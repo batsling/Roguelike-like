@@ -257,10 +257,9 @@ func games_with_tag(tag: StringName) -> Array:
 			continue
 		if GameLoop2.is_bashed(g.id):
 			continue
-		for t in g.tags:
-			if StringName(String(t).to_lower()) == tag:
-				pool.append(g.id)
-				break
+		# GameTags, not g.tags: a tag the player added in game counts at once.
+		if GameTags.has_tag(g, String(tag)):
+			pool.append(g.id)
 	return pool
 
 

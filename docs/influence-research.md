@@ -137,6 +137,8 @@ bar to fill the gap.
 ## Running it
 
 ```bash
+python3 tools/influence_research.py new       # the games added since the last pass: every scan below that works from here
+python3 tools/influence_research.py new --mark  # ...once their findings are in docs/influence-candidates.md
 python3 tools/influence_research.py targets   # who to research
 python3 tools/influence_research.py devs      # appid + developer for every game, ~6 min, cached
 python3 tools/influence_research.py samedev   # same-studio leads
@@ -190,6 +192,40 @@ python3 tools/influence_research.py forums      # continues from game 55
 
 Copy the file back into `tools/` before the session ends. A cloud container can
 restart and take `.influence_work/` with it; that happened once mid-scan.
+
+### New games: `new`
+
+Every game the owner adds gets researched, without anyone having to ask.
+`tools/influence_researched.json` (checked in) holds the date each game was
+researched; the 899 that were on the chart before it existed say
+`before 2026-10-07`, which the passes above covered. A game on the sheet and
+not in it is new, and `import-games-godot.py` lists those after every import.
+
+`new` runs, over just those games: `devs` (for the whole catalog, so the
+same-studio check has something to compare against; cached after the first
+run), their Steam store text and developer announcements, `itch`, `site`,
+`reddit`, `bluesky`, and `media` (YouTube; Apple Podcasts only if it answers,
+which it doesn't from the cloud: those rows are cached with an error so a run
+at home redoes them). `media` also folds the new games into
+`docs/influence-media.md` and its cache back into `tools/`, exactly as a full
+`media` run does. One source refusing (Arctic Shift throttles hard) stops that
+source only. Then it writes `.influence_work/new_games.md`, one section per
+game:
+
+- every first-hand sentence naming a chart game it isn't connected to;
+- **influence claims that name no chart game**: the developer's "inspired by"
+  lines about games off the chart, which is where a roguelike the chart lacks
+  shows up (rule 3), and where non-roguelike influences show the trail is cold;
+- same-studio games on the chart, and whether they are connected;
+- other chart games' cached Steam text naming it (only if `steam` has run);
+- videos and podcasts to listen to;
+- search links for the hand half.
+
+The hand half is the part that usually pays: a web search per game for an
+interview, a devlog or a press release. The October 2026 batch shows why: the
+scans found nothing first-hand for most of the eighteen, while a Japanese
+interview gave Lumencraft's whole influence list. Write up what holds up in
+`docs/influence-candidates.md` (section 1, 5 or 6), then `new --mark`.
 
 ### Interviews and podcasts: `media`
 

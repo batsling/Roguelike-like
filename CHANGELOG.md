@@ -11,6 +11,73 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The tag export moved to Settings, and covers every game.** Settings →
+  Game tags → *Export tags for all games* writes all 917 games to
+  `tools/tag_edits.json`, each with the tags it has in game and what was added
+  or removed there; the path is shown beside the button to copy. The editor's
+  footer now only counts the pending edits and points at Settings.
+  `apply_tag_edits.py` still writes only the differences, never a game's full
+  list, so a tag typed into the sheet in Excel since the last import is never
+  undone by an older export.
+
+- **Tag games in game, and send the tags to the sheet.** A game's tags are
+  editable on the Collection's game page and on the run map's game card: its
+  tags are chips with a × to take one off, "+ Tag" opens every tag in use as
+  one-click chips plus a box for a brand-new one, a tag added in game is drawn
+  in ember until the sheet has it, and a sheet tag taken off stays on view,
+  faint, to be put back. The new `GameTags` autoload (the 28th) lays these edits
+  over the baked `GameData.tags`, per profile like the owned ticks, and they
+  count at once: `EventSystem.games_with_tag` reads it, so an event can send the
+  run to a game tagged a minute ago. The sheet is never written from the game.
+  The editor's Export writes the pending edits to `tools/tag_edits.json`;
+  `tools/apply_tag_edits.py` writes them into the `games` sheet's Tags column
+  through `_xlsx_surgery` (checked end to end: all 8 charts and 1771 formulas
+  intact) and re-imports, and on the next load the game drops every edit the
+  baked data now carries, so the pending count empties itself. `set_cells` now
+  keeps a replaced cell's style. `test_game_tags.gd` covers the store, the
+  routing, the reload, the self-emptying, the export and both screens.
+
+- **New games get researched every time, and tags get suggested.** Two tools
+  the owner asked for. **`influence_research.py new`** researches only the games
+  added since the last pass: `tools/influence_researched.json` (checked in)
+  dates every researched game, `import-games-godot.py` lists the ones missing
+  from it after every import, and `new` runs the scans that work from the cloud
+  (Steam store text and announcements, itch.io, studio sites, Reddit, Bluesky,
+  YouTube) over just those, into one report per game. Its list of "influence
+  claims naming no chart game" is where a roguelike the chart lacks turns up.
+  `new --mark` records them once the findings are written up. CLAUDE.md now says
+  porting games means doing this unasked. Its first run, on the eighteen games
+  above: two weaker lines on Conquest Dark, text sources for Kingdom: New Lands →
+  Crab God and Noita → Lumencraft, and Teleglitch as a roguelike the chart lacks
+  (all in `docs/influence-candidates.md`, none in the sheet). Two bugs fixed on the
+  way, both in the shared scan code: the claim pattern's `tribute` matched
+  "attribute", so every patch note about an attribute read as an influence
+  claim; and a source that gave up (Reddit, after five minutes of Arctic
+  Shift's "slow down") left every queued game to sit out the same five minutes,
+  about ninety minutes for eighteen games. **`tag_research.py`** writes
+  `tools/Research.xlsx`, its own workbook: for each game, which of the sheet's
+  31 tags its Steam tags, store text or title point to, with the evidence and a
+  strength, plus Steam themes several games share that no tag covers yet. Each
+  rule is scored by how many of the already-tagged games it finds. It never
+  touches `Roguelikes.xlsx`; the owner's yes/no in its `Owner` column survives
+  reruns. First run: 399 suggestions over 295 games, 167 of them strong.
+
+- **Eighteen new games and fourteen new connections from the owner.** New on
+  the sheet, with their covers: Blade Assault, Blood Dungeon, Change: A Homeless
+  Survival Experience, Conquest Dark, Crab God, Devil Spire, Full Metal
+  Schoolgirl, Kaz, Kingsway, Lumencraft, Orbital Bullet, Pinball Storm: Lokanta,
+  Prime Monster, Pro Jank Footy, Ratatan, Scarlet Skips, Source of Madness and
+  Stray Path (eleven of them owned). Blood Dungeon comes in on six rows from
+  Messhof's Campaign Mode interview (20 Minutes Till Dawn, Downwell, Megabonk,
+  Risk of Rain, Spelunky Classic, Vampire Survivors); the others on one or two
+  rows each, every one but Vampire Survivors → Pinball Storm: Lokanta with a proof
+  already in the folder. Ten of the eighteen have no connection yet. ADOM →
+  Ultimate ADOM is now a Dev/Series row. The owner re-sorted `connections`, so
+  most touched `.tres` files only change the order of their arrays. The Crab God
+  clip is converted, and `proof-missing.md` is hand-patched with the one new
+  line: its generator needs the capture report, which lived in the last
+  session's container. 917 games, 1505 connections; the Atlas skies are re-baked.
+
 - **Four new games, 24 new connections, five newly owned games and 45 proof uploads
   from the owner.** New on the sheet: Lost Eidolons: Veil of the Witch, Rogue
   Blight, Fushigi no Pixel Dungeon and Slayblade, with their covers. Newly owned:

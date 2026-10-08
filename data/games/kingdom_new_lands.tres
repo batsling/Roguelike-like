@@ -8,9 +8,9 @@ id = &"kingdom_new_lands"
 display_name = "Kingdom: New Lands"
 year = 2016
 type = 1
-games_influenced = Array[StringName]([&"dome_keeper", &"drill_core", &"ratropolis"])
-influence_sources = PackedStringArray("check folder", "https://steamcommunity.com/app/2821800/discussions/0/4346617656894336061/#c4346617656897843847", "look at it")
-influence_relations = PackedStringArray("", "", "")
+games_influenced = Array[StringName]([&"crab_god", &"dome_keeper", &"drill_core", &"ratropolis"])
+influence_sources = PackedStringArray("https://www.youtube.com/watch?v=sKnZGU2DbGA&t=144s", "check folder", "https://steamcommunity.com/app/2821800/discussions/0/4346617656894336061/#c4346617656897843847", "look at it")
+influence_relations = PackedStringArray("", "", "", "")
 tags = PackedStringArray()
 enemy_pool = Array[StringName]([])
 item_pool = Array[StringName]([])

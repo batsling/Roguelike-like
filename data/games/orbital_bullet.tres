@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="GameData" load_steps=2 format=3 uid="uid://game_orbital_bullet"]
+
+[ext_resource type="Script" path="res://scripts/resources/GameData.gd" id="1_game"]
+
+[resource]
+script = ExtResource("1_game")
+id = &"orbital_bullet"
+display_name = "Orbital Bullet"
+year = 2021
+type = 0
+games_influenced = Array[StringName]([])
+influence_sources = PackedStringArray()
+influence_relations = PackedStringArray()
+tags = PackedStringArray()
+enemy_pool = Array[StringName]([])
+item_pool = Array[StringName]([])
+special_effects = PackedStringArray()
+cover_path = "res://images2.0/games/orbital-bullet.png"
+owned = true
+file_location = "C:\\Users\\Owner\\Documents\\Roguelike Roguelike\\Roguelikes\\Orbital Bullet.url"
+steam_page = "https://store.steampowered.com/app/1167680/Orbital_Bullet__The_360_Roguelite/"

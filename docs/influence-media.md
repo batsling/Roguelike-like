@@ -6,10 +6,10 @@ Videos and podcast episodes where a developer may say what inspired their game, 
 
 | | games | results |
 |---|---|---|
-| 1. Confirm a suspected connection | 108 | 309 |
-| 2. Games with few connections | 164 | 523 |
+| 1. Confirm a suspected connection | 110 | 312 |
+| 2. Games with few connections | 174 | 552 |
 
-Searched 506 of the 506 games that qualify; 234 had nothing that looked like the developer talking.
+Searched 522 of the 522 games that qualify; 238 had nothing that looked like the developer talking.
 
 ---
 
@@ -177,6 +177,12 @@ Listen for: **Cult of the Lamb** (sheet says "check folder"); **Hades** (sheet s
 Listen for: **Nuclear Throne** (sheet says "mentioned multiple times in discord and on steam discussions")
 
 - [ ] video [Holden's Half Hour: Colt Canyon](https://www.youtube.com/watch?v=1jeWstNnDRY) — Holden's Game Archive · 28:38 · 4y ago — names the developer
+
+### Conquest Dark (2025) — 1 connection
+
+Listen for: **Vampire Survivors** (sheet says "check folder")
+
+- [ ] video [Conquest Dark / Holden's Half Hour](https://www.youtube.com/watch?v=k5Aw5xQS0U0) — Holden's Game Archive · 34:17 · 1mo ago — names the developer
 
 ### Cross Blitz (2023) — 3 connections
 
@@ -445,7 +451,7 @@ Listen for: **NetHack** (sheet says "check folder"); **The Binding of Isaac** (s
 
 - [ ] video [Captain Spark - Behind The Scenes - The Lost Flame Of Liberty](https://www.youtube.com/watch?v=qyoBBzJi_T0) — Snap Holidays · 5:04 · 2mo ago — behind the
 
-### Megabonk (2025) — 4 connections
+### Megabonk (2025) — 5 connections
 
 Listen for: **Risk of Rain 2** (sheet says "check folder"); **Vampire Survivors** (sheet says "check folder")
 
@@ -549,7 +555,7 @@ Listen for: **Vampire Survivors** (sheet says "check folder")
 - [ ] podcast [Bobby Lee and Nimrods](https://podcasts.apple.com/us/podcast/bobby-lee-and-nimrods/id1480311435?i=1000782881219) — Office Ladies · 49 min · 2026-08-12 — cue in the description
 - [ ] podcast [Lanterns + Nimrods + Brink of War + More Reviews](https://podcasts.apple.com/us/podcast/lanterns-nimrods-brink-of-war-more-reviews/id1202134377?i=1000783361263) — Film Threat · 123 min · 2026-08-14 — cue in the description
 
-### Noita (2019) — 9 connections
+### Noita (2019) — 10 connections
 
 Listen for: **Spelunky Classic** (sheet says "check folder")
 
@@ -594,6 +600,12 @@ Listen for: **Dead Cells** (sheet says "look at it")
 
 - [ ] video [OBLIVION OVERRIDE, a entrevista da Calabresa e do Porchat no PodPah, e um nível a mais](https://www.youtube.com/watch?v=dENhb2LfiMA) — Artrite Porque · 1:37:31 · Streamed 2y ago — entrevista
 - [ ] video [Oblivion Override / VGU Test Drive](https://www.youtube.com/watch?v=eOasnwllcB8) — VGU TV · 9:51 · 3y ago — names the developer
+
+### Pinball Storm: Lokanta (2025) — 1 connection
+
+Listen for: **Vampire Survivors** (sheet says "look at it")
+
+- [ ] video [What is Pinball Storm Lokanta?](https://www.youtube.com/watch?v=UnlKvvN2Lu8) — Pravculear · 14:36 · 2y ago — cue in the description
 
 ### Pluto (2026) — 1 connection
 
@@ -669,6 +681,7 @@ Listen for: **Spelunky Classic** (sheet says "check folder")
 Listen for: **FTL** (sheet says "check folder"); **Slay the Spire** (sheet says "check folder")
 
 - [ ] video [Philippine Franchise Expo Interview with Franchise Sales Officer Anne Tayag of Slice & Dice](https://www.youtube.com/watch?v=vDmUiPbeJMY) — NowPlanet.TV Philippines · 1:49 · 14y ago — interview
+- [ ] podcast [Casino Cast 2 ft. Balatro and Slice & Dice](https://podcasts.apple.com/us/podcast/casino-cast-2-ft-balatro-and-slice-dice/id1455728057?i=1000659100650) — Pixelated Playgrounds · 2024-06-15 — ft.
 
 ### Sodaman (2025) — 3 connections
 
@@ -870,6 +883,10 @@ Listen for: **Angband** (sheet says "check folder")
 
 Held on the map by one connection or none. Listen for any game on the chart.
 
+### Blade Assault (2021) — 0 connections
+
+- [ ] video [Blade Assault / Holden's Half Hour](https://www.youtube.com/watch?v=rBRXnzAdtdk) — Holden's Game Archive · 29:34 · 3y ago — names the developer
+
 ### Blue Prince (2025) — 0 connections
 
 - [ ] video [BLUE PRINCE: An Interview with Tonda Ros](https://www.youtube.com/watch?v=7kX5jeBMWjE) — Myster Rogers · 1:22:08 · 1y ago — interview
@@ -884,6 +901,10 @@ Held on the map by one connection or none. Listen for any game on the chart.
 ### Captain Forever Remix (2016) — 0 connections
 
 - [ ] podcast [GWJ Conference Call Episode 441](https://podcasts.apple.com/us/podcast/gwj-conference-call-episode-441/id175107566?i=1000430121169) — Gamers With Jobs - Conference Call · 78 min · 2015-03-25 — cue in the description
+
+### Change: A Homeless Survival Experience (2020) — 0 connections
+
+- [ ] video [FazCast - @WASD X @IGN - Interview from @DannyHayes for CHANGE - A Homeless Survival Experience](https://www.youtube.com/watch?v=4kenqyPrrsY) — Faz D · 5:41 · 2y ago — interview, names the developer
 
 ### Cryptark (2017) — 0 connections
 
@@ -956,6 +977,20 @@ Held on the map by one connection or none. Listen for any game on the chart.
 - [ ] video [Did Landfall Games Create the FASTEST Rouguelike Ever?! / Haste: Broken Worlds](https://www.youtube.com/watch?v=o2YSF3eCGoc) — BoyJonesiee · 22:44 · 1y ago — names the developer
 - [ ] podcast [Shane Haste is Back in Japan](https://podcasts.apple.com/us/podcast/shane-haste-is-back-in-japan/id1504940209?i=1000766421737) — Talk'n Shop · 99 min · 2026-05-06 — cue in the description
 
+### Kaz (2026) — 0 connections
+
+- [ ] video [Playstation Underground Interview with Kaz Hirai (YouTube Automatic Dub Test)](https://www.youtube.com/watch?v=vebDDzrqKjY) — Cabbusses · 5:18 · 1y ago — interview
+- [ ] video [Playstation Underground interview with Kaz Hirai - for the Playstation 1](https://www.youtube.com/watch?v=MhpNTKTWNYk) — Pantsi's Random Game Videos · 5:18 · 3y ago — interview
+- [ ] video [Kaz Hirai Interview (Playstation Underground)](https://www.youtube.com/watch?v=4d6nva0gKeY) — Windy Corner - Archive · 5:01 · 1y ago — interview
+- [ ] video [ODSC East 2016 / Interview with Kaz Sato](https://www.youtube.com/watch?v=oymElkFQmUY) — Open Data Science and AI Conference · 8:46 · 10y ago — interview
+- [ ] podcast [Writing SpongeBob With Kaz](https://podcasts.apple.com/us/podcast/writing-spongebob-with-kaz/id1586201809?i=1000547766901) — SpongeBob BingePants · 26 min · 2022-01-13 — cue in the description
+
+### Kingsway (2017) — 0 connections
+
+- [ ] video [Kingsway - Interview with Andrew Morrish at PAX East 2017](https://www.youtube.com/watch?v=lA1oqXtYJs8) — Voxel Voice · 4:44 · 9y ago — interview, names the developer
+- [ ] video [Kingsway College School: Interview with Head of School Garth Nichols](https://www.youtube.com/watch?v=LNkGb1tT4eo) — Our Kids Guide to Private Schools · 16:48 · 1y ago — interview
+- [ ] video [Kingsway Financial Services (CEO Interview)](https://www.youtube.com/watch?v=oMDwjdTwi8I) — James Emanuel | Rock and Turner Investments · 1:07:00 · 8mo ago — interview
+
 ### Loot River (2022) — 0 connections
 
 - [ ] podcast [Miro Straka of straka.studio Developer Interview](https://podcasts.apple.com/us/podcast/miro-straka-of-straka-studio-developer-interview/id1459327958?i=1000547660367) — Indie Pod: An Indie Games Podcast · 43 min · 2022-01-12 — developer, interview, names the developer
@@ -974,6 +1009,16 @@ Held on the map by one connection or none. Listen for any game on the chart.
 - [ ] podcast [George Fan, I'm your biggest Fan!](https://podcasts.apple.com/us/podcast/george-fan-im-your-biggest-fan/id1671350556?i=1000614422468) — The Fourth Curtain · 88 min · 2023-05-25 — cue in the description
 - [ ] podcast [Episode 107 - Drop a Pin](https://podcasts.apple.com/us/podcast/episode-107-drop-a-pin/id1067849668?i=1000402061527) — The Optional Podcast · 76 min · 2018-02-12 — cue in the description
 
+### Orbital Bullet (2021) — 0 connections
+
+- [ ] video [Orbital Bullet  - Interview auf den German Dev Days 2019](https://www.youtube.com/watch?v=Rv0CQ0eSlRs) — Geruhn Streamarchiv · 3:59 · 7y ago — dev, interview
+- [ ] video [SWW Interviews Episode 70: Orbital Bullet and Breach Wanderers](https://www.youtube.com/watch?v=r59i-Nd0D-g) — The SWW Show · 51:03 · 1y ago — interview
+- [ ] video [Leet's Play Pre-Release "Orbital Bullet" by SmokeStab / devcom Indie Expo](https://www.youtube.com/watch?v=uiSyWq1NhSo) — gamescom dev · 23:58 · 4y ago — dev, names the developer
+- [ ] video [Playing Some / Orbital Bullet (Steam)](https://www.youtube.com/watch?v=aVrJU2Q2_Po) — GameEnthus · 30:59 · 4y ago — names the developer
+- [ ] podcast [SWW Interviews Episode 70: Orbital Bullet and Breach Wanderers](https://podcasts.apple.com/us/podcast/sww-interviews-episode-70-orbital-bullet-and-breach/id1435072446?i=1000531213276) — The SWW Show · 51 min · 2021-08-06 — interview
+- [ ] podcast [The Sausage Factory: 334 –  Orbital Bullet by Smokestab Games](https://podcasts.apple.com/us/podcast/the-sausage-factory-334-orbital-bullet-by-smokestab-games/id767461047?i=1000523384967) — The Sausage Factory · 59 min · 2021-05-28 — names the developer
+- [ ] podcast [The Sausage Factory: 334 –  Orbital Bullet by Smokestab Games](https://podcasts.apple.com/us/podcast/the-sausage-factory-334-orbital-bullet-by-smokestab-games/id1727863948?i=1000643204457) — The Sausage Factory · 59 min · 2021-05-28 — names the developer
+
 ### OTXO (2023) — 0 connections
 
 - [ ] video [High Speed Action With OTXO Developer Interview / Perceptive Podcast #indiedev #indiegames](https://www.youtube.com/watch?v=sCKDrDnwZzQ) — Game Wisdom · 57:28 · 3y ago — developer, interview, names the developer
@@ -990,6 +1035,18 @@ Held on the map by one connection or none. Listen for any game on the chart.
 
 - [ ] video [Hearthstone Deck Tech/ S02 E07/ Krea Pogo Rogue](https://www.youtube.com/watch?v=Qncth3vDq8M) — Guam Esports Federation · 47:10 · 7y ago — cue in the description
 - [ ] podcast [Hearthstone Deck Tech/ S02 E07/ Krea Pogo Rogue](https://podcasts.apple.com/us/podcast/hearthstone-deck-tech-s02-e07-krea-pogo-rogue/id1410460547?i=1000441991868) — Hearthstone Deck Techs · 47 min · 2019-06-19 — cue in the description
+
+### Pro Jank Footy (2026) — 0 connections
+
+- [ ] video [Pro Jank Footy / David Ashby (Powerbomb Games) Interview / PAX Aus 2025](https://www.youtube.com/watch?v=GpzOEfZBBMw) — Russtymango · 8:55 · 23h ago — interview, names the developer
+- [ ] podcast [Pro Jank Footy: the video game love letter to our "absurd" footy culture](https://podcasts.apple.com/us/podcast/pro-jank-footy-the-video-game-love-letter-to-our/id499806529?i=1000785170752) — Sunday Extra - Separate stories podcast · 11 min · 2026-08-22 — names the developer
+- [ ] podcast [New Footy Game developed in SA: Pro Jank Footy](https://podcasts.apple.com/us/podcast/new-footy-game-developed-in-sa-pro-jank-footy/id1167323375?i=1000784176250) — FIVEAA Breakfast with David & Will with Stacey Lee · 5 min · 2026-08-18 — names the developer
+
+### Ratatan (2025) — 0 connections
+
+- [ ] video [(BitSummit the 13th) Official Full Interview w/ Hiroyuki Kotani & Kazuo Sakajiri](https://www.youtube.com/watch?v=b7t1lGP6OmY) — BitSummit · 13:16 · 1y ago — interview
+- [ ] video [Ratatan Is A Mash Up of A Rhythm Game Meets Real Time Combat Tactics](https://www.youtube.com/watch?v=w0mqG9H5-9E) — Shacknews Interviews · 4:05 · 1y ago — interview
+- [ ] podcast [Ratatan: Patapon Spiritual Successor](https://podcasts.apple.com/us/podcast/ratatan-patapon-spiritual-successor/id1777692807?i=1000677540309) — Hot Off - Gaming · 12 min · 2024-11-19 — cue in the description
 
 ### Ringer (2025) — 0 connections
 
@@ -1221,6 +1278,10 @@ Held on the map by one connection or none. Listen for any game on the chart.
 - [ ] video [Interview with Convoy Games' Sander de Visser](https://www.youtube.com/watch?v=PnaXTx_7EDw) — Rituro · 11:27 · 11y ago — interview, names the developer
 - [ ] podcast [Reviews: Hope//The Christophers//Convoy](https://podcasts.apple.com/us/podcast/reviews-hope-the-christophers-convoy/id368403941?i=1000790313855) — The Film Vault · 108 min · 2026-09-17 — cue in the description
 - [ ] podcast [Canada Convoy Update](https://podcasts.apple.com/us/podcast/canada-convoy-update/id1449762156?i=1000550029426) — It Could Happen Here · 30 min · 2022-02-04 — cue in the description
+
+### Crab God (2024) — 1 connection
+
+- [ ] video [The Blindspot Podcast Episode 8: Crabgodroni](https://www.youtube.com/watch?v=X8ju6THXhJg) — DEFINITIVE SAFETY GROUP presents "THE BLINDSPOT" · 14:42 · Streamed 4y ago — cue in the description
 
 ### Crown Trick (2020) — 1 connection
 
@@ -1488,6 +1549,10 @@ Held on the map by one connection or none. Listen for any game on the chart.
 - [ ] podcast [Lost in Random feat. CinemaTisch - Folge 8](https://podcasts.apple.com/us/podcast/lost-in-random-feat-cinematisch-folge-8/id1817950107?i=1000710740878) — Gooniverse · 231 min · 2025-02-16 — feat.
 - [ ] podcast [#002 - Lost in Random, Stranger of Paradise e Turnip Boy - ft. Bah Gutierrez](https://podcasts.apple.com/us/podcast/002-lost-in-random-stranger-of-paradise-e-turnip-boy/id1628371318?i=1000565543351) — Detona! Game On · 34 min · 2022-05-13 — ft.
 
+### Lumencraft (2022) — 1 connection
+
+- [ ] video [Lumencraft - Interview with the developer](https://www.youtube.com/watch?v=wUJ804Sho40) — Feardemic · 2:28 · 4y ago — developer, interview
+
 ### Maid Survivors: Little Angels (2025) — 1 connection
 
 - [ ] video [Maid Survivors - a playtest of a forthcoming swarm survival game](https://www.youtube.com/watch?v=pyFOM35Xg0w) — Gentlemen's Pixel Club · 51:34 · 1y ago — cue in the description
@@ -1687,6 +1752,13 @@ Held on the map by one connection or none. Listen for any game on the chart.
 ### Solitairica (2016) — 1 connection
 
 - [ ] video [PAX West 2016: Interview w/ Righteous Hammer of Solitairica](https://www.youtube.com/watch?v=j6rOHgGxdHY) — Constantly Calibrating · 20:13 · 10y ago — interview
+
+### Source of Madness (2021) — 1 connection
+
+- [ ] podcast [The Sausage Factory: 401 – Source of Madness by Carry Castle](https://podcasts.apple.com/us/podcast/the-sausage-factory-401-source-of-madness-by-carry-castle/id1727863948?i=1000643204452) — The Sausage Factory · 49 min · 2022-08-12 — names the developer
+- [ ] podcast [The Sausage Factory: 401 – Source of Madness by Carry Castle](https://podcasts.apple.com/us/podcast/the-sausage-factory-401-source-of-madness-by-carry-castle/id767461047?i=1000575870266) — The Sausage Factory · 49 min · 2022-08-12 — names the developer
+- [ ] podcast [141 Per Fornander (Grundare / Source of Madness)](https://podcasts.apple.com/us/podcast/141-per-fornander-grundare-source-of-madness/id1084993748?i=1000539111873) — Spelskaparna · 35 min · 2021-10-19 — names the developer
+- [ ] podcast [78: Sean Andrew Murray / Source of Madness](https://podcasts.apple.com/us/podcast/78-sean-andrew-murray-source-of-madness/id1590177585?i=1000566931519) — Indie Game International · 80 min · 2022-06-18 — names the developer
 
 ### Spelunky 2 (2020) — 1 connection
 
