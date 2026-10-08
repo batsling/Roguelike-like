@@ -662,6 +662,10 @@ func start_run(character_id: StringName = &"") -> void:
 	# longer exists (GameLog is cleared with the run).
 	_dismiss_history()
 	_dismiss_splits()
+	# …and the old run's toasts ("Switch your Twitch category to …" a game this
+	# run is not on).
+	if _toasts != null and is_instance_valid(_toasts):
+		_toasts.clear()
 	_resolving = false
 	_attempt_resolve = false
 	_board.clear_fx()
@@ -1371,7 +1375,9 @@ func pick(index: int) -> void:
 	# commit stands on a laid rift game (docs/rifts-design.md §8).
 	if _chosen.has("rift_key"):
 		_open_rift_key(_chosen)
+	GameLog.arriving_at = _chosen["slot"]
 	_begin_game(_chosen["game"], _chosen["enemy"], _current_tier())
+	GameLog.arriving_at = &""
 	# Move to the graph SLOT (a transmuted card plays an off-graph game but keeps
 	# its position on the route toward the amulet).
 	GameState.set_current_game(_chosen["slot"])
@@ -4039,7 +4045,9 @@ func _start_play_game(request: Dictionary) -> void:
 	}
 	# `log_shields` false: this path has always granted the armour silently. See
 	# _begin_game — kept as it was rather than quietly fixed.
+	GameLog.arriving_at = dest
 	_begin_game(game, enemy, tier, false)
+	GameLog.arriving_at = &""
 	GameState.set_current_game(dest)
 	_dash_mode = false
 	# A detour is posted by an event, not paid for with a charge, so there is

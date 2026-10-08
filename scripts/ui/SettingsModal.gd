@@ -13,6 +13,9 @@ static func open(parent: Node) -> SettingsModal:
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	# In a run this mounts on a CanvasLayer, which the theme does not cross — so
+	# without this the in-run Settings came up in Godot's stock grey.
+	UITheme.dress(self)
 	top_level = true
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	_fit_to_viewport()

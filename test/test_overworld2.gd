@@ -10687,6 +10687,53 @@ func test_a_second_visit_to_a_game_is_its_own_stop() -> void:
 			at_a += 1
 	assert_eq(at_a, 2, "two separate stops at the same game, not one folded pair")
 
+# What committing to a game writes — the shields it grants, the bodies that walk
+# on, the Twitch reminder — belongs to THAT game's stop. `pick` commits the game
+# before it moves the run there, so those lines used to be filed under the game
+# just left, and the History screen showed "Switch your Twitch category to X"
+# under the game before X.
+func test_what_arriving_at_a_game_writes_is_filed_under_that_game() -> void:
+	if _ui._phase != OVERWORLD.Phase.SELECT or _ui.offer_count() == 0:
+		pending("the run did not reach an offering")
+		return
+	var left: StringName = GameState.current_game_id
+	var slot: StringName = _ui._choices[0]["slot"]
+	if slot == left:
+		pending("the first card is the game the run stands on")
+		return
+	_ui.pick(0)
+	assert_eq(GameState.current_game_id, slot, "the run moved where it was sent")
+	var stops: Array = GameLog.by_stop()
+	assert_eq(StringName(stops[0]["game"]), slot, "the newest stop is the arrival")
+	var shields_at_arrival: bool = false
+	for e in (stops[0]["lines"] as Array):
+		if String(e["text"]).contains("one hit stopped each"):
+			shields_at_arrival = true
+	assert_true(shields_at_arrival, "and it carries the shields committing granted")
+	for stop in stops.slice(1):
+		if StringName(stop["game"]) != left:
+			continue
+		for e in (stop["lines"] as Array):
+			assert_false(String(e["text"]).contains(
+				"Twitch category to \"%s\"" % Data.get_game(slot).display_name),
+				"the arrival's reminder is not filed under the game left")
+	assert_eq(GameLog.arriving_at, &"", "and the log is back to stamping where the run stands")
+
+func test_a_new_run_takes_the_old_ones_toasts_off_the_page() -> void:
+	var note := "a notice about the old run"
+	_ui._toasts._on_notified(note, Color.WHITE)
+	assert_true(_toast_texts().has(note), "the toast is up")
+	_ui.start_run()
+	await wait_frames(2)
+	assert_false(_toast_texts().has(note), "and the old run's toast went with it")
+
+func _toast_texts() -> Array:
+	var out: Array = []
+	for t in _ui._toasts._stack.get_children():
+		for l in (t as Node).find_children("*", "Label", true, false):
+			out.append((l as Label).text)
+	return out
+
 func test_a_new_run_takes_the_old_ones_history_off_the_page() -> void:
 	_ui.open_history()
 	assert_not_null(_ui._history_screen)

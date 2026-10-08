@@ -289,7 +289,10 @@ func _build_shell() -> void:
 	_add_tab_button(tabs, Tab.CHARACTERS, "Characters (%d)" % Data.all_characters2().size())
 	_add_tab_button(tabs, Tab.ENEMIES, "Enemies (%d)" % Data.all_goal_enemies().size())
 	_add_tab_button(tabs, Tab.BOSSES, "Bosses (%d)" % Data.all_bosses().size())
-	_add_tab_button(tabs, Tab.LOOT, "Loot (%d)" % (Data.all_scrolls().size() + Data.all_pills().size()))
+	# Every kind the Loot tab's sub-tabs list (_build_loot), not just the first two.
+	_add_tab_button(tabs, Tab.LOOT, "Loot (%d)" % (Data.all_scrolls().size()
+		+ Data.all_pills().size() + Data.all_potions().size()
+		+ Data.all_cards().size() + Data.all_wands().size()))
 	_add_tab_button(tabs, Tab.EVENTS, "Events (%d)" % Data.all_events2().size())
 	_add_tab_button(tabs, Tab.OBJECTS, "Objects (%d)" % Data.all_objects2().size())
 
@@ -2930,8 +2933,13 @@ func _event_gate_text(gate: Dictionary) -> String:
 			return OBJECT_FLAG_NAMES.get(String(gate.get("flag", "")),
 				String(gate.get("flag", "")))
 		_:
-			return "needs %s %s" % [str(gate.get("value", 1)),
-				String(gate.get("resource", ""))]
+			# A countable resource is named in the plural ("bombs"); one of
+			# them is singular. ("gold" carries no s and is left alone.)
+			var amount = gate.get("value", 1)
+			var res: String = String(gate.get("resource", ""))
+			if str(amount) == "1" and res.ends_with("s"):
+				res = res.left(-1)
+			return "needs %s %s" % [str(amount), res]
 
 const OBJECT_FLAG_NAMES := {
 	"not_jammed": "the machine is not jammed",
@@ -3023,8 +3031,6 @@ func _populate_objects() -> void:
 	if list.is_empty():
 		_grid.add_child(_label("No objects match.", Color(0.55, 0.55, 0.6), 13))
 	_set_count(list.size(), total)
-	if not list.is_empty():
-		_show_object_detail(list[0])
 
 func _object_choice_blob(obj: ObjectData) -> String:
 	var out: String = ""
@@ -3091,7 +3097,10 @@ func _show_object_detail(obj: ObjectData) -> void:
 	if obj.chance_won != "" or obj.chance_lost != "":
 		_detail_box.add_child(_detail_section("If a roll lands"))
 		if obj.chance_won != "":
-			_detail_box.add_child(_label("Won: %s" % obj.chance_won,
+			# {ITEM} is filled in a run with the relic actually rolled; the
+			# reference has no roll, so it says what kind of thing appears.
+			_detail_box.add_child(_label("Won: %s" % obj.chance_won.replace(
+				EventSystem.ITEM_HOLE, "a random item"),
 				Color(0.6, 0.85, 0.6), 11, false, true))
 		if obj.chance_lost != "":
 			_detail_box.add_child(_label("Lost: %s" % obj.chance_lost,

@@ -19,11 +19,19 @@ const MAX_MESSAGES := 500
 # opening roll, a menu action).
 var messages: Array[Dictionary] = []
 
+# Where lines are filed while the run is ARRIVING somewhere it does not yet
+# stand. Overworld2.pick commits the new game (walk-on bodies, the Twitch
+# reminder, the shields it grants) before `GameState.set_current_game` moves the
+# run — an order that is load-bearing, see Overworld2._begin_game — so without
+# this every arrival line was filed under the game just left. Empty means "where
+# the run is standing", which is every other line.
+var arriving_at: StringName = &""
+
 func add(text: String, color: Color = Color.WHITE) -> void:
 	messages.append({
 		"text": text,
 		"color": color,
-		"game": GameState.current_game_id,
+		"game": arriving_at if arriving_at != &"" else GameState.current_game_id,
 	})
 	if messages.size() > MAX_MESSAGES:
 		messages.pop_front()
@@ -53,3 +61,4 @@ func by_stop() -> Array:
 
 func clear() -> void:
 	messages.clear()
+	arriving_at = &""
