@@ -235,7 +235,10 @@ func _build_ui() -> void:
 
 	var hint := Label.new()
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	hint.custom_minimum_size = Vector2(0, 70)
+	# Room for the longest hint (two lines), so switching filters does not make
+	# the panel jump. It was a flat 70px — three and a half lines — which left a
+	# hole under the one-line "any game" hint that every player sees.
+	hint.custom_minimum_size = Vector2(0, UITheme.lines_height(UITheme.FONT_TEXT, 2))
 	hint.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 	hint.add_theme_color_override("font_color", Color(0.75, 0.75, 0.8))
 	vbox.add_child(hint)

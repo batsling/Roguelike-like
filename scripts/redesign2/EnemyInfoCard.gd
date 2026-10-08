@@ -473,7 +473,7 @@ func _size_text(e: GoalEnemyData) -> String:
 	var cells: int = e.footprint_cells().size()
 	var box: String = "%d x %d" % [e.footprint_rows(), e.footprint_cols()]
 	if cells == e.footprint_rows() * e.footprint_cols():
-		return "%s — %d cells of the board" % [box, cells]
+		return "%s — %s of the board" % [box, Plural.count(cells, "cell")]
 	# A shaped body (an L) fills fewer cells than its box; say so, since the gap
 	# is a real hole other enemies can stand in.
 	var raw: String = String(e.size)

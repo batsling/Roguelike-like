@@ -895,6 +895,18 @@ static func shared() -> Theme:
 	return _shared
 
 
+# The height `lines` lines of text take at `size` in the shared theme's font —
+# what a wrapping Label needs to RESERVE so a shorter text in the same slot does
+# not move what is under it. Measured off the font rather than typed, because a
+# guessed number is either a few pixels short (and the slot still jumps) or a
+# line too tall (and leaves a hole).
+static func lines_height(size: int, lines: int) -> float:
+	var t: Theme = shared()
+	var font: Font = t.default_font if t.default_font != null else ThemeDB.fallback_font
+	var spacing: float = float(t.get_constant("line_spacing", "Label")) \
+		if t.has_constant("line_spacing", "Label") else 3.0
+	return ceilf(font.get_height(size)) * lines + spacing * (lines - 1)
+
 # Put the shared theme on a subtree the screen's own theme cannot reach.
 #
 # A theme travels down CONTROL parents. Every 2.0 modal mounts itself on a
@@ -1114,6 +1126,34 @@ static func make_theme() -> Theme:
 		t.set_icon(on_name, "PopupMenu", popup_mark(true))
 	for off_name in ["unchecked", "radio_unchecked"]:
 		t.set_icon(off_name, "PopupMenu", popup_mark(false))
+
+	# --- Window / AcceptDialog ---
+	#
+	# THE RUN'S SAVE AND EXIT PROMPTS WERE STOCK GREY. They are real Windows
+	# (AcceptDialog / ConfirmationDialog), and a Window draws two things this theme
+	# never named: its FRAME and title bar (`embedded_border` on Window) and the
+	# body behind its text and buttons (`panel` on AcceptDialog). Their buttons and
+	# line edit already came up in the game's look — Godot hands a parent's theme
+	# down into a child window — so the dialogs read as a brown button stuck on a
+	# grey slab. Named here, every dialog in the project takes the modal look: the
+	# panel surface, an ember rim, and a gold title.
+	#
+	# The border box draws the title bar too, by reaching OUT past the window's
+	# rect: `expand_margin_top` is the bar's height and must match `title_height`,
+	# or the title is drawn half off its own bar.
+	var title_h: int = 36
+	var frame := flat(PANEL, 10, 0, 1, ACCENT.lerp(BORDER, 0.35))
+	frame.set_expand_margin_all(GAP)
+	frame.expand_margin_top = title_h
+	t.set_stylebox("embedded_border", "Window", frame)
+	var frame_dim: StyleBoxFlat = frame.duplicate()
+	frame_dim.border_color = BORDER
+	t.set_stylebox("embedded_unfocused_border", "Window", frame_dim)
+	t.set_constant("title_height", "Window", title_h)
+	t.set_color("title_color", "Window", GOLD)
+	t.set_font_size("title_font_size", "Window", FONT_HEAD)
+	t.set_stylebox("panel", "AcceptDialog", flat(PANEL, 0, GAP_LOOSE))
+	t.set_constant("buttons_separation", "AcceptDialog", GAP_WIDE)
 
 	# --- Separators ---
 	var sep := StyleBoxLine.new()

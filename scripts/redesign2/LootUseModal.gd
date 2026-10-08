@@ -801,7 +801,7 @@ func _report_outcome() -> void:
 		var bar: Array = LootSystem.charges(_entry)
 		var left: int = int(bar[0])
 		GameLog.add("The wand is spent." if left <= 0
-			else "%d of %d charges left." % [left, int(bar[1])],
+			else "%d of %s left." % [left, Plural.count(int(bar[1]), "charge")],
 			UITheme.TEXT_DIM if left <= 0 else WandSystem.WAND_COLOR)
 
 	# A piece whose ops ALL no-opped (a charge into a pack with nothing chargeable,

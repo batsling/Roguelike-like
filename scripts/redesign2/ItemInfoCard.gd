@@ -196,7 +196,8 @@ func _echo_strip(item: ItemData) -> Control:
 	var depth: int = maxi(1, int(item.echo_loot))
 	if memory.is_empty():
 		var none := Label.new()
-		none.text = "Nothing used yet — it copies the last %d pieces of loot you spend." % depth
+		none.text = "Nothing used yet — it copies the last %s you spend." % (
+			"piece of loot" if depth == 1 else "%d pieces of loot" % depth)
 		none.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 		none.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		none.add_theme_color_override("font_color", UITheme.TEXT_FAINT)

@@ -33,6 +33,12 @@ const LOOT_PILLS := "pills"
 const LOOT_POTIONS := "potions"
 const LOOT_CARDS := "cards"
 const LOOT_WANDS := "wands"
+# The pack's other pieces (docs/loot-passives.md): trinkets (§1), bags (§6) and
+# weapons (§12), plus the evolutions that turn one weapon into another (§13).
+const LOOT_TRINKETS := "trinkets"
+const LOOT_BAGS := "bags"
+const LOOT_WEAPONS := "weapons"
+const LOOT_EVOLUTIONS := "evolutions"
 
 # The stand-in capsule every pill cell wears. A PILL HAS NO ART OF ITS OWN
 # (PillData carries no image field): its picture is the COLOUR the run deals it
@@ -125,8 +131,9 @@ const CELL_SEP := 2
 var _tab: int = Tab.GAMES
 
 var _search := {"items": "", "characters": "", "enemies": "", "scrolls": "", "pills": "",
-	"potions": "", "cards": "", "wands": "", "games": "", "events": "", "objects": ""}
-# Which sub-tab the Loot tab is on: LOOT_SCROLLS / LOOT_PILLS / LOOT_POTIONS / LOOT_CARDS.
+	"potions": "", "cards": "", "wands": "", "trinkets": "", "bags": "", "weapons": "",
+	"evolutions": "", "games": "", "events": "", "objects": ""}
+# Which sub-tab the Loot tab is on: one of the LOOT_* constants.
 var _loot_sub: String = LOOT_SCROLLS
 var _games_sort: String = "name"
 var _games_type: int = -1
@@ -289,10 +296,7 @@ func _build_shell() -> void:
 	_add_tab_button(tabs, Tab.CHARACTERS, "Characters (%d)" % Data.all_characters2().size())
 	_add_tab_button(tabs, Tab.ENEMIES, "Enemies (%d)" % Data.all_goal_enemies().size())
 	_add_tab_button(tabs, Tab.BOSSES, "Bosses (%d)" % Data.all_bosses().size())
-	# Every kind the Loot tab's sub-tabs list (_build_loot), not just the first two.
-	_add_tab_button(tabs, Tab.LOOT, "Loot (%d)" % (Data.all_scrolls().size()
-		+ Data.all_pills().size() + Data.all_potions().size()
-		+ Data.all_cards().size() + Data.all_wands().size()))
+	_add_tab_button(tabs, Tab.LOOT, "Loot (%d)" % loot_total())
 	_add_tab_button(tabs, Tab.EVENTS, "Events (%d)" % Data.all_events2().size())
 	_add_tab_button(tabs, Tab.OBJECTS, "Objects (%d)" % Data.all_objects2().size())
 
@@ -2233,36 +2237,61 @@ func _show_enemy_detail(e: GoalEnemyData) -> void:
 # The Loot tab: one sub-tab row over one grid. Both halves are the same shape — a
 # search box, a count and a flow of cards — so the switch changes what is in the
 # grid and nothing about the furniture around it.
+# Every piece the Loot tab lists, across all its sub-tabs — the number on the tab.
+# Evolutions are recipes rather than pieces (each one's result is a weapon already
+# counted), so they are not in it.
+static func loot_total() -> int:
+	return Data.all_scrolls().size() + Data.all_pills().size() \
+		+ Data.all_potions().size() + Data.all_cards().size() + Data.all_wands().size() \
+		+ Data.all_trinkets().size() + Data.all_bags().size() + Data.all_weapons().size()
+
 func _build_loot() -> void:
-	var subs := _controls_row()
+	# NINE SUB-TABS DO NOT FIT ONE ROW AT 1280, so the row FLOWS: the buttons wrap
+	# onto a second line rather than setting a minimum width the modal would have to
+	# grow past the canvas to honour (see the note below).
+	var bg := PanelContainer.new()
+	bg.add_theme_stylebox_override("panel", _flat(Color(0, 0, 0, 0.35)))
+	var subs := HFlowContainer.new()
+	subs.add_theme_constant_override("h_separation", UITheme.GAP_SNUG)
+	subs.add_theme_constant_override("v_separation", UITheme.GAP_SNUG)
+	subs.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	bg.add_child(subs)
+	_content.add_child(bg)
 	subs.add_child(_loot_sub_button("📜  Scrolls (%d)" % Data.all_scrolls().size(), LOOT_SCROLLS))
 	subs.add_child(_loot_sub_button("💊  Pills (%d)" % Data.all_pills().size(), LOOT_PILLS))
 	subs.add_child(_loot_sub_button("🧪  Potions (%d)" % Data.all_potions().size(),
 		LOOT_POTIONS))
 	subs.add_child(_loot_sub_button("🃏  Cards (%d)" % Data.all_cards().size(), LOOT_CARDS))
 	subs.add_child(_loot_sub_button("🪄  Wands (%d)" % Data.all_wands().size(), LOOT_WANDS))
-	# WHAT THE TAB IS, said once, where the difference between the three halves
-	# actually matters: a scroll hides behind a shared Unidentified art, a pill
-	# hides behind a colour, and a potion hides behind a bottle it does NOT own —
-	# so a potion's own art can be shown here where a pill's capsule cannot.
-	#
-	# IT WRAPS, and it has to. A Label with `autowrap_mode` OFF reports its whole
-	# line as its MINIMUM width, so this note was not sharing the row with the five
-	# buttons — it was setting the row's width, and through it the compendium's.
-	# Four of the five notes run half as long again as the scrolls one, so picking
-	# Pills, Potions, Cards or Wands took the modal's minimum width past the 1280
-	# canvas (1405 at the worst) — and a PanelContainer that cannot fit GROWS rather
-	# than shrinking, so the whole panel widened and carried its ✕ Close button off
-	# the right edge of the screen. Wrapping, the note's minimum is its longest
-	# WORD, and it takes whatever the buttons leave.
-	var note := _label(_loot_note(), Color(0.6, 0.6, 0.65), 11, false, true)
-	note.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	note.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	note.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	subs.add_child(note)
+	subs.add_child(_loot_sub_button("◆  Trinkets (%d)" % Data.all_trinkets().size(),
+		LOOT_TRINKETS))
+	subs.add_child(_loot_sub_button("🎒  Bags (%d)" % Data.all_bags().size(), LOOT_BAGS))
+	subs.add_child(_loot_sub_button("⚔  Weapons (%d)" % Data.all_weapons().size(),
+		LOOT_WEAPONS))
+	subs.add_child(_loot_sub_button("⟳  Evolutions (%d)" % Data.all_evolutions().size(),
+		LOOT_EVOLUTIONS))
 
 	var row := _controls_row()
 	row.add_child(_search_box(_loot_sub))
+	# WHAT THE TAB IS, said once, where the difference between the halves actually
+	# matters: a scroll hides behind a shared Unidentified art, a pill hides behind
+	# a colour, and a potion hides behind a bottle it does NOT own — so a potion's
+	# own art can be shown here where a pill's capsule cannot.
+	#
+	# IT WRAPS, and it has to. A Label with `autowrap_mode` OFF reports its whole
+	# line as its MINIMUM width, so this note was not sharing its row — it was
+	# setting the row's width, and through it the compendium's. Picking a sub-tab
+	# with a long note once took the modal's minimum width past the 1280 canvas
+	# (1405 at the worst) — and a PanelContainer that cannot fit GROWS rather than
+	# shrinking, so the whole panel widened and carried its ✕ Close button off the
+	# right edge of the screen. Wrapping, the note's minimum is its longest WORD,
+	# and it takes whatever the search box and the count leave.
+	var note := _label(_loot_note(), Color(0.6, 0.6, 0.65), 11, false, true)
+	note.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	note.size_flags_stretch_ratio = 2.0
+	note.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	note.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	row.add_child(note)
 	_add_count_label(row)
 	var scroll := ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -2302,6 +2331,17 @@ func _loot_note() -> String:
 		LOOT_WANDS:
 			return ("Revealed reference — including the charges. Every run deals these "
 				+ "a material out of 28, so the stick you'll be holding is not this one.")
+		LOOT_TRINKETS:
+			return ("Nothing hidden: a trinket works from wherever it sits in the pack, "
+				+ "and some care what is next to it.")
+		LOOT_BAGS:
+			return "Nothing hidden: a bag is more pack, and what is inside it rides along."
+		LOOT_WEAPONS:
+			return ("Nothing hidden: a weapon charges from its own goal, once a game, "
+				+ "won or lost — then you aim the swing at the board.")
+		LOOT_EVOLUTIONS:
+			return ("A weapon grows into another when the run holds what it asks for. "
+				+ "Where those things sit does not matter.")
 		_:
 			return "Revealed reference — a run hides all of this until you identify it."
 
@@ -2322,6 +2362,14 @@ func _populate_loot() -> void:
 			_populate_cards()
 		LOOT_WANDS:
 			_populate_wands()
+		LOOT_TRINKETS:
+			_populate_trinkets()
+		LOOT_BAGS:
+			_populate_bags()
+		LOOT_WEAPONS:
+			_populate_weapons()
+		LOOT_EVOLUTIONS:
+			_populate_evolutions()
 		_:
 			_populate_scrolls()
 
@@ -2573,6 +2621,188 @@ func _wand_targeting_word(targeting: String) -> String:
 			return "aimed, or not — it varies"
 		_:
 			return "fires where you stand"
+
+# --- the pack's other pieces (docs/loot-passives.md) ------------------------
+#
+# Nothing on these four sub-tabs is hidden in a run: a trinket, a bag or a weapon
+# is readable the moment it is in the pack, so the cells are a straight reference.
+# Each one draws its own art (LootPassives' loaders, the ones the pack uses) and is
+# coloured by RARITY, since none of them has a Preference.
+
+# Search matches the name, the description and the source game — the three things
+# a piece is remembered by.
+func _loot_piece_matches(term: String, piece) -> bool:
+	if term == "":
+		return true
+	var hay: String = ("%s %s %s" % [piece.display_name, piece.description,
+		piece.source_game]).to_lower()
+	return term in hay
+
+func _sorted_by_name(list: Array) -> Array:
+	var out: Array = list.duplicate()
+	out.sort_custom(func(a, b): return a.display_name.to_lower() < b.display_name.to_lower())
+	return out
+
+func _populate_trinkets() -> void:
+	_clear_children(_grid)
+	var term: String = _search["trinkets"].to_lower()
+	var shown: int = 0
+	for t in _sorted_by_name(Data.all_trinkets()):
+		if t is TrinketData and _loot_piece_matches(term, t):
+			_grid.add_child(_trinket_card(t))
+			shown += 1
+	_set_count(shown, Data.all_trinkets().size())
+
+func _populate_bags() -> void:
+	_clear_children(_grid)
+	var term: String = _search["bags"].to_lower()
+	var shown: int = 0
+	for b in _sorted_by_name(Data.all_bags()):
+		if b is BagData and _loot_piece_matches(term, b):
+			_grid.add_child(_bag_card(b))
+			shown += 1
+	_set_count(shown, Data.all_bags().size())
+
+func _populate_weapons() -> void:
+	_clear_children(_grid)
+	var term: String = _search["weapons"].to_lower()
+	var shown: int = 0
+	for w in _sorted_by_name(Data.all_weapons()):
+		if w is WeaponData and _loot_piece_matches(term, w):
+			_grid.add_child(_weapon_card(w))
+			shown += 1
+	_set_count(shown, Data.all_weapons().size())
+
+# Evolutions are listed by the weapon they start from, then by what it becomes,
+# and found by either name.
+func _populate_evolutions() -> void:
+	_clear_children(_grid)
+	var term: String = _search["evolutions"].to_lower()
+	var evos: Array = Data.all_evolutions().filter(func(e): return e is EvolutionData)
+	evos.sort_custom(func(a, b):
+		var ka: String = "%s %s" % [_weapon_name(a.base), _weapon_name(a.result)]
+		var kb: String = "%s %s" % [_weapon_name(b.base), _weapon_name(b.result)]
+		return ka.to_lower() < kb.to_lower())
+	var shown: int = 0
+	for evo in evos:
+		var hay: String = "%s %s %s" % [_weapon_name(evo.base), _weapon_name(evo.result),
+			WeaponSystem.need_words(evo)]
+		if term != "" and not (term in hay.to_lower()):
+			continue
+		_grid.add_child(_evolution_card(evo))
+		shown += 1
+	_set_count(shown, evos.size())
+
+func _weapon_name(id: StringName) -> String:
+	var w: WeaponData = Data.get_weapon(id)
+	return w.display_name if w != null else String(id)
+
+# The shared top of a piece's cell: its art, its name, and one line of facts.
+func _piece_head(vb: VBoxContainer, tex: Texture2D, name_text: String, color: Color,
+		facts: String) -> void:
+	var top := HBoxContainer.new()
+	top.add_theme_constant_override("separation", UITheme.GAP)
+	vb.add_child(top)
+	if tex != null:
+		top.add_child(UITheme.crisp_tex(tex, 48))
+	var head := VBoxContainer.new()
+	head.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	top.add_child(head)
+	head.add_child(_label(name_text, color, 14))
+	head.add_child(_label(facts, Color(0.7, 0.7, 0.75), 11, false, true))
+
+# How many pack cells a piece takes, said only when it is more than one.
+func _footprint_words(size: Vector2i) -> String:
+	if size.x * size.y <= 1:
+		return ""
+	return "%d×%d" % [size.x, size.y]
+
+func _facts(parts: Array) -> String:
+	return "  ·  ".join(parts.filter(func(p): return String(p) != ""))
+
+func _source_line(vb: VBoxContainer, source: String) -> void:
+	if source != "":
+		vb.add_child(_label("from %s" % source, Color(0.55, 0.6, 0.7), 10))
+
+# A trinket: its Type (a Charged one counts charges toward its payout, §11), its
+# shape, and its line.
+func _trinket_card(t: TrinketData) -> Control:
+	var col: Color = RarityStyle.color(t.rarity_index())
+	var cell := _cell(col, Callable())
+	cell.panel.custom_minimum_size = Vector2(300, 0)
+	var vb: VBoxContainer = cell.vbox
+	_piece_head(vb, LootPassives.load_trinket_art(t), t.display_name, col,
+		_facts([t.rarity, t.loot_type, _footprint_words(t.size),
+			"food" if t.is_food() else ""]))
+	vb.add_child(_label(t.description if t.description != "" else "—",
+		Color(0.85, 0.85, 0.88), 12, false, true))
+	_source_line(vb, t.source_game)
+	return cell.panel
+
+# A bag: the room it adds, then its own rule — the line the pack prints.
+func _bag_card(b: BagData) -> Control:
+	var col: Color = RarityStyle.color(b.rarity_index())
+	var cell := _cell(col, Callable())
+	cell.panel.custom_minimum_size = Vector2(300, 0)
+	var vb: VBoxContainer = cell.vbox
+	_piece_head(vb, LootPassives.load_bag_art(b), b.display_name, col,
+		_facts([b.rarity, _footprint_words(b.size)]))
+	vb.add_child(_label(LootSystem.bag_description(b), Color(0.85, 0.85, 0.88), 12,
+		false, true))
+	_source_line(vb, b.source_game)
+	return cell.panel
+
+# A weapon: the swing, what charges it and its passive — the pack's own words —
+# then where it sits in the evolution chart, both ways.
+func _weapon_card(w: WeaponData) -> Control:
+	var col: Color = RarityStyle.color(w.rarity_index())
+	var cell := _cell(col, Callable())
+	cell.panel.custom_minimum_size = Vector2(300, 0)
+	var vb: VBoxContainer = cell.vbox
+	_piece_head(vb, LootPassives.load_weapon_art(w), w.display_name, col,
+		_facts([w.rarity, w.weapon_type.capitalize(), _footprint_words(w.size),
+			Plural.count(w.max_charges, "charge") + " to swing"]))
+	# A bare entry rather than WeaponSystem.new_entry: that one rolls a uid off the
+	# global random stream, and the Collection can be opened mid-run — reading a
+	# page must not move a seeded run's dice.
+	vb.add_child(_label(LootSystem.weapon_description({"type": "weapon", "id": w.id}),
+		Color(0.85, 0.85, 0.88), 12, false, true))
+	for evo in Data.all_evolutions():
+		if evo is EvolutionData and evo.result == w.id:
+			vb.add_child(_label("Evolves from %s" % _weapon_name(evo.base),
+				Color(0.95, 0.82, 0.55), 11, false, true))
+	for evo in Data.evolutions_from(w.id):
+		vb.add_child(_label("⟳ Evolves into %s" % _weapon_name(evo.result),
+			Color(0.95, 0.82, 0.55), 11, false, true))
+	_source_line(vb, w.source_game)
+	return cell.panel
+
+# An evolution: the weapon it starts from, the one it makes, and what it asks for.
+func _evolution_card(evo: EvolutionData) -> Control:
+	var into: WeaponData = Data.get_weapon(evo.result)
+	var from: WeaponData = Data.get_weapon(evo.base)
+	var col: Color = RarityStyle.color(into.rarity_index() if into != null else 0)
+	var cell := _cell(col, Callable())
+	cell.panel.custom_minimum_size = Vector2(300, 0)
+	var vb: VBoxContainer = cell.vbox
+	var pics := HBoxContainer.new()
+	pics.add_theme_constant_override("separation", UITheme.GAP)
+	vb.add_child(pics)
+	var a: Texture2D = LootPassives.load_weapon_art(from)
+	if a != null:
+		pics.add_child(UITheme.crisp_tex(a, 48))
+	var arrow := _label("→", Color(0.95, 0.82, 0.55), 18)
+	arrow.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	pics.add_child(arrow)
+	var b: Texture2D = LootPassives.load_weapon_art(into)
+	if b != null:
+		pics.add_child(UITheme.crisp_tex(b, 48))
+	vb.add_child(_label("%s  →  %s" % [_weapon_name(evo.base), _weapon_name(evo.result)],
+		col, 14, false, true))
+	vb.add_child(_pill_dose("Needs", WeaponSystem.need_words(evo), Color(0.85, 0.85, 0.88)))
+	vb.add_child(_label("Uses them up." if evo.consumes else "Keeps them.",
+		Color(0.7, 0.7, 0.75), 11))
+	return cell.panel
 
 func _card_art(folder: String, base: String) -> Texture2D:
 	if base == "":
@@ -2933,13 +3163,11 @@ func _event_gate_text(gate: Dictionary) -> String:
 			return OBJECT_FLAG_NAMES.get(String(gate.get("flag", "")),
 				String(gate.get("flag", "")))
 		_:
-			# A countable resource is named in the plural ("bombs"); one of
-			# them is singular. ("gold" carries no s and is left alone.)
-			var amount = gate.get("value", 1)
-			var res: String = String(gate.get("resource", ""))
-			if str(amount) == "1" and res.ends_with("s"):
-				res = res.left(-1)
-			return "needs %s %s" % [str(amount), res]
+			# EventSystem's names, the ones the in-run button prints — "1 bomb",
+			# "2 bombs" — so the reference and the game cannot word it two ways.
+			var amount: int = int(gate.get("value", 1))
+			return "needs %d %s" % [amount, EventSystem.gate_stat_name(
+				String(gate.get("resource", "")), amount).to_lower()]
 
 const OBJECT_FLAG_NAMES := {
 	"not_jammed": "the machine is not jammed",

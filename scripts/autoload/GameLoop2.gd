@@ -2710,9 +2710,9 @@ func beat_game(clear_advertised: bool = false, fulfilled_instances: Array = [],
 			# Barricade that did it, saying how many it kept.
 			var keeper: Array = LootPassives.holders("bank_shields")
 			if not keeper.is_empty():
-				LootPassives.announce(keeper[0], "kept %d %s%s as %ss" % [
-					GameState.shields, GameState.TEMP_SHIELD_NAME,
-					"" if GameState.shields == 1 else "s", GameState.SHIELD_NAME])
+				LootPassives.announce(keeper[0], "kept %s as %s" % [
+					Plural.count(GameState.shields, GameState.TEMP_SHIELD_NAME),
+					Plural.word(GameState.shields, GameState.SHIELD_NAME)])
 			GameState.bonus_shields += GameState.shields
 			GameState.shields = 0
 		else:

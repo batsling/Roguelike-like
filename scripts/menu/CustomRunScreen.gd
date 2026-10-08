@@ -227,7 +227,12 @@ func _filter_column(col: Dictionary) -> Control:
 	var blurb := Label.new()
 	blurb.text = col["blurb"]
 	blurb.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	blurb.custom_minimum_size.y = 32
+	# TWO LINES RESERVED, MEASURED, in every column. THE MAP's sentence wraps to two
+	# and the other two fit on one, so a reservation shorter than two real lines
+	# (it was a guessed 32px against ~38) let the first column's blurb push its
+	# whole stack down a few pixels — every dropdown and box sat lower than its
+	# neighbours across the row. The columns are meant to be read ACROSS.
+	blurb.custom_minimum_size.y = UITheme.lines_height(UITheme.FONT_SMALL, 2)
 	blurb.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 	blurb.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
 	box.add_child(blurb)
@@ -284,7 +289,12 @@ func _genre_row(key: String) -> Control:
 		var b := CheckBox.new()
 		b.text = RunGraph.type_label(int(type_val))
 		b.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
-		b.add_theme_color_override("font_color", RunGraph.type_color(int(type_val)))
+		# Lightened toward white, the way UITheme draws every type-coloured LABEL:
+		# the raw genre colours are fills and rims, and as small text on this panel
+		# they measured 1.95:1 (Strategy) and 2.31:1 (Traditional). Lightened 35%
+		# they are 4.7:1 and up, and still read as their colour.
+		b.add_theme_color_override("font_color",
+			RunGraph.type_color(int(type_val)).lerp(Color.WHITE, 0.35))
 		b.toggled.connect(func(on):
 			var genres: Array = (_specs[key] as Dictionary)["genres"]
 			if on and not genres.has(int(type_val)):
@@ -544,7 +554,7 @@ func _refresh() -> void:
 			UITheme.DANGER if n == 0 else (UITheme.SUCCESS if n >= 20 else UITheme.GOLD))
 
 	if _band_label != null:
-		_band_label.text = ("%d games" % _min_path) if _min_path == _max_path \
+		_band_label.text = Plural.count(_min_path, "game") if _min_path == _max_path \
 			else "%d–%d games" % [_min_path, _max_path]
 
 	if _seed_note != null:
@@ -577,7 +587,8 @@ func _update_verdict() -> void:
 	if map_n == 0:
 		problems.append("The map filter leaves no games at all.")
 	elif map_n < 12:
-		warnings.append("Only %d games on the map — routes will be short and repetitive." % map_n)
+		warnings.append("Only %s on the map — routes will be short and repetitive."
+			% Plural.count(map_n, "game"))
 
 	# Start and amulet are chosen from INSIDE the map, so what matters is the
 	# overlap, not each filter's own count.
@@ -631,7 +642,7 @@ func _update_verdict() -> void:
 		_verdict.text = "•  %s" % " ".join(PackedStringArray(warnings))
 		_verdict.add_theme_color_override("font_color", UITheme.GOLD)
 	else:
-		_verdict.text = "Ready — %d games on the map." % map_n
+		_verdict.text = "Ready — %s on the map." % Plural.count(map_n, "game")
 		_verdict.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 	if _begin_btn != null:
 		_begin_btn.disabled = not problems.is_empty()

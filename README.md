@@ -336,10 +336,13 @@ node and its script.
     Atlas button of its own (Run History still lays its routes over the sky).
     Enemies and Bosses sort by A-Z, Tier, Damage and **Ability** — an ability is
     the one thing about a body that isn't a number, and it is what the roster is
-    browsed for. **Loot is one tab with four sub-tabs** —
-    Scrolls, Pills, Potions and Cards — because they are one thing to the run: one
-    four-way payout, one nine-piece pack, one window, and four top-level tabs
-    would say the opposite. **A potion's cell shows its identified art and both
+    browsed for. **Loot is one tab with nine sub-tabs** —
+    Scrolls, Pills, Potions, Cards, Wands, Trinkets, Bags, Weapons and Evolutions
+    — because they are one thing to the run: one payout, one pack, one window, and
+    nine top-level tabs would say the opposite. The sub-tab buttons sit in a row
+    that WRAPS, since nine do not fit across the 1280 canvas. The tab's own count
+    (`Collection.loot_total`) is every piece the sub-tabs list; evolutions are
+    recipes whose results are weapons already counted, so they are not in it. **A potion's cell shows its identified art and both
     verbs**, which is the one place this tab does not draw a stand-in: a pill's
     picture is the colour the run deals it, but what a potion looks like once you
     know it is a fact about the potion rather than a per-run secret. **A card's
@@ -2064,6 +2067,12 @@ parity-checking only.
 
 Its art is served through the `legacy-web/images` symlink that points back to the
 root `images/` folder, so there is exactly one image store for the whole repo.
+
+**`legacy-web/.gdignore` keeps Godot out of the folder.** Without it the editor
+followed that symlink and imported every picture in `images/` a second time, under
+a second path — doubling the import and printing a "UID duplicate detected"
+warning for each one. Nothing in the Godot project loads from `legacy-web/`; the
+Python tools that read its data files read them from disk and are unaffected.
 
 ---
 

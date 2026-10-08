@@ -1318,7 +1318,8 @@ static func _cell_body(entry: Dictionary, use_cb: Callable, locked_now: bool,
 		count.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
 		count.grow_horizontal = Control.GROW_DIRECTION_END
 		count.grow_vertical = Control.GROW_DIRECTION_BEGIN
-		count.tooltip_text = "%d of %d charges left." % [int(bar[0]), int(bar[1])] \
+		count.tooltip_text = "%d of %s left." % [int(bar[0]),
+			Plural.count(int(bar[1]), "charge")] \
 			if counted else "Zap it to find out what it is — and how much of it is left."
 		band.add_child(count)
 	# A WEAPON WEARS ITS CHARGE in the wand's corner, green once it can swing.
@@ -1492,8 +1493,9 @@ static func _weapon_chip(entry: Dictionary) -> Control:
 	wc.grow_horizontal = Control.GROW_DIRECTION_END
 	wc.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	wc.tooltip_text = "Ready to swing." if ready \
-		else "%d of %d charges — complete its goal for +1." % [
-			WeaponSystem.charges_of(entry), WeaponSystem.max_charges(entry)]
+		else "%d of %s — complete its goal for +1." % [
+			WeaponSystem.charges_of(entry),
+			Plural.count(WeaponSystem.max_charges(entry), "charge")]
 	return wc
 
 # A WEAPON'S BUTTON SAYS EVOLVE when it can (docs/loot-passives.md §13) — the rarer
@@ -1558,8 +1560,8 @@ static func _add_progress(on: Control, extras: Dictionary) -> void:
 	chip.set_anchors_preset(Control.PRESET_TOP_RIGHT)
 	chip.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	chip.tooltip_text = ("Ready — it pays on its next charge." if ready
-		else "%d of %d charges toward its next trigger." % [
-			int(progress["have"]), int(progress["need"])])
+		else "%d of %s toward its next trigger." % [
+			int(progress["have"]), Plural.count(int(progress["need"]), "charge")])
 	if not foods.is_empty():
 		chip.tooltip_text += "\nNeeds %d fewer for the food beside it." % foods.size()
 	on.add_child(chip)

@@ -485,8 +485,9 @@ static func need_words(evo: EvolutionData) -> String:
 		var t: TrinketData = Data.get_trinket(evo.need_id)
 		return item.display_name if item != null else (t.display_name if t != null
 			else String(evo.need_id))
-	return "%s%s with \"%s\"" % ["" if evo.need_count == 1 else "%d " % evo.need_count,
-		"item or trinket" if evo.need_count == 1 else "items or trinkets", evo.need_tag]
+	# "an item or trinket", not a bare "item or trinket" — the count reads as a word.
+	return "%s with \"%s\"" % ["an item or trinket" if evo.need_count == 1
+		else "%d items or trinkets" % evo.need_count, evo.need_tag]
 
 # EVOLVE the weapon at pack index `index` by `evo`, using `chosen` (need_count of
 # the candidates evolutions_ready listed). Returns the new entry, or {} when it

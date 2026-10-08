@@ -440,6 +440,7 @@ func _show_coming_soon(title: String, body: String) -> void:
 	var dlg := AcceptDialog.new()
 	dlg.title = title
 	dlg.dialog_text = body
+	dlg.dialog_autowrap = true
 	_modal_layer.add_child(dlg)
 	dlg.popup_centered(Vector2i(480, 220))
 	dlg.confirmed.connect(func(): dlg.queue_free())

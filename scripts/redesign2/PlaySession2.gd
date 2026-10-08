@@ -141,7 +141,7 @@ func _stack_text() -> String:
 func _result_text(res: Dictionary) -> String:
 	var parts: Array = []
 	if int(res.get("drops", 0)) > 0:
-		parts.append("%d drop(s)" % int(res["drops"]))
+		parts.append(Plural.count(int(res["drops"]), "drop"))
 	if int(res.get("damage_taken", 0)) > 0:
 		parts.append("took %d damage" % int(res["damage_taken"]))
 	if int(res.get("blocked", 0)) > 0:
