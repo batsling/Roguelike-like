@@ -818,13 +818,16 @@ func clear_last_strike() -> void:
 
 # THE LOST-RUN SPAWN (§3.2). Every lost run has a chance to stand one body up at
 # the back column, rolled from the game in play's type at the run's tier — and the
-# chance CLIMBS with each lost run that stood nothing up: 0% (the first is free),
-# 25%, 50%, 75%, then certain. A spawn drops it back to the bottom, and so does
-# the end of the game (`_clear_attempts`). So a long bad evening averages about
-# one body per three lost runs, never one per run. `lost_run_spawn_step` is the
+# chance CLIMBS with each lost run that stood nothing up: 25%, 50%, 75%, then
+# certain. A spawn drops it back to the bottom, and so does the end of the game
+# (`_clear_attempts`). So a long bad evening averages about one body per two lost
+# runs at 0 Luck, never one per run. THE FIRST LOST RUN IS NOT FREE: it used to
+# start at 0%, which left Luck nothing to do on the most common lost run there
+# is, a game's first. Starting at 25% is what gives every point of Luck work on
+# every lost run. `lost_run_spawn_step` is the
 # rung, 0-based. LUCK lowers each rung's odds the way it lowers every bad roll
 # (see `_roll_lost_run_spawn`); the ladder itself is the chance at 0 Luck.
-const LOST_RUN_SPAWN_CHANCES: Array = [0.0, 0.25, 0.5, 0.75, 1.0]
+const LOST_RUN_SPAWN_CHANCES: Array = [0.25, 0.5, 0.75, 1.0]
 var lost_run_spawn_step: int = 0
 # The ladder in force — LOST_RUN_SPAWN_CHANCES, put back by every reset(). A suite
 # whose subject is something else a lost run does sets it to [0.0] in before_each,
@@ -2160,7 +2163,8 @@ func lost_run_spawn_rung() -> float:
 #
 # LUCK LEANS ON IT (Stats.roll_chance, Favour.LOW — a body walking on is the bad
 # outcome): each point of Luck is a coin, each heads one more roll, and the body
-# only walks on if EVERY roll hits. So 2 Luck turns the 50% rung into about 28%.
+# only walks on if EVERY roll hits. So 2 Luck turns the 50% rung into about 28%,
+# and the opening 25% into about 10%.
 # Negative Luck points the same machine the other way. The guaranteed last rung
 # stays guaranteed — every roll of a certainty hits — so Luck shortens a bad
 # evening's streak of free losses but never removes the ladder's ceiling. The rng

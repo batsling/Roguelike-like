@@ -312,17 +312,20 @@ of a game.
   nothing to take and a body still walking in merely walks. The tick is still
   logged — it is what the tracker shows.
 - **A lost run MAY stand one body up** (`GameLoop2._roll_lost_run_spawn`). The
-  chance climbs with every lost run at the game that stood nothing up — **0% (the
-  first is free), 25%, 50%, 75%, then certain** (`LOST_RUN_SPAWN_CHANCES`) — and
+  chance climbs with every lost run at the game that stood nothing up — **25%,
+  50%, 75%, then certain** (`LOST_RUN_SPAWN_CHANCES`) — and
   drops back to 0% the moment one does, and whenever a game ends or starts —
   won, lost or escaped (`_clear_attempts`) — so losing on purpose can never bank a
   rung for the next game. So a long bad
-  evening averages about one body per three lost runs, never one per run.
+  evening averages about one body per two lost runs at 0 Luck (2.2), never one
+  per run. **The first lost run is not free** — it was 0% until Luck started
+  leaning on this roll, and a free first rung was the one lost run Luck could do
+  nothing about; starting at 25% gives every point of Luck work on every lost run.
   **Luck lowers each rung** the way it lowers every roll whose success is the bad
   outcome (`Stats.roll_chance`, `Favour.LOW`): a coin per point of Luck, each
   heads one more roll, and the body walks on only if every roll hits — so 2 Luck
-  makes the 50% rung about 28%, and negative Luck pushes it up. The free first
-  rung stays free and the certain last rung stays certain, so Luck shortens the
+  makes the 50% rung about 28% and the opening 25% about 10%, and negative Luck
+  pushes them up. The certain last rung stays certain, so Luck shortens the
   streak rather than removing the ceiling. The chance quoted on screen is the
   Luck-adjusted one (`lost_run_spawn_chance`, through `Stats.effective_chance`). The body
   rolls off the game in play's type at the run's tier, walks on at the back column
@@ -3409,8 +3412,10 @@ Three things fall out of that, and each is worth knowing:
   the owner cut them. Scroll of Scare Monster, Web and a goal hit all just make a
   body skip turns, and the "quiet stun" bookkeeping that told a goal hit's stacks
   from a paid-for one (so only the latter paid the bonus) went with the bonus. A
-  Stun inflicted on the PLAYER (Spider Kitten's `Infliction (1, Stun)`) does
-  nothing: the player takes no turns to skip.
+  Stun on the PLAYER would do nothing — the player takes no turns to skip — so the
+  one thing that put it there, Spider Kitten's `Infliction (1, Stun)`, was taken
+  off the kitten (`tools/_enemies_spider_kitten_no_ability_setup.py`) until it
+  gets something else.
 - **Sticky Bombs' `bomb_stun` is deleted**, not merely unauthored: the field, the
   `GameState.bombs_stun()` reader and the `_explode` branch are all gone, and
   `generate_item_tres.py` refuses the token out loud pointing at `bomb_tile web`.
@@ -4979,8 +4984,8 @@ surcharges, all in `GameLoop2.end_of_game_price`:
 - **Not at the Amulet** — there is no next game for anything to walk into — and
   **not off a teleport**, which the loot already paid for (§4.1, `road_spawns`).
 
-**A lost run's own spawn is a CHANCE, not this price** (§3.2): 0% on the first,
-then 25% climbing to certain, one body, and a spawn event like any other. It once stood these bodies up mid-game when
+**A lost run's own spawn is a CHANCE, not this price** (§3.2): 25% on the first,
+climbing to certain, one body, and a spawn event like any other. It once stood these bodies up mid-game when
 nothing had been defeated; that moved here, so the board only MOVES mid-game (one
 turn per lost run, §3.2) and only FILLS as a game ends. It is also what retired
 the mid-game tier step and the mid-game capstone (§19.6).

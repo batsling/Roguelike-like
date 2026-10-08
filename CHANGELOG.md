@@ -26,6 +26,10 @@ For how the project is laid out and how its systems fit together, see
   makes a body skip turns, and the `quiet_stun` bookkeeping that existed for its
   bonus row is deleted. Burn's `instead` stays instant on a `game beaten` body.
   The bonus-row tests in `test_overworld2` moved from Stun to Marked.
+  **The first lost run is no longer free**: the ladder is now 25%, 50%, 75%,
+  certain (was 0%, 25%, …), which gives Luck work on a game's first lost run
+  too (2 Luck makes that 25% about 10%). **Spider Kitten has no ability** for
+  now — its `Infliction (1, Stun)` put a Stun on the player that does nothing.
 
 - **The tag export moved to Settings, and covers every game.** Settings →
   Game tags → *Export tags for all games* writes all 917 games to

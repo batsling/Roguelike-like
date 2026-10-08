@@ -2891,20 +2891,20 @@ func test_an_end_of_game_spawn_can_be_the_one_that_closes_the_band() -> void:
 
 # --- the lost-run spawn (§3.2) ------------------------------------------------
 
-func test_the_lost_run_spawn_climbs_0_25_50_75_100() -> void:
+func test_the_lost_run_spawn_climbs_25_50_75_100() -> void:
 	GameLoop2.lost_run_spawn_ladder = GameLoop2.LOST_RUN_SPAWN_CHANCES.duplicate()
 	var seen: Array = []
-	for step in range(6):
+	for step in range(5):
 		GameLoop2.lost_run_spawn_step = step
 		seen.append(GameLoop2.lost_run_spawn_chance())
-	assert_eq(seen, [0.0, 0.25, 0.5, 0.75, 1.0, 1.0], "the first is free, and it holds at certain")
+	assert_eq(seen, [0.25, 0.5, 0.75, 1.0, 1.0], "the first is not free, and it holds at certain")
 
 # LUCK LEANS ON IT the way it leans on every bad roll (Favour.LOW): each point is a
 # coin, each heads another roll, and the body walks on only if every roll hits. The
 # number quoted is the closed form of that, so the button reads what gets rolled.
 func test_luck_lowers_the_lost_run_spawn_chance() -> void:
 	GameLoop2.lost_run_spawn_ladder = GameLoop2.LOST_RUN_SPAWN_CHANCES.duplicate()
-	GameLoop2.lost_run_spawn_step = 2
+	GameLoop2.lost_run_spawn_step = 1
 	GameState.luck = 0
 	assert_almost_eq(GameLoop2.lost_run_spawn_chance(), 0.5, 0.0001, "0 Luck is the ladder")
 	GameState.luck = 2
@@ -2913,10 +2913,12 @@ func test_luck_lowers_the_lost_run_spawn_chance() -> void:
 	GameState.luck = -2
 	assert_almost_eq(GameLoop2.lost_run_spawn_chance(), 0.71875, 0.0001,
 		"negative Luck pushes it the other way")
-	GameState.luck = 5
+	GameState.luck = 2
 	GameLoop2.lost_run_spawn_step = 0
-	assert_eq(GameLoop2.lost_run_spawn_chance(), 0.0, "the first lost run is still free")
-	GameLoop2.lost_run_spawn_step = 4
+	assert_almost_eq(GameLoop2.lost_run_spawn_chance(), 0.09765625, 0.0001,
+		"the first lost run is not free, but Luck shaves it: 0.25 x 0.625^2")
+	GameState.luck = 5
+	GameLoop2.lost_run_spawn_step = 3
 	assert_almost_eq(GameLoop2.lost_run_spawn_chance(), 1.0, 0.0001,
 		"and the last rung is still certain — Luck shortens the streak, not the ceiling")
 
@@ -2935,13 +2937,13 @@ func test_a_certain_lost_run_spawn_stands_a_body_up_and_starts_over() -> void:
 	var _a: int = _choose_solo(_enemy(1))
 	GameState.current_game_id = &"slay_the_spire"
 	GameLoop2.lost_run_spawn_ladder = GameLoop2.LOST_RUN_SPAWN_CHANCES.duplicate()
-	GameLoop2.lost_run_spawn_step = 4
+	GameLoop2.lost_run_spawn_step = 3
 	var before: int = GameLoop2.stack.size()
 	GameLoop2.log_attempt()
 	assert_eq(GameLoop2.stack.size(), before + 1, "100%: a body walked on")
 	assert_gt(int(GameLoop2.last_attempt_turn.get("lost_run_spawn", 0)), 0,
 		"and the turn's result names it")
-	assert_eq(GameLoop2.lost_run_spawn_step, 0, "the chance drops back to 0%")
+	assert_eq(GameLoop2.lost_run_spawn_step, 0, "the chance drops back to the first rung")
 
 func test_a_reset_puts_the_ladder_back() -> void:
 	GameLoop2.reset()
@@ -2958,23 +2960,29 @@ func test_undoing_a_lost_run_puts_the_spawn_chance_back() -> void:
 	var _a: int = _choose_solo(_enemy(1))
 	GameState.current_game_id = &"slay_the_spire"
 	GameLoop2.lost_run_spawn_ladder = GameLoop2.LOST_RUN_SPAWN_CHANCES.duplicate()
-	GameLoop2.lost_run_spawn_step = 4
+	GameLoop2.lost_run_spawn_step = 3
 	var before: int = GameLoop2.stack.size()
 	GameLoop2.log_attempt()
 	var events: int = GameState.spawn_events
 	GameLoop2.undo_attempt()
-	assert_eq(GameLoop2.lost_run_spawn_step, 4, "the rung comes back with the turn")
+	assert_eq(GameLoop2.lost_run_spawn_step, 3, "the rung comes back with the turn")
 	assert_eq(GameState.spawn_events, events - 1, "and so does the spawn event")
 	assert_eq(GameLoop2.stack.size(), before, "and the body that walked on goes")
 
-func test_the_first_lost_run_of_a_game_never_spawns() -> void:
+# THE FIRST LOST RUN IS NOT FREE (§3.2) — a free one was the lost run Luck could
+# do nothing about. A miss still climbs a rung.
+func test_the_first_lost_run_of_a_game_can_spawn_and_a_miss_climbs() -> void:
 	var _a: int = _choose_solo(_enemy(1))
 	GameState.current_game_id = &"slay_the_spire"
 	GameLoop2.lost_run_spawn_ladder = GameLoop2.LOST_RUN_SPAWN_CHANCES.duplicate()
+	assert_eq(GameLoop2.lost_run_spawn_step, 0, "a fresh game stands on the first rung")
+	assert_almost_eq(GameLoop2.lost_run_spawn_chance(), 0.25, 0.0001, "which is 25%, not 0%")
+	# A rung of 0% is a certain miss, so the climb itself is deterministic.
+	GameLoop2.lost_run_spawn_ladder = [0.0, 0.5]
 	var before: int = GameLoop2.stack.size()
 	GameLoop2.log_attempt()
-	assert_eq(GameLoop2.stack.size(), before, "0% on the first")
-	assert_eq(GameLoop2.lost_run_spawn_step, 1, "and the next one is 25%")
+	assert_eq(GameLoop2.stack.size(), before, "a miss stands nothing up")
+	assert_eq(GameLoop2.lost_run_spawn_step, 1, "and the next lost run is a rung higher")
 
 func test_a_lost_run_spawn_is_a_spawn_event() -> void:
 	var _a: int = _choose_solo(_enemy(1))

@@ -739,8 +739,9 @@ func _hold_small_print_on_one_row() -> void:
 
 # The warning above the grid while a lost run could bring the next boss on, or ""
 # (§3.2): the next spawn is a difficulty up and a game is in play. Names the
-# chance the next lost run spawns — 0% on a game's first, so the line says it is
-# safe this once rather than leaving the player to work it out.
+# chance the next lost run spawns, Luck included. The "can't spawn it" line is for
+# a ladder whose rung is 0% — no authored rung is now that a game's first lost run
+# costs 25%, but a test's disarmed ladder is, and the line must not lie there.
 func boss_warning_text() -> String:
 	if not GameLoop2.lost_run_may_bring_boss():
 		return ""

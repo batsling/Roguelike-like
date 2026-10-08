@@ -11156,7 +11156,7 @@ func test_the_board_warns_when_a_lost_run_could_bring_the_boss() -> void:
 	assert_eq(_ui._phase, OVERWORLD.Phase.PLAYING, "a game is in play")
 	GameState.spawn_events = RunDifficulty.GAMES_PER_TIER - 1
 	GameLoop2.lost_run_spawn_ladder = GameLoop2.LOST_RUN_SPAWN_CHANCES.duplicate()
-	GameLoop2.lost_run_spawn_step = 2
+	GameLoop2.lost_run_spawn_step = 1
 	_ui._board.refresh()
 	assert_true(_ui._board._boss_warning.visible, "the warning is up")
 	assert_true(_ui._board._boss_warning.text.contains("50%"),
