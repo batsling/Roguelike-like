@@ -184,6 +184,7 @@ func _flush_stores() -> void:
 	GameStats.save_data()
 	TierList.save_data()
 	Ownership.save_ownership()
+	GameTags.save_tags()
 	Settings.save_settings()
 
 # Re-read every profile-scoped store from the new directory. Order doesn't
@@ -193,6 +194,7 @@ func _reload_stores() -> void:
 	GameStats.load_data()
 	TierList.load_data()
 	Settings.load_settings()
+	GameTags.load_tags()
 	Ownership.load_ownership()
 
 # --- names -----------------------------------------------------------------

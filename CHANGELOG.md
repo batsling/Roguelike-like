@@ -11,6 +11,23 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Tag games in game, and send the tags to the sheet.** A game's tags are
+  editable on the Collection's game page and on the run map's game card: its
+  tags are chips with a × to take one off, "+ Tag" opens every tag in use as
+  one-click chips plus a box for a brand-new one, a tag added in game is drawn
+  in ember until the sheet has it, and a sheet tag taken off stays on view,
+  faint, to be put back. The new `GameTags` autoload (the 28th) lays these edits
+  over the baked `GameData.tags`, per profile like the owned ticks, and they
+  count at once: `EventSystem.games_with_tag` reads it, so an event can send the
+  run to a game tagged a minute ago. The sheet is never written from the game.
+  The editor's Export writes the pending edits to `tools/tag_edits.json`;
+  `tools/apply_tag_edits.py` writes them into the `games` sheet's Tags column
+  through `_xlsx_surgery` (checked end to end: all 8 charts and 1771 formulas
+  intact) and re-imports, and on the next load the game drops every edit the
+  baked data now carries, so the pending count empties itself. `set_cells` now
+  keeps a replaced cell's style. `test_game_tags.gd` covers the store, the
+  routing, the reload, the self-emptying, the export and both screens.
+
 - **New games get researched every time, and tags get suggested.** Two tools
   the owner asked for. **`influence_research.py new`** researches only the games
   added since the last pass: `tools/influence_researched.json` (checked in)

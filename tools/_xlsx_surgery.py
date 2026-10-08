@@ -348,7 +348,14 @@ class Workbook:
             if value is None or value == "":
                 rows[r][1].pop(col, None)
             else:
-                rows[r][1][col] = _cell_xml(ref, value)
+                new = _cell_xml(ref, value)
+                # A cell being REPLACED keeps its style (`s="N"`: font, fill,
+                # wrap, number format). Only its value is being authored.
+                old = rows[r][1].get(col, "")
+                sm = re.match(r'<c\b[^>]*?\ss="(\d+)"', old)
+                if sm:
+                    new = new.replace('<c r="%s"' % ref, '<c r="%s" s="%s"' % (ref, sm.group(1)), 1)
+                rows[r][1][col] = new
             width = max(width, _col_index(col) + 1)
 
         body = []

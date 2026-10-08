@@ -692,6 +692,12 @@ static func node_card_body(cfg: Dictionary) -> VBoxContainer:
 			("  (%s tier)" % TierList.tier_names[tier_i]) if tier_i >= 0
 				and tier_i < TierList.tier_names.size() else ""]))
 
+	# Its tags, editable right after playing it — the same editor as the
+	# Collection's game page, so an edit here is already true there.
+	if game != null:
+		box.add_child(card_heading("Tags"))
+		box.add_child(TagEditor.make(game))
+
 	# The record you have IN this game — the same fact the box's ⚔ badge carries,
 	# spelled out.
 	var fought: Array = GameStats.enemies_for(id)

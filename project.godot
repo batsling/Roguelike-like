@@ -25,6 +25,9 @@ Notifications="*res://scripts/autoload/Notifications.gd"
 SaveSystem="*res://scripts/autoload/SaveSystem.gd"
 Settings="*res://scripts/autoload/Settings.gd"
 Ownership="*res://scripts/autoload/Ownership.gd"
+; Tags the player adds or removes in game, laid over the baked GameData.tags.
+; After Data (it reads the catalog to prune edits the sheet has caught up with).
+GameTags="*res://scripts/autoload/GameTags.gd"
 RunConfig="*res://scripts/autoload/RunConfig.gd"
 TierList="*res://scripts/autoload/TierList.gd"
 GameStats="*res://scripts/autoload/GameStats.gd"

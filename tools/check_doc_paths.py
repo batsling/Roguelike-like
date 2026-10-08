@@ -10,7 +10,7 @@ have broken something or the doc has.
 
 Seventeen of them had accumulated, all from the same two renames the project has
 already done — the `2.0` content migration and the combat -> games-first cut —
-with the prose left behind. Twelve were fixed; the five in ALLOWED below are
+with the prose left behind. Twelve were fixed; the entries in ALLOWED below are
 deliberate and are listed with the reason, because "this path does not exist" is
 sometimes exactly what a doc means.
 
@@ -45,6 +45,8 @@ ALLOWED = {
         "stat-dispatcher.md says the icon falls back 'until' this is added — art not drawn yet",
     "tools/build_systems_graph.py":
         "systems-graph.md says outright 'the renderer is still unbuilt' and sketches it",
+    "tools/tag_edits.json":
+        "the game's tag Export writes it and apply_tag_edits.py spends it; it exists only in between",
 }
 
 # A backticked path that starts with one of the repo's real top-level folders.

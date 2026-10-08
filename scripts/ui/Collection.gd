@@ -1586,8 +1586,9 @@ func _show_game_detail(g: GameData) -> void:
 	record.tooltip_text = "Beaten %d time%s  ·  %d Amulet win%s" % [
 		beaten, "" if beaten == 1 else "s", amulets, "" if amulets == 1 else "s"]
 	ident.add_child(record)
-	if g.tags.size() > 0:
-		ident.add_child(_label(", ".join(g.tags), Color(0.73, 0.55, 0.78), 11, false, true))
+	# The tags, editable: through GameTags, so what is added here counts at
+	# once and rides out to the sheet on the next Export.
+	ident.add_child(TagEditor.make(g))
 	head.add_child(ident)
 	_detail_box.add_child(head)
 
