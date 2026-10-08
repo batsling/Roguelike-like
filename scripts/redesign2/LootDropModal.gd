@@ -329,7 +329,8 @@ func _build() -> void:
 	box.add_child(row)
 	var offer_col: Control = _offer_column(multi)
 	row.add_child(offer_col)
-	row.add_child(_pack_column())
+	var pack_col: Control = _pack_column()
+	row.add_child(pack_col)
 	# THE FOLD CHANGES SIDES WHEN EMBEDDED. "Known this run" is not a fact about the
 	# pack — it is what the RUN has learned — and under the pack it was the row that
 	# pushed the bin off the bottom of the post-combat screen's column. The offer
@@ -361,6 +362,7 @@ func _build() -> void:
 	# a haul you are sorting, not an order you placed. So the host says whether the
 	# button belongs: never "Leave the rest", which would be a second way out of a
 	# screen that already has one, and never anything that ends the section.
+	shell.add_child(_bin_row(pack_col))
 	if _slot == null:
 		shell.add_child(_buttons(multi))
 	elif _take_all_button:
@@ -507,9 +509,6 @@ func _pack_column() -> Control:
 	col.add_child(_line("Your pack — %d / %d" % [
 		GameState.loot_items.size(), GameState.loot_capacity()], UITheme.TEXT_DIM, 12))
 	col.add_child(_grid)
-	var bin := LootTrash.new()
-	bin.grid = _grid
-	col.add_child(bin)
 	# The instruction line goes when the panel is embedded, and the bin it was
 	# explaining is what it goes FOR: on the post-combat screen this column shares
 	# a 720p page with four other sections, and a caption under a labelled bin was
@@ -532,6 +531,32 @@ func _pack_column() -> Control:
 	if _slot == null:
 		col.add_child(LootDiscoveries.build(_rebuild, DISCOVERIES_H))
 	return col
+
+# THE BIN IS PINNED UNDER THE SCROLL, not at the foot of the pack inside it. It is
+# one of the answers — "leave it" said with the hands — and when a host shrinks
+# this table to fit its window (EventModal2._fit -> shrink_body) the scroll gives
+# way from the bottom, so a bin inside it was the first thing pushed below the
+# fold: the Potion Lab showed "Drag here to throw away" cut in half under its
+# three bottles. Out here it is always on screen, and the pack above it scrolls.
+#
+# It still stands UNDER THE PACK: a lead spacer follows the pack column's left
+# edge, because how far in that is depends on how wide the offer side is.
+func _bin_row(pack_col: Control) -> Control:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", UITheme.GAP_NONE)
+	var lead := Control.new()
+	lead.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(lead)
+	var bin := LootTrash.new()
+	bin.grid = _grid
+	row.add_child(bin)
+	var follow := func() -> void:
+		if is_instance_valid(lead) and is_instance_valid(pack_col) and is_instance_valid(row):
+			lead.custom_minimum_size.x = maxf(0.0,
+				pack_col.get_global_rect().position.x - row.get_global_rect().position.x)
+	pack_col.item_rect_changed.connect(follow)
+	row.item_rect_changed.connect(follow)
+	return row
 
 # Just the take-all, for an embedded table whose host asked for one. Deliberately
 # NOT `_buttons` minus a button: this row cannot close anything, and its label
