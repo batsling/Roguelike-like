@@ -274,8 +274,9 @@ func test_reward_text_reads_at_the_live_stack() -> void:
 func test_every_status_has_art_and_does_something() -> void:
 	for s in Data.all_statuses():
 		var sd: StatusData = s
-		assert_true(sd.has_side(StatusData.PLAYER) or sd.has_side(StatusData.ENEMY),
-			"%s acts on at least one side" % sd.id)
+		# A goal side on either end, or the board: Stun is combat-only (§13.2).
+		assert_true(sd.has_side(StatusData.PLAYER) or sd.has_side(StatusData.ENEMY)
+			or sd.has_combat(), "%s acts on at least one side" % sd.id)
 		assert_not_null(sd.image, "%s resolved its art" % sd.id)
 
 # ---------------------------------------------------------------------------
