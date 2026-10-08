@@ -120,6 +120,8 @@ const ENEMY := &"enemy"
 # THE TWO SIDES. Each is either {} (this side does nothing) or:
 #   {"mode": "goal"|"clause"|"bonus"|"demand"|"instead",
 #    "condition": String,        the challenge clause, with {expr} holes over X
+#    "condition_any_time": String  OPTIONAL — the same clause worded for a body
+#                                whose goal is answered ANY TIME (see below)
 #    "reward": Array,            EffectSystem effect dicts, {expr} holes in `scaled`
 #    "reward_text": String,      human wording for the payout
 #    "penalty": Array,           what MISSING it costs (a `demand` only)
@@ -243,9 +245,28 @@ func is_capped() -> bool:
 
 # One side's condition clause at `stacks`, every {expr} hole resolved:
 #   Marked / enemy    at 3 -> "you get 3 achievements"
-#   Dexterity / enemy at 3 -> "must be beaten in 1 hour 30 minutes or less"
-func condition_text(which: StringName, stacks: int) -> String:
-	return resolve(String(side(which).get("condition", "")), stacks)
+#   Speed / enemy     at 3 -> "the game must be beaten in 1 hour 30 minutes or less"
+#
+# `any_time` IS WHEN THE GOAL IT HANGS OFF IS ANSWERED (§7.7). An enemy-side clause
+# or bonus rides whatever body it lands on, and a body's goal is settled either by
+# beating the game or on the spot, mid-game. Most conditions read right either way
+# ("you get 3 achievements"); a few only make sense at the end of a game — "the
+# game must be beaten in 3 hours", "you didn't intentionally heal" — and on an
+# any-time body they asked for a promise the moment the box was ticked. Those
+# sides author a second wording (`condition_any_time`, the sheet's
+# `any_time "…"`) that is true at the moment the body is cleared, and the caller
+# holding the body says which one it wants (GameLoop2.answered_any_time). A side
+# with no second wording reads the same on both.
+func condition_text(which: StringName, stacks: int, any_time: bool = false) -> String:
+	var s: Dictionary = side(which)
+	var text: String = String(s.get("condition", ""))
+	if any_time and String(s.get("condition_any_time", "")) != "":
+		text = String(s["condition_any_time"])
+	return resolve(text, stacks)
+
+# Whether `which` side words itself differently on an any-time body.
+func has_any_time_wording(which: StringName) -> bool:
+	return String(side(which).get("condition_any_time", "")) != ""
 
 # One side's reward wording at `stacks` — "+2 Small Chests, +2 Bashes".
 func reward_at(which: StringName, stacks: int) -> String:
@@ -258,15 +279,15 @@ func penalty_at(which: StringName, stacks: int) -> String:
 
 # The bare clause, for ANDing onto a goal. Rendered without a leading "and" so the
 # caller joins it however its line reads.
-func clause_text(which: StringName, stacks: int) -> String:
-	return condition_text(which, stacks)
+func clause_text(which: StringName, stacks: int, any_time: bool = false) -> String:
+	return condition_text(which, stacks, any_time)
 
 # The bare alternative, for ORing onto a goal — the other half of what an
 # `instead` side is (see GameLoop2.goal_text_for, which joins it with "or
 # instead"). Same shape as clause_text, and separate from it so a caller cannot
 # accidentally AND on a condition that was meant to replace the goal.
-func alternative_text(which: StringName, stacks: int) -> String:
-	return condition_text(which, stacks)
+func alternative_text(which: StringName, stacks: int, any_time: bool = false) -> String:
+	return condition_text(which, stacks, any_time)
 
 # How a TICKABLE side reads as a checklist row. A `goal` is a standing objective
 # and opens with "If"; a `bonus` hangs off something else and opens with "and if";
@@ -277,13 +298,13 @@ func alternative_text(which: StringName, stacks: int) -> String:
 # Either way what is at stake is part of the line: a row that pays has to
 # advertise what skipping it forfeits, and a row that charges has to advertise
 # what missing it costs.
-func objective_text(which: StringName, stacks: int) -> String:
+func objective_text(which: StringName, stacks: int, any_time: bool = false) -> String:
 	if is_demand(which):
-		var owed: String = "You must %s" % condition_text(which, stacks)
+		var owed: String = "You must %s" % condition_text(which, stacks, any_time)
 		var price: String = penalty_at(which, stacks)
 		return owed if price == "" else "%s, or %s" % [owed, price]
 	var line: String = "%s %s" % [
-		"and if" if is_bonus(which) else "If", condition_text(which, stacks)]
+		"and if" if is_bonus(which) else "If", condition_text(which, stacks, any_time)]
 	var pay: String = reward_at(which, stacks)
 	if pay != "":
 		line += ", gain %s" % pay
@@ -303,7 +324,7 @@ func objective_text(which: StringName, stacks: int) -> String:
 # is wearing it, and it changes the WORDS rather than any of the facts: the pip is
 # real, the stacks are real, and what is void is what it would otherwise buy.
 func hover_card(which: StringName, stacks: int, nullified: bool = false,
-		games: int = 0) -> Dictionary:
+		games: int = 0, any_time: bool = false) -> Dictionary:
 	var mode: StringName = mode_for(which)
 	var good: bool = is_bonus(which) or is_goal(which) or is_alternative(which)
 	var sub: String = "%s stack%s" % [stacks, "" if stacks == 1 else "s"]
@@ -326,19 +347,19 @@ func hover_card(which: StringName, stacks: int, nullified: bool = false,
 	var lines: Array = []
 	match mode:
 		&"goal", &"bonus", &"demand":
-			lines.append(objective_text(which, stacks))
+			lines.append(objective_text(which, stacks, any_time))
 		&"clause":
 			lines.append(("Every enemy's goal also needs: %s" if which == PLAYER
-				else "This enemy's goal also needs: %s") % clause_text(which, stacks))
+				else "This enemy's goal also needs: %s") % clause_text(which, stacks, any_time))
 		&"instead":
 			if nullified:
 				lines.append("A boss comes off the board on its goal alone — "
-					+ "\"%s\" does nothing here." % alternative_text(which, stacks))
+					+ "\"%s\" does nothing here." % alternative_text(which, stacks, any_time))
 			else:
 				lines.append(("Every enemy's goal can be met instead by: %s"
 					if which == PLAYER
 					else "This enemy's goal can be met instead by: %s")
-					% alternative_text(which, stacks))
+					% alternative_text(which, stacks, any_time))
 		_:
 			lines.append("Does nothing on this side.")
 	if combat_applies(which):
@@ -422,7 +443,7 @@ func _side_body(which: StringName, stacks: int) -> String:
 	return full.substr(cut + 1) if cut >= 0 else full
 
 func tooltip_for(which: StringName, stacks: int, nullified: bool = false,
-		games: int = 0) -> String:
+		games: int = 0, any_time: bool = false) -> String:
 	var head: String = "%s %d" % [display_name, stacks]
 	if is_capped():
 		head += "/%d" % max_stacks
@@ -431,23 +452,23 @@ func tooltip_for(which: StringName, stacks: int, nullified: bool = false,
 	var body: String = ""
 	match mode_for(which):
 		&"goal":
-			body = "Standing goal — %s" % objective_text(which, stacks)
+			body = "Standing goal — %s" % objective_text(which, stacks, any_time)
 		&"bonus":
-			body = "Bonus — %s" % objective_text(which, stacks)
+			body = "Bonus — %s" % objective_text(which, stacks, any_time)
 		&"clause":
 			body = ("Every enemy's goal also needs: %s" if which == PLAYER
-				else "This enemy's goal also needs: %s") % clause_text(which, stacks)
+				else "This enemy's goal also needs: %s") % clause_text(which, stacks, any_time)
 		&"demand":
-			body = "Every game — %s" % objective_text(which, stacks)
+			body = "Every game — %s" % objective_text(which, stacks, any_time)
 		&"instead":
 			if nullified:
 				body = "Nullified — a boss comes off the board on its goal alone, " \
-					+ "so \"%s\" does nothing here." % alternative_text(which, stacks)
+					+ "so \"%s\" does nothing here." % alternative_text(which, stacks, any_time)
 			else:
 				body = ("Every enemy's goal can be met instead by: %s"
 					if which == PLAYER
 					else "This enemy's goal can be met instead by: %s") \
-					% alternative_text(which, stacks)
+					% alternative_text(which, stacks, any_time)
 		_:
 			body = "Does nothing on this side."
 	var shed: String = decrease_note(which)

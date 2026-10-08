@@ -317,7 +317,14 @@ of a game.
   drops back to 0% the moment one does, and whenever a game ends or starts —
   won, lost or escaped (`_clear_attempts`) — so losing on purpose can never bank a
   rung for the next game. So a long bad
-  evening averages about one body per three lost runs, never one per run. The body
+  evening averages about one body per three lost runs, never one per run.
+  **Luck lowers each rung** the way it lowers every roll whose success is the bad
+  outcome (`Stats.roll_chance`, `Favour.LOW`): a coin per point of Luck, each
+  heads one more roll, and the body walks on only if every roll hits — so 2 Luck
+  makes the 50% rung about 28%, and negative Luck pushes it up. The free first
+  rung stays free and the certain last rung stays certain, so Luck shortens the
+  streak rather than removing the ceiling. The chance quoted on screen is the
+  Luck-adjusted one (`lost_run_spawn_chance`, through `Stats.effective_chance`). The body
   rolls off the game in play's type at the run's tier, walks on at the back column
   AFTER the turn (it acts from the next lost run) and is not one of `arrivals`.
   **It is a spawn event like every other spawn** (§19.6): the fourth brings the
@@ -1525,13 +1532,11 @@ there, still owed, still carrying its goal, which is what its remaining Health
 means. A game handed in spends no turns (§7.4), so stacks laid at the report are
 spent against the next game's first lost runs.
 
-**Those stacks are QUIET: they hang no bonus row.** Stun's enemy side is a
-claimable chest reward, and that is for a stun the player chose to spend (Scare
-Monster, Web, a weapon), not one the board handed out. The body's `quiet_stun`
-key counts them; `bonus_objectives_for` and `claim_enemy_bonus` subtract it, and
-the turn's wear spends the quiet stacks FIRST, so a paid stun on top keeps its
-row for as long as the body is stunned. The full card says how many of its turns
-came from the goal hit, so the missing row does not read as a bug.
+**They are ordinary Stun stacks.** They used to be QUIET — counted in a
+`quiet_stun` body key so they hung none of Stun's bonus row, which was for a stun
+the player chose to spend. Stun has no goal side any more (§13.2), so there is no
+row for any stack to hang and nothing to tell the two kinds apart by; the key is
+gone, and an older save's copy of it is not read back.
 
 **This replaced Staggered**, which held a survivor for the rest of the game in a
 per-game set of its own (`staggered_this_game`) beside Stun. Two ways of sitting
@@ -2013,6 +2018,24 @@ carrying** (`GameLoop2.goal_text_for`), and the body can be any of the 111 —
 `any time`, `game beaten` or counted. So the clause is not a sentence of its
 own: it is a phrase that has to read correctly after an arbitrary goal.
 
+**A side can be worded twice, once per `Ticked`.** A few conditions only make
+sense at the end of a game — "the game must be beaten in 3 hours", "you didn't
+intentionally heal" — and on an `any time` body, cleared mid-game, they asked for
+a promise the moment the box was ticked. So a side may author a second wording
+after the first, `any_time "…"` in the effect DSL (`condition_any_time` on the
+side), and the screens pick by the body it rides (`GameLoop2.answered_any_time`,
+passed down to `StatusData.condition_text` and every text/hover helper above it).
+The first wording is the end-of-game one; the second must be true at the moment
+the body is cleared:
+
+| Status | `game beaten` body | `any time` body |
+|---|---|---|
+| Speed (clause) | "the game must be beaten in 3 hours or less" | "you must do it within 3 hours of starting the game" |
+| Bleed (bonus) | "and if you didn't intentionally heal" | "and if you didn't intentionally heal before clearing it" |
+
+Strength, Dexterity and Marked read right on both and carry one wording. Burn's
+`instead` resolves on the spot even on a `game beaten` body, on purpose (below).
+
 **Give it a subject.** The two that do compose everywhere:
 
 | Status | Clause | Composed |
@@ -2027,7 +2050,7 @@ where the sentence contains no game for a reader to recover the subject from,
 and least bad on a `game beaten` one, which is why it survived. It now says
 "**the game** must be beaten in …".
 
-The three enemy-side **`bonus`** sides (Bleed, Marked, Stun) are exempt from this
+The two enemy-side **`bonus`** sides (Bleed, Marked) are exempt from this
 rule: a bonus is drawn as a row of its own rather than joined to the goal, so it
 never has to survive the composition. A **`instead`** (Burn) joins with "or
 instead" and needs no subject either, because it replaces the goal rather than
@@ -3257,7 +3280,7 @@ where `<verb>` is one of the five modes above. So the current roster reads:
 | Status | `On Player Effect` | `On Enemy Effect` |
 |---|---|---|
 | Strength | `goal "the difficulty is increased {X} times or as much as possible" -> gain_chest reward {X}; gain_stat bash 1` | `clause "the difficulty must be increased {X} times or as much as possible"` |
-| Speed | `goal "beaten in {1+(1/2)^(X-2):hours} or less" -> gain_chest reward {X}; gain_stat dash 1` | `clause "must be beaten in {1+(1/2)^(X-2):hours} or less"` |
+| Speed | `goal "beaten in {1+(1/2)^(X-2):hours} or less" -> gain_chest reward {X}; gain_stat dash 1` | `clause "the game must be beaten in {1+(1/2)^(X-2):hours} or less" any_time "you must do it within {1+(1/2)^(X-2):hours} of starting the game"` |
 | Marked | `demand "get {X} achievements" else -> take_damage 3` | `bonus "you get {X} achievements" decay -> gain_chest reward {X}` |
 | Dexterity | `goal "{X} or all bosses were beaten without getting hit" -> gain_chest reward {X}` | `clause "you must beat {X} or all bosses without getting hit"` |
 | Burn | `demand "skip or trash {X} items/upgrades" else -> take_damage 3` | `instead "skip or trash {4-X} items/upgrades"` |
@@ -3341,7 +3364,7 @@ would only make it a worse item.
 | **Marked** | Debuff | Mewgenics | you get X achievements | [chest reward X] on an enemy; on the player it charges 3 Damage for being missed | takes double damage, ignoring Shields |
 | **Burn** | Debuff | Brutal Orchestra | skip or trash X items/upgrades (4-X on an enemy) | *nothing* — it charges 3 Damage for being missed | deals half damage |
 | **Bleed** | Debuff | Mewgenics | don't heal intentionally | *nothing* on the player — it charges 3 Damage for being missed; [chest reward X] on an enemy | X separate 50% rolls of 1 damage **to itself** when it attacks |
-| **Stun** | Debuff | Slay the Spire | beat a game twice in a row to set it as Completed | *nothing* on the player — it charges 5 Damage for being missed; [chest reward X] on an enemy | loses its turn |
+| **Stun** | Debuff | Slay the Spire | *none — no goal side on either end* | *none* | loses its turn |
 
 **Bleed and Stun are the first two statuses whose clock is the BOARD.** Every
 status above them either never depletes or depletes by having a side *completed*
@@ -3379,10 +3402,15 @@ Three things fall out of that, and each is worth knowing:
   status strip under the token, no ❄ badge and no pip of its own. The token still
   *cools toward blue*, because that is a property of the token rather than a second
   listing of the same fact.
-- **Stunning a body hands it Stun's enemy side too**: the claimable bonus row "and
-  if you beat the game twice in a row, Gain a [chest reward]". So Scroll of Scare
-  Monster is now *skip its turn AND open a chest reward on it*, which is what the
-  sheet's Stun row says applied consistently.
+- **Stun has no in-game effect** — no goal side on the player or on an enemy. It
+  used to hang "and if you beat the game twice in a row, Gain a [chest reward]"
+  off a stunned body and bill the player 5 Damage for not beating a game twice in
+  a row; both asked for two wins on a status that wears off a stack per turn, and
+  the owner cut them. Scroll of Scare Monster, Web and a goal hit all just make a
+  body skip turns, and the "quiet stun" bookkeeping that told a goal hit's stacks
+  from a paid-for one (so only the latter paid the bonus) went with the bonus. A
+  Stun inflicted on the PLAYER (Spider Kitten's `Infliction (1, Stun)`) does
+  nothing: the player takes no turns to skip.
 - **Sticky Bombs' `bomb_stun` is deleted**, not merely unauthored: the field, the
   `GameState.bombs_stun()` reader and the `_explode` branch are all gone, and
   `generate_item_tres.py` refuses the token out loud pointing at `bomb_tile web`.

@@ -5703,6 +5703,9 @@ func _refresh_stats(_a = null) -> void:
 	_paint_health_chip()
 	_paint_gold_chip()
 	_refresh_select_stats()
+	# Luck leans on the lost-run spawn (§3.2), and the tracker button quotes that
+	# chance, so a pill or an item that moves Luck mid-game has to repaint it.
+	_refresh_attempts()
 	# …and the hero with them, because the board is where Health, Shields and the
 	# player's statuses are now drawn. These signals used to land on a HUD strip
 	# that repainted immediately while the board waited for the next full refresh;
@@ -5819,8 +5822,8 @@ func _refresh_select_stats() -> void:
 		"Every roll in the run gets %d coin flip%s — each heads is one more roll — "
 		% [absi(luck), "" if absi(luck) == 1 else "s"]
 		+ "and the %s result is kept.\n" % ("better" if luck >= 0 else "worse")
-		+ "Rarity ladders, event gambles, machine odds — anything with a better "
-		+ "side to land on.\nA 25%% chance is really %s%% at this much Luck."
+		+ "Rarity ladders, event gambles, machine odds, a lost run's spawn — "
+		+ "anything with a better side to land on.\nA 25%% chance is really %s%% at this much Luck."
 		% EventSystem.percent_text(Stats.effective_chance(25.0, Stats.Favour.HIGH))))
 	# RIFT KEYS (docs/rifts-design.md §8), a readout rather than a button: a key is
 	# spent by TAKING a rift card, which the offering deals into its empty slots

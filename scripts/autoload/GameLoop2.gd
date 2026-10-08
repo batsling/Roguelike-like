@@ -101,9 +101,7 @@ const BRIMSTONE_STUN: int = 1
 # What a goal hit that does NOT finish its body costs it instead: this many turns
 # of Stun (§7.2). It replaced Staggered, which held the survivor for the rest of
 # the game — one way of sitting a turn out rather than two, with one countdown.
-# Two is roughly what the rest of a game used to buy. These stacks are QUIET: they
-# hang no bonus row off the body (see `quiet_stun`), because a chest reward is for
-# a stun the player chose to spend, not for one the board handed out.
+# Two is roughly what the rest of a game used to buy.
 const GOAL_HIT_STUN: int = 2
 
 # The battlefield is a Mega-Man-Battle-Network-style grid: the player sits on the
@@ -275,9 +273,6 @@ var game_in_play: bool = false
 #                 hits for RIFT_MULT times its damage and pays RIFT_MULT times the
 #                 loot and chest points, for as long as it stands, wherever it
 #                 follows you. Absent on every body that did not.
-#   "quiet_stun"  how many of the body's Stun stacks were laid by a GOAL HIT it
-#                 survived (§7.2), and so hang no bonus row off it. Never more
-#                 than the Stun it holds; absent or 0 on a body nobody hit.
 var stack: Array = []
 
 # THE LIST ABOVE, AS SOMETHING THE GAME CAN CHECK.
@@ -316,7 +311,7 @@ const BODY_KEYS := {
 	"timed_statuses": true, "abilities": true, "turns": true, "phase": true,
 	"revives": true, "fades": true, "hidden": true, "illusionist": true,
 	"stolen": true, "fleeing": true, "tags": true,
-	"corpse": true, "corpse_revive": true, "progress": true, "quiet_stun": true,
+	"corpse": true, "corpse_revive": true, "progress": true,
 	"rift": true,
 }
 
@@ -827,7 +822,8 @@ func clear_last_strike() -> void:
 # 25%, 50%, 75%, then certain. A spawn drops it back to the bottom, and so does
 # the end of the game (`_clear_attempts`). So a long bad evening averages about
 # one body per three lost runs, never one per run. `lost_run_spawn_step` is the
-# rung, 0-based.
+# rung, 0-based. LUCK lowers each rung's odds the way it lowers every bad roll
+# (see `_roll_lost_run_spawn`); the ladder itself is the chance at 0 Luck.
 const LOST_RUN_SPAWN_CHANCES: Array = [0.0, 0.25, 0.5, 0.75, 1.0]
 var lost_run_spawn_step: int = 0
 # The ladder in force — LOST_RUN_SPAWN_CHANCES, put back by every reset(). A suite
@@ -1282,9 +1278,6 @@ func _serialize_entry(entry: Dictionary) -> Dictionary:
 		"col": int(entry.get("col", offgrid_col())),
 		"row": int(entry.get("row", 0)),
 		"statuses": _serialize_statuses(entry.get("statuses", {})),
-		# How many of those Stun stacks a goal hit laid, which carry no bonus row
-		# (§7.2). Written because nothing on the body can recompute it.
-		"quiet_stun": quiet_stun(entry),
 		# The stacks with a clock on them (docs/potions-design.md §5.4), each with
 		# the shield it handed out so a reload can still take back what it owes.
 		"timed_statuses": _serialize_timed(entry.get("timed_statuses", [])),
@@ -1378,9 +1371,9 @@ func _deserialize_entry(raw) -> Dictionary:
 		# load that dropped it would hand the player back a board where the thing
 		# they had just scared is walking again.
 		"statuses": _restore_statuses(d),
-		# Absent from a save written before §7.2's goal-hit stun: every stun in it was
-		# a paid one, so 0 is the right answer.
-		"quiet_stun": maxi(0, int(d.get("quiet_stun", 0))),
+		# NO "quiet_stun" any more: it split a body's Stun into stacks that paid
+		# Stun's bonus row and stacks that did not, and Stun has no goal sides now
+		# (§13.2). An older save's field is simply not read back.
 		"timed_statuses": _deserialize_timed(d.get("timed_statuses", [])),
 		# A save written before §7.6 has no ability list; the enemy's own is the
 		# right answer there, because nothing had ever granted one.
@@ -2139,8 +2132,14 @@ func log_attempt() -> String:
 	loop_changed.emit()
 	return "turn"
 
-# The chance the NEXT lost run stands a body up (§3.2), 0..1.
+# The chance the NEXT lost run stands a body up (§3.2), 0..1 — LUCK INCLUDED, so the
+# number the tracker button and the boss warning quote is the number that gets
+# rolled (Stats.effective_chance, the same promise the event buttons keep).
 func lost_run_spawn_chance() -> float:
+	return Stats.effective_chance(lost_run_spawn_rung() * 100.0, Stats.Favour.LOW) / 100.0
+
+# The ladder's own chance on the rung the next lost run stands on, before Luck.
+func lost_run_spawn_rung() -> float:
 	if lost_run_spawn_ladder.is_empty():
 		return 0.0
 	return float(lost_run_spawn_ladder[clampi(lost_run_spawn_step, 0,
@@ -2158,8 +2157,18 @@ func lost_run_spawn_chance() -> float:
 # next spawn is a difficulty up (BattlefieldView._refresh_pressure). Rolled first,
 # placed second, as `_land_end_of_game_bodies` does, so the body lands on the
 # grown board's back column. Not one of `arrivals`: a Scramble cannot scrub it.
+#
+# LUCK LEANS ON IT (Stats.roll_chance, Favour.LOW — a body walking on is the bad
+# outcome): each point of Luck is a coin, each heads one more roll, and the body
+# only walks on if EVERY roll hits. So 2 Luck turns the 50% rung into about 28%.
+# Negative Luck points the same machine the other way. The guaranteed last rung
+# stays guaranteed — every roll of a certainty hits — so Luck shortens a bad
+# evening's streak of free losses but never removes the ladder's ceiling. The rng
+# is seeded off the global one so a test that seeds `seed()` still gets one answer.
 func _roll_lost_run_spawn() -> int:
-	if randf() >= lost_run_spawn_chance():
+	var rng := RandomNumberGenerator.new()
+	rng.seed = randi()
+	if not Stats.roll_chance(rng, lost_run_spawn_rung() * 100.0, Stats.Favour.LOW):
 		lost_run_spawn_step = mini(lost_run_spawn_step + 1, maxi(0, lost_run_spawn_ladder.size() - 1))
 		return 0
 	lost_run_spawn_step = 0
@@ -3056,11 +3065,11 @@ func retreat_goal(instance: int) -> bool:
 	loop_changed.emit()
 	return true
 
-# A body took its goal's hit and lived: it is STUNNED for GOAL_HIT_STUN turns, and
-# those stacks hang no bonus row off it (§7.2). Only ever called on a survivor; a
-# defeated body is off the board and has nothing left to hold still.
+# A body took its goal's hit and lived: it is STUNNED for GOAL_HIT_STUN turns
+# (§7.2). Only ever called on a survivor; a defeated body is off the board and has
+# nothing left to hold still.
 func _stun_survivor(instance: int) -> void:
-	stun(instance, GOAL_HIT_STUN, false)
+	stun(instance, GOAL_HIT_STUN)
 
 # The same hit for a goal met THE OTHER WAY (§13, Burn's `instead`): the player did
 # the alternative rather than the condition, so the body clears and is engaged, but
@@ -4117,44 +4126,23 @@ func _prune_offboard_cells() -> void:
 # so a body that has lost a turn has lost it for exactly one reason.
 #
 # What that buys beyond tidiness: the sheet's Stun row applies in full. Its
-# `Decrease: Each Turn` is the countdown, its `skip_turn` is the lost turn, and its
-# enemy side hangs a claimable bonus on the body — so a scared monster is a body
-# that is not acting AND a chest reward you can go and earn.
+# `Decrease: Each Turn` is the countdown and its `skip_turn` is the lost turn — and
+# that is ALL it is. Stun has no goal sides (§13.2): it once hung a "beat the game
+# twice in a row" bonus off a stunned body, which asked for two wins on a status
+# that wears off a stack a turn, and the owner cut it. So a goal hit's stun and a
+# scroll's are the same stacks, with nothing to tell apart.
 #
-# `stacks` is how many turns it sits out. `rewarded` false lays them QUIET — no
-# bonus row for them (see `quiet_stun`) — which is how a goal hit the body
-# survived stuns it (§7.2). Only the stacks that actually landed are counted as
-# quiet, so a resistance or a cap cannot leave the tally ahead of the Stun.
-func stun(instance: int, stacks: int = 1, rewarded: bool = true) -> bool:
-	var entry: Dictionary = entry_for(instance)
-	if entry.is_empty():
+# `stacks` is how many turns it sits out.
+func stun(instance: int, stacks: int = 1) -> bool:
+	if entry_for(instance).is_empty():
 		return false
-	var before: int = stun_stacks(entry)
 	apply_status_to(instance, &"stun", stacks)
-	if not rewarded:
-		var landed: int = stun_stacks(entry) - before
-		if landed > 0:
-			entry["quiet_stun"] = quiet_stun(entry) + landed
 	return true
 
 # How many turns `entry` is going to sit out. The one place the number is read off
 # a body, so nothing has to know it is a status rather than a field.
 func stun_stacks(entry: Dictionary) -> int:
 	return entry_status_stacks(entry, &"stun")
-
-# How many of those stacks are QUIET — laid by a goal hit, and so carrying no bonus
-# row. Read clamped to the Stun actually held, so whatever took stacks off the body
-# (a claimed bonus, a scroll, the dev panel) can never leave more quiet stacks than
-# stun. The turn's wear spends the quiet ones FIRST (`_wear_statuses`), so a stun
-# the player paid for keeps its bonus row for as long as the body is stunned.
-func quiet_stun(entry: Dictionary) -> int:
-	var owned: int = int((entry.get("statuses", {}) as Dictionary).get(&"stun", 0))
-	return clampi(int(entry.get("quiet_stun", 0)), 0, owned)
-
-# The Stun stacks on `entry` that DO pay its bonus row: the paid-for ones.
-func paid_stun(entry: Dictionary) -> int:
-	var owned: int = int((entry.get("statuses", {}) as Dictionary).get(&"stun", 0))
-	return owned - quiet_stun(entry)
 
 # --- push (§grid) ----------------------------------------------------------
 #
@@ -5438,15 +5426,6 @@ func bonus_objectives_for(entry: Dictionary) -> Array:
 	var out: Array = []
 	for row in enemy_statuses(entry):
 		if (row["status"] as StatusData).is_bonus(StatusData.ENEMY):
-			# A GOAL HIT'S STUN PAYS NOTHING (§7.2): the row is for the stacks
-			# somebody chose to spend, and a body holding only quiet ones has none.
-			if (row["status"] as StatusData).id == &"stun":
-				var quiet: int = quiet_stun(entry)
-				if quiet > 0:
-					row = row.duplicate()
-					row["stacks"] = int(row["stacks"]) - quiet
-					if int(row["stacks"]) <= 0:
-						continue
 			out.append(row)
 	return out
 
@@ -5515,6 +5494,16 @@ func goal_text_for(entry: Dictionary) -> String:
 		text += " %s %s" % [addon["joiner"], addon["text"]]
 	return text
 
+# IS `entry`'s GOAL ANSWERED ON THE SPOT (§7.7 `Ticked: any time`) rather than by
+# beating the game? Which way a status's clause or bonus is WORDED on it hangs off
+# this (StatusData.condition_text): "the game must be beaten in 3 hours" is a
+# promise on a body cleared mid-game, so Speed reads "within 3 hours of starting
+# the game" there instead. An empty entry (no body to ask) reads as the authored,
+# end-of-game wording.
+static func answered_any_time(entry: Dictionary) -> bool:
+	var e: GoalEnemyData = entry.get("enemy") as GoalEnemyData
+	return e != null and not e.settled_by_beating()
+
 # --- a goal's ADD-ONS, as rows rather than as a sentence --------------------
 #
 # A goal picks up clauses. A status on the body tightens it, a status on the
@@ -5540,6 +5529,7 @@ func goal_text_for(entry: Dictionary) -> String:
 # one will route around a tax that is about to lift.
 func goal_addons_for(entry: Dictionary) -> Array:
 	var out: Array = []
+	var any_time: bool = answered_any_time(entry)
 	for clause in required_clauses_for(entry):
 		var sd: StatusData = clause["status"]
 		var which: StringName = StatusData.PLAYER if clause["source"] == "player" \
@@ -5549,7 +5539,7 @@ func goal_addons_for(entry: Dictionary) -> Array:
 			"games": int(clause.get("games", 0)),
 			"kind": "clause", "source": String(clause["source"]), "required": true,
 			"joiner": "and",
-			"text": "%s%s" % [sd.clause_text(which, int(clause["stacks"])),
+			"text": "%s%s" % [sd.clause_text(which, int(clause["stacks"]), any_time),
 				StatusData.clock_suffix(int(clause.get("games", 0)))],
 		})
 	for alt in alternatives_for(entry):
@@ -5559,7 +5549,7 @@ func goal_addons_for(entry: Dictionary) -> Array:
 			"games": int(alt.get("games", 0)),
 			"kind": "instead", "source": "enemy", "required": false,
 			"joiner": "or instead",
-			"text": "%s%s" % [asd.alternative_text(StatusData.ENEMY, int(alt["stacks"])),
+			"text": "%s%s" % [asd.alternative_text(StatusData.ENEMY, int(alt["stacks"]), any_time),
 				StatusData.clock_suffix(int(alt.get("games", 0)))],
 		})
 	for bonus in bonus_objectives_for(entry):
@@ -5573,7 +5563,7 @@ func goal_addons_for(entry: Dictionary) -> Array:
 			# Chest", because a row that pays has to advertise what skipping it
 			# forfeits — so a joiner here would say "and if" twice.
 			"joiner": "",
-			"text": "%s%s" % [bsd.objective_text(StatusData.ENEMY, int(bonus["stacks"])),
+			"text": "%s%s" % [bsd.objective_text(StatusData.ENEMY, int(bonus["stacks"]), any_time),
 				StatusData.clock_suffix(int(bonus.get("games", 0)))],
 		})
 	return out
@@ -5638,16 +5628,6 @@ func _wear_statuses(entry: Dictionary, when: StringName) -> void:
 			else status.wears_per_turn()
 		if due:
 			_add_status_to(entry, StringName(id), -1)
-			# THE QUIET STACKS GO FIRST (§7.2). A goal hit's stun and a paid one are
-			# the same lost turn, so which stack a turn wears is only a question about
-			# the bonus row — and spending the unpaid ones first keeps a scared
-			# monster's reward on the board for as long as it is scared.
-			if StringName(id) == &"stun" and entry.has("quiet_stun"):
-				var quiet: int = mini(int(entry["quiet_stun"]) - 1, quiet_stun(entry))
-				if quiet > 0:
-					entry["quiet_stun"] = quiet
-				else:
-					entry.erase("quiet_stun")
 
 # --- Bleed's recoil (§13.2) ------------------------------------------------
 
@@ -5921,9 +5901,6 @@ func claim_enemy_bonus(instance: int, status_id: StringName) -> bool:
 		return false
 	var held: Dictionary = entry.get("statuses", {})
 	var stacks: int = int(held.get(status_id, 0))
-	# Only the paid-for stun pays (§7.2) — see `quiet_stun`.
-	if status_id == &"stun":
-		stacks = paid_stun(entry)
 	if stacks <= 0:
 		return false
 	var status: StatusData = Data.get_status(status_id)

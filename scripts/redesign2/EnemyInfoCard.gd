@@ -168,11 +168,6 @@ func setup(entry: Dictionary, col: int, position_note: String = "") -> void:
 		# here. It wears the status's own art rather than a symbol of its own, so
 		# the two places Stun appears on this card are recognisably the same thing.
 		var worth: String = "sits out your next %d lost run%s" % [stun, "" if stun == 1 else "s"]
-		# A goal hit it survived stuns it too (§7.2), and those stacks pay no bonus —
-		# so say which ones they are, or the missing bonus row reads as a bug.
-		var quiet: int = GameLoop2.quiet_stun(entry)
-		if quiet > 0:
-			worth += " (%d from the goal hit it survived)" % quiet
 		var sd: StatusData = Data.get_status(&"stun")
 		stat_col.add_child(_stat_row_art(sd.image if sd != null else null,
 			sd.display_name if sd != null else "Stun", worth, Color(0.6, 0.8, 1.0)))
@@ -238,7 +233,8 @@ func setup(entry: Dictionary, col: int, position_note: String = "") -> void:
 		for row in statuses:
 			var st: StatusData = row["status"]
 			strip.add_child(_status_chip(st, int(row["stacks"]),
-				st != null and dead.has(st.id), int(row.get("games", 0))))
+				st != null and dead.has(st.id), int(row.get("games", 0)),
+				GameLoop2.answered_any_time(entry)))
 		inner.add_child(strip)
 
 	# The goal — the thing you actually have to do — gets its own panel.
@@ -412,14 +408,14 @@ func _chip(text: String, color: Color) -> Control:
 const STATUS_ART := 28
 
 func _status_chip(status: StatusData, stacks: int, nullified: bool = false,
-		games: int = 0) -> Control:
+		games: int = 0, any_time: bool = false) -> Control:
 	# A nullified way-out never reads as good news, whatever side it is on (§7.1).
 	var good: bool = status.is_bonus(StatusData.ENEMY) and not nullified
 	var tint: Color = UITheme.GOLD if good else UITheme.DANGER
 	var wrap := PanelContainer.new()
 	wrap.add_theme_stylebox_override("panel",
 		UITheme.flat(tint.lerp(UITheme.BG, 0.80), 6, 5, 1, tint.lerp(UITheme.BG, 0.35)))
-	wrap.tooltip_text = status.tooltip_for(StatusData.ENEMY, stacks, nullified, games)
+	wrap.tooltip_text = status.tooltip_for(StatusData.ENEMY, stacks, nullified, games, any_time)
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", UITheme.GAP_SNUG)
 	wrap.add_child(row)
@@ -445,11 +441,11 @@ func _status_chip(status: StatusData, stacks: int, nullified: bool = false,
 		# and what they would have bought is not available on this one.
 		what.text = "nullified — a boss comes off the board on its goal alone"
 	elif status.is_alternative(StatusData.ENEMY):
-		what.text = "or instead: %s" % status.alternative_text(StatusData.ENEMY, stacks)
+		what.text = "or instead: %s" % status.alternative_text(StatusData.ENEMY, stacks, any_time)
 	elif good:
-		what.text = status.objective_text(StatusData.ENEMY, stacks)
+		what.text = status.objective_text(StatusData.ENEMY, stacks, any_time)
 	else:
-		what.text = "goal also needs: %s" % status.clause_text(StatusData.ENEMY, stacks)
+		what.text = "goal also needs: %s" % status.clause_text(StatusData.ENEMY, stacks, any_time)
 	what.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 	what.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 	what.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART

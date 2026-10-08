@@ -10084,8 +10084,8 @@ func _solo_with_bonus() -> int:
 	_disarm_board()
 	var inst: int = int(GameLoop2.stack[0]["instance"])
 	_clear_board_except(inst)
-	# Stun's enemy side is a `bonus` — the sheet's own optional objective.
-	GameLoop2.apply_status_to(inst, &"stun", 1)
+	# Marked's enemy side is a `bonus` — the sheet's own optional objective.
+	GameLoop2.apply_status_to(inst, &"marked", 1)
 	_ui._populate_play_panel()
 	return inst
 
@@ -10111,16 +10111,16 @@ func test_ticking_a_bonus_arms_it_and_pays_nothing_yet() -> void:
 	_ui._bonus_checks[0]["check"].button_pressed = true
 	assert_null(_ui.get_node_or_null("Confirm"),
 		"a row that can be unticked does not ask 'did you really?'")
-	assert_true(GameLoop2.bonus_armed(inst, &"stun"), "it is armed")
+	assert_true(GameLoop2.bonus_armed(inst, &"marked"), "it is armed")
 	assert_eq(GameState.pending_chests, chests_before, "and nothing has been paid")
 
 func test_unticking_a_bonus_disarms_it_at_no_cost() -> void:
 	var inst: int = _solo_with_bonus()
 	var cb: CheckBox = _ui._bonus_checks[0]["check"]
 	cb.button_pressed = true
-	assert_true(GameLoop2.bonus_armed(inst, &"stun"))
+	assert_true(GameLoop2.bonus_armed(inst, &"marked"))
 	cb.button_pressed = false
-	assert_false(GameLoop2.bonus_armed(inst, &"stun"),
+	assert_false(GameLoop2.bonus_armed(inst, &"marked"),
 		"taking it back costs nothing, because it had done nothing")
 
 func test_an_armed_bonus_pays_when_the_enemy_is_ticked() -> void:
@@ -10133,7 +10133,7 @@ func test_an_armed_bonus_pays_when_the_enemy_is_ticked() -> void:
 	_tick(_ui._fulfil_checks[0]["check"])
 	assert_gt(GameState.pending_chests, chests_before,
 		"the bonus cashed with the body")
-	assert_false(GameLoop2.bonus_armed(inst, &"stun"), "and is spent")
+	assert_false(GameLoop2.bonus_armed(inst, &"marked"), "and is spent")
 
 func test_a_bonus_never_armed_pays_nothing_when_the_enemy_is_ticked() -> void:
 	_solo_with_bonus()
@@ -10157,13 +10157,13 @@ func test_a_bonus_ticked_after_the_body_is_down_pays_at_once() -> void:
 	_ui._bonus_checks[0]["check"].button_pressed = true
 	assert_gt(GameState.pending_chests, chests_before,
 		"nothing left to wait for, so it pays on the spot")
-	assert_false(GameLoop2.bonus_armed(inst, &"stun"))
+	assert_false(GameLoop2.bonus_armed(inst, &"marked"))
 
 func test_an_armed_bonus_survives_a_repaint() -> void:
 	var inst: int = _solo_with_bonus()
 	_ui._bonus_checks[0]["check"].button_pressed = true
 	_ui._populate_play_panel()
-	assert_true(GameLoop2.bonus_armed(inst, &"stun"), "the loop remembers, not the box")
+	assert_true(GameLoop2.bonus_armed(inst, &"marked"), "the loop remembers, not the box")
 	assert_true(_ui._bonus_checks[0]["check"].button_pressed,
 		"and the rebuilt row comes back ticked")
 

@@ -1049,15 +1049,16 @@ func _add_instead_rows(entry: Dictionary) -> void:
 	if entry.is_empty():
 		return
 	var instance: int = int(entry.get("instance", 0))
+	var any_time: bool = GameLoop2.answered_any_time(entry)
 	for row in GameLoop2.alternatives_for(entry):
 		var sd: StatusData = row["status"]
 		var stacks: int = int(row["stacks"])
 		var games: int = int(row.get("games", 0))
 		var irow := verify_row("%s or instead: %s%s" % [
-			_status_prefix(sd, stacks), sd.alternative_text(StatusData.ENEMY, stacks),
+			_status_prefix(sd, stacks), sd.alternative_text(StatusData.ENEMY, stacks, any_time),
 			StatusData.clock_suffix(games)],
 			UITheme.GOLD.lerp(UITheme.TEXT, 0.3), false, null, null, instance,
-			_status_mark(sd, stacks, StatusData.ENEMY, false, games))
+			_status_mark(sd, stacks, StatusData.ENEMY, false, games, any_time))
 		_add_row(irow["row"], false, true)
 		instead_checks.append({"check": irow["check"], "instance": instance,
 			"status": sd.id})
@@ -1071,7 +1072,7 @@ func _add_instead_rows(entry: Dictionary) -> void:
 			func() -> void:
 				var standing: int = GameLoop2.stack.size()
 				GameLoop2.record_completed_goal("enemy", "Cleared the other way: %s — %s" % [
-					sd.alternative_text(StatusData.ENEMY, stacks), alt_name])
+					sd.alternative_text(StatusData.ENEMY, stacks, any_time), alt_name])
 				GameLoop2.fulfill_instead(instance, sd.id)
 				GameLoop2.mark_row_answered("instead:%d" % instance)
 				# CLEARING IT THE OTHER WAY IS STILL CLEARING IT, so the bonuses armed
@@ -1119,6 +1120,7 @@ func _add_clause_rows(entry: Dictionary) -> void:
 	if entry.is_empty():
 		return
 	var instance: int = int(entry.get("instance", 0))
+	var any_time: bool = GameLoop2.answered_any_time(entry)
 	for addon in GameLoop2.goal_addons_for(entry):
 		if String(addon.get("kind", "")) != "clause":
 			continue
@@ -1137,22 +1139,23 @@ func _add_clause_rows(entry: Dictionary) -> void:
 		_add_row(_objective_row("%s %s" % [String(addon.get("joiner", "and")),
 			String(addon.get("text", ""))],
 			UITheme.addon_color(true), null, instance,
-			_status_mark(sd, stacks, which, false, games)), false, true)
+			_status_mark(sd, stacks, which, false, games, any_time)), false, true)
 
 func _add_bonus_rows(entry: Dictionary, sunk: bool = false) -> void:
 	if entry.is_empty():
 		return
 	var instance: int = int(entry.get("instance", 0))
+	var any_time: bool = GameLoop2.answered_any_time(entry)
 	for row in GameLoop2.bonus_objectives_for(entry):
 		var sd: StatusData = row["status"]
 		var stacks: int = int(row["stacks"])
 		var games: int = int(row.get("games", 0))
 		var brow := verify_row(
 			"%s %s%s" % [_status_prefix(sd, stacks),
-				sd.objective_text(StatusData.ENEMY, stacks),
+				sd.objective_text(StatusData.ENEMY, stacks, any_time),
 				StatusData.clock_suffix(games)],
 			UITheme.GOLD.lerp(UITheme.TEXT, 0.3), false, null, null, instance,
-			_status_mark(sd, stacks, StatusData.ENEMY, false, games))
+			_status_mark(sd, stacks, StatusData.ENEMY, false, games, any_time))
 		_add_row(brow["row"], sunk, true)
 		bonus_checks.append({"check": brow["check"], "instance": instance, "status": sd.id})
 		_arm_bonus_row(brow["check"], instance, sd)
@@ -1205,6 +1208,10 @@ func _arm_bonus_row(cb: CheckBox, instance: int, sd: StatusData) -> void:
 # two rows that finish a body — its goal, and the `instead` that clears it the
 # other way — and from a bonus ticked against a body that is already down.
 func _cash_armed(instance: int) -> void:
+	var body: Dictionary = GameLoop2.entry_for(instance)
+	if body.is_empty():
+		body = GameLoop2.ghost_for(instance)
+	var any_time: bool = GameLoop2.answered_any_time(body)
 	for row in GameLoop2.claim_armed_bonuses(instance):
 		var sid := StringName(row.get("status", &""))
 		var sd: StatusData = Data.get_status(sid)
@@ -1212,7 +1219,7 @@ func _cash_armed(instance: int) -> void:
 			continue
 		GameLoop2.mark_row_answered("bonus:%d:%s" % [instance, sid])
 		GameLoop2.record_completed_goal("bonus", "Bonus: %s — %s" % [
-			sd.objective_text(StatusData.ENEMY, int(row.get("stacks", 1))),
+			sd.objective_text(StatusData.ENEMY, int(row.get("stacks", 1)), any_time),
 			enemy_name_of(instance)])
 		_announce("%s paid out." % sd.display_name, UITheme.GOLD)
 
@@ -1247,7 +1254,7 @@ const STATUS_ICON_SIZE := 22
 # symbol the player has to have memorised: it answers what it is, at what stack,
 # and what that side does, in the same words the pip would.
 func _status_mark(status: StatusData, stacks: int, which: StringName,
-		nullified: bool = false, games: int = 0) -> Control:
+		nullified: bool = false, games: int = 0, any_time: bool = false) -> Control:
 	if status == null or status.image == null:
 		return null
 	var frame := PanelContainer.new()
@@ -1259,7 +1266,7 @@ func _status_mark(status: StatusData, stacks: int, which: StringName,
 	# many games are left (clock_suffix) and the badge is what makes it findable
 	# without reading the sentence.
 	frame.add_child(UITheme.timed_art(status.image, STATUS_ICON_SIZE, games > 0))
-	HoverCard.attach(frame, status.hover_card(which, stacks, nullified, games))
+	HoverCard.attach(frame, status.hover_card(which, stacks, nullified, games, any_time))
 	return frame
 
 # Every per-game checklist binding, dropped together. Five parallel arrays that
@@ -1921,16 +1928,17 @@ func _add_standing_body_row(entry: Dictionary, at_the_end: bool = false) -> void
 	# The way out of that goal, if something burned this body (§13) — read here
 	# rather than only on the report step, because it is a reason to play the
 	# next game differently and this list is what is read before choosing one.
+	var any_time: bool = GameLoop2.answered_any_time(entry)
 	for alt in GameLoop2.alternatives_for(entry):
 		var asd: StatusData = alt["status"]
 		var astacks: int = int(alt["stacks"])
 		var agames: int = int(alt.get("games", 0))
 		_add_row(_objective_row("%s or instead: %s%s" % [
 			_status_prefix(asd, astacks),
-			asd.alternative_text(StatusData.ENEMY, astacks),
+			asd.alternative_text(StatusData.ENEMY, astacks, any_time),
 			StatusData.clock_suffix(agames)],
 			UITheme.GOLD.lerp(UITheme.TEXT, 0.3), null, inst,
-			_status_mark(asd, astacks, StatusData.ENEMY, false, agames)),
+			_status_mark(asd, astacks, StatusData.ENEMY, false, agames, any_time)),
 			false, true)
 	# …and the ones a boss is ignoring, said rather than left out (see
 	# _add_instead_rows, which draws the same line on the report step).
@@ -1942,10 +1950,10 @@ func _add_standing_body_row(entry: Dictionary, at_the_end: bool = false) -> void
 		var bgames: int = int(bonus.get("games", 0))
 		_add_row(_objective_row(
 			"%s %s%s" % [_status_prefix(sd, stacks),
-				sd.objective_text(StatusData.ENEMY, stacks),
+				sd.objective_text(StatusData.ENEMY, stacks, any_time),
 				StatusData.clock_suffix(bgames)],
 			UITheme.GOLD.lerp(UITheme.TEXT, 0.3), null, inst,
-			_status_mark(sd, stacks, StatusData.ENEMY, false, bgames)),
+			_status_mark(sd, stacks, StatusData.ENEMY, false, bgames, any_time)),
 			false, true)
 
 # A GROUP OF IDENTICAL FOLLOWERS on the standing list: one row, ×N, tinted urgent
@@ -2354,7 +2362,7 @@ func _buff_strip(entry: Dictionary) -> Control:
 		chip.add_child(UITheme.timed_art(sd.image, BUFF_ICON_SIZE,
 			int(row.get("games", 0)) > 0))
 		HoverCard.attach(chip, sd.hover_card(StatusData.ENEMY, int(row["stacks"]),
-			false, int(row.get("games", 0))))
+			false, int(row.get("games", 0)), GameLoop2.answered_any_time(entry)))
 		flow.add_child(chip)
 	if rows.size() > shown:
 		var more := UITheme.chip("+%d" % (rows.size() - shown), UITheme.TEXT_DIM, UITheme.FONT_MICRO)

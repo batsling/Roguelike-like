@@ -11,6 +11,22 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Luck lowers the lost-run spawn, and the enemy statuses match the goal they
+  ride.** A lost run's chance of standing a body up now goes through the same
+  Luck roll as every other bad outcome (`Stats.roll_chance`, `Favour.LOW`): a
+  coin per point, each heads another roll, the body walks on only if every roll
+  hits — 2 Luck turns the 50% rung into ~28%. The free first rung and the certain
+  last one are untouched, and the button and boss warning quote the
+  Luck-adjusted number. On the statuses: an enemy-side side can now be worded
+  twice (`any_time "…"` in the effect DSL), and the screens pick by the body's
+  `Ticked`. **Speed** on an any-time body reads "you must do it within 3 hours of
+  starting the game" instead of promising a win; **Bleed**'s bonus reads "you
+  didn't intentionally heal before clearing it". **Stun has no in-game effect
+  any more** — both goal sides are gone (its `goals` row with them), so it only
+  makes a body skip turns, and the `quiet_stun` bookkeeping that existed for its
+  bonus row is deleted. Burn's `instead` stays instant on a `game beaten` body.
+  The bonus-row tests in `test_overworld2` moved from Stun to Marked.
+
 - **The tag export moved to Settings, and covers every game.** Settings →
   Game tags → *Export tags for all games* writes all 917 games to
   `tools/tag_edits.json`, each with the tags it has in game and what was added

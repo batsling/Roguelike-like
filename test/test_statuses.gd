@@ -180,6 +180,50 @@ func test_speed_window_tightens_on_the_authored_curve() -> void:
 	assert_eq(speed.condition_text(StatusData.PLAYER, 4), "beaten in 1 hour 15 minutes or less")
 	assert_eq(speed.condition_text(StatusData.PLAYER, 5), "beaten in 1 hour 8 minutes or less")
 
+# --- a side worded per `Ticked` (§7.7) ---------------------------------------
+#
+# An enemy-side clause or bonus rides whatever body it lands on. On a body whose
+# goal is answered ANY TIME, mid-game, "the game must be beaten in 3 hours" and
+# "you didn't intentionally heal" asked for a promise — so those two carry a
+# second wording that is true the moment the body is cleared.
+
+func test_speed_on_an_any_time_body_times_the_goal_not_the_game() -> void:
+	var speed: StatusData = Data.get_status(&"speed")
+	assert_eq(speed.clause_text(StatusData.ENEMY, 1),
+		"the game must be beaten in 3 hours or less", "the end-of-game wording")
+	assert_eq(speed.clause_text(StatusData.ENEMY, 1, true),
+		"you must do it within 3 hours of starting the game", "the any-time wording")
+	assert_eq(speed.clause_text(StatusData.ENEMY, 3, true),
+		"you must do it within 1 hour 30 minutes of starting the game",
+		"and it keeps the curve")
+
+func test_bleed_on_an_any_time_body_asks_only_up_to_the_clear() -> void:
+	var bleed: StatusData = Data.get_status(&"bleed")
+	assert_string_contains(bleed.objective_text(StatusData.ENEMY, 1),
+		"and if you didn't intentionally heal,")
+	assert_string_contains(bleed.objective_text(StatusData.ENEMY, 1, true),
+		"and if you didn't intentionally heal before clearing it,")
+
+func test_a_status_with_one_wording_reads_the_same_on_both() -> void:
+	for id in [&"strength", &"dexterity", &"marked", &"burn"]:
+		var sd: StatusData = Data.get_status(id)
+		assert_false(sd.has_any_time_wording(StatusData.ENEMY), "%s has one wording" % id)
+		assert_eq(sd.condition_text(StatusData.ENEMY, 2, true),
+			sd.condition_text(StatusData.ENEMY, 2), "%s reads the same" % id)
+
+func test_a_body_picks_the_wording_by_its_own_ticked() -> void:
+	var quick: GoalEnemyData = _enemy("Defeat 3 bugs")
+	var slow: GoalEnemyData = _enemy("Beat a game without using magic")
+	slow.ticked = GoalEnemyData.TICK_GAME_BEATEN
+	for pair in [[quick, "you must do it within 3 hours of starting the game"],
+			[slow, "the game must be beaten in 3 hours or less"]]:
+		GameLoop2.reset()
+		var inst: int = _choose_solo(pair[0])
+		GameLoop2.apply_status_to(inst, &"speed", 1)
+		var entry: Dictionary = GameLoop2.entry_for(inst)
+		assert_string_contains(GameLoop2.goal_text_for(entry), String(pair[1]),
+			"%s reads its own wording" % (pair[0] as GoalEnemyData).goal)
+
 func test_a_fractional_window_reads_as_hours_and_minutes() -> void:
 	# A time window is held against a clock, so "1.5 hours" would be arithmetic the
 	# player has to do themselves mid-run.
@@ -1645,18 +1689,26 @@ func test_an_addon_row_leads_with_its_status_symbol() -> void:
 # the thing most worth pinning down here: the two ends measure time differently,
 # and a status that "lasts three" has to mean three of whatever the holder counts.
 
-func test_the_two_new_statuses_loaded_with_both_sides_and_a_combat_side() -> void:
-	for id in [&"bleed", &"stun"]:
-		var sd: StatusData = Data.get_status(id)
-		assert_not_null(sd, "%s is in the catalog" % id)
-		if sd == null:
-			continue
-		assert_true(sd.is_debuff(), "%s is a debuff" % id)
-		assert_true(sd.is_demand(StatusData.PLAYER),
-			"%s bills the player for a missed row" % id)
-		assert_true(sd.is_bonus(StatusData.ENEMY),
-			"%s pays out on a body rather than taxing one" % id)
-		assert_true(sd.has_combat(), "%s does something on the board" % id)
+func test_bleed_loaded_with_both_sides_and_a_combat_side() -> void:
+	var sd: StatusData = Data.get_status(&"bleed")
+	assert_not_null(sd, "bleed is in the catalog")
+	if sd == null:
+		return
+	assert_true(sd.is_debuff(), "bleed is a debuff")
+	assert_true(sd.is_demand(StatusData.PLAYER), "it bills the player for a missed row")
+	assert_true(sd.is_bonus(StatusData.ENEMY), "it pays out on a body rather than taxing one")
+	assert_true(sd.has_combat(), "and does something on the board")
+
+# STUN HAS NO IN-GAME EFFECT (§13.2) — no goal side on either end. It is a board
+# status and nothing else: the body skips its turn.
+func test_stun_is_a_board_status_and_nothing_else() -> void:
+	var sd: StatusData = Data.get_status(&"stun")
+	assert_not_null(sd, "stun is in the catalog")
+	if sd == null:
+		return
+	assert_false(sd.has_side(StatusData.PLAYER), "nothing on the player's checklist")
+	assert_false(sd.has_side(StatusData.ENEMY), "and nothing hung off a body")
+	assert_true(sd.skips_turn(), "the lost turn is the whole of it")
 
 func test_the_new_decrease_modes_read_off_the_column() -> void:
 	var bleed: StatusData = Data.get_status(&"bleed")
