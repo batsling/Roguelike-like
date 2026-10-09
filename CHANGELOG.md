@@ -11,6 +11,21 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Research, third batch.** Cult of the Lamb, For the King, Moonlighter,
+  Noita, UnderMine, Brogue, Dead Cells, Slice & Dice and Risk of Rain 2, every
+  kind: 130 rows. The blind goal rows came out worse here than in batch two.
+  Five bosses were filed as enemies (Dead Cells' Giant, Time Keeper and
+  Dracula; Risk of Rain 2's Aurelionite and Xi Construct). Brogue's
+  "paralytic bloat" isn't in the game. Several goals described something that
+  doesn't happen: Mithrix destroying a moon, Selt's weak tail, the Warden of
+  Yendor guarding the deep. Each is now fixed to what the wiki says the
+  monster does, with the old idea moved to the body it fitted where it had
+  one (Selt's weak spot to Ponzu, the Goblin Conjurer's summon goal to Brogue's
+  Spectral Blade, Dead Cells' timed doors to an object). Slice & Dice's Demon
+  has no wiki page, so it is marked `?` to check in game. Keys finally have
+  things to spend them on (Dibble's door, Brogue's vault), and there are four
+  more shopkeepers: Sho'guul prices relics in curses, Newt in Lunar Coins.
+
 - **Research, second batch.** Mewgenics, The Binding of Isaac (original and
   Rebirth), Darkest Dungeon, Death Road to Canada and Dwarf Fortress, every
   kind. Most goal rows from the blind pass needed work: Isaac's 21 were
