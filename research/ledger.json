@@ -1173,8 +1173,13 @@
   "connections": "before 2026-10-07"
  },
  "Hades": {
+  "characters": "2026-10-09: nothing: Zagreus is live",
   "connections": "before 2026-10-07",
-  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+  "events": "2026-10-09: Chaos Gate",
+  "goals": "2026-10-09: checked: Cerberus holds; Bone Hydra, Furies moved to bosses; Asterius dropped (described the boss; minotaur = NetHack's); Thanatos, Hades added (Numbskull, Wringer, Vermin, Chariot, Megaera, Charon live)",
+  "locations": "2026-10-09: Infernal Trove (Erebus Gates would shorten paths)",
+  "loot": "2026-10-09: weapons and evolutions: Stygian Blade, Heart-Seeking Bow, Shield of Chaos; Excalibur as the Blade's aspect through blood. Keepsakes repeat other rows (Lucky Tooth = Life Saving, Pierced Butterfly = Flawless)",
+  "statuses": "2026-10-09: nothing: the gods' curses (Jolted, Weak, Chill, Doom) are Bleed, Burn, Slow and others; Hangover is Battle Brothers' name"
  },
  "Hades II": {
   "connections": "before 2026-10-07",
