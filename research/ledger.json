@@ -2340,8 +2340,13 @@
   "connections": "before 2026-10-07"
  },
  "Slay the Spire": {
+  "characters": "2026-10-09: nothing: Ironclad is live; the Silent's poison, Defect's orbs and Watcher's stances are other candidates' level-ups",
   "connections": "before 2026-10-07",
-  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+  "events": "2026-10-09: nothing: 4 live, and the owner asked for no more from Slay the Spire unless exceptional",
+  "goals": "2026-10-09: checked 14: Hexaghost, Spiker, Writhing Mass, Byrds, Guardian, Giant Head hold; Awakened One, Sentry, Book of Stabbing, Nemesis fixed; 3 gremlins merged into one; Mystic dropped (repeated DD, wrong subject); Darkling added (12 bodies are live)",
+  "locations": "2026-10-09: nothing: acts and rooms are the map itself",
+  "loot": "2026-10-09: nothing new: 14 items, 2 cards and 8 potions are live; weapons and evolutions: none (a deckbuilder)",
+  "statuses": "2026-10-09: Normality (curse); Weak, Vulnerable and Frail are Burn, Marked and Shields"
  },
  "Slay the Spire 2": {
   "connections": "before 2026-10-07"
