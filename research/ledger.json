@@ -2382,8 +2382,13 @@
   "connections": "before 2026-10-07"
  },
  "Skul: The Hero Slayer": {
+  "characters": "2026-10-09: nothing: skull-swapping repeats John's switching level-up",
   "connections": "before 2026-10-07",
-  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+  "events": "2026-10-09: nothing: no event pages",
+  "goals": "2026-10-09: checked 4: First Hero right (4-Insane), Yggdrasil and Chimera moved to bosses, Chimera's goal changed (repeated Curse of the Dead Gods), Alexander kept as ? (no page); nothing added (the Bomb Cart repeats Dome Keeper's, the Chief Maid's bell is a live curse)",
+  "locations": "2026-10-09: nothing: its shrines (destroy to take the enemies' buff) have no name of their own",
+  "loot": "2026-10-09: Pot of Greed; weapons and evolutions: none distinctive (weapons are stat items; no evolutions, inscriptions are set bonuses)",
+  "statuses": "2026-10-09: nothing: no status pages"
  },
  "Skull Horde": {
   "connections": "before 2026-10-07"
