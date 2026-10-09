@@ -282,7 +282,13 @@
   "connections": "before 2026-10-07"
  },
  "Breach Wanderers": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-09: nothing usable: the wiki is stat tables and Lua data modules (Monsters, Cards, Items) with no move text, descriptions or lore; names alone aren't enough to translate. Revisit from the game itself",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-09: nothing usable: the wiki is stat tables and Lua data modules (Monsters, Cards, Items) with no move text, descriptions or lore; names alone aren't enough to translate. Revisit from the game itself",
+  "goals": "2026-10-09: nothing usable: the wiki is stat tables and Lua data modules (Monsters, Cards, Items) with no move text, descriptions or lore; names alone aren't enough to translate. Revisit from the game itself",
+  "locations": "2026-10-09: nothing usable: the wiki is stat tables and Lua data modules (Monsters, Cards, Items) with no move text, descriptions or lore; names alone aren't enough to translate. Revisit from the game itself",
+  "loot": "2026-10-09: nothing usable: the wiki is stat tables and Lua data modules (Monsters, Cards, Items) with no move text, descriptions or lore; names alone aren't enough to translate. Revisit from the game itself",
+  "statuses": "2026-10-09: nothing usable: the wiki is stat tables and Lua data modules (Monsters, Cards, Items) with no move text, descriptions or lore; names alone aren't enough to translate. Revisit from the game itself"
  },
  "Breachway": {
   "connections": "before 2026-10-07"
