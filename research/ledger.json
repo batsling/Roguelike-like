@@ -512,8 +512,13 @@
   "connections": "before 2026-10-07"
  },
  "Cult of the Lamb": {
+  "characters": "2026-10-09: the Lamb",
   "connections": "before 2026-10-07",
-  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+  "events": "2026-10-09: Clauneck, Helob",
+  "goals": "2026-10-09: checked 3 rows (2 goals fixed, Leshy flagged); Shamura added",
+  "locations": "2026-10-09: Silk Cradle, Rakshasa",
+  "loot": "2026-10-09: the Golden Fleece",
+  "statuses": "2026-10-09: nothing usable: its 'curses' are attacks and its states belong to followers"
  },
  "Cultist Simulator": {
   "connections": "before 2026-10-07"
