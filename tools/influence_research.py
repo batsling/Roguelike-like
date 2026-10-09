@@ -36,12 +36,13 @@ SUBCOMMANDS (all write into --work, default `.influence_work/`, gitignored):
     python3 tools/influence_research.py new       # every pass above that works from here, over the games
                                                   # added since the last research -> new_games.md; --mark after
 
-NEW GAMES. `tools/influence_researched.json` (checked in) is the ledger of games
-that have been researched. A game on the sheet and not in it is NEW: `new` runs
-the cloud-friendly passes over just those games and writes one report per game.
-Importing games is not finished until their findings are in
-`docs/influence-candidates.md` and `new --mark` has recorded them;
-`import-games-godot.py` prints the games still waiting.
+NEW GAMES. `research/ledger.json` (checked in; the `connections` entry of each
+game) records the games that have been researched. A game on the sheet without
+one is NEW: `new` runs the cloud-friendly passes over just those games and writes
+one report per game. Importing games is not finished until their findings are
+rows in `research/connections.csv` and `new --mark` has recorded them;
+`import-games-godot.py` prints the games still waiting. This is one of the eight
+kinds of research `tools/research.py` organises (docs/research.md).
 
 `devs` must run before everything after it, and `steam` before `lang` (it reads
 the cached announcements). The three forum steps are rate-limited and resumable;
@@ -2083,7 +2084,9 @@ def cmd_site(args):
 # which games on the sheet nobody has looked into yet. The games that were on
 # the chart before it existed are recorded as "before 2026-10-07": the October
 # degree passes (docs/influence-research.md) had covered them.
-LEDGER = os.path.join(ROOT, "tools", "influence_researched.json")
+# The ledger every kind of research shares, {game: {kind: date}}; this script
+# reads and writes the `connections` kind of it.
+LEDGER = os.path.join(ROOT, "research", "ledger.json")
 MEDIA_CACHE = os.path.join(ROOT, "tools", "influence_research_media.jsonl")
 NEW_PASSES = ("steam", "itch", "site", "reddit", "bluesky", "media")
 # A claim word in a sentence about the players or the patch, not the game's
@@ -2095,7 +2098,9 @@ NOT_ORIGINS = re.compile(r"feedback|patch notes?|influencers?|\bbugs?\b|\bfix(?:
 
 
 def load_ledger():
-    return json.load(open(LEDGER, encoding="utf8")) if os.path.exists(LEDGER) else {}
+    """{game: date researched} for connections."""
+    full = json.load(open(LEDGER, encoding="utf8")) if os.path.exists(LEDGER) else {}
+    return {g: k["connections"] for g, k in full.items() if "connections" in k}
 
 
 def unresearched(games):
@@ -2146,7 +2151,7 @@ def cmd_new(args):
 
     What it can't do is the half that needs a person or a search engine: an
     interview search per game, and reading every line. Do that, put what holds
-    up in docs/influence-candidates.md (never in the sheet), then
+    up in research/connections.csv (never in the sheet), then
     `new --mark` to record the games as researched.
     """
     games, conns = load_sheet()
@@ -2157,13 +2162,9 @@ def cmd_new(args):
             sys.exit("not on the games sheet: " + ", ".join(missing))
     args.only = args.game or unresearched(games)
     if args.mark:
-        led = load_ledger()
+        import research
         today = time.strftime("%Y-%m-%d")
-        for g in args.only:
-            led[g] = today
-        json.dump(dict(sorted(led.items(), key=lambda kv: kv[0].lower())), open(LEDGER, "w", encoding="utf8"),
-                  indent=0, ensure_ascii=False)
-        open(LEDGER, "a").write("\n")
+        research.mark(args.only, "connections")
         print(f"marked {len(args.only)} game(s) researched on {today}: " + ", ".join(args.only))
         return
     if not args.only:
@@ -2237,7 +2238,7 @@ def write_new_report(args, games, conns, failed):
     lines = ["# New games — research report", "",
              f"Written by `influence_research.py new` on {time.strftime('%Y-%m-%d')} for {len(args.only)} game(s). "
              "Nothing here is a source until a person has read it: check who wrote each page, then put what holds "
-             "up in docs/influence-candidates.md and run `new --mark`.", ""]
+             "up in research/connections.csv (docs/research.md) and run `new --mark`.", ""]
     if failed:
         lines += ["**Passes that stopped:** " + "; ".join(f"{k}: {v}" for k, v in failed.items()), ""]
     for g in args.only:
@@ -2380,116 +2381,32 @@ def cmd_radio(args):
 
 # ── status ──────────────────────────────────────────────────────────────────
 
-CANDIDATES = os.path.join(ROOT, "docs", "influence-candidates.md")
-# `**Influencer → Influencee**`, the format every candidate line uses. Anything
-# after it on the line (the quote, the source) is left alone.
-CANDIDATE = re.compile(r"\*\*([^*→]+?) → ([^*]+?)\*\*")
-# The doc is laid out by what the owner does next: sections 1 and 2 hold the
-# open lines (2 is games not on the sheet yet), section 7 the ones now in the
-# sheet. These headings are how `status` finds its way around it.
-WANTED_SECTION = "## 2."
-DONE_SECTION = "## 7."
-
-
-def _line_pairs(line):
-    """The pairs a candidate line PROPOSES: the bold pairs before its ` — `.
-
-    After the dash comes the quote, and a line that shares one says so with
-    `same as **A → B**`. That pair is a cross-reference, not part of the line:
-    counting it kept **Brotato → Slime 3K** open after the owner added it,
-    because the Despotism 3k pair it pointed at was (deliberately) left out.
-    """
-    return list(CANDIDATE.finditer(line.split(" — ", 1)[0]))
-
-
-def _pair_key(line):
-    p = CANDIDATE.findall(line)
-    return (p[0][1].lower(), p[0][0].lower()) if p else ("~", line)
-
-
-def _recount(text):
-    """Refresh the line counts in the table at the top of the doc."""
-    count, sec, sub = {}, "", ""
-    for line in text.split("\n"):
-        if line.startswith("## "):
-            sec, sub = line[:5], ""
-        elif line.startswith("### "):
-            sub = line
-        elif line.startswith("- [ ] ") or line.startswith("- [x] "):
-            kind = "weaker" if "Weaker" in sub else "strong"
-            count[(sec, kind)] = count.get((sec, kind), 0) + 1
-            count[(sec, "all")] = count.get((sec, "all"), 0) + 1
-    def row(label, sec):
-        return "| %s | %d strong, %d weaker |" % (label, count.get((sec, "strong"), 0), count.get((sec, "weaker"), 0))
-    text = re.sub(r"\| 1\. To review: games on the sheet \|[^\n]*", row("1. To review: games on the sheet", "## 1."), text)
-    text = re.sub(r"\| 2\. To review: games you want to add \|[^\n]*", row("2. To review: games you want to add", "## 2."), text)
-    return re.sub(r"\| 7\. Done: on the chart \|[^\n]*", "| 7. Done: on the chart | %d |" % count.get(("## 7.", "all"), 0), text)
-
 
 def cmd_status(args):
-    """Which candidates in `docs/influence-candidates.md` are in the sheet now.
+    """Which candidates in `research/connections.csv` are in the sheet now.
 
     The owner adds approved rows to `connections` by hand, so the candidate list
-    falls behind the sheet. This reads both and prints, per open `- [ ]` line,
-    whether every pair on it is a row now. With --tick those lines are ticked,
-    marked `✓ on the chart`, and moved into section 7 in their sorted place, so
-    sections 1 and 2 only ever hold what is left to review.
-
-    A name the sheet doesn't have exactly (the doc says "Spelunky", or a series,
-    where the sheet names one game) is reported rather than guessed: fix the
-    line to name the row the owner picked, and run it again. In section 2 the
-    games are not on the sheet yet by definition, so a missing name there is
-    reported as waiting for its game row, not as a misspelling.
+    falls behind the sheet. A `to review` row whose pair is a row now is
+    reported, and with --tick moved to `on sheet` (and the workbook rebuilt) —
+    which `research.py build` also does on every run. A row waiting for a game
+    the sheet now has goes back to `to review`.
     """
-    games, conns = load_sheet()
-    have = {(str(a).strip().lower(), str(b).strip().lower()) for a, b, *_ in conns}
-    names = {str(r[0]).strip().lower() for r in games}
-    lines = open(CANDIDATES, encoding="utf8").read().split("\n")
-    added, still_open, unknown, waiting = [], [], [], []
-    section = ""
-    for i, line in enumerate(lines):
-        if line.startswith("## "):
-            section = line
-            continue
-        if not line.startswith("- [ ] ") or section.startswith(DONE_SECTION):
-            continue
-        pairs = [m.groups() for m in _line_pairs(line)]
-        if not pairs:
-            continue
-        missing = list(dict.fromkeys(n for p in pairs for n in p if n.strip().lower() not in names))
-        if all((a.strip().lower(), b.strip().lower()) in have for a, b in pairs):
-            added.append(i)
-        elif missing and section.startswith(WANTED_SECTION):
-            waiting.append((i, missing))
-        elif missing:
-            unknown.append((i, missing))
-        else:
-            still_open.append(i)
-    for i in added:
-        print("in the sheet  %4d  %s" % (i + 1, " ; ".join("%s → %s" % m.groups() for m in _line_pairs(lines[i]))))
-    for i, missing in unknown:
-        print("name?         %4d  not a sheet name: %s" % (i + 1, ", ".join(missing)))
-    for i, missing in waiting:
-        print("no game row   %4d  add to `games` first: %s" % (i + 1, ", ".join(missing)))
-    print("%d open line(s) are in the sheet, %d are not, %d name a game the sheet spells "
-          "differently, %d wait for a game row" % (len(added), len(still_open), len(unknown), len(waiting)))
-    if not (args.tick and added):
-        return
-    moved = []
-    for i in added:
-        line = lines[i]
-        end = _line_pairs(line)[-1].end()
-        moved.append("- [x] " + line[6:end] + " ✓ *on the chart*" + line[end:])
-    keep = [l for n, l in enumerate(lines) if n not in set(added)]
-    start = next(n for n, l in enumerate(keep) if l.startswith(DONE_SECTION))
-    stop = next((n for n in range(start + 1, len(keep)) if keep[n].startswith("## ")), len(keep))
-    body = [l for l in keep[start + 1:stop] if l.startswith("- [x] ")]
-    first = next(n for n in range(start + 1, stop) if keep[n].startswith("- [x] "))
-    last = max(n for n in range(start + 1, stop) if keep[n].startswith("- [x] "))
-    keep[first:last + 1] = sorted(body + moved, key=_pair_key)
-    open(CANDIDATES, "w", encoding="utf8").write(_recount("\n".join(keep)))
-    print("ticked %d line(s) and moved them to section 7 of %s"
-          % (len(added), os.path.relpath(CANDIDATES, ROOT)))
+    import research
+    games = research.catalog()
+    rows = research.read_rows("connections")
+    moved = research.refresh_status("connections", rows, pairs=research.connection_pairs(), names=set(games),
+                                    verbose=True)
+    open_rows = [r for r in rows if r["Status"] == "to review"]
+    unknown = [r for r in open_rows if r["Influencer"] not in games or r["Influencee"] not in games]
+    for r in unknown:
+        print("name?  %s → %s: not spelled as the sheet spells it" % (r["Influencer"], r["Influencee"]))
+    print("%d row(s) moved; %d still to review, %d naming a game the sheet spells differently, %d waiting "
+          "for a game row" % (len(moved), len(open_rows), len(unknown),
+                              sum(r["Status"] == "waiting for game row" for r in rows)))
+    if args.tick and moved:
+        research.write_rows("connections", rows)
+        research.build()
+        print("wrote research/connections.csv and rebuilt tools/Research.xlsx")
 
 
 def main():
@@ -2514,8 +2431,8 @@ def main():
     np_ = sub.add_parser("new")
     np_.add_argument("--game", action="append", help="research this game whatever the ledger says (repeat for more)")
     np_.add_argument("--mark", action="store_true",
-                     help="record the games as researched in tools/influence_researched.json, after their "
-                          "findings are in docs/influence-candidates.md")
+                     help="record the games as researched in research/ledger.json, after their "
+                          "findings are rows in research/connections.csv")
     np_.add_argument("--skip", default="", help="comma-separated passes to leave out: "
                                                 "steam,itch,site,reddit,bluesky,media")
     np_.add_argument("--write-only", action="store_true", help="rewrite new_games.md from the caches, no fetching")

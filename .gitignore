@@ -6,8 +6,9 @@
 *.uid
 export_presets.cfg
 # Godot imports any .csv under res:// as a TRANSLATION and writes one
-# .translation per column beside it. docs/goal-candidates.csv is a spreadsheet
-# paste queue, not a locale file, so its sixteen generated siblings are cache.
+# .translation per column beside it. research/*.csv are candidate lists, not
+# locale files (research/.gdignore keeps Godot out of that folder now), so any
+# generated siblings are cache.
 *.translation
 
 # ── legacy-web (old HTML/JS version) ────────────────────────────────────
@@ -25,3 +26,5 @@ package-lock.json
 # ── Influence research (tools/influence_research.py) ─────────────────────
 # Steam page cache and scan output; reproducible, and large.
 .influence_work/
+# ── Every other kind of research (tools/research.py): wiki reads, briefs ──
+.research_work/

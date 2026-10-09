@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""`docs/goal-candidates.csv` and the workbook's enemy sheets should agree.
+"""`research/goals.csv` and the workbook's enemy sheets should agree.
 
-WHY THIS EXISTS. The candidate file is a paste QUEUE for the `enemies` and
+WHY THIS EXISTS. The candidate file (`goals` in tools/research.py, reviewed by
+the owner in tools/Research.xlsx) is a paste QUEUE for the `enemies` and
 `bosses` sheets of tools/Roguelikes.xlsx, and every rule it has to keep is one
 that nothing checks at paste time: a Damage that does not match the tier is a
 row that ships wrong, a `File` that collides with a shipped one silently steals
@@ -49,13 +50,15 @@ import generate_goal_enemy_tres as gen  # noqa: E402  (slugify + the Size gramma
 import openpyxl  # noqa: E402
 
 ROOT = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
-CSV_PATH = os.path.join(ROOT, "docs", "goal-candidates.csv")
+CSV_PATH = os.path.join(ROOT, "research", "goals.csv")
 XLSX_PATH = os.path.join(ROOT, "tools", "Roguelikes.xlsx")
 GAMES_DIR = os.path.join(ROOT, "data", "games")
 
-COLUMNS = ["Sheet", "Name", "Type", "Difficulty", "Size", "Game", "Health",
-           "Damage", "Goal Type", "Goal", "Ability", "File", "Tag", "Phases",
-           "Confidence", "Why this pairing"]
+# The two sheets' columns, then research.py's staging ones (Source, Status, the
+# owner's two, ID); research.py owns that list, so it is read from there.
+import research  # noqa: E402
+COLUMNS = research.KINDS["goals"]["columns"]
+TICKED = {"", "any time", "game beaten"}
 
 SHEETS = {"enemies", "bosses"}
 TYPES = {"Action", "Deckbuilder", "Strategy", "Traditional"}
@@ -194,6 +197,16 @@ def main() -> int:
             flag(i, name, "no 'Why this pairing' note")
         if sheet == "enemies" and (row["Phases"] or "").strip():
             flag(i, name, "Phases is a bosses-only column")
+        # Blank Ticked is `any time`, the sheet's default (spec §7.7). Count
+        # turns a tick box into a counter, so it is 2 or more, and only the
+        # enemies sheet has the column.
+        if (row["Ticked"] or "").strip() not in TICKED:
+            flag(i, name, "Ticked %r, expected blank, 'any time' or 'game beaten'" % row["Ticked"])
+        count = (row["Count"] or "").strip()
+        if count and not (count.isdigit() and int(count) >= 2):
+            flag(i, name, "Count %r, expected blank or 2+" % count)
+        if count and sheet == "bosses":
+            flag(i, name, "Count is an enemies-only column")
 
         # Size has to parse with the generator's own grammar, and come back as
         # the box the row declared — a silent fallback to 1x1 is a Size that
@@ -251,7 +264,7 @@ def main() -> int:
                     flag(i, name, "%s already taken on the %s sheet by another row"
                          % (what, table[key]))
 
-    print("goal-candidates.csv: %d rows, %d games — %d shipped to the sheet, %d pending"
+    print("research/goals.csv: %d rows, %d games — %d shipped to the sheet, %d pending"
           % (len(rows), len({r["Game"] for r in rows}), shipped, len(rows) - shipped))
     if bad:
         print("\n%d finding(s):" % len(bad))

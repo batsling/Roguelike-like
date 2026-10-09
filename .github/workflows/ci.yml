@@ -120,8 +120,15 @@ jobs:
         # check only hashes files, so it needs no ffmpeg here.
         run: python3 tools/convert_proof_videos.py --check
 
+      - name: The research store is sound
+        # research/*.csv are the candidates every kind of research produces
+        # (docs/research.md). This catches a CSV with the wrong columns, a row
+        # with no ID or an unknown Status, a Game the sheet does not spell that
+        # way, and a ledger entry for a game that no longer exists.
+        run: python3 tools/research.py check
+
       - name: The candidate rows are still pasteable
-        # docs/goal-candidates.csv is a paste queue for the enemies/bosses
+        # research/goals.csv is a paste queue for the enemies/bosses
         # sheets, so the things that would break at paste time — a Damage that
         # does not match the tier, a Name/File/Goal that is already live, a Game
         # the catalog does not spell that way — are worth catching while the row

@@ -1,6 +1,8 @@
 # Goal-enemies: the candidate file
 
-`docs/goal-candidates.csv` holds **316 audited candidate rows** in the exact
+`research/goals.csv` (the `goals` kind of [research.md](research.md), reviewed in
+the `goals` sheet of `tools/Research.xlsx`; until October 2026 it was
+`docs/goal-candidates.csv`) holds **307 audited candidate rows** in the exact
 column order of the `enemies` and `bosses` sheets of `tools/Roguelikes.xlsx`,
 built over four passes of wiki reading and **ready to paste**.
 
@@ -352,7 +354,7 @@ say.
 Picked bodies with no goal written for them yet — the opposite of how the rest of
 this file was built, which started from a goal and went looking for something to
 carry it. Each row below has a **proposal and a fallback**, and neither is in
-`goal-candidates.csv`: a body is only a candidate once its goal has been checked
+`research/goals.csv`: a body is only a candidate once its goal has been checked
 for a collision, which is what the table's last column is about.
 
 Three of these are **already in the file** and want nothing:

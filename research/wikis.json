@@ -1,0 +1,8583 @@
+{
+ "100 Rogues": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "2 Fights in 2 Tight Spaces": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "20 Minutes Till Dawn": {
+  "also": [
+   "https://20-minutes-till-dawn.fandom.com/api.php"
+  ],
+  "api": "https://20minutestilldawn.wiki.gg/api.php",
+  "articles": 286,
+  "categories": {
+   "characters": [
+    "Character-specific Upgrades",
+    "Characters",
+    "Character Size Upgrades"
+   ],
+   "goals": [
+    "Enemies",
+    "Small Enemies",
+    "Bosses",
+    "Elite Enemies"
+   ],
+   "locations": [
+    "Maps"
+   ],
+   "loot": [
+    "Upgrades",
+    "Character-specific Upgrades",
+    "Burn Upgrades",
+    "Fire Rate Upgrades",
+    "Bullet Damage Upgrades",
+    "Ammo Upgrades",
+    "Move Speed Upgrades",
+    "Weapons",
+    "Lightning Upgrades",
+    "Reload Rate Upgrades",
+    "Health Upgrades",
+    "Summon Upgrades"
+   ],
+   "statuses": [
+    "Curse Upgrades"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 57,
+   "events": 0,
+   "goals": 42,
+   "locations": 3,
+   "loot": 454,
+   "statuses": 6
+  },
+  "match": "sure",
+  "pages": {
+   "characters": [
+    "Characters"
+   ],
+   "goals": [
+    "Bosses"
+   ],
+   "locations": [
+    "Map"
+   ],
+   "loot": [
+    "Weapons",
+    "Upgrades",
+    "Perks"
+   ]
+  },
+  "sitename": "20 Minutes Till Dawn Wiki",
+  "wiki": "https://20minutestilldawn.wiki.gg/"
+ },
+ "20XX": {
+  "also": [
+   "https://20xx.wiki.gg/api.php"
+  ],
+  "api": "https://20xx.fandom.com/api.php",
+  "articles": 159,
+  "categories": {
+   "goals": [
+    "Enemies",
+    "Bosses"
+   ],
+   "locations": [
+    "Zones"
+   ],
+   "loot": [
+    "Augments",
+    "Items"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 0,
+   "events": 0,
+   "goals": 26,
+   "locations": 5,
+   "loot": 100,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "characters": [
+    "Characters"
+   ],
+   "goals": [
+    "Enemies",
+    "Bosses"
+   ],
+   "locations": [
+    "Zones",
+    "Objects"
+   ],
+   "loot": [
+    "Weapons",
+    "Pickups",
+    "Augments"
+   ],
+   "statuses": [
+    "Powers"
+   ]
+  },
+  "sitename": "20XX Wiki",
+  "wiki": "https://20xx.fandom.com"
+ },
+ "30XX": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "33 Immortals": {
+  "api": "https://33immortals.wiki.gg/api.php",
+  "articles": 45,
+  "categories": {
+   "goals": [
+    "Boss Lairs"
+   ],
+   "locations": [
+    "Areas"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 0,
+   "events": 0,
+   "goals": 2,
+   "locations": 5,
+   "loot": 0,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "characters": [
+    "Characters"
+   ],
+   "goals": [
+    "Monsters",
+    "Bosses"
+   ],
+   "locations": [
+    "Areas"
+   ],
+   "loot": [
+    "Relics",
+    "Weapons",
+    "Perks"
+   ],
+   "statuses": [
+    "Statuses"
+   ]
+  },
+  "sitename": "33 Immortals Wiki",
+  "wiki": "https://33immortals.wiki.gg/"
+ },
+ "868-Back": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "868-Hack": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "9 Kings": {
+  "also": [
+   "https://9kings.fandom.com/api.php"
+  ],
+  "api": "https://9kings.wiki.gg/api.php",
+  "articles": 114,
+  "categories": {},
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 0,
+   "events": 0,
+   "goals": 0,
+   "locations": 0,
+   "loot": 0,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "events": [
+    "Events"
+   ],
+   "loot": [
+    "Cards",
+    "Perks"
+   ]
+  },
+  "sitename": "9 Kings Wiki",
+  "wiki": "https://9kings.wiki.gg/"
+ },
+ "99 Levels to Hell": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "A Robot Named Fight!": {
+  "api": "https://a-robot-named-fight.fandom.com/api.php",
+  "articles": 144,
+  "categories": {
+   "goals": [
+    "Monsters",
+    "Boss"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 0,
+   "events": 0,
+   "goals": 102,
+   "locations": 0,
+   "loot": 0,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "events": [
+    "Shrines"
+   ],
+   "goals": [
+    "Monsters",
+    "Bosses"
+   ],
+   "locations": [
+    "Shrines"
+   ],
+   "loot": [
+    "Items",
+    "Artifacts"
+   ]
+  },
+  "sitename": "A Robot Named Fight! Wiki",
+  "wiki": "https://a-robot-named-fight.fandom.com"
+ },
+ "A la Card": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "AK-xolotl": {
+  "also": [
+   "https://ak-xolotl.fandom.com/api.php"
+  ],
+  "api": "https://akxolotl.fandom.com/api.php",
+  "articles": 16,
+  "categories": {},
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 0,
+   "events": 0,
+   "goals": 0,
+   "locations": 0,
+   "loot": 0,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "events": [
+    "NPCs"
+   ],
+   "goals": [
+    "Enemies",
+    "Bosses"
+   ],
+   "loot": [
+    "Items",
+    "Weapons"
+   ]
+  },
+  "sitename": "AK-xolotl Wiki",
+  "wiki": "https://akxolotl.fandom.com"
+ },
+ "Abandon Ship": {
+  "api": "https://abandonship.fandom.com/api.php",
+  "articles": 23,
+  "categories": {
+   "locations": [
+    "World"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 0,
+   "events": 0,
+   "goals": 0,
+   "locations": 2,
+   "loot": 0,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "events": [
+    "Quests"
+   ],
+   "locations": [
+    "Locations"
+   ],
+   "loot": [
+    "Weapons",
+    "Upgrades"
+   ]
+  },
+  "sitename": "Abandon Ship Wiki",
+  "wiki": "https://abandonship.fandom.com"
+ },
+ "Abandoned Archive": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Absolum": {
+  "api": "https://absolum.wiki.gg/api.php",
+  "articles": 109,
+  "categories": {
+   "characters": [
+    "Characters",
+    "Heroes",
+    "Races"
+   ],
+   "goals": [
+    "Bosses",
+    "Enemies"
+   ],
+   "locations": [
+    "Regions",
+    "Locations"
+   ],
+   "loot": [
+    "Trinkets"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 11,
+   "events": 0,
+   "goals": 20,
+   "locations": 9,
+   "loot": 22,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "characters": [
+    "Characters",
+    "Races"
+   ],
+   "events": [
+    "Events",
+    "NPCs"
+   ],
+   "goals": [
+    "Enemies",
+    "Bosses"
+   ],
+   "loot": [
+    "Trinkets",
+    "Consumables"
+   ]
+  },
+  "sitename": "Absolum Wiki",
+  "wiki": "https://absolum.wiki.gg/"
+ },
+ "Abyssus": {
+  "also": [
+   "https://abyssus.fandom.com/api.php"
+  ],
+  "api": "https://abyssus.wiki.gg/api.php",
+  "articles": 108,
+  "categories": {},
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 0,
+   "events": 0,
+   "goals": 0,
+   "locations": 0,
+   "loot": 0,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "goals": [
+    "Enemies"
+   ],
+   "locations": [
+    "Areas",
+    "Biomes"
+   ],
+   "loot": [
+    "Weapons",
+    "Charms",
+    "Blessings"
+   ],
+   "statuses": [
+    "Status effects"
+   ]
+  },
+  "sitename": "Abyssus Wiki",
+  "wiki": "https://abyssus.wiki.gg/"
+ },
+ "Aces & Adventures": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Across the Obelisk": {
+  "api": "https://across-the-obelisk.fandom.com/api.php",
+  "articles": 34,
+  "categories": {},
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 0,
+   "events": 0,
+   "goals": 0,
+   "locations": 0,
+   "loot": 0,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "goals": [
+    "Enemies"
+   ],
+   "loot": [
+    "Equipment"
+   ]
+  },
+  "sitename": "Across The Obelisk Wiki",
+  "wiki": "https://across-the-obelisk.fandom.com"
+ },
+ "Aethermancer": {
+  "api": "https://aethermancer.wiki.gg/api.php",
+  "articles": 899,
+  "categories": {
+   "characters": [
+    "Characters"
+   ],
+   "goals": [
+    "Targets single enemy",
+    "Monsters",
+    "Monster galleries",
+    "Wind (Element) - Monsters",
+    "Shifted Monsters",
+    "Wild monster data",
+    "Fire (Element) - Monsters",
+    "Earth (Element) - Monsters",
+    "Water (Element) - Monsters",
+    "Purges enemy Aether",
+    "Targets all enemies",
+    "Sidekick (Type) - Monsters"
+   ],
+   "locations": [
+    "Biomes",
+    "Locations"
+   ],
+   "loot": [
+    "Minion provides Perks"
+   ],
+   "statuses": [
+    "Affliction (Type) - Traits",
+    "Affliction (Type) - Actions",
+    "Buffs",
+    "Cleanses debuffs from self",
+    "Debuffs",
+    "Affliction (Type) - Monsters",
+    "Cleanses debuffs from all allies",
+    "Applies Affliction to self",
+    "Cleanses debuffs from target ally",
+    "Affected by debuff stacks on all monsters",
+    "Affected by buffs consumed by allies",
+    "Affected by debuff stacks on self"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 10,
+   "events": 0,
+   "goals": 1086,
+   "locations": 9,
+   "loot": 12,
+   "statuses": 133
+  },
+  "match": "sure",
+  "pages": {
+   "goals": [
+    "Monsters"
+   ],
+   "locations": [
+    "Areas",
+    "Levels"
+   ],
+   "loot": [
+    "Artifacts",
+    "Equipment",
+    "Upgrades",
+    "Boons",
+    "Spells",
+    "Perks"
+   ],
+   "statuses": [
+    "Status Effects",
+    "Buffs",
+    "Debuffs"
+   ]
+  },
+  "sitename": "Aethermancer Wiki",
+  "wiki": "https://aethermancer.wiki.gg/"
+ },
+ "Alina of the Arena": {
+  "api": "https://alina-of-the-arena.fandom.com/api.php",
+  "articles": 72,
+  "categories": {
+   "loot": [
+    "Cards",
+    "Combat Cards",
+    "Common Cards",
+    "Rare Cards",
+    "Epic Cards",
+    "Items"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 0,
+   "events": 0,
+   "goals": 0,
+   "locations": 0,
+   "loot": 173,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "loot": [
+    "Items",
+    "Weapons",
+    "Cards",
+    "Consumables"
+   ]
+  },
+  "sitename": "Alina of the Arena Wiki",
+  "wiki": "https://alina-of-the-arena.fandom.com"
+ },
+ "An Amazing Wizard": {
+  "api": "https://an-amazing-wizard.fandom.com/api.php",
+  "articles": 79,
+  "categories": {
+   "goals": [
+    "Enemies"
+   ],
+   "locations": [
+    "Astral Altars"
+   ],
+   "loot": [
+    "Permanent upgrades",
+    "Items",
+    "Upgrades"
+   ],
+   "statuses": [
+    "Debuffs",
+    "Curses"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 0,
+   "events": 0,
+   "goals": 4,
+   "locations": 8,
+   "loot": 15,
+   "statuses": 33
+  },
+  "match": "sure",
+  "pages": {
+   "events": [
+    "NPCs"
+   ],
+   "goals": [
+    "Enemies",
+    "Bosses",
+    "Bestiary",
+    "Minibosses"
+   ],
+   "loot": [
+    "Items",
+    "Artifacts",
+    "Spells",
+    "Perks"
+   ],
+   "statuses": [
+    "Debuffs",
+    "Curses"
+   ]
+  },
+  "sitename": "An Amazing Wizard Wiki",
+  "wiki": "https://an-amazing-wizard.fandom.com"
+ },
+ "Ancient Domains of Mystery": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Angband": {
+  "api": "https://angband.fandom.com/api.php",
+  "articles": 30,
+  "categories": {
+   "goals": [
+    "Monsters"
+   ],
+   "locations": [
+    "The Dungeon"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 0,
+   "events": 0,
+   "goals": 5,
+   "locations": 2,
+   "loot": 0,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "locations": [
+    "Dungeon"
+   ],
+   "loot": [
+    "Equipment"
+   ]
+  },
+  "sitename": "Angband Wiki",
+  "wiki": "https://angband.fandom.com"
+ },
+ "Anomaly Collapse": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Another Farm Roguelike": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Another Farm Roguelike: Rebirth": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Aotenjo: Infinite Hands": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Approaching Infinity": {
+  "api": "https://approachinginfinity.fandom.com/api.php",
+  "articles": 475,
+  "categories": {},
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 0,
+   "events": 0,
+   "goals": 0,
+   "locations": 0,
+   "loot": 0,
+   "statuses": 0
+  },
+  "match": "check",
+  "pages": {
+   "events": [
+    "Quests"
+   ],
+   "goals": [
+    "Bestiary"
+   ],
+   "loot": [
+    "Artifacts",
+    "Consumables"
+   ]
+  },
+  "sitename": "IBOL: Approaching Infinity Wiki",
+  "wiki": "https://approachinginfinity.fandom.com"
+ },
+ "Arc Seed": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Arcane Trigger": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Arcanium: Rise of Akhan": {
+  "api": "https://arcanium.fandom.com/api.php",
+  "articles": 47,
+  "categories": {
+   "characters": [
+    "Heroes",
+    "Classes"
+   ],
+   "loot": [
+    "Artifacts"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 20,
+   "events": 0,
+   "goals": 0,
+   "locations": 0,
+   "loot": 8,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {},
+  "sitename": "Arcanium Wiki",
+  "wiki": "https://arcanium.fandom.com"
+ },
+ "Archon Soul": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Archons": {
+  "api": "https://archons.fandom.com/api.php",
+  "articles": 675,
+  "categories": {
+   "characters": [
+    "Classes"
+   ],
+   "loot": [
+    "Potions/ingredients",
+    "Weapons",
+    "Trinket Packs",
+    "Direction Spells",
+    "Logic Spells",
+    "Fire Spells",
+    "Materialism Spells",
+    "Air Spells",
+    "Tools",
+    "Trickery Spells",
+    "Earth Spells",
+    "Warfare Spells"
+   ],
+   "statuses": [
+    "Talent Effects",
+    "Technique Effects",
+    "Conditions"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 8,
+   "events": 0,
+   "goals": 0,
+   "locations": 0,
+   "loot": 178,
+   "statuses": 184
+  },
+  "match": "sure",
+  "pages": {
+   "characters": [
+    "Classes"
+   ],
+   "loot": [
+    "Trinkets"
+   ],
+   "statuses": [
+    "Conditions"
+   ]
+  },
+  "sitename": "Archons Wiki",
+  "wiki": "https://archons.fandom.com"
+ },
+ "Arms of God": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Army of Ruin": {
+  "api": "https://army-of-ruin.fandom.com/api.php",
+  "articles": 30,
+  "categories": {
+   "characters": [
+    "Characters",
+    "Unlockable Characters",
+    "Starter Characters"
+   ],
+   "loot": [
+    "Primary Weapons",
+    "Weapons",
+    "Unlockable Weapons",
+    "Weapons That Evolve With Wind",
+    "Weapons That Evolve With Doubled Elements",
+    "Weapons That Evolve With Earth",
+    "Weapons That Evolve With Fire"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 38,
+   "events": 0,
+   "goals": 0,
+   "locations": 0,
+   "loot": 37,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "characters": [
+    "Heroes"
+   ]
+  },
+  "sitename": "Army of Ruin Wiki",
+  "wiki": "https://army-of-ruin.fandom.com"
+ },
+ "Arrogue": {
+  "api": "https://arrogue.wiki.gg/api.php",
+  "articles": 73,
+  "categories": {},
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 0,
+   "events": 0,
+   "goals": 0,
+   "locations": 0,
+   "loot": 0,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "characters": [
+    "Characters"
+   ],
+   "goals": [
+    "Enemies"
+   ],
+   "loot": [
+    "Relics"
+   ],
+   "statuses": [
+    "Statuses"
+   ]
+  },
+  "sitename": "Arrogue Wiki",
+  "wiki": "https://arrogue.wiki.gg/"
+ },
+ "As We Descend": {
+  "api": "https://aswedescend.wiki.gg/api.php",
+  "articles": 165,
+  "categories": {
+   "events": [
+    "Events"
+   ],
+   "goals": [
+    "Monsters"
+   ],
+   "loot": [
+    "Cards",
+    "Items",
+    "City cards",
+    "Common cards",
+    "Rare cards"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 0,
+   "events": 4,
+   "goals": 3,
+   "locations": 0,
+   "loot": 33,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "locations": [
+    "Locations"
+   ]
+  },
+  "sitename": "As We Descend Wiki",
+  "wiki": "https://aswedescend.wiki.gg/"
+ },
+ "Asgard's Fall: Viking Survivors": {
+  "api": "https://asgardsfall.wiki.gg/api.php",
+  "articles": 19,
+  "categories": {},
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 0,
+   "events": 0,
+   "goals": 0,
+   "locations": 0,
+   "loot": 0,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "characters": [
+    "Characters"
+   ],
+   "goals": [
+    "Enemies"
+   ]
+  },
+  "sitename": "Asgard's Fall Wiki",
+  "wiki": "https://asgardsfall.wiki.gg/"
+ },
+ "Asterogues": {
+  "api": "https://asterogues.wiki.gg/api.php",
+  "articles": 31,
+  "categories": {},
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 0,
+   "events": 0,
+   "goals": 0,
+   "locations": 0,
+   "loot": 0,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "goals": [
+    "Enemies"
+   ],
+   "locations": [
+    "Locations",
+    "Rooms"
+   ]
+  },
+  "sitename": "Asterogues Wiki",
+  "wiki": "https://asterogues.wiki.gg/"
+ },
+ "Astral Ascent": {
+  "also": [
+   "https://astral-ascent.fandom.com/api.php"
+  ],
+  "api": "https://astralascent.wiki.gg/api.php",
+  "articles": 437,
+  "categories": {
+   "characters": [
+    "Characters"
+   ],
+   "goals": [
+    "Enemies"
+   ],
+   "loot": [
+    "Spells"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 4,
+   "events": 0,
+   "goals": 84,
+   "locations": 0,
+   "loot": 122,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "goals": [
+    "Enemies"
+   ],
+   "locations": [
+    "Rooms",
+    "Objects"
+   ],
+   "loot": [
+    "Spells"
+   ]
+  },
+  "sitename": "Astral Ascent Wiki",
+  "wiki": "https://astralascent.wiki.gg/"
+ },
+ "Astrea: Six-Sided Oracles": {
+  "also": [
+   "https://astrea.fandom.com/api.php"
+  ],
+  "api": "https://astrea.wiki.gg/api.php",
+  "articles": 309,
+  "categories": {
+   "events": [
+    "Event Blessings"
+   ],
+   "goals": [
+    "Enemies"
+   ],
+   "loot": [
+    "Star Blessings",
+    "Neutral Blessings",
+    "Black Hole Blessings",
+    "Sothis Blessings",
+    "Austra Blessings",
+    "Orion Blessings",
+    "Hevelius Blessings",
+    "Cellarius Blessings",
+    "Moonie Blessings",
+    "Event Blessings",
+    "Cards",
+    "Rings"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 0,
+   "events": 13,
+   "goals": 55,
+   "locations": 0,
+   "loot": 361,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "goals": [
+    "Enemies"
+   ],
+   "loot": [
+    "Blessings"
+   ],
+   "statuses": [
+    "Keywords"
+   ]
+  },
+  "sitename": "Astrea Wiki",
+  "wiki": "https://astrea.wiki.gg/"
+ },
+ "Astro Prospector": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Astronarch": {
+  "api": "https://astronarch.fandom.com/api.php",
+  "articles": 128,
+  "categories": {
+   "characters": [
+    "Heroes"
+   ],
+   "events": [
+    "Events"
+   ],
+   "loot": [
+    "Items"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 20,
+   "events": 2,
+   "goals": 0,
+   "locations": 0,
+   "loot": 101,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "loot": [
+    "Potions"
+   ],
+   "statuses": [
+    "Keywords"
+   ]
+  },
+  "sitename": "Astronarch Wiki",
+  "wiki": "https://astronarch.fandom.com"
+ },
+ "Atai no Gensoukyou": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Atomic Owl": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Atomicrops": {
+  "api": "https://atomicrops.fandom.com/api.php",
+  "articles": 339,
+  "categories": {
+   "characters": [
+    "Character Specific Items",
+    "Characters"
+   ],
+   "events": [
+    "Events"
+   ],
+   "goals": [
+    "Enemies"
+   ],
+   "locations": [
+    "Locations",
+    "Cat Shrines",
+    "Removed Features",
+    "Biomes"
+   ],
+   "loot": [
+    "Normal Items",
+    "Golden Pupa Items",
+    "Character Specific Items",
+    "Items",
+    "Oregacrow Items",
+    "Weapons",
+    "Deervil Items",
+    "Rings",
+    "Other Items"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 26,
+   "events": 5,
+   "goals": 36,
+   "locations": 29,
+   "loot": 199,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "characters": [
+    "Characters"
+   ],
+   "goals": [
+    "Bosses"
+   ],
+   "locations": [
+    "Biomes"
+   ],
+   "loot": [
+    "Weapons",
+    "Scrolls",
+    "Equipment",
+    "Upgrades"
+   ]
+  },
+  "sitename": "Atomicrops Wiki",
+  "wiki": "https://atomicrops.fandom.com"
+ },
+ "Auro: A Monster-Bumping Adventure": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Auto Rogue": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Azure Dreams": {
+  "api": "https://azure-dreams.fandom.com/api.php",
+  "articles": 206,
+  "categories": {
+   "characters": [
+    "Characters",
+    "Characters (PSX)",
+    "Characters (GBC)"
+   ],
+   "events": [
+    "Quests"
+   ],
+   "goals": [
+    "Monsters",
+    "Monsters (GBC)",
+    "Monsters (PSX)",
+    "Monster Tower"
+   ],
+   "locations": [
+    "Locations",
+    "Metal objects"
+   ],
+   "loot": [
+    "Items",
+    "Weapons",
+    "Equipment"
+   ],
+   "statuses": [
+    "Status Effects"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 33,
+   "events": 3,
+   "goals": 291,
+   "locations": 12,
+   "loot": 22,
+   "statuses": 8
+  },
+  "match": "sure",
+  "pages": {
+   "characters": [
+    "Characters"
+   ],
+   "goals": [
+    "Monsters"
+   ],
+   "loot": [
+    "Items",
+    "Weapons",
+    "Scrolls",
+    "Wands",
+    "Spells"
+   ]
+  },
+  "sitename": "Azure Dreams Wiki",
+  "wiki": "https://azure-dreams.fandom.com"
+ },
+ "BAZR": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "BPM: Bullets Per Minute": {
+  "api": "https://bpm-bullets-per-minute.fandom.com/api.php",
+  "articles": 34,
+  "categories": {
+   "loot": [
+    "Weapons",
+    "Items"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 0,
+   "events": 0,
+   "goals": 0,
+   "locations": 0,
+   "loot": 10,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "goals": [
+    "Monsters"
+   ],
+   "locations": [
+    "Levels"
+   ],
+   "loot": [
+    "Items",
+    "Weapons"
+   ]
+  },
+  "sitename": "BPM: Bullets Per Minute Wiki",
+  "wiki": "https://bpm-bullets-per-minute.fandom.com"
+ },
+ "Backpack Battles": {
+  "also": [
+   "https://backpack-battles.fandom.com/api.php"
+  ],
+  "api": "https://backpackbattles.wiki.gg/api.php",
+  "articles": 960,
+  "categories": {
+   "characters": [
+    "Characters",
+    "Playable characters",
+    "Minor characters"
+   ],
+   "loot": [
+    "Item",
+    "Weapon",
+    "Items",
+    "Melee Weapon",
+    "Potion",
+    "Food",
+    "Armor",
+    "Ranged Weapon",
+    "Playing Card"
+   ],
+   "statuses": [
+    "Buff",
+    "Debuff"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 24,
+   "events": 0,
+   "goals": 0,
+   "locations": 0,
+   "loot": 1004,
+   "statuses": 137
+  },
+  "match": "sure",
+  "pages": {
+   "characters": [
+    "Classes"
+   ],
+   "loot": [
+    "Items",
+    "Food"
+   ],
+   "statuses": [
+    "Status Effects"
+   ]
+  },
+  "sitename": "Backpack Battles Wiki",
+  "wiki": "https://backpackbattles.wiki.gg/"
+ },
+ "Backpack Hero": {
+  "also": [
+   "https://backpackhero.fandom.com/api.php",
+   "https://backpack-hero.fandom.com/api.php"
+  ],
+  "api": "https://backpackhero.wiki.gg/api.php",
+  "articles": 437,
+  "categories": {
+   "characters": [
+    "Characters"
+   ],
+   "loot": [
+    "Items",
+    "Relic",
+    "Weapons",
+    "Consumables",
+    "Tote Exclusive Items",
+    "Wands",
+    "Armor",
+    "Purse Exclusive Items"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 13,
+   "events": 0,
+   "goals": 0,
+   "locations": 0,
+   "loot": 297,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "characters": [
+    "Characters"
+   ],
+   "events": [
+    "Random events"
+   ],
+   "goals": [
+    "Enemies"
+   ],
+   "locations": [
+    "Dungeon",
+    "Structures"
+   ],
+   "loot": [
+    "Relics",
+    "Weapons",
+    "Wands",
+    "Consumables",
+    "Blessings"
+   ],
+   "statuses": [
+    "Status Effects",
+    "Buffs and Debuffs",
+    "Curses"
+   ]
+  },
+  "sitename": "Backpack Hero Wiki",
+  "wiki": "https://backpackhero.wiki.gg/"
+ },
+ "Bad North": {
+  "api": "https://bad-north.fandom.com/api.php",
+  "articles": 34,
+  "categories": {
+   "goals": [
+    "Enemy"
+   ],
+   "loot": [
+    "Items"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 0,
+   "events": 0,
+   "goals": 8,
+   "locations": 0,
+   "loot": 8,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "loot": [
+    "Items"
+   ]
+  },
+  "sitename": "Bad North Wiki",
+  "wiki": "https://bad-north.fandom.com"
+ },
+ "Balatro": {
+  "api": "https://balatro.fandom.com/api.php",
+  "articles": 242,
+  "categories": {
+   "loot": [
+    "Jokers",
+    "Jokers by number",
+    "Uncommon Jokers",
+    "Common Jokers",
+    "Activates Independently Jokers",
+    "Effect Jokers",
+    "Activates Passively Jokers",
+    "Multiplicative Mult Jokers",
+    "Additive Mult Jokers",
+    "Activates On Scored Jokers",
+    "Rare Jokers",
+    "Chips Jokers"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 0,
+   "events": 0,
+   "goals": 0,
+   "locations": 0,
+   "loot": 743,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "goals": [
+    "Bosses"
+   ],
+   "loot": [
+    "Jokers",
+    "Consumables"
+   ]
+  },
+  "sitename": "Balatro Wiki",
+  "wiki": "https://balatrogame.fandom.com"
+ },
+ "Baldi's Basics Plus": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Ball x Pit": {
+  "also": [
+   "https://ballxpit.fandom.com/api.php"
+  ],
+  "api": "https://ballxpit.wiki.gg/api.php",
+  "articles": 366,
+  "categories": {
+   "characters": [
+    "Characters"
+   ],
+   "goals": [
+    "Enemies",
+    "Normal enemies",
+    "Mini-bosses",
+    "Bosses"
+   ],
+   "loot": [
+    "Harvest Upgrades"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 23,
+   "events": 0,
+   "goals": 176,
+   "locations": 0,
+   "loot": 2,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "characters": [
+    "Characters"
+   ],
+   "goals": [
+    "Enemies",
+    "Bosses",
+    "Bestiary"
+   ],
+   "locations": [
+    "Levels"
+   ]
+  },
+  "sitename": "BALL x PIT Wiki",
+  "wiki": "https://ballxpit.wiki.gg/"
+ },
+ "Ballionaire": {
+  "api": "https://ballionaire.wiki.gg/api.php",
+  "articles": 20,
+  "categories": {},
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 0,
+   "events": 0,
+   "goals": 0,
+   "locations": 0,
+   "loot": 0,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "loot": [
+    "Boons",
+    "Food"
+   ]
+  },
+  "sitename": "Ballionaire Wiki",
+  "wiki": "https://ballionaire.wiki.gg/"
+ },
+ "Banners of Ruin": {
+  "api": "https://banners-of-ruin.fandom.com/api.php",
+  "articles": 670,
+  "categories": {
+   "events": [
+    "Encounters"
+   ],
+   "goals": [
+    "Enemy"
+   ],
+   "loot": [
+    "Weapons",
+    "Agnostic Passives",
+    "Opponent Passives",
+    "Armours",
+    "Weasel Passives",
+    "Wolf Passives",
+    "Beaver Passives",
+    "Mouse Passives",
+    "Bear Passives",
+    "Hare Passives"
+   ],
+   "statuses": [
+    "Statuses"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 0,
+   "events": 99,
+   "goals": 41,
+   "locations": 0,
+   "loot": 141,
+   "statuses": 37
+  },
+  "match": "sure",
+  "pages": {
+   "characters": [
+    "Characters"
+   ],
+   "events": [
+    "Encounters"
+   ],
+   "loot": [
+    "Weapons"
+   ],
+   "statuses": [
+    "Statuses",
+    "Status"
+   ]
+  },
+  "sitename": "Banners of Ruin Wiki",
+  "wiki": "https://banners-of-ruin.fandom.com"
+ },
+ "Barda": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Barony": {
+  "also": [
+   "https://barony.fandom.com/api.php"
+  ],
+  "api": "https://barony.wiki.gg/api.php",
+  "articles": 210,
+  "categories": {
+   "characters": [
+    "Classes",
+    "Races",
+    "Character Attributes"
+   ],
+   "goals": [
+    "Boss"
+   ],
+   "loot": [
+    "Items",
+    "Spells",
+    "Artifacts"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 48,
+   "events": 0,
+   "goals": 5,
+   "locations": 0,
+   "loot": 18,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "characters": [
+    "Classes",
+    "Races"
+   ],
+   "locations": [
+    "Shops"
+   ],
+   "loot": [
+    "Items",
+    "Weapons",
+    "Potions",
+    "Scrolls",
+    "Equipment",
+    "Rings",
+    "Amulets",
+    "Spells",
+    "Tools",
+    "Food"
+   ],
+   "statuses": [
+    "Status Effects"
+   ]
+  },
+  "sitename": "Barony Wiki",
+  "wiki": "https://barony.wiki.gg/"
+ },
+ "Baroque": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Baroque (2007)": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Batomon Showdown": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Battle Brothers": {
+  "also": [
+   "https://battle-brothers.fandom.com/api.php"
+  ],
+  "api": "https://battlebrothers.fandom.com/api.php",
+  "articles": 2063,
+  "categories": {
+   "events": [
+    "Event"
+   ],
+   "goals": [
+    "Enemies"
+   ],
+   "locations": [
+    "Legendary Locations",
+    "Global Map resources"
+   ],
+   "loot": [
+    "Armor",
+    "Melee Weapon",
+    "Body Armor",
+    "Weapon Skills",
+    "Items",
+    "Named Weapon",
+    "Perks",
+    "Anatomists Potions",
+    "Ranged Weapon",
+    "Racial Perks",
+    "Armor Attachments",
+    "Legendary Items"
+   ],
+   "statuses": [
+    "Status Effects"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 0,
+   "events": 415,
+   "goals": 175,
+   "locations": 24,
+   "loot": 978,
+   "statuses": 48
+  },
+  "match": "sure",
+  "pages": {
+   "events": [
+    "Events"
+   ],
+   "goals": [
+    "Monsters"
+   ],
+   "loot": [
+    "Weapons",
+    "Perks"
+   ],
+   "statuses": [
+    "Status Effects"
+   ]
+  },
+  "sitename": "Battle Brothers Wiki",
+  "wiki": "https://battlebrothers.fandom.com"
+ },
+ "Battle Shapers": {
+  "api": "https://battleshapers.wiki.gg/api.php",
+  "articles": 69,
+  "categories": {},
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 0,
+   "events": 0,
+   "goals": 0,
+   "locations": 0,
+   "loot": 0,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "characters": [
+    "Characters"
+   ],
+   "goals": [
+    "Enemies"
+   ],
+   "loot": [
+    "Weapons"
+   ],
+   "statuses": [
+    "Status Effects",
+    "Powers",
+    "Keywords"
+   ]
+  },
+  "sitename": "Battle Shapers Wiki",
+  "wiki": "https://battleshapers.wiki.gg/"
+ },
+ "Be My Horde": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Beat Blast": {
+  "also": [
+   "https://beat-blast.fandom.com/api.php"
+  ],
+  "api": "https://beatblast.fandom.com/api.php",
+  "articles": 123,
+  "categories": {
+   "goals": [
+    "Enemy",
+    "Boss"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 0,
+   "events": 0,
+   "goals": 69,
+   "locations": 0,
+   "loot": 0,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "goals": [
+    "Enemies"
+   ],
+   "locations": [
+    "Shops"
+   ]
+  },
+  "sitename": "The Beat Blast Wiki",
+  "wiki": "https://beatblast.fandom.com"
+ },
+ "Bella Wants Blood": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Beneath Apple Manor": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Beneath Oresa": {
+  "api": "https://beneath-oresa.fandom.com/api.php",
+  "articles": 298,
+  "categories": {
+   "characters": [
+    "Characters"
+   ],
+   "goals": [
+    "Enemies",
+    "Bosses"
+   ],
+   "locations": [
+    "Areas"
+   ],
+   "loot": [
+    "Cards",
+    "House Agica Cards",
+    "Attack Cards",
+    "Maneuver Cards",
+    "Mundane Cards",
+    "Hero Cards",
+    "Peculiar Cards",
+    "Program Cards",
+    "Uncommon Cards",
+    "Faction Cards",
+    "Exceptional Cards",
+    "Unrivalled Cards"
+   ],
+   "statuses": [
+    "Keywords",
+    "Curses",
+    "Status Effects"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 12,
+   "events": 0,
+   "goals": 37,
+   "locations": 8,
+   "loot": 222,
+   "statuses": 28
+  },
+  "match": "sure",
+  "pages": {
+   "goals": [
+    "Enemies"
+   ],
+   "locations": [
+    "Zones"
+   ],
+   "loot": [
+    "Cards"
+   ]
+  },
+  "sitename": "Beneath Oresa Wiki",
+  "wiki": "https://beneath-oresa.fandom.com"
+ },
+ "Beyond Words": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Beyond the Long Night": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Bingle Bingle": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Bioprototype": {
+  "api": "https://bioprototype.fandom.com/api.php",
+  "articles": 32,
+  "categories": {},
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 0,
+   "events": 0,
+   "goals": 0,
+   "locations": 0,
+   "loot": 0,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {},
+  "sitename": "Bio Prototype Wiki",
+  "wiki": "https://bioprototype.fandom.com"
+ },
+ "Black Jacket": {
+  "api": "https://blackjacket.wiki.gg/api.php",
+  "articles": 68,
+  "categories": {
+   "loot": [
+    "Cards"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 0,
+   "events": 0,
+   "goals": 0,
+   "locations": 0,
+   "loot": 16,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "events": [
+    "Events"
+   ],
+   "loot": [
+    "Artifacts"
+   ],
+   "statuses": [
+    "Curses",
+    "Keywords"
+   ]
+  },
+  "sitename": "Black Jacket Wiki",
+  "wiki": "https://blackjacket.wiki.gg/"
+ },
+ "Blade Assault": {
+  "api": "https://blade-assault.fandom.com/api.php",
+  "articles": 46,
+  "categories": {
+   "characters": [
+    "Characters"
+   ],
+   "goals": [
+    "Boss"
+   ],
+   "locations": [
+    "Location"
+   ],
+   "loot": [
+    "Weapons"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 7,
+   "events": 0,
+   "goals": 5,
+   "locations": 4,
+   "loot": 10,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "characters": [
+    "Characters"
+   ],
+   "goals": [
+    "Enemies",
+    "Bosses"
+   ],
+   "locations": [
+    "Chapters",
+    "Objects"
+   ],
+   "loot": [
+    "Food"
+   ]
+  },
+  "sitename": "Blade Assault Wiki",
+  "wiki": "https://blade-assault.fandom.com"
+ },
+ "Blazing Beaks": {
+  "also": [
+   "https://blazing-beaks.fandom.com/api.php"
+  ],
+  "api": "https://blazingbeaks.fandom.com/api.php",
+  "articles": 40,
+  "categories": {
+   "goals": [
+    "Bosses",
+    "Enemies"
+   ],
+   "loot": [
+    "Pickups"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 0,
+   "events": 0,
+   "goals": 10,
+   "locations": 0,
+   "loot": 3,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "characters": [
+    "Characters"
+   ],
+   "goals": [
+    "Enemies",
+    "Bosses"
+   ],
+   "locations": [
+    "Locations",
+    "Levels",
+    "Objects"
+   ],
+   "loot": [
+    "Items",
+    "Weapons",
+    "Artifacts",
+    "Pickups"
+   ]
+  },
+  "sitename": "Blazing Beaks Wiki",
+  "wiki": "https://blazingbeaks.fandom.com"
+ },
+ "Bleak Sword": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Block Tower TD": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Block Tower TD 2": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Blood Dungeon": {
+  "api": "https://blood-dungeon.fandom.com/api.php",
+  "articles": 2,
+  "categories": {
+   "locations": [
+    "Blood Dungeon Wiki"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 0,
+   "events": 0,
+   "goals": 0,
+   "locations": 3,
+   "loot": 0,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {},
+  "sitename": "Blood Dungeon Wiki",
+  "wiki": "https://blood-dungeon.fandom.com"
+ },
+ "BloodDome99": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Bloodshed": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Bloons TD 6: Rogue Legends": {
+  "api": "https://bloonstd.fandom.com/api.php",
+  "articles": 29,
+  "categories": {},
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 0,
+   "events": 0,
+   "goals": 0,
+   "locations": 0,
+   "loot": 0,
+   "statuses": 0
+  },
+  "match": "check",
+  "pages": {},
+  "sitename": "Bloons td Wiki",
+  "wiki": "https://bloonstd.fandom.com"
+ },
+ "Blue Prince": {
+  "also": [
+   "https://blue-prince.fandom.com/api.php",
+   "https://blueprince.wiki.gg/api.php"
+  ],
+  "api": "https://blueprince.fandom.com/api.php",
+  "articles": 579,
+  "categories": {
+   "characters": [
+    "Characters"
+   ],
+   "locations": [
+    "Rooms",
+    "Locations",
+    "Lore locations",
+    "Green Rooms",
+    "Red Rooms",
+    "Shops",
+    "Outer Rooms",
+    "Multi-color Rooms",
+    "Permanent Rooms"
+   ],
+   "loot": [
+    "Items",
+    "Special Items",
+    "Upgrades",
+    "Luxury Items",
+    "Food"
+   ],
+   "statuses": [
+    "Drafting Effects",
+    "Mechanical Effects",
+    "Entry Effects",
+    "Tomorrow Effects",
+    "Spread Effects",
+    "Puzzle Effects"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 42,
+   "events": 0,
+   "goals": 0,
+   "locations": 239,
+   "loot": 210,
+   "statuses": 46
+  },
+  "match": "sure",
+  "pages": {
+   "characters": [
+    "Characters"
+   ],
+   "locations": [
+    "Locations",
+    "Rooms"
+   ],
+   "loot": [
+    "Items",
+    "Tools",
+    "Food",
+    "Blessings"
+   ]
+  },
+  "sitename": "Blue Prince Wiki",
+  "wiki": "https://blue-prince.fandom.com"
+ },
+ "Boneraiser Minions": {
+  "api": "https://boneraiser-minions.fandom.com/api.php",
+  "articles": 118,
+  "categories": {
+   "goals": [
+    "Minions",
+    "Demon minions",
+    "Normal minions",
+    "Bro minions",
+    "Boneraiser Minions Wiki",
+    "Meldus minions",
+    "Barrow minions",
+    "Miscellaneous minions"
+   ],
+   "loot": [
+    "Relics"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 0,
+   "events": 0,
+   "goals": 85,
+   "locations": 0,
+   "loot": 38,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "events": [
+    "Events"
+   ],
+   "goals": [
+    "Enemies"
+   ],
+   "loot": [
+    "Relics",
+    "Pickups",
+    "Spells"
+   ]
+  },
+  "sitename": "Boneraiser Minions Wiki",
+  "wiki": "https://boneraiser-minions.fandom.com"
+ },
+ "Book of Demons": {
+  "api": "https://book-of-demons.fandom.com/api.php",
+  "articles": 152,
+  "categories": {
+   "characters": [
+    "Classes",
+    "Characters"
+   ],
+   "events": [
+    "Events",
+    "Quests"
+   ],
+   "goals": [
+    "Enemies"
+   ],
+   "locations": [
+    "Dungeons"
+   ],
+   "loot": [
+    "Starter Artifacts",
+    "Mage Spell Cards",
+    "Artifact Cards",
+    "Warrior Artifact Cards",
+    "Item Cards",
+    "Rogue Spell Cards",
+    "Warrior Spell Cards",
+    "Cards",
+    "Rogue Artifact Cards",
+    "Rogue Item Cards",
+    "Mage Artifact Cards",
+    "Warrior Item Cards"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 6,
+   "events": 4,
+   "goals": 11,
+   "locations": 2,
+   "loot": 103,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "characters": [
+    "Characters",
+    "Classes"
+   ],
+   "goals": [
+    "Monsters",
+    "Bosses"
+   ],
+   "locations": [
+    "Objects"
+   ],
+   "loot": [
+    "Cards",
+    "Artifacts"
+   ]
+  },
+  "sitename": "Book of Demons Wiki",
+  "wiki": "https://book-of-demons.fandom.com"
+ },
+ "Bounty of One": {
+  "api": "https://bounty-of-one.fandom.com/api.php",
+  "articles": 67,
+  "categories": {
+   "characters": [
+    "Characters"
+   ],
+   "goals": [
+    "Enemies",
+    "Boss"
+   ],
+   "locations": [
+    "Objects"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 11,
+   "events": 0,
+   "goals": 6,
+   "locations": 50,
+   "loot": 0,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {},
+  "sitename": "Bounty of One Wiki",
+  "wiki": "https://bounty-of-one.fandom.com"
+ },
+ "Boyfriend Dungeon": {
+  "api": "https://boyfrienddungeon.fandom.com/api.php",
+  "articles": 193,
+  "categories": {
+   "characters": [
+    "Characters"
+   ],
+   "locations": [
+    "Locations",
+    "Shops",
+    "Dungeons",
+    "Boyfriend Dungeon",
+    "Boyfriend Dungeon Wiki"
+   ],
+   "loot": [
+    "Items"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 27,
+   "events": 0,
+   "goals": 0,
+   "locations": 38,
+   "loot": 115,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "goals": [
+    "Enemies"
+   ],
+   "locations": [
+    "Levels"
+   ],
+   "loot": [
+    "Weapons"
+   ]
+  },
+  "sitename": "Boyfriend Dungeon Wiki",
+  "wiki": "https://boyfrienddungeon.fandom.com"
+ },
+ "Brawl Tactics: Origins": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Breach Wanderers": {
+  "api": "https://breach-wanderers.fandom.com/api.php",
+  "articles": 1607,
+  "categories": {
+   "characters": [
+    "Characters"
+   ],
+   "events": [
+    "Event Items",
+    "Event Monsters",
+    "Quest Monsters"
+   ],
+   "goals": [
+    "Monster Cards",
+    "Monsters",
+    "Normal Monsters",
+    "Elite Monsters",
+    "Aether Plains Monsters",
+    "Fetid Coast Monsters",
+    "Crystal Valley Monsters",
+    "Battered Ramparts Monsters",
+    "Mushroom Forest Monsters",
+    "Mid Boss Monsters",
+    "End Boss Monsters",
+    "Summoned Monsters"
+   ],
+   "locations": [
+    "Shrine Cards"
+   ],
+   "loot": [
+    "Cards",
+    "Skill Cards",
+    "Common Cards",
+    "Generic Cards",
+    "Rare Cards",
+    "Monster Cards",
+    "Token Cards",
+    "Items",
+    "Epic Cards",
+    "Item Pool Items",
+    "Spell Cards",
+    "Strike Cards"
+   ],
+   "statuses": [
+    "Cards that apply Curse"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 11,
+   "events": 35,
+   "goals": 748,
+   "locations": 64,
+   "loot": 6666,
+   "statuses": 64
+  },
+  "match": "sure",
+  "pages": {
+   "characters": [
+    "Characters"
+   ],
+   "events": [
+    "Events",
+    "Quests"
+   ],
+   "goals": [
+    "Monsters"
+   ],
+   "loot": [
+    "Items",
+    "Cards",
+    "Trinkets",
+    "Spells",
+    "Tools"
+   ],
+   "statuses": [
+    "Status Effects",
+    "Status",
+    "Buffs",
+    "Debuffs",
+    "Keywords"
+   ]
+  },
+  "sitename": "Breach Wanderers Wiki",
+  "wiki": "https://breach-wanderers.fandom.com"
+ },
+ "Breachway": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Brew": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Brogue": {
+  "api": "https://brogue.fandom.com/api.php",
+  "articles": 357,
+  "categories": {
+   "characters": [
+    "Character builds"
+   ],
+   "goals": [
+    "Monster",
+    "Boss Monster",
+    "Immobile Monster",
+    "Monsters by trait"
+   ],
+   "locations": [
+    "Terrain",
+    "Machine"
+   ],
+   "loot": [
+    "Item",
+    "Weapon",
+    "Armor",
+    "Potion",
+    "Scroll",
+    "Charm",
+    "Attack Spellcaster",
+    "Ring",
+    "Wand",
+    "Support Spellcaster",
+    "Degrade Weapons",
+    "Food"
+   ],
+   "statuses": [
+    "Status"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 5,
+   "events": 0,
+   "goals": 80,
+   "locations": 34,
+   "loot": 237,
+   "statuses": 17
+  },
+  "match": "sure",
+  "pages": {
+   "goals": [
+    "Monsters"
+   ],
+   "loot": [
+    "Items",
+    "Weapons",
+    "Potions",
+    "Scrolls",
+    "Wands",
+    "Equipment",
+    "Rings",
+    "Food",
+    "Charms"
+   ],
+   "statuses": [
+    "Status",
+    "Mutations"
+   ]
+  },
+  "sitename": "Brogue Wiki",
+  "wiki": "https://brogue.fandom.com"
+ },
+ "BroomSweeper": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Brotato": {
+  "api": "https://brotato.fandom.com/api.php",
+  "articles": 537,
+  "categories": {
+   "characters": [
+    "Characters",
+    "Weapon classes"
+   ],
+   "goals": [
+    "Enemies"
+   ],
+   "loot": [
+    "Items",
+    "Weapons",
+    "Uncommon items",
+    "Rare items",
+    "Common items",
+    "Melee weapons",
+    "Legendary items",
+    "Ranged weapons",
+    "Weapon classes"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 81,
+   "events": 0,
+   "goals": 82,
+   "locations": 0,
+   "loot": 655,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "characters": [
+    "Characters"
+   ],
+   "goals": [
+    "Enemies"
+   ],
+   "locations": [
+    "Zones"
+   ],
+   "loot": [
+    "Items",
+    "Weapons",
+    "Upgrades"
+   ]
+  },
+  "sitename": "Brotato Wiki",
+  "wiki": "https://brotato.fandom.com"
+ },
+ "Brutal Orchestra": {
+  "api": "https://brutalorchestra.wiki.gg/api.php",
+  "articles": 165,
+  "categories": {
+   "characters": [
+    "Companions"
+   ],
+   "events": [
+    "Quests"
+   ],
+   "locations": [
+    "Locations"
+   ],
+   "loot": [
+    "Items"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 27,
+   "events": 3,
+   "goals": 0,
+   "locations": 2,
+   "loot": 2,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "characters": [
+    "Characters"
+   ],
+   "events": [
+    "Quests"
+   ],
+   "goals": [
+    "Enemies",
+    "Bosses"
+   ],
+   "loot": [
+    "Items"
+   ]
+  },
+  "sitename": "Brutal Orchestra Wiki",
+  "wiki": "https://brutalorchestra.wiki.gg/"
+ },
+ "Buckshot Roulette": {
+  "api": "https://buckshot-roulette.fandom.com/api.php",
+  "articles": 43,
+  "categories": {
+   "characters": [
+    "Characters"
+   ],
+   "locations": [
+    "Locations"
+   ],
+   "loot": [
+    "Items",
+    "Double or Nothing items",
+    "Multiplayer items",
+    "Story mode items"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 4,
+   "events": 0,
+   "goals": 0,
+   "locations": 9,
+   "loot": 36,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "loot": [
+    "Items"
+   ]
+  },
+  "sitename": "Buckshot Roulette Wiki",
+  "wiki": "https://buckshot-roulette.fandom.com"
+ },
+ "Cadence of Hyrule": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Candies 'n Curses": {
+  "api": "https://candies-n-curses.fandom.com/api.php",
+  "articles": 172,
+  "categories": {
+   "characters": [
+    "Characters",
+    "Companions"
+   ],
+   "events": [
+    "Events",
+    "Quests"
+   ],
+   "goals": [
+    "Enemies",
+    "Bosses"
+   ],
+   "locations": [
+    "Rooms",
+    "Locations",
+    "Shop"
+   ],
+   "loot": [
+    "Items",
+    "Charms",
+    "Treasures"
+   ],
+   "statuses": [
+    "Curses"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 30,
+   "events": 4,
+   "goals": 42,
+   "locations": 12,
+   "loot": 171,
+   "statuses": 19
+  },
+  "match": "sure",
+  "pages": {
+   "characters": [
+    "Characters"
+   ],
+   "goals": [
+    "Enemies",
+    "Bosses"
+   ],
+   "locations": [
+    "Rooms"
+   ],
+   "loot": [
+    "Charms"
+   ]
+  },
+  "sitename": "Candies 'n Curses Wiki",
+  "wiki": "https://candies-n-curses.fandom.com"
+ },
+ "Captain Forever Remix": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Cardinal Quest": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Cardinal Quest 2": {
+  "api": "https://cardinal-quest-2.fandom.com/api.php",
+  "articles": 320,
+  "categories": {
+   "events": [
+    "Cardinal Quest II Wiki"
+   ],
+   "goals": [
+    "Monster",
+    "Boss"
+   ],
+   "loot": [
+    "Armour",
+    "Consumables",
+    "Weapons",
+    "Passive"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 0,
+   "events": 2,
+   "goals": 68,
+   "locations": 0,
+   "loot": 155,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "goals": [
+    "Monsters"
+   ],
+   "loot": [
+    "Potions",
+    "Scrolls",
+    "Equipment",
+    "Consumables",
+    "Perks"
+   ],
+   "statuses": [
+    "Status"
+   ]
+  },
+  "sitename": "Cardinal Quest 2 Wiki",
+  "wiki": "https://cardinal-quest-2.fandom.com"
+ },
+ "Castle of the Winds": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "CastlevaniaRL": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Cat God Ranch": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Cataclysm": {
+  "api": "https://cataclysm.fandom.com/api.php",
+  "articles": 26,
+  "categories": {},
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 0,
+   "events": 0,
+   "goals": 0,
+   "locations": 0,
+   "loot": 0,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {},
+  "sitename": "The Cataclysm Wiki",
+  "wiki": "https://cataclysm.fandom.com"
+ },
+ "Cataclysm: Bright Nights": {
+  "api": "https://cataclysm.fandom.com/api.php",
+  "articles": 26,
+  "categories": {},
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 0,
+   "events": 0,
+   "goals": 0,
+   "locations": 0,
+   "loot": 0,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {},
+  "sitename": "The Cataclysm Wiki",
+  "wiki": "https://cataclysm.fandom.com"
+ },
+ "Cataclysm: Dark Days Ahead": {
+  "api": "https://cataclysm.fandom.com/api.php",
+  "articles": 26,
+  "categories": {},
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 0,
+   "events": 0,
+   "goals": 0,
+   "locations": 0,
+   "loot": 0,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {},
+  "sitename": "The Cataclysm Wiki",
+  "wiki": "https://cataclysm.fandom.com"
+ },
+ "Cataclysm: The Last Generation": {
+  "api": "https://cataclysm.fandom.com/api.php",
+  "articles": 26,
+  "categories": {},
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 0,
+   "events": 0,
+   "goals": 0,
+   "locations": 0,
+   "loot": 0,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {},
+  "sitename": "The Cataclysm Wiki",
+  "wiki": "https://cataclysm.fandom.com"
+ },
+ "Catacomb Kids": {
+  "api": "https://catacomb-kids.fandom.com/api.php",
+  "articles": 94,
+  "categories": {
+   "characters": [
+    "Classes"
+   ],
+   "goals": [
+    "Enemies"
+   ],
+   "loot": [
+    "Spells",
+    "Spellbooks",
+    "Equipment",
+    "Vision Item"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 5,
+   "events": 0,
+   "goals": 2,
+   "locations": 0,
+   "loot": 51,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "characters": [
+    "Classes"
+   ],
+   "goals": [
+    "Enemies",
+    "Bosses"
+   ],
+   "locations": [
+    "Floors",
+    "Objects"
+   ],
+   "loot": [
+    "Weapons",
+    "Potions",
+    "Equipment",
+    "Spells",
+    "Food",
+    "Blessings"
+   ],
+   "statuses": [
+    "Status Effects"
+   ]
+  },
+  "sitename": "Catacomb Kids Wiki",
+  "wiki": "https://catacomb-kids.fandom.com"
+ },
+ "Cats & Dice": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Cave Noire": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Caveblazers": {
+  "api": "https://caveblazers.fandom.com/api.php",
+  "articles": 13,
+  "categories": {},
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 0,
+   "events": 0,
+   "goals": 0,
+   "locations": 0,
+   "loot": 0,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "goals": [
+    "Monsters",
+    "Bosses"
+   ],
+   "locations": [
+    "Locations",
+    "Areas"
+   ],
+   "loot": [
+    "Items",
+    "Relics",
+    "Perks",
+    "Blessings"
+   ]
+  },
+  "sitename": "Caveblazers Wiki",
+  "wiki": "https://caveblazers.fandom.com"
+ },
+ "Caves of Qud": {
+  "api": "https://wiki.cavesofqud.com/api.php",
+  "articles": 3558,
+  "categories": {
+   "characters": [
+    "Unique Characters",
+    "Character"
+   ],
+   "events": [
+    "Quests",
+    "Encounter Tables",
+    "Quest Items",
+    "Side Quests",
+    "Quest Givers",
+    "Randomly Generated Side Quests"
+   ],
+   "goals": [
+    "Chiliad Creatures",
+    "Creatures",
+    "Creature Navigation",
+    "Modding - Creatures and Objects"
+   ],
+   "locations": [
+    "Dynamic Objects Tables",
+    "Machinery",
+    "Locations",
+    "Terrain",
+    "Modding - Creatures and Objects",
+    "Dungeons",
+    "Mentioned-only locations",
+    "Zones and Worlds",
+    "Biomes",
+    "Terrain Features",
+    "The Great Machine",
+    "World"
+   ],
+   "loot": [
+    "Natural Weapons",
+    "Food",
+    "Preserved Food",
+    "Armor",
+    "Reputation-altering items",
+    "Unique items",
+    "Thrown Weapons",
+    "Quest Items",
+    "Mutated Natural Weapons",
+    "Heavy Weapons",
+    "Items",
+    "Tools"
+   ],
+   "statuses": [
+    "Mutations",
+    "Physical Mutations",
+    "Removable Effects",
+    "Innate mutations",
+    "Minor Effects",
+    "Negative Effects",
+    "Cooking Effects",
+    "Mental Mutations",
+    "Mental Effects",
+    "Metabolic Effects",
+    "Activity-based Effects",
+    "Structural Effects"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 106,
+   "events": 108,
+   "goals": 106,
+   "locations": 261,
+   "loot": 771,
+   "statuses": 498
+  },
+  "match": "sure",
+  "pages": {
+   "events": [
+    "Quests",
+    "NPCs"
+   ],
+   "goals": [
+    "Monsters"
+   ],
+   "locations": [
+    "Locations",
+    "Zones",
+    "Map"
+   ],
+   "loot": [
+    "Items",
+    "Relics",
+    "Weapons",
+    "Artifacts",
+    "Equipment",
+    "Food"
+   ],
+   "statuses": [
+    "Status Effects",
+    "Mutations"
+   ]
+  },
+  "sitename": "Caves of Qud Wiki",
+  "wiki": "https://wiki.cavesofqud.com"
+ },
+ "Cavity Busters": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Cell Command": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Centipede Gun": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Change: A Homeless Survival Experience": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Chaos Zero Nightmare": {
+  "api": "https://chaos-zero-nightmare.fandom.com/api.php",
+  "articles": 27,
+  "categories": {
+   "characters": [
+    "Playable Characters",
+    "-Star Characters",
+    "Characters",
+    "Characters by Birthday",
+    "Characters by Rarity",
+    "Characters by Rarity and Release Date",
+    "Characters by Release Date",
+    "Human Characters",
+    "Female Characters",
+    "Character Voice-Overs",
+    "Male Characters",
+    "Void Characters"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 145,
+   "events": 0,
+   "goals": 0,
+   "locations": 0,
+   "loot": 0,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "characters": [
+    "Characters"
+   ]
+  },
+  "sitename": "Chaos Zero Nightmare Wiki",
+  "wiki": "https://chaos-zero-nightmare.fandom.com"
+ },
+ "Chess Survivors": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Children of Morta": {
+  "api": "https://childrenofmorta.fandom.com/api.php",
+  "articles": 319,
+  "categories": {
+   "characters": [
+    "Characters",
+    "The Heroes"
+   ],
+   "events": [
+    "Events"
+   ],
+   "goals": [
+    "Enemies",
+    "Dark Enemies",
+    "Minibosses",
+    "Bosses"
+   ],
+   "locations": [
+    "Locations"
+   ],
+   "loot": [
+    "Items",
+    "Passive Skills",
+    "Active Skills",
+    "Charms",
+    "Divine Relics",
+    "Upgrades",
+    "Workshop Upgrades",
+    "Book of Rea Upgrades"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 33,
+   "events": 5,
+   "goals": 64,
+   "locations": 19,
+   "loot": 224,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "characters": [
+    "Characters"
+   ],
+   "events": [
+    "Events"
+   ],
+   "goals": [
+    "Enemies",
+    "Bosses"
+   ],
+   "locations": [
+    "Locations"
+   ],
+   "loot": [
+    "Items",
+    "Charms"
+   ]
+  },
+  "sitename": "Children of Morta Wiki",
+  "wiki": "https://childrenofmorta.fandom.com"
+ },
+ "Chocobo's Dungeon 2": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Chocobo's Mysterious Dungeon": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Chocobo's Mystery Dungeon Every Buddy!": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Choo Choo Survivor": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Choo Choo Survivor 2": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Chosen Garden": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Chrono Ark": {
+  "api": "https://chronoark.fandom.com/api.php",
+  "articles": 115,
+  "categories": {
+   "loot": [
+    "Item"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 0,
+   "events": 0,
+   "goals": 0,
+   "locations": 0,
+   "loot": 2,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "goals": [
+    "Bosses"
+   ],
+   "loot": [
+    "Scrolls",
+    "Equipment"
+   ],
+   "statuses": [
+    "Keywords"
+   ]
+  },
+  "sitename": "Chrono Ark Wiki",
+  "wiki": "https://chronoark.fandom.com"
+ },
+ "Cinderia": {
+  "api": "https://cinderia.fandom.com/api.php",
+  "articles": 12,
+  "categories": {},
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 0,
+   "events": 0,
+   "goals": 0,
+   "locations": 0,
+   "loot": 0,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "loot": [
+    "Artifacts"
+   ],
+   "statuses": [
+    "Curses"
+   ]
+  },
+  "sitename": "Cinderia Wiki",
+  "wiki": "https://cinderia.fandom.com"
+ },
+ "CleanFall": {
+  "api": "https://cleanfall.wiki.gg/api.php",
+  "articles": 51,
+  "categories": {
+   "characters": [
+    "Classes"
+   ],
+   "locations": [
+    "Mini Biomes"
+   ],
+   "loot": [
+    "Items",
+    "Mining Tools",
+    "Consumable Weapon",
+    "F-Tools",
+    "Perks"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 7,
+   "events": 0,
+   "goals": 0,
+   "locations": 2,
+   "loot": 20,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "characters": [
+    "Classes"
+   ],
+   "goals": [
+    "Bestiary"
+   ],
+   "locations": [
+    "Biomes",
+    "Chapters",
+    "Map"
+   ],
+   "loot": [
+    "Items",
+    "Perks"
+   ]
+  },
+  "sitename": "CleanFall Wiki",
+  "wiki": "https://cleanfall.wiki.gg/"
+ },
+ "CloverPit": {
+  "also": [
+   "https://cloverpit.fandom.com/api.php"
+  ],
+  "api": "https://cloverpit.wiki.gg/api.php",
+  "articles": 246,
+  "categories": {
+   "locations": [
+    "Cell Features"
+   ],
+   "loot": [
+    "Lucky Charms",
+    "Legendary Lucky Charms",
+    "Common Lucky Charms",
+    "Rare Lucky Charms",
+    "Uncommon Lucky Charms",
+    "Memory Cards",
+    "Common Memory Cards",
+    "Uncommon Memory Cards",
+    "Rare Memory Cards",
+    "Legendary Memory Cards"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 0,
+   "events": 0,
+   "goals": 0,
+   "locations": 10,
+   "loot": 407,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "loot": [
+    "Charms"
+   ]
+  },
+  "sitename": "CloverPit Wiki",
+  "wiki": "https://cloverpit.wiki.gg/"
+ },
+ "Cluckmech Oasis": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Clutchtime: Basketball Deckbuilder": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Coal LLC": {
+  "api": "https://coal-llc.fandom.com/api.php",
+  "articles": 12,
+  "categories": {
+   "locations": [
+    "Maps"
+   ],
+   "loot": [
+    "Items"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 0,
+   "events": 0,
+   "goals": 0,
+   "locations": 2,
+   "loot": 2,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "loot": [
+    "Equipment"
+   ]
+  },
+  "sitename": "Coal LLC Wiki",
+  "wiki": "https://coal-llc.fandom.com"
+ },
+ "Cobalt Core": {
+  "also": [
+   "https://cobalt-core.fandom.com/api.php"
+  ],
+  "api": "https://cobaltcore.wiki.gg/api.php",
+  "articles": 430,
+  "categories": {
+   "characters": [
+    "Characters",
+    "Unlockable characters",
+    "Base characters"
+   ],
+   "events": [
+    "Events"
+   ],
+   "goals": [
+    "Enemies",
+    "Bosses"
+   ],
+   "locations": [
+    "Locations"
+   ],
+   "loot": [
+    "Cards",
+    "Artifacts",
+    "Peri Cards",
+    "Books Cards",
+    "Isaac Cards",
+    "Max Cards",
+    "Dizzy Cards",
+    "Drake Cards",
+    "Riggs Cards",
+    "CAT Cards",
+    "Trash Cards",
+    "Starter artifacts"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 17,
+   "events": 22,
+   "goals": 46,
+   "locations": 6,
+   "loot": 518,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "characters": [
+    "Characters"
+   ],
+   "events": [
+    "Events"
+   ],
+   "goals": [
+    "Enemies",
+    "Bosses"
+   ],
+   "locations": [
+    "Locations"
+   ],
+   "loot": [
+    "Cards",
+    "Artifacts"
+   ],
+   "statuses": [
+    "Status"
+   ]
+  },
+  "sitename": "Cobalt Core Wiki",
+  "wiki": "https://cobaltcore.wiki.gg/"
+ },
+ "Cogmind": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Coin Crypt": {
+  "api": "https://coin-crypt.fandom.com/api.php",
+  "articles": 44,
+  "categories": {
+   "characters": [
+    "Classes"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 27,
+   "events": 0,
+   "goals": 0,
+   "locations": 0,
+   "loot": 0,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "characters": [
+    "Classes"
+   ],
+   "goals": [
+    "Enemies"
+   ],
+   "loot": [
+    "Perks"
+   ],
+   "statuses": [
+    "Status Effects"
+   ]
+  },
+  "sitename": "Coin Crypt Wiki",
+  "wiki": "https://coin-crypt.fandom.com"
+ },
+ "Colt Canyon": {
+  "also": [
+   "https://colt-canyon.fandom.com/api.php"
+  ],
+  "api": "https://coltcanyon.fandom.com/api.php",
+  "articles": 63,
+  "categories": {
+   "goals": [
+    "Enemy"
+   ],
+   "locations": [
+    "Game Features",
+    "Objects"
+   ],
+   "loot": [
+    "Items"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 0,
+   "events": 0,
+   "goals": 8,
+   "locations": 17,
+   "loot": 2,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "characters": [
+    "Characters"
+   ],
+   "goals": [
+    "Bosses"
+   ],
+   "locations": [
+    "Areas"
+   ],
+   "loot": [
+    "Items",
+    "Weapons",
+    "Upgrades",
+    "Perks"
+   ],
+   "statuses": [
+    "Status effects"
+   ]
+  },
+  "sitename": "Colt Canyon Wiki",
+  "wiki": "https://coltcanyon.fandom.com"
+ },
+ "Combolands": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Commander Quest": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Conan Chop Chop": {
+  "api": "https://conanchopchop.fandom.com/api.php",
+  "articles": 39,
+  "categories": {
+   "characters": [
+    "Characters"
+   ],
+   "goals": [
+    "Bosses"
+   ],
+   "locations": [
+    "Regions"
+   ],
+   "loot": [
+    "Items"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 5,
+   "events": 0,
+   "goals": 7,
+   "locations": 6,
+   "loot": 4,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "characters": [
+    "Characters"
+   ],
+   "goals": [
+    "Enemies",
+    "Bosses"
+   ],
+   "locations": [
+    "Dungeon"
+   ],
+   "loot": [
+    "Items",
+    "Weapons",
+    "Charms"
+   ],
+   "statuses": [
+    "Status effects"
+   ]
+  },
+  "sitename": "Conan Chop Chop Wiki",
+  "wiki": "https://conanchopchop.fandom.com"
+ },
+ "Conquest Dark": {
+  "api": "https://conquestdark.wiki.gg/api.php",
+  "articles": 27,
+  "categories": {},
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 0,
+   "events": 0,
+   "goals": 0,
+   "locations": 0,
+   "loot": 0,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "goals": [
+    "Enemies"
+   ],
+   "loot": [
+    "Artifacts"
+   ]
+  },
+  "sitename": "Conquest Dark Wiki",
+  "wiki": "https://conquestdark.wiki.gg/"
+ },
+ "Convoy": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Core Defense": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Corpse Keeper": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Crab Champions": {
+  "also": [
+   "https://crabchampions.fandom.com/api.php"
+  ],
+  "api": "https://crabchampions.wiki.gg/api.php",
+  "articles": 252,
+  "categories": {
+   "goals": [
+    "Enemies"
+   ],
+   "locations": [
+    "Biomes"
+   ],
+   "loot": [
+    "Upgrades",
+    "Perks",
+    "Weapon Mods",
+    "Weapons & Abilities",
+    "Relics"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 0,
+   "events": 0,
+   "goals": 3,
+   "locations": 5,
+   "loot": 303,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "goals": [
+    "Enemies",
+    "Bosses"
+   ],
+   "locations": [
+    "Biomes"
+   ],
+   "loot": [
+    "Relics",
+    "Weapons",
+    "Upgrades",
+    "Perks"
+   ]
+  },
+  "sitename": "Crab Champions Wiki",
+  "wiki": "https://crabchampions.wiki.gg/"
+ },
+ "Crab God": {
+  "also": [
+   "https://crab-god.fandom.com/api.php"
+  ],
+  "api": "https://crabgod.fandom.com/api.php",
+  "articles": 34,
+  "categories": {
+   "goals": [
+    "Creatures"
+   ],
+   "locations": [
+    "Locations"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 0,
+   "events": 0,
+   "goals": 3,
+   "locations": 3,
+   "loot": 0,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "characters": [
+    "Roles"
+   ],
+   "goals": [
+    "Creatures"
+   ],
+   "locations": [
+    "Locations"
+   ],
+   "loot": [
+    "Food",
+    "Blessings"
+   ]
+  },
+  "sitename": "Crab God Wiki",
+  "wiki": "https://crab-god.fandom.com"
+ },
+ "Crablike": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Crafty Survivors": {
+  "api": "https://crafty-survivors.fandom.com/api.php",
+  "articles": 14,
+  "categories": {
+   "characters": [
+    "Characters",
+    "Crafty Survivors Wiki"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 14,
+   "events": 0,
+   "goals": 0,
+   "locations": 0,
+   "loot": 0,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "characters": [
+    "Playable characters"
+   ]
+  },
+  "sitename": "Crafty Survivors Wiki",
+  "wiki": "https://crafty-survivors.fandom.com"
+ },
+ "Crawl": {
+  "api": "https://crawl.fandom.com/api.php",
+  "articles": 102,
+  "categories": {
+   "loot": [
+    "Weapons"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 0,
+   "events": 0,
+   "goals": 0,
+   "locations": 0,
+   "loot": 11,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "events": [
+    "Quests"
+   ],
+   "goals": [
+    "Monsters",
+    "Bosses"
+   ],
+   "locations": [
+    "Objects",
+    "Dungeon"
+   ],
+   "loot": [
+    "Weapons",
+    "Spells"
+   ]
+  },
+  "sitename": "Crawl Wiki",
+  "wiki": "https://crawl.fandom.com"
+ },
+ "Crop Rotation": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Cropdeck": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Cross Blitz": {
+  "api": "https://cross-blitz.fandom.com/api.php",
+  "articles": 17,
+  "categories": {},
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 0,
+   "events": 0,
+   "goals": 0,
+   "locations": 0,
+   "loot": 0,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {},
+  "sitename": "Cross blitz Wiki",
+  "wiki": "https://cross-blitz.fandom.com"
+ },
+ "Crown Trick": {
+  "also": [
+   "https://crown-trick.fandom.com/api.php"
+  ],
+  "api": "https://crowntrick.fandom.com/api.php",
+  "articles": 69,
+  "categories": {
+   "characters": [
+    "Characters"
+   ],
+   "goals": [
+    "Bosses",
+    "Enemies"
+   ],
+   "loot": [
+    "Weapons",
+    "Active skills"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 2,
+   "events": 0,
+   "goals": 26,
+   "locations": 0,
+   "loot": 13,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "locations": [
+    "Dungeon"
+   ]
+  },
+  "sitename": "Crown Trick Wiki",
+  "wiki": "https://crowntrick.fandom.com"
+ },
+ "Crush the Industry": {
+  "api": "https://crushtheindustry.wiki.gg/api.php",
+  "articles": 16,
+  "categories": {},
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 0,
+   "events": 0,
+   "goals": 0,
+   "locations": 0,
+   "loot": 0,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "characters": [
+    "Characters"
+   ],
+   "events": [
+    "Events"
+   ],
+   "goals": [
+    "Enemies"
+   ],
+   "loot": [
+    "Consumables"
+   ]
+  },
+  "sitename": "Crush the Industry Wiki",
+  "wiki": "https://crushtheindustry.wiki.gg/"
+ },
+ "Crying Suns": {
+  "api": "https://cryingsuns.fandom.com/api.php",
+  "articles": 59,
+  "categories": {},
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 0,
+   "events": 0,
+   "goals": 0,
+   "locations": 0,
+   "loot": 0,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "characters": [
+    "Heroes"
+   ],
+   "events": [
+    "Events",
+    "Quests"
+   ],
+   "goals": [
+    "Enemies",
+    "Bosses"
+   ],
+   "locations": [
+    "Chapters",
+    "Shops"
+   ],
+   "loot": [
+    "Weapons",
+    "Upgrades"
+   ]
+  },
+  "sitename": "Crying Suns Wiki",
+  "wiki": "https://cryingsuns.fandom.com"
+ },
+ "Crypt of the NecroDancer": {
+  "also": [
+   "https://crypt-of-the-necrodancer.fandom.com/api.php"
+  ],
+  "api": "https://cryptofthenecrodancer.fandom.com/api.php",
+  "articles": 173,
+  "categories": {
+   "characters": [
+    "Playable Character",
+    "Characters"
+   ],
+   "goals": [
+    "Bosses",
+    "Monsters"
+   ],
+   "locations": [
+    "Objects",
+    "Shrines",
+    "Shop"
+   ],
+   "loot": [
+    "Equipment",
+    "Rings",
+    "Armor",
+    "Tools",
+    "Charms",
+    "Weapons",
+    "Consumables",
+    "Spells"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 21,
+   "events": 0,
+   "goals": 22,
+   "locations": 10,
+   "loot": 172,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "characters": [
+    "Characters"
+   ],
+   "events": [
+    "Shrines"
+   ],
+   "goals": [
+    "Bosses"
+   ],
+   "locations": [
+    "Zones",
+    "Shrines",
+    "Objects",
+    "Map"
+   ],
+   "loot": [
+    "Items",
+    "Weapons",
+    "Scrolls",
+    "Rings",
+    "Spells",
+    "Tools",
+    "Food",
+    "Charms"
+   ]
+  },
+  "sitename": "Crypt of the NecroDancer Wiki",
+  "wiki": "https://crypt-of-the-necrodancer.fandom.com"
+ },
+ "Cryptark": {
+  "api": "https://cryptark.fandom.com/api.php",
+  "articles": 42,
+  "categories": {
+   "goals": [
+    "Enemies"
+   ],
+   "loot": [
+    "Artifacts"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 0,
+   "events": 0,
+   "goals": 3,
+   "locations": 0,
+   "loot": 15,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "characters": [
+    "Characters"
+   ],
+   "goals": [
+    "Enemies"
+   ],
+   "loot": [
+    "Weapons",
+    "Artifacts",
+    "Equipment"
+   ]
+  },
+  "sitename": "Cryptark Wiki",
+  "wiki": "https://cryptark.fandom.com"
+ },
+ "Cthangband": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Cube Chaos": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Cubic Cosmos": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Cult of PiN": {
+  "api": "https://cult-of-pin.fandom.com/api.php",
+  "articles": 8,
+  "categories": {},
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 0,
+   "events": 0,
+   "goals": 0,
+   "locations": 0,
+   "loot": 0,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {},
+  "sitename": "Cult of PiN Wiki",
+  "wiki": "https://cult-of-pin.fandom.com"
+ },
+ "Cult of the Lamb": {
+  "also": [
+   "https://cult-of-the-lamb.fandom.com/api.php"
+  ],
+  "api": "https://cultofthelamb.fandom.com/api.php",
+  "articles": 930,
+  "categories": {
+   "characters": [
+    "Characters"
+   ],
+   "goals": [
+    "Enemies",
+    "Bosses",
+    "Ewefall Enemies",
+    "Silk Cradle enemies",
+    "Anchordeep Enemies",
+    "Anura Enemies",
+    "Darkwood enemies",
+    "Evolved Bosses",
+    "The Rot Enemies",
+    "The Gateway Enemies",
+    "Heart of the Mountain Enemies"
+   ],
+   "locations": [
+    "Locations"
+   ],
+   "loot": [
+    "Tarot Cards",
+    "Items",
+    "Weapons",
+    "Godly Weapons",
+    "Merciless Weapons"
+   ],
+   "statuses": [
+    "Curses"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 159,
+   "events": 0,
+   "goals": 305,
+   "locations": 26,
+   "loot": 135,
+   "statuses": 21
+  },
+  "match": "sure",
+  "pages": {
+   "characters": [
+    "Characters"
+   ],
+   "events": [
+    "Quests",
+    "NPCs"
+   ],
+   "goals": [
+    "Enemies",
+    "Bosses"
+   ],
+   "locations": [
+    "Locations",
+    "Biomes",
+    "Structures"
+   ],
+   "loot": [
+    "Relics",
+    "Weapons",
+    "Upgrades",
+    "Food"
+   ],
+   "statuses": [
+    "Curses"
+   ]
+  },
+  "sitename": "Cult of the Lamb Wiki",
+  "wiki": "https://cult-of-the-lamb.fandom.com"
+ },
+ "Cultist Simulator": {
+  "also": [
+   "https://cultist-simulator.fandom.com/api.php"
+  ],
+  "api": "https://cultistsimulator.fandom.com/api.php",
+  "articles": 1050,
+  "categories": {
+   "events": [
+    "Events"
+   ],
+   "locations": [
+    "Locations",
+    "Map's Edge"
+   ],
+   "loot": [
+    "Cards",
+    "Tools"
+   ],
+   "statuses": [
+    "Curse (Obstacle)",
+    "Curse (Situation)"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 0,
+   "events": 4,
+   "goals": 0,
+   "locations": 99,
+   "loot": 126,
+   "statuses": 8
+  },
+  "match": "sure",
+  "pages": {
+   "locations": [
+    "Locations"
+   ],
+   "loot": [
+    "Cards",
+    "Tools"
+   ],
+   "statuses": [
+    "Curses"
+   ]
+  },
+  "sitename": "Cultist Simulator Wiki",
+  "wiki": "https://cultistsimulator.fandom.com"
+ },
+ "Cupiclaw": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Curious Expedition": {
+  "api": "https://curious-expedition.fandom.com/api.php",
+  "articles": 596,
+  "categories": {
+   "characters": [
+    "Character",
+    "Companions"
+   ],
+   "events": [
+    "Quest",
+    "Quest Item"
+   ],
+   "goals": [
+    "Enemy"
+   ],
+   "locations": [
+    "Location",
+    "Biome",
+    "Terrain"
+   ],
+   "loot": [
+    "Item",
+    "Perk",
+    "Perk-Explorer",
+    "Perk-Companion",
+    "Consumable",
+    "Treasure",
+    "Weapon",
+    "Perk-Exclusive",
+    "Blessing",
+    "Quest Item",
+    "Companion-Item"
+   ],
+   "statuses": [
+    "Ailment"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 137,
+   "events": 14,
+   "goals": 30,
+   "locations": 43,
+   "loot": 363,
+   "statuses": 38
+  },
+  "match": "sure",
+  "pages": {
+   "characters": [
+    "Characters"
+   ],
+   "events": [
+    "Quests",
+    "Shrines"
+   ],
+   "goals": [
+    "Enemies"
+   ],
+   "locations": [
+    "Locations",
+    "Biomes",
+    "Shrines"
+   ],
+   "loot": [
+    "Items",
+    "Perks"
+   ],
+   "statuses": [
+    "Ailments"
+   ]
+  },
+  "sitename": "Curious Expedition Wiki",
+  "wiki": "https://curious-expedition.fandom.com"
+ },
+ "Curious Expedition 2": {
+  "api": "https://curious-expedition.fandom.com/api.php",
+  "articles": 596,
+  "categories": {
+   "characters": [
+    "Character",
+    "Companions"
+   ],
+   "events": [
+    "Quest",
+    "Quest Item"
+   ],
+   "goals": [
+    "Enemy"
+   ],
+   "locations": [
+    "Location",
+    "Biome",
+    "Terrain"
+   ],
+   "loot": [
+    "Item",
+    "Perk",
+    "Perk-Explorer",
+    "Perk-Companion",
+    "Consumable",
+    "Treasure",
+    "Weapon",
+    "Perk-Exclusive",
+    "Blessing",
+    "Quest Item",
+    "Companion-Item"
+   ],
+   "statuses": [
+    "Ailment"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 137,
+   "events": 14,
+   "goals": 30,
+   "locations": 43,
+   "loot": 363,
+   "statuses": 38
+  },
+  "match": "check",
+  "pages": {
+   "characters": [
+    "Characters"
+   ],
+   "events": [
+    "Quests",
+    "Shrines"
+   ],
+   "goals": [
+    "Enemies"
+   ],
+   "locations": [
+    "Locations",
+    "Biomes",
+    "Shrines"
+   ],
+   "loot": [
+    "Items",
+    "Perks"
+   ],
+   "statuses": [
+    "Ailments"
+   ]
+  },
+  "sitename": "Curious Expedition Wiki",
+  "wiki": "https://curious-expedition.fandom.com"
+ },
+ "Curse of Pirates": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Curse of the Dead Gods": {
+  "api": "https://curseofthedeadgods.fandom.com/api.php",
+  "articles": 318,
+  "categories": {
+   "characters": [
+    "Characters"
+   ],
+   "goals": [
+    "Enemies",
+    "Champions and Bosses"
+   ],
+   "locations": [
+    "Locations"
+   ],
+   "loot": [
+    "Weapons",
+    "Relics",
+    "Cursed weapons"
+   ],
+   "statuses": [
+    "Curse of the Dead Gods Wiki",
+    "Cursed weapons",
+    "Curses"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 2,
+   "events": 0,
+   "goals": 40,
+   "locations": 10,
+   "loot": 19,
+   "statuses": 7
+  },
+  "match": "sure",
+  "pages": {
+   "characters": [
+    "Characters"
+   ],
+   "goals": [
+    "Enemies"
+   ],
+   "locations": [
+    "Rooms"
+   ],
+   "loot": [
+    "Relics",
+    "Weapons",
+    "Blessings"
+   ],
+   "statuses": [
+    "Curses"
+   ]
+  },
+  "sitename": "Curse of the Dead Gods Wiki",
+  "wiki": "https://curseofthedeadgods.fandom.com"
+ },
+ "Cursed Words": {
+  "api": "https://cursedwords.wiki.gg/api.php",
+  "articles": 574,
+  "categories": {
+   "characters": [
+    "Characters"
+   ],
+   "events": [
+    "Quests",
+    "Start of encounter items",
+    "Elite quests"
+   ],
+   "goals": [
+    "Bosses"
+   ],
+   "loot": [
+    "Scattered items",
+    "Multiplicative word score items",
+    "Food items",
+    "Animal items",
+    "Additive word score items",
+    "Additive tile score items",
+    "Red scattering items",
+    "Blue scattering items",
+    "Void scattering items",
+    "Accumulator items",
+    "Multiplicative tile score items",
+    "Card scattering items"
+   ],
+   "statuses": [
+    "Curse scattering items"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 11,
+   "events": 39,
+   "goals": 20,
+   "locations": 0,
+   "loot": 498,
+   "statuses": 5
+  },
+  "match": "sure",
+  "pages": {
+   "characters": [
+    "Characters"
+   ],
+   "events": [
+    "Quests"
+   ],
+   "goals": [
+    "Bosses"
+   ],
+   "loot": [
+    "Items",
+    "Cards"
+   ]
+  },
+  "sitename": "Cursed Words Wiki",
+  "wiki": "https://cursedwords.wiki.gg/"
+ },
+ "Cursorblade": {
+  "api": "https://cursorblade.fandom.com/api.php",
+  "articles": 13,
+  "categories": {
+   "goals": [
+    "Enemies"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 0,
+   "events": 0,
+   "goals": 2,
+   "locations": 0,
+   "loot": 0,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "goals": [
+    "Enemies"
+   ],
+   "loot": [
+    "Items",
+    "Weapons"
+   ]
+  },
+  "sitename": "Cursorblade Wiki",
+  "wiki": "https://cursorblade.fandom.com"
+ },
+ "DIG: Deep In Galaxies": {
+  "api": "https://dig.fandom.com/api.php",
+  "articles": 34,
+  "categories": {
+   "characters": [
+    "Active Character"
+   ],
+   "loot": [
+    "Active Character"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 8,
+   "events": 0,
+   "goals": 0,
+   "locations": 0,
+   "loot": 8,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {},
+  "sitename": "Dig Wiki",
+  "wiki": "https://dig.fandom.com"
+ },
+ "Dark Devotion": {
+  "api": "https://darkdevotion.fandom.com/api.php",
+  "articles": 377,
+  "categories": {
+   "characters": [
+    "Characters"
+   ],
+   "events": [
+    "Quests",
+    "Events"
+   ],
+   "goals": [
+    "Bosses",
+    "Enemies"
+   ],
+   "locations": [
+    "Locations",
+    "Areas",
+    "Lost Rooms",
+    "Maps",
+    "Worlds",
+    "Other Rooms"
+   ],
+   "loot": [
+    "Items",
+    "Blessings",
+    "Armor",
+    "Heavy Armor",
+    "Medium Armor",
+    "Light Armor",
+    "Weapons",
+    "2H Weapons",
+    "Item Blessings",
+    "Slashing Weapons",
+    "Spell Books",
+    "Staggering Weapons"
+   ],
+   "statuses": [
+    "Curses"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 49,
+   "events": 5,
+   "goals": 38,
+   "locations": 72,
+   "loot": 337,
+   "statuses": 54
+  },
+  "match": "sure",
+  "pages": {
+   "characters": [
+    "Characters"
+   ],
+   "events": [
+    "Quests"
+   ],
+   "goals": [
+    "Enemies"
+   ],
+   "locations": [
+    "Altars",
+    "Map"
+   ],
+   "loot": [
+    "Items",
+    "Weapons",
+    "Trinkets",
+    "Consumables",
+    "Blessings"
+   ],
+   "statuses": [
+    "Curses"
+   ]
+  },
+  "sitename": "Dark Devotion Wiki",
+  "wiki": "https://darkdevotion.fandom.com"
+ },
+ "Dark Light: Survivor": {
+  "api": "https://dark-light.fandom.com/api.php",
+  "articles": 12,
+  "categories": {},
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 0,
+   "events": 0,
+   "goals": 0,
+   "locations": 0,
+   "loot": 0,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "locations": [
+    "Locations"
+   ],
+   "loot": [
+    "Weapons"
+   ]
+  },
+  "sitename": "Dark light Wiki",
+  "wiki": "https://dark-light.fandom.com"
+ },
+ "Darkblade Ascent": {
+  "api": "https://darkblade-ascent.fandom.com/api.php",
+  "articles": 3,
+  "categories": {},
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 0,
+   "events": 0,
+   "goals": 0,
+   "locations": 0,
+   "loot": 0,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {},
+  "sitename": "Darkblade Ascent Wiki",
+  "wiki": "https://darkblade-ascent.fandom.com"
+ },
+ "Darkest Dungeon": {
+  "also": [
+   "https://darkestdungeon.fandom.com/api.php",
+   "https://darkest-dungeon.fandom.com/api.php"
+  ],
+  "api": "https://darkestdungeon.wiki.gg/api.php",
+  "articles": 964,
+  "categories": {
+   "characters": [
+    "Heroes (Darkest Dungeon II)",
+    "Heroes"
+   ],
+   "goals": [
+    "Enemies (Darkest Dungeon II)",
+    "Enemies",
+    "Bosses",
+    "Bosses (Darkest Dungeon II)",
+    "Creatures",
+    "Darkest Dungeon Enemies",
+    "Crimson Court Enemies",
+    "Champion Enemy",
+    "Color of Madness Enemies"
+   ],
+   "locations": [
+    "Enemies (Darkest Dungeon II)",
+    "Heroes (Darkest Dungeon II)",
+    "Locations (Darkest Dungeon II)",
+    "Gameplay (Darkest Dungeon II)",
+    "Bosses (Darkest Dungeon II)",
+    "Cosmic (Darkest Dungeon II)",
+    "Darkest Dungeon Wiki",
+    "Darkest Dungeon Enemies",
+    "Locations",
+    "Cultists (Darkest Dungeon II)",
+    "Bloodsuckers (Darkest Dungeon II)",
+    "Swine (Darkest Dungeon II)"
+   ],
+   "loot": [
+    "Items"
+   ],
+   "statuses": [
+    "Status effects"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 55,
+   "events": 0,
+   "goals": 321,
+   "locations": 314,
+   "loot": 23,
+   "statuses": 12
+  },
+  "match": "sure",
+  "pages": {
+   "characters": [
+    "Classes"
+   ],
+   "events": [
+    "Events"
+   ],
+   "goals": [
+    "Enemies",
+    "Bosses",
+    "Creatures"
+   ],
+   "locations": [
+    "Locations",
+    "Map"
+   ],
+   "loot": [
+    "Items",
+    "Relics",
+    "Weapons",
+    "Trinkets",
+    "Food",
+    "Curios"
+   ],
+   "statuses": [
+    "Status effects",
+    "Afflictions"
+   ]
+  },
+  "sitename": "Darkest Dungeon Wiki",
+  "wiki": "https://darkestdungeon.wiki.gg/"
+ },
+ "Darkest Dungeon 2": {
+  "also": [
+   "https://darkestdungeon.fandom.com/api.php",
+   "https://darkest-dungeon.fandom.com/api.php"
+  ],
+  "api": "https://darkestdungeon.wiki.gg/api.php",
+  "articles": 964,
+  "categories": {
+   "characters": [
+    "Heroes (Darkest Dungeon II)",
+    "Heroes"
+   ],
+   "goals": [
+    "Enemies (Darkest Dungeon II)",
+    "Enemies",
+    "Bosses",
+    "Bosses (Darkest Dungeon II)",
+    "Creatures",
+    "Darkest Dungeon Enemies",
+    "Crimson Court Enemies",
+    "Champion Enemy",
+    "Color of Madness Enemies"
+   ],
+   "locations": [
+    "Enemies (Darkest Dungeon II)",
+    "Heroes (Darkest Dungeon II)",
+    "Locations (Darkest Dungeon II)",
+    "Gameplay (Darkest Dungeon II)",
+    "Bosses (Darkest Dungeon II)",
+    "Cosmic (Darkest Dungeon II)",
+    "Darkest Dungeon Wiki",
+    "Darkest Dungeon Enemies",
+    "Locations",
+    "Cultists (Darkest Dungeon II)",
+    "Bloodsuckers (Darkest Dungeon II)",
+    "Swine (Darkest Dungeon II)"
+   ],
+   "loot": [
+    "Items"
+   ],
+   "statuses": [
+    "Status effects"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 55,
+   "events": 0,
+   "goals": 321,
+   "locations": 314,
+   "loot": 23,
+   "statuses": 12
+  },
+  "match": "check",
+  "pages": {
+   "characters": [
+    "Classes"
+   ],
+   "events": [
+    "Events"
+   ],
+   "goals": [
+    "Enemies",
+    "Bosses",
+    "Creatures"
+   ],
+   "locations": [
+    "Locations",
+    "Map"
+   ],
+   "loot": [
+    "Items",
+    "Relics",
+    "Weapons",
+    "Trinkets",
+    "Food",
+    "Curios"
+   ],
+   "statuses": [
+    "Status effects",
+    "Afflictions"
+   ]
+  },
+  "sitename": "Darkest Dungeon Wiki",
+  "wiki": "https://darkestdungeon.wiki.gg/"
+ },
+ "Dave the Diver": {
+  "also": [
+   "https://dave-the-diver.fandom.com/api.php"
+  ],
+  "api": "https://davethediver.fandom.com/api.php",
+  "articles": 1063,
+  "categories": {
+   "characters": [
+    "Characters"
+   ],
+   "goals": [
+    "Bosses"
+   ],
+   "locations": [
+    "Glacier Zone Fish",
+    "Locations"
+   ],
+   "loot": [
+    "Weapons",
+    "Mission Items",
+    "Consumables",
+    "Auxiliary Items",
+    "Items"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 38,
+   "events": 0,
+   "goals": 16,
+   "locations": 39,
+   "loot": 81,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "characters": [
+    "Characters"
+   ],
+   "loot": [
+    "Weapons",
+    "Equipment",
+    "Charms"
+   ]
+  },
+  "sitename": "Dave the Diver Wiki",
+  "wiki": "https://dave-the-diver.fandom.com"
+ },
+ "Dead Cells": {
+  "also": [
+   "https://deadcells.fandom.com/api.php",
+   "https://dead-cells.fandom.com/api.php"
+  ],
+  "api": "https://deadcells.wiki.gg/api.php",
+  "articles": 571,
+  "categories": {
+   "goals": [
+    "Enemies",
+    "Bosses",
+    "Spawned enemies"
+   ],
+   "locations": [
+    "Biomes"
+   ],
+   "loot": [
+    "Items",
+    "Brutality items",
+    "Tactics items",
+    "Survival items",
+    "Melee weapons",
+    "Ranged weapons",
+    "Two-handed weapons",
+    "Weapons",
+    "Colorless items"
+   ],
+   "statuses": [
+    "Mutations",
+    "Colorless mutations",
+    "Brutality mutations",
+    "Tactics mutations",
+    "Survival mutations"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 0,
+   "events": 0,
+   "goals": 133,
+   "locations": 43,
+   "loot": 574,
+   "statuses": 118
+  },
+  "match": "sure",
+  "pages": {
+   "events": [
+    "NPCs"
+   ],
+   "goals": [
+    "Monsters",
+    "Bosses"
+   ],
+   "locations": [
+    "Levels",
+    "Shops",
+    "Objects",
+    "Map"
+   ],
+   "loot": [
+    "Weapons",
+    "Scrolls",
+    "Upgrades",
+    "Amulets",
+    "Food"
+   ],
+   "statuses": [
+    "Status Effects",
+    "Curses",
+    "Powers",
+    "Mutations"
+   ]
+  },
+  "sitename": "Dead Cells Wiki",
+  "wiki": "https://deadcells.wiki.gg/"
+ },
+ "Dead Estate": {
+  "also": [
+   "https://deadestate.fandom.com/api.php"
+  ],
+  "api": "https://deadestate.wiki.gg/api.php",
+  "articles": 400,
+  "categories": {
+   "characters": [
+    "Characters",
+    "Playable Characters",
+    "Non-Player Characters"
+   ],
+   "goals": [
+    "Monsters",
+    "Bosses"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 35,
+   "events": 0,
+   "goals": 28,
+   "locations": 0,
+   "loot": 0,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "characters": [
+    "Characters"
+   ],
+   "goals": [
+    "Monsters",
+    "Bosses"
+   ],
+   "locations": [
+    "Rooms",
+    "Floors",
+    "Map"
+   ],
+   "loot": [
+    "Items",
+    "Weapons"
+   ],
+   "statuses": [
+    "Status",
+    "Curses"
+   ]
+  },
+  "sitename": "Dead Estate Wiki",
+  "wiki": "https://deadestate.wiki.gg/"
+ },
+ "Dead Finger Dice": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Dead Weight": {
+  "api": "https://dead-weight.fandom.com/api.php",
+  "articles": 13,
+  "categories": {
+   "characters": [
+    "Characters"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 2,
+   "events": 0,
+   "goals": 0,
+   "locations": 0,
+   "loot": 0,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {},
+  "sitename": "Dead Weight Wiki",
+  "wiki": "https://dead-weight.fandom.com"
+ },
+ "Deadzone: Rogue": {
+  "api": "https://deadzone-rogue.fandom.com/api.php",
+  "articles": 4,
+  "categories": {},
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 0,
+   "events": 0,
+   "goals": 0,
+   "locations": 0,
+   "loot": 0,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {},
+  "sitename": "Deadzone: Rogue Wiki",
+  "wiki": "https://deadzone-rogue.fandom.com"
+ },
+ "Death Must Die": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Death Road to Canada": {
+  "also": [
+   "https://deathroadtocanada.wiki.gg/api.php"
+  ],
+  "api": "https://deathroadtocanada.fandom.com/api.php",
+  "articles": 738,
+  "categories": {
+   "characters": [
+    "Characters",
+    "Rare Characters",
+    "Custom Characters"
+   ],
+   "events": [
+    "Events",
+    "Driving Events",
+    "Camping Events",
+    "Walking Events",
+    "Despair Events"
+   ],
+   "locations": [
+    "Locations",
+    "Game Features",
+    "Super Rare Locations"
+   ],
+   "loot": [
+    "Weapons",
+    "Melee Weapons",
+    "Perks",
+    "Special Weapons",
+    "Weapon Traders",
+    "Ranged Weapons"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 258,
+   "events": 424,
+   "goals": 0,
+   "locations": 144,
+   "loot": 328,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "events": [
+    "Events",
+    "NPCs"
+   ],
+   "locations": [
+    "Locations"
+   ],
+   "loot": [
+    "Weapons",
+    "Food",
+    "Perks"
+   ],
+   "statuses": [
+    "Status"
+   ]
+  },
+  "sitename": "Death Road To Canada Wiki",
+  "wiki": "https://deathroadtocanada.fandom.com"
+ },
+ "Death Roads: Tournament": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Death Skid Marks": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Death by Scrolling": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Deck of Ashes": {
+  "api": "https://deckofashes.fandom.com/api.php",
+  "articles": 27,
+  "categories": {
+   "characters": [
+    "Characters"
+   ],
+   "statuses": [
+    "Effects"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 6,
+   "events": 0,
+   "goals": 0,
+   "locations": 0,
+   "loot": 0,
+   "statuses": 2
+  },
+  "match": "sure",
+  "pages": {
+   "characters": [
+    "Heroes"
+   ],
+   "goals": [
+    "Enemies"
+   ],
+   "locations": [
+    "Biomes",
+    "Chapters"
+   ],
+   "loot": [
+    "Cards"
+   ]
+  },
+  "sitename": "Deck of Ashes Wiki",
+  "wiki": "https://deckofashes.fandom.com"
+ },
+ "Deck of Haunts": {
+  "api": "https://deckofhaunts.wiki.gg/api.php",
+  "articles": 101,
+  "categories": {},
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 0,
+   "events": 0,
+   "goals": 0,
+   "locations": 0,
+   "loot": 0,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "loot": [
+    "Cards"
+   ]
+  },
+  "sitename": "Deck of Haunts Wiki",
+  "wiki": "https://deckofhaunts.wiki.gg/"
+ },
+ "Decktamer": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Deep Dungeons of Doom": {
+  "api": "https://deep-dungeons-of-doom.fandom.com/api.php",
+  "articles": 80,
+  "categories": {
+   "characters": [
+    "Characters"
+   ],
+   "goals": [
+    "Monsters",
+    "Bosses"
+   ],
+   "locations": [
+    "Dungeons"
+   ],
+   "loot": [
+    "Items",
+    "Potions",
+    "Armor",
+    "Weapons",
+    "Multi-use Potions",
+    "Rings"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 3,
+   "events": 0,
+   "goals": 28,
+   "locations": 8,
+   "loot": 52,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "events": [
+    "Shrines"
+   ],
+   "locations": [
+    "Shrines"
+   ]
+  },
+  "sitename": "Deep Dungeons of Doom Wiki",
+  "wiki": "https://deep-dungeons-of-doom.fandom.com"
+ },
+ "Deep Rock Galactic: Rogue Core": {
+  "also": [
+   "https://deeprockgalactic.fandom.com/api.php"
+  ],
+  "api": "https://deeprockgalactic.wiki.gg/api.php",
+  "articles": 494,
+  "categories": {
+   "characters": [
+    "Survivor Classes"
+   ],
+   "events": [
+    "Season Events",
+    "Random Events"
+   ],
+   "goals": [
+    "Creatures",
+    "Survivor Creature Data Pages",
+    "Survivor Creatures"
+   ],
+   "locations": [
+    "Biomes",
+    "AREA"
+   ],
+   "loot": [
+    "Equipment",
+    "Survivor Weapons",
+    "Survivor Weapon Data Pages",
+    "Weapon overclock tables",
+    "Perks",
+    "Survivor Weapon Tags",
+    "Primary Weapons",
+    "Secondary Weapons",
+    "Dwarf gear tables"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 7,
+   "events": 17,
+   "goals": 164,
+   "locations": 18,
+   "loot": 285,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "characters": [
+    "Classes"
+   ],
+   "events": [
+    "Events"
+   ],
+   "goals": [
+    "Bestiary"
+   ],
+   "locations": [
+    "Biomes",
+    "Levels"
+   ],
+   "loot": [
+    "Equipment",
+    "Tools",
+    "Perks"
+   ],
+   "statuses": [
+    "Status"
+   ]
+  },
+  "sitename": "Deep Rock Galactic Wiki",
+  "wiki": "https://deeprockgalactic.wiki.gg/"
+ },
+ "Deep Rock Galactic: Survivor": {
+  "also": [
+   "https://deeprockgalactic.fandom.com/api.php"
+  ],
+  "api": "https://deeprockgalactic.wiki.gg/api.php",
+  "articles": 494,
+  "categories": {
+   "characters": [
+    "Survivor Classes"
+   ],
+   "events": [
+    "Season Events",
+    "Random Events"
+   ],
+   "goals": [
+    "Creatures",
+    "Survivor Creature Data Pages",
+    "Survivor Creatures"
+   ],
+   "locations": [
+    "Biomes",
+    "AREA"
+   ],
+   "loot": [
+    "Equipment",
+    "Survivor Weapons",
+    "Survivor Weapon Data Pages",
+    "Weapon overclock tables",
+    "Perks",
+    "Survivor Weapon Tags",
+    "Primary Weapons",
+    "Secondary Weapons",
+    "Dwarf gear tables"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 7,
+   "events": 17,
+   "goals": 164,
+   "locations": 18,
+   "loot": 285,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "characters": [
+    "Classes"
+   ],
+   "events": [
+    "Events"
+   ],
+   "goals": [
+    "Bestiary"
+   ],
+   "locations": [
+    "Biomes",
+    "Levels"
+   ],
+   "loot": [
+    "Equipment",
+    "Tools",
+    "Perks"
+   ],
+   "statuses": [
+    "Status"
+   ]
+  },
+  "sitename": "Deep Rock Galactic Wiki",
+  "wiki": "https://deeprockgalactic.wiki.gg/"
+ },
+ "Deep Sky Derelicts": {
+  "api": "https://deepskyderelicts.fandom.com/api.php",
+  "articles": 466,
+  "categories": {
+   "characters": [
+    "Characters"
+   ],
+   "loot": [
+    "Deep Sky Derelicts",
+    "Items",
+    "Heavy Melee Weapon Mods",
+    "General Weapon Mods",
+    "Precision Ranged Weapon Mods",
+    "Assault Ranged Weapons",
+    "Heavy Melee Weapons",
+    "Medical Tools",
+    "Tech Tools",
+    "Weapon Tools",
+    "Assault Ranged Weapon Mods",
+    "Light Ranged Weapons"
+   ],
+   "statuses": [
+    "Status effects"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 7,
+   "events": 0,
+   "goals": 0,
+   "locations": 0,
+   "loot": 95,
+   "statuses": 2
+  },
+  "match": "sure",
+  "pages": {
+   "characters": [
+    "Characters"
+   ],
+   "loot": [
+    "Items"
+   ],
+   "statuses": [
+    "Status effects"
+   ]
+  },
+  "sitename": "Deep Sky Derelicts Wiki",
+  "wiki": "https://deepskyderelicts.fandom.com"
+ },
+ "Deepest Chamber: Resurrection": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Delver": {
+  "api": "https://delver.fandom.com/api.php",
+  "articles": 119,
+  "categories": {
+   "goals": [
+    "Mobs",
+    "Dungeon Mobs",
+    "Cave Mobs",
+    "Ruins Mobs",
+    "Sewer Mobs",
+    "Sewer mobs"
+   ],
+   "locations": [
+    "Dungeon Mobs",
+    "Dungeons",
+    "Shops",
+    "Location"
+   ],
+   "loot": [
+    "Item",
+    "Armor",
+    "Weapons",
+    "Charms",
+    "Items",
+    "Wands",
+    "Amulets",
+    "Rings"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 0,
+   "events": 0,
+   "goals": 41,
+   "locations": 14,
+   "loot": 86,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "goals": [
+    "Mobs"
+   ],
+   "locations": [
+    "Shops"
+   ],
+   "loot": [
+    "Items",
+    "Potions",
+    "Scrolls",
+    "Food"
+   ]
+  },
+  "sitename": "Delver Wiki",
+  "wiki": "https://delver.fandom.com"
+ },
+ "Demon Lord: Just a Block": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "DemonCrawl": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Demonic Mahjong": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Demonlore": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Desktop Dungeons": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Desktop Survivors 98": {
+  "api": "https://desktopsurvivors98.wiki.gg/api.php",
+  "articles": 45,
+  "categories": {},
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 0,
+   "events": 0,
+   "goals": 0,
+   "locations": 0,
+   "loot": 0,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {},
+  "sitename": "Desktop Survivors 98 Wiki",
+  "wiki": "https://desktopsurvivors98.wiki.gg/"
+ },
+ "Despot's Game": {
+  "api": "https://despotsgame.fandom.com/api.php",
+  "articles": 41,
+  "categories": {
+   "characters": [
+    "Classes"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 11,
+   "events": 0,
+   "goals": 0,
+   "locations": 0,
+   "loot": 0,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "characters": [
+    "Classes"
+   ],
+   "events": [
+    "Events"
+   ],
+   "goals": [
+    "Enemies"
+   ],
+   "locations": [
+    "Biomes"
+   ],
+   "loot": [
+    "Food",
+    "Perks"
+   ],
+   "statuses": [
+    "Status effects",
+    "Mutations"
+   ]
+  },
+  "sitename": "Despot's Game Wiki",
+  "wiki": "https://despots-game.fandom.com"
+ },
+ "Despotism 3k": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Devil Peach Soda": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Devil Slayer: Raksasi": {
+  "api": "https://devilslayerraksasi.fandom.com/api.php",
+  "articles": 18,
+  "categories": {},
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 0,
+   "events": 0,
+   "goals": 0,
+   "locations": 0,
+   "loot": 0,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "goals": [
+    "Enemies"
+   ],
+   "loot": [
+    "Items",
+    "Relics",
+    "Weapons"
+   ],
+   "statuses": [
+    "Statuses"
+   ]
+  },
+  "sitename": "Devil Slayer Raksasi Wiki",
+  "wiki": "https://devilslayerraksasi.fandom.com"
+ },
+ "Devil Spire": {
+  "api": "https://devil-spire.fandom.com/api.php",
+  "articles": 22,
+  "categories": {
+   "goals": [
+    "Enemies"
+   ],
+   "loot": [
+    "Items"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 0,
+   "events": 0,
+   "goals": 2,
+   "locations": 0,
+   "loot": 4,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "goals": [
+    "Enemies"
+   ],
+   "loot": [
+    "Items",
+    "Weapons",
+    "Potions",
+    "Rings",
+    "Spells"
+   ]
+  },
+  "sitename": "Devil Spire Wiki",
+  "wiki": "https://devil-spire.fandom.com"
+ },
+ "Diablo": {
+  "api": "https://diablo.fandom.com/api.php",
+  "articles": 17085,
+  "categories": {
+   "characters": [
+    "Characters",
+    "Character stats",
+    "Heroes of the Storm",
+    "Background Classes",
+    "Classes",
+    "Player characters",
+    "Races",
+    "Companions",
+    "Diablo Immortal Classes",
+    "Diablo IV Classes",
+    "Diablo III Classes",
+    "Diablo Immortal Characters"
+   ],
+   "events": [
+    "Diablo Immortal quests",
+    "Diablo Immortal events",
+    "Side Quests (Diablo Immortal)",
+    "Quest Items",
+    "Events (Diablo III)",
+    "Diablo III Quests",
+    "Act V Event Bounties (Diablo III)",
+    "Diablo Immortal Quest Items",
+    "Quests",
+    "Diablo II quests",
+    "Diablo IV Quest Items",
+    "Events"
+   ],
+   "goals": [
+    "Unique Monsters",
+    "Diablo Immortal Bestiary",
+    "Act 5 Bestiary (Diablo III)",
+    "Monsters",
+    "Super Unique Monsters",
+    "Act 1 Bestiary (Diablo III)",
+    "Boss",
+    "Act 2 Bestiary (Diablo III)",
+    "Diablo III Monsters",
+    "Act 3 Bestiary (Diablo III)",
+    "Diablo I Bestiary",
+    "Monster Skills"
+   ],
+   "locations": [
+    "Diablo Immortal Zones",
+    "Khanduras locations",
+    "Kehjistan locations",
+    "Fractured Peaks locations",
+    "Act 2 Zones (Diablo III)",
+    "Act 1 Zones (Diablo III)",
+    "Act 5 Zones (Diablo III)",
+    "Westmarch locations",
+    "Locations",
+    "Dungeons (Diablo IV)",
+    "Scosglen zones (Diablo IV)",
+    "Dreadlands locations"
+   ],
+   "loot": [
+    "Diablo Immortal Legendary Gear",
+    "Elite items",
+    "Exceptional items",
+    "Normal items",
+    "Diablo III Aesthetic Items",
+    "Unique Exceptional Items",
+    "Unique Normal Items",
+    "Unique Elite Items",
+    "Diablo Immortal Items",
+    "Diablo III Item Sets",
+    "Items",
+    "Diablo II Body Armor"
+   ],
+   "statuses": [
+    "Curses",
+    "Buffs",
+    "Bounty Zone Cursed Chest Events (Diablo III)",
+    "Act III Cursed Chest Events (Diablo III)",
+    "Act I Cursed Chest Bounties (Diablo III)",
+    "Act I Cursed Chest Events (Diablo III)",
+    "Act V Cursed Chest Events (Diablo III)",
+    "Cursed Chest Events",
+    "Debuffs",
+    "Krelm's Buff Bulwark",
+    "Act II Cursed Chest Bounties (Diablo III)"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 794,
+   "events": 1166,
+   "goals": 3571,
+   "locations": 1813,
+   "loot": 4884,
+   "statuses": 46
+  },
+  "match": "sure",
+  "pages": {
+   "characters": [
+    "Classes"
+   ],
+   "events": [
+    "Quests",
+    "Shrines",
+    "NPCs"
+   ],
+   "goals": [
+    "Monsters",
+    "Bosses",
+    "Bestiary"
+   ],
+   "locations": [
+    "Shrines",
+    "Objects",
+    "Map",
+    "Dungeon"
+   ],
+   "loot": [
+    "Items",
+    "Relics",
+    "Weapons",
+    "Potions",
+    "Scrolls",
+    "Wands",
+    "Equipment",
+    "Rings",
+    "Amulets",
+    "Spells",
+    "Charms"
+   ],
+   "statuses": [
+    "Status effects",
+    "Debuffs",
+    "Curses"
+   ]
+  },
+  "sitename": "Diablo Wiki",
+  "wiki": "https://diablo.fandom.com"
+ },
+ "Dice & Fold": {
+  "api": "https://dice-and-fold.fandom.com/api.php",
+  "articles": 303,
+  "categories": {
+   "characters": [
+    "Companions",
+    "Heroes"
+   ],
+   "goals": [
+    "Enemies",
+    "Bosses"
+   ],
+   "loot": [
+    "Items",
+    "Trinkets"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 42,
+   "events": 0,
+   "goals": 103,
+   "locations": 0,
+   "loot": 152,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {},
+  "sitename": "Dice & Fold Wiki",
+  "wiki": "https://dice-and-fold.fandom.com"
+ },
+ "Dice A Million": {
+  "api": "https://dice-a-million.fandom.com/api.php",
+  "articles": 21,
+  "categories": {},
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 0,
+   "events": 0,
+   "goals": 0,
+   "locations": 0,
+   "loot": 0,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {},
+  "sitename": "Dice a Million Wiki",
+  "wiki": "https://dice-a-million.fandom.com"
+ },
+ "Dice Legends": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Dice With Death": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Dicealot": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Dicefolk": {
+  "api": "https://dicefolk.wiki.gg/api.php",
+  "articles": 462,
+  "categories": {
+   "locations": [
+    "Biomes"
+   ],
+   "loot": [
+    "Equipment"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 0,
+   "events": 0,
+   "goals": 0,
+   "locations": 6,
+   "loot": 265,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "loot": [
+    "Equipment"
+   ]
+  },
+  "sitename": "Dicefolk Wiki",
+  "wiki": "https://dicefolk.wiki.gg/"
+ },
+ "Diceomancer": {
+  "api": "https://diceomancer.fandom.com/api.php",
+  "articles": 15,
+  "categories": {
+   "loot": [
+    "Cards",
+    "Sage cards"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 0,
+   "events": 0,
+   "goals": 0,
+   "locations": 0,
+   "loot": 13,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "characters": [
+    "Classes"
+   ]
+  },
+  "sitename": "DICEOMANCER Wiki",
+  "wiki": "https://diceomancer.fandom.com"
+ },
+ "Dicevaders": {
+  "api": "https://dicevaders.wiki.gg/api.php",
+  "articles": 40,
+  "categories": {
+   "loot": [
+    "Artifacts",
+    "Perks"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 0,
+   "events": 0,
+   "goals": 0,
+   "locations": 0,
+   "loot": 13,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "loot": [
+    "Artifacts",
+    "Perks"
+   ]
+  },
+  "sitename": "Dicevaders Wiki",
+  "wiki": "https://dicevaders.wiki.gg/"
+ },
+ "Dicey Dungeons": {
+  "api": "https://diceydungeons.fandom.com/api.php",
+  "articles": 730,
+  "categories": {
+   "characters": [
+    "Characters"
+   ],
+   "goals": [
+    "Enemies",
+    "Enemy Super",
+    "Enemy Rare",
+    "Bosses"
+   ],
+   "locations": [
+    "Dungeon Equipments"
+   ],
+   "loot": [
+    "Equipment",
+    "Equipment Parallel",
+    "Equipment Weapon",
+    "Equipment Witch",
+    "Equipment Item",
+    "Equipment Magic",
+    "Equipment Purple",
+    "Equipment Green",
+    "Equipment Yellow",
+    "Equipment Orange",
+    "Equipment Red",
+    "Equipment Brightcyan"
+   ],
+   "statuses": [
+    "Status effect"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 13,
+   "events": 0,
+   "goals": 103,
+   "locations": 2,
+   "loot": 1820,
+   "statuses": 2
+  },
+  "match": "sure",
+  "pages": {
+   "goals": [
+    "Enemies"
+   ],
+   "loot": [
+    "Items",
+    "Equipment"
+   ],
+   "statuses": [
+    "Status effects"
+   ]
+  },
+  "sitename": "Dicey Dungeons Wiki",
+  "wiki": "https://diceydungeons.fandom.com"
+ },
+ "Die For The Lich": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Die in the Dungeon": {
+  "api": "https://die-in-the-dungeon.fandom.com/api.php",
+  "articles": 43,
+  "categories": {
+   "events": [
+    "Special Events"
+   ],
+   "locations": [
+    "Die in the Dungeon Wiki"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 0,
+   "events": 6,
+   "goals": 0,
+   "locations": 3,
+   "loot": 0,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "goals": [
+    "Enemies"
+   ],
+   "loot": [
+    "Upgrades"
+   ]
+  },
+  "sitename": "Die in the Dungeon Wiki",
+  "wiki": "https://die-in-the-dungeon.fandom.com"
+ },
+ "Dimensionals": {
+  "api": "https://dimensionals.fandom.com/api.php",
+  "articles": 46,
+  "categories": {
+   "characters": [
+    "Heroes"
+   ],
+   "goals": [
+    "Bosses"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 16,
+   "events": 0,
+   "goals": 9,
+   "locations": 0,
+   "loot": 0,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "characters": [
+    "Heroes"
+   ],
+   "goals": [
+    "Bosses"
+   ],
+   "loot": [
+    "Artifacts"
+   ]
+  },
+  "sitename": "Dimensionals Wiki",
+  "wiki": "https://dimensionals.fandom.com"
+ },
+ "Disfigure": {
+  "also": [
+   "https://disfigure.fandom.com/api.php"
+  ],
+  "api": "https://disfigure.wiki.gg/api.php",
+  "articles": 439,
+  "categories": {
+   "loot": [
+    "Upgrades",
+    "Perks",
+    "Weapon Damage",
+    "Weapons",
+    "Weapon Projectiles",
+    "Greatsword perks",
+    "Shrapnel upgrades",
+    "Spotlight upgrades",
+    "Boomerang Scythe perks",
+    "Burst Rifle perks",
+    "Handcannon perks",
+    "Knife perks"
+   ],
+   "statuses": [
+    "Buffs",
+    "Debuff"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 0,
+   "events": 0,
+   "goals": 0,
+   "locations": 0,
+   "loot": 546,
+   "statuses": 14
+  },
+  "match": "sure",
+  "pages": {
+   "events": [
+    "Quests"
+   ],
+   "goals": [
+    "Enemies"
+   ],
+   "loot": [
+    "Weapons",
+    "Upgrades",
+    "Perks"
+   ],
+   "statuses": [
+    "Mutations"
+   ]
+  },
+  "sitename": "Disfigure Wiki",
+  "wiki": "https://disfigure.wiki.gg/"
+ },
+ "Dive or Die: Children of Rain": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Dog Witch": {
+  "api": "https://dogwitch.wiki.gg/api.php",
+  "articles": 273,
+  "categories": {
+   "loot": [
+    "Equipment"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 0,
+   "events": 0,
+   "goals": 0,
+   "locations": 0,
+   "loot": 264,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "loot": [
+    "Equipment"
+   ]
+  },
+  "sitename": "Dog Witch Wiki",
+  "wiki": "https://dogwitch.wiki.gg/"
+ },
+ "Dog and Goblin": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Dogpile": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Dome Keeper": {
+  "also": [
+   "https://dome-keeper.fandom.com/api.php"
+  ],
+  "api": "https://domekeeper.wiki.gg/api.php",
+  "articles": 150,
+  "categories": {
+   "goals": [
+    "Enemies"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 0,
+   "events": 0,
+   "goals": 24,
+   "locations": 0,
+   "loot": 0,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "characters": [
+    "Characters"
+   ],
+   "goals": [
+    "Creatures"
+   ],
+   "locations": [
+    "Biomes"
+   ]
+  },
+  "sitename": "Dome Keeper Wiki",
+  "wiki": "https://domekeeper.wiki.gg/"
+ },
+ "Don't Let It Starve": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Don't Lose Aggro": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Don't Starve": {
+  "also": [
+   "https://dontstarve.fandom.com/api.php"
+  ],
+  "api": "https://dontstarve.wiki.gg/api.php",
+  "articles": 3270,
+  "categories": {
+   "characters": [
+    "Character Quotes",
+    "Character Clothes",
+    "Characters",
+    "Character-Specific"
+   ],
+   "events": [
+    "Lunar New Year Events",
+    "Special Event Filter",
+    "Events"
+   ],
+   "goals": [
+    "Mob Spawning Entities",
+    "Mob Dropped Items",
+    "Hostile Creatures",
+    "Surface Creatures",
+    "Boss Dropped Items",
+    "Mobs",
+    "Monsters",
+    "Passive Creatures",
+    "Mob Housing",
+    "Neutral Creatures",
+    "Boss Monsters",
+    "Cave Creatures"
+   ],
+   "locations": [
+    "Craftable Items and Structures on DST",
+    "Flammable Objects",
+    "Naturally Spawning Objects",
+    "Structures",
+    "Indestructible Object",
+    "Biomes",
+    "Structures Filter",
+    "Craftable Structures",
+    "Mineable Objects",
+    "Unstealable Object",
+    "Structures Tab",
+    "Removed Features"
+   ],
+   "loot": [
+    "Craftable Items and Structures on DST",
+    "Items",
+    "Equipable Items",
+    "Mob Dropped Items",
+    "Food",
+    "Craftable Items",
+    "Boss Dropped Items",
+    "Turf Items",
+    "Passive Creatures",
+    "Survivor Items Filter",
+    "Weapons",
+    "Armor"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 159,
+   "events": 22,
+   "goals": 1332,
+   "locations": 2427,
+   "loot": 2852,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "characters": [
+    "Characters",
+    "Survivors"
+   ],
+   "events": [
+    "Events"
+   ],
+   "goals": [
+    "Monsters",
+    "Bosses",
+    "Creatures"
+   ],
+   "locations": [
+    "Biomes",
+    "Map",
+    "Structures"
+   ],
+   "loot": [
+    "Items",
+    "Relics",
+    "Weapons",
+    "Trinkets",
+    "Boons",
+    "Tools",
+    "Food",
+    "Curios"
+   ]
+  },
+  "sitename": "Don't Starve Wiki",
+  "wiki": "https://dontstarve.wiki.gg/"
+ },
+ "Don't Starve Together": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "DoomRL": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Dota Auto Chess": {
+  "api": "https://dotaautochess.fandom.com/api.php",
+  "articles": 123,
+  "categories": {
+   "characters": [
+    "Classes"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 14,
+   "events": 0,
+   "goals": 0,
+   "locations": 0,
+   "loot": 0,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "characters": [
+    "Classes"
+   ],
+   "loot": [
+    "Items"
+   ]
+  },
+  "sitename": "Dota Auto Chess Wiki",
+  "wiki": "https://dotaautochess.fandom.com"
+ },
+ "Double Dragon Gaiden: Rise Of The Dragons": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Downwell": {
+  "api": "https://downwell.fandom.com/api.php",
+  "articles": 81,
+  "categories": {
+   "goals": [
+    "Enemies",
+    "Floating enemies"
+   ],
+   "locations": [
+    "Worlds"
+   ],
+   "loot": [
+    "Upgrades",
+    "Weapons"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 0,
+   "events": 0,
+   "goals": 20,
+   "locations": 5,
+   "loot": 30,
+   "statuses": 0
+  },
+  "match": "check",
+  "pages": {
+   "goals": [
+    "Enemies"
+   ],
+   "locations": [
+    "Levels"
+   ]
+  },
+  "sitename": "Downwell Wikia",
+  "wiki": "https://downwell.fandom.com"
+ },
+ "Dragon Crystal": {
+  "api": "https://dragon-crystal.fandom.com/api.php",
+  "articles": 3,
+  "categories": {},
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 0,
+   "events": 0,
+   "goals": 0,
+   "locations": 0,
+   "loot": 0,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {},
+  "sitename": "Dragon crystal Wiki",
+  "wiki": "https://dragon-crystal.fandom.com"
+ },
+ "Dragon Quest Heroes: Torneko‘s Mystery Dungeon Classic HD": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Dragon Quest: Young Yangus and the Mystery Dungeon": {
+  "also": [
+   "https://dragon-quest.fandom.com/api.php"
+  ],
+  "api": "https://dragonquest.fandom.com/api.php",
+  "articles": 17052,
+  "categories": {
+   "characters": [
+    "Female characters",
+    "Dragon Quest X characters",
+    "Dragon Quest Heroes II skills",
+    "Dragon Quest Tact characters",
+    "Dragon Quest of the Stars characters",
+    "Dragon Quest Walk characters",
+    "Dragon Quest Heroes II monsters",
+    "Dragon Quest Keshikeshi characters",
+    "Dragon Quest Rivals characters",
+    "Deceased Characters",
+    "Dragon Quest Heroes skills",
+    "Dragon Quest Heroes monsters"
+   ],
+   "events": [
+    "Dragon Quest X monsters",
+    "Dragon Quest of the Stars monsters",
+    "Dragon Quest Monsters: Super Light monsters",
+    "Dragon Quest Rivals monsters",
+    "Dragon Quest Monsters 2: Iru and Luca's Marvelous Mysterious Key SP monsters",
+    "Dragon Quest Walk monsters",
+    "Dragon Quest Monsters 2: Iru and Luca's Marvelous Mysterious Key monsters",
+    "Dragon Quest X bosses",
+    "Dragon Quest Tact skills",
+    "Dragon Quest Tact monsters",
+    "Dragon Quest Monsters: Joker 3 Professional monsters",
+    "Dragon Quest of the Stars skills"
+   ],
+   "goals": [
+    "Dragon Quest X monsters",
+    "Dragon Quest of the Stars monsters",
+    "Dragon Quest Monsters: Super Light monsters",
+    "Dragon Quest Rivals monsters",
+    "Dragon Quest Monsters 2: Iru and Luca's Marvelous Mysterious Key SP monsters",
+    "Dragon Quest Walk monsters",
+    "Dragon Quest Monsters 2: Iru and Luca's Marvelous Mysterious Key monsters",
+    "Dragon Quest X bosses",
+    "Dragon Quest Tact monsters",
+    "Dragon Quest Monsters: Joker 3 Professional monsters",
+    "Dragon Quest Monsters: Terry's Wonderland SP monsters",
+    "Dragon Quest Monsters: Terry's Wonderland 3D monsters"
+   ],
+   "locations": [
+    "Dragon Quest Monsters: The Withered World monsters",
+    "Dragon Quest Manga Chapters",
+    "Dragon Quest Monsters: The Withered World skills",
+    "Dragon Quest Monsters: The Withered World spells",
+    "Dragon Quest VI locations",
+    "Dragon Quest X locations",
+    "Dragon Quest Tact locations",
+    "Dragon Quest IV locations",
+    "Dragon Quest VII locations",
+    "Dragon Quest IX locations",
+    "Dragon Quest XI dungeons",
+    "Dragon Quest IX regions"
+   ],
+   "loot": [
+    "Dragon Quest Monsters: Joker 3 Professional monsters",
+    "Dragon Quest Monsters: Joker 3 monsters",
+    "Dragon Quest of the Stars top armor",
+    "Dragon Quest Monsters: Joker 2 Professional monsters",
+    "Dragon Quest Walk top armour",
+    "Dragon Quest of the Stars bottom armor",
+    "Dragon Quest Monsters: Joker 2 monsters",
+    "Dragon Quest Tact spells",
+    "Dragon Quest Walk bottom armour",
+    "Dragon Quest Monsters: Joker monsters",
+    "Dragon Quest Treasures skills",
+    "Dragon Quest Monsters: Joker 2 skills"
+   ],
+   "statuses": [
+    "Curse skills",
+    "Cursed equipment",
+    "Cursed items"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 4830,
+   "events": 50131,
+   "goals": 28013,
+   "locations": 1664,
+   "loot": 11331,
+   "statuses": 50
+  },
+  "match": "sure",
+  "pages": {},
+  "sitename": "Dragon Quest Wiki",
+  "wiki": "https://dragonquest.fandom.com"
+ },
+ "Dragonslayer": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Drapline": {
+  "api": "https://drapline.fandom.com/api.php",
+  "articles": 26,
+  "categories": {
+   "characters": [
+    "Characters"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 17,
+   "events": 0,
+   "goals": 0,
+   "locations": 0,
+   "loot": 0,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {},
+  "sitename": "Drapline Wiki",
+  "wiki": "https://drapline.fandom.com"
+ },
+ "Dream Quest": {
+  "api": "https://dream-quest.fandom.com/api.php",
+  "articles": 550,
+  "categories": {
+   "characters": [
+    "Classes"
+   ],
+   "goals": [
+    "Monsters",
+    "Boss"
+   ],
+   "locations": [
+    "Altars",
+    "Terrain"
+   ],
+   "loot": [
+    "Cards",
+    "NPC-Cards",
+    "Spells",
+    "Equipment",
+    "UnlockPassive"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 15,
+   "events": 0,
+   "goals": 91,
+   "locations": 13,
+   "loot": 383,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "characters": [
+    "Classes"
+   ],
+   "locations": [
+    "Dungeon"
+   ],
+   "loot": [
+    "Cards"
+   ],
+   "statuses": [
+    "Status Effects",
+    "Curses"
+   ]
+  },
+  "sitename": "Dream Quest Wiki",
+  "wiki": "https://dream-quest.fandom.com"
+ },
+ "Dreamscaper": {
+  "also": [
+   "https://dreamscaper.fandom.com/api.php"
+  ],
+  "api": "https://dreamscaper.wiki.gg/api.php",
+  "articles": 331,
+  "categories": {
+   "goals": [
+    "Boss",
+    "Enemies"
+   ],
+   "locations": [
+    "Rooms"
+   ],
+   "loot": [
+    "Melee Weapons",
+    "Ranged Weapons"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 0,
+   "events": 0,
+   "goals": 8,
+   "locations": 8,
+   "loot": 37,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "events": [
+    "NPCs"
+   ],
+   "goals": [
+    "Enemies"
+   ],
+   "loot": [
+    "Items",
+    "Weapons"
+   ]
+  },
+  "sitename": "Dreamscaper Wiki",
+  "wiki": "https://dreamscaper.wiki.gg/"
+ },
+ "Drill Core": {
+  "api": "https://drillcore.wiki.gg/api.php",
+  "articles": 21,
+  "categories": {},
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 0,
+   "events": 0,
+   "goals": 0,
+   "locations": 0,
+   "loot": 0,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "events": [
+    "Random Events"
+   ],
+   "goals": [
+    "Enemies"
+   ],
+   "locations": [
+    "Biomes"
+   ],
+   "loot": [
+    "Upgrades"
+   ]
+  },
+  "sitename": "Drill Core Wiki",
+  "wiki": "https://drillcore.wiki.gg/"
+ },
+ "Driving Rogue": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Drop Duchy": {
+  "api": "https://drop-duchy.fandom.com/api.php",
+  "articles": 5,
+  "categories": {},
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 0,
+   "events": 0,
+   "goals": 0,
+   "locations": 0,
+   "loot": 0,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {},
+  "sitename": "Drop Duchy Wiki",
+  "wiki": "https://drop-duchy.fandom.com"
+ },
+ "Drop Pockets": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Dungeon Clawler": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Dungeon Crawl Stone Soup": {
+  "api": "http://crawl.chaosforge.org/api.php",
+  "articles": 3232,
+  "categories": {
+   "characters": [
+    "Character guides",
+    "Characters"
+   ],
+   "goals": [
+    "Monsters",
+    "Speaking monster",
+    "Medium monsters",
+    "Monster spells",
+    "Will+ monsters",
+    "Evil monsters",
+    "Unbreathing monsters",
+    "Large monsters",
+    "Will++ monsters",
+    "Infinite will monsters",
+    "Unique monsters",
+    "Will+++ monsters"
+   ],
+   "locations": [
+    "Dungeon Branches",
+    "Translocation Spells",
+    "Dungeon Features",
+    "Translocation Books",
+    "World",
+    "Translocations"
+   ],
+   "loot": [
+    "Spellcaster",
+    "Starting equipment",
+    "Monster spells",
+    "Weapons armour",
+    "Obsolete spells",
+    "Body armour",
+    "Level 4 Spells",
+    "Potion",
+    "Spells",
+    "Conjuration Spells",
+    "Necromancy Spells",
+    "Scroll"
+   ],
+   "statuses": [
+    "Mutations",
+    "Good Mutations",
+    "Status effects",
+    "Bad Mutations",
+    "Demonspawn Mutations",
+    "Transmutation Spells",
+    "Intrinsic",
+    "Jiyva Mutations",
+    "Transmutations"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 58,
+   "events": 0,
+   "goals": 3862,
+   "locations": 96,
+   "loot": 2271,
+   "statuses": 430
+  },
+  "match": "sure",
+  "pages": {
+   "characters": [
+    "Races"
+   ],
+   "goals": [
+    "Monsters"
+   ],
+   "locations": [
+    "Altars",
+    "Dungeon"
+   ],
+   "loot": [
+    "Items",
+    "Weapons",
+    "Cards",
+    "Potions",
+    "Scrolls",
+    "Wands",
+    "Artifacts",
+    "Spells",
+    "Food",
+    "Charms"
+   ],
+   "statuses": [
+    "Status effects",
+    "Mutations"
+   ]
+  },
+  "sitename": "CrawlWiki",
+  "wiki": "http://crawl.chaosforge.org/Crawl_Wiki"
+ },
+ "Dungeon Deathball": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Dungeon Drafters": {
+  "api": "https://dungeondrafters.wiki.gg/api.php",
+  "articles": 171,
+  "categories": {
+   "locations": [
+    "Dungeons"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 0,
+   "events": 0,
+   "goals": 0,
+   "locations": 6,
+   "loot": 0,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "events": [
+    "Quests",
+    "Shrines",
+    "NPCs"
+   ],
+   "goals": [
+    "Monsters",
+    "Bosses"
+   ],
+   "locations": [
+    "Shrines"
+   ],
+   "loot": [
+    "Cards",
+    "Boons",
+    "Blessings",
+    "Curios"
+   ]
+  },
+  "sitename": "Dungeon Drafters Wiki",
+  "wiki": "https://dungeondrafters.wiki.gg/"
+ },
+ "Dungeon Hack": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Dungeon Rushers": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Dungeon of Windaria": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Dungeonmans": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Dungeons & Degenerate Gamblers": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Dungeons of Blood and Dream": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Dungeons of Dredmor": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Dungreed": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Dunjungle": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Dwarf Fortress": {
+  "api": "https://dwarffortresswiki.org/api.php",
+  "articles": 10349,
+  "categories": {
+   "characters": [
+    "DF2014:Non-player characters",
+    "Non-player characters",
+    "DF2014:Races",
+    "V0.31:Races",
+    "V0.34:Races",
+    "Races",
+    "Masterwork:Races",
+    "23a:Races",
+    "40d:Races"
+   ],
+   "events": [
+    "Events",
+    "DF2014:Events"
+   ],
+   "goals": [
+    "Creature raw pages",
+    "Creatures",
+    "DF2014:Creature raw pages",
+    "Masterwork:Creatures",
+    "DF2014:Creatures",
+    "V0.34:Creature raw pages",
+    "V0.34:Creatures",
+    "V0.31:Creature raw pages",
+    "V0.31:Creatures",
+    "40d:Creature raw pages",
+    "40d:Creatures",
+    "23a:Creature raw pages"
+   ],
+   "locations": [
+    "World",
+    "DF2014:World",
+    "40d:World",
+    "V0.34:World",
+    "V0.31:World",
+    "Map tiles",
+    "23a:World",
+    "Obsolete features",
+    "40d:Map tiles",
+    "Biomes",
+    "DF2014:Biomes",
+    "DF2014:Map tiles"
+   ],
+   "loot": [
+    "Items",
+    "DF2014:Steals food",
+    "Steals food",
+    "DF2014:Items",
+    "40d:Items",
+    "Weapons",
+    "DF2014:Weapons",
+    "V0.34:Steals food",
+    "V0.34:Weapons",
+    "Masterwork:Steals food",
+    "Steals items",
+    "DF2014:Steals items"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 102,
+   "events": 10,
+   "goals": 6689,
+   "locations": 673,
+   "loot": 804,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "characters": [
+    "Characters"
+   ],
+   "goals": [
+    "Bestiary",
+    "Creatures"
+   ],
+   "locations": [
+    "Locations",
+    "Rooms",
+    "Biomes",
+    "Floors",
+    "Zones",
+    "Shops",
+    "Machines",
+    "Objects",
+    "Dungeon"
+   ],
+   "loot": [
+    "Items",
+    "Weapons",
+    "Artifacts",
+    "Equipment",
+    "Rings",
+    "Tools",
+    "Food"
+   ],
+   "statuses": [
+    "Status"
+   ]
+  },
+  "sitename": "Dwarf Fortress Wiki",
+  "wiki": "https://dwarffortresswiki.org/index.php/Main_Page"
+ },
+ "Dwarves: Glory, Death and Loot": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Elden Ring Nightreign": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Eldritch": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Elemental Survivors": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Elewar: Fused Survivors": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Elin": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Elona": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Ember Knights": {
+  "api": "https://emberknights.wiki.gg/api.php",
+  "articles": 34,
+  "categories": {},
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 0,
+   "events": 0,
+   "goals": 0,
+   "locations": 0,
+   "loot": 0,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "goals": [
+    "Enemies"
+   ],
+   "locations": [
+    "Levels"
+   ],
+   "loot": [
+    "Relics",
+    "Weapons",
+    "Food"
+   ]
+  },
+  "sitename": "Ember Knights Wiki",
+  "wiki": "https://emberknights.wiki.gg/"
+ },
+ "Emberward": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Endgame of Devil": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Endless Alice": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Enter the Gungeon": {
+  "also": [
+   "https://enterthegungeon.fandom.com/api.php",
+   "https://enter-the-gungeon.fandom.com/api.php"
+  ],
+  "api": "https://enterthegungeon.wiki.gg/api.php",
+  "articles": 1477,
+  "categories": {
+   "characters": [
+    "Companions",
+    "Characters",
+    "Character Model"
+   ],
+   "events": [
+    "Dialogue Pages"
+   ],
+   "goals": [
+    "Enemies",
+    "Bosses"
+   ],
+   "locations": [
+    "Locations",
+    "Objects",
+    "Shrines",
+    "Special Rooms",
+    "Shop Discounts"
+   ],
+   "loot": [
+    "Items",
+    "Passive",
+    "Item Quality B",
+    "Item Quality C",
+    "Item Quality A",
+    "Item Quality D",
+    "Active",
+    "Item Quality S",
+    "Stackable Items",
+    "Bullet Upgrades",
+    "Non-Stackable Items",
+    "Charm"
+   ],
+   "statuses": [
+    "Curse",
+    "Sound Effects",
+    "Status Effects"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 45,
+   "events": 29,
+   "goals": 288,
+   "locations": 76,
+   "loot": 1357,
+   "statuses": 36
+  },
+  "match": "sure",
+  "pages": {
+   "characters": [
+    "Characters"
+   ],
+   "events": [
+    "Shrines",
+    "NPCs"
+   ],
+   "goals": [
+    "Enemies",
+    "Bosses"
+   ],
+   "locations": [
+    "Levels",
+    "Shrines",
+    "Shops",
+    "Objects",
+    "Map"
+   ],
+   "loot": [
+    "Items",
+    "Weapons",
+    "Pickups",
+    "Charms"
+   ],
+   "statuses": [
+    "Status effects"
+   ]
+  },
+  "sitename": "Enter the Gungeon Wiki",
+  "wiki": "https://enterthegungeon.wiki.gg/"
+ },
+ "Escape The Mad Empire": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Eternal Quest": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Etrian Mystery Dungeon": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Etrian Mystery Dungeon 2": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Everything is Crab": {
+  "api": "https://everythingiscrab.wiki.gg/api.php",
+  "articles": 195,
+  "categories": {
+   "goals": [
+    "Bosses"
+   ],
+   "loot": [
+    "Passive Evolutions"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 0,
+   "events": 0,
+   "goals": 6,
+   "locations": 0,
+   "loot": 78,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "goals": [
+    "Enemies"
+   ],
+   "locations": [
+    "Map"
+   ],
+   "loot": [
+    "Food"
+   ]
+  },
+  "sitename": "Everything is Crab Wiki",
+  "wiki": "https://everythingiscrab.wiki.gg/"
+ },
+ "Evolings": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Exit the Gungeon": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "FLERP": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "FTL": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Facehand": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Fairy Tail: Dungeons": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Fatal Labyrinth": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Fear & Hunger": {
+  "api": "https://fearandhunger.wiki.gg/api.php",
+  "articles": 981,
+  "categories": {
+   "characters": [
+    "Characters F&H1",
+    "Characters F&H2",
+    "Unseen Characters",
+    "Recruitable Characters F&H1",
+    "Recruitable Characters F&H2",
+    "Playable Characters F&H2",
+    "Community Characters",
+    "Playable Characters F&H1"
+   ],
+   "events": [
+    "Dialogues F&H2",
+    "Dialogues F&H1"
+   ],
+   "goals": [
+    "Enemies F&H1",
+    "Enemies F&H2",
+    "Bosses F&H2",
+    "Bosses F&H1"
+   ],
+   "locations": [
+    "Locations F&H2",
+    "Locations F&H1",
+    "Pages including data maps"
+   ],
+   "loot": [
+    "Weapons F&H1",
+    "Miscellaneous Consumables F&H2",
+    "Armor F&H2",
+    "Weapons F&H2",
+    "Food F&H2",
+    "Armor F&H1",
+    "Food F&H1",
+    "Miscellaneous Consumables F&H1",
+    "Items F&H2",
+    "Items F&H1"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 164,
+   "events": 22,
+   "goals": 139,
+   "locations": 121,
+   "loot": 213,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "events": [
+    "Quests"
+   ]
+  },
+  "sitename": "Fear and Hunger Wiki",
+  "wiki": "https://fearandhunger.wiki.gg/"
+ },
+ "Feed the Deep": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Fights in Tight Spaces": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Final Fantasy Fables: Chocobo's Dungeon": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Fish Fear Me": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Flick Shot Rogues": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Flinthook": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Fogpiercer": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Footgun: Underground": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "For The Warp": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "For the King": {
+  "api": "https://fortheking.wiki.gg/api.php",
+  "articles": 2509,
+  "categories": {
+   "characters": [
+    "Characters",
+    "Non-player characters"
+   ],
+   "events": [
+    "Encounters",
+    "Quest Items"
+   ],
+   "goals": [
+    "Creatures",
+    "Creatures (FTK2)",
+    "Humanoid Creatures",
+    "Undead Creatures",
+    "Bosses",
+    "Beast Creatures",
+    "Enemy Taunt",
+    "Boss Creatures",
+    "Water Creatures",
+    "Armored Creatures",
+    "Flying Creatures",
+    "Poison Creatures"
+   ],
+   "locations": [
+    "Locations (FTK2)",
+    "Special Locations (FTK2)",
+    "Dungeons",
+    "Locations",
+    "World"
+   ],
+   "loot": [
+    "Armor",
+    "Weapons",
+    "Weapons (FTK2)",
+    "Trinkets",
+    "Two-Handed Weapons",
+    "Trinkets (FTK2)",
+    "Artifact",
+    "Consumables (FTK2)",
+    "Items (FTK2)",
+    "Armored",
+    "Consumables",
+    "Equipment"
+   ],
+   "statuses": [
+    "Status Effects",
+    "Curse Immunity"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 40,
+   "events": 81,
+   "goals": 798,
+   "locations": 278,
+   "loot": 1243,
+   "statuses": 51
+  },
+  "match": "sure",
+  "pages": {
+   "characters": [
+    "Characters"
+   ],
+   "events": [
+    "Events",
+    "Quests"
+   ],
+   "goals": [
+    "Bestiary",
+    "Creatures"
+   ],
+   "locations": [
+    "Locations",
+    "Map",
+    "Dungeon"
+   ],
+   "loot": [
+    "Weapons",
+    "Potions",
+    "Scrolls",
+    "Trinkets",
+    "Equipment"
+   ],
+   "statuses": [
+    "Status Effects"
+   ]
+  },
+  "sitename": "For The King Wiki",
+  "wiki": "https://fortheking.wiki.gg/"
+ },
+ "For the King 2": {
+  "api": "https://fortheking.wiki.gg/api.php",
+  "articles": 2509,
+  "categories": {
+   "characters": [
+    "Characters",
+    "Non-player characters"
+   ],
+   "events": [
+    "Encounters",
+    "Quest Items"
+   ],
+   "goals": [
+    "Creatures",
+    "Creatures (FTK2)",
+    "Humanoid Creatures",
+    "Undead Creatures",
+    "Bosses",
+    "Beast Creatures",
+    "Enemy Taunt",
+    "Boss Creatures",
+    "Water Creatures",
+    "Armored Creatures",
+    "Flying Creatures",
+    "Poison Creatures"
+   ],
+   "locations": [
+    "Locations (FTK2)",
+    "Special Locations (FTK2)",
+    "Dungeons",
+    "Locations",
+    "World"
+   ],
+   "loot": [
+    "Armor",
+    "Weapons",
+    "Weapons (FTK2)",
+    "Trinkets",
+    "Two-Handed Weapons",
+    "Trinkets (FTK2)",
+    "Artifact",
+    "Consumables (FTK2)",
+    "Items (FTK2)",
+    "Armored",
+    "Consumables",
+    "Equipment"
+   ],
+   "statuses": [
+    "Status Effects",
+    "Curse Immunity"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 40,
+   "events": 81,
+   "goals": 798,
+   "locations": 278,
+   "loot": 1243,
+   "statuses": 51
+  },
+  "match": "check",
+  "pages": {
+   "characters": [
+    "Characters"
+   ],
+   "events": [
+    "Events",
+    "Quests"
+   ],
+   "goals": [
+    "Bestiary",
+    "Creatures"
+   ],
+   "locations": [
+    "Locations",
+    "Map",
+    "Dungeon"
+   ],
+   "loot": [
+    "Weapons",
+    "Potions",
+    "Scrolls",
+    "Trinkets",
+    "Equipment"
+   ],
+   "statuses": [
+    "Status Effects"
+   ]
+  },
+  "sitename": "For The King Wiki",
+  "wiki": "https://fortheking.wiki.gg/"
+ },
+ "Forestrike": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Forward: Escape the Fold": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Freaky Awesome": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "From The Top": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Frozen Depths": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Full Metal Schoolgirl": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Full Mojo Rampage": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Fury Unleashed": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Fushigi no Gensoukyou": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Fushigi no Gensoukyou 3": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Fushigi no Pixel Dungeon": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "GONNER2": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Galactic Glitch": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Gambonanza": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Garden of Witches": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Gatekeeper": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "GearHead": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "GearHead 2": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "GearHead Caramel": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Genome Guardian": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Genome Guardian 2": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Geometry Arena": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Geometry Arena 2": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Glyphica: Typing Survival": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "GnollHack": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Gnomes": {
+  "api": "https://gnomes.wiki.gg/api.php",
+  "articles": 32,
+  "categories": {
+   "loot": [
+    "Relics"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 0,
+   "events": 0,
+   "goals": 0,
+   "locations": 0,
+   "loot": 2,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "loot": [
+    "Relics"
+   ]
+  },
+  "sitename": "Gnomes Wiki",
+  "wiki": "https://gnomes.wiki.gg/"
+ },
+ "Go Mecha Ball": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "GoNNER": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Goblin Sushi": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "God of Weapons": {
+  "api": "https://godofweapons.wiki.gg/api.php",
+  "articles": 303,
+  "categories": {
+   "characters": [
+    "Classes"
+   ],
+   "loot": [
+    "God of Weapons Wiki"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 4,
+   "events": 0,
+   "goals": 0,
+   "locations": 0,
+   "loot": 2,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "characters": [
+    "Characters",
+    "Classes"
+   ],
+   "loot": [
+    "Items",
+    "Weapons"
+   ]
+  },
+  "sitename": "God of Weapons Wiki",
+  "wiki": "https://godofweapons.wiki.gg/"
+ },
+ "Godbreakers": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Going Under": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Golden Krone Hotel": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Golden Light": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Golfie": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Goobies": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Gordian Quest": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Granvir": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Greedland": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Griftlands": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Guidus": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Guidus Zero": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Guild of Dungeoneering": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Gumballs & Dungeons": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Gunfire Reborn": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Gunlocked": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Gunlocked 2": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Guntouchables": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Hack": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Hack'EM": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Hadean Tactics": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Hades": {
+  "api": "https://hades.fandom.com/api.php",
+  "articles": 749,
+  "categories": {
+   "characters": [
+    "Characters",
+    "Companions"
+   ],
+   "events": [
+    "Events"
+   ],
+   "goals": [
+    "Enemies",
+    "Mini-bosses",
+    "Bosses"
+   ],
+   "locations": [
+    "Locations"
+   ],
+   "loot": [
+    "Items",
+    "Artifacts",
+    "Gathering Tools",
+    "Attack Boons",
+    "Boon",
+    "Boons",
+    "Hades II Boons",
+    "Legendary boons",
+    "Requires Air Boons",
+    "Requires Ares Boons",
+    "Requires Zeus Boons",
+    "Zeus Boons"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 88,
+   "events": 2,
+   "goals": 188,
+   "locations": 27,
+   "loot": 160,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "characters": [
+    "Characters"
+   ],
+   "locations": [
+    "Rooms"
+   ],
+   "loot": [
+    "Weapons",
+    "Artifacts",
+    "Boons",
+    "Tools"
+   ],
+   "statuses": [
+    "Status effects"
+   ]
+  },
+  "sitename": "Hades Wiki",
+  "wiki": "https://hades.fandom.com"
+ },
+ "Hades II": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Halls of Torment": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Hand of Fate": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Hand of Fate 2": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Hand of Fate: Hordes": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Handmancers": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Hangtime!": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Haque": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Has-Been Heroes": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Haste": {
+  "api": "https://haste.wiki.gg/api.php",
+  "articles": 31,
+  "categories": {
+   "characters": [
+    "Characters"
+   ],
+   "goals": [
+    "Bosses"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 11,
+   "events": 0,
+   "goals": 3,
+   "locations": 0,
+   "loot": 0,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "characters": [
+    "Characters"
+   ],
+   "goals": [
+    "Bosses"
+   ],
+   "locations": [
+    "Biomes"
+   ],
+   "loot": [
+    "Items"
+   ]
+  },
+  "sitename": "HASTE Wiki",
+  "wiki": "https://haste.wiki.gg/"
+ },
+ "Have a Nice Death": {
+  "api": "https://haveanicedeath.wiki.gg/api.php",
+  "articles": 73,
+  "categories": {
+   "characters": [
+    "Characters"
+   ],
+   "goals": [
+    "Minions",
+    "Physical Illness Dept. Minions",
+    "Addictions Dept. Minions",
+    "Industrial Pollution Dept. Minions",
+    "Modern Wars Dept. Minions",
+    "Hall of Eternity Dept. Minions"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 3,
+   "events": 0,
+   "goals": 53,
+   "locations": 0,
+   "loot": 0,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "goals": [
+    "Enemies"
+   ],
+   "locations": [
+    "Floors"
+   ],
+   "loot": [
+    "Items",
+    "Weapons",
+    "Food"
+   ],
+   "statuses": [
+    "Curses"
+   ]
+  },
+  "sitename": "Have a Nice Death Wiki",
+  "wiki": "https://haveanicedeath.wiki.gg/"
+ },
+ "He is Coming": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Heading Out": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Heat Signature": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Heavy Bullets": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Hell Clock": {
+  "api": "https://hellclock.wiki.gg/api.php",
+  "articles": 106,
+  "categories": {},
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 0,
+   "events": 0,
+   "goals": 0,
+   "locations": 0,
+   "loot": 0,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "events": [
+    "Shrines"
+   ],
+   "goals": [
+    "Bosses"
+   ],
+   "locations": [
+    "Shrines"
+   ],
+   "loot": [
+    "Relics",
+    "Trinkets"
+   ],
+   "statuses": [
+    "Ailments"
+   ]
+  },
+  "sitename": "Hell Clock Wiki",
+  "wiki": "https://hellclock.wiki.gg/"
+ },
+ "Hell Maiden": {
+  "api": "https://hellmaiden.wiki.gg/api.php",
+  "articles": 122,
+  "categories": {
+   "characters": [
+    "Characters"
+   ],
+   "events": [
+    "Dialogue Pages"
+   ],
+   "goals": [
+    "Limbo Enemies",
+    "Melee Enemies",
+    "Boss Fights"
+   ],
+   "locations": [
+    "Locations",
+    "Stages"
+   ],
+   "loot": [
+    "Mod Cards",
+    "Weapon Cards",
+    "Gold Weapons",
+    "Effect Cards",
+    "Boost Cards",
+    "Silver Weapons",
+    "Spread Cards",
+    "Items",
+    "Curse Cards",
+    "Miracle Cards",
+    "Signature Weapons"
+   ],
+   "statuses": [
+    "Curse Cards"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 9,
+   "events": 10,
+   "goals": 12,
+   "locations": 5,
+   "loot": 127,
+   "statuses": 4
+  },
+  "match": "sure",
+  "pages": {
+   "characters": [
+    "Characters"
+   ],
+   "events": [
+    "Quests"
+   ],
+   "goals": [
+    "Enemies"
+   ],
+   "loot": [
+    "Cards",
+    "Charms"
+   ]
+  },
+  "sitename": "Hell Maiden Wiki",
+  "wiki": "https://hellmaiden.wiki.gg/"
+ },
+ "Hellboy Web of Wyrd": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Hellcard": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Helskate": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Heretic's Fork": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Heroes of Hammerwatch": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Heroes of Hammerwatch II": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Hexagod": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Hive Blight": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "HoloCure: Save the Fans!": {
+  "api": "https://holocure.wiki.gg/api.php",
+  "articles": 381,
+  "categories": {
+   "characters": [
+    "Characters",
+    "Character and equipment statistics"
+   ],
+   "goals": [
+    "Enemies",
+    "Bosses"
+   ],
+   "locations": [
+    "Stages",
+    "Shop",
+    "Area 15"
+   ],
+   "loot": [
+    "Weapons",
+    "Main weapons",
+    "Multishot weapons",
+    "Items",
+    "Melee weapons",
+    "Stat items",
+    "Ranged weapons",
+    "Basic weapons",
+    "Super items",
+    "Utility items",
+    "Character and equipment statistics",
+    "Healing items"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 52,
+   "events": 0,
+   "goals": 38,
+   "locations": 18,
+   "loot": 356,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "characters": [
+    "Characters"
+   ],
+   "goals": [
+    "Bosses"
+   ],
+   "loot": [
+    "Items",
+    "Weapons",
+    "Upgrades",
+    "Food"
+   ]
+  },
+  "sitename": "HoloCure Wiki",
+  "wiki": "https://holocure.wiki.gg/"
+ },
+ "HoloDungeon: Koyori vs HollowLive in Honsha Tower": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Hoplite": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "House of Necrosis": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "How Many Dudes?": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Hungry Horrors": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Hunter X Hunter: Nen X Survivor": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "HyperRogue": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "I Am Legion: Stand Survivors": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "I Am Overburdened": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Icewall": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Immortal Redneck": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "In Celebration of Violence": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Incursion": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Infinite Space III: Sea of Stars": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Infra Arcana": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Inkbound": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Inkshade": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Inscryption": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Insider Trading": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Insurmountable": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Into The Grid": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Into the Breach": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Iratus: Lord of the Dead": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Iter Vehemens Ad Necem": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "Juicy Realm": {
+  "checked": "2026-10-09",
+  "wiki": null
+ },
+ "NetHack": {
+  "api": "https://nethackwiki.com/api.php",
+  "articles": 5875,
+  "categories": {
+   "characters": [
+    "Monster classes",
+    "Your character",
+    "SlashTHEM races",
+    "NotdNetHack races",
+    "NotnotdNetHack races",
+    "EvilHack races",
+    "Races",
+    "DNetHack monster classes",
+    "DNetHack races",
+    "Hack'EM races",
+    "NotdNetHack monster classes",
+    "NotnotdNetHack monster classes"
+   ],
+   "events": [
+    "Quests",
+    "DNethack Alignment Quests",
+    "Quest leaders",
+    "DNetHack quest artifacts",
+    "NotdNetHack quest artifacts",
+    "NotnotdNetHack quest artifacts",
+    "Quest artifacts",
+    "Quest guardians",
+    "DNetHack quest nemeses",
+    "Quest nemeses",
+    "DNethack Quests",
+    "Hack'EM quest artifacts"
+   ],
+   "goals": [
+    "Monster symbols",
+    "Monsters missing tiles",
+    "DNetHack monsters",
+    "Monsters",
+    "NotdNetHack monsters",
+    "NotnotdNetHack monsters",
+    "SLASH'EM monsters",
+    "Hack'EM monsters",
+    "SlashTHEM monsters",
+    "EvilHack monsters",
+    "SpliceHack monsters",
+    "DNetHack monster symbols"
+   ],
+   "locations": [
+    "Dungeon features",
+    "Defunct features (SLASH'EM)",
+    "Defunct features (SpliceHack)",
+    "Defunct objects (SLASH'EM)",
+    "Special rooms",
+    "Object materials",
+    "Dungeon branches",
+    "DNetHack dungeon branches",
+    "Deferred and defunct features (SlashTHEM)",
+    "Deferred features",
+    "SLASH'EM dungeon branches",
+    "SlashTHEM dungeon branches"
+   ],
+   "loot": [
+    "DNetHack weapons",
+    "NotdNetHack weapons",
+    "NotnotdNetHack weapons",
+    "Weapons",
+    "DNetHack artifacts",
+    "Spellbooks",
+    "Tools",
+    "NotdNetHack artifacts",
+    "NotnotdNetHack artifacts",
+    "Potions",
+    "Wands",
+    "Rings"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 208,
+   "events": 399,
+   "goals": 4243,
+   "locations": 305,
+   "loot": 2404,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "characters": [
+    "Classes",
+    "Heroes",
+    "Races",
+    "Roles"
+   ],
+   "events": [
+    "Quests"
+   ],
+   "goals": [
+    "Creatures"
+   ],
+   "locations": [
+    "Floors",
+    "Levels",
+    "Altars",
+    "Shops",
+    "Objects",
+    "Map",
+    "Dungeon"
+   ],
+   "loot": [
+    "Weapons",
+    "Potions",
+    "Scrolls",
+    "Wands",
+    "Artifacts",
+    "Equipment",
+    "Rings",
+    "Amulets",
+    "Spells",
+    "Tools",
+    "Food"
+   ],
+   "statuses": [
+    "Curses",
+    "Intrinsics"
+   ]
+  },
+  "sitename": "NetHackWiki",
+  "wiki": "https://nethackwiki.com"
+ },
+ "Risk of Rain 2": {
+  "also": [
+   "https://riskofrain2.fandom.com/api.php",
+   "https://risk-of-rain-2.fandom.com/api.php",
+   "https://riskofrain.fandom.com/api.php",
+   "https://riskofrain.wiki.gg/api.php"
+  ],
+  "api": "https://riskofrain2.wiki.gg/api.php",
+  "articles": 666,
+  "categories": {
+   "characters": [
+    "Survivors of the Void",
+    "Mechanical Characters",
+    "Survivors",
+    "IgnoreFallDamage Characters",
+    "Combat Characters",
+    "IgnoreKnockback Characters",
+    "Void Characters",
+    "ImmuneToVoidDeath Characters",
+    "Utility Characters",
+    "ForbiddenAsBoss Characters",
+    "Healing Characters",
+    "ImmuneToGoo Characters"
+   ],
+   "goals": [
+    "Monsters",
+    "Bosses"
+   ],
+   "locations": [
+    "Shrines"
+   ],
+   "loot": [
+    "Items",
+    "Utility Items",
+    "Damage Items",
+    "AIBlacklist Items",
+    "Equipment",
+    "Technology Items",
+    "Healing Items",
+    "TemporaryBlacklist Items",
+    "OnKillEffect Items",
+    "MobilityRelated Items",
+    "TurretBlacklist Items",
+    "WorldUnique Items"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 211,
+   "events": 0,
+   "goals": 103,
+   "locations": 12,
+   "loot": 679,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "characters": [
+    "Characters",
+    "Survivors"
+   ],
+   "events": [
+    "Shrines"
+   ],
+   "goals": [
+    "Enemies"
+   ],
+   "locations": [
+    "Locations",
+    "Stages",
+    "Shrines"
+   ],
+   "loot": [
+    "Artifacts",
+    "Equipment",
+    "Augments"
+   ],
+   "statuses": [
+    "Status Effects",
+    "Debuffs"
+   ]
+  },
+  "sitename": "Risk of Rain 2 Wiki",
+  "wiki": "https://riskofrain2.wiki.gg/"
+ },
+ "Slay the Spire 2": {
+  "also": [
+   "https://slaythespire.fandom.com/api.php",
+   "https://slay-the-spire.fandom.com/api.php"
+  ],
+  "api": "https://slaythespire.wiki.gg/api.php",
+  "articles": 2240,
+  "categories": {
+   "characters": [
+    "Character"
+   ],
+   "events": [
+    "Events"
+   ],
+   "goals": [
+    "Monsters",
+    "Bosses",
+    "Minions"
+   ],
+   "loot": [
+    "Cards",
+    "Relics",
+    "StS2 Potions",
+    "Potions",
+    "BG Cards",
+    "BG Relics"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 9,
+   "events": 114,
+   "goals": 113,
+   "locations": 0,
+   "loot": 1591,
+   "statuses": 0
+  },
+  "match": "check",
+  "pages": {
+   "events": [
+    "Events"
+   ],
+   "goals": [
+    "Enemies",
+    "Bosses",
+    "Bestiary"
+   ],
+   "loot": [
+    "Relics",
+    "Cards",
+    "Potions"
+   ],
+   "statuses": [
+    "Status",
+    "Buffs",
+    "Debuffs",
+    "Afflictions",
+    "Keywords"
+   ]
+  },
+  "sitename": "Slay the Spire Wiki",
+  "wiki": "https://slaythespire.wiki.gg/"
+ },
+ "Spelunky 2": {
+  "api": "https://spelunky.fandom.com/api.php",
+  "articles": 702,
+  "categories": {
+   "goals": [
+    "Spelunky 2 Bestiary",
+    "Spelunky HD Monsters",
+    "Spelunky Classic Enemies",
+    "Enemies"
+   ],
+   "loot": [
+    "Spelunky 2 Items",
+    "Spelunky HD Items",
+    "Spelunky Classic Items",
+    "Items"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 0,
+   "events": 0,
+   "goals": 166,
+   "locations": 0,
+   "loot": 148,
+   "statuses": 0
+  },
+  "match": "check",
+  "pages": {
+   "goals": [
+    "Monsters"
+   ],
+   "locations": [
+    "Rooms",
+    "Areas",
+    "Altars",
+    "Shops"
+   ],
+   "loot": [
+    "Items",
+    "Weapons"
+   ]
+  },
+  "sitename": "Spelunky Wiki",
+  "wiki": "https://spelunky.fandom.com"
+ },
+ "The Binding of Isaac: Rebirth": {
+  "also": [
+   "https://bindingofisaacrebirth.fandom.com/api.php",
+   "https://thebindingofisaac.fandom.com/api.php",
+   "https://the-binding-of-isaac.fandom.com/api.php",
+   "https://bindingofisaac.fandom.com/api.php"
+  ],
+  "api": "https://bindingofisaacrebirth.wiki.gg/api.php",
+  "articles": 1774,
+  "categories": {
+   "characters": [
+    "Characters"
+   ],
+   "goals": [
+    "Bosses",
+    "Monsters",
+    "Debut bosses in Rebirth",
+    "Champion bosses",
+    "Debut bosses in Repentance",
+    "Chapter 2 bosses",
+    "Chapter 1 bosses",
+    "Mini-bosses",
+    "Flooded Caves bosses",
+    "Caves bosses",
+    "Catacombs bosses",
+    "Champion bosses using color id 18"
+   ],
+   "locations": [
+    "Stages",
+    "Chapter 2 bosses",
+    "Objects",
+    "Rooms",
+    "Chapter 1 bosses",
+    "Chapter 4 bosses",
+    "Chapter 3 bosses",
+    "Chapter 2.5 bosses",
+    "Chapter 2 monsters",
+    "Chapter 4 monsters",
+    "Chapter 1.5 bosses",
+    "Chapter 3 monsters"
+   ],
+   "loot": [
+    "Passive collectibles",
+    "Trinkets",
+    "Damage-triggered items",
+    "Cards",
+    "Item tags",
+    "Item pools",
+    "Conjoined items",
+    "Damage-preventing items",
+    "Mom items",
+    "Beelzebub items",
+    "Yes Mother? items",
+    "Bomb items"
+   ]
+  },
+  "checked": "2026-10-09",
+  "counts": {
+   "characters": 36,
+   "events": 0,
+   "goals": 878,
+   "locations": 232,
+   "loot": 1301,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "characters": [
+    "Characters",
+    "Classes"
+   ],
+   "events": [
+    "NPCs"
+   ],
+   "goals": [
+    "Enemies",
+    "Bosses",
+    "Bestiary"
+   ],
+   "locations": [
+    "Rooms",
+    "Floors",
+    "Machines",
+    "Map"
+   ],
+   "loot": [
+    "Items",
+    "Cards",
+    "Trinkets"
+   ],
+   "statuses": [
+    "Status Effects",
+    "Curses"
+   ]
+  },
+  "sitename": "The Binding of Isaac: Rebirth Wiki",
+  "wiki": "https://bindingofisaacrebirth.wiki.gg/"
+ },
+ "[Redacted]": {
+  "checked": "2026-10-09",
+  "wiki": null
+ }
+}
