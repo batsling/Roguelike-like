@@ -11,6 +11,21 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Research, second batch.** Mewgenics, The Binding of Isaac (original and
+  Rebirth), Darkest Dungeon, Death Road to Canada and Dwarf Fortress, every
+  kind. Most goal rows from the blind pass needed work: Isaac's 21 were
+  re-filed (eight are Rebirth/DLC bosses), eleven rewritten to what the monster
+  does, and three flagged; Darkest Dungeon's Bone Courtier was a stress dealer,
+  not a summoner. The thin areas got the most: the first board objects as
+  units and tiles (Mewgenics' cactus, decoy, tesla coil and tombstone; gas,
+  tar and magma; a cage trap), two things that spend keys (Isaac's Key Master,
+  Darkest Dungeon's Locked Display Cabinet), four more shopkeeper ideas,
+  ten events (Baphomet, Death, the Devil and Angel Rooms, the Strange Mood…)
+  and a stinky body for the Dross location that has been asking for one.
+  `tiles` and `units` are research targets now, and `page --raw` reads wikis
+  that keep their substance in templates. The owner's Diablo → Halls of
+  Torment source (an archived interview with a proof) is in `diablo.tres`.
+
 - **How research picks what to take, and the first batch.** The owner set the
   method: a candidate must be recognisable (its own name and flavour), work on
   top of any game, not duplicate anything live or proposed (one row, from the
