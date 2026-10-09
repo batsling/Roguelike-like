@@ -424,7 +424,13 @@
   "connections": "before 2026-10-07"
  },
  "Children of Morta": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-09: John; the others' crafts (music, rogue, mage) repeat existing level-ups",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-09: Save the Wolf Cub, Memory Game",
+  "goals": "2026-10-09: nothing: its bosses are a god (live 'Defeat a God'), a stone golem (live 'made of stone'), a machine and a king (candidates), and the wiki pages are one line each",
+  "locations": "2026-10-09: nothing: the dungeons are areas with no distinctive feature on the wiki",
+  "loot": "2026-10-09: Unstable Relics; weapons and evolutions: none (divine relics are gem-priced abilities, not weapons; no evolutions)",
+  "statuses": "2026-10-09: nothing: no status pages; Corruption is the setting's evil, not a status"
  },
  "Chocobo's Dungeon 2": {
   "connections": "before 2026-10-07"
