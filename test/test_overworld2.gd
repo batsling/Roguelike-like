@@ -4850,8 +4850,12 @@ func test_the_starts_are_different_distances_when_the_graph_allows_it() -> void:
 		var lens: Dictionary = {}
 		for opt in _ui._start_options:
 			lens[int(opt["path_len"])] = true
-		assert_eq(lens.size(), _best_spread(amulet, _ui._start_options.size()),
-			"the panel took every distinct distance its genres could reach")
+		# AT LEAST TWO, not as many as possible (RunGraph.SPREAD_MIN_DISTANCES):
+		# hunting for a third distance over-picked the few games that sit at one.
+		var want: int = mini(RunGraph.SPREAD_MIN_DISTANCES,
+			_best_spread(amulet, _ui._start_options.size()))
+		assert_gte(lens.size(), want,
+			"the panel shows at least %d distances when its genres can reach them" % want)
 
 
 # The most distinct distances a panel of `want` cards could POSSIBLY show against

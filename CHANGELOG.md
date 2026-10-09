@@ -11,6 +11,16 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The starting games are random now.** The Amulet was already a uniform draw;
+  the three start cards were ranked by early-branching score, which put the same
+  hubs on most panels (253 distinct starts on 900 cards, top ten 30%, Hack 'Em
+  one run in seven) and nearly always offered Action and Strategy. Now the genre
+  trio and each card's game are uniform draws inside the same rules (band, route
+  floor, three genres), and the panel needs at least two different distances
+  rather than as many as possible (`RunGraph.SPREAD_MIN_DISTANCES`) — hunting for
+  a third over-picked the few games at rare distances. Measured: 336 distinct
+  starts, top ten 14%, all four genre trios about equally common. Spec §19.3.3.
+
 - **Luck lowers the lost-run spawn, and the enemy statuses match the goal they
   ride.** A lost run's chance of standing a body up now goes through the same
   Luck roll as every other bad outcome (`Stats.roll_chance`, `Favour.LOW`): a

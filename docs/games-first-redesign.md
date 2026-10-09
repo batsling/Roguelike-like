@@ -4776,7 +4776,8 @@ put a card on the table that taking it cannot reach in one move.
 
 `NUM_START_OPTIONS` goes from **2 to 3**, and `MAX_PATH_LENGTH` from **7 to 8**
 with it. The two belong together: the panel wants its cards at **different
-distances** as well as different genres (`_spread_across_band`), and three cards
+distances** as well as different genres (`_spread_across_band`, now
+`_random_spread` — §19.3.3), and three cards
 drawn from a four-rung band leave that preference very little room. A fifth rung
 is what makes three distinct distances an ordinary outcome rather than a lucky one.
 
@@ -4939,6 +4940,44 @@ whole. So a guaranteed route reads slightly richer in Event and Shop than
 average and the rest of the map slightly poorer, which is the honest way round —
 the odds on the tin stay true of the map, and the guarantee is visibly paid for
 somewhere.
+
+### 19.3.3 THE STARTS ARE DRAWN, NOT RANKED
+
+The Amulet was already a uniform draw over every game that can be the goal
+(§19.9): 250 distinct Amulets in 300 runs, which is what uniform over ~790 gives.
+The **starts were not**. `_strict_starts_for` kept the best-branching start per
+genre per distance plus a near-best pool (`START_SCORE_SLACK`, 3), and
+`_spread_across_band` picked WHICH genres and WHICH distances by the highest
+total branching score. Over 300 runs that put 253 distinct starts on 900 cards
+(of 484 eligible), gave the top ten 30%, put Hack 'Em on a card one run in seven,
+and almost never offered Deckbuilder and Traditional together.
+
+**Now nothing about a start is ranked** (`RunGraph._random_spread`). The rules
+hold — the 4–8 band, the route floor, three genres — and inside them:
+
+1. **The genres** are a uniform pick among the genre trios that can meet the
+   distance rule.
+2. **The games** are a uniform pick over every qualifying start of each genre, at
+   any distance, redrawn until the trio meets the distance rule.
+
+**The distance rule is "at least two different distances"**
+(`SPREAD_MIN_DISTANCES`), not "as many as possible". Most starts sit 4–5 hops
+out, so insisting on three distances redrew until a card landed on a rare 6–8 —
+and the handful of games living there were over-picked (Hack 'Em, often the only
+Traditional at 6, stayed at one run in seven). Measured over 300 runs each:
+
+| Distance rule | Distinct starts / 900 | Top-ten share |
+|---|---|---|
+| ranked (before) | 253 | 30% |
+| random, as many as possible | 296 | 21% |
+| **random, at least two** | **336–351** | **13–14%** |
+| random, no rule | 354 | 11% |
+
+Two keeps the panel a choice of run length — never three cards at one distance —
+for nearly all of the randomness of no rule. The cost is that runs lean shorter:
+7–8-hop cards are about half as common as under the ranked draw. The branching
+score is still computed (`dag_branch_scores_to`) and still reported on each
+option; nothing chooses by it.
 
 ### 19.4 The spawn model
 

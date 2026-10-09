@@ -176,3 +176,96 @@ func test_the_screen_and_the_generator_ask_the_same_question() -> void:
 func test_a_game_off_the_map_supplies_no_panel() -> void:
 	assert_eq(RunGraph.panel_genres(&"not_a_game_at_all"), 0,
 		"a game that is not on the map cannot be opened on anything")
+
+
+# --- the panel is DRAWN, not ranked (§19.3.3) --------------------------------
+#
+# Built by hand rather than off the live graph so each case is exact: `by_type` is
+# the shape `_strict_starts_for` returns, genre -> {distance -> cell record}.
+
+func _fake_start(id: String, type_val: int) -> GameData:
+	var g := GameData.new()
+	g.id = StringName(id)
+	g.type = type_val
+	return g
+
+# `layout` is genre -> {distance: how many starts}. Scores are deliberately
+# lopsided — the first start in each cell scores far above the rest — so a draw
+# that still favoured branching would show it.
+func _fake_cells(layout: Dictionary) -> Dictionary:
+	var by_type: Dictionary = {}
+	for t in layout:
+		by_type[t] = {}
+		for l in layout[t]:
+			var cands: Array = []
+			for i in range(int(layout[t][l])):
+				cands.append({"game": _fake_start("%d_%d_%d" % [t, l, i], t),
+					"score": 100 if i == 0 else 0, "slack": 6})
+			by_type[t][l] = RunGraph._cell_record(cands, int(l))
+	return by_type
+
+func _lens(picks: Array) -> Dictionary:
+	var d: Dictionary = {}
+	for p in picks:
+		d[int(p["path_len"])] = true
+	return d
+
+func test_a_panel_never_puts_three_cards_at_one_distance_when_it_can_help_it() -> void:
+	var A := GameData.GameType.ACTION
+	var S := GameData.GameType.STRATEGY
+	var D := GameData.GameType.DECKBUILDER
+	# Everything at 4 hops, and ONE strategy start at 6: the only way to show two
+	# distances is that one game, so it must be on every panel.
+	var by_type: Dictionary = _fake_cells({A: {4: 10}, S: {4: 10, 6: 1}, D: {4: 10}})
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 3
+	for _i in range(40):
+		var picks: Array = RunGraph._random_spread(by_type, 3, rng)
+		assert_eq(picks.size(), 3)
+		assert_eq(_lens(picks).size(), 2, "two distances, never one")
+
+func test_a_panel_does_not_hunt_for_a_third_distance() -> void:
+	var A := GameData.GameType.ACTION
+	var S := GameData.GameType.STRATEGY
+	var D := GameData.GameType.DECKBUILDER
+	# Three distances ARE reachable (A at 8), but only through one rare game.
+	# At-least-two must not chase it: most panels stay at two distances.
+	var by_type: Dictionary = _fake_cells({A: {4: 20, 8: 1}, S: {4: 10, 5: 10}, D: {4: 10, 5: 10}})
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 5
+	var rare := 0
+	for _i in range(200):
+		for p in RunGraph._random_spread(by_type, 3, rng):
+			if int(p["path_len"]) == 8:
+				rare += 1
+	# Uniform over Action's 21 starts is ~10 of 200; chasing three distances
+	# would put it on most panels.
+	assert_lt(rare, 30, "the lone 8-hop game is drawn about as often as its share (%d)" % rare)
+
+func test_the_genres_and_games_are_drawn_rather_than_ranked() -> void:
+	var types: Array = RunGraph.TYPE_ORDER
+	var layout: Dictionary = {}
+	for t in types:
+		layout[t] = {4: 6, 5: 6}
+	var by_type: Dictionary = _fake_cells(layout)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 11
+	var trios: Dictionary = {}
+	var seen: Dictionary = {}
+	var top_scorers := 0
+	var cards := 0
+	for _i in range(200):
+		var key: Array = []
+		for p in RunGraph._random_spread(by_type, 3, rng):
+			key.append(int((p["game"] as GameData).type))
+			seen[(p["game"] as GameData).id] = true
+			cards += 1
+			if int(p["score"]) == 100:
+				top_scorers += 1
+		key.sort()
+		trios[str(key)] = true
+	assert_eq(trios.size(), 4, "every genre trio comes up")
+	assert_gt(seen.size(), 40, "and nearly all 48 starts do (%d)" % seen.size())
+	# 2 of 12 starts per genre are the cell bests; a ranked draw would pick them
+	# every time, a uniform one about a sixth of the time.
+	assert_lt(float(top_scorers) / cards, 0.35, "the best-branching start is not favoured")
