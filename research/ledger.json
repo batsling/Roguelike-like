@@ -755,8 +755,13 @@
   "connections": "before 2026-10-07"
  },
  "Dicey Dungeons": {
+  "characters": "2026-10-09: nothing: the Thief, Inventor and Robot repeat level-ups already proposed (stealing, crafting, a won gamble)",
   "connections": "before 2026-10-07",
-  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+  "events": "2026-10-09: nothing: its episodes are run rules, not prompts",
+  "goals": "2026-10-09: checked 3: Slime, Snowman and Lady Luck right (Lady Luck moved to 4-Insane); Jester and Wicker Man added; Drake left out (repeats the live 'Defeat a vampire'), Copycat (repeats Risk of Rain's Scavenger), Sticky Hands (repeats UnderMine's runaway), Cornelius (repeats For the King's countdown)",
+  "locations": "2026-10-09: nothing: its floors hold shops, apples and chests, all generic",
+  "loot": "2026-10-09: Precious Egg; weapons and evolutions: Cardboard Sword; no evolutions (upgrades are a '+' on the same piece)",
+  "statuses": "2026-10-09: Bear Transform; Cursed left out (Dead Cells has the name), Thorns (Riposte's combat)"
  },
  "Die For The Lich": {
   "connections": "before 2026-10-07"
