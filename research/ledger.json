@@ -2491,11 +2491,22 @@
   "connections": "before 2026-10-07"
  },
  "The Binding of Isaac": {
+  "characters": "2026-10-09: researched together with Rebirth (one wiki); rows are filed under Rebirth",
   "connections": "before 2026-10-07",
-  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+  "events": "2026-10-09: researched together with Rebirth (one wiki); rows are filed under Rebirth",
+  "goals": "2026-10-09: checked 21 rows on the Rebirth wiki: 8 moved to Rebirth (they're Rebirth/DLC bosses), 11 goals fixed, 3 flagged (Uriel's release, Strider, The Fallen)",
+  "locations": "2026-10-09: researched together with Rebirth (one wiki); rows are filed under Rebirth",
+  "loot": "2026-10-09: researched together with Rebirth (one wiki); rows are filed under Rebirth",
+  "statuses": "2026-10-09: researched together with Rebirth (one wiki); rows are filed under Rebirth"
  },
  "The Binding of Isaac: Rebirth": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-09: Keeper, The Lost; Eden and Judas overlap Erratic Deck and Ironclad",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-09: Devil Room, Angel Room",
+  "goals": "2026-10-09: 8 rows moved here from the original; nothing added (Isaac already supplies 11 live bodies)",
+  "locations": "2026-10-09: 3 rooms, 2 machines/beggars; the Slot Machine moved here from Mewgenics",
+  "loot": "2026-10-09: 4 rows; Isaac already supplies 47 live pieces",
+  "statuses": "2026-10-09: Midas Touch, Curse of the Blind"
  },
  "The Doors of Trithius": {
   "connections": "before 2026-10-07"
