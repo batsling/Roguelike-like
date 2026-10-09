@@ -218,7 +218,13 @@
   "connections": "before 2026-10-07"
  },
  "Battle Brothers": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-09: nothing: the player is a company; backgrounds are hirelings",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-09: Bird Shits on Sellsword, Ball on Roof (many event pages are empty templates)",
+  "goals": "2026-10-09: 4: Nachzehrer, Alp, Hexe, Unhold (Necrosavant = vampire, Barbarian King = king, Geist's morale breaking and the Kraken's drag are other games' rows)",
+  "locations": "2026-10-09: Sunken Library, Grotesque Tree (Black Monolith and Witch Hut are fights for a reward)",
+  "loot": "2026-10-09: nothing: weapons and armour are stat variants; the named artifacts (Emperor's Armor, Black Book) are location rewards",
+  "statuses": "2026-10-09: Hangover; Drunk is a live goal, Charmed is Lovesick, Overwhelmed and Swarm are stat penalties"
  },
  "Battle Shapers": {
   "connections": "before 2026-10-07"
