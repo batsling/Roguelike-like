@@ -47,12 +47,20 @@ ALLOWED = {
         "systems-graph.md says outright 'the renderer is still unbuilt' and sketches it",
     "tools/tag_edits.json":
         "the game's tag Export writes it and apply_tag_edits.py spends it; it exists only in between",
+    # Retired in October 2026 when every kind of research moved into research/
+    # (docs/research.md). The docs name them to say where the rows came from.
+    "docs/influence-candidates.md":
+        "influence-research.md says its lines moved into research/connections.csv",
+    "docs/goal-candidates.csv":
+        "goal-enemy-candidates.md says it became research/goals.csv",
+    "tools/influence_researched.json":
+        "influence-research.md's research log names the ledger the October passes used",
 }
 
 # A backticked path that starts with one of the repo's real top-level folders.
 PATH = re.compile(
     r"`((?:res://|scripts/|test/|data/|tools/|obs/|scenes/|images/|images2\.0/|"
-    r"docs/|addons/|fonts/|legacy-web/)[\w./\-]+\.\w{2,5})`"
+    r"docs/|addons/|fonts/|legacy-web/|research/)[\w./\-]+\.\w{2,5})`"
 )
 
 

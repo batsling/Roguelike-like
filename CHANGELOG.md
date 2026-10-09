@@ -11,6 +11,131 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Research, sixth batch.** Young Yangus, Monster Train, Caves of Qud
+  (goals only; its other kinds were done in the pilot), Dicey Dungeons, One
+  Step From Eden, Children of Morta, Skul, Boneraiser Minions, Astral Ascent
+  and Nuclear Throne: 33 new rows. Twelve blind goal rows were checked, and
+  five of them were wrong on the wiki. Caves of Qud's Slog has nothing to do
+  with carrying liquids; it spews the one it stands in. Nuclear Throne's
+  I.D.P.D. hunt you for being too strong, and Big Dog's overkill goal
+  described nothing it does. Big Dog's real trait, sleeping until woken,
+  repeats Darkest Dungeon 2's Dreaming General, so that row is gone. Skul's
+  Chimera repeated Curse of the Dead Gods' stitched creature. These wikis are
+  thinner, so most games got only a few rows, and every kind with nothing
+  usable says why in the ledger. Young Yangus has a single row: the Dragon
+  Quest wiki's sections for it are empty headers (the game was Japan-only
+  until a fan patch last week). New weapons include the Guillotine and the
+  Frozen Lance, which share live goals ("Behead an enemy", "Freeze an
+  enemy").
+
+- **Research, fifth batch.** Spelunky, Rogue Legacy, Slay the Spire, Hades,
+  Rogue Legacy 2, Darkest Dungeon 2, Star of Providence, Risk of Rain, For the
+  King 2 and A Robot Named Fight!, every kind: 119 rows. The blind goal rows
+  were checked as before. Slay the Spire had 14, Risk of Rain 5, Rogue Legacy
+  2 had 4. Risk of Rain's Parent never grabs and throws you; it hunts whoever
+  killed its child, and the Child is live. Its Providence goal repeated the
+  live Strength status. Four rows were dropped because they repeated
+  earlier candidates: Slay the Spire's gremlin and Mystic, Hades' Asterius,
+  and Rogue Legacy 2's Jonah. Two wiki notes record where a shared wiki keeps a
+  sequel's pages. Darkest Dungeon 2's item lists live in templates, and For
+  the King 2's pages carry an "(FTK2)" suffix.
+
+- **Weapons and evolutions are asked of every game.** Loot research now
+  always looks for weapons (`weapons`, aimed per `docs/loot-passives.md` §12)
+  and evolutions (`evolutions`, §13). Candidate rows carry the sheet's own
+  columns in `Extra`. `research.py check` refuses an unknown Aim or Outcome,
+  and an evolution whose Requirement 1 is not a live or candidate weapon. The
+  per-game brief gets a "Weapons and evolutions" section, and a game with
+  neither has to say so in its ledger note. All 30 games researched before
+  this got the pass. There are now 50 weapon and 14 evolution candidates.
+  Gungeon's guns and synergies, Ball x Pit's evolved balls and Star of
+  Providence's Unique weapons supply most of the evolutions. Where a game
+  hands its weapon over ready-made, the row says the evolution reading is
+  ours. `research.py` also waits out wiki.gg's rate limit (a 200 with
+  `ratelimited` in the body, which used to read as "no page").
+
+- **Research, fourth batch.** The King is Watching, Enter the Gungeon, Breach
+  Wanderers, Aethermancer, Azure Dreams, Ball x Pit, Scourgebringer, Patch
+  Quest, Battle Brothers and Peglin: 70 rows. Smaller wikis meant fewer
+  rows per game. Breach Wanderers has none at all: its wiki is Lua data
+  modules with no descriptions or lore, and the ledger says so. Gungeon's nine
+  blind goals were the worst so far: four bosses filed as enemies, and four
+  goals the wiki doesn't support. Keys and curses got more to do: Flynt
+  takes keys, the Lock-a-doora eats one, Cursula sells at half price plus a
+  curse. Two overlaps from earlier batches were caught on the way and fixed.
+  Commencement's "Go to the moon" repeated the live "Go to a Moon".
+  Aethermancer's wolpertinger repeated Curse of the Dead Gods' stitched
+  creature. The checker used while writing rows now also reads location goals,
+  curse conditions and weapon goals, which is where the first one hid.
+
+- **Research, third batch.** Cult of the Lamb, For the King, Moonlighter,
+  Noita, UnderMine, Brogue, Dead Cells, Slice & Dice and Risk of Rain 2, every
+  kind: 130 rows. The blind goal rows came out worse here than in batch two.
+  Five bosses were filed as enemies (Dead Cells' Giant, Time Keeper and
+  Dracula; Risk of Rain 2's Aurelionite and Xi Construct). Brogue's
+  "paralytic bloat" isn't in the game. Several goals described something that
+  doesn't happen: Mithrix destroying a moon, Selt's weak tail, the Warden of
+  Yendor guarding the deep. Each is now fixed to what the wiki says the
+  monster does, with the old idea moved to the body it fitted where it had
+  one (Selt's weak spot to Ponzu, the Goblin Conjurer's summon goal to Brogue's
+  Spectral Blade, Dead Cells' timed doors to an object). Slice & Dice's Demon
+  has no wiki page, so it is marked `?` to check in game. Keys finally have
+  things to spend them on (Dibble's door, Brogue's vault), and there are four
+  more shopkeepers: Sho'guul prices relics in curses, Newt in Lunar Coins.
+
+- **Research, second batch.** Mewgenics, The Binding of Isaac (original and
+  Rebirth), Darkest Dungeon, Death Road to Canada and Dwarf Fortress, every
+  kind. Most goal rows from the blind pass needed work: Isaac's 21 were
+  re-filed (eight are Rebirth/DLC bosses), eleven rewritten to what the monster
+  does, and three flagged; Darkest Dungeon's Bone Courtier was a stress dealer,
+  not a summoner. The thin areas got the most: the first board objects as
+  units and tiles (Mewgenics' cactus, decoy, tesla coil and tombstone; gas,
+  tar and magma; a cage trap), two things that spend keys (Isaac's Key Master,
+  Darkest Dungeon's Locked Display Cabinet), four more shopkeeper ideas,
+  ten events (Baphomet, Death, the Devil and Angel Rooms, the Strange Mood…)
+  and a stinky body for the Dross location that has been asking for one.
+  `tiles` and `units` are research targets now, and `page --raw` reads wikis
+  that keep their substance in templates. The owner's Diablo → Halls of
+  Torment source (an archived interview with a proof) is in `diablo.tres`.
+
+- **How research picks what to take, and the first batch.** The owner set the
+  method: a candidate must be recognisable (its own name and flavour), work on
+  top of any game, not duplicate anything live or proposed (one row, from the
+  game that made it most famous), and fill a gap or plug into an existing
+  system. Ideas that need a new mechanic are allowed and flagged. Every kind
+  gained `What it is there` / `Builds on` / `Needs`, and `research.py inventory`
+  lists everything the game has by system, so those choices are made against
+  it. The 80 goal games written blind are back in the queue as `redo:`
+  (check, fix, then add). The research sheet now keeps up with the workbook by
+  itself: `import-games-godot.py` ends with `research.py sync`, and a pair the
+  owner added that disagrees with its research row is listed under "Needs a
+  look". First batch: NetHack, Dungeon Crawl Stone Soup, Diablo and Don't
+  Starve, every kind: ~100 rows, including the first shopkeeper ideas (Izchak
+  and Tristram's four), the first vampire body (Vlad), the first key sources
+  (Skeleton Key, Rune of Zot), and new tiles and units flagged in `Needs`.
+
+- **One research system, eight kinds.** Research used to be three systems in
+  three shapes: influences in a markdown doc, goal-enemies in a paste-queue CSV,
+  tag suggestions in `tools/Research.xlsx`, each with its own idea of "done".
+  `tools/research.py` is now the single entry point for connections, tags, goals,
+  loot, events, characters, statuses and locations ([docs/research.md](docs/research.md)).
+  Candidates live in `research/<kind>.csv`, in the target sheet's own columns
+  plus `Why it fits` / `Source` / `Confidence` / `Status` / `Owner` / `ID`. The
+  owner reviews them in `Research.xlsx` (a sheet per kind, `Owner` yes/no), and
+  `sync` brings their edits back row by row against a hidden hash of each row as
+  built, so an owner edit and a session edit to the same row are reported rather
+  than one silently winning. One ledger (`research/ledger.json`, game × kind)
+  replaces `tools/influence_researched.json`. The old candidates moved word for
+  word: 307 goal rows, and every line of `docs/influence-candidates.md` as 585
+  rows, one per pair a line proposes. The workflow also changed: the goal rows
+  were written from search summaries because the wikis were unreachable, and
+  they answer now. `research.py wikis` found a wiki for 333 of the 921 games
+  (`research/wikis.json`, each judged by name and by its main page, which caught
+  three name collisions: a TV show, a web series and a Ragnarök fan wiki).
+  `brief` and `page` read them. A Caves of Qud pilot wrote 20 rows across loot,
+  statuses, locations, events and characters. The porting steps now hand off to
+  `research.py new`, which starts every kind for the games just added.
+
 - **Four Isaac relics, two cards and four games from the October upload.** The
   relics (Book of Revelations, Latch Key, Mom's Key, The Book of Sin) and the two
   cards (VIII - Justice, 2 of Spades) arrived with Descriptions and blank Effect

@@ -15,7 +15,8 @@ the honour system.
 | what is known-slow and not yet fixed | `docs/performance-backlog.md` — measured findings with the fix for each. The Events tab and the page's cold compile are fixed; `GameLoop2.gd` has been measured and is cheap. What stays useful is the method: `Overworld2.gd` carries a seam table re-measured rather than guessed, and `test_page_load.gd` keeps the screens a run only opens on demand out of the page's compile |
 | what the layout pass left open | `docs/layout-review-backlog.md` — all eight items closed. Fonts and gaps are both on `UITheme`'s scales project-wide, with `test_design_tokens.gd` asserting both lists complete and no value off the scale. All of it stays in the doc with its reasoning so none of it gets re-litigated. Two standing notes in it are worth reading before touching any UI: judge colour by sampling the rendered pixel rather than by eye off a screenshot (that produced one confidently wrong finding), and use the `verify` skill to look at a screen rather than reasoning about it |
 | trinkets, passive cards, bags, weapons, and why WHERE a piece sits in the pack matters | `docs/loot-passives.md` — the sixth loot kind, Blueprint's neighbour rule (it copies ANY loot, usable pieces included), the five hooks it added, the coin-chain rule and the trigger toast; §6 is BAGS, the seventh kind, which give the pack its shape (slots are numbered by which bag owns the cell, so a bag's contents ride along when it moves); §10 is pieces BIGGER than one cell (one index on several slots, anchored at the lowest); §11 is food, which counts CHARGES (a defeated enemy is one; anything that charges loot is another); §12 is WEAPONS, the eighth kind — aimed like a thrown potion, charged once per game by their own goal; §13 is evolutions; §14 the hover glow |
-| finding influences missing from the chart | `docs/influence-research.md`: the method, what counts as a source (first-hand only), which sources paid off, and the traps. `tools/influence_research.py` does the scanning. Candidates found so far are in `docs/influence-candidates.md`, and **nothing from it goes into `connections` until the owner has ticked it**. Interviews and podcasts for the owner to listen to (nobody else can) are in `docs/influence-media.md` |
+| **research of any kind** — influences, tags, and what each game's enemies, items, events, characters, statuses and places could give this one | `docs/research.md`: eight kinds, one entry point (`tools/research.py`), candidates in `research/<kind>.csv`, reviewed by the owner in `tools/Research.xlsx` (a sheet per kind, `Owner` yes/no), one ledger (`research/ledger.json`) and each game's wiki (`research/wikis.json`). **If the owner has uploaded `Research.xlsx`, run `python3 tools/research.py sync` before anything else** or their ticks are overwritten by the next build. Nothing reaches `Roguelikes.xlsx` until the owner has said yes |
+| finding influences missing from the chart | `docs/influence-research.md`: the method, what counts as a source (first-hand only), which sources paid off, and the traps. `tools/influence_research.py` does the scanning. Candidates found so far are rows of `research/connections.csv`, and **nothing from it goes into `connections` until the owner has ticked it**. Interviews and podcasts for the owner to listen to (nobody else can) are in `docs/influence-media.md` |
 | which games should carry which tags | `tools/tag_research.py` writes **suggestions** into `tools/Research.xlsx` (its own workbook, not `Roguelikes.xlsx`) from each game's Steam tags, store text and title, with the evidence beside each one. **Never type a tag into the `games` sheet yourself**: the owner reads the sheet and does that. Its `Owner` column (yes/no) survives a rerun. The owner can also tag games **in game** (the Collection's game page and the run map's game card, `GameTags` + `TagEditor`); those edits count at once and reach the sheet only through Settings → Game tags → *Export tags for all games* → `tools/tag_edits.json` → `python3 tools/apply_tag_edits.py` (see the porting steps below) |
 | rifts (all four build steps done; key sources in items and loot are the owner's) | `docs/rifts-design.md` — per-run rift games that pull off-map games into the map without ever shortening a path; path rifts on the start routes, world rifts on weak spots, Rift Keys that fill empty offering slots with rift cards, and the measured effect on the Amulet pool |
 | combat-era designs | `docs/archive/` — **describes systems that no longer exist**; see its README before trusting a path or class name |
@@ -73,26 +74,37 @@ the honour system.
 ## Working here
 
 **Porting games from the owner's upload is several jobs, not one.** After
-`import-games-godot.py` (which prints the games still waiting):
+`import-games-godot.py` (which prints the games still waiting), every kind of
+research runs over the new games (`docs/research.md` §7 has the detail):
 
-1. `python3 tools/influence_research.py new` runs every research pass that
-   works from the cloud over just the games missing from
-   `tools/influence_researched.json`, and writes `.influence_work/new_games.md`.
-   Read every line of it, then do the hand half the script can't: a web search
-   per game for an interview, a devlog or a press release in the developer's own
-   words. What holds up goes in `docs/influence-candidates.md` (section 1 for a
-   pair of chart games, section 5 for a roguelike the chart lacks, section 6 for
-   a game searched with nothing found), **never** into `connections`.
-2. `python3 tools/influence_research.py new --mark` records them as researched.
-   Commit the ledger; it is how the next session knows.
-3. `python3 tools/tag_research.py` refreshes the tag suggestions for the owner.
-4. If the upload includes `tools/tag_edits.json` (tags the owner edited in game
+1. `python3 tools/research.py new` runs every scripted pass over just the games
+   with no entry in `research/ledger.json`: the influence scans
+   (`influence_research.py new`, into `.influence_work/new_games.md`), the tag
+   suggestions (`tag_research.py`), each game's wiki, and a brief per game in
+   `.research_work/briefs/`. It prints the hand work left.
+2. **Connections:** read every line of `.influence_work/new_games.md`, then do
+   the hand half the script can't: a web search per game for an interview, a
+   devlog or a press release in the developer's own words. What holds up goes
+   in `research/connections.csv` (`to review` for a pair of chart games, `lead`
+   for a roguelike the chart lacks, `nothing found` for a game searched with
+   nothing found), **never** into `connections`. Then
+   `python3 tools/influence_research.py new --mark`.
+3. **Goals, loot (always including weapons and evolutions), events,
+   characters, statuses, locations:** read each new game's brief and the wiki
+   pages it lists, write candidate rows into
+   `research/<kind>.csv` by the rules in `docs/research.md` §6, then
+   `python3 tools/research.py mark <kind> <game> --note "..."` for EVERY kind,
+   rows or not, so "nothing usable" is on record.
+4. `python3 tools/research.py check && python3 tools/research.py build`, and
+   commit the CSVs, the ledger, `research/wikis.json` and `tools/Research.xlsx`
+   together.
+5. If the upload includes `tools/tag_edits.json` (tags the owner edited in game
    and exported), run `python3 tools/apply_tag_edits.py`, which writes them into
    the `games` sheet's Tags column and re-imports, then delete the JSON in the
    same commit. Unlike tag *suggestions*, these are the owner's own decisions.
 
 Do all of them without being asked. The owner asked for the research to happen
-every time games are added.
+every time games are added, for every kind.
 
 ```bash
 godot --headless -s addons/gut/gut_cmdln.gd     # GUT suite: 48 scripts, ~2530 tests, ~12 min

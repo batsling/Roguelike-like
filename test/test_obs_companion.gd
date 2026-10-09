@@ -888,7 +888,7 @@ func test_every_swing_says_which_body_is_throwing_it() -> void:
 
 # This asked for an absolute: no body anywhere without art, which was true of the
 # 94 hand-made rows and their 94 pictures. It is a RATCHET instead, because the
-# roster is about to stop being 94 rows — docs/goal-candidates.csv holds 316
+# roster is about to stop being 94 rows — research/goals.csv holds 307
 # audited rows waiting to be pasted, none of which has art yet (art is its own
 # pass, and the `File` column is the hook it will hang on). An absolute would go
 # red the moment they land, for a reason the project has already decided about.

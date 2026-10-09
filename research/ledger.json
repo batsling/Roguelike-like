@@ -1,0 +1,3111 @@
+{
+ "100 Rogues": {
+  "connections": "before 2026-10-07"
+ },
+ "2 Fights in 2 Tight Spaces": {
+  "connections": "before 2026-10-07"
+ },
+ "20 Minutes Till Dawn": {
+  "connections": "before 2026-10-07"
+ },
+ "20XX": {
+  "connections": "before 2026-10-07"
+ },
+ "30XX": {
+  "connections": "before 2026-10-07"
+ },
+ "33 Immortals": {
+  "connections": "before 2026-10-07"
+ },
+ "868-Back": {
+  "connections": "before 2026-10-07"
+ },
+ "868-Hack": {
+  "connections": "before 2026-10-07"
+ },
+ "9 Kings": {
+  "connections": "before 2026-10-07"
+ },
+ "99 Levels to Hell": {
+  "connections": "before 2026-10-07"
+ },
+ "A Robot Named Fight!": {
+  "characters": "2026-10-09: nothing: Fight is the only playable robot",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-09: nothing: its shrines are objects and its allies are shops",
+  "goals": "2026-10-09: Metal Patriarch, Polyphemus, False Beast; Ghost Fight left out (repeats the live 'Defeat yourself'), Stalkus (repeats the Leviathan's broken-off part)",
+  "locations": "2026-10-09: Shrine of Tyr, Revenant Station, The Traitor",
+  "loot": "2026-10-09: The Thief, Scrap Vorb; weapons and evolutions: Buzzsaw Gun; no evolutions (bolt upgrades stack, nothing turns into anything)",
+  "statuses": "2026-10-09: nothing: shrine blessings are timed stat boosts"
+ },
+ "A la Card": {
+  "connections": "before 2026-10-07"
+ },
+ "AK-xolotl": {
+  "connections": "before 2026-10-07"
+ },
+ "Abandon Ship": {
+  "connections": "before 2026-10-07"
+ },
+ "Abandoned Archive": {
+  "connections": "before 2026-10-07"
+ },
+ "Absolum": {
+  "connections": "before 2026-10-07"
+ },
+ "Abyssus": {
+  "connections": "before 2026-10-07"
+ },
+ "Aces & Adventures": {
+  "connections": "before 2026-10-07"
+ },
+ "Across the Obelisk": {
+  "connections": "before 2026-10-07",
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+ },
+ "Aethermancer": {
+  "characters": "2026-10-09: Siriux the Aethermancer",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-09: Myrne the Cook (Lily's reroll and the Merchant are services)",
+  "goals": "2026-10-09: 4: Star Spawn, Ravager, Wolpertinger, Mandragora (Dullahan = live headless goal, Medusa and Cockatrice are NetHack's, Nosferatu a vampire, taming is Cult of the Lamb's)",
+  "locations": "2026-10-09: nothing: the biomes and Rest Sites have nothing a board or map doesn't",
+  "loot": "2026-10-09: nothing: the Monster Flask is a refillable heal (Brogue's Health Charm candidate), equipment is stat affixes; weapons and evolutions: none; monsters fight with skills, and equipment is stat affixes",
+  "statuses": "2026-10-09: nothing: Redirect is Bishop's live goal, Corruption folds into Myrne, the rest are stat buffs"
+ },
+ "Alina of the Arena": {
+  "connections": "before 2026-10-07"
+ },
+ "An Amazing Wizard": {
+  "connections": "before 2026-10-07"
+ },
+ "Ancient Domains of Mystery": {
+  "connections": "before 2026-10-07",
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+ },
+ "Angband": {
+  "connections": "before 2026-10-07",
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+ },
+ "Anomaly Collapse": {
+  "connections": "before 2026-10-07"
+ },
+ "Another Farm Roguelike": {
+  "connections": "before 2026-10-07"
+ },
+ "Another Farm Roguelike: Rebirth": {
+  "connections": "before 2026-10-07"
+ },
+ "Aotenjo: Infinite Hands": {
+  "connections": "before 2026-10-07"
+ },
+ "Approaching Infinity": {
+  "connections": "before 2026-10-07"
+ },
+ "Arc Seed": {
+  "connections": "before 2026-10-07"
+ },
+ "Arcane Trigger": {
+  "connections": "before 2026-10-07"
+ },
+ "Arcanium: Rise of Akhan": {
+  "connections": "before 2026-10-07"
+ },
+ "Archon Soul": {
+  "connections": "before 2026-10-07"
+ },
+ "Archons": {
+  "connections": "before 2026-10-07"
+ },
+ "Arms of God": {
+  "connections": "before 2026-10-07"
+ },
+ "Army of Ruin": {
+  "connections": "before 2026-10-07"
+ },
+ "Arrogue": {
+  "connections": "before 2026-10-07"
+ },
+ "As We Descend": {
+  "connections": "before 2026-10-07"
+ },
+ "Asgard's Fall: Viking Survivors": {
+  "connections": "before 2026-10-07"
+ },
+ "Asterogues": {
+  "connections": "before 2026-10-07"
+ },
+ "Astral Ascent": {
+  "characters": "2026-10-09: nothing: Kiran's parry repeats DCSS's countered attack; Ayla, Calie and Octave have lore but no mechanic to build a level-up on",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-09: nothing: no event pages",
+  "goals": "2026-10-09: Gemini (for all twelve Zodiacs); the Zodiac arena's timed challenge repeats Star of Providence's Gauntlet",
+  "locations": "2026-10-09: nothing: rooms are fight, quiet and shop rooms, all generic",
+  "loot": "2026-10-09: nothing else: relics and gambits are stat boosts; weapons and evolutions: Fisherman's Demise; no evolutions (spells take gems, not evolve)",
+  "statuses": "2026-10-09: nothing: no status pages"
+ },
+ "Astrea: Six-Sided Oracles": {
+  "connections": "before 2026-10-07"
+ },
+ "Astro Prospector": {
+  "connections": "before 2026-10-07"
+ },
+ "Astronarch": {
+  "connections": "before 2026-10-07"
+ },
+ "Atai no Gensoukyou": {
+  "connections": "before 2026-10-07"
+ },
+ "Atomic Owl": {
+  "connections": "before 2026-10-07"
+ },
+ "Atomicrops": {
+  "connections": "before 2026-10-07"
+ },
+ "Auro: A Monster-Bumping Adventure": {
+  "connections": "before 2026-10-07"
+ },
+ "Auto Rogue": {
+  "connections": "before 2026-10-07"
+ },
+ "Azure Dreams": {
+  "characters": "2026-10-09: Koh",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-09: nothing: the three quests have no pages beyond a line",
+  "goals": "2026-10-09: Kid (hatching); most monster pages are Monster Book stats; Death, Dragon, Hydra, Unicorn, Snowman are other games' rows; Noise = NecroDancer's musician",
+  "locations": "2026-10-09: Frog Trap (tile); the Monster Tower's climb is NetHack's tower goal",
+  "loot": "2026-10-09: nothing: seeds and fruits are potion effects (Tumna is the Frog row), Sands are Scroll of Enchanting; weapons and evolutions: none; swords are stat gear, Magic Balls repeat wands, and Fusion is monster fusion",
+  "statuses": "2026-10-09: Frog; Blind and Slow are other games', Chaos is confusion, Angry is a crit buff"
+ },
+ "BAZR": {
+  "connections": "before 2026-10-07"
+ },
+ "BPM: Bullets Per Minute": {
+  "connections": "before 2026-10-07"
+ },
+ "Backpack Battles": {
+  "connections": "before 2026-10-07"
+ },
+ "Backpack Hero": {
+  "connections": "before 2026-10-07",
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+ },
+ "Bad North": {
+  "connections": "before 2026-10-07"
+ },
+ "Balatro": {
+  "connections": "before 2026-10-07",
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+ },
+ "Baldi's Basics Plus": {
+  "connections": "before 2026-10-07"
+ },
+ "Ball x Pit": {
+  "characters": "2026-10-09: The Makeshift Sisyphus, The Hoary Hoarder",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-09: nothing: no events",
+  "goals": "2026-10-09: checked 4 (boss pages are stubs; names and stages hold): Lord of Owls, Shroom Swarm moved to bosses; The Moon added (skeletons live, Goblin Warlord is Brogue's, Voidling RoR2's)",
+  "locations": "2026-10-09: nothing: level pages are stubs; the town buildings unlock characters",
+  "loot": "2026-10-09: Fusion Reactor; ball and passive pages are stat tables; weapons and evolutions: Earthquake, Egg Sac; evolved balls as evolutions: Fireworks (Egg Sac + fire), Drill (Earthquake + stone). Its 69 evolved balls fuse two balls; only pairs whose second half maps to a live tag were taken",
+  "statuses": "2026-10-09: nothing: no status pages"
+ },
+ "Ballionaire": {
+  "connections": "before 2026-10-07"
+ },
+ "Banners of Ruin": {
+  "connections": "before 2026-10-07"
+ },
+ "Barda": {
+  "connections": "before 2026-10-07"
+ },
+ "Barony": {
+  "connections": "before 2026-10-07"
+ },
+ "Baroque": {
+  "connections": "before 2026-10-07"
+ },
+ "Baroque (2007)": {
+  "connections": "before 2026-10-07"
+ },
+ "Batomon Showdown": {
+  "connections": "before 2026-10-07"
+ },
+ "Battle Brothers": {
+  "characters": "2026-10-09: nothing: the player is a company; backgrounds are hirelings",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-09: Bird Shits on Sellsword, Ball on Roof (many event pages are empty templates)",
+  "goals": "2026-10-09: 4: Nachzehrer, Alp, Hexe, Unhold (Necrosavant = vampire, Barbarian King = king, Geist's morale breaking and the Kraken's drag are other games' rows)",
+  "locations": "2026-10-09: Sunken Library, Grotesque Tree (Black Monolith and Witch Hut are fights for a reward)",
+  "loot": "2026-10-09: nothing: weapons and armour are stat variants; the named artifacts (Emperor's Armor, Black Book) are location rewards; weapons and evolutions: none; named weapons are stat variants of ordinary ones",
+  "statuses": "2026-10-09: Hangover; Drunk is a live goal, Charmed is Lovesick, Overwhelmed and Swarm are stat penalties"
+ },
+ "Battle Shapers": {
+  "connections": "before 2026-10-07"
+ },
+ "Be My Horde": {
+  "connections": "before 2026-10-07"
+ },
+ "Beat Blast": {
+  "connections": "before 2026-10-07"
+ },
+ "Bella Wants Blood": {
+  "connections": "before 2026-10-07"
+ },
+ "Beneath Apple Manor": {
+  "connections": "before 2026-10-07"
+ },
+ "Beneath Oresa": {
+  "connections": "before 2026-10-07"
+ },
+ "Beyond Words": {
+  "connections": "before 2026-10-07"
+ },
+ "Beyond the Long Night": {
+  "connections": "before 2026-10-07"
+ },
+ "Bingle Bingle": {
+  "connections": "before 2026-10-07"
+ },
+ "Bioprototype": {
+  "connections": "before 2026-10-07"
+ },
+ "Black Jacket": {
+  "connections": "before 2026-10-07"
+ },
+ "Blade Assault": {
+  "connections": "2026-10-07"
+ },
+ "Blazing Beaks": {
+  "connections": "before 2026-10-07"
+ },
+ "Bleak Sword": {
+  "connections": "before 2026-10-07"
+ },
+ "Block Tower TD": {
+  "connections": "before 2026-10-07"
+ },
+ "Block Tower TD 2": {
+  "connections": "before 2026-10-07"
+ },
+ "Blood Dungeon": {
+  "connections": "2026-10-07"
+ },
+ "BloodDome99": {
+  "connections": "before 2026-10-07"
+ },
+ "Bloodshed": {
+  "connections": "before 2026-10-07"
+ },
+ "Bloons TD 6: Rogue Legends": {
+  "connections": "before 2026-10-07"
+ },
+ "Blue Prince": {
+  "connections": "before 2026-10-07"
+ },
+ "Boneraiser Minions": {
+  "characters": "2026-10-09: nothing: the Boneraiser's raising the dead is a live goal already",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-09: Clairvoyant; the Lost Maiden left out (its only reward is murdering her)",
+  "goals": "2026-10-09: nothing: the wiki lists your minions, not the heroes you fight",
+  "locations": "2026-10-09: nothing: no location pages",
+  "loot": "2026-10-09: Wanted Poster; Bottled Fairy left out (repeats Dio's Best Friend); weapons and evolutions: none (minions upgrade into Demon minions, but minions aren't weapons)",
+  "statuses": "2026-10-09: nothing: no status pages"
+ },
+ "Book of Demons": {
+  "connections": "before 2026-10-07"
+ },
+ "Bounty of One": {
+  "connections": "before 2026-10-07"
+ },
+ "Boyfriend Dungeon": {
+  "connections": "before 2026-10-07"
+ },
+ "Brawl Tactics: Origins": {
+  "connections": "before 2026-10-07"
+ },
+ "Breach Wanderers": {
+  "characters": "2026-10-09: nothing usable: the wiki is stat tables and Lua data modules (Monsters, Cards, Items) with no move text, descriptions or lore; names alone aren't enough to translate. Revisit from the game itself",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-09: nothing usable: the wiki is stat tables and Lua data modules (Monsters, Cards, Items) with no move text, descriptions or lore; names alone aren't enough to translate. Revisit from the game itself",
+  "goals": "2026-10-09: nothing usable: the wiki is stat tables and Lua data modules (Monsters, Cards, Items) with no move text, descriptions or lore; names alone aren't enough to translate. Revisit from the game itself",
+  "locations": "2026-10-09: nothing usable: the wiki is stat tables and Lua data modules (Monsters, Cards, Items) with no move text, descriptions or lore; names alone aren't enough to translate. Revisit from the game itself",
+  "loot": "2026-10-09: nothing usable: the wiki is stat tables and Lua data modules (Monsters, Cards, Items) with no move text, descriptions or lore; names alone aren't enough to translate. Revisit from the game itself; weapons and evolutions: none usable (item names only)",
+  "statuses": "2026-10-09: nothing usable: the wiki is stat tables and Lua data modules (Monsters, Cards, Items) with no move text, descriptions or lore; names alone aren't enough to translate. Revisit from the game itself"
+ },
+ "Breachway": {
+  "connections": "before 2026-10-07"
+ },
+ "Brew": {
+  "connections": "before 2026-10-07"
+ },
+ "Brogue": {
+  "characters": "2026-10-09: nothing: Brogue's one hero is the unnamed rogue, the same @ as Rodney (live)",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-09: Vault (reward room behind a key); captives need allies the board doesn't have",
+  "goals": "2026-10-09: checked: Ogre, Phantom, Dar Blademaster hold; Bloat, Goblin Conjurer, Warden fixed; 4 added (Black Jelly = Spike Slime, Vampire = Spelunky 2's, Dar Priestess = Legend of Keepers')",
+  "locations": "2026-10-09: Goblin Warren, Commutation Altar, Lichen, Bloodwort, Dewar",
+  "loot": "2026-10-09: 7 rows: Scroll of Enchanting, Potion of Detect Magic, Ring of Reaping, Health Charm, Potion of Creeping Death, Wand of Beckoning, Staff of Discord (Wand of Plenty is live); weapons and evolutions: Rapier (the lunge), War Axe (every adjacent enemy); runic weapons repeat statuses already listed, and Axe to War Axe is a strength requirement, not an item",
+  "statuses": "2026-10-09: Discorded; Slowed, Burning, Poisoned, Invisible covered elsewhere; Weakened and Hallucinating don't translate"
+ },
+ "BroomSweeper": {
+  "connections": "before 2026-10-07"
+ },
+ "Brotato": {
+  "connections": "before 2026-10-07",
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+ },
+ "Brutal Orchestra": {
+  "connections": "before 2026-10-07"
+ },
+ "Buckshot Roulette": {
+  "connections": "before 2026-10-07"
+ },
+ "Cadence of Hyrule": {
+  "connections": "before 2026-10-07"
+ },
+ "Candies 'n Curses": {
+  "connections": "before 2026-10-07"
+ },
+ "Captain Forever Remix": {
+  "connections": "before 2026-10-07"
+ },
+ "Cardinal Quest": {
+  "connections": "before 2026-10-07"
+ },
+ "Cardinal Quest 2": {
+  "connections": "before 2026-10-07"
+ },
+ "Castle of the Winds": {
+  "connections": "before 2026-10-07"
+ },
+ "CastlevaniaRL": {
+  "connections": "before 2026-10-07"
+ },
+ "Cat God Ranch": {
+  "connections": "before 2026-10-07"
+ },
+ "Cataclysm": {
+  "connections": "before 2026-10-07"
+ },
+ "Cataclysm: Bright Nights": {
+  "connections": "before 2026-10-07"
+ },
+ "Cataclysm: Dark Days Ahead": {
+  "connections": "before 2026-10-07",
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+ },
+ "Cataclysm: The Last Generation": {
+  "connections": "before 2026-10-07"
+ },
+ "Catacomb Kids": {
+  "connections": "before 2026-10-07"
+ },
+ "Cats & Dice": {
+  "connections": "before 2026-10-07"
+ },
+ "Cave Noire": {
+  "connections": "before 2026-10-07"
+ },
+ "Caveblazers": {
+  "connections": "before 2026-10-07"
+ },
+ "Caves of Qud": {
+  "characters": "2026-10-09: pilot: rows written from wiki.cavesofqud.com",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-09: pilot: rows written from wiki.cavesofqud.com",
+  "goals": "2026-10-09: checked 1: Slog of the Cloaca fixed (its goal didn't fit it); Jotun and Girsh Qas added; Oboroqoru left out (repeats the live 'Defeat a God'), Qudzu (rust repeats Rogue's ruined armour), Thirst thistle (nothing to do but be dehydrated)",
+  "locations": "2026-10-09: pilot: rows written from wiki.cavesofqud.com",
+  "loot": "2026-10-09: pilot: rows written from wiki.cavesofqud.com; weapons and evolutions: Vibro blade; the geomagnetic disc's return repeats the Boomerang, and the Recipes category is cooking, not evolutions",
+  "statuses": "2026-10-09: pilot: rows written from wiki.cavesofqud.com"
+ },
+ "Cavity Busters": {
+  "connections": "before 2026-10-07"
+ },
+ "Cell Command": {
+  "connections": "before 2026-10-07"
+ },
+ "Centipede Gun": {
+  "connections": "before 2026-10-07"
+ },
+ "Change: A Homeless Survival Experience": {
+  "connections": "2026-10-07"
+ },
+ "Chaos Zero Nightmare": {
+  "connections": "before 2026-10-07"
+ },
+ "Chess Survivors": {
+  "connections": "before 2026-10-07"
+ },
+ "Children of Morta": {
+  "characters": "2026-10-09: John; the others' crafts (music, rogue, mage) repeat existing level-ups",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-09: Save the Wolf Cub, Memory Game",
+  "goals": "2026-10-09: nothing: its bosses are a god (live 'Defeat a God'), a stone golem (live 'made of stone'), a machine and a king (candidates), and the wiki pages are one line each",
+  "locations": "2026-10-09: nothing: the dungeons are areas with no distinctive feature on the wiki",
+  "loot": "2026-10-09: Unstable Relics; weapons and evolutions: none (divine relics are gem-priced abilities, not weapons; no evolutions)",
+  "statuses": "2026-10-09: nothing: no status pages; Corruption is the setting's evil, not a status"
+ },
+ "Chocobo's Dungeon 2": {
+  "connections": "before 2026-10-07"
+ },
+ "Chocobo's Mysterious Dungeon": {
+  "connections": "before 2026-10-07"
+ },
+ "Chocobo's Mystery Dungeon Every Buddy!": {
+  "connections": "before 2026-10-07"
+ },
+ "Choo Choo Survivor": {
+  "connections": "before 2026-10-07"
+ },
+ "Choo Choo Survivor 2": {
+  "connections": "before 2026-10-07"
+ },
+ "Chosen Garden": {
+  "connections": "before 2026-10-07"
+ },
+ "Chrono Ark": {
+  "connections": "before 2026-10-07"
+ },
+ "Cinderia": {
+  "connections": "before 2026-10-07"
+ },
+ "CleanFall": {
+  "connections": "before 2026-10-07"
+ },
+ "CloverPit": {
+  "connections": "before 2026-10-07"
+ },
+ "Cluckmech Oasis": {
+  "connections": "before 2026-10-07"
+ },
+ "Clutchtime: Basketball Deckbuilder": {
+  "connections": "before 2026-10-07"
+ },
+ "Coal LLC": {
+  "connections": "before 2026-10-07"
+ },
+ "Cobalt Core": {
+  "connections": "before 2026-10-07"
+ },
+ "Cogmind": {
+  "connections": "before 2026-10-07",
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+ },
+ "Coin Crypt": {
+  "connections": "before 2026-10-07"
+ },
+ "Colt Canyon": {
+  "connections": "before 2026-10-07"
+ },
+ "Combolands": {
+  "connections": "before 2026-10-07"
+ },
+ "Commander Quest": {
+  "connections": "before 2026-10-07"
+ },
+ "Conan Chop Chop": {
+  "connections": "before 2026-10-07"
+ },
+ "Conquest Dark": {
+  "connections": "2026-10-07"
+ },
+ "Convoy": {
+  "connections": "before 2026-10-07"
+ },
+ "Core Defense": {
+  "connections": "before 2026-10-07"
+ },
+ "Corpse Keeper": {
+  "connections": "before 2026-10-07"
+ },
+ "Crab Champions": {
+  "connections": "before 2026-10-07"
+ },
+ "Crab God": {
+  "connections": "2026-10-07"
+ },
+ "Crablike": {
+  "connections": "before 2026-10-07"
+ },
+ "Crafty Survivors": {
+  "connections": "before 2026-10-07"
+ },
+ "Crawl": {
+  "connections": "before 2026-10-07"
+ },
+ "Crop Rotation": {
+  "connections": "before 2026-10-07"
+ },
+ "Cropdeck": {
+  "connections": "before 2026-10-07"
+ },
+ "Cross Blitz": {
+  "connections": "before 2026-10-07"
+ },
+ "Crown Trick": {
+  "connections": "before 2026-10-07"
+ },
+ "Crush the Industry": {
+  "connections": "before 2026-10-07"
+ },
+ "Crying Suns": {
+  "connections": "before 2026-10-07"
+ },
+ "Crypt of the NecroDancer": {
+  "connections": "before 2026-10-07",
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+ },
+ "Cryptark": {
+  "connections": "before 2026-10-07"
+ },
+ "Cthangband": {
+  "connections": "before 2026-10-07"
+ },
+ "Cube Chaos": {
+  "connections": "before 2026-10-07"
+ },
+ "Cubic Cosmos": {
+  "connections": "before 2026-10-07"
+ },
+ "Cult of PiN": {
+  "connections": "before 2026-10-07"
+ },
+ "Cult of the Lamb": {
+  "characters": "2026-10-09: the Lamb",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-09: Clauneck, Helob",
+  "goals": "2026-10-09: checked 3 rows (2 goals fixed, Leshy flagged); Shamura added",
+  "locations": "2026-10-09: Silk Cradle, Rakshasa",
+  "loot": "2026-10-09: the Golden Fleece; weapons and evolutions: Ratau's Staff; Godly Sword as an evolution of the live Wooden Sword through holy. The other variants (Bane, Vampiric, Necromantic) repeat poison and lifesteal weapons",
+  "statuses": "2026-10-09: nothing usable: its 'curses' are attacks and its states belong to followers"
+ },
+ "Cultist Simulator": {
+  "connections": "before 2026-10-07"
+ },
+ "Cupiclaw": {
+  "connections": "before 2026-10-07"
+ },
+ "Curious Expedition": {
+  "connections": "before 2026-10-07"
+ },
+ "Curious Expedition 2": {
+  "connections": "before 2026-10-07"
+ },
+ "Curse of Pirates": {
+  "connections": "before 2026-10-07"
+ },
+ "Curse of the Dead Gods": {
+  "connections": "before 2026-10-07",
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+ },
+ "Cursed Words": {
+  "connections": "before 2026-10-07"
+ },
+ "Cursorblade": {
+  "connections": "before 2026-10-07"
+ },
+ "DIG: Deep In Galaxies": {
+  "connections": "before 2026-10-07"
+ },
+ "Dark Devotion": {
+  "connections": "before 2026-10-07"
+ },
+ "Dark Light: Survivor": {
+  "connections": "before 2026-10-07"
+ },
+ "Darkblade Ascent": {
+  "connections": "before 2026-10-07"
+ },
+ "Darkest Dungeon": {
+  "characters": "2026-10-09: 4 heroes",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-09: nothing: its interactions are curios, filed as objects",
+  "goals": "2026-10-09: checked 8 rows on the wiki: 7 right, Bone Courtier fixed; Hag added",
+  "locations": "2026-10-09: 2 curios, the Nomad Wagon, the Cove and the Weald",
+  "loot": "2026-10-09: 2 provisions; weapons and evolutions: none; weapons are hero upgrades at the blacksmith",
+  "statuses": "2026-10-09: Stress, Blight"
+ },
+ "Darkest Dungeon 2": {
+  "characters": "2026-10-09: Flagellant, Runaway, Abomination (the first game's four are already candidates)",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-09: The Desperate Few (Assistance Encounter)",
+  "goals": "2026-10-09: 5: Dreaming General, Librarian, Leviathan, Shackles of Denial, Implication; Harvest Child (repeats Dome Keeper's 'before it reaches you'), Ancient Adversary (repeats Halls of Torment's statue) and Focused Fault (close to Wizard of Legend's one-eyed enemy) left out",
+  "locations": "2026-10-09: Creature Den, Oasis, The Hoarder",
+  "loot": "2026-10-09: 2 items; weapons and evolutions: Bone Saw and Makeshift Javelin (the wiki's Weapon combat items); no evolutions; trinkets are on-hit/on-miss stat rolls",
+  "statuses": "2026-10-09: Riposte, Stealth; Loathing left out (a Kingdoms-mode difficulty track, not a status)"
+ },
+ "Dave the Diver": {
+  "connections": "before 2026-10-07"
+ },
+ "Dead Cells": {
+  "characters": "2026-10-09: The Beheaded",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-09: nothing: the NPCs are hub services (Collector, Tailor, Blacksmith); the Swamp Priest's sacrifice is Mama Tick's goal and the timed doors an object",
+  "goals": "2026-10-09: checked: Concierge holds; Giant, Time Keeper, Dracula moved to bosses; Giant, Time Keeper, Hand of the King fixed; 3 added (Mimic, Death, Medusa are other games' candidates)",
+  "locations": "2026-10-09: Prisoners' Quarters, Timed Door",
+  "loot": "2026-10-09: 5 rows: Flawless, Cursed Sword, Dead Inside, Acceptance, Get Rich Quick (Midas' Blood = Piggy Bank); weapons and evolutions: Balanced Blade, Spite Sword (beside Flawless and Cursed Sword); Vampire Killer as a second evolution of the live Whip, through fire",
+  "statuses": "2026-10-09: Cursed (curse); Bleed, Burn, Stun live, freeze/root/poison covered elsewhere"
+ },
+ "Dead Estate": {
+  "connections": "before 2026-10-07"
+ },
+ "Dead Finger Dice": {
+  "connections": "before 2026-10-07"
+ },
+ "Dead Weight": {
+  "connections": "before 2026-10-07"
+ },
+ "Deadzone: Rogue": {
+  "connections": "before 2026-10-07"
+ },
+ "Death Must Die": {
+  "connections": "before 2026-10-07"
+ },
+ "Death Road to Canada": {
+  "characters": "2026-10-09: the Mounties",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-09: 3 of its ~180 events",
+  "goals": "2026-10-09: nothing usable: its enemies are generic zombies and bandits, already covered by live goals",
+  "locations": "2026-10-09: Gas Station Siege",
+  "loot": "2026-10-09: 1 special weapon; weapons and evolutions: Chainsaw (the Mountie Hockey Stick was already a candidate); most of its 100+ weapons are props with stats, and there are no evolutions",
+  "statuses": "2026-10-09: nothing usable: its morale system overlaps Darkest Dungeon's Stress candidate"
+ },
+ "Death Roads: Tournament": {
+  "connections": "before 2026-10-07"
+ },
+ "Death Skid Marks": {
+  "connections": "before 2026-10-07"
+ },
+ "Death by Scrolling": {
+  "connections": "before 2026-10-07"
+ },
+ "Deck of Ashes": {
+  "connections": "before 2026-10-07"
+ },
+ "Deck of Haunts": {
+  "connections": "before 2026-10-07"
+ },
+ "Decktamer": {
+  "connections": "before 2026-10-07"
+ },
+ "Deep Dungeons of Doom": {
+  "connections": "before 2026-10-07"
+ },
+ "Deep Rock Galactic: Rogue Core": {
+  "connections": "before 2026-10-07"
+ },
+ "Deep Rock Galactic: Survivor": {
+  "connections": "before 2026-10-07",
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+ },
+ "Deep Sky Derelicts": {
+  "connections": "before 2026-10-07"
+ },
+ "Deepest Chamber: Resurrection": {
+  "connections": "before 2026-10-07"
+ },
+ "Delver": {
+  "connections": "before 2026-10-07"
+ },
+ "Demon Lord: Just a Block": {
+  "connections": "before 2026-10-07"
+ },
+ "DemonCrawl": {
+  "connections": "before 2026-10-07"
+ },
+ "Demonic Mahjong": {
+  "connections": "before 2026-10-07"
+ },
+ "Demonlore": {
+  "connections": "before 2026-10-07"
+ },
+ "Desktop Dungeons": {
+  "connections": "before 2026-10-07"
+ },
+ "Desktop Survivors 98": {
+  "connections": "before 2026-10-07"
+ },
+ "Despot's Game": {
+  "connections": "before 2026-10-07"
+ },
+ "Despotism 3k": {
+  "connections": "before 2026-10-07"
+ },
+ "Devil Peach Soda": {
+  "connections": "2026-10-09"
+ },
+ "Devil Slayer: Raksasi": {
+  "connections": "before 2026-10-07"
+ },
+ "Devil Spire": {
+  "connections": "2026-10-07"
+ },
+ "Diablo": {
+  "characters": "2026-10-09: the 3 classes",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-09: 2 quests as add_goal events",
+  "goals": "2026-10-09: checked 2 rows against the Diablo wiki (both right); 3 added",
+  "locations": "2026-10-09: 2 locations, 2 shrines, 4 Tristram shopkeepers",
+  "loot": "2026-10-09: 3 rows: Diablo I's item pool is mostly generic affixes; weapons and evolutions: The Butcher's Cleaver (Griswold's Edge was already a candidate); Diablo I has no evolutions",
+  "statuses": "2026-10-09: 1 curse; Diablo I has few statuses"
+ },
+ "Dice & Fold": {
+  "connections": "before 2026-10-07"
+ },
+ "Dice A Million": {
+  "connections": "before 2026-10-07"
+ },
+ "Dice Legends": {
+  "connections": "before 2026-10-07"
+ },
+ "Dice With Death": {
+  "connections": "before 2026-10-07"
+ },
+ "Dicealot": {
+  "connections": "before 2026-10-07"
+ },
+ "Dicefolk": {
+  "connections": "before 2026-10-07"
+ },
+ "Diceomancer": {
+  "connections": "before 2026-10-07"
+ },
+ "Dicevaders": {
+  "connections": "before 2026-10-07"
+ },
+ "Dicey Dungeons": {
+  "characters": "2026-10-09: nothing: the Thief, Inventor and Robot repeat level-ups already proposed (stealing, crafting, a won gamble)",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-09: nothing: its episodes are run rules, not prompts",
+  "goals": "2026-10-09: checked 3: Slime, Snowman and Lady Luck right (Lady Luck moved to 4-Insane); Jester and Wicker Man added; Drake left out (repeats the live 'Defeat a vampire'), Copycat (repeats Risk of Rain's Scavenger), Sticky Hands (repeats UnderMine's runaway), Cornelius (repeats For the King's countdown)",
+  "locations": "2026-10-09: nothing: its floors hold shops, apples and chests, all generic",
+  "loot": "2026-10-09: Precious Egg; weapons and evolutions: Cardboard Sword; no evolutions (upgrades are a '+' on the same piece)",
+  "statuses": "2026-10-09: Bear Transform; Cursed left out (Dead Cells has the name), Thorns (Riposte's combat)"
+ },
+ "Die For The Lich": {
+  "connections": "before 2026-10-07"
+ },
+ "Die in the Dungeon": {
+  "connections": "before 2026-10-07"
+ },
+ "Dimensionals": {
+  "connections": "before 2026-10-07"
+ },
+ "Disfigure": {
+  "connections": "before 2026-10-07"
+ },
+ "Dive or Die: Children of Rain": {
+  "connections": "before 2026-10-07"
+ },
+ "Dog Witch": {
+  "connections": "before 2026-10-07"
+ },
+ "Dog and Goblin": {
+  "connections": "before 2026-10-07"
+ },
+ "Dogpile": {
+  "connections": "before 2026-10-07"
+ },
+ "Dome Keeper": {
+  "connections": "before 2026-10-07",
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+ },
+ "Don't Let It Starve": {
+  "connections": "before 2026-10-07"
+ },
+ "Don't Lose Aggro": {
+  "connections": "before 2026-10-07"
+ },
+ "Don't Starve": {
+  "characters": "2026-10-09: 4 survivors",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-09: 1 row: the Pig King",
+  "goals": "2026-10-09: checked 2 rows against the wiki (both right); 5 added",
+  "locations": "2026-10-09: 1 location, 1 object",
+  "loot": "2026-10-09: 4 rows; weapons and evolutions: Boomerang, Dark Sword (the Ham Bat was already a candidate); crafting tiers are recipes, not evolutions",
+  "statuses": "2026-10-09: 1 status, 1 curse"
+ },
+ "Don't Starve Together": {
+  "connections": "before 2026-10-07"
+ },
+ "DoomRL": {
+  "connections": "before 2026-10-07"
+ },
+ "Dota Auto Chess": {
+  "connections": "before 2026-10-07"
+ },
+ "Double Dragon Gaiden: Rise Of The Dragons": {
+  "connections": "before 2026-10-07"
+ },
+ "Downwell": {
+  "connections": "before 2026-10-07"
+ },
+ "Dragon Crystal": {
+  "connections": "before 2026-10-07"
+ },
+ "Dragon Quest Heroes: Torneko‘s Mystery Dungeon Classic HD": {
+  "connections": "before 2026-10-07"
+ },
+ "Dragon Quest: Young Yangus and the Mystery Dungeon": {
+  "characters": "2026-10-09: nothing: Yangus's thief level-up repeats Mewgenics', and his monster-feeding repeats NetHack's 'Feed an animal'",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-09: nothing: no source",
+  "goals": "2026-10-09: nothing: its 16 bosses (Inhera, Grand Pazuzu, Estark...) have empty Young Yangus sections on the wiki; nothing to write a goal from",
+  "locations": "2026-10-09: nothing: Pottal Land and the farmhouse are named in the overview, with nothing to build a goal or choice from",
+  "loot": "2026-10-09: nothing: the item pages' Young Yangus sections are empty; weapons and evolutions: none found (Slapstick, Dream blade and two axes are series-wide items with no Young Yangus text)",
+  "statuses": "2026-10-09: Tension (check: from the game's overview page)"
+ },
+ "Dragonslayer": {
+  "connections": "before 2026-10-07"
+ },
+ "Drapline": {
+  "connections": "before 2026-10-07"
+ },
+ "Dream Quest": {
+  "connections": "before 2026-10-07"
+ },
+ "Dreamscaper": {
+  "connections": "before 2026-10-07"
+ },
+ "Drill Core": {
+  "connections": "before 2026-10-07"
+ },
+ "Driving Rogue": {
+  "connections": "before 2026-10-07"
+ },
+ "Drop Duchy": {
+  "connections": "before 2026-10-07"
+ },
+ "Drop Pockets": {
+  "connections": "before 2026-10-07"
+ },
+ "Dungeon Clawler": {
+  "connections": "before 2026-10-07",
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+ },
+ "Dungeon Crawl Stone Soup": {
+  "characters": "2026-10-09: 3 species",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-09: 1 row: the Ecumenical Temple",
+  "goals": "2026-10-09: checked 2 rows against the CrawlWiki: Slime Creature's goal fixed; 3 added",
+  "locations": "2026-10-09: 3 locations",
+  "loot": "2026-10-09: 10 rows; weapons and evolutions: Singing Sword, Plutonium Sword (unrandarts); no evolutions in the game",
+  "statuses": "2026-10-09: 3 statuses, 1 curse"
+ },
+ "Dungeon Deathball": {
+  "connections": "before 2026-10-07"
+ },
+ "Dungeon Drafters": {
+  "connections": "before 2026-10-07"
+ },
+ "Dungeon Hack": {
+  "connections": "before 2026-10-07"
+ },
+ "Dungeon Rushers": {
+  "connections": "before 2026-10-07"
+ },
+ "Dungeon of Windaria": {
+  "connections": "before 2026-10-07"
+ },
+ "Dungeonmans": {
+  "connections": "before 2026-10-07",
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+ },
+ "Dungeons & Degenerate Gamblers": {
+  "connections": "before 2026-10-07"
+ },
+ "Dungeons of Blood and Dream": {
+  "connections": "before 2026-10-07"
+ },
+ "Dungeons of Dredmor": {
+  "connections": "before 2026-10-07",
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+ },
+ "Dungreed": {
+  "connections": "before 2026-10-07"
+ },
+ "Dunjungle": {
+  "connections": "before 2026-10-07"
+ },
+ "Dwarf Fortress": {
+  "characters": "2026-10-09: nothing usable: fortress mode has no hero, and its adventurer is a blank",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-09: Strange Mood",
+  "goals": "2026-10-09: checked 3 rows (all right); Carp added; its Vampire is noted on Spelunky 2's row",
+  "locations": "2026-10-09: Magma tile, Cage Trap unit, Hidden Fun Stuff, the Dwarven Caravan",
+  "loot": "2026-10-09: Adamantine; weapons and evolutions: none; artifact weapons are randomly named strange-mood crafts",
+  "statuses": "2026-10-09: Cave Adaptation"
+ },
+ "Dwarves: Glory, Death and Loot": {
+  "connections": "before 2026-10-07"
+ },
+ "Elden Ring Nightreign": {
+  "connections": "before 2026-10-07"
+ },
+ "Eldritch": {
+  "connections": "before 2026-10-07"
+ },
+ "Elemental Survivors": {
+  "connections": "before 2026-10-07"
+ },
+ "Elewar: Fused Survivors": {
+  "connections": "before 2026-10-07"
+ },
+ "Elin": {
+  "connections": "before 2026-10-07"
+ },
+ "Elona": {
+  "connections": "before 2026-10-07"
+ },
+ "Ember Knights": {
+  "connections": "before 2026-10-07",
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+ },
+ "Emberward": {
+  "connections": "before 2026-10-07"
+ },
+ "Endgame of Devil": {
+  "connections": "before 2026-10-07"
+ },
+ "Endless Alice": {
+  "connections": "before 2026-10-07"
+ },
+ "Enter the Gungeon": {
+  "characters": "2026-10-09: Pilot",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-09: nothing as events: the shrines are objects, the NPCs shops",
+  "goals": "2026-10-09: checked 9: Kill Pillars, High Priest, Mine Flayer, Shotgrub hold; Old King, Kill Pillars, High Priest, Mine Flayer moved to bosses; Knight Bullet Kin, Bullet Kin, Blobulin, Treadnaught, Old King fixed; 2 added (Bullat, Keybullet Kin, Fungun, King Bullat, Beholster, Rat, Wallmonger, Lich are live)",
+  "locations": "2026-10-09: Black Powder Mine, Bullet Hell, Fallen Angel Shrine, Lock-a-doora, Cursula, Flynt",
+  "loot": "2026-10-09: Blank, Master Round (King Bomber, Lil' Bomber live); weapons and evolutions: Bee Hive, Casey, Snowballer, Camera, Blasphemy, Mailbox, Honeycomb; synergies as evolutions: Bomberpal (Lil' Bomber + bomb), BEES (Bee Hive + Honeycomb), Frosty the Bullet Tyrant (Snowballer + snow)",
+  "statuses": "2026-10-09: Jammed; Burn, Poison, Charm, Freeze covered elsewhere"
+ },
+ "Escape The Mad Empire": {
+  "connections": "before 2026-10-07"
+ },
+ "Eternal Quest": {
+  "connections": "before 2026-10-07"
+ },
+ "Etrian Mystery Dungeon": {
+  "connections": "before 2026-10-07"
+ },
+ "Etrian Mystery Dungeon 2": {
+  "connections": "before 2026-10-07"
+ },
+ "Everything is Crab": {
+  "connections": "before 2026-10-07"
+ },
+ "Evolings": {
+  "connections": "before 2026-10-07"
+ },
+ "Exit the Gungeon": {
+  "connections": "before 2026-10-07"
+ },
+ "FLERP": {
+  "connections": "before 2026-10-07"
+ },
+ "FTL": {
+  "connections": "before 2026-10-07",
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+ },
+ "Facehand": {
+  "connections": "before 2026-10-07"
+ },
+ "Fairy Tail: Dungeons": {
+  "connections": "before 2026-10-07"
+ },
+ "Fatal Labyrinth": {
+  "connections": "before 2026-10-07"
+ },
+ "Fear & Hunger": {
+  "connections": "before 2026-10-07"
+ },
+ "Feed the Deep": {
+  "connections": "before 2026-10-07"
+ },
+ "Fights in Tight Spaces": {
+  "connections": "before 2026-10-07"
+ },
+ "Final Fantasy Fables: Chocobo's Dungeon": {
+  "connections": "before 2026-10-07"
+ },
+ "Fish Fear Me": {
+  "connections": "before 2026-10-07"
+ },
+ "Flick Shot Rogues": {
+  "connections": "before 2026-10-07"
+ },
+ "Flinthook": {
+  "connections": "before 2026-10-07"
+ },
+ "Fogpiercer": {
+  "connections": "before 2026-10-07"
+ },
+ "Footgun: Underground": {
+  "connections": "before 2026-10-07"
+ },
+ "For The Warp": {
+  "connections": "before 2026-10-07"
+ },
+ "For the King": {
+  "characters": "2026-10-09: Busker, Treasure Hunter",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-09: Game of Dice, Hot Spring, Blood Ritual",
+  "goals": "2026-10-09: The Hangman",
+  "locations": "2026-10-09: nothing usable: its places are encounters, filed as events",
+  "loot": "2026-10-09: nothing distinctive: its gear is generic stat items, and its luck pieces duplicate Clover and Lucky Toe; weapons and evolutions: none; weapons are generic stat gear",
+  "statuses": "2026-10-09: Wet; Death Mark duplicates the Doomed candidate, so it went into The Hangman's goal"
+ },
+ "For the King 2": {
+  "characters": "2026-10-09: Fortune Teller, Fallen Knight; Toymaker left out (repeats Cult of the Lamb's recruit), Shepherd (repeats 'made a friend')",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-09: End of the Rainbow, Fragrant Outhouse",
+  "goals": "2026-10-09: Clown, Queen Rosomon; Toymaker's soul-dolls left out of characters (repeats Cult of the Lamb's recruit)",
+  "locations": "2026-10-09: Embedded Blade",
+  "loot": "2026-10-09: Fancy Umbrella, Silver Padlock; weapons and evolutions: Stool, Lute; Flaming Stool (the Stool's own tier-3 upgrade)",
+  "statuses": "2026-10-09: Scared; Foolish (curse); Suicidal left out (the name)"
+ },
+ "Forestrike": {
+  "connections": "before 2026-10-07"
+ },
+ "Forward: Escape the Fold": {
+  "connections": "before 2026-10-07",
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+ },
+ "Freaky Awesome": {
+  "connections": "before 2026-10-07"
+ },
+ "From The Top": {
+  "connections": "before 2026-10-07"
+ },
+ "Frozen Depths": {
+  "connections": "before 2026-10-07"
+ },
+ "Full Metal Schoolgirl": {
+  "connections": "2026-10-07"
+ },
+ "Full Mojo Rampage": {
+  "connections": "before 2026-10-07"
+ },
+ "Fury Unleashed": {
+  "connections": "before 2026-10-07"
+ },
+ "Fushigi no Gensoukyou": {
+  "connections": "before 2026-10-07"
+ },
+ "Fushigi no Gensoukyou 3": {
+  "connections": "before 2026-10-07"
+ },
+ "Fushigi no Pixel Dungeon": {
+  "connections": "before 2026-10-07"
+ },
+ "GONNER2": {
+  "connections": "before 2026-10-07"
+ },
+ "Galactic Glitch": {
+  "connections": "before 2026-10-07"
+ },
+ "Gambonanza": {
+  "connections": "before 2026-10-07"
+ },
+ "Garden of Witches": {
+  "connections": "before 2026-10-07"
+ },
+ "Gatekeeper": {
+  "connections": "before 2026-10-07"
+ },
+ "GearHead": {
+  "connections": "before 2026-10-07"
+ },
+ "GearHead 2": {
+  "connections": "before 2026-10-07"
+ },
+ "GearHead Caramel": {
+  "connections": "before 2026-10-07"
+ },
+ "Genome Guardian": {
+  "connections": "before 2026-10-07"
+ },
+ "Genome Guardian 2": {
+  "connections": "before 2026-10-07"
+ },
+ "Geometry Arena": {
+  "connections": "before 2026-10-07"
+ },
+ "Geometry Arena 2": {
+  "connections": "before 2026-10-07"
+ },
+ "Glyphica: Typing Survival": {
+  "connections": "before 2026-10-07"
+ },
+ "GnollHack": {
+  "connections": "before 2026-10-07"
+ },
+ "Gnomes": {
+  "connections": "before 2026-10-07"
+ },
+ "Go Mecha Ball": {
+  "connections": "before 2026-10-07"
+ },
+ "GoNNER": {
+  "connections": "before 2026-10-07"
+ },
+ "Goblin Sushi": {
+  "connections": "before 2026-10-07"
+ },
+ "God of Weapons": {
+  "connections": "before 2026-10-07"
+ },
+ "Godbreakers": {
+  "connections": "before 2026-10-07"
+ },
+ "Going Under": {
+  "connections": "before 2026-10-07"
+ },
+ "Golden Krone Hotel": {
+  "connections": "before 2026-10-07"
+ },
+ "Golden Light": {
+  "connections": "before 2026-10-07"
+ },
+ "Golfie": {
+  "connections": "before 2026-10-07"
+ },
+ "Goobies": {
+  "connections": "before 2026-10-07"
+ },
+ "Gordian Quest": {
+  "connections": "before 2026-10-07"
+ },
+ "Granvir": {
+  "connections": "before 2026-10-07"
+ },
+ "Greedland": {
+  "connections": "before 2026-10-07"
+ },
+ "Griftlands": {
+  "connections": "before 2026-10-07",
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+ },
+ "Guidus": {
+  "connections": "before 2026-10-07"
+ },
+ "Guidus Zero": {
+  "connections": "before 2026-10-07"
+ },
+ "Guild of Dungeoneering": {
+  "connections": "before 2026-10-07"
+ },
+ "Gumballs & Dungeons": {
+  "connections": "before 2026-10-07"
+ },
+ "Gunfire Reborn": {
+  "connections": "before 2026-10-07",
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+ },
+ "Gunlocked": {
+  "connections": "before 2026-10-07"
+ },
+ "Gunlocked 2": {
+  "connections": "before 2026-10-07"
+ },
+ "Guntouchables": {
+  "connections": "before 2026-10-07"
+ },
+ "Hack": {
+  "connections": "before 2026-10-07"
+ },
+ "Hack'EM": {
+  "connections": "before 2026-10-07"
+ },
+ "Hadean Tactics": {
+  "connections": "before 2026-10-07"
+ },
+ "Hades": {
+  "characters": "2026-10-09: nothing: Zagreus is live",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-09: Chaos Gate",
+  "goals": "2026-10-09: checked: Cerberus holds; Bone Hydra, Furies moved to bosses; Asterius dropped (described the boss; minotaur = NetHack's); Thanatos, Hades added (Numbskull, Wringer, Vermin, Chariot, Megaera, Charon live)",
+  "locations": "2026-10-09: Infernal Trove (Erebus Gates would shorten paths)",
+  "loot": "2026-10-09: weapons and evolutions: Stygian Blade, Heart-Seeking Bow, Shield of Chaos; Excalibur as the Blade's aspect through blood. Keepsakes repeat other rows (Lucky Tooth = Life Saving, Pierced Butterfly = Flawless)",
+  "statuses": "2026-10-09: nothing: the gods' curses (Jolted, Weak, Chill, Doom) are Bleed, Burn, Slow and others; Hangover is Battle Brothers' name"
+ },
+ "Hades II": {
+  "connections": "before 2026-10-07",
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+ },
+ "Halls of Torment": {
+  "connections": "before 2026-10-07",
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+ },
+ "Hand of Fate": {
+  "connections": "before 2026-10-07",
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+ },
+ "Hand of Fate 2": {
+  "connections": "before 2026-10-07"
+ },
+ "Hand of Fate: Hordes": {
+  "connections": "before 2026-10-07"
+ },
+ "Handmancers": {
+  "connections": "before 2026-10-07"
+ },
+ "Hangtime!": {
+  "connections": "before 2026-10-07"
+ },
+ "Haque": {
+  "connections": "before 2026-10-07"
+ },
+ "Has-Been Heroes": {
+  "connections": "before 2026-10-07"
+ },
+ "Haste": {
+  "connections": "before 2026-10-07"
+ },
+ "Have a Nice Death": {
+  "connections": "before 2026-10-07"
+ },
+ "He is Coming": {
+  "connections": "before 2026-10-07"
+ },
+ "Heading Out": {
+  "connections": "before 2026-10-07"
+ },
+ "Heat Signature": {
+  "connections": "before 2026-10-07"
+ },
+ "Heavy Bullets": {
+  "connections": "before 2026-10-07"
+ },
+ "Hell Clock": {
+  "connections": "before 2026-10-07"
+ },
+ "Hell Maiden": {
+  "connections": "before 2026-10-07"
+ },
+ "Hellboy Web of Wyrd": {
+  "connections": "before 2026-10-07"
+ },
+ "Hellcard": {
+  "connections": "before 2026-10-07"
+ },
+ "Helskate": {
+  "connections": "before 2026-10-07"
+ },
+ "Heretic's Fork": {
+  "connections": "before 2026-10-07"
+ },
+ "Heroes of Hammerwatch": {
+  "connections": "before 2026-10-07"
+ },
+ "Heroes of Hammerwatch II": {
+  "connections": "before 2026-10-07"
+ },
+ "Hexagod": {
+  "connections": "before 2026-10-07"
+ },
+ "Hive Blight": {
+  "connections": "before 2026-10-07"
+ },
+ "HoloCure: Save the Fans!": {
+  "connections": "before 2026-10-07"
+ },
+ "HoloDungeon: Koyori vs HollowLive in Honsha Tower": {
+  "connections": "before 2026-10-07"
+ },
+ "Hoplite": {
+  "connections": "before 2026-10-07",
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+ },
+ "House of Necrosis": {
+  "connections": "before 2026-10-07"
+ },
+ "How Many Dudes?": {
+  "connections": "before 2026-10-07"
+ },
+ "Hungry Horrors": {
+  "connections": "before 2026-10-07"
+ },
+ "Hunter X Hunter: Nen X Survivor": {
+  "connections": "before 2026-10-07"
+ },
+ "HyperRogue": {
+  "connections": "before 2026-10-07"
+ },
+ "I Am Legion: Stand Survivors": {
+  "connections": "before 2026-10-07"
+ },
+ "I Am Overburdened": {
+  "connections": "before 2026-10-07"
+ },
+ "Icewall": {
+  "connections": "before 2026-10-07"
+ },
+ "Immortal Redneck": {
+  "connections": "before 2026-10-07"
+ },
+ "In Celebration of Violence": {
+  "connections": "before 2026-10-07"
+ },
+ "Incursion": {
+  "connections": "before 2026-10-07"
+ },
+ "Infinite Space III: Sea of Stars": {
+  "connections": "before 2026-10-07"
+ },
+ "Infra Arcana": {
+  "connections": "before 2026-10-07"
+ },
+ "Inkbound": {
+  "connections": "before 2026-10-07"
+ },
+ "Inkshade": {
+  "connections": "before 2026-10-07"
+ },
+ "Inscryption": {
+  "connections": "before 2026-10-07",
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+ },
+ "Insider Trading": {
+  "connections": "before 2026-10-07"
+ },
+ "Insurmountable": {
+  "connections": "before 2026-10-07"
+ },
+ "Into The Grid": {
+  "connections": "before 2026-10-07"
+ },
+ "Into the Breach": {
+  "connections": "before 2026-10-07",
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+ },
+ "Iratus: Lord of the Dead": {
+  "connections": "before 2026-10-07"
+ },
+ "Iter Vehemens Ad Necem": {
+  "connections": "before 2026-10-07"
+ },
+ "Izuna 2: The Unemployed Ninja Returns": {
+  "connections": "before 2026-10-07"
+ },
+ "Izuna: Legend of the Unemployed Ninja": {
+  "connections": "before 2026-10-07"
+ },
+ "Jotunnslayer: Hordes of Hel": {
+  "connections": "before 2026-10-07"
+ },
+ "Juicy Realm": {
+  "connections": "before 2026-10-07"
+ },
+ "Jupiter Hell": {
+  "connections": "before 2026-10-07",
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+ },
+ "Just King": {
+  "connections": "before 2026-10-07"
+ },
+ "Katanaut": {
+  "connections": "before 2026-10-07"
+ },
+ "Kaz": {
+  "connections": "2026-10-07"
+ },
+ "Keeper's Toll": {
+  "connections": "before 2026-10-07"
+ },
+ "KeeperRL": {
+  "connections": "before 2026-10-07"
+ },
+ "Kernel Hearts": {
+  "connections": "before 2026-10-07"
+ },
+ "Kill The Music": {
+  "connections": "before 2026-10-07"
+ },
+ "Kill the Brickman": {
+  "connections": "before 2026-10-07"
+ },
+ "Kingdom: New Lands": {
+  "connections": "before 2026-10-07"
+ },
+ "Kingsway": {
+  "connections": "2026-10-07"
+ },
+ "Kitty Survivors: Rogues of Catmere": {
+  "connections": "before 2026-10-07"
+ },
+ "Knightica": {
+  "connections": "before 2026-10-07"
+ },
+ "Knights in Tight Spaces": {
+  "connections": "before 2026-10-07"
+ },
+ "Knock on the Coffin Lid": {
+  "connections": "before 2026-10-07"
+ },
+ "Kādomon: Hyper Auto Battlers": {
+  "connections": "before 2026-10-07"
+ },
+ "Labyrinth of Legendary Loot": {
+  "connections": "before 2026-10-07"
+ },
+ "Lake of Creatures": {
+  "connections": "before 2026-10-07"
+ },
+ "LambdaRogue: The Book of Stars": {
+  "connections": "before 2026-10-07"
+ },
+ "Larn": {
+  "connections": "before 2026-10-07"
+ },
+ "Legend of Dungeon": {
+  "connections": "before 2026-10-07"
+ },
+ "Legend of Keepers: Career of a Dungeon Manager": {
+  "connections": "before 2026-10-07",
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+ },
+ "Legionbound": {
+  "connections": "before 2026-10-07"
+ },
+ "Let Him Cook": {
+  "connections": "before 2026-10-07"
+ },
+ "Let's! Revolution!": {
+  "connections": "before 2026-10-07"
+ },
+ "Lethal Dungeon": {
+  "connections": "before 2026-10-07"
+ },
+ "Lexispell": {
+  "connections": "before 2026-10-07"
+ },
+ "Linley's Dungeon Crawl": {
+  "connections": "before 2026-10-07"
+ },
+ "Lone Ruin": {
+  "connections": "before 2026-10-07"
+ },
+ "LoneStar": {
+  "connections": "before 2026-10-07"
+ },
+ "Loop Hero": {
+  "connections": "before 2026-10-07",
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+ },
+ "Loot Rascals": {
+  "connections": "before 2026-10-07"
+ },
+ "Loot River": {
+  "connections": "before 2026-10-07"
+ },
+ "Lootplot": {
+  "connections": "before 2026-10-07"
+ },
+ "Lort": {
+  "connections": "before 2026-10-07"
+ },
+ "Lost Eidolons: Veil of the Witch": {
+  "connections": "before 2026-10-07"
+ },
+ "Lost Flame": {
+  "connections": "before 2026-10-07"
+ },
+ "Lost For Swords": {
+  "connections": "before 2026-10-07"
+ },
+ "Lost In Fantaland": {
+  "connections": "before 2026-10-07"
+ },
+ "Lost Labyrinth": {
+  "connections": "before 2026-10-07"
+ },
+ "Lost in Random: The Eternal Die": {
+  "connections": "before 2026-10-07"
+ },
+ "Luck & Loot": {
+  "connections": "before 2026-10-07"
+ },
+ "Luck be a Landlord": {
+  "connections": "before 2026-10-07"
+ },
+ "Lucky Hero": {
+  "connections": "before 2026-10-07"
+ },
+ "Lucky Shot": {
+  "connections": "before 2026-10-07"
+ },
+ "Lumencraft": {
+  "connections": "2026-10-07"
+ },
+ "Lunchbreak Tactics": {
+  "connections": "before 2026-10-07"
+ },
+ "Mad King Redemption": {
+  "connections": "before 2026-10-07"
+ },
+ "Magic Survival": {
+  "connections": "before 2026-10-07"
+ },
+ "Magicraft": {
+  "connections": "before 2026-10-07"
+ },
+ "Maid Survivors: Little Angels": {
+  "connections": "before 2026-10-07"
+ },
+ "Mainframe Defenders": {
+  "connections": "before 2026-10-07"
+ },
+ "Mana Spark": {
+  "connections": "before 2026-10-07"
+ },
+ "Masks of the Void: Origins": {
+  "connections": "before 2026-10-07"
+ },
+ "Master of Piece": {
+  "connections": "before 2026-10-07"
+ },
+ "Maze Mice": {
+  "connections": "before 2026-10-07"
+ },
+ "Mechanibot": {
+  "connections": "before 2026-10-07"
+ },
+ "Megabonk": {
+  "connections": "before 2026-10-07"
+ },
+ "Meme Mayhem": {
+  "connections": "before 2026-10-07"
+ },
+ "Menace from the Deep": {
+  "connections": "before 2026-10-07"
+ },
+ "Menherarium": {
+  "connections": "before 2026-10-07"
+ },
+ "Merge Maestro": {
+  "connections": "before 2026-10-07"
+ },
+ "Metal Slug Tactics": {
+  "connections": "before 2026-10-07"
+ },
+ "Metal Unit": {
+  "connections": "before 2026-10-07"
+ },
+ "Metallic Child": {
+  "connections": "before 2026-10-07"
+ },
+ "Mewgenics": {
+  "characters": "2026-10-09: 3 classes",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-09: 5 of its 150+ events",
+  "goals": "2026-10-09: checked 2 rows (both real; Fenrir demoted to an ordinary body, Boris flagged: Mewgenics already ships 10 bosses); nothing added, the roster is already 25 Mewgenics bodies",
+  "locations": "2026-10-09: 4 units, 2 tiles, 1 object (its battlefield objects)",
+  "loot": "2026-10-09: 2 rows; weapons and evolutions: Bear Traps, and Bloody Bear Traps through blood (the game's 'Bloody' upgrades are its evolutions); Death's Scythe was already a candidate",
+  "statuses": "2026-10-09: 4 statuses"
+ },
+ "Million Depth": {
+  "connections": "before 2026-10-07"
+ },
+ "Mimic Logic": {
+  "connections": "before 2026-10-07"
+ },
+ "Miracle Chou Party: Sanae to Tenshi no Gensou Labyrinth": {
+  "connections": "before 2026-10-07"
+ },
+ "Miracle Party: Fushigi no Gensoukyou 2": {
+  "connections": "before 2026-10-07"
+ },
+ "Mission: Thunderbolt": {
+  "connections": "before 2026-10-07"
+ },
+ "Mistrogue: Mist and the Living Dungeons": {
+  "connections": "before 2026-10-07"
+ },
+ "Mobmania": {
+  "connections": "before 2026-10-07"
+ },
+ "Monmusu Gladiator": {
+  "connections": "before 2026-10-07"
+ },
+ "Monster Gate": {
+  "connections": "before 2026-10-07"
+ },
+ "Monster Gate: Ooinaru Dungeon - Fuuin no Orb": {
+  "connections": "before 2026-10-07"
+ },
+ "Monster Girls and the Mysterious Adventure": {
+  "connections": "before 2026-10-07"
+ },
+ "Monster Girls and the Mysterious Adventure 2": {
+  "connections": "before 2026-10-07"
+ },
+ "Monster Slayers": {
+  "connections": "before 2026-10-07"
+ },
+ "Monster Train": {
+  "characters": "2026-10-09: nothing: the Hornbreaker Prince's horn-collecting repeats Powder's trophy and the Leviathan's broken-off part",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-09: Abandoned Winged",
+  "goals": "2026-10-09: checked 2: Seraph right (moved to 4-Insane), Lightwing right; The Porcupine and The Last Divinity added; the Steel Slate left out (repeats Shogun Showdown's shield), the Self-Made Harpy (stitched wings repeat Curse of the Dead Gods)",
+  "locations": "2026-10-09: nothing: its merchants are generic shops and the Pyre is the whole game, not a place",
+  "loot": "2026-10-09: Golden Vault; weapons and evolutions: Frozen Lance (a spell read as a weapon); no evolutions (upgrades are stones added to cards)",
+  "statuses": "2026-10-09: Burnout; Spikes left out (the same as Riposte's combat)"
+ },
+ "Monster Train 2": {
+  "connections": "before 2026-10-07",
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+ },
+ "Monsters are Coming!": {
+  "connections": "before 2026-10-07"
+ },
+ "Monstrum": {
+  "connections": "before 2026-10-07"
+ },
+ "Montabi": {
+  "connections": "before 2026-10-07"
+ },
+ "Moon Hunters": {
+  "connections": "before 2026-10-07"
+ },
+ "Moon Watch": {
+  "connections": "before 2026-10-07"
+ },
+ "Moonlighter": {
+  "characters": "2026-10-09: Will",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-09: nothing: Moonlighter has no events",
+  "goals": "2026-10-09: 2 bosses",
+  "locations": "2026-10-09: Healing Pool, Edward the Banker",
+  "loot": "2026-10-09: 3 bag curses, Merchant Pendant, Merchant Mirror; weapons and evolutions: Broom Spear; Golem Drill Spear as its forge evolution (whetstones, as the recipe asks). The other forge trees are stat steps",
+  "statuses": "2026-10-09: nothing usable: poison, burn and electric duplicate Blight, Burn and Wet"
+ },
+ "Moonlighter 2: The Endless Vault": {
+  "connections": "before 2026-10-07"
+ },
+ "Moonring": {
+  "connections": "before 2026-10-07"
+ },
+ "Moonsigil Atlas": {
+  "connections": "2026-10-09"
+ },
+ "Morbid Metal": {
+  "connections": "before 2026-10-07"
+ },
+ "Moria": {
+  "connections": "before 2026-10-07"
+ },
+ "Morimens": {
+  "connections": "before 2026-10-07"
+ },
+ "Morsels": {
+  "connections": "before 2026-10-07"
+ },
+ "Mortal Sin": {
+  "connections": "before 2026-10-07"
+ },
+ "Mothergunship": {
+  "connections": "before 2026-10-07"
+ },
+ "Mothergunship: Forge": {
+  "connections": "before 2026-10-07"
+ },
+ "Motto!? Fushigi no Gensoukyou: Under the Moonlight": {
+  "connections": "before 2026-10-07"
+ },
+ "Mr. Sun's Hatbox": {
+  "connections": "before 2026-10-07"
+ },
+ "Muck": {
+  "connections": "before 2026-10-07",
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+ },
+ "My Card Is Better Than Your Card!": {
+  "connections": "before 2026-10-07"
+ },
+ "Mystery Chronicle: One Way Heroics": {
+  "connections": "before 2026-10-07"
+ },
+ "Mystery Dungeon 2: Shiren the Wanderer": {
+  "connections": "before 2026-10-07",
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+ },
+ "Mythical Concept Starnaut": {
+  "connections": "before 2026-10-07"
+ },
+ "Nadir": {
+  "connections": "before 2026-10-07"
+ },
+ "NecroBouncer": {
+  "connections": "before 2026-10-07"
+ },
+ "Necroking": {
+  "connections": "before 2026-10-07"
+ },
+ "Necrosmith": {
+  "connections": "before 2026-10-07"
+ },
+ "Necrosmith 2": {
+  "connections": "before 2026-10-07"
+ },
+ "Neon Abyss": {
+  "connections": "before 2026-10-07"
+ },
+ "Neon Abyss 2": {
+  "connections": "before 2026-10-07"
+ },
+ "Neophyte": {
+  "connections": "before 2026-10-07"
+ },
+ "NetHack": {
+  "characters": "2026-10-09: 5 roles",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-09: 2 rows",
+  "goals": "2026-10-09: checked 15 rows against nethackwiki: 4 fixed (Black Pudding, Mummy, Gas Spore, Medusa now a boss), 5 added",
+  "locations": "2026-10-09: 3 locations, 4 objects, 1 shopkeeper",
+  "loot": "2026-10-09: 12 rows; weapons and evolutions: Vorpal Blade (shares the live Jabberwock's goal), Mjollnir; Excalibur was already a candidate. Sting's naming trick has no item to evolve through",
+  "statuses": "2026-10-09: 2 statuses, 1 curse"
+ },
+ "Netherworld Covenant": {
+  "connections": "before 2026-10-07"
+ },
+ "Nigate Tale": {
+  "connections": "before 2026-10-07"
+ },
+ "Night Swarm": {
+  "connections": "before 2026-10-07"
+ },
+ "Nimrods": {
+  "connections": "before 2026-10-07"
+ },
+ "No-Skin": {
+  "connections": "before 2026-10-07"
+ },
+ "Node Crown": {
+  "connections": "before 2026-10-07"
+ },
+ "Node Farm": {
+  "connections": "before 2026-10-07"
+ },
+ "Noita": {
+  "characters": "2026-10-09: nothing: Minä is live already",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-09: nothing: Noita has no events",
+  "goals": "2026-10-09: checked 4 rows: 3 fixed; Stevari added",
+  "locations": "2026-10-09: Holy Mountain, Perk Altar",
+  "loot": "2026-10-09: Polymorphine; its spell-built wands would need a whole new system; weapons and evolutions: none; its wands are built from spells, which would need a whole system",
+  "statuses": "2026-10-09: Teleportitis; its other stains duplicate Wet, Tarred and Burn"
+ },
+ "Nomad Survival": {
+  "connections": "before 2026-10-07"
+ },
+ "Noobs Are Coming": {
+  "connections": "before 2026-10-07"
+ },
+ "Noobs Want to Live": {
+  "connections": "before 2026-10-07"
+ },
+ "Nordhold": {
+  "connections": "before 2026-10-07"
+ },
+ "Nordic Ashes: Survivors of Ragnarok": {
+  "connections": "before 2026-10-07"
+ },
+ "Nova Drift": {
+  "connections": "before 2026-10-07"
+ },
+ "Nowhere Prophet": {
+  "connections": "before 2026-10-07"
+ },
+ "Nubby's Number Factory": {
+  "connections": "before 2026-10-07"
+ },
+ "Nuclear Throne": {
+  "characters": "2026-10-09: Chicken, Melting; Robot left out (eating repeats Don't Starve's level-up), Steroids (repeats Ball x Pit's two weapons)",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-09: nothing: no events",
+  "goals": "2026-10-09: checked 2: I.D.P.D. Elite fixed (goal didn't fit), Big Dog dropped (goal didn't fit; its sleep repeats the Dreaming General); Big Bandit and The Nuclear Throne added; Health Mimic left out (repeats Shattered Pixel Dungeon's mimic)",
+  "locations": "2026-10-09: nothing: the areas are levels with no feature to build a goal on beyond the Oasis, which Big Bandit carries",
+  "loot": "2026-10-09: nothing: weapons and evolutions: none usable (the Weapons page is a table with no item pages; no evolutions); mutations are perks",
+  "statuses": "2026-10-09: nothing: mutations are permanent perks, not statuses"
+ },
+ "Nunholy": {
+  "connections": "before 2026-10-07"
+ },
+ "OTXO": {
+  "connections": "before 2026-10-07"
+ },
+ "Oaken Tower": {
+  "connections": "before 2026-10-07"
+ },
+ "Oblivion Override": {
+  "connections": "before 2026-10-07"
+ },
+ "Obsidian Prince": {
+  "connections": "before 2026-10-07"
+ },
+ "Octogeddon": {
+  "connections": "before 2026-10-07"
+ },
+ "Oddcore": {
+  "connections": "before 2026-10-07"
+ },
+ "Odinfall": {
+  "connections": "before 2026-10-07"
+ },
+ "Ogre Chambers 2222": {
+  "connections": "before 2026-10-07"
+ },
+ "Omega": {
+  "connections": "before 2026-10-07"
+ },
+ "Omega Labyrinth": {
+  "connections": "before 2026-10-07"
+ },
+ "Omega Labyrinth Life": {
+  "connections": "before 2026-10-07"
+ },
+ "Omega Labyrinth Z": {
+  "connections": "before 2026-10-07"
+ },
+ "Omelet You Cook": {
+  "connections": "before 2026-10-07"
+ },
+ "One Step From Eden": {
+  "characters": "2026-10-09: nothing: the playable Shopkeeper's selling repeats Moonlighter's level-up, and the others are fought as bosses here",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-09: nothing: its zones are fights, shops and campfires",
+  "goals": "2026-10-09: Violette, Terra, Terrable; the Shopkeeper boss left out (repeats Spelunky 2's angered shopkeeper), Hostage (filed as the Distress Call place)",
+  "locations": "2026-10-09: Distress Call",
+  "loot": "2026-10-09: Glass Cannon; weapons and evolutions: Guillotine, Ice Hockey; no evolutions (spell upgrades add a letter to the same spell)",
+  "statuses": "2026-10-09: nothing: Frost, Fragile and Root are covered by live or candidate statuses"
+ },
+ "One Way Heroics": {
+  "connections": "before 2026-10-07"
+ },
+ "OneBit Adventure": {
+  "connections": "before 2026-10-07"
+ },
+ "Orbital Bullet": {
+  "connections": "2026-10-07"
+ },
+ "Order Automatica": {
+  "connections": "before 2026-10-07"
+ },
+ "Our Darker Purpose": {
+  "connections": "before 2026-10-07"
+ },
+ "Overlooting": {
+  "connections": "before 2026-10-07"
+ },
+ "Overworld": {
+  "connections": "before 2026-10-07"
+ },
+ "Pairs & Perils": {
+  "connections": "before 2026-10-07"
+ },
+ "Paper Animal Adventure": {
+  "connections": "before 2026-10-07"
+ },
+ "Paper Planet": {
+  "connections": "before 2026-10-07"
+ },
+ "Pass the Fear": {
+  "connections": "before 2026-10-07"
+ },
+ "Passant: A Chess Roguelike": {
+  "connections": "before 2026-10-07"
+ },
+ "Patch Quest": {
+  "characters": "2026-10-09: nothing: the explorer is unnamed",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-09: nothing: no events",
+  "goals": "2026-10-09: Shinobo; riding and taming are Spelunky 2's and Cult of the Lamb's, Jumbo monsters are Tangledeep's elite goal, pet gifts NetHack's",
+  "locations": "2026-10-09: Soap (tile); dungeons and zones are biome lists",
+  "loot": "2026-10-09: Mirror Match; the other charms are small stat or terrain bonuses; weapons and evolutions: none; the blaster and mount skills belong to the monsters you ride",
+  "statuses": "2026-10-09: nothing as statuses: Slippery became the Soap tile; Sticky, Smokey, Dizzy, Burned, Frozen, Poisoned overlap Web, invisibility, Discorded, Burn, Slow, Blight"
+ },
+ "Path of Achra": {
+  "connections": "before 2026-10-07"
+ },
+ "Pathogenic": {
+  "connections": "before 2026-10-07"
+ },
+ "Pathos: Nethack Codex": {
+  "connections": "before 2026-10-07"
+ },
+ "Pawnbarian": {
+  "connections": "before 2026-10-07"
+ },
+ "Pebble Knights": {
+  "connections": "before 2026-10-07"
+ },
+ "Peglin": {
+  "characters": "2026-10-09: nothing: the classes are unlocked by peg feats (100 Ballwark, 50 Spinfection, 7 slimed pegs) with no level-up that leaves the pegboard",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-09: Golden Peglin Statue, Peglin Chef (Pachinko = Arcade Room, Crave Power = Devil Room, Dual Altar = Duplicator)",
+  "goals": "2026-10-09: checked: Thesaurosus holds, Stumpy Stump fixed; nothing added (Slime Boss swallowing = Hades II and Rogue Legacy 2, Demon Wall = Wallmonger, Minnie = NetHack's Minotaur, Pigment of Imagination = Doomvas)",
+  "locations": "2026-10-09: nothing: the areas are Forest, Castle, Mines with no places in them",
+  "loot": "2026-10-09: Wand of Skulltimate Greed; most relics act on pegs and orbs, which the board doesn't have; weapons and evolutions: Bouldorb (orbs are Peglin's weapons; most only change how pegs score); orbs level up rather than evolve",
+  "statuses": "2026-10-09: nothing: Muscircle, Ballwark and Spinfection are Strength, Shields and a poison"
+ },
+ "Pegs X Stickers": {
+  "connections": "before 2026-10-07"
+ },
+ "PengPong": {
+  "connections": "before 2026-10-07"
+ },
+ "Pesticide Not Required": {
+  "connections": "before 2026-10-07"
+ },
+ "Picayune Dreams": {
+  "connections": "before 2026-10-07"
+ },
+ "Pinball Storm: Lokanta": {
+  "connections": "2026-10-07"
+ },
+ "Pip My Dice": {
+  "connections": "before 2026-10-07"
+ },
+ "Pixel Dungeon": {
+  "connections": "before 2026-10-07"
+ },
+ "PlateUp!": {
+  "connections": "before 2026-10-07"
+ },
+ "Plinbo": {
+  "connections": "before 2026-10-07"
+ },
+ "Plinko Panic!": {
+  "connections": "before 2026-10-07"
+ },
+ "Pluto": {
+  "connections": "before 2026-10-07"
+ },
+ "Pocket Crystal League": {
+  "connections": "before 2026-10-07"
+ },
+ "Pogo Rogue": {
+  "connections": "before 2026-10-07"
+ },
+ "PokeVoid": {
+  "connections": "before 2026-10-07"
+ },
+ "Pokelike": {
+  "connections": "before 2026-10-07"
+ },
+ "PokéRogue": {
+  "connections": "before 2026-10-07"
+ },
+ "Pokémon Auto Chess": {
+  "connections": "before 2026-10-07"
+ },
+ "Pokémon Auto Spire": {
+  "connections": "before 2026-10-07"
+ },
+ "Pokémon Mystery Dungeon: Explorers of Sky": {
+  "connections": "before 2026-10-07",
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+ },
+ "Pokémon Mystery Dungeon: Explorers of Time and Explorers of Darkness": {
+  "connections": "before 2026-10-07"
+ },
+ "Pokémon Mystery Dungeon: Gates to Infinity": {
+  "connections": "before 2026-10-07"
+ },
+ "Pokémon Mystery Dungeon: Red and Blue Rescue Team": {
+  "connections": "before 2026-10-07",
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+ },
+ "Pokémon Mystery Dungeon: Rescue Team DX": {
+  "connections": "before 2026-10-07"
+ },
+ "Pokémon Super Mystery Dungeon": {
+  "connections": "before 2026-10-07"
+ },
+ "Pokémon Survivor Burst": {
+  "connections": "before 2026-10-07"
+ },
+ "Popup Dungeon": {
+  "connections": "before 2026-10-07"
+ },
+ "Powder": {
+  "connections": "before 2026-10-07",
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+ },
+ "Prime Monster": {
+  "connections": "2026-10-07"
+ },
+ "Primordialis": {
+  "connections": "before 2026-10-07"
+ },
+ "Pro Jank Footy": {
+  "connections": "2026-10-07"
+ },
+ "Pronoun Palace": {
+  "connections": "before 2026-10-07"
+ },
+ "Putrid Shot Ultra": {
+  "connections": "before 2026-10-07"
+ },
+ "Pyrene": {
+  "connections": "before 2026-10-07"
+ },
+ "Quasimorph": {
+  "connections": "before 2026-10-07"
+ },
+ "Quest of Dungeons": {
+  "connections": "before 2026-10-07"
+ },
+ "RAM: Random Access Mayhem": {
+  "connections": "before 2026-10-07"
+ },
+ "Rabbit and Steel": {
+  "connections": "before 2026-10-07"
+ },
+ "Raccoin: Coin Pusher Roguelike": {
+  "connections": "before 2026-10-07"
+ },
+ "Rack and Slay": {
+  "connections": "before 2026-10-07"
+ },
+ "Ragnarok": {
+  "connections": "before 2026-10-07"
+ },
+ "Rampage Knights": {
+  "connections": "before 2026-10-07"
+ },
+ "Rangedrifter": {
+  "connections": "before 2026-10-07"
+ },
+ "Ratatan": {
+  "connections": "2026-10-07"
+ },
+ "Ratropolis": {
+  "connections": "before 2026-10-07"
+ },
+ "Ravenswatch": {
+  "connections": "before 2026-10-07"
+ },
+ "Reality Break": {
+  "connections": "before 2026-10-07"
+ },
+ "Realm of Ink": {
+  "connections": "before 2026-10-07"
+ },
+ "Realm of the Mad God": {
+  "connections": "before 2026-10-07"
+ },
+ "Red Rogue": {
+  "connections": "before 2026-10-07"
+ },
+ "Reignbreaker": {
+  "connections": "before 2026-10-07"
+ },
+ "Renowned Explorers: International Society": {
+  "connections": "before 2026-10-07"
+ },
+ "Repetendium": {
+  "connections": "before 2026-10-07"
+ },
+ "Replicat": {
+  "connections": "before 2026-10-07"
+ },
+ "Return to Abyss": {
+  "connections": "before 2026-10-07"
+ },
+ "Returnal": {
+  "connections": "before 2026-10-07"
+ },
+ "Revita": {
+  "connections": "before 2026-10-07"
+ },
+ "Rhythm Witch: Beat Death": {
+  "connections": "before 2026-10-07"
+ },
+ "Rift Wizard": {
+  "connections": "before 2026-10-07",
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+ },
+ "Rift Wizard 2": {
+  "connections": "before 2026-10-07"
+ },
+ "Rift Wizard 3": {
+  "connections": "before 2026-10-07"
+ },
+ "Rig Riot": {
+  "connections": "before 2026-10-07"
+ },
+ "Right and Down": {
+  "connections": "before 2026-10-07"
+ },
+ "Ring of Pain": {
+  "connections": "before 2026-10-07",
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+ },
+ "Ringer": {
+  "connections": "before 2026-10-07"
+ },
+ "Riptale": {
+  "connections": "before 2026-10-07"
+ },
+ "Risk of Rain": {
+  "characters": "2026-10-09: Engineer, Sniper; CHEF left out (repeats Rogue Legacy 2's cooking Chef), Acrid (repeats the Plague Doctor's poison)",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-09: Divine Teleporter",
+  "goals": "2026-10-09: checked 5: Providence (goal replaced: repeated the live Strength status), Parent (goal was wrong; fixed), Scavenger and Magma Worm (moved to bosses; Scavenger's goal fixed), Imp Overlord right; Whorl added; Cremator left out (lava-swimming is the Magma Worm's), Toxic Beast (summoners are taken)",
+  "locations": "2026-10-09: Imp Shrine, Roulette Chamber",
+  "loot": "2026-10-09: Gold-plated Bomb, Dio's Best Friend, Colossal Knurl (the live Colossus's drop); weapons and evolutions: Disposable Missile Launcher; no evolutions in the first game",
+  "statuses": "2026-10-09: nothing: bleed, burn and poison are live or candidates; the Artifacts are run modifiers"
+ },
+ "Risk of Rain 2": {
+  "characters": "2026-10-09: Captain",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-09: nothing as events: the shrines and the Void Cradle are objects",
+  "goals": "2026-10-09: checked: Voidling holds; Aurelionite, Xi Construct moved to bosses and fixed; Mithrix fixed; 3 added (Scavenger, Magma Worm, Parent, Imp Overlord are Risk of Rain's)",
+  "locations": "2026-10-09: Commencement, Shrine of the Mountain, Shrine of Order, Void Cradle, Newt (Shrine of Blood = IV Bag, Shrine of Chance = Arcade Room)",
+  "loot": "2026-10-09: Brittle Crown, Egocentrism, Gesture of the Drowned, Ceremonial Dagger (Gasoline, Infusion, Rejuvenation Rack are live); weapons and evolutions: Royal Capacitor (equipment as a weapon); no evolutions (Void items corrupt items, not weapons)",
+  "statuses": "2026-10-09: nothing: the wiki's debuff pages are templates; Bleed, Burn live, Tar and Weak are other games' candidates"
+ },
+ "Risk of Rain Returns": {
+  "connections": "before 2026-10-07"
+ },
+ "Road Not Taken": {
+  "connections": "before 2026-10-07"
+ },
+ "Roboquest": {
+  "connections": "before 2026-10-07"
+ },
+ "Rocket Rats": {
+  "connections": "before 2026-10-07"
+ },
+ "Rogue": {
+  "connections": "before 2026-10-07",
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+ },
+ "Rogue Blight": {
+  "connections": "before 2026-10-07"
+ },
+ "Rogue Command": {
+  "connections": "before 2026-10-07"
+ },
+ "Rogue Empire": {
+  "connections": "before 2026-10-07"
+ },
+ "Rogue Factory": {
+  "connections": "before 2026-10-07"
+ },
+ "Rogue Flight": {
+  "connections": "before 2026-10-07"
+ },
+ "Rogue Hearts Dungeon": {
+  "connections": "before 2026-10-07"
+ },
+ "Rogue Heroes: Ruins of Tasos": {
+  "connections": "before 2026-10-07"
+ },
+ "Rogue Legacy": {
+  "characters": "2026-10-09: Miner",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-09: nothing: Charon's toll and the Architect are hub services",
+  "goals": "2026-10-09: checked: Johannes fixed; The Brohannes added (Alexander, Ponce de Leon and Herodotus repeat fire-trail and splitting goals; Khidr and Doomvas live)",
+  "locations": "2026-10-09: Fairy Chest",
+  "loot": "2026-10-09: nothing: runes and blueprints are stat steps; weapons and evolutions: none (one sword, and spells are class abilities)",
+  "statuses": "2026-10-09: Color Blind (curse); the other traits are cosmetic or medical jokes"
+ },
+ "Rogue Legacy 2": {
+  "characters": "2026-10-09: Chef",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-09: nothing: the NPCs are hub services",
+  "goals": "2026-10-09: checked 4: Jonah dropped (not on the wiki; repeats Hades II), Lamech fixed and moved to bosses, Cain and the Void Beasts kept as ? (unconfirmed on the wiki); nothing added (Estuaries' pages are attack lists)",
+  "locations": "2026-10-09: nothing: the Stygian Study repeats Battle Brothers' lost library",
+  "loot": "2026-10-09: weapons and evolutions: Frying Pan (Chef); no evolutions; relics and armour sets are stat bonuses",
+  "statuses": "2026-10-09: nothing: traits repeat Rogue Legacy's"
+ },
+ "Rogue Lords": {
+  "connections": "before 2026-10-07"
+ },
+ "Rogue Tower": {
+  "connections": "before 2026-10-07"
+ },
+ "Rogue Voltage": {
+  "connections": "before 2026-10-07"
+ },
+ "Rogue Wizards": {
+  "connections": "before 2026-10-07"
+ },
+ "Rogue's Tale": {
+  "connections": "before 2026-10-07"
+ },
+ "Rogue-Fp": {
+  "connections": "before 2026-10-07"
+ },
+ "Rogue: Genesia": {
+  "connections": "before 2026-10-07"
+ },
+ "RogueJack21": {
+  "connections": "before 2026-10-07"
+ },
+ "RogueSlide": {
+  "connections": "before 2026-10-07"
+ },
+ "Roguebook": {
+  "connections": "before 2026-10-07"
+ },
+ "Roll": {
+  "connections": "before 2026-10-07"
+ },
+ "RollScape": {
+  "connections": "before 2026-10-07"
+ },
+ "Roulette Dungeon": {
+  "connections": "before 2026-10-07"
+ },
+ "Roulette Hero": {
+  "connections": "before 2026-10-07"
+ },
+ "Rounds": {
+  "connections": "before 2026-10-07"
+ },
+ "Rune Dice": {
+  "connections": "before 2026-10-07"
+ },
+ "Runeborn": {
+  "connections": "before 2026-10-07"
+ },
+ "Runeveil": {
+  "connections": "before 2026-10-07"
+ },
+ "Rungore": {
+  "connections": "before 2026-10-07"
+ },
+ "Runic Survivor": {
+  "connections": "before 2026-10-07"
+ },
+ "SNKRX": {
+  "connections": "before 2026-10-07"
+ },
+ "SULFUR": {
+  "connections": "before 2026-10-07"
+ },
+ "Sanae no Chou Tokkyuu: The Express Trial": {
+  "connections": "before 2026-10-07"
+ },
+ "Sandwalkers": {
+  "connections": "before 2026-10-07"
+ },
+ "Scarlet Skips": {
+  "connections": "2026-10-07"
+ },
+ "Scarlet Tower": {
+  "connections": "before 2026-10-07"
+ },
+ "Schism": {
+  "connections": "before 2026-10-07"
+ },
+ "Scourgebringer": {
+  "characters": "2026-10-09: nothing: Kyhra, the only hero, has no page",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-09: nothing: no events",
+  "goals": "2026-10-09: Alarm-bot, Judge CandleMask; most judge pages are one line (NightWeaver = reflect, live; Splat-fly Queen and Horned-devil King = queen and king goals elsewhere)",
+  "locations": "2026-10-09: nothing: the biome pages are enemy lists",
+  "loot": "2026-10-09: Cursed Second Wind, Cursed Ammo (the regular blessings are stat bumps); weapons and evolutions: none; the wiki's weapon list is incomplete and its gun mods are stat effects",
+  "statuses": "2026-10-09: nothing: no status pages"
+ },
+ "Sea of Survivors": {
+  "connections": "before 2026-10-07"
+ },
+ "Section 13": {
+  "connections": "before 2026-10-07"
+ },
+ "Seedborne Soldiers": {
+  "connections": "before 2026-10-07"
+ },
+ "Sephiria": {
+  "connections": "before 2026-10-07"
+ },
+ "Seraph's Last Stand": {
+  "connections": "before 2026-10-07"
+ },
+ "Serpent's Gaze": {
+  "connections": "before 2026-10-07"
+ },
+ "Shadow of the Wyrm": {
+  "connections": "before 2026-10-07"
+ },
+ "Shadowveil: Legend of The Five Rings": {
+  "connections": "before 2026-10-07"
+ },
+ "Shape Shifter: Formations": {
+  "connections": "before 2026-10-07"
+ },
+ "Shape of Dreams": {
+  "connections": "before 2026-10-07"
+ },
+ "Shard Squad": {
+  "connections": "before 2026-10-07"
+ },
+ "Shattered Pixel Dungeon": {
+  "connections": "before 2026-10-07",
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+ },
+ "Ship of Fools": {
+  "connections": "before 2026-10-07"
+ },
+ "Shiren the Wanderer (2008)": {
+  "connections": "before 2026-10-07"
+ },
+ "Shiren the Wanderer 2: Shiren's Castle and the Oni Invasion": {
+  "connections": "before 2026-10-07"
+ },
+ "Shiren the Wanderer 4: The Eye of God and the Devil's Navel": {
+  "connections": "before 2026-10-07"
+ },
+ "Shiren the Wanderer GB2: Magic Castle of the Desert": {
+  "connections": "before 2026-10-07"
+ },
+ "Shiren the Wanderer GB: Monster of Moonlight Village": {
+  "connections": "before 2026-10-07"
+ },
+ "Shiren the Wanderer Gaiden: Asuka the Swordswoman": {
+  "connections": "before 2026-10-07"
+ },
+ "Shiren the Wanderer: The Mystery Dungeon of Serpentcoil Island": {
+  "connections": "before 2026-10-07"
+ },
+ "Shiren the Wanderer: The Tower of Fortune and the Dice of Fate": {
+  "connections": "before 2026-10-07"
+ },
+ "Shogun Showdown": {
+  "connections": "before 2026-10-07",
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+ },
+ "Shoot First": {
+  "connections": "before 2026-10-07"
+ },
+ "Shotgun King: The Final Checkmate": {
+  "connections": "before 2026-10-07",
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+ },
+ "Shovel Knight Dig": {
+  "connections": "before 2026-10-07"
+ },
+ "Shroom and Gloom": {
+  "connections": "before 2026-10-07"
+ },
+ "Sil": {
+  "connections": "before 2026-10-07"
+ },
+ "Sir, We Have an Orc Problem": {
+  "connections": "before 2026-10-07"
+ },
+ "Skul: The Hero Slayer": {
+  "characters": "2026-10-09: nothing: skull-swapping repeats John's switching level-up",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-09: nothing: no event pages",
+  "goals": "2026-10-09: checked 4: First Hero right (4-Insane), Yggdrasil and Chimera moved to bosses, Chimera's goal changed (repeated Curse of the Dead Gods), Alexander kept as ? (no page); nothing added (the Bomb Cart repeats Dome Keeper's, the Chief Maid's bell is a live curse)",
+  "locations": "2026-10-09: nothing: its shrines (destroy to take the enemies' buff) have no name of their own",
+  "loot": "2026-10-09: Pot of Greed; weapons and evolutions: none distinctive (weapons are stat items; no evolutions, inscriptions are set bonuses)",
+  "statuses": "2026-10-09: nothing: no status pages"
+ },
+ "Skull Horde": {
+  "connections": "before 2026-10-07"
+ },
+ "Sky Rogue": {
+  "connections": "before 2026-10-07"
+ },
+ "Sky's The Limit MAH-JONG": {
+  "connections": "before 2026-10-07"
+ },
+ "Slash'EM": {
+  "connections": "before 2026-10-07"
+ },
+ "Slasher's Keep": {
+  "connections": "before 2026-10-07"
+ },
+ "Slay the Spire": {
+  "characters": "2026-10-09: nothing: Ironclad is live; the Silent's poison, Defect's orbs and Watcher's stances are other candidates' level-ups",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-09: nothing: 4 live, and the owner asked for no more from Slay the Spire unless exceptional",
+  "goals": "2026-10-09: checked 14: Hexaghost, Spiker, Writhing Mass, Byrds, Guardian, Giant Head hold; Awakened One, Sentry, Book of Stabbing, Nemesis fixed; 3 gremlins merged into one; Mystic dropped (repeated DD, wrong subject); Darkling added (12 bodies are live)",
+  "locations": "2026-10-09: nothing: acts and rooms are the map itself",
+  "loot": "2026-10-09: nothing new: 14 items, 2 cards and 8 potions are live; weapons and evolutions: none (a deckbuilder)",
+  "statuses": "2026-10-09: Normality (curse); Weak, Vulnerable and Frail are Burn, Marked and Shields"
+ },
+ "Slay the Spire 2": {
+  "connections": "before 2026-10-07"
+ },
+ "Slayblade": {
+  "connections": "before 2026-10-07"
+ },
+ "Slice & Dice": {
+  "characters": "2026-10-09: Gambler",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-09: nothing: no events (fights, then item or level-up picks)",
+  "goals": "2026-10-09: checked: Bones holds; Demon only in player comments (marked ?); nothing added (Lich, Wisp, Wolf, Fanatic, Slimelet, eggs are live or other games' candidates; most other pages are empty)",
+  "locations": "2026-10-09: nothing: no map places in the game",
+  "loot": "2026-10-09: Lich's Tome, Bond Certificate; the rest rewrite dice sides, which the pack doesn't have; weapons and evolutions: none; weapons are dice sides",
+  "statuses": "2026-10-09: Petrify; Poison = Blight, Pain/Exert/Growth are dice-side keywords; the curses are difficulty settings"
+ },
+ "Slime 3K: Rise Against Despot": {
+  "connections": "before 2026-10-07"
+ },
+ "Slime 3k: Demake": {
+  "connections": "before 2026-10-07"
+ },
+ "Slot & Dungeons": {
+  "connections": "before 2026-10-07"
+ },
+ "Slot or Not": {
+  "connections": "before 2026-10-07"
+ },
+ "Slots & Daggers": {
+  "connections": "before 2026-10-07"
+ },
+ "Sodaman": {
+  "connections": "before 2026-10-07"
+ },
+ "Sol Cesto": {
+  "connections": "before 2026-10-07"
+ },
+ "Solitairica": {
+  "connections": "before 2026-10-07"
+ },
+ "Soulash": {
+  "connections": "before 2026-10-07"
+ },
+ "Soulash 2": {
+  "connections": "before 2026-10-07"
+ },
+ "Soulstone Survivors": {
+  "connections": "before 2026-10-07"
+ },
+ "Source of Madness": {
+  "connections": "2026-10-07"
+ },
+ "Space Beast Terror Fright": {
+  "connections": "before 2026-10-07"
+ },
+ "Space Gladiators": {
+  "connections": "before 2026-10-07"
+ },
+ "Space Grunts": {
+  "connections": "before 2026-10-07"
+ },
+ "Space Prison": {
+  "connections": "before 2026-10-07"
+ },
+ "Sparklite": {
+  "connections": "before 2026-10-07"
+ },
+ "SpellRogue": {
+  "connections": "before 2026-10-07"
+ },
+ "Spellbook Demonslayers": {
+  "connections": "before 2026-10-07"
+ },
+ "Spellmasons": {
+  "connections": "before 2026-10-07"
+ },
+ "Spelunky": {
+  "characters": "2026-10-09: Spelunky Guy",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-09: Damsel",
+  "goals": "2026-10-09: The Ghost, King Yama, Yeti King (Olmec, the angry shopkeeper, Vampire, Golden Monkey and the Witch Doctor's sacrifice are Spelunky 2's candidates)",
+  "locations": "2026-10-09: Kali Altar, Black Market, City of Gold (Tunnel Man's shortcuts would shorten paths)",
+  "loot": "2026-10-09: Kapala; weapons and evolutions: Web Gun, Mattock (Boomerang and Camera are other games' rows); no evolutions",
+  "statuses": "2026-10-09: nothing: no statuses beyond stun and poison"
+ },
+ "Spelunky 2": {
+  "connections": "before 2026-10-07",
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+ },
+ "Spelunky Classic": {
+  "connections": "before 2026-10-07",
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+ },
+ "Spin Hero": {
+  "connections": "before 2026-10-07"
+ },
+ "Spirit Hunters: Infinite Horde": {
+  "connections": "before 2026-10-07"
+ },
+ "Spiritfall": {
+  "connections": "before 2026-10-07"
+ },
+ "Spirits Abyss": {
+  "connections": "before 2026-10-07"
+ },
+ "Sproggiwood": {
+  "connections": "before 2026-10-07"
+ },
+ "Squeaky Squad": {
+  "connections": "before 2026-10-07"
+ },
+ "Stackflow": {
+  "connections": "before 2026-10-07"
+ },
+ "Star Renegades": {
+  "connections": "before 2026-10-07"
+ },
+ "Star Survivor": {
+  "connections": "before 2026-10-07"
+ },
+ "Star Wars: Galactic Racer": {
+  "connections": "2026-10-09"
+ },
+ "Star of Providence": {
+  "characters": "2026-10-09: Overlord; Chaos left out (repeats the live random-build level-up), Skully (repeats the Collector's full inventory)",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-09: The Trader",
+  "goals": "2026-10-09: 3: Special Offer, Database, Lucid Dream; Twofold left out (repeats Rogue Legacy 2's shared health bar)",
+  "locations": "2026-10-09: Gauntlet, Breachstone, Kleines",
+  "loot": "2026-10-09: 3 cartridges as trinkets; weapons and evolutions: Laser, Fireball, Sword; Donner, Purifier, Dragonbreath (Unique weapons read as evolutions)",
+  "statuses": "2026-10-09: Curse of Haphephobia; Curse of Fatigue left out (repeats Caves of Qud's movement curse)"
+ },
+ "StarVaders": {
+  "connections": "before 2026-10-07"
+ },
+ "Starlight Revolver": {
+  "connections": "before 2026-10-07"
+ },
+ "Steve's Warehouse: Physics. Roguelike. Chaos.": {
+  "connections": "before 2026-10-07"
+ },
+ "Stick It to the Stickman": {
+  "connections": "before 2026-10-07"
+ },
+ "Stolen Realm Survivors": {
+  "connections": "before 2026-10-07"
+ },
+ "Stoneshard": {
+  "connections": "before 2026-10-07"
+ },
+ "Stories from the Outbreak": {
+  "connections": "before 2026-10-07"
+ },
+ "Strafe": {
+  "connections": "before 2026-10-07"
+ },
+ "Strange Adventures in Infinite Space": {
+  "connections": "before 2026-10-07"
+ },
+ "Stray Path": {
+  "connections": "2026-10-07"
+ },
+ "Streets of Rogue": {
+  "connections": "before 2026-10-07",
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+ },
+ "Sundered": {
+  "connections": "before 2026-10-07"
+ },
+ "Sunless Sea": {
+  "connections": "before 2026-10-07"
+ },
+ "Super Auto Pets": {
+  "connections": "before 2026-10-07",
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+ },
+ "Super Bullet Break": {
+  "connections": "before 2026-10-07"
+ },
+ "Super Fantasy Kingdom": {
+  "connections": "before 2026-10-07"
+ },
+ "Super House of Dead Ninjas": {
+  "connections": "before 2026-10-07"
+ },
+ "Super Tax City": {
+  "connections": "before 2026-10-07"
+ },
+ "Swapmeat": {
+  "connections": "before 2026-10-07"
+ },
+ "Swarm Grinder": {
+  "connections": "before 2026-10-07"
+ },
+ "Switchcars": {
+  "connections": "before 2026-10-07"
+ },
+ "Sword of Fargoal": {
+  "connections": "before 2026-10-07"
+ },
+ "Sword of the Necromancer": {
+  "connections": "before 2026-10-07"
+ },
+ "Sword of the Necromancer: Resurrection": {
+  "connections": "before 2026-10-07"
+ },
+ "Sword of the Stars: The Pit": {
+  "connections": "before 2026-10-07"
+ },
+ "Swordship": {
+  "connections": "before 2026-10-07"
+ },
+ "Sworn": {
+  "connections": "before 2026-10-07"
+ },
+ "Synthetik 2": {
+  "connections": "before 2026-10-07"
+ },
+ "Synthetik: Legion Rising": {
+  "connections": "before 2026-10-07"
+ },
+ "Tabletop Tavern": {
+  "connections": "before 2026-10-07"
+ },
+ "Tainted Grail: Conquest": {
+  "connections": "before 2026-10-07"
+ },
+ "Talented": {
+  "connections": "before 2026-10-07"
+ },
+ "Tales of Maj'Eyal": {
+  "connections": "before 2026-10-07",
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+ },
+ "Talespinner": {
+  "connections": "before 2026-10-07"
+ },
+ "Tangledeep": {
+  "connections": "before 2026-10-07",
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+ },
+ "Tangy TD": {
+  "connections": "before 2026-10-07"
+ },
+ "Tao's Adventure: Curse of the Demon Seal": {
+  "connections": "before 2026-10-07"
+ },
+ "Tape to Tape": {
+  "connections": "before 2026-10-07"
+ },
+ "Teamfight Tactics": {
+  "connections": "before 2026-10-07"
+ },
+ "Tears of Metal": {
+  "connections": "before 2026-10-07"
+ },
+ "Teenage Mutant Ninja Turtles: Splintered Fate": {
+  "connections": "before 2026-10-07"
+ },
+ "Temtem: Swarm": {
+  "connections": "before 2026-10-07"
+ },
+ "TerRoguelike": {
+  "connections": "before 2026-10-07"
+ },
+ "TerraTech Legion": {
+  "connections": "before 2026-10-07"
+ },
+ "Terraformers": {
+  "connections": "before 2026-10-07"
+ },
+ "The Bazaar": {
+  "connections": "before 2026-10-07"
+ },
+ "The Binding of Isaac": {
+  "characters": "2026-10-09: researched together with Rebirth (one wiki); rows are filed under Rebirth",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-09: researched together with Rebirth (one wiki); rows are filed under Rebirth",
+  "goals": "2026-10-09: checked 21 rows on the Rebirth wiki: 8 moved to Rebirth (they're Rebirth/DLC bosses), 11 goals fixed, 3 flagged (Uriel's release, Strider, The Fallen)",
+  "locations": "2026-10-09: researched together with Rebirth (one wiki); rows are filed under Rebirth",
+  "loot": "2026-10-09: researched together with Rebirth (one wiki); rows are filed under Rebirth; weapons and evolutions: filed under Rebirth (Brimstone, Mom's Knife)",
+  "statuses": "2026-10-09: researched together with Rebirth (one wiki); rows are filed under Rebirth"
+ },
+ "The Binding of Isaac: Rebirth": {
+  "characters": "2026-10-09: Keeper, The Lost; Eden and Judas overlap Erratic Deck and Ironclad",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-09: Devil Room, Angel Room",
+  "goals": "2026-10-09: 8 rows moved here from the original; nothing added (Isaac already supplies 11 live bodies)",
+  "locations": "2026-10-09: 3 rooms, 2 machines/beggars; the Slot Machine moved here from Mewgenics",
+  "loot": "2026-10-09: 4 rows; Isaac already supplies 47 live pieces; weapons and evolutions: Brimstone, Mom's Knife (from the Fandom Isaac wiki: bindingofisaacrebirth.wiki.gg refused this client with a redirect loop, so Confidence is check); transformations are set bonuses, not weapon evolutions",
+  "statuses": "2026-10-09: Midas Touch, Curse of the Blind"
+ },
+ "The Doors of Trithius": {
+  "connections": "before 2026-10-07"
+ },
+ "The Dungeon RPG": {
+  "connections": "before 2026-10-07"
+ },
+ "The Fable: Manga Build Roguelike": {
+  "connections": "before 2026-10-07"
+ },
+ "The Flame in the Flood": {
+  "connections": "before 2026-10-07"
+ },
+ "The Ground Gives Way": {
+  "connections": "before 2026-10-07"
+ },
+ "The Guided Fate Paradox": {
+  "connections": "before 2026-10-07"
+ },
+ "The King is Watching": {
+  "characters": "2026-10-09: nothing: the player is the unnamed king, whose gaze is the loot row",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-09: The Cursed Crown, Befitting a King, A Dish Best Served...Warm? (The Devil You Know = Isaac's Devil Room)",
+  "goals": "2026-10-09: 5 bosses: Graveyard Golem, Monkey King, O'Cthulupus, Smokeeye, Unholy Crones (Gorzog = Brogue's Goblin Warlord, Lord Draven = Spelunky 2's Vampire, Ashfeather = Brogue's Phylactery)",
+  "locations": "2026-10-09: nothing: the places are kingdom buildings that produce resources",
+  "loot": "2026-10-09: The King's Gaze, Free Coupon; the artifacts mostly feed kingdom resources and troops; weapons and evolutions: none; the fighting is done by troops",
+  "statuses": "2026-10-09: nothing: no status pages; the spells' Weakness and Slow Zone are covered elsewhere"
+ },
+ "The Last Flame": {
+  "connections": "before 2026-10-07"
+ },
+ "The Last Game": {
+  "connections": "before 2026-10-07"
+ },
+ "The Last Spell": {
+  "connections": "before 2026-10-07",
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+ },
+ "The Legend of Bum-Bo": {
+  "connections": "before 2026-10-07"
+ },
+ "The Loopler": {
+  "connections": "before 2026-10-07"
+ },
+ "The Magus Circle": {
+  "connections": "before 2026-10-07"
+ },
+ "The Nightmare of Druaga": {
+  "connections": "before 2026-10-07"
+ },
+ "The Ouroboros King": {
+  "connections": "before 2026-10-07"
+ },
+ "The Rogue Prince of Persia": {
+  "connections": "before 2026-10-07"
+ },
+ "The Royal Writ": {
+  "connections": "before 2026-10-07"
+ },
+ "The Spell Brigade": {
+  "connections": "before 2026-10-07"
+ },
+ "The Spirit Lift": {
+  "connections": "before 2026-10-07"
+ },
+ "The Unliving": {
+  "connections": "before 2026-10-07"
+ },
+ "The Void Rains Upon Her Heart": {
+  "connections": "before 2026-10-07"
+ },
+ "The World is Your Weapon": {
+  "connections": "before 2026-10-07"
+ },
+ "There Are No Orcs": {
+  "connections": "before 2026-10-07"
+ },
+ "Tic Tactic": {
+  "connections": "before 2026-10-07"
+ },
+ "Time Survivors": {
+  "connections": "before 2026-10-07"
+ },
+ "Time Wasters": {
+  "connections": "before 2026-10-07"
+ },
+ "Tinker Shot": {
+  "connections": "before 2026-10-07"
+ },
+ "Tiny Auto Knights": {
+  "connections": "before 2026-10-07"
+ },
+ "Tiny Rogues": {
+  "connections": "before 2026-10-07"
+ },
+ "Tinyfolks": {
+  "connections": "before 2026-10-07"
+ },
+ "ToeJam & Earl": {
+  "connections": "before 2026-10-07"
+ },
+ "ToeJam & Earl: Back in the Groove!": {
+  "connections": "before 2026-10-07"
+ },
+ "TombStar": {
+  "connections": "before 2026-10-07"
+ },
+ "Torneko's Great Adventure 3": {
+  "connections": "before 2026-10-07"
+ },
+ "Torneko's Great Adventure: Mystery Dungeon": {
+  "connections": "before 2026-10-07",
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+ },
+ "Torneko: The Last Hope": {
+  "connections": "before 2026-10-07"
+ },
+ "Touhou Crawl": {
+  "connections": "before 2026-10-07"
+ },
+ "Touhou Genso Wanderer: Foresight": {
+  "connections": "before 2026-10-07"
+ },
+ "Touhou Genso Wanderer: Lotus Labyrinth R": {
+  "connections": "before 2026-10-07"
+ },
+ "Touhou: Lost Branch of Legend": {
+  "connections": "before 2026-10-07"
+ },
+ "Touhou: Red Empress Devil": {
+  "connections": "2026-10-09"
+ },
+ "Tower Dominion": {
+  "connections": "before 2026-10-07"
+ },
+ "Tower Escape": {
+  "connections": "before 2026-10-07"
+ },
+ "Tower Factory": {
+  "connections": "before 2026-10-07"
+ },
+ "Tower Fortress": {
+  "connections": "before 2026-10-07"
+ },
+ "Tower Tactics: Liberation": {
+  "connections": "before 2026-10-07"
+ },
+ "Tower of Guns": {
+  "connections": "before 2026-10-07"
+ },
+ "Toy Smash Kaboom!": {
+  "connections": "before 2026-10-07"
+ },
+ "Trash of the Titans": {
+  "connections": "before 2026-10-07"
+ },
+ "Trials of Fire": {
+  "connections": "before 2026-10-07"
+ },
+ "TumbleSeed": {
+  "connections": "before 2026-10-07"
+ },
+ "Turnbound": {
+  "connections": "before 2026-10-07"
+ },
+ "Tyrant's Realm": {
+  "connections": "before 2026-10-07"
+ },
+ "Ultima Ratio Regum": {
+  "connections": "before 2026-10-07"
+ },
+ "Ultimate ADOM": {
+  "connections": "before 2026-10-07"
+ },
+ "Ultrapool": {
+  "connections": "before 2026-10-07"
+ },
+ "Uma Musume: Pretty Derby": {
+  "connections": "before 2026-10-07"
+ },
+ "UnReal World": {
+  "connections": "before 2026-10-07"
+ },
+ "UnderMine": {
+  "characters": "2026-10-09: Peasant, with the Canary as loadout",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-09: 3 rows from rooms (no events category): Black Rabbit, Momentary Peril, Tus; Sacrifice Room, Altar and Tribute Fountain are other games' rows or live",
+  "goals": "2026-10-09: checked: Selt and Seer fixed against the wiki; 6 added (Pilfer, Mimic, Larva, Gargoyle, Lurker left: live goals or other games' candidates cover them)",
+  "locations": "2026-10-09: Shimmering Caverns, Delvemore Dungeon, Cursed Chest, Shatter Rock, Sho'guul, Dibble (Oil = Mewgenics Tar)",
+  "loot": "2026-10-09: 8 rows: Doll, Bounty Contract, Tsar Bomba, Bombushka, Pilfer Credit Card, Box of Holding, Bottled Pilfer, Canary (Four Leaf Clover = Golden Idol, Doubling Saison = 2 of Clubs); weapons and evolutions: none; the peasant's pickaxe is the only weapon, and combined relics pair two relics, not a weapon",
+  "statuses": "2026-10-09: 4 curses: Blood Pact, Mediocrity, Tariffs, Compulsion; Hobbled/Ignite/Poison covered by Slow, Burn, Blight"
+ },
+ "UnderMine 2": {
+  "connections": "before 2026-10-07"
+ },
+ "Underdogs": {
+  "connections": "before 2026-10-07"
+ },
+ "Unexplored": {
+  "connections": "before 2026-10-07"
+ },
+ "Unexplored 2: The Wayfarer's Legacy": {
+  "connections": "before 2026-10-07"
+ },
+ "Vagante": {
+  "connections": "before 2026-10-07"
+ },
+ "Vampire Crawlers": {
+  "connections": "before 2026-10-07"
+ },
+ "Vampire Hunters": {
+  "connections": "before 2026-10-07"
+ },
+ "Vampire Survivors": {
+  "connections": "before 2026-10-07",
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+ },
+ "Vault of the Void": {
+  "connections": "before 2026-10-07"
+ },
+ "Vellum": {
+  "connections": "before 2026-10-07"
+ },
+ "Vital Shell": {
+  "connections": "before 2026-10-07"
+ },
+ "Vivid Knight": {
+  "connections": "before 2026-10-07"
+ },
+ "Vivid World": {
+  "connections": "before 2026-10-07"
+ },
+ "Voice of Belldona": {
+  "connections": "before 2026-10-07"
+ },
+ "Void Bastards": {
+  "connections": "before 2026-10-07"
+ },
+ "Void Scrappers": {
+  "connections": "before 2026-10-07"
+ },
+ "Void War": {
+  "connections": "before 2026-10-07"
+ },
+ "Voidigo": {
+  "connections": "before 2026-10-07"
+ },
+ "Voids Vigil": {
+  "connections": "before 2026-10-07"
+ },
+ "Voin": {
+  "connections": "before 2026-10-07"
+ },
+ "Waku Waku Puyo Puyo Dungeon": {
+  "connections": "before 2026-10-07"
+ },
+ "Wall World": {
+  "connections": "before 2026-10-07"
+ },
+ "Wall World 2": {
+  "connections": "before 2026-10-07"
+ },
+ "Wanderburg": {
+  "connections": "before 2026-10-07"
+ },
+ "Warhammer Survivors": {
+  "connections": "before 2026-10-07"
+ },
+ "WarpVector": {
+  "connections": "before 2026-10-07"
+ },
+ "Warriors: Abyss": {
+  "connections": "before 2026-10-07"
+ },
+ "Warsim: The Realm of Aslona": {
+  "connections": "before 2026-10-07"
+ },
+ "Wayward": {
+  "connections": "before 2026-10-07"
+ },
+ "WazHack": {
+  "connections": "before 2026-10-07"
+ },
+ "We Need To Go Deeper": {
+  "connections": "before 2026-10-07"
+ },
+ "Weird Worlds: Return to Infinite Space": {
+  "connections": "before 2026-10-07"
+ },
+ "West of Dead": {
+  "connections": "before 2026-10-07"
+ },
+ "Whisker Squadron: Survivor": {
+  "connections": "before 2026-10-07"
+ },
+ "White Knuckle": {
+  "connections": "before 2026-10-07"
+ },
+ "Wild Bastards": {
+  "connections": "before 2026-10-07"
+ },
+ "Wildermyth": {
+  "connections": "before 2026-10-07"
+ },
+ "Wildfrost": {
+  "connections": "before 2026-10-07",
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+ },
+ "Windblown": {
+  "connections": "before 2026-10-07"
+ },
+ "Winnie's Hole": {
+  "connections": "before 2026-10-07"
+ },
+ "Wireworks": {
+  "connections": "before 2026-10-07"
+ },
+ "Witch's Apocalyptic Journey": {
+  "connections": "before 2026-10-07"
+ },
+ "Witchfire": {
+  "connections": "before 2026-10-07"
+ },
+ "Wizard of Legend": {
+  "connections": "before 2026-10-07",
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+ },
+ "Wizard of Legend 2": {
+  "connections": "before 2026-10-07"
+ },
+ "WizardChess": {
+  "connections": "before 2026-10-07"
+ },
+ "Word Play": {
+  "connections": "before 2026-10-07"
+ },
+ "Wordatro!": {
+  "connections": "before 2026-10-07"
+ },
+ "Words Can Kill": {
+  "connections": "before 2026-10-07"
+ },
+ "Worlds Upon The Wind": {
+  "connections": "before 2026-10-07"
+ },
+ "Yasha: Legends of the Demon Blade": {
+  "connections": "before 2026-10-07"
+ },
+ "Yet Another Zombie Survivors": {
+  "connections": "before 2026-10-07"
+ },
+ "Yohane the Parhelion: Numazu in the Mirage": {
+  "connections": "before 2026-10-07"
+ },
+ "Youdanji": {
+  "connections": "before 2026-10-07"
+ },
+ "Z.H.P. Unlosing Ranger VS Darkdeath Evilman": {
+  "connections": "before 2026-10-07"
+ },
+ "ZMAngband": {
+  "connections": "before 2026-10-07"
+ },
+ "Zangband": {
+  "connections": "before 2026-10-07"
+ },
+ "Zet Zillions": {
+  "connections": "before 2026-10-07"
+ },
+ "Ziggurat": {
+  "connections": "before 2026-10-07"
+ },
+ "Ziggurat 2": {
+  "connections": "before 2026-10-07"
+ },
+ "Zoeti": {
+  "connections": "before 2026-10-07"
+ },
+ "Zoominoes": {
+  "connections": "before 2026-10-07"
+ },
+ "Zorbus": {
+  "connections": "before 2026-10-07"
+ },
+ "[Redacted]": {
+  "connections": "before 2026-10-07"
+ }
+}

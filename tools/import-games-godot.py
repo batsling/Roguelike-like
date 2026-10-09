@@ -261,13 +261,32 @@ def main() -> int:
         print("[import-games-godot] atlas bake FAILED — run tools/bake_atlas.py to see why")
         return rc
     _research_reminder(games)
+    _refresh_research()
     return 0
 
 
-# A game is not finished arriving until somebody has looked for what influenced
-# it. `influence_research.py new` does the searching for every game missing from
-# this ledger; it is checked in so the next session knows which games those are.
-RESEARCH_LEDGER = os.path.join(SCRIPT_DIR, "influence_researched.json")
+# A game is not finished arriving until it has been researched: what
+# influenced it, its tags, and what its enemies, items, events, characters,
+# statuses and places could give this game. `research.py new` starts all of it
+# for every game missing from this ledger; it is checked in so the next session
+# knows which games those are.
+RESEARCH_LEDGER = os.path.join(SCRIPT_DIR, "..", "research", "ledger.json")
+
+
+def _refresh_research() -> None:
+    """A new upload of the workbook can carry connections (and any other row)
+    the owner copied across from the research sheet, so the research sheet is
+    brought up to date with it: `sync` takes any edits waiting in
+    Research.xlsx first and then rebuilds, which marks what is now on the sheet
+    as `on sheet` and lists anything the two disagree about. Never fatal: the
+    import has already succeeded by the time this runs."""
+    script = os.path.join(SCRIPT_DIR, "research.py")
+    try:
+        rc = subprocess.call([sys.executable, script, "sync"])
+    except OSError as e:
+        rc = str(e)
+    if rc:
+        print(f"[import-games-godot] research.py sync did not finish ({rc}); run it by hand")
 
 
 def _research_reminder(games: list[dict]) -> None:
@@ -280,10 +299,8 @@ def _research_reminder(games: list[dict]) -> None:
     if not waiting:
         return
     print(f"[import-games-godot] {len(waiting)} game(s) not researched yet: {', '.join(waiting)}")
-    print("[import-games-godot]   1. python3 tools/influence_research.py new   (then read .influence_work/new_games.md")
-    print("[import-games-godot]      and search each game by hand; findings go in docs/influence-candidates.md)")
-    print("[import-games-godot]   2. python3 tools/influence_research.py new --mark")
-    print("[import-games-godot]   3. python3 tools/tag_research.py   (tag suggestions -> tools/Research.xlsx)")
+    print("[import-games-godot]   python3 tools/research.py new   (every kind of research, over just these games;")
+    print("[import-games-godot]   it prints the hand work left. docs/research.md has the steps)")
 
 
 if __name__ == "__main__":

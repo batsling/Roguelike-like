@@ -61,6 +61,9 @@ import openpyxl  # reads Roguelikes.xlsx read-only; WRITES only Research.xlsx, w
 from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.worksheet.datavalidation import DataValidation
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import research_book  # noqa: E402  the workbook every kind of research shares
+
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 XLSX = os.path.join(ROOT, "tools", "Roguelikes.xlsx")
 OUT = os.path.join(ROOT, "tools", "Research.xlsx")
@@ -330,13 +333,14 @@ def write_book(games, pages, sugg, vocab, ideas):
             sugg.append(dict(g, tag=tag, strength="—", evidence="(no longer found; kept for your mark)"))
     sugg.sort(key=lambda s: (s["name"].lower(), {"strong": 0, "medium": 1, "weak": 2}.get(s["strength"], 3), s["tag"]))
 
-    wb = openpyxl.Workbook()
+    # Research.xlsx is shared with tools/research.py: replace only this
+    # script's three sheets and keep every other one.
+    wb = research_book.open_book(OUT)
     bold = Font(bold=True)
     fill = {"strong": PatternFill("solid", fgColor="C6EFCE"), "medium": PatternFill("solid", fgColor="FFEB9C"),
             "weak": PatternFill("solid", fgColor="F2F2F2")}
 
-    ws = wb.active
-    ws.title = "tag suggestions"
+    ws = research_book.replace_sheet(wb, "tag suggestions")
     ws.append(SUGG_HEAD)
     for s in sugg:
         ws.append([s["name"], s["year"], s["type"], ", ".join(s["tags"]), s["tag"], s["strength"],
@@ -349,14 +353,14 @@ def write_book(games, pages, sugg, vocab, ideas):
     for col, w in zip("ABCDEFGHI", (34, 6, 11, 18, 14, 9, 7, 110, 50)):
         ws.column_dimensions[col].width = w
 
-    ws2 = wb.create_sheet("new tag ideas")
+    ws2 = research_book.replace_sheet(wb, "new tag ideas")
     ws2.append(["Steam Theme", "Games", "Which games"])
     for n, gs in ideas:
         ws2.append([n, len(gs), ", ".join(sorted(gs, key=str.lower))])
     for col, w in zip("ABC", (22, 7, 160)):
         ws2.column_dimensions[col].width = w
 
-    ws3 = wb.create_sheet("vocabulary")
+    ws3 = research_book.replace_sheet(wb, "vocabulary")
     ws3.append(["Tag", "Games tagged", "…that the evidence finds", "Recall",
                 "Suggestions", "…strong", "Steam tags used", "Store-text pattern"])
     for row in vocab:
@@ -364,7 +368,8 @@ def write_book(games, pages, sugg, vocab, ideas):
     for col, w in zip("ABCDEFGH", (14, 8, 9, 7, 9, 7, 50, 80)):
         ws3.column_dimensions[col].width = w
 
-    ws4 = wb.create_sheet("about")
+    # Its own notes sheet: `about` belongs to research.py and covers every kind.
+    ws4 = research_book.replace_sheet(wb, "tags about")
     with_page = sum(1 for g in games if pages.get(g["name"]))
     for line in [
         "Tag suggestions — written by `python3 tools/tag_research.py`. Nothing here is on the games sheet.",
@@ -396,7 +401,7 @@ def write_book(games, pages, sugg, vocab, ideas):
         sheet.auto_filter.ref = sheet.dimensions
     for row in ws.iter_rows(min_row=2):
         row[7].alignment = Alignment(wrap_text=False)
-    wb.save(OUT)
+    research_book.save(wb, OUT)
 
 
 def main():

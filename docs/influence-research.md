@@ -1,12 +1,18 @@
 # Influence research — finding missing `connections` with first-hand sources
 
 How to find influences the chart is missing, what counts as a source, and what
-went wrong the first time so it doesn't again. The candidates found so far, with
-quotes and links, are in `docs/influence-candidates.md`. It is laid out by what
-the owner does next: lines to review (section 1 for games on the sheet, section
-2 for games not added yet), what was checked and isn't an influence (3), rows
-whose source needs a look (4), leads (5), what was searched without result (6),
-and what is on the chart now (7). Videos and podcasts to listen to are in
+went wrong the first time so it doesn't again. This is the `connections` kind
+of the project's research ([research.md](research.md) covers all eight). The
+candidates found so far, with quotes and links, are rows in
+`research/connections.csv`, reviewed by the owner in the `connections` sheet of
+`tools/Research.xlsx`. Each row's `Status` says what the owner does next:
+`to review` (a pair of games on the sheet), `waiting for game row` (a game not
+added yet), `not an influence` (checked, and no), `source check` (a row already
+on the sheet whose source needs a look), `lead`, `nothing found` (searched
+without result) and `on sheet`. Until October 2026 these were sections 1–7 of a
+markdown doc, `docs/influence-candidates.md`; `tools/_research_migrate.py` moved
+every line into a row word for word, and the doc's research log is now the
+last section here. Videos and podcasts to listen to are in
 `docs/influence-media.md` (see `media` below).
 
 ## The rules
@@ -20,12 +26,12 @@ and what is on the chart now (7). Videos and podcasts to listen to are in
    and only those become rows.
 3. **Flag roguelikes the chart doesn't have.** When a developer names an
    influence that is itself a roguelike but isn't on the chart, list it under
-   "Roguelikes you don't have" (section 5 of `docs/influence-candidates.md`) and tell the
+   a `lead` row of `research/connections.csv` (Heading "Roguelikes you don't have") and tell the
    owner: it's a game they may want to add. Check the chart's full names first
    (IVAN is there as `Iter Vehemens Ad Necem`).
 4. **Record denials too.** "I love Vampire Survivors, but no" (Ron Gilbert, on
    Death by Scrolling) stops someone adding that edge later on a reviewer's say-so.
-   Denials live in section 3 of `docs/influence-candidates.md`, with the
+   Denials are `not an influence` rows of `research/connections.csv`, with the
    things that looked like an influence and weren't.
 
 ## Where to look, and what each source was worth
@@ -138,7 +144,8 @@ bar to fill the gap.
 
 ```bash
 python3 tools/influence_research.py new       # the games added since the last pass: every scan below that works from here
-python3 tools/influence_research.py new --mark  # ...once their findings are in docs/influence-candidates.md
+python3 tools/influence_research.py new --mark  # ...once their findings are rows in research/connections.csv
+python3 tools/influence_research.py status --tick  # rows the owner has added to the sheet -> `on sheet`
 python3 tools/influence_research.py targets   # who to research
 python3 tools/influence_research.py devs      # appid + developer for every game, ~6 min, cached
 python3 tools/influence_research.py samedev   # same-studio leads
@@ -196,8 +203,8 @@ restart and take `.influence_work/` with it; that happened once mid-scan.
 ### New games: `new`
 
 Every game the owner adds gets researched, without anyone having to ask.
-`tools/influence_researched.json` (checked in) holds the date each game was
-researched; the 899 that were on the chart before it existed say
+`research/ledger.json` (checked in, shared by every kind of research; this is
+its `connections` entry) holds the date each game was researched; the 899 that were on the chart before it existed say
 `before 2026-10-07`, which the passes above covered. A game on the sheet and
 not in it is new, and `import-games-godot.py` lists those after every import.
 
@@ -224,8 +231,10 @@ game:
 The hand half is the part that usually pays: a web search per game for an
 interview, a devlog or a press release. The October 2026 batch shows why: the
 scans found nothing first-hand for most of the eighteen, while a Japanese
-interview gave Lumencraft's whole influence list. Write up what holds up in
-`docs/influence-candidates.md` (section 1, 5 or 6), then `new --mark`.
+interview gave Lumencraft's whole influence list. Write up what holds up as
+rows in `research/connections.csv` (`to review` for a pair of chart games, `lead`
+for a roguelike the chart lacks, `nothing found` for a game searched with
+nothing found), then `new --mark`.
 
 ### Interviews and podcasts: `media`
 
@@ -429,8 +438,8 @@ specific tweets other sources link to.
 
 The first check (82 rows) found every tweet still readable except one deleted,
 almost all posted by the game's own account, and two posted by someone else (a
-PR agency and a publisher). Those are listed in section 4 of
-`docs/influence-candidates.md`.
+PR agency and a publisher). Those are `source check` rows of
+`research/connections.csv`.
 
 ### Proof screenshots: `tools/capture_proof.js`
 
@@ -608,8 +617,8 @@ One, Enter the Gungeon → Dungreed). They wait, already named, in
 `images2.0/proof/not-on-sheet/`: move them up a folder once their rows exist.
 
 The script picks a sentence, it doesn't judge one. **Look at the images**: the
-pilot found a source that undercuts its own row (Rogue Voltage, section 4 of
-`docs/influence-candidates.md`), and a status of `ok` only means a sentence
+pilot found a source that undercuts its own row (Rogue Voltage, a
+`source check` row of `research/connections.csv`), and a status of `ok` only means a sentence
 naming the game was found.
 
 ## Traps
@@ -711,3 +720,32 @@ When adding new findings, put each line in section 1 or 2 under Strong or
 Weaker, in its sorted place (by the game that gets the connection). Write every
 line so it stands alone: a second pair from the same quote says `same quote as
 **A → B**` rather than just `same`, because `--tick` moves lines one at a time.
+
+## Research log
+
+What each pass covered, moved here from the old candidates doc when the candidates moved to `research/connections.csv`.
+
+- **First passes**: games with no connections and no recorded influences (the strong and weaker leads that opened this list), then about 45 best-known games with only one recorded influence, in five passes.
+- **Steam forum scan**: paused at 54 of the 130 no-influence games; progress is in `tools/influence_research_forums.jsonl`. It found one developer post (Roboquest → Deadzone: Rogue, now on the chart). The other forum matches were players' suggestions and guesses.
+- **Native-language pass**: studios that don't work in English, searched in their own language (Japanese, Korean, Chinese, Russian).
+- **Degree-1 pass (October 2026)**: the 335 games the map holds by a single connection, through their Steam pages and `cues`, plus about 45 hand searches.
+- **Owned pass (October 2026)**: every owned game with no connection or one, by hand.
+- **Your wanted list (October 2026)**: 84 games not on the sheet yet, all by hand.
+- **Early classics (October 2026)**: 19 pre-2010 games with no recorded influence or one, by hand. Three new edges (GearHead, Shiren, Omega), two weaker, and first-hand sources for four rows sourced to wikis.
+- **Early classics, second round (October 2026)**: 20 more, 1990s console roguelikes and 2010–14 indies with no recorded influence. Three new edges on Cardinal Quest and one on Baroque, plus first-hand sources for Rogue → ToeJam & Earl, Rogue → Torneko (in English) and Torneko → Baroque.
+- **2015–17 round (October 2026)**: 15 influential games from 2015–17 with few recorded influences, Darkest Dungeon first. Thin: their developers mostly name games off the chart (X-Com, Dark Souls, Super Metroid, Magic) or confirm rows already on the sheet. One weaker pair (In Celebration of Violence) from a publisher's announcement.
+- **Four connections, first batch (October 2026)**: 33 games never named here. One strong line (Skul → Dunjungle), two weaker, source fixes for three Ouroboros King rows and Dicevaders.
+- **Four connections, second batch (October 2026)**: the other 30. Two strong lines (Into the Breach → Lost For Swords, Diablo → Tangledeep), one weaker, and first-hand sources for five rows. The Reddit reread now walks reply trees.
+- **Five connections (October 2026)**: all 29. Four strong lines on Dungeons of Dredmor, two on GoNNER, one on Order Automatica, and Hoplite in Fights in Tight Spaces' pitch (weaker).
+- **Six connections (October 2026)**: all 15. Nova Drift → 20 Minutes Till Dawn and Diablo → Soulstone Survivors (both strong).
+- **Seven connections (October 2026)**: all 11. No new lines; first-hand sources for four rows and a doubt on Diablo → Halls of Torment.
+- **Eight connections (October 2026)**: all six. No new lines; a first-hand source for Enter the Gungeon → Gunfire Reborn.
+- **The `look at it` rows (October 2026)**: all 78. First-hand sources for nine rows; two strong lines (Inscryption → Dice A Million, Isaac → Keeper's Toll) and two weaker ones found on the way.
+- **The `check folder` rows (October 2026)**: 207, of which 196 have a screenshot now. Of the other eleven, one gets a proof (Torneko → Dungeon Drafters), four on Ember Knights have nothing, and a CNC interview is a linkable source for the existing Dead Cells → Scourgebringer row (first written up here as a new line by mistake).
+- **The rows with no link (October 2026)**: 167, of which 139 are Dev/Series. Of the 28 others, first-hand sources for nine (Hadean Tactics, Rogue Lords, Caves of Qud, Castle of the Winds, Hack, two on Elona, GnollHack, Ultimate ADOM), and the Discord-sourced ones need screenshots.
+- **Early classics, variants and console games (October 2026)**: 12 Angband/NetHack variants and Japanese console roguelikes, the Japanese ones in Japanese too. No new edges; first-hand sources for NetHack → Slash'EM and NetHack → Pathos.
+- **New games on the sheet (October 2026)**: Slayblade, added with no connection, through its store page and developer posts. Nothing first-hand; it is in section 6. The owner's upload also put 24 rows on the sheet, 13 of them lines from this doc, and replaced RogueBasin's NetHack → Dungeons of Dredmor with Gaslamp's four.
+- **Bluesky, Substack and Patreon (October 2026)**: the 386 games with one connection or none. Four strong lines on Sir, We Have an Orc Problem (Bluesky); nothing first-hand on Substack; Patreon's developer pages listed for reading logged in.
+- **The RogueBasin and Wikipedia rows (October 2026)**: the 63 of 88 not already discussed. Most get the developer's own words (section 4), several via RogueBasin page histories showing the developer typed the infobox; four code forks to mark Dev/Series; four rows whose Wikipedia citation doesn't say it; thirteen weaker lines in section 1.
+- **The second October upload (October 2026)**: all eighteen new games, the first batch through `influence_research.py new`, which runs the cloud-friendly scans over just the games missing from `tools/influence_researched.json`. Two weaker lines on Conquest Dark (one unconfirmed), better sources for Kingdom: New Lands → Crab God and Noita → Lumencraft, one roguelike the chart lacks (Teleglitch), and nothing first-hand for the ten new games with no connection.
+- **The third October upload (October 2026)**: all four new games. Nothing first-hand: two came with their rows and proofs, and the two with no connection (Moonsigil Atlas, Touhou: Red Empress Devil) have only journalists' comparisons.

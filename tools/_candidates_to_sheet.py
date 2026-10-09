@@ -1,6 +1,13 @@
 #!/usr/bin/env python3
-"""One-shot: paste `docs/goal-candidates.csv` into the workbook's enemies and
-bosses sheets.
+"""Paste the goal-enemies the owner said `yes` to (`research/goals.csv`) into the
+workbook's enemies and bosses sheets.
+
+KNOWN GAP, NOT YET CLOSED: since this was written, every goal in the game is
+authored in the `goals` sheet and pushed out by `tools/apply_goals_sheet.py`.
+This script writes the enemies/bosses rows only, so after it runs each pasted
+goal also needs its row in `goals` (Owner Sheet enemy/boss, Owner = the Name,
+Relation `has`), or `apply_goals_sheet.py --check` reports the drift. Teach it
+that before the first paste.
 
 The candidate file was always a paste QUEUE — 316 audited rows in the exact
 column order of the two sheets, minus the two staging columns. This is the
@@ -40,7 +47,7 @@ import generate_goal_enemy_tres as gen  # noqa: E402  (slugify, so ids match)
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 XLSX = os.path.join(ROOT, "tools", "Roguelikes.xlsx")
-CSV_PATH = os.path.join(ROOT, "docs", "goal-candidates.csv")
+CSV_PATH = os.path.join(ROOT, "research", "goals.csv")
 
 DIFF_ORDER = ["1-low", "2-medium", "3-high", "4-insane"]
 
@@ -78,7 +85,8 @@ def insert_sorted(grid, new_rows):
 
 def main():
     with open(CSV_PATH, newline="", encoding="utf-8") as fh:
-        candidates = list(csv.DictReader(fh))
+        # Only what the owner ticked in Research.xlsx (and `sync` brought in).
+        candidates = [c for c in csv.DictReader(fh) if c["Owner"] == "yes" and c["Status"] == "to review"]
 
     with Workbook(XLSX) as wb:
         for sheet in ("enemies", "bosses"):
