@@ -291,8 +291,13 @@
   "connections": "before 2026-10-07"
  },
  "Brogue": {
+  "characters": "2026-10-09: nothing: Brogue's one hero is the unnamed rogue, the same @ as Rodney (live)",
   "connections": "before 2026-10-07",
-  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+  "events": "2026-10-09: Vault (reward room behind a key); captives need allies the board doesn't have",
+  "goals": "2026-10-09: checked: Ogre, Phantom, Dar Blademaster hold; Bloat, Goblin Conjurer, Warden fixed; 4 added (Black Jelly = Spike Slime, Vampire = Spelunky 2's, Dar Priestess = Legend of Keepers')",
+  "locations": "2026-10-09: Goblin Warren, Commutation Altar, Lichen, Bloodwort, Dewar",
+  "loot": "2026-10-09: 7 rows: Scroll of Enchanting, Potion of Detect Magic, Ring of Reaping, Health Charm, Potion of Creeping Death, Wand of Beckoning, Staff of Discord (Wand of Plenty is live)",
+  "statuses": "2026-10-09: Discorded; Slowed, Burning, Poisoned, Invisible covered elsewhere; Weakened and Hallucinating don't translate"
  },
  "BroomSweeper": {
   "connections": "before 2026-10-07"
