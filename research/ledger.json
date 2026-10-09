@@ -2585,7 +2585,13 @@
   "connections": "before 2026-10-07"
  },
  "The King is Watching": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-09: nothing: the player is the unnamed king, whose gaze is the loot row",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-09: The Cursed Crown, Befitting a King, A Dish Best Served...Warm? (The Devil You Know = Isaac's Devil Room)",
+  "goals": "2026-10-09: 5 bosses: Graveyard Golem, Monkey King, O'Cthulupus, Smokeeye, Unholy Crones (Gorzog = Brogue's Goblin Warlord, Lord Draven = Spelunky 2's Vampire, Ashfeather = Brogue's Phylactery)",
+  "locations": "2026-10-09: nothing: the places are kingdom buildings that produce resources",
+  "loot": "2026-10-09: The King's Gaze, Free Coupon; the artifacts mostly feed kingdom resources and troops",
+  "statuses": "2026-10-09: nothing: no status pages; the spells' Weakness and Slow Zone are covered elsewhere"
  },
  "The Last Flame": {
   "connections": "before 2026-10-07"
