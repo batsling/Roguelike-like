@@ -22,6 +22,7 @@ Effect DSL (one item = `clause; clause; ...`, paren/bracket aware):
                   card_played if_type=attack: counter key=attacks_total every=10 -> gain_energy 1
                   turn_started if_turn=3: +18 block (self)
                   run_lost if_goals=0: gain_stat shields 1
+                  item_used: one_of gain_gold 1 | gain_hp 1 | gain_loot 1
   card grant:     card_grant if_tag=strike: +1 bruise (enemy)
   scaling:        scaling: +1 strength per 20 max_hp
   weapon:         weapon: barrel; verify: <question> => <increment effects>
@@ -36,6 +37,7 @@ Effect DSL (one item = `clause; clause; ...`, paren/bracket aware):
                   grid_grow, grid_length, front_column_slow [N], hide_spawns,
                   spawn_status <status> N, loot_multiplier: N, heal_multiplier: N,
                   gold_per_enemy: N, shop_sweep, boss_chest_bonus: N,
+                  base_chest_bonus: N,
                   pills_positive, echo_loot N,
                   reroll_enemies, destroy_on_damage.
 
@@ -322,6 +324,17 @@ def parse_one_effect(raw, default_target="enemy", in_grant=False):
         if isinstance(inner, dict):
             eff["effect"] = inner
         return eff
+
+    # one_of <effect> | <effect> | ... — ONE of the listed effects, picked at
+    # random each time it fires (The Book of Sin: Gold, Health, a Bomb, a Key or a
+    # piece of Loot). Each option is parsed as a payload effect of its own.
+    m = re.match(r"^one_of\s+(.+)$", raw, re.I)
+    if m:
+        options = [parse_one_effect(p, default_target) for p in m.group(1).split("|")]
+        options = [o for o in options if isinstance(o, dict)]
+        if len(options) < 2:
+            raise ValueError("item DSL: one_of wants two or more `|`-separated effects in %r" % raw)
+        return {"type": "one_of", "effects": options}
 
     # counter key=K every=N -> <inner>
     m = re.match(r"^counter\s+(.+?)\s*->\s*(.+)$", raw, re.I)
@@ -1114,6 +1127,11 @@ def parse_item(row):
             # size ladder, so the boss's becomes 1 of 2.
             fields["boss_chest_bonus"] = _int(re.search(r"\d+", clause).group(0), 0)
             last_trigger = None
+        elif kl0 == "base_chest_bonus":
+            # Mom's Key: chest POINTS added to the point a BEATEN game is worth on
+            # its own, so the kill chest starts a rung up the size ladder.
+            fields["base_chest_bonus"] = _int(re.search(r"\d+", clause).group(0), 0)
+            last_trigger = None
         elif kl0 == "lower_hp_damage_mult":
             fields["lower_hp_damage_mult"] = float(re.search(r"[0-9.]+", payload).group(0))
             last_trigger = None
@@ -1451,6 +1469,7 @@ def item_tres(row):
         ("gold_per_enemy", lambda v: str(v)),
         ("shop_sweep", lambda v: "true"),
         ("boss_chest_bonus", lambda v: str(v)),
+        ("base_chest_bonus", lambda v: str(v)),
         ("status_bonuses", lambda v: gd_value(v)),
         ("destroyed_by_enemy_damage", lambda v: "true"),
     ]:

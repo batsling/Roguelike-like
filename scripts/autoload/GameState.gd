@@ -3052,6 +3052,15 @@ func boss_chest_bonus() -> int:
 			n += it.boss_chest_bonus
 	return n
 
+# Mom's Key: extra chest POINTS on the point a beaten game is worth on its own
+# (§8.2). Summed across copies, like boss_chest_bonus; 0 leaves a win worth 1.
+func base_chest_bonus() -> int:
+	var n: int = 0
+	for it in inventory:
+		if it is ItemData:
+			n += it.base_chest_bonus
+	return n
+
 # ---------------------------------------------------------------------------
 # Usable consumables + temporary buffs
 # ---------------------------------------------------------------------------

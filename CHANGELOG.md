@@ -11,6 +11,22 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Four Isaac relics, two cards and four games from the October upload.** The
+  relics (Book of Revelations, Latch Key, Mom's Key, The Book of Sin) and the two
+  cards (VIII - Justice, 2 of Spades) arrived with Descriptions and blank Effect
+  cells. The relics generated `.tres` that read right and did nothing, and the
+  blank cards made `generate_card2_tres.py` refuse the whole sheet.
+  `tools/_items2_isaac_keys_books_setup.py` writes their DSL. Two pieces are new:
+  `one_of A | B | …` (The Book of Sin's one-of-five, a flat draw Luck does not
+  steer) and `base_chest_bonus: N` (Mom's Key: a beaten game's own chest point is
+  worth 2, shown as its own term in the haul screen's sum). Card `gain_stat gold`
+  now goes through `change_gold` so the purse repaints. "Shield" on all of them is
+  the pool that stays, as The Hierophant's is. The games (Devil Peach Soda,
+  Moonsigil Atlas, Star Wars: Galactic Racer, Touhou: Red Empress Devil) are
+  imported with their new connections and proofs. They were researched and
+  nothing first-hand turned up (`docs/influence-candidates.md` §6), and their tag
+  suggestions are in `tools/Research.xlsx`.
+
 - **The starting games are random now.** The Amulet was already a uniform draw;
   the three start cards were ranked by early-branching score, which put the same
   hubs on most panels (253 distinct starts on 900 cards, top ten 30%, Hack 'Em

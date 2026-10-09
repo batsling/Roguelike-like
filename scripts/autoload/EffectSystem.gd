@@ -100,6 +100,7 @@ func _register_defaults() -> void:
 	register("none", _h_none)
 	register("if_hp", _h_if_hp)
 	register("chance", _h_chance)
+	register("one_of", _h_one_of)
 	register("counter", _h_counter)
 	register("reroll_enemies", _h_reroll_enemies)
 	register("teleport_type", _h_teleport_type)
@@ -586,6 +587,18 @@ func _h_chance(effect: Dictionary, ctx: Dictionary) -> void:
 	if not Stats.roll_chance(_rng, percent, favour_of(inner)):
 		return
 	apply(inner, ctx)
+
+
+# `one_of A | B | C` — ONE of the listed effects, picked at random each time it
+# fires (The Book of Sin). Favour.NONE on WHICH, as with gain_pickups: Gold is not
+# a better answer than a Key, it is a different one, so Luck does not get a say.
+func _h_one_of(effect: Dictionary, ctx: Dictionary) -> void:
+	var options: Array = effect.get("effects", [])
+	if options.is_empty():
+		return
+	var pick = options[_rng.randi_range(0, options.size() - 1)]
+	if pick is Dictionary:
+		apply(pick, ctx)
 
 
 # The INCREMENTAL wrapper: "every Nth time this happens, do the thing" (Charm of

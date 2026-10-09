@@ -519,6 +519,80 @@ func test_a_chest_point_ladder_turns_the_bonus_into_choices() -> void:
 	assert_eq(Data.CHEST_SIZE_CHOICES[Data.chest_reward_sizes(2)[0]], 2,
 		"one There's Options makes a boss's drop 1 of 2")
 
+# --- Mom's Key: the WIN's chest goes up a size ---------------------------
+
+func test_moms_key_raises_the_point_a_beaten_game_is_worth() -> void:
+	assert_eq(GameState.base_chest_bonus(), 0, "nothing owned, nothing added")
+	var keys_before: int = GameState.keys
+	_give(&"moms_key")
+	assert_eq(GameState.keys, keys_before + 1, "Mom's Key: +1 Key on pickup")
+	assert_eq(GameState.base_chest_bonus(), 1)
+	var chests: Array = GameLoop2.claim_chests(true)
+	assert_eq(chests.size(), 1)
+	assert_eq(int((chests[0] as Dictionary)["points"]), 2,
+		"a clear-board win is a Medium chest instead of a Small one")
+
+func test_moms_key_buys_nothing_for_a_game_you_did_not_beat() -> void:
+	_give(&"moms_key")
+	assert_true(GameLoop2.claim_chests(false).is_empty(),
+		"the base point is a reward for beating the game, and so is the bonus on it")
+
+func test_moms_key_leaves_a_boss_chest_alone() -> void:
+	_give(&"moms_key")
+	assert_eq(GameState.boss_chest_bonus(), 0, "that is There's Options' job")
+
+# --- Latch Key / Book of Revelations: the Shield that stays ---------------
+
+func test_latch_key_pays_a_key_and_a_shield_and_holds_a_luck() -> void:
+	var keys_before: int = GameState.keys
+	var shields_before: int = GameState.bonus_shields
+	var latch: ItemData = _give(&"latch_key")
+	assert_eq(GameState.keys, keys_before + 1, "+1 Key")
+	assert_eq(GameState.bonus_shields, shields_before + 1, "+1 Shield — the pool that stays")
+	assert_eq(int(latch.stat_bonuses.get("luck", 0)), 1, "+1 Luck while it is held")
+
+func test_book_of_revelations_is_a_three_charge_shield() -> void:
+	var book: ItemData = _give(&"book_of_revelations")
+	assert_true(book.is_charged())
+	assert_eq(book.max_charge(), 3)
+	var before: int = GameState.bonus_shields
+	assert_true(GameState.use_item(book))
+	assert_eq(GameState.bonus_shields, before + 1, "a Shield, not a Temporary Shield")
+	assert_eq(book.current_charge, 0, "and the bar is spent")
+
+# --- The Book of Sin: one of five, at random -----------------------------
+
+func test_one_of_applies_exactly_one_option() -> void:
+	var effect := {"type": "one_of", "effects": [
+		{"type": "gain_stat", "stat": "bombs", "value": 1},
+		{"type": "gain_stat", "stat": "keys", "value": 1},
+		{"type": "gain_gold", "value": 1}]}
+	var seen := {}
+	for n in range(40):
+		EffectSystem.reseed(n)
+		var b: int = GameState.bombs
+		var k: int = GameState.keys
+		var g: int = GameState.gold
+		EffectSystem.apply(effect, {})
+		var moved: Array = []
+		if GameState.bombs != b: moved.append("bombs")
+		if GameState.keys != k: moved.append("keys")
+		if GameState.gold != g: moved.append("gold")
+		assert_eq(moved.size(), 1, "one option lands, never two and never none")
+		if moved.size() == 1:
+			seen[moved[0]] = true
+	assert_eq(seen.size(), 3, "and over forty uses every option comes up")
+
+func test_the_book_of_sin_is_a_two_charge_pick_of_five() -> void:
+	var book: ItemData = _give(&"the_book_of_sin")
+	assert_eq(book.max_charge(), 2)
+	var effect: Dictionary = book.triggers[0]["effects"][0]
+	assert_eq(String(effect["type"]), "one_of")
+	var kinds: Array = (effect["effects"] as Array).map(
+		func(e): return "%s %s" % [e["type"], e.get("stat", "")])
+	assert_eq(kinds, ["gain_gold ", "gain_hp ", "gain_stat bombs", "gain_stat keys",
+		"gain_loot "], "Gold, Health, a Bomb, a Key or a piece of Loot")
+
 # --- The Mark / Stigmata: the two board-verb pickups ---------------------
 
 func test_the_mark_grants_a_bash_and_the_speed_status() -> void:

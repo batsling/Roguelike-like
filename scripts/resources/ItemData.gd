@@ -561,6 +561,14 @@ const CLASS_NAMES := ["Common", "Uncommon", "Rare", "Legendary", "Starter", "Bos
 # GameState.boss_chest_bonus and read by Overworld2's kill-drop path.
 @export var boss_chest_bonus: int = 0
 
+# Mom's Key: chest POINTS added to the point a game BEATEN is worth on its own
+# (§8.2) — the "Beat the game +1" at the head of the haul screen's sum. The
+# kill-chest twin of boss_chest_bonus: the win's chest starts a rung up the ladder
+# and every body defeated still adds its own difficulty on top. Paid only when
+# the game is beaten, because that is the only time the base point is. SUMMED
+# across copies by GameState.base_chest_bonus and read by GameLoop2.claim_chests.
+@export var base_chest_bonus: int = 0
+
 # Mewgenics' fragile trinkets (Lucky Hat, Bionic Face Plating, Fortune Necklace):
 # the item is destroyed the moment an ENEMY ATTACK costs the player Health.
 # Deliberately narrower than the `health_lost` hook Piggy Bank rides: the Health

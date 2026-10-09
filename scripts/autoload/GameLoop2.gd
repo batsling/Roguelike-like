@@ -552,7 +552,11 @@ func claim_chests(beaten: bool) -> Array:
 	if beaten:
 		# THE WIN'S OWN POINT doubles on a rift game (docs/rifts-design.md §6); the
 		# bodies' points were already doubled as each rift body fell.
-		var base: int = RIFT_MULT if RunGraph.is_rift_game(GameState.current_game_id) else 1
+		# Mom's Key raises that point before the rift doubles it, the way There's
+		# Options raises a boss chest before a rift body's multiplier does.
+		var base: int = 1 + GameState.base_chest_bonus()
+		if RunGraph.is_rift_game(GameState.current_game_id):
+			base *= RIFT_MULT
 		out.append({"points": base + chest_points, "boss": false})
 	for points in boss_chests:
 		out.append({"points": int(points), "boss": true})

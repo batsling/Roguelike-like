@@ -180,7 +180,11 @@ func _gain_stat(effect: Dictionary, out: Dictionary) -> void:
 	var value: int = int(effect.get("value", 0))
 	if stat == "" or value == 0:
 		return
-	GameState.grant_run_stat(stat, value)
+	if stat == "gold":
+		# Gold's own setter, for the reason _double_stat gives (VIII - Justice).
+		GameState.change_gold(value)
+	else:
+		GameState.grant_run_stat(stat, value)
 	out["logs"].append("+%d %s." % [value, _stat_word(stat)])
 
 
