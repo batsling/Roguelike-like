@@ -16290,6 +16290,7 @@
    "statuses": 0
   },
   "match": "sure",
+  "note": "2026-10-09: bindingofisaacrebirth.wiki.gg answers this client with a 301 to itself (every page, API or not); https://bindingofisaac.fandom.com/api.php used as the fallback (`page --api`)",
   "pages": {
    "characters": [
     "Characters",

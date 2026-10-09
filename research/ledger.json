@@ -63,7 +63,7 @@
   "events": "2026-10-09: Myrne the Cook (Lily's reroll and the Merchant are services)",
   "goals": "2026-10-09: 4: Star Spawn, Ravager, Wolpertinger, Mandragora (Dullahan = live headless goal, Medusa and Cockatrice are NetHack's, Nosferatu a vampire, taming is Cult of the Lamb's)",
   "locations": "2026-10-09: nothing: the biomes and Rest Sites have nothing a board or map doesn't",
-  "loot": "2026-10-09: nothing: the Monster Flask is a refillable heal (Brogue's Health Charm candidate), equipment is stat affixes",
+  "loot": "2026-10-09: nothing: the Monster Flask is a refillable heal (Brogue's Health Charm candidate), equipment is stat affixes; weapons and evolutions: none; monsters fight with skills, and equipment is stat affixes",
   "statuses": "2026-10-09: nothing: Redirect is Bishop's live goal, Corruption folds into Myrne, the rest are stat buffs"
  },
  "Alina of the Arena": {
@@ -161,7 +161,7 @@
   "events": "2026-10-09: nothing: the three quests have no pages beyond a line",
   "goals": "2026-10-09: Kid (hatching); most monster pages are Monster Book stats; Death, Dragon, Hydra, Unicorn, Snowman are other games' rows; Noise = NecroDancer's musician",
   "locations": "2026-10-09: Frog Trap (tile); the Monster Tower's climb is NetHack's tower goal",
-  "loot": "2026-10-09: nothing: seeds and fruits are potion effects (Tumna is the Frog row), Sands are Scroll of Enchanting",
+  "loot": "2026-10-09: nothing: seeds and fruits are potion effects (Tumna is the Frog row), Sands are Scroll of Enchanting; weapons and evolutions: none; swords are stat gear, Magic Balls repeat wands, and Fusion is monster fusion",
   "statuses": "2026-10-09: Frog; Blind and Slow are other games', Chaos is confusion, Angry is a crit buff"
  },
  "BAZR": {
@@ -223,7 +223,7 @@
   "events": "2026-10-09: Bird Shits on Sellsword, Ball on Roof (many event pages are empty templates)",
   "goals": "2026-10-09: 4: Nachzehrer, Alp, Hexe, Unhold (Necrosavant = vampire, Barbarian King = king, Geist's morale breaking and the Kraken's drag are other games' rows)",
   "locations": "2026-10-09: Sunken Library, Grotesque Tree (Black Monolith and Witch Hut are fights for a reward)",
-  "loot": "2026-10-09: nothing: weapons and armour are stat variants; the named artifacts (Emperor's Armor, Black Book) are location rewards",
+  "loot": "2026-10-09: nothing: weapons and armour are stat variants; the named artifacts (Emperor's Armor, Black Book) are location rewards; weapons and evolutions: none; named weapons are stat variants of ordinary ones",
   "statuses": "2026-10-09: Hangover; Drunk is a live goal, Charmed is Lovesick, Overwhelmed and Swarm are stat penalties"
  },
  "Battle Shapers": {
@@ -310,7 +310,7 @@
   "events": "2026-10-09: nothing usable: the wiki is stat tables and Lua data modules (Monsters, Cards, Items) with no move text, descriptions or lore; names alone aren't enough to translate. Revisit from the game itself",
   "goals": "2026-10-09: nothing usable: the wiki is stat tables and Lua data modules (Monsters, Cards, Items) with no move text, descriptions or lore; names alone aren't enough to translate. Revisit from the game itself",
   "locations": "2026-10-09: nothing usable: the wiki is stat tables and Lua data modules (Monsters, Cards, Items) with no move text, descriptions or lore; names alone aren't enough to translate. Revisit from the game itself",
-  "loot": "2026-10-09: nothing usable: the wiki is stat tables and Lua data modules (Monsters, Cards, Items) with no move text, descriptions or lore; names alone aren't enough to translate. Revisit from the game itself",
+  "loot": "2026-10-09: nothing usable: the wiki is stat tables and Lua data modules (Monsters, Cards, Items) with no move text, descriptions or lore; names alone aren't enough to translate. Revisit from the game itself; weapons and evolutions: none usable (item names only)",
   "statuses": "2026-10-09: nothing usable: the wiki is stat tables and Lua data modules (Monsters, Cards, Items) with no move text, descriptions or lore; names alone aren't enough to translate. Revisit from the game itself"
  },
  "Breachway": {
@@ -597,7 +597,7 @@
   "events": "2026-10-09: nothing: its interactions are curios, filed as objects",
   "goals": "2026-10-09: checked 8 rows on the wiki: 7 right, Bone Courtier fixed; Hag added",
   "locations": "2026-10-09: 2 curios, the Nomad Wagon, the Cove and the Weald",
-  "loot": "2026-10-09: 2 provisions",
+  "loot": "2026-10-09: 2 provisions; weapons and evolutions: none; weapons are hero upgrades at the blacksmith",
   "statuses": "2026-10-09: Stress, Blight"
  },
  "Darkest Dungeon 2": {
@@ -891,7 +891,7 @@
   "events": "2026-10-09: Strange Mood",
   "goals": "2026-10-09: checked 3 rows (all right); Carp added; its Vampire is noted on Spelunky 2's row",
   "locations": "2026-10-09: Magma tile, Cage Trap unit, Hidden Fun Stuff, the Dwarven Caravan",
-  "loot": "2026-10-09: Adamantine",
+  "loot": "2026-10-09: Adamantine; weapons and evolutions: none; artifact weapons are randomly named strange-mood crafts",
   "statuses": "2026-10-09: Cave Adaptation"
  },
  "Dwarves: Glory, Death and Loot": {
@@ -1010,7 +1010,7 @@
   "events": "2026-10-09: Game of Dice, Hot Spring, Blood Ritual",
   "goals": "2026-10-09: The Hangman",
   "locations": "2026-10-09: nothing usable: its places are encounters, filed as events",
-  "loot": "2026-10-09: nothing distinctive: its gear is generic stat items, and its luck pieces duplicate Clover and Lucky Toe",
+  "loot": "2026-10-09: nothing distinctive: its gear is generic stat items, and its luck pieces duplicate Clover and Lucky Toe; weapons and evolutions: none; weapons are generic stat gear",
   "statuses": "2026-10-09: Wet; Death Mark duplicates the Doomed candidate, so it went into The Hangman's goal"
  },
  "For the King 2": {
@@ -1735,7 +1735,7 @@
   "events": "2026-10-09: nothing: Noita has no events",
   "goals": "2026-10-09: checked 4 rows: 3 fixed; Stevari added",
   "locations": "2026-10-09: Holy Mountain, Perk Altar",
-  "loot": "2026-10-09: Polymorphine; its spell-built wands would need a whole new system",
+  "loot": "2026-10-09: Polymorphine; its spell-built wands would need a whole new system; weapons and evolutions: none; its wands are built from spells, which would need a whole system",
   "statuses": "2026-10-09: Teleportitis; its other stains duplicate Wet, Tarred and Burn"
  },
  "Nomad Survival": {
@@ -1853,7 +1853,7 @@
   "events": "2026-10-09: nothing: no events",
   "goals": "2026-10-09: Shinobo; riding and taming are Spelunky 2's and Cult of the Lamb's, Jumbo monsters are Tangledeep's elite goal, pet gifts NetHack's",
   "locations": "2026-10-09: Soap (tile); dungeons and zones are biome lists",
-  "loot": "2026-10-09: Mirror Match; the other charms are small stat or terrain bonuses",
+  "loot": "2026-10-09: Mirror Match; the other charms are small stat or terrain bonuses; weapons and evolutions: none; the blaster and mount skills belong to the monsters you ride",
   "statuses": "2026-10-09: nothing as statuses: Slippery became the Soap tile; Sticky, Smokey, Dizzy, Burned, Frozen, Poisoned overlap Web, invisibility, Discorded, Burn, Slow, Blight"
  },
  "Path of Achra": {
@@ -2225,7 +2225,7 @@
   "events": "2026-10-09: nothing: no events",
   "goals": "2026-10-09: Alarm-bot, Judge CandleMask; most judge pages are one line (NightWeaver = reflect, live; Splat-fly Queen and Horned-devil King = queen and king goals elsewhere)",
   "locations": "2026-10-09: nothing: the biome pages are enemy lists",
-  "loot": "2026-10-09: Cursed Second Wind, Cursed Ammo (the regular blessings are stat bumps)",
+  "loot": "2026-10-09: Cursed Second Wind, Cursed Ammo (the regular blessings are stat bumps); weapons and evolutions: none; the wiki's weapon list is incomplete and its gun mods are stat effects",
   "statuses": "2026-10-09: nothing: no status pages"
  },
  "Sea of Survivors": {
@@ -2350,7 +2350,7 @@
   "events": "2026-10-09: nothing: no events (fights, then item or level-up picks)",
   "goals": "2026-10-09: checked: Bones holds; Demon only in player comments (marked ?); nothing added (Lich, Wisp, Wolf, Fanatic, Slimelet, eggs are live or other games' candidates; most other pages are empty)",
   "locations": "2026-10-09: nothing: no map places in the game",
-  "loot": "2026-10-09: Lich's Tome, Bond Certificate; the rest rewrite dice sides, which the pack doesn't have",
+  "loot": "2026-10-09: Lich's Tome, Bond Certificate; the rest rewrite dice sides, which the pack doesn't have; weapons and evolutions: none; weapons are dice sides",
   "statuses": "2026-10-09: Petrify; Poison = Blight, Pain/Exert/Growth are dice-side keywords; the curses are difficulty settings"
  },
  "Slime 3K: Rise Against Despot": {
@@ -2605,7 +2605,7 @@
   "events": "2026-10-09: researched together with Rebirth (one wiki); rows are filed under Rebirth",
   "goals": "2026-10-09: checked 21 rows on the Rebirth wiki: 8 moved to Rebirth (they're Rebirth/DLC bosses), 11 goals fixed, 3 flagged (Uriel's release, Strider, The Fallen)",
   "locations": "2026-10-09: researched together with Rebirth (one wiki); rows are filed under Rebirth",
-  "loot": "2026-10-09: researched together with Rebirth (one wiki); rows are filed under Rebirth",
+  "loot": "2026-10-09: researched together with Rebirth (one wiki); rows are filed under Rebirth; weapons and evolutions: filed under Rebirth (Brimstone, Mom's Knife)",
   "statuses": "2026-10-09: researched together with Rebirth (one wiki); rows are filed under Rebirth"
  },
  "The Binding of Isaac: Rebirth": {
@@ -2641,7 +2641,7 @@
   "events": "2026-10-09: The Cursed Crown, Befitting a King, A Dish Best Served...Warm? (The Devil You Know = Isaac's Devil Room)",
   "goals": "2026-10-09: 5 bosses: Graveyard Golem, Monkey King, O'Cthulupus, Smokeeye, Unholy Crones (Gorzog = Brogue's Goblin Warlord, Lord Draven = Spelunky 2's Vampire, Ashfeather = Brogue's Phylactery)",
   "locations": "2026-10-09: nothing: the places are kingdom buildings that produce resources",
-  "loot": "2026-10-09: The King's Gaze, Free Coupon; the artifacts mostly feed kingdom resources and troops",
+  "loot": "2026-10-09: The King's Gaze, Free Coupon; the artifacts mostly feed kingdom resources and troops; weapons and evolutions: none; the fighting is done by troops",
   "statuses": "2026-10-09: nothing: no status pages; the spells' Weakness and Slow Zone are covered elsewhere"
  },
  "The Last Flame": {
@@ -2805,7 +2805,7 @@
   "events": "2026-10-09: 3 rows from rooms (no events category): Black Rabbit, Momentary Peril, Tus; Sacrifice Room, Altar and Tribute Fountain are other games' rows or live",
   "goals": "2026-10-09: checked: Selt and Seer fixed against the wiki; 6 added (Pilfer, Mimic, Larva, Gargoyle, Lurker left: live goals or other games' candidates cover them)",
   "locations": "2026-10-09: Shimmering Caverns, Delvemore Dungeon, Cursed Chest, Shatter Rock, Sho'guul, Dibble (Oil = Mewgenics Tar)",
-  "loot": "2026-10-09: 8 rows: Doll, Bounty Contract, Tsar Bomba, Bombushka, Pilfer Credit Card, Box of Holding, Bottled Pilfer, Canary (Four Leaf Clover = Golden Idol, Doubling Saison = 2 of Clubs)",
+  "loot": "2026-10-09: 8 rows: Doll, Bounty Contract, Tsar Bomba, Bombushka, Pilfer Credit Card, Box of Holding, Bottled Pilfer, Canary (Four Leaf Clover = Golden Idol, Doubling Saison = 2 of Clubs); weapons and evolutions: none; the peasant's pickaxe is the only weapon, and combined relics pair two relics, not a weapon",
   "statuses": "2026-10-09: 4 curses: Blood Pact, Mediocrity, Tariffs, Compulsion; Hobbled/Ignite/Poison covered by Slow, Burn, Blight"
  },
  "UnderMine 2": {
