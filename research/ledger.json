@@ -823,7 +823,13 @@
   "connections": "before 2026-10-07"
  },
  "Dragon Quest: Young Yangus and the Mystery Dungeon": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-09: nothing: Yangus's thief level-up repeats Mewgenics', and his monster-feeding repeats NetHack's 'Feed an animal'",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-09: nothing: no source",
+  "goals": "2026-10-09: nothing: its 16 bosses (Inhera, Grand Pazuzu, Estark...) have empty Young Yangus sections on the wiki; nothing to write a goal from",
+  "locations": "2026-10-09: nothing: Pottal Land and the farmhouse are named in the overview, with nothing to build a goal or choice from",
+  "loot": "2026-10-09: nothing: the item pages' Young Yangus sections are empty; weapons and evolutions: none found (Slapstick, Dream blade and two axes are series-wide items with no Young Yangus text)",
+  "statuses": "2026-10-09: Tension (check: from the game's overview page)"
  },
  "Dragonslayer": {
   "connections": "before 2026-10-07"
