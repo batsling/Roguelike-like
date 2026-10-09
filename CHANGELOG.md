@@ -11,6 +11,23 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Research, sixth batch.** Young Yangus, Monster Train, Caves of Qud
+  (goals only; its other kinds were done in the pilot), Dicey Dungeons, One
+  Step From Eden, Children of Morta, Skul, Boneraiser Minions, Astral Ascent
+  and Nuclear Throne: 33 new rows. Twelve blind goal rows were checked, and
+  five of them were wrong on the wiki. Caves of Qud's Slog has nothing to do
+  with carrying liquids; it spews the one it stands in. Nuclear Throne's
+  I.D.P.D. hunt you for being too strong, and Big Dog's overkill goal
+  described nothing it does. Big Dog's real trait, sleeping until woken,
+  repeats Darkest Dungeon 2's Dreaming General, so that row is gone. Skul's
+  Chimera repeated Curse of the Dead Gods' stitched creature. These wikis are
+  thinner, so most games got only a few rows, and every kind with nothing
+  usable says why in the ledger. Young Yangus has a single row: the Dragon
+  Quest wiki's sections for it are empty headers (the game was Japan-only
+  until a fan patch last week). New weapons include the Guillotine and the
+  Frozen Lance, which share live goals ("Behead an enemy", "Freeze an
+  enemy").
+
 - **Research, fifth batch.** Spelunky, Rogue Legacy, Slay the Spire, Hades,
   Rogue Legacy 2, Darkest Dungeon 2, Star of Providence, Risk of Rain, For the
   King 2 and A Robot Named Fight!, every kind: 119 rows. The blind goal rows
