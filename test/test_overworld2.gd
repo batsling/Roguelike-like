@@ -6026,7 +6026,7 @@ func test_a_card_map_draws_that_cards_route_on_the_chart() -> void:
 		"and the chart says which star that is")
 	# The corridor drawn on the sky IS the ladder in the window: same DAG, edge
 	# for edge, from the candidate rather than from where the player stands.
-	var dag: Dictionary = RunGraph.shortest_path_dag(slot, GameState.amulet_game_id)
+	var dag: Dictionary = RunGraph.route_map(slot, GameState.amulet_game_id)
 	var expected: int = 0
 	for edge in dag.get("edges", []):
 		# A step through a rift is not an influence, so the chart leaves it out

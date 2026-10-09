@@ -35,6 +35,9 @@ const COL_CHOICE_BG := Color(0.24, 0.18, 0.0)     # reachable-now choice
 const COL_PATH_BG := Color(0.29, 0.27, 0.25)      # on the road to the amulet
 const COL_VISITED_BG := Color(0.16, 0.16, 0.16)   # already behind you
 const COL_ARROW := Color(0.30, 0.78, 0.42, 0.85)  # shortest-path arrow green
+# A step only the road AROUND a hub link takes (RunGraph.route_map, §19.10): one
+# game longer, so not the shortest road's green.
+const COL_DETOUR := Color(0.92, 0.72, 0.28, 0.80)
 # What a plain box's name sits on. Near-black, not the old grey fill: the cover is
 # the colour now, and only the roles (you, the Amulet, an offer) keep their own.
 const COL_FADE := Color(0.03, 0.03, 0.04)
@@ -86,6 +89,18 @@ static func node_key(depth: int, id: StringName) -> String:
 static func node_name(id: StringName) -> String:
 	var game: GameData = Data.get_game(id)
 	return game.display_name if game != null else String(id)
+
+# The key for the amber arrows (RunGraph.route_map, §19.10), or "" when the route
+# has none. The map window prints it over the map; the card popup has no room for
+# a legend, so every map carries it as the canvas's hover too.
+static func detour_note(data: Dictionary) -> String:
+	if (data.get("detours", {}) as Dictionary).is_empty():
+		return ""
+	var pairs: Array = []
+	for link in data.get("hub_links", []):
+		pairs.append("%s → %s" % [node_name(StringName(link[0])), node_name(StringName(link[1]))])
+	return "Amber arrows: the roads one game longer that skip the %s shortcut, which every shortest road crosses." % \
+		" / ".join(pairs)
 
 # Build the map for one route. `cfg` is the model:
 #
@@ -178,14 +193,24 @@ static func build(cfg: Dictionary) -> Control:
 		if rects.has(a) and rects.has(b):
 			var ra: Rect2 = rects[a]
 			var rb: Rect2 = rects[b]
+			# A SIDEWAYS step (RunGraph.route_map, §19.10) joins two boxes in one
+			# column: it leaves the right edge and comes back into the right edge,
+			# bowing out into the gap rather than cutting across the column.
+			var sideways: bool = int(e.get("from_depth", 0)) == int(e.get("to_depth", 0))
 			# The third entry flags a step THROUGH A RIFT (either end a rift game),
-			# drawn in the rift's own dashed line rather than as an influence.
+			# drawn in the rift's own dashed line rather than as an influence; the
+			# fourth a step only the road around a hub link takes; the fifth the
+			# sideways bow, as the bow's control point.
 			segments.append([
 				Vector2(ra.end.x, ra.get_center().y),
-				Vector2(rb.position.x, rb.get_center().y),
+				Vector2(rb.end.x if sideways else rb.position.x, rb.get_center().y),
 				RunGraph.is_rift_game(StringName(e.get("from", ""))) or RunGraph.is_rift_game(to_id),
+				bool(e.get("detour", false)),
+				Vector2(ra.end.x + minf(gap * 0.9, 12.0 + absf(rb.get_center().y - ra.get_center().y) * 0.35),
+					(ra.get_center().y + rb.get_center().y) * 0.5) if sideways else null,
 			])
 	canvas.segments = segments
+	canvas.tooltip_text = detour_note(data)
 	canvas.arrow_size = 9.0 * clampf(box.y / BOX.y, 0.6, 1.0)
 	canvas.custom_minimum_size = stage + Vector2(pad, pad) * 2.0
 
@@ -252,6 +277,21 @@ static func order_layers(layers: Array, edges: Array) -> Array:
 						n += 1
 				score[id] = sum / n if n > 0 else float(k)
 			(out[i] as Array).sort_custom(func(x, y): return score[String(x)] < score[String(y)])
+	# A game the road around a hub link steps SIDEWAYS into (§19.10) goes to the
+	# middle of its column: every bow in that column ends on it, and from the
+	# middle they fan out both ways instead of all climbing to one end.
+	var sinks: Dictionary = {}
+	for e in edges:
+		if int(e.get("from_depth", -1)) == int(e.get("to_depth", -2)):
+			sinks["%d|%s" % [int(e["to_depth"]), String(e.get("to", ""))]] = true
+	for i in out.size():
+		var col: Array = out[i]
+		for k in col.size():
+			if sinks.has("%d|%s" % [i, String(col[k])]):
+				var id = col[k]
+				col.remove_at(k)
+				col.insert(col.size() / 2, id)
+				break
 	return out
 
 # A box's nudge off its slot, in -1..1: a hash of the box, so the same route is
@@ -794,22 +834,27 @@ static func fit_zoom(ladder: Vector2, room: Vector2, zoom: float,
 # boxes (which are added as its children).
 # ---------------------------------------------------------------------------
 class GraphCanvas extends Control:
-	var segments: Array = []          # [[Vector2 from, Vector2 to, bool rift], ...]
+	# [[Vector2 from, Vector2 to, bool rift, bool detour, Vector2-or-null bow], ...]
+	var segments: Array = []
 	var arrow_size: float = 9.0
 
 	func _draw() -> void:
 		for seg in segments:
 			var a: Vector2 = seg[0]
 			var b: Vector2 = seg[1]
+			var rift: bool = seg.size() > 2 and bool(seg[2])
+			var detour: bool = seg.size() > 3 and bool(seg[3])
+			var col: Color = UITheme.RIFT if rift else (COL_DETOUR if detour else COL_ARROW)
+			var w: float = 2.5 * (arrow_size / 9.0)
+			if seg.size() > 4 and seg[4] is Vector2:
+				_draw_bow(a, b, seg[4], col, w)
+				continue
 			# Stop the line a touch short of the box so the arrowhead sits clear.
 			var dir: Vector2 = (b - a)
 			if dir.length() < 0.001:
 				continue
 			dir = dir.normalized()
 			var tip: Vector2 = b - dir * 2.0
-			var rift: bool = seg.size() > 2 and bool(seg[2])
-			var col: Color = UITheme.RIFT if rift else COL_ARROW
-			var w: float = 2.5 * (arrow_size / 9.0)
 			if rift:
 				# Dashed, in the rift colour: a road, but not an influence.
 				draw_dashed_line(a, tip - dir * arrow_size, col, w, arrow_size * 0.7, true)
@@ -820,3 +865,24 @@ class GraphCanvas extends Control:
 			var base: Vector2 = tip - dir * arrow_size
 			draw_colored_polygon(
 				PackedVector2Array([tip, base + perp, base - perp]), col)
+
+	# A sideways step: a quadratic bow from one box's right edge out to `ctrl` and
+	# back into the other's, the head on the way in.
+	func _draw_bow(a: Vector2, b: Vector2, ctrl: Vector2, col: Color, w: float) -> void:
+		var pts := PackedVector2Array()
+		var steps := 16
+		for i in range(steps + 1):
+			var t: float = float(i) / steps
+			pts.append(a.lerp(ctrl, t).lerp(ctrl.lerp(b, t), t))
+		var dir: Vector2 = (b - pts[steps - 2])
+		if dir.length() < 0.001:
+			return
+		dir = dir.normalized()
+		var tip: Vector2 = b - dir * 2.0
+		# Trim the curve where the head starts, so the line does not poke through it.
+		while pts.size() > 2 and pts[pts.size() - 1].distance_to(b) < arrow_size + 2.0:
+			pts.remove_at(pts.size() - 1)
+		draw_polyline(pts, col, w, true)
+		var perp: Vector2 = Vector2(-dir.y, dir.x) * (arrow_size * 0.5)
+		var base: Vector2 = tip - dir * arrow_size
+		draw_colored_polygon(PackedVector2Array([tip, base + perp, base - perp]), col)

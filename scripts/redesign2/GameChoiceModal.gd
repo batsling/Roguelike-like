@@ -1370,7 +1370,7 @@ func _build_route_column() -> Control:
 func _ladder_cfg() -> Dictionary:
 	var slot: StringName = _choice.get("slot", &"")
 	var amulet: StringName = GameState.amulet_game_id
-	var data: Dictionary = RunGraph.shortest_path_dag(slot, amulet) if slot != &"" and amulet != &"" else {}
+	var data: Dictionary = RunGraph.route_map(slot, amulet) if slot != &"" and amulet != &"" else {}
 	if _key_dest() != &"" and amulet != &"":
 		data = _key_route(slot, _key_dest(), amulet)
 	return {
@@ -1391,7 +1391,7 @@ func _ladder_cfg() -> Dictionary:
 # shortest route on. The rift is not laid yet, so the graph cannot answer it; the
 # rung on top is stitched onto the destination's ladder, one step down.
 static func _key_route(rift_id: StringName, dest: StringName, amulet: StringName) -> Dictionary:
-	var on: Dictionary = RunGraph.shortest_path_dag(dest, amulet)
+	var on: Dictionary = RunGraph.route_map(dest, amulet)
 	var layers: Array = [[rift_id]]
 	for layer in on.get("layers", []):
 		layers.append(layer)
@@ -1401,7 +1401,8 @@ static func _key_route(rift_id: StringName, dest: StringName, amulet: StringName
 		moved["from_depth"] = int(e.get("from_depth", 0)) + 1
 		moved["to_depth"] = int(e.get("to_depth", 0)) + 1
 		edges.append(moved)
-	return {"layers": layers, "edges": edges}
+	return {"layers": layers, "edges": edges, "detours": on.get("detours", {}),
+		"hub_links": on.get("hub_links", [])}
 
 # --- the rung's card -------------------------------------------------------
 

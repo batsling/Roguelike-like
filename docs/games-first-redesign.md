@@ -3703,7 +3703,9 @@ reaches is always worth walking into.
 > **RETIRED BY §19.7, AND GONE FROM THE CODE.** A shop stands at a **Shop
 > node** and nowhere else: `ShopSystem.is_shop` reads `GameState.node_kinds`, and
 > `hub_games`, `hub_ids`, `NUM_HUBS` and `is_hub` no longer exist (the degree sort
-> survives as `RunGraph.best_connected`, with no rule hanging off it). The degree
+> survives as `RunGraph.best_connected`, with no rule hanging off it). The
+> `RunGraph.hubs` / `is_hub` of §19.10 are a later, unrelated rule that reuses
+> the word: they decide which links the map draws a road around, and nothing else. The degree
 > measurements and the "second routing axis" argument below are kept as the
 > history of the idea, because §19.2 is that argument carried through — the
 > kinds are frozen at run start for exactly the reason given here. §14.3's shelf
@@ -5342,3 +5344,51 @@ Slay-the-Spire-adjacent neighbour helps none of them.
 `Settings.exclude_beaten_amulets` still narrows the pool on top of all this, and
 still keeps its no-softlock fallback. That one is a player's preference rather
 than a property of the map, which is exactly why it is the only narrowing left.
+
+### 19.10 The road around a hub link
+
+**DONE.** When EVERY shortest road from where you stand to the Amulet crosses a
+link between two **hubs** — the `RunGraph.HUB_COUNT` (10) best-connected games on
+the run's map, measured after the filter and the main-component prune — the maps
+also draw the roads **one game longer** that do not. `RunGraph.route_map` builds
+it; the 🗺 map window, the card popup's ladder (`GameChoiceModal`) and the star
+chart's road ahead (`AtlasView`) draw it. The stream overlay still draws only the
+shortest roads (`ObsCompanion._route`): its page has no sideways edge yet.
+
+**Why.** Two of the genre's landmarks linked directly is a shortcut through the
+middle of the map, and when it is the ONLY shortcut it eats every other road at
+that distance. Measured on the full catalogue before Slay the Spire → Balatro was
+authored: 7.0% of the (eligible start, Amulet in band) pairs a run can deal were
+forced over one of the twelve existing hub links (Slay the Spire–Isaac, Isaac–
+Hades, Spelunky–Gungeon…), with a **median slack of 1** — a single-file corridor
+— where the same routes with the roads around the link carry ~17. Mid-run it is
+11.3% of all game pairs two or more apart. Slay the Spire → Balatro takes those
+to 8.1% and 13.7%: those two games already sat two apart through fifteen shared
+neighbours, so the link shortens 1% of dealable routes by exactly one game, and
+for each of them the road-around is precisely the map it had before the link.
+
+**Display only.** `shortest_path_dag` is still exactly the shortest roads, and
+every RULE reads it — the route floor (§19.3), the Event and Shop each route is
+promised, rifts. So a route forced over a hub link is still a corridor to the
+start panel's floor and is not dealt as a start; the road around it is what the
+player sees once they are walking. The distance does not move either: the step
+count, `★ OPTIMAL` and the pressure band all read real distances, and a card on
+the longer road reads `→ Sideways` for the one step that does not close the gap.
+
+**Laid out by true distance from the start, so no game needs two boxes.** A road
+one game longer between two ends `hops` apart takes `hops + 1` steps, each moving
+the distance by at most one, adding up to `hops` — so exactly ONE step stays at
+the same distance and none goes back. That step is an edge with `from_depth ==
+to_depth`; `RouteLadder` draws it as a bow out of one box's right edge and into
+the other's, and puts the game the bows end on in the middle of its column
+(`order_layers`). Every edge the road around adds carries `detour: true` and is
+drawn amber (`RouteLadder.COL_DETOUR`); the window prints the key
+(`RouteLadder.detour_note`, naming the link) and every ladder carries it as its
+hover. Roads around that are TWO or more games longer are not drawn: they would
+need a column that goes backwards, and they are rare (94 of 249,029 dealable
+pairs).
+
+**The rule only adds when it has to.** If any shortest road avoids the hub links,
+the roads around them are already a subset of the map and nothing changes; the
+roads around are drawn only when the map without the hub links is exactly one
+game longer (`RunGraph.detour_distances`, a BFS that skips hub-to-hub links).

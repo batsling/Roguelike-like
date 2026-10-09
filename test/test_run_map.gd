@@ -80,7 +80,12 @@ func test_map_edges_only_step_forward_one_layer() -> void:
 	for e in data.get("edges", []):
 		var a: StringName = StringName(e["from"])
 		var b: StringName = StringName(e["to"])
-		assert_eq(int(layer_of[b]) - int(layer_of[a]), 1,
+		# The road around a hub link (RunGraph.route_map, §19.10) takes one step
+		# that stays in its column; it is flagged, and nothing else may.
+		var step: int = int(layer_of[b]) - int(layer_of[a])
+		if bool(e.get("detour", false)) and step == 0:
+			continue
+		assert_eq(step, 1,
 			"every drawn edge advances exactly one layer toward the amulet")
 
 func test_zoom_rebuilds_the_graph_without_changing_the_model() -> void:
@@ -293,6 +298,8 @@ func test_the_amulets_rung_opens_a_card_on_a_start_map_too() -> void:
 func test_every_edge_of_the_route_advances_one_layer() -> void:
 	var modal = _open_map()
 	for e in modal.map_data().get("edges", []):
+		if bool(e.get("detour", false)) and int(e["to_depth"]) == int(e["from_depth"]):
+			continue    # the sideways step of the road around a hub link (§19.10)
 		assert_eq(int(e["to_depth"]) - int(e["from_depth"]), 1,
 			"every drawn edge is one step of the route")
 

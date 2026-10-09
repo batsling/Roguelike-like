@@ -371,7 +371,10 @@ func _build_trail() -> void:
 	var amulet: StringName = GameState.amulet_game_id
 	if current == &"" or amulet == &"":
 		return
-	var dag: Dictionary = RunGraph.shortest_path_dag(current, amulet)
+	# The same route the ladder draws, the road around a hub link included
+	# (RunGraph.route_map, §19.10). Its columns are still true distances, so its
+	# depth is still the distance.
+	var dag: Dictionary = RunGraph.route_map(current, amulet)
 	# The depth of that DAG is how far the run still has to go, and the markers
 	# quote it. Cached here rather than recomputed in _draw: it's a BFS over the
 	# whole graph, and the sky redraws on every pan.
@@ -389,7 +392,9 @@ func _build_trail() -> void:
 		var b: int = layout.index_of(to_id)
 		if a < 0 or b < 0:
 			continue
-		_trail.append([a, b])
+		# The third slot is the walked road's "jumped" flag (never true ahead); the
+		# fourth says the step belongs only to the road around a hub link.
+		_trail.append([a, b, false, bool(edge.get("detour", false))])
 
 func trail_segment_count() -> int:
 	return _trail.size()

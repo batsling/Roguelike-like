@@ -141,11 +141,13 @@ func start(host: Node, current: StringName, amulet: StringName, choice_ids: Arra
 # edges: [{from, to, from_depth, to_depth}]}. Empty layers mean no route (amulet
 # unreachable / not set).
 #
-# The shortest-path DAG from the current game to the Amulet.
+# The shortest-path DAG from the current game to the Amulet — plus, when every
+# shortest road crosses a link between two hubs, the roads one game longer that
+# go around it (RunGraph.route_map, §19.10).
 func map_data() -> Dictionary:
 	if _current == &"" or _amulet == &"":
 		return {"layers": [], "edges": []}
-	return RunGraph.shortest_path_dag(_current, _amulet)
+	return RunGraph.route_map(_current, _amulet)
 
 # Whether the run is standing somewhere yet. False on the choose-your-start
 # panel, which is the one place a map is drawn before the player has a position:
@@ -190,6 +192,18 @@ func _build() -> void:
 		note.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 		note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		root.add_child(note)
+
+	# The road around a hub link, said in words: the amber arrows are the only
+	# thing on the map that is not a shortest road, so they need their key.
+	var around: String = RouteLadder.detour_note(map_data())
+	if around != "":
+		var detour := Label.new()
+		detour.name = "DetourNote"
+		detour.text = around
+		detour.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
+		detour.add_theme_color_override("font_color", RouteLadder.COL_DETOUR)
+		detour.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		root.add_child(detour)
 
 	# Journey trail — the games already behind the player (visited_games).
 	var journey: Array = [] if _preview else GameState.visited_games

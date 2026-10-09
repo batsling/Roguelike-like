@@ -269,6 +269,9 @@ static func invalidate_cache() -> void:
 	_off_map.clear()
 	_isolated.clear()
 	_rift_games.clear()
+	_hubs.clear()
+	_hubs_built = false
+	_detour_bfs_cache.clear()
 
 # Whether a game is eligible to appear in path selection, per the global
 # Settings.game_filter. Filtered-out games are excluded from the graph
@@ -1100,6 +1103,190 @@ static func shortest_path_dag(start_id: StringName, amulet_id: StringName) -> Di
 		_dag_cache.clear()
 	_dag_cache[key] = built
 	return built
+
+
+# --- the road around a hub link (§19.10) -----------------------------------
+#
+# WHEN THE ONLY SHORTEST ROAD RUNS OVER A LINK BETWEEN TWO HUBS, THE MAP ALSO
+# DRAWS THE ROADS ONE GAME LONGER THAT DO NOT. Two of the genre's landmarks linked
+# directly — Slay the Spire and Balatro, Isaac and Hades — is a shortcut across
+# the middle of the map, and when it is the ONLY shortcut it eats every other
+# road at that distance: measured on the full catalogue, 7% of the pairs a run can
+# deal were funnelled through one of the twelve hub-to-hub links, and those routes
+# had a median slack of 1 — a single-file corridor, one card worth taking per
+# step — where the same routes without the link carry ~17.
+#
+# DISPLAY ONLY. `shortest_path_dag` stays exactly the shortest roads, and every
+# RULE reads it (the route floor, the kinds §19.3 guarantees, rifts): this is what
+# the MAPS draw instead. The distance is still the distance — the Amulet sits in
+# the same column, the step count does not move, and a card on the longer road
+# still reads "→ Sideways" for the one step that does not get you closer.
+#
+# LAID OUT BY THE TRUE DISTANCE FROM THE START, so no game ever needs two boxes. A
+# road one game longer than the shortest, between two ends `hops` apart, takes
+# exactly one step that stays at the same distance and none that go back (its
+# hops+1 steps each move the distance by at most one and must add up to `hops`),
+# so it fits the shortest road's columns with ONE sideways edge per road — the
+# step the card already calls Sideways. Those edges carry `from_depth ==
+# to_depth`, and every edge this adds carries `detour: true`.
+#
+# Only ONE game longer. A road around the link two or more games longer would need
+# a column that goes backwards; it is also rare (94 of the 249,029 dealable pairs)
+# and long enough that it is not the road anyone means.
+#
+# A HUB is one of the HUB_COUNT best-connected games on the run's map (after the
+# filter and the main-component prune, like `degree`). Ten because that is where
+# the degree curve flattens out, and it is the count the retired shop hubs used
+# (§14.2). Live rather than frozen: nothing here is a promise printed on a card.
+const HUB_COUNT := 10
+
+static var _hubs: Dictionary = {}            # StringName -> true; rebuilt with the adjacency
+static var _hubs_built: bool = false
+# Distances on the map with the hub-to-hub links taken out, memoized like
+# `_bfs_cache` and bounded the same way. Only ever asked for the two ends of a
+# route that runs over such a link, so it stays small.
+static var _detour_bfs_cache: Dictionary = {}
+
+# The run's hubs, as a set. Rift games are left out of the count — a rift adds a
+# link to two games of the map for one run, and the hubs should not move with it.
+static func hubs() -> Dictionary:
+	_build_adj()
+	if _hubs_built:
+		return _hubs
+	_hubs.clear()
+	var ids: Array = []
+	var deg: Dictionary = {}
+	for id in _adj_cache:
+		if is_rift_game(id):
+			continue
+		var n := 0
+		for nb in (_adj_cache[id] as Array):
+			if not is_rift_game(nb):
+				n += 1
+		deg[id] = n
+		ids.append(id)
+	# Tie-break inside the comparator, as `best_connected` does and for its reason.
+	ids.sort_custom(func(a, b):
+		if deg[a] != deg[b]:
+			return deg[a] > deg[b]
+		return String(a) < String(b))
+	for i in range(mini(HUB_COUNT, ids.size())):
+		_hubs[ids[i]] = true
+	_hubs_built = true
+	return _hubs
+
+static func is_hub(game_id: StringName) -> bool:
+	return hubs().has(game_id)
+
+# Is the link between these two games a link between two hubs?
+static func is_hub_link(a: StringName, b: StringName) -> bool:
+	var h: Dictionary = hubs()
+	return h.has(a) and h.has(b)
+
+# `bfs_distances`, on the map with every hub-to-hub link taken out.
+static func detour_distances(start_id: StringName) -> Dictionary:
+	if _detour_bfs_cache.has(start_id):
+		return _detour_bfs_cache[start_id]
+	_build_adj()
+	var h: Dictionary = hubs()
+	var dist: Dictionary = {start_id: 0}
+	var queue: Array[StringName] = [start_id]
+	var qi := 0
+	while qi < queue.size():
+		var cur: StringName = queue[qi]
+		qi += 1
+		var cur_d: int = dist[cur]
+		var from_hub: bool = h.has(cur)
+		for nb in (_adj_cache.get(cur, []) as Array):
+			if from_hub and h.has(nb):
+				continue
+			if not dist.has(nb):
+				dist[nb] = cur_d + 1
+				queue.append(nb)
+	if _detour_bfs_cache.size() >= BFS_CACHE_MAX:
+		_detour_bfs_cache.clear()
+	_detour_bfs_cache[start_id] = dist
+	return dist
+
+# THE ROUTE THE MAPS DRAW: `shortest_path_dag`, plus — when every shortest road
+# runs over a hub-to-hub link — the roads one game longer that do not. Same shape
+# as the DAG ({layers, edges}), plus:
+#
+#   detours    {id: true}  games only the longer roads pass through
+#   hub_links  [[a, b]]    the hub-to-hub links on the shortest roads, which
+#                          between them every shortest road crosses
+#
+# Both are empty when nothing was added, which is the usual case: when ANY
+# shortest road avoids the links, the longer ones add nothing a player needs.
+#
+# Memoized in the DAG's own cache and SHARED like it — read-only.
+static func route_map(start_id: StringName, amulet_id: StringName) -> Dictionary:
+	var key: String = "%s>%s>around" % [start_id, amulet_id]
+	if _dag_cache.has(key):
+		return _dag_cache[key]
+	var built: Dictionary = _build_route_map(start_id, amulet_id)
+	if _dag_cache.size() >= DAG_CACHE_MAX:
+		_dag_cache.clear()
+	_dag_cache[key] = built
+	return built
+
+static func _build_route_map(start_id: StringName, amulet_id: StringName) -> Dictionary:
+	var dag: Dictionary = shortest_path_dag(start_id, amulet_id)
+	var plain: Dictionary = {"layers": dag.get("layers", []), "edges": dag.get("edges", []),
+		"detours": {}, "hub_links": []}
+	var layers: Array = dag.get("layers", [])
+	if layers.size() < 2:
+		return plain
+	var hops: int = layers.size() - 1
+	var links: Array = []
+	for e in dag.get("edges", []):
+		var a := StringName(e.get("from", ""))
+		var b := StringName(e.get("to", ""))
+		if is_hub_link(a, b):
+			links.append([a, b])
+	if links.is_empty():
+		return plain
+	# Without the links the road is either just as short (some shortest road never
+	# needed them: nothing to add), exactly one longer (draw it), or longer still.
+	var ds: Dictionary = detour_distances(start_id)
+	if int(ds.get(amulet_id, -1)) != hops + 1:
+		return plain
+	var d_true: Dictionary = bfs_distances(start_id)
+	var da: Dictionary = detour_distances(amulet_id)
+	var out_layers: Array = []
+	for layer in layers:
+		out_layers.append((layer as Array).duplicate())
+	var on_dag: Dictionary = {}
+	for layer in layers:
+		for id in layer:
+			on_dag[id] = true
+	var around: Dictionary = {}
+	var detours: Dictionary = {}
+	for n in ds:
+		if not da.has(n) or int(ds[n]) + int(da[n]) != hops + 1:
+			continue
+		around[n] = true
+		if not on_dag.has(n):
+			detours[n] = true
+			(out_layers[int(d_true[n])] as Array).append(n)
+	var edges: Array = (dag.get("edges", []) as Array).duplicate()
+	var seen: Dictionary = {}
+	for e in edges:
+		seen["%s>%s" % [e.get("from", ""), e.get("to", "")]] = true
+	var h: Dictionary = hubs()
+	for u in around:
+		for v in (_adj_cache.get(u, []) as Array):
+			if not around.has(v) or int(ds[v]) != int(ds[u]) + 1:
+				continue
+			if h.has(u) and h.has(v):
+				continue
+			var k: String = "%s>%s" % [u, v]
+			if seen.has(k):
+				continue
+			seen[k] = true
+			edges.append({"from": u, "to": v, "from_depth": int(d_true[u]),
+				"to_depth": int(d_true[v]), "detour": true})
+	return {"layers": out_layers, "edges": edges, "detours": detours, "hub_links": links}
 
 
 # --- the route floor (§19.3) -----------------------------------------------

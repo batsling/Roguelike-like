@@ -11,6 +11,18 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The map draws the road around a hub link.** When every shortest road to the
+  Amulet crosses a link between two of the ten best-connected games (Slay the
+  Spire–Isaac, Isaac–Hades…), the map window, the card popup's ladder and the
+  star chart also draw the roads one game longer that skip it, in amber, with a
+  sideways bow for the one step that does not close the gap
+  (`RunGraph.route_map`). Measured: 7% of dealable routes were already corridors
+  of slack 1 because of a hub link; the roads around bring them to a median of
+  ~17. Display only — the route floor, the guaranteed Event/Shop and rifts still
+  read `shortest_path_dag`. Written ahead of Slay the Spire → Balatro, which
+  takes that 7% to 8% and, for each route it shortens, the road around is
+  exactly the map it had before. Spec §19.10.
+
 - **The starting games are random now.** The Amulet was already a uniform draw;
   the three start cards were ranked by early-branching score, which put the same
   hubs on most panels (253 distinct starts on 900 cards, top ten 30%, Hack 'Em

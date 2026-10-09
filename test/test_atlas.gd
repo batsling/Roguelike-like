@@ -771,7 +771,7 @@ func test_route_matches_the_run_minimap_exactly() -> void:
 	if not view.has_layout() or view.trail_segment_count() == 0:
 		pending("no baked layout, or this run walked no trail to draw")
 		return
-	var dag: Dictionary = RunGraph.shortest_path_dag(
+	var dag: Dictionary = RunGraph.route_map(
 		GameState.current_game_id, GameState.amulet_game_id)
 	var expected: Dictionary = {}
 	for edge in dag.get("edges", []):
@@ -944,6 +944,10 @@ func test_route_segments_run_toward_the_amulet() -> void:
 		return
 	var to_amulet: Dictionary = RunGraph.bfs_distances(GameState.amulet_game_id)
 	for seg in view._trail:
+		# A step of the road AROUND a hub link (§19.10) is one game longer, so it
+		# need not close the distance; it is flagged in the fourth slot.
+		if seg.size() > 3 and bool(seg[3]):
+			continue
 		var from_id: StringName = view.layout.id_at(int(seg[0]))
 		var to_id: StringName = view.layout.id_at(int(seg[1]))
 		assert_true(to_amulet.has(from_id) and to_amulet.has(to_id),
