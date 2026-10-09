@@ -1620,8 +1620,13 @@
   "connections": "before 2026-10-07"
  },
  "Monster Train": {
+  "characters": "2026-10-09: nothing: the Hornbreaker Prince's horn-collecting repeats Powder's trophy and the Leviathan's broken-off part",
   "connections": "before 2026-10-07",
-  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+  "events": "2026-10-09: Abandoned Winged",
+  "goals": "2026-10-09: checked 2: Seraph right (moved to 4-Insane), Lightwing right; The Porcupine and The Last Divinity added; the Steel Slate left out (repeats Shogun Showdown's shield), the Self-Made Harpy (stitched wings repeat Curse of the Dead Gods)",
+  "locations": "2026-10-09: nothing: its merchants are generic shops and the Pyre is the whole game, not a place",
+  "loot": "2026-10-09: Golden Vault; weapons and evolutions: Frozen Lance (a spell read as a weapon); no evolutions (upgrades are stones added to cards)",
+  "statuses": "2026-10-09: Burnout; Spikes left out (the same as Riposte's combat)"
  },
  "Monster Train 2": {
   "connections": "before 2026-10-07",
