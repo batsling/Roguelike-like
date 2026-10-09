@@ -2723,8 +2723,13 @@
   "connections": "before 2026-10-07"
  },
  "UnderMine": {
+  "characters": "2026-10-09: Peasant, with the Canary as loadout",
   "connections": "before 2026-10-07",
-  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+  "events": "2026-10-09: 3 rows from rooms (no events category): Black Rabbit, Momentary Peril, Tus; Sacrifice Room, Altar and Tribute Fountain are other games' rows or live",
+  "goals": "2026-10-09: checked: Selt and Seer fixed against the wiki; 6 added (Pilfer, Mimic, Larva, Gargoyle, Lurker left: live goals or other games' candidates cover them)",
+  "locations": "2026-10-09: Shimmering Caverns, Delvemore Dungeon, Cursed Chest, Shatter Rock, Sho'guul, Dibble (Oil = Mewgenics Tar)",
+  "loot": "2026-10-09: 8 rows: Doll, Bounty Contract, Tsar Bomba, Bombushka, Pilfer Credit Card, Box of Holding, Bottled Pilfer, Canary (Four Leaf Clover = Golden Idol, Doubling Saison = 2 of Clubs)",
+  "statuses": "2026-10-09: 4 curses: Blood Pact, Mediocrity, Tariffs, Compulsion; Hobbled/Ignite/Poison covered by Slow, Burn, Blight"
  },
  "UnderMine 2": {
   "connections": "before 2026-10-07"
