@@ -1570,7 +1570,13 @@
   "connections": "before 2026-10-07"
  },
  "Moonlighter": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-09: Will",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-09: nothing: Moonlighter has no events",
+  "goals": "2026-10-09: 2 bosses",
+  "locations": "2026-10-09: Healing Pool, Edward the Banker",
+  "loot": "2026-10-09: 3 bag curses, Merchant Pendant, Merchant Mirror",
+  "statuses": "2026-10-09: nothing usable: poison, burn and electric duplicate Blight, Burn and Wet"
  },
  "Moonlighter 2: The Endless Vault": {
   "connections": "before 2026-10-07"
