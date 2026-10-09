@@ -1872,8 +1872,13 @@
   "connections": "before 2026-10-07"
  },
  "Peglin": {
+  "characters": "2026-10-09: nothing: the classes are unlocked by peg feats (100 Ballwark, 50 Spinfection, 7 slimed pegs) with no level-up that leaves the pegboard",
   "connections": "before 2026-10-07",
-  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+  "events": "2026-10-09: Golden Peglin Statue, Peglin Chef (Pachinko = Arcade Room, Crave Power = Devil Room, Dual Altar = Duplicator)",
+  "goals": "2026-10-09: checked: Thesaurosus holds, Stumpy Stump fixed; nothing added (Slime Boss swallowing = Hades II and Rogue Legacy 2, Demon Wall = Wallmonger, Minnie = NetHack's Minotaur, Pigment of Imagination = Doomvas)",
+  "locations": "2026-10-09: nothing: the areas are Forest, Castle, Mines with no places in them",
+  "loot": "2026-10-09: Wand of Skulltimate Greed; most relics act on pegs and orbs, which the board doesn't have",
+  "statuses": "2026-10-09: nothing: Muscircle, Ballwark and Spinfection are Strength, Shields and a poison"
  },
  "Pegs X Stickers": {
   "connections": "before 2026-10-07"
