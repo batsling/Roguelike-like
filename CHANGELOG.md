@@ -11,6 +11,32 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Research, fifth batch.** Spelunky, Rogue Legacy, Slay the Spire, Hades,
+  Rogue Legacy 2, Darkest Dungeon 2, Star of Providence, Risk of Rain, For the
+  King 2 and A Robot Named Fight!, every kind: 119 rows. The blind goal rows
+  were checked as before. Slay the Spire had 14, Risk of Rain 5, Rogue Legacy
+  2 had 4. Risk of Rain's Parent never grabs and throws you; it hunts whoever
+  killed its child, and the Child is live. Its Providence goal repeated the
+  live Strength status. Four rows were dropped because they repeated
+  earlier candidates: Slay the Spire's gremlin and Mystic, Hades' Asterius,
+  and Rogue Legacy 2's Jonah. Two wiki notes record where a shared wiki keeps a
+  sequel's pages. Darkest Dungeon 2's item lists live in templates, and For
+  the King 2's pages carry an "(FTK2)" suffix.
+
+- **Weapons and evolutions are asked of every game.** Loot research now
+  always looks for weapons (`weapons`, aimed per `docs/loot-passives.md` §12)
+  and evolutions (`evolutions`, §13). Candidate rows carry the sheet's own
+  columns in `Extra`. `research.py check` refuses an unknown Aim or Outcome,
+  and an evolution whose Requirement 1 is not a live or candidate weapon. The
+  per-game brief gets a "Weapons and evolutions" section, and a game with
+  neither has to say so in its ledger note. All 30 games researched before
+  this got the pass. There are now 50 weapon and 14 evolution candidates.
+  Gungeon's guns and synergies, Ball x Pit's evolved balls and Star of
+  Providence's Unique weapons supply most of the evolutions. Where a game
+  hands its weapon over ready-made, the row says the evolution reading is
+  ours. `research.py` also waits out wiki.gg's rate limit (a 200 with
+  `ratelimited` in the body, which used to read as "no page").
+
 - **Research, fourth batch.** The King is Watching, Enter the Gungeon, Breach
   Wanderers, Aethermancer, Azure Dreams, Ball x Pit, Scourgebringer, Patch
   Quest, Battle Brothers and Peglin: 70 rows. Smaller wikis meant fewer
