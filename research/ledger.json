@@ -1705,7 +1705,7 @@
   "events": "2026-10-09: 2 rows",
   "goals": "2026-10-09: checked 15 rows against nethackwiki: 4 fixed (Black Pudding, Mummy, Gas Spore, Medusa now a boss), 5 added",
   "locations": "2026-10-09: 3 locations, 4 objects, 1 shopkeeper",
-  "loot": "2026-10-09: 12 rows",
+  "loot": "2026-10-09: 12 rows; weapons and evolutions: Vorpal Blade (shares the live Jabberwock's goal), Mjollnir; Excalibur was already a candidate. Sting's naming trick has no item to evolve through",
   "statuses": "2026-10-09: 2 statuses, 1 curse"
  },
  "Netherworld Covenant": {
