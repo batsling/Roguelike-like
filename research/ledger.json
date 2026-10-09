@@ -601,7 +601,13 @@
   "statuses": "2026-10-09: Stress, Blight"
  },
  "Darkest Dungeon 2": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-09: Flagellant, Runaway, Abomination (the first game's four are already candidates)",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-09: The Desperate Few (Assistance Encounter)",
+  "goals": "2026-10-09: 5: Dreaming General, Librarian, Leviathan, Shackles of Denial, Implication; Harvest Child (repeats Dome Keeper's 'before it reaches you'), Ancient Adversary (repeats Halls of Torment's statue) and Focused Fault (close to Wizard of Legend's one-eyed enemy) left out",
+  "locations": "2026-10-09: Creature Den, Oasis, The Hoarder",
+  "loot": "2026-10-09: 2 items; weapons and evolutions: Bone Saw and Makeshift Javelin (the wiki's Weapon combat items); no evolutions; trinkets are on-hit/on-miss stat rolls",
+  "statuses": "2026-10-09: Riposte, Stealth; Loathing left out (a Kingdoms-mode difficulty track, not a status)"
  },
  "Dave the Diver": {
   "connections": "before 2026-10-07"

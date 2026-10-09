@@ -4829,6 +4829,7 @@
    "statuses": 12
   },
   "match": "check",
+  "note": "Shared with the first game. DD2's own pages carry '(Darkest Dungeon II)' in the title; the Items category is the first game's. DD2's combat items, trinkets and stagecoach items are in Category:Gameplay (Darkest Dungeon II), and their lists sit in templates (Template:CombatWeapon, Template:TrinketsMisc...), so read those with action=parse.",
   "pages": {
    "characters": [
     "Classes"
