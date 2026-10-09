@@ -2289,8 +2289,13 @@
   "connections": "before 2026-10-07"
  },
  "Slice & Dice": {
+  "characters": "2026-10-09: Gambler",
   "connections": "before 2026-10-07",
-  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+  "events": "2026-10-09: nothing: no events (fights, then item or level-up picks)",
+  "goals": "2026-10-09: checked: Bones holds; Demon only in player comments (marked ?); nothing added (Lich, Wisp, Wolf, Fanatic, Slimelet, eggs are live or other games' candidates; most other pages are empty)",
+  "locations": "2026-10-09: nothing: no map places in the game",
+  "loot": "2026-10-09: Lich's Tome, Bond Certificate; the rest rewrite dice sides, which the pack doesn't have",
+  "statuses": "2026-10-09: Petrify; Poison = Blight, Pain/Exert/Growth are dice-side keywords; the curses are difficulty settings"
  },
  "Slime 3K: Rise Against Despot": {
   "connections": "before 2026-10-07"
