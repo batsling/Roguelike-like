@@ -2145,8 +2145,13 @@
   "statuses": "2026-10-09: Color Blind (curse); the other traits are cosmetic or medical jokes"
  },
  "Rogue Legacy 2": {
+  "characters": "2026-10-09: Chef",
   "connections": "before 2026-10-07",
-  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+  "events": "2026-10-09: nothing: the NPCs are hub services",
+  "goals": "2026-10-09: checked 4: Jonah dropped (not on the wiki; repeats Hades II), Lamech fixed and moved to bosses, Cain and the Void Beasts kept as ? (unconfirmed on the wiki); nothing added (Estuaries' pages are attack lists)",
+  "locations": "2026-10-09: nothing: the Stygian Study repeats Battle Brothers' lost library",
+  "loot": "2026-10-09: weapons and evolutions: Frying Pan (Chef); no evolutions; relics and armour sets are stat bonuses",
+  "statuses": "2026-10-09: nothing: traits repeat Rogue Legacy's"
  },
  "Rogue Lords": {
   "connections": "before 2026-10-07"
