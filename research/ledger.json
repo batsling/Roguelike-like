@@ -961,7 +961,13 @@
   "connections": "before 2026-10-07"
  },
  "For the King": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-09: Busker, Treasure Hunter",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-09: Game of Dice, Hot Spring, Blood Ritual",
+  "goals": "2026-10-09: The Hangman",
+  "locations": "2026-10-09: nothing usable: its places are encounters, filed as events",
+  "loot": "2026-10-09: nothing distinctive: its gear is generic stat items, and its luck pieces duplicate Clover and Lucky Toe",
+  "statuses": "2026-10-09: Wet; Death Mark duplicates the Doomed candidate, so it went into The Hangman's goal"
  },
  "For the King 2": {
   "connections": "before 2026-10-07"
