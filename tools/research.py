@@ -81,13 +81,19 @@ TODAY = datetime.date.today().isoformat()
 
 # ── the kinds ───────────────────────────────────────────────────────────────
 
-# The columns every candidate kind ends with. `Why it fits` is the case for the
-# row; `Source` the page it came from; `Confidence` is `ok` or `check` (a row
-# written from a summary, or a detail nobody could confirm); `Status` where the
-# row stands (STATUSES); the owner's two columns; and a stable `ID`, which is
-# how `sync` matches a row in the workbook to its line in the CSV however the
-# owner sorts or filters the sheet.
-STAGE = ["Why it fits", "Source", "Confidence", "Status", "Owner", "Owner Notes", "ID"]
+# The columns every candidate kind ends with. The sheet is a BRAINSTORM the owner
+# copies from by hand, so after the target sheet's own columns come three that
+# make the idea readable at a glance: `What it is there` (the thing in its own
+# game), `Builds on` (the system of THIS game it plugs into: "Fire tile", "coin
+# trinkets", "add_goal event") and `Needs` (blank if it rides what exists,
+# otherwise the new mechanic it would take). Then `Why it fits`, `Source` (the
+# page), `Confidence` (`ok`, or `check`: written from memory or a summary, or a
+# detail nobody could confirm), `Status` (STATUSES), the owner's two columns,
+# and a stable `ID`, which is how `sync` matches a workbook row to its CSV line
+# however the owner sorts or filters the sheet.
+IDEA = ["What it is there", "Builds on", "Needs"]
+STAGE = ["What it is there", "Why it fits", "Builds on", "Needs", "Source", "Confidence", "Status", "Owner",
+         "Owner Notes", "ID"]
 
 EVENT_CHOICES = [f"{c} {i}" for i in range(1, 7) for c in ("Choice", "Repeat", "Result", "Effect")]
 
@@ -103,7 +109,7 @@ KINDS = {
         # the staging ones; tools/check_goal_candidates.py audits this file.
         columns=["Sheet", "Name", "Type", "Difficulty", "Size", "Game", "Health", "Damage", "Goal Type",
                  "Goal", "Ability", "File", "Tag", "Phases", "Ticked", "Count", "Confidence",
-                 "Why this pairing", "Source", "Status", "Owner", "Owner Notes", "ID"],
+                 "Why this pairing"] + IDEA + ["Source", "Status", "Owner", "Owner Notes", "ID"],
         name="Name", sheets=["enemies", "bosses"], categories="goals"),
     "loot": dict(
         title="Loot: items, trinkets, cards, weapons, bags, wands, potions and scrolls",
@@ -126,7 +132,7 @@ KINDS = {
         name="Name", targets=["characters"], categories="characters"),
     "statuses": dict(
         title="Statuses and curses",
-        columns=["Sheet", "Name", "Game", "Type", "What it does there", "On Player", "On Enemy", "Combat",
+        columns=["Sheet", "Name", "Game", "Type", "On Player", "On Enemy", "Combat",
                  "Condition", "Penalty", "Timer", "Image"] + STAGE,
         name="Name", sheets=["statuses", "curses"], categories="statuses"),
     "locations": dict(
@@ -259,8 +265,16 @@ def load_ledger():
     return load_json(LEDGER, {})
 
 
+# A ledger entry starting `redo:` is research that has to be done again: on the
+# record, but not done. The 80 games of the old goal passes are the case it was
+# made for: written from search summaries while the wikis were unreachable, so a
+# pass with the wiki open checks each row, fixes it, and adds what was missed.
+REDO = "redo:"
+
+
 def researched(ledger, game, kind):
-    return kind in ledger.get(game, {})
+    v = ledger.get(game, {}).get(kind)
+    return v is not None and not v.startswith(REDO)
 
 
 def mark(games, kind, note=""):
@@ -787,6 +801,107 @@ def game_content(game):
     return out
 
 
+# What a row of each content sheet is, in a few words, for the inventory.
+DESCRIBE = {
+    "enemies": ("Goal", "Tag"), "bosses": ("Goal", "Tag"), "items": ("Description",), "trinkets": ("Description",),
+    "cards": ("Description",), "weapons": ("Goal", "Passive"), "bags": ("Description",), "wands": ("Description",),
+    "potions": ("On Player", "On Tile"), "scrolls": ("Description",), "events": ("Requirement",),
+    "characters": ("Level Up",), "statuses": ("Type", "Combat"), "curses": ("Condition",),
+    "locations": ("Goal", "Goal Effect"), "objects": ("Tag",),
+}
+EXTRA_SHEETS = {"abilities": ("Name", "Description"), "tiles": ("Name", "Description"),
+                "units": ("Name", "Description"), "pills": ("Name", "Description"),
+                "evolutions": ("Name", "Requirement 2")}
+THIN = 10  # a content sheet with fewer rows than this is a gap worth filling
+
+
+def name_index():
+    """{normalised name: [where]} over every live content row and every
+    candidate, so a wiki title the game already has is flagged wherever it
+    came from — the same thing from another game is still a duplicate."""
+    idx = {}
+
+    def add(name, where):
+        k = _title_norm(name)
+        if k:
+            idx.setdefault(k, []).append(where)
+    for sheet, (ncol, gcol) in TARGET_COLS.items():
+        for r in sheet_table(sheet):
+            if r.get(ncol):
+                add(r[ncol], f"{sheet}: {r.get(gcol) or '?'}")
+    for sheet, (ncol, _) in EXTRA_SHEETS.items():
+        for r in sheet_table(sheet):
+            if r.get(ncol):
+                add(r[ncol], sheet)
+    for k in WIKI_KINDS:
+        for r in read_rows(k):
+            add(r.get(KINDS[k]["name"], ""), f"candidate {k}: {r.get('Game')}")
+    return idx
+
+
+def inventory_lines():
+    """Everything the game already has, by system, with the thin areas named."""
+    import collections
+    out = ["# What the game already has", "",
+           f"Written by `python3 tools/research.py inventory` on {TODAY} from tools/Roguelikes.xlsx. Read it "
+           "before writing candidates: a candidate should fill a gap or plug into something below, and must "
+           "not duplicate a row here (any game's version counts).", ""]
+    sizes, source = {}, collections.Counter()
+    for sheet, (ncol, gcol) in TARGET_COLS.items():
+        rows = sheet_table(sheet)
+        sizes[sheet] = len(rows)
+        for r in rows:
+            if r.get(gcol):
+                source[r[gcol]] += 1
+    for sheet, _ in EXTRA_SHEETS.items():
+        sizes[sheet] = len(sheet_table(sheet))
+    thin = sorted((n, s) for s, n in sizes.items() if n < THIN)
+    out += ["## Thin areas (fewer than %d rows)" % THIN, ""] + [f"- {s}: {n}" for n, s in thin] + [
+        "- keys: no content grants or spends one (spec §4)",
+        "- shops: no shopkeepers authored, and the shelf sells only relics and loot (spec §14.5)", ""]
+    out += ["## Where the content comes from", "",
+            f"{sum(source.values())} rows from {len(source)} games; the top five: "
+            + ", ".join(f"{g} {n}" for g, n in source.most_common(5)), ""]
+    tags = collections.Counter(t.strip() for s in ("enemies", "bosses") for r in sheet_table(s)
+                               for t in r.get("Tag", "").split(",") if t.strip())
+    out += ["## Enemy tags (what a location, an ability or a goal can name)", "",
+            ", ".join(f"{t} {n}" for t, n in tags.most_common()), ""]
+    ltags = collections.Counter(t.strip() for s, col in (("items", "tags"), ("trinkets", "Tag"), ("cards", "Tags"),
+                                                        ("weapons", "Tag"), ("potions", "Tags"), ("wands", "Tags"),
+                                                        ("scrolls", "Tags"))
+                                for r in sheet_table(s) for t in r.get(col, "").split(",") if t.strip())
+    out += ["## Loot tags (families a new piece can join: evolutions and neighbours read them)", "",
+            ", ".join(f"{t} {n}" for t, n in ltags.most_common()), ""]
+    verbs = collections.Counter()
+    for s in list(DESCRIBE) + ["pills", "bags"]:
+        for r in sheet_table(s):
+            for k, v in r.items():
+                if "Effect" in k and v:
+                    verbs.update(re.findall(r"(?:^|[;:>]\s*|else\s+|->\s*)([a-z_]{3,})", v))
+    out += ["## The effect language in use (verbs and triggers, by how often)", "",
+            ", ".join(f"{k} {v}" for k, v in verbs.most_common()), ""]
+    for sheet, cols in DESCRIBE.items():
+        ncol, gcol = TARGET_COLS[sheet]
+        rows = sheet_table(sheet)
+        out += [f"## {sheet} ({len(rows)})", ""]
+        out += [f"- {r[ncol]} ({r.get(gcol) or '?'}): " + " / ".join(r.get(c, "")[:90] for c in cols if r.get(c))
+                for r in rows]
+        out.append("")
+    for sheet, (ncol, dcol) in EXTRA_SHEETS.items():
+        rows = sheet_table(sheet)
+        out += [f"## {sheet} ({len(rows)})", ""] + [f"- {r[ncol]}: {r.get(dcol, '')[:110]}" for r in rows] + [""]
+    return out
+
+
+def cmd_inventory(args):
+    text = "\n".join(inventory_lines())
+    os.makedirs(WORK, exist_ok=True)
+    path = os.path.join(WORK, "inventory.md")
+    with open(path, "w", encoding="utf8") as fh:
+        fh.write(text)
+    print(text if not args.quiet else f"wrote {os.path.relpath(path, ROOT)}")
+
+
 def cmd_brief(args):
     games = catalog()
     if args.game not in games:
@@ -810,9 +925,20 @@ def cmd_brief(args):
         for r in read_rows(k):
             if r.get("Game") == args.game or (k == "connections" and args.game in (r["Influencer"],
                                                                                   r["Influencee"])):
-                cands.append(f"- {k}: {r.get(KINDS[k]['name']) or r.get('Text', '')[:60]} [{r['Status']}]")
+                if k == "goals":  # in full: a redo pass checks each of these against the wiki
+                    cands.append(f"- goals: {r['Name']} ({r['Sheet']}, {r['Difficulty']}, {r['Goal Type']}): "
+                                 f"{r['Goal']} [{r['Confidence']}] {r['ID']}")
+                else:
+                    cands.append(f"- {k}: {r.get(KINDS[k]['name']) or r.get('Text', '')[:60]} [{r['Status']}]")
     lines += ["## Already a candidate", ""] + (cands or ["- nothing"]) + [""]
     base = w.get("api")
+    known = name_index()
+
+    def flag(title):
+        hit = known.get(_title_norm(title))
+        return f"{title} [HAVE: {'; '.join(hit[:2])}]" if hit else title
+    lines += ["Titles marked [HAVE: …] are already in the game or a candidate, from any game. The whole "
+              "inventory: `python3 tools/research.py inventory`.", ""]
     for k in kinds:
         cats = (w.get("categories") or {}).get(k, [])
         pages = (w.get("pages") or {}).get(k, [])
@@ -834,7 +960,7 @@ def cmd_brief(args):
                 continue
             shown += 1
             lines += [f"### Category:{c} ({len(members)}{'+' if len(members) >= args.members else ''})", "",
-                      ", ".join(members), ""]
+                      ", ".join(flag(m) for m in members), ""]
     lines += ["Read pages: `python3 tools/research.py page \"%s\" \"<title>\" ...` or `--category \"<name>\"`."
               % args.game, "Rules for each kind's rows: docs/research.md.", ""]
     text = "\n".join(lines)
@@ -898,6 +1024,55 @@ def refresh_status(kind, rows, idx=None, pairs=None, names=None, verbose=False):
                 print(f"  {kind}: {r.get(KINDS[kind]['name'])} ({r.get('Game') or r.get('Influencer')}) "
                       f"{before} -> {r['Status']}")
     return moved
+
+
+# A candidate whose Status says the owner should NOT add it, found on the sheet
+# anyway: the owner decided otherwise, or added it for another reason. Never
+# changed by itself; listed for a person to settle.
+SETTLED_NO = ("not an influence", "nothing found", "lead")
+
+
+def sheet_conflicts(kind, rows, idx=None, pairs=None):
+    """Rows the sheet disagrees with, as (row, why) — read-only. For connections:
+    a pair the owner added the OTHER way round (which direction is right?), and
+    a pair on the sheet whose row says it isn't an influence or wasn't found."""
+    out = []
+    for r in rows:
+        if kind == "connections":
+            a, b = r["Influencer"].lower(), r["Influencee"].lower()
+            if not (a and b):
+                continue
+            if r["Status"] in SETTLED_NO and (a, b) in pairs:
+                out.append((r, f"is on the connections sheet, but this row says `{r['Status']}`"))
+            elif r["Status"] in ("to review", "waiting for game row") and (b, a) in pairs \
+                    and (a, b) not in pairs:
+                out.append((r, "is on the sheet the OTHER way round"))
+        else:
+            name = r.get(KINDS[kind]["name"], "").lower()
+            sheet = target_sheet(kind, r)
+            on = (idx or {}).get(sheet, {})
+            if r["Status"] == "to review" and name in on and on[name].lower() != r.get("Game", "").lower():
+                out.append((r, f"has a namesake on the {sheet} sheet from {on[name] or 'another game'}"))
+    return out
+
+
+def label(kind, r):
+    if kind == "connections":
+        return f"{r['Influencer']} → {r['Influencee']}" if r["Influencer"] else r["Text"][:60]
+    return f"{r.get(KINDS[kind]['name'])} ({r.get('Game')})"
+
+
+def sheet_report():
+    """What `build` would change, and what it would flag, without writing:
+    (would move, conflicts). `check` prints it, so CI says when the owner has
+    added rows the research sheet doesn't know about yet."""
+    idx, pairs, names = on_sheet_index(), connection_pairs(), set(catalog())
+    moves, conflicts = [], []
+    for kind in KINDS:
+        rows = [dict(r) for r in read_rows(kind)]
+        moves += [(kind, r, before) for r, before in refresh_status(kind, rows, idx, pairs, names)]
+        conflicts += [(kind, r, why) for r, why in sheet_conflicts(kind, rows, idx, pairs)]
+    return moves, conflicts
 
 
 def assign_ids(kind, rows):
@@ -973,10 +1148,16 @@ def check(verbose=True):
 def cmd_check(args):
     bad = check()
     stale = book_drift()
+    moves, conflicts = sheet_report()
+    if moves:
+        stale.append(f"{len(moves)} candidate(s) are on Roguelikes.xlsx now and still say otherwise "
+                     f"(e.g. {label(moves[0][0], moves[0][1])}): `sync` updates them")
     for line in bad:
         print(line)
     for line in stale:
         print("note: " + line)
+    for k, r, why in conflicts:
+        print(f"look: {k} {label(k, r)} {why}")
     if bad:
         print(f"{len(bad)} problem(s)")
         return 1
@@ -991,9 +1172,9 @@ def cmd_check(args):
 WIDTHS = {"Name": 24, "Event": 24, "Game": 24, "Influencer": 24, "Influencee": 24, "Goal": 36,
           "Description": 44, "Why it fits": 44, "Why this pairing": 44, "Text": 90, "Source": 30,
           "Prompt": 44, "Owner": 8, "Owner Notes": 30, "ID": 14, "Status": 13, "Heading": 24,
-          "Level Up": 34, "What it does there": 40, "On Player": 30, "On Enemy": 30, "Choices": 40,
+          "Level Up": 34, "What it is there": 40, "Builds on": 22, "Needs": 22, "On Player": 30, "On Enemy": 30, "Choices": 40,
           "Extra": 22, "Tag": 14, "Tags": 14, "Sheet": 10, "Confidence": 10, "Effect": 24}
-WRAP = {"Description", "Why it fits", "Why this pairing", "Text", "Prompt", "What it does there", "Choices"}
+WRAP = {"Description", "Why it fits", "Why this pairing", "Text", "Prompt", "What it is there", "Choices"}
 
 
 def book_rows(wb, kind):
@@ -1040,7 +1221,7 @@ def write_kind_sheet(wb, kind, rows):
     ws.column_dimensions[letter].hidden = True
 
 
-def write_status_sheet(wb, games, ledger, wikis):
+def write_status_sheet(wb, games, ledger, wikis, conflicts=()):
     ws = rb.replace_sheet(wb, "status")
     owned = [g for g in games if games[g]["owned"]]
     ws.append(["Kind", "Games researched", "…of the owned", "Candidates", "To review", "Owner: yes",
@@ -1059,6 +1240,12 @@ def write_status_sheet(wb, games, ledger, wikis):
         ws.append(["tags", "every game with a Steam page", "", len(tags), sum(not t.get("Owner") for t in tags),
                    sum(t.get("Owner") == "yes" for t in tags), sum(t.get("Owner") == "no" for t in tags), "",
                    "rerun tools/tag_research.py"])
+    if conflicts:
+        ws.append([])
+        ws.append(["Needs a look: the sheet and these candidates disagree. Settle each one (fix the "
+                   "candidate's Status, or the sheet) and the line goes away."])
+        for kind, r, why in conflicts:
+            ws.append([kind, label(kind, r), why, r["ID"]])
     have = sum(1 for w in wikis.values() if w.get("wiki"))
     ws.append([])
     ws.append([f"Wikis: {have} found of {len(wikis)} games looked for ({len(games)} on the sheet). "
@@ -1111,18 +1298,21 @@ def build(verbose=False):
     games, ledger, wikis = catalog(), load_ledger(), load_json(WIKIS, {})
     idx, pairs, names = on_sheet_index(), connection_pairs(), set(games)
     wb = rb.open_book()
-    built = []
+    built, conflicts = [], []
     for kind in KINDS:
         rows = read_rows(kind)
         if not rows and not os.path.exists(csv_path(kind)):
             continue
         assign_ids(kind, rows)
         refresh_status(kind, rows, idx, pairs, names, verbose)
+        conflicts += [(kind, r, why) for r, why in sheet_conflicts(kind, rows, idx, pairs)]
         write_rows(kind, rows)
         write_kind_sheet(wb, kind, rows)
         built += [(kind, r["ID"]) for r in rows]
     write_about_sheet(wb)
-    write_status_sheet(wb, games, ledger, wikis)
+    write_status_sheet(wb, games, ledger, wikis, conflicts)
+    for kind, r, why in conflicts:
+        print(f"  look: {kind} {label(kind, r)} {why}")
     ws = rb.replace_sheet(wb, "_built")
     ws.append(["kind", "id"])
     for row in built:
@@ -1308,6 +1498,10 @@ def main():
     p.add_argument("games", nargs="+")
     p.add_argument("--note", default="", help='e.g. "12 rows" or "nothing usable"')
     p.set_defaults(fn=cmd_mark)
+
+    p = sub.add_parser("inventory", help="everything the game already has, by system, with its gaps")
+    p.add_argument("--quiet", action="store_true", help="write .research_work/inventory.md, don't print it")
+    p.set_defaults(fn=cmd_inventory)
 
     sub.add_parser("check", help="validate the CSVs, ledger and wikis.json").set_defaults(fn=cmd_check)
     sub.add_parser("build", help="write Research.xlsx from the CSVs").set_defaults(fn=cmd_build)

@@ -55,7 +55,7 @@
  },
  "Across the Obelisk": {
   "connections": "before 2026-10-07",
-  "goals": "before 2026-10-09: from search summaries, before the wikis were reachable (docs/goal-enemy-candidates.md)"
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
  },
  "Aethermancer": {
   "connections": "before 2026-10-07"
@@ -68,11 +68,11 @@
  },
  "Ancient Domains of Mystery": {
   "connections": "before 2026-10-07",
-  "goals": "before 2026-10-09: from search summaries, before the wikis were reachable (docs/goal-enemy-candidates.md)"
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
  },
  "Angband": {
   "connections": "before 2026-10-07",
-  "goals": "before 2026-10-09: from search summaries, before the wikis were reachable (docs/goal-enemy-candidates.md)"
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
  },
  "Anomaly Collapse": {
   "connections": "before 2026-10-07"
@@ -163,21 +163,21 @@
  },
  "Backpack Hero": {
   "connections": "before 2026-10-07",
-  "goals": "before 2026-10-09: from search summaries, before the wikis were reachable (docs/goal-enemy-candidates.md)"
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
  },
  "Bad North": {
   "connections": "before 2026-10-07"
  },
  "Balatro": {
   "connections": "before 2026-10-07",
-  "goals": "before 2026-10-09: from search summaries, before the wikis were reachable (docs/goal-enemy-candidates.md)"
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
  },
  "Baldi's Basics Plus": {
   "connections": "before 2026-10-07"
  },
  "Ball x Pit": {
   "connections": "before 2026-10-07",
-  "goals": "before 2026-10-09: from search summaries, before the wikis were reachable (docs/goal-enemy-candidates.md)"
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
  },
  "Ballionaire": {
   "connections": "before 2026-10-07"
@@ -292,14 +292,14 @@
  },
  "Brogue": {
   "connections": "before 2026-10-07",
-  "goals": "before 2026-10-09: from search summaries, before the wikis were reachable (docs/goal-enemy-candidates.md)"
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
  },
  "BroomSweeper": {
   "connections": "before 2026-10-07"
  },
  "Brotato": {
   "connections": "before 2026-10-07",
-  "goals": "before 2026-10-09: from search summaries, before the wikis were reachable (docs/goal-enemy-candidates.md)"
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
  },
  "Brutal Orchestra": {
   "connections": "before 2026-10-07"
@@ -339,7 +339,7 @@
  },
  "Cataclysm: Dark Days Ahead": {
   "connections": "before 2026-10-07",
-  "goals": "before 2026-10-09: from search summaries, before the wikis were reachable (docs/goal-enemy-candidates.md)"
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
  },
  "Cataclysm: The Last Generation": {
   "connections": "before 2026-10-07"
@@ -360,7 +360,7 @@
   "characters": "2026-10-09: pilot: rows written from wiki.cavesofqud.com",
   "connections": "before 2026-10-07",
   "events": "2026-10-09: pilot: rows written from wiki.cavesofqud.com",
-  "goals": "before 2026-10-09: from search summaries, before the wikis were reachable (docs/goal-enemy-candidates.md)",
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed",
   "locations": "2026-10-09: pilot: rows written from wiki.cavesofqud.com",
   "loot": "2026-10-09: pilot: rows written from wiki.cavesofqud.com",
   "statuses": "2026-10-09: pilot: rows written from wiki.cavesofqud.com"
@@ -430,7 +430,7 @@
  },
  "Cogmind": {
   "connections": "before 2026-10-07",
-  "goals": "before 2026-10-09: from search summaries, before the wikis were reachable (docs/goal-enemy-candidates.md)"
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
  },
  "Coin Crypt": {
   "connections": "before 2026-10-07"
@@ -494,7 +494,7 @@
  },
  "Crypt of the NecroDancer": {
   "connections": "before 2026-10-07",
-  "goals": "before 2026-10-09: from search summaries, before the wikis were reachable (docs/goal-enemy-candidates.md)"
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
  },
  "Cryptark": {
   "connections": "before 2026-10-07"
@@ -513,7 +513,7 @@
  },
  "Cult of the Lamb": {
   "connections": "before 2026-10-07",
-  "goals": "before 2026-10-09: from search summaries, before the wikis were reachable (docs/goal-enemy-candidates.md)"
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
  },
  "Cultist Simulator": {
   "connections": "before 2026-10-07"
@@ -532,7 +532,7 @@
  },
  "Curse of the Dead Gods": {
   "connections": "before 2026-10-07",
-  "goals": "before 2026-10-09: from search summaries, before the wikis were reachable (docs/goal-enemy-candidates.md)"
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
  },
  "Cursed Words": {
   "connections": "before 2026-10-07"
@@ -554,7 +554,7 @@
  },
  "Darkest Dungeon": {
   "connections": "before 2026-10-07",
-  "goals": "before 2026-10-09: from search summaries, before the wikis were reachable (docs/goal-enemy-candidates.md)"
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
  },
  "Darkest Dungeon 2": {
   "connections": "before 2026-10-07"
@@ -564,7 +564,7 @@
  },
  "Dead Cells": {
   "connections": "before 2026-10-07",
-  "goals": "before 2026-10-09: from search summaries, before the wikis were reachable (docs/goal-enemy-candidates.md)"
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
  },
  "Dead Estate": {
   "connections": "before 2026-10-07"
@@ -610,7 +610,7 @@
  },
  "Deep Rock Galactic: Survivor": {
   "connections": "before 2026-10-07",
-  "goals": "before 2026-10-09: from search summaries, before the wikis were reachable (docs/goal-enemy-candidates.md)"
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
  },
  "Deep Sky Derelicts": {
   "connections": "before 2026-10-07"
@@ -656,7 +656,7 @@
  },
  "Diablo": {
   "connections": "before 2026-10-07",
-  "goals": "before 2026-10-09: from search summaries, before the wikis were reachable (docs/goal-enemy-candidates.md)"
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
  },
  "Dice & Fold": {
   "connections": "before 2026-10-07"
@@ -684,7 +684,7 @@
  },
  "Dicey Dungeons": {
   "connections": "before 2026-10-07",
-  "goals": "before 2026-10-09: from search summaries, before the wikis were reachable (docs/goal-enemy-candidates.md)"
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
  },
  "Die For The Lich": {
   "connections": "before 2026-10-07"
@@ -712,7 +712,7 @@
  },
  "Dome Keeper": {
   "connections": "before 2026-10-07",
-  "goals": "before 2026-10-09: from search summaries, before the wikis were reachable (docs/goal-enemy-candidates.md)"
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
  },
  "Don't Let It Starve": {
   "connections": "before 2026-10-07"
@@ -722,7 +722,7 @@
  },
  "Don't Starve": {
   "connections": "before 2026-10-07",
-  "goals": "before 2026-10-09: from search summaries, before the wikis were reachable (docs/goal-enemy-candidates.md)"
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
  },
  "Don't Starve Together": {
   "connections": "before 2026-10-07"
@@ -774,11 +774,11 @@
  },
  "Dungeon Clawler": {
   "connections": "before 2026-10-07",
-  "goals": "before 2026-10-09: from search summaries, before the wikis were reachable (docs/goal-enemy-candidates.md)"
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
  },
  "Dungeon Crawl Stone Soup": {
   "connections": "before 2026-10-07",
-  "goals": "before 2026-10-09: from search summaries, before the wikis were reachable (docs/goal-enemy-candidates.md)"
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
  },
  "Dungeon Deathball": {
   "connections": "before 2026-10-07"
@@ -797,7 +797,7 @@
  },
  "Dungeonmans": {
   "connections": "before 2026-10-07",
-  "goals": "before 2026-10-09: from search summaries, before the wikis were reachable (docs/goal-enemy-candidates.md)"
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
  },
  "Dungeons & Degenerate Gamblers": {
   "connections": "before 2026-10-07"
@@ -807,7 +807,7 @@
  },
  "Dungeons of Dredmor": {
   "connections": "before 2026-10-07",
-  "goals": "before 2026-10-09: from search summaries, before the wikis were reachable (docs/goal-enemy-candidates.md)"
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
  },
  "Dungreed": {
   "connections": "before 2026-10-07"
@@ -817,7 +817,7 @@
  },
  "Dwarf Fortress": {
   "connections": "before 2026-10-07",
-  "goals": "before 2026-10-09: from search summaries, before the wikis were reachable (docs/goal-enemy-candidates.md)"
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
  },
  "Dwarves: Glory, Death and Loot": {
   "connections": "before 2026-10-07"
@@ -842,7 +842,7 @@
  },
  "Ember Knights": {
   "connections": "before 2026-10-07",
-  "goals": "before 2026-10-09: from search summaries, before the wikis were reachable (docs/goal-enemy-candidates.md)"
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
  },
  "Emberward": {
   "connections": "before 2026-10-07"
@@ -855,7 +855,7 @@
  },
  "Enter the Gungeon": {
   "connections": "before 2026-10-07",
-  "goals": "before 2026-10-09: from search summaries, before the wikis were reachable (docs/goal-enemy-candidates.md)"
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
  },
  "Escape The Mad Empire": {
   "connections": "before 2026-10-07"
@@ -883,7 +883,7 @@
  },
  "FTL": {
   "connections": "before 2026-10-07",
-  "goals": "before 2026-10-09: from search summaries, before the wikis were reachable (docs/goal-enemy-candidates.md)"
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
  },
  "Facehand": {
   "connections": "before 2026-10-07"
@@ -935,7 +935,7 @@
  },
  "Forward: Escape the Fold": {
   "connections": "before 2026-10-07",
-  "goals": "before 2026-10-09: from search summaries, before the wikis were reachable (docs/goal-enemy-candidates.md)"
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
  },
  "Freaky Awesome": {
   "connections": "before 2026-10-07"
@@ -1050,7 +1050,7 @@
  },
  "Griftlands": {
   "connections": "before 2026-10-07",
-  "goals": "before 2026-10-09: from search summaries, before the wikis were reachable (docs/goal-enemy-candidates.md)"
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
  },
  "Guidus": {
   "connections": "before 2026-10-07"
@@ -1066,7 +1066,7 @@
  },
  "Gunfire Reborn": {
   "connections": "before 2026-10-07",
-  "goals": "before 2026-10-09: from search summaries, before the wikis were reachable (docs/goal-enemy-candidates.md)"
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
  },
  "Gunlocked": {
   "connections": "before 2026-10-07"
@@ -1088,19 +1088,19 @@
  },
  "Hades": {
   "connections": "before 2026-10-07",
-  "goals": "before 2026-10-09: from search summaries, before the wikis were reachable (docs/goal-enemy-candidates.md)"
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
  },
  "Hades II": {
   "connections": "before 2026-10-07",
-  "goals": "before 2026-10-09: from search summaries, before the wikis were reachable (docs/goal-enemy-candidates.md)"
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
  },
  "Halls of Torment": {
   "connections": "before 2026-10-07",
-  "goals": "before 2026-10-09: from search summaries, before the wikis were reachable (docs/goal-enemy-candidates.md)"
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
  },
  "Hand of Fate": {
   "connections": "before 2026-10-07",
-  "goals": "before 2026-10-09: from search summaries, before the wikis were reachable (docs/goal-enemy-candidates.md)"
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
  },
  "Hand of Fate 2": {
   "connections": "before 2026-10-07"
@@ -1176,7 +1176,7 @@
  },
  "Hoplite": {
   "connections": "before 2026-10-07",
-  "goals": "before 2026-10-09: from search summaries, before the wikis were reachable (docs/goal-enemy-candidates.md)"
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
  },
  "House of Necrosis": {
   "connections": "before 2026-10-07"
@@ -1225,7 +1225,7 @@
  },
  "Inscryption": {
   "connections": "before 2026-10-07",
-  "goals": "before 2026-10-09: from search summaries, before the wikis were reachable (docs/goal-enemy-candidates.md)"
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
  },
  "Insider Trading": {
   "connections": "before 2026-10-07"
@@ -1238,7 +1238,7 @@
  },
  "Into the Breach": {
   "connections": "before 2026-10-07",
-  "goals": "before 2026-10-09: from search summaries, before the wikis were reachable (docs/goal-enemy-candidates.md)"
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
  },
  "Iratus: Lord of the Dead": {
   "connections": "before 2026-10-07"
@@ -1260,7 +1260,7 @@
  },
  "Jupiter Hell": {
   "connections": "before 2026-10-07",
-  "goals": "before 2026-10-09: from search summaries, before the wikis were reachable (docs/goal-enemy-candidates.md)"
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
  },
  "Just King": {
   "connections": "before 2026-10-07"
@@ -1324,7 +1324,7 @@
  },
  "Legend of Keepers: Career of a Dungeon Manager": {
   "connections": "before 2026-10-07",
-  "goals": "before 2026-10-09: from search summaries, before the wikis were reachable (docs/goal-enemy-candidates.md)"
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
  },
  "Legionbound": {
   "connections": "before 2026-10-07"
@@ -1352,7 +1352,7 @@
  },
  "Loop Hero": {
   "connections": "before 2026-10-07",
-  "goals": "before 2026-10-09: from search summaries, before the wikis were reachable (docs/goal-enemy-candidates.md)"
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
  },
  "Loot Rascals": {
   "connections": "before 2026-10-07"
@@ -1458,7 +1458,7 @@
  },
  "Mewgenics": {
   "connections": "before 2026-10-07",
-  "goals": "before 2026-10-09: from search summaries, before the wikis were reachable (docs/goal-enemy-candidates.md)"
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
  },
  "Million Depth": {
   "connections": "before 2026-10-07"
@@ -1501,11 +1501,11 @@
  },
  "Monster Train": {
   "connections": "before 2026-10-07",
-  "goals": "before 2026-10-09: from search summaries, before the wikis were reachable (docs/goal-enemy-candidates.md)"
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
  },
  "Monster Train 2": {
   "connections": "before 2026-10-07",
-  "goals": "before 2026-10-09: from search summaries, before the wikis were reachable (docs/goal-enemy-candidates.md)"
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
  },
  "Monsters are Coming!": {
   "connections": "before 2026-10-07"
@@ -1563,7 +1563,7 @@
  },
  "Muck": {
   "connections": "before 2026-10-07",
-  "goals": "before 2026-10-09: from search summaries, before the wikis were reachable (docs/goal-enemy-candidates.md)"
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
  },
  "My Card Is Better Than Your Card!": {
   "connections": "before 2026-10-07"
@@ -1573,7 +1573,7 @@
  },
  "Mystery Dungeon 2: Shiren the Wanderer": {
   "connections": "before 2026-10-07",
-  "goals": "before 2026-10-09: from search summaries, before the wikis were reachable (docs/goal-enemy-candidates.md)"
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
  },
  "Mythical Concept Starnaut": {
   "connections": "before 2026-10-07"
@@ -1604,7 +1604,7 @@
  },
  "NetHack": {
   "connections": "before 2026-10-07",
-  "goals": "before 2026-10-09: from search summaries, before the wikis were reachable (docs/goal-enemy-candidates.md)"
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
  },
  "Netherworld Covenant": {
   "connections": "before 2026-10-07"
@@ -1629,7 +1629,7 @@
  },
  "Noita": {
   "connections": "before 2026-10-07",
-  "goals": "before 2026-10-09: from search summaries, before the wikis were reachable (docs/goal-enemy-candidates.md)"
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
  },
  "Nomad Survival": {
   "connections": "before 2026-10-07"
@@ -1657,7 +1657,7 @@
  },
  "Nuclear Throne": {
   "connections": "before 2026-10-07",
-  "goals": "before 2026-10-09: from search summaries, before the wikis were reachable (docs/goal-enemy-candidates.md)"
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
  },
  "Nunholy": {
   "connections": "before 2026-10-07"
@@ -1760,7 +1760,7 @@
  },
  "Peglin": {
   "connections": "before 2026-10-07",
-  "goals": "before 2026-10-09: from search summaries, before the wikis were reachable (docs/goal-enemy-candidates.md)"
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
  },
  "Pegs X Stickers": {
   "connections": "before 2026-10-07"
@@ -1818,7 +1818,7 @@
  },
  "Pokémon Mystery Dungeon: Explorers of Sky": {
   "connections": "before 2026-10-07",
-  "goals": "before 2026-10-09: from search summaries, before the wikis were reachable (docs/goal-enemy-candidates.md)"
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
  },
  "Pokémon Mystery Dungeon: Explorers of Time and Explorers of Darkness": {
   "connections": "before 2026-10-07"
@@ -1828,7 +1828,7 @@
  },
  "Pokémon Mystery Dungeon: Red and Blue Rescue Team": {
   "connections": "before 2026-10-07",
-  "goals": "before 2026-10-09: from search summaries, before the wikis were reachable (docs/goal-enemy-candidates.md)"
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
  },
  "Pokémon Mystery Dungeon: Rescue Team DX": {
   "connections": "before 2026-10-07"
@@ -1844,7 +1844,7 @@
  },
  "Powder": {
   "connections": "before 2026-10-07",
-  "goals": "before 2026-10-09: from search summaries, before the wikis were reachable (docs/goal-enemy-candidates.md)"
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
  },
  "Prime Monster": {
   "connections": "2026-10-07"
@@ -1938,7 +1938,7 @@
  },
  "Rift Wizard": {
   "connections": "before 2026-10-07",
-  "goals": "before 2026-10-09: from search summaries, before the wikis were reachable (docs/goal-enemy-candidates.md)"
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
  },
  "Rift Wizard 2": {
   "connections": "before 2026-10-07"
@@ -1954,7 +1954,7 @@
  },
  "Ring of Pain": {
   "connections": "before 2026-10-07",
-  "goals": "before 2026-10-09: from search summaries, before the wikis were reachable (docs/goal-enemy-candidates.md)"
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
  },
  "Ringer": {
   "connections": "before 2026-10-07"
@@ -1964,11 +1964,11 @@
  },
  "Risk of Rain": {
   "connections": "before 2026-10-07",
-  "goals": "before 2026-10-09: from search summaries, before the wikis were reachable (docs/goal-enemy-candidates.md)"
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
  },
  "Risk of Rain 2": {
   "connections": "before 2026-10-07",
-  "goals": "before 2026-10-09: from search summaries, before the wikis were reachable (docs/goal-enemy-candidates.md)"
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
  },
  "Risk of Rain Returns": {
   "connections": "before 2026-10-07"
@@ -1984,7 +1984,7 @@
  },
  "Rogue": {
   "connections": "before 2026-10-07",
-  "goals": "before 2026-10-09: from search summaries, before the wikis were reachable (docs/goal-enemy-candidates.md)"
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
  },
  "Rogue Blight": {
   "connections": "before 2026-10-07"
@@ -2009,11 +2009,11 @@
  },
  "Rogue Legacy": {
   "connections": "before 2026-10-07",
-  "goals": "before 2026-10-09: from search summaries, before the wikis were reachable (docs/goal-enemy-candidates.md)"
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
  },
  "Rogue Legacy 2": {
   "connections": "before 2026-10-07",
-  "goals": "before 2026-10-09: from search summaries, before the wikis were reachable (docs/goal-enemy-candidates.md)"
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
  },
  "Rogue Lords": {
   "connections": "before 2026-10-07"
@@ -2134,7 +2134,7 @@
  },
  "Shattered Pixel Dungeon": {
   "connections": "before 2026-10-07",
-  "goals": "before 2026-10-09: from search summaries, before the wikis were reachable (docs/goal-enemy-candidates.md)"
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
  },
  "Ship of Fools": {
   "connections": "before 2026-10-07"
@@ -2165,14 +2165,14 @@
  },
  "Shogun Showdown": {
   "connections": "before 2026-10-07",
-  "goals": "before 2026-10-09: from search summaries, before the wikis were reachable (docs/goal-enemy-candidates.md)"
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
  },
  "Shoot First": {
   "connections": "before 2026-10-07"
  },
  "Shotgun King: The Final Checkmate": {
   "connections": "before 2026-10-07",
-  "goals": "before 2026-10-09: from search summaries, before the wikis were reachable (docs/goal-enemy-candidates.md)"
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
  },
  "Shovel Knight Dig": {
   "connections": "before 2026-10-07"
@@ -2188,7 +2188,7 @@
  },
  "Skul: The Hero Slayer": {
   "connections": "before 2026-10-07",
-  "goals": "before 2026-10-09: from search summaries, before the wikis were reachable (docs/goal-enemy-candidates.md)"
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
  },
  "Skull Horde": {
   "connections": "before 2026-10-07"
@@ -2207,7 +2207,7 @@
  },
  "Slay the Spire": {
   "connections": "before 2026-10-07",
-  "goals": "before 2026-10-09: from search summaries, before the wikis were reachable (docs/goal-enemy-candidates.md)"
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
  },
  "Slay the Spire 2": {
   "connections": "before 2026-10-07"
@@ -2217,7 +2217,7 @@
  },
  "Slice & Dice": {
   "connections": "before 2026-10-07",
-  "goals": "before 2026-10-09: from search summaries, before the wikis were reachable (docs/goal-enemy-candidates.md)"
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
  },
  "Slime 3K: Rise Against Despot": {
   "connections": "before 2026-10-07"
@@ -2284,11 +2284,11 @@
  },
  "Spelunky 2": {
   "connections": "before 2026-10-07",
-  "goals": "before 2026-10-09: from search summaries, before the wikis were reachable (docs/goal-enemy-candidates.md)"
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
  },
  "Spelunky Classic": {
   "connections": "before 2026-10-07",
-  "goals": "before 2026-10-09: from search summaries, before the wikis were reachable (docs/goal-enemy-candidates.md)"
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
  },
  "Spin Hero": {
   "connections": "before 2026-10-07"
@@ -2355,7 +2355,7 @@
  },
  "Streets of Rogue": {
   "connections": "before 2026-10-07",
-  "goals": "before 2026-10-09: from search summaries, before the wikis were reachable (docs/goal-enemy-candidates.md)"
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
  },
  "Sundered": {
   "connections": "before 2026-10-07"
@@ -2365,7 +2365,7 @@
  },
  "Super Auto Pets": {
   "connections": "before 2026-10-07",
-  "goals": "before 2026-10-09: from search summaries, before the wikis were reachable (docs/goal-enemy-candidates.md)"
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
  },
  "Super Bullet Break": {
   "connections": "before 2026-10-07"
@@ -2423,14 +2423,14 @@
  },
  "Tales of Maj'Eyal": {
   "connections": "before 2026-10-07",
-  "goals": "before 2026-10-09: from search summaries, before the wikis were reachable (docs/goal-enemy-candidates.md)"
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
  },
  "Talespinner": {
   "connections": "before 2026-10-07"
  },
  "Tangledeep": {
   "connections": "before 2026-10-07",
-  "goals": "before 2026-10-09: from search summaries, before the wikis were reachable (docs/goal-enemy-candidates.md)"
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
  },
  "Tangy TD": {
   "connections": "before 2026-10-07"
@@ -2467,7 +2467,7 @@
  },
  "The Binding of Isaac": {
   "connections": "before 2026-10-07",
-  "goals": "before 2026-10-09: from search summaries, before the wikis were reachable (docs/goal-enemy-candidates.md)"
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
  },
  "The Binding of Isaac: Rebirth": {
   "connections": "before 2026-10-07"
@@ -2501,7 +2501,7 @@
  },
  "The Last Spell": {
   "connections": "before 2026-10-07",
-  "goals": "before 2026-10-09: from search summaries, before the wikis were reachable (docs/goal-enemy-candidates.md)"
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
  },
  "The Legend of Bum-Bo": {
   "connections": "before 2026-10-07"
@@ -2577,7 +2577,7 @@
  },
  "Torneko's Great Adventure: Mystery Dungeon": {
   "connections": "before 2026-10-07",
-  "goals": "before 2026-10-09: from search summaries, before the wikis were reachable (docs/goal-enemy-candidates.md)"
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
  },
  "Torneko: The Last Hope": {
   "connections": "before 2026-10-07"
@@ -2650,7 +2650,7 @@
  },
  "UnderMine": {
   "connections": "before 2026-10-07",
-  "goals": "before 2026-10-09: from search summaries, before the wikis were reachable (docs/goal-enemy-candidates.md)"
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
  },
  "UnderMine 2": {
   "connections": "before 2026-10-07"
@@ -2675,7 +2675,7 @@
  },
  "Vampire Survivors": {
   "connections": "before 2026-10-07",
-  "goals": "before 2026-10-09: from search summaries, before the wikis were reachable (docs/goal-enemy-candidates.md)"
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
  },
  "Vault of the Void": {
   "connections": "before 2026-10-07"
@@ -2766,7 +2766,7 @@
  },
  "Wildfrost": {
   "connections": "before 2026-10-07",
-  "goals": "before 2026-10-09: from search summaries, before the wikis were reachable (docs/goal-enemy-candidates.md)"
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
  },
  "Windblown": {
   "connections": "before 2026-10-07"
@@ -2785,7 +2785,7 @@
  },
  "Wizard of Legend": {
   "connections": "before 2026-10-07",
-  "goals": "before 2026-10-09: from search summaries, before the wikis were reachable (docs/goal-enemy-candidates.md)"
+  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
  },
  "Wizard of Legend 2": {
   "connections": "before 2026-10-07"

@@ -261,6 +261,7 @@ def main() -> int:
         print("[import-games-godot] atlas bake FAILED — run tools/bake_atlas.py to see why")
         return rc
     _research_reminder(games)
+    _refresh_research()
     return 0
 
 
@@ -270,6 +271,22 @@ def main() -> int:
 # for every game missing from this ledger; it is checked in so the next session
 # knows which games those are.
 RESEARCH_LEDGER = os.path.join(SCRIPT_DIR, "..", "research", "ledger.json")
+
+
+def _refresh_research() -> None:
+    """A new upload of the workbook can carry connections (and any other row)
+    the owner copied across from the research sheet, so the research sheet is
+    brought up to date with it: `sync` takes any edits waiting in
+    Research.xlsx first and then rebuilds, which marks what is now on the sheet
+    as `on sheet` and lists anything the two disagree about. Never fatal: the
+    import has already succeeded by the time this runs."""
+    script = os.path.join(SCRIPT_DIR, "research.py")
+    try:
+        rc = subprocess.call([sys.executable, script, "sync"])
+    except OSError as e:
+        rc = str(e)
+    if rc:
+        print(f"[import-games-godot] research.py sync did not finish ({rc}); run it by hand")
 
 
 def _research_reminder(games: list[dict]) -> None:

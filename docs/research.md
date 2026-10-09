@@ -18,8 +18,9 @@ gets found. It is organised as **eight kinds**, one system, one entry point
 | locations | which places or map objects could become a location or object | `locations`, `objects` | its wiki, by hand: §6.6 |
 
 **The rule that does not change:** nothing goes into `tools/Roguelikes.xlsx`
-until the owner has said `yes` to it. Research produces candidates. The owner
-decides which become content.
+until the owner has said `yes` to it. `Research.xlsx` is a **brainstorming
+sheet**: research produces candidates, and the owner decides which become
+content and copies them across by hand.
 
 ---
 
@@ -42,12 +43,15 @@ hidden `_base` column are how `sync` tells the owner's edits apart (§3).
 
 ## 2. The columns
 
-Every candidate kind uses **the target sheet's own columns**, so a ticked row can
-be pasted, then the same staging columns:
+Every candidate kind uses **the target sheet's own columns**, so a ticked row
+copies across as it is, then the same idea and staging columns:
 
 | column | holds |
 |---|---|
-| `Why it fits` | the case for the row: what the thing is in its game, and how it would play here |
+| `What it is there` | the thing in its own game, in a sentence: what it does, where it shows up |
+| `Why it fits` | the case for the row: how it would play here, and what gap it fills |
+| `Builds on` | the system of THIS game it plugs into: `Fire tile`, `coin trinkets`, `add_goal event`, `Stun`, `Undying ability`, `vampire tag`… |
+| `Needs` | blank if it rides what the game can already do; otherwise `new: ` and the mechanic it would take (`new: a Poison tile`, `new: keys open locked paths`) |
 | `Source` | the exact page it came from (a wiki article, a store page) |
 | `Confidence` | `ok`, or `check` when it was written from a summary or a detail could not be confirmed (`?` in the goal file means the same) |
 | `Status` | where the row stands: `to review`, `waiting for game row`, `lead`, `source check`, `not an influence`, `nothing found`, `on sheet` |
@@ -86,13 +90,22 @@ the owner adds without an `ID` becomes a new candidate. A row they delete is
 reported and kept: the way to turn one down is `no`, so the idea isn't proposed
 again.
 
-A `yes` row waits in the workbook until it is pasted into `Roguelikes.xlsx`.
-From then on, `build` sees it there and sets its Status to `on sheet` by itself,
-for every kind (for connections, when the pair is a row). Pasting is a separate
-step, done by the owner or by a session the owner asks to do it, always through
-`tools/_xlsx_surgery.py` (never openpyxl on `Roguelikes.xlsx`). For goals,
-`tools/_candidates_to_sheet.py` pastes the `yes` rows, but it has a known gap:
-see its docstring.
+A `yes` row waits in the workbook until the owner copies it into
+`Roguelikes.xlsx` by hand. From then on, `build` sees it there and sets its
+Status to `on sheet` by itself, for every kind (for connections, when the pair
+is a row). Nothing pastes automatically.
+
+**The check runs on its own after every upload.** `import-games-godot.py`, which
+runs whenever the owner's workbook arrives, ends with `research.py sync`. That
+means sync (taking any ticks waiting in `Research.xlsx`) and then build, so
+connections the owner has added are ticked off without anyone asking. Things it
+must not decide alone are listed instead, in the `status` sheet under **Needs a
+look**, in `build`'s output and as notes from `check` (which CI runs): a pair
+added the other way round, and a pair on the sheet whose row says `not an
+influence`, `nothing found` or `lead`. For the other kinds, a candidate whose
+name is on its target sheet from a different game is flagged the same way. (`tools/_candidates_to_sheet.py` can
+paste `yes` goal rows if the owner ever asks, but it has a known gap: see its
+docstring.)
 
 ## 4. Commands
 
@@ -140,33 +153,83 @@ A kind with nothing is still marked, with a note saying why, so it is not
 searched again. The ledger is the only record of "searched, nothing found" for
 the wiki kinds: it is cheap, which is the point.
 
-The 80 games of the old goal passes are marked for `goals` with the note
-"from search summaries, before the wikis were reachable". The wikis were blocked
-then, so those rows were written blind. Every one of those games is worth a
-second pass with the wiki open, which means taking its ledger entry out first.
+A ledger entry that starts `redo:` is on the record but **not done**: `next`
+offers the game again and `status` doesn't count it. The 80 games of the old
+goal passes are marked that way for `goals`, because their 307 rows were
+written from search summaries while the wikis were unreachable. The owner chose
+**check, fix, then add** for them: read each existing row against the wiki,
+correct a wrong name or fact in place, mark a row `check` (in `Confidence`) when
+the creature can't be found, then add what the old pass missed. Nothing old is
+deleted. The brief lists each of the game's goal rows in full for this.
 
 ## 6. Writing a candidate
 
-Six rules hold for every kind:
+**Read the inventory before the first game of a session:**
+`python3 tools/research.py inventory` (also written to
+`.research_work/inventory.md`). It lists everything the game already has, by
+system: every enemy, relic, piece of loot, status, curse, ability, tile, unit,
+object, event, location, character and evolution; the enemy tags and loot tags
+with their counts; the effect language in use; where the content comes from;
+and the thin areas. Every decision below is made against it. A brief marks
+every wiki title the game already has (or that is a candidate already, from any
+game) as `[HAVE: …]`.
 
-1. **It is a real thing in that game**, named the way the game names it, with
-   the page it came from in `Source`. A wiki describing what is IN a game is a
-   fine source. That is different from influences, where only the developer's
-   own words count.
-2. **Translate, don't transcribe.** The question is never "what does it do
-   there" but "what would it do here". This game is played on top of other
-   games: the run is a map of real games, a "fight" is going off and playing
-   one, and everything reads back through goals, chests, health, gold and the
-   verbs (Bash, Dash, Push, Transmute, Scramble). `Why it fits` says which part of
-   this game the thing plugs into.
-3. **Check the brief's "already in this game" first.** A candidate that
-   duplicates something live, or another game's candidate, is noise.
-4. **Leave Effect blank.** Describe the intent in `Description` (or `Result N`
-   for events) in the sheet's voice ("Gain +1 Shield…"), and leave the mechanic
-   to the owner.
-5. **`File` / `Image` is the PascalCase of the Name**, where its art will hang.
-6. **Quality over coverage.** A game that gives two good rows is better than
-   one that gives twenty mediocre ones, and "nothing usable" is an answer.
+### What a candidate has to pass
+
+The owner's choices (October 2026) are written into these, in this order:
+
+1. **Recognisable.** A real thing from that game, under its own name and with
+   its own flavour, so a fan of the game knows it. The mechanics are
+   translated; the identity is not. (The live Slay the Spire events are the
+   model: their prompts are the game's.)
+2. **It works on top of any game.** This game is played on top of other games:
+   the run is a map of real games, a "fight" is going off and playing one, and
+   everything reads back through goals, chests, health, gold, shields, the
+   board and the verbs (Bash, Dash, Push, Transmute, Scramble). A goal has to be
+   possible in whatever game of that Type the player picked, not only in its
+   source game.
+3. **Not a duplicate.** Nothing the inventory already has, from any game. When
+   the same thing exists in several games (a healing potion, a mimic), there is
+   **one row, from the game that made it most famous**, with the other games
+   named in `What it is there`.
+4. **Fills a gap or plugs in.** Prefer what fills a thin area (the inventory's
+   list) or joins an existing family (the coin trinkets, the food trinkets, the
+   whetstone-to-weapon evolutions, the Fire and Web tiles, the arcade objects, a
+   thin enemy tag). Say which in `Builds on`.
+5. **New mechanics are allowed, and flagged.** Most rows ride what exists. A
+   strong idea that needs something the game can't do yet is still a candidate,
+   with `Needs` saying what (`new: …`). The owner reads that column to tell a
+   cheap idea from an expensive one.
+6. **Effect is left blank.** Describe the intent in `Description` (or `Result
+   N` for events) in the sheet's voice ("Gain +1 Shield…"). The mechanic is the
+   owner's.
+7. **`File` / `Image` is the PascalCase of the Name**, where its art will hang.
+
+### How many
+
+**The best few per kind**, up to about three, **and more for a large game**:
+one whose wiki documents hundreds of monsters or items (the brief's category
+sizes say so) can give six to ten in a kind. Fewer is fine. "Nothing usable" is
+an answer, and is marked in the ledger like any other.
+
+### Where a row comes from
+
+**The wiki first** (`brief`, `page`). Where there is no wiki, or it lacks the
+thing: the Steam page, the game's manual, or a guide, cited in `Source`. A row
+written from memory of the game, with no page to point at, is allowed but is
+`Confidence: check` and says so in `Why it fits`.
+
+### What to look for, kind by kind
+
+| kind | look for | where it plugs in |
+|---|---|---|
+| goals | creatures whose behaviour translates into something a player does in any game ("make an enemy flee"); bodies for thin enemy tags; Traditional and Deckbuilder bodies (the thinnest types) | enemy tags, abilities, the goal types |
+| loot | items that join a family (coins, food, whetstone/weapon, bombs, tarot); wands, scrolls and potions from roguelikes other than Rogue and NetHack; bags; anything that grants or spends **keys** | the pack, its neighbours and charges; the identify gamble |
+| events | the game's own decision screens: shrines, altars, gambles, strangers, offers with a price. Not from Slay the Spire unless exceptional (13 of 16 live events are) | `add_goal`, chests, curses, gold, loot |
+| characters | its starting classes or heroes: a stat spread and a level-up goal that say who they are | the verbs and stats |
+| statuses | effects that rewrite a goal (Terrified, Lovesick) or change a body on the board; conditions to avoid, for curses | statuses' goal modes, curses' `spawn_enemy` |
+| locations | themed areas with a goal; machines and features you stand at (fountains, altars, slot machines, forges); shopkeepers for the planned named shops | locations' goals, objects' choices, `ShopPanel2`'s `shopkeeper` |
+| board | hazards and placed things for the battlefield (acid, oil, ice, spikes, a turret); listed under loot or locations with `Needs: new: a … tile/unit` until they get a kind of their own | the Fire and Web tiles, the Landmine unit |
 
 ### 6.1 goals → `research/goals.csv`
 
@@ -226,7 +289,7 @@ Two sheets. A **status** (`Sheet` statuses, Type Buff or Debuff) changes a goal:
 `On Player` says what it does to the goal you carry ("You must beat a game while
 … or take 3 Damage"), `On Enemy` what it does to a body's, and `Combat` what it
 does on the board. A **curse** (`Sheet` curses) has a `Condition` ("you go below
-half health"), a `Penalty`, and a `Timer`. `What it does there` holds the source
+half health"), a `Penalty`, and a `Timer`. `What it is there` holds the source
 game's own rule, so the translation can be judged against it.
 
 ### 6.6 locations → `research/locations.csv`
@@ -310,9 +373,6 @@ neither describes a game's contents anyway.
   `signal` yet (and are judged by name alone). `research.py wikis --blurbs`
   reads them again without rediscovering anything; run it in a later session.
 
-- **Pasting `yes` rows** is manual for every kind except goals, and the goals
-  paste has the `goals`-sheet gap its docstring describes. Build each paste when
-  the first `yes` rows for that kind arrive, so it is written against real rows.
 - **Tags** stay in the workbook only (no CSV): they are regenerated from Steam
   on every run and the owner's marks are carried by `tag_research.py` itself, as
   before.
