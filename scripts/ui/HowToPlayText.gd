@@ -853,7 +853,8 @@ static func _ch_pack() -> Dictionary:
 				+ "better result is kept. It compounds rather than adding — at 1 "
 				+ "Luck a 25% chance is really 34%, and at 3 Luck it is 50%. It reaches every "
 				+ "random decision the run makes: item rarity, chest sizes, shop "
-				+ "stock, scrolls, machines."),
+				+ "stock, scrolls, machines — and the chance a lost run stands an "
+				+ "enemy up, which Luck pushes DOWN."),
 			_p("Negative Luck is the same machine backwards — a chance of extra "
 				+ "rolls, keep the worse. And any odds the game shows you are the odds your "
 				+ "Luck will actually roll, not the number on the sheet."),

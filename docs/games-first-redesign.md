@@ -312,12 +312,22 @@ of a game.
   nothing to take and a body still walking in merely walks. The tick is still
   logged — it is what the tracker shows.
 - **A lost run MAY stand one body up** (`GameLoop2._roll_lost_run_spawn`). The
-  chance climbs with every lost run at the game that stood nothing up — **0% (the
-  first is free), 25%, 50%, 75%, then certain** (`LOST_RUN_SPAWN_CHANCES`) — and
+  chance climbs with every lost run at the game that stood nothing up — **25%,
+  50%, 75%, then certain** (`LOST_RUN_SPAWN_CHANCES`) — and
   drops back to 0% the moment one does, and whenever a game ends or starts —
   won, lost or escaped (`_clear_attempts`) — so losing on purpose can never bank a
   rung for the next game. So a long bad
-  evening averages about one body per three lost runs, never one per run. The body
+  evening averages about one body per two lost runs at 0 Luck (2.2), never one
+  per run. **The first lost run is not free** — it was 0% until Luck started
+  leaning on this roll, and a free first rung was the one lost run Luck could do
+  nothing about; starting at 25% gives every point of Luck work on every lost run.
+  **Luck lowers each rung** the way it lowers every roll whose success is the bad
+  outcome (`Stats.roll_chance`, `Favour.LOW`): a coin per point of Luck, each
+  heads one more roll, and the body walks on only if every roll hits — so 2 Luck
+  makes the 50% rung about 28% and the opening 25% about 10%, and negative Luck
+  pushes them up. The certain last rung stays certain, so Luck shortens the
+  streak rather than removing the ceiling. The chance quoted on screen is the
+  Luck-adjusted one (`lost_run_spawn_chance`, through `Stats.effective_chance`). The body
   rolls off the game in play's type at the run's tier, walks on at the back column
   AFTER the turn (it acts from the next lost run) and is not one of `arrivals`.
   **It is a spawn event like every other spawn** (§19.6): the fourth brings the
@@ -1525,13 +1535,11 @@ there, still owed, still carrying its goal, which is what its remaining Health
 means. A game handed in spends no turns (§7.4), so stacks laid at the report are
 spent against the next game's first lost runs.
 
-**Those stacks are QUIET: they hang no bonus row.** Stun's enemy side is a
-claimable chest reward, and that is for a stun the player chose to spend (Scare
-Monster, Web, a weapon), not one the board handed out. The body's `quiet_stun`
-key counts them; `bonus_objectives_for` and `claim_enemy_bonus` subtract it, and
-the turn's wear spends the quiet stacks FIRST, so a paid stun on top keeps its
-row for as long as the body is stunned. The full card says how many of its turns
-came from the goal hit, so the missing row does not read as a bug.
+**They are ordinary Stun stacks.** They used to be QUIET — counted in a
+`quiet_stun` body key so they hung none of Stun's bonus row, which was for a stun
+the player chose to spend. Stun has no goal side any more (§13.2), so there is no
+row for any stack to hang and nothing to tell the two kinds apart by; the key is
+gone, and an older save's copy of it is not read back.
 
 **This replaced Staggered**, which held a survivor for the rest of the game in a
 per-game set of its own (`staggered_this_game`) beside Stun. Two ways of sitting
@@ -2013,6 +2021,24 @@ carrying** (`GameLoop2.goal_text_for`), and the body can be any of the 111 —
 `any time`, `game beaten` or counted. So the clause is not a sentence of its
 own: it is a phrase that has to read correctly after an arbitrary goal.
 
+**A side can be worded twice, once per `Ticked`.** A few conditions only make
+sense at the end of a game — "the game must be beaten in 3 hours", "you didn't
+intentionally heal" — and on an `any time` body, cleared mid-game, they asked for
+a promise the moment the box was ticked. So a side may author a second wording
+after the first, `any_time "…"` in the effect DSL (`condition_any_time` on the
+side), and the screens pick by the body it rides (`GameLoop2.answered_any_time`,
+passed down to `StatusData.condition_text` and every text/hover helper above it).
+The first wording is the end-of-game one; the second must be true at the moment
+the body is cleared:
+
+| Status | `game beaten` body | `any time` body |
+|---|---|---|
+| Speed (clause) | "the game must be beaten in 3 hours or less" | "you must do it within 3 hours of starting the game" |
+| Bleed (bonus) | "and if you didn't intentionally heal" | "and if you didn't intentionally heal before clearing it" |
+
+Strength, Dexterity and Marked read right on both and carry one wording. Burn's
+`instead` resolves on the spot even on a `game beaten` body, on purpose (below).
+
 **Give it a subject.** The two that do compose everywhere:
 
 | Status | Clause | Composed |
@@ -2027,7 +2053,7 @@ where the sentence contains no game for a reader to recover the subject from,
 and least bad on a `game beaten` one, which is why it survived. It now says
 "**the game** must be beaten in …".
 
-The three enemy-side **`bonus`** sides (Bleed, Marked, Stun) are exempt from this
+The two enemy-side **`bonus`** sides (Bleed, Marked) are exempt from this
 rule: a bonus is drawn as a row of its own rather than joined to the goal, so it
 never has to survive the composition. A **`instead`** (Burn) joins with "or
 instead" and needs no subject either, because it replaces the goal rather than
@@ -3257,7 +3283,7 @@ where `<verb>` is one of the five modes above. So the current roster reads:
 | Status | `On Player Effect` | `On Enemy Effect` |
 |---|---|---|
 | Strength | `goal "the difficulty is increased {X} times or as much as possible" -> gain_chest reward {X}; gain_stat bash 1` | `clause "the difficulty must be increased {X} times or as much as possible"` |
-| Speed | `goal "beaten in {1+(1/2)^(X-2):hours} or less" -> gain_chest reward {X}; gain_stat dash 1` | `clause "must be beaten in {1+(1/2)^(X-2):hours} or less"` |
+| Speed | `goal "beaten in {1+(1/2)^(X-2):hours} or less" -> gain_chest reward {X}; gain_stat dash 1` | `clause "the game must be beaten in {1+(1/2)^(X-2):hours} or less" any_time "you must do it within {1+(1/2)^(X-2):hours} of starting the game"` |
 | Marked | `demand "get {X} achievements" else -> take_damage 3` | `bonus "you get {X} achievements" decay -> gain_chest reward {X}` |
 | Dexterity | `goal "{X} or all bosses were beaten without getting hit" -> gain_chest reward {X}` | `clause "you must beat {X} or all bosses without getting hit"` |
 | Burn | `demand "skip or trash {X} items/upgrades" else -> take_damage 3` | `instead "skip or trash {4-X} items/upgrades"` |
@@ -3341,7 +3367,7 @@ would only make it a worse item.
 | **Marked** | Debuff | Mewgenics | you get X achievements | [chest reward X] on an enemy; on the player it charges 3 Damage for being missed | takes double damage, ignoring Shields |
 | **Burn** | Debuff | Brutal Orchestra | skip or trash X items/upgrades (4-X on an enemy) | *nothing* — it charges 3 Damage for being missed | deals half damage |
 | **Bleed** | Debuff | Mewgenics | don't heal intentionally | *nothing* on the player — it charges 3 Damage for being missed; [chest reward X] on an enemy | X separate 50% rolls of 1 damage **to itself** when it attacks |
-| **Stun** | Debuff | Slay the Spire | beat a game twice in a row to set it as Completed | *nothing* on the player — it charges 5 Damage for being missed; [chest reward X] on an enemy | loses its turn |
+| **Stun** | Debuff | Slay the Spire | *none — no goal side on either end* | *none* | loses its turn |
 
 **Bleed and Stun are the first two statuses whose clock is the BOARD.** Every
 status above them either never depletes or depletes by having a side *completed*
@@ -3379,10 +3405,17 @@ Three things fall out of that, and each is worth knowing:
   status strip under the token, no ❄ badge and no pip of its own. The token still
   *cools toward blue*, because that is a property of the token rather than a second
   listing of the same fact.
-- **Stunning a body hands it Stun's enemy side too**: the claimable bonus row "and
-  if you beat the game twice in a row, Gain a [chest reward]". So Scroll of Scare
-  Monster is now *skip its turn AND open a chest reward on it*, which is what the
-  sheet's Stun row says applied consistently.
+- **Stun has no in-game effect** — no goal side on the player or on an enemy. It
+  used to hang "and if you beat the game twice in a row, Gain a [chest reward]"
+  off a stunned body and bill the player 5 Damage for not beating a game twice in
+  a row; both asked for two wins on a status that wears off a stack per turn, and
+  the owner cut them. Scroll of Scare Monster, Web and a goal hit all just make a
+  body skip turns, and the "quiet stun" bookkeeping that told a goal hit's stacks
+  from a paid-for one (so only the latter paid the bonus) went with the bonus. A
+  Stun on the PLAYER would do nothing — the player takes no turns to skip — so the
+  one thing that put it there, Spider Kitten's `Infliction (1, Stun)`, was taken
+  off the kitten (`tools/_enemies_spider_kitten_no_ability_setup.py`) until it
+  gets something else.
 - **Sticky Bombs' `bomb_stun` is deleted**, not merely unauthored: the field, the
   `GameState.bombs_stun()` reader and the `_explode` branch are all gone, and
   `generate_item_tres.py` refuses the token out loud pointing at `bomb_tile web`.
@@ -4743,7 +4776,8 @@ put a card on the table that taking it cannot reach in one move.
 
 `NUM_START_OPTIONS` goes from **2 to 3**, and `MAX_PATH_LENGTH` from **7 to 8**
 with it. The two belong together: the panel wants its cards at **different
-distances** as well as different genres (`_spread_across_band`), and three cards
+distances** as well as different genres (`_spread_across_band`, now
+`_random_spread` — §19.3.3), and three cards
 drawn from a four-rung band leave that preference very little room. A fifth rung
 is what makes three distinct distances an ordinary outcome rather than a lucky one.
 
@@ -4907,6 +4941,44 @@ average and the rest of the map slightly poorer, which is the honest way round �
 the odds on the tin stay true of the map, and the guarantee is visibly paid for
 somewhere.
 
+### 19.3.3 THE STARTS ARE DRAWN, NOT RANKED
+
+The Amulet was already a uniform draw over every game that can be the goal
+(§19.9): 250 distinct Amulets in 300 runs, which is what uniform over ~790 gives.
+The **starts were not**. `_strict_starts_for` kept the best-branching start per
+genre per distance plus a near-best pool (`START_SCORE_SLACK`, 3), and
+`_spread_across_band` picked WHICH genres and WHICH distances by the highest
+total branching score. Over 300 runs that put 253 distinct starts on 900 cards
+(of 484 eligible), gave the top ten 30%, put Hack 'Em on a card one run in seven,
+and almost never offered Deckbuilder and Traditional together.
+
+**Now nothing about a start is ranked** (`RunGraph._random_spread`). The rules
+hold — the 4–8 band, the route floor, three genres — and inside them:
+
+1. **The genres** are a uniform pick among the genre trios that can meet the
+   distance rule.
+2. **The games** are a uniform pick over every qualifying start of each genre, at
+   any distance, redrawn until the trio meets the distance rule.
+
+**The distance rule is "at least two different distances"**
+(`SPREAD_MIN_DISTANCES`), not "as many as possible". Most starts sit 4–5 hops
+out, so insisting on three distances redrew until a card landed on a rare 6–8 —
+and the handful of games living there were over-picked (Hack 'Em, often the only
+Traditional at 6, stayed at one run in seven). Measured over 300 runs each:
+
+| Distance rule | Distinct starts / 900 | Top-ten share |
+|---|---|---|
+| ranked (before) | 253 | 30% |
+| random, as many as possible | 296 | 21% |
+| **random, at least two** | **336–351** | **13–14%** |
+| random, no rule | 354 | 11% |
+
+Two keeps the panel a choice of run length — never three cards at one distance —
+for nearly all of the randomness of no rule. The cost is that runs lean shorter:
+7–8-hop cards are about half as common as under the ranked draw. The branching
+score is still computed (`dag_branch_scores_to`) and still reported on each
+option; nothing chooses by it.
+
 ### 19.4 The spawn model
 
 **An Enemies node lands exactly two bodies, at every tier.** This is §7.5's
@@ -4951,8 +5023,8 @@ surcharges, all in `GameLoop2.end_of_game_price`:
 - **Not at the Amulet** — there is no next game for anything to walk into — and
   **not off a teleport**, which the loot already paid for (§4.1, `road_spawns`).
 
-**A lost run's own spawn is a CHANCE, not this price** (§3.2): 0% on the first,
-then 25% climbing to certain, one body, and a spawn event like any other. It once stood these bodies up mid-game when
+**A lost run's own spawn is a CHANCE, not this price** (§3.2): 25% on the first,
+climbing to certain, one body, and a spawn event like any other. It once stood these bodies up mid-game when
 nothing had been defeated; that moved here, so the board only MOVES mid-game (one
 turn per lost run, §3.2) and only FILLS as a game ends. It is also what retired
 the mid-game tier step and the mid-game capstone (§19.6).

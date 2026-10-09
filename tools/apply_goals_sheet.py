@@ -367,12 +367,17 @@ def edits_for_statuses(wb, by_owner):
     for n, row in rows:
         owner = cell(row, 0)
         key = ("status", owner)
+        prose = cell(row, col)
         if key not in by_owner:
+            # A status that does NOTHING on the player (Stun, §13.2: it only makes
+            # an enemy skip turns) has no goal to author, so a blank `On Player`
+            # with no `goals` row is the one consistent way to say so.
+            if not prose:
+                continue
             raise Finding("statuses!%d: %r has no row in `%s`." % (n, owner, SHEET))
         seen.add(key)
         g = by_owner[key][0]
         _refuse_unreadable("statuses", "status", g)
-        prose = cell(row, col)
         want = status_prose_with(prose, g["Goal"], owner)
         if prose != want:
             edits["%s%d" % (col_name(col), n)] = want

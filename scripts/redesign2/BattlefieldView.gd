@@ -739,8 +739,9 @@ func _hold_small_print_on_one_row() -> void:
 
 # The warning above the grid while a lost run could bring the next boss on, or ""
 # (§3.2): the next spawn is a difficulty up and a game is in play. Names the
-# chance the next lost run spawns — 0% on a game's first, so the line says it is
-# safe this once rather than leaving the player to work it out.
+# chance the next lost run spawns, Luck included. The "can't spawn it" line is for
+# a ladder whose rung is 0% — no authored rung is now that a game's first lost run
+# costs 25%, but a test's disarmed ladder is, and the line must not lie there.
 func boss_warning_text() -> String:
 	if not GameLoop2.lost_run_may_bring_boss():
 		return ""
@@ -2486,7 +2487,7 @@ func _add_enemy_badges(holder: Control, entry: Dictionary, e: GoalEnemyData,
 		strip.alignment = BoxContainer.ALIGNMENT_CENTER
 		strip.add_theme_constant_override("separation", UITheme.GAP_HAIR)
 		_fill_status_strip(strip, statuses, StatusData.ENEMY, STATUS_PIP_ENEMY,
-			_nullified_ids(entry))
+			_nullified_ids(entry), GameLoop2.answered_any_time(entry))
 		strip.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM,
 			Control.PRESET_MODE_MINSIZE, -(STATUS_STRIP_DROP + stat_badge_drop(stat_font)
 				- STAT_BADGE_DROP))
@@ -2876,13 +2877,13 @@ const STATUS_STRIP_NAME := "StatusStrip"
 # its stack count, tinted by what this SIDE does — a `bonus` is an opportunity and
 # reads gold, anything that taxes reads red.
 func _status_pip(status: StatusData, stacks: int, which: StringName, size: int,
-		nullified: bool = false, games: int = 0) -> Control:
+		nullified: bool = false, games: int = 0, any_time: bool = false) -> Control:
 	var good: bool = status.is_bonus(which) or status.is_goal(which)
 	var tint: Color = UITheme.GOLD if good else UITheme.DANGER
 	var chip := HoverPanel.new()
 	chip.add_theme_stylebox_override("panel",
 		UITheme.flat(tint.lerp(UITheme.BG, 0.75), 3, 1, 1, tint.lerp(UITheme.BORDER, 0.35)))
-	HoverCard.attach(chip, status_hover(status, stacks, which, nullified, games))
+	HoverCard.attach(chip, status_hover(status, stacks, which, nullified, games, any_time))
 	chip.mouse_filter = Control.MOUSE_FILTER_STOP
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", UITheme.GAP_HAIR)
@@ -2923,16 +2924,18 @@ func _nullified_ids(entry: Dictionary) -> Dictionary:
 # The hover model for one status pip. A thin wrapper over StatusData's own
 # `hover_card`, so the board, the enemy card and the hero strip cannot describe
 # the same status differently.
+# `any_time` is whether the body it rides answers its goal on the spot, which picks
+# the wording of a clause that would otherwise ask for a promise (§13.1).
 func status_hover(status: StatusData, stacks: int, which: StringName,
-		nullified: bool = false, games: int = 0) -> Dictionary:
-	return status.hover_card(which, stacks, nullified, games)
+		nullified: bool = false, games: int = 0, any_time: bool = false) -> Dictionary:
+	return status.hover_card(which, stacks, nullified, games, any_time)
 
 # Fill `strip` with one pip per status in `rows` ([{status, stacks}]). Returns how
 # many were drawn, so a caller can hide an empty strip rather than leave a gap.
 # `dead` names the statuses this BODY nullifies — an `instead` on a boss (§7.1) —
 # so the pip's hover says the way out is void here rather than promising one.
 func _fill_status_strip(strip: HBoxContainer, rows: Array, which: StringName,
-		size: int, dead: Dictionary = {}) -> int:
+		size: int, dead: Dictionary = {}, any_time: bool = false) -> int:
 	# remove_child BEFORE queue_free: queue_free only marks a node, leaving it a
 	# child until the frame ends, so two refreshes in one frame (a status applied
 	# during a resolve) would draw every pip twice.
@@ -2945,7 +2948,7 @@ func _fill_status_strip(strip: HBoxContainer, rows: Array, which: StringName,
 		# (docs/potions-design.md §5.3), so a borrowed status's pip says so without
 		# this strip knowing the timed layer exists.
 		strip.add_child(_status_pip(sd, int(row["stacks"]), which, size,
-			sd != null and dead.has(sd.id), int(row.get("games", 0))))
+			sd != null and dead.has(sd.id), int(row.get("games", 0)), any_time))
 	strip.visible = not rows.is_empty()
 	return rows.size()
 

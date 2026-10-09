@@ -20,7 +20,7 @@ it, the player included (every debuff). See parse_combat below.
 
 Side effect DSL — one clause per cell:
 
-  <verb> "<condition>" [decay] [-> <reward>; …] [else -> <penalty>; …]
+  <verb> "<condition>" [any_time "<condition>"] [decay] [-> <reward>; …] [else -> <penalty>; …]
 
   goal     a standing objective of the holder's own: "If <condition>, gain
            <reward>". On the player, an extra checklist row offered every game.
@@ -39,6 +39,17 @@ Side effect DSL — one clause per cell:
            Burn's enemy side.
   decay    completing it sheds one stack. Authored in the `Decrease` COLUMN now
            (see below); the flag is still read, and must agree with it.
+
+  any_time "<condition>"  the same condition worded for a body whose goal is
+           answered ANY TIME rather than by beating the game (the goals sheet's
+           `Ticked`, §7.7). A side rides whatever body it lands on, and a few
+           conditions only make sense at the end of a game: "the game must be
+           beaten in 3 hours" or "you didn't intentionally heal" asked for a
+           promise on a body cleared mid-game. The first condition is the
+           end-of-game wording; this one must be true at the moment the body is
+           cleared. Optional, and only on a side that rides a goal — `clause`,
+           `bonus` or `instead` — since a player's own goal or demand is always
+           settled when the game is reported.
 
 Because the verb says what the side DOES, Buff/Debuff drives no mechanic: it is
 the HUD tint and the collection filter, nothing more.
@@ -305,8 +316,11 @@ MODES = ("goal", "clause", "bonus", "demand", "instead")
 # for meeting one, so a `-> reward` on either is an authoring mistake rather than
 # a payout to be silently dropped.
 UNPAID_MODES = ("clause", "instead")
+# The modes whose side rides an enemy's GOAL and so can be worded per `Ticked`.
+GOAL_RIDING_MODES = ("clause", "bonus", "instead")
 SIDE_RE = re.compile(
     r'^\s*(?P<verb>[a-z_]+)\s+"(?P<condition>[^"]*)"\s*'
+    r'(?:any_time\s+"(?P<any_time>[^"]*)"\s*)?'
     r'(?P<flags>(?:[a-z_]+\s*)*?)\s*'
     r'(?:(?P<arrow>else\s*->|->)\s*(?P<payload>.*))?$', re.S)
 
@@ -323,7 +337,7 @@ def parse_side(raw, where):
     m = SIDE_RE.match(s)
     if not m:
         raise ValueError('statuses2.0 %s: cannot parse %r — expected '
-                         '<verb> "<condition>" [decay] [-> <reward>] '
+                         '<verb> "<condition>" [any_time "<condition>"] [decay] [-> <reward>] '
                          '[else -> <penalty>]' % (where, s))
     mode = m.group("verb").lower()
     if mode not in MODES:
@@ -350,7 +364,7 @@ def parse_side(raw, where):
         raise ValueError("statuses2.0 %s: a `demand` is an obligation with a "
                          "price — write what missing it costs after `else ->`"
                          % where)
-    return {
+    out = {
         "mode": mode,
         "condition": normalise_holes(m.group("condition")),
         "reward": reward,
@@ -359,6 +373,18 @@ def parse_side(raw, where):
         "penalty_text": penalty_text,
         "decay": any(f.lower() == "decay" for f in flags),
     }
+    # Written only when authored, so a side that reads the same on every body keeps
+    # the shape it always had (StatusData reads it with a default).
+    if m.group("any_time") is not None:
+        if mode not in GOAL_RIDING_MODES:
+            raise ValueError("statuses2.0 %s: `any_time` words a side for the goal "
+                             "it rides, and a `%s` rides none — it is always "
+                             "settled when the game is reported" % (where, mode))
+        if not m.group("any_time").strip():
+            raise ValueError("statuses2.0 %s: `any_time \"\"` is empty — leave it "
+                             "out for a side that reads the same on every body" % where)
+        out["condition_any_time"] = normalise_holes(m.group("any_time"))
+    return out
 
 
 # --- how a status depletes (the `Decrease` column) -------------------------

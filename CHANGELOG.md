@@ -11,6 +11,36 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The starting games are random now.** The Amulet was already a uniform draw;
+  the three start cards were ranked by early-branching score, which put the same
+  hubs on most panels (253 distinct starts on 900 cards, top ten 30%, Hack 'Em
+  one run in seven) and nearly always offered Action and Strategy. Now the genre
+  trio and each card's game are uniform draws inside the same rules (band, route
+  floor, three genres), and the panel needs at least two different distances
+  rather than as many as possible (`RunGraph.SPREAD_MIN_DISTANCES`) — hunting for
+  a third over-picked the few games at rare distances. Measured: 336 distinct
+  starts, top ten 14%, all four genre trios about equally common. Spec §19.3.3.
+
+- **Luck lowers the lost-run spawn, and the enemy statuses match the goal they
+  ride.** A lost run's chance of standing a body up now goes through the same
+  Luck roll as every other bad outcome (`Stats.roll_chance`, `Favour.LOW`): a
+  coin per point, each heads another roll, the body walks on only if every roll
+  hits — 2 Luck turns the 50% rung into ~28%. The free first rung and the certain
+  last one are untouched, and the button and boss warning quote the
+  Luck-adjusted number. On the statuses: an enemy-side side can now be worded
+  twice (`any_time "…"` in the effect DSL), and the screens pick by the body's
+  `Ticked`. **Speed** on an any-time body reads "you must do it within 3 hours of
+  starting the game" instead of promising a win; **Bleed**'s bonus reads "you
+  didn't intentionally heal before clearing it". **Stun has no in-game effect
+  any more** — both goal sides are gone (its `goals` row with them), so it only
+  makes a body skip turns, and the `quiet_stun` bookkeeping that existed for its
+  bonus row is deleted. Burn's `instead` stays instant on a `game beaten` body.
+  The bonus-row tests in `test_overworld2` moved from Stun to Marked.
+  **The first lost run is no longer free**: the ladder is now 25%, 50%, 75%,
+  certain (was 0%, 25%, …), which gives Luck work on a game's first lost run
+  too (2 Luck makes that 25% about 10%). **Spider Kitten has no ability** for
+  now — its `Infliction (1, Stun)` put a Stun on the player that does nothing.
+
 - **The tag export moved to Settings, and covers every game.** Settings →
   Game tags → *Export tags for all games* writes all 917 games to
   `tools/tag_edits.json`, each with the tags it has in game and what was added

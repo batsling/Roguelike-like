@@ -44,7 +44,7 @@ extends RefCounted
 # games.
 #
 # THE CEILING IS 8 because the panel now offers three cards and wants them at
-# three different DISTANCES as well as three genres (_spread_across_band). Three
+# three different DISTANCES as well as three genres (_random_spread). Three
 # cards drawn from a four-rung band leave that preference almost no room; a fifth
 # rung makes three distinct distances an ordinary outcome instead of a lucky one.
 #
@@ -1380,23 +1380,33 @@ const AMULET_ATTEMPTS := 8
 # eligible start instead, which is the end of that line rather than another step
 # along it: the pool stops depending on the roll at all.
 
-# How far below its cell's best score a START may sit and still be drawn.
+# THE STARTS ARE DRAWN AT RANDOM, as the Amulet is.
 #
-# The same problem the Amulet slack above solves, and it went unnoticed for
-# longer because the amulet is the thing a run is ABOUT while the start is just
-# where you stand. `_strict_starts_for` kept the single best-scoring start per
-# genre per distance — a strict argmax, ties broken on the id — so for any given
-# amulet the panel was fully determined. The well-connected games are the best
-# start for MANY different amulets, so a handful of them opened nearly every run:
-# sampled over 400 runs of the full catalog, 63 distinct starts appeared at all
-# and the top ten took 55.6% of the cards, one of them 15.6% on its own. The
-# amulet draw over the same runs produced 281 distinct goals.
+# They were ranked. `_strict_starts_for` used to keep the single best-scoring
+# start per genre per distance, then a pool within START_SCORE_SLACK (3) of it,
+# and `_spread_across_band` chose WHICH genres and WHICH distances by the highest
+# total early-branching score. Every step of that favoured the same few hubs:
+# measured over 300 runs of the full catalogue, 253 distinct starts appeared on
+# 900 cards (of 484 eligible), the top ten took 30%, Hack 'Em was on a card one
+# run in seven, Action and Strategy were on almost every panel and
+# Deckbuilder+Traditional together appeared once. The Amulet over the same runs
+# was 250 distinct of 300 — already a uniform draw.
 #
-# So starts now draw the way amulets do: every candidate within this much of its
-# cell's best advances to a random pick. The SPREAD is still decided on the best
-# score in each cell (see _spread_across_band), so which genre and which distance
-# the panel offers does not move — only which game wears the card.
-const START_SCORE_SLACK := 3
+# So nothing about a start is ranked any more (see `_random_spread`). The RULES
+# still hold — the band, the route floor, three genres, and as many distinct
+# distances as the Amulet's genres can show between them — and everything inside
+# them is a die roll: which genres, then which games, uniformly.
+#
+# THE DISTANCE RULE IS "AT LEAST TWO", not "as many as possible" (SPREAD_MIN_DISTANCES).
+# Most starts sit 4-5 hops out, so a draw that insisted on three distances kept
+# redrawing until one card landed at a rare 6-8 — and the few games living there
+# were over-picked: Hack 'Em was often the only Traditional at 6 and stayed on a
+# card one run in seven even after the ranking went. Measured over 300 runs:
+#   as many as possible   296 distinct starts / 900 cards, top ten 21%
+#   at least two          351 distinct,                    top ten 13%
+#   no rule at all        354 distinct,                    top ten 11%
+# Two keeps the panel a real choice of run length — never three cards at one
+# distance — for nearly all of the randomness of no rule.
 
 # Every game that may BE the goal, as {id: GameData}: one sitting inside the
 # path band from at least one eligible start (§19.9). Measured on the shipping
@@ -1466,18 +1476,13 @@ static func amulet_candidates_from(start_pool: Array, all_games: Array) -> Dicti
 # is now ROUTE_SLACK_FLOOR, asked of the road the player is actually offered.
 
 # Every in-window start worth offering, as type -> (path_len -> record): for each
-# genre, the best-branching eligible start AT EACH DISTANCE its routes to `amulet`
-# can take. The caller reads the SIZE of the outer dictionary — one entry per
-# genre — to judge whether an amulet can fill the panel, exactly as before.
+# genre, EVERY eligible start at each distance its routes to `amulet` can take
+# (the record's `pool`). The caller reads the SIZE of the outer dictionary — one
+# entry per genre — to judge whether an amulet can fill the panel.
 #
-# Keeping one start PER LENGTH rather than one per genre is the whole point. The
-# panel wants its cards at different distances (see _spread_across_band), and
-# collapsing each genre to its single best-scoring start first throws that choice
-# away before it can be made: a genre whose top start is 4 hops out still has a 6
-# and a 7 further down the score order, and those are what a spread is built
-# from. Deciding the spread here, with every length still on the table, is what
-# keeps the cost of the rule down to the handful of Amulets that genuinely have
-# no two lengths to offer.
+# Grouped by length as well as genre because the panel wants its cards at
+# different distances (see _random_spread), and that choice can only be made
+# with every length still on the table.
 # The games this run may OPEN on, drawn out of `all` (already map-filtered).
 #
 # Split out of pick_amulet_and_starts so the setup screen can ask the same
@@ -1598,11 +1603,10 @@ static func _strict_starts_for(amulet: GameData, eligible_starts: Array,
 			per_len[path_len] = _cell_record(per_len[path_len], path_len)
 	return by_type
 
-# One (genre, distance) cell: its best candidate, its score, and every candidate
-# within START_SCORE_SLACK of that best — the pool the card is drawn from.
-#
-# `start` stays the strict best (ties on the id) because the panel's SHAPE is
-# ranked on it and must not wobble between runs; `pool` is what the draw uses.
+# One (genre, distance) cell: every start that qualifies there, as the pool the
+# card is drawn from. `start` / `score` are the best-branching candidate, kept as
+# a fact about the cell for anything that wants it; nothing about the draw reads
+# them.
 static func _cell_record(candidates: Array, path_len: int) -> Dictionary:
 	var best: Dictionary = {}
 	for c in candidates:
@@ -1610,49 +1614,43 @@ static func _cell_record(candidates: Array, path_len: int) -> Dictionary:
 				or (int(c["score"]) == int(best["score"]) \
 					and (c["game"] as GameData).id < (best["game"] as GameData).id):
 			best = c
-	var pool: Array = []
-	for c in candidates:
-		if int(c["score"]) >= int(best["score"]) - START_SCORE_SLACK:
-			pool.append(c)
+	var pool: Array = candidates.duplicate()
 	# Sorted so the pool itself is the same list every time and the only variable
-	# is the die roll against it.
+	# is the die roll against it — a seeded rng gives the same panel twice.
 	pool.sort_custom(func(a, b): return (a["game"] as GameData).id < (b["game"] as GameData).id)
 	return {"start": best["game"], "score": int(best["score"]), "path_len": path_len,
 		"in_window": true, "pool": pool}
 
-# Draw the game that actually wears a card, from the near-best pool its cell
-# collected. Returns {"game", "score"} — the DRAWN game's own score, not the
-# cell's best, so what the panel reports is true of what it is offering.
-static func _draw_start(rec: Dictionary, rng: RandomNumberGenerator) -> Dictionary:
-	var pool: Array = rec.get("pool", [])
-	if pool.is_empty():
-		return {"game": rec["start"], "score": int(rec["score"])}
-	return pool[rng.randi() % pool.size()]
-
-# Pick `count` records out of `by_type` — one per genre, and at DIFFERENT
-# DISTANCES from the Amulet wherever the graph allows it.
+# THE PANEL, DRAWN: `count` starts out of `by_type`, one per genre, at as many
+# DIFFERENT DISTANCES as SPREAD_MIN_DISTANCES asks (or the graph allows). Returns
+# [{game, score, slack, path_len, in_window}].
 #
 # Distance is a real choice across the 4..8 band: the end of a game stands more
 # bodies up the closer the run stands to the Amulet
-# (RunDifficulty.pressure_for_hops), so an 8-hop card opens with four games in
-# the calm band and a 4-hop card starts already out of it. Two cards at the same distance offer a genre and nothing else.
+# (RunDifficulty.pressure_for_hops), so an 8-hop card opens with four games in the
+# calm band and a 4-hop card starts already out of it. That is why the panel still
+# shows at least SPREAD_MIN_DISTANCES different distances whenever its genres can
+# reach them — a rule, not a ranking, and the one thing this draw is conditioned on.
 #
-# It is a PREFERENCE, not a requirement, and the ONLY one left in the panel — the
-# genre count and the band are both absolute now (§19.3.2). A few Amulets have
-# every in-band start at one single distance, no differing-length pair existing at
-# any price, and dropping them to enforce a presentation rule is the worse trade.
-# The wider band all but retired the case: sweeping every amulet on the owned
-# catalog, 33 field their three genres at only two distances (425 of 458 manage
-# three). Those repeat a length rather than shrinking the panel.
-#
-# Selections are compared on, in order: how many cards are in-window, then how
-# many DISTINCT lengths they cover, then total branching. The first key is
-# constant now that a relaxed card cannot exist — it is kept because it is the
-# rank that ENCODES the promise, and a tie-break that never fires costs nothing
-# next to a reader wondering where the promise went. Exhaustive over at most 4
-# genres x 5 lengths, so a few hundred leaves at worst, run once per amulet
-# attempt.
-static func _spread_across_band(by_type: Dictionary, count: int) -> Array:
+# Everything else is uniform, in two steps:
+#   1. THE GENRES. Every set of `count` genres that can meet the distance rule is
+#      equally likely. They were chosen by branching score, which
+#      put Action and Strategy on nearly every panel.
+#   2. THE GAMES. Each genre's card is a uniform draw over every start of that
+#      genre the rules allow, at any distance, redrawn until the set shows the
+#      distances step 1 promised. So a game is as likely as any other of its
+#      genre, rather than its DISTANCE being as likely as any other — the
+#      distances fall where the games are.
+# If the redraws run out (a genre with nearly all its starts at one distance),
+# the distances are drawn first from the assignments that work and a game
+# uniformly within each — the same promise, kept the slow way.
+const SPREAD_REDRAWS := 200
+# How many different distances the panel must show, when its genres can reach
+# that many (see the note above `amulet_candidates_from`).
+const SPREAD_MIN_DISTANCES := 2
+
+static func _random_spread(by_type: Dictionary, count: int,
+		rng: RandomNumberGenerator) -> Array:
 	var types: Array = []
 	for type_val in TYPE_ORDER:
 		if by_type.has(type_val):
@@ -1660,50 +1658,103 @@ static func _spread_across_band(by_type: Dictionary, count: int) -> Array:
 	var want: int = mini(count, types.size())
 	if want <= 0:
 		return []
-	var out: Dictionary = {"key": [], "best": []}
-	_spread_search(types, 0, by_type, want, [], out)
-	return out["best"]
+	# Step 1: every genre set of size `want` that can show the required number of
+	# distances — SPREAD_MIN_DISTANCES, or fewer when no set of genres can.
+	var combos: Array = _combinations(types, want)
+	var reach: Array = []
+	var most: int = 0
+	for combo in combos:
+		var r: int = _most_distinct(combo, by_type)
+		reach.append(r)
+		most = maxi(most, r)
+	var best: int = mini(mini(SPREAD_MIN_DISTANCES, want), most)
+	var sets: Array = []
+	for i in range(combos.size()):
+		if int(reach[i]) >= best:
+			sets.append(combos[i])
+	var genres: Array = sets[rng.randi() % sets.size()]
+	# Step 2: a uniform game per genre, redrawn until the distances spread.
+	var flat: Dictionary = {}            # genre -> [{cand, path_len}]
+	for t in genres:
+		var all_of_genre: Array = []
+		var per_len: Dictionary = by_type[t]
+		var lens: Array = per_len.keys()
+		lens.sort()
+		for l in lens:
+			for c in (per_len[l] as Dictionary)["pool"]:
+				all_of_genre.append({"cand": c, "path_len": int(l)})
+		flat[t] = all_of_genre
+	for _try in range(SPREAD_REDRAWS):
+		var picks: Array = []
+		var seen: Dictionary = {}
+		for t in genres:
+			var arr: Array = flat[t]
+			var p: Dictionary = arr[rng.randi() % arr.size()]
+			picks.append(p)
+			seen[int(p["path_len"])] = true
+		if seen.size() >= best:
+			return _spread_records(picks)
+	# Fallback: draw the distances from the assignments that reach `best`, then a
+	# game uniformly inside each.
+	var assignments: Array = []
+	_distance_assignments(genres, 0, by_type, [], assignments)
+	var good: Array = assignments.filter(func(a):
+		var d: Dictionary = {}
+		for l in a:
+			d[int(l)] = true
+		return d.size() >= best)
+	var lens_for: Array = good[rng.randi() % good.size()]
+	var picks: Array = []
+	for i in range(genres.size()):
+		var pool: Array = (by_type[genres[i]][lens_for[i]] as Dictionary)["pool"]
+		picks.append({"cand": pool[rng.randi() % pool.size()], "path_len": int(lens_for[i])})
+	return _spread_records(picks)
 
-# Ranks one candidate selection. Higher is better, compared left to right.
-static func _spread_key(chosen: Array) -> Array:
-	var lens: Dictionary = {}
-	var in_window := 0
-	var total := 0
-	for rec in chosen:
-		lens[int(rec["path_len"])] = true
-		total += int(rec["score"])
-		if bool(rec.get("in_window", false)):
-			in_window += 1
-	return [in_window, lens.size(), total]
+static func _spread_records(picks: Array) -> Array:
+	var out: Array = []
+	for p in picks:
+		var c: Dictionary = p["cand"]
+		out.append({"game": c["game"], "score": int(c["score"]),
+			"slack": int(c.get("slack", 0)), "path_len": int(p["path_len"]),
+			"in_window": true})
+	return out
 
-static func _key_greater(a: Array, b: Array) -> bool:
-	for i in range(mini(a.size(), b.size())):
-		if int(a[i]) != int(b[i]):
-			return int(a[i]) > int(b[i])
-	return false
+# Every way to choose `k` of `items`, in order.
+static func _combinations(items: Array, k: int) -> Array:
+	if k == 0:
+		return [[]]
+	if items.size() < k:
+		return []
+	var out: Array = []
+	var head = items[0]
+	for rest in _combinations(items.slice(1), k - 1):
+		out.append([head] + rest)
+	out.append_array(_combinations(items.slice(1), k))
+	return out
 
-static func _spread_search(types: Array, ti: int, by_type: Dictionary, want: int,
-		chosen: Array, out: Dictionary) -> void:
-	if chosen.size() == want:
-		var key: Array = _spread_key(chosen)
-		if (out["best"] as Array).is_empty() or _key_greater(key, out["key"]):
-			out["key"] = key
-			out["best"] = chosen.duplicate()
+# The most distinct distances these genres can show, one card each.
+static func _most_distinct(genres: Array, by_type: Dictionary) -> int:
+	var assignments: Array = []
+	_distance_assignments(genres, 0, by_type, [], assignments)
+	var most: int = 0
+	for a in assignments:
+		var d: Dictionary = {}
+		for l in a:
+			d[int(l)] = true
+		most = maxi(most, d.size())
+	return most
+
+# Every distance assignment for `genres`, one distance per genre from those it has
+# starts at. At most 4 genres x 5 distances, so a few hundred leaves at worst.
+static func _distance_assignments(genres: Array, i: int, by_type: Dictionary,
+		chosen: Array, out: Array) -> void:
+	if i >= genres.size():
+		out.append(chosen.duplicate())
 		return
-	if ti >= types.size():
-		return
-	# Not enough genres left to reach `want` — abandon this branch.
-	if types.size() - ti < want - chosen.size():
-		return
-	var per_len: Dictionary = by_type[types[ti]]
-	var lens: Array = per_len.keys()
-	lens.sort()
-	for l in lens:
-		chosen.append(per_len[l])
-		_spread_search(types, ti + 1, by_type, want, chosen, out)
+	for l in (by_type[genres[i]] as Dictionary).keys():
+		chosen.append(int(l))
+		_distance_assignments(genres, i + 1, by_type, chosen, out)
 		chosen.pop_back()
-	# ...or skip this genre entirely and take the remaining cards from later ones.
-	_spread_search(types, ti + 1, by_type, want, chosen, out)
 
 # Result format:
 #   {
@@ -1721,7 +1772,7 @@ static func _spread_search(types: Array, ti: int, by_type: Dictionary, want: int
 #
 # The options are also spread across the band: different genres AND different
 # distances from the Amulet, longest first, so the panel is a choice of how long
-# the run is as well as what it is played in (see _spread_across_band). That one
+# the run is as well as what it is played in (see _random_spread). That one
 # is a preference — where the graph has no two lengths to offer, the cards repeat
 # a distance rather than the panel losing one.
 #
@@ -1884,9 +1935,8 @@ static func _pick_on_bare_map(rng: RandomNumberGenerator) -> Dictionary:
 		result["rifts"] = _deal_rifts(amulet.id, options, path_spots, rng)
 	return result
 
-# Choose the cards: one genre each, spread across the band where it can be.
-# _spread_across_band already prefers in-window records over relaxed ones and
-# distinct lengths over repeated ones, so what comes back is the panel.
+# Choose the cards: one genre each, spread across the band where it can be, drawn
+# at random inside those rules (_random_spread), so what comes back is the panel.
 #
 # The LONGER route first, then branching. Distance leads the display order
 # because it is the choice the spread exists to offer — the first card is the
@@ -1900,18 +1950,17 @@ static func _pick_on_bare_map(rng: RandomNumberGenerator) -> Dictionary:
 # assume nobody checked rather than that nobody had to.
 static func _draw_panel(amulet: GameData, per_type: Dictionary,
 		rng: RandomNumberGenerator) -> Array:
-	var chosen: Array = _spread_across_band(per_type, NUM_START_OPTIONS)
 	var options: Array = []
-	for rec in chosen:
-		var drawn: Dictionary = _draw_start(rec, rng)
+	for drawn in _random_spread(per_type, NUM_START_OPTIONS, rng):
 		var start_game: GameData = drawn["game"]
 		options.append({
 			"type": start_game.type,
 			"start_id": start_game.id,
 			"score": int(drawn["score"]),
-			"path_len": int(rec["path_len"]),
-			"in_window": bool(rec.get("in_window", false)),
-			"slack": int(drawn.get("slack", route_slack(start_game.id, amulet.id))),
+			"path_len": int(drawn["path_len"]),
+			"in_window": bool(drawn.get("in_window", false)),
+			"slack": int(drawn["slack"]) if int(drawn["slack"]) > 0 \
+				else route_slack(start_game.id, amulet.id),
 		})
 	options.sort_custom(func(a, b):
 		if int(a["path_len"]) != int(b["path_len"]):
