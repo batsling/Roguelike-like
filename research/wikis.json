@@ -7531,6 +7531,7 @@
    "statuses": 51
   },
   "match": "check",
+  "note": "Shared with the first game. FtK2's pages end in ' (FTK2)' (its encounters in ' (Encounter) (FTK2)'), and their text drops the page's own name where a template stood, so read the [facts] line for descriptions.",
   "pages": {
    "characters": [
     "Characters"

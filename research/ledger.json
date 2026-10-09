@@ -1020,7 +1020,13 @@
   "statuses": "2026-10-09: Wet; Death Mark duplicates the Doomed candidate, so it went into The Hangman's goal"
  },
  "For the King 2": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-09: Fortune Teller, Fallen Knight; Toymaker left out (repeats Cult of the Lamb's recruit), Shepherd (repeats 'made a friend')",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-09: End of the Rainbow, Fragrant Outhouse",
+  "goals": "2026-10-09: Clown, Queen Rosomon; Toymaker's soul-dolls left out of characters (repeats Cult of the Lamb's recruit)",
+  "locations": "2026-10-09: Embedded Blade",
+  "loot": "2026-10-09: Fancy Umbrella, Silver Padlock; weapons and evolutions: Stool, Lute; Flaming Stool (the Stool's own tier-3 upgrade)",
+  "statuses": "2026-10-09: Scared; Foolish (curse); Suicidal left out (the name)"
  },
  "Forestrike": {
   "connections": "before 2026-10-07"
