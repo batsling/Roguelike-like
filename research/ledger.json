@@ -2414,7 +2414,13 @@
   "connections": "before 2026-10-07"
  },
  "Spelunky": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-09: Spelunky Guy",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-09: Damsel",
+  "goals": "2026-10-09: The Ghost, King Yama, Yeti King (Olmec, the angry shopkeeper, Vampire, Golden Monkey and the Witch Doctor's sacrifice are Spelunky 2's candidates)",
+  "locations": "2026-10-09: Kali Altar, Black Market, City of Gold (Tunnel Man's shortcuts would shorten paths)",
+  "loot": "2026-10-09: Kapala; weapons and evolutions: Web Gun, Mattock (Boomerang and Camera are other games' rows); no evolutions",
+  "statuses": "2026-10-09: nothing: no statuses beyond stun and poison"
  },
  "Spelunky 2": {
   "connections": "before 2026-10-07",
