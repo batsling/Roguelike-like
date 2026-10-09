@@ -2131,8 +2131,13 @@
   "connections": "before 2026-10-07"
  },
  "Rogue Legacy": {
+  "characters": "2026-10-09: Miner",
   "connections": "before 2026-10-07",
-  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+  "events": "2026-10-09: nothing: Charon's toll and the Architect are hub services",
+  "goals": "2026-10-09: checked: Johannes fixed; The Brohannes added (Alexander, Ponce de Leon and Herodotus repeat fire-trail and splitting goals; Khidr and Doomvas live)",
+  "locations": "2026-10-09: Fairy Chest",
+  "loot": "2026-10-09: nothing: runes and blueprints are stat steps; weapons and evolutions: none (one sword, and spells are class abilities)",
+  "statuses": "2026-10-09: Color Blind (curse); the other traits are cosmetic or medical jokes"
  },
  "Rogue Legacy 2": {
   "connections": "before 2026-10-07",
