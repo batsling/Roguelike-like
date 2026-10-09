@@ -30,7 +30,13 @@
   "connections": "before 2026-10-07"
  },
  "A Robot Named Fight!": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-09: nothing: Fight is the only playable robot",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-09: nothing: its shrines are objects and its allies are shops",
+  "goals": "2026-10-09: Metal Patriarch, Polyphemus, False Beast; Ghost Fight left out (repeats the live 'Defeat yourself'), Stalkus (repeats the Leviathan's broken-off part)",
+  "locations": "2026-10-09: Shrine of Tyr, Revenant Station, The Traitor",
+  "loot": "2026-10-09: The Thief, Scrap Vorb; weapons and evolutions: Buzzsaw Gun; no evolutions (bolt upgrades stack, nothing turns into anything)",
+  "statuses": "2026-10-09: nothing: shrine blessings are timed stat boosts"
  },
  "A la Card": {
   "connections": "before 2026-10-07"
