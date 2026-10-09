@@ -553,8 +553,13 @@
   "connections": "before 2026-10-07"
  },
  "Darkest Dungeon": {
+  "characters": "2026-10-09: 4 heroes",
   "connections": "before 2026-10-07",
-  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+  "events": "2026-10-09: nothing: its interactions are curios, filed as objects",
+  "goals": "2026-10-09: checked 8 rows on the wiki: 7 right, Bone Courtier fixed; Hag added",
+  "locations": "2026-10-09: 2 curios, the Nomad Wagon, the Cove and the Weald",
+  "loot": "2026-10-09: 2 provisions",
+  "statuses": "2026-10-09: Stress, Blight"
  },
  "Darkest Dungeon 2": {
   "connections": "before 2026-10-07"
