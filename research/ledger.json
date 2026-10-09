@@ -58,7 +58,13 @@
   "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
  },
  "Aethermancer": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-09: Siriux the Aethermancer",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-09: Myrne the Cook (Lily's reroll and the Merchant are services)",
+  "goals": "2026-10-09: 4: Star Spawn, Ravager, Wolpertinger, Mandragora (Dullahan = live headless goal, Medusa and Cockatrice are NetHack's, Nosferatu a vampire, taming is Cult of the Lamb's)",
+  "locations": "2026-10-09: nothing: the biomes and Rest Sites have nothing a board or map doesn't",
+  "loot": "2026-10-09: nothing: the Monster Flask is a refillable heal (Brogue's Health Charm candidate), equipment is stat affixes",
+  "statuses": "2026-10-09: nothing: Redirect is Bishop's live goal, Corruption folds into Myrne, the rest are stat buffs"
  },
  "Alina of the Arena": {
   "connections": "before 2026-10-07"
