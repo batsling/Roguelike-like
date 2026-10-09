@@ -842,8 +842,13 @@
   "connections": "before 2026-10-07"
  },
  "Dwarf Fortress": {
+  "characters": "2026-10-09: nothing usable: fortress mode has no hero, and its adventurer is a blank",
   "connections": "before 2026-10-07",
-  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+  "events": "2026-10-09: Strange Mood",
+  "goals": "2026-10-09: checked 3 rows (all right); Vampire and Carp added",
+  "locations": "2026-10-09: Magma tile, Cage Trap unit, Hidden Fun Stuff, the Dwarven Caravan",
+  "loot": "2026-10-09: Adamantine",
+  "statuses": "2026-10-09: Cave Adaptation"
  },
  "Dwarves: Glory, Death and Loot": {
   "connections": "before 2026-10-07"
