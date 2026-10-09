@@ -11,6 +11,20 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Research, fourth batch.** The King is Watching, Enter the Gungeon, Breach
+  Wanderers, Aethermancer, Azure Dreams, Ball x Pit, Scourgebringer, Patch
+  Quest, Battle Brothers and Peglin: 70 rows. Smaller wikis meant fewer
+  rows per game. Breach Wanderers has none at all: its wiki is Lua data
+  modules with no descriptions or lore, and the ledger says so. Gungeon's nine
+  blind goals were the worst so far: four bosses filed as enemies, and four
+  goals the wiki doesn't support. Keys and curses got more to do: Flynt
+  takes keys, the Lock-a-doora eats one, Cursula sells at half price plus a
+  curse. Two overlaps from earlier batches were caught on the way and fixed.
+  Commencement's "Go to the moon" repeated the live "Go to a Moon".
+  Aethermancer's wolpertinger repeated Curse of the Dead Gods' stitched
+  creature. The checker used while writing rows now also reads location goals,
+  curse conditions and weapon goals, which is where the first one hid.
+
 - **Research, third batch.** Cult of the Lamb, For the King, Moonlighter,
   Noita, UnderMine, Brogue, Dead Cells, Slice & Dice and Risk of Rain 2, every
   kind: 130 rows. The blind goal rows came out worse here than in batch two.
