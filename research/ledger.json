@@ -726,8 +726,13 @@
   "connections": "before 2026-10-07"
  },
  "Don't Starve": {
+  "characters": "2026-10-09: 4 survivors",
   "connections": "before 2026-10-07",
-  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+  "events": "2026-10-09: 1 row: the Pig King",
+  "goals": "2026-10-09: checked 2 rows against the wiki (both right); 5 added",
+  "locations": "2026-10-09: 1 location, 1 object",
+  "loot": "2026-10-09: 4 rows",
+  "statuses": "2026-10-09: 1 status, 1 curse"
  },
  "Don't Starve Together": {
   "connections": "before 2026-10-07"
