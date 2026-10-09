@@ -587,7 +587,13 @@
   "connections": "before 2026-10-07"
  },
  "Death Road to Canada": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-09: the Mounties",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-09: 3 of its ~180 events",
+  "goals": "2026-10-09: nothing usable: its enemies are generic zombies and bandits, already covered by live goals",
+  "locations": "2026-10-09: Gas Station Siege",
+  "loot": "2026-10-09: 1 special weapon",
+  "statuses": "2026-10-09: nothing usable: its morale system overlaps Darkest Dungeon's Stress candidate"
  },
  "Death Roads: Tournament": {
   "connections": "before 2026-10-07"
