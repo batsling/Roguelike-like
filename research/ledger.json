@@ -1686,8 +1686,13 @@
   "connections": "before 2026-10-07"
  },
  "Noita": {
+  "characters": "2026-10-09: nothing: Minä is live already",
   "connections": "before 2026-10-07",
-  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+  "events": "2026-10-09: nothing: Noita has no events",
+  "goals": "2026-10-09: checked 4 rows: 3 fixed; Stevari added",
+  "locations": "2026-10-09: Holy Mountain, Perk Altar",
+  "loot": "2026-10-09: Polymorphine; its spell-built wands would need a whole new system",
+  "statuses": "2026-10-09: Teleportitis; its other stains duplicate Wet, Tarred and Burn"
  },
  "Nomad Survival": {
   "connections": "before 2026-10-07"
