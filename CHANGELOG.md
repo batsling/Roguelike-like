@@ -11,6 +11,22 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **How research picks what to take, and the first batch.** The owner set the
+  method: a candidate must be recognisable (its own name and flavour), work on
+  top of any game, not duplicate anything live or proposed (one row, from the
+  game that made it most famous), and fill a gap or plug into an existing
+  system. Ideas that need a new mechanic are allowed and flagged. Every kind
+  gained `What it is there` / `Builds on` / `Needs`, and `research.py inventory`
+  lists everything the game has by system, so those choices are made against
+  it. The 80 goal games written blind are back in the queue as `redo:`
+  (check, fix, then add). The research sheet now keeps up with the workbook by
+  itself: `import-games-godot.py` ends with `research.py sync`, and a pair the
+  owner added that disagrees with its research row is listed under "Needs a
+  look". First batch: NetHack, Dungeon Crawl Stone Soup, Diablo and Don't
+  Starve, every kind: ~100 rows, including the first shopkeeper ideas (Izchak
+  and Tristram's four), the first vampire body (Vlad), the first key sources
+  (Skeleton Key, Rune of Zot), and new tiles and units flagged in `Needs`.
+
 - **One research system, eight kinds.** Research used to be three systems in
   three shapes: influences in a markdown doc, goal-enemies in a paste-queue CSV,
   tag suggestions in `tools/Research.xlsx`, each with its own idea of "done".
