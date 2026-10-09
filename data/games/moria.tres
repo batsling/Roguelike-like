@@ -8,9 +8,9 @@ id = &"moria"
 display_name = "Moria"
 year = 1983
 type = 3
-games_influenced = Array[StringName]([&"angband", &"diablo", &"powder"])
-influence_sources = PackedStringArray("https://roguebasin.com/index.php/Angband", "https://roguebasin.com/index.php?title=Diablo", "http://www.zincland.com/powder/?pagename=about")
-influence_relations = PackedStringArray("", "", "")
+games_influenced = Array[StringName]([&"angband", &"diablo", &"lambdarogue_the_book_of_stars", &"powder"])
+influence_sources = PackedStringArray("https://roguebasin.com/index.php/Angband", "https://roguebasin.com/index.php?title=Diablo", "https://blog.roguetemple.com/2008/05/24/lambdarogue-development-goes-strong/", "http://www.zincland.com/powder/?pagename=about")
+influence_relations = PackedStringArray("", "", "", "")
 tags = PackedStringArray()
 enemy_pool = Array[StringName]([])
 item_pool = Array[StringName]([])

@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3 uid="uid://card2_viii_justice"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"viii_justice"
+display_name = "VIII - Justice"
+rarity = "Uncommon"
+source_game = "The Binding of Isaac"
+set_name = "Major Arcana"
+description = "Gain +1 Key, Bomb, Health, and Gold"
+effect = [{"op": "gain_stat", "stat": "keys", "value": 1}, {"op": "gain_stat", "stat": "bombs", "value": 1}, {"op": "gain_hp", "value": 1}, {"op": "gain_stat", "stat": "gold", "value": 1}]
+file = "VIIIJustice"
+icon = "Isaac_Major_Arcana"
+loot_type = "Usable"
+tags = PackedStringArray("tarot")

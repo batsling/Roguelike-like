@@ -318,6 +318,12 @@ func chest_terms() -> Array:
 	if verdict() != "beaten":
 		return []
 	var out: Array = [{"label": "Beat the game", "points": 1, "enemy": null}]
+	# Mom's Key raises the win's own point (GameLoop2.claim_chests); each copy is a
+	# term of its own so the sum names the thing that made the chest bigger.
+	for it in GameState.inventory:
+		if it is ItemData and int(it.base_chest_bonus) > 0:
+			out.append({"label": it.display_name, "points": int(it.base_chest_bonus),
+				"enemy": null, "item": it})
 	for row in _snap.get("chest_sources", []):
 		if not (row is Dictionary):
 			continue
@@ -1011,6 +1017,20 @@ func _sum_term(term: Dictionary) -> Control:
 			RunDifficulty.tier_name(enemy.tier_index()), int(term.get("points", 0))]
 		art.tooltip_text = tip
 		box.add_child(art)
+	elif term.get("item") is ItemData and (term["item"] as ItemData).image != null:
+		# A relic that raises the win's point (Mom's Key): its own art, so the
+		# player sees which piece of the pack bought the bigger chest.
+		var it: ItemData = term["item"]
+		var icon := TextureRect.new()
+		icon.texture = it.image
+		icon.custom_minimum_size = Vector2(REASON_FACE, REASON_FACE)
+		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		UITheme.apply_crisp(icon, it.image)
+		tip = "%s — a beaten game is worth +%d more." % [it.display_name,
+			int(term.get("points", 0))]
+		icon.tooltip_text = tip
+		box.add_child(icon)
 	else:
 		# The win's own point (§8.2): a game beaten with a clear board is still a
 		# Small chest, and the sum has to show where that came from.

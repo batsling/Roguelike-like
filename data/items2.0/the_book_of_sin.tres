@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=3 format=3 uid="uid://item_the_book_of_sin"]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+[ext_resource type="Texture2D" path="res://images2.0/items/TheBookOfSin.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_item")
+id = &"the_book_of_sin"
+display_name = "The Book of Sin"
+kind = 6
+rarity = 1
+description = "Gain +1 Gold, +1 Health, +1 Bomb, +1 Key, or 1 random Loot"
+triggers = [{"on": "item_used", "effects": [{"type": "one_of", "effects": [{"type": "gain_gold", "value": 1}, {"type": "gain_hp", "value": 1}, {"type": "gain_stat", "stat": "bombs", "value": 1}, {"type": "gain_stat", "stat": "keys", "value": 1}, {"type": "gain_loot", "value": 1}]}]}]
+stat_bonuses = {}
+charge_cost = 2
+starts_charged = true
+source_game = "The Binding of Isaac"
+tags = PackedStringArray("book")
+image = ExtResource("2_img")

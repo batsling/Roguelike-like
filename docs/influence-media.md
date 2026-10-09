@@ -7,9 +7,9 @@ Videos and podcast episodes where a developer may say what inspired their game, 
 | | games | results |
 |---|---|---|
 | 1. Confirm a suspected connection | 110 | 312 |
-| 2. Games with few connections | 174 | 552 |
+| 2. Games with few connections | 175 | 555 |
 
-Searched 522 of the 522 games that qualify; 238 had nothing that looked like the developer talking.
+Searched 525 of the 525 games that qualify; 240 had nothing that looked like the developer talking.
 
 ---
 
@@ -70,7 +70,7 @@ Listen for: **Brotato** (sheet says "check folder"); **Enter the Gungeon** (shee
 
 - [ ] podcast [Astro Prospector and Messenger](https://podcasts.apple.com/us/podcast/astro-prospector-and-messenger/id1816643078?i=1000738820270) — Off The Radar · 7 min · 2025-11-28 — names the developer
 
-### Azure Dreams (1997) — 4 connections
+### Azure Dreams (1997) — 5 connections
 
 Listen for: **Torneko's Great Adventure: Mystery Dungeon** (sheet says "look at it")
 
@@ -996,6 +996,12 @@ Held on the map by one connection or none. Listen for any game on the chart.
 - [ ] podcast [Miro Straka of straka.studio Developer Interview](https://podcasts.apple.com/us/podcast/miro-straka-of-straka-studio-developer-interview/id1459327958?i=1000547660367) — Indie Pod: An Indie Games Podcast · 43 min · 2022-01-12 — developer, interview, names the developer
 - [ ] podcast [#37 Slovenská dungeonovka Loot River](https://podcasts.apple.com/us/podcast/37-slovensk%C3%A1-dungeonovka-loot-river/id1558168833?i=1000564190527) — Double Kill · 43 min · 2022-05-27 — names the developer
 - [ ] podcast [E3 2021 / Miro Straka](https://podcasts.apple.com/us/podcast/e3-2021-miro-straka/id1494755008?i=1000626262942) — LAN Parties: A Video Gaming and Esports Podcast · 44 min · 2021-06-16 — cue in the description
+
+### Moonsigil Atlas (2026) — 0 connections
+
+- [ ] podcast [304th Session - Expedition GETT-3](https://podcasts.apple.com/us/podcast/304th-session-expedition-gett-3/id1454701016?i=1000742549512) — Super GG Radio · 87 min · 2025-12-24 — cue in the description
+- [ ] podcast [304th Session - Expedition GETT-3](https://podcasts.apple.com/us/podcast/304th-session-expedition-gett-3/id1696785235?i=1000742549240) — Super GG Radio · 87 min · 2025-12-24 — cue in the description
+- [ ] podcast [Episode 145 - Destroy the WORLD-EGG.](https://podcasts.apple.com/us/podcast/episode-145-destroy-the-world-egg/id1653178238?i=1000732958668) — Girl Mode · 64 min · 2025-10-22 — cue in the description
 
 ### Morsels (2025) — 0 connections
 

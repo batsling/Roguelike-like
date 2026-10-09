@@ -151,12 +151,14 @@ twice.
 | Ride the Bus | Uncommon | `teleport_type deckbuilder` | §5.2 |
 | V - The Hierophant | Common | `gain_stat bonus_shields 2` | |
 | VI - The Lovers | Common | `gain_hp 2` | |
+| VIII - Justice | Uncommon | `gain_stat keys 1; gain_stat bombs 1; gain_hp 1; gain_stat gold 1` | |
 | IX - The Hermit | Uncommon | `teleport_shop` | §5.2 |
 | XIV - Temperance | Common | `spawn_object blood_donation_machine` | §5.3 |
 | 0 - The Fool | Uncommon | `teleport_start` | §5.2 |
 | 2 of Clubs | Rare | `double_stat bombs floor=2` | §5.4 |
 | 2 of Diamonds | Rare | `double_stat gold floor=2` | §5.4 |
 | 2 of Hearts | Rare | `double_stat hp` | §5.4 |
+| 2 of Spades | Rare | `double_stat keys floor=2` | §5.4 |
 | Queen of Hearts | Rare | `gain_hp 1-20` | §5.5 |
 | Ancient Recall | Rare | `gain_loot card 3` | §5.6 |
 | ? Card | Uncommon | `copy_item` | §5.7 |
@@ -254,9 +256,10 @@ Three properties fall out of using that path rather than a new one:
     standing at the game *before* the event kept living in `ObjectSystem` with no
     panel to press it on. `_on_event_finished` now asks once more.
 
-### 5.4 The three twos
+### 5.4 The four twos
 
-`double_stat <what> [floor=<n>]`, three times over. Double what you are holding;
+`double_stat <what> [floor=<n>]`, four times over (2 of Spades, the Keys one,
+came in the October upload). Double what you are holding;
 where you are holding none, `floor` is what you get instead — which is the sheet's
 "if you have no Bombs then Gain +2", and the whole reason the card is not dead in
 the hand of a player who spent everything.

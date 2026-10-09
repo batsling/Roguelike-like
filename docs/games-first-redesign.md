@@ -2271,7 +2271,7 @@ doubles Transmute gains; **Alien Baby** (+6 Max Health but all enemies +1 Health
 plays against the `alien` bounty; **Unstable Genome** self-destructs for a
 3-item choice.
 
-**The Isaac seven**, each of which named a moment or a rule the loop did not have
+**The Isaac seven** (eleven since the October upload), each of which named a moment or a rule the loop did not have
 and so brought a piece of machinery with it:
 
 | Relic | | Brought with it |
@@ -2283,6 +2283,10 @@ and so brought a piece of machinery with it:
 | **Charm of the Vampire** | Uncommon | The **incremental** counter, and `enemy_killed` for it to count. |
 | **D10** | Common, Charged 2 | `reroll_enemies` — the board re-rolled at its own difficulty and type. |
 | **Wooden Nickel** | Common, Charged 1 | Nothing new: a 50% `chance` at +1 Gold, on the shortest bar in the game. |
+| **Mom's Key** | Uncommon, `shop` | `base_chest_bonus` — +1 Key, and a beaten game's own chest point raised to 2 (§8.2). |
+| **The Book of Sin** | Uncommon, Charged 2 | `one_of` — Gold, Health, a Bomb, a Key or a piece of Loot, one at random. |
+| **Latch Key** | Common | Nothing new: +1 Key and +1 Shield kept, +1 Luck while held. |
+| **Book of Revelations** | Rare, Charged 3 | Nothing new: +1 Shield (the pool that stays) per use. |
 
 **The Mewgenics three** are one rule wearing three hats — **Lucky Hat**
 (Common, +1 Luck), **Bionic Face Plating** (Uncommon, +3 Speed) and **Fortune
@@ -2391,6 +2395,8 @@ previously name:
 | `enemy_killed:` | A body was **defeated** (`GameLoop2._defeat`). A bombed enemy is destroyed rather than defeated and never reaches it, the same rule that decides whether the body pays gold (§14). **Charm of the Vampire** counts them. |
 | `counter key=K every=N -> …` | The **incremental** wrapper: fire the inner effects on every Nth time, then roll the count back to zero. The count lives on the inventory slot, not on the run — see the `Incremental` row above. |
 | `boss_chest_bonus: N` | **There's Options.** Chest points added to a boss's drop; see §8.2. |
+| `base_chest_bonus: N` | **Mom's Key.** Chest points added to the point a game **beaten** is worth on its own (§8.2), so the kill chest starts a rung up the ladder and every body defeated still adds its difficulty on top. Raised before a rift doubles it, and paid only on a win, like the point it raises. The haul screen's sum shows it as a term of its own, with the relic's art. Boss chests are There's Options' business, not this. |
+| `one_of A \| B \| …` | **The Book of Sin.** ONE of the listed effects, picked at random each time it fires (`EffectSystem._h_one_of`). Each option is a whole payload effect. The pick is a flat draw that Luck does not steer, for the reason `gain_pickups` gives: Gold is not a better answer than a Key, it is a different one. |
 | `heal_multiplier: N` | **Rejuvenation Rack.** Every **heal** lands at this multiple. Read at `GameState.change_hp` — the one choke point every gain in the run funnels through — so a pill, a potion, an event's payment and a relic's report payout all double without any of them knowing the Rack exists, exactly as `health_lost` is fired from that same point. **A heal is Health arriving in a container that already exists**, and that is the line the flag draws: the fill that comes *with* a bigger container is not one, so "+2 Max Health" still pays 2 and not 4 (`_h_gain_max_hp` says so out loud by tagging it `HEALTH_SOURCE_MAX_HP_FILL`, the one `source` ever read on a gain). Multiplies across copies like `loot_multiplier`, because "double the effect" applied twice is quadruple. |
 | `death_tile <tile>` | **Gasoline.** The tile effect left on the square a **defeated** body fell in (§17.3) — the twin of `bomb_tile`, and its own field precisely so the two can disagree about bombs. |
 | `front_column_slow N` | **Censer** (`front_column_slow 2`). Every body standing in the **front N columns** — the ones in reach of you, and the column they step into reach from — sits out every EXTRA turn: a turn a body is handed beyond the lost runs that are the board's clock (§3.2), which today means Predatory Scent's hunt (§7.6). It touches the front of the board and no further on purpose: a body further back spends its turns *walking*, while at the front a turn is a hit or a step into reach. Read off each body's **live** column inside the turn loop (`_resolve_enemy_turn`'s `extra` beat), so anything added later that hands a body a turn of its own is covered without touching the item. The widest copy wins rather than the sum (`GameState.censer_columns`): a second copy has nothing left to take. The turn a **lost run** buys is untouched — the player paid for it by failing. It used to take one off the road's extra turns at a report; those are retired (§7.4). |

@@ -35,7 +35,7 @@ func _entry(id: StringName) -> Dictionary:
 
 func test_every_card_loads_with_an_effect_and_both_pictures() -> void:
 	var cards: Array = Data.all_cards()
-	assert_eq(cards.size(), 20, "the sheet's 20 rows all generated")
+	assert_eq(cards.size(), 22, "the sheet's 22 rows all generated")
 	for c in cards:
 		assert_true(c is CardData)
 		var card: CardData = c
@@ -166,9 +166,9 @@ func test_which_decks_give_their_card_away_when_it_is_face_down() -> void:
 		"three decks hold one card each and name it on the floor — see LONELY_DECKS")
 	assert_eq(int(counts.get("Balatro_Playing_Cards", 0)), 6,
 		"Ride the Bus and the five jokers")
-	assert_eq(int(counts.get("Isaac_Major_Arcana", 0)), 6,
+	assert_eq(int(counts.get("Isaac_Major_Arcana", 0)), 7,
 		"the arcana are where a face-down card is a real guess")
-	assert_eq(int(counts.get("Isaac_Playing_Cards", 0)), 5)
+	assert_eq(int(counts.get("Isaac_Playing_Cards", 0)), 6)
 
 # --- The drop (§4) ---------------------------------------------------------
 
@@ -251,6 +251,29 @@ func test_the_twos_pay_their_floor_when_you_have_none() -> void:
 	assert_string_contains(String(out["logs"][0]), "you had none")
 	CardSystem.play_card(_entry(&"2_of_clubs"), {"rng": _rng()})
 	assert_eq(GameState.bombs, 2)
+
+func test_the_two_of_spades_doubles_keys_or_pays_two() -> void:
+	GameState.keys = 3
+	CardSystem.play_card(_entry(&"2_of_spades"), {"rng": _rng()})
+	assert_eq(GameState.keys, 6)
+	GameState.keys = 0
+	CardSystem.play_card(_entry(&"2_of_spades"), {"rng": _rng()})
+	assert_eq(GameState.keys, 2, "no Keys pays the authored floor instead")
+
+func test_justice_pays_a_key_a_bomb_a_health_and_a_gold() -> void:
+	GameState.max_hp = 20
+	GameState.hp = 10
+	var keys: int = GameState.keys
+	var bombs: int = GameState.bombs
+	var gold: int = GameState.gold
+	watch_signals(GameState)
+	CardSystem.play_card(_entry(&"viii_justice"), {"rng": _rng()})
+	assert_eq(GameState.keys, keys + 1)
+	assert_eq(GameState.bombs, bombs + 1)
+	assert_eq(GameState.hp, 11)
+	assert_eq(GameState.gold, gold + 1)
+	# Through Gold's own setter, or the purse in the header would not repaint.
+	assert_signal_emitted(GameState, "gold_changed")
 
 func test_doubling_health_is_capped_like_every_other_heal() -> void:
 	GameState.max_hp = 100
