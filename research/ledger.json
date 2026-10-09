@@ -578,8 +578,13 @@
   "connections": "before 2026-10-07"
  },
  "Dead Cells": {
+  "characters": "2026-10-09: The Beheaded",
   "connections": "before 2026-10-07",
-  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+  "events": "2026-10-09: nothing: the NPCs are hub services (Collector, Tailor, Blacksmith); the Swamp Priest's sacrifice is Mama Tick's goal and the timed doors an object",
+  "goals": "2026-10-09: checked: Concierge holds; Giant, Time Keeper, Dracula moved to bosses; Giant, Time Keeper, Hand of the King fixed; 3 added (Mimic, Death, Medusa are other games' candidates)",
+  "locations": "2026-10-09: Prisoners' Quarters, Timed Door",
+  "loot": "2026-10-09: 5 rows: Flawless, Cursed Sword, Dead Inside, Acceptance, Get Rich Quick (Midas' Blood = Piggy Bank)",
+  "statuses": "2026-10-09: Cursed (curse); Bleed, Burn, Stun live, freeze/root/poison covered elsewhere"
  },
  "Dead Estate": {
   "connections": "before 2026-10-07"
