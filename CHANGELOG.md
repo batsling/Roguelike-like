@@ -11,6 +11,28 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **One research system, eight kinds.** Research used to be three systems in
+  three shapes: influences in a markdown doc, goal-enemies in a paste-queue CSV,
+  tag suggestions in `tools/Research.xlsx`, each with its own idea of "done".
+  `tools/research.py` is now the single entry point for connections, tags, goals,
+  loot, events, characters, statuses and locations ([docs/research.md](docs/research.md)).
+  Candidates live in `research/<kind>.csv`, in the target sheet's own columns
+  plus `Why it fits` / `Source` / `Confidence` / `Status` / `Owner` / `ID`. The
+  owner reviews them in `Research.xlsx` (a sheet per kind, `Owner` yes/no), and
+  `sync` brings their edits back row by row against a hidden hash of each row as
+  built, so an owner edit and a session edit to the same row are reported rather
+  than one silently winning. One ledger (`research/ledger.json`, game × kind)
+  replaces `tools/influence_researched.json`. The old candidates moved word for
+  word: 307 goal rows, and every line of `docs/influence-candidates.md` as 585
+  rows, one per pair a line proposes. The workflow also changed: the goal rows
+  were written from search summaries because the wikis were unreachable, and
+  they answer now. `research.py wikis` found a wiki for 333 of the 921 games
+  (`research/wikis.json`, each judged by name and by its main page, which caught
+  three name collisions: a TV show, a web series and a Ragnarök fan wiki).
+  `brief` and `page` read them. A Caves of Qud pilot wrote 20 rows across loot,
+  statuses, locations, events and characters. The porting steps now hand off to
+  `research.py new`, which starts every kind for the games just added.
+
 - **Four Isaac relics, two cards and four games from the October upload.** The
   relics (Book of Revelations, Latch Key, Mom's Key, The Book of Sin) and the two
   cards (VIII - Justice, 2 of Spades) arrived with Descriptions and blank Effect

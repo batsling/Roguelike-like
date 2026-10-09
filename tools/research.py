@@ -58,6 +58,7 @@ import os
 import re
 import subprocess
 import sys
+import threading
 import time
 import urllib.error
 import urllib.parse
@@ -327,15 +328,40 @@ def target_sheet(kind, row):
 
 # ── HTTP and wikis ──────────────────────────────────────────────────────────
 
+# Politeness. A first run of `wikis` fired 8 threads at Fandom unpaced, and
+# Fandom answered by rate-limiting this client for a while. So every request
+# waits its turn per host family (all of *.fandom.com counts as one), and a 429
+# is answered by sleeping as long as the server asks.
+PACE = 0.5  # seconds between requests to one host family
+_last, _pace_lock = {}, threading.Lock()
+
+
+def _host_family(url):
+    host = urllib.parse.urlparse(url).netloc
+    return ".".join(host.split(".")[-2:])
+
+
+def _wait_turn(url):
+    fam = _host_family(url)
+    with _pace_lock:
+        now = time.monotonic()
+        at = max(now, _last.get(fam, 0) + PACE)
+        _last[fam] = at
+    if at > now:
+        time.sleep(at - now)
+
+
 def fetch(url, timeout=30, tries=4):
     for i in range(tries):
+        _wait_turn(url)
         try:
             req = urllib.request.Request(url, headers=UA)
             with urllib.request.urlopen(req, timeout=timeout) as r:
                 return r.status, r.read().decode("utf8", "replace")
         except urllib.error.HTTPError as e:
             if e.code in (429, 502, 503) and i < tries - 1:
-                time.sleep(2 ** (i + 1))
+                after = e.headers.get("Retry-After", "") if e.headers else ""
+                time.sleep(min(int(after), 120) if after.isdigit() else 2 ** (i + 2))
                 continue
             return e.code, ""
         except Exception:
@@ -359,8 +385,10 @@ def api(base, **params):
 
 def _title_norm(s):
     s = s.lower().replace("&", "and")
-    s = re.sub(r"\b(wiki|the|official|community|gamepedia|fandom|en)\b", " ", s)
-    return re.sub(r"[^a-z0-9]", "", s)
+    s = re.sub(r"\b(wiki|wikia|the|official|community|gamepedia|fandom|en)\b", " ", s)
+    s = re.sub(r"[^a-z0-9]", "", s)
+    # "NetHackWiki", "WikiPowder", "Downwell Wikia": the word run into the name.
+    return re.sub(r"^wiki|wikia?$", "", s)
 
 
 SEQUEL = re.compile(r"\s+(\d+|ii|iii|iv|v|vi|remastered|returns|classic|deluxe|hd|plus|\+|redux|"
@@ -413,6 +441,54 @@ def match_quality(game, sitename):
     return None
 
 
+def main_page(base):
+    """The wiki's main page as raw wikitext, or "". Raw because most main pages
+    are built out of templates and the words are in their arguments; and not
+    `action=parse`, which Fandom's Cloudflare answers with a challenge page."""
+    d = api(base, action="query", meta="siteinfo")
+    if not d:
+        return ""
+    title = d["query"]["general"].get("mainpage", "Main Page")
+    q = api(base, action="query", prop="revisions", rvprop="content", rvslots="main", titles=title,
+            redirects="1") or {}
+    for p in q.get("query", {}).get("pages", {}).values():
+        revs = p.get("revisions") or [{}]
+        slot = revs[0].get("slots", {}).get("main", revs[0])
+        return slot.get("*") or slot.get("content") or ""
+    return ""
+
+
+def blurb_of(raw):
+    """A line a person can judge the wiki by."""
+    return " ".join(re.sub(r"\[facts\].*", "", wikitext_to_text(raw)).split())[:240]
+
+
+def signal_of(year, raw):
+    """What the main page says, kept so a later run can re-judge without
+    fetching: "rogue" if it says roguelike/-lite, "year" if it names the
+    release year, "" if neither, None if it could not be read."""
+    if not raw:
+        return None
+    if "rogue" in raw.lower():
+        return "rogue"
+    return "year" if year and str(year) in raw else ""
+
+
+def looks_like_the_game(year, raw, counts, signal=False):
+    """Is a wiki named like the game about it? Guessing an address finds
+    whatever owns the name: "Ragnarok" found a Ragnarök fan wiki, "Ringer" a
+    TV show's, "Omega" a web series'. A roguelike's wiki nearly always says
+    roguelike (or -lite) or the release year on its main page, or at least
+    keeps pages of enemies or items. ("game" is no signal: a TV wiki's
+    navigation says it.) What fails all three is `check`, not rejected; a
+    main page that could not be read is no evidence either way."""
+    sig = signal_of(year, raw) if signal is False else signal
+    if sig is None:
+        return True
+    content = (counts or {}).get("goals", 0) + (counts or {}).get("loot", 0)
+    return bool(sig) or content >= 5
+
+
 def count_categories(base, cap_pages=20):
     """{kind: [(category, pages)]} for the categories that look like content."""
     found = {k: [] for k in CATEGORY}
@@ -451,13 +527,13 @@ def list_pages(base):
     return {k: [t for t in ts if t in have] for k, ts in LIST_PAGES.items() if any(t in have for t in ts)}
 
 
-def discover(game):
+def discover(game, year=""):
     """The best wiki for a game, or a record saying none was found."""
     cands = []
     if game in KNOWN_WIKIS:
         info = siteinfo(KNOWN_WIKIS[game])
         if info:
-            cands.append((KNOWN_WIKIS[game], info, "sure"))
+            cands.append((KNOWN_WIKIS[game], info, "known"))
     for base in wiki_guesses(game):
         info = siteinfo(base)
         if info:
@@ -468,12 +544,18 @@ def discover(game):
         return {"wiki": None, "checked": TODAY}
     # A named-after-the-game wiki beats a series one; then the bigger, which is
     # the live one when a community has moved (most moved Fandom -> wiki.gg).
-    cands.sort(key=lambda c: (c[2] != "sure", -c[1]["articles"]))
+    cands.sort(key=lambda c: (c[2] not in ("known", "sure"), -c[1]["articles"]))
     base, info, q = cands[0]
+    raw = main_page(base)
     cats = count_categories(base)
+    counts = {k: sum(p for _, p in v) for k, v in cats.items()}
+    if q == "known":
+        q = "sure"
+    elif q == "sure" and not looks_like_the_game(year, raw, counts):
+        q = "check"
     rec = {"wiki": info["url"], "api": base, "sitename": info["sitename"], "articles": info["articles"],
-           "match": q, "checked": TODAY,
-           "counts": {k: sum(p for _, p in v) for k, v in cats.items()},
+           "match": q, "checked": TODAY, "blurb": blurb_of(raw), "signal": signal_of(year, raw),
+           "counts": counts,
            "categories": {k: [n for n, _ in v[:12]] for k, v in cats.items() if v},
            "pages": list_pages(base)}
     others = [c[0] for c in cands[1:] if c[0] != base]
@@ -651,10 +733,19 @@ def cmd_wikis(args):
     else:
         names = [g for g in games if g not in wikis]
     names = [g for g in names if (wikis.get(g) or {}).get("set") != "by hand"]
+    if args.blurbs:
+        # Records found before main pages were read: read them now, no rediscovery.
+        todo = [g for g, w in wikis.items() if w.get("api") and w.get("set") != "by hand"]
+        print(f"reading main pages for {len(todo)} wiki(s)", flush=True)
+        with cf.ThreadPoolExecutor(args.threads) as ex:
+            for g, raw in zip(todo, ex.map(lambda g: main_page(wikis[g]["api"]), todo)):
+                wikis[g]["blurb"] = blurb_of(raw)
+                wikis[g]["signal"] = signal_of(games[g]["year"], raw)
+        names = []
     print(f"looking for wikis for {len(names)} game(s)", flush=True)
     done = 0
     with cf.ThreadPoolExecutor(args.threads) as ex:
-        futs = {ex.submit(discover, g): g for g in names}
+        futs = {ex.submit(discover, g, games[g]["year"]): g for g in names}
         for f in cf.as_completed(futs):
             g = futs[f]
             try:
@@ -669,8 +760,15 @@ def cmd_wikis(args):
     # The match rule can change after a wiki was found; it reads only the
     # stored sitename, so every record is re-judged by the current one.
     for g, w in wikis.items():
-        if w.get("sitename") and w.get("set") != "by hand":
-            w["match"] = match_quality(g, w["sitename"]) or "check"
+        if not w.get("sitename") or w.get("set") == "by hand":
+            continue
+        if g in KNOWN_WIKIS and w.get("api") == KNOWN_WIKIS[g]:
+            w["match"] = "sure"
+            continue
+        q = match_quality(g, w["sitename"]) or "check"
+        if q == "sure" and "signal" in w and not looks_like_the_game(None, "", w.get("counts"), w["signal"]):
+            q = "check"
+        w["match"] = q
     save_json(WIKIS, wikis)
     found = sum(1 for g in names if (wikis.get(g) or {}).get("wiki"))
     check = sum(1 for g in names if (wikis.get(g) or {}).get("match") == "check")
@@ -1184,6 +1282,7 @@ def main():
     p = sub.add_parser("wikis", help="find each game's wiki and count its content categories")
     p.add_argument("games", nargs="*", help="just these games (default: every game not looked for yet)")
     p.add_argument("--refresh", action="store_true", help="look again for every game")
+    p.add_argument("--blurbs", action="store_true", help="read every found wiki's main page again, no rediscovery")
     p.add_argument("--threads", type=int, default=6)
     p.set_defaults(fn=cmd_wikis)
 

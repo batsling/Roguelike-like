@@ -267,19 +267,48 @@ so a session cut short leaves the gap visible in `status`.
 `wikis` finds a game's wiki by trying the addresses a community would pick:
 `<title>.fandom.com` and `<title>.wiki.gg`, with and without "the", the
 title before a subtitle, and the series name for a sequel (Spelunky 2 shares
-Spelunky's wiki). A candidate is accepted only if the wiki's own name matches
-the game: `match: sure` when it is named after the game, `match: check` when
-one name contains the other (a series wiki, which may cover several games, so
-read pages with that in mind). Fandom's search is behind Cloudflare and can't be
-used from here, which is why it guesses.
+Spelunky's wiki). Fandom's own search is behind Cloudflare and can't be used
+from here, which is why it guesses. The first full run (October 2026) found a
+wiki for **333 of the 921 games**: 204 on Fandom, 125 on wiki.gg, and the four
+communities on their own domains listed in `KNOWN_WIKIS`.
 
-A few communities run their own domain; those are listed in `KNOWN_WIKIS` in
-`research.py`. To correct a game by hand, edit its entry in `wikis.json` and
-add `"set": "by hand"`, which `wikis --refresh` then leaves alone. Wikipedia
-rate-limits and PCGamingWiki refuses the cloud container, and neither describes
-a game's contents anyway.
+A guessed address finds whatever owns the name, so each find is judged twice:
+
+- **by name**: `match: sure` when the wiki is named after the game, subtitle
+  and all; `check` when one name only contains the other: a series wiki
+  ("Spelunky Wiki" for Spelunky 2) or the game a subtitle hangs off ("Dragon
+  Quest Wiki", 17,000 articles, for Young Yangus). Read a `check` wiki's pages
+  knowing they may be about another game in the series.
+- **by main page**: a name match is kept `sure` only if the main page says
+  roguelike (or -lite) or the release year, or the wiki keeps at least five
+  pages of enemies or items. Otherwise it drops to `check`. This is what caught
+  `ragnarok.fandom.com` (a Ragnarök fan wiki), `ringer.fandom.com` (a TV
+  series) and `omega.fandom.com` (a web series), now set by hand to no wiki.
+  `blurb` holds the first lines of the main page for a person to judge by;
+  `signal` records what it said (`null` when it could not be read).
+
+Each record also holds `counts` (pages in each kind's categories, which is what
+`next` ranks by), `categories` (the ones that matched, biggest first) and
+`pages` (the list articles that exist, such as "Status Effects": statuses
+rarely get a category of their own).
+
+To correct a game by hand, edit its entry and add `"set": "by hand"` (with a
+`note` saying why), which every later run leaves alone.
+
+**Go gently.** The first run fired eight threads at Fandom unpaced, and Fandom
+rate-limited this client for a while (HTTP 429, and a Cloudflare challenge on
+`action=parse`). `fetch` now paces every request per host family (one per
+`PACE` seconds across all threads) and sleeps as long as a 429 asks. Reading a
+page goes through `action=query` (raw wikitext), never `action=parse`.
+Wikipedia also rate-limits and PCGamingWiki refuses the cloud container, but
+neither describes a game's contents anyway.
 
 ## 9. What is not built yet
+
+- **Main-page blurbs are missing for most wikis.** Fandom was rate-limiting
+  this client when they were read, so most records have no `blurb` or
+  `signal` yet (and are judged by name alone). `research.py wikis --blurbs`
+  reads them again without rediscovering anything; run it in a later session.
 
 - **Pasting `yes` rows** is manual for every kind except goals, and the goals
   paste has the `goals`-sheet gap its docstring describes. Build each paste when
