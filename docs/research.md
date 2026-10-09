@@ -229,7 +229,7 @@ written from memory of the game, with no page to point at, is allowed but is
 | characters | its starting classes or heroes: a stat spread and a level-up goal that say who they are | the verbs and stats |
 | statuses | effects that rewrite a goal (Terrified, Lovesick) or change a body on the board; conditions to avoid, for curses | statuses' goal modes, curses' `spawn_enemy` |
 | locations | themed areas with a goal; machines and features you stand at (fountains, altars, slot machines, forges); shopkeepers for the planned named shops | locations' goals, objects' choices, `ShopPanel2`'s `shopkeeper` |
-| board | hazards and placed things for the battlefield (acid, oil, ice, spikes, a turret); listed under loot or locations with `Needs: new: a … tile/unit` until they get a kind of their own | the Fire and Web tiles, the Landmine unit |
+| board | hazards and placed things for the battlefield (acid, oil, ice, spikes, a turret): `research/locations.csv` with `Sheet` `tiles` or `units`. A wand or item that LAYS one is loot, and names the tile in `Needs` | the Fire and Web tiles, the Landmine unit |
 
 ### 6.1 goals → `research/goals.csv`
 
@@ -294,7 +294,10 @@ game's own rule, so the translation can be judged against it.
 
 ### 6.6 locations → `research/locations.csv`
 
-Two sheets. A **location** (`Sheet` locations) is a place with a goal and a
+Five sheets. A **tile** or a **unit** (`Sheet` tiles / units) is something on
+the battlefield: terrain that does something to whatever stands in it, or a
+placed thing with Health. A **shopkeeper** (`Sheet` shopkeepers) is a named
+shop for `ShopPanel2`. A **location** (`Sheet` locations) is a place with a goal and a
 payout: `Difficulty`, `Goal Type`, `Goal`, `Goal Effect` ("Gain +1 Small
 Chest") and the enemy `Tag` it favours. An **object** (`Sheet` objects) is
 something standing in an event, with choices (an arcade machine, a shrine):

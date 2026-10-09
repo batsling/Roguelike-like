@@ -141,7 +141,9 @@ KINDS = {
                  "Description", "Choices", "Image"] + STAGE,
         # `shopkeepers` has no sheet yet: ShopPanel2 reads a `shopkeeper` field
         # and nothing is authored for it (spec §14.5), so ideas wait here.
-        name="Name", sheets=["locations", "objects", "shopkeepers"], categories="locations"),
+        # `tiles` and `units` are the battlefield's terrain and placed things
+        # (Fire, Web, Landmine): what stands ON the board rather than on the map.
+        name="Name", sheets=["locations", "objects", "shopkeepers", "tiles", "units"], categories="locations"),
 }
 # Kinds whose rows are written by hand from a game's sources, game by game.
 # `connections` is researched by tools/influence_research.py, and `tags` by
@@ -169,7 +171,7 @@ TARGET_COLS = {
     "bags": ("Name", "Game"), "wands": ("Name", "Game"), "potions": ("Name", "Reference"),
     "scrolls": ("Scrolls", "Game"), "events": ("Event", "Game"), "characters": ("Name", "Game"),
     "statuses": ("Name", "Game"), "curses": ("Curse", "Game"), "locations": ("Name", "Game"),
-    "objects": ("Name", "Game"),
+    "objects": ("Name", "Game"), "tiles": ("Name", "Game"), "units": ("Name", "Game"),
 }
 
 # What a wiki category is about, by its name. Used for two things: ranking games
@@ -665,8 +667,10 @@ def wikitext_to_text(t):
     return t
 
 
-def page_texts(base, titles):
-    """{title: text} for up to 50 titles per request, following redirects."""
+def page_texts(base, titles, raw=False):
+    """{title: text} for up to 50 titles per request, following redirects.
+    `raw` keeps the wikitext as written: right for pages whose substance is in
+    nested templates (an event's choices, a table of outcomes)."""
     out = {}
     for i in range(0, len(titles), 50):
         chunk = titles[i:i + 50]
@@ -685,8 +689,17 @@ def page_texts(base, titles):
             text = slot.get("*") or slot.get("content") or ""
             t = p["title"]
             t = back.get(t, t)
-            out[norm.get(t, t)] = wikitext_to_text(text)
+            out[norm.get(t, t)] = _raw(text) if raw else wikitext_to_text(text)
     return out
+
+
+def _raw(text):
+    """Wikitext minus the parts that are never content: comments, file links
+    and galleries."""
+    text = re.sub(r"<!--.*?-->", "", text, flags=re.S)
+    text = re.sub(r"<gallery.*?</gallery>", "", text, flags=re.S | re.I)
+    text = re.sub(r"\[\[(?:File|Image):[^\]]*\]\]", "", text, flags=re.I)
+    return re.sub(r"\n{3,}", "\n\n", text).strip()
 
 
 def category_members(base, category, limit=500):
@@ -815,10 +828,10 @@ DESCRIBE = {
     "cards": ("Description",), "weapons": ("Goal", "Passive"), "bags": ("Description",), "wands": ("Description",),
     "potions": ("On Player", "On Tile"), "scrolls": ("Description",), "events": ("Requirement",),
     "characters": ("Level Up",), "statuses": ("Type", "Combat"), "curses": ("Condition",),
-    "locations": ("Goal", "Goal Effect"), "objects": ("Tag",),
+    "locations": ("Goal", "Goal Effect"), "objects": ("Tag",), "tiles": ("Description",),
+    "units": ("Type", "Description"),
 }
-EXTRA_SHEETS = {"abilities": ("Name", "Description"), "tiles": ("Name", "Description"),
-                "units": ("Name", "Description"), "pills": ("Name", "Description"),
+EXTRA_SHEETS = {"abilities": ("Name", "Description"), "pills": ("Name", "Description"),
                 "evolutions": ("Name", "Requirement 2")}
 THIN = 10  # a content sheet with fewer rows than this is a gap worth filling
 
@@ -992,7 +1005,7 @@ def cmd_page(args):
     titles = list(args.titles)
     if args.category:
         titles += category_members(base, args.category, args.limit)
-    texts = page_texts(base, titles)
+    texts = page_texts(base, titles, raw=args.raw)
     for t in titles:
         body = texts.get(t)
         if body is None:
@@ -1503,6 +1516,7 @@ def main():
     p.add_argument("--limit", type=int, default=200, help="pages read from --category")
     p.add_argument("--chars", type=int, default=2500, help="characters per page (0 = all)")
     p.add_argument("--api", help="a wiki's api.php, for a game with none recorded")
+    p.add_argument("--raw", action="store_true", help="the wikitext as written (for pages built from templates)")
     p.set_defaults(fn=cmd_page)
 
     p = sub.add_parser("mark", help="record games as researched for a kind")
