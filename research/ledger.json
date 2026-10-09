@@ -2487,7 +2487,13 @@
   "connections": "2026-10-09"
  },
  "Star of Providence": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-09: Overlord; Chaos left out (repeats the live random-build level-up), Skully (repeats the Collector's full inventory)",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-09: The Trader",
+  "goals": "2026-10-09: 3: Special Offer, Database, Lucid Dream; Twofold left out (repeats Rogue Legacy 2's shared health bar)",
+  "locations": "2026-10-09: Gauntlet, Breachstone, Kleines",
+  "loot": "2026-10-09: 3 cartridges as trinkets; weapons and evolutions: Laser, Fireball, Sword; Donner, Purifier, Dragonbreath (Unique weapons read as evolutions)",
+  "statuses": "2026-10-09: Curse of Haphephobia; Curse of Fatigue left out (repeats Caves of Qud's movement curse)"
  },
  "StarVaders": {
   "connections": "before 2026-10-07"
