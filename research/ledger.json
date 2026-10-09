@@ -156,7 +156,13 @@
   "connections": "before 2026-10-07"
  },
  "Azure Dreams": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-09: Koh",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-09: nothing: the three quests have no pages beyond a line",
+  "goals": "2026-10-09: Kid (hatching); most monster pages are Monster Book stats; Death, Dragon, Hydra, Unicorn, Snowman are other games' rows; Noise = NecroDancer's musician",
+  "locations": "2026-10-09: Frog Trap (tile); the Monster Tower's climb is NetHack's tower goal",
+  "loot": "2026-10-09: nothing: seeds and fruits are potion effects (Tumna is the Frog row), Sands are Scroll of Enchanting",
+  "statuses": "2026-10-09: Frog; Blind and Slow are other games', Chaos is confusion, Angry is a crit buff"
  },
  "BAZR": {
   "connections": "before 2026-10-07"
