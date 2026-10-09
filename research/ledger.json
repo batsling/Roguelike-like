@@ -396,7 +396,7 @@
   "events": "2026-10-09: pilot: rows written from wiki.cavesofqud.com",
   "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed",
   "locations": "2026-10-09: pilot: rows written from wiki.cavesofqud.com",
-  "loot": "2026-10-09: pilot: rows written from wiki.cavesofqud.com",
+  "loot": "2026-10-09: pilot: rows written from wiki.cavesofqud.com; weapons and evolutions: Vibro blade; the geomagnetic disc's return repeats the Boomerang, and the Recipes category is cooking, not evolutions",
   "statuses": "2026-10-09: pilot: rows written from wiki.cavesofqud.com"
  },
  "Cavity Busters": {
@@ -2090,7 +2090,7 @@
   "events": "2026-10-09: nothing as events: the shrines and the Void Cradle are objects",
   "goals": "2026-10-09: checked: Voidling holds; Aurelionite, Xi Construct moved to bosses and fixed; Mithrix fixed; 3 added (Scavenger, Magma Worm, Parent, Imp Overlord are Risk of Rain's)",
   "locations": "2026-10-09: Commencement, Shrine of the Mountain, Shrine of Order, Void Cradle, Newt (Shrine of Blood = IV Bag, Shrine of Chance = Arcade Room)",
-  "loot": "2026-10-09: Brittle Crown, Egocentrism, Gesture of the Drowned, Ceremonial Dagger (Gasoline, Infusion, Rejuvenation Rack are live)",
+  "loot": "2026-10-09: Brittle Crown, Egocentrism, Gesture of the Drowned, Ceremonial Dagger (Gasoline, Infusion, Rejuvenation Rack are live); weapons and evolutions: Royal Capacitor (equipment as a weapon); no evolutions (Void items corrupt items, not weapons)",
   "statuses": "2026-10-09: nothing: the wiki's debuff pages are templates; Bleed, Burn live, Tar and Weak are other games' candidates"
  },
  "Risk of Rain Returns": {
