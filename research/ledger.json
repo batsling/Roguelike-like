@@ -1820,8 +1820,13 @@
   "connections": "before 2026-10-07"
  },
  "Nuclear Throne": {
+  "characters": "2026-10-09: Chicken, Melting; Robot left out (eating repeats Don't Starve's level-up), Steroids (repeats Ball x Pit's two weapons)",
   "connections": "before 2026-10-07",
-  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+  "events": "2026-10-09: nothing: no events",
+  "goals": "2026-10-09: checked 2: I.D.P.D. Elite fixed (goal didn't fit), Big Dog dropped (goal didn't fit; its sleep repeats the Dreaming General); Big Bandit and The Nuclear Throne added; Health Mimic left out (repeats Shattered Pixel Dungeon's mimic)",
+  "locations": "2026-10-09: nothing: the areas are levels with no feature to build a goal on beyond the Oasis, which Big Bandit carries",
+  "loot": "2026-10-09: nothing: weapons and evolutions: none usable (the Weapons page is a table with no item pages; no evolutions); mutations are perks",
+  "statuses": "2026-10-09: nothing: mutations are permanent perks, not statuses"
  },
  "Nunholy": {
   "connections": "before 2026-10-07"
