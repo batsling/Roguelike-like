@@ -139,7 +139,9 @@ KINDS = {
         title="Locations and objects: places on the map, and things standing in them",
         columns=["Sheet", "Name", "Game", "Difficulty", "Goal Type", "Goal", "Goal Effect", "Tag", "Rarity",
                  "Description", "Choices", "Image"] + STAGE,
-        name="Name", sheets=["locations", "objects"], categories="locations"),
+        # `shopkeepers` has no sheet yet: ShopPanel2 reads a `shopkeeper` field
+        # and nothing is authored for it (spec §14.5), so ideas wait here.
+        name="Name", sheets=["locations", "objects", "shopkeepers"], categories="locations"),
 }
 # Kinds whose rows are written by hand from a game's sources, game by game.
 # `connections` is researched by tools/influence_research.py, and `tags` by
@@ -190,7 +192,7 @@ NOT_CONTENT = re.compile(
     r"screenshots?|videos?|disambiguation|deletion|\busers?\b|maintenance|pages with|articles|\bcss\b|"
     r"\bjs\b|cleanup|redirects?|candidates|translat|\bstub\b|hidden|tracking|lua|modules?|gifs?|"
     r"animations?|portraits?|artwork|concept art|patch|updates? \d|version|cut content|unused|"
-    r"navigation|modding|\bdata\b|\btables?\b|population|lists? of|"
+    r"navigation|modding|\bdata\b|\btables?\b|population|lists? of|defunct|missing|"
     r"\b(ja|zh|ko|ru|de|fr|es|pt|pl|it)\b", re.I)
 
 # The list articles a wiki keeps when a kind has no category of its own — a
@@ -736,6 +738,9 @@ def cmd_next(args):
         print(f"every game has been researched for {args.kind}")
 
 
+HAND_FIELDS = ("skip", "note")
+
+
 def cmd_wikis(args):
     games, wikis = catalog(), load_json(WIKIS, {})
     if args.games:
@@ -763,7 +768,10 @@ def cmd_wikis(args):
         for f in cf.as_completed(futs):
             g = futs[f]
             try:
+                old = wikis.get(g) or {}
                 wikis[g] = f.result()
+                # Fields only a person writes survive a rediscovery.
+                wikis[g].update({k: old[k] for k in HAND_FIELDS if k in old})
             except Exception as e:  # one bad wiki never stops the pass
                 print(f"  {g}: failed ({e})")
                 continue
@@ -941,6 +949,10 @@ def cmd_brief(args):
               "inventory: `python3 tools/research.py inventory`.", ""]
     for k in kinds:
         cats = (w.get("categories") or {}).get(k, [])
+        # A wiki that also covers other games (NetHack's covers a dozen variants)
+        # names them in `skip` in wikis.json; their categories bury the game's.
+        if w.get("skip"):
+            cats = [c for c in cats if not re.search(w["skip"], c, re.I)]
         pages = (w.get("pages") or {}).get(k, [])
         lines += [f"## {k}: {KINDS[k]['title']}", ""]
         if not base:

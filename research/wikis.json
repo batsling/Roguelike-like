@@ -9897,6 +9897,9 @@
   "wiki": "https://neophyte.fandom.com"
  },
  "NetHack": {
+  "also": [
+   "https://nethack.fandom.com/api.php"
+  ],
   "api": "https://nethackwiki.com/api.php",
   "articles": 5875,
   "blurb": "NetHackWiki is a free community web site for the game NetHack that anyone can edit. This wiki is one big spoiler, so turn back now if you want to figure things out for yourself. Otherwise, consider taking a look at the basic strategy page. ",
@@ -9931,7 +9934,6 @@
    ],
    "goals": [
     "Monster symbols",
-    "Monsters missing tiles",
     "DNetHack monsters",
     "Monsters",
     "NotdNetHack monsters",
@@ -9941,21 +9943,22 @@
     "SlashTHEM monsters",
     "EvilHack monsters",
     "SpliceHack monsters",
-    "DNetHack monster symbols"
+    "DNetHack monster symbols",
+    "NotdNetHack monster symbols"
    ],
    "locations": [
     "Dungeon features",
-    "Defunct features (SLASH'EM)",
-    "Defunct features (SpliceHack)",
-    "Defunct objects (SLASH'EM)",
     "Special rooms",
     "Object materials",
     "Dungeon branches",
     "DNetHack dungeon branches",
-    "Deferred and defunct features (SlashTHEM)",
     "Deferred features",
     "SLASH'EM dungeon branches",
-    "SlashTHEM dungeon branches"
+    "SlashTHEM dungeon branches",
+    "DNetHack object materials",
+    "Dudley's dungeon",
+    "EvilHack dungeon branches",
+    "NotdNetHack object materials"
    ],
    "loot": [
     "DNetHack weapons",
@@ -9976,8 +9979,8 @@
   "counts": {
    "characters": 208,
    "events": 399,
-   "goals": 4243,
-   "locations": 305,
+   "goals": 3766,
+   "locations": 211,
    "loot": 2404,
    "statuses": 0
   },
@@ -10022,7 +10025,9 @@
     "Intrinsics"
    ]
   },
+  "signal": "",
   "sitename": "NetHackWiki",
+  "skip": "dnethack|notd|slash|splice|evil|unnethack|spork|grunt|xnethack|fiqhack|nethack4|gnollhack|hack'em|variant|deferred",
   "wiki": "https://nethackwiki.com"
  },
  "Netherworld Covenant": {

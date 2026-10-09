@@ -1603,8 +1603,13 @@
   "connections": "before 2026-10-07"
  },
  "NetHack": {
+  "characters": "2026-10-09: 5 roles",
   "connections": "before 2026-10-07",
-  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+  "events": "2026-10-09: 2 rows",
+  "goals": "2026-10-09: checked 15 rows against nethackwiki: 4 fixed (Black Pudding, Mummy, Gas Spore, Medusa now a boss), 5 added",
+  "locations": "2026-10-09: 3 locations, 4 objects, 1 shopkeeper",
+  "loot": "2026-10-09: 12 rows",
+  "statuses": "2026-10-09: 2 statuses, 1 curse"
  },
  "Netherworld Covenant": {
   "connections": "before 2026-10-07"
