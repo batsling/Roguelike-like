@@ -1842,7 +1842,13 @@
   "connections": "before 2026-10-07"
  },
  "Patch Quest": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-09: nothing: the explorer is unnamed",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-09: nothing: no events",
+  "goals": "2026-10-09: Shinobo; riding and taming are Spelunky 2's and Cult of the Lamb's, Jumbo monsters are Tangledeep's elite goal, pet gifts NetHack's",
+  "locations": "2026-10-09: Soap (tile); dungeons and zones are biome lists",
+  "loot": "2026-10-09: Mirror Match; the other charms are small stat or terrain bonuses",
+  "statuses": "2026-10-09: nothing as statuses: Slippery became the Soap tile; Sticky, Smokey, Dizzy, Burned, Frozen, Poisoned overlap Web, invisibility, Discorded, Burn, Slow, Blight"
  },
  "Path of Achra": {
   "connections": "before 2026-10-07"
