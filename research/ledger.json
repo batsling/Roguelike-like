@@ -1848,7 +1848,13 @@
   "connections": "before 2026-10-07"
  },
  "One Step From Eden": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-09: nothing: the playable Shopkeeper's selling repeats Moonlighter's level-up, and the others are fought as bosses here",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-09: nothing: its zones are fights, shops and campfires",
+  "goals": "2026-10-09: Violette, Terra, Terrable; the Shopkeeper boss left out (repeats Spelunky 2's angered shopkeeper), Hostage (filed as the Distress Call place)",
+  "locations": "2026-10-09: Distress Call",
+  "loot": "2026-10-09: Glass Cannon; weapons and evolutions: Guillotine, Ice Hockey; no evolutions (spell upgrades add a letter to the same spell)",
+  "statuses": "2026-10-09: nothing: Frost, Fragile and Root are covered by live or candidate statuses"
  },
  "One Way Heroics": {
   "connections": "before 2026-10-07"
