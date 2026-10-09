@@ -417,14 +417,25 @@ def fetch(url, timeout=30, tries=4):
 
 
 def api(base, **params):
+    """One MediaWiki API call. wiki.gg answers a busy client with HTTP 200 and
+    `{"error": {"code": "ratelimited"}}`, which used to read as "no page"; it
+    is waited out (up to a few minutes) instead, and reported if it persists."""
     params.setdefault("format", "json")
-    status, body = fetch(base + "?" + urllib.parse.urlencode(params))
-    if status != 200:
-        return None
-    try:
-        return json.loads(body)
-    except ValueError:
-        return None
+    for wait in (15, 45, 90, 0):
+        status, body = fetch(base + "?" + urllib.parse.urlencode(params))
+        if status != 200:
+            return None
+        try:
+            d = json.loads(body)
+        except ValueError:
+            return None
+        if (d.get("error") or {}).get("code") != "ratelimited":
+            return d
+        if not wait:
+            print(f"  rate-limited by {urllib.parse.urlparse(base).netloc}; try again later", file=sys.stderr)
+            return None
+        time.sleep(wait)
+    return None
 
 
 def _title_norm(s):
@@ -955,7 +966,8 @@ def weapon_leads(base, members):
     cats = count_categories(base)
     allc = {c for v in cats.values() for c, _ in v}
     wcats = sorted((c for c in allc if WEAPON_CATS.search(c)), key=len)[:4]
-    ecats = sorted((c for c in allc if EVOLUTION_CATS.search(c)), key=len)[:4]
+    ecats = sorted((c for c in allc if EVOLUTION_CATS.search(c)  # "Evolved Bosses" is a monster list
+                    and not re.search(CATEGORY["goals"], c, re.I)), key=len)[:4]
     have = {}
     d = api(base, action="query", titles="|".join(WEAPON_PAGES + EVOLUTION_PAGES), redirects="1")
     if d:
