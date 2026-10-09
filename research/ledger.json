@@ -655,8 +655,13 @@
   "connections": "2026-10-07"
  },
  "Diablo": {
+  "characters": "2026-10-09: the 3 classes",
   "connections": "before 2026-10-07",
-  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+  "events": "2026-10-09: 2 quests as add_goal events",
+  "goals": "2026-10-09: checked 2 rows against the Diablo wiki (both right); 3 added",
+  "locations": "2026-10-09: 2 locations, 2 shrines, 4 Tristram shopkeepers",
+  "loot": "2026-10-09: 3 rows: Diablo I's item pool is mostly generic affixes",
+  "statuses": "2026-10-09: 1 curse; Diablo I has few statuses"
  },
  "Dice & Fold": {
   "connections": "before 2026-10-07"
