@@ -112,13 +112,15 @@ KINDS = {
                  "Why this pairing"] + IDEA + ["Source", "Status", "Owner", "Owner Notes", "ID"],
         name="Name", sheets=["enemies", "bosses"], categories="goals"),
     "loot": dict(
-        title="Loot: items, trinkets, cards, weapons, bags, wands, potions and scrolls",
+        title="Loot: items, trinkets, cards, weapons, evolutions, bags, wands, potions and scrolls",
         # One file for every loot sheet: the columns they share, `Effect` left
         # for the owner, and `Extra` for the few a single sheet has (a wand's
-        # Charges, a weapon's Aim / Area / Goal) as `key=value; key=value`.
+        # Charges, a weapon's Aim / Area / Goal, an evolution's Requirements) as
+        # `key=value; key=value`. `check` holds weapons and evolutions to theirs.
         columns=["Sheet", "Name", "Game", "Rarity", "Type", "Size", "Description", "Effect", "Tags", "File",
                  "Extra"] + STAGE,
-        name="Name", sheets=["items", "trinkets", "cards", "weapons", "bags", "wands", "potions", "scrolls"],
+        name="Name", sheets=["items", "trinkets", "cards", "weapons", "evolutions", "bags", "wands", "potions",
+                                     "scrolls"],
         categories="loot"),
     "events": dict(
         title="Events: a prompt between games, with choices",
@@ -172,13 +174,36 @@ TARGET_COLS = {
     "scrolls": ("Scrolls", "Game"), "events": ("Event", "Game"), "characters": ("Name", "Game"),
     "statuses": ("Name", "Game"), "curses": ("Curse", "Game"), "locations": ("Name", "Game"),
     "objects": ("Name", "Game"), "tiles": ("Name", "Game"), "units": ("Name", "Game"),
+    # No game column: an evolution is named for the weapon it becomes.
+    "evolutions": ("Name", "Game"),
 }
+
+# A weapon or evolution candidate carries its sheet's own columns in `Extra`
+# (docs/loot-passives.md §12-13). These are the keys `check` insists on.
+EXTRA_KEYS = {
+    "weapons": ("Aim", "Area", "Type", "Goal", "Charge"),
+    "evolutions": ("Requirement 1", "Requirement 2", "Outcome"),
+}
+WEAPON_AIMS = {"any", "front", "back", "enemy", "none", "random"}
+EVOLUTION_OUTCOMES = {"Consume All", "Consume None"}
+
+# Weapons and evolutions are asked of every game (the owner's standing
+# request), so `brief` looks for them by name on the live wiki rather than
+# trusting the general loot categories to surface them.
+WEAPON_CATS = re.compile(r"weapons?|\bguns?\b|firearms?|swords?|\bmelee\b|\branged\b|\bbows?\b|"
+                         r"staff|staves|blades?|spears?|\baxes?\b|daggers?|hammers?|launchers?", re.I)
+EVOLUTION_CATS = re.compile(r"evolutions?|evolved|synerg|fusions?|transformations?|recipes?|combos?|"
+                            r"combinations?|crafting|upgrade paths?", re.I)
+WEAPON_PAGES = ["Weapons", "Guns", "Melee Weapons", "Ranged Weapons", "Weapon", "Swords"]
+EVOLUTION_PAGES = ["Evolutions", "Evolution", "Weapon Evolutions", "Synergies", "Synergy", "Transformations",
+                   "Fusion", "Fusions", "Recipes", "Crafting", "Combinations", "Combos"]
 
 # What a wiki category is about, by its name. Used for two things: ranking games
 # by how much their wiki documents (`next`), and listing what to read (`brief`).
 CATEGORY = {
     "goals": r"enem(y|ies)|monsters?|bosses|\bboss\b|creatures?|\bmobs?\b|minions|foes|bestiary|villains",
-    "loot": r"\bitems?\b|relics?|\bcards?\b|weapons?|potions?|scrolls?|wands?|\brings?\b|amulets?|trinkets?|"
+    "loot": r"\bitems?\b|relics?|\bcards?\b|weapons?|\bguns?\b|potions?|scrolls?|wands?|\brings?\b|amulets?|"
+            r"trinkets?|evolutions?|synerg|fusions?|transformations?|recipes?|"
             r"artifacts?|artefacts?|equipment|consumables?|passives?|actives?|pickups?|jokers?|upgrades|perks?|"
             r"blessings?|boons?|\bgear\b|armou?r|charms?|curios?|\bfood\b|treasures?|tools\b|spells?|augments?",
     "events": r"\bevents?\b|encounters?|\bquests?\b|dialogues?|\bchoices\b",
@@ -204,7 +229,8 @@ LIST_PAGES = {
     "goals": ["Enemies", "Monsters", "Bosses", "Bestiary", "Creatures", "Mobs", "Minibosses"],
     "loot": ["Items", "Relics", "Weapons", "Cards", "Potions", "Scrolls", "Wands", "Trinkets", "Jokers",
              "Artifacts", "Equipment", "Consumables", "Upgrades", "Boons", "Pickups", "Rings", "Amulets",
-             "Spells", "Tools", "Food", "Charms", "Perks", "Blessings", "Curios", "Augments"],
+             "Spells", "Tools", "Food", "Charms", "Perks", "Blessings", "Curios", "Augments", "Guns",
+             "Evolutions", "Synergies", "Transformations", "Recipes"],
     "events": ["Events", "Encounters", "Random events", "Random Events", "Quests", "Shrines", "NPCs"],
     "characters": ["Characters", "Classes", "Heroes", "Playable characters", "Survivors", "Races", "Roles"],
     "statuses": ["Status Effects", "Status effects", "Status Effect", "Statuses", "Status", "Buffs", "Debuffs",
@@ -829,10 +855,9 @@ DESCRIBE = {
     "potions": ("On Player", "On Tile"), "scrolls": ("Description",), "events": ("Requirement",),
     "characters": ("Level Up",), "statuses": ("Type", "Combat"), "curses": ("Condition",),
     "locations": ("Goal", "Goal Effect"), "objects": ("Tag",), "tiles": ("Description",),
-    "units": ("Type", "Description"),
+    "units": ("Type", "Description"), "evolutions": ("Requirement 1", "Requirement 2", "Outcome"),
 }
-EXTRA_SHEETS = {"abilities": ("Name", "Description"), "pills": ("Name", "Description"),
-                "evolutions": ("Name", "Requirement 2")}
+EXTRA_SHEETS = {"abilities": ("Name", "Description"), "pills": ("Name", "Description")}
 THIN = 10  # a content sheet with fewer rows than this is a gap worth filling
 
 
@@ -923,6 +948,38 @@ def cmd_inventory(args):
     print(text if not args.quiet else f"wrote {os.path.relpath(path, ROOT)}")
 
 
+def weapon_leads(base, members):
+    """The brief's standing section: where this wiki keeps its weapons and its
+    evolutions (synergies, fusions, recipes), found live by name so a wiki
+    whose loot categories bury them still shows them."""
+    cats = count_categories(base)
+    allc = {c for v in cats.values() for c, _ in v}
+    wcats = sorted((c for c in allc if WEAPON_CATS.search(c)), key=len)[:4]
+    ecats = sorted((c for c in allc if EVOLUTION_CATS.search(c)), key=len)[:4]
+    have = {}
+    d = api(base, action="query", titles="|".join(WEAPON_PAGES + EVOLUTION_PAGES), redirects="1")
+    if d:
+        q = d.get("query", {})
+        back = {r["to"]: r["from"] for r in q.get("redirects", [])}
+        have = {back.get(p["title"], p["title"]) for p in q.get("pages", {}).values()
+                if "missing" not in p and "invalid" not in p}
+    out = ["## Weapons and evolutions (asked of every game)", "",
+           "A weapon is swung or fired: `Sheet` `weapons`, with `Extra` Aim, Area, Type, Goal, Charge. An "
+           "evolution turns a weapon into a better one when a named piece or a tagged family is held: `Sheet` "
+           "`evolutions`, Name = what it becomes, `Extra` Requirement 1 (the weapon), Requirement 2, Outcome "
+           "(docs/research.md §6.2).", ""]
+    for label, found, pages in (("Weapons", wcats, WEAPON_PAGES), ("Evolutions", ecats, EVOLUTION_PAGES)):
+        lp = [p for p in pages if p in have]
+        out += [f"### {label}", "", "List articles: " + (", ".join(lp) or "none"), ""]
+        for c in found[:2]:
+            m = category_members(base, c, members)
+            if m:
+                out += [f"Category:{c} ({len(m)}{'+' if len(m) >= members else ''}): " + ", ".join(m), ""]
+        if not lp and not found:
+            out += [f"- no {label.lower()} category or page: say so in the ledger note", ""]
+    return out
+
+
 def cmd_brief(args):
     games = catalog()
     if args.game not in games:
@@ -986,6 +1043,8 @@ def cmd_brief(args):
             shown += 1
             lines += [f"### Category:{c} ({len(members)}{'+' if len(members) >= args.members else ''})", "",
                       ", ".join(flag(m) for m in members), ""]
+    if base and (not args.kind or args.kind == "loot"):
+        lines += weapon_leads(base, args.members)
     lines += ["Read pages: `python3 tools/research.py page \"%s\" \"<title>\" ...` or `--category \"<name>\"`."
               % args.game, "Rules for each kind's rows: docs/research.md.", ""]
     text = "\n".join(lines)
@@ -1118,6 +1177,42 @@ def assign_ids(kind, rows):
         seen.add(rid)
 
 
+def extra_of(row):
+    """A loot row's `Extra` as a dict: `Aim=front; Goal=Be a hero` -> {Aim: front, Goal: Be a hero}."""
+    out = {}
+    for part in row.get("Extra", "").split(";"):
+        if "=" in part:
+            k, v = part.split("=", 1)
+            out[k.strip()] = v.strip()
+    return out
+
+
+def check_loot_extra(rows, where_of):
+    """Weapons and evolutions carry their sheet's own columns in `Extra`; a
+    missing one would paste as a blank the generator refuses."""
+    bad = []
+    weapons = {r["Name"].lower() for r in sheet_table("weapons") if r.get("Name")}
+    weapons |= {r["Name"].lower() for r in rows if r.get("Sheet") == "weapons"}
+    for r in rows:
+        sheet = r.get("Sheet")
+        if sheet not in EXTRA_KEYS:
+            continue
+        ex, where = extra_of(r), where_of(r)
+        missing = [k for k in EXTRA_KEYS[sheet] if not ex.get(k)]
+        if missing:
+            bad.append(f"{where}: {r['Name']} ({sheet}) has no {', '.join(missing)} in Extra")
+        if sheet == "weapons" and ex.get("Aim") and ex["Aim"] not in WEAPON_AIMS \
+                and not re.fullmatch(r"column \d", ex["Aim"]):
+            bad.append(f"{where}: {r['Name']} Aim {ex['Aim']!r} is not one of {sorted(WEAPON_AIMS)} or `column N`")
+        if sheet == "evolutions":
+            if ex.get("Outcome") and ex["Outcome"] not in EVOLUTION_OUTCOMES:
+                bad.append(f"{where}: {r['Name']} Outcome {ex['Outcome']!r} should be Consume All or Consume None")
+            if ex.get("Requirement 1") and ex["Requirement 1"].lower() not in weapons:
+                bad.append(f"{where}: {r['Name']} evolves from {ex['Requirement 1']!r}, which is neither a live "
+                           "weapon nor a weapon candidate (Requirement 1 is always the weapon that turns)")
+    return bad
+
+
 def check(verbose=True):
     """Problems in the store, as a list of strings. Read-only."""
     bad = []
@@ -1157,6 +1252,10 @@ def check(verbose=True):
             elif key in keys:
                 bad.append(f"{where}: {r[k['name']]} is a candidate twice for {key[0]}")
             keys.add(key)
+        if kind == "loot":
+            rows = read_rows(kind)
+            line = {id(r): n for n, r in enumerate(rows, 2)}
+            bad += check_loot_extra(rows, lambda r: f"loot.csv line {line[id(r)]}")
     ledger = load_ledger()
     for g, kinds in ledger.items():
         if g not in games:

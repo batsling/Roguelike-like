@@ -11,7 +11,7 @@ gets found. It is organised as **eight kinds**, one system, one entry point
 | connections | which chart games influenced it, in its developer's words | `connections` | `tools/influence_research.py`, then by hand: **[influence-research.md](influence-research.md)** |
 | tags | which of the sheet's themes it carries | `games` (Tags) | `tools/tag_research.py`, from Steam; nothing by hand |
 | goals | which enemies and bosses would carry a good goal | `enemies`, `bosses` (and `goals`) | its wiki, by hand: §6.1, and **[goal-enemy-candidates.md](goal-enemy-candidates.md)** |
-| loot | which items could become loot, and of which kind | `items`, `trinkets`, `cards`, `weapons`, `bags`, `wands`, `potions`, `scrolls` | its wiki, by hand: §6.2 |
+| loot | which items could become loot, and of which kind, **always including its weapons and any evolutions** | `items`, `trinkets`, `cards`, `weapons`, `evolutions`, `bags`, `wands`, `potions`, `scrolls` | its wiki, by hand: §6.2 |
 | events | which events or encounters could become an event | `events` | its wiki, by hand: §6.3 |
 | characters | which playable characters could become a character | `characters` | its wiki, by hand: §6.4 |
 | statuses | which status effects and curses could become one here | `statuses`, `curses` | its wiki, by hand: §6.5 |
@@ -64,7 +64,9 @@ Kinds that land on several sheets carry a `Sheet` column naming which one
 (`loot`, `statuses`, `locations`, `goals`). `loot` spans eight sheets with
 different columns, so it keeps the ones they share and puts a single sheet's
 own fields in `Extra` as `key=value; key=value` (a wand's `Charges=3`, a
-weapon's `Aim=front; Area=3x1; Goal=…; Charge=3`).
+weapon's `Aim=front; Area=3x1; Type=Melee; Goal=…; Charge=3`, an evolution's
+`Requirement 1=…; Requirement 2=…; Outcome=Consume All`). `check` refuses a
+weapon or evolution row missing one of its keys.
 
 `connections` keeps its old doc's lines whole: `Text` is the line as it was
 written (quote, attribution and all), `Heading` the section it sat under, and
@@ -252,14 +254,26 @@ Pick the sheet by how the thing is USED in its game:
 | an always-on pickup, a relic, a passive item | `items` (relics) | Rarity is the sheet's `Rating`: Common / Uncommon / Rare, or Boss / Event / Starter. Type: Passive, Triggered, Pickup, `Charged, N`, `Usable, N` |
 | small, positional, coin-like, or caring about its neighbours | `trinkets` | Type Passive or Charged; Size `1x1` usually ([loot-passives.md](loot-passives.md)) |
 | played once, or a held card | `cards` | Type Usable or Passive |
-| a weapon you swing or fire | `weapons` | aimed like a thrown potion, charged by its own goal: `Extra` gives Aim, Area, Goal, Charge |
+| a weapon you swing or fire | `weapons` | aimed like a thrown potion, charged by its own goal: `Extra` gives Aim, Area, Type, Goal, Charge. Description is the swing (`Stun N`, a push) and any passive |
+| a weapon turning into a better one | `evolutions` | Name is what it becomes; `Extra` gives Requirement 1 (the weapon that turns: a live one or a weapon candidate), Requirement 2 (`Any [N] Item(s) or Trinket(s) with "tag"`, or one named piece), Outcome (`Consume All` / `Consume None`). Description is what the new weapon does. If the evolved weapon needs its own stats, give it a `weapons` row too |
 | something that holds other things | `bags` | Size is its shape |
 | a charged zapper | `wands` | `Extra`: Charges; Type Ray / Non-Directional / Random |
 | a drink or a thrown flask | `potions` | Preference Positive / Negative / Neutral |
 | read once, for an effect | `scrolls` | Preference as potions |
 
 Rarity is Common / Uncommon / Rare (`Legendary` exists on wands only). Map the
-source game's rarity rather than inventing one. `Tags` are the themes the piece
+source game's rarity rather than inventing one.
+
+**Weapons and evolutions are asked of every game.** The brief has a standing
+section, *Weapons and evolutions*, that finds a wiki's weapon and synergy /
+fusion / recipe pages by name. A game whose fighting is done with weapons
+gets weapon rows. A game with a way for one weapon to become another
+(Vampire Survivors' evolutions, Gungeon's synergies, Ball x Pit's fusions,
+Isaac's transformations) gets evolution rows. A game with neither says so
+in its `loot` ledger note. The live rules are
+[loot-passives.md](loot-passives.md) §12 (weapons: Aim, Area, `stun N`, a goal
+that charges once per game) and §13 (evolutions: Requirement 1 is always the
+weapon that turns). Read them before writing either. `Tags` are the themes the piece
 belongs to (`coin`, `food`, `blood`), as on the live rows.
 
 ### 6.3 events → `research/events.csv`

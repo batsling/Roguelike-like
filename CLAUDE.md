@@ -89,8 +89,9 @@ research runs over the new games (`docs/research.md` §7 has the detail):
    for a roguelike the chart lacks, `nothing found` for a game searched with
    nothing found), **never** into `connections`. Then
    `python3 tools/influence_research.py new --mark`.
-3. **Goals, loot, events, characters, statuses, locations:** read each new
-   game's brief and the wiki pages it lists, write candidate rows into
+3. **Goals, loot (always including weapons and evolutions), events,
+   characters, statuses, locations:** read each new game's brief and the wiki
+   pages it lists, write candidate rows into
    `research/<kind>.csv` by the rules in `docs/research.md` §6, then
    `python3 tools/research.py mark <kind> <game> --note "..."` for EVERY kind,
    rows or not, so "nothing usable" is on record.
