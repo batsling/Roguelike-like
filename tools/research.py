@@ -191,10 +191,11 @@ EVOLUTION_OUTCOMES = {"Consume All", "Consume None"}
 # request), so `brief` looks for them by name on the live wiki rather than
 # trusting the general loot categories to surface them.
 WEAPON_CATS = re.compile(r"weapons?|\bguns?\b|firearms?|swords?|\bmelee\b|\branged\b|\bbows?\b|"
-                         r"staff|staves|blades?|spears?|\baxes?\b|daggers?|hammers?|launchers?", re.I)
-EVOLUTION_CATS = re.compile(r"evolutions?|evolved|synerg|fusions?|transformations?|recipes?|combos?|"
+                         r"staff|staves|blades?|spears?|\baxes?\b|daggers?|hammers?|launchers?|"
+                         r"\borbs?\b|\bballs?\b", re.I)  # Peglin's orbs and Ball x Pit's balls are their weapons
+EVOLUTION_CATS = re.compile(r"evolutions?|evolved|synerg|\bfusions?\b|transformations?|recipes?|combos?|"
                             r"combinations?|crafting|upgrade paths?", re.I)
-WEAPON_PAGES = ["Weapons", "Guns", "Melee Weapons", "Ranged Weapons", "Weapon", "Swords"]
+WEAPON_PAGES = ["Weapons", "Guns", "Melee Weapons", "Ranged Weapons", "Weapon", "Swords", "Orbs", "Balls"]
 EVOLUTION_PAGES = ["Evolutions", "Evolution", "Weapon Evolutions", "Synergies", "Synergy", "Transformations",
                    "Fusion", "Fusions", "Recipes", "Crafting", "Combinations", "Combos"]
 
