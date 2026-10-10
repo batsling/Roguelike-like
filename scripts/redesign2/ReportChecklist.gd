@@ -300,7 +300,8 @@ func _add_weapon_rows() -> void:
 func _resolve_weapon_goal(entry: Dictionary, key: String) -> void:
 	var w: WeaponData = WeaponSystem.def(entry)
 	GameLoop2.mark_row_answered(key)
-	GameLoop2.record_completed_goal("weapon", "Charged: %s — %s" % [w.goal, w.display_name])
+	GameLoop2.record_completed_goal("weapon", "Charged: %s — %s" % [w.goal, w.display_name],
+		String(w.id), "%s — %s" % [w.display_name, w.goal])
 	var landed: int = WeaponSystem.goal_done(entry)
 	if landed <= 0:
 		_announce("%s is already full — the goal is logged." % w.display_name, UITheme.TEXT_DIM)
@@ -962,7 +963,9 @@ func resolve_event_goals() -> void:
 		# report is simply the last moment a row can resolve, not a different kind
 		# of resolution.
 		GameLoop2.record_completed_goal("event",
-			"Event goal — %s" % goal.get("condition", ""))
+			"Event goal — %s" % goal.get("condition", ""),
+			"%s|%s" % [goal.get("event", ""), goal.get("condition", "")],
+			String(goal.get("condition", "")))
 		var src: EventData2 = Data.get_event2(StringName(goal.get("event", &"")))
 		var line: String = src.goal_met if src != null and src.goal_met != "" else \
 			"Event goal met — %s." % goal.get("effects_text", "")
@@ -996,7 +999,8 @@ func resolve_event_goals() -> void:
 		if fcd == null:
 			continue
 		GameLoop2.record_completed_goal("curse",
-			"%s followed — %s" % [fcd.display_name, fcd.goal_text()])
+			"%s followed — %s" % [fcd.display_name, fcd.goal_text()], String(fcd.id),
+			"%s — %s" % [fcd.display_name, fcd.goal_text()])
 		var fline: String = "%s followed — it did not bite this game." % fcd.display_name
 		Notifications.notify(fline, UITheme.CURSE)
 		GameLog.add(fline, UITheme.CURSE)
@@ -1218,9 +1222,11 @@ func _cash_armed(instance: int) -> void:
 		if sd == null:
 			continue
 		GameLoop2.mark_row_answered("bonus:%d:%s" % [instance, sid])
+		var bonus_text: String = sd.objective_text(StatusData.ENEMY,
+			int(row.get("stacks", 1)), any_time)
 		GameLoop2.record_completed_goal("bonus", "Bonus: %s — %s" % [
-			sd.objective_text(StatusData.ENEMY, int(row.get("stacks", 1)), any_time),
-			enemy_name_of(instance)])
+			bonus_text, enemy_name_of(instance)], String(sid),
+			"%s — %s" % [sd.display_name, bonus_text])
 		_announce("%s paid out." % sd.display_name, UITheme.GOLD)
 
 # What colour a player-side status row reads in. GOLD is the checklist's colour

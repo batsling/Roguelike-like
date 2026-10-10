@@ -1654,29 +1654,82 @@ func _show_game_detail(g: GameData) -> void:
 		_detail_box.add_child(_detail_section("Influenced By"))
 		_detail_box.add_child(_label(_game_names(influenced_by), Color(0.7, 0.85, 0.95), 11, false, true))
 
-	# The same record as the Atlas card, from the game's side: how much of the
-	# enemy pool that can appear here has actually been cleared here.
-	var beaten_here: Array = GameStats.enemies_for(g.id)
-	var can_appear: int = GameLoop2.possible_enemies_at(g).size()
-	_detail_box.add_child(HSeparator.new())
-	_detail_box.add_child(_detail_section("Enemies beaten in (%d / %d)"
-		% [beaten_here.size(), maxi(can_appear, beaten_here.size())]))
-	if beaten_here.is_empty():
-		_detail_box.add_child(_label("Nothing beaten here yet.",
-			Color(0.55, 0.55, 0.6), 12, false, true))
-	for entry in beaten_here:
-		_detail_box.add_child(_game_enemy_row(g, entry))
+	_add_goals_section(g)
 
-	# The same record for LEVEL-UPS taken here: which characters managed their
-	# standing condition at this game, and what they wrote about doing it.
-	var levelled_here: Array = GameStats.characters_for_game(g.id)
-	if not levelled_here.is_empty():
-		_detail_box.add_child(HSeparator.new())
-		_detail_box.add_child(_detail_section("Levelled up here (%d)" % levelled_here.size()))
-		for entry in levelled_here:
-			var ch: CharacterData = Data.get_character2(StringName(entry["id"]))
-			if ch != null:
-				_detail_box.add_child(_levelup_row(g, ch, entry, func(): _show_game_detail(g)))
+# EVERY GOAL COMPLETED AT THIS GAME, under one header per kind, in
+# GameStats.GOAL_KINDS order: Character, Enemies, Bosses, Weapons, Statuses,
+# Bonuses, Events, Curses. It was two lists — the enemies beaten here and the
+# level-ups taken here — and the other five kinds of goal were done here and
+# written down nowhere. The enemy and level-up rows keep their notes; the rest
+# say what the goal was and how many times it was done.
+func _add_goals_section(g: GameData) -> void:
+	var all: Dictionary = GameStats.goals_at(g.id)
+	var counted: int = GameStats.distinct_goals_count(g.id)
+	_detail_box.add_child(HSeparator.new())
+	_detail_box.add_child(_detail_section("Goals completed here (%d)" % counted))
+	if all.is_empty():
+		_detail_box.add_child(_label("No goals completed here yet.",
+			Color(0.55, 0.55, 0.6), 12, false, true))
+		return
+	var redraw := func(): _show_game_detail(g)
+	for kind in all.keys():
+		var rows: Array = all[kind]
+		var head: String = "%s (%d)" % [GameStats.GOAL_KIND_NAMES[kind], rows.size()]
+		# The enemy pool, from the game's side: how much of what CAN appear here
+		# has actually been cleared here — the same record as the Atlas card.
+		if kind == "enemy":
+			var can_appear: int = GameLoop2.possible_enemies_at(g).size()
+			head = "%s (%d / %d)" % [GameStats.GOAL_KIND_NAMES[kind], rows.size(),
+				maxi(can_appear, rows.size())]
+		_detail_box.add_child(_goal_kind_header(head))
+		for row in rows:
+			match kind:
+				"enemy", "boss":
+					_detail_box.add_child(_game_enemy_row(g, {"id": row["key"],
+						"beaten": row["done"], "note": row["note"]}))
+				"character":
+					var ch: CharacterData = Data.get_character2(StringName(row["key"]))
+					if ch != null:
+						_detail_box.add_child(_levelup_row(g, ch,
+							{"levels": row["done"], "note": row["note"]}, redraw))
+				_:
+					_detail_box.add_child(_game_goal_row(String(kind), row))
+
+func _goal_kind_header(text: String) -> Label:
+	var l := _label(text, UITheme.GOLD, UITheme.FONT_LABEL)
+	l.set_meta(&"goal_kind_header", true)
+	return l
+
+# One goal of the kinds that carry no note of their own: what it was, and how
+# many times it was done here. A curse says "followed", since that is what
+# completing one means.
+func _game_goal_row(kind: String, row: Dictionary) -> Control:
+	var panel := PanelContainer.new()
+	panel.add_theme_stylebox_override("panel", UITheme.flat(CELL_BG, 6, 9, 1, UITheme.BORDER))
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", UITheme.GAP_HAIR)
+	panel.add_child(col)
+	var top := HBoxContainer.new()
+	top.add_theme_constant_override("separation", UITheme.GAP)
+	col.add_child(top)
+	var what := Label.new()
+	what.text = String(row["label"])
+	what.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	what.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	what.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
+	what.add_theme_color_override("font_color", UITheme.TEXT)
+	top.add_child(what)
+	var times := Label.new()
+	times.text = ("followed ×%d" if kind == "curse" else "done ×%d") % int(row["done"])
+	times.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
+	times.add_theme_color_override("font_color",
+		UITheme.CURSE if kind == "curse" else UITheme.SUCCESS)
+	times.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	top.add_child(times)
+	var note: String = String(row.get("note", "")).strip_edges()
+	if note != "":
+		col.add_child(_label(note, UITheme.GOLD, UITheme.FONT_BODY, false, true))
+	return panel
 
 # "I own this" — the per-game half of the ownership setting. Live only while the
 # player's own list is the source; under the catalog's list it shows what the

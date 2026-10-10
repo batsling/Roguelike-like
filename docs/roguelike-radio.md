@@ -7,7 +7,7 @@ out of the game window). This is the design and the reasoning; the code is
 
 ## 1. What the owner asked for
 
-- Songs unlocked by **"defeat X distinct enemies in Y"** and **"beat Y X
+- Songs unlocked by **"complete X distinct goals in Y"** and **"beat Y X
   times"**.
 - The music is **music the owner already owns**. It is never committed.
 - Songs are authored in **the spreadsheet**: name, artist, album, year, game,
@@ -36,7 +36,7 @@ row (No Escape, Hades); delete it freely.
 | `Album` | optional |
 | `Year` | optional |
 | `Game` | the game it belongs to **and unlocks on**: its name as the `games` sheet spells it, or its id. Must be in the catalog |
-| `Unlock` | `enemies` or `wins` (`goals` is read as `enemies`). **Blank keeps the song locked.** That is the owner's rule: a row still being authored should not start playing on stream |
+| `Unlock` | `goals` or `wins` (`enemies` is read as `goals`). **Blank keeps the song locked.** That is the owner's rule: a row still being authored should not start playing on stream |
 | `Count` | how many it takes (1 or more when `Unlock` is set) |
 | `File` | the exact file name in the music folder: `.mp3`, `.ogg` or `.wav` |
 | `Image` | album art base name under `images2.0/radio/` (blank = the game's cover) |
@@ -51,17 +51,35 @@ come out as the same id (`<name> <artist>`, slugified).
 
 | Rule | Counts | Source |
 |---|---|---|
-| `enemies` | the **distinct** goal-enemies defeated **at that game**: each enemy counts once, however often it was re-cleared | `GameStats.distinct_enemies_count(game)` (the ids in `enemy_log[game]` with `beaten > 0`) |
+| `goals` | the **distinct** goals completed **at that game**, of every kind but curses: each goal counts once, however often it was done again | `GameStats.distinct_goals_count(game)` (`GameStats.goals_at(game)`, curses left out) |
 | `wins` | every time **that game** was reported beaten | `GameStats.beaten_count(game)` |
 
-It reads **"Defeat 5 distinct enemies in Balatro"**, and the song list names
-the ones already defeated there, so the player knows which enemies count and
-how many are left. Only goal-enemies count; level-ups and status goals don't.
-Re-clearing an enemy you've already beaten doesn't move it; meeting a new one
-does.
+It reads **"Complete 5 distinct goals in Balatro"**, and the song list says
+where the progress came from ("Done here: 2 Enemies, 1 Weapon").
 
-Both counts already existed for every game, so **the radio stores no progress
-of its own**. A song is unlocked exactly when `have >= need`. The only thing it
+**Every kind of goal counts:** the character's level-up, enemies, bosses,
+weapons, standing status goals, bonus clauses and event goals. Doing the same
+goal again (re-clearing Monkey, charging the same Whip) doesn't move it; a new
+one does. **Curses are listed but never counted.** A curse row is a rule you
+followed to dodge a penalty, and counting it would reward taking curses on
+purpose (the owner's call).
+
+### Where each kind is recorded
+
+`GameStats.goals_at(game)` reads three logs as one list, in the order a game's
+Collection page shows them (`GameStats.GOAL_KINDS`): Character, Enemies,
+Bosses, Weapons, Statuses, Bonuses, Events, Curses.
+
+| Kind | Log | Same goal = same… |
+|---|---|---|
+| Character | `levelup_log[game][character]` | character |
+| Enemies / Bosses | `enemy_log[game][enemy]` (split by `Data.get_boss`) | enemy |
+| Weapons, Statuses, Bonuses, Events, Curses | `goal_log[game][kind][key]`, written by `GameLoop2.record_completed_goal(kind, text, key, label)` | weapon id / status id / status id / event + condition / curse id |
+
+`goal_log` is new with this change, so goals of those five kinds done before
+it don't appear; level-ups and enemies go back to the start of the save.
+
+The radio **stores no progress of its own**. A song is unlocked exactly when `have >= need`. The only thing it
 remembers (per profile, `radio.json` in the profile folder) is which unlocks it
 has already **announced**, so each one gets its toast and jumps the queue
 exactly once.
@@ -133,7 +151,7 @@ corner**. It has:
 - the music folder, with Open folder and Rescan (for files added while the game
   is running);
 - every song on the sheet: unlocked first, then the nearest to unlocking, each
-  with its rule and progress ("Defeat 5 distinct enemies in Balatro (3 / 5)", with the three named) and a ▶ to play
+  with its rule and progress ("Complete 5 distinct goals in Balatro (3 / 5)", with where the three came from) and a ▶ to play
   it now.
 
 The speakers, volume, shuffle, station and pause live in `user://radio.cfg`.
@@ -159,3 +177,12 @@ They belong to the PC, like the window mode does, not to a profile.
 - `tools/check_overlay.js`, "roguelike radio": the page plays, seeks to where
   the game says, follows pause and restart, goes silent when the game window is
   the speaker, and only `radio.html` makes a sound.
+
+## 9. The game's Collection page
+
+The game page's goal record is one section, **Goals completed here (N)**, with
+a header per kind in `GOAL_KINDS` order and only the kinds that have something
+in them. N is the radio's count (curses left out). Enemies keep their
+"(beaten / can appear here)" figure. Enemy, boss and level-up rows keep their
+notes and Edit note buttons; the other kinds show what the goal was and
+"done ×N" ("followed ×N" for a curse).

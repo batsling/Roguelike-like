@@ -83,6 +83,32 @@ var status_goal_log: Dictionary = {}
 # each fell at is already in enemy_log.
 var character_enemy_log: Dictionary = {}
 
+# EVERY OTHER KIND OF GOAL, per game: the weapons charged, the standing status
+# goals met, the bonus clauses paid, the event goals claimed and the curses
+# followed. Keyed game id -> kind -> goal key -> {"done": int, "label": String}.
+#
+# The enemies and the level-ups keep their own logs above (they carry notes and
+# predate this); `goals_at` reads all three as one list, which is what the
+# Collection's game page draws and what a `goals` song on Roguelike Radio counts
+# (docs/roguelike-radio.md).
+var goal_log: Dictionary = {}
+
+# THE KINDS, IN THE ORDER A GAME'S PAGE LISTS THEM: who you are, what you fought
+# (bosses after the rest), what you carried, what you were holding yourself to,
+# what an enemy's clause paid, what an event asked for, and last the curses —
+# the one kind you are trying NOT to complete.
+const GOAL_KINDS := ["character", "enemy", "boss", "weapon", "status", "bonus",
+	"event", "curse"]
+const GOAL_KIND_NAMES := {
+	"character": "Character", "enemy": "Enemies", "boss": "Bosses",
+	"weapon": "Weapons", "status": "Statuses", "bonus": "Bonuses",
+	"event": "Events", "curse": "Curses",
+}
+# Kinds that do NOT count towards "complete X distinct goals": a curse row is
+# a rule you followed to avoid a penalty, and rewarding it would reward taking
+# curses on purpose.
+const UNCOUNTED_KINDS := ["curse"]
+
 func _ready() -> void:
 	load_data()
 
@@ -303,20 +329,78 @@ func enemies_for(game_id) -> Array:
 		return String(a["id"]) < String(b["id"]))
 	return out
 
-# The DIFFERENT goal-enemies beaten at a game, each counted once however often
-# it was re-cleared — "defeat X distinct enemies in Y", which is what an
-# `enemies` song on Roguelike Radio unlocks on (docs/roguelike-radio.md).
-func distinct_enemies_beaten(game_id) -> Array:
-	var out: Array = []
-	var at_game: Dictionary = enemy_log.get(String(game_id), {})
-	for e in at_game.keys():
-		if int((at_game[e] as Dictionary).get("beaten", 0)) > 0:
-			out.append(String(e))
-	out.sort()
-	return out
+# One goal of a kind enemy_log and levelup_log do not cover, completed at a
+# game. `key` is what makes two completions the SAME goal (a weapon's id, a
+# status's id, a curse's id); `label` is how the game's page names it.
+func record_goal(game_id, kind: String, key: String, label: String) -> void:
+	var g := String(game_id)
+	if g == "" or key == "" or not (kind in GOAL_KINDS):
+		return
+	if not goal_log.has(g):
+		goal_log[g] = {}
+	if not goal_log[g].has(kind):
+		goal_log[g][kind] = {}
+	var entry: Dictionary = goal_log[g][kind].get(key, {"done": 0, "label": label})
+	entry["done"] = int(entry.get("done", 0)) + 1
+	if label != "":
+		entry["label"] = label
+	goal_log[g][kind][key] = entry
+	save_data()
+	changed.emit()
 
-func distinct_enemies_count(game_id) -> int:
-	return distinct_enemies_beaten(game_id).size()
+# EVERY goal completed at a game, grouped by kind in GOAL_KINDS order:
+# kind -> [{"key", "label", "done", "note"}], each kind sorted by label. Kinds
+# with nothing done are left out.
+func goals_at(game_id) -> Dictionary:
+	var g := String(game_id)
+	var out: Dictionary = {}
+	for e in enemy_log.get(g, {}).keys():
+		var entry: Dictionary = enemy_log[g][e]
+		if int(entry.get("beaten", 0)) <= 0:
+			continue
+		var is_boss: bool = Data.get_boss(StringName(e)) != null
+		var enemy: GoalEnemyData = Data.get_goal_enemy_any(StringName(e))
+		_add_goal(out, "boss" if is_boss else "enemy", String(e),
+			enemy.display_name if enemy != null else String(e).capitalize(),
+			int(entry.get("beaten", 0)), String(entry.get("note", "")))
+	for c in levelup_log.get(g, {}).keys():
+		var entry: Dictionary = levelup_log[g][c]
+		if int(entry.get("levels", 0)) <= 0:
+			continue
+		var ch: CharacterData = Data.get_character2(StringName(c))
+		_add_goal(out, "character", String(c),
+			ch.display_name if ch != null else String(c).capitalize(),
+			int(entry.get("levels", 0)), String(entry.get("note", "")))
+	var rest: Dictionary = goal_log.get(g, {})
+	for kind in rest.keys():
+		for key in rest[kind].keys():
+			var entry: Dictionary = rest[kind][key]
+			var note: String = status_goal_note(g, key) if kind == "status" else ""
+			_add_goal(out, String(kind), String(key), String(entry.get("label", key)),
+				int(entry.get("done", 0)), note)
+	var ordered: Dictionary = {}
+	for kind in GOAL_KINDS:
+		if out.has(kind):
+			var rows: Array = out[kind]
+			rows.sort_custom(func(a, b): return String(a["label"]) < String(b["label"]))
+			ordered[kind] = rows
+	return ordered
+
+func _add_goal(out: Dictionary, kind: String, key: String, label: String,
+		done: int, note: String) -> void:
+	if not out.has(kind):
+		out[kind] = []
+	out[kind].append({"key": key, "label": label, "done": done, "note": note})
+
+# The DISTINCT goals completed at a game, each counted once however often it was
+# done again, curses left out — "complete X distinct goals in Y".
+func distinct_goals_count(game_id) -> int:
+	var n: int = 0
+	var all: Dictionary = goals_at(game_id)
+	for kind in all.keys():
+		if not (kind in UNCOUNTED_KINDS):
+			n += (all[kind] as Array).size()
+	return n
 
 func has_enemy_log(game_id) -> bool:
 	return not enemy_log.get(String(game_id), {}).is_empty()
@@ -470,7 +554,7 @@ func save_data() -> bool:
 		{"games": stats, "deck_wins": deck_wins, "runs": runs,
 		 "enemy_log": enemy_log, "levelup_log": levelup_log,
 		 "status_goal_log": status_goal_log,
-		 "character_enemy_log": character_enemy_log,
+		 "character_enemy_log": character_enemy_log, "goal_log": goal_log,
 		 "donation_bank": donation_bank_total, "last_rifts": last_rifts}, "  "))
 	return true
 
@@ -510,6 +594,7 @@ func load_data() -> void:
 	levelup_log = {}
 	status_goal_log = {}
 	character_enemy_log = {}
+	goal_log = {}
 	donation_bank_total = 0
 	last_rifts = []
 	if not FileAccess.file_exists(save_path()):
@@ -534,6 +619,8 @@ func load_data() -> void:
 		status_goal_log = json.data["status_goal_log"]
 	if json.data.has("character_enemy_log") and typeof(json.data["character_enemy_log"]) == TYPE_DICTIONARY:
 		character_enemy_log = json.data["character_enemy_log"]
+	if json.data.has("goal_log") and typeof(json.data["goal_log"]) == TYPE_DICTIONARY:
+		goal_log = json.data["goal_log"]
 	donation_bank_total = maxi(0, int(json.data.get("donation_bank", 0)))
 	if typeof(json.data.get("last_rifts")) == TYPE_ARRAY:
 		for id in json.data["last_rifts"]:

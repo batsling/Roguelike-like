@@ -731,7 +731,13 @@ const BEATING_A_GAME := "When beating a game"
 #
 # `text` is the row's own finished sentence. Blank text records nothing: a line
 # with no words in it is a line the panel cannot say anything with.
-func record_completed_goal(kind: String, text: String) -> void:
+#
+# `key` and `label`, when given, ALSO put the goal on the game's lifetime record
+# (GameStats.record_goal) — the kinds enemy_log and levelup_log do not already
+# cover: weapons, statuses, bonuses, events and curses. `key` is what makes two
+# completions the same goal; `label` is how the game's Collection page names it.
+func record_completed_goal(kind: String, text: String, key: String = "",
+		label: String = "") -> void:
 	if text.strip_edges() == "":
 		return
 	completed_goals.append({
@@ -739,6 +745,9 @@ func record_completed_goal(kind: String, text: String) -> void:
 		"text": text,
 		"game": GameState.current_game_id,
 	})
+	if key != "" and GameState.current_game_id != &"":
+		GameStats.record_goal(GameState.current_game_id, kind, key,
+			label if label != "" else text)
 
 # Remember a claimed event goal so its row can stay on the checklist for the rest
 # of the game (see `claimed_event_goals`). Takes the goal as GameState handed it
@@ -6119,7 +6128,8 @@ func _record_player_objective(key: String) -> void:
 		return
 	record_completed_goal("status", "%s ×%d — %s, %s" % [
 		status.display_name, stacks, BEATING_A_GAME,
-		status.objective_text(StatusData.PLAYER, stacks)])
+		status.objective_text(StatusData.PLAYER, stacks)], String(status.id),
+		"%s — %s" % [status.display_name, status.objective_text(StatusData.PLAYER, stacks)])
 
 # The player's decaying CLAUSES shed a stack for the game just resolved, when a
 # goal carrying one was actually completed. A player clause sits on EVERY enemy's

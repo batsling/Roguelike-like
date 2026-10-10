@@ -420,12 +420,12 @@ func _song_row(song: SongData) -> Control:
 	sub.add_theme_color_override("font_color", _status_color(song))
 	sub.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	text.add_child(sub)
-	# WHICH enemies have counted so far, so "3 / 5" says what is left to find.
-	var met: Array = Radio.enemies_defeated(song)
-	if song.unlock == &"enemies":
+	# WHAT has counted so far, kind by kind, so "3 / 5" says where it came from.
+	var met: Array = Radio.goals_done(song)
+	if song.unlock == &"goals":
 		var known := Label.new()
-		known.text = ("Defeated here: " + ", ".join(met)) if not met.is_empty() \
-			else "No enemies defeated here yet"
+		known.text = ("Done here: " + ", ".join(met)) if not met.is_empty() \
+			else "No goals done here yet"
 		known.add_theme_font_size_override("font_size", UITheme.FONT_TINY)
 		known.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 		known.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART

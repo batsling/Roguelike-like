@@ -17,6 +17,8 @@ const OTHER := &"balatro"
 var _saved_songs: Dictionary
 var _saved_stats: Dictionary
 var _saved_log: Dictionary
+var _saved_goal_log: Dictionary
+var _saved_levelups: Dictionary
 var _saved_announced: Dictionary
 var _saved_folder: String
 var _saved_config: String
@@ -26,6 +28,8 @@ func before_each() -> void:
 	_saved_songs = Data._songs.duplicate()
 	_saved_stats = GameStats.stats.duplicate(true)
 	_saved_log = GameStats.enemy_log.duplicate(true)
+	_saved_goal_log = GameStats.goal_log.duplicate(true)
+	_saved_levelups = GameStats.levelup_log.duplicate(true)
 	_saved_announced = Radio._announced.duplicate()
 	_saved_folder = Radio.folder
 	_saved_config = Radio.config_path
@@ -33,6 +37,8 @@ func before_each() -> void:
 	Data._songs = {}
 	GameStats.stats = {}
 	GameStats.enemy_log = {}
+	GameStats.goal_log = {}
+	GameStats.levelup_log = {}
 	Radio._announced = {}
 	Radio.folder = FOLDER
 	Radio.config_path = CONFIG
@@ -58,6 +64,8 @@ func after_each() -> void:
 	Data._songs = _saved_songs
 	GameStats.stats = _saved_stats
 	GameStats.enemy_log = _saved_log
+	GameStats.goal_log = _saved_goal_log
+	GameStats.levelup_log = _saved_levelups
 	Radio._announced = _saved_announced
 	Radio._save_announced()
 	Radio.folder = _saved_folder
@@ -140,7 +148,7 @@ func test_the_generated_songs_load_as_songs() -> void:
 		if song.game_id != &"":
 			assert_not_null(Data.get_game(song.game_id),
 				"%s's game %s is in the catalog" % [song.id, song.game_id])
-		assert_true(song.unlock in [&"", &"enemies", &"wins"], "%s's rule" % song.id)
+		assert_true(song.unlock in [&"", &"goals", &"wins"], "%s's rule" % song.id)
 	if _saved_songs.is_empty():
 		pending("the radio sheet has no rows yet")
 
@@ -154,38 +162,44 @@ func test_a_wins_song_unlocks_on_the_games_beaten_count() -> void:
 	_wins(GAME, 3)
 	assert_true(Radio.is_unlocked(s), "3 of 3 is")
 
-func test_an_enemies_song_counts_each_enemy_once() -> void:
-	var s := _song("grind", &"enemies", 3)
-	GameStats.enemy_log[String(GAME)] = {
-		"monkey": {"beaten": 5, "note": ""}, "floating_eye": {"beaten": 1, "note": ""}}
-	assert_eq(GameStats.distinct_enemies_count(GAME), 2,
-		"five Monkeys are one enemy, not five")
-	assert_false(Radio.is_unlocked(s))
-	GameStats.enemy_log[String(GAME)]["monkey"]["beaten"] = 50
-	assert_false(Radio.is_unlocked(s), "re-clearing the same enemy does not move it")
-	GameStats.enemy_log[String(GAME)]["lava_slime"] = {"beaten": 1, "note": ""}
-	assert_true(Radio.is_unlocked(s), "a third different enemy does")
+func test_a_goals_song_counts_each_distinct_goal_of_every_kind() -> void:
+	var s := _song("grind", &"goals", 4)
+	GameStats.enemy_log[String(GAME)] = {"monkey": {"beaten": 5, "note": ""}}
+	assert_eq(GameStats.distinct_goals_count(GAME), 1, "five Monkeys are one goal")
+	GameStats.record_goal(GAME, "weapon", "whip", "Whip — kill 3 enemies")
+	GameStats.record_goal(GAME, "weapon", "whip", "Whip — kill 3 enemies")
+	assert_eq(GameStats.distinct_goals_count(GAME), 2, "the same weapon twice is one goal")
+	GameStats.record_goal(GAME, "status", "strength", "Strength — win without healing")
+	GameStats.levelup_log[String(GAME)] = {"isaac": {"levels": 1, "note": ""}}
+	assert_true(Radio.is_unlocked(s), "an enemy, a weapon, a status and a level-up: 4")
 
-func test_a_note_without_a_win_is_not_a_defeated_enemy() -> void:
+func test_a_curse_is_listed_but_never_counted() -> void:
+	var s := _song("grind", &"goals", 1)
+	GameStats.record_goal(GAME, "curse", "poor_sleep", "Poor Sleep — don't rest")
+	assert_true(GameStats.goals_at(GAME).has("curse"), "the curse is on the record")
+	assert_eq(GameStats.distinct_goals_count(GAME), 0, "but it unlocks nothing")
+	assert_false(Radio.is_unlocked(s))
+
+func test_a_note_without_a_win_is_not_a_goal() -> void:
 	# enemy_log also holds notes written before a clear (GameStats.set_enemy_note).
-	var s := _song("grind", &"enemies", 1)
+	var s := _song("grind", &"goals", 1)
 	GameStats.enemy_log[String(GAME)] = {"monkey": {"beaten": 0, "note": "next time"}}
-	assert_eq(GameStats.distinct_enemies_count(GAME), 0)
+	assert_eq(GameStats.distinct_goals_count(GAME), 0)
 	assert_false(Radio.is_unlocked(s))
 
-func test_enemies_at_another_game_do_not_count() -> void:
-	var s := _song("grind", &"enemies", 1)
+func test_goals_at_another_game_do_not_count() -> void:
+	var s := _song("grind", &"goals", 1)
 	_defeat_distinct(OTHER, 9)
 	assert_false(Radio.is_unlocked(s))
 
-func test_the_list_names_the_enemies_that_counted() -> void:
-	var s := _song("grind", &"enemies", 5)
-	var monkey: GoalEnemyData = Data.get_goal_enemy_any(&"monkey")
-	GameStats.enemy_log[String(GAME)] = {"monkey": {"beaten": 2, "note": ""}}
-	var names: Array = Radio.enemies_defeated(s)
-	assert_eq(names, [monkey.display_name if monkey != null else "Monkey"])
-	assert_eq(Radio.enemies_defeated(_song("w", &"wins", 1)), [],
-		"a wins song has no enemies to name")
+func test_the_list_says_where_the_progress_came_from() -> void:
+	var s := _song("grind", &"goals", 5)
+	_defeat_distinct(GAME, 2)
+	GameStats.record_goal(GAME, "weapon", "whip", "Whip")
+	GameStats.record_goal(GAME, "curse", "poor_sleep", "Poor Sleep")
+	assert_eq(Radio.goals_done(s), ["2 Enemies", "1 Weapon"], "curses left out")
+	assert_eq(Radio.goals_done(_song("w", &"wins", 1)), [],
+		"a wins song has nothing to list")
 
 func test_a_song_with_no_rule_stays_locked() -> void:
 	var s := _song("draft", &"", 0)
@@ -206,10 +220,10 @@ func test_an_unlocked_song_without_its_file_is_listed_but_not_played() -> void:
 func test_the_rule_reads_as_a_sentence() -> void:
 	assert_eq(Radio.rule_text(_song("a", &"wins", 1)), "Beat Hades once")
 	assert_eq(Radio.rule_text(_song("b", &"wins", 3)), "Beat Hades 3 times")
-	assert_eq(Radio.rule_text(_song("c", &"enemies", 10)),
-		"Defeat 10 distinct enemies in Hades")
-	assert_eq(Radio.rule_text(_song("d", &"enemies", 1)),
-		"Defeat 1 distinct enemy in Hades")
+	assert_eq(Radio.rule_text(_song("c", &"goals", 10)),
+		"Complete 10 distinct goals in Hades")
+	assert_eq(Radio.rule_text(_song("d", &"goals", 1)),
+		"Complete 1 distinct goal in Hades")
 
 func test_an_unlock_is_announced_once_and_plays_next() -> void:
 	var first := _song("first")
@@ -390,7 +404,7 @@ func test_the_overlay_writes_a_radio_view() -> void:
 
 func test_the_screen_lists_every_song_and_drives_the_radio() -> void:
 	_song("a")
-	_song("b", &"enemies", 4)
+	_song("b", &"goals", 4)
 	_wins(GAME, 1)
 	_defeat_distinct(GAME, 1)
 	Radio.next()
@@ -403,11 +417,59 @@ func test_the_screen_lists_every_song_and_drives_the_radio() -> void:
 	for row in screen._list.get_children():
 		for l in row.find_children("*", "Label", true, false):
 			text += (l as Label).text + "\n"
-	assert_string_contains(text, "Defeat 4 distinct enemies in Hades  (1 / 4)")
-	assert_string_contains(text, "Defeated here: ")
+	assert_string_contains(text, "Complete 4 distinct goals in Hades  (1 / 4)")
+	assert_string_contains(text, "Done here: 1 Enemy")
 	screen._play_btn.pressed.emit()
 	assert_true(Radio.paused, "the play button pauses")
 	screen._volume.value = 40
 	assert_almost_eq(Radio.volume, 0.4, 0.001, "the slider sets the volume")
 	screen.close()
 	await get_tree().process_frame
+
+# --- the game's Collection page ---------------------------------------------
+
+func test_every_kind_of_goal_lists_under_its_header_in_order() -> void:
+	GameStats.levelup_log[String(GAME)] = {"isaac": {"levels": 1, "note": ""}}
+	_defeat_distinct(GAME, 1)
+	GameStats.record_goal(GAME, "curse", "poor_sleep", "Poor Sleep — don't rest")
+	GameStats.record_goal(GAME, "event", "e|x", "Win without a shop")
+	GameStats.record_goal(GAME, "weapon", "whip", "Whip — kill 3")
+	GameStats.record_goal(GAME, "status", "strength", "Strength — no heals")
+	GameStats.record_goal(GAME, "bonus", "burn", "Burn — beat it burning")
+	var boss: GoalEnemyData = Data.all_bosses()[0] if not Data.all_bosses().is_empty() else null
+	if boss != null:
+		GameStats.enemy_log[String(GAME)][String(boss.id)] = {"beaten": 1, "note": ""}
+	var want: Array = ["character", "enemy", "boss", "weapon", "status", "bonus",
+		"event", "curse"]
+	if boss == null:
+		want.erase("boss")
+	assert_eq(GameStats.goals_at(GAME).keys(), want, "the Collection's order")
+
+	var c := Collection.new()
+	add_child_autofree(c)
+	await get_tree().process_frame
+	c._show_game_detail(Data.get_game(GAME))
+	var heads: Array = []
+	for n in c._detail_box.get_children():
+		if n.has_meta(&"goal_kind_header"):
+			heads.append((n as Label).text.get_slice(" (", 0))
+	var names: Array = want.map(func(k): return GameStats.GOAL_KIND_NAMES[k])
+	assert_eq(heads, names, "one header per kind, in order")
+	var all_text: String = ""
+	for l in c._detail_box.find_children("*", "Label", true, false):
+		all_text += (l as Label).text + "\n"
+	assert_string_contains(all_text, "Goals completed here (%d)" % (want.size() - 1),
+		"the count leaves the curse out")
+	assert_string_contains(all_text, "followed ×1", "a curse reads as followed")
+	assert_string_contains(all_text, "Whip — kill 3")
+
+func test_a_completed_goal_lands_on_the_game_it_was_done_at() -> void:
+	var was: StringName = GameState.current_game_id
+	GameState.current_game_id = GAME
+	GameLoop2.record_completed_goal("weapon", "Charged: kill 3 — Whip", "whip", "Whip — kill 3")
+	GameLoop2.record_completed_goal("enemy", "Cleared: Monkey")
+	GameState.current_game_id = was
+	GameLoop2.completed_goals.resize(GameLoop2.completed_goals.size() - 2)
+	assert_eq(GameStats.goals_at(GAME).get("weapon", []).size(), 1)
+	assert_false(GameStats.goals_at(GAME).has("enemy"),
+		"an enemy goes on the record through enemy_log, not twice")

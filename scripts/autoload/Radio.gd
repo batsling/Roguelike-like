@@ -7,7 +7,7 @@ extends Node
 #
 #   * The SONGS are content like everything else: rows of the `radio` sheet,
 #     generated into data/songs/ (SongData). A row says which game the song
-#     belongs to and what it takes there — `enemies` (distinct goal-enemies beaten at that
+#     belongs to and what it takes there — `goals` (distinct goals of any kind but curses, completed at that
 #     game) or `wins` (times it has been reported beaten) — and how many.
 #   * The AUDIO is the player's own and never in the repo. It sits in FOLDER on
 #     their machine and a row only names the file.
@@ -115,8 +115,8 @@ func progress(song: SongData) -> Dictionary:
 		return {"have": 0, "need": 0}
 	var have: int = 0
 	match song.unlock:
-		&"enemies":
-			have = GameStats.distinct_enemies_count(song.game_id)
+		&"goals":
+			have = GameStats.distinct_goals_count(song.game_id)
 		&"wins":
 			have = GameStats.beaten_count(song.game_id)
 	return {"have": have, "need": song.count}
@@ -139,19 +139,38 @@ func rule_text(song: SongData) -> String:
 	var name: String = game.display_name if game != null else String(song.game_id)
 	if song.unlock == &"wins":
 		return "Beat %s %s" % [name, "once" if song.count == 1 else "%d times" % song.count]
-	return "Defeat %d distinct enem%s in %s" % [song.count,
-		"y" if song.count == 1 else "ies", name]
+	return "Complete %d distinct goal%s in %s" % [song.count,
+		"" if song.count == 1 else "s", name]
 
-# The names of the distinct enemies already defeated towards an `enemies` song,
-# so the list can say WHICH ones count and the player knows what is left.
-func enemies_defeated(song: SongData) -> Array:
-	if song == null or song.unlock != &"enemies":
+# What has counted so far towards a `goals` song, kind by kind in the
+# Collection's order — "2 Enemies, 1 Weapon" — so the list says where the
+# progress came from. Curses are left out: they do not count.
+func goals_done(song: SongData) -> Array:
+	if song == null or song.unlock != &"goals":
 		return []
 	var out: Array = []
-	for id in GameStats.distinct_enemies_beaten(song.game_id):
-		var e: GoalEnemyData = Data.get_goal_enemy_any(StringName(id))
-		out.append(e.display_name if e != null else String(id).capitalize())
+	var all: Dictionary = GameStats.goals_at(song.game_id)
+	for kind in all.keys():
+		if kind in GameStats.UNCOUNTED_KINDS:
+			continue
+		var n: int = (all[kind] as Array).size()
+		var name: String = GameStats.GOAL_KIND_NAMES[kind]
+		out.append("%d %s" % [n, name if n != 1 else _singular(name)])
 	return out
+
+static func _singular(plural: String) -> String:
+	match plural:
+		"Enemies":
+			return "Enemy"
+		"Statuses":
+			return "Status"
+		"Bosses":
+			return "Boss"
+		"Bonuses":
+			return "Bonus"
+		"Character":
+			return "Character"
+	return plural.trim_suffix("s")
 
 # Every tag any song carries, sorted: the stations.
 func stations() -> Array:
