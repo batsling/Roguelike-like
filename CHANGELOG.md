@@ -11,6 +11,22 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Research, twelfth batch.** OneBit Adventure, Roboquest, Blazing Beaks,
+  Absolum, Ravenswatch, Dungeon Drafters, Boyfriend Dungeon, Curse of the Dead
+  Gods, Rift Wizard 2 and Spelunky Classic: 10 new rows, 1 clone and the
+  check of 10 old blind goal rows. The wikis this far down the list are thin
+  (Roboquest, Blazing Beaks and Dungeon Drafters keep names without effects),
+  and Spelunky Classic and Rift Wizard 2 share their series' wikis with games
+  already researched. Of Curse of the Dead Gods' eight old rows, Dreadful
+  Offspring was wrong (they teleport and shoot lightning; nothing multiplies)
+  and Headless Guardian repeats the live Pacer; both, and the loose Malok paal,
+  are now `?` for the owner rather than rewritten into another repeat. Spelunky
+  Classic's Snake goal had nothing behind it and is now a plain "Defeat a
+  snake". New: The Interloper (close a portal), Fool's Bounty (a curse on
+  opening chests), The Crow (a shopkeeper who buys your cursed pieces) with
+  Infected Bandages to sell her, Punish Ball, the Glass Shrine (a boss
+  rematch), Valeria (a dateable dagger), and the Ostrich, Scarlet and Karl.
+
 - **Research, eleventh batch, the thinnest yet.** Beneath Oresa, Rabbit and
   Steel, Dice & Fold, Turnbound, Dicefolk, One Way Heroics, HoloCure, Rogue
   Heroes: Ruins of Tasos, Dave the Diver and Alina of the Arena: 17 new rows

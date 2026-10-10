@@ -63,7 +63,13 @@
   "connections": "before 2026-10-07"
  },
  "Absolum": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: 1 row: Karl; Cider's grab repeats the live Wringer, Galandra the Necromancer",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: nothing: the events page is empty",
+  "goals": "2026-10-10: 1 row: The Interloper; Gazorg's thrown goblins repeat the Mountie Hockey Stick's goal, Mort Mima the summoners",
+  "locations": "2026-10-10: nothing: regions only",
+  "loot": "2026-10-10: nothing: its Moxes only tune its own Rituals, its charms are percent ups; no evolutions",
+  "statuses": "2026-10-10: nothing"
  },
  "Abyssus": {
   "connections": "before 2026-10-07"
@@ -339,7 +345,13 @@
   "connections": "2026-10-07"
  },
  "Blazing Beaks": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: nothing: no character pages",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: nothing",
+  "goals": "2026-10-10: nothing: its bosses have empty pages",
+  "locations": "2026-10-10: 1 row: The Crow (shopkeeper, trades for cursed artifacts)",
+  "loot": "2026-10-10: 1 row: Infected Bandages (an artifact); Broken Lock repeats the Hungry Locks curse, Black Potato the Golden Vault; weapons and evolutions: none (guns, no pages)",
+  "statuses": "2026-10-10: nothing"
  },
  "Bleak Sword": {
   "connections": "before 2026-10-07"
@@ -381,7 +393,13 @@
   "connections": "before 2026-10-07"
  },
  "Boyfriend Dungeon": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: nothing: the weapons are the cast; the player character is unnamed",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: nothing: its dates are story scenes",
+  "goals": "2026-10-10: nothing: no monster pages beyond a list",
+  "locations": "2026-10-10: nothing: its places are date spots and shops",
+  "loot": "2026-10-10: 1 row: weapons and evolutions: Valeria (a dateable dagger); its items are clothes and gifts; no evolutions (crafting makes outfits)",
+  "statuses": "2026-10-10: nothing"
  },
  "Brawl Tactics: Origins": {
   "connections": "before 2026-10-07"
@@ -704,8 +722,13 @@
   "connections": "before 2026-10-07"
  },
  "Curse of the Dead Gods": {
+  "characters": "2026-10-10: nothing: one unnamed Pretender",
   "connections": "before 2026-10-07",
-  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+  "events": "2026-10-10: nothing: no event screens",
+  "goals": "2026-10-10: checked 8: Dreadful Offspring wrong (they teleport, they don't multiply; a fix would repeat Blink Batty) and marked ?, Headless Guardian repeats the live Pacer (?), Malok paal a loose fit (?); Xucat', Xak'olchir, Champion of Death, Wicked Twins, Infernal Jaguars hold; nothing added: the Blood Priest repeats the Priestess",
+  "locations": "2026-10-10: nothing: Sanctuaries are shops paid in Corruption, close to Sho'guul",
+  "loot": "2026-10-10: nothing new; clone: Sword of Conjunctivius into Cursed Sword; its weapons are categories, its relics have no pages; no evolutions",
+  "statuses": "2026-10-10: 1 row: Fool's Bounty (curse); its other curses change the temple's rules, not a thing you do"
  },
  "Cursed Words": {
   "connections": "before 2026-10-07"
@@ -1046,7 +1069,13 @@
   "connections": "before 2026-10-07"
  },
  "Dungeon Drafters": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: nothing: no character pages",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: nothing: no event pages",
+  "goals": "2026-10-10: nothing: no monster pages",
+  "locations": "2026-10-10: 1 row: Glass Shrine (object); the Hearth is a rest site, the Torch repeats the map scroll, the Stone close to the Glass",
+  "loot": "2026-10-10: nothing: curios have names but no effects on the wiki; no weapons; no evolutions",
+  "statuses": "2026-10-10: nothing"
  },
  "Dungeon Hack": {
   "connections": "before 2026-10-07"
@@ -2075,7 +2104,13 @@
   "statuses": "2026-10-10: nothing: no status pages"
  },
  "OneBit Adventure": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: 1 row: Ostrich; the Blood Knight repeats the Necromancer's lifesteal",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: nothing: its one event page is an April Fool's announcement",
+  "goals": "2026-10-10: nothing: the Greats repeat other games' Hydra, Dragon and Beholder, the Evil Tree the Tendron disguise, the Mimic Chest the Mimic",
+  "locations": "2026-10-10: nothing: the Stewpot repeats the Crock Pot",
+  "loot": "2026-10-10: nothing: plain potions and food; no weapons pages; no evolutions",
+  "statuses": "2026-10-10: nothing: Death (die after 150 steps) repeats the Doomed candidate, Panic the Blind"
  },
  "Orbital Bullet": {
   "connections": "2026-10-07"
@@ -2306,7 +2341,13 @@
   "statuses": "2026-10-10: nothing: its Curse keyword is damage over time (Blight)"
  },
  "Ravenswatch": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: 1 row: Scarlet; Geppetto repeats Wendy's companion, Melusine the Whorl's drowning, Carmilla the Necromancer, the Pied Piper shares a name with a Tainted Grail event",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: nothing: points of interest are fights and shops",
+  "goals": "2026-10-10: nothing: Baba Yaga repeats the Unholy Crones (a witch), the Claws Master Nightmare the shared-health bosses, Steropes the Hag's rescue",
+  "locations": "2026-10-10: nothing",
+  "loot": "2026-10-10: nothing: talents and magical objects are percent ups; no weapons pages",
+  "statuses": "2026-10-10: nothing: its keywords are stats"
  },
  "Reality Break": {
   "connections": "before 2026-10-07"
@@ -2367,7 +2408,13 @@
   "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
  },
  "Rift Wizard 2": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: nothing: one wizard",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: nothing",
+  "goals": "2026-10-10: nothing: its monster pages are stat blocks; Rift Wizard's rows cover the series",
+  "locations": "2026-10-10: nothing",
+  "loot": "2026-10-10: nothing: spells and trinkets that tune spells and summons; no weapons; no evolutions",
+  "statuses": "2026-10-10: nothing"
  },
  "Rift Wizard 3": {
   "connections": "before 2026-10-07"
@@ -2424,7 +2471,13 @@
   "connections": "before 2026-10-07"
  },
  "Roboquest": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: nothing: the classes repeat the Engineer, the Sniper and others",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: nothing",
+  "goals": "2026-10-10: nothing: its bots are generic shooters (the Boom Bot repeats the kamikaze goals), bosses have no pages",
+  "locations": "2026-10-10: nothing",
+  "loot": "2026-10-10: nothing: weapons are generic guns, Artifacts are deprecated; no evolutions",
+  "statuses": "2026-10-10: nothing"
  },
  "Rocket Rats": {
   "connections": "before 2026-10-07"
@@ -2795,8 +2848,13 @@
   "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
  },
  "Spelunky Classic": {
+  "characters": "2026-10-10: nothing: the Spelunker is Spelunky's Spelunky Guy",
   "connections": "before 2026-10-07",
-  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+  "events": "2026-10-10: nothing: the Damsel is Spelunky's event",
+  "goals": "2026-10-10: checked 2: Snake fixed (nothing ties it to the first room: now 'Defeat a snake'), Caveman holds (it frenzies and charges on sight); nothing added: the series' monsters are Spelunky's and Spelunky 2's rows",
+  "locations": "2026-10-10: nothing: altars, shops and the City of Gold are Spelunky's rows",
+  "loot": "2026-10-10: 1 row: Punish Ball; the Sceptre repeats the homing Disposable Missile Launcher, the Crystal Skull the Kolmisilma; weapons and evolutions: none new; no evolutions",
+  "statuses": "2026-10-10: nothing"
  },
  "Spin Hero": {
   "connections": "before 2026-10-07"
