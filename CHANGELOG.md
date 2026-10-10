@@ -11,6 +11,19 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Research, thirteenth batch, and the wikis running out.** Spelunky 2,
+  Nordic Ashes, Colt Canyon, Crying Suns, Conan Chop Chop, Astrea: Six-Sided
+  Oracles, Despot's Game, 33 Immortals, Have a Nice Death and CleanFall: 4 new
+  rows, 2 clones and 6 old goal rows checked. Most of these wikis keep names
+  without effects or behaviour, so there is little to translate. Of Spelunky 2's
+  old rows, the Golden Monkey is a friendly character, not an enemy, and the
+  Witch Doctor's sacrifice goal is wrong (it curses you through an effigy); both
+  are `?` for the owner. New: Immunity Destroyer (statuses work on bosses), two
+  events (A Dragon, a dice roll written as a joke; Mr. O'Shah, boons with a
+  curse on a delay) and the Allergy status (healing hurts). Colt Canyon's
+  tamable dog and its escape after the final boss went in as clones of
+  Cerberus and Mithrix.
+
 - **Research, twelfth batch.** OneBit Adventure, Roboquest, Blazing Beaks,
   Absolum, Ravenswatch, Dungeon Drafters, Boyfriend Dungeon, Curse of the Dead
   Gods, Rift Wizard 2 and Spelunky Classic: 10 new rows, 1 clone and the

@@ -27,7 +27,13 @@
   "connections": "before 2026-10-07"
  },
  "33 Immortals": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: nothing",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: nothing",
+  "goals": "2026-10-10: nothing: no monster pages",
+  "locations": "2026-10-10: nothing: Dante's areas (Inferno, Purgatorio, Paradiso) have no pages; Bullet Hell (Gungeon) is the hell location",
+  "loot": "2026-10-10: nothing: no relic or weapon pages with effects",
+  "statuses": "2026-10-10: nothing"
  },
  "868-Back": {
   "connections": "before 2026-10-07"
@@ -174,7 +180,13 @@
   "statuses": "2026-10-09: nothing: no status pages"
  },
  "Astrea: Six-Sided Oracles": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: nothing",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: nothing: the event pages are blessing lists",
+  "goals": "2026-10-10: nothing: enemies have names only; the Corrupted Chest repeats the Mimic",
+  "locations": "2026-10-10: nothing",
+  "loot": "2026-10-10: nothing: blessings are dice effects with no text on the wiki; no weapons; no evolutions",
+  "statuses": "2026-10-10: nothing"
  },
  "Astro Prospector": {
   "connections": "before 2026-10-07"
@@ -562,7 +574,13 @@
   "connections": "before 2026-10-07"
  },
  "CleanFall": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: nothing: classes are stat pages",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: nothing",
+  "goals": "2026-10-10: nothing: no bestiary entries",
+  "locations": "2026-10-10: nothing",
+  "loot": "2026-10-10: nothing: mining tools and a landmine (live as a unit); no evolutions",
+  "statuses": "2026-10-10: nothing"
  },
  "CloverPit": {
   "characters": "2026-10-10: nothing: one prisoner",
@@ -599,7 +617,13 @@
   "connections": "before 2026-10-07"
  },
  "Colt Canyon": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: nothing: characters differ by stats",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: nothing",
+  "goals": "2026-10-10: nothing new; clones: Dog into Cerberus (pet or tame it), Bandit Boss into Mithrix (fight your way back out); the Slaver is a whip boss",
+  "locations": "2026-10-10: nothing",
+  "loot": "2026-10-10: nothing: weapons are western guns with no pages of effects; the locked crate repeats the Locked Display Cabinet; no evolutions",
+  "statuses": "2026-10-10: nothing: fire and poison are live"
  },
  "Combolands": {
   "connections": "before 2026-10-07"
@@ -608,7 +632,13 @@
   "connections": "before 2026-10-07"
  },
  "Conan Chop Chop": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: nothing: Conan and friends with no character pages",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: nothing",
+  "goals": "2026-10-10: nothing: the bosses have no behaviour pages; the Giant Sand Worm repeats the Magma Worm",
+  "locations": "2026-10-10: nothing",
+  "loot": "2026-10-10: nothing: three items, no effects on the wiki; no weapons pages; no evolutions",
+  "statuses": "2026-10-10: nothing"
  },
  "Conquest Dark": {
   "connections": "2026-10-07"
@@ -659,7 +689,13 @@
   "connections": "before 2026-10-07"
  },
  "Crying Suns": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: nothing: officers are stat cards",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: nothing new: its anomalies are paid-or-fight (the Pirate Magnetic Lock Trap repeats Toll Bridge Bandits) and 50/50 reboots",
+  "goals": "2026-10-10: nothing: no enemy or boss pages",
+  "locations": "2026-10-10: nothing",
+  "loot": "2026-10-10: nothing: battleship weapons and officer abilities with no identity outside the ship; no evolutions",
+  "statuses": "2026-10-10: nothing"
  },
  "Crypt of the NecroDancer": {
   "characters": "2026-10-10: Monk, Bolt; Aria left out (one-heart perfect runs are Zoe's), Dove (no attacking: the Cop), Melody (her Golden Lute is For the King 2's Lute), Cadence (the plain hero)",
@@ -881,7 +917,13 @@
   "connections": "before 2026-10-07"
  },
  "Despot's Game": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: nothing: classes are unit types",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: 1 row: A Dragon; AAAAAA (a giant spider) and AMZANIG FCAT are jokes with no stakes",
+  "goals": "2026-10-10: nothing: no enemy pages",
+  "locations": "2026-10-10: nothing",
+  "loot": "2026-10-10: nothing: food and perks are stat ups; no evolutions",
+  "statuses": "2026-10-10: 1 row: Allergy; silence repeats the Scroll of Silence, burning the live Burn"
  },
  "Despotism 3k": {
   "connections": "before 2026-10-07"
@@ -1442,7 +1484,13 @@
   "connections": "before 2026-10-07"
  },
  "Have a Nice Death": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: nothing: Death is the only hero, and his reaping repeats the live Gatekeeper",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: 1 row: Mr. O'Shah (his curse cards)",
+  "goals": "2026-10-10: nothing: minion pages are empty; Ms. Camille Flage is a mini-boss with lore but no distinct goal",
+  "locations": "2026-10-10: nothing",
+  "loot": "2026-10-10: nothing: weapons and food are stat ups on the wiki; no evolutions",
+  "statuses": "2026-10-10: nothing: its curses are bonus cards, used in Mr. O'Shah's event"
  },
  "He is Coming": {
   "connections": "before 2026-10-07"
@@ -2017,7 +2065,13 @@
   "connections": "before 2026-10-07"
  },
  "Nordic Ashes: Survivors of Ragnarok": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: nothing: Gnöki (a merchant turned survivor) repeats the Will, Blud the Necromancer",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: nothing",
+  "goals": "2026-10-10: nothing: no enemy pages",
+  "locations": "2026-10-10: nothing",
+  "loot": "2026-10-10: 1 row: Immunity Destroyer; its relics are mostly percent ups (Golden Mushroom), Bad Flowers repeats Spreading Infection's spread; weapons and evolutions: none usable; no evolutions",
+  "statuses": "2026-10-10: nothing"
  },
  "Nova Drift": {
   "connections": "before 2026-10-07"
@@ -2844,8 +2898,13 @@
   "statuses": "2026-10-09: nothing: no statuses beyond stun and poison"
  },
  "Spelunky 2": {
+  "characters": "2026-10-10: nothing: the Spelunky Guy covers the series' explorers",
   "connections": "before 2026-10-07",
-  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+  "events": "2026-10-10: nothing: Tun's challenges repeat the Gauntlet, the Damsel is Spelunky's",
+  "goals": "2026-10-10: checked 6: Golden Monkey is a friendly character, not an enemy (?), Witch Doctor's sacrifice goal is wrong (they curse through an effigy) and a fix repeats the Hexer (?); Vampire, Olmec, Angry Shopkeeper, Qilin hold; nothing added: Hundun repeats the Servants' rising climb, Celestial Jelly and Ghist the Ghost, Lavamander the Magma Worm",
+  "locations": "2026-10-10: nothing: the Cosmic Ocean repeats the Tower of Sisyphus, Vlad's Castle and Eggplant World are levels",
+  "loot": "2026-10-10: nothing new: the Clone Gun repeats the live Wand of Plenty, the Four-Leaf Clover the live Clover; Spelunky's Kapala, Web Gun and Mattock cover the series; no evolutions",
+  "statuses": "2026-10-10: nothing: the curse is Kali's, covered by Spelunky's altar"
  },
  "Spelunky Classic": {
   "characters": "2026-10-10: nothing: the Spelunker is Spelunky's Spelunky Guy",
