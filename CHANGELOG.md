@@ -11,6 +11,29 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Research, seventeenth batch, and Monstrum's real wiki.** Devil Spire,
+  Cursorblade, Crown Trick, Red Rogue, Coin Crypt, Sproggiwood, Monstrum,
+  Renowned Explorers, Mothergunship and Chrono Ark: 16 new rows and 4 clones.
+  Most of these wikis have no categories that match a kind, so each one's full
+  page index was listed and read from there.
+  - **Monstrum's wiki was wrong.** `monstrum.fandom.com` belongs to Monstrum
+    RPG, a different game by Monstrum Studios. Team Junkfish's horror game is
+    `themonstrum.fandom.com`, now set by hand in `research/wikis.json`.
+  - **Goals:** The Brute (hide from an enemy until it gives up looking for
+    you) and Abaddon (learn a skill from an enemy you defeated).
+  - **Loot:** the Alchemy Ring (a used piece stays, 1 in 3), the Identity
+    Crisis Potion (be a random character for a game), the Scroll of Pottery
+    (a row of enemies becomes pots), Tuuri's Lucky Coin (reroll a chest),
+    the Alchemist's Vial (potions work twice) and the Spikeball Launcher.
+    From Chrono Ark: the Sun and Moon Shards (the highest and lowest weapon in
+    the pack), the Black Rabbit Doll (gold from the run before) and the Cursed
+    Pharos Mask.
+  - **Other kinds:** the Claim Ghost event (take a piece out of the loot pool),
+    the Deity Statue (walking past costs too), the Green Leaf tile and the
+    Campfire (rest, or melt two pieces into a better one).
+  - **Clones:** Red Rogue's Altar of Chaos and Balrog, Renowned Explorers'
+    talk-it-down fights, and Crown Trick's nightmare statue.
+
 - **Research, sixteenth batch, read more closely.** Dome Keeper, Downwell,
   Solitairica, Dreamscaper, Everything is Crab, Ship of Fools, Deep Dungeons of
   Doom, Cryptark, Crab God and Haste: 15 new rows, 6 clones and 2 old goal

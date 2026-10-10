@@ -616,7 +616,13 @@
   "connections": "before 2026-10-07"
  },
  "Chrono Ark": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: investigators are skill decks; none read individually",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: no events page",
+  "goals": "2026-10-10: Bosses page is a list of names; nothing to read",
+  "locations": "2026-10-10: Campfire",
+  "loot": "2026-10-10: Relic list read: Sun Shard, Moon Shard, Black Rabbit Doll, Cursed Pharos Mask. No weapons, no evolutions",
+  "statuses": "2026-10-10: buff and debuff lists not read this batch"
  },
  "Cinderia": {
   "connections": "before 2026-10-07"
@@ -662,7 +668,13 @@
   "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
  },
  "Coin Crypt": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: 27 classes read in part (Gambler, Executive, Coinquistador, Princess): coin-bag tricks; nothing a level-up can ask",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: Claim Ghost",
+  "goals": "2026-10-10: Enemies page read: nothing new",
+  "locations": "2026-10-10: Deities read: Deity Statue",
+  "loot": "2026-10-10: coins are its spell cards; Executive's steal repeats Pillaged Gold's goal. No weapons, no evolutions",
+  "statuses": "2026-10-10: status effects repeat existing ones"
  },
  "Colt Canyon": {
   "characters": "2026-10-10: nothing: characters differ by stats",
@@ -743,7 +755,13 @@
   "connections": "before 2026-10-07"
  },
  "Crown Trick": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: Elle is the only hero",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: Statue of the god of nightmare read: blessings, one of them a clone",
+  "goals": "2026-10-10: Abaddon (learn a beaten elite's skill, its Familiar system); the other 22 familiars and bosses are skill lists",
+  "locations": "2026-10-10: Room Types and Challenges and puzzles read: elite, event, secret, shrine and shop rooms repeat existing places",
+  "loot": "2026-10-10: Relic list sampled; the statue's gold-for-damage blessing a clone on Golden Vault. Weapons are stat variants; no evolutions",
+  "statuses": "2026-10-10: elemental statuses repeat existing ones"
  },
  "Crush the Industry": {
   "connections": "before 2026-10-07"
@@ -836,7 +854,13 @@
   "connections": "before 2026-10-07"
  },
  "Cursorblade": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: no characters",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: no events",
+  "goals": "2026-10-10: 13-page wiki, all read: six enemies (slimes that split, a hive, a cloud) repeat existing goals",
+  "locations": "2026-10-10: no locations",
+  "loot": "2026-10-10: Items and Weapons pages are stubs; Target (3x damage at random) is a crit. No evolutions",
+  "statuses": "2026-10-10: no statuses"
  },
  "DIG: Deep In Galaxies": {
   "connections": "before 2026-10-07"
@@ -1007,7 +1031,13 @@
   "connections": "before 2026-10-07"
  },
  "Devil Spire": {
-  "connections": "2026-10-07"
+  "characters": "2026-10-10: one player character",
+  "connections": "2026-10-07",
+  "events": "2026-10-10: no events",
+  "goals": "2026-10-10: 22-page wiki, all read: its eight monsters (Djinn, Manroom, goblins, undead) are stat blocks with spells",
+  "locations": "2026-10-10: no location pages",
+  "loot": "2026-10-10: Rings read: Alchemy Ring; the rest repeat existing pieces or need its action combat. Combine and Garbage Items are item crafting with no weapon as the base, so no evolutions",
+  "statuses": "2026-10-10: no status pages"
  },
  "Diablo": {
   "characters": "2026-10-09: the 3 classes",
@@ -2000,7 +2030,13 @@
   "connections": "before 2026-10-07"
  },
  "Monstrum": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: no playable characters with names",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: no events",
+  "goals": "2026-10-10: the matched wiki was Monstrum RPG's; read the real one (themonstrum.fandom.com, set by hand): The Brute (hide until it gives up); the Hunter's egg sacs repeat Spider Leader, the Fiend repeats unkillable-enemy goals",
+  "locations": "2026-10-10: Escape Routes and Hiding Places read: rebuilding an escape vehicle repeats DM-200's goal",
+  "loot": "2026-10-10: items read (Egg Timer, flare gun, extinguisher): lures and stuns that repeat the Decoy and existing pieces. No weapons, no evolutions",
+  "statuses": "2026-10-10: no statuses"
  },
  "Montabi": {
   "connections": "before 2026-10-07"
@@ -2051,7 +2087,13 @@
   "connections": "before 2026-10-07"
  },
  "Mothergunship": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: characters page not read: NPCs who brief the missions",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: no events",
+  "goals": "2026-10-10: Enemies page is a list of turrets and drones",
+  "locations": "2026-10-10: no location pages",
+  "loot": "2026-10-10: barrels read (Fist, Barrel Barrel, Spikeball, Oblivigun): Spikeball Launcher. Caps and connectors build its guns; no evolutions",
+  "statuses": "2026-10-10: no statuses"
  },
  "Mothergunship: Forge": {
   "connections": "before 2026-10-07"
@@ -2544,13 +2586,25 @@
   "statuses": "2026-10-10: nothing: the status pages are missing"
  },
  "Red Rogue": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: Red is the only hero; the Minion is her dead husband",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: Blood on the Walls is hints, Quest is the husband's revenge",
+  "goals": "2026-10-10: 39-page wiki, all read: the Balrog a clone on Goblin Warlord; Champion and Super monsters are tiers",
+  "locations": "2026-10-10: Miracles read: the Altar of Chaos a clone on Goat Shrine",
+  "loot": "2026-10-10: Runes, Smite, Heads and True Name read: kicked heads and smites need its side-on physics. No evolutions",
+  "statuses": "2026-10-10: no status pages beyond Sleep"
  },
  "Reignbreaker": {
   "connections": "before 2026-10-07"
  },
  "Renowned Explorers: International Society": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: Explorers read: scientists, scouts and speakers with one-line bios; nothing a level-up can ask beyond the clone",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: Events read: expedition encounters, each a fight or a skill check",
+  "goals": "2026-10-10: Enemies and Events read: talking a fight down a clone on Kashio",
+  "locations": "2026-10-10: expeditions are named places only",
+  "loot": "2026-10-10: treasures are renown and insight stats; no weapons, no evolutions",
+  "statuses": "2026-10-10: Emotions read: moods that repeat existing statuses"
  },
  "Repetendium": {
   "connections": "before 2026-10-07"
@@ -3098,7 +3152,13 @@
   "connections": "before 2026-10-07"
  },
  "Sproggiwood": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: classes (Farmer, Warrior, Archer, Thief, Wizard, Vampire) are combat roles",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: no events",
+  "goals": "2026-10-10: Boss monsters read: Big Icky (a jelly spawner) and Goatress (a charger) repeat existing goals; the bizarro Doppelganger teleports you",
+  "locations": "2026-10-10: Objects read: Green Leaf; spiderweb, shrines and vases repeat existing tiles and objects",
+  "loot": "2026-10-10: Items and Accessories read: Identity Crisis Potion, Scroll of Pottery, Tuuri's Lucky Coin, Alchemist's Vial. No weapons page, no evolutions",
+  "statuses": "2026-10-10: no statuses"
  },
  "Squeaky Squad": {
   "connections": "before 2026-10-07"

@@ -9063,34 +9063,17 @@
   "wiki": null
  },
  "Monstrum": {
-  "api": "https://monstrum.fandom.com/api.php",
-  "articles": 26,
-  "blurb": "",
+  "api": "https://themonstrum.fandom.com/api.php",
+  "articles": 77,
   "categories": {},
-  "checked": "2026-10-09",
-  "counts": {
-   "characters": 0,
-   "events": 0,
-   "goals": 0,
-   "locations": 0,
-   "loot": 0,
-   "statuses": 0
-  },
+  "checked": "2026-10-10",
+  "counts": {},
   "match": "sure",
-  "pages": {
-   "characters": [
-    "Heroes",
-    "Races"
-   ],
-   "goals": [
-    "Bestiary"
-   ],
-   "loot": [
-    "Equipment"
-   ]
-  },
+  "note": "monstrum.fandom.com is the wiki of Monstrum RPG, a different JRPG by Monstrum Studios; Team Junkfish's 2015 horror game is themonstrum.fandom.com (set by hand)",
+  "pages": {},
+  "set": "by hand",
   "sitename": "Monstrum Wiki",
-  "wiki": "https://monstrum.fandom.com"
+  "wiki": "https://themonstrum.fandom.com"
  },
  "Montabi": {
   "api": "https://montabi.wiki.gg/api.php",
