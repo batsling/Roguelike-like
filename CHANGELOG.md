@@ -11,6 +11,29 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Research, seventh batch.** Brotato, Streets of Rogue, Dark Devotion, Neon
+  Abyss, Pixel Dungeon, SpellRogue, Curious Expedition, LoneStar, Backpack Hero
+  and Crypt of the NecroDancer, every kind: 93 new rows. Seventeen blind goal
+  rows were checked against the wikis. Five were wrong and are fixed: the Monk
+  lays eggs and keeps its distance, the Cop is about bribes rather than
+  pacifism, NecroDancer's Ghost only moves while your back is turned, Deep
+  Blues is a chess army rather than a daily run, and King Conga is about his
+  conga lines rather than his crown. Four more are marked `check`: the
+  Mother (an elite, not a wave-20 boss, and the wiki gives no behaviour), the
+  Farseer, the Minotaur, and the Skeleton, whose goal repeats the live Bony. Highlights:
+  seven curses (four from Dark Devotion, three phobias from Curious
+  Expedition), the Keygun (the first piece that makes keys), the Tesla Gun
+  and its upgrade the Loki Gun, two push-your-luck events built on `Again`
+  (Fortune Favors the Brave, the Gambling Mole), Baz the shopkeeper, and four
+  tiles and units (Tree, Killer Plant, Oil Slick, Bounce Trap). Neon Abyss has
+  no goals (its monster names come from image files) and LoneStar no loot (its
+  treasure pages hold only an ID). Before committing, each game's rows were
+  compared with every candidate and live row by word overlap. That found
+  eight repeats in this batch's own drafts. Six were dropped, among them the
+  Free Item Voucher (The King is Watching's Free Coupon), Enraged (Brogue's
+  Discorded) and the Hydra Body (Hades' Bone Hydra), and two goals were
+  reworded; the ledger names each one.
+
 - **Proof clips: one file per clip, and no MP4 left behind.** The 38 proof
   clips cost 767 MB of the checkout, half of it twice over. Each clip was kept
   as the owner's MP4 *and* the `.ogv` the game plays, though Godot never reads

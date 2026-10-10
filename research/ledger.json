@@ -186,8 +186,13 @@
   "connections": "before 2026-10-07"
  },
  "Backpack Hero": {
+  "characters": "2026-10-10: Purse; Satchel left out (charming repeats Hexe), CR-8 (no healing: The Head), Pochette (pets: Wendy's companion), Tote (no weapons: The Goad)",
   "connections": "before 2026-10-07",
-  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+  "events": "2026-10-10: Magic Font, Gambling Mole (push-your-luck, Again); the Travelling Warrior is a fight; Frog Roulette, Playing Possum and Glitched Eye have no pages",
+  "goals": "2026-10-10: checked 2: Polar Bear right; Farseer kept as check (tier fixed to 3-Hard; the wiki says nothing about seeing ahead); Possum Player added (check: from the Enemies table); the thieves repeat UnderMine's, the Hermit Crab Mimic the mimic candidates",
+  "locations": "2026-10-10: Baz (a shopkeeper); Structures are pack items, and Matthew's starting blessing is a menu, not a place",
+  "loot": "2026-10-10: Mouse Wood, Beast's Ring, Evil Hand; weapons and evolutions: none readable (the weapon pages' stats sit in tables the reader can't see; no evolutions, though Purse's Jack Cleaver set comes close); Gem of Anna left out (Dio's Best Friend), Sandwich (the live Rejuvenation Rack), Belt of Knives (the live Duplicator)",
+  "statuses": "2026-10-10: nothing: its curses are pack items (two are loot rows here) and its statuses (poison, regen, spikes, charm) are already proposed"
  },
  "Bad North": {
   "connections": "before 2026-10-07"
@@ -353,7 +358,7 @@
   "characters": "2026-10-10: Streamer; One-Armed left out (Ball x Pit's Hoary Hoarder, 'no more than two weapons'), Pacifist (the Cop's 'without killing'), Gangster (Charon's 'Steal from a shop'), Bull (The Goad's 'without a weapon'), Saver (The Window)",
   "connections": "before 2026-10-07",
   "events": "2026-10-10: nothing: no events; between waves there is only the shop",
-  "goals": "2026-10-10: checked 2: The Mother kept as check (an elite, not a wave-20 boss; the wiki gives no behaviour), Monk Elite fixed (it lays eggs; renamed Monk); Invoker and Buffer added; Looter and Looting Pig left out (repeat UnderMine's runaway)",
+  "goals": "2026-10-10: checked 2: The Mother kept as check (an elite, not a wave-20 boss; the wiki gives no behaviour), Monk Elite fixed and renamed Monk (it keeps its distance; its eggs were the first idea, but Into the Breach's Spider Leader has that goal); Invoker (its ring of bullets: the ground-marked dodge is Moonlighter's Golem King) and Buffer added; Looter and Looting Pig left out (repeat UnderMine's runaway)",
   "locations": "2026-10-10: Tree (a unit); its two zones differ only in which enemies come",
   "loot": "2026-10-10: Handcuffs, Mirror, Sunken Bell, Candy Bag, Bag; weapons and evolutions: Screwdriver, Wrench; no evolutions (two copies of a weapon merge into its next tier, which is not a new weapon)",
   "statuses": "2026-10-10: nothing: burning is the live Burn, and the DLC's Curse is a stat that strengthens enemies, not a status"
@@ -556,8 +561,13 @@
   "connections": "before 2026-10-07"
  },
  "Crypt of the NecroDancer": {
+  "characters": "2026-10-10: Monk, Bolt; Aria left out (one-heart perfect runs are Zoe's), Dove (no attacking: the Cop), Melody (her Golden Lute is For the King 2's Lute), Cadence (the plain hero)",
   "connections": "before 2026-10-07",
-  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+  "events": "2026-10-10: nothing: no events; its shrines are objects (two are location rows)",
+  "goals": "2026-10-10: checked 10: Zombie, Monster Lord, The Necrodancer, Coral Riff and Death Metal right (the three bosses moved to the bosses sheet, tiers fixed); Ghost fixed (it moves only when your back is turned), Deep Blues fixed (a chess army, not a daily run), King Conga fixed (his conga lines, not a crown); Skeleton marked check (repeats the live Bony and Pacer), Minotaur check (not in the Monsters article as read); Fortissimole, Frankensteinway and The Conductor left out (summoner and phase bosses already proposed)",
+  "locations": "2026-10-10: Shrine of Glass, Shrine of War (objects), Bounce Trap (tile); Shrine of Blood left out (Mewgenics' Baphomet's blood price), Tar (the live Web tile)",
+  "loot": "2026-10-10: Ring of Peace, Crown of Greed, Monkey's Paw; weapons and evolutions: none (weapons share one shape per type, and materials like Blood, Glass and Golden change a weapon's numbers, not what it is); Ring of Becoming and Glass Jaw left out (one-hit death is Dead Cells' Cursed), Pack of Holding (NetHack's Bag of Holding)",
+  "statuses": "2026-10-10: nothing: no status effects; freezing and confusion are trap and spell effects already proposed"
  },
  "Cryptark": {
   "connections": "before 2026-10-07"
@@ -1503,7 +1513,13 @@
   "connections": "before 2026-10-07"
  },
  "LoneStar": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: nothing: the playable things are spaceships (Shielder, Spacewalker, Spectra), not heroes",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: Fortune Favors the Brave (push-your-luck, Again x9), Magic Show; Casino Betting left out (For the King's Game of Dice), Kitty Financial Management (Moonlighter's banker); most others trade ship units",
+  "goals": "2026-10-10: One Punch (check: the wiki gives its bio, not its units); its bounties are space pirates whose mechanics sit in unit tables the page reader can't see",
+  "locations": "2026-10-10: nothing: no locations on the wiki; the map is a route of fights and events",
+  "loot": "2026-10-10: nothing: every treasure page holds only an ID (its effect lives in a data module) and the Treasure list is empty; weapons and evolutions: none (dice-driven ship units, no weapons; upgrades add slots, not a new piece)",
+  "statuses": "2026-10-10: nothing: its keywords are dice and slot rules (Jam, Overclock, Paint) and the Keywords page is a stub"
  },
  "Loop Hero": {
   "connections": "before 2026-10-07",
