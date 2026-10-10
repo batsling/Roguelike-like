@@ -189,7 +189,13 @@
   "connections": "before 2026-10-07"
  },
  "Backpack Battles": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: nothing: the classes (Ranger, Reaper, Berserker, Pyromancer, Mage, Adventurer) are archetypes already taken",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: nothing: no events (shop rounds and fights)",
+  "goals": "2026-10-10: nothing: no monsters (you fight other players' backpacks)",
+  "locations": "2026-10-10: nothing: Shopkeeper Furcifer only gives tips; no places",
+  "loot": "2026-10-10: Banana, Pineapple (food trinkets); weapons and evolutions: Dagger and its recipe Molten Dagger (Poison Dagger in its Clones); Pan and Eggscalibur left out (the Pan's +1 per Food repeats the live Stankus' Toothpick); its other weapons are mostly live or recipe chains of two new pieces",
+  "statuses": "2026-10-10: nothing: Heat, Cold, Spikes, Luck, Regeneration, Vampirism, Blind and Poison are live or proposed"
  },
  "Backpack Hero": {
   "characters": "2026-10-10: Purse; Satchel left out (charming repeats Hexe), CR-8 (no healing: The Head), Pochette (pets: Wendy's companion), Tote (no weapons: The Goad)",
@@ -223,7 +229,13 @@
   "connections": "before 2026-10-07"
  },
  "Banners of Ruin": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: nothing: characters are animal races with a racial ability, not heroes",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: Arena, Merchant In Trouble (both check: the wiki lists the choices with no text); the rest are shops and card removal (Augur, Juggler, Innkeeper, Crazy Weasel)",
+  "goals": "2026-10-10: nothing: the enemy pages hold only where a fight appears (the Hunters, the Spymaster, the Prince), and the regular soldiers are faction troops",
+  "locations": "2026-10-10: nothing: districts (Outer Districts, Old Town, Noble Quarters) are acts, not places with a feature",
+  "loot": "2026-10-10: nothing: the weapon pages are empty; weapons and evolutions: none readable (weapons hold skill cards; no evolutions)",
+  "statuses": "2026-10-10: Crippled, Protected; Provoked left out (Gremlin Nob's taunt), Overwhelm and Vulnerable (the live Marked), Retaliate (Darkest Dungeon 2's Riposte), Pacified (the live Stun)"
  },
  "Barda": {
   "connections": "before 2026-10-07"
@@ -2162,7 +2174,13 @@
   "connections": "before 2026-10-07"
  },
  "Realm of the Mad God": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: nothing: the classes are archetypes already taken (Warrior, Rogue, Wizard, Necromancer, Archer, Priest)",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: nothing: its events are seasonal or event-boss spawns",
+  "goals": "2026-10-10: nothing new: the Crystal Prisoner is a clone on Wildfrost's Frost Jailer and the Pentaract on Gungeon's Kill Pillars; Oryx, the Cube God and the Hermit God are bullet-pattern bosses",
+  "locations": "2026-10-10: nothing: its dungeons (Pirate Cave, Snake Pit, Mad Lab) are themed fights; the Wine Cellar behind Oryx repeats the Owl's secret ending",
+  "loot": "2026-10-10: nothing: equipment is tiered stat gear; Pirate Rum (drunk) repeats Trampy's goal and Battle Brothers' Hangover, the Magic Mushroom NetHack's Hallucination; weapons and evolutions: none (tiers, not evolutions)",
+  "statuses": "2026-10-10: nothing: the status pages are missing"
  },
  "Red Rogue": {
   "connections": "before 2026-10-07"
