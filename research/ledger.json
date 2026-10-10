@@ -350,8 +350,13 @@
   "connections": "before 2026-10-07"
  },
  "Brotato": {
+  "characters": "2026-10-10: Streamer, One-Armed; Pacifist left out (repeats the Cop's 'without killing'), Gangster (Charon's 'Steal from a shop'), Bull (The Goad's 'without a weapon'), Saver (The Window)",
   "connections": "before 2026-10-07",
-  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+  "events": "2026-10-10: nothing: no events; between waves there is only the shop",
+  "goals": "2026-10-10: checked 2: The Mother kept as check (an elite, not a wave-20 boss; the wiki gives no behaviour), Monk Elite fixed (it lays eggs; renamed Monk); Invoker and Buffer added; Looter and Looting Pig left out (repeat UnderMine's runaway)",
+  "locations": "2026-10-10: Tree (a unit); its two zones differ only in which enemies come",
+  "loot": "2026-10-10: Handcuffs, Mirror, Sunken Bell, Candy Bag, Bag; weapons and evolutions: Screwdriver, Wrench; no evolutions (two copies of a weapon merge into its next tier, which is not a new weapon)",
+  "statuses": "2026-10-10: nothing: burning is the live Burn, and the DLC's Curse is a stat that strengthens enemies, not a status"
  },
  "Brutal Orchestra": {
   "connections": "before 2026-10-07"
@@ -607,7 +612,13 @@
   "connections": "before 2026-10-07"
  },
  "Dark Devotion": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: nothing: one hero, the Templar knight; the NPCs (Blacksmith, Dicecaster, Ferryman) aren't playable",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: nothing: no events; its one quest page is kill counts",
+  "goals": "2026-10-10: Nekosh, Hezek; Elinor and Aureus left out (duos repeat the Wicked Twins and three more), the regular enemies' pages are 'Under Construction'",
+  "locations": "2026-10-10: Blood Altar, Healing Statue (objects), Oil Slick (tile); Blessing thief trap left out (it only acts on the hero, who isn't on the board)",
+  "loot": "2026-10-10: Beset Dead Man's Ring, Torn Saddlebag; weapons and evolutions: Jealous Hatchet, Broken Blade; no evolutions (the forge builds boss weapons from blueprints); Golden medallion left out (Dio's Best Friend)",
+  "statuses": "2026-10-10: 4 curses: Guilt, Overdose, Manipulated, Glass Bones; most of its 54 curses are stat penalties (stamina, crits, miss chance) with no rule to break"
  },
  "Dark Light: Survivor": {
   "connections": "before 2026-10-07"
@@ -2593,8 +2604,13 @@
   "connections": "2026-10-07"
  },
  "Streets of Rogue": {
+  "characters": "2026-10-10: Firefighter; Doctor left out (NetHack's Healer), Comedian (Regent's friend, Marshmallow's infighting), Investment Banker and Slum Dweller (money level-ups already proposed)",
   "connections": "before 2026-10-07",
-  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+  "events": "2026-10-10: nothing: its quests are level missions and Big Quests are per-character run goals; neither is a prompt with choices",
+  "goals": "2026-10-10: checked 3: Gorilla and Werewolf right; Cop fixed (goal was the Doctor's pacifism; now bribing, as the Cop unlocks); Upper-Cruster, Shapeshifter and Mayor added; Killer Robot left out (Groudon's 'ten times your health'), Ghost (a candidate from two games)",
+  "locations": "2026-10-10: Clone Machine, Well (objects), Killer Plant (unit); Toilet left out (Flushmaster's goal covers it), the stages are levels with enemies and no goal of their own",
+  "loot": "2026-10-10: Free Item Voucher, Monkey Barrel; weapons and evolutions: Banana Peel, Leafblower, Fire Extinguisher, Shrink Ray, Water Pistol; no evolutions (mods attach to a gun, it stays the same gun); Kill Profiter left out (the live Golden Idol), Resurrection Shampoo (Dio's Best Friend), Four-Leaf Clover (the live Clover)",
+  "statuses": "2026-10-10: Shrunk, Enraged; Debt left out (UnderMine and Star of Providence), Electrocuted (the live Stun), Perfumorous (no body to befriend)"
  },
  "Sundered": {
   "connections": "before 2026-10-07"
