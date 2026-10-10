@@ -7,7 +7,7 @@ out of the game window). This is the design and the reasoning; the code is
 
 ## 1. What the owner asked for
 
-- Songs unlocked by **"do X goals on this game"** and **"beat this game X
+- Songs unlocked by **"defeat X distinct enemies in Y"** and **"beat Y X
   times"**.
 - The music is **music the owner already owns**. It is never committed.
 - Songs are authored in **the spreadsheet**: name, artist, album, year, game,
@@ -36,7 +36,7 @@ row (No Escape, Hades); delete it freely.
 | `Album` | optional |
 | `Year` | optional |
 | `Game` | the game it belongs to **and unlocks on**: its name as the `games` sheet spells it, or its id. Must be in the catalog |
-| `Unlock` | `goals` or `wins`. **Blank keeps the song locked.** That is the owner's rule: a row still being authored should not start playing on stream |
+| `Unlock` | `enemies` or `wins` (`goals` is read as `enemies`). **Blank keeps the song locked.** That is the owner's rule: a row still being authored should not start playing on stream |
 | `Count` | how many it takes (1 or more when `Unlock` is set) |
 | `File` | the exact file name in the music folder: `.mp3`, `.ogg` or `.wav` |
 | `Image` | album art base name under `images2.0/radio/` (blank = the game's cover) |
@@ -51,11 +51,14 @@ come out as the same id (`<name> <artist>`, slugified).
 
 | Rule | Counts | Source |
 |---|---|---|
-| `goals` | every goal-enemy beaten **at that game**, re-clears included | `GameStats.goals_count(game)` (sum of `enemy_log[game][*].beaten`) |
+| `enemies` | the **distinct** goal-enemies defeated **at that game**: each enemy counts once, however often it was re-cleared | `GameStats.distinct_enemies_count(game)` (the ids in `enemy_log[game]` with `beaten > 0`) |
 | `wins` | every time **that game** was reported beaten | `GameStats.beaten_count(game)` |
 
-The owner chose **enemy goals only** for `goals`. Level-ups and status goals
-don't count.
+It reads **"Defeat 5 distinct enemies in Balatro"**, and the song list names
+the ones already defeated there, so the player knows which enemies count and
+how many are left. Only goal-enemies count; level-ups and status goals don't.
+Re-clearing an enemy you've already beaten doesn't move it; meeting a new one
+does.
 
 Both counts already existed for every game, so **the radio stores no progress
 of its own**. A song is unlocked exactly when `have >= need`. The only thing it
@@ -130,7 +133,7 @@ corner**. It has:
 - the music folder, with Open folder and Rescan (for files added while the game
   is running);
 - every song on the sheet: unlocked first, then the nearest to unlocking, each
-  with its rule and progress ("Do 5 goals in Balatro (3 / 5)") and a ▶ to play
+  with its rule and progress ("Defeat 5 distinct enemies in Balatro (3 / 5)", with the three named) and a ▶ to play
   it now.
 
 The speakers, volume, shuffle, station and pause live in `user://radio.cfg`.

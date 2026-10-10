@@ -4171,7 +4171,7 @@ func _texture_rects_under(node: Node) -> Array:
 		# list" is answered. Each marks itself; the strip marks the whole subtree,
 		# since every chip in it is one of these.
 		if child.has_meta(&"character_portrait") or child.has_meta(&"buff_strip") \
-				or child.has_meta(&"curse_portrait"):
+				or child.has_meta(&"curse_portrait") or child.has_meta(&"status_portrait"):
 			continue
 		if child is TextureRect and (child as TextureRect).texture != null:
 			out.append(child)
@@ -4733,7 +4733,7 @@ func test_the_verb_chips_follow_a_gain_without_a_loop_resolve() -> void:
 
 func test_bash_removes_a_choice_from_the_pool() -> void:
 	GameState.bash = 1
-	_ui._build_choices()
+	_stand_where_a_bash_is_legal()
 	var idx: int = _first_bashable()
 	var bashed_id: StringName = _ui._choices[idx]["slot"]
 	_ui.bash_choice(idx)
@@ -4751,7 +4751,7 @@ func test_bash_removes_a_choice_from_the_pool() -> void:
 func test_bashing_does_not_dodge_the_capstone() -> void:
 	GameState.spawn_events = RunDifficulty.GAMES_PER_TIER - 1
 	GameState.bash = 1
-	_ui._build_choices()
+	_stand_where_a_bash_is_legal()
 	var idx: int = _first_bashable()
 	var bashed_id: StringName = _ui._choices[idx]["slot"]
 	_ui.bash_choice(idx)
@@ -4793,6 +4793,16 @@ func _first_bashable() -> int:
 			_set_kind(_ui._choices[i], RunGraph.NodeKind.ENEMIES)
 			return i
 	return 0
+
+# THE RUN OPENS SOMEWHERE RANDOM, and once in a while that is a dead end: one
+# card on the offering and nothing behind it to refill the slot, where a bash is
+# REFUSED ("bashing would leave nowhere to go") — correctly, and silently as far
+# as these tests could tell. Seen on `necroking`. So they stand at a hub first.
+func _stand_where_a_bash_is_legal() -> void:
+	var hub: StringName = _hub_with_spare_neighbours()
+	if hub != &"":
+		GameState.set_current_game(hub)
+	_ui._build_choices()
 
 # A game with more connections than the offering can show, so there is a spare
 # neighbour for a bashed slot to be refilled from. &"" when the graph has none.
@@ -9797,8 +9807,8 @@ func test_the_review_rows_carry_the_pictures_their_checklist_rows_do() -> void:
 	if review == null:
 		return
 	# Every mirrored row leads with a picture, and both kinds are represented. The
-	# character's icon is counted separately because `_texture_rects_under` skips
-	# it on purpose — it is not a body on the board.
+	# character's icon and the status's symbol are counted separately because
+	# `_texture_rects_under` skips both on purpose — neither is a body on the board.
 	var rows: int = 0
 	var faces: int = 0
 	var symbols: int = 0
@@ -9806,12 +9816,21 @@ func test_the_review_rows_carry_the_pictures_their_checklist_rows_do() -> void:
 		if not (line is HBoxContainer):
 			continue
 		rows += 1
-		symbols += _texture_rects_under(line).size()
+		symbols += _marked_under(line, &"status_portrait").size()
 		faces += _character_icons_under(line).size()
 	assert_gt(rows, 1, "the level-up and the status goal are both mirrored")
 	assert_eq(symbols + faces, rows, "and each row leads with exactly one picture")
 	assert_eq(faces, 1, "the level-up row wears the character's own face")
 	assert_gt(symbols, 0, "and a status goal wears its status's symbol")
+
+func _marked_under(node: Node, meta: StringName) -> Array:
+	var out: Array = []
+	for child in node.get_children():
+		if child.has_meta(meta):
+			out.append(child)
+		else:
+			out.append_array(_marked_under(child, meta))
+	return out
 
 func _character_icons_under(node: Node) -> Array:
 	var out: Array = []

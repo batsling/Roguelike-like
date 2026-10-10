@@ -23,7 +23,10 @@ extends Resource
 @export var game_id: StringName = &""
 
 # How it unlocks:
-#   &"goals" — `count` goal-enemies beaten at `game_id` (GameStats.enemy_log),
+#   &"enemies" — `count` DISTINCT goal-enemies defeated at `game_id`, each
+#              counted once however often it was re-cleared
+#              (GameStats.distinct_enemies_count) — "Defeat 5 distinct enemies
+#              in Balatro",
 #   &"wins"  — `game_id` reported beaten `count` times (GameStats.beaten_count),
 #   &""      — no rule yet, which keeps it LOCKED. That is the owner's call, not
 #              a default to "free": a row being authored should not start

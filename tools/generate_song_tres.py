@@ -7,8 +7,9 @@ into data/songs/ — the songs of ROGUELIKE RADIO (docs/roguelike-radio.md).
 
 The audio is the player's own and is never in the repo; `File` only names it.
 `Game` may be a game's display name or its id, and must be a game in the
-catalog. `Unlock` is `goals`, `wins` or blank (blank = locked until it has a
-rule). `Image` is a base name under images2.0/radio/.
+catalog. `Unlock` is `enemies` ("defeat X distinct enemies in Y"), `wins`
+("beat Y X times") or blank (blank = locked until it has a rule). `goals` is
+read as `enemies`, the word the rule had first. `Image` is a base name under images2.0/radio/.
 
 The output folder is REWRITTEN, not added to: a row deleted from the sheet takes
 its song with it, so the example row the sheet was created with goes away the
@@ -37,7 +38,8 @@ IMG_DIR = os.path.join(PROJECT_ROOT, "images2.0", "radio")
 IMG_RES_PREFIX = "res://images2.0/radio/"
 SHEET = "radio"
 
-UNLOCKS = ("goals", "wins")
+UNLOCKS = ("enemies", "wins")
+ALIASES = {"goals": "enemies", "enemy": "enemies", "win": "wins"}
 AUDIO = (".mp3", ".ogg", ".wav")
 IMAGE_EXTS = (".png", ".jpg", ".jpeg", ".webp")
 
@@ -102,6 +104,7 @@ def song_tres(row, games: dict) -> tuple:
                          % (name, game_raw))
 
     unlock = _clean(row.get("Unlock")).lower()
+    unlock = ALIASES.get(unlock, unlock)
     if unlock and unlock not in UNLOCKS:
         raise ValueError("radio %s: Unlock %r must be one of %s, or blank"
                          % (name, row.get("Unlock"), ", ".join(UNLOCKS)))
