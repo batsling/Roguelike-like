@@ -303,6 +303,15 @@ func enemies_for(game_id) -> Array:
 		return String(a["id"]) < String(b["id"]))
 	return out
 
+# Every goal-enemy beaten at a game, re-clears included — "do X goals on this
+# game", which is what a `goals` song on Roguelike Radio unlocks on
+# (docs/roguelike-radio.md).
+func goals_count(game_id) -> int:
+	var total: int = 0
+	for entry in enemy_log.get(String(game_id), {}).values():
+		total += int((entry as Dictionary).get("beaten", 0))
+	return total
+
 func has_enemy_log(game_id) -> bool:
 	return not enemy_log.get(String(game_id), {}).is_empty()
 

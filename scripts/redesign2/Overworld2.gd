@@ -197,6 +197,8 @@ var _header: HBoxContainer = null
 var _header_map_btn: Button = null
 # …and the History button beside it, with the screen it opens (RunLogScreen).
 var _header_history_btn: Button = null
+var _header_radio_btn: Button = null
+var _radio_screen: Node = null
 var _history_screen = null
 var _header_bar: PanelContainer = null
 var _header_layer: CanvasLayer = null
@@ -2984,6 +2986,7 @@ const HOW_TO_PLAY_SCREEN_SCRIPT := "res://scripts/ui/HowToPlayScreen.gd"
 const RATE_GAME_MODAL_SCRIPT := "res://scripts/ui/RateGameModal.gd"
 const REWARD_SCREEN_SCRIPT := "res://scripts/ui/RewardScreen.gd"
 const SETTINGS_MODAL_SCRIPT := "res://scripts/ui/SettingsModal.gd"
+const RADIO_SCREEN_SCRIPT := "res://scripts/ui/RadioScreen.gd"
 const TIER_LIST_SCREEN_SCRIPT := "res://scripts/ui/TierListScreen.gd"
 
 # --- the checklist's ceiling ----------------------------------------------
@@ -6404,6 +6407,7 @@ func _build_ui() -> void:
 	# modal and no scroll position can put it away.
 	header.add_child(_build_history_button())
 	header.add_child(_build_map_button())
+	header.add_child(_build_radio_button())
 	header.add_child(_build_menu_button())
 	_header = header
 	_mount_header(header)
@@ -7109,6 +7113,36 @@ func _build_map_button() -> Button:
 	b.pressed.connect(open_map)
 	_header_map_btn = b
 	return b
+
+# ROGUELIKE RADIO (docs/roguelike-radio.md): skip, back, pause and the volume,
+# from anywhere in a run. On the header for the reason the Map is — it is the one
+# row no modal and no scroll position can put away — and an icon alone, because
+# the road strip beside it is the thing that wants the width.
+func _build_radio_button() -> Button:
+	var b := HoverButton.new()
+	b.text = "📻"
+	b.pressed.connect(open_radio)
+	_header_radio_btn = b
+	# A METHOD, not a lambda: a bound method is disconnected when this node goes,
+	# and the radio outlives every run.
+	Radio.changed.connect(_refresh_radio_tip)
+	_refresh_radio_tip()
+	return b
+
+func _refresh_radio_tip() -> void:
+	if _header_radio_btn == null or not is_instance_valid(_header_radio_btn):
+		return
+	var song: SongData = Radio.current_song()
+	_header_radio_btn.tooltip_text = "Roguelike Radio — skip, go back, pause and set the volume."
+	if song != null:
+		_header_radio_btn.tooltip_text = "Now playing %s.\n%s" % [song.title,
+			_header_radio_btn.tooltip_text]
+
+func open_radio() -> Node:
+	if _radio_screen != null and is_instance_valid(_radio_screen):
+		return _radio_screen
+	_radio_screen = _open_full_screen(func(host): return load(RADIO_SCREEN_SCRIPT).open(host))
+	return _radio_screen
 
 # THE HISTORY BUTTON, next to the Map and for the same reason the Map is there:
 # these are the two questions a player asks about a run they have stepped away

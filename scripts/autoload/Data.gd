@@ -41,6 +41,7 @@ var _abilities: Dictionary = {}         # StringName -> AbilityData (§7.6)
 var _events2: Dictionary = {}           # StringName -> EventData2 (docs/event-sheet-authoring.md)
 var _objects2: Dictionary = {}          # StringName -> ObjectData (docs/object-sheet-authoring.md)
 var _curses2: Dictionary = {}           # StringName -> CurseData2 (the checklist kind, not data/curses)
+var _songs: Dictionary = {}             # StringName -> SongData (Roguelike Radio, docs/roguelike-radio.md)
 
 func _ready() -> void:
 	_load_dir("res://data/items/", _items)
@@ -68,6 +69,7 @@ func _ready() -> void:
 	_load_dir("res://data/events2.0/", _events2)
 	_load_dir("res://data/objects2.0/", _objects2)
 	_load_dir("res://data/curses2.0/", _curses2)
+	_load_dir("res://data/songs/", _songs)
 	print("[Data] Loaded %d items, %d games, %d characters, %d curses" % [
 		_items.size(), _games.size(), _characters.size(), _curses.size()
 	])
@@ -738,6 +740,13 @@ func get_curse2(id: StringName) -> CurseData2:
 
 func all_curses2() -> Array:
 	return _curses2.values()
+
+# ROGUELIKE RADIO's songs (docs/roguelike-radio.md), in id order.
+func get_song(id: StringName) -> SongData:
+	return _songs.get(id)
+
+func all_songs() -> Array:
+	return _songs.values()
 
 func get_status(id: StringName) -> StatusData:
 	return _statuses.get(id)

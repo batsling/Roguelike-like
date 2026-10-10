@@ -524,6 +524,24 @@ function fixture(dir) {
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+/* A `seconds`-long 440 Hz mono WAV, for the radio's checks: a real file the
+ * <audio> element can load, seek and play, made here so no audio ships in the
+ * repo. */
+function toneWav(seconds) {
+  const rate = 8000;
+  const n = rate * seconds;
+  const buf = Buffer.alloc(44 + n * 2);
+  buf.write('RIFF', 0); buf.writeUInt32LE(36 + n * 2, 4); buf.write('WAVE', 8);
+  buf.write('fmt ', 12); buf.writeUInt32LE(16, 16); buf.writeUInt16LE(1, 20);
+  buf.writeUInt16LE(1, 22); buf.writeUInt32LE(rate, 24); buf.writeUInt32LE(rate * 2, 28);
+  buf.writeUInt16LE(2, 32); buf.writeUInt16LE(16, 34);
+  buf.write('data', 36); buf.writeUInt32LE(n * 2, 40);
+  for (let i = 0; i < n; i++) {
+    buf.writeInt16LE(Math.round(Math.sin(2 * Math.PI * 440 * i / rate) * 3000), 44 + i * 2);
+  }
+  return buf;
+}
+
 async function main() {
   const exe = findBrowser();
   if (!exe) {
@@ -556,7 +574,10 @@ async function main() {
   };
   write();
 
-  const browser = await chromium.launch({ executablePath: exe });
+  /* OBS's browser source plays audio without a click; a stock headless Chromium
+   * does not, so the radio's checks would read a correct page as a broken one. */
+  const browser = await chromium.launch({ executablePath: exe,
+    args: ['--autoplay-policy=no-user-gesture-required'] });
   const page = await browser.newPage({ viewport: { width: WIDTH, height: HEIGHT } });
   const errors = [];
   page.on('pageerror', (e) => errors.push(e.message));
@@ -566,11 +587,11 @@ async function main() {
   console.log('the page draws a heavy run');
   check('no uncaught page errors', errors.length === 0, errors.join(' / '));
   const drew = await page.evaluate(() => ({
-    /* The cards ON THE DEFAULT PAGE. `.road` and `.map` are in the document
-     * either way — both are built on every payload and shown only at their own
-     * fragment — so both are excluded here rather than counted as page furniture
-     * this check would then have to keep renumbering. */
-    cards: document.querySelectorAll('.card:not(.road):not(.map)').length,
+    /* The cards ON THE DEFAULT PAGE. `.road`, `.map` and `.radio` are in the
+     * document either way — each is built on every payload and shown only at
+     * its own fragment — so they are excluded here rather than counted as page
+     * furniture this check would then have to keep renumbering. */
+    cards: document.querySelectorAll('.card:not(.road):not(.map):not(.radio)').length,
     goals: document.querySelectorAll('.goal').length,
     art: document.querySelectorAll('.goal-art img').length,
     badges: document.querySelectorAll('.goal-badge').length,
@@ -1724,6 +1745,88 @@ async function main() {
   check('no art url carries a scheme — they are all relative to the page',
     art.absolute.length === 0, art.absolute.slice(0, 3).join(', '));
   await new Promise((r) => server.close(r));
+
+  /* ---------------------------------------------------------------------
+   * ROGUELIKE RADIO (docs/roguelike-radio.md). The game keeps the time and the
+   * page follows it, and only radio.html makes a sound — every view is the same
+   * page, so without that rule a scene with three of them plays the music three
+   * times over. All of it is behaviour of a real <audio> element, which GUT
+   * cannot see.
+   * --------------------------------------------------------------------- */
+  console.log('roguelike radio');
+  fs.mkdirSync(path.join(dir, 'radio'), { recursive: true });
+  fs.writeFileSync(path.join(dir, 'radio', 'tone.wav'), toneWav(30));
+  fs.writeFileSync(path.join(dir, 'radio.html'), pageSrc.replace(anchor,
+    '<script>window.OBS_VIEW = "radio";</script>\n' + anchor));
+  const radioOn = (over) => ({
+    output: 'obs', playing: true, seq: 1, volume: 0.5, station: '',
+    src: 'radio/tone.wav', offset: 10, since: Date.now() / 1000, duration: 30,
+    song: { title: 'No Escape', artist: 'Darren Korb', album: 'Hades OST',
+      year: 2020, game: 'Hades', tags: ['boss'] },
+    art: state.now && state.now.cover ? state.now.cover : '',
+    ...over,
+  });
+  const radioReading = () => page.evaluate(() => {
+    const a = document.getElementById('radio-audio');
+    const vis = (sel) => {
+      const n = document.querySelector(sel);
+      return !!n && n.getBoundingClientRect().height > 0;
+    };
+    return { paused: a.paused, t: a.currentTime, volume: a.volume,
+      card: vis('.card.radio'), run: vis('.run'), goals: vis('.goals'),
+      timer: vis('.timer'), offline: vis('.offline'),
+      title: document.getElementById('radio-title').textContent,
+      meta: document.getElementById('radio-meta').textContent };
+  });
+  const savedState = state.state;
+
+  write((s) => { s.at += 1; s.radio = radioOn({}); });
+  await page.goto('file://' + path.join(dir, 'overlay.html'));
+  await sleep(1200);
+  let r = await radioReading();
+  check('the default page has no radio card', !r.card, JSON.stringify(r));
+  check('…and does not play the music — radio.html is the only speaker', r.paused);
+
+  /* ON THE MENU, where most of a stream's music plays: no run, and the card
+   * must stand anyway, alone. */
+  write((s) => { s.at += 1; s.state = 'idle'; s.radio = radioOn({ since: Date.now() / 1000 }); });
+  await page.goto('file://' + path.join(dir, 'radio.html'));
+  await sleep(1500);
+  r = await radioReading();
+  check('radio.html draws the now-playing card on the menus, and nothing else',
+    r.card && !r.run && !r.goals && !r.timer && !r.offline, JSON.stringify(r));
+  check('…with the song and where it is from',
+    r.title === 'No Escape' && r.meta.includes('2020') && r.meta.includes('Hades'),
+    r.title + ' / ' + r.meta);
+  check('…and plays it', !r.paused, 'paused=' + r.paused);
+  check('…from where the game says it is, not from the top',
+    r.t >= 10 && r.t < 14, r.t.toFixed(2) + 's');
+  check('…at the game\'s volume', Math.abs(r.volume - 0.5) < 0.01, r.volume);
+
+  write((s) => { s.at += 1; s.radio = radioOn({ playing: false, seq: 2, offset: 4 }); });
+  await sleep(1000);
+  r = await radioReading();
+  check('pause in the game pauses the page, where the game paused it',
+    r.paused && Math.abs(r.t - 4) < 0.5, 'paused=' + r.paused + ' t=' + r.t.toFixed(2));
+
+  write((s) => { s.at += 1; s.radio = radioOn({ seq: 3, offset: 0, since: Date.now() / 1000 }); });
+  await sleep(1000);
+  r = await radioReading();
+  check('a restart (Back) seeks to the top even on the same track',
+    !r.paused && r.t < 2.5, 't=' + r.t.toFixed(2));
+
+  write((s) => { s.at += 1; s.radio = radioOn({ output: 'game', seq: 4 }); });
+  await sleep(1000);
+  r = await radioReading();
+  check('playing from the game window silences the page', r.paused);
+
+  write((s) => { s.at += 1; s.radio = { output: 'obs', playing: false, seq: 5, volume: 0.5, station: '' }; });
+  await sleep(1000);
+  r = await radioReading();
+  check('with nothing to play the card goes rather than standing empty',
+    !r.card && r.paused, JSON.stringify(r));
+
+  write((s) => { s.at += 1; s.state = savedState; delete s.radio; });
 
   const shot = path.join(dir, 'overlay.png');
   await page.goto('file://' + path.join(dir, 'overlay.html'));

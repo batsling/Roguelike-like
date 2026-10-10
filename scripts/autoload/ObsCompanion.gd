@@ -79,6 +79,10 @@ const PAYLOAD_VERSION := 1
 
 const DIR := "user://obs"
 const COVER_DIR := "user://obs/covers"
+# The radio's current track, copied beside the page for the same reason the
+# covers are (see `_path_url`): nothing the page loads may point outside its
+# folder. Only the track playing is kept; the one before is deleted.
+const RADIO_DIR := "user://obs/radio"
 const STATE_PATH := "user://obs/state.js"
 const SOURCE_DIR := "res://obs"
 
@@ -119,6 +123,11 @@ const SPLIT_VIEWS := {
 	# the game capture, at whatever size the scene has room for — so it gets its
 	# own file like the map does.
 	"timer.html": "timer",
+	# ROGUELIKE RADIO (docs/roguelike-radio.md): the now-playing card, and the
+	# only view that makes a sound. Its own source so it gets its own fader in
+	# OBS's mixer and can be kept off the VOD track — and so the music plays
+	# exactly once however many of the other views are in the scene.
+	"radio.html": "radio",
 }
 
 # WHERE THE LINE GOES: immediately before the script that reads it. `applySplit`
@@ -237,6 +246,10 @@ func _connect_signals() -> void:
 	# deliberately does not emit per frame.
 	RunTimer.changed.connect(mark_dirty)
 
+	Radio.changed.connect(mark_dirty)
+	Radio.song_unlocked.connect(func(song: SongData) -> void:
+		_note("good", "New on Roguelike Radio: %s" % song.title))
+
 # ---------------------------------------------------------------------------
 # The write loop
 # ---------------------------------------------------------------------------
@@ -330,6 +343,8 @@ func payload() -> Dictionary:
 		"at": Time.get_unix_time_from_system(),
 		"state": _run_state(),
 		"events": _events.duplicate(true),
+		# Before the idle return: the radio plays on the menus too.
+		"radio": _radio(),
 	}
 	if out["state"] == "idle":
 		return out
@@ -1083,6 +1098,43 @@ func _stop(id: StringName, visit: int, unreached: bool, beaten: bool) -> Diction
 # ---------------------------------------------------------------------------
 # The event ticker
 # ---------------------------------------------------------------------------
+
+# The radio's payload with its two paths made into page-relative URLs. The track
+# is only STAGED when OBS is the speaker — copying a song nobody in OBS will play
+# is a few MB for nothing.
+var _staged_track: String = ""      # user:// path of the source last staged
+var _staged_url: String = ""
+
+func _radio() -> Dictionary:
+	var out: Dictionary = Radio.payload()
+	var file: String = String(out.get("file", ""))
+	out.erase("file")
+	if out.has("art"):
+		out["art"] = _path_url(String(out["art"]))
+	out["src"] = _stage_track(file) if out["output"] == "obs" else ""
+	return out
+
+func _stage_track(path: String) -> String:
+	if path == "":
+		return ""
+	if path == _staged_track and _staged_url != "":
+		return _staged_url
+	DirAccess.make_dir_recursive_absolute(RADIO_DIR)
+	var dir := DirAccess.open(RADIO_DIR)
+	if dir != null:
+		for old in dir.get_files():
+			dir.remove(old)
+	var name: String = "%d-%s" % [path.hash(), path.get_file()]
+	var src := FileAccess.open(path, FileAccess.READ)
+	var dst := FileAccess.open("%s/%s" % [RADIO_DIR, name], FileAccess.WRITE)
+	if src == null or dst == null:
+		_staged_track = ""
+		_staged_url = ""
+		return ""
+	dst.store_buffer(src.get_buffer(src.get_length()))
+	_staged_track = path
+	_staged_url = "radio/" + _escape(name)
+	return _staged_url
 
 # One line for the toast strip. `tone` is "good" / "bad" / "info" and is the only
 # thing the page colours on.
