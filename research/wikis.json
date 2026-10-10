@@ -15904,75 +15904,59 @@
   "wiki": null
  },
  "Tainted Grail: Conquest": {
-  "api": "https://taintedgrail.wiki.gg/api.php",
-  "articles": 3823,
-  "blurb": "Welcome to the Tainted Grail Wiki! Founded on April 1, 2023 3,823 articles • 10,798 files • 58,568 edits Tainted Grail: The Fall Of Avalon is a first person RPG videogame developed by Questline. It is based on the Dark Arthurian lore of the",
+  "also": [
+   "https://taintedgrail.wiki.gg/api.php"
+  ],
+  "api": "https://taintedgrail.fandom.com/api.php",
+  "articles": 257,
+  "blurb": "Welcome to the ! Tainted Grail: Conquest is a roguelite videogame with RPG elements, deckbuilding and turnbased combat developed by Awaken Realms Digital. It is based on the Dark Arthurian lore of Tainted Grail: The Fall of Avalon a boardga",
   "categories": {
-   "characters": [
-    "Character"
-   ],
    "events": [
-    "Quest Item",
+    "Encounters",
     "Quest",
-    "Quest-Side",
-    "Readable-Quest",
-    "Quest-Misc",
-    "Quest-Main"
+    "New Quest"
    ],
    "goals": [
-    "NPC-Enemy"
+    "Summoned Enemy",
+    "Boss"
    ],
    "locations": [
-    "Places-Shrine",
-    "Places-Dungeon",
-    "Places-Shop",
-    "Pages including data maps",
-    "Places-Natural Landmark",
-    "Places-Region",
-    "Places-Landmark"
-   ],
-   "loot": [
-    "Armor",
-    "Item",
-    "Weapon",
-    "Quest Item",
-    "Armor-Cuirass",
-    "Armor-Helmet",
-    "Weapon-OneHanded",
-    "Armor-Gauntlets",
-    "Weapon-TwoHanded",
-    "Equipment Sets",
-    "Armor-Boots",
-    "Handcrafting - Armor"
-   ],
-   "statuses": [
-    "Build-Debuff"
-   ]
-  },
-  "checked": "2026-10-09",
-  "counts": {
-   "characters": 7,
-   "events": 768,
-   "goals": 134,
-   "locations": 73,
-   "loot": 4272,
-   "statuses": 3
-  },
-  "match": "check",
-  "pages": {
-   "events": [
-    "Quests"
+    "Location"
    ],
    "loot": [
     "Items",
-    "Relics",
-    "Weapons",
-    "Potions",
-    "Spells"
+    "Loose Cards",
+    "Gain a Passive",
+    "Get Cards",
+    "Neutral Cards"
    ]
   },
-  "sitename": "Tainted Grail Wiki",
-  "wiki": "https://taintedgrail.wiki.gg/"
+  "checked": "2026-10-10",
+  "counts": {
+   "characters": 0,
+   "events": 103,
+   "goals": 22,
+   "locations": 16,
+   "loot": 24,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "events": [
+    "Quests",
+    "NPCs"
+   ],
+   "goals": [
+    "Enemies"
+   ],
+   "loot": [
+    "Items",
+    "Cards"
+   ]
+  },
+  "signal": "rogue",
+  "sitename": "Tainted Grail: Conquest Wiki",
+  "wiki": "https://taintedgrail-conquest.fandom.com"
  },
  "Talented": {
   "api": "https://talented.wiki.gg/api.php",

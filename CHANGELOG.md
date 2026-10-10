@@ -11,6 +11,21 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Research: Tainted Grail: Conquest and Slay the Spire 2, the two largest
+  wikis left, and each was the wrong wiki.** Conquest's guessed wiki
+  (taintedgrail.wiki.gg) is The Fall of Avalon's, a first-person RPG. Its
+  real one is taintedgrail.fandom.com, now in `KNOWN_WIKIS`, and it has 257
+  articles, not 3,823. From it: five events (Hanging Tree, A Wrinkled Creature,
+  Insane Worshippers, Pied Piper, Futhark), Vran the Sullen and the Wooden
+  Flute, with the Fountain of Health as a clone of the Magic Font. Slay the
+  Spire 2 shares the Slay the Spire wiki, whose categories are all StS1. Its
+  own content sits in `Module:Relics/StS2 data` and the Event2Nav template,
+  read directly: four new relics (Sword of Stone, Wongo's Mystery Ticket,
+  Beating Remnant, Toy Box) and two events held to "exceptional only" (The
+  Merchant???, a counterfeit shop, and Endless Conveyor, a sushi belt for
+  pushing your luck). A wiki marked `match: check` needs this look before
+  it's researched.
+
 - **Research, eighth batch, the first under the Clones rule.** Nowhere
   Prophet, Cobalt Core, 20 Minutes Till Dawn, Morimens, Ring of Pain,
   Soulstone Survivors, Banners of Ruin, Realm of the Mad God, Backpack Battles

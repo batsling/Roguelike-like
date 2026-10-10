@@ -256,6 +256,8 @@ KNOWN_WIKIS = {
     "Dungeon Crawl Stone Soup": "http://crawl.chaosforge.org/api.php",
     "Dwarf Fortress": "https://dwarffortresswiki.org/api.php",
     "Caves of Qud": "https://wiki.cavesofqud.com/api.php",
+    # the guess finds taintedgrail.wiki.gg, which is The Fall of Avalon's
+    "Tainted Grail: Conquest": "https://taintedgrail.fandom.com/api.php",
 }
 
 

@@ -2529,7 +2529,13 @@
   "statuses": "2026-10-09: Normality (curse); Weak, Vulnerable and Frail are Burn, Marked and Shields"
  },
  "Slay the Spire 2": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: nothing: the Regent is live, the Necrobinder's companion repeats Don't Starve's Wendy",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: The Merchant???, Endless Conveyor; held to 'exceptional only' (StS events are 13 of the 16 live); The Trial, Room Full of Cheese and Welcome to Wongo's were close",
+  "goals": "2026-10-10: nothing: the shared Slay the Spire wiki's monster categories are StS1's; StS2 content lives in modules and an Event2Nav template, and its two famous bosses (Vantom, The Insatiable) are live",
+  "locations": "2026-10-10: nothing: no locations",
+  "loot": "2026-10-10: Sword of Stone, Wongo's Mystery Ticket, Beating Remnant, Toy Box, read from Module:Relics/StS2 data; relics carried over from StS1 (Maw Bank, Winged Boots, Bag of Marbles...) left to StS1's own pass; weapons and evolutions: none (a deckbuilder)",
+  "statuses": "2026-10-10: nothing: no StS2 status pages found; Doom repeats Mewgenics' Doomed"
  },
  "Slayblade": {
   "connections": "before 2026-10-07"
@@ -2769,7 +2775,13 @@
   "connections": "before 2026-10-07"
  },
  "Tainted Grail: Conquest": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: nothing: no character pages (the classes are undocumented)",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: Hanging Tree, A Wrinkled Creature, Insane Worshippers, Pied Piper, Futhark; Fountain of Health is a clone on Backpack Hero's Magic Font; the rest are shops (Fortune-Seller, Cursed Healer) and quest chains",
+  "goals": "2026-10-10: Vran the Sullen (wiki corrected by hand: the guessed taintedgrail.wiki.gg is The Fall of Avalon's; Conquest's is taintedgrail.fandom.com); Horned Warden left out (its card-stealing summons are NetHack's live Leprechaun), Dullahan (headless: the live Pacer), Awakened Golem and Mistbearer (stun-and-armour bosses already proposed)",
+  "locations": "2026-10-10: nothing: its locations are the encounters above (the Hanging Tree is one); the Run-down Windmill is a quest door",
+  "loot": "2026-10-10: Wooden Flute; weapons and evolutions: none (no weapon pages; runestones and cards are the gear, with no evolutions)",
+  "statuses": "2026-10-10: nothing: no status pages"
  },
  "Talented": {
   "connections": "before 2026-10-07"
