@@ -679,12 +679,15 @@ static func short_source(url: String) -> String:
 
 # --- the proof screenshot ---------------------------------------------------
 #
-# One image per connection, named by the two games' ids in the direction the
-# sheet authored it, influencer first, joined by three hyphens:
-# `slay_the_spire---tic_tactic.png`. An id is only ever lower-case letters,
-# digits and underscores, so a hyphen can never be part of one and a name splits
-# one way only; three of them make the join easy to see, and the owner types
-# these by hand. They are captured — `node
+# A proof is named by the games' ids in the direction the sheet authored it,
+# influencer first, joined by three hyphens: `slay_the_spire---tic_tactic.png`.
+# One file can prove SEVERAL connections into the same game — a developer naming
+# five influences in one clip — and then its influencers are joined by one
+# hyphen each: `balatro-inscryption---black_jacket.ogv` is the proof of both
+# Balatro → Black Jacket and Inscryption → Black Jacket. An id is only ever
+# lower-case letters, digits and underscores, so a hyphen can never be part of
+# one and a name splits one way only; three of them make the join easy to see,
+# and the owner types these by hand. They are captured — `node
 # tools/capture_proof.js` opens each Source link, finds the sentence where the
 # developer names the older game, highlights it and crops around it — or they are
 # the owner's own screenshots. A connection with neither has no file, and the
@@ -696,6 +699,8 @@ const PROOF_DIR := "res://images2.0/proof/"
 # PNG, the owner's call: screenshots of text, kept lossless.
 const PROOF_EXT := ".png"
 const PROOF_JOIN := "---"
+# Between the influencers of one file that proves several connections.
+const PROOF_AND := "-"
 # The thumbnail's tallest. A screenshot is scaled to the column's WIDTH and no
 # further (never up: blowing a line of text past its own size only blurs it), so
 # text stays readable; a tall one shows its top this far and is read in full by
@@ -706,35 +711,85 @@ const PROOF_THUMB_H := 130.0
 # the 0.62 the column has without one, a tweet's text came out too small to read.
 const PROOF_COLUMN_RATIO := 0.5
 
+# The connections a proof's file name (without its extension) stands for, as
+# [from, to] pairs: one for `a---c`, two for `a-b---c`. [] for a name that isn't
+# a proof's. The pattern spells out PROOF_AND and PROOF_JOIN.
+static var _proof_name: RegEx = null
+
+static func proof_pairs(stem: String) -> Array:
+	if _proof_name == null:
+		_proof_name = RegEx.create_from_string("^([a-z0-9_]+(?:-[a-z0-9_]+)*)---([a-z0-9_]+)$")
+	var m: RegExMatch = _proof_name.search(stem)
+	if m == null:
+		return []
+	var to := StringName(m.get_string(2))
+	var pairs: Array = []
+	for from in m.get_string(1).split(PROOF_AND):
+		pairs.append([StringName(from), to])
+	return pairs
+
+# Every proof in the folder by the connection it proves ("from---to" -> path),
+# one map per kind. A file that proves several connections can't be found by
+# building its name from one of them, so the folder is read once, on the first
+# lookup. A proof added while the game runs shows from the next launch.
+#
+# DirAccess, with `.import` taken off, the way MenuFallingArt reads its folders:
+# a shipped build holds only `x.png.import` for a screenshot, and a clip (never
+# imported) as itself. NOT ResourceLoader.list_directory, which costs ~60 ms on
+# this folder against ~4 here, and reads a `.uid` as the file it belongs to: a
+# clip renamed or merged outside the editor leaves its old `.uid` behind
+# (gitignored, so a pull never removes it), and the listing then names a clip
+# that is gone, in place of the one that proves the connection now.
+static var _proof_shots: Dictionary = {}
+static var _proof_clips: Dictionary = {}
+static var _proofs_read: bool = false
+
+static func _proof_file(index: Dictionary, from_id: StringName, to_id: StringName) -> String:
+	if not _proofs_read:
+		_proofs_read = true
+		for f in DirAccess.get_files_at(PROOF_DIR):
+			f = f.trim_suffix(".import").trim_suffix(".remap")
+			var into: Dictionary = _proof_clips if f.ends_with(PROOF_VIDEO_EXT) \
+				else _proof_shots if f.ends_with(PROOF_EXT) else {}
+			for pair in proof_pairs(f.get_basename()):
+				into["%s%s%s" % [pair[0], PROOF_JOIN, pair[1]]] = PROOF_DIR + f
+	return String(index.get("%s%s%s" % [from_id, PROOF_JOIN, to_id], ""))
+
+# The screenshot's path, or "" when this connection has none.
 static func proof_path(from_id: StringName, to_id: StringName) -> String:
-	return "%s%s%s%s%s" % [PROOF_DIR, from_id, PROOF_JOIN, to_id, PROOF_EXT]
+	return _proof_file(_proof_shots, from_id, to_id)
 
 static func proof_texture(from_id: StringName, to_id: StringName) -> Texture2D:
 	var path: String = proof_path(from_id, to_id)
-	if not ResourceLoader.exists(path):
+	if path == "" or not ResourceLoader.exists(path):
 		return null
 	return load(path) as Texture2D
 
 # A PROOF THAT IS A CLIP — a developer saying it on a stream or a podcast. The
-# owner drops the `.mp4` in under the proof's own name, and
-# `tools/convert_proof_videos.py` writes the two files the game uses beside it:
+# owner uploads the `.mp4` under the proof's own name, and
+# `tools/convert_proof_videos.py` turns it into the two files the game uses —
 # the clip as Ogg Theora (the one format Godot plays) and a poster frame for the
-# thumbnail. A clip wins over a screenshot of the same connection.
+# thumbnail — then deletes the MP4. A clip wins over a screenshot of the same
+# connection.
 const PROOF_VIDEO_EXT := ".ogv"
 const PROOF_POSTER_EXT := ".poster.jpg"
 
+# The clip's path, or "" when this connection has none.
 static func proof_video_path(from_id: StringName, to_id: StringName) -> String:
-	return "%s%s%s%s%s" % [PROOF_DIR, from_id, PROOF_JOIN, to_id, PROOF_VIDEO_EXT]
+	return _proof_file(_proof_clips, from_id, to_id)
 
 # The clip for this connection, or null when it has none.
 static func proof_video(from_id: StringName, to_id: StringName) -> VideoStream:
 	var path: String = proof_video_path(from_id, to_id)
-	if not ResourceLoader.exists(path):
+	if path == "" or not ResourceLoader.exists(path):
 		return null
 	return load(path) as VideoStream
 
 static func proof_poster(from_id: StringName, to_id: StringName) -> Texture2D:
-	var path: String = "%s%s%s%s%s" % [PROOF_DIR, from_id, PROOF_JOIN, to_id, PROOF_POSTER_EXT]
+	var clip: String = proof_video_path(from_id, to_id)
+	if clip == "":
+		return null
+	var path: String = clip.trim_suffix(PROOF_VIDEO_EXT) + PROOF_POSTER_EXT
 	if not ResourceLoader.exists(path):
 		return null
 	return load(path) as Texture2D
