@@ -11,6 +11,24 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Research, fourteenth batch, and Batomon Showdown read off its own site.**
+  Batomon Showdown, Caveblazers, Source of Madness, Nubby's Number Factory,
+  Shotgun King, Crawl, Spiritfall, Nova Drift, Blade Assault, Abyssus and
+  Astronarch: 9 new rows, 7 clones and 1 old goal row checked. Batomon has no
+  MediaWiki, but batomon.com is a community companion site with a page for
+  every trinket, trainer and event, and `research/wikis.json` now says so by
+  hand. From it: Fake Diamond (gold the next time you lose a game), Link Cable
+  (every piece in the pack counts as next to every other) and two events
+  (Genius Inventor, Baby Basilisk). Elsewhere: Blessing of the Slug (whatever
+  hurts you is Slow), Pickle Rat (food that rerolls a shop), the Glaciate
+  status (frozen, and shatters if pushed into the edge), the Statue of Kismet
+  (take one gift, or grab both and fight more) and Crawl's Homing Spike Block,
+  the first unit that moves. Shotgun King's White King goal ("grows when
+  cornered") has nothing behind it on the wiki and is `?`. Seven pieces that
+  repeat a candidate went in as clones instead: Black Bishop, Wand of Gust,
+  Greedy Gloves, Purple Egg, Broken Figurine, Paragon Relic and Overturned
+  Caravan.
+
 - **Research, thirteenth batch, and the wikis running out.** Spelunky 2,
   Nordic Ashes, Colt Canyon, Crying Suns, Conan Chop Chop, Astrea: Six-Sided
   Oracles, Despot's Game, 33 Immortals, Have a Nice Death and CleanFall: 4 new

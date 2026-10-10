@@ -78,7 +78,13 @@
   "statuses": "2026-10-10: nothing"
  },
  "Abyssus": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: small wiki; the brief's pages for this kind hold nothing usable or new on a read (generic enemies, stat upgrades)",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: small wiki; the brief's pages for this kind hold nothing usable or new on a read (generic enemies, stat upgrades)",
+  "goals": "2026-10-10: small wiki; the brief's pages for this kind hold nothing usable or new on a read (generic enemies, stat upgrades)",
+  "locations": "2026-10-10: small wiki; the brief's pages for this kind hold nothing usable or new on a read (generic enemies, stat upgrades)",
+  "loot": "2026-10-10: small wiki; the brief's pages for this kind hold nothing usable or new on a read (generic enemies, stat upgrades)",
+  "statuses": "2026-10-10: small wiki; the brief's pages for this kind hold nothing usable or new on a read (generic enemies, stat upgrades)"
  },
  "Aces & Adventures": {
   "connections": "before 2026-10-07"
@@ -192,7 +198,13 @@
   "connections": "before 2026-10-07"
  },
  "Astronarch": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: small wiki; the brief's pages for this kind hold nothing usable or new on a read",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: Overturned Caravan a clone on Merchant In Trouble; Goo For It and the rest are stat gambles",
+  "goals": "2026-10-10: small wiki; the brief's pages for this kind hold nothing usable or new on a read",
+  "locations": "2026-10-10: small wiki; the brief's pages for this kind hold nothing usable or new on a read",
+  "loot": "2026-10-10: small wiki; the brief's pages for this kind hold nothing usable or new on a read",
+  "statuses": "2026-10-10: small wiki; the brief's pages for this kind hold nothing usable or new on a read"
  },
  "Atai no Gensoukyou": {
   "connections": "before 2026-10-07"
@@ -303,7 +315,13 @@
   "connections": "before 2026-10-07"
  },
  "Batomon Showdown": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: 24 trainers are one-line team abilities; Egg Breeder's hatching repeats the live-candidate Kid goal and Precious Egg, so none",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: Genius Inventor, Baby Basilisk from its 15 events; the rest are shops, gifts and battles",
+  "goals": "2026-10-10: no MediaWiki; batomon.com read by hand. Its 148 Batomon are your own team, not enemies, so nothing to carry a goal",
+  "locations": "2026-10-10: nothing: the map is a calendar of battles, shops and events",
+  "loot": "2026-10-10: batomon.com trinkets: Fake Diamond, Link Cable; Greedy Gloves a clone on Hoarder's Backpack, the Purple Egg one on Precious Egg; items are battle consumables. No weapons, no evolutions",
+  "statuses": "2026-10-10: statuses (Shock, Burn and the like) repeat existing ones"
  },
  "Battle Brothers": {
   "characters": "2026-10-09: nothing: the player is a company; backgrounds are hirelings",
@@ -354,7 +372,13 @@
   "connections": "before 2026-10-07"
  },
  "Blade Assault": {
-  "connections": "2026-10-07"
+  "characters": "2026-10-10: small wiki; the brief's pages for this kind hold nothing usable or new on a read (generic enemies, stat upgrades)",
+  "connections": "2026-10-07",
+  "events": "2026-10-10: small wiki; the brief's pages for this kind hold nothing usable or new on a read (generic enemies, stat upgrades)",
+  "goals": "2026-10-10: small wiki; the brief's pages for this kind hold nothing usable or new on a read (generic enemies, stat upgrades)",
+  "locations": "2026-10-10: small wiki; the brief's pages for this kind hold nothing usable or new on a read (generic enemies, stat upgrades)",
+  "loot": "2026-10-10: small wiki; the brief's pages for this kind hold nothing usable or new on a read (generic enemies, stat upgrades)",
+  "statuses": "2026-10-10: small wiki; the brief's pages for this kind hold nothing usable or new on a read (generic enemies, stat upgrades)"
  },
  "Blazing Beaks": {
   "characters": "2026-10-10: nothing: no character pages",
@@ -511,7 +535,13 @@
   "connections": "before 2026-10-07"
  },
  "Caveblazers": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: one hero, no classes",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: no events",
+  "goals": "2026-10-10: monsters and bosses are generic cave fare (goblins, slimes, a minotaur); nothing a goal can name that isn't already a candidate",
+  "locations": "2026-10-10: secret and puzzle rooms only; the Paragon Relic clone covers the one with a choice",
+  "loot": "2026-10-10: Blessing of the Slug from Blessings; Paragon Relic a clone on Shrine of the Mountain; weapons are stat swords and bows. No evolutions",
+  "statuses": "2026-10-10: no status page holds anything new"
  },
  "Caves of Qud": {
   "characters": "2026-10-09: pilot: rows written from wiki.cavesofqud.com",
@@ -671,7 +701,13 @@
   "connections": "before 2026-10-07"
  },
  "Crawl": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: the four players are interchangeable heroes",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: Quests are achievement lists, not events",
+  "goals": "2026-10-10: monsters are the ghosts' own forms, generic fantasy; nothing new",
+  "locations": "2026-10-10: Homing Spike Block from Objects; Haunted Furniture and the other traps repeat existing units and tiles",
+  "loot": "2026-10-10: weapons are classes of sword, bow and club with only stats; no evolutions",
+  "statuses": "2026-10-10: no status page holds anything new"
  },
  "Crop Rotation": {
   "connections": "before 2026-10-07"
@@ -2074,7 +2110,13 @@
   "statuses": "2026-10-10: nothing"
  },
  "Nova Drift": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: small wiki; the brief's pages for this kind hold nothing usable or new on a read (generic enemies, stat upgrades)",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: small wiki; the brief's pages for this kind hold nothing usable or new on a read (generic enemies, stat upgrades)",
+  "goals": "2026-10-10: small wiki; the brief's pages for this kind hold nothing usable or new on a read (generic enemies, stat upgrades)",
+  "locations": "2026-10-10: small wiki; the brief's pages for this kind hold nothing usable or new on a read (generic enemies, stat upgrades)",
+  "loot": "2026-10-10: its 'Evolution' is a ship mod, not a weapon evolution; weapons and mods are stat upgrades. Nothing usable",
+  "statuses": "2026-10-10: small wiki; the brief's pages for this kind hold nothing usable or new on a read (generic enemies, stat upgrades)"
  },
  "Nowhere Prophet": {
   "characters": "2026-10-10: nothing: the Firebrand's intimidation repeats Griftlands' Plocka, the Banshee is a live boss name, the Breaker's explosives and the Echo's speed are taken",
@@ -2086,7 +2128,13 @@
   "statuses": "2026-10-10: nothing: its status effects are gear powers, and the pages are empty templates"
  },
  "Nubby's Number Factory": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: Nubby is the only character",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: no events",
+  "goals": "2026-10-10: no enemies: the game is a Plinko board",
+  "locations": "2026-10-10: the Nubby-Mart is a plain shop; nothing new",
+  "loot": "2026-10-10: Pickle Rat; Broken Figurine a clone on Crush Curse; the other items are trigger chains that need its peg board. No weapons, no evolutions",
+  "statuses": "2026-10-10: no statuses"
  },
  "Nuclear Throne": {
   "characters": "2026-10-09: Chicken, Melting; Robot left out (eating repeats Don't Starve's level-up), Steroids (repeats Ball x Pit's two weapons)",
@@ -2747,8 +2795,13 @@
   "connections": "before 2026-10-07"
  },
  "Shotgun King: The Final Checkmate": {
+  "characters": "2026-10-10: the Shotgun King is the only character",
   "connections": "before 2026-10-07",
-  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+  "events": "2026-10-10: no events: cards are offered between floors",
+  "goals": "2026-10-10: old rows checked: Pawn and Rook hold, White King marked ? (nothing grows when cornered); Black Bishop a clone on Lucid Dream",
+  "locations": "2026-10-10: nothing: one chessboard per floor",
+  "loot": "2026-10-10: Wand of Gust a clone on Blank; Downpour, Frenzy and Wings repeat existing candidates; the shotguns are stat variants. No evolutions",
+  "statuses": "2026-10-10: nothing beyond the card buffs"
  },
  "Shovel Knight Dig": {
   "connections": "before 2026-10-07"
@@ -2856,7 +2909,13 @@
   "statuses": "2026-10-10: Brittle; Distracted is a clone on NetHack's Blind (attacks that go astray); Doom left out (Mewgenics' Doomed), Disarray, Exposed, Fragility and Shattered are all 'takes more damage', which the live Marked covers"
  },
  "Source of Madness": {
-  "connections": "2026-10-07"
+  "characters": "2026-10-10: one acolyte, no classes",
+  "connections": "2026-10-07",
+  "events": "2026-10-10: no events",
+  "goals": "2026-10-10: Lovecraftian bosses repeat Star Spawn and the existing eldritch candidates",
+  "locations": "2026-10-10: nothing usable: procedural biomes only",
+  "loot": "2026-10-10: rings are procedural spells carrying only stats; no weapons or evolutions to speak of",
+  "statuses": "2026-10-10: no status page holds anything new"
  },
  "Space Beast Terror Fright": {
   "connections": "before 2026-10-07"
@@ -2922,7 +2981,13 @@
   "connections": "before 2026-10-07"
  },
  "Spiritfall": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: one hero",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: NPC rooms (Herbalist, Relic Tinkerer) are shops; nothing new",
+  "goals": "2026-10-10: bosses are spirit guardians with patterns, nothing a goal can name that isn't already a candidate",
+  "locations": "2026-10-10: Statue of Kismet; the Tribute Room repeats Blood Altar and the Sacrifice Room",
+  "loot": "2026-10-10: spirit gifts and weapons are stat and dash modifiers; no weapon evolutions",
+  "statuses": "2026-10-10: Glaciate; Drenched and Wounded are plain stacking debuffs"
  },
  "Spirits Abyss": {
   "connections": "before 2026-10-07"
