@@ -11,6 +11,78 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Research: Tainted Grail: Conquest and Slay the Spire 2, the two largest
+  wikis left, and each was the wrong wiki.** Conquest's guessed wiki
+  (taintedgrail.wiki.gg) is The Fall of Avalon's, a first-person RPG. Its
+  real one is taintedgrail.fandom.com, now in `KNOWN_WIKIS`, and it has 257
+  articles, not 3,823. From it: five events (Hanging Tree, A Wrinkled Creature,
+  Insane Worshippers, Pied Piper, Futhark), Vran the Sullen and the Wooden
+  Flute, with the Fountain of Health as a clone of the Magic Font. Slay the
+  Spire 2 shares the Slay the Spire wiki, whose categories are all StS1. Its
+  own content sits in `Module:Relics/StS2 data` and the Event2Nav template,
+  read directly: four new relics (Sword of Stone, Wongo's Mystery Ticket,
+  Beating Remnant, Toy Box) and two events held to "exceptional only" (The
+  Merchant???, a counterfeit shop, and Endless Conveyor, a sushi belt for
+  pushing your luck). A wiki marked `match: check` needs this look before
+  it's researched.
+
+- **Research, eighth batch, the first under the Clones rule.** Nowhere
+  Prophet, Cobalt Core, 20 Minutes Till Dawn, Morimens, Ring of Pain,
+  Soulstone Survivors, Banners of Ruin, Realm of the Mad God, Backpack Battles
+  and Deep Rock Galactic: Survivor: 29 new rows and 14 clones. These wikis were
+  thinner than batch seven's. Morimens is a gacha game with nothing usable,
+  Realm of the Mad God gave only clones, and Deep Rock Galactic: Survivor's
+  wiki is the main game's, so only its shared Glyphids were used. Its six
+  blind goal rows were checked there: the Praetorian's was wrong (an open
+  mouth, not mining), and the other five were right. Highlights: the Time
+  Weaver ("Beat a game without reloading a save"), four Cobalt Core events
+  (Your Old Friend Dracula, The Duplitron, Black Hole, and Ship Shuffler, which
+  scrambles the pack), the Batgun and Dagger with their evolutions Vampiric
+  Bats and Molten Dagger, Ring of Pain's Swapper and Create Exit, and Banners
+  of Ruin's Arena bet. Overlaps went into the better row's `Clones`: LoneStar's
+  Magic Show is now a clone of The Duplitron, and Brotato's Buffer of
+  Deep Rock Galactic's Warden. `check` misread a clone whose game name holds a
+  colon, and now reads the game from the parentheses.
+
+- **Research: overlapping ideas become clones, not second rows.** Every
+  candidate sheet in `tools/Research.xlsx` has a `Clones` column (after
+  `Needs`). When two candidates overlap in goal or mechanic, the more
+  interesting one is the row, and the other is written into its `Clones` as
+  `Name (Game): how it differs`, so the idea stays on record and the owner can
+  swap them. Before this, the loser was dropped and only the ledger remembered
+  it. `research.py check` holds each clone to that shape and to a real game.
+  `sync` still takes the owner's edits from a workbook built before the
+  column existed: a row with empty `Clones` also matches the hash taken
+  without it. Tested with a tick and a cell edit on the pre-column workbook:
+  both came through, no clash. The rows already written haven't been folded
+  in yet (docs/research.md §6, rule 3). The same pass fixed two
+  mistakes from batch seven that CI's goal audit would have failed on: tier
+  `3-High` is the goal sheet's word, not `3-Hard`, and an unsure goal row is
+  `?`, not `check`.
+
+- **Research, seventh batch.** Brotato, Streets of Rogue, Dark Devotion, Neon
+  Abyss, Pixel Dungeon, SpellRogue, Curious Expedition, LoneStar, Backpack Hero
+  and Crypt of the NecroDancer, every kind: 93 new rows. Seventeen blind goal
+  rows were checked against the wikis. Five were wrong and are fixed: the Monk
+  lays eggs and keeps its distance, the Cop is about bribes rather than
+  pacifism, NecroDancer's Ghost only moves while your back is turned, Deep
+  Blues is a chess army rather than a daily run, and King Conga is about his
+  conga lines rather than his crown. Four more are marked `check`: the
+  Mother (an elite, not a wave-20 boss, and the wiki gives no behaviour), the
+  Farseer, the Minotaur, and the Skeleton, whose goal repeats the live Bony. Highlights:
+  seven curses (four from Dark Devotion, three phobias from Curious
+  Expedition), the Keygun (the first piece that makes keys), the Tesla Gun
+  and its upgrade the Loki Gun, two push-your-luck events built on `Again`
+  (Fortune Favors the Brave, the Gambling Mole), Baz the shopkeeper, and four
+  tiles and units (Tree, Killer Plant, Oil Slick, Bounce Trap). Neon Abyss has
+  no goals (its monster names come from image files) and LoneStar no loot (its
+  treasure pages hold only an ID). Before committing, each game's rows were
+  compared with every candidate and live row by word overlap. That found
+  eight repeats in this batch's own drafts. Six were dropped, among them the
+  Free Item Voucher (The King is Watching's Free Coupon), Enraged (Brogue's
+  Discorded) and the Hydra Body (Hades' Bone Hydra), and two goals were
+  reworded; the ledger names each one.
+
 - **Proof clips: one file per clip, and no MP4 left behind.** The 38 proof
   clips cost 767 MB of the checkout, half of it twice over. Each clip was kept
   as the owner's MP4 *and* the `.ogv` the game plays, though Godot never reads

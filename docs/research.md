@@ -52,6 +52,7 @@ copies across as it is, then the same idea and staging columns:
 | `Why it fits` | the case for the row: how it would play here, and what gap it fills |
 | `Builds on` | the system of THIS game it plugs into: `Fire tile`, `coin trinkets`, `add_goal event`, `Stun`, `Undying ability`, `vampire tag`… |
 | `Needs` | blank if it rides what the game can already do; otherwise `new: ` and the mechanic it would take (`new: a Poison tile`, `new: keys open locked paths`) |
+| `Clones` | the ideas this row beat: other candidates, from any game, whose mechanic or goal overlaps it, as `Name (Game): how it differs`, split by `; ` (so no `;` inside one) (§6, rule 3). `check` holds each to that shape and to a real game |
 | `Source` | the exact page it came from (a wiki article, a store page) |
 | `Confidence` | `ok`, or `check` when it was written from a summary or a detail could not be confirmed (`?` in the goal file means the same) |
 | `Status` | where the row stands: `to review`, `waiting for game row`, `lead`, `source check`, `not an influence`, `nothing found`, `on sheet` |
@@ -122,6 +123,7 @@ python3 tools/research.py page "Hades" "Charon" "Megaera"           # pages as p
 python3 tools/research.py page "Hades" --category "Boons" --chars 400   # a whole category, briefly
 python3 tools/research.py mark loot "Hades" --note "9 rows"         # after writing a game's rows
 python3 tools/research.py check               # CI runs this
+python3 tools/check_goal_candidates.py         # CI runs this too: goal tiers are 1-Low/2-Medium/3-High/4-Insane, unsure is `?`
 python3 tools/research.py build               # CSVs -> Research.xlsx
 python3 tools/research.py new                 # every kind, for games just added (§7)
 ```
@@ -194,6 +196,21 @@ The owner's choices (October 2026) are written into these, in this order:
    the same thing exists in several games (a healing potion, a mimic), there is
    **one row, from the game that made it most famous**, with the other games
    named in `What it is there`.
+   **When two candidates overlap** (the same goal, or a mechanic that plays the
+   same, even with different names and from different games), **keep the more
+   interesting one as the row and put the other in its `Clones` column**
+   (owner's rule, October 2026): `Name (Game): how it differs`, so the idea is
+   on record and the owner can still swap them. "More interesting" means a
+   stronger identity, a goal more games can host, or a better fit for a gap.
+   If the existing row already has the owner's `yes` or `no`, it stays the row
+   whatever the comparison says, and the new idea goes in its `Clones`. If the
+   new idea wins over a row the owner hasn't decided, the new idea becomes the
+   row, and the old row's name, game and difference move into its `Clones`.
+   An idea that repeats *live* content has no row to sit on: leave it out and
+   say so in the ledger note, as before. Rows written before this rule (the
+   first seven batches) keep their ledger notes and haven't been folded in
+   yet. Compare by meaning, not wording: the batch-seven repeats ("Destroy an
+   egg before it hatches" twice, a half-price voucher twice) shared few words.
 4. **Fills a gap or plugs in.** Prefer what fills a thin area (the inventory's
    list) or joins an existing family (the coin trinkets, the food trinkets, the
    whetstone-to-weapon evolutions, the Fire and Web tiles, the arcade objects, a
@@ -336,7 +353,7 @@ a brief for each, and prints the hand work left. Then, for each new game:
 2. **goals, loot, events, characters, statuses, locations**: read its brief and
    the pages it lists, write rows, then `research.py mark <kind> <game>` for
    every kind, rows or not.
-3. `research.py check && research.py build`, and commit the CSVs, the ledger,
+3. `research.py check && check_goal_candidates.py && research.py build`, and commit the CSVs, the ledger,
    `wikis.json` and `Research.xlsx` together.
 
 `new` does not write the ledger. Each kind is marked once its rows are written,

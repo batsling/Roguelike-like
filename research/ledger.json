@@ -6,7 +6,13 @@
   "connections": "before 2026-10-07"
  },
  "20 Minutes Till Dawn": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: Diamond; Shana put in the Clones of Mewgenics' Jester (rerolling a level-up), Raven (a companion: Wendy's), Abby, Scarlett and Hina are fire-mode variants",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: nothing: no events",
+  "goals": "2026-10-10: Mysterious Tree; the bosses are Lovecraft's (Shoggoth, Shub-Niggurath, Yog, Hastur), whose behaviour is dash-and-spawn, and the Sploders' explosion goals are taken",
+  "locations": "2026-10-10: nothing: three maps (Forest, Pumpkin Patch, Temple) that differ only in enemies; surviving the timer is the Hound's goal",
+  "loot": "2026-10-10: weapons and evolutions: Batgun and its evolution Vampiric Bats (Hellfire Bats in its Clones); every weapon evolves at level 20 into one of three; upgrades are stat perks",
+  "statuses": "2026-10-10: nothing: Curse (double damage after 2 seconds) is the live Marked; Burn and Freeze are live or proposed"
  },
  "20XX": {
   "connections": "before 2026-10-07"
@@ -183,11 +189,22 @@
   "connections": "before 2026-10-07"
  },
  "Backpack Battles": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: nothing: the classes (Ranger, Reaper, Berserker, Pyromancer, Mage, Adventurer) are archetypes already taken",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: nothing: no events (shop rounds and fights)",
+  "goals": "2026-10-10: nothing: no monsters (you fight other players' backpacks)",
+  "locations": "2026-10-10: nothing: Shopkeeper Furcifer only gives tips; no places",
+  "loot": "2026-10-10: Banana, Pineapple (food trinkets); weapons and evolutions: Dagger and its recipe Molten Dagger (Poison Dagger in its Clones); Pan and Eggscalibur left out (the Pan's +1 per Food repeats the live Stankus' Toothpick); its other weapons are mostly live or recipe chains of two new pieces",
+  "statuses": "2026-10-10: nothing: Heat, Cold, Spikes, Luck, Regeneration, Vampirism, Blind and Poison are live or proposed"
  },
  "Backpack Hero": {
+  "characters": "2026-10-10: Purse; Satchel left out (charming repeats Hexe), CR-8 (no healing: The Head), Pochette (pets: Wendy's companion), Tote (no weapons: The Goad)",
   "connections": "before 2026-10-07",
-  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+  "events": "2026-10-10: Magic Font, Gambling Mole (push-your-luck, Again); the Travelling Warrior is a fight; Frog Roulette, Playing Possum and Glitched Eye have no pages",
+  "goals": "2026-10-10: checked 2: Polar Bear right; Farseer kept as check (tier was right as 3-High; the wiki says nothing about seeing ahead); Possum Player added (check: from the Enemies table); the thieves repeat UnderMine's, the Hermit Crab Mimic the mimic candidates",
+  "locations": "2026-10-10: Baz (a shopkeeper); Structures are pack items, and Matthew's starting blessing is a menu, not a place",
+  "loot": "2026-10-10: Mouse Wood, Beast's Ring, Evil Hand; weapons and evolutions: none readable (the weapon pages' stats sit in tables the reader can't see; no evolutions, though Purse's Jack Cleaver set comes close); Gem of Anna left out (Dio's Best Friend), Sandwich (the live Rejuvenation Rack), Belt of Knives (the live Duplicator)",
+  "statuses": "2026-10-10: nothing: its curses are pack items (two are loot rows here) and its statuses (poison, regen, spikes, charm) are already proposed"
  },
  "Bad North": {
   "connections": "before 2026-10-07"
@@ -212,7 +229,13 @@
   "connections": "before 2026-10-07"
  },
  "Banners of Ruin": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: nothing: characters are animal races with a racial ability, not heroes",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: Arena, Merchant In Trouble (both check: the wiki lists the choices with no text); the rest are shops and card removal (Augur, Juggler, Innkeeper, Crazy Weasel)",
+  "goals": "2026-10-10: nothing: the enemy pages hold only where a fight appears (the Hunters, the Spymaster, the Prince), and the regular soldiers are faction troops",
+  "locations": "2026-10-10: nothing: districts (Outer Districts, Old Town, Noble Quarters) are acts, not places with a feature",
+  "loot": "2026-10-10: nothing: the weapon pages are empty; weapons and evolutions: none readable (weapons hold skill cards; no evolutions)",
+  "statuses": "2026-10-10: Crippled, Protected; Provoked left out (Gremlin Nob's taunt), Overwhelm and Vulnerable (the live Marked), Retaliate (Darkest Dungeon 2's Riposte), Pacified (the live Stun)"
  },
  "Barda": {
   "connections": "before 2026-10-07"
@@ -350,8 +373,13 @@
   "connections": "before 2026-10-07"
  },
  "Brotato": {
+  "characters": "2026-10-10: Streamer; One-Armed left out (Ball x Pit's Hoary Hoarder, 'no more than two weapons'), Pacifist (the Cop's 'without killing'), Gangster (Charon's 'Steal from a shop'), Bull (The Goad's 'without a weapon'), Saver (The Window)",
   "connections": "before 2026-10-07",
-  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+  "events": "2026-10-10: nothing: no events; between waves there is only the shop",
+  "goals": "2026-10-10: checked 2: The Mother kept as unconfirmed (an elite, not a wave-20 boss; the wiki gives no behaviour), Monk Elite fixed and renamed Monk (it keeps its distance); Invoker added; Buffer folded into the Clones of Deep Rock Galactic's Warden (an enemy that buffs the rest); Looter and Looting Pig left out (UnderMine's runaway)",
+  "locations": "2026-10-10: Tree (a unit); its two zones differ only in which enemies come",
+  "loot": "2026-10-10: Handcuffs, Mirror, Sunken Bell, Candy Bag, Bag; weapons and evolutions: Screwdriver, Wrench; no evolutions (two copies of a weapon merge into its next tier, which is not a new weapon)",
+  "statuses": "2026-10-10: nothing: burning is the live Burn, and the DLC's Curse is a stat that strengthens enemies, not a status"
  },
  "Brutal Orchestra": {
   "connections": "before 2026-10-07"
@@ -484,7 +512,13 @@
   "connections": "before 2026-10-07"
  },
  "Cobalt Core": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: Drake; Max put in the Clones of Cogmind's Operator (hacking a machine), Books (crystal mining is the Peasant's), CAT, Dizzy, Peri and Riggs are card-colour roles (shields, attacks, movement)",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: Your Old Friend Dracula, The Duplitron (Magic Show from LoneStar folded into its Clones), Black Hole, Ship Shuffler; Grandma's Bakery left out (a card-removal stop), Sports! (a fight)",
+  "goals": "2026-10-10: Replicator; the three bosses are ships judged by layout (Crystalline Entity, The Dreadnought, The Cobalt), and most enemy pages are stubs",
+  "locations": "2026-10-10: nothing: map nodes are only enemy, elite, event, artifact and boss",
+  "loot": "2026-10-10: nothing: cards and artifacts are ship systems (shields, evade, heat) with no piece to carry; weapons and evolutions: none (the ship's cannons are parts, not weapons; upgrades are A/B card variants)",
+  "statuses": "2026-10-10: nothing: its statuses (Heat, Evade, Shield, Oxygen Leak) are ship systems"
  },
  "Cogmind": {
   "connections": "before 2026-10-07",
@@ -551,8 +585,13 @@
   "connections": "before 2026-10-07"
  },
  "Crypt of the NecroDancer": {
+  "characters": "2026-10-10: Monk, Bolt; Aria left out (one-heart perfect runs are Zoe's), Dove (no attacking: the Cop), Melody (her Golden Lute is For the King 2's Lute), Cadence (the plain hero)",
   "connections": "before 2026-10-07",
-  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+  "events": "2026-10-10: nothing: no events; its shrines are objects (two are location rows)",
+  "goals": "2026-10-10: checked 10: Zombie, Monster Lord, The Necrodancer, Coral Riff and Death Metal right (Coral Riff, Death Metal and Deep Blues moved to the bosses sheet); Ghost fixed (it moves only when your back is turned), Deep Blues fixed (a chess army, not a daily run), King Conga fixed (his conga lines, not a crown); Skeleton marked check (repeats the live Bony and Pacer), Minotaur check (not in the Monsters article as read); Fortissimole, Frankensteinway and The Conductor left out (summoner and phase bosses already proposed)",
+  "locations": "2026-10-10: Shrine of Glass, Shrine of War (objects), Bounce Trap (tile); Shrine of Blood left out (Mewgenics' Baphomet's blood price), Tar (the live Web tile)",
+  "loot": "2026-10-10: Ring of Peace, Crown of Greed, Monkey's Paw; weapons and evolutions: none (weapons share one shape per type, and materials like Blood, Glass and Golden change a weapon's numbers, not what it is); Ring of Becoming and Glass Jaw left out (one-hit death is Dead Cells' Cursed), Pack of Holding (NetHack's Bag of Holding)",
+  "statuses": "2026-10-10: nothing: no status effects; freezing and confusion are trap and spell effects already proposed"
  },
  "Cryptark": {
   "connections": "before 2026-10-07"
@@ -585,7 +624,13 @@
   "connections": "before 2026-10-07"
  },
  "Curious Expedition": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: H. P. Lovecraft, Charles Darwin; Amelia Earhart left out (speedrunning is Time Eater's), Alfred Nobel (blowing things up is taken), Isabella Bird (secret areas and chests are taken), Nikola Tesla (the Tesla Gun carries him)",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: nothing: shrine looting repeats the live Golden Idol, and its quests are fetch-and-kill errands from London",
+  "goals": "2026-10-10: Snarfrattle; the rest are animals with no behaviour beyond toughness (T-Rex is a workshop mod), Lt. Konrad is a quest fight, and Zombie Pygmies repeat the zombie candidates",
+  "locations": "2026-10-10: Healing Springs, Stone Circle (objects); Raptor Nest left out (its egg repeats the Precious Egg), the Golden Pyramid is the expedition's end, not a place with a goal",
+  "loot": "2026-10-10: Necronomicon; weapons and evolutions: Tesla Gun, and its upgrade the Loki Gun (an evolution); Crystal Ball left out (NetHack's Magic Mapping), Mysterious Egg (Dicey Dungeons' Precious Egg), Whip (a live weapon name)",
+  "statuses": "2026-10-10: Pyromaniac; 3 curses: Claustrophobic, Acrophobia, Superstitious; Cannibal left out (Lord Bunga's goal), Kleptomania (the live Theft ability), Hallucinations (NetHack's)"
  },
  "Curious Expedition 2": {
   "connections": "before 2026-10-07"
@@ -607,7 +652,13 @@
   "connections": "before 2026-10-07"
  },
  "Dark Devotion": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: nothing: one hero, the Templar knight; the NPCs (Blacksmith, Dicecaster, Ferryman) aren't playable",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: nothing: no events; its one quest page is kill counts",
+  "goals": "2026-10-10: Nekosh, Hezek; Elinor and Aureus left out (duos repeat the Wicked Twins and three more), the regular enemies' pages are 'Under Construction'",
+  "locations": "2026-10-10: Blood Altar, Healing Statue (objects), Oil Slick (tile); Blessing thief trap left out (it only acts on the hero, who isn't on the board)",
+  "loot": "2026-10-10: Beset Dead Man's Ring, Torn Saddlebag; weapons and evolutions: Jealous Hatchet, Broken Blade; no evolutions (the forge builds boss weapons from blueprints); Golden medallion left out (Dio's Best Friend)",
+  "statuses": "2026-10-10: 4 curses: Guilt, Overdose, Manipulated, Glass Bones; most of its 54 curses are stat penalties (stamina, crits, miss chance) with no rule to break"
  },
  "Dark Light: Survivor": {
   "connections": "before 2026-10-07"
@@ -694,8 +745,13 @@
   "connections": "before 2026-10-07"
  },
  "Deep Rock Galactic: Survivor": {
+  "characters": "2026-10-10: nothing: the four classes (Scout, Driller, Engineer, Gunner) are roles, and Engineer is taken",
   "connections": "before 2026-10-07",
-  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+  "events": "2026-10-10: nothing: the wiki's events are the main game's seasonal and machine events",
+  "goals": "2026-10-10: checked 6 against the main Deep Rock Galactic wiki (the Glyphids are shared): Warden, Bulk Detonator, Oppressor, Stingtail and Web Spitter right; Praetorian fixed (its open mouth, not mining); the Loot Bug is a clone on UnderMine's Hoarding Pilfer, the Korlok Tyrant-Weed on Legend of Keepers' Priestess",
+  "locations": "2026-10-10: nothing: biomes (Magma Core, Glacial Strata, Fungus Bogs) are hazard themes whose goals are taken (the live 'Touch lava', the ice candidates)",
+  "loot": "2026-10-10: nothing: the wiki is the main game's, and its equipment (Drilldozer, M.U.L.E., overclocks) is not Survivor's; weapons and evolutions: not researchable from this wiki",
+  "statuses": "2026-10-10: nothing: its statuses (burning, frozen, electrocuted, slowed) are live or proposed"
  },
  "Deep Sky Derelicts": {
   "connections": "before 2026-10-07"
@@ -1486,7 +1542,13 @@
   "connections": "before 2026-10-07"
  },
  "LoneStar": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: nothing: the playable things are spaceships (Shielder, Spacewalker, Spectra), not heroes",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: Fortune Favors the Brave (push-your-luck, Again x9); Magic Show is a clone on Cobalt Core's The Duplitron; Casino Betting left out (For the King's Game of Dice), Kitty Financial Management (Moonlighter's banker); most others trade ship units",
+  "goals": "2026-10-10: One Punch (check: the wiki gives its bio, not its units); its bounties are space pirates whose mechanics sit in unit tables the page reader can't see",
+  "locations": "2026-10-10: nothing: no locations on the wiki; the map is a route of fights and events",
+  "loot": "2026-10-10: nothing: every treasure page holds only an ID (its effect lives in a data module) and the Treasure list is empty; weapons and evolutions: none (dice-driven ship units, no weapons; upgrades add slots, not a new piece)",
+  "statuses": "2026-10-10: nothing: its keywords are dice and slot rules (Jam, Overclock, Paint) and the Keywords page is a stub"
  },
  "Loop Hero": {
   "connections": "before 2026-10-07",
@@ -1695,7 +1757,13 @@
   "connections": "before 2026-10-07"
  },
  "Morimens": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: nothing: 106 gacha Awakeners defined by card kits, with no hero identity a level-up could carry",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: nothing: its events are limited-time gacha promotions with currencies, not run events",
+  "goals": "2026-10-10: nothing: the boss pages hold a quote and no fight (Twin Contradiction, Paradise Veil, Crybaby Geor), the enemies are stubs",
+  "locations": "2026-10-10: nothing: locations are story places (Mythag University) with no feature",
+  "loot": "2026-10-10: nothing: relics tweak card costs and a gacha resource (Aliemus, Arithmetica), and most pages carry only the story text; weapons and evolutions: none (no weapons; relic grades are Silver/Gold/Cursed, not upgrades)",
+  "statuses": "2026-10-10: nothing: Exalt and Posse effects are card-kit buffs"
  },
  "Morsels": {
   "connections": "before 2026-10-07"
@@ -1748,7 +1816,13 @@
   "connections": "before 2026-10-07"
  },
  "Neon Abyss": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: Lucas; Ming left out (hatching is Azure Dreams' Kid, not harming animals ADOM's Cat Lord), Matt and Zack (dodge-roll and dash heroes repeat Ironshank's movement rule), R-6 (The Head's 'without healing')",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: nothing: no events; the Intersection Room is a blind pick between two doors, with no prompt",
+  "goals": "2026-10-10: nothing: the wiki's monster names come from image file names ('very likely not the actual names'), and its bosses (the gods) have no pages",
+  "locations": "2026-10-10: Claw Machine (an arcade object); the other special rooms are minigames (piano, dance) with no board or choice",
+  "loot": "2026-10-10: Devil's Trade, Coin Bomb, Battle Pass; weapons and evolutions: Keygun; no evolutions (the Combos page is player builds; 'nothing secret happens'); Black Friday left out (half-price shops are Dibble's and Cursula's), Dimensional Bags (not a bag: a drop on taking damage, Fanny Pack's)",
+  "statuses": "2026-10-10: nothing: no status effects documented"
  },
  "Neon Abyss 2": {
   "connections": "before 2026-10-07"
@@ -1814,7 +1888,13 @@
   "connections": "before 2026-10-07"
  },
  "Nowhere Prophet": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: nothing: the Firebrand's intimidation repeats Griftlands' Plocka, the Banshee is a live boss name, the Breaker's explosives and the Echo's speed are taken",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: Surrender (check: the prompt is written to fit); Pregnancy left out (not a theme for this game), Huge Motor Wagon and the Salta-bird hunt (results unknown on the wiki), quests are faction errands",
+  "goals": "2026-10-10: Knight of the Flame, Ambas Worm; Leper Colossus left out (healing on retreat repeats the regenerating candidates), Coherent Hive (summoners are taken), the basic enemies are faction soldiers with no behaviour of their own",
+  "locations": "2026-10-10: Gladiator Camp; Mineral Springs and Bujjahat Monastery are heal-and-teacher stops, Hermit's Sanctum a faction recruitment tree",
+  "loot": "2026-10-10: nothing: every Gear and Tool page is an empty template (its abilities live in data the reader can't see); weapons and evolutions: none readable (tools are leader powers; dismantling turns gear into cards, not a better weapon)",
+  "statuses": "2026-10-10: nothing: its status effects are gear powers, and the pages are empty templates"
  },
  "Nubby's Number Factory": {
   "connections": "before 2026-10-07"
@@ -1967,7 +2047,13 @@
   "connections": "before 2026-10-07"
  },
  "Pixel Dungeon": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: nothing: Warrior, Mage, Rogue and Huntress are generic classes with stat perks (Rogue is a candidate from Diablo)",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: Sad Ghost, Old Wandmaker; the Troll Blacksmith and Ambitious Imp are mining and kill-count quests",
+  "goals": "2026-10-10: Dwarf monk, Gnoll shaman; Succubus left out (charming repeats Battle Brothers' Hexe), Swarm of flies (the live Spike Slime's split), Evil eye (Marshmallow's infighting), Tengu (trap goals already proposed), Yog-Dzewa (The Creator's 'Defeat a God'), Mimic/Goo (candidates from Shattered Pixel Dungeon)",
+  "locations": "2026-10-10: Well of Transmutation (an object); the Wells of Health and Awareness repeat healing and NetHack's Magic Mapping; the Alchemy pot needs seeds, which the game doesn't have",
+  "loot": "2026-10-10: Wand of Flock, Scroll of Recharging, Scroll of Mirror Image, Potion of Paralytic Gas, Honeypot, Weightstone, Dew Vial; weapons and evolutions: none (its weapons are the generic dagger-to-war-hammer set; no evolutions); Wand of Amok left out (Brogue's Staff of Discord), Scroll of Lullaby (NetHack's Wand of Sleep), Scroll of Magic Mapping (NetHack's), Ring of Haggler (half-price shops already proposed), Ankh (Dio's Best Friend)",
+  "statuses": "2026-10-10: nothing: the status pages are missing; Amok is Brogue's Discord, Rooted is the live Immobile, Terror and Charmed are already proposed"
  },
  "PlateUp!": {
   "connections": "before 2026-10-07"
@@ -2093,7 +2179,13 @@
   "connections": "before 2026-10-07"
  },
  "Realm of the Mad God": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: nothing: the classes are archetypes already taken (Warrior, Rogue, Wizard, Necromancer, Archer, Priest)",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: nothing: its events are seasonal or event-boss spawns",
+  "goals": "2026-10-10: nothing new: the Crystal Prisoner is a clone on Wildfrost's Frost Jailer and the Pentaract on Gungeon's Kill Pillars; Oryx, the Cube God and the Hermit God are bullet-pattern bosses",
+  "locations": "2026-10-10: nothing: its dungeons (Pirate Cave, Snake Pit, Mad Lab) are themed fights; the Wine Cellar behind Oryx repeats the Owl's secret ending",
+  "loot": "2026-10-10: nothing: equipment is tiered stat gear; Pirate Rum (drunk) repeats Trampy's goal and Battle Brothers' Hangover, the Magic Mushroom NetHack's Hallucination; weapons and evolutions: none (tiers, not evolutions)",
+  "statuses": "2026-10-10: nothing: the status pages are missing"
  },
  "Red Rogue": {
   "connections": "before 2026-10-07"
@@ -2139,8 +2231,13 @@
   "connections": "before 2026-10-07"
  },
  "Ring of Pain": {
+  "characters": "2026-10-10: nothing: one unnamed hero",
   "connections": "before 2026-10-07",
-  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+  "events": "2026-10-10: nothing: paths between floors (Crossroads, Reprieve, Finders Keepers) are menus of items",
+  "goals": "2026-10-10: checked 1: Owl right (the Dark Ending's final boss, and your companion until then); Time Weaver added; Scrounger is a clone on UnderMine's Hoarding Pilfer (a treasure creature that gets away); the Light Ending's bosses (Calm, Connection, Discipline, Vision) are stat puzzles",
+  "locations": "2026-10-10: nothing: no location pages; its alternate paths are item choices",
+  "loot": "2026-10-10: Tipping Point, Gambler's Reward, Create Exit (scroll); weapons and evolutions: Swapper; no evolutions (items are upgraded in place); Transformer left out (Noita's Polymorphine and the Frog status), Target Dummy (Mewgenics' Decoy)",
+  "statuses": "2026-10-10: nothing: Ensnare (the Wand of Roots), Freeze, Intimidate, Knockback, Petrify (Slice & Dice's) and Poison are live or proposed"
  },
  "Ringer": {
   "connections": "before 2026-10-07"
@@ -2432,7 +2529,13 @@
   "statuses": "2026-10-09: Normality (curse); Weak, Vulnerable and Frail are Burn, Marked and Shields"
  },
  "Slay the Spire 2": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: nothing: the Regent is live, the Necrobinder's companion repeats Don't Starve's Wendy",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: The Merchant???, Endless Conveyor; held to 'exceptional only' (StS events are 13 of the 16 live); The Trial, Room Full of Cheese and Welcome to Wongo's were close",
+  "goals": "2026-10-10: nothing: the shared Slay the Spire wiki's monster categories are StS1's; StS2 content lives in modules and an Event2Nav template, and its two famous bosses (Vantom, The Insatiable) are live",
+  "locations": "2026-10-10: nothing: no locations",
+  "loot": "2026-10-10: Sword of Stone, Wongo's Mystery Ticket, Beating Remnant, Toy Box, read from Module:Relics/StS2 data; relics carried over from StS1 (Maw Bank, Winged Boots, Bag of Marbles...) left to StS1's own pass; weapons and evolutions: none (a deckbuilder)",
+  "statuses": "2026-10-10: nothing: no StS2 status pages found; Doom repeats Mewgenics' Doomed"
  },
  "Slayblade": {
   "connections": "before 2026-10-07"
@@ -2477,7 +2580,13 @@
   "connections": "before 2026-10-07"
  },
  "Soulstone Survivors": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: The Cursed Captain; The Blacksmith is a clone on Caves of Qud's Tinker (upgrading); the rest are class archetypes whose identities are taken (Engineer, Necromancer, Hound Master, Barbarian)",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: nothing: no events",
+  "goals": "2026-10-10: nothing new: the Corrupted Void Hunters are a clone on Isaac's Blue Baby (a copy of you); the Lords of the Void and Titans are bullet-pattern bosses with elemental themes",
+  "locations": "2026-10-10: nothing: the Area category is skills; its maps are arenas",
+  "loot": "2026-10-10: nothing: its loot is skills and runes, not items; weapons and evolutions: none (each hero's weapons carry one special skill; no evolutions)",
+  "statuses": "2026-10-10: Brittle; Distracted is a clone on NetHack's Blind (attacks that go astray); Doom left out (Mewgenics' Doomed), Disarray, Exposed, Fragility and Shattered are all 'takes more damage', which the live Marked covers"
  },
  "Source of Madness": {
   "connections": "2026-10-07"
@@ -2498,7 +2607,13 @@
   "connections": "before 2026-10-07"
  },
  "SpellRogue": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: nothing: its four Dice Slingers are elements (Azar fire, Lapis water and ice, Hazel earth, Sefyra air) whose level-ups are taken (Willow's and the Runaway's fire, the Ice Slime's freeze)",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: Hag's Hollow (check: the wiki has the choices but no event text, so the prompt is written to fit); the rest trade spells and runes, which this game doesn't have",
+  "goals": "2026-10-10: Mana Devourer, Heart of the Forest; Hydra Body left out (Hades' Bone Hydra), Divine Scarab (revives: the live Undying), Djinn (illusions: the live Illusionist), Dark Reflection (Blue Baby's copy of you)",
+  "locations": "2026-10-10: nothing: its map tiles are fights, events, shops and rests",
+  "loot": "2026-10-10: Crooked Dice, Fool's Hope Charm, Dilapidated Crown; weapons and evolutions: none (spells cast with dice, no weapons; no evolutions); Giant's Pouch left out (half-price shops already proposed), Flask of Echoes (the live Echo Form), Chest of Wonders (a plain item draft)",
+  "statuses": "2026-10-10: Pox; Death Pact left out (Mewgenics' Soul Link), Fumble/Vexed/Silenced (dice enchantments with no counterpart), Fateweaving (keeps dice between turns)"
  },
  "Spellbook Demonslayers": {
   "connections": "before 2026-10-07"
@@ -2593,8 +2708,13 @@
   "connections": "2026-10-07"
  },
  "Streets of Rogue": {
+  "characters": "2026-10-10: Firefighter; Doctor left out (NetHack's Healer), Comedian (Regent's friend, Marshmallow's infighting), Investment Banker and Slum Dweller (money level-ups already proposed)",
   "connections": "before 2026-10-07",
-  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+  "events": "2026-10-10: nothing: its quests are level missions and Big Quests are per-character run goals; neither is a prompt with choices",
+  "goals": "2026-10-10: checked 3: Gorilla and Werewolf right; Cop fixed (goal was the Doctor's pacifism; now bribing, as the Cop unlocks); Shapeshifter and Mayor added; Upper-Cruster left out (repeats Scourgebringer's Alarm-bot), Killer Robot (Groudon's 'ten times your health'), Ghost (a candidate from two games)",
+  "locations": "2026-10-10: Clone Machine, Well (objects), Killer Plant (unit); Toilet left out (Flushmaster's goal covers it), the stages are levels with enemies and no goal of their own",
+  "loot": "2026-10-10: Monkey Barrel; weapons and evolutions: Banana Peel, Leafblower, Fire Extinguisher, Shrink Ray, Water Pistol; no evolutions (mods attach to a gun, it stays the same gun); Free Item Voucher left out (The King is Watching's Free Coupon), Kill Profiter (the live Golden Idol), Resurrection Shampoo (Dio's Best Friend), Four-Leaf Clover (the live Clover)",
+  "statuses": "2026-10-10: Shrunk; Enraged left out (Brogue's Discorded), Debt (UnderMine and Star of Providence), Electrocuted (the live Stun), Perfumorous (no body to befriend)"
  },
  "Sundered": {
   "connections": "before 2026-10-07"
@@ -2655,7 +2775,13 @@
   "connections": "before 2026-10-07"
  },
  "Tainted Grail: Conquest": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: nothing: no character pages (the classes are undocumented)",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: Hanging Tree, A Wrinkled Creature, Insane Worshippers, Pied Piper, Futhark; Fountain of Health is a clone on Backpack Hero's Magic Font; the rest are shops (Fortune-Seller, Cursed Healer) and quest chains",
+  "goals": "2026-10-10: Vran the Sullen (wiki corrected by hand: the guessed taintedgrail.wiki.gg is The Fall of Avalon's; Conquest's is taintedgrail.fandom.com); Horned Warden left out (its card-stealing summons are NetHack's live Leprechaun), Dullahan (headless: the live Pacer), Awakened Golem and Mistbearer (stun-and-armour bosses already proposed)",
+  "locations": "2026-10-10: nothing: its locations are the encounters above (the Hanging Tree is one); the Run-down Windmill is a quest door",
+  "loot": "2026-10-10: Wooden Flute; weapons and evolutions: none (no weapon pages; runestones and cards are the gear, with no evolutions)",
+  "statuses": "2026-10-10: nothing: no status pages"
  },
  "Talented": {
   "connections": "before 2026-10-07"

@@ -91,9 +91,16 @@ TODAY = datetime.date.today().isoformat()
 # detail nobody could confirm), `Status` (STATUSES), the owner's two columns,
 # and a stable `ID`, which is how `sync` matches a workbook row to its CSV line
 # however the owner sorts or filters the sheet.
-IDEA = ["What it is there", "Builds on", "Needs"]
-STAGE = ["What it is there", "Why it fits", "Builds on", "Needs", "Source", "Confidence", "Status", "Owner",
-         "Owner Notes", "ID"]
+#
+# `Clones` (after `Needs`) holds the ideas this row beat: when two candidates,
+# from any games, overlap in mechanic or goal, the more interesting one is the
+# row and the other is written here as `Name (Game): how it differs`, entries
+# split by `; `, instead of being a second row or being dropped. It came after
+# the rest, so `sync` still accepts a workbook built before it (LATE_COLUMNS).
+IDEA = ["What it is there", "Builds on", "Needs", "Clones"]
+STAGE = ["What it is there", "Why it fits", "Builds on", "Needs", "Clones", "Source", "Confidence", "Status",
+         "Owner", "Owner Notes", "ID"]
+LATE_COLUMNS = {"Clones"}
 
 EVENT_CHOICES = [f"{c} {i}" for i in range(1, 7) for c in ("Choice", "Repeat", "Result", "Effect")]
 
@@ -249,6 +256,8 @@ KNOWN_WIKIS = {
     "Dungeon Crawl Stone Soup": "http://crawl.chaosforge.org/api.php",
     "Dwarf Fortress": "https://dwarffortresswiki.org/api.php",
     "Caves of Qud": "https://wiki.cavesofqud.com/api.php",
+    # the guess finds taintedgrail.wiki.gg, which is The Fall of Avalon's
+    "Tainted Grail: Conquest": "https://taintedgrail.fandom.com/api.php",
 }
 
 
@@ -1259,6 +1268,14 @@ def check(verbose=True):
                 bad.append(f"{where}: Game {r['Game']!r} is not spelled as the games sheet spells it")
             if "sheets" in k and r.get("Sheet") not in k["sheets"]:
                 bad.append(f"{where}: Sheet {r.get('Sheet')!r} should be one of {k['sheets']}")
+            for clone in filter(None, (c.strip() for c in r.get("Clones", "").split(";"))):
+                # the game is the parenthesis closed right before `: ` or the end; a
+                # game name may itself hold a colon ("Deep Rock Galactic: Survivor")
+                m = re.match(r"^(.*?) \(([^()]+)\)(?::\s.*)?$", clone, re.S)
+                game = m.group(2) if m else ""
+                if game not in games:
+                    bad.append(f"{where}: clone {clone[:60]!r} should read `Name (Game): how it differs`, "
+                               f"with the game spelled as the games sheet spells it")
             key = (target_sheet(kind, r), r.get(k["name"], "").lower())
             if not key[1]:
                 bad.append(f"{where}: no {k['name']}")
@@ -1309,9 +1326,9 @@ def cmd_check(args):
 WIDTHS = {"Name": 24, "Event": 24, "Game": 24, "Influencer": 24, "Influencee": 24, "Goal": 36,
           "Description": 44, "Why it fits": 44, "Why this pairing": 44, "Text": 90, "Source": 30,
           "Prompt": 44, "Owner": 8, "Owner Notes": 30, "ID": 14, "Status": 13, "Heading": 24,
-          "Level Up": 34, "What it is there": 40, "Builds on": 22, "Needs": 22, "On Player": 30, "On Enemy": 30, "Choices": 40,
+          "Level Up": 34, "What it is there": 40, "Builds on": 22, "Needs": 22, "Clones": 30, "On Player": 30, "On Enemy": 30, "Choices": 40,
           "Extra": 22, "Tag": 14, "Tags": 14, "Sheet": 10, "Confidence": 10, "Effect": 24}
-WRAP = {"Description", "Why it fits", "Why this pairing", "Text", "Prompt", "What it is there", "Choices"}
+WRAP = {"Description", "Why it fits", "Why this pairing", "Text", "Prompt", "What it is there", "Choices", "Clones"}
 
 
 def book_rows(wb, kind):
@@ -1399,6 +1416,7 @@ ABOUT = [
     "  Upload the workbook back to tools/Research.xlsx. A Claude session then runs `python3 tools/research.py sync`.",
     "  A `yes` row waits there until it is in Roguelikes.xlsx; its Status then turns to `on sheet` by itself.",
     "  Don't delete rows: write no instead, so the same idea isn't suggested again.",
+    "  Clones lists ideas that overlapped a row and lost to it: Name (Game): how it differs. Prefer one? Say so in Owner Notes.",
     "",
     "THE SHEETS",
     "  status       what has been researched, for which games, and what is next",
@@ -1463,6 +1481,17 @@ def cmd_build(args):
     print(f"wrote {n} candidate rows to {os.path.relpath(rb.BOOK, ROOT)}")
 
 
+def built_as(row, cols, base):
+    """Whether `row` is the row whose hash is `base`. A workbook built before a
+    LATE_COLUMNS column existed hashed its rows without it, so a row that leaves
+    those columns empty also matches the hash taken without them."""
+    if rb.row_hash([row.get(c, "") for c in cols]) == base:
+        return True
+    late = [c for c in cols if c in LATE_COLUMNS]
+    return bool(late) and not any(row.get(c, "") for c in late) and \
+        rb.row_hash([row.get(c, "") for c in cols if c not in LATE_COLUMNS]) == base
+
+
 def cmd_sync(args):
     """Bring the owner's edits in Research.xlsx into the CSVs, then rebuild.
 
@@ -1502,8 +1531,8 @@ def cmd_sync(args):
                 print(f"  {kind}: {rid} is in the workbook but not the CSV; left out (was it removed on purpose?)")
                 continue
             base = b.get("_base", "")
-            owner_changed = rb.row_hash(vals) != base
-            csv_changed = rb.row_hash([r[c] for c in cols]) != base
+            owner_changed = not built_as(b, cols, base)
+            csv_changed = not built_as(r, cols, base)
             if not owner_changed:
                 continue
             if not csv_changed:
