@@ -120,7 +120,13 @@
   "connections": "before 2026-10-07"
  },
  "Archons": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: 1 row: The Archons (two heroes on one controller), from the Steam page; the guessed wiki is a tabletop game's",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: nothing: the guessed wiki (archons.fandom.com) is a tabletop game's, now set by hand to none; the Steam page names no monsters or items",
+  "goals": "2026-10-10: nothing: the guessed wiki (archons.fandom.com) is a tabletop game's, now set by hand to none; the Steam page names no monsters or items",
+  "locations": "2026-10-10: nothing: the guessed wiki (archons.fandom.com) is a tabletop game's, now set by hand to none; the Steam page names no monsters or items",
+  "loot": "2026-10-10: nothing: the guessed wiki (archons.fandom.com) is a tabletop game's, now set by hand to none; the Steam page names no monsters or items",
+  "statuses": "2026-10-10: nothing: the guessed wiki (archons.fandom.com) is a tabletop game's, now set by hand to none; the Steam page names no monsters or items"
  },
  "Arms of God": {
   "connections": "before 2026-10-07"
@@ -165,7 +171,13 @@
   "connections": "before 2026-10-07"
  },
  "Atomicrops": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: 1 row: Lavender; Rye repeats the Engineer's turret, Robusta the Bolt's speed",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: 1 row: Deervil's Den; the Moons are wave modifiers",
+  "goals": "2026-10-10: 2 rows: Locust, Tree Monster; clone: Mini U.F.O. into Hag; Corpse-a-Copia repeats the live Shelled Parasite (an edible enemy), Bull Boy the Ancient Guardian, Mole the Magma Worm's burrowing",
+  "locations": "2026-10-10: 1 row: Bundit Camp",
+  "loot": "2026-10-10: 3 rows: Heart Beet, Participation Trophy; weapons and evolutions: Flying Squirrels; no evolutions (Butcher's Bayonet fires the Butcher's Knife's blade without turning it); clone: Mysterious Flower into Dio's Best Friend",
+  "statuses": "2026-10-10: nothing: no status effects or curses"
  },
  "Auro: A Monster-Bumping Adventure": {
   "connections": "before 2026-10-07"
@@ -241,7 +253,13 @@
   "connections": "before 2026-10-07"
  },
  "Barony": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: 2 rows: Brewer, Accursed; Mechanist repeats the Engineer, Mesmer the Lamb, Shaman the Abomination, Sexton the live Stalker",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: nothing: no event screens",
+  "goals": "2026-10-10: 1 row: Baron Herx; clone: Orpheus and Erudyce into Trigger Twins; the Minotaur shares a name with NecroDancer's candidate (its maze became a location), Baphomet is a Mewgenics event",
+  "locations": "2026-10-10: 2 rows: Minotaur Maze, Teleportation Trap (tile)",
+  "loot": "2026-10-10: 2 rows: Scroll of Food, Enchanted Feather; weapons and evolutions: none (its weapons are generic; Whip and Rapier are other games'); no evolutions; its potions repeat Rogue's and NetHack's",
+  "statuses": "2026-10-10: nothing new; clone: Oversaturated into Overdose; Conflict repeats Madness"
  },
  "Baroque": {
   "connections": "before 2026-10-07"
@@ -391,7 +409,13 @@
   "connections": "before 2026-10-07"
  },
  "Candies 'n Curses": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: 1 row: Molli Pop",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: 1 row: Hector the Hunter",
+  "goals": "2026-10-10: 3 rows: Jack, Climber Slime, Phantom King; the Necro Witch's minion phase repeats the Carnivorous Mutae",
+  "locations": "2026-10-10: nothing: its rooms are wave stages; the Soul Shop sells real-money currency",
+  "loot": "2026-10-10: 1 row: Spicy Feet Curse; clones: Devil's Bargain into Last Stand, Purified Curse into Vitality; its candies are stat ups; weapons and evolutions: none (the flashlight is the only weapon); no evolutions",
+  "statuses": "2026-10-10: nothing: its 'curses' are treasures with a price, researched as loot"
  },
  "Captain Forever Remix": {
   "connections": "before 2026-10-07"
@@ -552,7 +576,13 @@
   "connections": "before 2026-10-07"
  },
  "Crab Champions": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: nothing: one crab, with cosmetic skins",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: nothing: no event screens; the totems are objects",
+  "goals": "2026-10-10: 1 row: Crab; King Skull and Giant Ant repeat live skeleton and Giant Spider goals, the Spider Crab is unreleased",
+  "locations": "2026-10-10: 2 rows: Tony (shopkeeper), Health Totem",
+  "loot": "2026-10-10: 5 rows: Hoarder's Backpack (bag), Equalizer, Valued Customer, Gold Coating, Faulty Chests; clone: Performance Bonus into Master Round; Coral Amulet is close to the live There's Options; weapons and evolutions: none (its guns are generic, the Blade Launcher is the Buzzsaw Gun); no evolutions",
+  "statuses": "2026-10-10: nothing: its elements are Burn (live), freezing (a live goal) and poison (Blight, a candidate)"
  },
  "Crab God": {
   "connections": "2026-10-07"
@@ -847,7 +877,13 @@
   "connections": "before 2026-10-07"
  },
  "Disfigure": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: nothing: one unnamed hero; builds come from the weapon",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: nothing: its quests are achievements",
+  "goals": "2026-10-10: nothing: its enemies and bosses are named by code (M1B1, M1Mb12), not by name",
+  "locations": "2026-10-10: nothing: three endless maps",
+  "loot": "2026-10-10: 3 rows: Vitality, Last Stand, Redline (mutations); clones: Loose Cannon into Glass Cannon, Iron Lung into Flawless; weapons and evolutions: none new (Boomerang Scythe is a clone of Boomerang); no evolutions",
+  "statuses": "2026-10-10: nothing: its buffs and debuffs are weapon upgrades"
  },
  "Dive or Die: Children of Rain": {
   "connections": "before 2026-10-07"
@@ -2137,7 +2173,13 @@
   "connections": "before 2026-10-07"
  },
  "Quasimorph": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: 1 row: Scout of Hades (a starting class)",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: nothing: missions and quest items, no event screens",
+  "goals": "2026-10-10: 1 row: Barakunarash (a Baron); its quasimorphs have no list pages, only the factions do",
+  "locations": "2026-10-10: nothing new; clone: Autodoc into Healing Pool; the other stations are crafting benches",
+  "loot": "2026-10-10: 2 rows: Giant Hand; weapons and evolutions: Big Bone; no evolutions (crafting makes items, nothing turns into another)",
+  "statuses": "2026-10-10: 1 row: Quasimorphosis (curse); wounds, infection and amputation repeat Bleed, Blight and Jotun's lost limb"
  },
  "Quest of Dungeons": {
   "connections": "before 2026-10-07"
@@ -2206,10 +2248,22 @@
   "connections": "before 2026-10-07"
  },
  "Returnal": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: 1 row: Selene",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: nothing: no event screens (devices are objects)",
+  "goals": "2026-10-10: 1 row: Severed; clones: Proteron into Priestess, Phrike into Prickwood, Chrysoid into Hoarding Pilfer; Infected Scout repeats the live Isaac ('Defeat yourself'), Gorgolith Ponzu's weak spot, Nemesis shares a name with a Slay the Spire candidate",
+  "locations": "2026-10-10: 2 rows: Tower of Sisyphus, Malignant Chest; clone: Reconstructor into Revenant Station",
+  "loot": "2026-10-10: 6 rows: Key Retriever, Fractal Nail, Parasite, Key Liquifier, Translocation Sphere; weapons and evolutions: Electropylon Driver; no evolutions (weapon traits level up per weapon, nothing turns into another); clone: Astronaut Figurine into Dio's Best Friend",
+  "statuses": "2026-10-10: 1 row: Suit Malfunction (curse, with the removal-task idea in Needs); the parasites became a loot row"
  },
  "Revita": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: nothing new; clone: Revita Kid into Krampus (paying with your own health)",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: nothing new; clone: Fortuna into Black Rabbit; shrines give run-level effects",
+  "goals": "2026-10-10: nothing new; clone: Acceptance into The Concierge (two bosses without a hit); most enemy pages are missing, and the other bosses' fights translate to summoning and burrowing, which are taken",
+  "locations": "2026-10-10: nothing: Fortuna is a clone, the Corrupted Room repeats the Cursed Chest",
+  "loot": "2026-10-10: 3 rows: Wax Wings, Paladin's Hammer, Mandrake; weapons and evolutions: Pisces Rod (a Celestial Weapon); no evolutions (Soul Guns branch by upgrade, synergies are set bonuses); clone: Open Lock into Key Retriever",
+  "statuses": "2026-10-10: 3 rows: Electrify (status), Blood Lust and Hungry Locks (curses); Charm, Fear, Confusion and Slow repeat candidates"
  },
  "Rhythm Witch: Beat Death": {
   "connections": "before 2026-10-07"
@@ -2264,7 +2318,13 @@
   "statuses": "2026-10-09: nothing: the wiki's debuff pages are templates; Bleed, Burn live, Tar and Weak are other games' candidates"
  },
  "Risk of Rain Returns": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: 3 rows: Enforcer, HAN-D, Drifter; Engineer, Sniper (Risk of Rain), CHEF, Miner, Pilot are other games' candidates, Acrid repeats the Plague Doctor's poison",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: nothing: no event screens; its shrines are Risk of Rain's objects already",
+  "goals": "2026-10-10: 3 rows: Lemurian Cavalry, Clay Man, Lynx Totem; the remake's other monsters are Risk of Rain's rows already (Providence, Scavenger, Magma Worm, Parent, Whorl, Imp Overlord, live Colossus, Wisp, Child); Gup repeats the live Spike Slime, Bighorn Bison the Ancient Guardian, Gilded Wurms the Wicked Twins, Ifrit Hezek's chains",
+  "locations": "2026-10-10: 1 row: Contact Light (the final stage, four keycards)",
+  "loot": "2026-10-10: 5 rows: Life Savings, Snake Eyes, Keycard, Old Box; weapons and evolutions: Pillaged Gold (equipment as a weapon); no evolutions (items stack, nothing turns into anything); clone: Golden Gun into Battle Pass (the same gold-for-Stun rule)",
+  "statuses": "2026-10-10: 1 row: Leeching (elite); the other elites repeat live or candidate statuses, the Artifacts are run modifiers"
  },
  "Road Not Taken": {
   "connections": "before 2026-10-07"

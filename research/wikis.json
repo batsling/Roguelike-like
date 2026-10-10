@@ -749,56 +749,10 @@
   "wiki": null
  },
  "Archons": {
-  "api": "https://archons.fandom.com/api.php",
-  "articles": 675,
-  "blurb": "",
-  "categories": {
-   "characters": [
-    "Classes"
-   ],
-   "loot": [
-    "Potions/ingredients",
-    "Weapons",
-    "Trinket Packs",
-    "Direction Spells",
-    "Logic Spells",
-    "Fire Spells",
-    "Materialism Spells",
-    "Air Spells",
-    "Tools",
-    "Trickery Spells",
-    "Earth Spells",
-    "Warfare Spells"
-   ],
-   "statuses": [
-    "Talent Effects",
-    "Technique Effects",
-    "Conditions"
-   ]
-  },
-  "checked": "2026-10-09",
-  "counts": {
-   "characters": 8,
-   "events": 0,
-   "goals": 0,
-   "locations": 0,
-   "loot": 178,
-   "statuses": 184
-  },
-  "match": "sure",
-  "pages": {
-   "characters": [
-    "Classes"
-   ],
-   "loot": [
-    "Trinkets"
-   ],
-   "statuses": [
-    "Conditions"
-   ]
-  },
-  "sitename": "Archons Wiki",
-  "wiki": "https://archons.fandom.com"
+  "checked": "2026-10-10",
+  "note": "archons.fandom.com is the wiki of Archons, a tabletop MMOTTE ('play as one of the godlike archons'), not BulletHell Studios' 2024 action roguelike",
+  "set": "by hand",
+  "wiki": null
  },
  "Arms of God": {
   "checked": "2026-10-09",

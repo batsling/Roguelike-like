@@ -11,6 +11,34 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Research, ninth batch: the ten best-documented owned games left.** Risk
+  of Rain Returns, Returnal, Crab Champions, Atomicrops, Quasimorph,
+  Disfigure, Revita, Archons, Barony and Candies 'n Curses, every kind: 69
+  new rows and 24 clones. The Archons wiki was the wrong one:
+  archons.fandom.com is a tabletop game's wiki, and it passed the main-page
+  check on 178 item pages. It is now set by hand to no wiki, and Archons was
+  researched from its Steam page (one character, The Archons: two heroes on
+  one controller).
+  Disfigure's enemies are named by code (M1B1), so it gives no goals, and
+  Risk of Rain Returns mostly repeats Risk of Rain, so only what the remake
+  adds was used. Keys, the thinnest resource, got the most: Keycard (a
+  marked enemy carries one), Key Retriever, Key Liquifier (keys into Max
+  Health), the Contact Light location and the Hungry Locks curse. Other
+  highlights: Returnal's Suit Malfunction (a curse, with the idea of lifting
+  it by a task instead of a timer) and Parasite (a pickup that shows its
+  Buff and Debuff before you take it), Quasimorphosis (eating meat calls the
+  monsters), Hoarder's Backpack (a bag that empties every chest into a pack
+  you can't drop from), Participation Trophy (four of a kind in a 2x2 merge),
+  Deervil's Den (a devil's deal whose price is a hunter until you're hit),
+  Tony the crab shopkeeper, the Health Totem (Max Health doubles or halves),
+  and the Electropylon Driver (two pylons and a fence of lightning). The
+  word-overlap sweep before committing found two repeats in this batch:
+  Golden Gun played exactly like Neon Abyss's Battle Pass, and Revita's
+  Acceptance was a stricter Concierge (Dead Cells). Both are now clones of
+  those rows. The other 22 were clones from the start, most of them on
+  existing rows, among them two revives (Astronaut Figurine, Mysterious
+  Flower) on Dio's Best Friend and Proteron on the Priestess.
+
 - **Research: Tainted Grail: Conquest and Slay the Spire 2, the two largest
   wikis left, and each was the wrong wiki.** Conquest's guessed wiki
   (taintedgrail.wiki.gg) is The Fall of Avalon's, a first-person RPG. Its

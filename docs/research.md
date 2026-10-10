@@ -381,6 +381,11 @@ A guessed address finds whatever owns the name, so each find is judged twice:
   pages of enemies or items. Otherwise it drops to `check`. This is what caught
   `ragnarok.fandom.com` (a Ragnarök fan wiki), `ringer.fandom.com` (a TV
   series) and `omega.fandom.com` (a web series), now set by hand to no wiki.
+  The page-count test can be fooled: `archons.fandom.com` passed as `sure`
+  on 178 item pages, and is the wiki of a tabletop game called Archons, not
+  the 2024 roguelike. A brief whose categories read like another genre
+  (spells, talents, potion ingredients for a twin-stick shooter) is worth a
+  look at the main page before any rows are written.
   `blurb` holds the first lines of the main page for a person to judge by;
   `signal` records what it said (`null` when it could not be read).
 
