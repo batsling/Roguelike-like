@@ -9812,16 +9812,21 @@ func test_the_review_rows_carry_the_pictures_their_checklist_rows_do() -> void:
 	var rows: int = 0
 	var faces: int = 0
 	var symbols: int = 0
+	var statuses: int = 0
 	for line in review.get_children():
 		if not (line is HBoxContainer):
 			continue
 		rows += 1
-		symbols += _marked_under(line, &"status_portrait").size()
+		# A status row wears the status's symbol; a goal authored `game beaten`
+		# mirrors in with its body's portrait — the random offering sometimes
+		# stands one, and it is a row like the others.
+		statuses += _marked_under(line, &"status_portrait").size()
+		symbols += _texture_rects_under(line).size()
 		faces += _character_icons_under(line).size()
 	assert_gt(rows, 1, "the level-up and the status goal are both mirrored")
-	assert_eq(symbols + faces, rows, "and each row leads with exactly one picture")
+	assert_eq(statuses + symbols + faces, rows, "and each row leads with exactly one picture")
 	assert_eq(faces, 1, "the level-up row wears the character's own face")
-	assert_gt(symbols, 0, "and a status goal wears its status's symbol")
+	assert_gt(statuses, 0, "and a status goal wears its status's symbol")
 
 func _marked_under(node: Node, meta: StringName) -> Array:
 	var out: Array = []
