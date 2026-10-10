@@ -11,6 +11,23 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Research, twentieth batch, and the end of the owned games with wikis.**
+  Hell Clock, Maze Mice, Merge Maestro, Noobs Are Coming, The Royal Writ,
+  Skull Horde, Asgard's Fall, Bad North, Bounty of One and Angband: 4 new rows,
+  1 clone and 5 old goal rows checked. Every owned game still waiting now has
+  no wiki, starting with Beneath Apple Manor, Rogue and Moria.
+  - **Angband's old rows:** Grip, Wormtongue, Boldor, Sauron and Morgoth all
+    hold. Its fandom wiki is a 30-page stub, so they were checked against the
+    game's own `lib/gamedata/monster.txt` on GitHub, which is the primary
+    source anyway.
+  - **New rows:** Tetraphobia (Maze Mice; every 4th game, from the 4th on,
+    Stun 4 to everything), the Duplicator (double your best weapon), the
+    Cursed Vase (Merge Maestro; a destroyed piece comes back) and the Educated
+    status (The Royal Writ; its blows heal you).
+  - **Clones:** Bounty of One's True Survivor, on Flawless.
+  - **Nothing usable:** Noobs Are Coming's and Skull Horde's wikis are almost
+    all stubs, and Hell Clock's relics are percentage stats.
+
 - **Research, nineteenth batch.** Battle Shapers, Moonring, Mortal Sin, Slime
   3K, Talented, The Rogue Prince of Persia, Wizard of Legend 2, Conquest Dark,
   Crush the Industry and Die in the Dungeon: 8 new rows and 3 clones. None of

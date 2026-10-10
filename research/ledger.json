@@ -130,8 +130,13 @@
   "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
  },
  "Angband": {
+  "characters": "2026-10-10: races and classes not read this batch",
   "connections": "before 2026-10-07",
-  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+  "events": "2026-10-10: no events",
+  "goals": "2026-10-10: old rows (Grip, Wormtongue, Boldor, Sauron, Morgoth) checked against the game's monster.txt on GitHub (the fandom wiki is a stub): all hold",
+  "locations": "2026-10-10: town stores not read this batch",
+  "loot": "2026-10-10: the fandom wiki's items are stubs; object.txt not read this batch",
+  "statuses": "2026-10-10: not read this batch"
  },
  "Anomaly Collapse": {
   "connections": "before 2026-10-07"
@@ -182,7 +187,13 @@
   "connections": "before 2026-10-07"
  },
  "Asgard's Fall: Viking Survivors": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: Characters not read in depth",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: Fates not read",
+  "goals": "2026-10-10: 19-page wiki: Enemies page not read in depth",
+  "locations": "2026-10-10: Realms by name",
+  "loot": "2026-10-10: Abilities read by name: survivors-style weapons; no evolutions page",
+  "statuses": "2026-10-10: no statuses"
  },
  "Asterogues": {
   "connections": "before 2026-10-07"
@@ -278,7 +289,13 @@
   "statuses": "2026-10-10: nothing: its curses are pack items (two are loot rows here) and its statuses (poison, regen, spikes, charm) are already proposed"
  },
  "Bad North": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: commanders are squads",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: no events",
+  "goals": "2026-10-10: Enemy pages are its Viking unit types; nothing to name",
+  "locations": "2026-10-10: The Fog read: the map closing in, close to the live Amulet pressure",
+  "loot": "2026-10-10: Items read (Holy Grail, Philosopher's Stone, Ring of Command, War Horn): revives and squad stats that repeat existing pieces. No evolutions",
+  "statuses": "2026-10-10: Traits are commander buffs"
  },
  "Balatro": {
   "characters": "2026-10-10: nothing new: the Erratic Deck is live; the other decks are small stat tweaks",
@@ -455,7 +472,13 @@
   "connections": "before 2026-10-07"
  },
  "Bounty of One": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: characters are stat variants",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: no events",
+  "goals": "2026-10-10: Bosses page not read in depth",
+  "locations": "2026-10-10: nothing",
+  "loot": "2026-10-10: objects read from their infobox text (7): True Survivor a clone on Flawless; the rest are attack-speed trades. No evolutions",
+  "statuses": "2026-10-10: no statuses"
  },
  "Boyfriend Dungeon": {
   "characters": "2026-10-10: nothing: the weapons are the cast; the player character is unnamed",
@@ -1682,7 +1705,13 @@
   "connections": "before 2026-10-07"
  },
  "Hell Clock": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: one hero",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: no events",
+  "goals": "2026-10-10: Bosses read: names and health totals (The Merchant, The Matriarch, Wraith)",
+  "locations": "2026-10-10: Shrines read: timed stat buffs",
+  "loot": "2026-10-10: relics sampled (10 of them): percentage enchantments with literary epigraphs; trinkets are stat categories. No evolutions",
+  "statuses": "2026-10-10: Ailments read: bleed, blight, shock repeat existing statuses"
  },
  "Hell Maiden": {
   "connections": "before 2026-10-07"
@@ -1988,7 +2017,13 @@
   "connections": "before 2026-10-07"
  },
  "Maze Mice": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: Characters page not read: mice with starting weapons",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: no events",
+  "goals": "2026-10-10: Enemies page not read in depth: chasers and phasers",
+  "locations": "2026-10-10: Shrine read: a damage buff that spawns phasers, close to Shrine of War",
+  "loot": "2026-10-10: 16 upgrades read: Tetraphobia, Duplicator; the rest (Fleas, Marbles, Black Hole, Mirror Image) repeat existing pieces or need its maze",
+  "statuses": "2026-10-10: no statuses"
  },
  "Mechanibot": {
   "connections": "before 2026-10-07"
@@ -2006,7 +2041,13 @@
   "connections": "before 2026-10-07"
  },
  "Merge Maestro": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: no characters",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: no events",
+  "goals": "2026-10-10: Enemies are its waves; nothing to name",
+  "locations": "2026-10-10: nothing",
+  "loot": "2026-10-10: 13 tokens and powers read: Cursed Vase; the rest are merge-board triggers",
+  "statuses": "2026-10-10: no statuses"
  },
  "Metal Slug Tactics": {
   "connections": "before 2026-10-07"
@@ -2269,7 +2310,13 @@
   "connections": "before 2026-10-07"
  },
  "Noobs Are Coming": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: 34 characters, every page a stub",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: no events",
+  "goals": "2026-10-10: 41-page wiki of stubs: you play the boss against noob players; the characters' pages say only 'Character'",
+  "locations": "2026-10-10: nothing",
+  "loot": "2026-10-10: Drops and Weapons are stubs; no evolutions",
+  "statuses": "2026-10-10: no statuses"
  },
  "Noobs Want to Live": {
   "connections": "before 2026-10-07"
@@ -3054,7 +3101,13 @@
   "statuses": "2026-10-09: nothing: no status pages"
  },
  "Skull Horde": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: Characters page not read: a list",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: no events",
+  "goals": "2026-10-10: 15-page wiki: Enemies is a name list",
+  "locations": "2026-10-10: Dungeons is a name list",
+  "loot": "2026-10-10: Items is 'TBA'; acquisitions and enlistments are name lists",
+  "statuses": "2026-10-10: no statuses"
  },
  "Sky Rogue": {
   "characters": "2026-10-10: classes are aircraft weight classes (Light to Experimental), not characters",
@@ -3540,7 +3593,13 @@
   "statuses": "2026-10-10: Status Effects read: icons for damage up and crits"
  },
  "The Royal Writ": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: character cards are units, not heroes",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: Events read: the Shoppe, Gift, Shady Bargain and Tinkerer repeat existing events; the rest are headings",
+  "goals": "2026-10-10: boss pages read (Dancemaster Lovash): descriptions, no mechanics",
+  "locations": "2026-10-10: Maps not read",
+  "loot": "2026-10-10: Relics read: lane and freeze tricks for its card board; no weapons, no evolutions",
+  "statuses": "2026-10-10: Status Conditions read: Educated; Frozen, Submerged and Frail repeat existing statuses"
  },
  "The Spell Brigade": {
   "connections": "before 2026-10-07"
