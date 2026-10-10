@@ -11,6 +11,26 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Research, nineteenth batch.** Battle Shapers, Moonring, Mortal Sin, Slime
+  3K, Talented, The Rogue Prince of Persia, Wizard of Legend 2, Conquest Dark,
+  Crush the Industry and Die in the Dungeon: 8 new rows and 3 clones. None of
+  these games had older rows to check.
+  - **Goals:** the Wind Magistrate (Battle Shapers; choose which boss to fight
+    next, each Overlord growing with the order) and the Cockroach (Die in the
+    Dungeon; overkill it and it revives, so defeat it with exactly the damage
+    it had left).
+  - **Loot:** the Dented Pot (a weapon of random strength), the Large Red
+    Button (less Max Health, full heal every game) and the BerserKing
+    Sandwich (healing you win back by fighting).
+  - **Events:** Oath of Light (Mortal Sin; a run-long vow from three) and the
+    Roly Poly Dice Collector (it takes pieces off your hands for nothing).
+  - **Statuses:** Exposed (one blow finishes it, for a Shield).
+  - **Clones:** Mortal Sin's Hunter's Mark, the Rogue Prince's Shield Giant and
+    Die in the Dungeon's Jester.
+  - **Nothing usable:** Moonring's Deaf status repeats the live Banshee goal
+    (mute the game). Slime 3K, Talented, Conquest Dark and Crush the Industry
+    gave nothing new.
+
 - **Research, eighteenth batch.** Deck of Ashes, Spirits Abyss, BPM: Bullets
   Per Minute, Mainframe Defenders, Star Renegades, Across the Obelisk,
   Pawnbarian, Roguebook, Ember Knights and Mothergunship: Forge: 10 new rows,

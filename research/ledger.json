@@ -350,7 +350,13 @@
   "statuses": "2026-10-09: Hangover; Drunk is a live goal, Charmed is Lovesick, Overwhelmed and Swarm are stat penalties"
  },
  "Battle Shapers": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: Characters page not read: a stub",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: no events",
+  "goals": "2026-10-10: Overlords and Overlord Powers read: Wind Magistrate (choose which boss is next, each growing with the order)",
+  "locations": "2026-10-10: Towers read: biomes only",
+  "loot": "2026-10-10: Misc. Items and Shaper Hacks read: health packs and floor-wide barrels; weapons are stat variants. No evolutions",
+  "statuses": "2026-10-10: Status Effects read: Exposed; Weak, Break, Magnetize repeat existing statuses"
  },
  "Be My Horde": {
   "connections": "before 2026-10-07"
@@ -712,7 +718,13 @@
   "statuses": "2026-10-10: nothing"
  },
  "Conquest Dark": {
-  "connections": "2026-10-07"
+  "characters": "2026-10-10: classes and origins are stat sets",
+  "connections": "2026-10-07",
+  "events": "2026-10-10: no events",
+  "goals": "2026-10-10: Enemies page not read: a stub",
+  "locations": "2026-10-10: Rituals read: a level tree",
+  "loot": "2026-10-10: Artifacts and Eldritch Gear read: elemental procs that repeat existing pieces; no evolutions",
+  "statuses": "2026-10-10: no status page"
  },
  "Convoy": {
   "connections": "before 2026-10-07"
@@ -775,7 +787,13 @@
   "statuses": "2026-10-10: elemental statuses repeat existing ones"
  },
  "Crush the Industry": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: Characters read: game-industry jobs (Intern, Community Manager, Game Designer, Shoutcaster) with nothing a level-up can ask beyond the live Streamer",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: Events read: headings only",
+  "goals": "2026-10-10: Enemies page not read: sprites only",
+  "locations": "2026-10-10: nothing",
+  "loot": "2026-10-10: Consumables read: one row filled (Milk Toast); nothing new. No evolutions",
+  "statuses": "2026-10-10: Meditate's Sanity Shield is a skill"
  },
  "Crying Suns": {
   "characters": "2026-10-10: nothing: officers are stat cards",
@@ -1114,7 +1132,13 @@
   "connections": "before 2026-10-07"
  },
  "Die in the Dungeon": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: Playable Characters not read",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: Special Events read: Roly Poly Dice Collector; Jester a clone on Offering Pit; Fairy and Purple Ponds and Golden Beetle repeat existing events",
+  "goals": "2026-10-10: Modifiers read: Cockroach (an exact kill); Copycat repeats Rak'Shor Cultist",
+  "locations": "2026-10-10: Terrain Dice Shrine repeats Shrine of War",
+  "loot": "2026-10-10: Dice and Upgrades not read in depth: dice faces; no weapons, no evolutions",
+  "statuses": "2026-10-10: no statuses"
  },
  "Dimensionals": {
   "connections": "before 2026-10-07"
@@ -2088,7 +2112,13 @@
   "connections": "before 2026-10-07"
  },
  "Moonring": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: no playable characters beyond the Dreamless hero",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: the five gods' devotional tasks are quest steps, not events",
+  "goals": "2026-10-10: hostiles sampled (Goose, Queen Hornet): stat blocks",
+  "locations": "2026-10-10: locations are towns and dungeons by name",
+  "loot": "2026-10-10: Herbs, Item Durability, Quest Items read: potion brewing and wear; nothing new. No evolutions",
+  "statuses": "2026-10-10: 15 statuses read in part: Deaf repeats the live Banshee goal (mute the game), Mad, Rot, Torpor and Deathly repeat existing statuses"
  },
  "Moonsigil Atlas": {
   "connections": "2026-10-09"
@@ -2112,7 +2142,13 @@
   "connections": "before 2026-10-07"
  },
  "Mortal Sin": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: Class List: the Martyr (starts with 6 curses) read; classes are stat and skill sets",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: Oaths List read: Oath of Light (Hollow Tribute, Twisted Lineage, Gift of Might)",
+  "goals": "2026-10-10: Curses List read: Hunter's Mark a clone on Barakunarash; Enemies page not read",
+  "locations": "2026-10-10: Traps and Scares not read in depth",
+  "loot": "2026-10-10: 39 weapons and armour are stat lists; no evolutions",
+  "statuses": "2026-10-10: its curses are run modifiers covered by the clone and the oath"
  },
  "Mothergunship": {
   "characters": "2026-10-10: characters page not read: NPCs who brief the missions",
@@ -3069,7 +3105,13 @@
   "statuses": "2026-10-09: Petrify; Poison = Blight, Pain/Exert/Growth are dice-side keywords; the curses are difficulty settings"
  },
  "Slime 3K: Rise Against Despot": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: Slimes page not read: one slime",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: no events",
+  "goals": "2026-10-10: 13-page wiki read: Bosses is a list of names, Humans a placeholder",
+  "locations": "2026-10-10: nothing",
+  "loot": "2026-10-10: Tags and Synergies read: weapon tag counts, nothing new; no evolutions",
+  "statuses": "2026-10-10: no statuses"
  },
  "Slime 3k: Demake": {
   "connections": "before 2026-10-07"
@@ -3366,7 +3408,13 @@
   "statuses": "2026-10-10: nothing: no status pages"
  },
  "Talented": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: classes read by name (Alchemist, Archer, Bandit, Summoner, Warrior, Wizard)",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: no events",
+  "goals": "2026-10-10: Elites read: Infested, Blessed, Defiant and the rest repeat live abilities",
+  "locations": "2026-10-10: nothing",
+  "loot": "2026-10-10: Talents and Portals read: talent-tree buffs; no weapons, no evolutions",
+  "statuses": "2026-10-10: Curses read: enemy buffs (more health, speed, elites) that repeat existing curses"
  },
  "Tales of Maj'Eyal": {
   "connections": "before 2026-10-07",
@@ -3483,7 +3531,13 @@
   "connections": "before 2026-10-07"
  },
  "The Rogue Prince of Persia": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: the Prince is the only hero",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: Points of Interest read: chests, shops and a gamble machine that repeat existing places",
+  "goals": "2026-10-10: enemies sampled: the Shield Giant a clone on Hand of the King; the Pangolin rolls at you",
+  "locations": "2026-10-10: biomes by name",
+  "loot": "2026-10-10: tools read (Dented Pot, Grappling Hook, Ice Trap): Dented Pot; medallions and affixes are stat lists. No evolutions",
+  "statuses": "2026-10-10: Status Effects read: icons for damage up and crits"
  },
  "The Royal Writ": {
   "connections": "before 2026-10-07"
@@ -3769,7 +3823,13 @@
   "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
  },
  "Wizard of Legend 2": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: no characters",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: no events",
+  "goals": "2026-10-10: Enemies page not read: a stub",
+  "locations": "2026-10-10: nothing",
+  "loot": "2026-10-10: 14 relics read: Large Red Button, BerserKing Sandwich; Fusion Relics fuse relics into relics, not weapons. Arcana are spells, not weapons",
+  "statuses": "2026-10-10: no status page"
  },
  "WizardChess": {
   "connections": "before 2026-10-07"
