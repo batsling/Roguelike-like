@@ -15,7 +15,13 @@
   "statuses": "2026-10-10: nothing: Curse (double damage after 2 seconds) is the live Marked; Burn and Freeze are live or proposed"
  },
  "20XX": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: 1 row: Hawk; Nina and Ace are Mega Man's X and Zero (a charge shot is the Fallen Knight's), the Revenants are weaker copies",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: nothing: no event screens",
+  "goals": "2026-10-10: 2 rows: Kur, Vile Visage; the Twin Astrals repeat Trigger Twins, Maintcore the Shielder",
+  "locations": "2026-10-10: nothing: Glory Zones are varied challenge rooms, the vending machines are shops",
+  "loot": "2026-10-10: 3 rows: Choicebooster, Entropy Lock, Crisis Lifebank; clones: Crisis Timestopper into Old Box, Hoarder's Might into Battle Pass; weapons and evolutions: none new (boss powers repeat candidates: Splinterfrost is Ice Hockey's diagonals); no evolutions",
+  "statuses": "2026-10-10: nothing: Powers are abilities, not statuses"
  },
  "30XX": {
   "connections": "before 2026-10-07"
@@ -222,8 +228,13 @@
   "connections": "before 2026-10-07"
  },
  "Balatro": {
+  "characters": "2026-10-10: nothing new: the Erratic Deck is live; the other decks are small stat tweaks",
   "connections": "before 2026-10-07",
-  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+  "events": "2026-10-10: nothing: no event screens (shops, tags and packs)",
+  "goals": "2026-10-10: checked 6: The Water fixed (it removes discards, not consumables), The Ox fixed (it takes your money to $0), The Manacle, Violet Vessel, The Wall, The Eye hold; nothing added: 12 Balatro blinds are live or candidates already, past the boss budget",
+  "locations": "2026-10-10: nothing: the shop is the only place",
+  "loot": "2026-10-10: 6 rows: Gros Michel, Cavendish, Invisible Joker, Abstract Joker, Popcorn, Ankh (a Spectral card); clone: Mr. Bones into Dio's Best Friend; weapons and evolutions: none (no weapons; Gros Michel into Cavendish is a Joker, not a weapon)",
+  "statuses": "2026-10-10: nothing: editions and stickers (Eternal, Perishable, Rental) are modifiers on pieces, which would need a new system; left for the owner"
  },
  "Baldi's Basics Plus": {
   "connections": "before 2026-10-07"
@@ -524,7 +535,13 @@
   "connections": "before 2026-10-07"
  },
  "CloverPit": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: nothing: one prisoner",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: nothing: the Telephone's offers repeat the Perk Altar",
+  "goals": "2026-10-10: nothing: no enemies",
+  "locations": "2026-10-10: 1 row: ATM (the debt and its deadline); the Toilet repeats the live Flushmaster's joke, the Slot Machine is Isaac's",
+  "loot": "2026-10-10: 3 rows: Golden Horseshoe, Evil Deal, Drawers (bag); clone: Consolation Prize into Snake Eyes; weapons and evolutions: none",
+  "statuses": "2026-10-10: nothing"
  },
  "Cluckmech Oasis": {
   "connections": "before 2026-10-07"
@@ -648,7 +665,13 @@
   "statuses": "2026-10-09: nothing usable: its 'curses' are attacks and its states belong to followers"
  },
  "Cultist Simulator": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: 2 rows: Dancer, Medium? (Legacies); the Exile repeats the Cogmind Hunter's pursuit, the Detective and Physician are jobs",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: nothing: its 'events' pages are lore",
+  "goals": "2026-10-10: nothing: no fights; its Hunters are investigators, and the summons repeat the summoner goals",
+  "locations": "2026-10-10: 1 row: Sunshine Island (a Map's Edge destination)",
+  "loot": "2026-10-10: nothing: its tools are expedition keys with no effect of their own on the wiki; weapons and evolutions: none",
+  "statuses": "2026-10-10: 1 row: Dread; its Curses are expedition obstacles beaten with aspects"
  },
  "Cupiclaw": {
   "connections": "before 2026-10-07"
@@ -727,7 +750,13 @@
   "statuses": "2026-10-09: Cursed (curse); Bleed, Burn, Stun live, freeze/root/poison covered elsewhere"
  },
  "Dead Estate": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: nothing: Fuji repeats the live Revola's body slam, Digby the Willow's fire, Lydia Koh's building, Axel the Butcher's Cleaver",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: nothing: no event screens",
+  "goals": "2026-10-10: 1 row: The Glitch; clone: Pierrot into Clown (For the King 2); Ultraclot repeats the live Spike Slime, the Golden Mask Ponzu, the Leviathan Egg the Carnivorous Mutae, the Kraken the Elite Kappa",
+  "locations": "2026-10-10: 1 row: Cordelia (shopkeeper)",
+  "loot": "2026-10-10: 1 row: Curse of the Resident; clones: Curse of the Glass Cannon into Last Stand, Ancient Urn into Old Box; weapons and evolutions: none (its guns are generic); no evolutions",
+  "statuses": "2026-10-10: nothing: Burn and Freeze are live or candidates"
  },
  "Dead Finger Dice": {
   "connections": "before 2026-10-07"
@@ -1820,8 +1849,13 @@
   "connections": "before 2026-10-07"
  },
  "Muck": {
+  "characters": "2026-10-10: nothing: one survivor",
   "connections": "before 2026-10-07",
-  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+  "events": "2026-10-10: nothing: no event screens",
+  "goals": "2026-10-10: checked 5: Gronk fixed (two swords, he forges nothing), Woodman fixed (a neutral trader, not a tree), Bob, Wyvern, Chief hold; Cow added; Stone Golem repeats the live Big Chunk",
+  "locations": "2026-10-10: nothing new; clone: Battle Totem into Infernal Trove; the Boss Totem repeats the Shrine of the Mountain",
+  "loot": "2026-10-10: 1 row: Chunky Hammer (weapon, from the live Big Chunk); its foods and armour are plain stat ups; no evolutions",
+  "statuses": "2026-10-10: nothing: no statuses"
  },
  "My Card Is Better Than Your Card!": {
   "connections": "before 2026-10-07"
@@ -2074,7 +2108,13 @@
   "connections": "before 2026-10-07"
  },
  "Picayune Dreams": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: nothing: one hero, Cyl",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: nothing: no event screens",
+  "goals": "2026-10-10: 1 row: Diver; clone: Biker into Lemurian Cavalry; Yuki's statue repeats the Possessed Effigy",
+  "locations": "2026-10-10: nothing: sectors are wave modifiers",
+  "loot": "2026-10-10: 1 row: Stinky Cheese (weapon); YoYo Rack repeats the Boomerang, Wicked Walkman the Lute; no evolutions",
+  "statuses": "2026-10-10: nothing: its elements are live or candidates"
  },
  "Pinball Storm: Lokanta": {
   "connections": "2026-10-07"
@@ -2209,7 +2249,13 @@
   "connections": "2026-10-07"
  },
  "Ratropolis": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: nothing: the leaders have no wiki pages",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: 2 rows: Cry of Widows, A Rat in Debt; the rest of its events are a story chain",
+  "goals": "2026-10-10: nothing: the wiki has no enemy or boss pages beyond the Plague Rat, a plain rat (the rat tag is live)",
+  "locations": "2026-10-10: nothing: buildings are cards",
+  "loot": "2026-10-10: 2 rows: Lottery, Treasure Map; its advisors are stat ups; weapons and evolutions: none (the Growth keyword turns unit cards into stronger ones after kills, which would need weapons that level up by kills)",
+  "statuses": "2026-10-10: nothing: its Curse keyword is damage over time (Blight)"
  },
  "Ravenswatch": {
   "connections": "before 2026-10-07"
@@ -2738,7 +2784,13 @@
   "statuses": "2026-10-09: Curse of Haphephobia; Curse of Fatigue left out (repeats Caves of Qud's movement curse)"
  },
  "StarVaders": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: nothing: Roxy repeats the Drake's overheating, Zeke the Drifter, Kaia's traps the Lucas candidate",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: nothing: no event screens",
+  "goals": "2026-10-10: nothing: its invaders have no pages; the Grandmaster's chess repeats Deep Blues",
+  "locations": "2026-10-10: nothing",
+  "loot": "2026-10-10: 2 rows: Booby Traps, Checkmate (a junk card); weapons and evolutions: none (cards, not weapons; Boomerang is a candidate)",
+  "statuses": "2026-10-10: nothing: Doom and Shock repeat Doomed and the lightning statuses"
  },
  "Starlight Revolver": {
   "connections": "before 2026-10-07"
@@ -2783,8 +2835,13 @@
   "connections": "before 2026-10-07"
  },
  "Super Auto Pets": {
+  "characters": "2026-10-10: nothing: no heroes, only packs",
   "connections": "before 2026-10-07",
-  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+  "events": "2026-10-10: nothing: no event screens",
+  "goals": "2026-10-10: checked 1: Sloth holds (a 1-in-10000 pet with no ability); nothing added: its pets are your own units, and the enemies are other players' teams",
+  "locations": "2026-10-10: nothing: the shop is the only place",
+  "loot": "2026-10-10: 3 rows: Chili, Cornucopia, Fortune Cookie (foods); Melon, Mushroom and Pepper repeat live shields and Dio's Best Friend; weapons and evolutions: none",
+  "statuses": "2026-10-10: 1 row: Tasty; Silly repeats Blind, Icky and Spooked the live Marked, Crisp and Toasty the live Burn"
  },
  "Super Bullet Break": {
   "connections": "before 2026-10-07"

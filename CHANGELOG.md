@@ -11,6 +11,29 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Research, tenth batch.** Balatro, Super Auto Pets, 20XX, Ratropolis,
+  Cultist Simulator, CloverPit, Dead Estate, StarVaders, Muck and Picayune
+  Dreams, every kind: 37 new rows and 9 clones, a thinner batch than the
+  last because half of these games have no enemies to speak of (CloverPit,
+  Cultist Simulator, Super Auto Pets) or no wiki pages for them (Ratropolis,
+  StarVaders). The three games with old blind goal rows got their check:
+  of Balatro's six, The Water was wrong (it removes discards, not
+  consumables) and The Ox too (it takes your money, you don't spend it); of
+  Muck's five, Gronk forges nothing (he fights with a sword in each hand)
+  and the Woodman is a neutral trader, not a tree; Super Auto Pets' Sloth
+  held. All four are fixed in place. Balatro gave no new goals, since twelve
+  of its blinds are live or candidates already, but six loot rows, among
+  them Gros Michel and the Cavendish that only exists once it has gone
+  extinct, and the Ankh. Other highlights: Kur (beat a boss, then use its
+  power on the next, the Mega Man rule), The Glitch (be fooled by a fake
+  crash), Diver (follow coordinates to buried treasure), Ratropolis' Cry of
+  Widows and A Rat in Debt, CloverPit's ATM (pay a debt before its
+  deadline) and Drawers (a locked bag that keeps pieces safe), Checkmate (a
+  junk card that becomes a boss if you forget it), Cultist Simulator's Dread
+  (a status cured by doing something you enjoy) and Cordelia, Dead Estate's
+  shopkeeper. The overlap sweep caught one repeat: Dead Estate's Pierrot was
+  word for word For the King 2's Clown, and is now its clone.
+
 - **Research, ninth batch: the ten best-documented owned games left.** Risk
   of Rain Returns, Returnal, Crab Champions, Atomicrops, Quasimorph,
   Disfigure, Revita, Archons, Barony and Candies 'n Curses, every kind: 69
