@@ -6405,9 +6405,11 @@ func _build_ui() -> void:
 	# is worth asking, because the answer decides whether to keep grinding it or
 	# take the door out. On the header it rides the same layer Health does, so no
 	# modal and no scroll position can put it away.
+	# The radio leads the three: History and the Map are a pair about the run,
+	# and the Map sits against the Menu, so the one about the music stands apart.
+	header.add_child(_build_radio_button())
 	header.add_child(_build_history_button())
 	header.add_child(_build_map_button())
-	header.add_child(_build_radio_button())
 	header.add_child(_build_menu_button())
 	_header = header
 	_mount_header(header)
