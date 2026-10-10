@@ -1759,7 +1759,13 @@
   "connections": "before 2026-10-07"
  },
  "Neon Abyss": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: Lucas; Ming left out (hatching is Azure Dreams' Kid, not harming animals ADOM's Cat Lord), Matt and Zack (dodge-roll and dash heroes repeat Ironshank's movement rule), R-6 (The Head's 'without healing')",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: nothing: no events; the Intersection Room is a blind pick between two doors, with no prompt",
+  "goals": "2026-10-10: nothing: the wiki's monster names come from image file names ('very likely not the actual names'), and its bosses (the gods) have no pages",
+  "locations": "2026-10-10: Claw Machine (an arcade object); the other special rooms are minigames (piano, dance) with no board or choice",
+  "loot": "2026-10-10: Devil's Trade, Coin Bomb, Battle Pass; weapons and evolutions: Keygun; no evolutions (the Combos page is player builds; 'nothing secret happens'); Black Friday left out (half-price shops are Dibble's and Cursula's), Dimensional Bags (not a bag: a drop on taking damage, Fanny Pack's)",
+  "statuses": "2026-10-10: nothing: no status effects documented"
  },
  "Neon Abyss 2": {
   "connections": "before 2026-10-07"
@@ -1978,7 +1984,13 @@
   "connections": "before 2026-10-07"
  },
  "Pixel Dungeon": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: nothing: Warrior, Mage, Rogue and Huntress are generic classes with stat perks (Rogue is a candidate from Diablo)",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: Sad Ghost, Old Wandmaker; the Troll Blacksmith and Ambitious Imp are mining and kill-count quests",
+  "goals": "2026-10-10: Dwarf monk, Gnoll shaman; Succubus left out (charming repeats Battle Brothers' Hexe), Swarm of flies (the live Spike Slime's split), Evil eye (Marshmallow's infighting), Tengu (trap goals already proposed), Yog-Dzewa (The Creator's 'Defeat a God'), Mimic/Goo (candidates from Shattered Pixel Dungeon)",
+  "locations": "2026-10-10: Well of Transmutation (an object); the Wells of Health and Awareness repeat healing and NetHack's Magic Mapping; the Alchemy pot needs seeds, which the game doesn't have",
+  "loot": "2026-10-10: Wand of Flock, Scroll of Recharging, Scroll of Mirror Image, Potion of Paralytic Gas, Honeypot, Weightstone, Dew Vial; weapons and evolutions: none (its weapons are the generic dagger-to-war-hammer set; no evolutions); Wand of Amok left out (Brogue's Staff of Discord), Scroll of Lullaby (NetHack's Wand of Sleep), Scroll of Magic Mapping (NetHack's), Ring of Haggler (half-price shops already proposed), Ankh (Dio's Best Friend)",
+  "statuses": "2026-10-10: nothing: the status pages are missing; Amok is Brogue's Discord, Rooted is the live Immobile, Terror and Charmed are already proposed"
  },
  "PlateUp!": {
   "connections": "before 2026-10-07"
@@ -2607,10 +2619,10 @@
   "characters": "2026-10-10: Firefighter; Doctor left out (NetHack's Healer), Comedian (Regent's friend, Marshmallow's infighting), Investment Banker and Slum Dweller (money level-ups already proposed)",
   "connections": "before 2026-10-07",
   "events": "2026-10-10: nothing: its quests are level missions and Big Quests are per-character run goals; neither is a prompt with choices",
-  "goals": "2026-10-10: checked 3: Gorilla and Werewolf right; Cop fixed (goal was the Doctor's pacifism; now bribing, as the Cop unlocks); Upper-Cruster, Shapeshifter and Mayor added; Killer Robot left out (Groudon's 'ten times your health'), Ghost (a candidate from two games)",
+  "goals": "2026-10-10: checked 3: Gorilla and Werewolf right; Cop fixed (goal was the Doctor's pacifism; now bribing, as the Cop unlocks); Shapeshifter and Mayor added; Upper-Cruster left out (repeats Scourgebringer's Alarm-bot), Killer Robot (Groudon's 'ten times your health'), Ghost (a candidate from two games)",
   "locations": "2026-10-10: Clone Machine, Well (objects), Killer Plant (unit); Toilet left out (Flushmaster's goal covers it), the stages are levels with enemies and no goal of their own",
-  "loot": "2026-10-10: Free Item Voucher, Monkey Barrel; weapons and evolutions: Banana Peel, Leafblower, Fire Extinguisher, Shrink Ray, Water Pistol; no evolutions (mods attach to a gun, it stays the same gun); Kill Profiter left out (the live Golden Idol), Resurrection Shampoo (Dio's Best Friend), Four-Leaf Clover (the live Clover)",
-  "statuses": "2026-10-10: Shrunk, Enraged; Debt left out (UnderMine and Star of Providence), Electrocuted (the live Stun), Perfumorous (no body to befriend)"
+  "loot": "2026-10-10: Monkey Barrel; weapons and evolutions: Banana Peel, Leafblower, Fire Extinguisher, Shrink Ray, Water Pistol; no evolutions (mods attach to a gun, it stays the same gun); Free Item Voucher left out (The King is Watching's Free Coupon), Kill Profiter (the live Golden Idol), Resurrection Shampoo (Dio's Best Friend), Four-Leaf Clover (the live Clover)",
+  "statuses": "2026-10-10: Shrunk; Enraged left out (Brogue's Discorded), Debt (UnderMine and Star of Providence), Electrocuted (the live Stun), Perfumorous (no body to befriend)"
  },
  "Sundered": {
   "connections": "before 2026-10-07"
