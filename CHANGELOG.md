@@ -11,6 +11,22 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Research: overlapping ideas become clones, not second rows.** Every
+  candidate sheet in `tools/Research.xlsx` has a `Clones` column (after
+  `Needs`). When two candidates overlap in goal or mechanic, the more
+  interesting one is the row, and the other is written into its `Clones` as
+  `Name (Game): how it differs`, so the idea stays on record and the owner can
+  swap them. Before this, the loser was dropped and only the ledger remembered
+  it. `research.py check` holds each clone to that shape and to a real game.
+  `sync` still takes the owner's edits from a workbook built before the
+  column existed: a row with empty `Clones` also matches the hash taken
+  without it. Tested with a tick and a cell edit on the pre-column workbook:
+  both came through, no clash. The rows already written haven't been folded
+  in yet (docs/research.md §6, rule 3). The same pass fixed two
+  mistakes from batch seven that CI's goal audit would have failed on: tier
+  `3-High` is the goal sheet's word, not `3-Hard`, and an unsure goal row is
+  `?`, not `check`.
+
 - **Research, seventh batch.** Brotato, Streets of Rogue, Dark Devotion, Neon
   Abyss, Pixel Dungeon, SpellRogue, Curious Expedition, LoneStar, Backpack Hero
   and Crypt of the NecroDancer, every kind: 93 new rows. Seventeen blind goal
