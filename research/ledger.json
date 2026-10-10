@@ -350,7 +350,7 @@
   "connections": "before 2026-10-07"
  },
  "Brotato": {
-  "characters": "2026-10-10: Streamer, One-Armed; Pacifist left out (repeats the Cop's 'without killing'), Gangster (Charon's 'Steal from a shop'), Bull (The Goad's 'without a weapon'), Saver (The Window)",
+  "characters": "2026-10-10: Streamer; One-Armed left out (Ball x Pit's Hoary Hoarder, 'no more than two weapons'), Pacifist (the Cop's 'without killing'), Gangster (Charon's 'Steal from a shop'), Bull (The Goad's 'without a weapon'), Saver (The Window)",
   "connections": "before 2026-10-07",
   "events": "2026-10-10: nothing: no events; between waves there is only the shop",
   "goals": "2026-10-10: checked 2: The Mother kept as check (an elite, not a wave-20 boss; the wiki gives no behaviour), Monk Elite fixed (it lays eggs; renamed Monk); Invoker and Buffer added; Looter and Looting Pig left out (repeat UnderMine's runaway)",
@@ -590,7 +590,13 @@
   "connections": "before 2026-10-07"
  },
  "Curious Expedition": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: H. P. Lovecraft, Charles Darwin; Amelia Earhart left out (speedrunning is Time Eater's), Alfred Nobel (blowing things up is taken), Isabella Bird (secret areas and chests are taken), Nikola Tesla (the Tesla Gun carries him)",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: nothing: shrine looting repeats the live Golden Idol, and its quests are fetch-and-kill errands from London",
+  "goals": "2026-10-10: Snarfrattle; the rest are animals with no behaviour beyond toughness (T-Rex is a workshop mod), Lt. Konrad is a quest fight, and Zombie Pygmies repeat the zombie candidates",
+  "locations": "2026-10-10: Healing Springs, Stone Circle (objects); Raptor Nest left out (its egg repeats the Precious Egg), the Golden Pyramid is the expedition's end, not a place with a goal",
+  "loot": "2026-10-10: Necronomicon; weapons and evolutions: Tesla Gun, and its upgrade the Loki Gun (an evolution); Crystal Ball left out (NetHack's Magic Mapping), Mysterious Egg (Dicey Dungeons' Precious Egg), Whip (a live weapon name)",
+  "statuses": "2026-10-10: Pyromaniac; 3 curses: Claustrophobic, Acrophobia, Superstitious; Cannibal left out (Lord Bunga's goal), Kleptomania (the live Theft ability), Hallucinations (NetHack's)"
  },
  "Curious Expedition 2": {
   "connections": "before 2026-10-07"
@@ -2521,7 +2527,13 @@
   "connections": "before 2026-10-07"
  },
  "SpellRogue": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: nothing: its four Dice Slingers are elements (Azar fire, Lapis water and ice, Hazel earth, Sefyra air) whose level-ups are taken (Willow's and the Runaway's fire, the Ice Slime's freeze)",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: Hag's Hollow (check: the wiki has the choices but no event text, so the prompt is written to fit); the rest trade spells and runes, which this game doesn't have",
+  "goals": "2026-10-10: Mana Devourer, Heart of the Forest; Hydra Body left out (Hades' Bone Hydra), Divine Scarab (revives: the live Undying), Djinn (illusions: the live Illusionist), Dark Reflection (Blue Baby's copy of you)",
+  "locations": "2026-10-10: nothing: its map tiles are fights, events, shops and rests",
+  "loot": "2026-10-10: Crooked Dice, Fool's Hope Charm, Dilapidated Crown; weapons and evolutions: none (spells cast with dice, no weapons; no evolutions); Giant's Pouch left out (half-price shops already proposed), Flask of Echoes (the live Echo Form), Chest of Wonders (a plain item draft)",
+  "statuses": "2026-10-10: Pox; Death Pact left out (Mewgenics' Soul Link), Fumble/Vexed/Silenced (dice enchantments with no counterpart), Fateweaving (keeps dice between turns)"
  },
  "Spellbook Demonslayers": {
   "connections": "before 2026-10-07"
