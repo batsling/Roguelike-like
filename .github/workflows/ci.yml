@@ -114,10 +114,11 @@ jobs:
         run: python3 tools/check_data_sync.py
 
       - name: Every proof clip has been converted
-        # The owner drops proofs in as .mp4, which Godot cannot play; the game
-        # plays the .ogv tools/convert_proof_videos.py makes beside each one. A
-        # clip pushed without that run is a proof slot that shows nothing. The
-        # check only hashes files, so it needs no ffmpeg here.
+        # The owner uploads proofs as .mp4, which Godot cannot play;
+        # tools/convert_proof_videos.py turns each into the .ogv and poster the
+        # game plays and deletes the MP4. An MP4 still here is a proof slot that
+        # shows nothing. It also fails on a misnamed clip or two clips proving
+        # one connection. The check only reads names, so it needs no ffmpeg here.
         run: python3 tools/convert_proof_videos.py --check
 
       - name: The research store is sound

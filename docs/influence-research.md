@@ -546,34 +546,54 @@ or one you uploaded) gets its translation set under it again.
 (PNG is the owner's call), named by the two games' ids, influencer first,
 joined by three hyphens: `slay_the_spire---tic_tactic.png`. An id is a game's file name
 in `data/games/` without `.tres`; ids are only lower-case letters, digits and
-underscores, so the hyphens split a name one way only. A screenshot that proves
-several connections is saved once under each: one image naming Hades, Isaac,
-Gungeon and Spelunky as Going Under's influences is four files.
+underscores, so the hyphens split a name one way only. A proof of several
+connections into one game is ONE file, its influencers joined by one hyphen:
+one image naming Hades, Isaac, Gungeon and Spelunky as Going Under's influences
+is `enter_the_gungeon-hades-spelunky_classic-the_binding_of_isaac---going_under.png`
+(see *One clip, several connections* below; older screenshots were saved once
+per connection, and still work).
 
 **Adding your own.** Drop a screenshot into `images2.0/proof/` named that way and
 you're done. Or drop it in under any name ("tic tactic sts.png", "going under
 hades, isaac, gungeon, spelunky.png") and run `python3
 tools/proof_owner_match.py`: it proposes the connection(s) each name means and
-lists what it couldn't place; `--write` renames them into place (one copy per
-connection). For a name it can't read, `--pair "file.png" slay_the_spire
+lists what it couldn't place; `--write` renames it into place (one file for all
+of them). It does the same for a clip (`.mp4`). For a name it can't read, `--pair "file.png" slay_the_spire
 tic_tactic` (ids or game names). It also flags a file in the id format whose ids
 aren't a connection on the sheet, and so does the test suite
 (`test_every_proof_is_named_for_a_real_connection`), so a typo can't ship
 silently.
 
 **A clip instead of a screenshot.** When the proof is a developer SAYING it — a
-stream, a podcast — drop the video in as `<influencer id>---<influenced id>.mp4`
+stream, a podcast — upload the video as `<influencer id>---<influenced id>.mp4`
 and run `python3 tools/convert_proof_videos.py`. Godot plays only Ogg Theora, so
-the script writes `<pair>.ogv` (capped at 720p) and `<pair>.poster.jpg` (a frame a
-quarter of the way in) beside the MP4, which stays as the source and is not
-shipped. In the game the proof slot shows the poster with a ▶, and a click plays
-the clip over the popup, sound and all (click it to pause, click outside it, ✕ or
-Esc to close). A clip wins over a screenshot of the same connection. The script
-keys its outputs to each MP4's sha1 (`tools/proof_videos.json`), so a re-run only
-converts what is new or replaced; CI runs `--check`, and
-`test_every_proof_clip_has_its_playable_video_and_poster` fails on a clip that
-was pushed without it. Name the file with the game's id, not its name: an
-apostrophe or an accent becomes `_` (`don_t_starve_together`, `pok_rogue`).
+the script writes `<name>.ogv` (capped at 720p) and `<name>.poster.jpg` (a frame a
+quarter of the way in), checks the `.ogv` runs as long as the MP4, and then
+**deletes the MP4**: the game never read it, and keeping it doubled what every
+clip cost (the Source link is where to get it again). In the game the proof slot
+shows the poster with a ▶, and a click plays the clip over the popup, sound and
+all (click it to pause, click outside it, ✕ or Esc to close). A clip wins over a
+screenshot of the same connection. CI runs `--check`, which fails while an MP4
+is waiting to be converted, and `test_every_proof_clip_plays_for_each_connection_it_names`
+fails on a clip without its poster. Name the file with the game's id, not its
+name: an apostrophe or an accent becomes `_` (`don_t_starve_together`,
+`pok_rogue`).
+
+**One clip, several connections.** When a developer names several influences in
+one clip, it is ONE file named for all of them: the influencers joined by one
+hyphen, then the three, then the influenced game —
+`boneraiser_minions-death_must_die-halls_of_torment-necrosmith-the_unliving---be_my_horde.ogv`
+proves all five connections into Be My Horde. (An id never has a hyphen in it, so
+the name still splits one way only.) This replaced a copy per connection: the
+first 38 clips were only 27 videos, five of them uploaded under several names,
+11 extra copies and 110 MB. The `Proof` column on the sheet proposes the shared name for every row
+whose Source is the same YouTube video or Spotify episode into the same game; a
+YouTube start time (`t=`) counts as a different clip. A clip uploaded for
+connections another clip already proves takes them over: the older one is
+renamed to what it still proves, or deleted if that is nothing. Names are capped
+at 150 characters (`MAX_STEM` in `tools/_proof_names.py` says why); the longest
+the sheet asks for is 111. Screenshots can use the same form, and
+`proof_owner_match.py` writes it for one upload that proves several connections.
 
 **Seeing it on the sheet.** Two columns on the `connections` sheet. `Proof`
 (F) holds every row's proof file name without the extension

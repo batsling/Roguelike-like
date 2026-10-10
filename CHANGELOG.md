@@ -11,6 +11,37 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Proof clips: one file per clip, and no MP4 left behind.** The 38 proof
+  clips cost 767 MB of the checkout, half of it twice over. Each clip was kept
+  as the owner's MP4 *and* the `.ogv` the game plays, though Godot never reads
+  an MP4. And the 38 clips were only 27 videos: five had been uploaded under
+  several names (the Be My Horde interview five times, the Tiny Rogues podcast
+  five times), 11 extra copies, because a proof's name could only say one
+  connection. Both are fixed. A
+  proof's name can now list every influencer it proves, joined by one hyphen:
+  `boneraiser_minions-death_must_die-halls_of_torment-necrosmith-the_unliving---be_my_horde.ogv`
+  is one file for five connections (ids never contain a hyphen, so the name
+  still splits one way only). `tools/convert_proof_videos.py` now deletes each
+  MP4 once its `.ogv` is made and checked to run the full length. A new clip
+  takes its connections off any older clip that had them. The checkout's clips
+  went from 767 MB to 274 MB (27 files), and the shipped game's from 384 MB to
+  274 MB. The game no longer builds a proof's path from the pair: it reads the
+  folder once with `DirAccess` (about 4 ms), taking `.import` off the way
+  `MenuFallingArt` does for a shipped build. `ResourceLoader.list_directory` was
+  tried first and dropped. It took about 60 ms, and it reads a stale `.uid` as
+  the file it belonged to. A clip merged or renamed outside the editor leaves its
+  old `.uid` behind (it is gitignored, so a pull never removes it), and the
+  listing then put a clip that no longer exists in place of the real one. The
+  suite caught that on the first run. `tools/proof_videos.json` is gone, since there is no MP4 left
+  to hash. The sheet's `Proof` column proposes a shared name for every group of
+  rows whose Source is the same YouTube video or Spotify episode into the same
+  game: 70 cells across 24 groups still waiting on a clip, the largest being
+  Crab Champions' seven influences in 111 characters. Names are capped at 150
+  characters (`tools/_proof_names.py` says why: 255 per file name everywhere,
+  minus the 49 Godot's import cache adds to a poster, minus Windows' 260-
+  character path limit). The MP4s are still in git history, since each arrived
+  in an upload commit; this shrinks the checkout, not a full clone.
+
 - **Research, sixth batch.** Young Yangus, Monster Train, Caves of Qud
   (goals only; its other kinds were done in the pilot), Dicey Dungeons, One
   Step From Eden, Children of Morta, Skul, Boneraiser Minions, Astral Ascent

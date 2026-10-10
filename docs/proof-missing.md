@@ -7,7 +7,10 @@ grouped by what each needs. A proof you screenshot yourself goes in
 `images2.0/proof/` as `<influencer id>---<influenced id>.png` (the ids are the
 game's file names in `data/games/`, e.g. `slay_the_spire---tic_tactic.png`), or
 under any name followed by `python3 tools/proof_owner_match.py --write` (see
-`docs/influence-research.md`).
+`docs/influence-research.md`). A clip that proves several connections into one
+game is ONE `.mp4` named for all of them, influencers joined by one hyphen
+(`balatro-inscryption---black_jacket.mp4`); the `Proof` column of the
+`connections` sheet has the name to use.
 
 ## Reddit: screenshot these yourself (10)
 

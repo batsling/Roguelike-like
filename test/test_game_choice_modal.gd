@@ -384,16 +384,36 @@ func test_the_popup_shows_the_evidence_the_sheet_records() -> void:
 # edge's two ids, so these tests stand the run on an edge that HAS one rather
 # than hoping the random offering lands on it.
 
-# A proof file, "slay_the_spire---tic_tactic.png", read back as the connection's
-# two ids. [] for anything that isn't a PNG; [null] for a name that isn't two
-# ids of real games joined by the three hyphens (a typo the owner made by hand).
-func _edge_of(file: String) -> Array:
-	if not file.ends_with(GameChoiceModal.PROOF_EXT):
+# A proof file read back as the connections it proves, [from, to] each:
+# "slay_the_spire---tic_tactic.png" is one, "balatro-inscryption---black_jacket.ogv"
+# two. [] for a file of another kind; [null] for a name that isn't ids of real
+# games in the proof format (a typo the owner made by hand).
+func _pairs_of(file: String, ext: String = GameChoiceModal.PROOF_EXT) -> Array:
+	if not file.ends_with(ext):
 		return []
-	var ids: PackedStringArray = file.get_basename().split(GameChoiceModal.PROOF_JOIN)
-	if ids.size() != 2 or Data.get_game(StringName(ids[0])) == null or Data.get_game(StringName(ids[1])) == null:
+	var pairs: Array = GameChoiceModal.proof_pairs(file.trim_suffix(ext))
+	if pairs.is_empty():
 		return [null]
-	return [StringName(ids[0]), StringName(ids[1])]
+	for pair in pairs:
+		if Data.get_game(pair[0]) == null or Data.get_game(pair[1]) == null:
+			return [null]
+	return pairs
+
+# A screenshot's first connection as [from, to]; [] and [null] as above.
+func _edge_of(file: String) -> Array:
+	var pairs: Array = _pairs_of(file)
+	return pairs[0] if not pairs.is_empty() and pairs[0] != null else pairs
+
+func test_a_proof_name_can_stand_for_several_connections() -> void:
+	assert_eq(GameChoiceModal.proof_pairs("slay_the_spire---tic_tactic"),
+		[[&"slay_the_spire", &"tic_tactic"]], "one influencer, one connection")
+	assert_eq(GameChoiceModal.proof_pairs("balatro-inscryption---black_jacket"),
+		[[&"balatro", &"black_jacket"], [&"inscryption", &"black_jacket"]],
+		"each influencer before the three hyphens is a connection into the game after them")
+	for bad in ["balatro", "balatro--black_jacket", "balatro----black_jacket",
+			"-balatro---black_jacket", "balatro--inscryption---black_jacket",
+			"balatro---black_jacket---hades", "Balatro---black_jacket", "balatro---black jacket"]:
+		assert_eq(GameChoiceModal.proof_pairs(bad), [], "%s is not a proof's name" % bad)
 
 func _a_captured_edge() -> Array:
 	var dir := DirAccess.open(GameChoiceModal.PROOF_DIR)
@@ -415,14 +435,15 @@ func test_every_proof_is_named_for_a_real_connection() -> void:
 	var orphans: Array = []
 	var seen: int = 0
 	for file in dir.get_files():
-		# The owner's own freely named screenshots share the folder; only the
-		# "<from>__<to>" files are the game's.
-		var edge: Array = _edge_of(file)
-		if edge.is_empty():
-			continue
-		seen += 1
-		if edge.size() != 2 or not Data.get_game(edge[0]).games_influenced.has(edge[1]):
-			orphans.append(file)
+		for ext in [GameChoiceModal.PROOF_EXT, GameChoiceModal.PROOF_VIDEO_EXT]:
+			var pairs: Array = _pairs_of(file, ext)
+			if pairs.is_empty():
+				continue
+			seen += 1
+			for pair in pairs:
+				if pair == null or not Data.get_game(pair[0]).games_influenced.has(pair[1]):
+					orphans.append(file)
+					break
 	if seen == 0:
 		pending("the proof folder is empty")
 		return
@@ -517,36 +538,38 @@ func test_the_proof_opens_full_size_and_any_click_puts_it_away() -> void:
 
 # --- proofs that are clips (tools/convert_proof_videos.py) ---------------------
 
-# Every clip the owner dropped in has the two files the game plays it from, and
-# both load: a missing conversion would be a proof that silently shows nothing.
-func test_every_proof_clip_has_its_playable_video_and_poster() -> void:
+# Every clip loads, has the poster the proof slot shows, and is found from EVERY
+# connection its name lists: a clip named for five influences is the proof of
+# all five, and a lookup that missed one would be a proof slot showing nothing.
+func test_every_proof_clip_plays_for_each_connection_it_names() -> void:
 	var clips: Array = []
 	for f in DirAccess.get_files_at(GameChoiceModal.PROOF_DIR):
-		if f.ends_with(".mp4"):
-			clips.append(f.get_basename())
+		if f.ends_with(GameChoiceModal.PROOF_VIDEO_EXT):
+			clips.append(f)
 	if clips.is_empty():
 		pending("no proof clips yet")
 		return
-	for stem in clips:
-		var pair: PackedStringArray = String(stem).split(GameChoiceModal.PROOF_JOIN)
-		assert_eq(pair.size(), 2, "%s is named <id>---<id>" % stem)
-		if pair.size() != 2:
-			continue
-		assert_not_null(GameChoiceModal.proof_video(StringName(pair[0]), StringName(pair[1])),
-			"%s has its .ogv (run tools/convert_proof_videos.py)" % stem)
-		assert_not_null(GameChoiceModal.proof_poster(StringName(pair[0]), StringName(pair[1])),
-			"%s has its poster" % stem)
+	for f in clips:
+		var pairs: Array = GameChoiceModal.proof_pairs(f.trim_suffix(GameChoiceModal.PROOF_VIDEO_EXT))
+		assert_false(pairs.is_empty(), "%s is named <id>[-<id>...]---<id>" % f)
+		for pair in pairs:
+			assert_eq(GameChoiceModal.proof_video_path(pair[0], pair[1]), GameChoiceModal.PROOF_DIR + f,
+				"%s -> %s is proved by %s" % [pair[0], pair[1], f])
+			assert_not_null(GameChoiceModal.proof_video(pair[0], pair[1]), "%s loads" % f)
+			assert_not_null(GameChoiceModal.proof_poster(pair[0], pair[1]),
+				"%s has its poster (tools/convert_proof_videos.py)" % f)
 
 # A clip in the proof slot is its poster with a ▶ over it, and a click plays it
 # over the popup; a click outside it puts it away.
 func test_a_proof_clip_shows_a_poster_and_plays_when_clicked() -> void:
+	# The LAST connection of a clip that proves several, when there is one: the
+	# lookup that reaches it is the one a name built from one pair would miss.
 	var edge: Array = []
 	for f in DirAccess.get_files_at(GameChoiceModal.PROOF_DIR):
-		if f.ends_with(GameChoiceModal.PROOF_VIDEO_EXT):
-			var pair: PackedStringArray = f.get_basename().split(GameChoiceModal.PROOF_JOIN)
-			if pair.size() == 2 and Data.get_game(StringName(pair[0])) != null \
-					and Data.get_game(StringName(pair[1])) != null:
-				edge = [StringName(pair[0]), StringName(pair[1])]
+		var pairs: Array = _pairs_of(f, GameChoiceModal.PROOF_VIDEO_EXT)
+		if not pairs.is_empty() and pairs[0] != null:
+			edge = pairs.back()
+			if pairs.size() > 1:
 				break
 	if edge.is_empty():
 		pending("no proof clips yet")

@@ -1154,7 +1154,11 @@ async function captureVideo(ctx, c, file) {
 // lower-case letters, digits and underscores, so the three hyphens split a name
 // one way only, and the owner can type these by hand. PNG is the owner's call; the
 // files are copied byte for byte. Video and audio cards are left out: the owner
-// sources those moments by hand.
+// sources those moments by hand, as clips, and one clip can prove several
+// connections into the same game — its influencers joined by one hyphen,
+// `balatro-inscryption---black_jacket.ogv` (tools/_proof_names.py). So whether
+// a connection HAS a proof is asked of every name in the folder (covered()),
+// never by building one name from the pair.
 //
 // WHOSE FILE IS WHOSE. Captured and owner's proofs share the folder and the
 // name format, so the name can't tell them apart. tools/proof_captured.json
@@ -1166,7 +1170,19 @@ async function captureVideo(ctx, c, file) {
 const GAME_DIR = path.join(ROOT, 'images2.0', 'proof');
 const CAPTURED = path.join(__dirname, 'proof_captured.json');
 const gameFile = r => `${r.from}---${r.to}.png`;
-const isProofName = f => /^[a-z0-9_]+---[a-z0-9_]+\.png$/.test(f);
+const pairOf = r => `${r.from}---${r.to}`;
+// "a---c.png" proves a -> c; "a-b---c.ogv" proves a -> c and b -> c. [] for a
+// name that isn't a proof's.
+const proofPairs = f => {
+  const m = /^([a-z0-9_]+(?:-[a-z0-9_]+)*)---([a-z0-9_]+)\.(?:png|ogv|mp4)$/.exec(f);
+  return m ? m[1].split('-').map(a => `${a}---${m[2]}`) : [];
+};
+// Every connection with a proof in the folder -> the files that prove it.
+const covered = () => {
+  const out = new Map();
+  for (const f of fs.readdirSync(GAME_DIR)) for (const p of proofPairs(f)) out.set(p, [...(out.get(p) || []), f]);
+  return out;
+};
 const sha1 = file => require('crypto').createHash('sha1').update(fs.readFileSync(file)).digest('hex');
 
 function exportProofs() {
@@ -1176,7 +1192,10 @@ function exportProofs() {
   // A listed file whose bytes changed was uploaded over: the owner's now.
   for (const f of Object.keys(ledger.files)) if (fs.existsSync(path.join(GAME_DIR, f)) && !ours(f)) delete ledger.files[f];
   fs.mkdirSync(GAME_DIR, { recursive: true });
-  const owners = f => fs.existsSync(path.join(GAME_DIR, f)) && !ledger.files[f];
+  // The connection already has a proof that isn't this export's: a screenshot
+  // of the owner's, or a clip.
+  const cover = covered();
+  const owners = r => (cover.get(pairOf(r)) || []).some(f => !ledger.files[f]);
   // A `weak` page capture names only the newer game, which proves nothing by
   // itself (ADOM -> HyperRogue showed a sentence about HyperRogue and no ADOM): it
   // stays in the report for a look, and is listed in docs/proof-missing.md, not
@@ -1184,7 +1203,7 @@ function exportProofs() {
   // name the text check missed is usually right there ("Isaac", or in the
   // attached picture).
   const shown = r => r.image && (r.status !== 'weak' || r.kind === 'x') && r.status !== 'quote-card';
-  const keep = report.filter(r => shown(r) && !['youtube', 'podcast'].includes(r.kind) && !owners(gameFile(r)));
+  const keep = report.filter(r => shown(r) && !['youtube', 'podcast'].includes(r.kind) && !owners(r));
   let bytes = 0;
   for (const r of keep) {
     const dest = path.join(GAME_DIR, gameFile(r));
@@ -1213,7 +1232,8 @@ function exportProofs() {
   ledger.files = Object.fromEntries(Object.entries(ledger.files).sort());
   fs.writeFileSync(CAPTURED, JSON.stringify(ledger, null, 1) + '\n');
   const all = fs.readdirSync(GAME_DIR).filter(f => f.endsWith('.png'));
-  const misnamed = all.filter(f => !isProofName(f) || !onSheet.has(f));
+  const onSheetPairs = new Set(loadConnections().map(pairOf));
+  const misnamed = all.filter(f => !proofPairs(f).length || proofPairs(f).some(p => !onSheetPairs.has(p)));
   console.log(`${keep.length} captured proofs -> images2.0/proof/ (${(bytes / 1048576).toFixed(1)} MB); ` +
     `${all.length - Object.keys(ledger.files).length - misnamed.length} of yours beside them`);
   if (misnamed.length) console.log(`Not <influencer id>---<influenced id>.png for a connection on the sheet, so not shown in game ` +
@@ -1286,13 +1306,12 @@ async function translateProofs(browser) {
 // run or after adding screenshots, and it drops whatever has a proof now.
 function writeMissing() {
   const report = new Map(JSON.parse(fs.readFileSync(path.join(OUT, 'report.json'), 'utf8')).map(r => [`${r.from}__${r.to}`, r]));
-  const file = gameFile;
-  const inGame = new Set(fs.readdirSync(GAME_DIR));
-  const groups = { reddit: [], dead: [], refused: [], down: [], weak: [], nomatch: [], video: [], note: [], none: [] };
   // A clip proves a connection as well as a screenshot does (tools/convert_proof_videos.py).
-  const hasClip = c => inGame.has(file(c).replace(/\.png$/, '.mp4')) || inGame.has(file(c).replace(/\.png$/, '.ogv'));
+  const cover = covered();
+  const groups = { reddit: [], dead: [], refused: [], down: [], weak: [], nomatch: [], video: [], note: [], none: [] };
+  let have = 0;
   for (const c of loadConnections()) {
-    if (inGame.has(file(c)) || hasClip(c)) continue;
+    if (cover.has(pairOf(c))) { have++; continue; }
     const r = report.get(`${c.from}__${c.to}`);
     const line = (why) => `- [ ] **${c.fromName} → ${c.toName}**${why ? ` — ${why}` : ''}${c.url ? ` — [${new URL(c.url).hostname.replace(/^www\./, '')}](${c.url})` : ''}`;
     if (!c.url) {
@@ -1318,12 +1337,15 @@ function writeMissing() {
 
 Generated by \`node tools/capture_proof.js --missing\` from the capture report and
 the files in \`images2.0/proof/\`, so **don't edit it by hand**: add the proof,
-then run it again and the connection drops off. ${inGame.size ? `${[...inGame].filter(isProofName).length} connections have a proof in the game; ` : ''}${total} don't, below,
+then run it again and the connection drops off. ${have ? `${have} connections have a proof in the game; ` : ''}${total} don't, below,
 grouped by what each needs. A proof you screenshot yourself goes in
 \`images2.0/proof/\` as \`<influencer id>---<influenced id>.png\` (the ids are the
 game's file names in \`data/games/\`, e.g. \`slay_the_spire---tic_tactic.png\`), or
 under any name followed by \`python3 tools/proof_owner_match.py --write\` (see
-\`docs/influence-research.md\`).
+\`docs/influence-research.md\`). A clip that proves several connections into one
+game is ONE \`.mp4\` named for all of them, influencers joined by one hyphen
+(\`balatro-inscryption---black_jacket.mp4\`); the \`Proof\` column of the
+\`connections\` sheet has the name to use.
 
 ` + section('Reddit: screenshot these yourself',
     'Reddit proofs are captured through Reddit\'s own embed of the post or comment that says it, found through the Arctic Shift archive of Reddit. These are the ones that can\'t be: a video or picture post (the embed shows no text for those), a comment removed or edited since it was archived, or a thread the archive never saw. Open the link and screenshot the sentence.', groups.reddit)

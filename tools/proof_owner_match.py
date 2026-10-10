@@ -1,14 +1,18 @@
 #!/usr/bin/env python3
-"""Rename the owner's free-named proof screenshots into the game's format.
+"""Rename the owner's free-named proof uploads into the game's format.
 
-The game reads one file per connection, named by the two games' ids, influencer
-first, joined by three hyphens: "slay_the_spire---tic_tactic.png" (an id is a game's
-file name in data/games/ without the .tres). A screenshot dropped into
-images2.0/proof/ under that name needs nothing else. One dropped in under any
-other name ("tic tactic sts.png", "going under hades, isaac, gungeon,
-spelunky.png") is what this is for: it works out which connection(s) the name
-means and, with --write, renames it into place, one copy per connection when
-it proves several, then removes the upload.
+The game reads a proof by the games' ids, influencer first, joined by three
+hyphens: "slay_the_spire---tic_tactic.png" (an id is a game's file name in
+data/games/ without the .tres). One file that proves several connections into
+the same game is named for all of them, the influencers joined by one hyphen:
+"hades-the_binding_of_isaac---going_under.png" (tools/_proof_names.py). A file
+dropped into images2.0/proof/ under such a name needs nothing else. One dropped
+in under any other name ("tic tactic sts.png", "going under hades, isaac,
+gungeon, spelunky.png") is what this is for: it works out which connection(s)
+the name means and, with --write, renames it into place — ONE file for all of
+them, never a copy each. Screenshots (.png) and clips (.mp4 and the other
+uploads tools/convert_proof_videos.py takes) alike; a clip still needs that
+script run after, to become the .ogv the game plays.
 
 How it reads a name:
 
@@ -30,7 +34,8 @@ file already in the id format whose ids aren't a connection (a typo).
 
 A connection that already has one of YOUR screenshots is never overwritten; the
 upload is left in place and reported. A captured one (tools/proof_captured.json)
-is replaced, and is yours from then on.
+is replaced, and is yours from then on. A clip replaces the clip it overlaps
+when it is converted (tools/convert_proof_videos.py says how).
 """
 import glob
 import json
@@ -39,10 +44,15 @@ import re
 import sys
 import unicodedata
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-PROOF = os.path.join(ROOT, "images2.0", "proof")
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+import _proof_names as names  # noqa: E402
+
+ROOT = names.ROOT
+PROOF = names.PROOF
 CAPTURED = os.path.join(ROOT, "tools", "proof_captured.json")
-PROOF_NAME = re.compile(r"^([a-z0-9_]+)---([a-z0-9_]+)\.png$")
+SHOT = ".png"
+CLIPS = (".mp4", ".mov", ".m4v", ".webm", ".mkv")
 
 # Short forms the owner uses that initials alone don't give.
 SHORT = {
@@ -130,26 +140,47 @@ def sha1(data):
     return hashlib.sha1(data).hexdigest()
 
 
+def ext_of(name):
+    low = name.lower()
+    return next((e for e in (SHOT,) + CLIPS if low.endswith(e)), None)
+
+
 def rename(name, pairs, ledger):
-    """Copy one upload to each connection's file; drop the upload if all landed."""
+    """Move one upload to the file named for all its connections (one per
+    influenced game, when a --pair list spans several); drop the upload if all
+    landed."""
     src = os.path.join(PROOF, name)
     data = open(src, "rb").read()
-    clashes = []
+    ext = ext_of(name)
+    by_game = {}
     for a, b in pairs:
-        dest = f"{a}---{b}.png"
-        path = os.path.join(PROOF, dest)
-        if os.path.exists(path):
-            old = open(path, "rb").read()
-            captured = ledger.get(dest) == sha1(old)
-            if not captured and old != data:
-                clashes.append(dest)
-                continue
-        open(path, "wb").write(data)
+        by_game.setdefault(b, []).append(a)
+    shots = names.proofs((SHOT,)) if ext == SHOT else {}
+    clashes, landed = [], []
+    for b, influencers in by_game.items():
+        dest = names.name(influencers, b) + ext
+        # A screenshot already proving one of these: a captured one makes way, one
+        # of yours stays, and so does this upload. (A clip settles its overlaps
+        # when it is converted.)
+        old = {shots[(a, b)] for a in influencers if (a, b) in shots} - {dest}
+        if os.path.exists(os.path.join(PROOF, dest)):
+            old.add(dest)
+        mine = [f for f in sorted(old) if ledger.get(f) != sha1(open(os.path.join(PROOF, f), "rb").read())
+                and open(os.path.join(PROOF, f), "rb").read() != data]
+        if mine:
+            clashes += mine
+            continue
+        for f in old - {dest}:
+            os.remove(os.path.join(PROOF, f))
+            ledger.pop(f, None)
+            print(f"  replaced {f}")
+        open(os.path.join(PROOF, dest), "wb").write(data)
         ledger.pop(dest, None)          # the owner's now
+        landed.append(dest)
         print(f"  -> {dest}")
     if clashes:
-        print(f"  KEPT {name}: you already have a screenshot for " + ", ".join(clashes))
-    else:
+        print(f"  KEPT {name}: you already have a proof there: " + ", ".join(clashes))
+    elif name not in landed:
         os.remove(src)
         if os.path.exists(src + ".import"):
             os.remove(src + ".import")
@@ -188,19 +219,23 @@ def main():
     if hand:
         write = True
 
+    graph = {gid: set(g["out"]) for gid, g in games.items()}
     new, stuck, typos = {}, [], []
-    for f in sorted(glob.glob(os.path.join(PROOF, "*.png")), key=str.lower):
+    for f in sorted(glob.glob(os.path.join(PROOF, "*")), key=str.lower):
         name = os.path.basename(f)
-        m = PROOF_NAME.match(name)
-        if m:
-            # Already in the format: only check it names a real connection.
-            a, b = m.groups()
-            if a not in games or b not in games or b not in games[a]["out"]:
-                typos.append(name)
+        ext = ext_of(name)
+        if ext is None:
+            continue
+        stem = name[:-len(ext)]
+        if names.pairs(stem):
+            # Already in the format: only check it names real connections.
+            why = names.problems(stem, graph)
+            if why:
+                typos.append(f"{name}  [{'; '.join(why)}]")
             continue
         if name in hand:
             continue
-        to, pairs = propose(name[:-4], games, incoming)
+        to, pairs = propose(stem, games, incoming)
         if pairs:
             new[name] = pairs
             print(f"{name}\n    " + "\n    ".join(f"{games[a]['name']} -> {games[b]['name']}" for a, b in pairs))

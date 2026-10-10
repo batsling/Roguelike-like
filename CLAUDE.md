@@ -106,6 +106,25 @@ research runs over the new games (`docs/research.md` §7 has the detail):
 Do all of them without being asked. The owner asked for the research to happen
 every time games are added, for every kind.
 
+**When the owner says they uploaded a proof clip (an `.mp4` in
+`images2.0/proof/`)**, turn it into what the game plays and get rid of the MP4,
+without being asked twice:
+
+1. If its name isn't in the proof format, `python3 tools/proof_owner_match.py`
+   (then `--write`, or `--pair`) renames it. The format is the influencers' ids
+   joined by ONE hyphen, then `---`, then the influenced game's id —
+   `balatro-inscryption---black_jacket.mp4` is one clip proving two connections.
+   The `Proof` column of the `connections` sheet has the name for every row.
+2. `python3 tools/convert_proof_videos.py` writes `<name>.ogv` and
+   `<name>.poster.jpg`, checks the `.ogv` runs as long as the MP4, and **deletes
+   the MP4**. It refuses (and keeps the upload) when an id isn't a game, a pair
+   isn't a connection, or the name is over 150 characters.
+3. `python3 tools/proof_column.py`, then commit the `.ogv`, the poster, the
+   MP4's deletion and `tools/Roguelikes.xlsx` together.
+
+The MP4 stays in git history from the upload commit itself: deleting it shrinks
+the checkout, not what a full clone downloads.
+
 ```bash
 godot --headless -s addons/gut/gut_cmdln.gd     # GUT suite: 48 scripts, ~2530 tests, ~12 min
 ```
