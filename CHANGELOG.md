@@ -11,6 +11,242 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Research, twentieth batch, and the end of the owned games with wikis.**
+  Hell Clock, Maze Mice, Merge Maestro, Noobs Are Coming, The Royal Writ,
+  Skull Horde, Asgard's Fall, Bad North, Bounty of One and Angband: 4 new rows,
+  1 clone and 5 old goal rows checked. Every owned game still waiting now has
+  no wiki, starting with Beneath Apple Manor, Rogue and Moria.
+  - **Angband's old rows:** Grip, Wormtongue, Boldor, Sauron and Morgoth all
+    hold. Its fandom wiki is a 30-page stub, so they were checked against the
+    game's own `lib/gamedata/monster.txt` on GitHub, which is the primary
+    source anyway.
+  - **New rows:** Tetraphobia (Maze Mice; every 4th game, from the 4th on,
+    Stun 4 to everything), the Duplicator (double your best weapon), the
+    Cursed Vase (Merge Maestro; a destroyed piece comes back) and the Educated
+    status (The Royal Writ; its blows heal you).
+  - **Clones:** Bounty of One's True Survivor, on Flawless.
+  - **Nothing usable:** Noobs Are Coming's and Skull Horde's wikis are almost
+    all stubs, and Hell Clock's relics are percentage stats.
+
+- **Research, nineteenth batch.** Battle Shapers, Moonring, Mortal Sin, Slime
+  3K, Talented, The Rogue Prince of Persia, Wizard of Legend 2, Conquest Dark,
+  Crush the Industry and Die in the Dungeon: 8 new rows and 3 clones. None of
+  these games had older rows to check.
+  - **Goals:** the Wind Magistrate (Battle Shapers; choose which boss to fight
+    next, each Overlord growing with the order) and the Cockroach (Die in the
+    Dungeon; overkill it and it revives, so defeat it with exactly the damage
+    it had left).
+  - **Loot:** the Dented Pot (a weapon of random strength), the Large Red
+    Button (less Max Health, full heal every game) and the BerserKing
+    Sandwich (healing you win back by fighting).
+  - **Events:** Oath of Light (Mortal Sin; a run-long vow from three) and the
+    Roly Poly Dice Collector (it takes pieces off your hands for nothing).
+  - **Statuses:** Exposed (one blow finishes it, for a Shield).
+  - **Clones:** Mortal Sin's Hunter's Mark, the Rogue Prince's Shield Giant and
+    Die in the Dungeon's Jester.
+  - **Nothing usable:** Moonring's Deaf status repeats the live Banshee goal
+    (mute the game). Slime 3K, Talented, Conquest Dark and Crush the Industry
+    gave nothing new.
+
+- **Research, eighteenth batch.** Deck of Ashes, Spirits Abyss, BPM: Bullets
+  Per Minute, Mainframe Defenders, Star Renegades, Across the Obelisk,
+  Pawnbarian, Roguebook, Ember Knights and Mothergunship: Forge: 10 new rows,
+  1 clone and 5 old goal rows checked. Most of these wikis are small (12 to 68
+  articles) and several are stubs, so each was listed page by page.
+  - **Old rows:** Ember Knights' Praxis holds (on doom mode he summons the
+    minibosses). Four are now `?`: Plague Bringer and The Architect (Ember
+    Knights' DLC ends on Arch Praxis instead), and Across the Obelisk's Wolf
+    and Houndmaster. None of the four has a page.
+  - **New rows:**
+    - Goals: the Demon Golem (Pawnbarian; defeat an enemy that can only be hurt
+      from a distance).
+    - Loot: the Last Resort Ammo Cap (a hit fully charges the pieces next to it)
+      and the Apple (bakes into a pie beside a fire piece).
+    - Characters: the Capyzerker (a capybara whose rage fills as it's hurt) and
+      Hildr (a BPM Valkyrie; fire only on the beat).
+    - Statuses: Buffer (shrugs off the next status).
+    - Shopkeepers: Huginn (a loyalty card: the shelf grows as you spend) and
+      Arlan (whose sign you can smash for a coin).
+    - Places: the Offering Pit (pieces back at the same rarity) and the Repair
+      Gel unit.
+  - **Clones:** the Restock Paddle Cap, on Box of Holding.
+
+- **Research, seventeenth batch, and Monstrum's real wiki.** Devil Spire,
+  Cursorblade, Crown Trick, Red Rogue, Coin Crypt, Sproggiwood, Monstrum,
+  Renowned Explorers, Mothergunship and Chrono Ark: 16 new rows and 4 clones.
+  Most of these wikis have no categories that match a kind, so each one's full
+  page index was listed and read from there.
+  - **Monstrum's wiki was wrong.** `monstrum.fandom.com` belongs to Monstrum
+    RPG, a different game by Monstrum Studios. Team Junkfish's horror game is
+    `themonstrum.fandom.com`, now set by hand in `research/wikis.json`.
+  - **Goals:** The Brute (hide from an enemy until it gives up looking for
+    you) and Abaddon (learn a skill from an enemy you defeated).
+  - **Loot:** the Alchemy Ring (a used piece stays, 1 in 3), the Identity
+    Crisis Potion (be a random character for a game), the Scroll of Pottery
+    (a row of enemies becomes pots), Tuuri's Lucky Coin (reroll a chest),
+    the Alchemist's Vial (potions work twice) and the Spikeball Launcher.
+    From Chrono Ark: the Sun and Moon Shards (the highest and lowest weapon in
+    the pack), the Black Rabbit Doll (gold from the run before) and the Cursed
+    Pharos Mask.
+  - **Other kinds:** the Claim Ghost event (take a piece out of the loot pool),
+    the Deity Statue (walking past costs too), the Green Leaf tile and the
+    Campfire (rest, or melt two pieces into a better one).
+  - **Clones:** Red Rogue's Altar of Chaos and Balrog, Renowned Explorers'
+    talk-it-down fights, and Crown Trick's nightmare statue.
+
+- **Research, sixteenth batch, read more closely.** Dome Keeper, Downwell,
+  Solitairica, Dreamscaper, Everything is Crab, Ship of Fools, Deep Dungeons of
+  Doom, Cryptark, Crab God and Haste: 15 new rows, 6 clones and 2 old goal
+  rows checked (Dome Keeper's Tick and Driller hold). This batch read every
+  list page each brief names and searched each wiki before writing "nothing".
+  That found Dreamscaper's keepsakes, which the brief never showed, and
+  HASTE's items in a Lua module. `docs/research.md` §8 now says to do both.
+  - **Goals:** the Turtle (beat an enemy by jumping on it; nothing asked for a
+    stomp), Burlypup (beat something adorable), Fear (a boss that personifies
+    an emotion), Krabken (survive a boss fight until something else ends it)
+    and the Undead Moose (hit the opening right after its attack).
+  - **Loot:** Youth (one more choice from every chest), White Elephant (a
+    random piece out, a Rare in), Sturdy Target (ranged hits double, the rest
+    halved), Piñata (bombed enemies drop twice), the Umbrella weapon (every
+    third swing pushes), Detachable Tail (a Decoy when you're first hit), the
+    Empty Plastic Bottle (comes back filled when sold), The Dark Chest (a
+    curse that a boss lifts) and Contract of Mutual Pain.
+  - **Other kinds:** the Exchange Room (keys for bombs and back).
+  - **Clones:** the word-overlap sweep caught two of this batch's own rows.
+    Dome Keeper's Repellent repeated A Glimmer of Hope and its Engineer
+    repeated UnderMine's Peasant, so both went on as clones, with Combos,
+    Rest in Pieces, Map of Myriodd and Trick-or-Treat.
+
+- **Research, fifteenth batch: mostly clones.** Beat Blast, Sky Rogue, Shogun
+  Showdown, Rift Wizard, Octogeddon, Sundered, Brutal Orchestra, AK-xolotl,
+  Paper Planet and Voidigo: 5 new rows, 6 clones and 4 old goal rows checked.
+  New: the Dreadnought (Sky Rogue; beat a boss by hitting its weak point, which
+  nothing asked for yet), Conjure Memories (a scroll that recharges every usable
+  piece), Lucky Helmet (1 in 3, a hit doesn't land), Bronzo (a stranger who
+  comes back asking for twice as much each time, and pays out only if you never
+  refuse) and Drash (Voidigo's amnesiac hero, whose level-up is playing one).
+  Six bosses and heroes repeated a candidate's idea and went on as clones:
+  Kowa the Coward, Sato the Stagemaster, Meg & Byte, the Treasure Plane,
+  Octogeddon himself and Voidigo's beacon-locked bosses. Of the old rows,
+  Shielder and The Shogun hold. Grappler and Prismancer are `?`: neither wiki
+  has a page that confirms them. AK-xolotl's and Paper Planet's wikis are
+  nearly empty, and the ledger says so.
+
+- **Research, fourteenth batch, and Batomon Showdown read off its own site.**
+  Batomon Showdown, Caveblazers, Source of Madness, Nubby's Number Factory,
+  Shotgun King, Crawl, Spiritfall, Nova Drift, Blade Assault, Abyssus and
+  Astronarch: 9 new rows, 7 clones and 1 old goal row checked. Batomon has no
+  MediaWiki, but batomon.com is a community companion site with a page for
+  every trinket, trainer and event, and `research/wikis.json` now says so by
+  hand. From it: Fake Diamond (gold the next time you lose a game), Link Cable
+  (every piece in the pack counts as next to every other) and two events
+  (Genius Inventor, Baby Basilisk). Elsewhere: Blessing of the Slug (whatever
+  hurts you is Slow), Pickle Rat (food that rerolls a shop), the Glaciate
+  status (frozen, and shatters if pushed into the edge), the Statue of Kismet
+  (take one gift, or grab both and fight more) and Crawl's Homing Spike Block,
+  the first unit that moves. Shotgun King's White King goal ("grows when
+  cornered") has nothing behind it on the wiki and is `?`. Seven pieces that
+  repeat a candidate went in as clones instead: Black Bishop, Wand of Gust,
+  Greedy Gloves, Purple Egg, Broken Figurine, Paragon Relic and Overturned
+  Caravan.
+
+- **Research, thirteenth batch, and the wikis running out.** Spelunky 2,
+  Nordic Ashes, Colt Canyon, Crying Suns, Conan Chop Chop, Astrea: Six-Sided
+  Oracles, Despot's Game, 33 Immortals, Have a Nice Death and CleanFall: 4 new
+  rows, 2 clones and 6 old goal rows checked. Most of these wikis keep names
+  without effects or behaviour, so there is little to translate. Of Spelunky 2's
+  old rows, the Golden Monkey is a friendly character, not an enemy, and the
+  Witch Doctor's sacrifice goal is wrong (it curses you through an effigy); both
+  are `?` for the owner. New: Immunity Destroyer (statuses work on bosses), two
+  events (A Dragon, a dice roll written as a joke; Mr. O'Shah, boons with a
+  curse on a delay) and the Allergy status (healing hurts). Colt Canyon's
+  tamable dog and its escape after the final boss went in as clones of
+  Cerberus and Mithrix.
+
+- **Research, twelfth batch.** OneBit Adventure, Roboquest, Blazing Beaks,
+  Absolum, Ravenswatch, Dungeon Drafters, Boyfriend Dungeon, Curse of the Dead
+  Gods, Rift Wizard 2 and Spelunky Classic: 10 new rows, 1 clone and the
+  check of 10 old blind goal rows. The wikis this far down the list are thin
+  (Roboquest, Blazing Beaks and Dungeon Drafters keep names without effects),
+  and Spelunky Classic and Rift Wizard 2 share their series' wikis with games
+  already researched. Of Curse of the Dead Gods' eight old rows, Dreadful
+  Offspring was wrong (they teleport and shoot lightning; nothing multiplies)
+  and Headless Guardian repeats the live Pacer; both, and the loose Malok paal,
+  are now `?` for the owner rather than rewritten into another repeat. Spelunky
+  Classic's Snake goal had nothing behind it and is now a plain "Defeat a
+  snake". New: The Interloper (close a portal), Fool's Bounty (a curse on
+  opening chests), The Crow (a shopkeeper who buys your cursed pieces) with
+  Infected Bandages to sell her, Punish Ball, the Glass Shrine (a boss
+  rematch), Valeria (a dateable dagger), and the Ostrich, Scarlet and Karl.
+
+- **Research, eleventh batch, the thinnest yet.** Beneath Oresa, Rabbit and
+  Steel, Dice & Fold, Turnbound, Dicefolk, One Way Heroics, HoloCure, Rogue
+  Heroes: Ruins of Tasos, Dave the Diver and Alina of the Arena: 17 new rows
+  and 3 clones. Each wiki's main page was checked first (the Archons lesson);
+  all ten are the right game. The yield is low for three reasons: card and
+  stat-item games whose pieces have little identity of their own (Dicefolk,
+  Alina, most of Rabbit and Steel), wikis with no enemy pages, and HoloCure,
+  whose characters and bosses are real streamers' personas and were left out
+  on purpose; only two of its generic items were taken. Highlights: Goblin
+  Shark (catch an enemy alive), Bankrupt Gambler (lose a bet), Black
+  Retribution (a curse on landing killing blows), Spreading Infection (a
+  curse card that doubles if you throw it away), Eat Me! Cake (a positional
+  food piece), Plushie (damage that lands a point per turn), the Executioner
+  and Dave, and Bancho Sushi (serve a whole shift). One Way Heroics gave
+  nothing: its signature darkness that eats the level behind you repeats two
+  candidates already.
+
+- **Research, tenth batch.** Balatro, Super Auto Pets, 20XX, Ratropolis,
+  Cultist Simulator, CloverPit, Dead Estate, StarVaders, Muck and Picayune
+  Dreams, every kind: 37 new rows and 9 clones, a thinner batch than the
+  last because half of these games have no enemies to speak of (CloverPit,
+  Cultist Simulator, Super Auto Pets) or no wiki pages for them (Ratropolis,
+  StarVaders). The three games with old blind goal rows got their check:
+  of Balatro's six, The Water was wrong (it removes discards, not
+  consumables) and The Ox too (it takes your money, you don't spend it); of
+  Muck's five, Gronk forges nothing (he fights with a sword in each hand)
+  and the Woodman is a neutral trader, not a tree; Super Auto Pets' Sloth
+  held. All four are fixed in place. Balatro gave no new goals, since twelve
+  of its blinds are live or candidates already, but six loot rows, among
+  them Gros Michel and the Cavendish that only exists once it has gone
+  extinct, and the Ankh. Other highlights: Kur (beat a boss, then use its
+  power on the next, the Mega Man rule), The Glitch (be fooled by a fake
+  crash), Diver (follow coordinates to buried treasure), Ratropolis' Cry of
+  Widows and A Rat in Debt, CloverPit's ATM (pay a debt before its
+  deadline) and Drawers (a locked bag that keeps pieces safe), Checkmate (a
+  junk card that becomes a boss if you forget it), Cultist Simulator's Dread
+  (a status cured by doing something you enjoy) and Cordelia, Dead Estate's
+  shopkeeper. The overlap sweep caught one repeat: Dead Estate's Pierrot was
+  word for word For the King 2's Clown, and is now its clone.
+
+- **Research, ninth batch: the ten best-documented owned games left.** Risk
+  of Rain Returns, Returnal, Crab Champions, Atomicrops, Quasimorph,
+  Disfigure, Revita, Archons, Barony and Candies 'n Curses, every kind: 69
+  new rows and 24 clones. The Archons wiki was the wrong one:
+  archons.fandom.com is a tabletop game's wiki, and it passed the main-page
+  check on 178 item pages. It is now set by hand to no wiki, and Archons was
+  researched from its Steam page (one character, The Archons: two heroes on
+  one controller).
+  Disfigure's enemies are named by code (M1B1), so it gives no goals, and
+  Risk of Rain Returns mostly repeats Risk of Rain, so only what the remake
+  adds was used. Keys, the thinnest resource, got the most: Keycard (a
+  marked enemy carries one), Key Retriever, Key Liquifier (keys into Max
+  Health), the Contact Light location and the Hungry Locks curse. Other
+  highlights: Returnal's Suit Malfunction (a curse, with the idea of lifting
+  it by a task instead of a timer) and Parasite (a pickup that shows its
+  Buff and Debuff before you take it), Quasimorphosis (eating meat calls the
+  monsters), Hoarder's Backpack (a bag that empties every chest into a pack
+  you can't drop from), Participation Trophy (four of a kind in a 2x2 merge),
+  Deervil's Den (a devil's deal whose price is a hunter until you're hit),
+  Tony the crab shopkeeper, the Health Totem (Max Health doubles or halves),
+  and the Electropylon Driver (two pylons and a fence of lightning). The
+  word-overlap sweep before committing found two repeats in this batch:
+  Golden Gun played exactly like Neon Abyss's Battle Pass, and Revita's
+  Acceptance was a stricter Concierge (Dead Cells). Both are now clones of
+  those rows. The other 22 were clones from the start, most of them on
+  existing rows, among them two revives (Astronaut Figurine, Mysterious
+  Flower) on Dio's Best Friend and Proteron on the Priestess.
+
 - **Research: Tainted Grail: Conquest and Slay the Spire 2, the two largest
   wikis left, and each was the wrong wiki.** Conquest's guessed wiki
   (taintedgrail.wiki.gg) is The Fall of Avalon's, a first-person RPG. Its

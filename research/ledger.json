@@ -15,13 +15,25 @@
   "statuses": "2026-10-10: nothing: Curse (double damage after 2 seconds) is the live Marked; Burn and Freeze are live or proposed"
  },
  "20XX": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: 1 row: Hawk; Nina and Ace are Mega Man's X and Zero (a charge shot is the Fallen Knight's), the Revenants are weaker copies",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: nothing: no event screens",
+  "goals": "2026-10-10: 2 rows: Kur, Vile Visage; the Twin Astrals repeat Trigger Twins, Maintcore the Shielder",
+  "locations": "2026-10-10: nothing: Glory Zones are varied challenge rooms, the vending machines are shops",
+  "loot": "2026-10-10: 3 rows: Choicebooster, Entropy Lock, Crisis Lifebank; clones: Crisis Timestopper into Old Box, Hoarder's Might into Battle Pass; weapons and evolutions: none new (boss powers repeat candidates: Splinterfrost is Ice Hockey's diagonals); no evolutions",
+  "statuses": "2026-10-10: nothing: Powers are abilities, not statuses"
  },
  "30XX": {
   "connections": "before 2026-10-07"
  },
  "33 Immortals": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: nothing",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: nothing",
+  "goals": "2026-10-10: nothing: no monster pages",
+  "locations": "2026-10-10: nothing: Dante's areas (Inferno, Purgatorio, Paradiso) have no pages; Bullet Hell (Gungeon) is the hell location",
+  "loot": "2026-10-10: nothing: no relic or weapon pages with effects",
+  "statuses": "2026-10-10: nothing"
  },
  "868-Back": {
   "connections": "before 2026-10-07"
@@ -48,7 +60,13 @@
   "connections": "before 2026-10-07"
  },
  "AK-xolotl": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: no character pages",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: no events",
+  "goals": "2026-10-10: Enemies and Bosses pages are empty",
+  "locations": "2026-10-10: nothing",
+  "loot": "2026-10-10: Items and Weapons pages are empty; no evolutions",
+  "statuses": "2026-10-10: no statuses"
  },
  "Abandon Ship": {
   "connections": "before 2026-10-07"
@@ -57,17 +75,34 @@
   "connections": "before 2026-10-07"
  },
  "Absolum": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: 1 row: Karl; Cider's grab repeats the live Wringer, Galandra the Necromancer",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: nothing: the events page is empty",
+  "goals": "2026-10-10: 1 row: The Interloper; Gazorg's thrown goblins repeat the Mountie Hockey Stick's goal, Mort Mima the summoners",
+  "locations": "2026-10-10: nothing: regions only",
+  "loot": "2026-10-10: nothing: its Moxes only tune its own Rituals, its charms are percent ups; no evolutions",
+  "statuses": "2026-10-10: nothing"
  },
  "Abyssus": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: small wiki; the brief's pages for this kind hold nothing usable or new on a read (generic enemies, stat upgrades)",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: small wiki; the brief's pages for this kind hold nothing usable or new on a read (generic enemies, stat upgrades)",
+  "goals": "2026-10-10: small wiki; the brief's pages for this kind hold nothing usable or new on a read (generic enemies, stat upgrades)",
+  "locations": "2026-10-10: small wiki; the brief's pages for this kind hold nothing usable or new on a read (generic enemies, stat upgrades)",
+  "loot": "2026-10-10: small wiki; the brief's pages for this kind hold nothing usable or new on a read (generic enemies, stat upgrades)",
+  "statuses": "2026-10-10: small wiki; the brief's pages for this kind hold nothing usable or new on a read (generic enemies, stat upgrades)"
  },
  "Aces & Adventures": {
   "connections": "before 2026-10-07"
  },
  "Across the Obelisk": {
+  "characters": "2026-10-10: Adventurers are class decks",
   "connections": "before 2026-10-07",
-  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+  "events": "2026-10-10: Fishing Contest is a stub",
+  "goals": "2026-10-10: old rows checked: Wolf and Houndmaster marked ? (no pages, a stub enemy list, search finds nothing)",
+  "locations": "2026-10-10: Map Locations is a stub",
+  "loot": "2026-10-10: Equipment and class cards not read in depth; pets are unlocks. No evolutions",
+  "statuses": "2026-10-10: Keywords/Effects read: Buffer"
  },
  "Aethermancer": {
   "characters": "2026-10-09: Siriux the Aethermancer",
@@ -79,7 +114,13 @@
   "statuses": "2026-10-09: nothing: Redirect is Bishop's live goal, Corruption folds into Myrne, the rest are stat buffs"
  },
  "Alina of the Arena": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: nothing: no character pages",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: nothing: no event screens",
+  "goals": "2026-10-10: nothing: no enemy pages",
+  "locations": "2026-10-10: nothing: the arena repeats the Gladiator Camp",
+  "loot": "2026-10-10: 1 row: weapons and evolutions: Entertainer (a combat card); its other cards are block and damage; no evolutions",
+  "statuses": "2026-10-10: nothing: Blind and Cripple are candidates already"
  },
  "An Amazing Wizard": {
   "connections": "before 2026-10-07"
@@ -89,8 +130,13 @@
   "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
  },
  "Angband": {
+  "characters": "2026-10-10: races and classes not read this batch",
   "connections": "before 2026-10-07",
-  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+  "events": "2026-10-10: no events",
+  "goals": "2026-10-10: old rows (Grip, Wormtongue, Boldor, Sauron, Morgoth) checked against the game's monster.txt on GitHub (the fandom wiki is a stub): all hold",
+  "locations": "2026-10-10: town stores not read this batch",
+  "loot": "2026-10-10: the fandom wiki's items are stubs; object.txt not read this batch",
+  "statuses": "2026-10-10: not read this batch"
  },
  "Anomaly Collapse": {
   "connections": "before 2026-10-07"
@@ -120,7 +166,13 @@
   "connections": "before 2026-10-07"
  },
  "Archons": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: 1 row: The Archons (two heroes on one controller), from the Steam page; the guessed wiki is a tabletop game's",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: nothing: the guessed wiki (archons.fandom.com) is a tabletop game's, now set by hand to none; the Steam page names no monsters or items",
+  "goals": "2026-10-10: nothing: the guessed wiki (archons.fandom.com) is a tabletop game's, now set by hand to none; the Steam page names no monsters or items",
+  "locations": "2026-10-10: nothing: the guessed wiki (archons.fandom.com) is a tabletop game's, now set by hand to none; the Steam page names no monsters or items",
+  "loot": "2026-10-10: nothing: the guessed wiki (archons.fandom.com) is a tabletop game's, now set by hand to none; the Steam page names no monsters or items",
+  "statuses": "2026-10-10: nothing: the guessed wiki (archons.fandom.com) is a tabletop game's, now set by hand to none; the Steam page names no monsters or items"
  },
  "Arms of God": {
   "connections": "before 2026-10-07"
@@ -135,7 +187,13 @@
   "connections": "before 2026-10-07"
  },
  "Asgard's Fall: Viking Survivors": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: Characters not read in depth",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: Fates not read",
+  "goals": "2026-10-10: 19-page wiki: Enemies page not read in depth",
+  "locations": "2026-10-10: Realms by name",
+  "loot": "2026-10-10: Abilities read by name: survivors-style weapons; no evolutions page",
+  "statuses": "2026-10-10: no statuses"
  },
  "Asterogues": {
   "connections": "before 2026-10-07"
@@ -150,13 +208,25 @@
   "statuses": "2026-10-09: nothing: no status pages"
  },
  "Astrea: Six-Sided Oracles": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: nothing",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: nothing: the event pages are blessing lists",
+  "goals": "2026-10-10: nothing: enemies have names only; the Corrupted Chest repeats the Mimic",
+  "locations": "2026-10-10: nothing",
+  "loot": "2026-10-10: nothing: blessings are dice effects with no text on the wiki; no weapons; no evolutions",
+  "statuses": "2026-10-10: nothing"
  },
  "Astro Prospector": {
   "connections": "before 2026-10-07"
  },
  "Astronarch": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: small wiki; the brief's pages for this kind hold nothing usable or new on a read",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: Overturned Caravan a clone on Merchant In Trouble; Goo For It and the rest are stat gambles",
+  "goals": "2026-10-10: small wiki; the brief's pages for this kind hold nothing usable or new on a read",
+  "locations": "2026-10-10: small wiki; the brief's pages for this kind hold nothing usable or new on a read",
+  "loot": "2026-10-10: small wiki; the brief's pages for this kind hold nothing usable or new on a read",
+  "statuses": "2026-10-10: small wiki; the brief's pages for this kind hold nothing usable or new on a read"
  },
  "Atai no Gensoukyou": {
   "connections": "before 2026-10-07"
@@ -165,7 +235,13 @@
   "connections": "before 2026-10-07"
  },
  "Atomicrops": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: 1 row: Lavender; Rye repeats the Engineer's turret, Robusta the Bolt's speed",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: 1 row: Deervil's Den; the Moons are wave modifiers",
+  "goals": "2026-10-10: 2 rows: Locust, Tree Monster; clone: Mini U.F.O. into Hag; Corpse-a-Copia repeats the live Shelled Parasite (an edible enemy), Bull Boy the Ancient Guardian, Mole the Magma Worm's burrowing",
+  "locations": "2026-10-10: 1 row: Bundit Camp",
+  "loot": "2026-10-10: 3 rows: Heart Beet, Participation Trophy; weapons and evolutions: Flying Squirrels; no evolutions (Butcher's Bayonet fires the Butcher's Knife's blade without turning it); clone: Mysterious Flower into Dio's Best Friend",
+  "statuses": "2026-10-10: nothing: no status effects or curses"
  },
  "Auro: A Monster-Bumping Adventure": {
   "connections": "before 2026-10-07"
@@ -186,7 +262,13 @@
   "connections": "before 2026-10-07"
  },
  "BPM: Bullets Per Minute": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: Valkyries read: Hildr (fire on the beat)",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: no events",
+  "goals": "2026-10-10: Monsters page is a list; rhythm combat sits on Violette and on Hildr's level-up",
+  "locations": "2026-10-10: Huginn's Shops read: Huginn; the Damocles Sword statue repeats Blood Altar",
+  "loot": "2026-10-10: Items read: Loki's Bargain and Midgard Bracelet are stat rings, Mortal Curse and Memento Mori repeat existing pieces; weapons are guns with reload beats. No evolutions",
+  "statuses": "2026-10-10: no status pages"
  },
  "Backpack Battles": {
   "characters": "2026-10-10: nothing: the classes (Ranger, Reaper, Berserker, Pyromancer, Mage, Adventurer) are archetypes already taken",
@@ -207,11 +289,22 @@
   "statuses": "2026-10-10: nothing: its curses are pack items (two are loot rows here) and its statuses (poison, regen, spikes, charm) are already proposed"
  },
  "Bad North": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: commanders are squads",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: no events",
+  "goals": "2026-10-10: Enemy pages are its Viking unit types; nothing to name",
+  "locations": "2026-10-10: The Fog read: the map closing in, close to the live Amulet pressure",
+  "loot": "2026-10-10: Items read (Holy Grail, Philosopher's Stone, Ring of Command, War Horn): revives and squad stats that repeat existing pieces. No evolutions",
+  "statuses": "2026-10-10: Traits are commander buffs"
  },
  "Balatro": {
+  "characters": "2026-10-10: nothing new: the Erratic Deck is live; the other decks are small stat tweaks",
   "connections": "before 2026-10-07",
-  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+  "events": "2026-10-10: nothing: no event screens (shops, tags and packs)",
+  "goals": "2026-10-10: checked 6: The Water fixed (it removes discards, not consumables), The Ox fixed (it takes your money to $0), The Manacle, Violet Vessel, The Wall, The Eye hold; nothing added: 12 Balatro blinds are live or candidates already, past the boss budget",
+  "locations": "2026-10-10: nothing: the shop is the only place",
+  "loot": "2026-10-10: 6 rows: Gros Michel, Cavendish, Invisible Joker, Abstract Joker, Popcorn, Ankh (a Spectral card); clone: Mr. Bones into Dio's Best Friend; weapons and evolutions: none (no weapons; Gros Michel into Cavendish is a Joker, not a weapon)",
+  "statuses": "2026-10-10: nothing: editions and stickers (Eternal, Perishable, Rental) are modifiers on pieces, which would need a new system; left for the owner"
  },
  "Baldi's Basics Plus": {
   "connections": "before 2026-10-07"
@@ -241,7 +334,13 @@
   "connections": "before 2026-10-07"
  },
  "Barony": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: 2 rows: Brewer, Accursed; Mechanist repeats the Engineer, Mesmer the Lamb, Shaman the Abomination, Sexton the live Stalker",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: nothing: no event screens",
+  "goals": "2026-10-10: 1 row: Baron Herx; clone: Orpheus and Erudyce into Trigger Twins; the Minotaur shares a name with NecroDancer's candidate (its maze became a location), Baphomet is a Mewgenics event",
+  "locations": "2026-10-10: 2 rows: Minotaur Maze, Teleportation Trap (tile)",
+  "loot": "2026-10-10: 2 rows: Scroll of Food, Enchanted Feather; weapons and evolutions: none (its weapons are generic; Whip and Rapier are other games'); no evolutions; its potions repeat Rogue's and NetHack's",
+  "statuses": "2026-10-10: nothing new; clone: Oversaturated into Overdose; Conflict repeats Madness"
  },
  "Baroque": {
   "connections": "before 2026-10-07"
@@ -250,7 +349,13 @@
   "connections": "before 2026-10-07"
  },
  "Batomon Showdown": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: 24 trainers are one-line team abilities; Egg Breeder's hatching repeats the live-candidate Kid goal and Precious Egg, so none",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: Genius Inventor, Baby Basilisk from its 15 events; the rest are shops, gifts and battles",
+  "goals": "2026-10-10: no MediaWiki; batomon.com read by hand. Its 148 Batomon are your own team, not enemies, so nothing to carry a goal",
+  "locations": "2026-10-10: nothing: the map is a calendar of battles, shops and events",
+  "loot": "2026-10-10: batomon.com trinkets: Fake Diamond, Link Cable; Greedy Gloves a clone on Hoarder's Backpack, the Purple Egg one on Precious Egg; items are battle consumables. No weapons, no evolutions",
+  "statuses": "2026-10-10: statuses (Shock, Burn and the like) repeat existing ones"
  },
  "Battle Brothers": {
   "characters": "2026-10-09: nothing: the player is a company; backgrounds are hirelings",
@@ -262,13 +367,25 @@
   "statuses": "2026-10-09: Hangover; Drunk is a live goal, Charmed is Lovesick, Overwhelmed and Swarm are stat penalties"
  },
  "Battle Shapers": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: Characters page not read: a stub",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: no events",
+  "goals": "2026-10-10: Overlords and Overlord Powers read: Wind Magistrate (choose which boss is next, each growing with the order)",
+  "locations": "2026-10-10: Towers read: biomes only",
+  "loot": "2026-10-10: Misc. Items and Shaper Hacks read: health packs and floor-wide barrels; weapons are stat variants. No evolutions",
+  "statuses": "2026-10-10: Status Effects read: Exposed; Weak, Break, Magnetize repeat existing statuses"
  },
  "Be My Horde": {
   "connections": "before 2026-10-07"
  },
  "Beat Blast": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: no characters on the wiki",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: no events",
+  "goals": "2026-10-10: Meg & Byte a clone on The Wicked Twins; Queen Bee and Sentinel are bullet-pattern bosses, the 66 enemies colour variants of a dozen shooters; Sapper's mines sit near Jack",
+  "locations": "2026-10-10: Shops and Choice Rooms only; nothing new",
+  "loot": "2026-10-10: Shops and Power Notes name powerups without effects; no weapons page, no evolutions",
+  "statuses": "2026-10-10: no statuses"
  },
  "Bella Wants Blood": {
   "connections": "before 2026-10-07"
@@ -277,7 +394,13 @@
   "connections": "before 2026-10-07"
  },
  "Beneath Oresa": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: nothing: Hectos and Nereide repeat the Minotaur's counter, Flynn the Gunslinger, Zakaan the Tinker, Sohoma the Grave Robber",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: nothing: Scavenges are two sets of stat effects, not stories",
+  "goals": "2026-10-10: nothing new; clone: Psy-Linked Gunner into Gas Spore (its death hurts its allies); the Healer Sentry repeats the Priestess, the Elevated Form's respawning gunners the Carnivorous Mutae, the Anointed Urn the live Hexer",
+  "locations": "2026-10-10: nothing: Regroup is a rest site, Scavenge a choice of stat effects",
+  "loot": "2026-10-10: 2 rows: Bargain, Spreading Infection (cards); weapons and evolutions: none (cards, no weapons); no evolutions",
+  "statuses": "2026-10-10: 1 row: Black Retribution (curse); Fragility repeats the live Marked, Worthy Opponent the Tasty candidate"
  },
  "Beyond Words": {
   "connections": "before 2026-10-07"
@@ -295,10 +418,22 @@
   "connections": "before 2026-10-07"
  },
  "Blade Assault": {
-  "connections": "2026-10-07"
+  "characters": "2026-10-10: small wiki; the brief's pages for this kind hold nothing usable or new on a read (generic enemies, stat upgrades)",
+  "connections": "2026-10-07",
+  "events": "2026-10-10: small wiki; the brief's pages for this kind hold nothing usable or new on a read (generic enemies, stat upgrades)",
+  "goals": "2026-10-10: small wiki; the brief's pages for this kind hold nothing usable or new on a read (generic enemies, stat upgrades)",
+  "locations": "2026-10-10: small wiki; the brief's pages for this kind hold nothing usable or new on a read (generic enemies, stat upgrades)",
+  "loot": "2026-10-10: small wiki; the brief's pages for this kind hold nothing usable or new on a read (generic enemies, stat upgrades)",
+  "statuses": "2026-10-10: small wiki; the brief's pages for this kind hold nothing usable or new on a read (generic enemies, stat upgrades)"
  },
  "Blazing Beaks": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: nothing: no character pages",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: nothing",
+  "goals": "2026-10-10: nothing: its bosses have empty pages",
+  "locations": "2026-10-10: 1 row: The Crow (shopkeeper, trades for cursed artifacts)",
+  "loot": "2026-10-10: 1 row: Infected Bandages (an artifact); Broken Lock repeats the Hungry Locks curse, Black Potato the Golden Vault; weapons and evolutions: none (guns, no pages)",
+  "statuses": "2026-10-10: nothing"
  },
  "Bleak Sword": {
   "connections": "before 2026-10-07"
@@ -337,10 +472,22 @@
   "connections": "before 2026-10-07"
  },
  "Bounty of One": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: characters are stat variants",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: no events",
+  "goals": "2026-10-10: Bosses page not read in depth",
+  "locations": "2026-10-10: nothing",
+  "loot": "2026-10-10: objects read from their infobox text (7): True Survivor a clone on Flawless; the rest are attack-speed trades. No evolutions",
+  "statuses": "2026-10-10: no statuses"
  },
  "Boyfriend Dungeon": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: nothing: the weapons are the cast; the player character is unnamed",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: nothing: its dates are story scenes",
+  "goals": "2026-10-10: nothing: no monster pages beyond a list",
+  "locations": "2026-10-10: nothing: its places are date spots and shops",
+  "loot": "2026-10-10: 1 row: weapons and evolutions: Valeria (a dateable dagger); its items are clothes and gifts; no evolutions (crafting makes outfits)",
+  "statuses": "2026-10-10: nothing"
  },
  "Brawl Tactics: Origins": {
   "connections": "before 2026-10-07"
@@ -382,7 +529,13 @@
   "statuses": "2026-10-10: nothing: burning is the live Burn, and the DLC's Curse is a stat that strengthens enemies, not a status"
  },
  "Brutal Orchestra": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: 27 companions are party members with abilities in its pigment system, not heroes with a goal",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: Bronzo's Quest as an escalating event; Fogs' Quest is a boss checklist",
+  "goals": "2026-10-10: already live (Mung, Revola, Giggling Minister, Hickory, Mobius, Trigger Fingers); nothing more from the lists",
+  "locations": "2026-10-10: Purgatory and the zones are lore; nothing",
+  "loot": "2026-10-10: Lucky Helmet from Items; Stolen Gold repeats Coin Bomb, Safe and Sound the live destroy_on_damage pieces, the pigment items need its colour system. No weapons, no evolutions",
+  "statuses": "2026-10-10: Burn already live; the others named on item pages (Frail, Scars, Ruptured, Oil-Slicked) weren't read closely this batch"
  },
  "Buckshot Roulette": {
   "connections": "before 2026-10-07"
@@ -391,7 +544,13 @@
   "connections": "before 2026-10-07"
  },
  "Candies 'n Curses": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: 1 row: Molli Pop",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: 1 row: Hector the Hunter",
+  "goals": "2026-10-10: 3 rows: Jack, Climber Slime, Phantom King; the Necro Witch's minion phase repeats the Carnivorous Mutae",
+  "locations": "2026-10-10: nothing: its rooms are wave stages; the Soul Shop sells real-money currency",
+  "loot": "2026-10-10: 1 row: Spicy Feet Curse; clones: Devil's Bargain into Last Stand, Purified Curse into Vitality; its candies are stat ups; weapons and evolutions: none (the flashlight is the only weapon); no evolutions",
+  "statuses": "2026-10-10: nothing: its 'curses' are treasures with a price, researched as loot"
  },
  "Captain Forever Remix": {
   "connections": "before 2026-10-07"
@@ -434,7 +593,13 @@
   "connections": "before 2026-10-07"
  },
  "Caveblazers": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: one hero, no classes",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: no events",
+  "goals": "2026-10-10: monsters and bosses are generic cave fare (goblins, slimes, a minotaur); nothing a goal can name that isn't already a candidate",
+  "locations": "2026-10-10: secret and puzzle rooms only; the Paragon Relic clone covers the one with a choice",
+  "loot": "2026-10-10: Blessing of the Slug from Blessings; Paragon Relic a clone on Shrine of the Mountain; weapons are stat swords and bows. No evolutions",
+  "statuses": "2026-10-10: no status page holds anything new"
  },
  "Caves of Qud": {
   "characters": "2026-10-09: pilot: rows written from wiki.cavesofqud.com",
@@ -491,16 +656,34 @@
   "connections": "before 2026-10-07"
  },
  "Chrono Ark": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: investigators are skill decks; none read individually",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: no events page",
+  "goals": "2026-10-10: Bosses page is a list of names; nothing to read",
+  "locations": "2026-10-10: Campfire",
+  "loot": "2026-10-10: Relic list read: Sun Shard, Moon Shard, Black Rabbit Doll, Cursed Pharos Mask. No weapons, no evolutions",
+  "statuses": "2026-10-10: buff and debuff lists not read this batch"
  },
  "Cinderia": {
   "connections": "before 2026-10-07"
  },
  "CleanFall": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: nothing: classes are stat pages",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: nothing",
+  "goals": "2026-10-10: nothing: no bestiary entries",
+  "locations": "2026-10-10: nothing",
+  "loot": "2026-10-10: nothing: mining tools and a landmine (live as a unit); no evolutions",
+  "statuses": "2026-10-10: nothing"
  },
  "CloverPit": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: nothing: one prisoner",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: nothing: the Telephone's offers repeat the Perk Altar",
+  "goals": "2026-10-10: nothing: no enemies",
+  "locations": "2026-10-10: 1 row: ATM (the debt and its deadline); the Toilet repeats the live Flushmaster's joke, the Slot Machine is Isaac's",
+  "loot": "2026-10-10: 3 rows: Golden Horseshoe, Evil Deal, Drawers (bag); clone: Consolation Prize into Snake Eyes; weapons and evolutions: none",
+  "statuses": "2026-10-10: nothing"
  },
  "Cluckmech Oasis": {
   "connections": "before 2026-10-07"
@@ -525,10 +708,22 @@
   "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
  },
  "Coin Crypt": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: 27 classes read in part (Gambler, Executive, Coinquistador, Princess): coin-bag tricks; nothing a level-up can ask",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: Claim Ghost",
+  "goals": "2026-10-10: Enemies page read: nothing new",
+  "locations": "2026-10-10: Deities read: Deity Statue",
+  "loot": "2026-10-10: coins are its spell cards; Executive's steal repeats Pillaged Gold's goal. No weapons, no evolutions",
+  "statuses": "2026-10-10: status effects repeat existing ones"
  },
  "Colt Canyon": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: nothing: characters differ by stats",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: nothing",
+  "goals": "2026-10-10: nothing new; clones: Dog into Cerberus (pet or tame it), Bandit Boss into Mithrix (fight your way back out); the Slaver is a whip boss",
+  "locations": "2026-10-10: nothing",
+  "loot": "2026-10-10: nothing: weapons are western guns with no pages of effects; the locked crate repeats the Locked Display Cabinet; no evolutions",
+  "statuses": "2026-10-10: nothing: fire and poison are live"
  },
  "Combolands": {
   "connections": "before 2026-10-07"
@@ -537,10 +732,22 @@
   "connections": "before 2026-10-07"
  },
  "Conan Chop Chop": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: nothing: Conan and friends with no character pages",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: nothing",
+  "goals": "2026-10-10: nothing: the bosses have no behaviour pages; the Giant Sand Worm repeats the Magma Worm",
+  "locations": "2026-10-10: nothing",
+  "loot": "2026-10-10: nothing: three items, no effects on the wiki; no weapons pages; no evolutions",
+  "statuses": "2026-10-10: nothing"
  },
  "Conquest Dark": {
-  "connections": "2026-10-07"
+  "characters": "2026-10-10: classes and origins are stat sets",
+  "connections": "2026-10-07",
+  "events": "2026-10-10: no events",
+  "goals": "2026-10-10: Enemies page not read: a stub",
+  "locations": "2026-10-10: Rituals read: a level tree",
+  "loot": "2026-10-10: Artifacts and Eldritch Gear read: elemental procs that repeat existing pieces; no evolutions",
+  "statuses": "2026-10-10: no status page"
  },
  "Convoy": {
   "connections": "before 2026-10-07"
@@ -552,10 +759,22 @@
   "connections": "before 2026-10-07"
  },
  "Crab Champions": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: nothing: one crab, with cosmetic skins",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: nothing: no event screens; the totems are objects",
+  "goals": "2026-10-10: 1 row: Crab; King Skull and Giant Ant repeat live skeleton and Giant Spider goals, the Spider Crab is unreleased",
+  "locations": "2026-10-10: 2 rows: Tony (shopkeeper), Health Totem",
+  "loot": "2026-10-10: 5 rows: Hoarder's Backpack (bag), Equalizer, Valued Customer, Gold Coating, Faulty Chests; clone: Performance Bonus into Master Round; Coral Amulet is close to the live There's Options; weapons and evolutions: none (its guns are generic, the Blade Launcher is the Buzzsaw Gun); no evolutions",
+  "statuses": "2026-10-10: nothing: its elements are Burn (live), freezing (a live goal) and poison (Blight, a candidate)"
  },
  "Crab God": {
-  "connections": "2026-10-07"
+  "characters": "2026-10-10: Roles are colony jobs (Builder, Gardener, Hunter, Scavenger, Worshipper), not heroes",
+  "connections": "2026-10-07",
+  "events": "2026-10-10: no events",
+  "goals": "2026-10-10: Darkfang is a name and a location only",
+  "locations": "2026-10-10: two locations, names only",
+  "loot": "2026-10-10: Blessings read: I Want This Harder repeats the live Alien Baby; the rest are colony stats. Food is a resource. No weapons, no evolutions",
+  "statuses": "2026-10-10: no statuses"
  },
  "Crablike": {
   "connections": "before 2026-10-07"
@@ -564,7 +783,13 @@
   "connections": "before 2026-10-07"
  },
  "Crawl": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: the four players are interchangeable heroes",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: Quests are achievement lists, not events",
+  "goals": "2026-10-10: monsters are the ghosts' own forms, generic fantasy; nothing new",
+  "locations": "2026-10-10: Homing Spike Block from Objects; Haunted Furniture and the other traps repeat existing units and tiles",
+  "loot": "2026-10-10: weapons are classes of sword, bow and club with only stats; no evolutions",
+  "statuses": "2026-10-10: no status page holds anything new"
  },
  "Crop Rotation": {
   "connections": "before 2026-10-07"
@@ -576,13 +801,31 @@
   "connections": "before 2026-10-07"
  },
  "Crown Trick": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: Elle is the only hero",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: Statue of the god of nightmare read: blessings, one of them a clone",
+  "goals": "2026-10-10: Abaddon (learn a beaten elite's skill, its Familiar system); the other 22 familiars and bosses are skill lists",
+  "locations": "2026-10-10: Room Types and Challenges and puzzles read: elite, event, secret, shrine and shop rooms repeat existing places",
+  "loot": "2026-10-10: Relic list sampled; the statue's gold-for-damage blessing a clone on Golden Vault. Weapons are stat variants; no evolutions",
+  "statuses": "2026-10-10: elemental statuses repeat existing ones"
  },
  "Crush the Industry": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: Characters read: game-industry jobs (Intern, Community Manager, Game Designer, Shoutcaster) with nothing a level-up can ask beyond the live Streamer",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: Events read: headings only",
+  "goals": "2026-10-10: Enemies page not read: sprites only",
+  "locations": "2026-10-10: nothing",
+  "loot": "2026-10-10: Consumables read: one row filled (Milk Toast); nothing new. No evolutions",
+  "statuses": "2026-10-10: Meditate's Sanity Shield is a skill"
  },
  "Crying Suns": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: nothing: officers are stat cards",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: nothing new: its anomalies are paid-or-fight (the Pirate Magnetic Lock Trap repeats Toll Bridge Bandits) and 50/50 reboots",
+  "goals": "2026-10-10: nothing: no enemy or boss pages",
+  "locations": "2026-10-10: nothing",
+  "loot": "2026-10-10: nothing: battleship weapons and officer abilities with no identity outside the ship; no evolutions",
+  "statuses": "2026-10-10: nothing"
  },
  "Crypt of the NecroDancer": {
   "characters": "2026-10-10: Monk, Bolt; Aria left out (one-heart perfect runs are Zoe's), Dove (no attacking: the Cop), Melody (her Golden Lute is For the King 2's Lute), Cadence (the plain hero)",
@@ -594,7 +837,13 @@
   "statuses": "2026-10-10: nothing: no status effects; freezing and confusion are trap and spell effects already proposed"
  },
  "Cryptark": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: Characters read: the crew are NPCs, the Pioneer is a suit",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: no events",
+  "goals": "2026-10-10: Juggernaut and Hornet are drones; nothing new",
+  "locations": "2026-10-10: no location pages",
+  "loot": "2026-10-10: Equipment read (Alarm Lure repeats the Decoy unit, nukes and EMP repeat bombs); artifacts are salvage sold for money; weapons are stat lists. No evolutions",
+  "statuses": "2026-10-10: no statuses"
  },
  "Cthangband": {
   "connections": "before 2026-10-07"
@@ -618,7 +867,13 @@
   "statuses": "2026-10-09: nothing usable: its 'curses' are attacks and its states belong to followers"
  },
  "Cultist Simulator": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: 2 rows: Dancer, Medium? (Legacies); the Exile repeats the Cogmind Hunter's pursuit, the Detective and Physician are jobs",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: nothing: its 'events' pages are lore",
+  "goals": "2026-10-10: nothing: no fights; its Hunters are investigators, and the summons repeat the summoner goals",
+  "locations": "2026-10-10: 1 row: Sunshine Island (a Map's Edge destination)",
+  "loot": "2026-10-10: nothing: its tools are expedition keys with no effect of their own on the wiki; weapons and evolutions: none",
+  "statuses": "2026-10-10: 1 row: Dread; its Curses are expedition obstacles beaten with aspects"
  },
  "Cupiclaw": {
   "connections": "before 2026-10-07"
@@ -639,14 +894,25 @@
   "connections": "before 2026-10-07"
  },
  "Curse of the Dead Gods": {
+  "characters": "2026-10-10: nothing: one unnamed Pretender",
   "connections": "before 2026-10-07",
-  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+  "events": "2026-10-10: nothing: no event screens",
+  "goals": "2026-10-10: checked 8: Dreadful Offspring wrong (they teleport, they don't multiply; a fix would repeat Blink Batty) and marked ?, Headless Guardian repeats the live Pacer (?), Malok paal a loose fit (?); Xucat', Xak'olchir, Champion of Death, Wicked Twins, Infernal Jaguars hold; nothing added: the Blood Priest repeats the Priestess",
+  "locations": "2026-10-10: nothing: Sanctuaries are shops paid in Corruption, close to Sho'guul",
+  "loot": "2026-10-10: nothing new; clone: Sword of Conjunctivius into Cursed Sword; its weapons are categories, its relics have no pages; no evolutions",
+  "statuses": "2026-10-10: 1 row: Fool's Bounty (curse); its other curses change the temple's rules, not a thing you do"
  },
  "Cursed Words": {
   "connections": "before 2026-10-07"
  },
  "Cursorblade": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: no characters",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: no events",
+  "goals": "2026-10-10: 13-page wiki, all read: six enemies (slimes that split, a hive, a cloud) repeat existing goals",
+  "locations": "2026-10-10: no locations",
+  "loot": "2026-10-10: Items and Weapons pages are stubs; Target (3x damage at random) is a crit. No evolutions",
+  "statuses": "2026-10-10: no statuses"
  },
  "DIG: Deep In Galaxies": {
   "connections": "before 2026-10-07"
@@ -685,7 +951,13 @@
   "statuses": "2026-10-09: Riposte, Stealth; Loathing left out (a Kingdoms-mode difficulty track, not a status)"
  },
  "Dave the Diver": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: 1 row: Dave; the other characters are NPCs and crossover guests",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: nothing: no event screens",
+  "goals": "2026-10-10: 1 row: Goblin Shark; clone: Truck Hermit Crab into Knight Bullet Kin (explosive barrels); Lusca and the Clione Queen are big fish with no distinct goal",
+  "locations": "2026-10-10: 1 row: Bancho Sushi; the Game Parlor's bets are the Bankrupt Gambler's goal",
+  "loot": "2026-10-10: 1 row: weapons and evolutions: Frozen Cod; the Doll Decoy repeats the Decoy unit; no evolutions (the recipes are dishes)",
+  "statuses": "2026-10-10: nothing"
  },
  "Dead Cells": {
   "characters": "2026-10-09: The Beheaded",
@@ -697,7 +969,13 @@
   "statuses": "2026-10-09: Cursed (curse); Bleed, Burn, Stun live, freeze/root/poison covered elsewhere"
  },
  "Dead Estate": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: nothing: Fuji repeats the live Revola's body slam, Digby the Willow's fire, Lydia Koh's building, Axel the Butcher's Cleaver",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: nothing: no event screens",
+  "goals": "2026-10-10: 1 row: The Glitch; clone: Pierrot into Clown (For the King 2); Ultraclot repeats the live Spike Slime, the Golden Mask Ponzu, the Leviathan Egg the Carnivorous Mutae, the Kraken the Elite Kappa",
+  "locations": "2026-10-10: 1 row: Cordelia (shopkeeper)",
+  "loot": "2026-10-10: 1 row: Curse of the Resident; clones: Curse of the Glass Cannon into Last Stand, Ancient Urn into Old Box; weapons and evolutions: none (its guns are generic); no evolutions",
+  "statuses": "2026-10-10: nothing: Burn and Freeze are live or candidates"
  },
  "Dead Finger Dice": {
   "connections": "before 2026-10-07"
@@ -730,7 +1008,13 @@
   "connections": "before 2026-10-07"
  },
  "Deck of Ashes": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: Heroes read: Lucia, Sly, Buck, Magnus are one-line stubs",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: no events",
+  "goals": "2026-10-10: 27-page wiki read: Enemies is a stub; King Octavius is lore (a mad king who calls himself a god)",
+  "locations": "2026-10-10: Camp is a stub",
+  "loot": "2026-10-10: Cards and Curse read: card effects in its own deckbuilder; no weapons, no evolutions",
+  "statuses": "2026-10-10: Curse read: stat debuff that repeats existing statuses"
  },
  "Deck of Haunts": {
   "connections": "before 2026-10-07"
@@ -739,7 +1023,13 @@
   "connections": "before 2026-10-07"
  },
  "Deep Dungeons of Doom": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: Mercenary and Witch read: stat classes with flavour text only",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: Shrines read: stat blessings",
+  "goals": "2026-10-10: Undead Moose (punish the opening after its attack); Escaping Jelly, Disembodied Head and Azathoth repeat existing goals",
+  "locations": "2026-10-10: Shrines and dungeons: nothing new",
+  "loot": "2026-10-10: items read: Contract of Mutual Pain; helmets, pelts and painful potions are stat trades. Weapons are stat variants; no evolutions",
+  "statuses": "2026-10-10: poison only"
  },
  "Deep Rock Galactic: Rogue Core": {
   "connections": "before 2026-10-07"
@@ -781,7 +1071,13 @@
   "connections": "before 2026-10-07"
  },
  "Despot's Game": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: nothing: classes are unit types",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: 1 row: A Dragon; AAAAAA (a giant spider) and AMZANIG FCAT are jokes with no stakes",
+  "goals": "2026-10-10: nothing: no enemy pages",
+  "locations": "2026-10-10: nothing",
+  "loot": "2026-10-10: nothing: food and perks are stat ups; no evolutions",
+  "statuses": "2026-10-10: 1 row: Allergy; silence repeats the Scroll of Silence, burning the live Burn"
  },
  "Despotism 3k": {
   "connections": "before 2026-10-07"
@@ -793,7 +1089,13 @@
   "connections": "before 2026-10-07"
  },
  "Devil Spire": {
-  "connections": "2026-10-07"
+  "characters": "2026-10-10: one player character",
+  "connections": "2026-10-07",
+  "events": "2026-10-10: no events",
+  "goals": "2026-10-10: 22-page wiki, all read: its eight monsters (Djinn, Manroom, goblins, undead) are stat blocks with spells",
+  "locations": "2026-10-10: no location pages",
+  "loot": "2026-10-10: Rings read: Alchemy Ring; the rest repeat existing pieces or need its action combat. Combine and Garbage Items are item crafting with no weapon as the base, so no evolutions",
+  "statuses": "2026-10-10: no status pages"
  },
  "Diablo": {
   "characters": "2026-10-09: the 3 classes",
@@ -805,7 +1107,13 @@
   "statuses": "2026-10-09: 1 curse; Diablo I has few statuses"
  },
  "Dice & Fold": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: 1 row: Executioner",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: nothing: no event screens",
+  "goals": "2026-10-10: 1 row: Bankrupt Gambler; clone: Dramatist into The Ox; Dullahan repeats the live Pacer (headless), the Dungeon Master the Barakunarash, Forlorn the Delirium",
+  "locations": "2026-10-10: nothing",
+  "loot": "2026-10-10: nothing new: Bounty Poster and Death in a Bottle are close to Bounty Contract and the live There's Options, the companion items need companions; weapons and evolutions: none",
+  "statuses": "2026-10-10: nothing: no statuses"
  },
  "Dice A Million": {
   "connections": "before 2026-10-07"
@@ -820,7 +1128,13 @@
   "connections": "before 2026-10-07"
  },
  "Dicefolk": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: nothing: no hero pages",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: nothing: no event screens",
+  "goals": "2026-10-10: nothing: its chimeras have no list pages",
+  "locations": "2026-10-10: nothing: biomes only",
+  "loot": "2026-10-10: nothing: its equipment is short stat and trigger effects with little identity of its own (Abacus, Bonsai Tree, Black Pawn); weapons and evolutions: none",
+  "statuses": "2026-10-10: nothing: no status pages"
  },
  "Diceomancer": {
   "connections": "before 2026-10-07"
@@ -841,13 +1155,25 @@
   "connections": "before 2026-10-07"
  },
  "Die in the Dungeon": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: Playable Characters not read",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: Special Events read: Roly Poly Dice Collector; Jester a clone on Offering Pit; Fairy and Purple Ponds and Golden Beetle repeat existing events",
+  "goals": "2026-10-10: Modifiers read: Cockroach (an exact kill); Copycat repeats Rak'Shor Cultist",
+  "locations": "2026-10-10: Terrain Dice Shrine repeats Shrine of War",
+  "loot": "2026-10-10: Dice and Upgrades not read in depth: dice faces; no weapons, no evolutions",
+  "statuses": "2026-10-10: no statuses"
  },
  "Dimensionals": {
   "connections": "before 2026-10-07"
  },
  "Disfigure": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: nothing: one unnamed hero; builds come from the weapon",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: nothing: its quests are achievements",
+  "goals": "2026-10-10: nothing: its enemies and bosses are named by code (M1B1, M1Mb12), not by name",
+  "locations": "2026-10-10: nothing: three endless maps",
+  "loot": "2026-10-10: 3 rows: Vitality, Last Stand, Redline (mutations); clones: Loose Cannon into Glass Cannon, Iron Lung into Flawless; weapons and evolutions: none new (Boomerang Scythe is a clone of Boomerang); no evolutions",
+  "statuses": "2026-10-10: nothing: its buffs and debuffs are weapon upgrades"
  },
  "Dive or Die: Children of Rain": {
   "connections": "before 2026-10-07"
@@ -862,8 +1188,13 @@
   "connections": "before 2026-10-07"
  },
  "Dome Keeper": {
+  "characters": "2026-10-10: Keepers read: the Engineer's mining level-up repeats UnderMine's Peasant and went on it as a clone; the Assessor, Infiltrator and Beastmaster are mining methods",
   "connections": "before 2026-10-07",
-  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+  "events": "2026-10-10: no events",
+  "goals": "2026-10-10: old rows checked against the 24 enemy pages: Tick (burrowing swarms whose threat is reaching the dome) and Driller (drills through the dome) hold; Breeder, Bloater and the rest repeat spawner and exploder goals",
+  "locations": "2026-10-10: Caves read (seed, Squidley, x-ray, iron tree, portal, cross bomb): nothing new enough; pets are cosmetic",
+  "loot": "2026-10-10: Gadgets read: the Repellent repeats A Glimmer of Hope and went on it as a clone; Shield, Orchard and the caves' buffs repeat existing pieces. No weapons, no evolutions",
+  "statuses": "2026-10-10: no statuses"
  },
  "Don't Let It Starve": {
   "connections": "before 2026-10-07"
@@ -893,7 +1224,13 @@
   "connections": "before 2026-10-07"
  },
  "Downwell": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: one hero; styles are on no page",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: no events",
+  "goals": "2026-10-10: Turtle (stomp it, bullets glance off); Combos a clone on Estuary Lamech; the other 15 enemies repeat existing goals",
+  "locations": "2026-10-10: worlds and safe zones only",
+  "loot": "2026-10-10: all 21 upgrades read: Youth; Rest in Pieces a clone on Melting; Knife and Fork repeats the live Charm of the Vampire, Apple and Candle are plain. Gun modules are stat variants; Combos is a mechanic, not an evolution",
+  "statuses": "2026-10-10: no statuses"
  },
  "Dragon Crystal": {
   "connections": "before 2026-10-07"
@@ -920,7 +1257,13 @@
   "connections": "before 2026-10-07"
  },
  "Dreamscaper": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: Cassidy is the only hero",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: NPCs read: relationship upgrades, not events",
+  "goals": "2026-10-10: Fear (a boss that personifies an emotion); the other five bosses are the same theme, and Traps is a list",
+  "locations": "2026-10-10: Rooms read: Exchange Room; Challenge and Secret rooms are already candidates, Font and Merchant rooms repeat existing places",
+  "loot": "2026-10-10: keepsakes found by wiki search (the brief missed the category) and read: White Elephant, Sturdy Target, Piñata; Trick-or-Treat a clone on Necronomicon; Birthday Card repeats the live 2 of Diamonds. Weapons: Umbrella; the rest are stat variants. Crafting makes gifts for NPCs, not evolutions",
+  "statuses": "2026-10-10: Wet, Oiled, Shatter and Freeze repeat existing statuses"
  },
  "Drill Core": {
   "connections": "before 2026-10-07"
@@ -951,7 +1294,13 @@
   "connections": "before 2026-10-07"
  },
  "Dungeon Drafters": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: nothing: no character pages",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: nothing: no event pages",
+  "goals": "2026-10-10: nothing: no monster pages",
+  "locations": "2026-10-10: 1 row: Glass Shrine (object); the Hearth is a rest site, the Torch repeats the map scroll, the Stone close to the Glass",
+  "loot": "2026-10-10: nothing: curios have names but no effects on the wiki; no weapons; no evolutions",
+  "statuses": "2026-10-10: nothing"
  },
  "Dungeon Hack": {
   "connections": "before 2026-10-07"
@@ -1013,8 +1362,13 @@
   "connections": "before 2026-10-07"
  },
  "Ember Knights": {
+  "characters": "2026-10-10: knights are cosmetic skins",
   "connections": "before 2026-10-07",
-  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+  "events": "2026-10-10: no events",
+  "goals": "2026-10-10: old rows checked: Praxis holds (doom mode summons the minibosses), Plague Bringer and The Architect marked ? (no pages; the DLC's last fight is Arch Praxis)",
+  "locations": "2026-10-10: Special Rooms read: Arlan, the Offering Pit; the Mimic King room repeats Mimic goals",
+  "loot": "2026-10-10: Food read: Apple; Relics page gives the system, not the list. Weapon Modifications not read. No evolutions",
+  "statuses": "2026-10-10: Status Conditions not read this batch"
  },
  "Emberward": {
   "connections": "before 2026-10-07"
@@ -1047,7 +1401,13 @@
   "connections": "before 2026-10-07"
  },
  "Everything is Crab": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: Darwin, a blob that eats to grow, repeats the Monster Lord goal",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: no events",
+  "goals": "2026-10-10: Bosses read: Krabken (outlast it); Clawdia's egg sacs repeat Spider Leader, Krabaroo's charm and the rest are patterns",
+  "locations": "2026-10-10: map biomes only",
+  "loot": "2026-10-10: evolutions sampled (Detachable Tail, Moulting, Hibernation, Convergent Evolution, Cordyceps, Revenge, Outlier, Scavenger): Detachable Tail; most are percentage stats. Its evolutions are traits, not weapon evolutions",
+  "statuses": "2026-10-10: charm and poison repeat existing statuses"
  },
  "Evolings": {
   "connections": "before 2026-10-07"
@@ -1315,10 +1675,22 @@
   "connections": "before 2026-10-07"
  },
  "Haste": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: Zoe is already live; the rest are NPCs",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: Random Encounters read: timed running challenges, not events",
+  "goals": "2026-10-10: Convoy, Final Machine and Jumper pages are stubs",
+  "locations": "2026-10-10: biomes only",
+  "loot": "2026-10-10: Items read from the wiki's Module:Items/data (the list page is a template): its triggers are Close Calls and Perfect Landings in a running game, nothing that maps to the board. Equipment is movement tools. No weapons, no evolutions",
+  "statuses": "2026-10-10: no statuses"
  },
  "Have a Nice Death": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: nothing: Death is the only hero, and his reaping repeats the live Gatekeeper",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: 1 row: Mr. O'Shah (his curse cards)",
+  "goals": "2026-10-10: nothing: minion pages are empty; Ms. Camille Flage is a mini-boss with lore but no distinct goal",
+  "locations": "2026-10-10: nothing",
+  "loot": "2026-10-10: nothing: weapons and food are stat ups on the wiki; no evolutions",
+  "statuses": "2026-10-10: nothing: its curses are bonus cards, used in Mr. O'Shah's event"
  },
  "He is Coming": {
   "connections": "before 2026-10-07"
@@ -1333,7 +1705,13 @@
   "connections": "before 2026-10-07"
  },
  "Hell Clock": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: one hero",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: no events",
+  "goals": "2026-10-10: Bosses read: names and health totals (The Merchant, The Matriarch, Wraith)",
+  "locations": "2026-10-10: Shrines read: timed stat buffs",
+  "loot": "2026-10-10: relics sampled (10 of them): percentage enchantments with literary epigraphs; trinkets are stat categories. No evolutions",
+  "statuses": "2026-10-10: Ailments read: bleed, blight, shock repeat existing statuses"
  },
  "Hell Maiden": {
   "connections": "before 2026-10-07"
@@ -1363,7 +1741,13 @@
   "connections": "before 2026-10-07"
  },
  "HoloCure: Save the Fans!": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: nothing: every character is a real streamer's persona, left out on purpose",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: nothing: no event screens",
+  "goals": "2026-10-10: nothing: its bosses and characters are real streamers' personas (Fubuzilla, Pekodam), left out on purpose",
+  "locations": "2026-10-10: nothing: stages are arenas",
+  "loot": "2026-10-10: 2 rows: Kusogaki Shackles, Plushie; weapons and evolutions: none taken (Collabs fuse two max-level weapons into one, which would need the evolution rule widened to a second weapon)",
+  "statuses": "2026-10-10: nothing"
  },
  "HoloDungeon: Koyori vs HollowLive in Honsha Tower": {
   "connections": "before 2026-10-07"
@@ -1615,7 +1999,13 @@
   "connections": "before 2026-10-07"
  },
  "Mainframe Defenders": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: squad units are chassis, not heroes",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: no events",
+  "goals": "2026-10-10: Enemies read: mechs whose weapons grow with each hit repeat the Hydra goal",
+  "locations": "2026-10-10: Strategic Tile read: Repair Gel; Cooler and Heater need its heat system",
+  "loot": "2026-10-10: Usable Items read: heat and repair kits for its squad; weapons are stat lists. No evolutions",
+  "statuses": "2026-10-10: Status Effect read: Corrosion and Internal Damage repeat poison and bleed"
  },
  "Mana Spark": {
   "connections": "before 2026-10-07"
@@ -1627,7 +2017,13 @@
   "connections": "before 2026-10-07"
  },
  "Maze Mice": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: Characters page not read: mice with starting weapons",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: no events",
+  "goals": "2026-10-10: Enemies page not read in depth: chasers and phasers",
+  "locations": "2026-10-10: Shrine read: a damage buff that spawns phasers, close to Shrine of War",
+  "loot": "2026-10-10: 16 upgrades read: Tetraphobia, Duplicator; the rest (Fleas, Marbles, Black Hole, Mirror Image) repeat existing pieces or need its maze",
+  "statuses": "2026-10-10: no statuses"
  },
  "Mechanibot": {
   "connections": "before 2026-10-07"
@@ -1645,7 +2041,13 @@
   "connections": "before 2026-10-07"
  },
  "Merge Maestro": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: no characters",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: no events",
+  "goals": "2026-10-10: Enemies are its waves; nothing to name",
+  "locations": "2026-10-10: nothing",
+  "loot": "2026-10-10: 13 tokens and powers read: Cursed Vase; the rest are merge-board triggers",
+  "statuses": "2026-10-10: no statuses"
  },
  "Metal Slug Tactics": {
   "connections": "before 2026-10-07"
@@ -1721,7 +2123,13 @@
   "connections": "before 2026-10-07"
  },
  "Monstrum": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: no playable characters with names",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: no events",
+  "goals": "2026-10-10: the matched wiki was Monstrum RPG's; read the real one (themonstrum.fandom.com, set by hand): The Brute (hide until it gives up); the Hunter's egg sacs repeat Spider Leader, the Fiend repeats unkillable-enemy goals",
+  "locations": "2026-10-10: Escape Routes and Hiding Places read: rebuilding an escape vehicle repeats DM-200's goal",
+  "loot": "2026-10-10: items read (Egg Timer, flare gun, extinguisher): lures and stuns that repeat the Decoy and existing pieces. No weapons, no evolutions",
+  "statuses": "2026-10-10: no statuses"
  },
  "Montabi": {
   "connections": "before 2026-10-07"
@@ -1745,7 +2153,13 @@
   "connections": "before 2026-10-07"
  },
  "Moonring": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: no playable characters beyond the Dreamless hero",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: the five gods' devotional tasks are quest steps, not events",
+  "goals": "2026-10-10: hostiles sampled (Goose, Queen Hornet): stat blocks",
+  "locations": "2026-10-10: locations are towns and dungeons by name",
+  "loot": "2026-10-10: Herbs, Item Durability, Quest Items read: potion brewing and wear; nothing new. No evolutions",
+  "statuses": "2026-10-10: 15 statuses read in part: Deaf repeats the live Banshee goal (mute the game), Mad, Rot, Torpor and Deathly repeat existing statuses"
  },
  "Moonsigil Atlas": {
   "connections": "2026-10-09"
@@ -1769,13 +2183,31 @@
   "connections": "before 2026-10-07"
  },
  "Mortal Sin": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: Class List: the Martyr (starts with 6 curses) read; classes are stat and skill sets",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: Oaths List read: Oath of Light (Hollow Tribute, Twisted Lineage, Gift of Might)",
+  "goals": "2026-10-10: Curses List read: Hunter's Mark a clone on Barakunarash; Enemies page not read",
+  "locations": "2026-10-10: Traps and Scares not read in depth",
+  "loot": "2026-10-10: 39 weapons and armour are stat lists; no evolutions",
+  "statuses": "2026-10-10: its curses are run modifiers covered by the clone and the oath"
  },
  "Mothergunship": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: characters page not read: NPCs who brief the missions",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: no events",
+  "goals": "2026-10-10: Enemies page is a list of turrets and drones",
+  "locations": "2026-10-10: no location pages",
+  "loot": "2026-10-10: barrels read (Fist, Barrel Barrel, Spikeball, Oblivigun): Spikeball Launcher. Caps and connectors build its guns; no evolutions",
+  "statuses": "2026-10-10: no statuses"
  },
  "Mothergunship: Forge": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: no characters",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: no events",
+  "goals": "2026-10-10: Bosses page not read: a stub list",
+  "locations": "2026-10-10: no location pages",
+  "loot": "2026-10-10: caps and canisters read (13 individually): Last Resort Ammo Cap; Restock Paddle Cap a clone on Box of Holding; the rest are stats. Barrels are its guns; no evolutions",
+  "statuses": "2026-10-10: Effects not read: canister elements repeat existing statuses"
  },
  "Motto!? Fushigi no Gensoukyou: Under the Moonlight": {
   "connections": "before 2026-10-07"
@@ -1784,8 +2216,13 @@
   "connections": "before 2026-10-07"
  },
  "Muck": {
+  "characters": "2026-10-10: nothing: one survivor",
   "connections": "before 2026-10-07",
-  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+  "events": "2026-10-10: nothing: no event screens",
+  "goals": "2026-10-10: checked 5: Gronk fixed (two swords, he forges nothing), Woodman fixed (a neutral trader, not a tree), Bob, Wyvern, Chief hold; Cow added; Stone Golem repeats the live Big Chunk",
+  "locations": "2026-10-10: nothing new; clone: Battle Totem into Infernal Trove; the Boss Totem repeats the Shrine of the Mountain",
+  "loot": "2026-10-10: 1 row: Chunky Hammer (weapon, from the live Big Chunk); its foods and armour are plain stat ups; no evolutions",
+  "statuses": "2026-10-10: nothing: no statuses"
  },
  "My Card Is Better Than Your Card!": {
   "connections": "before 2026-10-07"
@@ -1873,7 +2310,13 @@
   "connections": "before 2026-10-07"
  },
  "Noobs Are Coming": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: 34 characters, every page a stub",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: no events",
+  "goals": "2026-10-10: 41-page wiki of stubs: you play the boss against noob players; the characters' pages say only 'Character'",
+  "locations": "2026-10-10: nothing",
+  "loot": "2026-10-10: Drops and Weapons are stubs; no evolutions",
+  "statuses": "2026-10-10: no statuses"
  },
  "Noobs Want to Live": {
   "connections": "before 2026-10-07"
@@ -1882,10 +2325,22 @@
   "connections": "before 2026-10-07"
  },
  "Nordic Ashes: Survivors of Ragnarok": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: nothing: Gnöki (a merchant turned survivor) repeats the Will, Blud the Necromancer",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: nothing",
+  "goals": "2026-10-10: nothing: no enemy pages",
+  "locations": "2026-10-10: nothing",
+  "loot": "2026-10-10: 1 row: Immunity Destroyer; its relics are mostly percent ups (Golden Mushroom), Bad Flowers repeats Spreading Infection's spread; weapons and evolutions: none usable; no evolutions",
+  "statuses": "2026-10-10: nothing"
  },
  "Nova Drift": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: small wiki; the brief's pages for this kind hold nothing usable or new on a read (generic enemies, stat upgrades)",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: small wiki; the brief's pages for this kind hold nothing usable or new on a read (generic enemies, stat upgrades)",
+  "goals": "2026-10-10: small wiki; the brief's pages for this kind hold nothing usable or new on a read (generic enemies, stat upgrades)",
+  "locations": "2026-10-10: small wiki; the brief's pages for this kind hold nothing usable or new on a read (generic enemies, stat upgrades)",
+  "loot": "2026-10-10: its 'Evolution' is a ship mod, not a weapon evolution; weapons and mods are stat upgrades. Nothing usable",
+  "statuses": "2026-10-10: small wiki; the brief's pages for this kind hold nothing usable or new on a read (generic enemies, stat upgrades)"
  },
  "Nowhere Prophet": {
   "characters": "2026-10-10: nothing: the Firebrand's intimidation repeats Griftlands' Plocka, the Banshee is a live boss name, the Breaker's explosives and the Echo's speed are taken",
@@ -1897,7 +2352,13 @@
   "statuses": "2026-10-10: nothing: its status effects are gear powers, and the pages are empty templates"
  },
  "Nubby's Number Factory": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: Nubby is the only character",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: no events",
+  "goals": "2026-10-10: no enemies: the game is a Plinko board",
+  "locations": "2026-10-10: the Nubby-Mart is a plain shop; nothing new",
+  "loot": "2026-10-10: Pickle Rat; Broken Figurine a clone on Crush Curse; the other items are trigger chains that need its peg board. No weapons, no evolutions",
+  "statuses": "2026-10-10: no statuses"
  },
  "Nuclear Throne": {
   "characters": "2026-10-09: Chicken, Melting; Robot left out (eating repeats Don't Starve's level-up), Steroids (repeats Ball x Pit's two weapons)",
@@ -1924,7 +2385,13 @@
   "connections": "before 2026-10-07"
  },
  "Octogeddon": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: Octogeddon himself a clone on The Brohannes (play as the villain); Catfish Carl is the shopkeeper, a Crazy Dave homage with nothing to offer",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: no events",
+  "goals": "2026-10-10: Treasure Plane a clone on Hoarding Pilfer; planes, subs and Nuclear Balloons repeat existing goals; Big Boss Bass and Giant Pillbug summon minions like many",
+  "locations": "2026-10-10: Real World category is the developers; nothing",
+  "loot": "2026-10-10: no loot category; the DNA limbs weren't read this batch; no weapons, no evolutions",
+  "statuses": "2026-10-10: no statuses"
  },
  "Oddcore": {
   "connections": "before 2026-10-07"
@@ -1960,10 +2427,22 @@
   "statuses": "2026-10-09: nothing: Frost, Fragile and Root are covered by live or candidate statuses"
  },
  "One Way Heroics": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: nothing: the Pirate's lockpicking repeats the Pilot, the Adventurer's chests the Miner, the Tourist and Hunter are other games' candidates",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: nothing: its NPCs have no event pages",
+  "goals": "2026-10-10: nothing: the Shining Darkness and the Dark Dragon repeat Mithrix and the Servants (outrun the end of the level), the Cursed Ogre the live Marshmallow, Lilith the Acid Mound",
+  "locations": "2026-10-10: nothing: the Dimensional Passageway is a meta-storage",
+  "loot": "2026-10-10: nothing: its unique weapons are named stat sticks; weapons and evolutions: none usable; no evolutions",
+  "statuses": "2026-10-10: nothing: no status pages"
  },
  "OneBit Adventure": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: 1 row: Ostrich; the Blood Knight repeats the Necromancer's lifesteal",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: nothing: its one event page is an April Fool's announcement",
+  "goals": "2026-10-10: nothing: the Greats repeat other games' Hydra, Dragon and Beholder, the Evil Tree the Tendron disguise, the Mimic Chest the Mimic",
+  "locations": "2026-10-10: nothing: the Stewpot repeats the Crock Pot",
+  "loot": "2026-10-10: nothing: plain potions and food; no weapons pages; no evolutions",
+  "statuses": "2026-10-10: nothing: Death (die after 150 steps) repeats the Doomed candidate, Panic the Blind"
  },
  "Orbital Bullet": {
   "connections": "2026-10-07"
@@ -1987,7 +2466,13 @@
   "connections": "before 2026-10-07"
  },
  "Paper Planet": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: no characters",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: no events",
+  "goals": "2026-10-10: enemies are shape behaviours (Splitter, Dodger, Teleporter) that repeat existing goals; Phobos and Deimos are twins, covered",
+  "locations": "2026-10-10: one planet; nothing",
+  "loot": "2026-10-10: no loot category on the brief; nothing read; no weapons, no evolutions",
+  "statuses": "2026-10-10: no statuses"
  },
  "Pass the Fear": {
   "connections": "before 2026-10-07"
@@ -2014,7 +2499,13 @@
   "connections": "before 2026-10-07"
  },
  "Pawnbarian": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: Classes read: Capyzerker (rage from damage); the rest are chess variants",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: no events",
+  "goals": "2026-10-10: Foul Shrine read: Demon Golem (only hurt from a distance); Void Imp's death-pull and Blight enemies need its board",
+  "locations": "2026-10-10: Locations read: four dungeons; Chains are difficulty",
+  "loot": "2026-10-10: pieces are chess moves; no items, no weapons, no evolutions",
+  "statuses": "2026-10-10: Blight repeats existing tiles"
  },
  "Pebble Knights": {
   "connections": "before 2026-10-07"
@@ -2038,7 +2529,13 @@
   "connections": "before 2026-10-07"
  },
  "Picayune Dreams": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: nothing: one hero, Cyl",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: nothing: no event screens",
+  "goals": "2026-10-10: 1 row: Diver; clone: Biker into Lemurian Cavalry; Yuki's statue repeats the Possessed Effigy",
+  "locations": "2026-10-10: nothing: sectors are wave modifiers",
+  "loot": "2026-10-10: 1 row: Stinky Cheese (weapon); YoYo Rack repeats the Boomerang, Wicked Walkman the Lute; no evolutions",
+  "statuses": "2026-10-10: nothing: its elements are live or candidates"
  },
  "Pinball Storm: Lokanta": {
   "connections": "2026-10-07"
@@ -2137,7 +2634,13 @@
   "connections": "before 2026-10-07"
  },
  "Quasimorph": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: 1 row: Scout of Hades (a starting class)",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: nothing: missions and quest items, no event screens",
+  "goals": "2026-10-10: 1 row: Barakunarash (a Baron); its quasimorphs have no list pages, only the factions do",
+  "locations": "2026-10-10: nothing new; clone: Autodoc into Healing Pool; the other stations are crafting benches",
+  "loot": "2026-10-10: 2 rows: Giant Hand; weapons and evolutions: Big Bone; no evolutions (crafting makes items, nothing turns into another)",
+  "statuses": "2026-10-10: 1 row: Quasimorphosis (curse); wounds, infection and amputation repeat Bleed, Blight and Jotun's lost limb"
  },
  "Quest of Dungeons": {
   "connections": "before 2026-10-07"
@@ -2146,7 +2649,13 @@
   "connections": "before 2026-10-07"
  },
  "Rabbit and Steel": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: nothing: the Ancient's familiar repeats Wendy's companion, the Druid's traps the Lucas candidate",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: nothing: no event screens",
+  "goals": "2026-10-10: nothing: its bosses are animals with names but little behaviour on the wiki; Twili's time-stop repeats Primal Dialga",
+  "locations": "2026-10-10: nothing: its stages are boss arenas",
+  "loot": "2026-10-10: 1 row: Divine Mirror; its items are mostly percent stat ups; weapons and evolutions: none (items, no weapons; sets are bonuses, not evolutions)",
+  "statuses": "2026-10-10: 1 row: Tranquility; Rabbitluck repeats the Golden Horseshoe candidate, Counter the Tension candidate, the debuffs live statuses"
  },
  "Raccoin: Coin Pusher Roguelike": {
   "connections": "before 2026-10-07"
@@ -2167,10 +2676,22 @@
   "connections": "2026-10-07"
  },
  "Ratropolis": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: nothing: the leaders have no wiki pages",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: 2 rows: Cry of Widows, A Rat in Debt; the rest of its events are a story chain",
+  "goals": "2026-10-10: nothing: the wiki has no enemy or boss pages beyond the Plague Rat, a plain rat (the rat tag is live)",
+  "locations": "2026-10-10: nothing: buildings are cards",
+  "loot": "2026-10-10: 2 rows: Lottery, Treasure Map; its advisors are stat ups; weapons and evolutions: none (the Growth keyword turns unit cards into stronger ones after kills, which would need weapons that level up by kills)",
+  "statuses": "2026-10-10: nothing: its Curse keyword is damage over time (Blight)"
  },
  "Ravenswatch": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: 1 row: Scarlet; Geppetto repeats Wendy's companion, Melusine the Whorl's drowning, Carmilla the Necromancer, the Pied Piper shares a name with a Tainted Grail event",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: nothing: points of interest are fights and shops",
+  "goals": "2026-10-10: nothing: Baba Yaga repeats the Unholy Crones (a witch), the Claws Master Nightmare the shared-health bosses, Steropes the Hag's rescue",
+  "locations": "2026-10-10: nothing",
+  "loot": "2026-10-10: nothing: talents and magical objects are percent ups; no weapons pages",
+  "statuses": "2026-10-10: nothing: its keywords are stats"
  },
  "Reality Break": {
   "connections": "before 2026-10-07"
@@ -2188,13 +2709,25 @@
   "statuses": "2026-10-10: nothing: the status pages are missing"
  },
  "Red Rogue": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: Red is the only hero; the Minion is her dead husband",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: Blood on the Walls is hints, Quest is the husband's revenge",
+  "goals": "2026-10-10: 39-page wiki, all read: the Balrog a clone on Goblin Warlord; Champion and Super monsters are tiers",
+  "locations": "2026-10-10: Miracles read: the Altar of Chaos a clone on Goat Shrine",
+  "loot": "2026-10-10: Runes, Smite, Heads and True Name read: kicked heads and smites need its side-on physics. No evolutions",
+  "statuses": "2026-10-10: no status pages beyond Sleep"
  },
  "Reignbreaker": {
   "connections": "before 2026-10-07"
  },
  "Renowned Explorers: International Society": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: Explorers read: scientists, scouts and speakers with one-line bios; nothing a level-up can ask beyond the clone",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: Events read: expedition encounters, each a fight or a skill check",
+  "goals": "2026-10-10: Enemies and Events read: talking a fight down a clone on Kashio",
+  "locations": "2026-10-10: expeditions are named places only",
+  "loot": "2026-10-10: treasures are renown and insight stats; no weapons, no evolutions",
+  "statuses": "2026-10-10: Emotions read: moods that repeat existing statuses"
  },
  "Repetendium": {
   "connections": "before 2026-10-07"
@@ -2206,20 +2739,43 @@
   "connections": "before 2026-10-07"
  },
  "Returnal": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: 1 row: Selene",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: nothing: no event screens (devices are objects)",
+  "goals": "2026-10-10: 1 row: Severed; clones: Proteron into Priestess, Phrike into Prickwood, Chrysoid into Hoarding Pilfer; Infected Scout repeats the live Isaac ('Defeat yourself'), Gorgolith Ponzu's weak spot, Nemesis shares a name with a Slay the Spire candidate",
+  "locations": "2026-10-10: 2 rows: Tower of Sisyphus, Malignant Chest; clone: Reconstructor into Revenant Station",
+  "loot": "2026-10-10: 6 rows: Key Retriever, Fractal Nail, Parasite, Key Liquifier, Translocation Sphere; weapons and evolutions: Electropylon Driver; no evolutions (weapon traits level up per weapon, nothing turns into another); clone: Astronaut Figurine into Dio's Best Friend",
+  "statuses": "2026-10-10: 1 row: Suit Malfunction (curse, with the removal-task idea in Needs); the parasites became a loot row"
  },
  "Revita": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: nothing new; clone: Revita Kid into Krampus (paying with your own health)",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: nothing new; clone: Fortuna into Black Rabbit; shrines give run-level effects",
+  "goals": "2026-10-10: nothing new; clone: Acceptance into The Concierge (two bosses without a hit); most enemy pages are missing, and the other bosses' fights translate to summoning and burrowing, which are taken",
+  "locations": "2026-10-10: nothing: Fortuna is a clone, the Corrupted Room repeats the Cursed Chest",
+  "loot": "2026-10-10: 3 rows: Wax Wings, Paladin's Hammer, Mandrake; weapons and evolutions: Pisces Rod (a Celestial Weapon); no evolutions (Soul Guns branch by upgrade, synergies are set bonuses); clone: Open Lock into Key Retriever",
+  "statuses": "2026-10-10: 3 rows: Electrify (status), Blood Lust and Hungry Locks (curses); Charm, Fear, Confusion and Slow repeat candidates"
  },
  "Rhythm Witch: Beat Death": {
   "connections": "before 2026-10-07"
  },
  "Rift Wizard": {
+  "characters": "2026-10-10: one wizard",
   "connections": "before 2026-10-07",
-  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+  "events": "2026-10-10: no events",
+  "goals": "2026-10-10: old row checked: Prismancer ? (no page; the wiki has only three monsters, the Tormentors, whose fire bursts and lifedrain repeat existing goals)",
+  "locations": "2026-10-10: Translocation is a spell school, not places; nothing",
+  "loot": "2026-10-10: Conjure Memories from its 50 spells; Dominate, Aether Swap and the damage spells repeat existing pieces or need allied bodies; no weapons, no evolutions",
+  "statuses": "2026-10-10: no status pages"
  },
  "Rift Wizard 2": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: nothing: one wizard",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: nothing",
+  "goals": "2026-10-10: nothing: its monster pages are stat blocks; Rift Wizard's rows cover the series",
+  "locations": "2026-10-10: nothing",
+  "loot": "2026-10-10: nothing: spells and trinkets that tune spells and summons; no weapons; no evolutions",
+  "statuses": "2026-10-10: nothing"
  },
  "Rift Wizard 3": {
   "connections": "before 2026-10-07"
@@ -2264,13 +2820,25 @@
   "statuses": "2026-10-09: nothing: the wiki's debuff pages are templates; Bleed, Burn live, Tar and Weak are other games' candidates"
  },
  "Risk of Rain Returns": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: 3 rows: Enforcer, HAN-D, Drifter; Engineer, Sniper (Risk of Rain), CHEF, Miner, Pilot are other games' candidates, Acrid repeats the Plague Doctor's poison",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: nothing: no event screens; its shrines are Risk of Rain's objects already",
+  "goals": "2026-10-10: 3 rows: Lemurian Cavalry, Clay Man, Lynx Totem; the remake's other monsters are Risk of Rain's rows already (Providence, Scavenger, Magma Worm, Parent, Whorl, Imp Overlord, live Colossus, Wisp, Child); Gup repeats the live Spike Slime, Bighorn Bison the Ancient Guardian, Gilded Wurms the Wicked Twins, Ifrit Hezek's chains",
+  "locations": "2026-10-10: 1 row: Contact Light (the final stage, four keycards)",
+  "loot": "2026-10-10: 5 rows: Life Savings, Snake Eyes, Keycard, Old Box; weapons and evolutions: Pillaged Gold (equipment as a weapon); no evolutions (items stack, nothing turns into anything); clone: Golden Gun into Battle Pass (the same gold-for-Stun rule)",
+  "statuses": "2026-10-10: 1 row: Leeching (elite); the other elites repeat live or candidate statuses, the Artifacts are run modifiers"
  },
  "Road Not Taken": {
   "connections": "before 2026-10-07"
  },
  "Roboquest": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: nothing: the classes repeat the Engineer, the Sniper and others",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: nothing",
+  "goals": "2026-10-10: nothing: its bots are generic shooters (the Boom Bot repeats the kamikaze goals), bosses have no pages",
+  "locations": "2026-10-10: nothing",
+  "loot": "2026-10-10: nothing: weapons are generic guns, Artifacts are deprecated; no evolutions",
+  "statuses": "2026-10-10: nothing"
  },
  "Rocket Rats": {
   "connections": "before 2026-10-07"
@@ -2298,7 +2866,13 @@
   "connections": "before 2026-10-07"
  },
  "Rogue Heroes: Ruins of Tasos": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: nothing: classes differ only by a dodge move",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: nothing: its quests are fetch errands",
+  "goals": "2026-10-10: nothing: Tendron repeats the Shapeshifter's disguise, the bosses are dungeon finales with no behaviour on the wiki",
+  "locations": "2026-10-10: 1 row: Pot (object); the Warp Statue is a teleport",
+  "loot": "2026-10-10: nothing: tools and potions are Zelda staples already covered; weapons and evolutions: none",
+  "statuses": "2026-10-10: nothing"
  },
  "Rogue Legacy": {
   "characters": "2026-10-09: Miner",
@@ -2346,7 +2920,13 @@
   "connections": "before 2026-10-07"
  },
  "Roguebook": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: Sharra, Seifer, Sorocco and Aurora are card decks",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: no events",
+  "goals": "2026-10-10: Enemies page is a stub",
+  "locations": "2026-10-10: nothing",
+  "loot": "2026-10-10: Relic and Gems pages are stubs; Talents are deck-size rewards. No weapons, no evolutions",
+  "statuses": "2026-10-10: keyword categories (Bleed, Courage) repeat existing statuses"
  },
  "Roll": {
   "connections": "before 2026-10-07"
@@ -2446,7 +3026,13 @@
   "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
  },
  "Ship of Fools": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: Fools read: co-op crew defined by their heirloom trinkets",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: no events",
+  "goals": "2026-10-10: its four bosses (Claws, Eyes, Heads, Tentacles) are parts of one sea monster; nothing new",
+  "locations": "2026-10-10: map only",
+  "loot": "2026-10-10: Trinkets read, ten individually: Empty Plastic Bottle; most are cannon and paddle stats. Curses read: The Dark Chest as a cursed trinket. No weapons, no evolutions",
+  "statuses": "2026-10-10: the five curses are covered by The Dark Chest"
  },
  "Shiren the Wanderer (2008)": {
   "connections": "before 2026-10-07"
@@ -2473,15 +3059,25 @@
   "connections": "before 2026-10-07"
  },
  "Shogun Showdown": {
+  "characters": "2026-10-10: Wanderer (swap), Ronin (push), Shadow (phase), Jujitsuka (throw) are movement tricks the existing Push/Scramble characters and Karl already cover",
   "connections": "before 2026-10-07",
-  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+  "events": "2026-10-10: Quests are boss and day achievements, not events",
+  "goals": "2026-10-10: old rows checked: Shielder and The Shogun (two phases) hold; Grappler ? (no page, the table gives only lore). Kowa the Coward a clone on Goblin Warlord, Sato the Stagemaster on Rak'Shor Cultist",
+  "locations": "2026-10-10: Map page is the route; nothing new",
+  "loot": "2026-10-10: Consumables: Rain of Mirrors, Mass Curse/Poison/Ice repeat existing pieces and statuses; no weapons page, no evolutions",
+  "statuses": "2026-10-10: curse, poison and freeze repeat existing ones"
  },
  "Shoot First": {
   "connections": "before 2026-10-07"
  },
  "Shotgun King: The Final Checkmate": {
+  "characters": "2026-10-10: the Shotgun King is the only character",
   "connections": "before 2026-10-07",
-  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+  "events": "2026-10-10: no events: cards are offered between floors",
+  "goals": "2026-10-10: old rows checked: Pawn and Rook hold, White King marked ? (nothing grows when cornered); Black Bishop a clone on Lucid Dream",
+  "locations": "2026-10-10: nothing: one chessboard per floor",
+  "loot": "2026-10-10: Wand of Gust a clone on Blank; Downpour, Frenzy and Wings repeat existing candidates; the shotguns are stat variants. No evolutions",
+  "statuses": "2026-10-10: nothing beyond the card buffs"
  },
  "Shovel Knight Dig": {
   "connections": "before 2026-10-07"
@@ -2505,10 +3101,22 @@
   "statuses": "2026-10-09: nothing: no status pages"
  },
  "Skull Horde": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: Characters page not read: a list",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: no events",
+  "goals": "2026-10-10: 15-page wiki: Enemies is a name list",
+  "locations": "2026-10-10: Dungeons is a name list",
+  "loot": "2026-10-10: Items is 'TBA'; acquisitions and enlistments are name lists",
+  "statuses": "2026-10-10: no statuses"
  },
  "Sky Rogue": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: classes are aircraft weight classes (Light to Experimental), not characters",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: no events",
+  "goals": "2026-10-10: Dreadnought (a weak point boss); the other 41 are aircraft, ships and buildings, and shooting down a flier is live (Bullat)",
+  "locations": "2026-10-10: structures are targets (Ministry of Peace, Space Transmitter) with only durability and cash",
+  "loot": "2026-10-10: 41 weapons are missiles and guns with stats; Itano Circus repeats Egg Sac's splitting shot; no evolutions",
+  "statuses": "2026-10-10: no statuses"
  },
  "Sky's The Limit MAH-JONG": {
   "connections": "before 2026-10-07"
@@ -2550,7 +3158,13 @@
   "statuses": "2026-10-09: Petrify; Poison = Blight, Pain/Exert/Growth are dice-side keywords; the curses are difficulty settings"
  },
  "Slime 3K: Rise Against Despot": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: Slimes page not read: one slime",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: no events",
+  "goals": "2026-10-10: 13-page wiki read: Bosses is a list of names, Humans a placeholder",
+  "locations": "2026-10-10: nothing",
+  "loot": "2026-10-10: Tags and Synergies read: weapon tag counts, nothing new; no evolutions",
+  "statuses": "2026-10-10: no statuses"
  },
  "Slime 3k: Demake": {
   "connections": "before 2026-10-07"
@@ -2571,7 +3185,13 @@
   "connections": "before 2026-10-07"
  },
  "Solitairica": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: decks are the classes, with no page each",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: no events",
+  "goals": "2026-10-10: enemy decks read: Burlypup (beat something adorable); the rest fight through card effects",
+  "locations": "2026-10-10: six biomes, names only",
+  "loot": "2026-10-10: Items and Spells read: Map of Myriodd a clone on Trumpet; the rest are energy, armour and heal stats or card tricks for its solitaire board. No weapons, no evolutions",
+  "statuses": "2026-10-10: stun, armour and bearded are card states; nothing new"
  },
  "Soulash": {
   "connections": "before 2026-10-07"
@@ -2589,7 +3209,13 @@
   "statuses": "2026-10-10: Brittle; Distracted is a clone on NetHack's Blind (attacks that go astray); Doom left out (Mewgenics' Doomed), Disarray, Exposed, Fragility and Shattered are all 'takes more damage', which the live Marked covers"
  },
  "Source of Madness": {
-  "connections": "2026-10-07"
+  "characters": "2026-10-10: one acolyte, no classes",
+  "connections": "2026-10-07",
+  "events": "2026-10-10: no events",
+  "goals": "2026-10-10: Lovecraftian bosses repeat Star Spawn and the existing eldritch candidates",
+  "locations": "2026-10-10: nothing usable: procedural biomes only",
+  "loot": "2026-10-10: rings are procedural spells carrying only stats; no weapons or evolutions to speak of",
+  "statuses": "2026-10-10: no status page holds anything new"
  },
  "Space Beast Terror Fright": {
   "connections": "before 2026-10-07"
@@ -2631,12 +3257,22 @@
   "statuses": "2026-10-09: nothing: no statuses beyond stun and poison"
  },
  "Spelunky 2": {
+  "characters": "2026-10-10: nothing: the Spelunky Guy covers the series' explorers",
   "connections": "before 2026-10-07",
-  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+  "events": "2026-10-10: nothing: Tun's challenges repeat the Gauntlet, the Damsel is Spelunky's",
+  "goals": "2026-10-10: checked 6: Golden Monkey is a friendly character, not an enemy (?), Witch Doctor's sacrifice goal is wrong (they curse through an effigy) and a fix repeats the Hexer (?); Vampire, Olmec, Angry Shopkeeper, Qilin hold; nothing added: Hundun repeats the Servants' rising climb, Celestial Jelly and Ghist the Ghost, Lavamander the Magma Worm",
+  "locations": "2026-10-10: nothing: the Cosmic Ocean repeats the Tower of Sisyphus, Vlad's Castle and Eggplant World are levels",
+  "loot": "2026-10-10: nothing new: the Clone Gun repeats the live Wand of Plenty, the Four-Leaf Clover the live Clover; Spelunky's Kapala, Web Gun and Mattock cover the series; no evolutions",
+  "statuses": "2026-10-10: nothing: the curse is Kali's, covered by Spelunky's altar"
  },
  "Spelunky Classic": {
+  "characters": "2026-10-10: nothing: the Spelunker is Spelunky's Spelunky Guy",
   "connections": "before 2026-10-07",
-  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+  "events": "2026-10-10: nothing: the Damsel is Spelunky's event",
+  "goals": "2026-10-10: checked 2: Snake fixed (nothing ties it to the first room: now 'Defeat a snake'), Caveman holds (it frenzies and charges on sight); nothing added: the series' monsters are Spelunky's and Spelunky 2's rows",
+  "locations": "2026-10-10: nothing: altars, shops and the City of Gold are Spelunky's rows",
+  "loot": "2026-10-10: 1 row: Punish Ball; the Sceptre repeats the homing Disposable Missile Launcher, the Crystal Skull the Kolmisilma; weapons and evolutions: none new; no evolutions",
+  "statuses": "2026-10-10: nothing"
  },
  "Spin Hero": {
   "connections": "before 2026-10-07"
@@ -2645,13 +3281,31 @@
   "connections": "before 2026-10-07"
  },
  "Spiritfall": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: one hero",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: NPC rooms (Herbalist, Relic Tinkerer) are shops; nothing new",
+  "goals": "2026-10-10: bosses are spirit guardians with patterns, nothing a goal can name that isn't already a candidate",
+  "locations": "2026-10-10: Statue of Kismet; the Tribute Room repeats Blood Altar and the Sacrifice Room",
+  "loot": "2026-10-10: spirit gifts and weapons are stat and dash modifiers; no weapon evolutions",
+  "statuses": "2026-10-10: Glaciate; Drenched and Wounded are plain stacking debuffs"
  },
  "Spirits Abyss": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: clans not read in depth: a list",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: no events",
+  "goals": "2026-10-10: 12-page wiki read: Bestiary and Card collection are name lists",
+  "locations": "2026-10-10: Regions and Zones are names",
+  "loot": "2026-10-10: Itemography read: the special hearts (Curse, Pure, Restless) repeat shields and curses",
+  "statuses": "2026-10-10: no statuses"
  },
  "Sproggiwood": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: classes (Farmer, Warrior, Archer, Thief, Wizard, Vampire) are combat roles",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: no events",
+  "goals": "2026-10-10: Boss monsters read: Big Icky (a jelly spawner) and Goatress (a charger) repeat existing goals; the bizarro Doppelganger teleports you",
+  "locations": "2026-10-10: Objects read: Green Leaf; spiderweb, shrines and vases repeat existing tiles and objects",
+  "loot": "2026-10-10: Items and Accessories read: Identity Crisis Potion, Scroll of Pottery, Tuuri's Lucky Coin, Alchemist's Vial. No weapons page, no evolutions",
+  "statuses": "2026-10-10: no statuses"
  },
  "Squeaky Squad": {
   "connections": "before 2026-10-07"
@@ -2660,7 +3314,13 @@
   "connections": "before 2026-10-07"
  },
  "Star Renegades": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: 17 rebel heroes listed; pages are stubs",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: no events",
+  "goals": "2026-10-10: Adversaries and Enemies read: tier lists; the Adversary system itself isn't described on the wiki",
+  "locations": "2026-10-10: Camping read: relationship cards",
+  "loot": "2026-10-10: Gear and Armory not read in depth: stat gear; no evolutions",
+  "statuses": "2026-10-10: Status Effects read: a list of names that repeat existing statuses"
  },
  "Star Survivor": {
   "connections": "before 2026-10-07"
@@ -2678,7 +3338,13 @@
   "statuses": "2026-10-09: Curse of Haphephobia; Curse of Fatigue left out (repeats Caves of Qud's movement curse)"
  },
  "StarVaders": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: nothing: Roxy repeats the Drake's overheating, Zeke the Drifter, Kaia's traps the Lucas candidate",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: nothing: no event screens",
+  "goals": "2026-10-10: nothing: its invaders have no pages; the Grandmaster's chess repeats Deep Blues",
+  "locations": "2026-10-10: nothing",
+  "loot": "2026-10-10: 2 rows: Booby Traps, Checkmate (a junk card); weapons and evolutions: none (cards, not weapons; Boomerang is a candidate)",
+  "statuses": "2026-10-10: nothing: Doom and Shock repeat Doomed and the lightning statuses"
  },
  "Starlight Revolver": {
   "connections": "before 2026-10-07"
@@ -2717,14 +3383,25 @@
   "statuses": "2026-10-10: Shrunk; Enraged left out (Brogue's Discorded), Debt (UnderMine and Star of Providence), Electrocuted (the live Stun), Perfumorous (no body to befriend)"
  },
  "Sundered": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: Eshe is the only hero",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: no events",
+  "goals": "2026-10-10: bosses split into three shard hitboxes and minibosses are variants of normal enemies; Arlie Waylon's invisibility is a live ability",
+  "locations": "2026-10-10: 19-article wiki; regions only",
+  "loot": "2026-10-10: no loot category; perks not read (19-article wiki); no weapons, no evolutions",
+  "statuses": "2026-10-10: no statuses"
  },
  "Sunless Sea": {
   "connections": "before 2026-10-07"
  },
  "Super Auto Pets": {
+  "characters": "2026-10-10: nothing: no heroes, only packs",
   "connections": "before 2026-10-07",
-  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+  "events": "2026-10-10: nothing: no event screens",
+  "goals": "2026-10-10: checked 1: Sloth holds (a 1-in-10000 pet with no ability); nothing added: its pets are your own units, and the enemies are other players' teams",
+  "locations": "2026-10-10: nothing: the shop is the only place",
+  "loot": "2026-10-10: 3 rows: Chili, Cornucopia, Fortune Cookie (foods); Melon, Mushroom and Pepper repeat live shields and Dio's Best Friend; weapons and evolutions: none",
+  "statuses": "2026-10-10: 1 row: Tasty; Silly repeats Blind, Icky and Spooked the live Marked, Crisp and Toasty the live Burn"
  },
  "Super Bullet Break": {
   "connections": "before 2026-10-07"
@@ -2784,7 +3461,13 @@
   "statuses": "2026-10-10: nothing: no status pages"
  },
  "Talented": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: classes read by name (Alchemist, Archer, Bandit, Summoner, Warrior, Wizard)",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: no events",
+  "goals": "2026-10-10: Elites read: Infested, Blessed, Defiant and the rest repeat live abilities",
+  "locations": "2026-10-10: nothing",
+  "loot": "2026-10-10: Talents and Portals read: talent-tree buffs; no weapons, no evolutions",
+  "statuses": "2026-10-10: Curses read: enemy buffs (more health, speed, elites) that repeat existing curses"
  },
  "Tales of Maj'Eyal": {
   "connections": "before 2026-10-07",
@@ -2901,10 +3584,22 @@
   "connections": "before 2026-10-07"
  },
  "The Rogue Prince of Persia": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: the Prince is the only hero",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: Points of Interest read: chests, shops and a gamble machine that repeat existing places",
+  "goals": "2026-10-10: enemies sampled: the Shield Giant a clone on Hand of the King; the Pangolin rolls at you",
+  "locations": "2026-10-10: biomes by name",
+  "loot": "2026-10-10: tools read (Dented Pot, Grappling Hook, Ice Trap): Dented Pot; medallions and affixes are stat lists. No evolutions",
+  "statuses": "2026-10-10: Status Effects read: icons for damage up and crits"
  },
  "The Royal Writ": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: character cards are units, not heroes",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: Events read: the Shoppe, Gift, Shady Bargain and Tinkerer repeat existing events; the rest are headings",
+  "goals": "2026-10-10: boss pages read (Dancemaster Lovash): descriptions, no mechanics",
+  "locations": "2026-10-10: Maps not read",
+  "loot": "2026-10-10: Relics read: lane and freeze tricks for its card board; no weapons, no evolutions",
+  "statuses": "2026-10-10: Status Conditions read: Educated; Frozen, Submerged and Frail repeat existing statuses"
  },
  "The Spell Brigade": {
   "connections": "before 2026-10-07"
@@ -3010,7 +3705,13 @@
   "connections": "before 2026-10-07"
  },
  "Turnbound": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: nothing: Alice's size-changing repeats the live Shrinker Beetle, Sun Wukong is a combo fighter",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: nothing: no event screens",
+  "goals": "2026-10-10: nothing: no enemy pages",
+  "locations": "2026-10-10: nothing",
+  "loot": "2026-10-10: 2 rows: Eat Me! Cake; weapons and evolutions: Twin Hunger; no evolutions (pieces level up by merging copies); Copy Card repeats the live ? Card",
+  "statuses": "2026-10-10: nothing: no statuses on the wiki"
  },
  "Tyrant's Realm": {
   "connections": "before 2026-10-07"
@@ -3092,7 +3793,13 @@
   "connections": "before 2026-10-07"
  },
  "Voidigo": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: Drash (the amnesiac hero); Botanika, Clozo, Dr Fusion and Karkamas are powerup sets",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: no event pages",
+  "goals": "2026-10-10: its beacon-locked bosses a clone on Aurelionite (as Formless Prime); the Void Challenger's extra boss sits on Shrine of the Mountain's idea",
+  "locations": "2026-10-10: worlds are biomes only",
+  "loot": "2026-10-10: Pickups read (jars, instant pickups, gamble bundles: nothing new); the Weapons page not read this batch; no evolutions",
+  "statuses": "2026-10-10: no status pages"
  },
  "Voids Vigil": {
   "connections": "before 2026-10-07"
@@ -3175,7 +3882,13 @@
   "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
  },
  "Wizard of Legend 2": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: no characters",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: no events",
+  "goals": "2026-10-10: Enemies page not read: a stub",
+  "locations": "2026-10-10: nothing",
+  "loot": "2026-10-10: 14 relics read: Large Red Button, BerserKing Sandwich; Fusion Relics fuse relics into relics, not weapons. Arcana are spells, not weapons",
+  "statuses": "2026-10-10: no status page"
  },
  "WizardChess": {
   "connections": "before 2026-10-07"

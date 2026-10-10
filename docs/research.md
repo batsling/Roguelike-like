@@ -381,6 +381,11 @@ A guessed address finds whatever owns the name, so each find is judged twice:
   pages of enemies or items. Otherwise it drops to `check`. This is what caught
   `ragnarok.fandom.com` (a Ragnarök fan wiki), `ringer.fandom.com` (a TV
   series) and `omega.fandom.com` (a web series), now set by hand to no wiki.
+  The page-count test can be fooled: `archons.fandom.com` passed as `sure`
+  on 178 item pages, and is the wiki of a tabletop game called Archons, not
+  the 2024 roguelike. A brief whose categories read like another genre
+  (spells, talents, potion ingredients for a twin-stick shooter) is worth a
+  look at the main page before any rows are written.
   `blurb` holds the first lines of the main page for a person to judge by;
   `signal` records what it said (`null` when it could not be read).
 
@@ -388,6 +393,16 @@ Each record also holds `counts` (pages in each kind's categories, which is what
 `next` ranks by), `categories` (the ones that matched, biggest first) and
 `pages` (the list articles that exist, such as "Status Effects": statuses
 rarely get a category of their own).
+
+**A brief is not the whole wiki.** It only shows the categories and list pages
+whose names match a kind, so loot a wiki files under its own word goes unseen:
+Dreamscaper's 100-odd keepsakes ("Category:Keepsakes") never appeared in its
+brief and were found by searching. Before writing "nothing usable", or "no
+page" for an old row, run the wiki's own search (`R.api(base, action="query",
+list="search", srsearch=...)` from `tools/research.py`) for the game's word for
+its items, and for the row's name. A list page built from a template or a Lua
+module reads as empty in `page`. HASTE's "Items List" is one; its items are in
+`Module:Items/data`, which `page --raw` reads.
 
 To correct a game by hand, edit its entry and add `"set": "by hand"` (with a
 `note` saying why), which every later run leaves alone.

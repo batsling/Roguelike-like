@@ -749,56 +749,10 @@
   "wiki": null
  },
  "Archons": {
-  "api": "https://archons.fandom.com/api.php",
-  "articles": 675,
-  "blurb": "",
-  "categories": {
-   "characters": [
-    "Classes"
-   ],
-   "loot": [
-    "Potions/ingredients",
-    "Weapons",
-    "Trinket Packs",
-    "Direction Spells",
-    "Logic Spells",
-    "Fire Spells",
-    "Materialism Spells",
-    "Air Spells",
-    "Tools",
-    "Trickery Spells",
-    "Earth Spells",
-    "Warfare Spells"
-   ],
-   "statuses": [
-    "Talent Effects",
-    "Technique Effects",
-    "Conditions"
-   ]
-  },
-  "checked": "2026-10-09",
-  "counts": {
-   "characters": 8,
-   "events": 0,
-   "goals": 0,
-   "locations": 0,
-   "loot": 178,
-   "statuses": 184
-  },
-  "match": "sure",
-  "pages": {
-   "characters": [
-    "Classes"
-   ],
-   "loot": [
-    "Trinkets"
-   ],
-   "statuses": [
-    "Conditions"
-   ]
-  },
-  "sitename": "Archons Wiki",
-  "wiki": "https://archons.fandom.com"
+  "checked": "2026-10-10",
+  "note": "archons.fandom.com is the wiki of Archons, a tabletop MMOTTE ('play as one of the godlike archons'), not BulletHell Studios' 2024 action roguelike",
+  "set": "by hand",
+  "wiki": null
  },
  "Arms of God": {
   "checked": "2026-10-09",
@@ -1669,7 +1623,9 @@
   "wiki": null
  },
  "Batomon Showdown": {
-  "checked": "2026-10-09",
+  "checked": "2026-10-10",
+  "note": "no MediaWiki; batomon.com/wiki is a community companion site with pages for its 148 Batomon, 24 trainers, 93 trinkets, 40 items and 15 events (read by hand, owner's tip)",
+  "set": "by hand",
   "wiki": null
  },
  "Battle Brothers": {
@@ -9107,34 +9063,17 @@
   "wiki": null
  },
  "Monstrum": {
-  "api": "https://monstrum.fandom.com/api.php",
-  "articles": 26,
-  "blurb": "",
+  "api": "https://themonstrum.fandom.com/api.php",
+  "articles": 77,
   "categories": {},
-  "checked": "2026-10-09",
-  "counts": {
-   "characters": 0,
-   "events": 0,
-   "goals": 0,
-   "locations": 0,
-   "loot": 0,
-   "statuses": 0
-  },
+  "checked": "2026-10-10",
+  "counts": {},
   "match": "sure",
-  "pages": {
-   "characters": [
-    "Heroes",
-    "Races"
-   ],
-   "goals": [
-    "Bestiary"
-   ],
-   "loot": [
-    "Equipment"
-   ]
-  },
+  "note": "monstrum.fandom.com is the wiki of Monstrum RPG, a different JRPG by Monstrum Studios; Team Junkfish's 2015 horror game is themonstrum.fandom.com (set by hand)",
+  "pages": {},
+  "set": "by hand",
   "sitename": "Monstrum Wiki",
-  "wiki": "https://monstrum.fandom.com"
+  "wiki": "https://themonstrum.fandom.com"
  },
  "Montabi": {
   "api": "https://montabi.wiki.gg/api.php",
