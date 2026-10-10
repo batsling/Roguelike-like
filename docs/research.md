@@ -394,6 +394,16 @@ Each record also holds `counts` (pages in each kind's categories, which is what
 `pages` (the list articles that exist, such as "Status Effects": statuses
 rarely get a category of their own).
 
+**A brief is not the whole wiki.** It only shows the categories and list pages
+whose names match a kind, so loot a wiki files under its own word goes unseen:
+Dreamscaper's 100-odd keepsakes ("Category:Keepsakes") never appeared in its
+brief and were found by searching. Before writing "nothing usable", or "no
+page" for an old row, run the wiki's own search (`R.api(base, action="query",
+list="search", srsearch=...)` from `tools/research.py`) for the game's word for
+its items, and for the row's name. A list page built from a template or a Lua
+module reads as empty in `page`. HASTE's "Items List" is one; its items are in
+`Module:Items/data`, which `page --raw` reads.
+
 To correct a game by hand, edit its entry and add `"set": "by hand"` (with a
 `note` saying why), which every later run leaves alone.
 

@@ -11,6 +11,29 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Research, sixteenth batch, read more closely.** Dome Keeper, Downwell,
+  Solitairica, Dreamscaper, Everything is Crab, Ship of Fools, Deep Dungeons of
+  Doom, Cryptark, Crab God and Haste: 15 new rows, 6 clones and 2 old goal
+  rows checked (Dome Keeper's Tick and Driller hold). This batch read every
+  list page each brief names and searched each wiki before writing "nothing".
+  That found Dreamscaper's keepsakes, which the brief never showed, and
+  HASTE's items in a Lua module. `docs/research.md` §8 now says to do both.
+  - **Goals:** the Turtle (beat an enemy by jumping on it; nothing asked for a
+    stomp), Burlypup (beat something adorable), Fear (a boss that personifies
+    an emotion), Krabken (survive a boss fight until something else ends it)
+    and the Undead Moose (hit the opening right after its attack).
+  - **Loot:** Youth (one more choice from every chest), White Elephant (a
+    random piece out, a Rare in), Sturdy Target (ranged hits double, the rest
+    halved), Piñata (bombed enemies drop twice), the Umbrella weapon (every
+    third swing pushes), Detachable Tail (a Decoy when you're first hit), the
+    Empty Plastic Bottle (comes back filled when sold), The Dark Chest (a
+    curse that a boss lifts) and Contract of Mutual Pain.
+  - **Other kinds:** the Exchange Room (keys for bombs and back).
+  - **Clones:** the word-overlap sweep caught two of this batch's own rows.
+    Dome Keeper's Repellent repeated A Glimmer of Hope and its Engineer
+    repeated UnderMine's Peasant, so both went on as clones, with Combos,
+    Rest in Pieces, Map of Myriodd and Trick-or-Treat.
+
 - **Research, fifteenth batch: mostly clones.** Beat Blast, Sky Rogue, Shogun
   Showdown, Rift Wizard, Octogeddon, Sundered, Brutal Orchestra, AK-xolotl,
   Paper Planet and Voidigo: 5 new rows, 6 clones and 4 old goal rows checked.

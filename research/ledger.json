@@ -710,7 +710,13 @@
   "statuses": "2026-10-10: nothing: its elements are Burn (live), freezing (a live goal) and poison (Blight, a candidate)"
  },
  "Crab God": {
-  "connections": "2026-10-07"
+  "characters": "2026-10-10: Roles are colony jobs (Builder, Gardener, Hunter, Scavenger, Worshipper), not heroes",
+  "connections": "2026-10-07",
+  "events": "2026-10-10: no events",
+  "goals": "2026-10-10: Darkfang is a name and a location only",
+  "locations": "2026-10-10: two locations, names only",
+  "loot": "2026-10-10: Blessings read: I Want This Harder repeats the live Alien Baby; the rest are colony stats. Food is a resource. No weapons, no evolutions",
+  "statuses": "2026-10-10: no statuses"
  },
  "Crablike": {
   "connections": "before 2026-10-07"
@@ -761,7 +767,13 @@
   "statuses": "2026-10-10: nothing: no status effects; freezing and confusion are trap and spell effects already proposed"
  },
  "Cryptark": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: Characters read: the crew are NPCs, the Pioneer is a suit",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: no events",
+  "goals": "2026-10-10: Juggernaut and Hornet are drones; nothing new",
+  "locations": "2026-10-10: no location pages",
+  "loot": "2026-10-10: Equipment read (Alarm Lure repeats the Decoy unit, nukes and EMP repeat bombs); artifacts are salvage sold for money; weapons are stat lists. No evolutions",
+  "statuses": "2026-10-10: no statuses"
  },
  "Cthangband": {
   "connections": "before 2026-10-07"
@@ -929,7 +941,13 @@
   "connections": "before 2026-10-07"
  },
  "Deep Dungeons of Doom": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: Mercenary and Witch read: stat classes with flavour text only",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: Shrines read: stat blessings",
+  "goals": "2026-10-10: Undead Moose (punish the opening after its attack); Escaping Jelly, Disembodied Head and Azathoth repeat existing goals",
+  "locations": "2026-10-10: Shrines and dungeons: nothing new",
+  "loot": "2026-10-10: items read: Contract of Mutual Pain; helmets, pelts and painful potions are stat trades. Weapons are stat variants; no evolutions",
+  "statuses": "2026-10-10: poison only"
  },
  "Deep Rock Galactic: Rogue Core": {
   "connections": "before 2026-10-07"
@@ -1076,8 +1094,13 @@
   "connections": "before 2026-10-07"
  },
  "Dome Keeper": {
+  "characters": "2026-10-10: Keepers read: the Engineer's mining level-up repeats UnderMine's Peasant and went on it as a clone; the Assessor, Infiltrator and Beastmaster are mining methods",
   "connections": "before 2026-10-07",
-  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+  "events": "2026-10-10: no events",
+  "goals": "2026-10-10: old rows checked against the 24 enemy pages: Tick (burrowing swarms whose threat is reaching the dome) and Driller (drills through the dome) hold; Breeder, Bloater and the rest repeat spawner and exploder goals",
+  "locations": "2026-10-10: Caves read (seed, Squidley, x-ray, iron tree, portal, cross bomb): nothing new enough; pets are cosmetic",
+  "loot": "2026-10-10: Gadgets read: the Repellent repeats A Glimmer of Hope and went on it as a clone; Shield, Orchard and the caves' buffs repeat existing pieces. No weapons, no evolutions",
+  "statuses": "2026-10-10: no statuses"
  },
  "Don't Let It Starve": {
   "connections": "before 2026-10-07"
@@ -1107,7 +1130,13 @@
   "connections": "before 2026-10-07"
  },
  "Downwell": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: one hero; styles are on no page",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: no events",
+  "goals": "2026-10-10: Turtle (stomp it, bullets glance off); Combos a clone on Estuary Lamech; the other 15 enemies repeat existing goals",
+  "locations": "2026-10-10: worlds and safe zones only",
+  "loot": "2026-10-10: all 21 upgrades read: Youth; Rest in Pieces a clone on Melting; Knife and Fork repeats the live Charm of the Vampire, Apple and Candle are plain. Gun modules are stat variants; Combos is a mechanic, not an evolution",
+  "statuses": "2026-10-10: no statuses"
  },
  "Dragon Crystal": {
   "connections": "before 2026-10-07"
@@ -1134,7 +1163,13 @@
   "connections": "before 2026-10-07"
  },
  "Dreamscaper": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: Cassidy is the only hero",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: NPCs read: relationship upgrades, not events",
+  "goals": "2026-10-10: Fear (a boss that personifies an emotion); the other five bosses are the same theme, and Traps is a list",
+  "locations": "2026-10-10: Rooms read: Exchange Room; Challenge and Secret rooms are already candidates, Font and Merchant rooms repeat existing places",
+  "loot": "2026-10-10: keepsakes found by wiki search (the brief missed the category) and read: White Elephant, Sturdy Target, Piñata; Trick-or-Treat a clone on Necronomicon; Birthday Card repeats the live 2 of Diamonds. Weapons: Umbrella; the rest are stat variants. Crafting makes gifts for NPCs, not evolutions",
+  "statuses": "2026-10-10: Wet, Oiled, Shatter and Freeze repeat existing statuses"
  },
  "Drill Core": {
   "connections": "before 2026-10-07"
@@ -1267,7 +1302,13 @@
   "connections": "before 2026-10-07"
  },
  "Everything is Crab": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: Darwin, a blob that eats to grow, repeats the Monster Lord goal",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: no events",
+  "goals": "2026-10-10: Bosses read: Krabken (outlast it); Clawdia's egg sacs repeat Spider Leader, Krabaroo's charm and the rest are patterns",
+  "locations": "2026-10-10: map biomes only",
+  "loot": "2026-10-10: evolutions sampled (Detachable Tail, Moulting, Hibernation, Convergent Evolution, Cordyceps, Revenge, Outlier, Scavenger): Detachable Tail; most are percentage stats. Its evolutions are traits, not weapon evolutions",
+  "statuses": "2026-10-10: charm and poison repeat existing statuses"
  },
  "Evolings": {
   "connections": "before 2026-10-07"
@@ -1535,7 +1576,13 @@
   "connections": "before 2026-10-07"
  },
  "Haste": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: Zoe is already live; the rest are NPCs",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: Random Encounters read: timed running challenges, not events",
+  "goals": "2026-10-10: Convoy, Final Machine and Jumper pages are stubs",
+  "locations": "2026-10-10: biomes only",
+  "loot": "2026-10-10: Items read from the wiki's Module:Items/data (the list page is a template): its triggers are Close Calls and Perfect Landings in a running game, nothing that maps to the board. Equipment is movement tools. No weapons, no evolutions",
+  "statuses": "2026-10-10: no statuses"
  },
  "Have a Nice Death": {
   "characters": "2026-10-10: nothing: Death is the only hero, and his reaping repeats the live Gatekeeper",
@@ -2796,7 +2843,13 @@
   "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
  },
  "Ship of Fools": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: Fools read: co-op crew defined by their heirloom trinkets",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: no events",
+  "goals": "2026-10-10: its four bosses (Claws, Eyes, Heads, Tentacles) are parts of one sea monster; nothing new",
+  "locations": "2026-10-10: map only",
+  "loot": "2026-10-10: Trinkets read, ten individually: Empty Plastic Bottle; most are cannon and paddle stats. Curses read: The Dark Chest as a cursed trinket. No weapons, no evolutions",
+  "statuses": "2026-10-10: the five curses are covered by The Dark Chest"
  },
  "Shiren the Wanderer (2008)": {
   "connections": "before 2026-10-07"
@@ -2937,7 +2990,13 @@
   "connections": "before 2026-10-07"
  },
  "Solitairica": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: decks are the classes, with no page each",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: no events",
+  "goals": "2026-10-10: enemy decks read: Burlypup (beat something adorable); the rest fight through card effects",
+  "locations": "2026-10-10: six biomes, names only",
+  "loot": "2026-10-10: Items and Spells read: Map of Myriodd a clone on Trumpet; the rest are energy, armour and heal stats or card tricks for its solitaire board. No weapons, no evolutions",
+  "statuses": "2026-10-10: stun, armour and bearded are card states; nothing new"
  },
  "Soulash": {
   "connections": "before 2026-10-07"
