@@ -60,7 +60,13 @@
   "connections": "before 2026-10-07"
  },
  "AK-xolotl": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: no character pages",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: no events",
+  "goals": "2026-10-10: Enemies and Bosses pages are empty",
+  "locations": "2026-10-10: nothing",
+  "loot": "2026-10-10: Items and Weapons pages are empty; no evolutions",
+  "statuses": "2026-10-10: no statuses"
  },
  "Abandon Ship": {
   "connections": "before 2026-10-07"
@@ -339,7 +345,13 @@
   "connections": "before 2026-10-07"
  },
  "Beat Blast": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: no characters on the wiki",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: no events",
+  "goals": "2026-10-10: Meg & Byte a clone on The Wicked Twins; Queen Bee and Sentinel are bullet-pattern bosses, the 66 enemies colour variants of a dozen shooters; Sapper's mines sit near Jack",
+  "locations": "2026-10-10: Shops and Choice Rooms only; nothing new",
+  "loot": "2026-10-10: Shops and Power Notes name powerups without effects; no weapons page, no evolutions",
+  "statuses": "2026-10-10: no statuses"
  },
  "Bella Wants Blood": {
   "connections": "before 2026-10-07"
@@ -477,7 +489,13 @@
   "statuses": "2026-10-10: nothing: burning is the live Burn, and the DLC's Curse is a stat that strengthens enemies, not a status"
  },
  "Brutal Orchestra": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: 27 companions are party members with abilities in its pigment system, not heroes with a goal",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: Bronzo's Quest as an escalating event; Fogs' Quest is a boss checklist",
+  "goals": "2026-10-10: already live (Mung, Revola, Giggling Minister, Hickory, Mobius, Trigger Fingers); nothing more from the lists",
+  "locations": "2026-10-10: Purgatory and the zones are lore; nothing",
+  "loot": "2026-10-10: Lucky Helmet from Items; Stolen Gold repeats Coin Bomb, Safe and Sound the live destroy_on_damage pieces, the pigment items need its colour system. No weapons, no evolutions",
+  "statuses": "2026-10-10: Burn already live; the others named on item pages (Frail, Scars, Ruptured, Oil-Slicked) weren't read closely this batch"
  },
  "Buckshot Roulette": {
   "connections": "before 2026-10-07"
@@ -2161,7 +2179,13 @@
   "connections": "before 2026-10-07"
  },
  "Octogeddon": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: Octogeddon himself a clone on The Brohannes (play as the villain); Catfish Carl is the shopkeeper, a Crazy Dave homage with nothing to offer",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: no events",
+  "goals": "2026-10-10: Treasure Plane a clone on Hoarding Pilfer; planes, subs and Nuclear Balloons repeat existing goals; Big Boss Bass and Giant Pillbug summon minions like many",
+  "locations": "2026-10-10: Real World category is the developers; nothing",
+  "loot": "2026-10-10: no loot category; the DNA limbs weren't read this batch; no weapons, no evolutions",
+  "statuses": "2026-10-10: no statuses"
  },
  "Oddcore": {
   "connections": "before 2026-10-07"
@@ -2236,7 +2260,13 @@
   "connections": "before 2026-10-07"
  },
  "Paper Planet": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: no characters",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: no events",
+  "goals": "2026-10-10: enemies are shape behaviours (Splitter, Dodger, Teleporter) that repeat existing goals; Phobos and Deimos are twins, covered",
+  "locations": "2026-10-10: one planet; nothing",
+  "loot": "2026-10-10: no loot category on the brief; nothing read; no weapons, no evolutions",
+  "statuses": "2026-10-10: no statuses"
  },
  "Pass the Fear": {
   "connections": "before 2026-10-07"
@@ -2506,8 +2536,13 @@
   "connections": "before 2026-10-07"
  },
  "Rift Wizard": {
+  "characters": "2026-10-10: one wizard",
   "connections": "before 2026-10-07",
-  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+  "events": "2026-10-10: no events",
+  "goals": "2026-10-10: old row checked: Prismancer ? (no page; the wiki has only three monsters, the Tormentors, whose fire bursts and lifedrain repeat existing goals)",
+  "locations": "2026-10-10: Translocation is a spell school, not places; nothing",
+  "loot": "2026-10-10: Conjure Memories from its 50 spells; Dominate, Aether Swap and the damage spells repeat existing pieces or need allied bodies; no weapons, no evolutions",
+  "statuses": "2026-10-10: no status pages"
  },
  "Rift Wizard 2": {
   "characters": "2026-10-10: nothing: one wizard",
@@ -2788,8 +2823,13 @@
   "connections": "before 2026-10-07"
  },
  "Shogun Showdown": {
+  "characters": "2026-10-10: Wanderer (swap), Ronin (push), Shadow (phase), Jujitsuka (throw) are movement tricks the existing Push/Scramble characters and Karl already cover",
   "connections": "before 2026-10-07",
-  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+  "events": "2026-10-10: Quests are boss and day achievements, not events",
+  "goals": "2026-10-10: old rows checked: Shielder and The Shogun (two phases) hold; Grappler ? (no page, the table gives only lore). Kowa the Coward a clone on Goblin Warlord, Sato the Stagemaster on Rak'Shor Cultist",
+  "locations": "2026-10-10: Map page is the route; nothing new",
+  "loot": "2026-10-10: Consumables: Rain of Mirrors, Mass Curse/Poison/Ice repeat existing pieces and statuses; no weapons page, no evolutions",
+  "statuses": "2026-10-10: curse, poison and freeze repeat existing ones"
  },
  "Shoot First": {
   "connections": "before 2026-10-07"
@@ -2828,7 +2868,13 @@
   "connections": "before 2026-10-07"
  },
  "Sky Rogue": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: classes are aircraft weight classes (Light to Experimental), not characters",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: no events",
+  "goals": "2026-10-10: Dreadnought (a weak point boss); the other 41 are aircraft, ships and buildings, and shooting down a flier is live (Bullat)",
+  "locations": "2026-10-10: structures are targets (Ministry of Peace, Space Transmitter) with only durability and cash",
+  "loot": "2026-10-10: 41 weapons are missiles and guns with stats; Itano Circus repeats Egg Sac's splitting shot; no evolutions",
+  "statuses": "2026-10-10: no statuses"
  },
  "Sky's The Limit MAH-JONG": {
   "connections": "before 2026-10-07"
@@ -3065,7 +3111,13 @@
   "statuses": "2026-10-10: Shrunk; Enraged left out (Brogue's Discorded), Debt (UnderMine and Star of Providence), Electrocuted (the live Stun), Perfumorous (no body to befriend)"
  },
  "Sundered": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: Eshe is the only hero",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: no events",
+  "goals": "2026-10-10: bosses split into three shard hitboxes and minibosses are variants of normal enemies; Arlie Waylon's invisibility is a live ability",
+  "locations": "2026-10-10: 19-article wiki; regions only",
+  "loot": "2026-10-10: no loot category; perks not read (19-article wiki); no weapons, no evolutions",
+  "statuses": "2026-10-10: no statuses"
  },
  "Sunless Sea": {
   "connections": "before 2026-10-07"
@@ -3451,7 +3503,13 @@
   "connections": "before 2026-10-07"
  },
  "Voidigo": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: Drash (the amnesiac hero); Botanika, Clozo, Dr Fusion and Karkamas are powerup sets",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: no event pages",
+  "goals": "2026-10-10: its beacon-locked bosses a clone on Aurelionite (as Formless Prime); the Void Challenger's extra boss sits on Shrine of the Mountain's idea",
+  "locations": "2026-10-10: worlds are biomes only",
+  "loot": "2026-10-10: Pickups read (jars, instant pickups, gamble bundles: nothing new); the Weapons page not read this batch; no evolutions",
+  "statuses": "2026-10-10: no status pages"
  },
  "Voids Vigil": {
   "connections": "before 2026-10-07"

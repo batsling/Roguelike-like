@@ -11,6 +11,21 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Research, fifteenth batch: mostly clones.** Beat Blast, Sky Rogue, Shogun
+  Showdown, Rift Wizard, Octogeddon, Sundered, Brutal Orchestra, AK-xolotl,
+  Paper Planet and Voidigo: 5 new rows, 6 clones and 4 old goal rows checked.
+  New: the Dreadnought (Sky Rogue; beat a boss by hitting its weak point, which
+  nothing asked for yet), Conjure Memories (a scroll that recharges every usable
+  piece), Lucky Helmet (1 in 3, a hit doesn't land), Bronzo (a stranger who
+  comes back asking for twice as much each time, and pays out only if you never
+  refuse) and Drash (Voidigo's amnesiac hero, whose level-up is playing one).
+  Six bosses and heroes repeated a candidate's idea and went on as clones:
+  Kowa the Coward, Sato the Stagemaster, Meg & Byte, the Treasure Plane,
+  Octogeddon himself and Voidigo's beacon-locked bosses. Of the old rows,
+  Shielder and The Shogun hold. Grappler and Prismancer are `?`: neither wiki
+  has a page that confirms them. AK-xolotl's and Paper Planet's wikis are
+  nearly empty, and the ledger says so.
+
 - **Research, fourteenth batch, and Batomon Showdown read off its own site.**
   Batomon Showdown, Caveblazers, Source of Madness, Nubby's Number Factory,
   Shotgun King, Crawl, Spiritfall, Nova Drift, Blade Assault, Abyssus and
