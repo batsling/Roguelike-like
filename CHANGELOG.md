@@ -11,6 +11,29 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Research, eighteenth batch.** Deck of Ashes, Spirits Abyss, BPM: Bullets
+  Per Minute, Mainframe Defenders, Star Renegades, Across the Obelisk,
+  Pawnbarian, Roguebook, Ember Knights and Mothergunship: Forge: 10 new rows,
+  1 clone and 5 old goal rows checked. Most of these wikis are small (12 to 68
+  articles) and several are stubs, so each was listed page by page.
+  - **Old rows:** Ember Knights' Praxis holds (on doom mode he summons the
+    minibosses). Four are now `?`: Plague Bringer and The Architect (Ember
+    Knights' DLC ends on Arch Praxis instead), and Across the Obelisk's Wolf
+    and Houndmaster. None of the four has a page.
+  - **New rows:**
+    - Goals: the Demon Golem (Pawnbarian; defeat an enemy that can only be hurt
+      from a distance).
+    - Loot: the Last Resort Ammo Cap (a hit fully charges the pieces next to it)
+      and the Apple (bakes into a pie beside a fire piece).
+    - Characters: the Capyzerker (a capybara whose rage fills as it's hurt) and
+      Hildr (a BPM Valkyrie; fire only on the beat).
+    - Statuses: Buffer (shrugs off the next status).
+    - Shopkeepers: Huginn (a loyalty card: the shelf grows as you spend) and
+      Arlan (whose sign you can smash for a coin).
+    - Places: the Offering Pit (pieces back at the same rarity) and the Repair
+      Gel unit.
+  - **Clones:** the Restock Paddle Cap, on Box of Holding.
+
 - **Research, seventeenth batch, and Monstrum's real wiki.** Devil Spire,
   Cursorblade, Crown Trick, Red Rogue, Coin Crypt, Sproggiwood, Monstrum,
   Renowned Explorers, Mothergunship and Chrono Ark: 16 new rows and 4 clones.

@@ -96,8 +96,13 @@
   "connections": "before 2026-10-07"
  },
  "Across the Obelisk": {
+  "characters": "2026-10-10: Adventurers are class decks",
   "connections": "before 2026-10-07",
-  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+  "events": "2026-10-10: Fishing Contest is a stub",
+  "goals": "2026-10-10: old rows checked: Wolf and Houndmaster marked ? (no pages, a stub enemy list, search finds nothing)",
+  "locations": "2026-10-10: Map Locations is a stub",
+  "loot": "2026-10-10: Equipment and class cards not read in depth; pets are unlocks. No evolutions",
+  "statuses": "2026-10-10: Keywords/Effects read: Buffer"
  },
  "Aethermancer": {
   "characters": "2026-10-09: Siriux the Aethermancer",
@@ -246,7 +251,13 @@
   "connections": "before 2026-10-07"
  },
  "BPM: Bullets Per Minute": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: Valkyries read: Hildr (fire on the beat)",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: no events",
+  "goals": "2026-10-10: Monsters page is a list; rhythm combat sits on Violette and on Hildr's level-up",
+  "locations": "2026-10-10: Huginn's Shops read: Huginn; the Damocles Sword statue repeats Blood Altar",
+  "loot": "2026-10-10: Items read: Loki's Bargain and Midgard Bracelet are stat rings, Mortal Curse and Memento Mori repeat existing pieces; weapons are guns with reload beats. No evolutions",
+  "statuses": "2026-10-10: no status pages"
  },
  "Backpack Battles": {
   "characters": "2026-10-10: nothing: the classes (Ranger, Reaper, Berserker, Pyromancer, Mage, Adventurer) are archetypes already taken",
@@ -956,7 +967,13 @@
   "connections": "before 2026-10-07"
  },
  "Deck of Ashes": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: Heroes read: Lucia, Sly, Buck, Magnus are one-line stubs",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: no events",
+  "goals": "2026-10-10: 27-page wiki read: Enemies is a stub; King Octavius is lore (a mad king who calls himself a god)",
+  "locations": "2026-10-10: Camp is a stub",
+  "loot": "2026-10-10: Cards and Curse read: card effects in its own deckbuilder; no weapons, no evolutions",
+  "statuses": "2026-10-10: Curse read: stat debuff that repeats existing statuses"
  },
  "Deck of Haunts": {
   "connections": "before 2026-10-07"
@@ -1298,8 +1315,13 @@
   "connections": "before 2026-10-07"
  },
  "Ember Knights": {
+  "characters": "2026-10-10: knights are cosmetic skins",
   "connections": "before 2026-10-07",
-  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+  "events": "2026-10-10: no events",
+  "goals": "2026-10-10: old rows checked: Praxis holds (doom mode summons the minibosses), Plague Bringer and The Architect marked ? (no pages; the DLC's last fight is Arch Praxis)",
+  "locations": "2026-10-10: Special Rooms read: Arlan, the Offering Pit; the Mimic King room repeats Mimic goals",
+  "loot": "2026-10-10: Food read: Apple; Relics page gives the system, not the list. Weapon Modifications not read. No evolutions",
+  "statuses": "2026-10-10: Status Conditions not read this batch"
  },
  "Emberward": {
   "connections": "before 2026-10-07"
@@ -1924,7 +1946,13 @@
   "connections": "before 2026-10-07"
  },
  "Mainframe Defenders": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: squad units are chassis, not heroes",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: no events",
+  "goals": "2026-10-10: Enemies read: mechs whose weapons grow with each hit repeat the Hydra goal",
+  "locations": "2026-10-10: Strategic Tile read: Repair Gel; Cooler and Heater need its heat system",
+  "loot": "2026-10-10: Usable Items read: heat and repair kits for its squad; weapons are stat lists. No evolutions",
+  "statuses": "2026-10-10: Status Effect read: Corrosion and Internal Damage repeat poison and bleed"
  },
  "Mana Spark": {
   "connections": "before 2026-10-07"
@@ -2096,7 +2124,13 @@
   "statuses": "2026-10-10: no statuses"
  },
  "Mothergunship: Forge": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: no characters",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: no events",
+  "goals": "2026-10-10: Bosses page not read: a stub list",
+  "locations": "2026-10-10: no location pages",
+  "loot": "2026-10-10: caps and canisters read (13 individually): Last Resort Ammo Cap; Restock Paddle Cap a clone on Box of Holding; the rest are stats. Barrels are its guns; no evolutions",
+  "statuses": "2026-10-10: Effects not read: canister elements repeat existing statuses"
  },
  "Motto!? Fushigi no Gensoukyou: Under the Moonlight": {
   "connections": "before 2026-10-07"
@@ -2382,7 +2416,13 @@
   "connections": "before 2026-10-07"
  },
  "Pawnbarian": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: Classes read: Capyzerker (rage from damage); the rest are chess variants",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: no events",
+  "goals": "2026-10-10: Foul Shrine read: Demon Golem (only hurt from a distance); Void Imp's death-pull and Blight enemies need its board",
+  "locations": "2026-10-10: Locations read: four dungeons; Chains are difficulty",
+  "loot": "2026-10-10: pieces are chess moves; no items, no weapons, no evolutions",
+  "statuses": "2026-10-10: Blight repeats existing tiles"
  },
  "Pebble Knights": {
   "connections": "before 2026-10-07"
@@ -2797,7 +2837,13 @@
   "connections": "before 2026-10-07"
  },
  "Roguebook": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: Sharra, Seifer, Sorocco and Aurora are card decks",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: no events",
+  "goals": "2026-10-10: Enemies page is a stub",
+  "locations": "2026-10-10: nothing",
+  "loot": "2026-10-10: Relic and Gems pages are stubs; Talents are deck-size rewards. No weapons, no evolutions",
+  "statuses": "2026-10-10: keyword categories (Bleed, Courage) repeat existing statuses"
  },
  "Roll": {
   "connections": "before 2026-10-07"
@@ -3149,7 +3195,13 @@
   "statuses": "2026-10-10: Glaciate; Drenched and Wounded are plain stacking debuffs"
  },
  "Spirits Abyss": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: clans not read in depth: a list",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: no events",
+  "goals": "2026-10-10: 12-page wiki read: Bestiary and Card collection are name lists",
+  "locations": "2026-10-10: Regions and Zones are names",
+  "loot": "2026-10-10: Itemography read: the special hearts (Curse, Pure, Restless) repeat shields and curses",
+  "statuses": "2026-10-10: no statuses"
  },
  "Sproggiwood": {
   "characters": "2026-10-10: classes (Farmer, Warrior, Archer, Thief, Wizard, Vampire) are combat roles",
@@ -3167,7 +3219,13 @@
   "connections": "before 2026-10-07"
  },
  "Star Renegades": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: 17 rebel heroes listed; pages are stubs",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: no events",
+  "goals": "2026-10-10: Adversaries and Enemies read: tier lists; the Adversary system itself isn't described on the wiki",
+  "locations": "2026-10-10: Camping read: relationship cards",
+  "loot": "2026-10-10: Gear and Armory not read in depth: stat gear; no evolutions",
+  "statuses": "2026-10-10: Status Effects read: a list of names that repeat existing statuses"
  },
  "Star Survivor": {
   "connections": "before 2026-10-07"
