@@ -1740,7 +1740,13 @@
   "connections": "before 2026-10-07"
  },
  "Morimens": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: nothing: 106 gacha Awakeners defined by card kits, with no hero identity a level-up could carry",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: nothing: its events are limited-time gacha promotions with currencies, not run events",
+  "goals": "2026-10-10: nothing: the boss pages hold a quote and no fight (Twin Contradiction, Paradise Veil, Crybaby Geor), the enemies are stubs",
+  "locations": "2026-10-10: nothing: locations are story places (Mythag University) with no feature",
+  "loot": "2026-10-10: nothing: relics tweak card costs and a gacha resource (Aliemus, Arithmetica), and most pages carry only the story text; weapons and evolutions: none (no weapons; relic grades are Silver/Gold/Cursed, not upgrades)",
+  "statuses": "2026-10-10: nothing: Exalt and Posse effects are card-kit buffs"
  },
  "Morsels": {
   "connections": "before 2026-10-07"
@@ -2202,8 +2208,13 @@
   "connections": "before 2026-10-07"
  },
  "Ring of Pain": {
+  "characters": "2026-10-10: nothing: one unnamed hero",
   "connections": "before 2026-10-07",
-  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+  "events": "2026-10-10: nothing: paths between floors (Crossroads, Reprieve, Finders Keepers) are menus of items",
+  "goals": "2026-10-10: checked 1: Owl right (the Dark Ending's final boss, and your companion until then); Time Weaver added; Scrounger is a clone on UnderMine's Hoarding Pilfer (a treasure creature that gets away); the Light Ending's bosses (Calm, Connection, Discipline, Vision) are stat puzzles",
+  "locations": "2026-10-10: nothing: no location pages; its alternate paths are item choices",
+  "loot": "2026-10-10: Tipping Point, Gambler's Reward, Create Exit (scroll); weapons and evolutions: Swapper; no evolutions (items are upgraded in place); Transformer left out (Noita's Polymorphine and the Frog status), Target Dummy (Mewgenics' Decoy)",
+  "statuses": "2026-10-10: nothing: Ensnare (the Wand of Roots), Freeze, Intimidate, Knockback, Petrify (Slice & Dice's) and Poison are live or proposed"
  },
  "Ringer": {
   "connections": "before 2026-10-07"
@@ -2540,7 +2551,13 @@
   "connections": "before 2026-10-07"
  },
  "Soulstone Survivors": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: The Cursed Captain; The Blacksmith is a clone on Caves of Qud's Tinker (upgrading); the rest are class archetypes whose identities are taken (Engineer, Necromancer, Hound Master, Barbarian)",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: nothing: no events",
+  "goals": "2026-10-10: nothing new: the Corrupted Void Hunters are a clone on Isaac's Blue Baby (a copy of you); the Lords of the Void and Titans are bullet-pattern bosses with elemental themes",
+  "locations": "2026-10-10: nothing: the Area category is skills; its maps are arenas",
+  "loot": "2026-10-10: nothing: its loot is skills and runes, not items; weapons and evolutions: none (each hero's weapons carry one special skill; no evolutions)",
+  "statuses": "2026-10-10: Brittle; Distracted is a clone on NetHack's Blind (attacks that go astray); Doom left out (Mewgenics' Doomed), Disarray, Exposed, Fragility and Shattered are all 'takes more damage', which the live Marked covers"
  },
  "Source of Madness": {
   "connections": "2026-10-07"

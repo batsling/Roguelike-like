@@ -52,7 +52,7 @@ copies across as it is, then the same idea and staging columns:
 | `Why it fits` | the case for the row: how it would play here, and what gap it fills |
 | `Builds on` | the system of THIS game it plugs into: `Fire tile`, `coin trinkets`, `add_goal event`, `Stun`, `Undying ability`, `vampire tag`… |
 | `Needs` | blank if it rides what the game can already do; otherwise `new: ` and the mechanic it would take (`new: a Poison tile`, `new: keys open locked paths`) |
-| `Clones` | the ideas this row beat: other candidates, from any game, whose mechanic or goal overlaps it, as `Name (Game): how it differs`, split by `; ` (§6, rule 3). `check` holds each to that shape and to a real game |
+| `Clones` | the ideas this row beat: other candidates, from any game, whose mechanic or goal overlaps it, as `Name (Game): how it differs`, split by `; ` (so no `;` inside one) (§6, rule 3). `check` holds each to that shape and to a real game |
 | `Source` | the exact page it came from (a wiki article, a store page) |
 | `Confidence` | `ok`, or `check` when it was written from a summary or a detail could not be confirmed (`?` in the goal file means the same) |
 | `Status` | where the row stands: `to review`, `waiting for game row`, `lead`, `source check`, `not an influence`, `nothing found`, `on sheet` |
