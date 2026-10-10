@@ -376,7 +376,7 @@
   "characters": "2026-10-10: Streamer; One-Armed left out (Ball x Pit's Hoary Hoarder, 'no more than two weapons'), Pacifist (the Cop's 'without killing'), Gangster (Charon's 'Steal from a shop'), Bull (The Goad's 'without a weapon'), Saver (The Window)",
   "connections": "before 2026-10-07",
   "events": "2026-10-10: nothing: no events; between waves there is only the shop",
-  "goals": "2026-10-10: checked 2: The Mother kept as check (an elite, not a wave-20 boss; the wiki gives no behaviour), Monk Elite fixed and renamed Monk (it keeps its distance; its eggs were the first idea, but Into the Breach's Spider Leader has that goal); Invoker (its ring of bullets: the ground-marked dodge is Moonlighter's Golem King) and Buffer added; Looter and Looting Pig left out (repeat UnderMine's runaway)",
+  "goals": "2026-10-10: checked 2: The Mother kept as unconfirmed (an elite, not a wave-20 boss; the wiki gives no behaviour), Monk Elite fixed and renamed Monk (it keeps its distance); Invoker added; Buffer folded into the Clones of Deep Rock Galactic's Warden (an enemy that buffs the rest); Looter and Looting Pig left out (UnderMine's runaway)",
   "locations": "2026-10-10: Tree (a unit); its two zones differ only in which enemies come",
   "loot": "2026-10-10: Handcuffs, Mirror, Sunken Bell, Candy Bag, Bag; weapons and evolutions: Screwdriver, Wrench; no evolutions (two copies of a weapon merge into its next tier, which is not a new weapon)",
   "statuses": "2026-10-10: nothing: burning is the live Burn, and the DLC's Curse is a stat that strengthens enemies, not a status"
@@ -745,8 +745,13 @@
   "connections": "before 2026-10-07"
  },
  "Deep Rock Galactic: Survivor": {
+  "characters": "2026-10-10: nothing: the four classes (Scout, Driller, Engineer, Gunner) are roles, and Engineer is taken",
   "connections": "before 2026-10-07",
-  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+  "events": "2026-10-10: nothing: the wiki's events are the main game's seasonal and machine events",
+  "goals": "2026-10-10: checked 6 against the main Deep Rock Galactic wiki (the Glyphids are shared): Warden, Bulk Detonator, Oppressor, Stingtail and Web Spitter right; Praetorian fixed (its open mouth, not mining); the Loot Bug is a clone on UnderMine's Hoarding Pilfer, the Korlok Tyrant-Weed on Legend of Keepers' Priestess",
+  "locations": "2026-10-10: nothing: biomes (Magma Core, Glacial Strata, Fungus Bogs) are hazard themes whose goals are taken (the live 'Touch lava', the ice candidates)",
+  "loot": "2026-10-10: nothing: the wiki is the main game's, and its equipment (Drilldozer, M.U.L.E., overclocks) is not Survivor's; weapons and evolutions: not researchable from this wiki",
+  "statuses": "2026-10-10: nothing: its statuses (burning, frozen, electrocuted, slowed) are live or proposed"
  },
  "Deep Sky Derelicts": {
   "connections": "before 2026-10-07"

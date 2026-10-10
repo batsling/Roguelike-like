@@ -11,6 +11,24 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Research, eighth batch, the first under the Clones rule.** Nowhere
+  Prophet, Cobalt Core, 20 Minutes Till Dawn, Morimens, Ring of Pain,
+  Soulstone Survivors, Banners of Ruin, Realm of the Mad God, Backpack Battles
+  and Deep Rock Galactic: Survivor: 29 new rows and 14 clones. These wikis were
+  thinner than batch seven's. Morimens is a gacha game with nothing usable,
+  Realm of the Mad God gave only clones, and Deep Rock Galactic: Survivor's
+  wiki is the main game's, so only its shared Glyphids were used. Its six
+  blind goal rows were checked there: the Praetorian's was wrong (an open
+  mouth, not mining), and the other five were right. Highlights: the Time
+  Weaver ("Beat a game without reloading a save"), four Cobalt Core events
+  (Your Old Friend Dracula, The Duplitron, Black Hole, and Ship Shuffler, which
+  scrambles the pack), the Batgun and Dagger with their evolutions Vampiric
+  Bats and Molten Dagger, Ring of Pain's Swapper and Create Exit, and Banners
+  of Ruin's Arena bet. Overlaps went into the better row's `Clones`: LoneStar's
+  Magic Show is now a clone of The Duplitron, and Brotato's Buffer of
+  Deep Rock Galactic's Warden. `check` misread a clone whose game name holds a
+  colon, and now reads the game from the parentheses.
+
 - **Research: overlapping ideas become clones, not second rows.** Every
   candidate sheet in `tools/Research.xlsx` has a `Clones` column (after
   `Needs`). When two candidates overlap in goal or mechanic, the more

@@ -1267,8 +1267,10 @@ def check(verbose=True):
             if "sheets" in k and r.get("Sheet") not in k["sheets"]:
                 bad.append(f"{where}: Sheet {r.get('Sheet')!r} should be one of {k['sheets']}")
             for clone in filter(None, (c.strip() for c in r.get("Clones", "").split(";"))):
-                head = clone.split(": ", 1)[0]
-                game = head[head.rfind(" (") + 2:-1] if head.endswith(")") and " (" in head else ""
+                # the game is the parenthesis closed right before `: ` or the end; a
+                # game name may itself hold a colon ("Deep Rock Galactic: Survivor")
+                m = re.match(r"^(.*?) \(([^()]+)\)(?::\s.*)?$", clone, re.S)
+                game = m.group(2) if m else ""
                 if game not in games:
                     bad.append(f"{where}: clone {clone[:60]!r} should read `Name (Game): how it differs`, "
                                f"with the game spelled as the games sheet spells it")
