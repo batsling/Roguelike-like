@@ -7696,7 +7696,16 @@ func test_a_coming_capstone_warns_on_the_haul_screen_and_not_twice() -> void:
 	_ui._build_choices()
 	_pick_enemies(0)
 	_ui._boss_notice_for = -1
+	# The REPORT must not take a step of its own. The road's end-of-game spawn
+	# (§19.5) is a spawn event too, so on a pick near the Amulet (or with nothing
+	# defeated) it landed the capstone right here, before the screen that is
+	# meant to warn about it: the test failed about one run in two. Shut both
+	# taps, the way `_quiet_report` does.
+	_shut_failure_tap()
+	var amulet: StringName = GameState.amulet_game_id
+	GameState.amulet_game_id = &""
 	_report_beat(_ui)
+	GameState.amulet_game_id = amulet
 	assert_true(_ui._boss_due_next(), "the run is one spawn from closing the band")
 	_ui._end_resolve()
 	var screen := _haul()
