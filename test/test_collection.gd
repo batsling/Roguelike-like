@@ -1044,3 +1044,63 @@ func test_an_unranked_games_cover_says_nothing() -> void:
 	assert_null(_badge_in(col._detail_box),
 		"no opinion recorded, so no badge — it is not a blank pill on every cover")
 	TierList.place(game.id, was_tier)
+
+# --- a game's page: wider, and drawn in pictures ------------------------------
+
+func test_a_games_page_is_wider_and_the_other_tabs_are_not() -> void:
+	var col := _new_collection()
+	col._show_game_detail(Data.get_game(&"hades"))
+	await wait_frames(2)
+	assert_eq(col._detail_panel.custom_minimum_size.x, float(Collection.GAME_DETAIL_PANEL_W))
+	col._show_item_detail(Data.all_items2()[0] if not Data.all_items2().is_empty() else Data.all_items()[0])
+	await wait_frames(2)
+	assert_eq(col._detail_panel.custom_minimum_size.x, float(Collection.DETAIL_PANEL_W),
+		"an item's card keeps the narrow measure")
+
+func test_the_influence_chart_is_covers_that_open_their_game() -> void:
+	var g: GameData = Data.get_game(&"hades")
+	if g == null or g.games_influenced.is_empty():
+		pending("hades influences nothing in this catalog")
+		return
+	var col := _new_collection()
+	col._show_game_detail(g)
+	await wait_frames(2)
+	var tiles: Array = col._detail_box.find_children("*", "PanelContainer", true, false) \
+		.filter(func(n): return n.has_meta(&"game_id"))
+	assert_gte(tiles.size(), g.games_influenced.size(), "one cover per influenced game")
+	var first: Control = tiles[0]
+	var other: GameData = Data.get_game(first.get_meta(&"game_id"))
+	assert_string_contains(first.tooltip_text, other.display_name, "the name is on the hover")
+	var click := InputEventMouseButton.new()
+	click.button_index = MOUSE_BUTTON_LEFT
+	click.pressed = true
+	first.gui_input.emit(click)
+	await wait_frames(1)
+	assert_eq(col._detail_game, other, "a click opens that game's page")
+
+func test_a_goal_is_a_picture_with_its_count_and_its_story_on_the_hover() -> void:
+	var saved: Array = [GameStats.enemy_log.duplicate(true),
+		GameStats.levelup_log.duplicate(true), GameStats.goal_log.duplicate(true)]
+	GameStats.enemy_log["hades"] = {"monkey": {"beaten": 3, "note": "round the pillar"}}
+	GameStats.levelup_log.erase("hades")
+	GameStats.goal_log.erase("hades")
+	var col := _new_collection()
+	col._show_game_detail(Data.get_game(&"hades"))
+	await wait_frames(2)
+	var tiles: Array = col._detail_box.find_children("*", "PanelContainer", true, false) \
+		.filter(func(n): return n.has_meta(&"goal_key"))
+	GameStats.enemy_log = saved[0]
+	GameStats.levelup_log = saved[1]
+	GameStats.goal_log = saved[2]
+	assert_eq(tiles.size(), 1)
+	var tile: Control = tiles[0]
+	var monkey: GoalEnemyData = Data.get_goal_enemy_any(&"monkey")
+	assert_string_contains(tile.tooltip_text, "%s — beaten ×3" % monkey.display_name)
+	assert_string_contains(tile.tooltip_text, monkey.goal, "the goal itself")
+	assert_string_contains(tile.tooltip_text, "Note: round the pillar")
+	var badges: Array = tile.find_children("*", "PanelContainer", true, false) \
+		.filter(func(n): return n.has_meta(&"count_badge"))
+	assert_eq(badges.size(), 1, "a number in the corner")
+	assert_eq((badges[0].get_child(0) as Label).text, "3")
+	assert_eq(tile.find_children("*", "TextureRect", true, false).size(), 1,
+		"a picture, not a name")

@@ -180,9 +180,16 @@ They belong to the PC, like the window mode does, not to a profile.
 
 ## 9. The game's Collection page
 
-The game page's goal record is one section, **Goals completed here (N)**, with
-a header per kind in `GOAL_KINDS` order and only the kinds that have something
-in them. N is the radio's count (curses left out). Enemies keep their
-"(beaten / can appear here)" figure. Enemy, boss and level-up rows keep their
-notes and Edit note buttons; the other kinds show what the goal was and
-"done ×N" ("followed ×N" for a curse).
+A game's page is **520px wide** (`Collection.GAME_DETAIL_PANEL_W`); every other
+tab's card keeps 360. Its two lists are grids of pictures:
+
+- **Influenced / Influenced By**: the games' covers, the name (and year) on the
+  hover. A click opens that game's page.
+- **Goals completed here (N)**: a header per kind in `GOAL_KINDS` order, only
+  the kinds that have something in them. N is the radio's count (curses left
+  out), and Enemies keep their "(beaten / can appear here)" figure. Each goal is
+  its art (the enemy, the character's icon, the weapon, the status, the event,
+  the curse) with **the times done in the top-right corner**. The hover carries
+  the name and "beaten / levelled / done / followed ×N", the goal itself, and
+  your note. A click on an enemy, boss or level-up opens its note editor; the
+  other kinds have no note. A goal with no art shows its name instead.

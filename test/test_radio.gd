@@ -460,8 +460,13 @@ func test_every_kind_of_goal_lists_under_its_header_in_order() -> void:
 		all_text += (l as Label).text + "\n"
 	assert_string_contains(all_text, "Goals completed here (%d)" % (want.size() - 1),
 		"the count leaves the curse out")
-	assert_string_contains(all_text, "followed ×1", "a curse reads as followed")
-	assert_string_contains(all_text, "Whip — kill 3")
+	# Each goal is a picture now, with what it was on the hover.
+	var tips: String = ""
+	for t in c._detail_box.find_children("*", "PanelContainer", true, false):
+		if t.has_meta(&"goal_key"):
+			tips += (t as Control).tooltip_text + "\n"
+	assert_string_contains(tips, "followed ×1", "a curse reads as followed")
+	assert_string_contains(tips, "kill 3", "a weapon's goal is on its hover")
 
 func test_a_completed_goal_lands_on_the_game_it_was_done_at() -> void:
 	var was: StringName = GameState.current_game_id
