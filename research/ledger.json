@@ -6,7 +6,13 @@
   "connections": "before 2026-10-07"
  },
  "20 Minutes Till Dawn": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: Diamond; Shana put in the Clones of Mewgenics' Jester (rerolling a level-up), Raven (a companion: Wendy's), Abby, Scarlett and Hina are fire-mode variants",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: nothing: no events",
+  "goals": "2026-10-10: Mysterious Tree; the bosses are Lovecraft's (Shoggoth, Shub-Niggurath, Yog, Hastur), whose behaviour is dash-and-spawn, and the Sploders' explosion goals are taken",
+  "locations": "2026-10-10: nothing: three maps (Forest, Pumpkin Patch, Temple) that differ only in enemies; surviving the timer is the Hound's goal",
+  "loot": "2026-10-10: weapons and evolutions: Batgun and its evolution Vampiric Bats (Hellfire Bats in its Clones); every weapon evolves at level 20 into one of three; upgrades are stat perks",
+  "statuses": "2026-10-10: nothing: Curse (double damage after 2 seconds) is the live Marked; Burn and Freeze are live or proposed"
  },
  "20XX": {
   "connections": "before 2026-10-07"
@@ -494,7 +500,13 @@
   "connections": "before 2026-10-07"
  },
  "Cobalt Core": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: Drake; Max put in the Clones of Cogmind's Operator (hacking a machine), Books (crystal mining is the Peasant's), CAT, Dizzy, Peri and Riggs are card-colour roles (shields, attacks, movement)",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: Your Old Friend Dracula, The Duplitron (Magic Show from LoneStar folded into its Clones), Black Hole, Ship Shuffler; Grandma's Bakery left out (a card-removal stop), Sports! (a fight)",
+  "goals": "2026-10-10: Replicator; the three bosses are ships judged by layout (Crystalline Entity, The Dreadnought, The Cobalt), and most enemy pages are stubs",
+  "locations": "2026-10-10: nothing: map nodes are only enemy, elite, event, artifact and boss",
+  "loot": "2026-10-10: nothing: cards and artifacts are ship systems (shields, evade, heat) with no piece to carry; weapons and evolutions: none (the ship's cannons are parts, not weapons; upgrades are A/B card variants)",
+  "statuses": "2026-10-10: nothing: its statuses (Heat, Evade, Shield, Oxygen Leak) are ship systems"
  },
  "Cogmind": {
   "connections": "before 2026-10-07",
@@ -1515,7 +1527,7 @@
  "LoneStar": {
   "characters": "2026-10-10: nothing: the playable things are spaceships (Shielder, Spacewalker, Spectra), not heroes",
   "connections": "before 2026-10-07",
-  "events": "2026-10-10: Fortune Favors the Brave (push-your-luck, Again x9), Magic Show; Casino Betting left out (For the King's Game of Dice), Kitty Financial Management (Moonlighter's banker); most others trade ship units",
+  "events": "2026-10-10: Fortune Favors the Brave (push-your-luck, Again x9); Magic Show is a clone on Cobalt Core's The Duplitron; Casino Betting left out (For the King's Game of Dice), Kitty Financial Management (Moonlighter's banker); most others trade ship units",
   "goals": "2026-10-10: One Punch (check: the wiki gives its bio, not its units); its bounties are space pirates whose mechanics sit in unit tables the page reader can't see",
   "locations": "2026-10-10: nothing: no locations on the wiki; the map is a route of fights and events",
   "loot": "2026-10-10: nothing: every treasure page holds only an ID (its effect lives in a data module) and the Treasure list is empty; weapons and evolutions: none (dice-driven ship units, no weapons; upgrades add slots, not a new piece)",
@@ -1853,7 +1865,13 @@
   "connections": "before 2026-10-07"
  },
  "Nowhere Prophet": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: nothing: the Firebrand's intimidation repeats Griftlands' Plocka, the Banshee is a live boss name, the Breaker's explosives and the Echo's speed are taken",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: Surrender (check: the prompt is written to fit); Pregnancy left out (not a theme for this game), Huge Motor Wagon and the Salta-bird hunt (results unknown on the wiki), quests are faction errands",
+  "goals": "2026-10-10: Knight of the Flame, Ambas Worm; Leper Colossus left out (healing on retreat repeats the regenerating candidates), Coherent Hive (summoners are taken), the basic enemies are faction soldiers with no behaviour of their own",
+  "locations": "2026-10-10: Gladiator Camp; Mineral Springs and Bujjahat Monastery are heal-and-teacher stops, Hermit's Sanctum a faction recruitment tree",
+  "loot": "2026-10-10: nothing: every Gear and Tool page is an empty template (its abilities live in data the reader can't see); weapons and evolutions: none readable (tools are leader powers; dismantling turns gear into cards, not a better weapon)",
+  "statuses": "2026-10-10: nothing: its status effects are gear powers, and the pages are empty templates"
  },
  "Nubby's Number Factory": {
   "connections": "before 2026-10-07"
