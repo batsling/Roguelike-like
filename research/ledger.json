@@ -85,7 +85,13 @@
   "statuses": "2026-10-09: nothing: Redirect is Bishop's live goal, Corruption folds into Myrne, the rest are stat buffs"
  },
  "Alina of the Arena": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: nothing: no character pages",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: nothing: no event screens",
+  "goals": "2026-10-10: nothing: no enemy pages",
+  "locations": "2026-10-10: nothing: the arena repeats the Gladiator Camp",
+  "loot": "2026-10-10: 1 row: weapons and evolutions: Entertainer (a combat card); its other cards are block and damage; no evolutions",
+  "statuses": "2026-10-10: nothing: Blind and Cripple are candidates already"
  },
  "An Amazing Wizard": {
   "connections": "before 2026-10-07"
@@ -306,7 +312,13 @@
   "connections": "before 2026-10-07"
  },
  "Beneath Oresa": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: nothing: Hectos and Nereide repeat the Minotaur's counter, Flynn the Gunslinger, Zakaan the Tinker, Sohoma the Grave Robber",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: nothing: Scavenges are two sets of stat effects, not stories",
+  "goals": "2026-10-10: nothing new; clone: Psy-Linked Gunner into Gas Spore (its death hurts its allies); the Healer Sentry repeats the Priestess, the Elevated Form's respawning gunners the Carnivorous Mutae, the Anointed Urn the live Hexer",
+  "locations": "2026-10-10: nothing: Regroup is a rest site, Scavenge a choice of stat effects",
+  "loot": "2026-10-10: 2 rows: Bargain, Spreading Infection (cards); weapons and evolutions: none (cards, no weapons); no evolutions",
+  "statuses": "2026-10-10: 1 row: Black Retribution (curse); Fragility repeats the live Marked, Worthy Opponent the Tasty candidate"
  },
  "Beyond Words": {
   "connections": "before 2026-10-07"
@@ -738,7 +750,13 @@
   "statuses": "2026-10-09: Riposte, Stealth; Loathing left out (a Kingdoms-mode difficulty track, not a status)"
  },
  "Dave the Diver": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: 1 row: Dave; the other characters are NPCs and crossover guests",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: nothing: no event screens",
+  "goals": "2026-10-10: 1 row: Goblin Shark; clone: Truck Hermit Crab into Knight Bullet Kin (explosive barrels); Lusca and the Clione Queen are big fish with no distinct goal",
+  "locations": "2026-10-10: 1 row: Bancho Sushi; the Game Parlor's bets are the Bankrupt Gambler's goal",
+  "loot": "2026-10-10: 1 row: weapons and evolutions: Frozen Cod; the Doll Decoy repeats the Decoy unit; no evolutions (the recipes are dishes)",
+  "statuses": "2026-10-10: nothing"
  },
  "Dead Cells": {
   "characters": "2026-10-09: The Beheaded",
@@ -864,7 +882,13 @@
   "statuses": "2026-10-09: 1 curse; Diablo I has few statuses"
  },
  "Dice & Fold": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: 1 row: Executioner",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: nothing: no event screens",
+  "goals": "2026-10-10: 1 row: Bankrupt Gambler; clone: Dramatist into The Ox; Dullahan repeats the live Pacer (headless), the Dungeon Master the Barakunarash, Forlorn the Delirium",
+  "locations": "2026-10-10: nothing",
+  "loot": "2026-10-10: nothing new: Bounty Poster and Death in a Bottle are close to Bounty Contract and the live There's Options, the companion items need companions; weapons and evolutions: none",
+  "statuses": "2026-10-10: nothing: no statuses"
  },
  "Dice A Million": {
   "connections": "before 2026-10-07"
@@ -879,7 +903,13 @@
   "connections": "before 2026-10-07"
  },
  "Dicefolk": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: nothing: no hero pages",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: nothing: no event screens",
+  "goals": "2026-10-10: nothing: its chimeras have no list pages",
+  "locations": "2026-10-10: nothing: biomes only",
+  "loot": "2026-10-10: nothing: its equipment is short stat and trigger effects with little identity of its own (Abacus, Bonsai Tree, Black Pawn); weapons and evolutions: none",
+  "statuses": "2026-10-10: nothing: no status pages"
  },
  "Diceomancer": {
   "connections": "before 2026-10-07"
@@ -1428,7 +1458,13 @@
   "connections": "before 2026-10-07"
  },
  "HoloCure: Save the Fans!": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: nothing: every character is a real streamer's persona, left out on purpose",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: nothing: no event screens",
+  "goals": "2026-10-10: nothing: its bosses and characters are real streamers' personas (Fubuzilla, Pekodam), left out on purpose",
+  "locations": "2026-10-10: nothing: stages are arenas",
+  "loot": "2026-10-10: 2 rows: Kusogaki Shackles, Plushie; weapons and evolutions: none taken (Collabs fuse two max-level weapons into one, which would need the evolution rule widened to a second weapon)",
+  "statuses": "2026-10-10: nothing"
  },
  "HoloDungeon: Koyori vs HollowLive in Honsha Tower": {
   "connections": "before 2026-10-07"
@@ -2030,7 +2066,13 @@
   "statuses": "2026-10-09: nothing: Frost, Fragile and Root are covered by live or candidate statuses"
  },
  "One Way Heroics": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: nothing: the Pirate's lockpicking repeats the Pilot, the Adventurer's chests the Miner, the Tourist and Hunter are other games' candidates",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: nothing: its NPCs have no event pages",
+  "goals": "2026-10-10: nothing: the Shining Darkness and the Dark Dragon repeat Mithrix and the Servants (outrun the end of the level), the Cursed Ogre the live Marshmallow, Lilith the Acid Mound",
+  "locations": "2026-10-10: nothing: the Dimensional Passageway is a meta-storage",
+  "loot": "2026-10-10: nothing: its unique weapons are named stat sticks; weapons and evolutions: none usable; no evolutions",
+  "statuses": "2026-10-10: nothing: no status pages"
  },
  "OneBit Adventure": {
   "connections": "before 2026-10-07"
@@ -2228,7 +2270,13 @@
   "connections": "before 2026-10-07"
  },
  "Rabbit and Steel": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: nothing: the Ancient's familiar repeats Wendy's companion, the Druid's traps the Lucas candidate",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: nothing: no event screens",
+  "goals": "2026-10-10: nothing: its bosses are animals with names but little behaviour on the wiki; Twili's time-stop repeats Primal Dialga",
+  "locations": "2026-10-10: nothing: its stages are boss arenas",
+  "loot": "2026-10-10: 1 row: Divine Mirror; its items are mostly percent stat ups; weapons and evolutions: none (items, no weapons; sets are bonuses, not evolutions)",
+  "statuses": "2026-10-10: 1 row: Tranquility; Rabbitluck repeats the Golden Horseshoe candidate, Counter the Tension candidate, the debuffs live statuses"
  },
  "Raccoin: Coin Pusher Roguelike": {
   "connections": "before 2026-10-07"
@@ -2404,7 +2452,13 @@
   "connections": "before 2026-10-07"
  },
  "Rogue Heroes: Ruins of Tasos": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: nothing: classes differ only by a dodge move",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: nothing: its quests are fetch errands",
+  "goals": "2026-10-10: nothing: Tendron repeats the Shapeshifter's disguise, the bosses are dungeon finales with no behaviour on the wiki",
+  "locations": "2026-10-10: 1 row: Pot (object); the Warp Statue is a teleport",
+  "loot": "2026-10-10: nothing: tools and potions are Zelda staples already covered; weapons and evolutions: none",
+  "statuses": "2026-10-10: nothing"
  },
  "Rogue Legacy": {
   "characters": "2026-10-09: Miner",
@@ -3127,7 +3181,13 @@
   "connections": "before 2026-10-07"
  },
  "Turnbound": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-10: nothing: Alice's size-changing repeats the live Shrinker Beetle, Sun Wukong is a combo fighter",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-10: nothing: no event screens",
+  "goals": "2026-10-10: nothing: no enemy pages",
+  "locations": "2026-10-10: nothing",
+  "loot": "2026-10-10: 2 rows: Eat Me! Cake; weapons and evolutions: Twin Hunger; no evolutions (pieces level up by merging copies); Copy Card repeats the live ? Card",
+  "statuses": "2026-10-10: nothing: no statuses on the wiki"
  },
  "Tyrant's Realm": {
   "connections": "before 2026-10-07"

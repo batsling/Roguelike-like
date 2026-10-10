@@ -11,6 +11,23 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Research, eleventh batch, the thinnest yet.** Beneath Oresa, Rabbit and
+  Steel, Dice & Fold, Turnbound, Dicefolk, One Way Heroics, HoloCure, Rogue
+  Heroes: Ruins of Tasos, Dave the Diver and Alina of the Arena: 17 new rows
+  and 3 clones. Each wiki's main page was checked first (the Archons lesson);
+  all ten are the right game. The yield is low for three reasons: card and
+  stat-item games whose pieces have little identity of their own (Dicefolk,
+  Alina, most of Rabbit and Steel), wikis with no enemy pages, and HoloCure,
+  whose characters and bosses are real streamers' personas and were left out
+  on purpose; only two of its generic items were taken. Highlights: Goblin
+  Shark (catch an enemy alive), Bankrupt Gambler (lose a bet), Black
+  Retribution (a curse on landing killing blows), Spreading Infection (a
+  curse card that doubles if you throw it away), Eat Me! Cake (a positional
+  food piece), Plushie (damage that lands a point per turn), the Executioner
+  and Dave, and Bancho Sushi (serve a whole shift). One Way Heroics gave
+  nothing: its signature darkness that eats the level behind you repeats two
+  candidates already.
+
 - **Research, tenth batch.** Balatro, Super Auto Pets, 20XX, Ratropolis,
   Cultist Simulator, CloverPit, Dead Estate, StarVaders, Muck and Picayune
   Dreams, every kind: 37 new rows and 9 clones, a thinner batch than the
