@@ -374,7 +374,8 @@ func _fill_list() -> void:
 		if Radio.is_unlocked(s):
 			unlocked += 1
 	_summary.text = "Songs — %d of %d unlocked" % [unlocked, all.size()]
-	# Unlocked first, then the nearest to unlocking; a row without a rule last.
+	# Unlocked first; then the locked ones by game, the game nearest its next song
+	# first (the draw is random, so it is the GAME that is near, not the song).
 	var order: Array = all.duplicate()
 	order.sort_custom(func(a, b) -> bool:
 		var ka: Array = _sort_key(a)
@@ -387,10 +388,13 @@ func _fill_list() -> void:
 		_list.add_child(_song_row(s))
 
 func _sort_key(song: SongData) -> Array:
-	var p: Dictionary = Radio.progress(song)
-	var need: int = int(p["need"])
-	var left: float = 1.0 - (float(p["have"]) / float(need)) if need > 0 else 2.0
-	return [0 if Radio.is_unlocked(song) else 1, maxf(left, 0.0), song.title]
+	if Radio.is_unlocked(song):
+		return [0, 0, "", song.title]
+	if song.game_id == &"":
+		return [2, 0, "", song.title]
+	var left: Dictionary = Radio.to_next(song.game_id)
+	return [1, mini(int(left["beats"]) * Radio.GOALS_PER_SONG,
+		int(left["goals"]) * Radio.BEATS_PER_SONG), String(song.game_id), song.title]
 
 func _song_row(song: SongData) -> Control:
 	var unlocked: bool = Radio.is_unlocked(song)
@@ -432,9 +436,11 @@ func _song_row(song: SongData) -> Control:
 	sub.add_theme_color_override("font_color", _status_color(song))
 	sub.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	text.add_child(sub)
-	# WHAT has counted so far, kind by kind, so "3 / 5" says where it came from.
+	# WHAT has counted at its game so far, kind by kind, so "3 more goals" says
+	# where the others came from. Only while it is locked: it is what the line
+	# above is counting towards.
 	var met: Array = Radio.goals_done(song)
-	if song.unlock == &"goals":
+	if not unlocked and song.game_id != &"":
 		var known := Label.new()
 		known.text = ("Done here: " + ", ".join(met)) if not met.is_empty() \
 			else "No goals done here yet"
@@ -458,22 +464,19 @@ func _song_row(song: SongData) -> Control:
 		h.add_child(play)
 	return row
 
-# One line saying where the song stands: the rule and how far along it is, or
-# what is in its way.
+# One line saying where the song stands: what its game needs for its next song,
+# or what is in its way.
 func _status_line(song: SongData) -> String:
-	var rule: String = Radio.rule_text(song)
-	if song.unlock == &"":
-		return "🔒  " + rule
-	var p: Dictionary = Radio.progress(song)
 	if not Radio.is_unlocked(song):
-		return "🔒  %s  (%d / %d)" % [rule, mini(int(p["have"]), int(p["need"])), int(p["need"])]
+		return "🔒  " + Radio.rule_text(song)
 	if song.file == "":
 		return "Unlocked — but the sheet names no file for it"
 	if not Radio.has_file(song):
 		return "Unlocked — file not found: %s" % song.file
 	if not Radio.on_station(song):
 		return "Unlocked — not on this station"
-	return "Unlocked  ·  " + rule
+	var game: GameData = Data.get_game(song.game_id)
+	return "Unlocked  ·  from " + (game.display_name if game != null else String(song.game_id))
 
 func _status_color(song: SongData) -> Color:
 	if not Radio.is_unlocked(song):

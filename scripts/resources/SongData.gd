@@ -19,21 +19,11 @@ extends Resource
 # 0 when the sheet left it blank.
 @export var year: int = 0
 
-# The game the song belongs to, and the one whose record unlocks it.
+# The game the song belongs to. Playing that game EARNS songs, and each one earned
+# is drawn at random from this game's songs still locked (Radio.earned has the
+# rule). There is no per-song rule any more: the sheet's `Unlock` and `Count`
+# columns went in October 2026. A song with no game is never drawn.
 @export var game_id: StringName = &""
-
-# How it unlocks:
-#   &"goals" — `count` DISTINCT goals completed at `game_id`, of every kind
-#              (level-ups, enemies, bosses, weapons, statuses, bonuses, curses
-#              followed), each counted once however often it was done again
-#              (GameStats.distinct_goals_count) — "Complete 5 distinct goals in
-#              Balatro",
-#   &"wins"  — `game_id` reported beaten `count` times (GameStats.beaten_count),
-#   &""      — no rule yet, which keeps it LOCKED. That is the owner's call, not
-#              a default to "free": a row being authored should not start
-#              playing on stream before its rule is decided.
-@export var unlock: StringName = &""
-@export var count: int = 0
 
 # The file name in the radio folder, exactly as the sheet spells it.
 @export var file: String = ""

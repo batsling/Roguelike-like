@@ -7,13 +7,17 @@ out of the game window). This is the design and the reasoning; the code is
 
 ## 1. What the owner asked for
 
-- Songs unlocked by **"complete X distinct goals in Y"** and **"beat Y X
-  times"**.
+- Songs unlocked by playing **the game they belong to**. Since October 2026
+  (the second ask) a game **earns** songs and **which one is random**: one on
+  its **first beat**, one on **every 3rd beat** (the first beat counting
+  towards it), and one for **every 5 goals** completed there. It replaced a
+  rule per song ("complete X distinct goals in Y", "beat Y X times").
 - The music is **music the owner already owns**. It is never committed.
 - Songs are authored in **the spreadsheet**: name, artist, album, year, game,
-  album image and tags, plus the unlock rule.
-- **Nothing is unlocked by hand.** A song unlocks the moment its count is met,
-  and that includes counts the save already holds.
+  album image and tags. **Every song is tied to its game**: it is only ever
+  drawn there.
+- **Nothing is unlocked by hand.** A game draws its songs the moment its counts
+  earn them, and that includes counts the save already holds.
 - It plays **into OBS**, with a setting to play it **from the game window** when
   OBS isn't running.
 - **Skip, back, pause and volume** are available from anywhere.
@@ -35,27 +39,46 @@ row (No Escape, Hades); delete it freely.
 | `Artist` | who made it |
 | `Album` | optional |
 | `Year` | optional |
-| `Game` | the game it belongs to **and unlocks on**: its name as the `games` sheet spells it, or its id. Must be in the catalog |
-| `Unlock` | `goals` or `wins` (`enemies` is read as `goals`). **Blank keeps the song locked.** That is the owner's rule: a row still being authored should not start playing on stream |
-| `Count` | how many it takes (1 or more when `Unlock` is set) |
+| `Game` | the game it belongs to **and is drawn at**: its name as the `games` sheet spells it, or its id. Must be in the catalog. A row with no `Game` is never drawn |
 | `File` | the exact file name in the music folder: `.mp3`, `.ogg` or `.wav` |
 | `Image` | album art base name under `images2.0/radio/` (blank = the game's cover) |
 | `Tags` | comma-separated, lower-cased; every tag is a station |
 
 The generator **rewrites** `data/songs/`: a row deleted from the sheet takes its
-`.tres` with it. It refuses an unknown game, an unknown `Unlock` word, an
-`Unlock` with no `Count`, an audio extension it can't play, and two rows that
-come out as the same id (`<name> <artist>`, slugified).
+`.tres` with it. It refuses an unknown game, an audio extension it can't play,
+two rows that come out as the same id (`<name> <artist>`, slugified), and a
+sheet that still has the retired `Unlock` / `Count` columns
+(`tools/_radio_random_unlocks_setup.py` took them off; there is no per-song
+rule left for them to hold).
+
+**There is no "blank keeps it locked" any more.** A row used to stay locked
+until its `Unlock` was filled in, so a song still being authored could not
+start playing on stream. Now any row with a `Game` is in that game's draw. A
+row being authored can be left without its `File`: if it is drawn it shows as
+"file not found" and never plays, and songs whose file is in the folder are
+always drawn first.
 
 ## 3. Unlocking
 
-| Rule | Counts | Source |
-|---|---|---|
-| `goals` | the **distinct** goals completed **at that game**, of every kind: each goal counts once, however often it was done again | `GameStats.distinct_goals_count(game)` (everything in `GameStats.goals_at(game)`) |
-| `wins` | every time **that game** was reported beaten | `GameStats.beaten_count(game)` |
+**A game earns songs; the draw decides which.** One rule for every game
+(`Radio.earned`, `Radio.earned_for`):
 
-It reads **"Complete 5 distinct goals in Balatro"**, and the song list says
-where the progress came from ("Done here: 2 Enemies, 1 Weapon").
+| A game earns a song… | Counts | Source |
+|---|---|---|
+| on its **first beat** | — | `GameStats.beaten_count(game)` |
+| on **every 3rd beat**, the first one counting towards it: beats **3, 6, 9, 12 …** | `BEATS_PER_SONG = 3` | `GameStats.beaten_count(game)` |
+| for **every 5 distinct goals** completed there: 5, 10, 15 … | `GOALS_PER_SONG = 5` | `GameStats.distinct_goals_count(game)` (everything in `GameStats.goals_at(game)`) |
+
+So beating a game once earns 1 song, three times 2, six times 3; and its 5th
+distinct goal earns one more on top, whatever the beats are. Each song earned is
+**drawn at random from that game's songs still locked**. A game with no locked
+songs left draws nothing (the songs it is owed wait, and a row added to the sheet
+for it later is drawn at once). Songs **whose file is in the folder are drawn
+first**, so an unlock is something that plays whenever there is one to give.
+
+A locked song's line in the list says what **its game** needs for its next song
+("Next Hades song: beat Hades 2 times more, or complete 3 more distinct goals
+there"). It is the game that is close, not the song: which one comes up is luck.
 
 **Every kind of goal counts:** the character's level-up, enemies, bosses,
 weapons, standing status goals, bonus clauses and curses followed. Doing the
@@ -80,10 +103,14 @@ Bosses, Weapons, Statuses, Bonuses, Curses.
 `goal_log` is new with this change, so goals of those four kinds done before
 it don't appear; level-ups and enemies go back to the start of the save.
 
-The radio **stores no progress of its own**. A song is unlocked exactly when `have >= need`. The only thing it
-remembers (per profile, `radio.json` in the profile folder) is which unlocks it
-has already **announced**, so each one gets its toast and jumps the queue
-exactly once.
+The radio **stores no progress of its own**: the beats and goals are GameStats's.
+What it keeps (per profile, `radio.json` in the profile folder) is **the draw**,
+which songs came up, because a random pick cannot be worked out again from the
+counts the way a per-song rule could. Each draw gets its toast and jumps the
+queue exactly once. **Nothing is ever locked again**: a save from before the
+random rule keeps every song it had, even if its counts would now earn fewer
+(its old `radio.json` listed them as "announced", and that list is read as the
+songs it holds).
 
 - **Re-checked on every `GameStats.changed`**, which a report always emits.
 - **It only starts music by itself when there is a window** (`Radio.autoplay`).
@@ -155,9 +182,11 @@ corner**. It has:
 - shuffle, the station, and where it plays from;
 - the music folder, with Open folder and Rescan (for files added while the game
   is running);
-- every song on the sheet: unlocked first, then the nearest to unlocking, each
-  with its rule and progress ("Complete 5 distinct goals in Balatro (3 / 5)", with where the three came from) and a ▶ to play
-  it now.
+- every song on the sheet: unlocked first, then the locked ones by game, the
+  game nearest its next song first, each saying what that game still needs
+  ("Next Balatro song: beat Balatro once more, or complete 2 more distinct goals
+  there", with where its goals so far came from) and, once unlocked, a ▶ to
+  play it now.
 
 The speakers, volume, shuffle, station and pause live in `user://radio.cfg`.
 They belong to the PC, like the window mode does, not to a profile.

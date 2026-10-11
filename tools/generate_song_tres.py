@@ -3,13 +3,16 @@
 Generate Godot SongData .tres from the `radio` sheet of tools/Roguelikes.xlsx
 into data/songs/ — the songs of ROGUELIKE RADIO (docs/roguelike-radio.md).
 
-  radio: Name | Artist | Album | Year | Game | Unlock | Count | File | Image | Tags
+  radio: Name | Artist | Album | Year | Game | File | Image | Tags
 
 The audio is the player's own and is never in the repo; `File` only names it.
 `Game` may be a game's display name or its id, and must be a game in the
-catalog. `Unlock` is `goals` ("complete X distinct goals in Y" — every kind of
-goal), `wins` ("beat Y X times") or blank (blank = locked until it
-has a rule). `enemies` is read as `goals`, the word the rule had for a while. `Image` is a base name under images2.0/radio/.
+catalog: a song is unlocked by playing that game, drawn at random from its songs
+still locked (Radio.earned has the rule). A row with no `Game` is never drawn.
+The sheet once had `Unlock` and `Count` columns, one rule per song; they were
+taken off in October 2026 (tools/_radio_random_unlocks_setup.py), and a sheet
+that still has them is refused rather than silently ignored. `Image` is a base
+name under images2.0/radio/.
 
 The output folder is REWRITTEN, not added to: a row deleted from the sheet takes
 its song with it, so the example row the sheet was created with goes away the
@@ -38,8 +41,8 @@ IMG_DIR = os.path.join(PROJECT_ROOT, "images2.0", "radio")
 IMG_RES_PREFIX = "res://images2.0/radio/"
 SHEET = "radio"
 
-UNLOCKS = ("goals", "wins")
-ALIASES = {"enemies": "goals", "enemy": "goals", "goal": "goals", "win": "wins"}
+# The columns songs no longer have (see the docstring).
+RETIRED = ("Unlock", "Count")
 AUDIO = (".mp3", ".ogg", ".wav")
 IMAGE_EXTS = (".png", ".jpg", ".jpeg", ".webp")
 
@@ -103,17 +106,6 @@ def song_tres(row, games: dict) -> tuple:
                          "(use its name as the games sheet spells it, or its id)"
                          % (name, game_raw))
 
-    unlock = _clean(row.get("Unlock")).lower()
-    unlock = ALIASES.get(unlock, unlock)
-    if unlock and unlock not in UNLOCKS:
-        raise ValueError("radio %s: Unlock %r must be one of %s, or blank"
-                         % (name, row.get("Unlock"), ", ".join(UNLOCKS)))
-    count = _int(row.get("Count"), "Count", name)
-    if unlock and not game_id:
-        raise ValueError("radio %s: an Unlock rule needs a Game to count on" % name)
-    if unlock and count < 1:
-        raise ValueError("radio %s: Unlock %s needs a Count of 1 or more"
-                         % (name, unlock))
 
     file = _clean(row.get("File"))
     if file and os.path.splitext(file)[1].lower() not in AUDIO:
@@ -137,8 +129,6 @@ def song_tres(row, games: dict) -> tuple:
         'album = "%s"' % dsl.gd_str(_clean(row.get("Album"))),
         "year = %d" % _int(row.get("Year"), "Year", name),
         'game_id = &"%s"' % game_id,
-        'unlock = &"%s"' % unlock,
-        "count = %d" % count,
         'file = "%s"' % dsl.gd_str(file),
         'image_path = "%s"' % dsl.gd_str(_image(row.get("Image"))),
         "tags = PackedStringArray(%s)" % ", ".join('"%s"' % dsl.gd_str(t) for t in tags),
@@ -155,6 +145,12 @@ def main():
     if SHEET not in wb.sheetnames:
         raise SystemExit("%s has no %r sheet — run tools/_radio_sheet_setup.py"
                          % (XLSX_PATH, SHEET))
+    header = [str(c.value).strip() if c.value is not None else "" for c in wb[SHEET][1]]
+    stale = [h for h in RETIRED if h in header]
+    if stale:
+        raise SystemExit("radio: the sheet still has %s — songs are drawn at random "
+                         "now; run tools/_radio_random_unlocks_setup.py"
+                         % " and ".join(stale))
     games = game_index()
     songs = {}
     for row in dsl.rows(wb[SHEET]):

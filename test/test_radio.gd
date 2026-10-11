@@ -19,7 +19,7 @@ var _saved_stats: Dictionary
 var _saved_log: Dictionary
 var _saved_goal_log: Dictionary
 var _saved_levelups: Dictionary
-var _saved_announced: Dictionary
+var _saved_unlocked: Dictionary
 var _saved_folder: String
 var _saved_config: String
 var _saved_prefs: Array
@@ -30,7 +30,7 @@ func before_each() -> void:
 	_saved_log = GameStats.enemy_log.duplicate(true)
 	_saved_goal_log = GameStats.goal_log.duplicate(true)
 	_saved_levelups = GameStats.levelup_log.duplicate(true)
-	_saved_announced = Radio._announced.duplicate()
+	_saved_unlocked = Radio._unlocked.duplicate()
 	_saved_folder = Radio.folder
 	_saved_config = Radio.config_path
 	_saved_prefs = [Radio.output, Radio.volume, Radio.shuffle, Radio.station, Radio.paused]
@@ -39,7 +39,7 @@ func before_each() -> void:
 	GameStats.enemy_log = {}
 	GameStats.goal_log = {}
 	GameStats.levelup_log = {}
-	Radio._announced = {}
+	Radio._unlocked = {}
 	Radio.folder = FOLDER
 	Radio.config_path = CONFIG
 	Radio.output = Radio.Output.OBS
@@ -66,8 +66,8 @@ func after_each() -> void:
 	GameStats.enemy_log = _saved_log
 	GameStats.goal_log = _saved_goal_log
 	GameStats.levelup_log = _saved_levelups
-	Radio._announced = _saved_announced
-	Radio._save_announced()
+	Radio._unlocked = _saved_unlocked
+	Radio._save_unlocked()
 	Radio.folder = _saved_folder
 	Radio.config_path = _saved_config
 	Radio.output = _saved_prefs[0]
@@ -110,21 +110,31 @@ func _zeros(count: int) -> PackedByteArray:
 	b.resize(count)
 	return b
 
-func _song(id: String, unlock: StringName = &"wins", count: int = 1,
-		game: StringName = GAME, tags: Array = [], with_file: bool = true) -> SongData:
+# A song of `game`'s, UNLOCKED unless `locked` — most of this file is about the
+# queue and the controls, and a song has to be unlocked to play at all. The
+# unlocking tests ask for locked ones and let the counts draw them.
+func _song(id: String, tags: Array = [], with_file: bool = true, locked: bool = false,
+		game: StringName = GAME) -> SongData:
 	var s := SongData.new()
 	s.id = StringName(id)
 	s.title = id.capitalize()
 	s.artist = "Tester"
 	s.game_id = game
-	s.unlock = unlock
-	s.count = count
 	s.file = "%s.wav" % id
 	s.tags = PackedStringArray(tags)
 	Data._songs[s.id] = s
 	if with_file:
 		_write_wav(s.file, 10.0)
+	if not locked:
+		Radio._unlocked[String(s.id)] = true
 	return s
+
+func _locked(id: String, game: StringName = GAME, with_file: bool = true) -> SongData:
+	return _song(id, [], with_file, true, game)
+
+func _unlocked_of(game: StringName) -> Array:
+	return Radio.game_songs(game).filter(func(s): return Radio.is_unlocked(s)).map(
+		func(s): return String((s as SongData).id))
 
 func _wins(game: StringName, n: int) -> void:
 	GameStats.stats[String(game)] = {"beaten": n, "amulets": 0}
@@ -148,22 +158,115 @@ func test_the_generated_songs_load_as_songs() -> void:
 		if song.game_id != &"":
 			assert_not_null(Data.get_game(song.game_id),
 				"%s's game %s is in the catalog" % [song.id, song.game_id])
-		assert_true(song.unlock in [&"", &"goals", &"wins"], "%s's rule" % song.id)
 	if _saved_songs.is_empty():
 		pending("the radio sheet has no rows yet")
 
-# --- unlocking ----------------------------------------------------------------
+# --- what a game earns ------------------------------------------------------
 
-func test_a_wins_song_unlocks_on_the_games_beaten_count() -> void:
-	var s := _song("anthem", &"wins", 3)
+func test_a_game_earns_on_its_first_beat_every_third_and_every_five_goals() -> void:
+	# The owner's rule: beat 1, then 3, 6, 9 ... (the first beat counts towards
+	# the three), and one for every five distinct goals on top.
+	var table: Array = [
+		[0, 0, 0], [1, 0, 1], [2, 0, 1], [3, 0, 2], [5, 0, 2], [6, 0, 3], [9, 0, 4],
+		[0, 4, 0], [0, 5, 1], [0, 9, 1], [0, 10, 2], [1, 5, 2], [3, 5, 3], [6, 15, 6],
+	]
+	for row in table:
+		assert_eq(Radio.earned_for(int(row[0]), int(row[1])), int(row[2]),
+			"%d beats and %d goals earn %d" % row)
+
+func test_the_first_beat_draws_one_song_of_that_game() -> void:
+	for id in ["h1", "h2", "h3"]:
+		_locked(id)
+	_locked("b1", OTHER)
+	_wins(GAME, 1)
+	Radio.refresh_unlocks(false)
+	assert_eq(_unlocked_of(GAME).size(), 1, "one song, and it is one of Hades's")
+	assert_eq(_unlocked_of(OTHER), [], "another game's songs are never drawn here")
+
+func test_the_third_and_sixth_beats_draw_one_more_each() -> void:
+	for i in range(5):
+		_locked("h%d" % i)
 	_wins(GAME, 2)
-	assert_false(Radio.is_unlocked(s), "2 of 3 wins is not enough")
-	assert_eq(Radio.progress(s), {"have": 2, "need": 3})
+	Radio.refresh_unlocks(false)
+	assert_eq(_unlocked_of(GAME).size(), 1, "two beats: still just the first one's")
 	_wins(GAME, 3)
-	assert_true(Radio.is_unlocked(s), "3 of 3 is")
+	Radio.refresh_unlocks(false)
+	assert_eq(_unlocked_of(GAME).size(), 2, "the third beat draws another")
+	_wins(GAME, 6)
+	Radio.refresh_unlocks(false)
+	assert_eq(_unlocked_of(GAME).size(), 3, "and so does the sixth")
 
-func test_a_goals_song_counts_each_distinct_goal_of_every_kind() -> void:
-	var s := _song("grind", &"goals", 4)
+func test_every_five_distinct_goals_draw_one() -> void:
+	for i in range(3):
+		_locked("h%d" % i)
+	_defeat_distinct(GAME, 4)
+	Radio.refresh_unlocks(false)
+	assert_eq(_unlocked_of(GAME).size(), 0, "four goals and no beat earn nothing")
+	_defeat_distinct(GAME, 5)
+	Radio.refresh_unlocks(false)
+	assert_eq(_unlocked_of(GAME).size(), 1, "the fifth draws one, without a beat")
+
+func test_the_draw_is_random_among_the_games_locked_songs() -> void:
+	_locked("h1")
+	_locked("h2")
+	_wins(GAME, 1)
+	var seen: Dictionary = {}
+	for i in range(60):
+		Radio._unlocked = {}
+		Radio.refresh_unlocks(false)
+		seen[_unlocked_of(GAME)[0]] = true
+	assert_eq(seen.size(), 2, "either song can come up")
+
+func test_a_song_whose_file_is_there_is_drawn_first() -> void:
+	_locked("missing", GAME, false)
+	_locked("here")
+	for i in range(20):
+		Radio._unlocked = {}
+		_wins(GAME, 1)
+		Radio.refresh_unlocks(false)
+		assert_eq(_unlocked_of(GAME), ["here"], "the one that can play")
+	_wins(GAME, 3)
+	Radio.refresh_unlocks(false)
+	assert_eq(_unlocked_of(GAME).size(), 2, "the missing one still comes once it is all that is left")
+
+func test_a_game_out_of_songs_draws_nothing_until_one_is_added() -> void:
+	_locked("only")
+	_wins(GAME, 9)
+	Radio.refresh_unlocks(false)
+	assert_eq(_unlocked_of(GAME), ["only"], "four earned, one to give")
+	_locked("late")
+	Radio.refresh_unlocks(false)
+	assert_eq(_unlocked_of(GAME).size(), 2, "a row added later is drawn at once")
+
+func test_nothing_is_locked_again() -> void:
+	# A save from before the random rule holds songs its counts no longer earn.
+	_song("kept1")
+	_song("kept2")
+	_wins(GAME, 1)
+	Radio.refresh_unlocks(false)
+	assert_eq(_unlocked_of(GAME).size(), 2, "both stay, though one beat earns one")
+
+func test_an_old_radio_file_reads_its_announced_songs_as_unlocked() -> void:
+	var f := FileAccess.open(Radio._unlocked_path(), FileAccess.WRITE)
+	f.store_string(JSON.stringify({"announced": ["old_song"]}))
+	f.close()
+	Radio._load_unlocked()
+	assert_true(Radio._unlocked.has("old_song"))
+	Radio._save_unlocked()
+	var parsed: Dictionary = JSON.parse_string(
+		FileAccess.get_file_as_string(Radio._unlocked_path()))
+	assert_eq(parsed.get("unlocked"), ["old_song"], "and it is written back as unlocked")
+
+func test_a_song_with_no_game_is_never_drawn() -> void:
+	var s := _locked("stray", &"")
+	_wins(GAME, 9)
+	Radio.refresh_unlocks(false)
+	assert_false(Radio.is_unlocked(s))
+	assert_eq(Radio.rule_text(s), "No game to unlock it on")
+
+# --- what counts as a goal --------------------------------------------------
+
+func test_each_distinct_goal_of_every_kind_counts_once() -> void:
 	GameStats.enemy_log[String(GAME)] = {"monkey": {"beaten": 5, "note": ""}}
 	assert_eq(GameStats.distinct_goals_count(GAME), 1, "five Monkeys are one goal")
 	GameStats.record_goal(GAME, "weapon", "whip", "Whip — kill 3 enemies")
@@ -171,14 +274,10 @@ func test_a_goals_song_counts_each_distinct_goal_of_every_kind() -> void:
 	assert_eq(GameStats.distinct_goals_count(GAME), 2, "the same weapon twice is one goal")
 	GameStats.record_goal(GAME, "status", "strength", "Strength — win without healing")
 	GameStats.levelup_log[String(GAME)] = {"isaac": {"levels": 1, "note": ""}}
-	assert_true(Radio.is_unlocked(s), "an enemy, a weapon, a status and a level-up: 4")
-
-func test_a_curse_followed_counts_as_a_goal() -> void:
-	var s := _song("grind", &"goals", 1)
 	GameStats.record_goal(GAME, "curse", "poor_sleep", "Poor Sleep — don't rest")
-	assert_true(GameStats.goals_at(GAME).has("curse"), "the curse is on the record")
-	assert_eq(GameStats.distinct_goals_count(GAME), 1, "and it counts")
-	assert_true(Radio.is_unlocked(s))
+	assert_true(GameStats.goals_at(GAME).has("curse"), "a curse followed is on the record")
+	assert_eq(GameStats.distinct_goals_count(GAME), 5)
+	assert_eq(Radio.earned(GAME), 1, "an enemy, a weapon, a status, a level-up and a curse: one song")
 
 func test_a_bonus_counts_once_per_status_whatever_it_rode_on() -> void:
 	# The checklist keys a bonus by its status, so Burn paid on two different
@@ -198,58 +297,53 @@ func test_event_goals_are_not_on_the_record() -> void:
 
 func test_a_note_without_a_win_is_not_a_goal() -> void:
 	# enemy_log also holds notes written before a clear (GameStats.set_enemy_note).
-	var s := _song("grind", &"goals", 1)
 	GameStats.enemy_log[String(GAME)] = {"monkey": {"beaten": 0, "note": "next time"}}
 	assert_eq(GameStats.distinct_goals_count(GAME), 0)
-	assert_false(Radio.is_unlocked(s))
 
 func test_goals_at_another_game_do_not_count() -> void:
-	var s := _song("grind", &"goals", 1)
+	var s := _locked("grind")
 	_defeat_distinct(OTHER, 9)
+	Radio.refresh_unlocks(false)
 	assert_false(Radio.is_unlocked(s))
 
-func test_the_list_says_where_the_progress_came_from() -> void:
-	var s := _song("grind", &"goals", 5)
+func test_the_list_says_where_the_goals_came_from() -> void:
+	var s := _locked("grind")
 	_defeat_distinct(GAME, 2)
 	GameStats.record_goal(GAME, "weapon", "whip", "Whip")
 	GameStats.record_goal(GAME, "curse", "poor_sleep", "Poor Sleep")
 	assert_eq(Radio.goals_done(s), ["2 Enemies", "1 Weapon", "1 Curse"])
-	assert_eq(Radio.goals_done(_song("w", &"wins", 1)), [],
-		"a wins song has nothing to list")
 
-func test_a_song_with_no_rule_stays_locked() -> void:
-	var s := _song("draft", &"", 0)
-	_wins(GAME, 99)
-	assert_false(Radio.is_unlocked(s), "no rule means locked, not free")
-	assert_false(Radio.is_playable(s))
-	assert_eq(Radio.rule_text(s), "No unlock rule yet")
+func test_the_next_song_reads_as_a_sentence_about_its_game() -> void:
+	var s := _locked("a")
+	assert_eq(Radio.rule_text(s),
+		"Next Hades song: beat Hades, or complete 5 more distinct goals there")
+	_wins(GAME, 1)
+	_defeat_distinct(GAME, 4)
+	assert_eq(Radio.rule_text(s),
+		"Next Hades song: beat Hades 2 times more, or complete 1 more distinct goal there")
+	_wins(GAME, 2)
+	assert_eq(Radio.rule_text(s),
+		"Next Hades song: beat Hades once more, or complete 1 more distinct goal there")
+	assert_eq(Radio.to_next(GAME), {"beats": 1, "goals": 1})
 
 func test_an_unlocked_song_without_its_file_is_listed_but_not_played() -> void:
-	var s := _song("ghost", &"wins", 1, GAME, [], false)
-	_wins(GAME, 1)
+	var s := _song("ghost", [], false)
 	assert_true(Radio.is_unlocked(s))
 	assert_false(Radio.has_file(s))
 	assert_false(Radio.is_playable(s))
 	Radio.next()
 	assert_eq(Radio.current, &"", "nothing to play")
 
-func test_the_rule_reads_as_a_sentence() -> void:
-	assert_eq(Radio.rule_text(_song("a", &"wins", 1)), "Beat Hades once")
-	assert_eq(Radio.rule_text(_song("b", &"wins", 3)), "Beat Hades 3 times")
-	assert_eq(Radio.rule_text(_song("c", &"goals", 10)),
-		"Complete 10 distinct goals in Hades")
-	assert_eq(Radio.rule_text(_song("d", &"goals", 1)),
-		"Complete 1 distinct goal in Hades")
-
 func test_an_unlock_is_announced_once_and_plays_next() -> void:
 	var first := _song("first")
-	var fresh := _song("fresh", &"wins", 2)
+	var fresh := _locked("fresh")
 	_wins(GAME, 1)
 	Radio.refresh_unlocks(false)
+	assert_false(Radio.is_unlocked(fresh), "one beat is one song, and Hades has it")
 	Radio.next()
 	assert_eq(Radio.current, first.id)
 	watch_signals(Radio)
-	_wins(GAME, 2)
+	_wins(GAME, 3)
 	GameStats.changed.emit()
 	assert_signal_emit_count(Radio, "song_unlocked", 1)
 	assert_true(Notifications.history.any(func(n): return String(n["text"]).contains("Fresh")),
@@ -260,12 +354,12 @@ func test_an_unlock_is_announced_once_and_plays_next() -> void:
 	assert_signal_emit_count(Radio, "song_unlocked", 1, "and is not announced twice")
 
 func test_unlocks_already_earned_are_taken_quietly() -> void:
-	_song("old")
+	_locked("old")
 	_wins(GAME, 1)
 	watch_signals(Radio)
 	Radio.refresh_unlocks(false)
 	assert_signal_not_emitted(Radio, "song_unlocked")
-	assert_true(Radio._announced.has("old"))
+	assert_true(Radio._unlocked.has("old"))
 	assert_eq(Notifications.history.size(), 0)
 
 # --- the queue and the controls --------------------------------------------
@@ -369,8 +463,8 @@ func test_volume_is_clamped_and_kept() -> void:
 	assert_almost_eq(Radio.volume, 0.25, 0.001, "saved to the radio's config")
 
 func test_a_station_plays_only_its_tag() -> void:
-	_song("calm", &"wins", 1, GAME, ["chill"])
-	_song("loud", &"wins", 1, GAME, ["boss"])
+	_song("calm", ["chill"])
+	_song("loud", ["boss"])
 	_wins(GAME, 1)
 	assert_eq(Radio.stations(), ["boss", "chill"])
 	Radio.set_station("chill")
@@ -382,7 +476,7 @@ func test_a_station_plays_only_its_tag() -> void:
 
 func test_a_file_that_will_not_decode_is_skipped() -> void:
 	_song("good")
-	var bad := _song("bad", &"wins", 1, GAME, [], false)
+	var bad := _song("bad", [], false)
 	var f := FileAccess.open("%s/%s" % [FOLDER, bad.file], FileAccess.WRITE)
 	f.store_string("not a wav")
 	f.close()
@@ -408,7 +502,7 @@ func test_only_the_chosen_speaker_plays() -> void:
 	assert_false(Radio._player.playing)
 
 func test_the_payload_is_plain_json_and_still_between_changes() -> void:
-	_song("a", &"wins", 1, GAME, ["boss"])
+	_song("a", ["boss"])
 	_wins(GAME, 1)
 	Radio.next()
 	var p: Dictionary = Radio.payload()
@@ -441,7 +535,7 @@ func test_the_overlay_writes_a_radio_view() -> void:
 
 func test_the_screen_lists_every_song_and_drives_the_radio() -> void:
 	_song("a")
-	_song("b", &"goals", 4)
+	_locked("b")
 	_wins(GAME, 1)
 	_defeat_distinct(GAME, 1)
 	Radio.next()
@@ -454,7 +548,8 @@ func test_the_screen_lists_every_song_and_drives_the_radio() -> void:
 	for row in screen._list.get_children():
 		for l in row.find_children("*", "Label", true, false):
 			text += (l as Label).text + "\n"
-	assert_string_contains(text, "Complete 4 distinct goals in Hades  (1 / 4)")
+	assert_string_contains(text,
+		"Next Hades song: beat Hades 2 times more, or complete 4 more distinct goals there")
 	assert_string_contains(text, "Done here: 1 Enemy")
 	screen._play_btn.pressed.emit()
 	assert_true(Radio.paused, "the play button pauses")

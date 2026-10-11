@@ -7,14 +7,19 @@ extends Node
 #
 #   * The SONGS are content like everything else: rows of the `radio` sheet,
 #     generated into data/songs/ (SongData). A row says which game the song
-#     belongs to and what it takes there — `goals` (distinct goals of any kind completed at that
-#     game) or `wins` (times it has been reported beaten) — and how many.
+#     belongs to, and nothing about how it unlocks.
 #   * The AUDIO is the player's own and never in the repo. It sits in FOLDER on
 #     their machine and a row only names the file.
-#   * UNLOCKING IS NOT A THING ANYONE DOES. Both counts are already kept by
-#     GameStats for every game; a song is unlocked exactly when its count is met.
-#     This node only remembers which unlocks it has already ANNOUNCED, so a new
-#     one gets its toast and jumps the queue once.
+#   * A GAME EARNS SONGS, AND WHICH ONE IS LUCK. Playing a game earns songs by
+#     one rule for every game (`earned`): one on its first beat, one more on
+#     every third beat, one for every five distinct goals completed there. Each
+#     song earned is drawn at random from that game's songs still locked. The
+#     counts are GameStats's, kept for every game anyway; what this node keeps is
+#     the DRAW — which songs came up — because a random pick cannot be worked out
+#     again from the counts the way a fixed rule could.
+#   * UNLOCKING IS NOT A THING ANYONE DOES BY HAND. Whenever the counts move, a
+#     game owed more songs than it has draws them (`refresh_unlocks`), and each
+#     new one gets its toast and jumps the queue once.
 #
 # THIS NODE IS THE CLOCK, AND BOTH SPEAKERS FOLLOW IT. The music can come out of
 # OBS (a `radio.html` browser source, so it has its own fader and can be kept off
@@ -70,7 +75,7 @@ var seq: int = 0
 
 var _queue: Array = []           # [StringName] still to play this pass
 var _history: Array = []         # [StringName] played, newest last
-var _announced: Dictionary = {}  # song id -> true: unlocks already toasted
+var _unlocked: Dictionary = {}   # song id -> true: songs drawn, per profile
 var _player: AudioStreamPlayer
 var _stream: AudioStream = null
 var _rng := RandomNumberGenerator.new()
@@ -93,7 +98,7 @@ func _ready() -> void:
 	add_child(_player)
 	DirAccess.make_dir_recursive_absolute(folder)
 	load_config()
-	_load_announced()
+	_load_unlocked()
 	# Unlocks the save already earned are taken QUIETLY at boot: a first launch
 	# on an old save could owe dozens of toasts, and none of them is news.
 	refresh_unlocks(false)
@@ -119,21 +124,49 @@ func has_file(song: SongData) -> bool:
 	var p: String = file_path(song)
 	return p != "" and FileAccess.file_exists(p)
 
-# How far the song's game has got towards it: {have, need}. need 0 = no rule.
-func progress(song: SongData) -> Dictionary:
-	if song == null or song.unlock == &"" or song.game_id == &"":
-		return {"have": 0, "need": 0}
-	var have: int = 0
-	match song.unlock:
-		&"goals":
-			have = GameStats.distinct_goals_count(song.game_id)
-		&"wins":
-			have = GameStats.beaten_count(song.game_id)
-	return {"have": have, "need": song.count}
+# --- what a game has earned ------------------------------------------------
+#
+# The owner's rule (October 2026), the same for every game:
+#
+#   * its FIRST BEAT earns a song,
+#   * and so does every THIRD beat, the first one counting towards it — so beats
+#     1, 3, 6, 9, 12 ... each earn one,
+#   * and every FIVE DISTINCT GOALS completed there earn one more (5, 10, 15 ...),
+#     counted as GameStats.distinct_goals_count counts them: every kind of goal,
+#     each one once however often it was done again.
+const BEATS_PER_SONG := 3
+const GOALS_PER_SONG := 5
+
+static func earned_for(beats: int, goals: int) -> int:
+	var n: int = 0
+	if beats >= 1:
+		n += 1 + beats / BEATS_PER_SONG
+	return n + maxi(goals, 0) / GOALS_PER_SONG
+
+# How many songs `game` has earned so far.
+func earned(game: StringName) -> int:
+	return earned_for(GameStats.beaten_count(game), GameStats.distinct_goals_count(game))
+
+# The beats and goals `game` still needs for its NEXT song: {beats, goals}, each
+# counted from where the game stands now. Either one gets there.
+func to_next(game: StringName) -> Dictionary:
+	var beats: int = GameStats.beaten_count(game)
+	var goals: int = GameStats.distinct_goals_count(game)
+	var next_beat: int = 1 if beats < 1 else (beats / BEATS_PER_SONG + 1) * BEATS_PER_SONG
+	var next_goals: int = (goals / GOALS_PER_SONG + 1) * GOALS_PER_SONG
+	return {"beats": next_beat - beats, "goals": next_goals - goals}
+
+func game_songs(game: StringName) -> Array:
+	var out: Array = []
+	if game == &"":
+		return out
+	for s in songs():
+		if (s as SongData).game_id == game:
+			out.append(s)
+	return out
 
 func is_unlocked(song: SongData) -> bool:
-	var p: Dictionary = progress(song)
-	return int(p["need"]) > 0 and int(p["have"]) >= int(p["need"])
+	return song != null and _unlocked.has(String(song.id))
 
 func is_playable(song: SongData) -> bool:
 	return is_unlocked(song) and has_file(song)
@@ -141,22 +174,29 @@ func is_playable(song: SongData) -> bool:
 func on_station(song: SongData) -> bool:
 	return station == "" or song.tags.has(station)
 
-# The rule in words, for the song list: "Beat Hades 3 times".
+# Where a locked song stands, for the song list: what its game needs for its next
+# song. It is only ever "a chance at this one", since the draw is random — the
+# list says so by naming the game rather than the song.
 func rule_text(song: SongData) -> String:
-	if song == null or song.unlock == &"":
-		return "No unlock rule yet"
+	if song == null or song.game_id == &"":
+		return "No game to unlock it on"
 	var game: GameData = Data.get_game(song.game_id)
 	var name: String = game.display_name if game != null else String(song.game_id)
-	if song.unlock == &"wins":
-		return "Beat %s %s" % [name, "once" if song.count == 1 else "%d times" % song.count]
-	return "Complete %d distinct goal%s in %s" % [song.count,
-		"" if song.count == 1 else "s", name]
+	var left: Dictionary = to_next(song.game_id)
+	var beats: int = int(left["beats"])
+	var goals: int = int(left["goals"])
+	var beat_part: String
+	if GameStats.beaten_count(song.game_id) < 1:
+		beat_part = "beat %s" % name
+	else:
+		beat_part = "beat %s %s more" % [name, "once" if beats == 1 else "%d times" % beats]
+	return "Next %s song: %s, or complete %d more distinct goal%s there" % [
+		name, beat_part, goals, "" if goals == 1 else "s"]
 
-# What has counted so far towards a `goals` song, kind by kind in the
-# Collection's order — "2 Enemies, 1 Weapon" — so the list says where the
-# progress came from.
+# What has counted at the song's game so far, kind by kind in the Collection's
+# order — "2 Enemies, 1 Weapon" — so the list says where the goals came from.
 func goals_done(song: SongData) -> Array:
-	if song == null or song.unlock != &"goals":
+	if song == null or song.game_id == &"":
 		return []
 	var out: Array = []
 	var all: Dictionary = GameStats.goals_at(song.game_id)
@@ -204,19 +244,51 @@ func current_song() -> SongData:
 # Unlocking
 # ---------------------------------------------------------------------------
 
-# Announce every song that has become unlocked since it was last looked at.
-# `announce` false takes them silently (boot, a profile switch).
+# Draw every song a game is owed and has not been dealt: for each game with
+# songs, `earned` minus the songs of it already unlocked, at random from the ones
+# still locked. `announce` false takes them silently (boot, a profile switch).
+#
+# A song whose FILE IS IN THE FOLDER is drawn before one whose file is missing, so
+# an unlock is something that can play whenever there is one to give; the rest
+# are still drawn once those run out, and show as "file not found" — a typo in
+# the sheet should read as a typo.
+#
+# NOTHING IS EVER LOCKED AGAIN. A game holding more songs than it has earned (a
+# save from before this rule, when each song had its own count) keeps them all.
 func refresh_unlocks(announce: bool = true) -> void:
 	var fresh: Array = []
+	var by_game: Dictionary = {}
 	for s in songs():
 		var song: SongData = s
-		if _announced.has(String(song.id)) or not is_unlocked(song):
+		if song.game_id == &"":
 			continue
-		_announced[String(song.id)] = true
-		fresh.append(song)
+		if not by_game.has(song.game_id):
+			by_game[song.game_id] = []
+		(by_game[song.game_id] as Array).append(song)
+	var games: Array = by_game.keys()
+	games.sort()
+	for game in games:
+		var pool: Array = by_game[game]
+		var have: int = 0
+		var with_file: Array = []
+		var without: Array = []
+		for song in pool:
+			if is_unlocked(song):
+				have += 1
+			elif has_file(song):
+				with_file.append(song)
+			else:
+				without.append(song)
+		var owed: int = earned(game) - have
+		while owed > 0 and not (with_file.is_empty() and without.is_empty()):
+			var from: Array = with_file if not with_file.is_empty() else without
+			var song: SongData = from.pop_at(_rng.randi_range(0, from.size() - 1))
+			_unlocked[String(song.id)] = true
+			fresh.append(song)
+			owed -= 1
 	if fresh.is_empty():
 		return
-	_save_announced()
+	_save_unlocked()
 	if announce:
 		# Newest first in the queue: the LAST one announced plays next, and the
 		# rest follow it, so a report that unlocks two plays both.
@@ -237,7 +309,7 @@ func _label(song: SongData) -> String:
 	return song.title if song.artist == "" else "%s — %s" % [song.title, song.artist]
 
 func _on_profile_changed() -> void:
-	_load_announced()
+	_load_unlocked()
 	refresh_unlocks(false)
 	_queue.clear()
 	_history.clear()
@@ -518,25 +590,29 @@ func save_config() -> void:
 	cfg.set_value("radio", "paused", paused)
 	cfg.save(config_path)
 
-# Which unlocks have been announced is the PLAYER's, so it follows the profile
-# the way GameStats does.
-func _announced_path() -> String:
+# Which songs have been drawn is the PLAYER's, so it follows the profile the way
+# GameStats does. `radio.json` used to hold only the unlocks already ANNOUNCED,
+# when an unlock could be worked out from the counts; under the random rule those
+# are the songs this profile had, so an old file's "announced" list is read as
+# unlocked songs and nothing anyone heard goes away.
+func _unlocked_path() -> String:
 	return Profiles.path("radio.json")
 
-func _load_announced() -> void:
-	_announced = {}
-	var f := FileAccess.open(_announced_path(), FileAccess.READ)
+func _load_unlocked() -> void:
+	_unlocked = {}
+	var f := FileAccess.open(_unlocked_path(), FileAccess.READ)
 	if f == null:
 		return
 	var parsed: Variant = JSON.parse_string(f.get_as_text())
 	if parsed is Dictionary:
-		for id in (parsed as Dictionary).get("announced", []):
-			_announced[String(id)] = true
+		for key in ["unlocked", "announced"]:
+			for id in (parsed as Dictionary).get(key, []):
+				_unlocked[String(id)] = true
 
-func _save_announced() -> void:
-	var f := FileAccess.open(_announced_path(), FileAccess.WRITE)
+func _save_unlocked() -> void:
+	var f := FileAccess.open(_unlocked_path(), FileAccess.WRITE)
 	if f == null:
 		return
-	var ids: Array = _announced.keys()
+	var ids: Array = _unlocked.keys()
 	ids.sort()
-	f.store_string(JSON.stringify({"announced": ids}, "  "))
+	f.store_string(JSON.stringify({"unlocked": ids}, "  "))
