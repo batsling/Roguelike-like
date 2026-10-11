@@ -118,13 +118,10 @@ func _build_header() -> Control:
 	title.add_theme_color_override("font_color", UITheme.GOLD)
 	row.add_child(title)
 
-	var sub := Label.new()
-	sub.text = "The dungeon is your backlog."
-	sub.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	sub.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	sub.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
-	sub.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
-	row.add_child(sub)
+	# No subtitle: "The dungeon is your backlog." is the first line of chapter one.
+	var gap := Control.new()
+	gap.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(gap)
 
 	var close := Button.new()
 	close.text = "✕  Close"

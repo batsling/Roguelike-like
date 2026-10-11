@@ -1817,7 +1817,7 @@ func test_every_offered_card_says_how_far_the_amulet_is() -> void:
 		var text: String = _text_of(card)
 		if hops > 0:
 			assert_string_contains(text,
-				"%d game%s away from the Amulet" % [hops, "" if hops == 1 else "s"],
+				"%d from the Amulet" % hops,
 				"the card counts the road left: %s" % text)
 		elif hops == 0:
 			assert_string_contains(text, "THE AMULET",
@@ -4132,7 +4132,7 @@ func test_the_standing_checklist_lists_what_you_owe() -> void:
 	var texts := func() -> String:
 		return "\n".join(_labels_under(_ui._verify_box))
 	var listed: String = texts.call()
-	assert_true(listed.contains("What you need to do"), "the panel says what it is: %s" % listed)
+	assert_true(listed.contains("Goals"), "the panel says what it is: %s" % listed)
 	# READ OFF THE CHARACTER, not quoted. The goal wording is authored in the
 	# workbook's `goals` sheet and pushed out to `characters` from there (§7.7), so
 	# a pass over the goals rewrites it — this line used to quote "Use sorrow or
@@ -5481,12 +5481,12 @@ func test_the_start_screen_selects_a_road_before_it_commits_to_one() -> void:
 		pending("no start options rolled for this run")
 		return
 	assert_eq(picker.selected_index(), 0, "one road is preselected, so Begin is never dead")
-	assert_true(String(picker._confirm.text).contains(
-		_ui._start_options[0]["game"].display_name), "and Begin names it")
+	assert_true(String(picker._confirm.tooltip_text).contains(
+		_ui._start_options[0]["game"].display_name), "and Begin names it on hover")
 	if _ui._start_options.size() > 1:
 		picker.select(1)
 		assert_eq(picker.selected_index(), 1, "clicking the other road selects it")
-		assert_true(String(picker._confirm.text).contains(
+		assert_true(String(picker._confirm.tooltip_text).contains(
 			_ui._start_options[1]["game"].display_name), "and Begin renames itself")
 		assert_eq(_ui._phase, OVERWORLD.Phase.START_SELECT,
 			"selecting is not choosing — nothing has been committed to")
@@ -8718,16 +8718,18 @@ func test_the_report_step_hands_the_checklist_back_intact() -> void:
 	# tick boxes on screen with no game in play.
 	_ui._populate_standing_checklist()
 	var standing: String = _text_of(_ui._verify_box)
-	assert_true(standing.contains("What you need to do"), "the standing list is up")
+	assert_true(standing.contains("Goals"), "the standing list is up")
 	_pick_enemies(0)
 	var playing: String = _text_of(_ui._verify_box)
-	assert_true(playing.contains("Tick what you did this game"),
+	assert_true(playing.contains("Tick what you did"),
 		"the report step took the box over: %s" % playing)
 	_report_beat(_ui)
 	_ui._end_resolve()
 	_leave_post_game()
-	assert_true(_text_of(_ui._verify_box).contains("What you need to do"),
+	assert_true(_text_of(_ui._verify_box).contains("Goals"),
 		"and the standing list is back after the report")
+	assert_false(_text_of(_ui._verify_box).contains("Tick what you did"),
+		"with the report step's header gone")
 
 # ---------------------------------------------------------------------------
 # What can be spent WHILE a game is in play

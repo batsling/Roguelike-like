@@ -423,10 +423,9 @@ node and its script.
   (`5 games from the Amulet`) and the maps drew the destination as an unnamed
   `The Amulet — ???` box that opened no card. All of that is gone. The start
   screen is built around it — its art and its name are the banner across the top
-  (`StartPicker`) — each road's distance line names it
-  (`5 games from Guild of Dungeoneering`, via `Overworld2.amulet_name` /
-  `_start_distance_text`), and the ladder a road opens names it on its last
-  rung. (That ladder is the ladder alone — the star chart stays down on the
+  (`StartPicker`), so each road's distance line only counts
+  (`5 from the Amulet`, `_start_distance_text`; its popup's tooltip names the
+  game), and the ladder a road opens names it on its last rung. (That ladder is the ladder alone — the star chart stays down on the
   start screen; see `RouteLadder.gd`.) Choosing a start is a routing decision, and
   the game the road ends on is half of what makes one road different from
   another.

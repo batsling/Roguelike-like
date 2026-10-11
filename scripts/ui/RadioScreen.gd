@@ -32,7 +32,7 @@ var _dragging_volume: bool = false
 var _shuffle: CheckBox
 var _station: OptionButton
 var _output: OptionButton
-var _output_hint: Label
+var _output_caption: Label
 var _list: VBoxContainer
 var _summary: Label
 var _list_key: String = "-"       # `_list_state` the list was last built for
@@ -265,7 +265,9 @@ func _build_options() -> Control:
 			Radio.set_station(tag))
 	row.add_child(_station)
 
-	row.add_child(_caption("Plays from"))
+	_output_caption = _caption("Plays from")
+	_output_caption.mouse_filter = Control.MOUSE_FILTER_PASS
+	row.add_child(_output_caption)
 	_output = OptionButton.new()
 	_output.add_item("OBS (radio.html)", Radio.Output.OBS)
 	_output.add_item("This window", Radio.Output.GAME)
@@ -274,19 +276,14 @@ func _build_options() -> Control:
 		if id != Radio.output:
 			Radio.set_output(id))
 	row.add_child(_output)
-
-	_output_hint = Label.new()
-	_output_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_output_hint.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
-	_output_hint.add_theme_color_override("font_color", UITheme.TEXT_DIM)
-	box.add_child(_output_hint)
+	# How to hear it is the dropdown's tooltip, not a paragraph under the row.
 	return box
 
 func _build_folder_row() -> Control:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", UITheme.GAP)
 	var where := Label.new()
-	where.text = "Your music folder: %s" % ProjectSettings.globalize_path(Radio.folder)
+	where.text = "Music folder: %s" % ProjectSettings.globalize_path(Radio.folder)
 	where.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 	where.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 	where.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -384,11 +381,13 @@ func _refresh() -> void:
 		_station.select(0)
 
 	_output.select(_output.get_item_index(Radio.output))
-	_output_hint.text = ("Add a Browser Source in OBS pointed at radio.html in the "
+	var how: String = ("Add a Browser Source in OBS pointed at radio.html in the "
 		+ "overlay folder, and set its Audio Monitoring to \"Monitor and Output\" to "
 		+ "hear it yourself.") if Radio.output == Radio.Output.OBS else (
 		"Playing out of the game window. Switch back to OBS when you stream, or "
 		+ "the music will be on the game's audio instead of its own fader.")
+	_output.tooltip_text = how
+	_output_caption.tooltip_text = how
 
 	_fill_list()
 
@@ -419,7 +418,7 @@ func _silence_reason() -> String:
 			return "None of your favourites has its file in the music folder."
 		if Radio.station != "":
 			return "Nothing unlocked on this station yet."
-		return "Nothing unlocked with its file in the music folder yet."
+		return "No unlocked song has its file yet."
 	return ""
 
 func _time_text() -> String:
@@ -595,6 +594,8 @@ func _song_row(song: SongData) -> Control:
 	text.add_child(name)
 	var sub := Label.new()
 	sub.text = _status_line(song)
+	sub.tooltip_text = _status_tip(song)
+	sub.mouse_filter = Control.MOUSE_FILTER_PASS
 	sub.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 	sub.add_theme_color_override("font_color", _status_color(song))
 	sub.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
@@ -626,13 +627,19 @@ func _status_line(song: SongData) -> String:
 	if not Radio.is_unlocked(song):
 		return "🔒  " + Radio.rule_text(song)
 	if song.file == "":
-		return "Unlocked — but the sheet names no file for it"
+		return "No file on the sheet"
 	if not Radio.has_file(song):
-		return "Unlocked — file not found: %s" % song.file
+		return "File missing"
 	if not Radio.on_station(song):
-		return "Unlocked — not on this station"
+		return "Not on this station"
 	var game: GameData = Data.get_game(song.game_id)
-	return "Unlocked  ·  from " + (game.display_name if game != null else String(song.game_id))
+	return "from " + (game.display_name if game != null else String(song.game_id))
+
+# The detail the short status line leaves out: which file it looked for.
+func _status_tip(song: SongData) -> String:
+	if Radio.is_unlocked(song) and song.file != "" and not Radio.has_file(song):
+		return "Not found in the music folder: %s" % song.file
+	return ""
 
 func _status_color(song: SongData) -> Color:
 	if not Radio.is_unlocked(song):

@@ -900,6 +900,13 @@ var _detail_overlay: Control = null
 var _nav_prev: Button = null
 var _nav_next: Button = null
 var _detail_scroll: ScrollContainer = null
+# Stepping with ◀ ▶ slides the next card in sideways rather than popping it.
+const DETAIL_SLIDE_PX := 36.0
+const DETAIL_SLIDE_SEC := 0.12
+var _slide_dir: int = 0
+var _reveal_dir: int = 0
+var _reveal_tween: Tween = null
+var _fit_gen: int = 0
 
 # Every clickable cell in the grid, in layout order, as {panel, open, border}.
 # Rebuilt with the grid, so it always describes what is on screen.
@@ -914,8 +921,15 @@ func _set_detail_open(on: bool) -> void:
 	if _detail_panel != null and is_instance_valid(_detail_panel):
 		_detail_panel.visible = on
 	if _detail_overlay != null and is_instance_valid(_detail_overlay):
+		var stepping: bool = on and _detail_overlay.visible
 		_detail_overlay.visible = on
 		if on:
+			# HIDDEN UNTIL FITTED. The card is measured a couple of frames after it
+			# is filled, and shown before that it grew to the cap and shrank back —
+			# on a centred card that read as the next entry dropping in from above.
+			if _detail_panel != null and is_instance_valid(_detail_panel):
+				_detail_panel.modulate.a = 0.0
+			_reveal_dir = _slide_dir if stepping else 0
 			# Deferred: every `_show_*_detail` opens the popup FIRST and fills it
 			# after, so the contents are only there to be measured a beat later.
 			_fit_detail_height.call_deferred()
@@ -1046,14 +1060,39 @@ func _fit_detail_height() -> void:
 	# Opened at the cap, then fitted once it has been laid out at its real width:
 	# a wrapping Label reports its height at whatever width it last had, and
 	# before its first layout that is a column one word wide.
+	_fit_gen += 1
+	var gen: int = _fit_gen
 	_detail_scroll.custom_minimum_size = Vector2(0, maxf(120.0, cap))
 	await get_tree().process_frame
 	await get_tree().process_frame
-	if _detail_scroll == null or not is_instance_valid(_detail_scroll) \
+	# A newer entry has been opened since: that call does the fitting.
+	if gen != _fit_gen or _detail_scroll == null or not is_instance_valid(_detail_scroll) \
 			or _detail_box == null or not is_instance_valid(_detail_box):
 		return
 	var want: float = _detail_box.size.y
 	_detail_scroll.custom_minimum_size = Vector2(0, clampf(want, 120.0, maxf(120.0, cap)))
+	# One more frame for the row to re-centre the card at its fitted size, so the
+	# slide starts from where it will rest.
+	await get_tree().process_frame
+	if gen != _fit_gen:
+		return
+	_reveal_detail()
+
+# Show the fitted card: a short slide in from the side of the arrow pressed (the
+# next entry comes from the right), or a plain fade when it was opened from the grid.
+func _reveal_detail() -> void:
+	if _detail_panel == null or not is_instance_valid(_detail_panel):
+		return
+	if _reveal_tween != null and _reveal_tween.is_valid():
+		_reveal_tween.kill()
+	var rest_x: float = _detail_panel.position.x
+	_detail_panel.position.x = rest_x + DETAIL_SLIDE_PX * _reveal_dir
+	# Bound to the card, so a tab switch that frees it takes the tween with it.
+	_reveal_tween = _detail_panel.create_tween().set_parallel(true) \
+		.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	_reveal_tween.tween_property(_detail_panel, "modulate:a", 1.0, DETAIL_SLIDE_SEC)
+	if _reveal_dir != 0:
+		_reveal_tween.tween_property(_detail_panel, "position:x", rest_x, DETAIL_SLIDE_SEC)
 
 func _paint_nav_buttons() -> void:
 	var has: bool = _nav_index >= 0 and _nav_index < _nav.size()
@@ -1084,7 +1123,12 @@ func _step_detail(step: int) -> void:
 	if _nav.is_empty():
 		return
 	var at: int = _nav_index if _nav_index >= 0 else (-1 if step > 0 else _nav.size())
-	_select(clampi(at + step, 0, _nav.size() - 1))
+	var to: int = clampi(at + step, 0, _nav.size() - 1)
+	if to == _nav_index:
+		return
+	_slide_dir = signi(step)
+	_select(to)
+	_slide_dir = 0
 
 # THE SELECTED CELL: a thick bright rim in its own colour, a wash of it behind the
 # art, and a gold outer edge — so it reads from across the grid, through the
@@ -2339,12 +2383,15 @@ func _show_enemy_detail(e: GoalEnemyData) -> void:
 		img.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		_detail_box.add_child(img)
 	_detail_box.add_child(_label(("☠ " if e.is_boss() else "") + e.display_name, ac, 18, true))
-	var kind: String = "Boss" if e.is_boss() else "Goal-Enemy"
-	_detail_box.add_child(_detail_meta("%s  •  %s" % [kind, String(e.game_type).capitalize()], ac))
+	var genre: String = String(e.game_type).capitalize()
+	_detail_box.add_child(_detail_meta(("Boss  •  %s" % genre) if e.is_boss() else genre, ac))
 	if e.source_game != "":
 		_detail_box.add_child(_label("From: %s" % e.source_game, Color(0.65, 0.7, 0.8), 11, false, true))
 	_detail_box.add_child(HSeparator.new())
-	_detail_box.add_child(_detail_section("Goal (%s)" % String(e.goal_type).capitalize()))
+	var goal_head := _detail_section("Goal")
+	goal_head.tooltip_text = "%s goal" % String(e.goal_type).capitalize()
+	goal_head.mouse_filter = Control.MOUSE_FILTER_PASS
+	_detail_box.add_child(goal_head)
 	_detail_box.add_child(_label(e.goal, Color(0.9, 0.85, 0.55), 13, false, true))
 	_detail_box.add_child(_detail_section("Threat"))
 	_detail_box.add_child(_kv("Tier", ENEMY_TIER_NAMES[clampi(e.tier_index(), 0, 3)]))
@@ -2454,12 +2501,11 @@ func _build_loot() -> void:
 	# shrinking, so the whole panel widened and carried its ✕ Close button off the
 	# right edge of the screen. Wrapping, the note's minimum is its longest WORD,
 	# and it takes whatever the search box and the count leave.
-	var note := _label(_loot_note(), Color(0.6, 0.6, 0.65), 11, false, true)
-	note.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	note.size_flags_stretch_ratio = 2.0
-	note.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	note.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	row.add_child(note)
+	# THE NOTE IS THE SUB-TAB'S TOOLTIP now (`_loot_sub_button`), not a line here.
+	var gap := Control.new()
+	gap.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	gap.size_flags_stretch_ratio = 2.0
+	row.add_child(gap)
 	_add_count_label(row)
 	var scroll := ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -2479,8 +2525,8 @@ func _build_loot() -> void:
 # every run, but what it looks like once you know it is a fact about the potion,
 # so the catalog draws it (docs/potions-design.md §9.2). Six of the fifteen have
 # no art of their own and keep wearing a vial forever, which is the design (§6.3).
-func _loot_note() -> String:
-	match _loot_sub:
+func _loot_note(sub: String = "") -> String:
+	match sub if sub != "" else _loot_sub:
 		LOOT_PILLS:
 			return ("Revealed reference. Every run deals these a random colour out of "
 				+ "13, so the capsule here is a stand-in, not the one you'll be holding.")
@@ -2516,9 +2562,11 @@ func _loot_note() -> String:
 func _loot_sub_button(label: String, sub: String) -> Button:
 	# A full _refresh rather than a repopulate: the sub-tabs carry their own search
 	# term and their own note, and both live outside the grid.
-	return _sort_button(label, _loot_sub == sub, func():
+	var b := _sort_button(label, _loot_sub == sub, func():
 		_loot_sub = sub
 		_refresh())
+	b.tooltip_text = _loot_note(sub)
+	return b
 
 func _populate_loot() -> void:
 	match _loot_sub:

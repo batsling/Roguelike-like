@@ -11,6 +11,28 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Less text on screen.** Settings is one row per setting in two columns,
+  with the explanations moved into tooltips, so it fits a 720p window without
+  scrolling, and Close is pinned to the bottom-right outside the scroll. The
+  loot window's three instruction paragraphs became its title's tooltip
+  ("Loot 5/9"). The haul screen lost the line beside its exit button, which
+  repeated what the button says, and its drag hint is a tooltip now. The
+  checklist headers are "Goals" / "Tick what you did:", and an offering card
+  reads "5 from the Amulet". In the Collection, stepping with ◀ ▶ no longer
+  shows the card at full height before it shrinks to fit, which made each
+  entry look like it dropped in from above. The card stays hidden until it
+  has been measured, then slides in from the side of the arrow pressed.
+  The same pass then went over the menus. Custom Run's subtitle, column
+  blurbs, section notes, "4–8 games" and "Ready — 921 games on the map" are
+  gone or tooltips on their headings. The Radio's OBS paragraph is the "Plays
+  from" tooltip, and a song whose file is missing says "File missing" with the
+  path on hover. Choose Your Character, Profiles and the Tier List lost their
+  subtitles to tooltips. Confirm and Begin no longer repeat the name shown in
+  large type beside them, and a start card reads "8 from the Amulet" under a
+  header that already names the Amulet. The Collection's loot notes are the
+  sub-tabs' tooltips, an enemy card's header is its genre (with "Boss" for a
+  boss), and How to Play's subtitle is gone.
+
 - **Roguelike Radio: the owner's 1288 songs are on the sheet**, one menu song
   per game, with the tags their files lacked researched (see the commit). The
   Radio screen now lists locked songs as **one row per game** and rebuilds only

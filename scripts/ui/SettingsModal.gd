@@ -2,9 +2,18 @@ class_name SettingsModal
 extends Control
 
 # Settings panel, extracted from MainMenu so both the main menu and the in-run
-# pause menu open the exact same controls. Currently surfaces the game-filter
-# preference (which games the path generator may use). Built in code; runs
+# pause menu open the exact same controls. Built in code; runs
 # PROCESS_MODE_ALWAYS so it works on top of a paused run.
+#
+# ONE ROW PER SETTING: a short label on the left, the control on the right, and
+# the explanation in the tooltip of both. It used to be a single column with a
+# paragraph under every control, which ran to three screens of scrolling and put
+# Close at the bottom of all of it. Two columns of sections now fit a 720p window,
+# and Close sits OUTSIDE the scroll, pinned to the panel's bottom-right corner.
+
+const PANEL_MAX_W := 1040
+const CONTROL_W := 280   # the right-hand column, so every control lines up
+const LABEL_W := 170
 
 static func open(parent: Node) -> SettingsModal:
 	var m := SettingsModal.new()
@@ -42,6 +51,69 @@ func _size_for(id: int) -> Vector2i:
 		return Settings.WINDOWED_SIZE
 	return Settings.WINDOW_SIZES[id - 1]
 
+# ---------------------------------------------------------------------------
+# Building blocks
+# ---------------------------------------------------------------------------
+
+func _section(col: VBoxContainer, title: String) -> GridContainer:
+	var heading := Label.new()
+	heading.text = title
+	heading.add_theme_font_size_override("font_size", UITheme.FONT_SUB)
+	heading.add_theme_color_override("font_color", UITheme.ACCENT)
+	col.add_child(heading)
+	var grid := GridContainer.new()
+	grid.columns = 2
+	grid.add_theme_constant_override("h_separation", UITheme.GAP_LOOSE)
+	grid.add_theme_constant_override("v_separation", UITheme.GAP_SNUG)
+	col.add_child(grid)
+	return grid
+
+# One setting: its name, then its control. The tip is on both, so hovering
+# either explains it.
+func _row(grid: GridContainer, text: String, control: Control, tip: String = "") -> Label:
+	var label := Label.new()
+	label.text = text
+	label.custom_minimum_size = Vector2(LABEL_W, 0)
+	label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	label.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
+	label.add_theme_color_override("font_color", UITheme.TEXT_DIM)
+	label.mouse_filter = Control.MOUSE_FILTER_PASS
+	grid.add_child(label)
+	control.custom_minimum_size.x = maxf(control.custom_minimum_size.x, CONTROL_W)
+	control.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	grid.add_child(control)
+	_tip(label, control, tip)
+	return label
+
+func _tip(label: Control, control: Control, tip: String) -> void:
+	label.tooltip_text = tip
+	control.tooltip_text = tip
+	for c in control.get_children():
+		if c is Control and (c as Control).tooltip_text == "":
+			(c as Control).tooltip_text = tip
+
+func _toggle(grid: GridContainer, text: String, on: bool, set_fn: Callable, tip: String) -> CheckButton:
+	var chk := CheckButton.new()
+	chk.button_pressed = on
+	chk.toggled.connect(func(v: bool) -> void: set_fn.call(v))
+	# The switch sits at the start of its column, under the dropdowns' left edge.
+	var holder := HBoxContainer.new()
+	holder.add_child(chk)
+	_row(grid, text, holder, tip)
+	return chk
+
+func _path_field(path: String) -> LineEdit:
+	# Selectable rather than a Label: it is there to be copied.
+	var field := LineEdit.new()
+	field.text = path
+	field.editable = false
+	field.select_all_on_focus = true
+	field.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
+	return field
+
+# ---------------------------------------------------------------------------
+# The page
+# ---------------------------------------------------------------------------
 
 func _build_ui() -> void:
 	var dim := ColorRect.new()
@@ -50,58 +122,91 @@ func _build_ui() -> void:
 	dim.mouse_filter = Control.MOUSE_FILTER_STOP
 	add_child(dim)
 
-	# Cover the viewport with a small inset, cap the panel width and center it
-	# horizontally while it fills the available height, and scroll its content when
-	# the window is short. The old fixed-size (640x600) panel ran its lower controls
-	# off the bottom of the screen; this can't fall off-screen.
 	var outer := MarginContainer.new()
 	outer.set_anchors_preset(Control.PRESET_FULL_RECT)
 	for side in ["left", "right", "top", "bottom"]:
 		outer.add_theme_constant_override("margin_" + side, 24)
 	add_child(outer)
 
-	var row := HBoxContainer.new()
-	outer.add_child(row)
-	var spacer_l := Control.new()
-	spacer_l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_child(spacer_l)
+	var center := CenterContainer.new()
+	outer.add_child(center)
 
 	var panel := PanelContainer.new()
-	panel.custom_minimum_size = Vector2(560, 0)
-	row.add_child(panel)
-
-	var spacer_r := Control.new()
-	spacer_r.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_child(spacer_r)
+	var vp: Vector2 = get_viewport_rect().size
+	panel.custom_minimum_size = Vector2(minf(PANEL_MAX_W, vp.x - 48), 0)
+	center.add_child(panel)
 
 	var margin := MarginContainer.new()
 	for side in ["left", "right", "top", "bottom"]:
-		margin.add_theme_constant_override("margin_" + side, 24)
+		margin.add_theme_constant_override("margin_" + side, 20)
 	panel.add_child(margin)
 
-	var scroll := ScrollContainer.new()
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	margin.add_child(scroll)
-
-	var vbox := VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", UITheme.GAP_LOOSE)
-	vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.add_child(vbox)
+	var page := VBoxContainer.new()
+	page.add_theme_constant_override("separation", UITheme.GAP_LOOSE)
+	margin.add_child(page)
 
 	var title := Label.new()
 	title.text = "Settings"
 	title.add_theme_font_size_override("font_size", UITheme.FONT_TITLE_LG)
-	vbox.add_child(title)
+	page.add_child(title)
 
-	# --- display -----------------------------------------------------------
-	#
-	# First, because it is the only setting that changes what the player is
-	# looking at rather than what the run will do.
-	var display_heading := Label.new()
-	display_heading.text = "Display"
-	display_heading.add_theme_font_size_override("font_size", UITheme.FONT_HEAD)
-	display_heading.add_theme_color_override("font_color", Color(0.85, 0.9, 1.0))
-	vbox.add_child(display_heading)
+	# Scrolls only if the window is shorter than the page — Close stays put.
+	var scroll := ScrollContainer.new()
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	page.add_child(scroll)
+
+	var cols := HBoxContainer.new()
+	cols.add_theme_constant_override("separation", UITheme.GAP_BREAK)
+	cols.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(cols)
+
+	var left := VBoxContainer.new()
+	left.add_theme_constant_override("separation", UITheme.GAP)
+	left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	cols.add_child(left)
+	cols.add_child(VSeparator.new())
+	var right := VBoxContainer.new()
+	right.add_theme_constant_override("separation", UITheme.GAP)
+	right.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	cols.add_child(right)
+
+	_build_display_section(left)
+	_build_runs_section(left)
+	_build_stream_section(right)
+	_build_tags_section(right)
+	_build_wipe_section(right)
+	_build_dev_section(right)
+
+	# Fitted once laid out: the scroll claims no height of its own, so it is
+	# handed the page's, capped at what the window leaves.
+	_fit_scroll.call_deferred(scroll, cols)
+
+	var footer := HBoxContainer.new()
+	var gap := Control.new()
+	gap.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	footer.add_child(gap)
+	var close_btn := Button.new()
+	close_btn.name = "CloseBtn"
+	close_btn.text = "Close"
+	close_btn.custom_minimum_size = Vector2(140, 40)
+	close_btn.pressed.connect(queue_free)
+	footer.add_child(close_btn)
+	page.add_child(footer)
+
+func _fit_scroll(scroll: ScrollContainer, content: Control) -> void:
+	if not is_instance_valid(scroll) or not is_instance_valid(content):
+		return
+	# Title, footer, gaps and margins: what the panel spends that isn't the page.
+	var cap: float = get_viewport_rect().size.y - 48 - 40 - 140
+	scroll.custom_minimum_size.y = clampf(content.get_combined_minimum_size().y, 120.0, maxf(120.0, cap))
+
+# --- display ----------------------------------------------------------------
+#
+# First, because it is the only section that changes what the player is looking
+# at rather than what the run will do.
+func _build_display_section(col: VBoxContainer) -> void:
+	var grid := _section(col, "Display")
 
 	var display_opt := OptionButton.new()
 	# Default first: an ordinary window is what the game ships in (Settings.gd).
@@ -109,32 +214,14 @@ func _build_ui() -> void:
 			Settings.DisplayMode.EXCLUSIVE]:
 		display_opt.add_item(Settings.display_mode_name(mode), mode)
 	display_opt.select(display_opt.get_item_index(Settings.display_mode))
-	vbox.add_child(display_opt)
-
-	var display_hint := Label.new()
-	display_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	display_hint.custom_minimum_size = Vector2(0, 56)
-	display_hint.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
-	display_hint.add_theme_color_override("font_color", Color(0.75, 0.75, 0.8))
-	vbox.add_child(display_hint)
+	var mode_label := _row(grid, "Mode", display_opt)
 
 	# The WINDOW'S SIZE, for windowed mode. The page is a fixed canvas stretched
-	# into whatever the window is, so this is not a resolution in the usual sense
-	# — it is how big the same page is drawn — but it is the control the player
-	# reaches for when the game is too small or too big on their monitor, and
-	# there wasn't one. Every entry is a request: a size bigger than the desktop
-	# is clamped to what fits (Settings.windowed_fit).
-	var size_row := HBoxContainer.new()
-	size_row.add_theme_constant_override("separation", UITheme.GAP)
-	vbox.add_child(size_row)
-
-	var size_label := Label.new()
-	size_label.text = "Window size"
-	size_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	size_label.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
-	size_label.add_theme_color_override("font_color", Color(0.75, 0.75, 0.8))
-	size_row.add_child(size_label)
-
+	# into whatever the window is, so this is how big the same page is drawn.
+	# Every entry is a request: a size bigger than the desktop is clamped to what
+	# fits (Settings.windowed_fit).
+	var size_box := HBoxContainer.new()
+	size_box.add_theme_constant_override("separation", UITheme.GAP_SNUG)
 	var size_opt := OptionButton.new()
 	size_opt.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	size_opt.add_item("Fit the screen", 0)
@@ -142,42 +229,38 @@ func _build_ui() -> void:
 		var s: Vector2i = Settings.WINDOW_SIZES[i]
 		size_opt.add_item("%d × %d" % [s.x, s.y], i + 1)
 	size_opt.select(size_opt.get_item_index(_size_id(Settings.windowed_size)))
-	size_row.add_child(size_opt)
-
-	# APPLY. The mode dropdown takes effect the moment it is picked, and that is
-	# right for a mode — but it means a setting whose value has not changed does
-	# nothing at all, and "windowed, but put the window back where I asked for it"
-	# is a thing a player wants to be able to say. Apply re-applies the display
-	# section whatever it is currently set to, so the size beside it can be
-	# changed and changed again.
+	size_box.add_child(size_opt)
+	# APPLY. The mode dropdown takes effect the moment it is picked, which means
+	# re-picking the same mode does nothing — and "put the window back where I
+	# asked for it" is a thing a player wants to be able to say.
 	var apply_btn := Button.new()
 	apply_btn.text = "Apply"
-	apply_btn.custom_minimum_size = Vector2(96, 30)
-	apply_btn.tooltip_text = "Put the window back at the size and mode above."
-	size_row.add_child(apply_btn)
+	apply_btn.tooltip_text = "Put the window back at this size and mode."
+	size_box.add_child(apply_btn)
+	var size_label := _row(grid, "Window size", size_box, "How big the window is drawn, in windowed mode.")
 
-	var refresh_display_hint := func() -> void:
+	var refresh_display := func() -> void:
 		# The size only means anything to a window: both fullscreens are the size
 		# of the screen by definition.
 		var windowed: bool = display_opt.get_selected_id() == Settings.DisplayMode.WINDOWED
 		size_opt.disabled = not windowed
 		size_label.modulate.a = 1.0 if windowed else 0.5
+		var tip: String
 		match display_opt.get_selected_id():
 			Settings.DisplayMode.WINDOWED:
-				display_hint.text = "The default: an ordinary window, drawn at the size you pick below, with your taskbar still reachable underneath it.  ·  F11 toggles."
+				tip = "An ordinary window, with your taskbar reachable. F11 toggles."
 			Settings.DisplayMode.EXCLUSIVE:
-				display_hint.text = "True fullscreen. Sharper on some displays, but every alt-tab out to the game you're playing is a mode switch — and you do that several times a run.  ·  F11 toggles."
+				tip = "True fullscreen. Every alt-tab out is a mode switch. F11 toggles."
 			_:
-				display_hint.text = "A borderless window filling the screen. Alt-tabbing out to the game you're playing and back is instant, which is most of what you do.  ·  F11 toggles."
-	refresh_display_hint.call()
+				tip = "A borderless window filling the screen. Alt-tab is instant. F11 toggles."
+		_tip(mode_label, display_opt, tip)
+	refresh_display.call()
 
 	display_opt.item_selected.connect(func(idx: int) -> void:
 		Settings.set_display_mode(display_opt.get_item_id(idx))
-		refresh_display_hint.call())
-
+		refresh_display.call())
 	size_opt.item_selected.connect(func(idx: int) -> void:
 		Settings.set_windowed_size(_size_for(size_opt.get_item_id(idx))))
-
 	apply_btn.pressed.connect(func() -> void:
 		Settings.set_windowed_size(_size_for(size_opt.get_selected_id()))
 		Settings.set_display_mode(display_opt.get_selected_id())
@@ -185,311 +268,212 @@ func _build_ui() -> void:
 		# common case here — the point of the button is the second half.
 		Settings.apply_display_mode())
 
-	# Under Display because it is the other setting that changes only what the
-	# player is looking at. It takes effect immediately, including from here —
-	# this panel opens OVER the menu, so the art behind it starts or stops while
-	# the box is being ticked (`Settings.menu_falling_art_changed`).
-	var fall_chk := CheckButton.new()
-	fall_chk.text = "Falling art on the main menu"
-	fall_chk.button_pressed = Settings.menu_falling_art
-	fall_chk.toggled.connect(func(on: bool) -> void:
-		Settings.set_menu_falling_art(on))
-	vbox.add_child(fall_chk)
+	# Takes effect immediately, including from here — this panel opens OVER the
+	# menu, so the art behind it starts or stops as it is ticked.
+	_toggle(grid, "Menu falling art", Settings.menu_falling_art,
+		func(on: bool) -> void: Settings.set_menu_falling_art(on),
+		"Enemies, items, loot and covers drifting down the main menu.")
 
-	var fall_hint := Label.new()
-	fall_hint.text = "Enemies, items, loot and game covers drift down both sides of the menu. Turn it off for a still background."
-	fall_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	fall_hint.custom_minimum_size = Vector2(0, 44)
-	fall_hint.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
-	fall_hint.add_theme_color_override("font_color", Color(0.75, 0.75, 0.8))
-	vbox.add_child(fall_hint)
-
-	vbox.add_child(HSeparator.new())
-
-	var heading := Label.new()
-	heading.text = "Games used in path selection"
-	heading.add_theme_font_size_override("font_size", UITheme.FONT_HEAD)
-	heading.add_theme_color_override("font_color", Color(0.85, 0.9, 1.0))
-	vbox.add_child(heading)
+# --- runs ---------------------------------------------------------------------
+func _build_runs_section(col: VBoxContainer) -> void:
+	var grid := _section(col, "Runs")
 
 	# Count how many games each filter would allow, shown inline so the player
 	# can see how restrictive each choice is.
 	var total: int = 0
-	var owned_n: int = 0
 	var downloaded_n: int = 0
 	for g in Data.all_games():
 		if not (g is GameData):
 			continue
 		total += 1
-		if Ownership.is_owned(g):
-			owned_n += 1
 		if g.file_location.strip_edges() != "":
 			downloaded_n += 1
 
 	var opt := OptionButton.new()
 	opt.add_item("Any game (%d)" % total, Settings.GameFilter.ALL)
-	opt.add_item("Any owned game (%d)" % owned_n, Settings.GameFilter.OWNED)
+	opt.add_item("Owned games (%d)" % Ownership.owned_count(), Settings.GameFilter.OWNED)
 	opt.add_item("Downloaded only (%d)" % downloaded_n, Settings.GameFilter.DOWNLOADED)
 	opt.select(opt.get_item_index(Settings.game_filter))
-	vbox.add_child(opt)
+	var pool_label := _row(grid, "Game pool", opt)
 
-	var hint := Label.new()
-	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	# Room for the longest hint (two lines), so switching filters does not make
-	# the panel jump. It was a flat 70px — three and a half lines — which left a
-	# hole under the one-line "any game" hint that every player sees.
-	hint.custom_minimum_size = Vector2(0, UITheme.lines_height(UITheme.FONT_TEXT, 2))
-	hint.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
-	hint.add_theme_color_override("font_color", Color(0.75, 0.75, 0.8))
-	vbox.add_child(hint)
-
-	var refresh_hint := func() -> void:
+	var refresh_pool := func() -> void:
+		var tip: String
 		match opt.get_selected_id():
 			Settings.GameFilter.OWNED:
-				hint.text = "Paths will only use games you own. A smaller pool means shorter, sparser paths."
+				tip = "Paths only use games you own. Fewer games, sparser paths."
 			Settings.GameFilter.DOWNLOADED:
-				hint.text = "Paths will only use games you've set a file location for, so every game on the path is launchable from the reward screen."
+				tip = "Paths only use games with a file location, so each is launchable."
 			_:
-				hint.text = "Paths can use any game in the catalog."
-	refresh_hint.call()
-
+				tip = "Paths can use any game in the catalog."
+		_tip(pool_label, opt, tip)
+	refresh_pool.call()
 	opt.item_selected.connect(func(idx: int) -> void:
 		Settings.set_game_filter(opt.get_item_id(idx))
-		refresh_hint.call())
+		refresh_pool.call())
 
 	# The owned count above is only as fixed as the ownership source below it, so
-	# re-label that one entry whenever the answer moves rather than leaving a
-	# stale number on screen until the panel is reopened.
+	# re-label that one entry whenever the answer moves.
 	var refresh_owned_count := func() -> void:
 		var i: int = opt.get_item_index(Settings.GameFilter.OWNED)
 		if i >= 0:
-			opt.set_item_text(i, "Any owned game (%d)" % Ownership.owned_count())
+			opt.set_item_text(i, "Owned games (%d)" % Ownership.owned_count())
+	_build_ownership_row(grid, refresh_owned_count)
 
-	vbox.add_child(HSeparator.new())
-	_build_ownership_section(vbox, refresh_owned_count)
+	_toggle(grid, "Skip won amulets", Settings.exclude_beaten_amulets,
+		func(on: bool) -> void: Settings.set_exclude_beaten_amulets(on),
+		"Don't target an amulet game you've already beaten. It can still be a stop on the way.")
+	_toggle(grid, "Rifts", Settings.rifts_enabled,
+		func(on: bool) -> void: Settings.set_rifts_enabled(on),
+		"Pull a few unconnected games into the map. Never shortens a route. From the next run.")
+	_toggle(grid, "Wide Traditional transmute",
+		Settings.traditional_transmute == Settings.TraditionalTransmute.ANY_OTHER,
+		func(on: bool) -> void:
+			Settings.set_traditional_transmute(Settings.TraditionalTransmute.ANY_OTHER if on
+				else Settings.TraditionalTransmute.SAME_TYPE),
+		"A Traditional game transmutes into a game of any OTHER type, not another Traditional.")
 
-	vbox.add_child(HSeparator.new())
-	_build_tags_section(vbox)
+# Where the "Owned" answer comes from: the shipped spreadsheet column, or a list
+# this player builds by ticking games off their covers in the compendium.
+# `on_change` re-labels the pool dropdown's owned count.
+func _build_ownership_row(grid: GridContainer, on_change: Callable) -> void:
+	var sheet_n: int = 0
+	for g in Data.all_games():
+		if g is GameData and (g as GameData).owned:
+			sheet_n += 1
 
-	vbox.add_child(HSeparator.new())
+	var box := HBoxContainer.new()
+	box.add_theme_constant_override("separation", UITheme.GAP_SNUG)
+	var src := OptionButton.new()
+	src.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	src.add_item("Catalog's list (%d)" % sheet_n, Ownership.Source.SPREADSHEET)
+	src.add_item("My own list (%d)" % Ownership.manual_count(), Ownership.Source.MANUAL)
+	src.select(src.get_item_index(Ownership.source))
+	box.add_child(src)
+	var clear_btn := Button.new()
+	clear_btn.name = "ClearOwnedBtn"
+	clear_btn.text = "Clear"
+	clear_btn.tooltip_text = "Empty your own list."
+	box.add_child(clear_btn)
+	var label := _row(grid, "Owned games", box)
 
-	var amulet_heading := Label.new()
-	amulet_heading.text = "Amulet generation"
-	amulet_heading.add_theme_font_size_override("font_size", UITheme.FONT_HEAD)
-	amulet_heading.add_theme_color_override("font_color", Color(0.85, 0.9, 1.0))
-	vbox.add_child(amulet_heading)
+	var refresh := func() -> void:
+		var i: int = src.get_item_index(Ownership.Source.MANUAL)
+		if i >= 0:
+			src.set_item_text(i, "My own list (%d)" % Ownership.manual_count())
+		src.select(src.get_item_index(Ownership.source))
+		clear_btn.disabled = Ownership.manual_count() == 0
+		var tip: String = "Mark a game owned with the tick on its cover in the compendium (Tab)." \
+			if Ownership.source == Ownership.Source.MANUAL \
+			else "The catalog's own Owned column, the same for everyone."
+		label.tooltip_text = tip
+		src.tooltip_text = tip
+		on_change.call()
+	refresh.call()
 
-	var exclude_chk := CheckButton.new()
-	exclude_chk.text = "Skip already-won amulet games"
-	exclude_chk.button_pressed = Settings.exclude_beaten_amulets
-	exclude_chk.toggled.connect(func(on: bool) -> void:
-		Settings.set_exclude_beaten_amulets(on))
-	vbox.add_child(exclude_chk)
+	src.item_selected.connect(func(idx: int) -> void:
+		Ownership.set_source(src.get_item_id(idx))
+		refresh.call())
+	clear_btn.pressed.connect(func() -> void:
+		Ownership.clear_manual()
+		refresh.call())
 
-	var amulet_hint := Label.new()
-	amulet_hint.text = "When on, runs won't target a game you've already beaten as the final amulet. Those games can still appear as stops along the way. Ignored if you've beaten every reachable amulet."
-	amulet_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	amulet_hint.custom_minimum_size = Vector2(0, 60)
-	amulet_hint.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
-	amulet_hint.add_theme_color_override("font_color", Color(0.75, 0.75, 0.8))
-	vbox.add_child(amulet_hint)
-
-	var rifts_chk := CheckButton.new()
-	rifts_chk.text = "Rifts"
-	rifts_chk.button_pressed = Settings.rifts_enabled
-	rifts_chk.toggled.connect(func(on: bool) -> void:
-		Settings.set_rifts_enabled(on))
-	vbox.add_child(rifts_chk)
-
-	var rifts_hint := Label.new()
-	rifts_hint.text = "When on, each run pulls a few games with no known influences into the map through rifts. A rift never shortens a route; it widens the roads to the amulet and gives stranded games a place to be played. Takes effect from the next run."
-	rifts_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	rifts_hint.custom_minimum_size = Vector2(0, 60)
-	rifts_hint.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
-	rifts_hint.add_theme_color_override("font_color", Color(0.75, 0.75, 0.8))
-	vbox.add_child(rifts_hint)
-
-	vbox.add_child(HSeparator.new())
-
-	var rules_heading := Label.new()
-	rules_heading.text = "Transmute"
-	rules_heading.add_theme_font_size_override("font_size", UITheme.FONT_HEAD)
-	rules_heading.add_theme_color_override("font_color", Color(0.85, 0.9, 1.0))
-	vbox.add_child(rules_heading)
-
-	var trad_chk := CheckButton.new()
-	trad_chk.text = "Traditional transmutes off its type"
-	trad_chk.button_pressed = (Settings.traditional_transmute
-		== Settings.TraditionalTransmute.ANY_OTHER)
-	trad_chk.toggled.connect(func(on: bool) -> void:
-		Settings.set_traditional_transmute(Settings.TraditionalTransmute.ANY_OTHER if on
-			else Settings.TraditionalTransmute.SAME_TYPE))
-	vbox.add_child(trad_chk)
-
-	var trad_hint := Label.new()
-	trad_hint.text = "A transmute normally swaps a game for another of its own type. Turn this on and a Traditional game instead becomes a random game of any OTHER type — a Traditional is the run's long haul, so trading one for another is no relief. Off by default; every other type always transmutes within its own type."
-	trad_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	trad_hint.custom_minimum_size = Vector2(0, 74)
-	trad_hint.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
-	trad_hint.add_theme_color_override("font_color", Color(0.75, 0.75, 0.8))
-	vbox.add_child(trad_hint)
-
-	vbox.add_child(HSeparator.new())
-
-	_build_stream_section(vbox)
-
-	vbox.add_child(HSeparator.new())
-
-	var dev_heading := Label.new()
-	dev_heading.text = "Developer"
-	dev_heading.add_theme_font_size_override("font_size", UITheme.FONT_HEAD)
-	dev_heading.add_theme_color_override("font_color", Color(0.85, 0.9, 1.0))
-	vbox.add_child(dev_heading)
-
-	var dev_chk := CheckButton.new()
-	dev_chk.text = "Developer mode"
-	dev_chk.button_pressed = Settings.dev_mode
-	dev_chk.toggled.connect(func(on: bool) -> void:
-		Settings.set_dev_mode(on))
-	vbox.add_child(dev_chk)
-
-	var dev_hint := Label.new()
-	dev_hint.text = "Enables the dev overlay (press ` / backtick) to add any card, curse, or item to the player."
-	dev_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	dev_hint.custom_minimum_size = Vector2(0, 44)
-	dev_hint.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
-	dev_hint.add_theme_color_override("font_color", Color(0.75, 0.75, 0.8))
-	vbox.add_child(dev_hint)
-
-	vbox.add_child(HSeparator.new())
-	_build_wipe_section(vbox)
-
-	var spacer := Control.new()
-	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	vbox.add_child(spacer)
-
-	var close_btn := Button.new()
-	close_btn.text = "Close"
-	close_btn.custom_minimum_size = Vector2(140, 40)
-	close_btn.size_flags_horizontal = Control.SIZE_SHRINK_END
-	close_btn.pressed.connect(queue_free)
-	vbox.add_child(close_btn)
-
-
-# THE STREAM OVERLAY (docs/games-first-redesign.md §9, ObsCompanion).
+# --- stream -------------------------------------------------------------------
 #
-# Two controls and one path. The path is the load-bearing part: OBS needs an
-# absolute file to point a Browser Source at, and the folder it lives in
-# (`user://`) is somewhere different on every platform, so a streamer who cannot
-# read it off this screen cannot set the overlay up at all. It is in a
-# SELECTABLE LineEdit rather than a Label for the same reason — it is there to be
-# copied, and a Label cannot be.
-func _build_stream_section(vbox: VBoxContainer) -> void:
-	var heading := Label.new()
-	heading.text = "Stream overlay"
-	heading.add_theme_font_size_override("font_size", UITheme.FONT_HEAD)
-	heading.add_theme_color_override("font_color", Color(0.85, 0.9, 1.0))
-	vbox.add_child(heading)
+# THE STREAM OVERLAY (docs/games-first-redesign.md §9, ObsCompanion). The folder
+# is the load-bearing part: OBS needs an absolute file to point a Browser Source
+# at, and `user://` is somewhere different on every platform. It is the FOLDER,
+# not overlay.html, because there are six pages in it; the tooltip lists them as
+# files rather than URL suffixes, since a # cannot be typed into OBS's local-file
+# box.
+func _build_stream_section(col: VBoxContainer) -> void:
+	var grid := _section(col, "Stream")
 
-	var chk := CheckButton.new()
-	chk.text = "Mirror the run for OBS"
-	chk.button_pressed = Settings.obs_overlay
-	chk.toggled.connect(func(on: bool) -> void:
-		Settings.set_obs_overlay(on))
-	vbox.add_child(chk)
+	_toggle(grid, "OBS overlay", Settings.obs_overlay,
+		func(on: bool) -> void: Settings.set_obs_overlay(on),
+		"Mirror the run into browser pages for OBS: health, shields, the game in play, the checklist.")
 
-	var hint := Label.new()
-	hint.text = "In OBS: add a Browser Source, tick \"Local file\", and browse to overlay.html in the folder below (352 x 680, and leave the source's transform at 100%). It shows health, your shields and statuses, what the next lost run would cost you, the game in play and the one the run is walking to, and the checklist as it ticks — every body's goal, and what an event, curse or status is asking of you."
-	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	hint.custom_minimum_size = Vector2(0, 58)
-	hint.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
-	hint.add_theme_color_override("font_color", Color(0.75, 0.75, 0.8))
-	vbox.add_child(hint)
+	var pages_tip: String = "In OBS add a Browser Source, tick \"Local file\" and pick a page in this folder:\n" \
+		+ "  overlay.html  the run (352 × 680, transform at 100%)\n" \
+		+ "  goals.html  the checklist alone\n" \
+		+ "  map.html  the road ahead, 2560 × 1440\n" \
+		+ "  road.html  the road walked, 352 × 116\n" \
+		+ "  top.html / bottom.html  the run card and checklist apart"
+	_row(grid, "Overlay folder", _path_field(ObsCompanion.page_dir()), pages_tip)
 
-	# THE FOLDER, NOT THE FILE. It used to be the path to overlay.html, which was
-	# right while overlay.html was the only page — there are six now, and a
-	# streamer who wants the map has to be able to find map.html sitting beside it.
-	var path := LineEdit.new()
-	path.text = ObsCompanion.page_dir()
-	path.editable = false
-	path.select_all_on_focus = true
-	path.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
-	vbox.add_child(path)
-
-	# THE OTHER PAGES, AS FILES RATHER THAN AS URL SUFFIXES.
-	#
-	# This used to read "add #goals to the end of the path" — a mechanism that
-	# works in a browser and CANNOT BE TYPED INTO OBS. With "Local file" ticked
-	# the box is a path, so the # is escaped and never becomes a fragment, and
-	# unticking it and pasting a file:/// URL does not get there either. The
-	# instruction was correct about the page and useless about the program, which
-	# is the worst way for a setup note to be wrong. Each split is a real file in
-	# the folder above now, and this is a list of what to browse to.
-	var extras := Label.new()
-	extras.text = "In the same folder, one page per source — browse to these the same way:\n"\
-		+ "    goals.html  the checklist alone, uncropped, for a scene beside something else\n"\
-		+ "    map.html  the road AHEAD at 2560 x 1440: every optimal route from the game you are on to the Amulet, drawn left to right as a branching map. It is drawn at that size whatever source you give it, so scale the scene item in OBS to zoom it. Show it when you want it\n"\
-		+ "    road.html  the road walked so far, at 352 x 116\n"\
-		+ "    top.html / bottom.html  the run card and the checklist as separate sources, to put a camera between them"
-	extras.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	extras.custom_minimum_size = Vector2(0, 92)
-	extras.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
-	extras.add_theme_color_override("font_color", Color(0.75, 0.75, 0.8))
-	vbox.add_child(extras)
-
-	# THE CATEGORY REMINDER, in this section because it is the same job as the
-	# overlay — things the stream needs that the run cannot do for itself — and
-	# NOT a second overlay setting, so it sits under the pages rather than beside
-	# the checkbox that turns them on.
-	var twitch := CheckButton.new()
+	# THE CATEGORY REMINDER: the same job as the overlay — things the stream needs
+	# that the run cannot do for itself. It only posts a notification; nothing
+	# here talks to Twitch.
+	var twitch := _toggle(grid, "Twitch reminder", Settings.twitch_reminder,
+		func(on: bool) -> void: Settings.set_twitch_reminder(on),
+		"Notify you to change the Twitch category when you pick a game.")
 	twitch.name = "TwitchChk"
-	twitch.text = "Remind me to change the Twitch category"
-	twitch.button_pressed = Settings.twitch_reminder
-	twitch.toggled.connect(func(on: bool) -> void:
-		Settings.set_twitch_reminder(on))
-	vbox.add_child(twitch)
 
-	var twitch_hint := Label.new()
-	twitch_hint.text = "Every game on the graph is a real game you go and play, so committing to one is the moment your category stops naming what is on screen. This posts a notification with the game's name the moment you pick it. It is a reminder only — nothing here talks to Twitch, and the game never knows whether you changed it."
-	twitch_hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	twitch_hint.custom_minimum_size = Vector2(0, 50)
-	twitch_hint.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
-	twitch_hint.add_theme_color_override("font_color", Color(0.75, 0.75, 0.8))
-	vbox.add_child(twitch_hint)
-
-
-# Starting over as yourself: empty the profile you are playing and keep it —
-# its runs, lifetime stats, tier list, owned-game list and run settings all go.
+# --- game tags ----------------------------------------------------------------
 #
+# THE TAG EXPORT (GameTags). Tags are edited per game, on the Collection's game
+# page and the run map's card; getting them into the sheet is one act for the
+# whole catalog, so it lives here. tools/apply_tag_edits.py writes the
+# differences into the `games` sheet.
+func _build_tags_section(col: VBoxContainer) -> void:
+	var grid := _section(col, "Game tags")
+
+	var box := HBoxContainer.new()
+	box.add_theme_constant_override("separation", UITheme.GAP)
+	var export_btn := Button.new()
+	export_btn.name = "ExportTagsBtn"
+	export_btn.text = "Export"
+	box.add_child(export_btn)
+	var status := Label.new()
+	status.name = "TagsHint"
+	status.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	status.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	status.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
+	status.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
+	box.add_child(status)
+	_row(grid, "Tag edits", box,
+		"Writes every game's tags to the file below, for tools/apply_tag_edits.py.")
+
+	var path := _path_field(ProjectSettings.globalize_path(GameTags.export_path()))
+	path.name = "TagsPath"
+	_row(grid, "Export file", path, path.text)
+
+	var refresh := func() -> void:
+		var n: int = GameTags.pending_count()
+		status.text = ("%d game%s %s tag edits" % [n, "" if n == 1 else "s", "has" if n == 1 else "have"]
+			if n > 0 else "All in the sheet")
+		status.remove_theme_color_override("font_color")
+		status.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
+	refresh.call()
+
+	export_btn.pressed.connect(func() -> void:
+		var written: String = GameTags.export_edits()
+		refresh.call()
+		if written == "":
+			status.text = "Couldn't write the file"
+			status.add_theme_color_override("font_color", UITheme.DANGER)
+			return
+		status.text = "Exported all %d games" % Data.all_games().size()
+		status.add_theme_color_override("font_color", UITheme.SUCCESS))
+
+# --- this profile -------------------------------------------------------------
+#
+# Starting over as yourself: empty the profile you are playing and keep it.
 # It lives here rather than on the profile screen because it is about the player
-# currently playing, not about picking between players. Deleting a whole profile
-# is the profile screen's job, and is never offered for the active one.
-func _build_wipe_section(vbox: VBoxContainer) -> void:
-	var heading := Label.new()
-	heading.text = "This profile"
-	heading.add_theme_font_size_override("font_size", UITheme.FONT_HEAD)
-	heading.add_theme_color_override("font_color", Color(0.85, 0.9, 1.0))
-	vbox.add_child(heading)
+# currently playing; deleting a whole profile is the profile screen's job.
+func _build_wipe_section(col: VBoxContainer) -> void:
+	var grid := _section(col, "Profile")
 
-	var hint := Label.new()
-	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	hint.custom_minimum_size = Vector2(0, 50)
-	hint.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
-	hint.add_theme_color_override("font_color", Color(0.75, 0.75, 0.8))
-	hint.text = "Starting over as %s: erases this profile's runs, stats, tier list, owned games and run settings. The profile itself stays, and no other profile is touched." % Profiles.active_name()
-	vbox.add_child(hint)
-
+	var holder := HBoxContainer.new()
 	var wipe := Button.new()
 	wipe.name = "WipeBtn"
-	wipe.text = "🗑  Wipe this profile"
-	wipe.custom_minimum_size = Vector2(0, 36)
-	wipe.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	wipe.text = "🗑  Wipe"
 	wipe.add_theme_color_override("font_color", Color(1, 0.72, 0.68))
-	vbox.add_child(wipe)
+	holder.add_child(wipe)
+	var label := _row(grid, Profiles.active_name(), holder,
+		"Erase this profile's runs, stats, tier list, owned games and run settings. The profile stays.")
 
-	# Settings is reachable from the main menu today, but a run is exactly what a
-	# wipe would pull the floor out from under — so the button is only live when
-	# there is no run in progress, whoever opens this screen later.
+	# A run is exactly what a wipe would pull the floor out from under — so the
+	# button is only live when there is no run in progress.
 	var in_run: bool = GameState.phase != GameState.Phase.MENU
 	wipe.disabled = in_run
 	if in_run:
@@ -501,116 +485,14 @@ func _build_wipe_section(vbox: VBoxContainer) -> void:
 			"Erase everything saved under \"%s\"?\n\nIts runs, lifetime stats, tier list, owned-game list and run settings are all deleted. The profile itself stays. This cannot be undone." % Profiles.active_name(),
 			"Wipe",
 			func() -> void:
-				var who: String = Profiles.active_name()
 				if Profiles.wipe(Profiles.active_id):
-					hint.text = "\"%s\" is empty again." % who
-					hint.add_theme_color_override("font_color", Color(0.6, 0.9, 0.7))))
+					wipe.text = "Wiped"
+					wipe.disabled = true
+					label.add_theme_color_override("font_color", UITheme.SUCCESS)))
 
-# THE TAG EXPORT (GameTags). Tags are edited per game, on the Collection's game
-# page and the run map's card; getting them into the sheet is one act for the
-# whole catalog, so it lives here rather than under any one game. The file lists
-# every game's tags; tools/apply_tag_edits.py writes the differences into the
-# `games` sheet. The path is a selectable LineEdit for the same reason the
-# overlay's is: it is there to be found and copied.
-func _build_tags_section(vbox: VBoxContainer) -> void:
-	var heading := Label.new()
-	heading.text = "Game tags"
-	heading.add_theme_font_size_override("font_size", UITheme.FONT_HEAD)
-	heading.add_theme_color_override("font_color", Color(0.85, 0.9, 1.0))
-	vbox.add_child(heading)
-
-	var hint := Label.new()
-	hint.name = "TagsHint"
-	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	hint.custom_minimum_size = Vector2(0, 58)
-	hint.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
-	hint.add_theme_color_override("font_color", Color(0.75, 0.75, 0.8))
-	vbox.add_child(hint)
-
-	var export_btn := Button.new()
-	export_btn.name = "ExportTagsBtn"
-	export_btn.text = "Export tags for all games"
-	export_btn.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-	vbox.add_child(export_btn)
-
-	var path := LineEdit.new()
-	path.name = "TagsPath"
-	path.text = ProjectSettings.globalize_path(GameTags.export_path())
-	path.editable = false
-	path.select_all_on_focus = true
-	path.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
-	vbox.add_child(path)
-
-	var refresh := func() -> void:
-		var n: int = GameTags.pending_count()
-		hint.text = ("Add or remove a game's tags on its page in the compendium (Tab) or on its card on the run map. "
-			+ ("%d game%s %s tag edits the sheet doesn't have yet. " % [n, "" if n == 1 else "s", "has" if n == 1 else "have"]
-				if n > 0 else "Every tag edit is already in the sheet. ")
-			+ "Export writes every game's tags to the file below, for tools/apply_tag_edits.py to put in the sheet.")
-	refresh.call()
-
-	export_btn.pressed.connect(func() -> void:
-		var written: String = GameTags.export_edits()
-		refresh.call()
-		if written == "":
-			hint.text = "Couldn't write %s." % GameTags.export_path()
-			hint.add_theme_color_override("font_color", Color(1, 0.72, 0.68))
-			return
-		var n: int = GameTags.pending_count()
-		hint.text = "Exported all %d games (%d with edits) to the file below. Upload it with your other changes; the edits stay live here until the sheet has them." % [
-			Data.all_games().size(), n]
-		hint.add_theme_color_override("font_color", Color(0.6, 0.9, 0.7)))
-
-# Where the "Owned" answer comes from: the shipped spreadsheet column, or a list
-# this player builds by ticking games off their covers in the compendium.
-# `on_change` re-labels the filter dropdown's owned count.
-func _build_ownership_section(vbox: VBoxContainer, on_change: Callable) -> void:
-	var heading := Label.new()
-	heading.text = "Which games you own"
-	heading.add_theme_font_size_override("font_size", UITheme.FONT_HEAD)
-	heading.add_theme_color_override("font_color", Color(0.85, 0.9, 1.0))
-	vbox.add_child(heading)
-
-	var sheet_n: int = 0
-	for g in Data.all_games():
-		if g is GameData and (g as GameData).owned:
-			sheet_n += 1
-
-	var src := OptionButton.new()
-	src.add_item("The catalog's list (%d)" % sheet_n, Ownership.Source.SPREADSHEET)
-	src.add_item("My own list (%d)" % Ownership.manual_count(), Ownership.Source.MANUAL)
-	src.select(src.get_item_index(Ownership.source))
-	vbox.add_child(src)
-
-	var hint := Label.new()
-	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	hint.custom_minimum_size = Vector2(0, 76)
-	hint.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
-	hint.add_theme_color_override("font_color", Color(0.75, 0.75, 0.8))
-	vbox.add_child(hint)
-
-	var clear_btn := Button.new()
-	clear_btn.text = "Clear my list"
-	clear_btn.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-	vbox.add_child(clear_btn)
-
-	var refresh := func() -> void:
-		var i: int = src.get_item_index(Ownership.Source.MANUAL)
-		if i >= 0:
-			src.set_item_text(i, "My own list (%d)" % Ownership.manual_count())
-		src.select(src.get_item_index(Ownership.source))
-		clear_btn.disabled = Ownership.manual_count() == 0
-		if Ownership.source == Ownership.Source.MANUAL:
-			hint.text = "Ownership is whatever you've marked yourself. Open the compendium (Tab) and click the tick at the top-left of a game's cover to mark it — one click per game, no account needed."
-		else:
-			hint.text = "Ownership comes from the catalog's own Owned column, the same for everyone. Switch to your own list to mark games yourself."
-		on_change.call()
-	refresh.call()
-
-	src.item_selected.connect(func(idx: int) -> void:
-		Ownership.set_source(src.get_item_id(idx))
-		refresh.call())
-
-	clear_btn.pressed.connect(func() -> void:
-		Ownership.clear_manual()
-		refresh.call())
+# --- developer ----------------------------------------------------------------
+func _build_dev_section(col: VBoxContainer) -> void:
+	var grid := _section(col, "Developer")
+	_toggle(grid, "Developer mode", Settings.dev_mode,
+		func(on: bool) -> void: Settings.set_dev_mode(on),
+		"Enables the dev overlay (` backtick) to add any card, curse or item.")

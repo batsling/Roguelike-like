@@ -64,7 +64,7 @@ static func build(on_toggle: Callable, max_height: int = HEIGHT) -> Control:
 	var learned: int = pills.size() + scrolls.size() + potions.size() + wands.size()
 
 	var toggle := UITheme.quiet_button(
-		"%s  Known this run — %d learned" % ["▾" if open else "▸", learned],
+		"%s  Known this run (%d)" % ["▾" if open else "▸", learned],
 		Vector2(0, 20), 11)
 	toggle.tooltip_text = "The pills, scrolls, potions and wands this run has identified.\n" \
 		+ "A pill's name belongs to its colour, a potion's to its bottle and a " \

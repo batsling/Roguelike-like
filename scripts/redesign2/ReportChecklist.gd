@@ -137,7 +137,7 @@ func populate_play_panel() -> void:
 	# (GameLoop2.arrivals): a body that walked on this game and a body you have
 	# owed since three games ago are the same kind of debt, and asking about them
 	# in two different places said they were not.
-	_box.add_child(_verify_head_row("Tick what you did this game:"))
+	_box.add_child(_verify_head_row("Tick what you did:"))
 
 	# On the Amulet, playing the game is the win — not any goal on this list (see
 	# report()). Said at the top, because a checklist is otherwise exactly where a
@@ -1806,7 +1806,7 @@ func populate_standing() -> void:
 	_page._clear(_launch)
 	_page._clear(_box)
 	reset_state()
-	_box.add_child(_verify_head_row("What you need to do:"))
+	_box.add_child(_verify_head_row("Goals"))
 
 	# THE SAME TWO SECTIONS THE REPORT STEP DRAWS, in the same order and with the
 	# same headers (see the block above WINNING_RUN_HEAD): the goals the report

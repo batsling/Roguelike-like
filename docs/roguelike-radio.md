@@ -62,7 +62,7 @@ rule left for them to hold).
 until its `Unlock` was filled in, so a song still being authored could not
 start playing on stream. Now any row with a `Game` is in that game's draw. A
 row being authored can be left without its `File`: if it is drawn it shows as
-"file not found" and never plays, and songs whose file is in the folder are
+"File missing" (the path is in its tooltip) and never plays, and songs whose file is in the folder are
 always drawn first.
 
 ## 2a. Filling the sheet from a folder of music
@@ -130,7 +130,7 @@ above after it.
 - **With several menu songs**, one of them is drawn first (at random, its file
   in the folder first); the others are ordinary songs of the game after that.
 - **A menu song whose file is missing is still first.** The game's first song
-  is its menu song either way; it shows as "file not found" until the file is
+  is its menu song either way; it shows as "File missing" until the file is
   in the folder.
 - **A game that already has a song** (a save from before this rule) draws no
   menu song first: its menu song is in the draw like the rest.
