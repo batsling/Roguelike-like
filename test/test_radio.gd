@@ -724,6 +724,53 @@ func test_the_screen_lists_every_song_and_drives_the_radio() -> void:
 	screen.close()
 	await get_tree().process_frame
 
+func test_a_games_locked_songs_are_one_row_saying_how_close_the_game_is() -> void:
+	_song("a")
+	for i in range(5):
+		_locked("hades_%d" % i)
+	_locked("bal", OTHER)
+	var screen := RadioScreen.open(self)
+	await get_tree().process_frame
+	assert_eq(screen._list.get_child_count(), 3, "the unlocked song, then one row per game")
+	var text: String = ""
+	for row in screen._list.get_children():
+		for l in row.find_children("*", "Label", true, false):
+			text += (l as Label).text + "\n"
+	assert_string_contains(text, "Hades  —  5 songs locked")
+	assert_string_contains(text, "Balatro  —  1 song locked")
+	assert_string_contains(text, "Next Hades song")
+	screen.close()
+	await get_tree().process_frame
+
+func test_a_new_track_rebuilds_only_the_rows_it_moved_between() -> void:
+	_song("a")
+	_song("b")
+	_song("c")
+	Radio.play_song(&"a")
+	var screen := RadioScreen.open(self)
+	await get_tree().process_frame
+	var untouched: Control = screen._rows[&"c"]
+	var key: String = screen._list_key
+	Radio.play_song(&"b")
+	assert_eq(screen._list_key, key, "the list itself was not rebuilt")
+	assert_same(screen._rows[&"c"], untouched, "a row the track didn't touch is kept")
+	var label: Label = screen._rows[&"b"].find_children("*", "Label", true, false)[0]
+	assert_string_starts_with(label.text, "♪", "the new track's row is the playing one")
+	assert_eq(screen._rows[&"b"].get_index(), untouched.get_index() - 1, "and stays in its place")
+	screen.close()
+	await get_tree().process_frame
+
+func test_unlocking_a_song_does_rebuild_the_list() -> void:
+	_song("a")
+	_locked("b")
+	var screen := RadioScreen.open(self)
+	await get_tree().process_frame
+	Radio._unlocked["b"] = true
+	Radio.changed.emit()
+	assert_true(screen._rows.has(&"b"), "the newly unlocked song has its own row")
+	screen.close()
+	await get_tree().process_frame
+
 # --- the game's Collection page ---------------------------------------------
 
 func test_every_kind_of_goal_lists_under_its_header_in_order() -> void:

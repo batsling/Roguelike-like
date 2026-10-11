@@ -11,6 +11,12 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Roguelike Radio: the owner's 1288 songs are on the sheet**, one menu song
+  per game, with the tags their files lacked researched (see the commit). The
+  Radio screen now lists locked songs as **one row per game** and rebuilds only
+  what moved: it opened in 3.2 s with a row per song, and froze as long again on
+  every new track; it now opens in about 0.3 s and a new track costs a few ms.
+
 - **Roguelike Radio: the sheet fills itself from a folder of music.** The Radio
   screen's *Export song list* lists every audio file in the music folder,
   subfolders included, with the title, artist, album and year out of each

@@ -267,11 +267,18 @@ corner**. It has:
 - shuffle, the station (★ Favourites among them), and where it plays from;
 - the music folder, with Open folder, Rescan (for files added while the game
   is running) and Export song list (§2a);
-- every song on the sheet: unlocked first, then the locked ones by game, the
-  game nearest its next song first, each saying what that game still needs
-  ("Next Balatro song: beat Balatro once more, or complete 2 more distinct goals
-  there", with where its goals so far came from) and, once unlocked, a ★ to
-  star it and a ▶ to play it now.
+- every unlocked song, with a ★ to star it and a ▶ to play it now; then **one
+  row per game for its locked songs** ("Balatro — 4 songs locked"), the game
+  nearest its next song first, saying what that game still needs ("Next
+  Balatro song: beat Balatro once more, or complete 2 more distinct goals
+  there", with where its goals so far came from).
+
+**The list is built for a whole library.** The owner's sheet has over a
+thousand songs, and a row each cost three seconds to open the screen and three
+more on every new track. Locked songs collapse per game (which one comes next
+is luck, so the game is what is worth reading), and the list is only rebuilt
+when what it shows moved: a new track rebuilds just the two rows the "playing"
+mark moved between.
 
 The speakers, volume, shuffle, station and pause live in `user://radio.cfg`.
 They belong to the PC, like the window mode does, not to a profile.

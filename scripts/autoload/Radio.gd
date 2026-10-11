@@ -466,7 +466,11 @@ func set_output(value: int) -> void:
 	changed.emit()
 
 # Pick up files added to the folder while the game is running.
+# Bumped by every rescan, so a view can tell the files on disk may have moved.
+var library_generation: int = 0
+
 func rescan() -> void:
+	library_generation += 1
 	_queue.clear()
 	if current == &"" and not paused and autoplay:
 		_advance()

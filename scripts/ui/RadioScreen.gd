@@ -7,8 +7,16 @@ extends Control
 # music can be driven from anywhere without leaving the run.
 #
 # A VIEW ONLY. Everything it shows is read off the Radio autoload and every
-# control calls straight back into it; it is rebuilt from scratch on
-# `Radio.changed`, which only fires when something actually moved.
+# control calls straight back into it, refreshed on `Radio.changed`.
+#
+# THE LIST IS BUILT FOR A WHOLE MUSIC LIBRARY. The owner's sheet holds over a
+# thousand songs, and a row per song cost ~2.5 ms to build: three seconds to
+# open, and three more on every `changed` — which fires on every new track. So:
+#   * LOCKED SONGS COLLAPSE TO ONE ROW PER GAME. Which song a game gives next is
+#     luck, so what is worth reading is how close the GAME is, said once.
+#   * THE LIST IS REBUILT ONLY WHEN WHAT IT SHOWS MOVED (`_list_state`). A new
+#     track only moves the "playing" highlight, so only the two rows involved
+#     are rebuilt (`_restyle_current`).
 
 const PANEL_WIDTH := 640
 const ROW_ART := 40
@@ -27,6 +35,9 @@ var _output: OptionButton
 var _output_hint: Label
 var _list: VBoxContainer
 var _summary: Label
+var _list_key: String = "-"       # `_list_state` the list was last built for
+var _rows: Dictionary = {}        # unlocked song id -> its row
+var _shown_current: StringName = &""
 
 static func open(parent: Node) -> RadioScreen:
 	var s := RadioScreen.new()
@@ -421,35 +432,132 @@ static func _clock(seconds: float) -> String:
 	return "%d:%02d" % [s / 60, s % 60]
 
 func _fill_list() -> void:
+	var key: String = _list_state()
+	if key == _list_key:
+		if Radio.current != _shown_current:
+			_restyle_current()
+		return
+	_list_key = key
+	_rows.clear()
+	_shown_current = Radio.current
 	for c in _list.get_children():
 		c.queue_free()
+	var unlocked: Array = []
+	var locked_by_game: Dictionary = {}   # game id -> its locked songs
 	var all: Array = Radio.songs()
-	var unlocked: int = 0
 	for s in all:
 		if Radio.is_unlocked(s):
-			unlocked += 1
-	_summary.text = "Songs — %d of %d unlocked" % [unlocked, all.size()]
-	# Unlocked first; then the locked ones by game, the game nearest its next song
-	# first (the draw is random, so it is the GAME that is near, not the song).
-	var order: Array = all.duplicate()
-	order.sort_custom(func(a, b) -> bool:
-		var ka: Array = _sort_key(a)
-		var kb: Array = _sort_key(b)
-		for i in range(ka.size()):
-			if ka[i] != kb[i]:
-				return ka[i] < kb[i]
-		return false)
-	for s in order:
-		_list.add_child(_song_row(s))
+			unlocked.append(s)
+		else:
+			if not locked_by_game.has(s.game_id):
+				locked_by_game[s.game_id] = []
+			locked_by_game[s.game_id].append(s)
+	_summary.text = "Songs — %d of %d unlocked" % [unlocked.size(), all.size()]
+	# Unlocked first, by title; then one row per game still holding songs, the
+	# game nearest its next song first (the draw is random, so it is the GAME
+	# that is near, not the song), and songs with no game last.
+	unlocked.sort_custom(func(a, b) -> bool: return a.title.naturalnocasecmp_to(b.title) < 0)
+	for s in unlocked:
+		var row: Control = _song_row(s)
+		_rows[s.id] = row
+		_list.add_child(row)
+	var games: Array = locked_by_game.keys()
+	games.sort_custom(func(a, b) -> bool:
+		var ka: Array = _game_key(a)
+		var kb: Array = _game_key(b)
+		return ka[0] < kb[0] or (ka[0] == kb[0] and ka[1] < kb[1]))
+	for g in games:
+		_list.add_child(_game_row(g, locked_by_game[g]))
 
-func _sort_key(song: SongData) -> Array:
-	if Radio.is_unlocked(song):
-		return [0, 0, "", song.title]
-	if song.game_id == &"":
-		return [2, 0, "", song.title]
-	var left: Dictionary = Radio.to_next(song.game_id)
-	return [1, mini(int(left["beats"]) * Radio.GOALS_PER_SONG,
-		int(left["goals"]) * Radio.BEATS_PER_SONG), String(song.game_id), song.title]
+# Everything the list shows apart from which song is playing. Cheap next to a
+# rebuild: a dictionary lookup per song and two counts per game.
+func _list_state() -> String:
+	var parts: PackedStringArray = []
+	var games: Dictionary = {}
+	for s in Radio.songs():
+		if Radio.is_unlocked(s):
+			parts.append(String(s.id) + ("*" if Radio.is_favorite(s) else ""))
+		elif not games.has(s.game_id):
+			games[s.game_id] = s
+	# Per game, exactly what its row says: the counts left and the goals done.
+	for g in games:
+		var left: Dictionary = Radio.to_next(g) if g != &"" else {}
+		parts.append("%s:%s:%s:%s" % [g, left.get("beats", 0), left.get("goals", 0),
+			",".join(Radio.goals_done(games[g]))])
+	parts.append("station=" + Radio.station)
+	parts.append("gen=%d" % Radio.library_generation)
+	return "|".join(parts)
+
+# A new track: rebuild only the row it left and the row it went to.
+func _restyle_current() -> void:
+	for id in [_shown_current, Radio.current]:
+		var old: Control = _rows.get(id)
+		if old == null or not is_instance_valid(old):
+			continue
+		var fresh: Control = _song_row(Data.get_song(id))
+		var at: int = old.get_index()
+		_list.remove_child(old)
+		old.queue_free()
+		_list.add_child(fresh)
+		_list.move_child(fresh, at)
+		_rows[id] = fresh
+	_shown_current = Radio.current
+
+func _game_key(game: StringName) -> Array:
+	if game == &"":
+		return [1 << 30, ""]
+	var left: Dictionary = Radio.to_next(game)
+	return [mini(int(left["beats"]) * Radio.GOALS_PER_SONG,
+		int(left["goals"]) * Radio.BEATS_PER_SONG), _game_name(game)]
+
+func _game_name(game: StringName) -> String:
+	var g: GameData = Data.get_game(game)
+	return g.display_name if g != null else String(game)
+
+# One row for a game's locked songs: how many there are and what the game needs
+# for its next one, with the goals that have counted there so far.
+func _game_row(game: StringName, songs: Array) -> Control:
+	var row := PanelContainer.new()
+	row.add_theme_stylebox_override("panel", UITheme.accent_box(UITheme.BORDER, UITheme.PANEL, 6))
+	var h := HBoxContainer.new()
+	h.add_theme_constant_override("separation", UITheme.GAP)
+	row.add_child(h)
+	var art := TextureRect.new()
+	art.custom_minimum_size = Vector2(ROW_ART, ROW_ART)
+	art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	art.texture = _art(songs[0])
+	art.modulate = Color(1, 1, 1, 0.35)
+	h.add_child(art)
+	var text := VBoxContainer.new()
+	text.add_theme_constant_override("separation", UITheme.GAP_NONE)
+	text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	h.add_child(text)
+	var name := Label.new()
+	name.text = "%s  —  %d song%s locked" % [
+		_game_name(game) if game != &"" else "No game", songs.size(), "" if songs.size() == 1 else "s"]
+	name.add_theme_font_size_override("font_size", UITheme.FONT_LABEL)
+	name.add_theme_color_override("font_color", UITheme.TEXT_DIM)
+	name.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	text.add_child(name)
+	var sub := Label.new()
+	sub.text = _status_line(songs[0])
+	sub.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
+	sub.add_theme_color_override("font_color", _status_color(songs[0]))
+	sub.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	text.add_child(sub)
+	# WHAT has counted at the game so far, kind by kind, so "3 more goals" says
+	# where the others came from.
+	if game != &"":
+		var met: Array = Radio.goals_done(songs[0])
+		var known := Label.new()
+		known.text = ("Done here: " + ", ".join(met)) if not met.is_empty() \
+			else "No goals done here yet"
+		known.add_theme_font_size_override("font_size", UITheme.FONT_TINY)
+		known.add_theme_color_override("font_color", UITheme.TEXT_DIM)
+		known.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		text.add_child(known)
+	return row
 
 func _song_row(song: SongData) -> Control:
 	var unlocked: bool = Radio.is_unlocked(song)
@@ -491,18 +599,6 @@ func _song_row(song: SongData) -> Control:
 	sub.add_theme_color_override("font_color", _status_color(song))
 	sub.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	text.add_child(sub)
-	# WHAT has counted at its game so far, kind by kind, so "3 more goals" says
-	# where the others came from. Only while it is locked: it is what the line
-	# above is counting towards.
-	var met: Array = Radio.goals_done(song)
-	if not unlocked and song.game_id != &"":
-		var known := Label.new()
-		known.text = ("Done here: " + ", ".join(met)) if not met.is_empty() \
-			else "No goals done here yet"
-		known.add_theme_font_size_override("font_size", UITheme.FONT_TINY)
-		known.add_theme_color_override("font_color", UITheme.TEXT_DIM)
-		known.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		text.add_child(known)
 	if not song.tags.is_empty():
 		var tags := Label.new()
 		tags.text = ", ".join(Array(song.tags))
