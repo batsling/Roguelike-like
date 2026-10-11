@@ -42,7 +42,13 @@
   "connections": "before 2026-10-07"
  },
  "9 Kings": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-11: nothing: each king is a deck; Greed repeats Isaac's Keeper and Blood Darkest Dungeon 2's Flagellant",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-11: nothing: its events are the Merchant (a shop) and the Royal Council (a pick of decrees)",
+  "goals": "2026-10-11: nothing: the enemy armies have no pages; the wiki documents the kings' cards",
+  "locations": "2026-10-11: Scapegoat (a unit); the kingdom is one 5x5 board",
+  "loot": "2026-10-11: Sacrifice, Over-Invest; no weapons (towers and troops are cards that fight on their own) and no evolutions (cards level up in place); Mortgage left out (Balatro's Trading Card already pays for a binned piece), Wildcard (a level, nothing more)",
+  "statuses": "2026-10-11: nothing: none documented"
  },
  "99 Levels to Hell": {
   "connections": "before 2026-10-07"
@@ -538,7 +544,13 @@
   "statuses": "2026-10-10: Burn already live; the others named on item pages (Frail, Scars, Ruptured, Oil-Slicked) weren't read closely this batch"
  },
  "Buckshot Roulette": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-11: nothing: one nameless player",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-11: Double or Nothing; the waiver and the Bathroom pills are menus",
+  "goals": "2026-10-11: Dealer (named so: Hand of Fate's The Dealer is a candidate); God left out (a waiver, not a body), the Doctor (an NPC who revives you)",
+  "locations": "2026-10-11: nothing: the Bathroom, the Hallway and the Backroom are the menu and the table",
+  "loot": "2026-10-11: Expired Medicine, Hand Saw; weapons and evolutions: Shotgun; no evolutions; Handcuffs left out (the live Stun, and a Brotato candidate already has the name), Magnifying Glass and Burner Phone (they read one shell; the live Runic Dome and Caves of Qud's Optical Bioscanner cover seeing what is coming), Beer, Inverter, Adrenaline and the Remote (they only mean something with a loaded chamber), Cigarette Pack (+1 Health, nothing more)",
+  "statuses": "2026-10-11: nothing: none"
  },
  "Cadence of Hyrule": {
   "connections": "before 2026-10-07"
@@ -1017,7 +1029,13 @@
   "statuses": "2026-10-10: Curse read: stat debuff that repeats existing statuses"
  },
  "Deck of Haunts": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-11: nothing: you play the house",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-11: nothing: its random events are not documented",
+  "goals": "2026-10-11: nothing: the humans you haunt have no pages",
+  "locations": "2026-10-11: Hidden Corpse (a tile); the rooms are the board itself",
+  "loot": "2026-10-11: Sacrificial Lamb; no weapons and no evolutions (you are the house; cards upgrade in place); the phobia cards (Oikophobia, Mnemophobia, Triskaphobia) are sanity damage with nothing else to them",
+  "statuses": "2026-10-11: nothing: Tension and Sanity are the humans' meters; Marked by The House repeats the live Marked"
  },
  "Decktamer": {
   "connections": "before 2026-10-07"
@@ -1568,7 +1586,13 @@
   "connections": "before 2026-10-07"
  },
  "God of Weapons": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-11: Weapon Master; the Rogue left out (its pitch is its starting Calling Card), the Hunter and Wizard (a weapon-family restriction and nothing more)",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-11: nothing: no events; between floors there is the shop and crates",
+  "goals": "2026-10-11: nothing: the wiki documents its classes, weapons and items and has no enemy pages",
+  "locations": "2026-10-11: nothing: one arena per floor and a shop",
+  "loot": "2026-10-11: Ledger, Calling Card, Enlarging Dust; weapons and evolutions: Crossvolver; Vorpal Blade folded into the Clones of NetHack's; no evolutions (a weapon is upgraded through tiers, not into another weapon); Hit List folded into the Clones of UnderMine's Bounty Contract; Philosopher Stone left out (a live relic's name), Whetstone (live)",
+  "statuses": "2026-10-11: nothing: the wiki documents no status effects"
  },
  "Godbreakers": {
   "connections": "before 2026-10-07"
@@ -2247,10 +2271,22 @@
   "connections": "before 2026-10-07"
  },
  "Necrosmith": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-11: nothing: one necromancer",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-11: nothing: no events",
+  "goals": "2026-10-11: nothing: the wiki documents only the minion recipes you build, which are allies; the heroes you fight have no pages",
+  "locations": "2026-10-11: nothing: the wiki has no location pages",
+  "loot": "2026-10-11: nothing: the wiki's 166 components are body parts for building minions; no weapons and no evolutions of the player's own",
+  "statuses": "2026-10-11: nothing: none documented"
  },
  "Necrosmith 2": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-11: nothing: one necromancer (Necrosmith 2 shares the first game's wiki, which documents only the first)",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-11: nothing: no events (Necrosmith 2 shares the first game's wiki, which documents only the first)",
+  "goals": "2026-10-11: nothing: the wiki documents only the minion recipes you build, which are allies; the heroes you fight have no pages (Necrosmith 2 shares the first game's wiki, which documents only the first)",
+  "locations": "2026-10-11: nothing: the wiki has no location pages (Necrosmith 2 shares the first game's wiki, which documents only the first)",
+  "loot": "2026-10-11: nothing: the wiki's 166 components are body parts for building minions; no weapons and no evolutions of the player's own (Necrosmith 2 shares the first game's wiki, which documents only the first)",
+  "statuses": "2026-10-11: nothing: none documented (Necrosmith 2 shares the first game's wiki, which documents only the first)"
  },
  "Neon Abyss": {
   "characters": "2026-10-10: Lucas; Ming left out (hatching is Azure Dreams' Kid, not harming animals ADOM's Cat Lord), Matt and Zack (dodge-roll and dash heroes repeat Ironshank's movement rule), R-6 (The Head's 'without healing')",
@@ -2490,7 +2526,13 @@
   "statuses": "2026-10-09: nothing as statuses: Slippery became the Soap tile; Sticky, Smokey, Dizzy, Burned, Frozen, Poisoned overlap Web, invisibility, Discorded, Burn, Slow, Blight"
  },
  "Path of Achra": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-11: Peltast; Warrior and Templar left out (Poise and Anoint are stat stacks), Amir (Brutal Orchestra's and Regent's followers); its 24 cultures and 24 religions are halves of one hero",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-11: nothing: its 'Events' page is the trigger system (on hit, on step), not encounters",
+  "goals": "2026-10-11: nothing new: Preta folded into the Clones of Tangledeep's Champion (an enemy with randomly rolled powers); Gore Idol repeats the live Carcass (a spawner), Zindiq and the Rat-men have no goal beyond 'defeat it', the Prince in Red's page is tactics only; most of its 162 'Enemy' pages are images",
+  "locations": "2026-10-11: nothing: its areas are levels drawn from enemy pools, with no goal of their own",
+  "loot": "2026-10-11: weapons and evolutions: Transal Chakram; no evolutions (items are found whole); its armour pieces are stat lines",
+  "statuses": "2026-10-11: Meditate; Mark repeats the live Marked, Bleed is live, Freeze and Entangle the Ice Slime and Web; the rest are stat stacks"
  },
  "Pathogenic": {
   "connections": "before 2026-10-07"
@@ -2658,7 +2700,13 @@
   "statuses": "2026-10-10: 1 row: Tranquility; Rabbitluck repeats the Golden Horseshoe candidate, Counter the Tension candidate, the debuffs live statuses"
  },
  "Raccoin: Coin Pusher Roguelike": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-11: nothing new: Manager is live; Big Eater folded into the Clones of Rogue Legacy 2's Chef (cooking), Trader and Astronomer are bonuses to its own coin families",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-11: nothing: no events; between rounds there is the shop",
+  "goals": "2026-10-11: nothing: the 'enemies' are Bad Coins, which are coins, not creatures",
+  "locations": "2026-10-11: nothing: one cabinet; its gadgets (Cooking Pot, Coin Cage, Raccoon Tower) only work on falling coins",
+  "loot": "2026-10-11: Berserker Badge; no weapons and no evolutions (a coin pusher); Mask Doll left out (Ember Knights' Offering Pit rerolls pieces by rarity), Mirror Badge (the live ? Card copies a piece), the Bad Coins (negative pieces that only make sense in a pusher)",
+  "statuses": "2026-10-11: nothing: coin modifiers (Golden, Clock, Zombie...) change a coin's score, not a body or a goal"
  },
  "Rack and Slay": {
   "connections": "before 2026-10-07"
@@ -2959,7 +3007,13 @@
   "connections": "before 2026-10-07"
  },
  "SNKRX": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-11: nothing: the player is the snake; its 50 heroes are units in it, each one ability",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-11: nothing: no events; between arenas there is the shop",
+  "goals": "2026-10-11: nothing: the wiki documents heroes, classes and items and no enemies",
+  "locations": "2026-10-11: nothing: one arena",
+  "loot": "2026-10-11: nothing: its items act on a snake of hero units (Ouroboros Technique, Porcupine Technique, Last Stand) or repeat live gold scaling (Dividends, Merchant's interest: Balatro's To the Moon); no weapons (heroes attack on their own) and no evolutions (three copies of a hero level it)",
+  "statuses": "2026-10-11: nothing: its curses (the Usurer's debt, Hextouch) are damage over time; Debt was already left out for UnderMine and Star of Providence"
  },
  "SULFUR": {
   "connections": "before 2026-10-07"
@@ -3245,7 +3299,13 @@
   "connections": "before 2026-10-07"
  },
  "Spellmasons": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-11: nothing: one spellmason",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-11: nothing: none",
+  "goals": "2026-10-11: nothing: the wiki documents only the spells; the enemies you can summon (Archer, Golem, Priest, Vampire) have no pages of their own",
+  "locations": "2026-10-11: nothing: its levels have no pages",
+  "loot": "2026-10-11: nothing: its spells are combined on a cast bar; Bloat repeats Brogue's Bloat, Swap and Capture Soul need the hero on the board, Sell repeats Balatro's Trading Card, Clone and Merge help the enemies; no weapons (spells only) and no evolutions",
+  "statuses": "2026-10-11: Last Will; Bloat left out (Brogue's Bloat, a goal-enemy), Contaminate (spreads curses, which the board doesn't have)"
  },
  "Spelunky": {
   "characters": "2026-10-09: Spelunky Guy",
@@ -3392,7 +3452,13 @@
   "statuses": "2026-10-10: no statuses"
  },
  "Sunless Sea": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-11: nothing: one captain, whose 'past' (Urchin, Soldier, Poet...) is a stat bump and a starting ambition rather than a hero",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-11: Unexploded Unclear Bomb, Desperate Measures, A Contest of Riddles; most of its 111 random events are 'Overheard at Zee' flavour or one-line Terror and crew changes",
+  "goals": "2026-10-11: Behemoustache, Eater of Names; Constant Companion left out (Cogmind's Hunter: 'Be hunted'), Mt Nomad (Risk of Rain's Colossus, a living structure), Blue Prophets (Ball x Pit's Lord of Owls, 'Defeat a bird'); the wiki's monster pages are its category 'Sunless Sea monsters', which the brief's names don't match",
+  "locations": "2026-10-11: nothing: its ports are story hubs with no goal of their own, and the zee-floor wrecks are random events",
+  "loot": "2026-10-11: weapons and evolutions: Memento Mori; no evolutions (ship guns are bought or earned whole); the curiosities are story tokens and trade goods with no effect of their own",
+  "statuses": "2026-10-11: nothing: Terror repeats the fear candidates (Don't Starve's Insanity and Darkness, Caves of Qud's Terrified) and Hunger NetHack's Hungry"
  },
  "Super Auto Pets": {
   "characters": "2026-10-10: nothing: no heroes, only packs",
@@ -3404,7 +3470,13 @@
   "statuses": "2026-10-10: 1 row: Tasty; Silly repeats Blind, Icky and Spooked the live Marked, Crisp and Toasty the live Burn"
  },
  "Super Bullet Break": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-11: nothing: the three friends (Akari, Hikaru, Sumire) have no stats of their own on the wiki",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-11: nothing: none documented",
+  "goals": "2026-10-11: nothing: its bosses (King Duchtoli, Queen Veresov) are 'bullets', collectible character cards with a cost, damage and range",
+  "locations": "2026-10-11: nothing: its seven levels are genre parodies (a rhythm game, a shooter, a fighting game) with no goal a location could carry",
+  "loot": "2026-10-11: nothing: its 165 bullets are attack cards of one shape (cost, damage, targets, Burst/Armor/Combo Beam), and its cartridges have no pages; no weapons and no evolutions",
+  "statuses": "2026-10-11: nothing: Burst, Armor and Combo Beam are card keywords"
  },
  "Super Fantasy Kingdom": {
   "connections": "before 2026-10-07"
