@@ -405,9 +405,9 @@ func _offer_column(multi: bool) -> Control:
 	if multi:
 		if _slot == null:
 			col.add_child(_line("On the table — %d" % _offers.size(), UITheme.TEXT_DIM, 12))
-		col.add_child(_offer_grid())
-		col.add_child(_line("Drag each one into a slot, or use it where it stands.",
-			UITheme.TEXT_FAINT, 10))
+		var offers := _offer_grid()
+		offers.tooltip_text = "Drag each one into a slot, or use it where it stands."
+		col.add_child(offers)
 		return col
 	_build_single(col)
 	return col
@@ -506,7 +506,7 @@ func _pack_column() -> Control:
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", UITheme.GAP_SNUG)
 	col.custom_minimum_size = Vector2(PACK_W, 0)
-	col.add_child(_line("Your pack — %d / %d" % [
+	col.add_child(_line("Pack  %d/%d" % [
 		GameState.loot_items.size(), GameState.loot_capacity()], UITheme.TEXT_DIM, 12))
 	col.add_child(_grid)
 	# The instruction line goes when the panel is embedded, and the bin it was

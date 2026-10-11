@@ -5253,7 +5253,7 @@ func amulet_distance_text(hops: int) -> String:
 		return "⛔ No route to the Amulet"
 	if hops == 0:
 		return ""
-	return "%d game%s away from the Amulet" % [hops, "" if hops == 1 else "s"]
+	return "%d from the Amulet" % hops
 
 # --- the report checklist ---------------------------------------------------
 #
@@ -6181,7 +6181,7 @@ func _result_text(res: Dictionary) -> String:
 		parts.append(Plural.count(int(res["attempts"]), "attempt"))
 	# Shields belong to the game that granted them; say so when some went unused.
 	if int(res.get("shields_expired", 0)) > 0:
-		parts.append("%s expired with the game" % GameState.temp_shields_text(
+		parts.append("%s expired" % GameState.temp_shields_text(
 			int(res["shields_expired"])))
 	if parts.is_empty():
 		parts.append("no effect")

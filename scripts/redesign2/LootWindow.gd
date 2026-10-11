@@ -202,8 +202,12 @@ func _panel(reporting: bool) -> Control:
 	head.add_theme_constant_override("separation", UITheme.GAP)
 	box.add_child(head)
 	var title := Label.new()
-	title.text = "%s  Loot  —  %d / %d carried" % [
+	title.text = "%s  Loot  %d/%d" % [
 		"💊" if _has_pills() else "📜", GameState.loot_items.size(), GameState.loot_capacity()]
+	# HOW TO USE IT, ON HOVER. It used to be up to three paragraphs under the grid,
+	# read once and then in the way every time the pack was opened after.
+	title.tooltip_text = _how_to(reporting)
+	title.mouse_filter = Control.MOUSE_FILTER_PASS
 	title.add_theme_font_size_override("font_size", UITheme.FONT_LABEL)
 	title.add_theme_color_override("font_color", ACCENT.lerp(Color.WHITE, 0.45))
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -243,35 +247,18 @@ func _panel(reporting: bool) -> Control:
 		bin.grid = grid
 		box.add_child(bin)
 
-	# The one line of instruction the grid needs, and only while there is something
-	# to rearrange — a single piece has nowhere to go.
-	if not GameState.loot_items.is_empty():
-		box.add_child(_note("Drag a piece into any slot to rearrange the pack — "
-			+ "onto another piece to swap the two, onto an empty one to move it there. "
-			+ "R or right-click while dragging turns it."))
-	# THE BAGS MOVE TOO, and nothing on the screen would say so otherwise.
-	if not GameState.pack_bags.is_empty():
-		box.add_child(_note("Drag a bag by its tab to move it, with what is in it. "
-			+ "R or right-click while dragging turns it."))
-	if reporting:
-		# SPENDING AND MOVING ARE NOT LOCKED, only binning (§4.3). Mid-game is
-		# exactly when the player knows what they want out of a piece — the body
-		# walking toward them is right there — and anything that cannot land in that
-		# gap fizzles rather than being refused.
-		box.add_child(_note("Mid-game: spend and rearrange what you like. Nothing "
-			+ "can be binned until you've reported this one."))
-
 	# WHAT YOU HAVE LEARNED, on both surfaces that draw the pack — the reward screen
 	# builds the same section, and the fold is shared so it cannot be shut here and
 	# open there (LootDiscoveries.open).
 	box.add_child(LootDiscoveries.build(func(): _page.refresh_loot_window()))
 	return panel
 
-func _note(text: String) -> Label:
-	var l := Label.new()
-	l.text = text
-	l.add_theme_font_size_override("font_size", UITheme.FONT_TINY)
-	l.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
-	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	l.custom_minimum_size = Vector2(LootSlot.CELL_W * 3, 0)
-	return l
+# The panel's instructions, as its title's tooltip.
+func _how_to(reporting: bool) -> String:
+	var lines: Array = ["Drag a piece to move it; onto another to swap. R or right-click turns it."]
+	if not GameState.pack_bags.is_empty():
+		lines.append("Drag a bag by its tab to move it with what is in it.")
+	# SPENDING AND MOVING ARE NOT LOCKED mid-game, only binning (§4.3).
+	if reporting:
+		lines.append("Nothing can be binned until you've reported this game.")
+	return "\n".join(lines)

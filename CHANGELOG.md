@@ -11,6 +11,18 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Less text on screen.** Settings is one row per setting in two columns,
+  with the explanations moved into tooltips, so it fits a 720p window without
+  scrolling, and Close is pinned to the bottom-right outside the scroll. The
+  loot window's three instruction paragraphs became its title's tooltip
+  ("Loot 5/9"). The haul screen lost the line beside its exit button, which
+  repeated what the button says, and its drag hint is a tooltip now. The
+  checklist headers are "Goals" / "Tick what you did:", and an offering card
+  reads "5 from the Amulet". In the Collection, stepping with ◀ ▶ no longer
+  shows the card at full height before it shrinks to fit, which made each
+  entry look like it dropped in from above. The card stays hidden until it
+  has been measured, then slides in from the side of the arrow pressed.
+
 - **Roguelike Radio: the owner's 1288 songs are on the sheet**, one menu song
   per game, with the tags their files lacked researched (see the commit). The
   Radio screen now lists locked songs as **one row per game** and rebuilds only

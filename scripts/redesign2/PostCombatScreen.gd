@@ -271,7 +271,7 @@ func tally() -> Array:
 	else:
 		var expired: int = int(res.get("shields_expired", 0))
 		if expired > 0:
-			out.append(["%ss left over" % GameState.TEMP_SHIELD_NAME, str(expired),
+			out.append(["Unused shields", str(expired),
 				UITheme.TEXT_DIM])
 	out.append(["Difficulty", RunDifficulty.tier_name(_tier_now()), UITheme.TEXT])
 	return out
@@ -860,23 +860,14 @@ func _empty_note(text: String) -> Control:
 	wrap.add_child(l)
 	return wrap
 
-# The line beside the way out, which names the same destination the button does —
-# the two are read together and used to disagree once the button stopped saying
-# "see what's waiting".
-func _hint_text() -> String:
-	if _event_pending:
-		return "Take what you want, spend what you like — then on to the event."
-	if _shop_id != &"":
-		return "Take what you want — the shop is waiting under the board."
-	return "Take what you want, then pick where the run goes next."
-
 func _footer() -> Control:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", UITheme.GAP_LOOSE)
-	var hint := _line(_hint_text(), UITheme.TEXT_FAINT, 12)
-	hint.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	hint.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	row.add_child(hint)
+	# NO LINE BESIDE THE WAY OUT. It named the same destination the button does
+	# ("…then on to the event" beside "Go to Event"); the button is enough.
+	var gap := Control.new()
+	gap.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(gap)
 	# ★ RATE, IMMEDIATELY LEFT OF THE WAY OUT. This is the moment there is anything
 	# to say — the game is over and the score is the last thing the evening
 	# produces — but saying it in a corner of the header meant nobody saw it. The

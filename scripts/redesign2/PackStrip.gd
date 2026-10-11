@@ -49,10 +49,8 @@ func rebuild(reporting: bool) -> void:
 	# from the toggle at the end of this row.
 	if GameState.inventory.is_empty():
 		# "No relics yet", not "nothing carried": this strip is relics only, and
-		# the old words sat directly over a Loot bar holding a Whip — a line that
-		# contradicted the row under it.
-		_box.add_child(_empty_note("no relics yet — loot is in the bar below"
-			if not GameState.loot_items.is_empty() else "no relics yet"))
+		# the loot bar right under it says what it is.
+		_box.add_child(_empty_note("no relics yet"))
 		return
 	for item in GameState.inventory:
 		if not (item is ItemData):

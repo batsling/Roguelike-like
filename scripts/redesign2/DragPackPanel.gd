@@ -70,7 +70,7 @@ func _build(on_take: Callable, on_bin: Callable, on_bag: Callable) -> void:
 	# A full pack is not an error here — it is a trade — so the line says which of
 	# the two is happening rather than warning about one of them.
 	var head := Label.new()
-	head.text = "Your pack — %d / %d" % [
+	head.text = "Pack  %d/%d" % [
 		GameState.loot_items.size(), GameState.loot_capacity()]
 	head.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	head.add_theme_color_override("font_color", UITheme.TEXT_DIM)

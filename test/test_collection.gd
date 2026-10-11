@@ -395,6 +395,26 @@ func test_the_arrows_step_through_the_grid_and_light_the_cell_they_land_on() -> 
 	var plain: StyleBoxFlat = (col._nav[0]["panel"] as PanelContainer).get_theme_stylebox("panel")
 	assert_eq(plain.border_width_left, 2, "and unlights the cell")
 
+# A STEP SLIDES THE NEXT CARD IN SIDEWAYS, and only once it has been fitted. It
+# used to show at the cap and shrink, which on a centred card read as the next
+# entry dropping in from above. Whatever the animation, it has to end visible.
+func test_a_step_ends_with_the_card_shown_and_at_rest() -> void:
+	var col := _new_collection()
+	col._set_tab(Collection.Tab.ENEMIES)
+	if col._nav.size() < 2:
+		pending("the roster is too small to step through")
+		return
+	col._select(0)
+	assert_eq(col._detail_panel.modulate.a, 0.0, "hidden until it has been measured")
+	await wait_seconds(0.4)
+	var rest_x: float = col._detail_panel.position.x
+	col._step_detail(1)
+	col._step_detail(1)
+	await wait_seconds(0.4)
+	assert_almost_eq(col._detail_panel.modulate.a, 1.0, 0.001, "the stepped-to card is shown")
+	assert_almost_eq(col._detail_panel.position.x, rest_x, 1.0, "and slid back to where cards rest")
+	col._close_detail()
+
 # The detail panel is the whole point of the tab: it has to lay out EVERY event's
 # choices, gates, goals and curses without tripping over an optional field.
 func test_every_event_renders_its_choices_in_full() -> void:
