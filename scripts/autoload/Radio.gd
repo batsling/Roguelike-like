@@ -476,6 +476,79 @@ func open_folder() -> void:
 	DirAccess.make_dir_recursive_absolute(folder)
 	OS.shell_open(ProjectSettings.globalize_path(folder))
 
+# --- the song-list export ----------------------------------------------------
+#
+# Getting a folder of music into the `radio` sheet without uploading the music
+# and without typing a row per song (docs/roguelike-radio.md §2a). The game is
+# the one thing that can see the player's folder, so it writes a list of every
+# audio file in it, subfolders included, with what each file's own tags say;
+# `tools/apply_radio_import.py` turns that list into rows. The file is a few KB
+# whatever the music weighs. Same shape as the tag export (GameTags): into
+# tools/ when running from the project, the user folder from an exported build.
+
+const AudioTags = preload("res://scripts/runtime/AudioTags.gd")
+const PROJECT_EXPORT := "res://tools/radio_import.json"
+const USER_EXPORT := "user://radio_import.json"
+# How many files the last export listed, for the screen to say.
+var last_export_count: int = 0
+
+func export_path() -> String:
+	if not OS.has_feature("template") and DirAccess.dir_exists_absolute("res://tools"):
+		return PROJECT_EXPORT
+	return USER_EXPORT
+
+# Every playable file under the folder, as paths relative to it with `/` between
+# folders, sorted so a folder's songs sit together. This relative path is what a
+# row's `File` holds: `file_path` joins it back onto the folder.
+func library_files() -> PackedStringArray:
+	var out := PackedStringArray()
+	_walk(folder, "", out)
+	out.sort()
+	return out
+
+func _walk(abs_dir: String, rel: String, out: PackedStringArray) -> void:
+	var d := DirAccess.open(abs_dir)
+	if d == null:
+		return
+	d.include_hidden = false
+	for sub in d.get_directories():
+		_walk(abs_dir.path_join(sub), rel.path_join(sub) if rel != "" else sub, out)
+	for f in d.get_files():
+		if AUDIO_EXTS.has(f.get_extension().to_lower()):
+			out.append(rel.path_join(f) if rel != "" else f)
+
+func export_payload() -> Dictionary:
+	var on_sheet: Dictionary = {}
+	for s in songs():
+		if s is SongData and s.file != "":
+			on_sheet[s.file.to_lower()] = true
+	var files: Array = []
+	for rel in library_files():
+		var tags: Dictionary = AudioTags.read(folder.path_join(rel))
+		tags["file"] = rel
+		tags["on_sheet"] = on_sheet.has(rel.to_lower())
+		files.append(tags)
+	return {
+		"about": "Every audio file in the radio folder, with its own tags. Add the new ones to the "
+			+ "radio sheet with: python3 tools/apply_radio_import.py",
+		"exported": Time.get_datetime_string_from_system(false, true),
+		"folder": ProjectSettings.globalize_path(folder),
+		"files": files,
+	}
+
+# Write the list; returns the file's absolute path, or "" if it couldn't be.
+func export_library(path: String = "") -> String:
+	if path == "":
+		path = export_path()
+	var payload: Dictionary = export_payload()
+	var f := FileAccess.open(path, FileAccess.WRITE)
+	if f == null:
+		return ""
+	f.store_string(JSON.stringify(payload, "  ") + "\n")
+	f.close()
+	last_export_count = payload["files"].size()
+	return ProjectSettings.globalize_path(path)
+
 func play_song(id: StringName) -> void:
 	var song: SongData = Data.get_song(id)
 	if song == null or not is_playable(song):

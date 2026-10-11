@@ -292,6 +292,24 @@ func _build_folder_row() -> Control:
 	rescan.tooltip_text = "Look again for files added since the game started."
 	rescan.pressed.connect(Radio.rescan)
 	row.add_child(rescan)
+	# The song-list export (Radio.export_library): every file in the folder and
+	# its tags, for tools/apply_radio_import.py to write into the sheet. The
+	# result goes in the folder label's place, path in the tooltip.
+	var export_btn := Button.new()
+	export_btn.name = "ExportSongsBtn"
+	export_btn.text = "Export song list"
+	export_btn.tooltip_text = ("Write every song in your music folder (subfolders too) to %s, "
+		+ "for tools/apply_radio_import.py to add to the radio sheet. Only the list is written, "
+		+ "never the music.") % ProjectSettings.globalize_path(Radio.export_path())
+	export_btn.pressed.connect(func() -> void:
+		var written: String = Radio.export_library()
+		if written == "":
+			where.text = "Couldn't write %s." % ProjectSettings.globalize_path(Radio.export_path())
+		else:
+			where.text = "Listed %d song file%s in %s" % [Radio.last_export_count,
+				"" if Radio.last_export_count == 1 else "s", written]
+		where.tooltip_text = where.text)
+	row.add_child(export_btn)
 	return row
 
 # The favourite toggle: a ★, gold when the song is starred and faint when not.

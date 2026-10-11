@@ -65,6 +65,45 @@ row being authored can be left without its `File`: if it is drawn it shows as
 "file not found" and never plays, and songs whose file is in the folder are
 always drawn first.
 
+## 2a. Filling the sheet from a folder of music
+
+Typing a row per song doesn't scale to a whole music library, and the music is
+never uploaded, so the game does the listing: the Radio screen's **Export song
+list** button (`Radio.export_library`) walks the music folder, **subfolders
+included**, and writes `tools/radio_import.json` (`user://radio_import.json`
+from an exported build): every `.mp3`, `.ogg` and `.wav`, its path relative to
+the folder, and what the file's own tags say. Godot plays these formats but
+reads none of their tags, so `scripts/runtime/AudioTags.gd` does: ID3v2 (2.2 to
+2.4) with ID3v1 as a fallback, the Ogg Vorbis/Opus comment packet, and a WAV's
+`LIST INFO`. Cover art is seeked past, never read. The list is a few KB however
+big the music is, and it is the only thing that has to be uploaded.
+
+`python3 tools/apply_radio_import.py` turns it into rows (`--dry-run` to look
+first):
+
+| Column | From |
+|---|---|
+| `Name` | the title tag, else the file name less its track number and a leading "`<game> - `" |
+| `Artist`, `Album`, `Year` | the tags (the album artist when there's no artist) |
+| `Game` | **a folder on the file's path that names a game** (innermost first), else the album; soundtrack words don't count, so `Slay the Spire OST/` and `Hades (Original Soundtrack)/` both match. Exact names only, never a guess |
+| `File` | the relative path, `Hades/01 No Escape.mp3`. **A `File` may name a subfolder**, so the folder-of-folders can sit in the music folder as it is |
+| `Tags` | `menu` when the title says menu, title screen/theme or main theme (§3); else blank |
+| `Image` | always blank, so every song shows **its game's cover** (the owner's call: album art isn't worth collecting). The file's own embedded art is never read |
+
+- **It only adds.** A file already on a row is skipped, so the export can be
+  re-run whenever music is added. A file whose game it can't tell is added with
+  `Game` blank (never drawn) and listed by folder; type the game into the sheet
+  or re-run with `--game "Folder=Game"`, which also fills the rows a previous
+  run left blank.
+- **A row whose `File` isn't in the folder is re-pointed** when a file in it is
+  the same song (same `Name` + `Artist`): that is a typo, a rename, or the
+  sheet's example row.
+- **Two files with the same name and artist** (two games' untagged
+  `Main Menu.mp3`) are told apart by the game in brackets after the name, since
+  the generator refuses two rows with one id. A true duplicate is skipped.
+- It writes through `_xlsx_surgery`, then runs `generate_song_tres.py`. The
+  JSON is spent once applied: delete it in the same commit.
+
 ## 3. Unlocking
 
 **A game earns songs; the draw decides which.** One rule for every game
@@ -226,8 +265,8 @@ corner**. It has:
 - Back / Pause / Skip and a volume slider;
 - a ★ beside the title of what's playing, to star or un-star it;
 - shuffle, the station (★ Favourites among them), and where it plays from;
-- the music folder, with Open folder and Rescan (for files added while the game
-  is running);
+- the music folder, with Open folder, Rescan (for files added while the game
+  is running) and Export song list (§2a);
 - every song on the sheet: unlocked first, then the locked ones by game, the
   game nearest its next song first, each saying what that game still needs
   ("Next Balatro song: beat Balatro once more, or complete 2 more distinct goals
@@ -240,8 +279,11 @@ They belong to the PC, like the window mode does, not to a profile.
 ## 7. Setting it up (for the streamer)
 
 1. Put the music in the folder the Radio screen shows (`Open folder`).
-2. Add a row per song to the `radio` sheet, with `File` matching the file name,
-   and regenerate.
+   Subfolders are fine, and a folder named after its game is how that game is
+   found.
+2. Press **Export song list** and upload `tools/radio_import.json`; then
+   `python3 tools/apply_radio_import.py` writes the rows and regenerates (§2a).
+   A single song can still be typed into the `radio` sheet by hand.
 3. In OBS, add a Browser Source with "Local file" ticked, pointed at
    `radio.html` in the overlay folder, sized about 352 × 100.
 4. In OBS's Advanced Audio Properties, set that source's Audio Monitoring to

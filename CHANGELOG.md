@@ -11,6 +11,15 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Roguelike Radio: the sheet fills itself from a folder of music.** The Radio
+  screen's *Export song list* lists every audio file in the music folder,
+  subfolders included, with the title, artist, album and year out of each
+  file's own tags (`scripts/runtime/AudioTags.gd` reads ID3, Ogg comments and
+  WAV INFO, since Godot reads none of them), and `tools/apply_radio_import.py`
+  writes a row per new file. A folder named after a game is that game's songs.
+  The music itself is never uploaded, only the list. A row's `File` may now
+  name a subfolder. See `docs/roguelike-radio.md` §2a.
+
 - **Roguelike Radio: favourites.** A ★ on each unlocked song's row and beside
   the title of the song playing stars it, and "★ Favourites" in the station
   list plays only starred songs, with the same queue and shuffle as any
