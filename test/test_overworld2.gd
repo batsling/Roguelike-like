@@ -5481,12 +5481,12 @@ func test_the_start_screen_selects_a_road_before_it_commits_to_one() -> void:
 		pending("no start options rolled for this run")
 		return
 	assert_eq(picker.selected_index(), 0, "one road is preselected, so Begin is never dead")
-	assert_true(String(picker._confirm.text).contains(
-		_ui._start_options[0]["game"].display_name), "and Begin names it")
+	assert_true(String(picker._confirm.tooltip_text).contains(
+		_ui._start_options[0]["game"].display_name), "and Begin names it on hover")
 	if _ui._start_options.size() > 1:
 		picker.select(1)
 		assert_eq(picker.selected_index(), 1, "clicking the other road selects it")
-		assert_true(String(picker._confirm.text).contains(
+		assert_true(String(picker._confirm.tooltip_text).contains(
 			_ui._start_options[1]["game"].display_name), "and Begin renames itself")
 		assert_eq(_ui._phase, OVERWORLD.Phase.START_SELECT,
 			"selecting is not choosing — nothing has been committed to")

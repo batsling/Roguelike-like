@@ -172,6 +172,9 @@ func _build_shell() -> void:
 
 	var title := Label.new()
 	title.text = "Tier List"
+	# How to use the board, on hover: it was a line across the header every visit.
+	title.tooltip_text = "Click a game for your notes  •  drag it to move tiers  •  click a tier name to rename"
+	title.mouse_filter = Control.MOUSE_FILTER_PASS
 	title.add_theme_font_size_override("font_size", UITheme.FONT_HERO)
 	title.add_theme_color_override("font_color", UITheme.GOLD)
 	header.add_child(title)
@@ -313,8 +316,7 @@ func _refresh() -> void:
 	# all need a game to be there already.
 	var empty: bool = _board_is_empty()
 	if _hint != null:
-		_hint.text = ("Nothing rated yet" if empty
-			else "Click a game for your notes  •  drag it to move tiers  •  click a tier name to rename")
+		_hint.text = "Nothing rated yet" if empty else ""
 	if empty:
 		_rows_box.add_child(_build_empty_note())
 	_show_detail(_selected)

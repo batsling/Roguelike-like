@@ -2383,12 +2383,15 @@ func _show_enemy_detail(e: GoalEnemyData) -> void:
 		img.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		_detail_box.add_child(img)
 	_detail_box.add_child(_label(("☠ " if e.is_boss() else "") + e.display_name, ac, 18, true))
-	var kind: String = "Boss" if e.is_boss() else "Goal-Enemy"
-	_detail_box.add_child(_detail_meta("%s  •  %s" % [kind, String(e.game_type).capitalize()], ac))
+	var genre: String = String(e.game_type).capitalize()
+	_detail_box.add_child(_detail_meta(("Boss  •  %s" % genre) if e.is_boss() else genre, ac))
 	if e.source_game != "":
 		_detail_box.add_child(_label("From: %s" % e.source_game, Color(0.65, 0.7, 0.8), 11, false, true))
 	_detail_box.add_child(HSeparator.new())
-	_detail_box.add_child(_detail_section("Goal (%s)" % String(e.goal_type).capitalize()))
+	var goal_head := _detail_section("Goal")
+	goal_head.tooltip_text = "%s goal" % String(e.goal_type).capitalize()
+	goal_head.mouse_filter = Control.MOUSE_FILTER_PASS
+	_detail_box.add_child(goal_head)
 	_detail_box.add_child(_label(e.goal, Color(0.9, 0.85, 0.55), 13, false, true))
 	_detail_box.add_child(_detail_section("Threat"))
 	_detail_box.add_child(_kv("Tier", ENEMY_TIER_NAMES[clampi(e.tier_index(), 0, 3)]))
@@ -2498,12 +2501,11 @@ func _build_loot() -> void:
 	# shrinking, so the whole panel widened and carried its ✕ Close button off the
 	# right edge of the screen. Wrapping, the note's minimum is its longest WORD,
 	# and it takes whatever the search box and the count leave.
-	var note := _label(_loot_note(), Color(0.6, 0.6, 0.65), 11, false, true)
-	note.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	note.size_flags_stretch_ratio = 2.0
-	note.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	note.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	row.add_child(note)
+	# THE NOTE IS THE SUB-TAB'S TOOLTIP now (`_loot_sub_button`), not a line here.
+	var gap := Control.new()
+	gap.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	gap.size_flags_stretch_ratio = 2.0
+	row.add_child(gap)
 	_add_count_label(row)
 	var scroll := ScrollContainer.new()
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -2523,8 +2525,8 @@ func _build_loot() -> void:
 # every run, but what it looks like once you know it is a fact about the potion,
 # so the catalog draws it (docs/potions-design.md §9.2). Six of the fifteen have
 # no art of their own and keep wearing a vial forever, which is the design (§6.3).
-func _loot_note() -> String:
-	match _loot_sub:
+func _loot_note(sub: String = "") -> String:
+	match sub if sub != "" else _loot_sub:
 		LOOT_PILLS:
 			return ("Revealed reference. Every run deals these a random colour out of "
 				+ "13, so the capsule here is a stand-in, not the one you'll be holding.")
@@ -2560,9 +2562,11 @@ func _loot_note() -> String:
 func _loot_sub_button(label: String, sub: String) -> Button:
 	# A full _refresh rather than a repopulate: the sub-tabs carry their own search
 	# term and their own note, and both live outside the grid.
-	return _sort_button(label, _loot_sub == sub, func():
+	var b := _sort_button(label, _loot_sub == sub, func():
 		_loot_sub = sub
 		_refresh())
+	b.tooltip_text = _loot_note(sub)
+	return b
 
 func _populate_loot() -> void:
 	match _loot_sub:

@@ -60,8 +60,6 @@ var _amulet_id: StringName = &""
 # a SpinBox would cap it, step it and reformat it out from under the player.
 var _seed: int = 0
 var _seed_field: LineEdit = null
-var _seed_note: Label = null
-var _band_label: Label = null
 var _target_label: Label = null
 var _target_search: LineEdit = null
 var _target_results: VBoxContainer = null
@@ -188,12 +186,11 @@ func _header() -> Control:
 	title.add_theme_color_override("font_color", UITheme.GOLD)
 	col.add_child(title)
 
-	var sub := Label.new()
-	sub.text = "Three filters, not one: what the map is made of, where you may start, and what you're looking for."
-	sub.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	sub.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
-	sub.add_theme_color_override("font_color", UITheme.TEXT_DIM)
-	col.add_child(sub)
+	# The explanations on this screen are tooltips: each section's heading carries
+	# its own. They used to be a line under every heading, read once and then
+	# stepped over on every visit after.
+	title.tooltip_text = "Three filters: what the map is made of, where you may start, and what you're looking for."
+	title.mouse_filter = Control.MOUSE_FILTER_PASS
 
 	var close := Button.new()
 	close.text = "✕"
@@ -222,20 +219,10 @@ func _filter_column(col: Dictionary) -> Control:
 	head.text = col["title"]
 	head.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 	head.add_theme_color_override("font_color", UITheme.ACCENT)
+	head.tooltip_text = col["blurb"]
+	head.mouse_filter = Control.MOUSE_FILTER_PASS
+	frame.tooltip_text = col["blurb"]
 	box.add_child(head)
-
-	var blurb := Label.new()
-	blurb.text = col["blurb"]
-	blurb.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	# TWO LINES RESERVED, MEASURED, in every column. THE MAP's sentence wraps to two
-	# and the other two fit on one, so a reservation shorter than two real lines
-	# (it was a guessed 32px against ~38) let the first column's blurb push its
-	# whole stack down a few pixels — every dropdown and box sat lower than its
-	# neighbours across the row. The columns are meant to be read ACROSS.
-	blurb.custom_minimum_size.y = UITheme.lines_height(UITheme.FONT_SMALL, 2)
-	blurb.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
-	blurb.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
-	box.add_child(blurb)
 
 	box.add_child(_axis_label("Library"))
 	box.add_child(_option_row(LIBRARY_ITEMS, func(v): _set_axis(key, "library", v)))
@@ -350,14 +337,9 @@ func _band_block() -> Control:
 	head.text = "HOW LONG A RUN"
 	head.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	head.add_theme_color_override("font_color", UITheme.ACCENT)
+	head.tooltip_text = "Games from the start to the Amulet. A start is offered when it is this far from the Amulet."
+	head.mouse_filter = Control.MOUSE_FILTER_PASS
 	box.add_child(head)
-
-	var note := Label.new()
-	note.text = "Games from the start to the Amulet."
-	note.tooltip_text = "The opening cards are drawn from inside this band — a start is offered when it is this far from the Amulet."
-	note.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
-	note.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
-	box.add_child(note)
 
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", UITheme.GAP_SNUG)
@@ -370,11 +352,7 @@ func _band_block() -> Control:
 		_max_path = v
 		if _min_path > _max_path:
 			_min_path = _max_path))
-
-	_band_label = Label.new()
-	_band_label.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
-	_band_label.add_theme_color_override("font_color", UITheme.GOLD)
-	box.add_child(_band_label)
+	# No "4–8 games" line under the two boxes: it read them back.
 	return box
 
 # --- the seed --------------------------------------------------------------
@@ -394,28 +372,19 @@ func _seed_block() -> Control:
 	box.custom_minimum_size.x = 220
 
 	var head := Label.new()
-	head.text = "SEED  (optional)"
+	head.text = "SEED"
 	head.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	head.add_theme_color_override("font_color", UITheme.ACCENT)
+	head.tooltip_text = "Optional. The same number deals the same run: the same Amulet, opening cards and drops. Blank deals a fresh one."
+	head.mouse_filter = Control.MOUSE_FILTER_PASS
 	box.add_child(head)
-
-	var note := Label.new()
-	note.text = "The same number deals the same run."
-	note.tooltip_text = "Leave it blank to be dealt a fresh run. Type a number a run was played on and it comes back: the same Amulet, the same opening cards, the same drops."
-	note.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
-	note.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
-	box.add_child(note)
 
 	_seed_field = LineEdit.new()
 	_seed_field.placeholder_text = "roll me one"
 	_seed_field.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	_seed_field.text_changed.connect(_on_seed_typed)
+	_seed_field.tooltip_text = head.tooltip_text
 	box.add_child(_seed_field)
-
-	_seed_note = Label.new()
-	_seed_note.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
-	_seed_note.add_theme_color_override("font_color", UITheme.GOLD)
-	box.add_child(_seed_note)
 	return box
 
 # DIGITS ONLY, AND THE FIELD IS CORRECTED AS YOU TYPE rather than at Begin —
@@ -473,7 +442,9 @@ func _target_block() -> Control:
 	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 
 	var head := Label.new()
-	head.text = "AIM AT A GAME  (optional)"
+	head.text = "AIM AT A GAME"
+	head.tooltip_text = "Optional. Leave it empty and the Amulet is rolled from the filter above."
+	head.mouse_filter = Control.MOUSE_FILTER_PASS
 	head.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	head.add_theme_color_override("font_color", UITheme.ACCENT)
 	box.add_child(head)
@@ -553,21 +524,9 @@ func _refresh() -> void:
 		label.add_theme_color_override("font_color",
 			UITheme.DANGER if n == 0 else (UITheme.SUCCESS if n >= 20 else UITheme.GOLD))
 
-	if _band_label != null:
-		_band_label.text = Plural.count(_min_path, "game") if _min_path == _max_path \
-			else "%d–%d games" % [_min_path, _max_path]
-
-	if _seed_note != null:
-		if _seed == 0:
-			_seed_note.text = "A fresh run."
-			_seed_note.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
-		else:
-			_seed_note.text = "🎲  %d" % _seed
-			_seed_note.add_theme_color_override("font_color", UITheme.GOLD)
-
 	if _target_label != null:
 		if _amulet_id == &"":
-			_target_label.text = "No target — the Amulet is rolled from the filter above."
+			_target_label.text = ""
 			_target_label.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
 		else:
 			var target: GameData = Data.get_game(_amulet_id)
@@ -642,7 +601,8 @@ func _update_verdict() -> void:
 		_verdict.text = "•  %s" % " ".join(PackedStringArray(warnings))
 		_verdict.add_theme_color_override("font_color", UITheme.GOLD)
 	else:
-		_verdict.text = "Ready — %s on the map." % Plural.count(map_n, "game")
+		# Nothing wrong is nothing to say: the map's count is under its column.
+		_verdict.text = ""
 		_verdict.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 	if _begin_btn != null:
 		_begin_btn.disabled = not problems.is_empty()

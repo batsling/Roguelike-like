@@ -22,6 +22,16 @@ For how the project is laid out and how its systems fit together, see
   shows the card at full height before it shrinks to fit, which made each
   entry look like it dropped in from above. The card stays hidden until it
   has been measured, then slides in from the side of the arrow pressed.
+  The same pass then went over the menus. Custom Run's subtitle, column
+  blurbs, section notes, "4–8 games" and "Ready — 921 games on the map" are
+  gone or tooltips on their headings. The Radio's OBS paragraph is the "Plays
+  from" tooltip, and a song whose file is missing says "File missing" with the
+  path on hover. Choose Your Character, Profiles and the Tier List lost their
+  subtitles to tooltips. Confirm and Begin no longer repeat the name shown in
+  large type beside them, and a start card reads "8 from the Amulet" under a
+  header that already names the Amulet. The Collection's loot notes are the
+  sub-tabs' tooltips, an enemy card's header is its genre (with "Boss" for a
+  boss), and How to Play's subtitle is gone.
 
 - **Roguelike Radio: the owner's 1288 songs are on the sheet**, one menu song
   per game, with the tags their files lacked researched (see the commit). The

@@ -381,9 +381,9 @@ func _footer() -> Control:
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(spacer)
 	_confirm = HoverButton.new()
-	_confirm.text = "Begin the run"
+	_confirm.text = "Begin"
 	_confirm.disabled = true
-	_confirm.custom_minimum_size = Vector2(280, 42)
+	_confirm.custom_minimum_size = Vector2(200, 42)
 	_confirm.add_theme_stylebox_override("normal", UITheme.accent_box(UITheme.ACCENT, UITheme.PANEL_HI, 8))
 	_confirm.add_theme_color_override("font_color", UITheme.GOLD)
 	_confirm.add_theme_font_size_override("font_size", UITheme.FONT_SUB)
@@ -413,7 +413,9 @@ func select(index: int) -> void:
 	if _confirm != null:
 		_confirm.disabled = false
 		var game: GameData = _options[index]["game"]
-		_confirm.text = "Begin: %s" % game.display_name
+		# The lit card already names the game; Begin says it on hover.
+		_confirm.text = "Begin"
+		_confirm.tooltip_text = "Begin with %s" % game.display_name
 
 # Which road is selected, or -1. Read by the tests and by nothing else.
 func selected_index() -> int:

@@ -5229,11 +5229,12 @@ func amulet_name() -> String:
 	return game.display_name if game != null else "the Amulet"
 
 # The distance line every start card wears, and the same line inside the popup it
-# opens: how far the Amulet is AND which game it is. One function because the two
-# must not drift, and because "5 games from Guild of Dungeoneering" is the whole
-# sentence — the number on its own was never the interesting half.
+# opens. One function because the two must not drift. It used to name the Amulet
+# ("5 games from Guild of Dungeoneering"), but the start screen's header names it
+# in large type right above the cards, so the cards say only how far, in the same
+# words the offering's cards use later in the run.
 func _start_distance_text(hops: int) -> String:
-	return "%d game%s from %s" % [hops, "" if hops == 1 else "s", amulet_name()]
+	return amulet_distance_text(hops)
 
 # The same fact on an ORDINARY offered card, where it used to be missing: how far
 # that game stands from the Amulet. The distance was on the start cards and then

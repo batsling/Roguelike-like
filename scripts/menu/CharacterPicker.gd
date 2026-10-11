@@ -94,13 +94,9 @@ func _build() -> void:
 	title.add_theme_font_size_override("font_size", UITheme.FONT_HERO)
 	title.add_theme_color_override("font_color", UITheme.GOLD)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.tooltip_text = "Each hero opens the run with a different Health pool and set of verbs."
+	title.mouse_filter = Control.MOUSE_FILTER_PASS
 	header.add_child(title)
-	var hint := Label.new()
-	hint.text = "Each hero opens the run with a different Health pool and set of verbs."
-	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	hint.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
-	hint.add_theme_color_override("font_color", UITheme.TEXT_DIM)
-	header.add_child(hint)
 
 	# Body: icon grid (left) | full portrait + info (right).
 	var body := HBoxContainer.new()
@@ -187,7 +183,9 @@ func _build() -> void:
 			state["tiles"][tid].call(tid == ch.id)
 		_fill_char_detail(detail_box, ch)
 		confirm.disabled = false
-		confirm.text = "Confirm: %s" % ch.display_name
+		# The name is the detail panel's heading right beside this; the button
+		# carries it on hover rather than saying it twice.
+		confirm.tooltip_text = "Start as %s" % ch.display_name
 
 	_select = select
 

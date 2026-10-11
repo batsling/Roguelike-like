@@ -71,15 +71,9 @@ func _build() -> void:
 	title.text = "Profiles"
 	title.add_theme_font_size_override("font_size", UITheme.FONT_TITLE_LG)
 	title.add_theme_color_override("font_color", Color(1, 0.85, 0.4))
+	title.tooltip_text = "Each profile keeps its own runs, stats, tier list, owned games and run settings. The window and dev settings are shared."
+	title.mouse_filter = Control.MOUSE_FILTER_PASS
 	vbox.add_child(title)
-
-	var hint := Label.new()
-	hint.text = "Each profile keeps its own runs, stats, tier list, owned games and run settings. The window and dev settings are shared."
-	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	hint.custom_minimum_size = Vector2(0, 44)
-	hint.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
-	hint.add_theme_color_override("font_color", Color(0.75, 0.75, 0.8))
-	vbox.add_child(hint)
 
 	var scroll := ScrollContainer.new()
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
