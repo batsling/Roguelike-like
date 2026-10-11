@@ -80,6 +80,40 @@ For how the project is laid out and how its systems fit together, see
     ("Next Hades song: beat Hades 2 times more, or complete 3 more distinct
     goals there"). It's the game that is close, not the song.
 
+- **Research, twenty-third batch: the first owned games with no wiki.**
+  Beneath Apple Manor, Rogue, Moria, Hack, Larn, Mission: Thunderbolt, Omega,
+  Dragon Crystal, Fatal Labyrinth, Cave Noire, ToeJam & Earl and Ragnarok,
+  every wiki kind each: 38 new rows and 5 clones. With no wiki, the sources
+  were the games themselves: Rogue 5.4's, Moria's and Larn's source code,
+  Beneath Apple Manor's 1982 manual, a 1993 Mission: Thunderbolt tips file and
+  a long Omega FAQ. Sega Retro turns scripts away, so the two Sega games got
+  little.
+  - **Old rows:** Rogue's Xeroc and Aquator both hold against `fight.c`.
+  - **Goals:** the Purple Worm (fall back from a fight and come back to finish
+    it), the Manor Ghost (only magic hurts it), the Wraith (lose a level and
+    earn it back), Creeping Gold Coins, the Icky Lump (farm a breeder) and the
+    Trifid.
+  - **Loot:** six scrolls, a thin sheet (Hold Monster, Sleep, Punishment's
+    iron ball, Gem Perfection, Annihilation, Word of Recall); the Sonic
+    Screwdriver (the first piece that stands in for a Key); the Discombobulator
+    weapon; a Stone to Mud wand; a Potion of See Invisible; Rose Bushes; and
+    three trinkets: the Ring of Slow Digestion (food beside it needs fewer
+    charges), Elvish Waybread and the Dragon Egg, which hatches as you level.
+  - **Places:** two shopkeepers (Moria's Mauglin the Grumpy, who haggles;
+    Omega's Pawn Shop, where everything is already identified), four objects
+    (the College of Larn, the Autodoc, ToeJam & Earl's Wiseman and Opera
+    Singer), a Rust Trap tile, the Sphere of Annihilation unit and David's
+    Treasure Zoo.
+  - **Events and the rest:** the Larn Revenue Service, Omega's Autoteller,
+    Santa, Cave Noire's Adventurers' Guild and the Golden Apple; ToeJam as a
+    hero; Confused, Lunarity and the Overeating curse.
+  - **Clones:** Brain Scan, Disenchantress, the Stasis Bag, Lil' Devil and
+    Ragnarok's Blacksmith, onto rows that already said the same thing.
+  - **ToeJam & Earl has a wiki after all** (toejamandearl.fandom.com, 213
+    articles); the first run missed it while Fandom was rate-limiting.
+  - **Not written:** a false Golden Apple that kills you. One search summary
+    claimed it, and no page reachable from here says so.
+
 - **Research, twentieth batch, and the end of the owned games with wikis.**
   Hell Clock, Maze Mice, Merge Maestro, Noobs Are Coming, The Royal Writ,
   Skull Horde, Asgard's Fall, Bad North, Bounty of One and Angband: 4 new rows,

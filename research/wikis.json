@@ -16416,8 +16416,45 @@
   "wiki": null
  },
  "ToeJam & Earl": {
-  "checked": "2026-10-09",
-  "wiki": null
+  "api": "https://toejamandearl.fandom.com/api.php",
+  "articles": 213,
+  "blurb": "DECEMBER 2022 NEWS:- The ToeJam & Earl Movie has been announced! ## Welcome to the Wiki Welcome to the unofficial ToeJam & Earl community site that anyone can edit. Please help us make this wiki more funkadelic than ever! ## Games ## Charac",
+  "categories": {
+   "characters": [
+    "Characters",
+    "Playable characters"
+   ],
+   "goals": [
+    "Enemies",
+    "High Level Enemies",
+    "Low Level Enemies"
+   ],
+   "locations": [
+    "Locations",
+    "World objects"
+   ],
+   "loot": [
+    "Food"
+   ]
+  },
+  "checked": "2026-10-11",
+  "counts": {
+   "characters": 102,
+   "events": 0,
+   "goals": 61,
+   "locations": 57,
+   "loot": 4,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "loot": [
+    "Food"
+   ]
+  },
+  "signal": "",
+  "sitename": "Toejam and Earl Wiki",
+  "wiki": "https://toejamandearl.fandom.com"
  },
  "ToeJam & Earl: Back in the Groove!": {
   "checked": "2026-10-09",

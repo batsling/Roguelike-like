@@ -421,7 +421,13 @@
   "connections": "before 2026-10-07"
  },
  "Beneath Apple Manor": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-11: nothing usable: one unnamed adventurer",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-11: 1 row (The Golden Apple)",
+  "goals": "2026-10-11: 2 rows (Purple Worm, Manor Ghost), from the 1982 manual; slimes, trolls and the red dragon repeat live goals",
+  "locations": "2026-10-11: nothing usable: the main staircase is its town, with a shop of three weapons",
+  "loot": "2026-10-11: nothing new: its Brain Scan (paid insurance against death) is a clone on Amulet of Life Saving; no weapons beyond dagger, axe and sword, no evolutions",
+  "statuses": "2026-10-11: nothing usable: the ghost's Strength drain is the live Drain ability"
  },
  "Beneath Oresa": {
   "characters": "2026-10-10: nothing: Hectos and Nereide repeat the Minotaur's counter, Flynn the Gunslinger, Zakaan the Tinker, Sohoma the Grave Robber",
@@ -632,7 +638,13 @@
   "connections": "before 2026-10-07"
  },
  "Cave Noire": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-11: nothing usable: a male or female hero, unnamed",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-11: 1 row (Adventurers' Guild)",
+  "goals": "2026-10-11: nothing usable: no monster list to be found",
+  "locations": "2026-10-11: nothing usable: the four quests are the Adventurers' Guild event",
+  "loot": "2026-10-11: nothing usable: a short list of tools, none named in a source; no weapons or evolutions",
+  "statuses": "2026-10-11: nothing usable: no source names any"
  },
  "Caveblazers": {
   "characters": "2026-10-10: one hero, no classes",
@@ -1311,7 +1323,13 @@
   "statuses": "2026-10-10: no statuses"
  },
  "Dragon Crystal": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-11: nothing usable: one unnamed hero",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-11: nothing usable: no events",
+  "goals": "2026-10-11: nothing usable: no monster list to be found (Sega Retro refuses scripts); its monsters are Fatal Labyrinth's sprites",
+  "locations": "2026-10-11: nothing usable: no source names any",
+  "loot": "2026-10-11: 1 row (Dragon Egg); weapons generic, no evolutions",
+  "statuses": "2026-10-11: nothing usable: no source names any"
  },
  "Dragon Quest Heroes: Torneko‘s Mystery Dungeon Classic HD": {
   "connections": "before 2026-10-07"
@@ -1519,7 +1537,13 @@
   "connections": "before 2026-10-07"
  },
  "Fatal Labyrinth": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-11: nothing usable: Trykaar has no traits to build a hero on",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-11: nothing usable: no events",
+  "goals": "2026-10-11: nothing usable: no monster list to be found (Sega Retro refuses scripts)",
+  "locations": "2026-10-11: nothing usable: monsters respawning if you linger repeats Quasimorph's Barakunarash",
+  "loot": "2026-10-11: nothing usable: its items are the generic roguelike set; gold buys only a better grave; weapons generic, no evolutions",
+  "statuses": "2026-10-11: 1 row (Overeating curse)"
  },
  "Fear & Hunger": {
   "connections": "before 2026-10-07"
@@ -1729,7 +1753,13 @@
   "connections": "before 2026-10-07"
  },
  "Hack": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-11: nothing usable: its Tourist is NetHack's candidate",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-11: nothing usable: no events",
+  "goals": "2026-10-11: nothing usable: its bestiary lives on in NetHack, whose rows are the famous versions",
+  "locations": "2026-10-11: 1 row (David's Treasure Zoo)",
+  "loot": "2026-10-11: 1 row (Scroll of Punishment); Scroll of Amnesia and Scroll of Fire are live; weapons generic, no evolutions",
+  "statuses": "2026-10-11: nothing usable: its statuses are NetHack's"
  },
  "Hack'EM": {
   "connections": "before 2026-10-07"
@@ -1997,7 +2027,13 @@
   "connections": "before 2026-10-07"
  },
  "Larn": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-11: nothing usable: one unnamed hero",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-11: 1 row (Larn Revenue Service)",
+  "goals": "2026-10-11: nothing usable: Disenchantress is a clone on Disenchanter (NetHack); the rest of the bestiary repeats Rogue's and NetHack's, and the Gnome King's throne is The Nuclear Throne's goal",
+  "locations": "2026-10-11: 2 rows (Sphere of Annihilation unit, College of Larn object); its throne, fountain, altar and bank are candidates from NetHack and Moonlighter",
+  "loot": "2026-10-11: 2 rows (Scroll of Gem Perfection, Scroll of Annihilation); its weapons are generic, no evolutions; the device of theft prevention repeats Silver Padlock (For the King 2)",
+  "statuses": "2026-10-11: nothing usable: dianthroritis is the daughter's illness, not a status"
  },
  "Legend of Dungeon": {
   "connections": "before 2026-10-07"
@@ -2182,7 +2218,13 @@
   "connections": "before 2026-10-07"
  },
  "Mission: Thunderbolt": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-11: nothing usable: one JauntTrooper",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-11: nothing usable: no events",
+  "goals": "2026-10-11: 1 row (Icky Lump); moppetts and the dreadnought repeat the thief and escape goals",
+  "locations": "2026-10-11: 1 row (Autodoc)",
+  "loot": "2026-10-11: 2 rows (Sonic Screwdriver, the Discombobulator weapon); the Stasis Bag is a clone on Drawers; no evolutions",
+  "statuses": "2026-10-11: nothing usable: klutzy and fuzzy-headed are minor"
  },
  "Mistrogue: Mist and the Living Dungeons": {
   "connections": "before 2026-10-07"
@@ -2276,7 +2318,13 @@
   "connections": "before 2026-10-07"
  },
  "Moria": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-11: nothing usable: its races and classes are the generic D&D set, done better by Dungeon Crawl's candidates",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-11: nothing usable: no events",
+  "goals": "2026-10-11: 1 row (Creeping Gold Coins); its only uniques are Evil Iggy and the Balrog, whose goals would repeat Angband's Sauron and Morgoth",
+  "locations": "2026-10-11: 1 row (shopkeeper Mauglin the Grumpy, for haggling); 17 more named owners in data_store_owners.cpp",
+  "loot": "2026-10-11: 3 rows (Wand of Stone to Mud, Scroll of Word of Recall, Elvish Waybread); its weapons are a long generic list, no evolutions",
+  "statuses": "2026-10-11: nothing usable: its fear, poison and blindness are generic"
  },
  "Morimens": {
   "characters": "2026-10-10: nothing: 106 gacha Awakeners defined by card kits, with no hero identity a level-up could carry",
@@ -2541,7 +2589,13 @@
   "connections": "before 2026-10-07"
  },
  "Omega": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-11: nothing usable: no classes, you join guilds",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-11: 1 row (Autoteller)",
+  "goals": "2026-10-11: 1 row (Trifid)",
+  "locations": "2026-10-11: 1 row (shopkeeper Rampart Pawn Shop); the Oracle is NetHack's event",
+  "loot": "2026-10-11: nothing usable: the FAQ names few items, and they are generic; weapons generic, no evolutions",
+  "statuses": "2026-10-11: 1 row (Lunarity)"
  },
  "Omega Labyrinth": {
   "connections": "before 2026-10-07"
@@ -2832,7 +2886,13 @@
   "connections": "before 2026-10-07"
  },
  "Ragnarok": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-11: nothing new: the Blacksmith is a clone on Tinker (Caves of Qud); its Sage, Alchemist and Woodsman repeat crafting heroes",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-11: nothing usable: no events",
+  "goals": "2026-10-11: nothing usable: no monster list to be found beyond the Norse gods",
+  "locations": "2026-10-11: nothing usable: no source names its places",
+  "loot": "2026-10-11: nothing usable: its Mjolnir is better known as NetHack's Mjollnir, and no source lists the rest; no evolutions",
+  "statuses": "2026-10-11: nothing usable: polymorphing yourself is the Druid's goal"
  },
  "Rampage Knights": {
   "connections": "before 2026-10-07"
@@ -3012,8 +3072,13 @@
   "connections": "before 2026-10-07"
  },
  "Rogue": {
+  "characters": "2026-10-11: nothing usable: Rodney is live",
   "connections": "before 2026-10-07",
-  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+  "events": "2026-10-11: nothing usable: Rogue has no decision screens",
+  "goals": "2026-10-11: 1 row (Wraith); old rows checked against the 5.4 source: Xeroc (disguises itself as an object) and Aquator (rusts armour) both hold. Ice monster and Venus flytrap repeat Wormtongue's 'slowed or held'",
+  "locations": "2026-10-11: 1 row (Rust Trap tile); its teleport and bear traps are candidates from Barony and Mewgenics",
+  "loot": "2026-10-11: 4 rows (Ring of Slow Digestion, Scroll of Hold Monster, Scroll of Sleep, Potion of See Invisible); its weapons are plain (mace, sword, bow), no evolutions; Magic Mapping, Hallucination and Blind are NetHack candidates already",
+  "statuses": "2026-10-11: 1 row (Confused)"
  },
  "Rogue Blight": {
   "connections": "before 2026-10-07"
@@ -3911,7 +3976,13 @@
   "connections": "before 2026-10-07"
  },
  "ToeJam & Earl": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-11: 1 row (ToeJam), Earl in its Clones",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-11: 1 row (Santa)",
+  "goals": "2026-10-11: nothing new: Lil' Devil is a clone on Graveyard Golem; the Boogie Man repeats Brogue's Phantom, the Mole the thief goals. Its wiki was found this batch",
+  "locations": "2026-10-11: 2 rows (Wiseman, Opera Singer)",
+  "loot": "2026-10-11: 1 row (Rose Bushes); the Randomizer repeats the live Scroll of Amnesia, the Decoy Pixel Dungeon's Scroll of Mirror Image; no weapons beyond tomatoes, no evolutions",
+  "statuses": "2026-10-11: nothing usable: the wiki has no page for Cupid's effect"
  },
  "ToeJam & Earl: Back in the Groove!": {
   "connections": "before 2026-10-07"
