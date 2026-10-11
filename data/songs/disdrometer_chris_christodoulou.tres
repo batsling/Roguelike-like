@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_disdrometer_chris_christodoulou"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"disdrometer_chris_christodoulou"
+title = "Disdrometer"
+artist = "Chris Christodoulou"
+album = "Risk of Rain 2"
+year = 2020
+game_id = &"risk_of_rain_2"
+file = "Risk of Rain 2/07. Disdrometer.mp3"
+image_path = ""
+tags = PackedStringArray()

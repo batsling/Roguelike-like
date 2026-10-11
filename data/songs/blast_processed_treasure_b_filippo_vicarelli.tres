@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_blast_processed_treasure_b_filippo_vicarelli"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"blast_processed_treasure_b_filippo_vicarelli"
+title = "Blast Processed Treasure B"
+artist = "Filippo Vicarelli"
+album = "Vampire Survivors The Original Soundtrack"
+year = 2022
+game_id = &"vampire_survivors"
+file = "Vampire Survivors/2-17 - Blast Processed Treasure B.mp3"
+image_path = ""
+tags = PackedStringArray()

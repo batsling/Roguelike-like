@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_the_spin_ish_line_crashtroid"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"the_spin_ish_line_crashtroid"
+title = "The Spin-ish Line"
+artist = "Crashtroid"
+album = "Peglin Official Soundtrack"
+year = 2026
+game_id = &"peglin"
+file = "Peglin/18. The Spin-ish Line.mp3"
+image_path = ""
+tags = PackedStringArray()

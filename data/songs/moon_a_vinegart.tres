@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_moon_a_vinegart"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"moon_a_vinegart"
+title = "Moon A"
+artist = "Vinegart"
+album = "Nubby's Number Factory OST"
+year = 2025
+game_id = &"nubby_s_number_factory"
+file = "Nubby's Number Factory/05. Moon A.mp3"
+image_path = ""
+tags = PackedStringArray()

@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_idpd_world_first_demo_jukio_kallio"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"idpd_world_first_demo_jukio_kallio"
+title = "IDPD World (First Demo)"
+artist = "Jukio Kallio"
+album = "Nuclear Throne OST (Wasteland Scraps bonus)"
+year = 2015
+game_id = &"nuclear_throne"
+file = "Nuclear Throne/Wasteland Scraps 106 BONUS IDPD World First Demo.mp3"
+image_path = ""
+tags = PackedStringArray()

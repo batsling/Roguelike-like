@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_we_did_it_crashtroid"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"we_did_it_crashtroid"
+title = "We Did It!"
+artist = "Crashtroid"
+album = "Peglin Official Soundtrack"
+year = 2026
+game_id = &"peglin"
+file = "Peglin/19. We Did It!.mp3"
+image_path = ""
+tags = PackedStringArray()

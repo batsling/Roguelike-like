@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_on_the_coast_darren_korb"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"on_the_coast_darren_korb"
+title = "On the Coast"
+artist = "Darren Korb"
+album = "Hades: Original Soundtrack"
+year = 2020
+game_id = &"hades"
+file = "Hades/27. On the Coast.mp3"
+image_path = ""
+tags = PackedStringArray()

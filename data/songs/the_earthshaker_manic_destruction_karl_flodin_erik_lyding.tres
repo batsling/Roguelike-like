@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_the_earthshaker_manic_destruction_karl_flodin_erik_lyding"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"the_earthshaker_manic_destruction_karl_flodin_erik_lyding"
+title = "The Earthshaker (Manic Destruction)"
+artist = "Karl Flodin & Erik Lyding"
+album = "Haste (Original Soundtrack)"
+year = 2025
+game_id = &"haste"
+file = "Haste/42. The Earthshaker (Manic Destruction).mp3"
+image_path = ""
+tags = PackedStringArray()

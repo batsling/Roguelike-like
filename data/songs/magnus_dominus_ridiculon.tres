@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_magnus_dominus_ridiculon"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"magnus_dominus_ridiculon"
+title = "Magnus Dominus"
+artist = "Ridiculon"
+album = "The Legend of Bum-Bo Original Soundtrack"
+year = 2019
+game_id = &"the_legend_of_bum_bo"
+file = "The Legend of Bum-bo/08 Magnus Dominus.mp3"
+image_path = ""
+tags = PackedStringArray()

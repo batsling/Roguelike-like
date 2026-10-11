@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_bonking_in_the_forest_miguelangell960"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"bonking_in_the_forest_miguelangell960"
+title = "Bonking in the Forest"
+artist = "MIGUELANGELL960"
+album = "MEGABONK OST"
+year = 2025
+game_id = &"megabonk"
+file = "Megabonk/02. Bonking in the Forest.mp3"
+image_path = ""
+tags = PackedStringArray()

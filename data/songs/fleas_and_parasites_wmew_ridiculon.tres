@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_fleas_and_parasites_wmew_ridiculon"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"fleas_and_parasites_wmew_ridiculon"
+title = "Fleas and Parasites (WMEW)"
+artist = "Ridiculon"
+album = "Mewgenics OST"
+year = 2026
+game_id = &"mewgenics"
+file = "Mewgenics/34. Fleas and Parasites (WMEW).mp3"
+image_path = ""
+tags = PackedStringArray()

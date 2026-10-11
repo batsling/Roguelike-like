@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_liquid_glass_adonai"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"liquid_glass_adonai"
+title = "Liquid Glass"
+artist = "Adonai"
+album = "Brotato Soundtrack"
+year = 2024
+game_id = &"brotato"
+file = "Brotato/1-01 - Liquid Glass.mp3"
+image_path = ""
+tags = PackedStringArray("menu")

@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_blitzkrieg_ben_prunty"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"blitzkrieg_ben_prunty"
+title = "Blitzkrieg"
+artist = "Ben Prunty"
+album = "Into the Breach Soundtrack"
+year = 2018
+game_id = &"into_the_breach"
+file = "Into the Breach/14 Blitzkrieg.mp3"
+image_path = ""
+tags = PackedStringArray()

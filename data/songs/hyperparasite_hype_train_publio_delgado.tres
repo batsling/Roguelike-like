@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_hyperparasite_hype_train_publio_delgado"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"hyperparasite_hype_train_publio_delgado"
+title = "Hyperparasite Hype Train"
+artist = "Publio Delgado"
+album = "Brutal Orchestra Soundtrack"
+year = 2022
+game_id = &"brutal_orchestra"
+file = "Brutal Orchestra/35 Hyperparasite Hype Train.mp3"
+image_path = ""
+tags = PackedStringArray()

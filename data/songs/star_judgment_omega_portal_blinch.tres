@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_star_judgment_omega_portal_blinch"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"star_judgment_omega_portal_blinch"
+title = "Star Judgment (Omega Portal)"
+artist = "blinch"
+album = "Loop Hero (Official Soundtrack)"
+year = 2023
+game_id = &"loop_hero"
+file = "Loop Hero/25. Star Judgment (Omega Portal).mp3"
+image_path = ""
+tags = PackedStringArray()

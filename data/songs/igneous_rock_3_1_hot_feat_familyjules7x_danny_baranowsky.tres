@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_igneous_rock_3_1_hot_feat_familyjules7x_danny_baranowsky"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"igneous_rock_3_1_hot_feat_familyjules7x_danny_baranowsky"
+title = "Igneous Rock (3-1 Hot feat. FamilyJules7x)"
+artist = "Danny Baranowsky"
+album = "Crypt of the Necrodancer OST"
+year = 2014
+game_id = &"crypt_of_the_necrodancer"
+file = "Crypt of the NecroDancer/12. Igneous Rock (3-1 Hot feat. FamilyJules7x).mp3"
+image_path = ""
+tags = PackedStringArray()

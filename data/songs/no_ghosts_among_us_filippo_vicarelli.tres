@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_no_ghosts_among_us_filippo_vicarelli"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"no_ghosts_among_us_filippo_vicarelli"
+title = "No Ghosts Among Us"
+artist = "Filippo Vicarelli"
+album = "Vampire Survivors The Original Soundtrack"
+year = 2023
+game_id = &"vampire_survivors"
+file = "Vampire Survivors/6-05 - No Ghosts Among Us.mp3"
+image_path = ""
+tags = PackedStringArray()

@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_an_unexpected_arrival_karl_flodin_erik_lyding"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"an_unexpected_arrival_karl_flodin_erik_lyding"
+title = "An Unexpected Arrival"
+artist = "Karl Flodin & Erik Lyding"
+album = "Haste (Original Soundtrack)"
+year = 2025
+game_id = &"haste"
+file = "Haste/08. An Unexpected Arrival.mp3"
+image_path = ""
+tags = PackedStringArray()

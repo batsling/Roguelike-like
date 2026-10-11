@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_main_theme_louisf"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"main_theme_louisf"
+title = "Main Theme"
+artist = "LouisF"
+album = "Balatro (Original Game Soundtrack)"
+year = 2023
+game_id = &"balatro"
+file = "Balatro/01. Main Theme.mp3"
+image_path = ""
+tags = PackedStringArray("menu")

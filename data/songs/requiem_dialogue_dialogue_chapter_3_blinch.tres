@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_requiem_dialogue_dialogue_chapter_3_blinch"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"requiem_dialogue_dialogue_chapter_3_blinch"
+title = "Requiem Dialogue (Dialogue Chapter 3)"
+artist = "blinch"
+album = "Loop Hero (Official Soundtrack)"
+year = 2023
+game_id = &"loop_hero"
+file = "Loop Hero/20. Requiem Dialogue (Dialogue Chapter 3).mp3"
+image_path = ""
+tags = PackedStringArray()

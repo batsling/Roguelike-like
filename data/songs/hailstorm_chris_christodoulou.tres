@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_hailstorm_chris_christodoulou"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"hailstorm_chris_christodoulou"
+title = "Hailstorm"
+artist = "Chris Christodoulou"
+album = "Risk of Rain"
+year = 2013
+game_id = &"risk_of_rain"
+file = "Risk of Rain/07. Hailstorm.mp3"
+image_path = ""
+tags = PackedStringArray()

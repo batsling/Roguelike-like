@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_tundra_heart_paul_zimmermann"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"tundra_heart_paul_zimmermann"
+title = "Tundra Heart"
+artist = "Paul Zimmermann"
+album = "Wildfrost (Original Game Soundtrack)"
+year = 2023
+game_id = &"wildfrost"
+file = "Wildfrost/09. Tundra Heart.mp3"
+image_path = ""
+tags = PackedStringArray()

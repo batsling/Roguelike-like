@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_just_roll_with_it_chipzel"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"just_roll_with_it_chipzel"
+title = "Just Roll With It"
+artist = "Chipzel"
+album = "Dicey Dungeons: Reunion Original Soundtrack"
+year = 2022
+game_id = &"dicey_dungeons"
+file = "Dicey Dungeons/34 Just Roll With It.mp3"
+image_path = ""
+tags = PackedStringArray()

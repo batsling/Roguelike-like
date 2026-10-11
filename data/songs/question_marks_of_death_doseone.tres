@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_question_marks_of_death_doseone"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"question_marks_of_death_doseone"
+title = "QUESTION MARKS OF DEATH"
+artist = "doseone"
+album = "ENTER THE GUNGEON (Original SoundTrack)"
+year = 2016
+game_id = &"enter_the_gungeon"
+file = "Enter the Gungeon/31 QUESTION MARKS OF DEATH.mp3"
+image_path = ""
+tags = PackedStringArray()

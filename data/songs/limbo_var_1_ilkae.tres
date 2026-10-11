@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_limbo_var_1_ilkae"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"limbo_var_1_ilkae"
+title = "Limbo var. 1"
+artist = "ilkae"
+album = "Downwell"
+year = 2015
+game_id = &"downwell"
+file = "Downwell/10 - Limbo var. 1.mp3"
+image_path = ""
+tags = PackedStringArray()

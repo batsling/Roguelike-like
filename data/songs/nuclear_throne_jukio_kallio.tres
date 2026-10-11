@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_nuclear_throne_jukio_kallio"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"nuclear_throne_jukio_kallio"
+title = "Nuclear Throne"
+artist = "Jukio Kallio"
+album = "Nuclear Throne OST"
+year = 2015
+game_id = &"nuclear_throne"
+file = "Nuclear Throne/13. Nuclear Throne.mp3"
+image_path = ""
+tags = PackedStringArray()

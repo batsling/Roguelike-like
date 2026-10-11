@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_barely_staying_alive_filippo_vicarelli"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"barely_staying_alive_filippo_vicarelli"
+title = "Barely Staying Alive"
+artist = "Filippo Vicarelli"
+album = "Vampire Survivors The Original Soundtrack"
+year = 2022
+game_id = &"vampire_survivors"
+file = "Vampire Survivors/2-07 - Barely Staying Alive.mp3"
+image_path = ""
+tags = PackedStringArray()

@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_reboot_cityfires"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"reboot_cityfires"
+title = "Reboot"
+artist = "Cityfires"
+album = "20XX Soundtrack"
+year = 2017
+game_id = &"20xx"
+file = "20XX/17 Reboot.mp3"
+image_path = ""
+tags = PackedStringArray()

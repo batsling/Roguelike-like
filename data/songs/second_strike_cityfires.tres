@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_second_strike_cityfires"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"second_strike_cityfires"
+title = "Second Strike"
+artist = "Cityfires"
+album = "20XX Soundtrack"
+year = 2017
+game_id = &"20xx"
+file = "20XX/07 Second Strike.mp3"
+image_path = ""
+tags = PackedStringArray()

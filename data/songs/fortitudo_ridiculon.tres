@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_fortitudo_ridiculon"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"fortitudo_ridiculon"
+title = "Fortitudo"
+artist = "Ridiculon"
+album = "The Legend of Bum-Bo Original Soundtrack"
+year = 2019
+game_id = &"the_legend_of_bum_bo"
+file = "The Legend of Bum-bo/05 Fortitudo.mp3"
+image_path = ""
+tags = PackedStringArray()

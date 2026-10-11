@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_the_twisted_serpent_amos_roddy"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"the_twisted_serpent_amos_roddy"
+title = "The Twisted Serpent"
+artist = "Amos Roddy"
+album = "BALL x PIT (Original Soundtrack)"
+year = 2025
+game_id = &"ball_x_pit"
+file = "Ball x Pit/08. The Twisted Serpent.mp3"
+image_path = ""
+tags = PackedStringArray()

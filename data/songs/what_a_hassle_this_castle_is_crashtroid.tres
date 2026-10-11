@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_what_a_hassle_this_castle_is_crashtroid"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"what_a_hassle_this_castle_is_crashtroid"
+title = "What A Hassle This Castle Is"
+artist = "Crashtroid"
+album = "Peglin Official Soundtrack"
+year = 2023
+game_id = &"peglin"
+file = "Peglin/07. What A Hassle This Castle Is.mp3"
+image_path = ""
+tags = PackedStringArray()

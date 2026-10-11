@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_haglins_hideout_crashtroid"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"haglins_hideout_crashtroid"
+title = "Haglin's Hideout"
+artist = "Crashtroid"
+album = "Peglin Official Soundtrack"
+year = 2023
+game_id = &"peglin"
+file = "Peglin/04. Haglin's Hideout.mp3"
+image_path = ""
+tags = PackedStringArray()

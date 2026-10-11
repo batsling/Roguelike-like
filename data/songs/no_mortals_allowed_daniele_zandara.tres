@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_no_mortals_allowed_daniele_zandara"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"no_mortals_allowed_daniele_zandara"
+title = "No Mortals Allowed"
+artist = "Daniele Zandara"
+album = "Vampire Survivors The Original Soundtrack"
+year = 2022
+game_id = &"vampire_survivors"
+file = "Vampire Survivors/1-08 - No Mortals Allowed.mp3"
+image_path = ""
+tags = PackedStringArray()

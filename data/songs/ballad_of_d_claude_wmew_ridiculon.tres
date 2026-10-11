@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_ballad_of_d_claude_wmew_ridiculon"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"ballad_of_d_claude_wmew_ridiculon"
+title = "Ballad Of D. Claude (WMEW)"
+artist = "Ridiculon"
+album = "Mewgenics OST"
+year = 2026
+game_id = &"mewgenics"
+file = "Mewgenics/30. Ballad Of D. Claude (WMEW).mp3"
+image_path = ""
+tags = PackedStringArray()

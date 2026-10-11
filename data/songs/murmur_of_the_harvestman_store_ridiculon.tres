@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_murmur_of_the_harvestman_store_ridiculon"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"murmur_of_the_harvestman_store_ridiculon"
+title = "Murmur of the Harvestman (Store)"
+artist = "Ridiculon"
+album = "The Binding Of Isaac: Rebirth (Original Soundtrack)"
+year = 2014
+game_id = &"the_binding_of_isaac_rebirth"
+file = "The Binding Of Isaac - Rebirth/15. Murmur of the Harvestman (Store).mp3"
+image_path = ""
+tags = PackedStringArray()

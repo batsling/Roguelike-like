@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_heavenly_x_gates_amos_roddy"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"heavenly_x_gates_amos_roddy"
+title = "Heavenly x Gates"
+artist = "Amos Roddy"
+album = "BALL x PIT (Original Soundtrack)"
+year = 2025
+game_id = &"ball_x_pit"
+file = "Ball x Pit/17. Heavenly x Gates.mp3"
+image_path = ""
+tags = PackedStringArray()

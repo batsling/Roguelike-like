@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_for_whom_the_knell_tolls_dead_ringer_danny_baranowsky"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"for_whom_the_knell_tolls_dead_ringer_danny_baranowsky"
+title = "For Whom the Knell Tolls (Dead Ringer)"
+artist = "Danny Baranowsky"
+album = "Crypt of the Necrodancer OST"
+year = 2014
+game_id = &"crypt_of_the_necrodancer"
+file = "Crypt of the NecroDancer/20. For Whom the Knell Tolls (Dead Ringer).mp3"
+image_path = ""
+tags = PackedStringArray()

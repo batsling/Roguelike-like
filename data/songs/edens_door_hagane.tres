@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_edens_door_hagane"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"edens_door_hagane"
+title = "Eden's Door"
+artist = "HAGANE"
+album = "One Step From Eden Original Soundtrack"
+year = 2020
+game_id = &"one_step_from_eden"
+file = "One Step From Eden/2-03 Eden's Door.mp3"
+image_path = ""
+tags = PackedStringArray()

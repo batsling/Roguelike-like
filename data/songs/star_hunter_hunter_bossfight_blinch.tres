@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_star_hunter_hunter_bossfight_blinch"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"star_hunter_hunter_bossfight_blinch"
+title = "Star Hunter (Hunter Bossfight)"
+artist = "blinch"
+album = "Loop Hero (Official Soundtrack)"
+year = 2023
+game_id = &"loop_hero"
+file = "Loop Hero/24. Star Hunter (Hunter Bossfight).mp3"
+image_path = ""
+tags = PackedStringArray()

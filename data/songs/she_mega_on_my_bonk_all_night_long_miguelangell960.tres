@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_she_mega_on_my_bonk_all_night_long_miguelangell960"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"she_mega_on_my_bonk_all_night_long_miguelangell960"
+title = "She Mega on my bonk (all night long)"
+artist = "MIGUELANGELL960"
+album = "MEGABONK OST"
+year = 2025
+game_id = &"megabonk"
+file = "Megabonk/13. She Mega on my bonk (all night long).mp3"
+image_path = ""
+tags = PackedStringArray()

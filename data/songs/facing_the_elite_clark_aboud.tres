@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_facing_the_elite_clark_aboud"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"facing_the_elite_clark_aboud"
+title = "Facing the Elite"
+artist = "Clark Aboud"
+album = "Slay the Spire (Original Soundtrack)"
+year = 2018
+game_id = &"slay_the_spire"
+file = "Slay the Spire/13 Facing the Elite.mp3"
+image_path = ""
+tags = PackedStringArray()

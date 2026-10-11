@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_consumed_by_the_castle_walls_crashtroid"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"consumed_by_the_castle_walls_crashtroid"
+title = "Consumed By The Castle Walls"
+artist = "Crashtroid"
+album = "Peglin Official Soundtrack"
+year = 2023
+game_id = &"peglin"
+file = "Peglin/09. Consumed By The Castle Walls.mp3"
+image_path = ""
+tags = PackedStringArray()

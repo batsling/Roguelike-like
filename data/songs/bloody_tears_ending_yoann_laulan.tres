@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_bloody_tears_ending_yoann_laulan"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"bloody_tears_ending_yoann_laulan"
+title = "Bloody Tears (Ending)"
+artist = "Yoann Laulan"
+album = "Dead Cells Return To Castlevania"
+year = 2023
+game_id = &"dead_cells"
+file = "Dead Cells/17. Bloody Tears (Ending).mp3"
+image_path = ""
+tags = PackedStringArray()

@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_not_today_satan_chipzel"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"not_today_satan_chipzel"
+title = "Not Today, Satan"
+artist = "Chipzel"
+album = "Dicey Dungeons: Reunion Original Soundtrack"
+year = 2022
+game_id = &"dicey_dungeons"
+file = "Dicey Dungeons/38 Not Today, Satan.mp3"
+image_path = ""
+tags = PackedStringArray()

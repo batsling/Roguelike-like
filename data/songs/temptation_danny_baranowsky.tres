@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_temptation_danny_baranowsky"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"temptation_danny_baranowsky"
+title = "Temptation"
+artist = "Danny Baranowsky"
+album = "The Binding of Isaac"
+year = 2012
+game_id = &"the_binding_of_isaac"
+file = "The Binding of Isaac/20 Temptation.mp3"
+image_path = ""
+tags = PackedStringArray()

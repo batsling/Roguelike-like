@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_ratoo_river_boy"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"ratoo_river_boy"
+title = "Ratoo"
+artist = "River Boy"
+album = "Cult of the Lamb Original Soundtrack"
+year = 2022
+game_id = &"cult_of_the_lamb"
+file = "Cult of the Lamb/23. Ratoo.mp3"
+image_path = ""
+tags = PackedStringArray()

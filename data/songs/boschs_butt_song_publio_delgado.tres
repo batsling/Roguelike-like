@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_boschs_butt_song_publio_delgado"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"boschs_butt_song_publio_delgado"
+title = "Bosch's Butt Song"
+artist = "Publio Delgado"
+album = "Brutal Orchestra Soundtrack"
+year = 2022
+game_id = &"brutal_orchestra"
+file = "Brutal Orchestra/13 Bosch's Butt Song.mp3"
+image_path = ""
+tags = PackedStringArray()

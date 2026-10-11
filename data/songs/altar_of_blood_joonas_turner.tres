@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_altar_of_blood_joonas_turner"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"altar_of_blood_joonas_turner"
+title = "Altar of Blood"
+artist = "Joonas Turner"
+album = "ScourgeBringer Original Soundtrack"
+year = 2020
+game_id = &"scourgebringer"
+file = "ScourgeBringer/27. Altar of Blood.mp3"
+image_path = ""
+tags = PackedStringArray()

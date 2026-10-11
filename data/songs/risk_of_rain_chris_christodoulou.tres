@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_risk_of_rain_chris_christodoulou"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"risk_of_rain_chris_christodoulou"
+title = "Risk of Rain"
+artist = "Chris Christodoulou"
+album = "Risk of Rain"
+year = 2013
+game_id = &"risk_of_rain"
+file = "Risk of Rain/01. Risk of Rain.mp3"
+image_path = ""
+tags = PackedStringArray("menu")

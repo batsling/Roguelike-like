@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_get_in_the_cage_ridiculon"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"get_in_the_cage_ridiculon"
+title = "Get In The Cage"
+artist = "Ridiculon"
+album = "Mewgenics OST"
+year = 2026
+game_id = &"mewgenics"
+file = "Mewgenics/13. Get In The Cage.mp3"
+image_path = ""
+tags = PackedStringArray()

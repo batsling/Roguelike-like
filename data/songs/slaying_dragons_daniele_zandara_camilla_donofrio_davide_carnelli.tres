@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_slaying_dragons_daniele_zandara_camilla_donofrio_davide_carnelli"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"slaying_dragons_daniele_zandara_camilla_donofrio_davide_carnelli"
+title = "Slaying Dragons"
+artist = "Daniele Zandara/Camilla D'Onofrio/Davide Carnelli"
+album = "Vampire Survivors The Original Soundtrack"
+year = 2023
+game_id = &"vampire_survivors"
+file = "Vampire Survivors/5-03 - Slaying Dragons.mp3"
+image_path = ""
+tags = PackedStringArray()

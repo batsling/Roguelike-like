@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_the_crack_of_doom_ridiculon"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"the_crack_of_doom_ridiculon"
+title = "The Crack Of Doom"
+artist = "Ridiculon"
+album = "Mewgenics OST"
+year = 2026
+game_id = &"mewgenics"
+file = "Mewgenics/25. The Crack Of Doom.mp3"
+image_path = ""
+tags = PackedStringArray()

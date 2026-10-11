@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_down_with_the_devil_ridiculon"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"down_with_the_devil_ridiculon"
+title = "Down With The Devil"
+artist = "Ridiculon"
+album = "Mewgenics OST"
+year = 2026
+game_id = &"mewgenics"
+file = "Mewgenics/09. Down With The Devil.mp3"
+image_path = ""
+tags = PackedStringArray()

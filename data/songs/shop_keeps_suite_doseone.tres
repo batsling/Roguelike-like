@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_shop_keeps_suite_doseone"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"shop_keeps_suite_doseone"
+title = "SHOP KEEPS SUITE"
+artist = "doseone"
+album = "ENTER THE GUNGEON (Original SoundTrack)"
+year = 2016
+game_id = &"enter_the_gungeon"
+file = "Enter the Gungeon/20 SHOP KEEPS SUITE.mp3"
+image_path = ""
+tags = PackedStringArray()

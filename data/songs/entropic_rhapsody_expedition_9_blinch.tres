@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_entropic_rhapsody_expedition_9_blinch"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"entropic_rhapsody_expedition_9_blinch"
+title = "Entropic Rhapsody (Expedition 9)"
+artist = "blinch"
+album = "Loop Hero (Official Soundtrack)"
+year = 2023
+game_id = &"loop_hero"
+file = "Loop Hero/08. Entropic Rhapsody (Expedition 9).mp3"
+image_path = ""
+tags = PackedStringArray()

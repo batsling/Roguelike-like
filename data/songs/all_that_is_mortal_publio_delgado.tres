@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_all_that_is_mortal_publio_delgado"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"all_that_is_mortal_publio_delgado"
+title = "All That Is Mortal"
+artist = "Publio Delgado"
+album = "Brutal Orchestra Soundtrack"
+year = 2022
+game_id = &"brutal_orchestra"
+file = "Brutal Orchestra/24 All That Is Mortal.mp3"
+image_path = ""
+tags = PackedStringArray()

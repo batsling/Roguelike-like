@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_spirit_call_paul_zimmermann"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"spirit_call_paul_zimmermann"
+title = "Spirit Call"
+artist = "Paul Zimmermann"
+album = "Wildfrost (Original Game Soundtrack)"
+year = 2023
+game_id = &"wildfrost"
+file = "Wildfrost/03. Spirit Call.mp3"
+image_path = ""
+tags = PackedStringArray()

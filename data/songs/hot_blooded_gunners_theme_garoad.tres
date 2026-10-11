@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_hot_blooded_gunners_theme_garoad"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"hot_blooded_gunners_theme_garoad"
+title = "Hot Blooded - Gunner's Theme"
+artist = "Garoad"
+album = "One Step From Eden Original Soundtrack"
+year = 2020
+game_id = &"one_step_from_eden"
+file = "One Step From Eden/1-16 Hot Blooded - Gunner's Theme.mp3"
+image_path = ""
+tags = PackedStringArray()

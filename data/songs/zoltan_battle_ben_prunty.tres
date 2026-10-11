@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_zoltan_battle_ben_prunty"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"zoltan_battle_ben_prunty"
+title = "Zoltan (Battle)"
+artist = "Ben Prunty"
+album = "Ftl: Faster Than Light - Original Soundtrack"
+year = 2013
+game_id = &"ftl"
+file = "FTL/26 - Zoltan (Battle).mp3"
+image_path = ""
+tags = PackedStringArray()

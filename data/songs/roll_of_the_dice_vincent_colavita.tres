@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_roll_of_the_dice_vincent_colavita"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"roll_of_the_dice_vincent_colavita"
+title = "Roll of the Dice"
+artist = "Vincent Colavita"
+album = "Luck be a Landlord - Official Video Game Soundtrack"
+year = 2021
+game_id = &"luck_be_a_landlord"
+file = "Luck be a Landlord/20. Roll of the Dice.mp3"
+image_path = ""
+tags = PackedStringArray()

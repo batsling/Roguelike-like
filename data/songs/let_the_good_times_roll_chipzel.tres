@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_let_the_good_times_roll_chipzel"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"let_the_good_times_roll_chipzel"
+title = "Let The Good Times Roll"
+artist = "Chipzel"
+album = "Dicey Dungeons: Reunion Original Soundtrack"
+year = 2022
+game_id = &"dicey_dungeons"
+file = "Dicey Dungeons/42 Let The Good Times Roll.mp3"
+image_path = ""
+tags = PackedStringArray()

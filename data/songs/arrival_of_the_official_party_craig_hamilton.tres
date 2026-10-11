@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_arrival_of_the_official_party_craig_hamilton"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"arrival_of_the_official_party_craig_hamilton"
+title = "Arrival of the Official Party"
+artist = "Craig Hamilton"
+album = "Caves of Qud OST"
+year = 2024
+game_id = &"caves_of_qud"
+file = "Caves of Qud/26. Arrival of the Official Party.mp3"
+image_path = ""
+tags = PackedStringArray()

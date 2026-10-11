@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_swing_me_one_more_six_chipzel"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"swing_me_one_more_six_chipzel"
+title = "Swing Me One More Six"
+artist = "Chipzel"
+album = "Dicey Dungeons: Reunion Original Soundtrack"
+year = 2022
+game_id = &"dicey_dungeons"
+file = "Dicey Dungeons/35 Swing Me One More Six.mp3"
+image_path = ""
+tags = PackedStringArray()

@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_nickel_grinder_ridiculon"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"nickel_grinder_ridiculon"
+title = "Nickel Grinder"
+artist = "Ridiculon"
+album = "The Legend of Bum-Bo Original Soundtrack"
+year = 2019
+game_id = &"the_legend_of_bum_bo"
+file = "The Legend of Bum-bo/04 Nickel Grinder.mp3"
+image_path = ""
+tags = PackedStringArray()

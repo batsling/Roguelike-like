@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_beginning_collectors_version_yoann_laulan"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"beginning_collectors_version_yoann_laulan"
+title = "Beginning (Collector's Version)"
+artist = "Yoann Laulan"
+album = "Dead Cells Return To Castlevania"
+year = 2023
+game_id = &"dead_cells"
+file = "Dead Cells/02. Beginning (Collector's Version).mp3"
+image_path = ""
+tags = PackedStringArray()

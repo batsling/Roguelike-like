@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_steinway_to_heaven_frankensteinway_fight_danny_baranowsky"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"steinway_to_heaven_frankensteinway_fight_danny_baranowsky"
+title = "Steinway to Heaven (Frankensteinway Fight)"
+artist = "Danny Baranowsky"
+album = "Crypt of the Necrodancer OST"
+year = 2014
+game_id = &"crypt_of_the_necrodancer"
+file = "Crypt of the NecroDancer/26. Steinway to Heaven (Frankensteinway Fight).mp3"
+image_path = ""
+tags = PackedStringArray()

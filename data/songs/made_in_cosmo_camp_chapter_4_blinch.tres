@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_made_in_cosmo_camp_chapter_4_blinch"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"made_in_cosmo_camp_chapter_4_blinch"
+title = "Made in Cosmo (Camp Chapter 4)"
+artist = "blinch"
+album = "Loop Hero (Official Soundtrack)"
+year = 2023
+game_id = &"loop_hero"
+file = "Loop Hero/16. Made in Cosmo (Camp Chapter 4).mp3"
+image_path = ""
+tags = PackedStringArray()

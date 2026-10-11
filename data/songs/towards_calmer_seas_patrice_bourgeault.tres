@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_towards_calmer_seas_patrice_bourgeault"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"towards_calmer_seas_patrice_bourgeault"
+title = "Towards Calmer Seas"
+artist = "Patrice Bourgeault"
+album = "Flinthook Original Soundtrack"
+year = 2017
+game_id = &"flinthook"
+file = "Flinthook/23. Towards Calmer Seas.mp3"
+image_path = ""
+tags = PackedStringArray()

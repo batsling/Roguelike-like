@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_tides_of_the_foscari_daniele_zandara_camilla_donofrio_stefano_sacchi"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"tides_of_the_foscari_daniele_zandara_camilla_donofrio_stefano_sacchi"
+title = "Tides of the Foscari"
+artist = "Daniele Zandara/Camilla D'Onofrio/Stefano Sacchi"
+album = "Vampire Survivors The Original Soundtrack"
+year = 2023
+game_id = &"vampire_survivors"
+file = "Vampire Survivors/5-01 - Tides of the Foscari.mp3"
+image_path = ""
+tags = PackedStringArray()

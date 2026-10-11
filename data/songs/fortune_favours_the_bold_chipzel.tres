@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_fortune_favours_the_bold_chipzel"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"fortune_favours_the_bold_chipzel"
+title = "Fortune Favours The Bold"
+artist = "Chipzel"
+album = "Dicey Dungeons Original Soundtrack"
+year = 2019
+game_id = &"dicey_dungeons"
+file = "Dicey Dungeons/14. Fortune Favours The Bold.mp3"
+image_path = ""
+tags = PackedStringArray()

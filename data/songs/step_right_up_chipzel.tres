@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_step_right_up_chipzel"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"step_right_up_chipzel"
+title = "Step Right Up"
+artist = "Chipzel"
+album = "Dicey Dungeons Original Soundtrack"
+year = 2019
+game_id = &"dicey_dungeons"
+file = "Dicey Dungeons/06. Step Right Up.mp3"
+image_path = ""
+tags = PackedStringArray()

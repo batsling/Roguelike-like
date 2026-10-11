@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_vempair_survaivors_daniele_zandara"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"vempair_survaivors_daniele_zandara"
+title = "Vempair Survaivors"
+artist = "Daniele Zandara"
+album = "Vampire Survivors The Original Soundtrack"
+year = 2022
+game_id = &"vampire_survivors"
+file = "Vampire Survivors/1-06 - Vempair Survaivors.mp3"
+image_path = ""
+tags = PackedStringArray()

@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_brave_new_void_karl_flodin_erik_lyding"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"brave_new_void_karl_flodin_erik_lyding"
+title = "Brave New Void"
+artist = "Karl Flodin & Erik Lyding"
+album = "Haste (Original Soundtrack)"
+year = 2025
+game_id = &"haste"
+file = "Haste/44. Brave New Void.mp3"
+image_path = ""
+tags = PackedStringArray()

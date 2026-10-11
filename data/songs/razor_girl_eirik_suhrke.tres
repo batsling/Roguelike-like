@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_razor_girl_eirik_suhrke"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"razor_girl_eirik_suhrke"
+title = "Razor girl"
+artist = "Eirik Suhrke"
+album = "Downwell"
+year = 2015
+game_id = &"downwell"
+file = "Downwell/03 - Razor girl.mp3"
+image_path = ""
+tags = PackedStringArray()

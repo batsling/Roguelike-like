@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_office_party_massacre_doseone"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"office_party_massacre_doseone"
+title = "OFFICE PARTY MASSACRE"
+artist = "doseone"
+album = "ENTER THE GUNGEON (Original SoundTrack)"
+year = 2016
+game_id = &"enter_the_gungeon"
+file = "Enter the Gungeon/10 OFFICE PARTY MASSACRE.mp3"
+image_path = ""
+tags = PackedStringArray()

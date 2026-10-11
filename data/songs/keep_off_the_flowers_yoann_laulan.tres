@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_keep_off_the_flowers_yoann_laulan"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"keep_off_the_flowers_yoann_laulan"
+title = "Keep Off The Flowers"
+artist = "Yoann Laulan"
+album = "Dead Cells - Soundtrack Part 1"
+year = 2017
+game_id = &"dead_cells"
+file = "Dead Cells/39. Keep Off The Flowers.mp3"
+image_path = ""
+tags = PackedStringArray()
