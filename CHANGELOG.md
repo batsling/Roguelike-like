@@ -11,6 +11,38 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Roguelike Radio: favourites.** A ★ on each unlocked song's row and beside
+  the title of the song playing stars it, and "★ Favourites" in the station
+  list plays only starred songs, with the same queue and shuffle as any
+  station. Stars are saved per profile in `radio.json`, and change nothing
+  else: normal shuffle ignores them. The overlay's radio card puts a ★ before a
+  favourite's title. Un-starring the song playing lets it finish. A tag may no
+  longer start with `*`, which the radio keeps for its own stations.
+
+- **Roguelike Radio: a game's first song is its menu song.** A song tagged
+  `menu` on the `radio` sheet is drawn before the rest of its game's songs, so
+  the first Hades song you get is Hades's menu song, and the same for every
+  game that has one. With several, one is drawn first (file first); a menu song
+  whose file is missing is still first. A game that already has a song draws
+  no menu song first. The generator also refuses a `radio` sheet missing any of
+  its eight columns, by name.
+
+- **Roguelike Radio unlocks at random.** Songs no longer carry their own rule
+  ("beat Hades 3 times"). A game EARNS songs, by one rule for every game: one
+  on its first beat, one more on every third beat (3, 6, 9 …, the first beat
+  counting towards it), and one for every 5 distinct goals completed there.
+  Each song earned is drawn at random from that game's own songs still locked,
+  files in the folder first.
+  - **The sheet:** `radio` lost its `Unlock` and `Count` columns
+    (`tools/_radio_random_unlocks_setup.py`), and the generator refuses a sheet
+    that still has them. A row with no `Game` is never drawn.
+  - **The save:** the draw is random, so it can't be worked out again from the
+    counts. `radio.json` now keeps the songs drawn, per profile. An old file's
+    "announced" list is read as unlocked, and nothing is ever locked again.
+  - **The screen:** a locked song says what its game needs for its next song
+    ("Next Hades song: beat Hades 2 times more, or complete 3 more distinct
+    goals there"). It's the game that is close, not the song.
+
 - **Research, twentieth batch, and the end of the owned games with wikis.**
   Hell Clock, Maze Mice, Merge Maestro, Noobs Are Coming, The Royal Writ,
   Skull Horde, Asgard's Fall, Bad North, Bounty of One and Angband: 4 new rows,

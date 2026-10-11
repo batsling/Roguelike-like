@@ -14,6 +14,7 @@ const PANEL_WIDTH := 640
 const ROW_ART := 40
 
 var _now_title: Label
+var _now_star: Button
 var _now_meta: Label
 var _now_time: Label
 var _play_btn: Button
@@ -154,11 +155,20 @@ func _build_ui() -> void:
 func _build_now_playing() -> Control:
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", UITheme.GAP_HAIR)
+	var head := HBoxContainer.new()
+	head.add_theme_constant_override("separation", UITheme.GAP)
+	box.add_child(head)
 	_now_title = Label.new()
 	_now_title.add_theme_font_size_override("font_size", UITheme.FONT_HEAD)
 	_now_title.add_theme_color_override("font_color", UITheme.TEXT)
 	_now_title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	box.add_child(_now_title)
+	_now_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	head.add_child(_now_title)
+	_now_star = _star_button()
+	_now_star.pressed.connect(func() -> void:
+		if Radio.current != &"":
+			Radio.toggle_favorite(Radio.current))
+	head.add_child(_now_star)
 	_now_meta = Label.new()
 	_now_meta.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 	_now_meta.add_theme_color_override("font_color", UITheme.TEXT_DIM)
@@ -237,7 +247,7 @@ func _build_options() -> Control:
 
 	row.add_child(_caption("Station"))
 	_station = OptionButton.new()
-	_station.tooltip_text = "Only play songs with this tag."
+	_station.tooltip_text = "Only play songs with this tag, or only your favourites."
 	_station.item_selected.connect(func(index: int) -> void:
 		var tag: String = _station.get_item_metadata(index)
 		if tag != Radio.station:
@@ -284,6 +294,22 @@ func _build_folder_row() -> Control:
 	row.add_child(rescan)
 	return row
 
+# The favourite toggle: a ★, gold when the song is starred and faint when not.
+func _star_button() -> Button:
+	var b := Button.new()
+	b.text = "★"
+	b.flat = true
+	b.focus_mode = Control.FOCUS_NONE
+	b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	b.add_theme_font_size_override("font_size", UITheme.FONT_HEAD)
+	return b
+
+func _show_star(b: Button, song: SongData) -> void:
+	var on: bool = Radio.is_favorite(song)
+	for state in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
+		b.add_theme_color_override(state, UITheme.GOLD if on else UITheme.TEXT_FAINT)
+	b.tooltip_text = "Remove from favourites" if on else "Add to favourites"
+
 func _caption(text: String) -> Label:
 	var l := Label.new()
 	l.text = text
@@ -301,7 +327,10 @@ func _refresh() -> void:
 	if song != null:
 		_now_title.text = song.title + ("" if song.artist == "" else "  —  " + song.artist)
 		_now_meta.text = _meta_line(song)
+		_now_star.visible = true
+		_show_star(_now_star, song)
 	else:
+		_now_star.visible = false
 		_now_title.text = "Nothing playing"
 		_now_meta.text = _silence_reason()
 	_now_time.text = _time_text()
@@ -313,6 +342,10 @@ func _refresh() -> void:
 	_station.clear()
 	_station.add_item("All songs")
 	_station.set_item_metadata(0, "")
+	_station.add_item("★ Favourites")
+	_station.set_item_metadata(1, Radio.FAVORITES)
+	if Radio.station == Radio.FAVORITES:
+		_station.select(1)
 	for tag in Radio.stations():
 		_station.add_item(String(tag).capitalize())
 		_station.set_item_metadata(_station.item_count - 1, String(tag))
@@ -351,6 +384,10 @@ func _silence_reason() -> String:
 	if Radio.paused:
 		return "Paused."
 	if Radio.playable_songs().is_empty():
+		if Radio.station == Radio.FAVORITES:
+			if Radio.favorite_count() == 0:
+				return "No favourites yet. Click the ★ on a song below."
+			return "None of your favourites has its file in the music folder."
 		if Radio.station != "":
 			return "Nothing unlocked on this station yet."
 		return "Nothing unlocked with its file in the music folder yet."
@@ -374,7 +411,8 @@ func _fill_list() -> void:
 		if Radio.is_unlocked(s):
 			unlocked += 1
 	_summary.text = "Songs — %d of %d unlocked" % [unlocked, all.size()]
-	# Unlocked first, then the nearest to unlocking; a row without a rule last.
+	# Unlocked first; then the locked ones by game, the game nearest its next song
+	# first (the draw is random, so it is the GAME that is near, not the song).
 	var order: Array = all.duplicate()
 	order.sort_custom(func(a, b) -> bool:
 		var ka: Array = _sort_key(a)
@@ -387,10 +425,13 @@ func _fill_list() -> void:
 		_list.add_child(_song_row(s))
 
 func _sort_key(song: SongData) -> Array:
-	var p: Dictionary = Radio.progress(song)
-	var need: int = int(p["need"])
-	var left: float = 1.0 - (float(p["have"]) / float(need)) if need > 0 else 2.0
-	return [0 if Radio.is_unlocked(song) else 1, maxf(left, 0.0), song.title]
+	if Radio.is_unlocked(song):
+		return [0, 0, "", song.title]
+	if song.game_id == &"":
+		return [2, 0, "", song.title]
+	var left: Dictionary = Radio.to_next(song.game_id)
+	return [1, mini(int(left["beats"]) * Radio.GOALS_PER_SONG,
+		int(left["goals"]) * Radio.BEATS_PER_SONG), String(song.game_id), song.title]
 
 func _song_row(song: SongData) -> Control:
 	var unlocked: bool = Radio.is_unlocked(song)
@@ -432,9 +473,11 @@ func _song_row(song: SongData) -> Control:
 	sub.add_theme_color_override("font_color", _status_color(song))
 	sub.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	text.add_child(sub)
-	# WHAT has counted so far, kind by kind, so "3 / 5" says where it came from.
+	# WHAT has counted at its game so far, kind by kind, so "3 more goals" says
+	# where the others came from. Only while it is locked: it is what the line
+	# above is counting towards.
 	var met: Array = Radio.goals_done(song)
-	if song.unlock == &"goals":
+	if not unlocked and song.game_id != &"":
 		var known := Label.new()
 		known.text = ("Done here: " + ", ".join(met)) if not met.is_empty() \
 			else "No goals done here yet"
@@ -449,6 +492,11 @@ func _song_row(song: SongData) -> Control:
 		tags.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
 		text.add_child(tags)
 
+	if unlocked:
+		var star := _star_button()
+		_show_star(star, song)
+		star.pressed.connect(func() -> void: Radio.toggle_favorite(song.id))
+		h.add_child(star)
 	if playable:
 		var play := Button.new()
 		play.text = "▶"
@@ -458,22 +506,19 @@ func _song_row(song: SongData) -> Control:
 		h.add_child(play)
 	return row
 
-# One line saying where the song stands: the rule and how far along it is, or
-# what is in its way.
+# One line saying where the song stands: what its game needs for its next song,
+# or what is in its way.
 func _status_line(song: SongData) -> String:
-	var rule: String = Radio.rule_text(song)
-	if song.unlock == &"":
-		return "🔒  " + rule
-	var p: Dictionary = Radio.progress(song)
 	if not Radio.is_unlocked(song):
-		return "🔒  %s  (%d / %d)" % [rule, mini(int(p["have"]), int(p["need"])), int(p["need"])]
+		return "🔒  " + Radio.rule_text(song)
 	if song.file == "":
 		return "Unlocked — but the sheet names no file for it"
 	if not Radio.has_file(song):
 		return "Unlocked — file not found: %s" % song.file
 	if not Radio.on_station(song):
 		return "Unlocked — not on this station"
-	return "Unlocked  ·  " + rule
+	var game: GameData = Data.get_game(song.game_id)
+	return "Unlocked  ·  from " + (game.display_name if game != null else String(song.game_id))
 
 func _status_color(song: SongData) -> Color:
 	if not Radio.is_unlocked(song):

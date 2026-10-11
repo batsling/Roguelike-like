@@ -1679,6 +1679,11 @@ html, body {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+/* A favourite (the ★ on the Radio screen): the same star before the title.
+   Display only; the page cannot be clicked. */
+.radio.favorite .radio-title::before {
+  content: "★ ";
+}
 .radio.paused .radio-title::after {
   content: "  (paused)";
   font-weight: 400;

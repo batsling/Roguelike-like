@@ -147,6 +147,7 @@ function drawRadio(r) {
   const song = r.song;
   card.classList.toggle('silent', !song);
   card.classList.toggle('paused', !!song && !r.playing);
+  card.classList.toggle('favorite', !!song && !!song.favorite);
   if (song) {
     el('radio-title').textContent = song.title || '';
     el('radio-artist').textContent = song.artist || '';

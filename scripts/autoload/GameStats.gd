@@ -88,8 +88,8 @@ var character_enemy_log: Dictionary = {}
 #
 # The enemies and the level-ups keep their own logs above (they carry notes and
 # predate this); `goals_at` reads all three as one list, which is what the
-# Collection's game page draws and what a `goals` song on Roguelike Radio counts
-# (docs/roguelike-radio.md).
+# Collection's game page draws and what Roguelike Radio counts towards a game's
+# songs, one for every five (docs/roguelike-radio.md).
 var goal_log: Dictionary = {}
 
 # THE KINDS, IN THE ORDER A GAME'S PAGE LISTS THEM: who you are, what you fought
@@ -395,7 +395,7 @@ func _add_goal(out: Dictionary, kind: String, key: String, label: String,
 	out[kind].append({"key": key, "label": label, "done": done, "note": note})
 
 # The DISTINCT goals completed at a game, each counted once however often it was
-# done again — "complete X distinct goals in Y".
+# done again. Roguelike Radio draws a song at a game for every five of these.
 func distinct_goals_count(game_id) -> int:
 	var n: int = 0
 	var all: Dictionary = goals_at(game_id)

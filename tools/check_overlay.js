@@ -1815,6 +1815,18 @@ async function main() {
   check('a restart (Back) seeks to the top even on the same track',
     !r.paused && r.t < 2.5, 't=' + r.t.toFixed(2));
 
+  const starred = () => page.evaluate(() => {
+    const t = document.getElementById('radio-title');
+    return getComputedStyle(t, '::before').content;
+  });
+  check('a song that is not a favourite has no star', (await starred()) === 'none',
+    await starred());
+  write((s) => { s.at += 1; s.radio = radioOn({ seq: 3, offset: 0, since: Date.now() / 1000,
+    song: { title: 'Tone', artist: 'Test', album: '', year: 0, game: 'Hades', tags: [], favorite: true } }); });
+  await sleep(1000);
+  check('a favourite shows the star before its title', (await starred()).includes('★'),
+    await starred());
+
   write((s) => { s.at += 1; s.radio = radioOn({ output: 'game', seq: 4 }); });
   await sleep(1000);
   r = await radioReading();
