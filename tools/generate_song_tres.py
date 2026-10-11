@@ -11,8 +11,10 @@ catalog: a song is unlocked by playing that game, drawn at random from its songs
 still locked (Radio.earned has the rule). A row with no `Game` is never drawn.
 The sheet once had `Unlock` and `Count` columns, one rule per song; they were
 taken off in October 2026 (tools/_radio_random_unlocks_setup.py), and a sheet
-that still has them is refused rather than silently ignored. `Image` is a base
-name under images2.0/radio/.
+that still has them is refused rather than silently ignored, and so is one
+missing any of the eight columns. `Image` is a base name under images2.0/radio/.
+A `menu` tag marks a menu song: the player's first unlock is one of them,
+whichever game earned it (docs/roguelike-radio.md §3).
 
 The output folder is REWRITTEN, not added to: a row deleted from the sheet takes
 its song with it, so the example row the sheet was created with goes away the
@@ -43,6 +45,10 @@ SHEET = "radio"
 
 # The columns songs no longer have (see the docstring).
 RETIRED = ("Unlock", "Count")
+# Every column the generator reads. A missing one is refused by name: read as
+# blank on every row instead, a renamed `Tags` would quietly take every song off
+# its stations and out of the `menu` rule (docs/roguelike-radio.md §3).
+HEADERS = ("Name", "Artist", "Album", "Year", "Game", "File", "Image", "Tags")
 AUDIO = (".mp3", ".ogg", ".wav")
 IMAGE_EXTS = (".png", ".jpg", ".jpeg", ".webp")
 
@@ -151,6 +157,10 @@ def main():
         raise SystemExit("radio: the sheet still has %s — songs are drawn at random "
                          "now; run tools/_radio_random_unlocks_setup.py"
                          % " and ".join(stale))
+    missing = [h for h in HEADERS if h not in header]
+    if missing:
+        raise SystemExit("radio: the sheet is missing %s (the columns are %s)"
+                         % (" and ".join(missing), " | ".join(HEADERS)))
     games = game_index()
     songs = {}
     for row in dsl.rows(wb[SHEET]):

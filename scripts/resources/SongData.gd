@@ -29,5 +29,6 @@ extends Resource
 @export var file: String = ""
 # Album art, as a res:// path; "" means "use the game's cover".
 @export var image_path: String = ""
-# Each tag is a station the radio can be tuned to.
+# Each tag is a station the radio can be tuned to. `menu` (Radio.MENU_TAG) also
+# makes it a menu song: the player's first unlock is one of those.
 @export var tags: PackedStringArray = PackedStringArray()

@@ -11,6 +11,14 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Roguelike Radio: the first song is a menu song.** Songs tagged `menu` on
+  the `radio` sheet are what a profile's very first unlock gives, whichever game
+  earned it; that game has spent its song on it, so Hades's first beat gives the
+  menu song and no Hades song. With several, one is drawn (file first); a menu
+  song with no `Game` is only ever that first song. A profile that already has
+  songs draws no menu song. `radio.json` keeps which game paid for it. The
+  generator also refuses a `radio` sheet missing any of its eight columns.
+
 - **Roguelike Radio unlocks at random.** Songs no longer carry their own rule
   ("beat Hades 3 times"). A game EARNS songs, by one rule for every game: one
   on its first beat, one more on every third beat (3, 6, 9 …, the first beat
