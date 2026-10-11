@@ -7,7 +7,7 @@ extends Node
 #
 #   * The SONGS are content like everything else: rows of the `radio` sheet,
 #     generated into data/songs/ (SongData). A row says which game the song
-#     belongs to and what it takes there — `goals` (distinct goals of any kind but curses, completed at that
+#     belongs to and what it takes there — `goals` (distinct goals of any kind completed at that
 #     game) or `wins` (times it has been reported beaten) — and how many.
 #   * The AUDIO is the player's own and never in the repo. It sits in FOLDER on
 #     their machine and a row only names the file.
@@ -31,6 +31,9 @@ extends Node
 # is a setting, and the other speaker stays silent so nothing plays twice.
 
 signal changed
+# The volume alone. Kept off `changed` because a slider drag moves it dozens of
+# times a second, and `changed` rebuilds the Radio screen's whole song list.
+signal volume_changed(volume: float)
 signal song_unlocked(song: SongData)
 
 enum Output { OBS, GAME }
@@ -72,6 +75,13 @@ var _player: AudioStreamPlayer
 var _stream: AudioStream = null
 var _rng := RandomNumberGenerator.new()
 
+# Whether the radio starts music BY ITSELF — at boot, after an unlock, on a
+# profile switch, after a rescan. Off when the game runs headless, which is how
+# the GUT suite runs: it shares user:// with the real game, so with this on, a
+# test run on the owner's PC played their music and staged it for OBS. Pressing
+# a control still plays, headless or not.
+var autoplay: bool = DisplayServer.get_name() != "headless"
+
 # A test clock. Real time otherwise.
 var clock_override: float = -1.0
 
@@ -90,7 +100,7 @@ func _ready() -> void:
 	GameStats.changed.connect(func() -> void: refresh_unlocks(true))
 	Profiles.profile_switched.connect(_on_profile_changed)
 	Profiles.profile_wiped.connect(_on_profile_changed)
-	if not paused:
+	if not paused and autoplay:
 		_advance()
 
 # ---------------------------------------------------------------------------
@@ -144,15 +154,13 @@ func rule_text(song: SongData) -> String:
 
 # What has counted so far towards a `goals` song, kind by kind in the
 # Collection's order — "2 Enemies, 1 Weapon" — so the list says where the
-# progress came from. Curses are left out: they do not count.
+# progress came from.
 func goals_done(song: SongData) -> Array:
 	if song == null or song.unlock != &"goals":
 		return []
 	var out: Array = []
 	var all: Dictionary = GameStats.goals_at(song.game_id)
 	for kind in all.keys():
-		if kind in GameStats.UNCOUNTED_KINDS:
-			continue
 		var n: int = (all[kind] as Array).size()
 		var name: String = GameStats.GOAL_KIND_NAMES[kind]
 		out.append("%d %s" % [n, name if n != 1 else _singular(name)])
@@ -221,7 +229,7 @@ func refresh_unlocks(announce: bool = true) -> void:
 			Notifications.notify("📻 New on Roguelike Radio: %s" % _label(song),
 				Color(0.95, 0.8, 0.45), null, "radio")
 			song_unlocked.emit(song)
-		if current == &"" and not paused:
+		if current == &"" and not paused and autoplay:
 			_advance()
 	changed.emit()
 
@@ -236,7 +244,7 @@ func _on_profile_changed() -> void:
 	var song: SongData = current_song()
 	if song == null or not is_playable(song):
 		_stop_track()
-		if not paused:
+		if not paused and autoplay:
 			_advance()
 	changed.emit()
 
@@ -287,11 +295,14 @@ func set_paused(value: bool) -> void:
 	save_config()
 	changed.emit()
 
-func set_volume(value: float) -> void:
+# `persist` false while a slider is being dragged: the file is written once,
+# when it is let go (RadioScreen), not on every step of the drag.
+func set_volume(value: float, persist: bool = true) -> void:
 	volume = clampf(value, 0.0, 1.0)
 	_player.volume_db = linear_to_db(maxf(volume, 0.0001))
-	save_config()
-	changed.emit()
+	if persist:
+		save_config()
+	volume_changed.emit(volume)
 
 func set_shuffle(value: bool) -> void:
 	shuffle = value
@@ -319,7 +330,7 @@ func set_output(value: int) -> void:
 # Pick up files added to the folder while the game is running.
 func rescan() -> void:
 	_queue.clear()
-	if current == &"" and not paused:
+	if current == &"" and not paused and autoplay:
 		_advance()
 	changed.emit()
 

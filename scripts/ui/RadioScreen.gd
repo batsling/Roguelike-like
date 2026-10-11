@@ -19,6 +19,7 @@ var _now_time: Label
 var _play_btn: Button
 var _volume: HSlider
 var _volume_label: Label
+var _dragging_volume: bool = false
 var _shuffle: CheckBox
 var _station: OptionButton
 var _output: OptionButton
@@ -40,6 +41,7 @@ func _ready() -> void:
 	get_viewport().size_changed.connect(_fit_to_viewport)
 	_build_ui()
 	Radio.changed.connect(_refresh)
+	Radio.volume_changed.connect(_show_volume)
 	_refresh()
 
 func _fit_to_viewport() -> void:
@@ -200,10 +202,17 @@ func _build_controls() -> Control:
 	_volume.step = 1
 	_volume.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_volume.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	# WHILE DRAGGING, only the label and the sound move; the setting is saved
+	# when the slider is let go. A click or a key press is one step and saves at
+	# once.
 	_volume.value_changed.connect(func(v: float) -> void:
 		_volume_label.text = "%d%%" % int(v)
 		if absf(v / 100.0 - Radio.volume) > 0.001:
-			Radio.set_volume(v / 100.0))
+			Radio.set_volume(v / 100.0, not _dragging_volume))
+	_volume.drag_started.connect(func() -> void: _dragging_volume = true)
+	_volume.drag_ended.connect(func(_changed: bool) -> void:
+		_dragging_volume = false
+		Radio.save_config())
 	row.add_child(_volume)
 	_volume_label = Label.new()
 	_volume_label.custom_minimum_size = Vector2(40, 0)
@@ -298,8 +307,7 @@ func _refresh() -> void:
 	_now_time.text = _time_text()
 	_play_btn.text = "⏸  Pause" if Radio.is_playing() else "▶  Play"
 
-	_volume.set_value_no_signal(roundf(Radio.volume * 100.0))
-	_volume_label.text = "%d%%" % int(roundf(Radio.volume * 100.0))
+	_show_volume(Radio.volume)
 	_shuffle.set_pressed_no_signal(Radio.shuffle)
 
 	_station.clear()
@@ -321,6 +329,10 @@ func _refresh() -> void:
 		+ "the music will be on the game's audio instead of its own fader.")
 
 	_fill_list()
+
+func _show_volume(v: float) -> void:
+	_volume.set_value_no_signal(roundf(v * 100.0))
+	_volume_label.text = "%d%%" % int(roundf(v * 100.0))
 
 func _meta_line(song: SongData) -> String:
 	var bits: Array = []

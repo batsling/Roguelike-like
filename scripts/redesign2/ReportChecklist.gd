@@ -962,10 +962,10 @@ func resolve_event_goals() -> void:
 		# Into the run's ledger, exactly as a claim made mid-game is (§2.1) — the
 		# report is simply the last moment a row can resolve, not a different kind
 		# of resolution.
+		# Into the run's ledger only — event goals are not on a game's lifetime
+		# record (GameStats.GOAL_KINDS says why).
 		GameLoop2.record_completed_goal("event",
-			"Event goal — %s" % goal.get("condition", ""),
-			"%s|%s" % [goal.get("event", ""), goal.get("condition", "")],
-			String(goal.get("condition", "")))
+			"Event goal — %s" % goal.get("condition", ""))
 		var src: EventData2 = Data.get_event2(StringName(goal.get("event", &"")))
 		var line: String = src.goal_met if src != null and src.goal_met != "" else \
 			"Event goal met — %s." % goal.get("effects_text", "")

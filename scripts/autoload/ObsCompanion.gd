@@ -247,6 +247,7 @@ func _connect_signals() -> void:
 	RunTimer.changed.connect(mark_dirty)
 
 	Radio.changed.connect(mark_dirty)
+	Radio.volume_changed.connect(func(_v: float) -> void: mark_dirty())
 	Radio.song_unlocked.connect(func(song: SongData) -> void:
 		_note("good", "New on Roguelike Radio: %s" % song.title))
 

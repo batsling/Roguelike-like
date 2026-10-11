@@ -173,12 +173,28 @@ func test_a_goals_song_counts_each_distinct_goal_of_every_kind() -> void:
 	GameStats.levelup_log[String(GAME)] = {"isaac": {"levels": 1, "note": ""}}
 	assert_true(Radio.is_unlocked(s), "an enemy, a weapon, a status and a level-up: 4")
 
-func test_a_curse_is_listed_but_never_counted() -> void:
+func test_a_curse_followed_counts_as_a_goal() -> void:
 	var s := _song("grind", &"goals", 1)
 	GameStats.record_goal(GAME, "curse", "poor_sleep", "Poor Sleep — don't rest")
 	assert_true(GameStats.goals_at(GAME).has("curse"), "the curse is on the record")
-	assert_eq(GameStats.distinct_goals_count(GAME), 0, "but it unlocks nothing")
-	assert_false(Radio.is_unlocked(s))
+	assert_eq(GameStats.distinct_goals_count(GAME), 1, "and it counts")
+	assert_true(Radio.is_unlocked(s))
+
+func test_a_bonus_counts_once_per_status_whatever_it_rode_on() -> void:
+	# The checklist keys a bonus by its status, so Burn paid on two different
+	# enemies lands on one goal.
+	GameStats.record_goal(GAME, "bonus", "burn", "Burn — beat it burning")
+	GameStats.record_goal(GAME, "bonus", "burn", "Burn — beat it burning")
+	assert_eq(GameStats.distinct_goals_count(GAME), 1)
+	assert_eq(int(GameStats.goals_at(GAME)["bonus"][0]["done"]), 2, "done twice")
+
+func test_event_goals_are_not_on_the_record() -> void:
+	GameStats.record_goal(GAME, "event", "e|x", "Win without a shop")
+	assert_false(GameStats.goal_log.get(String(GAME), {}).has("event"), "never written")
+	# …and one an older save already holds is dropped on the way out.
+	GameStats.goal_log[String(GAME)] = {"event": {"e|x": {"done": 1, "label": "old"}}}
+	assert_false(GameStats.goals_at(GAME).has("event"))
+	assert_eq(GameStats.distinct_goals_count(GAME), 0)
 
 func test_a_note_without_a_win_is_not_a_goal() -> void:
 	# enemy_log also holds notes written before a clear (GameStats.set_enemy_note).
@@ -197,7 +213,7 @@ func test_the_list_says_where_the_progress_came_from() -> void:
 	_defeat_distinct(GAME, 2)
 	GameStats.record_goal(GAME, "weapon", "whip", "Whip")
 	GameStats.record_goal(GAME, "curse", "poor_sleep", "Poor Sleep")
-	assert_eq(Radio.goals_done(s), ["2 Enemies", "1 Weapon"], "curses left out")
+	assert_eq(Radio.goals_done(s), ["2 Enemies", "1 Weapon", "1 Curse"])
 	assert_eq(Radio.goals_done(_song("w", &"wins", 1)), [],
 		"a wins song has nothing to list")
 
@@ -323,6 +339,27 @@ func test_back_restarts_the_song_then_goes_to_the_one_before() -> void:
 	Radio.next()
 	assert_eq(Radio.current, &"b", "and Skip comes back to it")
 
+func test_a_volume_drag_neither_saves_nor_rebuilds_the_screen() -> void:
+	Radio.set_volume(0.5)
+	watch_signals(Radio)
+	Radio.set_volume(0.3, false)
+	assert_signal_not_emitted(Radio, "changed", "the song list is not rebuilt")
+	assert_signal_emitted(Radio, "volume_changed")
+	Radio.volume = 0.9
+	Radio.load_config()
+	assert_almost_eq(Radio.volume, 0.5, 0.001, "a step mid-drag is not written")
+
+func test_nothing_plays_by_itself_when_headless() -> void:
+	# This suite IS headless — the case the guard is for.
+	assert_false(Radio.autoplay, "a headless run never starts music by itself")
+	_song("a")
+	_wins(GAME, 1)
+	GameStats.changed.emit()
+	Radio.rescan()
+	assert_eq(Radio.current, &"", "an unlock or a rescan does not start it")
+	Radio.next()
+	assert_eq(Radio.current, &"a", "pressing a control still plays")
+
 func test_volume_is_clamped_and_kept() -> void:
 	Radio.set_volume(1.7)
 	assert_eq(Radio.volume, 1.0)
@@ -432,7 +469,6 @@ func test_every_kind_of_goal_lists_under_its_header_in_order() -> void:
 	GameStats.levelup_log[String(GAME)] = {"isaac": {"levels": 1, "note": ""}}
 	_defeat_distinct(GAME, 1)
 	GameStats.record_goal(GAME, "curse", "poor_sleep", "Poor Sleep — don't rest")
-	GameStats.record_goal(GAME, "event", "e|x", "Win without a shop")
 	GameStats.record_goal(GAME, "weapon", "whip", "Whip — kill 3")
 	GameStats.record_goal(GAME, "status", "strength", "Strength — no heals")
 	GameStats.record_goal(GAME, "bonus", "burn", "Burn — beat it burning")
@@ -440,7 +476,7 @@ func test_every_kind_of_goal_lists_under_its_header_in_order() -> void:
 	if boss != null:
 		GameStats.enemy_log[String(GAME)][String(boss.id)] = {"beaten": 1, "note": ""}
 	var want: Array = ["character", "enemy", "boss", "weapon", "status", "bonus",
-		"event", "curse"]
+		"curse"]
 	if boss == null:
 		want.erase("boss")
 	assert_eq(GameStats.goals_at(GAME).keys(), want, "the Collection's order")
@@ -458,8 +494,8 @@ func test_every_kind_of_goal_lists_under_its_header_in_order() -> void:
 	var all_text: String = ""
 	for l in c._detail_box.find_children("*", "Label", true, false):
 		all_text += (l as Label).text + "\n"
-	assert_string_contains(all_text, "Goals completed here (%d)" % (want.size() - 1),
-		"the count leaves the curse out")
+	assert_string_contains(all_text, "Goals completed here (%d)" % want.size(),
+		"every picture counts, the curse included")
 	# Each goal is a picture now, with what it was on the hover.
 	var tips: String = ""
 	for t in c._detail_box.find_children("*", "PanelContainer", true, false):

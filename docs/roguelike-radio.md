@@ -51,32 +51,33 @@ come out as the same id (`<name> <artist>`, slugified).
 
 | Rule | Counts | Source |
 |---|---|---|
-| `goals` | the **distinct** goals completed **at that game**, of every kind but curses: each goal counts once, however often it was done again | `GameStats.distinct_goals_count(game)` (`GameStats.goals_at(game)`, curses left out) |
+| `goals` | the **distinct** goals completed **at that game**, of every kind: each goal counts once, however often it was done again | `GameStats.distinct_goals_count(game)` (everything in `GameStats.goals_at(game)`) |
 | `wins` | every time **that game** was reported beaten | `GameStats.beaten_count(game)` |
 
 It reads **"Complete 5 distinct goals in Balatro"**, and the song list says
 where the progress came from ("Done here: 2 Enemies, 1 Weapon").
 
 **Every kind of goal counts:** the character's level-up, enemies, bosses,
-weapons, standing status goals, bonus clauses and event goals. Doing the same
-goal again (re-clearing Monkey, charging the same Whip) doesn't move it; a new
-one does. **Curses are listed but never counted.** A curse row is a rule you
-followed to dodge a penalty, and counting it would reward taking curses on
-purpose (the owner's call).
+weapons, standing status goals, bonus clauses and curses followed. Doing the
+same goal again (re-clearing Monkey, charging the same Whip) doesn't move it; a
+new one does. **A bonus counts once per status**: Burn paid on two different
+enemies is one goal. **Event goals are not on the record at all** (the owner's
+call: there is one in the game, and it is not worth a section). They are still
+claimed in a run as before; they just don't count or show here.
 
 ### Where each kind is recorded
 
 `GameStats.goals_at(game)` reads three logs as one list, in the order a game's
 Collection page shows them (`GameStats.GOAL_KINDS`): Character, Enemies,
-Bosses, Weapons, Statuses, Bonuses, Events, Curses.
+Bosses, Weapons, Statuses, Bonuses, Curses.
 
 | Kind | Log | Same goal = same… |
 |---|---|---|
 | Character | `levelup_log[game][character]` | character |
 | Enemies / Bosses | `enemy_log[game][enemy]` (split by `Data.get_boss`) | enemy |
-| Weapons, Statuses, Bonuses, Events, Curses | `goal_log[game][kind][key]`, written by `GameLoop2.record_completed_goal(kind, text, key, label)` | weapon id / status id / status id / event + condition / curse id |
+| Weapons, Statuses, Bonuses, Curses | `goal_log[game][kind][key]`, written by `GameLoop2.record_completed_goal(kind, text, key, label)` | weapon id / status id / status id / curse id |
 
-`goal_log` is new with this change, so goals of those five kinds done before
+`goal_log` is new with this change, so goals of those four kinds done before
 it don't appear; level-ups and enemies go back to the start of the save.
 
 The radio **stores no progress of its own**. A song is unlocked exactly when `have >= need`. The only thing it
@@ -85,6 +86,10 @@ has already **announced**, so each one gets its toast and jumps the queue
 exactly once.
 
 - **Re-checked on every `GameStats.changed`**, which a report always emits.
+- **It only starts music by itself when there is a window** (`Radio.autoplay`).
+  Headless, which is how the test suite runs, nothing plays until a control is
+  pressed: the suite shares `user://` with the real game, and used to play the
+  owner's music during a test run.
 - **At boot and on a profile switch, unlocks are taken quietly.** A first launch
   on an old save could otherwise owe dozens of toasts.
 - **An unlocked song whose file isn't in the folder** is listed as "file not
@@ -184,12 +189,14 @@ A game's page is **520px wide** (`Collection.GAME_DETAIL_PANEL_W`); every other
 tab's card keeps 360. Its two lists are grids of pictures:
 
 - **Influenced / Influenced By**: the games' covers, the name (and year) on the
-  hover. A click opens that game's page.
+  hover. A click opens that game's page. The covers are drawn a few per frame
+  (`Collection.COVERS_PER_FRAME`), so a game that influenced sixty others opens
+  at once and fills in over a few frames instead of stalling on sixty decodes.
 - **Goals completed here (N)**: a header per kind in `GOAL_KINDS` order, only
-  the kinds that have something in them. N is the radio's count (curses left
-  out), and Enemies keep their "(beaten / can appear here)" figure. Each goal is
-  its art (the enemy, the character's icon, the weapon, the status, the event,
-  the curse) with **the times done in the top-right corner**. The hover carries
+  the kinds that have something in them. N is the radio's count (every
+  picture in the section), and Enemies keep their "(beaten / can appear here)" figure. Each goal is
+  its art (the enemy, the character's icon, the weapon, the status, the
+  curse) with **the times done in the top-right corner**. The hover carries
   the name and "beaten / levelled / done / followed ×N", the goal itself, and
   your note. A click on an enemy, boss or level-up opens its note editor; the
   other kinds have no note. A goal with no art shows its name instead.

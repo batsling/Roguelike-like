@@ -23,9 +23,9 @@ extends Resource
 @export var game_id: StringName = &""
 
 # How it unlocks:
-#   &"goals" — `count` DISTINCT goals completed at `game_id`, of every kind but
-#              curses (level-ups, enemies, bosses, weapons, statuses, bonuses,
-#              events), each counted once however often it was done again
+#   &"goals" — `count` DISTINCT goals completed at `game_id`, of every kind
+#              (level-ups, enemies, bosses, weapons, statuses, bonuses, curses
+#              followed), each counted once however often it was done again
 #              (GameStats.distinct_goals_count) — "Complete 5 distinct goals in
 #              Balatro",
 #   &"wins"  — `game_id` reported beaten `count` times (GameStats.beaten_count),

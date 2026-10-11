@@ -16,8 +16,7 @@ Columns:
     Album    optional
     Year     optional
     Game     the game it is tied to and unlocks on (its display name, or its id)
-    Unlock   `goals` — distinct goals completed at that game (any kind but
-             curses), or
+    Unlock   `goals` — distinct goals completed at that game (any kind), or
              `wins`  — times that game has been reported beaten.
              Blank keeps the song LOCKED (owner's rule, not a default to "free")
     Count    how many of them it takes

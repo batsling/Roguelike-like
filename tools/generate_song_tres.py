@@ -8,7 +8,7 @@ into data/songs/ — the songs of ROGUELIKE RADIO (docs/roguelike-radio.md).
 The audio is the player's own and is never in the repo; `File` only names it.
 `Game` may be a game's display name or its id, and must be a game in the
 catalog. `Unlock` is `goals` ("complete X distinct goals in Y" — every kind of
-goal but curses), `wins` ("beat Y X times") or blank (blank = locked until it
+goal), `wins` ("beat Y X times") or blank (blank = locked until it
 has a rule). `enemies` is read as `goals`, the word the rule had for a while. `Image` is a base name under images2.0/radio/.
 
 The output folder is REWRITTEN, not added to: a row deleted from the sheet takes

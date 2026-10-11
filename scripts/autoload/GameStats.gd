@@ -84,8 +84,7 @@ var status_goal_log: Dictionary = {}
 var character_enemy_log: Dictionary = {}
 
 # EVERY OTHER KIND OF GOAL, per game: the weapons charged, the standing status
-# goals met, the bonus clauses paid, the event goals claimed and the curses
-# followed. Keyed game id -> kind -> goal key -> {"done": int, "label": String}.
+# goals met, the bonus clauses paid and the curses followed. Keyed game id -> kind -> goal key -> {"done": int, "label": String}.
 #
 # The enemies and the level-ups keep their own logs above (they carry notes and
 # predate this); `goals_at` reads all three as one list, which is what the
@@ -95,19 +94,22 @@ var goal_log: Dictionary = {}
 
 # THE KINDS, IN THE ORDER A GAME'S PAGE LISTS THEM: who you are, what you fought
 # (bosses after the rest), what you carried, what you were holding yourself to,
-# what an enemy's clause paid, what an event asked for, and last the curses —
-# the one kind you are trying NOT to complete.
+# what an enemy's clause paid, and last the curses you followed. Every one of
+# them counts towards "complete X distinct goals".
+#
+# A BONUS is keyed by its STATUS, not by the enemy it rode on: Burn paid on two
+# different enemies is one goal, the same rule that makes five Monkeys one.
+#
+# EVENT GOALS ARE NOT ON THIS LIST, on purpose (the owner's call): there is one
+# of them in the game and it is not worth a section. `record_goal` refuses the
+# kind, so none are written, and `goals_at` drops any an older save holds.
 const GOAL_KINDS := ["character", "enemy", "boss", "weapon", "status", "bonus",
-	"event", "curse"]
+	"curse"]
 const GOAL_KIND_NAMES := {
 	"character": "Character", "enemy": "Enemies", "boss": "Bosses",
 	"weapon": "Weapons", "status": "Statuses", "bonus": "Bonuses",
-	"event": "Events", "curse": "Curses",
+	"curse": "Curses",
 }
-# Kinds that do NOT count towards "complete X distinct goals": a curse row is
-# a rule you followed to avoid a penalty, and rewarding it would reward taking
-# curses on purpose.
-const UNCOUNTED_KINDS := ["curse"]
 
 func _ready() -> void:
 	load_data()
@@ -393,13 +395,12 @@ func _add_goal(out: Dictionary, kind: String, key: String, label: String,
 	out[kind].append({"key": key, "label": label, "done": done, "note": note})
 
 # The DISTINCT goals completed at a game, each counted once however often it was
-# done again, curses left out — "complete X distinct goals in Y".
+# done again — "complete X distinct goals in Y".
 func distinct_goals_count(game_id) -> int:
 	var n: int = 0
 	var all: Dictionary = goals_at(game_id)
 	for kind in all.keys():
-		if not (kind in UNCOUNTED_KINDS):
-			n += (all[kind] as Array).size()
+		n += (all[kind] as Array).size()
 	return n
 
 func has_enemy_log(game_id) -> bool:

@@ -1071,6 +1071,12 @@ func test_the_influence_chart_is_covers_that_open_their_game() -> void:
 	var first: Control = tiles[0]
 	var other: GameData = Data.get_game(first.get_meta(&"game_id"))
 	assert_string_contains(first.tooltip_text, other.display_name, "the name is on the hover")
+	# The covers fill in a few a frame; give them the frames and they are all up.
+	await wait_process_frames(ceili(tiles.size() / float(Collection.COVERS_PER_FRAME)) + 2)
+	var bare: Array = tiles.filter(func(t): return is_instance_valid(t) \
+		and (t.get_meta(&"art") as TextureRect).texture \
+			!= Data.get_game(t.get_meta(&"game_id")).cover_image)
+	assert_eq(bare.size(), 0, "every cover has arrived")
 	var click := InputEventMouseButton.new()
 	click.button_index = MOUSE_BUTTON_LEFT
 	click.pressed = true

@@ -883,6 +883,10 @@ const GAME_DETAIL_PANEL_W := 520
 # The pictures in those grids: a game's cover (3:4) and a goal's art (square).
 const DETAIL_TILE_COVER := 70
 const DETAIL_TILE_GOAL := 56
+# How many covers not yet in memory an influence grid decodes per frame. A game
+# like Hades influenced sixty-odd others, and decoding all of them before the
+# page could draw was a visible stall; a few a frame fills the grid in a blink.
+const COVERS_PER_FRAME := 6
 # How much of the window's height the card may take before it scrolls.
 const DETAIL_MAX_H_FRACTION := 0.84
 # The ◀ ▶ buttons either side of the card.
@@ -1629,8 +1633,8 @@ func _show_game_detail(g: GameData) -> void:
 
 # EVERY GOAL COMPLETED AT THIS GAME, under one header per kind, in
 # GameStats.GOAL_KINDS order: Character, Enemies, Bosses, Weapons, Statuses,
-# Bonuses, Events, Curses. It was two lists — the enemies beaten here and the
-# level-ups taken here — and the other five kinds of goal were done here and
+# Bonuses, Curses. It was two lists — the enemies beaten here and the
+# level-ups taken here — and the other kinds of goal were done here and
 # written down nowhere. The enemy and level-up rows keep their notes; the rest
 # say what the goal was and how many times it was done.
 func _add_goals_section(g: GameData) -> void:
@@ -1680,8 +1684,11 @@ func _game_cover_flow(ids) -> HFlowContainer:
 			games.append(other)
 	games.sort_custom(func(a, b): return a.display_name < b.display_name)
 	var flow := _tile_flow()
+	var pending: Array = []
 	for other in games:
-		var tile := _picture_tile(other.cover_image,
+		# The cover arrives a few frames later (_fill_covers); the frame, the
+		# hover and the click are all there from the first one.
+		var tile := _picture_tile(null,
 			Vector2(DETAIL_TILE_COVER, roundi(DETAIL_TILE_COVER * 4.0 / 3.0)),
 			"%s%s" % [other.display_name, (" (%d)" % other.year) if other.year > 0 else ""],
 			0, _game_type_color(int(other.type)), false)
@@ -1695,7 +1702,31 @@ func _game_cover_flow(ids) -> HFlowContainer:
 				# next one, and freeing it inside its own click is an engine error.
 				_show_game_detail.call_deferred(target))
 		flow.add_child(tile)
+		pending.append([tile, other])
+	_fill_covers(pending)
 	return flow
+
+# Put each tile's cover in, COVERS_PER_FRAME decodes a frame. A cover already
+# in memory (the grid behind this card drew it) costs nothing and is not
+# counted. Stops if the page is torn down under it — a click to another game,
+# or ◀ ▶ — since its tiles are freed with it.
+func _fill_covers(pending: Array) -> void:
+	var decoded: int = 0
+	for pair in pending:
+		var tile: Control = pair[0]
+		if not is_instance_valid(tile):
+			return
+		var game: GameData = pair[1]
+		var cached: bool = game.cover_path == "" or ResourceLoader.has_cached(game.cover_path)
+		var art: TextureRect = tile.get_meta(&"art")
+		art.texture = game.cover_image
+		if cached:
+			continue
+		decoded += 1
+		if decoded % COVERS_PER_FRAME == 0:
+			await get_tree().process_frame
+			if not is_inside_tree():
+				return
 
 # One goal done at this game: its picture, the number of times in the corner,
 # and everything else on the hover — the name, the goal itself, the count, the
@@ -1729,10 +1760,6 @@ func _goal_tile(g: GameData, kind: String, row: Dictionary, redraw: Callable) ->
 			var st: StatusData = Data.get_status(StringName(key))
 			if st != null:
 				tex = st.image
-		"event":
-			var ev: EventData2 = Data.get_event2(StringName(key.get_slice("|", 0)))
-			if ev != null:
-				tex = ev.image
 		"curse":
 			var cd: CurseData2 = Data.get_curse2(StringName(key))
 			if cd != null:
@@ -1786,14 +1813,17 @@ func _picture_tile(tex: Texture2D, size: Vector2, tip: String, count: int,
 	stack.custom_minimum_size = size
 	stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	tile.add_child(stack)
-	if tex != null:
+	# No picture AND no name means the picture is still coming (a cover filled
+	# in by _fill_covers), so the frame for it goes up empty.
+	if tex != null or fallback == "":
 		var art := TextureRect.new()
 		art.texture = tex
+		tile.set_meta(&"art", art)
 		art.set_anchors_preset(Control.PRESET_FULL_RECT)
 		art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		art.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		if crisp:
+		if crisp and tex != null:
 			UITheme.apply_crisp(art, tex)
 		stack.add_child(art)
 	else:
