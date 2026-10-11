@@ -89,8 +89,19 @@ For how the project is laid out and how its systems fit together, see
     te4.org, names the finder can't guess, so both are now `KNOWN_WIKIS`.
     UnReal World's was simply missed. The Mystery Dungeon Wiki covers every
     Torneko and Shiren game, one namespace each. `docs/research.md` §8 now
-    says where to look before writing "no wiki". Every no-wiki game was then
-    looked for again, since the first run met Fandom's rate limit.
+    says where to look before writing "no wiki".
+  - **Every no-wiki game, looked for again:** the first run had met
+    Fandom's rate limit, and this one found wikis for 155 of the 580. Wikis on
+    record went from 326 to 504. 106 of them are owned games not yet
+    researched, Vampire Survivors, Inscryption and Griftlands among them, and
+    `next` now offers them first, as the owner's best-documented-first order
+    says. Two finds were the wrong thing and are set to none by hand
+    (fable.fandom.com is Lionhead's Fable, underdogs.fandom.com a film). 19
+    Mystery Dungeon games (Torneko, Shiren, Pokémon) now point at their
+    namespace on the Mystery Dungeon Wiki, and the Chocobo games and Castle of
+    the Winds at the Final Fantasy Wiki and StrategyWiki. Larn and Fatal
+    Labyrinth turned out to have small wikis (33 and 11 articles) after
+    batch 23 marked them from other sources.
   - **Old rows:** Kranach, the Cat Lord, Ukruk, Bill the Stone Troll, the Grand
     Corruptor, the Rak'Shor Cultist, Mamel and Pacorepkin hold. Fixed:
     Keethrax (a druid among animals, not a curser), the Weirdling Beast (heals
