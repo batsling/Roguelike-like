@@ -28,6 +28,8 @@ out of the game window). This is the design and the reasoning; the code is
   with **tags as stations**.
 - A new unlock gets a **toast** in the game and on the overlay, and **plays
   next**.
+- **Favourites** (the fourth ask): a ★ on a song stars it, and a **Favourites
+  station** plays only starred songs (§5a).
 
 ## 2. The `radio` sheet
 
@@ -188,8 +190,31 @@ overlay").
 - **Back** restarts the song if it is more than 3 s in; otherwise it goes to
   the previous song (a history of 50).
 - **A station** (a tag) filters the playable list. "All songs" is no filter.
+  **★ Favourites** is a station too (§5a).
 - **A file that won't decode** is skipped, and remembered for that pick so a
   folder of broken files ends in silence rather than a loop.
+
+## 5a. Favourites
+
+The owner's choices, asked before it was built:
+
+- **It is a station**, not a switch: "★ Favourites" is the second entry in the
+  station list, after "All songs" (its value is `Radio.FAVORITES`, `*favorites`,
+  which no tag can be: the generator refuses a tag starting with `*`). It can't
+  be combined with a tag; it uses the same queue and shuffle as any station.
+- **Stars belong to the profile**, like the songs it has drawn, and are saved
+  beside them in `radio.json` (`"favorites"`).
+- **Only an unlocked song can be starred.** The ★ is on each unlocked song's row
+  and beside the title of the song playing; gold when starred, faint when not.
+- **Stars change nothing else.** Normal shuffle still plays every song once
+  before any repeats.
+- **The overlay shows it.** The payload's `song.favorite` puts a ★ before the
+  title on the `radio.html` card. Display only: the page can't be clicked.
+- **Un-starring the song that is playing lets it finish**; it just isn't picked
+  again. **Starring a song while the Favourites station stands silent** starts
+  it.
+- With no favourites, the station is silent and the screen says "No favourites
+  yet. Click the ★ on a song below."
 
 ## 6. Where the controls are
 
@@ -199,14 +224,15 @@ corner**. It has:
 
 - what's playing and how far in;
 - Back / Pause / Skip and a volume slider;
-- shuffle, the station, and where it plays from;
+- a ★ beside the title of what's playing, to star or un-star it;
+- shuffle, the station (★ Favourites among them), and where it plays from;
 - the music folder, with Open folder and Rescan (for files added while the game
   is running);
 - every song on the sheet: unlocked first, then the locked ones by game, the
   game nearest its next song first, each saying what that game still needs
   ("Next Balatro song: beat Balatro once more, or complete 2 more distinct goals
-  there", with where its goals so far came from) and, once unlocked, a ▶ to
-  play it now.
+  there", with where its goals so far came from) and, once unlocked, a ★ to
+  star it and a ▶ to play it now.
 
 The speakers, volume, shuffle, station and pause live in `user://radio.cfg`.
 They belong to the PC, like the window mode does, not to a profile.
@@ -225,12 +251,13 @@ They belong to the PC, like the window mode does, not to a profile.
 ## 8. Tests
 
 - `test/test_radio.gd`: the unlock rules, quiet vs announced unlocks, the
-  queue, Back, pause, the clock, stations, broken files, the one-speaker rule,
+  queue, Back, pause, the clock, stations, favourites, broken files, the one-speaker rule,
   the payload and its staging, and the screen. It uses its own injected songs
   and real WAV files written into a scratch folder.
 - `tools/check_overlay.js`, "roguelike radio": the page plays, seeks to where
   the game says, follows pause and restart, goes silent when the game window is
-  the speaker, and only `radio.html` makes a sound.
+  the speaker, only `radio.html` makes a sound, and a favourite's title wears
+  the ★.
 
 ## 9. The game's Collection page
 

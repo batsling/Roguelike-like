@@ -79,6 +79,7 @@ var seq: int = 0
 var _queue: Array = []           # [StringName] still to play this pass
 var _history: Array = []         # [StringName] played, newest last
 var _unlocked: Dictionary = {}   # song id -> true: songs drawn, per profile
+var _favorites: Dictionary = {}  # song id -> true: songs starred, per profile
 var _player: AudioStreamPlayer
 var _stream: AudioStream = null
 var _rng := RandomNumberGenerator.new()
@@ -183,7 +184,48 @@ func is_playable(song: SongData) -> bool:
 	return is_unlocked(song) and has_file(song)
 
 func on_station(song: SongData) -> bool:
+	if station == FAVORITES:
+		return is_favorite(song)
 	return station == "" or song.tags.has(station)
+
+# --- favourites -----------------------------------------------------------
+#
+# A star on a song the player likes. Its only effect is the FAVOURITES STATION:
+# tuned to it, the radio plays starred songs and nothing else, with the same
+# queue and shuffle as any station. Normal shuffle ignores stars.
+#
+# Stars belong to the PROFILE, like the songs it has drawn, and are saved beside
+# them in radio.json. Only an unlocked song can be starred.
+
+# The station value for favourites. A tag can never be it: the generator lower-
+# cases tags and refuses one starting with `*`.
+const FAVORITES := "*favorites"
+
+func is_favorite(song: SongData) -> bool:
+	return song != null and _favorites.has(String(song.id))
+
+func favorite_count() -> int:
+	return _favorites.size()
+
+func toggle_favorite(id: StringName) -> void:
+	var song: SongData = Data.get_song(id)
+	set_favorite(id, not is_favorite(song))
+
+# Un-starring the song that is playing lets it finish: the queue only ever hands
+# out songs on the station, so it simply is not picked again. Starring one while
+# the favourites station stands silent starts it.
+func set_favorite(id: StringName, on: bool) -> void:
+	var song: SongData = Data.get_song(id)
+	if song == null or (on and not is_unlocked(song)) or is_favorite(song) == on:
+		return
+	if on:
+		_favorites[String(id)] = true
+	else:
+		_favorites.erase(String(id))
+	_save_unlocked()
+	if on and station == FAVORITES and current == &"" and not paused and autoplay:
+		_advance()
+	changed.emit()
 
 # Where a locked song stands, for the song list: what its game needs for its next
 # song. It is only ever "a chance at this one", since the draw is random — the
@@ -586,6 +628,7 @@ func payload() -> Dictionary:
 		"year": song.year,
 		"game": game.display_name if game != null else "",
 		"tags": Array(song.tags),
+		"favorite": is_favorite(song),
 	}
 	out["art"] = song.image_path if song.image_path != "" else (
 		game.cover_path if game != null else "")
@@ -618,12 +661,14 @@ func save_config() -> void:
 # GameStats does. `radio.json` used to hold only the unlocks already ANNOUNCED,
 # when an unlock could be worked out from the counts; under the random rule those
 # are the songs this profile had, so an old file's "announced" list is read as
-# unlocked songs and nothing anyone heard goes away.
+# unlocked songs and nothing anyone heard goes away. The profile's favourites
+# ride in the same file, under "favorites".
 func _unlocked_path() -> String:
 	return Profiles.path("radio.json")
 
 func _load_unlocked() -> void:
 	_unlocked = {}
+	_favorites = {}
 	var f := FileAccess.open(_unlocked_path(), FileAccess.READ)
 	if f == null:
 		return
@@ -632,6 +677,8 @@ func _load_unlocked() -> void:
 		for key in ["unlocked", "announced"]:
 			for id in (parsed as Dictionary).get(key, []):
 				_unlocked[String(id)] = true
+		for id in (parsed as Dictionary).get("favorites", []):
+			_favorites[String(id)] = true
 
 func _save_unlocked() -> void:
 	var f := FileAccess.open(_unlocked_path(), FileAccess.WRITE)
@@ -639,4 +686,6 @@ func _save_unlocked() -> void:
 		return
 	var ids: Array = _unlocked.keys()
 	ids.sort()
-	f.store_string(JSON.stringify({"unlocked": ids}, "  "))
+	var favorites: Array = _favorites.keys()
+	favorites.sort()
+	f.store_string(JSON.stringify({"unlocked": ids, "favorites": favorites}, "  "))

@@ -119,6 +119,10 @@ def song_tres(row, games: dict) -> tuple:
                          % (name, file, " ".join(AUDIO)))
 
     tags = [t.strip().lower() for t in _clean(row.get("Tags")).split(",") if t.strip()]
+    for t in tags:
+        if t.startswith("*"):
+            raise ValueError("radio %s: tag %r may not start with * (the radio keeps "
+                             "those for its own stations, like *favorites)" % (name, t))
 
     lines = [
         '[gd_resource type="Resource" script_class="SongData" load_steps=2 '

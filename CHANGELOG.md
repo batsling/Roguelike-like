@@ -11,6 +11,14 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Roguelike Radio: favourites.** A ★ on each unlocked song's row and beside
+  the title of the song playing stars it, and "★ Favourites" in the station
+  list plays only starred songs, with the same queue and shuffle as any
+  station. Stars are saved per profile in `radio.json`, and change nothing
+  else: normal shuffle ignores them. The overlay's radio card puts a ★ before a
+  favourite's title. Un-starring the song playing lets it finish. A tag may no
+  longer start with `*`, which the radio keeps for its own stations.
+
 - **Roguelike Radio: a game's first song is its menu song.** A song tagged
   `menu` on the `radio` sheet is drawn before the rest of its game's songs, so
   the first Hades song you get is Hades's menu song, and the same for every

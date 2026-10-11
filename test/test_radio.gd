@@ -20,6 +20,7 @@ var _saved_log: Dictionary
 var _saved_goal_log: Dictionary
 var _saved_levelups: Dictionary
 var _saved_unlocked: Dictionary
+var _saved_favorites: Dictionary
 var _saved_folder: String
 var _saved_config: String
 var _saved_prefs: Array
@@ -31,6 +32,7 @@ func before_each() -> void:
 	_saved_goal_log = GameStats.goal_log.duplicate(true)
 	_saved_levelups = GameStats.levelup_log.duplicate(true)
 	_saved_unlocked = Radio._unlocked.duplicate()
+	_saved_favorites = Radio._favorites.duplicate()
 	_saved_folder = Radio.folder
 	_saved_config = Radio.config_path
 	_saved_prefs = [Radio.output, Radio.volume, Radio.shuffle, Radio.station, Radio.paused]
@@ -40,6 +42,7 @@ func before_each() -> void:
 	GameStats.goal_log = {}
 	GameStats.levelup_log = {}
 	Radio._unlocked = {}
+	Radio._favorites = {}
 	Radio.folder = FOLDER
 	Radio.config_path = CONFIG
 	Radio.output = Radio.Output.OBS
@@ -67,6 +70,7 @@ func after_each() -> void:
 	GameStats.goal_log = _saved_goal_log
 	GameStats.levelup_log = _saved_levelups
 	Radio._unlocked = _saved_unlocked
+	Radio._favorites = _saved_favorites
 	Radio._save_unlocked()
 	Radio.folder = _saved_folder
 	Radio.config_path = _saved_config
@@ -550,6 +554,89 @@ func test_a_station_plays_only_its_tag() -> void:
 		assert_eq(Radio.current, &"calm")
 	Radio.set_station("")
 	assert_eq(Radio.playable_songs().size(), 2)
+
+# --- favourites ----------------------------------------------------------------
+
+func test_the_favourites_station_plays_only_starred_songs() -> void:
+	_song("liked")
+	_song("other")
+	Radio.toggle_favorite(&"liked")
+	assert_true(Radio.is_favorite(Data.get_song(&"liked")))
+	Radio.set_station(Radio.FAVORITES)
+	for i in range(3):
+		Radio.next()
+		assert_eq(Radio.current, &"liked")
+	Radio.set_station("")
+	assert_eq(Radio.playable_songs().size(), 2, "every station but this one ignores stars")
+
+func test_a_locked_song_cannot_be_starred() -> void:
+	var s := _locked("far_off")
+	Radio.toggle_favorite(s.id)
+	assert_false(Radio.is_favorite(s))
+
+func test_unstarring_the_song_playing_lets_it_finish() -> void:
+	_song("a")
+	_song("b")
+	Radio.set_favorite(&"a", true)
+	Radio.set_favorite(&"b", true)
+	Radio.set_station(Radio.FAVORITES)
+	Radio.next()
+	var playing: StringName = Radio.current
+	var other: StringName = &"b" if playing == &"a" else &"a"
+	Radio.set_favorite(playing, false)
+	assert_eq(Radio.current, playing, "it plays on")
+	for i in range(3):
+		Radio.next()
+		assert_eq(Radio.current, other, "and does not come back")
+
+func test_starring_a_song_starts_a_silent_favourites_station() -> void:
+	_song("a")
+	Radio.autoplay = true
+	Radio.set_station(Radio.FAVORITES)
+	assert_eq(Radio.current, &"", "no favourites, no music")
+	Radio.set_favorite(&"a", true)
+	Radio.autoplay = false
+	assert_eq(Radio.current, &"a")
+
+func test_favourites_are_saved_with_the_profile() -> void:
+	_song("a")
+	Radio.set_favorite(&"a", true)
+	Radio._favorites = {}
+	Radio._load_unlocked()
+	assert_true(Radio._favorites.has("a"), "read back from radio.json")
+	var parsed: Dictionary = JSON.parse_string(
+		FileAccess.get_file_as_string(Radio._unlocked_path()))
+	assert_eq(parsed.get("favorites"), ["a"])
+
+func test_the_payload_says_whether_the_song_is_a_favourite() -> void:
+	_song("a")
+	Radio.next()
+	assert_false(Radio.payload()["song"]["favorite"])
+	Radio.set_favorite(&"a", true)
+	assert_true(Radio.payload()["song"]["favorite"])
+
+func test_the_screen_stars_a_song_and_offers_the_favourites_station() -> void:
+	_song("a")
+	_locked("b")
+	Radio.next()
+	var screen := RadioScreen.open(self)
+	await get_tree().process_frame
+	assert_eq(screen._station.get_item_metadata(1), Radio.FAVORITES)
+	var stars: Array = []
+	for row in screen._list.get_children():
+		for b in row.find_children("*", "Button", true, false):
+			if (b as Button).text == "★":
+				stars.append(b)
+	assert_eq(stars.size(), 1, "only the unlocked song has a star")
+	(stars[0] as Button).pressed.emit()
+	assert_true(Radio.is_favorite(Data.get_song(&"a")))
+	await get_tree().process_frame
+	assert_eq(screen._now_star.tooltip_text, "Remove from favourites",
+		"the now-playing star follows")
+	screen._now_star.pressed.emit()
+	assert_false(Radio.is_favorite(Data.get_song(&"a")))
+	screen.close()
+	await get_tree().process_frame
 
 func test_a_file_that_will_not_decode_is_skipped() -> void:
 	_song("good")

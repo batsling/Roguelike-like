@@ -14,6 +14,7 @@ const PANEL_WIDTH := 640
 const ROW_ART := 40
 
 var _now_title: Label
+var _now_star: Button
 var _now_meta: Label
 var _now_time: Label
 var _play_btn: Button
@@ -154,11 +155,20 @@ func _build_ui() -> void:
 func _build_now_playing() -> Control:
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", UITheme.GAP_HAIR)
+	var head := HBoxContainer.new()
+	head.add_theme_constant_override("separation", UITheme.GAP)
+	box.add_child(head)
 	_now_title = Label.new()
 	_now_title.add_theme_font_size_override("font_size", UITheme.FONT_HEAD)
 	_now_title.add_theme_color_override("font_color", UITheme.TEXT)
 	_now_title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	box.add_child(_now_title)
+	_now_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	head.add_child(_now_title)
+	_now_star = _star_button()
+	_now_star.pressed.connect(func() -> void:
+		if Radio.current != &"":
+			Radio.toggle_favorite(Radio.current))
+	head.add_child(_now_star)
 	_now_meta = Label.new()
 	_now_meta.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 	_now_meta.add_theme_color_override("font_color", UITheme.TEXT_DIM)
@@ -237,7 +247,7 @@ func _build_options() -> Control:
 
 	row.add_child(_caption("Station"))
 	_station = OptionButton.new()
-	_station.tooltip_text = "Only play songs with this tag."
+	_station.tooltip_text = "Only play songs with this tag, or only your favourites."
 	_station.item_selected.connect(func(index: int) -> void:
 		var tag: String = _station.get_item_metadata(index)
 		if tag != Radio.station:
@@ -284,6 +294,22 @@ func _build_folder_row() -> Control:
 	row.add_child(rescan)
 	return row
 
+# The favourite toggle: a ★, gold when the song is starred and faint when not.
+func _star_button() -> Button:
+	var b := Button.new()
+	b.text = "★"
+	b.flat = true
+	b.focus_mode = Control.FOCUS_NONE
+	b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	b.add_theme_font_size_override("font_size", UITheme.FONT_HEAD)
+	return b
+
+func _show_star(b: Button, song: SongData) -> void:
+	var on: bool = Radio.is_favorite(song)
+	for state in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
+		b.add_theme_color_override(state, UITheme.GOLD if on else UITheme.TEXT_FAINT)
+	b.tooltip_text = "Remove from favourites" if on else "Add to favourites"
+
 func _caption(text: String) -> Label:
 	var l := Label.new()
 	l.text = text
@@ -301,7 +327,10 @@ func _refresh() -> void:
 	if song != null:
 		_now_title.text = song.title + ("" if song.artist == "" else "  —  " + song.artist)
 		_now_meta.text = _meta_line(song)
+		_now_star.visible = true
+		_show_star(_now_star, song)
 	else:
+		_now_star.visible = false
 		_now_title.text = "Nothing playing"
 		_now_meta.text = _silence_reason()
 	_now_time.text = _time_text()
@@ -313,6 +342,10 @@ func _refresh() -> void:
 	_station.clear()
 	_station.add_item("All songs")
 	_station.set_item_metadata(0, "")
+	_station.add_item("★ Favourites")
+	_station.set_item_metadata(1, Radio.FAVORITES)
+	if Radio.station == Radio.FAVORITES:
+		_station.select(1)
 	for tag in Radio.stations():
 		_station.add_item(String(tag).capitalize())
 		_station.set_item_metadata(_station.item_count - 1, String(tag))
@@ -351,6 +384,10 @@ func _silence_reason() -> String:
 	if Radio.paused:
 		return "Paused."
 	if Radio.playable_songs().is_empty():
+		if Radio.station == Radio.FAVORITES:
+			if Radio.favorite_count() == 0:
+				return "No favourites yet. Click the ★ on a song below."
+			return "None of your favourites has its file in the music folder."
 		if Radio.station != "":
 			return "Nothing unlocked on this station yet."
 		return "Nothing unlocked with its file in the music folder yet."
@@ -455,6 +492,11 @@ func _song_row(song: SongData) -> Control:
 		tags.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
 		text.add_child(tags)
 
+	if unlocked:
+		var star := _star_button()
+		_show_star(star, song)
+		star.pressed.connect(func() -> void: Radio.toggle_favorite(song.id))
+		h.add_child(star)
 	if playable:
 		var play := Button.new()
 		play.text = "▶"
