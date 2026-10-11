@@ -80,6 +80,32 @@ For how the project is laid out and how its systems fit together, see
     ("Next Hades song: beat Hades 2 times more, or complete 3 more distinct
     goals there"). It's the game that is close, not the song.
 
+- **Research, twenty-fourth batch, and most "no wiki" games have one after
+  all.** UnReal World, Torneko's Great Adventure, ADOM, Castle of the Winds,
+  Zangband, Linley's Dungeon Crawl, Shiren the Wanderer (1995), Shiren GB,
+  both Chocobo's Dungeons, Cthangband and Tales of Maj'Eyal: 20 new rows,
+  6 clones, and 13 old goal rows checked.
+  - **Wikis:** ADOM's lives at ancardia.fandom.com and Tales of Maj'Eyal's at
+    te4.org, names the finder can't guess, so both are now `KNOWN_WIKIS`.
+    UnReal World's was simply missed. The Mystery Dungeon Wiki covers every
+    Torneko and Shiren game, one namespace each. `docs/research.md` §8 now
+    says where to look before writing "no wiki". Every no-wiki game was then
+    looked for again, since the first run met Fandom's rate limit.
+  - **Old rows:** Kranach, the Cat Lord, Ukruk, Bill the Stone Troll, the Grand
+    Corruptor, the Rak'Shor Cultist, Mamel and Pacorepkin hold. Fixed:
+    Keethrax (a druid among animals, not a curser), the Weirdling Beast (heals
+    itself, never to full) and Torneko's Drakee, which is Dracky, a monster that
+    moves at random. Marked `?`: the Emperor Lich (nothing on its page raises the
+    dead) and the Gitan Mamel (it joined the family in the DS remake).
+  - **New:** two Mystery Dungeon staves (Pain Sharing, Postpone), the
+    Discount Armband, the Bread Scroll, the Division Jar and the
+    Transmogrification Chest (two bags, a thin sheet), Bufu's Cleaver and
+    Bill's Tree Trunk (weapons), Tellervo's Gift (safe only beside fire), the
+    Potion of Raw Chaos (ADOM's corruption) and the Empty Bottle. Also the
+    Copycat and Cryshale; Rescue the Cute Dog, Iron to the Bog and Zangband's
+    Chaos Patron; the Alchemist; a Grave to rob; and two shopkeepers, Kaltor
+    (fight him for his chests) and Olaf (buys junk).
+
 - **Research, twenty-third batch: the first owned games with no wiki.**
   Beneath Apple Manor, Rogue, Moria, Hack, Larn, Mission: Thunderbolt, Omega,
   Dragon Crystal, Fatal Labyrinth, Cave Noire, ToeJam & Earl and Ragnarok,

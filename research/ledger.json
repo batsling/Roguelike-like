@@ -138,8 +138,13 @@
   "connections": "before 2026-10-07"
  },
  "Ancient Domains of Mystery": {
+  "characters": "2026-10-11: nothing usable: its 23 classes are the genre's; the Farmer's identity is a stat curve",
   "connections": "before 2026-10-07",
-  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+  "events": "2026-10-11: 1 row (Rescue the Cute Dog)",
+  "goals": "2026-10-11: nothing new; old rows checked against the wiki (found this batch at ancardia.fandom.com, 1696 articles): Kranach (a raider lord on an optional quest) and the Cat Lord (hostile only if you have killed cats) hold; Keethrax fixed (a druid among animals, no curses); Emperor Lich marked check (a paralysing touch, nothing raises the dead)",
+  "locations": "2026-10-11: 1 row (Grave); the tension room is a clone on David's Treasure Zoo, and altars and pools are NetHack's",
+  "loot": "2026-10-11: 1 row (Potion of Raw Chaos, for corruption); its artifacts are stat sticks, no evolutions",
+  "statuses": "2026-10-11: nothing usable: its conditions are generic, and Doomed and Confused are candidates already"
  },
  "Angband": {
   "characters": "2026-10-10: races and classes not read this batch",
@@ -610,7 +615,13 @@
   "connections": "before 2026-10-07"
  },
  "Castle of the Winds": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-11: nothing usable: one unnamed hero",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-11: nothing usable: no events",
+  "goals": "2026-10-11: nothing usable: the Smirking Sneak Thief repeats the thief goals, Hrungnir the giant goal (StrategyWiki has its 90 monsters)",
+  "locations": "2026-10-11: 1 row (shopkeeper Olaf, who buys junk)",
+  "loot": "2026-10-11: nothing usable: its packs and purses repeat the bags; melee weapons only, no evolutions",
+  "statuses": "2026-10-11: nothing usable: drain and poison are generic"
  },
  "CastlevaniaRL": {
   "connections": "before 2026-10-07"
@@ -698,10 +709,22 @@
   "statuses": "2026-10-09: nothing: no status pages; Corruption is the setting's evil, not a status"
  },
  "Chocobo's Dungeon 2": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-11: nothing usable: Chocobo, and partners who are Final Fantasy's",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-11: nothing usable: no events",
+  "goals": "2026-10-11: nothing usable: its enemies are Final Fantasy's (Tonberry, Behemoth, Ultros), better known from there",
+  "locations": "2026-10-11: nothing usable: none named",
+  "loot": "2026-10-11: 1 row (Empty Bottle); its potions repeat live ones (Amnesia, Nitro is the Explosive Ampoule); no evolutions",
+  "statuses": "2026-10-11: nothing usable: the genre's conditions"
  },
  "Chocobo's Mysterious Dungeon": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-11: nothing usable: Poulet the chocobo has no traits to build on",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-11: nothing usable: no events",
+  "goals": "2026-10-11: 1 row (Cryshale), from the Final Fantasy Wiki",
+  "locations": "2026-10-11: nothing usable: its village grows as you sell, which Koh's goal covers",
+  "loot": "2026-10-11: nothing usable: the FF Wiki lists no items for it; no evolutions",
+  "statuses": "2026-10-11: nothing usable: none named"
  },
  "Chocobo's Mystery Dungeon Every Buddy!": {
   "connections": "before 2026-10-07"
@@ -918,7 +941,13 @@
   "statuses": "2026-10-10: no statuses"
  },
  "Cthangband": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-11: nothing usable: no source reachable from here (no wiki, no packaged source); it is Zangband with Lovecraft's names, and Zangband's rows cover its systems",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-11: nothing usable: no source reachable from here (no wiki, no packaged source); it is Zangband with Lovecraft's names, and Zangband's rows cover its systems",
+  "goals": "2026-10-11: nothing usable: no source reachable from here (no wiki, no packaged source); it is Zangband with Lovecraft's names, and Zangband's rows cover its systems",
+  "locations": "2026-10-11: nothing usable: no source reachable from here (no wiki, no packaged source); it is Zangband with Lovecraft's names, and Zangband's rows cover its systems",
+  "loot": "2026-10-11: nothing usable: no source reachable from here (no wiki, no packaged source); it is Zangband with Lovecraft's names, and Zangband's rows cover its systems",
+  "statuses": "2026-10-11: nothing usable: no source reachable from here (no wiki, no packaged source); it is Zangband with Lovecraft's names, and Zangband's rows cover its systems"
  },
  "Cube Chaos": {
   "connections": "before 2026-10-07"
@@ -2058,7 +2087,13 @@
   "connections": "before 2026-10-07"
  },
  "Linley's Dungeon Crawl": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-11: nothing new: it lives on as Dungeon Crawl Stone Soup, whose rows are the famous versions",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-11: nothing new: it lives on as Dungeon Crawl Stone Soup, whose rows are the famous versions",
+  "goals": "2026-10-11: nothing new: it lives on as Dungeon Crawl Stone Soup, whose rows are the famous versions",
+  "locations": "2026-10-11: nothing new: it lives on as Dungeon Crawl Stone Soup, whose rows are the famous versions",
+  "loot": "2026-10-11: nothing new: it lives on as Dungeon Crawl Stone Soup, whose rows are the famous versions",
+  "statuses": "2026-10-11: nothing new: it lives on as Dungeon Crawl Stone Soup, whose rows are the famous versions"
  },
  "Lone Ruin": {
   "connections": "before 2026-10-07"
@@ -2387,8 +2422,13 @@
   "connections": "before 2026-10-07"
  },
  "Mystery Dungeon 2: Shiren the Wanderer": {
+  "characters": "2026-10-11: nothing usable: Shiren alone",
   "connections": "before 2026-10-07",
-  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+  "events": "2026-10-11: nothing usable: Fay's Puzzles are puzzles",
+  "goals": "2026-10-11: nothing new; old rows checked against the Mystery Dungeon Wiki (its Shiren 1 SFC namespace): Mamel (the first, weakest monster) and Pacorepkin (wanders inside walls) hold; Gitan Mamel marked check, since it joined the family in the DS remake",
+  "locations": "2026-10-11: nothing usable: the Kitchen God's shrine is the cleaver's row",
+  "loot": "2026-10-11: 2 rows (Division Jar, the Bufu's Cleaver weapon); its Melding Jar fuses weapons but the wiki gives no effect to write from, no other evolutions",
+  "statuses": "2026-10-11: nothing usable: the genre's conditions"
  },
  "Mythical Concept Starnaut": {
   "connections": "before 2026-10-07"
@@ -3322,7 +3362,13 @@
   "connections": "before 2026-10-07"
  },
  "Shiren the Wanderer GB: Monster of Moonlight Village": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-11: nothing usable: Shiren alone",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-11: nothing usable: no events",
+  "goals": "2026-10-11: nothing usable: its monsters are the original's families, and the wiki gives the new ones (Tanuki, Escape Monkey) no abilities",
+  "locations": "2026-10-11: nothing usable: Item Islands are a floor trick",
+  "loot": "2026-10-11: 3 rows (Pain Sharing Staff, Staff of Postpone, Discount Armband); no evolutions",
+  "statuses": "2026-10-11: nothing usable: the Winds of Kron are a clone on Barakunarash (Quasimorph)"
  },
  "Shiren the Wanderer Gaiden: Asuka the Swordswoman": {
   "connections": "before 2026-10-07"
@@ -3805,8 +3851,13 @@
   "statuses": "2026-10-10: Curses read: enemy buffs (more health, speed, elites) that repeat existing curses"
  },
  "Tales of Maj'Eyal": {
+  "characters": "2026-10-11: 1 row (Alchemist); Cursed, Doomed and Tinker are candidates from other games",
   "connections": "before 2026-10-07",
-  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+  "events": "2026-10-11: nothing new: its escorts are a clone on Damsel (Spelunky)",
+  "goals": "2026-10-11: nothing new; old rows checked against te4.org (found this batch, 2928 articles): Ukruk, Bill the Stone Troll, the Grand Corruptor and the Rak'Shor Cultist hold; the Weirdling Beast's goal fixed (it heals itself, never to full)",
+  "locations": "2026-10-11: 1 row (shopkeeper Kaltor)",
+  "loot": "2026-10-11: 2 rows (Bill's Tree Trunk weapon, Transmogrification Chest); the Rod of Recall is a clone on Word of Recall; no evolutions",
+  "statuses": "2026-10-11: nothing usable: no status list on the wiki"
  },
  "Talespinner": {
   "connections": "before 2026-10-07"
@@ -3994,8 +4045,13 @@
   "connections": "before 2026-10-07"
  },
  "Torneko's Great Adventure: Mystery Dungeon": {
+  "characters": "2026-10-11: nothing new: Torneko (a merchant whose shop grows) is a clone on Koh (Azure Dreams)",
   "connections": "before 2026-10-07",
-  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+  "events": "2026-10-11: nothing usable: no events",
+  "goals": "2026-10-11: 1 row (Copycat); old row fixed against the Mystery Dungeon Wiki: Drakee is Dracky, which wanders at random, and its goal now says so. Trick Bag repeats the thief goals",
+  "locations": "2026-10-11: nothing usable: its monster houses are David's Treasure Zoo's ground",
+  "loot": "2026-10-11: 1 row (Bread Scroll); weapons generic, no evolutions",
+  "statuses": "2026-10-11: nothing usable: its status conditions are the genre's (confused, asleep, blind)"
  },
  "Torneko: The Last Hope": {
   "connections": "before 2026-10-07"
@@ -4070,7 +4126,13 @@
   "connections": "before 2026-10-07"
  },
  "UnReal World": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-11: nothing usable: one unnamed hunter",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-11: 1 row (Iron to the Bog)",
+  "goals": "2026-10-11: nothing new: its bear is a clone on Polar Bear (Backpack Hero); the wiki (found this batch, 432 articles) has no monster category, and the Njerpez raiders repeat the bandit goals",
+  "locations": "2026-10-11: nothing usable: its sauna would only repeat the healing objects",
+  "loot": "2026-10-11: 1 row (Tellervo's Gift); its weapons are historical (axes, spears, bows), no evolutions",
+  "statuses": "2026-10-11: nothing usable: hunger, cold and fatigue are generic"
  },
  "UnderMine": {
   "characters": "2026-10-09: Peasant, with the Canary as loadout",
@@ -4271,7 +4333,13 @@
   "connections": "before 2026-10-07"
  },
  "Zangband": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-11: nothing usable: Angband's classes plus the chaos warrior, whose patron is the event",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-11: 1 row (Chaos Patron); its casino's In Between repeats the gambling events",
+  "goals": "2026-10-11: nothing usable: its bestiary is Angband's plus Amber's; source read on sources.debian.org",
+  "locations": "2026-10-11: nothing usable: its towns and buildings repeat the shopkeepers",
+  "loot": "2026-10-11: nothing usable: Angband's items; no evolutions",
+  "statuses": "2026-10-11: nothing usable: its mutations repeat ADOM's corruption"
  },
  "Zet Zillions": {
   "connections": "before 2026-10-07"

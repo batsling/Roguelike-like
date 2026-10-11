@@ -407,6 +407,29 @@ module reads as empty in `page`. HASTE's "Items List" is one; its items are in
 To correct a game by hand, edit its entry and add `"set": "by hand"` (with a
 `note` saying why), which every later run leaves alone.
 
+**"No wiki found" usually means no wiki under the game's own name.** The
+owned games with no wiki (October 2026, batches 23 and 24) mostly had one
+somewhere else, or a better source than a wiki:
+
+- **One wiki, a namespace per game.** The Mystery Dungeon Wiki
+  (`https://mysterydungeonwiki.com/api.php`) covers every Torneko and Shiren
+  game, Nightmare of Druaga and the Pokémon Mystery Dungeon games, each in its
+  own namespace (`Torneko 1:`, `Shiren 1 SFC:`, `Moonlight Village GB:`,
+  `Magic Castle GBC:`, `Asuka the Swordswoman PC:` …; list them with
+  `meta=siteinfo&siprop=namespaces`). Pages are titled `Shiren 1 SFC:Mamel`,
+  and the series-wide `Shiren:` pages carry the lore the game pages lack.
+  StrategyWiki (`https://strategywiki.org/w/api.php`) has a handful of old
+  games as `Game/Monsters`, `Game/Items` subpages.
+- **Series wikis.** The Final Fantasy Wiki has the Chocobo games' item and
+  enemy lists, the Dragon Quest Wiki Torneko's; read them with `page --api`.
+- **The game's own source, which beats a wiki.** Rogue, Moria (umoria), Larn
+  and Hack are on GitHub or in the BSDs; Zangband is on
+  `sources.debian.org/api/src/zangband/`. Monster and item tables are in one or
+  two files (`extern.c`, `data_creatures.cpp`, `data.c`, `tables.c`).
+- **Sega Retro refuses scripts** (an Anubis challenge); don't work around it.
+
+`page --api <url>` reads any of these.
+
 **Go gently.** The first run fired eight threads at Fandom unpaced, and Fandom
 rate-limited this client for a while (HTTP 429, and a Cloudflare challenge on
 `action=parse`). `fetch` now paces every request per host family (one per

@@ -258,6 +258,9 @@ KNOWN_WIKIS = {
     "Caves of Qud": "https://wiki.cavesofqud.com/api.php",
     # the guess finds taintedgrail.wiki.gg, which is The Fall of Avalon's
     "Tainted Grail: Conquest": "https://taintedgrail.fandom.com/api.php",
+    # named after the game's world (Ancardia), and the game's own site
+    "Ancient Domains of Mystery": "https://ancardia.fandom.com/api.php",
+    "Tales of Maj'Eyal": "https://te4.org/w/api.php",
 }
 
 
