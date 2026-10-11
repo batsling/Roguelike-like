@@ -20,7 +20,6 @@ var _saved_log: Dictionary
 var _saved_goal_log: Dictionary
 var _saved_levelups: Dictionary
 var _saved_unlocked: Dictionary
-var _saved_menu_draw: Dictionary
 var _saved_folder: String
 var _saved_config: String
 var _saved_prefs: Array
@@ -32,7 +31,6 @@ func before_each() -> void:
 	_saved_goal_log = GameStats.goal_log.duplicate(true)
 	_saved_levelups = GameStats.levelup_log.duplicate(true)
 	_saved_unlocked = Radio._unlocked.duplicate()
-	_saved_menu_draw = Radio._menu_draw.duplicate()
 	_saved_folder = Radio.folder
 	_saved_config = Radio.config_path
 	_saved_prefs = [Radio.output, Radio.volume, Radio.shuffle, Radio.station, Radio.paused]
@@ -42,7 +40,6 @@ func before_each() -> void:
 	GameStats.goal_log = {}
 	GameStats.levelup_log = {}
 	Radio._unlocked = {}
-	Radio._menu_draw = {}
 	Radio.folder = FOLDER
 	Radio.config_path = CONFIG
 	Radio.output = Radio.Output.OBS
@@ -70,7 +67,6 @@ func after_each() -> void:
 	GameStats.goal_log = _saved_goal_log
 	GameStats.levelup_log = _saved_levelups
 	Radio._unlocked = _saved_unlocked
-	Radio._menu_draw = _saved_menu_draw
 	Radio._save_unlocked()
 	Radio.folder = _saved_folder
 	Radio.config_path = _saved_config
@@ -261,96 +257,82 @@ func test_an_old_radio_file_reads_its_announced_songs_as_unlocked() -> void:
 		FileAccess.get_file_as_string(Radio._unlocked_path()))
 	assert_eq(parsed.get("unlocked"), ["old_song"], "and it is written back as unlocked")
 
-# --- the first song is a menu song --------------------------------------------
+# --- a game's first song is its menu song -----------------------------------
 
-func _menu(id: String, game: StringName = &"", with_file: bool = true) -> SongData:
-	var s := _song(id, ["menu"], with_file, true, game)
-	return s
+func _menu(id: String, game: StringName = GAME, with_file: bool = true) -> SongData:
+	return _song(id, ["menu"], with_file, true, game)
 
-func test_the_first_song_drawn_is_a_menu_song() -> void:
-	_locked("h1")
-	_locked("h2")
-	var menu := _menu("title_theme")
-	_wins(GAME, 1)
-	Radio.refresh_unlocks(false)
-	assert_true(Radio.is_unlocked(menu), "the first beat's song is the menu song")
-	assert_eq(_unlocked_of(GAME), [], "and it was Hades's song to give: no second draw")
-	assert_eq(Radio._menu_draw, {"song": "title_theme", "game": "hades"})
-	_wins(GAME, 3)
-	Radio.refresh_unlocks(false)
-	assert_eq(_unlocked_of(GAME).size(), 1, "the third beat draws Hades's own, as before")
-
-func test_a_game_with_no_songs_of_its_own_still_gives_the_menu_song() -> void:
-	var menu := _menu("title_theme")
-	_defeat_distinct(OTHER, 5)
-	Radio.refresh_unlocks(false)
-	assert_true(Radio.is_unlocked(menu), "five goals at a game with no songs: still the first song")
-
-func test_the_menu_song_is_announced_like_any_unlock() -> void:
-	var menu := _menu("title_theme")
-	watch_signals(Radio)
-	_wins(GAME, 1)
-	GameStats.changed.emit()
-	assert_signal_emit_count(Radio, "song_unlocked", 1)
-	Radio.next()
-	assert_eq(Radio.current, menu.id, "and it plays next")
-
-func test_only_one_menu_song_is_the_first_one() -> void:
-	var a := _menu("theme_a")
-	var b := _menu("theme_b")
-	_wins(GAME, 9)
-	Radio.refresh_unlocks(false)
-	assert_eq([a, b].filter(func(s): return Radio.is_unlocked(s)).size(), 1,
-		"one first song; a menu song with no game has no draw after that")
-
-func test_a_menu_song_whose_file_is_there_is_drawn_first() -> void:
-	_menu("missing", &"", false)
-	var here := _menu("here")
+func test_a_games_first_song_is_its_menu_song() -> void:
+	for i in range(4):
+		_locked("h%d" % i)
+	var menu := _menu("hades_menu")
 	for i in range(20):
 		Radio._unlocked = {}
-		Radio._menu_draw = {}
 		_wins(GAME, 1)
 		Radio.refresh_unlocks(false)
-		assert_true(Radio.is_unlocked(here), "the one that can play")
-
-func test_a_menu_song_of_a_game_is_in_its_draw_after_the_first() -> void:
-	# theme_b's file is missing, so the first draw (files first) is title_theme.
-	_menu("title_theme", OTHER)
-	var theme_b := _menu("theme_b", GAME, false)
-	_wins(OTHER, 1)
+		assert_eq(_unlocked_of(GAME), ["hades_menu"], "the first Hades song, every time")
+	_wins(GAME, 3)
 	Radio.refresh_unlocks(false)
-	assert_eq(Radio._menu_draw, {"song": "title_theme", "game": "balatro"})
-	assert_false(Radio.is_unlocked(theme_b))
+	assert_eq(_unlocked_of(GAME).size(), 2, "then the rest are drawn as before")
+	assert_true(Radio.is_unlocked(menu))
+
+func test_each_game_has_its_own_menu_song() -> void:
+	_locked("h1")
+	_menu("hades_menu")
+	_locked("b1", OTHER)
+	_menu("balatro_menu", OTHER)
+	_wins(GAME, 1)
+	_defeat_distinct(OTHER, 5)
+	Radio.refresh_unlocks(false)
+	assert_eq(_unlocked_of(GAME), ["hades_menu"])
+	assert_eq(_unlocked_of(OTHER), ["balatro_menu"], "five goals there: its menu song")
+
+func test_another_games_menu_song_is_not_drawn() -> void:
+	_locked("h1")
+	_menu("balatro_menu", OTHER)
 	_wins(GAME, 1)
 	Radio.refresh_unlocks(false)
-	assert_true(Radio.is_unlocked(theme_b), "Hades's first beat draws its own song, menu or not")
+	assert_eq(_unlocked_of(GAME), ["h1"], "a game without a menu song draws as before")
+	assert_eq(_unlocked_of(OTHER), [])
 
-func test_a_profile_that_already_has_songs_draws_no_menu_song() -> void:
+func test_a_game_that_already_has_a_song_draws_no_menu_song_first() -> void:
+	# A save from before the rule: its first Hades song has come and gone.
 	_song("old")
-	var menu := _menu("title_theme")
 	_locked("h1")
-	_wins(GAME, 1)
+	var menu := _menu("hades_menu")
+	_wins(GAME, 3)
 	Radio.refresh_unlocks(false)
-	assert_false(Radio.is_unlocked(menu), "its first song came before the rule")
-	assert_eq(Radio._menu_draw, {})
+	assert_eq(_unlocked_of(GAME).size(), 2, "one more song, from the whole pool")
+	var seen: Dictionary = {}
+	for i in range(40):
+		Radio._unlocked = {"old": true}
+		Radio.refresh_unlocks(false)
+		seen[Radio.is_unlocked(menu)] = true
+	assert_eq(seen.size(), 2, "the menu song is only a chance there, not a sure thing")
 
-func test_the_menu_draw_survives_a_reload() -> void:
+func test_with_several_menu_songs_one_is_first_and_a_file_comes_first() -> void:
+	_menu("missing", GAME, false)
+	_menu("here_a")
+	_menu("here_b")
 	_locked("h1")
-	_menu("title_theme")
-	_wins(GAME, 1)
-	Radio.refresh_unlocks(false)
-	Radio._load_unlocked()
-	assert_eq(Radio._menu_draw, {"song": "title_theme", "game": "hades"})
-	Radio.refresh_unlocks(false)
-	assert_eq(_unlocked_of(GAME), [], "Hades has still spent its first song on the menu song")
+	var seen: Dictionary = {}
+	for i in range(40):
+		Radio._unlocked = {}
+		_wins(GAME, 1)
+		Radio.refresh_unlocks(false)
+		var got: Array = _unlocked_of(GAME)
+		assert_eq(got.size(), 1)
+		assert_true(got[0] in ["here_a", "here_b"], "a menu song whose file is there")
+		seen[got[0]] = true
+	assert_eq(seen.size(), 2, "either can be first")
 
-func test_a_menu_song_says_it_is_the_first_one() -> void:
-	var menu := _menu("title_theme")
-	assert_eq(Radio.rule_text(menu), "The first song any game earns is a menu song")
+func test_a_menu_song_with_no_file_is_still_first() -> void:
+	_locked("h1")
+	_menu("hades_menu", GAME, false)
 	_wins(GAME, 1)
 	Radio.refresh_unlocks(false)
-	var other := _menu("second_theme")
-	assert_eq(Radio.rule_text(other), "No game to unlock it on", "once the first song is out")
+	assert_eq(_unlocked_of(GAME), ["hades_menu"],
+		"it is the game's first song, and shows as file not found")
 
 func test_a_song_with_no_game_is_never_drawn() -> void:
 	var s := _locked("stray", &"")

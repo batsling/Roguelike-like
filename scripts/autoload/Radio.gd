@@ -17,9 +17,9 @@ extends Node
 #     counts are GameStats's, kept for every game anyway; what this node keeps is
 #     the DRAW — which songs came up — because a random pick cannot be worked out
 #     again from the counts the way a fixed rule could.
-#   * THE FIRST SONG IS A MENU SONG. The first time a profile would draw a song
-#     at all, it draws one of the songs tagged `menu` instead (`_draw_menu_song`),
-#     whatever game earned it — so the radio opens on the main menu's music.
+#   * A GAME'S FIRST SONG IS ITS MENU SONG. A song tagged `menu` is drawn before
+#     the rest of its game's songs: the first song Hades gives is Hades's menu
+#     song, if the sheet has one.
 #   * UNLOCKING IS NOT A THING ANYONE DOES BY HAND. Whenever the counts move, a
 #     game owed more songs than it has draws them (`refresh_unlocks`), and each
 #     new one gets its toast and jumps the queue once.
@@ -79,11 +79,6 @@ var seq: int = 0
 var _queue: Array = []           # [StringName] still to play this pass
 var _history: Array = []         # [StringName] played, newest last
 var _unlocked: Dictionary = {}   # song id -> true: songs drawn, per profile
-# The profile's first draw, when it went to a menu song: {"song": id, "game": the
-# game that earned it}. Empty until then, and for good on a profile whose first
-# song came before this rule. Kept because that song is paid for by the game that
-# earned it, not by its own game, and that cannot be worked out again later.
-var _menu_draw: Dictionary = {}
 var _player: AudioStreamPlayer
 var _stream: AudioStream = null
 var _rng := RandomNumberGenerator.new()
@@ -145,30 +140,13 @@ func has_file(song: SongData) -> bool:
 const BEATS_PER_SONG := 3
 const GOALS_PER_SONG := 5
 
-# A song carrying this tag is a MENU SONG: the first song a profile ever draws is
-# one of them, whichever game earned it (`_draw_menu_song`). After that a menu
-# song is an ordinary song of its own game, and one with no game is only ever
-# that first draw.
+# A song carrying this tag is its game's MENU SONG, and the first song that game
+# gives (`refresh_unlocks`). With several, one of them is drawn first; the others
+# are ordinary songs of the game after that.
 const MENU_TAG := "menu"
 
 func is_menu(song: SongData) -> bool:
 	return song != null and song.tags.has(MENU_TAG)
-
-# Whether the next song this profile draws will be a menu song.
-func menu_song_due() -> bool:
-	if not _unlocked.is_empty() or not _menu_draw.is_empty():
-		return false
-	for s in songs():
-		if is_menu(s):
-			return true
-	return false
-
-# The game a drawn song is counted against: its own, except the menu draw, which
-# the game that earned it paid for.
-func _drawn_for(song: SongData) -> StringName:
-	if String(_menu_draw.get("song", "")) == String(song.id):
-		return StringName(String(_menu_draw.get("game", "")))
-	return song.game_id
 
 static func earned_for(beats: int, goals: int) -> int:
 	var n: int = 0
@@ -211,8 +189,6 @@ func on_station(song: SongData) -> bool:
 # song. It is only ever "a chance at this one", since the draw is random — the
 # list says so by naming the game rather than the song.
 func rule_text(song: SongData) -> String:
-	if is_menu(song) and menu_song_due():
-		return "The first song any game earns is a menu song"
 	if song == null or song.game_id == &"":
 		return "No game to unlock it on"
 	var game: GameData = Data.get_game(song.game_id)
@@ -292,14 +268,6 @@ func current_song() -> SongData:
 # save from before this rule, when each song had its own count) keeps them all.
 func refresh_unlocks(announce: bool = true) -> void:
 	var fresh: Array = []
-	_draw_menu_song(fresh)
-	# What each game has drawn so far, the menu song counted against the game
-	# that earned it rather than its own.
-	var drawn: Dictionary = {}
-	for s in songs():
-		if is_unlocked(s):
-			var g: StringName = _drawn_for(s)
-			drawn[g] = int(drawn.get(g, 0)) + 1
 	var by_game: Dictionary = {}
 	for s in songs():
 		var song: SongData = s
@@ -312,19 +280,33 @@ func refresh_unlocks(announce: bool = true) -> void:
 	games.sort()
 	for game in games:
 		var pool: Array = by_game[game]
-		var have: int = int(drawn.get(game, 0))
+		var have: int = 0
 		var with_file: Array = []
 		var without: Array = []
 		for song in pool:
 			if is_unlocked(song):
-				continue
+				have += 1
 			elif has_file(song):
 				with_file.append(song)
 			else:
 				without.append(song)
 		var owed: int = earned(game) - have
+		# A game's FIRST song is its menu song, when it has one: drawn from the
+		# menu songs alone (file first, as ever), then back to the whole pool.
+		if have == 0 and owed > 0:
+			var menu_file: Array = with_file.filter(is_menu)
+			var menu_without: Array = without.filter(is_menu)
+			if not (menu_file.is_empty() and menu_without.is_empty()):
+				var from_menu: Array = menu_file if not menu_file.is_empty() else menu_without
+				var first: SongData = from_menu[_rng.randi_range(0, from_menu.size() - 1)]
+				with_file.erase(first)
+				without.erase(first)
+				_unlocked[String(first.id)] = true
+				fresh.append(first)
+				owed -= 1
 		while owed > 0 and not (with_file.is_empty() and without.is_empty()):
-			var song: SongData = _pick(with_file, without)
+			var from: Array = with_file if not with_file.is_empty() else without
+			var song: SongData = from.pop_at(_rng.randi_range(0, from.size() - 1))
 			_unlocked[String(song.id)] = true
 			fresh.append(song)
 			owed -= 1
@@ -346,46 +328,6 @@ func refresh_unlocks(announce: bool = true) -> void:
 		if current == &"" and not paused and autoplay:
 			_advance()
 	changed.emit()
-
-# Draw at random, a song whose file is in the folder first.
-func _pick(with_file: Array, without: Array) -> SongData:
-	var from: Array = with_file if not with_file.is_empty() else without
-	return from.pop_at(_rng.randi_range(0, from.size() - 1))
-
-# THE FIRST SONG. The first time this profile would draw a song at all — some
-# game's first beat, or its fifth goal — it draws a menu song instead, and that
-# game has spent its song on it. Only on a profile that has drawn nothing yet: a
-# save whose first song came before this rule keeps what it has.
-func _draw_menu_song(fresh: Array) -> void:
-	if not menu_song_due():
-		return
-	var game: StringName = _first_game_owed()
-	if game == &"":
-		return
-	var with_file: Array = []
-	var without: Array = []
-	for s in songs():
-		if is_menu(s):
-			(with_file if has_file(s) else without).append(s)
-	var song: SongData = _pick(with_file, without)
-	_unlocked[String(song.id)] = true
-	_menu_draw = {"song": String(song.id), "game": String(game)}
-	fresh.append(song)
-
-# The first game, in id order, that has earned a song: the one a menu song is
-# counted against. Only games with something on the record can have.
-func _first_game_owed() -> StringName:
-	var seen: Dictionary = {}
-	for book in [GameStats.stats, GameStats.enemy_log, GameStats.levelup_log,
-			GameStats.goal_log]:
-		for key in (book as Dictionary).keys():
-			seen[String(key)] = true
-	var ids: Array = seen.keys()
-	ids.sort()
-	for id in ids:
-		if earned(StringName(id)) > 0:
-			return StringName(id)
-	return &""
 
 func _label(song: SongData) -> String:
 	return song.title if song.artist == "" else "%s — %s" % [song.title, song.artist]
@@ -682,7 +624,6 @@ func _unlocked_path() -> String:
 
 func _load_unlocked() -> void:
 	_unlocked = {}
-	_menu_draw = {}
 	var f := FileAccess.open(_unlocked_path(), FileAccess.READ)
 	if f == null:
 		return
@@ -691,9 +632,6 @@ func _load_unlocked() -> void:
 		for key in ["unlocked", "announced"]:
 			for id in (parsed as Dictionary).get(key, []):
 				_unlocked[String(id)] = true
-		var menu: Variant = (parsed as Dictionary).get("menu", {})
-		if menu is Dictionary and _unlocked.has(String((menu as Dictionary).get("song", ""))):
-			_menu_draw = {"song": String(menu["song"]), "game": String(menu.get("game", ""))}
 
 func _save_unlocked() -> void:
 	var f := FileAccess.open(_unlocked_path(), FileAccess.WRITE)
@@ -701,7 +639,4 @@ func _save_unlocked() -> void:
 		return
 	var ids: Array = _unlocked.keys()
 	ids.sort()
-	var out: Dictionary = {"unlocked": ids}
-	if not _menu_draw.is_empty():
-		out["menu"] = _menu_draw
-	f.store_string(JSON.stringify(out, "  "))
+	f.store_string(JSON.stringify({"unlocked": ids}, "  "))

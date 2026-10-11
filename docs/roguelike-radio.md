@@ -12,8 +12,9 @@ out of the game window). This is the design and the reasoning; the code is
   its **first beat**, one on **every 3rd beat** (the first beat counting
   towards it), and one for **every 5 goals** completed there. It replaced a
   rule per song ("complete X distinct goals in Y", "beat Y X times").
-- **The first song is a menu song** (the third ask): songs tagged `menu` are
-  what the player's very first unlock gives, whichever game earned it.
+- **A game's first song is its menu song** (the third ask): the first Hades
+  song you get is the Hades song tagged `menu`, and the same for every game
+  that has one.
 - The music is **music the owner already owns**. It is never committed.
 - Songs are authored in **the spreadsheet**: name, artist, album, year, game,
   album image and tags. **Every song is tied to its game**: it is only ever
@@ -44,14 +45,14 @@ row (No Escape, Hades); delete it freely.
 | `Game` | the game it belongs to **and is drawn at**: its name as the `games` sheet spells it, or its id. Must be in the catalog. A row with no `Game` is never drawn |
 | `File` | the exact file name in the music folder: `.mp3`, `.ogg` or `.wav` |
 | `Image` | album art base name under `images2.0/radio/` (blank = the game's cover) |
-| `Tags` | comma-separated, lower-cased; every tag is a station. **`menu`** marks a menu song: the player's first unlock is one of them (§3) |
+| `Tags` | comma-separated, lower-cased; every tag is a station. **`menu`** marks the game's menu song, the first song it gives (§3) |
 
 The generator **rewrites** `data/songs/`: a row deleted from the sheet takes its
 `.tres` with it. It refuses an unknown game, an audio extension it can't play,
 two rows that come out as the same id (`<name> <artist>`, slugified), a sheet
-missing any of the eight columns above (named; a renamed `Tags` would otherwise
-read as blank and take every song out of the `menu` rule), and a sheet that
-still has the retired `Unlock` / `Count` columns
+missing any of the eight columns above (by name: a renamed `Tags` would
+otherwise read as blank, and every menu song would lose its tag), and a sheet
+that still has the retired `Unlock` / `Count` columns
 (`tools/_radio_random_unlocks_setup.py` took them off; there is no per-song
 rule left for them to hold).
 
@@ -80,27 +81,20 @@ songs left draws nothing (the songs it is owed wait, and a row added to the shee
 for it later is drawn at once). Songs **whose file is in the folder are drawn
 first**, so an unlock is something that plays whenever there is one to give.
 
-### The first song is a menu song
+**A game's first song is its menu song.** When a game draws its first song and
+one of its songs is tagged `menu`, that is the song it draws: the first Hades
+song is always Hades's menu song. The rest of the game's songs are drawn as
+above after it.
 
-**The first time a profile would draw a song at all, it draws a menu song
-instead** (a song tagged `menu`; `Radio._draw_menu_song`). Whatever earned it
-(a first beat, a fifth goal) and at whatever game, that game has spent its song
-on the menu song: it is counted against the game that earned it, not against
-its own, so the first beat of Hades with a menu song on the sheet gives the
-menu song and no Hades song. Hades's third beat draws a Hades song as usual.
-
-- **One menu song is the first.** With several on the sheet one is drawn at
-  random, its file in the folder first, like any draw. After that a menu song is
-  an ordinary song of its own `Game`, in that game's draw; one with **no `Game`
-  is only ever that first song**.
-- **Only on a profile that has drawn nothing yet.** A save whose first song came
-  before this rule keeps what it has, and draws no menu song.
-- **No menu song on the sheet, no rule:** the first song is the earning game's
-  own, as before.
-- `radio.json` keeps the draw (`"menu": {"song", "game"}`), since which game paid
-  for it can't be worked out again from the counts.
-- Until it is drawn, a locked menu song's line in the list reads "The first song
-  any game earns is a menu song".
+- **With several menu songs**, one of them is drawn first (at random, its file
+  in the folder first); the others are ordinary songs of the game after that.
+- **A menu song whose file is missing is still first.** The game's first song
+  is its menu song either way; it shows as "file not found" until the file is
+  in the folder.
+- **A game that already has a song** (a save from before this rule) draws no
+  menu song first: its menu song is in the draw like the rest.
+- **A game with no menu song** draws its first song from all of them, as
+  before. Another game's menu song is never drawn for it.
 
 A locked song's line in the list says what **its game** needs for its next song
 ("Next Hades song: beat Hades 2 times more, or complete 3 more distinct goals

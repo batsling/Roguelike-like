@@ -13,8 +13,8 @@ The sheet once had `Unlock` and `Count` columns, one rule per song; they were
 taken off in October 2026 (tools/_radio_random_unlocks_setup.py), and a sheet
 that still has them is refused rather than silently ignored, and so is one
 missing any of the eight columns. `Image` is a base name under images2.0/radio/.
-A `menu` tag marks a menu song: the player's first unlock is one of them,
-whichever game earned it (docs/roguelike-radio.md §3).
+A `menu` tag marks the game's menu song: the first song a game gives is its
+menu song, if it has one (docs/roguelike-radio.md §3).
 
 The output folder is REWRITTEN, not added to: a row deleted from the sheet takes
 its song with it, so the example row the sheet was created with goes away the
