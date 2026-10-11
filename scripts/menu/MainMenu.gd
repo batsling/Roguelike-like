@@ -45,6 +45,7 @@ func _ready() -> void:
 	Profiles.profile_wiped.connect(_on_profile_switched)
 	_refresh_continue_button()
 	_move_quit_to_corner()
+	_build_radio_corner()
 
 # ---------------------------------------------------------------------------
 # Menu styling
@@ -175,6 +176,45 @@ func _move_quit_to_corner() -> void:
 	quit_btn.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	quit_btn.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	corner.add_child(quit_btn)
+
+# ROGUELIKE RADIO (docs/roguelike-radio.md) in the top-right corner — the music
+# plays from the moment the game opens, so its controls are on the first screen
+# too. A corner rather than the button column for the reason Exit is: it is not a
+# way into the game.
+func _build_radio_corner() -> void:
+	var corner := Control.new()
+	corner.name = "RadioCorner"
+	corner.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	corner.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	corner.offset_right = -CORNER_MARGIN
+	corner.offset_top = CORNER_MARGIN
+	corner.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(corner)
+	if _modal_layer != null and is_instance_valid(_modal_layer) \
+			and _modal_layer.get_parent() == self:
+		move_child(corner, _modal_layer.get_index())
+	var btn := Button.new()
+	btn.name = "RadioBtn"
+	btn.text = "📻  Radio"
+	btn.custom_minimum_size = Vector2(188, 45)
+	btn.add_theme_font_size_override("font_size", MENU_FONT)
+	btn.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	btn.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	btn.pressed.connect(func() -> void: RadioScreen.open(_modal_layer))
+	corner.add_child(btn)
+	_radio_btn = btn
+	# A method rather than a lambda, so it is disconnected when the menu goes.
+	Radio.changed.connect(_refresh_radio_tip)
+	_refresh_radio_tip()
+
+var _radio_btn: Button = null
+
+func _refresh_radio_tip() -> void:
+	if _radio_btn == null or not is_instance_valid(_radio_btn):
+		return
+	var song: SongData = Radio.current_song()
+	_radio_btn.tooltip_text = ("Roguelike Radio — now playing %s" % song.title) \
+		if song != null else "Roguelike Radio — the songs you have unlocked"
 
 func _refresh_profile_row() -> void:
 	if _profile_lbl != null:

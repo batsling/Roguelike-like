@@ -108,6 +108,7 @@ function checkStale() {
 
 function render(s) {
   overlay.classList.toggle('waiting', s.state === 'idle');
+  drawRadio(s.radio || {});
   drawVerdict(s.state);
   drawEvents(s.events || []);
   if (s.state === 'idle') { firstDraw = false; return; }
@@ -123,6 +124,63 @@ function render(s) {
   drawTimer(s.timer || {});
   firstDraw = false;
 }
+/* ---------------------------------------------------- roguelike radio --- */
+
+/* THE GAME IS THE CLOCK; THIS ONLY FOLLOWS IT (docs/roguelike-radio.md). The
+ * payload says which track, how far in it was (`offset`) at what wall-clock time
+ * (`since`, unix seconds), and whether it is playing. `seq` moves whenever the
+ * game started, restarted, paused or resumed something, and that is when this
+ * re-seeks; between those it only corrects a drift past DRIFT_S.
+ *
+ * ONLY radio.html MAKES A SOUND. Every view is the same page, so without this
+ * test a scene with the checklist and the map in it would play the music three
+ * times over, out of step. */
+const DRIFT_S = 2.0;
+let radioSeq = -1;
+let radioSrc = '';
+
+function radioView() { return overlay.classList.contains('only-radio'); }
+
+function drawRadio(r) {
+  const card = document.querySelector('.card.radio');
+  const audio = el('radio-audio');
+  const song = r.song;
+  card.classList.toggle('silent', !song);
+  card.classList.toggle('paused', !!song && !r.playing);
+  if (song) {
+    el('radio-title').textContent = song.title || '';
+    el('radio-artist').textContent = song.artist || '';
+    el('radio-meta').textContent = [song.album, song.year || '', song.game]
+      .filter(Boolean).join(' · ');
+    setImg(el('radio-art'), r.art || '');
+  }
+
+  const speaking = radioView() && r.output === 'obs' && !!song && !!r.src;
+  if (!speaking) {
+    if (!audio.paused) audio.pause();
+    radioSeq = -1;
+    return;
+  }
+  audio.volume = Math.max(0, Math.min(1, num(r.volume, 0.8)));
+  const want = r.playing ? num(r.offset) + (Date.now() / 1000 - num(r.since))
+                         : num(r.offset);
+  if (r.src !== radioSrc) {
+    radioSrc = r.src;
+    audio.src = r.src;
+    radioSeq = -1;
+  }
+  if (r.seq !== radioSeq || Math.abs(audio.currentTime - want) > DRIFT_S) {
+    radioSeq = r.seq;
+    try { audio.currentTime = Math.max(0, want); } catch (e) { /* not loaded yet */ }
+  }
+  if (r.playing && audio.paused) {
+    const p = audio.play();
+    if (p && p.catch) p.catch(() => {});
+  } else if (!r.playing && !audio.paused) {
+    audio.pause();
+  }
+}
+
 /* `s.statuses` IS DELIBERATELY NOT DRAWN. It is still in the payload for anyone
  * restyling this page, but every player-side status is claimable and therefore
  * already has a checklist row — wearing this strip's art and carrying its stack
@@ -1277,6 +1335,7 @@ function applySplit() {
   overlay.classList.toggle('only-road', parts.has('road'));
   overlay.classList.toggle('only-map', parts.has('map'));
   overlay.classList.toggle('only-timer', parts.has('timer'));
+  overlay.classList.toggle('only-radio', parts.has('radio'));
   overlay.classList.toggle('fill', parts.has('fill'));
   /* THE MAP IS MEASURED, so it has to be re-laid the moment it becomes visible.
    * A `display: none` ladder has no geometry at all — every box reports a zero

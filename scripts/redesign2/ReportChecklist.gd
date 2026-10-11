@@ -300,7 +300,8 @@ func _add_weapon_rows() -> void:
 func _resolve_weapon_goal(entry: Dictionary, key: String) -> void:
 	var w: WeaponData = WeaponSystem.def(entry)
 	GameLoop2.mark_row_answered(key)
-	GameLoop2.record_completed_goal("weapon", "Charged: %s — %s" % [w.goal, w.display_name])
+	GameLoop2.record_completed_goal("weapon", "Charged: %s — %s" % [w.goal, w.display_name],
+		String(w.id), "%s — %s" % [w.display_name, w.goal])
 	var landed: int = WeaponSystem.goal_done(entry)
 	if landed <= 0:
 		_announce("%s is already full — the goal is logged." % w.display_name, UITheme.TEXT_DIM)
@@ -961,6 +962,8 @@ func resolve_event_goals() -> void:
 		# Into the run's ledger, exactly as a claim made mid-game is (§2.1) — the
 		# report is simply the last moment a row can resolve, not a different kind
 		# of resolution.
+		# Into the run's ledger only — event goals are not on a game's lifetime
+		# record (GameStats.GOAL_KINDS says why).
 		GameLoop2.record_completed_goal("event",
 			"Event goal — %s" % goal.get("condition", ""))
 		var src: EventData2 = Data.get_event2(StringName(goal.get("event", &"")))
@@ -996,7 +999,8 @@ func resolve_event_goals() -> void:
 		if fcd == null:
 			continue
 		GameLoop2.record_completed_goal("curse",
-			"%s followed — %s" % [fcd.display_name, fcd.goal_text()])
+			"%s followed — %s" % [fcd.display_name, fcd.goal_text()], String(fcd.id),
+			"%s — %s" % [fcd.display_name, fcd.goal_text()])
 		var fline: String = "%s followed — it did not bite this game." % fcd.display_name
 		Notifications.notify(fline, UITheme.CURSE)
 		GameLog.add(fline, UITheme.CURSE)
@@ -1218,9 +1222,11 @@ func _cash_armed(instance: int) -> void:
 		if sd == null:
 			continue
 		GameLoop2.mark_row_answered("bonus:%d:%s" % [instance, sid])
+		var bonus_text: String = sd.objective_text(StatusData.ENEMY,
+			int(row.get("stacks", 1)), any_time)
 		GameLoop2.record_completed_goal("bonus", "Bonus: %s — %s" % [
-			sd.objective_text(StatusData.ENEMY, int(row.get("stacks", 1)), any_time),
-			enemy_name_of(instance)])
+			bonus_text, enemy_name_of(instance)], String(sid),
+			"%s — %s" % [sd.display_name, bonus_text])
 		_announce("%s paid out." % sd.display_name, UITheme.GOLD)
 
 # What colour a player-side status row reads in. GOLD is the checklist's colour
@@ -1262,6 +1268,11 @@ func _status_mark(status: StatusData, stacks: int, which: StringName,
 	frame.add_theme_stylebox_override("panel",
 		UITheme.flat(UITheme.BG, 4, 2, 1, tint.lerp(UITheme.BORDER, 0.35)))
 	frame.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	# Marked, like the curse's and the character's, so "how many BODIES are on
+	# this list" stays answerable — a status is not a body on the board, and a
+	# boss that hands out Burn put its pip on the list beside its own portrait
+	# (test_overworld2's _texture_rects_under counted it as a second body).
+	frame.set_meta(&"status_portrait", true)
 	# Timed rows carry the clock, like the board's pips do — the row's text says how
 	# many games are left (clock_suffix) and the badge is what makes it findable
 	# without reading the sentence.

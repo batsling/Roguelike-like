@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_no_escape_darren_korb"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"no_escape_darren_korb"
+title = "No Escape"
+artist = "Darren Korb"
+album = "Hades Original Soundtrack"
+year = 2020
+game_id = &"hades"
+unlock = &"wins"
+count = 1
+file = "Hades - No Escape.mp3"
+image_path = ""
+tags = PackedStringArray("boss", "intense")

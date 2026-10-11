@@ -19,6 +19,7 @@ the honour system.
 | finding influences missing from the chart | `docs/influence-research.md`: the method, what counts as a source (first-hand only), which sources paid off, and the traps. `tools/influence_research.py` does the scanning. Candidates found so far are rows of `research/connections.csv`, and **nothing from it goes into `connections` until the owner has ticked it**. Interviews and podcasts for the owner to listen to (nobody else can) are in `docs/influence-media.md` |
 | which games should carry which tags | `tools/tag_research.py` writes **suggestions** into `tools/Research.xlsx` (its own workbook, not `Roguelikes.xlsx`) from each game's Steam tags, store text and title, with the evidence beside each one. **Never type a tag into the `games` sheet yourself**: the owner reads the sheet and does that. Its `Owner` column (yes/no) survives a rerun. The owner can also tag games **in game** (the Collection's game page and the run map's game card, `GameTags` + `TagEditor`); those edits count at once and reach the sheet only through Settings → Game tags → *Export tags for all games* → `tools/tag_edits.json` → `python3 tools/apply_tag_edits.py` (see the porting steps below) |
 | rifts (all four build steps done; key sources in items and loot are the owner's) | `docs/rifts-design.md` — per-run rift games that pull off-map games into the map without ever shortening a path; path rifts on the start routes, world rifts on weak spots, Rift Keys that fill empty offering slots with rift cards, and the measured effect on the Amulet pool |
+| Roguelike Radio — the player's own music, unlocked per game, played into OBS | `docs/roguelike-radio.md`: the `radio` sheet, the unlock rules, why the game keeps the clock, the one-speaker rule, `radio.html` |
 | combat-era designs | `docs/archive/` — **describes systems that no longer exist**; see its README before trusting a path or class name |
 
 ## The shape of it
@@ -38,11 +39,11 @@ the honour system.
   looking for the game's UI in it; every screen past the menu is built in code.
   `MainMenu.tscn` is the exception and always was: it lays out its 20 nodes (the
   title, the eight buttons, the save list) in the editor like an ordinary scene.
-- **28 autoloads** in `scripts/autoload/`, registered in `project.godot`. The ones
+- **29 autoloads** in `scripts/autoload/`, registered in `project.godot`. The ones
   that matter most: `GameState` (run-persistent state), `Data` (loads every
   `.tres` and serves it by id), `GameLoop2` (the run loop — `Overworld2` is a view
   over it), `EffectSystem` + `TriggerBus` (effect dispatch and the signal hub).
-  README's "Autoload singletons" table covers all 28. Count them with
+  README's "Autoload singletons" table covers all 29. Count them with
   `sed -n '/^\[autoload\]/,/^\[/p' project.godot | grep -c '=\"\*res://'` rather
   than trusting this line — it has been wrong before.
 - **Content is data, never code.** Everything lives as typed `.tres` under `data/`,

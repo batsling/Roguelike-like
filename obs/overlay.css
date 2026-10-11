@@ -1620,3 +1620,68 @@ html, body {
  * Faded rather than hidden: a stream that suddenly loses its overlay looks
  * broken, one that dims looks deliberate. */
 #overlay.stale { opacity: 0.35; filter: grayscale(0.7); }
+
+/* ROGUELIKE RADIO (docs/roguelike-radio.md) — the now-playing card. Off the
+ * default page; radio.html is the card and nothing else, on the menus as well as
+ * in a run, which is why it is the one card the idle `waiting` state leaves up. */
+#overlay > .radio { display: none; }
+#overlay.only-radio > .radio { display: flex; }
+#overlay.only-radio > .run,
+#overlay.only-radio > .timer,
+#overlay.only-radio > .goals,
+#overlay.only-radio > .road,
+#overlay.only-radio > .map,
+#overlay.only-radio > .ticker,
+#overlay.only-radio > .verdict,
+#overlay.only-radio > .offline { display: none; }
+#overlay.only-radio.waiting > .radio { display: flex; }
+/* Nothing is playing: the card goes rather than showing an empty frame. */
+#overlay.only-radio > .radio.silent { display: none; }
+
+.radio {
+  align-items: center;
+  gap: 10px;
+}
+.radio-art {
+  flex: 0 0 auto;
+  width: 64px;
+  height: 64px;
+  object-fit: cover;
+  border-radius: 4px;
+  background: var(--panel-hi);
+}
+.radio-art:not([src]) { visibility: hidden; }
+.radio-text {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.radio-title {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--gold);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.radio-artist {
+  font-size: 14px;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.radio-meta {
+  font-size: 12px;
+  color: var(--faint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.radio.paused .radio-title::after {
+  content: "  (paused)";
+  font-weight: 400;
+  font-size: 12px;
+  color: var(--faint);
+}

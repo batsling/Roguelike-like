@@ -264,6 +264,28 @@
     <div id="map-note" class="map-note" hidden></div>
   </section>
 
+  <!-- ROGUELIKE RADIO (docs/roguelike-radio.md): what is playing. OFF THE
+       DEFAULT PAGE — it renders only in radio.html, its own browser source, and
+       that source is also the only one that PLAYS anything: give it a fader of
+       its own in OBS's mixer, set its Audio Monitoring to "Monitor and Output"
+       to hear it yourself, and leave it off the VOD track if you like.
+
+       THE GAME KEEPS THE TIME, NOT THIS PAGE. The game cannot hear back from a
+       browser source, so it decides when a song ends and what comes next, and
+       this page only follows: it loads the track it is told, seeks to where the
+       game says it should be, and pauses when told. A source refreshed in the
+       middle of a song picks it up where it is. -->
+  <section class="card radio">
+    <img id="radio-art" class="radio-art" alt="">
+    <div class="radio-text">
+      <div class="label">Roguelike Radio</div>
+      <div id="radio-title" class="radio-title"></div>
+      <div id="radio-artist" class="radio-artist"></div>
+      <div id="radio-meta" class="radio-meta"></div>
+    </div>
+    <audio id="radio-audio" preload="auto"></audio>
+  </section>
+
   <!-- What just happened. Fades out on its own. -->
   <div id="ticker" class="ticker"></div>
 
