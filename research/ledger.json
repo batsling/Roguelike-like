@@ -75,7 +75,13 @@
   "statuses": "2026-10-10: no statuses"
  },
  "Abandon Ship": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-11: nothing: its wiki is overview pages (Combat, Weapons, Quests) with no individual content",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-11: nothing: its wiki is overview pages (Combat, Weapons, Quests) with no individual content",
+  "goals": "2026-10-11: nothing: its wiki is overview pages (Combat, Weapons, Quests) with no individual content",
+  "locations": "2026-10-11: nothing: its wiki is overview pages (Combat, Weapons, Quests) with no individual content",
+  "loot": "2026-10-11: nothing: its wiki is overview pages (Combat, Weapons, Quests) with no individual content",
+  "statuses": "2026-10-11: nothing: its wiki is overview pages (Combat, Weapons, Quests) with no individual content"
  },
  "Abandoned Archive": {
   "connections": "before 2026-10-07"
@@ -166,7 +172,13 @@
   "connections": "before 2026-10-07"
  },
  "Arcanium: Rise of Akhan": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-11: nothing: its heroes (Carrion, Jingu, Slugz) are units in a card battler, an ability list each",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-11: nothing: none",
+  "goals": "2026-10-11: nothing: its wiki's hero pages list abilities, and no enemy has a page",
+  "locations": "2026-10-11: nothing: its provinces are names in a list",
+  "loot": "2026-10-11: nothing: its artifact pages (Hungering Pendant, Spectral Cloak, Deathwish) are one line each; no evolutions",
+  "statuses": "2026-10-11: nothing: Slow and Immobilize are the live Stun"
  },
  "Archon Soul": {
   "connections": "before 2026-10-07"
@@ -184,7 +196,13 @@
   "connections": "before 2026-10-07"
  },
  "Army of Ruin": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-11: nothing: its heroes are a weapon, a special and a stat passive each (Experiment XIX: +50% Health, -10% Fire Rate and Luck)",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-11: nothing: none",
+  "goals": "2026-10-11: nothing: its stages (Defiled Graveyard) list star goals, and the enemies have no pages",
+  "locations": "2026-10-11: nothing: its stage pages are star checklists",
+  "loot": "2026-10-11: weapons and evolutions: Quicksilver Spears, Serrated Spears (its level-5 form; the whetstone requirement is ours, the game needs only levels); Vampire Gauntlets left out (Vampire Survivors' Bloody Tear steals health), Dire Fang (a poison the board doesn't have)",
+  "statuses": "2026-10-11: nothing: none"
  },
  "Arrogue": {
   "connections": "before 2026-10-07"
@@ -325,7 +343,13 @@
   "statuses": "2026-10-09: nothing: no status pages"
  },
  "Ballionaire": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-11: nothing: none",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-11: nothing: none",
+  "goals": "2026-10-11: nothing: its 'enemies' are attackable triggers on the board (Bombgoblin, Cave Troll, Lich), pegs rather than creatures with a goal",
+  "locations": "2026-10-11: nothing: one pegboard",
+  "loot": "2026-10-11: Donut; no weapons (balls fall) and no evolutions; Camera left out (Vampire Survivors' Lightning Ring replays), Captain's Hat (a ball bouncing back up), Anchor (a peg in the bottom row)",
+  "statuses": "2026-10-11: Avarice (a Tribulation); the others reshape the pegboard (Abatement, Befuddlement)"
  },
  "Banners of Ruin": {
   "characters": "2026-10-10: nothing: characters are animal races with a racial ability, not heroes",
@@ -451,7 +475,13 @@
   "connections": "before 2026-10-07"
  },
  "Blood Dungeon": {
-  "connections": "2026-10-07"
+  "characters": "2026-10-11: nothing: its wiki is a main page and nothing else",
+  "connections": "2026-10-07",
+  "events": "2026-10-11: nothing: its wiki is a main page and nothing else",
+  "goals": "2026-10-11: nothing: its wiki is a main page and nothing else",
+  "locations": "2026-10-11: nothing: its wiki is a main page and nothing else",
+  "loot": "2026-10-11: nothing: its wiki is a main page and nothing else",
+  "statuses": "2026-10-11: nothing: its wiki is a main page and nothing else"
  },
  "BloodDome99": {
   "connections": "before 2026-10-07"
@@ -635,7 +665,13 @@
   "connections": "2026-10-07"
  },
  "Chaos Zero Nightmare": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-11: nothing: its character pages are gacha roster entries (class and attribute), mostly voice-over transcripts",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-11: nothing: none",
+  "goals": "2026-10-11: nothing: no enemy pages",
+  "locations": "2026-10-11: nothing: Ark City has a stub page",
+  "loot": "2026-10-11: nothing: none documented",
+  "statuses": "2026-10-11: nothing: none"
  },
  "Chess Survivors": {
   "connections": "before 2026-10-07"
@@ -792,7 +828,13 @@
   "connections": "before 2026-10-07"
  },
  "Crafty Survivors": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-11: nothing: its wiki is a list of character names and a 'TBA' village page",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-11: nothing: its wiki is a list of character names and a 'TBA' village page",
+  "goals": "2026-10-11: nothing: its wiki is a list of character names and a 'TBA' village page",
+  "locations": "2026-10-11: nothing: its wiki is a list of character names and a 'TBA' village page",
+  "loot": "2026-10-11: nothing: its wiki is a list of character names and a 'TBA' village page",
+  "statuses": "2026-10-11: nothing: its wiki is a list of character names and a 'TBA' village page"
  },
  "Crawl": {
   "characters": "2026-10-10: the four players are interchangeable heroes",
@@ -810,7 +852,13 @@
   "connections": "before 2026-10-07"
  },
  "Cross Blitz": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-11: nothing: its wiki is two demo guides and a keyword list; no card, hero or enemy pages",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-11: nothing: its wiki is two demo guides and a keyword list; no card, hero or enemy pages",
+  "goals": "2026-10-11: nothing: its wiki is two demo guides and a keyword list; no card, hero or enemy pages",
+  "locations": "2026-10-11: nothing: its wiki is two demo guides and a keyword list; no card, hero or enemy pages",
+  "loot": "2026-10-11: nothing: its wiki is two demo guides and a keyword list; no card, hero or enemy pages",
+  "statuses": "2026-10-11: nothing: its wiki is two demo guides and a keyword list; no card, hero or enemy pages"
  },
  "Crown Trick": {
   "characters": "2026-10-10: Elle is the only hero",
@@ -1086,7 +1134,13 @@
   "connections": "before 2026-10-07"
  },
  "Desktop Survivors 98": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-11: nothing: no character pages",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-11: nothing: none",
+  "goals": "2026-10-11: Dusty; Tatter left out (Dicey Dungeons' Wicker Man sets a scarecrow on fire), Milo (Risk of Rain's Magma Worm, 'Defeat an enemy that burrows')",
+  "locations": "2026-10-11: nothing: its zones (Dunes.exe, Grove.exe, Hollow.exe) are levels with a boss; Piper, the cat shopkeeper, has no stock of her own on the wiki",
+  "loot": "2026-10-11: nothing new: its weapons are desktop programs (Minesweeper, Solitaire, Recycle Bin), and its 'corruptions' are evolutions (RAM + Minesweeper = Pyrobolus, Failsafe + Window Shield = Saepire) whose results have no description on the wiki; Minesweeper folded into the Clones of Brotato's Screwdriver (laying a Landmine)",
+  "statuses": "2026-10-11: nothing: none"
  },
  "Despot's Game": {
   "characters": "2026-10-10: nothing: classes are unit types",
@@ -1155,7 +1209,13 @@
   "statuses": "2026-10-10: nothing: no status pages"
  },
  "Diceomancer": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-11: nothing: its six classes (Sage, Berserker, Druid, Pro, Barbarian, Builder) are a mix of orbs and a starting relic that draws cards or adds mana",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-11: nothing: its Crossroad page is a test edit",
+  "goals": "2026-10-11: nothing: no enemy pages",
+  "locations": "2026-10-11: nothing: none",
+  "loot": "2026-10-11: nothing: every card page (Smoker, Blunderbuss, Slow Sword) reads 'TBA'; no evolutions",
+  "statuses": "2026-10-11: nothing: none"
  },
  "Dicevaders": {
   "connections": "before 2026-10-07"
@@ -1269,7 +1329,13 @@
   "connections": "before 2026-10-07"
  },
  "Drapline": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-11: nothing: one dragon, Coo, raised week by week",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-11: nothing: the Divine Dragon Festival is a pick of three stat meals",
+  "goals": "2026-10-11: nothing: its Calamity Dragons (Labryn, Ouroboros) are dragon-girl bosses whose pages are move lists; 'defeat a dragon' is Rogue's live Dragon",
+  "locations": "2026-10-11: nothing: none",
+  "loot": "2026-10-11: nothing: its meals are randomly named stat boosts; no weapons and no evolutions",
+  "statuses": "2026-10-11: nothing: STR up and AGI up are stat buffs"
  },
  "Dream Quest": {
   "connections": "before 2026-10-07"
@@ -1290,7 +1356,13 @@
   "connections": "before 2026-10-07"
  },
  "Drop Duchy": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-11: nothing: its wiki's one article is a battle calculator",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-11: nothing: its wiki's one article is a battle calculator",
+  "goals": "2026-10-11: nothing: its wiki's one article is a battle calculator",
+  "locations": "2026-10-11: nothing: its wiki's one article is a battle calculator",
+  "loot": "2026-10-11: nothing: its wiki's one article is a battle calculator",
+  "statuses": "2026-10-11: nothing: its wiki's one article is a battle calculator"
  },
  "Drop Pockets": {
   "connections": "before 2026-10-07"
@@ -1574,7 +1646,13 @@
   "connections": "before 2026-10-07"
  },
  "Gnomes": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-11: nothing: its 24 guilds are starter packs (a house, a gnome, a crop and a relic) rather than heroes",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-11: nothing: none",
+  "goals": "2026-10-11: nothing new: its Goblin is live; the King goblin has no page of its own",
+  "locations": "2026-10-11: nothing: its maps are mazes for goblins to walk",
+  "loot": "2026-10-11: Deathcap; no weapons of the player's (gnomes fight on their own) and no evolutions; its crops and houses are tower-defence buildings",
+  "statuses": "2026-10-11: nothing: none"
  },
  "Go Mecha Ball": {
   "connections": "before 2026-10-07"
@@ -2159,7 +2237,13 @@
   "connections": "before 2026-10-07"
  },
  "Moon Hunters": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-11: Druid; Witch, Occultist and Spellblade left out (an element and a stat line), Songweaver (Hades II's Scylla, 'Perform a song')",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-11: nothing: its dialogue choices give traits, and no page lists them",
+  "goals": "2026-10-11: nothing: no enemy or boss pages",
+  "locations": "2026-10-11: nothing: biomes and tribes with no goal",
+  "loot": "2026-10-11: nothing: its 'items' are cooking ingredients that raise stats, and abilities bought from the Merchant; no weapons and no evolutions",
+  "statuses": "2026-10-11: nothing: its nine Traits (Brave, Foolish...) are personality marks for dialogue, not statuses"
  },
  "Moon Watch": {
   "connections": "before 2026-10-07"
@@ -2319,7 +2403,13 @@
   "connections": "before 2026-10-07"
  },
  "Night Swarm": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-11: nothing: Roderic is the one protagonist",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-11: nothing: none",
+  "goals": "2026-10-11: nothing: no enemy pages",
+  "locations": "2026-10-11: nothing: none",
+  "loot": "2026-10-11: weapons and evolutions: Blood Spear, Blood Chakram (a fusion; its effect is not on the wiki); its other relics (Sanguine Pool, Infernal Breath, Bloodletting Bomb) are auras and pools of damage",
+  "statuses": "2026-10-11: nothing: none"
  },
  "Nimrods": {
   "connections": "before 2026-10-07"
@@ -2343,7 +2433,13 @@
   "statuses": "2026-10-09: Teleportitis; its other stains duplicate Wet, Tarred and Burn"
  },
  "Nomad Survival": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-11: Whisperer; The Quickling left out (Moon Hunters' Druid transforms), the Necromancer, Knight and Crusader have no page content",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-11: nothing: none",
+  "goals": "2026-10-11: nothing: no enemy pages",
+  "locations": "2026-10-11: nothing: none",
+  "loot": "2026-10-11: nothing: its 17 active skills (Fireball, Magic Missile, Icicle Barrage) are generic auto-attacks that level in place; no weapons beyond them and no evolutions",
+  "statuses": "2026-10-11: nothing: none"
  },
  "Noobs Are Coming": {
   "characters": "2026-10-10: 34 characters, every page a stub",
@@ -2409,7 +2505,13 @@
   "connections": "before 2026-10-07"
  },
  "OTXO": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-11: nothing: one protagonist",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-11: nothing: none",
+  "goals": "2026-10-11: nothing: its enemies and bosses have no pages",
+  "locations": "2026-10-11: The Bartender (a shopkeeper); its run modifiers (Angel Investor: 10k gold to start and none from enemies) are challenges, not places",
+  "loot": "2026-10-11: Homing Pigeon; its 40-odd guns are real-world models with a damage and a fire rate and nothing of their own; no evolutions; ENLOUDENER and WICK are stat bumps, SHHH and CONTROL need stealth or are 'TBA'",
+  "statuses": "2026-10-11: nothing: none"
  },
  "Oaken Tower": {
   "connections": "before 2026-10-07"
@@ -2481,7 +2583,13 @@
   "statuses": "2026-10-10: nothing: Death (die after 150 steps) repeats the Doomed candidate, Panic the Blind"
  },
  "Orbital Bullet": {
-  "connections": "2026-10-07"
+  "characters": "2026-10-11: nothing: its wiki documents meta-progression only (Skills, Upgrades, Weapon Parts)",
+  "connections": "2026-10-07",
+  "events": "2026-10-11: nothing: its wiki documents meta-progression only (Skills, Upgrades, Weapon Parts)",
+  "goals": "2026-10-11: nothing: its wiki documents meta-progression only (Skills, Upgrades, Weapon Parts)",
+  "locations": "2026-10-11: nothing: its wiki documents meta-progression only (Skills, Upgrades, Weapon Parts)",
+  "loot": "2026-10-11: nothing: its wiki documents meta-progression only (Skills, Upgrades, Weapon Parts)",
+  "statuses": "2026-10-11: nothing: its wiki documents meta-progression only (Skills, Upgrades, Weapon Parts)"
  },
  "Order Automatica": {
   "connections": "before 2026-10-07"
@@ -2607,7 +2715,13 @@
   "connections": "before 2026-10-07"
  },
  "Pocket Crystal League": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-11: nothing: one trainer",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-11: nothing: its events are deck services (card pack, level up, evolve, campfire), each a purchase with no tension",
+  "goals": "2026-10-11: nothing: its creatures are Pokemon, which the main-series and Mystery Dungeon games on the chart already speak for",
+  "locations": "2026-10-11: nothing: its gyms are trainer battles",
+  "loot": "2026-10-11: nothing: its berries are the card cost (Oran, Lum, Leppa), and its Glyphs card upgrades; no weapons and no evolutions of the player's",
+  "statuses": "2026-10-11: nothing: none"
  },
  "Pogo Rogue": {
   "connections": "before 2026-10-07"
@@ -2616,7 +2730,13 @@
   "connections": "before 2026-10-07"
  },
  "Pokelike": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-11: nothing: its wiki's one article is Traits (bonuses for Pokemon types on the team)",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-11: nothing: its wiki's one article is Traits (bonuses for Pokemon types on the team)",
+  "goals": "2026-10-11: nothing: its wiki's one article is Traits (bonuses for Pokemon types on the team)",
+  "locations": "2026-10-11: nothing: its wiki's one article is Traits (bonuses for Pokemon types on the team)",
+  "loot": "2026-10-11: nothing: its wiki's one article is Traits (bonuses for Pokemon types on the team)",
+  "statuses": "2026-10-11: nothing: its wiki's one article is Traits (bonuses for Pokemon types on the team)"
  },
  "PokéRogue": {
   "connections": "before 2026-10-07"
@@ -2941,7 +3061,13 @@
   "statuses": "2026-10-09: nothing: traits repeat Rogue Legacy's"
  },
  "Rogue Lords": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-11: nothing: the Devil and his Disciples (Dracula, the Headless Horseman, Bloody Mary...) have no pages of their own",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-11: Monoliths, Great Elder; Abandoned shack left out (killing a school's teachers), Black Hollow and Doomvalley (their results are '?' on the wiki), Old cemetery (a chain of four screens)",
+  "goals": "2026-10-11: nothing: Van Helsing and the Sanctua Lumen have no pages; the Disciples are your own party",
+  "locations": "2026-10-11: nothing: none documented",
+  "loot": "2026-10-11: nothing: its relics have no pages; no weapons and no evolutions documented",
+  "statuses": "2026-10-11: nothing: Terror is a map meter, Diabolic Essence a resource"
  },
  "Rogue Tower": {
   "connections": "before 2026-10-07"
@@ -2959,7 +3085,13 @@
   "connections": "before 2026-10-07"
  },
  "Rogue: Genesia": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-11: nothing: one player",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-11: nothing: its '?' events are the Golden Altar (an object) and the Statuette (a choice of run-long stat bonuses)",
+  "goals": "2026-10-11: nothing: no enemy pages",
+  "locations": "2026-10-11: Golden Altar (an object)",
+  "loot": "2026-10-11: nothing new: Glass Sword folded into the Clones of One Step From Eden's Glass Cannon, Hand of the Cheater into Downwell's Youth (one more choice); Cursed Belt and Beef Statue are stat trades; weapons (Swordrang, Worm Gland, Katana...) level in place and have no evolutions; Swordrang left out (Path of Achra's Transal Chakram comes back too)",
+  "statuses": "2026-10-11: nothing: none"
  },
  "RogueJack21": {
   "connections": "before 2026-10-07"
@@ -2989,7 +3121,13 @@
   "connections": "before 2026-10-07"
  },
  "Rounds": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-11: nothing: the round player is customised in an editor",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-11: nothing: a card pick after losing two rounds is the only screen",
+  "goals": "2026-10-11: nothing: the opponent is the other player",
+  "locations": "2026-10-11: nothing: the maps are arenas",
+  "loot": "2026-10-11: Careful Planning; no weapons (one gun, changed by cards) and no evolutions; Abyssal Countdown left out (Path of Achra's Meditate rewards standing still), Remote Steering and Chase (aiming and movement), Bombs Away (a block)",
+  "statuses": "2026-10-11: nothing: Static Field's freeze is the live Stun"
  },
  "Rune Dice": {
   "connections": "before 2026-10-07"
@@ -3022,13 +3160,25 @@
   "connections": "before 2026-10-07"
  },
  "Sandwalkers": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-11: nothing: its Events and Landmarks pages are headings with no text",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-11: nothing: its Events and Landmarks pages are headings with no text",
+  "goals": "2026-10-11: nothing: its Events and Landmarks pages are headings with no text",
+  "locations": "2026-10-11: nothing: its Events and Landmarks pages are headings with no text",
+  "loot": "2026-10-11: nothing: its Events and Landmarks pages are headings with no text",
+  "statuses": "2026-10-11: nothing: its Events and Landmarks pages are headings with no text"
  },
  "Scarlet Skips": {
   "connections": "2026-10-07"
  },
  "Scarlet Tower": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-11: nothing: its hero pages are upgrade-cost tables",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-11: nothing: none",
+  "goals": "2026-10-11: nothing: its maps list enemy names (Shark, Angler Fish, World Eater) with no pages behind them",
+  "locations": "2026-10-11: nothing: its five maps are enemy lists, Corruption a difficulty",
+  "loot": "2026-10-11: nothing: its relics were replaced by Masteries in v0.9.3 and its flask table is blank; no evolutions documented",
+  "statuses": "2026-10-11: nothing: none"
  },
  "Schism": {
   "connections": "before 2026-10-07"
@@ -3070,7 +3220,13 @@
   "connections": "before 2026-10-07"
  },
  "Shape of Dreams": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-11: Shell; Lacerta and Mist left out (a ranged and a melee kit with a dodge), Bismuth (its unlock is a speed check), Nachia (summons spirits, Brutal Orchestra's and Regent's friends)",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-11: nothing: none",
+  "goals": "2026-10-11: nothing: its bosses (the Demon of the Forest) have no pages",
+  "locations": "2026-10-11: nothing: none",
+  "loot": "2026-10-11: nothing: its Essence, Souvenirs and Artifact pages are placeholders; memories are abilities; no evolutions",
+  "statuses": "2026-10-11: nothing: none"
  },
  "Shard Squad": {
   "connections": "before 2026-10-07"
@@ -3230,7 +3386,13 @@
   "connections": "before 2026-10-07"
  },
  "Slots & Daggers": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-11: nothing: its wiki has one page (a character, Friedemann) with no content",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-11: nothing: its wiki has one page (a character, Friedemann) with no content",
+  "goals": "2026-10-11: nothing: its wiki has one page (a character, Friedemann) with no content",
+  "locations": "2026-10-11: nothing: its wiki has one page (a character, Friedemann) with no content",
+  "loot": "2026-10-11: nothing: its wiki has one page (a character, Friedemann) with no content",
+  "statuses": "2026-10-11: nothing: its wiki has one page (a character, Friedemann) with no content"
  },
  "Sodaman": {
   "connections": "before 2026-10-07"
@@ -3284,7 +3446,13 @@
   "connections": "before 2026-10-07"
  },
  "Sparklite": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-11: nothing: its wiki is a stub (Ada, Baron, a how-to-play page)",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-11: nothing: its wiki is a stub (Ada, Baron, a how-to-play page)",
+  "goals": "2026-10-11: nothing: its wiki is a stub (Ada, Baron, a how-to-play page)",
+  "locations": "2026-10-11: nothing: its wiki is a stub (Ada, Baron, a how-to-play page)",
+  "loot": "2026-10-11: nothing: its wiki is a stub (Ada, Baron, a how-to-play page)",
+  "statuses": "2026-10-11: nothing: its wiki is a stub (Ada, Baron, a how-to-play page)"
  },
  "SpellRogue": {
   "characters": "2026-10-10: nothing: its four Dice Slingers are elements (Azar fire, Lapis water and ice, Hazel earth, Sefyra air) whose level-ups are taken (Willow's and the Runaway's fire, the Ice Slime's freeze)",
@@ -3296,7 +3464,13 @@
   "statuses": "2026-10-10: Pox; Death Pact left out (Mewgenics' Soul Link), Fumble/Vexed/Silenced (dice enchantments with no counterpart), Fateweaving (keeps dice between turns)"
  },
  "Spellbook Demonslayers": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-11: nothing: Tammy and Speare are a starting skill and a stat bonus each",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-11: nothing: none",
+  "goals": "2026-10-11: nothing: no enemy pages",
+  "locations": "2026-10-11: nothing: its 18 shrines are stand-in-a-circle stat buffs (Turbo, Critical, Revival), which the live objects' choices do better",
+  "loot": "2026-10-11: nothing: its Illegal Upgrades are stat trades (Prey Animal: Max HP +100%, Armor -1) and its spellbooks auto-cast; no weapons and no evolutions beyond auras' named upgrades",
+  "statuses": "2026-10-11: nothing: its 'buffs' are the timed shrine bonuses"
  },
  "Spellmasons": {
   "characters": "2026-10-11: nothing: one spellmason",
@@ -3338,7 +3512,13 @@
   "connections": "before 2026-10-07"
  },
  "Spirit Hunters: Infinite Horde": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-11: nothing: its wiki's pages are one-line stubs and lists ending in '...'",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-11: nothing: its wiki's pages are one-line stubs and lists ending in '...'",
+  "goals": "2026-10-11: nothing: its wiki's pages are one-line stubs and lists ending in '...'",
+  "locations": "2026-10-11: nothing: its wiki's pages are one-line stubs and lists ending in '...'",
+  "loot": "2026-10-11: nothing: its wiki's pages are one-line stubs and lists ending in '...'",
+  "statuses": "2026-10-11: nothing: its wiki's pages are one-line stubs and lists ending in '...'"
  },
  "Spiritfall": {
   "characters": "2026-10-10: one hero",
@@ -3407,7 +3587,13 @@
   "statuses": "2026-10-10: nothing: Doom and Shock repeat Doomed and the lightning statuses"
  },
  "Starlight Revolver": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-11: nothing: the four Divers (Effy, Kira, Ren, Vivi) have no pages of their own",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-11: nothing: none",
+  "goals": "2026-10-11: nothing: Grand Golem left out (golems are candidates from Moonlighter, Pawnbarian and The King is Watching), the other enemies have no pages",
+  "locations": "2026-10-11: No-Go (an object); its portals are room types, NIM's residents sell cosmetics",
+  "loot": "2026-10-11: nothing: its charms are stat bonuses by rarity and category; no weapons pages beyond each Diver's revolver, and no evolutions",
+  "statuses": "2026-10-11: nothing: none"
  },
  "Steve's Warehouse: Physics. Roguelike. Chaos.": {
   "connections": "before 2026-10-07"
@@ -3425,7 +3611,13 @@
   "connections": "before 2026-10-07"
  },
  "Strafe": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-11: nothing: one scrapper",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-11: nothing: none",
+  "goals": "2026-10-11: Glutton; Harvester left out (Spelunky 2's Qilin, 'Ride an animal'), Carrier and Stalker (an ambusher and a sniper, nothing a goal can ask for)",
+  "locations": "2026-10-11: nothing: its shop (kill the shopkeeper and its turrets hunt you all run) repeats Hades' Charon, 'Steal from a shop'",
+  "loot": "2026-10-11: weapons and evolutions: Slaughterfaust (an evolution of Buckshot Roulette's Shotgun); its other upgrades (Ricochot, Super shotgun) are the same gun firing harder; the four power-ups are stat bumps",
+  "statuses": "2026-10-11: nothing: none"
  },
  "Strange Adventures in Infinite Space": {
   "connections": "before 2026-10-07"
@@ -3479,7 +3671,13 @@
   "statuses": "2026-10-11: nothing: Burst, Armor and Combo Beam are card keywords"
  },
  "Super Fantasy Kingdom": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-11: nothing: its one listed hero has no name",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-11: nothing: its events (Hermit: a free unit; Merchant; Witch: unlock an ability) are free picks or shops with no tension",
+  "goals": "2026-10-11: nothing: its one provocable creature, the Giant Octopus (woken by building roads), repeats Don't Starve's Treeguard ('Make peace with an enemy you provoked'); heroes have no names on the wiki",
+  "locations": "2026-10-11: nothing: its bonus tiles are meta-progression",
+  "loot": "2026-10-11: nothing: units and buildings, no items, no weapons and no evolutions",
+  "statuses": "2026-10-11: nothing: none"
  },
  "Super House of Dead Ninjas": {
   "connections": "before 2026-10-07"
@@ -3963,7 +4161,13 @@
   "statuses": "2026-10-10: no status page"
  },
  "WizardChess": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-11: nothing: every page of its wiki is one line (Boss, Enemy, Units, The Fae Queen)",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-11: nothing: every page of its wiki is one line (Boss, Enemy, Units, The Fae Queen)",
+  "goals": "2026-10-11: nothing: every page of its wiki is one line (Boss, Enemy, Units, The Fae Queen)",
+  "locations": "2026-10-11: nothing: every page of its wiki is one line (Boss, Enemy, Units, The Fae Queen)",
+  "loot": "2026-10-11: nothing: every page of its wiki is one line (Boss, Enemy, Units, The Fae Queen)",
+  "statuses": "2026-10-11: nothing: every page of its wiki is one line (Boss, Enemy, Units, The Fae Queen)"
  },
  "Word Play": {
   "connections": "before 2026-10-07"

@@ -2741,80 +2741,28 @@
   "wiki": null
  },
  "Cataclysm": {
-  "api": "https://cataclysm.fandom.com/api.php",
-  "articles": 26,
-  "blurb": "",
-  "categories": {},
-  "checked": "2026-10-09",
-  "counts": {
-   "characters": 0,
-   "events": 0,
-   "goals": 0,
-   "locations": 0,
-   "loot": 0,
-   "statuses": 0
-  },
-  "match": "sure",
-  "pages": {},
-  "sitename": "The Cataclysm Wiki",
-  "wiki": "https://cataclysm.fandom.com"
+  "checked": "2026-10-11",
+  "note": "cataclysm.fandom.com is the wiki of The Cataclysm, a Minecraft 1.12.2 modpack, not the 2010 roguelike; its own wiki is cataclysmdda.org's (set by hand)",
+  "set": "by hand",
+  "wiki": null
  },
  "Cataclysm: Bright Nights": {
-  "api": "https://cataclysm.fandom.com/api.php",
-  "articles": 26,
-  "blurb": "",
-  "categories": {},
-  "checked": "2026-10-09",
-  "counts": {
-   "characters": 0,
-   "events": 0,
-   "goals": 0,
-   "locations": 0,
-   "loot": 0,
-   "statuses": 0
-  },
-  "match": "check",
-  "pages": {},
-  "sitename": "The Cataclysm Wiki",
-  "wiki": "https://cataclysm.fandom.com"
+  "checked": "2026-10-11",
+  "note": "cataclysm.fandom.com is the wiki of The Cataclysm, a Minecraft 1.12.2 modpack, not this CDDA fork (set by hand)",
+  "set": "by hand",
+  "wiki": null
  },
  "Cataclysm: Dark Days Ahead": {
-  "api": "https://cataclysm.fandom.com/api.php",
-  "articles": 26,
-  "blurb": "",
-  "categories": {},
-  "checked": "2026-10-09",
-  "counts": {
-   "characters": 0,
-   "events": 0,
-   "goals": 0,
-   "locations": 0,
-   "loot": 0,
-   "statuses": 0
-  },
-  "match": "check",
-  "pages": {},
-  "sitename": "The Cataclysm Wiki",
-  "wiki": "https://cataclysm.fandom.com"
+  "checked": "2026-10-11",
+  "note": "cataclysm.fandom.com is the wiki of The Cataclysm, a Minecraft 1.12.2 modpack; CDDA documents itself in its own JSON and the community Hitchhiker's Guide (set by hand)",
+  "set": "by hand",
+  "wiki": null
  },
  "Cataclysm: The Last Generation": {
-  "api": "https://cataclysm.fandom.com/api.php",
-  "articles": 26,
-  "blurb": "",
-  "categories": {},
-  "checked": "2026-10-09",
-  "counts": {
-   "characters": 0,
-   "events": 0,
-   "goals": 0,
-   "locations": 0,
-   "loot": 0,
-   "statuses": 0
-  },
-  "match": "check",
-  "pages": {},
-  "sitename": "The Cataclysm Wiki",
-  "wiki": "https://cataclysm.fandom.com"
+  "checked": "2026-10-11",
+  "note": "cataclysm.fandom.com is the wiki of The Cataclysm, a Minecraft 1.12.2 modpack, not this CDDA fork (set by hand)",
+  "set": "by hand",
+  "wiki": null
  },
  "Catacomb Kids": {
   "api": "https://catacomb-kids.fandom.com/api.php",
@@ -4493,30 +4441,10 @@
   "wiki": "https://cursorblade.fandom.com"
  },
  "DIG: Deep In Galaxies": {
-  "api": "https://dig.fandom.com/api.php",
-  "articles": 34,
-  "blurb": "",
-  "categories": {
-   "characters": [
-    "Active Character"
-   ],
-   "loot": [
-    "Active Character"
-   ]
-  },
-  "checked": "2026-10-09",
-  "counts": {
-   "characters": 8,
-   "events": 0,
-   "goals": 0,
-   "locations": 0,
-   "loot": 8,
-   "statuses": 0
-  },
-  "match": "check",
-  "pages": {},
-  "sitename": "Dig Wiki",
-  "wiki": "https://dig.fandom.com"
+  "checked": "2026-10-11",
+  "note": "dig.fandom.com is the wiki of DIG, a forum game on the Bay12 forums, not the 2021 action roguelite (set by hand)",
+  "set": "by hand",
+  "wiki": null
  },
  "Dark Devotion": {
   "api": "https://darkdevotion.fandom.com/api.php",
@@ -6397,23 +6325,10 @@
   "wiki": "https://downwell.fandom.com"
  },
  "Dragon Crystal": {
-  "api": "https://dragon-crystal.fandom.com/api.php",
-  "articles": 3,
-  "blurb": "",
-  "categories": {},
-  "checked": "2026-10-09",
-  "counts": {
-   "characters": 0,
-   "events": 0,
-   "goals": 0,
-   "locations": 0,
-   "loot": 0,
-   "statuses": 0
-  },
-  "match": "sure",
-  "pages": {},
-  "sitename": "Dragon crystal Wiki",
-  "wiki": "https://dragon-crystal.fandom.com"
+  "checked": "2026-10-11",
+  "note": "dragon-crystal.fandom.com is a fan wiki of dragon species (Strikingwave), not Sega's 1990 roguelike (set by hand)",
+  "set": "by hand",
+  "wiki": null
  },
  "Dragon Quest Heroes: Torneko‘s Mystery Dungeon Classic HD": {
   "checked": "2026-10-09",
@@ -11725,34 +11640,10 @@
   "wiki": "https://popupdungeon.fandom.com"
  },
  "Powder": {
-  "api": "https://powder.fandom.com/api.php",
-  "articles": 92,
-  "blurb": "",
-  "categories": {
-   "characters": [
-    "Material classes"
-   ],
-   "loot": [
-    "Tools"
-   ]
-  },
-  "checked": "2026-10-09",
-  "counts": {
-   "characters": 6,
-   "events": 0,
-   "goals": 0,
-   "locations": 0,
-   "loot": 3,
-   "statuses": 0
-  },
-  "match": "sure",
-  "pages": {
-   "events": [
-    "Events"
-   ]
-  },
-  "sitename": "WikiPowder",
-  "wiki": "https://powder.fandom.com"
+  "checked": "2026-10-11",
+  "note": "powder.fandom.com is WikiPowder, the wiki of Dan-Ball's Powder Game (a falling-sand toy), not Jeff Lait's 2003 roguelike (set by hand)",
+  "set": "by hand",
+  "wiki": null
  },
  "Prime Monster": {
   "checked": "2026-10-09",
