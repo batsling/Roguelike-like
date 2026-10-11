@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_bileranha_joonas_turner"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"bileranha_joonas_turner"
+title = "Bileranha"
+artist = "Joonas Turner"
+album = "ScourgeBringer Original Soundtrack"
+year = 2020
+game_id = &"scourgebringer"
+file = "ScourgeBringer/06. Bileranha.mp3"
+image_path = ""
+tags = PackedStringArray()

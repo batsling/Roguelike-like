@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_rumble_kachara_daniele_zandara"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"rumble_kachara_daniele_zandara"
+title = "Rumble Kachara"
+artist = "Daniele Zandara"
+album = "Vampire Survivors The Original Soundtrack"
+year = 2022
+game_id = &"vampire_survivors"
+file = "Vampire Survivors/4-03 - Rumble Kachara.mp3"
+image_path = ""
+tags = PackedStringArray()

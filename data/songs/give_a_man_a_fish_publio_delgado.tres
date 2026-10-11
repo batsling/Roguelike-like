@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_give_a_man_a_fish_publio_delgado"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"give_a_man_a_fish_publio_delgado"
+title = "Give a Man a Fish"
+artist = "Publio Delgado"
+album = "Brutal Orchestra Soundtrack"
+year = 2022
+game_id = &"brutal_orchestra"
+file = "Brutal Orchestra/02 Give a Man a Fish.mp3"
+image_path = ""
+tags = PackedStringArray()

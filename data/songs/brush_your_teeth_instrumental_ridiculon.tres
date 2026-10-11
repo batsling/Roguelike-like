@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_brush_your_teeth_instrumental_ridiculon"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"brush_your_teeth_instrumental_ridiculon"
+title = "Brush Your Teeth INSTRUMENTAL"
+artist = "Ridiculon"
+album = "Mewgenics OST"
+year = 2026
+game_id = &"mewgenics"
+file = "Mewgenics/66. Brush Your Teeth INSTRUMENTAL.mp3"
+image_path = ""
+tags = PackedStringArray()

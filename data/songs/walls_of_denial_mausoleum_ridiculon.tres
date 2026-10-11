@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_walls_of_denial_mausoleum_ridiculon"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"walls_of_denial_mausoleum_ridiculon"
+title = "Walls Of Denial (Mausoleum)"
+artist = "Ridiculon"
+album = "The Binding Of Isaac: Rebirth (Original Soundtrack \"Repentance\")"
+year = 2021
+game_id = &"the_binding_of_isaac_rebirth"
+file = "The Binding Of Isaac - Rebirth/06. Walls Of Denial (Mausoleum).mp3"
+image_path = ""
+tags = PackedStringArray()

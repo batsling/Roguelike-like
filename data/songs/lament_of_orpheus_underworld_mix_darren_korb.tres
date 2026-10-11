@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_lament_of_orpheus_underworld_mix_darren_korb"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"lament_of_orpheus_underworld_mix_darren_korb"
+title = "Lament of Orpheus (Underworld Mix)"
+artist = "Darren Korb"
+album = "Hades: Original Soundtrack"
+year = 2020
+game_id = &"hades"
+file = "Hades/23. Lament of Orpheus (Underworld Mix).mp3"
+image_path = ""
+tags = PackedStringArray()

@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_drawing_dead_saffrons_theme_hagane"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"drawing_dead_saffrons_theme_hagane"
+title = "Drawing Dead - Saffron's Theme"
+artist = "HAGANE"
+album = "One Step From Eden Original Soundtrack"
+year = 2020
+game_id = &"one_step_from_eden"
+file = "One Step From Eden/2-01 Drawing Dead - Saffron's Theme.mp3"
+image_path = ""
+tags = PackedStringArray()

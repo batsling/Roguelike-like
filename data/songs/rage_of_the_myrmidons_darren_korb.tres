@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_rage_of_the_myrmidons_darren_korb"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"rage_of_the_myrmidons_darren_korb"
+title = "Rage of the Myrmidons"
+artist = "Darren Korb"
+album = "Hades: Original Soundtrack"
+year = 2020
+game_id = &"hades"
+file = "Hades/19. Rage of the Myrmidons.mp3"
+image_path = ""
+tags = PackedStringArray()

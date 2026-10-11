@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_alpha_waves_intro_cutscene_blinch"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"alpha_waves_intro_cutscene_blinch"
+title = "Alpha Waves (Intro Cutscene)"
+artist = "blinch"
+album = "Loop Hero (Official Soundtrack)"
+year = 2023
+game_id = &"loop_hero"
+file = "Loop Hero/01. Alpha Waves (Intro Cutscene).mp3"
+image_path = ""
+tags = PackedStringArray()

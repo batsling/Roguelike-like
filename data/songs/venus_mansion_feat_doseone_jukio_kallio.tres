@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_venus_mansion_feat_doseone_jukio_kallio"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"venus_mansion_feat_doseone_jukio_kallio"
+title = "Venus Mansion (feat. Doseone)"
+artist = "Jukio Kallio"
+album = "Nuclear Throne OST"
+year = 2015
+game_id = &"nuclear_throne"
+file = "Nuclear Throne/32. Venus Mansion (feat. Doseone).mp3"
+image_path = ""
+tags = PackedStringArray()

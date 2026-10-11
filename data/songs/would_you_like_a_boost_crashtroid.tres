@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_would_you_like_a_boost_crashtroid"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"would_you_like_a_boost_crashtroid"
+title = "Would You Like A Boost?"
+artist = "Crashtroid"
+album = "Peglin Official Soundtrack"
+year = 2026
+game_id = &"peglin"
+file = "Peglin/21. Would You Like A Boost.mp3"
+image_path = ""
+tags = PackedStringArray()

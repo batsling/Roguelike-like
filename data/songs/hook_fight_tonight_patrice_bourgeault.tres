@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_hook_fight_tonight_patrice_bourgeault"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"hook_fight_tonight_patrice_bourgeault"
+title = "Hook Fight Tonight"
+artist = "Patrice Bourgeault"
+album = "Flinthook Original Soundtrack"
+year = 2017
+game_id = &"flinthook"
+file = "Flinthook/13. Hook Fight Tonight.mp3"
+image_path = ""
+tags = PackedStringArray()

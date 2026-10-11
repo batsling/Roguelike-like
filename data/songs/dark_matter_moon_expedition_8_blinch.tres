@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_dark_matter_moon_expedition_8_blinch"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"dark_matter_moon_expedition_8_blinch"
+title = "Dark Matter Moon (Expedition 8)"
+artist = "blinch"
+album = "Loop Hero (Official Soundtrack)"
+year = 2023
+game_id = &"loop_hero"
+file = "Loop Hero/04. Dark Matter Moon (Expedition 8).mp3"
+image_path = ""
+tags = PackedStringArray()

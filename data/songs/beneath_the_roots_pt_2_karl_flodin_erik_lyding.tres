@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_beneath_the_roots_pt_2_karl_flodin_erik_lyding"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"beneath_the_roots_pt_2_karl_flodin_erik_lyding"
+title = "Beneath the Roots Pt. 2"
+artist = "Karl Flodin & Erik Lyding"
+album = "Haste (Original Soundtrack)"
+year = 2025
+game_id = &"haste"
+file = "Haste/40. Beneath the Roots Pt. 2.mp3"
+image_path = ""
+tags = PackedStringArray()

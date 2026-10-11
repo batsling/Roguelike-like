@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_sodden_hollow_caves_ridiculon"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"sodden_hollow_caves_ridiculon"
+title = "Sodden Hollow (Caves)"
+artist = "Ridiculon"
+album = "The Binding Of Isaac: Rebirth (Original Soundtrack)"
+year = 2014
+game_id = &"the_binding_of_isaac_rebirth"
+file = "The Binding Of Isaac - Rebirth/04. Sodden Hollow (Caves).mp3"
+image_path = ""
+tags = PackedStringArray()

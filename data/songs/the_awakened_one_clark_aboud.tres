@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_the_awakened_one_clark_aboud"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"the_awakened_one_clark_aboud"
+title = "The Awakened One"
+artist = "Clark Aboud"
+album = "Slay the Spire (Original Soundtrack)"
+year = 2018
+game_id = &"slay_the_spire"
+file = "Slay the Spire/17 The Awakened One.mp3"
+image_path = ""
+tags = PackedStringArray()

@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_still_no_need_for_tricks_from_nuclear_throne_jukio_kallio"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"still_no_need_for_tricks_from_nuclear_throne_jukio_kallio"
+title = "Still No Need For Tricks (From \"Nuclear Throne\")"
+artist = "Jukio Kallio"
+album = "Nuclear Throne OST"
+year = 2025
+game_id = &"nuclear_throne"
+file = "Nuclear Throne/36. Still No Need For Tricks (From Nuclear Throne).mp3"
+image_path = ""
+tags = PackedStringArray()

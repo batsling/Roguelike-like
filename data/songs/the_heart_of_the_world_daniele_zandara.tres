@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_the_heart_of_the_world_daniele_zandara"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"the_heart_of_the_world_daniele_zandara"
+title = "The Heart of the World"
+artist = "Daniele Zandara"
+album = "Vampire Survivors The Original Soundtrack"
+year = 2023
+game_id = &"vampire_survivors"
+file = "Vampire Survivors/5-06 - The Heart of the World.mp3"
+image_path = ""
+tags = PackedStringArray()

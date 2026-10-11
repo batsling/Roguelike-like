@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_into_the_breach_ben_prunty"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"into_the_breach_ben_prunty"
+title = "Into the Breach"
+artist = "Ben Prunty"
+album = "Into the Breach Soundtrack"
+year = 2018
+game_id = &"into_the_breach"
+file = "Into the Breach/24 Into the Breach.mp3"
+image_path = ""
+tags = PackedStringArray()

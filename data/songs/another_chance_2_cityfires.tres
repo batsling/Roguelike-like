@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_another_chance_2_cityfires"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"another_chance_2_cityfires"
+title = "Another Chance 2"
+artist = "Cityfires"
+album = "20XX Soundtrack"
+year = 2017
+game_id = &"20xx"
+file = "20XX/12 Another Chance 2.mp3"
+image_path = ""
+tags = PackedStringArray()

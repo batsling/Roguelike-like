@@ -80,13 +80,15 @@ func after_each() -> void:
 	Radio.station = _saved_prefs[3]
 	Radio.paused = _saved_prefs[4]
 
-func _wipe_folder() -> void:
-	var dir := DirAccess.open(FOLDER)
+func _wipe_folder(path: String = FOLDER) -> void:
+	var dir := DirAccess.open(path)
 	if dir == null:
 		return
+	for sub in dir.get_directories():  # the export tests write subfolders
+		_wipe_folder(path.path_join(sub))
 	for f in dir.get_files():
 		dir.remove(f)
-	DirAccess.remove_absolute(FOLDER)
+	DirAccess.remove_absolute(path)
 
 # A `seconds`-long silent mono WAV, written byte for byte, so the radio has a real
 # file to load and a real length to time.
@@ -722,6 +724,53 @@ func test_the_screen_lists_every_song_and_drives_the_radio() -> void:
 	screen.close()
 	await get_tree().process_frame
 
+func test_a_games_locked_songs_are_one_row_saying_how_close_the_game_is() -> void:
+	_song("a")
+	for i in range(5):
+		_locked("hades_%d" % i)
+	_locked("bal", OTHER)
+	var screen := RadioScreen.open(self)
+	await get_tree().process_frame
+	assert_eq(screen._list.get_child_count(), 3, "the unlocked song, then one row per game")
+	var text: String = ""
+	for row in screen._list.get_children():
+		for l in row.find_children("*", "Label", true, false):
+			text += (l as Label).text + "\n"
+	assert_string_contains(text, "Hades  —  5 songs locked")
+	assert_string_contains(text, "Balatro  —  1 song locked")
+	assert_string_contains(text, "Next Hades song")
+	screen.close()
+	await get_tree().process_frame
+
+func test_a_new_track_rebuilds_only_the_rows_it_moved_between() -> void:
+	_song("a")
+	_song("b")
+	_song("c")
+	Radio.play_song(&"a")
+	var screen := RadioScreen.open(self)
+	await get_tree().process_frame
+	var untouched: Control = screen._rows[&"c"]
+	var key: String = screen._list_key
+	Radio.play_song(&"b")
+	assert_eq(screen._list_key, key, "the list itself was not rebuilt")
+	assert_same(screen._rows[&"c"], untouched, "a row the track didn't touch is kept")
+	var label: Label = screen._rows[&"b"].find_children("*", "Label", true, false)[0]
+	assert_string_starts_with(label.text, "♪", "the new track's row is the playing one")
+	assert_eq(screen._rows[&"b"].get_index(), untouched.get_index() - 1, "and stays in its place")
+	screen.close()
+	await get_tree().process_frame
+
+func test_unlocking_a_song_does_rebuild_the_list() -> void:
+	_song("a")
+	_locked("b")
+	var screen := RadioScreen.open(self)
+	await get_tree().process_frame
+	Radio._unlocked["b"] = true
+	Radio.changed.emit()
+	assert_true(screen._rows.has(&"b"), "the newly unlocked song has its own row")
+	screen.close()
+	await get_tree().process_frame
+
 # --- the game's Collection page ---------------------------------------------
 
 func test_every_kind_of_goal_lists_under_its_header_in_order() -> void:
@@ -773,3 +822,185 @@ func test_a_completed_goal_lands_on_the_game_it_was_done_at() -> void:
 	assert_eq(GameStats.goals_at(GAME).get("weapon", []).size(), 1)
 	assert_false(GameStats.goals_at(GAME).has("enemy"),
 		"an enemy goes on the record through enemy_log, not twice")
+
+# --- the song-list export (§2a) --------------------------------------------------
+#
+# Each format's tags are written here byte for byte, the way the encoders lay
+# them out, so the reader is checked against the format and not against itself.
+# tools/apply_radio_import.py, which turns the list into rows, is Python and is
+# exercised by running it.
+
+const AudioTags = preload("res://scripts/runtime/AudioTags.gd")
+
+func _write(rel: String, bytes: PackedByteArray) -> String:
+	var path: String = FOLDER.path_join(rel)
+	DirAccess.make_dir_recursive_absolute(path.get_base_dir())
+	var f := FileAccess.open(path, FileAccess.WRITE)
+	f.store_buffer(bytes)
+	f.close()
+	return path
+
+func _be(n: int, width: int) -> PackedByteArray:
+	var b := PackedByteArray()
+	for i in range(width - 1, -1, -1):
+		b.append((n >> (8 * i)) & 0xFF)
+	return b
+
+func _le(n: int, width: int) -> PackedByteArray:
+	var b := PackedByteArray()
+	for i in width:
+		b.append((n >> (8 * i)) & 0xFF)
+	return b
+
+func _syncsafe(n: int) -> PackedByteArray:
+	return PackedByteArray([(n >> 21) & 0x7F, (n >> 14) & 0x7F, (n >> 7) & 0x7F, n & 0x7F])
+
+# An ID3v2 tag of `frames` ({id: body bytes}) in front of some audio-ish bytes.
+func _id3v2(major: int, frames: Array) -> PackedByteArray:
+	var body := PackedByteArray()
+	for fr in frames:
+		body.append_array(String(fr[0]).to_ascii_buffer())
+		body.append_array(_syncsafe(fr[1].size()) if major == 4 else _be(fr[1].size(), 4))
+		body.append_array(PackedByteArray([0, 0]))
+		body.append_array(fr[1])
+	body.append_array(_zeros(64))  # padding
+	var out := "ID3".to_ascii_buffer()
+	out.append_array(PackedByteArray([major, 0, 0]))
+	out.append_array(_syncsafe(body.size()))
+	out.append_array(body)
+	out.append_array(PackedByteArray([0xFF, 0xFB, 0x90, 0x00]))
+	out.append_array(_zeros(400))
+	return out
+
+func _text_frame(id: String, enc: int, text: String) -> Array:
+	var b := PackedByteArray([enc])
+	match enc:
+		1:
+			b.append_array(PackedByteArray([0xFF, 0xFE]))
+			b.append_array(text.to_utf16_buffer())
+		3:
+			b.append_array(text.to_utf8_buffer())
+		_:
+			b.append_array(text.to_ascii_buffer())
+	return [id, b]
+
+func test_an_id3v24_tag_is_read_in_utf8_with_the_year_out_of_the_date() -> void:
+	var path: String = _write("a.mp3", _id3v2(4, [
+		_text_frame("TIT2", 3, "No Escape — Ünïcode"), _text_frame("TPE1", 3, "Darren Korb"),
+		_text_frame("TALB", 3, "Hades (Original Soundtrack)"), _text_frame("TDRC", 3, "2020-09-17")]))
+	assert_eq(AudioTags.read(path), {"title": "No Escape — Ünïcode", "artist": "Darren Korb",
+		"album": "Hades (Original Soundtrack)", "year": "2020"})
+
+func test_an_id3v23_tag_in_utf16_skips_its_cover_art_and_falls_back_to_the_album_artist() -> void:
+	var art := PackedByteArray([0])
+	art.append_array("image/jpeg".to_ascii_buffer())
+	art.append_array(PackedByteArray([0, 3, 0]))
+	art.append_array(_zeros(200000))
+	var path: String = _write("b.mp3", _id3v2(3, [
+		["APIC", art], _text_frame("TIT2", 1, "Exordium 🎵"), _text_frame("TPE2", 1, "Clark Aboud"),
+		_text_frame("TYER", 0, "2019")]))
+	var t: Dictionary = AudioTags.read(path)
+	assert_eq(t["title"], "Exordium 🎵", "a surrogate pair is one character")
+	assert_eq(t["artist"], "Clark Aboud", "no TPE1, so the album artist")
+	assert_eq(t["year"], "2019")
+
+func test_an_mp3_with_only_an_id3v1_tag_is_read_from_its_end() -> void:
+	var b := PackedByteArray([0xFF, 0xFB, 0x90, 0x00])
+	b.append_array(_zeros(400))
+	b.append_array("TAG".to_ascii_buffer())
+	for field in [["Old Tag", 30], ["V1 Artist", 30], ["", 30], ["1999", 4], ["", 31]]:
+		var f: PackedByteArray = String(field[0]).to_ascii_buffer()
+		f.resize(field[1])
+		b.append_array(f)
+	var t: Dictionary = AudioTags.read(_write("c.mp3", b))
+	assert_eq([t["title"], t["artist"], t["year"]], ["Old Tag", "V1 Artist", "1999"])
+
+func _ogg_page(segments: Array, header_type: int) -> PackedByteArray:
+	var lacing := PackedByteArray()
+	var data := PackedByteArray()
+	for seg in segments:
+		lacing.append(seg.size())
+		data.append_array(seg)
+	var b := "OggS".to_ascii_buffer()
+	b.append_array(PackedByteArray([0, header_type]))
+	b.append_array(_zeros(20))  # granule, serial, sequence, CRC: the reader needs none
+	b.append(lacing.size())
+	b.append_array(lacing)
+	b.append_array(data)
+	return b
+
+func test_an_ogg_comment_packet_is_read_across_pages() -> void:
+	var comments := PackedByteArray([3])
+	comments.append_array("vorbis".to_ascii_buffer())
+	comments.append_array(_le(6, 4))
+	comments.append_array("Lavf61".to_ascii_buffer())
+	var entries: Array = ["title=Balatro Main Theme", "ARTIST=LouisF", "Date=2024", "ALBUM=Balatro OST",
+		"METADATA_BLOCK_PICTURE=" + "A".repeat(600)]
+	comments.append_array(_le(entries.size(), 4))
+	for e in entries:
+		comments.append_array(_le(String(e).to_utf8_buffer().size(), 4))
+		comments.append_array(String(e).to_utf8_buffer())
+	comments.append(1)  # framing bit
+	# Split into 255-byte segments over two pages, the second continuing the packet.
+	var segs: Array = []
+	var at: int = 0
+	while at < comments.size():
+		segs.append(comments.slice(at, at + 255))
+		at += 255
+	var file := _ogg_page([_zeros(30)], 2)
+	file.append_array(_ogg_page(segs.slice(0, 2), 0))
+	file.append_array(_ogg_page(segs.slice(2), 1))
+	assert_true(segs.size() > 2 and segs[-1].size() < 255, "the packet really spans both pages")
+	assert_eq(AudioTags.read(_write("d.ogg", file)), {"title": "Balatro Main Theme",
+		"artist": "LouisF", "album": "Balatro OST", "year": "2024"})
+
+func test_a_wav_info_chunk_is_read() -> void:
+	var info := "INFO".to_ascii_buffer()
+	for pair in [["INAM", "Shop"], ["IART", "LouisF"], ["ICRD", "2024"]]:
+		var v: PackedByteArray = String(pair[1]).to_ascii_buffer()
+		v.append(0)
+		info.append_array(String(pair[0]).to_ascii_buffer())
+		info.append_array(_le(v.size(), 4))
+		info.append_array(v)
+		if v.size() % 2 == 1:
+			info.append(0)
+	var b := "RIFF".to_ascii_buffer()
+	b.append_array(_le(4 + 8 + info.size(), 4))
+	b.append_array("WAVE".to_ascii_buffer())
+	b.append_array("LIST".to_ascii_buffer())
+	b.append_array(_le(info.size(), 4))
+	b.append_array(info)
+	assert_eq(AudioTags.read(_write("e.wav", b)), {"title": "Shop", "artist": "LouisF",
+		"album": "", "year": "2024"})
+
+func test_an_untagged_file_reads_blank() -> void:
+	assert_eq(AudioTags.read(_write("f.mp3", _zeros(500))),
+		{"title": "", "artist": "", "album": "", "year": ""})
+
+func test_the_export_lists_every_file_in_every_subfolder_and_which_are_on_the_sheet() -> void:
+	_song("listed")  # its file, listed.wav, is at the top of the folder
+	_write("Hades (Original Soundtrack)/01 - No Escape.mp3",
+		_id3v2(4, [_text_frame("TIT2", 3, "No Escape")]))
+	_write("Slay the Spire OST/Disc 1/03 Exordium.ogg", _zeros(10))
+	_write("Balatro/cover.jpg", _zeros(10))
+	_write("Balatro/notes.txt", _zeros(10))
+	var out: String = "user://test_radio_import.json"
+	var written: String = Radio.export_library(out)
+	assert_ne(written, "")
+	var data: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(out))
+	DirAccess.remove_absolute(out)
+	var files: Array = data["files"].map(func(e): return e["file"])
+	assert_eq(files, ["Hades (Original Soundtrack)/01 - No Escape.mp3",
+		"Slay the Spire OST/Disc 1/03 Exordium.ogg", "listed.wav"],
+		"audio only, with paths relative to the folder, sorted")
+	assert_eq(data["files"][0]["title"], "No Escape", "with each file's own tags")
+	assert_eq(data["files"].map(func(e): return e["on_sheet"]), [false, false, true])
+	assert_eq(Radio.last_export_count, 3)
+
+func test_a_song_in_a_subfolder_plays_from_it() -> void:
+	# What the export's relative path is for: a row's File may name a subfolder.
+	var s := _song("nested", [], false)
+	s.file = "Hades/nested.wav"
+	DirAccess.make_dir_recursive_absolute(FOLDER.path_join("Hades"))
+	_write_wav(s.file, 10.0)
+	assert_true(Radio.has_file(s))

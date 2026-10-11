@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_after_bloodshed_jukio_kallio"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"after_bloodshed_jukio_kallio"
+title = "After Bloodshed"
+artist = "Jukio Kallio"
+album = "Nuclear Throne OST"
+year = 2015
+game_id = &"nuclear_throne"
+file = "Nuclear Throne/07. After Bloodshed.mp3"
+image_path = ""
+tags = PackedStringArray()

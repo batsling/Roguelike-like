@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_legend_of_the_throne_jukio_kallio"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"legend_of_the_throne_jukio_kallio"
+title = "Legend of the Throne"
+artist = "Jukio Kallio"
+album = "Nuclear Throne OST"
+year = 2015
+game_id = &"nuclear_throne"
+file = "Nuclear Throne/01. Legend of the Throne.mp3"
+image_path = ""
+tags = PackedStringArray("menu")

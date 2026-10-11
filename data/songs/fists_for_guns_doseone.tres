@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_fists_for_guns_doseone"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"fists_for_guns_doseone"
+title = "FISTS FOR GUNS"
+artist = "doseone"
+album = "ENTER THE GUNGEON (Original SoundTrack)"
+year = 2016
+game_id = &"enter_the_gungeon"
+file = "Enter the Gungeon/36 FISTS FOR GUNS.mp3"
+image_path = ""
+tags = PackedStringArray()

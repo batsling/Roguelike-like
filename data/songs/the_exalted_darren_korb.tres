@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_the_exalted_darren_korb"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"the_exalted_darren_korb"
+title = "The Exalted"
+artist = "Darren Korb"
+album = "Hades: Original Soundtrack"
+year = 2020
+game_id = &"hades"
+file = "Hades/20. The Exalted.mp3"
+image_path = ""
+tags = PackedStringArray()

@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_march_of_the_profane_3_2_hot_feat_familyjules7x_danny_baranowsky"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"march_of_the_profane_3_2_hot_feat_familyjules7x_danny_baranowsky"
+title = "March of the Profane (3-2 Hot feat. FamilyJules7x)"
+artist = "Danny Baranowsky"
+album = "Crypt of the Necrodancer OST"
+year = 2014
+game_id = &"crypt_of_the_necrodancer"
+file = "Crypt of the NecroDancer/14. March of the Profane (3-2 Hot feat. FamilyJules7x).mp3"
+image_path = ""
+tags = PackedStringArray()

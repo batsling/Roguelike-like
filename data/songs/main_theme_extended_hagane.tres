@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_main_theme_extended_hagane"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"main_theme_extended_hagane"
+title = "Main Theme (extended)"
+artist = "HAGANE"
+album = "One Step From Eden Original Soundtrack"
+year = 2020
+game_id = &"one_step_from_eden"
+file = "One Step From Eden/2-17 Main Theme (extended).mp3"
+image_path = ""
+tags = PackedStringArray()

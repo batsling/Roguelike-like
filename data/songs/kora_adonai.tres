@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_kora_adonai"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"kora_adonai"
+title = "Kora"
+artist = "Adonai"
+album = "Brotato Soundtrack"
+year = 2024
+game_id = &"brotato"
+file = "Brotato/2-02 - Kora.mp3"
+image_path = ""
+tags = PackedStringArray()

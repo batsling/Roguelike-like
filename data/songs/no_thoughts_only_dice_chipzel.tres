@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_no_thoughts_only_dice_chipzel"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"no_thoughts_only_dice_chipzel"
+title = "No Thoughts, Only Dice"
+artist = "Chipzel"
+album = "Dicey Dungeons: Reunion Original Soundtrack"
+year = 2022
+game_id = &"dicey_dungeons"
+file = "Dicey Dungeons/41 No Thoughts, Only Dice.mp3"
+image_path = ""
+tags = PackedStringArray()

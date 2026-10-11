@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_retinal_dissociation_crashtroid"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"retinal_dissociation_crashtroid"
+title = "Retinal Dissociation"
+artist = "Crashtroid"
+album = "Peglin Official Soundtrack"
+year = 2026
+game_id = &"peglin"
+file = "Peglin/17. Retinal Dissociation.mp3"
+image_path = ""
+tags = PackedStringArray()

@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_stone_cold_3_1_cold_danny_baranowsky"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"stone_cold_3_1_cold_danny_baranowsky"
+title = "Stone Cold (3-1 Cold)"
+artist = "Danny Baranowsky"
+album = "Crypt of the Necrodancer OST"
+year = 2014
+game_id = &"crypt_of_the_necrodancer"
+file = "Crypt of the NecroDancer/11. Stone Cold (3-1 Cold).mp3"
+image_path = ""
+tags = PackedStringArray()

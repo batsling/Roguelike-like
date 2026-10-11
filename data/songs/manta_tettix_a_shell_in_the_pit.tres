@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_manta_tettix_a_shell_in_the_pit"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"manta_tettix_a_shell_in_the_pit"
+title = "Manta"
+artist = "Tettix & A Shell in the Pit"
+album = "Rogue Legacy Original Soundtrack"
+year = 2013
+game_id = &"rogue_legacy"
+file = "Rogue Legacy/16. Manta.mp3"
+image_path = ""
+tags = PackedStringArray()

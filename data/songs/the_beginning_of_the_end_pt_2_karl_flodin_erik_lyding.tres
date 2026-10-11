@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_the_beginning_of_the_end_pt_2_karl_flodin_erik_lyding"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"the_beginning_of_the_end_pt_2_karl_flodin_erik_lyding"
+title = "The Beginning of the End Pt. 2"
+artist = "Karl Flodin & Erik Lyding"
+album = "Haste (Original Soundtrack)"
+year = 2025
+game_id = &"haste"
+file = "Haste/57. The Beginning of the End Pt. 2.mp3"
+image_path = ""
+tags = PackedStringArray()

@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_merchant_under_fire_joseph_bailey"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"merchant_under_fire_joseph_bailey"
+title = "Merchant Under Fire"
+artist = "Joseph Bailey"
+album = "One Step From Eden Original Soundtrack"
+year = 2020
+game_id = &"one_step_from_eden"
+file = "One Step From Eden/2-18 Merchant Under Fire.mp3"
+image_path = ""
+tags = PackedStringArray()

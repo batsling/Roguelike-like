@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_time_for_your_medicine_yoann_laulan"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"time_for_your_medicine_yoann_laulan"
+title = "Time For Your Medicine"
+artist = "Yoann Laulan"
+album = "Dead Cells - Soundtrack Part 1"
+year = 2017
+game_id = &"dead_cells"
+file = "Dead Cells/30. Time For Your Medicine.mp3"
+image_path = ""
+tags = PackedStringArray()

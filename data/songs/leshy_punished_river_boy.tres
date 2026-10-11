@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_leshy_punished_river_boy"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"leshy_punished_river_boy"
+title = "Leshy Punished"
+artist = "River Boy"
+album = "Cult of the Lamb Original Soundtrack"
+year = 2023
+game_id = &"cult_of_the_lamb"
+file = "Cult of the Lamb/48. Leshy Punished.mp3"
+image_path = ""
+tags = PackedStringArray()

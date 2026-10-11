@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_tribute_credits_roll_ridiculon"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"tribute_credits_roll_ridiculon"
+title = "Tribute (Credits Roll)"
+artist = "Ridiculon"
+album = "The Binding Of Isaac: Rebirth (Original Soundtrack)"
+year = 2014
+game_id = &"the_binding_of_isaac_rebirth"
+file = "The Binding Of Isaac - Rebirth/28. Tribute (Credits Roll).mp3"
+image_path = ""
+tags = PackedStringArray()

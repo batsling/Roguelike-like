@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_singularitys_dream_camp_chapter_3_blinch"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"singularitys_dream_camp_chapter_3_blinch"
+title = "Singularity's Dream (Camp Chapter 3)"
+artist = "blinch"
+album = "Loop Hero (Official Soundtrack)"
+year = 2023
+game_id = &"loop_hero"
+file = "Loop Hero/22. Singularity's Dream (Camp Chapter 3).mp3"
+image_path = ""
+tags = PackedStringArray()

@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_moving_the_sun_and_the_other_stars_daniele_zandara"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"moving_the_sun_and_the_other_stars_daniele_zandara"
+title = "Moving the Sun and the other Stars"
+artist = "Daniele Zandara"
+album = "Vampire Survivors The Original Soundtrack"
+year = 2024
+game_id = &"vampire_survivors"
+file = "Vampire Survivors/3-03 - Moving the Sun and the other Stars.mp3"
+image_path = ""
+tags = PackedStringArray()

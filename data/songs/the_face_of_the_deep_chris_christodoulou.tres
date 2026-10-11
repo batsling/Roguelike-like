@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_the_face_of_the_deep_chris_christodoulou"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"the_face_of_the_deep_chris_christodoulou"
+title = "The Face of the Deep"
+artist = "Chris Christodoulou"
+album = "Risk of Rain 2: Survivors of the Void"
+year = 2022
+game_id = &"risk_of_rain_2"
+file = "Risk of Rain 2/08. The Face of the Deep.mp3"
+image_path = ""
+tags = PackedStringArray()

@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_wubs_of_the_deep_adonai_ft_rez"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"wubs_of_the_deep_adonai_ft_rez"
+title = "Wubs of the Deep"
+artist = "Adonai ft. Rez"
+album = "Brotato Soundtrack"
+year = 2024
+game_id = &"brotato"
+file = "Brotato/1-04 - Wubs of the Deep.mp3"
+image_path = ""
+tags = PackedStringArray()

@@ -47,6 +47,8 @@ ALLOWED = {
         "systems-graph.md says outright 'the renderer is still unbuilt' and sketches it",
     "tools/tag_edits.json":
         "the game's tag Export writes it and apply_tag_edits.py spends it; it exists only in between",
+    "tools/radio_import.json":
+        "the Radio screen's Export song list writes it and apply_radio_import.py spends it; it exists only in between",
     # Retired in October 2026 when every kind of research moved into research/
     # (docs/research.md). The docs name them to say where the rows came from.
     "docs/influence-candidates.md":

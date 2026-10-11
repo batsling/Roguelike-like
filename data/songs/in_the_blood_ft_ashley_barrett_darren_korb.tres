@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_in_the_blood_ft_ashley_barrett_darren_korb"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"in_the_blood_ft_ashley_barrett_darren_korb"
+title = "In the Blood (ft. Ashley Barrett)"
+artist = "Darren Korb"
+album = "Hades: Original Soundtrack"
+year = 2020
+game_id = &"hades"
+file = "Hades/28. In the Blood (ft. Ashley Barrett).mp3"
+image_path = ""
+tags = PackedStringArray()

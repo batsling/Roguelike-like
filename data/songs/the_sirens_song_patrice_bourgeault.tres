@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_the_sirens_song_patrice_bourgeault"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"the_sirens_song_patrice_bourgeault"
+title = "The Sirens' Song"
+artist = "Patrice Bourgeault"
+album = "Flinthook Original Soundtrack"
+year = 2017
+game_id = &"flinthook"
+file = "Flinthook/17. The Sirens' Song.mp3"
+image_path = ""
+tags = PackedStringArray()

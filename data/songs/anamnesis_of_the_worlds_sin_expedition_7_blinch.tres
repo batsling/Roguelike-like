@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_anamnesis_of_the_worlds_sin_expedition_7_blinch"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"anamnesis_of_the_worlds_sin_expedition_7_blinch"
+title = "Anamnesis of the World's Sin (Expedition 7)"
+artist = "blinch"
+album = "Loop Hero (Official Soundtrack)"
+year = 2023
+game_id = &"loop_hero"
+file = "Loop Hero/02. Anamnesis of the World's Sin (Expedition 7).mp3"
+image_path = ""
+tags = PackedStringArray()

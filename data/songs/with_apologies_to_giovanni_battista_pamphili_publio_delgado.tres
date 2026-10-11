@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_with_apologies_to_giovanni_battista_pamphili_publio_delgado"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"with_apologies_to_giovanni_battista_pamphili_publio_delgado"
+title = "With Apologies to Giovanni Battista Pamphili"
+artist = "Publio Delgado"
+album = "Brutal Orchestra Soundtrack"
+year = 2022
+game_id = &"brutal_orchestra"
+file = "Brutal Orchestra/27 With Apologies to Giovanni Battista Pamphili.mp3"
+image_path = ""
+tags = PackedStringArray()

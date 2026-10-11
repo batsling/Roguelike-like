@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_debris_explore_ben_prunty"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"debris_explore_ben_prunty"
+title = "Debris (Explore)"
+artist = "Ben Prunty"
+album = "Ftl: Faster Than Light - Original Soundtrack"
+year = 2013
+game_id = &"ftl"
+file = "FTL/06 - Debris (Explore).mp3"
+image_path = ""
+tags = PackedStringArray()

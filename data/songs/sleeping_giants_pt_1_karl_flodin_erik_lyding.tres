@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_sleeping_giants_pt_1_karl_flodin_erik_lyding"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"sleeping_giants_pt_1_karl_flodin_erik_lyding"
+title = "Sleeping Giants Pt. 1"
+artist = "Karl Flodin & Erik Lyding"
+album = "Haste (Original Soundtrack)"
+year = 2025
+game_id = &"haste"
+file = "Haste/46. Sleeping Giants Pt. 1.mp3"
+image_path = ""
+tags = PackedStringArray()
