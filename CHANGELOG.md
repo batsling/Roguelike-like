@@ -80,6 +80,14 @@ For how the project is laid out and how its systems fit together, see
     ("Next Hades song: beat Hades 2 times more, or complete 3 more distinct
     goals there"). It's the game that is close, not the song.
 
+- **Research, sixty-third batch, and every game in the catalog has a ledger
+  entry for every kind.** The last 56 games, nearly all 2026 releases, have
+  no wiki or a stub one and are marked nothing usable. All 921 games are now
+  researched for goals, loot, events, characters, statuses and locations;
+  what is left is depth, not coverage: Wildermyth's 300 unread events,
+  Cataclysm: Dark Days Ahead's item JSON, and the rows marked `?` for the
+  owner.
+
 - **Research, sixty-second batch: 60 games, nothing usable.** Mostly 2025–26
   releases with no wiki or a stub one; Torneko's Mystery Dungeon Classic HD
   is the remake of a game already read.
