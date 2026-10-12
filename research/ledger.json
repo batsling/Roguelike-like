@@ -1207,7 +1207,13 @@
   "statuses": "2026-10-10: 1 row: Fool's Bounty (curse); its other curses change the temple's rules, not a thing you do"
  },
  "Cursed Words": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: none",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: none",
+  "goals": "2026-10-12: nothing usable: its bosses are animals whose pages are rules for word scores",
+  "locations": "2026-10-12: nothing usable: none",
+  "loot": "2026-10-12: 1 row (Hungry Hippo); the rest score words and letters; no evolutions",
+  "statuses": "2026-10-12: nothing usable: none"
  },
  "Cursorblade": {
   "characters": "2026-10-10: no characters",
@@ -3719,7 +3725,13 @@
   "statuses": "2026-10-11: nothing: none"
  },
  "Oaken Tower": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: its items are auto-battler triggers (A Thousand Cuts fires when another sword does); the Mirror Elixir copies an item, which Blueprint and the Division Jar already do",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: its items are auto-battler triggers (A Thousand Cuts fires when another sword does); the Mirror Elixir copies an item, which Blueprint and the Division Jar already do",
+  "goals": "2026-10-12: nothing usable: its items are auto-battler triggers (A Thousand Cuts fires when another sword does); the Mirror Elixir copies an item, which Blueprint and the Division Jar already do",
+  "locations": "2026-10-12: nothing usable: its items are auto-battler triggers (A Thousand Cuts fires when another sword does); the Mirror Elixir copies an item, which Blueprint and the Division Jar already do",
+  "loot": "2026-10-12: nothing usable: its items are auto-battler triggers (A Thousand Cuts fires when another sword does); the Mirror Elixir copies an item, which Blueprint and the Division Jar already do",
+  "statuses": "2026-10-12: nothing usable: its items are auto-battler triggers (A Thousand Cuts fires when another sword does); the Mirror Elixir copies an item, which Blueprint and the Division Jar already do"
  },
  "Oblivion Override": {
   "connections": "before 2026-10-07"
@@ -4595,7 +4607,13 @@
   "statuses": "2026-10-11: nothing: its curses (the Usurer's debt, Hextouch) are damage over time; Debt was already left out for UnderMine and Star of Providence"
  },
  "SULFUR": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: one priest",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: none",
+  "goals": "2026-10-12: 1 row (Terrorbaum); Desert Claus and Cousin are multi-phase gun bosses",
+  "locations": "2026-10-12: nothing usable: biomes",
+  "loot": "2026-10-12: 1 row (Ascetic Oil); the other oils are stat trades (Aimless Oil: crits for no aiming); no evolutions",
+  "statuses": "2026-10-12: nothing usable: none"
  },
  "Sanae no Chou Tokkyuu: The Express Trial": {
   "connections": "before 2026-10-07"
@@ -5490,7 +5508,13 @@
   "statuses": "2026-10-12: nothing usable: a 38-article wiki of building and resource stubs"
  },
  "The Bazaar": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: its 3,000 item pages are enchantment tables built around a real-time cooldown board",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: its 3,000 item pages are enchantment tables built around a real-time cooldown board",
+  "goals": "2026-10-12: nothing usable: its 3,000 item pages are enchantment tables built around a real-time cooldown board",
+  "locations": "2026-10-12: nothing usable: its 3,000 item pages are enchantment tables built around a real-time cooldown board",
+  "loot": "2026-10-12: nothing usable: its 3,000 item pages are enchantment tables built around a real-time cooldown board",
+  "statuses": "2026-10-12: nothing usable: its 3,000 item pages are enchantment tables built around a real-time cooldown board"
  },
  "The Binding of Isaac": {
   "characters": "2026-10-09: researched together with Rebirth (one wiki); rows are filed under Rebirth",
@@ -6117,10 +6141,22 @@
   "connections": "before 2026-10-07"
  },
  "Witch's Apocalyptic Journey": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: its cards, relics and blessings are a deckbuilder's stat lines",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: its cards, relics and blessings are a deckbuilder's stat lines",
+  "goals": "2026-10-12: nothing usable: its cards, relics and blessings are a deckbuilder's stat lines",
+  "locations": "2026-10-12: nothing usable: its cards, relics and blessings are a deckbuilder's stat lines",
+  "loot": "2026-10-12: nothing usable: its cards, relics and blessings are a deckbuilder's stat lines",
+  "statuses": "2026-10-12: nothing usable: its cards, relics and blessings are a deckbuilder's stat lines"
  },
  "Witchfire": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: enemy pages are stat blocks and move lists (the Gravedigger's area denial, the Stag-head's lift); items are notes and weapons",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: enemy pages are stat blocks and move lists (the Gravedigger's area denial, the Stag-head's lift); items are notes and weapons",
+  "goals": "2026-10-12: nothing usable: enemy pages are stat blocks and move lists (the Gravedigger's area denial, the Stag-head's lift); items are notes and weapons",
+  "locations": "2026-10-12: nothing usable: enemy pages are stat blocks and move lists (the Gravedigger's area denial, the Stag-head's lift); items are notes and weapons",
+  "loot": "2026-10-12: nothing usable: enemy pages are stat blocks and move lists (the Gravedigger's area denial, the Stag-head's lift); items are notes and weapons",
+  "statuses": "2026-10-12: nothing usable: enemy pages are stat blocks and move lists (the Gravedigger's area denial, the Stag-head's lift); items are notes and weapons"
  },
  "Wizard of Legend": {
   "characters": "2026-10-12: nothing usable: one wizard",

@@ -80,6 +80,12 @@ For how the project is laid out and how its systems fit together, see
     ("Next Hades song: beat Hades 2 times more, or complete 3 more distinct
     goals there"). It's the game that is close, not the song.
 
+- **Research, forty-ninth batch.** SULFUR gave Ascetic Oil (damage for no
+  gold) and Terrorbaum, the tree boss whose bullet rain is made of your own
+  shots; Cursed Words gave the Hungry Hippo, which eats the shop's food for
+  levels. Witchfire, Oaken Tower, Witch's Apocalyptic Journey and The Bazaar
+  have big wikis of stat blocks and real-time triggers, nothing usable.
+
 - **Research, forty-eighth batch: the first unowned games.** With every
   owned game done, `next` now hands out the unowned ones with the biggest
   wikis first. Elona gave Ether Disease (a status that keeps adding
