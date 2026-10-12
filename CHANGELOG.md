@@ -80,6 +80,12 @@ For how the project is laid out and how its systems fit together, see
     ("Next Hades song: beat Hades 2 times more, or complete 3 more distinct
     goals there"). It's the game that is close, not the song.
 
+- **Research, fortieth batch: twelve games, nothing usable.** Uma Musume's
+  real wiki (umamusume.fandom.com, 1545 articles) is set by hand; its Career
+  conditions would make statuses, but the wiki names them without saying
+  what they do, so none was written. Ultimate ADOM is ADOM's world again;
+  the rest have no wiki or a menu-only one.
+
 - **Research, thirty-ninth batch.** Trials of Fire's wiki is 720 pages,
   but its cards are empty infoboxes; its bosses gave the Amalgam (a Husk for
   every 8 damage it takes). Heroes of Hammerwatch lives on the Hammerwatch

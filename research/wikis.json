@@ -21897,36 +21897,12 @@
   "wiki": null
  },
  "Uma Musume: Pretty Derby": {
-  "also": [
-   "https://umamusume.fandom.com/api.php"
-  ],
-  "api": "https://uma-musume-pretty-derby.fandom.com/api.php",
-  "articles": 22,
-  "blurb": "",
-  "categories": {
-   "characters": [
-    "Character",
-    "Characters"
-   ]
-  },
-  "checked": "2026-10-11",
-  "counts": {
-   "characters": 12,
-   "events": 0,
-   "goals": 0,
-   "locations": 0,
-   "loot": 0,
-   "statuses": 0
-  },
-  "match": "check",
-  "pages": {
-   "characters": [
-    "Characters"
-   ]
-  },
-  "signal": "",
-  "sitename": "Uma Musume: Pretty Derby Wiki",
-  "wiki": "https://uma-musume-pretty-derby.fandom.com"
+  "api": "https://umamusume.fandom.com/api.php",
+  "checked": "2026-10-12",
+  "note": "umamusume.fandom.com (1545 articles) is the main wiki; uma-musume-pretty-derby.fandom.com has 22. Career conditions (Night Owl, Slacker, Skin Breakout, Migraine, Practice Poor) are named on character pages but not described anywhere on it",
+  "set": "by hand",
+  "sitename": "Umamusume Wiki",
+  "wiki": "https://umamusume.fandom.com"
  },
  "UnReal World": {
   "api": "https://unrealworld.fandom.com/api.php",
