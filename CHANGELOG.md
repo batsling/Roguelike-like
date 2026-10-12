@@ -80,6 +80,12 @@ For how the project is laid out and how its systems fit together, see
     ("Next Hades song: beat Hades 2 times more, or complete 3 more distinct
     goals there"). It's the game that is close, not the song.
 
+- **Research, forty-first and forty-second batches: 36 games, nothing
+  usable.** Hack'EM is NetHack variants' content again; PlateUp! has no wiki
+  that answers (plateup.wiki.gg refuses with 401, which is what wiki.gg says
+  for a wiki that doesn't exist; real wiki.gg wikis still answer); the other
+  34 have no wiki under their name on Fandom or wiki.gg, or a stub one.
+
 - **Research, fortieth batch: twelve games, nothing usable.** Uma Musume's
   real wiki (umamusume.fandom.com, 1545 articles) is set by hand; its Career
   conditions would make statuses, but the wiki names them without saying
