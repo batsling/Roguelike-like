@@ -7518,8 +7518,12 @@
   "wiki": "https://elewar-fused-survivors.fandom.com"
  },
  "Elin": {
-  "checked": "2026-10-11",
-  "wiki": null
+  "api": "https://ylvapedia.wiki/api.php",
+  "checked": "2026-10-12",
+  "note": "the Elin/Elona wiki; Elin's pages are in the Elin: namespace (3000), many with /ja and /zh translations beside them",
+  "set": "by hand",
+  "sitename": "Ylvapedia",
+  "wiki": "https://ylvapedia.wiki"
  },
  "Elona": {
   "api": "https://elona.fandom.com/api.php",

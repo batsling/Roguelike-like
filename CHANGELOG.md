@@ -80,6 +80,11 @@ For how the project is laid out and how its systems fit together, see
     ("Next Hades song: beat Hades 2 times more, or complete 3 more distinct
     goals there"). It's the game that is close, not the song.
 
+- **Research, sixty-first batch: 40 games, nothing usable.** Elin's wiki is
+  Ylvapedia's `Elin:` namespace (set by hand), a sandbox's stat pages;
+  PokéRogue and Realm of Ink have no wiki that answers; the rest have none
+  or a stub.
+
 - **Research, sixtieth batch.** Teamfight Tactics lives in the League of
   Legends wiki's `TFT:` namespace and Shovel Knight Dig on the series wiki
   (both set by hand); they gave The Golden Egg (hatches on a timer that
