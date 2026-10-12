@@ -80,6 +80,10 @@ For how the project is laid out and how its systems fit together, see
     ("Next Hades song: beat Hades 2 times more, or complete 3 more distinct
     goals there"). It's the game that is close, not the song.
 
+- **Research, forty-fifth batch: 24 games, nothing usable.** He is Coming's
+  wiki is ten empty pages; Cataclysm: The Last Generation is a fork of a game
+  already read; the rest have no wiki on Fandom or wiki.gg.
+
 - **Research, forty-fourth batch.** Shiren 6 (the Mystery Dungeon Wiki's
   `Shiren 6:` namespace) gave Aggressive Incense, which makes every body on
   the board take more damage, you included, and the Behemoth as a clone on
