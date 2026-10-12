@@ -12406,8 +12406,12 @@
   "wiki": "https://mergemaestro.wiki.gg/"
  },
  "Metal Slug Tactics": {
-  "checked": "2026-10-11",
-  "wiki": null
+  "api": "https://metalslug.fandom.com/api.php",
+  "checked": "2026-10-12",
+  "note": "the series wiki; the game's page is 'Metal Slug Tactics'",
+  "set": "by hand",
+  "sitename": "Metal Slug Wiki",
+  "wiki": "https://metalslug.fandom.com"
  },
  "Metal Unit": {
   "api": "https://metalunit.fandom.com/api.php",

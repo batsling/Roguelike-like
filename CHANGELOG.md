@@ -80,6 +80,12 @@ For how the project is laid out and how its systems fit together, see
     ("Next Hades song: beat Hades 2 times more, or complete 3 more distinct
     goals there"). It's the game that is close, not the song.
 
+- **Research, forty-fourth batch.** Shiren 6 (the Mystery Dungeon Wiki's
+  `Shiren 6:` namespace) gave Aggressive Incense, which makes every body on
+  the board take more damage, you included, and the Behemoth as a clone on
+  Hand of the King (hurt only from behind). Metal Slug Tactics is on the
+  series wiki (set by hand) with names only; 22 more marked nothing usable.
+
 - **Research, forty-third batch: 24 games, nothing usable.** The Last
   Game's "wiki" was a romantic-comedy manga's, set to none by hand; Geometry
   Arena 2's is the first game's; the rest have none or a stub.
