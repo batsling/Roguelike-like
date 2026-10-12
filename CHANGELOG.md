@@ -80,6 +80,16 @@ For how the project is laid out and how its systems fit together, see
     ("Next Hades song: beat Hades 2 times more, or complete 3 more distinct
     goals there"). It's the game that is close, not the song.
 
+- **Research, twenty-eighth batch.** Ziggurat, Fights in Tight Spaces, Void
+  Bastards, Into the Breach, Kingsway, Inkbound, The Ground Gives Way and
+  Fairy Tail: Dungeons: 5 new rows and Into the Breach's 3 old goal rows
+  checked (Psion, Scarab and Spider Leader all hold). New: Into the Breach's
+  Vek Hormones (enemies hurt each other more) and Attraction Pulse (the board's
+  first pull), Void Bastards' Kittybot (a meowing decoy that explodes), The
+  Ground Gives Way's Scroll of the Grave, and Kingsway's Bell of the Dead.
+  Inkbound's wiki pages are empty templates, and the Fairy Tail wiki found is
+  the anime's, so both are marked with nothing.
+
 - **Research, twenty-seventh batch.** Hellcard, Just King, Dungeon Clawler,
   Dungreed, We Need To Go Deeper, For The Warp, Halls of Torment and Elden
   Ring Nightreign: 6 new rows, 2 clones and 4 old goal rows checked. Most of

@@ -1585,7 +1585,13 @@
   "connections": "before 2026-10-07"
  },
  "Fairy Tail: Dungeons": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: the wiki found is the anime's (match check), and nothing on it is about this deckbuilder",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: the wiki found is the anime's (match check), and nothing on it is about this deckbuilder",
+  "goals": "2026-10-12: nothing usable: the wiki found is the anime's (match check), and nothing on it is about this deckbuilder",
+  "locations": "2026-10-12: nothing usable: the wiki found is the anime's (match check), and nothing on it is about this deckbuilder",
+  "loot": "2026-10-12: nothing usable: the wiki found is the anime's (match check), and nothing on it is about this deckbuilder",
+  "statuses": "2026-10-12: nothing usable: the wiki found is the anime's (match check), and nothing on it is about this deckbuilder"
  },
  "Fatal Labyrinth": {
   "characters": "2026-10-11: nothing usable: Trykaar has no traits to build a hero on",
@@ -1603,7 +1609,13 @@
   "connections": "before 2026-10-07"
  },
  "Fights in Tight Spaces": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: one agent",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: no events",
+  "goals": "2026-10-12: nothing usable: two enemy pages (Biker, Thug)",
+  "locations": "2026-10-12: nothing usable: none listed",
+  "loot": "2026-10-12: nothing usable: its 97 cards are moves (push, swap, counter) the board's verbs already cover; no weapons, no evolutions",
+  "statuses": "2026-10-12: nothing usable: none listed"
  },
  "Final Fantasy Fables: Chocobo's Dungeon": {
   "connections": "before 2026-10-07"
@@ -2028,7 +2040,13 @@
   "connections": "before 2026-10-07"
  },
  "Inkbound": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: the wiki's vestige pages are empty templates and nothing else is documented",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: the wiki's vestige pages are empty templates and nothing else is documented",
+  "goals": "2026-10-12: nothing usable: the wiki's vestige pages are empty templates and nothing else is documented",
+  "locations": "2026-10-12: nothing usable: the wiki's vestige pages are empty templates and nothing else is documented",
+  "loot": "2026-10-12: nothing usable: the wiki's vestige pages are empty templates and nothing else is documented",
+  "statuses": "2026-10-12: nothing usable: the wiki's vestige pages are empty templates and nothing else is documented"
  },
  "Inkshade": {
   "connections": "before 2026-10-07"
@@ -2052,8 +2070,13 @@
   "connections": "before 2026-10-07"
  },
  "Into the Breach": {
+  "characters": "2026-10-12: nothing usable: its pilots' abilities are mech stats",
   "connections": "before 2026-10-07",
-  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+  "events": "2026-10-12: nothing usable: no events",
+  "goals": "2026-10-12: nothing new; old rows checked against the wiki (second wiki pass): Psion, Scarab and Spider Leader hold",
+  "locations": "2026-10-12: nothing usable: islands are levels",
+  "loot": "2026-10-12: 2 rows (Vek Hormones, Attraction Pulse); its 98 weapons are mech weapons, the passives repeat stats; no evolutions",
+  "statuses": "2026-10-12: nothing usable: none listed"
  },
  "Iratus: Lord of the Dead": {
   "connections": "before 2026-10-07"
@@ -2116,7 +2139,13 @@
   "connections": "before 2026-10-07"
  },
  "Kingsway": {
-  "connections": "2026-10-07"
+  "characters": "2026-10-12: nothing usable: classes",
+  "connections": "2026-10-07",
+  "events": "2026-10-12: nothing usable: no events",
+  "goals": "2026-10-12: nothing usable: 57 enemy pages with stats",
+  "locations": "2026-10-12: nothing usable: none listed",
+  "loot": "2026-10-12: 1 row (Bell of the Dead); its weapons are stat items, no evolutions",
+  "statuses": "2026-10-12: nothing usable: none listed"
  },
  "Kitty Survivors: Rogues of Catmere": {
   "connections": "before 2026-10-07"
@@ -4023,7 +4052,13 @@
   "connections": "before 2026-10-07"
  },
  "The Ground Gives Way": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: one hero",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: no events",
+  "goals": "2026-10-12: nothing usable: no monster pages",
+  "locations": "2026-10-12: nothing usable: none listed",
+  "loot": "2026-10-12: 1 row (Scroll of the Grave); the Scroll of the Forest is its twin for animals; weapons generic, no evolutions",
+  "statuses": "2026-10-12: nothing usable: none listed"
  },
  "The Guided Fate Paradox": {
   "connections": "before 2026-10-07"
@@ -4291,7 +4326,13 @@
   "connections": "before 2026-10-07"
  },
  "Void Bastards": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: prisoners are interchangeable",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: no events",
+  "goals": "2026-10-12: nothing usable: its enemy pages are voice lines",
+  "locations": "2026-10-12: nothing usable: ships are levels",
+  "loot": "2026-10-12: 1 row (Kittybot); its weapons are crafted upgrades of each other (Stapler to Head Stapler), stat lines; no evolutions to write from",
+  "statuses": "2026-10-12: nothing usable: none listed"
  },
  "Void Scrappers": {
   "connections": "before 2026-10-07"
@@ -4466,7 +4507,13 @@
   "connections": "before 2026-10-07"
  },
  "Ziggurat": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: wizards distinguished by stats",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: no events",
+  "goals": "2026-10-12: nothing usable: its carrots and bone soldiers repeat existing goals",
+  "locations": "2026-10-12: nothing usable: rooms",
+  "loot": "2026-10-12: nothing usable: its wands are each character's starting weapon, and the Lidless Eye spellbook repeats summons; no evolutions",
+  "statuses": "2026-10-12: nothing usable: none listed"
  },
  "Ziggurat 2": {
   "connections": "before 2026-10-07"
