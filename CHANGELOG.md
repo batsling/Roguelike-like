@@ -88,6 +88,19 @@ For how the project is laid out and how its systems fit together, see
   pieces), What Doesn't Kill You (losses pay) and Switching Gears (breaking a
   streak pays). Pandora's Items is a clone on Change Pot.
 
+- **Research: Wildermyth's events and Cataclysm's own data, read in full.**
+  All 292 Wildermyth event pages were read; most are party-only, romance,
+  plot or plain battles, and six more joined The Wolf Price and To Humble
+  Ends: The Starseed Tree (three rungs of risk), The Gambler (you bet what
+  you'd win), Splinter (a save from death that waits), Dreams of Icarus (a
+  one-in-three blessing), The Unstilled Heart (gold for new pieces or health
+  for better ones) and Family Business (an investment settled three games
+  later). Cataclysm: Dark Days Ahead's item, effect and mutation JSON gave
+  three items (Mutagenic Catalyst, Scrambler Grenade, RX12 Jet Injector),
+  two statuses (Unidentified Illness, Hoarder) and three curses (Restless,
+  Brawler, Illiterate). Where a source gives no odds or numbers, the row
+  says which ones are ours.
+
 - **Research, sixty-third batch, and every game in the catalog has a ledger
   entry for every kind.** The last 56 games, nearly all 2026 releases, have
   no wiki or a stub one and are marked nothing usable. All 921 games are now

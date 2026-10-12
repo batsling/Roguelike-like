@@ -994,9 +994,9 @@
   "connections": "before 2026-10-07",
   "events": "2026-10-12: nothing usable: none",
   "goals": "2026-10-12: 7 old rows checked against the game's own monster JSON (raw.githubusercontent.com): five hold, Zombie Hulk and Mi-go marked ?; Chicken Walker not checked (its file moved)",
-  "locations": "2026-10-12: not read",
-  "loot": "2026-10-12: not read: the item JSON is thousands of entries; a pass of its own",
-  "statuses": "2026-10-12: not read"
+  "locations": "2026-10-12: nothing usable: its locations are map specials, not rules",
+  "loot": "2026-10-12: 3 rows from the game's item JSON (Mutagenic Catalyst, Scrambler Grenade, RX12 Jet Injector); most items are generic weapons, armour and food; no evolutions",
+  "statuses": "2026-10-12: 5 rows from effects.json and mutations.json (Unidentified Illness, Hoarder; curses Restless, Brawler, Illiterate)"
  },
  "Cataclysm: The Last Generation": {
   "characters": "2026-10-12: nothing new: a fork of Cataclysm: Dark Days Ahead, whose monster data was read",
@@ -8039,7 +8039,7 @@
  "Wildermyth": {
   "characters": "2026-10-12: nothing usable: heroes are generated",
   "connections": "before 2026-10-07",
-  "events": "2026-10-12: 2 rows (The Wolf Price, To Humble Ends) from the official wiki (set by hand); 300 more events not yet read",
+  "events": "2026-10-12: 8 rows: The Wolf Price and To Humble Ends earlier, now The Starseed Tree, The Gambler, Splinter, Dreams of Icarus, The Unstilled Heart and Family Business; all 292 event pages read, the rest party-only, romance, plot or plain battles",
   "goals": "2026-10-12: nothing usable this pass: its monsters (Gorgons, Morthagi, Thrixl, Drauven) are faction pages; villains are campaign bosses",
   "locations": "2026-10-12: nothing usable: sites are map features",
   "loot": "2026-10-12: nothing usable: weapons and augments are stat lines; no evolutions",
