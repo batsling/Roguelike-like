@@ -96,7 +96,9 @@ research runs over the new games (`docs/research.md` §7 has the detail):
    `research/<kind>.csv` by the rules in `docs/research.md` §6, then
    `python3 tools/research.py mark <kind> <game> --note "..."` for EVERY kind,
    rows or not, so "nothing usable" is on record.
-4. `python3 tools/research.py check && python3 tools/research.py build`, and
+4. `python3 tools/research.py check && python3 tools/check_goal_candidates.py &&
+   python3 tools/research.py build` (the middle one also holds every weapon to a
+   goal no other game's goal repeats), and
    commit the CSVs, the ledger, `research/wikis.json` and `tools/Research.xlsx`
    together.
 5. If the upload includes `tools/tag_edits.json` (tags the owner edited in game

@@ -26,6 +26,18 @@ It checks the file against three things:
                      already live, on Name, File, Goal or slugified id.
   3. data/games/   — every `Game` names a game the catalog actually has, and of
                      the `Type` the row claims.
+  4. WEAPON GOALS  — a weapon's goal is a goal like an enemy's (it charges the
+                     weapon, and becomes a row of the `goals` sheet when the
+                     weapon ships), so every weapon on the sheet and every
+                     weapon candidate in research/loot.csv must HAVE one, and a
+                     candidate's must not repeat a goal from ANOTHER game —
+                     live, enemy candidate or weapon candidate. Two from the
+                     same game (Vorpal Blade and NetHack's Jabberwock, Love and
+                     Hate) are a family and may share one, and so may a weapon
+                     and what it evolves into. A goal that would otherwise go to
+                     waste is told apart with its own game's theme (docs/
+                     research.md §6.1: Ball x Pit's skeletons are defeated
+                     "with a ball").
 
   python3 tools/check_goal_candidates.py           # report
   python3 tools/check_goal_candidates.py --stats   # + the distribution tables
@@ -104,6 +116,88 @@ def catalog_games():
         if name:
             out[name] = GAME_TYPES[typ] if 0 <= typ < len(GAME_TYPES) else "?"
     return out
+
+
+LOOT_CSV = os.path.join(ROOT, "research", "loot.csv")
+# The `goals` sheet's `Owner Sheet` -> the sheet that owner is a row of, and the
+# column its name is in there.
+OWNER_SHEETS = {"enemy": ("enemies", "Name"), "boss": ("bosses", "Name"),
+                "weapon": ("weapons", "Name"), "character": ("characters", "Name"),
+                "curse": ("curses", "Curse"), "status": ("statuses", "Name")}
+
+
+def extra_of(raw: str) -> dict:
+    """A loot row's `Extra`: `Aim=front; Goal=Be a hero` -> {Aim:…, Goal:…}."""
+    out = {}
+    for part in (raw or "").split(";"):
+        if "=" in part:
+            k, v = part.split("=", 1)
+            out[k.strip()] = v.strip()
+    return out
+
+
+def weapon_goal_findings(wb, enemy_rows) -> list:
+    """Check 4 (see the docstring). Returns finding lines."""
+    bad = []
+    # Every goal already live, with whose it is and from which game.
+    games_of = {}
+    for owner, (sheet, col) in OWNER_SHEETS.items():
+        for r in sheet_rows(wb, sheet):
+            games_of[(owner, str(r.get(col) or "").strip())] = str(r.get("Game") or "").strip()
+    pool = collections.defaultdict(list)          # norm goal -> [(who, game, kind)]
+    for r in sheet_rows(wb, "goals"):
+        owner = str(r.get("Owner Sheet") or "").strip()
+        name = str(r.get("Owner") or "").strip()
+        if norm(r.get("Goal")):
+            pool[norm(r["Goal"])].append(("%s %s (live)" % (owner, name),
+                                          games_of.get((owner, name), ""), name))
+    live_weapons = set()
+    for r in sheet_rows(wb, "weapons"):
+        nm = str(r.get("Name") or "").strip()
+        live_weapons.add(nm.lower())
+        if not norm(r.get("Goal")):
+            bad.append("  weapons sheet %-17s has no Goal — a weapon is charged by its goal" % nm[:17])
+    for r in enemy_rows:
+        if norm(r["Goal"]):
+            pool[norm(r["Goal"])].append(("%s candidate %s"
+                                          % ({"bosses": "boss"}.get(r["Sheet"], "enemy"), r["Name"]),
+                                          r["Game"].strip(), r["Name"].strip()))
+    with open(LOOT_CSV, newline="", encoding="utf-8") as fh:
+        loot = list(csv.DictReader(fh))
+    # A weapon and what it evolves into share their goal by design (Lightning
+    # Ring -> Thunder Loop), on the sheet and among the candidates.
+    family = set()
+    for r in sheet_rows(wb, "evolutions"):
+        family.add(frozenset((str(r.get("Requirement 1") or "").strip().lower(),
+                              str(r.get("Name") or "").strip().lower())))
+    for r in loot:
+        if r["Sheet"] == "evolutions":
+            family.add(frozenset((extra_of(r["Extra"]).get("Requirement 1", "").lower(),
+                                  r["Name"].strip().lower())))
+    weapons = []
+    for i, r in enumerate(loot, start=2):
+        if r["Sheet"] != "weapons":
+            continue
+        goal = extra_of(r["Extra"]).get("Goal", "")
+        if not norm(goal):
+            bad.append("  loot.csv line %-4d %-18s has no Goal= in Extra — a weapon is charged "
+                       "by its goal" % (i, r["Name"][:18]))
+            continue
+        if r["Name"].strip().lower() in live_weapons:
+            continue                                  # shipped: it is in the pool already
+        weapons.append((i, r))
+        pool[norm(goal)].append(("weapon candidate %s" % r["Name"], r["Game"].strip(), r["Name"].strip()))
+    for i, r in weapons:
+        key = norm(extra_of(r["Extra"])["Goal"])
+        me = (r["Game"].strip(), r["Name"].strip().lower())
+        clash = [who for who, game, name in pool[key]
+                 if name.lower() != me[1] and game != me[0]
+                 and frozenset((name.lower(), me[1])) not in family]
+        if clash:
+            bad.append("  loot.csv line %-4d %-18s goal %r is also %s — tell it apart with a "
+                       "theme from %s (docs/research.md §6.1)"
+                       % (i, r["Name"][:18], extra_of(r["Extra"])["Goal"], "; ".join(clash), r["Game"]))
+    return bad
 
 
 def pascal(name: str) -> str:
@@ -264,6 +358,8 @@ def main() -> int:
                     flag(i, name, "%s already taken on the %s sheet by another row"
                          % (what, table[key]))
 
+    weapon_bad = weapon_goal_findings(wb, rows)
+    bad.extend(weapon_bad)
     print("research/goals.csv: %d rows, %d games — %d shipped to the sheet, %d pending"
           % (len(rows), len({r["Game"] for r in rows}), shipped, len(rows) - shipped))
     if bad:
@@ -272,8 +368,9 @@ def main() -> int:
     else:
         print("ok — enums, Health/Damage, Size and File all hold; every shipped row "
               "still matches its sheet row cell for cell; every pending row is "
-              "pasteable without a Name / File / Goal / id collision; and every "
-              "Game names a real catalog entry of the right type")
+              "pasteable without a Name / File / Goal / id collision; every "
+              "Game names a real catalog entry of the right type; and every weapon, "
+              "live or candidate, has a goal no other game's goal repeats")
 
     if args.stats:
         print("\nBy sheet: %s" % dict(collections.Counter(r["Sheet"] for r in rows)))

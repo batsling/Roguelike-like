@@ -269,7 +269,27 @@ like any enemy's (always `any time`, because a lost game still charges it). So
 write it to the same test as an enemy goal: something a player does **in
 whatever game they picked**, checkable on the honour system, and the weapon's
 idea in a sentence ("Plant a mine or a trap", "Build a structure that fights
-for you"). `research.py check` refuses a weapon row with no Goal.
+for you"). `research.py check` refuses a weapon row with no Goal, and
+`tools/check_goal_candidates.py` (in CI) refuses a weapon on the sheet or in
+`research/loot.csv` without one, and a weapon candidate whose goal repeats a goal
+from another game.
+
+**When two goals would be the same, tell them apart with the game's own theme —
+but only when one would otherwise go to waste** (the owner, 12 Oct 2026). The
+model is Ball x Pit's skeletons: "Defeat a skeleton" was taken, so theirs are
+defeated "with a ball", because Ball x Pit is a game about balls. So a candidate
+whose goal is already live, or already another candidate's, keeps its idea and
+gains a qualifier from ITS game: Brimstone fires "a laser of blood" (Isaac), One
+Step From Eden's Guillotine beheads "with a spell", Darkest Dungeon 2's Bone Saw
+bleeds an enemy to death "in the dark", Dreamscaper's Umbrella is an improvised
+weapon "in a dream". The live goal, and the first candidate to claim it, keep the
+plain wording. Don't decorate a goal that collides with nothing.
+
+Two goals FROM THE SAME GAME may stay identical: they are a family, not a waste
+(Vorpal Blade beheads NetHack's own Jabberwock; Mewgenics' Bear Traps and Spider
+Kitten both trap an enemy in place; Jupiter Hell's Love and Hate are dual-wielded),
+and so may a weapon and what it evolves into (Lightning Ring, Thunder Loop). The
+check knows both exceptions.
 
 ### 6.2 loot → `research/loot.csv`
 
@@ -457,6 +477,11 @@ neither describes a game's contents anyway.
   this client when they were read, so most records have no `blurb` or
   `signal` yet (and are judged by name alone). `research.py wikis --blurbs`
   reads them again without rediscovering anything; run it in a later session.
+
+- **Pills are not researched, on purpose** (the owner, 12 Oct 2026). The pill
+  system is modelled closely on Isaac's, and few other games have anything
+  shaped like it, so the loot kind does not look for them. `research.py` reads
+  the `pills` sheet only to flag a duplicate name.
 
 - **Tags** stay in the workbook only (no CSV): they are regenerated from Steam
   on every run and the owner's marks are carried by `tag_research.py` itself, as
