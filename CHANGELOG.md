@@ -80,6 +80,30 @@ For how the project is laid out and how its systems fit together, see
     ("Next Hades song: beat Hades 2 times more, or complete 3 more distinct
     goals there"). It's the game that is close, not the song.
 
+- **Research, twenty-fifth batch: the first games the second wiki pass
+  found.** Dungeons of Dredmor, WazHack, Hand of Fate, Hand of Fate 2,
+  Gumballs & Dungeons, Gunfire Reborn, Vampire Survivors and Jupiter Hell:
+  15 new rows, 3 clones and 12 old goal rows checked.
+  - **Old rows:** nine hold (Diggle, Blink Batty, Lord Dredmor, Jack of Dust,
+    King of Scales, The Dealer, Elite Kappa, Abyssal Serpent, Turret).
+    Vampire Survivors' Death is now The Reaper, who comes when the clock runs
+    out (the old goal said level 30, mixing up the 30-minute timer with a
+    level). Jupiter Hell's Former Human is its own Former Grunt. The Amalaric
+    Sniper is marked `?`, since nothing on its page is about aimed shots.
+  - **Weapons:** Love and Hate, Jupiter Hell's twin revolvers, each better
+    beside the other; and Vampire Survivors' Cross with its Heaven Sword
+    evolution, which needs the live Clover, so it can ship the day the Cross
+    does.
+  - **Curses as a resource:** Gunfire Reborn's 3rd Time Unlucky (strong, and
+    every third chest curses you) and Evil-Devouring Sword (Stun for every
+    curse you carry); Hand of Fate 2's Fickle Fate and Gambler's Insurance.
+  - **Events:** Hand of Fate's Devil's Wager and Cursed Gambler, and Hand of
+    Fate 2's goat, which you may pet five times.
+  - **Places:** Dredmor's Lutefisk Statue (tithe food to a fish god) and Anvil
+    of Krong (a weapon enchantment you gamble on), Gumballs & Dungeons'
+    Machine Altar, and WazHack's Gnome Train, a unit that clears its row on a
+    timer.
+
 - **Research, twenty-fourth batch, and most "no wiki" games have one after
   all.** UnReal World, Torneko's Great Adventure, ADOM, Castle of the Winds,
   Zangband, Linley's Dungeon Crawl, Shiren the Wanderer (1995), Shiren GB,
