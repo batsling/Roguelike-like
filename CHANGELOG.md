@@ -80,6 +80,17 @@ For how the project is laid out and how its systems fit together, see
     ("Next Hades song: beat Hades 2 times more, or complete 3 more distinct
     goals there"). It's the game that is close, not the song.
 
+- **Research, thirtieth batch.** Flinthook, Synthetik, The Last Spell,
+  Iratus, Sword of the Necromancer, Heat Signature, Tangledeep, Golden Light,
+  Mana Spark and GoNNER: 4 new rows, 1 clone and 2 old goal rows checked
+  (The Last Spell's Archivist fixed: you stop his ritual; Tangledeep's
+  Champion marked `?`, no such page). New: Tangledeep's Pandora's Box (loot
+  now, tougher enemies for the rest of the run), The Last Spell's Runestone
+  (a unit you break to blast what's near it), Flinthook's Devil's Lodge (a
+  curse for a chest), and Golden Light's Meat Cop, who turns up when you
+  exploit a loophole. These wikis are small, and most kinds are marked with
+  nothing.
+
 - **Research, twenty-ninth batch.** The Flame in the Flood, West of Dead,
   Evolings, Hades II, GearHead, Dungeons of Blood and Dream, Loop Hero, Tower
   of Guns and Ziggurat 2: 5 new rows and 7 old goal rows checked. Loop Hero's
