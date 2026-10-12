@@ -116,6 +116,27 @@ static func neighbour_slot(slot: int, dir: String) -> int:
 		return -1
 	return GameState.pack_slot_at(GameState.pack_cell_of(slot) + step)
 
+# LINK CABLE (docs/loot-passives.md §15): with one owned, every piece in the pack
+# counts as touching every other, in EVERY direction — the directional rules
+# included. So a Whetstone (up and down) reaches every weapon, a food is beside
+# every other food, Stankus' Toothpick counts every food in the pack, and a
+# Blueprint copies every passive (`copied`). Each rule that reads a neighbour asks
+# this first and, when it answers true, stops asking the grid: `adjacent_pieces`,
+# `copied`, `_works_on` here and `WeaponSystem.aura_targets`. `neighbour_slot`
+# itself stays the grid's answer, because the grid is still the grid — a dragged
+# piece lands where it is dropped, and a Blueprint is still USED as the piece it
+# actually faces (`usable_copy`).
+static func linked() -> bool:
+	return GameState.links_loot()
+
+# Every piece in the pack (indices), each once, in slot order.
+static func carried() -> Array:
+	var out: Array = []
+	for index in GameState.loot_layout():
+		if int(index) >= 0 and int(index) < GameState.loot_items.size() and not out.has(int(index)):
+			out.append(int(index))
+	return out
+
 
 # --- what is working right now --------------------------------------------------
 
@@ -142,14 +163,17 @@ static func active() -> Array:
 		var def: Resource = def_for(entry)
 		if def == null:
 			continue
-		var src: Dictionary = resolve(slot, layout)
-		if not src.has("def"):
-			continue
-		out.append({"item": proxy(src["def"]), "def": src["def"],
-			"entry": entry, "source": src["entry"],
-			# is_same, not ==: Dictionaries compare by VALUE, and two Goat Hoofs picked
-			# up the same way are equal rows that are still two pieces.
-			"copy": not is_same(src["entry"], entry), "slot": slot, "copier": def})
+		# A copier under Link Cable runs EVERY passive in the pack, one row each,
+		# and each row is `linked` so its counts and once-a-game claims are kept
+		# apart (`count_key`): two copied foods are two counts, not one.
+		var is_linked: bool = copies(def) != "" and linked()
+		for src in copied(slot, layout):
+			out.append({"item": proxy(src["def"]), "def": src["def"],
+				"entry": entry, "source": src["entry"],
+				# is_same, not ==: Dictionaries compare by VALUE, and two Goat Hoofs picked
+				# up the same way are equal rows that are still two pieces.
+				"copy": not is_same(src["entry"], entry), "slot": slot, "copier": def,
+				"linked": is_linked})
 	# THE BAGS THAT DO SOMETHING (docs/loot-passives.md §6), after the pieces. A
 	# bag is not in a slot — it is slots — so `slot` is -1 and `bag` is its index in
 	# `pack_bags`, which is what the `if_in_bag` gate compares a spent piece's slot
@@ -199,15 +223,67 @@ static func resolve(slot: int, layout: Array = []) -> Dictionary:
 		at = neighbour_slot(at, dir)
 	return {}
 
+# THE PASSIVES THE PIECE IN `slot` RUNS, as [{def, entry, index}] — one for a
+# plain passive (itself) or a copier on the grid (what its chain ends on), none
+# when it runs nothing. UNDER LINK CABLE a copier runs every passive in the pack
+# that is not itself a copier: every piece is to its right, so it is beside every
+# one of them, and another Blueprint adds nothing a Blueprint does not already
+# copy (it would only be the same list again).
+static func copied(slot: int, layout: Array = []) -> Array:
+	var lay: Array = layout if not layout.is_empty() else GameState.loot_layout()
+	if slot < 0 or slot >= lay.size():
+		return []
+	var me: int = int(lay[slot])
+	if me < 0 or me >= GameState.loot_items.size():
+		return []
+	var mine = GameState.loot_items[me]
+	if copies(def_for(mine)) != "" and linked():
+		var out: Array = []
+		for index in carried():
+			if index == me:
+				continue
+			var entry = GameState.loot_items[index]
+			var def: Resource = def_for(entry)
+			if def != null and copies(def) == "":
+				out.append({"def": def, "entry": entry, "index": index})
+		return out
+	var src: Dictionary = resolve(slot, lay)
+	if not src.has("def"):
+		return []
+	var at: int = me
+	if not is_same(src["entry"], mine):
+		for i in range(GameState.loot_items.size()):
+			if is_same(GameState.loot_items[i], src["entry"]):
+				at = i
+				break
+	return [{"def": src["def"], "entry": src["entry"], "index": at}]
+
+# Where an `every=N` count or a once-a-game claim is kept on the firing piece. A
+# row a Link Cable copier runs is one of SEVERAL on the same Blueprint, so its key
+# names the passive it runs; every other row keeps the plain key it always had,
+# which is what keeps an old save's counts where they were.
+static func count_key(base: String, row: Dictionary) -> String:
+	if not bool(row.get("linked", false)) or row.get("def") == null:
+		return base
+	return "%s@%s" % [base, String(row["def"].get("id"))]
+
 # The piece a copier in `slot` is copying, as a display name, or "" for nothing.
-# What the pack's hover card says under a Blueprint.
+# What the pack's hover card says under a Blueprint. Under Link Cable it is every
+# passive it runs, and the piece it faces when that is one you use.
 static func copying_name(slot: int) -> String:
 	var src: Dictionary = resolve(slot)
+	var names: Array = []
+	var lay: Array = GameState.loot_layout()
+	var me: int = int(lay[slot]) if slot >= 0 and slot < lay.size() else -1
+	if me >= 0 and me < GameState.loot_items.size() \
+			and copies(def_for(GameState.loot_items[me])) != "" and linked():
+		for c in copied(slot):
+			names.append(String(c["def"].get("display_name")))
+	elif src.has("def"):
+		names.append(String(src["def"].get("display_name")))
 	if src.has("usable"):
-		return LootSystem.display_name(src["usable"])
-	if src.is_empty():
-		return ""
-	return String(src["def"].get("display_name"))
+		names.append(LootSystem.display_name(src["usable"]))
+	return ", ".join(PackedStringArray(names))
 
 # THE PIECE A COPIER AT `index` WOULD BE USED AS — a copy of the usable piece it
 # points at, stripped of where that one sits — or {} when the piece at `index` is
@@ -334,17 +410,31 @@ static func announce(row: Dictionary, line: String) -> void:
 
 # The food a piece is (its passive's id, a copier's copied one), or &"" for none.
 static func food_id_at(index: int) -> StringName:
+	var ids: Array = food_ids_at(index)
+	return ids[0] if not ids.is_empty() else &""
+
+# Every food a piece is: one for a food or a Blueprint copying one, several for a
+# Blueprint under Link Cable copying several, none for anything else.
+static func food_ids_at(index: int) -> Array:
 	var slot: int = GameState.loot_slot_of(index)
 	if slot < 0:
-		return &""
-	var src: Dictionary = resolve(slot)
-	var def = src.get("def")
-	if def is TrinketData and (def as TrinketData).is_food():
-		return (def as TrinketData).id
-	return &""
+		return []
+	var out: Array = []
+	for c in copied(slot):
+		var def = c["def"]
+		if def is TrinketData and (def as TrinketData).is_food() and not out.has(def.id):
+			out.append((def as TrinketData).id)
+	return out
 
-# The pieces (indices) sharing a side with any cell of the piece at `index`.
+# The pieces (indices) sharing a side with any cell of the piece at `index` — or,
+# under Link Cable, every other piece in the pack.
 static func adjacent_pieces(index: int) -> Array:
+	if linked():
+		var all: Array = carried()
+		if not all.has(index):
+			return []
+		all.erase(index)
+		return all
 	var layout: Array = GameState.loot_layout()
 	var out: Array = []
 	for slot in range(layout.size()):
@@ -360,14 +450,16 @@ static func adjacent_pieces(index: int) -> Array:
 	return out
 
 # The different foods beside the piece at `index`, as ids — each once, its own
-# kind never.
-static func adjacent_foods(index: int) -> Array:
-	var mine: StringName = food_id_at(index)
+# kind never. `mine` is the food asking, when the piece is several (a Blueprint
+# under Link Cable copying a Garlic and a Carrot asks once as each).
+static func adjacent_foods(index: int, mine: StringName = &"") -> Array:
+	if mine == &"":
+		mine = food_id_at(index)
 	var out: Array = []
 	for other in adjacent_pieces(index):
-		var f: StringName = food_id_at(other)
-		if f != &"" and f != mine and not out.has(f):
-			out.append(f)
+		for f in food_ids_at(other):
+			if f != mine and not out.has(f):
+				out.append(f)
 	return out
 
 # THE N A TRIGGER ACTUALLY COUNTS TO, for the active() row `row` firing it: the
@@ -381,7 +473,7 @@ static func every_for(trig: Dictionary, row: Dictionary) -> int:
 	if not (def is TrinketData and (def as TrinketData).is_food()):
 		return n
 	var index: int = GameState.loot_index_at_slot(int(row.get("slot", -1)))
-	return maxi(1, n - adjacent_foods(index).size())
+	return maxi(1, n - adjacent_foods(index, (def as TrinketData).id).size())
 
 # WHERE A PIECE IS TOWARD ITS NEXT ENEMY-DEFEAT TRIGGER, for the number drawn on
 # it: {have, need, foods} — `need` already lowered by the food beside it — or {}
@@ -398,12 +490,13 @@ static func kill_progress(index: int) -> Dictionary:
 				continue
 			var counts: Dictionary = (row["entry"] as Dictionary).get("every_count", {})
 			var need: int = every_for(trig, row)
-			var have: int = int(counts.get("enemy_killed#%d" % i, 0))
+			var have: int = int(counts.get(count_key("enemy_killed#%d" % i, row), 0))
 			# READY: a move beside more food has lowered the target to at or below
 			# what it already holds. It does not pay on the spot — the count only moves
 			# on a charge — so it pays on the NEXT one, and the piece says so.
 			return {"have": mini(have, need), "need": need, "ready": have >= need,
-				"foods": adjacent_foods(index) if need < int(trig["every"]) else []}
+				"foods": adjacent_foods(index, StringName(row["def"].get("id")))
+					if need < int(trig["every"]) else []}
 	return {}
 
 
@@ -457,28 +550,31 @@ static func _works_on(a: int, b: int) -> bool:
 		return false
 	var entry = GameState.loot_items[a]
 	var def: Resource = def_for(entry)
-	# A copier, at the piece it points at.
+	# A copier, at the piece it points at — and under Link Cable at every passive
+	# it copies.
 	var dir: String = facing(entry, def)
 	if dir != "":
 		for s in GameState.loot_slots_of(a):
 			var n: int = neighbour_slot(s, dir)
 			if n >= 0 and GameState.loot_index_at_slot(n) == b:
 				return true
-	# What the piece RUNS (its own passive, or the one a copier runs).
-	var src: Dictionary = resolve(slot)
-	var run = src.get("def")
-	for aura_key in ["weapon_stun", "weapon_retrigger"]:
-		if run != null and run.get(aura_key) is Dictionary \
-				and not (run.get(aura_key) as Dictionary).is_empty():
-			if WeaponSystem.aura_targets(a, run.get(aura_key),
-					int((entry as Dictionary).get("rot", 0))).has(b):
-				return true
-	var fa: StringName = food_id_at(a)
-	if fa != &"" and adjacent_pieces(b).has(a):
-		# A food lowers a DIFFERENT food's target, and feeds a weapon that counts food.
-		var fb: StringName = food_id_at(b)
-		if fb != &"" and fb != fa:
+		if linked() and copied(slot).any(func(c): return int(c["index"]) == b):
 			return true
+	# What the piece RUNS (its own passive, or the ones a copier runs).
+	for c in copied(slot):
+		var run = c["def"]
+		for aura_key in ["weapon_stun", "weapon_retrigger"]:
+			if run.get(aura_key) is Dictionary \
+					and not (run.get(aura_key) as Dictionary).is_empty():
+				if WeaponSystem.aura_targets(a, run.get(aura_key),
+						int((entry as Dictionary).get("rot", 0))).has(b):
+					return true
+	var fa: Array = food_ids_at(a)
+	if not fa.is_empty() and adjacent_pieces(b).has(a):
+		# A food lowers a DIFFERENT food's target, and feeds a weapon that counts food.
+		for fb in food_ids_at(b):
+			if fa.any(func(f): return f != fb):
+				return true
 		var w: WeaponData = WeaponSystem.def(GameState.loot_items[b])
 		if w != null and not w.stun_per_food.is_empty():
 			return true

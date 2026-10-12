@@ -11,5 +11,4 @@ album = "Wildfrost (Original Game Soundtrack)"
 year = 2023
 game_id = &"wildfrost"
 file = "Wildfrost/12. Sunbringer.mp3"
-image_path = ""
 tags = PackedStringArray()

@@ -1009,7 +1009,8 @@ func _loot_gates_pass(trig: Dictionary, ctx: Dictionary, loot: Dictionary) -> bo
 func _count_every(item: ItemData, loot: Dictionary, trig: Dictionary, n: int = 0) -> bool:
 	if n <= 0:
 		n = int(trig["every"])
-	var key: String = "%s#%d" % [String(trig.get("on", "")), item.triggers.find(trig)]
+	var key: String = LootPassives.count_key(
+		"%s#%d" % [String(trig.get("on", "")), item.triggers.find(trig)], loot)
 	var holder: Dictionary = loot.get("entry", {}) if not loot.is_empty() else {}
 	var counts: Dictionary = holder.get("every_count", {}) if not loot.is_empty() \
 		else (item.get_meta("every_count") if item.has_meta("every_count") else {})
@@ -1035,9 +1036,10 @@ func _claim_once_per_game(item: ItemData, loot: Dictionary, hook: String) -> boo
 	if not loot.is_empty():
 		var entry: Dictionary = loot["entry"]
 		var once: Dictionary = entry.get("once_game", {})
-		if int(once.get(hook, -1)) == games_played:
+		var claim: String = LootPassives.count_key(hook, loot)
+		if int(once.get(claim, -1)) == games_played:
 			return false
-		once[hook] = games_played
+		once[claim] = games_played
 		entry["once_game"] = once
 		return true
 	var key: String = "once_game_%s" % hook
@@ -3041,6 +3043,12 @@ func enemy_gold_bonus() -> int:
 func sweeps_shops() -> bool:
 	return _any_item_flag("shop_sweep")
 
+# Link Cable: whether every piece in the pack counts as touching every other
+# (docs/loot-passives.md §15). One is enough — a piece cannot be more beside
+# another than beside it.
+func links_loot() -> bool:
+	return _any_item_flag("link_loot")
+
 # There's Options: extra chest POINTS on a boss's drop (§8.2). SUMS the copies,
 # like enemy_gold_bonus — a second one is a second rung, not a second doubling.
 # 0 when nothing owned changes it, which leaves a boss dropping the Small chest
@@ -3397,8 +3405,8 @@ func charge_thing_room(thing) -> int:
 		var row: Dictionary = _passive_row_for(thing)
 		var ct: Dictionary = _charges_trigger(row)
 		if not ct.is_empty():
-			var key: String = "%s#%d" % [String(ct["trig"].get("on", "")),
-				(row["item"] as ItemData).triggers.find(ct["trig"])]
+			var key: String = LootPassives.count_key("%s#%d" % [String(ct["trig"].get("on", "")),
+				(row["item"] as ItemData).triggers.find(ct["trig"])], row)
 			var have: int = int((thing.get("every_count", {}) as Dictionary).get(key, 0))
 			return maxi(1, int(ct["n"]) - have)
 	return 0

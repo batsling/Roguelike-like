@@ -11,5 +11,4 @@ album = "Haste (Original Soundtrack)"
 year = 2025
 game_id = &"haste"
 file = "Haste/49. Agency Caravan (Battle of the Desert).mp3"
-image_path = ""
 tags = PackedStringArray()

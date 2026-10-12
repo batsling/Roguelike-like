@@ -11,5 +11,4 @@ album = "Dicey Dungeons: Reunion Original Soundtrack"
 year = 2022
 game_id = &"dicey_dungeons"
 file = "Dicey Dungeons/36 It Is What It Is.mp3"
-image_path = ""
 tags = PackedStringArray()

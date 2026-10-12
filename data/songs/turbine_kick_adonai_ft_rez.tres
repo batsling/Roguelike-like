@@ -11,5 +11,4 @@ album = "Brotato Soundtrack"
 year = 2024
 game_id = &"brotato"
 file = "Brotato/1-03 - Turbine Kick.mp3"
-image_path = ""
 tags = PackedStringArray()

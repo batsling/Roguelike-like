@@ -11,5 +11,4 @@ album = "Downwell"
 year = 2015
 game_id = &"downwell"
 file = "Downwell/08 - Lustre.mp3"
-image_path = ""
 tags = PackedStringArray()

@@ -3,7 +3,7 @@
 Generate Godot SongData .tres from the `radio` sheet of tools/Roguelikes.xlsx
 into data/songs/ — the songs of ROGUELIKE RADIO (docs/roguelike-radio.md).
 
-  radio: Name | Artist | Album | Year | Game | File | Image | Tags
+  radio: Name | Artist | Album | Year | Game | File | Tags
 
 The audio is the player's own and is never in the repo; `File` only names it.
 `Game` may be a game's display name or its id, and must be a game in the
@@ -12,7 +12,9 @@ still locked (Radio.earned has the rule). A row with no `Game` is never drawn.
 The sheet once had `Unlock` and `Count` columns, one rule per song; they were
 taken off in October 2026 (tools/_radio_random_unlocks_setup.py), and a sheet
 that still has them is refused rather than silently ignored, and so is one
-missing any of the eight columns. `Image` is a base name under images2.0/radio/.
+missing any of the seven columns. It also once had an `Image` column for album
+art; the owner took it off on 12 Oct 2026, because a song's picture is its
+game's cover and nothing else, so that is what the radio shows.
 A `menu` tag marks the game's menu song: the first song a game gives is its
 menu song, if it has one (docs/roguelike-radio.md §3).
 
@@ -39,18 +41,20 @@ PROJECT_ROOT = dsl.PROJECT_ROOT
 XLSX_PATH = dsl.XLSX_PATH
 OUT_DIR = os.path.join(PROJECT_ROOT, "data", "songs")
 GAMES_DIR = os.path.join(PROJECT_ROOT, "data", "games")
-IMG_DIR = os.path.join(PROJECT_ROOT, "images2.0", "radio")
-IMG_RES_PREFIX = "res://images2.0/radio/"
 SHEET = "radio"
 
-# The columns songs no longer have (see the docstring).
-RETIRED = ("Unlock", "Count")
+# The columns songs no longer have, and what to do about one still there (see
+# the docstring).
+RETIRED = {
+    "Unlock": "songs are drawn at random now; run tools/_radio_random_unlocks_setup.py",
+    "Count": "songs are drawn at random now; run tools/_radio_random_unlocks_setup.py",
+    "Image": "every song shows its game's cover; delete the column",
+}
 # Every column the generator reads. A missing one is refused by name: read as
 # blank on every row instead, a renamed `Tags` would quietly take every song off
 # its stations and out of the `menu` rule (docs/roguelike-radio.md §3).
-HEADERS = ("Name", "Artist", "Album", "Year", "Game", "File", "Image", "Tags")
+HEADERS = ("Name", "Artist", "Album", "Year", "Game", "File", "Tags")
 AUDIO = (".mp3", ".ogg", ".wav")
-IMAGE_EXTS = (".png", ".jpg", ".jpeg", ".webp")
 
 
 def _clean(v) -> str:
@@ -84,18 +88,6 @@ def _int(raw, what: str, name: str) -> int:
         return int(float(s))
     except ValueError:
         raise ValueError("radio %s: %s %r is not a number" % (name, what, raw))
-
-
-def _image(raw) -> str:
-    base = _clean(raw)
-    if not base:
-        return ""
-    if os.path.splitext(base)[1].lower() in IMAGE_EXTS:
-        return IMG_RES_PREFIX + base
-    for ext in IMAGE_EXTS:
-        if os.path.exists(os.path.join(IMG_DIR, base + ext)):
-            return IMG_RES_PREFIX + base + ext
-    return IMG_RES_PREFIX + base + ".png"
 
 
 def song_tres(row, games: dict) -> tuple:
@@ -140,7 +132,6 @@ def song_tres(row, games: dict) -> tuple:
         "year = %d" % _int(row.get("Year"), "Year", name),
         'game_id = &"%s"' % game_id,
         'file = "%s"' % dsl.gd_str(file),
-        'image_path = "%s"' % dsl.gd_str(_image(row.get("Image"))),
         "tags = PackedStringArray(%s)" % ", ".join('"%s"' % dsl.gd_str(t) for t in tags),
     ]
     return sid, "\n".join(lines) + "\n"
@@ -158,9 +149,8 @@ def main():
     header = [str(c.value).strip() if c.value is not None else "" for c in wb[SHEET][1]]
     stale = [h for h in RETIRED if h in header]
     if stale:
-        raise SystemExit("radio: the sheet still has %s — songs are drawn at random "
-                         "now; run tools/_radio_random_unlocks_setup.py"
-                         % " and ".join(stale))
+        raise SystemExit("radio: the sheet still has %s — %s"
+                         % (" and ".join(stale), RETIRED[stale[0]]))
     missing = [h for h in HEADERS if h not in header]
     if missing:
         raise SystemExit("radio: the sheet is missing %s (the columns are %s)"
@@ -183,12 +173,9 @@ def main():
     for stale in glob.glob(os.path.join(OUT_DIR, "*.tres")):
         if os.path.splitext(os.path.basename(stale))[0] not in songs:
             os.remove(stale)
-    for sid, (row, text) in songs.items():
+    for sid, (_row, text) in songs.items():
         with open(os.path.join(OUT_DIR, sid + ".tres"), "w", encoding="utf-8") as f:
             f.write(text)
-        img = _image(row.get("Image"))
-        if img and not os.path.exists(os.path.join(PROJECT_ROOT, img[len("res://"):])):
-            print("  ! %s: no art at %s" % (sid, img))
     print("Wrote %d songs to %s" % (len(songs), OUT_DIR))
     for sid in songs:
         print("  -", sid)

@@ -11,5 +11,4 @@ album = "Haste (Original Soundtrack)"
 year = 2025
 game_id = &"haste"
 file = "Haste/02. Through The Glades Pt. 1.mp3"
-image_path = ""
 tags = PackedStringArray()

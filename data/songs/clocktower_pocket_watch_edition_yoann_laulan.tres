@@ -11,5 +11,4 @@ album = "The Bad Seeds (Dead Cells Original Soundtrack)"
 year = 2020
 game_id = &"dead_cells"
 file = "Dead Cells/06. ClockTower Pocket Watch Edition.mp3"
-image_path = ""
 tags = PackedStringArray()

@@ -11,5 +11,4 @@ album = "Nuclear Throne OST"
 year = 2015
 game_id = &"nuclear_throne"
 file = "Nuclear Throne/25. Ode.mp3"
-image_path = ""
 tags = PackedStringArray()

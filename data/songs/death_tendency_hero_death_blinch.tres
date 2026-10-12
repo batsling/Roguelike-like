@@ -11,5 +11,4 @@ album = "Loop Hero (Official Soundtrack)"
 year = 2023
 game_id = &"loop_hero"
 file = "Loop Hero/05. Death Tendency (Hero Death).mp3"
-image_path = ""
 tags = PackedStringArray()

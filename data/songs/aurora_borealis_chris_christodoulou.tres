@@ -11,5 +11,4 @@ album = "Risk of Rain"
 year = 2013
 game_id = &"risk_of_rain"
 file = "Risk of Rain/11. Aurora Borealis.mp3"
-image_path = ""
 tags = PackedStringArray()

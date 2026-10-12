@@ -610,7 +610,7 @@ func test_transient_high_tier_damage() -> void:
 # --- Scrolls2.0 -----------------------------------------------------------
 
 func test_scrolls2_load() -> void:
-	assert_eq(Data.all_scrolls2().size(), 8, "8 scrolls2.0 rows -> 8 .tres")
+	assert_eq(Data.all_scrolls2().size(), 9, "9 scrolls2.0 rows -> 9 .tres")
 
 func test_identify_scroll_effect_and_preference() -> void:
 	var s: ScrollData = Data.get_scroll2(&"scroll_of_identify")

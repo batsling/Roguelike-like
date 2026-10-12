@@ -42,6 +42,7 @@ Effect token DSL (semicolons separate clauses; most scrolls are one):
   remove_curse choose|random|all N   -> {op:remove_curse, mode, count:N}
   stun_enemies choose|random|all N   -> {op:stun_enemies, mode, count:N}
   teleport same|closer|farther N     -> {op:teleport, dir, spread:N}
+  enchant_weapon random N            -> {op:enchant_weapon, mode, amount:N}
 
 Art: File -> res://images2.0/scrolls/<File>.png (identified art). Unidentified
 scrolls — and identified scrolls with missing art — fall back to the shared
@@ -209,6 +210,14 @@ def parse_clause(s):
     if verb == "teleport":
         direction = rest[0].lower() if rest and not rest[0].isdigit() else "same"
         return [{"op": "teleport", "dir": direction, "spread": nums[0] if nums else 1}]
+    if verb == "enchant_weapon":
+        # `enchant_weapon random N` — Enchant Weapon: a weapon in the pack gains
+        # +N Stun for the rest of the run (docs/loot-passives.md §12). `random` is
+        # the only mode authored; the word is there so `choose` can join it.
+        mode = rest[0].lower() if rest and not rest[0].isdigit() else "random"
+        if mode != "random":
+            raise ValueError("scroll effect DSL: enchant_weapon only knows `random` in %r" % s)
+        return [{"op": "enchant_weapon", "mode": mode, "amount": nums[0] if nums else 1}]
 
     raise ValueError("scroll effect DSL: unknown verb %r in %r" % (verb, s))
 

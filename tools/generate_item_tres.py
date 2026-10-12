@@ -37,7 +37,7 @@ Effect DSL (one item = `clause; clause; ...`, paren/bracket aware):
                   grid_grow, grid_length, front_column_slow [N], hide_spawns,
                   spawn_status <status> N, loot_multiplier: N, heal_multiplier: N,
                   gold_per_enemy: N, shop_sweep, boss_chest_bonus: N,
-                  base_chest_bonus: N,
+                  base_chest_bonus: N, link_loot,
                   pills_positive, echo_loot N,
                   reroll_enemies, destroy_on_damage.
 
@@ -1121,6 +1121,12 @@ def parse_item(row):
             # Lord's Parasol: walking into a shop takes the whole shelf.
             fields["shop_sweep"] = True
             last_trigger = None
+        elif kl0 == "link_loot":
+            # Link Cable: every piece in the pack counts as touching every other,
+            # in every direction (docs/loot-passives.md §15). Read by
+            # LootPassives.linked through GameState.links_loot.
+            fields["link_loot"] = True
+            last_trigger = None
         elif kl0 == "boss_chest_bonus":
             # There's Options: chest POINTS added to a BOSS's drop. One item off a
             # body is a Small chest (1 of 1); +1 point buys the next rung of the
@@ -1468,6 +1474,7 @@ def item_tres(row):
         ("heal_multiplier", lambda v: str(v)),
         ("gold_per_enemy", lambda v: str(v)),
         ("shop_sweep", lambda v: "true"),
+        ("link_loot", lambda v: "true"),
         ("boss_chest_bonus", lambda v: str(v)),
         ("base_chest_bonus", lambda v: str(v)),
         ("status_bonuses", lambda v: gd_value(v)),

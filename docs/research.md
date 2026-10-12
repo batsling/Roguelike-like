@@ -243,7 +243,7 @@ written from memory of the game, with no page to point at, is allowed but is
 | kind | look for | where it plugs in |
 |---|---|---|
 | goals | creatures whose behaviour translates into something a player does in any game ("make an enemy flee"); bodies for thin enemy tags; Traditional and Deckbuilder bodies (the thinnest types) | enemy tags, abilities, the goal types |
-| loot | items that join a family (coins, food, whetstone/weapon, bombs, tarot); wands, scrolls and potions from roguelikes other than Rogue and NetHack; bags; anything that grants or spends **keys** | the pack, its neighbours and charges; the identify gamble |
+| loot | items that join a family (coins, food, whetstone/weapon, bombs, tarot); wands, scrolls and potions from roguelikes other than Rogue and NetHack; bags; anything that grants or spends **keys**; **a card game's own cards** (§6.2) | the pack, its neighbours and charges; the identify gamble |
 | events | the game's own decision screens: shrines, altars, gambles, strangers, offers with a price. Not from Slay the Spire unless exceptional (13 of 16 live events are) | `add_goal`, chests, curses, gold, loot |
 | characters | its starting classes or heroes: a stat spread and a level-up goal that say who they are | the verbs and stats |
 | statuses | effects that rewrite a goal (Terrified, Lovesick) or change a body on the board; conditions to avoid, for curses | statuses' goal modes, curses' `spawn_enemy` |
@@ -262,6 +262,15 @@ over three); Health `1`; Damage `1/2/3/4` by tier (`3/5/7/9` for bosses);
 time`) or `game beaten`; `Count` is blank or 2+, enemies only. Every goal is
 authored in the `goals` sheet once a row is pasted (CLAUDE.md).
 
+**Weapons have goals too** (the owner's reminder, 12 Oct 2026). A weapon
+candidate's `Goal=` in `Extra` is not flavour: it is what charges the weapon,
+once per game, and when the row is pasted it becomes a row of the `goals` sheet
+like any enemy's (always `any time`, because a lost game still charges it). So
+write it to the same test as an enemy goal: something a player does **in
+whatever game they picked**, checkable on the honour system, and the weapon's
+idea in a sentence ("Plant a mine or a trap", "Build a structure that fights
+for you"). `research.py check` refuses a weapon row with no Goal.
+
 ### 6.2 loot → `research/loot.csv`
 
 Pick the sheet by how the thing is USED in its game:
@@ -270,7 +279,7 @@ Pick the sheet by how the thing is USED in its game:
 |---|---|---|
 | an always-on pickup, a relic, a passive item | `items` (relics) | Rarity is the sheet's `Rating`: Common / Uncommon / Rare, or Boss / Event / Starter. Type: Passive, Triggered, Pickup, `Charged, N`, `Usable, N` |
 | small, positional, coin-like, or caring about its neighbours | `trinkets` | Type Passive or Charged; Size `1x1` usually ([loot-passives.md](loot-passives.md)) |
-| played once, or a held card | `cards` | Type Usable or Passive |
+| played once, or a held card | `cards` | Type Usable or Passive. **A card game's cards are card loot** (the owner, 12 Oct 2026): a deckbuilder's or card battler's own cards (Slay the Spire, Balatro's jokers and tarots, Inscryption, Monster Train, Ratropolis…) are candidates for this sheet as they stand — a card you play once is Usable, a card that sits and works is Passive. Look for them in every card game researched from now on |
 | a weapon you swing or fire | `weapons` | aimed like a thrown potion, charged by its own goal: `Extra` gives Aim, Area, Type, Goal, Charge. Description is the swing (`Stun N`, a push) and any passive |
 | a weapon turning into a better one | `evolutions` | Name is what it becomes; `Extra` gives Requirement 1 (the weapon that turns: a live one or a weapon candidate), Requirement 2 (`Any [N] Item(s) or Trinket(s) with "tag"`, or one named piece), Outcome (`Consume All` / `Consume None`). Description is what the new weapon does. If the evolved weapon needs its own stats, give it a `weapons` row too |
 | something that holds other things | `bags` | Size is its shape |

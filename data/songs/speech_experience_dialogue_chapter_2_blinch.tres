@@ -11,5 +11,4 @@ album = "Loop Hero (Official Soundtrack)"
 year = 2023
 game_id = &"loop_hero"
 file = "Loop Hero/23. Speech Experience (Dialogue Chapter 2).mp3"
-image_path = ""
 tags = PackedStringArray()

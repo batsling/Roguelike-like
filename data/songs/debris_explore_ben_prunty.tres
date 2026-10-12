@@ -11,5 +11,4 @@ album = "Ftl: Faster Than Light - Original Soundtrack"
 year = 2013
 game_id = &"ftl"
 file = "FTL/06 - Debris (Explore).mp3"
-image_path = ""
 tags = PackedStringArray()

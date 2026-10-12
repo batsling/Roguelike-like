@@ -46,17 +46,21 @@ row (No Escape, Hades); delete it freely.
 | `Year` | optional |
 | `Game` | the game it belongs to **and is drawn at**: its name as the `games` sheet spells it, or its id. Must be in the catalog. A row with no `Game` is never drawn |
 | `File` | the exact file name in the music folder: `.mp3`, `.ogg` or `.wav` |
-| `Image` | album art base name under `images2.0/radio/` (blank = the game's cover) |
 | `Tags` | comma-separated, lower-cased; every tag is a station. **`menu`** marks the game's menu song, the first song it gives (§3) |
 
 The generator **rewrites** `data/songs/`: a row deleted from the sheet takes its
 `.tres` with it. It refuses an unknown game, an audio extension it can't play,
 two rows that come out as the same id (`<name> <artist>`, slugified), a sheet
-missing any of the eight columns above (by name: a renamed `Tags` would
+missing any of the seven columns above (by name: a renamed `Tags` would
 otherwise read as blank, and every menu song would lose its tag), and a sheet
-that still has the retired `Unlock` / `Count` columns
+that still has a retired column: `Unlock` / `Count`
 (`tools/_radio_random_unlocks_setup.py` took them off; there is no per-song
-rule left for them to hold).
+rule left for them to hold) or `Image`.
+
+**A song's picture is its game's cover**, always. The sheet had an `Image`
+column for album art; the owner deleted it on 12 Oct 2026 (it was blank on every
+row anyway, since album art isn't worth collecting), and `SongData.image_path`
+went with it.
 
 **There is no "blank keeps it locked" any more.** A row used to stay locked
 until its `Unlock` was filled in, so a song still being authored could not
@@ -88,7 +92,6 @@ first):
 | `Game` | **a folder on the file's path that names a game** (innermost first), else the album; soundtrack words don't count, so `Slay the Spire OST/` and `Hades (Original Soundtrack)/` both match. Exact names only, never a guess |
 | `File` | the relative path, `Hades/01 No Escape.mp3`. **A `File` may name a subfolder**, so the folder-of-folders can sit in the music folder as it is |
 | `Tags` | `menu` when the title says menu, title screen/theme or main theme (§3); else blank |
-| `Image` | always blank, so every song shows **its game's cover** (the owner's call: album art isn't worth collecting). The file's own embedded art is never read |
 
 - **It only adds.** A file already on a row is skipped, so the export can be
   re-run whenever music is added. A file whose game it can't tell is added with
@@ -265,8 +268,9 @@ corner**. It has:
 - Back / Pause / Skip and a volume slider;
 - a ★ beside the title of what's playing, to star or un-star it;
 - shuffle, the station (★ Favourites among them), and where it plays from;
-- the music folder, with Open folder, Rescan (for files added while the game
-  is running) and Export song list (§2a);
+- the music folder, with **Change…** (the OS's folder picker), **Default** (shown
+  once it has been changed), Open folder, Rescan (for files added while the
+  game is running) and Export song list (§2a);
 - every unlocked song, with a ★ to star it and a ▶ to play it now; then **one
   row per game for its locked songs** ("Balatro — 4 songs locked"), the game
   nearest its next song first, saying what that game still needs ("Next
@@ -280,12 +284,21 @@ is luck, so the game is what is worth reading), and the list is only rebuilt
 when what it shows moved: a new track rebuilds just the two rows the "playing"
 mark moved between.
 
-The speakers, volume, shuffle, station and pause live in `user://radio.cfg`.
-They belong to the PC, like the window mode does, not to a profile.
+The speakers, volume, shuffle, station, pause and music folder live in
+`user://radio.cfg`. They belong to the PC, like the window mode does, not to a
+profile.
+
+**The music folder is the player's to pick** (`Radio.set_folder`). Until they
+do, it is **`C:\Users\Owner\Documents\Roguelike Roguelike\radio`**
+(`Radio.DEFAULT_FOLDER`, the owner's own, 12 Oct 2026) on Windows, and
+`user://radio` anywhere else, where a `C:` path means nothing. Only a folder the
+player chose is written to the config, so the default stays a default. Changing
+it stops the song playing (its file was in the old folder) and rescans.
 
 ## 7. Setting it up (for the streamer)
 
-1. Put the music in the folder the Radio screen shows (`Open folder`).
+1. Put the music in the folder the Radio screen shows (`Open folder`), or point
+   the screen at the folder it is already in (`Change…`).
    Subfolders are fine, and a folder named after its game is how that game is
    found.
 2. Press **Export song list** and upload `tools/radio_import.json`; then

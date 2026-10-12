@@ -11,5 +11,4 @@ album = "Vampire Survivors The Original Soundtrack"
 year = 2022
 game_id = &"vampire_survivors"
 file = "Vampire Survivors/2-18 - Blast Processed Treasure C.mp3"
-image_path = ""
 tags = PackedStringArray()

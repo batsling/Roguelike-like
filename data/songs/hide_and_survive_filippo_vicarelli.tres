@@ -11,5 +11,4 @@ album = "Vampire Survivors The Original Soundtrack"
 year = 2023
 game_id = &"vampire_survivors"
 file = "Vampire Survivors/6-02 - Hide and Survive.mp3"
-image_path = ""
 tags = PackedStringArray()

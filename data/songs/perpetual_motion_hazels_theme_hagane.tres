@@ -11,5 +11,4 @@ album = "One Step From Eden Original Soundtrack"
 year = 2020
 game_id = &"one_step_from_eden"
 file = "One Step From Eden/1-14 Perpetual Motion - Hazel's Theme.mp3"
-image_path = ""
 tags = PackedStringArray()

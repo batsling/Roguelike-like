@@ -11,5 +11,4 @@ album = "Dead Cells - Soundtrack Part 1"
 year = 2017
 game_id = &"dead_cells"
 file = "Dead Cells/21. Formerly Know As Assassin.mp3"
-image_path = ""
 tags = PackedStringArray()

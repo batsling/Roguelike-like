@@ -11,5 +11,4 @@ album = "MEGABONK OST"
 year = 2025
 game_id = &"megabonk"
 file = "Megabonk/13. She Mega on my bonk (all night long).mp3"
-image_path = ""
 tags = PackedStringArray()

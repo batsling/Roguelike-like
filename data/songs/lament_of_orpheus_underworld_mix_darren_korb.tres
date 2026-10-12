@@ -11,5 +11,4 @@ album = "Hades: Original Soundtrack"
 year = 2020
 game_id = &"hades"
 file = "Hades/23. Lament of Orpheus (Underworld Mix).mp3"
-image_path = ""
 tags = PackedStringArray()

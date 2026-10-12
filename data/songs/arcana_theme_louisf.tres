@@ -11,5 +11,4 @@ album = "Balatro (Original Game Soundtrack)"
 year = 2023
 game_id = &"balatro"
 file = "Balatro/03. Arcana Theme.mp3"
-image_path = ""
 tags = PackedStringArray()

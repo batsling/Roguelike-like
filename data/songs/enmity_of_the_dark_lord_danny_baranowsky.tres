@@ -11,5 +11,4 @@ album = "The Binding of Isaac"
 year = 2012
 game_id = &"the_binding_of_isaac"
 file = "The Binding of Isaac/30 Enmity of the Dark Lord.mp3"
-image_path = ""
 tags = PackedStringArray()

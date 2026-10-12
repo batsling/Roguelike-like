@@ -1004,3 +1004,59 @@ func test_a_song_in_a_subfolder_plays_from_it() -> void:
 	DirAccess.make_dir_recursive_absolute(FOLDER.path_join("Hades"))
 	_write_wav(s.file, 10.0)
 	assert_true(Radio.has_file(s))
+
+# --- the music folder is the player's to pick ------------------------------------
+
+func test_the_default_folder_is_the_owners_on_windows_and_the_user_folder_elsewhere() -> void:
+	assert_eq(Radio.DEFAULT_FOLDER, "C:/Users/Owner/Documents/Roguelike Roguelike/radio")
+	if OS.get_name() == "Windows":
+		assert_eq(Radio.default_folder(), Radio.DEFAULT_FOLDER)
+	else:
+		assert_eq(Radio.default_folder(), Radio.FALLBACK_FOLDER,
+			"a C:/ path means nothing off Windows")
+
+func test_a_chosen_folder_is_saved_and_read_back() -> void:
+	var other: String = FOLDER + "_other"
+	DirAccess.make_dir_recursive_absolute(other)
+	Radio.set_folder(other)
+	assert_eq(Radio.folder, other)
+	assert_false(Radio.is_default_folder())
+	Radio.folder = FOLDER
+	Radio.load_config()
+	assert_eq(Radio.folder, other, "the choice is in the config")
+	_wipe_folder(other)
+	DirAccess.remove_absolute(other)
+
+func test_backslashes_and_a_trailing_slash_are_tidied() -> void:
+	Radio.set_folder("C:\\Music\\radio\\")
+	assert_eq(Radio.folder, "C:/Music/radio")
+
+func test_a_blank_folder_goes_back_to_the_default_and_is_not_saved() -> void:
+	Radio.set_folder(FOLDER + "_other")
+	Radio.set_folder("")
+	assert_true(Radio.is_default_folder())
+	var cfg := ConfigFile.new()
+	cfg.load(CONFIG)
+	assert_false(cfg.has_section_key("radio", "folder"),
+		"the default stays a default, so a build that moves it moves the player too")
+
+func test_changing_folder_finds_the_songs_in_the_new_one() -> void:
+	var s: SongData = _song("moved", [], false)
+	assert_false(Radio.has_file(s), "not in the first folder")
+	var other: String = FOLDER + "_other"
+	DirAccess.make_dir_recursive_absolute(other)
+	var f := FileAccess.open("%s/moved.wav" % other, FileAccess.WRITE)
+	f.store_string("x")
+	f.close()
+	var gen: int = Radio.library_generation
+	Radio.set_folder(other)
+	assert_true(Radio.has_file(s), "found in the new one")
+	assert_gt(Radio.library_generation, gen, "the screen's list is told to rebuild")
+	_wipe_folder(other)
+	DirAccess.remove_absolute(other)
+
+func test_a_songs_picture_is_its_games_cover() -> void:
+	var s: SongData = _song("covered")
+	Radio.play_song(s.id)
+	var game: GameData = Data.get_game(GAME)
+	assert_eq(String(Radio.payload().get("art", "")), game.cover_path)

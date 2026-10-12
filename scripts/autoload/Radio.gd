@@ -46,9 +46,15 @@ signal song_unlocked(song: SongData)
 
 enum Output { OBS, GAME }
 
-# Where the player's music lives. A var rather than a const so tests can point it
-# at a scratch folder instead of the real one.
-var folder: String = "user://radio"
+# WHERE THE PLAYER'S MUSIC LIVES. The player picks it (the Radio screen's
+# "Change…"), and it is saved with the speakers in `config_path`, because a folder
+# is a fact about the PC rather than about a profile. Until they pick one it is
+# DEFAULT_FOLDER — the owner's own music folder (12 Oct 2026) — on Windows, and
+# the game's user folder anywhere else, where a `C:/` path means nothing. A var
+# rather than a const so tests can point it at a scratch folder.
+const DEFAULT_FOLDER := "C:/Users/Owner/Documents/Roguelike Roguelike/radio"
+const FALLBACK_FOLDER := "user://radio"
+var folder: String = default_folder()
 # Machine-level preferences: the speakers and the volume belong to the PC, like
 # the window mode does (Settings.CONFIG_PATH), not to a profile.
 var config_path: String = "user://radio.cfg"
@@ -100,8 +106,8 @@ func _ready() -> void:
 	_player = AudioStreamPlayer.new()
 	_player.name = "RadioPlayer"
 	add_child(_player)
-	DirAccess.make_dir_recursive_absolute(folder)
 	load_config()
+	DirAccess.make_dir_recursive_absolute(folder)
 	_load_unlocked()
 	# Unlocks the save already earned are taken QUIETLY at boot: a first launch
 	# on an old save could owe dozens of toasts, and none of them is news.
@@ -480,6 +486,26 @@ func open_folder() -> void:
 	DirAccess.make_dir_recursive_absolute(folder)
 	OS.shell_open(ProjectSettings.globalize_path(folder))
 
+static func default_folder() -> String:
+	return DEFAULT_FOLDER if OS.get_name() == "Windows" else FALLBACK_FOLDER
+
+func is_default_folder() -> bool:
+	return folder == default_folder()
+
+# Point the radio at another music folder, or back at the default with "". The
+# song playing stops — its file was in the old folder — and the next one is drawn
+# from the new folder's files, as a rescan would.
+func set_folder(path: String) -> void:
+	path = path.strip_edges().replace("\\", "/").trim_suffix("/")
+	if path == "":
+		path = default_folder()
+	if path == folder:
+		return
+	folder = path
+	save_config()
+	_stop_track()
+	rescan()
+
 # --- the song-list export ----------------------------------------------------
 #
 # Getting a folder of music into the `radio` sheet without uploading the music
@@ -707,8 +733,7 @@ func payload() -> Dictionary:
 		"tags": Array(song.tags),
 		"favorite": is_favorite(song),
 	}
-	out["art"] = song.image_path if song.image_path != "" else (
-		game.cover_path if game != null else "")
+	out["art"] = game.cover_path if game != null else ""
 	return out
 
 # ---------------------------------------------------------------------------
@@ -724,6 +749,9 @@ func load_config() -> void:
 	shuffle = bool(cfg.get_value("radio", "shuffle", shuffle))
 	station = String(cfg.get_value("radio", "station", station))
 	paused = bool(cfg.get_value("radio", "paused", paused))
+	var saved: String = String(cfg.get_value("radio", "folder", ""))
+	if saved != "":
+		folder = saved
 
 func save_config() -> void:
 	var cfg := ConfigFile.new()
@@ -732,6 +760,10 @@ func save_config() -> void:
 	cfg.set_value("radio", "shuffle", shuffle)
 	cfg.set_value("radio", "station", station)
 	cfg.set_value("radio", "paused", paused)
+	# Only a folder the player CHOSE is saved; the default stays a default, so a
+	# later build that moves the default moves this player with it.
+	if not is_default_folder():
+		cfg.set_value("radio", "folder", folder)
 	cfg.save(config_path)
 
 # Which songs have been drawn is the PLAYER's, so it follows the profile the way

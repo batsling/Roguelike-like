@@ -11,5 +11,4 @@ album = "Flinthook Original Soundtrack"
 year = 2017
 game_id = &"flinthook"
 file = "Flinthook/19. Spacey Jones' Locker.mp3"
-image_path = ""
 tags = PackedStringArray()

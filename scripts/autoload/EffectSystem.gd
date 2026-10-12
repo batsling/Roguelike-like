@@ -113,6 +113,7 @@ func _register_defaults() -> void:
 	register("gain_item_per_rarity", _h_gain_item_per_rarity)
 	register("add_curse", _h_add_curse)
 	register("spawn_enemy", _h_spawn_enemy)
+	register("spawn_boss", _h_spawn_boss)
 	register("trade_relic", _h_trade_relic)
 	register("gain_random_item", _h_gain_random_item)
 	register("lose_potion", _h_lose_potion)
@@ -476,6 +477,18 @@ func _h_spawn_enemy(effect: Dictionary, _ctx: Dictionary) -> void:
 		UITheme.CURSE)
 	GameLog.add("%s joined the stack." % ", ".join(PackedStringArray(names)), UITheme.CURSE)
 
+# Candy Bag's price: a boss of the game in play's type, at the run's tier, walks
+# onto the board (GameLoop2.summon_boss — The Emperor's door, CardSystem). An
+# UNWANTED effect, so the `10% chance` in front of it is steered down by Luck.
+func _h_spawn_boss(_effect: Dictionary, ctx: Dictionary) -> void:
+	var boss: GoalEnemyData = GameLoop2.summon_boss()
+	if boss == null:
+		return
+	var line: String = "%s walks onto the board." % boss.display_name
+	_did(ctx, line)
+	GameLog.add(line, UITheme.DANGER)
+	GameLoop2.loop_changed.emit()
+
 # The Relic Trader's swap. The pairing lives on EventSystem, which rolled it when
 # the event opened — this handler only names the slot the button belongs to.
 func _h_trade_relic(effect: Dictionary, _ctx: Dictionary) -> void:
@@ -771,7 +784,7 @@ func _h_reroll_enemies(_effect: Dictionary, _ctx: Dictionary) -> void:
 # right direction without being listed.
 const UNWANTED_EFFECTS := [
 	"jam_object", "lose_hp", "take_damage", "lose_max_hp", "lose_gold", "lose_stat",
-	"add_curse", "spawn_enemy", "item_downgrade", "forget",
+	"add_curse", "spawn_enemy", "spawn_boss", "item_downgrade", "forget",
 ]
 
 func favour_of(effect: Dictionary) -> int:

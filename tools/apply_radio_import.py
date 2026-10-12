@@ -27,8 +27,6 @@ For each file not already on a row (matched by `File`, case-insensitively):
           be typed into the sheet or given with --game and the script re-run
   File    the path as the export gives it ("Hades/01 No Escape.mp3"): the game
           plays it from that subfolder of the music folder
-  Image   always blank: every song shows its game's cover (the owner's call;
-          album art isn't worth collecting)
   Tags    `menu` when the title says it is the menu or title music (§3: a
           game's first song is its menu song); otherwise blank
 
@@ -205,7 +203,7 @@ def plan(export: dict, grid: list, overrides: dict) -> tuple:
         year = str(entry.get("year") or "").strip()
         tags = "menu" if MENU_TITLE.search(title) else ""
         rows.append([title, artist, album, int(year) if year.isdigit() else "",
-                     game, rel, "", tags])
+                     game, rel, tags])
         known[sid] = rows[-1]
         report.append("  + %-28s %-36s %s%s" % ((game or "(no game)")[:28], title[:36],
                                                 artist or "?", "  [menu]" if tags else ""))

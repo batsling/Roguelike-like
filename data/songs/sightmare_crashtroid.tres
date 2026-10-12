@@ -11,5 +11,4 @@ album = "Peglin Official Soundtrack"
 year = 2026
 game_id = &"peglin"
 file = "Peglin/22. Sightmare.mp3"
-image_path = ""
 tags = PackedStringArray()

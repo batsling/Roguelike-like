@@ -11,5 +11,4 @@ album = "BALL x PIT (Original Soundtrack)"
 year = 2025
 game_id = &"ball_x_pit"
 file = "Ball x Pit/05. Snowy x Shores.mp3"
-image_path = ""
 tags = PackedStringArray()

@@ -11,5 +11,4 @@ album = "Loop Hero (Official Soundtrack)"
 year = 2023
 game_id = &"loop_hero"
 file = "Loop Hero/19. Prist in the Mirror (Prist Bossfight).mp3"
-image_path = ""
 tags = PackedStringArray()

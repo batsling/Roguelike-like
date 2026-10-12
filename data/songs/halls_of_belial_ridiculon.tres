@@ -11,5 +11,4 @@ album = "The Legend of Bum-Bo Original Soundtrack"
 year = 2019
 game_id = &"the_legend_of_bum_bo"
 file = "The Legend of Bum-bo/09 Halls of Belial.mp3"
-image_path = ""
 tags = PackedStringArray()

@@ -11,5 +11,4 @@ album = "Loop Hero (Official Soundtrack)"
 year = 2023
 game_id = &"loop_hero"
 file = "Loop Hero/01. Alpha Waves (Intro Cutscene).mp3"
-image_path = ""
 tags = PackedStringArray()

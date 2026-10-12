@@ -11,5 +11,4 @@ album = "Risk of Rain 2"
 year = 2020
 game_id = &"risk_of_rain_2"
 file = "Risk of Rain 2/15. The Rain Formerly Known as Purple.mp3"
-image_path = ""
 tags = PackedStringArray()

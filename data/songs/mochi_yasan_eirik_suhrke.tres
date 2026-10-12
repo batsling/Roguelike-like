@@ -11,5 +11,4 @@ album = "Downwell"
 year = 2015
 game_id = &"downwell"
 file = "Downwell/07 - Mochi yasan.mp3"
-image_path = ""
 tags = PackedStringArray()

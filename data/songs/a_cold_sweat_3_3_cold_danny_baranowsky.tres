@@ -11,5 +11,4 @@ album = "Crypt of the Necrodancer OST"
 year = 2014
 game_id = &"crypt_of_the_necrodancer"
 file = "Crypt of the NecroDancer/15. A Cold Sweat (3-3 Cold).mp3"
-image_path = ""
 tags = PackedStringArray()

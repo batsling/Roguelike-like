@@ -11,5 +11,4 @@ album = "Cult of the Lamb Original Soundtrack"
 year = 2024
 game_id = &"cult_of_the_lamb"
 file = "Cult of the Lamb/58. Berith.mp3"
-image_path = ""
 tags = PackedStringArray()

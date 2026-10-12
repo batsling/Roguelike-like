@@ -11,5 +11,4 @@ album = "Wildfrost (Original Game Soundtrack)"
 year = 2023
 game_id = &"wildfrost"
 file = "Wildfrost/03. Spirit Call.mp3"
-image_path = ""
 tags = PackedStringArray()
