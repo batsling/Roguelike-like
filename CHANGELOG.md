@@ -80,6 +80,403 @@ For how the project is laid out and how its systems fit together, see
     ("Next Hades song: beat Hades 2 times more, or complete 3 more distinct
     goals there"). It's the game that is close, not the song.
 
+- **Research: Teamfight Tactics' augments, read in full.** All 244 augments
+  on the League wiki's `TFT:Augment` page, most of them trait crests and
+  team-comp stats. Five more joined The Golden Egg: Risky Moves (health now
+  for gold seven games later), At What Cost (two levels now, no more choices
+  in chests), Over Encumbered (a smaller pack for a while, then three
+  pieces), What Doesn't Kill You (losses pay) and Switching Gears (breaking a
+  streak pays). Pandora's Items is a clone on Change Pot.
+
+- **Research: Wildermyth's events and Cataclysm's own data, read in full.**
+  All 292 Wildermyth event pages were read; most are party-only, romance,
+  plot or plain battles, and six more joined The Wolf Price and To Humble
+  Ends: The Starseed Tree (three rungs of risk), The Gambler (you bet what
+  you'd win), Splinter (a save from death that waits), Dreams of Icarus (a
+  one-in-three blessing), The Unstilled Heart (gold for new pieces or health
+  for better ones) and Family Business (an investment settled three games
+  later). Cataclysm: Dark Days Ahead's item, effect and mutation JSON gave
+  three items (Mutagenic Catalyst, Scrambler Grenade, RX12 Jet Injector),
+  two statuses (Unidentified Illness, Hoarder) and three curses (Restless,
+  Brawler, Illiterate). Where a source gives no odds or numbers, the row
+  says which ones are ours.
+
+- **Research, sixty-third batch, and every game in the catalog has a ledger
+  entry for every kind.** The last 56 games, nearly all 2026 releases, have
+  no wiki or a stub one and are marked nothing usable. All 921 games are now
+  researched for goals, loot, events, characters, statuses and locations;
+  what is left is depth, not coverage: Wildermyth's 300 unread events,
+  Cataclysm: Dark Days Ahead's item JSON, and the rows marked `?` for the
+  owner.
+
+- **Research, sixty-second batch: 60 games, nothing usable.** Mostly 2025–26
+  releases with no wiki or a stub one; Torneko's Mystery Dungeon Classic HD
+  is the remake of a game already read.
+
+- **Research, sixty-first batch: 40 games, nothing usable.** Elin's wiki is
+  Ylvapedia's `Elin:` namespace (set by hand), a sandbox's stat pages;
+  PokéRogue and Realm of Ink have no wiki that answers; the rest have none
+  or a stub.
+
+- **Research, sixtieth batch.** Teamfight Tactics lives in the League of
+  Legends wiki's `TFT:` namespace and Shovel Knight Dig on the series wiki
+  (both set by hand); they gave The Golden Egg (hatches on a timer that
+  winning speeds up) and the Enchanted Slamvil (weakens the strongest enemy
+  before each game). 28 games with no usable wiki marked.
+
+- **Research, fifty-ninth batch: Wildermyth's own wiki.** Its "no wiki" was
+  the official one on the game's site (`wildermyth.com/w/api.php`, 853
+  articles, 304 events; set by hand). Two events so far: The Wolf Price (a
+  wolf god offers a transformation that gives back what you lost) and To
+  Humble Ends (destroy a cursed dagger, or keep it and pay every game). The
+  other 300 events are left for a pass of their own, and the ledger says so.
+
+- **Research, fifty-eighth batch: Shattered Pixel Dungeon and Cogmind
+  checked.** Shattered's "no wiki" was the Pixel Dungeon wiki's
+  `Shattered Pixel Dungeon/…` subpages (set by hand). Its six old goals had
+  nothing to do with the monsters they named; four are rewritten from the
+  wiki (Goo heals in water, DM-300 has an invincible phase, DM-200 can't fit
+  through doors, the Dwarf Warlock weakens you), and Necromancer and Mimic
+  are marked `?` as duplicates of Goblin Conjurer and Xeroc. Cogmind has no
+  wiki but ships a 194 KB plain-text manual: four of its nine rows hold
+  against it, five are marked `?`. 25 more unowned games marked.
+
+- **Research, fifty-seventh batch.** DoomRL's own wiki
+  (`drl.chaosforge.org/w/api.php`, set by hand) gave its level events, and
+  the Armed Nuke became an event that hands out a timed goal. Gates to
+  Infinity is the series' content again; 22 older games with no wiki marked
+  nothing usable.
+
+- **Research, fifty-sixth batch.** ToeJam & Earl: Back in the Groove! gave
+  the Evil Elevator, a fake way forward that drops you a level, as an event;
+  nineteen stub wikis marked nothing usable.
+
+- **Research, fifty-fifth batch: 16 games, nothing usable.** Three sequels
+  sit on their first game's wiki (Rift Wizard 3, Wall World 2, Sword of the
+  Necromancer: Resurrection), both Touhou games on the series wiki, and the
+  rest are stubs or stat pages.
+
+- **Research, fifty-fourth batch.** HyperRogue's Hedgehog Warrior (only
+  killed by stepping from one cell beside it to another) and Has-Been
+  Heroes' Bobob and Dumm (twins, the survivor taking the other's immunity)
+  became goals, and the Ghost Dad a clone on Vran the Sullen. Ten small
+  wikis and Unexplored 2 (the first game's wiki) marked.
+
+- **Research, fifty-third batch.** Our Darker Purpose's Cauldron Of
+  Yesterdayers (a boss that pops out of one of four cauldrons) became a goal;
+  eleven small or stat-only wikis marked nothing usable.
+
+- **Research, fifty-second batch.** Unexplored's Guardian of Yendor, which
+  hunts you from the moment you lift the Amulet, became a goal (escape with a
+  treasure while its keeper hunts you). Curious Expedition 2 and Temtem:
+  Swarm are on their first game's wiki; Book of Demons, Hell Maiden and seven
+  small wikis (Kaz, Lort, Voin, Oddcore, Schism, Legend of Dungeon, Road Not
+  Taken) are stat pages or empty, nothing usable.
+
+- **Research, fifty-first batch.** Six sequels whose wiki is the first
+  game's (Moonlighter 2, UnderMine 2, Hand of Fate: Hordes, Monster Train 2,
+  Neon Abyss 2, Deep Rock Galactic: Rogue Core) are marked nothing new. Of
+  the rest, only Vagante's Lost Adventurer (a second phase if every Rune Orb
+  was found) gave anything, as a clone on Frost Jailer.
+
+- **Research, fiftieth batch.** Six unowned games and two clones: Fear &
+  Hunger's Lucky coin on Fool's Hope Charm, Magicraft's Enchanting Coin on
+  Coin Gun. Blue Prince's rooms are a house-drafting rule, Guild of
+  Dungeoneering's monster pages are empty templates, and Dog Witch and
+  Cardinal Quest 2 are stat pages, so all six are otherwise nothing usable.
+
+- **Research, forty-ninth batch.** SULFUR gave Ascetic Oil (damage for no
+  gold) and Terrorbaum, the tree boss whose bullet rain is made of your own
+  shots; Cursed Words gave the Hungry Hippo, which eats the shop's food for
+  levels. Witchfire, Oaken Tower, Witch's Apocalyptic Journey and The Bazaar
+  have big wikis of stat blocks and real-time triggers, nothing usable.
+
+- **Research, forty-eighth batch: the first unowned games.** With every
+  owned game done, `next` now hands out the unowned ones with the biggest
+  wikis first. Elona gave Ether Disease (a status that keeps adding
+  symptoms) and the Etherwind that spreads it (an event); Rampage Knights
+  gave the Grand Vizir's Terrifying Transmutator (your Health becomes what
+  you were missing); Dream Quest's Clone and Mime are clones on Rak'Shor
+  Cultist. Stoneshard, Wayward and Sword of the Stars: The Pit have big wikis
+  of stat templates and crafting materials, nothing usable.
+
+- **Research, forty-seventh batch, and the end of the owned games.** The
+  last 18 owned games marked: Touhou Crawl and ZMAngband are variants of
+  games already read, Warriors: Abyss's wiki is 27 placeholder pages named
+  "Character 1" to "Character 27", and the rest have no wiki. Every owned
+  game (580) now has a ledger entry for every kind; the 341 games not owned
+  are next.
+
+- **Research, forty-sixth batch: 24 games, nothing usable.** All from 2025:
+  Heroes of Hammerwatch II has no pages yet on the Hammerwatch wiki, Lost in
+  Random: The Eternal Die and I Am Legion have stub wikis, and the rest have
+  none on Fandom or wiki.gg.
+
+- **Research, forty-fifth batch: 24 games, nothing usable.** He is Coming's
+  wiki is ten empty pages; Cataclysm: The Last Generation is a fork of a game
+  already read; the rest have no wiki on Fandom or wiki.gg.
+
+- **Research, forty-fourth batch.** Shiren 6 (the Mystery Dungeon Wiki's
+  `Shiren 6:` namespace) gave Aggressive Incense, which makes every body on
+  the board take more damage, you included, and the Behemoth as a clone on
+  Hand of the King (hurt only from behind). Metal Slug Tactics is on the
+  series wiki (set by hand) with names only; 22 more marked nothing usable.
+
+- **Research, forty-third batch: 24 games, nothing usable.** The Last
+  Game's "wiki" was a romantic-comedy manga's, set to none by hand; Geometry
+  Arena 2's is the first game's; the rest have none or a stub.
+
+- **Research, forty-first and forty-second batches: 36 games, nothing
+  usable.** Hack'EM is NetHack variants' content again; PlateUp! has no wiki
+  that answers (plateup.wiki.gg refuses with 401, which is what wiki.gg says
+  for a wiki that doesn't exist; real wiki.gg wikis still answer); the other
+  34 have no wiki under their name on Fandom or wiki.gg, or a stub one.
+
+- **Research, fortieth batch: twelve games, nothing usable.** Uma Musume's
+  real wiki (umamusume.fandom.com, 1545 articles) is set by hand; its Career
+  conditions would make statuses, but the wiki names them without saying
+  what they do, so none was written. Ultimate ADOM is ADOM's world again;
+  the rest have no wiki or a menu-only one.
+
+- **Research, thirty-ninth batch.** Trials of Fire's wiki is 720 pages,
+  but its cards are empty infoboxes; its bosses gave the Amalgam (a Husk for
+  every 8 damage it takes). Heroes of Hammerwatch lives on the Hammerwatch
+  wiki and 30XX on the 20XX wiki, both set by hand. Bright Nights and
+  GnollHack are forks of games already read; eight more marked nothing
+  usable.
+
+- **Research, thirty-eighth batch.** Mystery Chronicle: One Way Heroics is
+  covered by the original game's wiki (set by hand), which gave two bosses:
+  the Dark Dragon, the Darkness that chases you across the map all game and
+  can be turned and beaten, and the Demon Lord, who arrives on a clock.
+  Pathos and Fushigi no Pixel Dungeon are NetHack's and Pixel Dungeon's
+  content again; nine games with no wiki marked nothing usable.
+
+- **Research, thirty-seventh batch: Cataclysm's own data, FTL's wiki.**
+  Cataclysm: Dark Days Ahead's seven old goals checked against the game's
+  monster JSON on GitHub (raw files answer; the API doesn't): five hold,
+  Zombie Hulk and Mi-go marked `?`. FTL's wiki was hidden by the catalog's
+  short name and is set by hand; its three old rows hold, and it gave the
+  Black Market Weapons Trader as an event. Don't Starve Together (the Don't
+  Starve Wiki, by hand) gave the Antlion as an event and Klaus as a clone on
+  Vran the Sullen. Hoplite's two rows have no source and are marked `?`.
+  The 2008 Shiren is now marked under its catalog name.
+
+- **Research, thirty-sixth batch.** Shiren 4's Day and Night became a
+  status, Night: your weapons deal 1 damage, enemies hit harder, and
+  everything they drop is better. Explorers of Sky's Primal Dialga checked
+  against the Mystery Dungeon Wiki and holds. Final Fantasy Fables:
+  Chocobo's Dungeon recorded by hand on the Final Fantasy Wiki. The DS
+  Shiren remake and Explorers of Time are the games already read; ten more
+  marked nothing usable.
+
+- **Research, thirty-fifth batch.** Pokémon Mystery Dungeon: Red and Blue
+  Rescue Team's four old goals checked against the Mystery Dungeon Wiki's
+  `Rescue Team:` pages: three hold, Groudon's "ten times your health" has
+  nothing behind it and is marked `?`. Powder's Baezl'bub row checked against
+  the game's own About page (it holds, black heart and all). Slash'EM's black
+  market, through the NetHack Wiki, gave One-eyed Sam as a shopkeeper.
+  Nine games with no wiki or a name-list wiki marked nothing usable.
+
+- **Research, thirty-fourth batch: the Mystery Dungeon namespaces, and IVAN's
+  wiki.** The Mystery Dungeon Wiki keeps each game in its own namespace, and
+  read that way the item lists gave six rows: Torneko 2's Change Pot, Magic
+  Castle's Healing Jar and Absorb Jar (bags and a jar that seals an enemy's
+  ability for you to borrow), Asuka's Staff of Exchange (your Health and an
+  enemy's swap), and a Mixer event from Shiren 2's Cross-Mixing. Its monster
+  pages are stat templates, so no goals came from them. IVAN has a wiki at
+  attnam.com with no working API; `?action=raw` reads it (noted in
+  `docs/research.md` §8), and it gave the Kamikaze Dwarf and a clone on
+  Gurdy. Infinite Space III's "wiki" was PlatinumGames' Infinite Space, set
+  to none by hand.
+
+- **Research, thirty-third batch, and Wildfrost's real wiki.** Wildfrost's
+  five goal rows were written from search summaries; `wildfrostwiki.com` (453
+  articles, set by hand in `research/wikis.json`) showed three of its
+  "enemies" are bosses and that none of the five goals matched what the wiki
+  says. All five rewritten (the true final boss, a boss that splits when hit,
+  a boss fight in waves, one that hits the whole team, one that marks where it
+  will strike), plus Overburn and Ink as statuses and the Gnome Traveller as an
+  event. Legend of Keepers' Priestess turned out not to heal: she swaps a
+  Penalty for a Bonus, and her goal says so now (marked `?`). Heavy Bullets
+  gave Rotten Life and Ritual Blade. Nine stub wikis marked nothing usable.
+  Also: research entries 30–32 put back in order in this file.
+
+- **Research, thirty-second batch.** Exit the Gungeon, Going Under, Guidus,
+  Tower Tactics: Liberation, Loot River, Swarm Grinder, Dungeonmans, Kingdom:
+  New Lands, Super House of Dead Ninjas, Fury Unleashed, Gordian Quest and
+  Hadean Tactics: 2 new rows, 1 clone. New: Going Under's Canbassador (hit it
+  so it drops its own bomb) and Tower Tactics' Risky Upgrades (pay now, gain
+  later). Dungeonmans' Gelatinous Cube is marked `?` (the wiki says only that
+  its champions split), and its Mysterious Pool went onto NetHack's Fountain.
+  Kingdom: New Lands' wiki was the manga Kingdom's and is set to none by hand.
+
+- **Research, thirty-first batch: twelve small wikis, nothing usable.**
+  TombStar, The Ouroboros King, Facehand, Greedland, Metal Unit, Wall World,
+  Megabonk, GONNER2, Lumencraft, Gunlocked 2, Eldritch and Immortal Redneck
+  were each read page by page (their categories show almost nothing). They
+  hold overview stubs, infobox shells or percentage bonuses, so every kind is
+  marked with the reason and no rows were written.
+
+- **Research, thirtieth batch.** Flinthook, Synthetik, The Last Spell,
+  Iratus, Sword of the Necromancer, Heat Signature, Tangledeep, Golden Light,
+  Mana Spark and GoNNER: 4 new rows, 1 clone and 2 old goal rows checked
+  (The Last Spell's Archivist fixed: you stop his ritual; Tangledeep's
+  Champion marked `?`, no such page). New: Tangledeep's Pandora's Box (loot
+  now, tougher enemies for the rest of the run), The Last Spell's Runestone
+  (a unit you break to blast what's near it), Flinthook's Devil's Lodge (a
+  curse for a chest), and Golden Light's Meat Cop, who turns up when you
+  exploit a loophole. These wikis are small, and most kinds are marked with
+  nothing.
+
+- **Research, twenty-ninth batch.** The Flame in the Flood, West of Dead,
+  Evolings, Hades II, GearHead, Dungeons of Blood and Dream, Loop Hero, Tower
+  of Guns and Ziggurat 2: 5 new rows and 7 old goal rows checked. Loop Hero's
+  five hold (each is summoned by a card you place), and Hades II's Hecate
+  holds; Charybdis is fixed, since you fight her tentacles and she swallows
+  nobody. New: West of Dead's Fifth Time Lucky (every fifth swing hits hard),
+  Evolings' Super Glue and Jar of Ghosts, Loop Hero's Oblivion card (wipe a
+  square, tile and all), and Polluted Water from The Flame in the Flood.
+
+- **Research, twenty-eighth batch.** Ziggurat, Fights in Tight Spaces, Void
+  Bastards, Into the Breach, Kingsway, Inkbound, The Ground Gives Way and
+  Fairy Tail: Dungeons: 5 new rows and Into the Breach's 3 old goal rows
+  checked (Psion, Scarab and Spider Leader all hold). New: Into the Breach's
+  Vek Hormones (enemies hurt each other more) and Attraction Pulse (the board's
+  first pull), Void Bastards' Kittybot (a meowing decoy that explodes), The
+  Ground Gives Way's Scroll of the Grave, and Kingsway's Bell of the Dead.
+  Inkbound's wiki pages are empty templates, and the Fairy Tail wiki found is
+  the anime's, so both are marked with nothing.
+
+- **Research, twenty-seventh batch.** Hellcard, Just King, Dungeon Clawler,
+  Dungreed, We Need To Go Deeper, For The Warp, Halls of Torment and Elden
+  Ring Nightreign: 6 new rows, 2 clones and 4 old goal rows checked. Most of
+  these wikis are stat tables (Hellcard's 1000+ cards, For The Warp's ship
+  parts, Dungreed's 118 weapons), so most kinds are marked with nothing.
+  - **Old rows:** Prickwood and the Marching Ghost hold. Dungeon Clawler's Bee
+    Queen doesn't exist (its bosses are moths, Prickwood, a tank, a squid and
+    Melimon), and Halls of Torment's Possessed Effigy only moves when you look
+    away, which repeats NecroDancer's Ghost; both are marked `?`.
+  - **New:** the Coin Gun (a weapon that spends a Gold a swing), the Ticking
+    Bomb, Just King's Golden Ticket (a shelf of Rare pieces) and its Bard in
+    the Pillory, We Need To Go Deeper's Rose (you never lose Max Health), and
+    Gladius, Beast of Night, a three-headed boss for the dog tag.
+
+- **Research, twenty-sixth batch.** Griftlands, Inscryption, Luck be a
+  Landlord, Wizard of Legend, The Legend of Bum-Bo and Forward: Escape the
+  Fold: 13 new rows, 3 clones and 14 old goal rows checked.
+  - **Old rows:** Inscryption's six, Wizard of Legend's Chaos Cyclops and
+    Forward's two Daemon Masters hold. Griftlands' five had been written
+    from the game's systems (negotiation, grudges) rather than from the
+    characters: Kashio is now "Pay off a debt" (she is a debt-broker) and Arint
+    "Find an enemy's weakness before you fight it" (you can probe her in a
+    negotiation); Fellemo, Plocka (a merchant you never fight) and Jake
+    Smuggler (no page) are marked `?`.
+  - **Neighbours:** Luck be a Landlord's Chicken (lays eggs beside it) and Cat
+    (drinks the milk beside it, the first cat piece and a use for dairy).
+  - **Events:** Inscryption's Campfire, where survivors eat what you warm too
+    often (on the Repeat grammar), and its Mycologists, who fuse two of a
+    kind; Griftlands' Wandering Chef and a Jake selling RPGs by the road.
+  - **Also:** Inscryption's Special Dagger (a strong hit that costs you an
+    eye) and Fish Hook (an enemy changes sides), Wizard of Legend's Adorable
+    Mimic and Armor of Greed, Griftlands' Sal and its Yotes (dogs in packs),
+    and Bum-Bo's Gizzarda, a boss whose weakness changes with every hit.
+
+- **Research, twenty-fifth batch: the first games the second wiki pass
+  found.** Dungeons of Dredmor, WazHack, Hand of Fate, Hand of Fate 2,
+  Gumballs & Dungeons, Gunfire Reborn, Vampire Survivors and Jupiter Hell:
+  15 new rows, 3 clones and 12 old goal rows checked.
+  - **Old rows:** nine hold (Diggle, Blink Batty, Lord Dredmor, Jack of Dust,
+    King of Scales, The Dealer, Elite Kappa, Abyssal Serpent, Turret).
+    Vampire Survivors' Death is now The Reaper, who comes when the clock runs
+    out (the old goal said level 30, mixing up the 30-minute timer with a
+    level). Jupiter Hell's Former Human is its own Former Grunt. The Amalaric
+    Sniper is marked `?`, since nothing on its page is about aimed shots.
+  - **Weapons:** Love and Hate, Jupiter Hell's twin revolvers, each better
+    beside the other; and Vampire Survivors' Cross with its Heaven Sword
+    evolution, which needs the live Clover, so it can ship the day the Cross
+    does.
+  - **Curses as a resource:** Gunfire Reborn's 3rd Time Unlucky (strong, and
+    every third chest curses you) and Evil-Devouring Sword (Stun for every
+    curse you carry); Hand of Fate 2's Fickle Fate and Gambler's Insurance.
+  - **Events:** Hand of Fate's Devil's Wager and Cursed Gambler, and Hand of
+    Fate 2's goat, which you may pet five times.
+  - **Places:** Dredmor's Lutefisk Statue (tithe food to a fish god) and Anvil
+    of Krong (a weapon enchantment you gamble on), Gumballs & Dungeons'
+    Machine Altar, and WazHack's Gnome Train, a unit that clears its row on a
+    timer.
+
+- **Research, twenty-fourth batch, and most "no wiki" games have one after
+  all.** UnReal World, Torneko's Great Adventure, ADOM, Castle of the Winds,
+  Zangband, Linley's Dungeon Crawl, Shiren the Wanderer (1995), Shiren GB,
+  both Chocobo's Dungeons, Cthangband and Tales of Maj'Eyal: 20 new rows,
+  6 clones, and 13 old goal rows checked.
+  - **Wikis:** ADOM's lives at ancardia.fandom.com and Tales of Maj'Eyal's at
+    te4.org, names the finder can't guess, so both are now `KNOWN_WIKIS`.
+    UnReal World's was simply missed. The Mystery Dungeon Wiki covers every
+    Torneko and Shiren game, one namespace each. `docs/research.md` §8 now
+    says where to look before writing "no wiki".
+  - **Every no-wiki game, looked for again:** the first run had met
+    Fandom's rate limit, and this one found wikis for 155 of the 580. Wikis on
+    record went from 326 to 504. 106 of them are owned games not yet
+    researched, Vampire Survivors, Inscryption and Griftlands among them, and
+    `next` now offers them first, as the owner's best-documented-first order
+    says. Two finds were the wrong thing and are set to none by hand
+    (fable.fandom.com is Lionhead's Fable, underdogs.fandom.com a film). 19
+    Mystery Dungeon games (Torneko, Shiren, Pokémon) now point at their
+    namespace on the Mystery Dungeon Wiki, and the Chocobo games and Castle of
+    the Winds at the Final Fantasy Wiki and StrategyWiki. Larn and Fatal
+    Labyrinth turned out to have small wikis (33 and 11 articles) after
+    batch 23 marked them from other sources.
+  - **Old rows:** Kranach, the Cat Lord, Ukruk, Bill the Stone Troll, the Grand
+    Corruptor, the Rak'Shor Cultist, Mamel and Pacorepkin hold. Fixed:
+    Keethrax (a druid among animals, not a curser), the Weirdling Beast (heals
+    itself, never to full) and Torneko's Drakee, which is Dracky, a monster that
+    moves at random. Marked `?`: the Emperor Lich (nothing on its page raises the
+    dead) and the Gitan Mamel (it joined the family in the DS remake).
+  - **New:** two Mystery Dungeon staves (Pain Sharing, Postpone), the
+    Discount Armband, the Bread Scroll, the Division Jar and the
+    Transmogrification Chest (two bags, a thin sheet), Bufu's Cleaver and
+    Bill's Tree Trunk (weapons), Tellervo's Gift (safe only beside fire), the
+    Potion of Raw Chaos (ADOM's corruption) and the Empty Bottle. Also the
+    Copycat and Cryshale; Rescue the Cute Dog, Iron to the Bog and Zangband's
+    Chaos Patron; the Alchemist; a Grave to rob; and two shopkeepers, Kaltor
+    (fight him for his chests) and Olaf (buys junk).
+
+- **Research, twenty-third batch: the first owned games with no wiki.**
+  Beneath Apple Manor, Rogue, Moria, Hack, Larn, Mission: Thunderbolt, Omega,
+  Dragon Crystal, Fatal Labyrinth, Cave Noire, ToeJam & Earl and Ragnarok,
+  every wiki kind each: 38 new rows and 5 clones. With no wiki, the sources
+  were the games themselves: Rogue 5.4's, Moria's and Larn's source code,
+  Beneath Apple Manor's 1982 manual, a 1993 Mission: Thunderbolt tips file and
+  a long Omega FAQ. Sega Retro turns scripts away, so the two Sega games got
+  little.
+  - **Old rows:** Rogue's Xeroc and Aquator both hold against `fight.c`.
+  - **Goals:** the Purple Worm (fall back from a fight and come back to finish
+    it), the Manor Ghost (only magic hurts it), the Wraith (lose a level and
+    earn it back), Creeping Gold Coins, the Icky Lump (farm a breeder) and the
+    Trifid.
+  - **Loot:** six scrolls, a thin sheet (Hold Monster, Sleep, Punishment's
+    iron ball, Gem Perfection, Annihilation, Word of Recall); the Sonic
+    Screwdriver (the first piece that stands in for a Key); the Discombobulator
+    weapon; a Stone to Mud wand; a Potion of See Invisible; Rose Bushes; and
+    three trinkets: the Ring of Slow Digestion (food beside it needs fewer
+    charges), Elvish Waybread and the Dragon Egg, which hatches as you level.
+  - **Places:** two shopkeepers (Moria's Mauglin the Grumpy, who haggles;
+    Omega's Pawn Shop, where everything is already identified), four objects
+    (the College of Larn, the Autodoc, ToeJam & Earl's Wiseman and Opera
+    Singer), a Rust Trap tile, the Sphere of Annihilation unit and David's
+    Treasure Zoo.
+  - **Events and the rest:** the Larn Revenue Service, Omega's Autoteller,
+    Santa, Cave Noire's Adventurers' Guild and the Golden Apple; ToeJam as a
+    hero; Confused, Lunarity and the Overeating curse.
+  - **Clones:** Brain Scan, Disenchantress, the Stasis Bag, Lil' Devil and
+    Ragnarok's Blacksmith, onto rows that already said the same thing.
+  - **ToeJam & Earl has a wiki after all** (toejamandearl.fandom.com, 213
+    articles); the first run missed it while Fandom was rate-limiting.
+  - **Not written:** a false Golden Apple that kills you. One search summary
+    claimed it, and no page reachable from here says so.
+
 - **Research, twentieth batch, and the end of the owned games with wikis.**
   Hell Clock, Maze Mice, Merge Maestro, Noobs Are Coming, The Royal Writ,
   Skull Horde, Asgard's Fall, Bad North, Bounty of One and Angband: 4 new rows,
