@@ -11,6 +11,18 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **A character's page lists the games they beaten, as covers.** The
+  Collection's character page has a new **Games beaten** list (every game won
+  playing as that character, `GameStats.character_game_log`, recorded beside
+  the game's own tally), and **Levelled up at** is now covers too. Both use the
+  influence lists' tiles: the name on hover, the game's page on a click, the count in
+  the corner. Games beaten starts empty, because no older record says which
+  character beat which game. Level-up notes are still written and read on the
+  game's page. **A Mysterious Mask level-up** is now recorded on the game it
+  was taken at, so it shows on that game's page and counts towards its radio
+  songs, but it is flagged `masked` and never lists on the masked character's
+  own page. That page is only about games played as them.
+
 - **The owner's second 12 Oct upload: two games, six connections, three items,
   a body and a boss.** The sheet came from an older copy that lacked the last
   change's three Effect cells (Link Cable, Candy Bag, Scroll of Enchant Weapon);

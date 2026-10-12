@@ -2551,11 +2551,14 @@ func report(beaten: bool, fulfilled: Variant = null, escaped: bool = false,
 			GameStats.record_amulet_win(played_game.id)
 		else:
 			GameStats.record_beaten(played_game.id)
+		# …and on the character's page: beaten playing as THIS character.
+		GameStats.record_character_game(GameState.character_id, played_game.id)
 	elif played_game != null and not escaped and was_amulet:
 		# The Amulet game finished WITHOUT its enemy's goal: still the run's win
 		# (see the was_amulet branch below), so it is still the game the win goes
 		# on the record against.
 		GameStats.record_amulet_win(played_game.id)
+		GameStats.record_character_game(GameState.character_id, played_game.id)
 	# Level up (§3.1) — a fresh chance each game; skipped if the game just killed
 	# the player.
 	if leveled and not GameLoop2.run_over:
@@ -2586,6 +2589,10 @@ func report(beaten: bool, fulfilled: Variant = null, escaped: bool = false,
 			GameLoop2.record_completed_goal("levelup",
 				"%s, levelled up as %s — %s" % [GameLoop2.BEATING_A_GAME,
 					mch.display_name, mch.level_up_condition])
+			# On the GAME's record (its page, Roguelike Radio), but flagged as
+			# borrowed so it never shows on the masked character's own page.
+			if played_game != null:
+				GameStats.record_level_up(played_game.id, mid, true)
 			mask_levels_paid.append({"levels": 1, "character": mch.display_name,
 				"condition": mch.level_up_condition, "reward": mch.level_up_reward,
 				"stats": GameState.grant_level_up(_rng, mch)})
