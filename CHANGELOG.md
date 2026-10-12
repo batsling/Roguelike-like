@@ -80,6 +80,13 @@ For how the project is laid out and how its systems fit together, see
     ("Next Hades song: beat Hades 2 times more, or complete 3 more distinct
     goals there"). It's the game that is close, not the song.
 
+- **Research, thirty-eighth batch.** Mystery Chronicle: One Way Heroics is
+  covered by the original game's wiki (set by hand), which gave two bosses:
+  the Dark Dragon, the Darkness that chases you across the map all game and
+  can be turned and beaten, and the Demon Lord, who arrives on a clock.
+  Pathos and Fushigi no Pixel Dungeon are NetHack's and Pixel Dungeon's
+  content again; nine games with no wiki marked nothing usable.
+
 - **Research, thirty-seventh batch: Cataclysm's own data, FTL's wiki.**
   Cataclysm: Dark Days Ahead's seven old goals checked against the game's
   monster JSON on GitHub (raw files answer; the API doesn't): five hold,

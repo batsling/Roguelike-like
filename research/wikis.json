@@ -13413,8 +13413,12 @@
   "wiki": "https://mycardisbetterthanyourcard.wiki.gg/"
  },
  "Mystery Chronicle: One Way Heroics": {
-  "checked": "2026-10-11",
-  "wiki": null
+  "api": "https://onewayheroics.fandom.com/api.php",
+  "checked": "2026-10-12",
+  "note": "the original game's wiki, which covers the Mystery Chronicle remake on pages marked (MC:OWH)",
+  "set": "by hand",
+  "sitename": "One Way Heroics Wiki",
+  "wiki": "https://onewayheroics.fandom.com"
  },
  "Mystery Dungeon 2: Shiren the Wanderer": {
   "api": "https://mysterydungeonwiki.com/api.php",
