@@ -80,6 +80,12 @@ For how the project is laid out and how its systems fit together, see
     ("Next Hades song: beat Hades 2 times more, or complete 3 more distinct
     goals there"). It's the game that is close, not the song.
 
+- **Research, fifty-first batch.** Six sequels whose wiki is the first
+  game's (Moonlighter 2, UnderMine 2, Hand of Fate: Hordes, Monster Train 2,
+  Neon Abyss 2, Deep Rock Galactic: Rogue Core) are marked nothing new. Of
+  the rest, only Vagante's Lost Adventurer (a second phase if every Rune Orb
+  was found) gave anything, as a clone on Frost Jailer.
+
 - **Research, fiftieth batch.** Six unowned games and two clones: Fear &
   Hunger's Lucky coin on Fool's Hope Charm, Magicraft's Enchanting Coin on
   Coin Gun. Blue Prince's rooms are a house-drafting rule, Guild of
