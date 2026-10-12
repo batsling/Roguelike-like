@@ -1631,8 +1631,13 @@
   "connections": "before 2026-10-07"
  },
  "Forward: Escape the Fold": {
+  "characters": "2026-10-12: nothing usable: its eleven characters have no described traits on the wiki",
   "connections": "before 2026-10-07",
-  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+  "events": "2026-10-12: nothing usable: no events",
+  "goals": "2026-10-12: nothing new; old rows checked against the wiki (second wiki pass): Daemon master is always the second-to-last boss and Strong daemon master the last, and both hold",
+  "locations": "2026-10-12: nothing usable: levels are cards",
+  "loot": "2026-10-12: nothing usable: its 150+ item pages give stats and no effects",
+  "statuses": "2026-10-12: nothing usable: status cards are enemies' health"
  },
  "Freaky Awesome": {
   "connections": "before 2026-10-07"
@@ -1758,8 +1763,13 @@
   "connections": "before 2026-10-07"
  },
  "Griftlands": {
+  "characters": "2026-10-12: 1 row (Sal); Rook is a goal candidate's name already, Smith's drinking is the live Trampy's goal",
   "connections": "before 2026-10-07",
-  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+  "events": "2026-10-12: 2 rows (Wandering Chef, A Jake by the Road); The Totem repeats card removal",
+  "goals": "2026-10-12: 1 row (Yote); old rows checked against the wiki (second wiki pass): all five were the game's systems, not its characters. Kashio fixed (a debt-broker: pay off a debt), Arint fixed (probe her weakness before the fight); Fellemo, Plocka (a merchant you never fight) and Jake Smuggler (no page) marked ?",
+  "locations": "2026-10-12: nothing usable: its locations are story places",
+  "loot": "2026-10-12: nothing usable: its 1000+ cards are negotiation and battle numbers; no weapons as such, no evolutions",
+  "statuses": "2026-10-12: nothing usable: its keywords are card mechanics"
  },
  "Guidus": {
   "connections": "before 2026-10-07"
@@ -1990,8 +2000,13 @@
   "connections": "before 2026-10-07"
  },
  "Inscryption": {
+  "characters": "2026-10-12: nothing usable: you play as yourself, and Leshy and the Scrybes are opponents",
   "connections": "before 2026-10-07",
-  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+  "events": "2026-10-12: 2 rows (The Campfire, The Mycologists); the Bone Lord's sacrifice repeats the altars",
+  "goals": "2026-10-12: nothing new; old rows checked against the wiki (second wiki pass): the Angler (hooks your newest card), the Trapper (sells pelts the Trader buys), the Prospector, Grimora (inscribes the dead's epitaphs), P03 and the Unfinished Boss (you design its face and rule) all hold",
+  "locations": "2026-10-12: nothing usable: its places are acts and boards",
+  "loot": "2026-10-12: 2 rows (Special Dagger, Fish Hook); the Hourglass repeats Stun to all, Pliers the self-harm pieces; its cards are creatures, no weapons or evolutions",
+  "statuses": "2026-10-12: nothing usable: its sigils are card abilities"
  },
  "Insider Trading": {
   "connections": "before 2026-10-07"
@@ -2177,7 +2192,13 @@
   "connections": "before 2026-10-07"
  },
  "Luck be a Landlord": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: no heroes",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: rent is the whole game, and Avarice (Ballionaire) already carries a debt with a deadline",
+  "goals": "2026-10-12: nothing usable: no enemies, only the landlord",
+  "locations": "2026-10-12: nothing usable: floors are difficulty settings",
+  "loot": "2026-10-12: 2 rows (Chicken, Cat, symbols that care about their neighbours); its items modify symbols; Lunchbox repeats Barony's Scroll of Food; no weapons, no evolutions",
+  "statuses": "2026-10-12: nothing usable: none"
  },
  "Lucky Hero": {
   "connections": "before 2026-10-07"
@@ -3987,7 +4008,13 @@
   "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
  },
  "The Legend of Bum-Bo": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing new: Bum-bo the Brave is a clone on Capyzerker, the Empty's random stats repeat the live Erratic Deck",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: no events",
+  "goals": "2026-10-12: 1 row (Gizzarda); its monsters are Isaac's, with Isaac's rows the famous versions",
+  "locations": "2026-10-12: nothing usable: chapters are levels",
+  "loot": "2026-10-12: nothing new: its spells and trinkets are Isaac's items again; Trap Door is a clone on Wand of Digging; no weapons, no evolutions",
+  "statuses": "2026-10-12: nothing usable: none listed"
  },
  "The Loopler": {
   "connections": "before 2026-10-07"
@@ -4324,8 +4351,13 @@
   "connections": "before 2026-10-07"
  },
  "Wizard of Legend": {
+  "characters": "2026-10-12: nothing usable: one wizard",
   "connections": "before 2026-10-07",
-  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+  "events": "2026-10-12: nothing usable: no events",
+  "goals": "2026-10-12: nothing new; old row checked against the wiki (second wiki pass): Chaos Cyclops is the one-eyed Laser Cyclops, and holds",
+  "locations": "2026-10-12: nothing usable: its trials are levels",
+  "loot": "2026-10-12: 2 rows (Adorable Mimic, Armor of Greed); Curse Eater's Watch is a clone on Evil-Devouring Sword; its arcana are spells, and relic bundles (the Vault of Midas) need five pieces, not a weapon, so no evolutions",
+  "statuses": "2026-10-12: nothing usable: none listed"
  },
  "Wizard of Legend 2": {
   "characters": "2026-10-10: no characters",

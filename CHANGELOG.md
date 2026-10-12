@@ -80,6 +80,26 @@ For how the project is laid out and how its systems fit together, see
     ("Next Hades song: beat Hades 2 times more, or complete 3 more distinct
     goals there"). It's the game that is close, not the song.
 
+- **Research, twenty-sixth batch.** Griftlands, Inscryption, Luck be a
+  Landlord, Wizard of Legend, The Legend of Bum-Bo and Forward: Escape the
+  Fold: 13 new rows, 3 clones and 14 old goal rows checked.
+  - **Old rows:** Inscryption's six, Wizard of Legend's Chaos Cyclops and
+    Forward's two Daemon Masters hold. Griftlands' five had been written
+    from the game's systems (negotiation, grudges) rather than from the
+    characters: Kashio is now "Pay off a debt" (she is a debt-broker) and Arint
+    "Find an enemy's weakness before you fight it" (you can probe her in a
+    negotiation); Fellemo, Plocka (a merchant you never fight) and Jake
+    Smuggler (no page) are marked `?`.
+  - **Neighbours:** Luck be a Landlord's Chicken (lays eggs beside it) and Cat
+    (drinks the milk beside it, the first cat piece and a use for dairy).
+  - **Events:** Inscryption's Campfire, where survivors eat what you warm too
+    often (on the Repeat grammar), and its Mycologists, who fuse two of a
+    kind; Griftlands' Wandering Chef and a Jake selling RPGs by the road.
+  - **Also:** Inscryption's Special Dagger (a strong hit that costs you an
+    eye) and Fish Hook (an enemy changes sides), Wizard of Legend's Adorable
+    Mimic and Armor of Greed, Griftlands' Sal and its Yotes (dogs in packs),
+    and Bum-Bo's Gizzarda, a boss whose weakness changes with every hit.
+
 - **Research, twenty-fifth batch: the first games the second wiki pass
   found.** Dungeons of Dredmor, WazHack, Hand of Fate, Hand of Fate 2,
   Gumballs & Dungeons, Gunfire Reborn, Vampire Survivors and Jupiter Hell:
