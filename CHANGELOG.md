@@ -80,6 +80,12 @@ For how the project is laid out and how its systems fit together, see
     ("Next Hades song: beat Hades 2 times more, or complete 3 more distinct
     goals there"). It's the game that is close, not the song.
 
+- **Research, fifty-fourth batch.** HyperRogue's Hedgehog Warrior (only
+  killed by stepping from one cell beside it to another) and Has-Been
+  Heroes' Bobob and Dumm (twins, the survivor taking the other's immunity)
+  became goals, and the Ghost Dad a clone on Vran the Sullen. Ten small
+  wikis and Unexplored 2 (the first game's wiki) marked.
+
 - **Research, fifty-third batch.** Our Darker Purpose's Cauldron Of
   Yesterdayers (a boss that pops out of one of four cauldrons) became a goal;
   eleven small or stat-only wikis marked nothing usable.
