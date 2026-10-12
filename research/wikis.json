@@ -3487,7 +3487,9 @@
   "wiki": "https://cobaltcore.wiki.gg/"
  },
  "Cogmind": {
-  "checked": "2026-10-11",
+  "checked": "2026-10-12",
+  "note": "no wiki; the game's own manual is at https://www.gridsagegames.com/cogmind/manual.txt (plain text, 194 KB)",
+  "set": "by hand",
   "wiki": null
  },
  "Coin Crypt": {
@@ -17714,8 +17716,12 @@
   "wiki": null
  },
  "Shattered Pixel Dungeon": {
-  "checked": "2026-10-11",
-  "wiki": null
+  "api": "https://pixeldungeon.fandom.com/api.php",
+  "checked": "2026-10-12",
+  "note": "the Pixel Dungeon wiki covers Shattered on subpages: 'Shattered Pixel Dungeon/Enemies', '.../Bosses', '.../Dungeon'",
+  "set": "by hand",
+  "sitename": "Pixel Dungeon Wiki",
+  "wiki": "https://pixeldungeon.fandom.com"
  },
  "Ship of Fools": {
   "also": [

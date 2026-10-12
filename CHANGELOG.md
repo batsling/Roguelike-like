@@ -80,6 +80,16 @@ For how the project is laid out and how its systems fit together, see
     ("Next Hades song: beat Hades 2 times more, or complete 3 more distinct
     goals there"). It's the game that is close, not the song.
 
+- **Research, fifty-eighth batch: Shattered Pixel Dungeon and Cogmind
+  checked.** Shattered's "no wiki" was the Pixel Dungeon wiki's
+  `Shattered Pixel Dungeon/…` subpages (set by hand). Its six old goals had
+  nothing to do with the monsters they named; four are rewritten from the
+  wiki (Goo heals in water, DM-300 has an invincible phase, DM-200 can't fit
+  through doors, the Dwarf Warlock weakens you), and Necromancer and Mimic
+  are marked `?` as duplicates of Goblin Conjurer and Xeroc. Cogmind has no
+  wiki but ships a 194 KB plain-text manual: four of its nine rows hold
+  against it, five are marked `?`. 25 more unowned games marked.
+
 - **Research, fifty-seventh batch.** DoomRL's own wiki
   (`drl.chaosforge.org/w/api.php`, set by hand) gave its level events, and
   the Armed Nuke became an event that hands out a timed goal. Gates to
