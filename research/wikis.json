@@ -6365,8 +6365,12 @@
   "wiki": "https://dontstarve.fandom.com"
  },
  "DoomRL": {
-  "checked": "2026-10-11",
-  "wiki": null
+  "api": "https://drl.chaosforge.org/w/api.php",
+  "checked": "2026-10-12",
+  "note": "ChaosForge's own wiki (the game is now called DRL); api.php lives under /w/",
+  "set": "by hand",
+  "sitename": "DRL Wiki",
+  "wiki": "https://drl.chaosforge.org"
  },
  "Dota Auto Chess": {
   "api": "https://dotaautochess.fandom.com/api.php",

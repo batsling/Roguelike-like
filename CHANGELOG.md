@@ -80,6 +80,12 @@ For how the project is laid out and how its systems fit together, see
     ("Next Hades song: beat Hades 2 times more, or complete 3 more distinct
     goals there"). It's the game that is close, not the song.
 
+- **Research, fifty-seventh batch.** DoomRL's own wiki
+  (`drl.chaosforge.org/w/api.php`, set by hand) gave its level events, and
+  the Armed Nuke became an event that hands out a timed goal. Gates to
+  Infinity is the series' content again; 22 older games with no wiki marked
+  nothing usable.
+
 - **Research, fifty-sixth batch.** ToeJam & Earl: Back in the Groove! gave
   the Evil Elevator, a fake way forward that drops you a level, as an event;
   nineteen stub wikis marked nothing usable.
