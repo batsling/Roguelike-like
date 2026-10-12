@@ -80,6 +80,13 @@ For how the project is laid out and how its systems fit together, see
     ("Next Hades song: beat Hades 2 times more, or complete 3 more distinct
     goals there"). It's the game that is close, not the song.
 
+- **Research, thirty-ninth batch.** Trials of Fire's wiki is 720 pages,
+  but its cards are empty infoboxes; its bosses gave the Amalgam (a Husk for
+  every 8 damage it takes). Heroes of Hammerwatch lives on the Hammerwatch
+  wiki and 30XX on the 20XX wiki, both set by hand. Bright Nights and
+  GnollHack are forks of games already read; eight more marked nothing
+  usable.
+
 - **Research, thirty-eighth batch.** Mystery Chronicle: One Way Heroics is
   covered by the original game's wiki (set by hand), which gave two bosses:
   the Dark Dragon, the Darkness that chases you across the map all game and

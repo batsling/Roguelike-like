@@ -131,8 +131,12 @@
   "wiki": "https://20xx.fandom.com"
  },
  "30XX": {
-  "checked": "2026-10-11",
-  "wiki": null
+  "api": "https://20xx.fandom.com/api.php",
+  "checked": "2026-10-12",
+  "note": "the 20XX wiki has a single page on 30XX",
+  "set": "by hand",
+  "sitename": "20XX Wiki",
+  "wiki": "https://20xx.fandom.com"
  },
  "33 Immortals": {
   "api": "https://33immortals.wiki.gg/api.php",
@@ -10529,8 +10533,12 @@
   "wiki": "https://hereticsfork.fandom.com"
  },
  "Heroes of Hammerwatch": {
-  "checked": "2026-10-11",
-  "wiki": null
+  "api": "https://hammerwatch.fandom.com/api.php",
+  "checked": "2026-10-12",
+  "note": "the Hammerwatch wiki covers Heroes of Hammerwatch on pages suffixed '(Heroes of Hammerwatch)'; its bosses have their own pages",
+  "set": "by hand",
+  "sitename": "Hammerwatch Wiki",
+  "wiki": "https://hammerwatch.fandom.com"
  },
  "Heroes of Hammerwatch II": {
   "checked": "2026-10-11",

@@ -24,7 +24,13 @@
   "statuses": "2026-10-10: nothing: Powers are abilities, not statuses"
  },
  "30XX": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: the 20XX wiki (set by hand) has one page on it; its items carry on from 20XX's rows",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: the 20XX wiki (set by hand) has one page on it; its items carry on from 20XX's rows",
+  "goals": "2026-10-12: nothing usable: the 20XX wiki (set by hand) has one page on it; its items carry on from 20XX's rows",
+  "locations": "2026-10-12: nothing usable: the 20XX wiki (set by hand) has one page on it; its items carry on from 20XX's rows",
+  "loot": "2026-10-12: nothing usable: the 20XX wiki (set by hand) has one page on it; its items carry on from 20XX's rows",
+  "statuses": "2026-10-12: nothing usable: the 20XX wiki (set by hand) has one page on it; its items carry on from 20XX's rows"
  },
  "33 Immortals": {
   "characters": "2026-10-10: nothing",
@@ -483,7 +489,13 @@
   "statuses": "2026-10-10: nothing"
  },
  "Bleak Sword": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "goals": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "locations": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "loot": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "statuses": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs"
  },
  "Block Tower TD": {
   "connections": "before 2026-10-07"
@@ -657,7 +669,13 @@
   "statuses": "2026-10-12: nothing usable: no wiki; its content lives on in Cataclysm: Dark Days Ahead"
  },
  "Cataclysm: Bright Nights": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing new: a fork of Cataclysm: Dark Days Ahead, whose monster data was read",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing new: a fork of Cataclysm: Dark Days Ahead, whose monster data was read",
+  "goals": "2026-10-12: nothing new: a fork of Cataclysm: Dark Days Ahead, whose monster data was read",
+  "locations": "2026-10-12: nothing new: a fork of Cataclysm: Dark Days Ahead, whose monster data was read",
+  "loot": "2026-10-12: nothing new: a fork of Cataclysm: Dark Days Ahead, whose monster data was read",
+  "statuses": "2026-10-12: nothing new: a fork of Cataclysm: Dark Days Ahead, whose monster data was read"
  },
  "Cataclysm: Dark Days Ahead": {
   "characters": "2026-10-12: nothing usable: professions are starting kits",
@@ -705,7 +723,13 @@
   "statuses": "2026-10-09: pilot: rows written from wiki.cavesofqud.com"
  },
  "Cavity Busters": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "goals": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "locations": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "loot": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "statuses": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs"
  },
  "Cell Command": {
   "connections": "before 2026-10-07"
@@ -871,7 +895,13 @@
   "statuses": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs"
  },
  "Core Defense": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "goals": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "locations": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "loot": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "statuses": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs"
  },
  "Corpse Keeper": {
   "connections": "before 2026-10-07"
@@ -1909,7 +1939,13 @@
   "connections": "before 2026-10-07"
  },
  "Geometry Arena": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: a wiki with no item or enemy text",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: a wiki with no item or enemy text",
+  "goals": "2026-10-12: nothing usable: a wiki with no item or enemy text",
+  "locations": "2026-10-12: nothing usable: a wiki with no item or enemy text",
+  "loot": "2026-10-12: nothing usable: a wiki with no item or enemy text",
+  "statuses": "2026-10-12: nothing usable: a wiki with no item or enemy text"
  },
  "Geometry Arena 2": {
   "connections": "before 2026-10-07"
@@ -1918,7 +1954,13 @@
   "connections": "before 2026-10-07"
  },
  "GnollHack": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing new: a NetHack variant, whose rows cover it",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing new: a NetHack variant, whose rows cover it",
+  "goals": "2026-10-12: nothing new: a NetHack variant, whose rows cover it",
+  "locations": "2026-10-12: nothing new: a NetHack variant, whose rows cover it",
+  "loot": "2026-10-12: nothing new: a NetHack variant, whose rows cover it",
+  "statuses": "2026-10-12: nothing new: a NetHack variant, whose rows cover it"
  },
  "Gnomes": {
   "characters": "2026-10-11: nothing: its 24 guilds are starter packs (a house, a gnome, a crop and a relic) rather than heroes",
@@ -2221,7 +2263,13 @@
   "connections": "before 2026-10-07"
  },
  "Heroes of Hammerwatch": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: classes are the genre's",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: none",
+  "goals": "2026-10-12: nothing usable: its Forsaken Spire bosses (Three Councilors, the Watcher, Thundersnow) are attack patterns",
+  "locations": "2026-10-12: nothing usable: the town is upgrades",
+  "loot": "2026-10-12: nothing usable: no item pages read; no evolutions",
+  "statuses": "2026-10-12: nothing usable: none"
  },
  "Heroes of Hammerwatch II": {
   "connections": "before 2026-10-07"
@@ -2476,7 +2524,13 @@
   "connections": "before 2026-10-07"
  },
  "Labyrinth of Legendary Loot": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "goals": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "locations": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "loot": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "statuses": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs"
  },
  "Lake of Creatures": {
   "connections": "before 2026-10-07"
@@ -3146,7 +3200,13 @@
   "connections": "before 2026-10-07"
  },
  "Omega Labyrinth Life": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "goals": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "locations": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "loot": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "statuses": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs"
  },
  "Omega Labyrinth Z": {
   "connections": "before 2026-10-07"
@@ -4038,7 +4098,13 @@
   "statuses": "2026-10-12: nothing usable: none"
  },
  "Slasher's Keep": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "goals": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "locations": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "loot": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "statuses": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs"
  },
  "Slay the Spire": {
   "characters": "2026-10-09: nothing: Ironclad is live; the Silent's poison, Defect's orbs and Watcher's stances are other candidates' level-ups",
@@ -4836,7 +4902,13 @@
   "connections": "before 2026-10-07"
  },
  "Trials of Fire": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: classes are card pools",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: quest pages are stubs",
+  "goals": "2026-10-12: 1 row (Amalgam); the other bosses' talents are resistances (the Glass Elemental's Impenetrable)",
+  "locations": "2026-10-12: nothing usable: none",
+  "loot": "2026-10-12: nothing usable: its card pages are empty infoboxes; no evolutions",
+  "statuses": "2026-10-12: nothing usable: the injury cards (Broken Arm, Cracked Skull) have empty pages"
  },
  "TumbleSeed": {
   "connections": "before 2026-10-07"
