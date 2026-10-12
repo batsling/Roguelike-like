@@ -91,6 +91,13 @@ For how the project is laid out and how its systems fit together, see
   exploit a loophole. These wikis are small, and most kinds are marked with
   nothing.
 
+- **Research, thirty-first batch: twelve small wikis, nothing usable.**
+  TombStar, The Ouroboros King, Facehand, Greedland, Metal Unit, Wall World,
+  Megabonk, GONNER2, Lumencraft, Gunlocked 2, Eldritch and Immortal Redneck
+  were each read page by page (their categories show almost nothing). They
+  hold overview stubs, infobox shells or percentage bonuses, so every kind is
+  marked with the reason and no rows were written.
+
 - **Research, twenty-ninth batch.** The Flame in the Flood, West of Dead,
   Evolings, Hades II, GearHead, Dungeons of Blood and Dream, Loop Hero, Tower
   of Guns and Ziggurat 2: 5 new rows and 7 old goal rows checked. Loop Hero's
