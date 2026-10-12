@@ -1672,7 +1672,13 @@
   "statuses": "2026-10-11: nothing: STR up and AGI up are stat buffs"
  },
  "Dream Quest": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: classes are the genre's",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: none",
+  "goals": "2026-10-12: nothing new: Clone and Mime are clones on Rak'Shor Cultist; the other bosses are the genre's",
+  "locations": "2026-10-12: nothing usable: none",
+  "loot": "2026-10-12: nothing usable: its cards are the deckbuilder's basics; Gauss' Hourglass needs a hand; no evolutions",
+  "statuses": "2026-10-12: nothing usable: card keywords"
  },
  "Dreamscaper": {
   "characters": "2026-10-10: Cassidy is the only hero",
@@ -1858,7 +1864,13 @@
   "connections": "before 2026-10-07"
  },
  "Elona": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: races and classes are the genre's",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: 1 row (Etherwind)",
+  "goals": "2026-10-12: nothing usable: monster pages are stat lists (the putit, the little sister); the famous ones are covered by the genre's rows",
+  "locations": "2026-10-12: nothing usable: towns are shops",
+  "loot": "2026-10-12: nothing usable: artifacts are stat lines (the Kill Kill Piano has no effect text); no evolutions",
+  "statuses": "2026-10-12: 1 row (Ether Disease)"
  },
  "Ember Knights": {
   "characters": "2026-10-10: knights are cosmetic skins",
@@ -4175,7 +4187,13 @@
   "statuses": "2026-10-11: nothing usable: polymorphing yourself is the Druid's goal"
  },
  "Rampage Knights": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: knights",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: none",
+  "goals": "2026-10-12: nothing usable: enemy pages are one line",
+  "locations": "2026-10-12: nothing usable: none",
+  "loot": "2026-10-12: 1 row (Grand Vizir's Terrifying Transmutator); its modifiers repeat Isaac's; no evolutions",
+  "statuses": "2026-10-12: nothing usable: none"
  },
  "Rangedrifter": {
   "connections": "before 2026-10-07"
@@ -5178,7 +5196,13 @@
   "connections": "before 2026-10-07"
  },
  "Stoneshard": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: its enemy and item pages are stat templates (the Archon's skills read TODO, enemy skills are titles)",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: its enemy and item pages are stat templates (the Archon's skills read TODO, enemy skills are titles)",
+  "goals": "2026-10-12: nothing usable: its enemy and item pages are stat templates (the Archon's skills read TODO, enemy skills are titles)",
+  "locations": "2026-10-12: nothing usable: its enemy and item pages are stat templates (the Archon's skills read TODO, enemy skills are titles)",
+  "loot": "2026-10-12: nothing usable: its enemy and item pages are stat templates (the Archon's skills read TODO, enemy skills are titles)",
+  "statuses": "2026-10-12: nothing usable: its enemy and item pages are stat templates (the Archon's skills read TODO, enemy skills are titles)"
  },
  "Stories from the Outbreak": {
   "characters": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
@@ -5325,7 +5349,13 @@
   "connections": "before 2026-10-07"
  },
  "Sword of the Stars: The Pit": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: weapons, armour and food are stat lines",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: weapons, armour and food are stat lines",
+  "goals": "2026-10-12: nothing usable: weapons, armour and food are stat lines",
+  "locations": "2026-10-12: nothing usable: weapons, armour and food are stat lines",
+  "loot": "2026-10-12: nothing usable: weapons, armour and food are stat lines",
+  "statuses": "2026-10-12: nothing usable: weapons, armour and food are stat lines"
  },
  "Swordship": {
   "characters": "2026-10-12: nothing usable: no wiki (Fandom and wiki.gg both tried under its name), and nothing beyond store blurbs",
@@ -6012,7 +6042,13 @@
   "statuses": "2026-10-12: nothing usable: a kingdom sim; its artifacts are tavern displays and a sack worth 1-4 gold a year"
  },
  "Wayward": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: a survival game whose 969 item pages are crafting materials and tools",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: a survival game whose 969 item pages are crafting materials and tools",
+  "goals": "2026-10-12: nothing usable: a survival game whose 969 item pages are crafting materials and tools",
+  "locations": "2026-10-12: nothing usable: a survival game whose 969 item pages are crafting materials and tools",
+  "loot": "2026-10-12: nothing usable: a survival game whose 969 item pages are crafting materials and tools",
+  "statuses": "2026-10-12: nothing usable: a survival game whose 969 item pages are crafting materials and tools"
  },
  "WazHack": {
   "characters": "2026-10-12: nothing usable: one hero",

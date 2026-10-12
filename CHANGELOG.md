@@ -80,6 +80,15 @@ For how the project is laid out and how its systems fit together, see
     ("Next Hades song: beat Hades 2 times more, or complete 3 more distinct
     goals there"). It's the game that is close, not the song.
 
+- **Research, forty-eighth batch: the first unowned games.** With every
+  owned game done, `next` now hands out the unowned ones with the biggest
+  wikis first. Elona gave Ether Disease (a status that keeps adding
+  symptoms) and the Etherwind that spreads it (an event); Rampage Knights
+  gave the Grand Vizir's Terrifying Transmutator (your Health becomes what
+  you were missing); Dream Quest's Clone and Mime are clones on Rak'Shor
+  Cultist. Stoneshard, Wayward and Sword of the Stars: The Pit have big wikis
+  of stat templates and crafting materials, nothing usable.
+
 - **Research, forty-seventh batch, and the end of the owned games.** The
   last 18 owned games marked: Touhou Crawl and ZMAngband are variants of
   games already read, Warriors: Abyss's wiki is 27 placeholder pages named
