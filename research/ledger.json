@@ -624,7 +624,13 @@
   "statuses": "2026-10-11: nothing usable: drain and poison are generic"
  },
  "CastlevaniaRL": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "goals": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "locations": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "loot": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "statuses": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs"
  },
  "Cat God Ranch": {
   "connections": "before 2026-10-07"
@@ -1580,7 +1586,13 @@
   "connections": "before 2026-10-07"
  },
  "Eternal Quest": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "goals": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "locations": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "loot": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "statuses": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs"
  },
  "Etrian Mystery Dungeon": {
   "connections": "before 2026-10-07"
@@ -1740,7 +1752,13 @@
   "statuses": "2026-10-12: nothing usable: a stub wiki with no item or enemy text"
  },
  "Frozen Depths": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "goals": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "locations": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "loot": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "statuses": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs"
  },
  "Full Metal Schoolgirl": {
   "connections": "2026-10-07"
@@ -2254,7 +2272,13 @@
   "connections": "before 2026-10-07"
  },
  "Izuna: Legend of the Unemployed Ninja": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "goals": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "locations": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "loot": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "statuses": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs"
  },
  "Jotunnslayer: Hordes of Hel": {
   "connections": "before 2026-10-07"
@@ -2341,7 +2365,13 @@
   "connections": "before 2026-10-07"
  },
  "LambdaRogue: The Book of Stars": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "goals": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "locations": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "loot": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "statuses": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs"
  },
  "Larn": {
   "characters": "2026-10-11: nothing usable: one unnamed hero",
@@ -2614,7 +2644,13 @@
   "statuses": "2026-10-12: nothing usable: no wiki, and nothing in English beyond store blurbs"
  },
  "Monster Gate: Ooinaru Dungeon - Fuuin no Orb": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "goals": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "locations": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "loot": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "statuses": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs"
  },
  "Monster Girls and the Mysterious Adventure": {
   "connections": "before 2026-10-07"
@@ -3192,8 +3228,13 @@
   "connections": "before 2026-10-07"
  },
  "Pokémon Mystery Dungeon: Red and Blue Rescue Team": {
+  "characters": "2026-10-12: nothing usable: the hero is chosen by personality quiz",
   "connections": "before 2026-10-07",
-  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+  "events": "2026-10-12: nothing usable: jobs are rescue missions",
+  "goals": "2026-10-12: 4 old rows checked against the Mystery Dungeon Wiki (Rescue Team: namespace): Kecleon, Zapdos and Rayquaza hold; Groudon marked ? (no boss HP on the wiki)",
+  "locations": "2026-10-12: nothing usable: Kecleon Shops are covered by the Kecleon row",
+  "loot": "2026-10-12: nothing usable: its items are Pokémon held items and orbs already common to the series; no evolutions",
+  "statuses": "2026-10-12: nothing usable: its statuses are Pokémon move effects"
  },
  "Pokémon Mystery Dungeon: Rescue Team DX": {
   "connections": "before 2026-10-07"
@@ -3208,8 +3249,13 @@
   "connections": "before 2026-10-07"
  },
  "Powder": {
+  "characters": "2026-10-12: nothing usable: one avatar",
   "connections": "before 2026-10-07",
-  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+  "events": "2026-10-12: nothing usable: none",
+  "goals": "2026-10-12: 1 old row (Baezl'bub) checked against the game's own site and holds; its bestiary is NetHack's animals",
+  "locations": "2026-10-12: nothing usable: none",
+  "loot": "2026-10-12: nothing usable: no item list online; no evolutions",
+  "statuses": "2026-10-12: nothing usable: none"
  },
  "Prime Monster": {
   "connections": "2026-10-07"
@@ -3801,7 +3847,13 @@
   "connections": "before 2026-10-07"
  },
  "Slash'EM": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: the Doppelganger race repeats NetHack's polymorph",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: none",
+  "goals": "2026-10-12: nothing usable: its new monsters (the Lethe patch's Cthulhu Mythos) are names on NetHack Wiki lists",
+  "locations": "2026-10-12: 1 row (One-eyed Sam, the black market) from the NetHack Wiki; Grund's Stronghold is a map",
+  "loot": "2026-10-12: nothing usable: its additions are NetHack items with new numbers; no evolutions",
+  "statuses": "2026-10-12: nothing usable: none"
  },
  "Slasher's Keep": {
   "connections": "before 2026-10-07"
@@ -4269,7 +4321,13 @@
   "statuses": "2026-10-12: nothing usable: a stub wiki; towers and upgrades with no text"
  },
  "Tao's Adventure: Curse of the Demon Seal": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "goals": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "locations": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "loot": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "statuses": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs"
  },
  "Tape to Tape": {
   "connections": "before 2026-10-07"
@@ -4392,7 +4450,13 @@
   "connections": "before 2026-10-07"
  },
  "The Nightmare of Druaga": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: the Mystery Dungeon Wiki's six pages are name lists",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: the Mystery Dungeon Wiki's six pages are name lists",
+  "goals": "2026-10-12: nothing usable: the Mystery Dungeon Wiki's six pages are name lists",
+  "locations": "2026-10-12: nothing usable: the Mystery Dungeon Wiki's six pages are name lists",
+  "loot": "2026-10-12: nothing usable: the Mystery Dungeon Wiki's six pages are name lists",
+  "statuses": "2026-10-12: nothing usable: the Mystery Dungeon Wiki's six pages are name lists"
  },
  "The Ouroboros King": {
   "characters": "2026-10-12: nothing usable: a 13-page wiki of empty overview pages",
@@ -4773,7 +4837,13 @@
   "statuses": "2026-10-12: nothing usable: none listed"
  },
  "Weird Worlds: Return to Infinite Space": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: a 13-article wiki with no item or event text",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: a 13-article wiki with no item or event text",
+  "goals": "2026-10-12: nothing usable: a 13-article wiki with no item or event text",
+  "locations": "2026-10-12: nothing usable: a 13-article wiki with no item or event text",
+  "loot": "2026-10-12: nothing usable: a 13-article wiki with no item or event text",
+  "statuses": "2026-10-12: nothing usable: a 13-article wiki with no item or event text"
  },
  "West of Dead": {
   "characters": "2026-10-12: nothing usable: William Mason only",

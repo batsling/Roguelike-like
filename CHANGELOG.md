@@ -80,6 +80,14 @@ For how the project is laid out and how its systems fit together, see
     ("Next Hades song: beat Hades 2 times more, or complete 3 more distinct
     goals there"). It's the game that is close, not the song.
 
+- **Research, thirty-fifth batch.** Pokémon Mystery Dungeon: Red and Blue
+  Rescue Team's four old goals checked against the Mystery Dungeon Wiki's
+  `Rescue Team:` pages: three hold, Groudon's "ten times your health" has
+  nothing behind it and is marked `?`. Powder's Baezl'bub row checked against
+  the game's own About page (it holds, black heart and all). Slash'EM's black
+  market, through the NetHack Wiki, gave One-eyed Sam as a shopkeeper.
+  Nine games with no wiki or a name-list wiki marked nothing usable.
+
 - **Research, thirty-fourth batch: the Mystery Dungeon namespaces, and IVAN's
   wiki.** The Mystery Dungeon Wiki keeps each game in its own namespace, and
   read that way the item lists gave six rows: Torneko 2's Change Pot, Magic
