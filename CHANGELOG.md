@@ -80,6 +80,11 @@ For how the project is laid out and how its systems fit together, see
     ("Next Hades song: beat Hades 2 times more, or complete 3 more distinct
     goals there"). It's the game that is close, not the song.
 
+- **Research, fifty-fifth batch: 16 games, nothing usable.** Three sequels
+  sit on their first game's wiki (Rift Wizard 3, Wall World 2, Sword of the
+  Necromancer: Resurrection), both Touhou games on the series wiki, and the
+  rest are stubs or stat pages.
+
 - **Research, fifty-fourth batch.** HyperRogue's Hedgehog Warrior (only
   killed by stepping from one cell beside it to another) and Has-Been
   Heroes' Bobob and Dumm (twins, the survivor taking the other's immunity)
