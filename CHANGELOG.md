@@ -80,6 +80,16 @@ For how the project is laid out and how its systems fit together, see
     ("Next Hades song: beat Hades 2 times more, or complete 3 more distinct
     goals there"). It's the game that is close, not the song.
 
+- **Research, thirty-seventh batch: Cataclysm's own data, FTL's wiki.**
+  Cataclysm: Dark Days Ahead's seven old goals checked against the game's
+  monster JSON on GitHub (raw files answer; the API doesn't): five hold,
+  Zombie Hulk and Mi-go marked `?`. FTL's wiki was hidden by the catalog's
+  short name and is set by hand; its three old rows hold, and it gave the
+  Black Market Weapons Trader as an event. Don't Starve Together (the Don't
+  Starve Wiki, by hand) gave the Antlion as an event and Klaus as a clone on
+  Vran the Sullen. Hoplite's two rows have no source and are marked `?`.
+  The 2008 Shiren is now marked under its catalog name.
+
 - **Research, thirty-sixth batch.** Shiren 4's Day and Night became a
   status, Night: your weapons deal 1 damage, enemies hit harder, and
   everything they drop is better. Explorers of Sky's Primal Dialga checked

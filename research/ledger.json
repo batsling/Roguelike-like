@@ -39,7 +39,13 @@
   "connections": "before 2026-10-07"
  },
  "868-Hack": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "goals": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "locations": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "loot": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "statuses": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs"
  },
  "9 Kings": {
   "characters": "2026-10-11: nothing: each king is a deck; Greed repeats Isaac's Keeper and Blood Darkest Dungeon 2's Flagellant",
@@ -648,8 +654,13 @@
   "connections": "before 2026-10-07"
  },
  "Cataclysm: Dark Days Ahead": {
+  "characters": "2026-10-12: nothing usable: professions are starting kits",
   "connections": "before 2026-10-07",
-  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+  "events": "2026-10-12: nothing usable: none",
+  "goals": "2026-10-12: 7 old rows checked against the game's own monster JSON (raw.githubusercontent.com): five hold, Zombie Hulk and Mi-go marked ?; Chicken Walker not checked (its file moved)",
+  "locations": "2026-10-12: not read",
+  "loot": "2026-10-12: not read: the item JSON is thousands of entries; a pass of its own",
+  "statuses": "2026-10-12: not read"
  },
  "Cataclysm: The Last Generation": {
   "connections": "before 2026-10-07"
@@ -845,7 +856,13 @@
   "statuses": "2026-10-10: no status page"
  },
  "Convoy": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "goals": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "locations": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "loot": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "statuses": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs"
  },
  "Core Defense": {
   "connections": "before 2026-10-07"
@@ -1115,7 +1132,13 @@
   "connections": "before 2026-10-07"
  },
  "Death Skid Marks": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "goals": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "locations": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "loot": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "statuses": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs"
  },
  "Death by Scrolling": {
   "connections": "before 2026-10-07"
@@ -1343,7 +1366,13 @@
   "statuses": "2026-10-09: 1 status, 1 curse"
  },
  "Don't Starve Together": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: the cast is Don't Starve's",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: 1 row (Antlion)",
+  "goals": "2026-10-12: nothing new: Klaus is a clone on Vran the Sullen",
+  "locations": "2026-10-12: nothing usable: biomes",
+  "loot": "2026-10-12: nothing usable from the pages read; no evolutions",
+  "statuses": "2026-10-12: nothing usable: none"
  },
  "DoomRL": {
   "connections": "before 2026-10-07"
@@ -1643,8 +1672,13 @@
   "connections": "before 2026-10-07"
  },
  "FTL": {
+  "characters": "2026-10-12: nothing usable: crews are races",
   "connections": "before 2026-10-07",
-  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+  "events": "2026-10-12: 1 row (Black Market Weapons Trader); Confused Mantis needs crew",
+  "goals": "2026-10-12: 3 old rows checked against ftl.fandom.com (set by hand) and hold",
+  "locations": "2026-10-12: nothing usable: sectors are map regions",
+  "loot": "2026-10-12: nothing usable: weapons and augments are ship parts; no evolutions",
+  "statuses": "2026-10-12: nothing usable: none"
  },
  "Facehand": {
   "characters": "2026-10-12: nothing usable: a 12-page wiki of empty overview pages",
@@ -1908,7 +1942,13 @@
   "statuses": "2026-10-12: nothing usable: none listed"
  },
  "Golden Krone Hotel": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "goals": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "locations": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "loot": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "statuses": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs"
  },
  "Golden Light": {
   "characters": "2026-10-12: nothing usable: its characters are NPCs",
@@ -2181,8 +2221,13 @@
   "connections": "before 2026-10-07"
  },
  "Hoplite": {
+  "characters": "2026-10-12: nothing usable: one hoplite",
   "connections": "before 2026-10-07",
-  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+  "events": "2026-10-12: nothing usable: none",
+  "goals": "2026-10-12: 2 old rows (Archer, Wizard) marked ?: no wiki or other source for its rules",
+  "locations": "2026-10-12: nothing usable: none",
+  "loot": "2026-10-12: nothing usable: no source",
+  "statuses": "2026-10-12: nothing usable: none"
  },
  "House of Necrosis": {
   "connections": "before 2026-10-07"
@@ -2239,7 +2284,13 @@
   "statuses": "2026-10-12: nothing usable: the wiki found was PlatinumGames' Infinite Space, now set to none by hand; no other source"
  },
  "Infra Arcana": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "goals": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "locations": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "loot": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "statuses": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs"
  },
  "Inkbound": {
   "characters": "2026-10-12: nothing usable: the wiki's vestige pages are empty templates and nothing else is documented",
@@ -3332,7 +3383,13 @@
   "statuses": "2026-10-10: 1 row: Quasimorphosis (curse); wounds, infection and amputation repeat Bleed, Blight and Jotun's lost limb"
  },
  "Quest of Dungeons": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "goals": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "locations": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "loot": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "statuses": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs"
  },
  "RAM: Random Access Mayhem": {
   "connections": "before 2026-10-07"
@@ -3789,7 +3846,13 @@
   "statuses": "2026-10-10: the five curses are covered by The Dark Chest"
  },
  "Shiren the Wanderer (2008)": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing new: the 2008 DS remake of the 1995 game, whose rows are on Mystery Dungeon 2: Shiren the Wanderer",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing new: the 2008 DS remake of the 1995 game, whose rows are on Mystery Dungeon 2: Shiren the Wanderer",
+  "goals": "2026-10-12: nothing new: the 2008 DS remake of the 1995 game, whose rows are on Mystery Dungeon 2: Shiren the Wanderer",
+  "locations": "2026-10-12: nothing new: the 2008 DS remake of the 1995 game, whose rows are on Mystery Dungeon 2: Shiren the Wanderer",
+  "loot": "2026-10-12: nothing new: the 2008 DS remake of the 1995 game, whose rows are on Mystery Dungeon 2: Shiren the Wanderer",
+  "statuses": "2026-10-12: nothing new: the 2008 DS remake of the 1995 game, whose rows are on Mystery Dungeon 2: Shiren the Wanderer"
  },
  "Shiren the Wanderer 2: Shiren's Castle and the Oni Invasion": {
   "characters": "2026-10-12: nothing usable: none",
@@ -5013,7 +5076,13 @@
   "connections": "before 2026-10-07"
  },
  "Z.H.P. Unlosing Ranger VS Darkdeath Evilman": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "goals": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "locations": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "loot": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "statuses": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs"
  },
  "ZMAngband": {
   "connections": "before 2026-10-07"

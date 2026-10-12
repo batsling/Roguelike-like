@@ -6353,8 +6353,12 @@
   "wiki": "https://dontstarve.wiki.gg/"
  },
  "Don't Starve Together": {
-  "checked": "2026-10-11",
-  "wiki": null
+  "api": "https://dontstarve.fandom.com/api.php",
+  "checked": "2026-10-12",
+  "note": "one wiki for Don't Starve and Together; DST-only pages are marked 'exclusive to Don't Starve Together'",
+  "set": "by hand",
+  "sitename": "Don't Starve Wiki",
+  "wiki": "https://dontstarve.fandom.com"
  },
  "DoomRL": {
   "checked": "2026-10-11",
@@ -7928,8 +7932,12 @@
   "wiki": "https://flerp.fandom.com"
  },
  "FTL": {
-  "checked": "2026-10-11",
-  "wiki": null
+  "api": "https://ftl.fandom.com/api.php",
+  "checked": "2026-10-12",
+  "note": "the catalog's short name hid it from the guess; ftlwiki.com is the larger wiki but refuses scripts (403)",
+  "set": "by hand",
+  "sitename": "FTL: Faster Than Light Wiki",
+  "wiki": "https://ftl.fandom.com"
  },
  "Facehand": {
   "api": "https://facehand.fandom.com/api.php",
