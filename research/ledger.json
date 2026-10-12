@@ -594,7 +594,13 @@
   "connections": "before 2026-10-07"
  },
  "Blue Prince": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: its rooms are drafted into a house plan (the Chapel takes a coin per entry, the Gymnasium two steps), a map rule this game lacks; its items are keys and puzzle pieces",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: its rooms are drafted into a house plan (the Chapel takes a coin per entry, the Gymnasium two steps), a map rule this game lacks; its items are keys and puzzle pieces",
+  "goals": "2026-10-12: nothing usable: its rooms are drafted into a house plan (the Chapel takes a coin per entry, the Gymnasium two steps), a map rule this game lacks; its items are keys and puzzle pieces",
+  "locations": "2026-10-12: nothing usable: its rooms are drafted into a house plan (the Chapel takes a coin per entry, the Gymnasium two steps), a map rule this game lacks; its items are keys and puzzle pieces",
+  "loot": "2026-10-12: nothing usable: its rooms are drafted into a house plan (the Chapel takes a coin per entry, the Gymnasium two steps), a map rule this game lacks; its items are keys and puzzle pieces",
+  "statuses": "2026-10-12: nothing usable: its rooms are drafted into a house plan (the Chapel takes a coin per entry, the Gymnasium two steps), a map rule this game lacks; its items are keys and puzzle pieces"
  },
  "Boneraiser Minions": {
   "characters": "2026-10-09: nothing: the Boneraiser's raising the dead is a live goal already",
@@ -720,7 +726,13 @@
   "connections": "before 2026-10-07"
  },
  "Cardinal Quest 2": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: its monsters and bosses are the genre's (minotaur, spider queen, ogre king) with stat pages",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: its monsters and bosses are the genre's (minotaur, spider queen, ogre king) with stat pages",
+  "goals": "2026-10-12: nothing usable: its monsters and bosses are the genre's (minotaur, spider queen, ogre king) with stat pages",
+  "locations": "2026-10-12: nothing usable: its monsters and bosses are the genre's (minotaur, spider queen, ogre king) with stat pages",
+  "loot": "2026-10-12: nothing usable: its monsters and bosses are the genre's (minotaur, spider queen, ogre king) with stat pages",
+  "statuses": "2026-10-12: nothing usable: its monsters and bosses are the genre's (minotaur, spider queen, ogre king) with stat pages"
  },
  "Castle of the Winds": {
   "characters": "2026-10-11: nothing usable: one unnamed hero",
@@ -1573,7 +1585,13 @@
   "connections": "before 2026-10-07"
  },
  "Dog Witch": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: its equipment page names are cipher text; the rest are card stats",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: its equipment page names are cipher text; the rest are card stats",
+  "goals": "2026-10-12: nothing usable: its equipment page names are cipher text; the rest are card stats",
+  "locations": "2026-10-12: nothing usable: its equipment page names are cipher text; the rest are card stats",
+  "loot": "2026-10-12: nothing usable: its equipment page names are cipher text; the rest are card stats",
+  "statuses": "2026-10-12: nothing usable: its equipment page names are cipher text; the rest are card stats"
  },
  "Dog and Goblin": {
   "connections": "before 2026-10-07"
@@ -2008,7 +2026,13 @@
   "statuses": "2026-10-11: 1 row (Overeating curse)"
  },
  "Fear & Hunger": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: the four mercenaries are stat sets",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: coin flips decide loot and escapes, already the shape of every 1-in-2 result",
+  "goals": "2026-10-12: nothing usable: boss pages are lore (Skin Granny is a cautionary tale); the doors are stat tables",
+  "locations": "2026-10-12: nothing usable: none",
+  "loot": "2026-10-12: nothing new: the Lucky coin is a clone on Fool's Hope Charm; cursed weapons are stat swaps; no evolutions",
+  "statuses": "2026-10-12: nothing usable: its injuries (Concussion, Needle Worm) have no pages"
  },
  "Feed the Deep": {
   "characters": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
@@ -2398,7 +2422,13 @@
   "connections": "before 2026-10-07"
  },
  "Guild of Dungeoneering": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: monster pages are empty ability templates (the Arch Vegan's five ability lines are blank)",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: monster pages are empty ability templates (the Arch Vegan's five ability lines are blank)",
+  "goals": "2026-10-12: nothing usable: monster pages are empty ability templates (the Arch Vegan's five ability lines are blank)",
+  "locations": "2026-10-12: nothing usable: monster pages are empty ability templates (the Arch Vegan's five ability lines are blank)",
+  "loot": "2026-10-12: nothing usable: monster pages are empty ability templates (the Arch Vegan's five ability lines are blank)",
+  "statuses": "2026-10-12: nothing usable: monster pages are empty ability templates (the Arch Vegan's five ability lines are blank)"
  },
  "Gumballs & Dungeons": {
   "characters": "2026-10-12: nothing usable: gumballs are collected, not a starting hero",
@@ -3145,7 +3175,13 @@
   "connections": "before 2026-10-07"
  },
  "Magicraft": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: none",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: none",
+  "goals": "2026-10-12: nothing usable: none read",
+  "locations": "2026-10-12: nothing usable: none",
+  "loot": "2026-10-12: nothing new: Enchanting Coin is a clone on Coin Gun; Mimicry Cube copies the spell beside it, which Blueprint already does; no evolutions",
+  "statuses": "2026-10-12: nothing usable: none"
  },
  "Maid Survivors: Little Angels": {
   "connections": "before 2026-10-07"

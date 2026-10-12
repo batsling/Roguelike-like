@@ -80,6 +80,12 @@ For how the project is laid out and how its systems fit together, see
     ("Next Hades song: beat Hades 2 times more, or complete 3 more distinct
     goals there"). It's the game that is close, not the song.
 
+- **Research, fiftieth batch.** Six unowned games and two clones: Fear &
+  Hunger's Lucky coin on Fool's Hope Charm, Magicraft's Enchanting Coin on
+  Coin Gun. Blue Prince's rooms are a house-drafting rule, Guild of
+  Dungeoneering's monster pages are empty templates, and Dog Witch and
+  Cardinal Quest 2 are stat pages, so all six are otherwise nothing usable.
+
 - **Research, forty-ninth batch.** SULFUR gave Ascetic Oil (damage for no
   gold) and Terrorbaum, the tree boss whose bullet rain is made of your own
   shots; Cursed Words gave the Hungry Hippo, which eats the shop's food for
