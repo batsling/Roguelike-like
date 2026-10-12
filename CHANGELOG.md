@@ -80,6 +80,14 @@ For how the project is laid out and how its systems fit together, see
     ("Next Hades song: beat Hades 2 times more, or complete 3 more distinct
     goals there"). It's the game that is close, not the song.
 
+- **Research, thirty-sixth batch.** Shiren 4's Day and Night became a
+  status, Night: your weapons deal 1 damage, enemies hit harder, and
+  everything they drop is better. Explorers of Sky's Primal Dialga checked
+  against the Mystery Dungeon Wiki and holds. Final Fantasy Fables:
+  Chocobo's Dungeon recorded by hand on the Final Fantasy Wiki. The DS
+  Shiren remake and Explorers of Time are the games already read; ten more
+  marked nothing usable.
+
 - **Research, thirty-fifth batch.** Pokémon Mystery Dungeon: Red and Blue
   Rescue Team's four old goals checked against the Mystery Dungeon Wiki's
   `Rescue Team:` pages: three hold, Groudon's "ten times your health" has

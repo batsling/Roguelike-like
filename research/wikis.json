@@ -8191,8 +8191,12 @@
   "wiki": "https://fights-in-tight-spaces.fandom.com"
  },
  "Final Fantasy Fables: Chocobo's Dungeon": {
-  "checked": "2026-10-11",
-  "wiki": null
+  "api": "https://finalfantasy.fandom.com/api.php",
+  "checked": "2026-10-12",
+  "note": "the series wiki: the game's page is 'Final Fantasy Fables: Chocobo's Dungeon'",
+  "set": "by hand",
+  "sitename": "Final Fantasy Wiki",
+  "wiki": "https://finalfantasy.fandom.com"
  },
  "Fish Fear Me": {
   "checked": "2026-10-11",

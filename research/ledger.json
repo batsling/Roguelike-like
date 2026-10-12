@@ -636,7 +636,13 @@
   "connections": "before 2026-10-07"
  },
  "Cataclysm": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: no wiki; its content lives on in Cataclysm: Dark Days Ahead",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: no wiki; its content lives on in Cataclysm: Dark Days Ahead",
+  "goals": "2026-10-12: nothing usable: no wiki; its content lives on in Cataclysm: Dark Days Ahead",
+  "locations": "2026-10-12: nothing usable: no wiki; its content lives on in Cataclysm: Dark Days Ahead",
+  "loot": "2026-10-12: nothing usable: no wiki; its content lives on in Cataclysm: Dark Days Ahead",
+  "statuses": "2026-10-12: nothing usable: no wiki; its content lives on in Cataclysm: Dark Days Ahead"
  },
  "Cataclysm: Bright Nights": {
   "connections": "before 2026-10-07"
@@ -1457,7 +1463,13 @@
   "connections": "before 2026-10-07"
  },
  "Dungeon of Windaria": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "goals": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "locations": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "loot": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "statuses": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs"
  },
  "Dungeonmans": {
   "characters": "2026-10-12: nothing usable: its classes are the genre's",
@@ -1677,7 +1689,13 @@
   "statuses": "2026-10-12: nothing usable: none listed"
  },
  "Final Fantasy Fables: Chocobo's Dungeon": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: the Final Fantasy Wiki's page is plot and cast; its bosses are Final Fantasy's own monsters",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: the Final Fantasy Wiki's page is plot and cast; its bosses are Final Fantasy's own monsters",
+  "goals": "2026-10-12: nothing usable: the Final Fantasy Wiki's page is plot and cast; its bosses are Final Fantasy's own monsters",
+  "locations": "2026-10-12: nothing usable: the Final Fantasy Wiki's page is plot and cast; its bosses are Final Fantasy's own monsters",
+  "loot": "2026-10-12: nothing usable: the Final Fantasy Wiki's page is plot and cast; its bosses are Final Fantasy's own monsters",
+  "statuses": "2026-10-12: nothing usable: the Final Fantasy Wiki's page is plot and cast; its bosses are Final Fantasy's own monsters"
  },
  "Fish Fear Me": {
   "connections": "before 2026-10-07"
@@ -1815,7 +1833,13 @@
   "statuses": "2026-10-12: nothing usable: none listed"
  },
  "GearHead 2": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "goals": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "locations": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "loot": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "statuses": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs"
  },
  "GearHead Caramel": {
   "connections": "before 2026-10-07"
@@ -2197,7 +2221,13 @@
   "connections": "before 2026-10-07"
  },
  "Incursion": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "goals": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "locations": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "loot": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "statuses": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs"
  },
  "Infinite Space III: Sea of Stars": {
   "characters": "2026-10-12: nothing usable: the wiki found was PlatinumGames' Infinite Space, now set to none by hand; no other source",
@@ -2269,7 +2299,13 @@
   "statuses": "2026-10-12: nothing usable: losing limbs is a body model"
  },
  "Izuna 2: The Unemployed Ninja Returns": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "goals": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "locations": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "loot": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "statuses": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs"
  },
  "Izuna: Legend of the Unemployed Ninja": {
   "characters": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
@@ -3218,11 +3254,22 @@
   "connections": "before 2026-10-07"
  },
  "Pokémon Mystery Dungeon: Explorers of Sky": {
+  "characters": "2026-10-12: nothing usable: the hero is chosen by quiz",
   "connections": "before 2026-10-07",
-  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+  "events": "2026-10-12: nothing usable: jobs and Spinda's Café are menus",
+  "goals": "2026-10-12: 1 old row (Primal Dialga) checked against the Mystery Dungeon Wiki and holds",
+  "locations": "2026-10-12: nothing usable: Temporal Tower is a dungeon, no rule",
+  "loot": "2026-10-12: nothing usable: its items are the series' orbs, seeds and held items; no evolutions",
+  "statuses": "2026-10-12: nothing usable: Pokémon move effects"
  },
  "Pokémon Mystery Dungeon: Explorers of Time and Explorers of Darkness": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing new: the same game as Explorers of Sky, whose pages were read",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing new: the same game as Explorers of Sky, whose pages were read",
+  "goals": "2026-10-12: nothing new: the same game as Explorers of Sky, whose pages were read",
+  "locations": "2026-10-12: nothing new: the same game as Explorers of Sky, whose pages were read",
+  "loot": "2026-10-12: nothing new: the same game as Explorers of Sky, whose pages were read",
+  "statuses": "2026-10-12: nothing new: the same game as Explorers of Sky, whose pages were read"
  },
  "Pokémon Mystery Dungeon: Gates to Infinity": {
   "connections": "before 2026-10-07"
@@ -3522,7 +3569,13 @@
   "connections": "before 2026-10-07"
  },
  "Rogue Hearts Dungeon": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "goals": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "locations": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "loot": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
+  "statuses": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs"
  },
  "Rogue Heroes: Ruins of Tasos": {
   "characters": "2026-10-10: nothing: classes differ only by a dodge move",
@@ -3748,7 +3801,13 @@
   "statuses": "2026-10-12: nothing usable: none"
  },
  "Shiren the Wanderer 4: The Eye of God and the Devil's Navel": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: Shiren only",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: none",
+  "goals": "2026-10-12: nothing usable: monster pages are stat templates; Night Monsters have no page of their own",
+  "locations": "2026-10-12: nothing usable: its islands are names",
+  "loot": "2026-10-12: nothing usable: its talismans repeat statuses already in the game (Shadow Bind is Wand of Roots); torches are a light radius; no evolutions",
+  "statuses": "2026-10-12: 1 row (Night, from Day and Night)"
  },
  "Shiren the Wanderer GB2: Magic Castle of the Desert": {
   "characters": "2026-10-12: nothing usable: none",
@@ -3781,7 +3840,13 @@
   "connections": "before 2026-10-07"
  },
  "Shiren the Wanderer: The Tower of Fortune and the Dice of Fate": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: its New Mechanics are passwords, StreetPass and secret pots; monster and item pages are ID lists",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: its New Mechanics are passwords, StreetPass and secret pots; monster and item pages are ID lists",
+  "goals": "2026-10-12: nothing usable: its New Mechanics are passwords, StreetPass and secret pots; monster and item pages are ID lists",
+  "locations": "2026-10-12: nothing usable: its New Mechanics are passwords, StreetPass and secret pots; monster and item pages are ID lists",
+  "loot": "2026-10-12: nothing usable: its New Mechanics are passwords, StreetPass and secret pots; monster and item pages are ID lists",
+  "statuses": "2026-10-12: nothing usable: its New Mechanics are passwords, StreetPass and secret pots; monster and item pages are ID lists"
  },
  "Shogun Showdown": {
   "characters": "2026-10-10: Wanderer (swap), Ronin (push), Shadow (phase), Jujitsuka (throw) are movement tricks the existing Push/Scramble characters and Karl already cover",
