@@ -612,7 +612,13 @@
   "statuses": "2026-10-09: nothing: no status pages"
  },
  "Book of Demons": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: its starter artifacts change a class's starting cards (Talking Scabbard, Horse's Head) and its rings are click-to-break shields",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: its starter artifacts change a class's starting cards (Talking Scabbard, Horse's Head) and its rings are click-to-break shields",
+  "goals": "2026-10-12: nothing usable: its starter artifacts change a class's starting cards (Talking Scabbard, Horse's Head) and its rings are click-to-break shields",
+  "locations": "2026-10-12: nothing usable: its starter artifacts change a class's starting cards (Talking Scabbard, Horse's Head) and its rings are click-to-break shields",
+  "loot": "2026-10-12: nothing usable: its starter artifacts change a class's starting cards (Talking Scabbard, Horse's Head) and its rings are click-to-break shields",
+  "statuses": "2026-10-12: nothing usable: its starter artifacts change a class's starting cards (Talking Scabbard, Horse's Head) and its rings are click-to-break shields"
  },
  "Bounty of One": {
   "characters": "2026-10-10: characters are stat variants",
@@ -1210,7 +1216,13 @@
   "statuses": "2026-10-10: Pyromaniac; 3 curses: Claustrophobic, Acrophobia, Superstitious; Cannibal left out (Lord Bunga's goal), Kleptomania (the live Theft ability), Hallucinations (NetHack's)"
  },
  "Curious Expedition 2": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing new: the wiki found is the first game's, already read",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing new: the wiki found is the first game's, already read",
+  "goals": "2026-10-12: nothing new: the wiki found is the first game's, already read",
+  "locations": "2026-10-12: nothing new: the wiki found is the first game's, already read",
+  "loot": "2026-10-12: nothing new: the wiki found is the first game's, already read",
+  "statuses": "2026-10-12: nothing new: the wiki found is the first game's, already read"
  },
  "Curse of Pirates": {
   "connections": "before 2026-10-07"
@@ -2656,7 +2668,13 @@
   "statuses": "2026-10-10: Ailments read: bleed, blight, shock repeat existing statuses"
  },
  "Hell Maiden": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: two boss pages and mod cards with no effect text",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: two boss pages and mod cards with no effect text",
+  "goals": "2026-10-12: nothing usable: two boss pages and mod cards with no effect text",
+  "locations": "2026-10-12: nothing usable: two boss pages and mod cards with no effect text",
+  "loot": "2026-10-12: nothing usable: two boss pages and mod cards with no effect text",
+  "statuses": "2026-10-12: nothing usable: two boss pages and mod cards with no effect text"
  },
  "Hellboy Web of Wyrd": {
   "connections": "before 2026-10-07"
@@ -2923,7 +2941,13 @@
   "connections": "before 2026-10-07"
  },
  "Kaz": {
-  "connections": "2026-10-07"
+  "characters": "2026-10-12: nothing usable: its items are jump-and-move modifiers for a board-hopping game (Broken Leg: a chance to miss a jump)",
+  "connections": "2026-10-07",
+  "events": "2026-10-12: nothing usable: its items are jump-and-move modifiers for a board-hopping game (Broken Leg: a chance to miss a jump)",
+  "goals": "2026-10-12: nothing usable: its items are jump-and-move modifiers for a board-hopping game (Broken Leg: a chance to miss a jump)",
+  "locations": "2026-10-12: nothing usable: its items are jump-and-move modifiers for a board-hopping game (Broken Leg: a chance to miss a jump)",
+  "loot": "2026-10-12: nothing usable: its items are jump-and-move modifiers for a board-hopping game (Broken Leg: a chance to miss a jump)",
+  "statuses": "2026-10-12: nothing usable: its items are jump-and-move modifiers for a board-hopping game (Broken Leg: a chance to miss a jump)"
  },
  "Keeper's Toll": {
   "characters": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
@@ -3052,7 +3076,13 @@
   "statuses": "2026-10-11: nothing usable: dianthroritis is the daughter's illness, not a status"
  },
  "Legend of Dungeon": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: its monsters and bosses are the genre's (Grim Reaper, Lich King, Deep Minotaur)",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: its monsters and bosses are the genre's (Grim Reaper, Lich King, Deep Minotaur)",
+  "goals": "2026-10-12: nothing usable: its monsters and bosses are the genre's (Grim Reaper, Lich King, Deep Minotaur)",
+  "locations": "2026-10-12: nothing usable: its monsters and bosses are the genre's (Grim Reaper, Lich King, Deep Minotaur)",
+  "loot": "2026-10-12: nothing usable: its monsters and bosses are the genre's (Grim Reaper, Lich King, Deep Minotaur)",
+  "statuses": "2026-10-12: nothing usable: its monsters and bosses are the genre's (Grim Reaper, Lich King, Deep Minotaur)"
  },
  "Legend of Keepers: Career of a Dungeon Manager": {
   "characters": "2026-10-12: nothing usable: the masters are three stat lines",
@@ -3142,7 +3172,13 @@
   "statuses": "2026-10-12: nothing usable: no wiki (Fandom and wiki.gg tried), and nothing beyond store blurbs"
  },
  "Lort": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: items are percentage stat buffs (Blackjack's Sap: +100% damage on enemies above 80% health)",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: items are percentage stat buffs (Blackjack's Sap: +100% damage on enemies above 80% health)",
+  "goals": "2026-10-12: nothing usable: items are percentage stat buffs (Blackjack's Sap: +100% damage on enemies above 80% health)",
+  "locations": "2026-10-12: nothing usable: items are percentage stat buffs (Blackjack's Sap: +100% damage on enemies above 80% health)",
+  "loot": "2026-10-12: nothing usable: items are percentage stat buffs (Blackjack's Sap: +100% damage on enemies above 80% health)",
+  "statuses": "2026-10-12: nothing usable: items are percentage stat buffs (Blackjack's Sap: +100% damage on enemies above 80% health)"
  },
  "Lost Eidolons: Veil of the Witch": {
   "connections": "before 2026-10-07"
@@ -3844,7 +3880,13 @@
   "statuses": "2026-10-10: no statuses"
  },
  "Oddcore": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: enemies and bosses are names with no behaviour text",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: enemies and bosses are names with no behaviour text",
+  "goals": "2026-10-12: nothing usable: enemies and bosses are names with no behaviour text",
+  "locations": "2026-10-12: nothing usable: enemies and bosses are names with no behaviour text",
+  "loot": "2026-10-12: nothing usable: enemies and bosses are names with no behaviour text",
+  "statuses": "2026-10-12: nothing usable: enemies and bosses are names with no behaviour text"
  },
  "Odinfall": {
   "connections": "before 2026-10-07"
@@ -4492,7 +4534,13 @@
   "statuses": "2026-10-10: 1 row: Leeching (elite); the other elites repeat live or candidate statuses, the Artifacts are run modifiers"
  },
  "Road Not Taken": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: a wiki with no item or enemy categories",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: a wiki with no item or enemy categories",
+  "goals": "2026-10-12: nothing usable: a wiki with no item or enemy categories",
+  "locations": "2026-10-12: nothing usable: a wiki with no item or enemy categories",
+  "loot": "2026-10-12: nothing usable: a wiki with no item or enemy categories",
+  "statuses": "2026-10-12: nothing usable: a wiki with no item or enemy categories"
  },
  "Roboquest": {
   "characters": "2026-10-10: nothing: the classes repeat the Engineer, the Sniper and others",
@@ -4729,7 +4777,13 @@
   "statuses": "2026-10-11: nothing: none"
  },
  "Schism": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: 13 relics and 11 weapons with stat pages",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: 13 relics and 11 weapons with stat pages",
+  "goals": "2026-10-12: nothing usable: 13 relics and 11 weapons with stat pages",
+  "locations": "2026-10-12: nothing usable: 13 relics and 11 weapons with stat pages",
+  "loot": "2026-10-12: nothing usable: 13 relics and 11 weapons with stat pages",
+  "statuses": "2026-10-12: nothing usable: 13 relics and 11 weapons with stat pages"
  },
  "Scourgebringer": {
   "characters": "2026-10-09: nothing: Kyhra, the only hero, has no page",
@@ -5579,7 +5633,13 @@
   "statuses": "2026-10-12: nothing usable: no wiki (Fandom and wiki.gg tried), and nothing beyond store blurbs"
  },
  "Temtem: Swarm": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing new: the Official Temtem Wiki is the main game's creature catalogue",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing new: the Official Temtem Wiki is the main game's creature catalogue",
+  "goals": "2026-10-12: nothing new: the Official Temtem Wiki is the main game's creature catalogue",
+  "locations": "2026-10-12: nothing new: the Official Temtem Wiki is the main game's creature catalogue",
+  "loot": "2026-10-12: nothing new: the Official Temtem Wiki is the main game's creature catalogue",
+  "statuses": "2026-10-12: nothing new: the Official Temtem Wiki is the main game's creature catalogue"
  },
  "TerRoguelike": {
   "connections": "before 2026-10-07"
@@ -6017,7 +6077,13 @@
   "connections": "before 2026-10-07"
  },
  "Unexplored": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: one explorer",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: none",
+  "goals": "2026-10-12: 1 row (Guardian of Yendor); Cir'leh the Doomed Swordsman drains strength, a stat",
+  "locations": "2026-10-12: nothing usable: none",
+  "loot": "2026-10-12: nothing usable: Sigils forge runes into gear at an anvil, a crafting table; no evolutions",
+  "statuses": "2026-10-12: nothing usable: none"
  },
  "Unexplored 2: The Wayfarer's Legacy": {
   "connections": "before 2026-10-07"
@@ -6116,7 +6182,13 @@
   "connections": "before 2026-10-07"
  },
  "Voin": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: weapon and artifact pages are empty",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: weapon and artifact pages are empty",
+  "goals": "2026-10-12: nothing usable: weapon and artifact pages are empty",
+  "locations": "2026-10-12: nothing usable: weapon and artifact pages are empty",
+  "loot": "2026-10-12: nothing usable: weapon and artifact pages are empty",
+  "statuses": "2026-10-12: nothing usable: weapon and artifact pages are empty"
  },
  "Waku Waku Puyo Puyo Dungeon": {
   "characters": "2026-10-12: nothing usable: no wiki, and nothing in English beyond store blurbs",
