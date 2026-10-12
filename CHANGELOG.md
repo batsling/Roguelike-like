@@ -80,6 +80,13 @@ For how the project is laid out and how its systems fit together, see
     ("Next Hades song: beat Hades 2 times more, or complete 3 more distinct
     goals there"). It's the game that is close, not the song.
 
+- **Research, fifty-ninth batch: Wildermyth's own wiki.** Its "no wiki" was
+  the official one on the game's site (`wildermyth.com/w/api.php`, 853
+  articles, 304 events; set by hand). Two events so far: The Wolf Price (a
+  wolf god offers a transformation that gives back what you lost) and To
+  Humble Ends (destroy a cursed dagger, or keep it and pay every game). The
+  other 300 events are left for a pass of their own, and the ledger says so.
+
 - **Research, fifty-eighth batch: Shattered Pixel Dungeon and Cogmind
   checked.** Shattered's "no wiki" was the Pixel Dungeon wiki's
   `Shattered Pixel Dungeon/…` subpages (set by hand). Its six old goals had

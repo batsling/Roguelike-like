@@ -23109,8 +23109,12 @@
   "wiki": "https://wildbastards.wiki.gg/"
  },
  "Wildermyth": {
-  "checked": "2026-10-11",
-  "wiki": null
+  "api": "https://wildermyth.com/w/api.php",
+  "checked": "2026-10-12",
+  "note": "the official wiki on the game's own site (853 articles, 304 events); api.php lives under /w/",
+  "set": "by hand",
+  "sitename": "Wildermyth Wiki",
+  "wiki": "https://wildermyth.com/wiki"
  },
  "Wildfrost": {
   "checked": "2026-10-12",

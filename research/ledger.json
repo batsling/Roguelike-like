@@ -6957,7 +6957,13 @@
   "connections": "before 2026-10-07"
  },
  "Wildermyth": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: heroes are generated",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: 2 rows (The Wolf Price, To Humble Ends) from the official wiki (set by hand); 300 more events not yet read",
+  "goals": "2026-10-12: nothing usable this pass: its monsters (Gorgons, Morthagi, Thrixl, Drauven) are faction pages; villains are campaign bosses",
+  "locations": "2026-10-12: nothing usable: sites are map features",
+  "loot": "2026-10-12: nothing usable: weapons and augments are stat lines; no evolutions",
+  "statuses": "2026-10-12: nothing new: Hobbled, Pinned, Stunned and Poisoned are the genre's"
  },
  "Wildfrost": {
   "characters": "2026-10-12: nothing usable: leaders are random recruits from three tribes",
