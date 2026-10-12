@@ -1461,7 +1461,13 @@
   "connections": "before 2026-10-07"
  },
  "Dungeons of Blood and Dream": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: a 26-article wiki whose item pages are weapon stats",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: a 26-article wiki whose item pages are weapon stats",
+  "goals": "2026-10-12: nothing usable: a 26-article wiki whose item pages are weapon stats",
+  "locations": "2026-10-12: nothing usable: a 26-article wiki whose item pages are weapon stats",
+  "loot": "2026-10-12: nothing usable: a 26-article wiki whose item pages are weapon stats",
+  "statuses": "2026-10-12: nothing usable: a 26-article wiki whose item pages are weapon stats"
  },
  "Dungeons of Dredmor": {
   "characters": "2026-10-12: nothing usable: one hero built from skills",
@@ -1569,7 +1575,13 @@
   "statuses": "2026-10-10: charm and poison repeat existing statuses"
  },
  "Evolings": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: evolings are monsters you field",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: no events",
+  "goals": "2026-10-12: nothing usable: no enemy category",
+  "locations": "2026-10-12: nothing usable: none listed",
+  "loot": "2026-10-12: 2 rows (Super Glue, Jar of Ghosts); Devil's Pact swaps teams, which a solo hero can't; no weapons, no evolutions",
+  "statuses": "2026-10-12: nothing usable: none listed"
  },
  "Exit the Gungeon": {
   "connections": "before 2026-10-07"
@@ -1717,7 +1729,13 @@
   "connections": "before 2026-10-07"
  },
  "GearHead": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: built from a character generator",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: no events",
+  "goals": "2026-10-12: nothing usable: its creatures are stat blocks",
+  "locations": "2026-10-12: nothing usable: cities are hubs",
+  "loot": "2026-10-12: nothing usable: mecha parts and guns; no evolutions",
+  "statuses": "2026-10-12: nothing usable: none listed"
  },
  "GearHead 2": {
   "connections": "before 2026-10-07"
@@ -1867,8 +1885,13 @@
   "statuses": "2026-10-09: nothing: the gods' curses (Jolted, Weak, Chill, Doom) are Bleed, Burn, Slow and others; Hangover is Battle Brothers' name"
  },
  "Hades II": {
+  "characters": "2026-10-12: nothing usable: Melinoë alone",
   "connections": "before 2026-10-07",
-  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+  "events": "2026-10-12: nothing usable: no events",
+  "goals": "2026-10-12: nothing new; old rows checked against the wiki (second wiki pass): Hecate holds; Charybdis fixed (you fight her tentacles, she swallows nobody)",
+  "locations": "2026-10-12: nothing usable: regions are levels",
+  "loot": "2026-10-12: nothing usable: its artifacts are upgrade currencies; the Anvil of Fates rerolls Daedalus upgrades, which nothing here has; no evolutions",
+  "statuses": "2026-10-12: nothing usable: Eris' blessing (more damage taken if you move too fast) is a pace rule"
  },
  "Halls of Torment": {
   "characters": "2026-10-12: nothing usable: its 31 characters are the genre's classes",
@@ -2224,8 +2247,13 @@
   "statuses": "2026-10-10: nothing: its keywords are dice and slot rules (Jam, Overclock, Paint) and the Keywords page is a stub"
  },
  "Loop Hero": {
+  "characters": "2026-10-12: nothing usable: Warrior, Rogue, Necromancer, the genre's classes",
   "connections": "before 2026-10-07",
-  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+  "events": "2026-10-12: nothing usable: no events",
+  "goals": "2026-10-12: nothing new; old rows checked against the wiki (second wiki pass): Goblin Leader, The Lich, Harpy, Chest and Blood Clot all hold (each spawned by a card you place)",
+  "locations": "2026-10-12: nothing usable: its tiles are the cards that summon its monsters, which this game's map can't host",
+  "loot": "2026-10-12: 1 row (Oblivion); its camp items are base upgrades; no weapons as such, no evolutions",
+  "statuses": "2026-10-12: nothing usable: none listed"
  },
  "Loot Rascals": {
   "connections": "before 2026-10-07"
@@ -4049,7 +4077,13 @@
   "connections": "before 2026-10-07"
  },
  "The Flame in the Flood": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: Scout, with Aesop the dog",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: no events",
+  "goals": "2026-10-12: nothing usable: no enemy category (its wolves and boars repeat the animal goals)",
+  "locations": "2026-10-12: nothing usable: river landings are levels",
+  "loot": "2026-10-12: 1 row (Polluted Water); Devil's Trumpet is bait for a trap; weapons are bows and clubs, no evolutions",
+  "statuses": "2026-10-12: nothing usable: its diseases are what Polluted Water gives"
  },
  "The Ground Gives Way": {
   "characters": "2026-10-12: nothing usable: one hero",
@@ -4221,7 +4255,13 @@
   "connections": "before 2026-10-07"
  },
  "Tower of Guns": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: one player",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: no events",
+  "goals": "2026-10-12: nothing usable: its bosses' pages describe attack patterns",
+  "locations": "2026-10-12: nothing usable: rooms",
+  "loot": "2026-10-12: nothing usable: the Kegerator's mines repeat the live Landmines; no evolutions",
+  "statuses": "2026-10-12: nothing usable: none listed"
  },
  "Toy Smash Kaboom!": {
   "connections": "before 2026-10-07"
@@ -4404,7 +4444,13 @@
   "connections": "before 2026-10-07"
  },
  "West of Dead": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: William Mason only",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: no events",
+  "goals": "2026-10-12: nothing usable: 19 enemy pages with stats",
+  "locations": "2026-10-12: nothing usable: none listed",
+  "loot": "2026-10-12: 1 row (Fifth Time Lucky weapon); its charms are timing rewards; no evolutions",
+  "statuses": "2026-10-12: nothing usable: none listed"
  },
  "Whisker Squadron: Survivor": {
   "connections": "before 2026-10-07"
@@ -4516,7 +4562,13 @@
   "statuses": "2026-10-12: nothing usable: none listed"
  },
  "Ziggurat 2": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: wizards distinguished by stats",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: no events",
+  "goals": "2026-10-12: nothing usable: shares Ziggurat's wiki (match check), whose enemy pages are short",
+  "locations": "2026-10-12: nothing usable: rooms",
+  "loot": "2026-10-12: nothing usable: its wands and spellbooks repeat Ziggurat's; no evolutions",
+  "statuses": "2026-10-12: nothing usable: none listed"
  },
  "Zoeti": {
   "connections": "before 2026-10-07"

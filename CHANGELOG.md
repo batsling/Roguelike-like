@@ -80,6 +80,15 @@ For how the project is laid out and how its systems fit together, see
     ("Next Hades song: beat Hades 2 times more, or complete 3 more distinct
     goals there"). It's the game that is close, not the song.
 
+- **Research, twenty-ninth batch.** The Flame in the Flood, West of Dead,
+  Evolings, Hades II, GearHead, Dungeons of Blood and Dream, Loop Hero, Tower
+  of Guns and Ziggurat 2: 5 new rows and 7 old goal rows checked. Loop Hero's
+  five hold (each is summoned by a card you place), and Hades II's Hecate
+  holds; Charybdis is fixed, since you fight her tentacles and she swallows
+  nobody. New: West of Dead's Fifth Time Lucky (every fifth swing hits hard),
+  Evolings' Super Glue and Jar of Ghosts, Loop Hero's Oblivion card (wipe a
+  square, tile and all), and Polluted Water from The Flame in the Flood.
+
 - **Research, twenty-eighth batch.** Ziggurat, Fights in Tight Spaces, Void
   Bastards, Into the Breach, Kingsway, Inkbound, The Ground Gives Way and
   Fairy Tail: Dungeons: 5 new rows and Into the Breach's 3 old goal rows
