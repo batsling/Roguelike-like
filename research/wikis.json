@@ -23144,32 +23144,10 @@
   "wiki": null
  },
  "Wildfrost": {
-  "api": "https://wildfrost.fandom.com/api.php",
-  "articles": 33,
-  "blurb": "Welcome to the... articles • files • edits About the wiki This is a wiki dedicated to the video game Wildfrost by Deadpan Games/Gaziter that anybody can edit. It plans to document all of the content that can be found in the game. Navigation",
-  "categories": {},
-  "checked": "2026-10-11",
-  "counts": {
-   "characters": 0,
-   "events": 0,
-   "goals": 0,
-   "locations": 0,
-   "loot": 0,
-   "statuses": 0
-  },
-  "match": "check",
-  "pages": {
-   "loot": [
-    "Items"
-   ],
-   "statuses": [
-    "Status Effects",
-    "Keywords"
-   ]
-  },
-  "signal": "",
-  "sitename": "Wildfrost Wiki",
-  "wiki": "https://wildfrost.fandom.com"
+  "checked": "2026-10-12",
+  "note": "wildfrostwiki.com is the game's real wiki (453 articles); wildfrost.fandom.com has 34 pages",
+  "set": "by hand",
+  "wiki": "https://wildfrostwiki.com/api.php"
  },
  "Windblown": {
   "api": "https://windblown.wiki.gg/api.php",

@@ -1463,7 +1463,13 @@
   "statuses": "2026-10-12: nothing usable: none listed"
  },
  "Dungeons & Degenerate Gamblers": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: a stub wiki; its cards are blackjack cards with names",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: a stub wiki; its cards are blackjack cards with names",
+  "goals": "2026-10-12: nothing usable: a stub wiki; its cards are blackjack cards with names",
+  "locations": "2026-10-12: nothing usable: a stub wiki; its cards are blackjack cards with names",
+  "loot": "2026-10-12: nothing usable: a stub wiki; its cards are blackjack cards with names",
+  "statuses": "2026-10-12: nothing usable: a stub wiki; its cards are blackjack cards with names"
  },
  "Dungeons of Blood and Dream": {
   "characters": "2026-10-12: nothing usable: a 26-article wiki whose item pages are weapon stats",
@@ -1547,7 +1553,13 @@
   "statuses": "2026-10-10: Status Conditions not read this batch"
  },
  "Emberward": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: a stub wiki with no item or enemy text",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: a stub wiki with no item or enemy text",
+  "goals": "2026-10-12: nothing usable: a stub wiki with no item or enemy text",
+  "locations": "2026-10-12: nothing usable: a stub wiki with no item or enemy text",
+  "loot": "2026-10-12: nothing usable: a stub wiki with no item or enemy text",
+  "statuses": "2026-10-12: nothing usable: a stub wiki with no item or enemy text"
  },
  "Endgame of Devil": {
   "connections": "before 2026-10-07"
@@ -1719,7 +1731,13 @@
   "connections": "before 2026-10-07"
  },
  "From The Top": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: a stub wiki with no item or enemy text",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: a stub wiki with no item or enemy text",
+  "goals": "2026-10-12: nothing usable: a stub wiki with no item or enemy text",
+  "locations": "2026-10-12: nothing usable: a stub wiki with no item or enemy text",
+  "loot": "2026-10-12: nothing usable: a stub wiki with no item or enemy text",
+  "statuses": "2026-10-12: nothing usable: a stub wiki with no item or enemy text"
  },
  "Frozen Depths": {
   "connections": "before 2026-10-07"
@@ -2058,7 +2076,13 @@
   "statuses": "2026-10-12: nothing usable: none listed"
  },
  "Heavy Bullets": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: one hunter",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: none",
+  "goals": "2026-10-12: nothing usable: enemy pages are one-line stubs",
+  "locations": "2026-10-12: nothing usable: the Medbay and the bank are shops",
+  "loot": "2026-10-12: 2 rows (Rotten Life, Ritual Blade); Last Will keeps money between runs, a meta effect; no evolutions",
+  "statuses": "2026-10-12: nothing usable: none"
  },
  "Hell Clock": {
   "characters": "2026-10-10: one hero",
@@ -2320,8 +2344,13 @@
   "connections": "before 2026-10-07"
  },
  "Legend of Keepers: Career of a Dungeon Manager": {
+  "characters": "2026-10-12: nothing usable: the masters are three stat lines",
   "connections": "before 2026-10-07",
-  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+  "events": "2026-10-12: nothing usable: events are text with numbers",
+  "goals": "2026-10-12: 2 old rows checked against the wiki: Barbarian holds; Priestess rewritten (she turns a Penalty into a Bonus, she does not heal) and marked ?",
+  "locations": "2026-10-12: nothing usable: rooms are trap slots",
+  "loot": "2026-10-12: nothing usable: artifacts are stat pages; no evolutions",
+  "statuses": "2026-10-12: nothing usable: Penalties and Bonuses are the genre's"
  },
  "Legionbound": {
   "connections": "before 2026-10-07"
@@ -4189,7 +4218,13 @@
   "statuses": "2026-10-12: nothing usable: none listed"
  },
  "Tangy TD": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: a stub wiki; towers and upgrades with no text",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: a stub wiki; towers and upgrades with no text",
+  "goals": "2026-10-12: nothing usable: a stub wiki; towers and upgrades with no text",
+  "locations": "2026-10-12: nothing usable: a stub wiki; towers and upgrades with no text",
+  "loot": "2026-10-12: nothing usable: a stub wiki; towers and upgrades with no text",
+  "statuses": "2026-10-12: nothing usable: a stub wiki; towers and upgrades with no text"
  },
  "Tao's Adventure: Curse of the Demon Seal": {
   "connections": "before 2026-10-07"
@@ -4375,7 +4410,13 @@
   "connections": "before 2026-10-07"
  },
  "Tinyfolks": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: a stub wiki with no item or enemy text",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: a stub wiki with no item or enemy text",
+  "goals": "2026-10-12: nothing usable: a stub wiki with no item or enemy text",
+  "locations": "2026-10-12: nothing usable: a stub wiki with no item or enemy text",
+  "loot": "2026-10-12: nothing usable: a stub wiki with no item or enemy text",
+  "statuses": "2026-10-12: nothing usable: a stub wiki with no item or enemy text"
  },
  "ToeJam & Earl": {
   "characters": "2026-10-11: 1 row (ToeJam), Earl in its Clones",
@@ -4432,7 +4473,13 @@
   "connections": "before 2026-10-07"
  },
  "Tower Escape": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: a stub wiki with no item or enemy text",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: a stub wiki with no item or enemy text",
+  "goals": "2026-10-12: nothing usable: a stub wiki with no item or enemy text",
+  "locations": "2026-10-12: nothing usable: a stub wiki with no item or enemy text",
+  "loot": "2026-10-12: nothing usable: a stub wiki with no item or enemy text",
+  "statuses": "2026-10-12: nothing usable: a stub wiki with no item or enemy text"
  },
  "Tower Factory": {
   "connections": "before 2026-10-07"
@@ -4531,7 +4578,13 @@
   "connections": "before 2026-10-07"
  },
  "Vampire Hunters": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: a stub wiki with no item or enemy text",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: a stub wiki with no item or enemy text",
+  "goals": "2026-10-12: nothing usable: a stub wiki with no item or enemy text",
+  "locations": "2026-10-12: nothing usable: a stub wiki with no item or enemy text",
+  "loot": "2026-10-12: nothing usable: a stub wiki with no item or enemy text",
+  "statuses": "2026-10-12: nothing usable: a stub wiki with no item or enemy text"
  },
  "Vampire Survivors": {
   "characters": "2026-10-12: nothing new: Antonio and Poe are live, and the other characters are their starting weapons",
@@ -4543,7 +4596,13 @@
   "statuses": "2026-10-12: nothing usable: no statuses"
  },
  "Vault of the Void": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: a stub wiki; its cards are stat lines",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: a stub wiki; its cards are stat lines",
+  "goals": "2026-10-12: nothing usable: a stub wiki; its cards are stat lines",
+  "locations": "2026-10-12: nothing usable: a stub wiki; its cards are stat lines",
+  "loot": "2026-10-12: nothing usable: a stub wiki; its cards are stat lines",
+  "statuses": "2026-10-12: nothing usable: a stub wiki; its cards are stat lines"
  },
  "Vellum": {
   "connections": "before 2026-10-07"
@@ -4666,8 +4725,13 @@
   "connections": "before 2026-10-07"
  },
  "Wildfrost": {
+  "characters": "2026-10-12: nothing usable: leaders are random recruits from three tribes",
   "connections": "before 2026-10-07",
-  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+  "events": "2026-10-12: 1 row (Gnome Traveller); the Muncher is a card-removal shop",
+  "goals": "2026-10-12: 5 old rows checked against wildfrostwiki.com (the real wiki, set by hand): Frost Jailer, Truffle and Krunker are bosses; all five goals rewritten from the wiki",
+  "locations": "2026-10-12: nothing usable: Snowdwell's buildings are meta unlocks",
+  "loot": "2026-10-12: nothing usable: charms are card upgrades; the Clunkers are units; no evolutions",
+  "statuses": "2026-10-12: 2 rows (Overburn, Ink); Snow is Stun, Demonize is Marked, Haze is Discorded (Brogue), Spice and Frost are attack up/down"
  },
  "Windblown": {
   "connections": "before 2026-10-07"
@@ -4727,7 +4791,13 @@
   "connections": "before 2026-10-07"
  },
  "Yet Another Zombie Survivors": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: a stub wiki with no item or enemy text",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: a stub wiki with no item or enemy text",
+  "goals": "2026-10-12: nothing usable: a stub wiki with no item or enemy text",
+  "locations": "2026-10-12: nothing usable: a stub wiki with no item or enemy text",
+  "loot": "2026-10-12: nothing usable: a stub wiki with no item or enemy text",
+  "statuses": "2026-10-12: nothing usable: a stub wiki with no item or enemy text"
  },
  "Yohane the Parhelion: Numazu in the Mirage": {
   "connections": "before 2026-10-07"

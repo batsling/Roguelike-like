@@ -80,6 +80,34 @@ For how the project is laid out and how its systems fit together, see
     ("Next Hades song: beat Hades 2 times more, or complete 3 more distinct
     goals there"). It's the game that is close, not the song.
 
+- **Research, thirty-third batch, and Wildfrost's real wiki.** Wildfrost's
+  five goal rows were written from search summaries; `wildfrostwiki.com` (453
+  articles, set by hand in `research/wikis.json`) showed three of its
+  "enemies" are bosses and that none of the five goals matched what the wiki
+  says. All five rewritten (the true final boss, a boss that splits when hit,
+  a boss fight in waves, one that hits the whole team, one that marks where it
+  will strike), plus Overburn and Ink as statuses and the Gnome Traveller as an
+  event. Legend of Keepers' Priestess turned out not to heal: she swaps a
+  Penalty for a Bonus, and her goal says so now (marked `?`). Heavy Bullets
+  gave Rotten Life and Ritual Blade. Nine stub wikis marked nothing usable.
+  Also: research entries 30–32 put back in order in this file.
+
+- **Research, thirty-second batch.** Exit the Gungeon, Going Under, Guidus,
+  Tower Tactics: Liberation, Loot River, Swarm Grinder, Dungeonmans, Kingdom:
+  New Lands, Super House of Dead Ninjas, Fury Unleashed, Gordian Quest and
+  Hadean Tactics: 2 new rows, 1 clone. New: Going Under's Canbassador (hit it
+  so it drops its own bomb) and Tower Tactics' Risky Upgrades (pay now, gain
+  later). Dungeonmans' Gelatinous Cube is marked `?` (the wiki says only that
+  its champions split), and its Mysterious Pool went onto NetHack's Fountain.
+  Kingdom: New Lands' wiki was the manga Kingdom's and is set to none by hand.
+
+- **Research, thirty-first batch: twelve small wikis, nothing usable.**
+  TombStar, The Ouroboros King, Facehand, Greedland, Metal Unit, Wall World,
+  Megabonk, GONNER2, Lumencraft, Gunlocked 2, Eldritch and Immortal Redneck
+  were each read page by page (their categories show almost nothing). They
+  hold overview stubs, infobox shells or percentage bonuses, so every kind is
+  marked with the reason and no rows were written.
+
 - **Research, thirtieth batch.** Flinthook, Synthetik, The Last Spell,
   Iratus, Sword of the Necromancer, Heat Signature, Tangledeep, Golden Light,
   Mana Spark and GoNNER: 4 new rows, 1 clone and 2 old goal rows checked
@@ -90,22 +118,6 @@ For how the project is laid out and how its systems fit together, see
   curse for a chest), and Golden Light's Meat Cop, who turns up when you
   exploit a loophole. These wikis are small, and most kinds are marked with
   nothing.
-
-- **Research, thirty-first batch: twelve small wikis, nothing usable.**
-  TombStar, The Ouroboros King, Facehand, Greedland, Metal Unit, Wall World,
-  Megabonk, GONNER2, Lumencraft, Gunlocked 2, Eldritch and Immortal Redneck
-  were each read page by page (their categories show almost nothing). They
-  hold overview stubs, infobox shells or percentage bonuses, so every kind is
-  marked with the reason and no rows were written.
-
-- **Research, thirty-second batch.** Exit the Gungeon, Going Under, Guidus,
-  Tower Tactics: Liberation, Loot River, Swarm Grinder, Dungeonmans, Kingdom:
-  New Lands, Super House of Dead Ninjas, Fury Unleashed, Gordian Quest and
-  Hadean Tactics: 2 new rows, 1 clone. New: Going Under's Canbassador (hit it
-  so it drops its own bomb) and Tower Tactics' Risky Upgrades (pay now, gain
-  later). Dungeonmans' Gelatinous Cube is marked `?` (the wiki says only that
-  its champions split), and its Mysterious Pool went onto NetHack's Fountain.
-  Kingdom: New Lands' wiki was the manga Kingdom's and is set to none by hand.
 
 - **Research, twenty-ninth batch.** The Flame in the Flood, West of Dead,
   Evolings, Hades II, GearHead, Dungeons of Blood and Dream, Loop Hero, Tower
