@@ -80,6 +80,12 @@ For how the project is laid out and how its systems fit together, see
     ("Next Hades song: beat Hades 2 times more, or complete 3 more distinct
     goals there"). It's the game that is close, not the song.
 
+- **Research, sixtieth batch.** Teamfight Tactics lives in the League of
+  Legends wiki's `TFT:` namespace and Shovel Knight Dig on the series wiki
+  (both set by hand); they gave The Golden Egg (hatches on a timer that
+  winning speeds up) and the Enchanted Slamvil (weakens the strongest enemy
+  before each game). 28 games with no usable wiki marked.
+
 - **Research, fifty-ninth batch: Wildermyth's own wiki.** Its "no wiki" was
   the official one on the game's site (`wildermyth.com/w/api.php`, 853
   articles, 304 events; set by hand). Two events so far: The Wolf Price (a

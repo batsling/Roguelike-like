@@ -17922,8 +17922,12 @@
   "wiki": "https://shotgun-king.fandom.com"
  },
  "Shovel Knight Dig": {
-  "checked": "2026-10-11",
-  "wiki": null
+  "api": "https://shovelknight.fandom.com/api.php",
+  "checked": "2026-10-12",
+  "note": "the series wiki; Dig's pages carry '(Dig)', e.g. 'Accessories (Dig)', 'Relics (Dig)'",
+  "set": "by hand",
+  "sitename": "Shovel Knight Wiki",
+  "wiki": "https://shovelknight.fandom.com"
  },
  "Shroom and Gloom": {
   "api": "https://shroom-and-gloom.fandom.com/api.php",
@@ -20226,8 +20230,12 @@
   "wiki": null
  },
  "Teamfight Tactics": {
-  "checked": "2026-10-11",
-  "wiki": null
+  "api": "https://wiki.leagueoflegends.com/en-us/api.php",
+  "checked": "2026-10-12",
+  "note": "the League wiki keeps Teamfight Tactics in its own TFT: namespace (3000), e.g. 'TFT:Augment'",
+  "set": "by hand",
+  "sitename": "League of Legends Wiki",
+  "wiki": "https://wiki.leagueoflegends.com/en-us"
  },
  "Tears of Metal": {
   "api": "https://tearsofmetal.wiki.gg/api.php",
