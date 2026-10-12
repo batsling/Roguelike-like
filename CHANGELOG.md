@@ -80,6 +80,10 @@ For how the project is laid out and how its systems fit together, see
     ("Next Hades song: beat Hades 2 times more, or complete 3 more distinct
     goals there"). It's the game that is close, not the song.
 
+- **Research, forty-third batch: 24 games, nothing usable.** The Last
+  Game's "wiki" was a romantic-comedy manga's, set to none by hand; Geometry
+  Arena 2's is the first game's; the rest have none or a stub.
+
 - **Research, forty-first and forty-second batches: 36 games, nothing
   usable.** Hack'EM is NetHack variants' content again; PlateUp! has no wiki
   that answers (plateup.wiki.gg refuses with 401, which is what wiki.gg says

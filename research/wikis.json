@@ -20902,31 +20902,10 @@
   "wiki": "https://the-last-flame.fandom.com"
  },
  "The Last Game": {
-  "api": "https://lastgame.fandom.com/api.php",
-  "articles": 102,
-  "blurb": "class=\"center\" style=\"background:#0094d9; color:#FFFFFF;\" | Welcome class=\"center\" | Welcome to the Last Game Wikia! ---- Everything about the romantic-comedy manga series written and illustrated by Shinobu Amano. Last Game is a Japanese ma",
-  "categories": {
-   "characters": [
-    "Characters",
-    "Supporting Characters",
-    "Female Characters",
-    "Male Characters"
-   ]
-  },
-  "checked": "2026-10-11",
-  "counts": {
-   "characters": 70,
-   "events": 0,
-   "goals": 0,
-   "locations": 0,
-   "loot": 0,
-   "statuses": 0
-  },
-  "match": "check",
-  "pages": {},
-  "signal": "",
-  "sitename": "Last Game Wiki",
-  "wiki": "https://lastgame.fandom.com"
+  "checked": "2026-10-12",
+  "note": "lastgame.fandom.com is the wiki of Shinobu Amano's romantic-comedy manga Last Game, not this game",
+  "set": "by hand",
+  "wiki": null
  },
  "The Last Spell": {
   "also": [
