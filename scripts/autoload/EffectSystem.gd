@@ -106,6 +106,7 @@ func _register_defaults() -> void:
 	register("teleport_type", _h_teleport_type)
 	register("obtain_item", _h_obtain_item)
 	register("random_item_choice", _h_random_item_choice)
+	register("mask_choice", _h_mask_choice)
 	register("apply_status", _h_apply_status)
 	register("apply_tile", _h_apply_tile)
 	register("apply_unit", _h_apply_unit)
@@ -914,6 +915,13 @@ func _h_obtain_item(_effect: Dictionary, _ctx: Dictionary) -> void:
 # Unstable Genome: gain 1 of N random items — banked as one chest offering
 # `count` choices (§8.2 Large chest), redeemed by the overworld's RewardScreen.
 # `destroy_self` consumes the source item that fired the trigger.
+# Mysterious Mask: bank a choice of characters whose Level Up condition the
+# player takes on beside their own. The popup is the overworld's
+# (Overworld2._redeem_pending_masks); this only banks it, so it fires the same
+# from a chest, a shop or an event.
+func _h_mask_choice(effect: Dictionary, _ctx: Dictionary) -> void:
+	GameState.grant_mask(maxi(1, int(effect.get("count", 1))))
+
 func _h_random_item_choice(effect: Dictionary, ctx: Dictionary) -> void:
 	var count: int = maxi(1, int(effect.get("count", 3)))
 	GameState.grant_chest(1, count)

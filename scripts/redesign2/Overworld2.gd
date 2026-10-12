@@ -623,6 +623,9 @@ func _ready() -> void:
 	# several rewards in a row.
 	if not TriggerBus.chest_granted.is_connected(_on_chest_granted):
 		TriggerBus.chest_granted.connect(_on_chest_granted)
+	# A Mysterious Mask banks a choice of characters the same way (§3.1).
+	if not GameState.mask_granted.is_connected(_on_mask_granted):
+		GameState.mask_granted.connect(_on_mask_granted)
 	# Every defeated enemy drops an item, and the drop ASKS to be taken (§8) rather
 	# than banking a RewardScreen chest.
 	if not GameLoop2.enemy_defeated.is_connected(_on_enemy_defeated):
@@ -2378,6 +2381,14 @@ func report(beaten: bool, fulfilled: Variant = null, escaped: bool = false,
 	# (ReportChecklist._lock_row) — paying that one again would pay it twice.
 	var leveled: bool = _levelup_check != null and _levelup_check.button_pressed \
 		and not _levelup_check.disabled
+	# …and every masked character's row the same way (Mysterious Mask, §3.1).
+	var masked_leveled: Array = []
+	if _checklist != null:
+		for mid in _checklist.mask_levelup_checks:
+			var mcheck: CheckBox = _checklist.mask_levelup_checks[mid]
+			if mcheck != null and is_instance_valid(mcheck) and mcheck.button_pressed \
+					and not mcheck.disabled:
+				masked_leveled.append(mid)
 	# What the level-up paid, filled in below when one is actually taken and read
 	# by `_post_snapshot` at the end of this function.
 	var level_up_paid: Dictionary = {}
@@ -2564,6 +2575,20 @@ func report(beaten: bool, fulfilled: Variant = null, escaped: bool = false,
 		# beside whatever the player wrote about doing it here.
 		if played_game != null:
 			GameStats.record_level_up(played_game.id, GameState.character_id)
+	# A MASKED LEVEL pays the masked character's stats and reward, not the hero's.
+	# No bonus-level chain: Crown's extra roll is about the hero's own level.
+	var mask_levels_paid: Array = []
+	if not GameLoop2.run_over:
+		for mid in masked_leveled:
+			var mch: CharacterData = Data.get_character2(mid)
+			if mch == null:
+				continue
+			GameLoop2.record_completed_goal("levelup",
+				"%s, levelled up as %s — %s" % [GameLoop2.BEATING_A_GAME,
+					mch.display_name, mch.level_up_condition])
+			mask_levels_paid.append({"levels": 1, "character": mch.display_name,
+				"condition": mch.level_up_condition, "reward": mch.level_up_reward,
+				"stats": GameState.grant_level_up(_rng, mch)})
 	# The event/curse half of the same honour-system report (§5): claim the event
 	# goals the player ticked and pay out the curses they owned up to. Read before
 	# games_played moves, because the tick below is what ages them.
@@ -2628,6 +2653,7 @@ func report(beaten: bool, fulfilled: Variant = null, escaped: bool = false,
 		# sheet's reward wording, and every stat line the chain granted. Empty on
 		# a report with no level in it.
 		"level_up": level_up_paid,
+		"mask_level_ups": mask_levels_paid,
 	}
 	# The offering is BUILT here and shown later (_refresh_stage): a Scramble or a
 	# Dash taken off the haul screen still has a table to act on, and the cards are
@@ -2845,6 +2871,9 @@ func _on_post_game_finished(_screen: PostCombatScreen) -> void:
 	_refresh()
 	autosave()
 	_open_pending_event()
+	# A Mysterious Mask taken off the haul waited for it to close (§3.1).
+	if GameState.pending_masks > 0:
+		call_deferred("_redeem_pending_chests")
 
 # `_adopt_shop` lived here: it took the shelf the haul screen had borrowed and
 # reparented it under the board. Nothing borrows the shelf now — the screen knows
@@ -3511,6 +3540,8 @@ func _exit_tree() -> void:
 	_close_enemy_info()
 	if TriggerBus.chest_granted.is_connected(_on_chest_granted):
 		TriggerBus.chest_granted.disconnect(_on_chest_granted)
+	if GameState.mask_granted.is_connected(_on_mask_granted):
+		GameState.mask_granted.disconnect(_on_mask_granted)
 	if GameState.inventory_changed.is_connected(_on_inventory_changed):
 		GameState.inventory_changed.disconnect(_on_inventory_changed)
 	if GameState.hp_changed.is_connected(_on_vitals_changed):
@@ -3537,6 +3568,8 @@ func _redeem_pending_chests() -> void:
 	if _reward_open or not is_inside_tree():
 		return
 	if GameState.pending_chests <= 0:
+		# The chests are done; a mask waiting on its choice goes next.
+		_redeem_pending_masks()
 		return
 	# ON THE HAUL SCREEN, if one is up. A chest banked during a report — a level-up
 	# reward, Unstable Genome firing on the beat, a status paying out — used to open
@@ -3591,6 +3624,38 @@ func _redeem_pending_chests() -> void:
 		_redeem_pending_chests())
 	add_child(screen)
 	screen.setup_chests(sizes)
+
+# A Mysterious Mask was picked up: open its choice when the page is next idle.
+func _on_mask_granted() -> void:
+	call_deferred("_redeem_pending_chests")
+
+# MYSTERIOUS MASK (§3.1): open the choice of characters for the next banked mask.
+# Same idle rule as a chest — never over a game in play, a resolve, the haul
+# screen or another reward — and the haul screen's way out comes back here
+# (`_on_post_game_finished`), so a mask taken off the haul is asked about the
+# moment the haul is done. One popup at a time; closing one chains to the next.
+func _redeem_pending_masks() -> void:
+	if _reward_open or not is_inside_tree() or GameState.pending_masks <= 0:
+		return
+	if _phase == Phase.PLAYING or _resolving:
+		return
+	if _post_screen != null and is_instance_valid(_post_screen):
+		return
+	var offer: Array = GameState.mask_offer()
+	if offer.is_empty():
+		# Every character is already worn (or is the hero): nothing to offer.
+		GameState.discard_mask()
+		Notifications.notify("Mysterious Mask: there is nobody left to become.",
+			UITheme.TEXT_DIM)
+		_redeem_pending_masks()
+		return
+	_reward_open = true
+	var modal := MaskChoiceModal.open(self, offer)
+	modal.finished.connect(func():
+		_reward_open = false
+		_refresh()
+		autosave()
+		_redeem_pending_chests())
 
 # Drain every banked chest onto the post-combat screen. Rolled through the same
 # `_roll_chest` a defeated body's drop uses — which is the same pool and the same

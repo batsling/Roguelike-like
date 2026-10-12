@@ -129,7 +129,7 @@ The MP4 stays in git history from the upload commit itself: deleting it shrinks
 the checkout, not what a full clone downloads.
 
 ```bash
-godot --headless -s addons/gut/gut_cmdln.gd     # GUT suite: 56 scripts, ~2560 tests, ~12 min
+godot --headless -s addons/gut/gut_cmdln.gd     # GUT suite: 57 scripts, ~2560 tests, ~12 min
 ```
 
 - Godot is at `/root/.local/godot/godot` and on `PATH` (installed by
