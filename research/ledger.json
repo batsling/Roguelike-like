@@ -1415,8 +1415,13 @@
   "connections": "before 2026-10-07"
  },
  "Dungeon Clawler": {
+  "characters": "2026-10-12: nothing usable: its lucky paws are characters' items only",
   "connections": "before 2026-10-07",
-  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+  "events": "2026-10-12: nothing usable: no events",
+  "goals": "2026-10-12: nothing new; old rows checked against the wiki (second wiki pass): Prickwood is the plant boss and holds; Bee Queen marked ?, there is no such boss (its bosses are moths, Prickwood, a tank, a squid, Melimon)",
+  "locations": "2026-10-12: nothing usable: rooms are levels",
+  "loot": "2026-10-12: 1 row (Ticking Bomb); its claw-machine items attract metal or plastic, which doesn't survive outside the claw; no evolutions",
+  "statuses": "2026-10-12: nothing usable: buffs are numbers"
  },
  "Dungeon Crawl Stone Soup": {
   "characters": "2026-10-09: 3 species",
@@ -1468,7 +1473,13 @@
   "statuses": "2026-10-12: nothing usable: its 150 effects are skills' numbers; the Bankster debts repeat Avarice"
  },
  "Dungreed": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: one adventurer",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: no events",
+  "goals": "2026-10-12: nothing usable: its bosses' pages list attack patterns",
+  "locations": "2026-10-12: nothing usable: its town's buildings unlock weapons",
+  "loot": "2026-10-12: 1 row (Coin Gun weapon); 118 weapons, most stat lines; no evolutions",
+  "statuses": "2026-10-12: nothing usable: none listed"
  },
  "Dunjungle": {
   "connections": "before 2026-10-07"
@@ -1486,7 +1497,13 @@
   "connections": "before 2026-10-07"
  },
  "Elden Ring Nightreign": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: the Nightfarers' kits (the Revenant's summons, the Duchess' replayed damage) repeat existing goals",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: no events",
+  "goals": "2026-10-12: 1 row (Gladius, Beast of Night); read on the Elden Ring Wiki (a series wiki: match check); its other Nightlords are Elden Ring's bosses again",
+  "locations": "2026-10-12: nothing new: the Night's Tide is a clone on Invoker (Brotato)",
+  "loot": "2026-10-12: nothing usable: its relics and weapons are Elden Ring's; no evolutions",
+  "statuses": "2026-10-12: nothing usable: Elden Ring's buildups"
  },
  "Eldritch": {
   "connections": "before 2026-10-07"
@@ -1607,7 +1624,13 @@
   "connections": "before 2026-10-07"
  },
  "For The Warp": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: the wiki has only its 94 ship cards, which are numbers",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: the wiki has only its 94 ship cards, which are numbers",
+  "goals": "2026-10-12: nothing usable: the wiki has only its 94 ship cards, which are numbers",
+  "locations": "2026-10-12: nothing usable: the wiki has only its 94 ship cards, which are numbers",
+  "loot": "2026-10-12: nothing usable: the wiki has only its 94 ship cards, which are numbers",
+  "statuses": "2026-10-12: nothing usable: the wiki has only its 94 ship cards, which are numbers"
  },
  "For the King": {
   "characters": "2026-10-09: Busker, Treasure Hunter",
@@ -1836,8 +1859,13 @@
   "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
  },
  "Halls of Torment": {
+  "characters": "2026-10-12: nothing usable: its 31 characters are the genre's classes",
   "connections": "before 2026-10-07",
-  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+  "events": "2026-10-12: nothing usable: no events",
+  "goals": "2026-10-12: nothing new; old rows checked against the wiki (second wiki pass): Marching Ghost holds; Possessed Effigy marked ? (it only moves when not looked at, which repeats NecroDancer's Ghost, not a statue coming to life). Gold Slime is a clone on Hoarding Pilfer",
+  "locations": "2026-10-12: nothing usable: its Cupbearer brews potions in the camp, between runs",
+  "loot": "2026-10-12: nothing usable: its items are stat equipment (the Blood Catcher charges on damage dealt, like the live charge pieces); no evolutions",
+  "statuses": "2026-10-12: nothing usable: pickups are buffs"
  },
  "Hand of Fate": {
   "characters": "2026-10-12: nothing usable: one unnamed hero",
@@ -1918,7 +1946,13 @@
   "connections": "before 2026-10-07"
  },
  "Hellcard": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: Mage, Rogue, Warrior, Tinkerer and Bruja are the genre's classes",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: no events",
+  "goals": "2026-10-12: nothing usable: its enemy pages are stat lines; the Devourer (eats wounded monsters) repeats Zombie Master's 'watch an enemy upgrade another'",
+  "locations": "2026-10-12: nothing usable: none listed",
+  "loot": "2026-10-12: nothing usable: 1000+ cards, numbers for a co-op deckbuilder; no weapons, no evolutions",
+  "statuses": "2026-10-12: nothing usable: none listed"
  },
  "Helskate": {
   "connections": "before 2026-10-07"
@@ -2049,7 +2083,13 @@
   "statuses": "2026-10-12: nothing usable: none listed"
  },
  "Just King": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: heroes are party members, not the one you play",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: 1 row (The Bard in the Pillory); the Ipdrasil Seed asks a hero to die for the King, which a solo run can't",
+  "goals": "2026-10-12: nothing usable: its bosses' pages list attacks only (Krantor's eyes repeat the eye goals)",
+  "locations": "2026-10-12: nothing usable: zones are levels",
+  "loot": "2026-10-12: 1 row (Golden Ticket); its items are stat cards; no weapons as such, no evolutions",
+  "statuses": "2026-10-12: nothing usable: none listed"
  },
  "Katanaut": {
   "connections": "before 2026-10-07"
@@ -4311,7 +4351,13 @@
   "statuses": "2026-10-12: nothing usable: NetHack's conditions"
  },
  "We Need To Go Deeper": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: crew roles",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: its events are seasonal enemies (Rat King, Headless Horseman)",
+  "goals": "2026-10-12: nothing usable: 150+ sea creatures with stats; its bosses repeat the Hydra and Leviathan candidates",
+  "locations": "2026-10-12: nothing usable: none listed",
+  "loot": "2026-10-12: 1 row (Rose); the Wedding Ring shares two players' health, a co-op idea; no evolutions",
+  "statuses": "2026-10-12: nothing usable: none listed"
  },
  "Weird Worlds: Return to Infinite Space": {
   "connections": "before 2026-10-07"

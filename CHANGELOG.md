@@ -80,6 +80,20 @@ For how the project is laid out and how its systems fit together, see
     ("Next Hades song: beat Hades 2 times more, or complete 3 more distinct
     goals there"). It's the game that is close, not the song.
 
+- **Research, twenty-seventh batch.** Hellcard, Just King, Dungeon Clawler,
+  Dungreed, We Need To Go Deeper, For The Warp, Halls of Torment and Elden
+  Ring Nightreign: 6 new rows, 2 clones and 4 old goal rows checked. Most of
+  these wikis are stat tables (Hellcard's 1000+ cards, For The Warp's ship
+  parts, Dungreed's 118 weapons), so most kinds are marked with nothing.
+  - **Old rows:** Prickwood and the Marching Ghost hold. Dungeon Clawler's Bee
+    Queen doesn't exist (its bosses are moths, Prickwood, a tank, a squid and
+    Melimon), and Halls of Torment's Possessed Effigy only moves when you look
+    away, which repeats NecroDancer's Ghost; both are marked `?`.
+  - **New:** the Coin Gun (a weapon that spends a Gold a swing), the Ticking
+    Bomb, Just King's Golden Ticket (a shelf of Rare pieces) and its Bard in
+    the Pillory, We Need To Go Deeper's Rose (you never lose Max Health), and
+    Gladius, Beast of Night, a three-headed boss for the dog tag.
+
 - **Research, twenty-sixth batch.** Griftlands, Inscryption, Luck be a
   Landlord, Wizard of Legend, The Legend of Bum-Bo and Forward: Escape the
   Fold: 13 new rows, 3 clones and 14 old goal rows checked.
