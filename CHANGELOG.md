@@ -80,6 +80,13 @@ For how the project is laid out and how its systems fit together, see
     ("Next Hades song: beat Hades 2 times more, or complete 3 more distinct
     goals there"). It's the game that is close, not the song.
 
+- **Research, forty-seventh batch, and the end of the owned games.** The
+  last 18 owned games marked: Touhou Crawl and ZMAngband are variants of
+  games already read, Warriors: Abyss's wiki is 27 placeholder pages named
+  "Character 1" to "Character 27", and the rest have no wiki. Every owned
+  game (580) now has a ledger entry for every kind; the 341 games not owned
+  are next.
+
 - **Research, forty-sixth batch: 24 games, nothing usable.** All from 2025:
   Heroes of Hammerwatch II has no pages yet on the Hammerwatch wiki, Lost in
   Random: The Eternal Die and I Am Legion have stub wikis, and the rest have
