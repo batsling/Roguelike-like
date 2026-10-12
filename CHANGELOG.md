@@ -30,8 +30,9 @@ For how the project is laid out and how its systems fit together, see
   copied again); and **Mysterious Mask** opens a popup of three characters, with
   their portrait and Level Up under it. The one picked adds their condition
   BESIDE the hero's, as its own row on the report that pays that character's
-  reward (games-first-redesign §3.1). Mask and Duplicator still need art
-  (`images2.0/items/MysteriousMask.png`, `UltraDuplicator.png`).
+  reward (games-first-redesign §3.1). The popup's subtitle reads "Choose a Character and gain
+  their Level Up Condition and Reward", and Mask and Duplicator have the
+  owner's art.
 
 - **Link Cable, Candy Bag, Scroll of Enchant Weapon, and the radio folder.**
   The owner's 12 Oct upload added three rows with their prose and art; this

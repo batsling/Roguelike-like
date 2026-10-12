@@ -65,7 +65,7 @@ func _build() -> void:
 	root.add_child(title)
 
 	var sub := Label.new()
-	sub.text = "Choose a character. Their Level Up joins yours, and meeting it pays their reward."
+	sub.text = "Choose a Character and gain their Level Up Condition and Reward"
 	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	sub.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	sub.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
