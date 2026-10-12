@@ -80,6 +80,10 @@ For how the project is laid out and how its systems fit together, see
     ("Next Hades song: beat Hades 2 times more, or complete 3 more distinct
     goals there"). It's the game that is close, not the song.
 
+- **Research, fifty-sixth batch.** ToeJam & Earl: Back in the Groove! gave
+  the Evil Elevator, a fake way forward that drops you a level, as an event;
+  nineteen stub wikis marked nothing usable.
+
 - **Research, fifty-fifth batch: 16 games, nothing usable.** Three sequels
   sit on their first game's wiki (Rift Wizard 3, Wall World 2, Sword of the
   Necromancer: Resurrection), both Touhou games on the series wiki, and the
