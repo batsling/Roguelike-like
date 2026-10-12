@@ -11,5 +11,4 @@ album = "Nubby's Number Factory OST"
 year = 2025
 game_id = &"nubby_s_number_factory"
 file = "Nubby's Number Factory/11. Endless.mp3"
-image_path = ""
 tags = PackedStringArray()

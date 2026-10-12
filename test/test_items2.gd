@@ -1404,3 +1404,35 @@ func test_the_digit_is_centred_in_the_pip() -> void:
 		"*", "Label", true, false)[0]
 	assert_eq(label.horizontal_alignment, HORIZONTAL_ALIGNMENT_CENTER)
 	assert_eq(label.vertical_alignment, VERTICAL_ALIGNMENT_CENTER)
+
+
+# --- Candy Bag (Brotato) -----------------------------------------------------
+
+func _verbs() -> int:
+	return GameState.bash + GameState.dash_charges + GameState.push \
+		+ GameState.transmute + GameState.scramble
+
+func test_candy_bag_gives_one_verb_after_every_game() -> void:
+	var bag: ItemData = Data.get_item2(&"candy_bag")
+	assert_not_null(bag)
+	assert_eq(String(bag.triggers[0].get("on", "")), "game_beaten", "After Combat ends")
+	_give(&"candy_bag")
+	var before: int = _verbs()
+	TriggerBus.game_beaten.emit({"game_id": &"rogue"})
+	assert_eq(_verbs(), before + 1, "+1 Bash, Dash, Push, Transmute or Scramble")
+
+func test_candy_bags_boss_is_an_unwanted_roll() -> void:
+	var bag: ItemData = Data.get_item2(&"candy_bag")
+	var roll: Dictionary = bag.triggers[0]["effects"][1]
+	assert_eq(String(roll.get("type", "")), "chance")
+	assert_eq(int(roll.get("percent", 0)), 10)
+	assert_eq(EffectSystem.favour_of(roll["effect"]), Stats.Favour.LOW,
+		"Luck makes the boss LESS likely, as it does every bad roll")
+
+func test_spawn_boss_walks_a_boss_onto_the_board() -> void:
+	var before: int = GameLoop2.stack.filter(
+		func(e): return (e["enemy"] as GoalEnemyData).is_boss()).size()
+	EffectSystem.apply({"type": "spawn_boss"}, {})
+	var after: int = GameLoop2.stack.filter(
+		func(e): return (e["enemy"] as GoalEnemyData).is_boss()).size()
+	assert_eq(after, before + 1)

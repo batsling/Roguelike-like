@@ -11,5 +11,4 @@ album = "Dead Cells - Soundtrack Part 1"
 year = 2017
 game_id = &"dead_cells"
 file = "Dead Cells/31. Corrupted Prison.mp3"
-image_path = ""
 tags = PackedStringArray()

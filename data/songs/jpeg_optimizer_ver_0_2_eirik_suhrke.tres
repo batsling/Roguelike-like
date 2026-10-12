@@ -11,5 +11,4 @@ album = "Downwell"
 year = 2015
 game_id = &"downwell"
 file = "Downwell/11 - jpeg optimizer ver. 0.2 ~水中夢~.mp3"
-image_path = ""
 tags = PackedStringArray()

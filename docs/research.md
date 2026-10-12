@@ -243,7 +243,7 @@ written from memory of the game, with no page to point at, is allowed but is
 | kind | look for | where it plugs in |
 |---|---|---|
 | goals | creatures whose behaviour translates into something a player does in any game ("make an enemy flee"); bodies for thin enemy tags; Traditional and Deckbuilder bodies (the thinnest types) | enemy tags, abilities, the goal types |
-| loot | items that join a family (coins, food, whetstone/weapon, bombs, tarot); wands, scrolls and potions from roguelikes other than Rogue and NetHack; bags; anything that grants or spends **keys** | the pack, its neighbours and charges; the identify gamble |
+| loot | items that join a family (coins, food, whetstone/weapon, bombs, tarot); wands, scrolls and potions from roguelikes other than Rogue and NetHack; bags; anything that grants or spends **keys**; **a card game's own cards** (§6.2) | the pack, its neighbours and charges; the identify gamble |
 | events | the game's own decision screens: shrines, altars, gambles, strangers, offers with a price. Not from Slay the Spire unless exceptional (13 of 16 live events are) | `add_goal`, chests, curses, gold, loot |
 | characters | its starting classes or heroes: a stat spread and a level-up goal that say who they are | the verbs and stats |
 | statuses | effects that rewrite a goal (Terrified, Lovesick) or change a body on the board; conditions to avoid, for curses | statuses' goal modes, curses' `spawn_enemy` |
@@ -262,6 +262,35 @@ over three); Health `1`; Damage `1/2/3/4` by tier (`3/5/7/9` for bosses);
 time`) or `game beaten`; `Count` is blank or 2+, enemies only. Every goal is
 authored in the `goals` sheet once a row is pasted (CLAUDE.md).
 
+**Weapons have goals too** (the owner's reminder, 12 Oct 2026). A weapon
+candidate's `Goal=` in `Extra` is not flavour: it is what charges the weapon,
+once per game, and when the row is pasted it becomes a row of the `goals` sheet
+like any enemy's (always `any time`, because a lost game still charges it). So
+write it to the same test as an enemy goal: something a player does **in
+whatever game they picked**, checkable on the honour system, and the weapon's
+idea in a sentence ("Plant a mine or a trap", "Build a structure that fights
+for you"). `research.py check` refuses a weapon row with no Goal, and
+`tools/check_goal_candidates.py` (in CI) refuses a weapon on the sheet or in
+`research/loot.csv` without one, and a weapon candidate whose goal repeats a goal
+from another game.
+
+**When two goals would be the same, tell them apart with the game's own theme —
+but only when one would otherwise go to waste** (the owner, 12 Oct 2026). The
+model is Ball x Pit's skeletons: "Defeat a skeleton" was taken, so theirs are
+defeated "with a ball", because Ball x Pit is a game about balls. So a candidate
+whose goal is already live, or already another candidate's, keeps its idea and
+gains a qualifier from ITS game: Brimstone fires "a laser of blood" (Isaac), One
+Step From Eden's Guillotine beheads "with a spell", Darkest Dungeon 2's Bone Saw
+bleeds an enemy to death "in the dark", Dreamscaper's Umbrella is an improvised
+weapon "in a dream". The live goal, and the first candidate to claim it, keep the
+plain wording. Don't decorate a goal that collides with nothing.
+
+Two goals FROM THE SAME GAME may stay identical: they are a family, not a waste
+(Vorpal Blade beheads NetHack's own Jabberwock; Mewgenics' Bear Traps and Spider
+Kitten both trap an enemy in place; Jupiter Hell's Love and Hate are dual-wielded),
+and so may a weapon and what it evolves into (Lightning Ring, Thunder Loop). The
+check knows both exceptions.
+
 ### 6.2 loot → `research/loot.csv`
 
 Pick the sheet by how the thing is USED in its game:
@@ -270,7 +299,7 @@ Pick the sheet by how the thing is USED in its game:
 |---|---|---|
 | an always-on pickup, a relic, a passive item | `items` (relics) | Rarity is the sheet's `Rating`: Common / Uncommon / Rare, or Boss / Event / Starter. Type: Passive, Triggered, Pickup, `Charged, N`, `Usable, N` |
 | small, positional, coin-like, or caring about its neighbours | `trinkets` | Type Passive or Charged; Size `1x1` usually ([loot-passives.md](loot-passives.md)) |
-| played once, or a held card | `cards` | Type Usable or Passive |
+| played once, or a held card | `cards` | Type Usable or Passive. **A card game's cards are card loot** (the owner, 12 Oct 2026): a deckbuilder's or card battler's own cards (Slay the Spire, Balatro's jokers and tarots, Inscryption, Monster Train, Ratropolis…) are candidates for this sheet as they stand — a card you play once is Usable, a card that sits and works is Passive. Look for them in every card game researched from now on |
 | a weapon you swing or fire | `weapons` | aimed like a thrown potion, charged by its own goal: `Extra` gives Aim, Area, Type, Goal, Charge. Description is the swing (`Stun N`, a push) and any passive |
 | a weapon turning into a better one | `evolutions` | Name is what it becomes; `Extra` gives Requirement 1 (the weapon that turns: a live one or a weapon candidate), Requirement 2 (`Any [N] Item(s) or Trinket(s) with "tag"`, or one named piece), Outcome (`Consume All` / `Consume None`). Description is what the new weapon does. If the evolved weapon needs its own stats, give it a `weapons` row too |
 | something that holds other things | `bags` | Size is its shape |
@@ -448,6 +477,11 @@ neither describes a game's contents anyway.
   this client when they were read, so most records have no `blurb` or
   `signal` yet (and are judged by name alone). `research.py wikis --blurbs`
   reads them again without rediscovering anything; run it in a later session.
+
+- **Pills are not researched, on purpose** (the owner, 12 Oct 2026). The pill
+  system is modelled closely on Isaac's, and few other games have anything
+  shaped like it, so the loot kind does not look for them. `research.py` reads
+  the `pills` sheet only to flag a duplicate name.
 
 - **Tags** stay in the workbook only (no CSV): they are regenerated from Steam
   on every run and the owner's marks are carried by `tag_research.py` itself, as

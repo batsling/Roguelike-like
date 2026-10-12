@@ -11,5 +11,4 @@ album = "Into the Breach Soundtrack"
 year = 2018
 game_id = &"into_the_breach"
 file = "Into the Breach/18 Detritus.mp3"
-image_path = ""
 tags = PackedStringArray()

@@ -11,5 +11,4 @@ album = "Risk of Rain 2: Seekers of the Storm"
 year = 2024
 game_id = &"risk_of_rain_2"
 file = "Risk of Rain 2/01. A Tempestuous Noise of Thunder and Lightning Heard.mp3"
-image_path = ""
 tags = PackedStringArray()

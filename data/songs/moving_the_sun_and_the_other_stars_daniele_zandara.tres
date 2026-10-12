@@ -11,5 +11,4 @@ album = "Vampire Survivors The Original Soundtrack"
 year = 2024
 game_id = &"vampire_survivors"
 file = "Vampire Survivors/3-03 - Moving the Sun and the other Stars.mp3"
-image_path = ""
 tags = PackedStringArray()

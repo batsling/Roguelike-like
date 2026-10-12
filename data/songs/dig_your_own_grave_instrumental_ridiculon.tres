@@ -11,5 +11,4 @@ album = "Mewgenics OST"
 year = 2026
 game_id = &"mewgenics"
 file = "Mewgenics/81. Dig Your Own Grave INSTRUMENTAL.mp3"
-image_path = ""
 tags = PackedStringArray()

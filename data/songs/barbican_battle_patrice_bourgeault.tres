@@ -11,5 +11,4 @@ album = "Flinthook Original Soundtrack"
 year = 2017
 game_id = &"flinthook"
 file = "Flinthook/09. Barbican Battle.mp3"
-image_path = ""
 tags = PackedStringArray()

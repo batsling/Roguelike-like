@@ -552,6 +552,12 @@ const CLASS_NAMES := ["Common", "Uncommon", "Rare", "Legendary", "Starter", "Bos
 # Read by ShopSystem.mark_seen via GameState.sweeps_shops.
 @export var shop_sweep: bool = false
 
+# Link Cable: every piece in the pack counts as touching every other, in every
+# direction (docs/loot-passives.md §15) — so a Whetstone reaches every weapon, a
+# food is beside every other food, and a Blueprint copies every passive. Read by
+# LootPassives.linked through GameState.links_loot.
+@export var link_loot: bool = false
+
 # There's Options: chest POINTS added to a BOSS's drop (§8.2). One item off a
 # defeated body IS a chest — a Small one, 1 of 1 — so this is not a new kind of
 # reward, it is the same drop one rung up the size ladder: 2 points is a Medium

@@ -11,5 +11,4 @@ album = "ENTER THE GUNGEON (Original SoundTrack)"
 year = 2016
 game_id = &"enter_the_gungeon"
 file = "Enter the Gungeon/42 A CONVICTS LAST STAND.mp3"
-image_path = ""
 tags = PackedStringArray()

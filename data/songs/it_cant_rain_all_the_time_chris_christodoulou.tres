@@ -11,5 +11,4 @@ album = "Risk of Rain 2: Seekers of the Storm"
 year = 2024
 game_id = &"risk_of_rain_2"
 file = "Risk of Rain 2/10. It Can't Rain All the Time.mp3"
-image_path = ""
 tags = PackedStringArray()

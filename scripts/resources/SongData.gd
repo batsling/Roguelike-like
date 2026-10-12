@@ -25,10 +25,10 @@ extends Resource
 # columns went in October 2026. A song with no game is never drawn.
 @export var game_id: StringName = &""
 
-# The file name in the radio folder, exactly as the sheet spells it.
+# The file name in the radio folder, exactly as the sheet spells it. A song has
+# no picture of its own: it shows its game's cover (the sheet's `Image` column
+# went on 12 Oct 2026).
 @export var file: String = ""
-# Album art, as a res:// path; "" means "use the game's cover".
-@export var image_path: String = ""
 # Each tag is a station the radio can be tuned to. `menu` (Radio.MENU_TAG) also
 # makes it its game's menu song: the first song that game gives.
 @export var tags: PackedStringArray = PackedStringArray()

@@ -9094,8 +9094,9 @@ func test_only_a_teleport_among_the_scroll_ops_needs_the_map() -> void:
 			continue
 		# identify_loot and remove_curse both land mid-game: one reads the pack and
 		# one the run's curse list, and neither needs the map the way a teleport does.
+		# enchant_weapon only reads the pack too.
 		assert_true(op in ["apply_status", "apply_tile", "forget", "spawn_enemy",
-			"identify_loot", "remove_curse", "stun_enemies"],
+			"identify_loot", "remove_curse", "stun_enemies", "enchant_weapon"],
 			"%s is an op this rule has been thought about — a new one needs a "
 			% op + "fizzle of its own if it cannot land mid-game")
 

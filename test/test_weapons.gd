@@ -518,3 +518,35 @@ func test_erratic_deck_starts_with_a_random_joker() -> void:
 	assert_eq(cards.size(), 1)
 	assert_true(Data.get_card(StringName(cards[0]["id"])).tags.has("joker"),
 		"drawn from the jokers alone")
+
+# --- Scroll of Enchant Weapon (§12) ----------------------------------------------
+
+func test_enchant_weapon_gives_a_weapon_stun_for_the_rest_of_the_run() -> void:
+	_weapon(&"wooden_sword", 4)
+	var sword: int = _index(4)
+	assert_eq(WeaponSystem.stun_for(sword), 1)
+	var scroll: ScrollData = Data.get_scroll(&"scroll_of_enchant_weapon")
+	assert_not_null(scroll, "the scroll generated")
+	var out: Dictionary = ScrollSystem.read_scroll(scroll)
+	assert_eq(WeaponSystem.stun_bonus_of(_at(4)), 1, "kept on the piece")
+	assert_eq(WeaponSystem.stun_for(sword), 2, "+1 Stun on its swing")
+	assert_string_contains(LootSystem.weapon_description(_at(4)), "Enchanted: +1 Stun")
+	assert_false((out["logs"] as Array).is_empty(), "the read says what it did")
+	GameState.move_loot(4, 5)
+	assert_eq(WeaponSystem.stun_bonus_of(_at(5)), 1, "and it moves with the piece")
+
+func test_enchant_weapon_with_no_weapon_does_nothing_and_stays_unread() -> void:
+	var scroll: ScrollData = Data.get_scroll(&"scroll_of_enchant_weapon")
+	ScrollSystem.unidentify(scroll.id)
+	ScrollSystem.read_scroll(scroll)
+	assert_false(ScrollSystem.is_identified(scroll.id),
+		"nothing to enchant shows the reader nothing")
+
+func test_an_enchanted_weapon_keeps_its_stun_when_it_evolves() -> void:
+	var sword: Dictionary = _weapon(&"wooden_sword", 0)
+	sword["stun_bonus"] = 2
+	_trinket(&"whetstone", 8)
+	var ready: Array = WeaponSystem.evolutions_ready(sword)
+	assert_eq(ready.size(), 1)
+	var grown: Dictionary = WeaponSystem.evolve(_index(0), ready[0]["evo"], ready[0]["candidates"])
+	assert_eq(WeaponSystem.stun_bonus_of(grown), 2, "the enchantment rides the evolution")

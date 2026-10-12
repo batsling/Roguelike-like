@@ -11,6 +11,26 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Link Cable, Candy Bag, Scroll of Enchant Weapon, and the radio folder.**
+  The owner's 12 Oct upload added three rows with their prose and art; this
+  filled their Effect cells (`tools/_items_link_cable_candy_bag_setup.py`) and
+  built what they needed. **Link Cable** (`link_loot`) makes every piece in the
+  pack touch every other in every direction, the one-way rules included: a
+  Whetstone sharpens every weapon, food speeds every other food, and a
+  Blueprint copies every passive in the pack (the owner's pick), each copy
+  counted on its own (docs/loot-passives.md §15). **Candy Bag** gives +1 of a
+  random verb after each game, with a 10% chance a boss walks on (`spawn_boss`,
+  steered down by Luck like every bad roll). **Scroll of Enchant Weapon** gives a
+  random weapon +1 Stun for the run (`stun_bonus`, kept through moves, saves
+  and evolutions). Mom's Coin Purse's `purse` tag is now `bag`.
+  **The radio's music folder is the player's to pick** (Change… / Default on
+  the Radio screen), defaulting to `C:\Users\Owner\Documents\Roguelike
+  Roguelike\radio` on Windows. The owner deleted the `radio` sheet's `Image`
+  column, so a song's picture is always its game's cover and the generator
+  refuses the column if it comes back. Research now treats a weapon's goal as a
+  real goal and a card game's own cards as `cards` candidates, and a
+  deckbuilder's brief lists them (docs/research.md §6.1–6.2).
+
 - **Less text on screen.** Settings is one row per setting in two columns,
   with the explanations moved into tooltips, so it fits a 720p window without
   scrolling, and Close is pinned to the bottom-right outside the scroll. The

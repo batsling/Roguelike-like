@@ -11,5 +11,4 @@ album = "Loop Hero (Official Soundtrack)"
 year = 2023
 game_id = &"loop_hero"
 file = "Loop Hero/02. Anamnesis of the World's Sin (Expedition 7).mp3"
-image_path = ""
 tags = PackedStringArray()

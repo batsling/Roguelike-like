@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=3 format=3 uid="uid://item_candy_bag"]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+[ext_resource type="Texture2D" path="res://images2.0/items/CandyBag.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_item")
+id = &"candy_bag"
+display_name = "Candy Bag"
+kind = 0
+rarity = 2
+description = "After Combat ends, Gain +1 Bash, Dash, Push, Transmute or Scramble, but have a 10% chance to spawn a Boss"
+triggers = [{"on": "game_beaten", "effects": [{"type": "one_of", "effects": [{"type": "gain_stat", "stat": "bash", "value": 1}, {"type": "gain_stat", "stat": "dash", "value": 1}, {"type": "gain_stat", "stat": "push", "value": 1}, {"type": "gain_stat", "stat": "transmute", "value": 1}, {"type": "gain_stat", "stat": "scramble", "value": 1}]}, {"type": "chance", "percent": 10, "effect": {"type": "spawn_boss"}}]}]
+stat_bonuses = {}
+max_uses = -1
+source_game = "Brotato"
+tags = PackedStringArray("food", "sweets", "bag")
+image = ExtResource("2_img")

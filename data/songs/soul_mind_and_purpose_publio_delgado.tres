@@ -11,5 +11,4 @@ album = "Brutal Orchestra Soundtrack"
 year = 2022
 game_id = &"brutal_orchestra"
 file = "Brutal Orchestra/21 Soul, Mind, and Purpose.mp3"
-image_path = ""
 tags = PackedStringArray()

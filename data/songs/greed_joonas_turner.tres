@@ -11,5 +11,4 @@ album = "ScourgeBringer Original Soundtrack"
 year = 2020
 game_id = &"scourgebringer"
 file = "ScourgeBringer/12. Greed.mp3"
-image_path = ""
 tags = PackedStringArray()

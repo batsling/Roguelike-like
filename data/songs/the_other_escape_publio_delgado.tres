@@ -11,5 +11,4 @@ album = "Brutal Orchestra Soundtrack"
 year = 2022
 game_id = &"brutal_orchestra"
 file = "Brutal Orchestra/12 The Other Escape.mp3"
-image_path = ""
 tags = PackedStringArray()

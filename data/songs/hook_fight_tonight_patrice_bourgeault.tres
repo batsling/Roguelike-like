@@ -11,5 +11,4 @@ album = "Flinthook Original Soundtrack"
 year = 2017
 game_id = &"flinthook"
 file = "Flinthook/13. Hook Fight Tonight.mp3"
-image_path = ""
 tags = PackedStringArray()

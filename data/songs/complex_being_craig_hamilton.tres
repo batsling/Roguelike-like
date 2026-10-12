@@ -11,5 +11,4 @@ album = "Caves of Qud OST"
 year = 2024
 game_id = &"caves_of_qud"
 file = "Caves of Qud/30. Complex Being.mp3"
-image_path = ""
 tags = PackedStringArray()

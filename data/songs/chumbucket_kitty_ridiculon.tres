@@ -11,5 +11,4 @@ album = "Mewgenics OST"
 year = 2026
 game_id = &"mewgenics"
 file = "Mewgenics/04. Chumbucket Kitty.mp3"
-image_path = ""
 tags = PackedStringArray()

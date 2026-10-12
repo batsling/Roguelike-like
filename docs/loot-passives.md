@@ -536,7 +536,15 @@ reported). A Brimstone blast writes it too. This is what tells the player where 
   **Hero swords** (`dirs=adjacent`) — each such piece once, turned with the piece;
   a Hero sword's aura is for *other* weapons;
 - `stun_per_food +N per=M` — **Stankus' Toothpick**: +1 for every 2 food pieces
-  touching it (pieces, not kinds: two Garlics are two food).
+  touching it (pieces, not kinds: two Garlics are two food);
+- `stun_bonus` on the piece itself — Stun it has GAINED for the run. **Scroll of
+  Enchant Weapon** (`enchant_weapon random 1`) gives a random weapon in the pack
+  +1; it moves, saves and evolves with the piece, and the hover says
+  "Enchanted: +1 Stun". With no weapon carried, the scroll does nothing and stays
+  unread.
+
+Under **Link Cable** (§15) every aura reaches every weapon in the pack, and the
+Toothpick counts every food piece.
 
 **King Bomber** pays through a new hook, `weapon_stunned` (once per body a swing
 stuns, with the swinging weapon's slot) and a new gate, `if_self`.
@@ -576,3 +584,40 @@ working on it in **blue** (`LootPassives.influence`, drawn by
 `LootGrid.light_influence`). One answer for every neighbour rule: a copier and its
 target, a `weapon_stun` piece and the weapons it reaches, a food and each
 different food touching it, and the food feeding Stankus' Toothpick.
+
+## 15. Link Cable — every piece touches every other
+
+**Link Cable** is a relic (`items`, Rare, `link_loot`, from Batomon Showdown):
+**"All Loot count as adjacent to each other."** With one owned, every piece in
+the pack counts as touching every other piece, **in every direction** — and that
+includes the rules that only look ONE way (the owner's call, 12 Oct 2026). So:
+
+| rule | unlinked | linked |
+|---|---|---|
+| Whetstone (`weapon_stun dirs=up,down`) | the weapon above and below | every weapon in the pack |
+| Hero swords, Duplicator (`dirs=adjacent`) | weapons on any side | every weapon in the pack |
+| food (§11) | each different food touching it | each different food in the pack |
+| Stankus' Toothpick | food pieces touching it | every food piece in the pack |
+| Blueprint (`copy_right`, §2) | the piece it faces (and its chain) | **every passive in the pack** |
+
+**Blueprint copies every passive** (the owner picked this over "unchanged" and
+"pick one"): every piece is to its right, so it runs each passive piece's
+passive at once — one `active()` row per piece it copies, each marked `linked`.
+It skips other copiers, which would only be the same list again, so two
+Blueprints beside a Goat Hoof are the hoof and two copies, not a pyramid. A
+linked row keeps its `every=N` count and its once-a-game claim under a key
+naming the passive it runs (`LootPassives.count_key`), so a Blueprint copying a
+Garlic and a Carrot counts the two apart. **Using** a Blueprint is unchanged: it
+is used as the piece it actually faces (`usable_copy`), and its arrow still
+points there; its hover lists everything it copies.
+
+The grid itself does not change — `neighbour_slot` is still geometry, a dragged
+piece still lands where it is dropped — so every rule asks
+`LootPassives.linked()` (→ `GameState.links_loot`) first and, when it says yes,
+stops asking the grid: `adjacent_pieces`, `copied`, `_works_on` (the hover glow)
+and `WeaponSystem.aura_targets`. **A new neighbour rule has to answer there too**,
+or it will be the one rule the cable does not reach.
+
+The cable arriving or leaving is an inventory change, so the pack's held-up
+statuses and its ready food are recomputed then (`_on_pack_changed`), like a
+move.

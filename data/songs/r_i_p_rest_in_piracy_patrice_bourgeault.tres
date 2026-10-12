@@ -11,5 +11,4 @@ album = "Flinthook Original Soundtrack"
 year = 2017
 game_id = &"flinthook"
 file = "Flinthook/20. R.I.P (Rest In Piracy).mp3"
-image_path = ""
 tags = PackedStringArray()

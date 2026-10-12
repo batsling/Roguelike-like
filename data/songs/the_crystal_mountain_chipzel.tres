@@ -11,5 +11,4 @@ album = "Dicey Dungeons Original Soundtrack"
 year = 2019
 game_id = &"dicey_dungeons"
 file = "Dicey Dungeons/20. The Crystal Mountain.mp3"
-image_path = ""
 tags = PackedStringArray()

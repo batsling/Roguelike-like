@@ -11,5 +11,4 @@ album = "Slay the Spire (Original Soundtrack)"
 year = 2018
 game_id = &"slay_the_spire"
 file = "Slay the Spire/08 Escape Plan.mp3"
-image_path = ""
 tags = PackedStringArray()

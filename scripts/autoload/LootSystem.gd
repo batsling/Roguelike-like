@@ -636,6 +636,9 @@ func weapon_description(entry: Dictionary) -> String:
 	if w.push > 0:
 		swing += " Then pushes them %d square%s %s." % [w.push, "" if w.push == 1 else "s",
 			{"right": "back", "left": "forward", "up": "up", "down": "down"}.get(w.push_dir, "back")]
+	var enchanted: int = WeaponSystem.stun_bonus_of(entry)
+	if enchanted > 0:
+		swing += " Enchanted: +%d Stun." % enchanted
 	var replays: int = WeaponSystem.replays_of(entry)
 	if replays > 0:
 		swing += " Strikes %d times (%d Replay%s)." % [1 + replays, replays,

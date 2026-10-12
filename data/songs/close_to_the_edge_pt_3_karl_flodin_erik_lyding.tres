@@ -11,5 +11,4 @@ album = "Haste (Original Soundtrack)"
 year = 2025
 game_id = &"haste"
 file = "Haste/54. Close to the Edge Pt. 3.mp3"
-image_path = ""
 tags = PackedStringArray()

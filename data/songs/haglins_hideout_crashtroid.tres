@@ -11,5 +11,4 @@ album = "Peglin Official Soundtrack"
 year = 2023
 game_id = &"peglin"
 file = "Peglin/04. Haglin's Hideout.mp3"
-image_path = ""
 tags = PackedStringArray()

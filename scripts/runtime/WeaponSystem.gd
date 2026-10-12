@@ -5,7 +5,8 @@ extends RefCounted
 # the pack like a trinket, is aimed at the board like a thrown potion, and charges
 # off its own goal.
 #
-# THE PACK ENTRY is {type: "weapon", id, rarity, charges, uid, goal_game[, replays]}:
+# THE PACK ENTRY is {type: "weapon", id, rarity, charges, uid, goal_game[, replays,
+# stun_bonus]}:
 #   charges    how many it holds, 0..max_charges. A new weapon arrives EMPTY.
 #   uid        tells two copies of one weapon apart — each has its own goal row on
 #              the checklist, and each charges once per game.
@@ -13,6 +14,8 @@ extends RefCounted
 #              tick in the same game is refused whatever door it comes through.
 #   replays    Lightning Ring's count: each one is another strike per swing. Grows
 #              after every swing (`replay_gain`) and rides an evolution.
+#   stun_bonus Stun the piece has GAINED for the rest of the run (Scroll of Enchant
+#              Weapon), on top of its sheet's Stun. Rides an evolution.
 #
 # HOW IT CHARGES. Ticking its goal while a game is in play is +1 Charge, at most
 # once per game (the checklist row is `any time`, keyed by `goal_key`, and locks
@@ -147,6 +150,8 @@ static func stun_parts(index: int) -> Array:
 	if w == null:
 		return []
 	var parts: Array = [{"from": w.display_name, "amount": w.stun}]
+	if stun_bonus_of(entry) > 0:
+		parts.append({"from": "Enchanted", "amount": stun_bonus_of(entry)})
 	for row in LootPassives.active():
 		var aura: Dictionary = row["def"].get("weapon_stun") \
 			if row["def"].get("weapon_stun") is Dictionary else {}
@@ -193,6 +198,10 @@ static func retriggers_for(index: int) -> int:
 			n += int(aura.get("amount", 0))
 	return n
 
+# The Stun a weapon has gained for the run (Scroll of Enchant Weapon), 0 for none.
+static func stun_bonus_of(entry) -> int:
+	return maxi(0, int((entry as Dictionary).get("stun_bonus", 0))) if is_weapon(entry) else 0
+
 # Lightning Ring's Replays — how many strikes past the first each swing makes.
 static func replays_of(entry) -> int:
 	return maxi(0, int((entry as Dictionary).get("replays", 0))) if is_weapon(entry) else 0
@@ -203,8 +212,17 @@ static func strikes_of(entry) -> int:
 
 # The WEAPONS (indices) a piece at `src` with `aura` reaches: the pieces sharing a
 # side with its footprint in each of the aura's directions, turned with the piece.
+# Under Link Cable every piece is beside it in every direction, so it reaches every
+# weapon in the pack (docs/loot-passives.md §15).
 static func aura_targets(src: int, aura: Dictionary, rot: int = 0) -> Array:
 	var out: Array = []
+	if LootPassives.linked():
+		if (aura.get("dirs", []) as Array).is_empty() or GameState.loot_slot_of(src) < 0:
+			return out
+		for other in LootPassives.carried():
+			if other != src and is_weapon(GameState.loot_items[other]):
+				out.append(other)
+		return out
 	for slot in GameState.loot_slots_of(src):
 		for dir in aura.get("dirs", []):
 			var n: int = LootPassives.neighbour_slot(slot, LootPassives.turned(String(dir), rot))
@@ -516,6 +534,8 @@ static func evolve(index: int, evo: EvolutionData, chosen: Array) -> Dictionary:
 	# WHAT IT HAS GROWN rides across too: Lightning Ring's Replays are Thunder Loop's.
 	if replays_of(old) > 0:
 		grown["replays"] = replays_of(old)
+	if stun_bonus_of(old) > 0:
+		grown["stun_bonus"] = stun_bonus_of(old)
 	if evo.consumes:
 		for c in chosen:
 			if String(c.get("kind", "")) == "item":

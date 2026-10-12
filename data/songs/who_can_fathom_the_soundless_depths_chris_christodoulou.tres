@@ -11,5 +11,4 @@ album = "Risk of Rain 2: Survivors of the Void"
 year = 2022
 game_id = &"risk_of_rain_2"
 file = "Risk of Rain 2/09. Who Can Fathom the Soundless Depths.mp3"
-image_path = ""
 tags = PackedStringArray()

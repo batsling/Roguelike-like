@@ -206,6 +206,44 @@ WEAPON_PAGES = ["Weapons", "Guns", "Melee Weapons", "Ranged Weapons", "Weapon", 
 EVOLUTION_PAGES = ["Evolutions", "Evolution", "Weapon Evolutions", "Synergies", "Synergy", "Transformations",
                    "Fusion", "Fusions", "Recipes", "Crafting", "Combinations", "Combos"]
 
+# A CARD GAME'S CARDS ARE CARD LOOT (the owner, 12 Oct 2026): a deckbuilder's
+# own cards are candidates for the `cards` sheet as they stand. So a game whose
+# Type is Deckbuilder, or whose wiki has a cards category, gets a standing brief
+# section that lists them, the way weapons get theirs.
+CARD_CATS = re.compile(r"\bcards?\b|jokers?|tarots?|spectrals?|relic cards?|spells?", re.I)
+CARD_PAGES = ["Cards", "Card", "Card List", "List of Cards", "Jokers", "Tarot Cards", "Spells"]
+
+
+def card_leads(base, members, card_game):
+    """The brief's card section: where this wiki keeps its cards, for the `cards`
+    loot sheet. Empty for a game that is neither a card game nor has a cards
+    category, so an action game's brief is not padded with it."""
+    cats = count_categories(base)
+    allc = {c for v in cats.values() for c, _ in v}
+    ccats = sorted((c for c in allc if CARD_CATS.search(c)), key=len)[:4]
+    if not card_game and not ccats:
+        return []
+    have = set()
+    d = api(base, action="query", titles="|".join(CARD_PAGES), redirects="1")
+    if d:
+        q = d.get("query", {})
+        back = {r["to"]: r["from"] for r in q.get("redirects", [])}
+        have = {back.get(p["title"], p["title"]) for p in q.get("pages", {}).values()
+                if "missing" not in p and "invalid" not in p}
+    lp = [p for p in CARD_PAGES if p in have]
+    out = ["## Cards (a card game's cards are card loot)", "",
+           "Its own cards are candidates for `Sheet` `cards`: Type Usable (played once) or Passive "
+           "(sits and works) (docs/research.md §6.2).", "",
+           "List articles: " + (", ".join(lp) or "none"), ""]
+    for c in ccats[:2]:
+        m = category_members(base, c, members)
+        if m:
+            out += [f"Category:{c} ({len(m)}{'+' if len(m) >= members else ''}): " + ", ".join(m), ""]
+    if not lp and not ccats:
+        out += ["- no cards category or page: say so in the ledger note", ""]
+    return out
+
+
 # What a wiki category is about, by its name. Used for two things: ranking games
 # by how much their wiki documents (`next`), and listing what to read (`brief`).
 CATEGORY = {
@@ -1070,6 +1108,7 @@ def cmd_brief(args):
                       ", ".join(flag(m) for m in members), ""]
     if base and (not args.kind or args.kind == "loot"):
         lines += weapon_leads(base, args.members)
+        lines += card_leads(base, args.members, info["type"] == "Deckbuilder")
     lines += ["Read pages: `python3 tools/research.py page \"%s\" \"<title>\" ...` or `--category \"<name>\"`."
               % args.game, "Rules for each kind's rows: docs/research.md.", ""]
     text = "\n".join(lines)

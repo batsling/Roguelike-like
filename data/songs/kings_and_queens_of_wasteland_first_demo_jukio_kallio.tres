@@ -11,5 +11,4 @@ album = "Nuclear Throne OST (Wasteland Scraps bonus)"
 year = 2015
 game_id = &"nuclear_throne"
 file = "Nuclear Throne/Wasteland Scraps 112 BONUS Kings And Queens Of Wasteland First Demo.mp3"
-image_path = ""
 tags = PackedStringArray()

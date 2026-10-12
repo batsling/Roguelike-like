@@ -11,5 +11,4 @@ album = "20XX Soundtrack"
 year = 2017
 game_id = &"20xx"
 file = "20XX/09 Pseudocode.mp3"
-image_path = ""
 tags = PackedStringArray()

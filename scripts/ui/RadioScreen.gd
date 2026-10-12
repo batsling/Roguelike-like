@@ -35,6 +35,9 @@ var _output: OptionButton
 var _output_caption: Label
 var _list: VBoxContainer
 var _summary: Label
+var _folder_label: Label
+var _folder_default_btn: Button
+var _folder_shown: String = ""
 var _list_key: String = "-"       # `_list_state` the list was last built for
 var _rows: Dictionary = {}        # unlocked song id -> its row
 var _shown_current: StringName = &""
@@ -279,18 +282,38 @@ func _build_options() -> Control:
 	# How to hear it is the dropdown's tooltip, not a paragraph under the row.
 	return box
 
+# THE MUSIC FOLDER IS THE PLAYER'S TO PICK (Radio.set_folder): "Change…" browses
+# for it, "Default" puts it back. The label says which one is in use.
+# The path has a line of its own above the buttons: beside five of them it was
+# squeezed down to "Music fold…".
 func _build_folder_row() -> Control:
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", UITheme.GAP)
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", UITheme.GAP_TIGHT)
 	var where := Label.new()
-	where.text = "Music folder: %s" % ProjectSettings.globalize_path(Radio.folder)
+	_folder_label = where
 	where.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 	where.add_theme_color_override("font_color", UITheme.TEXT_DIM)
-	where.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	where.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	where.tooltip_text = where.text
 	where.mouse_filter = Control.MOUSE_FILTER_PASS
-	row.add_child(where)
+	box.add_child(where)
+	_show_folder()
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", UITheme.GAP)
+	box.add_child(row)
+	var change_btn := Button.new()
+	change_btn.name = "ChangeFolderBtn"
+	change_btn.text = "Change…"
+	change_btn.tooltip_text = "Pick the folder your music is in."
+	change_btn.pressed.connect(_browse_folder)
+	row.add_child(change_btn)
+	_folder_default_btn = Button.new()
+	_folder_default_btn.name = "DefaultFolderBtn"
+	_folder_default_btn.text = "Default"
+	_folder_default_btn.tooltip_text = "Go back to %s." \
+		% ProjectSettings.globalize_path(Radio.default_folder())
+	_folder_default_btn.visible = not Radio.is_default_folder()
+	_folder_default_btn.pressed.connect(func() -> void: Radio.set_folder(""))
+	row.add_child(_folder_default_btn)
 	var open_btn := Button.new()
 	open_btn.text = "Open folder"
 	open_btn.pressed.connect(Radio.open_folder)
@@ -318,7 +341,33 @@ func _build_folder_row() -> Control:
 				"" if Radio.last_export_count == 1 else "s", written]
 		where.tooltip_text = where.text)
 	row.add_child(export_btn)
-	return row
+	return box
+
+func _show_folder() -> void:
+	if _folder_label == null:
+		return
+	_folder_shown = Radio.folder
+	_folder_label.text = "Music folder: %s" % ProjectSettings.globalize_path(Radio.folder)
+	_folder_label.tooltip_text = _folder_label.text
+	if _folder_default_btn != null:
+		_folder_default_btn.visible = not Radio.is_default_folder()
+
+# The OS's own folder picker where there is one, Godot's otherwise.
+func _browse_folder() -> void:
+	var dialog := FileDialog.new()
+	dialog.file_mode = FileDialog.FILE_MODE_OPEN_DIR
+	dialog.access = FileDialog.ACCESS_FILESYSTEM
+	dialog.use_native_dialog = true
+	dialog.title = "Pick your music folder"
+	var start: String = ProjectSettings.globalize_path(Radio.folder)
+	if DirAccess.dir_exists_absolute(start):
+		dialog.current_dir = start
+	dialog.dir_selected.connect(func(dir: String) -> void:
+		Radio.set_folder(dir)
+		dialog.queue_free())
+	dialog.canceled.connect(dialog.queue_free)
+	add_child(dialog)
+	dialog.popup_centered_ratio(0.6)
 
 # The favourite toggle: a ★, gold when the song is starred and faint when not.
 func _star_button() -> Button:
@@ -349,6 +398,8 @@ func _caption(text: String) -> Label:
 # ---------------------------------------------------------------------------
 
 func _refresh() -> void:
+	if Radio.folder != _folder_shown:
+		_show_folder()
 	var song: SongData = Radio.current_song()
 	if song != null:
 		_now_title.text = song.title + ("" if song.artist == "" else "  —  " + song.artist)
@@ -648,9 +699,7 @@ func _status_color(song: SongData) -> Color:
 		return UITheme.DANGER
 	return UITheme.SUCCESS
 
+# A song's picture is its game's cover.
 func _art(song: SongData) -> Texture2D:
-	var path: String = song.image_path
-	if path == "" or not ResourceLoader.exists(path):
-		var game: GameData = Data.get_game(song.game_id)
-		return game.cover_image if game != null else null
-	return load(path) as Texture2D
+	var game: GameData = Data.get_game(song.game_id)
+	return game.cover_image if game != null else null

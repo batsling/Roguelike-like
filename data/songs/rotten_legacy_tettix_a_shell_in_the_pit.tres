@@ -11,5 +11,4 @@ album = "Rogue Legacy Original Soundtrack"
 year = 2013
 game_id = &"rogue_legacy"
 file = "Rogue Legacy/14. Rotten Legacy.mp3"
-image_path = ""
 tags = PackedStringArray()

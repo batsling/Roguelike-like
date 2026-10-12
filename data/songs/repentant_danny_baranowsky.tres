@@ -11,5 +11,4 @@ album = "The Binding of Isaac"
 year = 2012
 game_id = &"the_binding_of_isaac"
 file = "The Binding of Isaac/11 Repentant.mp3"
-image_path = ""
 tags = PackedStringArray()

@@ -11,5 +11,4 @@ album = "Crypt of the Necrodancer OST"
 year = 2014
 game_id = &"crypt_of_the_necrodancer"
 file = "Crypt of the NecroDancer/21. Last Dance (Necrodancer Fight 2nd Phase).mp3"
-image_path = ""
 tags = PackedStringArray()

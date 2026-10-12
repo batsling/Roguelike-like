@@ -11,5 +11,4 @@ album = "Peglin Official Soundtrack"
 year = 2023
 game_id = &"peglin"
 file = "Peglin/07. What A Hassle This Castle Is.mp3"
-image_path = ""
 tags = PackedStringArray()

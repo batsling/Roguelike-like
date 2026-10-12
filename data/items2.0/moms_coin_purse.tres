@@ -14,5 +14,5 @@ triggers = [{"on": "item_acquired", "effects": [{"type": "gain_pill", "value": 4
 stat_bonuses = {}
 max_uses = -1
 source_game = "The Binding of Isaac"
-tags = PackedStringArray("mom", "purse", "drugs", "pills")
+tags = PackedStringArray("mom", "bag", "drugs", "pills")
 image = ExtResource("2_img")

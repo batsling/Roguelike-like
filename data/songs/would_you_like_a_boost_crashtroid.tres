@@ -11,5 +11,4 @@ album = "Peglin Official Soundtrack"
 year = 2026
 game_id = &"peglin"
 file = "Peglin/21. Would You Like A Boost.mp3"
-image_path = ""
 tags = PackedStringArray()

@@ -11,5 +11,4 @@ album = "Crypt of the Necrodancer OST"
 year = 2014
 game_id = &"crypt_of_the_necrodancer"
 file = "Crypt of the NecroDancer/18. The Wight to Remain (4-3).mp3"
-image_path = ""
 tags = PackedStringArray()

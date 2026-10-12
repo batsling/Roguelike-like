@@ -329,6 +329,7 @@ const LOOT_SCALED_FIELDS := {
 	"identify_scrolls": ["count"],
 	"remove_curse": ["count"],
 	"stun_enemies": ["count"],
+	"enchant_weapon": ["amount"],
 }
 
 
@@ -403,6 +404,10 @@ func _apply_one(raw_effect: Dictionary, out: Dictionary, rng: RandomNumberGenera
 			# Scare Monster — the player chooses a following enemy to Stun (§7.2).
 			return _stun_enemies(String(effect.get("mode", "choose")),
 				int(effect.get("count", 1)), out)
+		"enchant_weapon":
+			# Enchant Weapon — a random weapon in the pack gains Stun for the rest of
+			# the run (docs/loot-passives.md §12). No weapon, no enchantment.
+			return _enchant_weapon(int(effect.get("amount", 1)), rng, out)
 		"teleport":
 			# Teleportation — move ~the same distance from the Amulet (±spread, §4.1).
 			out["requests"].append({
@@ -494,7 +499,30 @@ func op_text(effect: Dictionary) -> String:
 			return "Choose %d following enemy to Stun." % int(effect.get("count", 1))
 		"teleport":
 			return "Teleport ~the same distance from the Amulet."
+		"enchant_weapon":
+			return "A random weapon in your pack gains +%d Stun." % int(effect.get("amount", 1))
 	return ""
+
+# --- enchant_weapon (Scroll of Enchant Weapon) -----------------------------
+
+# A random weapon in the pack gains `amount` Stun for the rest of the run — kept on
+# the piece (`stun_bonus`), so it moves, saves and evolves with it. A pack with no
+# weapon has nothing to enchant, and the scroll did nothing.
+func _enchant_weapon(amount: int, rng: RandomNumberGenerator, out: Dictionary) -> bool:
+	var weapons: Array = []
+	for i in range(GameState.loot_items.size()):
+		if WeaponSystem.is_weapon(GameState.loot_items[i]):
+			weapons.append(i)
+	if weapons.is_empty() or amount <= 0:
+		out["logs"].append("Your hands glow for a moment, but you carry no weapon.")
+		return false
+	var entry: Dictionary = GameState.loot_items[weapons[rng.randi_range(0, weapons.size() - 1)]]
+	entry["stun_bonus"] = WeaponSystem.stun_bonus_of(entry) + amount
+	GameState.emit_signal("inventory_changed")
+	var w: WeaponData = WeaponSystem.def(entry)
+	out["logs"].append("%s glows: +%d Stun for the rest of the run."
+		% [w.display_name if w != null else "Your weapon", amount])
+	return true
 
 # --- apply_status (Scroll of Aggravate Monsters) ---------------------------
 

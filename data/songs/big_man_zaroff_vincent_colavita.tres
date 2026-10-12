@@ -11,5 +11,4 @@ album = "Luck be a Landlord - Official Video Game Soundtrack"
 year = 2021
 game_id = &"luck_be_a_landlord"
 file = "Luck be a Landlord/02. Big Man Zaroff.mp3"
-image_path = ""
 tags = PackedStringArray()

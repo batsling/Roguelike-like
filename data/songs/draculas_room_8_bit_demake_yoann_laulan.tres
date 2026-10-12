@@ -11,5 +11,4 @@ album = "Dead Cells Return To Castlevania"
 year = 2023
 game_id = &"dead_cells"
 file = "Dead Cells/26. Dracula's Room (8 Bit Demake).mp3"
-image_path = ""
 tags = PackedStringArray()

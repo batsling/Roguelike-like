@@ -11,5 +11,4 @@ album = "Hades: Original Soundtrack"
 year = 2020
 game_id = &"hades"
 file = "Hades/02. The House of Hades.mp3"
-image_path = ""
 tags = PackedStringArray()
