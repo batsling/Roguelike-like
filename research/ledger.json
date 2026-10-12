@@ -2182,7 +2182,13 @@
   "connections": "before 2026-10-07"
  },
  "Infinite Space III: Sea of Stars": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: the wiki found was PlatinumGames' Infinite Space, now set to none by hand; no other source",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: the wiki found was PlatinumGames' Infinite Space, now set to none by hand; no other source",
+  "goals": "2026-10-12: nothing usable: the wiki found was PlatinumGames' Infinite Space, now set to none by hand; no other source",
+  "locations": "2026-10-12: nothing usable: the wiki found was PlatinumGames' Infinite Space, now set to none by hand; no other source",
+  "loot": "2026-10-12: nothing usable: the wiki found was PlatinumGames' Infinite Space, now set to none by hand; no other source",
+  "statuses": "2026-10-12: nothing usable: the wiki found was PlatinumGames' Infinite Space, now set to none by hand; no other source"
  },
  "Infra Arcana": {
   "connections": "before 2026-10-07"
@@ -2236,7 +2242,13 @@
   "statuses": "2026-10-12: nothing usable: none listed"
  },
  "Iter Vehemens Ad Necem": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: one hero",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: none",
+  "goals": "2026-10-12: 1 row (Kamikaze Dwarf) from IvanWiki (attnam.com, set by hand); Genetrix Vesana is a clone on Gurdy",
+  "locations": "2026-10-12: nothing usable: Attnam and the Gloomy Caves are places, not rules",
+  "loot": "2026-10-12: nothing usable from the pages read: the backpack of gunpowder is the dwarf's; no evolutions",
+  "statuses": "2026-10-12: nothing usable: losing limbs is a body model"
  },
  "Izuna 2: The Unemployed Ninja Returns": {
   "connections": "before 2026-10-07"
@@ -2593,7 +2605,13 @@
   "connections": "before 2026-10-07"
  },
  "Monster Gate": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: no wiki, and nothing in English beyond store blurbs",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: no wiki, and nothing in English beyond store blurbs",
+  "goals": "2026-10-12: nothing usable: no wiki, and nothing in English beyond store blurbs",
+  "locations": "2026-10-12: nothing usable: no wiki, and nothing in English beyond store blurbs",
+  "loot": "2026-10-12: nothing usable: no wiki, and nothing in English beyond store blurbs",
+  "statuses": "2026-10-12: nothing usable: no wiki, and nothing in English beyond store blurbs"
  },
  "Monster Gate: Ooinaru Dungeon - Fuuin no Orb": {
   "connections": "before 2026-10-07"
@@ -3675,13 +3693,25 @@
   "connections": "before 2026-10-07"
  },
  "Shiren the Wanderer 2: Shiren's Castle and the Oni Invasion": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: none",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: 1 row (Mixer, from Cross-Mixing)",
+  "goals": "2026-10-12: nothing usable: its 24 pages (Shiren 2: namespace) have no monster text",
+  "locations": "2026-10-12: nothing usable: the castle is a building game outside the dungeon",
+  "loot": "2026-10-12: nothing usable: its item pages are empty stubs; no evolutions",
+  "statuses": "2026-10-12: nothing usable: none"
  },
  "Shiren the Wanderer 4: The Eye of God and the Devil's Navel": {
   "connections": "before 2026-10-07"
  },
  "Shiren the Wanderer GB2: Magic Castle of the Desert": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: none",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: none",
+  "goals": "2026-10-12: nothing usable: monster pages are stat templates",
+  "locations": "2026-10-12: nothing usable: its locations are names",
+  "loot": "2026-10-12: 2 rows (Healing Jar, Absorb Jar); its Resonances are weapon-and-shield set bonuses, a rule with no piece to carry it; no evolutions",
+  "statuses": "2026-10-12: nothing usable: none"
  },
  "Shiren the Wanderer GB: Monster of Moonlight Village": {
   "characters": "2026-10-11: nothing usable: Shiren alone",
@@ -3693,7 +3723,13 @@
   "statuses": "2026-10-11: nothing usable: the Winds of Kron are a clone on Barakunarash (Quasimorph)"
  },
  "Shiren the Wanderer Gaiden: Asuka the Swordswoman": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: Asuka only",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: none",
+  "goals": "2026-10-12: nothing usable: one monster list with names",
+  "locations": "2026-10-12: nothing usable: none",
+  "loot": "2026-10-12: 1 row (Staff of Exchange); the Warp Armband and Armband of Wish repeat Isaac and NetHack; no evolutions",
+  "statuses": "2026-10-12: nothing usable: none"
  },
  "Shiren the Wanderer: The Mystery Dungeon of Serpentcoil Island": {
   "connections": "before 2026-10-07"
@@ -4053,7 +4089,13 @@
   "statuses": "2026-10-11: nothing: none"
  },
  "Strange Adventures in Infinite Space": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: no wiki, and the game's text is not online",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: no wiki, and the game's text is not online",
+  "goals": "2026-10-12: nothing usable: no wiki, and the game's text is not online",
+  "locations": "2026-10-12: nothing usable: no wiki, and the game's text is not online",
+  "loot": "2026-10-12: nothing usable: no wiki, and the game's text is not online",
+  "statuses": "2026-10-12: nothing usable: no wiki, and the game's text is not online"
  },
  "Stray Path": {
   "connections": "2026-10-07"
@@ -4278,7 +4320,13 @@
   "connections": "before 2026-10-07"
  },
  "The Dungeon RPG": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: no wiki, and nothing in English beyond store blurbs",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: no wiki, and nothing in English beyond store blurbs",
+  "goals": "2026-10-12: nothing usable: no wiki, and nothing in English beyond store blurbs",
+  "locations": "2026-10-12: nothing usable: no wiki, and nothing in English beyond store blurbs",
+  "loot": "2026-10-12: nothing usable: no wiki, and nothing in English beyond store blurbs",
+  "statuses": "2026-10-12: nothing usable: no wiki, and nothing in English beyond store blurbs"
  },
  "The Fable: Manga Build Roguelike": {
   "connections": "before 2026-10-07"
@@ -4440,7 +4488,13 @@
   "statuses": "2026-10-12: nothing usable: a 19-page wiki of overview pages (Items, Weapons, Upgrades) with no individual entries"
  },
  "Torneko's Great Adventure 3": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: the Mystery Dungeon Wiki's Torneko 3 PS2 namespace has no pages",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: the Mystery Dungeon Wiki's Torneko 3 PS2 namespace has no pages",
+  "goals": "2026-10-12: nothing usable: the Mystery Dungeon Wiki's Torneko 3 PS2 namespace has no pages",
+  "locations": "2026-10-12: nothing usable: the Mystery Dungeon Wiki's Torneko 3 PS2 namespace has no pages",
+  "loot": "2026-10-12: nothing usable: the Mystery Dungeon Wiki's Torneko 3 PS2 namespace has no pages",
+  "statuses": "2026-10-12: nothing usable: the Mystery Dungeon Wiki's Torneko 3 PS2 namespace has no pages"
  },
  "Torneko's Great Adventure: Mystery Dungeon": {
   "characters": "2026-10-11: nothing new: Torneko (a merchant whose shop grows) is a clone on Koh (Azure Dreams)",
@@ -4452,7 +4506,13 @@
   "statuses": "2026-10-11: nothing usable: its status conditions are the genre's (confused, asleep, blind)"
  },
  "Torneko: The Last Hope": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: Torneko only",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: none",
+  "goals": "2026-10-12: nothing usable: the wiki's monster pages (Torneko 2 PS1: namespace) are stat templates with no ability text",
+  "locations": "2026-10-12: nothing usable: its dungeons are a list of names",
+  "loot": "2026-10-12: 1 row (Change Pot); its other pots and staves are the series' own (Shiren's rows cover them); no evolutions",
+  "statuses": "2026-10-12: nothing usable: none listed"
  },
  "Touhou Crawl": {
   "connections": "before 2026-10-07"
@@ -4650,7 +4710,13 @@
   "connections": "before 2026-10-07"
  },
  "Waku Waku Puyo Puyo Dungeon": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: no wiki, and nothing in English beyond store blurbs",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: no wiki, and nothing in English beyond store blurbs",
+  "goals": "2026-10-12: nothing usable: no wiki, and nothing in English beyond store blurbs",
+  "locations": "2026-10-12: nothing usable: no wiki, and nothing in English beyond store blurbs",
+  "loot": "2026-10-12: nothing usable: no wiki, and nothing in English beyond store blurbs",
+  "statuses": "2026-10-12: nothing usable: no wiki, and nothing in English beyond store blurbs"
  },
  "Wall World": {
   "characters": "2026-10-12: nothing usable: its 56 pages are mech upgrades (drills, turrets) for a wall-climbing machine, nothing a pack or board can hold",
@@ -4677,7 +4743,13 @@
   "connections": "before 2026-10-07"
  },
  "Warsim: The Realm of Aslona": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: a kingdom sim; its artifacts are tavern displays and a sack worth 1-4 gold a year",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: a kingdom sim; its artifacts are tavern displays and a sack worth 1-4 gold a year",
+  "goals": "2026-10-12: nothing usable: a kingdom sim; its artifacts are tavern displays and a sack worth 1-4 gold a year",
+  "locations": "2026-10-12: nothing usable: a kingdom sim; its artifacts are tavern displays and a sack worth 1-4 gold a year",
+  "loot": "2026-10-12: nothing usable: a kingdom sim; its artifacts are tavern displays and a sack worth 1-4 gold a year",
+  "statuses": "2026-10-12: nothing usable: a kingdom sim; its artifacts are tavern displays and a sack worth 1-4 gold a year"
  },
  "Wayward": {
   "connections": "before 2026-10-07"

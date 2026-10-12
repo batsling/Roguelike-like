@@ -427,6 +427,10 @@ somewhere else, or a better source than a wiki:
   `sources.debian.org/api/src/zangband/`. Monster and item tables are in one or
   two files (`extern.c`, `data_creatures.cpp`, `data.c`, `tables.c`).
 - **Sega Retro refuses scripts** (an Anubis challenge); don't work around it.
+- **A wiki with no API can still be read.** IVAN's wiki (`https://attnam.com/wiki`)
+  has no `api.php` that answers, but any MediaWiki serves a page's source at
+  `<page>?action=raw` and its index at `Special:AllPages`. The record in
+  `research/wikis.json` says so in its `note`, since `page` can't fetch it.
 
 `page --api <url>` reads any of these.
 

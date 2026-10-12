@@ -80,6 +80,18 @@ For how the project is laid out and how its systems fit together, see
     ("Next Hades song: beat Hades 2 times more, or complete 3 more distinct
     goals there"). It's the game that is close, not the song.
 
+- **Research, thirty-fourth batch: the Mystery Dungeon namespaces, and IVAN's
+  wiki.** The Mystery Dungeon Wiki keeps each game in its own namespace, and
+  read that way the item lists gave six rows: Torneko 2's Change Pot, Magic
+  Castle's Healing Jar and Absorb Jar (bags and a jar that seals an enemy's
+  ability for you to borrow), Asuka's Staff of Exchange (your Health and an
+  enemy's swap), and a Mixer event from Shiren 2's Cross-Mixing. Its monster
+  pages are stat templates, so no goals came from them. IVAN has a wiki at
+  attnam.com with no working API; `?action=raw` reads it (noted in
+  `docs/research.md` §8), and it gave the Kamikaze Dwarf and a clone on
+  Gurdy. Infinite Space III's "wiki" was PlatinumGames' Infinite Space, set
+  to none by hand.
+
 - **Research, thirty-third batch, and Wildfrost's real wiki.** Wildfrost's
   five goal rows were written from search summaries; `wildfrostwiki.com` (453
   articles, set by hand in `research/wikis.json`) showed three of its

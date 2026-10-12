@@ -10783,37 +10783,10 @@
   "wiki": null
  },
  "Infinite Space III: Sea of Stars": {
-  "also": [
-   "https://infinite-space.fandom.com/api.php"
-  ],
-  "api": "https://infinitespace.fandom.com/api.php",
-  "articles": 442,
-  "blurb": "style=\"background-color: #102952; padding: 5px;\" | style=\"padding: 15px; font-size: 1.1em;\" | Welcome to the Infinite Space Wiki, a collaborative encyclopedia for the Nintendo DS game Infinite Space! Developed by PlatinumGames and published",
-  "categories": {
-   "characters": [
-    "Characters"
-   ],
-   "locations": [
-    "Locations"
-   ],
-   "loot": [
-    "Weapons"
-   ]
-  },
-  "checked": "2026-10-11",
-  "counts": {
-   "characters": 121,
-   "events": 0,
-   "goals": 0,
-   "locations": 6,
-   "loot": 6,
-   "statuses": 0
-  },
-  "match": "check",
-  "pages": {},
-  "signal": "",
-  "sitename": "Infinite Space Wiki",
-  "wiki": "https://infinitespace.fandom.com"
+  "checked": "2026-10-12",
+  "note": "infinitespace.fandom.com is the wiki of PlatinumGames' Infinite Space (DS, 2009), not Digital Eel's game",
+  "set": "by hand",
+  "wiki": null
  },
  "Infra Arcana": {
   "checked": "2026-10-11",
@@ -11089,8 +11062,11 @@
   "wiki": "https://iratus-lord-of-the-dead.fandom.com"
  },
  "Iter Vehemens Ad Necem": {
-  "checked": "2026-10-11",
-  "wiki": null
+  "checked": "2026-10-12",
+  "note": "no api.php that answers; read a page with https://attnam.com/wiki/<Title>?action=raw, list pages at Special:AllPages",
+  "set": "by hand",
+  "sitename": "IvanWiki",
+  "wiki": "https://attnam.com/wiki"
  },
  "Izuna 2: The Unemployed Ninja Returns": {
   "checked": "2026-10-11",
