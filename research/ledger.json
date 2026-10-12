@@ -1454,8 +1454,13 @@
   "connections": "before 2026-10-07"
  },
  "Dungeonmans": {
+  "characters": "2026-10-12: nothing usable: its classes are the genre's",
   "connections": "before 2026-10-07",
-  "goals": "redo: written from search summaries before the wikis were reachable (2026-10); check each row against the wiki, fix it, then add what was missed"
+  "events": "2026-10-12: nothing usable: no events",
+  "goals": "2026-10-12: nothing new; old row checked against the wiki (second wiki pass): Gelatinous Cube marked ?, the wiki says only that its champions split",
+  "locations": "2026-10-12: nothing new: the Mysterious Pool is a clone on NetHack's Fountain",
+  "loot": "2026-10-12: nothing usable: its named items are stat gear (Quaffer's Delight repeats Reptile Trinket's potion trigger); no evolutions",
+  "statuses": "2026-10-12: nothing usable: none listed"
  },
  "Dungeons & Degenerate Gamblers": {
   "connections": "before 2026-10-07"
@@ -1590,7 +1595,13 @@
   "statuses": "2026-10-12: nothing usable: none listed"
  },
  "Exit the Gungeon": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: its pages are Enter the Gungeon's cast again (Beholster, the Resourceful Rat, the Gungeoneers), whose rows are the famous versions",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: its pages are Enter the Gungeon's cast again (Beholster, the Resourceful Rat, the Gungeoneers), whose rows are the famous versions",
+  "goals": "2026-10-12: nothing usable: its pages are Enter the Gungeon's cast again (Beholster, the Resourceful Rat, the Gungeoneers), whose rows are the famous versions",
+  "locations": "2026-10-12: nothing usable: its pages are Enter the Gungeon's cast again (Beholster, the Resourceful Rat, the Gungeoneers), whose rows are the famous versions",
+  "loot": "2026-10-12: nothing usable: its pages are Enter the Gungeon's cast again (Beholster, the Resourceful Rat, the Gungeoneers), whose rows are the famous versions",
+  "statuses": "2026-10-12: nothing usable: its pages are Enter the Gungeon's cast again (Beholster, the Resourceful Rat, the Gungeoneers), whose rows are the famous versions"
  },
  "FLERP": {
   "connections": "before 2026-10-07"
@@ -1720,7 +1731,13 @@
   "connections": "before 2026-10-07"
  },
  "Fury Unleashed": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: boss pages describe attack patterns (the Chained God can't move); pickups and skills are numbers",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: boss pages describe attack patterns (the Chained God can't move); pickups and skills are numbers",
+  "goals": "2026-10-12: nothing usable: boss pages describe attack patterns (the Chained God can't move); pickups and skills are numbers",
+  "locations": "2026-10-12: nothing usable: boss pages describe attack patterns (the Chained God can't move); pickups and skills are numbers",
+  "loot": "2026-10-12: nothing usable: boss pages describe attack patterns (the Chained God can't move); pickups and skills are numbers",
+  "statuses": "2026-10-12: nothing usable: boss pages describe attack patterns (the Chained God can't move); pickups and skills are numbers"
  },
  "Fushigi no Gensoukyou": {
   "connections": "before 2026-10-07"
@@ -1822,7 +1839,13 @@
   "connections": "before 2026-10-07"
  },
  "Going Under": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: Jackie alone",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: no events",
+  "goals": "2026-10-12: 1 row (Canbassador); networking a monster with a Blank Card is a collection mechanic",
+  "locations": "2026-10-12: nothing usable: its dungeons are cursed startups, levels",
+  "loot": "2026-10-12: nothing usable: its items are office junk weapons with stat lines; no evolutions",
+  "statuses": "2026-10-12: nothing usable: none listed"
  },
  "Golden Krone Hotel": {
   "connections": "before 2026-10-07"
@@ -1843,7 +1866,13 @@
   "connections": "before 2026-10-07"
  },
  "Gordian Quest": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: its pages are perk and card names with one-line numbers",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: its pages are perk and card names with one-line numbers",
+  "goals": "2026-10-12: nothing usable: its pages are perk and card names with one-line numbers",
+  "locations": "2026-10-12: nothing usable: its pages are perk and card names with one-line numbers",
+  "loot": "2026-10-12: nothing usable: its pages are perk and card names with one-line numbers",
+  "statuses": "2026-10-12: nothing usable: its pages are perk and card names with one-line numbers"
  },
  "Granvir": {
   "connections": "before 2026-10-07"
@@ -1867,7 +1896,13 @@
   "statuses": "2026-10-12: nothing usable: its keywords are card mechanics"
  },
  "Guidus": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: a 23-page wiki of class names with no descriptions",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: a 23-page wiki of class names with no descriptions",
+  "goals": "2026-10-12: nothing usable: a 23-page wiki of class names with no descriptions",
+  "locations": "2026-10-12: nothing usable: a 23-page wiki of class names with no descriptions",
+  "loot": "2026-10-12: nothing usable: a 23-page wiki of class names with no descriptions",
+  "statuses": "2026-10-12: nothing usable: a 23-page wiki of class names with no descriptions"
  },
  "Guidus Zero": {
   "connections": "before 2026-10-07"
@@ -1921,7 +1956,13 @@
   "connections": "before 2026-10-07"
  },
  "Hadean Tactics": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: its pages are keyword and unit stubs (Egg, Griffin Call) with no text beyond a title",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: its pages are keyword and unit stubs (Egg, Griffin Call) with no text beyond a title",
+  "goals": "2026-10-12: nothing usable: its pages are keyword and unit stubs (Egg, Griffin Call) with no text beyond a title",
+  "locations": "2026-10-12: nothing usable: its pages are keyword and unit stubs (Egg, Griffin Call) with no text beyond a title",
+  "loot": "2026-10-12: nothing usable: its pages are keyword and unit stubs (Egg, Griffin Call) with no text beyond a title",
+  "statuses": "2026-10-12: nothing usable: its pages are keyword and unit stubs (Egg, Griffin Call) with no text beyond a title"
  },
  "Hades": {
   "characters": "2026-10-09: nothing: Zagreus is live",
@@ -2225,7 +2266,13 @@
   "connections": "before 2026-10-07"
  },
  "Kingdom: New Lands": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: the wiki found was the manga Kingdom's, now set to none by hand; no other source",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: the wiki found was the manga Kingdom's, now set to none by hand; no other source",
+  "goals": "2026-10-12: nothing usable: the wiki found was the manga Kingdom's, now set to none by hand; no other source",
+  "locations": "2026-10-12: nothing usable: the wiki found was the manga Kingdom's, now set to none by hand; no other source",
+  "loot": "2026-10-12: nothing usable: the wiki found was the manga Kingdom's, now set to none by hand; no other source",
+  "statuses": "2026-10-12: nothing usable: the wiki found was the manga Kingdom's, now set to none by hand; no other source"
  },
  "Kingsway": {
   "characters": "2026-10-12: nothing usable: classes",
@@ -2325,7 +2372,13 @@
   "connections": "before 2026-10-07"
  },
  "Loot River": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: a 13-page wiki of overview pages",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: a 13-page wiki of overview pages",
+  "goals": "2026-10-12: nothing usable: a 13-page wiki of overview pages",
+  "locations": "2026-10-12: nothing usable: a 13-page wiki of overview pages",
+  "loot": "2026-10-12: nothing usable: a 13-page wiki of overview pages",
+  "statuses": "2026-10-12: nothing usable: a 13-page wiki of overview pages"
  },
  "Lootplot": {
   "connections": "before 2026-10-07"
@@ -4031,7 +4084,13 @@
   "statuses": "2026-10-11: nothing: none"
  },
  "Super House of Dead Ninjas": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: a 17-page wiki of stubs",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: a 17-page wiki of stubs",
+  "goals": "2026-10-12: nothing usable: a 17-page wiki of stubs",
+  "locations": "2026-10-12: nothing usable: a 17-page wiki of stubs",
+  "loot": "2026-10-12: nothing usable: a 17-page wiki of stubs",
+  "statuses": "2026-10-12: nothing usable: a 17-page wiki of stubs"
  },
  "Super Tax City": {
   "connections": "before 2026-10-07"
@@ -4040,7 +4099,13 @@
   "connections": "before 2026-10-07"
  },
  "Swarm Grinder": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: weapon and enemy pages are stat stubs",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: nothing usable: weapon and enemy pages are stat stubs",
+  "goals": "2026-10-12: nothing usable: weapon and enemy pages are stat stubs",
+  "locations": "2026-10-12: nothing usable: weapon and enemy pages are stat stubs",
+  "loot": "2026-10-12: nothing usable: weapon and enemy pages are stat stubs",
+  "statuses": "2026-10-12: nothing usable: weapon and enemy pages are stat stubs"
  },
  "Switchcars": {
   "connections": "before 2026-10-07"
@@ -4376,7 +4441,13 @@
   "connections": "before 2026-10-07"
  },
  "Tower Tactics: Liberation": {
-  "connections": "before 2026-10-07"
+  "characters": "2026-10-12: nothing usable: none",
+  "connections": "before 2026-10-07",
+  "events": "2026-10-12: 1 row (Risky Upgrades); its other events are shops and card choices",
+  "goals": "2026-10-12: nothing usable: one Enemies overview",
+  "locations": "2026-10-12: nothing usable: tile types are a tower-defence grid",
+  "loot": "2026-10-12: nothing usable: its cards are towers; offerings are meta upgrades; no evolutions",
+  "statuses": "2026-10-12: nothing usable: none"
  },
  "Tower of Guns": {
   "characters": "2026-10-12: nothing usable: one player",

@@ -11394,56 +11394,10 @@
   "wiki": null
  },
  "Kingdom: New Lands": {
-  "api": "https://kingdom.fandom.com/api.php",
-  "articles": 2424,
-  "blurb": "[[External Media Feel free to visit Kingdom's Subreddit to chat with other fans!",
-  "categories": {
-   "characters": [
-    "Characters",
-    "Deceased Characters",
-    "Characters Killed by Kyou Kai",
-    "Characters only present in One-Shots"
-   ],
-   "goals": [
-    "Four Monster Squad"
-   ],
-   "locations": [
-    "Locations",
-    "Western Zhao Invasion Arc Chapters",
-    "Coalition Invasion Arc Chapters",
-    "Battle of Bayou Arc Chapters",
-    "Koku You Campaign Arc Chapters",
-    "Sanyou Campaign Arc Chapters",
-    "Sei Kyou's Rebellion Arc Chapters",
-    "Fire Dragons of Wei Arc Chapters",
-    "Assassination Plot Arc Chapters",
-    "War of the Three States Arc Chapters",
-    "Zhao Retaliation Arc Chapters",
-    "Chapters"
-   ],
-   "loot": [
-    "Items",
-    "Weapons"
-   ]
-  },
-  "checked": "2026-10-11",
-  "counts": {
-   "characters": 823,
-   "events": 0,
-   "goals": 4,
-   "locations": 518,
-   "loot": 33,
-   "statuses": 0
-  },
-  "match": "check",
-  "pages": {
-   "loot": [
-    "Weapons"
-   ]
-  },
-  "signal": "",
-  "sitename": "Kingdom Wiki",
-  "wiki": "https://kingdom.fandom.com"
+  "checked": "2026-10-12",
+  "note": "kingdom.fandom.com is the wiki of the manga Kingdom (1500 pages of Qin generals), not the Raw Fury game",
+  "set": "by hand",
+  "wiki": null
  },
  "Kingsway": {
   "api": "https://kingsway.fandom.com/api.php",

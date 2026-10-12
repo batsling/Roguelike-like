@@ -98,6 +98,15 @@ For how the project is laid out and how its systems fit together, see
   hold overview stubs, infobox shells or percentage bonuses, so every kind is
   marked with the reason and no rows were written.
 
+- **Research, thirty-second batch.** Exit the Gungeon, Going Under, Guidus,
+  Tower Tactics: Liberation, Loot River, Swarm Grinder, Dungeonmans, Kingdom:
+  New Lands, Super House of Dead Ninjas, Fury Unleashed, Gordian Quest and
+  Hadean Tactics: 2 new rows, 1 clone. New: Going Under's Canbassador (hit it
+  so it drops its own bomb) and Tower Tactics' Risky Upgrades (pay now, gain
+  later). Dungeonmans' Gelatinous Cube is marked `?` (the wiki says only that
+  its champions split), and its Mysterious Pool went onto NetHack's Fountain.
+  Kingdom: New Lands' wiki was the manga Kingdom's and is set to none by hand.
+
 - **Research, twenty-ninth batch.** The Flame in the Flood, West of Dead,
   Evolings, Hades II, GearHead, Dungeons of Blood and Dream, Loop Hero, Tower
   of Guns and Ziggurat 2: 5 new rows and 7 old goal rows checked. Loop Hero's
