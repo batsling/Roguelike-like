@@ -80,6 +80,14 @@ For how the project is laid out and how its systems fit together, see
     ("Next Hades song: beat Hades 2 times more, or complete 3 more distinct
     goals there"). It's the game that is close, not the song.
 
+- **Research: Teamfight Tactics' augments, read in full.** All 244 augments
+  on the League wiki's `TFT:Augment` page, most of them trait crests and
+  team-comp stats. Five more joined The Golden Egg: Risky Moves (health now
+  for gold seven games later), At What Cost (two levels now, no more choices
+  in chests), Over Encumbered (a smaller pack for a while, then three
+  pieces), What Doesn't Kill You (losses pay) and Switching Gears (breaking a
+  streak pays). Pandora's Items is a clone on Change Pot.
+
 - **Research, sixty-third batch, and every game in the catalog has a ledger
   entry for every kind.** The last 56 games, nearly all 2026 releases, have
   no wiki or a stub one and are marked nothing usable. All 921 games are now
