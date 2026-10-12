@@ -80,6 +80,10 @@ For how the project is laid out and how its systems fit together, see
     ("Next Hades song: beat Hades 2 times more, or complete 3 more distinct
     goals there"). It's the game that is close, not the song.
 
+- **Research, fifty-third batch.** Our Darker Purpose's Cauldron Of
+  Yesterdayers (a boss that pops out of one of four cauldrons) became a goal;
+  eleven small or stat-only wikis marked nothing usable.
+
 - **Research, fifty-second batch.** Unexplored's Guardian of Yendor, which
   hunts you from the moment you lift the Amulet, became a goal (escape with a
   treasure while its keeper hunts you). Curious Expedition 2 and Temtem:
