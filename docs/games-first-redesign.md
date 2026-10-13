@@ -268,6 +268,20 @@ How it already works in the project (to be kept):
   `level_up_condition` as an honour-system **Yes/No**. Yes → apply `level_up_stats`
   and grant the reward (`_level_up_once`). So **each game is a fresh chance** to
   hit the challenge and level again — exactly as requested.
+- **Mysterious Mask** (`item_acquired: mask_choice`) adds a SECOND condition
+  rather than replacing the first. Picking it up banks a choice
+  (`GameState.pending_masks`); when the page is next idle — never over a game in
+  play, a resolve or the haul screen — `MaskChoiceModal` offers 3 random
+  characters (not the hero, not one already worn), each as portrait, name,
+  condition and reward. The one picked joins `GameState.masked_characters` for
+  the rest of the run: its own winning-run row on the report (key
+  `levelup:<id>`), and meeting it pays THAT character's stats and reward
+  (`GameState.grant_level_up(rng, ch)`), with no Crown chain. The haul screen
+  shows it as "LEVELLED UP AS <name>". Saved with the run. It is recorded on
+  the GAME (`GameStats.record_level_up(game, id, masked=true)`), so the game's
+  Collection page lists it and Roguelike Radio counts it, but the masked
+  character's own page leaves it out: that page's **Games beaten** and
+  **Levelled up at** covers are only games played as that character.
 - **Crown** already exists as `bonus_level_up_chance` (roll an extra level-up);
   **Snowball** as `stat_gain_bonus` (+1 on a keyed stat gain). Both need only the
   new stat ids (transmute, bash, …) added.

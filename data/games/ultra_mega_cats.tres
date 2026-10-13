@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="GameData" load_steps=2 format=3 uid="uid://game_ultra_mega_cats"]
+
+[ext_resource type="Script" path="res://scripts/resources/GameData.gd" id="1_game"]
+
+[resource]
+script = ExtResource("1_game")
+id = &"ultra_mega_cats"
+display_name = "Ultra Mega Cats"
+year = 2025
+type = 0
+games_influenced = Array[StringName]([])
+influence_sources = PackedStringArray()
+influence_relations = PackedStringArray()
+tags = PackedStringArray("cats")
+enemy_pool = Array[StringName]([])
+item_pool = Array[StringName]([])
+special_effects = PackedStringArray()
+cover_path = "res://images2.0/games/ultra-mega-cats.png"
+owned = false
+file_location = ""
+steam_page = "https://store.steampowered.com/app/1882130/Ultra_Mega_Cats/"

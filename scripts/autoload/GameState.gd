@@ -1170,6 +1170,77 @@ var pending_chests: int = 0
 # it's opening. `pending_chests` stays the authoritative count (tests read it).
 var pending_chest_choices: Array[int] = []
 
+# MYSTERIOUS MASK (§3.1): the characters whose Level Up condition the player has
+# taken on IN ADDITION to their own, in the order they were chosen. Each one is a
+# second level-up row on the report, and meeting it pays THAT character's stats
+# and reward (grant_level_up's `ch`), not the hero's. Run state, saved with it.
+var masked_characters: Array[StringName] = []
+
+# Masks picked up but not yet chosen from. A mask's choice is a popup, and a
+# pickup can land somewhere a popup cannot open (a chest on the haul screen, a
+# shop mid-report), so it banks here the way a chest banks in pending_chests and
+# the overworld opens the choice when it is next idle (Overworld2._redeem_pending_masks).
+var pending_masks: int = 0
+
+signal mask_granted
+
+# How many characters a mask offers to choose from.
+const MASK_CHOICES := 3
+
+# Bank one mask choice (the `mask_choice` effect).
+func grant_mask(count: int = 1) -> void:
+	if count <= 0:
+		return
+	pending_masks += count
+	mask_granted.emit()
+
+# The characters a mask offers: random characters who are not the hero and not
+# already worn, and who have a condition to give. Fewer than `count` when the
+# roster runs short; empty when there is nobody left to offer.
+func mask_offer(count: int = MASK_CHOICES, rng: RandomNumberGenerator = null) -> Array:
+	var pool: Array = []
+	for ch in Data.all_characters2():
+		if ch == null or ch.id == character_id or masked_characters.has(ch.id):
+			continue
+		if ch.level_up_condition.strip_edges() == "":
+			continue
+		pool.append(ch)
+	var r: RandomNumberGenerator = rng
+	if r == null:
+		r = RandomNumberGenerator.new()
+		r.randomize()
+	var out: Array = []
+	while out.size() < count and not pool.is_empty():
+		out.append(pool.pop_at(r.randi() % pool.size()))
+	return out
+
+# The player picked `id` off a mask: its condition joins the hero's for the rest
+# of the run. Spends one pending mask.
+func wear_mask(id: StringName) -> void:
+	pending_masks = maxi(0, pending_masks - 1)
+	var ch: CharacterData = Data.get_character2(id)
+	if ch == null or masked_characters.has(id) or id == character_id:
+		return
+	masked_characters.append(id)
+	Notifications.notify("Mysterious Mask: you can now level up as %s too." % ch.display_name,
+		Color(1.0, 0.85, 0.4))
+	GameLog.add("Took on %s's Level Up — %s" % [ch.display_name, ch.level_up_condition],
+		Color(1.0, 0.85, 0.4))
+	stats_changed.emit()
+
+# A mask whose choice found nobody to offer is spent without a pick.
+func discard_mask() -> void:
+	pending_masks = maxi(0, pending_masks - 1)
+
+# The masked characters as CharacterData, skipping any id the roster lost.
+func masked_character_data() -> Array:
+	var out: Array = []
+	for id in masked_characters:
+		var ch: CharacterData = Data.get_character2(id)
+		if ch != null and ch.level_up_condition != "":
+			out.append(ch)
+	return out
+
 # Grants `count` chests (item rewards), each offering `choices` items to pick
 # from (0 = the RewardScreen's default of BASE_ITEM_CHOICES + Discovery). Banks
 # them and announces via chest_granted so the overworld can open the item-choice
@@ -1416,6 +1487,8 @@ func reset_run() -> void:
 	active_curses.clear()
 	pending_chests = 0
 	pending_chest_choices.clear()
+	masked_characters.clear()
+	pending_masks = 0
 	pending_combat_statuses.clear()
 	pending_ambush = ""
 	pending_spawn_enemies.clear()
@@ -2064,8 +2137,12 @@ func apply_level_up_stats(stats: Dictionary) -> Array:
 #
 # It also does not roll a BONUS level. Chaining is Overworld2's rule about earning
 # several at once, not part of what one level is worth.
-func grant_level_up(rng: RandomNumberGenerator = null) -> Array:
-	var ch: CharacterData = Data.get_character2(character_id)
+#
+# `ch` is whose level it is: the hero by default, or a character worn off a
+# Mysterious Mask, whose own stats and reward a masked level pays.
+func grant_level_up(rng: RandomNumberGenerator = null, ch: CharacterData = null) -> Array:
+	if ch == null:
+		ch = Data.get_character2(character_id)
 	if ch == null:
 		return []
 	player_level += 1
@@ -3532,7 +3609,32 @@ func add_item(template: ItemData) -> ItemData:
 		GameLog.add("%s: %s" % [inst.display_name, gained], Color(0.7, 1.0, 0.7))
 	TriggerBus.emit_signal("item_acquired", {"item": inst})
 	emit_signal("inventory_changed")
+	# ULTRA DUPLICATOR: one extra copy per Duplicator held. A copy is minted
+	# through this same function (so a Lunch's +2 Max Health lands twice, as two
+	# Lunches would), but it never copies itself — `_duplicating` is the guard —
+	# and the Duplicator just picked up does not count toward its own copy.
+	if not _duplicating:
+		var copies: int = item_duplicates(inst)
+		if copies > 0:
+			_duplicating = true
+			for _i in range(copies):
+				add_item(template)
+			_duplicating = false
+			Notifications.notify("Ultra Duplicator: an extra %s%s!" % [inst.display_name,
+				(" x%d" % copies) if copies > 1 else ""], Color(0.7, 1.0, 0.7))
 	return inst
+
+# True while add_item is minting Ultra Duplicator copies, so a copy is not copied.
+var _duplicating: bool = false
+
+# How many extra copies of `obtained` the held Ultra Duplicators owe: one per
+# Duplicator in the pack, not counting `obtained` itself.
+func item_duplicates(obtained: ItemData = null) -> int:
+	var n: int = 0
+	for it in inventory:
+		if it is ItemData and it != obtained and it.duplicate_items:
+			n += 1
+	return n
 
 # The run resources a pickup / effect can move, as one flat dictionary. Paired
 # with describe_resource_gains to turn "an item was acquired" into "+2 Max

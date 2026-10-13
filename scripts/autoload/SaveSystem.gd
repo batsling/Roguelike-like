@@ -315,6 +315,9 @@ func _build_payload() -> Dictionary:
 		"run_seed": GameState.run_seed,
 		"pending_chests": GameState.pending_chests,
 		"pending_chest_choices": Array(GameState.pending_chest_choices),
+		# Mysterious Mask: the characters worn and the choices still to make.
+		"masked_characters": Array(GameState.masked_characters).map(func(id): return String(id)),
+		"pending_masks": GameState.pending_masks,
 		"total_combats_completed": GameState.total_combats_completed,
 		# The enemy stack, the destroyed games, the attempt tracker.
 		"loop": GameLoop2.serialize(),
@@ -606,6 +609,10 @@ func _apply_save_data(data: Dictionary) -> void:
 	GameState.pending_chest_choices.clear()
 	for n in data.get("pending_chest_choices", []):
 		GameState.pending_chest_choices.append(int(n))
+	GameState.masked_characters.clear()
+	for id in data.get("masked_characters", []):
+		GameState.masked_characters.append(StringName(String(id)))
+	GameState.pending_masks = int(data.get("pending_masks", 0))
 	GameState.total_combats_completed = int(data.get("total_combats_completed", 0))
 	GameState.phase = GameState.Phase.OVERWORLD
 	# BEFORE the loop and the view: this rebuilds the run graph (RunGraph's

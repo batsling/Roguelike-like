@@ -578,6 +578,11 @@ func _left_column() -> Control:
 	var lvl: Control = _level_up_panel()
 	if lvl != null:
 		col.add_child(lvl)
+	# …and one per Mysterious Mask whose condition the report met (§3.1).
+	for masked in _snap.get("mask_level_ups", []):
+		var mlvl: Control = _level_up_block(masked)
+		if mlvl != null:
+			col.add_child(mlvl)
 
 	# One heading over all the chests rather than one apiece: three bodies each
 	# leaving a single relic is three panels that would otherwise each announce "it
@@ -812,7 +817,11 @@ func refresh_payout() -> void:
 # applied would under-report the relic that caused it (Overworld2._apply_level_up
 # collects them across the whole while-loop for exactly this).
 func _level_up_panel() -> Control:
-	var lvl: Dictionary = _snap.get("level_up", {})
+	return _level_up_block(_snap.get("level_up", {}))
+
+# One level's panel. `character` names a masked character (Mysterious Mask) whose
+# level this was; the hero's own carries none.
+func _level_up_block(lvl: Dictionary) -> Control:
 	if lvl.is_empty():
 		return null
 	var wrap := PanelContainer.new()
@@ -828,8 +837,9 @@ func _level_up_panel() -> Control:
 	# and a symbol it does not carry costs a host font search every time a Label
 	# wearing it is built. ✦ is already in it, and already means "the evening earned
 	# something" on the heading below this panel.
-	col.add_child(_line("✦  LEVELLED UP" + ("" if levels == 1 else "  ×%d" % levels),
-		UITheme.GOLD, 10))
+	var who: String = String(lvl.get("character", ""))
+	col.add_child(_line("✦  LEVELLED UP" + ("" if who == "" else " AS %s" % who.to_upper())
+		+ ("" if levels == 1 else "  ×%d" % levels), UITheme.GOLD, 10))
 	col.add_child(_line(String(lvl.get("condition", "")), UITheme.TEXT, 13, true))
 	var stats: Array = lvl.get("stats", [])
 	if not stats.is_empty():

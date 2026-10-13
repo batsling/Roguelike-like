@@ -50,6 +50,8 @@ var instead_checks: Array = []       # [{check: CheckBox, instance: int, status:
 var event_goal_checks: Array = []
 var curse_goal_checks: Array = []
 var levelup_check: CheckBox = null   # null when the character has no level-up
+# Mysterious Mask (§3.1): one level-up row per character worn, keyed by their id.
+var mask_levelup_checks: Dictionary = {}
 # The WINNING-RUN rows as the "Completed Game" confirm needs them:
 # [{check: CheckBox, label: String, note: {read, write, placeholder}}], in the
 # order they were built. The checklist already holds the same boxes in
@@ -225,6 +227,20 @@ func populate_play_panel() -> void:
 		_arm_winning_row(lu_row["check"], LEVELUP_KEY)
 		winning_rows.append({"check": lu_row["check"], "label": lu_text,
 			"mark": {"character": ch}, "note": _level_up_note_hooks(ch)})
+	# …AND ONE PER MASK (Mysterious Mask, §3.1). The same row, worded with whose
+	# condition it is, because meeting it pays THAT character's reward and not the
+	# hero's. Keyed apart so ticking one never answers the other.
+	for mch in GameState.masked_character_data():
+		var m_text: String = "Leveled up as %s — %s" % [mch.display_name, mch.level_up_condition]
+		if mch.level_up_reward != "" and mch.level_up_reward.to_upper() != "N/A":
+			m_text += "   → %s" % mch.level_up_reward
+		var m_row := verify_row(m_text, UITheme.GOLD, false, null, mch)
+		var m_key: String = mask_levelup_key(mch.id)
+		mask_levelup_checks[mch.id] = m_row["check"]
+		_add_row(m_row["row"], GameLoop2.row_answered(m_key), true)
+		_arm_winning_row(m_row["check"], m_key)
+		winning_rows.append({"check": m_row["check"], "label": m_text,
+			"mark": {"character": mch}, "note": _level_up_note_hooks(mch)})
 
 	# EVENT GOALS and CURSE GOALS (docs/event-sheet-authoring.md §5), nested under
 	# the SAME header as the rows above them. They bite in different ways — an event
@@ -1411,6 +1427,10 @@ const CONFIRM_BODY := ("%s\n\nThis resolves right now, while you are still "
 # in it to tell it apart from anything else.
 const LEVELUP_KEY := "levelup"
 
+# A masked character's level-up row key (Mysterious Mask, §3.1).
+static func mask_levelup_key(id: StringName) -> String:
+	return "%s:%s" % [LEVELUP_KEY, String(id)]
+
 # ===========================================================================
 # THE WINNING-RUN ROWS (§13, and the level-up in §3.1)
 #
@@ -1498,6 +1518,7 @@ const ANY_TIME_HEAD := "Any time:"
 func _settled_at_the_end_is_empty(ch: CharacterData, winning: Array) -> bool:
 	return winning.is_empty() \
 		and (ch == null or ch.level_up_condition == "") \
+		and GameState.masked_character_data().is_empty() \
 		and GameState.event_goals.is_empty() \
 		and GameState.curse_goals.is_empty() \
 		and GameLoop2.claimed_event_goals.is_empty() \
@@ -1789,6 +1810,7 @@ func reset_state() -> void:
 	# its flush must not hand its leftovers to the next one.
 	_sunk.clear()
 	levelup_check = null
+	mask_levelup_checks.clear()
 
 # The checklist while you're CHOOSING: the goals already on you — the character's
 # level-up challenge, and every follower's outstanding goal (any of which you may
@@ -1853,6 +1875,13 @@ func populate_standing() -> void:
 			lu_row.tooltip_text = "%s — level up here and it pays %s." % [
 				ch.display_name, ch.level_up_reward]
 		_add_row(lu_row, false, true)
+	for mch in GameState.masked_character_data():
+		var m_row: Control = _objective_row("Level up as %s — %s" % [mch.display_name,
+			mch.level_up_condition], UITheme.GOLD, _character_icon_rect(mch, UITheme.GOLD))
+		if mch.level_up_reward != "" and mch.level_up_reward.to_upper() != "N/A":
+			m_row.tooltip_text = "%s — worn off a Mysterious Mask. Level up here and it pays %s." % [
+				mch.display_name, mch.level_up_reward]
+		_add_row(m_row, false, true)
 
 	# Event goals and curses, read-only (docs/event-sheet-authoring.md §5). These
 	# have to be here and not only on the report step: an event fires the moment a
@@ -2030,6 +2059,7 @@ func _play_panel_sig() -> String:
 	var ch: CharacterData = Data.get_character2(GameState.character_id)
 	if ch != null:
 		parts.append("%s/%s" % [ch.level_up_condition, ch.level_up_reward])
+	parts.append("masks:%s" % str(GameState.masked_characters))
 	parts.append(str(GameState.event_goals))
 	parts.append(str(GameState.curse_goals))
 	# The ✓ button at the head of the list wears the count, so a goal ticked into
@@ -2077,6 +2107,7 @@ func _standing_checklist_sig() -> String:
 	var ch: CharacterData = Data.get_character2(GameState.character_id)
 	if ch != null:
 		parts.append("%s/%s" % [ch.level_up_condition, ch.level_up_reward])
+	parts.append("masks:%s" % str(GameState.masked_characters))
 	parts.append(str(GameState.event_goals))
 	parts.append(str(GameState.curse_goals))
 	# The ✓ button at the head of the list wears the count, so a goal ticked into
@@ -2431,7 +2462,8 @@ func _character_icon_rect(character: CharacterData, tint: Color = UITheme.GOLD) 
 	frame.add_theme_stylebox_override("panel",
 		UITheme.flat(UITheme.BG, 4, 2, 1, tint.lerp(UITheme.BORDER, 0.45)))
 	frame.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	frame.tooltip_text = "%s — your character. This is their standing challenge." % character.display_name
+	frame.tooltip_text = ("%s — your character. This is their standing challenge." if character.id == GameState.character_id
+		else "%s — worn off a Mysterious Mask. Their challenge stands beside yours.") % character.display_name
 	# Marked, so "how many BODIES are on this list" stays an answerable question.
 	# Both checklists count their portraits by walking for TextureRects, and the
 	# player's face is not one of the board's — see test_overworld2's

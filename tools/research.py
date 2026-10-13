@@ -1650,7 +1650,7 @@ def cmd_new(args):
         print("\n== tags: tools/tag_research.py", flush=True)
         subprocess.call([sys.executable, os.path.join(TOOLS, "tag_research.py")])
     print("\n== wikis", flush=True)
-    cmd_wikis(argparse.Namespace(games=new, refresh=False, threads=4))
+    cmd_wikis(argparse.Namespace(games=new, refresh=False, threads=4, blurbs=False))
     for g in new:
         cmd_brief(argparse.Namespace(game=g, kind=None, members=60, categories=4, quiet=True))
     print("\nLeft to do, by hand, for each new game (docs/research.md says how):")

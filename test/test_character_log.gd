@@ -11,11 +11,14 @@ const OVERWORLD := preload("res://scenes/redesign2/Overworld2.tscn")
 var _saved_levels: Dictionary = {}
 var _saved_trophies: Dictionary = {}
 var _saved_enemies: Dictionary = {}
+var _saved_games: Dictionary = {}
 
 func before_each() -> void:
 	_saved_levels = GameStats.levelup_log.duplicate(true)
 	_saved_trophies = GameStats.character_enemy_log.duplicate(true)
 	_saved_enemies = GameStats.enemy_log.duplicate(true)
+	_saved_games = GameStats.character_game_log.duplicate(true)
+	GameStats.character_game_log.clear()
 	GameStats.levelup_log.clear()
 	GameStats.character_enemy_log.clear()
 	GameStats.enemy_log.clear()
@@ -24,6 +27,7 @@ func after_each() -> void:
 	GameStats.levelup_log = _saved_levels
 	GameStats.character_enemy_log = _saved_trophies
 	GameStats.enemy_log = _saved_enemies
+	GameStats.character_game_log = _saved_games
 	GameState.reset_run()
 	GameLoop2.reset()
 
@@ -254,3 +258,53 @@ func _pick_enemies(ui, idx: int = 0) -> void:
 		if slot != &"":
 			GameState.node_kinds[slot] = RunGraph.NodeKind.ENEMIES
 	ui.pick(idx)
+
+
+# --- games beaten, per character --------------------------------------------
+
+func test_a_game_beaten_is_logged_against_the_character_who_beat_it() -> void:
+	GameStats.record_character_game(&"rodney", &"rogue")
+	GameStats.record_character_game(&"rodney", &"rogue")
+	GameStats.record_character_game(&"rodney", &"brogue")
+	var games: Array = GameStats.games_beaten_by(&"rodney")
+	assert_eq(games.size(), 2)
+	assert_eq(games[0], {"id": "rogue", "beaten": 2}, "most-beaten first")
+	assert_eq(GameStats.games_beaten_by(&"isaac").size(), 0, "only for who did it")
+
+func test_games_beaten_survive_a_save() -> void:
+	GameStats.record_character_game(&"rodney", &"rogue")
+	GameStats.save_data()
+	GameStats.load_data()
+	assert_eq(GameStats.games_beaten_by(&"rodney").size(), 1)
+
+# --- a Mysterious Mask's level-up -------------------------------------------
+
+# Borrowed: it is a goal done at the GAME (its page, the radio), but the masked
+# character's own page lists only the games played as them.
+func test_a_masked_level_counts_at_the_game_but_not_on_the_character() -> void:
+	GameStats.record_level_up(&"rogue", &"zoe", true)
+	assert_eq(GameStats.level_up_count(&"rogue", &"zoe"), 1, "the game has it")
+	var at_game: Array = GameStats.goals_at(&"rogue").get("character", [])
+	assert_eq(at_game.size(), 1, "on the game's page, and towards its songs")
+	assert_eq(GameStats.games_for_character(&"zoe").size(), 0,
+		"not on Zoe's page — Zoe was not the one playing")
+
+func test_zoes_own_level_still_lists_beside_a_masked_one() -> void:
+	GameStats.record_level_up(&"rogue", &"zoe", true)
+	GameStats.record_level_up(&"rogue", &"zoe")
+	var games: Array = GameStats.games_for_character(&"zoe")
+	assert_eq(games.size(), 1)
+	assert_eq(int(games[0]["levels"]), 1, "only her own level counts there")
+
+# Through the real report: a win banks the game on the hero's page.
+func test_reporting_a_win_logs_the_game_on_the_heros_page() -> void:
+	var ui = OVERWORLD.instantiate()
+	add_child_autofree(ui)
+	ui.choose_start(0)
+	var game: GameData = Data.get_game(GameState.current_game_id)
+	if game == null:
+		pending("the run did not reach a game to beat")
+		return
+	ui.report(true, [])
+	var ids: Array = GameStats.games_beaten_by(GameState.character_id).map(func(r): return r["id"])
+	assert_has(ids, String(game.id), "the game is on the character's page")

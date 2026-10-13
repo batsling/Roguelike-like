@@ -5102,6 +5102,15 @@
   "loot": "2026-10-10: pieces are chess moves; no items, no weapons, no evolutions",
   "statuses": "2026-10-10: Blight repeats existing tiles"
  },
+ "Pax Autocratica": {
+  "characters": "2026-10-12: 1 row: The Leader",
+  "connections": "2026-10-12",
+  "events": "2026-10-12: 1 row: The Prison",
+  "goals": "2026-10-12: nothing usable: the wiki has no creatures and the Steam notes name Lethal Venomfly, Crimson Spider, Sattleri Warrior, Scourgeborn soldiers, Tree of Asherah, Terminal Bastion, all repeating a candidate goal (poison, spider, teleport, tame, tree, living structure). Tree of Asherah and the Scourgeborn capture are in the Clones of Elder Ent and Leshy",
+  "locations": "2026-10-12: 2 rows: Infested Nest (location), Execution Gallows (object)",
+  "loot": "2026-10-12: 2 rows: Void Detonation, Nebula Assault Rifle E36-V weapon. Most Core Fragments repeat live pieces (Fearless Entry ~ Anchor, Excess Spoils, Potion Requisition, Retaliation Core ~ Spiker); Second Chance is in Return of the King's Clones; no evolutions (weapons upgrade by blueprint tier)",
+  "statuses": "2026-10-12: 1 row: Sub-Healthy (curse); the other soldier traits (Aged, Agitator, Black Cloud, Venom-Tongued) are colony-social and undocumented"
+ },
  "Pebble Knights": {
   "characters": "2026-10-12: nothing usable: no wiki under its name on Fandom or wiki.gg, or a stub with no item or enemy pages",
   "connections": "before 2026-10-07",
@@ -7675,6 +7684,15 @@
   "locations": "2026-10-12: nothing new: ADOM's world again; the Ancient Domains of Mystery wiki has only passing mentions of it",
   "loot": "2026-10-12: nothing new: ADOM's world again; the Ancient Domains of Mystery wiki has only passing mentions of it",
   "statuses": "2026-10-12: nothing new: ADOM's world again; the Ancient Domains of Mystery wiki has only passing mentions of it"
+ },
+ "Ultra Mega Cats": {
+  "characters": "2026-10-12: 3 rows: Kagero, BBKAT, Clint",
+  "connections": "2026-10-12",
+  "events": "2026-10-12: 1 row: Coalition Chests",
+  "goals": "2026-10-12: 3 rows (Rat King, Theodore, Koala Ballerina) from the Steam devlogs; no wiki. Hamster Bomb and Rabbit Shooter repeat candidates (Kamikaze Dwarf, Implication) and are in their Clones; Gel-A-Tron and Wingstitch Spitfire repeat a split and a reptile goal",
+  "locations": "2026-10-12: 2 rows: Machineland (location), Banner of Fury (unit)",
+  "loot": "2026-10-12: 6 rows: Milk Bottle, Plush Bear, Return of the King, Machine Gun and Mighty Rocket Gun weapons, Mighty Rocket Gun evolution (the Legendary M.O.D.). Kinetic Bow left out: its charged shot repeats Heart-Seeking Bow's goal",
+  "statuses": "2026-10-12: nothing usable: Bleed is live and Lion's Roar terrify repeats the Terrified candidate (Caves of Qud)"
  },
  "Ultrapool": {
   "characters": "2026-10-12: nothing usable: no wiki under its name on Fandom or wiki.gg, or a stub with no item or enemy pages",

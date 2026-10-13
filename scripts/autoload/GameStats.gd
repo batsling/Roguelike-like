@@ -21,7 +21,8 @@ extends Node
 #     "enemy_log": { "<game>": { "<enemy>": {"beaten": 2, "note": "…"} } },
 #     "levelup_log": { "<game>": { "<character>": {"levels": 1, "note": "…"} } },
 #     "status_goal_log": { "<game>": { "<status>": {"note": "…"} } },
-#     "character_enemy_log": { "<character>": { "<enemy>": {"beaten": 4} } } }
+#     "character_enemy_log": { "<character>": { "<enemy>": {"beaten": 4} } },
+#     "character_game_log": { "<character>": { "<game>": {"beaten": 2} } } }
 # (Older files were the bare games dictionary; load_data migrates them, and a
 # file predating any of the three logs just starts that log empty.)
 
@@ -82,6 +83,12 @@ var status_goal_log: Dictionary = {}
 # shelf, the roster-side counterpart to "enemies beaten in <game>". Which game
 # each fell at is already in enemy_log.
 var character_enemy_log: Dictionary = {}
+
+# Which GAMES each character has beaten, playing as them. Keyed character id ->
+# game id -> {"beaten": int}. The character page's "Games beaten". Started
+# empty when it was added: no older record says which character beat which game,
+# and the owner chose an empty list over a guessed one.
+var character_game_log: Dictionary = {}
 
 # EVERY OTHER KIND OF GOAL, per game: the weapons charged, the standing status
 # goals met, the bonus clauses paid and the curses followed. Keyed game id -> kind -> goal key -> {"done": int, "label": String}.
@@ -412,7 +419,13 @@ func has_enemy_log(game_id) -> bool:
 
 # Record that `character_id` levelled up while playing `game_id`. One call per
 # level gained, so a Crown-chained double level counts twice.
-func record_level_up(game_id, character_id) -> void:
+#
+# `masked`: the level was a MYSTERIOUS MASK's — `character_id`'s condition met
+# while playing someone else. It is still a goal done at this game (the game's
+# page lists it and Roguelike Radio counts it), so it lands in `levels` like any
+# other; `masked` counts how many of those were borrowed, so the character's own
+# page (games_for_character) lists only the games they levelled up at themselves.
+func record_level_up(game_id, character_id, masked: bool = false) -> void:
 	var g := String(game_id)
 	var c := String(character_id)
 	if g == "" or c == "":
@@ -421,6 +434,8 @@ func record_level_up(game_id, character_id) -> void:
 		levelup_log[g] = {}
 	var entry: Dictionary = levelup_log[g].get(c, {"levels": 0, "note": ""})
 	entry["levels"] = int(entry.get("levels", 0)) + 1
+	if masked:
+		entry["masked"] = int(entry.get("masked", 0)) + 1
 	levelup_log[g][c] = entry
 	save_data()
 	changed.emit()
@@ -487,7 +502,9 @@ func characters_for_game(game_id) -> Array:
 	_sort_log(out, "levels")
 	return out
 
-# The inverse: every GAME this character has levelled up at. Drives the
+# The inverse: every GAME this character has levelled up at, AS THEMSELVES —
+# a level taken through a Mysterious Mask is not counted here (`masked`), since
+# the character page is about games played as that character. Drives the
 # character detail.
 func games_for_character(character_id) -> Array:
 	var target := String(character_id)
@@ -496,9 +513,14 @@ func games_for_character(character_id) -> Array:
 		var entry: Dictionary = levelup_log[g].get(target, {})
 		if entry.is_empty():
 			continue
-		if int(entry.get("levels", 0)) <= 0 and String(entry.get("note", "")).strip_edges() == "":
+		# A note with no level yet still lists (a plan written before the level
+		# was taken) — unless the only level there is a masked one, whose note is
+		# about the game played as someone else.
+		var own: int = int(entry.get("levels", 0)) - int(entry.get("masked", 0))
+		if own <= 0 and (int(entry.get("masked", 0)) > 0
+				or String(entry.get("note", "")).strip_edges() == ""):
 			continue
-		out.append({"id": String(g), "levels": int(entry.get("levels", 0)),
+		out.append({"id": String(g), "levels": own,
 			"note": String(entry.get("note", ""))})
 	_sort_log(out, "levels")
 	return out
@@ -535,6 +557,35 @@ func enemies_for_character(character_id) -> Array:
 func character_enemy_count(character_id, enemy_id) -> int:
 	return int(character_enemy_log.get(String(character_id), {}).get(String(enemy_id), {}).get("beaten", 0))
 
+# ---------------------------------------------------------------------------
+# The games a character has beaten, playing as them
+# ---------------------------------------------------------------------------
+
+# Record that `game_id` was beaten while playing `character_id`. Called beside
+# record_beaten / record_amulet_win, so this and the game's own tally agree.
+func record_character_game(character_id, game_id) -> void:
+	var c := String(character_id)
+	var g := String(game_id)
+	if c == "" or g == "":
+		return
+	if not character_game_log.has(c):
+		character_game_log[c] = {}
+	var entry: Dictionary = character_game_log[c].get(g, {"beaten": 0})
+	entry["beaten"] = int(entry.get("beaten", 0)) + 1
+	character_game_log[c][g] = entry
+	save_data()
+	changed.emit()
+
+# Every game this character has beaten, most-beaten first then by id, as
+# [{"id": String, "beaten": int}].
+func games_beaten_by(character_id) -> Array:
+	var out: Array = []
+	for g in character_game_log.get(String(character_id), {}).keys():
+		var entry: Dictionary = character_game_log[String(character_id)][g]
+		out.append({"id": String(g), "beaten": int(entry.get("beaten", 0))})
+	_sort_log(out, "beaten")
+	return out
+
 # Shared ordering for the log lists: the biggest tally first, ties by id, so the
 # panels read the same way whichever log they are drawn from.
 func _sort_log(rows: Array, key: String) -> void:
@@ -556,6 +607,7 @@ func save_data() -> bool:
 		 "enemy_log": enemy_log, "levelup_log": levelup_log,
 		 "status_goal_log": status_goal_log,
 		 "character_enemy_log": character_enemy_log, "goal_log": goal_log,
+		 "character_game_log": character_game_log,
 		 "donation_bank": donation_bank_total, "last_rifts": last_rifts}, "  "))
 	return true
 
@@ -595,6 +647,7 @@ func load_data() -> void:
 	levelup_log = {}
 	status_goal_log = {}
 	character_enemy_log = {}
+	character_game_log = {}
 	goal_log = {}
 	donation_bank_total = 0
 	last_rifts = []
@@ -620,6 +673,8 @@ func load_data() -> void:
 		status_goal_log = json.data["status_goal_log"]
 	if json.data.has("character_enemy_log") and typeof(json.data["character_enemy_log"]) == TYPE_DICTIONARY:
 		character_enemy_log = json.data["character_enemy_log"]
+	if json.data.has("character_game_log") and typeof(json.data["character_game_log"]) == TYPE_DICTIONARY:
+		character_game_log = json.data["character_game_log"]
 	if json.data.has("goal_log") and typeof(json.data["goal_log"]) == TYPE_DICTIONARY:
 		goal_log = json.data["goal_log"]
 	donation_bank_total = maxi(0, int(json.data.get("donation_bank", 0)))

@@ -15104,6 +15104,34 @@
   "sitename": "Pawnbarian Wiki",
   "wiki": "https://pawnbarian.fandom.com"
  },
+ "Pax Autocratica": {
+  "api": "https://pax-autocratica.fandom.com/api.php",
+  "articles": 77,
+  "blurb": "This is a wiki about the video game . Welcome to the ! We're a collaborative community about created by fans and for fans like you! This wiki is an online encyclopedia which anyone can edit and contribute to, creating a new page or improvin",
+  "categories": {
+   "locations": [
+    "Structures"
+   ]
+  },
+  "checked": "2026-10-12",
+  "counts": {
+   "characters": 0,
+   "events": 0,
+   "goals": 0,
+   "locations": 3,
+   "loot": 0,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "loot": [
+    "Weapons"
+   ]
+  },
+  "signal": "rogue",
+  "sitename": "Pax Autocratica Wiki",
+  "wiki": "https://pax-autocratica.fandom.com"
+ },
  "Pebble Knights": {
   "checked": "2026-10-11",
   "wiki": null
@@ -21895,6 +21923,10 @@
  },
  "Ultimate ADOM": {
   "checked": "2026-10-11",
+  "wiki": null
+ },
+ "Ultra Mega Cats": {
+  "checked": "2026-10-12",
   "wiki": null
  },
  "Ultrapool": {

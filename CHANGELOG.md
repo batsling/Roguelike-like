@@ -11,6 +11,41 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **A character's page lists the games they beaten, as covers.** The
+  Collection's character page has a new **Games beaten** list (every game won
+  playing as that character, `GameStats.character_game_log`, recorded beside
+  the game's own tally), and **Levelled up at** is now covers too. Both use the
+  influence lists' tiles: the name on hover, the game's page on a click, the count in
+  the corner. Games beaten starts empty, because no older record says which
+  character beat which game. Level-up notes are still written and read on the
+  game's page. **A Mysterious Mask level-up** is now recorded on the game it
+  was taken at, so it shows on that game's page and counts towards its radio
+  songs, but it is flagged `masked` and never lists on the masked character's
+  own page. That page is only about games played as them.
+
+- **The owner's second 12 Oct upload: two games, six connections, three items,
+  a body and a boss.** The sheet came from an older copy that lacked the last
+  change's three Effect cells (Link Cable, Candy Bag, Scroll of Enchant Weapon);
+  those were put back by rerunning their one-shot, and nothing else was missing.
+  **Pax Autocratica** and **Ultra Mega Cats** are on the map (with their
+  influences from Risk of Rain 2 and Cult of the Lamb), Godbreakers and Risk of
+  Rain Returns gained theirs, and Kill the Brickman, Unexplored and WarpVector
+  are owned. **Stumpy Stump** (Peglin) and **Baby Plum** (Isaac) arrived with
+  their goals typed into `enemies` / `bosses`, so they were authored into
+  `goals` instead, where the next push would otherwise have lost them. A
+  `games!#REF!` in `Map Calc` A927 (left by the row insert) is fixed.
+  `tools/_items_dagger_mask_duplicator_setup.py` fills the new Effect cells:
+  **Ceremonial Dagger** stuns a random body on every defeat
+  (`enemy_killed: apply_status stun 1 target=random`); **Ultra Duplicator**
+  (`duplicate_items`) gives one extra copy of every ITEM obtained per Duplicator
+  held (items only, not pack loot; it does not copy itself, and a copy is never
+  copied again); and **Mysterious Mask** opens a popup of three characters, with
+  their portrait and Level Up under it. The one picked adds their condition
+  BESIDE the hero's, as its own row on the report that pays that character's
+  reward (games-first-redesign §3.1). The popup's subtitle reads "Choose a Character and gain
+  their Level Up Condition and Reward", and Mask and Duplicator have the
+  owner's art.
+
 - **Link Cable, Candy Bag, Scroll of Enchant Weapon, and the radio folder.**
   The owner's 12 Oct upload added three rows with their prose and art; this
   filled their Effect cells (`tools/_items_link_cable_candy_bag_setup.py`) and

@@ -1476,74 +1476,6 @@ func _badge_tooltip(owns: bool) -> String:
 			else "Not owned, per the catalog's list."
 	return "You own this — click to unmark." if owns else "Click to mark as owned."
 
-# One (game, character) level-up row, on the CHARACTER's page: the games they
-# levelled at, each with what the player wrote about doing it. (A game's own page
-# draws its level-ups as picture tiles — see `_goal_tile`.) `side` picks which
-# half of the pair names the row.
-func _levelup_row(game: GameData, ch: CharacterData, entry: Dictionary,
-		on_done: Callable, side: String = "character") -> Control:
-	var gold := Color(1.0, 0.82, 0.35)
-	var panel := PanelContainer.new()
-	panel.add_theme_stylebox_override("panel", UITheme.flat(CELL_BG, 6, 9, 1, UITheme.BORDER))
-	var body := HBoxContainer.new()
-	body.add_theme_constant_override("separation", UITheme.GAP)
-	panel.add_child(body)
-
-	var art_tex: Texture2D = null
-	if side == "character":
-		art_tex = ch.icon if ch.icon != null else ch.portrait
-	else:
-		art_tex = game.cover_image
-	if art_tex != null:
-		var art := TextureRect.new()
-		art.texture = art_tex
-		art.custom_minimum_size = Vector2(54, 48) if side == "game" else Vector2(48, 48)
-		art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED \
-			if side == "game" else TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		body.add_child(art)
-
-	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", UITheme.GAP_HAIR)
-	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	body.add_child(col)
-	var top := HBoxContainer.new()
-	top.add_theme_constant_override("separation", UITheme.GAP)
-	col.add_child(top)
-	var who := Label.new()
-	who.text = ch.display_name if side == "character" else game.display_name
-	who.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	who.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
-	who.add_theme_color_override("font_color", UITheme.TEXT)
-	top.add_child(who)
-	var levels: int = int(entry.get("levels", 0))
-	if levels > 0:
-		var times := Label.new()
-		times.text = "levelled ×%d" % levels
-		times.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
-		times.add_theme_color_override("font_color", gold)
-		top.add_child(times)
-
-	# The condition itself, so the note has something to be a note ABOUT.
-	if ch.level_up_condition != "":
-		col.add_child(_label(ch.level_up_condition, Color(0.72, 0.75, 0.82), 11, false, true))
-
-	var note_text: String = String(entry.get("note", "")).strip_edges()
-	var note := Label.new()
-	note.text = note_text if note_text != "" else "No note written for this one."
-	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	note.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
-	note.add_theme_color_override("font_color",
-		gold if note_text != "" else Color(0.55, 0.55, 0.6))
-	col.add_child(note)
-
-	var edit := Button.new()
-	edit.text = "✎ Edit note" if note_text != "" else "✎ Add note"
-	edit.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
-	edit.pressed.connect(func(): EnemyNoteModal.open_level_up(self, game, ch, on_done))
-	col.add_child(edit)
-	return panel
-
 # THE GAME'S PAGE, and the one entry in the compendium that was mostly below the
 # fold. A game carries more than anything else here — identity, ownership, two
 # ways to launch it, a lifetime record, your ranking, both influence lists, every
@@ -1720,7 +1652,10 @@ func _tile_flow() -> HFlowContainer:
 
 # One game of an influence list: its cover, its name on the hover, its page on a
 # click. Sorted by name, so the grid reads in the order the paragraph did.
-func _game_cover_flow(ids) -> HFlowContainer:
+#
+# `counts` ({id: n}) puts a number in a tile's corner, the way a goal tile
+# does — the character page's times beaten, or levels taken.
+func _game_cover_flow(ids, counts: Dictionary = {}) -> HFlowContainer:
 	var games: Array = []
 	for id in ids:
 		var other: GameData = Data.get_game(StringName(id))
@@ -1734,8 +1669,10 @@ func _game_cover_flow(ids) -> HFlowContainer:
 		# hover and the click are all there from the first one.
 		var tile := _picture_tile(null,
 			Vector2(DETAIL_TILE_COVER, roundi(DETAIL_TILE_COVER * 4.0 / 3.0)),
-			"%s%s" % [other.display_name, (" (%d)" % other.year) if other.year > 0 else ""],
-			0, _game_type_color(int(other.type)), false)
+			"%s%s%s" % [other.display_name, (" (%d)" % other.year) if other.year > 0 else "",
+				("  ×%d" % int(counts[String(other.id)])) if counts.has(String(other.id)) else ""],
+			int(counts.get(String(other.id), 0)),
+			_game_type_color(int(other.type)), false)
 		tile.set_meta(&"game_id", other.id)
 		var target: GameData = other
 		tile.gui_input.connect(func(ev: InputEvent) -> void:
@@ -2149,15 +2086,35 @@ func _show_character_detail(ch: CharacterData) -> void:
 		if enemy != null:
 			_detail_box.add_child(_character_enemy_row(enemy, entry))
 
+	# THE GAMES, AS COVERS — the same tiles an influence list draws: the name on
+	# the hover, the game's page on a click, how many times in the corner. Both
+	# lists are about games played AS this character: a level-up taken through a
+	# Mysterious Mask is on the game's page, not here (GameStats.games_for_character).
+	# The level-up notes live on the game's page too, under its character goals.
+	var beaten: Array = GameStats.games_beaten_by(ch.id)
+	_detail_box.add_child(HSeparator.new())
+	_detail_box.add_child(_detail_section("Games beaten (%d)" % beaten.size()))
+	if beaten.is_empty():
+		_detail_box.add_child(_label("%s has not beaten a game yet." % ch.display_name,
+			Color(0.55, 0.55, 0.6), 12, false, true))
+	else:
+		_detail_box.add_child(_game_cover_flow(_log_ids(beaten), _log_counts(beaten, "beaten")))
+
 	var levelled_at: Array = GameStats.games_for_character(ch.id)
 	if not levelled_at.is_empty():
 		_detail_box.add_child(HSeparator.new())
 		_detail_box.add_child(_detail_section("Levelled up at (%d)" % levelled_at.size()))
-		for entry in levelled_at:
-			var game: GameData = Data.get_game(StringName(entry["id"]))
-			if game != null:
-				_detail_box.add_child(_levelup_row(game, ch, entry,
-					func(): _show_character_detail(ch), "game"))
+		_detail_box.add_child(_game_cover_flow(_log_ids(levelled_at), _log_counts(levelled_at, "levels")))
+
+# The ids, and {id: count}, out of a GameStats log list.
+func _log_ids(rows: Array) -> Array:
+	return rows.map(func(r): return r["id"])
+
+func _log_counts(rows: Array, key: String) -> Dictionary:
+	var out: Dictionary = {}
+	for r in rows:
+		out[r["id"]] = int(r.get(key, 0))
+	return out
 
 # One enemy on a character's trophy shelf: art, name and how many times this
 # character put it down. No note — the write-up belongs to the (game, enemy)

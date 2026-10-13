@@ -558,6 +558,11 @@ const CLASS_NAMES := ["Common", "Uncommon", "Rare", "Legendary", "Starter", "Bos
 # LootPassives.linked through GameState.links_loot.
 @export var link_loot: bool = false
 
+# Ultra Duplicator: every ITEM obtained (the items sheet — never pack loot)
+# arrives with one extra copy per Duplicator held. The copy does not copy itself.
+# Read by GameState.add_item through GameState.item_duplicates.
+@export var duplicate_items: bool = false
+
 # There's Options: chest POINTS added to a BOSS's drop (§8.2). One item off a
 # defeated body IS a chest — a Small one, 1 of 1 — so this is not a new kind of
 # reward, it is the same drop one rung up the size ladder: 2 points is a Medium

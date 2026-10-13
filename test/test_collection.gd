@@ -96,6 +96,35 @@ func test_character_detail_draws_the_trophy_shelf_and_level_up_log() -> void:
 	GameStats.character_enemy_log = trophies
 	GameStats.levelup_log = levels
 
+# The character's games are COVERS, like an influence list: a tile per game,
+# its page on a click — and a masked level-up is not one of them.
+func test_character_page_draws_its_games_as_covers() -> void:
+	var saved_games: Dictionary = GameStats.character_game_log.duplicate(true)
+	var levels: Dictionary = GameStats.levelup_log.duplicate(true)
+	GameStats.character_game_log.clear()
+	GameStats.levelup_log.clear()
+	var ch: CharacterData = Data.all_characters2()[0]
+	var games: Array = Data.all_games()
+	GameStats.record_character_game(ch.id, games[0].id)
+	GameStats.record_level_up(games[1].id, ch.id)
+	GameStats.record_level_up(games[2].id, ch.id, true)
+	var col := _new_collection()
+	col._set_tab(Collection.Tab.CHARACTERS)
+	col._show_character_detail(ch)
+	var ids: Array = []
+	_game_tiles(col._detail_box, ids)
+	assert_has(ids, games[0].id, "the game beaten is a cover tile")
+	assert_has(ids, games[1].id, "so is the game levelled up at")
+	assert_does_not_have(ids, games[2].id, "a masked level is not this character's")
+	GameStats.character_game_log = saved_games
+	GameStats.levelup_log = levels
+
+func _game_tiles(node: Node, out: Array) -> void:
+	if node.has_meta(&"game_id"):
+		out.append(node.get_meta(&"game_id"))
+	for c in node.get_children():
+		_game_tiles(c, out)
+
 func test_game_detail_lists_who_levelled_up_there() -> void:
 	var levels: Dictionary = GameStats.levelup_log.duplicate(true)
 	GameStats.levelup_log.clear()

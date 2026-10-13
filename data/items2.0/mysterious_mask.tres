@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=3 format=3 uid="uid://item_mysterious_mask"]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+[ext_resource type="Texture2D" path="res://images2.0/items/MysteriousMask.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_item")
+id = &"mysterious_mask"
+display_name = "Mysterious Mask"
+kind = 5
+rarity = 2
+description = "Choose one of 3 Starting Characters and gain their Level Up Condition"
+triggers = [{"on": "item_acquired", "effects": [{"type": "mask_choice"}]}]
+stat_bonuses = {}
+max_uses = -1
+source_game = "Batomon Showdown"
+tags = PackedStringArray("wearable", "mask")
+image = ExtResource("2_img")
