@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_bloody_toll_breakdown_epiphanies"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"bloody_toll_breakdown_epiphanies"
+title = "Bloody Toll"
+artist = "Breakdown Epiphanies"
+album = "Battle Brothers (Original Soundtrack)"
+year = 2017
+game_id = &"battle_brothers"
+file = "Battle Brothers/17. Bloody Toll.mp3"
+tags = PackedStringArray()

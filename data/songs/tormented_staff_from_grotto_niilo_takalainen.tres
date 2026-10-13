@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_tormented_staff_from_grotto_niilo_takalainen"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"tormented_staff_from_grotto_niilo_takalainen"
+title = "Tormented Staff"
+artist = "From Grotto & Niilo Takalainen"
+album = "Noita, Vol. 2 (Original Game Soundtrack)"
+year = 2020
+game_id = &"noita"
+file = "Noita/13. Tormented Staff.mp3"
+tags = PackedStringArray()

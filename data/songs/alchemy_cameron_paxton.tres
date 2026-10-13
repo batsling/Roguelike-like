@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_alchemy_cameron_paxton"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"alchemy_cameron_paxton"
+title = "Alchemy"
+artist = "Cameron Paxton"
+album = "Dome Keeper, Vol. II: The Assessor (Original Soundtrack)"
+year = 0
+game_id = &"dome_keeper"
+file = "Dome Keeper/1-03. Alchemy.mp3"
+tags = PackedStringArray()

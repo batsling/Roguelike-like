@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_made_with_love_majorwipeout"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"made_with_love_majorwipeout"
+title = "Made With Love"
+artist = "MajorWipeout"
+album = "Dead Estate OST"
+year = 2021
+game_id = &"dead_estate"
+file = "Dead Estate/1-39. Made With Love.mp3"
+tags = PackedStringArray()

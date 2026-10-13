@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_sightless_shepherd_feat_sam_gendel_darren_korb"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"sightless_shepherd_feat_sam_gendel_darren_korb"
+title = "Sightless Shepherd (feat. Sam Gendel)"
+artist = "Darren Korb"
+album = "Hades II (Original Soundtrack)"
+year = 2025
+game_id = &"hades_ii"
+file = "Hades II/27. Sightless Shepherd (feat. Sam Gendel).mp3"
+tags = PackedStringArray()

@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_a_sea_of_laments_remi_gallego"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"a_sea_of_laments_remi_gallego"
+title = "A Sea Of Laments"
+artist = "Remi Gallego"
+album = "The Last Spell (Official Game Soundtrack)"
+year = 0
+game_id = &"the_last_spell"
+file = "The Last Spell/05 - A Sea Of Laments.mp3"
+tags = PackedStringArray()

@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_the_final_combat_stuart_chatwood"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"the_final_combat_stuart_chatwood"
+title = "The Final Combat"
+artist = "Stuart Chatwood"
+album = "Darkest Dungeon: Collector's Edition Original Soundtrack"
+year = 2019
+game_id = &"darkest_dungeon"
+file = "Darkest Dungeon/12 The Final Combat.mp3"
+tags = PackedStringArray()

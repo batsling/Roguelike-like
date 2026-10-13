@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_06_luminesce"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"06_luminesce"
+title = "06 Luminesce"
+artist = ""
+album = ""
+year = 0
+game_id = &"dome_keeper"
+file = "Dome Keeper/06. Luminesce.mp3"
+tags = PackedStringArray()

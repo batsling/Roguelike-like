@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_in_the_furthest_of_reach_in_th_joonas_turner"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"in_the_furthest_of_reach_in_th_joonas_turner"
+title = "In the furthest of reach in th"
+artist = "Joonas Turner"
+album = "Atomicrops Original Soundtrack"
+year = 2020
+game_id = &"atomicrops"
+file = "Atomicrops/37. In the furthest of reach in the darkest of Plains.mp3"
+tags = PackedStringArray()

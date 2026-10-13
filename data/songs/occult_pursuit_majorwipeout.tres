@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_occult_pursuit_majorwipeout"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"occult_pursuit_majorwipeout"
+title = "Occult Pursuit"
+artist = "MajorWipeout"
+album = "Dead Estate - Assignment Anya OST"
+year = 2023
+game_id = &"dead_estate"
+file = "Dead Estate/2-12. Occult Pursuit.mp3"
+tags = PackedStringArray()

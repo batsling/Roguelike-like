@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_new_adventures_alex_benet"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"new_adventures_alex_benet"
+title = "New Adventures"
+artist = "Alex Benet"
+album = "Moonlighter Between Dimensions"
+year = 0
+game_id = &"moonlighter"
+file = "Moonlighter/01. New Adventures.mp3"
+tags = PackedStringArray()

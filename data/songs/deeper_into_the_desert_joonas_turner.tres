@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_deeper_into_the_desert_joonas_turner"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"deeper_into_the_desert_joonas_turner"
+title = "Deeper into the Desert"
+artist = "Joonas Turner"
+album = "Atomicrops Original Soundtrack"
+year = 2020
+game_id = &"atomicrops"
+file = "Atomicrops/31. Deeper into the Desert.mp3"
+tags = PackedStringArray()

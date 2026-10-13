@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_happy_nature_boy_from_grotto_niilo_takalainen"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"happy_nature_boy_from_grotto_niilo_takalainen"
+title = "Happy Nature Boy"
+artist = "From Grotto & Niilo Takalainen"
+album = "Noita, Vol. 3 (Original Game Soundtrack)"
+year = 2022
+game_id = &"noita"
+file = "Noita/10. Happy Nature Boy.mp3"
+tags = PackedStringArray()

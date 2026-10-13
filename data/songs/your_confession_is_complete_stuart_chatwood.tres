@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_your_confession_is_complete_stuart_chatwood"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"your_confession_is_complete_stuart_chatwood"
+title = "Your Confession is Complete"
+artist = "Stuart Chatwood"
+album = "Darkest Dungeon II (Original Video Game Soundtrack)"
+year = 2023
+game_id = &"darkest_dungeon_2"
+file = "Darkest Dungeon II/1-21. Your Confession is Complete.mp3"
+tags = PackedStringArray()

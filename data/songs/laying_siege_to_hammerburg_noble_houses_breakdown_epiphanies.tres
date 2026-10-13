@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_laying_siege_to_hammerburg_noble_houses_breakdown_epiphanies"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"laying_siege_to_hammerburg_noble_houses_breakdown_epiphanies"
+title = "Laying Siege to Hammerburg (Noble Houses)"
+artist = "Breakdown Epiphanies"
+album = "Battle Brothers (Original Soundtrack)"
+year = 2017
+game_id = &"battle_brothers"
+file = "Battle Brothers/08. Laying Siege to Hammerburg (Noble Houses).mp3"
+tags = PackedStringArray()

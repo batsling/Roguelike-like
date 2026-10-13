@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_corpse_a_copia_joonas_turner"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"corpse_a_copia_joonas_turner"
+title = "Corpse-a-copia"
+artist = "Joonas Turner"
+album = "Atomicrops Original Soundtrack"
+year = 2020
+game_id = &"atomicrops"
+file = "Atomicrops/22. Corpse-a-copia.mp3"
+tags = PackedStringArray()

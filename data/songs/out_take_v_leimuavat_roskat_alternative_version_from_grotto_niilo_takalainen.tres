@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_out_take_v_leimuavat_roskat_alternative_version_from_grotto_niilo_takalainen"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"out_take_v_leimuavat_roskat_alternative_version_from_grotto_niilo_takalainen"
+title = "Out-take V - Leimuavat Roskat (alternative version)"
+artist = "From Grotto & Niilo Takalainen"
+album = "Noita, Vol. 2 (Original Game Soundtrack)"
+year = 2020
+game_id = &"noita"
+file = "Noita/12. Out-take V - Leimuavat Roskat (alternative take).mp3"
+tags = PackedStringArray()

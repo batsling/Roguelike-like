@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_the_black_iron_pact_orcs_breakdown_epiphanies"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"the_black_iron_pact_orcs_breakdown_epiphanies"
+title = "The Black Iron Pact (Orcs)"
+artist = "Breakdown Epiphanies"
+album = "Battle Brothers (Original Soundtrack)"
+year = 2017
+game_id = &"battle_brothers"
+file = "Battle Brothers/06. The Black Iron Pact (Orcs).mp3"
+tags = PackedStringArray()

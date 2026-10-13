@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_a_hidden_menace_goblins_breakdown_epiphanies"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"a_hidden_menace_goblins_breakdown_epiphanies"
+title = "A Hidden Menace (Goblins)"
+artist = "Breakdown Epiphanies"
+album = "Battle Brothers (Original Soundtrack)"
+year = 2017
+game_id = &"battle_brothers"
+file = "Battle Brothers/25. A Hidden Menace (Goblins).mp3"
+tags = PackedStringArray()

@@ -20,8 +20,8 @@ DASH = "Map Analysis"
 # have to actually clear it: at 820 the games block stopped 29 rows short of the
 # 849 games on the sheet, so every degree, hub and median here was computed over
 # a truncated catalog. Keep a few hundred rows of headroom.
-GAMES = 950
-CONNS = 1400
+GAMES = 1200
+CONNS = 2500
 YEAR0, YEAR1 = 1978, 2026
 TYPES = ["Action", "Strategy", "Deckbuilder", "Traditional"]
 LANE = {t: i + 1 for i, t in enumerate(TYPES)}

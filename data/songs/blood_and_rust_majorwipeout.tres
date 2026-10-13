@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_blood_and_rust_majorwipeout"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"blood_and_rust_majorwipeout"
+title = "Blood and Rust"
+artist = "MajorWipeout"
+album = "Dead Estate OST"
+year = 2021
+game_id = &"dead_estate"
+file = "Dead Estate/1-47. Blood and Rust.mp3"
+tags = PackedStringArray()

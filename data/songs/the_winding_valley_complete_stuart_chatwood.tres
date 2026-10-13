@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_the_winding_valley_complete_stuart_chatwood"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"the_winding_valley_complete_stuart_chatwood"
+title = "The Winding Valley (Complete)"
+artist = "Stuart Chatwood"
+album = "Darkest Dungeon II (Original Video Game Soundtrack)"
+year = 2023
+game_id = &"darkest_dungeon_2"
+file = "Darkest Dungeon II/1-11. The Winding Valley (Complete).mp3"
+tags = PackedStringArray()

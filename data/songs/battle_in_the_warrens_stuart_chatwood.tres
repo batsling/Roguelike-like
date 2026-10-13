@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_battle_in_the_warrens_stuart_chatwood"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"battle_in_the_warrens_stuart_chatwood"
+title = "Battle In The Warrens"
+artist = "Stuart Chatwood"
+album = "Darkest Dungeon: Collector's Edition Original Soundtrack"
+year = 2019
+game_id = &"darkest_dungeon"
+file = "Darkest Dungeon/06 Battle in the Warrens.mp3"
+tags = PackedStringArray()

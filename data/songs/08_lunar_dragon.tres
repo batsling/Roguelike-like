@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_08_lunar_dragon"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"08_lunar_dragon"
+title = "08 Lunar Dragon"
+artist = ""
+album = ""
+year = 0
+game_id = &"dome_keeper"
+file = "Dome Keeper/08. Lunar Dragon.mp3"
+tags = PackedStringArray()

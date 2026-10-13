@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_you_have_angered_the_gods_from_grotto_niilo_takalainen"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"you_have_angered_the_gods_from_grotto_niilo_takalainen"
+title = "You Have Angered the Gods"
+artist = "From Grotto & Niilo Takalainen"
+album = "Noita, Vol. 3 (Original Game Soundtrack)"
+year = 2022
+game_id = &"noita"
+file = "Noita/16. You Have Angered the Gods.mp3"
+tags = PackedStringArray()

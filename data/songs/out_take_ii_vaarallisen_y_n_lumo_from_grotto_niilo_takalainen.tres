@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_out_take_ii_vaarallisen_y_n_lumo_from_grotto_niilo_takalainen"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"out_take_ii_vaarallisen_y_n_lumo_from_grotto_niilo_takalainen"
+title = "Out-take II - Vaarallisen yön lumo"
+artist = "From Grotto & Niilo Takalainen"
+album = "Noita, Vol. 3 (Original Game Soundtrack)"
+year = 2022
+game_id = &"noita"
+file = "Noita/07. Out-take II - Vaarallisen yön lumo.mp3"
+tags = PackedStringArray()

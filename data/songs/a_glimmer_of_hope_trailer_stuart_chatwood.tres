@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_a_glimmer_of_hope_trailer_stuart_chatwood"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"a_glimmer_of_hope_trailer_stuart_chatwood"
+title = "A Glimmer of Hope (Trailer)"
+artist = "Stuart Chatwood"
+album = "Darkest Dungeon II (Original Video Game Soundtrack)"
+year = 2023
+game_id = &"darkest_dungeon_2"
+file = "Darkest Dungeon II/1-12. A Glimmer of Hope (Trailer).mp3"
+tags = PackedStringArray()

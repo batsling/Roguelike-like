@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_noita_official_sountrack_vol_1_from_grotto_niilo_takalainen"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"noita_official_sountrack_vol_1_from_grotto_niilo_takalainen"
+title = "Noita Official Sountrack vol. 1"
+artist = "From Grotto & Niilo Takalainen"
+album = "Noita Official Sountrack vol. 1"
+year = 2019
+game_id = &"noita"
+file = "Noita/21 - Noita Official Sountrack vol. 1  A-side.mp3"
+tags = PackedStringArray()

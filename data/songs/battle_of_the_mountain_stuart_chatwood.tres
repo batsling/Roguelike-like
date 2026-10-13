@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_battle_of_the_mountain_stuart_chatwood"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"battle_of_the_mountain_stuart_chatwood"
+title = "Battle of the Mountain"
+artist = "Stuart Chatwood"
+album = "Darkest Dungeon II (Original Video Game Soundtrack)"
+year = 2023
+game_id = &"darkest_dungeon_2"
+file = "Darkest Dungeon II/1-10. Battle of the Mountain.mp3"
+tags = PackedStringArray()
