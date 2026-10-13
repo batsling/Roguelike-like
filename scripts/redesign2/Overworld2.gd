@@ -7191,27 +7191,13 @@ func _build_map_button() -> Button:
 
 # ROGUELIKE RADIO (docs/roguelike-radio.md): skip, back, pause and the volume,
 # from anywhere in a run. On the header for the reason the Map is — it is the one
-# row no modal and no scroll position can put away — and an icon alone, because
-# the road strip beside it is the thing that wants the width.
-func _build_radio_button() -> Button:
-	var b := HoverButton.new()
-	b.text = "📻"
-	b.pressed.connect(open_radio)
-	_header_radio_btn = b
-	# A METHOD, not a lambda: a bound method is disconnected when this node goes,
-	# and the radio outlives every run.
-	Radio.changed.connect(_refresh_radio_tip)
-	_refresh_radio_tip()
-	return b
-
-func _refresh_radio_tip() -> void:
-	if _header_radio_btn == null or not is_instance_valid(_header_radio_btn):
-		return
-	var song: SongData = Radio.current_song()
-	_header_radio_btn.tooltip_text = "Roguelike Radio — skip, go back, pause and set the volume."
-	if song != null:
-		_header_radio_btn.tooltip_text = "Now playing %s.\n%s" % [song.title,
-			_header_radio_btn.tooltip_text]
+# row no modal and no scroll position can put away. The 📻 alone, and beside it,
+# while a song is loaded, its game's cover and back / pause / skip
+# (RadioMiniPlayer), so the three controls reached for most are one click away.
+func _build_radio_button() -> Control:
+	var player := RadioMiniPlayer.make(open_radio, 0.0, 0)
+	_header_radio_btn = player.radio_button
+	return player
 
 func open_radio() -> Node:
 	if _radio_screen != null and is_instance_valid(_radio_screen):

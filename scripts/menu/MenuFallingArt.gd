@@ -1,8 +1,9 @@
 class_name MenuFallingArt
 extends Control
 
-# The main menu's background: the game's own art falling past, down both sides of
-# the button column, fading out into the dark at the bottom.
+# The main menu's background: the game's own art falling past across the whole
+# screen — behind the button column too, dimmed there so the buttons still read —
+# fading out into the dark at the bottom.
 #
 # The menu was the emptiest screen in the project — a 320px column centred in a
 # 1280px canvas, in a game whose whole substance is pictures of games
@@ -23,10 +24,11 @@ extends Control
 # every other folder together is about 6 MB.
 enum Kind { SMALL, COVER }
 
-# Pieces on screen at once, split across the two columns. Chosen with the mix
-# below: enough that the screen is busy, few enough that the cover pool stays
-# small.
-const PIECE_COUNT := 72
+# Pieces on screen at once, over the whole width. Chosen with the mix below:
+# enough that the screen is busy, few enough that the cover pool stays small. It
+# was 72 down the two side columns (60% of the width); the full width keeps the
+# same density at 100.
+const PIECE_COUNT := 100
 # Of those, how many are game covers. The rest are characters, enemies, items and
 # loot — so the screen reads as the run's furniture with the games falling through
 # it, rather than as a wall of box art.
@@ -76,10 +78,16 @@ const ALPHA_MIN := 0.30
 const ALPHA_MAX := 0.62
 const FADE_BOTTOM := 0.34          # the height spent fading out into the dark
 
-# The middle of the canvas the columns leave alone, as a fraction of the width.
-# The button column is 400px of a 1280px canvas; this is wider than that so the
-# art never crowds the text it sits beside.
+# The middle of the canvas the buttons stand in, as a fraction of the width. The
+# button column is 400px of a 1280px canvas; this is a little wider than that.
+#
+# ART FALLS THROUGH IT NOW, DIMMED. The middle used to be kept clear, and the art
+# down the two sides read as two columns either side of an empty one; the owner
+# asked for the whole screen. A piece passing behind the buttons is drawn at
+# BAND_DIM of its alpha, eased in over its own width as it crosses the band's edge
+# (`_band_dim`), so the text in front of it still reads.
 const CLEAR_BAND := 0.40
+const BAND_DIM := 0.35
 
 # How long a frame may spend decoding textures, in microseconds. The menu has to
 # come up instantly, and baking the whole pool is the better part of a second's
@@ -151,8 +159,8 @@ const COVER_DIR := "res://images2.0/games/"
 # put a picture on screen that is already on it, so a pool only a little larger
 # than the screen holds makes the free list run dry and the fallback kind take
 # over — the mix drifts away from `COVER_SHARE` on its own.
-const COVER_POOL := 34
-const SMALL_POOL := 112
+const COVER_POOL := 46
+const SMALL_POOL := 154
 
 var _rng := RandomNumberGenerator.new()
 var _pieces: Array[Dictionary] = []
@@ -500,46 +508,31 @@ func _release(piece: Dictionary) -> void:
 	if not _free[kind].has(index):
 		_free[kind].append(index)
 
-# An x in one of the two columns, with the WHOLE piece clear of the band the menu
-# occupies — `width` is the piece's, and half of it is held back from the band's
-# edge. Placing the centre on the edge was enough while everything was a 46px
-# token; a 3x3 enemy is three times that, and half of it reached across into the
-# buttons.
+# An x anywhere across the screen, with the whole piece on it. A piece wider than
+# the screen is pinned to the middle rather than letting the range invert.
 func _column_x(size: Vector2, width: float = 0.0) -> float:
-	# A piece wider than the whole column still has to go somewhere: pin it to the
-	# outer edge rather than letting the range invert and put it under the menu.
-	var x: float = _rng.randf_range(0.0, maxf(_column_limit(size, width), 0.0))
-	return x if _rng.randf() < 0.5 else size.x - x
+	var half: float = minf(width * 0.5, size.x * 0.5)
+	return _rng.randf_range(half, size.x - half)
 
-# How far in from its own edge a piece of this width may have its CENTRE. Both the
-# spawn above and the per-frame clamp below are this same number, so the band is
-# one rule rather than two that have to agree.
-#
-# `BAND_GUARD` is a pixel of slack, and it is there because a piece placed exactly
-# on the limit is a piece whose position is decided by float rounding: the test
-# that guards this band asks whether the piece overlaps it, and an exact tie is
-# neither in nor out depending on the order two additions happen in.
-const BAND_GUARD := 1.0
-
-func _column_limit(size: Vector2, width: float) -> float:
-	return size.x * 0.5 - size.x * CLEAR_BAND * 0.5 - width * 0.5 - BAND_GUARD
-
-# Hold a drifting piece out of the menu's column.
-#
-# THE BAND WAS ONLY EVER GUARANTEED AT SPAWN. A piece drifts sideways at up to
-# `DRIFT` px/s for the whole of its fall — twenty seconds, so up to ~180px — and
-# nothing stopped that drift carrying a piece dealt near the inner edge straight
-# across into the text. It showed up as a one-in-some-runs test failure with the
-# intruder a fraction of a pixel inside the line, which reads like a rounding
-# quibble and is not: the same piece a few seconds later is under the buttons.
-# A piece that reaches the edge now slides down it instead.
-func _hold_clear_of_the_band(pos: Vector2, size: Vector2, box: Vector2) -> Vector2:
-	var limit: float = maxf(_column_limit(size, box.x), 0.0)
-	if pos.x < size.x * 0.5:
-		pos.x = minf(pos.x, limit)
-	else:
-		pos.x = maxf(pos.x, size.x - limit)
+# Hold a drifting piece on screen. A piece drifts sideways at up to `DRIFT` px/s
+# for the whole of its fall — twenty seconds, so up to ~180px — and a piece dealt
+# near an edge would otherwise drift off it and fall unseen. One that reaches the
+# edge slides down it instead.
+func _hold_on_screen(pos: Vector2, size: Vector2, box: Vector2) -> Vector2:
+	var half: float = minf(box.x * 0.5, size.x * 0.5)
+	pos.x = clampf(pos.x, half, size.x - half)
 	return pos
+
+# How much of its alpha a piece keeps at `x`: all of it clear of the button band,
+# BAND_DIM once its whole width is inside, and in between while it crosses the
+# edge — so nothing pops as it drifts in.
+func _band_dim(x: float, width: float, view_w: float) -> float:
+	var half_band: float = view_w * CLEAR_BAND * 0.5
+	var half: float = maxf(width * 0.5, 1.0)
+	var d: float = absf(x - view_w * 0.5)
+	# 0 when the piece is wholly outside the band, 1 when wholly inside.
+	var inside: float = clampf((half_band + half - d) / (2.0 * half), 0.0, 1.0)
+	return lerpf(1.0, BAND_DIM, inside)
 
 func _process(delta: float) -> void:
 	if not _running:
@@ -574,9 +567,9 @@ func _process(delta: float) -> void:
 			break
 		_pieces.append(piece)
 	for piece in _pieces:
-		# Moved, then held out of the menu's column — the drift is what would carry
-		# it in there (see `_hold_clear_of_the_band`).
-		piece["pos"] = _hold_clear_of_the_band(
+		# Moved, then held on screen — the drift is what would carry it off an
+		# edge (see `_hold_on_screen`).
+		piece["pos"] = _hold_on_screen(
 			(piece["pos"] as Vector2) + Vector2(
 				(piece["drift"] as float) * delta, (piece["fall"] as float) * delta),
 			size, piece["box"])
@@ -644,9 +637,12 @@ func _fade_at(y: float, height: float, base: float) -> float:
 func _redraw() -> void:
 	_pixel_batch.clear()
 	_smooth_batch.clear()
-	var height: float = get_viewport_rect().size.y
+	var view: Vector2 = get_viewport_rect().size
+	var height: float = view.y
 	for piece in _pieces:
-		var a: float = _fade_at((piece["pos"] as Vector2).y, height, piece["alpha"])
+		var pos: Vector2 = piece["pos"]
+		var a: float = _fade_at(pos.y, height, piece["alpha"]) \
+			* _band_dim(pos.x, (piece["box"] as Vector2).x, view.x)
 		piece["draw_alpha"] = a
 		if a <= 0.005:
 			continue

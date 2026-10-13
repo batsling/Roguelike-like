@@ -66,52 +66,46 @@ func test_both_kinds_are_actually_falling_once_it_is_seeded() -> void:
 	assert_lt(covers, _art._pieces.size(),
 		"and they are not all covers — the mix is mostly the run's smaller furniture")
 
-func test_nothing_falls_through_the_menus_own_column() -> void:
-	# THE WHOLE piece, not its centre. A piece spans [x - w/2, x + w/2], so it
-	# overlaps the band as soon as `|x - middle|` drops below `half_band + w/2`.
-	# An earlier version of this test subtracted that half-width instead of adding
-	# it, which only caught a piece whose CENTRE was already well inside the band —
-	# and so it passed while 3x3 enemies reached across into the buttons.
+# THE WHOLE SCREEN, the middle included. The button column used to be kept clear,
+# and the art read as two columns either side of an empty one.
+func test_art_falls_behind_the_buttons_too() -> void:
 	_seed()
 	var width: float = _art.get_viewport_rect().size.x
 	var half_band: float = width * MenuFallingArt.CLEAR_BAND * 0.5
-	var intruders: Array = []
+	var middle := 0
+	for _i in range(int(ceil(20.0 / MenuFallingArt.MAX_STEP))):
+		_art._process(MenuFallingArt.MAX_STEP)
 	for piece in _art._pieces:
-		var pos: Vector2 = piece["pos"]
-		var box: Vector2 = piece["box"]
-		if absf(pos.x - width * 0.5) < half_band + box.x * 0.5:
-			intruders.append("%.0f wide %.0f" % [pos.x, box.x])
-	assert_eq(intruders, [], "the buttons' column is left clear: %s" % str(intruders))
+		if absf((piece["pos"] as Vector2).x - width * 0.5) < half_band:
+			middle += 1
+	assert_gt(middle, 0, "some pieces fall through the buttons' column")
 
-# AND IT STAYS CLEAR OF IT ALL THE WAY DOWN, which the test above does not ask:
-# it measures the frame a piece is dealt on. A piece drifts sideways at up to
-# `DRIFT` px/s for its whole fall — twenty seconds, so ~180px — and nothing used
-# to stop that carrying a piece dealt near the inner edge across into the buttons.
-#
-# THIS IS WHAT THE ONE-IN-SOME-RUNS FAILURE WAS. The test above would occasionally
-# catch a piece a fraction of a pixel over the line and read like a rounding
-# quibble; it was the first fraction of the drift that ends up under the menu.
-func test_nothing_drifts_into_the_menus_column_on_the_way_down() -> void:
+# …DIMMED THERE, so the buttons in front of it still read: a piece wholly inside
+# the band is drawn at BAND_DIM of the alpha it has outside it.
+func test_a_piece_behind_the_buttons_is_dimmed() -> void:
+	var width: float = 1280.0
+	assert_almost_eq(_art._band_dim(width * 0.5, 40.0, width), MenuFallingArt.BAND_DIM, 0.001,
+		"in the middle of the band")
+	assert_almost_eq(_art._band_dim(20.0, 40.0, width), 1.0, 0.001, "out at the edge of the screen")
+	var crossing: float = _art._band_dim(width * 0.5 - width * MenuFallingArt.CLEAR_BAND * 0.5,
+		40.0, width)
+	assert_true(crossing < 1.0 and crossing > MenuFallingArt.BAND_DIM,
+		"eased in across the band's edge rather than popping (%.2f)" % crossing)
+
+# AND NOTHING DRIFTS OFF THE SIDES on the way down: a piece drifts sideways at up
+# to `DRIFT` px/s for its whole fall, and one dealt near an edge would otherwise
+# leave the screen.
+func test_nothing_drifts_off_the_screen_on_the_way_down() -> void:
 	_seed()
 	var width: float = _art.get_viewport_rect().size.x
-	var half_band: float = width * MenuFallingArt.CLEAR_BAND * 0.5
-	var worst: float = -INF
 	var offender: String = ""
-	# Long enough that a piece drifting the whole way would have crossed several
-	# times over.
 	for _i in range(int(ceil(40.0 / MenuFallingArt.MAX_STEP))):
 		_art._process(MenuFallingArt.MAX_STEP)
 		for piece in _art._pieces:
 			var pos: Vector2 = piece["pos"]
-			var box: Vector2 = piece["box"]
-			# How far INTO the band the piece reaches; negative is clear of it.
-			var into: float = half_band + box.x * 0.5 - absf(pos.x - width * 0.5)
-			if into > worst:
-				worst = into
-				offender = "x %.1f, %.0f wide" % [pos.x, box.x]
-	assert_lt(worst, 0.0,
-		"the buttons' column stays clear for the whole fall (worst: %s, %.2fpx in)"
-			% [offender, worst])
+			if pos.x < -0.01 or pos.x > width + 0.01:
+				offender = "x %.1f" % pos.x
+	assert_eq(offender, "", "every piece's centre stays on screen")
 
 func test_it_falls_down_both_sides() -> void:
 	_seed()

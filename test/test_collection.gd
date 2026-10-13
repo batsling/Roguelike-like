@@ -1106,6 +1106,22 @@ func test_a_games_page_is_wider_and_the_other_tabs_are_not() -> void:
 	assert_eq(col._detail_panel.custom_minimum_size.x, float(Collection.DETAIL_PANEL_W),
 		"an item's card keeps the narrow measure")
 
+func test_enemy_boss_and_event_pages_are_as_wide_as_a_games() -> void:
+	var col := _new_collection()
+	col._show_enemy_detail(Data.all_goal_enemies()[0])
+	await wait_frames(2)
+	assert_eq(col._detail_panel.custom_minimum_size.x, float(Collection.GAME_DETAIL_PANEL_W), "an enemy")
+	col._show_enemy_detail(Data.all_bosses()[0])
+	await wait_frames(2)
+	assert_eq(col._detail_panel.custom_minimum_size.x, float(Collection.GAME_DETAIL_PANEL_W), "a boss")
+	var events: Array = Data.all_events2()
+	if events.is_empty():
+		pending("no events in this catalog")
+		return
+	col._show_event_detail(events[0])
+	await wait_frames(2)
+	assert_eq(col._detail_panel.custom_minimum_size.x, float(Collection.GAME_DETAIL_PANEL_W), "an event")
+
 func test_the_influence_chart_is_covers_that_open_their_game() -> void:
 	var g: GameData = Data.get_game(&"hades")
 	if g == null or g.games_influenced.is_empty():

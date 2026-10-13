@@ -134,6 +134,33 @@ func is_filled() -> bool:
 # Drag and drop
 # ---------------------------------------------------------------------------
 
+# PICKED UP ON THE PRESS, not once the mouse has moved a few pixels with the
+# button down — Godot's own threshold. Holding the button is holding the piece, so
+# R or a right-click turns it straight away, before it has gone anywhere. A click
+# on a cell does nothing else (LootGrid: "hover reads, drag moves, the button
+# spends"), so nothing is lost; let go where it started and it lands where it was.
+func _gui_input(event: InputEvent) -> void:
+	if not (event is InputEventMouseButton):
+		return
+	var mb := event as InputEventMouseButton
+	if mb.button_index != MOUSE_BUTTON_LEFT or not mb.pressed or mb.double_click:
+		return
+	if get_viewport() == null or get_viewport().gui_is_dragging():
+		return
+	var data = _get_drag_data(mb.position)
+	if data == null:
+		return
+	accept_event()
+	force_drag(data, _preview_for(data))
+
+# What follows the cursor for `data` — the bag's footprint or the cell.
+func _preview_for(data: Dictionary) -> Control:
+	if String(data.get("kind", "")) == "bag_move":
+		return grid.bag_preview(data)
+	if grid.is_bag_payload(data):
+		return grid.loose_bag_preview(data)
+	return grid.drag_preview(self, data)
+
 func _get_drag_data(_at: Vector2) -> Variant:
 	if grid == null:
 		return null
@@ -145,7 +172,7 @@ func _get_drag_data(_at: Vector2) -> Variant:
 			return null
 		var move: Dictionary = grid.bag_payload(bag)
 		if get_viewport() != null and get_viewport().gui_is_dragging():
-			set_drag_preview(grid.bag_preview(move))
+			set_drag_preview(_preview_for(move))
 		return move
 	if not grid.can_drag_from(self):
 		return null
@@ -155,7 +182,7 @@ func _get_drag_data(_at: Vector2) -> Variant:
 		var take: Dictionary = {"kind": "loot_take", "entry": entry.duplicate(true),
 			"offer": offer_index, "rot": 0}
 		if get_viewport() != null and get_viewport().gui_is_dragging():
-			set_drag_preview(grid.loose_bag_preview(take))
+			set_drag_preview(_preview_for(take))
 		return take
 	# GUARDED, because `set_drag_preview` is only legal while the viewport is
 	# actually starting a drag — it fails outright otherwise. Godot itself only ever
@@ -169,7 +196,7 @@ func _get_drag_data(_at: Vector2) -> Variant:
 		"offer": offer_index, "rot": rot} if slot_index < 0 \
 		else {"kind": "loot_move", "from": slot_index, "index": loot_index, "rot": rot}
 	if get_viewport() != null and get_viewport().gui_is_dragging():
-		set_drag_preview(grid.drag_preview(self, data))
+		set_drag_preview(_preview_for(data))
 	return data
 
 # What follows the cursor: THE WHOLE CELL, built by the grid — see

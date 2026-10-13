@@ -261,8 +261,10 @@ The owner's choices, asked before it was built:
 ## 6. Where the controls are
 
 `RadioScreen`, opened from **📻 on the run's header bar** (beside Map and Menu,
-on the layer no modal covers) and from **Radio in the main menu's top-right
-corner**. It has:
+on the layer no modal covers) and from **📻 in the main menu's top-right
+corner**. Both are a `RadioMiniPlayer`: the icon alone, and beside it, while a
+song is loaded, its game's cover and ⏮ ⏸ ⏭, so back, pause and skip never need
+the screen. The screen has:
 
 - what's playing and how far in;
 - Back / Pause / Skip and a volume slider;

@@ -831,37 +831,45 @@ class BagPreview extends Control:
 # THE ARROW ON A PIECE THAT ACTS ON A NEIGHBOUR (Blueprint copies the piece it
 # points at), drawn on the edge of its cell facing that neighbour and poking into
 # the gutter between the two, so the pair reads as connected. It turns with the
-# piece. Any piece LootPassives.direction answers for gets one.
+# piece. Any piece LootPassives.directions answers for gets one, with a head per
+# direction it acts in (a Whetstone points up AND down, a Duplicator all four).
 static func add_direction_arrow(cell: Control, entry: Dictionary) -> void:
-	var dir: String = LootPassives.direction(entry)
-	if dir == "":
+	var dirs: Array = LootPassives.directions(entry)
+	if dirs.is_empty():
 		return
 	var arrow := DirArrow.new()
-	arrow.dir = dir
+	arrow.dirs = dirs
 	cell.add_child(arrow)
 
 class DirArrow extends Control:
-	var dir: String = ""
+	var dirs: Array = []
+	# The first direction — what a single-arrow piece (Blueprint) points at.
+	var dir: String:
+		get:
+			return String(dirs[0]) if not dirs.is_empty() else ""
+		set(value):
+			dirs = [value] if value != "" else []
 
 	func _init() -> void:
 		mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 	func _draw() -> void:
-		var step: Vector2 = Vector2(LootPassives.DIRECTIONS.get(dir, Vector2i.ZERO))
-		if step == Vector2.ZERO:
-			return
-		# The cell's panel insets this Control by its margin; the tip reaches past
-		# the cell's own edge into the gutter.
-		var pad: float = LootSlot.PAD
-		var half: Vector2 = size * 0.5
-		var edge: Vector2 = half + step * (half + Vector2(pad, pad))
-		var tip: Vector2 = edge + step * 5.0
-		var side: Vector2 = Vector2(-step.y, step.x) * 6.0
-		var base: Vector2 = edge - step * 4.0
-		var pts := PackedVector2Array([tip, base + side, base - side])
-		draw_colored_polygon(pts, UITheme.GOLD)
-		draw_polyline(PackedVector2Array([tip, base + side, base - side, tip]),
-			UITheme.BG, 1.0, true)
+		for d in dirs:
+			var step: Vector2 = Vector2(LootPassives.DIRECTIONS.get(String(d), Vector2i.ZERO))
+			if step == Vector2.ZERO:
+				continue
+			# The cell's panel insets this Control by its margin; the tip reaches past
+			# the cell's own edge into the gutter.
+			var pad: float = LootSlot.PAD
+			var half: Vector2 = size * 0.5
+			var edge: Vector2 = half + step * (half + Vector2(pad, pad))
+			var tip: Vector2 = edge + step * 5.0
+			var side: Vector2 = Vector2(-step.y, step.x) * 6.0
+			var base: Vector2 = edge - step * 4.0
+			var pts := PackedVector2Array([tip, base + side, base - side])
+			draw_colored_polygon(pts, UITheme.GOLD)
+			draw_polyline(PackedVector2Array([tip, base + side, base - side, tip]),
+				UITheme.BG, 1.0, true)
 
 
 # THE PIECE IN YOUR HAND, turnable. R or a right-click turns it a quarter clockwise:
@@ -904,11 +912,12 @@ class PiecePreview extends Control:
 			span.queue_redraw()
 			var ext: Vector2i = GameState.bag_extent(span.cells, rot)
 			cell.size = LootGrid.span_px(ext)
-			return
-		var art: Node = cell.find_child("Art", true, false)
-		if art is Control:
-			(art as Control).rotation = rot * PI * 0.5
-		# The arrow turns with it, so the hand shows where the piece will point.
+		else:
+			var art: Node = cell.find_child("Art", true, false)
+			if art is Control:
+				(art as Control).rotation = rot * PI * 0.5
+		# The arrows turn with it, so the hand shows where the piece will point — a
+		# big piece's too (the Hero swords carry them).
 		for c in cell.get_children():
 			if c is DirArrow:
 				var turned_entry: Dictionary = (data.get("entry", {}) as Dictionary).duplicate() \
@@ -918,7 +927,7 @@ class PiecePreview extends Control:
 					if i >= 0 and i < GameState.loot_items.size():
 						turned_entry = (GameState.loot_items[i] as Dictionary).duplicate()
 				turned_entry["rot"] = rot
-				(c as DirArrow).dir = LootPassives.direction(turned_entry)
+				(c as DirArrow).dirs = LootPassives.directions(turned_entry)
 				(c as DirArrow).queue_redraw()
 
 
@@ -1056,7 +1065,11 @@ static func preview_cell(entry: Dictionary, face_up: bool = true,
 	# begins.
 	cell.add_child(_cell_body(entry, Callable(), false, true, face_up,
 		{"rot": int(data.get("rot", entry.get("rot", 0)))}))
-	add_direction_arrow(cell, entry)
+	# Face down, it says nothing about what it is — its arrows included.
+	if face_up:
+		var held: Dictionary = entry.duplicate()
+		held["rot"] = int(data.get("rot", entry.get("rot", 0)))
+		add_direction_arrow(cell, held)
 	holder.add_child(cell)
 	if holder is PiecePreview:
 		(holder as PiecePreview).data = data

@@ -130,10 +130,13 @@ func test_a_rungs_card_spells_the_kind_out() -> void:
 		return
 	GameState.node_kinds[game.id] = RunGraph.NodeKind.CHAMPION
 	var box: VBoxContainer = RouteLadder.node_card_body({"id": game.id})
-	var found := false
-	for l in box.find_children("*", "Label", true, false):
-		if (l as Label).text == "%s  %s" % [RunGraph.kind_mark(RunGraph.NodeKind.CHAMPION),
-				RunGraph.kind_label(RunGraph.NodeKind.CHAMPION)]:
-			found = true
-	assert_true(found, "the card names the kind the rung abbreviates")
+	# On the cover's top-right corner now, as the rung's own mark, with the kind
+	# spelled out on its hover.
+	var marker: Control = box.find_child("KindMarker", true, false)
+	assert_not_null(marker, "the card's cover carries the kind's mark")
+	if marker != null:
+		assert_eq((marker.find_child("Text", true, false) as Label).text,
+			RunGraph.kind_mark(RunGraph.NodeKind.CHAMPION), "the mark the rung wears")
+		assert_eq(marker.tooltip_text, RunGraph.kind_tip(RunGraph.NodeKind.CHAMPION),
+			"and the hover says what it means")
 	box.free()

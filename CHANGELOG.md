@@ -11,6 +11,32 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The run map's game card, the radio, the menu's art and the pack's arrows.**
+  - *The game card* (`RouteLadder.node_card_body`, shared by the 🗺 map window
+    and the choice popup's route) is 470px wide. Its facts stand to the left of
+    a smaller cover. The cover carries the node's kind mark top-right and ⚔ plus
+    the times beaten bottom-left, which replaced the `Kind` and `⚔ Beaten` rows.
+    "On this route: step N of M" and "On the road to the Amulet (if you take this
+    card)" are gone. The list of enemies beaten there is now a **Goals Beaten**
+    button that opens `GoalsBeatenView`, the Collection game page's record of
+    every goal kind as pictures, built by the same code. The choice popup's
+    card was centred on the whole window and could put its title under the run's
+    header bar; it is placed in `ModalScaffold.free_rect` now, as the map
+    window's always was.
+  - *Roguelike Radio* is the 📻 alone on the main menu as well as in the run
+    header. While a song is loaded, its game's cover and ⏮ ⏸ ⏭ stand beside the
+    icon (`RadioMiniPlayer`).
+  - *The menu's falling art* covers the whole screen (100 pieces, up from 72).
+    Pieces passing behind the button column are drawn at `BAND_DIM` of their
+    alpha instead of being kept out of it.
+  - *The Collection's* enemy, boss and event pages are as wide as a game's
+    (`GAME_DETAIL_PANEL_W`).
+  - *Directional loot* shows its arrows. `LootPassives.directions` reads
+    `weapon_stun`/`weapon_retrigger` `dirs` as well as `copy_neighbour`, so
+    Whetstone, Duplicator and the Hero swords have arrows, not just Blueprint.
+    A pack or floor piece is picked up on the mouse press, so it can be turned
+    before it moves.
+
 - **`Map Analysis` is right again: `Map Calc`'s connection rows were off by
   one.** A row deleted from `connections` left `Map Calc` T429/U429 reading
   `connections!#REF!`, and every row below it read the connection ABOVE its

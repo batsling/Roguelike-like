@@ -25,7 +25,8 @@ the honour system.
 ## The shape of it
 
 - **The main menu has a moving background.** `MenuFallingArt` drops enemies,
-  items, loot and game covers down both sides of the button column. Four things to
+  items, loot and game covers across the whole screen, dimmed to `BAND_DIM` behind
+  the button column (`_band_dim`) so the buttons still read. Four things to
   know before touching it: a texture filter belongs to the CanvasItem, so the
   pieces are split across two draw layers (NEAREST for pixel art, LINEAR for the
   rest); art is only used if `_is_cutout` says so — `wands_unidentified/` is RGBA

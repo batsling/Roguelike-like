@@ -254,14 +254,59 @@ func test_clicking_a_rung_opens_a_card_on_that_game() -> void:
 	assert_true(_text_of(card).contains(Data.get_game(GameState.current_game_id).display_name),
 		"and the card is about the game that was clicked")
 
-func test_the_card_says_which_rung_it_is() -> void:
-	# The same game can hold two rungs on a forced route, so "step 3 of 9" is part
-	# of the answer, not decoration.
+func test_the_card_says_which_rung_it_is_without_a_step_count() -> void:
+	# "On this route: step 3 of 9" went: the map the card was opened from shows
+	# the step, and the role line says the rest.
 	var modal = _open_map()
 	var total: int = modal.shortest_distance()
 	var card = modal.open_node_card(GameState.amulet_game_id, total)
-	assert_true(_text_of(card).contains("step %d of %d" % [total, total]),
-		"the Amulet's card places it at the bottom of the route")
+	var text: String = _text_of(card)
+	assert_true(text.contains("The Amulet"), "the Amulet's card says what it is")
+	assert_false(text.contains("On this route"), "and no longer counts the steps")
+	assert_false(text.contains("On the road to the Amulet"), "nor says it is on the road")
+
+func test_the_card_stays_below_the_header_bar() -> void:
+	var modal = _open_map()
+	var card = modal.open_node_card(GameState.amulet_game_id, modal.shortest_distance())
+	await wait_frames(2)
+	assert_gte(card.position.y, ModalScaffold.free_rect(modal).position.y,
+		"the card's title is not under the run's header")
+
+func test_the_cover_carries_the_times_beaten_and_the_kind() -> void:
+	var modal = _open_map()
+	var here: StringName = GameState.current_game_id
+	var card = modal.open_node_card(here, 0)
+	var badge: Control = card.find_child("BeatenBadge", true, false)
+	assert_not_null(badge, "⚔ and the count sit on the cover")
+	if badge != null:
+		assert_eq((badge.find_child("Text", true, false) as Label).text,
+			"⚔ %d" % GameStats.beaten_count(here))
+	assert_not_null(card.find_child("KindMarker", true, false), "and the kind's mark")
+
+func test_goals_beaten_opens_the_record_as_pictures() -> void:
+	var modal = _open_map()
+	var here: StringName = GameState.current_game_id
+	var enemy: GoalEnemyData = Data.all_goal_enemies()[0]
+	# The record lives on disk with the profile, so it is put back as it was.
+	var saved: Dictionary = GameStats.enemy_log.duplicate(true)
+	GameStats.enemy_log[String(here)] = {String(enemy.id): {"beaten": 2, "note": ""}}
+	var card = modal.open_node_card(here, 0)
+	var text: String = _text_of(card)
+	var btn: Button = card.find_child("GoalsBeaten", true, false)
+	var view: Control = null
+	if btn != null:
+		btn.pressed.emit()
+		view = modal.find_child("GoalsBeatenView", true, false)
+	var tiles: Array = [] if view == null else view.find_children("*", "", true, false) \
+		.filter(func(n): return n.has_meta(&"goal_key"))
+	GameStats.enemy_log = saved
+	assert_not_null(btn, "a game with goals done has the button")
+	assert_false(text.contains("Enemies you have beaten here"), "and no longer lists them as text")
+	assert_not_null(view, "the button opens the record")
+	assert_true(tiles.any(func(t): return String(t.get_meta(&"goal_key")) == String(enemy.id)),
+		"with a picture for the enemy beaten there")
+	if view != null:
+		view.queue_free()
 
 func test_only_one_card_is_open_at_a_time() -> void:
 	var modal = _open_map()

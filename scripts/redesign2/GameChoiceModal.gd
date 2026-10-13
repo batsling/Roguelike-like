@@ -1461,7 +1461,7 @@ static func _key_route(rift_id: StringName, dest: StringName, amulet: StringName
 # --- the rung's card -------------------------------------------------------
 
 # The card width, and the gap it keeps from the panel's edge.
-const NODE_CARD_W := 300.0
+const NODE_CARD_W := RouteLadder.NODE_CARD_W
 
 # Open the card on one rung of the route. Public so a test can ask for exactly
 # what a click asks for.
@@ -1471,7 +1471,7 @@ func open_node_card(id: StringName, depth: int = 0) -> Control:
 		return null
 	var amulet: StringName = GameState.amulet_game_id
 
-	var facts: Array = [["On this route", "step %d of %d" % [depth, route_steps()]]]
+	var facts: Array = []
 	var left: int = RunGraph.route_length(id, amulet)
 	if left >= 0:
 		facts.append(["From here to the Amulet", "%d step%s" % [left, "" if left == 1 else "s"]])
@@ -1530,7 +1530,9 @@ func _node_role_text(id: StringName, depth: int) -> String:
 		return "The Amulet — the end of the run."
 	if GameState.visited_games.has(id):
 		return "You have already been here this run."
-	return "On the road to the Amulet, if you take this card."
+	# An ordinary rung needs no line: the route it was clicked on already says it
+	# is on the road.
+	return ""
 
 
 # Park the card over the LEFT column — the game and its enemy, which the player
@@ -1542,14 +1544,19 @@ func _place_node_card() -> void:
 		return
 	var view: Vector2 = get_viewport_rect().size
 	var panel: Vector2 = _panel_size()
+	# THE ROOM BELOW THE RUN'S HEADER BAR, not the whole window. The header is drawn
+	# over this layer, and a tall card centred on the window put its title — the
+	# game's name — under it.
+	var free: Rect2 = ModalScaffold.free_rect(self)
 	var want: float = 320.0
 	if _node_card_body != null and is_instance_valid(_node_card_body):
 		want = _node_card_body.get_combined_minimum_size().y + 34.0
-	var h: float = clampf(want, 240.0, maxf(240.0, view.y - 40.0))
+	var h: float = clampf(want, 240.0, maxf(240.0, free.size.y - 16.0))
 	_node_card.size = Vector2(NODE_CARD_W, h)
+	var top: float = free.position.y + 8.0
 	_node_card.position = Vector2(
 		clampf((view.x - panel.x) * 0.5 + 18.0, 8.0, maxf(8.0, view.x - NODE_CARD_W - 8.0)),
-		clampf((view.y - h) * 0.5, 8.0, maxf(8.0, view.y - h - 8.0)))
+		clampf(free.position.y + (free.size.y - h) * 0.5, top, maxf(top, free.end.y - h - 8.0)))
 
 # How many steps the ladder is showing. Public so a test can check the popup and
 # the card's badge are quoting the same route.

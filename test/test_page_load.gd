@@ -18,7 +18,7 @@ const ON_DEMAND := [
 	"AtlasView", "Collection", "HowToPlayScreen", "SettingsModal",
 	"TierListScreen", "RunHistoryScreen", "RunLogScreen", "RunOverScreen",
 	"EventModal2", "RewardScreen", "GraveyardPanel", "CompletedGoalsPanel",
-	"RunMapModal",
+	"RunMapModal", "GoalsBeatenView",
 ]
 
 # The page, and the pieces it builds on its first frame. A screen named from
