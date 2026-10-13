@@ -989,11 +989,15 @@ func test_the_tick_sits_clear_of_the_cover_art() -> void:
 	# It is still IN the cell, under the cover rather than beside the grid: the
 	# cover's plate and the tick's row are both children of the same cell box.
 	var cell_box: Node = row.get_parent()
+	# Searched for rather than walked: the plate sits inside the rank badge's
+	# holder (RankBadge.wrap), and inside the tier badge's wrapper too on a ranked
+	# game, so its depth varies.
 	var cover_found: bool = false
 	for child in cell_box.get_children():
-		for grandchild in (child as Node).get_children():
-			if grandchild is TextureRect:
-				cover_found = true
+		if child == row:
+			continue
+		if not (child as Node).find_children("*", "TextureRect", true, false).is_empty():
+			cover_found = true
 	assert_true(cover_found, "the cover is in the same cell, one row above the tick")
 
 func test_the_cover_sits_on_a_plate_that_fills_the_cell_evenly() -> void:
@@ -1007,9 +1011,11 @@ func test_the_cover_sits_on_a_plate_that_fills_the_cell_evenly() -> void:
 	for slot in col._cell_slots:
 		if not bool(slot.get("filled", false)):
 			continue
-		for child in (slot["box"] as Node).get_children():
-			if child is PanelContainer:
-				plates.append(child)
+		# The plate is the clipping PanelContainer under the cell, at whatever
+		# depth the badges' holders put it.
+		for p in (slot["box"] as Node).find_children("*", "PanelContainer", true, false):
+			if (p as PanelContainer).clip_contents:
+				plates.append(p)
 	assert_gt(plates.size(), 0, "the filled cells have cover plates")
 	var want := Vector2(Collection.GRID_COVER_W, roundi(Collection.GRID_COVER_W * 4.0 / 3.0))
 	for plate in plates:

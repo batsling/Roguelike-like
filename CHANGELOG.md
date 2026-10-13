@@ -11,6 +11,30 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Game ranks: every game levels up, and its rank unlocks its music**
+  (spec §20).
+  - *The rank.* Each game has a rank and an XP bar, held by the profile, with
+    no cap. A rank is 250 XP. A first win is worth 100 and every later win 50.
+    The first Amulet win adds 200 and the first perfected visit (won with no lost
+    run) adds 100. Each distinct goal beaten at a game pays once: an enemy by its
+    tier (20 / 40 / 70 / 120), doubled for a boss, ×1.5 for a `game beaten`
+    goal and ×1.25 for a counted one. Every other kind of goal pays 40. Goals
+    keep their XP through a loss or an escape.
+  - *XP is derived, never stored* (`GameRanks`), from what `GameStats` already
+    kept. So every old save opened at the rank its record earns. Perfects are the
+    one exception: they were never recorded before, so they count from now.
+  - *Roguelike Radio* earns one song per rank. That replaced the "first beat,
+    every 3rd beat, every 5 goals" rule. Songs already held stay held. Settings
+    → Stream → **Unlock all songs** plays everything while it is on, and turning
+    it off gives back exactly what the ranks drew.
+  - *Where it shows.* The rank is a number in a circle at the bottom middle of
+    the cover, with a thin bar under it (`RankBadge`), on the Collection, the run
+    map's card, the game-choice screen, the Atlas card, the Radio screen's
+    locked rows and the OBS overlay. On the Collection, the circle is flanked by
+    a silver star (beaten) or a gold one (perfected) on the left and a 🏆
+    (Amulet win) on the right. The end-of-game screen fills the bar from where
+    the game stood when it was picked (`RankFill`), won or lost.
+
 - **The run map's game card, the radio, the menu's art and the pack's arrows.**
   - *The game card* (`RouteLadder.node_card_body`, shared by the 🗺 map window
     and the choice popup's route) is 470px wide. Its facts stand to the left of

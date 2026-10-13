@@ -342,6 +342,14 @@ function drawNow(now, run) {
   /* A RIFT GAME: on the map through a rift rather than an influence
      (docs/rifts-design.md §9). Ringed in the rift's swirl, which costs no layout. */
   el('now-cover').classList.toggle('rift', !!now.rift);
+  /* THE GAME'S RANK (spec §20.5), over the cover's bottom middle. */
+  const rank = now.cover ? now.rank : null;
+  el('now-rank').hidden = !rank;
+  if (rank) {
+    el('now-rank-num').textContent = String(rank.rank);
+    el('now-rank-num').classList.toggle('ranked', rank.rank > 0);
+    el('now-rank-fill').style.width = Math.round(Math.max(0, Math.min(1, rank.fraction)) * 100) + '%';
+  }
   /* "Current game" is the resting label. "Standing on" is kept for the gap
      between games, because it is the one moment the two are different things —
      the run is parked on a node nobody is playing, and a label that still said

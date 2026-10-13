@@ -784,7 +784,8 @@ static func card_cover(id: StringName, game: GameData) -> Control:
 	beaten_pill.offset_left = CORNER_INSET
 	beaten_pill.offset_bottom = -CORNER_INSET
 	stack.add_child(beaten_pill)
-	return stack
+	# The game's rank, half below the cover's bottom middle (§20.5).
+	return RankBadge.wrap(stack, game.id if game != null else &"")
 
 const CORNER_INSET := 4.0
 

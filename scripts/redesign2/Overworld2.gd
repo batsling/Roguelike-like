@@ -1436,8 +1436,22 @@ func pick(index: int) -> void:
 #
 # `log_shields` is false for the detour alone, which is the drift noted above:
 # it grants the armour silently. Kept as it was rather than quietly fixed.
+# The XP `game` had when it was picked (GameLoop2.rank_start), or its XP now when
+# that was not recorded for it.
+func _rank_from(game: GameData) -> int:
+	if game == null:
+		return 0
+	var start: Dictionary = GameLoop2.rank_start
+	if String(start.get("game", "")) == String(game.id):
+		return int(start.get("xp", 0))
+	return GameRanks.xp(game.id)
+
 func _begin_game(game: GameData, enemy: GoalEnemyData, tier: int,
 		log_shields: bool = true) -> void:
+	# Where the game's rank bar stood as it was picked (§20.4), for the end-of-game
+	# screen to fill from.
+	GameLoop2.rank_start = {"game": String(game.id), "xp": GameRanks.xp(game.id)} \
+		if game != null else {}
 	# THE TIER CAN STEP RIGHT HERE NOW (§19.6). The counter it reads is spawn
 	# events, and an arrival that lands bodies IS one — so committing a game can
 	# cross a band with nothing reported yet, which `games_played` never could.
@@ -2361,6 +2375,9 @@ func report(beaten: bool, fulfilled: Variant = null, escaped: bool = false,
 	var fulfilled_instances: Array = fulfilled if fulfilled is Array \
 		else _honoured_fulfilments(beaten and not escaped)
 	var was_amulet: bool = bool(_chosen.get("amulet", false))
+	# A PERFECTED visit (game ranks, §20.1): won with no lost run logged on THIS
+	# visit. Read before beat_game, which closes the tracker out.
+	var perfect_visit: bool = GameLoop2.attempts() == 0
 	# Had the run been to this game before? Read BEFORE this visit is recorded, so
 	# it is the SECOND trip to a game that pays the Dash (REPEAT_BEAT_DASH).
 	#
@@ -2551,6 +2568,8 @@ func report(beaten: bool, fulfilled: Variant = null, escaped: bool = false,
 			GameStats.record_amulet_win(played_game.id)
 		else:
 			GameStats.record_beaten(played_game.id)
+		if perfect_visit:
+			GameStats.record_perfect(played_game.id)
 		# …and on the character's page: beaten playing as THIS character.
 		GameStats.record_character_game(GameState.character_id, played_game.id)
 	elif played_game != null and not escaped and was_amulet:
@@ -2558,6 +2577,8 @@ func report(beaten: bool, fulfilled: Variant = null, escaped: bool = false,
 		# (see the was_amulet branch below), so it is still the game the win goes
 		# on the record against.
 		GameStats.record_amulet_win(played_game.id)
+		if perfect_visit:
+			GameStats.record_perfect(played_game.id)
 		GameStats.record_character_game(GameState.character_id, played_game.id)
 	# Level up (§3.1) — a fresh chance each game; skipped if the game just killed
 	# the player.
@@ -2661,6 +2682,12 @@ func report(beaten: bool, fulfilled: Variant = null, escaped: bool = false,
 		# a report with no level in it.
 		"level_up": level_up_paid,
 		"mask_level_ups": mask_levels_paid,
+		# THE GAME'S RANK BAR, from where it stood when the game was picked to
+		# where everything this game earned has put it (§20.4) — goals ticked
+		# mid-game included, won or lost. Both ends equal when the start was not
+		# recorded (a save from before ranks), so the bar shows without filling.
+		"rank_from": _rank_from(played_game),
+		"rank_to": GameRanks.xp(played_game.id) if played_game != null else 0,
 	}
 	# The offering is BUILT here and shown later (_refresh_stage): a Scramble or a
 	# Dash taken off the haul screen still has a table to act on, and the cards are

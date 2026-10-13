@@ -1970,6 +1970,10 @@ func test_the_clicked_card_never_crops_its_cover() -> void:
 	view.select(target)
 	var art: TextureRect = null
 	for c in view._card_box.get_children():
+		# The cover rides inside the rank badge's holder (RankBadge.wrap), which
+		# makes room under it for the badge's overhang.
+		if c.name == "RankHolder" and c.get_child(0) is TextureRect:
+			c = c.get_child(0)
 		if c is TextureRect:
 			art = c
 			break

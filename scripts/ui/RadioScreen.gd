@@ -532,7 +532,7 @@ func _list_state() -> String:
 	# Per game, exactly what its row says: the counts left and the goals done.
 	for g in games:
 		var left: Dictionary = Radio.to_next(g) if g != &"" else {}
-		parts.append("%s:%s:%s:%s" % [g, left.get("beats", 0), left.get("goals", 0),
+		parts.append("%s:%s:%s:%s" % [g, left.get("rank", 0), left.get("needed", 0),
 			",".join(Radio.goals_done(games[g]))])
 	parts.append("station=" + Radio.station)
 	parts.append("gen=%d" % Radio.library_generation)
@@ -556,9 +556,7 @@ func _restyle_current() -> void:
 func _game_key(game: StringName) -> Array:
 	if game == &"":
 		return [1 << 30, ""]
-	var left: Dictionary = Radio.to_next(game)
-	return [mini(int(left["beats"]) * Radio.GOALS_PER_SONG,
-		int(left["goals"]) * Radio.BEATS_PER_SONG), _game_name(game)]
+	return [int(Radio.to_next(game)["needed"]), _game_name(game)]
 
 func _game_name(game: StringName) -> String:
 	var g: GameData = Data.get_game(game)
@@ -572,13 +570,16 @@ func _game_row(game: StringName, songs: Array) -> Control:
 	var h := HBoxContainer.new()
 	h.add_theme_constant_override("separation", UITheme.GAP)
 	row.add_child(h)
+	# The art dimmed, with the game's rank hanging half below it (§20.5) — what
+	# its next song waits on. Wrapped rather than added to the art, because the
+	# art's dimming would carry down to a child.
 	var art := TextureRect.new()
 	art.custom_minimum_size = Vector2(ROW_ART, ROW_ART)
 	art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 	art.texture = _art(songs[0])
 	art.modulate = Color(1, 1, 1, 0.35)
-	h.add_child(art)
+	h.add_child(RankBadge.wrap(art, game) if game != &"" else art)
 	var text := VBoxContainer.new()
 	text.add_theme_constant_override("separation", UITheme.GAP_NONE)
 	text.size_flags_horizontal = Control.SIZE_EXPAND_FILL

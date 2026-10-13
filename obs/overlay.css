@@ -537,6 +537,33 @@ html, body {
   flex: 0 0 auto;
 }
 .now-cover:not([src]) { visibility: hidden; }
+/* THE RANK BADGE (spec §20.5): the number in a circle centred ON the cover's
+ * bottom edge, half on the picture and half below it, and a thin XP bar under
+ * that. Absolutely positioned, so it costs the row no layout and the page's
+ * measured heights do not move. */
+.now-cover-wrap { position: relative; flex: 0 0 auto; display: flex; margin-bottom: 4px; }
+.rank-badge {
+  position: absolute;
+  left: -6px; right: -6px; top: calc(100% - 8px);
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  pointer-events: none;
+}
+.rank-badge[hidden] { display: none; }
+.rank-num {
+  min-width: 16px; height: 16px; box-sizing: border-box;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: rgba(20, 18, 15, 0.88);
+  color: var(--text);
+  font-size: 9px; font-weight: 700; line-height: 14px; text-align: center;
+}
+.rank-num.ranked { border-color: var(--gold); }
+.rank-bar {
+  width: 62%; height: 2px;
+  background: rgba(0, 0, 0, 0.6);
+  overflow: hidden;
+}
+.rank-fill { display: block; height: 100%; width: 0; background: var(--gold); }
 /* THE RIFT'S SWIRL, in CSS: a teal ring with a violet glow that turns slowly
  * round it. Outline and box-shadow only, so it costs no layout. */
 .now-cover.rift {
