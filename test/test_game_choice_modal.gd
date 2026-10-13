@@ -637,7 +637,8 @@ func test_a_rung_opens_the_game_it_names() -> void:
 	var game: GameData = Data.get_game(slot)
 	assert_true(text.contains(game.display_name), "the card names the game")
 	assert_true(text.contains("Connections"), "and says how many ways there are on")
-	assert_true(text.contains("⚔ Beaten"), "and what you have done there")
+	assert_not_null(modal._node_card.find_child("BeatenBadge", true, false),
+		"and, on its cover, how often you have beaten it")
 
 func test_a_previewed_rung_offers_nothing_only_a_map_could_do() -> void:
 	var modal = _ui.open_choice(0)
@@ -646,6 +647,8 @@ func test_a_previewed_rung_offers_nothing_only_a_map_could_do() -> void:
 	assert_false(text.contains("star chart"),
 		"there is no chart on this screen to find it on")
 	assert_true(text.contains("Close"), "the card can be put away")
+	assert_false(text.contains("On the road to the Amulet"),
+		"and it no longer says a rung is on the road it was clicked on")
 	modal.close_node_card()
 	assert_null(modal._node_card, "and closing it closes only it")
 

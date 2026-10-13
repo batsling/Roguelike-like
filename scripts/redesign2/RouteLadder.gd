@@ -641,12 +641,21 @@ static func node_card_body(cfg: Dictionary) -> VBoxContainer:
 		role.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		box.add_child(role)
 
-	if game != null and game.cover_image != null:
-		var art := UITheme.card_art(game.cover_image, CARD_ART_W, 190.0)
-		UITheme.attach_tier_badge(art, game.id)
-		art.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-		box.add_child(art)
-
+	# THE FACTS BESIDE THE PICTURE, not under it. The card was one tall column — a
+	# 248px cover and then every fact stacked beneath it — and on a short window the
+	# bottom of it was under a scrollbar. The cover is narrower now and the facts
+	# stand to its left, and the two that were words about the picture's game (the
+	# node's kind, how often you have beaten it) are ON the picture: the kind's mark
+	# in its top-right corner, ⚔ and the count in its bottom-left.
+	var row := HBoxContainer.new()
+	row.name = "FactsAndCover"
+	row.add_theme_constant_override("separation", UITheme.GAP_LOOSE)
+	box.add_child(row)
+	var facts := VBoxContainer.new()
+	facts.name = "Facts"
+	facts.add_theme_constant_override("separation", UITheme.GAP_TIGHT)
+	facts.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(facts)
 	if game != null:
 		var meta: Array = []
 		if game.year > 0:
@@ -656,31 +665,16 @@ static func node_card_body(cfg: Dictionary) -> VBoxContainer:
 		chip.text = "  •  ".join(PackedStringArray(meta)).to_upper()
 		chip.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 		chip.add_theme_color_override("font_color", RunGraph.type_color(game.type))
-		box.add_child(chip)
-
-	var facts := VBoxContainer.new()
-	facts.add_theme_constant_override("separation", UITheme.GAP_HAIR)
-	box.add_child(facts)
-	for row in cfg.get("facts", []):
-		if row is Array and (row as Array).size() >= 2:
-			facts.add_child(card_fact(String(row[0]), String(row[1])))
-	# The kind in words, beside the box's marker (§19.8) — the card is what a player
-	# opens to find out what a node MEANS, so it spells out what the mark abbreviates.
-	var kind_row := card_fact("Kind", "%s  %s" % [
-		RunGraph.kind_mark(GameState.node_kind(id)), RunGraph.kind_label(GameState.node_kind(id))])
-	kind_row.tooltip_text = RunGraph.kind_tip(GameState.node_kind(id))
-	(kind_row.get_child(1) as Label).add_theme_color_override("font_color",
-		UITheme.kind_color(GameState.node_kind(id)))
-	facts.add_child(kind_row)
+		facts.add_child(chip)
+	for f in cfg.get("facts", []):
+		if f is Array and (f as Array).size() >= 2:
+			facts.add_child(card_fact(String(f[0]), String(f[1])))
 	# The same number the box's ⛓ badge carries and the Atlas's card calls
 	# "Connections", spelled out in the same words on all three.
 	var links: int = RunGraph.open_degree(id)
 	if links > 0:
 		facts.add_child(card_fact("Connections", "%d game%s" % [
 			links, "" if links == 1 else "s"]))
-	var beaten_times: int = GameStats.beaten_count(id)
-	facts.add_child(card_fact("⚔ Beaten", ("%d time%s" % [beaten_times,
-		"" if beaten_times == 1 else "s"]) if beaten_times > 0 else "never"))
 	var amulet_runs: int = GameStats.amulet_wins(id)
 	if amulet_runs > 0:
 		facts.add_child(card_fact("👑 Amulet won", "%d run%s" % [amulet_runs,
@@ -691,26 +685,29 @@ static func node_card_body(cfg: Dictionary) -> VBoxContainer:
 			int(TierList.get_rating(id).get("score", 0)),
 			("  (%s tier)" % TierList.tier_names[tier_i]) if tier_i >= 0
 				and tier_i < TierList.tier_names.size() else ""]))
+	row.add_child(card_cover(id, game))
+
+	# EVERY GOAL DONE HERE, behind one button. The card used to list the enemies
+	# beaten here, a row each, which on a game played often was most of the card;
+	# the button opens them as the Collection's game page draws them — pictures,
+	# grouped by kind, every kind of goal (GoalsBeatenView). Reached by path, so
+	# the run's page does not compile it until it is pressed (test_page_load).
+	var goals: int = GameStats.distinct_goals_count(id)
+	if game != null and goals > 0:
+		var btn := card_button("🏆  Goals Beaten (%d)" % goals, func():
+			var host: Control = box
+			while host.get_parent() is Control:
+				host = host.get_parent()
+			load(GOALS_VIEW_SCRIPT).open(host, game))
+		btn.name = "GoalsBeaten"
+		btn.tooltip_text = "Every goal you have completed at %s, by kind." % game.display_name
+		box.add_child(btn)
 
 	# Its tags, editable right after playing it — the same editor as the
 	# Collection's game page, so an edit here is already true there.
 	if game != null:
 		box.add_child(card_heading("Tags"))
 		box.add_child(TagEditor.make(game))
-
-	# The record you have IN this game — the same fact the box's ⚔ badge carries,
-	# spelled out.
-	var fought: Array = GameStats.enemies_for(id)
-	if not fought.is_empty():
-		box.add_child(card_heading("Enemies you have beaten here (%d)" % fought.size()))
-		for i in range(mini(fought.size(), 6)):
-			var e: Dictionary = fought[i]
-			var ed: GoalEnemyData = Data.get_goal_enemy_any(StringName(e["id"]))
-			box.add_child(card_fact(
-				ed.display_name if ed != null else String(e["id"]),
-				"x%d" % int(e["beaten"])))
-		if fought.size() > 6:
-			box.add_child(card_note("…and %d more." % (fought.size() - 6)))
 
 	box.add_child(HSeparator.new())
 	for action in cfg.get("actions", []):
@@ -731,9 +728,84 @@ static func node_card_body(cfg: Dictionary) -> VBoxContainer:
 		box.add_child(card_button("Close", on_close))
 	return box
 
-# The cover's width inside a card. The card itself is 300 wide (RunMapModal's
-# CARD_W) less its margins and the scrollbar's lane.
-const CARD_ART_W := 248.0
+const GOALS_VIEW_SCRIPT := "res://scripts/ui/GoalsBeatenView.gd"
+
+# The cover's width inside a card, beside the facts column.
+const CARD_ART_W := 150.0
+const CARD_ART_MAX_H := 200.0
+# The card's own width (RunMapModal's and GameChoiceModal's frame) — wide enough
+# for the facts column beside the cover.
+const NODE_CARD_W := 470.0
+
+# THE COVER, with what it can say for itself drawn on it: the node's KIND as its
+# mark in the top-right corner (the same mark the route's box wears, bigger), and
+# ⚔ and the times you have beaten the game in the bottom-left.
+static func card_cover(id: StringName, game: GameData) -> Control:
+	var tex: Texture2D = game.cover_image if game != null else null
+	var size: Vector2 = UITheme.card_art_size(tex, CARD_ART_W, CARD_ART_MAX_H) \
+		if tex != null else Vector2(CARD_ART_W, CARD_ART_W * 4.0 / 3.0)
+	var stack := Control.new()
+	stack.name = "Cover"
+	stack.custom_minimum_size = size
+	stack.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if tex != null:
+		var art := UITheme.card_art(tex, CARD_ART_W, CARD_ART_MAX_H)
+		art.set_anchors_preset(Control.PRESET_FULL_RECT)
+		art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		stack.add_child(art)
+	else:
+		var blank := Panel.new()
+		blank.add_theme_stylebox_override("panel", UITheme.flat(COL_PATH_BG, 6, 0, 1, UITheme.BORDER))
+		blank.set_anchors_preset(Control.PRESET_FULL_RECT)
+		blank.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		stack.add_child(blank)
+
+	var kind: int = GameState.node_kind(id)
+	var kind_pill := _corner_pill(RunGraph.kind_mark(kind), UITheme.kind_color(kind),
+		UITheme.FONT_LEAD)
+	kind_pill.name = "KindMarker"
+	kind_pill.tooltip_text = RunGraph.kind_tip(kind)
+	kind_pill.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	kind_pill.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	kind_pill.offset_right = -CORNER_INSET
+	kind_pill.offset_top = CORNER_INSET
+	stack.add_child(kind_pill)
+
+	var beaten: int = GameStats.beaten_count(id)
+	var beaten_pill := _corner_pill("⚔ %d" % beaten,
+		UITheme.GOLD if beaten > 0 else UITheme.TEXT_DIM, UITheme.FONT_LEAD)
+	beaten_pill.name = "BeatenBadge"
+	beaten_pill.tooltip_text = ("You have beaten %s %d time%s." % [
+		game.display_name if game != null else String(id), beaten, "" if beaten == 1 else "s"]) \
+		if beaten > 0 else "You have never beaten this game."
+	beaten_pill.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
+	beaten_pill.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	beaten_pill.offset_left = CORNER_INSET
+	beaten_pill.offset_bottom = -CORNER_INSET
+	stack.add_child(beaten_pill)
+	return stack
+
+const CORNER_INSET := 4.0
+
+# A dark pill with one short coloured line in it, for a corner of the cover.
+static func _corner_pill(text: String, color: Color, font_size: int) -> PanelContainer:
+	var pill := PanelContainer.new()
+	var sb := UITheme.flat(Color(0.05, 0.05, 0.06, 0.9), 6, 0, 1, color)
+	sb.content_margin_left = UITheme.GAP_SNUG
+	sb.content_margin_right = UITheme.GAP_SNUG
+	sb.content_margin_top = UITheme.GAP_HAIR
+	sb.content_margin_bottom = UITheme.GAP_HAIR
+	pill.add_theme_stylebox_override("panel", sb)
+	pill.mouse_filter = Control.MOUSE_FILTER_STOP
+	var l := Label.new()
+	l.name = "Text"
+	l.text = text
+	l.add_theme_font_size_override("font_size", font_size)
+	l.add_theme_color_override("font_color", color)
+	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	pill.add_child(l)
+	return pill
 
 static func card_fact(key: String, value: String) -> Control:
 	var row := HBoxContainer.new()

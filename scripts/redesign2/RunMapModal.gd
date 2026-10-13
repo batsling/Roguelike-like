@@ -502,11 +502,12 @@ func node_name(id: StringName) -> String:
 # window and follows it when the window is dragged.
 # ---------------------------------------------------------------------------
 
-const CARD_W := 300.0
+# RouteLadder owns the width: facts beside a cover need it on every map.
+const CARD_W := RouteLadder.NODE_CARD_W
 const CARD_GAP := 12.0
 
-# Open the card on one box. `depth` is which column it is in, which is what
-# "step 2 of 9" on the card is read from.
+# Open the card on one box. `depth` is which column it is in, which is what its
+# role line ("You are here.") is read from.
 # Public so a test can ask for exactly what a click asks for.
 func open_node_card(id: StringName, depth: int = 0) -> Control:
 	close_node_card()
@@ -534,7 +535,7 @@ func open_node_card(id: StringName, depth: int = 0) -> Control:
 	# draws the same card off the same builder, and two views of one game must not
 	# write their own copy of it. What belongs to THIS window is the route it is a
 	# window on (which rung, how far to go) and the two things only a map can do.
-	var facts: Array = [["On this route", "step %d of %d" % [depth, shortest_distance()]]]
+	var facts: Array = []
 	var left: int = RunGraph.route_length(id, _amulet)
 	if left >= 0:
 		facts.append(["From here to the Amulet", "%d step%s" % [left, "" if left == 1 else "s"]])
@@ -581,7 +582,9 @@ func _node_role_text(id: StringName, depth: int) -> String:
 		return "Offered right now — you can take this one next."
 	if not _preview and GameState.visited_games.has(id):
 		return "You have already been here this run."
-	return "On the road to the Amulet."
+	# An ordinary rung needs no line: the map it was clicked on already says it is
+	# on the road.
+	return ""
 
 # Park the card beside the window: to its right if the viewport has room there,
 # otherwise to its left, and always fully on screen.

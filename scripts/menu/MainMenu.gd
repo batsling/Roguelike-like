@@ -193,28 +193,17 @@ func _build_radio_corner() -> void:
 	if _modal_layer != null and is_instance_valid(_modal_layer) \
 			and _modal_layer.get_parent() == self:
 		move_child(corner, _modal_layer.get_index())
-	var btn := Button.new()
-	btn.name = "RadioBtn"
-	btn.text = "📻  Radio"
-	btn.custom_minimum_size = Vector2(188, 45)
-	btn.add_theme_font_size_override("font_size", MENU_FONT)
-	btn.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	btn.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-	btn.pressed.connect(func() -> void: RadioScreen.open(_modal_layer))
-	corner.add_child(btn)
-	_radio_btn = btn
-	# A method rather than a lambda, so it is disconnected when the menu goes.
-	Radio.changed.connect(_refresh_radio_tip)
-	_refresh_radio_tip()
+	# The 📻 alone — and beside it, while a song is loaded, its game's cover and
+	# back / pause / skip (RadioMiniPlayer).
+	var player := RadioMiniPlayer.make(func() -> void: RadioScreen.open(_modal_layer),
+		45.0, MENU_FONT)
+	player.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	player.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	player.alignment = BoxContainer.ALIGNMENT_END
+	corner.add_child(player)
+	_radio_player = player
 
-var _radio_btn: Button = null
-
-func _refresh_radio_tip() -> void:
-	if _radio_btn == null or not is_instance_valid(_radio_btn):
-		return
-	var song: SongData = Radio.current_song()
-	_radio_btn.tooltip_text = ("Roguelike Radio — now playing %s" % song.title) \
-		if song != null else "Roguelike Radio — the songs you have unlocked"
+var _radio_player: RadioMiniPlayer = null
 
 func _refresh_profile_row() -> void:
 	if _profile_lbl != null:

@@ -86,11 +86,21 @@ copies the piece below it, then to its left, then above it
 (`LootPassives.facing`, `LootPassives.turned`). Its plate points the way it faces
 ("Copies v") and its hover says where.
 
-**A piece that acts on a neighbour wears an arrow** on the edge of its cell,
-pointing at that neighbour and poking into the gutter between them; it turns with
-the piece, in hand too (`LootGrid.DirArrow`). Every surface asks one function,
-`LootPassives.direction(entry)`, so **the next directional piece gets its arrow by
-answering there** — add its field to that function and nothing in the grid changes. A floor piece taken in turned is still the
+**A piece that acts on a neighbour wears an arrow** on the edge of its cell for
+each direction it acts in, pointing at that neighbour and poking into the gutter
+between them; they turn with the piece, in hand too, big pieces included
+(`LootGrid.DirArrow`). Every surface asks one function,
+`LootPassives.directions(entry)`, which reads a copier's `copy_neighbour` and the
+`dirs` of a `weapon_stun` or `weapon_retrigger` aura (Whetstone up and down,
+Duplicator and the Hero swords all four). It used to read only `copy_neighbour`,
+so Blueprint was the one piece with an arrow. **The next directional piece gets its
+arrows by answering there**: add its field to that function and nothing in the
+grid changes.
+
+**A piece is picked up on the press** (`LootSlot._gui_input`, `FloorLoot._gui_input`
+call `force_drag`), not once the mouse has moved past Godot's drag threshold, so
+holding the button is holding the piece and R or a right-click turns it straight
+away. A floor piece taken in turned is still the
 same piece (`DropQueue._same_piece` ignores `rot`).
 
 ## 3. Hooks, gates and verbs

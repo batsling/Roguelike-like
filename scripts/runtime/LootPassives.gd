@@ -48,12 +48,36 @@ static func turned(dir: String, rot: int) -> String:
 		return dir
 	return String(TURNS[posmod(at + rot, 4)])
 
-# THE DIRECTION A PIECE ACTS IN, if it acts on a neighbour at all — the one
-# question every surface asks to draw a piece's ARROW (LootGrid.DirArrow), so a
-# new piece that reads a neighbour gets its arrow by answering here. Blueprint's
-# copy is the only such rule today; add the next one's field to this function.
+# THE DIRECTION A PIECE ACTS IN, if it acts on a neighbour at all — the first of
+# `directions`, for the callers that only ever meant a copier's one arrow.
 static func direction(entry) -> String:
-	return facing(entry, def_for(entry))
+	var all: Array = directions(entry)
+	return String(all[0]) if not all.is_empty() else ""
+
+# THE DIRECTIONS A PIECE ACTS IN, turned the way it is carried — the one question
+# every surface asks to draw a piece's ARROWS (LootGrid.DirArrow), so a new piece
+# that reads a neighbour gets its arrows by answering here. Two rules today: a
+# copier's `copy_neighbour` (Blueprint), and the `dirs` of a weapon aura
+# (`weapon_stun`: Whetstone, the Hero swords; `weapon_retrigger`: Duplicator).
+# It only ever said Blueprint's, so every other directional piece went unmarked.
+static func directions(entry) -> Array:
+	var def: Resource = def_for(entry)
+	var out: Array = []
+	if def == null:
+		return out
+	var copy: String = facing(entry, def)
+	if copy != "":
+		out.append(copy)
+	var rot: int = int(entry.get("rot", 0)) if entry is Dictionary else 0
+	for aura_key in ["weapon_stun", "weapon_retrigger"]:
+		var aura = def.get(aura_key)
+		if not (aura is Dictionary):
+			continue
+		for d in (aura as Dictionary).get("dirs", []):
+			var dir: String = turned(String(d), rot)
+			if DIRECTIONS.has(dir) and not out.has(dir):
+				out.append(dir)
+	return out
 
 # The direction the piece in `entry` copies, turned the way it is carried, or ""
 # for a piece that copies nothing.

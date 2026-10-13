@@ -76,9 +76,28 @@ func _get_drag_data(_at: Vector2) -> Variant:
 	# Any piece can be turned in hand on its way in (docs/loot-passives.md §2).
 	data["rot"] = 0 if bag else int(entry.get("rot", 0))
 	if get_viewport() != null and get_viewport().gui_is_dragging():
-		# FACE DOWN, because it is still on the floor until it lands (cards-design
-		# §3). A preview that turned the card over would make drag-and-cancel a free
-		# look at every card on the board.
-		set_drag_preview(LootGrid.loose_bag_preview(data) if bag
-			else LootGrid.preview_cell(entry, false, data))
+		set_drag_preview(_preview_for(data))
 	return data
+
+# FACE DOWN, because it is still on the floor until it lands (cards-design §3). A
+# preview that turned the card over would make drag-and-cancel a free look at
+# every card on the board.
+func _preview_for(data: Dictionary) -> Control:
+	return LootGrid.loose_bag_preview(data) if GameState.is_bag_entry(entry) \
+		else LootGrid.preview_cell(entry, false, data)
+
+# PICKED UP ON THE PRESS, as a pack cell is (LootSlot._gui_input): holding the
+# button is holding the piece, so it can be turned before it has moved.
+func _gui_input(event: InputEvent) -> void:
+	if not (event is InputEventMouseButton):
+		return
+	var mb := event as InputEventMouseButton
+	if mb.button_index != MOUSE_BUTTON_LEFT or not mb.pressed or mb.double_click:
+		return
+	if get_viewport() == null or get_viewport().gui_is_dragging():
+		return
+	var data = _get_drag_data(mb.position)
+	if data == null:
+		return
+	accept_event()
+	force_drag(data, _preview_for(data))
