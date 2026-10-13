@@ -1436,8 +1436,22 @@ func pick(index: int) -> void:
 #
 # `log_shields` is false for the detour alone, which is the drift noted above:
 # it grants the armour silently. Kept as it was rather than quietly fixed.
+# The XP `game` had when it was picked (GameLoop2.rank_start), or its XP now when
+# that was not recorded for it.
+func _rank_from(game: GameData) -> int:
+	if game == null:
+		return 0
+	var start: Dictionary = GameLoop2.rank_start
+	if String(start.get("game", "")) == String(game.id):
+		return int(start.get("xp", 0))
+	return GameRanks.xp(game.id)
+
 func _begin_game(game: GameData, enemy: GoalEnemyData, tier: int,
 		log_shields: bool = true) -> void:
+	# Where the game's rank bar stood as it was picked (§20.4), for the end-of-game
+	# screen to fill from.
+	GameLoop2.rank_start = {"game": String(game.id), "xp": GameRanks.xp(game.id)} \
+		if game != null else {}
 	# THE TIER CAN STEP RIGHT HERE NOW (§19.6). The counter it reads is spawn
 	# events, and an arrival that lands bodies IS one — so committing a game can
 	# cross a band with nothing reported yet, which `games_played` never could.
@@ -2668,6 +2682,12 @@ func report(beaten: bool, fulfilled: Variant = null, escaped: bool = false,
 		# a report with no level in it.
 		"level_up": level_up_paid,
 		"mask_level_ups": mask_levels_paid,
+		# THE GAME'S RANK BAR, from where it stood when the game was picked to
+		# where everything this game earned has put it (§20.4) — goals ticked
+		# mid-game included, won or lost. Both ends equal when the start was not
+		# recorded (a save from before ranks), so the bar shows without filling.
+		"rank_from": _rank_from(played_game),
+		"rank_to": GameRanks.xp(played_game.id) if played_game != null else 0,
 	}
 	# The offering is BUILT here and shown later (_refresh_stage): a Scramble or a
 	# Dash taken off the haul screen still has a table to act on, and the cards are

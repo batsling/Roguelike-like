@@ -502,6 +502,10 @@ func _header() -> Control:
 	# a header it reads as decoration on a screen whose whole job is the haul below
 	# it. It now sits in the FOOTER, immediately left of the button everyone
 	# presses to leave (see `_footer`), where the eye already goes.
+	# THE GAME'S RANK GOING UP (§20.4), beside the name: the bar fills from where
+	# it stood when the game was picked. A snapshot from before ranks has no ends.
+	if g != null and _snap.has("rank_to"):
+		row.add_child(RankFill.make(int(_snap.get("rank_from", 0)), int(_snap["rank_to"])))
 	var tail := Control.new()
 	tail.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(tail)

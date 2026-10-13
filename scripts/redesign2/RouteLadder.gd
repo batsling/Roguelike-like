@@ -754,6 +754,8 @@ static func card_cover(id: StringName, game: GameData) -> Control:
 		art.set_anchors_preset(Control.PRESET_FULL_RECT)
 		art.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		stack.add_child(art)
+		# The game's rank, bottom middle (§20.5).
+		RankBadge.attach(art, game.id)
 	else:
 		var blank := Panel.new()
 		blank.add_theme_stylebox_override("panel", UITheme.flat(COL_PATH_BG, 6, 0, 1, UITheme.BORDER))

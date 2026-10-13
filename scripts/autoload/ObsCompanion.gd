@@ -492,7 +492,16 @@ func _now_playing() -> Dictionary:
 		# A RIFT GAME (docs/rifts-design.md §9): on the map through a rift, not an
 		# influence. The page rings the cover in the rift's swirl.
 		"rift": RunGraph.is_rift_game(GameState.current_game_id),
+		# THE GAME'S RANK (docs/games-first-redesign.md §20.5): the number in a
+		# circle on the cover and the thin bar under it. Null with no game.
+		"rank": _rank_of(game),
 	}
+
+func _rank_of(game: GameData) -> Variant:
+	if game == null:
+		return null
+	var p: Dictionary = GameRanks.progress(game.id)
+	return {"rank": int(p["rank"]), "fraction": snappedf(float(p["fraction"]), 0.001)}
 
 # THE CHECKLIST, which is the thing the overlay exists to show. Every row the
 # report panel would draw, in the order it draws them, each with whether it is

@@ -11357,3 +11357,42 @@ func test_a_group_moves_on_from_a_body_that_survived_its_tick() -> void:
 			survivor_open = true
 	assert_true(open_other, "the other body can still be ticked")
 	assert_false(survivor_open, "the survivor cannot be ticked a second time")
+
+
+# ==========================================================================
+# Game ranks (docs/games-first-redesign.md §20)
+# ==========================================================================
+
+func test_a_game_won_without_a_lost_run_is_perfected() -> void:
+	var game: GameData = _pick_as(RunGraph.NodeKind.ENEMIES)
+	var before: int = GameStats.perfect_count(game.id)
+	_report_beat(_ui)
+	assert_eq(GameStats.perfect_count(game.id), before + 1,
+		"no lost run on this visit, and won: perfected")
+
+func test_a_lost_run_on_the_visit_costs_the_perfect() -> void:
+	var game: GameData = _pick_as(RunGraph.NodeKind.ENEMIES)
+	var before: int = GameStats.perfect_count(game.id)
+	_lose_runs(1)
+	if GameLoop2.run_over:
+		pending("the lost run's turn ended the run")
+		return
+	_report_beat(_ui)
+	assert_eq(GameStats.perfect_count(game.id), before, "won, but not perfectly")
+
+func test_the_haul_screen_fills_the_rank_from_where_the_game_was_picked() -> void:
+	var game: GameData = _pick_as(RunGraph.NodeKind.ENEMIES)
+	var start: int = GameRanks.xp(game.id)
+	assert_eq(int(GameLoop2.rank_start.get("xp", -1)), start, "snapshotted on the pick")
+	_report_beat(_ui)
+	_ui._end_resolve()
+	if GameLoop2.run_over or _ui._post_screen == null:
+		pending("the report ended the run before the haul screen")
+		return
+	var fill: RankFill = _ui._post_screen.find_child("RankFill", true, false)
+	assert_not_null(fill, "the haul screen shows the rank")
+	if fill == null:
+		return
+	assert_eq(fill.from_xp, start)
+	assert_eq(fill.to_xp, GameRanks.xp(game.id), "to everything this game earned")
+	assert_true(fill.gained() >= GameRanks.XP_REPEAT_WIN, "a win is at least 50")

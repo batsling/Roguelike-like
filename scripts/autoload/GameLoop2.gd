@@ -812,6 +812,13 @@ var last_attempt_turn: Dictionary = {}
 # discount and starts being the point.
 var hurt_this_game: bool = false
 
+# THE GAME'S XP WHEN IT WAS PICKED (game ranks, docs/games-first-redesign.md
+# §20.4): {"game": id, "xp": int}. The end-of-game screen fills the rank bar from
+# here to where the game's XP ends up, so a goal ticked mid-game — whose XP landed
+# the moment it was ticked — still shows as this game's. Saved with the run, so a
+# reload mid-game fills from the right place.
+var rank_start: Dictionary = {}
+
 # WHAT THE LAST SWING HIT, for the board to show (§12): {label, strikes:
 # [{cells, instances}]}, one strike per entry in the order they landed — a
 # Lightning Ring's random strikes are numbered on the board by it. Set by a weapon
@@ -892,6 +899,7 @@ func reset() -> void:
 	_clear_game_record()
 	last_attempt_turn = {}
 	hurt_this_game = false
+	rank_start = {}
 	lost_run_spawn_ladder = LOST_RUN_SPAWN_CHANCES.duplicate()
 	bashed.clear()
 	transmuted.clear()
@@ -1019,6 +1027,7 @@ func serialize() -> Dictionary:
 		"attempt_costs": attempt_costs.duplicate(),
 		"attempt_payouts": _attempt_payouts.duplicate(),
 		"hurt_this_game": hurt_this_game,
+		"rank_start": rank_start.duplicate(),
 		"lost_run_spawn_step": lost_run_spawn_step,
 		# What the game in play has already been answered for (§2.1). Saved with
 		# the tracker and for the same reason: a run reloaded mid-game must not
@@ -1217,6 +1226,8 @@ func restore(data: Dictionary) -> void:
 	# again the first time a swing gets through, rather than being open on a run
 	# that never earned it.
 	hurt_this_game = bool(data.get("hurt_this_game", false))
+	var rs: Variant = data.get("rank_start", {})
+	rank_start = (rs as Dictionary).duplicate() if rs is Dictionary else {}
 	lost_run_spawn_step = int(data.get("lost_run_spawn_step", 0))
 	# What the game in play was already answered for (§2.1). Absent from an older
 	# save, which loads as "nothing has been ticked yet" — the same safe direction

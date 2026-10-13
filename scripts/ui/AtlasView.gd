@@ -1642,6 +1642,7 @@ func _refresh_card() -> void:
 	if game != null and game.cover_image != null:
 		var cover := card_art(game.cover_image, CARD_ART_WIDTH)
 		UITheme.attach_tier_badge(cover, game.id)
+		RankBadge.attach(cover, game.id)
 		_card_box.add_child(cover)
 
 	if game != null:

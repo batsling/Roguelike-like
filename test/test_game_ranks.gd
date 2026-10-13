@@ -117,3 +117,63 @@ func test_progress_reads_the_bar() -> void:
 
 func test_there_is_no_cap() -> void:
 	assert_eq(GameRanks.rank_for(250 * 400), 400)
+
+# --- the badge --------------------------------------------------------------
+
+func _badge(awards: bool) -> RankBadge:
+	var art := TextureRect.new()
+	art.custom_minimum_size = Vector2(120, 160)
+	art.size = Vector2(120, 160)
+	add_child_autofree(art)
+	return RankBadge.attach(art, GAME, awards)
+
+func test_a_game_with_no_xp_shows_a_zero_and_an_empty_bar() -> void:
+	var b := _badge(false)
+	assert_eq(b._number.text, "0")
+	assert_eq(b.fraction(), 0.0)
+
+func test_the_badge_sits_at_the_bottom_middle_with_the_bar_under_it() -> void:
+	var b := _badge(false)
+	var c: Vector2 = b.circle_center()
+	assert_almost_eq(c.x, 60.0, 0.5, "centred")
+	assert_true(c.y > 160.0 * 0.6, "in the bottom of the cover")
+	assert_true(b.bar_rect().position.y > c.y + b.diameter() * 0.5, "the bar is under the circle")
+
+func test_only_the_collection_badge_carries_the_star_and_trophy() -> void:
+	GameStats.record_amulet_win(GAME)
+	var plain := _badge(false)
+	assert_null(plain._star)
+	assert_null(plain._trophy)
+	var b := _badge(true)
+	assert_not_null(b._star, "beaten: a star")
+	assert_not_null(b._trophy, "beaten as the Amulet: a trophy")
+	assert_true(b._star.position.x < b.circle_center().x, "star on the left")
+	assert_true(b._trophy.position.x > b.circle_center().x, "trophy on the right")
+
+func test_the_star_is_silver_for_beaten_and_gold_for_perfected() -> void:
+	GameStats.record_beaten(GAME)
+	var b := _badge(true)
+	assert_eq(b._star.get_theme_color("font_color"), RankBadge.SILVER)
+	assert_null(b._trophy, "no Amulet win, no trophy")
+	GameStats.record_perfect(GAME)
+	var g := _badge(true)
+	assert_eq(g._star.get_theme_color("font_color"), UITheme.GOLD)
+
+func test_an_unbeaten_game_has_no_star() -> void:
+	GameStats.record_goal(GAME, "weapon", "whip", "Whip")
+	var b := _badge(true)
+	assert_null(b._star, "goal XP is not a win")
+
+# --- the end-of-game fill ---------------------------------------------------
+
+func test_the_fill_counts_what_the_game_earned_and_the_ranks_it_crossed() -> void:
+	var f := RankFill.make(200, 560)
+	add_child_autofree(f)
+	assert_eq(f.gained(), 360)
+	assert_eq(f.ranks_gained(), 2, "rank 0 -> 2")
+	assert_eq(f.shown_rank(), 0, "it starts where the game stood")
+
+func test_the_fill_never_runs_backwards() -> void:
+	var f := RankFill.make(300, 100)
+	assert_eq(f.to_xp, 300)
+	assert_eq(f.gained(), 0)

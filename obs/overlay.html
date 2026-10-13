@@ -67,7 +67,15 @@
       <div class="now-half">
         <div id="now-label" class="label">Current game</div>
         <div class="now-row">
-          <img id="now-cover" class="now-cover" alt="">
+          <!-- THE GAME'S RANK on its cover (docs/games-first-redesign.md §20.5):
+               the number in a circle at the bottom middle, a thin bar under it. -->
+          <div class="now-cover-wrap">
+            <img id="now-cover" class="now-cover" alt="">
+            <div id="now-rank" class="rank-badge" hidden>
+              <span id="now-rank-num" class="rank-num"></span>
+              <span class="rank-bar"><span id="now-rank-fill" class="rank-fill"></span></span>
+            </div>
+          </div>
           <div class="now-text">
             <div id="now-game" class="now-game"></div>
             <!-- WHICH ATTEMPT THIS IS, with the game it is being spent on: the

@@ -5492,7 +5492,29 @@ Wherever a game's cover carries its information, the cover carries its rank:
 unlocked while it is on. Turning it off goes back to what the ranks have earned;
 favourites are kept either way. It changes no rank.
 
-### 20.7 Not (yet)
+### 20.7 Where it lives
+
+- **The numbers and the sum:** `scripts/runtime/GameRanks.gd` — static, no
+  state. `GameRanks.xp(game)` reads `GameStats`; `progress_for(xp)` turns XP into
+  `{rank, into, needed, fraction}`.
+- **Perfected visits:** `GameStats.record_perfect` / `perfect_count`, recorded in
+  `Overworld2.report` beside the win, when `GameLoop2.attempts()` was 0 before
+  `beat_game` closed the tracker out.
+- **The radio:** `Radio.earned(game)` is `GameRanks.rank(game)`; `Radio.unlock_all`
+  sits over the draw (`is_unlocked`) without touching it (`is_drawn`), saved in
+  the radio's machine config.
+- **The badge:** `scripts/ui/RankBadge.gd`, laid over the art with
+  `RankBadge.attach(art, game, awards)`. Inside the art, never overhanging, so a
+  clipping parent is no trouble to it. The bar is capped at 1.8 circles wide so it
+  clears the run map card's "⚔ N" pill in the bottom-left corner.
+- **The end-of-game fill:** `scripts/ui/RankFill.gd`, in `PostCombatScreen`'s
+  header. It fills from `GameLoop2.rank_start` (taken in `Overworld2._begin_game`,
+  saved with the run) to the XP after the report. Those two ends ride the
+  post-game snapshot as `rank_from` / `rank_to`.
+- **The overlay:** the `now` payload carries `rank: {rank, fraction}`, and the page
+  draws it over `#now-cover` in CSS.
+
+### 20.8 Not (yet)
 
 - Ranks do **nothing but music**: no run power, no difficulty, no map weighting.
 - **A rank with no song left gives nothing** for now — visual only. The owner will

@@ -484,6 +484,9 @@ func _cover_plate(tex: Texture2D, game_id = &"") -> Control:
 	tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	plate.add_child(tr)
+	# The game's rank, with its star and trophy either side (§20.5). Inside the
+	# art, so the plate's clipping is no trouble to it.
+	RankBadge.attach(tr, game_id, true)
 	if TierList.tier_of(game_id) < 0:
 		return plate
 	# THE BADGE NEEDS A PARENT THAT NEITHER LAYS OUT NOR CLIPS, and the plate is
@@ -511,6 +514,7 @@ func _cover_rect(tex: Texture2D, w: int, game_id = &"") -> TextureRect:
 	tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	UITheme.attach_tier_badge(tr, game_id)
+	RankBadge.attach(tr, game_id, true)
 	return tr
 
 const IMAGE_BG := Color(0.16, 0.17, 0.22, 1.0)

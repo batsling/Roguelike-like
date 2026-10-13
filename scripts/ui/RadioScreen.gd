@@ -570,13 +570,26 @@ func _game_row(game: StringName, songs: Array) -> Control:
 	var h := HBoxContainer.new()
 	h.add_theme_constant_override("separation", UITheme.GAP)
 	row.add_child(h)
+	# The art dimmed, with the game's rank over it (§20.5) — what its next song
+	# waits on. Siblings in one stack rather than the badge on the art, because
+	# the art's dimming would carry down to a child.
+	var stack := Control.new()
+	stack.custom_minimum_size = Vector2(ROW_ART, ROW_ART)
+	stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	h.add_child(stack)
 	var art := TextureRect.new()
-	art.custom_minimum_size = Vector2(ROW_ART, ROW_ART)
+	art.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 	art.texture = _art(songs[0])
 	art.modulate = Color(1, 1, 1, 0.35)
-	h.add_child(art)
+	stack.add_child(art)
+	if game != &"":
+		var over := Control.new()
+		over.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		over.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		stack.add_child(over)
+		RankBadge.attach(over, game)
 	var text := VBoxContainer.new()
 	text.add_theme_constant_override("separation", UITheme.GAP_NONE)
 	text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
