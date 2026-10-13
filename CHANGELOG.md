@@ -11,6 +11,25 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **`Map Analysis` is right again: `Map Calc`'s connection rows were off by
+  one.** A row deleted from `connections` left `Map Calc` T429/U429 reading
+  `connections!#REF!`, and every row below it read the connection ABOVE its
+  own. That broke the edge-span histogram, the median span and the
+  backward-in-time and same-year counts. The block also stopped at row 1400 while
+  `connections` runs to 1526, so the last 126 connections were never counted.
+  `tools/_map_calc_realign.py` rewrites every `Map Calc` formula on its own
+  row, straight into the sheet XML, because openpyxl can't round-trip this
+  workbook. It widens the ranges to 1200 games and 2500 connections, in
+  `build_map_charts.py` too, and has Excel recalculate on open, since every
+  cached value predates the fix. LibreOffice's recalculation matches all 1525
+  connections row for row.
+
+- **Roguelike Radio: 450 songs from ten soundtracks.** Darkest Dungeon 1 and 2,
+  Dead Estate, Hades II, Atomicrops, The Last Spell, Moonlighter, Noita, Battle
+  Brothers and Dome Keeper, from the owner's Export song list. The
+  `Darkest Dungeon II` folder was given its game with
+  `--game "Darkest Dungeon II=Darkest Dungeon 2"`.
+
 - **A character's page lists the games they beaten, as covers.** The
   Collection's character page has a new **Games beaten** list (every game won
   playing as that character, `GameStats.character_game_log`, recorded beside
