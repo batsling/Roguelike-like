@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_floor_5_3_tell_it_to_my_cardiologist_why_dontcha_craig_barnes"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"floor_5_3_tell_it_to_my_cardiologist_why_dontcha_craig_barnes"
+title = "Floor 5-3 Tell It to My Cardiologist, Why Dontcha"
+artist = "Craig Barnes"
+album = "Streets of Rogue (Original Game Soundtrack)"
+year = 2019
+game_id = &"streets_of_rogue"
+file = "Streets of Rogue/15 Floor 5-3 Tell It to My Cardiologist, Why Dontcha.mp3"
+tags = PackedStringArray()

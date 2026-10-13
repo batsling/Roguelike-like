@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_turn_up_the_base_home_base_craig_barnes"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"turn_up_the_base_home_base_craig_barnes"
+title = "Turn Up the Base (Home Base)"
+artist = "Craig Barnes"
+album = "Streets of Rogue (Original Game Soundtrack)"
+year = 2019
+game_id = &"streets_of_rogue"
+file = "Streets of Rogue/20 Turn Up the Base (Home Base).mp3"
+tags = PackedStringArray()

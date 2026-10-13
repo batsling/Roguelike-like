@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_floor_3_1_ace_of_la_boots_craig_barnes"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"floor_3_1_ace_of_la_boots_craig_barnes"
+title = "Floor 3-1 Ace of La Boots"
+artist = "Craig Barnes"
+album = "Streets of Rogue (Original Game Soundtrack)"
+year = 2019
+game_id = &"streets_of_rogue"
+file = "Streets of Rogue/07 Floor 3-1 Ace of La Boots.mp3"
+tags = PackedStringArray()

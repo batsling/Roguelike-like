@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_kick_the_tires_light_the_fires_phonetic_hero"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"kick_the_tires_light_the_fires_phonetic_hero"
+title = "Kick The Tires & Light The Fires"
+artist = "Phonetic Hero"
+album = "Sky Rogue Original Soundtrack"
+year = 2017
+game_id = &"sky_rogue"
+file = "Sky Rogue/01 Kick The Tires & Light The Fires.mp3"
+tags = PackedStringArray()

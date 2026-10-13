@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_theme_of_veiled_genuine_varia_hiroshi_tamawari"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"theme_of_veiled_genuine_varia_hiroshi_tamawari"
+title = "Theme Of Veiled Genuine (Varia"
+artist = "Hiroshi Tamawari"
+album = "Other Life - Azure Dreams Orig"
+year = 1997
+game_id = &"azure_dreams"
+file = "Azure Dreams/47. Theme of Veiled Genuine(Variation#8).mp3"
+tags = PackedStringArray()

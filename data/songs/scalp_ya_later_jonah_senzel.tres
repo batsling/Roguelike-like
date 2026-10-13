@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_scalp_ya_later_jonah_senzel"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"scalp_ya_later_jonah_senzel"
+title = "Scalp Ya Later"
+artist = "Jonah Senzel"
+album = "Inscryption (Original Soundtrack)"
+year = 2021
+game_id = &"inscryption"
+file = "Inscryption/27. Scalp Ya Later.mp3"
+tags = PackedStringArray()

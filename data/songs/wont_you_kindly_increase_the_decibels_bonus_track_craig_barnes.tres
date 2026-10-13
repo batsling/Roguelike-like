@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_wont_you_kindly_increase_the_decibels_bonus_track_craig_barnes"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"wont_you_kindly_increase_the_decibels_bonus_track_craig_barnes"
+title = "Won't You Kindly Increase the Decibels (Bonus Track)"
+artist = "Craig Barnes"
+album = "Streets of Rogue (Original Game Soundtrack)"
+year = 2019
+game_id = &"streets_of_rogue"
+file = "Streets of Rogue/21 Won't You Kindly Increase the Decibels (Bonus Track).mp3"
+tags = PackedStringArray()

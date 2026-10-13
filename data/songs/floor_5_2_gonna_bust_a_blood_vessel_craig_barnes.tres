@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_floor_5_2_gonna_bust_a_blood_vessel_craig_barnes"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"floor_5_2_gonna_bust_a_blood_vessel_craig_barnes"
+title = "Floor 5-2 Gonna Bust a Blood Vessel"
+artist = "Craig Barnes"
+album = "Streets of Rogue (Original Game Soundtrack)"
+year = 2019
+game_id = &"streets_of_rogue"
+file = "Streets of Rogue/14 Floor 5-2 Gonna Bust a Blood Vessel.mp3"
+tags = PackedStringArray()

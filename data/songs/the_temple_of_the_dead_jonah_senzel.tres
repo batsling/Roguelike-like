@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_the_temple_of_the_dead_jonah_senzel"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"the_temple_of_the_dead_jonah_senzel"
+title = "The Temple of the Dead"
+artist = "Jonah Senzel"
+album = "Inscryption (Original Soundtrack)"
+year = 2021
+game_id = &"inscryption"
+file = "Inscryption/10. The Temple of the Dead.mp3"
+tags = PackedStringArray()

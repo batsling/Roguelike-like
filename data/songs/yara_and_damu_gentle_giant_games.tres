@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_yara_and_damu_gentle_giant_games"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"yara_and_damu_gentle_giant_games"
+title = "Yara and Damu"
+artist = "Gentle Giant Games"
+album = "Spiritfall Original Soundtrack"
+year = 0
+game_id = &"spiritfall"
+file = "Spiritfall/09. Yara and Damu.mp3"
+tags = PackedStringArray()
