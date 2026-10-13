@@ -12,6 +12,9 @@ out of the game window). This is the design and the reasoning; the code is
   its **first beat**, one on **every 3rd beat** (the first beat counting
   towards it), and one for **every 5 goals** completed there. It replaced a
   rule per song ("complete X distinct goals in Y", "beat Y X times").
+  **Since the fifth ask, a game earns one song per RANK** (game ranks,
+  `docs/games-first-redesign.md` §20): beats and goals fill the game's XP bar,
+  and each rank-up draws one song. That replaced the beats-and-goals rule above.
 - **A game's first song is its menu song** (the third ask): the first Hades
   song you get is the Hades song tagged `menu`, and the same for every game
   that has one.
@@ -109,17 +112,16 @@ first):
 
 ## 3. Unlocking
 
-**A game earns songs; the draw decides which.** One rule for every game
-(`Radio.earned`, `Radio.earned_for`):
+**A game earns one song per rank; the draw decides which.** One rule for every
+game (`Radio.earned`, `Radio.earned_for`): **a game at rank N has earned N
+songs.** The rank is the game's, worked out from its XP by `GameRanks`, and the
+whole XP table (wins, Amulet and perfect bonuses, every kind of goal by tier) is
+`docs/games-first-redesign.md` §20.1. A rank costs 250 XP; a typical first win is
+about 180, so **a game's first song usually arrives on its second win**, sooner
+if the first one beat a lot of goals.
 
-| A game earns a song… | Counts | Source |
-|---|---|---|
-| on its **first beat** | — | `GameStats.beaten_count(game)` |
-| on **every 3rd beat**, the first one counting towards it: beats **3, 6, 9, 12 …** | `BEATS_PER_SONG = 3` | `GameStats.beaten_count(game)` |
-| for **every 5 distinct goals** completed there: 5, 10, 15 … | `GOALS_PER_SONG = 5` | `GameStats.distinct_goals_count(game)` (everything in `GameStats.goals_at(game)`) |
-
-So beating a game once earns 1 song, three times 2, six times 3; and its 5th
-distinct goal earns one more on top, whatever the beats are. Each song earned is
+This replaced an earlier rule (a song on the first beat, on every 3rd beat, and
+for every 5 distinct goals). Each song earned is
 **drawn at random from that game's songs still locked**. A game with no locked
 songs left draws nothing (the songs it is owed wait, and a row added to the sheet
 for it later is drawn at once). Songs **whose file is in the folder are drawn
@@ -140,11 +142,12 @@ above after it.
 - **A game with no menu song** draws its first song from all of them, as
   before. Another game's menu song is never drawn for it.
 
-A locked song's line in the list says what **its game** needs for its next song
-("Next Hades song: beat Hades 2 times more, or complete 3 more distinct goals
-there"). It is the game that is close, not the song: which one comes up is luck.
+A game's locked-songs row shows **its rank badge** (§20.5 of the spec: the rank
+in a circle, the thin XP bar under it) and how much XP its next rank still needs
+("Hades — rank 3, 120 XP to the next song"). It is the game that is close, not
+the song: which one comes up is luck.
 
-**Every kind of goal counts:** the character's level-up, enemies, bosses,
+**Every kind of goal counts** (each distinct goal once per game, for its XP): the character's level-up, enemies, bosses,
 weapons, standing status goals, bonus clauses and curses followed. Doing the
 same goal again (re-clearing Monkey, charging the same Whip) doesn't move it; a
 new one does. **A bonus counts once per status**: Burn paid on two different
@@ -167,7 +170,9 @@ Bosses, Weapons, Statuses, Bonuses, Curses.
 `goal_log` is new with this change, so goals of those four kinds done before
 it don't appear; level-ups and enemies go back to the start of the save.
 
-The radio **stores no progress of its own**: the beats and goals are GameStats's.
+The radio **stores no progress of its own**: the beats and goals are GameStats's,
+and the rank is worked out from them, never stored (spec §20.3). So an old save
+opens with every game at the rank its record earns, and draws what that owes.
 What it keeps (per profile, `radio.json` in the profile folder) is **the draw**,
 which songs came up, because a random pick cannot be worked out again from the
 counts the way a per-song rule could. Each draw gets its toast and jumps the
@@ -183,6 +188,12 @@ songs it holds).
   owner's music during a test run.
 - **At boot and on a profile switch, unlocks are taken quietly.** A first launch
   on an old save could otherwise owe dozens of toasts.
+- **A rank-up mid-game draws its song at once**, with the toast, and it plays
+  next. The end-of-game screen shows the rank going up afterwards (spec §20.4).
+- **Unlock all songs** (a Settings toggle): every song is unlocked while it is
+  on. Turning it off goes back to the draw, so what the ranks earned is still
+  what is held; favourites are kept either way.
+- **A rank with no locked song left draws nothing.** The rank still shows.
 - **An unlocked song whose file isn't in the folder** is listed as "file not
   found" and skipped. A typo in `File` then shows up as a typo, not as a song
   that silently doesn't exist.
@@ -275,9 +286,9 @@ the screen. The screen has:
   game is running) and Export song list (§2a);
 - every unlocked song, with a ★ to star it and a ▶ to play it now; then **one
   row per game for its locked songs** ("Balatro — 4 songs locked"), the game
-  nearest its next song first, saying what that game still needs ("Next
-  Balatro song: beat Balatro once more, or complete 2 more distinct goals
-  there", with where its goals so far came from).
+  nearest its next song first, with its rank badge and what that game still
+  needs ("Balatro — rank 2, 90 XP to the next song", with where its goals so
+  far came from).
 
 **The list is built for a whole library.** The owner's sheet has over a
 thousand songs, and a row each cost three seconds to open the screen and three

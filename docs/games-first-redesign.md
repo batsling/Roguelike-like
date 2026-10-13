@@ -5362,3 +5362,139 @@ Slay-the-Spire-adjacent neighbour helps none of them.
 `Settings.exclude_beaten_amulets` still narrows the pool on top of all this, and
 still keeps its no-softlock fallback. That one is a player's preference rather
 than a property of the map, which is exactly why it is the only narrowing left.
+
+---
+
+## 20. Game ranks — every game levels up, and its rank is what unlocks its music
+
+Every game has a **rank** and an **XP bar**, held by the **profile** (not the
+run, not the character), and **no cap**. You fill a game's bar by beating it and
+by beating goals while playing it. A rank-up is, for now, worth exactly one
+thing: **one of that game's songs on Roguelike Radio** (`docs/roguelike-radio.md`
+§3). The ranks replace the radio's earlier rule (a song on the first beat, every
+3rd beat, and every 5 distinct goals).
+
+Designed with the owner in October 2026. The numbers are tuned for the **long
+term**: a game's first win must NOT rank it up on its own, and the bulk of a
+game's ranks should come from **goals**, not from grinding wins.
+
+### 20.1 The numbers
+
+**A rank costs 250 XP, every rank.** The cost does not climb: some games have 40
+to 91 songs, and a climbing cost would put the last of them out of reach.
+
+| Source | XP | How often |
+|---|---|---|
+| Beating the game | **100** | the first win at that game |
+| …again | **50** | every later win |
+| Beating it as the **Amulet** | **+200**, on top of the win | once per game |
+| **Perfecting** it — beaten on a visit with no lost run on that visit | **+100**, on top of the win | once per game |
+| A **goal** beaten there | by tier, below | once per distinct goal |
+
+| Goal | XP |
+|---|---|
+| Enemy goal, **Low / Medium / High / Insane** | **20 / 40 / 70 / 120** |
+| …a **boss** | ×2 (paid once, after its **last** phase) |
+| …ticked `game beaten` (§7.7) | ×1.5 |
+| …a counter, `Count` 2+ (§7.7) | ×1.25 |
+| Any other kind of goal — level-up (incl. a Mask's), weapon charged, status goal, bonus, curse followed | **40** (a Medium) |
+
+Multipliers stack, and the product is **rounded to a whole number** (a counted
+High is 87.5 → 88): the bar only ever shows whole XP.
+
+**A goal only pays the first time it is beaten AT THAT GAME.** Five Monkeys at
+Hades are one goal, the same "distinct" rule the Collection's game page and the
+old radio rule already used (`GameStats.goals_at`). The same goal at a different
+game pays again — it is that game's bar. **A goal counts at the game it was ticked
+at, whichever game's pool its enemy came from**: an Action body still standing
+when you finish a Traditional game pays the Traditional game.
+
+**A loss or an escape pays no win XP, but keeps the goals.** A goal ticked
+`any time` is answered on the spot (§2.1) and its XP lands then; losing the game
+afterwards does not take it back.
+
+**"Perfect" is per visit, never a lock.** It is beating the game with the attempt
+tracker (§3.2) at zero for THIS visit. Lost runs on an earlier visit to the same
+game do not stop a later visit from perfecting it.
+
+### 20.2 What that adds up to
+
+Measured over the roster (`enemies2.0` + `bosses2.0`, all tiers, every multiplier):
+
+| Type | Enemy + boss goals | XP they are worth | ≈ ranks |
+|---|---|---|---|
+| Action | 44 | ~2,400 | 9.7 |
+| Strategy | 34 | ~2,100 | 8.5 |
+| Deckbuilder | 25 | ~2,000 | 8.1 |
+| Traditional | 10 | ~630 | 2.5 |
+
+…plus the other goal kinds at 40 each. Traditional's pool is small, but bodies
+from other pools reach its board (§19.5), so its ceiling from goals is higher
+than its own column.
+
+- **A typical first win** is 100 + a few goals ≈ 180 of 250: no rank yet, which
+  is the point. **Rank 1 usually arrives on the second win.**
+- **A game's first 8–10 ranks ride mostly on new goals**; once its goals are
+  spent, a rank is **5 repeat wins**. A 91-song soundtrack is a lifetime's
+  project, and that was accepted: the system is meant to lean on goals.
+
+### 20.3 XP is DERIVED, never stored
+
+A game's XP is a pure function of what `GameStats` already records per game:
+`beaten_count`, `amulet_wins`, `goals_at` (every kind, distinct), plus one new
+per-game flag, **perfected**. There is no XP ledger to keep in step.
+
+That is a deliberate choice, and it buys three things:
+
+- **Old saves rank up for free.** A profile with history opens with every game
+  at the rank its record earns. Only **perfected** cannot be backfilled — nothing
+  ever recorded it — so perfects count from the build that adds the flag.
+- **It cannot drift.** The same rule the radio followed ("nothing is unlocked by
+  hand… counts the save already holds") carries over unchanged.
+- **The tuning stays live.** Change a number in §20.1 and every profile's ranks
+  follow. The cost is the same in reverse: re-tiering a goal in the `goals`
+  sheet moves the XP of everyone who beat it. Accepted.
+
+Wins are 100 + 50 × (beats − 1). `record_amulet_win` already bumps `beaten`, so
+an Amulet win is a win **and** the +200, as the table says.
+
+### 20.4 When it is seen
+
+- **A rank-up happens the moment the XP lands**, mid-game included: a goal
+  ticked mid-game can rank the game up there and then. **The song unlocks at
+  that moment** — the radio's usual toast, and it plays next.
+- **The rank going up is SHOWN on the end-of-game screen** (§18): the bar fills
+  from where it stood when the game started to where it ends, and rolls over
+  through every rank gained. Won **or lost** — a lost game's goals still filled
+  it. The XP at the start of the game is snapshotted with the run so the fill is
+  right after a save and load.
+- **The run-over screen shows no rank.** Its covers are only the map of where
+  the run went.
+
+### 20.5 The badge
+
+Wherever a game's cover carries its information, the cover carries its rank:
+
+- **The rank number in a circle at the bottom middle of the cover**, and a
+  **very thin XP bar directly under it**. A game with no XP shows **0** and an
+  empty bar.
+- On: the **Collection** (grid and game page), the **run map's game card**, the
+  **game-choice screen** (§4.2), the **Atlas**, the **Radio screen's** locked-songs
+  rows, and the **OBS overlay** (§9).
+- **Collection only**, either side of the circle:
+  - **left:** a **silver star** if the game has been beaten, a **gold star**
+    instead if it has been perfected;
+  - **right:** a **trophy** if it has been beaten as the Amulet.
+
+### 20.6 Settings
+
+**Unlock all songs** (a toggle, under Roguelike Radio): every song plays as
+unlocked while it is on. Turning it off goes back to what the ranks have earned;
+favourites are kept either way. It changes no rank.
+
+### 20.7 Not (yet)
+
+- Ranks do **nothing but music**: no run power, no difficulty, no map weighting.
+- **A rank with no song left gives nothing** for now — visual only. The owner will
+  decide what fills it later.
+- No profile-wide total, and no rank on the run-over screen.
