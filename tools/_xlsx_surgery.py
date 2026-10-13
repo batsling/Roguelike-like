@@ -226,6 +226,19 @@ class Workbook:
         list) are all resized to match.
         """
         part, table = self.sheet_parts(sheet_name)
+        # sheet_parts returns the FIRST table in the sheet's rels, which on a
+        # multi-table sheet is not necessarily the main one: on `scrolls` it is
+        # the N:O "Random Scroll Part" lookup, and a write_grid there stretched
+        # it over A1:O40 with duplicate and blank column names, so Excel
+        # dropped the table on open ("Removed Part: /xl/tables/table13.xml").
+        rel_path = "xl/worksheets/_rels/%s.rels" % os.path.basename(part)
+        n_tables = len(re.findall(r'Target="[^"]*tables/',
+                                  self._by_name.get(rel_path, b"").decode("utf-8")))
+        if n_tables > 1:
+            raise ValueError(
+                "%s carries %d tables; write_grid would re-author the first one "
+                "over the whole grid. Use replace_cells (and resize_table by name "
+                "if rows grow) instead" % (sheet_name, n_tables))
         xml = self._by_name[part].decode("utf-8")
         rows = len(grid)
         cols = max((len(r) for r in grid), default=0)
