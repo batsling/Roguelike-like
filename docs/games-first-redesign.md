@@ -5478,6 +5478,11 @@ Wherever a game's cover carries its information, the cover carries its rank:
 - **The rank number in a circle at the bottom middle of the cover**, and a
   **very thin XP bar directly under it**. A game with no XP shows **0** and an
   empty bar.
+- **It hangs half below the cover** (the owner's call, so it hides less of the
+  picture): the circle, the star and the trophy are centred ON the cover's
+  bottom edge, and the bar sits under the circle, entirely below it. The screen
+  makes room for the overhang, so what comes after the cover moves down rather
+  than being covered.
 - On: the **Collection** (grid and game page), the **run map's game card**, the
   **game-choice screen** (§4.2), the **Atlas**, the **Radio screen's** locked-songs
   rows, and the **OBS overlay** (§9).
@@ -5503,16 +5508,22 @@ favourites are kept either way. It changes no rank.
 - **The radio:** `Radio.earned(game)` is `GameRanks.rank(game)`; `Radio.unlock_all`
   sits over the draw (`is_unlocked`) without touching it (`is_drawn`), saved in
   the radio's machine config.
-- **The badge:** `scripts/ui/RankBadge.gd`, laid over the art with
-  `RankBadge.attach(art, game, awards)`. Inside the art, never overhanging, so a
-  clipping parent is no trouble to it. The bar is capped at 1.8 circles wide so it
-  clears the run map card's "⚔ N" pill in the bottom-left corner.
+- **The badge:** `scripts/ui/RankBadge.gd`. `RankBadge.wrap(cover, game, awards)`
+  hands back a holder that is the cover plus `overhang_for(width)` underneath,
+  laid out in the cover's place. That is how the overhang gets room in a layout,
+  and why it is never added to the art itself: the Collection's plate clips, and
+  would cut it. Hand it the outermost box of the cover (the choice screen's frame,
+  the Collection's plate) so it sits on the edge you see. The bar is capped at
+  1.8 circles wide, so it reads as part of the badge.
 - **The end-of-game fill:** `scripts/ui/RankFill.gd`, in `PostCombatScreen`'s
   header. It fills from `GameLoop2.rank_start` (taken in `Overworld2._begin_game`,
   saved with the run) to the XP after the report. Those two ends ride the
   post-game snapshot as `rank_from` / `rank_to`.
 - **The overlay:** the `now` payload carries `rank: {rank, fraction}`, and the page
-  draws it over `#now-cover` in CSS.
+  hangs it half below `#now-cover` in CSS. It is absolutely positioned, so the
+  page's documented heights do not move. `.now-cover-wrap`'s 4px bottom margin
+  lifts the cover just enough for the bar to clear the health bar under it,
+  without growing the row; 8px grows the page.
 
 ### 20.8 Not (yet)
 

@@ -537,13 +537,14 @@ html, body {
   flex: 0 0 auto;
 }
 .now-cover:not([src]) { visibility: hidden; }
-/* THE RANK BADGE (spec §20.5): the number in a circle at the cover's bottom
- * middle, and a thin XP bar under it. Positioned over the cover, so it costs
- * the row no layout. */
-.now-cover-wrap { position: relative; flex: 0 0 auto; display: flex; }
+/* THE RANK BADGE (spec §20.5): the number in a circle centred ON the cover's
+ * bottom edge, half on the picture and half below it, and a thin XP bar under
+ * that. Absolutely positioned, so it costs the row no layout and the page's
+ * measured heights do not move. */
+.now-cover-wrap { position: relative; flex: 0 0 auto; display: flex; margin-bottom: 4px; }
 .rank-badge {
   position: absolute;
-  left: 0; right: 0; bottom: 3px;
+  left: -6px; right: -6px; top: calc(100% - 8px);
   display: flex; flex-direction: column; align-items: center; gap: 2px;
   pointer-events: none;
 }

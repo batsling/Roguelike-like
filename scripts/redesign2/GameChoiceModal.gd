@@ -507,7 +507,6 @@ func _build_game_column(game: GameData, accent: Color) -> Control:
 		art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		UITheme.attach_tier_badge(art, game.id)
-		RankBadge.attach(art, game.id)
 		var frame := PanelContainer.new()
 		frame.add_theme_stylebox_override("panel", UITheme.flat(UITheme.BG, 8, 5, 1, accent))
 		frame.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
@@ -528,7 +527,8 @@ func _build_game_column(game: GameData, accent: Color) -> Control:
 			frame.add_child(art)
 		var cover_row := HBoxContainer.new()
 		cover_row.add_theme_constant_override("separation", UITheme.GAP_WIDE)
-		cover_row.add_child(frame)
+		# The game's rank, half below the frame's bottom middle (§20.5).
+		cover_row.add_child(RankBadge.wrap(frame, game.id))
 		cover_row.add_child(facts)
 		col.add_child(cover_row)
 	else:

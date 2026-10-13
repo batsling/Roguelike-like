@@ -484,11 +484,10 @@ func _cover_plate(tex: Texture2D, game_id = &"") -> Control:
 	tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	plate.add_child(tr)
-	# The game's rank, with its star and trophy either side (§20.5). Inside the
-	# art, so the plate's clipping is no trouble to it.
-	RankBadge.attach(tr, game_id, true)
 	if TierList.tier_of(game_id) < 0:
-		return plate
+		# The game's rank, with its star and trophy either side, hanging half
+		# below the plate (§20.5) — outside it, so its clipping cannot cut them.
+		return RankBadge.wrap(plate, game_id, true)
 	# THE BADGE NEEDS A PARENT THAT NEITHER LAYS OUT NOR CLIPS, and the plate is
 	# both: it is a PanelContainer, so a badge handed to it is stretched to fill
 	# the tile rather than pinned to a corner, and it clips (which is what keeps a
@@ -505,17 +504,16 @@ func _cover_plate(tex: Texture2D, game_id = &"") -> Control:
 	plate.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	wrap.add_child(plate)
 	UITheme.attach_tier_badge(wrap, game_id)
-	return wrap
+	return RankBadge.wrap(wrap, game_id, true)
 
-func _cover_rect(tex: Texture2D, w: int, game_id = &"") -> TextureRect:
+func _cover_rect(tex: Texture2D, w: int, game_id = &"") -> Control:
 	var tr := TextureRect.new()
 	tr.texture = tex
 	tr.custom_minimum_size = Vector2(w, roundi(w * 4.0 / 3.0))
 	tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	UITheme.attach_tier_badge(tr, game_id)
-	RankBadge.attach(tr, game_id, true)
-	return tr
+	return RankBadge.wrap(tr, game_id, true)
 
 const IMAGE_BG := Color(0.16, 0.17, 0.22, 1.0)
 # The frame's inset. `size` is the ART, so the pad is paid on top of it twice over
@@ -792,7 +790,9 @@ func _fill_cell(index: int) -> void:
 		var spacer := Control.new()
 		spacer.custom_minimum_size = Vector2(GRID_COVER_W, roundi(GRID_COVER_W * 4.0 / 3.0))
 		spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		box.add_child(spacer)
+		spacer.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		# Still ranked: the badge sits where the cover's bottom edge would be.
+		box.add_child(RankBadge.wrap(spacer, g.id, true))
 	box.add_child(_game_name_label(g.display_name, tc))
 	var type_name: String = GAME_TYPE_NAMES[clampi(int(g.type), 0, 3)]
 	var meta: String = ("%d  •  %s" % [g.year, type_name]) if g.year > 0 else type_name
@@ -1385,6 +1385,7 @@ func _game_cell_height() -> float:
 	# `_fill_cell`), so it is as tall as the taller of the two rather than one line
 	# of text. Counted here or the cell clips its own last row.
 	_cell_height_cache = roundi(GRID_COVER_W * 4.0 / 3.0) \
+		+ RankBadge.overhang_for(GRID_COVER_W) \
 		+ _name_block_height() \
 		+ _line_height(GRID_META_FONT) \
 		+ maxf(_line_height(GRID_META_FONT), float(OWNED_BADGE)) \

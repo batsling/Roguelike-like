@@ -120,24 +120,43 @@ func test_there_is_no_cap() -> void:
 
 # --- the badge --------------------------------------------------------------
 
+var _holder: Control
+
 func _badge(awards: bool) -> RankBadge:
 	var art := TextureRect.new()
 	art.custom_minimum_size = Vector2(120, 160)
-	art.size = Vector2(120, 160)
-	add_child_autofree(art)
-	return RankBadge.attach(art, GAME, awards)
+	_holder = RankBadge.wrap(art, GAME, awards)
+	add_child_autofree(_holder)
+	_holder.size = _holder.custom_minimum_size
+	return _holder.get_node("RankBadge")
 
 func test_a_game_with_no_xp_shows_a_zero_and_an_empty_bar() -> void:
 	var b := _badge(false)
 	assert_eq(b._number.text, "0")
 	assert_eq(b.fraction(), 0.0)
 
-func test_the_badge_sits_at_the_bottom_middle_with_the_bar_under_it() -> void:
-	var b := _badge(false)
+func test_the_badge_hangs_half_below_the_cover_with_the_bar_under_it() -> void:
+	var b := _badge(true)
 	var c: Vector2 = b.circle_center()
 	assert_almost_eq(c.x, 60.0, 0.5, "centred")
-	assert_true(c.y > 160.0 * 0.6, "in the bottom of the cover")
+	assert_eq(c.y, 160.0, "the circle is centred ON the cover's bottom edge: half in, half out")
 	assert_true(b.bar_rect().position.y > c.y + b.diameter() * 0.5, "the bar is under the circle")
+	assert_true(b.bar_rect().end.y <= _holder.size.y, "and the holder leaves room for all of it")
+	var art: Control = _holder.get_child(0)
+	assert_eq(art.size, Vector2(120, 160), "the cover keeps its own size, at the top")
+
+func test_the_star_and_trophy_sit_on_the_edge_too() -> void:
+	GameStats.record_amulet_win(GAME)
+	var b := _badge(true)
+	for l in [b._star, b._trophy]:
+		assert_almost_eq(l.position.y + l.size.y * 0.5, 160.0, 0.5, "%s centred on the edge" % l.text)
+
+func test_a_holder_makes_room_for_the_overhang() -> void:
+	var art := Control.new()
+	art.custom_minimum_size = Vector2(100, 130)
+	var holder := RankBadge.wrap(art, GAME)
+	assert_eq(holder.custom_minimum_size, Vector2(100, 130 + RankBadge.overhang_for(100)))
+	holder.free()
 
 func test_only_the_collection_badge_carries_the_star_and_trophy() -> void:
 	GameStats.record_amulet_win(GAME)

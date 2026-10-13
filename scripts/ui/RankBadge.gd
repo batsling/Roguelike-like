@@ -9,8 +9,13 @@ extends Control
 # record has won: on the LEFT a star — silver for beaten, gold instead once it
 # has been perfected — and on the RIGHT a trophy for an Amulet win.
 #
-# It lies over the art as a full-rect child and draws inside it, so unlike the
-# tier badge it never overhangs and a clipping parent cannot cut it.
+# HALF OUTSIDE THE ART (the owner's call): the circle, the star and the trophy are
+# centred ON the cover's bottom edge, and the bar hangs below the circle, so the
+# badge covers as little of the picture as it can. An overhang is something a
+# layout has to make room for and a clipping parent would cut, so the badge is
+# never added to the art itself: `wrap` hands back a holder that is the cover
+# plus the overhang, laid out as one piece — whatever sits under the cover moves
+# down to clear it, and nothing between the badge and the holder clips.
 
 const SILVER := Color(0.80, 0.82, 0.88)
 const RING := Color(0.0, 0.0, 0.0, 0.55)
@@ -29,34 +34,58 @@ const BAR_H := 2.0
 # "⚔ N" pill).
 const BAR_SHARE := 0.62
 const BAR_MAX_SHARE := 1.8
-const EDGE := 4.0      # the bar's gap from the art's bottom edge
+const BAR_GAP := 2.0   # between the circle and the bar under it
+const FOOT := 2.0      # below the bar, so it never touches what comes next
 
 var game_id: StringName = &""
 var awards: bool = false
+# Where the cover's bottom edge is, in this badge's own space. The badge covers
+# the whole holder (cover plus overhang); the edge is where the cover stops.
+var edge_y: float = 0.0
 var _progress: Dictionary = {}
 var _number: Label
 var _star: Label
 var _trophy: Label
 
-# Lay a badge over `art` for `game`. `art` should be the picture itself (a
-# TextureRect or a plain Control holding it); a Container would lay the badge
-# out as one of its children, so the first non-container child is used instead,
-# the way UITheme.attach_tier_badge does it.
-static func attach(art: Control, game, with_awards: bool = false) -> RankBadge:
-	if art == null or not is_instance_valid(art) or String(game) == "":
-		return null
-	if art is Container:
-		for child in art.get_children():
-			if child is Control and not (child is Container):
-				return attach(child, game, with_awards)
-		return null
-	var badge := RankBadge.new()
-	badge.name = "RankBadge"
-	badge.game_id = StringName(game)
-	badge.awards = with_awards
-	badge.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	art.add_child(badge)
-	return badge
+static func diameter_for(width: float) -> float:
+	return clampf(width * CIRCLE_SHARE, CIRCLE_MIN, CIRCLE_MAX)
+
+# How far the badge hangs below a cover `width` wide: half the circle, then the
+# bar and its gaps. The space a layout has to leave under the cover for it.
+static func overhang_for(width: float) -> float:
+	return ceilf(diameter_for(width) * 0.5 + BAR_GAP + BAR_H + FOOT)
+
+# `cover` with `game`'s badge on its bottom edge, as one Control to lay out in
+# its place. `cover` keeps its own minimum size (it must have one) and sits at
+# the top of the holder; the holder is that much taller again, for the overhang.
+# Hand it the outermost box of the cover — a frame, a plate — so the badge sits
+# on the edge you see.
+static func wrap(cover: Control, game, with_awards: bool = false) -> Control:
+	# What the cover needs: its own minimum, or a frame's measured round what
+	# it holds.
+	var box: Vector2 = cover.get_combined_minimum_size()
+	var holder := Control.new()
+	holder.name = "RankHolder"
+	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	holder.size_flags_horizontal = cover.size_flags_horizontal
+	holder.size_flags_vertical = cover.size_flags_vertical
+	var drop: float = overhang_for(box.x) if String(game) != "" else 0.0
+	holder.custom_minimum_size = Vector2(box.x, box.y + drop)
+	cover.set_anchors_preset(Control.PRESET_TOP_WIDE)
+	cover.offset_left = 0.0
+	cover.offset_right = 0.0
+	cover.offset_top = 0.0
+	cover.offset_bottom = box.y
+	holder.add_child(cover)
+	if String(game) != "":
+		var badge := RankBadge.new()
+		badge.name = "RankBadge"
+		badge.game_id = StringName(game)
+		badge.awards = with_awards
+		badge.edge_y = box.y
+		badge.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		holder.add_child(badge)
+	return holder
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -94,17 +123,18 @@ func fraction() -> float:
 	return float(_progress.get("fraction", 0.0))
 
 func diameter() -> float:
-	return clampf(size.x * CIRCLE_SHARE, CIRCLE_MIN, CIRCLE_MAX)
+	return diameter_for(size.x)
 
-# Where the circle's centre sits: bottom middle, standing on the bar.
+# Where the circle's centre sits: the middle of the cover's bottom edge, so half
+# of it is on the picture and half below.
 func circle_center() -> Vector2:
-	var d: float = diameter()
-	return Vector2(size.x * 0.5, size.y - EDGE - BAR_H - 2.0 - d * 0.5)
+	return Vector2(size.x * 0.5, edge_y)
 
+# The bar, under the circle and so entirely below the cover.
 func bar_rect() -> Rect2:
 	var d: float = diameter()
 	var w: float = clampf(size.x * BAR_SHARE, d, d * BAR_MAX_SHARE)
-	return Rect2(Vector2((size.x - w) * 0.5, size.y - EDGE - BAR_H), Vector2(w, BAR_H))
+	return Rect2(Vector2((size.x - w) * 0.5, edge_y + d * 0.5 + BAR_GAP), Vector2(w, BAR_H))
 
 func _layout() -> void:
 	if _number == null:

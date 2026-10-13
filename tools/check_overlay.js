@@ -489,6 +489,7 @@ function fixture(dir) {
     now: {
       playing: true, game: 'Vampire Survivors: Legacy of the Moonspell',
       cover: games[0] || '', attempts: 4,
+      rank: { rank: 3, fraction: 0.4 },
     },
     goals,
     board: { bodies: 5, front: swings.length, incoming: 18 },
@@ -629,6 +630,20 @@ async function main() {
   });
   check('the two games share a line, Amulet on the right',
     pair.dy < 12 && pair.right, JSON.stringify(pair));
+  /* THE GAME'S RANK (spec §20.5) hangs HALF BELOW the cover: the circle's
+   * centre on the cover's bottom edge, the bar under it, and the number and
+   * the fill the payload sent. */
+  const rank = await page.evaluate(() => {
+    const cover = document.getElementById('now-cover').getBoundingClientRect();
+    const num = document.getElementById('now-rank-num');
+    const r = num.getBoundingClientRect();
+    return { shown: !document.getElementById('now-rank').hidden, text: num.textContent,
+      centre: Math.round(r.top + r.height / 2 - cover.bottom),
+      fill: document.getElementById('now-rank-fill').style.width };
+  });
+  check('the rank hangs half below the current game\'s cover',
+    rank.shown && rank.text === '3' && Math.abs(rank.centre) <= 1 && rank.fill === '40%',
+    JSON.stringify(rank));
   /* THE HEAD OF THE CHECKLIST: the chat command, then the list's label, then the
    * list. Asserted in that ORDER and not merely present — the command is above
    * the label on purpose (it answers the question the rows raise), and a card

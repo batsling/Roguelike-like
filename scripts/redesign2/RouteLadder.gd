@@ -754,8 +754,6 @@ static func card_cover(id: StringName, game: GameData) -> Control:
 		art.set_anchors_preset(Control.PRESET_FULL_RECT)
 		art.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		stack.add_child(art)
-		# The game's rank, bottom middle (§20.5).
-		RankBadge.attach(art, game.id)
 	else:
 		var blank := Panel.new()
 		blank.add_theme_stylebox_override("panel", UITheme.flat(COL_PATH_BG, 6, 0, 1, UITheme.BORDER))
@@ -786,7 +784,8 @@ static func card_cover(id: StringName, game: GameData) -> Control:
 	beaten_pill.offset_left = CORNER_INSET
 	beaten_pill.offset_bottom = -CORNER_INSET
 	stack.add_child(beaten_pill)
-	return stack
+	# The game's rank, half below the cover's bottom middle (§20.5).
+	return RankBadge.wrap(stack, game.id if game != null else &"")
 
 const CORNER_INSET := 4.0
 
