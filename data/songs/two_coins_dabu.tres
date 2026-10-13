@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_two_coins_dabu"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"two_coins_dabu"
+title = "Two Coins"
+artist = "Dabu"
+album = "Dwarf Fortress: Adventure Mode (Original Game Soundtrack)"
+year = 2024
+game_id = &"dwarf_fortress"
+file = "Dwarf Fortress/12. Two Coins.mp3"
+tags = PackedStringArray()

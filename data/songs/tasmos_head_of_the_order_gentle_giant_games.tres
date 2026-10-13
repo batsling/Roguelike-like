@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_tasmos_head_of_the_order_gentle_giant_games"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"tasmos_head_of_the_order_gentle_giant_games"
+title = "Tasmos, Head of the Order"
+artist = "Gentle Giant Games"
+album = "Spiritfall Original Soundtrack"
+year = 0
+game_id = &"spiritfall"
+file = "Spiritfall/16. Tasmos, Head of the Order.mp3"
+tags = PackedStringArray()

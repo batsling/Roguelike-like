@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_death_spiral_dabu"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"death_spiral_dabu"
+title = "Death Spiral"
+artist = "Dabu"
+album = "Dwarf Fortress (Original Game Soundtrack)"
+year = 2022
+game_id = &"dwarf_fortress"
+file = "Dwarf Fortress/12. Death Spiral.mp3"
+tags = PackedStringArray()

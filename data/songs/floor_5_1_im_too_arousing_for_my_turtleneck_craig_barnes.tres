@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_floor_5_1_im_too_arousing_for_my_turtleneck_craig_barnes"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"floor_5_1_im_too_arousing_for_my_turtleneck_craig_barnes"
+title = "Floor 5-1 I'm Too Arousing for My Turtleneck"
+artist = "Craig Barnes"
+album = "Streets of Rogue (Original Game Soundtrack)"
+year = 2019
+game_id = &"streets_of_rogue"
+file = "Streets of Rogue/13 Floor 5-1 I'm Too Arousing for My Turtleneck.mp3"
+tags = PackedStringArray()

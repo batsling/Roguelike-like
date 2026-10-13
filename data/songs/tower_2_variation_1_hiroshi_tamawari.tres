@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_tower_2_variation_1_hiroshi_tamawari"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"tower_2_variation_1_hiroshi_tamawari"
+title = "Tower #2 (Variation #1)"
+artist = "Hiroshi Tamawari"
+album = "Other Life - Azure Dreams Orig"
+year = 1997
+game_id = &"azure_dreams"
+file = "Azure Dreams/40. Tower#2(Variation#1).mp3"
+tags = PackedStringArray()

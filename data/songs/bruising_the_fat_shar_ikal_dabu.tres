@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_bruising_the_fat_shar_ikal_dabu"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"bruising_the_fat_shar_ikal_dabu"
+title = "Bruising The Fat (Shar Ikal)"
+artist = "Dabu"
+album = "Dwarf Fortress: Adventure Mode (Original Game Soundtrack)"
+year = 2024
+game_id = &"dwarf_fortress"
+file = "Dwarf Fortress/03. Bruising The Fat (Shar Ikal).mp3"
+tags = PackedStringArray()

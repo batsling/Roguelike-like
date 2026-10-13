@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_floor_2_2_thwomp_there_it_a_rollicking_good_time_is_craig_barnes"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"floor_2_2_thwomp_there_it_a_rollicking_good_time_is_craig_barnes"
+title = "Floor 2-2 THWOMP! (There It [A Rollicking Good Time] Is)"
+artist = "Craig Barnes"
+album = "Streets of Rogue (Original Game Soundtrack)"
+year = 2019
+game_id = &"streets_of_rogue"
+file = "Streets of Rogue/05 Floor 2-2 THWOMP! (There It [A Rollicking Good Time] Is).mp3"
+tags = PackedStringArray()

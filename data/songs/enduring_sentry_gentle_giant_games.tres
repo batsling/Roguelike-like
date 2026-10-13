@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_enduring_sentry_gentle_giant_games"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"enduring_sentry_gentle_giant_games"
+title = "Enduring Sentry"
+artist = "Gentle Giant Games"
+album = "Spiritfall Original Soundtrack"
+year = 0
+game_id = &"spiritfall"
+file = "Spiritfall/05. Enduring Sentry.mp3"
+tags = PackedStringArray()

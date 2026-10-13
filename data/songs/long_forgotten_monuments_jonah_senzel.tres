@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_long_forgotten_monuments_jonah_senzel"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"long_forgotten_monuments_jonah_senzel"
+title = "Long Forgotten Monuments"
+artist = "Jonah Senzel"
+album = "Inscryption (Original Soundtrack)"
+year = 2021
+game_id = &"inscryption"
+file = "Inscryption/08. Long Forgotten Monuments.mp3"
+tags = PackedStringArray()

@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_g0llys_theme_uploading_jonah_senzel"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"g0llys_theme_uploading_jonah_senzel"
+title = "G0lly's Theme (Uploading)"
+artist = "Jonah Senzel"
+album = "Inscryption (Original Soundtrack)"
+year = 2021
+game_id = &"inscryption"
+file = "Inscryption/23. G0lly's Theme (Uploading).mp3"
+tags = PackedStringArray()

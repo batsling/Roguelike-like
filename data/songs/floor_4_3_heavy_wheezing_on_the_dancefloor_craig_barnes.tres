@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_floor_4_3_heavy_wheezing_on_the_dancefloor_craig_barnes"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"floor_4_3_heavy_wheezing_on_the_dancefloor_craig_barnes"
+title = "Floor 4-3 Heavy Wheezing on the Dancefloor"
+artist = "Craig Barnes"
+album = "Streets of Rogue (Original Game Soundtrack)"
+year = 2019
+game_id = &"streets_of_rogue"
+file = "Streets of Rogue/12 Floor 4-3 Heavy Wheezing on the Dancefloor.mp3"
+tags = PackedStringArray()

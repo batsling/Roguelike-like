@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_the_sanctum_gentle_giant_games"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"the_sanctum_gentle_giant_games"
+title = "The Sanctum"
+artist = "Gentle Giant Games"
+album = "Spiritfall Original Soundtrack"
+year = 0
+game_id = &"spiritfall"
+file = "Spiritfall/03. The Sanctum.mp3"
+tags = PackedStringArray()

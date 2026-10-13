@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_whispering_waters_asadi_prince_of_persia"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"whispering_waters_asadi_prince_of_persia"
+title = "Whispering Waters"
+artist = "ASADI, Prince Of Persia"
+album = "The Rogue Prince of Persia (The Complete Soundtrack)"
+year = 2025
+game_id = &"the_rogue_prince_of_persia"
+file = "The Rogue Prince of Persia/02. Whispering Waters.mp3"
+tags = PackedStringArray()

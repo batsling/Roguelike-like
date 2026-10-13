@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_first_year_dabu"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"first_year_dabu"
+title = "First Year"
+artist = "Dabu"
+album = "Dwarf Fortress (Original Game Soundtrack)"
+year = 2022
+game_id = &"dwarf_fortress"
+file = "Dwarf Fortress/02. First Year.mp3"
+tags = PackedStringArray()

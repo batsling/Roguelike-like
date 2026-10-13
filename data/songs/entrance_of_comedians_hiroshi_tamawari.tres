@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_entrance_of_comedians_hiroshi_tamawari"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"entrance_of_comedians_hiroshi_tamawari"
+title = "Entrance Of Comedians"
+artist = "Hiroshi Tamawari"
+album = "Other Life - Azure Dreams Orig"
+year = 1997
+game_id = &"azure_dreams"
+file = "Azure Dreams/31. Entrance Of Comedians.mp3"
+tags = PackedStringArray()
