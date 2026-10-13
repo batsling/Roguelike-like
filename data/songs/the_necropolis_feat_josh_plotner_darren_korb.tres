@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_the_necropolis_feat_josh_plotner_darren_korb"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"the_necropolis_feat_josh_plotner_darren_korb"
+title = "The Necropolis (feat. Josh Plotner)"
+artist = "Darren Korb"
+album = "Hades II (Original Soundtrack)"
+year = 2025
+game_id = &"hades_ii"
+file = "Hades II/31. The Necropolis (feat. Josh Plotner).mp3"
+tags = PackedStringArray()

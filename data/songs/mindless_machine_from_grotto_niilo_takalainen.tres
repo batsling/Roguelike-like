@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_mindless_machine_from_grotto_niilo_takalainen"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"mindless_machine_from_grotto_niilo_takalainen"
+title = "Mindless Machine"
+artist = "From Grotto & Niilo Takalainen"
+album = "Noita, Vol. 3 (Original Game Soundtrack)"
+year = 2022
+game_id = &"noita"
+file = "Noita/06. Mindless Machine.mp3"
+tags = PackedStringArray()

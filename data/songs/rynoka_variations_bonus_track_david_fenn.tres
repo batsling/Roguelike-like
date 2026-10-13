@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_rynoka_variations_bonus_track_david_fenn"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"rynoka_variations_bonus_track_david_fenn"
+title = "Rynoka Variations (Bonus Track)"
+artist = "David Fenn"
+album = "Moonlighter (Original Game Soundtrack)"
+year = 2018
+game_id = &"moonlighter"
+file = "Moonlighter/24. Rynoka Variations (Bonus Track).mp3"
+tags = PackedStringArray()

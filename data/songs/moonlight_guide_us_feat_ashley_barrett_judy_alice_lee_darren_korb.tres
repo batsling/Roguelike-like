@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_moonlight_guide_us_feat_ashley_barrett_judy_alice_lee_darren_korb"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"moonlight_guide_us_feat_ashley_barrett_judy_alice_lee_darren_korb"
+title = "Moonlight Guide Us (feat. Ashley Barrett & Judy Alice Lee)"
+artist = "Darren Korb"
+album = "Hades II (Original Soundtrack)"
+year = 2025
+game_id = &"hades_ii"
+file = "Hades II/06. Moonlight Guide Us (feat. Ashley Barrett & Judy Alice Lee).mp3"
+tags = PackedStringArray()

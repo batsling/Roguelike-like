@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_rock_and_a_hard_place_feat_charybdis_darren_korb"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"rock_and_a_hard_place_feat_charybdis_darren_korb"
+title = "Rock and a Hard Place (feat. Charybdis)"
+artist = "Darren Korb"
+album = "Hades II (Original Soundtrack)"
+year = 2025
+game_id = &"hades_ii"
+file = "Hades II/33. Rock and a Hard Place (feat. Charybdis).mp3"
+tags = PackedStringArray()

@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_he_doesnt_bite_majorwipeout"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"he_doesnt_bite_majorwipeout"
+title = "He Doesn't Bite"
+artist = "MajorWipeout"
+album = "Dead Estate - Assignment Anya OST"
+year = 2023
+game_id = &"dead_estate"
+file = "Dead Estate/2-14. He Doesn't Bite.mp3"
+tags = PackedStringArray()

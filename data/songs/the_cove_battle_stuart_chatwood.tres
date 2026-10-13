@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_the_cove_battle_stuart_chatwood"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"the_cove_battle_stuart_chatwood"
+title = "The Cove Battle"
+artist = "Stuart Chatwood"
+album = "Darkest Dungeon: Collector's Edition Original Soundtrack"
+year = 2019
+game_id = &"darkest_dungeon"
+file = "Darkest Dungeon/11 The Cove Battle.mp3"
+tags = PackedStringArray()

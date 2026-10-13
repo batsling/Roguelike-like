@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_and_then_theres_chunks_majorwipeout"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"and_then_theres_chunks_majorwipeout"
+title = "And Then There's Chunks"
+artist = "MajorWipeout"
+album = "Dead Estate OST"
+year = 2021
+game_id = &"dead_estate"
+file = "Dead Estate/1-11. And Then There's Chunks.mp3"
+tags = PackedStringArray()

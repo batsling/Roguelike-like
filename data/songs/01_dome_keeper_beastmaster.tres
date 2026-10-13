@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_01_dome_keeper_beastmaster"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"01_dome_keeper_beastmaster"
+title = "01 Dome Keeper - Beastmaster"
+artist = ""
+album = ""
+year = 0
+game_id = &"dome_keeper"
+file = "Dome Keeper/01. Dome Keeper - Beastmaster.mp3"
+tags = PackedStringArray()

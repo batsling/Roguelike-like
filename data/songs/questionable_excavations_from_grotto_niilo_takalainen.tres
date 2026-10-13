@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_questionable_excavations_from_grotto_niilo_takalainen"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"questionable_excavations_from_grotto_niilo_takalainen"
+title = "Questionable Excavations"
+artist = "From Grotto & Niilo Takalainen"
+album = "Noita, Vol. 2 (Original Game Soundtrack)"
+year = 2020
+game_id = &"noita"
+file = "Noita/20. Questionable Excavations.mp3"
+tags = PackedStringArray()

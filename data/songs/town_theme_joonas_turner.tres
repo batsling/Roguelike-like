@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_town_theme_joonas_turner"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"town_theme_joonas_turner"
+title = "Town Theme"
+artist = "Joonas Turner"
+album = "Atomicrops Original Soundtrack"
+year = 2020
+game_id = &"atomicrops"
+file = "Atomicrops/02. Town Theme.mp3"
+tags = PackedStringArray()

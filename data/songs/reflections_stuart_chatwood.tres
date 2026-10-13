@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_reflections_stuart_chatwood"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"reflections_stuart_chatwood"
+title = "Reflections"
+artist = "Stuart Chatwood"
+album = "Darkest Dungeon II (Original Video Game Soundtrack)"
+year = 2023
+game_id = &"darkest_dungeon_2"
+file = "Darkest Dungeon II/1-24. Reflections.mp3"
+tags = PackedStringArray()

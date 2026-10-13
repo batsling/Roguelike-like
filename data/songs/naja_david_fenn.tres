@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_naja_david_fenn"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"naja_david_fenn"
+title = "Naja"
+artist = "David Fenn"
+album = "Moonlighter (Original Game Soundtrack)"
+year = 2018
+game_id = &"moonlighter"
+file = "Moonlighter/16. Naja.mp3"
+tags = PackedStringArray()

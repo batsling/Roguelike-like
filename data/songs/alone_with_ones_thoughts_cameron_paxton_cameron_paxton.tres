@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_alone_with_ones_thoughts_cameron_paxton_cameron_paxton"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"alone_with_ones_thoughts_cameron_paxton_cameron_paxton"
+title = "Alone With One's Thoughts"
+artist = "Cameron Paxton;Cameron Paxton"
+album = "Dome Keeper: Engineer Gear Pack"
+year = 2022
+game_id = &"dome_keeper"
+file = "Dome Keeper/2-16. Alone With One's Thoughts.mp3"
+tags = PackedStringArray()

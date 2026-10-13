@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_goon_from_below_majorwipeout"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"goon_from_below_majorwipeout"
+title = "Goon From Below"
+artist = "MajorWipeout"
+album = "Dead Estate OST"
+year = 2021
+game_id = &"dead_estate"
+file = "Dead Estate/1-43. Goon From Below.mp3"
+tags = PackedStringArray()

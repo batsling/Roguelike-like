@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_strange_grounds_alex_benet"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"strange_grounds_alex_benet"
+title = "Strange Grounds"
+artist = "Alex Benet"
+album = "Moonlighter Between Dimensions"
+year = 0
+game_id = &"moonlighter"
+file = "Moonlighter/02. Strange Grounds.mp3"
+tags = PackedStringArray()

@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_the_risen_fleet_darren_korb"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"the_risen_fleet_darren_korb"
+title = "The Risen Fleet"
+artist = "Darren Korb"
+album = "Hades II (Original Soundtrack)"
+year = 2025
+game_id = &"hades_ii"
+file = "Hades II/34. The Risen Fleet.mp3"
+tags = PackedStringArray()

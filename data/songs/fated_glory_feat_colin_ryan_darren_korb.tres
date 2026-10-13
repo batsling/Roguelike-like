@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_fated_glory_feat_colin_ryan_darren_korb"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"fated_glory_feat_colin_ryan_darren_korb"
+title = "Fated Glory (feat. Colin Ryan)"
+artist = "Darren Korb"
+album = "Hades II (Original Soundtrack)"
+year = 2025
+game_id = &"hades_ii"
+file = "Hades II/44. Fated Glory (feat. Colin Ryan).mp3"
+tags = PackedStringArray()

@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_bigger_and_better_majorwipeout"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"bigger_and_better_majorwipeout"
+title = "Bigger and Better"
+artist = "MajorWipeout"
+album = "Dead Estate OST"
+year = 2021
+game_id = &"dead_estate"
+file = "Dead Estate/1-09. Bigger and Better.mp3"
+tags = PackedStringArray()

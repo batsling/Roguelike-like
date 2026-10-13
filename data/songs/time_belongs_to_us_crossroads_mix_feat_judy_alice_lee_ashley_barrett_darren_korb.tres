@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_time_belongs_to_us_crossroads_mix_feat_judy_alice_lee_ashley_barrett_darren_korb"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"time_belongs_to_us_crossroads_mix_feat_judy_alice_lee_ashley_barrett_darren_korb"
+title = "Time Belongs to Us (Crossroads Mix) (feat. Judy Alice Lee & Ashley Barrett)"
+artist = "Darren Korb"
+album = "Hades II (Original Soundtrack)"
+year = 2025
+game_id = &"hades_ii"
+file = "Hades II/52. Time Belongs to Us (Crossroads Mix) (feat. Judy Alice Lee & Ashley Barrett).mp3"
+tags = PackedStringArray()

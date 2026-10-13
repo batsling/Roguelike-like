@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_i_am_gonna_claw_out_your_eyes_then_drown_you_to_death_darren_korb"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"i_am_gonna_claw_out_your_eyes_then_drown_you_to_death_darren_korb"
+title = "I Am Gonna Claw (Out Your Eyes then Drown You to Death)"
+artist = "Darren Korb"
+album = "Hades II (Original Soundtrack)"
+year = 2025
+game_id = &"hades_ii"
+file = "Hades II/21. I Am Gonna Claw (Out Your Eyes then Drown You to Death).mp3"
+tags = PackedStringArray()

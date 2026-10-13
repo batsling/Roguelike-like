@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_a_brief_respite_darkest_dungeon_stuart_chatwood"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"a_brief_respite_darkest_dungeon_stuart_chatwood"
+title = "A Brief Respite (Darkest Dungeon)"
+artist = "Stuart Chatwood"
+album = "Darkest Dungeon: Collector's Edition Original Soundtrack"
+year = 2019
+game_id = &"darkest_dungeon"
+file = "Darkest Dungeon/05. A Brief Respite (Camp Theme).mp3"
+tags = PackedStringArray()

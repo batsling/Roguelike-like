@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_moonlighter_nintendo_switch_announcement_trailer_pablo_caballero"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"moonlighter_nintendo_switch_announcement_trailer_pablo_caballero"
+title = "Moonlighter (Nintendo Switch™ Announcement Trailer)"
+artist = "pablo, Caballero"
+album = "Moonlighter (Original Game Soundtrack)"
+year = 2018
+game_id = &"moonlighter"
+file = "Moonlighter/26. Moonlighter Nintendo Switch Announcement Trailer (Pablo Caballero).mp3"
+tags = PackedStringArray()
