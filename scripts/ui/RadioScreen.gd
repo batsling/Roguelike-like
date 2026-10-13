@@ -532,7 +532,7 @@ func _list_state() -> String:
 	# Per game, exactly what its row says: the counts left and the goals done.
 	for g in games:
 		var left: Dictionary = Radio.to_next(g) if g != &"" else {}
-		parts.append("%s:%s:%s:%s" % [g, left.get("beats", 0), left.get("goals", 0),
+		parts.append("%s:%s:%s:%s" % [g, left.get("rank", 0), left.get("needed", 0),
 			",".join(Radio.goals_done(games[g]))])
 	parts.append("station=" + Radio.station)
 	parts.append("gen=%d" % Radio.library_generation)
@@ -556,9 +556,7 @@ func _restyle_current() -> void:
 func _game_key(game: StringName) -> Array:
 	if game == &"":
 		return [1 << 30, ""]
-	var left: Dictionary = Radio.to_next(game)
-	return [mini(int(left["beats"]) * Radio.GOALS_PER_SONG,
-		int(left["goals"]) * Radio.BEATS_PER_SONG), _game_name(game)]
+	return [int(Radio.to_next(game)["needed"]), _game_name(game)]
 
 func _game_name(game: StringName) -> String:
 	var g: GameData = Data.get_game(game)

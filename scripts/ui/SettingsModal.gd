@@ -408,6 +408,13 @@ func _build_stream_section(col: VBoxContainer) -> void:
 		"Notify you to change the Twitch category when you pick a game.")
 	twitch.name = "TwitchChk"
 
+	# ROGUELIKE RADIO's one override (docs/games-first-redesign.md §20.6). Off
+	# gives back exactly what the game ranks have drawn.
+	var all_songs := _toggle(grid, "Unlock all songs", Radio.unlock_all,
+		func(on: bool) -> void: Radio.set_unlock_all(on),
+		"Play every Roguelike Radio song, whatever the game ranks have unlocked. Turning it off goes back to what the ranks earned.")
+	all_songs.name = "UnlockAllSongsChk"
+
 # --- game tags ----------------------------------------------------------------
 #
 # THE TAG EXPORT (GameTags). Tags are edited per game, on the Collection's game

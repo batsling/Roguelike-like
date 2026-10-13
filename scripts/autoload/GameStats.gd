@@ -16,7 +16,7 @@ extends Node
 # Drives the "Beaten With Deck" checklist on character select + Collection.
 #
 # Persisted shape (user://game_stats.json):
-#   { "games": { "hades": {"beaten": 3, "amulets": 1}, ... },
+#   { "games": { "hades": {"beaten": 3, "amulets": 1, "perfects": 1}, ... },
 #     "deck_wins": { "ironclad": ["Random", "Silent"], ... },
 #     "enemy_log": { "<game>": { "<enemy>": {"beaten": 2, "note": "…"} } },
 #     "levelup_log": { "<game>": { "<character>": {"levels": 1, "note": "…"} } },
@@ -153,6 +153,13 @@ func amulet_wins(id) -> int:
 	var row: Variant = stats.get(String(id))
 	return int((row as Dictionary).get("amulets", 0)) if row is Dictionary else 0
 
+# How many visits beat this game with no lost run on that visit — PERFECTED it
+# (game ranks, docs/games-first-redesign.md §20.1). Started at 0 when it was
+# added: nothing before it recorded a perfect, so none can be backfilled.
+func perfect_count(id) -> int:
+	var row: Variant = stats.get(String(id))
+	return int((row as Dictionary).get("perfects", 0)) if row is Dictionary else 0
+
 # How many runs have put this game in a rift (docs/rifts-design.md §3.3). The
 # rotation hands out the least-seen first.
 func rift_count(id) -> int:
@@ -207,6 +214,14 @@ func record_amulet_win(id) -> void:
 	var e := _entry(String(id))
 	e["beaten"] += 1
 	e["amulets"] += 1
+	save_data()
+	emit_signal("changed")
+
+# Records a PERFECTED visit: the game won with no lost run logged on it (§20.1).
+# Called beside record_beaten / record_amulet_win, never instead of them.
+func record_perfect(id) -> void:
+	var e := _entry(String(id))
+	e["perfects"] = int(e.get("perfects", 0)) + 1
 	save_data()
 	emit_signal("changed")
 

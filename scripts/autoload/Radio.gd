@@ -10,9 +10,8 @@ extends Node
 #     belongs to, and nothing about how it unlocks.
 #   * The AUDIO is the player's own and never in the repo. It sits in FOLDER on
 #     their machine and a row only names the file.
-#   * A GAME EARNS SONGS, AND WHICH ONE IS LUCK. Playing a game earns songs by
-#     one rule for every game (`earned`): one on its first beat, one more on
-#     every third beat, one for every five distinct goals completed there. Each
+#   * A GAME EARNS SONGS, AND WHICH ONE IS LUCK. A game earns one song per RANK
+#     (`earned`, GameRanks): wins and distinct goals there fill its XP bar. Each
 #     song earned is drawn at random from that game's songs still locked. The
 #     counts are GameStats's, kept for every game anyway; what this node keeps is
 #     the DRAW — which songs came up — because a random pick cannot be worked out
@@ -71,6 +70,7 @@ var volume: float = 0.8          # 0..1, linear
 var shuffle: bool = true
 var station: String = ""         # a tag, or "" for every song
 var paused: bool = false
+var unlock_all: bool = false     # every song plays as unlocked (§20.6)
 
 # The track and its clock.
 var current: StringName = &""
@@ -136,16 +136,11 @@ func has_file(song: SongData) -> bool:
 
 # --- what a game has earned ------------------------------------------------
 #
-# The owner's rule (October 2026), the same for every game:
-#
-#   * its FIRST BEAT earns a song,
-#   * and so does every THIRD beat, the first one counting towards it — so beats
-#     1, 3, 6, 9, 12 ... each earn one,
-#   * and every FIVE DISTINCT GOALS completed there earn one more (5, 10, 15 ...),
-#     counted as GameStats.distinct_goals_count counts them: every kind of goal,
-#     each one once however often it was done again.
-const BEATS_PER_SONG := 3
-const GOALS_PER_SONG := 5
+# ONE SONG PER RANK (the owner, October 2026): a game at rank N has earned N
+# songs. The rank is GameRanks's — worked out from the game's wins and the
+# distinct goals beaten there (docs/games-first-redesign.md §20) — and it
+# replaced a rule of a song on the first beat, every third beat and every five
+# distinct goals.
 
 # A song carrying this tag is its game's MENU SONG, and the first song that game
 # gives (`refresh_unlocks`). With several, one of them is drawn first; the others
@@ -155,24 +150,15 @@ const MENU_TAG := "menu"
 func is_menu(song: SongData) -> bool:
 	return song != null and song.tags.has(MENU_TAG)
 
-static func earned_for(beats: int, goals: int) -> int:
-	var n: int = 0
-	if beats >= 1:
-		n += 1 + beats / BEATS_PER_SONG
-	return n + maxi(goals, 0) / GOALS_PER_SONG
-
-# How many songs `game` has earned so far.
+# How many songs `game` has earned so far: its rank.
 func earned(game: StringName) -> int:
-	return earned_for(GameStats.beaten_count(game), GameStats.distinct_goals_count(game))
+	return GameRanks.rank(game)
 
-# The beats and goals `game` still needs for its NEXT song: {beats, goals}, each
-# counted from where the game stands now. Either one gets there.
+# What `game` still needs for its NEXT song: {rank, needed}, the XP left to its
+# next rank.
 func to_next(game: StringName) -> Dictionary:
-	var beats: int = GameStats.beaten_count(game)
-	var goals: int = GameStats.distinct_goals_count(game)
-	var next_beat: int = 1 if beats < 1 else (beats / BEATS_PER_SONG + 1) * BEATS_PER_SONG
-	var next_goals: int = (goals / GOALS_PER_SONG + 1) * GOALS_PER_SONG
-	return {"beats": next_beat - beats, "goals": next_goals - goals}
+	var p: Dictionary = GameRanks.progress(game)
+	return {"rank": int(p["rank"]), "needed": int(p["needed"])}
 
 func game_songs(game: StringName) -> Array:
 	var out: Array = []
@@ -183,8 +169,32 @@ func game_songs(game: StringName) -> Array:
 			out.append(s)
 	return out
 
+# Whether `song` plays as unlocked: drawn by its game's ranks, or every song
+# while UNLOCK ALL is on.
 func is_unlocked(song: SongData) -> bool:
+	return song != null and (unlock_all or is_drawn(song))
+
+# Whether `song` has actually been DRAWN — earned by its game's ranks. What the
+# draw counts; Unlock all never changes it, so turning that off gives back
+# exactly what the ranks earned.
+func is_drawn(song: SongData) -> bool:
 	return song != null and _unlocked.has(String(song.id))
+
+# UNLOCK ALL SONGS (Settings, docs/games-first-redesign.md §20.6): every song
+# plays as unlocked while it is on. A preference of the PC's, beside the
+# speakers, and it changes no rank and draws nothing.
+func set_unlock_all(value: bool) -> void:
+	if unlock_all == value:
+		return
+	unlock_all = value
+	save_config()
+	_queue.clear()
+	var song: SongData = current_song()
+	if song != null and not is_playable(song):
+		_stop_track()
+	if current == &"" and not paused and autoplay:
+		_advance()
+	changed.emit()
 
 func is_playable(song: SongData) -> bool:
 	return is_unlocked(song) and has_file(song)
@@ -242,15 +252,8 @@ func rule_text(song: SongData) -> String:
 	var game: GameData = Data.get_game(song.game_id)
 	var name: String = game.display_name if game != null else String(song.game_id)
 	var left: Dictionary = to_next(song.game_id)
-	var beats: int = int(left["beats"])
-	var goals: int = int(left["goals"])
-	var beat_part: String
-	if GameStats.beaten_count(song.game_id) < 1:
-		beat_part = "beat %s" % name
-	else:
-		beat_part = "beat %s %s more" % [name, "once" if beats == 1 else "%d times" % beats]
-	return "Next %s song: %s, or complete %d more distinct goal%s there" % [
-		name, beat_part, goals, "" if goals == 1 else "s"]
+	return "Next %s song: %d XP more (rank %d)" % [name, int(left["needed"]),
+		int(left["rank"])]
 
 # What has counted at the song's game so far, kind by kind in the Collection's
 # order — "2 Enemies, 1 Weapon" — so the list says where the goals came from.
@@ -332,7 +335,7 @@ func refresh_unlocks(announce: bool = true) -> void:
 		var with_file: Array = []
 		var without: Array = []
 		for song in pool:
-			if is_unlocked(song):
+			if is_drawn(song):
 				have += 1
 			elif has_file(song):
 				with_file.append(song)
@@ -749,6 +752,7 @@ func load_config() -> void:
 	shuffle = bool(cfg.get_value("radio", "shuffle", shuffle))
 	station = String(cfg.get_value("radio", "station", station))
 	paused = bool(cfg.get_value("radio", "paused", paused))
+	unlock_all = bool(cfg.get_value("radio", "unlock_all", unlock_all))
 	var saved: String = String(cfg.get_value("radio", "folder", ""))
 	if saved != "":
 		folder = saved
@@ -760,6 +764,7 @@ func save_config() -> void:
 	cfg.set_value("radio", "shuffle", shuffle)
 	cfg.set_value("radio", "station", station)
 	cfg.set_value("radio", "paused", paused)
+	cfg.set_value("radio", "unlock_all", unlock_all)
 	# Only a folder the player CHOSE is saved; the default stays a default, so a
 	# later build that moves the default moves this player with it.
 	if not is_default_folder():

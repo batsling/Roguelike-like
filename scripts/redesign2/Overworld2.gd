@@ -2361,6 +2361,9 @@ func report(beaten: bool, fulfilled: Variant = null, escaped: bool = false,
 	var fulfilled_instances: Array = fulfilled if fulfilled is Array \
 		else _honoured_fulfilments(beaten and not escaped)
 	var was_amulet: bool = bool(_chosen.get("amulet", false))
+	# A PERFECTED visit (game ranks, §20.1): won with no lost run logged on THIS
+	# visit. Read before beat_game, which closes the tracker out.
+	var perfect_visit: bool = GameLoop2.attempts() == 0
 	# Had the run been to this game before? Read BEFORE this visit is recorded, so
 	# it is the SECOND trip to a game that pays the Dash (REPEAT_BEAT_DASH).
 	#
@@ -2551,6 +2554,8 @@ func report(beaten: bool, fulfilled: Variant = null, escaped: bool = false,
 			GameStats.record_amulet_win(played_game.id)
 		else:
 			GameStats.record_beaten(played_game.id)
+		if perfect_visit:
+			GameStats.record_perfect(played_game.id)
 		# …and on the character's page: beaten playing as THIS character.
 		GameStats.record_character_game(GameState.character_id, played_game.id)
 	elif played_game != null and not escaped and was_amulet:
@@ -2558,6 +2563,8 @@ func report(beaten: bool, fulfilled: Variant = null, escaped: bool = false,
 		# (see the was_amulet branch below), so it is still the game the win goes
 		# on the record against.
 		GameStats.record_amulet_win(played_game.id)
+		if perfect_visit:
+			GameStats.record_perfect(played_game.id)
 		GameStats.record_character_game(GameState.character_id, played_game.id)
 	# Level up (§3.1) — a fresh chance each game; skipped if the game just killed
 	# the player.
