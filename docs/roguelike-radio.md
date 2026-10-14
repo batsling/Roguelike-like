@@ -274,11 +274,14 @@ The owner's choices, asked before it was built:
 `RadioScreen`, opened from **📻 on the run's header bar** (beside Map and Menu,
 on the layer no modal covers) and from **📻 in the main menu's top-right
 corner**. Both are a `RadioMiniPlayer`: the icon alone, and beside it, while a
-song is loaded, its game's cover and ⏮ ⏸ ⏭, so back, pause and skip never need
-the screen. The screen has:
+song is loaded, its game's cover **whole** (letterboxed, never cropped) and a
+stack of two: **"Song — Game" scrolling** across a fixed-width window on top
+(`RadioMiniPlayer.Ticker`; a line that fits stands still), and ⏮ ⏸ ⏭, smaller,
+under it. It keeps about the footprint the row of full-size buttons had (October
+2026), so back, pause and skip never need the screen. The screen has:
 
 - what's playing and how far in;
-- Back / Pause / Skip and a volume slider;
+- Back / Pause / Skip, a volume slider and **⟳ Re-measure** (§6a);
 - a ★ beside the title of what's playing, to star or un-star it;
 - shuffle, the station (★ Favourites among them), and where it plays from;
 - the music folder, with **Change…** (the OS's folder picker), **Default** (shown
@@ -307,6 +310,28 @@ do, it is **`C:\Users\Owner\Documents\Roguelike Roguelike\radio`**
 `user://radio` anywhere else, where a `C:` path means nothing. Only a folder the
 player chose is written to the config, so the default stays a default. Changing
 it stops the song playing (its file was in the old folder) and rescans.
+
+## 6a. Every song at the same loudness
+
+The owner asked whether the volume could be balanced (October 2026). The music
+is the player's own and never in the repo, so nothing can measure it ahead of
+time; **the game listens to each song once** (`Radio.gd`, "Loudness"). A second,
+silent player plays the current song into the `RadioMeter` bus, whose first
+effect is a capture; the radio reads the RMS level of every block louder than
+`GATE_DB` (so a quiet intro does not drag the average down), and after
+`LEARN_AFTER` seconds keeps it, per file, in `user://radio_loudness.json`. From
+then on the song plays at `TARGET_DB - level` dB of gain (held between
+`GAIN_MIN` and `GAIN_MAX`), and the meter is never run for it again.
+
+- **In the game window** the gain eases in during that first play, as the
+  estimate firms up, and is right from the first second after.
+- **In OBS** the page is told only a LEARNED gain (`payload().gain_db`): a value
+  that moved every frame would rewrite the overlay's state file every frame. A
+  browser `<audio>` cannot go past full volume, so a quiet song is raised only as
+  far as the slider leaves room; `TARGET_DB` is set low (-20 dBFS RMS) so most
+  songs are turned down to meet it, which both speakers can do.
+- **⟳ Re-measure** forgets every level (`Radio.forget_loudness`), for a file
+  swapped for a different master under the same name.
 
 ## 7. Setting it up (for the streamer)
 

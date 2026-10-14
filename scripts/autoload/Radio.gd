@@ -106,7 +106,9 @@ func _ready() -> void:
 	_player = AudioStreamPlayer.new()
 	_player.name = "RadioPlayer"
 	add_child(_player)
+	_setup_meter()
 	load_config()
+	_load_loudness()
 	DirAccess.make_dir_recursive_absolute(folder)
 	_load_unlocked()
 	# Unlocks the save already earned are taken QUIETLY at boot: a first launch
@@ -446,7 +448,7 @@ func set_paused(value: bool) -> void:
 # when it is let go (RadioScreen), not on every step of the drag.
 func set_volume(value: float, persist: bool = true) -> void:
 	volume = clampf(value, 0.0, 1.0)
-	_player.volume_db = linear_to_db(maxf(volume, 0.0001))
+	_player.volume_db = _speaker_db()
 	if persist:
 		save_config()
 	volume_changed.emit(volume)
@@ -611,9 +613,10 @@ func position() -> float:
 func is_playing() -> bool:
 	return current != &"" and not paused
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	if is_playing() and duration > 0.0 and position() >= duration:
 		next()
+	_measure(delta)
 
 # The next song: the head of the queue, refilled when it runs dry. Shuffle deals
 # every playable song once before any repeats — the "no repeats until all have
@@ -663,6 +666,7 @@ func _start(id: StringName, at: float) -> bool:
 	_offset = at
 	_since = _now()
 	seq += 1
+	_begin_measuring(song)
 	if _stream == null or duration <= 0.0:
 		push_warning("Radio: %s would not play — skipping it" % file_path(song))
 		_queue.erase(id)
@@ -673,6 +677,7 @@ func _start(id: StringName, at: float) -> bool:
 	return true
 
 func _stop_track() -> void:
+	_keep_measurement()
 	current = &""
 	duration = 0.0
 	_offset = 0.0
@@ -684,7 +689,8 @@ func _stop_track() -> void:
 # The in-game speaker follows the clock, and is silent unless it is the one
 # chosen.
 func _sync_player() -> void:
-	_player.volume_db = linear_to_db(maxf(volume, 0.0001))
+	_player.volume_db = _speaker_db()
+	_sync_meter()
 	if output != Output.GAME or paused or _stream == null:
 		_player.stop()
 		return
@@ -723,6 +729,10 @@ func payload() -> Dictionary:
 	if song == null:
 		return out
 	out["file"] = file_path(song)
+	# The LEARNED gain only, never the one still settling during a first play:
+	# that one moves every frame, and the payload must not (the overlay dedupes
+	# on it). 0 until the song has been measured once.
+	out["gain_db"] = snappedf(learned_gain_db(song), 0.1)
 	out["offset"] = _offset
 	out["since"] = _since
 	out["duration"] = duration
@@ -738,6 +748,186 @@ func payload() -> Dictionary:
 	}
 	out["art"] = game.cover_path if game != null else ""
 	return out
+
+# ---------------------------------------------------------------------------
+# Loudness (the owner, Oct 2026: "is there a way to make sure the music volume is
+# balanced?")
+# ---------------------------------------------------------------------------
+#
+# THE GAME LEARNS HOW LOUD EACH SONG IS, by listening to it once. The music is the
+# player's own and never in the repo, so nothing can measure it ahead of time;
+# what the game CAN do is hear it. A second, silent player (`_meter_player`) plays
+# the current song into the `RadioMeter` bus, whose first effect is a capture the
+# radio reads every frame. Its loudness is the RMS level of the blocks that are
+# not silence (the gate keeps a quiet intro or a gap between movements from
+# dragging the average down, as broadcast loudness meters do). Once LEARN_AFTER
+# seconds have been heard it is saved, per FILE, in `loudness_path`, and from then
+# on the song starts at the right volume and the meter is not run for it again.
+#
+# The GAIN is TARGET_DB minus that level, held between GAIN_MIN and GAIN_MAX.
+# During a song's first play the game window's speaker eases toward it as the
+# estimate firms up (GAIN_SLEW dB a second, so it is never a jump). The OBS page
+# gets only the learned gain (`payload`), because a value that moved every frame
+# would rewrite the overlay's state file every frame.
+#
+# A browser <audio> cannot play LOUDER than full volume, so on the OBS page a
+# positive gain is capped at what the volume slider leaves room for. TARGET_DB is
+# set low enough (-20, about where quiet masters sit) that most songs are turned
+# DOWN to meet it rather than up, which is the direction both speakers can go.
+const METER_BUS := "RadioMeter"
+const TARGET_DB := -20.0
+const GAIN_MIN := -15.0
+const GAIN_MAX := 8.0
+const GATE_DB := -50.0         # a block quieter than this is silence, not the song
+const LEARN_AFTER := 20.0      # seconds of song heard before the level is kept
+const ESTIMATE_AFTER := 3.0    # seconds heard before the estimate moves the gain
+const GAIN_SLEW := 4.0         # dB per second the live gain may move
+var loudness_path: String = "user://radio_loudness.json"
+var _loudness: Dictionary = {}     # song file -> its learned RMS level in dBFS
+var _meter_player: AudioStreamPlayer = null
+var _meter: AudioEffectCapture = null
+var _heard_sq: float = 0.0          # sum of squares over the gated blocks
+var _heard_n: int = 0               # samples in it
+var _heard_s: float = 0.0           # seconds of song in it
+var _measuring: String = ""        # the file being measured, "" when none
+var _gain_now: float = 0.0          # the gain the game speaker is playing at
+
+# The silent second player and its bus. The bus is made here rather than in a
+# bus layout resource, so a project without one still gets it, and it is sent to
+# Master at -80 dB: it has to go somewhere for Godot to mix it, and nobody may hear
+# it. The capture is the bus's FIRST effect, ahead of its fader.
+func _setup_meter() -> void:
+	var idx: int = AudioServer.get_bus_index(METER_BUS)
+	if idx < 0:
+		AudioServer.add_bus()
+		idx = AudioServer.bus_count - 1
+		AudioServer.set_bus_name(idx, METER_BUS)
+		AudioServer.set_bus_send(idx, &"Master")
+		var cap := AudioEffectCapture.new()
+		cap.buffer_length = 0.5
+		AudioServer.add_bus_effect(idx, cap, 0)
+	AudioServer.set_bus_volume_db(idx, -80.0)
+	for i in AudioServer.get_bus_effect_count(idx):
+		if AudioServer.get_bus_effect(idx, i) is AudioEffectCapture:
+			_meter = AudioServer.get_bus_effect(idx, i)
+			break
+	_meter_player = AudioStreamPlayer.new()
+	_meter_player.name = "RadioMeterPlayer"
+	_meter_player.bus = METER_BUS
+	add_child(_meter_player)
+
+# The level a song was measured at, or NAN when it has not been yet.
+func measured_db(song: SongData) -> float:
+	if song == null or song.file == "":
+		return NAN
+	return float(_loudness.get(song.file, NAN))
+
+static func gain_for_level(level_db: float) -> float:
+	if is_nan(level_db):
+		return 0.0
+	return clampf(TARGET_DB - level_db, GAIN_MIN, GAIN_MAX)
+
+func learned_gain_db(song: SongData) -> float:
+	return gain_for_level(measured_db(song))
+
+# The game window's speaker: the slider, then the song's gain.
+func _speaker_db() -> float:
+	return linear_to_db(maxf(volume, 0.0001)) + _gain_now
+
+func _begin_measuring(song: SongData) -> void:
+	_keep_measurement()
+	_heard_sq = 0.0
+	_heard_n = 0
+	_heard_s = 0.0
+	var level: float = measured_db(song)
+	_gain_now = gain_for_level(level)
+	_measuring = song.file if song != null and is_nan(level) else ""
+
+# The meter plays only while there is something to learn: an unmeasured song,
+# playing. It follows the same clock as both speakers.
+func _sync_meter() -> void:
+	if _meter_player == null:
+		return
+	if _measuring == "" or paused or _stream == null:
+		_meter_player.stop()
+		return
+	if _meter_player.stream != _stream:
+		_meter_player.stream = _stream
+	_meter_player.play(position())
+	if _meter != null:
+		_meter.clear_buffer()
+
+func _measure(delta: float) -> void:
+	if _measuring == "" or _meter == null or not is_playing():
+		return
+	var frames: int = _meter.get_frames_available()
+	if frames <= 0:
+		return
+	var buf: PackedVector2Array = _meter.get_buffer(frames)
+	# Every 4th frame is plenty for an average over twenty seconds, and keeps this
+	# a few hundred multiplies a frame.
+	var sq: float = 0.0
+	var n: int = 0
+	for i in range(0, buf.size(), 4):
+		var v: Vector2 = buf[i]
+		sq += v.x * v.x + v.y * v.y
+		n += 2
+	if n == 0:
+		return
+	if linear_to_db(sqrt(sq / n)) < GATE_DB:
+		return
+	_heard_sq += sq
+	_heard_n += n
+	_heard_s += float(frames) / AudioServer.get_mix_rate()
+	if _heard_s < ESTIMATE_AFTER:
+		return
+	var target: float = gain_for_level(linear_to_db(sqrt(_heard_sq / _heard_n)))
+	_gain_now = move_toward(_gain_now, target, GAIN_SLEW * delta)
+	_player.volume_db = _speaker_db()
+	if _heard_s >= LEARN_AFTER:
+		_keep_measurement()
+		_measuring = ""
+		_meter_player.stop()
+		changed.emit()
+
+# Keep what has been heard of the song being measured, if it is enough.
+func _keep_measurement() -> void:
+	if _measuring == "" or _heard_s < LEARN_AFTER or _heard_n <= 0:
+		return
+	_loudness[_measuring] = snappedf(linear_to_db(sqrt(_heard_sq / _heard_n)), 0.01)
+	_save_loudness()
+
+# JSON rather than a ConfigFile: the keys are the player's file names, which
+# carry spaces, brackets and subfolder slashes a ConfigFile key does not survive.
+func _load_loudness() -> void:
+	_loudness = {}
+	var f := FileAccess.open(loudness_path, FileAccess.READ)
+	if f == null:
+		return
+	var parsed: Variant = JSON.parse_string(f.get_as_text())
+	if parsed is Dictionary:
+		for key in parsed:
+			_loudness[String(key)] = float(parsed[key])
+
+func _save_loudness() -> void:
+	var f := FileAccess.open(loudness_path, FileAccess.WRITE)
+	if f == null:
+		return
+	f.store_string(JSON.stringify(_loudness, "\t", true))
+
+# Forget every learned level (the Radio screen's "Re-measure"), so each song is
+# listened to again the next time it plays.
+func forget_loudness() -> void:
+	# What is half-heard goes too, or _begin_measuring would keep it on the way in.
+	_measuring = ""
+	_heard_s = 0.0
+	_loudness = {}
+	_save_loudness()
+	var song: SongData = current_song()
+	if song != null:
+		_begin_measuring(song)
+		_sync_player()
+	changed.emit()
 
 # ---------------------------------------------------------------------------
 # Persistence
