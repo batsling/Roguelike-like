@@ -2814,6 +2814,108 @@ func test_a_board_packed_to_the_front_still_queues() -> void:
 	assert_eq(_col_of(fresh), GameLoop2.offgrid_col(),
 		"nothing can be shoved off the front edge, so it waits off the board")
 
+# THE SHOVE THAT HITS YOU (§7.3a). A board packed to the front still queues the
+# newcomer, but the lane it leans on is driven into the player: every body in that
+# chain strikes once, nobody moves, and the crash is recorded for the board.
+func _pack_to_the_front(dmg: int) -> Dictionary:
+	var at: Dictionary = {}
+	for row in range(GameLoop2.grid_rows()):
+		for c in range(1, GameLoop2.grid_cols() + 1):
+			at[GameLoop2.summon(_enemy(dmg), Vector2i(c, row))] = Vector2i(c, row)
+	GameLoop2.take_crashes()
+	GameState.shields = 0
+	GameState.bonus_shields = 0
+	GameState.max_hp = 100
+	GameState.hp = 100
+	return at
+
+func test_a_packed_board_shoves_a_lane_into_you() -> void:
+	var at: Dictionary = _pack_to_the_front(2)
+	var fresh: int = GameLoop2.spawn_to_stack(_enemy(0))
+	assert_eq(_col_of(fresh), GameLoop2.offgrid_col(), "the newcomer still queues")
+	var cols: int = GameLoop2.grid_cols()
+	assert_eq(GameState.hp, 100 - 2 * cols,
+		"every body in one full lane (%d of them) hit for its 2" % cols)
+	for inst in at:
+		assert_eq(Vector2i(_col_of(int(inst)), _row_of(int(inst))), at[inst], "and nobody moved")
+	var crashes: Array = GameLoop2.take_crashes()
+	assert_eq(crashes.size(), 1, "the crash is recorded for the board to play")
+	var hits: Array = crashes[0]["hits"]
+	assert_eq(hits.size(), cols, "one hit per body in the lane")
+	var row: int = int(crashes[0]["row"])
+	for h in hits:
+		assert_eq(_row_of(int(h["instance"])), row, "all of them from the lane it leaned on")
+	assert_eq(_col_of(int(hits[0]["instance"])), cols, "listed back to front, the way the push runs")
+	assert_true(GameLoop2.take_crashes().is_empty(), "and each crash is handed over once")
+
+func test_the_crash_takes_the_shortest_chain() -> void:
+	# Lane 0 has a gap so it reaches nobody… no: a gap would let the FORWARD shove
+	# through. So every lane is full and lane 1 is made of one wide body per pair of
+	# columns — fewer bodies, fewer hits.
+	var cols: int = GameLoop2.grid_cols()
+	if cols % 2 != 0:
+		pending("the wide-body lane needs an even number of columns")
+		return
+	for row in range(GameLoop2.grid_rows()):
+		if row == 1:
+			for c in range(2, cols + 1, 2):
+				GameLoop2.summon(_shaped(1, 1, 2), Vector2i(c - 1, row))
+			continue
+		for c in range(1, cols + 1):
+			GameLoop2.summon(_enemy(1), Vector2i(c, row))
+	GameState.shields = 0
+	GameState.bonus_shields = 0
+	GameState.max_hp = 100
+	GameState.hp = 100
+	GameLoop2.take_crashes()
+	GameLoop2.spawn_to_stack(_enemy(0))
+	var crashes: Array = GameLoop2.take_crashes()
+	assert_eq(crashes.size(), 1)
+	assert_eq(int(crashes[0]["row"]), 1, "the lane with the fewest bodies to swing")
+	assert_eq(GameState.hp, 100 - cols / 2, "%d wide bodies, 1 each" % (cols / 2))
+
+func test_a_stunned_body_in_the_chain_does_not_swing() -> void:
+	_pack_to_the_front(3)
+	# Stun one whole column, so whichever lane is picked carries a stunned body.
+	for entry in GameLoop2.stack:
+		if int(entry["col"]) == 1:
+			GameLoop2.stun(int(entry["instance"]))
+	GameLoop2.spawn_to_stack(_enemy(0))
+	var cols: int = GameLoop2.grid_cols()
+	assert_eq(GameState.hp, 100 - 3 * (cols - 1), "the stunned front body was shoved but held its swing")
+	var stunned := 0
+	for h in GameLoop2.take_crashes()[0]["hits"]:
+		if bool(h.get("stunned", false)):
+			stunned += 1
+	assert_eq(stunned, 1)
+
+func test_shields_stop_a_crash_hit_like_any_other() -> void:
+	_pack_to_the_front(4)
+	GameState.shields = 1
+	GameLoop2.spawn_to_stack(_enemy(0))
+	var cols: int = GameLoop2.grid_cols()
+	assert_eq(GameState.hp, 100 - 4 * (cols - 1), "one hit landed on the shield")
+	assert_eq(GameState.shields, 0)
+
+func test_a_spawner_holds_its_lane_against_the_crash() -> void:
+	# Every lane but one is a lane of summoners that never attack; the crash goes
+	# down the one lane it can lean through.
+	var cols: int = GameLoop2.grid_cols()
+	var spawner: GoalEnemyData = _enemy(5)
+	spawner.abilities = [{"id": &"nested_spawner", "amount": 1, "arg": &"", "text": ""}]
+	for row in range(GameLoop2.grid_rows()):
+		for c in range(1, cols + 1):
+			GameLoop2.summon(spawner if (row != 2 and c == cols) else _enemy(1), Vector2i(c, row))
+	GameState.shields = 0
+	GameState.bonus_shields = 0
+	GameState.max_hp = 100
+	GameState.hp = 100
+	GameLoop2.take_crashes()
+	GameLoop2.spawn_to_stack(_enemy(0))
+	var crashes: Array = GameLoop2.take_crashes()
+	assert_eq(crashes.size(), 1)
+	assert_eq(int(crashes[0]["row"]), 2, "the only lane without a summoner at its back")
+
 func test_being_shoved_is_not_a_turn() -> void:
 	# A body shoved into the front column does not swing for it.
 	var cols: int = GameLoop2.grid_cols()

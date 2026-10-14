@@ -882,6 +882,7 @@ func _ready() -> void:
 
 func reset() -> void:
 	arrivals.clear()
+	_crashes.clear()
 	game_in_play = false
 	stack.clear()
 	graveyard.clear()
@@ -6434,6 +6435,10 @@ func _place_on_spawn(entry: Dictionary, shove: bool = false) -> bool:
 				rows = [int(side["row"])]
 	if rows.is_empty():
 		entry["col"] = offgrid_col()
+		# …AND WHEN NOTHING WILL MOVE, IT SHOVES ANYWAY, INTO YOU (§7.3a). Only a
+		# fresh spawn, for the same reason only a fresh spawn shoves at all.
+		if shove:
+			_crash_into_player(entry, col)
 		return false
 	# Through _move_entry, so walking onto the board pays the ground's tolls like
 	# every other way of arriving in a cell (§17): an enemy that spawns onto a
@@ -6612,6 +6617,113 @@ func _side_shove_lane(enemy: GoalEnemyData, row: int, col: int, exclude: int) ->
 		if not placed:
 			return {}
 	return {"row": row, "moves": moves}
+
+# THE SHOVE THAT HITS YOU (§7.3a). A newcomer that could push no lane forward and
+# step nobody sideways still shoves: the lane it leans on is packed to the front,
+# so the push has nowhere to go but into the player, and EVERY body in that chain
+# strikes you once for its own damage. Nobody moves, and the newcomer queues as
+# it always did — so a packed board is something the player feels on every spawn
+# it refuses, rather than a queue growing quietly off the edge.
+#
+# The lane is the one whose chain is SHORTEST (fewest bodies to swing), ties at
+# random, the same "least pushing" rule the forward shove picks by. A lane with a
+# spawner that never attacks in its chain cannot be leaned through (_is_anchored:
+# it holds its ground). A STUNNED body is shoved along without swinging, and one
+# whose swing is 0 lands nothing, exactly as on its own turn.
+#
+# Each crash is recorded in `_crashes` for the board to play back (the shove, then
+# the hits): see `take_crashes` and BattlefieldView.play_crashes.
+var _crashes: Array = []
+
+# Every crash since the last call, oldest first, and forget them: the board plays
+# each one once.
+func take_crashes() -> Array:
+	var out: Array = _crashes
+	_crashes = []
+	return out
+
+func has_crashes() -> bool:
+	return not _crashes.is_empty()
+
+# The chain one lane would drive into the player, as instances ordered back to
+# front, or [] when that lane does not reach the player (a gap stops it, or it
+# runs into an anchored spawner). Read off the board as it stands: bodies the
+# newcomer's footprint overlaps, then whatever stands one column in front of each
+# of THEM, and so on — the same chain the forward shove would have moved.
+func _crash_chain(enemy: GoalEnemyData, row: int, col: int, exclude: int) -> Array:
+	var newcomer: Array = footprint_at(enemy, row, col)
+	if newcomer.is_empty():
+		return []
+	var taken: Dictionary = occupancy(exclude)
+	var chain: Array = []
+	var reaches: bool = false
+	var frontier: Array = newcomer.duplicate()
+	while not frontier.is_empty():
+		var cell: Vector2i = frontier.pop_back()
+		if not taken.has(cell):
+			continue
+		var inst: int = int(taken[cell])
+		if chain.has(inst):
+			continue
+		var entry: Dictionary = entry_for(inst)
+		if entry.is_empty() or _is_anchored(entry):
+			return []
+		chain.append(inst)
+		var ahead: Array = footprint_at(entry.get("enemy"), int(entry.get("row", 0)),
+			int(entry.get("col", 1)) - 1)
+		if ahead.is_empty():
+			reaches = true       # it stands on the front line: the push lands on you
+			continue
+		frontier.append_array(ahead)
+	if not reaches:
+		return []
+	chain.sort_custom(func(a, b): return int(entry_for(a).get("col", 1)) > int(entry_for(b).get("col", 1)))
+	return chain
+
+func _crash_into_player(entry: Dictionary, col: int) -> void:
+	if run_over:
+		return
+	var enemy: GoalEnemyData = entry.get("enemy")
+	var inst: int = int(entry.get("instance", 0))
+	var best: Array = []
+	var best_n: int = 1 << 30
+	for row in range(grid_rows()):
+		var chain: Array = _crash_chain(enemy, row, col, inst)
+		if chain.is_empty():
+			continue
+		if chain.size() < best_n:
+			best_n = chain.size()
+			best = [{"row": row, "chain": chain}]
+		elif chain.size() == best_n:
+			best.append({"row": row, "chain": chain})
+	if best.is_empty():
+		return
+	var pick: Dictionary = best[randi() % best.size()]
+	var hits: Array = []
+	var scratch: Dictionary = {}
+	var total: int = 0
+	for body in pick["chain"]:
+		var e: Dictionary = entry_for(int(body))
+		if e.is_empty():
+			continue
+		var row_hit := {"instance": int(body), "damage": 0, "blocked": 0}
+		if not is_stunned(e) and not run_over:
+			_reveal(e)
+			var hit: Dictionary = _take_hit(enemy_damage(e), scratch)
+			row_hit["damage"] = int(hit["damage"])
+			row_hit["blocked"] = int(hit["blocked"])
+			total += int(hit["damage"]) - int(hit["blocked"])
+			if int(hit["damage"]) > 0:
+				player_hit.emit(int(hit["damage"]), int(hit["blocked"]))
+		else:
+			row_hit["stunned"] = true
+		hits.append(row_hit)
+	_crashes.append({"instance": inst, "row": int(pick["row"]), "hits": hits})
+	var who: String = enemy.display_name if enemy != null else "A newcomer"
+	var msg: String = "%s had no room and shoved a lane into you: %d hit%s for %d." % [
+		who, hits.size(), "" if hits.size() == 1 else "s", total]
+	GameLog.add(msg, UITheme.DANGER)
+	Notifications.notify(msg, UITheme.DANGER)
 
 # Carry out a _side_shove_plan through _move_entry, so the ground a shoved body
 # steps onto charges it exactly as a Push would (§17). Not a turn.

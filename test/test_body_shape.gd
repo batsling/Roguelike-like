@@ -128,3 +128,34 @@ func test_a_real_board_passes_its_own_check() -> void:
 				"a body built the ordinary way carries only allowed keys")
 		for req in GameLoop2.BODY_REQUIRED:
 			assert_true(body.has(req), "…and everything required")
+
+# --- one outline round a big body (BattlefieldView.FootprintFrame) ----------
+#
+# A body bigger than a cell is framed as ONE shape: its cells, the gutters
+# between two of them, and a gutter crossing only where all four cells round it
+# are the body's. An L must not fill the crossing in its notch.
+
+const _FRAME := preload("res://scripts/redesign2/BattlefieldView.gd")
+
+func _frame(cells: Array) -> Control:
+	var f = _FRAME.FootprintFrame.new()
+	f.set_cells(cells)
+	autofree(f)
+	return f
+
+func test_a_square_body_is_one_solid_block() -> void:
+	var f = _frame([Vector2i(0, 0), Vector2i(1, 0), Vector2i(0, 1), Vector2i(1, 1)])
+	for i in range(3):
+		for j in range(3):
+			assert_true(f.is_solid(Vector2i(i, j)), "a 2x2 fills its cells, gutters and crossing (%d,%d)" % [i, j])
+
+func test_an_l_keeps_its_notch_open() -> void:
+	var f = _frame([Vector2i(0, 0), Vector2i(1, 0), Vector2i(0, 1)])
+	assert_true(f.is_solid(Vector2i(1, 0)), "the gutter between the top two cells is the body's")
+	assert_true(f.is_solid(Vector2i(0, 1)), "and the one between the left two")
+	assert_false(f.is_solid(Vector2i(1, 1)), "the crossing in the notch is not")
+	assert_false(f.is_solid(Vector2i(2, 2)), "nor is the missing cell")
+
+func test_two_cells_in_a_line_share_the_gutter_between_them() -> void:
+	var f = _frame([Vector2i(0, 0), Vector2i(1, 0)])
+	assert_true(f.is_solid(Vector2i(1, 0)), "the gutter between them is filled, so no line splits the body")

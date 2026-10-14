@@ -364,6 +364,90 @@ class FootprintControl extends Control:
 	func _make_custom_tooltip(_for_text: String) -> Object:
 		return HoverCard.of(self)
 
+# A BODY BIGGER THAN ONE CELL, FRAMED AS ONE SHAPE (the owner, Oct 2026). It used
+# to be one rounded frame per cell, so a 2x2 spider read as four enemies sharing a
+# picture. Now the body is filled across its cells AND the gutters between them,
+# and the border runs only round the outside of that region, so an L is drawn as
+# an L. The board's own empty squares are still under it (the backdrop is a
+# separate layer), which is what keeps the grid readable through a big body.
+#
+# Worked on a lattice twice as fine as the board: even indices are cells, odd ones
+# the gutters between them. A gutter is part of the body when the cells on both
+# sides of it are; a gutter CROSSING when all four cells round it are.
+class FootprintFrame extends Control:
+	var cells: Array = []            # Vector2i(col offset, row offset), solid only
+	var cell_size: float = 84.0
+	var step: float = 90.0
+	var fill: Color = Color.BLACK
+	var border: Color = Color.WHITE
+	var width: float = 2.0
+	var _solid: Dictionary = {}
+
+	func set_cells(c: Array) -> void:
+		cells = c
+		_solid = {}
+		var has: Dictionary = {}
+		for v in c:
+			has[Vector2i(v)] = true
+		var max_x: int = 0
+		var max_y: int = 0
+		for v in c:
+			max_x = maxi(max_x, int(v.x))
+			max_y = maxi(max_y, int(v.y))
+		for i in range(2 * max_x + 1):
+			for j in range(2 * max_y + 1):
+				var x0: int = i / 2
+				var y0: int = j / 2
+				var on: bool
+				if i % 2 == 0 and j % 2 == 0:
+					on = has.has(Vector2i(x0, y0))
+				elif i % 2 == 1 and j % 2 == 0:
+					on = has.has(Vector2i(x0, y0)) and has.has(Vector2i(x0 + 1, y0))
+				elif i % 2 == 0 and j % 2 == 1:
+					on = has.has(Vector2i(x0, y0)) and has.has(Vector2i(x0, y0 + 1))
+				else:
+					on = has.has(Vector2i(x0, y0)) and has.has(Vector2i(x0 + 1, y0)) \
+						and has.has(Vector2i(x0, y0 + 1)) and has.has(Vector2i(x0 + 1, y0 + 1))
+				if on:
+					_solid[Vector2i(i, j)] = true
+		queue_redraw()
+
+	func is_solid(u: Vector2i) -> bool:
+		return _solid.has(u)
+
+	func _unit_rect(u: Vector2i) -> Rect2:
+		var gap: float = step - cell_size
+		var x: float = float(u.x / 2) * step + (cell_size if u.x % 2 == 1 else 0.0)
+		var y: float = float(u.y / 2) * step + (cell_size if u.y % 2 == 1 else 0.0)
+		return Rect2(x, y, gap if u.x % 2 == 1 else cell_size, gap if u.y % 2 == 1 else cell_size)
+
+	func _draw() -> void:
+		for u in _solid:
+			draw_rect(_unit_rect(u), fill)
+		for u in _solid:
+			var r: Rect2 = _unit_rect(u)
+			var w: float = minf(width, minf(r.size.x, r.size.y))
+			var left: bool = not _solid.has(u + Vector2i(-1, 0))
+			var right: bool = not _solid.has(u + Vector2i(1, 0))
+			var up: bool = not _solid.has(u + Vector2i(0, -1))
+			var down: bool = not _solid.has(u + Vector2i(0, 1))
+			if left:
+				draw_rect(Rect2(r.position, Vector2(w, r.size.y)), border)
+			if right:
+				draw_rect(Rect2(Vector2(r.end.x - w, r.position.y), Vector2(w, r.size.y)), border)
+			if up:
+				draw_rect(Rect2(r.position, Vector2(r.size.x, w)), border)
+			if down:
+				draw_rect(Rect2(Vector2(r.position.x, r.end.y - w), Vector2(r.size.x, w)), border)
+			# The inside corner of an L: both sides belong to the body, the diagonal
+			# does not, so neither edge strip reaches the notch's corner pixel.
+			for d in [Vector2i(-1, -1), Vector2i(1, -1), Vector2i(-1, 1), Vector2i(1, 1)]:
+				if _solid.has(u + Vector2i(d.x, 0)) and _solid.has(u + Vector2i(0, d.y)) \
+						and not _solid.has(u + d):
+					var cx: float = r.position.x if d.x < 0 else r.end.x - w
+					var cy: float = r.position.y if d.y < 0 else r.end.y - w
+					draw_rect(Rect2(cx, cy, w, w), border)
+
 # THE LINE A RAY TAKES (RayAim), drawn over the squares it lights: the path in
 # board pixels, a ring at each bounce and a dot where it stops. Never clickable.
 class RayLine extends Control:
@@ -1401,6 +1485,11 @@ func _build() -> void:
 func refresh() -> void:
 	if _battlefield == null:
 		return
+	# A crash the loop recorded outside a resolve. Deferred, because a resolve
+	# refreshes the board and THEN calls animate_resolve in the same frame, which
+	# takes the crashes for itself and plays them in their place in the sequence.
+	if GameLoop2.has_crashes():
+		_play_loose_crashes.call_deferred()
 	# A verb that has run out of charges is not armed any more, whatever the last
 	# click left set — asked here, before anything is drawn against it.
 	if push_mode and GameState.push <= 0:
@@ -1799,7 +1888,14 @@ func _style_enemy_cell(frames: Array, accent: Color, selected: bool,
 		fill = fill.lerp(Color.WHITE, 0.09)
 	var box: StyleBox = UITheme.flat(fill, 6, 2, width, border)
 	for f in frames:
-		if is_instance_valid(f):
+		if not is_instance_valid(f):
+			continue
+		if f is FootprintFrame:
+			f.fill = fill
+			f.border = border
+			f.width = float(width)
+			f.queue_redraw()
+		else:
 			f.add_theme_stylebox_override("panel", box)
 
 # --- lighting a body up from outside the board -----------------------------
@@ -1944,9 +2040,10 @@ func _refresh_aim_cells() -> void:
 		# A WEAPON SHOWS WHAT IT WOULD HIT from the square under the cursor: its Area
 		# is a shape, and a shape is easier seen than read (§12).
 		# A RAY SHOWS ITS WHOLE PATH, bounces and all, the way Ball x Pit draws
-		# its aim line — for a weapon, and for a wand once it is known.
-		if WeaponSystem.is_weapon(throwing_loot) \
-				or (LootSystem.is_wand(throwing_loot) and WandSystem.previews_ray(throwing_loot)):
+		# its aim line — for a weapon, and for EVERY wand (its Aim is on its card,
+		# so the line gives nothing away): a ray wand draws its line, a square-aimed
+		# one lights where it lands (WandSystem.preview_cells).
+		if WeaponSystem.is_weapon(throwing_loot) or LootSystem.is_wand(throwing_loot):
 			btn.mouse_entered.connect(_show_swing_preview.bind(cell))
 			btn.mouse_exited.connect(_clear_swing_preview)
 		_arrow_layer.add_child(btn)
@@ -1969,10 +2066,10 @@ func _show_swing_preview(cell: Vector2i) -> void:
 			lit = WeaponSystem.ray_hit_cells(w, path)
 		else:
 			lit = WeaponSystem.hit_cells(throwing_loot, cell)
-	elif LootSystem.is_wand(throwing_loot) and WandSystem.previews_ray(throwing_loot):
-		path = RayAim.trace(cell, WandSystem.data_for(throwing_loot).bounce)
-		for imp in RayAim.impacts(path):
-			lit.append(imp["cell"])
+	elif LootSystem.is_wand(throwing_loot):
+		if WandSystem.previews_ray(throwing_loot):
+			path = RayAim.trace(cell, WandSystem.data_for(throwing_loot).bounce)
+		lit = WandSystem.preview_cells(throwing_loot, cell)
 	else:
 		return
 	for hit in lit:
@@ -2294,15 +2391,28 @@ func _add_enemy_node(entry: Dictionary) -> Control:
 	_enemy_layer.add_child(node)
 	_enemy_nodes[inst] = node
 
-	# One frame per filled cell, positioned inside the node.
+	# One frame for the body: a rounded panel for a one-cell body, and for a bigger
+	# one a single shape over its cells and the gutters between them, outlined round
+	# the outside only (FootprintFrame).
 	var frames: Array = []
-	for off in cells:
-		var frame := PanelContainer.new()
-		frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		frame.position = Vector2(off.x, off.y) * float(_cell_step)
-		frame.size = Vector2(_cell, _cell)
-		node.add_child(frame)
-		frames.append(frame)
+	if cells.size() > 1:
+		var shape := FootprintFrame.new()
+		shape.name = "Footprint"
+		shape.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		shape.cell_size = float(_cell)
+		shape.step = float(_cell_step)
+		shape.size = _span_size(rows, cols)
+		shape.set_cells(cells)
+		node.add_child(shape)
+		frames.append(shape)
+	else:
+		for off in cells:
+			var frame := PanelContainer.new()
+			frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			frame.position = Vector2(off.x, off.y) * float(_cell_step)
+			frame.size = Vector2(_cell, _cell)
+			node.add_child(frame)
+			frames.append(frame)
 
 	# Repainting this body is one callable, registered by instance, because the
 	# board is no longer the only thing that lights an enemy up: the checklist
@@ -3411,6 +3521,12 @@ func animate_resolve(before: Dictionary, res: Dictionary, hp_before: int = -1,
 	# ground the turns left, and walking them on through a slide would be two
 	# things moving through each other.
 	elapsed = _play_arrivals(before, after, elapsed)
+	# …and any newcomer that found no room at all shoves its lane into the hero
+	# (GameLoop2._crash_into_player, §7.3a), once the board has finished moving.
+	var crash_end: float = play_crashes(GameLoop2.take_crashes(), after, elapsed)
+	if crash_end > elapsed:
+		numbers_end = maxf(numbers_end, crash_end + FX_NUMBER_TAIL)
+		elapsed = crash_end
 	# Whatever the ghosts were standing in for comes back at the end of the whole
 	# playback, not at the end of each turn: a body that moved on turn 1 and then
 	# stood still has no turn-3 ghost to hand it back. The Health line stops being
@@ -3689,6 +3805,127 @@ func _punch_hero() -> void:
 	f.tween_property(_hero_icon, "modulate", Color(1.0, 0.55, 0.55), 0.09)
 	f.tween_property(_hero_icon, "modulate", Color.WHITE, 0.34)
 	_punch_tweens = [t, f]
+
+# THE SHOVE THAT HITS YOU, played (§7.3a): a newcomer with no room leaned on a
+# lane packed to the front. The push runs through the lane from the back — each
+# body jolts toward the hero a beat after the one behind it — and when it reaches
+# the front line every body in the chain lands its hit, one after another, the
+# way a turn's strikes do. Nothing actually moves: the bodies settle back where
+# they stood, which is what they did.
+#
+# `crashes` is GameLoop2.take_crashes(); `rects` the board's positions
+# (capture_positions). Starts at `delay`; returns when the last hit has landed
+# (`delay` itself when there was nothing to play).
+const FX_CRASH_JOLT: float = 0.16     # one body's lurch forward (and as long back)
+const FX_CRASH_WAVE: float = 0.08     # the push reaching the next body down the lane
+
+func play_crashes(crashes: Array, rects: Dictionary = {}, delay: float = 0.0) -> float:
+	if crashes.is_empty() or _fx_layer == null or not is_inside_tree():
+		return delay
+	if rects.is_empty():
+		rects = capture_positions()
+	var hero_rect: Rect2 = _local_rect(_hero_icon) if _hero_icon != null else Rect2()
+	var at: float = delay
+	for crash in crashes:
+		if not (crash is Dictionary):
+			continue
+		var hits: Array = crash.get("hits", [])
+		# The newcomer leans first, from wherever it is waiting.
+		var wave: Array = [int(crash.get("instance", 0))]
+		for h in hits:
+			wave.append(int((h as Dictionary).get("instance", 0)))
+		var k: int = 0
+		for inst in wave:
+			if not rects.has(inst):
+				continue
+			_jolt(inst, rects[inst], hero_rect, at + FX_CRASH_WAVE * k)
+			k += 1
+		var land: float = at + FX_CRASH_WAVE * maxi(k - 1, 0) + FX_CRASH_JOLT
+		var step: float = stagger_step(hits.size())
+		var gen: int = _fx_gen
+		for i in range(hits.size()):
+			var h: Dictionary = hits[i]
+			var inst: int = int(h.get("instance", 0))
+			if bool(h.get("stunned", false)) or not rects.has(inst):
+				continue
+			var from: Rect2 = rects[inst]
+			var dmg: int = int(h.get("damage", 0))
+			var to_health: int = maxi(0, dmg - int(h.get("blocked", 0)))
+			var blocked: bool = int(h.get("blocked", 0)) > 0
+			_after(land + step * i, func():
+				_spawn_strike_flash(from)
+				if dmg > 0:
+					_spawn_damage_number(dmg, from, hero_rect)
+				if gen != _fx_gen:
+					return
+				_drop_shown_hp(to_health)
+				if blocked:
+					_break_one_shield()
+				if dmg > 0:
+					_punch_hero())
+		at = land + step * maxi(hits.size() - 1, 0) + FX_CRASH_JOLT
+	return at
+
+# One body lurching a third of its width toward the hero and back, drawn by a
+# ghost while the real one is hidden.
+func _jolt(inst: int, rect: Rect2, hero: Rect2, delay: float) -> void:
+	var entry: Dictionary = _stack_entry(inst)
+	var art: Texture2D = GameLoop2.entry_image(entry) if not entry.is_empty() else null
+	if art == null:
+		return
+	var parts: Array = []
+	for part in [_holder_for_instance(inst), _badges_for_instance(inst)]:
+		if part != null:
+			parts.append(part)
+	var ghost := _ghost_for(art, rect)
+	ghost.modulate.a = 0.0
+	var toward: Vector2 = Vector2(-1, 0)
+	if hero.size.x > 0.0:
+		toward = (hero.get_center() - rect.get_center()).normalized()
+	var lunge: Vector2 = rect.position + toward * rect.size.x * 0.33
+	var gen: int = _fx_gen
+	var t := ghost.create_tween()
+	t.tween_interval(delay)
+	t.tween_callback(func():
+		ghost.modulate.a = 1.0
+		for part in parts:
+			if is_instance_valid(part):
+				part.modulate.a = 0.0)
+	t.tween_property(ghost, "position", lunge, FX_CRASH_JOLT).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	t.tween_property(ghost, "position", rect.position, FX_CRASH_JOLT).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	t.tween_callback(func():
+		ghost.queue_free()
+		if gen != _fx_gen:
+			return
+		for part in parts:
+			if is_instance_valid(part):
+				part.modulate.a = 1.0)
+
+# A crash that happened OUTSIDE a resolve (arriving at a game, a spawner's brood
+# finding no room): played on its own, over the board as it stands. The Health
+# and shield row are wound back by what the crash took so they come down WITH the
+# hits rather than having already dropped before the push was drawn.
+func _play_loose_crashes() -> void:
+	if not GameLoop2.has_crashes() or _fx_layer == null or not is_inside_tree():
+		return
+	var crashes: Array = GameLoop2.take_crashes()
+	var lost: int = 0
+	var broke: int = 0
+	for crash in crashes:
+		for h in (crash as Dictionary).get("hits", []):
+			lost += maxi(0, int(h.get("damage", 0)) - int(h.get("blocked", 0)))
+			if int(h.get("blocked", 0)) > 0:
+				broke += 1
+	_fx_gen += 1
+	_hp_shown = GameState.hp + lost
+	_shields_shown = Vector2i(GameState.shields + broke, GameState.bonus_shields)
+	_paint_hp()
+	_fill_shields()
+	var end: float = play_crashes(crashes)
+	var gen: int = _fx_gen
+	_after(end + FX_NUMBER_TAIL, func():
+		if gen == _fx_gen:
+			_end_hp_playback())
 
 # Bodies that were on the board when the resolve began and are not on it now —
 # cleared at the hand-in, bombed, carried off — fade and shrink where they stood.

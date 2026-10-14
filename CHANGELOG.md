@@ -11,6 +11,40 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The owner's second 14 Oct list: a sheet upload and eight fixes.**
+  - **The sheet**: Words Can Kill → Spinny Dungeon is on the chart (the
+    dev-relation row the research found), and Stumpy Stump's goal is the owner's
+    "Have a defeated enemy block an attack". The owner typed it into `enemies`,
+    which `apply_goals_sheet.py` writes, so `tools/_goals_stumpy_stump_wording.py`
+    carried it up into `goals`. CLAUDE.md now says the workbook comes first in
+    every upload.
+  - **Tier badges are never cut off.** The badge hangs half off the cover's
+    corner, and on the Collection's game page and the game popup the scroll
+    edge and the text beside the cover cut it. `UITheme.tier_badge_room` keeps
+    the overhang clear, the badge follows a letterboxed picture's corner (the
+    Atlas card's floated at the panel edge), and the Collection detail is inset
+    from its scrollbar, which hid the end of "Your ranking … Tier S".
+  - **The game popup's cover no longer covers its facts**: `RankBadge.wrap`
+    measured the frame before it had a size. The run map's game card is
+    narrower (400px, a 120px cover).
+  - **"Curse: Random"** on an event option whose curse is rolled (Golden Monkey
+    read "Curse:").
+  - **A spawn with no room shoves its lane into you** (§7.3a): every body in the
+    shortest chain to the player hits once, nobody moves, and the newcomer
+    queues. The board plays the push down the lane, then the hits.
+  - **A multi-cell enemy has one outline**, round the outside of the whole
+    shape (`BattlefieldView.FootprintFrame`), with the board's squares still
+    under it.
+  - **Wands say how they aim before they are identified**, and every aimed wand
+    previews its zap under the cursor: a ray its whole path, a square-aimed one
+    where it lands (its full shape once known). This gives up the old rule that
+    a mystery wand always asked for a square (docs/wands-design.md §4.2).
+  - **The radio mini player** shows the cover whole, with "Song — Game"
+    scrolling over smaller ⏮ ⏸ ⏭, in about the old footprint, and **every song
+    plays at the same loudness**: the game listens to each one once and keeps
+    its level (docs/roguelike-radio.md §6a), in the game window and on the OBS
+    page alike.
+
 - **Research now checks the developer's other roguelikes** (the owner's ask,
   14 Oct 2026). `influence_research.py new` runs a new `studio` pass: Steam's
   developer search lists every game under the new game's developer, and each
