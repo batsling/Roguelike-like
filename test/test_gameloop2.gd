@@ -299,6 +299,14 @@ func test_bombing_the_escort_clears_the_handle_it_was_held_by() -> void:
 	var primary: int = GameLoop2.choose_game(_enemy(2))
 	var escort: int = GameLoop2.second_body_instance()
 	assert_gt(escort, 0, "the game brought one")
+	# A ONE-HIT escort, whatever was rolled. The escort is random, and a few bodies
+	# take more than a bomb: the Mysterious Tree stands on 3 Health, so it survived
+	# the blast about one run in twenty-five and this failed on the handle it still
+	# rightly held. What is under test is the handle, not the bomb's damage.
+	var held: Dictionary = GameLoop2.entry_for(escort)
+	held["health"] = 1
+	held["max_health"] = 1
+	held["shield"] = 0
 	GameLoop2.bomb(escort)
 	assert_eq(GameLoop2.second_body_instance(), 0, "nothing to reach back for")
 	assert_true(_entry(escort).is_empty(), "and the body it named is off the board")
