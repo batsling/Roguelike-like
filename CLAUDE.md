@@ -75,6 +75,15 @@ the honour system.
 
 ## Working here
 
+**The workbook comes first in every upload.** When the owner uploads, assume
+`tools/Roguelikes.xlsx` has already been updated before anything else (images,
+proof clips, music lists): fetch `main`, diff the sheet against the last commit
+sheet by sheet, run `python3 tools/apply_goals_sheet.py --check` and
+`python3 tools/check_data_sync.py`, and regenerate, then wire up the art. An
+owner edit typed into an owner sheet's goal column (as Stumpy Stump's was, 14 Oct)
+is carried up into `goals` rather than reverted; see
+`tools/_goals_stumpy_stump_wording.py`.
+
 **Porting games from the owner's upload is several jobs, not one.** After
 `import-games-godot.py` (which prints the games still waiting), every kind of
 research runs over the new games (`docs/research.md` §7 has the detail):
