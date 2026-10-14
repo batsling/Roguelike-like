@@ -16,6 +16,8 @@ For how the project is laid out and how its systems fit together, see
   lane, but only the body shoved into you swings. A body waiting off the field
   now stands to the right of the lane it will walk into, takes that lane first
   when room frees, and lights its landing squares when hovered (spec §7.3a).
+  A multi-cell body's single outline now has the same rounded corners as a
+  one-cell body's, inside corners included.
 
 - **The owner's second 14 Oct list: a sheet upload and eight fixes.**
   - **The sheet**: Words Can Kill → Spinny Dungeon is on the chart (the

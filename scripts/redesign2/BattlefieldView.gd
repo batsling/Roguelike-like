@@ -423,32 +423,59 @@ class FootprintFrame extends Control:
 		var y: float = float(u.y / 2) * step + (cell_size if u.y % 2 == 1 else 0.0)
 		return Rect2(x, y, gap if u.x % 2 == 1 else cell_size, gap if u.y % 2 == 1 else cell_size)
 
-	func _draw() -> void:
-		for u in _solid:
-			draw_rect(_unit_rect(u), fill)
+	# ROUNDED LIKE A ONE-CELL BODY (the owner, Oct 2026): every corner of the
+	# shape, outside and inside, takes the same radius the single frames' StyleBox
+	# has. The cells and gutters are unioned into one outline, then closed (grown
+	# and shrunk, which rounds the inside corners) and opened (shrunk and grown,
+	# which rounds the outside ones). The border is that outline pulled in by half
+	# its width, so it sits inside the edge the way a StyleBox border does.
+	const RADIUS := 6.0
+
+	func outline() -> PackedVector2Array:
+		var shape: PackedVector2Array = PackedVector2Array()
 		for u in _solid:
 			var r: Rect2 = _unit_rect(u)
-			var w: float = minf(width, minf(r.size.x, r.size.y))
-			var left: bool = not _solid.has(u + Vector2i(-1, 0))
-			var right: bool = not _solid.has(u + Vector2i(1, 0))
-			var up: bool = not _solid.has(u + Vector2i(0, -1))
-			var down: bool = not _solid.has(u + Vector2i(0, 1))
-			if left:
-				draw_rect(Rect2(r.position, Vector2(w, r.size.y)), border)
-			if right:
-				draw_rect(Rect2(Vector2(r.end.x - w, r.position.y), Vector2(w, r.size.y)), border)
-			if up:
-				draw_rect(Rect2(r.position, Vector2(r.size.x, w)), border)
-			if down:
-				draw_rect(Rect2(Vector2(r.position.x, r.end.y - w), Vector2(r.size.x, w)), border)
-			# The inside corner of an L: both sides belong to the body, the diagonal
-			# does not, so neither edge strip reaches the notch's corner pixel.
-			for d in [Vector2i(-1, -1), Vector2i(1, -1), Vector2i(-1, 1), Vector2i(1, 1)]:
-				if _solid.has(u + Vector2i(d.x, 0)) and _solid.has(u + Vector2i(0, d.y)) \
-						and not _solid.has(u + d):
-					var cx: float = r.position.x if d.x < 0 else r.end.x - w
-					var cy: float = r.position.y if d.y < 0 else r.end.y - w
-					draw_rect(Rect2(cx, cy, w, w), border)
+			var quad := PackedVector2Array([r.position, Vector2(r.end.x, r.position.y),
+				r.end, Vector2(r.position.x, r.end.y)])
+			if shape.is_empty():
+				shape = quad
+				continue
+			var merged: Array = Geometry2D.merge_polygons(shape, quad)
+			shape = _largest(merged)
+		if shape.is_empty():
+			return shape
+		shape = _largest(Geometry2D.offset_polygon(shape, RADIUS, Geometry2D.JOIN_ROUND))
+		shape = _largest(Geometry2D.offset_polygon(shape, -RADIUS, Geometry2D.JOIN_ROUND))
+		shape = _largest(Geometry2D.offset_polygon(shape, -RADIUS, Geometry2D.JOIN_ROUND))
+		return _largest(Geometry2D.offset_polygon(shape, RADIUS, Geometry2D.JOIN_ROUND))
+
+	static func _largest(polys: Array) -> PackedVector2Array:
+		var best := PackedVector2Array()
+		var best_area: float = -1.0
+		# By bounding box: a hole (which a footprint never has) is always inside
+		# the outline round it, so the largest is the outline.
+		for poly in polys:
+			if (poly as PackedVector2Array).is_empty():
+				continue
+			var r: Rect2 = Rect2(poly[0], Vector2.ZERO)
+			for v in poly:
+				r = r.expand(v)
+			if r.get_area() > best_area:
+				best_area = r.get_area()
+				best = poly
+		return best
+
+	func _draw() -> void:
+		var shape: PackedVector2Array = outline()
+		if shape.size() < 3:
+			return
+		draw_colored_polygon(shape, fill)
+		var inner: PackedVector2Array = _largest(
+			Geometry2D.offset_polygon(shape, -width * 0.5, Geometry2D.JOIN_ROUND))
+		if inner.size() < 3:
+			return
+		inner.append(inner[0])
+		draw_polyline(inner, border, width, true)
 
 # THE LINE A RAY TAKES (RayAim), drawn over the squares it lights: the path in
 # board pixels, a ring at each bounce and a dot where it stops. Never clickable.

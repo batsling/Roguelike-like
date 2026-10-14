@@ -94,6 +94,13 @@ func test_bomb_button_removes_first_follower() -> void:
 	GameState.bombs = 1
 	_pick_solo(&"action") ; _ui.beat(false)
 	assert_eq(GameLoop2.stack_size(), 1)
+	# A KNOWN ONE-HIT BODY in its place. The game rolls a RANDOM enemy, and now
+	# and then that is one a single bomb does not finish (a boss is bomb-immune,
+	# §7.1; others walk on with more Health or a shield) — which failed this test
+	# about one full run in several while testing nothing it was written for.
+	var at := Vector2i(int(GameLoop2.stack[0]["col"]), int(GameLoop2.stack[0]["row"]))
+	GameLoop2.stack.clear()
+	GameLoop2.summon(Data.get_goal_enemy_any(&"monkey"), at)
 	_ui.bomb_first()
 	assert_eq(GameLoop2.stack_size(), 0)
 	assert_eq(GameState.bombs, 0)

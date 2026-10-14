@@ -159,3 +159,15 @@ func test_an_l_keeps_its_notch_open() -> void:
 func test_two_cells_in_a_line_share_the_gutter_between_them() -> void:
 	var f = _frame([Vector2i(0, 0), Vector2i(1, 0)])
 	assert_true(f.is_solid(Vector2i(1, 0)), "the gutter between them is filled, so no line splits the body")
+
+func test_a_big_body_is_one_outline_with_rounded_corners() -> void:
+	var f = _frame([Vector2i(0, 0), Vector2i(1, 0), Vector2i(0, 1)])
+	f.cell_size = 84.0
+	f.step = 90.0
+	var shape: PackedVector2Array = f.outline()
+	assert_gt(shape.size(), 8, "one outline, with points along its rounded corners")
+	assert_true(Geometry2D.is_point_in_polygon(Vector2(42, 42), shape), "the cells are inside")
+	assert_true(Geometry2D.is_point_in_polygon(Vector2(87, 42), shape), "and the gutter between two")
+	assert_false(Geometry2D.is_point_in_polygon(Vector2(0.5, 0.5), shape),
+		"the outside corner is rounded off, like a one-cell frame's")
+	assert_false(Geometry2D.is_point_in_polygon(Vector2(130, 130), shape), "the notch stays open")
