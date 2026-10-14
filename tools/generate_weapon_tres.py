@@ -11,9 +11,15 @@ off their own goal.
 
   Size            "HxW", ROWS FIRST, as trinkets and bags write a footprint.
   Aim             where the swing may be aimed:
-                    any | front | back | column N | enemy | none | random
+                    any | front | back | column N | enemy | none | random | ray
                   `random` needs no click: each strike lands on a random enemy
                   standing on the board (and whiffs on an empty one).
+                  `ray` fires a line from you (the left of the board) through
+                  ANY square the player clicks, Ball x Pit's ball: it carries on
+                  past that square, stops at the first enemy or wall it meets,
+                  and its Area lands on every enemy it struck (see RayAim.gd).
+                  `ray, bounce N` lets it bounce N times first — the bounce may
+                  equally be written in Effect.
   Area            what it hits, measured from the aimed square:
                     a word    cell row col cross 3x3 5x5 board plus diagonals
                     RxC       a rectangle, rows first: its rows CENTRED on the
@@ -30,6 +36,9 @@ off their own goal.
                                         toward <dir> — right (away from you),
                                         left (toward you), up or down — free,
                                         as far as it fits (GameLoop2.shove)
+                    bounce N            a `ray` bounces N times, mirrored off
+                                        each wall or enemy it meets, before it
+                                        stops (refused on any other Aim)
                   Anything else refuses.
   Type            Melee | Ranged — what kind of weapon it is (blank: Melee).
   Passive         the prose the player reads.
@@ -63,7 +72,8 @@ IMG_DIR = os.path.join(PROJECT_ROOT, "images2.0", "weapons")
 SIZE_RE = re.compile(r"^\s*(\d+)\s*[xX×]\s*(\d+)\s*$")
 AREA_WORDS = {"cell", "row", "col", "column", "cross", "3x3", "5x5", "board", "all",
               "plus", "diagonals"}
-AIM_WORDS = {"any", "front", "back", "enemy", "none", "random"}
+AIM_WORDS = {"any", "front", "back", "enemy", "none", "random", "ray"}
+BOUNCE_RE = re.compile(r"bounce\s+(\d+)")
 PUSH_DIRS = ("right", "left", "up", "down")
 WEAPON_TYPES = ("melee", "ranged")
 
@@ -87,14 +97,27 @@ def parse_size(raw, name):
 
 
 def parse_aim(raw, name):
-    text = (_clean(raw) or "any").lower()
+    """(aim, aim_column, bounce) from `any`, `column N`, `ray, bounce N`..."""
+    # Not through _clean: it reads a bare "none" as an empty cell, and `none` is
+    # an Aim word of its own (no click), not a blank one (`any`).
+    text = ("" if raw is None else str(raw)).strip().lower()
+    if text in ("", "n/a"):
+        text = "any"
+    parts = [p.strip() for p in text.split(",") if p.strip()]
+    text = parts[0] if parts else "any"
+    bounce = None
+    for extra in parts[1:]:
+        m = BOUNCE_RE.fullmatch(extra)
+        if m is None or bounce is not None:
+            raise ValueError("weapon %r: Aim %r — %r is not `bounce N`" % (name, raw, extra))
+        bounce = int(m.group(1))
     m = re.fullmatch(r"col(?:umn)?\s+(\d+)", text)
     if m:
-        return "column", int(m.group(1))
+        return "column", int(m.group(1)), bounce
     if text not in AIM_WORDS:
         raise ValueError("weapon %r: Aim %r is not one of any, front, back, "
-                         "column N, enemy, none, random" % (name, raw))
-    return text, 0
+                         "column N, enemy, none, random, ray" % (name, raw))
+    return text, 0, bounce
 
 
 def check_area(raw, name):
@@ -114,9 +137,10 @@ def check_area(raw, name):
 
 
 def parse_effect(raw, name):
-    """(stun, push_dir, push) from `stun N[, push <dir> N]`."""
+    """(stun, push_dir, push, bounce) from `stun N[, push <dir> N][, bounce N]`."""
     stun = None
     push_dir, push = "", 0
+    bounce = None
     for part in [p.strip() for p in (_clean(raw) or "").lower().split(",") if p.strip()]:
         m = re.fullmatch(r"stun\s+(\d+)", part)
         if m and stun is None:
@@ -126,11 +150,15 @@ def parse_effect(raw, name):
         if m and not push:
             push_dir, push = m.group(1), int(m.group(2))
             continue
-        raise ValueError("weapon %r: Effect %r — %r is not `stun N` or "
-                         "`push right|left|up|down N`" % (name, raw, part))
+        m = BOUNCE_RE.fullmatch(part)
+        if m and bounce is None:
+            bounce = int(m.group(1))
+            continue
+        raise ValueError("weapon %r: Effect %r — %r is not `stun N`, "
+                         "`push right|left|up|down N` or `bounce N`" % (name, raw, part))
     if stun is None:
         raise ValueError("weapon %r: Effect %r has no `stun N`" % (name, raw))
-    return stun, push_dir, push
+    return stun, push_dir, push, bounce
 
 
 def parse_type(raw, name):
@@ -145,9 +173,16 @@ def weapon_tres(row) -> tuple:
     wid = slugify(name)
     rarity = _clean(row.get("Rarity")) or "Common"
     w, h = parse_size(row.get("Size"), name)
-    aim, aim_col = parse_aim(row.get("Aim"), name)
+    aim, aim_col, aim_bounce = parse_aim(row.get("Aim"), name)
     area = check_area(row.get("Area"), name)
-    stun, push_dir, push = parse_effect(row.get("Effect"), name)
+    stun, push_dir, push, fx_bounce = parse_effect(row.get("Effect"), name)
+    if aim_bounce is not None and fx_bounce is not None and aim_bounce != fx_bounce:
+        raise ValueError("weapon %r: bounce %d in Aim but bounce %d in Effect"
+                         % (name, aim_bounce, fx_bounce))
+    bounce = aim_bounce if aim_bounce is not None else (fx_bounce or 0)
+    if bounce and aim != "ray":
+        raise ValueError("weapon %r: bounce %d on Aim %r — only a `ray` bounces"
+                         % (name, bounce, aim))
     wtype = parse_type(row.get("Type"), name)
     passive_text = _clean(row.get("Passive Effect"))
     passive = items.parse_loot_passive(name, passive_text, allow_empty=True)
@@ -183,6 +218,7 @@ def weapon_tres(row) -> tuple:
         "size = Vector2i(%d, %d)" % (w, h),
         'aim = "%s"' % aim,
         "aim_column = %d" % aim_col,
+        "bounce = %d" % bounce,
         'area = "%s"' % items.gd_str(area),
         "stun = %d" % stun,
         'push_dir = "%s"' % push_dir,

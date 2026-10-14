@@ -633,6 +633,13 @@ func weapon_description(entry: Dictionary) -> String:
 		return ""
 	var swing: String = "Swing: %d Stun to every enemy in a %s, aimed %s." % [
 		w.stun, WeaponSystem.area_words(w.area), WeaponSystem.aim_words(w)]
+	if w.aim == "ray":
+		# A ray's area is laid where the line strikes, not where it was aimed.
+		var reach: String = "it" if w.area == "cell" \
+			else "a %s round each" % WeaponSystem.area_words(w.area)
+		swing = "Swing: fires %s, toward any square. %d Stun to every enemy it hits%s." % [
+			RayAim.words(w.bounce), w.stun,
+			"" if w.area == "cell" else " and to every enemy in %s" % reach]
 	if w.push > 0:
 		swing += " Then pushes them %d square%s %s." % [w.push, "" if w.push == 1 else "s",
 			{"right": "back", "left": "forward", "up": "up", "down": "down"}.get(w.push_dir, "back")]

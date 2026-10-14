@@ -52,23 +52,27 @@ extends Resource
 # can sit in the same pack without the Common one being strictly worse.
 @export var charges: int = 1
 
-# WHAT THE WAND WANTS POINTED AT (the sheet's Type column), one of:
+# WHAT THE WAND WANTS POINTED AT (the sheet's `Aim`), in THE WEAPONS' WORDS
+# (WeaponData.aim) — one vocabulary for every piece of aimed loot:
 #
-#   "ray"              a square of the battlefield, picked the way a thrown potion's
-#                      is. Wand of Fire.
-#   "non_directional"  nothing at all — it fires where it stands. Wishing, Create
-#                      Monster.
-#   "random"           ONE OF THE OTHER TWO, rolled fresh on every zap. Wand of
-#                      Nothing is the only row that authors it, and that is not an
-#                      accident: a wand that behaved identically every time would
-#                      announce itself as the do-nothing one the moment you fired
-#                      it twice.
+#   "ray"     a line from you through any square clicked: the effect lands on
+#             every enemy it strikes, `bounce` bounces included (RayAim). Nearly
+#             the whole roster.
+#   "none"    nothing at all — it fires where it stands (the sheet's
+#             Non-Directional). Wishing, Create Monster.
+#   "random"  no click: the zap lands on a random enemy standing on the board.
+#             Wand of Nothing, the only row that authors it.
+#   "any" / "front" / "back" / "column" (+ `aim_column`) / "enemy"
+#             the square clicked, fenced as a weapon's is.
 #
 # It does NOT decide whether the player is asked to aim — WandSystem.needs_target
 # does, and an UNIDENTIFIED wand always asks (§4.2). Hiding the aiming step for
 # unknown non-directional wands would leak which half of the roster a mystery
 # stick belongs to, which is exactly the fact the gamble is selling.
-@export var targeting: String = "non_directional"
+@export var aim: String = "none"
+@export var aim_column: int = 0
+# How many times a "ray" bounces before it stops (the sheet's `Ray, Bounce N`).
+@export var bounce: int = 0
 
 # The structured effect ONE CHARGE buys, a list of ops (a Dictionary with an "op"
 # plus op-specific keys) in the grammar the other four consumables speak — see
@@ -124,12 +128,10 @@ func starting_charges() -> int:
 	return maxi(1, charges)
 
 
-# Does firing this wand need a square? `random` says yes, because it MIGHT — and
-# the roll happens after the player has aimed, so a random wand that came up
-# non-directional simply ignores a cell it was given rather than having to go back
-# and ask for one it wasn't.
+# Does firing this wand need a square, once it is known? Not for `none`, and not
+# for `random`, which picks its own enemy — the weapons' rule (WeaponSystem.needs_aim).
 func aims() -> bool:
-	return targeting != "non_directional"
+	return aim != "none" and aim != "random"
 
 
 func is_negative() -> bool:

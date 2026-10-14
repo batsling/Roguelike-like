@@ -251,22 +251,34 @@ static func adjacent_food_pieces(index: int) -> Array:
 #   enemy      every square an enemy is standing on
 #   none       nothing to click — see `fixed_cell`
 #   random     nothing to click — each strike picks a random enemy (`random_cell`)
+#   ray        every square: the click is a DIRECTION, and the line from you
+#              through it decides what is hit (RayAim, `hit_cells`)
 static func aim_cells(entry) -> Array:
 	var w: WeaponData = def(entry)
 	if w == null:
 		return []
-	match w.aim:
+	return cells_for_aim(w.aim, w.aim_column)
+
+# The same list for an Aim word, whoever carries it — a wand's Aim is written in
+# these words too (WandSystem.aim_cells).
+static func cells_for_aim(aim: String, column: int = 0) -> Array:
+	match aim:
 		"front":
 			return GameLoop2.column_cells(1)
 		"back":
 			return GameLoop2.column_cells(GameLoop2.grid_cols())
 		"column":
-			return GameLoop2.column_cells(w.aim_column)
+			return GameLoop2.column_cells(column)
 		"enemy":
 			return GameLoop2.occupancy().keys()
 		"none", "random":
 			return []
 	return GameLoop2.target_cells("all")
+
+# Whether it fires as a ray (RayAim) rather than landing on the square clicked.
+static func is_ray(entry) -> bool:
+	var w: WeaponData = def(entry)
+	return w != null and w.aim == "ray"
 
 # Whether it needs a click at all.
 static func needs_aim(entry) -> bool:
@@ -281,19 +293,25 @@ static func fixed_cell() -> Vector2i:
 
 # WHERE IT AIMS, in the words the hover prints.
 static func aim_words(w: WeaponData) -> String:
-	match w.aim:
+	return aim_phrase(w.aim, w.aim_column, w.bounce)
+
+# The same words for an Aim, whoever carries it (a wand's card says them too).
+static func aim_phrase(aim: String, column: int = 0, bounce: int = 0) -> String:
+	match aim:
 		"front":
 			return "at the front column"
 		"back":
 			return "at the back column"
 		"column":
-			return "at column %d" % w.aim_column
+			return "at column %d" % column
 		"enemy":
 			return "at an enemy"
 		"none":
 			return "at a fixed spot"
 		"random":
 			return "at a random enemy"
+		"ray":
+			return RayAim.words(bounce)
 	return "anywhere"
 
 # WHAT SHAPE IT HITS, in the same words.
@@ -346,11 +364,27 @@ static func push_vector(w: WeaponData) -> Vector2i:
 	return GameLoop2.PUSH_BACK
 
 # The squares a swing aimed at `cell` hits (its `area` from there, clipped).
+#
+# A RAY's area is laid at EVERY enemy the line strikes rather than at the square
+# clicked (RayAim.impacts) — Earthquake's 3x3 shakes the ground round each body
+# its rock hits, bounce included — and at the square it stopped on when it struck
+# nobody. One list, no square twice, so a body under two of the areas is still
+# covered once.
 static func hit_cells(entry, cell: Vector2i) -> Array:
 	var w: WeaponData = def(entry)
 	if w == null:
 		return []
-	return GameLoop2.area_cells(cell, w.area)
+	if w.aim != "ray":
+		return GameLoop2.area_cells(cell, w.area)
+	return ray_hit_cells(w, RayAim.trace(cell, w.bounce))
+
+static func ray_hit_cells(w: WeaponData, path: Dictionary) -> Array:
+	var out: Array = []
+	for impact in RayAim.impacts(path):
+		for c in GameLoop2.area_cells(impact["cell"], w.area):
+			if not out.has(c):
+				out.append(c)
+	return out
 
 
 # --- the swing ------------------------------------------------------------------
@@ -388,7 +422,14 @@ static func swing(entry: Dictionary, ctx: Dictionary) -> Dictionary:
 				cell = random_cell()
 			else:
 				cell = at if at is Vector2i else fixed_cell()
-			var cells: Array = hit_cells(entry, cell) if cell != GameLoop2.OFF_FIELD else []
+			var path: Dictionary = {}
+			var cells: Array = []
+			if cell != GameLoop2.OFF_FIELD:
+				if w.aim == "ray":
+					path = RayAim.trace(cell, w.bounce)
+					cells = ray_hit_cells(w, path)
+				else:
+					cells = hit_cells(entry, cell)
 			var hit: Array = GameLoop2.area_instances(cells)
 			for inst in hit:
 				if GameLoop2.entry_for(int(inst)).is_empty():
@@ -400,7 +441,11 @@ static func swing(entry: Dictionary, ctx: Dictionary) -> Dictionary:
 						"instance": int(inst), "weapon": w.id})
 			if w.push > 0:
 				_push_all(hit, push_vector(w), w.push)
-			strikes.append({"cells": cells, "instances": hit.duplicate()})
+			var strike := {"cells": cells, "instances": hit.duplicate()}
+			if not path.is_empty():
+				# The line itself, for the board to draw over the squares it lit.
+				strike["ray"] = (path["points"] as Array).duplicate()
+			strikes.append(strike)
 	# THE REPLAY IT EARNED, after the swing it was earned on.
 	var gain: Dictionary = w.replay_gain
 	if not gain.is_empty():

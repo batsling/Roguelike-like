@@ -10,6 +10,7 @@ rarity = "Rare"
 size = Vector2i(1, 3)
 aim = "front"
 aim_column = 0
+bounce = 0
 area = "3x2"
 stun = 2
 push_dir = "right"

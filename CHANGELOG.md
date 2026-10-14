@@ -11,6 +11,41 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The ray: Ball x Pit's ball, for Earthquake and the wands**
+  (`docs/loot-passives.md` §12.1-§12.2).
+  - *The aim.* `ray` is a new Aim. It is a line from the hero's spot on the left
+    of the board through any square you click. The click sets the direction, and
+    the line carries on past that square until it meets an enemy or a wall. With a
+    bounce left, it mirrors off that thing like a ball and keeps going. With none
+    left, it stops. A ray that comes back out past your side has gone home and
+    ends there. **Every enemy it struck takes the effect, once each**, so a
+    `bounce 1` ray that hits two enemies does its effect to both. The geometry is
+    one walk over the board, `RayAim.trace`, shared by weapons and wands.
+  - *Earthquake* (Ball x Pit; `ray`, `3x3`, `stun 1, bounce 1`) is the first ray
+    weapon. Its 3x3 lands round **each enemy the rock hits**, not round the
+    square you clicked. It is the starting weapon of **The Makeshift Sisyphus**,
+    the new Ball x Pit character.
+  - *The preview.* While you aim, hovering a square draws the whole path,
+    bounces included, over the squares it would hit. It is the same trace the
+    click fires, so the preview and the result always agree. Afterwards the
+    board draws the line over what was hit.
+  - *Wands aim in the weapons' words.* The `wands` sheet's `Type` column is now
+    `Aim`. `Ray, Bounce 1` is the ray (nine of the twelve wands), `Non-Directional`
+    is `none`, and `Random` is the weapons' `random`: a random enemy. The other
+    weapon words fence the click the same way they do for a weapon.
+    `WandData.targeting` became `aim`, `aim_column` and `bounce`. A clause about
+    where the bolt lands runs once per enemy struck, and every other clause runs
+    once per zap. An unknown wand still asks for any square, and it draws no line,
+    because the line would show what kind of stick it is.
+  - *Also in the upload:* The Beast (Isaac boss, 3x3, Trample), Mysterious Tree
+    (20 Minutes Till Dawn, Immobile), and eight more proof clips. The goals the
+    owner typed into `enemies`, `bosses`, `characters` and `weapons` are
+    authored in `goals` (`tools/_ball_x_pit_upload_setup.py`), so the next goals
+    push keeps them.
+  - *A latent generator bug, fixed:* the weapons' cell cleaner read a bare
+    `none` as an empty cell, so a weapon authored `Aim: none` would have become
+    `any`. No weapon used it yet.
+
 - **Game ranks: every game levels up, and its rank unlocks its music**
   (spec §20).
   - *The rank.* Each game has a rank and an XP bar, held by the profile, with

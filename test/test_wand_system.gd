@@ -44,8 +44,11 @@ func test_every_wand_loads_with_a_charge_count_and_a_target_mode() -> void:
 		assert_ne(wand.display_name, "", "%s has a name" % wand.id)
 		assert_ne(wand.description, "", "%s prints what it does" % wand.id)
 		assert_gt(wand.starting_charges(), 0, "%s can be zapped" % wand.id)
-		assert_true(wand.targeting in ["ray", "non_directional", "random"],
-			"%s's Type is one of the three (%s)" % [wand.id, wand.targeting])
+		assert_true(wand.aim in ["ray", "none", "random", "any", "front", "back",
+				"column", "enemy"],
+			"%s's Aim is one of the weapons' words (%s)" % [wand.id, wand.aim])
+		if wand.bounce > 0:
+			assert_eq(wand.aim, "ray", "%s bounces, so it is a ray" % wand.id)
 		for op in wand.effect:
 			assert_true(op is Dictionary and String(op.get("op", "")) != "",
 				"%s's ops are all named" % wand.id)
@@ -278,18 +281,20 @@ func test_echo_chamber_replays_a_zap() -> void:
 
 func test_a_replayed_ray_lands_where_it_was_aimed() -> void:
 	# The remembered zap keeps its square, so a replay fired off the back of a
-	# pill (which aims at nothing) still has somewhere to land.
-	var cell := Vector2i(1, 0)
+	# pill (which aims at nothing) still has somewhere to land. A ray carries on
+	# past that square (RayAim), so on an empty board the fire is where it stopped.
+	var cell := Vector2i(2, 0)
+	var land: Vector2i = RayAim.trace(cell, Data.get_wand(&"wand_of_fire").bounce)["end"]
 	GameState.add_item(Data.get_item2(&"echo_chamber"))
 	WandSystem.identify(&"wand_of_fire")
 	GameState.add_wand_loot(&"wand_of_fire")
 	LootSystem.use_loot(0, {"rng": _rng(), "target": cell})
 	assert_eq(LootSystem.used_memory()[-1].get("echo_target"), [cell.x, cell.y])
 	GameLoop2.tiles.clear()
-	assert_null(GameLoop2.tile_at(cell))
+	assert_null(GameLoop2.tile_at(land))
 	GameState.add_pill_loot(Data.all_pills()[0].id)
 	LootSystem.use_loot(GameState.loot_items.size() - 1, {"rng": _rng()})
-	assert_not_null(GameLoop2.tile_at(cell), "the replayed bolt set the square alight again")
+	assert_not_null(GameLoop2.tile_at(land), "the replayed bolt set the square alight again")
 
 # --- Aiming (§4.2) ---------------------------------------------------------
 
@@ -309,27 +314,11 @@ func test_a_known_non_directional_wand_stops_asking() -> void:
 	assert_true(WandSystem.needs_target(_entry(&"wand_of_fire")),
 		"a ray still wants a square when you know exactly what it is")
 
-func test_a_random_wand_keeps_asking_even_once_it_is_known() -> void:
+func test_a_known_random_wand_picks_its_own_enemy() -> void:
+	# `random` is the weapons' word now: it lands on a random enemy, so once the
+	# stick is known there is no square to ask for (docs/loot-passives.md §12.2).
 	WandSystem.identify(&"wand_of_nothing")
-	assert_true(WandSystem.needs_target(_entry(&"wand_of_nothing")),
-		"it might want one — which is the whole of the disguise")
-
-func test_random_resolves_to_one_of_the_two_real_modes() -> void:
-	var wand: WandData = Data.get_wand(&"wand_of_nothing")
-	var seen: Dictionary = {}
-	var rng := RandomNumberGenerator.new()
-	rng.randomize()
-	for _i in range(200):
-		seen[WandSystem.resolve_targeting(wand, rng)] = true
-	assert_eq(seen.size(), 2, "both concrete modes come up over 200 zaps")
-	assert_true(seen.has("ray") and seen.has("non_directional"))
-
-func test_a_concrete_wand_resolves_to_itself_every_time() -> void:
-	var rng := RandomNumberGenerator.new()
-	rng.randomize()
-	assert_eq(WandSystem.resolve_targeting(Data.get_wand(&"wand_of_fire"), rng), "ray")
-	assert_eq(WandSystem.resolve_targeting(
-		Data.get_wand(&"wand_of_wishing"), rng), "non_directional")
+	assert_false(WandSystem.needs_target(_entry(&"wand_of_nothing")))
 
 # --- The ops (§5) ----------------------------------------------------------
 
@@ -353,9 +342,11 @@ func test_the_wand_of_create_monster_puts_a_body_on_the_board() -> void:
 	assert_string_contains(String(out["logs"][0]), "answers the wand")
 
 func test_the_wand_of_fire_burns_the_square_and_lights_the_ground() -> void:
-	var cell := Vector2i(1, 0)
+	# On an empty board the ray strikes nobody and lands where it stopped.
+	var cell: Vector2i = RayAim.trace(Vector2i(2, 0), Data.get_wand(&"wand_of_fire").bounce)["end"]
+	assert_true(GameLoop2._on_board(cell.x, cell.y), "(the ray stops on the board)")
 	var out: Dictionary = WandSystem.zap_wand(_entry(&"wand_of_fire"),
-		{"rng": _rng(), "target": cell})
+		{"rng": _rng(), "target": Vector2i(2, 0)})
 	assert_not_null(GameLoop2.tile_at(cell), "the ground catches")
 	assert_eq(StringName(GameLoop2.tile_at(cell).id), &"fire")
 	assert_true(str(out["logs"]).contains("Fire"), "and it says so: %s" % str(out["logs"]))
@@ -484,7 +475,8 @@ func test_the_wand_of_teleportation_moves_the_body_somewhere_else() -> void:
 	assert_string_contains(str(out["logs"]), "somewhere else")
 
 func test_a_unit_wand_aimed_at_an_empty_square_fizzles() -> void:
-	var out: Dictionary = _zap(&"wand_of_death", Vector2i(3, 2))
+	# Aimed so the ray stops on the board (RayAim), on a square nobody stands on.
+	var out: Dictionary = _zap(&"wand_of_death", Vector2i(2, 0))
 	assert_eq(out["logs"].size(), 1)
 	assert_string_contains(String(out["logs"][0]), "without finding anything")
 

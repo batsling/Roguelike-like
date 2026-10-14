@@ -26,10 +26,15 @@ extends Resource
 
 # --- the swing ------------------------------------------------------------------
 # WHERE IT MAY BE AIMED (the sheet's `Aim`): "any", "front", "back", "column",
-# "enemy", "none" or "random". "column" carries its number in `aim_column`;
-# "random" needs no click — each strike picks a random enemy on the board.
+# "enemy", "none", "random" or "ray". "column" carries its number in
+# `aim_column`; "random" needs no click — each strike picks a random enemy on the
+# board; "ray" is a line from you through any square clicked, and its Area lands
+# on every enemy the line strikes (RayAim).
 @export var aim: String = "any"
 @export var aim_column: int = 0
+# How many times a "ray" bounces before it stops — off a wall or an enemy, mirrored
+# like a ball (`bounce N` in the sheet). 0 stops at the first thing it meets.
+@export var bounce: int = 0
 # WHAT IT HITS, measured from the square aimed at (the sheet's `Area`), kept as
 # authored and read by WeaponArea: a word (cell, row, col, cross, 3x3, 5x5,
 # board, plus, diagonals), a rectangle "RxC", or a drawn shape ".#./#O#/.#.".
