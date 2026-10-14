@@ -53,7 +53,7 @@ func _index_of(entry: Dictionary) -> int:
 
 func test_every_trinket_loads_with_art_and_a_passive() -> void:
 	var all: Array = Data.all_trinkets()
-	assert_eq(all.size(), 18, "the sheet's eighteen trinkets all generated")
+	assert_eq(all.size(), 21, "the sheet's twenty-one trinkets all generated")
 	for t in all:
 		var trinket: TrinketData = t
 		assert_ne(trinket.description, "", "%s prints what it does" % trinket.id)

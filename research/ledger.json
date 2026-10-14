@@ -1322,6 +1322,15 @@
   "loot": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
   "statuses": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs"
  },
+ "Corebreaker": {
+  "characters": "2026-10-14: 1 row: Nova (Steam page, confidence check)",
+  "connections": "2026-10-14",
+  "events": "2026-10-14: nothing usable: neither game has decision screens between fights",
+  "goals": "2026-10-14: nothing usable: no wiki, and neither store page names a monster or boss (Spinny Dungeon's 'Demon of the Slot Machine' is a narrator, not a body)",
+  "locations": "2026-10-14: nothing usable: Corebreaker's biomes and terminals are unnamed; Spinny Dungeon's slot machine repeats Isaac's Slot Machine object candidate",
+  "loot": "2026-10-14: nothing usable: no wiki and no named item, weapon or symbol on either store page; Corebreaker's 40+ weapons are unnamed, and neither game has a weapon evolution",
+  "statuses": "2026-10-14: nothing usable: no named statuses; Spinny Dungeon's 'sins' are unnamed challenges"
+ },
  "Corpse Keeper": {
   "characters": "2026-10-12: nothing usable: no wiki (Fandom and wiki.gg both tried under its name), and nothing beyond store blurbs",
   "connections": "before 2026-10-07",
@@ -6667,6 +6676,15 @@
   "locations": "2026-10-12: nothing usable: no wiki (Fandom and wiki.gg tried), and nothing beyond store blurbs",
   "loot": "2026-10-12: nothing usable: no wiki (Fandom and wiki.gg tried), and nothing beyond store blurbs",
   "statuses": "2026-10-12: nothing usable: no wiki (Fandom and wiki.gg tried), and nothing beyond store blurbs"
+ },
+ "Spinny Dungeon": {
+  "characters": "2026-10-14: nothing usable: its heroes are unnamed on the store page and there is no wiki",
+  "connections": "2026-10-14",
+  "events": "2026-10-14: nothing usable: neither game has decision screens between fights",
+  "goals": "2026-10-14: nothing usable: no wiki, and neither store page names a monster or boss (Spinny Dungeon's 'Demon of the Slot Machine' is a narrator, not a body)",
+  "locations": "2026-10-14: nothing usable: Corebreaker's biomes and terminals are unnamed; Spinny Dungeon's slot machine repeats Isaac's Slot Machine object candidate",
+  "loot": "2026-10-14: nothing usable: no wiki and no named item, weapon or symbol on either store page; Corebreaker's 40+ weapons are unnamed, and neither game has a weapon evolution",
+  "statuses": "2026-10-14: nothing usable: no named statuses; Spinny Dungeon's 'sins' are unnamed challenges"
  },
  "Spirit Hunters: Infinite Horde": {
   "characters": "2026-10-11: nothing: its wiki's pages are one-line stubs and lists ending in '...'",
