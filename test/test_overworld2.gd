@@ -1213,7 +1213,14 @@ func test_a_push_aim_clears_when_its_target_dies() -> void:
 func test_report_accepts_an_explicit_fulfilment_list() -> void:
 	_pick_enemies(0)
 	_ui.report(false)
-	var inst: int = int(GameLoop2.stack[0]["instance"])
+	# A BODY ONE GOAL CLEARS. The follower is whatever the offering stood, and a
+	# boss or the Mysterious Tree (3 Health) is still standing after its goal is
+	# ticked — correctly, and the assertion below then fails on a rule it is not
+	# about.
+	var inst: int = _make_front_body(&"monkey")
+	if inst == 0:
+		pending("the board had no follower to fulfil")
+		return
 	_pick_enemies(0)
 	_ui.report(false, [inst])                    # explicit list bypasses the checkboxes
 	for entry in GameLoop2.stack:
