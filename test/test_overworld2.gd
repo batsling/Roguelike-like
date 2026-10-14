@@ -11416,3 +11416,34 @@ func test_the_haul_screen_fills_the_rank_from_where_the_game_was_picked() -> voi
 	assert_eq(fill.from_xp, start)
 	assert_eq(fill.to_xp, GameRanks.xp(game.id), "to everything this game earned")
 	assert_true(fill.gained() >= GameRanks.XP_REPEAT_WIN, "a win is at least 50")
+
+# A WAITING BODY STANDS BESIDE ITS LANE (the owner, Oct 2026): the off-field token
+# is level with the lane the body will walk into, and hovering it lights the
+# squares it wants.
+func test_a_queued_body_waits_level_with_its_lane_and_shows_where_it_goes() -> void:
+	GameLoop2.stack.clear()
+	var monkey: GoalEnemyData = Data.get_goal_enemy_any(&"monkey")
+	for row in range(GameLoop2.grid_rows()):
+		for c in range(1, GameLoop2.grid_cols() + 1):
+			GameLoop2.summon(monkey, Vector2i(c, row))
+	GameState.hp = GameState.max_hp
+	var fresh: int = GameLoop2.spawn_to_stack(monkey)
+	GameLoop2.take_crashes()
+	var board = _ui._board
+	board.refresh()
+	await wait_frames(2)
+	var lane: int = int(GameLoop2.entry_for(fresh)["row"])
+	var token: Control = null
+	for tok in board._offgrid_box.get_children():
+		if tok.has_meta("instance") and int(tok.get_meta("instance")) == fresh:
+			token = tok
+	assert_not_null(token, "the waiting body has a token")
+	if token == null:
+		return
+	var lane_y: float = board._cell_pos(lane, 1).y
+	assert_almost_eq(token.position.y + token.size.y * 0.5, lane_y + board._cell * 0.5, 1.0,
+		"level with the lane it waits by")
+	token.mouse_entered.emit()
+	assert_eq(board.queue_target_shown(), 1, "hovering lights the square it wants")
+	token.mouse_exited.emit()
+	assert_eq(board.queue_target_shown(), 0, "and lets go")

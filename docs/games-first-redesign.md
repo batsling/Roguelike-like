@@ -1631,18 +1631,27 @@ would strand off the edge is put back in the queue rather than left hanging.
 - **§7.3a The shove that hits you** (the owner, October 2026). A newcomer that
   could push no lane forward and step nobody sideways **still shoves**: the lane
   it leans on is packed to the front, so the push has nowhere to go but into the
-  player, and **every body in that chain strikes you once** for its own damage
-  (`GameLoop2._crash_into_player`). Nobody moves and the newcomer queues as
-  before. The lane is the one with the **fewest bodies** in its chain, ties at
+  player, and **the body at the front of that chain — the one shoved into you —
+  strikes once** for its own damage (`GameLoop2._crash_into_player`; for a day
+  it was every body in the chain, and the owner cut it to the front one). Nobody
+  moves and the newcomer queues, **beside the lane it leaned on**. The lane is the one with the **fewest bodies** in its chain, ties at
   random; a lane with an anchored spawner in its chain cannot be leaned through,
   and a gap stops a chain short of you (but a gap would have let the forward
   shove through in the first place). Shields stop a crash hit like any other; a
   stunned body is shoved along without swinging. Only a FRESH spawn crashes, as
   only a fresh spawn shoves. The board plays it (`BattlefieldView.play_crashes`):
   the push runs down the lane from the back, each body jolting toward the hero,
-  then each one's hit lands in turn. Inside a resolve it plays after the
+  then the front body's hit lands. Inside a resolve it plays after the
   arrivals; a crash from anywhere else (an arrival at a game, a brood) plays on
-  its own over the board as it stands. A summon aimed at a cell of its own (a spawner's brood) never
+  its own over the board as it stands.
+- **The queue waits lane by lane** (the owner, October 2026). A body that cannot
+  get on keeps the lane it will walk into in its `row` (meaningless off the
+  board until then): the lane it crashed through, or the one it was already
+  waiting by, or the clearest lane its footprint fits (`_queue_lane`). It walks
+  into that lane first when room frees (`_admit_offgrid` → `_place_on_spawn`'s
+  `waiting`). The board draws its token to the right of that lane, level with it,
+  one token per lane with the rest counted on it ("+2"), and hovering a token
+  lights the squares it wants (`GameLoop2.queue_target_cells`). A summon aimed at a cell of its own (a spawner's brood) never
   shoves either. **A spawner that never attacks is never shoved FORWARD**
   (`GameLoop2._is_anchored`) — every turn a `turn: summon_*` op (Nested Spawner,
   Necromancy) — so a lane with one in the way cannot be pushed past it; it can

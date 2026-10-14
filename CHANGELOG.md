@@ -11,6 +11,12 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Only the front body hits, and the queue waits by its lane** (the owner,
+  14 Oct). When a spawn crashes into you, the push still runs down the whole
+  lane, but only the body shoved into you swings. A body waiting off the field
+  now stands to the right of the lane it will walk into, takes that lane first
+  when room frees, and lights its landing squares when hovered (spec §7.3a).
+
 - **The owner's second 14 Oct list: a sheet upload and eight fixes.**
   - **The sheet**: Words Can Kill → Spinny Dungeon is on the chart (the
     dev-relation row the research found), and Stumpy Stump's goal is the owner's
@@ -29,9 +35,9 @@ For how the project is laid out and how its systems fit together, see
     narrower (400px, a 120px cover).
   - **"Curse: Random"** on an event option whose curse is rolled (Golden Monkey
     read "Curse:").
-  - **A spawn with no room shoves its lane into you** (§7.3a): every body in the
-    shortest chain to the player hits once, nobody moves, and the newcomer
-    queues. The board plays the push down the lane, then the hits.
+  - **A spawn with no room shoves its lane into you** (§7.3a): the push runs
+    down the shortest chain to the player, nobody moves, and the newcomer
+    queues. The board plays the push down the lane, then the hit.
   - **A multi-cell enemy has one outline**, round the outside of the whole
     shape (`BattlefieldView.FootprintFrame`), with the board's squares still
     under it.

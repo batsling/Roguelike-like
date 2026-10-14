@@ -144,7 +144,9 @@ var _repaint_fns: Dictionary = {}
 # darken a body the mouse is still sitting on.
 var _hovered_instance: int = 0
 var _highlighted: Dictionary = {}
-var _offgrid_box: VBoxContainer      # overflow queue just off the grid's right edge
+var _offgrid_box: Control            # overflow queue just off the grid's right edge, lane by lane
+var _offgrid_label: Label = null     # "off field", over the column while anything waits
+const OFFGRID_TOKEN := 44
 var _fx_layer: Control               # overlay for damage numbers + sliding ghosts
 # Bodies (and their badges) currently hidden behind a travelling ghost. Held for
 # the whole multi-turn playback rather than per slide — an enemy that walks on
@@ -524,6 +526,8 @@ func _rebuild_cells() -> void:
 		_cell_layer.remove_child(c)
 		c.queue_free()
 	_field.custom_minimum_size = _field_size()
+	if _offgrid_box != null:
+		_offgrid_box.custom_minimum_size = Vector2(OFFGRID_TOKEN, _field_size().y)
 	# Every backdrop panel looks the same, so one shared StyleBox does for all of
 	# them instead of rows x cols identical copies.
 	var empty_style: StyleBox = UITheme.flat(UITheme.BG.lerp(UITheme.PANEL, 0.4), 6, 4, 1, UITheme.BORDER.lerp(UITheme.BG, 0.3))
@@ -1460,19 +1464,24 @@ func _build() -> void:
 	# Off-field lane: enemies with no cell to stand in — the overflow queue, and the
 	# game you're currently playing, whose enemy only steps onto the grid once you
 	# report the result.
-	var off_col := VBoxContainer.new()
-	off_col.add_theme_constant_override("separation", UITheme.GAP_TIGHT)
-	off_col.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	#
+	# LANE BY LANE (the owner, Oct 2026). A waiting body stands to the right of the
+	# lane it will walk into (its `row`, GameLoop2._place_on_spawn), so the column
+	# is the field's height and centred the same way, and a token sits level with
+	# its lane rather than in a stack. Hovering one lights the squares it wants.
+	_offgrid_box = Control.new()
+	_offgrid_box.name = "OffField"
+	_offgrid_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_offgrid_box.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_offgrid_box.custom_minimum_size = Vector2(OFFGRID_TOKEN, _field_size().y)
 	var off_lbl := Label.new()
 	off_lbl.text = "off field"
 	off_lbl.add_theme_font_size_override("font_size", UITheme.FONT_TINY)
 	off_lbl.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 	off_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	off_col.add_child(off_lbl)
-	_offgrid_box = VBoxContainer.new()
-	_offgrid_box.add_theme_constant_override("separation", CELL_SEP)
-	off_col.add_child(_offgrid_box)
-	_battlefield.add_child(off_col)
+	off_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_battlefield.add_child(_offgrid_box)
+	_offgrid_label = off_lbl
 
 # Repaint the battlefield from the current loop state: place each following enemy
 # in its grid cell (by column = distance) and the off-grid queue in the side lane.
@@ -1537,7 +1546,8 @@ func refresh() -> void:
 	# the advance would measure as "didn't move", and the slide would never play.
 	for c in _offgrid_box.get_children():
 		_offgrid_box.remove_child(c)
-		c.queue_free()
+		if c != _offgrid_label:
+			c.queue_free()
 
 	# Enemies standing on the board, drawn BACK-TO-FRONT: a body lower on the grid
 	# is nearer the viewer, so it paints over the ones above it where their
@@ -1578,18 +1588,42 @@ func refresh() -> void:
 	# window. So it holds one token per ROW, a board cell being at least a token's
 	# height, and the rest are counted on the last one ("+3"). Those are the ones
 	# furthest back in the queue, so the bodies it draws are the next to walk on.
-	var queued: Array = []
+	# One token per LANE, level with it: the first body waiting by that lane (the
+	# next to walk into it), with the rest counted on it ("+2"), so the column is
+	# never taller than the board however long the queue gets.
+	var by_lane: Dictionary = {}
 	for entry in GameLoop2.stack:
 		if GameLoop2.entry_hidden(entry):
 			continue
 		if int(entry.get("col", GameLoop2.offgrid_col())) > GameLoop2.grid_cols():
-			queued.append(entry)
-	var room: int = maxi(1, GameLoop2.grid_rows())
-	var drawn: int = queued.size() if queued.size() <= room else room - 1
-	for i in range(drawn):
-		_offgrid_box.add_child(_offgrid_token(queued[i]))
-	if drawn < queued.size():
-		_offgrid_box.add_child(_offgrid_more(queued.slice(drawn)))
+			var lane: int = clampi(int(entry.get("row", 0)), 0, maxi(0, GameLoop2.grid_rows() - 1))
+			if not by_lane.has(lane):
+				by_lane[lane] = []
+			(by_lane[lane] as Array).append(entry)
+	for lane in by_lane:
+		var waiting: Array = by_lane[lane]
+		var head: Dictionary = waiting[0]
+		var tok: Control = _offgrid_token(head)
+		var e: GoalEnemyData = head.get("enemy")
+		var span: float = float(_span_size(e.footprint_rows() if e != null else 1, 1).y)
+		tok.position = Vector2(0, _cell_pos(int(lane), 1).y + (span - OFFGRID_TOKEN) * 0.5)
+		tok.size = Vector2(OFFGRID_TOKEN, OFFGRID_TOKEN)
+		_offgrid_box.add_child(tok)
+		if waiting.size() > 1:
+			# On the token's holder, not the token: a PanelContainer would stretch it.
+			var more: Control = _offgrid_more(waiting.slice(1))
+			var host: Control = tok.get_meta("holder") if tok.has_meta("holder") else null
+			if host != null:
+				more.position = Vector2(OFFGRID_TOKEN - 26, -6)
+				more.size = Vector2(26, 18)
+				host.add_child(more)
+	if _offgrid_label != null:
+		if _offgrid_label.get_parent() != null:
+			_offgrid_label.get_parent().remove_child(_offgrid_label)
+		if not by_lane.is_empty():
+			_offgrid_box.add_child(_offgrid_label)
+			_offgrid_label.position = Vector2(-8, -18)
+			_offgrid_label.size = Vector2(OFFGRID_TOKEN + 16, 16)
 
 	_draw_last_strike()
 
@@ -3149,9 +3183,9 @@ func _corner_badge(text: String, color: Color, font_size: int = 12) -> Label:
 # The rest of the off-field queue, counted rather than drawn (see refresh). A
 # token-sized chip, so the lane's height does not depend on how many are behind
 # it, with every name it stands for on the hover.
+# The "+N" riding a lane's token: how many more wait behind it for that lane.
 func _offgrid_more(rest: Array) -> Control:
 	var chip := PanelContainer.new()
-	chip.custom_minimum_size = Vector2(44, 44)
 	chip.mouse_filter = Control.MOUSE_FILTER_STOP
 	chip.add_theme_stylebox_override("panel",
 		UITheme.flat(UITheme.PANEL.lerp(UITheme.BG, 0.3), 5, 2, 1, UITheme.BORDER))
@@ -3159,12 +3193,12 @@ func _offgrid_more(rest: Array) -> Control:
 	for entry in rest:
 		var e: GoalEnemyData = entry.get("enemy")
 		names.append(e.display_name if e != null else "?")
-	chip.tooltip_text = "Also waiting to walk on:\n" + "\n".join(names)
+	chip.tooltip_text = "Also waiting for this lane:\n" + "\n".join(names)
 	var l := Label.new()
 	l.text = "+%d" % rest.size()
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	l.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
+	l.add_theme_font_size_override("font_size", UITheme.FONT_MICRO)
 	l.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	chip.add_child(l)
@@ -3199,11 +3233,13 @@ func _offgrid_token(entry: Dictionary) -> Control:
 		cell.mouse_entered.connect(func():
 			_hovered_instance = inst
 			paint.call()
+			_show_queue_target(entry)
 			enemy_hovered.emit(inst, true))
 		cell.mouse_exited.connect(func():
 			if _hovered_instance == inst:
 				_hovered_instance = 0
 			paint.call()
+			_clear_queue_target()
 			enemy_hovered.emit(inst, false))
 		cell.gui_input.connect(func(ev: InputEvent):
 			if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
@@ -3228,6 +3264,36 @@ func _offgrid_token(entry: Dictionary) -> Control:
 		# No "NOW PLAYING" tag. A body waiting in the overflow lane is a body
 		# waiting in the overflow lane, whichever game walked it on.
 	return cell
+
+# WHERE A WAITING BODY WANTS TO GO, lit while its token is hovered: its footprint
+# on the spawn column in the lane it waits beside (GameLoop2.queue_target_cells).
+# Drawn on the strike layer, under anything that can be pressed, and never
+# clickable.
+var _queue_target: Array = []
+
+func _show_queue_target(entry: Dictionary) -> void:
+	_clear_queue_target()
+	if _strike_layer == null:
+		return
+	for cell in GameLoop2.queue_target_cells(entry):
+		var r := Panel.new()
+		r.name = "QueueTarget"
+		r.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		r.position = _cell_pos(cell.y, cell.x)
+		r.size = Vector2(_cell, _cell)
+		r.add_theme_stylebox_override("panel",
+			UITheme.flat(Color(UITheme.GOLD, 0.22), 6, 0, 2, UITheme.GOLD))
+		_strike_layer.add_child(r)
+		_queue_target.append(r)
+
+func _clear_queue_target() -> void:
+	for r in _queue_target:
+		if is_instance_valid(r):
+			r.queue_free()
+	_queue_target.clear()
+
+func queue_target_shown() -> int:
+	return _queue_target.size()
 
 # --- resolve animation ----------------------------------------------------
 
@@ -3809,7 +3875,7 @@ func _punch_hero() -> void:
 # THE SHOVE THAT HITS YOU, played (§7.3a): a newcomer with no room leaned on a
 # lane packed to the front. The push runs through the lane from the back — each
 # body jolts toward the hero a beat after the one behind it — and when it reaches
-# the front line every body in the chain lands its hit, one after another, the
+# the front line the body shoved into the hero lands its hit, the
 # way a turn's strikes do. Nothing actually moves: the bodies settle back where
 # they stood, which is what they did.
 #
@@ -3831,9 +3897,11 @@ func play_crashes(crashes: Array, rects: Dictionary = {}, delay: float = 0.0) ->
 			continue
 		var hits: Array = crash.get("hits", [])
 		# The newcomer leans first, from wherever it is waiting.
+		# Every body the push runs through, back to front (the record's `chain`);
+		# only the front one(s) in `hits` swing.
 		var wave: Array = [int(crash.get("instance", 0))]
-		for h in hits:
-			wave.append(int((h as Dictionary).get("instance", 0)))
+		for b in crash.get("chain", hits.map(func(h): return int((h as Dictionary).get("instance", 0)))):
+			wave.append(int(b))
 		var k: int = 0
 		for inst in wave:
 			if not rects.has(inst):

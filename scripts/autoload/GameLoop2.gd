@@ -6415,11 +6415,16 @@ func _add_to_grid(instance: int, enemy: GoalEnemyData, health: int,
 # body in the way one lane sideways (_side_shove_plan); only then queue. The queue's
 # own admissions never shove — a body already waiting walks on as room frees, and
 # a queue that pushed the board every turn would be a second clock.
-func _place_on_spawn(entry: Dictionary, shove: bool = false) -> bool:
+#
+# `waiting`: the body is walking on out of the QUEUE, where it has been standing
+# beside one lane (its `row`, see below). It takes that lane when it is open.
+func _place_on_spawn(entry: Dictionary, shove: bool = false, waiting: bool = false) -> bool:
 	var enemy: GoalEnemyData = entry.get("enemy")
 	var col: int = spawn_col_for(enemy)
 	var inst: int = int(entry.get("instance", 0))
 	var rows: Array = _spawn_rows(enemy, col, inst)
+	if waiting and rows.has(int(entry.get("row", 0))):
+		rows = [int(entry.get("row", 0))]
 	if rows.is_empty() and shove:
 		# FORWARD FIRST, and only when no lane can go forward, SIDEWAYS (§7.3).
 		var plan: Dictionary = _shove_plan(enemy, col, inst)
@@ -6437,14 +6442,51 @@ func _place_on_spawn(entry: Dictionary, shove: bool = false) -> bool:
 		entry["col"] = offgrid_col()
 		# …AND WHEN NOTHING WILL MOVE, IT SHOVES ANYWAY, INTO YOU (§7.3a). Only a
 		# fresh spawn, for the same reason only a fresh spawn shoves at all.
-		if shove:
-			_crash_into_player(entry, col)
+		var lane: int = _crash_into_player(entry, col) if shove else -1
+		# A WAITING BODY WAITS BESIDE ITS LANE (the owner, Oct 2026). Its `row`,
+		# which says nothing while it is off the board, is the lane it will walk
+		# into: the lane it just leaned on, or the one it was already waiting by,
+		# or the clearest one it fits. The board draws it to the right of that
+		# lane, and hovering it lights the squares it wants (BattlefieldView).
+		if lane < 0:
+			lane = int(entry.get("row", 0)) if waiting and not footprint_at(
+				enemy, int(entry.get("row", 0)), col).is_empty() else _queue_lane(enemy, col, inst)
+		entry["row"] = lane
 		return false
 	# Through _move_entry, so walking onto the board pays the ground's tolls like
 	# every other way of arriving in a cell (§17): an enemy that spawns onto a
 	# mined back column sets it off on the way in.
 	_move_entry(entry, int(rows[randi() % rows.size()]), col)
 	return true
+
+# The lane a body that cannot get on waits beside: of the lanes its footprint fits
+# at the spawn column, the one with the least in the way of its walk to the front
+# (`path_blockers`, the ranking _spawn_rows uses), ties at random.
+func _queue_lane(enemy: GoalEnemyData, col: int, exclude: int = 0) -> int:
+	var best: Array = []
+	var best_score := Vector3i(1 << 30, 1 << 30, 1 << 30)
+	for row in range(grid_rows()):
+		if footprint_at(enemy, row, col).is_empty():
+			continue
+		var blockers: Dictionary = path_blockers(enemy, row, col, exclude)
+		var score := Vector3i(int(blockers["enemies"]), int(blockers["mines"]),
+			int(blockers["cells"]))
+		if _better_lane(score, best_score):
+			best_score = score
+			best = [row]
+		elif score == best_score:
+			best.append(row)
+	return int(best[randi() % best.size()]) if not best.is_empty() else 0
+
+# The cells a waiting body wants: its footprint on the spawn column in the lane
+# it is waiting beside. Empty for a body on the board.
+func queue_target_cells(entry: Dictionary) -> Array:
+	if int(entry.get("col", offgrid_col())) <= grid_cols():
+		return []
+	var enemy: GoalEnemyData = entry.get("enemy")
+	if enemy == null:
+		return []
+	return footprint_at(enemy, int(entry.get("row", 0)), spawn_col_for(enemy))
 
 # THE SPAWN SHOVE (§7.3). A body walking onto a back column with no room in any
 # lane pushes a lane forward instead of waiting off the board: whatever stands in
@@ -6620,9 +6662,10 @@ func _side_shove_lane(enemy: GoalEnemyData, row: int, col: int, exclude: int) ->
 
 # THE SHOVE THAT HITS YOU (§7.3a). A newcomer that could push no lane forward and
 # step nobody sideways still shoves: the lane it leans on is packed to the front,
-# so the push has nowhere to go but into the player, and EVERY body in that chain
-# strikes you once for its own damage. Nobody moves, and the newcomer queues as
-# it always did — so a packed board is something the player feels on every spawn
+# so the push has nowhere to go but into the player, and the body at the FRONT of
+# that chain — the one shoved into you — strikes once for its own damage (the
+# owner, Oct 2026; it was every body in the chain for a day). Nobody moves, and
+# the newcomer queues as it always did, beside the lane it leaned on — so a packed board is something the player feels on every spawn
 # it refuses, rather than a queue growing quietly off the edge.
 #
 # The lane is the one whose chain is SHORTEST (fewest bodies to swing), ties at
@@ -6645,18 +6688,19 @@ func take_crashes() -> Array:
 func has_crashes() -> bool:
 	return not _crashes.is_empty()
 
-# The chain one lane would drive into the player, as instances ordered back to
-# front, or [] when that lane does not reach the player (a gap stops it, or it
+# The chain one lane would drive into the player — {"chain": every body it
+# shoves, back to front; "front": the ones standing on the front line, which are
+# the ones shoved INTO the player} — or {} when that lane does not reach the player (a gap stops it, or it
 # runs into an anchored spawner). Read off the board as it stands: bodies the
 # newcomer's footprint overlaps, then whatever stands one column in front of each
 # of THEM, and so on — the same chain the forward shove would have moved.
-func _crash_chain(enemy: GoalEnemyData, row: int, col: int, exclude: int) -> Array:
+func _crash_chain(enemy: GoalEnemyData, row: int, col: int, exclude: int) -> Dictionary:
 	var newcomer: Array = footprint_at(enemy, row, col)
 	if newcomer.is_empty():
-		return []
+		return {}
 	var taken: Dictionary = occupancy(exclude)
 	var chain: Array = []
-	var reaches: bool = false
+	var front: Array = []
 	var frontier: Array = newcomer.duplicate()
 	while not frontier.is_empty():
 		var cell: Vector2i = frontier.pop_back()
@@ -6667,42 +6711,47 @@ func _crash_chain(enemy: GoalEnemyData, row: int, col: int, exclude: int) -> Arr
 			continue
 		var entry: Dictionary = entry_for(inst)
 		if entry.is_empty() or _is_anchored(entry):
-			return []
+			return {}
 		chain.append(inst)
 		var ahead: Array = footprint_at(entry.get("enemy"), int(entry.get("row", 0)),
 			int(entry.get("col", 1)) - 1)
 		if ahead.is_empty():
-			reaches = true       # it stands on the front line: the push lands on you
+			front.append(inst)   # it stands on the front line: the push lands on you
 			continue
 		frontier.append_array(ahead)
-	if not reaches:
-		return []
+	if front.is_empty():
+		return {}
 	chain.sort_custom(func(a, b): return int(entry_for(a).get("col", 1)) > int(entry_for(b).get("col", 1)))
-	return chain
+	return {"chain": chain, "front": front}
 
-func _crash_into_player(entry: Dictionary, col: int) -> void:
+# Returns the lane it leaned on, or -1 when no lane reaches the player.
+func _crash_into_player(entry: Dictionary, col: int) -> int:
 	if run_over:
-		return
+		return -1
 	var enemy: GoalEnemyData = entry.get("enemy")
 	var inst: int = int(entry.get("instance", 0))
 	var best: Array = []
 	var best_n: int = 1 << 30
 	for row in range(grid_rows()):
-		var chain: Array = _crash_chain(enemy, row, col, inst)
-		if chain.is_empty():
+		var plan: Dictionary = _crash_chain(enemy, row, col, inst)
+		if plan.is_empty():
 			continue
-		if chain.size() < best_n:
-			best_n = chain.size()
-			best = [{"row": row, "chain": chain}]
-		elif chain.size() == best_n:
-			best.append({"row": row, "chain": chain})
+		var n: int = (plan["chain"] as Array).size()
+		plan["row"] = row
+		if n < best_n:
+			best_n = n
+			best = [plan]
+		elif n == best_n:
+			best.append(plan)
 	if best.is_empty():
-		return
+		return -1
 	var pick: Dictionary = best[randi() % best.size()]
+	# ONLY THE BODY SHOVED INTO YOU SWINGS (the owner, Oct 2026): the one on the
+	# front line at the end of the chain. The rest are pushed and shown pushed.
 	var hits: Array = []
 	var scratch: Dictionary = {}
 	var total: int = 0
-	for body in pick["chain"]:
+	for body in pick["front"]:
 		var e: Dictionary = entry_for(int(body))
 		if e.is_empty():
 			continue
@@ -6718,12 +6767,19 @@ func _crash_into_player(entry: Dictionary, col: int) -> void:
 		else:
 			row_hit["stunned"] = true
 		hits.append(row_hit)
-	_crashes.append({"instance": inst, "row": int(pick["row"]), "hits": hits})
+	_crashes.append({"instance": inst, "row": int(pick["row"]),
+		"chain": (pick["chain"] as Array).duplicate(), "hits": hits})
 	var who: String = enemy.display_name if enemy != null else "A newcomer"
-	var msg: String = "%s had no room and shoved a lane into you: %d hit%s for %d." % [
-		who, hits.size(), "" if hits.size() == 1 else "s", total]
+	var front_names: Array = []
+	for h in hits:
+		var fe: Dictionary = entry_for(int(h["instance"]))
+		var fg: GoalEnemyData = fe.get("enemy") if not fe.is_empty() else null
+		front_names.append(fg.display_name if fg != null else "a body")
+	var msg: String = "%s had no room and shoved its lane into you: %s hit you for %d." % [
+		who, " and ".join(PackedStringArray(front_names)), total]
 	GameLog.add(msg, UITheme.DANGER)
 	Notifications.notify(msg, UITheme.DANGER)
+	return int(pick["row"])
 
 # Carry out a _side_shove_plan through _move_entry, so the ground a shoved body
 # steps onto charges it exactly as a Push would (§17). Not a turn.
@@ -6899,7 +6955,7 @@ func _admit_offgrid() -> void:
 		if is_stunned(entry):
 			continue
 		if int(entry.get("col", offgrid_col())) > grid_cols():
-			_place_on_spawn(entry)
+			_place_on_spawn(entry, false, true)
 
 # ---------------------------------------------------------------------------
 # ENEMY ABILITIES (docs/games-first-redesign.md §7.6)
