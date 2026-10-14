@@ -237,34 +237,72 @@ func has_charge(entry: Dictionary) -> bool:
 
 # Does spending this one need a square of the board first?
 #
-# AN UNKNOWN WAND ALWAYS DOES, even the one that turns out to be non-directional
-# and ignores the cell. The button is skipped only for a KNOWN wand that fires
-# where it stands; asking only the ray-shaped unknowns to aim would tell the player
-# which half of the roster a mystery stick belongs to before they had spent
-# anything, which is exactly the fact the identification gamble is selling.
+# WHAT A WAND AIMS AT IS PUBLIC, identified or not (the owner, Oct 2026: "let the
+# player know what aim type the wand has beforehand"). A mystery stick used to
+# ask for a square whatever it was, so the aiming step could not tell the player
+# which half of the roster it belonged to; that secret is given up on purpose. The
+# Aim is printed on every wand's card (`aim_text`), so asking for a square only
+# when the wand really takes one — and fencing and previewing it by its real Aim —
+# tells the player nothing the card has not. What stays hidden until the wand is
+# identified is what it DOES (and so the shape it hits: see `preview_cells`).
 func needs_target(entry: Dictionary) -> bool:
 	var w: WandData = data_for(entry)
-	if w == null:
-		return false
-	return w.aims() or not is_identified(w.id)
+	return w != null and w.aims()
 
-# THE SQUARES THE BOARD LIGHTS for a zap, and the ones it takes a click on. A
-# KNOWN wand is fenced by its Aim, in the weapons' words (WeaponSystem.cells_for_aim)
-# — a ray takes any square, since the click is only a direction. An UNKNOWN wand
-# takes any square too, whatever it turns out to be: the fence would be the tell.
+# THE SQUARES THE BOARD LIGHTS for a zap, and the ones it takes a click on: the
+# wand's Aim, in the weapons' words (WeaponSystem.cells_for_aim) — a ray takes any
+# square, since the click is only a direction.
 func aim_cells(entry: Dictionary) -> Array:
+	var w: WandData = data_for(entry)
+	if w == null or not w.aims():
+		return []
+	return WeaponSystem.cells_for_aim(w.aim, w.aim_column)
+
+# Whether the board draws this zap's ray before it is fired: every ray wand, known
+# or not, since its Aim is on its card.
+func previews_ray(entry: Dictionary) -> bool:
+	var w: WandData = data_for(entry)
+	return w != null and w.aim == "ray"
+
+# THE SQUARES A ZAP AIMED AT `cell` WOULD COVER, for the board's preview while the
+# player aims (BattlefieldView._show_swing_preview). A ray: every square its line
+# strikes or stops on. A square-aimed wand: the shape its clauses cover from that
+# square once the wand is IDENTIFIED — and only the square itself while it is not,
+# since a 3x3 lit around the cursor would say what the stick does.
+func preview_cells(entry: Dictionary, cell: Vector2i) -> Array:
 	var w: WandData = data_for(entry)
 	if w == null:
 		return []
-	if not is_identified(w.id) or not w.aims():
-		return GameLoop2.target_cells("all")
-	return WeaponSystem.cells_for_aim(w.aim, w.aim_column)
+	if w.aim == "ray":
+		var out: Array = []
+		for imp in RayAim.impacts(RayAim.trace(cell, w.bounce)):
+			if imp.get("cell") is Vector2i and not out.has(imp["cell"]):
+				out.append(imp["cell"])
+		return out
+	if not is_identified(w.id):
+		return [cell]
+	var lit: Array = []
+	for op in w.effect:
+		if not (op is Dictionary) or String((op as Dictionary).get("area", "cell")).to_lower() == "board":
+			continue
+		for c in _cells_for(op, cell):
+			if not lit.has(c):
+				lit.append(c)
+	if lit.is_empty():
+		lit.append(cell)
+	return lit
 
-# Whether the board may draw this zap's ray before it is fired. Only for a KNOWN
-# ray wand: drawing the line for an unknown stick would say it is a ray wand.
-func previews_ray(entry: Dictionary) -> bool:
-	var w: WandData = data_for(entry)
-	return w != null and w.aim == "ray" and is_identified(w.id)
+# THE AIM IN WORDS, for every wand's card and hover: "Aim: in a line from you,
+# bouncing once" / "Aim: at a random enemy" / "Aim: fires where it stands".
+static func aim_text(w: WandData) -> String:
+	if w == null:
+		return ""
+	match w.aim:
+		"none":
+			return "Aim: none — it fires where it stands"
+		"random":
+			return "Aim: none — it picks a random enemy"
+	return "Aim: " + WeaponSystem.aim_phrase(w.aim, w.aim_column, w.bounce)
 
 # WHERE THIS ZAP LANDS, as RayAim's impacts — [{instance, cell}], cell null for a
 # zap that is not aimed at anything:

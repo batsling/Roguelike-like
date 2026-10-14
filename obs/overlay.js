@@ -162,7 +162,11 @@ function drawRadio(r) {
     radioSeq = -1;
     return;
   }
-  audio.volume = Math.max(0, Math.min(1, num(r.volume, 0.8)));
+  /* The song's LEARNED gain (Radio.gd, "Loudness"): the game listened to it once
+   * and says how far it sits from the target level. An <audio> element cannot go
+   * past 1, so a quiet song is raised only as far as the slider leaves room. */
+  const gain = Math.pow(10, num(r.gain_db, 0) / 20);
+  audio.volume = Math.max(0, Math.min(1, num(r.volume, 0.8) * gain));
   const want = r.playing ? num(r.offset) + (Date.now() / 1000 - num(r.since))
                          : num(r.offset);
   if (r.src !== radioSrc) {

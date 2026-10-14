@@ -231,11 +231,13 @@ func test_a_non_directional_wand_runs_once_and_ignores_the_ray() -> void:
 	WandSystem.zap_wand(_wand(&"wand_of_create_monster"), {})
 	assert_eq(GameLoop2.stack.size(), before + 1, "one body, called up once")
 
-func test_an_unknown_wand_asks_for_any_square_and_previews_nothing() -> void:
+func test_an_unknown_ray_wand_previews_its_line() -> void:
+	# Its Aim is on its card (the owner, Oct 2026), so the line gives nothing away.
 	var entry: Dictionary = _wand(&"wand_of_magic_missile")
+	assert_false(WandSystem.is_identified(&"wand_of_magic_missile"))
 	assert_true(WandSystem.needs_target(entry))
 	assert_eq(WandSystem.aim_cells(entry).size(),
-		GameLoop2.grid_cols() * GameLoop2.grid_rows(), "every square, as any wand would")
-	assert_false(WandSystem.previews_ray(entry), "drawing the line would say it is a ray wand")
-	WandSystem.identify(&"wand_of_magic_missile")
-	assert_true(WandSystem.previews_ray(entry), "once known, its path is shown")
+		GameLoop2.grid_cols() * GameLoop2.grid_rows(), "a ray takes any square as its direction")
+	assert_true(WandSystem.previews_ray(entry), "and draws its path before it is fired")
+	var lit: Array = WandSystem.preview_cells(entry, Vector2i(GameLoop2.grid_cols(), 0))
+	assert_false(lit.is_empty(), "lighting where the line goes")

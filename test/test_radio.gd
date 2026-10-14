@@ -11,6 +11,7 @@ extends GutTest
 
 const FOLDER := "user://test_radio_music"
 const CONFIG := "user://test_radio.cfg"
+const LOUDNESS := "user://test_radio_loudness.json"
 const GAME := &"hades"
 const OTHER := &"balatro"
 
@@ -24,6 +25,8 @@ var _saved_favorites: Dictionary
 var _saved_folder: String
 var _saved_config: String
 var _saved_prefs: Array
+var _saved_loudness: Dictionary
+var _saved_loudness_path: String
 
 func before_each() -> void:
 	_saved_songs = Data._songs.duplicate()
@@ -35,6 +38,10 @@ func before_each() -> void:
 	_saved_favorites = Radio._favorites.duplicate()
 	_saved_folder = Radio.folder
 	_saved_config = Radio.config_path
+	_saved_loudness = Radio._loudness.duplicate()
+	_saved_loudness_path = Radio.loudness_path
+	Radio.loudness_path = LOUDNESS
+	Radio._loudness = {}
 	_saved_prefs = [Radio.output, Radio.volume, Radio.shuffle, Radio.station, Radio.paused,
 		Radio.unlock_all]
 	Data._songs = {}
@@ -66,6 +73,10 @@ func after_each() -> void:
 	Radio.clock_override = -1.0
 	_wipe_folder()
 	DirAccess.remove_absolute(CONFIG)
+	DirAccess.remove_absolute(LOUDNESS)
+	Radio.loudness_path = _saved_loudness_path
+	Radio._loudness = _saved_loudness
+	Radio._gain_now = 0.0
 	Data._songs = _saved_songs
 	GameStats.stats = _saved_stats
 	GameStats.enemy_log = _saved_log
@@ -714,6 +725,54 @@ func test_the_payload_is_plain_json_and_still_between_changes() -> void:
 	Radio.clock_override += 3.0
 	assert_eq(JSON.stringify(Radio.payload()), JSON.stringify(p),
 		"a running song does not change the payload, so the overlay's dedupe holds")
+
+# --- loudness (the radio learns each song's level once) ----------------------
+
+func test_the_gain_brings_a_song_to_the_target_and_no_further_than_its_limits() -> void:
+	assert_eq(Radio.gain_for_level(NAN), 0.0, "an unmeasured song plays as it is")
+	assert_almost_eq(Radio.gain_for_level(Radio.TARGET_DB + 6.0), -6.0, 0.001,
+		"6 dB too loud comes down 6")
+	assert_almost_eq(Radio.gain_for_level(Radio.TARGET_DB - 3.0), 3.0, 0.001,
+		"3 dB too quiet goes up 3")
+	assert_eq(Radio.gain_for_level(0.0), Radio.GAIN_MIN, "never cut past the floor")
+	assert_eq(Radio.gain_for_level(-90.0), Radio.GAIN_MAX, "never boosted past the ceiling")
+
+func test_a_learned_level_sets_the_speaker_and_rides_the_payload() -> void:
+	var song: SongData = _song("a")
+	_rank(GAME, 1)
+	Radio._loudness[song.file] = Radio.TARGET_DB + 6.0
+	Radio.set_output(Radio.Output.GAME)
+	Radio.next()
+	assert_eq(Radio.current, &"a")
+	assert_almost_eq(Radio._player.volume_db, linear_to_db(Radio.volume) - 6.0, 0.01,
+		"a song learned as 6 dB loud plays 6 dB down")
+	assert_almost_eq(float(Radio.payload()["gain_db"]), -6.0, 0.001,
+		"and the OBS page is told the same gain")
+	assert_eq(Radio._measuring, "", "a measured song is not measured again")
+
+func test_an_unmeasured_song_is_listened_to_but_tells_the_page_nothing_yet() -> void:
+	_song("a")
+	_rank(GAME, 1)
+	Radio.next()
+	assert_eq(Radio._measuring, "a.wav", "the meter is on for a song it has not heard")
+	assert_eq(float(Radio.payload()["gain_db"]), 0.0,
+		"the page plays it as it is until the level is learned")
+
+func test_a_learned_level_is_kept_and_can_be_forgotten() -> void:
+	var song: SongData = _song("a")
+	_rank(GAME, 1)
+	Radio.next()
+	Radio._heard_sq = 0.01 * 1000.0
+	Radio._heard_n = 1000
+	Radio._heard_s = Radio.LEARN_AFTER
+	Radio._keep_measurement()
+	assert_almost_eq(Radio.measured_db(song), linear_to_db(0.1), 0.05, "kept as its RMS level")
+	Radio._loudness = {}
+	Radio._load_loudness()
+	assert_false(is_nan(Radio.measured_db(song)), "and read back from the file")
+	Radio.forget_loudness()
+	assert_true(is_nan(Radio.measured_db(song)), "Re-measure forgets it")
+	assert_eq(Radio._measuring, "a.wav", "and listens to the current song again")
 
 func test_the_overlay_stages_the_track_beside_the_page() -> void:
 	_song("a")

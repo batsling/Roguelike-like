@@ -298,13 +298,40 @@ func test_a_replayed_ray_lands_where_it_was_aimed() -> void:
 
 # --- Aiming (§4.2) ---------------------------------------------------------
 
-func test_an_unknown_wand_always_asks_for_a_square() -> void:
-	# Even the one that turns out to fire where it stands. Asking only the
-	# ray-shaped unknowns would say which half of the roster a mystery stick is in.
+func test_a_wand_asks_for_a_square_exactly_when_its_aim_takes_one() -> void:
+	# The Aim is public on every wand (the owner, Oct 2026), so a mystery stick is
+	# asked to aim by its real Aim, the same as a known one.
 	for w in Data.all_wands():
 		var wand: WandData = w
-		assert_true(WandSystem.needs_target(_entry(wand.id)),
-			"%s asks while it is still a mystery" % wand.id)
+		assert_false(WandSystem.is_identified(wand.id))
+		assert_eq(WandSystem.needs_target(_entry(wand.id)), wand.aims(),
+			"%s (aim %s) asks for a square only if it takes one" % [wand.id, wand.aim])
+
+func test_every_wand_says_how_it_aims_before_it_is_known() -> void:
+	for w in Data.all_wands():
+		var wand: WandData = w
+		var text: String = WandSystem.aim_text(wand)
+		assert_true(text.begins_with("Aim: "), "%s names its aim: %s" % [wand.id, text])
+		var lines: Array = LootSystem.hover_card(_entry(wand.id)).get("lines", [])
+		assert_true(lines.has(text), "%s's hover says it while unidentified" % wand.id)
+
+func test_an_unknown_square_wand_previews_only_the_square() -> void:
+	# The shape it would hit is what it DOES, and that stays hidden. No wand on the
+	# sheet aims at a square today (they are rays, `none` and `random`), so this
+	# stands one up: a 3x3 blast aimed at any square.
+	var w := WandData.new()
+	w.id = &"test_square_wand"
+	w.display_name = "Test"
+	w.aim = "any"
+	w.effect = [{"op": "damage", "value": 1, "area": "3x3"}]
+	Data._wands[w.id] = w
+	var cell := Vector2i(2, 1)
+	assert_eq(WandSystem.preview_cells(_entry(w.id), cell), [cell],
+		"while unknown it lights only the square aimed at")
+	WandSystem.identify(w.id)
+	assert_gt(WandSystem.preview_cells(_entry(w.id), cell).size(), 1,
+		"and the whole 3x3 once it is known")
+	Data._wands.erase(w.id)
 
 func test_a_known_non_directional_wand_stops_asking() -> void:
 	WandSystem.identify(&"wand_of_create_monster")

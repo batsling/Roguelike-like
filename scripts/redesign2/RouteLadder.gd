@@ -730,12 +730,15 @@ static func node_card_body(cfg: Dictionary) -> VBoxContainer:
 
 const GOALS_VIEW_SCRIPT := "res://scripts/ui/GoalsBeatenView.gd"
 
-# The cover's width inside a card, beside the facts column.
-const CARD_ART_W := 150.0
-const CARD_ART_MAX_H := 200.0
+# The cover's width inside a card, beside the facts column. 120 rather than 150:
+# the card floats over the map it describes, and the owner asked for it to take
+# less of it (Oct 2026). The cover is an identifier here, not the exhibit.
+const CARD_ART_W := 120.0
+const CARD_ART_MAX_H := 160.0
 # The card's own width (RunMapModal's and GameChoiceModal's frame) — wide enough
-# for the facts column beside the cover.
-const NODE_CARD_W := 470.0
+# for the facts column beside the cover. Was 470; 400 with the narrower cover
+# keeps the facts column the same ~200px it had.
+const NODE_CARD_W := 400.0
 
 # THE COVER, with what it can say for itself drawn on it: the node's KIND as its
 # mark in the top-right corner (the same mark the route's box wears, bigger), and

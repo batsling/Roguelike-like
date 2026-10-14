@@ -243,6 +243,17 @@ func _build_controls() -> Control:
 	_volume_label.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	_volume_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	row.add_child(_volume_label)
+	# THE LEVELLING (Radio.gd, "Loudness"): every song is listened to once and
+	# played at the same loudness after that. This forgets what was learned, for a
+	# file that was swapped for a different master under the same name.
+	var level := Button.new()
+	level.name = "Remeasure"
+	level.text = "⟳ Re-measure"
+	level.tooltip_text = ("Every song is evened out to the same loudness: the radio "
+		+ "listens to each one the first time it plays and remembers how loud it is.\n"
+		+ "This forgets all of that, so every song is measured again.")
+	level.pressed.connect(Radio.forget_loudness)
+	row.add_child(level)
 	return row
 
 func _build_options() -> Control:

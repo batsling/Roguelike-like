@@ -65,10 +65,9 @@ extends Resource
 #   "any" / "front" / "back" / "column" (+ `aim_column`) / "enemy"
 #             the square clicked, fenced as a weapon's is.
 #
-# It does NOT decide whether the player is asked to aim — WandSystem.needs_target
-# does, and an UNIDENTIFIED wand always asks (§4.2). Hiding the aiming step for
-# unknown non-directional wands would leak which half of the roster a mystery
-# stick belongs to, which is exactly the fact the gamble is selling.
+# The Aim is PUBLIC on every wand, identified or not (the owner, Oct 2026), so it
+# also decides whether the player is asked to aim (WandSystem.needs_target) —
+# what stays a mystery until identification is what the wand DOES.
 @export var aim: String = "none"
 @export var aim_column: int = 0
 # How many times a "ray" bounces before it stops (the sheet's `Ray, Bounce N`).

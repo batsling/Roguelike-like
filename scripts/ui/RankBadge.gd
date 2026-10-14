@@ -69,22 +69,34 @@ static func wrap(cover: Control, game, with_awards: bool = false) -> Control:
 	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	holder.size_flags_horizontal = cover.size_flags_horizontal
 	holder.size_flags_vertical = cover.size_flags_vertical
-	var drop: float = overhang_for(box.x) if String(game) != "" else 0.0
-	holder.custom_minimum_size = Vector2(box.x, box.y + drop)
+	var ranked: bool = String(game) != ""
 	cover.set_anchors_preset(Control.PRESET_TOP_WIDE)
 	cover.offset_left = 0.0
 	cover.offset_right = 0.0
 	cover.offset_top = 0.0
-	cover.offset_bottom = box.y
 	holder.add_child(cover)
-	if String(game) != "":
-		var badge := RankBadge.new()
+	var badge: RankBadge = null
+	if ranked:
+		badge = RankBadge.new()
 		badge.name = "RankBadge"
 		badge.game_id = StringName(game)
 		badge.awards = with_awards
-		badge.edge_y = box.y
 		badge.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		holder.add_child(badge)
+	# THE HOLDER FOLLOWS THE COVER, rather than measuring it once. A FRAME (a
+	# PanelContainer round the art) reports no minimum until it has laid its
+	# child out, so a holder sized at build time came out narrower than the frame
+	# and whatever stood beside it in a row was drawn UNDER the cover: the game
+	# popup's facts lost their first few letters to it.
+	var fit := func() -> void:
+		var b: Vector2 = cover.get_combined_minimum_size()
+		holder.custom_minimum_size = Vector2(b.x, b.y + (overhang_for(b.x) if ranked else 0.0))
+		cover.offset_bottom = b.y
+		if badge != null:
+			badge.edge_y = b.y
+			badge._layout()
+	fit.call()
+	cover.minimum_size_changed.connect(fit)
 	return holder
 
 func _ready() -> void:

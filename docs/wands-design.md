@@ -140,12 +140,20 @@ for the ray and the full list:
 away by behaving the same twice; it now means what it means on a weapon, and the
 wand does nothing wherever it lands.
 
-**An unidentified wand always asks for a square**, whatever its type, and that is
-`WandSystem.needs_target`'s whole job. Asking only the ray-shaped unknowns would
-tell the player which half of the roster a mystery stick belongs to before they had
-spent anything, which is exactly the fact the gamble is selling. A known
-non-directional wand stops asking; a known ray keeps asking; a known `random`
-stops asking too, since it picks its own enemy.
+**A wand's Aim is public, identified or not** (the owner, October 2026: "let the
+player know what aim type the wand has beforehand"). Every wand's hover carries an
+`Aim:` line (`WandSystem.aim_text`), and `WandSystem.needs_target` asks for a
+square exactly when the Aim takes one, known or not. Until then an unidentified
+wand always asked, so the aiming step could not say which half of the roster a
+mystery stick belonged to; that secret was given up on purpose for an informed
+zap. What stays hidden until identification is what the wand **does**.
+
+While aiming, the board **previews the zap** under the cursor
+(`WandSystem.preview_cells`, `BattlefieldView._show_swing_preview`): a ray draws
+its whole path, bounces included, and lights every square it strikes; a
+square-aimed wand lights the shape its clauses cover once it is known, and only
+the square itself while it is not (a lit 3x3 would say what it does). `none` and
+`random` take no click, and their hover says so.
 
 The picker is the **potion throw's**, reused (`Overworld2.begin_loot_throw`), and
 nothing is spent while the player is aiming: the charge comes off in `use_loot`

@@ -888,6 +888,13 @@ func hover_card(entry: Dictionary, face_up: bool = true) -> Dictionary:
 		# where one should go.
 		if def is TrinketData and (def as TrinketData).is_food():
 			lines.append(FOOD_RULE)
+	# A WAND SAYS HOW IT AIMS, known or not (the owner, Oct 2026): the Aim is
+	# public, so the choice of where to zap a mystery stick is an informed one.
+	# What it does stays behind identification (WandSystem.needs_target).
+	if is_wand(entry):
+		var wd: WandData = WandSystem.data_for(entry)
+		if wd != null:
+			lines.append(WandSystem.aim_text(wd))
 	if is_weapon(entry):
 		lines.append_array(_weapon_lines(entry))
 		note = "▸ Complete its goal in a game for +1 Charge. Full: Swing it at the board."

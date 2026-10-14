@@ -1820,6 +1820,20 @@ async function main() {
     r.t >= 10 && r.t < 14, r.t.toFixed(2) + 's');
   check('…at the game\'s volume', Math.abs(r.volume - 0.5) < 0.01, r.volume);
 
+  /* THE LEARNED GAIN (Radio.gd, "Loudness"): a song the game measured as loud
+   * plays quieter by its gain; a quiet one is raised only as far as 1. */
+  write((s) => { s.at += 1; s.state = 'idle'; s.radio = radioOn({ since: Date.now() / 1000, gain_db: -6 }); });
+  await sleep(1000);
+  r = await radioReading();
+  check('a song learned as loud is turned down by its gain',
+    Math.abs(r.volume - 0.5 * Math.pow(10, -6 / 20)) < 0.01, r.volume);
+  write((s) => { s.at += 1; s.state = 'idle'; s.radio = radioOn({ since: Date.now() / 1000, gain_db: 8, volume: 0.9 }); });
+  await sleep(1000);
+  r = await radioReading();
+  check('…and a quiet one raised no further than full volume', Math.abs(r.volume - 1) < 0.001, r.volume);
+  write((s) => { s.at += 1; s.state = 'idle'; s.radio = radioOn({ since: Date.now() / 1000 }); });
+  await sleep(600);
+
   write((s) => { s.at += 1; s.radio = radioOn({ playing: false, seq: 2, offset: 4 }); });
   await sleep(1000);
   r = await radioReading();
