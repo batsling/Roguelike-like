@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=3 format=3 uid="uid://item_salt_shaker"]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+[ext_resource type="Texture2D" path="res://images2.0/items/SaltShaker.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_item")
+id = &"salt_shaker"
+display_name = "Salt Shaker"
+kind = 0
+rarity = 0
+description = "Whenever you would Gain Max Health, Gain +1 Extra Max Health"
+triggers = []
+stat_bonuses = {}
+stat_gain_bonus = {"max_hp": 1}
+max_uses = -1
+source_game = "Peglin"
+tags = PackedStringArray("food")
+image = ExtResource("2_img")

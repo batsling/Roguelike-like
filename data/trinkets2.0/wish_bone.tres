@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="TrinketData" load_steps=2 format=3 uid="uid://trinket2_wish_bone"]
+
+[ext_resource type="Script" path="res://scripts/resources/TrinketData.gd" id="1_trinket"]
+
+[resource]
+script = ExtResource("1_trinket")
+id = &"wish_bone"
+display_name = "Wish Bone"
+rarity = "Common"
+size = Vector2i(1, 1)
+description = "5% on losing Health to lose this and Gain + 1 Random Item"
+source_game = "The Binding of Isaac: Rebirth"
+tags = PackedStringArray("bone")
+file = "WishBone"
+loot_type = "Passive"
+triggers = [{"on": "health_lost", "silent": true, "effects": [{"type": "chance", "percent": 5, "effect": {"type": "break_into", "item": "random_item"}}]}]
+stat_bonuses = {}
+status_bonuses = {}

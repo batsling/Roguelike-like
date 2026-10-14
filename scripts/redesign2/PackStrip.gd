@@ -47,7 +47,7 @@ func rebuild(reporting: bool) -> void:
 	# made nine pieces ordinary (§4.3), and nine more tiles in a strip is a second
 	# inventory wearing the first one's clothes. Loot has its own window now, opened
 	# from the toggle at the end of this row.
-	if GameState.inventory.is_empty():
+	if GameState.inventory.is_empty() and GameState.smelted_loot.is_empty():
 		# "No relics yet", not "nothing carried": this strip is relics only, and
 		# the loot bar right under it says what it is.
 		_box.add_child(_empty_note("no relics yet"))
@@ -56,6 +56,11 @@ func rebuild(reporting: bool) -> void:
 		if not (item is ItemData):
 			continue
 		_box.add_child(_item_token(item, reporting))
+	# …and the pieces a Smelter took out of the pack, which work like relics now
+	# (docs/loot-passives.md §16). Shown here because this is where relics are;
+	# they have nothing to press, so they are art and a hover.
+	for entry in GameState.smelted_loot:
+		_box.add_child(_smelted_token(entry))
 
 # One item in the pack: the art tile, with its FIRING control above it when the
 # item has one. Reading and spending are deliberately separate gestures — clicking
@@ -109,6 +114,26 @@ func _item_token(item: ItemData, reporting: bool) -> Control:
 		if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
 			_page.open_item_card(target_item))
 	return col
+
+# A smelted piece: its pack art on a relic tile, in the Smelter's colour, with a
+# hover saying what it is and what it does.
+func _smelted_token(entry: Dictionary) -> Control:
+	var accent := Color(1.0, 0.7, 0.35)
+	var tile := HoverPanel.new()
+	tile.size_flags_vertical = Control.SIZE_SHRINK_END
+	tile.add_theme_stylebox_override("panel",
+		UITheme.flat(accent.lerp(UITheme.BG, 0.86), 5, 3, 1, accent.lerp(UITheme.BG, 0.45)))
+	HoverCard.attach(tile, {
+		"title": LootSystem.display_name(entry),
+		"subtitle": "Smelted  ·  works like an item",
+		"accent": accent,
+		"art": LootPassives.art_for(LootPassives.def_for(entry)),
+		"lines": [LootSystem.description(entry)],
+	})
+	var art := UITheme.crisp_tex(LootPassives.art_for(LootPassives.def_for(entry)), ITEM_TOKEN)
+	art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	tile.add_child(art)
+	return tile
 
 # An INCREMENTAL relic's counter, drawn in the bottom-right corner of its own art
 # — Slay the Spire's relic counters, in the same corner and for the same reason:

@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="TrinketData" load_steps=2 format=3 uid="uid://trinket2_flat_penny"]
+
+[ext_resource type="Script" path="res://scripts/resources/TrinketData.gd" id="1_trinket"]
+
+[resource]
+script = ExtResource("1_trinket")
+id = &"flat_penny"
+display_name = "Flat Penny"
+rarity = "Uncommon"
+size = Vector2i(1, 1)
+description = "25% chance to Gain +1 Key when gaining Gold"
+source_game = "The Binding of Isaac"
+tags = PackedStringArray("coin")
+file = "FlatPenny"
+loot_type = "Passive"
+triggers = [{"on": "gold_gained", "effects": [{"type": "chance", "percent": 25, "effect": {"type": "gain_stat", "stat": "keys", "value": 1}}]}]
+stat_bonuses = {}
+status_bonuses = {}

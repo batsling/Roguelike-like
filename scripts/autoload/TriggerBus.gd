@@ -140,6 +140,17 @@ signal weapon_hit(ctx: Dictionary)          # ctx.slot, ctx.instance, ctx.weapon
                                             # stunned or not (WeaponSystem.swing),
                                             # once per body per strike. Bloody
                                             # Tear's `if_self` heal.
+signal weapon_charged(ctx: Dictionary)      # ctx.slot, ctx.amount, ctx.weapon — a
+                                            # charge LANDED on a weapon in the pack,
+                                            # from any source (its goal, a penny, a
+                                            # Hairpin). Once per charging, whatever
+                                            # its size (GameState.charge_loot_entry).
+                                            # Dumb Bell, Well-Done Steak.
+signal game_perfected(ctx: Dictionary)      # ctx.game_id — a game won with no lost
+                                            # run logged on this visit: the game
+                                            # ranks' perfected visit (§20.1). Fired
+                                            # by Overworld2 beside game_won.
+                                            # Performance Based Health Insurance.
 signal bomb_used(ctx: Dictionary)           # ctx.instance, ctx.enemy, ctx.hits,
                                             # ctx.destroyed — a Bomb was spent on
                                             # the battlefield (§4). Fired ONCE per
