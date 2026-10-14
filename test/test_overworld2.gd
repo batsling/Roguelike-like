@@ -10872,8 +10872,21 @@ func _make_front_body(enemy_id: StringName) -> int:
 	var e: GoalEnemyData = Data.get_goal_enemy_any(enemy_id)
 	if e == null:
 		return 0
-	GameLoop2.stack[0]["enemy"] = e
-	GameLoop2.stack[0]["progress"] = 0
+	# A FRESH BODY of that enemy, not the old body wearing it. The random offering
+	# stands a boss about one run in seven, and a body can arrive shielded, with
+	# revives, a phase or an ability's fields; keeping those under a new enemy made
+	# "a 1-Health body" take more than its goal to clear, now and then, in a full
+	# run. Only where it stands and who it is survive the swap.
+	var body: Dictionary = GameLoop2.stack[0]
+	for k in body.keys():
+		if not k in ["instance", "col", "row"]:
+			body.erase(k)
+	body["enemy"] = e
+	body["health"] = maxi(1, e.health)
+	body["max_health"] = maxi(1, e.health)
+	body["shield"] = 0
+	body["statuses"] = {}
+	body["progress"] = 0
 	_ui._populate_play_panel()
 	return int(GameLoop2.stack[0]["instance"])
 

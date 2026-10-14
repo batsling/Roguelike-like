@@ -778,14 +778,14 @@ func _h_break_into(effect: Dictionary, ctx: Dictionary) -> void:
 	if what != "random_item" and Data.get_item2(StringName(what)) == null:
 		push_warning("EffectSystem.break_into: no items2.0 item '%s'" % what)
 		return
-	var name: String = LootSystem.display_name(entry)
+	var piece: String = LootSystem.display_name(entry)
 	GameState.remove_loot_at(index)
 	if what == "random_item":
 		_h_gain_random_item({"value": 1}, ctx)
-		_did(ctx, "%s broke into %s" % [name, ctx.get("granted_item_name", "a relic")])
+		_did(ctx, "%s broke into %s" % [piece, ctx.get("granted_item_name", "a relic")])
 	else:
 		_h_gain_item({"item": what}, ctx)
-		_did(ctx, "%s broke into %s" % [name, Data.get_item2(StringName(what)).display_name])
+		_did(ctx, "%s broke into %s" % [piece, Data.get_item2(StringName(what)).display_name])
 
 # `smelt` — Smelter's use: the piece the overworld picked (GameState.smelt_target)
 # leaves the pack and keeps working as a relic (docs/loot-passives.md §16). The

@@ -1296,10 +1296,10 @@ func smelt_loot(entry) -> bool:
 	(entry as Dictionary).erase("pack_slot")
 	(entry as Dictionary).erase("rot")
 	smelted_loot.append(entry)
-	var name: String = LootSystem.display_name(entry)
-	Notifications.notify("Smelter: %s works like a relic now." % name, Color(1.0, 0.7, 0.35),
+	var piece: String = LootSystem.display_name(entry)
+	Notifications.notify("Smelter: %s works like a relic now." % piece, Color(1.0, 0.7, 0.35),
 		LootPassives.art_for(LootPassives.def_for(entry)))
-	GameLog.add("Smelted %s — it works from the shelf now, not the pack." % name,
+	GameLog.add("Smelted %s — it works from the shelf now, not the pack." % piece,
 		Color(1.0, 0.7, 0.35))
 	emit_signal("inventory_changed")
 	return true
