@@ -764,7 +764,7 @@ func _connect_lifecycle_hooks() -> void:
 	# no scene, one event per moment, and whatever is held — relic or pack piece —
 	# answers from the far end.
 	for hook in ["game_won", "shop_entered", "boss_spawned", "loot_used", "card_binned",
-			"weapon_stunned", "weapon_hit"]:
+			"weapon_stunned", "weapon_hit", "weapon_charged", "game_perfected"]:
 		var sig: Signal = TriggerBus.get(hook)
 		# One Callable per hook, kept, so is_connected can recognise it on a second
 		# pass (a fresh lambda is a fresh Callable and would connect twice).
@@ -1105,6 +1105,10 @@ func _trigger_gates_pass(trig: Dictionary, ctx: Dictionary) -> bool:
 	# Rocket's `enemy_killed if_boss:` — the defeat was a boss's.
 	if bool(trig.get("if_boss", false)) and not bool(ctx.get("boss", false)):
 		return false
+	# Knight Cap's `game_beaten if_shields:` — a Shield was still standing as the
+	# game ended (`shields_left`, put in the context by the report).
+	if bool(trig.get("if_shields", false)) and int(ctx.get("shields_left", 0)) <= 0:
+		return false
 	return true
 
 # --- Curse / curse-card tallies -------------------------------------------
@@ -1240,6 +1244,65 @@ func masked_character_data() -> Array:
 		if ch != null and ch.level_up_condition != "":
 			out.append(ch)
 	return out
+
+# SMELTER (docs/loot-passives.md §16): passive pieces taken OUT of the pack that
+# keep working as relics — no slot, no neighbours, saved with the run. Each is the
+# pack entry as it was (its counts and once-a-game claims ride along), and
+# LootPassives.active() runs it after the bags.
+var smelted_loot: Array = []
+
+# The piece the overworld picked for the Smelter about to fire. Set just before
+# the item is used and read by its `smelt` effect, so the charge is spent only
+# once a piece has been chosen (a cancelled pick costs nothing).
+var smelt_target = null
+
+# Whether a piece can go in the Smelter: loot whose passive works ON ITS OWN. A
+# piece that works through where it sits (Blueprint's copy, the Whetstone's and
+# Duplicator's auras) has no neighbours once it is off the grid, so it would be
+# smelted into nothing, and is refused. A weapon is swung, not held.
+func can_smelt(entry) -> bool:
+	if not LootPassives.is_passive(entry) or LootSystem.is_bag(entry):
+		return false
+	var def: Resource = LootPassives.def_for(entry)
+	if LootPassives.copies(def) != "":
+		return false
+	for field in ["weapon_stun", "weapon_retrigger", "stun_per_food"]:
+		var v = def.get(field)
+		if v is Dictionary and not (v as Dictionary).is_empty():
+			return false
+	return true
+
+# The pieces in the pack that could be smelted right now, in slot order.
+func smeltable_loot() -> Array:
+	var out: Array = []
+	for index in LootPassives.carried():
+		if can_smelt(loot_items[index]):
+			out.append(loot_items[index])
+	return out
+
+# Take `entry` out of the pack and keep it working as a relic. False when it is
+# not in the pack or cannot be smelted.
+func smelt_loot(entry) -> bool:
+	if not can_smelt(entry):
+		return false
+	var index: int = -1
+	for i in range(loot_items.size()):
+		if is_same(loot_items[i], entry):
+			index = i
+			break
+	if index < 0:
+		return false
+	loot_items.remove_at(index)
+	(entry as Dictionary).erase("pack_slot")
+	(entry as Dictionary).erase("rot")
+	smelted_loot.append(entry)
+	var piece: String = LootSystem.display_name(entry)
+	Notifications.notify("Smelter: %s works like a relic now." % piece, Color(1.0, 0.7, 0.35),
+		LootPassives.art_for(LootPassives.def_for(entry)))
+	GameLog.add("Smelted %s — it works from the shelf now, not the pack." % piece,
+		Color(1.0, 0.7, 0.35))
+	emit_signal("inventory_changed")
+	return true
 
 # Grants `count` chests (item rewards), each offering `choices` items to pick
 # from (0 = the RewardScreen's default of BASE_ITEM_CHOICES + Discovery). Banks
@@ -1489,6 +1552,8 @@ func reset_run() -> void:
 	pending_chest_choices.clear()
 	masked_characters.clear()
 	pending_masks = 0
+	smelted_loot.clear()
+	smelt_target = null
 	pending_combat_statuses.clear()
 	pending_ambush = ""
 	pending_spawn_enemies.clear()
@@ -2102,7 +2167,7 @@ func apply_level_up_stats(stats: Dictionary) -> Array:
 			set(field, int(get(field)) + av)
 			applied.append("+%d %s" % [av, _pretty_stat(key)])
 			touched = true
-	var hp_gain: int = int(stats.get("max_hp", 0))
+	var hp_gain: int = max_hp_gain(int(stats.get("max_hp", 0)))
 	if hp_gain != 0:
 		change_max_hp(hp_gain)
 		change_hp(hp_gain, HEALTH_SOURCE_MAX_HP_FILL)
@@ -2233,6 +2298,13 @@ func stat_gain_bonus_for(stat: String) -> int:
 		if it is ItemData and not it.stat_gain_bonus.is_empty():
 			bonus += int(it.stat_gain_bonus.get(stat, 0))
 	return bonus
+
+# Salt Shaker: a Max Health GAIN of `v` as it actually lands — `v` plus every
+# held `stat_gain_bonus` for max_hp, the field Snowball uses for Transmute. Asked
+# by every site that raises the cap as a gain (an effect, a pill, a potion, a
+# level-up), never by what a held item's passive holds up: that is not gained.
+func max_hp_gain(v: int) -> int:
+	return v + stat_gain_bonus_for("max_hp") if v > 0 else v
 
 # Permanent run-scope stat grant used by the `gain_stat` effect (Secret
 # Technique Instructions: +1 Dash on a perfected game). Resolves ability stats
@@ -3423,6 +3495,10 @@ func charge_loot_entry(entry, amount: int) -> int:
 		landed = WeaponSystem.add_charges(entry, amount)
 		if landed > 0:
 			landed += WeaponSystem.add_charges(entry, _bag_charge_bonus(slot))
+			# "When charging a weapon" (Dumb Bell, Well-Done Steak): once per
+			# charging that moved the bar, from whatever charged it.
+			TriggerBus.weapon_charged.emit({"slot": slot, "amount": landed,
+				"weapon": entry.get("id", &"")})
 	elif String(entry.get("type", "")) == "wand":
 		var before: int = WandSystem.charges_of(entry)
 		WandSystem.add_charges(entry, amount)
@@ -4288,13 +4364,22 @@ const LOOT_WEIGHTS := {
 func roll_loot_kind() -> String:
 	var total: int = 0
 	for kind in LOOT_KINDS:
-		total += int(LOOT_WEIGHTS.get(kind, 0))
+		total += loot_kind_weight(kind)
 	var roll: int = randi() % maxi(1, total)
 	for kind in LOOT_KINDS:
-		roll -= int(LOOT_WEIGHTS.get(kind, 0))
+		roll -= loot_kind_weight(kind)
 		if roll < 0:
 			return String(kind)
 	return String(LOOT_KINDS[0])
+
+# A kind's weight in that roll as the run stands: LOOT_WEIGHTS, times every held
+# relic's `loot_kind_weights` for it (Smelter doubles the trinkets found).
+func loot_kind_weight(kind: String) -> int:
+	var w: int = int(LOOT_WEIGHTS.get(kind, 0))
+	for it in inventory:
+		if it is ItemData and not it.loot_kind_weights.is_empty():
+			w *= maxi(1, int(it.loot_kind_weights.get(kind, 1)))
+	return w
 
 # IDENTIFY IS A FLAT TENTH OF EVERY DROP, and is not in the scroll pool at all.
 #

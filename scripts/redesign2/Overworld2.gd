@@ -2516,13 +2516,19 @@ func report(beaten: bool, fulfilled: Variant = null, escaped: bool = false,
 		# is deliberately a wider net than the beat below: it is what paces the
 		# "after beating a game" items, and every one of them is balanced around
 		# firing once per game played.
-		TriggerBus.game_beaten.emit({"game_id": played_game.id})
+		# `shields_left` is what stood when the game ended (Knight Cap's gate).
+		TriggerBus.game_beaten.emit({"game_id": played_game.id,
+			"shields_left": int(res.get("shields_left", 0))})
 		# …and the narrower moment: the game was actually WON (docs/loot-passives.md
 		# §3). The report said it was beaten and it was not an escape — which this
 		# block already guarantees — so a missed game pays the wider trigger above
 		# and not this one.
 		if beaten:
 			TriggerBus.game_won.emit({"game_id": played_game.id})
+			# …and narrower again: won with no lost run logged on this visit, the
+			# game ranks' PERFECTED visit (Performance Based Health Insurance).
+			if perfect_visit:
+				TriggerBus.game_perfected.emit({"game_id": played_game.id})
 		# THE GAME'S OWN LOOT (§4.3): one piece, a straight 50/50 between a scroll
 		# and a pill, asked about the way a kill drop is. On the same terms as the
 		# trigger above — any game seen through, win or lose — because what it pays
@@ -3899,6 +3905,11 @@ func use_item(item: ItemData) -> void:
 	if item.wants_target():
 		aim_item(item)
 		return
+	# SMELTER PICKS A PIECE FIRST (docs/loot-passives.md §16), for the reason an
+	# aiming item does: the charge is spent when it fires, so it fires on the pick.
+	if item.smelts():
+		_open_smelter(item)
+		return
 	# A non-charged overworld active (Ride the Bus) commits immediately, so spend
 	# its use here (use_item defers the spend for cancellable pickers).
 	var spend_after: bool = not item.is_charged() and item.overworld_usable
@@ -3906,6 +3917,24 @@ func use_item(item: ItemData) -> void:
 	if spend_after and GameState.inventory.has(item):
 		GameState.consume_item_use(item)
 	_refresh_items()
+
+# Smelter's pick: the pack's smeltable pieces in a popup, and the item fired on
+# the one chosen. Nothing to smelt says so and spends nothing.
+var _smelt_modal: SmeltChoiceModal = null
+func _open_smelter(item: ItemData) -> void:
+	if _smelt_modal != null and is_instance_valid(_smelt_modal):
+		return
+	var pieces: Array = GameState.smeltable_loot()
+	if pieces.is_empty():
+		Notifications.notify("%s: nothing in your pack to smelt. It takes a trinket or passive card that works on its own." \
+			% item.display_name, SmeltChoiceModal.ACCENT, item.image)
+		return
+	_smelt_modal = SmeltChoiceModal.open(self, pieces)
+	_smelt_modal.chose.connect(func(entry: Dictionary):
+		GameState.smelt_target = entry
+		GameState.use_item(item)
+		GameState.smelt_target = null
+		_refresh_items())
 
 # Arm an aiming item over the board: the bodies light up, and the click on one is
 # what fires it (see _on_item_aimed). Refused — loudly, and without spending

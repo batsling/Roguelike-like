@@ -210,6 +210,15 @@ static func active() -> Array:
 			continue
 		out.append({"item": proxy(bdef), "def": bdef, "entry": bag, "source": bag,
 			"copy": false, "slot": -1, "copier": bdef, "bag": i})
+	# THE SMELTED PIECES (Smelter, docs/loot-passives.md §16), last. Off the grid,
+	# so `slot` is -1 like a bag's, and nothing copies one. Its entry still rides
+	# its counts and claims, so a smelted food keeps counting where it left off.
+	for e in GameState.smelted_loot:
+		var sdef: Resource = def_for(e)
+		if sdef == null:
+			continue
+		out.append({"item": proxy(sdef), "def": sdef, "entry": e, "source": e,
+			"copy": false, "slot": -1, "copier": sdef, "smelted": true})
 	return out
 
 # What the piece in `slot` actually does: {def, entry} of the passive it runs, or

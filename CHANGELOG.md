@@ -11,6 +11,54 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Research now checks the developer's other roguelikes** (the owner's ask,
+  14 Oct 2026). `influence_research.py new` runs a new `studio` pass: Steam's
+  developer search lists every game under the new game's developer, and each
+  one's tags say whether it is a roguelike. `new_games.md` lists them under
+  *The developer's other games*, each with what it asks for. A chart game not
+  connected becomes a `to review` row with Dev/Series `yes`, and a roguelike
+  off the chart becomes a `lead`. The same check is by hand for a game off
+  Steam. This replaces the old rule that a same-studio pair counted only when
+  the newer game's page said so; the owner still decides each row. Its first
+  find is **Words Can Kill → Spinny Dungeon** (both Typing Monkey's). aQuadiun's
+  other game, Galaxy Champions TV, is an arena shooter and was dropped.
+
+- **The owner's 14 Oct upload: two games, three connections, six relics, three
+  trinkets and a boss.** **Corebreaker** (influenced by Dead Cells and
+  ScourgeBringer) and **Spinny Dungeon** (by Luck be a Landlord) are on the map,
+  their three proofs screenshots the sheet already named. The sheet's other
+  changes were a re-sort of `characters` and `connections`, which reorders a few
+  games' influence lists and nothing else. **Slime Boss** (Peglin) arrived with
+  its goal typed into `bosses`, so it was authored into `goals` instead.
+  `tools/_items_trinkets_slime_boss_setup.py` fills the nine Effect cells. The
+  owner settled four readings before any of it was built: Smelter is a **pick**,
+  Knight Cap counts **any** Shield, Wish Bone pays a random relic **at once**, and
+  Dumb Bell's Strength lasts **until the next game ends**.
+  - **Dumb Bell** and **Well-Done Steak** ride a new **`weapon_charged`** hook,
+    fired by `GameState.charge_loot_entry` whenever a charge lands on a weapon
+    from any source (+1 Strength for a game; +1 Health).
+  - **Knight Cap** is the **`if_shields`** gate on `game_beaten`: `beat_game`
+    reads `shields_left` (Temporary plus Shields) before the Temporary ones
+    expire, and the report passes it on.
+  - **Performance Based Health Insurance** (Haste) rides **`game_perfected`**,
+    fired beside `game_won` on a game won with no lost run logged.
+  - **Salt Shaker** reuses Snowball's `stat_gain_bonus` keyed `max_hp`, asked
+    through `GameState.max_hp_gain` at every Max Health gain (effects, pills,
+    potions, level-ups).
+  - **Smelter** is `Passive, Charged, 3`, which the generator now reads as
+    charged wherever `Charged` sits in the Type cell. Using it opens
+    `SmeltChoiceModal` with the pack's passive pieces; the one picked leaves the
+    pack for `GameState.smelted_loot`, keeps working from the shelf (it is an
+    `active()` row with no slot), is drawn on the relic strip and is saved with
+    the run. Pieces that work by position (Blueprint, the auras) are refused. It
+    also doubles the trinket kind's weight in the loot roll
+    (`loot_kind_weight`). `docs/loot-passives.md` §16.
+  - **Bag Lunch** and **Wish Bone** break on a 5% chance when Health is lost,
+    through the new **`break_into`** verb (into Lunch / a random relic). **Flat
+    Penny** is a Key on 25% of gold gained, the penny family's own grammar.
+
+---
+
 - **The ray: Ball x Pit's ball, for Earthquake and the wands**
   (`docs/loot-passives.md` §12.1-§12.2).
   - *The aim.* `ray` is a new Aim. It is a line from the hero's spot on the left

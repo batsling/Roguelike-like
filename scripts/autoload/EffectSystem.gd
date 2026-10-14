@@ -138,6 +138,8 @@ func _register_defaults() -> void:
 	register("gain_random_buff", _h_gain_random_buff)
 	register("remove_random_debuff", _h_remove_random_debuff)
 	register("gain_top_buff", _h_gain_top_buff)
+	register("break_into", _h_break_into)
+	register("smelt", _h_smelt)
 
 # Scene-less heal straight to the run HP pool. Caps at max_hp via change_hp.
 func _h_gain_hp(effect: Dictionary, _ctx: Dictionary) -> void:
@@ -152,7 +154,7 @@ func _h_gain_hp(effect: Dictionary, _ctx: Dictionary) -> void:
 # swallow part of a raise, and healing the requested amount there would hand out
 # Health the cap just refused to make room for.
 func _h_gain_max_hp(effect: Dictionary, _ctx: Dictionary) -> void:
-	var v: int = int(effect.get("value", 0))
+	var v: int = GameState.max_hp_gain(int(effect.get("value", 0)))
 	if v == 0:
 		return
 	var before: int = GameState.max_hp
@@ -167,7 +169,7 @@ func _h_gain_max_hp(effect: Dictionary, _ctx: Dictionary) -> void:
 # as `gain_empty_max_hp` so an item that wants the bare cap says so out loud,
 # rather than the heal being a thing every other author has to remember to add.
 func _h_gain_empty_max_hp(effect: Dictionary, _ctx: Dictionary) -> void:
-	var v: int = int(effect.get("value", 0))
+	var v: int = GameState.max_hp_gain(int(effect.get("value", 0)))
 	if v != 0:
 		GameState.set_max_hp(GameState.max_hp + v, false)
 
@@ -755,6 +757,47 @@ func _h_drop_copy(_effect: Dictionary, ctx: Dictionary) -> void:
 	var cell: Vector2i = GameLoop2.drop_loot_anywhere(copy)
 	if cell != GameLoop2.OFF_FIELD:
 		_did(ctx, "a copy of %s lands on the board" % LootSystem.display_name(copy))
+
+# `break_into <item_id>` / `break_into random_item` — Isaac's breaking trinkets
+# (Bag Lunch -> Lunch, Wish Bone -> a random relic). The piece of loot doing the
+# firing LEAVES THE PACK and a relic takes its place on the shelf. A Blueprint
+# copying one is the piece that fired, so it is the Blueprint that breaks: the
+# rule that it "fires as itself" (docs/loot-passives.md §2) holds for the cost too.
+func _h_break_into(effect: Dictionary, ctx: Dictionary) -> void:
+	var entry = ctx.get("loot_entry")
+	if not (entry is Dictionary):
+		return
+	var index: int = -1
+	for i in range(GameState.loot_items.size()):
+		if is_same(GameState.loot_items[i], entry):
+			index = i
+			break
+	if index < 0:
+		return
+	var what: String = String(effect.get("item", ""))
+	if what != "random_item" and Data.get_item2(StringName(what)) == null:
+		push_warning("EffectSystem.break_into: no items2.0 item '%s'" % what)
+		return
+	var piece: String = LootSystem.display_name(entry)
+	GameState.remove_loot_at(index)
+	if what == "random_item":
+		_h_gain_random_item({"value": 1}, ctx)
+		_did(ctx, "%s broke into %s" % [piece, ctx.get("granted_item_name", "a relic")])
+	else:
+		_h_gain_item({"item": what}, ctx)
+		_did(ctx, "%s broke into %s" % [piece, Data.get_item2(StringName(what)).display_name])
+
+# `smelt` — Smelter's use: the piece the overworld picked (GameState.smelt_target)
+# leaves the pack and keeps working as a relic (docs/loot-passives.md §16). The
+# overworld only fires the Smelter once a piece is picked, so a missing target is
+# a test or a driver firing it bare, and does nothing.
+func _h_smelt(_effect: Dictionary, ctx: Dictionary) -> void:
+	var target = GameState.smelt_target
+	GameState.smelt_target = null
+	if target == null:
+		return
+	if GameState.smelt_loot(target):
+		_did(ctx, "smelted %s" % LootSystem.display_name(target))
 
 # What an effect that moves no run resource did, for the trigger's toast (see
 # GameState._end_trigger_report). Resource changes are read off the run and need

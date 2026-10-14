@@ -127,6 +127,18 @@ relic shelf, so a trinket authoring one would be a promise nothing keeps.
 
 `enemy_killed` now also carries `boss: bool`.
 
+Two more came with the 14 Oct 2026 upload, both run-scope like the five above:
+
+| Hook | Fires when | Emitted from | Used by |
+|---|---|---|---|
+| `weapon_charged` | A charge **landed** on a weapon in the pack, from anything that charges one (its goal, a penny, a Hairpin). Once per charging, whatever its size; a full weapon that took nothing fires nothing. | `GameState.charge_loot_entry` | Dumb Bell (+1 Strength for the next game), Well-Done Steak (+1 Health) |
+| `game_perfected` | A game **won with no lost run logged** on this visit: the game ranks' perfected visit (spec §20.1). Narrower than `game_won`, and fired beside it. | `Overworld2`, beside `game_won` | Performance Based Health Insurance |
+
+and one more gate, **`if_shields`**: passes when a Shield was still standing as
+the game ended, Temporary or not (Knight Cap: `game_beaten if_shields:`). The
+report reads `shields_left` in `GameLoop2.beat_game` before the Temporary ones
+expire, and passes it on `game_beaten`'s context.
+
 ### Two new gates
 
 - `if_boss` passes only when the hook's context says the body was a boss
@@ -145,6 +157,7 @@ relic shelf, so a trinket authoring one would be a promise nothing keeps.
 | `gain_card N` | A named card grant (Deck of Cards). |
 | `gain_gold N per=P of=<stat>` | N for every P of the stat, rounded down, read before this payout lands (To the Moon: `per=3 of=gold`). |
 | `gain_gold N plus=counter` | N plus the counter on the piece whose passive this is (Rocket). |
+| `break_into <item_id>` / `break_into random_item` | The firing piece **leaves the pack** and a relic takes its place: a named one, or a random one off the reward pool (Bag Lunch -> Lunch, Wish Bone). Its own verb because a `N% chance` wraps exactly one effect. A Blueprint copying one is the piece that fired, so the Blueprint is what breaks. |
 
 ### The coin-chain rule
 
@@ -690,3 +703,30 @@ or it will be the one rule the cable does not reach.
 The cable arriving or leaving is an inventory change, so the pack's held-up
 statuses and its ready food are recomputed then (`_on_pack_changed`), like a
 move.
+
+## 16. Smelter — a piece that leaves the pack and keeps working
+
+**Smelter** is a relic (`items`, Uncommon, The Binding of Isaac: Rebirth, Type
+`Passive, Charged, 3`): **"Consume a Loot with a passive effect and treat it as
+an item. Doubles the chances of finding trinkets."**
+
+- **The Type is two words.** `Charged` decides how it is used, so it is a
+  charged item (`generate_item_tres._kind_of`): three games to fill, and
+  `Charged, 3` is read wherever `Charged` sits in the cell. The passive half is
+  `loot_kind_weight: {trinket: 2}`: while it is held, the trinket kind's weight
+  in the kind-blind loot roll is doubled (`GameState.loot_kind_weight`).
+- **Using it is a pick** (the owner's call, 14 Oct 2026). The overworld opens
+  `SmeltChoiceModal` with every piece that can be smelted, and the Smelter
+  fires, spending its charge, only on the pick
+  (`GameState.smelt_target` -> the `smelt` effect). Closing it costs nothing, and
+  an empty list says so and spends nothing, as an aiming item's cancel does.
+- **The piece leaves the pack and works from the shelf.** It goes into
+  `GameState.smelted_loot` (saved with the run) and `LootPassives.active()` runs
+  it after the bags, with `slot` -1: its stat and status grants stay held up,
+  its triggers still fire, and a food keeps counting where it left off. It is
+  drawn on the relic strip in the Smelter's colour, with a hover.
+- **Only a piece that works on its own can go in** (`GameState.can_smelt`). One
+  that works through where it sits (Blueprint's copy, the Whetstone and
+  Duplicator auras, Stankus' Toothpick) has no neighbours off the grid, so it
+  would be smelted into nothing, and is refused. A weapon is swung, not held,
+  so it is not passive loot.

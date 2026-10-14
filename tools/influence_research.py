@@ -18,6 +18,7 @@ SUBCOMMANDS (all write into --work, default `.influence_work/`, gitignored):
     python3 tools/influence_research.py targets   # games with no influences / no connections
     python3 tools/influence_research.py devs      # Steam appid + developer for every game (~6 min)
     python3 tools/influence_research.py samedev   # same-developer pairs the sheet doesn't connect
+    python3 tools/influence_research.py studio G  # G's developer's other Steam games, roguelike or not
     python3 tools/influence_research.py steam     # store pages + dev announcements -> triage.md
     python3 tools/influence_research.py cues      # wider read of those pages for the degree-1 games
     python3 tools/influence_research.py wanted FILE  # games not on the chart yet: find edges to it
@@ -332,6 +333,81 @@ def cmd_samedev(args):
                     continue
                 seen.add((a, b))
                 print(f"{a} ({year.get(a)}) -> {b} ({year.get(b)})  dev={devs[a].get('devs')}")
+
+
+# ── studio: the developer's other games (dev relation) ──────────────────────
+
+# Steam's own word for a roguelike or roguelite is a user tag, so a game counts
+# when any of its tags says "rogue" (Roguelike, Roguelite, Action Roguelike,
+# Roguelike Deckbuilder, Traditional Roguelike, Roguevania).
+ROGUE_TAG = re.compile(r"rogue", re.I)
+# Store entries that are not another game: a demo, a soundtrack, a playtest, a
+# server, an art book.
+NOT_A_GAME = re.compile(r"\b(demo|soundtrack|ost|playtest|prologue|dedicated server|artbook|art book|"
+                        r"wallpapers?|supporter pack|dlc)\b", re.I)
+
+
+def studio_games(dev, cache):
+    """[{name, aid}] for every Steam store entry under developer `dev`, cached.
+
+    The store search's `developer=` filter is the developer's own catalog page
+    in JSON. The app id is read out of each capsule's URL, which is the only
+    place the search puts it."""
+    fn = os.path.join(cache, re.sub(r"[^a-z0-9]+", "_", dev.lower()).strip("_") + ".json")
+    if os.path.exists(fn):
+        return json.load(open(fn))
+    try:
+        j = json.loads(get("https://store.steampowered.com/search/results/?json=1&count=100&developer="
+                           + urllib.parse.quote(dev)))
+    except Exception:
+        return []  # not cached, so a rerun asks again
+    out = []
+    for it in j.get("items", []):
+        m = re.search(r"/apps/(\d+)/", it.get("logo", ""))
+        if m and not NOT_A_GAME.search(it.get("name", "")):
+            out.append({"name": it["name"], "aid": m.group(1)})
+    json.dump(out, open(fn, "w"), indent=0)
+    return out
+
+
+def cmd_studio(args):
+    """Every new game's developer's OTHER games, and which are roguelikes.
+
+    A game by the same developer as one on the chart is a Dev/Series relation
+    to put to the owner (the owner's call, 14 Oct 2026): on the chart and not
+    connected, a `to review` row marked Dev/Series; a roguelike off the chart, a
+    `lead`. Writes --work/studio.json, which the `new` report reads."""
+    import tag_research  # its Steam tag reader and cache
+    games, _ = load_sheet()
+    names = {r[0] for r in games}
+    only = getattr(args, "only", None) or args.game or unresearched(games)
+    devs = load_devs(args)
+    by_aid = {str(v.get("aid")): n for n, v in devs.items() if v.get("aid")}
+    cache = wpath(args, "studio")
+    os.makedirs(cache, exist_ok=True)
+    os.makedirs(tag_research.CACHE, exist_ok=True)
+    path = wpath(args, "studio.json")
+    found = json.load(open(path)) if os.path.exists(path) else {}
+    for g in only:
+        v = devs.get(g) or {}
+        mine = str(v.get("aid") or "")
+        rows, seen = [], {mine}
+        for dev in v.get("devs") or []:
+            for it in studio_games(dev, cache):
+                if it["aid"] in seen:
+                    continue
+                seen.add(it["aid"])
+                chart = by_aid.get(it["aid"])
+                rec = tag_research.store_page(it["aid"]) or {}
+                tags = [t[0] for t in rec.get("tags", [])]
+                rows.append({"name": chart or it["name"], "aid": it["aid"], "dev": dev,
+                             "on_chart": chart in names if chart else False,
+                             "roguelike": any(ROGUE_TAG.search(t) for t in tags),
+                             "tags": [t for t in tags if ROGUE_TAG.search(t)][:3]})
+        found[g] = rows
+        print("%-45s %d other game(s), %d roguelike" % (g[:45], len(rows), sum(r["roguelike"] for r in rows)),
+              flush=True)
+    json.dump(found, open(path, "w"), indent=1)
 
 
 # ── steam ───────────────────────────────────────────────────────────────────
@@ -2145,7 +2221,8 @@ def cmd_new(args):
     --work/new_games.md: per game, every first-hand sentence that names a chart
     game the sheet doesn't connect it to, the influence claims that name NO
     chart game (where a roguelike missing from the chart turns up), same-studio
-    games on the chart, other chart games' cached Steam text naming it, and the
+    games on the chart, the developer's other Steam games and which of them are
+    roguelikes (`studio`: dev relations), other chart games' cached Steam text naming it, and the
     videos worth a listen. `media` also folds the new games into
     docs/influence-media.md and its cache into tools/, as a full `media` run does.
 
@@ -2187,6 +2264,13 @@ def cmd_new(args):
                 aid = (devs.get(g) or {}).get("aid")
                 print("%-45s %s" % (g[:45], f"{len(steam_pages(aid, cache))} page(s)" if aid else "no Steam page"),
                       flush=True)
+        if "studio" not in skip:
+            print("\n== studio (the developer's other games: dev relations)", flush=True)
+            try:
+                cmd_studio(args)
+            except (Exception, SystemExit) as e:
+                failed["studio"] = str(e)[:200]
+                print(f"studio stopped: {failed['studio']}", flush=True)
         passes = {"itch": (cmd_itch, {}), "site": (cmd_site, {}), "reddit": (cmd_reddit, {"delay": 2.0}),
                   "bluesky": (cmd_bluesky, {"delay": 0.3})}
         for name, (fn, kw) in passes.items():
@@ -2224,6 +2308,8 @@ def write_new_report(args, games, conns, failed):
     cache = wpath(args, "pages")
     sources = {s: _jsonl(args, s) for s in ("itch", "site", "reddit", "bluesky")}
     media = _jsonl(args, "media")
+    spath = wpath(args, "studio.json")
+    studio = json.load(open(spath)) if os.path.exists(spath) else {}
     norm = lambda s: re.sub(r"\b(inc|llc|ltd|games|studios?|co|gmbh|entertainment|interactive)\b",
                             "", re.sub(r"[^a-z0-9 ]", "", s.lower())).strip()
     # Other chart games' Steam text, where `steam` has cached it: an older game's
@@ -2280,6 +2366,26 @@ def write_new_report(args, games, conns, failed):
         lines += ["", "**Same studio on the chart:** " + (", ".join(
             f"{n} ({year.get(n)})" + (" — connected" if (n, g) in have or (g, n) in have else "")
             for n in same) or "none")]
+        # THE DEVELOPER'S OTHER GAMES (dev relation, the owner's call 14 Oct 2026):
+        # every game under the same developer on Steam, roguelike or not, and what
+        # each one asks for. The chart's own same-studio match above only sees the
+        # chart; this sees the roguelikes the chart lacks too.
+        sdev = studio.get(g)
+        if sdev is None:
+            lines += ["", "**The developer's other games:** not looked up (run `studio`)"]
+        else:
+            dl = []
+            for r in sdev:
+                n = r["name"]
+                if r["on_chart"]:
+                    todo = "connected" if (n, g) in have or (g, n) in have else \
+                        "on the chart, not connected: a `to review` row, Dev/Series `yes`"
+                elif r["roguelike"]:
+                    todo = "a roguelike the chart lacks (%s): a `lead` row" % ", ".join(r["tags"])
+                else:
+                    todo = "not a roguelike: nothing"
+                dl.append(f"- **{n}** (https://store.steampowered.com/app/{r['aid']}/, {r['dev']}) — {todo}")
+            lines += ["", f"**The developer's other games ({len(sdev)}) — dev relations:**", ""] + (dl or ["- none on Steam"])
         own_pat = [(g, p) for n, p in pats if n == g]
         back = []
         for n, odocs in others:
@@ -2416,6 +2522,8 @@ def main():
     sub.add_parser("targets")
     sub.add_parser("devs")
     sub.add_parser("samedev")
+    sp = sub.add_parser("studio")
+    sp.add_argument("game", nargs="*", help="games to look up (default: the unresearched ones)")
     sub.add_parser("steam")
     sub.add_parser("xsources")
     sub.add_parser("wanted").add_argument("file", help="text file, one game name per line")
@@ -2434,7 +2542,7 @@ def main():
                      help="record the games as researched in research/ledger.json, after their "
                           "findings are rows in research/connections.csv")
     np_.add_argument("--skip", default="", help="comma-separated passes to leave out: "
-                                                "steam,itch,site,reddit,bluesky,media")
+                                                "steam,studio,itch,site,reddit,bluesky,media")
     np_.add_argument("--write-only", action="store_true", help="rewrite new_games.md from the caches, no fetching")
     sub.add_parser("status").add_argument("--tick", action="store_true",
                                           help="tick the candidate lines that are in the sheet now")
@@ -2473,7 +2581,7 @@ def main():
     sub.choices["lang"].add_argument("--forums", action="store_true",
                                      help="also read each game's forum index for language subforums")
     args = ap.parse_args()
-    {"targets": cmd_targets, "devs": cmd_devs, "samedev": cmd_samedev, "steam": cmd_steam,
+    {"targets": cmd_targets, "devs": cmd_devs, "samedev": cmd_samedev, "studio": cmd_studio, "steam": cmd_steam,
      "lang": cmd_lang, "forums": cmd_forums, "devcheck": cmd_devcheck, "xsources": cmd_xsources, "status": cmd_status,
      "cues": cmd_cues, "wanted": cmd_wanted, "media": cmd_media, "titles": cmd_titles,
      "itch": cmd_itch, "kickstarter": cmd_kickstarter, "reddit": cmd_reddit, "site": cmd_site,

@@ -1213,7 +1213,14 @@ func test_a_push_aim_clears_when_its_target_dies() -> void:
 func test_report_accepts_an_explicit_fulfilment_list() -> void:
 	_pick_enemies(0)
 	_ui.report(false)
-	var inst: int = int(GameLoop2.stack[0]["instance"])
+	# A BODY ONE GOAL CLEARS. The follower is whatever the offering stood, and a
+	# boss or the Mysterious Tree (3 Health) is still standing after its goal is
+	# ticked — correctly, and the assertion below then fails on a rule it is not
+	# about.
+	var inst: int = _make_front_body(&"monkey")
+	if inst == 0:
+		pending("the board had no follower to fulfil")
+		return
 	_pick_enemies(0)
 	_ui.report(false, [inst])                    # explicit list bypasses the checkboxes
 	for entry in GameLoop2.stack:
@@ -10872,8 +10879,21 @@ func _make_front_body(enemy_id: StringName) -> int:
 	var e: GoalEnemyData = Data.get_goal_enemy_any(enemy_id)
 	if e == null:
 		return 0
-	GameLoop2.stack[0]["enemy"] = e
-	GameLoop2.stack[0]["progress"] = 0
+	# A FRESH BODY of that enemy, not the old body wearing it. The random offering
+	# stands a boss about one run in seven, and a body can arrive shielded, with
+	# revives, a phase or an ability's fields; keeping those under a new enemy made
+	# "a 1-Health body" take more than its goal to clear, now and then, in a full
+	# run. Only where it stands and who it is survive the swap.
+	var body: Dictionary = GameLoop2.stack[0]
+	for k in body.keys():
+		if not k in ["instance", "col", "row"]:
+			body.erase(k)
+	body["enemy"] = e
+	body["health"] = maxi(1, e.health)
+	body["max_health"] = maxi(1, e.health)
+	body["shield"] = 0
+	body["statuses"] = {}
+	body["progress"] = 0
 	_ui._populate_play_panel()
 	return int(GameLoop2.stack[0]["instance"])
 

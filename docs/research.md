@@ -379,6 +379,12 @@ a brief for each, and prints the hand work left. Then, for each new game:
 1. **connections**: read `.influence_work/new_games.md`, search the web per game
    ([influence-research.md](influence-research.md)), write what holds up as
    rows in `research/connections.csv`, then `influence_research.py new --mark`.
+   **Check the developer's other roguelikes too** (the owner, 14 Oct 2026): the
+   report's *The developer's other games* lists every Steam game by the same
+   developer and says what each asks for. One on the chart and not connected is
+   a `to review` row with Dev/Series `yes`; a roguelike the chart lacks is a
+   `lead`. A game off Steam (itch, a website) has no such list, so search the
+   developer's other games by hand and apply the same rule.
 2. **goals, loot, events, characters, statuses, locations**: read its brief and
    the pages it lists, write rows, then `research.py mark <kind> <game>` for
    every kind, rows or not.

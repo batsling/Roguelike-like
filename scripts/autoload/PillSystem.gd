@@ -392,7 +392,7 @@ func _apply_one(op: Dictionary, out: Dictionary, rng: RandomNumberGenerator,
 		"gain_max_hp":
 			# Raising the cap heals by the same amount (§3) — the container arrives
 			# full, which is what makes Health Up worth taking at full Health.
-			var up: int = _scaled_value(op, "value", 1)
+			var up: int = GameState.max_hp_gain(_scaled_value(op, "value", 1))
 			GameState.change_max_hp(up)
 			GameState.change_hp(up, GameState.HEALTH_SOURCE_MAX_HP_FILL)
 			out["logs"].append("You gain +%d Max Health." % up)

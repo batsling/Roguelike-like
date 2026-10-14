@@ -14,7 +14,7 @@ the honour system.
 | what changed and why | `CHANGELOG.md` — narrative history, not needed to make a change |
 | what is known-slow and not yet fixed | `docs/performance-backlog.md` — measured findings with the fix for each. The Events tab and the page's cold compile are fixed; `GameLoop2.gd` has been measured and is cheap. What stays useful is the method: `Overworld2.gd` carries a seam table re-measured rather than guessed, and `test_page_load.gd` keeps the screens a run only opens on demand out of the page's compile |
 | what the layout pass left open | `docs/layout-review-backlog.md` — all eight items closed. Fonts and gaps are both on `UITheme`'s scales project-wide, with `test_design_tokens.gd` asserting both lists complete and no value off the scale. All of it stays in the doc with its reasoning so none of it gets re-litigated. Two standing notes in it are worth reading before touching any UI: judge colour by sampling the rendered pixel rather than by eye off a screenshot (that produced one confidently wrong finding), and use the `verify` skill to look at a screen rather than reasoning about it |
-| trinkets, passive cards, bags, weapons, and why WHERE a piece sits in the pack matters | `docs/loot-passives.md` — the sixth loot kind, Blueprint's neighbour rule (it copies ANY loot, usable pieces included), the five hooks it added, the coin-chain rule and the trigger toast; §6 is BAGS, the seventh kind, which give the pack its shape (slots are numbered by which bag owns the cell, so a bag's contents ride along when it moves); §10 is pieces BIGGER than one cell (one index on several slots, anchored at the lowest); §11 is food, which counts CHARGES (a defeated enemy is one; anything that charges loot is another); §12 is WEAPONS, the eighth kind — aimed like a thrown potion, charged once per game by their own goal; §13 is evolutions; §14 the hover glow; §15 Link Cable, which makes every piece touch every other — a new neighbour rule has to ask `LootPassives.linked()` too |
+| trinkets, passive cards, bags, weapons, and why WHERE a piece sits in the pack matters | `docs/loot-passives.md` — the sixth loot kind, Blueprint's neighbour rule (it copies ANY loot, usable pieces included), the five hooks it added, the coin-chain rule and the trigger toast; §6 is BAGS, the seventh kind, which give the pack its shape (slots are numbered by which bag owns the cell, so a bag's contents ride along when it moves); §10 is pieces BIGGER than one cell (one index on several slots, anchored at the lowest); §11 is food, which counts CHARGES (a defeated enemy is one; anything that charges loot is another); §12 is WEAPONS, the eighth kind — aimed like a thrown potion, charged once per game by their own goal; §13 is evolutions; §14 the hover glow; §15 Link Cable, which makes every piece touch every other — a new neighbour rule has to ask `LootPassives.linked()` too; §16 Smelter, which takes a passive piece out of the pack and keeps it working from the shelf |
 | **research of any kind** — influences, tags, and what each game's enemies, items, events, characters, statuses and places could give this one | `docs/research.md`: eight kinds, one entry point (`tools/research.py`), candidates in `research/<kind>.csv`, reviewed by the owner in `tools/Research.xlsx` (a sheet per kind, `Owner` yes/no), one ledger (`research/ledger.json`) and each game's wiki (`research/wikis.json`). **If the owner has uploaded `Research.xlsx`, run `python3 tools/research.py sync` before anything else** or their ticks are overwritten by the next build. Nothing reaches `Roguelikes.xlsx` until the owner has said yes |
 | finding influences missing from the chart | `docs/influence-research.md`: the method, what counts as a source (first-hand only), which sources paid off, and the traps. `tools/influence_research.py` does the scanning. Candidates found so far are rows of `research/connections.csv`, and **nothing from it goes into `connections` until the owner has ticked it**. Interviews and podcasts for the owner to listen to (nobody else can) are in `docs/influence-media.md` |
 | which games should carry which tags | `tools/tag_research.py` writes **suggestions** into `tools/Research.xlsx` (its own workbook, not `Roguelikes.xlsx`) from each game's Steam tags, store text and title, with the evidence beside each one. **Never type a tag into the `games` sheet yourself**: the owner reads the sheet and does that. Its `Owner` column (yes/no) survives a rerun. The owner can also tag games **in game** (the Collection's game page and the run map's game card, `GameTags` + `TagEditor`); those edits count at once and reach the sheet only through Settings → Game tags → *Export tags for all games* → `tools/tag_edits.json` → `python3 tools/apply_tag_edits.py` (see the porting steps below) |
@@ -89,7 +89,11 @@ research runs over the new games (`docs/research.md` §7 has the detail):
    devlog or a press release in the developer's own words. What holds up goes
    in `research/connections.csv` (`to review` for a pair of chart games, `lead`
    for a roguelike the chart lacks, `nothing found` for a game searched with
-   nothing found), **never** into `connections`. Then
+   nothing found), **never** into `connections`. **Also the developer's other
+   roguelikes:** `new_games.md`'s *The developer's other games* lists every
+   Steam game by the same developer; one on the chart and not connected is a
+   `to review` row with Dev/Series `yes`, a roguelike off the chart a `lead`
+   (by hand for a game off Steam). Then
    `python3 tools/influence_research.py new --mark`.
 3. **Goals, loot (always including weapons and evolutions), events,
    characters, statuses, locations:** read each new game's brief and the wiki
@@ -326,10 +330,10 @@ godot --headless -s addons/gut/gut_cmdln.gd     # GUT suite: 57 scripts, ~2560 t
   wiring it up — it says "hides a native class" in one line.
 - **Game covers load lazily.** `GameData.cover_path` holds the path and
   `GameData.cover_image` loads it on first read. Do **not** turn `cover_image`
-  back into an `@export var ... : Texture2D` — `Data` loads all 921 games at
+  back into an `@export var ... : Texture2D` — `Data` loads all 925 games at
   startup and an ExtResource resolves eagerly, which meant decoding ~206 MB of
   PNG on every boot and every headless test run (~5.2s of a ~5.7s startup).
-- **`data/games/` has 921 files.** Never glob or read it wholesale to answer a
+- **`data/games/` has 925 files.** Never glob or read it wholesale to answer a
   question; query it with `grep` for the field you care about.
 - **The repo tracks source only.** `.godot/`, `*.import`, `*.uid` and
   `export_presets.cfg` are gitignored and regenerate. They show up in local file

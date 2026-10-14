@@ -2339,6 +2339,18 @@ brought a hook each:
 | **Reptile Trinket** | Uncommon | The **`potion_used`** hook, declared since the potion work and emitted by nothing until this item wanted it. +3 Strength *borrowed for one game* — the first item to hand out a timed status, and what made one row per instance necessary (docs/potions-design.md §5.4). |
 | **Ripple Basin** | Uncommon | The **`run_lost`** hook and **`if_goals=`**, the first gate on a run-scope trigger: +1 Temporary Shield for a lost run logged while the game is still blank. |
 
+**The 14 Oct 2026 six** (four from Peglin, one each from Haste and Isaac) each
+brought one word:
+
+| Relic | | Brought with it |
+|---|---|---|
+| **Dumb Bell** | Uncommon | The **`weapon_charged`** hook (docs/loot-passives.md §3): +1 Strength borrowed for one game whenever a charge lands on a weapon. |
+| **Well-Done Steak** | Uncommon | The same hook: +1 Health per charging. |
+| **Knight Cap** | Common | The **`if_shields`** gate on `game_beaten`: +1 Health for a game that ends with any Shield still standing, Temporary or not. |
+| **Performance Based Health Insurance** | Common | The **`game_perfected`** hook: +2 Health for a game won with no lost run logged (§20.1's perfected visit). |
+| **Salt Shaker** | Common | Snowball's `stat_gain_bonus`, keyed `max_hp`: every Max Health GAIN is one bigger (`GameState.max_hp_gain`, asked by effects, pills, potions and level-ups). What a held item's passive holds up is not a gain, and a loss is untouched. |
+| **Smelter** | Uncommon | **`smelt`** and **`loot_kind_weight`**: Charged 3, a pick of the pack's passive pieces, which leave it and work from the relic shelf; trinkets found twice as often (docs/loot-passives.md §16). |
+
 ### 8.1 Effect DSL — reuse the existing item grammar
 
 The `items2.0.Effect` column is authored in the **same grammar the project already

@@ -43,7 +43,7 @@ Measured on the first pass (October 2026), over the 892 games on the chart:
 | Developer Steam announcements | `steam` subcommand: the Steam news API, `feedname == steam_community_announcements` only | **Best.** About 35 real edges out of 215 hits. Q&A posts and devlogs say "our main inspiration was…" outright |
 | Steam store pages | same pass, `about_the_game` text | Good for "Inspired by: X, Y" lists and "From the creators of X" (a Dev/Series Relation) |
 | Interviews and devlogs | web search per game, then read the page | Good for well-known games. Hades, Children of Morta, Crawl, Heat Signature and Death Road to Canada all came from here |
-| Same developer | `samedev` subcommand | A lead, not a source. Use a pair only when the newer game's page says so |
+| Same developer | `studio` (run by `new`) for a new game; `samedev` across the whole chart | **A dev relation, put to the owner** (their call, 14 Oct 2026). `studio` asks Steam for every game under the new game's developer and reads each one's tags: one on the chart and not connected becomes a `to review` row with Dev/Series `yes`, one off the chart whose tags say roguelike or roguelite becomes a `lead`, the rest are noted and dropped. The row's Text says when the shared developer is all there is (the newer game's page doesn't name the older), so the owner can weigh it. `new_games.md` lists them under **The developer's other games** |
 | Steam discussion forums | `forums` then `devcheck` | **Poor and slow, but the badge makes it trustworthy.** 30 hits in the first 38 games, one from a developer. `devcheck` keeps only posts with Steam's developer badge. Run it last, on the games nothing else found |
 | itch.io pages and devlogs | `itch` | Not measured yet. Aimed at the small games nothing else finds: a jam game's or a solo developer's itch page is often the only place they wrote about it. 4 of 8 well-known games tested were on itch under their exact title, and 2 of the 4 were someone else's upload, which is why each game's itch account is printed beside its Steam developer |
 | Studio websites and press kits | `site` | Not measured yet. A press kit's History section is written by the studio for journalists. 6 of 8 tested had a site, and 3 a press page |
@@ -148,7 +148,8 @@ python3 tools/influence_research.py new --mark  # ...once their findings are row
 python3 tools/influence_research.py status --tick  # rows the owner has added to the sheet -> `on sheet`
 python3 tools/influence_research.py targets   # who to research
 python3 tools/influence_research.py devs      # appid + developer for every game, ~6 min, cached
-python3 tools/influence_research.py samedev   # same-studio leads
+python3 tools/influence_research.py samedev   # same-studio pairs across the whole chart
+python3 tools/influence_research.py studio GAME...  # a game's developer's other Steam games, roguelike or not (`new` runs it)
 python3 tools/influence_research.py steam     # -> .influence_work/steam_triage.md, read every line
 python3 tools/influence_research.py cues      # wider read of the same pages, for pairs touching a degree-1 game
 python3 tools/influence_research.py wanted FILE  # games not on the chart yet (one name per line): sentences naming a chart game

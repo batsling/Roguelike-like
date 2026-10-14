@@ -563,6 +563,22 @@ const CLASS_NAMES := ["Common", "Uncommon", "Rare", "Legendary", "Starter", "Bos
 # Read by GameState.add_item through GameState.item_duplicates.
 @export var duplicate_items: bool = false
 
+# Smelter: a kind's weight in the kind-blind loot roll is multiplied by this while
+# the item is held (`{"trinket": 2}` doubles the trinkets found). Copies multiply.
+# Read by GameState.roll_loot_kind through GameState.loot_kind_weight.
+@export var loot_kind_weights: Dictionary = {}
+
+# Whether using this item smelts a piece of the pack (Smelter's `item_used: smelt`),
+# which the overworld asks so it can open the pick before the item fires.
+func smelts() -> bool:
+	for trig in triggers:
+		if String(trig.get("on", "")) != "item_used":
+			continue
+		for eff in trig.get("effects", []):
+			if eff is Dictionary and String(eff.get("type", "")) == "smelt":
+				return true
+	return false
+
 # There's Options: chest POINTS added to a BOSS's drop (§8.2). One item off a
 # defeated body IS a chest — a Small one, 1 of 1 — so this is not a new kind of
 # reward, it is the same drop one rung up the size ladder: 2 points is a Medium

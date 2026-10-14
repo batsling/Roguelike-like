@@ -6,10 +6,10 @@ Videos and podcast episodes where a developer may say what inspired their game, 
 
 | | games | results |
 |---|---|---|
-| 1. Confirm a suspected connection | 110 | 312 |
-| 2. Games with few connections | 175 | 555 |
+| 1. Confirm a suspected connection | 109 | 307 |
+| 2. Games with few connections | 173 | 550 |
 
-Searched 525 of the 525 games that qualify; 240 had nothing that looked like the developer talking.
+Searched 523 of the 523 games that qualify; 241 had nothing that looked like the developer talking.
 
 ---
 
@@ -70,7 +70,7 @@ Listen for: **Brotato** (sheet says "check folder"); **Enter the Gungeon** (shee
 
 - [ ] podcast [Astro Prospector and Messenger](https://podcasts.apple.com/us/podcast/astro-prospector-and-messenger/id1816643078?i=1000738820270) — Off The Radar · 7 min · 2025-11-28 — names the developer
 
-### Azure Dreams (1997) — 5 connections
+### Azure Dreams (1997) — 6 connections
 
 Listen for: **Torneko's Great Adventure: Mystery Dungeon** (sheet says "look at it")
 
@@ -647,7 +647,7 @@ Listen for: **Balatro** (sheet says "check folder"); **The Binding of Isaac** (s
 - [ ] video [Livesplaining: SSPX Schism + Q&A](https://www.youtube.com/watch?v=cNvismOGv2g) — Godsplaining | Catholic Podcast · 1:01:17 · Streamed 2mo ago — q&a
 - [ ] video [Revisiting The Great Schism Between East and West (Ft. Erick Ybarra)](https://www.youtube.com/watch?v=AF58gx2WH5Y) — Roots of Faith · 1:28:37 · 1y ago — ft.
 
-### Scourgebringer (2020) — 7 connections
+### Scourgebringer (2020) — 8 connections
 
 Listen for: **Bleak Sword** (sheet says "check folder"); **Dead Cells** (sheet says "check folder"); **Downwell** (sheet says "check folder"); **Riptale** (sheet says "check folder"); **Star of Providence** (sheet says "check folder")
 
@@ -707,16 +707,6 @@ Listen for: **Hades** (sheet says "check folder"); **Slay the Spire** (sheet say
 - [ ] video [Spiritfall Interview // The Mini indie Showcase 2023](https://www.youtube.com/watch?v=bJ0Zmg3qW0k) — Six One Indie · 18:20 · 3y ago — interview
 - [ ] video [Spiritfall - Hades Meets Super Smash Bros.?! / The Duel Screens Podcast #162](https://www.youtube.com/watch?v=pVb9rENq0kM) — indieRift · 53:07 · 3y ago — names the developer
 - [ ] podcast [Spiritfall with Or Avrahamy / The Duel Screens Podcast: Episode #163](https://podcasts.apple.com/us/podcast/spiritfall-with-or-avrahamy-the-duel-screens/id1599978672?i=1000599338166) — DevDive · 53 min · 2023-02-13 — names the developer
-
-### SULFUR (2024) — 1 connection
-
-Listen for: **Noita** (sheet says "mentioned multiple times by players as inspired by noita, and check folder for the dev saying he likes noita")
-
-- [ ] video [I Interviewed Perfect Random, The Developers of SULFUR](https://www.youtube.com/watch?v=CtJmnAVvk7k) — The Homie Dot · 1:58:56 · 1y ago — developer, interview, names the developer
-- [ ] video [Live Q&A With the Developers of SULFUR, Perfect Random](https://www.youtube.com/watch?v=aF7COE1QZ7Q) — The Homie Dot · 2:17:38 · Streamed 11mo ago — developer, q&a, names the developer
-- [ ] video [INTERVIEW: Anton Albiin, CEO & Founder of Perfect Random, Developer of SULFUR - Boss Rush Spotlight](https://www.youtube.com/watch?v=rfMFqg-L2f0) — Boss Rush Podcast  |  Boss Rush Network · 49:08 · 1y ago — developer, founder, interview, names the developer
-- [ ] video [Sulfur Dev Interview // Six One Indie Showcase](https://www.youtube.com/watch?v=s9xKFq3XdPo) — Six One Indie · 35:32 · 2y ago — dev, interview
-- [ ] podcast [The Spawn Chunks 411: Straw Slabs And Sulfur Stories](https://podcasts.apple.com/us/podcast/the-spawn-chunks-411-straw-slabs-and-sulfur-stories/id1433556215?i=1000777601016) — The Spawn Chunks - A Minecraft Podcast · 63 min · 2026-07-20 — cue in the description
 
 ### Swordship (2022) — 1 connection
 
@@ -959,11 +949,6 @@ Held on the map by one connection or none. Listen for any game on the chart.
 
 - [ ] podcast [Unter der Erfolgshaube des Schweizer Indie-Hits "Goblin Sushi": OK COOL trifft Annika Gerber](https://podcasts.apple.com/us/podcast/unter-der-erfolgshaube-des-schweizer-indie-hits-goblin/id1509985306?i=1000759303756) — OK COOL · 68 min · 2026-04-04 — names the developer
 
-### Godbreakers (2025) — 0 connections
-
-- [ ] video [Interview at Gamescom with the developers behind GODBREAKERS](https://www.youtube.com/watch?v=G9AGh23PE8M) — Bitemind · 18:10 · 11mo ago — developer, interview
-- [ ] video [GODBREAKERS Demo w/ LEAD DEV (answers all your BURNING questions about the upcoming release)](https://www.youtube.com/watch?v=ZzKP4qq-kOA) — WetChilla · 1:00:31 · 1y ago — dev
-
 ### Granvir (2025) — 0 connections
 
 - [ ] video [Granvir Developer Interview](https://www.youtube.com/watch?v=jbeZN5TJPH4) — Paper Prototypes Podcast · 1:23:44 · 7mo ago — developer, interview
@@ -1077,6 +1062,14 @@ Held on the map by one connection or none. Listen for any game on the chart.
 ### Stick It to the Stickman (2025) — 0 connections
 
 - [ ] video [Stick It To The Stickman 2022 - Demo Play](https://www.youtube.com/watch?v=cZi3X8kDc48) — INDIEstructable Gaming & More Podcast · 36:41 · 3y ago — names the developer
+
+### SULFUR (2024) — 0 connections
+
+- [ ] video [I Interviewed Perfect Random, The Developers of SULFUR](https://www.youtube.com/watch?v=CtJmnAVvk7k) — The Homie Dot · 1:58:56 · 1y ago — developer, interview, names the developer
+- [ ] video [Live Q&A With the Developers of SULFUR, Perfect Random](https://www.youtube.com/watch?v=aF7COE1QZ7Q) — The Homie Dot · 2:17:38 · Streamed 11mo ago — developer, q&a, names the developer
+- [ ] video [INTERVIEW: Anton Albiin, CEO & Founder of Perfect Random, Developer of SULFUR - Boss Rush Spotlight](https://www.youtube.com/watch?v=rfMFqg-L2f0) — Boss Rush Podcast  |  Boss Rush Network · 49:08 · 1y ago — developer, founder, interview, names the developer
+- [ ] video [Sulfur Dev Interview // Six One Indie Showcase](https://www.youtube.com/watch?v=s9xKFq3XdPo) — Six One Indie · 35:32 · 2y ago — dev, interview
+- [ ] podcast [The Spawn Chunks 411: Straw Slabs And Sulfur Stories](https://podcasts.apple.com/us/podcast/the-spawn-chunks-411-straw-slabs-and-sulfur-stories/id1433556215?i=1000777601016) — The Spawn Chunks - A Minecraft Podcast · 63 min · 2026-07-20 — cue in the description
 
 ### Tangy TD (2026) — 0 connections
 
@@ -1206,17 +1199,6 @@ Held on the map by one connection or none. Listen for any game on the chart.
 - [ ] video [O3C GAMES REVIEWS Bleak Sword DX (more8bit, 2023)](https://www.youtube.com/watch?v=NmXSSvCCKFs) — O3C Games · 5:16 · 2y ago — names the developer
 - [ ] video [Bleak Sword DX - Quick Look (4K)](https://www.youtube.com/watch?v=QcD40bmvdWU) — The Casual Hour · 13:08 · 3y ago — names the developer
 - [ ] podcast [Bleak Sword](https://podcasts.apple.com/us/podcast/bleak-sword/id1260373097?i=1000467160688) — Seven Days to Play · 34 min · 2020-03-02 — names the developer
-
-### Boyfriend Dungeon (2021) — 1 connection
-
-- [ ] video [PAX West 2019 - Boyfriend Dungeon Interview](https://www.youtube.com/watch?v=OuoXl8Pa4O8) — Last Geek · 5:23 · 7y ago — interview, names the developer
-- [ ] video [Boyfriend Dungeon INTERVIEW: Tanya X. Short / The Duel Screens Podcast #62](https://www.youtube.com/watch?v=KElU1pZqfQs) — indieRift · 56:59 · 5y ago — interview, names the developer
-- [ ] video [PAX West 2018 Interviews - Boyfriend Dungeon](https://www.youtube.com/watch?v=-o6F1hv7LiM) — TheBrianJ · 1:40 · 8y ago — interview, names the developer
-- [ ] video [Boyfriend Dungeon: Boba Tea Taste Test & AMA](https://www.youtube.com/watch?v=9MQKM2wLa54) — Kitfox Games · 1:30:10 · 8y ago — ama, names the developer
-- [ ] podcast [Twelve Minutes, Boyfriend Dungeon, Axiom Verge 2, and an Interview with Luis Antonio](https://podcasts.apple.com/us/podcast/twelve-minutes-boyfriend-dungeon-axiom-verge-2-and/id1186106962?i=1000532724991) — The Gamerheads Podcast · 127 min · 2021-08-22 — interview
-- [ ] podcast [Side Quests Episode 397: Boyfriend Dungeon with Claire After All](https://podcasts.apple.com/us/podcast/side-quests-episode-397-boyfriend-dungeon-with-claire/id1227321765?i=1000723095715) — "Fun" and Games Podcast · 9 min · 2025-08-22 — names the developer
-- [ ] podcast [1H1D #52: Boyfriend Dungeon](https://podcasts.apple.com/us/podcast/1h1d-52-boyfriend-dungeon/id1543834887?i=1000545875885) — 1 Hour 1 Decision (1H1D) · 20 min · 2021-12-23 — names the developer
-- [ ] podcast [Super Mega Crash Bros. Turbo 83 - Exploring the Boyfriend Dungeon (w/Victoria Tran)](https://podcasts.apple.com/us/podcast/super-mega-crash-bros-turbo-83-exploring-the/id1252420761?i=1000437965039) — Super Mega Crash Beyond · 94 min · 2019-05-13 — names the developer
 
 ### BPM: Bullets Per Minute (2020) — 1 connection
 
@@ -1352,10 +1334,6 @@ Held on the map by one connection or none. Listen for any game on the chart.
 - [ ] video [BGMP 012 DIE in the Dungeon with Wes Woodbury](https://www.youtube.com/watch?v=E2maTdnx1AY) — Meeple Marketing · 31:05 · 6y ago — cue in the description
 - [ ] podcast [Die in the Dungeon - Análisis de un roguelite sorprendente. Ni cartas ni gatos, ¡con dados](https://podcasts.apple.com/us/podcast/die-in-the-dungeon-an%C3%A1lisis-de-un-roguelite/id1583991405?i=1000767373235) — Nuevebits - Podcast de videojuegos en español en Spotity · 34 min · 2026-05-12 — cue in the description
 - [ ] podcast [BGMP 012 DIE in the Dungeon with Wes Woodbury](https://podcasts.apple.com/us/podcast/bgmp-012-die-in-the-dungeon-with-wes-woodbury/id1516571395?i=1000480926345) — Board Game Marketing Podcast · 31 min · 2020-07-01 — cue in the description
-
-### Dive or Die: Children of Rain (2026) — 1 connection
-
-- [ ] video [GMIF 26 - Meet the developers of Dive or Die - Children of Rain](https://www.youtube.com/watch?v=sulyRl3GJ5c) — Capital Games · 28:21 · 2mo ago — developer, names the developer
 
 ### Dragon Quest Heroes: Torneko‘s Mystery Dungeon Classic HD (2026) — 1 connection
 
@@ -1667,10 +1645,6 @@ Held on the map by one connection or none. Listen for any game on the chart.
 - [ ] video [(BONUS!) Rift Wizard 3 - Interview with Developer Dylan White](https://www.youtube.com/watch?v=Vg2zdlSvR60) — GROGPOD Roguelike Podcast · 1:34:38 · 3mo ago — developer, interview, names the developer
 - [ ] podcast [Rift Wizard 3: Interview with Developer Dylan White](https://podcasts.apple.com/us/podcast/rift-wizard-3-interview-with-developer-dylan-white/id1650474911?i=1000772046890) — GROGPOD Roguelike Podcast · 94 min · 2026-06-09 — developer, interview, names the developer
 
-### Risk of Rain Returns (2023) — 1 connection
-
-- [ ] podcast [The Eternal Castle Remastered and Other Games (Ft. Tom Reed)](https://podcasts.apple.com/us/podcast/the-eternal-castle-remastered-and-other-games-ft-tom-reed/id1441496783?i=1000635042108) — Thumb Cramps · 79 min · 2023-11-16 — ft.
-
 ### Rogue Blight (2026) — 1 connection
 
 - [ ] video [I INTERVIEWED THE ROGUE BLIGHT DEV](https://www.youtube.com/watch?v=h74lTsKz8Ts) — RegretfullyMine · 32:25 · 2mo ago — dev, interview
@@ -1879,6 +1853,11 @@ Held on the map by one connection or none. Listen for any game on the chart.
 ### Tower Fortress (2017) — 1 connection
 
 - [ ] video [Tower Fortress - Keybol / Meet the Devs - Casual Connect Asia 2017](https://www.youtube.com/watch?v=7R9xP8geev0) — Quit Stalling · 14:52 · 9y ago — devs, names the developer
+
+### Ultra Mega Cats (2025) — 1 connection
+
+- [ ] video [Ultra Mega Cats LAUNCH DAY!  #UltraMegaCats #felinefrenzy !umc](https://www.youtube.com/watch?v=lQidPZLtXio) — HeadKanon · 0:27 · Streamed 1y ago — names the developer
+- [ ] video [Ultra Mega Cats LAUNCH DAY!  #UltraMegaCats #felinefrenzy !umc](https://www.youtube.com/watch?v=kOCDAowX7DM) — HeadKanon · 3:14:55 · Streamed 1y ago — names the developer
 
 ### Uma Musume: Pretty Derby (2021) — 1 connection
 

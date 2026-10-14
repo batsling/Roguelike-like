@@ -152,6 +152,14 @@ TRIGGER_SIGNALS = {
     # stunned or not, with the swinging weapon's slot. Bloody Tear's
     # `weapon_hit if_self: gain_hp 1`.
     "weapon_hit": "weapon_hit",
+    # A charge LANDED on a weapon in the pack (§12), from anything that charges
+    # one — its goal, a penny, a Hairpin. Fired once per charging, whatever its
+    # size, with the weapon's slot (Dumb Bell, Well-Done Steak).
+    "weapon_charged": "weapon_charged",
+    # A game PERFECTED: won with no lost run logged on this visit — the game
+    # ranks' perfected visit (§20.1). Narrower than game_won, and fired beside it
+    # (Performance Based Health Insurance).
+    "game_perfected": "game_perfected",
 }
 # Triggers whose effects default to the player (self) rather than an enemy —
 # every out-of-combat / on-self hook. game_beaten is scene-less run-scope, so
@@ -161,7 +169,8 @@ SELF_DEFAULT_TRIGGERS = ("combat_started", "turn_started", "turn_ended",
                          "bomb_used", "health_lost", "run_lost", "potion_used",
                          "gold_gained", "card_obtained", "game_won",
                          "shop_entered", "boss_spawned", "loot_used",
-                         "card_binned", "weapon_hit")
+                         "card_binned", "weapon_hit", "weapon_charged",
+                         "game_perfected")
 # Hooks that fire frequently enough to suppress the generic trigger log line.
 # `health_lost` is on the list because in the 2.0 loop it fires on every enemy
 # swing that lands AND on every failed try — a report can be a dozen of them, and
@@ -252,7 +261,12 @@ def _kind_of(name, type_str):
     # A Type word KIND has never heard of used to fall through to PASSIVE in
     # silence, which is how a re-uploaded sheet turns a Pickup into a passive
     # nobody notices until the item is removed and its grant unwinds. Say so.
-    word = str(type_str or "").split(",")[0].strip().lower()
+    words = [w.strip().lower() for w in str(type_str or "").split(",")]
+    # "Passive, Charged, 3" (Smelter) is a charged active that ALSO does something
+    # while held. Charged decides how it is used, so it decides the kind.
+    if "charged" in words:
+        return KIND["charged"]
+    word = words[0]
     if word not in KIND:
         print("  ! %s: unknown Type %r — defaulting to PASSIVE. Add it to KIND "
               "if it should be something else." % (name, str(type_str or "").strip()))
@@ -285,8 +299,9 @@ def _charge_cost(type_str, kind):
     if kind != KIND["charged"]:
         return 0
     parts = [p.strip() for p in str(type_str or "").split(",")]
-    if len(parts) > 1 and parts[1].isdigit():
-        return max(0, int(parts[1]))
+    at = [p.lower() for p in parts].index("charged") if "charged" in [p.lower() for p in parts] else 0
+    if len(parts) > at + 1 and parts[at + 1].isdigit():
+        return max(0, int(parts[at + 1]))
     return 0
 
 
@@ -469,6 +484,16 @@ def parse_one_effect(raw, default_target="enemy", in_grant=False):
             eff["per"] = _int(kv["per"])
             eff["of"] = kv["of"]
         return eff
+
+    # `break_into <item_id>` / `break_into random_item` — the piece of loot doing
+    # the firing LEAVES THE PACK and becomes a relic: a named one (Bag Lunch ->
+    # Lunch) or a random one (Wish Bone). Isaac's breaking trinkets. Its own verb
+    # rather than two effects because a `5% chance` wraps exactly one.
+    if verb == "break_into":
+        rest, _ = _kv(toks[1:])
+        if not rest:
+            raise ValueError("item DSL: break_into wants an item id or random_item in %r" % raw)
+        return {"type": "break_into", "item": rest[0].lower()}
 
     # `charge_random N` / `charge_random full` — top up one random relic or wand
     # that has room (Charged Penny +1, Hairpin all the way). The same pool the pill
@@ -1127,6 +1152,11 @@ def parse_item(row):
             # LootPassives.linked through GameState.links_loot.
             fields["link_loot"] = True
             last_trigger = None
+        elif kl0 == "loot_kind_weight":
+            # Smelter: `loot_kind_weight: {trinket: 2}` multiplies a kind's weight in
+            # the kind-blind loot roll (GameState.roll_loot_kind) while it is held.
+            fields["loot_kind_weights"] = _brace_dict(payload)
+            last_trigger = None
         elif kl0 == "duplicate_items":
             # Ultra Duplicator: every item obtained arrives with an extra copy.
             # Items only (the items sheet), never pack loot. Read by
@@ -1290,6 +1320,12 @@ def _gates(head_lower):
     # if_self:`. Read against the `slot` the hook carries, as `if_in_bag` is.
     if re.search(r"\bif_self\b", head_lower):
         g["if_self"] = True
+    # "only when a Shield is still standing as the game ends" — Knight Cap's
+    # `game_beaten if_shields:`. Read against `shields_left`, which the report puts
+    # in game_beaten's context (Temporary Shields the swings left, plus Shields);
+    # a hook that carries no count refuses.
+    if re.search(r"\bif_shields\b", head_lower):
+        g["if_shields"] = True
     return g
 
 
@@ -1482,6 +1518,7 @@ def item_tres(row):
         ("shop_sweep", lambda v: "true"),
         ("link_loot", lambda v: "true"),
         ("duplicate_items", lambda v: "true"),
+        ("loot_kind_weights", lambda v: gd_value(v)),
         ("boss_chest_bonus", lambda v: str(v)),
         ("base_chest_bonus", lambda v: str(v)),
         ("status_bonuses", lambda v: gd_value(v)),

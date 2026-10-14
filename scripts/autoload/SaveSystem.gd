@@ -318,6 +318,8 @@ func _build_payload() -> Dictionary:
 		# Mysterious Mask: the characters worn and the choices still to make.
 		"masked_characters": Array(GameState.masked_characters).map(func(id): return String(id)),
 		"pending_masks": GameState.pending_masks,
+		# Smelter: the pieces taken out of the pack that work as relics.
+		"smelted_loot": GameState.smelted_loot.duplicate(true),
 		"total_combats_completed": GameState.total_combats_completed,
 		# The enemy stack, the destroyed games, the attempt tracker.
 		"loop": GameLoop2.serialize(),
@@ -613,6 +615,10 @@ func _apply_save_data(data: Dictionary) -> void:
 	for id in data.get("masked_characters", []):
 		GameState.masked_characters.append(StringName(String(id)))
 	GameState.pending_masks = int(data.get("pending_masks", 0))
+	GameState.smelted_loot.clear()
+	for e in data.get("smelted_loot", []):
+		if e is Dictionary:
+			GameState.smelted_loot.append((e as Dictionary).duplicate(true))
 	GameState.total_combats_completed = int(data.get("total_combats_completed", 0))
 	GameState.phase = GameState.Phase.OVERWORLD
 	# BEFORE the loop and the view: this rebuilds the run graph (RunGraph's

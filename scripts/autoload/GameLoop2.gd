@@ -2571,7 +2571,8 @@ func _board_snapshot() -> Dictionary:
 #    instead_cleared:[instance...], status_penalties:[{status, damage, blocked}],
 #    run_over, won}
 # `blocked` is what the unspent shields absorbed; `shields_expired` is what was
-# left over afterwards and went away with the game (§3). `turns` is how many
+# left over afterwards and went away with the game (§3); `shields_left` is every
+# Shield still standing as the game ended, Temporary or not (Knight Cap). `turns` is how many
 # turns the board took at the end of the game — 0, since a report moves nobody
 # (§7.4); only Predatory Scent's extra turn (§7.6) lands one — while
 # `turn_frames` holds the board after each so the view can replay them in order.
@@ -2602,7 +2603,7 @@ func beat_game(clear_advertised: bool = false, fulfilled_instances: Array = [],
 		"beaten": true, "defeats": [], "drops": 0, "attacks": [],
 		"turns": 0, "turn_frames": [],
 		"damage_taken": 0, "blocked": 0, "hp": GameState.hp,
-		"shields": GameState.shields, "shields_expired": 0,
+		"shields": GameState.shields, "shields_expired": 0, "shields_left": 0,
 		"attempts": attempts(), "stack_size": stack.size(),
 		"status_rewards": 0, "statuses_ticked": [],
 		"instead_cleared": [], "status_penalties": [], "tiles_expired": [],
@@ -2734,6 +2735,10 @@ func beat_game(clear_advertised: bool = false, fulfilled_instances: Array = [],
 	# banking into the next, which is what stops a quiet game from arming you for a
 	# loud one.
 	#
+	# What was still standing as the game ended, before any of it expires or banks:
+	# the Temporary Shields the swings left plus the Shields. Knight Cap's
+	# `if_shields` reads it off game_beaten's context.
+	res["shields_left"] = GameState.shields + GameState.bonus_shields
 	# Barricade (§4.3) BANKS them instead: the survivors become ordinary Shields —
 	# the pool that stays. Not "they stop expiring", which quietly made the
 	# temporary pool a second permanent one with its own spend order; there is one

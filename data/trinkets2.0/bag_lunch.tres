@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="TrinketData" load_steps=2 format=3 uid="uid://trinket2_bag_lunch"]
+
+[ext_resource type="Script" path="res://scripts/resources/TrinketData.gd" id="1_trinket"]
+
+[resource]
+script = ExtResource("1_trinket")
+id = &"bag_lunch"
+display_name = "Bag Lunch"
+rarity = "Common"
+size = Vector2i(1, 1)
+description = "5% on losing Health to lose this and Gain + 1 Lunch"
+source_game = "The Binding of Isaac: Rebirth"
+tags = PackedStringArray("food", "bag")
+file = "BagLunch"
+loot_type = "Passive"
+triggers = [{"on": "health_lost", "silent": true, "effects": [{"type": "chance", "percent": 5, "effect": {"type": "break_into", "item": "lunch"}}]}]
+stat_bonuses = {}
+status_bonuses = {}
