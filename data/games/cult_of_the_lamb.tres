@@ -8,9 +8,9 @@ id = &"cult_of_the_lamb"
 display_name = "Cult of the Lamb"
 year = 2022
 type = 0
-games_influenced = Array[StringName]([&"cinderia", &"garden_of_witches", &"pax_autocratica"])
-influence_sources = PackedStringArray("check folder", "https://www.nettosgameroom.com/2025/09/interview-with-team-tapas-creators-of.html", "https://www.youtube.com/watch?v=hALQHBpwysY&t=690s")
-influence_relations = PackedStringArray("", "", "")
+games_influenced = Array[StringName]([&"cinderia", &"garden_of_witches", &"pax_autocratica", &"dive_or_die_children_of_rain"])
+influence_sources = PackedStringArray("check folder", "https://www.nettosgameroom.com/2025/09/interview-with-team-tapas-creators-of.html", "https://www.youtube.com/watch?v=hALQHBpwysY&t=690s", "https://www.youtube.com/watch?v=sulyRl3GJ5c")
+influence_relations = PackedStringArray("", "", "", "")
 tags = PackedStringArray()
 enemy_pool = Array[StringName]([])
 item_pool = Array[StringName]([])
