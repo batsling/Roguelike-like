@@ -513,7 +513,7 @@ func _cover_rect(tex: Texture2D, w: int, game_id = &"") -> Control:
 	tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	UITheme.attach_tier_badge(tr, game_id)
-	return RankBadge.wrap(tr, game_id, true)
+	return UITheme.tier_badge_room(RankBadge.wrap(tr, game_id, true), game_id)
 
 const IMAGE_BG := Color(0.16, 0.17, 0.22, 1.0)
 # The frame's inset. `size` is the ART, so the pad is paid on top of it twice over
@@ -878,6 +878,8 @@ func _name_block_height() -> float:
 # (DETAIL_ENEMY_SIZE) is the biggest thing in it, and a longer measure than this
 # makes the one-sentence facts in it read worse rather than better.
 const DETAIL_PANEL_W := 360
+# What the detail's scrollbar is given on the right of the content it scrolls.
+const DETAIL_SCROLLBAR_ROOM := 14
 # A GAME's page is wider than the rest. It is the one entry whose content is
 # LISTS — the games it influenced and was influenced by, every goal done there —
 # and they are drawn as grids of pictures, which want a row of five or six rather
@@ -1032,7 +1034,17 @@ func _new_detail_panel() -> Control:
 	# Panel width minus the stylebox margins (10 a side) and the vertical
 	# scrollbar, so right-aligned values (Tier / Damage / Health) aren't clipped.
 	_detail_box.custom_minimum_size = Vector2(DETAIL_PANEL_W - 52, 0)
-	scroll.add_child(_detail_box)
+	# …and an inset the scrollbar's width on the right, because the minimum alone
+	# did not do it: a ScrollContainer stretches its child to its own full width
+	# and draws the bar OVER it, so the game page's right-aligned "8 / 10 · Tier S"
+	# ran under the bar and lost its last letter (the run map's node card had
+	# already met this, RunMapModal.open_node_card).
+	var inset := MarginContainer.new()
+	inset.add_theme_constant_override("margin_right", DETAIL_SCROLLBAR_ROOM)
+	inset.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	inset.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	inset.add_child(_detail_box)
+	scroll.add_child(inset)
 
 	add_child(overlay)
 	_detail_overlay = overlay
@@ -3172,8 +3184,12 @@ func _event_choice_block(c: Dictionary, ac: Color) -> Control:
 	var curse: Dictionary = c.get("curse", {}) if c.get("curse") is Dictionary else {}
 	if not curse.is_empty():
 		var cd: CurseData2 = Data.get_curse2(StringName(curse.get("curse", &"")))
-		vb.add_child(_label("Curse: %s" % (cd.display_name if cd != null
-			else String(curse.get("curse", ""))), Color(0.85, 0.55, 0.9), 11, false, true))
+		# `add_curse random` names no row (EventSystem rolls it when it fires), so
+		# its name here is "Random" — it used to print a bare "Curse:".
+		var curse_name: String = cd.display_name if cd != null else String(curse.get("curse", ""))
+		if bool(curse.get("random", false)) or curse_name == "":
+			curse_name = "Random"
+		vb.add_child(_label("Curse: %s" % curse_name, Color(0.85, 0.55, 0.9), 11, false, true))
 	# "again" / "stay" options loop the modal; that changes how the event plays,
 	# so it belongs next to the option it is a property of.
 	var repeat: String = String(c.get("repeat", "end"))

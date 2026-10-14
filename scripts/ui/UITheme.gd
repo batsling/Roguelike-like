@@ -482,9 +482,28 @@ static func attach_tier_badge(art: Control, game_id, min_art: float = TIER_BADGE
 	# the width: a long tier name grows to the LEFT (grow_horizontal BEGIN), so the
 	# amount standing outside the right edge is the same for "S" and for
 	# "Masterpiece" and the corner always looks alike.
-	var out: float = float(TIER_BADGE_H) * TIER_BADGE_OUT
+	var out: float = float(tier_badge_overhang())
 	badge.offset_right = out
 	badge.offset_top = -out
+	# ON THE PICTURE'S CORNER, not the box's. A TextureRect that letterboxes
+	# (KEEP_ASPECT_CENTERED) and is handed a box wider than its picture draws the
+	# picture in the middle of it, and a badge on the box's corner then floats in
+	# the empty band beside the art: the Atlas card's cover, stretched to the
+	# card's width, wore its badge at the card's edge. So it follows the drawn
+	# picture whenever the box is resized.
+	if art is TextureRect and (art as TextureRect).stretch_mode == TextureRect.STRETCH_KEEP_ASPECT_CENTERED:
+		var tr := art as TextureRect
+		var place := func() -> void:
+			if tr.texture == null or not is_instance_valid(badge):
+				return
+			var tex: Vector2 = tr.texture.get_size()
+			if tex.x <= 0.0 or tex.y <= 0.0 or tr.size.x <= 0.0 or tr.size.y <= 0.0:
+				return
+			var k: float = minf(tr.size.x / tex.x, tr.size.y / tex.y)
+			var drawn: Vector2 = tex * k
+			badge.offset_right = out - (tr.size.x - drawn.x) * 0.5
+			badge.offset_top = -out + (tr.size.y - drawn.y) * 0.5
+		tr.resized.connect(place)
 	# ANYTHING THAT CLIPS WOULD CUT IT IN QUARTERS. The badge deliberately overhangs
 	# now, and several of these covers sit inside a parent with `clip_contents` on
 	# (the collection's plate rounds off square art that way, the route strip and
@@ -493,6 +512,36 @@ static func attach_tier_badge(art: Control, game_id, min_art: float = TIER_BADGE
 	# that does not, and this only has to not clip itself.
 	art.clip_contents = false
 	art.add_child(badge)
+
+# HOW FAR THE BADGE STANDS OUT past the art's top and right edges.
+static func tier_badge_overhang() -> int:
+	return ceili(float(TIER_BADGE_H) * TIER_BADGE_OUT)
+
+# `cover` with room kept for its tier badge's overhang: a MarginContainer with the
+# overhang as its top and right margins, or `cover` itself for an unranked game.
+#
+# The badge hangs half off the corner by design, and that half lands on whatever
+# is next to the cover: under the text beside it (laid out after it, so drawn on
+# top), or past the edge of a scroll area, which cuts it off. The Collection's
+# game page and the game popup lost the top of the badge and its right side to
+# exactly those two. Handing the layout the overhang as margin is what gives the
+# badge somewhere to hang. Call it on the OUTERMOST box of the cover (after
+# RankBadge.wrap, which owns the bottom overhang).
+static func tier_badge_room(cover: Control, game_id) -> Control:
+	if cover == null or TierList.tier_of(game_id) < 0:
+		return cover
+	var out: int = tier_badge_overhang()
+	var room := MarginContainer.new()
+	room.name = "TierBadgeRoom"
+	room.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	room.size_flags_horizontal = cover.size_flags_horizontal
+	room.size_flags_vertical = cover.size_flags_vertical
+	room.add_theme_constant_override("margin_top", out)
+	room.add_theme_constant_override("margin_right", out)
+	room.add_theme_constant_override("margin_left", 0)
+	room.add_theme_constant_override("margin_bottom", 0)
+	room.add_child(cover)
+	return room
 
 # --- General art -----------------------------------------------------------
 #

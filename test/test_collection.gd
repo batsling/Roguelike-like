@@ -464,6 +464,27 @@ func test_every_event_renders_its_choices_in_full() -> void:
 				assert_true(text.contains(label),
 					"and lists %s's option '%s'" % [ev.display_name, label])
 
+# A RANDOM CURSE IS NAMED "Random". `add_curse random` names no row (the curse is
+# rolled when the option fires), and the option's line used to read a bare
+# "Curse:" — Golden Monkey's, which the owner caught. No line may end there.
+func test_an_options_random_curse_reads_random() -> void:
+	var col := _new_collection()
+	col._set_tab(Collection.Tab.EVENTS)
+	var found: bool = false
+	for ev in Data.all_events2():
+		col._show_event_detail(ev)
+		var text: String = _text_of(col._detail_box)
+		for line in text.split("\n"):
+			assert_false(line.strip_edges() == "Curse:",
+				"%s has a curse line with no curse named" % ev.display_name)
+		for c in ev.choices:
+			if c.get("curse") is Dictionary and bool((c["curse"] as Dictionary).get("random", false)):
+				found = true
+				assert_true(text.contains("Curse: Random"),
+					"%s's random curse reads 'Curse: Random'" % ev.display_name)
+	if not found:
+		pending("no event authors a random curse any more")
+
 # THE ART ARRIVES, SMALL (docs/performance-backlog.md §6). The tab used to decode
 # every event's art at up to 1616px on the frame it opened, and again on every
 # rebuild. Now each picture comes in off a thread, shrunk once, and every cell
