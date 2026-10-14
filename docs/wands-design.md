@@ -125,25 +125,27 @@ is counting.
 
 ### 4.2 Aiming
 
-The sheet's `Type` column is what a wand wants pointed at it:
+The sheet's `Aim` column (it was `Type` until October 2026) is what a wand wants
+pointed at it, **in the weapons' words** — see `docs/loot-passives.md` §12.1-§12.2
+for the ray and the full list:
 
-| `Type` | `targeting` | means |
+| `Aim` | `WandData.aim` | means |
 |---|---|---|
-| Ray | `ray` | a square of the board, picked the way a thrown potion's is |
-| Non-Directional | `non_directional` | nothing; it fires where it stands |
-| Random | `random` | one of the other two, **rolled fresh on every zap** |
+| Ray, Bounce 1 | `ray` (`bounce` 1) | a line from you through any square clicked, mirrored once off a wall or an enemy; the effect lands on every enemy it strikes |
+| Non-Directional | `none` | nothing; it fires where it stands |
+| Random | `random` | no click; the zap lands on a random enemy standing on the board |
 
-`random` is authored on exactly one row and that is not an accident. Wand of
-Nothing does nothing, so the only thing that could ever give it away is behaving
-identically twice — and a wand that asks for a square one zap and not the next is a
-wand you cannot rule anything out about.
+`random` is still authored on exactly one row, Wand of Nothing. It used to roll
+"aimed or not" afresh on every zap so the do-nothing wand could not give itself
+away by behaving the same twice; it now means what it means on a weapon, and the
+wand does nothing wherever it lands.
 
 **An unidentified wand always asks for a square**, whatever its type, and that is
 `WandSystem.needs_target`'s whole job. Asking only the ray-shaped unknowns would
 tell the player which half of the roster a mystery stick belongs to before they had
 spent anything, which is exactly the fact the gamble is selling. A known
-non-directional wand stops asking; a known ray keeps asking; a known `random` keeps
-asking, because it might want one.
+non-directional wand stops asking; a known ray keeps asking; a known `random`
+stops asking too, since it picks its own enemy.
 
 The picker is the **potion throw's**, reused (`Overworld2.begin_loot_throw`), and
 nothing is spent while the player is aiming: the charge comes off in `use_loot`
@@ -187,19 +189,19 @@ ladder do all the work. At its 75/20/5 with the Rare rung's 10% bump to Legendar
 in two hundred (before Luck, which rides the same roll). None of that spread is
 authored anywhere except in the twelve rarity words.
 
-| Wand | Rarity | Charges | Type | Effect cell |
+| Wand | Rarity | Charges | Aim | Effect cell |
 |---|---|---|---|---|
 | **Wand of Nothing** | Common | 4 | Random | `nothing` |
-| **Wand of Magic Missile** | Common | 3 | Ray | `deal_damage 1` |
-| **Wand of Haste Monster** | Common | 3 | Ray | `apply_status speed 1 target=enemy` |
-| **Wand of Invisibility** | Common | 3 | Ray | `grant_ability invisibility` |
-| **Wand of Cancellation** | Uncommon | 3 | Ray | `cancel_abilities` |
-| **Wand of Plenty** | Uncommon | 2 | Ray | `split` |
+| **Wand of Magic Missile** | Common | 3 | Ray, Bounce 1 | `deal_damage 1` |
+| **Wand of Haste Monster** | Common | 3 | Ray, Bounce 1 | `apply_status speed 1 target=enemy` |
+| **Wand of Invisibility** | Common | 3 | Ray, Bounce 1 | `grant_ability invisibility` |
+| **Wand of Cancellation** | Uncommon | 3 | Ray, Bounce 1 | `cancel_abilities` |
+| **Wand of Plenty** | Uncommon | 2 | Ray, Bounce 1 | `split` |
 | **Wand of Create Monster** | Rare | 4 | Non-Directional | `spawn_enemy current` |
-| **Wand of Fire** | Rare | 3 | Ray | `apply_status burn 3 target=enemy; apply_tile fire` |
-| **Wand of Polymorph** | Rare | 3 | Ray | `polymorph` |
-| **Wand of Teleportation** | Rare | 3 | Ray | `teleport` |
-| **Wand of Death** | Legendary | 1 | Ray | `kill` |
+| **Wand of Fire** | Rare | 3 | Ray, Bounce 1 | `apply_status burn 3 target=enemy; apply_tile fire` |
+| **Wand of Polymorph** | Rare | 3 | Ray, Bounce 1 | `polymorph` |
+| **Wand of Teleportation** | Rare | 3 | Ray, Bounce 1 | `teleport` |
+| **Wand of Death** | Legendary | 1 | Ray, Bounce 1 | `kill` |
 | **Wand of Wishing** | Legendary | 1 | Non-Directional | `obtain_item any` |
 
 **The charge count is the rarity ladder read a second way.** The two Legendaries

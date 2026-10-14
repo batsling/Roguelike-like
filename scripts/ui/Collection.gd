@@ -2645,23 +2645,18 @@ func _wand_card(w: WandData) -> Control:
 		Color(0.7, 0.7, 0.75), 11))
 	vb.add_child(_label("%d charge%s  ·  %s" % [
 		w.starting_charges(), "" if w.starting_charges() == 1 else "s",
-		_wand_targeting_word(w.targeting)], Color(0.55, 0.74, 0.86), 11))
+		_wand_aim_words(w)], Color(0.55, 0.74, 0.86), 11))
 	vb.add_child(_label(w.description, Color(0.85, 0.85, 0.88), 12, false, true))
 	if w.reference != "":
 		vb.add_child(_label("from %s" % w.reference, Color(0.55, 0.6, 0.7), 10))
 	return cell.panel
 
-# The Type column in the words a player meets rather than the sheet's. "Random" is
-# said out loud rather than hidden, because it IS the wand — a stick that asks for
-# a square one zap and not the next is the only tell Wand of Nothing has.
-func _wand_targeting_word(targeting: String) -> String:
-	match targeting:
-		"ray":
-			return "aimed at a square"
-		"random":
-			return "aimed, or not — it varies"
-		_:
-			return "fires where you stand"
+# The Aim column in the words a player meets rather than the sheet's — the
+# weapons' words, since a wand is aimed in them (WeaponSystem.aim_phrase).
+func _wand_aim_words(w: WandData) -> String:
+	if w.aim == "none":
+		return "fires where you stand"
+	return "aimed " + WeaponSystem.aim_phrase(w.aim, w.aim_column, w.bounce)
 
 # --- the pack's other pieces (docs/loot-passives.md) ------------------------
 #

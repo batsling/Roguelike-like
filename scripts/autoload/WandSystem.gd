@@ -63,9 +63,6 @@ const MATERIALS := [
 # constant would be a special case rather than a rule.
 const SOURCES := ["NetHack"]
 
-# The two concrete things a `random` wand can turn out to want, rolled per zap.
-const CONCRETE_TARGETING := ["ray", "non_directional"]
-
 # ===========================================================================
 # Reading a material's file name
 # ===========================================================================
@@ -251,15 +248,71 @@ func needs_target(entry: Dictionary) -> bool:
 		return false
 	return w.aims() or not is_identified(w.id)
 
-# What this zap turns out to want. `random` rolls fresh EVERY TIME, which is Wand
-# of Nothing's whole disguise: a wand that behaved identically twice running would
-# announce itself as the do-nothing one before its second charge was spent.
-func resolve_targeting(wand: WandData, rng: RandomNumberGenerator) -> String:
-	if wand == null:
-		return "non_directional"
-	if wand.targeting != "random":
-		return wand.targeting
-	return String(CONCRETE_TARGETING[rng.randi_range(0, CONCRETE_TARGETING.size() - 1)])
+# THE SQUARES THE BOARD LIGHTS for a zap, and the ones it takes a click on. A
+# KNOWN wand is fenced by its Aim, in the weapons' words (WeaponSystem.cells_for_aim)
+# — a ray takes any square, since the click is only a direction. An UNKNOWN wand
+# takes any square too, whatever it turns out to be: the fence would be the tell.
+func aim_cells(entry: Dictionary) -> Array:
+	var w: WandData = data_for(entry)
+	if w == null:
+		return []
+	if not is_identified(w.id) or not w.aims():
+		return GameLoop2.target_cells("all")
+	return WeaponSystem.cells_for_aim(w.aim, w.aim_column)
+
+# Whether the board may draw this zap's ray before it is fired. Only for a KNOWN
+# ray wand: drawing the line for an unknown stick would say it is a ray wand.
+func previews_ray(entry: Dictionary) -> bool:
+	var w: WandData = data_for(entry)
+	return w != null and w.aim == "ray" and is_identified(w.id)
+
+# WHERE THIS ZAP LANDS, as RayAim's impacts — [{instance, cell}], cell null for a
+# zap that is not aimed at anything:
+#   ray     every enemy the line from you strikes (bounces included), or the square
+#           it stopped on when it struck nobody. The board is told the path
+#           (GameLoop2.last_strike) so it can draw where the bolt went.
+#   none    one impact on nothing — it fires where it stands.
+#   random  a random enemy on the board (WeaponSystem.random_cell), or nothing.
+#   else    the square clicked.
+func impacts_for(wand: WandData, target, label: String = "") -> Array:
+	match wand.aim:
+		"none":
+			return [{"instance": 0, "cell": null}]
+		"random":
+			var c: Vector2i = WeaponSystem.random_cell()
+			return [{"instance": 0, "cell": c if c != GameLoop2.OFF_FIELD else null}]
+		"ray":
+			if not (target is Vector2i):
+				return []
+			var path: Dictionary = RayAim.trace(target, wand.bounce)
+			var hit: Array = []
+			var cells: Array = []
+			for h in path["hits"]:
+				hit.append(int(h["instance"]))
+			var landed: Array = RayAim.impacts(path)
+			for imp in landed:
+				cells.append(imp["cell"])
+			GameLoop2.set_last_strike(label if label != "" else wand.display_name,
+				[{"cells": cells, "instances": hit, "ray": (path["points"] as Array).duplicate()}])
+			return landed
+	if target is Vector2i:
+		return [{"instance": 0, "cell": target}]
+	return []
+
+# Whether a clause is about WHERE the bolt landed, so it runs once per impact —
+# against each enemy a ray struck. The rest (a pick from every item, a body called
+# up, a status on the hand holding the wand, the whole board) run ONCE per zap
+# however many enemies it hit.
+static func _per_impact(op: Dictionary) -> bool:
+	if String(op.get("area", "cell")).to_lower() == "board":
+		return false
+	match String(op.get("op", "")):
+		"apply_tile", "deal_damage", "kill", "cancel_abilities", "grant_ability", \
+				"split", "polymorph", "teleport":
+			return true
+		"apply_status":
+			return String(op.get("target", "enemy")) != "player"
+	return false
 
 # ===========================================================================
 # Rolling one as loot
@@ -325,21 +378,18 @@ func zap_wand(entry: Dictionary, ctx: Dictionary = {}) -> Dictionary:
 	# one either way. Only the IDENTIFY hangs on the bolt landing (see the header).
 	notify_used(wand)
 
-	var mode: String = resolve_targeting(wand, rng)
-	var target = ctx.get("target")
-	var cell = target if (target is Vector2i and mode == "ray") else null
-
 	if wand.effect.is_empty():
 		# Wand of Nothing, and it should read as the joke it is rather than as a
-		# charge that reported nothing. The line does not mention the roll: which
-		# way a `random` wand came up is the disguise, not the outcome.
+		# charge that reported nothing.
 		out["logs"].append("Nothing happens.")
 		return out
 
-	if mode == "ray" and not (cell is Vector2i):
-		# A ray with nowhere to land. Not reachable from the UI — the picker is the
-		# only way to arm one — but a caller that forgot the cell should get the
-		# fizzle rather than a silent no-op with the charge already gone.
+	var impacts: Array = impacts_for(wand, ctx.get("target"), display_name(entry))
+	if impacts.is_empty():
+		# A bolt with nowhere to land: a ray that went home without touching
+		# anything, or one fired with no square at all (not reachable from the UI —
+		# the picker is the only way to arm one — but a caller that forgot the cell
+		# should get the fizzle rather than a silent no-op with the charge gone).
 		out["logs"].append("The bolt goes wide and fades on nothing.")
 		return out
 
@@ -348,9 +398,14 @@ func zap_wand(entry: Dictionary, ctx: Dictionary = {}) -> Dictionary:
 	# argument. The toast waits for the landing either way.
 	var newly: bool = identify(wand.id, false)
 	var landed: bool = false
-	for op in wand.effect:
-		if op is Dictionary:
-			landed = _apply_one(op, cell, out, rng) or landed
+	# EVERY ENEMY THE BOLT STRUCK takes the effect, a ray's bounce included; the
+	# clauses that are not about where it landed run on the first impact only.
+	for i in range(impacts.size()):
+		var imp: Dictionary = impacts[i]
+		var cell = RayAim.live_cell(imp) if imp.get("cell") is Vector2i else null
+		for op in wand.effect:
+			if op is Dictionary and (i == 0 or _per_impact(op)):
+				landed = _apply_one(op, cell, out, rng) or landed
 	if not landed:
 		if out["logs"].is_empty():
 			out["logs"].append("The bolt fades without finding anything.")

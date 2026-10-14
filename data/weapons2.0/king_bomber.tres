@@ -10,6 +10,7 @@ rarity = "Rare"
 size = Vector2i(2, 1)
 aim = "any"
 aim_column = 0
+bounce = 0
 area = "plus"
 stun = 2
 push_dir = ""

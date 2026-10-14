@@ -478,7 +478,7 @@ N draws over the debuffs you carry, each taking one stack off.
 
 A **weapon** sits in the pack like a trinket (it has a footprint and neighbours),
 is **aimed at the board like a thrown potion**, and **charges off its own goal**.
-Ten, all from the `weapons` sheet (`tools/generate_weapon_tres.py` →
+Eleven, all from the `weapons` sheet (`tools/generate_weapon_tres.py` →
 `data/weapons2.0/`, `WeaponData`; runtime in `scripts/runtime/WeaponSystem.gd`).
 
 **Charging.** A weapon is found **empty**. Its goal (the sheet's `Goal` column,
@@ -505,6 +505,7 @@ are covered. The swing spends every charge and the weapon stays in its slot.
 | `enemy` | a square an enemy stands on |
 | `none` | nothing — laid from the front column's middle row |
 | `random` | nothing — each strike lands on a random enemy standing on the board (its square nearest you), and whiffs on an empty board |
+| `ray` (`bounce N`) | every square — the click is a **direction**: see §12.1 |
 
 | Area | what it hits, from the clicked square |
 |---|---|
@@ -517,7 +518,8 @@ Shapes are clipped, never wrapped (`GameLoop2.area_cells`, so potions can use th
 new words too). The generator refuses an Area or Aim it cannot read.
 
 **The Effect cell** is `stun N`, optionally followed by `push <dir> N`
-(`right` is away from you, `left` toward you, `up`, `down`). **Hero Longsword** is
+(`right` is away from you, `left` toward you, `up`, `down`) and, on a `ray`,
+`bounce N` (which may equally be written in Aim: `ray, bounce 1`). **Hero Longsword** is
 `stun 2, push right 1`: after the Stun lands, every body it covered is shoved one
 square back — free (`GameLoop2.shove`, not the Push verb), farthest-first so a line
 moves together, as far as each fits. The **Type** column is `Melee` or `Ranged`.
@@ -528,6 +530,63 @@ squares in the weapon's orange (numbered when there was more than one strike),
 pulsing once, until the board next moves (a lost run's turn, a game chosen or
 reported). A Brimstone blast writes it too. This is what tells the player where a
 `random` strike went.
+
+### 12.1 The ray (Earthquake, and the wands)
+
+`ray` is **Ball x Pit's ball**, asked for with **Earthquake** (Ball x Pit, The
+Makeshift Sisyphus's starting weapon: `ray`, `3x3`, `stun 1, bounce 1`), and it is
+the wands' Aim too (§12.2). The geometry is `scripts/runtime/RayAim.gd`, one walk
+over the board shared by everything that fires one.
+
+- **It leaves from you**: the middle of the hero's column, beside the board's left
+  edge — board point (0.5, rows/2), where column *c* spans x ∈ [c, c+1).
+- **The click only says which way.** The line runs from you through the centre of
+  the clicked square and **carries on past it** until it meets something.
+- **An enemy** is struck. **A wall** — the top, the bottom or the back edge — is
+  met. Either way, with a bounce left the ray **mirrors like a ball** off the face
+  it crossed (a vertical edge flips it left-right, a horizontal one up-down; at an
+  exact corner the vertical edge is met first) and travels on, one bounce spent.
+  With none left **it stops**: on the enemy, or on the last square before the wall.
+- **Your side is not a wall.** A ray mirrored back out past the left edge has gone
+  home and ends there, its remaining bounces unspent.
+- **Every enemy it struck takes the effect**, each **once** however often the line
+  comes back to it — so a `bounce 1` ray that hits one enemy, mirrors off it and
+  hits a second does the effect to both. A ray that struck nobody lands on the
+  square it stopped on (so a Wand of Fire still sets that square alight), and one
+  that went home lands nowhere.
+- **A weapon's Area is laid at each enemy struck**, not at the square clicked:
+  Earthquake's 3x3 shakes the ground round every body its rock hits, and a body
+  under two of those squares is still stunned once (`WeaponSystem.ray_hit_cells`).
+- **The board previews the whole path while you aim**, bounces included: hovering
+  a square draws the line (a ring at each bounce, a dot where it stops) over the
+  squares it would hit, in white — the same trace the click then fires, so the
+  preview cannot disagree with the swing. Afterwards `last_strike` carries the line
+  (`strike.ray`) and the board draws it in the weapon's orange over what it hit.
+- A ray that keeps finding walls always ends: each wall or enemy spends a bounce,
+  so a ray crosses the board at most `bounce + 1` times.
+
+### 12.2 Wands aim in the same words
+
+The `wands` sheet's `Type` column is now **`Aim`**, read in the weapons'
+vocabulary (`generate_wand2_tres.parse_aim` calls `generate_weapon_tres.parse_aim`):
+`Ray, Bounce 1` is the ray above (nine of the twelve wands), `Non-Directional` is
+`none`, and `Random` is the weapons' `random` — the zap lands on a random enemy.
+`any`, `front`, `back`, `column N` and `enemy` fence the click the way a weapon's
+do (`WandSystem.aim_cells`), and the effect lands on the square clicked.
+
+`WandData.targeting` became `aim`, `aim_column` and `bounce`. A ray wand runs its
+**per-square clauses once per impact** — a status on an enemy, damage, a tile, the
+six unit verbs — and everything else **once per zap** (a pick of any item, a body
+called up, a status on you, an `area=board` clause): `WandSystem._per_impact`.
+Each impact is followed to where its body stands now (`RayAim.live_cell`), so a
+teleport on the first does not misplace the second.
+
+**An unknown wand still asks for any square** and **draws no line** — the fence or
+the path would say what kind of stick it is (`WandSystem.previews_ray`). Once known,
+a ray wand previews its path like a weapon. Wand of Nothing's old disguise — a
+`random` that rolled "aimed or not" afresh on every zap — is gone with the column:
+`random` now means what it means on a weapon, and the wand still does nothing
+wherever it lands.
 
 **More strikes, more firings.**
 - **Replays** (Lightning Ring, Thunder Loop — `replay_on_use +1 max=4`): every swing

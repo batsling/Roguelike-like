@@ -57,7 +57,7 @@ func _body(cell: Vector2i) -> int:
 
 func test_every_weapon_loads_with_art_a_goal_and_a_swing() -> void:
 	var all: Array = Data.all_weapons()
-	assert_eq(all.size(), 10, "the sheet's ten weapons all generated")
+	assert_eq(all.size(), 11, "the sheet's eleven weapons all generated")
 	for w in all:
 		var weapon: WeaponData = w
 		assert_ne(weapon.goal, "", "%s has a goal to charge it" % weapon.id)

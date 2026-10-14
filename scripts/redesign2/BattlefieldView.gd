@@ -364,6 +364,40 @@ class FootprintControl extends Control:
 	func _make_custom_tooltip(_for_text: String) -> Object:
 		return HoverCard.of(self)
 
+# THE LINE A RAY TAKES (RayAim), drawn over the squares it lights: the path in
+# board pixels, a ring at each bounce and a dot where it stops. Never clickable.
+class RayLine extends Control:
+	var points: PackedVector2Array = PackedVector2Array()
+	var color: Color = Color.WHITE
+
+	func _draw() -> void:
+		if points.size() < 2:
+			return
+		draw_polyline(points, Color(0, 0, 0, 0.45), 6.0, true)
+		draw_polyline(points, color, 3.0, true)
+		for i in range(1, points.size() - 1):
+			draw_arc(points[i], 6.0, 0.0, TAU, 20, color, 2.0, true)
+		draw_circle(points[points.size() - 1], 5.0, color)
+
+# A ray's points (board units, RayAim) as pixels on the field: column c's left
+# edge is x = c, so the hero's column sits left of the field at negative x.
+func _ray_pixels(points: Array) -> PackedVector2Array:
+	var field: Vector2 = _field_size()
+	var cols: float = maxf(1.0, GameLoop2.grid_cols())
+	var rows: float = maxf(1.0, GameLoop2.grid_rows())
+	var out := PackedVector2Array()
+	for p: Vector2 in points:
+		out.append(Vector2((p.x - 1.0) / cols * field.x, p.y / rows * field.y))
+	return out
+
+func _ray_line(points: Array, color: Color) -> RayLine:
+	var line := RayLine.new()
+	line.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	line.set_anchors_preset(Control.PRESET_FULL_RECT)
+	line.points = _ray_pixels(points)
+	line.color = color
+	return line
+
 # Board size in px: grid_cols() x grid_rows() cells with a gutter between them.
 func _field_size() -> Vector2:
 	return Vector2(
@@ -1078,6 +1112,9 @@ func _aim_request(what) -> Dictionary:
 func throw_request(entry: Dictionary = throwing_loot) -> Dictionary:
 	if WeaponSystem.is_weapon(entry):
 		return {"target_kind": "tile", "cells": WeaponSystem.aim_cells(entry)}
+	# A WAND IS FENCED BY ITS AIM TOO, once it is known (WandSystem.aim_cells).
+	if LootSystem.is_wand(entry):
+		return {"target_kind": "tile", "cells": WandSystem.aim_cells(entry)}
 	return {"target_kind": "tile", "col_min": 0, "col_max": 0}
 
 # Re-label and enable/disable the combat verbs for the current selection.
@@ -1906,7 +1943,10 @@ func _refresh_aim_cells() -> void:
 		btn.pressed.connect(_click_cell.bind(cell))
 		# A WEAPON SHOWS WHAT IT WOULD HIT from the square under the cursor: its Area
 		# is a shape, and a shape is easier seen than read (§12).
-		if WeaponSystem.is_weapon(throwing_loot):
+		# A RAY SHOWS ITS WHOLE PATH, bounces and all, the way Ball x Pit draws
+		# its aim line — for a weapon, and for a wand once it is known.
+		if WeaponSystem.is_weapon(throwing_loot) \
+				or (LootSystem.is_wand(throwing_loot) and WandSystem.previews_ray(throwing_loot)):
 			btn.mouse_entered.connect(_show_swing_preview.bind(cell))
 			btn.mouse_exited.connect(_clear_swing_preview)
 		_arrow_layer.add_child(btn)
@@ -1918,9 +1958,24 @@ var _swing_preview: Array = []
 
 func _show_swing_preview(cell: Vector2i) -> void:
 	_clear_swing_preview()
-	if _arrow_layer == null or not WeaponSystem.is_weapon(throwing_loot):
+	if _arrow_layer == null:
 		return
-	for hit in WeaponSystem.hit_cells(throwing_loot, cell):
+	var lit: Array = []
+	var path: Dictionary = {}
+	if WeaponSystem.is_weapon(throwing_loot):
+		var w: WeaponData = WeaponSystem.def(throwing_loot)
+		if WeaponSystem.is_ray(throwing_loot):
+			path = RayAim.trace(cell, w.bounce)
+			lit = WeaponSystem.ray_hit_cells(w, path)
+		else:
+			lit = WeaponSystem.hit_cells(throwing_loot, cell)
+	elif LootSystem.is_wand(throwing_loot) and WandSystem.previews_ray(throwing_loot):
+		path = RayAim.trace(cell, WandSystem.data_for(throwing_loot).bounce)
+		for imp in RayAim.impacts(path):
+			lit.append(imp["cell"])
+	else:
+		return
+	for hit in lit:
 		var r := Panel.new()
 		r.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		r.position = _cell_pos(hit.y, hit.x)
@@ -1929,6 +1984,10 @@ func _show_swing_preview(cell: Vector2i) -> void:
 			UITheme.flat(Color(WeaponSystem.WEAPON_COLOR, 0.42), 6, 0, 2, Color.WHITE))
 		_arrow_layer.add_child(r)
 		_swing_preview.append(r)
+	if not path.is_empty():
+		var line := _ray_line(path["points"], Color.WHITE)
+		_arrow_layer.add_child(line)
+		_swing_preview.append(line)
 
 func _clear_swing_preview() -> void:
 	for r in _swing_preview:
@@ -1969,6 +2028,12 @@ func _draw_last_strike() -> void:
 				r.tooltip_text = "Hit by %s." % String(rec.get("label", "the last swing"))
 				_strike_layer.add_child(r)
 				nodes.append(r)
+		# A ray's line, over the squares it lit.
+		var ray: Array = (strikes[i] as Dictionary).get("ray", [])
+		if ray.size() >= 2:
+			var line := _ray_line(ray, WeaponSystem.WEAPON_COLOR.lightened(0.25))
+			_strike_layer.add_child(line)
+			nodes.append(line)
 		if numbered and not cells.is_empty():
 			var first: Vector2i = cells[0]
 			if GameLoop2._on_board(first.x, first.y):

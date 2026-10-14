@@ -6,21 +6,28 @@ Wands are the FIFTH loot consumable (docs/wands-design.md), and the first one
 that is not spent in a single use: every row authors a CHARGE COUNT, and what the
 Effect column describes is what ONE of those charges buys.
 
-  wands: Name | Rarity | Game | Preference | Type | Charges | Description |
-         Effect | File
+  wands: Name | Rarity | Game | Preference | Aim | Charges | Description |
+         Effect | Tags | File
 
-`Type` is what the wand wants pointed at it, and it is the column with the
-surprise in it:
+`Aim` (the column was `Type` until the October 2026 sheet, and is still read
+under that name) says what the wand wants pointed at it, in THE WEAPONS' WORDS
+(generate_weapon_tres.parse_aim) — one vocabulary for both kinds of aimed loot:
 
-  Ray              -> "ray"              a square of the board, aimed like a
-                                         thrown potion.
-  Non-Directional  -> "non_directional"  nothing; it fires where it stands.
-  Random           -> "random"           one of the other two, rolled fresh on
-                                         every zap. Wand of Nothing is the only
-                                         row that authors it — a do-nothing wand
-                                         that behaved identically twice running
-                                         would give itself away, and this is what
-                                         stops it.
+  Ray[, Bounce N]  -> "ray"     a line from you (the left of the board) through
+                                any square you click, Ball x Pit's ball: it stops
+                                at the first enemy or wall it meets, bouncing N
+                                times first, and the Effect lands on EVERY enemy
+                                it struck (RayAim.gd). Nearly the whole roster.
+  Non-Directional  -> "none"    nothing; it fires where it stands. (`none` is
+                                the weapons' own word and reads the same.)
+  Random           -> "random"  no click: the zap lands on a random enemy
+                                standing on the board. Wand of Nothing is the
+                                only row that authors it.
+  Any / Front / Back / Column N / Enemy
+                   -> the square clicked, fenced as a weapon's Aim is.
+
+An UNIDENTIFIED wand still asks for a square whatever its Aim (WandSystem.
+needs_target), so the click itself never says which kind a mystery stick is.
 
 Effect token DSL (semicolons separate clauses, as in every other sheet). Every
 clause takes an optional `area=`, resolved RELATIVE TO THE AIMED CELL at runtime
@@ -67,8 +74,12 @@ so a blank (or `N/A`) File is expected and correct.
 import argparse
 import os
 import re
+import sys
 
 import openpyxl
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import generate_weapon_tres as weapons  # noqa: E402
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.dirname(SCRIPT_DIR)
@@ -97,14 +108,10 @@ def _clean(v):
 # GameLoop2.area_cells at runtime. Clipped to the board, never wrapped.
 AREAS = ("cell", "row", "col", "3x3", "5x5", "board")
 
-# The `Type` column's three words, and what each becomes on the resource.
-TARGETING = {
-    "ray": "ray",
-    "non-directional": "non_directional",
-    "non directional": "non_directional",
-    "nondirectional": "non_directional",
-    "random": "random",
-}
+# The Aim words a wand may NOT take from the weapons' list: none so far — every
+# weapon aim means something for a zap. Non-Directional is the wand sheet's own
+# spelling of `none`.
+NON_DIRECTIONAL = ("non-directional", "non directional", "nondirectional")
 
 # Who an apply_status lands on. A wand can burn the body on the square it hit or
 # the hand holding it, and the two are the same verb pointed differently.
@@ -236,12 +243,24 @@ def parse_clause(s: str, where: str):
     raise ValueError("wands %s: unknown verb %r in %r" % (where, verb, s))
 
 
-def parse_targeting(raw, where) -> str:
-    key = (_clean(raw) or "non-directional").strip().lower()
-    if key not in TARGETING:
-        raise ValueError("wands %s: unknown Type %r (want one of %s)"
-                         % (where, key, ", ".join(sorted(set(TARGETING.values())))))
-    return TARGETING[key]
+def parse_aim(raw, where) -> tuple:
+    """(aim, aim_column, bounce), in the weapons' vocabulary."""
+    text = (_clean(raw) or "none").strip()
+    head, sep, rest = text.partition(",")
+    if head.strip().lower() in NON_DIRECTIONAL + ("none",):
+        # Answered here: Non-Directional is the wand sheet's own word for it.
+        if rest.strip():
+            raise ValueError("wands %s: Aim %r — a Non-Directional wand does not "
+                             "bounce" % (where, raw))
+        return "none", 0, 0
+    try:
+        aim, col, bounce = weapons.parse_aim(text, where)
+    except ValueError as e:
+        raise ValueError("wands %s: %s" % (where, str(e).split(": ", 1)[-1]))
+    if bounce and aim != "ray":
+        raise ValueError("wands %s: Bounce %d on Aim %r — only a Ray bounces"
+                         % (where, bounce, aim))
+    return aim, col, bounce or 0
 
 
 def parse_charges(raw, where) -> int:
@@ -279,7 +298,8 @@ def wand_tres(row) -> tuple:
     wid = slugify(name)
     rarity = _clean(row.get("Rarity")) or "Common"
     preference = _clean(row.get("Preference")) or "Neutral"
-    targeting = parse_targeting(row.get("Type"), name)
+    aim, aim_col, bounce = parse_aim(
+        row.get("Aim") if "Aim" in row else row.get("Type"), name)
     charges = parse_charges(row.get("Charges"), name)
     description = _clean(row.get("Description"))
     effect = parse_effect(row.get("Effect"), name)
@@ -301,7 +321,9 @@ def wand_tres(row) -> tuple:
     lines.append('reference = "%s"' % gd_str(_clean(row.get("Game"))))
     lines.append('description = "%s"' % gd_str(description))
     lines.append("charges = %d" % charges)
-    lines.append('targeting = "%s"' % gd_str(targeting))
+    lines.append('aim = "%s"' % gd_str(aim))
+    lines.append("aim_column = %d" % aim_col)
+    lines.append("bounce = %d" % bounce)
     lines.append("effect = %s" % gd_value(effect))
     lines.append('file = "%s"' % gd_str(file))
     # The sheet's `Tags` column (lower-cased): what a tag-reading rule matches
