@@ -1655,6 +1655,8 @@ def cmd_new(args):
         cmd_brief(argparse.Namespace(game=g, kind=None, members=60, categories=4, quiet=True))
     print("\nLeft to do, by hand, for each new game (docs/research.md says how):")
     print("  connections  read .influence_work/new_games.md, search the web; rows go in research/connections.csv")
+    print("               ...and its 'developer's other games': a chart game by the same developer is a")
+    print("               `to review` Dev/Series row, an off-chart roguelike a `lead` (by hand off Steam)")
     print("  tags         nothing: the suggestions are in Research.xlsx for the owner")
     print("  goals, loot, events, characters, statuses, locations")
     print("               read .research_work/briefs/<game>.md and the wiki pages it lists; rows go in research/<kind>.csv")

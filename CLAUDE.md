@@ -89,7 +89,11 @@ research runs over the new games (`docs/research.md` §7 has the detail):
    devlog or a press release in the developer's own words. What holds up goes
    in `research/connections.csv` (`to review` for a pair of chart games, `lead`
    for a roguelike the chart lacks, `nothing found` for a game searched with
-   nothing found), **never** into `connections`. Then
+   nothing found), **never** into `connections`. **Also the developer's other
+   roguelikes:** `new_games.md`'s *The developer's other games* lists every
+   Steam game by the same developer; one on the chart and not connected is a
+   `to review` row with Dev/Series `yes`, a roguelike off the chart a `lead`
+   (by hand for a game off Steam). Then
    `python3 tools/influence_research.py new --mark`.
 3. **Goals, loot (always including weapons and evolutions), events,
    characters, statuses, locations:** read each new game's brief and the wiki

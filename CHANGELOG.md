@@ -11,6 +11,18 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Research now checks the developer's other roguelikes** (the owner's ask,
+  14 Oct 2026). `influence_research.py new` runs a new `studio` pass: Steam's
+  developer search lists every game under the new game's developer, and each
+  one's tags say whether it is a roguelike. `new_games.md` lists them under
+  *The developer's other games*, each with what it asks for. A chart game not
+  connected becomes a `to review` row with Dev/Series `yes`, and a roguelike
+  off the chart becomes a `lead`. The same check is by hand for a game off
+  Steam. This replaces the old rule that a same-studio pair counted only when
+  the newer game's page said so; the owner still decides each row. Its first
+  find is **Words Can Kill → Spinny Dungeon** (both Typing Monkey's). aQuadiun's
+  other game, Galaxy Champions TV, is an arena shooter and was dropped.
+
 - **The owner's 14 Oct upload: two games, three connections, six relics, three
   trinkets and a boss.** **Corebreaker** (influenced by Dead Cells and
   ScourgeBringer) and **Spinny Dungeon** (by Luck be a Landlord) are on the map,
