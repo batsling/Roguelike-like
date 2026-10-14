@@ -262,6 +262,11 @@ def main() -> int:
     for i, row in enumerate(rows, start=2):
         name = (row["Name"] or "").strip()
         sheet = (row["Sheet"] or "").strip()
+        # Shipped rows are the owner's now: they are held to the sheet cell for
+        # cell below, so the two conventions a CANDIDATE keeps (Health 1, no
+        # ability) are not asked of them — the owner may author either, as
+        # Mysterious Tree's 3 Health and The Beast's Trample are.
+        live = live_rows.get((sheet, gen.slugify(name)))
         if sheet not in SHEETS:
             flag(i, name, "Sheet %r is not enemies/bosses" % sheet)
         if (row["Type"] or "").strip() not in TYPES:
@@ -273,7 +278,7 @@ def main() -> int:
             flag(i, name, "Goal Type %r" % row["Goal Type"])
         # Health is 1 on every live row, so anything else here is a typo rather
         # than a design decision — the sheet has no concept of a tougher body.
-        if (row["Health"] or "").strip() != "1":
+        if live is None and (row["Health"] or "").strip() != "1":
             flag(i, name, "Health %r (every live row is 1)" % row["Health"])
         if diff in DIFFICULTIES:
             want = (BOSS_DAMAGE if sheet == "bosses" else ENEMY_DAMAGE)[diff]
@@ -282,7 +287,7 @@ def main() -> int:
                      % (row["Damage"], want, diff, sheet[:-1] if sheet else "?"))
         if not norm(row["Goal"]):
             flag(i, name, "empty Goal")
-        if (row["Ability"] or "").strip() != "N/A":
+        if live is None and (row["Ability"] or "").strip() != "N/A":
             flag(i, name, "Ability %r — this file leaves abilities to their own pass"
                  % row["Ability"])
         if (row["Confidence"] or "").strip() not in ("ok", "?"):
@@ -335,7 +340,6 @@ def main() -> int:
                 flag(i, name, "duplicate %s, first seen line %d" % (what, seen[key]))
             elif key:
                 seen[key] = i
-        live = live_rows.get((sheet, gen.slugify(name)))
         if live is not None:
             # SHIPPED: the sheet row and this row are the same row, so every
             # column the sheet has must still say what the file says. A

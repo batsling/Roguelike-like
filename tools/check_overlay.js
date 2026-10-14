@@ -1115,7 +1115,9 @@ async function main() {
   /* The whole page grew by the clock card (183px on this fixture): the run card
    * and the clock are `#top` now, the checklist and the ticker `#bottom`, and
    * `#timer` is the clock alone at its own source size. */
-  const DOCUMENTED = { '': 715, '#top': 385, '#bottom': 346, '#goals': 346,
+  /* +1px on the whole page and `#top`: the rank badge (spec §20) hangs half below
+   * the current game's cover and the run card makes room for its overhang. */
+  const DOCUMENTED = { '': 716, '#top': 386, '#bottom': 346, '#goals': 346,
     '#road': 116, '#timer': 224 };
   console.log('the shape the README documents');
   write((s) => { s.at++; s.events = []; Object.assign(s, fixture(dir)); s.at = Date.now(); });

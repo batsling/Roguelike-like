@@ -927,8 +927,8 @@ up and down), and the last column is the one to size a source against.
 
 | | light run | median | heavy (hour three) | pathological |
 |---|---|---|---|---|
-| `overlay.html` | 614 | 673 | 715 | **781** |
-| `top.html` | 272 | 327 | 385 | **451** |
+| `overlay.html` | 615 | 674 | 716 | **782** |
+| `top.html` | 273 | 328 | 386 | **452** |
 | `bottom.html` | 310 | 346 | 346 | **346** |
 | `goals.html` | 310 | 346 | 346 | **346** |
 | `road.html` | 116 | 116 | 116 | **116** |
