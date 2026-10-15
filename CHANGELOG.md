@@ -31,6 +31,9 @@ For how the project is laid out and how its systems fit together, see
     and page, a row each on the Radio screen, and on the end-of-game screen,
     where both bars now sit on the left under the title: the game's beside its
     cover and the character's under it beside their icon.
+  - **The end-of-game screen drops its sentence under the headline** ("You saw
+    X through.", and its escaped and lost versions) to make the room: the
+    headline says how it went, and the game's name leads its rank bar.
   - **A rank of 100 or more is shrunk to fit its circle** instead of spilling
     out of it.
   - **`test_game_ranks.gd` puts the save file back after each test.** Its

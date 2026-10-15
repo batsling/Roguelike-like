@@ -232,19 +232,6 @@ func headline() -> String:
 		_:
 			return "GAME OVER"
 
-func subtitle() -> String:
-	var g: GameData = game()
-	var name: String = g.display_name if g != null else "that game"
-	match verdict():
-		"escaped":
-			return "You left %s unfinished. The evening still counted." % name
-		"beaten":
-			if bool(_snap.get("amulet", false)):
-				return "%s — the Amulet game — is done." % name
-			return "You saw %s through." % name
-		_:
-			return "%s is behind you, goal unmet." % name
-
 # The fight in numbers, as {label: value} in the order the screen prints them.
 func tally() -> Array:
 	var res: Dictionary = _snap.get("res", {})
@@ -485,13 +472,15 @@ func _header() -> Control:
 	# WIDTH PINNED, because two of the three lines autowrap: with nothing to wrap
 	# AGAINST, a shrink-sized block reports the whole sentence on one line and
 	# pushes the button back out to the edge this is here to bring it in from.
-	# The subtitle and the difficulty step wrap at TITLE_W instead.
+	# The difficulty step wraps at TITLE_W instead.
 	words.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	words.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	words.custom_minimum_size = Vector2(TITLE_W, 0)
 	row.add_child(words)
 	words.add_child(_line(headline(), _accent(), 22))
-	words.add_child(_wrapped(subtitle(), UITheme.TEXT, 13))
+	# No sentence under the headline any more ("You saw X through."): the owner
+	# took it out for the room (15 Oct 2026). The headline says how it went, and
+	# the game's name leads its rank bar just below.
 	var step: String = step_line()
 	if step != "":
 		words.add_child(_wrapped(step, UITheme.GOLD, 12))
