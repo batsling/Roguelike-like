@@ -190,13 +190,6 @@ func record_key_rift(id) -> void:
 	e["rifts"] = int(e.get("rifts", 0)) + 1
 	save_data()
 
-# Deck ids (DeckCatalog) this character has won at least one run with.
-func deck_wins_for(character_id) -> Array:
-	return deck_wins.get(String(character_id), [])
-
-func has_deck_win(character_id, deck_id) -> bool:
-	return String(deck_id) in deck_wins_for(character_id)
-
 # ---------------------------------------------------------------------------
 # Writes
 # ---------------------------------------------------------------------------
@@ -222,21 +215,6 @@ func record_amulet_win(id) -> void:
 func record_perfect(id) -> void:
 	var e := _entry(String(id))
 	e["perfects"] = int(e.get("perfects", 0)) + 1
-	save_data()
-	emit_signal("changed")
-
-# Records a run win for a (character, deck) pair. Idempotent — the checklist
-# only cares that the pair was won at least once.
-func record_deck_win(character_id, deck_id) -> void:
-	var ck := String(character_id)
-	var dk := String(deck_id)
-	if ck == "" or dk == "":
-		return
-	if not deck_wins.has(ck):
-		deck_wins[ck] = []
-	if dk in deck_wins[ck]:
-		return
-	deck_wins[ck].append(dk)
 	save_data()
 	emit_signal("changed")
 

@@ -1121,27 +1121,6 @@ func _trigger_gates_pass(trig: Dictionary, ctx: Dictionary) -> bool:
 func curse_count() -> int:
 	return active_curses.size()
 
-# Saddles the player with a curse (skipping a game today; events / enemies
-# later). Records it in active_curses. The penalty card is NOT granted here — a
-# restriction curse drops its card only when the player admits on the
-# verification screen that they failed the challenge (see Overworld).
-func add_active_curse(curse: CurseData) -> CurseData:
-	if curse == null:
-		return null
-	# Curse of Vulnerability: each active COPY grants one extra duplicate of
-	# whatever curse is being gained (including another Vulnerability, so
-	# stacking Vulnerability compounds on the next grant). Counted from the
-	# copies active BEFORE this grant, so a single call is bounded and never
-	# recurses — it never re-checks its own freshly-appended entries.
-	var copies: int = 1 + active_affliction_effects("duplicate_curse").size()
-	for _i in range(copies):
-		active_curses.append({"id": curse.id, "name": curse.display_name})
-		TriggerBus.emit_signal("curse_applied", {"curse": curse})
-	Notifications.notify(
-		"Cursed: %s%s" % [curse.display_name, (" x%d" % copies) if copies > 1 else ""],
-		Color(0.85, 0.6, 0.85))
-	return curse
-
 # Lifts an active curse (events / shrines / future "cleanse" effects). Removes
 # the first active_curses entry matching `curse_id` and fires curse_removed so
 # items react (Golden Beetle -> a chest). Returns the resolved CurseData that
@@ -1342,25 +1321,6 @@ func take_pending_chest() -> int:
 		return -1
 	pending_chests -= 1
 	return int(pending_chest_choices.pop_front()) if not pending_chest_choices.is_empty() else 0
-
-# All active RESTRICTION curses resolved to CurseData, for the verification
-# screen's "did you fulfil it?" rows. Afflictions are automatic and excluded.
-func active_restriction_curses() -> Array:
-	var out: Array = []
-	for entry in active_curses:
-		if not (entry is Dictionary):
-			continue
-		var cd: CurseData = Data.get_curse(StringName(entry.get("id", "")))
-		if cd != null and cd.is_restriction():
-			out.append(cd)
-	return out
-
-# A random curse from the catalog — the skip-a-game penalty draws from here.
-func random_curse() -> CurseData:
-	var all: Array = Data.all_curses()
-	if all.is_empty():
-		return null
-	return all[randi() % all.size()]
 
 # Every effect dict of `effect_type` among active curses' CurseData.effects —
 # one entry per active_curses ROW, not per distinct curse, so a curse held
@@ -1564,23 +1524,6 @@ func reset_run() -> void:
 	Notifications.clear()
 	phase = Phase.MENU
 
-# Texture for the player marker in action / tactical combat. Prefers the
-# character's small `icon`, falling back to the full `portrait`. Null when no
-# character is selected (callers draw their default token instead).
-func player_icon_texture() -> Texture2D:
-	var cd: CharacterData = Data.get_character(character_id)
-	if cd == null:
-		return null
-	return cd.icon if cd.icon != null else cd.portrait
-
-# Single-letter marker for the ASCII overworld (the roguelike strategy floor):
-# the first letter of the character's name, uppercased. Falls back to "@".
-func player_initial() -> String:
-	var cd: CharacterData = Data.get_character(character_id)
-	if cd != null and String(cd.display_name) != "":
-		return String(cd.display_name).substr(0, 1).to_upper()
-	return "@"
-
 # Games-first redesign (2.0) run-start loadout applier. The no-combat rework has
 # no deck / energy / combat stats — a character brings only a tiny Health and the
 # verb/consumable counts (docs/games-first-redesign.md §3), plus its starting
@@ -1723,45 +1666,6 @@ func _reset_item_tracking() -> void:
 # === Incremental-item counter API ===
 # Called from ItemTriggers.fire so every combat mode keeps the same counters.
 
-# A player Attack was played (deckbuilder card, action-loop card, strategy
-# ability). Bumps the run-wide and per-turn attack tallies.
-func incremental_on_attack() -> void:
-	incremental_attacks_total += 1
-	incremental_attacks_turn += 1
-
-# A discrete turn / combat room began: remember its number for if_turn-gated
-# one-shots (room-based in Action). Does NOT touch the recurring per-turn
-# window — that rides turn_tick so it can be timer-based in Action.
-func incremental_on_turn_started(turn_no: int) -> void:
-	incremental_turn = turn_no
-	pen_nib_double_active = false
-
-# The recurring turn heartbeat fired (once per turn in deckbuilder/strategy; on
-# the real-time turn-tick timer in Action). Advances Happy Flower's "turns"
-# count and resets the per-turn attack window (Ornamental Fan / Shuriken).
-func incremental_on_turn_tick() -> void:
-	incremental_turn_pulses += 1
-	incremental_attacks_turn = 0
-	incremental_discards_turn = 0
-
-# A fresh combat began: per-combat counters restart; the run-wide attack
-# total carries over.
-func incremental_on_combat_started() -> void:
-	incremental_turn = 0
-	incremental_turn_pulses = 0
-	incremental_attacks_turn = 0
-	incremental_hp_losses = 0
-	incremental_discards_turn = 0
-	pen_nib_double_active = false
-	streak_clear()
-
-# A card was discarded by an EFFECT this turn (Acrobatics' pick, All-Out
-# Attack's random toss, Storm of Steel's hand dump). Called from the scenes'
-# discard paths — never from the end-of-turn hand sweep, which isn't "you
-# Discarded a Card this turn". Feeds Eviscerate's cost_reduce_from.
-func incremental_on_discard() -> void:
-	incremental_discards_turn += 1
-
 # One "time you lost Health this combat" (Blood for Blood's discount).
 # Deckbuilder/action player HP funnels through change_hp, which reports here;
 # strategy battles damage the player UNIT directly (GameState.hp syncs at
@@ -1769,43 +1673,11 @@ func incremental_on_discard() -> void:
 func incremental_on_player_hp_loss() -> void:
 	incremental_hp_losses += 1
 
-# Current value of a named counter, used by the `counter` effect handler and
-# the Backpack progress badge.
-func incremental_value(key: String) -> int:
-	match key:
-		"attacks_total":
-			return incremental_attacks_total
-		"attacks_this_turn":
-			return incremental_attacks_turn
-		"turns":
-			return incremental_turn_pulses
-		"hp_losses":
-			return incremental_hp_losses
-		"discards_this_turn":
-			return incremental_discards_turn
-	return 0
-
 # === Streak API (Dead Eye) ===
 # Shared by every combat mode through EffectSystem's streak_hit / streak_reset
 # handlers and each scene's attack path. A landed player attack grows the
 # streak against the hit target; switching targets or whiffing resets it; the
 # streak's count is folded into outgoing player attacks vs the same target.
-
-# A landed player attack grows the named streak. Switching targets resets the
-# count first (the bonus only rewards staying on one enemy), then this hit
-# counts as 1.
-func streak_register_hit(key: String, target, attack_bonus: bool, label: String) -> void:
-	if key == "" or target == null:
-		return
-	var s: Dictionary = _streaks.get(key, {"count": 0, "target": null})
-	if s.get("target") != target:
-		s["count"] = 0
-	s["target"] = target
-	s["attack_bonus"] = attack_bonus
-	s["label"] = label
-	s["count"] = int(s.get("count", 0)) + 1
-	_streaks[key] = s
-	_sync_dead_eye_streak()
 
 # A whiff (Blind) or target switch wipes the named streak entirely.
 func streak_reset(key: String) -> void:
@@ -1833,10 +1705,6 @@ func streak_attack_bonus(target) -> int:
 			label = String(key)
 		GameLog.add("%s: +%d Dmg (streak %d)!" % [label, n, n], Color(0.7, 1.0, 0.7))
 	return bonus
-
-func streak_clear() -> void:
-	_streaks.clear()
-	dead_eye_streak = 0
 
 func _sync_dead_eye_streak() -> void:
 	var s: Dictionary = _streaks.get("dead_eye", {})
@@ -2038,24 +1906,6 @@ func change_gold(delta: int) -> void:
 # an enemy. Shared by all three combat modes so the roll + log live in one place.
 # `rng` lets each mode pass its seeded generator; null falls back to a global one.
 var _gold_on_hit_rng: RandomNumberGenerator = null
-func gain_gold_on_hit(effect: Dictionary, rng: RandomNumberGenerator = null) -> void:
-	var hi: int = int(effect.get("gold_on_hit_max", 0))
-	if hi <= 0:
-		return
-	var lo: int = int(effect.get("gold_on_hit_min", 0))
-	if lo > hi:
-		lo = hi
-	var r: RandomNumberGenerator = rng
-	if r == null:
-		if _gold_on_hit_rng == null:
-			_gold_on_hit_rng = RandomNumberGenerator.new()
-			_gold_on_hit_rng.randomize()
-		r = _gold_on_hit_rng
-	var amt: int = r.randi_range(maxi(0, lo), hi)
-	if amt <= 0:
-		return
-	change_gold(amt)
-	GameLog.add("Gold on hit: +%d Gold." % amt, Color(1.0, 0.85, 0.35))
 
 # Gold the player actively SPENDS (shop purchases, card removal, …). Deducts
 # and counts toward Keeper's Sack. Use this — NOT change_gold — wherever the
@@ -2103,9 +1953,6 @@ func lower_hp_damage_mult() -> float:
 		if item is ItemData and item.lower_hp_damage_mult > 1.0:
 			mult *= item.lower_hp_damage_mult
 	return mult
-
-func is_dead() -> bool:
-	return hp <= 0
 
 # ---------------------------------------------------------------------------
 # Level-up
@@ -3222,17 +3069,6 @@ func base_chest_bonus() -> int:
 # Usable consumables + temporary buffs
 # ---------------------------------------------------------------------------
 
-# Combat scenes register themselves here at start (and clear at end) so the
-# global backpack / action active-slot can fire a pill's effects into the
-# live fight without holding a direct reference to the scene.
-func set_combat_context(scene, player) -> void:
-	combat_scene = scene
-	combat_player = player
-
-func clear_combat_context() -> void:
-	combat_scene = null
-	combat_player = null
-
 # The overworld scene registers itself while the map is up so overworld_usable
 # items can route their item_used effect to it (Winged Boots' map jump).
 func set_overworld_context(scene) -> void:
@@ -3376,17 +3212,6 @@ func charge_all_items(amount: int = 1) -> void:
 			changed = _charge_item(it, amount) or changed
 	if changed:
 		emit_signal("inventory_changed")
-
-# Adds charge to the (first) charged item matching `id` — Action's single active
-# slot tops up only its equipped item per turn.
-func charge_item_by_id(id: StringName, amount: int = 1) -> void:
-	if id == &"" or amount == 0:
-		return
-	for it in inventory:
-		if it is ItemData and it.id == id and it.is_charged():
-			if _charge_item(it, amount):
-				emit_signal("inventory_changed")
-			return
 
 # Every relic in the pack that runs on charges. The carried copies, not the
 # templates, since what a charge lands on is a bar that exists.
@@ -3588,27 +3413,6 @@ func _count_items(id: StringName) -> int:
 			n += 1
 	return n
 
-# Adds to the temporary stat layer that Stats.get_value() folds in. Used by
-# the `temp_stat` effect; cleared at the combat/room/event boundary.
-func add_temp_stat(stat: StringName, amount: int) -> void:
-	if amount == 0:
-		return
-	var key := String(stat)
-	temp_stat_bonus[key] = int(temp_stat_bonus.get(key, 0)) + amount
-	emit_signal("stats_changed")
-
-func add_event_block(amount: int) -> void:
-	event_block = maxi(0, event_block + amount)
-
-# Drains event_block against incoming event damage, returning the HP loss
-# left after the shield soaks what it can.
-func absorb_event_damage(amount: int) -> int:
-	if amount <= 0 or event_block <= 0:
-		return maxi(0, amount)
-	var soaked: int = mini(event_block, amount)
-	event_block -= soaked
-	return amount - soaked
-
 # Wipes consumable buffs. Called at combat end (deckbuilder/strategy), on
 # leaving a room (action), and when an event closes.
 func clear_temp_buffs() -> void:
@@ -3734,17 +3538,6 @@ func describe_resource_gains(before: Dictionary) -> String:
 		if delta != 0:
 			parts.append("%s%d %s" % ["+" if delta > 0 else "", delta, key])
 	return ", ".join(parts)
-
-# Total bonus stacks any owned status-amplify item adds when `status_id` is
-# inflicted on an enemy (Empty Syringe -> +1 Bleed / Poison). Called from
-# CombatActor.add_status so it works across every combat mode.
-func status_amplify_bonus(status_id: StringName) -> int:
-	var key: String = String(status_id)
-	var bonus: int = 0
-	for item in inventory:
-		if item is ItemData and not item.status_amplify.is_empty():
-			bonus += int(item.status_amplify.get(key, 0))
-	return bonus
 
 # True when an owned item makes the player immune to gaining `status_id` (Ginger
 # → "weak", Turnip → "frail"). Called from the player actor's add_status so the
@@ -3902,33 +3695,6 @@ func remove_item(item: ItemData) -> void:
 	if idx >= 0:
 		remove_item_at(idx)
 
-# Reactive Trauma Plate: if the player owns a lethal-negating item, destroy one
-# copy and report it. Called from Stats.resolve_damage the instant a hit would
-# drop the player to 0 HP, so the negation lands in every combat mode.
-func consume_lethal_guard() -> bool:
-	for i in range(inventory.size()):
-		var it = inventory[i]
-		if it is ItemData and it.negate_lethal:
-			GameLog.add("%s shatters, negating a lethal blow!" % it.display_name,
-				Color(1.0, 0.55, 0.35))
-			remove_item_at(i)
-			return true
-	return false
-
-func set_equipped_weapon(template: ItemData) -> void:
-	# Same duplication contract as add_item — the equipped weapon also
-	# carries per-instance upgrade_level / instance_id so the future
-	# weapon-as-equipment flow can pair with its card the same way
-	# inventory weapons do.
-	if template == null:
-		equipped_weapon = null
-	else:
-		equipped_weapon = template.duplicate(true)
-		equipped_weapon.instance_id = _next_item_instance_id
-		_next_item_instance_id += 1
-	_recompute_item_bonuses()
-	emit_signal("inventory_changed")
-
 func _append_item_internal(template: ItemData, upgrade_level: int) -> ItemData:
 	# Internal: duplicates and appends without firing the recompute /
 	# signal. apply_character batches several adds and recomputes once
@@ -3940,25 +3706,6 @@ func _append_item_internal(template: ItemData, upgrade_level: int) -> ItemData:
 	_next_item_instance_id += 1
 	inventory.append(inst)
 	return inst
-
-# Picks a random Passive (anything with a non-zero non-health stat bonus)
-# and bumps its upgrade_level by `delta`. Returns a dict with the chosen
-# item and its new level, or null if no eligible item exists. Save the
-# loop here for the future "Curse of Decay" / event reward hooks.
-func upgrade_random_passive(delta: int) -> Dictionary:
-	var eligible: Array = []
-	for it in inventory:
-		if it is ItemData and it.is_upgradeable_passive():
-			eligible.append(it)
-	if eligible.is_empty():
-		return {}
-	var picked: ItemData = eligible[randi() % eligible.size()]
-	picked.upgrade_level += delta
-	# Recompute already emits stats_changed; we add inventory_changed so
-	# HUDs that key off inventory state (passive-bonus tooltips, etc.) refresh.
-	_recompute_item_bonuses()
-	emit_signal("inventory_changed")
-	return {"item": picked, "delta": delta, "new_level": picked.upgrade_level}
 
 # Deck-tag card counting backed the combat `of: "deck_tag:<tag>"` item scaling.
 # The deck is gone with the combat cut (§11), so this is always 0 now; kept as a

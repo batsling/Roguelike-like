@@ -105,22 +105,6 @@ func slot_path(slot: int) -> String:
 func has_save(slot: int) -> bool:
 	return FileAccess.file_exists(slot_path(slot))
 
-func list_slots() -> Array:
-	var out: Array = []
-	for i in range(NUM_SLOTS):
-		out.append({
-			"slot": i,
-			"exists": has_save(i),
-			"summary": _peek(i) if has_save(i) else {},
-		})
-	return out
-
-func _peek(slot: int) -> Dictionary:
-	var data := _read(slot)
-	if data.is_empty():
-		return {}
-	return _summary(data, String(data.get("save_name", "")), slot)
-
 # One save's headline, shared by the slot list, the named list, and the Continue
 # list so all three describe a run the same way. `slot` is -1 for a named save.
 func _summary(data: Dictionary, display_name: String, slot: int = -1) -> Dictionary:
@@ -680,9 +664,6 @@ func _sanitize_save_name(save_name: String) -> String:
 
 func named_save_path(save_name: String) -> String:
 	return named_save_dir() + _sanitize_save_name(save_name) + ".json"
-
-func has_named_save(save_name: String) -> bool:
-	return FileAccess.file_exists(named_save_path(save_name))
 
 func save_named(save_name: String) -> bool:
 	GameState.save_name = save_name

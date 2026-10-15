@@ -47,6 +47,3 @@ enum Kind { RESTRICTION, AFFLICTION }
 #   {"type": "duplicate_curse"} — gaining any curse grants a second copy of it
 #     (Curse of Vulnerability).
 @export var effects: Array[Dictionary] = []
-
-func is_restriction() -> bool:
-	return kind == Kind.RESTRICTION

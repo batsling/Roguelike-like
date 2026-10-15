@@ -93,12 +93,6 @@ extends Resource
 # `GameLoop2.ability_op_args` does it.
 @export var triggers: Dictionary = {}
 
-# Does this ability do anything at `when`? Cheaper and clearer at the call sites
-# than digging the dictionary out, and it is the question every dispatch point in
-# the loop actually asks.
-func fires_on(when: StringName) -> bool:
-	return not (triggers.get(when, []) as Array).is_empty()
-
 # The ops this ability runs at `when`, or an empty array.
 func ops_on(when: StringName) -> Array:
 	return triggers.get(when, []) as Array

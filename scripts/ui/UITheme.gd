@@ -944,18 +944,6 @@ static func shared() -> Theme:
 	return _shared
 
 
-# The height `lines` lines of text take at `size` in the shared theme's font —
-# what a wrapping Label needs to RESERVE so a shorter text in the same slot does
-# not move what is under it. Measured off the font rather than typed, because a
-# guessed number is either a few pixels short (and the slot still jumps) or a
-# line too tall (and leaves a hole).
-static func lines_height(size: int, lines: int) -> float:
-	var t: Theme = shared()
-	var font: Font = t.default_font if t.default_font != null else ThemeDB.fallback_font
-	var spacing: float = float(t.get_constant("line_spacing", "Label")) \
-		if t.has_constant("line_spacing", "Label") else 3.0
-	return ceilf(font.get_height(size)) * lines + spacing * (lines - 1)
-
 # Put the shared theme on a subtree the screen's own theme cannot reach.
 #
 # A theme travels down CONTROL parents. Every 2.0 modal mounts itself on a

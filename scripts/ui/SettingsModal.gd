@@ -459,7 +459,7 @@ func _build_tags_section(col: VBoxContainer) -> void:
 			status.text = "Couldn't write the file"
 			status.add_theme_color_override("font_color", UITheme.DANGER)
 			return
-		status.text = "Exported all %d games" % Data.all_games().size()
+		status.text = "Exported all %d games" % Data.game_count()
 		status.add_theme_color_override("font_color", UITheme.SUCCESS))
 
 # --- this profile -------------------------------------------------------------

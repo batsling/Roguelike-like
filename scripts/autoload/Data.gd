@@ -154,9 +154,6 @@ func _load_dir(path: String, target: Dictionary) -> void:
 func get_curse(id: StringName) -> CurseData:
 	return _curses.get(id)
 
-func all_curses() -> Array:
-	return _curses.values()
-
 # --- Scrolls (2.0) ---------------------------------------------------------
 func get_scroll(id: StringName) -> ScrollData:
 	return _scrolls.get(id)
@@ -785,15 +782,6 @@ func get_ability(id: StringName) -> AbilityData:
 func all_abilities() -> Array:
 	return _abilities.values()
 
-# The ability's authored name, falling back to a title-cased slug so a UI that
-# meets an id the catalogue has never heard of still prints something a human can
-# read rather than an empty chip.
-func ability_name(id: StringName) -> String:
-	var a: AbilityData = get_ability(id)
-	if a != null:
-		return a.display_name
-	return String(id).replace("_", " ").capitalize()
-
 func all_items() -> Array:
 	return _items.values()
 
@@ -807,12 +795,6 @@ func all_items() -> Array:
 # before mutating.
 var _reward_pool_cache: Dictionary = {}    # "items" | "items2" | "items2:boss" -> Array[ItemData]
 var _reward_bucket_cache: Dictionary = {}  # "items2:2" -> Array[ItemData]
-
-# Items eligible for random shop / reward / treasure draws. Excludes the three
-# off-ladder classes (ItemData.is_rollable) — starters belong to a character's
-# opening loadout, boss relics to a boss, event relics to their event.
-func reward_item_pool() -> Array:
-	return _reward_pool("items", _items)
 
 # The games-first (2.0) reward pool — the items2.0 relics that drop from a
 # defeated enemy (docs/games-first-redesign.md §8 "the item table IS the reward
@@ -852,41 +834,9 @@ func _reward_pool(key: String, catalog: Dictionary) -> Array:
 		_reward_pool_cache[key] = out
 	return _reward_pool_cache[key]
 
-# Draw `count` distinct items using rarity weighting, excluding starters.
-# Falls back across rarities so the result is always filled when possible.
-func roll_weighted_items(count: int, rng: RandomNumberGenerator) -> Array:
-	var pool: Array = reward_item_pool()
-	var out: Array = []
-	var attempts: int = 0
-	while out.size() < count and attempts < 200 and not pool.is_empty():
-		attempts += 1
-		var target: int = roll_item_rarity(rng)
-		var bucket: Array = pool.filter(func(it): return int(it.rarity) == target)
-		if bucket.is_empty():
-			bucket = pool
-		var pick: ItemData = bucket[rng.randi_range(0, bucket.size() - 1)]
-		if not out.has(pick):
-			out.append(pick)
-	return out
-
-# Items carrying a given free-form tag (e.g. &"eye", &"coin", &"seed").
-func items_with_tag(tag: StringName) -> Array:
-	var out: Array = []
-	for it in _items.values():
-		if it is ItemData and it.tags.has(String(tag)):
-			out.append(it)
-	return out
-
-# One random item template carrying `tag`, or null if nothing matches.
-func random_item_by_tag(tag: StringName, rng: RandomNumberGenerator = null) -> ItemData:
-	var pool: Array = items_with_tag(tag)
-	if pool.is_empty():
-		return null
-	var idx: int = (rng.randi() if rng != null else randi()) % pool.size()
-	return pool[idx]
-
 func all_games() -> Array:
 	return _games.values()
 
-func all_characters() -> Array:
-	return _characters.values()
+# How many games there are, without building the 900-entry array to count.
+func game_count() -> int:
+	return _games.size()

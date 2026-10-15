@@ -292,6 +292,10 @@ var _splits_popup: Control = null
 var _split_rows: VBoxContainer = null    # one row per game, plus its tries
 var _split_total: Label = null           # the run's own line
 var _split_pause_btn: Button = null
+# What the strip last drew the clock as: 1 paused, 0 running, -1 not drawn yet —
+# reset whenever the strip is built, so a new strip always paints once (see
+# _refresh_split_panel).
+var _split_paused_shown: int = -1
 var _launch_row: HBoxContainer
 var _verify_box: VBoxContainer      # clean checklist: goal + level-up + follower goals
 var _verify_scroll: ScrollContainer  # _verify_box's frame, capped by _fit_checklist
@@ -3262,6 +3266,7 @@ func _build_split_strip() -> Control:
 	row.visible = false
 
 	_split_total = Label.new()
+	_split_paused_shown = -1
 	_split_total.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_split_total.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 	_split_total.add_theme_color_override("font_color", UITheme.TEXT_DIM)
@@ -3306,11 +3311,20 @@ func _refresh_split_panel() -> void:
 		_split_panel.visible = false
 		return
 	_split_panel.visible = true
-	_split_pause_btn.text = "▶" if RunTimer.paused else "⏸"
 	_split_pause_btn.disabled = not RunTimer.can_pause()
-	_split_pause_btn.tooltip_text = ("The clock is stopped. Nothing else about the "
-		+ "run is paused — the board and the tracker still work.") if RunTimer.paused \
-		else "Stop the clock. It counts real time, so a break costs the run nothing."
+	# THIS RUNS EVERY FRAME while the clock is going, and only the numbers move.
+	# A theme override is not a cheap assignment: setting one — even to the colour
+	# already there — sends the Label a THEME_CHANGED, and a Label re-shapes its
+	# text on that. So the paused look is re-applied when paused flips, not sixty
+	# times a second.
+	if int(RunTimer.paused) != _split_paused_shown:
+		_split_paused_shown = int(RunTimer.paused)
+		_split_pause_btn.text = "▶" if RunTimer.paused else "⏸"
+		_split_pause_btn.tooltip_text = ("The clock is stopped. Nothing else about the "
+			+ "run is paused — the board and the tracker still work.") if RunTimer.paused \
+			else "Stop the clock. It counts real time, so a break costs the run nothing."
+		_split_total.add_theme_color_override("font_color",
+			UITheme.GOLD if RunTimer.paused else UITheme.TEXT_DIM)
 
 	var parts: Array = []
 	if RunTimer.game_running or RunTimer.game_seconds > 0.0:
@@ -3324,8 +3338,6 @@ func _refresh_split_panel() -> void:
 	if RunTimer.paused:
 		parts.append("⏸ paused")
 	_split_total.text = "   ·   ".join(parts)
-	_split_total.add_theme_color_override("font_color",
-		UITheme.GOLD if RunTimer.paused else UITheme.TEXT_DIM)
 
 # --- the full splits, over the page ----------------------------------------
 #

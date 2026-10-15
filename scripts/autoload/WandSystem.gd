@@ -225,12 +225,6 @@ func add_charges(entry: Dictionary, amount: int) -> bool:
 	entry["charges"] = after
 	return after != before
 
-# Is there anything left to fire? A wand at zero is not a wand any more — it is
-# consumed the moment its last charge resolves — so this is a guard against a
-# stale index rather than a state the pack is ever left holding.
-func has_charge(entry: Dictionary) -> bool:
-	return charges_of(entry) > 0
-
 # ===========================================================================
 # Aiming (§4.2)
 # ===========================================================================
@@ -682,15 +676,6 @@ func display_name(entry: Dictionary) -> String:
 		return wand.display_name
 	var base: String = material_for(wand.id)
 	return "Wand" if base == "" else "%s Wand" % material_name(base)
-
-# The game a stick's material was lifted from, for the card's credit line. Empty
-# once the wand is identified — from then on the wand's own `reference` is the
-# credit, and the material is just the shape it arrived in.
-func material_credit(entry: Dictionary) -> String:
-	var wand: WandData = data_for(entry)
-	if wand == null or is_identified(wand.id):
-		return ""
-	return material_source(material_for(wand.id))
 
 # What the wand does, in words. The sheet's own prose once it is known, and the
 # gamble line before that — with the CHARGES said only on the known half. The count

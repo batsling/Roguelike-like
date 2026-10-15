@@ -1383,11 +1383,6 @@ func _install_views(page: String) -> void:
 			continue
 		f.store_string(page.replace(VIEW_ANCHOR, line + VIEW_ANCHOR))
 
-# The path to hand a streamer: the overlay page itself, as an absolute OS path
-# they can paste into OBS's Browser Source "Local file" box.
-func page_path() -> String:
-	return ProjectSettings.globalize_path("%s/overlay.html" % DIR)
-
 # The folder every page sits in, which is what the settings screen should really
 # be showing: the streamer needs `overlay.html` AND `map.html` beside it, and a
 # path to one file is a path to one file.

@@ -684,15 +684,6 @@ func effective_stat_bonuses() -> Dictionary:
 			out[stat] = base + upgrade_level
 	return out
 
-# Whether this item is eligible for random upgrade/downgrade. Items with
-# at least one non-health stat bonus qualify; pure-trigger items (Anchor)
-# and pure-vital items don't.
-func is_upgradeable_passive() -> bool:
-	for stat in stat_bonuses.keys():
-		if not (stat in HEALTH_BUCKET) and int(stat_bonuses[stat]) != 0:
-			return true
-	return false
-
 # True when this relic is drawn from the named pool (the sheet's `pools` column).
 func in_pool(pool: StringName) -> bool:
 	return pools.has(String(pool))

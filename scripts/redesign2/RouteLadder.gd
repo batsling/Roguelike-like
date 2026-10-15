@@ -836,14 +836,6 @@ static func card_heading(text: String) -> Control:
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	return l
 
-static func card_note(text: String) -> Control:
-	var l := Label.new()
-	l.text = text
-	l.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
-	l.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
-	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	return l
-
 static func card_button(text: String, cb: Callable) -> Button:
 	var b := Button.new()
 	b.text = text

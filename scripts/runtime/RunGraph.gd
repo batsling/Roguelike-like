@@ -836,24 +836,6 @@ static func best_connected(count: int) -> Array[StringName]:
 		out.append(id)
 	return out
 
-# Eligible games in this run that share `game_id`'s release year (Winged Boots
-# flies to one of these, ignoring connections). Excludes the game itself and any
-# already-beaten game so the jump only ever advances the run. The adjacency
-# cache's keys are exactly the run's filtered game set.
-static func same_year_games(game_id: StringName) -> Array[StringName]:
-	_build_adj()
-	var cur: GameData = Data.get_game(game_id)
-	if cur == null or cur.year <= 0:
-		return []
-	var out: Array[StringName] = []
-	for gid in _adj_cache.keys():
-		if gid == game_id or GameState.beaten_games.has(gid):
-			continue
-		var g: GameData = Data.get_game(gid)
-		if g != null and g.year == cur.year:
-			out.append(gid)
-	return out
-
 # Shortest-hop distance from start_id to every reachable game. Memoized
 # — picking start/amulet on the full catalog runs BFS hundreds of times
 # from a handful of distinct origins, so recomputing is wasteful. Call
@@ -1053,28 +1035,6 @@ static func dag_branch_scores_to(d_to_target: Dictionary,
 					branched += 1
 			scores[v] = branched
 	return scores
-
-# Per-layer "how many nodes are on a shortest-path DAG at depth d?".
-# Used by the choose-your-start panel's vertical bar chart.
-static func layer_widths(start_id: StringName, amulet_id: StringName) -> Array:
-	# Returns [{depth: int, count: int}, ...] from depth 1 to amulet_dist
-	# inclusive. The amulet depth has count = 1 (the goal itself).
-	var d_from_start := bfs_distances(start_id)
-	if not d_from_start.has(amulet_id):
-		return []
-	var amulet_dist: int = d_from_start[amulet_id]
-	var d_to_amulet := bfs_distances(amulet_id)
-	var count_at_depth: Dictionary = {}
-	for name in d_from_start:
-		var from_d: int = d_from_start[name]
-		if from_d == 0 or from_d > amulet_dist:
-			continue
-		if d_to_amulet.has(name) and from_d + int(d_to_amulet[name]) == amulet_dist:
-			count_at_depth[from_d] = int(count_at_depth.get(from_d, 0)) + 1
-	var out: Array = []
-	for d in range(1, amulet_dist + 1):
-		out.append({"depth": d, "count": int(count_at_depth.get(d, 1))})
-	return out
 
 # Returns the set of game ids that lie on a shortest path between
 # start_id and amulet_id, organized by layer. Used by the map preview
@@ -2004,15 +1964,6 @@ static func type_label(type_val: int) -> String:
 		GameData.GameType.DECKBUILDER: return "Deckbuilder"
 		GameData.GameType.TRADITIONAL: return "Traditional"
 	return "?"
-
-# Per-type starting bonus description (UI-only — applied separately).
-static func type_bonus_description(type_val: int) -> String:
-	match type_val:
-		GameData.GameType.ACTION: return "1 Weapon Reward"
-		GameData.GameType.TRADITIONAL: return "1 Item Reward"
-		GameData.GameType.STRATEGY: return "+40 Gold"
-		GameData.GameType.DECKBUILDER: return "1 Card Reward"
-	return ""
 
 # Themed color (RGB) used for the chip + Choose button. Matches the
 # typeColors map in character-start.js.
