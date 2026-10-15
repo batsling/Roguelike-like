@@ -15,6 +15,21 @@ const COLORS := [
 	Color(1.00, 0.80, 0.30),  # Legendary
 ]
 
+# A rarity name as its index on that ladder: "Common" 0 .. "Legendary" 3, and
+# anything unrecognised Common. The one copy of what every loot resource's
+# `rarity_index()` answers (cards, scrolls, potions, wands, trinkets, bags,
+# weapons all store their rarity as the sheet's word).
+static func index_of(rarity: String) -> int:
+	match rarity.to_lower():
+		"uncommon":
+			return 1
+		"rare":
+			return 2
+		"legendary":
+			return 3
+		_:
+			return 0
+
 static func color(rarity: int) -> Color:
 	return COLORS[clampi(rarity, 0, COLORS.size() - 1)]
 

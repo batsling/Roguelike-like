@@ -344,21 +344,38 @@ func chest_sizes_text(sizes: Array) -> String:
 	return "%s and %s" % [", ".join(parts.slice(0, parts.size() - 1)),
 		parts[parts.size() - 1]]
 
+# THE SHARED RARITY DRAW every loot kind's `roll_*` makes: roll a rung on the one
+# ladder (roll_item_rarity, so Luck rides every kind for free), take the pool's
+# pieces at that rung, and fall back to the whole pool when the rung is empty —
+# a Legendary roll on a kind with no Legendaries still hands something back.
+# Every piece here answers `rarity_index()`. Empty only when `pool` is.
+func _rarity_bucket(pool: Array, rng: RandomNumberGenerator) -> Array:
+	if pool.is_empty():
+		return pool
+	var target: int = roll_item_rarity(rng)
+	var bucket: Array = pool.filter(func(x): return x.rarity_index() == target)
+	return pool if bucket.is_empty() else bucket
+
+# One piece of `pool`, rarity-weighted and then uniform within its rung; null
+# for an empty pool.
+func _roll_by_rarity(pool: Array, rng: RandomNumberGenerator) -> Variant:
+	var r: RandomNumberGenerator = _rng_or_new(rng)
+	var bucket: Array = _rarity_bucket(pool, r)
+	return null if bucket.is_empty() else bucket[r.randi_range(0, bucket.size() - 1)]
+
+func _rng_or_new(rng: RandomNumberGenerator) -> RandomNumberGenerator:
+	if rng != null:
+		return rng
+	var r := RandomNumberGenerator.new()
+	r.randomize()
+	return r
+
 # One random scroll template, rarity-weighted. Falls back to the full pool when
 # the rolled bucket is empty; null only if no scrolls are loaded.
 func roll_scroll(rng: RandomNumberGenerator = null) -> ScrollData:
-	var pool: Array = _scrolls.values()
-	if pool.is_empty():
-		return null
-	var r: RandomNumberGenerator = rng
-	if r == null:
-		r = RandomNumberGenerator.new()
-		r.randomize()
-	var target: int = roll_item_rarity(r)
-	var bucket: Array = pool.filter(func(s): return s is ScrollData and s.rarity_index() == target)
-	if bucket.is_empty():
-		bucket = pool
-	return _pick_by_find_weight(bucket, r)
+	var r: RandomNumberGenerator = _rng_or_new(rng)
+	var bucket: Array = _rarity_bucket(_scrolls.values(), r)
+	return null if bucket.is_empty() else _pick_by_find_weight(bucket, r)
 
 # One of `bucket`, drawn by find_weight (potions-design §10, decision #20).
 #
@@ -407,18 +424,7 @@ func _pick_by_find_weight(bucket: Array, rng: RandomNumberGenerator) -> ScrollDa
 # making until step 2 caught it. It belongs here the day the sheet grows a place
 # to say it.
 func roll_potion(rng: RandomNumberGenerator = null) -> PotionData:
-	var pool: Array = _potions.values()
-	if pool.is_empty():
-		return null
-	var r: RandomNumberGenerator = rng
-	if r == null:
-		r = RandomNumberGenerator.new()
-		r.randomize()
-	var target: int = roll_item_rarity(r)
-	var bucket: Array = pool.filter(func(p): return p is PotionData and p.rarity_index() == target)
-	if bucket.is_empty():
-		bucket = pool
-	return bucket[r.randi_range(0, bucket.size() - 1)]
+	return _roll_by_rarity(_potions.values(), rng)
 
 # One random card, weighted by rarity — roll_potion's twin (docs/cards-design.md §4).
 #
@@ -437,17 +443,7 @@ func roll_card(rng: RandomNumberGenerator = null, tag: String = "") -> CardData:
 	# family alone, on the same rarity ladder.
 	if tag != "":
 		pool = pool.filter(func(c): return c is CardData and (c as CardData).tags.has(tag))
-	if pool.is_empty():
-		return null
-	var r: RandomNumberGenerator = rng
-	if r == null:
-		r = RandomNumberGenerator.new()
-		r.randomize()
-	var target: int = roll_item_rarity(r)
-	var bucket: Array = pool.filter(func(c): return c is CardData and c.rarity_index() == target)
-	if bucket.is_empty():
-		bucket = pool
-	return bucket[r.randi_range(0, bucket.size() - 1)]
+	return _roll_by_rarity(pool, rng)
 
 # --- Trinkets (docs/loot-passives.md) --------------------------------------
 func get_trinket(id: StringName) -> TrinketData:
@@ -459,18 +455,7 @@ func all_trinkets() -> Array:
 # One random trinket, weighted by rarity — roll_card's twin, on the same shared
 # ladder, so Luck rides a trinket drop exactly as it rides every other kind.
 func roll_trinket(rng: RandomNumberGenerator = null) -> TrinketData:
-	var pool: Array = _trinkets.values()
-	if pool.is_empty():
-		return null
-	var r: RandomNumberGenerator = rng
-	if r == null:
-		r = RandomNumberGenerator.new()
-		r.randomize()
-	var target: int = roll_item_rarity(r)
-	var bucket: Array = pool.filter(func(t): return t is TrinketData and t.rarity_index() == target)
-	if bucket.is_empty():
-		bucket = pool
-	return bucket[r.randi_range(0, bucket.size() - 1)]
+	return _roll_by_rarity(_trinkets.values(), rng)
 
 # --- Bags (docs/loot-passives.md §6) ---------------------------------------
 func get_bag(id: StringName) -> BagData:
@@ -481,18 +466,7 @@ func all_bags() -> Array:
 
 # One random bag, weighted by rarity on the shared ladder — roll_trinket's twin.
 func roll_bag(rng: RandomNumberGenerator = null) -> BagData:
-	var pool: Array = _bags.values()
-	if pool.is_empty():
-		return null
-	var r: RandomNumberGenerator = rng
-	if r == null:
-		r = RandomNumberGenerator.new()
-		r.randomize()
-	var target: int = roll_item_rarity(r)
-	var bucket: Array = pool.filter(func(b): return b is BagData and b.rarity_index() == target)
-	if bucket.is_empty():
-		bucket = pool
-	return bucket[r.randi_range(0, bucket.size() - 1)]
+	return _roll_by_rarity(_bags.values(), rng)
 
 # --- Weapons (docs/loot-passives.md §12) -----------------------------------
 func get_weapon(id: StringName) -> WeaponData:
@@ -503,18 +477,7 @@ func all_weapons() -> Array:
 
 # One random weapon, weighted by rarity on the shared ladder — roll_trinket's twin.
 func roll_weapon(rng: RandomNumberGenerator = null) -> WeaponData:
-	var pool: Array = _weapons.values()
-	if pool.is_empty():
-		return null
-	var r: RandomNumberGenerator = rng
-	if r == null:
-		r = RandomNumberGenerator.new()
-		r.randomize()
-	var target: int = roll_item_rarity(r)
-	var bucket: Array = pool.filter(func(w): return w is WeaponData and w.rarity_index() == target)
-	if bucket.is_empty():
-		bucket = pool
-	return bucket[r.randi_range(0, bucket.size() - 1)]
+	return _roll_by_rarity(_weapons.values(), rng)
 
 # --- Evolutions (docs/loot-passives.md §13) ---------------------------------
 func all_evolutions() -> Array:
@@ -546,18 +509,7 @@ func all_wands() -> Array:
 # five, Fire on about one in twenty-two and Wishing on about one in two hundred —
 # and none of that spread is authored anywhere but in the four rarity words.
 func roll_wand(rng: RandomNumberGenerator = null) -> WandData:
-	var pool: Array = _wands.values()
-	if pool.is_empty():
-		return null
-	var r: RandomNumberGenerator = rng
-	if r == null:
-		r = RandomNumberGenerator.new()
-		r.randomize()
-	var target: int = roll_item_rarity(r)
-	var bucket: Array = pool.filter(func(w): return w is WandData and w.rarity_index() == target)
-	if bucket.is_empty():
-		bucket = pool
-	return bucket[r.randi_range(0, bucket.size() - 1)]
+	return _roll_by_rarity(_wands.values(), rng)
 
 func get_item(id: StringName) -> ItemData:
 	return _items.get(id)
