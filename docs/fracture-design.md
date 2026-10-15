@@ -85,14 +85,28 @@ already uses, so:
 
 **+1 hop (9).** The run's path band moves up one: 4–8 hops becomes 5–9 (runs of
 six to ten games instead of five to nine). **This does not break the router.**
-Custom runs already route bands up to 20 (`RunConfig.PATH_CEILING`). Two things
-to measure when it is built, the same way the rifts doc measured its effect
-(rifts §5):
-- the three start cards want three different distances (`_random_spread`), and
-  the ceiling of 8 was chosen to give them room; a band of 5–9 has the same five
-  rungs, so this should hold, but check it;
-- how much of the Amulet pool stays reachable at the longer distances, on the
-  full catalogue and on the owned one.
+Custom runs already route bands up to 20 (`RunConfig.PATH_CEILING`).
+
+**But a flat 5–9 leaves Amulets out (measured 15 October 2026).** A game can be
+the Amulet only if starts in three genres sit inside the band on a road that
+clears the floor (`RunGraph.panel_genres`, §19.3.2). Counted for every game on
+the map, rifts on:
+
+| Catalogue | On the map | Amulets at 4–8 | Amulets at 5–9 | Lost |
+|---|---|---|---|---|
+| Full | 845 | 845 | 815 | 30 |
+| Owned | 524 | 522 | 373 | **150** (1 gained) |
+
+The owned losses cluster where the other genres' starts are all close:
+Deckbuilder 62 of 96 (Balatro, Backpack Hero, Across the Obelisk, …), Action
+60 of 241 (Brotato, Atomicrops, …), Strategy 26 of 82, Traditional 2 of 103.
+
+**Proposed fix, pending the owner:** *+1 hop where the Amulet allows it.* At
+Fracture 9 the panel is drawn from 5–9 first; an Amulet that cannot field three
+genres there falls back to 4–8. Every Amulet stays in the pool, and about 71%
+of owned Amulets (373 of 522) get the longer road. The panel's
+three-distances preference (`_random_spread`) has the same five rungs at 5–9,
+so it should hold; check it when built.
 
 A custom run's band is the player's own and is not shifted (custom runs earn
 nothing from Fractures anyway, §5).
