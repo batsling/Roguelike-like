@@ -36,6 +36,11 @@ For how the project is laid out and how its systems fit together, see
     headline says how it went, and the game's name leads its rank bar.
   - **A rank of 100 or more is shrunk to fit its circle** instead of spilling
     out of it.
+  - **`test_wish_bone_breaks_into_a_relic` failed about one CI run in
+    sixteen.** It asserted the Wish Bone's slot was empty after it broke, but
+    four relics (Caffeine Pill, Cauldron, Lucky Foot, Mom's Coin Purse) put
+    loot in the pack on pickup and it lands in that slot. It now asserts the
+    bone left the pack, which is what it meant.
   - **`test_game_ranks.gd` puts the save file back after each test.** Its
     record calls write the test's state to the shared save folder, and only the
     in-memory record was being restored.
