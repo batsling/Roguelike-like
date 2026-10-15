@@ -7,9 +7,9 @@ Videos and podcast episodes where a developer may say what inspired their game, 
 | | games | results |
 |---|---|---|
 | 1. Confirm a suspected connection | 109 | 307 |
-| 2. Games with few connections | 173 | 550 |
+| 2. Games with few connections | 174 | 554 |
 
-Searched 523 of the 523 games that qualify; 241 had nothing that looked like the developer talking.
+Searched 523 of the 523 games that qualify; 240 had nothing that looked like the developer talking.
 
 ---
 
@@ -146,7 +146,7 @@ Listen for: **Vampire Survivors** (sheet says "look at it")
 
 - [ ] podcast [Brotato](https://podcasts.apple.com/us/podcast/brotato/id1774367401?i=1000712412839) — RoguePod LiteCast · 90 min · 2025-06-11 — names the developer
 
-### Caves of Qud (2010) — 5 connections
+### Caves of Qud (2010) — 6 connections
 
 Listen for: **Ancient Domains of Mystery** (sheet says "nothing")
 
@@ -1620,6 +1620,13 @@ Held on the map by one connection or none. Listen for any game on the chart.
 ### Pokémon Survivor Burst (2026) — 1 connection
 
 - [ ] video [It Keeps Getting Better! / Pokémon Survivor Burst](https://www.youtube.com/watch?v=Z-mqD7IBmA8) — TheDuoDesign · 2:36:46 · Streamed 4w ago — cue in the description
+
+### Poly Fighter (2026) — 1 connection
+
+- [ ] video [How Poly Fighter Became a Roguelike Fighting Game / Dev Interview w/ Osama Dorias](https://www.youtube.com/watch?v=ni91J3g5gg8) — The Outerhaven · 41:12 · 6mo ago — dev, interview, names the developer
+- [ ] video [Poly Fighter Interview / PAX East 2026 Exclusive](https://www.youtube.com/watch?v=2VXp2jP-hkE) — Gamer Section Media · 3:03 · 6mo ago — interview
+- [ ] podcast [Osama Dorias (Poly Fighter)](https://podcasts.apple.com/us/podcast/osama-dorias-poly-fighter/id1606033506?i=1000762034143) — Pixel Pizza · 65 min · 2026-04-17 — names the developer
+- [ ] podcast [35 - Osama Dorias of Poly Fighter](https://podcasts.apple.com/us/podcast/35-osama-dorias-of-poly-fighter/id1876649883?i=1000795928465) — indie game garden · 67 min · 2026-10-12 — names the developer
 
 ### Popup Dungeon (2020) — 1 connection
 

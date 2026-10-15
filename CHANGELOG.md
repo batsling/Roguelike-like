@@ -11,6 +11,45 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The 14 Oct evening upload, the `goals` sheet's gaps, and a dead-code sweep.**
+  - **Two games and four connections.** Poly Fighter (Action) and Roguefort
+    (Traditional), both 2026, take `data/games/` to **927**; Slay the Spire →
+    Poly Fighter, and Caves of Qud, Dwarf Fortress and UnReal World → Roguefort.
+    The Slay the Spire → Poly Fighter proof clip is an `.ogv` and a poster now,
+    and its MP4 is gone. The research pass found two more for the owner to tick
+    in `research/connections.csv`: Rift Wizard → Roguefort (named in Roguefort's
+    own FAQ next to the two already on the chart) and Balatro → Poly Fighter
+    (an interviewer's narration, so marked weaker). Neither game has a wiki yet,
+    so every other kind is on record as nothing usable.
+  - **`goals` holds every goal the workbook has: 162, up from 150.** The two
+    `locations` goals (Burning Basement, Dross) were in the old view and fell
+    out when it was promoted, because the push had nowhere to write them; the
+    ten `amulets` `Obtain Goals` were never in it. Both are rows now, and
+    `apply_goals_sheet.py` pushes them back like every other owner: a location
+    is `any time` (it pays on the spot), an amulet part is `game beaten` (read
+    off the whole run) and keyed by part + tier, "Body 1-Low", since its row has
+    no name. **The blank cells are filled too**: Type and Difficulty on the 33
+    character, status, curse and weapon rows that never had an owner column for
+    them (judged against the body asking for the same thing: Erratic Deck takes
+    Snecko's Restriction 2-Medium), and `Tags` on all of them, in the owner
+    sheets' `Tag` vocabulary. `tools/_goals_fill_blanks_setup.py` only writes
+    blank cells, so it never replaces anything the owner typed.
+  - **593 lines of code nothing called.** 66 functions in 20 files, found by
+    widening the dead-code scan in `docs/performance-backlog.md` from private
+    functions to public ones and running it until it came back empty (deleting
+    one round orphans the next). Most are from the combat build: GameState's
+    `incremental_on_*` counters, streaks, the combat context, the event d20 in
+    `Stats`. None is reached by a built-up name.
+  - **The split timer stopped re-theming itself every frame.** It set its colour
+    override sixty times a second, and setting one (even to the same colour)
+    makes a Label re-shape its text. Now it only changes when pause flips.
+    `GameLoop2.possible_games_for` also stopped walking all 927 games to count
+    them (`Data.game_count()`).
+  - **Measured and found fine**, for the next pass: a warm page refresh is
+    10-12 ms (the board is 4-7 of it); the first report of a run costs ~500 ms,
+    all of it the offering's covers loading cold off disk; and the overlay's
+    occasional 100+ ms write was cold disk reads in this container, 8 ms warm.
+
 - **Only the front body hits, and the queue waits by its lane** (the owner,
   14 Oct). When a spawn crashes into you, the push still runs down the whole
   lane, but only the body shoved into you swings. A body waiting off the field

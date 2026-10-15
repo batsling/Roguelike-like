@@ -15550,6 +15550,10 @@
   "checked": "2026-10-11",
   "wiki": null
  },
+ "Poly Fighter": {
+  "checked": "2026-10-14",
+  "wiki": null
+ },
  "Popup Dungeon": {
   "api": "https://popupdungeon.fandom.com/api.php",
   "articles": 99,
@@ -17286,6 +17290,10 @@
   },
   "sitename": "Roguebook Wiki",
   "wiki": "https://roguebook.fandom.com"
+ },
+ "Roguefort": {
+  "checked": "2026-10-14",
+  "wiki": null
  },
  "Roll": {
   "checked": "2026-10-11",

@@ -55,12 +55,15 @@ the honour system.
   regenerate; don't hand-edit generated `.tres` in bulk. If you change the shape
   a `.tres` is written in, **update the generator in the same commit** or the next
   regeneration silently reverts you.
-  **…and the `goals` sheet is upstream of six of its own sheets.** Every goal in
+  **…and the `goals` sheet is upstream of eight of its own sheets.** Every goal in
   the game is authored there, in one sorted list, and
   `python3 tools/apply_goals_sheet.py` writes it out into `enemies`, `bosses`,
   `characters` (`Level Up`), `curses` (`Condition`), `statuses` (spliced back
-  into the `On Player` prose) and `weapons` (`Goal` — always `any time`, since a
-  weapon's goal charges it even in a lost game). So a goal is edited in `goals` and NOWHERE ELSE —
+  into the `On Player` prose), `weapons` (`Goal` — always `any time`, since a
+  weapon's goal charges it even in a lost game), `locations` (Goal, Goal Type,
+  Difficulty) and `amulets` (`Obtain Goals`; an amulet row has no name, so its
+  Owner is part + tier, "Body 1-Low"). Every row carries a Type, a Difficulty
+  and `Tags` (its themes, in the owner sheets' `Tag` vocabulary). So a goal is edited in `goals` and NOWHERE ELSE —
   anything typed into an owner sheet's goal column is lost on the next push, the
   same rule `data/` lives under. `--check` runs in CI. It went that way round
   because the reverse (a generated view) made a one-pass rewrite of 34 goals
@@ -339,10 +342,10 @@ godot --headless -s addons/gut/gut_cmdln.gd     # GUT suite: 57 scripts, ~2560 t
   wiring it up — it says "hides a native class" in one line.
 - **Game covers load lazily.** `GameData.cover_path` holds the path and
   `GameData.cover_image` loads it on first read. Do **not** turn `cover_image`
-  back into an `@export var ... : Texture2D` — `Data` loads all 925 games at
+  back into an `@export var ... : Texture2D` — `Data` loads all 927 games at
   startup and an ExtResource resolves eagerly, which meant decoding ~206 MB of
   PNG on every boot and every headless test run (~5.2s of a ~5.7s startup).
-- **`data/games/` has 925 files.** Never glob or read it wholesale to answer a
+- **`data/games/` has 927 files.** Never glob or read it wholesale to answer a
   question; query it with `grep` for the field you care about.
 - **The repo tracks source only.** `.godot/`, `*.import`, `*.uid` and
   `export_presets.cfg` are gitignored and regenerate. They show up in local file

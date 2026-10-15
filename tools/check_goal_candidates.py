@@ -123,7 +123,8 @@ LOOT_CSV = os.path.join(ROOT, "research", "loot.csv")
 # column its name is in there.
 OWNER_SHEETS = {"enemy": ("enemies", "Name"), "boss": ("bosses", "Name"),
                 "weapon": ("weapons", "Name"), "character": ("characters", "Name"),
-                "curse": ("curses", "Curse"), "status": ("statuses", "Name")}
+                "curse": ("curses", "Curse"), "status": ("statuses", "Name"),
+                "location": ("locations", "Name")}
 
 
 def extra_of(raw: str) -> dict:
