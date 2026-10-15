@@ -20,6 +20,10 @@ var _saved_stats: Dictionary
 var _saved_log: Dictionary
 var _saved_goal_log: Dictionary
 var _saved_levelups: Dictionary
+# Character ranks (§20.9) draw from a game's songs too, so a character record
+# left by an earlier test would draw songs these tests do not expect.
+var _saved_character: Array
+var _saved_drawn_by: Dictionary
 var _saved_unlocked: Dictionary
 var _saved_favorites: Dictionary
 var _saved_folder: String
@@ -49,6 +53,17 @@ func before_each() -> void:
 	GameStats.enemy_log = {}
 	GameStats.goal_log = {}
 	GameStats.levelup_log = {}
+	_saved_character = [GameStats.character_enemy_log.duplicate(true),
+		GameStats.character_game_log.duplicate(true),
+		GameStats.character_goal_log.duplicate(true), GameStats.runs.duplicate(true),
+		GameState.character_id]
+	GameStats.character_enemy_log = {}
+	GameStats.character_game_log = {}
+	GameStats.character_goal_log = {}
+	GameStats.runs = []
+	GameState.character_id = &""
+	_saved_drawn_by = Radio._drawn_by.duplicate()
+	Radio._drawn_by = {}
 	Radio._unlocked = {}
 	Radio._favorites = {}
 	Radio.folder = FOLDER
@@ -82,6 +97,12 @@ func after_each() -> void:
 	GameStats.enemy_log = _saved_log
 	GameStats.goal_log = _saved_goal_log
 	GameStats.levelup_log = _saved_levelups
+	GameStats.character_enemy_log = _saved_character[0]
+	GameStats.character_game_log = _saved_character[1]
+	GameStats.character_goal_log = _saved_character[2]
+	GameStats.runs = _saved_character[3]
+	GameState.character_id = _saved_character[4]
+	Radio._drawn_by = _saved_drawn_by
 	Radio._unlocked = _saved_unlocked
 	Radio._favorites = _saved_favorites
 	Radio._save_unlocked()
@@ -1153,3 +1174,75 @@ func test_a_songs_picture_is_its_games_cover() -> void:
 	Radio.play_song(s.id)
 	var game: GameData = Data.get_game(GAME)
 	assert_eq(String(Radio.payload().get("art", "")), game.cover_path)
+
+# --- character ranks (§20.9) -------------------------------------------------
+#
+# Zagreus's music is Hades's (GAME): the same songs, drawn by either rank.
+
+const HERO := &"zagreus"
+
+func _hero_rank(n: int) -> void:
+	# Wins as Zagreus, like `_rank`: rank n is 5n - 1 wins.
+	GameStats.character_game_log = {String(HERO): {"elsewhere": {"beaten": 0 if n <= 0 else 5 * n - 1}}}
+	assert_eq(GameRanks.character_rank(HERO), n)
+
+func test_a_characters_rank_draws_a_song_from_its_game() -> void:
+	for i in range(4):
+		_locked("h%d" % i)
+	_hero_rank(1)
+	Radio.refresh_unlocks(false)
+	var got: Array = _unlocked_of(GAME)
+	assert_eq(got.size(), 1, "rank 1 as Zagreus is one Hades song")
+	assert_eq(Radio.drawn_for(Data.get_song(StringName(got[0]))), HERO, "and it was his")
+
+func test_a_characters_songs_come_on_top_of_its_games() -> void:
+	for i in range(6):
+		_locked("h%d" % i)
+	_rank(GAME, 2)
+	_hero_rank(1)
+	Radio.refresh_unlocks(false)
+	assert_eq(_unlocked_of(GAME).size(), 3, "Hades rank 2 + Zagreus rank 1")
+	assert_eq(Radio.character_drawn(HERO), 1)
+
+func test_a_characters_draws_do_not_eat_the_games() -> void:
+	for i in range(6):
+		_locked("h%d" % i)
+	_hero_rank(2)
+	Radio.refresh_unlocks(false)
+	_rank(GAME, 1)
+	Radio.refresh_unlocks(false)
+	assert_eq(_unlocked_of(GAME).size(), 3, "Hades's first rank still owes its own song")
+
+func test_a_shared_pool_runs_dry() -> void:
+	_locked("h1")
+	_rank(GAME, 1)
+	_hero_rank(3)
+	Radio.refresh_unlocks(false)
+	assert_eq(_unlocked_of(GAME).size(), 1, "one song is all there is")
+	assert_eq(Radio.character_drawn(HERO), 0, "the game drew first")
+
+func test_a_character_with_no_songs_draws_nothing() -> void:
+	_locked("h1")
+	GameStats.character_game_log = {"rodney": {"rogue": {"beaten": 9}}}
+	assert_eq(GameRanks.character_rank(&"rodney"), 1)
+	Radio.refresh_unlocks(false)
+	assert_eq(_unlocked_of(GAME), [], "Rogue has no songs, and Hades's are not his")
+	assert_string_contains(Radio.character_rank_line(&"rodney"), "no Rogue songs")
+
+func test_isaac_draws_from_both_soundtracks() -> void:
+	var ch: CharacterData = Data.get_character2(&"isaac")
+	assert_eq(ch.music_games, [&"the_binding_of_isaac", &"the_binding_of_isaac_rebirth"] as Array[StringName])
+	_locked("rebirth_only", &"the_binding_of_isaac_rebirth")
+	GameStats.character_game_log = {"isaac": {"x": {"beaten": 4}}}
+	Radio.refresh_unlocks(false)
+	assert_eq(_unlocked_of(&"the_binding_of_isaac_rebirth"), ["rebirth_only"])
+
+func test_who_drew_a_song_survives_a_reload() -> void:
+	for i in range(3):
+		_locked("h%d" % i)
+	_hero_rank(1)
+	Radio.refresh_unlocks(false)
+	Radio._load_unlocked()
+	assert_eq(Radio.character_drawn(HERO), 1)
+	Radio.refresh_unlocks(false)
+	assert_eq(_unlocked_of(GAME).size(), 1, "nothing owed twice after a reload")

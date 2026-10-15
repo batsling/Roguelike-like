@@ -268,7 +268,11 @@ func _character_tile(ch: CharacterData, state: Dictionary, select: Callable) -> 
 	tile.add_child(vb)
 	var tex: Texture2D = ch.icon if ch.icon != null else ch.portrait
 	if tex != null:
-		vb.add_child(UITheme.crisp_tex(tex, 76))
+		# The character's rank on its token (§20.9), hung half below it like a
+		# game cover's.
+		var icon := UITheme.crisp_tex(tex, 76)
+		icon.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		vb.add_child(RankBadge.wrap_character(icon, ch.id))
 	var name_lbl := Label.new()
 	name_lbl.text = ch.display_name
 	name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER

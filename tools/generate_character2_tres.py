@@ -12,7 +12,7 @@ level_up_reward_type here).
 
   characters2.0: Name | Game | Health | Gold | Bash | Dash | Push | Transmute |
                  Scramble | Bombs | Keys | Random | Level Up | Reward |
-                 Description | Starting loadout | File
+                 Description | Starting loadout | File | Radio
 
 Health -> base_max_hp (a 2.0 run's tiny Health/Max Health reuse hp/max_hp).
 Gold -> start_gold, the run's starting purse (§14). It sits beside Health rather
@@ -38,6 +38,12 @@ full portrait from images2.0/characters/Full/<File>.png and the round in-world
 icon from images2.0/characters/Icon/<File>.png (case-insensitive). File falls
 back to the de-spaced Name for rows that leave it blank. Missing art just leaves
 that field unset (placeholder later).
+
+Radio -> music_games: the games whose soundtracks the character's RANKS draw
+          songs from (docs/games-first-redesign.md §20.9), `;`-separated game
+          names. Blank means the Game column. A name the `games` sheet does not
+          have is a refusal; a blank Radio whose Game is not on the chart is just
+          an empty list (a rank with no songs to give).
 
   python3 tools/generate_character2_tres.py            # regenerate the 2.0 roster
   python3 tools/generate_character2_tres.py --list      # print, write nothing
@@ -257,7 +263,34 @@ def load_catalog(wb):
     return cat
 
 
-def character_tres(row, catalog=None) -> tuple:
+def game_ids(wb) -> dict:
+    """games sheet Name -> game id, the way import-games-godot.py ids them."""
+    import importlib
+    games = importlib.import_module("import-games-godot")
+    return {_norm(r["Name"]): games.id_for(str(r["Name"]))
+            for r in rows(wb["games"]) if r.get("Name")}
+
+
+def music_games(name, row, games) -> list:
+    """The Radio column as game ids; blank falls back to Game."""
+    raw = _clean(row.get("Radio"))
+    if not raw:
+        gid = games.get(_norm(row.get("Game") or ""))
+        return [gid] if gid else []
+    out = []
+    for g in raw.split(";"):
+        if not g.strip():
+            continue
+        gid = games.get(_norm(g))
+        if gid is None:
+            raise SystemExit("%s: Radio names %r, which is not on the games sheet"
+                             % (name, g.strip()))
+        if gid not in out:
+            out.append(gid)
+    return out
+
+
+def character_tres(row, catalog=None, games=None) -> tuple:
     name = str(row["Name"]).strip()
     cid = slugify(name)
 
@@ -301,6 +334,10 @@ def character_tres(row, catalog=None) -> tuple:
     lines.append('display_name = "%s"' % gd_str(name))
     lines.append('description = "%s"' % gd_str(row.get("Description")))
     lines.append('source_game = "%s"' % gd_str(row.get("Game")))
+    # Whose songs the character's ranks draw (§20.9). Without a games table (a
+    # test feeding one row) there is nothing to resolve names against.
+    lines.append("music_games = %s" % string_name_array(
+        music_games(name, row, games) if games is not None else []))
     # Health / Max Health reuse hp / max_hp; the 2.0 Health column is both.
     lines.append("base_max_hp = %d" % _int(row.get("Health"), 5))
     # The run's starting purse. Gold is run-scope (never carried between runs),
@@ -355,10 +392,11 @@ def main():
 
     wb = openpyxl.load_workbook(XLSX_PATH, data_only=True)
     catalog = load_catalog(wb)
+    games = game_ids(wb)
     os.makedirs(OUT_DIR, exist_ok=True)
     written = []
     for row in rows(wb["characters"]):
-        cid, text = character_tres(row, catalog)
+        cid, text = character_tres(row, catalog, games)
         if args.list:
             print("=== %s ===\n%s" % (cid, text))
             continue

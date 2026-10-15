@@ -504,8 +504,17 @@ func _header() -> Control:
 	# presses to leave (see `_footer`), where the eye already goes.
 	# THE GAME'S RANK GOING UP (§20.4), beside the name: the bar fills from where
 	# it stood when the game was picked. A snapshot from before ranks has no ends.
+	# The CHARACTER's under it (§20.9), filled from everything played as them.
 	if g != null and _snap.has("rank_to"):
-		row.add_child(RankFill.make(int(_snap.get("rank_from", 0)), int(_snap["rank_to"])))
+		var fills := VBoxContainer.new()
+		fills.name = "RankFills"
+		fills.add_theme_constant_override("separation", UITheme.GAP_TIGHT)
+		fills.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		fills.add_child(RankFill.make(int(_snap.get("rank_from", 0)), int(_snap["rank_to"])))
+		if _snap.has("character_rank_to"):
+			fills.add_child(RankFill.make(int(_snap.get("character_rank_from", 0)),
+				int(_snap["character_rank_to"]), String(_snap.get("character_name", ""))))
+		row.add_child(fills)
 	var tail := Control.new()
 	tail.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(tail)

@@ -1906,7 +1906,8 @@ func _character_cell(ch: CharacterData) -> Control:
 	if ch.portrait != null:
 		var tr := UITheme.crisp_tex(ch.portrait, GRID_PORTRAIT_SIZE)
 		tr.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-		vb.add_child(tr)
+		# The character's rank, the same badge a game's cover wears (§20.9).
+		vb.add_child(RankBadge.wrap_character(tr, ch.id))
 	# The NAME AND NOTHING ELSE. Health was the one stat on the tile, and a single
 	# number is the worst thing a grid can carry: it is not enough to compare
 	# characters by and it is a second line of text under every portrait, on the one
@@ -1923,10 +1924,12 @@ func _show_character_detail(ch: CharacterData) -> void:
 	if ch.portrait != null:
 		var tr := UITheme.crisp_tex(ch.portrait, DETAIL_PORTRAIT_SIZE)
 		tr.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-		_detail_box.add_child(tr)
+		_detail_box.add_child(RankBadge.wrap_character(tr, ch.id))
 	_detail_box.add_child(_label(ch.display_name, green, 18, true))
 	if ch.source_game != "":
 		_detail_box.add_child(_label("From: %s" % ch.source_game, Color(0.6, 0.6, 0.66), 11, false))
+	# Its rank, and which soundtrack each rank draws a song from (§20.9).
+	_detail_box.add_child(_label(Radio.character_rank_line(ch.id), UITheme.GOLD, 11, false, true))
 	if ch.description != "":
 		_detail_box.add_child(_label(ch.description, Color(0.82, 0.82, 0.85), 12, false, true))
 	_detail_box.add_child(_detail_section("Base Stats"))

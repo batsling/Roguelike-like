@@ -10,6 +10,7 @@ id = &"min"
 display_name = "Minä"
 description = "Why must you go destroying everything? Why? For glory? For your precious god of gods. Is it really worth all this? Is it? Is it really?"
 source_game = "Noita"
+music_games = Array[StringName]([&"noita"])
 base_max_hp = 7
 start_gold = 3
 start_bash = 0

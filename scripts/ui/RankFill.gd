@@ -8,6 +8,9 @@ extends HBoxContainer
 #
 # The song a rank-up draws was already unlocked, and toasted, the moment the XP
 # landed (Radio); this is only where the climb is SHOWN.
+#
+# The CHARACTER's rank (§20.9) fills the same way, under the game's: `character`
+# names whose it is, and the line leads with that name.
 
 const FILL_TIME := 1.4
 const BAR_W := 168.0
@@ -15,6 +18,8 @@ const BAR_H := 4.0
 const CIRCLE := 30.0
 
 var from_xp: int = 0
+# The character's name, for a character's fill; "" for the game's.
+var character: String = ""
 var to_xp: int = 0
 # The XP the bar is showing right now; tweened from `from_xp` to `to_xp`.
 var shown_xp: float = 0.0
@@ -24,8 +29,9 @@ var _number: Label
 var _gain: Label
 var _bar: Control
 
-static func make(from: int, to: int) -> RankFill:
+static func make(from: int, to: int, character_name: String = "") -> RankFill:
 	var f := RankFill.new()
+	f.character = character_name
 	f.from_xp = maxi(from, 0)
 	f.to_xp = maxi(to, f.from_xp)
 	f.shown_xp = f.from_xp
@@ -68,8 +74,10 @@ func _ready() -> void:
 	_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_bar.draw.connect(_draw_bar)
 	col.add_child(_bar)
-	tooltip_text = "This game's rank: every %d XP is a rank, and each rank unlocks one of its songs on Roguelike Radio." \
-		% GameRanks.XP_PER_RANK
+	tooltip_text = ("This game's rank: every %d XP is a rank, and each rank unlocks one of its songs on Roguelike Radio." \
+		if character == "" else \
+		"%s's rank: every %d XP is a rank, and each rank unlocks a song from their game on Roguelike Radio.") \
+		% ([GameRanks.XP_PER_RANK] if character == "" else [character, GameRanks.XP_PER_RANK])
 	_paint()
 	if to_xp > from_xp:
 		create_tween().tween_method(_set_shown, float(from_xp), float(to_xp), FILL_TIME) \
@@ -84,7 +92,8 @@ func _paint() -> void:
 	var up: bool = int(p["rank"]) > GameRanks.rank_for(from_xp)
 	_number.text = str(int(p["rank"]))
 	_number.add_theme_color_override("font_color", UITheme.GOLD if up else UITheme.TEXT)
-	var head: String = ("RANK UP!  " if up else "") + \
+	var head: String = ("%s  " % character if character != "" else "") + \
+		("RANK UP!  " if up else "") + \
 		("+%d XP" % gained() if gained() > 0 else "No XP this game")
 	_gain.text = "%s   ·   %d / %d" % [head, int(p["into"]), GameRanks.XP_PER_RANK]
 	_gain.add_theme_color_override("font_color", UITheme.GOLD if up else UITheme.TEXT_DIM)

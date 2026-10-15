@@ -22,7 +22,10 @@ extends Node
 #     "levelup_log": { "<game>": { "<character>": {"levels": 1, "note": "…"} } },
 #     "status_goal_log": { "<game>": { "<status>": {"note": "…"} } },
 #     "character_enemy_log": { "<character>": { "<enemy>": {"beaten": 4} } },
-#     "character_game_log": { "<character>": { "<game>": {"beaten": 2} } } }
+#     "character_game_log": { "<character>": { "<game>": {"beaten": 2,
+#                                                "amulets": 0, "perfects": 1} } },
+#     "character_goal_log": { "<character>": { "<kind>": { "<key>":
+#                                                {"done": 1, "label": "…"} } } } }
 # (Older files were the bare games dictionary; load_data migrates them, and a
 # file predating any of the three logs just starts that log empty.)
 
@@ -89,6 +92,14 @@ var character_enemy_log: Dictionary = {}
 # empty when it was added: no older record says which character beat which game,
 # and the owner chose an empty list over a guessed one.
 var character_game_log: Dictionary = {}
+
+# EVERY OTHER KIND OF GOAL, per CHARACTER (character ranks,
+# docs/games-first-redesign.md §20.9): what goal_log is to a game, keyed by who
+# was playing. Keyed character id -> kind -> goal key -> {"done", "label"}.
+# Enemies and bosses are not written here — character_enemy_log already has
+# them — and nor is a character's OWN level-up from before this log existed,
+# which levelup_log still answers (`character_goals` reads all three).
+var character_goal_log: Dictionary = {}
 
 # EVERY OTHER KIND OF GOAL, per game: the weapons charged, the standing status
 # goals met, the bonus clauses paid and the curses followed. Keyed game id -> kind -> goal key -> {"done": int, "label": String}.
@@ -347,6 +358,8 @@ func record_goal(game_id, kind: String, key: String, label: String) -> void:
 	if label != "":
 		entry["label"] = label
 	goal_log[g][kind][key] = entry
+	# …and on the record of whoever was playing (§20.9).
+	_add_character_goal(String(GameState.character_id), kind, key, label)
 	save_data()
 	changed.emit()
 
@@ -430,6 +443,10 @@ func record_level_up(game_id, character_id, masked: bool = false) -> void:
 	if masked:
 		entry["masked"] = int(entry.get("masked", 0)) + 1
 	levelup_log[g][c] = entry
+	# …and on the PLAYER's record (§20.9): a level is a goal of the character
+	# being played, and a masked one is `c`'s level taken by someone else.
+	_add_character_goal(String(GameState.character_id) if masked else c,
+		"character", c, _character_name(c))
 	save_data()
 	changed.emit()
 
@@ -556,7 +573,11 @@ func character_enemy_count(character_id, enemy_id) -> int:
 
 # Record that `game_id` was beaten while playing `character_id`. Called beside
 # record_beaten / record_amulet_win, so this and the game's own tally agree.
-func record_character_game(character_id, game_id) -> void:
+#
+# `amulet` and `perfect` say the win was also the run's Amulet, or a perfected
+# visit (§20.1): the character's rank pays for each once, like the game's does.
+func record_character_game(character_id, game_id, amulet: bool = false,
+		perfect: bool = false) -> void:
 	var c := String(character_id)
 	var g := String(game_id)
 	if c == "" or g == "":
@@ -565,6 +586,10 @@ func record_character_game(character_id, game_id) -> void:
 		character_game_log[c] = {}
 	var entry: Dictionary = character_game_log[c].get(g, {"beaten": 0})
 	entry["beaten"] = int(entry.get("beaten", 0)) + 1
+	if amulet:
+		entry["amulets"] = int(entry.get("amulets", 0)) + 1
+	if perfect:
+		entry["perfects"] = int(entry.get("perfects", 0)) + 1
 	character_game_log[c][g] = entry
 	save_data()
 	changed.emit()
@@ -578,6 +603,100 @@ func games_beaten_by(character_id) -> Array:
 		out.append({"id": String(g), "beaten": int(entry.get("beaten", 0))})
 	_sort_log(out, "beaten")
 	return out
+
+# ---------------------------------------------------------------------------
+# A character's own record, for its rank (§20.9)
+# ---------------------------------------------------------------------------
+
+# Every game won playing as `character_id`, however many times each.
+func character_wins(character_id) -> int:
+	return _character_game_sum(character_id, "beaten")
+
+func character_perfects(character_id) -> int:
+	return _character_game_sum(character_id, "perfects")
+
+# Amulet wins as `character_id`. The count only started with character ranks, so
+# the run history (which has always said who won) is read as well when the count
+# is still 0: a won run in it was an Amulet win. The history is capped, so this
+# is a backfill for old saves, not a second count.
+func character_amulet_wins(character_id) -> int:
+	var n: int = _character_game_sum(character_id, "amulets")
+	if n > 0:
+		return n
+	for r in runs:
+		if r is Dictionary and bool(r.get("won", false)) \
+				and String(r.get("character", "")) == String(character_id):
+			n += 1
+	return n
+
+func _character_game_sum(character_id, field: String) -> int:
+	var n: int = 0
+	var games: Dictionary = character_game_log.get(String(character_id), {})
+	for g in games.keys():
+		n += int((games[g] as Dictionary).get(field, 0))
+	return n
+
+# EVERY distinct goal beaten playing as `character_id`, wherever it was beaten,
+# grouped by kind in GOAL_KINDS order the way goals_at groups a game's:
+# kind -> [{"key", "label", "done"}], sorted by label. Read from three records,
+# so an older save counts what it already holds: the enemies and bosses
+# (character_enemy_log), the character's own level-ups (levelup_log, which has
+# always said who levelled where), and everything since character ranks
+# (character_goal_log).
+func character_goals(character_id) -> Dictionary:
+	var c := String(character_id)
+	var out: Dictionary = {}
+	if c == "":
+		return out
+	for e in character_enemy_log.get(c, {}).keys():
+		var beaten: int = int(character_enemy_log[c][e].get("beaten", 0))
+		if beaten <= 0:
+			continue
+		var is_boss: bool = Data.get_boss(StringName(e)) != null
+		var enemy: GoalEnemyData = Data.get_goal_enemy_any(StringName(e))
+		_add_goal(out, "boss" if is_boss else "enemy", String(e),
+			enemy.display_name if enemy != null else String(e).capitalize(), beaten, "")
+	var logged: Dictionary = character_goal_log.get(c, {})
+	for kind in logged.keys():
+		for key in logged[kind].keys():
+			var entry: Dictionary = logged[kind][key]
+			_add_goal(out, String(kind), String(key), String(entry.get("label", key)),
+				int(entry.get("done", 0)), "")
+	# The character's own level-ups from before character_goal_log: levelup_log
+	# has always kept them, so an old save's count. Once, like any goal.
+	var own: int = 0
+	for g in levelup_log.keys():
+		var entry: Dictionary = levelup_log[g].get(c, {})
+		own += int(entry.get("levels", 0)) - int(entry.get("masked", 0))
+	var logged_own: bool = (logged.get("character", {}) as Dictionary).has(c)
+	if own > 0 and not logged_own:
+		_add_goal(out, "character", c, _character_name(c), own, "")
+	var ordered: Dictionary = {}
+	for kind in GOAL_KINDS:
+		if out.has(kind):
+			var rows: Array = out[kind]
+			rows.sort_custom(func(a, b): return String(a["label"]) < String(b["label"]))
+			ordered[kind] = rows
+	return ordered
+
+# One goal on `c`'s record. Enemies and bosses are character_enemy_log's, so
+# they are never written here.
+func _add_character_goal(c: String, kind: String, key: String, label: String) -> void:
+	if c == "" or key == "" or not (kind in GOAL_KINDS) or kind == "enemy" or kind == "boss":
+		return
+	if not character_goal_log.has(c):
+		character_goal_log[c] = {}
+	if not character_goal_log[c].has(kind):
+		character_goal_log[c][kind] = {}
+	var entry: Dictionary = character_goal_log[c][kind].get(key, {"done": 0, "label": label})
+	entry["done"] = int(entry.get("done", 0)) + 1
+	if label != "":
+		entry["label"] = label
+	character_goal_log[c][kind][key] = entry
+
+func _character_name(c: String) -> String:
+	var ch: CharacterData = Data.get_character2(StringName(c))
+	return ch.display_name if ch != null else c.capitalize()
 
 # Shared ordering for the log lists: the biggest tally first, ties by id, so the
 # panels read the same way whichever log they are drawn from.
@@ -601,6 +720,7 @@ func save_data() -> bool:
 		 "status_goal_log": status_goal_log,
 		 "character_enemy_log": character_enemy_log, "goal_log": goal_log,
 		 "character_game_log": character_game_log,
+		 "character_goal_log": character_goal_log,
 		 "donation_bank": donation_bank_total, "last_rifts": last_rifts}, "  "))
 	return true
 
@@ -641,6 +761,7 @@ func load_data() -> void:
 	status_goal_log = {}
 	character_enemy_log = {}
 	character_game_log = {}
+	character_goal_log = {}
 	goal_log = {}
 	donation_bank_total = 0
 	last_rifts = []
@@ -668,6 +789,8 @@ func load_data() -> void:
 		character_enemy_log = json.data["character_enemy_log"]
 	if json.data.has("character_game_log") and typeof(json.data["character_game_log"]) == TYPE_DICTIONARY:
 		character_game_log = json.data["character_game_log"]
+	if json.data.has("character_goal_log") and typeof(json.data["character_goal_log"]) == TYPE_DICTIONARY:
+		character_goal_log = json.data["character_goal_log"]
 	if json.data.has("goal_log") and typeof(json.data["goal_log"]) == TYPE_DICTIONARY:
 		goal_log = json.data["goal_log"]
 	donation_bank_total = maxi(0, int(json.data.get("donation_bank", 0)))
@@ -691,4 +814,7 @@ func load_data() -> void:
 			"beaten": int(r.get("beaten", 0)),
 			"amulets": int(r.get("amulets", 0)),
 			"rifts": int(r.get("rifts", 0)),
+			# Kept since game ranks (§20.1) count it. It used to be dropped here,
+			# so every perfect was forgotten the next time the file loaded.
+			"perfects": int(r.get("perfects", 0)),
 		}

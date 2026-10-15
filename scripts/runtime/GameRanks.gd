@@ -3,7 +3,9 @@ extends RefCounted
 
 # GAME RANKS (docs/games-first-redesign.md §20): every game has a rank and an XP
 # bar, held by the profile, with no cap. A rank-up is worth one of that game's
-# songs on Roguelike Radio (docs/roguelike-radio.md §3).
+# songs on Roguelike Radio (docs/roguelike-radio.md §3). CHARACTERS rank the
+# same way (§20.9, `character_xp`), and a character's rank-up is a song from
+# its own game's soundtrack, out of the same pool.
 #
 # XP IS DERIVED, NEVER STORED (§20.3). A game's XP is a pure function of what
 # GameStats already keeps for it — its wins, its Amulet wins, its perfected visits
@@ -74,6 +76,33 @@ static func xp(game) -> int:
 		for g in goals[kind]:
 			total += goal_xp(String(kind), String((g as Dictionary).get("key", "")))
 	return total
+
+# CHARACTER RANKS (§20.9): the same table, summed over everything done PLAYING AS
+# `character`, at any game. Wins count across games (the first win as them is
+# 100, every later one 50), the Amulet and perfect bonuses once per character,
+# and each goal once per character, wherever it was beaten — five Monkeys at
+# five games are one Monkey to the Ironclad. Derived, never stored, like a
+# game's.
+static func character_xp(character) -> int:
+	var id := String(character)
+	if id == "":
+		return 0
+	var total: int = wins_xp(GameStats.character_wins(id))
+	if GameStats.character_amulet_wins(id) > 0:
+		total += XP_AMULET
+	if GameStats.character_perfects(id) > 0:
+		total += XP_PERFECT
+	var goals: Dictionary = GameStats.character_goals(id)
+	for kind in goals.keys():
+		for g in goals[kind]:
+			total += goal_xp(String(kind), String((g as Dictionary).get("key", "")))
+	return total
+
+static func character_rank(character) -> int:
+	return rank_for(character_xp(character))
+
+static func character_progress(character) -> Dictionary:
+	return progress_for(character_xp(character))
 
 static func rank_for(total_xp: int) -> int:
 	return maxi(total_xp, 0) / XP_PER_RANK

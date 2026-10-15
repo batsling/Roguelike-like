@@ -11,6 +11,28 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Characters have ranks too, and each rank is a song from their game**
+  (spec §20.9, the owner's design, 15 Oct 2026).
+  - **Same bar, same table as a game's**, filled by everything done playing as
+    the character at any game: wins (100, then 50), the Amulet and perfect
+    bonuses once each, and every goal once per character wherever it fell.
+    `GameRanks.character_xp`, derived from `GameStats` like a game's.
+  - **The songs come out of the game's own pool, on top of the game's ranks.**
+    Each drawn song now remembers whose rank drew it (`radio.json`'s
+    `drawn_by`), so the two counts never eat each other. The `characters` sheet
+    has a new `Radio` column naming the soundtracks (blank = `Game`); Isaac's is
+    both Isaac games. Regent and Rodney's games have no songs yet, so their
+    ranks wait for some.
+  - **Old saves backfill** wins, enemy and boss goals, own level-ups and (from
+    the run history) Amulet wins. A new `character_goal_log` keeps the other
+    goal kinds per character from now on, and `character_game_log` now counts
+    Amulet wins and perfects.
+  - **Shown** on the character picker's tiles, the Collection's character grid
+    and page, and as a second fill under the game's on the end-of-game screen.
+  - **A game's perfects were forgotten on every reload**: `load_data` copied
+    `beaten`, `amulets` and `rifts` and dropped `perfects`, so the gold star and
+    the +100 XP only lasted until the game restarted. Kept now.
+
 - **A curse landing says so again, and the combat build's state is gone.**
   - **`curse_applied` was never fired.** Only the retired 1.0 curse list
     (`active_curses`) emitted it, and nothing had added to that list since curses

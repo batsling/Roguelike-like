@@ -16,6 +16,9 @@ extends Node
 #     counts are GameStats's, kept for every game anyway; what this node keeps is
 #     the DRAW — which songs came up — because a random pick cannot be worked out
 #     again from the counts the way a fixed rule could.
+#   * CHARACTERS EARN SONGS TOO, one per character rank (§20.9 of the spec),
+#     out of their own game's soundtrack — the same pool, so a character's
+#     songs come on top of its game's (`character_earned`).
 #   * A GAME'S FIRST SONG IS ITS MENU SONG. A song tagged `menu` is drawn before
 #     the rest of its game's songs: the first song Hades gives is Hades's menu
 #     song, if the sheet has one.
@@ -86,6 +89,7 @@ var _queue: Array = []           # [StringName] still to play this pass
 var _history: Array = []         # [StringName] played, newest last
 var _unlocked: Dictionary = {}   # song id -> true: songs drawn, per profile
 var _favorites: Dictionary = {}  # song id -> true: songs starred, per profile
+var _drawn_by: Dictionary = {}   # song id -> character id: drawn by a character's rank
 var _player: AudioStreamPlayer
 var _stream: AudioStream = null
 var _rng := RandomNumberGenerator.new()
@@ -319,6 +323,14 @@ func current_song() -> SongData:
 #
 # NOTHING IS EVER LOCKED AGAIN. A game holding more songs than it has earned (a
 # save from before this rule, when each song had its own count) keeps them all.
+#
+# CHARACTERS DRAW TOO (§20.9 of the spec): a character at rank N has earned N
+# songs, from its `music_games`' soundtracks — the SAME songs those games' own
+# ranks draw from, so the two add up. Which is why a draw remembers who it was
+# for (`_drawn_by`): a game is owed its rank minus the songs IT drew, and a
+# character its rank minus the songs IT drew, so neither eats the other's. Games
+# draw first, then characters in id order. A pool with nothing left to draw
+# draws nothing; the rank still stands.
 func refresh_unlocks(announce: bool = true) -> void:
 	var fresh: Array = []
 	var by_game: Dictionary = {}
@@ -334,35 +346,20 @@ func refresh_unlocks(announce: bool = true) -> void:
 	for game in games:
 		var pool: Array = by_game[game]
 		var have: int = 0
-		var with_file: Array = []
-		var without: Array = []
 		for song in pool:
-			if is_drawn(song):
+			if is_drawn(song) and not _drawn_by.has(String(song.id)):
 				have += 1
-			elif has_file(song):
-				with_file.append(song)
-			else:
-				without.append(song)
-		var owed: int = earned(game) - have
-		# A game's FIRST song is its menu song, when it has one: drawn from the
-		# menu songs alone (file first, as ever), then back to the whole pool.
-		if have == 0 and owed > 0:
-			var menu_file: Array = with_file.filter(is_menu)
-			var menu_without: Array = without.filter(is_menu)
-			if not (menu_file.is_empty() and menu_without.is_empty()):
-				var from_menu: Array = menu_file if not menu_file.is_empty() else menu_without
-				var first: SongData = from_menu[_rng.randi_range(0, from_menu.size() - 1)]
-				with_file.erase(first)
-				without.erase(first)
-				_unlocked[String(first.id)] = true
-				fresh.append(first)
-				owed -= 1
-		while owed > 0 and not (with_file.is_empty() and without.is_empty()):
-			var from: Array = with_file if not with_file.is_empty() else without
-			var song: SongData = from.pop_at(_rng.randi_range(0, from.size() - 1))
-			_unlocked[String(song.id)] = true
-			fresh.append(song)
-			owed -= 1
+		_draw(pool, earned(game) - have, "", fresh)
+	var roster: Array = Data.all_characters2()
+	roster.sort_custom(func(a, b): return String(a.id) < String(b.id))
+	for ch in roster:
+		var pool: Array = []
+		for g in (ch as CharacterData).music_games:
+			pool.append_array(by_game.get(g, []))
+		if pool.is_empty():
+			continue
+		var owed: int = character_earned(ch.id) - character_drawn(ch.id)
+		_draw(pool, owed, String(ch.id), fresh)
 	if fresh.is_empty():
 		return
 	_save_unlocked()
@@ -381,6 +378,91 @@ func refresh_unlocks(announce: bool = true) -> void:
 		if current == &"" and not paused and autoplay:
 			_advance()
 	changed.emit()
+
+# Draw `owed` songs out of `pool`'s locked ones into `fresh`, for character `by`
+# ("" for the game itself). A pool's FIRST song is its menu song, when it has
+# one: drawn from the menu songs alone (file first, as ever), then back to the
+# whole pool.
+func _draw(pool: Array, owed: int, by: String, fresh: Array) -> void:
+	if owed <= 0:
+		return
+	var any_drawn: bool = false
+	var with_file: Array = []
+	var without: Array = []
+	for song in pool:
+		if is_drawn(song):
+			any_drawn = true
+		elif has_file(song):
+			with_file.append(song)
+		else:
+			without.append(song)
+	if not any_drawn:
+		var menu_file: Array = with_file.filter(is_menu)
+		var menu_without: Array = without.filter(is_menu)
+		if not (menu_file.is_empty() and menu_without.is_empty()):
+			var from_menu: Array = menu_file if not menu_file.is_empty() else menu_without
+			var first: SongData = from_menu[_rng.randi_range(0, from_menu.size() - 1)]
+			with_file.erase(first)
+			without.erase(first)
+			_take(first, by, fresh)
+			owed -= 1
+	while owed > 0 and not (with_file.is_empty() and without.is_empty()):
+		var from: Array = with_file if not with_file.is_empty() else without
+		_take(from.pop_at(_rng.randi_range(0, from.size() - 1)), by, fresh)
+		owed -= 1
+
+func _take(song: SongData, by: String, fresh: Array) -> void:
+	_unlocked[String(song.id)] = true
+	if by != "":
+		_drawn_by[String(song.id)] = by
+	fresh.append(song)
+
+# --- what a character has earned (§20.9) -------------------------------------
+
+# How many songs `character` has earned so far: its rank.
+func character_earned(character: StringName) -> int:
+	return GameRanks.character_rank(character)
+
+# How many songs have been drawn FOR `character`.
+func character_drawn(character: StringName) -> int:
+	var n: int = 0
+	for id in _drawn_by.keys():
+		if String(_drawn_by[id]) == String(character):
+			n += 1
+	return n
+
+# Every song `character`'s ranks draw from: its music games' soundtracks.
+func character_songs(character: StringName) -> Array:
+	var out: Array = []
+	var ch: CharacterData = Data.get_character2(character)
+	if ch == null:
+		return out
+	for g in ch.music_games:
+		out.append_array(game_songs(g))
+	return out
+
+# One line saying where `character`'s rank stands and what it pays, for the
+# character's detail panels: "Rank 2 · 120 XP to the next Hades song", or, for a
+# character whose game has no songs on the sheet, that its ranks wait for some.
+func character_rank_line(character: StringName) -> String:
+	var ch: CharacterData = Data.get_character2(character)
+	var p: Dictionary = GameRanks.character_progress(character)
+	var names: Array = []
+	if ch != null:
+		for g in ch.music_games:
+			var game: GameData = Data.get_game(g)
+			names.append(game.display_name if game != null else String(g))
+	if character_songs(character).is_empty():
+		var from: String = " / ".join(names) if not names.is_empty() \
+			else (ch.source_game if ch != null else "")
+		return "Rank %d · no %s songs on the radio yet" % [int(p["rank"]), from]
+	return "Rank %d · %d XP to the next %s song" % [int(p["rank"]), int(p["needed"]),
+		" / ".join(names)]
+
+# Which character a song was drawn for, or &"" when its game drew it (or it is
+# still locked).
+func drawn_for(song: SongData) -> StringName:
+	return StringName(_drawn_by.get(String(song.id), "")) if song != null else &""
 
 func _label(song: SongData) -> String:
 	return song.title if song.artist == "" else "%s — %s" % [song.title, song.artist]
@@ -973,6 +1055,7 @@ func _unlocked_path() -> String:
 func _load_unlocked() -> void:
 	_unlocked = {}
 	_favorites = {}
+	_drawn_by = {}
 	var f := FileAccess.open(_unlocked_path(), FileAccess.READ)
 	if f == null:
 		return
@@ -983,6 +1066,13 @@ func _load_unlocked() -> void:
 				_unlocked[String(id)] = true
 		for id in (parsed as Dictionary).get("favorites", []):
 			_favorites[String(id)] = true
+		# Which character drew which song (§20.9). An older file has none: every
+		# song in it was its game's.
+		var by: Variant = (parsed as Dictionary).get("drawn_by", {})
+		if by is Dictionary:
+			for id in (by as Dictionary).keys():
+				if _unlocked.has(String(id)):
+					_drawn_by[String(id)] = String(by[id])
 
 func _save_unlocked() -> void:
 	var f := FileAccess.open(_unlocked_path(), FileAccess.WRITE)
@@ -992,4 +1082,5 @@ func _save_unlocked() -> void:
 	ids.sort()
 	var favorites: Array = _favorites.keys()
 	favorites.sort()
-	f.store_string(JSON.stringify({"unlocked": ids, "favorites": favorites}, "  "))
+	f.store_string(JSON.stringify({"unlocked": ids, "favorites": favorites,
+		"drawn_by": _drawn_by}, "  "))
