@@ -31,7 +31,7 @@ already exists.
 
 Exit 0 = clean/written, 1 = findings (--check) or a sheet that cannot be pushed.
 
-WHAT GOES WHERE. Eight owner sheets, and they do not all take the same fields,
+WHAT GOES WHERE. Five owner sheets, and they do not all take the same fields,
 because the goal fields only travel as far as something downstream reads them:
 
   enemies, bosses  Goal, Goal Type, Difficulty, AND the two new columns `Ticked`
@@ -47,23 +47,10 @@ because the goal fields only travel as far as something downstream reads them:
   statuses         the goal spliced back into the `On Player` prose (see
                    `status_prose_with`). A status MODIFIES the goal you carry
                    rather than having one, so it has no tick row of its own.
-  weapons          `Goal` only, always `any time` (it charges the weapon).
-  locations        Goal, Goal Type and Difficulty. A location's goal pays on
-                   the spot like a body's, so it is `any time`; the sheet has no
-                   Count column, so a number stays in the wording.
-  amulets          `Obtain Goals`. An amulet row has no name: it is a PART
-                   (`Type`) at a `Tier`, so its `goals` Owner is the two joined,
-                   "Body 1-Low", and its Difficulty has to be that Tier. Its goal
-                   is read off the whole run once it ends, which is the
-                   `game beaten` half of the checklist, never `any time`.
 
-Neither locations nor amulets reach data/ yet — nothing generates them — but
-their goals are goals, and the point of this sheet is that every one is in it.
-They were left out when the view was promoted; now they are pushed like the rest.
-
-Because those three (and amulets) carry no Ticked/Count column, authoring one
-there would be a silent no-op. So it is a hard error instead: a character, curse,
-status or amulet row that is not `game beaten`, or that carries a Count, stops the run and names
+Because those three carry no Ticked/Count column, authoring one there would be a
+silent no-op. So it is a hard error instead: a character, curse or status row
+that is not `game beaten`, or that carries a Count, stops the run and names
 itself. Widen this script and the owner sheet together if that day comes.
 
 WHY XML SURGERY AND NOT openpyxl: Roguelikes.xlsx carries eight charts that an
@@ -98,8 +85,6 @@ OWNER_SHEETS = {
     "curse": "curses",
     "status": "statuses",
     "weapon": "weapons",
-    "location": "locations",
-    "amulet": "amulets",
 }
 
 # The two values `Ticked` may take, and what each one means downstream:
@@ -444,100 +429,12 @@ def edits_for_weapons(wb, by_owner):
     return edits
 
 
-def edits_for_locations(wb, by_owner):
-    """Cell edits for `locations`: Goal, Goal Type and Difficulty.
-
-    A location's goal is done inside the game you are standing in and pays its
-    `Goal Effect` there and then, so it is `any time`. There is no Ticked or
-    Count column on the sheet, so anything else is refused rather than dropped.
-    """
-    header, rows = read_sheet(wb, "locations")
-    idx = {h: i for i, h in enumerate(header)}
-    for need in ("Goal", "Goal Type", "Difficulty"):
-        if need not in idx:
-            raise Finding("`locations` has no `%s` column" % need)
-    edits = {}
-    seen = set()
-    for n, row in rows:
-        owner = cell(row, 0)
-        key = ("location", owner)
-        if key not in by_owner:
-            raise Finding("locations!%d: %r has no row in `%s`." % (n, owner, SHEET))
-        seen.add(key)
-        goals = by_owner[key]
-        if len(goals) != 1:
-            raise Finding("location / %s has %d goal rows; a location has one."
-                          % (owner, len(goals)))
-        g = goals[0]
-        if g["Ticked"] != ANY_TIME or g["Count"]:
-            raise Finding(
-                "%s!%d (location / %s): a location's goal is ticked %r with no "
-                "Count — `locations` has neither column, and its goal pays on the "
-                "spot." % (SHEET, g["_row"], owner, ANY_TIME))
-        for field, value in (("Goal", g["Goal"]), ("Goal Type", g["Type"]),
-                             ("Difficulty", g["Difficulty"])):
-            if cell(row, idx[field]) != value:
-                edits["%s%d" % (col_name(idx[field]), n)] = value
-    missing = sorted(k[1] for k in by_owner if k[0] == "location" and k not in seen)
-    if missing:
-        raise Finding("`%s` names %s under Owner Sheet 'location', and `locations` "
-                      "has no such row(s)." % (SHEET, ", ".join(missing)))
-    return edits
-
-
-def amulet_owner(part: str, tier: str) -> str:
-    """The `goals` Owner of an amulet row, which has no name of its own."""
-    return "%s %s" % (part, tier)
-
-
-def edits_for_amulets(wb, by_owner):
-    """Cell edits for `amulets`' `Obtain Goals`, keyed by part + tier."""
-    ws = wb["amulets"]
-    rows = list(ws.iter_rows(values_only=True))
-    header = [str(h).strip() if h is not None else "" for h in rows[0]]
-    for need in ("Type", "Tier", "Obtain Goals"):
-        if need not in header:
-            raise Finding("`amulets` has no `%s` column" % need)
-    t, tier_i, col = header.index("Type"), header.index("Tier"), header.index("Obtain Goals")
-    edits = {}
-    seen = set()
-    for n, row in enumerate(rows[1:], start=2):
-        if not cell(row, t):
-            continue
-        owner = amulet_owner(cell(row, t), cell(row, tier_i))
-        key = ("amulet", owner)
-        if key not in by_owner:
-            raise Finding("amulets!%d: %r has no row in `%s`." % (n, owner, SHEET))
-        if key in seen:
-            raise Finding("amulets!%d: a second %r — part and tier name one row."
-                          % (n, owner))
-        seen.add(key)
-        goals = by_owner[key]
-        if len(goals) != 1:
-            raise Finding("amulet / %s has %d goal rows; an amulet part has one."
-                          % (owner, len(goals)))
-        g = goals[0]
-        _refuse_unreadable("amulets", "amulet", g)
-        if g["Difficulty"] != cell(row, tier_i):
-            raise Finding("%s!%d (amulet / %s): Difficulty %r is not the part's "
-                          "Tier %r." % (SHEET, g["_row"], owner, g["Difficulty"],
-                                        cell(row, tier_i)))
-        if cell(row, col) != g["Goal"]:
-            edits["%s%d" % (col_name(col), n)] = g["Goal"]
-    missing = sorted(k[1] for k in by_owner if k[0] == "amulet" and k not in seen)
-    if missing:
-        raise Finding("`%s` names %s under Owner Sheet 'amulet', and `amulets` "
-                      "has no such row(s)." % (SHEET, ", ".join(missing)))
-    return edits
-
-
 def _refuse_unreadable(sheet_name, owner_key, g):
     """A Ticked/Count authored where nothing downstream can read it.
 
-    Silence is the danger here: these sheets (characters, curses, statuses,
-    amulets) have no column to put it in, so the value would be dropped on the
-    way through and the goal would keep behaving the way it always did, with the
-    sheet saying otherwise.
+    Silence is the danger here: these three sheets have no column to put it in,
+    so the value would be dropped on the way through and the goal would keep
+    behaving the way it always did, with the sheet saying otherwise.
     """
     if g["Ticked"] != GAME_BEATEN:
         raise Finding(
@@ -576,8 +473,6 @@ def build_edits():
             wb, sheet_name, owner_key, column, by_owner), [], [], 0)
     plan["statuses"] = (edits_for_statuses(wb, by_owner), [], [], 0)
     plan["weapons"] = (edits_for_weapons(wb, by_owner), [], [], 0)
-    plan["locations"] = (edits_for_locations(wb, by_owner), [], [], 0)
-    plan["amulets"] = (edits_for_amulets(wb, by_owner), [], [], 0)
     return goals, plan
 
 

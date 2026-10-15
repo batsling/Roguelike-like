@@ -55,15 +55,12 @@ the honour system.
   regenerate; don't hand-edit generated `.tres` in bulk. If you change the shape
   a `.tres` is written in, **update the generator in the same commit** or the next
   regeneration silently reverts you.
-  **…and the `goals` sheet is upstream of eight of its own sheets.** Every goal in
+  **…and the `goals` sheet is upstream of six of its own sheets.** Every goal in
   the game is authored there, in one sorted list, and
   `python3 tools/apply_goals_sheet.py` writes it out into `enemies`, `bosses`,
   `characters` (`Level Up`), `curses` (`Condition`), `statuses` (spliced back
-  into the `On Player` prose), `weapons` (`Goal` — always `any time`, since a
-  weapon's goal charges it even in a lost game), `locations` (Goal, Goal Type,
-  Difficulty) and `amulets` (`Obtain Goals`; an amulet row has no name, so its
-  Owner is part + tier, "Body 1-Low"). Every row carries a Type, a Difficulty
-  and `Tags` (its themes, in the owner sheets' `Tag` vocabulary). So a goal is edited in `goals` and NOWHERE ELSE —
+  into the `On Player` prose) and `weapons` (`Goal` — always `any time`, since a
+  weapon's goal charges it even in a lost game). So a goal is edited in `goals` and NOWHERE ELSE —
   anything typed into an owner sheet's goal column is lost on the next push, the
   same rule `data/` lives under. `--check` runs in CI. It went that way round
   because the reverse (a generated view) made a one-pass rewrite of 34 goals

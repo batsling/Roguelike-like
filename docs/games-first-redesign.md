@@ -2004,12 +2004,8 @@ sheet was built as a read-only VIEW — six owning sheets in five column shapes,
 gathered so the roster could be counted — and it has been promoted to the
 **source**. `tools/apply_goals_sheet.py` writes it out into the sheets the
 generators read (`enemies`, `bosses`, `characters`' `Level Up`, `curses`'
-`Condition`, `statuses`' `On Player` prose and `weapons`' `Goal`), plus the two
-designed-but-unbuilt owners `locations` and `amulets` (`Obtain Goals`), so that
-every goal the workbook holds is in the one list; `--check` is what CI runs, and
-an edit made to an owner sheet's goal column is lost on the next push. Every
-row carries a Type, a Difficulty and `Tags`, the goal's themes in the owner
-sheets' `Tag` vocabulary.
+`Condition`, and `statuses`' `On Player` prose); `--check` is what CI runs, and
+an edit made to an owner sheet's goal column is lost on the next push.
 
 That promotion is what made a consistent pass over the goals possible: 34 of the
 134 were rewritten into one voice, and the counting ones were given honest
