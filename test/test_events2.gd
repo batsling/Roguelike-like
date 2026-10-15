@@ -194,6 +194,19 @@ func test_a_curse_that_bites_puts_an_enemy_on_the_board() -> void:
 	assert_eq(GameState.curse_goals.size(), 1, "a curse bites and STAYS")
 
 
+# A CURSE LANDING SAYS SO on the bus. Only the retired 1.0 curse list ever
+# emitted curse_applied, so for the whole curse-goal era a curse arrived in
+# silence: the OBS ticker's "Cursed — …" line could not fire, and neither could
+# a relic watching for it. It carries the curse, which is what both read.
+func test_gaining_a_curse_announces_it() -> void:
+	watch_signals(TriggerBus)
+	assert_true(GameState.add_curse_goal(&"poor_sleep"), "the curse landed")
+	assert_signal_emitted(TriggerBus, "curse_applied", "and the bus heard it")
+	var ctx: Dictionary = get_signal_parameters(TriggerBus, "curse_applied")[0]
+	assert_eq(ctx.get("curse"), Data.get_curse2(&"poor_sleep"), "carrying the curse itself")
+	assert_eq(GameState.curse_count(), 1, "the tally counts curse goals")
+
+
 # …and the body it puts there is one from the run's own difficulty. A conjured
 # enemy is priced on nothing else, so widening the roll to "anything authored"
 # the way an offering's roll may is the one thing it must not do.

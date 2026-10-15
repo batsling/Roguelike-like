@@ -11,6 +11,41 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **A curse landing says so again, and the combat build's state is gone.**
+  - **`curse_applied` was never fired.** Only the retired 1.0 curse list
+    (`active_curses`) emitted it, and nothing had added to that list since curses
+    became curse goals, so a curse arrived in silence: the OBS overlay's
+    "Cursed — …" ticker line could not appear, and a relic watching the hook
+    could not fire. `GameState.add_curse_goal` emits it now, carrying the
+    curse, and `test_events2.gd` holds it there. `curse_count()` (the `curses`
+    count source) reads the curse goals instead of the empty list.
+  - **The empty 1.0 curse layer is gone**: `active_curses`,
+    `active_affliction_effects` and Curse of Decay's check, all of which read a
+    list nothing wrote. The 1.0 curse catalog itself stays loaded, shelved as §5
+    says.
+  - **33 variables from the combat build**, every one only ever reset
+    (and some saved and reloaded) and never read: the incremental counters, Pen
+    Nib, Dead Eye's streaks, the action-mode slots, the pre-combat carryovers
+    (ambush, spawns, enemy buffs, start stuns, fire), crit, regeneration, hand
+    size, the chosen deck, and the combat scene / player / event-active flags
+    the item-use path still tested (always null or false, so those tests are
+    folded to what they always answered). A save written before this still
+    loads; the dropped keys are ignored.
+  - **A rare test failure fixed, not the game.**
+    `test_gameloop2.gd::test_a_survivor_still_closes_in_after_the_arrivals_are_wanded_off`
+    failed once in a full run (and 0 in 30 runs on its own, before and after
+    this change). A body walking on shoves whatever stands in its lane a column
+    (§7.3a), with the lane picked at random, and the test took the follower's
+    "before" position ahead of the arrival, so the odd run that dealt the newcomer
+    into the follower's lane read the shove as the follower moving by itself. It
+    measures after the arrivals land now, which is what "has not moved on its own"
+    meant.
+  - **Checked and fine**: every effect type the current items, loot and events
+    use has a handler, and all 20 triggers current loot listens for are fired.
+    The effect types with no handler all belong to the 112 combat-era items in
+    `data/items/`, which no current run can drop; they are only read as a
+    fallback when an old save names one.
+
 - **The 14 Oct evening upload and a dead-code sweep.**
   - **Two games and four connections.** Poly Fighter (Action) and Roguefort
     (Traditional), both 2026, take `data/games/` to **927**; Slay the Spire →

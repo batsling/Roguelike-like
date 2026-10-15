@@ -803,14 +803,19 @@ func test_a_survivor_still_closes_in_after_the_arrivals_are_wanded_off() -> void
 	# A new game, and the player clears everything that walked on with it.
 	var fresh: int = GameLoop2.choose_game(_enemy(1))
 	var escort: int = GameLoop2.second_body_instance()
+	# MEASURED AFTER THE ARRIVALS LAND, not before: a body walking on in the
+	# follower's lane shoves it along (§7.3a), which is the arrival moving it, not
+	# the follower. Taken before choose_game, this failed the odd run that dealt
+	# the fresh body into the same lane.
+	var col_settled: int = _col_of(follower)
 	GameLoop2.despawn(fresh)
 	if escort > 0:
 		GameLoop2.despawn(escort)
 	assert_false(GameLoop2.has_arrivals(), "nothing that arrived is left standing")
-	assert_eq(_col_of(follower), col_before, "and the follower has not moved on its own")
+	assert_eq(_col_of(follower), col_settled, "and the follower has not moved on its own")
 
 	assert_eq(GameLoop2.log_attempt(), "turn", "the tick lands")
-	assert_lt(_col_of(follower), col_before,
+	assert_lt(_col_of(follower), col_settled,
 		"and the board it bought actually closes the follower in — a press that resolves nothing is what 'it just stands there' looks like")
 
 func test_reporting_a_game_is_what_takes_it_out_of_play() -> void:

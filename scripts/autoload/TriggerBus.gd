@@ -199,10 +199,11 @@ signal wand_used(ctx: Dictionary)            # ctx.wand — a WAND (the loot kin
                                             # that can fire six times off one piece
                                             # of loot, which is what an item
                                             # watching it has to be priced against.
-signal curse_applied(ctx: Dictionary)        # ctx.curse — a curse was added to
-                                            # active_curses (Vitality Orb).
-signal curse_removed(ctx: Dictionary)        # ctx.curse — a curse left
-                                            # active_curses (Golden Beetle).
+signal curse_applied(ctx: Dictionary)        # ctx.curse (CurseData2) — a curse
+                                            # goal was added (add_curse_goal).
+signal curse_removed(ctx: Dictionary)        # ctx.curse — a curse left the run
+                                            # (Golden Beetle). Nothing emits it
+                                            # since the 1.0 curse list went.
 signal curse_card_removed(ctx: Dictionary)   # ctx.card — a CURSE-type card left
                                             # the deck (Golden Beetle). Distinct
                                             # from curse_removed: a curse and a

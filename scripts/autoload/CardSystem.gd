@@ -311,12 +311,11 @@ func copyable_items() -> Array:
 func copy_item(item: ItemData) -> String:
 	if item == null or GameState.inventory.find(item) == -1:
 		return ""
-	var on_overworld: bool = GameState.combat_scene == null \
-		and item.overworld_usable and GameState.overworld_scene != null
+	var on_overworld: bool = item.overworld_usable and GameState.overworld_scene != null
 	var ctx := {
-		"source": GameState.combat_player,
-		"target": GameState.combat_player,
-		"scene": GameState.overworld_scene if on_overworld else GameState.combat_scene,
+		"source": null,
+		"target": null,
+		"scene": GameState.overworld_scene if on_overworld else null,
 		"card": null,
 		"item": item,
 	}

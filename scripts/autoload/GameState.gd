@@ -21,9 +21,6 @@ signal event_goals_changed
 
 # === Identity / progression ===
 var character_id: StringName = &""
-# The run's chosen deck (DeckCatalog id). Independent of the character: it only
-# scopes combat/shop card rewards via deck_reward_tag(). Defaults to Random.
-var selected_deck: StringName = &""
 var save_name: String = ""
 var current_game_id: StringName = &""
 var start_game_id: StringName = &""
@@ -113,7 +110,6 @@ var last_game_perfected: bool = false
 var max_hp: int = 75
 var hp: int = 75
 var max_energy: int = 3
-var hand_size: int = 5
 
 # === Stats ===
 # Strength / Dexterity / Intelligence / Charisma drive the derived
@@ -132,17 +128,6 @@ var speed: int = 0
 # Harvesting: after beating a game, the player gains gold equal to this
 # stat (paid out by Stats on TriggerBus.game_beaten). Item-granted.
 var harvesting: int = 0
-
-# Crit: crit_chance is the player's base crit % (item-granted, may be
-# negative). crit_damage is the % bonus a crit adds — 100 means a crit
-# deals double damage. The live per-hit roll folds Luck in via
-# Stats.crit_chance_percent(); see docs/stat-dispatcher.md.
-var crit_chance: int = 0
-var crit_damage: int = 100
-
-# Regeneration: at the start of combat the player gains Regeneration status
-# equal to this stat (1 HP healed per stack at end of turn). Item-granted.
-var regeneration: int = 0
 
 # === Economy ===
 # Gold (docs/games-first-redesign.md §14). RUN-SCOPE: it is never carried between
@@ -320,121 +305,13 @@ var identified_wand_types: Array[StringName] = []
 # known. Persisted, so a reloaded run keeps the alphabet it taught you.
 var pill_color_map: Dictionary = {}
 
-# === Incremental-item counters ===
-# Progress counters that drive "every Nth …" items (Happy Flower, Nunchaku,
-# Ornamental Fan, Shuriken, Pen Nib) and let the Backpack show how close each
-# one is to its next proc. Bumped centrally by ItemTriggers.fire so every
-# combat mode (deckbuilder card play, action loop, strategy ability) feeds the
-# same counters; read back by EffectSystem's `counter` handler.
-#
-# Two "turn" clocks (they coincide in deckbuilder/strategy; they diverge in
-# Action, which has no discrete turns):
-#   * turn_started — a discrete turn / combat ROOM. Drives "on the Nth turn"
-#     one-shots via if_turn (Horn Cleat). Room-based in Action.
-#   * turn_tick    — the recurring heartbeat. Once per turn in deckbuilder/
-#     strategy; on the real-time turn-tick timer in Action. Drives recurring
-#     per-turn effects so they're paced by the timer, not by room transitions.
-#
-#   incremental_attacks_total  — Attacks played this RUN (persists across
-#                                combats; reset only by reset_run). Nunchaku /
-#                                Pen Nib read this.
-#   incremental_attacks_turn   — Attacks played within the current turn window
-#                                (reset every turn_tick — so timer-based in
-#                                Action). Ornamental Fan / Shuriken.
-#   incremental_turn_pulses    — Count of turn_tick heartbeats this combat
-#                                (Happy Flower's "every N turns"). Read as the
-#                                "turns" counter.
-#   incremental_turn           — Current discrete turn / room number (set on
-#                                turn_started). Not read by recurring counters;
-#                                kept for display / debug.
-var incremental_attacks_total: int = 0
-var incremental_attacks_turn: int = 0
-var incremental_turn_pulses: int = 0
-var incremental_turn: int = 0
-
-#   incremental_hp_losses      — Times the PLAYER lost HP this combat (each
-#                                change_hp(-n) while a combat scene is live is
-#                                one instance, whatever the source: enemy hits,
-#                                DoT ticks, self-damage cards). Blood for
-#                                Blood's cost_reduce_from counter.
-#   incremental_discards_turn  — Cards discarded by effects within the current
-#                                turn window (reset every turn_tick; the
-#                                end-of-turn hand sweep doesn't count).
-#                                Eviscerate's cost_reduce_from counter.
-var incremental_hp_losses: int = 0
-var incremental_discards_turn: int = 0
-
-# Pen Nib: set true while the player's current (10th) Attack resolves so
-# Stats.resolve_damage doubles its hits. Cleared at the start of the next
-# card play and on combat/turn boundaries.
-var pen_nib_double_active: bool = false
-
-# Dead Eye: the current consecutive-hit streak, mirrored here so the Backpack
-# can show the live "+N Dmg" number like the other incremental items. 0 when no
-# streak is active. Derived from _streaks below.
-var dead_eye_streak: int = 0
-
-# Named consecutive-hit streaks (Dead Eye), centralized here so every combat
-# mode (deckbuilder, action, strategy) grows and reads the same streak through
-# EffectSystem + each scene's attack path — not just the deckbuilder. Keyed by
-# streak id -> {count, target, attack_bonus, label}. The `target` is whatever
-# actor object the scene passed (CombatActor / Unit); identity comparison
-# detects target switches. Cleared at combat start.
-var _streaks: Dictionary = {}
-
-# Spells learned this run, addressed by SpellData.id. Drives the
-# strategy/tactical Spellbook (Phase 6). Spell defs live in
-# `SpellsCatalog` until designers ship .tres files for them.
-var learned_spells: Array[StringName] = []
-
-# === Action-mode loadout (StringName ids resolved via Data) ===
-# Two manual click slots — left (LMB) and right (RMB). Only Strikes or
-# weapon-granted cards may be slotted here; everything else in the deck
-# plays automatically. Empty / unset means "auto-pick from deck on
-# combat start".
-var action_left_card_id: StringName = &""
-var action_right_card_id: StringName = &""
-
-# Cache of upgraded-form CardData duplicates for action mode, keyed by card id.
-# Built lazily by effective_action_card_data so every upgraded copy of an id
-# shares one resource (matching how base copies share Data.get_card's). Cleared
-# on run reset.
-var _action_upgraded_cache: Dictionary = {}
-
-# Action-mode item slots, assigned on the equipment screen:
-#   * action_active_item_id  — one USABLE consumable item, popped with Q.
-#                              Cleared when the item is spent.
-#   * action_charged_item_id — one CHARGED active, fired with E. While slotted it
-#                              is the only charged item that gains a charge per
-#                              turn (the per-combat baseline still tops up all of
-#                              them). Both slots are independent.
-var action_active_item_id: StringName = &""
-var action_charged_item_id: StringName = &""
-
 # === Temporary (consumable) buffs ===
 # Layers on top of base + item bonuses in Stats.get_value(). Populated by
 # the `temp_stat` effect when a pill is used; lasts one combat
 # (deckbuilder/strategy), one room (action), or until an event closes — then
 # cleared by clear_temp_buffs() at the matching boundary.
 var temp_stat_bonus: Dictionary = {}
-# Per-turn temporary status stacks on the player (Prayer Beads' "+3 Brace until
-# end of turn"). status_id (String) -> stacks added this turn. ItemTriggers
-# strips these off the player actor at the next turn_started and clears the
-# tally at combat boundaries, so the buff only survives the turn it was gained.
-var temp_status_stacks: Dictionary = {}
-# Block granted by a consumable (Percs) while resolving an event. Combat
-# block lives on the player CombatActor; events have no actor, so this pool
-# soaks the next chunk of event damage. Cleared with the temp buffs.
-var event_block: int = 0
 
-# Live combat context, registered by whichever combat scene is running so
-# globally-invoked item uses (backpack / active slot) route their effects
-# into the running fight. Empty when not in combat.
-var combat_scene = null
-var combat_player = null
-# True while an event modal is open — the only non-combat place a pill may be
-# used (gates the backpack's Use button).
-var event_active: bool = false
 # Live overworld scene, registered while the player is on the map. Lets
 # overworld_usable items (Winged Boots) route their item_used effect to the map
 # so they can be fired from the backpack / overworld HUD. Null off the map.
@@ -664,39 +541,6 @@ var node_kinds: Dictionary = {}
 # (RunGraph.set_rifts); this is the copy the save carries. Empty for a run with
 # rifts off and for any save written before rifts existed.
 var rifts: Array = []
-
-# === Curses / status ===
-var active_curses: Array = []            # Array[Dictionary] for now
-var pending_combat_statuses: Array = []  # carryover from events
-
-# Carryover from a pre-combat event into the next combat the player enters.
-# Drained (and cleared) when that combat starts. All three modes honour them.
-#   pending_ambush — "" / "ambush" (player gets the drop on the enemy) /
-#                    "ambushed" (the enemy gets the drop on the player).
-#   pending_spawn_enemies — Array of { "enemy": StringName, "count": int };
-#                    extra enemies added on top of the encounter (deckbuilder).
-var pending_ambush: String = ""
-var pending_spawn_enemies: Array = []
-
-# Carryover scroll effects that land at the START of the next combat, drained by
-# each combat mode's start hook (ScrollSystem.apply_pending_combat_effects).
-# Mirror how pending_ambush / pending_spawn_enemies already work cross-mode.
-#   pending_enemy_buff — { "power": int, "defense": int } added to every enemy
-#                        (Scroll of Aggravate Monsters).
-#   pending_enemy_start_stun — { "all": bool, "count": int, "choose": int }:
-#                        `all` stuns every enemy, `count` stuns that many random
-#                        enemies, `choose` lets the player pick up to N to stun
-#                        (Scroll of Scare Monster).
-#   pending_fire_damage_all — flat fire damage dealt to every enemy at combat
-#                        start (Scroll of Fire).
-var pending_enemy_buff: Dictionary = {}
-var pending_enemy_start_stun: Dictionary = {}
-var pending_fire_damage_all: int = 0
-
-# "A Note For Yourself" stores a card id here so the next encounter can hand it
-# back. Empty until the player stores one; the event seeds a default the first
-# time (a combat-era event effect; the set it came from is gone).
-var note_for_yourself_card: StringName = &""
 
 # === Phase ===
 enum Phase { MENU, OVERWORLD, EVENT, COMBAT, DEAD, ESCAPE, WIN }
@@ -1111,31 +955,11 @@ func _trigger_gates_pass(trig: Dictionary, ctx: Dictionary) -> bool:
 		return false
 	return true
 
-# --- Curse / curse-card tallies -------------------------------------------
-# A "curse" (active_curses) and a "curse card" (a CURSE-type card in the deck)
-# are DIFFERENT things. Death Orb / Du-Vu Doll / Vitality Orb count curses
-# only; Golden Beetle counts both. Keep these two helpers the single source of
-# truth so item effects (value_from / stacks_from) and the design stay aligned.
-
-# Number of active curses the player is currently saddled with.
+# --- Curse tally -----------------------------------------------------------
+# How many curses the run is carrying: the live curse goals (curse_goals). The
+# `curses` dynamic source (EffectSystem.value_from) counts these.
 func curse_count() -> int:
-	return active_curses.size()
-
-# Lifts an active curse (events / shrines / future "cleanse" effects). Removes
-# the first active_curses entry matching `curse_id` and fires curse_removed so
-# items react (Golden Beetle -> a chest). Returns the resolved CurseData that
-# was lifted, or null if no such curse was active.
-func remove_active_curse(curse_id: StringName) -> CurseData:
-	for i in range(active_curses.size()):
-		var entry = active_curses[i]
-		if entry is Dictionary and StringName(entry.get("id", "")) == curse_id:
-			active_curses.remove_at(i)
-			var cd: CurseData = Data.get_curse(curse_id)
-			var nm: String = cd.display_name if cd != null else String(curse_id)
-			Notifications.notify("Curse lifted: %s" % nm, Color(0.7, 0.95, 0.8))
-			TriggerBus.emit_signal("curse_removed", {"curse": cd})
-			return cd
-	return null
+	return curse_goals.size()
 
 # === Chests (item rewards) =================================================
 # A "chest" is the project's parlance for an item-reward — the gold-less
@@ -1322,29 +1146,6 @@ func take_pending_chest() -> int:
 	pending_chests -= 1
 	return int(pending_chest_choices.pop_front()) if not pending_chest_choices.is_empty() else 0
 
-# Every effect dict of `effect_type` among active curses' CurseData.effects —
-# one entry per active_curses ROW, not per distinct curse, so a curse held
-# twice (two identical entries, however that happened — bad luck on two random
-# draws, or Vulnerability duplicating a grant) contributes its effect dict
-# twice. Callers that stack (Decay's downgrade roll, Shroud's choice
-# reduction, Vulnerability's duplicate count) use .size() or sum over this;
-# callers that are just a boolean gate (Misfortune's disadvantage) only check
-# is_empty(). Affliction effects are passive modifiers read directly by the
-# systems they touch (item rewards, event dice rolls, overworld portal
-# choices) rather than fired through EffectSystem — see CurseData.gd.
-func active_affliction_effects(effect_type: String) -> Array:
-	var out: Array = []
-	for entry in active_curses:
-		if not (entry is Dictionary):
-			continue
-		var cd: CurseData = Data.get_curse(StringName(entry.get("id", "")))
-		if cd == null:
-			continue
-		for eff in cd.effects:
-			if eff is Dictionary and String(eff.get("type", "")) == effect_type:
-				out.append(eff)
-	return out
-
 # Put every private random stream in the game back onto the run's seed.
 #
 # Most of the game rolls off Godot's GLOBAL stream, which `reset_run` seeds
@@ -1365,7 +1166,6 @@ func reseed_run_streams() -> void:
 
 func reset_run() -> void:
 	character_id = &""
-	selected_deck = &""
 	save_name = ""
 	current_game_id = &""
 	start_game_id = &""
@@ -1412,7 +1212,6 @@ func reset_run() -> void:
 	max_hp = 75
 	hp = 75
 	max_energy = 3
-	hand_size = 5
 	strength = 0
 	dexterity = 0
 	intelligence = 0
@@ -1421,8 +1220,6 @@ func reset_run() -> void:
 	luck = 0
 	speed = 0
 	harvesting = 0
-	crit_chance = 0
-	crit_damage = 100
 	# Zeroed, not defaulted to a purse: apply_character2 puts the character's
 	# start_gold in immediately after, and a run booted without a character
 	# should hold nothing rather than a stale number.
@@ -1448,16 +1245,7 @@ func reset_run() -> void:
 	# different capsules next run, which is the whole reason learning one is worth
 	# anything.
 	pill_color_map.clear()
-	learned_spells.clear()
-	action_left_card_id = &""
-	action_right_card_id = &""
-	action_active_item_id = &""
-	action_charged_item_id = &""
-	_action_upgraded_cache.clear()
 	temp_stat_bonus.clear()
-	event_block = 0
-	combat_scene = null
-	combat_player = null
 	# overworld_scene is NOT cleared here. It is a SCENE-LIFECYCLE registration
 	# (Overworld2 registers on mount and clears it in _exit_tree), not run state —
 	# and a run reset happens while that scene is still mounted, since booting a run
@@ -1465,7 +1253,6 @@ func reset_run() -> void:
 	# with no registered overworld: nothing able to move the run (can_use_scrolls),
 	# overworld actives unusable (Ride the Bus), and a save unable to find the
 	# screen to capture. The guarded clear_overworld_context is what ends the registration.
-	event_active = false
 	dash_charges = 0
 	reroll_charges = 0
 	fov_bonus = 0
@@ -1481,13 +1268,11 @@ func reset_run() -> void:
 	bombs = 0
 	keys = 0
 	game_choice_bonus = 0
-	regeneration = 0
 	stat_high_water.clear()
 	stat_floor_active = false
 	stat_floor_stats.clear()
 	stat_multiplier_active = false
 	stat_multiplier.clear()
-	temp_status_stacks.clear()
 	player_statuses.clear()
 	timed_statuses.clear()
 	_next_timed_instance = 1
@@ -1507,20 +1292,12 @@ func reset_run() -> void:
 	# rifts — the graph goes back to the bare influence map for the next one.
 	node_kinds.clear()
 	set_rifts([])
-	active_curses.clear()
 	pending_chests = 0
 	pending_chest_choices.clear()
 	masked_characters.clear()
 	pending_masks = 0
 	smelted_loot.clear()
 	smelt_target = null
-	pending_combat_statuses.clear()
-	pending_ambush = ""
-	pending_spawn_enemies.clear()
-	pending_enemy_buff.clear()
-	pending_enemy_start_stun.clear()
-	pending_fire_damage_all = 0
-	note_for_yourself_card = &""
 	Notifications.clear()
 	phase = Phase.MENU
 
@@ -1653,62 +1430,15 @@ func _reset_item_tracking() -> void:
 	max_hp_cap = -1
 	_next_item_instance_id = 1
 	_gold_spent_accum = 0
-	incremental_attacks_total = 0
-	incremental_attacks_turn = 0
-	incremental_turn_pulses = 0
-	incremental_turn = 0
-	incremental_hp_losses = 0
-	incremental_discards_turn = 0
-	pen_nib_double_active = false
-	_streaks.clear()
-	dead_eye_streak = 0
 
 # === Incremental-item counter API ===
 # Called from ItemTriggers.fire so every combat mode keeps the same counters.
-
-# One "time you lost Health this combat" (Blood for Blood's discount).
-# Deckbuilder/action player HP funnels through change_hp, which reports here;
-# strategy battles damage the player UNIT directly (GameState.hp syncs at
-# battle end), so BattleView reports its player HP losses explicitly.
-func incremental_on_player_hp_loss() -> void:
-	incremental_hp_losses += 1
 
 # === Streak API (Dead Eye) ===
 # Shared by every combat mode through EffectSystem's streak_hit / streak_reset
 # handlers and each scene's attack path. A landed player attack grows the
 # streak against the hit target; switching targets or whiffing resets it; the
 # streak's count is folded into outgoing player attacks vs the same target.
-
-# A whiff (Blind) or target switch wipes the named streak entirely.
-func streak_reset(key: String) -> void:
-	if key == "":
-		return
-	_streaks.erase(key)
-	_sync_dead_eye_streak()
-
-# Sum every attack_bonus streak currently locked onto `target`, to fold into an
-# outgoing attack. Logs the exact bonus so the player sees what just landed.
-func streak_attack_bonus(target) -> int:
-	if _streaks.is_empty() or target == null:
-		return 0
-	var bonus: int = 0
-	for key in _streaks:
-		var s: Dictionary = _streaks[key]
-		if not bool(s.get("attack_bonus", false)) or s.get("target") != target:
-			continue
-		var n: int = int(s.get("count", 0))
-		if n <= 0:
-			continue
-		bonus += n
-		var label: String = String(s.get("label", ""))
-		if label == "":
-			label = String(key)
-		GameLog.add("%s: +%d Dmg (streak %d)!" % [label, n, n], Color(0.7, 1.0, 0.7))
-	return bonus
-
-func _sync_dead_eye_streak() -> void:
-	var s: Dictionary = _streaks.get("dead_eye", {})
-	dead_eye_streak = int(s.get("count", 0))
 
 func set_current_game(id: StringName) -> void:
 	# Record the game we're leaving so the map's journey trail can show where the
@@ -1867,12 +1597,6 @@ func change_hp(delta: int, source: String = "") -> void:
 	# set_hp cap it as usual, so doubling into a full pool is still a full pool.
 	if delta > 0 and source != HEALTH_SOURCE_MAX_HP_FILL:
 		delta *= heal_multiplier()
-	# Each in-combat HP loss is one "time you lost Health this combat" for
-	# Blood for Blood's discount — deckbuilder/action player HP loss (enemy
-	# hits, DoT ticks, self-damage cards) funnels through here. Gated on a
-	# live combat scene so event/overworld drains never count.
-	if delta < 0 and combat_scene != null:
-		incremental_on_player_hp_loss()
 	var before: int = hp
 	set_hp(hp + delta)
 	# "You lost Health" (Piggy Bank, §8.1) — fired on what ACTUALLY came off,
@@ -1905,7 +1629,6 @@ func change_gold(delta: int) -> void:
 # gold_on_hit_min/max grants a random amount in that range when it connects with
 # an enemy. Shared by all three combat modes so the roll + log live in one place.
 # `rng` lets each mode pass its seeded generator; null falls back to a global one.
-var _gold_on_hit_rng: RandomNumberGenerator = null
 
 # Gold the player actively SPENDS (shop purchases, card removal, …). Deducts
 # and counts toward Keeper's Sack. Use this — NOT change_gold — wherever the
@@ -2552,6 +2275,10 @@ func add_curse_goal(curse_id: StringName, event_id: StringName = &"", games: int
 		"games_left": -1 if window <= 0 else window,
 	})
 	event_goals_changed.emit()
+	# The run-wide "a curse landed" hook (the OBS ticker's "Cursed — …", any relic
+	# watching curse_applied). Only the retired 1.0 curse list used to fire it, so
+	# for the whole of the curse-goal era a curse landed in silence.
+	TriggerBus.curse_applied.emit({"curse": cd})
 	return true
 
 func has_curse_goal(curse_id: StringName) -> bool:
@@ -3081,14 +2808,6 @@ func clear_overworld_context(scene = null) -> void:
 	if scene == null or overworld_scene == scene:
 		overworld_scene = null
 
-# A USABLE item may only be fired in combat or while an event roll is open.
-# ("Pill" used to be this file's word for a USABLE consumable item, from the
-# combat era. It means the §4.3 loot consumable now — a different thing entirely,
-# which is not an item and is not fired through here — so the old jargon is gone
-# from the two comments that still carried it.)
-func can_use_items() -> bool:
-	return combat_scene != null or event_active
-
 # Whether `item` can be fired right now. USABLE items need a combat/event
 # context; CHARGED actives only need a full bar and can be popped from any
 # screen (combat, backpack, a reward screen).
@@ -3115,7 +2834,7 @@ func can_fire_item(item: ItemData) -> bool:
 		# anywhere else, which is why it is checked first and answered strictly. A
 		# plain usable needs nothing in particular, so it fires wherever the player
 		# is standing.
-		return can_use_items() or overworld_scene != null
+		return overworld_scene != null
 	return false
 
 # Whether the OVERWORLD is mounted and able to act on a loot effect that needs it.
@@ -3146,11 +2865,11 @@ func use_item(item: ItemData, target = null) -> bool:
 	# source, so a null target just keeps the old self-only behaviour.
 	# Off the map combat_scene is null; an overworld active routes its effect to
 	# the registered overworld scene instead so it can open its map UI.
-	var on_overworld: bool = combat_scene == null and item.overworld_usable and overworld_scene != null
+	var on_overworld: bool = item.overworld_usable and overworld_scene != null
 	var ctx := {
-		"source": combat_player,
-		"target": target if target != null else combat_player,
-		"scene": overworld_scene if on_overworld else combat_scene,
+		"source": null,
+		"target": target,
+		"scene": overworld_scene if on_overworld else null,
 		"card": null,
 		"item": item,
 	}
@@ -3186,8 +2905,6 @@ func consume_item_use(item: ItemData) -> void:
 		return
 	item.max_uses -= 1
 	if item.max_uses <= 0:
-		if action_active_item_id == item.id and _count_items(item.id) <= 1:
-			action_active_item_id = &""
 		inventory.erase(item)
 		# A spent item leaves for the same reasons any other does, so it gives
 		# back its passive statuses too — this is the one removal path that does
@@ -3416,10 +3133,9 @@ func _count_items(id: StringName) -> int:
 # Wipes consumable buffs. Called at combat end (deckbuilder/strategy), on
 # leaving a room (action), and when an event closes.
 func clear_temp_buffs() -> void:
-	if temp_stat_bonus.is_empty() and event_block == 0:
+	if temp_stat_bonus.is_empty():
 		return
 	temp_stat_bonus.clear()
-	event_block = 0
 	emit_signal("stats_changed")
 
 # ---------------------------------------------------------------------------
@@ -3445,18 +3161,6 @@ func add_item(template: ItemData) -> ItemData:
 	# minted from a duplicated INSTANCE (Duplicator, the dev panel) would inherit
 	# one, so the slot is zeroed here rather than trusted.
 	inst.counter_value = 0
-	# Curse of Decay: a passive item obtained while it's active has a chance
-	# to arrive already downgraded. Holding it twice rolls twice, independently.
-	if inst.kind == ItemData.ItemKind.PASSIVE:
-		var hits: int = 0
-		for decay in active_affliction_effects("item_downgrade_chance"):
-			if randi() % 100 < int(decay.get("percent", 50)):
-				hits += 1
-		if hits > 0:
-			inst.upgrade_level -= hits
-			Notifications.notify(
-				"%s arrived decayed%s." % [inst.display_name, (" x%d" % hits) if hits > 1 else ""],
-				Color(0.7, 0.55, 0.4))
 	# Snapshot the run resources BEFORE anything the pickup does lands, so the
 	# pickup can REPORT what it changed. An item's payload is its passive
 	# stat_bonuses (a passive +1 Bash, folded in by the recompute below) plus its

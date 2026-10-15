@@ -65,8 +65,8 @@ func _dyn_amount(effect: Dictionary, base_key: String, from_key: String, mult_ke
 		return _dynamic_count(String(effect[from_key])) * int(effect.get(mult_key, 1))
 	return int(effect.get(base_key, 0))
 
-# Live count for a dynamic effect source. Curses are shelved (§5) but the count
-# helper stays valid; "curses" = active curses currently held.
+# Live count for a dynamic effect source. "curses" = the curse goals the run
+# is carrying right now.
 func _dynamic_count(source: String) -> int:
 	match source:
 		"curses":
