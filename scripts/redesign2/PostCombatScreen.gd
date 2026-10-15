@@ -232,19 +232,6 @@ func headline() -> String:
 		_:
 			return "GAME OVER"
 
-func subtitle() -> String:
-	var g: GameData = game()
-	var name: String = g.display_name if g != null else "that game"
-	match verdict():
-		"escaped":
-			return "You left %s unfinished. The evening still counted." % name
-		"beaten":
-			if bool(_snap.get("amulet", false)):
-				return "%s — the Amulet game — is done." % name
-			return "You saw %s through." % name
-		_:
-			return "%s is behind you, goal unmet." % name
-
 # The fight in numbers, as {label: value} in the order the screen prints them.
 func tally() -> Array:
 	var res: Dictionary = _snap.get("res", {})
@@ -485,16 +472,25 @@ func _header() -> Control:
 	# WIDTH PINNED, because two of the three lines autowrap: with nothing to wrap
 	# AGAINST, a shrink-sized block reports the whole sentence on one line and
 	# pushes the button back out to the edge this is here to bring it in from.
-	# The subtitle and the difficulty step wrap at TITLE_W instead.
+	# The difficulty step wraps at TITLE_W instead.
 	words.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	words.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	words.custom_minimum_size = Vector2(TITLE_W, 0)
 	row.add_child(words)
 	words.add_child(_line(headline(), _accent(), 22))
-	words.add_child(_wrapped(subtitle(), UITheme.TEXT, 13))
+	# No sentence under the headline any more ("You saw X through."): the owner
+	# took it out for the room (15 Oct 2026). The headline says how it went, and
+	# the game's name leads its rank bar just below.
 	var step: String = step_line()
 	if step != "":
 		words.add_child(_wrapped(step, UITheme.GOLD, 12))
+	# THE GAME'S RANK GOING UP (§20.4), under the name and beside the cover, so the
+	# picture and its bar read as one thing (the owner, 15 Oct 2026). The bar
+	# fills from where it stood when the game was picked; a snapshot from before
+	# ranks has no ends.
+	if g != null and _snap.has("rank_to"):
+		words.add_child(RankFill.make(int(_snap.get("rank_from", 0)), int(_snap["rank_to"]),
+			g.display_name, false, true))
 
 	# The ★ Rate button USED TO SIT HERE, beside the cover and the name — the right
 	# place by the logic of "put it next to the thing it is about", and the wrong
@@ -502,14 +498,30 @@ func _header() -> Control:
 	# a header it reads as decoration on a screen whose whole job is the haul below
 	# it. It now sits in the FOOTER, immediately left of the button everyone
 	# presses to leave (see `_footer`), where the eye already goes.
-	# THE GAME'S RANK GOING UP (§20.4), beside the name: the bar fills from where
-	# it stood when the game was picked. A snapshot from before ranks has no ends.
-	if g != null and _snap.has("rank_to"):
-		row.add_child(RankFill.make(int(_snap.get("rank_from", 0)), int(_snap["rank_to"])))
 	var tail := Control.new()
 	tail.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(tail)
-	return row
+	if g == null or not _snap.has("character_rank_to"):
+		return row
+	# THE CHARACTER'S RANK (§20.9) directly under the game's: their picture in the
+	# cover's column, their bar in the name's, so the two climbs line up.
+	var block := VBoxContainer.new()
+	block.add_theme_constant_override("separation", UITheme.GAP_HAIR)
+	block.add_child(row)
+	var hero := HBoxContainer.new()
+	hero.name = "CharacterRank"
+	hero.add_theme_constant_override("separation", UITheme.GAP_LOOSE)
+	var slot := CenterContainer.new()
+	slot.custom_minimum_size = Vector2(COVER.x, 0)
+	hero.add_child(slot)
+	var ch: CharacterData = Data.get_character2(StringName(_snap.get("character_id", "")))
+	if ch != null and (ch.icon != null or ch.portrait != null):
+		slot.add_child(UITheme.crisp_tex(ch.icon if ch.icon != null else ch.portrait,
+			int(RankFill.CIRCLE_COMPACT)))
+	hero.add_child(RankFill.make(int(_snap.get("character_rank_from", 0)),
+		int(_snap["character_rank_to"]), String(_snap.get("character_name", "")), true, true))
+	block.add_child(hero)
+	return block
 
 # The rating entry point for this screen. It does NOT go through
 # Overworld2._prompt_rating, which is wired to the page's own tier list and its

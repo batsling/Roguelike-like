@@ -211,7 +211,12 @@ func test_wish_bone_breaks_into_a_relic() -> void:
 	var bone: Dictionary = _trinket(&"wish_bone", 0)
 	var held: int = GameState.inventory.size()
 	EffectSystem.apply({"type": "break_into", "item": "random_item"}, {"loot_entry": bone})
-	assert_true(_at(0).is_empty())
+	# The BONE is gone, which is not the same as its slot being empty: four
+	# relics (Caffeine Pill, Cauldron, Lucky Foot, Mom's Coin Purse) put loot in
+	# the pack on pickup, and it lands in the slot the bone just left. Asking for
+	# an empty slot failed about one run in sixteen.
+	assert_false(GameState.loot_items.any(func(e): return e.get("id") == &"wish_bone"),
+		"the Wish Bone left the pack")
 	assert_eq(GameState.inventory.size(), held + 1, "one random relic")
 
 # --- Flat Penny ------------------------------------------------------------------

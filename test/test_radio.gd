@@ -20,6 +20,10 @@ var _saved_stats: Dictionary
 var _saved_log: Dictionary
 var _saved_goal_log: Dictionary
 var _saved_levelups: Dictionary
+# Character ranks (§20.9) draw from a game's songs too, so a character record
+# left by an earlier test would draw songs these tests do not expect.
+var _saved_character: Array
+var _saved_drawn_by: Dictionary
 var _saved_unlocked: Dictionary
 var _saved_favorites: Dictionary
 var _saved_folder: String
@@ -49,6 +53,17 @@ func before_each() -> void:
 	GameStats.enemy_log = {}
 	GameStats.goal_log = {}
 	GameStats.levelup_log = {}
+	_saved_character = [GameStats.character_enemy_log.duplicate(true),
+		GameStats.character_game_log.duplicate(true),
+		GameStats.character_goal_log.duplicate(true), GameStats.runs.duplicate(true),
+		GameState.character_id]
+	GameStats.character_enemy_log = {}
+	GameStats.character_game_log = {}
+	GameStats.character_goal_log = {}
+	GameStats.runs = []
+	GameState.character_id = &""
+	_saved_drawn_by = Radio._drawn_by.duplicate()
+	Radio._drawn_by = {}
 	Radio._unlocked = {}
 	Radio._favorites = {}
 	Radio.folder = FOLDER
@@ -82,6 +97,12 @@ func after_each() -> void:
 	GameStats.enemy_log = _saved_log
 	GameStats.goal_log = _saved_goal_log
 	GameStats.levelup_log = _saved_levelups
+	GameStats.character_enemy_log = _saved_character[0]
+	GameStats.character_game_log = _saved_character[1]
+	GameStats.character_goal_log = _saved_character[2]
+	GameStats.runs = _saved_character[3]
+	GameState.character_id = _saved_character[4]
+	Radio._drawn_by = _saved_drawn_by
 	Radio._unlocked = _saved_unlocked
 	Radio._favorites = _saved_favorites
 	Radio._save_unlocked()
@@ -800,7 +821,7 @@ func test_the_screen_lists_every_song_and_drives_the_radio() -> void:
 	Radio.next()
 	var screen := RadioScreen.open(self)
 	await get_tree().process_frame
-	assert_eq(screen._list.get_child_count(), 2)
+	assert_eq(_non_character_rows(screen), 2)
 	assert_string_contains(screen._summary.text, "1 of 2")
 	assert_string_contains(screen._now_title.text, "A")
 	var text: String = ""
@@ -824,7 +845,7 @@ func test_a_games_locked_songs_are_one_row_saying_how_close_the_game_is() -> voi
 	_locked("bal", OTHER)
 	var screen := RadioScreen.open(self)
 	await get_tree().process_frame
-	assert_eq(screen._list.get_child_count(), 3, "the unlocked song, then one row per game")
+	assert_eq(_non_character_rows(screen), 3, "the unlocked song, then one row per game")
 	var text: String = ""
 	for row in screen._list.get_children():
 		for l in row.find_children("*", "Label", true, false):
@@ -1153,3 +1174,97 @@ func test_a_songs_picture_is_its_games_cover() -> void:
 	Radio.play_song(s.id)
 	var game: GameData = Data.get_game(GAME)
 	assert_eq(String(Radio.payload().get("art", "")), game.cover_path)
+
+# --- character ranks (§20.9) -------------------------------------------------
+#
+# Zagreus's music is Hades's (GAME): the same songs, drawn by either rank.
+
+const HERO := &"zagreus"
+
+func _hero_rank(n: int) -> void:
+	# Wins as Zagreus, like `_rank`: rank n is 5n - 1 wins.
+	GameStats.character_game_log = {String(HERO): {"elsewhere": {"beaten": 0 if n <= 0 else 5 * n - 1}}}
+	assert_eq(GameRanks.character_rank(HERO), n)
+
+func test_a_characters_rank_draws_a_song_from_its_game() -> void:
+	for i in range(4):
+		_locked("h%d" % i)
+	_hero_rank(1)
+	Radio.refresh_unlocks(false)
+	var got: Array = _unlocked_of(GAME)
+	assert_eq(got.size(), 1, "rank 1 as Zagreus is one Hades song")
+	assert_eq(Radio.drawn_for(Data.get_song(StringName(got[0]))), HERO, "and it was his")
+
+func test_a_characters_songs_come_on_top_of_its_games() -> void:
+	for i in range(6):
+		_locked("h%d" % i)
+	_rank(GAME, 2)
+	_hero_rank(1)
+	Radio.refresh_unlocks(false)
+	assert_eq(_unlocked_of(GAME).size(), 3, "Hades rank 2 + Zagreus rank 1")
+	assert_eq(Radio.character_drawn(HERO), 1)
+
+func test_a_characters_draws_do_not_eat_the_games() -> void:
+	for i in range(6):
+		_locked("h%d" % i)
+	_hero_rank(2)
+	Radio.refresh_unlocks(false)
+	_rank(GAME, 1)
+	Radio.refresh_unlocks(false)
+	assert_eq(_unlocked_of(GAME).size(), 3, "Hades's first rank still owes its own song")
+
+func test_a_shared_pool_runs_dry() -> void:
+	_locked("h1")
+	_rank(GAME, 1)
+	_hero_rank(3)
+	Radio.refresh_unlocks(false)
+	assert_eq(_unlocked_of(GAME).size(), 1, "one song is all there is")
+	assert_eq(Radio.character_drawn(HERO), 0, "the game drew first")
+
+func test_a_character_with_no_songs_draws_nothing() -> void:
+	_locked("h1")
+	GameStats.character_game_log = {"rodney": {"rogue": {"beaten": 4}}}
+	assert_eq(GameRanks.character_rank(&"rodney"), 1)
+	Radio.refresh_unlocks(false)
+	assert_eq(_unlocked_of(GAME), [], "Rogue has no songs, and Hades's are not his")
+	assert_string_contains(Radio.character_rank_line(&"rodney"), "no Rogue songs")
+
+func test_isaac_draws_from_both_soundtracks() -> void:
+	var ch: CharacterData = Data.get_character2(&"isaac")
+	assert_eq(ch.music_games, [&"the_binding_of_isaac", &"the_binding_of_isaac_rebirth"] as Array[StringName])
+	_locked("rebirth_only", &"the_binding_of_isaac_rebirth")
+	GameStats.character_game_log = {"isaac": {"x": {"beaten": 4}}}
+	Radio.refresh_unlocks(false)
+	assert_eq(_unlocked_of(&"the_binding_of_isaac_rebirth"), ["rebirth_only"])
+
+func test_who_drew_a_song_survives_a_reload() -> void:
+	for i in range(3):
+		_locked("h%d" % i)
+	_hero_rank(1)
+	Radio.refresh_unlocks(false)
+	Radio._load_unlocked()
+	assert_eq(Radio.character_drawn(HERO), 1)
+	Radio.refresh_unlocks(false)
+	assert_eq(_unlocked_of(GAME).size(), 1, "nothing owed twice after a reload")
+
+func test_the_radio_screen_lists_a_character_still_owed_songs() -> void:
+	# Zagreus's soundtrack is Hades's, which holds a locked song here.
+	_locked("h1")
+	_locked("h2")
+	var screen := RadioScreen.open(self)
+	await get_tree().process_frame
+	var names: Array = []
+	for r in screen._list.get_children():
+		if r.has_meta("character"):
+			for l in r.find_children("*", "Label", true, false):
+				names.append((l as Label).text)
+	assert_true(names.any(func(t): return String(t).begins_with("Zagreus  —  2 songs")),
+		"a row for Zagreus: %s" % [names])
+	screen.close()
+	await get_tree().process_frame
+
+# The list's rows less the characters' (§20.9): what the tests about GAME rows
+# count, since a game's soundtrack is often a character's too.
+func _non_character_rows(screen) -> int:
+	return screen._list.get_children().filter(
+		func(r): return not r.has_meta("character")).size()

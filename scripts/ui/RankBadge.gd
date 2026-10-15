@@ -16,6 +16,9 @@ extends Control
 # never added to the art itself: `wrap` hands back a holder that is the cover
 # plus the overhang, laid out as one piece — whatever sits under the cover moves
 # down to clear it, and nothing between the badge and the holder clips.
+#
+# A CHARACTER'S RANK (§20.9) wears the same badge, on its portrait: `wrap_character`.
+# Same circle, same bar, never any awards.
 
 const SILVER := Color(0.80, 0.82, 0.88)
 const RING := Color(0.0, 0.0, 0.0, 0.55)
@@ -38,6 +41,8 @@ const BAR_GAP := 2.0   # between the circle and the bar under it
 const FOOT := 2.0      # below the bar, so it never touches what comes next
 
 var game_id: StringName = &""
+# Set instead of game_id for a character's badge.
+var character_id: StringName = &""
 var awards: bool = false
 # Where the cover's bottom edge is, in this badge's own space. The badge covers
 # the whole holder (cover plus overhang); the edge is where the cover stops.
@@ -61,6 +66,15 @@ static func overhang_for(width: float) -> float:
 # Hand it the outermost box of the cover — a frame, a plate — so the badge sits
 # on the edge you see.
 static func wrap(cover: Control, game, with_awards: bool = false) -> Control:
+	return _wrap(cover, String(game), "", with_awards)
+
+# `cover` (a character's portrait) with `character`'s rank badge, laid out the
+# same way as a game's.
+static func wrap_character(cover: Control, character) -> Control:
+	return _wrap(cover, "", String(character), false)
+
+static func _wrap(cover: Control, game: String, character: String,
+		with_awards: bool) -> Control:
 	# What the cover needs: its own minimum, or a frame's measured round what
 	# it holds.
 	var box: Vector2 = cover.get_combined_minimum_size()
@@ -69,7 +83,7 @@ static func wrap(cover: Control, game, with_awards: bool = false) -> Control:
 	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	holder.size_flags_horizontal = cover.size_flags_horizontal
 	holder.size_flags_vertical = cover.size_flags_vertical
-	var ranked: bool = String(game) != ""
+	var ranked: bool = game != "" or character != ""
 	cover.set_anchors_preset(Control.PRESET_TOP_WIDE)
 	cover.offset_left = 0.0
 	cover.offset_right = 0.0
@@ -80,6 +94,7 @@ static func wrap(cover: Control, game, with_awards: bool = false) -> Control:
 		badge = RankBadge.new()
 		badge.name = "RankBadge"
 		badge.game_id = StringName(game)
+		badge.character_id = StringName(character)
 		badge.awards = with_awards
 		badge.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		holder.add_child(badge)
@@ -101,9 +116,10 @@ static func wrap(cover: Control, game, with_awards: bool = false) -> Control:
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_progress = GameRanks.progress(game_id)
+	_progress = GameRanks.character_progress(character_id) if character_id != &"" \
+		else GameRanks.progress(game_id)
 	_number = _make_label(str(int(_progress["rank"])), UITheme.TEXT)
-	if awards:
+	if awards and character_id == &"":
 		var beaten: bool = GameStats.beaten_count(game_id) > 0
 		if beaten:
 			var perfect: bool = GameStats.perfect_count(game_id) > 0
@@ -157,6 +173,15 @@ func _layout() -> void:
 	_number.add_theme_font_size_override("font_size", font)
 	_number.position = c - Vector2(d, d) * 0.5
 	_number.size = Vector2(d, d)
+	# A NUMBER WIDER THAN THE CIRCLE (rank 100 and up) is shrunk to fit inside
+	# it, rather than given a font size off UITheme's scale: the smallest step
+	# there is already what a small badge uses, and "281" at it still spills.
+	var text_w: float = _number.get_theme_font("font").get_string_size(_number.text,
+		HORIZONTAL_ALIGNMENT_LEFT, -1, font).x
+	var room: float = d - 4.0
+	var k: float = minf(1.0, room / text_w) if text_w > 0.0 else 1.0
+	_number.pivot_offset = Vector2(d, d) * 0.5
+	_number.scale = Vector2(k, k)
 	var side: Vector2 = Vector2(d, d)
 	var glyph: int = UITheme.FONT_SUB if d >= 24.0 else UITheme.FONT_LABEL
 	if _star != null:

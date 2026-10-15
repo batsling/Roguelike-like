@@ -10,6 +10,7 @@ id = &"regent"
 display_name = "Regent"
 description = "Heir to the Throne of Stars. Wields cosmic powers but his minions do the work."
 source_game = "Slay the Spire 2"
+music_games = Array[StringName]([&"slay_the_spire_2"])
 base_max_hp = 7
 start_gold = 3
 start_bash = 0

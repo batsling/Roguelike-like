@@ -7257,8 +7257,12 @@ func test_the_haul_screen_says_which_report_this_was() -> void:
 		return
 	assert_eq(screen.verdict(), "beaten", "the goal was met and the game finished")
 	assert_eq(screen.game(), played, "about the game that was just played")
-	assert_true(played.display_name in screen.subtitle(),
-		"which it names: %s" % screen.subtitle())
+	# Named on the game's rank bar, under the headline.
+	var fill: RankFill = screen.find_child("RankFill", true, false)
+	assert_not_null(fill, "the game's rank bar is on the header")
+	if fill != null:
+		assert_true(fill.label.trim_suffix("…") in played.display_name,
+			"which names the game: %s" % fill.label)
 	_leave_post_game()
 
 func test_a_missed_goal_and_a_walk_away_read_differently() -> void:

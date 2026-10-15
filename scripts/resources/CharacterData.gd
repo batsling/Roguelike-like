@@ -8,6 +8,11 @@ extends Resource
 # e.g. "Slay the Spire"). Shown as a "From: <game>" line on character
 # select / Collection, like the HTML details panel. Purely informational.
 @export var source_game: String = ""
+# The games whose SOUNDTRACKS this character's ranks draw songs from
+# (docs/games-first-redesign.md §20.9): the sheet's `Radio` column, or its Game
+# when that is blank. Empty when the game is not on the chart. Isaac draws from
+# two, The Binding of Isaac and Rebirth.
+@export var music_games: Array[StringName] = []
 
 # Starting stats
 @export var base_max_hp: int = 75

@@ -3106,7 +3106,7 @@ Resource schema in `scripts/resources/`.
 
 - **characters** — `Name | Game | Health | Gold | Bash | Dash | Push | Transmute |
   Scramble | Bombs | Keys | Random | Level Up | Reward | Description |
-  Starting loadout | File`. Drives the starting loadout (§3) and the Level Up loop
+  Starting loadout | File | Radio` (Radio: §20.9). Drives the starting loadout (§3) and the Level Up loop
   (§3.1). 11 characters.
 - **items2.0** — `Name | Rating | Type | Description | Effect | Reference | tags |
   File | Sorting` (§8). 14 items. `Effect` column currently empty → the structured
@@ -5552,7 +5552,8 @@ favourites are kept either way. It changes no rank.
   the Collection's plate) so it sits on the edge you see. The bar is capped at
   1.8 circles wide, so it reads as part of the badge.
 - **The end-of-game fill:** `scripts/ui/RankFill.gd`, in `PostCombatScreen`'s
-  header. It fills from `GameLoop2.rank_start` (taken in `Overworld2._begin_game`,
+  header, under the game's name beside its cover (the character's under it,
+  §20.9). It fills from `GameLoop2.rank_start` (taken in `Overworld2._begin_game`,
   saved with the run) to the XP after the report. Those two ends ride the
   post-game snapshot as `rank_from` / `rank_to`.
 - **The overlay:** the `now` payload carries `rank: {rank, fraction}`, and the page
@@ -5567,3 +5568,64 @@ favourites are kept either way. It changes no rank.
 - **A rank with no song left gives nothing** for now — visual only. The owner will
   decide what fills it later.
 - No profile-wide total, and no rank on the run-over screen.
+
+### 20.9 Character ranks
+
+**Every character ranks up too**, with the same bar, the same 250 XP a rank and
+the same table as §20.1, held by the profile with no cap. Designed with the
+owner on 15 Oct 2026. **A character's rank-up is, for now, worth the same thing
+a game's is: one song**, drawn from the character's own game's soundtrack.
+
+**What fills it: everything done PLAYING AS that character, at any game.**
+
+| Source | XP | How often |
+|---|---|---|
+| A win as them, at any game | **100**, then **50** | the first win as them, then every later one |
+| An Amulet win as them | **+200** | once per character |
+| A perfected visit as them | **+100** | once per character |
+| A goal beaten as them | by tier, as §20.1 | **once per distinct goal per character**, wherever it was beaten |
+
+So five Monkeys at five games are one Monkey to the Ironclad, where they are
+five goals to five games' bars. A Mysterious Mask's level-up is a goal of the
+character being PLAYED (it is the masked character's condition, met by
+someone else).
+
+**The songs: the same pool as the game's, added up.** A character draws from its
+`music_games` (the `characters` sheet's `Radio` column, `;`-separated game
+names, blank meaning its `Game`): Isaac draws from both The Binding of Isaac and
+Rebirth, everyone else from their one game. Each drawn song remembers whose
+rank drew it (`radio.json`'s `drawn_by`), so a game is owed its rank minus the
+songs IT drew and a character its rank minus the songs IT drew: Slay the Spire
+at rank 3 and the Ironclad at rank 2 is five Slay the Spire songs. Games draw
+first. A pool with nothing left draws nothing; the rank still shows. **Regent
+(Slay the Spire 2) and Rodney (Rogue) have no songs on the sheet yet**, so their
+ranks wait: a song added later is drawn for the ranks already earned.
+
+**Derived, never stored, like a game's (§20.3)**, out of what `GameStats` keeps
+per character: `character_game_log` (wins, and since this section Amulet wins
+and perfects), `character_enemy_log` (enemies and bosses), the character's own
+level-ups in `levelup_log`, and `character_goal_log` (every other kind, from
+this build on). **What an old save backfills:** wins, enemy and boss goals, own
+level-ups, and an Amulet win if the run history (capped at 40 runs) has a won
+run as them. Weapon, status, bonus and curse goals, and perfects, were never
+recorded per character, so they count from this build.
+
+**Where it shows:** the badge (§20.5, no awards) on the character picker's
+tiles and on the Collection's character grid and page, the page adding a line
+("Rank 2 · 120 XP to the next Hades song"); a row on the Radio screen for every
+character whose soundtrack still has locked songs, sorted in among the games'
+rows by how close each is to a song; and on the end-of-game screen (§20.4),
+snapshotted with `rank_start` the same way. There, both bars sit on the LEFT
+under the title (the owner, 15 Oct 2026): the game's beside its cover, named,
+and the character's directly under it beside the character's icon, so each
+picture reads as joined to its climb. They are the compact size of `RankFill`.
+Not on the OBS overlay, and the radio's unlock toast is the same for a
+character's song as a game's.
+
+**A rank of 100 or more** is shrunk to fit inside its circle, on any badge: the
+smallest font on the scale is what a small badge already uses.
+
+**Where it lives:** `GameRanks.character_xp` / `character_progress`,
+`GameStats.character_goals` / `character_wins` / `character_amulet_wins` /
+`character_perfects`, `Radio.character_earned` and `_draw`,
+`RankBadge.wrap_character`, `RankFill.make(from, to, name)`.

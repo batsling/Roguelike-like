@@ -1450,11 +1450,25 @@ func _rank_from(game: GameData) -> int:
 		return int(start.get("xp", 0))
 	return GameRanks.xp(game.id)
 
+func _character_display_name() -> String:
+	var ch: CharacterData = Data.get_character2(GameState.character_id)
+	return ch.display_name if ch != null else String(GameState.character_id).capitalize()
+
+# The same for the character being played (§20.9).
+func _character_rank_from() -> int:
+	var start: Dictionary = GameLoop2.rank_start
+	if String(start.get("character", "")) == String(GameState.character_id) \
+			and start.has("character_xp"):
+		return int(start["character_xp"])
+	return GameRanks.character_xp(GameState.character_id)
+
 func _begin_game(game: GameData, enemy: GoalEnemyData, tier: int,
 		log_shields: bool = true) -> void:
 	# Where the game's rank bar stood as it was picked (§20.4), for the end-of-game
 	# screen to fill from.
-	GameLoop2.rank_start = {"game": String(game.id), "xp": GameRanks.xp(game.id)} \
+	GameLoop2.rank_start = {"game": String(game.id), "xp": GameRanks.xp(game.id),
+		"character": String(GameState.character_id),
+		"character_xp": GameRanks.character_xp(GameState.character_id)} \
 		if game != null else {}
 	# THE TIER CAN STEP RIGHT HERE NOW (§19.6). The counter it reads is spawn
 	# events, and an arrival that lands bodies IS one — so committing a game can
@@ -2580,8 +2594,10 @@ func report(beaten: bool, fulfilled: Variant = null, escaped: bool = false,
 			GameStats.record_beaten(played_game.id)
 		if perfect_visit:
 			GameStats.record_perfect(played_game.id)
-		# …and on the character's page: beaten playing as THIS character.
-		GameStats.record_character_game(GameState.character_id, played_game.id)
+		# …and on the character's page: beaten playing as THIS character, which
+		# is also what its rank counts (§20.9).
+		GameStats.record_character_game(GameState.character_id, played_game.id,
+			was_amulet, perfect_visit)
 	elif played_game != null and not escaped and was_amulet:
 		# The Amulet game finished WITHOUT its enemy's goal: still the run's win
 		# (see the was_amulet branch below), so it is still the game the win goes
@@ -2589,7 +2605,8 @@ func report(beaten: bool, fulfilled: Variant = null, escaped: bool = false,
 		GameStats.record_amulet_win(played_game.id)
 		if perfect_visit:
 			GameStats.record_perfect(played_game.id)
-		GameStats.record_character_game(GameState.character_id, played_game.id)
+		GameStats.record_character_game(GameState.character_id, played_game.id,
+			true, perfect_visit)
 	# Level up (§3.1) — a fresh chance each game; skipped if the game just killed
 	# the player.
 	if leveled and not GameLoop2.run_over:
@@ -2698,6 +2715,11 @@ func report(beaten: bool, fulfilled: Variant = null, escaped: bool = false,
 		# recorded (a save from before ranks), so the bar shows without filling.
 		"rank_from": _rank_from(played_game),
 		"rank_to": GameRanks.xp(played_game.id) if played_game != null else 0,
+		# …and THE CHARACTER'S (§20.9), the same way.
+		"character_rank_from": _character_rank_from(),
+		"character_rank_to": GameRanks.character_xp(GameState.character_id),
+		"character_name": _character_display_name(),
+		"character_id": String(GameState.character_id),
 	}
 	# The offering is BUILT here and shown later (_refresh_stage): a Scramble or a
 	# Dash taken off the haul screen still has a table to act on, and the cards are

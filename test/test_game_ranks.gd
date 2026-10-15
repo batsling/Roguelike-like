@@ -10,6 +10,9 @@ var _saved_stats: Dictionary
 var _saved_log: Dictionary
 var _saved_goal_log: Dictionary
 var _saved_levelups: Dictionary
+# Character ranks (§20.9) draw from a game's songs too, so a character record
+# left by an earlier test would draw songs these tests do not expect.
+var _saved_character: Array
 
 func before_each() -> void:
 	_saved_stats = GameStats.stats.duplicate(true)
@@ -20,12 +23,29 @@ func before_each() -> void:
 	GameStats.enemy_log = {}
 	GameStats.goal_log = {}
 	GameStats.levelup_log = {}
+	_saved_character = [GameStats.character_enemy_log.duplicate(true),
+		GameStats.character_game_log.duplicate(true),
+		GameStats.character_goal_log.duplicate(true), GameStats.runs.duplicate(true),
+		GameState.character_id]
+	GameStats.character_enemy_log = {}
+	GameStats.character_game_log = {}
+	GameStats.character_goal_log = {}
+	GameStats.runs = []
+	GameState.character_id = &""
 
 func after_each() -> void:
 	GameStats.stats = _saved_stats
 	GameStats.enemy_log = _saved_log
 	GameStats.goal_log = _saved_goal_log
 	GameStats.levelup_log = _saved_levelups
+	GameStats.character_enemy_log = _saved_character[0]
+	GameStats.character_game_log = _saved_character[1]
+	GameStats.character_goal_log = _saved_character[2]
+	GameStats.runs = _saved_character[3]
+	GameState.character_id = _saved_character[4]
+	# Put the profile's own record back ON DISK too: every record_* call above
+	# saved the test's state over it, and the suite shares the real save folder.
+	GameStats.save_data()
 
 func _enemy(tier: int, boss: bool = false, game_beaten: bool = false,
 		count: int = 0) -> GoalEnemyData:
@@ -196,3 +216,106 @@ func test_the_fill_never_runs_backwards() -> void:
 	var f := RankFill.make(300, 100)
 	assert_eq(f.to_xp, 300)
 	assert_eq(f.gained(), 0)
+
+# --- character ranks (§20.9) -------------------------------------------------
+
+const HERO := &"ironclad"
+
+func test_a_characters_wins_count_across_every_game() -> void:
+	GameStats.record_character_game(HERO, &"hades")
+	GameStats.record_character_game(HERO, &"balatro")
+	GameStats.record_character_game(HERO, &"balatro")
+	assert_eq(GameStats.character_wins(HERO), 3)
+	assert_eq(GameRanks.character_xp(HERO), 100 + 50 + 50,
+		"the first win as them is 100, every later one 50, whatever the game")
+
+func test_a_characters_amulet_and_perfect_pay_once_each() -> void:
+	GameStats.record_character_game(HERO, &"hades", true, true)
+	GameStats.record_character_game(HERO, &"balatro", true, true)
+	assert_eq(GameRanks.character_xp(HERO),
+		GameRanks.wins_xp(2) + GameRanks.XP_AMULET + GameRanks.XP_PERFECT)
+
+func test_a_goal_pays_a_character_once_wherever_it_is_beaten() -> void:
+	var monkey: GoalEnemyData = Data.get_goal_enemy_any(&"monkey")
+	GameStats.record_character_enemy(HERO, &"monkey")
+	GameStats.record_character_enemy(HERO, &"monkey")
+	assert_eq(GameRanks.character_xp(HERO), GameRanks.enemy_goal_xp(monkey),
+		"five Monkeys at five games are one Monkey to the Ironclad")
+
+func test_another_characters_record_is_not_this_ones() -> void:
+	GameStats.record_character_game(&"zagreus", &"hades")
+	GameStats.record_character_enemy(&"zagreus", &"monkey")
+	assert_eq(GameRanks.character_xp(HERO), 0)
+
+func test_a_goal_ticked_at_a_game_lands_on_whoever_was_playing() -> void:
+	GameState.character_id = HERO
+	GameStats.record_goal(&"hades", "weapon", "lightning_ring", "Lightning Ring")
+	GameStats.record_goal(&"balatro", "weapon", "lightning_ring", "Lightning Ring")
+	var goals: Dictionary = GameStats.character_goals(HERO)
+	assert_eq((goals.get("weapon", []) as Array).size(), 1, "one weapon goal, counted once")
+	assert_eq(GameRanks.character_xp(HERO), GameRanks.XP_OTHER_GOAL)
+
+func test_a_masked_level_is_the_players_goal_not_the_masks() -> void:
+	GameState.character_id = HERO
+	GameStats.record_level_up(&"hades", &"zagreus", true)
+	assert_true(GameStats.character_goals(HERO).has("character"),
+		"the Ironclad took Zagreus's level: a goal on the Ironclad's record")
+	assert_eq(GameRanks.character_xp(&"zagreus"), 0, "Zagreus was not playing")
+
+func test_an_own_level_up_counts_once() -> void:
+	GameState.character_id = HERO
+	GameStats.record_level_up(&"hades", HERO)
+	GameStats.record_level_up(&"balatro", HERO)
+	assert_eq(GameRanks.character_xp(HERO), GameRanks.XP_OTHER_GOAL)
+
+func test_an_old_save_backfills_level_ups_and_amulet_wins() -> void:
+	# Nothing in character_goal_log or the amulet count: only what older saves
+	# already kept, the level-up log and the run history.
+	GameStats.levelup_log = {"hades": {String(HERO): {"levels": 2, "note": ""}}}
+	GameStats.runs = [{"path": ["a", "b"], "won": true, "character": String(HERO)}]
+	assert_eq(GameRanks.character_xp(HERO), GameRanks.XP_OTHER_GOAL + GameRanks.XP_AMULET)
+
+func test_a_perfect_survives_a_reload() -> void:
+	# It used to be dropped by load_data, so every perfect was forgotten.
+	GameStats.record_perfect(GAME)
+	GameStats.save_data()
+	GameStats.load_data()
+	assert_eq(GameStats.perfect_count(GAME), 1)
+
+func test_the_character_goal_log_survives_a_reload() -> void:
+	GameState.character_id = HERO
+	GameStats.record_goal(&"hades", "curse", "greed", "Greed")
+	GameStats.save_data()
+	GameStats.load_data()
+	assert_true(GameStats.character_goals(HERO).has("curse"))
+
+func test_a_character_badge_shows_the_characters_rank() -> void:
+	for i in range(5):
+		GameStats.record_character_game(HERO, &"hades")
+	var art := TextureRect.new()
+	art.custom_minimum_size = Vector2(80, 80)
+	_holder = RankBadge.wrap_character(art, HERO)
+	add_child_autofree(_holder)
+	var b: RankBadge = _holder.get_node("RankBadge")
+	assert_eq(b._number.text, "1", "5 wins as them is 300 XP: rank 1")
+	assert_null(b._star, "a character's badge carries no awards")
+
+func test_a_three_digit_rank_is_shrunk_to_fit_its_circle() -> void:
+	for i in range(600):  # 100 + 599 * 50 XP: rank 120
+		GameStats.record_character_game(HERO, &"hades")
+	var art := TextureRect.new()
+	art.custom_minimum_size = Vector2(76, 76)
+	_holder = RankBadge.wrap_character(art, HERO)
+	add_child_autofree(_holder)
+	await wait_process_frames(2)
+	var b: RankBadge = _holder.get_node("RankBadge")
+	assert_eq(b._number.text, "120")
+	var w: float = b._number.get_theme_font("font").get_string_size("120",
+		HORIZONTAL_ALIGNMENT_LEFT, -1, b._number.get_theme_font_size("font_size")).x
+	assert_true(w * b._number.scale.x <= b.diameter(), "the number fits inside the circle")
+	assert_true(b._number.scale.x < 1.0, "by shrinking it")
+
+func test_a_character_fill_names_the_character() -> void:
+	var f := RankFill.make(0, 40, "Ironclad")
+	add_child_autofree(f)
+	assert_string_starts_with(f._gain.text, "Ironclad")
