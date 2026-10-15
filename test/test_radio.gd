@@ -1223,7 +1223,7 @@ func test_a_shared_pool_runs_dry() -> void:
 
 func test_a_character_with_no_songs_draws_nothing() -> void:
 	_locked("h1")
-	GameStats.character_game_log = {"rodney": {"rogue": {"beaten": 9}}}
+	GameStats.character_game_log = {"rodney": {"rogue": {"beaten": 4}}}
 	assert_eq(GameRanks.character_rank(&"rodney"), 1)
 	Radio.refresh_unlocks(false)
 	assert_eq(_unlocked_of(GAME), [], "Rogue has no songs, and Hades's are not his")
