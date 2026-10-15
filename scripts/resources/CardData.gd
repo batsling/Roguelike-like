@@ -100,15 +100,7 @@ func is_passive() -> bool:
 
 # Shared 0-3 rarity ordering (Common/Uncommon/Rare/Legendary).
 func rarity_index() -> int:
-	match rarity.to_lower():
-		"uncommon":
-			return 1
-		"rare":
-			return 2
-		"legendary":
-			return 3
-		_:
-			return 0
+	return RarityStyle.index_of(rarity)
 
 
 # Face art base name, falling back to the de-spaced display name when `file` is

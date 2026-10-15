@@ -105,22 +105,6 @@ func slot_path(slot: int) -> String:
 func has_save(slot: int) -> bool:
 	return FileAccess.file_exists(slot_path(slot))
 
-func list_slots() -> Array:
-	var out: Array = []
-	for i in range(NUM_SLOTS):
-		out.append({
-			"slot": i,
-			"exists": has_save(i),
-			"summary": _peek(i) if has_save(i) else {},
-		})
-	return out
-
-func _peek(slot: int) -> Dictionary:
-	var data := _read(slot)
-	if data.is_empty():
-		return {}
-	return _summary(data, String(data.get("save_name", "")), slot)
-
 # One save's headline, shared by the slot list, the named list, and the Continue
 # list so all three describe a run the same way. `slot` is -1 for a named save.
 func _summary(data: Dictionary, display_name: String, slot: int = -1) -> Dictionary:
@@ -182,7 +166,6 @@ func _build_payload() -> Dictionary:
 		"save_name": GameState.save_name,
 		"saved_at": Time.get_unix_time_from_system(),
 		"character_id": String(GameState.character_id),
-		"selected_deck": String(GameState.selected_deck),
 		"current_game_id": String(GameState.current_game_id),
 		"start_game_id": String(GameState.start_game_id),
 		"amulet_game_id": String(GameState.amulet_game_id),
@@ -203,7 +186,6 @@ func _build_payload() -> Dictionary:
 		"max_hp": GameState.max_hp - GameState._applied_item_max_hp - GameState._applied_scaling_max_hp,
 		"hp": GameState.hp,
 		"max_energy": GameState.max_energy - GameState._applied_item_max_energy,
-		"hand_size": GameState.hand_size,
 		"strength": GameState.strength,
 		"dexterity": GameState.dexterity,
 		"intelligence": GameState.intelligence,
@@ -212,9 +194,6 @@ func _build_payload() -> Dictionary:
 		"luck": GameState.luck,
 		"speed": GameState.speed,
 		"harvesting": GameState.harvesting,
-		"crit_chance": GameState.crit_chance,
-		"crit_damage": GameState.crit_damage,
-		"regeneration": GameState.regeneration,
 		"gold": GameState.gold,
 		# Per-slot entries preserve upgrade_level so two copies of the
 		# same item keep their independent state across save/load.
@@ -230,7 +209,6 @@ func _build_payload() -> Dictionary:
 		"next_item_instance_id": GameState._next_item_instance_id,
 		# Run-wide Attack tally for incremental items (Nunchaku / Pen Nib);
 		# per-turn / per-combat counters are combat-scoped and not saved.
-		"incremental_attacks_total": GameState.incremental_attacks_total,
 		"dash": GameState.dash_charges,
 		"reroll": GameState.reroll_charges,
 		"fov_bonus": GameState.fov_bonus,
@@ -238,10 +216,6 @@ func _build_payload() -> Dictionary:
 		# Rock Bottom's per-stat high-water marks. Floor itself is rebuilt from
 		# inventory on load; the peaks must survive so they aren't lost.
 		"stat_high_water": GameState.stat_high_water.duplicate(),
-		"action_left_card_id": String(GameState.action_left_card_id),
-		"action_right_card_id": String(GameState.action_right_card_id),
-		"action_active_item_id": String(GameState.action_active_item_id),
-		"action_charged_item_id": String(GameState.action_charged_item_id),
 		# Loot (potions): concrete carried entries + global per-type identification
 		# + this run's mystery-bottle colour assignment.
 		"loot_items": GameState.loot_items.duplicate(true),
@@ -406,7 +380,6 @@ func _apply_save_data(data: Dictionary) -> void:
 	GameState.reset_run()
 	GameState.save_name = String(data.get("save_name", ""))
 	GameState.character_id = StringName(data.get("character_id", ""))
-	GameState.selected_deck = StringName(data.get("selected_deck", ""))
 	GameState.current_game_id = StringName(data.get("current_game_id", ""))
 	GameState.start_game_id = StringName(data.get("start_game_id", ""))
 	GameState.amulet_game_id = StringName(data.get("amulet_game_id", ""))
@@ -438,7 +411,6 @@ func _apply_save_data(data: Dictionary) -> void:
 	GameState.max_hp = data.get("max_hp", 75)
 	GameState.hp = data.get("hp", GameState.max_hp)
 	GameState.max_energy = data.get("max_energy", 3)
-	GameState.hand_size = data.get("hand_size", 5)
 	GameState.strength = data.get("strength", 0)
 	GameState.dexterity = data.get("dexterity", 0)
 	GameState.intelligence = data.get("intelligence", 0)
@@ -447,11 +419,7 @@ func _apply_save_data(data: Dictionary) -> void:
 	GameState.luck = data.get("luck", 0)
 	GameState.speed = data.get("speed", 0)
 	GameState.harvesting = data.get("harvesting", 0)
-	GameState.crit_chance = data.get("crit_chance", 0)
-	GameState.crit_damage = data.get("crit_damage", 100)
-	GameState.regeneration = data.get("regeneration", 0)
 	GameState.gold = data.get("gold", 0)
-	GameState.incremental_attacks_total = int(data.get("incremental_attacks_total", 0))
 	# Prefer the new per-slot inventory; fall back to legacy id list.
 	if data.has("inventory"):
 		GameState.inventory = _resolve_inventory(data.get("inventory", []))
@@ -534,10 +502,6 @@ func _apply_save_data(data: Dictionary) -> void:
 	var hw_saved: Dictionary = data.get("stat_high_water", {})
 	for k in hw_saved.keys():
 		GameState.stat_high_water[String(k)] = int(hw_saved[k])
-	GameState.action_left_card_id = StringName(data.get("action_left_card_id", ""))
-	GameState.action_right_card_id = StringName(data.get("action_right_card_id", ""))
-	GameState.action_active_item_id = StringName(data.get("action_active_item_id", ""))
-	GameState.action_charged_item_id = StringName(data.get("action_charged_item_id", ""))
 	# Loot: rehydrate carried potion/scroll entries (coercing the JSON string
 	# ids back to StringName), the global identification set, and the run's
 	# mystery-bottle colour map.
@@ -680,9 +644,6 @@ func _sanitize_save_name(save_name: String) -> String:
 
 func named_save_path(save_name: String) -> String:
 	return named_save_dir() + _sanitize_save_name(save_name) + ".json"
-
-func has_named_save(save_name: String) -> bool:
-	return FileAccess.file_exists(named_save_path(save_name))
 
 func save_named(save_name: String) -> bool:
 	GameState.save_name = save_name

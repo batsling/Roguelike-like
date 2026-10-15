@@ -80,15 +80,6 @@ func _natural_stat_value(stat_id: StringName) -> int:
 	var temp: int = int(GameState.temp_stat_bonus.get(field, 0))
 	return base + bonus + temp
 
-func get_definition(stat_id: StringName) -> StatDefinition:
-	return _stat_defs.get(stat_id)
-
-func event_roll_bonus(stat_id: StringName) -> int:
-	var def: StatDefinition = _stat_defs.get(stat_id)
-	if def == null or not def.grants_event_roll_bonus:
-		return 0
-	return get_value(stat_id)
-
 # ---------------------------------------------------------------------------
 # Luck-weighted rolls (EffectSystem chance procs, event dice)
 # ---------------------------------------------------------------------------
@@ -217,46 +208,6 @@ func roll_rarity_step_with_luck(rng: RandomNumberGenerator) -> int:
 		var again: int = Data.roll_rarity_step(rng)
 		best = (maxi(best, again) if luck_keeps_high() else mini(best, again))
 	return best
-
-# Kept for the legacy 1.0 callers that pass an int percent; success is good.
-func roll_chance_with_luck(rng: RandomNumberGenerator, percent: int) -> bool:
-	return roll_chance(rng, float(percent), Favour.HIGH)
-
-func roll_die_with_luck(rng: RandomNumberGenerator, sides: int) -> int:
-	return roll_range(rng, 1, sides, Favour.HIGH)
-
-# Decide whether this roll earns Luck advantage / disadvantage — the event modal's
-# d20, which shows its dice and so needs the mode named rather than folded in.
-# "Advantage" is the sign of Luck; the affliction still forces disadvantage over
-# the top of it.
-func event_luck_mode(_rng: RandomNumberGenerator) -> String:
-	if not GameState.active_affliction_effects("dice_disadvantage").is_empty():
-		return "disadvantage"
-	var lv: int = get_value(&"luck")
-	if lv > 0:
-		return "advantage"
-	if lv < 0:
-		return "disadvantage"
-	return "normal"
-
-# Roll a d20 under a known luck mode, exposing every die so the event modal can
-# render them. One coin PER POINT of Luck, each heads an extra die: the d20 is a
-# roll like any other and gets the same rerolls everything else does. The
-# affliction's forced disadvantage is always at least one extra die, Luck or not.
-# Returns { "rolls": [a, …], "used": int }.
-func roll_d20_event(rng: RandomNumberGenerator, mode: String) -> Dictionary:
-	var rolls: Array = [rng.randi_range(1, 20)]
-	if mode == "advantage" or mode == "disadvantage":
-		var extra: int = luck_rerolls(rng)
-		if mode == "disadvantage" \
-				and not GameState.active_affliction_effects("dice_disadvantage").is_empty():
-			extra = maxi(1, extra)
-		for _i in range(extra):
-			rolls.append(rng.randi_range(1, 20))
-	var used: int = int(rolls[0])
-	for r in rolls:
-		used = maxi(used, int(r)) if mode == "advantage" else mini(used, int(r))
-	return {"rolls": rolls, "used": used}
 
 # ---------------------------------------------------------------------------
 # Constitution auto-gain — call when max_hp grows mid-run

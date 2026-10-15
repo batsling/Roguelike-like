@@ -749,18 +749,6 @@ func record_completed_goal(kind: String, text: String, key: String = "",
 		GameStats.record_goal(GameState.current_game_id, kind, key,
 			label if label != "" else text)
 
-# Remember a claimed event goal so its row can stay on the checklist for the rest
-# of the game (see `claimed_event_goals`). Takes the goal as GameState handed it
-# back and keeps only what the row is drawn from.
-func record_claimed_event_goal(goal: Dictionary) -> void:
-	if goal.is_empty():
-		return
-	claimed_event_goals.append({
-		"condition": String(goal.get("condition", "")),
-		"effects_text": String(goal.get("effects_text", "")),
-		"event": String(goal.get("event", "")),
-	})
-
 # --- the attempt tracker's state (§3) ---------------------------------------
 #
 # Its VERBS are further down, under `a lost run: the turn it buys`.
@@ -832,9 +820,6 @@ func set_last_strike(label: String, strikes: Array) -> void:
 
 func note_strike(cells: Array, instances: Array, label: String) -> void:
 	set_last_strike(label, [{"cells": cells.duplicate(), "instances": instances.duplicate()}])
-
-func clear_last_strike() -> void:
-	last_strike = {}
 
 # THE LOST-RUN SPAWN (§3.2). Every lost run has a chance to stand one body up at
 # the back column, rolled from the game in play's type at the run's tier — and the
@@ -4229,18 +4214,6 @@ func push_directions(instance: int) -> Array:
 			out.append(dir)
 	return out
 
-# What a direction is called, for a button's tooltip and the log.
-static func push_direction_name(dir: Vector2i) -> String:
-	match dir:
-		PUSH_FORWARD:
-			return "forward"
-		PUSH_UP:
-			return "up a lane"
-		PUSH_DOWN:
-			return "down a lane"
-		_:
-			return "back"
-
 # Push a following enemy one cell (Manager's verb, from Raccoin): spends a
 # GameState.push charge to shove the target in `dir` — back, buying the games it
 # takes to close in again and freeing the attack row it was holding; forward; or
@@ -4714,11 +4687,7 @@ func possible_enemies_at(game: GameData) -> Array:
 func possible_games_for(enemy: GoalEnemyData) -> int:
 	if enemy == null:
 		return 0
-	var n: int = 0
-	for g in Data.all_games():
-		if g is GameData:
-			n += 1
-	return n
+	return Data.game_count()
 
 func is_bashed(game_id: StringName) -> bool:
 	return bashed.has(game_id)
@@ -7070,16 +7039,6 @@ func entry_has_op(entry: Dictionary, op: StringName) -> bool:
 
 func entry_op_row(entry: Dictionary, op: StringName) -> Dictionary:
 	return BodyFacts.op_row(entry, op)
-
-# The numeric argument of the first op named `op` on this body, or `fallback`.
-# The passives that carry a number (Ranged's reach) read it through here so a
-# call site does not have to unpack the row itself.
-func entry_op_amount(entry: Dictionary, op: StringName, fallback: int = 0) -> int:
-	var row: Dictionary = BodyFacts.op_row(entry, op)
-	if row.is_empty():
-		return fallback
-	var args: Array = row.get("args", [])
-	return int(args[0]) if not args.is_empty() else fallback
 
 # Hang an ability on a body that was not authored with one — an Illusionist
 # handing `illusion` to what it summons is the only user today. Refuses a

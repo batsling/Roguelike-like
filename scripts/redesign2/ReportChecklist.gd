@@ -434,26 +434,6 @@ static func body_done(inst: int) -> bool:
 	return GameLoop2.body_finished_this_game(inst) \
 		or GameLoop2.row_answered("goal:%d" % inst)
 
-static func group_target(group: Array) -> int:
-	# A `game beaten` group's claim is ARMED, not answered, until the report — so a
-	# rebuild mid-game has to keep pointing at the body already armed, or the row
-	# would come back unticked and the claim would be orphaned.
-	for entry in group:
-		var armed: int = int(entry.get("instance", 0))
-		if GameLoop2.row_armed("goal:%d" % armed) \
-				and not GameLoop2.row_answered("goal:%d" % armed):
-			return armed
-	var fallback: int = -1
-	for entry in group:
-		var inst: int = int(entry.get("instance", 0))
-		if body_done(inst):
-			continue
-		if GameLoop2.in_front(entry):
-			return inst
-		if fallback < 0:
-			fallback = inst
-	return fallback
-
 # Draw a list of bodies, grouped. `standing` picks the read-only rows of the
 # list shown between games.
 func _add_body_groups(entries: Array, at_the_end: bool = false, standing: bool = false) -> void:

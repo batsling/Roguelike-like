@@ -174,15 +174,6 @@ func is_buff() -> bool:
 func is_debuff() -> bool:
 	return kind == &"debuff"
 
-# True when a second application raises X instead of stacking independently — the
-# only way the current roster combines, capped or not, but asked as a question so a
-# future duration-based status doesn't have to be special-cased at every call site.
-func stacks_by_intensity() -> bool:
-	var how: String = stackable.to_lower()
-	# A bare `Max: 3` is an intensity status with a ceiling on it: the cap says how
-	# FAR it climbs, not what climbing means.
-	return how.begins_with("intensity") or how.begins_with("max")
-
 func art_file() -> String:
 	return file if file != "" else display_name.replace(" ", "").replace("'", "")
 

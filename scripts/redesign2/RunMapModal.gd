@@ -147,13 +147,6 @@ func map_data() -> Dictionary:
 		return {"layers": [], "edges": []}
 	return RunGraph.shortest_path_dag(_current, _amulet)
 
-# Whether the run is standing somewhere yet. False on the choose-your-start
-# panel, which is the one place a map is drawn before the player has a position:
-# "you have already been here" needs a road behind you to mean anything, and
-# there isn't one.
-func _run_has_position() -> bool:
-	return GameState.current_game_id != &""
-
 func shortest_distance() -> int:
 	var layers: Array = map_data().get("layers", [])
 	return maxi(0, layers.size() - 1)

@@ -37,10 +37,6 @@ func add(text: String, color: Color = Color.WHITE) -> void:
 		messages.pop_front()
 	emit_signal("message_added", text, color)
 
-func get_recent(count: int) -> Array:
-	var start := maxi(0, messages.size() - count)
-	return messages.slice(start)
-
 # The run so far as a list of STOPS, newest first: one entry per stretch the run
 # spent standing on a game, carrying the lines written while it was there.
 #   [{game: StringName, lines: Array[Dictionary]}, …]

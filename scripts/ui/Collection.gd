@@ -291,7 +291,7 @@ func _build_shell() -> void:
 	var tabs := HBoxContainer.new()
 	tabs.add_theme_constant_override("separation", UITheme.GAP_SNUG)
 	root.add_child(tabs)
-	_add_tab_button(tabs, Tab.GAMES, "Games (%d)" % Data.all_games().size())
+	_add_tab_button(tabs, Tab.GAMES, "Games (%d)" % Data.game_count())
 	_add_tab_button(tabs, Tab.ITEMS, "Items (%d)" % Data.all_items2().size())
 	_add_tab_button(tabs, Tab.CHARACTERS, "Characters (%d)" % Data.all_characters2().size())
 	_add_tab_button(tabs, Tab.ENEMIES, "Enemies (%d)" % Data.all_goal_enemies().size())
@@ -1332,7 +1332,7 @@ func _populate_games() -> void:
 		_grid.add_child(_game_cell(g))
 	if list.is_empty():
 		_grid.add_child(_label("No games match.", Color(0.55, 0.55, 0.6), 13))
-	_set_count(list.size(), Data.all_games().size())
+	_set_count(list.size(), Data.game_count())
 	# The first rows, filled straight away rather than waiting for a frame.
 	#
 	# `_stream_cells` cannot answer anything until the flow has placed the cells,

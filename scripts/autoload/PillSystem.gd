@@ -363,16 +363,7 @@ const LOOT_SCALED_FIELDS := {
 
 # One field of an op as it resolves for THIS player, Sacred Bark folded in.
 func _scaled_value(op: Dictionary, field: String, fallback: int) -> int:
-	var raw: int = int(op.get(field, fallback))
-	var fields: Array = LOOT_SCALED_FIELDS.get(String(op.get("op", "")), [])
-	if not fields.has(field):
-		return raw
-	var mult: int = GameState.loot_multiplier()
-	if mult <= 1:
-		return raw
-	# A field the pill never authored takes its own default times the multiplier,
-	# which is what "doubled" means for a count nobody wrote down.
-	return maxi(1, raw) * mult
+	return LootOps.scaled_value(op, field, fallback, LOOT_SCALED_FIELDS)
 
 # One dose clause. Returns whether it actually DID anything — a dose whose every
 # clause no-opped is what leaves a capsule unidentified (see take_pill).
@@ -385,18 +376,9 @@ func _apply_one(op: Dictionary, out: Dictionary, rng: RandomNumberGenerator,
 		"gain_stat", "lose_stat":
 			return _apply_stat(op, verb == "lose_stat", out)
 		"gain_hp":
-			var healed: int = _scaled_value(op, "value", 1)
-			GameState.change_hp(healed)
-			out["logs"].append("You gain +%d Health." % healed)
-			return true
+			return LootOps.gain_hp(_scaled_value(op, "value", 1), out)
 		"gain_max_hp":
-			# Raising the cap heals by the same amount (§3) — the container arrives
-			# full, which is what makes Health Up worth taking at full Health.
-			var up: int = GameState.max_hp_gain(_scaled_value(op, "value", 1))
-			GameState.change_max_hp(up)
-			GameState.change_hp(up, GameState.HEALTH_SOURCE_MAX_HP_FILL)
-			out["logs"].append("You gain +%d Max Health." % up)
-			return true
+			return LootOps.gain_max_hp(_scaled_value(op, "value", 1), out)
 		"lose_max_hp":
 			# The deliberate NON-mirror (§3): the room goes, the Health stays, and
 			# only moves when it no longer fits.
@@ -422,13 +404,7 @@ func _apply_one(op: Dictionary, out: Dictionary, rng: RandomNumberGenerator,
 		"teleport":
 			# Telepills — movement belongs to the overworld, so it comes back as a
 			# request the way a scroll's does rather than reaching into the map here.
-			var req := {"kind": "teleport", "dir": String(op.get("dir", "same"))}
-			if req["dir"] == "amulet":
-				req["min"] = int(op.get("min", 1))
-				req["max"] = int(op.get("max", 3))
-			else:
-				req["spread"] = int(op.get("spread", 1))
-			out["requests"].append(req)
+			out["requests"].append(LootOps.teleport_request(op))
 			# A REQUEST IS SOMETHING HAPPENING. The move is fulfilled by the overworld
 			# a moment later rather than here, and a Telepill that identified nothing
 			# because this file had not moved the player yet would be the one dose you

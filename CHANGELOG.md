@@ -11,6 +11,76 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **A curse landing says so again, and the combat build's state is gone.**
+  - **`curse_applied` was never fired.** Only the retired 1.0 curse list
+    (`active_curses`) emitted it, and nothing had added to that list since curses
+    became curse goals, so a curse arrived in silence: the OBS overlay's
+    "Cursed — …" ticker line could not appear, and a relic watching the hook
+    could not fire. `GameState.add_curse_goal` emits it now, carrying the
+    curse, and `test_events2.gd` holds it there. `curse_count()` (the `curses`
+    count source) reads the curse goals instead of the empty list.
+  - **The empty 1.0 curse layer is gone**: `active_curses`,
+    `active_affliction_effects` and Curse of Decay's check, all of which read a
+    list nothing wrote. The 1.0 curse catalog itself stays loaded, shelved as §5
+    says.
+  - **33 variables from the combat build**, every one only ever reset
+    (and some saved and reloaded) and never read: the incremental counters, Pen
+    Nib, Dead Eye's streaks, the action-mode slots, the pre-combat carryovers
+    (ambush, spawns, enemy buffs, start stuns, fire), crit, regeneration, hand
+    size, the chosen deck, and the combat scene / player / event-active flags
+    the item-use path still tested (always null or false, so those tests are
+    folded to what they always answered). A save written before this still
+    loads; the dropped keys are ignored.
+  - **A rare test failure fixed, not the game.**
+    `test_gameloop2.gd::test_a_survivor_still_closes_in_after_the_arrivals_are_wanded_off`
+    failed once in a full run (and 0 in 30 runs on its own, before and after
+    this change). A body walking on shoves whatever stands in its lane a column
+    (§7.3a), with the lane picked at random, and the test took the follower's
+    "before" position ahead of the arrival, so the odd run that dealt the newcomer
+    into the follower's lane read the shove as the follower moving by itself. It
+    measures after the arrivals land now, which is what "has not moved on its own"
+    meant.
+  - **Checked and fine**: every effect type the current items, loot and events
+    use has a handler, and all 20 triggers current loot listens for are fired.
+    The effect types with no handler all belong to the 112 combat-era items in
+    `data/items/`, which no current run can drop; they are only read as a
+    fallback when an old save names one.
+
+- **The 14 Oct evening upload and a dead-code sweep.**
+  - **Two games and four connections.** Poly Fighter (Action) and Roguefort
+    (Traditional), both 2026, take `data/games/` to **927**; Slay the Spire →
+    Poly Fighter, and Caves of Qud, Dwarf Fortress and UnReal World → Roguefort.
+    The Slay the Spire → Poly Fighter proof clip is an `.ogv` and a poster now,
+    and its MP4 is gone. The research pass found two more for the owner to tick
+    in `research/connections.csv`: Rift Wizard → Roguefort (named in Roguefort's
+    own FAQ next to the two already on the chart) and Balatro → Poly Fighter
+    (an interviewer's narration, so marked weaker). Neither game has a wiki yet,
+    so every other kind is on record as nothing usable.
+  - **593 lines of code nothing called.** 66 functions in 20 files, found by
+    widening the dead-code scan in `docs/performance-backlog.md` from private
+    functions to public ones and running it until it came back empty (deleting
+    one round orphans the next). Most are from the combat build: GameState's
+    `incremental_on_*` counters, streaks, the combat context, the event d20 in
+    `Stats`. None is reached by a built-up name.
+  - **Effects and rolls that several loot kinds share are written once.**
+    A pill's and a potion's `gain_hp`, `gain_max_hp` and Sacred Bark scaling
+    were the same lines twice, and a pill and a scroll each built their own
+    teleport request; they live in `scripts/runtime/LootOps.gd` now, and each
+    system's `match` arm calls it. The seven loot kinds' `roll_*` in `Data`
+    (scroll, potion, card, trinket, bag, weapon, wand) were one routine copied
+    seven times and are `_roll_by_rarity` / `_rarity_bucket`; the seven
+    resources' identical `rarity_index()` bodies are `RarityStyle.index_of`.
+    Same rolls in the same order, so a seeded run deals what it dealt.
+  - **The split timer stopped re-theming itself every frame.** It set its colour
+    override sixty times a second, and setting one (even to the same colour)
+    makes a Label re-shape its text. Now it only changes when pause flips.
+    `GameLoop2.possible_games_for` also stopped walking all 927 games to count
+    them (`Data.game_count()`).
+  - **Measured and found fine**, for the next pass: a warm page refresh is
+    10-12 ms (the board is 4-7 of it); the first report of a run costs ~500 ms,
+    all of it the offering's covers loading cold off disk; and the overlay's
+    occasional 100+ ms write was cold disk reads in this container, 8 ms warm.
+
 - **Only the front body hits, and the queue waits by its lane** (the owner,
   14 Oct). When a spawn crashes into you, the push still runs down the whole
   lane, but only the body shoved into you swings. A body waiting off the field

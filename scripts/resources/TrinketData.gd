@@ -73,15 +73,7 @@ func is_food() -> bool:
 
 
 func rarity_index() -> int:
-	match rarity.to_lower():
-		"uncommon":
-			return 1
-		"rare":
-			return 2
-		"legendary":
-			return 3
-		_:
-			return 0
+	return RarityStyle.index_of(rarity)
 
 
 func art_file() -> String:

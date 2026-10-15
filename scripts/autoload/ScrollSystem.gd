@@ -410,11 +410,7 @@ func _apply_one(raw_effect: Dictionary, out: Dictionary, rng: RandomNumberGenera
 			return _enchant_weapon(int(effect.get("amount", 1)), rng, out)
 		"teleport":
 			# Teleportation — move ~the same distance from the Amulet (±spread, §4.1).
-			out["requests"].append({
-				"kind": "teleport",
-				"dir": String(effect.get("dir", "same")),
-				"spread": int(effect.get("spread", 1)),
-			})
+			out["requests"].append(LootOps.teleport_request(effect))
 			return true
 		_:
 			push_warning("ScrollSystem: unknown effect op '%s'" % op)

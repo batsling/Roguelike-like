@@ -372,14 +372,7 @@ const LOOT_SCALED_FIELDS := {
 }
 
 func _scaled_value(op: Dictionary, field: String, fallback: int) -> int:
-	var raw: int = int(op.get(field, fallback))
-	var fields: Array = LOOT_SCALED_FIELDS.get(String(op.get("op", "")), [])
-	if not fields.has(field):
-		return raw
-	var mult: int = GameState.loot_multiplier()
-	if mult <= 1:
-		return raw
-	return maxi(1, raw) * mult
+	return LootOps.scaled_value(op, field, fallback, LOOT_SCALED_FIELDS)
 
 # A GRID HAS NO WAY TO BE EXACTLY TWICE AS BIG, so Sacred Bark widens a throw's
 # shape by ONE STEP of a ladder rather than by a multiplier (§8.2, decision #19).
@@ -426,17 +419,10 @@ func _apply_one(op: Dictionary, out: Dictionary, _rng: RandomNumberGenerator) ->
 			out["logs"].append("You take %d damage." % dmg)
 			return true
 		"gain_hp":
-			var healed: int = _scaled_value(op, "value", 1)
-			GameState.change_hp(healed)
-			out["logs"].append("You gain +%d Health." % healed)
-			return true
+			return LootOps.gain_hp(_scaled_value(op, "value", 1), out)
 		"gain_max_hp":
 			# The container arrives full, exactly as Health Up does (spec §3).
-			var up: int = GameState.max_hp_gain(_scaled_value(op, "value", 1))
-			GameState.change_max_hp(up)
-			GameState.change_hp(up, GameState.HEALTH_SOURCE_MAX_HP_FILL)
-			out["logs"].append("You gain +%d Max Health." % up)
-			return true
+			return LootOps.gain_max_hp(_scaled_value(op, "value", 1), out)
 		"gain_stat":
 			var stat: String = String(op.get("stat", ""))
 			var amount: int = _scaled_value(op, "value", 1)

@@ -240,7 +240,3 @@ static func tier_from_name(name: String) -> int:
 # Convenience: the current run's tier, read straight off GameState.
 static func current_tier() -> int:
 	return tier_for(GameState.spawn_events)
-
-# Convenience: the current run's tier value (1..4).
-static func current_tier_value() -> int:
-	return tier_value(current_tier())

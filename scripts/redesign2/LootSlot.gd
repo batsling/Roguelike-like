@@ -199,14 +199,6 @@ func _get_drag_data(_at: Vector2) -> Variant:
 		set_drag_preview(_preview_for(data))
 	return data
 
-# What follows the cursor: THE WHOLE CELL, built by the grid — see
-# LootGrid.drag_preview for why it is the cell and not the bare capsule, and why it
-# is built there. A horse dose still drags at ITS size, because the cell it is drawn
-# in draws it that way (LootSystem.art_box): the whole point of the oversized
-# capsule is that you can tell which dose you are holding.
-func _drag_preview() -> Control:
-	return grid.drag_preview(self)
-
 func _can_drop_data(at: Vector2, data: Variant) -> bool:
 	if grid == null or not (data is Dictionary):
 		return false
