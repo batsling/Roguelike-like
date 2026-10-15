@@ -2719,6 +2719,7 @@ func report(beaten: bool, fulfilled: Variant = null, escaped: bool = false,
 		"character_rank_from": _character_rank_from(),
 		"character_rank_to": GameRanks.character_xp(GameState.character_id),
 		"character_name": _character_display_name(),
+		"character_id": String(GameState.character_id),
 	}
 	# The offering is BUILT here and shown later (_refresh_stage): a Scramble or a
 	# Dash taken off the haul screen still has a table to act on, and the cards are

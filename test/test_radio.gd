@@ -821,7 +821,7 @@ func test_the_screen_lists_every_song_and_drives_the_radio() -> void:
 	Radio.next()
 	var screen := RadioScreen.open(self)
 	await get_tree().process_frame
-	assert_eq(screen._list.get_child_count(), 2)
+	assert_eq(_non_character_rows(screen), 2)
 	assert_string_contains(screen._summary.text, "1 of 2")
 	assert_string_contains(screen._now_title.text, "A")
 	var text: String = ""
@@ -845,7 +845,7 @@ func test_a_games_locked_songs_are_one_row_saying_how_close_the_game_is() -> voi
 	_locked("bal", OTHER)
 	var screen := RadioScreen.open(self)
 	await get_tree().process_frame
-	assert_eq(screen._list.get_child_count(), 3, "the unlocked song, then one row per game")
+	assert_eq(_non_character_rows(screen), 3, "the unlocked song, then one row per game")
 	var text: String = ""
 	for row in screen._list.get_children():
 		for l in row.find_children("*", "Label", true, false):
@@ -1246,3 +1246,25 @@ func test_who_drew_a_song_survives_a_reload() -> void:
 	assert_eq(Radio.character_drawn(HERO), 1)
 	Radio.refresh_unlocks(false)
 	assert_eq(_unlocked_of(GAME).size(), 1, "nothing owed twice after a reload")
+
+func test_the_radio_screen_lists_a_character_still_owed_songs() -> void:
+	# Zagreus's soundtrack is Hades's, which holds a locked song here.
+	_locked("h1")
+	_locked("h2")
+	var screen := RadioScreen.open(self)
+	await get_tree().process_frame
+	var names: Array = []
+	for r in screen._list.get_children():
+		if r.has_meta("character"):
+			for l in r.find_children("*", "Label", true, false):
+				names.append((l as Label).text)
+	assert_true(names.any(func(t): return String(t).begins_with("Zagreus  —  2 songs")),
+		"a row for Zagreus: %s" % [names])
+	screen.close()
+	await get_tree().process_frame
+
+# The list's rows less the characters' (§20.9): what the tests about GAME rows
+# count, since a game's soundtrack is often a character's too.
+func _non_character_rows(screen) -> int:
+	return screen._list.get_children().filter(
+		func(r): return not r.has_meta("character")).size()

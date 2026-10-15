@@ -43,6 +43,9 @@ func after_each() -> void:
 	GameStats.character_goal_log = _saved_character[2]
 	GameStats.runs = _saved_character[3]
 	GameState.character_id = _saved_character[4]
+	# Put the profile's own record back ON DISK too: every record_* call above
+	# saved the test's state over it, and the suite shares the real save folder.
+	GameStats.save_data()
 
 func _enemy(tier: int, boss: bool = false, game_beaten: bool = false,
 		count: int = 0) -> GoalEnemyData:
@@ -296,6 +299,21 @@ func test_a_character_badge_shows_the_characters_rank() -> void:
 	var b: RankBadge = _holder.get_node("RankBadge")
 	assert_eq(b._number.text, "1", "5 wins as them is 300 XP: rank 1")
 	assert_null(b._star, "a character's badge carries no awards")
+
+func test_a_three_digit_rank_is_shrunk_to_fit_its_circle() -> void:
+	for i in range(600):  # 100 + 599 * 50 XP: rank 120
+		GameStats.record_character_game(HERO, &"hades")
+	var art := TextureRect.new()
+	art.custom_minimum_size = Vector2(76, 76)
+	_holder = RankBadge.wrap_character(art, HERO)
+	add_child_autofree(_holder)
+	await wait_process_frames(2)
+	var b: RankBadge = _holder.get_node("RankBadge")
+	assert_eq(b._number.text, "120")
+	var w: float = b._number.get_theme_font("font").get_string_size("120",
+		HORIZONTAL_ALIGNMENT_LEFT, -1, b._number.get_theme_font_size("font_size")).x
+	assert_true(w * b._number.scale.x <= b.diameter(), "the number fits inside the circle")
+	assert_true(b._number.scale.x < 1.0, "by shrinking it")
 
 func test_a_character_fill_names_the_character() -> void:
 	var f := RankFill.make(0, 40, "Ironclad")

@@ -495,6 +495,13 @@ func _header() -> Control:
 	var step: String = step_line()
 	if step != "":
 		words.add_child(_wrapped(step, UITheme.GOLD, 12))
+	# THE GAME'S RANK GOING UP (§20.4), under the name and beside the cover, so the
+	# picture and its bar read as one thing (the owner, 15 Oct 2026). The bar
+	# fills from where it stood when the game was picked; a snapshot from before
+	# ranks has no ends.
+	if g != null and _snap.has("rank_to"):
+		words.add_child(RankFill.make(int(_snap.get("rank_from", 0)), int(_snap["rank_to"]),
+			g.display_name, false, true))
 
 	# The ★ Rate button USED TO SIT HERE, beside the cover and the name — the right
 	# place by the logic of "put it next to the thing it is about", and the wrong
@@ -502,23 +509,30 @@ func _header() -> Control:
 	# a header it reads as decoration on a screen whose whole job is the haul below
 	# it. It now sits in the FOOTER, immediately left of the button everyone
 	# presses to leave (see `_footer`), where the eye already goes.
-	# THE GAME'S RANK GOING UP (§20.4), beside the name: the bar fills from where
-	# it stood when the game was picked. A snapshot from before ranks has no ends.
-	# The CHARACTER's under it (§20.9), filled from everything played as them.
-	if g != null and _snap.has("rank_to"):
-		var fills := VBoxContainer.new()
-		fills.name = "RankFills"
-		fills.add_theme_constant_override("separation", UITheme.GAP_TIGHT)
-		fills.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		fills.add_child(RankFill.make(int(_snap.get("rank_from", 0)), int(_snap["rank_to"])))
-		if _snap.has("character_rank_to"):
-			fills.add_child(RankFill.make(int(_snap.get("character_rank_from", 0)),
-				int(_snap["character_rank_to"]), String(_snap.get("character_name", ""))))
-		row.add_child(fills)
 	var tail := Control.new()
 	tail.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(tail)
-	return row
+	if g == null or not _snap.has("character_rank_to"):
+		return row
+	# THE CHARACTER'S RANK (§20.9) directly under the game's: their picture in the
+	# cover's column, their bar in the name's, so the two climbs line up.
+	var block := VBoxContainer.new()
+	block.add_theme_constant_override("separation", UITheme.GAP_HAIR)
+	block.add_child(row)
+	var hero := HBoxContainer.new()
+	hero.name = "CharacterRank"
+	hero.add_theme_constant_override("separation", UITheme.GAP_LOOSE)
+	var slot := CenterContainer.new()
+	slot.custom_minimum_size = Vector2(COVER.x, 0)
+	hero.add_child(slot)
+	var ch: CharacterData = Data.get_character2(StringName(_snap.get("character_id", "")))
+	if ch != null and (ch.icon != null or ch.portrait != null):
+		slot.add_child(UITheme.crisp_tex(ch.icon if ch.icon != null else ch.portrait,
+			int(RankFill.CIRCLE_COMPACT)))
+	hero.add_child(RankFill.make(int(_snap.get("character_rank_from", 0)),
+		int(_snap["character_rank_to"]), String(_snap.get("character_name", "")), true, true))
+	block.add_child(hero)
+	return block
 
 # The rating entry point for this screen. It does NOT go through
 # Overworld2._prompt_rating, which is wired to the page's own tier list and its

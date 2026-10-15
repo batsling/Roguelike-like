@@ -173,6 +173,15 @@ func _layout() -> void:
 	_number.add_theme_font_size_override("font_size", font)
 	_number.position = c - Vector2(d, d) * 0.5
 	_number.size = Vector2(d, d)
+	# A NUMBER WIDER THAN THE CIRCLE (rank 100 and up) is shrunk to fit inside
+	# it, rather than given a font size off UITheme's scale: the smallest step
+	# there is already what a small badge uses, and "281" at it still spills.
+	var text_w: float = _number.get_theme_font("font").get_string_size(_number.text,
+		HORIZONTAL_ALIGNMENT_LEFT, -1, font).x
+	var room: float = d - 4.0
+	var k: float = minf(1.0, room / text_w) if text_w > 0.0 else 1.0
+	_number.pivot_offset = Vector2(d, d) * 0.5
+	_number.scale = Vector2(k, k)
 	var side: Vector2 = Vector2(d, d)
 	var glyph: int = UITheme.FONT_SUB if d >= 24.0 else UITheme.FONT_LABEL
 	if _star != null:

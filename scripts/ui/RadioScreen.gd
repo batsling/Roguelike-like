@@ -516,19 +516,28 @@ func _fill_list() -> void:
 	_summary.text = "Songs — %d of %d unlocked" % [unlocked.size(), all.size()]
 	# Unlocked first, by title; then one row per game still holding songs, the
 	# game nearest its next song first (the draw is random, so it is the GAME
-	# that is near, not the song), and songs with no game last.
+	# that is near, not the song), and songs with no game last. CHARACTERS whose
+	# soundtrack still holds songs get a row too (§20.9), sorted in among the
+	# games by the same rule: whoever is nearest a song first.
 	unlocked.sort_custom(func(a, b) -> bool: return a.title.naturalnocasecmp_to(b.title) < 0)
 	for s in unlocked:
 		var row: Control = _song_row(s)
 		_rows[s.id] = row
 		_list.add_child(row)
-	var games: Array = locked_by_game.keys()
-	games.sort_custom(func(a, b) -> bool:
-		var ka: Array = _game_key(a)
-		var kb: Array = _game_key(b)
+	var waiting: Array = []   # [{"key": [needed, name], "game" or "character": id}]
+	for g in locked_by_game.keys():
+		waiting.append({"key": _game_key(g), "game": g})
+	for ch in _characters_waiting():
+		waiting.append({"key": _character_key(ch.id), "character": ch})
+	waiting.sort_custom(func(a, b) -> bool:
+		var ka: Array = a["key"]
+		var kb: Array = b["key"]
 		return ka[0] < kb[0] or (ka[0] == kb[0] and ka[1] < kb[1]))
-	for g in games:
-		_list.add_child(_game_row(g, locked_by_game[g]))
+	for w in waiting:
+		if w.has("character"):
+			_list.add_child(_character_row(w["character"]))
+		else:
+			_list.add_child(_game_row(w["game"], locked_by_game[w["game"]]))
 
 # Everything the list shows apart from which song is playing. Cheap next to a
 # rebuild: a dictionary lookup per song and two counts per game.
@@ -545,6 +554,9 @@ func _list_state() -> String:
 		var left: Dictionary = Radio.to_next(g) if g != &"" else {}
 		parts.append("%s:%s:%s:%s" % [g, left.get("rank", 0), left.get("needed", 0),
 			",".join(Radio.goals_done(games[g]))])
+	for ch in _characters_waiting():
+		var p: Dictionary = GameRanks.character_progress(ch.id)
+		parts.append("%s:%s:%s" % [ch.id, p["rank"], p["needed"]])
 	parts.append("station=" + Radio.station)
 	parts.append("gen=%d" % Radio.library_generation)
 	return "|".join(parts)
@@ -568,6 +580,63 @@ func _game_key(game: StringName) -> Array:
 	if game == &"":
 		return [1 << 30, ""]
 	return [int(Radio.to_next(game)["needed"]), _game_name(game)]
+
+# The characters whose soundtrack still has a locked song: the ones a rank can
+# still pay (§20.9).
+func _characters_waiting() -> Array:
+	var out: Array = []
+	for ch in Data.all_characters2():
+		for s in Radio.character_songs(ch.id):
+			if not Radio.is_unlocked(s):
+				out.append(ch)
+				break
+	return out
+
+func _character_key(character: StringName) -> Array:
+	var ch: CharacterData = Data.get_character2(character)
+	return [int(GameRanks.character_progress(character)["needed"]),
+		ch.display_name if ch != null else String(character)]
+
+# One row for a character: their portrait with their rank on it, how many of
+# their game's songs are still locked, and what their next rank needs.
+func _character_row(ch: CharacterData) -> Control:
+	var row := PanelContainer.new()
+	# Tagged rather than named: two rows cannot share a node name.
+	row.set_meta("character", ch.id)
+	row.add_theme_stylebox_override("panel", UITheme.accent_box(UITheme.BORDER, UITheme.PANEL, 6))
+	var h := HBoxContainer.new()
+	h.add_theme_constant_override("separation", UITheme.GAP)
+	row.add_child(h)
+	var art := TextureRect.new()
+	art.custom_minimum_size = Vector2(ROW_ART, ROW_ART)
+	art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	art.texture = ch.icon if ch.icon != null else ch.portrait
+	art.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	art.modulate = Color(1, 1, 1, 0.5)
+	h.add_child(RankBadge.wrap_character(art, ch.id))
+	var text := VBoxContainer.new()
+	text.add_theme_constant_override("separation", UITheme.GAP_NONE)
+	text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	h.add_child(text)
+	var locked: int = 0
+	for s in Radio.character_songs(ch.id):
+		if not Radio.is_unlocked(s):
+			locked += 1
+	var name := Label.new()
+	name.text = "%s  —  %d song%s from their game locked" % [ch.display_name, locked,
+		"" if locked == 1 else "s"]
+	name.add_theme_font_size_override("font_size", UITheme.FONT_LABEL)
+	name.add_theme_color_override("font_color", UITheme.TEXT_DIM)
+	name.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	text.add_child(name)
+	var sub := Label.new()
+	sub.text = Radio.character_rank_line(ch.id)
+	sub.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
+	sub.add_theme_color_override("font_color", UITheme.GOLD)
+	sub.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	text.add_child(sub)
+	return row
 
 func _game_name(game: StringName) -> String:
 	var g: GameData = Data.get_game(game)

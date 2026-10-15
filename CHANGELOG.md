@@ -28,7 +28,14 @@ For how the project is laid out and how its systems fit together, see
     goal kinds per character from now on, and `character_game_log` now counts
     Amulet wins and perfects.
   - **Shown** on the character picker's tiles, the Collection's character grid
-    and page, and as a second fill under the game's on the end-of-game screen.
+    and page, a row each on the Radio screen, and on the end-of-game screen,
+    where both bars now sit on the left under the title: the game's beside its
+    cover and the character's under it beside their icon.
+  - **A rank of 100 or more is shrunk to fit its circle** instead of spilling
+    out of it.
+  - **`test_game_ranks.gd` puts the save file back after each test.** Its
+    record calls write the test's state to the shared save folder, and only the
+    in-memory record was being restored.
   - **A game's perfects were forgotten on every reload**: `load_data` copied
     `beaten`, `amulets` and `rifts` and dropped `perfects`, so the gold star and
     the +100 XP only lasted until the game restarted. Kept now.

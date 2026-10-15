@@ -199,7 +199,10 @@ songs it holds).
   column, blank = its `Game`; Isaac's is both Isaac soundtracks). It is the
   SAME pool the game's ranks draw from, and the two add up: each draw is
   remembered as the game's or the character's (`drawn_by` in `radio.json`), so
-  neither one's songs count against the other. Games draw first.
+  neither one's songs count against the other. Games draw first. The Radio
+  screen gives each such character a row ("Zagreus — 29 songs from their game
+  locked", with their rank badge and the XP to their next song), in among the
+  games' rows.
 - **An unlocked song whose file isn't in the folder** is listed as "file not
   found" and skipped. A typo in `File` then shows up as a typo, not as a song
   that silently doesn't exist.
