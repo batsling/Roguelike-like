@@ -12,12 +12,6 @@ func before_each() -> void:
 	GameState.hp = 10
 	# A lost run's random body (§3.2) is not what this suite is about.
 	GameLoop2.lost_run_spawn_ladder = [0.0]
-	# The transmute rule is a persisted preference, so a test that flips it would
-	# otherwise leak into the rest of the suite.
-	Settings.traditional_transmute = Settings.TraditionalTransmute.SAME_TYPE
-
-func after_each() -> void:
-	Settings.traditional_transmute = Settings.TraditionalTransmute.SAME_TYPE
 
 # Number of .tres resource files in a data directory — the count Data._load_dir
 # is expected to load, so the roster tests stay correct as content grows and
@@ -1614,13 +1608,14 @@ func test_bash_requires_charge() -> void:
 	assert_false(GameLoop2.bash_game(g.id))
 	assert_false(GameLoop2.is_bashed(g.id))
 
-func test_transmute_returns_same_type_offgraph_game() -> void:
+func test_transmute_returns_an_offgraph_game() -> void:
 	GameState.transmute = 1
 	var db: GameData = _find_game_with_type(GameData.GameType.DECKBUILDER)
 	var repl: GameData = GameLoop2.transmute_game(db.id, [db.id])
-	assert_not_null(repl, "a same-type off-graph game exists")
+	assert_not_null(repl, "an off-graph game exists")
 	assert_ne(String(repl.id), String(db.id), "not the source game")
-	assert_eq(String(GameLoop2.game_type_key(repl)), "deckbuilder", "same effective type")
+	assert_true(String(repl.id) in RunGraph.off_map_ids().map(func(i): return String(i)),
+		"%s is off the map" % repl.display_name)
 	assert_eq(GameState.transmute, 0, "a transmute charge is spent")
 
 func test_transmute_excludes_connected_and_bashed() -> void:
@@ -1639,75 +1634,23 @@ func test_transmute_requires_charge() -> void:
 	var g: GameData = Data.all_games()[0]
 	assert_null(GameLoop2.transmute_game(g.id, []))
 
-# --- the Traditional transmute rule (Settings.traditional_transmute) -------
+# --- a transmute crosses types ----------------------------------------------
 #
-# A Traditional game is the run's long haul — 5 tries rather than 3 — so
-# transmuting one into another Traditional is arguably no relief. That is the
-# ANY_OTHER rule, and it is a setting rather than the law it briefly was:
-# SAME_TYPE is the default, and it is what every other type does.
+# The type is not kept (docs/fracture-design.md §7.4): the off-map pool is small
+# and lopsided by type, so a same-type roll repeated itself almost at once.
 
-func test_traditional_transmutes_within_its_type_by_default() -> void:
-	assert_eq(Settings.traditional_transmute, Settings.TraditionalTransmute.SAME_TYPE,
-		"same-type is the shipped rule")
-	GameState.transmute = 12
-	var trad: GameData = _find_game_with_type(GameData.GameType.TRADITIONAL)
-	for _i in range(12):
-		var repl: GameData = GameLoop2.transmute_game(trad.id, [trad.id])
-		assert_not_null(repl, "another Traditional off-graph game exists")
-		assert_eq(String(GameLoop2.game_type_key(repl)), "traditional",
-			"%s stays Traditional under the default rule" % repl.display_name)
-		GameLoop2.transmuted.clear()
-
-func test_transmute_moves_a_traditional_game_off_its_type() -> void:
-	Settings.traditional_transmute = Settings.TraditionalTransmute.ANY_OTHER
-	GameState.transmute = 12
-	var trad: GameData = _find_game_with_type(GameData.GameType.TRADITIONAL)
-	for _i in range(12):
-		var repl: GameData = GameLoop2.transmute_game(trad.id, [trad.id])
-		assert_not_null(repl, "a non-Traditional off-graph game exists")
-		assert_ne(String(GameLoop2.game_type_key(repl)), "traditional",
-			"%s must not transmute into another Traditional game" % repl.display_name)
-		GameLoop2.transmuted.clear()
-
-func test_transmute_reaches_more_than_one_type_from_traditional() -> void:
-	# Flat across the non-Traditional catalog, so over enough rolls it must land
-	# on at least two different types rather than being pinned to one.
-	Settings.traditional_transmute = Settings.TraditionalTransmute.ANY_OTHER
+func test_transmute_reaches_more_than_one_type() -> void:
+	# Flat across the off-map catalog, so over enough rolls a Deckbuilder (the
+	# thinnest type off the map) must land on at least two different types.
 	GameState.transmute = 40
-	var trad: GameData = _find_game_with_type(GameData.GameType.TRADITIONAL)
+	var db: GameData = _find_game_with_type(GameData.GameType.DECKBUILDER)
 	var seen := {}
 	for _i in range(40):
-		var repl: GameData = GameLoop2.transmute_game(trad.id, [trad.id])
+		var repl: GameData = GameLoop2.transmute_game(db.id, [db.id])
 		if repl != null:
 			seen[String(GameLoop2.game_type_key(repl))] = true
 		GameLoop2.transmuted.clear()
 	assert_gt(seen.size(), 1, "the roll spreads across types, got %s" % [seen.keys()])
-
-func test_the_transmute_rule_survives_a_save_and_reload() -> void:
-	# It is a persisted preference, so it has to round-trip through settings.cfg
-	# — a rule that forgets itself between sessions is not a setting.
-	var was: int = Settings.traditional_transmute
-	Settings.set_traditional_transmute(Settings.TraditionalTransmute.ANY_OTHER)
-	Settings.traditional_transmute = Settings.TraditionalTransmute.SAME_TYPE
-	Settings.load_settings()
-	assert_eq(Settings.traditional_transmute, Settings.TraditionalTransmute.ANY_OTHER,
-		"the saved rule comes back")
-	Settings.set_traditional_transmute(was)
-
-func test_the_setting_only_touches_traditional() -> void:
-	# Every other type transmutes within itself under EITHER rule — the setting
-	# is about Traditional and nothing else.
-	var db: GameData = _find_game_with_type(GameData.GameType.DECKBUILDER)
-	for rule in [Settings.TraditionalTransmute.SAME_TYPE,
-			Settings.TraditionalTransmute.ANY_OTHER]:
-		Settings.traditional_transmute = rule
-		GameState.transmute = 4
-		for _i in range(4):
-			var repl: GameData = GameLoop2.transmute_game(db.id, [db.id])
-			assert_not_null(repl)
-			assert_eq(String(GameLoop2.game_type_key(repl)), "deckbuilder",
-				"a Deckbuilder stays a Deckbuilder under rule %d" % rule)
-			GameLoop2.transmuted.clear()
 
 # --- run start (loadout) --------------------------------------------------
 

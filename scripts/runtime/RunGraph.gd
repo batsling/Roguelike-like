@@ -339,8 +339,8 @@ static func _build_adj() -> void:
 #
 # They are not deleted from the catalog, only from the ROUTE. Off-map games are
 # exactly the pool Transmute draws from (see GameLoop2.transmute_game and
-# §Transmute in docs/games-first-redesign.md: "a random game of the same game type
-# that is not connected to the map"), so being off the map IS their role — it is
+# §Transmute in docs/games-first-redesign.md: "a random game, of any type, that is
+# not connected to the map"), so being off the map IS their role — it is
 # the only way a run ever meets one.
 #
 # Ties are broken on the lowest id so the same catalog always yields the same

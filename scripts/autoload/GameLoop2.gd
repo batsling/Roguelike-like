@@ -4765,39 +4765,32 @@ func bash_game(game_id: StringName) -> bool:
 	loop_changed.emit()
 	return true
 
-# Transmute (§4): turn a game into a random game that is genuinely OFF THE MAP —
-# outside the run graph's main group, so no route could reach it — and that is
-# neither currently on the map (`connected`) nor bashed. Spends a transmute
-# charge. Returns the replacement GameData, or null if there's no charge, the
+# Transmute (§4): turn a game into a random game, of ANY type, that is genuinely
+# OFF THE MAP — outside the run graph's main group, so no route could reach it —
+# and that is neither currently on the map (`connected`) nor bashed. Spends a
+# transmute charge. Returns the replacement GameData, or null if there's no charge, the
 # source is unknown, or no off-map candidate is available. The overworld passes
 # the ids currently on the map and swaps the node to the returned game.
 #
 # This is the ONLY way an off-map game is ever played. The influence graph is not
 # one piece — on the owned catalog 76 games sit in sequel pairs and lone stars
 # outside the 395-game mainland — and rather than being dead weight they are
-# exactly what this verb spends its charge on. Which also means the pool is small
-# and lopsided (owned: Action 41, Strategy 23, Traditional 7, Deckbuilder 5), so a
-# Deckbuilder transmute repeats itself far sooner than an Action one does. It
-# empties as the run bashes and visits, and returns null rather than a charge
-# wasted on nothing when a type runs dry.
+# exactly what this verb spends its charge on. It empties as the run bashes and
+# visits, and returns null rather than a charge wasted on nothing when it runs dry.
 #
-# The replacement keeps the source's TYPE. **Traditional** is the one exception,
-# and it is a SETTING (Settings.traditional_transmute): a Traditional roguelike
-# is the run's long haul — it grants 5 shields rather than 3 for a reason — so
-# trading one for another is arguably no relief at all, and ANY_OTHER lets a
-# Traditional transmute land on any other type instead. Default is SAME_TYPE,
-# the same rule every other type follows. Under ANY_OTHER the roll is flat
-# across every non-Traditional game off the map, so the types with the deeper
-# catalogs come up more often.
+# THE TYPE IS NOT KEPT (the owner's call, October 2026). It used to be: a game
+# transmuted into another of its own type, with a setting that let Traditional
+# out of its type. But the off-map pool is small and lopsided by type (owned:
+# Action 41, Strategy 23, Traditional 7, Deckbuilder 5), so a Deckbuilder
+# transmute repeated itself almost at once, and Fracture 10's Collapse
+# (docs/fracture-design.md §7) transmutes every game a run played in one go. The
+# roll is flat across every off-map game, so the deeper types come up more often.
 func transmute_game(game_id: StringName, connected: Array = []) -> GameData:
 	if GameState.transmute <= 0:
 		return null
 	var src: GameData = Data.get_game(game_id)
 	if src == null:
 		return null
-	var key: StringName = game_type_key(src)
-	var away_from_traditional: bool = key == &"traditional" \
-		and Settings.traditional_transmute == Settings.TraditionalTransmute.ANY_OTHER
 	var on_map := {}
 	for c in connected:
 		on_map[StringName(c)] = true
@@ -4819,9 +4812,6 @@ func transmute_game(game_id: StringName, connected: Array = []) -> GameData:
 			if g == null:
 				continue
 			if g.id == game_id or on_map.has(g.id) or is_bashed(g.id):
-				continue
-			var same_type: bool = game_type_key(g) == key
-			if same_type == away_from_traditional:
 				continue
 			pool.append(g)
 	# Deterministic order regardless of how the set enumerated, so a seeded run

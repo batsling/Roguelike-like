@@ -603,7 +603,7 @@ static func _ch_verbs() -> Dictionary:
 				+ "to where you stand, with its own fresh enemy — and if there is "
 				+ "nothing left to connect, the slot simply goes. Bash is "
 				+ "destruction, not a guaranteed reroll."),
-			_kv("⚗ Transmute", "Swap a game for a random one of the SAME TYPE that "
+			_kv("⚗ Transmute", "Swap a game for a random one, of any type, that "
 				+ "is off the map entirely — a game no route could ever have "
 				+ "reached. It is the only way those games are ever played. The "
 				+ "swap sticks to the SPOT: the node keeps all its connections, so "

@@ -32,19 +32,6 @@ var exclude_beaten_amulets: bool = false
 # per run, never shortening a path. On by default; off is a pure-influence map.
 var rifts_enabled: bool = true
 
-# What a transmute turns a **Traditional** game into.
-#   SAME_TYPE — another Traditional, the ordinary same-type rule (default).
-#   ANY_OTHER — a random game of any type EXCEPT Traditional.
-# A transmute normally swaps a game for another of its own type. Traditional is
-# the one type where that is arguably no relief — it is the run's long haul, and
-# trading one long haul for another leaves you where you started — so the
-# ANY_OTHER rule exists as an option. It is off by default: same-type is the
-# rule the verb is described by everywhere else, and a Traditional player who
-# wants Traditional games should keep getting them.
-enum TraditionalTransmute { SAME_TYPE, ANY_OTHER }
-
-var traditional_transmute: int = TraditionalTransmute.SAME_TYPE
-
 # How the game's window is presented.
 #
 #   WINDOWED_FULLSCREEN — a borderless window the size of the screen.
@@ -370,15 +357,6 @@ func set_game_filter(value: int) -> void:
 	RunGraph.invalidate_cache()
 	save_settings()
 
-func set_traditional_transmute(value: int) -> void:
-	value = clampi(value, 0, TraditionalTransmute.ANY_OTHER)
-	if value == traditional_transmute:
-		return
-	traditional_transmute = value
-	# Nothing to invalidate: GameLoop2 reads this when the verb is used, not when
-	# the graph is built.
-	save_settings()
-
 func set_rifts_enabled(value: bool) -> void:
 	if value == rifts_enabled:
 		return
@@ -409,8 +387,6 @@ func load_settings() -> void:
 		0, GameFilter.DOWNLOADED)
 	exclude_beaten_amulets = bool(prefs.get_value("path", "exclude_beaten_amulets", false))
 	rifts_enabled = bool(prefs.get_value("path", "rifts_enabled", true))
-	traditional_transmute = clampi(int(prefs.get_value("rules", "traditional_transmute",
-		TraditionalTransmute.SAME_TYPE)), 0, TraditionalTransmute.ANY_OTHER)
 
 	if not has_global:
 		RunGraph.invalidate_cache()
@@ -430,7 +406,6 @@ func save_settings() -> void:
 	prefs.set_value("path", "game_filter", game_filter)
 	prefs.set_value("path", "exclude_beaten_amulets", exclude_beaten_amulets)
 	prefs.set_value("path", "rifts_enabled", rifts_enabled)
-	prefs.set_value("rules", "traditional_transmute", traditional_transmute)
 	prefs.save(prefs_path())
 
 	var cfg := ConfigFile.new()

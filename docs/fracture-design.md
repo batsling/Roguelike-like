@@ -178,21 +178,23 @@ Transmuting is simpler, because **it keeps the map's shape**:
 
 ### 7.4 The one real problem: running out of games to transmute into
 
-Transmute draws from the **off-map pool** of the same type, and that pool is
-small and lopsided: on the owned catalogue, Deckbuilder 5, Traditional 7. A
-Collapse transmutes every game the run played, often ten or more at once, after
-the run's world rifts have already taken some of the same pool. A run that
-played three Deckbuilders could empty it.
+Transmute draws from the **off-map pool**. That pool used to be split by type,
+and by type it was tiny (owned: Deckbuilder 5, Traditional 7), so a Collapse
+that transmutes ten or more games at once, after the run's world rifts have
+taken their share, could have emptied it. Two decisions answer that:
 
-So the Collapse's transmute does not refuse the way the verb does. For each game,
-it takes the first of these that has anything left:
+- **Transmute no longer keeps the type, everywhere** (owner, October 2026): the
+  verb rolls flat across every off-map game. That is built, and the Traditional
+  transmute setting went with it.
+- **The owner is adding more unconnected games** to the catalogue.
 
-1. an off-map game of the **same type** (the verb's own rule, and the setting
-   `Settings.traditional_transmute` still applies to Traditional);
-2. an off-map game of **any type**;
-3. a game inside the run's filter that is **not on the map and not played**.
+The Collapse's transmute still must not refuse the way the verb does when the
+pool is dry, so for each game it takes the first of these that has anything left:
 
-All three exclude games played this run and games already handed out by this
+1. an **off-map** game (the verb's own pool);
+2. a game inside the run's filter that is **not on the map and not played**.
+
+Both exclude games played this run and games already handed out by this
 Collapse, so no two nodes end up holding the same game.
 
 It is **free**: it spends no Transmute charges and is not the verb. It needs its
