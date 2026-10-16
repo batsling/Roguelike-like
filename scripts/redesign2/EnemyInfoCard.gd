@@ -133,8 +133,10 @@ func setup(entry: Dictionary, col: int, position_note: String = "") -> void:
 	if GameLoop2.is_rift_body(entry):
 		# Off a rift (docs/rifts-design.md §6): doubled, and it stays doubled.
 		dmg_note += "  (×%d — it came through a rift)" % GameLoop2.RIFT_MULT
-	elif dmg != int(e.damage):
-		dmg_note += "  (%d before statuses)" % int(e.damage)
+	elif dmg != GameLoop2.base_damage(e):
+		# Before statuses, but WITH the run's Fracture: that is part of what this
+		# enemy is on this run, not something that happened to it.
+		dmg_note += "  (%d before statuses)" % GameLoop2.base_damage(e)
 	stat_col.add_child(_stat_row("⚔", "Damage", dmg_note, Color(1.0, 0.8, 0.35)))
 	# Shields only when it has some to spend: a body with none is the normal case
 	# and a "◆ Shield: 0" row on every card is a line of noise per enemy.

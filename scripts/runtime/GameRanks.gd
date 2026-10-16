@@ -67,7 +67,10 @@ static func xp(game) -> int:
 	if id == "":
 		return 0
 	var total: int = wins_xp(GameStats.beaten_count(id))
-	if GameStats.amulet_wins(id) > 0:
+	# +10% of the repeat win per Fracture level it was won at (fracture-design §5).
+	total += Fracture.XP_PER_LEVEL * GameStats.repeat_win_fractures(id)
+	# A custom run's Amulet pays its XP too; only the 🏆 is withheld from it.
+	if GameStats.amulet_wins(id) > 0 or GameStats.custom_amulet_wins(id) > 0:
 		total += XP_AMULET
 	if GameStats.perfect_count(id) > 0:
 		total += XP_PERFECT
@@ -88,7 +91,9 @@ static func character_xp(character) -> int:
 	if id == "":
 		return 0
 	var total: int = wins_xp(GameStats.character_wins(id))
-	if GameStats.character_amulet_wins(id) > 0:
+	total += Fracture.XP_PER_LEVEL * GameStats.character_repeat_win_fractures(id)
+	if GameStats.character_amulet_wins(id) > 0 \
+			or GameStats.character_custom_amulet_wins(id) > 0:
 		total += XP_AMULET
 	if GameStats.character_perfects(id) > 0:
 		total += XP_PERFECT

@@ -362,6 +362,9 @@ func _save_subtitle(entry: Dictionary) -> String:
 	var ch: CharacterData = Data.get_character2(StringName(entry.get("character_id", "")))
 	if ch != null:
 		parts.append(ch.display_name)
+	# The level the run is played at (docs/fracture-design.md §6), when it has one.
+	if int(entry.get("fracture", 0)) > 0:
+		parts.append("Fracture %d" % int(entry.get("fracture", 0)))
 	var g: GameData = Data.get_game(StringName(entry.get("current_game", "")))
 	if g != null:
 		parts.append(g.display_name)

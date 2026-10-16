@@ -157,9 +157,11 @@ func grid_growth() -> int:
 func grid_cols() -> int:
 	return BASE_GRID_COLS + grid_growth() + GameState.grid_length_growth()
 
-# Lanes on the board right now, 0-based rows 0..grid_rows() - 1.
+# Lanes on the board right now, 0-based rows 0..grid_rows() - 1. A Fracture adds
+# a lane and no depth (docs/fracture-design.md §3): more bodies abreast at the
+# front, none of them spawning any closer or further.
 func grid_rows() -> int:
-	return BASE_GRID_ROWS + grid_growth()
+	return BASE_GRID_ROWS + grid_growth() + Fracture.extra_rows()
 
 # The back column — where an enemy's rightmost cell lands when it spawns.
 func spawn_col() -> int:
@@ -947,6 +949,12 @@ func _reseat_stack(was_offgrid_from: int = -1) -> void:
 func start_run(character: CharacterData) -> void:
 	GameState.reset_run()
 	GameState.apply_character2(character)
+	# The level this run is played at: the character's remembered pick, which
+	# GameStats already holds to what they have unlocked (docs/fracture-design.md
+	# §4). A custom run may use any level unlocked in ordinary runs, so the same
+	# pick serves both.
+	if character != null:
+		GameState.fracture = GameStats.fracture_pick(character.id)
 	# The speedrun clock back to zero. Here rather than in the overworld because
 	# this is the one door into a fresh run, and a clock that kept the last run's
 	# splits would be wrong from its first frame.
@@ -1767,7 +1775,11 @@ func choose_game(enemy: GoalEnemyData, escort_type: StringName = &"",
 	_next_instance += 1
 	_add_to_grid(inst, enemy, effective_health(enemy), _spawn_statuses())
 	arrivals = [inst]
-	if with_second_body:
+	# An Enemies node's second body (§19.4), plus one more on a Fracture
+	# (docs/fracture-design.md §3) — which is also what gives a Champion's boss a
+	# body beside it there. Rolled the same way, so they are ordinary arrivals.
+	var others: int = (1 if with_second_body else 0) + Fracture.extra_bodies()
+	for _i in range(others):
 		var second_inst: int = _spawn_second_body(enemy, escort_type, escort_tier)
 		if second_inst > 0:
 			arrivals.append(second_inst)
@@ -1849,6 +1861,14 @@ func _land_capstone_boss(type_key: StringName = &"", tier: int = -1) -> void:
 		return          # an empty boss roster: the band closes without one
 	if spawn_to_stack(boss) <= 0:
 		return
+	# On a Fracture the capstone does not walk on alone (docs/fracture-design.md
+	# §3): a body of the same game type and tier comes with it, landed the way the
+	# boss was, so it is no more an arrival than the boss is.
+	for _i in range(Fracture.extra_bodies()):
+		var with_it: GoalEnemyData = roll_second_body(key,
+			tier if tier >= 0 else RunDifficulty.current_tier(), boss)
+		if with_it != null:
+			spawn_to_stack(with_it)
 	# NOT an arrival, for the same reason an end-of-game spawn is not one: it did not
 	# come with the game, so a Scramble must not be able to scrub it off.
 	var msg: String = "%s closes the band — a boss walks on." % boss.display_name
@@ -1908,7 +1928,10 @@ func end_of_game_price(escaped: bool = false) -> Dictionary:
 	var here: StringName = GameState.current_game_id
 	if here == &"":
 		return {"bodies": 0, "why": ""}
-	if here == GameState.amulet_game_id:
+	# The Amulet owes nothing because nothing comes after it — except in a
+	# Collapse (docs/fracture-design.md §7), where the walk home does, and the
+	# Amulet game is the doorstep it is.
+	if here == GameState.amulet_game_id and not collapse_due():
 		return {"bodies": 0, "why": "nothing follows you past the Amulet"}
 	var bodies: int = pressure()
 	if defeated_this_game <= 0:
@@ -2053,10 +2076,13 @@ func _clear_arrivals() -> void:
 
 # How many shields selecting `game` grants: the long haul of a Traditional
 # roguelike is worth more cover than anything else.
+#
+# A Fracture cuts it (docs/fracture-design.md §3): here, so the choosing card,
+# the selection screen and the grant itself cannot disagree.
 func shields_for_game(game: GameData) -> int:
 	if game != null and game.type == GameData.GameType.TRADITIONAL:
-		return SHIELDS_TRADITIONAL
-	return SHIELDS_PER_GAME
+		return Fracture.shields(SHIELDS_TRADITIONAL)
+	return Fracture.shields(SHIELDS_PER_GAME)
 
 # Selecting a game hands the player their armour for it. Adds the grant on top of
 # whatever is carried (a shield from Anchor bought before this point still
@@ -2503,7 +2529,8 @@ func effective_health(enemy: GoalEnemyData) -> int:
 # Same BFS the overworld's route badges read, so the number the board shows and
 # the number the loop resolves on are the same number.
 func hops_to_amulet() -> int:
-	var amulet: StringName = GameState.amulet_game_id
+	# The GOAL: the start, once a Collapse has the Amulet being carried home.
+	var amulet: StringName = GameState.goal_game_id()
 	var here: StringName = GameState.current_game_id
 	if amulet == &"" or here == &"":
 		return -1
@@ -2582,9 +2609,13 @@ func _board_snapshot() -> Dictionary:
 #
 # It does not touch 2a: Predatory Scent is a body's own ability reacting to an
 # evening you did nothing with (§7.6), not the road's price for the road.
+#
+# `won` says the game's own goal was met, which is half of what the Fracture's
+# extra turn needs (an escape is the other half, docs/fracture-design.md §3).
+# False by default, so a caller that does not say is never charged one.
 func beat_game(clear_advertised: bool = false, fulfilled_instances: Array = [],
 		claims: Dictionary = {}, road_spawns: bool = true,
-		escaped: bool = false) -> Dictionary:
+		escaped: bool = false, won: bool = false) -> Dictionary:
 	var res := {
 		"beaten": true, "defeats": [], "drops": 0, "attacks": [],
 		"turns": 0, "turn_frames": [],
@@ -2706,6 +2737,17 @@ func beat_game(clear_advertised: bool = false, fulfilled_instances: Array = [],
 		res["turns"] = 1
 		# An EXTRA turn, so a Censer holds the front line out of it (§8.2).
 		_resolve_enemy_turn(0, res, hunters, true)
+		(res["turn_frames"] as Array).append(_board_snapshot())
+
+	# 2a'. THE FRACTURE'S EXTRA TURN (docs/fracture-design.md §3): from Fracture 8
+	#     the whole board takes one more turn after a game BEATEN or ESCAPED — not
+	#     one missed, and not a teleport out, which is not a game handed in (the
+	#     same reason it skips step 5). An EXTRA turn, so the Censer holds the
+	#     front line out of it like any other.
+	if Fracture.extra_turn() and (won or escaped) and road_spawns and not run_over:
+		res["fracture_turn"] = true
+		res["turns"] = int(res["turns"]) + 1
+		_resolve_enemy_turn(int(res["turns"]) - 1, res, [], true)
 		(res["turn_frames"] as Array).append(_board_snapshot())
 
 	# 2b. THE STATUSES' OWN BILL, once the enemies have finished swinging. Burn's 3
@@ -4589,6 +4631,73 @@ func nearest_open_cell(enemy: GoalEnemyData, to: Vector2i, exclude: int = 0) -> 
 # for it; there is no such body now (see `arrivals`), and whatever is standing
 # there was already dealt with by the report that got us here — ticked or not,
 # like every other enemy. The run is simply over.
+# --- FRACTURE 10: THE COLLAPSE (docs/fracture-design.md §7) -----------------
+
+# Whether beating the Amulet game, right now, starts the walk home rather than
+# winning the run.
+func collapse_due() -> bool:
+	return Fracture.at_least(Fracture.MAX) and not GameState.carrying_amulet
+
+# THE TURNAROUND. The Amulet is picked up and every game the run stood on, the
+# start aside, is transmuted into a game the player has not played: the map
+# keeps its shape (a transmuted node keeps its connections), so the road home is
+# exactly as long as the road out, and "do not go back through games you
+# played" holds without a rule for it. Free — no Transmute charge.
+#
+# Returns what changed, in the order walked, as [{node, from, to}] for the
+# screen that shows it happening.
+func begin_collapse() -> Array:
+	GameState.carrying_amulet = true
+	var taken: Dictionary = {}
+	for id in RunGraph.map_ids():
+		taken[id] = true
+	for id in transmuted.values():
+		taken[StringName(id)] = true
+	for id in GameState.played_games:
+		taken[StringName(id)] = true
+	var changed: Array = []
+	var seen: Dictionary = {}
+	for node in GameState.walked_path():
+		if node == GameState.start_game_id or seen.has(node):
+			continue
+		seen[node] = true
+		var was: GameData = game_at(node)
+		var repl: GameData = _collapse_replacement(node, taken)
+		if repl == null:
+			continue
+		taken[repl.id] = true
+		transmuted[node] = repl.id
+		changed.append({"node": node, "from": was.id if was != null else node, "to": repl.id})
+	GameLog.add("The Amulet is yours — and the way you came fractures behind you.",
+		Fracture.COLOR)
+	loop_changed.emit()
+	return changed
+
+# What one walked node becomes. The verb's own pools first — a rift slot's from
+# the rift pool, anything else's off the map — and, since off-map games are the
+# only ones in the run's filter not already on it, the whole catalogue last, so
+# a run that has used up its off-map games still never holds one game twice.
+func _collapse_replacement(node: StringName, taken: Dictionary) -> GameData:
+	var pools: Array = []
+	if RunGraph.is_rift_game(node):
+		pools.append(_rift_refill_pool(node, taken))
+	var off: Array = []
+	for id in RunGraph.off_map_ids():
+		var g: GameData = Data.get_game(id)
+		if g != null and not taken.has(g.id) and not is_bashed(g.id):
+			off.append(g)
+	pools.append(off)
+	var anywhere: Array = []
+	for g in Data.all_games():
+		if g is GameData and not taken.has(g.id) and not is_bashed(g.id):
+			anywhere.append(g)
+	pools.append(anywhere)
+	for pool in pools:
+		if not (pool as Array).is_empty():
+			(pool as Array).sort_custom(func(a, b): return a.id < b.id)
+			return pool[randi() % (pool as Array).size()]
+	return null
+
 func clear_amulet() -> void:
 	if run_over:
 		return
@@ -4765,39 +4874,32 @@ func bash_game(game_id: StringName) -> bool:
 	loop_changed.emit()
 	return true
 
-# Transmute (§4): turn a game into a random game that is genuinely OFF THE MAP —
-# outside the run graph's main group, so no route could reach it — and that is
-# neither currently on the map (`connected`) nor bashed. Spends a transmute
-# charge. Returns the replacement GameData, or null if there's no charge, the
+# Transmute (§4): turn a game into a random game, of ANY type, that is genuinely
+# OFF THE MAP — outside the run graph's main group, so no route could reach it —
+# and that is neither currently on the map (`connected`) nor bashed. Spends a
+# transmute charge. Returns the replacement GameData, or null if there's no charge, the
 # source is unknown, or no off-map candidate is available. The overworld passes
 # the ids currently on the map and swaps the node to the returned game.
 #
 # This is the ONLY way an off-map game is ever played. The influence graph is not
 # one piece — on the owned catalog 76 games sit in sequel pairs and lone stars
 # outside the 395-game mainland — and rather than being dead weight they are
-# exactly what this verb spends its charge on. Which also means the pool is small
-# and lopsided (owned: Action 41, Strategy 23, Traditional 7, Deckbuilder 5), so a
-# Deckbuilder transmute repeats itself far sooner than an Action one does. It
-# empties as the run bashes and visits, and returns null rather than a charge
-# wasted on nothing when a type runs dry.
+# exactly what this verb spends its charge on. It empties as the run bashes and
+# visits, and returns null rather than a charge wasted on nothing when it runs dry.
 #
-# The replacement keeps the source's TYPE. **Traditional** is the one exception,
-# and it is a SETTING (Settings.traditional_transmute): a Traditional roguelike
-# is the run's long haul — it grants 5 shields rather than 3 for a reason — so
-# trading one for another is arguably no relief at all, and ANY_OTHER lets a
-# Traditional transmute land on any other type instead. Default is SAME_TYPE,
-# the same rule every other type follows. Under ANY_OTHER the roll is flat
-# across every non-Traditional game off the map, so the types with the deeper
-# catalogs come up more often.
+# THE TYPE IS NOT KEPT (the owner's call, October 2026). It used to be: a game
+# transmuted into another of its own type, with a setting that let Traditional
+# out of its type. But the off-map pool is small and lopsided by type (owned:
+# Action 41, Strategy 23, Traditional 7, Deckbuilder 5), so a Deckbuilder
+# transmute repeated itself almost at once, and Fracture 10's Collapse
+# (docs/fracture-design.md §7) transmutes every game a run played in one go. The
+# roll is flat across every off-map game, so the deeper types come up more often.
 func transmute_game(game_id: StringName, connected: Array = []) -> GameData:
 	if GameState.transmute <= 0:
 		return null
 	var src: GameData = Data.get_game(game_id)
 	if src == null:
 		return null
-	var key: StringName = game_type_key(src)
-	var away_from_traditional: bool = key == &"traditional" \
-		and Settings.traditional_transmute == Settings.TraditionalTransmute.ANY_OTHER
 	var on_map := {}
 	for c in connected:
 		on_map[StringName(c)] = true
@@ -4819,9 +4921,6 @@ func transmute_game(game_id: StringName, connected: Array = []) -> GameData:
 			if g == null:
 				continue
 			if g.id == game_id or on_map.has(g.id) or is_bashed(g.id):
-				continue
-			var same_type: bool = game_type_key(g) == key
-			if same_type == away_from_traditional:
 				continue
 			pool.append(g)
 	# Deterministic order regardless of how the set enumerated, so a seeded run
@@ -5688,10 +5787,16 @@ func enemy_damage(entry: Dictionary) -> int:
 		return 0
 	var totals: Dictionary = enemy_combat(entry)
 	var hit: int = StatusData.apply_damage_mods(
-		int(enemy.damage), int(totals["damage_dealt"]), float(totals["damage_dealt_mult"]))
+		base_damage(enemy), int(totals["damage_dealt"]), float(totals["damage_dealt_mult"]))
 	# A RIFT BODY HITS TWICE AS HARD (docs/rifts-design.md §6), after everything
 	# else has had its say: the rift doubles what this body would have dealt.
 	return hit * RIFT_MULT if is_rift_body(entry) else hit
+
+# An enemy's damage BEFORE its statuses: the authored stat with this run's
+# Fracture steps on it (docs/fracture-design.md §3). The number a preview shows
+# for an enemy that is not on the board yet, and the base enemy_damage builds on.
+func base_damage(enemy: GoalEnemyData) -> int:
+	return Fracture.damage(int(enemy.damage)) if enemy != null else 0
 
 # RIFTS (docs/rifts-design.md §6). A body that walked on at a rift game deals
 # RIFT_MULT times its damage and pays RIFT_MULT times the loot and chest points,

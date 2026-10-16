@@ -304,8 +304,6 @@ func _migrate_legacy_into(id: String) -> void:
 	prefs.set_value("path", "game_filter", old.get_value("path", "game_filter", 0))
 	prefs.set_value("path", "exclude_beaten_amulets",
 		old.get_value("path", "exclude_beaten_amulets", false))
-	prefs.set_value("rules", "traditional_transmute",
-		old.get_value("rules", "traditional_transmute", 0))
 	prefs.save(target + "prefs.cfg")
 
 func _rm_rf(dir_path: String) -> void:

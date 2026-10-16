@@ -65,7 +65,7 @@ static func chapters() -> Array:
 	return [
 		_ch_start(), _ch_choosing(), _ch_playing(), _ch_enemies(), _ch_board(),
 		_ch_health(), _ch_verbs(), _ch_gold(), _ch_events(), _ch_pack(),
-		_ch_bosses(), _ch_wrong(), _ch_screen(),
+		_ch_bosses(), _ch_fractures(), _ch_wrong(), _ch_screen(),
 	]
 
 
@@ -412,7 +412,7 @@ static func _ch_enemies() -> Dictionary:
 			_p(("Every %dth spawn — a node's enemies arriving, or a game's end "
 				+ "standing some up — is a DIFFICULTY UP: the tier steps, the board "
 				+ "grows, and a boss walks on. The strip counts down to it.")
-				% RunDifficulty.GAMES_PER_TIER),
+				% RunDifficulty.games_per_tier()),
 			_h("Old goals never expire"),
 			_p("A follower's goal can be fulfilled during ANY later game. Do it "
 				+ "and the follower dies right there, drops its loot and pays its "
@@ -603,7 +603,7 @@ static func _ch_verbs() -> Dictionary:
 				+ "to where you stand, with its own fresh enemy — and if there is "
 				+ "nothing left to connect, the slot simply goes. Bash is "
 				+ "destruction, not a guaranteed reroll."),
-			_kv("⚗ Transmute", "Swap a game for a random one of the SAME TYPE that "
+			_kv("⚗ Transmute", "Swap a game for a random one, of any type, that "
 				+ "is off the map entirely — a game no route could ever have "
 				+ "reached. It is the only way those games are ever played. The "
 				+ "swap sticks to the SPOT: the node keeps all its connections, so "
@@ -880,14 +880,14 @@ static func _ch_bosses() -> Dictionary:
 				+ "Shop node lands nothing, so routing through them holds the tier "
 				+ "where it is. A higher tier means enemies that hit harder — and a "
 				+ "bigger board to cross before they reach you, which is the "
-				+ "counterweight.") % RunDifficulty.GAMES_PER_TIER),
+				+ "counterweight.") % RunDifficulty.games_per_tier()),
 			_h("Where bosses come from"),
 			_b("A CHAMPION node (!!) stands a boss of the current tier, alone."),
 			_b(("Every %d%s spawn lands a boss ON TOP of whatever else was "
 				+ "arriving — so a lost run can be the one that brings a boss, and "
 				+ "a Champion node that is also that spawn brings two.") % [
-				RunDifficulty.GAMES_PER_TIER,
-				"rd" if RunDifficulty.GAMES_PER_TIER == 3 else "th"]),
+				RunDifficulty.games_per_tier(),
+				"rd" if RunDifficulty.games_per_tier() == 3 else "th"]),
 			_p("The count to the next one is on the strip over the board, and the "
 				+ "spawn before it is announced in a popup, once."),
 			_p("A boss is a different set of rules:"),
@@ -903,6 +903,49 @@ static func _ch_bosses() -> Dictionary:
 				+ "buys you a DIFFERENT boss, not a way past this one."),
 			_note("A boss cannot be dashed past either. It follows you like "
 				+ "everything else on the board, and only its goal removes it."),
+		],
+	}
+
+
+# ---------------------------------------------------------------------------
+# Fractures (docs/fracture-design.md)
+# ---------------------------------------------------------------------------
+
+# The ladder is read off Fracture itself, a line per level, so this page and the
+# picker's hover say the same thing and a reordered ladder moves both.
+static func _ch_fractures() -> Dictionary:
+	var ladder: Array = [_row(["Fracture", "What it adds"], true)]
+	for lv in range(1, Fracture.MAX + 1):
+		ladder.append(_row(["%s%d" % [Fracture.GLYPH, lv], Fracture.change_text(lv)]))
+	return {
+		"id": &"fractures", "icon": Fracture.GLYPH, "title": "Fractures",
+		"blurb": "Ten harder runs, unlocked one at a time.",
+		"blocks": [
+			_p("A Fracture is a harder run. There are ten, and each one keeps every "
+				+ "Fracture below it: Fracture 6 is Fractures 1 to 6 together. "
+				+ "Fracture 0 is the game as it is."),
+			_h("Unlocking them"),
+			_b("They unlock PER CHARACTER. Win a run as a character to open "
+				+ "Fracture 1 for them; win at their highest Fracture to open the next."),
+			_b("Pick the level on the character select, in the row under the hero. "
+				+ "It stays on whatever you picked last for that hero."),
+			_b("A custom run can be played at any Fracture that hero has unlocked, "
+				+ "but it is practice: it unlocks nothing and wins no trophy."),
+			_h("The ladder"),
+		] + ladder + [
+			_h("What you get for it"),
+			_b("Every repeat win pays 10% more XP per Fracture: 55 at Fracture 1, "
+				+ "100 at Fracture 10, where an ordinary repeat win pays 50."),
+			_b("A game's 🏆 and a character's 🏆 carry the highest Fracture they "
+				+ "were won at."),
+			_h("Fracture 10: the Collapse"),
+			_p("Beating the Amulet does not end the run. You pick it up, every game "
+				+ "you played is fractured into one you have not, and the run is won "
+				+ "by carrying the Amulet back to the game you started on. Arriving is "
+				+ "enough: you do not play it again. The road home is as long as the "
+				+ "road out, and everything still on the board comes with you."),
+			_note("The level you are playing is beside your portrait at the top of "
+				+ "the screen. Hover it for everything that level is doing."),
 		],
 	}
 

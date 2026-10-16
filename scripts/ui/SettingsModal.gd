@@ -325,12 +325,6 @@ func _build_runs_section(col: VBoxContainer) -> void:
 	_toggle(grid, "Rifts", Settings.rifts_enabled,
 		func(on: bool) -> void: Settings.set_rifts_enabled(on),
 		"Pull a few unconnected games into the map. Never shortens a route. From the next run.")
-	_toggle(grid, "Wide Traditional transmute",
-		Settings.traditional_transmute == Settings.TraditionalTransmute.ANY_OTHER,
-		func(on: bool) -> void:
-			Settings.set_traditional_transmute(Settings.TraditionalTransmute.ANY_OTHER if on
-				else Settings.TraditionalTransmute.SAME_TYPE),
-		"A Traditional game transmutes into a game of any OTHER type, not another Traditional.")
 
 # Where the "Owned" answer comes from: the shipped spreadsheet column, or a list
 # this player builds by ticking games off their covers in the compendium.

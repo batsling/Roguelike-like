@@ -368,7 +368,7 @@ func _build_trail() -> void:
 	# In preview mode the road ahead starts at the game being considered — that is
 	# the whole question the preview asks.
 	var current: StringName = preview_origin if preview_origin != &"" else GameState.current_game_id
-	var amulet: StringName = GameState.amulet_game_id
+	var amulet: StringName = GameState.goal_game_id()
 	if current == &"" or amulet == &"":
 		return
 	var dag: Dictionary = RunGraph.shortest_path_dag(current, amulet)
@@ -2445,7 +2445,7 @@ class StarCanvas extends Control:
 		var amulet: int = -1
 		if not view.pure_catalog:
 			current = lay.index_of(GameState.current_game_id)
-			amulet = lay.index_of(GameState.amulet_game_id)
+			amulet = lay.index_of(GameState.goal_game_id())
 		# WHICH stars this pass is for is answered once, as a list, rather than by
 		# running the whole sky and skipping the half belonging to the other pass
 		# (see AtlasView.star_indices — that skipping was 1704 iterations and 1704

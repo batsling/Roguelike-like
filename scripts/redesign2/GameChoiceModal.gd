@@ -338,7 +338,7 @@ func _build_header(game: GameData, accent: Color) -> Control:
 	row.add_theme_constant_override("separation", UITheme.GAP_WIDE)
 
 	var title := Label.new()
-	title.text = ("🏆 " if bool(_choice.get("amulet", false))
+	title.text = (("🏠 " if GameState.carrying_amulet else "🏆 ") if bool(_choice.get("amulet", false))
 		else ("☠ " if bool(_choice.get("boss", false)) else "")) + game.display_name
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -584,6 +584,15 @@ func _build_source_block() -> Control:
 		return null
 	var influencer: GameData = found["from"]
 	var influenced: GameData = found["to"]
+	# A FORMER CONNECTION (the owner's call, 16 Oct 2026): either end has had a
+	# different game painted over it since — by Transmute, or by Fracture 10's
+	# Collapse, which does it to the whole road walked. The road and its proof
+	# still belong to the original pair, so the section says so in as many words
+	# rather than crediting the games standing there now with that influence.
+	var now_here: GameData = GameLoop2.game_at(here.id)
+	var now_there: GameData = GameLoop2.game_at(there.id)
+	var former: bool = (now_here != null and now_here.id != here.id) \
+		or (now_there != null and now_there.id != there.id)
 
 	# SIZED FOR THE SLOT BESIDE THE COVER, which is a narrow one: the type sizes
 	# here are a step down from the rest of the column because two game names and a
@@ -593,17 +602,34 @@ func _build_source_block() -> Control:
 	box.custom_minimum_size = Vector2(SOURCE_MIN_W, 0)
 
 	var head := Label.new()
-	head.text = "🔗  SOURCE"
+	head.text = "🔗  FORMER CONNECTION" if former else "🔗  SOURCE"
 	head.add_theme_font_size_override("font_size", UITheme.FONT_TINY)
 	head.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
 	box.add_child(head)
 
 	var claim := Label.new()
 	claim.text = "%s inspired %s" % [influencer.display_name, influenced.display_name]
+	if former:
+		claim.text = "Previously a connection between %s and %s: %s" % [
+			here.display_name, there.display_name, claim.text]
 	claim.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	claim.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	claim.add_theme_color_override("font_color", UITheme.TEXT)
 	box.add_child(claim)
+	if former:
+		var since: Array = []
+		for pair in [[here, now_here], [there, now_there]]:
+			var was: GameData = pair[0]
+			var now: GameData = pair[1]
+			if now != null and now.id != was.id:
+				since.append("%s is now %s" % [was.display_name, now.display_name])
+		var changed := Label.new()
+		changed.name = "FormerConnection"
+		changed.text = "%s. The road and its proof are the old pair's." % "; ".join(since)
+		changed.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		changed.add_theme_font_size_override("font_size", UITheme.FONT_TINY)
+		changed.add_theme_color_override("font_color", Fracture.COLOR)
+		box.add_child(changed)
 
 	# The sheet flags roughly 110 links as a sequel or the same studio rather than
 	# one game merely inspiring another. That is a stronger claim, so it is said —
@@ -1053,7 +1079,7 @@ func _build_enemy_block(game: GameData) -> Control:
 	var entry: Dictionary = {"enemy": enemy, "statuses": {}}
 	var hp: int = GameLoop2.effective_health(enemy)
 	# A rift's bodies walk on hitting twice as hard (docs/rifts-design.md §6).
-	var dmg: int = int(enemy.damage) * (GameLoop2.RIFT_MULT if _is_rift() else 1)
+	var dmg: int = GameLoop2.base_damage(enemy) * (GameLoop2.RIFT_MULT if _is_rift() else 1)
 	var meta: String = "%s / %s / %d goal%s to beat / dmg %d" % [
 		String(enemy.game_type).capitalize(), RunDifficulty.tier_name(int(enemy.difficulty)),
 		hp, "" if hp == 1 else "s", dmg]
@@ -1425,7 +1451,7 @@ func _build_route_column() -> Control:
 # screen to fly.
 func _ladder_cfg() -> Dictionary:
 	var slot: StringName = _choice.get("slot", &"")
-	var amulet: StringName = GameState.amulet_game_id
+	var amulet: StringName = GameState.goal_game_id()
 	var data: Dictionary = RunGraph.shortest_path_dag(slot, amulet) if slot != &"" and amulet != &"" else {}
 	if _key_dest() != &"" and amulet != &"":
 		data = _key_route(slot, _key_dest(), amulet)
@@ -1470,7 +1496,7 @@ func open_node_card(id: StringName, depth: int = 0) -> Control:
 	close_node_card()
 	if id == &"":
 		return null
-	var amulet: StringName = GameState.amulet_game_id
+	var amulet: StringName = GameState.goal_game_id()
 
 	var facts: Array = []
 	var left: int = RunGraph.route_length(id, amulet)
@@ -1527,8 +1553,9 @@ func close_node_card() -> void:
 func _node_role_text(id: StringName, depth: int) -> String:
 	if depth == 0:
 		return "Where this card would put you."
-	if id == GameState.amulet_game_id:
-		return "The Amulet — the end of the run."
+	if id == GameState.goal_game_id():
+		return ("Home — carry the Amulet here and the run is won." if GameState.carrying_amulet
+			else "The Amulet — the end of the run.")
 	if GameState.visited_games.has(id):
 		return "You have already been here this run."
 	# An ordinary rung needs no line: the route it was clicked on already says it

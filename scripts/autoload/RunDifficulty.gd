@@ -44,6 +44,15 @@ enum Tier { LOW, MEDIUM, HIGH, INSANE }
 # apart as it was.
 const GAMES_PER_TIER := 4
 
+# The band a FRACTURE run steps at (docs/fracture-design.md §3): one spawn
+# sooner, so the tier, the board's growth and the capstone boss all come faster.
+const GAMES_PER_TIER_FRACTURED := 3
+
+# The band THIS run steps at. Everything below asks this rather than the const,
+# so the strip's "boss in N spawns", the tier and the capstone cannot disagree.
+static func games_per_tier() -> int:
+	return GAMES_PER_TIER_FRACTURED if Fracture.faster_tier() else GAMES_PER_TIER
+
 # Highest tier index (Tier enum size - 1). Difficulty is capped here.
 const MAX_TIER := Tier.INSANE
 
@@ -67,7 +76,7 @@ static func tier_for(spawn_events: int) -> int:
 	if spawn_events < 0:
 		spawn_events = 0
 	@warning_ignore("integer_division")
-	var tier: int = spawn_events / GAMES_PER_TIER
+	var tier: int = spawn_events / games_per_tier()
 	return mini(tier, MAX_TIER)
 
 # --- where the bosses stand in that ladder (§7.1, §19.6) --------------------
@@ -98,14 +107,14 @@ static func tier_for(spawn_events: int) -> int:
 static func is_boss_spawn(spawn_events: int) -> bool:
 	if spawn_events <= 0:
 		return false
-	return spawn_events % GAMES_PER_TIER == 0
+	return spawn_events % games_per_tier() == 0
 
 # How many MORE spawn events until the next one lands a boss, counting that one:
 # 1 means the very next spawn is the capstone. For the battlefield strip (§19.8),
 # which has to say it before it happens: a player deciding whether to lose one
 # more run here cannot weigh the price without knowing a boss may come with it.
 static func spawns_to_boss(spawn_events: int) -> int:
-	return GAMES_PER_TIER - (maxi(0, spawn_events) % GAMES_PER_TIER)
+	return games_per_tier() - (maxi(0, spawn_events) % games_per_tier())
 
 # --- the battlefield grows with the tier (§7.3) -----------------------------
 #

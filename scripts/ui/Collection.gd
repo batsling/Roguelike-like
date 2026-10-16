@@ -1907,7 +1907,7 @@ func _character_cell(ch: CharacterData) -> Control:
 		var tr := UITheme.crisp_tex(ch.portrait, GRID_PORTRAIT_SIZE)
 		tr.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		# The character's rank, the same badge a game's cover wears (§20.9).
-		vb.add_child(RankBadge.wrap_character(tr, ch.id))
+		vb.add_child(RankBadge.wrap_character(tr, ch.id, true))
 	# The NAME AND NOTHING ELSE. Health was the one stat on the tile, and a single
 	# number is the worst thing a grid can carry: it is not enough to compare
 	# characters by and it is a second line of text under every portrait, on the one
@@ -1924,7 +1924,7 @@ func _show_character_detail(ch: CharacterData) -> void:
 	if ch.portrait != null:
 		var tr := UITheme.crisp_tex(ch.portrait, DETAIL_PORTRAIT_SIZE)
 		tr.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-		_detail_box.add_child(RankBadge.wrap_character(tr, ch.id))
+		_detail_box.add_child(RankBadge.wrap_character(tr, ch.id, true))
 	_detail_box.add_child(_label(ch.display_name, green, 18, true))
 	if ch.source_game != "":
 		_detail_box.add_child(_label("From: %s" % ch.source_game, Color(0.6, 0.6, 0.66), 11, false))
@@ -1952,6 +1952,18 @@ func _show_character_detail(ch: CharacterData) -> void:
 		_detail_box.add_child(_label(ch.level_up_condition, Color(0.8, 0.85, 0.95), 11, false, true))
 		if ch.level_up_reward != "" and ch.level_up_reward.to_upper() != "N/A":
 			_detail_box.add_child(_kv("Reward", ch.level_up_reward))
+
+	# FRACTURES (docs/fracture-design.md §6): how far up the ladder this character
+	# has climbed, and the runs won at each level.
+	_detail_box.add_child(_detail_section("%s Fractures" % Fracture.GLYPH))
+	_detail_box.add_child(_kv("Unlocked", "up to Fracture %d" % GameStats.fracture_unlocked(ch.id)
+		if GameStats.fracture_unlocked(ch.id) > 0 else "none yet — win a run to open Fracture 1"))
+	var by_level: Dictionary = GameStats.fracture_wins(ch.id)
+	var levels: Array = by_level.keys()
+	levels.sort()
+	for lv in levels:
+		_detail_box.add_child(_kv("Won at Fracture %d" % int(lv),
+			"%d run%s" % [int(by_level[lv]), "" if int(by_level[lv]) == 1 else "s"]))
 
 	# The character's own record, the mirror of the game tab's: what this
 	# character has put down, and where they managed their level-up condition.

@@ -797,12 +797,16 @@ func _refresh_pressure() -> void:
 
 	# WHY it's that number. Without the hop count the pressure reads as a random
 	# difficulty spike rather than as the price of the route the player chose.
+	# Counted to the GOAL: the start, on Fracture 10's walk home (§7.5 of
+	# docs/fracture-design.md), where the pressure ladder counts down to it.
+	var goal: String = "Home" if GameState.carrying_amulet else "Amulet"
 	if hops < 0:
-		_pressure_why.text = "no route to the Amulet"
+		_pressure_why.text = "no route to %s" % GameState.goal_word()
 	elif hops == 0:
-		_pressure_why.text = "standing ON the Amulet — %s" % RunDifficulty.band_name(pressure)
+		_pressure_why.text = "standing ON %s — %s" % [GameState.goal_word(),
+			RunDifficulty.band_name(pressure)]
 	else:
-		_pressure_why.text = "Amulet %d hop%s away — %s" % [
+		_pressure_why.text = "%s %d hop%s away — %s" % [goal,
 			hops, "" if hops == 1 else "s", RunDifficulty.band_name(pressure)]
 
 	var price: Dictionary = GameLoop2.end_of_game_price()
@@ -816,6 +820,12 @@ func _refresh_pressure() -> void:
 		_spawn_price.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 	else:
 		_spawn_price.text = ""        # between games: nothing in play to end
+	# FRACTURE 8's price (docs/fracture-design.md §3): the board takes a turn when
+	# a game is beaten or escaped, so it is part of what ending this one costs.
+	# Short, because this label shares the headline with the pressure.
+	if _spawn_price.text != "" and Fracture.extra_turn():
+		_spawn_price.text += " · +1 turn"
+		_spawn_price.add_theme_color_override("font_color", UITheme.DANGER)
 	_spawn_price.visible = _spawn_price.text != ""
 
 	var to_boss: int = RunDifficulty.spawns_to_boss(GameState.spawn_events)
@@ -841,7 +851,8 @@ func _refresh_pressure() -> void:
 			_pressure_why.text,
 			_spawn_tip(owed, why_free),
 			_boss_tip(to_boss),
-		],
+		] + ([("Fracture %d: when this game is beaten or escaped, every enemy takes "
+			+ "one more turn.") % Fracture.level()] if Fracture.extra_turn() else []),
 		"note": "Rush the Amulet and every game fills the board faster; take the long way and it fills slower.",
 	})
 	# The two labels inside it are MOUSE-TRANSPARENT so the panel owns the hover —
@@ -915,7 +926,7 @@ func _boss_tip(to_boss: int) -> String:
 			+ "a boss walks on top of whatever else arrives — a lost run's spawn included.")
 	return ("Every %dth spawn is a difficulty up — the tier steps, the board grows and a "
 		+ "boss walks on: %d more to go. A node arriving, a game ending and a lost "
-		+ "run's spawn each count once, however many bodies they bring.") % [RunDifficulty.GAMES_PER_TIER, to_boss]
+		+ "run's spawn each count once, however many bodies they bring.") % [RunDifficulty.games_per_tier(), to_boss]
 
 # The combat verbs live with the combat: Push and Bomb sit on a toolbar attached to
 # the battlefield. ARM FIRST, THEN AIM — press the verb, the bodies it can reach

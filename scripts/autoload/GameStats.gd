@@ -208,18 +208,87 @@ func record_key_rift(id) -> void:
 # Records a verified beat. Called when the player confirms the "play the real
 # game" verification — NOT on skip.
 func record_beaten(id) -> void:
-	_entry(String(id))["beaten"] += 1
+	var e := _entry(String(id))
+	e["beaten"] += 1
+	_note_win_fracture(e)
 	save_data()
 	emit_signal("changed")
 
 # Records a won run keyed to its amulet game. Bumps both amulets and beaten so
 # an amulet-only win still shows in the beaten tally.
+#
+# A CUSTOM run's Amulet win is counted apart (`custom_amulets`): it pays the
+# Amulet's XP like any other (GameRanks), but it is practice, so it puts no 🏆 on
+# the game and no number on one (docs/fracture-design.md §5). `amulet_wins`, which
+# every trophy and "Skip won amulets" read, counts the others only.
 func record_amulet_win(id) -> void:
 	var e := _entry(String(id))
 	e["beaten"] += 1
-	e["amulets"] += 1
+	_note_win_fracture(e)
+	if Fracture.run_counts():
+		e["amulets"] += 1
+		e["amulet_best"] = maxi(int(e.get("amulet_best", -1)), Fracture.level())
+	else:
+		e["custom_amulets"] = int(e.get("custom_amulets", 0)) + 1
 	save_data()
 	emit_signal("changed")
+
+# A COLLAPSE WON (docs/fracture-design.md §7.6): the run carried the Amulet back
+# to the start. The Amulet game was already recorded as BEATEN when it fell, like
+# any game, so this is only what the run's end adds: the Amulet win, its trophy
+# number, and the character's Amulet. Custom runs are held apart, as ever.
+func record_collapse_win(amulet_id, character_id) -> void:
+	var e := _entry(String(amulet_id))
+	if Fracture.run_counts():
+		e["amulets"] += 1
+		e["amulet_best"] = maxi(int(e.get("amulet_best", -1)), Fracture.level())
+	else:
+		e["custom_amulets"] = int(e.get("custom_amulets", 0)) + 1
+	var c := String(character_id)
+	var g := String(amulet_id)
+	if c != "" and g != "":
+		if not character_game_log.has(c):
+			character_game_log[c] = {}
+		var entry: Dictionary = character_game_log[c].get(g, {"beaten": 0})
+		var field: String = "amulets" if Fracture.run_counts() else "custom_amulets"
+		entry[field] = int(entry.get(field, 0)) + 1
+		character_game_log[c][g] = entry
+	save_data()
+	emit_signal("changed")
+
+# WHICH FRACTURE EACH WIN WAS AT, kept as the two numbers the XP needs rather
+# than as a list: the sum of every win's level, and the level of the FIRST win,
+# which is the one win whose XP the level does not touch (only the base repeat
+# win's 50 grows, §5). `beaten` has already been bumped when this runs, so 1
+# means this is the first. Wins from before Fractures existed are in `beaten`
+# and in neither number, which reads them as Fracture 0 — what they were.
+func _note_win_fracture(e: Dictionary) -> void:
+	var f: int = Fracture.level()
+	e["fracture_sum"] = int(e.get("fracture_sum", 0)) + f
+	if int(e["beaten"]) == 1:
+		e["first_fracture"] = f
+
+# The Fracture levels summed over this game's REPEAT wins: what GameRanks pays
+# Fracture.XP_PER_LEVEL per point of.
+func repeat_win_fractures(id) -> int:
+	var row: Variant = stats.get(String(id))
+	if not (row is Dictionary):
+		return 0
+	return maxi(0, int(row.get("fracture_sum", 0)) - int(row.get("first_fracture", 0)))
+
+# The highest Fracture this game has been beaten at AS THE AMULET, outside custom
+# runs: the number on its 🏆. -1 for a game never won as the Amulet; a win from
+# before Fractures existed reads as 0.
+func amulet_best(id) -> int:
+	var row: Variant = stats.get(String(id))
+	if not (row is Dictionary) or int(row.get("amulets", 0)) <= 0:
+		return -1
+	return maxi(0, int(row.get("amulet_best", 0)))
+
+# Amulet wins from CUSTOM runs: XP, no trophy (see record_amulet_win).
+func custom_amulet_wins(id) -> int:
+	var row: Variant = stats.get(String(id))
+	return int((row as Dictionary).get("custom_amulets", 0)) if row is Dictionary else 0
 
 # Records a PERFECTED visit: the game won with no lost run logged on it (§20.1).
 # Called beside record_beaten / record_amulet_win, never instead of them.
@@ -248,6 +317,22 @@ func record_run(did_win: bool) -> void:
 	# it is filed under should be able to tell them apart.
 	for id in GameState.walked_path():
 		path.append(String(id))
+	last_run_unlocked = -1
+	# THE UNLOCK (docs/fracture-design.md §1): a win at the character's highest
+	# level opens the next one. Before the route check below, so a win is never
+	# lost to a history row there was nothing to draw for. Custom runs never
+	# unlock: they are practice.
+	var c := String(GameState.character_id)
+	if did_win and c != "" and Fracture.run_counts():
+		var before: int = fracture_unlocked(c)
+		var rec: Dictionary = _fracture_record(c)
+		rec["best"] = maxi(fracture_best(c), Fracture.level())
+		# How many runs were won at each level, for the character's stats (§6).
+		var key := "won_%d" % Fracture.level()
+		rec[key] = int(rec.get(key, 0)) + 1
+		if fracture_unlocked(c) > before:
+			last_run_unlocked = fracture_unlocked(c)
+		save_data()
 	if path.size() < 2:
 		return
 	runs.push_front({
@@ -257,6 +342,10 @@ func record_run(did_win: bool) -> void:
 		"character": String(GameState.character_id),
 		"at": int(Time.get_unix_time_from_system()),
 		"beaten": int(GameState.total_games_beaten),
+		# Which level it was played at, and whether it was a custom run, for the
+		# run history (§6) and so a custom win is never read back as a trophy.
+		"fracture": Fracture.level(),
+		"custom": not Fracture.run_counts(),
 	})
 	while runs.size() > MAX_RUNS:
 		runs.pop_back()
@@ -587,10 +676,19 @@ func record_character_game(character_id, game_id, amulet: bool = false,
 	var entry: Dictionary = character_game_log[c].get(g, {"beaten": 0})
 	entry["beaten"] = int(entry.get("beaten", 0)) + 1
 	if amulet:
-		entry["amulets"] = int(entry.get("amulets", 0)) + 1
+		# A custom run's Amulet is counted apart, as on the game (record_amulet_win).
+		var field: String = "amulets" if Fracture.run_counts() else "custom_amulets"
+		entry[field] = int(entry.get(field, 0)) + 1
 	if perfect:
 		entry["perfects"] = int(entry.get("perfects", 0)) + 1
 	character_game_log[c][g] = entry
+	# The character's own wins carry their Fracture the way a game's do, for the
+	# character's XP: summed, with the first win's level kept apart.
+	var rec: Dictionary = _fracture_record(c)
+	var f: int = Fracture.level()
+	rec["fracture_sum"] = int(rec.get("fracture_sum", 0)) + f
+	if character_wins(c) == 1:
+		rec["first_fracture"] = f
 	save_data()
 	changed.emit()
 
@@ -619,15 +717,93 @@ func character_perfects(character_id) -> int:
 # the run history (which has always said who won) is read as well when the count
 # is still 0: a won run in it was an Amulet win. The history is capped, so this
 # is a backfill for old saves, not a second count.
+#
+# Custom runs are left out of both halves (docs/fracture-design.md §5): their
+# Amulet wins are `custom_amulets`, and their history rows say `custom`.
 func character_amulet_wins(character_id) -> int:
 	var n: int = _character_game_sum(character_id, "amulets")
 	if n > 0:
 		return n
 	for r in runs:
 		if r is Dictionary and bool(r.get("won", false)) \
+				and not bool(r.get("custom", false)) \
 				and String(r.get("character", "")) == String(character_id):
 			n += 1
 	return n
+
+func character_custom_amulet_wins(character_id) -> int:
+	return _character_game_sum(character_id, "custom_amulets")
+
+# ---------------------------------------------------------------------------
+# Fractures, per character (docs/fracture-design.md)
+# ---------------------------------------------------------------------------
+#
+# character id -> {"best": int, "pick": int, "fracture_sum": int,
+#                  "first_fracture": int}
+#   best            the highest Fracture a run was WON at as them, custom runs
+#                   aside. What unlocks the next level and what their 🏆 shows.
+#   pick            the level last chosen for them, which the next run starts at.
+#   fracture_sum /  their game wins' levels, for their XP, exactly as a game's
+#   first_fracture  (see _note_win_fracture).
+# Stored rather than read off `runs` because that history is capped at
+# MAX_RUNS, and an unlock must not be forgotten when its run scrolls off.
+var fracture_log: Dictionary = {}
+
+# The run that just ended unlocked this level for its character, or -1. Set by
+# record_run for the winning screen to announce (§5), and cleared by the next.
+var last_run_unlocked: int = -1
+
+func _fracture_record(c: String) -> Dictionary:
+	if not fracture_log.has(c):
+		fracture_log[c] = {}
+	return fracture_log[c]
+
+# The highest Fracture `character_id` has won a run at, or -1 for none. A win
+# from before Fractures existed counts as Fracture 0 (§8): the character has
+# beaten the game, and making them do it again to open Fracture 1 would be a
+# chore rather than a step.
+func fracture_best(character_id) -> int:
+	var rec: Dictionary = fracture_log.get(String(character_id), {})
+	if rec.has("best"):
+		return int(rec["best"])
+	return 0 if character_amulet_wins(character_id) > 0 else -1
+
+# The highest level `character_id` may start a run at: one past their best win,
+# or 0 before their first. Fracture 1 needs a win first (§1).
+func fracture_unlocked(character_id) -> int:
+	return mini(fracture_best(character_id) + 1, Fracture.MAX)
+
+# The level the next run as `character_id` starts at: the last one picked, held
+# to what is unlocked.
+func fracture_pick(character_id) -> int:
+	var rec: Dictionary = fracture_log.get(String(character_id), {})
+	return clampi(int(rec.get("pick", 0)), 0, fracture_unlocked(character_id))
+
+func set_fracture_pick(character_id, level: int) -> void:
+	var c := String(character_id)
+	if c == "":
+		return
+	_fracture_record(c)["pick"] = clampi(level, 0, fracture_unlocked(c))
+	save_data()
+	changed.emit()
+
+# Runs won as `character_id`, by Fracture: {level: count}, levels with a win only.
+# Wins from before Fractures existed are not in fracture_log, and count at 0 —
+# the history's own count of them, the same backfill fracture_best reads.
+func fracture_wins(character_id) -> Dictionary:
+	var out: Dictionary = {}
+	var rec: Dictionary = fracture_log.get(String(character_id), {})
+	for key in rec.keys():
+		if String(key).begins_with("won_"):
+			out[int(String(key).substr(4))] = int(rec[key])
+	if out.is_empty() and character_amulet_wins(character_id) > 0:
+		out[0] = character_amulet_wins(character_id)
+	return out
+
+# The character's wins summed over their REPEAT wins' levels, for their XP.
+func character_repeat_win_fractures(character_id) -> int:
+	var rec: Dictionary = fracture_log.get(String(character_id), {})
+	return maxi(0, int(rec.get("fracture_sum", 0)) - int(rec.get("first_fracture", 0)))
 
 func _character_game_sum(character_id, field: String) -> int:
 	var n: int = 0
@@ -721,7 +897,8 @@ func save_data() -> bool:
 		 "character_enemy_log": character_enemy_log, "goal_log": goal_log,
 		 "character_game_log": character_game_log,
 		 "character_goal_log": character_goal_log,
-		 "donation_bank": donation_bank_total, "last_rifts": last_rifts}, "  "))
+		 "donation_bank": donation_bank_total, "last_rifts": last_rifts,
+		 "fracture_log": fracture_log}, "  "))
 	return true
 
 # --- the Donation Machine's bank -------------------------------------------
@@ -765,6 +942,7 @@ func load_data() -> void:
 	goal_log = {}
 	donation_bank_total = 0
 	last_rifts = []
+	fracture_log = {}
 	if not FileAccess.file_exists(save_path()):
 		return
 	var f := FileAccess.open(save_path(), FileAccess.READ)
@@ -794,6 +972,15 @@ func load_data() -> void:
 	if json.data.has("goal_log") and typeof(json.data["goal_log"]) == TYPE_DICTIONARY:
 		goal_log = json.data["goal_log"]
 	donation_bank_total = maxi(0, int(json.data.get("donation_bank", 0)))
+	if typeof(json.data.get("fracture_log")) == TYPE_DICTIONARY:
+		for ck in json.data["fracture_log"].keys():
+			var rec = json.data["fracture_log"][ck]
+			if typeof(rec) != TYPE_DICTIONARY:
+				continue
+			var clean: Dictionary = {}
+			for key in rec.keys():
+				clean[String(key)] = int(rec[key])
+			fracture_log[String(ck)] = clean
 	if typeof(json.data.get("last_rifts")) == TYPE_ARRAY:
 		for id in json.data["last_rifts"]:
 			last_rifts.append(String(id))
@@ -818,3 +1005,8 @@ func load_data() -> void:
 			# so every perfect was forgotten the next time the file loaded.
 			"perfects": int(r.get("perfects", 0)),
 		}
+		# Fractures (docs/fracture-design.md). Copied only when present, so an
+		# older file loads to exactly the record it had.
+		for key in ["fracture_sum", "first_fracture", "amulet_best", "custom_amulets"]:
+			if r.has(key):
+				stats[String(k)][key] = int(r[key])

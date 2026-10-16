@@ -186,6 +186,12 @@ func _run_caption(run: Dictionary) -> Control:
 	var parts: Array = []
 	if who != null:
 		parts.append(who.display_name)
+	# Which Fracture it was played at, and whether it was a custom run — practice,
+	# which a win in the list should not be mistaken for (docs/fracture-design.md §6).
+	if int(run.get("fracture", 0)) > 0:
+		parts.append("%s Fracture %d" % [Fracture.GLYPH, int(run.get("fracture", 0))])
+	if bool(run.get("custom", false)):
+		parts.append("custom run")
 	parts.append("%d game%s" % [int(run.get("beaten", 0)),
 		"" if int(run.get("beaten", 0)) == 1 else "s"])
 	var when: int = int(run.get("at", 0))

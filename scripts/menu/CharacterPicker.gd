@@ -41,6 +41,7 @@ const CHAR_PORTRAIT_SIZE := 210
 var _roster: Array[CharacterData] = []
 var _select: Callable = Callable()
 var _state: Dictionary = {}
+var _fracture_row: HBoxContainer = null
 
 static func open(parent: Node) -> CharacterPicker:
 	var picker := CharacterPicker.new()
@@ -131,6 +132,14 @@ func _build() -> void:
 	detail_box.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	detail_wrap.add_child(detail_box)
 
+	# THE FRACTURE ROW (docs/fracture-design.md §4), under the hero it belongs to:
+	# 0..10, the levels this hero has unlocked clickable and the rest greyed out.
+	# Choosing one saves it as the hero's pick, which is the level their next run
+	# starts at (GameLoop2.start_run reads it), so Confirm needs nothing passed.
+	_fracture_row = HBoxContainer.new()
+	_fracture_row.add_theme_constant_override("separation", UITheme.GAP_SNUG)
+	vbox.add_child(_fracture_row)
+
 	# Footer: Cancel (left) and the Confirm button (right), enabled once a hero is
 	# selected.
 	var footer := HBoxContainer.new()
@@ -182,6 +191,7 @@ func _build() -> void:
 		for tid in state["tiles"]:
 			state["tiles"][tid].call(tid == ch.id)
 		_fill_char_detail(detail_box, ch)
+		_fill_fracture_row(ch)
 		confirm.disabled = false
 		# The name is the detail panel's heading right beside this; the button
 		# carries it on hover rather than saying it twice.
@@ -208,6 +218,52 @@ func _build() -> void:
 	# Preselect the first hero so the panel is never empty and Confirm is live.
 	if not roster.is_empty() and roster[0] is CharacterData:
 		select.call(roster[0])
+
+# The row of Fracture levels for `ch`: a button per level, the one that will be
+# played lit, the locked ones greyed out, and the selected level's changes on
+# the right. Each button's hover is the whole ladder up to it.
+func _fill_fracture_row(ch: CharacterData) -> void:
+	if _fracture_row == null:
+		return
+	for c in _fracture_row.get_children():
+		_fracture_row.remove_child(c)
+		c.queue_free()
+	var unlocked: int = GameStats.fracture_unlocked(ch.id)
+	var pick: int = GameStats.fracture_pick(ch.id)
+	var head := Label.new()
+	head.text = "%s Fracture" % Fracture.GLYPH
+	head.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
+	head.add_theme_color_override("font_color", Fracture.COLOR)
+	head.tooltip_text = ("Harder runs, unlocked one at a time by winning at the "
+		+ "highest one this hero has. Each level keeps every level below it.")
+	head.mouse_filter = Control.MOUSE_FILTER_PASS
+	_fracture_row.add_child(head)
+	for lv in range(Fracture.MAX + 1):
+		var b := Button.new()
+		b.name = "Fracture%d" % lv
+		b.text = str(lv)
+		b.custom_minimum_size = Vector2(34, 32)
+		b.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
+		b.disabled = lv > unlocked
+		b.tooltip_text = Fracture.ladder_text(lv) if lv <= unlocked else (
+			"Locked: win a run as %s at Fracture %d to open it." % [ch.display_name, lv - 1]
+			if lv == unlocked + 1 else "Locked.")
+		if lv == pick:
+			b.add_theme_stylebox_override("normal", UITheme.accent_box(Fracture.COLOR, UITheme.PANEL_HI, 6))
+			b.add_theme_color_override("font_color", Fracture.COLOR)
+		b.pressed.connect(func():
+			GameStats.set_fracture_pick(ch.id, lv)
+			_fill_fracture_row(ch))
+		_fracture_row.add_child(b)
+	var what := Label.new()
+	what.name = "FractureNote"
+	what.text = (Fracture.change_text(pick) if pick > 0 else "The game as it is.") \
+		if unlocked > 0 else "Win a run as %s to unlock Fracture 1." % ch.display_name
+	what.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	what.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	what.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
+	what.add_theme_color_override("font_color", UITheme.TEXT_DIM)
+	_fracture_row.add_child(what)
 
 # Roll a hero into the preview and answer which one it was. Public because the
 # footer's 🎲 is not the only thing that should be able to ask for one, and

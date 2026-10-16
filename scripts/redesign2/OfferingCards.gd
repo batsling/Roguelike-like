@@ -231,7 +231,12 @@ func _make_choice_card(index: int, choice: Dictionary) -> Control:
 	badge_row.add_child(_kind_mark_label(choice))
 
 	var flag := Label.new()
-	if amulet:
+	if amulet and GameState.carrying_amulet:
+		# The Collapse's goal (docs/fracture-design.md §7): arriving is the win.
+		flag.text = "🏠 HOME"
+		flag.tooltip_text = "Carry the Amulet here and you win the run — you do not play it again."
+		flag.add_theme_color_override("font_color", UITheme.GOLD)
+	elif amulet:
 		flag.text = "🏆 THE AMULET"
 		flag.tooltip_text = "Beat this game's goal and you win the run."
 		flag.add_theme_color_override("font_color", UITheme.GOLD)
@@ -302,7 +307,7 @@ func _make_choice_card(index: int, choice: Dictionary) -> Control:
 	# where the flag a line up has already said it.
 	var dist := Label.new()
 	dist.text = _page.amulet_distance_text(_page.steps_to_amulet(StringName(choice.get("slot", &""))))
-	dist.tooltip_text = "%s is the Amulet — the game this run ends on." % _page.amulet_name()
+	dist.tooltip_text = "%s is where this run ends." % _page.amulet_name()
 	dist.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	dist.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	dist.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -400,7 +405,8 @@ func _make_choice_card(index: int, choice: Dictionary) -> Control:
 	card.add_child(btn)
 
 	var name_lbl := Label.new()
-	name_lbl.text = ("☠ " if choice["boss"] else ("🏆 " if amulet else "")) + game.display_name
+	name_lbl.text = ("☠ " if choice["boss"] else (("🏠 " if GameState.carrying_amulet else "🏆 ")
+		if amulet else "")) + game.display_name
 	name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	name_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	name_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER

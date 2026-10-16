@@ -11,6 +11,36 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Fractures: ten harder runs, unlocked per character** (the owner's design,
+  15–16 Oct 2026; [`docs/fracture-design.md`](docs/fracture-design.md)).
+  - **The ladder**, each level carrying every level below it: a shield fewer per
+    game at 1, 3 and 5; enemy damage x1.5 rounded up at 2 and 9 (on the authored
+    number, statuses on top); one more body on every arrival at 4, bosses
+    included; a boss and a tier step every 3rd spawn at 6; a row taller board at
+    7; a whole-board turn after every game beaten or escaped at 8. One table in
+    `scripts/runtime/Fracture.gd` places them all, so a reorder is one edit.
+  - **Fracture 10, the Collapse.** Beating the Amulet picks it up instead of
+    winning; every game walked except the start is transmuted into one not
+    played, and the run is won by arriving back at the start. One
+    `GameState.goal_game_id()` now answers "where is the run going" for every
+    route, distance, pressure reading, goal card, teleport and map.
+  - **Unlocks and rewards.** Fracture 1 opens with a character's first win and
+    each win at the top opens the next. Repeat wins pay +10% of the base 50 XP
+    per level, and game and character trophies carry the highest level won.
+    Custom runs pay XP but unlock nothing and win no trophy; "Skip won amulets"
+    counts only wins at the current level or higher.
+  - **Shown** on the character select (a 0–10 row), in the header (⟡ and the
+    level), on trophies, the winning screen, Continue rows, run history, the
+    character's Collection page, the board's strip, the dev panel and a new How
+    to Play chapter.
+  - **Dropped on the way:** "+1 hop at the start" was Fracture 9 first, and was
+    measured to leave 150 of 522 owned Amulets unreachable; the doc keeps the
+    numbers.
+- **Transmute picks a game of any type**, not one of the same type, and the
+  *Wide Traditional transmute* setting went with the rule it existed to bend.
+  The off-map pool is small and lopsided by type, and the Collapse transmutes a
+  whole road at once.
+
 - **Characters have ranks too, and each rank is a song from their game**
   (spec §20.9, the owner's design, 15 Oct 2026).
   - **Same bar, same table as a game's**, filled by everything done playing as

@@ -120,10 +120,18 @@ func route_ids() -> Array:
 
 # The headline, in the words the screen prints.
 func headline() -> String:
+	if won and GameState.carrying_amulet:
+		return "🏆  YOU WIN — YOU CARRIED THE AMULET HOME"
 	return "🏆  YOU WIN — THE AMULET IS YOURS" if won else "💀  THE RUN ENDS HERE"
 
 func subtitle() -> String:
 	var here: GameData = Data.get_game(_route[_route.size() - 1]) if not _route.is_empty() else null
+	if won and GameState.carrying_amulet:
+		var got: GameData = Data.get_game(_amulet)
+		return "You beat %s, took the Amulet, and carried it back to where you began." % (
+			got.display_name if got != null else "the Amulet game")
+	if not won and GameState.carrying_amulet:
+		return "Health hit 0 on the way home, with the Amulet in hand."
 	if won:
 		var goal: GameData = Data.get_game(_amulet)
 		return "You cleared %s — the Amulet game — in a run of %d game%s." % [
@@ -135,6 +143,15 @@ func subtitle() -> String:
 			here.display_name if here != null else "the last game",
 			left, "" if left == 1 else "s"]
 	return "Health hit 0 at %s." % [here.display_name if here != null else "the last game"]
+
+# "⟡ Fracture 4 unlocked for Ironclad", or "" when this run unlocked nothing:
+# a loss, a custom run, or a win below the character's highest level.
+func unlock_line() -> String:
+	if not won or GameStats.last_run_unlocked <= 0:
+		return ""
+	var ch: CharacterData = Data.get_character2(GameState.character_id)
+	return "%s  Fracture %d unlocked for %s" % [Fracture.GLYPH, GameStats.last_run_unlocked,
+		ch.display_name if ch != null else "this character"]
 
 # ---------------------------------------------------------------------------
 # Building
@@ -184,6 +201,18 @@ func _build() -> void:
 	sub.add_theme_font_size_override("font_size", UITheme.FONT_SUB)
 	sub.add_theme_color_override("font_color", UITheme.TEXT)
 	col.add_child(sub)
+
+	# THE UNLOCK (docs/fracture-design.md §5), said where the win is: the next
+	# Fracture this win opened for this character, if it opened one.
+	var unlock: String = unlock_line()
+	if unlock != "":
+		var opened := Label.new()
+		opened.name = "FractureUnlock"
+		opened.text = unlock
+		opened.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		opened.add_theme_font_size_override("font_size", UITheme.FONT_HEAD)
+		opened.add_theme_color_override("font_color", Fracture.COLOR)
+		col.add_child(opened)
 
 	col.add_child(_tally())
 	col.add_child(_route_strip())

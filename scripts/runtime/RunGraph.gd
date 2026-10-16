@@ -339,8 +339,8 @@ static func _build_adj() -> void:
 #
 # They are not deleted from the catalog, only from the ROUTE. Off-map games are
 # exactly the pool Transmute draws from (see GameLoop2.transmute_game and
-# §Transmute in docs/games-first-redesign.md: "a random game of the same game type
-# that is not connected to the map"), so being off the map IS their role — it is
+# §Transmute in docs/games-first-redesign.md: "a random game, of any type, that is
+# not connected to the map"), so being off the map IS their role — it is
 # the only way a run ever meets one.
 #
 # Ties are broken on the lowest id so the same catalog always yields the same
@@ -386,6 +386,14 @@ static func _prune_to_main_component() -> void:
 
 # Games inside the active filter that the run's routes cannot reach: everything
 # outside the main group. This is the Transmute pool.
+# Every game standing on the run's map (the main component, rift games included).
+static func map_ids() -> Array[StringName]:
+	_build_adj()
+	var out: Array[StringName] = []
+	for id in _adj_cache.keys():
+		out.append(StringName(id))
+	return out
+
 static func off_map_ids() -> Array[StringName]:
 	_build_adj()
 	var out: Array[StringName] = []
@@ -1804,10 +1812,13 @@ static func _pick_on_bare_map(rng: RandomNumberGenerator) -> Dictionary:
 	# …but never against a NAMED target: "aim me at Balatro" is a more specific
 	# instruction than "prefer amulets I haven't won on", and the general
 	# preference does not get to overrule it.
+	# "Won" means won AT THIS FRACTURE OR HIGHER (docs/fracture-design.md §5): a
+	# game beaten at Fracture 2 is still a goal worth aiming at on Fracture 5,
+	# where it would earn a higher number on its 🏆.
 	if Settings.exclude_beaten_amulets and RunConfig.amulet_id == &"":
 		var unbeaten: Array[GameData] = []
 		for g in amulet_candidates:
-			if GameStats.amulet_wins(g.id) == 0:
+			if GameStats.amulet_best(g.id) < Fracture.level():
 				unbeaten.append(g)
 		if not unbeaten.is_empty():
 			amulet_candidates = unbeaten
