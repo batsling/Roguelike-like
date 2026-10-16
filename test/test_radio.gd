@@ -922,11 +922,16 @@ func test_every_kind_of_goal_lists_under_its_header_in_order() -> void:
 		all_text += (l as Label).text + "\n"
 	assert_string_contains(all_text, "Goals completed here (%d)" % want.size(),
 		"every picture counts, the curse included")
-	# Each goal is a picture now, with what it was on the hover.
+	# Each goal is a picture now, with what it was on the hover — a HoverCard.
 	var tips: String = ""
 	for t in c._detail_box.find_children("*", "PanelContainer", true, false):
 		if t.has_meta(&"goal_key"):
-			tips += (t as Control).tooltip_text + "\n"
+			var card: Control = HoverCard.of(t)
+			if card == null:
+				continue
+			for l in card.find_children("*", "Label", true, false):
+				tips += (l as Label).text + "\n"
+			card.free()
 	assert_string_contains(tips, "followed ×1", "a curse reads as followed")
 	assert_string_contains(tips, "kill 3", "a weapon's goal is on its hover")
 
