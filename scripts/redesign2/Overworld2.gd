@@ -1507,7 +1507,7 @@ func _begin_game(game: GameData, enemy: GoalEnemyData, tier: int,
 # lost. A Strategy start's item chest joins the drop queue and opens at once,
 # before anything has been played.
 func _grant_start_gear_once(game: GameData) -> void:
-	if game == null or GameState.start_gear_given:
+	if game == null or GameState.start_gear_given or not GameState.start_gear_enabled:
 		return
 	GameState.start_gear_given = true
 	var genre: String = RunGraph.type_label(int(game.type))

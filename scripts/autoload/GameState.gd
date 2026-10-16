@@ -33,6 +33,12 @@ var start_game_id: StringName = &""
 # the moment the first game is committed, saved with the run, so a save loaded
 # after the start never pays it a second time.
 var start_gear_given: bool = false
+# Whether starting gear is paid at all. Always on in the game; the GUT suite turns
+# it off in `test/pre_run_hook.gd`, because a random chest or weapon riding on
+# whichever genre card 0 rolled is noise in every test that is not about the kit,
+# and `test_start_panel.gd` turns it back on for the tests that are. Not part of
+# the run, so `reset_run` leaves it alone.
+var start_gear_enabled: bool = true
 var amulet_game_id: StringName = &""
 # FRACTURE 10's COLLAPSE (docs/fracture-design.md §7): the Amulet game has been
 # beaten and the run is carrying it back to the start. From then on the start is

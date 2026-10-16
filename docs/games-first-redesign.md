@@ -5090,7 +5090,9 @@ is committed (`Overworld2._grant_start_gear_once`, flagged by
 `GameState.start_gear_given` and saved with the run), so a custom run that opens
 without a panel still gets the kit of whatever card it opened on. Loot goes into
 the pack; what does not fit is asked about on the drop screen. Each start card
-says its kit under its genre (`GameState.start_gear_text`).
+says its kit under its genre (`GameState.start_gear_text`). The GUT suite runs
+with the kit switched off (`GameState.start_gear_enabled`, `test/pre_run_hook.gd`)
+and `test/test_start_panel.gd` switches it on.
 
 ### 19.4 The spawn model
 

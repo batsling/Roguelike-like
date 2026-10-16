@@ -11,15 +11,21 @@ extends GutTest
 const OVERWORLD := preload("res://scenes/redesign2/Overworld2.tscn")
 
 var _saved_starts: Array = []
+var _saved_gear_on: bool = false
 
+# The suite runs with starting gear OFF (test/pre_run_hook.gd); this file is
+# about the kit, so it turns it on and puts it back.
 func before_each() -> void:
 	_saved_starts = GameStats.last_starts.duplicate()
+	_saved_gear_on = GameState.start_gear_enabled
+	GameState.start_gear_enabled = true
 	GameStats.last_starts = []
 	RunConfig.reset()
 	GameState.reset_run()
 
 func after_each() -> void:
 	GameStats.last_starts = _saved_starts
+	GameState.start_gear_enabled = _saved_gear_on
 	RunConfig.reset()
 
 # --- the shape _strict_starts_for returns, built by hand -----------------------
@@ -210,12 +216,10 @@ func test_every_genre_has_a_line_for_its_card() -> void:
 	assert_eq(GameState.start_gear_text(GameData.GameType.ACTION), "+1 weapon")
 	assert_eq(GameState.start_gear_text(GameData.GameType.DECKBUILDER), "+2 cards")
 
-# The start picked off the panel, by genre, or -1 when this panel has none.
-func _start_of(ui, type_val: int) -> int:
-	for i in range(ui._start_options.size()):
-		if int(ui._start_options[i]["type"]) == type_val:
-			return i
-	return -1
+# How many pack pieces a genre's kit hands over.
+func _kit_pieces(type_val: int) -> int:
+	var g: Dictionary = GameState.START_GEAR.get(type_val, {})
+	return int(g.get("count", 0)) if g.has("loot") else 0
 
 func test_picking_a_start_hands_over_its_kit_once() -> void:
 	var ui = OVERWORLD.instantiate()
@@ -223,15 +227,9 @@ func test_picking_a_start_hands_over_its_kit_once() -> void:
 	if ui._start_options.is_empty():
 		pending("this catalogue deals no start panel")
 		return
-	var i: int = _start_of(ui, GameData.GameType.DECKBUILDER)
-	if i < 0:
-		i = _start_of(ui, GameData.GameType.ACTION)
-	if i < 0:
-		pending("this panel has neither a Deckbuilder nor an Action start")
-		return
-	var want: int = 2 if int(ui._start_options[i]["type"]) == GameData.GameType.DECKBUILDER else 1
+	var want: int = _kit_pieces(int(ui._start_options[0]["type"]))
 	var before: int = GameState.loot_items.size()
-	ui.choose_start(i)
+	ui.choose_start(0)
 	assert_true(GameState.start_gear_given)
 	assert_eq(GameState.loot_items.size() - before, want, "the kit is in the pack")
 	# A second game committed is not a second opening.
@@ -239,19 +237,37 @@ func test_picking_a_start_hands_over_its_kit_once() -> void:
 	ui._grant_start_gear_once(Data.get_game(GameState.current_game_id))
 	assert_eq(GameState.loot_items.size(), after, "the kit is paid once a run")
 
+func test_the_switch_the_suite_uses_pays_no_kit() -> void:
+	var ui = OVERWORLD.instantiate()
+	add_child_autofree(ui)
+	GameState.start_gear_enabled = false
+	var before: int = GameState.loot_items.size()
+	ui._grant_start_gear_once(_game_of(GameData.GameType.DECKBUILDER))
+	assert_eq(GameState.loot_items.size(), before)
+	assert_false(GameState.start_gear_given, "…and the run can still be paid later")
+
+func _game_of(type_val: int) -> GameData:
+	for g in Data.all_games():
+		if g is GameData and int(g.type) == type_val:
+			return g
+	return null
+
+# Arranged rather than hoped for: the panel's genres are random, so this hands
+# the run a Strategy game directly instead of waiting for one to be dealt.
 func test_a_strategy_start_queues_its_chest() -> void:
 	var ui = OVERWORLD.instantiate()
 	add_child_autofree(ui)
-	var i: int = _start_of(ui, GameData.GameType.STRATEGY)
-	if i < 0:
-		pending("this panel has no Strategy start")
-		return
-	ui.choose_start(i)
+	ui._grant_start_gear_once(_game_of(GameData.GameType.STRATEGY))
 	var chests: Array = ui._drop_queue.filter(func(d): return (d as Dictionary).has("items"))
-	var asking: bool = ui._drop_modal != null and is_instance_valid(ui._drop_modal)
-	assert_true(not chests.is_empty() or asking, "the chest is waiting, or already open")
-	if not chests.is_empty():
-		assert_eq((chests[0]["items"] as Array).size(), 3, "pick 1 of 3")
+	assert_eq(chests.size(), 1, "one item chest is waiting")
+	assert_eq((chests[0]["items"] as Array).size(), 3, "pick 1 of 3")
+
+func test_a_traditional_start_seats_its_three_pieces() -> void:
+	var ui = OVERWORLD.instantiate()
+	add_child_autofree(ui)
+	var before: int = GameState.loot_items.size()
+	ui._grant_start_gear_once(_game_of(GameData.GameType.TRADITIONAL))
+	assert_eq(GameState.loot_items.size() - before, 3)
 
 func test_each_start_card_says_what_it_gives() -> void:
 	var ui = OVERWORLD.instantiate()
