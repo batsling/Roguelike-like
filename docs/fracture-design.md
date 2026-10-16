@@ -24,47 +24,65 @@ normal run, in the shape Slay the Spire gave the idea.
 
 | # | Change | What it touches |
 |---|---|---|
-| 1 | **Escorts +1**: everything that spawns brings one more companion | §7.5 |
-| 2 | **Shield gain −1**: normal 3 → 2, Traditional 5 → 4 | `GameLoop2.shields_for_game` |
-| 3 | **Enemies hit harder, +1 per tier**: Low +1, Medium +2, High +3, Insane +4 | the swing, `GameLoop2._take_hit` |
-| 4 | **Shield gain −1**: normal 2 → 1, Traditional 4 → 3 | as 2 |
-| 5 | **+1 starting row**: the board starts one row taller, so more bodies can stand in the front column and hit at once. Columns are unchanged, so nothing spawns closer or farther | `GameLoop2.grid_growth` (rows only) |
+| 1 | **Shield gain −1**: normal 3 → 2, Traditional 5 → 4 | `GameLoop2.shields_for_game` |
+| 2 | **Enemies hit harder, ×1.5 rounded up** | the swing, `GameLoop2._take_hit` |
+| 3 | **Shield gain −1**: normal 2 → 1, Traditional 4 → 3 | as 1 |
+| 4 | **Escorts +1**: everything that spawns brings one more companion | §7.5 |
+| 5 | **Shield gain −1**: normal stays at 1 (the floor), Traditional 3 → 2 | as 1 |
 | 6 | **Difficulty rises 1 spawn faster**: the tier steps, and a boss comes, every 3rd spawn event instead of every 4th | `RunDifficulty.GAMES_PER_TIER` |
-| 7 | **Shield gain −1**: normal stays at 1 (the floor), Traditional 3 → 2 | as 2 |
-| 8 | **Enemies take 1 extra turn after each completed game** | `_resolve_enemy_turn`'s `extra` beat |
-| 9 | **Enemies hit harder again, +1 per tier**: on top of Fracture 3, so Low +2, Medium +4, High +6, Insane +8 | as 3 |
+| 7 | **+1 starting row**: the board starts one row taller, so more bodies can stand in the front column and hit at once. Columns are unchanged, so nothing spawns closer or farther | `GameLoop2.grid_growth` (rows only) |
+| 8 | **Enemies take 1 extra turn after each game beaten or escaped** | `_resolve_enemy_turn`'s `extra` beat |
+| 9 | **Enemies hit harder again, ×1.5 rounded up** on top of Fracture 2 | as 2 |
 | 10 | **The Collapse**: beat the Amulet, then carry it back to the start | §7 |
 
 Where a game's shields land at each level:
 
 | Fracture | Normal game | Traditional |
 |---|---|---|
-| 0–1 | 3 | 5 |
-| 2–3 | 2 | 4 |
-| 4–6 | 1 | 3 |
-| 7–10 | 1 | 2 |
+| 0 | 3 | 5 |
+| 1–2 | 2 | 4 |
+| 3–4 | 1 | 3 |
+| 5–10 | 1 | 2 |
 
+What a swing does at each level. Authored damage today is the enemy's tier
+(Low 1 … Insane 4) and, for bosses, 3 / 5 / 7 / 9:
+
+| | Today | Fracture 2–8 | Fracture 9–10 |
+|---|---|---|---|
+| Low enemy | 1 | 2 | 3 |
+| Medium enemy | 2 | 3 | 5 |
+| High enemy | 3 | 5 | 8 |
+| Insane enemy | 4 | 6 | 9 |
+| Low boss | 3 | 5 | 8 |
+| Medium boss | 5 | 8 | 12 |
+| High boss | 7 | 11 | 17 |
+| Insane boss | 9 | 14 | 21 |
+
+Reordered by the owner on 16 October 2026 (1↔4, 2↔3, 5↔7 of the first draft).
 The order is the owner's to move. It is written down here so a change to it is a
 change to this table first.
 
 ## 3. Notes on each change
 
-**Escorts (1).** One more body in every escort the board already rolls (§7.5),
+**Escorts (4).** One more body in every escort the board already rolls (§7.5),
 so it rides the escort's own rules (type, tier, footprint, "a body with no room
 does not spawn"). It does not touch the end-of-game pressure count (§7.4).
 
-**Shields (2, 4, 7).** A flat cut to the per-game grant, applied inside
+**Shields (1, 3, 5).** A flat cut to the per-game grant, applied inside
 `shields_for_game`, so the selection screen, the card and the grant cannot
 disagree. Normal games floor at 1: a game that grants nothing would be a game
 with no armour at all, and the third cut is the one that only reaches
 Traditional. Items that add to the grant (Anchor's +1 Temporary Shield) add on
 top as they do now.
 
-**Damage (3).** A shield stops one whole hit whatever its size (§3.2), so this
-level only bites once the shields are gone. That is why it sits right after the
-first shield cut. Bosses take it too: the tier is the enemy's own.
+**Damage (2).** The enemy's **authored** damage is multiplied by 1.5 and rounded
+up; statuses that add damage (Strength and the rest) add on top of the result,
+so the number on the body's card is the number that lands. A shield stops one
+whole hit whatever its size (§3.2), so this level only bites once the shields
+are gone, which is why it sits right after the first shield cut. Bosses take it
+too.
 
-**Starting row (5).** Rows only. The owner's intent is "more enemies can hit you
+**Starting row (7).** Rows only. The owner's intent is "more enemies can hit you
 at once", and a deeper board would have made them spawn farther away, which is
 not wanted. The tier's own growth (`RunDifficulty.grid_growth_for`) still adds
 on top.
@@ -73,7 +91,8 @@ on top.
 board grows with the tier (§7.3), so it grows sooner too, and the strip's
 `boss in N spawns` reads it from the same place.
 
-**The extra turn (8).** The game had a version of this once and removed it (§7.4,
+**The extra turn (8).** It follows a game that was **beaten or escaped**, not one
+that was lost or abandoned. The game had a version of this once and removed it (§7.4,
 *This replaced the extra turns*), because it punished the thing the player is
 trying to do. On a difficulty level that punishment is the point. It goes
 through the same `extra` beat of `_resolve_enemy_turn` that Predatory Scent
@@ -83,8 +102,8 @@ already uses, so:
   each body's "N lost runs until it reaches you" lies. That is the one place this
   level needs care.
 
-**Damage again (9).** A second +1 per tier, stacked on Fracture 3's. Same rule,
-same place in the code; one constant per level rather than a second mechanism.
+**Damage again (9).** A second ×1.5, applied to Fracture 2's result and rounded
+up again. Same rule, same place in the code.
 
 **DROPPED: +1 hop at the start.** This was Fracture 9 first: every start one game
 farther from the Amulet (the path band 4–8 moved to 5–9). It did not break the
@@ -155,6 +174,14 @@ so it is the first thing to build.
   won at.
 - No number means Fracture 0. Every trophy earned before this is built reads
   that way, which is correct: those runs were at Fracture 0.
+
+**"Skip won amulets"** (`Settings.exclude_beaten_amulets`) skips only games
+already beaten as the Amulet **at the current Fracture or higher**, so a player
+can go back for a higher number on a game they have won before.
+
+**The unlock is shown on the winning screen**: "Fracture N unlocked for
+<character>". Beating Fracture 10 gives the 🏆 with a 10 and nothing more, for
+now.
 
 **Custom runs** (filters, seed, a named target, a moved band): still give game
 and character XP, as now. They **do not unlock Fractures and do not award
@@ -243,6 +270,10 @@ back.
   same icon on the current game. That icon is worth having at Fracture 0 too.
 - Every "N games from the Amulet" line in the UI (the offered cards, the start
   picker's wording) reads "N games from the start" on the way home.
+- **Teleports measure from the start** on the way home: Scroll of Teleportation
+  and the Telepills read "distance from the Amulet" today, and read distance
+  from the start instead, so a Horse Telepill lands 1–3 games from home. It is
+  an item the player found; that is what it is for.
 - **Dying on the way home is an ordinary loss**: no trophy, no unlock.
 
 ### 7.6 When the run is recorded
@@ -268,8 +299,9 @@ the Amulet now" button.
 
 ## 10. Still open
 
-- **Fracture 3's numbers**: +1 per tier, starting at +1 for Low. If Low should
-  start at +0, it is one constant.
+- **Whether ×1.5 applies before or after statuses**: written as before (the
+  authored number is multiplied, statuses add on top). After would make
+  Strength-style statuses grow with the level too.
 - **What a Fracture-0 player sees of the ladder** before their first win: the
   greyed row (§4) is the current answer.
 
