@@ -51,6 +51,7 @@ var _progress: Dictionary = {}
 var _number: Label
 var _star: Label
 var _trophy: Label
+var _trophy_level: Label
 
 static func diameter_for(width: float) -> float:
 	return clampf(width * CIRCLE_SHARE, CIRCLE_MIN, CIRCLE_MAX)
@@ -70,8 +71,8 @@ static func wrap(cover: Control, game, with_awards: bool = false) -> Control:
 
 # `cover` (a character's portrait) with `character`'s rank badge, laid out the
 # same way as a game's.
-static func wrap_character(cover: Control, character) -> Control:
-	return _wrap(cover, "", String(character), false)
+static func wrap_character(cover: Control, character, with_awards: bool = false) -> Control:
+	return _wrap(cover, "", String(character), with_awards)
 
 static func _wrap(cover: Control, game: String, character: String,
 		with_awards: bool) -> Control:
@@ -129,8 +130,25 @@ func _ready() -> void:
 		if GameStats.amulet_wins(game_id) > 0:
 			_trophy = _make_label("🏆", UITheme.GOLD)
 			_trophy.tooltip_text = "Beaten as the Amulet"
+			_add_trophy_level(GameStats.amulet_best(game_id), "Beaten as the Amulet")
+	elif awards and character_id != &"" and GameStats.fracture_best(character_id) >= 0:
+		# A CHARACTER'S 🏆 (docs/fracture-design.md §5): a run won as them, with
+		# the highest Fracture it was won at.
+		_trophy = _make_label("🏆", UITheme.GOLD)
+		_trophy.tooltip_text = "Won a run as this character"
+		_add_trophy_level(GameStats.fracture_best(character_id), "Won a run")
 	resized.connect(_layout)
 	_layout()
+
+# THE NUMBER ON A TROPHY: the highest Fracture it was earned at, in the
+# Fracture's own colour beside the cup. Nothing at Fracture 0 — a plain cup is a
+# win at the ordinary game, which is what every trophy before Fractures was.
+func _add_trophy_level(level: int, what: String) -> void:
+	if level <= 0 or _trophy == null:
+		return
+	_trophy_level = _make_label(str(level), Fracture.COLOR)
+	_trophy.tooltip_text = "%s — at Fracture %d" % [what, level]
+	_trophy_level.tooltip_text = _trophy.tooltip_text
 
 func _make_label(text: String, color: Color) -> Label:
 	var l := Label.new()
@@ -192,6 +210,10 @@ func _layout() -> void:
 		_trophy.add_theme_font_size_override("font_size", glyph)
 		_trophy.position = c + Vector2(d * 0.5 + UITheme.GAP_HAIR, -d * 0.5)
 		_trophy.size = side
+	if _trophy_level != null:
+		_trophy_level.add_theme_font_size_override("font_size", UITheme.FONT_MICRO)
+		_trophy_level.position = c + Vector2(d * 1.25 + UITheme.GAP_HAIR, -d * 0.15)
+		_trophy_level.size = side
 	queue_redraw()
 
 func _draw() -> void:

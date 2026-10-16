@@ -816,6 +816,12 @@ func _refresh_pressure() -> void:
 		_spawn_price.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 	else:
 		_spawn_price.text = ""        # between games: nothing in play to end
+	# FRACTURE 8's price (docs/fracture-design.md §3): the board takes a turn when
+	# a game is beaten or escaped, so it is part of what ending this one costs.
+	# Short, because this label shares the headline with the pressure.
+	if _spawn_price.text != "" and Fracture.extra_turn():
+		_spawn_price.text += " · +1 turn"
+		_spawn_price.add_theme_color_override("font_color", UITheme.DANGER)
 	_spawn_price.visible = _spawn_price.text != ""
 
 	var to_boss: int = RunDifficulty.spawns_to_boss(GameState.spawn_events)
@@ -841,7 +847,8 @@ func _refresh_pressure() -> void:
 			_pressure_why.text,
 			_spawn_tip(owed, why_free),
 			_boss_tip(to_boss),
-		],
+		] + ([("Fracture %d: when this game is beaten or escaped, every enemy takes "
+			+ "one more turn.") % Fracture.level()] if Fracture.extra_turn() else []),
 		"note": "Rush the Amulet and every game fills the board faster; take the long way and it fills slower.",
 	})
 	# The two labels inside it are MOUSE-TRANSPARENT so the panel owns the hover —

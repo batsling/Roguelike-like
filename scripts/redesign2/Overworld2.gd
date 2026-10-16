@@ -184,6 +184,7 @@ var _character_chip: TextureRect = null
 var _character_wrap: Control = null
 # The character's LEVEL, in the same chip as the token ("Lv. 1"). See
 # _build_character_chip for why it rides the header rather than a panel.
+var _fracture_chip: Label = null
 var _level_chip: Label = null
 # The road walked, across the top of the page. Rebuilt on every refresh — it is a
 # handful of TextureRects and the run only moves a few dozen times.
@@ -5718,6 +5719,16 @@ func _build_character_chip() -> Control:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", UITheme.GAP_SNUG)
 	wrap.add_child(row)
+	# THE FRACTURE, left of the token (docs/fracture-design.md §6): the level this
+	# run is played at, which the board's harder numbers come from and nothing
+	# else on the page names. Nothing at Fracture 0, the ordinary game.
+	_fracture_chip = Label.new()
+	_fracture_chip.name = "FractureChip"
+	_fracture_chip.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
+	_fracture_chip.add_theme_color_override("font_color", Fracture.COLOR)
+	_fracture_chip.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_fracture_chip.mouse_filter = Control.MOUSE_FILTER_STOP
+	row.add_child(_fracture_chip)
 	_character_chip = UITheme.crisp_tex(null, CHARACTER_CHIP)
 	# The token answers a hover with who it is — the name is not written out,
 	# because the header's job here is the picture and a name would cost the route
@@ -5751,6 +5762,11 @@ func _paint_character_chip() -> void:
 		tex = ch.icon if ch.icon != null else ch.portrait
 	_character_chip.texture = tex
 	UITheme.apply_crisp(_character_chip, tex)
+	if _fracture_chip != null and is_instance_valid(_fracture_chip):
+		_fracture_chip.text = Fracture.tag(Fracture.level())
+		_fracture_chip.visible = Fracture.level() > 0
+		_fracture_chip.tooltip_text = "Fracture %d\n%s" % [Fracture.level(),
+			Fracture.ladder_text(Fracture.level())]
 	# A character authored without art loses the TOKEN, not the whole chip: the
 	# level beside it is a number about the run and it has to be readable whether
 	# or not there is a picture to hang it on. The frame only goes when there is no

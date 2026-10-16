@@ -354,3 +354,87 @@ func test_fracture_zero_changes_nothing() -> void:
 	assert_eq(Fracture.extra_bodies(), 0)
 	assert_eq(Fracture.extra_rows(), 0)
 	assert_false(Fracture.extra_turn())
+
+# ==========================================================================
+# Build step 3: where a Fracture is shown (docs/fracture-design.md §4, §5, §6)
+# ==========================================================================
+
+func test_the_tag_is_the_shard_and_the_level_and_nothing_at_zero() -> void:
+	assert_eq(Fracture.tag(0), "")
+	assert_eq(Fracture.tag(7), "%s7" % Fracture.GLYPH)
+
+func test_every_level_says_what_it_adds() -> void:
+	for lv in range(1, Fracture.MAX + 1):
+		assert_ne(Fracture.change_text(lv), "", "Fracture %d has a line" % lv)
+	assert_eq(Fracture.ladder_text(4).split("\n").size(), 4, "a line per level up to it")
+
+func _picker() -> CharacterPicker:
+	var host := Control.new()
+	add_child_autofree(host)
+	var picker: CharacterPicker = CharacterPicker.open(host)
+	return picker
+
+func _fracture_button(picker: CharacterPicker, lv: int) -> Button:
+	return picker._fracture_row.get_node_or_null("Fracture%d" % lv) as Button
+
+func test_the_picker_row_locks_what_is_not_unlocked() -> void:
+	var picker: CharacterPicker = _picker()
+	var first: CharacterData = picker._roster[0]
+	GameStats.fracture_log[String(first.id)] = {"best": 2}
+	picker._select.call(first)
+	for lv in range(Fracture.MAX + 1):
+		var b: Button = _fracture_button(picker, lv)
+		assert_not_null(b, "a button for Fracture %d" % lv)
+		if b != null:
+			assert_eq(b.disabled, lv > 3, "Fracture %d is %s" % [lv, "locked" if lv > 3 else "open"])
+
+func test_pressing_a_level_saves_it_as_the_heros_pick() -> void:
+	var picker: CharacterPicker = _picker()
+	var first: CharacterData = picker._roster[0]
+	GameStats.fracture_log[String(first.id)] = {"best": 4}
+	picker._select.call(first)
+	_fracture_button(picker, 3).pressed.emit()
+	assert_eq(GameStats.fracture_pick(first.id), 3)
+
+func test_a_hero_with_no_win_is_told_how_to_open_fracture_one() -> void:
+	var picker: CharacterPicker = _picker()
+	var first: CharacterData = picker._roster[0]
+	picker._select.call(first)
+	var note: Label = picker._fracture_row.get_node_or_null("FractureNote") as Label
+	assert_not_null(note)
+	assert_string_contains(note.text, "unlock Fracture 1")
+
+func test_the_winning_screen_names_the_unlock() -> void:
+	_win_run_at(0)
+	var screen := RunOverScreen.new()
+	screen.won = true
+	assert_string_contains(screen.unlock_line(), "Fracture 1 unlocked")
+	screen.free()
+
+func test_a_loss_names_no_unlock() -> void:
+	_win_run_at(0)
+	var screen := RunOverScreen.new()
+	screen.won = false
+	assert_eq(screen.unlock_line(), "")
+	screen.free()
+
+func test_a_save_row_carries_its_fracture() -> void:
+	GameState.fracture = 6
+	var row: Dictionary = SaveSystem._summary(SaveSystem._build_payload(), "x")
+	assert_eq(int(row.get("fracture", -1)), 6)
+
+func test_wins_are_counted_by_fracture() -> void:
+	_win_run_at(0)
+	_win_run_at(0)
+	_win_run_at(1)
+	assert_eq(GameStats.fracture_wins(HERO), {0: 2, 1: 1})
+
+func test_old_wins_count_at_fracture_zero() -> void:
+	GameStats.runs = [{"path": ["a", "b"], "won": true, "character": String(HERO)}]
+	assert_eq(GameStats.fracture_wins(HERO), {0: 1})
+
+func test_how_to_play_has_a_fractures_chapter() -> void:
+	var ids: Array = []
+	for ch in HowToPlayText.chapters():
+		ids.append(ch["id"])
+	assert_has(ids, &"fractures")

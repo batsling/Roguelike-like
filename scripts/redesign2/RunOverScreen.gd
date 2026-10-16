@@ -136,6 +136,15 @@ func subtitle() -> String:
 			left, "" if left == 1 else "s"]
 	return "Health hit 0 at %s." % [here.display_name if here != null else "the last game"]
 
+# "⟡ Fracture 4 unlocked for Ironclad", or "" when this run unlocked nothing:
+# a loss, a custom run, or a win below the character's highest level.
+func unlock_line() -> String:
+	if not won or GameStats.last_run_unlocked <= 0:
+		return ""
+	var ch: CharacterData = Data.get_character2(GameState.character_id)
+	return "%s  Fracture %d unlocked for %s" % [Fracture.GLYPH, GameStats.last_run_unlocked,
+		ch.display_name if ch != null else "this character"]
+
 # ---------------------------------------------------------------------------
 # Building
 # ---------------------------------------------------------------------------
@@ -184,6 +193,18 @@ func _build() -> void:
 	sub.add_theme_font_size_override("font_size", UITheme.FONT_SUB)
 	sub.add_theme_color_override("font_color", UITheme.TEXT)
 	col.add_child(sub)
+
+	# THE UNLOCK (docs/fracture-design.md §5), said where the win is: the next
+	# Fracture this win opened for this character, if it opened one.
+	var unlock: String = unlock_line()
+	if unlock != "":
+		var opened := Label.new()
+		opened.name = "FractureUnlock"
+		opened.text = unlock
+		opened.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		opened.add_theme_font_size_override("font_size", UITheme.FONT_HEAD)
+		opened.add_theme_color_override("font_color", Fracture.COLOR)
+		col.add_child(opened)
 
 	col.add_child(_tally())
 	col.add_child(_route_strip())

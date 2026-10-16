@@ -304,6 +304,9 @@ func record_run(did_win: bool) -> void:
 		var before: int = fracture_unlocked(c)
 		var rec: Dictionary = _fracture_record(c)
 		rec["best"] = maxi(fracture_best(c), Fracture.level())
+		# How many runs were won at each level, for the character's stats (§6).
+		var key := "won_%d" % Fracture.level()
+		rec[key] = int(rec.get(key, 0)) + 1
 		if fracture_unlocked(c) > before:
 			last_run_unlocked = fracture_unlocked(c)
 		save_data()
@@ -760,6 +763,19 @@ func set_fracture_pick(character_id, level: int) -> void:
 	_fracture_record(c)["pick"] = clampi(level, 0, fracture_unlocked(c))
 	save_data()
 	changed.emit()
+
+# Runs won as `character_id`, by Fracture: {level: count}, levels with a win only.
+# Wins from before Fractures existed are not in fracture_log, and count at 0 —
+# the history's own count of them, the same backfill fracture_best reads.
+func fracture_wins(character_id) -> Dictionary:
+	var out: Dictionary = {}
+	var rec: Dictionary = fracture_log.get(String(character_id), {})
+	for key in rec.keys():
+		if String(key).begins_with("won_"):
+			out[int(String(key).substr(4))] = int(rec[key])
+	if out.is_empty() and character_amulet_wins(character_id) > 0:
+		out[0] = character_amulet_wins(character_id)
+	return out
 
 # The character's wins summed over their REPEAT wins' levels, for their XP.
 func character_repeat_win_fractures(character_id) -> int:

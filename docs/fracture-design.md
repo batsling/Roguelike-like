@@ -1,11 +1,16 @@
 # Fracture — design
 
-**Status: steps 1 and 2 of 5 built** (1, the record: the run's level and its
-save, the per-character unlocks and remembered pick, each win's level and the XP
-it pays, the trophy's number, custom runs, and "Skip won amulets" by level. 2,
-the nine changes of Fractures 1–9, each placed on the ladder in one table in
-`scripts/runtime/Fracture.gd`; tests in `test/test_fracture.gd`). Nothing about
-Fractures is on screen yet; that is step 3. Agreed with the owner on 15
+**Status: steps 1–3 of 5 built.** 1, the record (the run's level and its save,
+per-character unlocks and remembered pick, each win's level and its XP, trophy
+numbers, custom runs, "Skip won amulets" by level). 2, the nine changes of
+Fractures 1–9, placed on the ladder in one table in `scripts/runtime/Fracture.gd`.
+3, everything that shows them: the picker row, the shard ⟡ and level in the
+header, the numbers on game and character trophies, the unlock line on the
+winning screen, the level on Continue rows and in run history, wins by level on
+the character's Collection page, "+1 turn" on the board's strip from Fracture 8,
+the dev panel's setting and the how-to-play chapter. Tests: `test/test_fracture.gd`.
+Fracture 10's Collapse (step 4) is not built; its line says "coming soon".
+Agreed with the owner on 15
 October 2026.
 The build order is at the end. Section numbers (§7.4, §19.6, …) refer to
 `docs/games-first-redesign.md`; rift sections refer to `docs/rifts-design.md`.

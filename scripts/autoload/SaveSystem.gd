@@ -118,6 +118,7 @@ func _summary(data: Dictionary, display_name: String, slot: int = -1) -> Diction
 		"max_hp": int(data.get("max_hp", 0)),
 		"gold": int(data.get("gold", 0)),
 		"games_beaten": int(data.get("total_games_beaten", 0)),
+		"fracture": int(data.get("fracture", 0)),
 		"games_played": int(data.get("games_played", 0)),
 		"saved_at": int(data.get("saved_at", 0)),
 		"version": int(data.get("save_version", 1)),

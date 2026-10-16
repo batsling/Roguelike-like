@@ -77,6 +77,52 @@ static func extra_rows() -> int:
 static func extra_turn() -> bool:
 	return at_least(EXTRA_TURN_LEVEL)
 
+# --- how a Fracture is shown (§6) ---------------------------------------------
+
+# THE SHARD, the mark a Fracture wears wherever it is drawn: the header, the
+# picker, a trophy's number, a save and a history row. One glyph, defined once.
+const GLYPH := "⟡"
+
+# The colour of all of it: a cold violet, apart from the gold of the trophies and
+# the level and the red of danger, so a Fracture never reads as either.
+const COLOR := Color(0.72, 0.58, 1.0)
+
+# "⟡7", or "" for Fracture 0, which is the ordinary game and wears nothing.
+static func tag(level: int) -> String:
+	return "" if level <= 0 else "%s%d" % [GLYPH, level]
+
+# What each level ADDS, in the ladder's order, for the picker's hover and the
+# how-to-play page. Kept beside the table above so the two cannot drift: a level
+# moved there has its line moved here.
+static func change_text(level: int) -> String:
+	if level in SHIELD_CUT_LEVELS:
+		return "Every game grants 1 fewer shield (never below 1)."
+	if level in DAMAGE_LEVELS:
+		return "Enemies hit harder: their damage x1.5, rounded up."
+	match level:
+		EXTRA_BODY_LEVEL:
+			return "Every arrival brings one more body, bosses included."
+		FASTER_TIER_LEVEL:
+			return "Difficulty rises a spawn sooner: a boss every 3rd spawn."
+		EXTRA_ROW_LEVEL:
+			return "The board starts a row taller: more enemies abreast."
+		EXTRA_TURN_LEVEL:
+			return "Enemies take an extra turn after every game beaten or escaped."
+		MAX:
+			# Not built yet (build step 4): said, so a player who reaches 10 is not
+			# promised a run that plays exactly like 9. Drop the bracket with it.
+			return "The Collapse: beat the Amulet, then carry it back to the start. (Coming soon.)"
+	return ""
+
+# Everything a run at `level` is playing with, one line per level from 1 up.
+static func ladder_text(level: int) -> String:
+	if level <= 0:
+		return "Fracture 0: the game as it is."
+	var lines: Array = []
+	for lv in range(1, mini(level, MAX) + 1):
+		lines.append("%s  %s" % [tag(lv), change_text(lv)])
+	return "\n".join(lines)
+
 # Whether this run's wins count towards unlocks and trophies (§5). A CUSTOM run
 # (RunConfig) is practice: it still pays XP, and nothing it does unlocks the next
 # level or puts a number on a trophy.
