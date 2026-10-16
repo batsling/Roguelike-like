@@ -12,8 +12,9 @@ normal run, in the shape Slay the Spire gave the idea.
 - **Fracture 0 is the game as it is today.** Fractures 1–10 each add one change,
   and **each level carries every level below it**: Fracture 6 is Fractures 1–6
   together.
-- **Unlocked per character.** Winning a run as a character at their highest
-  unlocked Fracture unlocks the next one **for that character only**. Twelve
+- **Unlocked per character.** Fracture 1 opens with a character's **first win
+  at Fracture 0**; after that, winning at their highest unlocked Fracture unlocks
+  the next one, **for that character only**. Twelve
   characters with ten levels each makes 120 wins to finish the ladder, which is
   deliberate: it gives every character a long life of their own.
 - **Chosen on the character select**, under the character (§4).
@@ -191,6 +192,10 @@ trophies**. This is a change from today, where an Amulet win is recorded
 whatever the run was (`Overworld2.gd`, the two `record_amulet_win` calls).
 Trophies already earned in custom runs cannot be told apart and stay.
 
+**A custom run may be played at any Fracture that character has unlocked in
+ordinary runs**, through the same picker row. It is practice: nothing it does
+unlocks the next one.
+
 ## 6. Display
 
 - **The header**: a **shard** glyph and the Fracture level, to the left of the
@@ -218,9 +223,11 @@ game:
 
 1. **The map turns round.** The optimal-path screen redraws running from the
    Amulet on the right to the start on the left.
-2. **Every game played this run crumbles**, with a crumble animation, and is
-   **transmuted** into a game the player has not played. The start is the one
-   game that is not.
+2. **Every game played this run fractures**: a rift-like fractal
+   transformation, in the same visual language as rift cards (the domain-warped,
+   drifting swirl of rifts §9, in the rift colour), washes over each played game
+   in turn and leaves it **transmuted** into a game the player has not played.
+   The start is the one game that is not.
 3. **The new road forms**: the optimal path from the Amulet back to the start,
    drawn over the transmuted games.
 
@@ -292,7 +299,9 @@ back.
 
 ## 8. Old saves
 
-- Every character starts at Fracture 0 with Fracture 1 unlocked.
+- Every character starts at Fracture 0. **A win already on record** from before
+  Fractures existed counts as the Fracture-0 win, so a character who has won
+  opens with Fracture 1 unlocked; one who never has, opens with nothing past 0.
 - A run saved before this is built loads as Fracture 0.
 - The run's Fracture is saved with the run, so a Continue resumes at the same
   level.
@@ -306,7 +315,7 @@ the Amulet now" button.
 ## 10. Still open
 
 - **What a Fracture-0 player sees of the ladder** before their first win: the
-  greyed row (§4) is the current answer.
+  greyed row (§4), with every level locked, is the current answer.
 
 ## 11. Build order
 
@@ -319,4 +328,7 @@ the Amulet now" button.
    the dev setting.
 4. **The Collapse** (§7): the free transmute with its fallbacks, the turnaround,
    pressure toward the start, the map's player icon with the Amulet, the sequence
-   and its crumble animation, and the end-of-run record at the start.
+   and its fractal transformation (reusing the rift swirl shader), and the
+   end-of-run record at the start.
+5. **How to play**: a Fractures page in `HowToPlayText.gd` listing every level
+   and explaining the Collapse. The picker row's hover shows the same list.
