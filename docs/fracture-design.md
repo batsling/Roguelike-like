@@ -1,15 +1,10 @@
 # Fracture — design
 
-**Status: steps 1–3 of 5 built.** 1, the record (the run's level and its save,
-per-character unlocks and remembered pick, each win's level and its XP, trophy
-numbers, custom runs, "Skip won amulets" by level). 2, the nine changes of
-Fractures 1–9, placed on the ladder in one table in `scripts/runtime/Fracture.gd`.
-3, everything that shows them: the picker row, the shard ⟡ and level in the
-header, the numbers on game and character trophies, the unlock line on the
-winning screen, the level on Continue rows and in run history, wins by level on
-the character's Collection page, "+1 turn" on the board's strip from Fracture 8,
-the dev panel's setting and the how-to-play chapter. Tests: `test/test_fracture.gd`.
-Fracture 10's Collapse (step 4) is not built; its line says "coming soon".
+**Status: steps 1–4 built; step 5 (how to play) was folded into step 3.** The
+record, the nine changes of Fractures 1–9 (one table in
+`scripts/runtime/Fracture.gd`), everything that shows a Fracture, and Fracture
+10's Collapse (`GameLoop2.begin_collapse`, `scripts/redesign2/CollapseScreen.gd`,
+`GameState.goal_game_id`). Tests: `test/test_fracture.gd`.
 Agreed with the owner on 15
 October 2026.
 The build order is at the end. Section numbers (§7.4, §19.6, …) refer to
@@ -305,6 +300,28 @@ back.
   from the start instead, so a Horse Telepill lands 1–3 games from home. It is
   an item the player found; that is what it is for.
 - **Dying on the way home is an ordinary loss**: no trophy, no unlock.
+
+### 7.5a As built (16 October 2026)
+
+- **One goal, asked everywhere.** `GameState.goal_game_id()` is the Amulet, or the
+  start while `carrying_amulet`. Every route, distance, pressure reading, goal
+  card ("🏠 HOME" on the way back), teleport and map reads it; `amulet_game_id`
+  is left meaning the game the run was a search for (its trophy, its name).
+- **Arriving home wins, however you arrive**: a card, a Dash, a teleport, a
+  travel or an event that sends you there all go through
+  `Overworld2._arrive_home_if_due`.
+- **The Amulet game charges the doorstep** in a Collapse. It owes nothing in an
+  ordinary run because nothing follows it; here the walk home does.
+- **When the off-map pool runs dry** the last resort is any unplayed game in the
+  whole catalogue: off-map games are the only ones in the run's filter not
+  already on the map, so there is nowhere else to look, and holding one game in
+  two places would be worse than stepping outside the filter.
+- **The route map shows what stands on a node now** (`GameLoop2.game_at`), for
+  every transmute and not only the Collapse's — it used to show the game a
+  transmute had replaced.
+- **The screen** opens when the haul screen after the Amulet is left, before the
+  event or shop behind it. The dev panel's "Collapse now" runs the same
+  turnaround from wherever the run stands.
 
 ### 7.6 When the run is recorded
 

@@ -83,8 +83,10 @@ static func node_key(depth: int, id: StringName) -> String:
 # a routing decision made towards an unnamed box is a decision made on the shape
 # of the road alone — the games the road actually runs through, and the one it
 # ends on, are the whole substance of it.
+# What stands on the node NOW: a transmute — the verb's, or every one the
+# Collapse makes (docs/fracture-design.md §7) — paints a different game onto it.
 static func node_name(id: StringName) -> String:
-	var game: GameData = Data.get_game(id)
+	var game: GameData = GameLoop2.game_at(id)
 	return game.display_name if game != null else String(id)
 
 # Build the map for one route. `cfg` is the model:
@@ -389,7 +391,7 @@ static func node_box(cfg: Dictionary, id: StringName, rect: Rect2, depth: int,
 	# sits on a fade along the bottom. The fade is the ROLE's colour on the three
 	# boxes that have one — you-are-here is still blue, the Amulet still ember, an
 	# offer still gold — and near-black on the rest, so the art is the colour.
-	var game: GameData = Data.get_game(id)
+	var game: GameData = GameLoop2.game_at(id)
 	var has_art: bool = game != null and game.cover_image != null
 	if has_art:
 		var inset: float = float(border_w)
@@ -498,7 +500,38 @@ static func node_box(cfg: Dictionary, id: StringName, rect: Rect2, depth: int,
 	label.add_theme_color_override("font_color",
 		Color.WHITE if (is_current or is_amulet) else UITheme.TEXT)
 	panel.add_child(label)
+	# THE PLAYER ON THE GAME THEY STAND ON (docs/fracture-design.md §7.5): their
+	# token in the box's corner, and the Amulet beside it while it is being carried
+	# home. Not on a preview, where the first box is where you WOULD stand.
+	if is_current and not preview:
+		panel.add_child(_player_mark(rect.size))
 	return panel
+
+# The character's token, top-left, with a 🏆 beside it once the Amulet is in hand.
+static func _player_mark(box: Vector2) -> Control:
+	var row := HBoxContainer.new()
+	row.name = "PlayerMark"
+	row.position = Vector2(3, 3)
+	row.add_theme_constant_override("separation", UITheme.GAP_HAIR)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var side: float = clampf(box.x * 0.28, 14.0, 28.0)
+	var ch: CharacterData = Data.get_character2(GameState.character_id)
+	var tex: Texture2D = null
+	if ch != null:
+		tex = ch.icon if ch.icon != null else ch.portrait
+	if tex != null:
+		var token: TextureRect = UITheme.crisp_tex(tex, int(side))
+		token.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		row.add_child(token)
+	if GameState.carrying_amulet:
+		var amulet := Label.new()
+		amulet.name = "CarriedAmulet"
+		amulet.text = "🏆"
+		amulet.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
+		amulet.add_theme_color_override("font_color", UITheme.GOLD)
+		amulet.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		row.add_child(amulet)
+	return row
 
 # The part of a cover a box shows: as much as the box's shape allows, taken from
 # a little below the TOP — where most covers put the title — rather than the

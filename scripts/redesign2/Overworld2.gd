@@ -185,6 +185,8 @@ var _character_wrap: Control = null
 # The character's LEVEL, in the same chip as the token ("Lv. 1"). See
 # _build_character_chip for why it rides the header rather than a panel.
 var _fracture_chip: Label = null
+# What the Collapse just changed, [{node, from, to}], until its screen has shown it.
+var _collapse_changes: Array = []
 var _level_chip: Label = null
 # The road walked, across the top of the page. Rebuilt on every refresh — it is a
 # handful of TextureRects and the run only moves a few dozen times.
@@ -861,7 +863,7 @@ func _start_choice(index: int) -> Dictionary:
 	var game: GameData = opt["game"]
 	return {
 		"game": game, "enemy": opt.get("enemy"), "slot": game.id,
-		"boss": false, "amulet": game.id == GameState.amulet_game_id,
+		"boss": false, "amulet": game.id == GameState.goal_game_id(),
 		"repeat": GameState.has_played_game(game.id),
 	}
 
@@ -1372,6 +1374,8 @@ func pick(index: int) -> void:
 		_take_return_choice(index)
 		return
 	_chosen = _choices[index]
+	if _arrive_home_if_due(StringName(_chosen.get("slot", &""))):
+		return
 	# Travelling moves the run, and the map is a picture of where it stood. Both
 	# the card that opened this and any route map go with the offering they were
 	# describing.
@@ -1989,7 +1993,7 @@ func open_optimal_path() -> Node:
 # run has no position yet. The chart is one button away on the window itself
 # (✦ Star chart) for anyone who wants it.
 func preview_map(game_id: StringName) -> Node:
-	if game_id == &"" or GameState.amulet_game_id == &"":
+	if game_id == &"" or GameState.goal_game_id() == &"":
 		return null
 	var game: GameData = Data.get_game(game_id)
 	var opts: Dictionary = {
@@ -2032,11 +2036,11 @@ func _open_route_map(origin: StringName, choice_ids: Array, options: Dictionary)
 		# Mounted UNDER the chart, so closing the chart takes its window with it.
 		# The window frames the route on the chart itself, once it knows how much
 		# of the sky it's covering.
-		modal.start(atlas, origin, GameState.amulet_game_id, choice_ids, opts)
+		modal.start(atlas, origin, GameState.goal_game_id(), choice_ids, opts)
 		_hold_route_map(modal)
 		return modal
 	var solo = load(RUN_MAP_MODAL_SCRIPT).new()
-	solo.start(self, origin, GameState.amulet_game_id, choice_ids, opts)
+	solo.start(self, origin, GameState.goal_game_id(), choice_ids, opts)
 	_hold_route_map(solo)
 	return solo
 
@@ -2060,9 +2064,9 @@ func _hold_route_map(modal) -> void:
 # each offering so a change of amulet or game filter is picked up.)
 func _rebuild_amulet_distances() -> void:
 	_amulet_dist = {}
-	if GameState.amulet_game_id == &"":
+	if GameState.goal_game_id() == &"":
 		return
-	_amulet_dist = RunGraph.bfs_distances(GameState.amulet_game_id)
+	_amulet_dist = RunGraph.bfs_distances(GameState.goal_game_id())
 
 # Hops from `game_id` to the Amulet, or -1 when no route reaches it.
 func steps_to_amulet(game_id: StringName) -> int:
@@ -2084,7 +2088,8 @@ func route_note(choice: Dictionary) -> Dictionary:
 	var slot: StringName = choice.get("slot", &"")
 	if bool(choice.get("amulet", false)):
 		return {
-			"text": "🏆 THE AMULET — the run ends here",
+			"text": "🏠 HOME — the run ends here" if GameState.carrying_amulet \
+				else "🏆 THE AMULET — the run ends here",
 			"color": UITheme.GOLD,
 			"tip": "Beat this game's goal and you win the run.",
 		}
@@ -2092,29 +2097,31 @@ func route_note(choice: Dictionary) -> Dictionary:
 	var there: int = steps_to_amulet(slot)
 	if there < 0:
 		return {
-			"text": "⛔ No route to the Amulet",
+			"text": "⛔ No route to %s" % GameState.goal_word(),
 			"color": UITheme.DANGER,
-			"tip": "Nothing connects this game to the Amulet any more.",
+			"tip": "Nothing connects this game to %s any more." % GameState.goal_word(),
 		}
 	var plural: String = "" if there == 1 else "s"
 	if here >= 0 and there < here:
 		return {
 			"text": "★ OPTIMAL — %d step%s left" % [there, plural],
 			"color": UITheme.SUCCESS,
-			"tip": "On a shortest path: taking this leaves %d step%s to the Amulet." % [there, plural],
+			"tip": "On a shortest path: taking this leaves %d step%s to %s." % [there, plural,
+				GameState.goal_word()],
 		}
 	if here >= 0 and there == here:
 		return {
 			"text": "→ Sideways — still %d step%s" % [there, plural],
 			"color": UITheme.TEXT_DIM,
-			"tip": "No closer, no further: %d step%s to the Amulet either way." % [there, plural],
+			"tip": "No closer, no further: %d step%s to %s either way." % [there, plural,
+				GameState.goal_word()],
 		}
 	var lost: int = there - here if here >= 0 else 0
 	return {
 		"text": "↩ Detour +%d — %d step%s left" % [lost, there, plural],
 		"color": UITheme.ACCENT,
-		"tip": "This walks away from the Amulet: %d step%s left instead of %d." % [
-			there, plural, maxi(here - 1, 0)],
+		"tip": "This walks away from %s: %d step%s left instead of %d." % [
+			GameState.goal_word(), there, plural, maxi(here - 1, 0)],
 	}
 
 # What taking this card does to the AMULET PRESSURE (§7.4). The route badge above
@@ -2153,8 +2160,8 @@ func turn_note(choice: Dictionary) -> Dictionary:
 		return {
 			"text": "☠ Pressure rises — %s per game" % RunDifficulty.bodies_text(then),
 			"color": color, "bodies": then,
-			"tip": "Closing on the Amulet fills the board faster: %s a game here, %s there.\n\n%s"
-				% [RunDifficulty.bodies_text(now), RunDifficulty.bodies_text(then),
+			"tip": "Closing on %s fills the board faster: %s a game here, %s there.\n\n%s"
+				% [GameState.goal_word(), RunDifficulty.bodies_text(now), RunDifficulty.bodies_text(then),
 					RunDifficulty.ladder_text(then)],
 		}
 	if then < now:
@@ -2255,7 +2262,7 @@ func loot_teleport(req: Dictionary) -> String:
 	# function's word for "it never fired", and the use screen turns it into "it
 	# fizzles — you do not move" — which after an escape is a lie by omission: the
 	# game WAS walked out of and the board took its turns for it.
-	var amulet: StringName = GameState.amulet_game_id
+	var amulet: StringName = GameState.goal_game_id()
 	if amulet == &"":
 		return _nowhere_to_go(escaped_out)
 	var dist: Dictionary = RunGraph.bfs_distances(amulet)
@@ -2291,9 +2298,9 @@ func loot_teleport(req: Dictionary) -> String:
 	# the whole op is about — `spread` keeps you about where you were and `amulet`
 	# is the one move in the game that can drop you on the doorstep — and a landing
 	# reported as a game's name alone is the half that doesn't say which happened.
-	var landed := "Teleported to %s — %d step%s from the Amulet." % [
+	var landed := "Teleported to %s — %d step%s from %s." % [
 		g.display_name if g != null else String(dest),
-		int(dist.get(dest, 0)), "" if int(dist.get(dest, 0)) == 1 else "s"]
+		int(dist.get(dest, 0)), "" if int(dist.get(dest, 0)) == 1 else "s", GameState.goal_word()]
 	# Said on the outcome screen as well as in the log, because escaping is the
 	# expensive half of what just happened and the modal only ever shows this
 	# string. escape_game's own line went to the log and the notification toast;
@@ -2394,6 +2401,11 @@ func report(beaten: bool, fulfilled: Variant = null, escaped: bool = false,
 	var fulfilled_instances: Array = fulfilled if fulfilled is Array \
 		else _honoured_fulfilments(beaten and not escaped)
 	var was_amulet: bool = bool(_chosen.get("amulet", false))
+	# On Fracture 10 the Amulet game does not end the run: it starts the walk home
+	# (docs/fracture-design.md §7). It is still a game beaten, recorded like any
+	# other; the Amulet's own win waits for the start (GameStats.record_collapse_win).
+	var collapsing: bool = was_amulet and GameLoop2.collapse_due()
+	var amulet_win: bool = was_amulet and not collapsing
 	# A PERFECTED visit (game ranks, §20.1): won with no lost run logged on THIS
 	# visit. Read before beat_game, which closes the tracker out.
 	var perfect_visit: bool = GameLoop2.attempts() == 0
@@ -2589,7 +2601,7 @@ func report(beaten: bool, fulfilled: Variant = null, escaped: bool = false,
 		# The lifetime tally the Collection, the tier list and the Atlas read
 		# ("beaten N times"). An amulet clear records the win instead — it bumps
 		# `beaten` too.
-		if was_amulet:
+		if amulet_win:
 			GameStats.record_amulet_win(played_game.id)
 		else:
 			GameStats.record_beaten(played_game.id)
@@ -2598,8 +2610,8 @@ func report(beaten: bool, fulfilled: Variant = null, escaped: bool = false,
 		# …and on the character's page: beaten playing as THIS character, which
 		# is also what its rank counts (§20.9).
 		GameStats.record_character_game(GameState.character_id, played_game.id,
-			was_amulet, perfect_visit)
-	elif played_game != null and not escaped and was_amulet:
+			amulet_win, perfect_visit)
+	elif played_game != null and not escaped and amulet_win:
 		# The Amulet game finished WITHOUT its enemy's goal: still the run's win
 		# (see the was_amulet branch below), so it is still the game the win goes
 		# on the record against.
@@ -2674,6 +2686,13 @@ func report(beaten: bool, fulfilled: Variant = null, escaped: bool = false,
 		# there. The end-of-run screen waits for it to land (_end_resolve).
 		_hold_for_resolve(_board.animate_resolve(before, res, hp_before, shields_before))
 		return
+	if collapsing:
+		# THE COLLAPSE (docs/fracture-design.md §7): the Amulet is picked up and the
+		# road walked fractures behind it. The run goes on from here exactly like
+		# any report — the haul, then the offering — with the start as the goal,
+		# and the screen showing the fracture comes up once the haul is left.
+		_collapse_changes = GameLoop2.begin_collapse()
+		was_amulet = false
 	if was_amulet:
 		# REACHING the Amulet game and playing it IS the run. It used to also
 		# require the goal box — the goal-enemy standing there had to have its
@@ -2937,6 +2956,14 @@ func _on_post_game_finished(_screen: PostCombatScreen) -> void:
 	_post_screen = null
 	_refresh()
 	autosave()
+	# THE COLLAPSE'S SCREEN comes first when the game just handed in was the
+	# Amulet on Fracture 10, and the chain carries on behind it.
+	if not _collapse_changes.is_empty():
+		var changes: Array = _collapse_changes
+		_collapse_changes = []
+		var screen := CollapseScreen.open(self, changes, _walked_road(), home_path())
+		screen.finished.connect(_open_pending_event)
+		return
 	_open_pending_event()
 	# A Mysterious Mask taken off the haul waited for it to close (§3.1).
 	if GameState.pending_masks > 0:
@@ -4058,6 +4085,8 @@ func arrive_at_game(dest: StringName, announce: String = "") -> void:
 	var game: GameData = Data.get_game(dest)
 	if game == null or GameLoop2.run_over or _phase == Phase.OVER:
 		return
+	if _arrive_home_if_due(dest):
+		return
 	# The run is being posted off wherever it stood, so anything standing at that
 	# node goes with it — the same first move `travel_to_game` and a detour make.
 	_leave_node()
@@ -4071,7 +4100,7 @@ func arrive_at_game(dest: StringName, announce: String = "") -> void:
 	var enemy: GoalEnemyData = _roll_card_enemy(dest, type_key, tier)
 	_chosen = {
 		"game": game, "enemy": enemy, "slot": dest,
-		"boss": false, "amulet": dest == GameState.amulet_game_id,
+		"boss": false, "amulet": dest == GameState.goal_game_id(),
 		"repeat": GameState.has_played_game(game.id),
 	}
 	_begin_game(game, enemy, tier)
@@ -4168,6 +4197,8 @@ func travel_to_game(game_id: StringName, escape_first: bool = true) -> void:
 		# nowhere left to be moved to; the win/lose screen owns the page now.
 		if GameLoop2.run_over or _phase == Phase.OVER:
 			return
+	if _arrive_home_if_due(game_id):
+		return
 	_leave_node()
 	GameState.set_current_game(game_id)
 	_phase = Phase.SELECT
@@ -4189,6 +4220,8 @@ func travel_to_game(game_id: StringName, escape_first: bool = true) -> void:
 func _start_play_game(request: Dictionary) -> void:
 	var tag: StringName = StringName(String(request.get("tag", "")).to_lower())
 	var dest: StringName = _random_game_with_tag(tag)
+	if dest != &"" and _arrive_home_if_due(dest):
+		return
 	if dest == &"":
 		# Nothing in the catalog carries the tag (or everything that does is
 		# bashed). Pay the payload anyway rather than swallowing the choice the
@@ -4208,7 +4241,7 @@ func _start_play_game(request: Dictionary) -> void:
 	var enemy: GoalEnemyData = _roll_card_enemy(dest, GameLoop2.game_type_key(game), tier)
 	_chosen = {
 		"game": game, "enemy": enemy, "slot": dest,
-		"boss": false, "amulet": dest == GameState.amulet_game_id,
+		"boss": false, "amulet": dest == GameState.goal_game_id(),
 		"repeat": GameState.has_played_game(game.id),
 	}
 	# `log_shields` false: this path has always granted the armour silently. See
@@ -4312,7 +4345,7 @@ func _ask_stay_or_return(back: StringName) -> void:
 func _build_return_choices() -> void:
 	_choices.clear()
 	var here: StringName = GameState.current_game_id
-	var amulet: StringName = GameState.amulet_game_id
+	var amulet: StringName = GameState.goal_game_id()
 	_rebuild_amulet_distances()
 	for gid in [here, _return_choice]:
 		var game: GameData = GameLoop2.game_at(gid)
@@ -4452,7 +4485,9 @@ func bash_choice(index: int) -> bool:
 	var slot: StringName = choice["slot"]
 	var game: GameData = choice["game"]
 	if bool(choice.get("amulet", false)):
-		var amulet_msg: String = "%s holds the Amulet — bashing it would end the run's goal." % game.display_name
+		var amulet_msg: String = ("%s is the way home — bashing it would end the run's goal."
+			if GameState.carrying_amulet else
+			"%s holds the Amulet — bashing it would end the run's goal.") % game.display_name
 		GameLog.add(amulet_msg, UITheme.DANGER)
 		Notifications.notify(amulet_msg, UITheme.DANGER)
 		return false
@@ -4687,7 +4722,7 @@ func offer_count() -> int:
 # kept when it's reachable. Stable so bashing/transmuting one card doesn't
 # reshuffle the rest — only a Scramble (which bumps _scramble_salt) re-draws it.
 func _offered_ids() -> Array:
-	var amulet: StringName = GameState.amulet_game_id
+	var amulet: StringName = GameState.goal_game_id()
 	var nbrs: Array = _sorted_neighbors()
 	# Dash (§4) bypasses the cap — every connected game is a valid target.
 	#
@@ -4827,7 +4862,7 @@ func _build_choices() -> void:
 	if enemy_key != _slot_enemy_key:
 		_slot_enemies.clear()
 		_slot_enemy_key = enemy_key
-	var amulet: StringName = GameState.amulet_game_id
+	var amulet: StringName = GameState.goal_game_id()
 	for gid in _offered_ids():
 		var game: GameData = GameLoop2.game_at(gid)
 		if game == null:
@@ -5388,7 +5423,7 @@ func _kind_of(choice: Dictionary) -> int:
 # it still read as sentences before an amulet has been rolled (the main menu's
 # custom-run preview, and any test that builds a card without a run).
 func amulet_name() -> String:
-	var game: GameData = Data.get_game(GameState.amulet_game_id)
+	var game: GameData = Data.get_game(GameState.goal_game_id())
 	return game.display_name if game != null else "the Amulet"
 
 # The distance line every start card wears, and the same line inside the popup it
@@ -5414,10 +5449,10 @@ func _start_distance_text(hops: int) -> String:
 # a line above, and "0 games away" under it would be noise.
 func amulet_distance_text(hops: int) -> String:
 	if hops < 0:
-		return "⛔ No route to the Amulet"
+		return "⛔ No route to %s" % GameState.goal_word()
 	if hops == 0:
 		return ""
-	return "%d from the Amulet" % hops
+	return "%d from %s" % [hops, GameState.goal_word()]
 
 # --- the report checklist ---------------------------------------------------
 #
@@ -6373,10 +6408,80 @@ func _on_run_lost() -> void:
 	_show_banner("💀  Run lost — Health reached 0.", Color(0.9, 0.3, 0.25))
 	_queue_run_over(false)
 
+# THE COLLAPSE ON DEMAND, for the dev panel (docs/fracture-design.md §9): the
+# same turnaround and the same screen an Amulet win on Fracture 10 gives, from
+# wherever the run is standing, without having to walk there.
+func begin_collapse_now() -> void:
+	if GameState.carrying_amulet or GameLoop2.run_over:
+		return
+	var changes: Array = GameLoop2.begin_collapse()
+	_phase = Phase.SELECT
+	_chosen = {}
+	_build_choices()
+	_refresh()
+	CollapseScreen.open(self, changes, _walked_road(), home_path())
+
+# The road walked, each node once in the order first reached, from the start.
+func _walked_road() -> Array:
+	var out: Array = []
+	for id in GameState.walked_path():
+		if not out.has(id):
+			out.append(id)
+	return out
+
+# THE WAY HOME (§7.2): an optimal path from where the run stands to the start,
+# start first. Read off the graph's distances to the start, stepping to a
+# neighbour one closer each time — ties broken by id, so it is the same path
+# every time it is drawn.
+func home_path() -> Array:
+	var home: StringName = GameState.start_game_id
+	var here: StringName = GameState.current_game_id
+	var dist: Dictionary = RunGraph.bfs_distances(home)
+	if home == &"" or not dist.has(here):
+		return [home] if home != &"" else []
+	var path: Array = [here]
+	var at: StringName = here
+	while at != home:
+		var nbrs: Array = RunGraph.neighbors(at)
+		nbrs.sort()
+		var next: StringName = &""
+		for n in nbrs:
+			if dist.has(n) and int(dist[n]) == int(dist[at]) - 1:
+				next = n
+				break
+		if next == &"":
+			break
+		path.append(next)
+		at = next
+	path.reverse()
+	return path
+
+# FRACTURE 10: HOME (docs/fracture-design.md §7.1). Arriving at the start with
+# the Amulet in hand wins the run — arriving is enough, the start is not played
+# again. Asked by every way the run moves (a card, a Dash, a teleport, a travel),
+# so there is no way onto the start that does not end it. True when it did.
+func _arrive_home_if_due(dest: StringName) -> bool:
+	if not GameState.carrying_amulet or dest == &"" \
+			or dest != GameState.start_game_id or GameLoop2.run_over:
+		return false
+	_dismiss_choice_modal()
+	_dismiss_route_map()
+	_leave_node()
+	GameState.set_current_game(dest)
+	_chosen = {}
+	GameLog.add("Home, with the Amulet.", Fracture.COLOR)
+	GameStats.record_collapse_win(GameState.amulet_game_id, GameState.character_id)
+	GameLoop2.clear_amulet()
+	return true
+
 func _on_run_won() -> void:
 	_phase = Phase.OVER
 	_drop_queue.clear()
 	SaveSystem.clear_autosave()
+	if GameState.carrying_amulet:
+		_show_banner("🏆  You carried the Amulet home — you win!", Color(0.95, 0.8, 0.2))
+		_queue_run_over(true)
+		return
 	_show_banner("🏆  You cleared the Amulet — you win!", Color(0.95, 0.8, 0.2))
 	_queue_run_over(true)
 

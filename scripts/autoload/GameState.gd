@@ -30,6 +30,11 @@ var save_name: String = ""
 var current_game_id: StringName = &""
 var start_game_id: StringName = &""
 var amulet_game_id: StringName = &""
+# FRACTURE 10's COLLAPSE (docs/fracture-design.md §7): the Amulet game has been
+# beaten and the run is carrying it back to the start. From then on the start is
+# the run's destination — read it through goal_game_id(), never amulet_game_id,
+# which stays the game the run was a search for (its trophy, its name).
+var carrying_amulet: bool = false
 var visited_games: Array[StringName] = []
 # The run's WALK, in order, with the repeats left in — every game the player has
 # stood on, appended the moment they arrive, ending on the game under their feet.
@@ -1165,6 +1170,15 @@ func take_pending_chest() -> int:
 func reseed_run_streams() -> void:
 	EffectSystem.reseed(randi())
 
+# WHERE THE RUN IS GOING: the Amulet, or the start once the Collapse has the
+# player carrying it home. Every route, distance, pressure and goal card asks this.
+func goal_game_id() -> StringName:
+	return start_game_id if carrying_amulet else amulet_game_id
+
+# The goal in words, for lines like "3 from the Amulet".
+func goal_word() -> String:
+	return "the start" if carrying_amulet else "the Amulet"
+
 # ---------------------------------------------------------------------------
 # Mutation API — UI and combat scenes go through these so signals fire.
 # ---------------------------------------------------------------------------
@@ -1172,6 +1186,7 @@ func reseed_run_streams() -> void:
 func reset_run() -> void:
 	character_id = &""
 	fracture = 0
+	carrying_amulet = false
 	save_name = ""
 	current_game_id = &""
 	start_game_id = &""

@@ -704,6 +704,12 @@ func _build_run_tab() -> void:
 				GameStats.fracture_log[String(GameState.character_id)]["best"] = Fracture.MAX - 1
 				GameStats.save_data()
 			_rebuild_body()))
+	_body.add_child(_row_button("Collapse now: carry the Amulet home from here", "",
+		func() -> void:
+			var scene = GameState.overworld_scene
+			if scene != null and scene.has_method("begin_collapse_now"):
+				scene.begin_collapse_now()
+			_rebuild_body()))
 	_body.add_child(_note(Fracture.ladder_text(Fracture.level())))
 
 # ---------------------------------------------------------------------------

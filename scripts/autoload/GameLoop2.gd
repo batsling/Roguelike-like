@@ -1928,7 +1928,10 @@ func end_of_game_price(escaped: bool = false) -> Dictionary:
 	var here: StringName = GameState.current_game_id
 	if here == &"":
 		return {"bodies": 0, "why": ""}
-	if here == GameState.amulet_game_id:
+	# The Amulet owes nothing because nothing comes after it — except in a
+	# Collapse (docs/fracture-design.md §7), where the walk home does, and the
+	# Amulet game is the doorstep it is.
+	if here == GameState.amulet_game_id and not collapse_due():
 		return {"bodies": 0, "why": "nothing follows you past the Amulet"}
 	var bodies: int = pressure()
 	if defeated_this_game <= 0:
@@ -2526,7 +2529,8 @@ func effective_health(enemy: GoalEnemyData) -> int:
 # Same BFS the overworld's route badges read, so the number the board shows and
 # the number the loop resolves on are the same number.
 func hops_to_amulet() -> int:
-	var amulet: StringName = GameState.amulet_game_id
+	# The GOAL: the start, once a Collapse has the Amulet being carried home.
+	var amulet: StringName = GameState.goal_game_id()
 	var here: StringName = GameState.current_game_id
 	if amulet == &"" or here == &"":
 		return -1
@@ -4627,6 +4631,73 @@ func nearest_open_cell(enemy: GoalEnemyData, to: Vector2i, exclude: int = 0) -> 
 # for it; there is no such body now (see `arrivals`), and whatever is standing
 # there was already dealt with by the report that got us here — ticked or not,
 # like every other enemy. The run is simply over.
+# --- FRACTURE 10: THE COLLAPSE (docs/fracture-design.md §7) -----------------
+
+# Whether beating the Amulet game, right now, starts the walk home rather than
+# winning the run.
+func collapse_due() -> bool:
+	return Fracture.at_least(Fracture.MAX) and not GameState.carrying_amulet
+
+# THE TURNAROUND. The Amulet is picked up and every game the run stood on, the
+# start aside, is transmuted into a game the player has not played: the map
+# keeps its shape (a transmuted node keeps its connections), so the road home is
+# exactly as long as the road out, and "do not go back through games you
+# played" holds without a rule for it. Free — no Transmute charge.
+#
+# Returns what changed, in the order walked, as [{node, from, to}] for the
+# screen that shows it happening.
+func begin_collapse() -> Array:
+	GameState.carrying_amulet = true
+	var taken: Dictionary = {}
+	for id in RunGraph.map_ids():
+		taken[id] = true
+	for id in transmuted.values():
+		taken[StringName(id)] = true
+	for id in GameState.played_games:
+		taken[StringName(id)] = true
+	var changed: Array = []
+	var seen: Dictionary = {}
+	for node in GameState.walked_path():
+		if node == GameState.start_game_id or seen.has(node):
+			continue
+		seen[node] = true
+		var was: GameData = game_at(node)
+		var repl: GameData = _collapse_replacement(node, taken)
+		if repl == null:
+			continue
+		taken[repl.id] = true
+		transmuted[node] = repl.id
+		changed.append({"node": node, "from": was.id if was != null else node, "to": repl.id})
+	GameLog.add("The Amulet is yours — and the way you came fractures behind you.",
+		Fracture.COLOR)
+	loop_changed.emit()
+	return changed
+
+# What one walked node becomes. The verb's own pools first — a rift slot's from
+# the rift pool, anything else's off the map — and, since off-map games are the
+# only ones in the run's filter not already on it, the whole catalogue last, so
+# a run that has used up its off-map games still never holds one game twice.
+func _collapse_replacement(node: StringName, taken: Dictionary) -> GameData:
+	var pools: Array = []
+	if RunGraph.is_rift_game(node):
+		pools.append(_rift_refill_pool(node, taken))
+	var off: Array = []
+	for id in RunGraph.off_map_ids():
+		var g: GameData = Data.get_game(id)
+		if g != null and not taken.has(g.id) and not is_bashed(g.id):
+			off.append(g)
+	pools.append(off)
+	var anywhere: Array = []
+	for g in Data.all_games():
+		if g is GameData and not taken.has(g.id) and not is_bashed(g.id):
+			anywhere.append(g)
+	pools.append(anywhere)
+	for pool in pools:
+		if not (pool as Array).is_empty():
+			(pool as Array).sort_custom(func(a, b): return a.id < b.id)
+			return pool[randi() % (pool as Array).size()]
+	return null
+
 func clear_amulet() -> void:
 	if run_over:
 		return

@@ -168,6 +168,7 @@ func _build_payload() -> Dictionary:
 		"saved_at": Time.get_unix_time_from_system(),
 		"character_id": String(GameState.character_id),
 		"fracture": GameState.fracture,
+		"carrying_amulet": GameState.carrying_amulet,
 		"current_game_id": String(GameState.current_game_id),
 		"start_game_id": String(GameState.start_game_id),
 		"amulet_game_id": String(GameState.amulet_game_id),
@@ -384,6 +385,7 @@ func _apply_save_data(data: Dictionary) -> void:
 	GameState.character_id = StringName(data.get("character_id", ""))
 	# A save from before Fractures existed has no level and was played at 0.
 	GameState.fracture = clampi(int(data.get("fracture", 0)), 0, Fracture.MAX)
+	GameState.carrying_amulet = bool(data.get("carrying_amulet", false))
 	GameState.current_game_id = StringName(data.get("current_game_id", ""))
 	GameState.start_game_id = StringName(data.get("start_game_id", ""))
 	GameState.amulet_game_id = StringName(data.get("amulet_game_id", ""))

@@ -109,9 +109,7 @@ static func change_text(level: int) -> String:
 		EXTRA_TURN_LEVEL:
 			return "Enemies take an extra turn after every game beaten or escaped."
 		MAX:
-			# Not built yet (build step 4): said, so a player who reaches 10 is not
-			# promised a run that plays exactly like 9. Drop the bracket with it.
-			return "The Collapse: beat the Amulet, then carry it back to the start. (Coming soon.)"
+			return "The Collapse: beat the Amulet, then carry it back to the start."
 	return ""
 
 # Everything a run at `level` is playing with, one line per level from 1 up.

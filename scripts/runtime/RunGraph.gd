@@ -386,6 +386,14 @@ static func _prune_to_main_component() -> void:
 
 # Games inside the active filter that the run's routes cannot reach: everything
 # outside the main group. This is the Transmute pool.
+# Every game standing on the run's map (the main component, rift games included).
+static func map_ids() -> Array[StringName]:
+	_build_adj()
+	var out: Array[StringName] = []
+	for id in _adj_cache.keys():
+		out.append(StringName(id))
+	return out
+
 static func off_map_ids() -> Array[StringName]:
 	_build_adj()
 	var out: Array[StringName] = []

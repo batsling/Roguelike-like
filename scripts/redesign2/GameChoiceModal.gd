@@ -338,7 +338,7 @@ func _build_header(game: GameData, accent: Color) -> Control:
 	row.add_theme_constant_override("separation", UITheme.GAP_WIDE)
 
 	var title := Label.new()
-	title.text = ("🏆 " if bool(_choice.get("amulet", false))
+	title.text = (("🏠 " if GameState.carrying_amulet else "🏆 ") if bool(_choice.get("amulet", false))
 		else ("☠ " if bool(_choice.get("boss", false)) else "")) + game.display_name
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -1425,7 +1425,7 @@ func _build_route_column() -> Control:
 # screen to fly.
 func _ladder_cfg() -> Dictionary:
 	var slot: StringName = _choice.get("slot", &"")
-	var amulet: StringName = GameState.amulet_game_id
+	var amulet: StringName = GameState.goal_game_id()
 	var data: Dictionary = RunGraph.shortest_path_dag(slot, amulet) if slot != &"" and amulet != &"" else {}
 	if _key_dest() != &"" and amulet != &"":
 		data = _key_route(slot, _key_dest(), amulet)
@@ -1470,7 +1470,7 @@ func open_node_card(id: StringName, depth: int = 0) -> Control:
 	close_node_card()
 	if id == &"":
 		return null
-	var amulet: StringName = GameState.amulet_game_id
+	var amulet: StringName = GameState.goal_game_id()
 
 	var facts: Array = []
 	var left: int = RunGraph.route_length(id, amulet)
@@ -1527,8 +1527,9 @@ func close_node_card() -> void:
 func _node_role_text(id: StringName, depth: int) -> String:
 	if depth == 0:
 		return "Where this card would put you."
-	if id == GameState.amulet_game_id:
-		return "The Amulet — the end of the run."
+	if id == GameState.goal_game_id():
+		return ("Home — carry the Amulet here and the run is won." if GameState.carrying_amulet
+			else "The Amulet — the end of the run.")
 	if GameState.visited_games.has(id):
 		return "You have already been here this run."
 	# An ordinary rung needs no line: the route it was clicked on already says it

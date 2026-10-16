@@ -962,7 +962,7 @@ func _road() -> Array:
 		var n: int = int(seen.get(id, 0)) + 1
 		seen[id] = n
 		stops.append(_stop(id, n, false, bool(won[i]) if i < won.size() else false))
-	var amulet: StringName = GameState.amulet_game_id
+	var amulet: StringName = GameState.goal_game_id()
 	# The Amulet always terminates the strip — as the last stop when the run
 	# reached it, and as an unreached one otherwise. RunOverScreen draws the gap
 	# dashed for exactly the same reason.
@@ -997,7 +997,7 @@ func _road() -> Array:
 # because it costs nothing and the page already reads it.
 func _route() -> Dictionary:
 	var here: StringName = GameState.current_game_id
-	var amulet: StringName = GameState.amulet_game_id
+	var amulet: StringName = GameState.goal_game_id()
 	var empty: Dictionary = {"layers": [], "edges": [], "dropped": 0,
 		"arrived": here != &"" and here == amulet}
 	if here == &"" or amulet == &"":
@@ -1065,7 +1065,7 @@ func _rung(id: StringName, depth: int, last: int) -> Dictionary:
 		# Depth 0 is the game under your feet — the ladder's root, drawn as
 		# you-are-here rather than as a step you might take.
 		"here": depth == 0,
-		"amulet": id == GameState.amulet_game_id,
+		"amulet": id == GameState.goal_game_id(),
 		# ALREADY BEATEN, which is a real thing to know about a road ahead: a
 		# revisit is legal, its goal is rolled fresh, and a viewer reading the map
 		# should see which of these you have history with. The last layer is the

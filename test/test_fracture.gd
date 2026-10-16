@@ -48,6 +48,7 @@ func after_each() -> void:
 	# One test here goes through GameLoop2.start_run, so the loop is put back too.
 	GameLoop2.reset()
 	RunConfig.reset()
+	SaveSystem.clear_all_saves()
 
 # A run won as HERO at `level`: what GameLoop2._finish_run does, with a route so
 # the history keeps a row.
@@ -438,3 +439,161 @@ func test_how_to_play_has_a_fractures_chapter() -> void:
 	for ch in HowToPlayText.chapters():
 		ids.append(ch["id"])
 	assert_has(ids, &"fractures")
+
+# ==========================================================================
+# Build step 4: Fracture 10's Collapse (docs/fracture-design.md §7)
+# ==========================================================================
+
+const OVERWORLD := preload("res://scenes/redesign2/Overworld2.tscn")
+
+func test_the_collapse_is_due_only_at_fracture_ten_and_only_once() -> void:
+	GameState.fracture = 9
+	assert_false(GameLoop2.collapse_due())
+	GameState.fracture = 10
+	assert_true(GameLoop2.collapse_due())
+	GameState.carrying_amulet = true
+	assert_false(GameLoop2.collapse_due(), "not again once the Amulet is in hand")
+
+func test_carrying_the_amulet_makes_the_start_the_goal() -> void:
+	GameState.start_game_id = &"hades"
+	GameState.amulet_game_id = &"balatro"
+	assert_eq(GameState.goal_game_id(), &"balatro")
+	GameState.carrying_amulet = true
+	assert_eq(GameState.goal_game_id(), &"hades")
+	assert_eq(GameState.goal_word(), "the start")
+
+# A small run in the overworld, walked by its own map: the start, then the first
+# offered card each time, `steps` times.
+func _walked_run(steps: int) -> Node:
+	var ui = OVERWORLD.instantiate()
+	add_child_autofree(ui)
+	ui.choose_start(0)
+	for _i in range(steps):
+		if ui._phase == ui.Phase.PLAYING:
+			ui.report(true)
+			ui._end_resolve()
+			if ui._post_screen != null and is_instance_valid(ui._post_screen):
+				ui._post_screen.dismiss()
+			ui._drop_queue.clear()
+		if ui._phase != ui.Phase.SELECT or ui._choices.is_empty():
+			break
+		ui.pick(0)
+	return ui
+
+func test_the_collapse_fractures_every_game_walked_but_the_start() -> void:
+	var ui = _walked_run(3)
+	GameState.fracture = 10
+	var road: Array = ui._walked_road()
+	var before: Dictionary = {}
+	for node in road:
+		before[node] = GameLoop2.game_at(node).id
+	var changes: Array = GameLoop2.begin_collapse()
+	assert_true(GameState.carrying_amulet)
+	var start: StringName = GameState.start_game_id
+	assert_eq(GameLoop2.game_at(start).id, before[start], "the start is not fractured")
+	var landed: Dictionary = {}
+	for node in road:
+		if node == start:
+			continue
+		var now: StringName = GameLoop2.game_at(node).id
+		assert_ne(now, before[node], "%s fractured" % node)
+		assert_false(GameState.played_games.has(now), "into a game not played")
+		assert_false(landed.has(now), "and no two nodes hold the same game")
+		landed[now] = true
+	assert_eq(changes.size(), road.size() - 1, "one change per walked game but the start")
+
+func test_pressure_counts_toward_the_start_on_the_way_home() -> void:
+	var ui = _walked_run(2)
+	GameState.fracture = 10
+	GameLoop2.begin_collapse()
+	var dist: Dictionary = RunGraph.bfs_distances(GameState.start_game_id)
+	assert_eq(GameLoop2.hops_to_amulet(), int(dist[GameState.current_game_id]),
+		"the hops are to the start now")
+
+func test_the_way_home_runs_from_here_to_the_start() -> void:
+	var ui = _walked_run(3)
+	GameState.fracture = 10
+	GameLoop2.begin_collapse()
+	var path: Array = ui.home_path()
+	assert_eq(path[0], GameState.start_game_id, "start first")
+	assert_eq(path[path.size() - 1], GameState.current_game_id, "here last")
+	for i in range(path.size() - 1):
+		assert_true(RunGraph.neighbors(path[i]).has(path[i + 1]), "a real road")
+	var dist: Dictionary = RunGraph.bfs_distances(GameState.start_game_id)
+	assert_eq(path.size() - 1, int(dist[GameState.current_game_id]), "and the shortest")
+
+func test_the_amulet_owes_the_doorstep_in_a_collapse() -> void:
+	GameLoop2.reset()
+	GameState.amulet_game_id = &"balatro"
+	GameState.current_game_id = &"balatro"
+	GameLoop2.choose_game(_plain_enemy())
+	GameState.fracture = 9
+	assert_eq(int(GameLoop2.end_of_game_price()["bodies"]), 0, "nothing past the Amulet")
+	GameState.fracture = 10
+	assert_gt(int(GameLoop2.end_of_game_price()["bodies"]), 0, "but there is a road home")
+
+func test_beating_the_amulet_on_ten_turns_the_run_round() -> void:
+	var ui = _walked_run(1)
+	GameState.fracture = 10
+	var amulet: StringName = GameState.amulet_game_id
+	ui.arrive_at_game(amulet)
+	assert_true(bool(ui._chosen.get("amulet", false)), "standing on the Amulet")
+	var beaten_before: int = GameStats.beaten_count(amulet)
+	ui.report(true)
+	ui._end_resolve()
+	assert_false(GameLoop2.run_over, "the run goes on")
+	assert_true(GameState.carrying_amulet, "with the Amulet in hand")
+	assert_eq(GameStats.amulet_wins(amulet), 0, "no trophy yet")
+	assert_eq(GameStats.beaten_count(amulet), beaten_before + 1, "but it was a game beaten")
+	assert_ne(GameLoop2.game_at(amulet).id, amulet, "and the Amulet game fractured too")
+	if ui._post_screen != null and is_instance_valid(ui._post_screen):
+		ui._post_screen.dismiss()
+	await get_tree().process_frame
+	var screen: CollapseScreen = null
+	for c in ui.get_children():
+		if c is CanvasLayer:
+			for cc in c.get_children():
+				if cc is CollapseScreen:
+					screen = cc
+	assert_not_null(screen, "leaving the haul raises the Collapse's screen")
+	if screen != null:
+		screen.finish_animation()
+		screen.close()
+
+func test_arriving_home_with_the_amulet_wins_the_run() -> void:
+	var ui = _walked_run(2)
+	GameState.fracture = 10
+	var amulet: StringName = GameState.amulet_game_id
+	GameLoop2.begin_collapse()
+	ui.travel_to_game(GameState.start_game_id, false)
+	assert_true(GameLoop2.run_over and GameLoop2.won, "arriving is the win")
+	assert_eq(GameStats.amulet_wins(amulet), 1, "the Amulet's trophy")
+	assert_eq(GameStats.amulet_best(amulet), 10, "at Fracture 10")
+
+func test_dying_on_the_way_home_is_an_ordinary_loss() -> void:
+	var ui = _walked_run(2)
+	GameState.fracture = 10
+	var amulet: StringName = GameState.amulet_game_id
+	GameLoop2.begin_collapse()
+	GameState.change_hp(-999)
+	await get_tree().process_frame
+	assert_true(GameLoop2.run_over and not GameLoop2.won)
+	assert_eq(GameStats.amulet_wins(amulet), 0, "no trophy")
+
+func test_the_map_shows_the_player_and_the_carried_amulet() -> void:
+	GameState.character_id = HERO
+	GameState.carrying_amulet = true
+	var cfg := {"current": &"hades", "amulet": &"balatro"}
+	var box: Control = RouteLadder.node_box(cfg, &"hades", Rect2(Vector2.ZERO, Vector2(90, 120)), 0)
+	add_child_autofree(box)
+	var mark: Node = box.get_node_or_null("PlayerMark")
+	assert_not_null(mark, "the player's token on the game they stand on")
+	if mark != null:
+		assert_not_null(mark.get_node_or_null("CarriedAmulet"), "and the Amulet beside it")
+
+func test_the_carried_amulet_survives_a_save() -> void:
+	GameState.carrying_amulet = true
+	var payload: Dictionary = SaveSystem._build_payload()
+	GameState.carrying_amulet = false
+	SaveSystem._apply_save_data(payload)
+	assert_true(GameState.carrying_amulet)

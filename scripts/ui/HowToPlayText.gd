@@ -938,10 +938,12 @@ static func _ch_fractures() -> Dictionary:
 				+ "100 at Fracture 10, where an ordinary repeat win pays 50."),
 			_b("A game's 🏆 and a character's 🏆 carry the highest Fracture they "
 				+ "were won at."),
-			_h("Fracture 10: the Collapse (coming soon)"),
+			_h("Fracture 10: the Collapse"),
 			_p("Beating the Amulet does not end the run. You pick it up, every game "
 				+ "you played is fractured into one you have not, and the run is won "
-				+ "by carrying the Amulet back to the game you started on."),
+				+ "by carrying the Amulet back to the game you started on. Arriving is "
+				+ "enough: you do not play it again. The road home is as long as the "
+				+ "road out, and everything still on the board comes with you."),
 			_note("The level you are playing is beside your portrait at the top of "
 				+ "the screen. Hover it for everything that level is doing."),
 		],

@@ -233,6 +233,29 @@ func record_amulet_win(id) -> void:
 	save_data()
 	emit_signal("changed")
 
+# A COLLAPSE WON (docs/fracture-design.md §7.6): the run carried the Amulet back
+# to the start. The Amulet game was already recorded as BEATEN when it fell, like
+# any game, so this is only what the run's end adds: the Amulet win, its trophy
+# number, and the character's Amulet. Custom runs are held apart, as ever.
+func record_collapse_win(amulet_id, character_id) -> void:
+	var e := _entry(String(amulet_id))
+	if Fracture.run_counts():
+		e["amulets"] += 1
+		e["amulet_best"] = maxi(int(e.get("amulet_best", -1)), Fracture.level())
+	else:
+		e["custom_amulets"] = int(e.get("custom_amulets", 0)) + 1
+	var c := String(character_id)
+	var g := String(amulet_id)
+	if c != "" and g != "":
+		if not character_game_log.has(c):
+			character_game_log[c] = {}
+		var entry: Dictionary = character_game_log[c].get(g, {"beaten": 0})
+		var field: String = "amulets" if Fracture.run_counts() else "custom_amulets"
+		entry[field] = int(entry.get(field, 0)) + 1
+		character_game_log[c][g] = entry
+	save_data()
+	emit_signal("changed")
+
 # WHICH FRACTURE EACH WIN WAS AT, kept as the two numbers the XP needs rather
 # than as a list: the sum of every win's level, and the level of the FIRST win,
 # which is the one win whose XP the level does not touch (only the base repeat

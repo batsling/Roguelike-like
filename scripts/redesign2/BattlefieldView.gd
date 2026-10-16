@@ -797,12 +797,16 @@ func _refresh_pressure() -> void:
 
 	# WHY it's that number. Without the hop count the pressure reads as a random
 	# difficulty spike rather than as the price of the route the player chose.
+	# Counted to the GOAL: the start, on Fracture 10's walk home (§7.5 of
+	# docs/fracture-design.md), where the pressure ladder counts down to it.
+	var goal: String = "Home" if GameState.carrying_amulet else "Amulet"
 	if hops < 0:
-		_pressure_why.text = "no route to the Amulet"
+		_pressure_why.text = "no route to %s" % GameState.goal_word()
 	elif hops == 0:
-		_pressure_why.text = "standing ON the Amulet — %s" % RunDifficulty.band_name(pressure)
+		_pressure_why.text = "standing ON %s — %s" % [GameState.goal_word(),
+			RunDifficulty.band_name(pressure)]
 	else:
-		_pressure_why.text = "Amulet %d hop%s away — %s" % [
+		_pressure_why.text = "%s %d hop%s away — %s" % [goal,
 			hops, "" if hops == 1 else "s", RunDifficulty.band_name(pressure)]
 
 	var price: Dictionary = GameLoop2.end_of_game_price()
