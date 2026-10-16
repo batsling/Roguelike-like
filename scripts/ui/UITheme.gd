@@ -1164,6 +1164,23 @@ static func make_theme() -> Theme:
 	for off_name in ["unchecked", "radio_unchecked"]:
 		t.set_icon(off_name, "PopupMenu", popup_mark(false))
 
+	# --- the stock tooltip ---
+	#
+	# Most hovers are a HoverCard (HoverPanel / HoverButton / HoverBox), but any
+	# Control left on a plain `tooltip_text` gets Godot's stock tooltip, which was
+	# grey system chrome. Dressed here as HoverCard.text_card is, so the stragglers
+	# at least look like the same family. (It still cannot wrap: a long one wants
+	# one of the Hover classes.)
+	#
+	# Godot wraps EVERY tooltip in a TooltipPanel, a HoverCard included — which drew
+	# a second frame round each card. So the panel is empty and the box is the
+	# stock LABEL's own (TooltipLabel is a Label variation), and a card is drawn
+	# exactly as HoverCard built it.
+	t.set_stylebox("panel", "TooltipPanel", StyleBoxEmpty.new())
+	t.set_stylebox("normal", "TooltipLabel", flat(Color(0.075, 0.065, 0.085, 0.985), 6, 8, 1, BORDER))
+	t.set_color("font_color", "TooltipLabel", TEXT)
+	t.set_font_size("font_size", "TooltipLabel", FONT_BODY)
+
 	# --- Window / AcceptDialog ---
 	#
 	# THE RUN'S SAVE AND EXIT PROMPTS WERE STOCK GREY. They are real Windows
