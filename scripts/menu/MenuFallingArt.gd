@@ -27,8 +27,12 @@ enum Kind { SMALL, COVER }
 # Pieces on screen at once, over the whole width. Chosen with the mix below:
 # enough that the screen is busy, few enough that the cover pool stays small. It
 # was 72 down the two side columns (60% of the width); the full width keeps the
-# same density at 100.
-const PIECE_COUNT := 100
+# same density at 100. Now the owner's to tune: Settings -> Display -> Menu art
+# amount (`Settings.menu_falling_art_count`), with this as its default and the
+# slider's range the two below. `piece_count()` is what the effect reads.
+const PIECE_COUNT := 150
+const PIECE_COUNT_MIN := 50
+const PIECE_COUNT_MAX := 300
 # Of those, how many are game covers. The rest are characters, enemies, items and
 # loot — so the screen reads as the run's furniture with the games falling through
 # it, rather than as a wall of box art.
@@ -159,8 +163,18 @@ const COVER_DIR := "res://images2.0/games/"
 # put a picture on screen that is already on it, so a pool only a little larger
 # than the screen holds makes the free list run dry and the fallback kind take
 # over — the mix drifts away from `COVER_SHARE` on its own.
-const COVER_POOL := 46
-const SMALL_POOL := 154
+# Those were 46 and 154 for 100 pieces; the ratios are kept as the count moves.
+const COVER_POOL_PER_COVER := 46.0 / 30.0
+const SMALL_POOL_PER_SMALL := 154.0 / 70.0
+
+func piece_count() -> int:
+	return clampi(Settings.menu_falling_art_count, PIECE_COUNT_MIN, PIECE_COUNT_MAX)
+
+func cover_pool() -> int:
+	return ceili(piece_count() * COVER_SHARE * COVER_POOL_PER_COVER)
+
+func small_pool() -> int:
+	return ceili(piece_count() * (1.0 - COVER_SHARE) * SMALL_POOL_PER_SMALL)
 
 var _rng := RandomNumberGenerator.new()
 var _pieces: Array[Dictionary] = []
@@ -193,7 +207,16 @@ func _ready() -> void:
 	_pixel_layer = _make_layer(CanvasItem.TEXTURE_FILTER_NEAREST)
 	_smooth_layer = _make_layer(CanvasItem.TEXTURE_FILTER_LINEAR)
 	Settings.menu_falling_art_changed.connect(_on_setting_changed)
+	Settings.menu_falling_art_count_changed.connect(_on_count_changed)
 	_on_setting_changed(Settings.menu_falling_art)
+
+# A new amount re-deals the pool at its new size: off and on again, which frees
+# the old textures rather than keeping both.
+func _on_count_changed(_count: int) -> void:
+	if not _running:
+		return
+	_on_setting_changed(false)
+	_on_setting_changed(true)
 
 func _make_layer(filter: int) -> MenuFallingArtLayer:
 	var layer := MenuFallingArtLayer.new()
@@ -248,8 +271,8 @@ func _fill_queue() -> void:
 	_queue.clear()
 	_queue.append_array(chars)
 	_queue.append_array(seated)
-	_queue.append_array(small.slice(0, maxi(0, SMALL_POOL - chars.size() - seated.size())))
-	_queue.append_array(covers.slice(0, COVER_POOL))
+	_queue.append_array(small.slice(0, maxi(0, small_pool() - chars.size() - seated.size())))
+	_queue.append_array(covers.slice(0, cover_pool()))
 	# Interleaved, so the first seconds are not all one kind.
 	_queue.shuffle()
 
@@ -552,7 +575,7 @@ func _process(delta: float) -> void:
 	if _pool[Kind.SMALL].is_empty() and _pool[Kind.COVER].is_empty():
 		return
 	var size: Vector2 = get_viewport_rect().size
-	while _pieces.size() < PIECE_COUNT:
+	while _pieces.size() < piece_count():
 		# EVERY PIECE ENTERS FROM ABOVE, the opening fill included. It used to
 		# scatter that first fill across the visible height so the screen started
 		# busy, and the cost of that was the two things it started wrong: art was

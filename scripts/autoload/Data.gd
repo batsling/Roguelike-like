@@ -170,7 +170,7 @@ func all_scrolls2() -> Array:
 
 # --- Pills (2.0, §4.3) -----------------------------------------------------
 # No rarity ladder here, unlike every other pool in this file: a pill is not
-# rolled off the 75/20/5 rungs, it is one of the ten this run dealt colours to.
+# rolled off the 75/20/4/1 rungs, it is one of the ten this run dealt colours to.
 # Which ten that is belongs to PillSystem, so a flat pick over the catalog is
 # what "a random pill" means and the colour deal is what narrows it.
 func get_pill(id: StringName) -> PillData:
@@ -203,29 +203,30 @@ func pills_with_preference(preference: String) -> Array:
 
 # --- the one rarity ladder -------------------------------------------------
 
-# Every random draw in the game — item rewards, enemy drops, scrolls — rolls rarity
-# the same way: the legacy selectRandomRarity distribution (75% Common, 20%
-# Uncommon, 5% Rare) with a 10% chance that a Rare upgrades to Legendary. The
-# numbers live here once; the two callers differ only in how they NUMBER legendary,
-# so the roll is expressed in its own vocabulary and mapped at the edges.
+# Every random draw in the game — item rewards, enemy drops, scrolls, chest sizes,
+# shop stock, events, objects — rolls rarity the same way, off these four weights:
+# 75% Common, 20% Uncommon, 4% Rare, 1% Legendary. THIS IS THE ONE PLACE TO TUNE
+# THEM; they are relative weights, so they need not add to 100. (It used to be
+# 75/20/5 with a 10% chance of a Rare upgrading — 4.5% Rare, 0.5% Legendary.)
 enum RarityStep { COMMON, UNCOMMON, RARE, LEGENDARY }
-const RARITY_WEIGHTS := { RarityStep.COMMON: 75.0, RarityStep.UNCOMMON: 20.0, RarityStep.RARE: 5.0 }
+const RARITY_WEIGHTS := {
+	RarityStep.COMMON: 75.0, RarityStep.UNCOMMON: 20.0,
+	RarityStep.RARE: 4.0, RarityStep.LEGENDARY: 1.0,
+}
 
 # One rarity roll on the ladder above. `roll01` lets a caller supply its own [0,1)
-# roll — RewardScreen passes a luck-advantaged one — instead of drawing from `rng`;
-# the Rare-to-Legendary bump always comes from `rng`. ScrollData.rarity_index()
-# uses this 0-3 ordering directly.
+# roll instead of drawing from `rng`. ScrollData.rarity_index() uses this 0-3
+# ordering directly.
 func roll_rarity_step(rng: RandomNumberGenerator, roll01: float = -1.0) -> int:
-	var total: float = RARITY_WEIGHTS[RarityStep.COMMON] + RARITY_WEIGHTS[RarityStep.UNCOMMON] + RARITY_WEIGHTS[RarityStep.RARE]
+	var total: float = 0.0
+	for step in RarityStep.values():
+		total += float(RARITY_WEIGHTS[step])
 	var roll: float = (rng.randf() if roll01 < 0.0 else roll01) * total
-	var step: int = RarityStep.RARE
-	if roll < RARITY_WEIGHTS[RarityStep.COMMON]:
-		step = RarityStep.COMMON
-	elif roll < RARITY_WEIGHTS[RarityStep.COMMON] + RARITY_WEIGHTS[RarityStep.UNCOMMON]:
-		step = RarityStep.UNCOMMON
-	if step == RarityStep.RARE and rng.randf() < 0.1:
-		step = RarityStep.LEGENDARY
-	return step
+	for step in RarityStep.values():
+		roll -= float(RARITY_WEIGHTS[step])
+		if roll < 0.0:
+			return step
+	return RarityStep.LEGENDARY
 
 # The same roll as an ItemData.Rarity value — which is the identity, because the
 # two enums are now the same four rungs in the same order. It used to need a
@@ -250,7 +251,7 @@ func roll_item_rarity(rng: RandomNumberGenerator, roll01: float = -1.0) -> int:
 # items to choose from, so the size ladder is one step wider at each rung: Small =
 # choose 1 of 1, Medium = 1 of 2, Large = 1 of 3, Huge = 1 of 5. The four sizes sit
 # one-to-one on the rarity ladder above (SMALL..HUGE share its 0-3 ordering), so a
-# size roll is that same 75/20/5-with-a-10%-bump roll — the wording is about the
+# size roll is that same 75/20/4/1 roll — the wording is about the
 # chest's size, not the rarity of the items inside it.
 enum ChestSize { SMALL, MEDIUM, LARGE, HUGE }
 const CHEST_SIZE_CHOICES := {
@@ -504,9 +505,9 @@ func all_wands() -> Array:
 # `wands` sheet has no column to author one in.
 #
 # THE ROSTER IS ONE OF EACH RUNG — 1 Common, 1 Uncommon, 1 Rare, 1 Legendary —
-# which makes the shared ladder do all the work. At its 75/20/5 with the Rare rung's
-# 10% bump, that is Wand of Nothing on three drops in four, Create Monster on one in
-# five, Fire on about one in twenty-two and Wishing on about one in two hundred —
+# which makes the shared ladder do all the work. At its 75/20/4/1,
+# that is Wand of Nothing on three drops in four, Create Monster on one in five,
+# Fire on one in twenty-five and Wishing on one in a hundred —
 # and none of that spread is authored anywhere but in the four rarity words.
 func roll_wand(rng: RandomNumberGenerator = null) -> WandData:
 	return _roll_by_rarity(_wands.values(), rng)

@@ -274,6 +274,35 @@ func _build_display_section(col: VBoxContainer) -> void:
 		func(on: bool) -> void: Settings.set_menu_falling_art(on),
 		"Enemies, items, loot and covers drifting down the main menu.")
 
+	# The amount: the label follows the drag, the menu re-deals on let-go (a
+	# re-deal reloads the texture pool, so not on every step of a drag).
+	var amount := HSlider.new()
+	amount.min_value = MenuFallingArt.PIECE_COUNT_MIN
+	amount.max_value = MenuFallingArt.PIECE_COUNT_MAX
+	amount.step = 10
+	amount.value = Settings.menu_falling_art_count
+	amount.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	amount.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	var amount_label := Label.new()
+	amount_label.text = str(Settings.menu_falling_art_count)
+	amount_label.custom_minimum_size = Vector2(36, 0)
+	amount_label.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
+	var amount_box := HBoxContainer.new()
+	amount_box.add_theme_constant_override("separation", UITheme.GAP_SNUG)
+	amount_box.add_child(amount)
+	amount_box.add_child(amount_label)
+	var dragging := [false]
+	amount.value_changed.connect(func(v: float) -> void:
+		amount_label.text = str(int(v))
+		if not dragging[0]:
+			Settings.set_menu_falling_art_count(int(v)))
+	amount.drag_started.connect(func() -> void: dragging[0] = true)
+	amount.drag_ended.connect(func(_changed: bool) -> void:
+		dragging[0] = false
+		Settings.set_menu_falling_art_count(int(amount.value)))
+	_row(grid, "Menu art amount", amount_box,
+		"How many pictures fall down the main menu at once (default %d)." % MenuFallingArt.PIECE_COUNT)
+
 # --- runs ---------------------------------------------------------------------
 func _build_runs_section(col: VBoxContainer) -> void:
 	var grid := _section(col, "Runs")

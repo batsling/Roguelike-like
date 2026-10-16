@@ -54,7 +54,7 @@ func test_nothing_falls_until_the_whole_pool_is_loaded() -> void:
 
 func test_both_kinds_are_actually_falling_once_it_is_seeded() -> void:
 	_seed()
-	assert_eq(_art._pieces.size(), MenuFallingArt.PIECE_COUNT, "the screen fills in one go")
+	assert_eq(_art._pieces.size(), _art.piece_count(), "the screen fills in one go")
 	var covers := 0
 	for piece in _art._pieces:
 		# By KIND, not by size: a 2x2 enemy is drawn bigger than a 1x1 cover would
@@ -432,7 +432,7 @@ func test_nothing_fades_in_at_the_top() -> void:
 
 func test_the_menu_opens_with_every_piece_still_above_the_top_edge() -> void:
 	_seed()
-	assert_eq(_art._pieces.size(), MenuFallingArt.PIECE_COUNT,
+	assert_eq(_art._pieces.size(), _art.piece_count(),
 		"the screen's worth of pieces is dealt in one go")
 	var inside: Array = []
 	for piece in _art._pieces:
@@ -477,7 +477,7 @@ func test_the_screen_fills_from_the_top_rather_than_all_at_once() -> void:
 		var y: float = (piece["pos"] as Vector2).y
 		if y > 0.0 and y < height:
 			on_screen += 1
-	assert_gt(on_screen, MenuFallingArt.PIECE_COUNT / 3,
+	assert_gt(on_screen, _art.piece_count() / 3,
 		"the screen has filled in: %d of %d pieces are in the window"
 			% [on_screen, _art._pieces.size()])
 
@@ -692,3 +692,15 @@ func test_the_pool_holds_each_texture_once() -> void:
 		assert_eq(_art._pool[kind].size(), by_tex.size(),
 			"kind %d holds %d entries for %d distinct textures"
 				% [kind, _art._pool[kind].size(), by_tex.size()])
+
+# THE AMOUNT IS A SETTING (Settings -> Display -> Menu art amount), and the pools
+# grow with it so the no-repeats free list does not run dry at a bigger count.
+func test_the_amount_on_screen_is_the_setting() -> void:
+	var was: int = Settings.menu_falling_art_count
+	Settings.menu_falling_art_count = 200
+	assert_eq(_art.piece_count(), 200)
+	assert_gt(_art.cover_pool(), int(200 * MenuFallingArt.COVER_SHARE), "more covers held than shown")
+	assert_gt(_art.small_pool(), int(200 * (1.0 - MenuFallingArt.COVER_SHARE)))
+	Settings.menu_falling_art_count = 9999
+	assert_eq(_art.piece_count(), MenuFallingArt.PIECE_COUNT_MAX, "and clamped to the slider's range")
+	Settings.menu_falling_art_count = was

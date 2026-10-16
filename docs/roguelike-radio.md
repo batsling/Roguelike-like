@@ -278,6 +278,19 @@ The owner's choices, asked before it was built:
 - With no favourites, the station is silent and the screen says "No favourites
   yet. Click the ★ on a song below."
 
+## 5b. The blacklist
+
+A red **✕** beside each unlocked song's ★ (and beside the title of the song
+playing) blacklists it. The owner's choices:
+
+- **It never plays on its own again**, on any station, Favourites included:
+  `Radio.on_station` answers no for it, so the queue, the shuffle and an unlock
+  announcement all pass it over. **▶ still plays it**, being asked for by name.
+- **It stays in the list**, greyed, its status line reading "✕ Blacklisted";
+  clicking the ✕ again takes it off.
+- **Blacklisting the song playing skips it** at once.
+- Per profile, in `radio.json` beside the stars (`"blocked"`).
+
 ## 6. Where the controls are
 
 `RadioScreen`, opened from **📻 on the run's header bar** (beside Map and Menu,

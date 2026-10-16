@@ -100,4 +100,18 @@ func _gui_input(event: InputEvent) -> void:
 	if data == null:
 		return
 	accept_event()
+	_pick_up.call_deferred(data)
+
+# DEFERRED to after the press has been handled, because Godot ends a left press
+# that arrives while a drag is live by DROPPING it ("alternate drop use" for
+# force_drag) — so a drag forced from inside the press was dropped where it
+# started before the button was ever let go, and only a double-click (which skips
+# the press above and falls through to Godot's own drag-on-move) picked anything
+# up. Still on the press, as far as the hand can tell: the piece is held from the
+# next frame, before the mouse has moved.
+func _pick_up(data: Dictionary) -> void:
+	if not is_inside_tree() or get_viewport().gui_is_dragging():
+		return
+	if not Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
+		return
 	force_drag(data, _preview_for(data))

@@ -283,7 +283,7 @@ func _build_shell() -> void:
 	title.add_theme_color_override("font_color", Color(1, 0.85, 0.45))
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header.add_child(title)
-	var close_btn := Button.new()
+	var close_btn := HoverButton.new()
 	close_btn.text = "✕ Close"
 	close_btn.pressed.connect(close)
 	header.add_child(close_btn)
@@ -308,7 +308,7 @@ func _build_shell() -> void:
 	root.add_child(_content)
 
 func _add_tab_button(bar: HBoxContainer, tab: int, label: String) -> void:
-	var b := Button.new()
+	var b := HoverButton.new()
 	b.text = label
 	b.pressed.connect(func(): _set_tab(tab))
 	bar.add_child(b)
@@ -418,7 +418,7 @@ func _populate_soon() -> void:
 	_search_timer.start(SEARCH_DEBOUNCE)
 
 func _sort_button(label: String, active: bool, on_press: Callable) -> Button:
-	var b := Button.new()
+	var b := HoverButton.new()
 	b.text = label
 	b.toggle_mode = true
 	b.button_pressed = active
@@ -426,7 +426,9 @@ func _sort_button(label: String, active: bool, on_press: Callable) -> Button:
 	return b
 
 func _cell(border: Color, on_click: Callable) -> Dictionary:
-	var panel := PanelContainer.new()
+	# A HoverPanel, so a cell's hover is a HoverCard (or its tip in the card's
+	# wrapped box) rather than Godot's stock tooltip.
+	var panel := HoverPanel.new()
 	var normal := _flat(CELL_BG, border, 2)
 	panel.add_theme_stylebox_override("panel", normal)
 	panel.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -1014,7 +1016,7 @@ func _new_detail_panel() -> Control:
 	var spacer := Control.new()
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	close_row.add_child(spacer)
-	var close := Button.new()
+	var close := HoverButton.new()
 	close.text = "✕"
 	close.flat = true
 	close.tooltip_text = "Close this entry (Esc)."
@@ -1055,7 +1057,7 @@ func _new_detail_panel() -> Control:
 	return stub
 
 func _nav_button(glyph: String, tip: String, step: int) -> Button:
-	var b := Button.new()
+	var b := HoverButton.new()
 	b.text = glyph
 	b.tooltip_text = tip
 	b.custom_minimum_size = DETAIL_NAV_BTN
@@ -1275,7 +1277,7 @@ func _build_games() -> void:
 	# The same catalog as the grid, drawn as the influence graph instead of a
 	# list. Opened in PURE mode: no run is laid over it, because the Collection is
 	# about the catalog, not about a run in progress.
-	var constellation := Button.new()
+	var constellation := HoverButton.new()
 	constellation.text = "✦ Show constellation"
 	constellation.tooltip_text = "See the whole catalog as a star chart of influences"
 	constellation.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
@@ -1375,6 +1377,7 @@ func _game_cell(g: GameData) -> Control:
 	# ones end in an ellipsis. On the panel rather than the label so it answers
 	# anywhere on the cell, and so it is there while the cell is empty too.
 	panel.tooltip_text = g.display_name
+	HoverCard.attach(panel, _game_card(g))
 	var vb: VBoxContainer = cell.vbox
 	vb.alignment = BoxContainer.ALIGNMENT_CENTER
 	_cell_slots.append({"cell": panel, "box": vb, "game": g, "filled": false})
@@ -1423,7 +1426,7 @@ func _line_height(size: int) -> float:
 # the cell underneath and opens the game, which is what a click on a picture
 # should do when the tick isn't yours to change.
 func _owned_badge(g: GameData) -> Control:
-	var badge := Button.new()
+	var badge := HoverButton.new()
 	badge.custom_minimum_size = Vector2(OWNED_BADGE, OWNED_BADGE)
 	# An ordinary child of the stat row, not an overlay pinned into the cover's
 	# corner — so no anchors, no position, and the row lays it out.
@@ -1575,7 +1578,7 @@ func _show_game_detail(g: GameData) -> void:
 	launch_row.add_theme_constant_override("separation", UITheme.GAP_TIGHT)
 	launch_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	if g.has_launch_target():
-		var play_btn := Button.new()
+		var play_btn := HoverButton.new()
 		# "▶ Play" rather than "▶ Play <the whole name>": the name is two inches
 		# up the pane and the button is now sharing its row.
 		play_btn.text = "▶  Play"
@@ -1587,7 +1590,7 @@ func _show_game_detail(g: GameData) -> void:
 		play_btn.pressed.connect(func(): g.launch())
 		launch_row.add_child(play_btn)
 	if g.has_steam_page():
-		var steam_btn := Button.new()
+		var steam_btn := HoverButton.new()
 		steam_btn.text = "🎮  Steam page"
 		steam_btn.tooltip_text = "Open %s on Steam." % g.display_name
 		steam_btn.custom_minimum_size = Vector2(0, 32)
@@ -1670,7 +1673,9 @@ func _game_cover_flow(ids, counts: Dictionary = {}) -> HFlowContainer:
 			"%s%s%s" % [other.display_name, (" (%d)" % other.year) if other.year > 0 else "",
 				("  ×%d" % int(counts[String(other.id)])) if counts.has(String(other.id)) else ""],
 			int(counts.get(String(other.id), 0)),
-			_game_type_color(int(other.type)), false)
+			_game_type_color(int(other.type)), false, "",
+			_game_card(other, ("×%d here" % int(counts[String(other.id)]))
+				if counts.has(String(other.id)) else ""))
 		tile.set_meta(&"game_id", other.id)
 		var target: GameData = other
 		tile.gui_input.connect(func(ev: InputEvent) -> void:
@@ -1711,8 +1716,24 @@ func _fill_covers(pending: Array) -> void:
 # corner, and the NAME written in when there is no picture to show — a goal
 # whose art is missing is still a goal on the record.
 func _picture_tile(tex: Texture2D, size: Vector2, tip: String, count: int,
-		border: Color, crisp: bool, fallback: String = "") -> Control:
-	return GoalsBeatenView.picture_tile(tex, size, tip, count, border, crisp, fallback)
+		border: Color, crisp: bool, fallback: String = "", card: Dictionary = {}) -> Control:
+	return GoalsBeatenView.picture_tile(tex, size, tip, count, border, crisp, fallback, card)
+
+# A game's hover card: its cover (loaded only when the card shows — covers load
+# lazily), its name in its type's colour, and the record. `extra` is a line the
+# caller has to say about it (a count on a character's page).
+func _game_card(g: GameData, extra: String = "") -> Dictionary:
+	var beaten: int = GameStats.beaten_count(g.id)
+	var amulets: int = GameStats.amulet_wins(g.id)
+	var lines: Array = []
+	if extra != "":
+		lines.append(extra)
+	lines.append("⚔ beaten %d    👑 %d Amulet win%s" % [beaten, amulets, "" if amulets == 1 else "s"]
+		if beaten > 0 or amulets > 0 else "Not beaten yet")
+	return {"title": g.display_name, "accent": _game_type_color(int(g.type)),
+		"art_path": g.cover_path,
+		"subtitle": str(g.year) if g.year > 0 else "",
+		"lines": lines, "note": "Click to open its page."}
 
 # "I own this" — the per-game half of the ownership setting. Live only while the
 # player's own list is the source; under the catalog's list it shows what the
@@ -1965,20 +1986,13 @@ func _show_character_detail(ch: CharacterData) -> void:
 		_detail_box.add_child(_kv("Won at Fracture %d" % int(lv),
 			"%d run%s" % [int(by_level[lv]), "" if int(by_level[lv]) == 1 else "s"]))
 
-	# The character's own record, the mirror of the game tab's: what this
-	# character has put down, and where they managed their level-up condition.
-	var trophies: Array = GameStats.enemies_for_character(ch.id)
-	var roster: int = Data.all_goal_enemies().size() + Data.all_bosses().size()
+	# The character's own record, drawn the way a game's is (GoalsBeatenView):
+	# every goal beaten as this character, as pictures by kind with the card on
+	# the hover — and the whole enemy and boss roster, the ones not yet beaten
+	# dimmed.
 	_detail_box.add_child(HSeparator.new())
-	_detail_box.add_child(_detail_section("Enemies beaten with (%d / %d)"
-		% [trophies.size(), maxi(roster, trophies.size())]))
-	if trophies.is_empty():
-		_detail_box.add_child(_label("Nothing has fallen to %s yet." % ch.display_name,
-			Color(0.55, 0.55, 0.6), 12, false, true))
-	for entry in trophies:
-		var enemy: GoalEnemyData = Data.get_goal_enemy_any(StringName(entry["id"]))
-		if enemy != null:
-			_detail_box.add_child(_character_enemy_row(enemy, entry))
+	_detail_box.add_child(_detail_section("Goals beaten as %s" % ch.display_name))
+	GoalsBeatenView.add_character_kinds(_detail_box, ch)
 
 	# THE GAMES, AS COVERS — the same tiles an influence list draws: the name on
 	# the hover, the game's page on a click, how many times in the corner. Both
@@ -2009,47 +2023,6 @@ func _log_counts(rows: Array, key: String) -> Dictionary:
 	for r in rows:
 		out[r["id"]] = int(r.get(key, 0))
 	return out
-
-# One enemy on a character's trophy shelf: art, name and how many times this
-# character put it down. No note — the write-up belongs to the (game, enemy)
-# pair and lives on those two tabs, and duplicating it here would give the
-# player two places to edit the same text.
-func _character_enemy_row(enemy: GoalEnemyData, entry: Dictionary) -> Control:
-	var panel := PanelContainer.new()
-	panel.add_theme_stylebox_override("panel", UITheme.flat(CELL_BG, 6, 9, 1, UITheme.BORDER))
-	var body := HBoxContainer.new()
-	body.add_theme_constant_override("separation", UITheme.GAP)
-	panel.add_child(body)
-	if enemy.image != null:
-		var art := TextureRect.new()
-		art.texture = enemy.image
-		art.custom_minimum_size = Vector2(44, 44)
-		art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		UITheme.apply_crisp(art, enemy.image)
-		body.add_child(art)
-	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", UITheme.GAP_HAIR)
-	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	body.add_child(col)
-	var top := HBoxContainer.new()
-	top.add_theme_constant_override("separation", UITheme.GAP)
-	col.add_child(top)
-	var who := Label.new()
-	who.text = enemy.display_name
-	who.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	who.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
-	who.add_theme_color_override("font_color",
-		_enemy_accent(enemy) if enemy.is_boss() else UITheme.TEXT)
-	top.add_child(who)
-	var times := Label.new()
-	times.text = "beaten ×%d" % int(entry.get("beaten", 0))
-	times.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
-	times.add_theme_color_override("font_color", UITheme.SUCCESS)
-	top.add_child(times)
-	if enemy.goal != "":
-		col.add_child(_label(enemy.goal, Color(0.72, 0.75, 0.82), 11, false, true))
-	return panel
 
 # ------------------------------------------------------------------
 # Enemies tab (2.0 goal-enemies + bosses)
@@ -2217,7 +2190,7 @@ func _enemy_game_row(enemy: GoalEnemyData, entry: Dictionary) -> Control:
 	col.add_child(note)
 
 	if game != null:
-		var edit := Button.new()
+		var edit := HoverButton.new()
 		edit.text = "✎ Edit note" if note_text != "" else "✎ Add note"
 		edit.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 		edit.pressed.connect(func():

@@ -96,6 +96,34 @@ func test_character_detail_draws_the_trophy_shelf_and_level_up_log() -> void:
 	GameStats.character_enemy_log = trophies
 	GameStats.levelup_log = levels
 
+# THE CHARACTER'S GOALS ARE TILES, like a game's: the whole enemy roster with
+# the beaten ones first and the rest dimmed, each with a HoverCard.
+func test_character_page_draws_every_enemy_as_a_tile_with_a_card() -> void:
+	var trophies: Dictionary = GameStats.character_enemy_log.duplicate(true)
+	GameStats.character_enemy_log.clear()
+	var ch: CharacterData = Data.all_characters2()[0]
+	var enemy: GoalEnemyData = Data.all_goal_enemies()[0]
+	GameStats.record_character_enemy(ch.id, enemy.id)
+	var col := _new_collection()
+	col._set_tab(Collection.Tab.CHARACTERS)
+	col._show_character_detail(ch)
+	var tiles: Array = col._detail_box.find_children("*", "HoverPanel", true, false) \
+		.filter(func(t): return t.has_meta(&"goal_key"))
+	var enemy_ids: Dictionary = {}
+	for e in Data.all_goal_enemies():
+		enemy_ids[String(e.id)] = true
+	var enemy_tiles: Array = tiles.filter(func(t): return enemy_ids.has(String(t.get_meta(&"goal_key"))))
+	assert_eq(enemy_tiles.size(), Data.all_goal_enemies().size(), "the whole roster is drawn")
+	var first: Control = enemy_tiles[0]
+	assert_eq(String(first.get_meta(&"goal_key")), String(enemy.id), "the beaten one first")
+	assert_eq(first.modulate.a, 1.0, "at full strength")
+	assert_lt((enemy_tiles[1] as Control).modulate.a, 1.0, "the rest dimmed")
+	var card: Control = HoverCard.of(first)
+	assert_not_null(card, "its hover is a card, not plain text")
+	if card != null:
+		card.free()
+	GameStats.character_enemy_log = trophies
+
 # The character's games are COVERS, like an influence list: a tile per game,
 # its page on a click — and a masked level-up is not one of them.
 func test_character_page_draws_its_games_as_covers() -> void:
@@ -1193,9 +1221,18 @@ func test_a_goal_is_a_picture_with_its_count_and_its_story_on_the_hover() -> voi
 	assert_eq(tiles.size(), 1)
 	var tile: Control = tiles[0]
 	var monkey: GoalEnemyData = Data.get_goal_enemy_any(&"monkey")
-	assert_string_contains(tile.tooltip_text, "%s — beaten ×3" % monkey.display_name)
-	assert_string_contains(tile.tooltip_text, monkey.goal, "the goal itself")
-	assert_string_contains(tile.tooltip_text, "Note: round the pillar")
+	# The hover is a HoverCard now: name, "beaten ×3", the goal and the note.
+	var card: Control = HoverCard.of(tile)
+	assert_not_null(card, "the hover is a card")
+	var said: String = ""
+	if card != null:
+		for l in card.find_children("*", "Label", true, false):
+			said += (l as Label).text + "\n"
+		card.free()
+	assert_string_contains(said, monkey.display_name)
+	assert_string_contains(said, "beaten ×3")
+	assert_string_contains(said, monkey.goal, "the goal itself")
+	assert_string_contains(said, "Note: round the pillar")
 	var badges: Array = tile.find_children("*", "PanelContainer", true, false) \
 		.filter(func(n): return n.has_meta(&"count_badge"))
 	assert_eq(badges.size(), 1, "a number in the corner")

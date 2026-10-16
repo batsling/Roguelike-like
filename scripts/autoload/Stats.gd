@@ -197,7 +197,7 @@ func roll_range(rng: RandomNumberGenerator, lo: int, hi: int, favour: int = Favo
 		best = (maxi(best, again) if keep_high else mini(best, again))
 	return best
 
-# A step on the 75/20/5 rarity ladder. Always Favour.HIGH — a rarer thing is the
+# A step on the 75/20/4/1 rarity ladder. Always Favour.HIGH — a rarer thing is the
 # better thing, everywhere this is asked. This is the roll that carries Luck to
 # most of the build: item rewards, chest sizes, scrolls, shop stock and the
 # object pools all walk this ladder, so they all inherit the reroll without

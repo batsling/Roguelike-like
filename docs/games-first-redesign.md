@@ -2248,7 +2248,7 @@ three are not:
 
 | Rating | Comes from | In the random pools? |
 |---|---|---|
-| Common … Legendary | any drop, chest or shop shelf, weighted 75/20/5 with a 10% bump off the top | yes |
+| Common … Legendary | any drop, chest or shop shelf, weighted 75/20/4/1 | yes |
 | **Starter** | a character's opening loadout (Burning Blood, D6) | no |
 | **Boss** | a defeated **boss**, and nowhere else (§7.1) | no |
 | **Event** | one authored event, and nowhere else (Golden Idol, `event-sheet-authoring.md` §12) | no |
@@ -3798,7 +3798,7 @@ around.
 ### 14.3 The shelf
 
 **Three items, and they stay.** Stock is rolled once — on the standard
-75/20/5-with-a-10%-bump ladder (`Data.roll_item_rarity`) — and **persists for the
+75/20/4/1 ladder (`Data.roll_item_rarity`) — and **persists for the
 whole run**. Buying marks a slot sold rather than removing it. So a shop you
 cleared out is a shop you know is empty, and a shop you left two items at is a
 reason to come back.

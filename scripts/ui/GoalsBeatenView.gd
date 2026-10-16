@@ -43,6 +43,43 @@ static func add_kinds(box: Container, host: Node, g: GameData, redraw: Callable)
 		box.add_child(flow)
 	return all.size()
 
+# THE CHARACTER PAGE'S RECORD, drawn the way a game's is: every goal beaten
+# playing as `ch`, wherever, as tiles by kind (GameStats.character_goals). The
+# enemies and bosses show the WHOLE roster, beaten first and the rest dimmed, so
+# the page says what is left as well as what is done. No notes: a note belongs to
+# a (game, goal) pair and is edited on the game's page.
+static func add_character_kinds(box: Container, ch: CharacterData) -> int:
+	var all: Dictionary = GameStats.character_goals(ch.id)
+	var shown: int = 0
+	for kind in GameStats.GOAL_KINDS:
+		var rows: Array = all.get(kind, [])
+		var roster: Array = []
+		if kind == "enemy":
+			roster = Data.all_goal_enemies()
+		elif kind == "boss":
+			roster = Data.all_bosses()
+		if rows.is_empty() and roster.is_empty():
+			continue
+		var head: String = "%s (%d)" % [GameStats.GOAL_KIND_NAMES[kind], rows.size()]
+		if not roster.is_empty():
+			head = "%s (%d / %d)" % [GameStats.GOAL_KIND_NAMES[kind], rows.size(),
+				maxi(roster.size(), rows.size())]
+		box.add_child(kind_header(head))
+		var flow := tile_flow()
+		var done: Dictionary = {}
+		for row in rows:
+			done[String(row["key"])] = true
+			flow.add_child(goal_tile(box, null, String(kind), row, Callable()))
+		var rest: Array = roster.filter(func(e): return not done.has(String(e.id)))
+		rest.sort_custom(func(a, b): return a.display_name < b.display_name)
+		for e in rest:
+			flow.add_child(goal_tile(box, null, String(kind),
+				{"key": String(e.id), "label": e.display_name, "done": 0, "missing": true,
+					"missing_text": "not beaten yet as %s" % ch.display_name}, Callable()))
+		box.add_child(flow)
+		shown += 1
+	return shown
+
 static func kind_header(text: String) -> Label:
 	var l := Label.new()
 	l.text = text
@@ -67,19 +104,24 @@ static func goal_tile(host: Node, g: GameData, kind: String, row: Dictionary,
 	var tex: Texture2D = null
 	var edit: Callable = Callable()
 	var key: String = String(row["key"])
+	var accent: Color = UITheme.GOLD
 	match kind:
 		"enemy", "boss":
 			var e: GoalEnemyData = Data.get_goal_enemy_any(StringName(key))
 			if e != null:
 				tex = e.image
 				goal = e.goal
-				edit = func(): EnemyNoteModal.open(host, g, e, redraw)
+				if e.is_boss():
+					accent = UITheme.DANGER
+				if g != null:
+					edit = func(): EnemyNoteModal.open(host, g, e, redraw)
 		"character":
 			var ch: CharacterData = Data.get_character2(StringName(key))
 			if ch != null:
 				tex = ch.icon if ch.icon != null else ch.portrait
 				goal = ch.level_up_condition
-				edit = func(): EnemyNoteModal.open_level_up(host, g, ch, redraw)
+				if g != null:
+					edit = func(): EnemyNoteModal.open_level_up(host, g, ch, redraw)
 		"weapon":
 			var w: WeaponData = Data.get_weapon(StringName(key))
 			if w != null:
@@ -110,8 +152,29 @@ static func goal_tile(host: Node, g: GameData, kind: String, row: Dictionary,
 		tip.append("Click to %s your note." % ("edit" if note != "" else "add"))
 	var border: Color = UITheme.CURSE if kind == "curse" else (
 		UITheme.GOLD if note != "" else UITheme.BORDER)
+	if kind == "curse":
+		accent = UITheme.CURSE
+	# THE CARD, not a line of system text: the art, the name in its colour, how
+	# often, then the goal and your note. `row["missing"]` is a roster entry
+	# never done (the character page shows the whole roster, dimmed).
+	var done: int = int(row["done"])
+	var missing: bool = bool(row.get("missing", false))
+	var lines: Array = []
+	if goal != "":
+		lines.append(goal)
+	if note != "":
+		lines.append("Note: " + note)
+	var card := {"title": name, "accent": UITheme.TEXT_DIM if missing else accent,
+		"art": tex,
+		"subtitle": String(row.get("missing_text", "not done yet")) if missing \
+			else "%s ×%d" % [verb, done],
+		"lines": lines}
+	if edit.is_valid():
+		card["note"] = "Click to %s your note." % ("edit" if note != "" else "add")
 	var tile := picture_tile(tex, Vector2(TILE, TILE),
-		"\n".join(tip), int(row["done"]), border, true, name)
+		"\n".join(tip), done, border, true, name, card)
+	if missing:
+		tile.modulate = Color(1, 1, 1, 0.35)
 	tile.set_meta(&"goal_key", key)
 	if edit.is_valid():
 		tile.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
@@ -126,8 +189,10 @@ static func goal_tile(host: Node, g: GameData, kind: String, row: Dictionary,
 # corner, and the NAME written in when there is no picture to show — a goal
 # whose art is missing is still a goal on the record.
 static func picture_tile(tex: Texture2D, size: Vector2, tip: String, count: int,
-		border: Color, crisp: bool, fallback: String = "") -> Control:
-	var tile := PanelContainer.new()
+		border: Color, crisp: bool, fallback: String = "", card: Dictionary = {}) -> Control:
+	# A HoverPanel, so the hover is a HoverCard (`card`) or, without one, the
+	# tip in HoverCard's wrapped box — never Godot's stock grey tooltip.
+	var tile := HoverPanel.new()
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = IMAGE_BG.lerp(border, 0.12)
 	sb.set_corner_radius_all(6)
@@ -136,6 +201,8 @@ static func picture_tile(tex: Texture2D, size: Vector2, tip: String, count: int,
 	sb.border_color = Color(border.r, border.g, border.b, 0.6)
 	tile.add_theme_stylebox_override("panel", sb)
 	tile.tooltip_text = tip
+	if not card.is_empty():
+		HoverCard.attach(tile, card)
 	tile.mouse_filter = Control.MOUSE_FILTER_STOP
 	var stack := Control.new()
 	stack.custom_minimum_size = size

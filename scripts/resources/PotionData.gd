@@ -30,7 +30,7 @@ extends Resource
 @export var display_name: String
 # "Common" | "Uncommon" | "Rare" | "Legendary" — the sheet's string, mapped to the
 # shared 0-3 ordering by rarity_index() for the drop roller. The roster is
-# 9 Common / 3 Uncommon / 3 Rare, which sits on the shared 75/20/5 ladder without
+# 9 Common / 3 Uncommon / 3 Rare, which sits on the shared 75/20/4/1 ladder without
 # any potion-specific weighting (§3).
 @export var rarity: String = "Common"
 # "Positive" | "Negative" | "Neutral" — the identification gamble's flavour, and

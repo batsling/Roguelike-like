@@ -171,3 +171,17 @@ func test_a_big_body_is_one_outline_with_rounded_corners() -> void:
 	assert_false(Geometry2D.is_point_in_polygon(Vector2(0.5, 0.5), shape),
 		"the outside corner is rounded off, like a one-cell frame's")
 	assert_false(Geometry2D.is_point_in_polygon(Vector2(130, 130), shape), "the notch stays open")
+
+func test_every_cell_of_an_l_is_inside_its_outline() -> void:
+	# Skeletal Bastion's footprint: one cell top-right over a full row of three.
+	# Merged in plain lattice order the top cell arrived before the gutter that
+	# joins it to the row, came back as a second polygon and was dropped.
+	var cells: Array = [Vector2i(2, 0), Vector2i(0, 1), Vector2i(1, 1), Vector2i(2, 1)]
+	var f = _frame(cells)
+	f.cell_size = 84.0
+	f.step = 90.0
+	var shape: PackedVector2Array = f.outline()
+	for c in cells:
+		var mid := Vector2(c.x * 90.0 + 42.0, c.y * 90.0 + 42.0)
+		assert_true(Geometry2D.is_point_in_polygon(mid, shape), "cell %s is outlined" % c)
+	assert_false(Geometry2D.is_point_in_polygon(Vector2(42, 42), shape), "the empty corner is not")

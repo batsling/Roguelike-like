@@ -433,7 +433,7 @@ class FootprintFrame extends Control:
 
 	func outline() -> PackedVector2Array:
 		var shape: PackedVector2Array = PackedVector2Array()
-		for u in _solid:
+		for u in _flood_order():
 			var r: Rect2 = _unit_rect(u)
 			var quad := PackedVector2Array([r.position, Vector2(r.end.x, r.position.y),
 				r.end, Vector2(r.position.x, r.end.y)])
@@ -448,6 +448,28 @@ class FootprintFrame extends Control:
 		shape = _largest(Geometry2D.offset_polygon(shape, -RADIUS, Geometry2D.JOIN_ROUND))
 		shape = _largest(Geometry2D.offset_polygon(shape, -RADIUS, Geometry2D.JOIN_ROUND))
 		return _largest(Geometry2D.offset_polygon(shape, RADIUS, Geometry2D.JOIN_ROUND))
+
+	# The solid units in an order where each one shares an edge with one already
+	# taken, so every merge above joins onto the shape. In plain lattice order a unit
+	# could arrive before the gutter linking it to the rest — the top cell of
+	# Skeletal Bastion's L did — and merging it then gave TWO polygons, of which
+	# `_largest` kept the other one and dropped that cell from the outline.
+	func _flood_order() -> Array:
+		var out: Array = []
+		if _solid.is_empty():
+			return out
+		var seen: Dictionary = {}
+		var queue: Array = [_solid.keys()[0]]
+		seen[queue[0]] = true
+		while not queue.is_empty():
+			var u: Vector2i = queue.pop_front()
+			out.append(u)
+			for d in [Vector2i.RIGHT, Vector2i.LEFT, Vector2i.DOWN, Vector2i.UP]:
+				var n: Vector2i = u + d
+				if _solid.has(n) and not seen.has(n):
+					seen[n] = true
+					queue.append(n)
+		return out
 
 	static func _largest(polys: Array) -> PackedVector2Array:
 		var best := PackedVector2Array()

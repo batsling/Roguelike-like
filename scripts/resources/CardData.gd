@@ -29,7 +29,7 @@ extends Resource
 @export var display_name: String
 # "Common" | "Uncommon" | "Rare" | "Legendary" — the sheet's string, mapped to the
 # shared 0-3 ordering by rarity_index() for the drop roller. The roster is
-# 3 Common / 4 Uncommon / 6 Rare, which sits on the shared 75/20/5 ladder with no
+# 3 Common / 4 Uncommon / 6 Rare, which sits on the shared 75/20/4/1 ladder with no
 # card-specific weighting, exactly as potions do.
 @export var rarity: String = "Common"
 # The real game this is lifted from, and the DECK inside it — both read off the

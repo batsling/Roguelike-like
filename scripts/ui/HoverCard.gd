@@ -40,6 +40,8 @@ extends RefCounted
 #   title     String        the name, drawn in `accent`
 #   accent    Color         the thing's own colour (threat tier, item class, …)
 #   art       Texture2D     optional thumbnail, left of the title
+#   art_path  String        the same, loaded only when the card is shown — for a
+#                           grid of game covers, which load lazily (GameData)
 #   subtitle  String        optional small dim line under the title (its class,
 #                           its type — what it IS, as against what it does)
 #   pips      Array         optional [{art: Texture2D, text: String, good: bool}]
@@ -156,6 +158,9 @@ static func build(cfg: Dictionary) -> Control:
 	# a 2.9x upscale, and linear filtering turns it to mush. Pills and potions were
 	# quietly suffering the same thing; cards are just where it became obvious.
 	var art: Texture2D = cfg.get("art")
+	if art == null and String(cfg.get("art_path", "")) != "" \
+			and ResourceLoader.exists(String(cfg["art_path"])):
+		art = load(String(cfg["art_path"])) as Texture2D
 	if art != null:
 		var tex: TextureRect = UITheme.crisp_tex(art, int(ART))
 		tex.size_flags_vertical = Control.SIZE_SHRINK_CENTER

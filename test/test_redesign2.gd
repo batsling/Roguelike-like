@@ -185,7 +185,7 @@ func test_rodneys_level_pays_a_piece_of_loot_of_any_kind() -> void:
 	assert_gt(kinds.size(), 1, "and over thirty levels it is not always the same one")
 
 # --- Chest sizing (Random Sized Chest, §8.2) --------------------------------
-# The same 75/20/5-with-10%-top-step-bump ladder every other rarity roll uses
+# The same 75/20/4/1 ladder every other rarity roll uses
 # (Data.roll_rarity_step), just numbered in chest choice counts instead of an
 # ItemData.Rarity: Small=1, Medium=2, Large=3, Huge=5.
 
@@ -247,6 +247,25 @@ func test_roll_chest_size_choices_follows_the_size_roll() -> void:
 	assert_eq(Data.roll_chest_size(rng, 0.0), int(Data.ChestSize.SMALL), "bottom of the ladder rolls Small")
 	assert_eq(Data.roll_chest_size_choices(rng, 0.0), 1, "Small -> 1 item, no choice")
 	assert_eq(Data.roll_chest_size_choices(rng, 0.80), 2, "75-95% rolls Medium -> 2")
+	assert_eq(Data.roll_chest_size_choices(rng, 0.97), 3, "95-99% rolls Large -> 3")
+	assert_eq(Data.roll_chest_size_choices(rng, 0.995), 5, "the top 1% rolls Huge -> 5")
+
+func test_the_rarity_ladder_is_75_20_4_1() -> void:
+	# Legendary is its own rung now, not a 10% bump off Rare (which made it 0.5%).
+	var rng := RandomNumberGenerator.new()
+	assert_eq(Data.roll_rarity_step(rng, 0.7499), int(Data.RarityStep.COMMON))
+	assert_eq(Data.roll_rarity_step(rng, 0.75), int(Data.RarityStep.UNCOMMON))
+	assert_eq(Data.roll_rarity_step(rng, 0.9499), int(Data.RarityStep.UNCOMMON))
+	assert_eq(Data.roll_rarity_step(rng, 0.95), int(Data.RarityStep.RARE))
+	assert_eq(Data.roll_rarity_step(rng, 0.9899), int(Data.RarityStep.RARE))
+	assert_eq(Data.roll_rarity_step(rng, 0.99), int(Data.RarityStep.LEGENDARY))
+	assert_eq(Data.roll_rarity_step(rng, 0.99999), int(Data.RarityStep.LEGENDARY))
+	rng.seed = 20261016
+	var counts := [0, 0, 0, 0]
+	for _i in range(20000):
+		counts[Data.roll_rarity_step(rng)] += 1
+	assert_almost_eq(counts[3] / 20000.0, 0.01, 0.003, "about 1% Legendary")
+	assert_almost_eq(counts[2] / 20000.0, 0.04, 0.006, "about 4% Rare")
 
 # --- Items2.0 (Effect DSL) ------------------------------------------------
 
@@ -705,7 +724,7 @@ func test_potions2_load() -> void:
 	assert_not_null(Data.get_potion(&"potion_of_uselessness"))
 
 func test_the_potion_roster_sits_on_the_shared_rarity_ladder() -> void:
-	# 9/3/3 is what lets the 75/20/5 ladder roll potions with no potion-specific
+	# 9/3/3 is what lets the 75/20/4/1 ladder roll potions with no potion-specific
 	# weighting (§3). Uselessness moving Common -> Uncommon is what made it 9/3/3.
 	var counts: Dictionary = {}
 	for p in Data.all_potions():
@@ -846,7 +865,7 @@ func test_roll_potion_respects_the_rarity_ladder() -> void:
 		var p: PotionData = Data.roll_potion(rng)
 		counts[p.rarity] = int(counts.get(p.rarity, 0)) + 1
 	assert_gt(int(counts.get("Common", 0)), int(counts.get("Uncommon", 0)),
-		"75/20/5, and Luck rides it through roll_item_rarity")
+		"75/20/4/1, and Luck rides it through roll_item_rarity")
 	assert_gt(int(counts.get("Uncommon", 0)), int(counts.get("Rare", 0)))
 
 func test_roll_potion_answers_without_an_rng() -> void:

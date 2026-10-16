@@ -35,7 +35,7 @@ the honour system.
   `GoalEnemyData`, not from `images2.0/enemies/`**, because the resource carries
   the battlefield footprint that sizes them and the folder does not; and a pool
   entry is handed out off a free list so one picture cannot be on screen twice.
-  Toggle lives in Settings under Display.
+  Toggle and amount (pieces on screen, default 150) live in Settings under Display.
 - **Two scenes only.** `scenes/menu/MainMenu.tscn` boots, `scenes/redesign2/Overworld2.tscn`
   *is* the game — and **`Overworld2.tscn` is one node and a script**, so don't go
   looking for the game's UI in it; every screen past the menu is built in code.

@@ -23,6 +23,7 @@ const ROW_ART := 40
 
 var _now_title: Label
 var _now_star: Button
+var _now_cross: Button
 var _now_meta: Label
 var _now_time: Label
 var _play_btn: Button
@@ -183,6 +184,12 @@ func _build_now_playing() -> Control:
 		if Radio.current != &"":
 			Radio.toggle_favorite(Radio.current))
 	head.add_child(_now_star)
+	_now_cross = _star_button()
+	_now_cross.text = "✕"
+	_now_cross.pressed.connect(func() -> void:
+		if Radio.current != &"":
+			Radio.toggle_blocked(Radio.current))
+	head.add_child(_now_cross)
 	_now_meta = Label.new()
 	_now_meta.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 	_now_meta.add_theme_color_override("font_color", UITheme.TEXT_DIM)
@@ -396,6 +403,15 @@ func _show_star(b: Button, song: SongData) -> void:
 		b.add_theme_color_override(state, UITheme.GOLD if on else UITheme.TEXT_FAINT)
 	b.tooltip_text = "Remove from favourites" if on else "Add to favourites"
 
+# The blacklist's red ✕: full red when the song is blacklisted, faint red when not.
+func _show_cross(b: Button, song: SongData) -> void:
+	var on: bool = Radio.is_blocked(song)
+	for state in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
+		b.add_theme_color_override(state, UITheme.DANGER if on else Color(UITheme.DANGER, 0.4))
+	b.add_theme_color_override("font_hover_color", UITheme.DANGER)
+	b.tooltip_text = "Take off the blacklist" if on \
+		else "Blacklist: never play this on its own again (▶ still plays it)"
+
 func _caption(text: String) -> Label:
 	var l := Label.new()
 	l.text = text
@@ -417,8 +433,11 @@ func _refresh() -> void:
 		_now_meta.text = _meta_line(song)
 		_now_star.visible = true
 		_show_star(_now_star, song)
+		_now_cross.visible = true
+		_show_cross(_now_cross, song)
 	else:
 		_now_star.visible = false
+		_now_cross.visible = false
 		_now_title.text = "Nothing playing"
 		_now_meta.text = _silence_reason()
 	_now_time.text = _time_text()
@@ -696,6 +715,7 @@ func _song_row(song: SongData) -> Control:
 	var playing: bool = song.id == Radio.current
 
 	var row := PanelContainer.new()
+	var blocked: bool = Radio.is_blocked(song)
 	var face: Color = UITheme.PANEL_HI if playing else UITheme.PANEL
 	row.add_theme_stylebox_override("panel", UITheme.accent_box(
 		UITheme.GOLD if playing else UITheme.BORDER, face, 6))
@@ -708,7 +728,7 @@ func _song_row(song: SongData) -> Control:
 	art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 	art.texture = _art(song)
-	if not unlocked:
+	if not unlocked or blocked:
 		art.modulate = Color(1, 1, 1, 0.35)
 	h.add_child(art)
 
@@ -721,7 +741,7 @@ func _song_row(song: SongData) -> Control:
 		"" if song.artist == "" else "  —  " + song.artist)
 	name.add_theme_font_size_override("font_size", UITheme.FONT_LABEL)
 	name.add_theme_color_override("font_color",
-		UITheme.GOLD if playing else (UITheme.TEXT if unlocked else UITheme.TEXT_DIM))
+		UITheme.GOLD if playing else (UITheme.TEXT if unlocked and not blocked else UITheme.TEXT_DIM))
 	name.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	text.add_child(name)
 	var sub := Label.new()
@@ -744,6 +764,11 @@ func _song_row(song: SongData) -> Control:
 		_show_star(star, song)
 		star.pressed.connect(func() -> void: Radio.toggle_favorite(song.id))
 		h.add_child(star)
+		var cross := _star_button()
+		cross.text = "✕"
+		_show_cross(cross, song)
+		cross.pressed.connect(func() -> void: Radio.toggle_blocked(song.id))
+		h.add_child(cross)
 	if playable:
 		var play := Button.new()
 		play.text = "▶"
@@ -762,6 +787,8 @@ func _status_line(song: SongData) -> String:
 		return "No file on the sheet"
 	if not Radio.has_file(song):
 		return "File missing"
+	if Radio.is_blocked(song):
+		return "✕ Blacklisted — never plays on its own"
 	if not Radio.on_station(song):
 		return "Not on this station"
 	var game: GameData = Data.get_game(song.game_id)
@@ -776,7 +803,7 @@ func _status_tip(song: SongData) -> String:
 func _status_color(song: SongData) -> Color:
 	if not Radio.is_unlocked(song):
 		return UITheme.TEXT_DIM
-	if not Radio.has_file(song):
+	if not Radio.has_file(song) or Radio.is_blocked(song):
 		return UITheme.DANGER
 	return UITheme.SUCCESS
 
