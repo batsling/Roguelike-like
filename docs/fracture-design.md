@@ -107,6 +107,18 @@ on). Of the 150, **149 have no starts in three genres 5+ hops away at all**;
 only one is short on route quality alone. A rift never lengthens a path, so
 there is nothing for one to fix.
 
+**Two genres instead of three, at Fracture 9 (asked by the owner, measured):**
+same rift-aware rule, the panel allowed to show only two genres.
+
+| Catalogue | Lost at 5–9 | Back with 2 genres | Still lost |
+|---|---|---|---|
+| Full | 30 | 24 | 6 (Chess Survivors, Cluckmech Oasis, Hades, Magicraft, Slay the Spire, The Binding of Isaac) |
+| Owned | 150 | 120 | 30 (among them Hades, The Binding of Isaac, Dead Cells, Enter the Gungeon, Nuclear Throne, Darkest Dungeon, Cult of the Lamb, NetHack, Spelunky Classic, Diablo) |
+
+The ones still lost are mostly the big hubs: everything that cites them sits
+close, so few genres reach 5+ hops. Two genres alone therefore does not keep
+every Amulet; it can be combined with the fallback below.
+
 **Proposed fix, pending the owner:** *+1 hop where the Amulet allows it.* At
 Fracture 9 the panel is drawn from 5–9 first; an Amulet that cannot field three
 genres there falls back to 4–8. Every Amulet stays in the pool, and about 71%
