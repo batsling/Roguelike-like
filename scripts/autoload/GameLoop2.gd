@@ -947,6 +947,12 @@ func _reseat_stack(was_offgrid_from: int = -1) -> void:
 func start_run(character: CharacterData) -> void:
 	GameState.reset_run()
 	GameState.apply_character2(character)
+	# The level this run is played at: the character's remembered pick, which
+	# GameStats already holds to what they have unlocked (docs/fracture-design.md
+	# §4). A custom run may use any level unlocked in ordinary runs, so the same
+	# pick serves both.
+	if character != null:
+		GameState.fracture = GameStats.fracture_pick(character.id)
 	# The speedrun clock back to zero. Here rather than in the overworld because
 	# this is the one door into a fresh run, and a clock that kept the last run's
 	# splits would be wrong from its first frame.

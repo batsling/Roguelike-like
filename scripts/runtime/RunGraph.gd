@@ -1804,10 +1804,13 @@ static func _pick_on_bare_map(rng: RandomNumberGenerator) -> Dictionary:
 	# …but never against a NAMED target: "aim me at Balatro" is a more specific
 	# instruction than "prefer amulets I haven't won on", and the general
 	# preference does not get to overrule it.
+	# "Won" means won AT THIS FRACTURE OR HIGHER (docs/fracture-design.md §5): a
+	# game beaten at Fracture 2 is still a goal worth aiming at on Fracture 5,
+	# where it would earn a higher number on its 🏆.
 	if Settings.exclude_beaten_amulets and RunConfig.amulet_id == &"":
 		var unbeaten: Array[GameData] = []
 		for g in amulet_candidates:
-			if GameStats.amulet_wins(g.id) == 0:
+			if GameStats.amulet_best(g.id) < Fracture.level():
 				unbeaten.append(g)
 		if not unbeaten.is_empty():
 			amulet_candidates = unbeaten

@@ -21,6 +21,11 @@ signal event_goals_changed
 
 # === Identity / progression ===
 var character_id: StringName = &""
+# The Fracture this run is played at (docs/fracture-design.md), 0..Fracture.MAX.
+# Set once, at GameLoop2.start_run, from the character's remembered pick, and
+# saved with the run so a Continue resumes at the same level. Read it through
+# Fracture.level() / Fracture.at_least().
+var fracture: int = 0
 var save_name: String = ""
 var current_game_id: StringName = &""
 var start_game_id: StringName = &""
@@ -1166,6 +1171,7 @@ func reseed_run_streams() -> void:
 
 func reset_run() -> void:
 	character_id = &""
+	fracture = 0
 	save_name = ""
 	current_game_id = &""
 	start_game_id = &""

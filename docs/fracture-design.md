@@ -1,6 +1,11 @@
 # Fracture — design
 
-**Status: designed, nothing built.** Agreed with the owner on 15 October 2026.
+**Status: step 1 of 5 built** (the record: the run's level and its save, the
+per-character unlocks and remembered pick, each win's level and the XP it pays,
+the trophy's number, custom runs, and "Skip won amulets" by level; the code is
+`scripts/runtime/Fracture.gd` and GameStats' Fractures section, the tests
+`test/test_fracture.gd`). Nothing is on screen yet. Agreed with the owner on 15
+October 2026.
 The build order is at the end. Section numbers (§7.4, §19.6, …) refer to
 `docs/games-first-redesign.md`; rift sections refer to `docs/rifts-design.md`.
 
