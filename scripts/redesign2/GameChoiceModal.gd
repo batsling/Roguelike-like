@@ -1053,7 +1053,7 @@ func _build_enemy_block(game: GameData) -> Control:
 	var entry: Dictionary = {"enemy": enemy, "statuses": {}}
 	var hp: int = GameLoop2.effective_health(enemy)
 	# A rift's bodies walk on hitting twice as hard (docs/rifts-design.md §6).
-	var dmg: int = int(enemy.damage) * (GameLoop2.RIFT_MULT if _is_rift() else 1)
+	var dmg: int = GameLoop2.base_damage(enemy) * (GameLoop2.RIFT_MULT if _is_rift() else 1)
 	var meta: String = "%s / %s / %d goal%s to beat / dmg %d" % [
 		String(enemy.game_type).capitalize(), RunDifficulty.tier_name(int(enemy.difficulty)),
 		hp, "" if hp == 1 else "s", dmg]

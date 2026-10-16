@@ -233,3 +233,124 @@ func test_skip_won_amulets_counts_only_wins_at_this_fracture_or_higher() -> void
 	assert_false(GameStats.amulet_best(GAME) < Fracture.level(), "won at 2: skipped on 2")
 	GameState.fracture = 5
 	assert_true(GameStats.amulet_best(GAME) < Fracture.level(), "but a target again on 5")
+
+# ==========================================================================
+# Build step 2: the changes each level makes (docs/fracture-design.md §2, §3)
+# ==========================================================================
+
+func _game_of_type(t: int) -> GameData:
+	for g in Data.all_games():
+		if g is GameData and g.type == t:
+			return g
+	return null
+
+func _plain_enemy() -> GoalEnemyData:
+	for e in Data.all_goal_enemies():
+		if e is GoalEnemyData and not e.is_boss() and e.abilities.is_empty():
+			return e
+	return Data.all_goal_enemies()[0]
+
+func test_shields_fall_at_one_three_and_five() -> void:
+	var normal: GameData = _game_of_type(GameData.GameType.ACTION)
+	var trad: GameData = _game_of_type(GameData.GameType.TRADITIONAL)
+	var want := {0: [3, 5], 1: [2, 4], 2: [2, 4], 3: [1, 3], 4: [1, 3], 5: [1, 2], 10: [1, 2]}
+	for lv in want.keys():
+		GameState.fracture = lv
+		assert_eq(GameLoop2.shields_for_game(normal), want[lv][0], "normal game at Fracture %d" % lv)
+		assert_eq(GameLoop2.shields_for_game(trad), want[lv][1], "Traditional at Fracture %d" % lv)
+
+func test_damage_is_one_and_a_half_rounded_up_per_step() -> void:
+	# The doc's table (§2): Low/Medium/High/Insane and the bosses' 3/5/7/9.
+	var want := {1: [2, 3], 2: [3, 5], 3: [5, 8], 4: [6, 9], 5: [8, 12], 7: [11, 17], 9: [14, 21]}
+	for base in want.keys():
+		GameState.fracture = 1
+		assert_eq(Fracture.damage(base), base, "no step yet at Fracture 1")
+		GameState.fracture = 2
+		assert_eq(Fracture.damage(base), want[base][0], "%d at Fracture 2" % base)
+		GameState.fracture = 9
+		assert_eq(Fracture.damage(base), want[base][1], "%d at Fracture 9" % base)
+
+func test_a_swing_carries_the_fracture_and_strength_adds_on_top() -> void:
+	var e: GoalEnemyData = _plain_enemy()
+	var plain := {"enemy": e, "statuses": {}}
+	var strong := {"enemy": e, "statuses": {&"strength": 2}}
+	GameState.fracture = 0
+	var strength_at_0: int = GameLoop2.enemy_damage(strong) - GameLoop2.enemy_damage(plain)
+	GameState.fracture = 9
+	assert_eq(GameLoop2.enemy_damage(plain), Fracture.damage(int(e.damage)),
+		"the swing is the authored damage with both steps on it")
+	assert_eq(GameLoop2.enemy_damage(strong) - GameLoop2.enemy_damage(plain), strength_at_0,
+		"Strength adds the same on top, and does not grow with the level")
+
+func test_the_tier_steps_a_spawn_sooner_from_fracture_six() -> void:
+	GameState.fracture = 5
+	assert_eq(RunDifficulty.games_per_tier(), 4)
+	assert_false(RunDifficulty.is_boss_spawn(3))
+	GameState.fracture = 6
+	assert_eq(RunDifficulty.games_per_tier(), 3)
+	assert_true(RunDifficulty.is_boss_spawn(3), "the boss comes on the 3rd spawn")
+	assert_eq(RunDifficulty.tier_for(3), 1, "and the tier steps with it")
+	assert_eq(RunDifficulty.spawns_to_boss(1), 2)
+
+func test_the_board_starts_a_row_taller_from_fracture_seven() -> void:
+	GameState.fracture = 6
+	var rows: int = GameLoop2.grid_rows()
+	var cols: int = GameLoop2.grid_cols()
+	GameState.fracture = 7
+	assert_eq(GameLoop2.grid_rows(), rows + 1, "one more lane")
+	assert_eq(GameLoop2.grid_cols(), cols, "and no more depth")
+
+func test_every_arrival_brings_one_more_body_from_fracture_four() -> void:
+	GameLoop2.reset()
+	GameState.fracture = 3
+	GameLoop2.choose_game(_plain_enemy())
+	assert_eq(GameLoop2.arrivals.size(), 2, "an Enemies node stands two below Fracture 4")
+	GameLoop2.reset()
+	GameState.fracture = 4
+	GameLoop2.choose_game(_plain_enemy())
+	assert_eq(GameLoop2.arrivals.size(), 3, "and three from it")
+	GameLoop2.reset()
+	GameLoop2.choose_game(_plain_enemy(), &"", -1, false)
+	assert_eq(GameLoop2.arrivals.size(), 2, "a Champion's boss gets a body beside it")
+
+func test_the_capstone_brings_a_body_from_fracture_four() -> void:
+	for lv in [3, 4]:
+		GameLoop2.reset()
+		GameState.fracture = lv
+		# One spawn short of the capstone, so this arrival lands it.
+		GameState.spawn_events = RunDifficulty.games_per_tier() - 1
+		GameLoop2.choose_game(_plain_enemy())
+		var bosses: int = 0
+		for entry in GameLoop2.stack:
+			if (entry.get("enemy") as GoalEnemyData).is_boss():
+				bosses += 1
+		assert_eq(bosses, 1, "the capstone landed at Fracture %d" % lv)
+		var others: int = GameLoop2.stack.size() - GameLoop2.arrivals.size() - bosses
+		assert_eq(others, 1 if lv >= 4 else 0, "and brought %d body with it" % (1 if lv >= 4 else 0))
+
+func _hand_in(won: bool, escaped: bool = false) -> Dictionary:
+	GameLoop2.reset()
+	GameState.hp = 99
+	GameState.max_hp = 99
+	GameLoop2.choose_game(_plain_enemy())
+	return GameLoop2.beat_game(false, [], {}, true, escaped, won)
+
+func test_the_board_takes_a_turn_after_a_won_or_escaped_game_from_fracture_eight() -> void:
+	GameState.fracture = 7
+	assert_false(_hand_in(true).has("fracture_turn"), "not below Fracture 8")
+	GameState.fracture = 8
+	assert_true(_hand_in(true).has("fracture_turn"), "after a game beaten")
+	GameState.fracture = 8
+	assert_true(_hand_in(false, true).has("fracture_turn"), "after a game escaped")
+	GameState.fracture = 8
+	assert_false(_hand_in(false).has("fracture_turn"), "not after a game missed")
+
+func test_fracture_zero_changes_nothing() -> void:
+	GameState.fracture = 0
+	assert_eq(GameLoop2.shields_for_game(_game_of_type(GameData.GameType.ACTION)),
+		GameLoop2.SHIELDS_PER_GAME)
+	assert_eq(Fracture.damage(4), 4)
+	assert_eq(RunDifficulty.games_per_tier(), RunDifficulty.GAMES_PER_TIER)
+	assert_eq(Fracture.extra_bodies(), 0)
+	assert_eq(Fracture.extra_rows(), 0)
+	assert_false(Fracture.extra_turn())

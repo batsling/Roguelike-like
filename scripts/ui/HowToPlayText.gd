@@ -412,7 +412,7 @@ static func _ch_enemies() -> Dictionary:
 			_p(("Every %dth spawn — a node's enemies arriving, or a game's end "
 				+ "standing some up — is a DIFFICULTY UP: the tier steps, the board "
 				+ "grows, and a boss walks on. The strip counts down to it.")
-				% RunDifficulty.GAMES_PER_TIER),
+				% RunDifficulty.games_per_tier()),
 			_h("Old goals never expire"),
 			_p("A follower's goal can be fulfilled during ANY later game. Do it "
 				+ "and the follower dies right there, drops its loot and pays its "
@@ -880,14 +880,14 @@ static func _ch_bosses() -> Dictionary:
 				+ "Shop node lands nothing, so routing through them holds the tier "
 				+ "where it is. A higher tier means enemies that hit harder — and a "
 				+ "bigger board to cross before they reach you, which is the "
-				+ "counterweight.") % RunDifficulty.GAMES_PER_TIER),
+				+ "counterweight.") % RunDifficulty.games_per_tier()),
 			_h("Where bosses come from"),
 			_b("A CHAMPION node (!!) stands a boss of the current tier, alone."),
 			_b(("Every %d%s spawn lands a boss ON TOP of whatever else was "
 				+ "arriving — so a lost run can be the one that brings a boss, and "
 				+ "a Champion node that is also that spawn brings two.") % [
-				RunDifficulty.GAMES_PER_TIER,
-				"rd" if RunDifficulty.GAMES_PER_TIER == 3 else "th"]),
+				RunDifficulty.games_per_tier(),
+				"rd" if RunDifficulty.games_per_tier() == 3 else "th"]),
 			_p("The count to the next one is on the strip over the board, and the "
 				+ "spawn before it is announced in a popup, once."),
 			_p("A boss is a different set of rules:"),

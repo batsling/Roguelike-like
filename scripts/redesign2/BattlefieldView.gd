@@ -915,7 +915,7 @@ func _boss_tip(to_boss: int) -> String:
 			+ "a boss walks on top of whatever else arrives — a lost run's spawn included.")
 	return ("Every %dth spawn is a difficulty up — the tier steps, the board grows and a "
 		+ "boss walks on: %d more to go. A node arriving, a game ending and a lost "
-		+ "run's spawn each count once, however many bodies they bring.") % [RunDifficulty.GAMES_PER_TIER, to_boss]
+		+ "run's spawn each count once, however many bodies they bring.") % [RunDifficulty.games_per_tier(), to_boss]
 
 # The combat verbs live with the combat: Push and Bomb sit on a toolbar attached to
 # the battlefield. ARM FIRST, THEN AIM — press the verb, the bodies it can reach

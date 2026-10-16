@@ -2460,7 +2460,7 @@ func report(beaten: bool, fulfilled: Variant = null, escaped: bool = false,
 	# checklist lists the bodies that walked on this game among all the others, so
 	# they are already in `fulfilled_instances` if the player ticked them.
 	var res: Dictionary = GameLoop2.beat_game(false, fulfilled_instances, claims,
-		not free_exit, escaped)
+		not free_exit, escaped, beaten)
 	# THE FLOOR IS SWEPT AT THE REPORT (§8.2). Loot lying on the board belongs to
 	# the game being played; handing the game in ends that, so anything nobody
 	# stopped to pick up — including whatever the bodies this very report cleared

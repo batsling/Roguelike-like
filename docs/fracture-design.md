@@ -1,10 +1,11 @@
 # Fracture — design
 
-**Status: step 1 of 5 built** (the record: the run's level and its save, the
-per-character unlocks and remembered pick, each win's level and the XP it pays,
-the trophy's number, custom runs, and "Skip won amulets" by level; the code is
-`scripts/runtime/Fracture.gd` and GameStats' Fractures section, the tests
-`test/test_fracture.gd`). Nothing is on screen yet. Agreed with the owner on 15
+**Status: steps 1 and 2 of 5 built** (1, the record: the run's level and its
+save, the per-character unlocks and remembered pick, each win's level and the XP
+it pays, the trophy's number, custom runs, and "Skip won amulets" by level. 2,
+the nine changes of Fractures 1–9, each placed on the ladder in one table in
+`scripts/runtime/Fracture.gd`; tests in `test/test_fracture.gd`). Nothing about
+Fractures is on screen yet; that is step 3. Agreed with the owner on 15
 October 2026.
 The build order is at the end. Section numbers (§7.4, §19.6, …) refer to
 `docs/games-first-redesign.md`; rift sections refer to `docs/rifts-design.md`.
@@ -33,7 +34,7 @@ normal run, in the shape Slay the Spire gave the idea.
 | 1 | **Shield gain −1**: normal 3 → 2, Traditional 5 → 4 | `GameLoop2.shields_for_game` |
 | 2 | **Enemies hit harder, ×1.5 rounded up** | the swing, `GameLoop2._take_hit` |
 | 3 | **Shield gain −1**: normal 2 → 1, Traditional 4 → 3 | as 1 |
-| 4 | **Escorts +1**: everything that spawns brings one more companion | §7.5 |
+| 4 | **One more body on every arrival**, the capstone boss's included (bosses too) | `GameLoop2.choose_game`, `_land_capstone_boss` |
 | 5 | **Shield gain −1**: normal stays at 1 (the floor), Traditional 3 → 2 | as 1 |
 | 6 | **Difficulty rises 1 spawn faster**: the tier steps, and a boss comes, every 3rd spawn event instead of every 4th | `RunDifficulty.GAMES_PER_TIER` |
 | 7 | **+1 starting row**: the board starts one row taller, so more bodies can stand in the front column and hit at once. Columns are unchanged, so nothing spawns closer or farther | `GameLoop2.grid_growth` (rows only) |
@@ -70,9 +71,12 @@ change to this table first.
 
 ## 3. Notes on each change
 
-**Escorts (4).** One more body in every escort the board already rolls (§7.5),
-so it rides the escort's own rules (type, tier, footprint, "a body with no room
-does not spawn"). **Bosses get the extra escort body too.** It does not touch
+**Extra body (4).** Written as "escorts +1", but the escort had already been
+retired by the time this was built: §19.4 replaced it with an Enemies node's
+SECOND BODY, and a Champion node stands its boss alone. So it is built as **one
+more body on every arrival**, rolled the way the second body is: an Enemies node
+stands three, a Champion's boss gets one beside it, and the every-fourth-spawn
+capstone boss (every third, from Fracture 6) brings one too. It does not touch
 the end-of-game pressure count (§7.4).
 
 **Shields (1, 3, 5).** A flat cut to the per-game grant, applied inside
@@ -106,9 +110,12 @@ trying to do. On a difficulty level that punishment is the point. It goes
 through the same `extra` beat of `_resolve_enemy_turn` that Predatory Scent
 already uses, so:
 - the Censer holds the two front columns out of it, as it does for any extra turn;
-- `GameLoop2.strike_countdown_text` and `attacks_in_turns` have to count it, or
-  each body's "N lost runs until it reaches you" lies. That is the one place this
-  level needs care.
+- each body's "N lost runs until it reaches you" is still right: it counts lost
+  runs in THIS game, and the extra turn comes when the game is handed in. What
+  the player needs told is the price of handing it in, so step 3 puts "+1 enemy
+  turn" beside the strip's "+N when this game ends";
+- a teleport out of a game skips it, the same way it skips the end-of-game
+  spawn: it is not a game handed in.
 
 **Damage again (9).** A second ×1.5, applied to Fracture 2's result and rounded
 up again. Same rule, same place in the code.

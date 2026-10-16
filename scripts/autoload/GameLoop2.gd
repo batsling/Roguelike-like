@@ -157,9 +157,11 @@ func grid_growth() -> int:
 func grid_cols() -> int:
 	return BASE_GRID_COLS + grid_growth() + GameState.grid_length_growth()
 
-# Lanes on the board right now, 0-based rows 0..grid_rows() - 1.
+# Lanes on the board right now, 0-based rows 0..grid_rows() - 1. A Fracture adds
+# a lane and no depth (docs/fracture-design.md §3): more bodies abreast at the
+# front, none of them spawning any closer or further.
 func grid_rows() -> int:
-	return BASE_GRID_ROWS + grid_growth()
+	return BASE_GRID_ROWS + grid_growth() + Fracture.extra_rows()
 
 # The back column — where an enemy's rightmost cell lands when it spawns.
 func spawn_col() -> int:
@@ -1773,7 +1775,11 @@ func choose_game(enemy: GoalEnemyData, escort_type: StringName = &"",
 	_next_instance += 1
 	_add_to_grid(inst, enemy, effective_health(enemy), _spawn_statuses())
 	arrivals = [inst]
-	if with_second_body:
+	# An Enemies node's second body (§19.4), plus one more on a Fracture
+	# (docs/fracture-design.md §3) — which is also what gives a Champion's boss a
+	# body beside it there. Rolled the same way, so they are ordinary arrivals.
+	var others: int = (1 if with_second_body else 0) + Fracture.extra_bodies()
+	for _i in range(others):
 		var second_inst: int = _spawn_second_body(enemy, escort_type, escort_tier)
 		if second_inst > 0:
 			arrivals.append(second_inst)
@@ -1855,6 +1861,14 @@ func _land_capstone_boss(type_key: StringName = &"", tier: int = -1) -> void:
 		return          # an empty boss roster: the band closes without one
 	if spawn_to_stack(boss) <= 0:
 		return
+	# On a Fracture the capstone does not walk on alone (docs/fracture-design.md
+	# §3): a body of the same game type and tier comes with it, landed the way the
+	# boss was, so it is no more an arrival than the boss is.
+	for _i in range(Fracture.extra_bodies()):
+		var with_it: GoalEnemyData = roll_second_body(key,
+			tier if tier >= 0 else RunDifficulty.current_tier(), boss)
+		if with_it != null:
+			spawn_to_stack(with_it)
 	# NOT an arrival, for the same reason an end-of-game spawn is not one: it did not
 	# come with the game, so a Scramble must not be able to scrub it off.
 	var msg: String = "%s closes the band — a boss walks on." % boss.display_name
@@ -2059,10 +2073,13 @@ func _clear_arrivals() -> void:
 
 # How many shields selecting `game` grants: the long haul of a Traditional
 # roguelike is worth more cover than anything else.
+#
+# A Fracture cuts it (docs/fracture-design.md §3): here, so the choosing card,
+# the selection screen and the grant itself cannot disagree.
 func shields_for_game(game: GameData) -> int:
 	if game != null and game.type == GameData.GameType.TRADITIONAL:
-		return SHIELDS_TRADITIONAL
-	return SHIELDS_PER_GAME
+		return Fracture.shields(SHIELDS_TRADITIONAL)
+	return Fracture.shields(SHIELDS_PER_GAME)
 
 # Selecting a game hands the player their armour for it. Adds the grant on top of
 # whatever is carried (a shield from Anchor bought before this point still
@@ -2588,9 +2605,13 @@ func _board_snapshot() -> Dictionary:
 #
 # It does not touch 2a: Predatory Scent is a body's own ability reacting to an
 # evening you did nothing with (§7.6), not the road's price for the road.
+#
+# `won` says the game's own goal was met, which is half of what the Fracture's
+# extra turn needs (an escape is the other half, docs/fracture-design.md §3).
+# False by default, so a caller that does not say is never charged one.
 func beat_game(clear_advertised: bool = false, fulfilled_instances: Array = [],
 		claims: Dictionary = {}, road_spawns: bool = true,
-		escaped: bool = false) -> Dictionary:
+		escaped: bool = false, won: bool = false) -> Dictionary:
 	var res := {
 		"beaten": true, "defeats": [], "drops": 0, "attacks": [],
 		"turns": 0, "turn_frames": [],
@@ -2712,6 +2733,17 @@ func beat_game(clear_advertised: bool = false, fulfilled_instances: Array = [],
 		res["turns"] = 1
 		# An EXTRA turn, so a Censer holds the front line out of it (§8.2).
 		_resolve_enemy_turn(0, res, hunters, true)
+		(res["turn_frames"] as Array).append(_board_snapshot())
+
+	# 2a'. THE FRACTURE'S EXTRA TURN (docs/fracture-design.md §3): from Fracture 8
+	#     the whole board takes one more turn after a game BEATEN or ESCAPED — not
+	#     one missed, and not a teleport out, which is not a game handed in (the
+	#     same reason it skips step 5). An EXTRA turn, so the Censer holds the
+	#     front line out of it like any other.
+	if Fracture.extra_turn() and (won or escaped) and road_spawns and not run_over:
+		res["fracture_turn"] = true
+		res["turns"] = int(res["turns"]) + 1
+		_resolve_enemy_turn(int(res["turns"]) - 1, res, [], true)
 		(res["turn_frames"] as Array).append(_board_snapshot())
 
 	# 2b. THE STATUSES' OWN BILL, once the enemies have finished swinging. Burn's 3
@@ -5684,10 +5716,16 @@ func enemy_damage(entry: Dictionary) -> int:
 		return 0
 	var totals: Dictionary = enemy_combat(entry)
 	var hit: int = StatusData.apply_damage_mods(
-		int(enemy.damage), int(totals["damage_dealt"]), float(totals["damage_dealt_mult"]))
+		base_damage(enemy), int(totals["damage_dealt"]), float(totals["damage_dealt_mult"]))
 	# A RIFT BODY HITS TWICE AS HARD (docs/rifts-design.md §6), after everything
 	# else has had its say: the rift doubles what this body would have dealt.
 	return hit * RIFT_MULT if is_rift_body(entry) else hit
+
+# An enemy's damage BEFORE its statuses: the authored stat with this run's
+# Fracture steps on it (docs/fracture-design.md §3). The number a preview shows
+# for an enemy that is not on the board yet, and the base enemy_damage builds on.
+func base_damage(enemy: GoalEnemyData) -> int:
+	return Fracture.damage(int(enemy.damage)) if enemy != null else 0
 
 # RIFTS (docs/rifts-design.md §6). A body that walked on at a rift game deals
 # RIFT_MULT times its damage and pays RIFT_MULT times the loot and chest points,
