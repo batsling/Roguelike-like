@@ -40,7 +40,7 @@ extends Resource
 # sheet's Notes column, where Identify says "Has a +25% find rate", read as 1.25.
 #
 # A WEIGHT INSIDE THE BUCKET, NOT A SHARE OF ALL DROPS (potions-design §10,
-# decision #20). The 75/20/5 ladder picks the rarity first and this only decides
+# decision #20). The 75/20/4/1 ladder picks the rarity first and this only decides
 # which member of that rarity comes up, so a find rate can never quietly promote a
 # Common past an Uncommon — rarity keeps meaning what it means. 1.0 is "like
 # everything else at this rarity", which is what an unannotated scroll gets.

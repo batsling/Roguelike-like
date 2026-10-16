@@ -127,7 +127,7 @@ marginally less than it was in the abstract — and worth exactly the same to th
 that needs it, which is the run holding four unknown capsules. That run's odds
 should not depend on how many cards it happened to draw.
 
-**Rarity** rides the shared 75/20/5 ladder through `Data.roll_card`, so Luck
+**Rarity** rides the shared 75/20/4/1 ladder through `Data.roll_card`, so Luck
 reaches a card drop for free. The roster is **3 Common / 4 Uncommon / 6 Rare** —
 the opposite shape to the other three kinds, and deliberate: a card is one use and
 a known quantity, so the interesting ones can afford to be the good ones. What

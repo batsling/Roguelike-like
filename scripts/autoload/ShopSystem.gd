@@ -374,7 +374,7 @@ func stock_lines(game_id: StringName) -> Array:
 # ---------------------------------------------------------------------------
 
 # STOCK_SLOTS items, each rolled on the game's standard rarity ladder
-# (Data.roll_item_rarity — 75/20/5 with a 10% bump off the top), seeded off the
+# (Data.roll_item_rarity — 75/20/4/1), seeded off the
 # run + node + reroll number so the same shelf comes back after a reload.
 #
 # Two preferences shape the draw, both aimed at the same problem: 21 authored

@@ -6,9 +6,8 @@ extends Control
 # post-victory rewards (the gold + item-choice portions):
 #   * Gold: a flat amount keyed on the run difficulty tier
 #     (Low 10 / Medium 15 / High 25 / Insane 35), granted immediately.
-#   * Item choice: pick 1 of (2 + Discovery) items rolled at 75/20/5
-#     common/uncommon/rare with luck advantage (rare has a 10% bump to
-#     legendary), boons excluded, no dupes within a batch. Reroll if the
+#   * Item choice: pick 1 of (2 + Discovery) items rolled at 75/20/4/1
+#     common/uncommon/rare/legendary with luck advantage, boons excluded, no dupes within a batch. Reroll if the
 #     player has reroll charges; Skip to take nothing.
 
 signal closed
@@ -550,7 +549,7 @@ func _roll_choices() -> void:
 		if not dup:
 			_choices.append(pick)
 
-# The shared 75/20/5 ladder. This screen used to carry its OWN luck weighting —
+# The shared 75/20/4/1 ladder. This screen used to carry its OWN luck weighting —
 # a port of the HTML build's rollWithLuckAdvantage, which took the better of two
 # [0,1) draws on a luck*10% chance. Luck is a guaranteed reroll per point now and
 # it lives on the ladder itself (Data.roll_item_rarity), so a second

@@ -192,9 +192,9 @@ So `LootSystem.use_entry` skips both the queue and the memory for a wand, and
 ## 5. The roster
 
 Twelve rows across the four rungs of the rarity ladder — which makes the shared
-ladder do all the work. At its 75/20/5 with the Rare rung's 10% bump to Legendary,
-`Data.roll_wand` gives a Common on three drops in four and a Legendary on about one
-in two hundred (before Luck, which rides the same roll). None of that spread is
+ladder do all the work. At its 75/20/4/1,
+`Data.roll_wand` gives a Common on three drops in four and a Legendary on one in a
+hundred (before Luck, which rides the same roll). None of that spread is
 authored anywhere except in the twelve rarity words.
 
 | Wand | Rarity | Charges | Aim | Effect cell |

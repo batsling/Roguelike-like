@@ -1538,8 +1538,8 @@ data folder and the ids all stay "tile".)
 
 `Data.gd` loads them all on startup and serves them by id, so gameplay code never
 hardcodes content — it asks `Data` for it. Random draws all share one rarity
-ladder there too (`Data.roll_rarity_step` / `roll_item_rarity`): 75/20/5
-common/uncommon/rare, with a 10% bump from rare to legendary.
+ladder there too (`Data.roll_rarity_step` / `roll_item_rarity`): 75/20/4/1
+common/uncommon/rare/legendary (`Data.RARITY_WEIGHTS`, the one place to tune them).
 
 ---
 
