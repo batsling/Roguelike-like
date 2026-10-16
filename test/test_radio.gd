@@ -26,6 +26,7 @@ var _saved_character: Array
 var _saved_drawn_by: Dictionary
 var _saved_unlocked: Dictionary
 var _saved_favorites: Dictionary
+var _saved_blocked: Dictionary
 var _saved_folder: String
 var _saved_config: String
 var _saved_prefs: Array
@@ -40,6 +41,7 @@ func before_each() -> void:
 	_saved_levelups = GameStats.levelup_log.duplicate(true)
 	_saved_unlocked = Radio._unlocked.duplicate()
 	_saved_favorites = Radio._favorites.duplicate()
+	_saved_blocked = Radio._blocked.duplicate()
 	_saved_folder = Radio.folder
 	_saved_config = Radio.config_path
 	_saved_loudness = Radio._loudness.duplicate()
@@ -66,6 +68,7 @@ func before_each() -> void:
 	Radio._drawn_by = {}
 	Radio._unlocked = {}
 	Radio._favorites = {}
+	Radio._blocked = {}
 	Radio.folder = FOLDER
 	Radio.config_path = CONFIG
 	Radio.output = Radio.Output.OBS
@@ -105,6 +108,7 @@ func after_each() -> void:
 	Radio._drawn_by = _saved_drawn_by
 	Radio._unlocked = _saved_unlocked
 	Radio._favorites = _saved_favorites
+	Radio._blocked = _saved_blocked
 	Radio._save_unlocked()
 	Radio.folder = _saved_folder
 	Radio.config_path = _saved_config
@@ -1268,3 +1272,48 @@ func test_the_radio_screen_lists_a_character_still_owed_songs() -> void:
 func _non_character_rows(screen) -> int:
 	return screen._list.get_children().filter(
 		func(r): return not r.has_meta("character")).size()
+
+# --- the blacklist (red ✕) ------------------------------------------------------
+
+func test_a_blacklisted_song_never_plays_on_its_own() -> void:
+	_song("a")
+	_song("b")
+	Radio.set_blocked(&"b", true)
+	for i in range(4):
+		Radio.next()
+		assert_eq(Radio.current, &"a", "only the song not blacklisted comes up")
+	Radio.set_favorite(&"b", true)
+	Radio.set_station(Radio.FAVORITES)
+	assert_eq(Radio.current, &"", "not even on the favourites station")
+	Radio.play_song(&"b")
+	assert_eq(Radio.current, &"b", "but ▶ still plays it by name")
+
+func test_blacklisting_the_song_playing_moves_on() -> void:
+	_song("a")
+	_song("b")
+	Radio.play_song(&"a")
+	Radio.set_blocked(&"a", true)
+	assert_eq(Radio.current, &"b")
+	Radio.set_blocked(&"a", false)
+	assert_false(Radio.is_blocked(Data.get_song(&"a")), "and the ✕ takes it back off")
+
+func test_the_blacklist_is_saved_with_the_profile() -> void:
+	_song("a")
+	Radio.set_blocked(&"a", true)
+	Radio._blocked = {}
+	Radio._load_unlocked()
+	assert_true(Radio._blocked.has("a"), "read back from radio.json")
+
+func test_the_screen_has_a_red_cross_on_each_unlocked_song() -> void:
+	_song("a")
+	_locked("b")
+	var screen := RadioScreen.open(self)
+	await get_tree().process_frame
+	var crosses: Array = []
+	for row in screen._list.get_children():
+		for b in row.find_children("*", "Button", true, false):
+			if (b as Button).text == "✕":
+				crosses.append(b)
+	assert_eq(crosses.size(), 1, "only the unlocked song has one")
+	(crosses[0] as Button).pressed.emit()
+	assert_true(Radio.is_blocked(Data.get_song(&"a")))

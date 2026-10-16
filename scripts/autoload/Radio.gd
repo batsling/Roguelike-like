@@ -89,6 +89,7 @@ var _queue: Array = []           # [StringName] still to play this pass
 var _history: Array = []         # [StringName] played, newest last
 var _unlocked: Dictionary = {}   # song id -> true: songs drawn, per profile
 var _favorites: Dictionary = {}  # song id -> true: songs starred, per profile
+var _blocked: Dictionary = {}    # song id -> true: songs blacklisted, per profile
 var _drawn_by: Dictionary = {}   # song id -> character id: drawn by a character's rank
 var _player: AudioStreamPlayer
 var _stream: AudioStream = null
@@ -206,6 +207,8 @@ func is_playable(song: SongData) -> bool:
 	return is_unlocked(song) and has_file(song)
 
 func on_station(song: SongData) -> bool:
+	if is_blocked(song):
+		return false
 	if station == FAVORITES:
 		return is_favorite(song)
 	return station == "" or song.tags.has(station)
@@ -247,6 +250,38 @@ func set_favorite(id: StringName, on: bool) -> void:
 	_save_unlocked()
 	if on and station == FAVORITES and current == &"" and not paused and autoplay:
 		_advance()
+	changed.emit()
+
+# --- the blacklist --------------------------------------------------------
+#
+# The red ✕ on a song: it never plays ON ITS OWN again — on no station, the
+# favourites one included (on_station answers no for it, which is what every pick
+# and the unlock announcement ask). ▶ still plays it, because that is the player
+# asking for it by name. Per profile, in radio.json beside the stars.
+
+func is_blocked(song: SongData) -> bool:
+	return song != null and _blocked.has(String(song.id))
+
+func blocked_count() -> int:
+	return _blocked.size()
+
+func toggle_blocked(id: StringName) -> void:
+	set_blocked(id, not is_blocked(Data.get_song(id)))
+
+# Blacklisting the song that is playing moves on at once: a red ✕ is "not this".
+func set_blocked(id: StringName, on: bool) -> void:
+	var song: SongData = Data.get_song(id)
+	if song == null or is_blocked(song) == on:
+		return
+	if on:
+		_blocked[String(id)] = true
+		_queue.erase(id)
+	else:
+		_blocked.erase(String(id))
+	_save_unlocked()
+	if on and current == id:
+		next()
+		return
 	changed.emit()
 
 # Where a locked song stands, for the song list: what its game needs for its next
@@ -1055,6 +1090,7 @@ func _unlocked_path() -> String:
 func _load_unlocked() -> void:
 	_unlocked = {}
 	_favorites = {}
+	_blocked = {}
 	_drawn_by = {}
 	var f := FileAccess.open(_unlocked_path(), FileAccess.READ)
 	if f == null:
@@ -1066,6 +1102,8 @@ func _load_unlocked() -> void:
 				_unlocked[String(id)] = true
 		for id in (parsed as Dictionary).get("favorites", []):
 			_favorites[String(id)] = true
+		for id in (parsed as Dictionary).get("blocked", []):
+			_blocked[String(id)] = true
 		# Which character drew which song (§20.9). An older file has none: every
 		# song in it was its game's.
 		var by: Variant = (parsed as Dictionary).get("drawn_by", {})
@@ -1082,5 +1120,7 @@ func _save_unlocked() -> void:
 	ids.sort()
 	var favorites: Array = _favorites.keys()
 	favorites.sort()
+	var blocked: Array = _blocked.keys()
+	blocked.sort()
 	f.store_string(JSON.stringify({"unlocked": ids, "favorites": favorites,
-		"drawn_by": _drawn_by}, "  "))
+		"blocked": blocked, "drawn_by": _drawn_by}, "  "))
