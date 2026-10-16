@@ -32,7 +32,7 @@ normal run, in the shape Slay the Spire gave the idea.
 | 6 | **Difficulty rises 1 spawn faster**: the tier steps, and a boss comes, every 3rd spawn event instead of every 4th | `RunDifficulty.GAMES_PER_TIER` |
 | 7 | **Shield gain −1**: normal stays at 1 (the floor), Traditional 3 → 2 | as 2 |
 | 8 | **Enemies take 1 extra turn after each completed game** | `_resolve_enemy_turn`'s `extra` beat |
-| 9 | **+1 hop at the start**: every start is one game farther from the Amulet | `RunGraph` path band |
+| 9 | **Enemies hit harder again, +1 per tier**: on top of Fracture 3, so Low +2, Medium +4, High +6, Insane +8 | as 3 |
 | 10 | **The Collapse**: beat the Amulet, then carry it back to the start | §7 |
 
 Where a game's shields land at each level:
@@ -83,11 +83,16 @@ already uses, so:
   each body's "N lost runs until it reaches you" lies. That is the one place this
   level needs care.
 
-**+1 hop (9).** The run's path band moves up one: 4–8 hops becomes 5–9 (runs of
-six to ten games instead of five to nine). **This does not break the router.**
-Custom runs already route bands up to 20 (`RunConfig.PATH_CEILING`).
+**Damage again (9).** A second +1 per tier, stacked on Fracture 3's. Same rule,
+same place in the code; one constant per level rather than a second mechanism.
 
-**But a flat 5–9 leaves Amulets out (measured 15 October 2026).** A game can be
+**DROPPED: +1 hop at the start.** This was Fracture 9 first: every start one game
+farther from the Amulet (the path band 4–8 moved to 5–9). It did not break the
+router, but it left Amulets out, and the owner scrapped it on 16 October 2026 in
+favour of the second damage step. The measurements stay here so the idea is not
+re-proposed without them.
+
+**A flat 5–9 leaves Amulets out (measured 15 October 2026).** A game can be
 the Amulet only if starts in three genres sit inside the band on a road that
 clears the floor (`RunGraph.panel_genres`, §19.3.2). Counted for every game on
 the map, rifts on:
@@ -117,17 +122,11 @@ same rift-aware rule, the panel allowed to show only two genres.
 
 The ones still lost are mostly the big hubs: everything that cites them sits
 close, so few genres reach 5+ hops. Two genres alone therefore does not keep
-every Amulet; it can be combined with the fallback below.
+every Amulet.
 
-**Proposed fix, pending the owner:** *+1 hop where the Amulet allows it.* At
-Fracture 9 the panel is drawn from 5–9 first; an Amulet that cannot field three
-genres there falls back to 4–8. Every Amulet stays in the pool, and about 71%
-of owned Amulets (373 of 522) get the longer road. The panel's
-three-distances preference (`_random_spread`) has the same five rungs at 5–9,
-so it should hold; check it when built.
-
-A custom run's band is the player's own and is not shifted (custom runs earn
-nothing from Fractures anyway, §5).
+The only version that kept every Amulet was a fallback (5–9 with three genres,
+else 5–9 with two, else 4–8), which makes the level do nothing at all for the
+biggest hubs. That is what tipped it.
 
 ## 4. Choosing a Fracture
 
