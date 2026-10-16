@@ -66,7 +66,8 @@ change to this table first.
 
 **Escorts (4).** One more body in every escort the board already rolls (§7.5),
 so it rides the escort's own rules (type, tier, footprint, "a body with no room
-does not spawn"). It does not touch the end-of-game pressure count (§7.4).
+does not spawn"). **Bosses get the extra escort body too.** It does not touch
+the end-of-game pressure count (§7.4).
 
 **Shields (1, 3, 5).** A flat cut to the per-game grant, applied inside
 `shields_for_game`, so the selection screen, the card and the grant cannot
@@ -76,7 +77,8 @@ Traditional. Items that add to the grant (Anchor's +1 Temporary Shield) add on
 top as they do now.
 
 **Damage (2).** The enemy's **authored** damage is multiplied by 1.5 and rounded
-up; statuses that add damage (Strength and the rest) add on top of the result,
+up; statuses that add damage (Strength and the rest) add on top of the result
+and **do not grow with the level** (the owner's call),
 so the number on the body's card is the number that lands. A shield stops one
 whole hit whatever its size (§3.2), so this level only bites once the shields
 are gone, which is why it sits right after the first shield cut. Bosses take it
@@ -191,8 +193,12 @@ Trophies already earned in custom runs cannot be told apart and stay.
 
 ## 6. Display
 
-- **The header**: the Fracture level to the left of the player icon at the top of
-  the screen. Nothing on Fracture 0.
+- **The header**: a **shard** glyph and the Fracture level, to the left of the
+  player icon at the top of the screen. Nothing on Fracture 0. The shard is a new
+  UI glyph, so `tools/build_glyph_font.py` is re-run for it, then
+  `godot --headless --editor --quit` (CLAUDE.md, *A new UI glyph*).
+- **Run history** shows the Fracture each past run was played at.
+- **Character stats** split the character's wins by Fracture.
 - **The OBS overlay** does not show it.
 - **The Continue list** shows it on each save's row.
 - **The Collection**: the character's 🏆 with its number (§5).
@@ -299,9 +305,6 @@ the Amulet now" button.
 
 ## 10. Still open
 
-- **Whether ×1.5 applies before or after statuses**: written as before (the
-  authored number is multiplied, statuses add on top). After would make
-  Strength-style statuses grow with the level too.
 - **What a Fracture-0 player sees of the ladder** before their first win: the
   greyed row (§4) is the current answer.
 
