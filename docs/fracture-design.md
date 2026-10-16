@@ -101,6 +101,12 @@ The owned losses cluster where the other genres' starts are all close:
 Deckbuilder 62 of 96 (Balatro, Backpack Hero, Across the Obelisk, …), Action
 60 of 241 (Brotato, Atomicrops, …), Strategy 26 of 82, Traditional 2 of 103.
 
+**Rifts cannot rescue them.** The count above already includes the path-rift
+rescue (the 4–8 column refuses exactly the two games rifts §5 refuses with rifts
+on). Of the 150, **149 have no starts in three genres 5+ hops away at all**;
+only one is short on route quality alone. A rift never lengthens a path, so
+there is nothing for one to fix.
+
 **Proposed fix, pending the owner:** *+1 hop where the Amulet allows it.* At
 Fracture 9 the panel is drawn from 5–9 first; an Amulet that cannot field three
 genres there falls back to 4–8. Every Amulet stays in the pool, and about 71%
