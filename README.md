@@ -67,11 +67,14 @@ Godot resource paths map directly onto folders: `res://scripts/…` is
 │   │                      #     BossNoticeModal — the "⚠ BOSS INCOMING" popup
 │   │                      #     RouteLadder     — the arrowed shortest-path map
 │   │                      #     RunOverScreen   — the end-of-run verdict screen
+│   │                      #     CollapseScreen  — Fracture 10's turnaround (docs/fracture-design.md)
 │   │                      #     LootDropModal   — "the game paid out, keep it?"
 │   │                      #     RunMapModal / LootUseModal
 │   ├── events/           #   the D20 event system (EventModal, D20DieView)
 │   ├── menu/             #   MainMenu + CharacterPicker + CustomRunScreen + ProfilePicker
 │   ├── runtime/          #   RunGraph — the real-games influence graph
+│   │                      #   Fracture — the ten difficulty levels: the ladder, the
+│   │                      #     run's level, and the text every screen shows it with
 │   └── ui/               #   shared UI (UITheme, RewardScreen, Collection, toasts)
 │                          #     AtlasView + AtlasLayoutBuilder — the star chart
 │                          #     and the runtime layout behind its filters
