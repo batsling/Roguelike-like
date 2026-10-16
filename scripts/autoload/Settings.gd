@@ -171,6 +171,11 @@ signal menu_falling_art_changed(enabled: bool)
 # frees the texture pool.
 var menu_falling_art: bool = true
 
+# How many pictures fall at once (Settings -> Display -> Menu art amount).
+# Emitted on its own signal for the reason the toggle has one.
+signal menu_falling_art_count_changed(count: int)
+var menu_falling_art_count: int = MenuFallingArt.PIECE_COUNT
+
 func _ready() -> void:
 	load_settings()
 	# The shared theme on the WINDOW, as the floor under every screen: anything
@@ -347,6 +352,14 @@ func set_menu_falling_art(value: bool) -> void:
 	save_settings()
 	menu_falling_art_changed.emit(value)
 
+func set_menu_falling_art_count(value: int) -> void:
+	value = clampi(value, MenuFallingArt.PIECE_COUNT_MIN, MenuFallingArt.PIECE_COUNT_MAX)
+	if value == menu_falling_art_count:
+		return
+	menu_falling_art_count = value
+	save_settings()
+	menu_falling_art_count_changed.emit(value)
+
 func set_game_filter(value: int) -> void:
 	value = clampi(value, 0, GameFilter.DOWNLOADED)
 	if value == game_filter:
@@ -395,6 +408,8 @@ func load_settings() -> void:
 	obs_overlay = bool(cfg.get_value("stream", "obs_overlay", true))
 	twitch_reminder = bool(cfg.get_value("stream", "twitch_reminder", true))
 	menu_falling_art = bool(cfg.get_value("display", "menu_falling_art", true))
+	menu_falling_art_count = clampi(int(cfg.get_value("display", "menu_falling_art_count",
+		MenuFallingArt.PIECE_COUNT)), MenuFallingArt.PIECE_COUNT_MIN, MenuFallingArt.PIECE_COUNT_MAX)
 	display_mode = clampi(int(cfg.get_value("display", DISPLAY_KEY,
 		DisplayMode.WINDOWED)), 0, DisplayMode.EXCLUSIVE)
 	var stored_size = cfg.get_value("display", "windowed_size", WINDOWED_SIZE)
@@ -413,6 +428,7 @@ func save_settings() -> void:
 	cfg.set_value("stream", "obs_overlay", obs_overlay)
 	cfg.set_value("stream", "twitch_reminder", twitch_reminder)
 	cfg.set_value("display", "menu_falling_art", menu_falling_art)
+	cfg.set_value("display", "menu_falling_art_count", menu_falling_art_count)
 	cfg.set_value("display", DISPLAY_KEY, display_mode)
 	cfg.set_value("display", "windowed_size", windowed_size)
 	cfg.save(CONFIG_PATH)
