@@ -874,17 +874,33 @@ func _refresh_pressure() -> void:
 # so the reserve costs the page no width; it is capped at the field's own width
 # budget all the same, so a line that long still wraps rather than widening the
 # column.
+#
+# THE BOSS WARNING TAKES THE SAME ROW, SO IT GETS THE SAME HOLD. While the next
+# spawn is a difficulty up the warning replaces the small print, and the reserve
+# above went with it: the board fell back to its shield row (399px at three
+# shields), the warning wrapped onto a second line, and the page with a shop on it
+# needed 641 of 625 — about one full-suite run in forty, whenever the run's spawn
+# count happened to sit on the boss rung.
 func _hold_small_print_on_one_row() -> void:
-	var want: float = 0.0
+	var small_want: float = 0.0
+	var warn_want: float = 0.0
 	if _height_budget == FIELD_HEIGHT_BUDGET_SHARED:
-		var shown: int = 0
-		for c in _pressure_small.get_children():
-			if c is Control and (c as Control).visible:
-				want += (c as Control).get_combined_minimum_size().x
-				shown += 1
-		want += _pressure_small.get_theme_constant("h_separation") * maxi(0, shown - 1)
-		want = minf(ceilf(want), float(FIELD_WIDTH_BUDGET))
-	_pressure_small.custom_minimum_size.x = want
+		if _boss_warning.visible:
+			var font: Font = _boss_warning.get_theme_font("font")
+			var fsize: int = _boss_warning.get_theme_font_size("font_size")
+			warn_want = font.get_string_size(_boss_warning.text,
+				HORIZONTAL_ALIGNMENT_LEFT, -1, fsize).x
+			warn_want = minf(ceilf(warn_want), float(FIELD_WIDTH_BUDGET))
+		else:
+			var shown: int = 0
+			for c in _pressure_small.get_children():
+				if c is Control and (c as Control).visible:
+					small_want += (c as Control).get_combined_minimum_size().x
+					shown += 1
+			small_want += _pressure_small.get_theme_constant("h_separation") * maxi(0, shown - 1)
+			small_want = minf(ceilf(small_want), float(FIELD_WIDTH_BUDGET))
+	_pressure_small.custom_minimum_size.x = small_want
+	_boss_warning.custom_minimum_size.x = warn_want
 
 # The warning above the grid while a lost run could bring the next boss on, or ""
 # (§3.2): the next spawn is a difficulty up and a game is in play. Names the

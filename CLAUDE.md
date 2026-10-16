@@ -275,6 +275,14 @@ godot --headless -s addons/gut/gut_cmdln.gd     # GUT suite: 57 scripts, ~2560 t
     page's Control tree with sizes on a passing and a failing run and diffing the
     two: same text, same grid, board 406 vs 369px. A layout test that varies is
     usually a WIDTH that varies upstream of a wrap; look for the wrap first.
+    **It came back once more, at "needs 641 of 625", about one full-suite run in
+    forty**, and the wrap was the BOSS WARNING: while the next spawn is a
+    difficulty up it takes the small print's row, and the one-row hold did not
+    cover it, so the board fell to 399px and the warning wrapped. It never failed
+    run on its own because a lone run's draw always opened on a Traditional game
+    (five shields, a wider board); the full suite's draw reached three. Found the
+    same way, by stress-looping the test inside a full run and diffing the
+    columns; `test_the_boss_warning_stays_on_one_row_with_a_shop` pins it.
 - The leaked-RID / orphan warnings at the end of a GUT run are also pre-existing
   noise from UI tests that build Controls.
 - To see a change on screen rather than in assertions, use the `verify` skill

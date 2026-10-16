@@ -8303,6 +8303,35 @@ func test_the_strip_small_print_stays_on_one_row_with_a_shop_whatever_the_shield
 			% [n, small.size.y, row])
 	_assert_fits("the page with a shop and a one-shield hero")
 
+# ...and the BOSS WARNING, which takes the small print's row while the next spawn
+# is a difficulty up. It had no hold of its own, so with three shields the board
+# fell to 399px, the warning took a second line and the page needed 641 of 625:
+# the fit test above failed whenever the run's spawn count sat on the boss rung,
+# about one full-suite run in forty. Stood here on purpose, with a crowded board.
+func test_the_boss_warning_stays_on_one_row_with_a_shop() -> void:
+	_at_720p()
+	var node: StringName = _a_shop()
+	if node == &"":
+		pending("the run is standing nowhere")
+		return
+	_pick_enemies(0)
+	_crowd_board(8)
+	_ui._mount_shop(node)
+	await get_tree().process_frame
+	while RunDifficulty.spawns_to_boss(GameState.spawn_events) != 1:
+		GameState.spawn_events += 1
+	GameState.shields = 3
+	GameState.bonus_shields = 0
+	_ui._refresh()
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var warning: Label = _ui._board._boss_warning
+	var row: float = (_ui._board._pressure_why as Control).get_combined_minimum_size().y
+	assert_true(warning.visible, "the next spawn is a difficulty up, so the warning is up")
+	assert_lt(warning.size.y, row * 2.0,
+		"the warning is one row (%.0fpx, a row is %.0f)" % [warning.size.y, row])
+	_assert_fits("the page with a shop and the boss warning up")
+
 func test_a_shelf_item_is_a_row_on_the_page_and_a_card_when_you_open_it() -> void:
 	var shop_node: StringName = _a_shop()
 	_ui._mount_shop(shop_node)
