@@ -345,6 +345,33 @@ func test_the_popup_names_who_inspired_whom() -> void:
 		"and it says which way the influence ran: %s" % text)
 	modal._close()
 
+# A ROAD WHOSE GAME HAS CHANGED keeps its old proof, and says whose it is: a
+# transmute (or Fracture 10's Collapse) paints a new game onto the slot, and the
+# connection being walked is still the original pair's.
+func test_a_transmuted_road_names_its_former_connection() -> void:
+	var here: GameData = Data.get_game(GameState.current_game_id)
+	var slot: StringName = StringName(_ui._choices[0]["slot"])
+	var there: GameData = Data.get_game(slot)
+	var found: Dictionary = GameData.describe_influence(here, there)
+	if found.is_empty():
+		pending("the first card is not an influence edge to describe")
+		return
+	var off: Array = RunGraph.off_map_ids()
+	GameLoop2.transmuted[slot] = off[0]
+	var modal = _ui.open_choice(0)
+	var text: String = _text_of(modal)
+	assert_true(text.contains("FORMER CONNECTION"), "the section says it is a former one: %s" % text)
+	assert_true(text.contains("Previously a connection between %s and %s" % [
+		here.display_name, there.display_name]), "between the original pair: %s" % text)
+	assert_true(text.contains("%s is now %s" % [there.display_name,
+		Data.get_game(StringName(off[0])).display_name]), "and what it became: %s" % text)
+	modal._close()
+
+func test_an_untouched_road_is_not_called_former() -> void:
+	var modal = _ui.open_choice(0)
+	assert_false(_text_of(modal).contains("FORMER CONNECTION"))
+	modal._close()
+
 func test_the_popup_shows_the_evidence_the_sheet_records() -> void:
 	var here: GameData = Data.get_game(GameState.current_game_id)
 	var slot: StringName = StringName(_ui._choices[0]["slot"])

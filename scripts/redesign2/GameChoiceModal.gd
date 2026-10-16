@@ -584,6 +584,15 @@ func _build_source_block() -> Control:
 		return null
 	var influencer: GameData = found["from"]
 	var influenced: GameData = found["to"]
+	# A FORMER CONNECTION (the owner's call, 16 Oct 2026): either end has had a
+	# different game painted over it since — by Transmute, or by Fracture 10's
+	# Collapse, which does it to the whole road walked. The road and its proof
+	# still belong to the original pair, so the section says so in as many words
+	# rather than crediting the games standing there now with that influence.
+	var now_here: GameData = GameLoop2.game_at(here.id)
+	var now_there: GameData = GameLoop2.game_at(there.id)
+	var former: bool = (now_here != null and now_here.id != here.id) \
+		or (now_there != null and now_there.id != there.id)
 
 	# SIZED FOR THE SLOT BESIDE THE COVER, which is a narrow one: the type sizes
 	# here are a step down from the rest of the column because two game names and a
@@ -593,17 +602,34 @@ func _build_source_block() -> Control:
 	box.custom_minimum_size = Vector2(SOURCE_MIN_W, 0)
 
 	var head := Label.new()
-	head.text = "🔗  SOURCE"
+	head.text = "🔗  FORMER CONNECTION" if former else "🔗  SOURCE"
 	head.add_theme_font_size_override("font_size", UITheme.FONT_TINY)
 	head.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
 	box.add_child(head)
 
 	var claim := Label.new()
 	claim.text = "%s inspired %s" % [influencer.display_name, influenced.display_name]
+	if former:
+		claim.text = "Previously a connection between %s and %s: %s" % [
+			here.display_name, there.display_name, claim.text]
 	claim.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	claim.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	claim.add_theme_color_override("font_color", UITheme.TEXT)
 	box.add_child(claim)
+	if former:
+		var since: Array = []
+		for pair in [[here, now_here], [there, now_there]]:
+			var was: GameData = pair[0]
+			var now: GameData = pair[1]
+			if now != null and now.id != was.id:
+				since.append("%s is now %s" % [was.display_name, now.display_name])
+		var changed := Label.new()
+		changed.name = "FormerConnection"
+		changed.text = "%s. The road and its proof are the old pair's." % "; ".join(since)
+		changed.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		changed.add_theme_font_size_override("font_size", UITheme.FONT_TINY)
+		changed.add_theme_color_override("font_color", Fracture.COLOR)
+		box.add_child(changed)
 
 	# The sheet flags roughly 110 links as a sequel or the same studio rather than
 	# one game merely inspiring another. That is a stronger claim, so it is said —
