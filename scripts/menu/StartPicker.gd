@@ -236,6 +236,18 @@ func _road_card(index: int, opt: Dictionary) -> Control:
 	genre.add_theme_color_override("font_color", accent)
 	box.add_child(genre)
 
+	# What the genre hands over (GameState.START_GEAR). Under the genre because it
+	# IS the genre's: three cards are three genres, so this is three kits to choose
+	# between, and a kit picked blind would not be a choice.
+	var gear := Label.new()
+	gear.name = "Gear"
+	gear.text = GameState.start_gear_text(int(opt["type"]))
+	gear.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	gear.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	gear.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
+	gear.add_theme_color_override("font_color", UITheme.TEXT)
+	box.add_child(gear)
+
 	# The cover is the button: clicking anywhere on the art selects the road.
 	var btn := HoverButton.new()
 	btn.custom_minimum_size = ROAD_ART
