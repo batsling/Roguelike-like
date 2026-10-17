@@ -89,3 +89,13 @@ func test_a_capstone_is_at_the_tier_of_the_band_it_closes() -> void:
 func test_a_negative_spawn_count_is_not_a_capstone() -> void:
 	assert_false(RunDifficulty.is_boss_spawn(-1))
 	assert_false(RunDifficulty.is_boss_spawn(-5))
+
+# "Every Nth spawn" is printed off the band, and a Fracture band is 3: a bare
+# "%dth" read "Every 3th spawn" on every Fracture run.
+func test_the_band_reads_as_an_english_ordinal() -> void:
+	var was: int = GameState.fracture
+	GameState.fracture = 0
+	assert_eq(RunDifficulty.games_per_tier_ordinal(), "4th")
+	GameState.fracture = Fracture.FASTER_TIER_LEVEL
+	assert_eq(RunDifficulty.games_per_tier_ordinal(), "3rd")
+	GameState.fracture = was

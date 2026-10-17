@@ -105,8 +105,8 @@ static func _ch_start() -> Dictionary:
 			_step(6, "A goal you ticked: that enemy dies, drops a piece of loot on "
 				+ "the board, pays a gold, and makes the chest waiting on the "
 				+ "reward screen bigger. One you left unticked: it survives, "
-				+ "follows you, and starts hitting you after every game you play "
-				+ "from now on."),
+				+ "follows you, walks a column closer for every run you lose, and "
+				+ "hits you on every lost run once it reaches the front."),
 			_p("Two rows on that list do not behave like a plain tick box. A goal "
 				+ "that COUNTS something — Defeat 3 bugs — is a + button with a "
 				+ "running total beside it instead, and only the press that "
@@ -187,7 +187,7 @@ static func _ch_choosing() -> Dictionary:
 			_kv("↩ Detour +N", "This card is off the shortest path. It costs you N "
 				+ "extra games to come back from."),
 			_kv("🏆 THE AMULET", "This is the game the run is a search for. Beat "
-				+ "its goal and the run is won, on the spot."),
+				+ "the game and the run is won, whether or not its boss went down."),
 			_h("Pressure: why the long way is a real option"),
 			_p("Only one thing moves the board: a run you LOSE, one turn each. "
 				+ "Handing a game in moves nobody. What the end of a game does "
@@ -248,8 +248,8 @@ static func _ch_playing() -> Dictionary:
 			_p("A roguelike is not beaten in one sitting, and you will lose runs of "
 				+ "it. Every time you do, you tick the attempt tracker yourself, "
 				+ "and each tick hands the enemies A TURN: the front line swings "
-				+ "and everything behind it walks a column closer, exactly as it "
-				+ "does when you report a game."),
+				+ "and everything behind it walks a column closer. Nothing else "
+				+ "moves the board — handing a game in does not."),
 			_p("It costs you no shields of either kind. There is no limit on how "
 				+ "many times you may fail at a game — what there is, is a board "
 				+ "that is one turn closer every time you do, and a pool that is "
@@ -266,7 +266,6 @@ static func _ch_playing() -> Dictionary:
 			_h("The checklist"),
 			_p("The left column is everything you are trying to do inside the real "
 				+ "game, in one list:"),
-			_b("This game's enemy and its goal."),
 			_b("Every follower's outstanding goal — old goals can be cleared at "
 				+ "any time, in any game, and doing so kills that follower exactly "
 				+ "as if you had beaten it on time."),
@@ -409,10 +408,10 @@ static func _ch_enemies() -> Dictionary:
 			_b("The strip on top of the board says the price before you pay it: "
 				+ "+N when this game ends, or none, and why."),
 			_h("Difficulty up"),
-			_p(("Every %dth spawn — a node's enemies arriving, or a game's end "
+			_p(("Every %s spawn — a node's enemies arriving, or a game's end "
 				+ "standing some up — is a DIFFICULTY UP: the tier steps, the board "
 				+ "grows, and a boss walks on. The strip counts down to it.")
-				% RunDifficulty.games_per_tier()),
+				% RunDifficulty.games_per_tier_ordinal()),
 			_h("Old goals never expire"),
 			_p("A follower's goal can be fulfilled during ANY later game. Do it "
 				+ "and the follower dies right there, drops its loot and pays its "
@@ -423,10 +422,9 @@ static func _ch_enemies() -> Dictionary:
 				+ "happens to have splitting enemies in it. Read your checklist "
 				+ "before you pick where to go — sometimes the right card is the "
 				+ "one that lets you pay off two old debts at once."),
-			_note("A follower whose old goal you cleared this game holds its fire "
-				+ "for the whole of that game — every turn of it. That makes "
-				+ "old-goal clearing worth MORE the closer you are to the Amulet, "
-				+ "which is the opposite of everything else on the pressure ladder."),
+			_note("A follower too tough to fall to one goal (2 Health, or a shield) "
+				+ "takes the hit, stays standing, and is STUNNED for two turns — "
+				+ "two lost runs where it neither strikes nor steps."),
 			_h("Other ways to be rid of one"),
 			_b("A BOMB kills a normal enemy outright — they have 1 Health. No loot, "
 				+ "no gold and no chest points, though: a bomb is an escape from a "
@@ -997,11 +995,11 @@ static func _ch_wrong() -> Dictionary:
 			_b("Pick cards whose games can pay off SEVERAL old goals at once. Read "
 				+ "the checklist first and choose the game to fit it, rather than "
 				+ "the other way round."),
-			_b("Clear an old goal even if you cannot clear this game's — a "
-				+ "follower you engaged holds its fire for the whole game."),
+			_b("Clear an old goal even if you cannot beat this game — it kills "
+				+ "that follower on the spot, wherever it is standing."),
 			_b("Bomb the ordinary enemies. No drop and no gold, but a dead enemy "
 				+ "is a dead enemy."),
-			_b("Push the front-line body backwards to buy a game, or sideways to "
+			_b("Push the front-line body backwards to buy a turn, or sideways to "
 				+ "unjam a lane."),
 			_b("Clear a game first try. Nothing you never lost is a turn the "
 				+ "stack never took, and the whole shield pool is still standing "

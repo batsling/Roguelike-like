@@ -53,6 +53,18 @@ const GAMES_PER_TIER_FRACTURED := 3
 static func games_per_tier() -> int:
 	return GAMES_PER_TIER_FRACTURED if Fracture.faster_tier() else GAMES_PER_TIER
 
+# The band as an ordinal — "4th", or "3rd" on a Fracture — for the copy that says
+# "every Nth spawn". A bare "%dth" read "3th" on every Fracture run.
+static func games_per_tier_ordinal() -> String:
+	var n: int = games_per_tier()
+	var suffix := "th"
+	if n % 100 < 11 or n % 100 > 13:
+		match n % 10:
+			1: suffix = "st"
+			2: suffix = "nd"
+			3: suffix = "rd"
+	return "%d%s" % [n, suffix]
+
 # Highest tier index (Tier enum size - 1). Difficulty is capped here.
 const MAX_TIER := Tier.INSANE
 

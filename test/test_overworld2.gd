@@ -1713,6 +1713,21 @@ func test_every_fourth_encounter_is_a_boss_at_its_own_tier() -> void:
 			"at %d spawns, the next %s the band" % [i,
 				"closes" if (i + 1) % RunDifficulty.GAMES_PER_TIER == 0 else "does not close"])
 
+# THE BOSS WARNING NAMES THE TIER IT STEPS UP TO, not the one being left. It is
+# raised before the spawn that closes the band, so `_current_tier()` is still the
+# old one — and the first warning of every run used to read "steps up to Low" on a
+# run that was already Low. At the cap nothing steps, so it names no tier at all.
+func test_the_boss_warning_names_the_tier_the_next_spawn_steps_up_to() -> void:
+	var per: int = RunDifficulty.games_per_tier()
+	GameState.spawn_events = per - 1
+	assert_true(_ui._boss_due_next())
+	assert_eq(_ui._boss_notice_tier(), "Medium", "Low -> Medium, named as Medium")
+	GameState.spawn_events = per * 2 - 1
+	assert_eq(_ui._boss_notice_tier(), "High")
+	GameState.spawn_events = per * (RunDifficulty.MAX_TIER + 1) - 1
+	assert_true(_ui._boss_due_next(), "the cap still lands a capstone every band")
+	assert_eq(_ui._boss_notice_tier(), "", "…but at Insane there is no step to name")
+
 # --- shields = the armour the game you selected granted (§3.2) -------------
 
 func test_picking_a_game_grants_its_shields() -> void:
@@ -4090,12 +4105,26 @@ func test_every_checklist_row_opens_unanswered_including_the_curses() -> void:
 		assert_false((f["check"] as CheckBox).button_pressed,
 			"every enemy row too — the ones that walked on with this game included")
 
+# The two curse tests below count bodies, and two things the RUN rolls could stand
+# an extra one up that is neither the curse's nor the road's `end_spawns`: a
+# CAPSTONE boss (§19.6), which lands on top of an end-of-game spawn when that spawn
+# is the band's fourth but is not counted in `end_spawns`, and a solo body authored
+# with more Health than one goal hit takes, which survives the report stunned. Both
+# failed `test_a_curse_left_unticked_is_what_bites` as "2 expected to equal 1" in a
+# full run. Arranged away rather than hoped away: the band restarts, so no spawn
+# these tests make can close it, and the solo body falls to its one hit.
+func _arrange_a_plain_curse_game() -> void:
+	GameState.spawn_events = 0
+	_pick_solo(0)
+	for inst in GameLoop2.arrivals:
+		_one_hit(int(inst))
+
 # Poor Sleep's bill is a BODY (every curse's is), so both halves of this are
 # read off the board: a met goal leaves nothing following, so anything standing
 # there afterwards is the curse and only the curse.
 func test_a_curse_you_ticked_costs_nothing() -> void:
 	GameState.add_curse_goal(&"poor_sleep")
-	_pick_solo(0)
+	_arrange_a_plain_curse_game()
 	var checks: Array = _curse_checks()
 	if checks.is_empty():
 		pending("the run did not reach this case (checks.is_empty())")
@@ -4111,7 +4140,7 @@ func test_a_curse_you_ticked_costs_nothing() -> void:
 
 func test_a_curse_left_unticked_is_what_bites() -> void:
 	GameState.add_curse_goal(&"poor_sleep")
-	_pick_solo(0)
+	_arrange_a_plain_curse_game()
 	_report_beat(_ui)                       # the row left exactly as it opened
 	# Less the road's own spawns as the game ended (§19.5), as above.
 	var walked: int = int(GameLoop2.last_result.get("end_spawns", 0))
