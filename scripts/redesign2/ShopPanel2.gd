@@ -275,15 +275,15 @@ func _big() -> bool:
 func _row_w() -> float:
 	return 260.0 if _big() else ROW_WIDTH
 func _row_h() -> float:
-	return 150.0 if _big() else ROW_HEIGHT
+	return 124.0 if _big() else ROW_HEIGHT
 func _row_icon() -> int:
-	return 64 if _big() else ROW_ICON
+	return 56 if _big() else ROW_ICON
 func _desc_lines() -> int:
-	return 5 if _big() else DESC_LINES
+	return 3 if _big() else DESC_LINES
 func _loot_h() -> float:
-	return 54.0 if _big() else LOOT_ROW_HEIGHT
+	return 96.0 if _big() else LOOT_ROW_HEIGHT
 func _loot_icon() -> int:
-	return 40 if _big() else LOOT_ICON
+	return 36 if _big() else LOOT_ICON
 func _pack_h() -> float:
 	return 130.0 if _big() else PACK_HEIGHT
 # A font size, one step up the scale in the pop-up.
@@ -421,6 +421,19 @@ func _render() -> void:
 func _loot_tile(slot: int, row: Dictionary) -> Control:
 	var entry: Dictionary = row.get("entry", {})
 	var sold: bool = bool(row.get("sold", false))
+	# In the pop-up a piece of loot is a card like an item's, with what it does
+	# written under it — through LootSystem's hover, so an unidentified one still
+	# reads "???" here.
+	if _big():
+		var hover: Dictionary = LootSystem.hover_card(entry)
+		var card := _card_button(LootSystem.LOOT_COLOR, sold, row,
+			LootSystem.art_tex(entry, _loot_icon()), LootSystem.display_name(entry),
+			" ".join(PackedStringArray(hover.get("lines", []))),
+			Vector2(_row_w(), _loot_h()), 2)
+		card.name = "LootTile%d" % slot
+		HoverCard.attach(card, hover)
+		card.pressed.connect(func(): open_loot_card(slot))
+		return card
 	var afford: bool = ShopSystem.can_afford(row)
 	var tint: Color = LootSystem.LOOT_COLOR
 	var btn := Button.new()
@@ -556,43 +569,54 @@ func open_loot_card(slot: int) -> Node:
 # rather than left to the theme: a Button's `normal` is what carries the outline.
 func _shelf_row(slot: int, entry: Dictionary) -> Control:
 	var item: ItemData = Data.get_item2(StringName(entry.get("item", &"")))
+	if item == null:
+		var empty := Button.new()
+		empty.custom_minimum_size = Vector2(_row_w(), _row_h())
+		empty.text = "(empty)"
+		empty.disabled = true
+		return empty
 	var sold: bool = bool(entry.get("sold", false))
-	var afford: bool = ShopSystem.can_afford(entry)
 	# item_color, not rarity_color: a Boss relic has a class of its own and should
 	# read as one here exactly as it does in the pack and on the drop modal.
-	var tint: Color = UITheme.item_color(item)
+	var btn := _card_button(UITheme.item_color(item), sold, entry,
+		UITheme.crisp_tex(item.image, _row_icon()), item.display_name, item.description,
+		Vector2(_row_w(), _row_h()), _desc_lines())
+	btn.tooltip_text = "%s — %s\n\n%s\n\n%s" % [
+		item.display_name, _kind_line(item), item.description,
+		"Click to look at it." if not sold else "Already bought."]
+	btn.pressed.connect(func(): open_card(slot))
+	return btn
 
+# ONE THING FOR SALE AS A CARD: art, name and price across the top, what it does
+# under them across the full width. Items always; loot in the pop-up, where there
+# is room for what a piece does to be read without opening it.
+#
+# The rarity dress: tinted toward its colour and edged in it, the way the pack
+# draws it. A sold slot keeps its place and loses its colour — the shelf has to stay
+# recognisable on a second visit, which is the whole reason what you don't buy
+# stays here. Hover and press lift the same box rather than replacing it, so the
+# outline never changes colour under the cursor.
+#
+# The contents are CHILDREN of the button rather than its own icon-and-text. A
+# Button lays those out as one line and clips the lot, which is what put the price
+# behind the ellipsis; children can be laid out as a card, and only the name and
+# the description are ever given up to a trim. They ignore the mouse, so the whole
+# card is still one button.
+func _card_button(tint: Color, sold: bool, entry: Dictionary, art: Control,
+		title: String, desc_text: String, size: Vector2, lines: int) -> Button:
+	var afford: bool = ShopSystem.can_afford(entry)
 	var btn := Button.new()
-	btn.custom_minimum_size = Vector2(_row_w(), _row_h())
+	btn.custom_minimum_size = size
 	btn.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	btn.add_theme_font_size_override("font_size", _font(UITheme.FONT_BODY, UITheme.FONT_LEAD))
-	if item == null:
-		btn.text = "(empty)"
-		btn.disabled = true
-		return btn
-
-	# The rarity dress. A sold slot keeps its place and loses its colour — the
-	# shelf has to stay recognisable on a second visit, which is the whole reason
-	# what you don't buy stays here.
 	var edge: Color = UITheme.TEXT_FAINT if sold else tint.lerp(UITheme.BG, 0.45)
 	var fill: Color = tint.lerp(UITheme.BG, 0.90 if sold else 0.86)
 	btn.add_theme_stylebox_override("normal", UITheme.flat(fill, 6, 0, 2, edge))
 	btn.add_theme_stylebox_override("disabled", UITheme.flat(fill, 6, 0, 2, edge))
-	# Hover and press lift the same box rather than replacing it, so the outline
-	# never changes colour under the cursor — the border means rarity and nothing
-	# else.
-	btn.add_theme_stylebox_override("hover",
-		UITheme.flat(tint.lerp(UITheme.BG, 0.78), 6, 0, 2, tint))
-	btn.add_theme_stylebox_override("pressed",
-		UITheme.flat(tint.lerp(UITheme.BG, 0.72), 6, 0, 2, tint))
+	btn.add_theme_stylebox_override("hover", UITheme.flat(tint.lerp(UITheme.BG, 0.78), 6, 0, 2, tint))
+	btn.add_theme_stylebox_override("pressed", UITheme.flat(tint.lerp(UITheme.BG, 0.72), 6, 0, 2, tint))
 	btn.add_theme_stylebox_override("focus", UITheme.flat(Color(0, 0, 0, 0), 6, 0, 0))
 
-	# The contents are CHILDREN of the button rather than its own icon-and-text.
-	# A Button lays those out as one line and clips the lot, which is what put the
-	# price behind the ellipsis; children can be laid out as a card, and only the
-	# name and the description are ever given up to a trim. They ignore the mouse,
-	# so the whole row is still one button.
 	var pad := MarginContainer.new()
 	pad.set_anchors_preset(Control.PRESET_FULL_RECT)
 	pad.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -601,21 +625,17 @@ func _shelf_row(slot: int, entry: Dictionary) -> Control:
 	pad.add_theme_constant_override("margin_top", 5)
 	pad.add_theme_constant_override("margin_bottom", 5)
 	btn.add_child(pad)
-
 	var body := VBoxContainer.new()
 	body.add_theme_constant_override("separation", UITheme.GAP_HAIR)
 	body.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	pad.add_child(body)
-
 	var line := HBoxContainer.new()
 	line.add_theme_constant_override("separation", UITheme.GAP_SNUG)
 	line.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	body.add_child(line)
-
-	var art := UITheme.crisp_tex(item.image, _row_icon())
 	art.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	art.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	line.add_child(art)
-
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", UITheme.GAP_NONE)
 	col.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -624,18 +644,16 @@ func _shelf_row(slot: int, entry: Dictionary) -> Control:
 	line.add_child(col)
 
 	var name_lbl := Label.new()
-	name_lbl.text = item.display_name
+	name_lbl.text = title
 	# The name trims before the price does: the price is the one number the panel
 	# exists to show, and the tooltip and the card both repeat the name in full.
 	name_lbl.clip_text = true
 	name_lbl.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	name_lbl.custom_minimum_size.x = 0.0
 	name_lbl.add_theme_font_size_override("font_size", _font(UITheme.FONT_BODY, UITheme.FONT_LEAD))
-	name_lbl.add_theme_color_override("font_color",
-		UITheme.TEXT_FAINT if sold else tint)
+	name_lbl.add_theme_color_override("font_color", UITheme.TEXT_FAINT if sold else tint)
 	name_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	col.add_child(name_lbl)
-
 	var price_lbl := Label.new()
 	price_lbl.text = "Sold" if sold else _price_text(entry)
 	price_lbl.add_theme_font_size_override("font_size", _font(UITheme.FONT_TEXT, UITheme.FONT_LEAD))
@@ -643,33 +661,26 @@ func _shelf_row(slot: int, entry: Dictionary) -> Control:
 	price_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	col.add_child(price_lbl)
 
-	# WHAT THE THING DOES, across the whole row rather than in the column beside
-	# the art. Wrapped to DESC_LINES and ellipsized after them, so a long relic
-	# trims instead of growing the row and taking the page off the bottom of the
-	# window — and `custom_minimum_size.x = 0` so the sentence never reports its
-	# own length as a width the panel has to honour, which is the bug the header
-	# above used to have.
+	# WHAT THE THING DOES, across the whole card rather than in the column beside
+	# the art. Wrapped to `lines` and ellipsized after them, so a long one trims
+	# instead of growing the card — and `custom_minimum_size.x = 0` so the sentence
+	# never reports its own length as a width the panel has to honour.
 	var desc := Label.new()
-	desc.text = item.description
+	desc.text = desc_text
 	desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	desc.max_lines_visible = _desc_lines()
+	desc.max_lines_visible = lines
 	desc.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	desc.clip_text = true
 	desc.custom_minimum_size.x = 0.0
 	desc.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	desc.add_theme_font_size_override("font_size", _font(UITheme.FONT_SMALL, UITheme.FONT_TEXT))
-	desc.add_theme_color_override("font_color",
-		UITheme.TEXT_FAINT if sold else UITheme.TEXT_DIM)
+	desc.add_theme_color_override("font_color", UITheme.TEXT_FAINT if sold else UITheme.TEXT_DIM)
 	desc.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	body.add_child(desc)
 
 	# One you cannot afford is dimmed rather than dropped or disabled — you can
 	# still open it and read it, you just cannot buy it yet.
 	btn.modulate.a = 0.55 if sold else (1.0 if afford else 0.78)
-	btn.tooltip_text = "%s — %s\n\n%s\n\n%s" % [
-		item.display_name, _kind_line(item), item.description,
-		"Click to look at it." if not sold else "Already bought."]
-	btn.pressed.connect(func(): open_card(slot))
 	return btn
 
 
