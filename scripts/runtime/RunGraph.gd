@@ -1742,28 +1742,37 @@ const START_WEIGHTING := true
 
 # Reach per start, on the bare map. Not cleared by invalidate_cache — that runs
 # twice per generation while a previous run's rifts are held (_on_bare_map) and
-# the bare map has not changed — but by the signature below moving: the band and
-# the bare graph's size, which is what a filter, the catalogue or a custom band
-# changes.
+# the bare map has not changed — but by the signature below moving: the band, the
+# bare graph's size, and the Amulet set reach is counted against, which a filter,
+# the catalogue, a custom band or a named Amulet changes.
 static var _reach_cache: Dictionary = {}     # StringName -> int
 static var _reach_sig: String = ""
 
-static func _reach_signature() -> String:
+static func _reach_signature(amulets: Dictionary) -> String:
 	_build_adj()
 	var edges: int = 0
 	for id in _adj_cache:
 		edges += (_adj_cache[id] as Array).size()
 	var band: Vector2i = RunConfig.path_band()
-	return "%d:%d:%d:%d:%d" % [band.x, band.y, _adj_cache.size(), edges, _rift_games.size()]
+	return "%d:%d:%d:%d:%d:%d" % [band.x, band.y, _adj_cache.size(), edges,
+		_rift_games.size(), amulets.size()]
+
+# Drops the cached reach if the map or the Amulet set has moved since it was
+# counted. Once per panel: the signature walks the whole adjacency list.
+static func _refresh_reach_cache(amulets: Dictionary) -> void:
+	var sig: String = _reach_signature(amulets)
+	if sig != _reach_sig:
+		_reach_cache.clear()
+		_reach_sig = sig
 
 # How many of `amulets` (id -> anything) sit inside the band from `start_id`.
 # A plain BFS rather than bfs_distances: the memo is capped at BFS_CACHE_MAX and
 # a sweep of every start would clear it under the generation that is using it.
-static func start_reach(start_id: StringName, amulets: Dictionary) -> int:
-	var sig: String = _reach_signature()
-	if sig != _reach_sig:
-		_reach_cache.clear()
-		_reach_sig = sig
+# `fresh` says the caller has already checked the cache against this Amulet set
+# (start_weights does, once for the whole panel).
+static func start_reach(start_id: StringName, amulets: Dictionary, fresh: bool = false) -> int:
+	if not fresh:
+		_refresh_reach_cache(amulets)
 	if _reach_cache.has(start_id):
 		return int(_reach_cache[start_id])
 	var band: Vector2i = RunConfig.path_band()
@@ -1791,12 +1800,13 @@ static func start_weights(per_type: Dictionary, amulets: Dictionary) -> Dictiona
 	var out: Dictionary = {}
 	if not START_WEIGHTING:
 		return out
+	_refresh_reach_cache(amulets)
 	for t in per_type:
 		for l in per_type[t]:
 			for c in (per_type[t][l] as Dictionary)["pool"]:
 				var id: StringName = (c["game"] as GameData).id
 				if not out.has(id):
-					out[id] = 1.0 / float(maxi(1, start_reach(id, amulets)))
+					out[id] = 1.0 / float(maxi(1, start_reach(id, amulets, true)))
 	return out
 
 # --- never the same panel twice (NO REPEATS) ------------------------------

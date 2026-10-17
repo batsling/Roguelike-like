@@ -161,6 +161,28 @@ func test_reach_counts_the_amulets_inside_the_band() -> void:
 			want += 1
 	assert_eq(RunGraph.start_reach(start, amulets), want)
 
+# A named Amulet changes the set reach is counted against without changing the
+# map, so the cache has to notice — counted against "every game" first, then
+# against one game, the second answer cannot be the first one read back.
+func test_reach_is_recounted_when_the_amulet_set_changes() -> void:
+	var start: StringName = RunGraph.best_connected(1)[0]
+	var every: Dictionary = {}
+	for g in Data.all_games():
+		if g is GameData:
+			every[g.id] = true
+	var far: StringName = &""
+	var d: Dictionary = RunGraph.bfs_distances(start)
+	var band: Vector2i = RunConfig.path_band()
+	for id in d:
+		if int(d[id]) >= band.x and int(d[id]) <= band.y:
+			far = id
+			break
+	if far == &"":
+		pending("nothing sits in the band from the best-connected game")
+		return
+	assert_gt(RunGraph.start_reach(start, every), 1)
+	assert_eq(RunGraph.start_reach(start, {far: true}), 1, "one Amulet, one in reach")
+
 func test_a_start_weighs_one_over_its_reach() -> void:
 	var start: StringName = RunGraph.best_connected(1)[0]
 	var amulets: Dictionary = {}
