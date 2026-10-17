@@ -419,3 +419,11 @@ func test_rarer_keepers_are_dealt_less() -> void:
 		if ShopSystem.keeper_for(node).id == &"legend_k":
 			legend += 1
 	assert_lt(legend, 20, "1 in 76 or so, not one in two")
+
+func test_a_reroll_keeps_a_pack_paid_for_and_not_yet_picked() -> void:
+	var node: StringName = _stand(_real(&"jimbo"))
+	GameState.gold = 10
+	GameState.scramble = 1
+	var cards: Array = ShopSystem.buy_pack(node, 0)
+	assert_true(ShopSystem.reroll(node))
+	assert_eq(ShopSystem.pack_stock(node)[0].get("cards"), cards, "still the player's three")

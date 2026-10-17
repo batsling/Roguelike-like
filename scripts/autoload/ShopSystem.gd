@@ -636,7 +636,12 @@ func reroll(game_id: StringName) -> bool:
 	# chance sale is a first-roll thing and does not come back.
 	shop["stock"] = _roll_stock(game_id, int(shop["rerolls"]), stock(game_id).size())
 	shop["loot"] = _roll_loot(game_id, loot_stock(game_id).size(), false)
-	shop["packs"] = _roll_packs(game_id, pack_stock(game_id).size(), false)
+	# …except a pack already paid for and not yet picked from: it is the player's.
+	var packs: Array = _roll_packs(game_id, pack_stock(game_id).size(), false)
+	for i in range(mini(packs.size(), pack_stock(game_id).size())):
+		if (pack_stock(game_id)[i] as Dictionary).has("cards"):
+			packs[i] = pack_stock(game_id)[i]
+	shop["packs"] = packs
 	GameState.emit_signal("stats_changed")
 	GameLog.add("Rerolled the shop.", Color(0.6, 0.75, 1.0))
 	shop_changed.emit(game_id)
