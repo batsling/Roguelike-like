@@ -145,6 +145,17 @@ func keeper_has(node_id: StringName, token: String) -> bool:
 	var keeper: ShopkeeperData = keeper_for(node_id)
 	return keeper != null and keeper.effect.has(token.to_lower())
 
+# The number a keeper's rule carries (`steal 3` -> 3), or 0 without the rule.
+func keeper_number(node_id: StringName, token: String) -> int:
+	var keeper: ShopkeeperData = keeper_for(node_id)
+	if keeper == null:
+		return 0
+	for e in keeper.effect:
+		var parts: PackedStringArray = String(e).split(" ", false)
+		if parts.size() == 2 and parts[0] == token:
+			return int(parts[1])
+	return 0
+
 func _dealt() -> Dictionary:
 	var roster: Array = Data.all_shopkeepers()
 	var nodes: Array[StringName] = shop_nodes()
@@ -162,17 +173,27 @@ func _dealt() -> Dictionary:
 	rng.seed = hash("%s|%d" % [_KEEPER_SALT, GameState.run_seed])
 	var deck: Array = []
 	for node in nodes:
-		# A fresh shuffle each time the deck runs out: more Shop nodes than keepers
-		# repeats them, but only once every keeper has had a shop.
+		# Drawn WITHOUT replacement, weighted by rarity (Data.RARITY_WEIGHTS): more
+		# Shop nodes than keepers refills the deck, so a keeper repeats only once
+		# every keeper has had a shop.
 		if deck.is_empty():
 			deck = roster.duplicate()
-			for i in range(deck.size() - 1, 0, -1):
-				var j: int = rng.randi_range(0, i)
-				var tmp = deck[i]
-				deck[i] = deck[j]
-				deck[j] = tmp
-		_deal[node] = String((deck.pop_back() as ShopkeeperData).id)
+		var total: float = 0.0
+		for k in deck:
+			total += _keeper_weight(k)
+		var roll: float = rng.randf() * total
+		var pick: int = deck.size() - 1
+		for i in range(deck.size()):
+			roll -= _keeper_weight(deck[i])
+			if roll < 0.0:
+				pick = i
+				break
+		_deal[node] = String((deck[pick] as ShopkeeperData).id)
+		deck.remove_at(pick)
 	return _deal
+
+func _keeper_weight(k: ShopkeeperData) -> float:
+	return float(Data.RARITY_WEIGHTS[rarity_rung(k.rarity)])
 
 const _KEEPER_SALT := "shop-keeper"
 
@@ -189,8 +210,28 @@ func price_for(rarity: int) -> int:
 		+ Fracture.shop_surcharge()
 
 
+# What `entry` costs NOW: the price it was rolled at, times every run-wide cut
+# (GameState.shop_price_cuts — Steam Sale, a beaten keeper), multiplied and
+# rounded up. Applied here, at reading, because a cut can arrive after the shelf
+# was rolled.
 func price_of(entry: Dictionary) -> int:
-	return int(entry.get("price", BASE_PRICE))
+	return discounted(int(entry.get("price", BASE_PRICE)))
+
+# `price` after the run's cuts. Integer arithmetic, so 5 at -20% is 4 and not a
+# float a hair over it rounded up to 5.
+func discounted(price: int) -> int:
+	var num: int = price
+	var den: int = 1
+	for pct in GameState.shop_price_cuts():
+		num *= 100 - clampi(int(pct), 0, 100)
+		den *= 100
+	@warning_ignore("integer_division")
+	return (num + den - 1) / den
+
+# What a card pack costs, before a keeper's sale and the run's cuts.
+const PACK_PRICE := 4
+# How many cards a pack opens to; the player keeps one.
+const PACK_CARDS := 3
 
 # What a piece of loot of `rarity` ("Common".."Legendary") costs on a shelf.
 func loot_price_for(rarity: String) -> int:
@@ -221,13 +262,37 @@ func shop_for(game_id: StringName) -> Dictionary:
 			"rerolls": 0,
 			"seen": false,
 		}
-		GameState.shops[game_id]["stock"] = _roll_stock(game_id, 0)
-		GameState.shops[game_id]["loot"] = _roll_loot(game_id)
+		var counts: Vector2i = _slot_counts(keeper)
+		GameState.shops[game_id]["stock"] = _roll_stock(game_id, 0, counts.x)
+		GameState.shops[game_id]["loot"] = _roll_loot(game_id, counts.y, true)
+		GameState.shops[game_id]["packs"] = _roll_packs(game_id,
+			keeper.pack_slots if keeper != null else 0, true)
 	# A shelf saved before loot was sold gets its loot row the first time it is
 	# asked for, rather than standing half-empty for the rest of that run.
 	if not (GameState.shops[game_id] as Dictionary).has("loot"):
-		GameState.shops[game_id]["loot"] = _roll_loot(game_id)
+		GameState.shops[game_id]["loot"] = _roll_loot(game_id, LOOT_SLOTS, false)
 	return GameState.shops[game_id]
+
+# DONATION SHELF (§14.6): how many slots the profile's best Donation Machine bank
+# had unlocked when this run started. Items take 1-2 of them (1 on the smallest),
+# loot the rest.
+const DONATION_TIERS := [[600, 6], [200, 5], [100, 4], [20, 3], [0, 2]]
+
+func donation_slots(best: int) -> int:
+	for tier in DONATION_TIERS:
+		if best >= int(tier[0]):
+			return int(tier[1])
+	return 2
+
+# (items, loot) a fresh shelf holds.
+func _slot_counts(keeper: ShopkeeperData) -> Vector2i:
+	if keeper == null:
+		return Vector2i(STOCK_SLOTS, LOOT_SLOTS)
+	if keeper.effect.has("donation_shelf"):
+		var total: int = donation_slots(GameState.donation_best)
+		var items: int = 1 if total <= 2 else 1 + randi() % 2
+		return Vector2i(items, total - items)
+	return Vector2i(keeper.item_slots, keeper.loot_slots)
 
 
 # The shop as it STANDS, without rolling one into existence. This is what the
@@ -309,6 +374,13 @@ func remaining(game_id: StringName) -> Array:
 func is_sold_out(game_id: StringName) -> bool:
 	return not (stock(game_id).is_empty() and loot_stock(game_id).is_empty()) \
 		and remaining(game_id).is_empty() and remaining_loot(game_id).is_empty()
+
+# The pack row, sold slots included: [{pack, price, sold, cards}].
+func pack_stock(game_id: StringName) -> Array:
+	return peek(game_id).get("packs", [])
+
+func remaining_packs(game_id: StringName) -> Array:
+	return pack_stock(game_id).filter(func(r): return not bool(r.get("sold", false)))
 
 # The loot row, sold slots included: [{entry, price, sold}].
 func loot_stock(game_id: StringName) -> Array:
@@ -399,11 +471,147 @@ func buy_loot(game_id: StringName, slot: int) -> Dictionary:
 	return entry
 
 # ---------------------------------------------------------------------------
+# Packs (§14.6)
+# ---------------------------------------------------------------------------
+
+# Buy pack `slot`: pay, and roll the cards inside (PACK_CARDS, rarities rolled as
+# a drop's are). Returns them for the player to pick ONE of (take_pack_card). The
+# cards are kept on the row until a pick is made, so a pack closed unopened still
+# holds the same three. {} … [] when it could not happen: no shop, bad slot, sold,
+# too dear, or no room in the pack for a card.
+func buy_pack(game_id: StringName, slot: int) -> Array:
+	var shop: Dictionary = shop_for(game_id)
+	var rows: Array = shop.get("packs", [])
+	if slot < 0 or slot >= rows.size():
+		return []
+	var row: Dictionary = rows[slot]
+	if row.has("cards"):
+		return row["cards"]
+	if bool(row.get("sold", false)) or not can_afford(row):
+		return []
+	var cards: Array = []
+	for _i in range(PACK_CARDS):
+		var c: Dictionary = GameState.roll_loot_entry("card")
+		if not c.is_empty():
+			cards.append(c)
+	if cards.is_empty() or not GameState.loot_fits(cards[0]):
+		return []
+	_pay(row)
+	row["cards"] = cards
+	GameLog.add("Bought a pack for %s." % price_words(row), Color(1.0, 0.84, 0.4))
+	shop_changed.emit(game_id)
+	return cards
+
+# Take card `pick` out of opened pack `slot`; the other two are gone.
+func take_pack_card(game_id: StringName, slot: int, pick: int) -> bool:
+	var rows: Array = pack_stock(game_id)
+	if slot < 0 or slot >= rows.size():
+		return false
+	var row: Dictionary = rows[slot]
+	var cards: Array = row.get("cards", [])
+	if pick < 0 or pick >= cards.size():
+		return false
+	if not GameState.take_loot_entry((cards[pick] as Dictionary).duplicate(true)):
+		return false
+	row.erase("cards")
+	row["sold"] = true
+	shop_changed.emit(game_id)
+	return true
+
+
+# ---------------------------------------------------------------------------
+# Keeper actions (§14.6)
+# ---------------------------------------------------------------------------
+
+func can_steal(game_id: StringName) -> bool:
+	return keeper_number(game_id, "steal") > 0 and not bool(shop_for(game_id).get("stolen", false))
+
+# Charon: take `steal N` gold, once, and his boss walks onto the board. The shop
+# stays open.
+func steal(game_id: StringName) -> bool:
+	if not can_steal(game_id):
+		return false
+	var keeper: ShopkeeperData = keeper_for(game_id)
+	shop_for(game_id)["stolen"] = true
+	GameState.change_gold(keeper_number(game_id, "steal"))
+	var boss: GoalEnemyData = Data.get_boss(keeper.boss)
+	if boss != null:
+		GameLoop2.spawn_to_stack(boss)
+	GameLog.add("Stole from %s." % keeper.display_name, UITheme.DANGER)
+	shop_changed.emit(game_id)
+	return true
+
+func can_bomb(game_id: StringName) -> bool:
+	return keeper_has(game_id, "bombable") and GameState.bombs >= 1 \
+		and not bool(shop_for(game_id).get("bombed", false))
+
+func is_bombed(game_id: StringName) -> bool:
+	return bool(peek(game_id).get("bombed", false))
+
+# Isaac's Shopkeeper, bombed (once a shop; he is gone after): 1% Steam Sale, and
+# the rest split in thirds between nothing, 1-5 gold and a spider on the board.
+# Returns what happened: "steam_sale", "gold", "spider" or "nothing".
+func bomb(game_id: StringName) -> String:
+	if not can_bomb(game_id):
+		return ""
+	GameState.bombs -= 1
+	GameState.emit_signal("stats_changed")
+	shop_for(game_id)["bombed"] = true
+	var roll: int = randi() % 100
+	var out: String = "nothing"
+	if roll == 99:
+		var sale: ItemData = Data.get_item2(STEAM_SALE)
+		if sale != null:
+			GameState.add_item(sale)
+			out = "steam_sale"
+	elif roll >= 66:
+		var spider: GoalEnemyData = Data.get_goal_enemy(SPIDER)
+		if spider != null:
+			GameLoop2.spawn_to_stack(spider)
+			out = "spider"
+	elif roll >= 33:
+		GameState.change_gold(1 + randi() % 5)
+		out = "gold"
+	shop_changed.emit(game_id)
+	return out
+
+const STEAM_SALE := &"steam_sale"
+const SPIDER := &"spider"
+
+# A keeper's boss beaten (Charon): that keeper's `beaten_sale` comes off every
+# price for the rest of the run, once per keeper.
+func _on_enemy_defeated(enemy, _cell) -> void:
+	if not (enemy is GoalEnemyData):
+		return
+	for k in Data.all_shopkeepers():
+		var keeper: ShopkeeperData = k
+		if keeper.boss != (enemy as GoalEnemyData).id:
+			continue
+		for e in keeper.effect:
+			var parts: PackedStringArray = String(e).split(" ", false)
+			if parts.size() == 2 and parts[0] == "beaten_sale":
+				if not GameState.shop_sales.has(String(keeper.id)):
+					GameState.shop_sales[String(keeper.id)] = int(parts[1])
+					Notifications.notify("Shops -%s%%" % parts[1], UITheme.SHOP_GREEN)
+
+func _ready() -> void:
+	GameLoop2.enemy_defeated.connect(_on_enemy_defeated)
+
+
+# ---------------------------------------------------------------------------
 # Rerolling
 # ---------------------------------------------------------------------------
 
 func can_reroll(game_id: StringName) -> bool:
-	return not shop_for(game_id).is_empty() and GameState.scramble >= REROLL_COST
+	if shop_for(game_id).is_empty():
+		return false
+	if keeper_has(game_id, "gold_reroll"):
+		return GameState.gold >= gold_reroll_cost(game_id)
+	return GameState.scramble >= REROLL_COST
+
+# A `gold_reroll` keeper's next reroll: 1 gold, +1 for each one already bought.
+func gold_reroll_cost(game_id: StringName) -> int:
+	return discounted(1 + int(peek(game_id).get("gold_rerolls", 0)))
 
 
 # Spend a Scramble and redraw the whole shelf — SOLD SLOTS INCLUDED. Refilling
@@ -417,14 +625,20 @@ func reroll(game_id: StringName) -> bool:
 	if not can_reroll(game_id):
 		return false
 	var shop: Dictionary = shop_for(game_id)
-	GameState.scramble -= REROLL_COST
+	if keeper_has(game_id, "gold_reroll"):
+		GameState.spend_gold(gold_reroll_cost(game_id))
+		shop["gold_rerolls"] = int(shop.get("gold_rerolls", 0)) + 1
+	else:
+		GameState.scramble -= REROLL_COST
 	shop["rerolls"] = int(shop.get("rerolls", 0)) + 1
-	shop["stock"] = _roll_stock(game_id, int(shop["rerolls"]))
-	# BOTH ROWS: a reroll replaces what is in front of you, wholesale.
-	shop["loot"] = _roll_loot(game_id)
+	# EVERY ROW, each the size it was: a slot that was an item stays an item, a
+	# loot slot stays loot (the donation shelf's split is kept, §14.6). A keeper's
+	# chance sale is a first-roll thing and does not come back.
+	shop["stock"] = _roll_stock(game_id, int(shop["rerolls"]), stock(game_id).size())
+	shop["loot"] = _roll_loot(game_id, loot_stock(game_id).size(), false)
+	shop["packs"] = _roll_packs(game_id, pack_stock(game_id).size(), false)
 	GameState.emit_signal("stats_changed")
-	GameLog.add("Rerolled the shop — %d Scramble left." % GameState.scramble,
-		Color(0.6, 0.75, 1.0))
+	GameLog.add("Rerolled the shop.", Color(0.6, 0.75, 1.0))
 	shop_changed.emit(game_id)
 	return true
 
@@ -448,7 +662,7 @@ func headline(game_id: StringName) -> String:
 	if not has_seen(game_id):
 		return "A shop stands here. Beat this game and it opens."
 	var left: int = remaining(game_id).size()
-	left += remaining_loot(game_id).size()
+	left += remaining_loot(game_id).size() + remaining_packs(game_id).size()
 	if left == 0:
 		return "You cleared this shop out. A Scramble would restock it."
 	return "You left %d thing%s on this shelf." % [left, "" if left == 1 else "s"]
@@ -489,12 +703,11 @@ func stock_lines(game_id: StringName) -> Array:
 # Both are PREFERENCES, not filters: when the catalog can't satisfy them the draw
 # still fills the shelf. A shop with two slots because the pool was thin would
 # read as a bug, and the fallback is invisible.
-func _roll_stock(game_id: StringName, reroll_index: int) -> Array:
+func _roll_stock(game_id: StringName, reroll_index: int, slots: int) -> Array:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = hash("%s|%s|%d|%d" % [
 		_STOCK_SALT, String(game_id), GameState.run_seed, reroll_index])
 	var keeper: ShopkeeperData = keeper_at(game_id)
-	var slots: int = keeper.item_slots if keeper != null else STOCK_SLOTS
 	var pools: PackedStringArray = keeper.pools if keeper != null else PackedStringArray()
 	var out: Array = []
 	var taken: Dictionary = {}
@@ -504,7 +717,7 @@ func _roll_stock(game_id: StringName, reroll_index: int) -> Array:
 			continue
 		taken[item.id] = true
 		out.append(_priced(keeper, {"item": String(item.id), "sold": false},
-			price_for(int(item.rarity)), _item_marks(item)))
+			price_for(int(item.rarity)), _item_marks(item), reroll_index == 0))
 	return out
 
 
@@ -512,21 +725,36 @@ func _roll_stock(game_id: StringName, reroll_index: int) -> Array:
 # price. Rolled live rather than seeded like the items: a piece carries run state
 # (a pill's dose, a wand's charges, a weapon's uid), and the shelf is saved with the
 # run, so a reload puts back what was rolled either way.
-func _roll_loot(game_id: StringName) -> Array:
+func _roll_loot(game_id: StringName, slots: int, first: bool) -> Array:
 	var keeper: ShopkeeperData = keeper_at(game_id)
-	var slots: int = keeper.loot_slots if keeper != null else LOOT_SLOTS
 	var out: Array = []
 	for _i in range(slots):
 		var kind: String = "loot"
 		if keeper != null and not keeper.loot_kinds.is_empty():
 			kind = _pick_loot_kind(keeper.loot_kinds)
-		var entry: Dictionary = GameState.roll_loot_entry(kind)
+		var entry: Dictionary
+		# A keeper's loot tag (Jimbo's jokers) is a card roll by tag; the generator
+		# holds the tag to card-only keepers.
+		if keeper != null and keeper.loot_tag != "" and kind == "card":
+			entry = CardSystem.roll_card_loot(null, keeper.loot_tag)
+		else:
+			entry = GameState.roll_loot_entry(kind)
 		if entry.is_empty():
 			continue
 		var rarity: String = String(entry.get("rarity", "Common"))
 		out.append(_priced(keeper, {"entry": entry, "sold": false},
 			loot_price_for(rarity),
-			["loot", rarity.to_lower(), String(entry.get("type", ""))]))
+			["loot", rarity.to_lower(), String(entry.get("type", ""))], first))
+	return out
+
+# `slots` card packs: PACK_PRICE each, art Pack1-4 at random. The cards inside are
+# rolled when one is bought (buy_pack), so they are a surprise until then.
+func _roll_packs(game_id: StringName, slots: int, first: bool) -> Array:
+	var keeper: ShopkeeperData = keeper_at(game_id)
+	var out: Array = []
+	for _i in range(slots):
+		out.append(_priced(keeper, {"pack": 1 + randi() % 4, "sold": false},
+			PACK_PRICE + Fracture.shop_surcharge(), ["packs"], first))
 	return out
 
 # One of a keeper's loot kinds, weighted the way the drop roll weights them
@@ -555,13 +783,18 @@ func _item_marks(item: ItemData) -> Array:
 
 # `row` with its price and currency set: the going rate `base`, then each of the
 # keeper's sale clauses whose target is `all` or one of `marks`, in order.
-func _priced(keeper: ShopkeeperData, row: Dictionary, base: int, marks: Array) -> Dictionary:
-	row["price"] = sale_price(keeper, base, marks)
+func _priced(keeper: ShopkeeperData, row: Dictionary, base: int, marks: Array,
+		first: bool = true) -> Dictionary:
+	row["price"] = sale_price(keeper, base, marks, first)
+	if row["price"] < base:
+		row["on_sale"] = true
 	if keeper != null and keeper.pays_in_health():
 		row["currency"] = "health"
 	return row
 
-func sale_price(keeper: ShopkeeperData, base: int, marks: Array) -> int:
+# `first` is whether this is the shelf's first roll: a chance clause ("10% half")
+# only ever rolls there.
+func sale_price(keeper: ShopkeeperData, base: int, marks: Array, first: bool = true) -> int:
 	var price: int = base
 	if keeper == null:
 		return price
@@ -569,6 +802,11 @@ func sale_price(keeper: ShopkeeperData, base: int, marks: Array) -> int:
 		var parts: PackedStringArray = String(clause).split(" ", false)
 		if parts.is_empty():
 			continue
+		if parts[0].ends_with("%"):
+			var chance: int = int(parts[0].trim_suffix("%"))
+			parts.remove_at(0)
+			if parts.is_empty() or not first or randi() % 100 >= chance:
+				continue
 		var target: String = parts[1] if parts.size() > 1 else "all"
 		if target != "all" and not marks.has(target):
 			continue
@@ -577,7 +815,7 @@ func sale_price(keeper: ShopkeeperData, base: int, marks: Array) -> int:
 				price = 0
 			"half":
 				@warning_ignore("integer_division")
-				price = price / 2
+				price = (price + 1) / 2
 			_:
 				price += int(parts[0])
 	return maxi(0, price)

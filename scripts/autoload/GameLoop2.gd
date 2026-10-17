@@ -955,6 +955,9 @@ func start_run(character: CharacterData) -> void:
 	# pick serves both.
 	if character != null:
 		GameState.fracture = GameStats.fracture_pick(character.id)
+	# What a Donation Machine has unlocked, as of now (§14.6): this run's gold
+	# counts from the next one.
+	GameState.donation_best = GameStats.donation_best()
 	# The speedrun clock back to zero. Here rather than in the overworld because
 	# this is the one door into a fresh run, and a clock that kept the last run's
 	# splits would be wrong from its first frame.

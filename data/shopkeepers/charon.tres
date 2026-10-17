@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="ShopkeeperData" load_steps=2 format=3 uid="uid://shopkeeper_charon"]
+
+[ext_resource type="Script" path="res://scripts/resources/ShopkeeperData.gd" id="1_keeper"]
+
+[resource]
+script = ExtResource("1_keeper")
+id = &"charon"
+display_name = "Charon"
+game_id = &"hades"
+description = ""
+image = "Charon"
+pools = PackedStringArray()
+loot_kinds = PackedStringArray()
+currency = &"gold"
+sale = PackedStringArray()
+effect = PackedStringArray("steal 3", "beaten_sale 20")
+item_slots = 3
+loot_slots = 0
+rarity = "Common"
+boss = &"charon"
+loot_tag = ""
+pack_slots = 0

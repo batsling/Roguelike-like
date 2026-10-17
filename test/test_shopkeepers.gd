@@ -1,10 +1,9 @@
 extends GutTest
 
-# SHOPKEEPERS (docs/games-first-redesign.md §14.6): the groundwork for the roster.
-# The sheet is empty until the owner authors it, so every keeper here is made in
-# the test and put into Data's roster for the length of one test only — nothing
-# here ships, and a test that forgot to take its keepers out would leak them into
-# every shop the rest of the suite opens.
+# SHOPKEEPERS (docs/games-first-redesign.md §14.6). The suite runs with an empty
+# roster (test/pre_run_hook.gd); the rules are tested on keepers made here, and the
+# four real ones are put back by `_real()` for the tests about them. Everything
+# added is taken out again in after_each, so no keeper leaks into another file.
 
 var _added: Array = []
 
@@ -21,6 +20,14 @@ func after_each() -> void:
 		Data._shopkeepers.erase(id)
 	_added.clear()
 	GameState.fracture = 0
+
+# One of the authored keepers, into the roster for this test.
+func _real(id: StringName) -> ShopkeeperData:
+	var k: ShopkeeperData = (Data.get_meta("all_shopkeepers", {}) as Dictionary).get(id)
+	if k != null:
+		Data._shopkeepers[k.id] = k
+		_added.append(k.id)
+	return k
 
 func _keeper(id: String, fields: Dictionary = {}) -> ShopkeeperData:
 	var k := ShopkeeperData.new()
@@ -141,7 +148,7 @@ func test_a_keeper_can_hold_a_bigger_or_smaller_shelf() -> void:
 func test_sales_apply_in_order_and_never_go_below_nothing() -> void:
 	var k: ShopkeeperData = _keeper("haggler", {"sale": PackedStringArray(["-1 loot", "half rare"])})
 	assert_eq(ShopSystem.sale_price(k, 5, ["loot", "common", "potion"]), 4, "-1 on loot")
-	assert_eq(ShopSystem.sale_price(k, 7, ["items", "rare"]), 3, "half a rare, rounded down")
+	assert_eq(ShopSystem.sale_price(k, 7, ["items", "rare"]), 4, "half a rare, rounded up")
 	assert_eq(ShopSystem.sale_price(k, 5, ["loot", "rare"]), 2, "both, in order: 5-1, halved")
 	assert_eq(ShopSystem.sale_price(k, 3, ["items", "common"]), 3, "nothing on a common item")
 	k.sale = PackedStringArray(["-9 all"])
@@ -231,3 +238,184 @@ func test_escape_or_leave_closes_it() -> void:
 	modal.finished.connect(func(): closed.append(true))
 	(modal.find_child("Leave", true, false) as Button).pressed.emit()
 	assert_eq(closed.size(), 1, "Leave closes it, once")
+
+
+# --- the authored four (§14.6) -------------------------------------------------
+
+func _stand(keeper: ShopkeeperData) -> StringName:
+	var node: StringName = _shops(1)[0]
+	GameState.shops.erase(node)
+	for k in Data._shopkeepers.keys():
+		if k != keeper.id:
+			Data._shopkeepers.erase(k)
+	ShopSystem.shop_for(node)
+	return node
+
+func test_the_roster_is_four_commons() -> void:
+	var all: Dictionary = Data.get_meta("all_shopkeepers", {})
+	for id in [&"charon", &"jimbo", &"shopkeeper", &"furcifer"]:
+		assert_true(all.has(id), "%s is authored" % id)
+		if all.has(id):
+			assert_eq((all[id] as ShopkeeperData).rarity, "Common")
+			assert_not_null((all[id] as ShopkeeperData).portrait(), "%s has a portrait" % id)
+
+func test_charon_sells_three_items_and_his_steal_brings_him_to_the_board() -> void:
+	var node: StringName = _stand(_real(&"charon"))
+	assert_eq(ShopSystem.stock(node).size(), 3)
+	assert_eq(ShopSystem.loot_stock(node).size(), 0)
+	GameLoop2.reset()
+	GameState.gold = 0
+	assert_true(ShopSystem.steal(node))
+	assert_eq(GameState.gold, 3, "three gold stolen")
+	var ids: Array = GameLoop2.stack.map(func(e): return (e.get("enemy") as GoalEnemyData).id)
+	assert_has(ids, &"charon", "and Charon stands on the board")
+	assert_false(ShopSystem.steal(node), "once")
+	assert_false(ShopSystem.shop_for(node).is_empty(), "and the shop stays open")
+
+func test_beating_charon_takes_twenty_percent_off_every_shop_for_the_run() -> void:
+	_real(&"charon")
+	var price_before: int = ShopSystem.discounted(5)
+	GameLoop2.enemy_defeated.emit(Data.get_boss(&"charon"), Vector2i.ZERO)
+	assert_eq(ShopSystem.discounted(5), 4, "5 at -20%")
+	assert_eq(ShopSystem.discounted(3), 3, "2.4 rounds up to 3")
+	GameLoop2.enemy_defeated.emit(Data.get_boss(&"charon"), Vector2i.ZERO)
+	assert_eq(GameState.shop_price_cuts().size(), 1, "once per keeper")
+	assert_eq(price_before, 5)
+
+func test_steam_sale_and_charon_multiply_and_round_up() -> void:
+	GameState.shop_sales = {"charon": 20}
+	GameState.add_item(Data.get_item2(&"steam_sale"))
+	assert_eq(ShopSystem.discounted(7), 3, "7 x 0.8 x 0.5 = 2.8, up to 3")
+	assert_eq(ShopSystem.discounted(10), 4)
+
+func test_steam_sale_is_an_event_relic_nothing_draws() -> void:
+	var sale: ItemData = Data.get_item2(&"steam_sale")
+	assert_not_null(sale)
+	assert_eq(sale.shop_discount, 50)
+	assert_false(Data.reward_item2_pool().has(sale), "no drop, chest or shelf draws it")
+
+func test_jimbo_sells_jokers_an_item_and_two_packs() -> void:
+	var node: StringName = _stand(_real(&"jimbo"))
+	assert_eq(ShopSystem.stock(node).size(), 1)
+	var loot: Array = ShopSystem.loot_stock(node)
+	assert_eq(loot.size(), 2)
+	for row in loot:
+		var card: CardData = CardSystem.data_for(row["entry"])
+		assert_true(card != null and card.tags.has("joker"), "a joker card")
+	var packs: Array = ShopSystem.pack_stock(node)
+	assert_eq(packs.size(), 2)
+	for row in packs:
+		assert_eq(ShopSystem.price_of(row), ShopSystem.PACK_PRICE)
+		assert_between(int(row["pack"]), 1, 4)
+
+func test_a_pack_opens_to_three_cards_and_keeps_one() -> void:
+	var node: StringName = _stand(_real(&"jimbo"))
+	GameState.gold = 10
+	var cards: Array = ShopSystem.buy_pack(node, 0)
+	assert_eq(cards.size(), ShopSystem.PACK_CARDS)
+	assert_eq(GameState.gold, 6, "4 gold")
+	assert_eq(ShopSystem.buy_pack(node, 0), cards, "an opened pack holds the same three")
+	assert_eq(GameState.gold, 6, "and is not charged twice")
+	var before: int = GameState.loot_items.size()
+	assert_true(ShopSystem.take_pack_card(node, 0, 1))
+	assert_eq(GameState.loot_items.size(), before + 1, "one card taken")
+	assert_true(bool(ShopSystem.pack_stock(node)[0]["sold"]))
+
+func test_isaacs_shelf_grows_with_the_best_donation_bank() -> void:
+	var want := {0: 2, 19: 2, 20: 3, 100: 4, 200: 5, 599: 5, 600: 6, 999: 6}
+	for best in want.keys():
+		assert_eq(ShopSystem.donation_slots(best), want[best], "%d banked" % best)
+	_real(&"shopkeeper")
+	for best in [0, 20, 100, 200, 600]:
+		GameState.donation_best = best
+		var node: StringName = _stand(Data.get_shopkeeper(&"shopkeeper"))
+		var items: int = ShopSystem.stock(node).size()
+		var loot: int = ShopSystem.loot_stock(node).size()
+		assert_eq(items + loot, ShopSystem.donation_slots(best))
+		assert_between(items, 1, 2)
+		assert_gte(loot, 1)
+		GameState.scramble = 1
+		assert_true(ShopSystem.reroll(node))
+		assert_eq(ShopSystem.stock(node).size(), items, "a reroll keeps items as items")
+		assert_eq(ShopSystem.loot_stock(node).size(), loot, "and loot as loot")
+
+func test_a_donation_level_reached_stays_reached() -> void:
+	var bank: int = GameStats.donation_bank_total
+	var best: int = GameStats.donation_best_total
+	GameStats.donation_bank_total = 0
+	GameStats.donation_best_total = 0
+	GameStats.add_to_donation_bank(120)
+	GameStats.add_to_donation_bank(-100)
+	assert_eq(GameStats.donation_best(), 120, "bombing the bank down takes nothing back")
+	GameStats.donation_bank_total = bank
+	GameStats.donation_best_total = best
+	GameStats.save_data()
+
+func test_bombing_isaacs_shopkeeper_happens_once_and_costs_a_bomb() -> void:
+	var node: StringName = _stand(_real(&"shopkeeper"))
+	GameLoop2.reset()
+	GameState.bombs = 2
+	var got: String = ShopSystem.bomb(node)
+	assert_has(["nothing", "gold", "spider", "steam_sale"], got)
+	assert_eq(GameState.bombs, 1)
+	assert_true(ShopSystem.is_bombed(node))
+	assert_eq(ShopSystem.bomb(node), "", "once a shop")
+	assert_false(ShopSystem.shop_for(node).is_empty(), "the shelf stays")
+
+func test_the_bomb_odds_are_thirds_and_one_percent() -> void:
+	var seen: Dictionary = {}
+	for i in range(400):
+		var node: StringName = _stand(_real(&"shopkeeper"))
+		GameLoop2.reset()
+		GameState.bombs = 1
+		var got: String = ShopSystem.bomb(node)
+		seen[got] = int(seen.get(got, 0)) + 1
+		GameState.inventory.clear()
+	for k in ["nothing", "gold", "spider"]:
+		assert_between(int(seen.get(k, 0)), 90, 175, "%s about a third" % k)
+	assert_lt(int(seen.get("steam_sale", 0)), 15, "Steam Sale about 1%")
+
+func test_isaacs_room_has_a_donation_machine_while_it_is_open() -> void:
+	var node: StringName = _stand(_real(&"shopkeeper"))
+	ObjectSystem.reset_run()
+	var modal = _open(node)
+	assert_true(modal.has_room_machines(), "the machine is in the room")
+	modal.close()
+	assert_false(ObjectSystem.has_live(), "and leaves with it")
+
+func test_furcifer_sells_five_loot_and_his_reroll_costs_more_each_time() -> void:
+	var node: StringName = _stand(_real(&"furcifer"))
+	assert_eq(ShopSystem.stock(node).size(), 0)
+	assert_eq(ShopSystem.loot_stock(node).size(), 5)
+	GameState.gold = 10
+	GameState.scramble = 0
+	assert_eq(ShopSystem.gold_reroll_cost(node), 1)
+	assert_true(ShopSystem.reroll(node))
+	assert_eq(GameState.gold, 9)
+	assert_eq(ShopSystem.gold_reroll_cost(node), 2)
+	assert_true(ShopSystem.reroll(node))
+	assert_eq(GameState.gold, 7)
+	assert_eq(ShopSystem.loot_stock(node).size(), 5)
+
+func test_a_chance_sale_lands_on_the_first_roll_only() -> void:
+	# Items, which start at 3: half of a 1-gold Common piece rounds back up to 1.
+	_keeper("always_sale", {"sale": PackedStringArray(["100% half"]), "loot_slots": 0,
+		"effect": PackedStringArray(["gold_reroll"])})
+	var node: StringName = _shops(1)[0]
+	for row in ShopSystem.shop_for(node)["stock"]:
+		assert_true(bool(row.get("on_sale", false)), "on sale on the first roll")
+	GameState.gold = 5
+	ShopSystem.reroll(node)
+	for row in ShopSystem.stock(node):
+		assert_false(bool(row.get("on_sale", false)), "and never after a reroll")
+
+func test_rarer_keepers_are_dealt_less() -> void:
+	_keeper("common_k")
+	_keeper("legend_k", {"rarity": "Legendary"})
+	var legend: int = 0
+	for seed in range(200):
+		GameState.run_seed = seed
+		var node: StringName = _shops(1)[0]
+		if ShopSystem.keeper_for(node).id == &"legend_k":
+			legend += 1
+	assert_lt(legend, 20, "1 in 76 or so, not one in two")

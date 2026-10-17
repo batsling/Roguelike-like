@@ -5,7 +5,8 @@ tools/Roguelikes.xlsx into data/shopkeepers/ (§14.6 of
 docs/games-first-redesign.md).
 
   shopkeepers: Name | Game | Description | Image | Pool | Loot Kinds | Currency |
-               Sale | Effect | Item Slots | Loot Slots
+               Sale | Effect | Item Slots | Loot Slots | Rarity | Boss | Loot Tag |
+               Pack Slots
 
   Name         the keeper's name, shown as the shop's title. Required.
   Game         the game they come from (its display name or id), or blank for
@@ -19,14 +20,19 @@ docs/games-first-redesign.md).
   Loot Kinds   comma-separated loot kinds the loot row draws from (scroll, pill,
                potion, card, wand, trinket, bag, weapon). Blank: the drop mix.
   Currency     `gold` (blank) or `health`.
-  Sale         comma-separated clauses, `<amount> <target>`: amount is -N, +N,
-               `half` or `free`; target is `all`, `items`, `loot`, a rarity, a
-               loot kind, or an item pool/tag. "-1 loot, half rare". A bare amount
-               means `all`.
-  Effect       comma-separated free-form rule tokens for rules not built yet.
-               Kept as written; nothing reads them until a rule asks.
+  Sale         comma-separated clauses, `[N%] <amount> <target>`: amount is -N,
+               +N, `half` or `free`; target is `all`, `items`, `loot`, `packs`, a
+               rarity, a loot kind, or an item pool/tag. "-1 loot, half rare". A
+               bare amount means `all`. A leading N% makes it a chance per slot,
+               rolled on the shelf's first roll only ("10% half").
+  Effect       comma-separated rules, from EFFECTS below.
   Item Slots   how many items on the shelf (blank: 3).
   Loot Slots   how many pieces of loot (blank: 3).
+  Rarity       Common (blank), Uncommon, Rare or Legendary: the keeper's weight in
+               the run's deal (75/20/4/1).
+  Boss         the boss a `steal` puts on the board (a bosses2.0 id or name).
+  Loot Tag     the tag every piece of loot must carry (`joker`); needs Loot Kinds.
+  Pack Slots   card packs on the shelf (blank: 0).
 
 The output folder is REWRITTEN, not added to: a row deleted from the sheet takes
 its keeper with it. The folder's README.md is left alone (it is what keeps the
@@ -55,7 +61,20 @@ ITEMS_DIR = os.path.join(PROJECT_ROOT, "data", "items2.0")
 SHEET = "shopkeepers"
 
 HEADERS = ("Name", "Game", "Description", "Image", "Pool", "Loot Kinds",
-           "Currency", "Sale", "Effect", "Item Slots", "Loot Slots")
+           "Currency", "Sale", "Effect", "Item Slots", "Loot Slots", "Rarity",
+           "Boss", "Loot Tag", "Pack Slots")
+
+# The rules a keeper's Effect can name (ShopSystem reads each), and whether the
+# token takes a number.
+EFFECTS = {
+    "steal": True,          # steal N gold, once; puts the Boss on the board
+    "beaten_sale": True,    # the Boss beaten: every price -N% for the run
+    "bombable": False,      # a bomb: nothing / 1-5 gold / a spider / Steam Sale
+    "donation_shelf": False,  # shelf size from the Donation Machine's best bank
+    "gold_reroll": False,   # rerolls cost 1 gold, +1 each time, not a Scramble
+}
+BOSSES_DIR = os.path.join(PROJECT_ROOT, "data", "bosses2.0")
+CARDS_DIR = os.path.join(PROJECT_ROOT, "data", "cards2.0")
 
 # GameState.LOOT_KINDS, and the rarities loot and items share.
 LOOT_KINDS = ("scroll", "pill", "potion", "card", "wand", "trinket", "bag", "weapon")
@@ -97,21 +116,66 @@ def _slots(raw, what: str, name: str) -> int:
 
 
 def _sale(raw, name: str, tags: set) -> list:
-    """Each clause normalised to "<amount> <target>", or refused by name."""
+    """Each clause normalised to "[N%] <amount> <target>", or refused by name."""
     out = []
     for clause in _list(raw):
         parts = clause.split()
+        chance = ""
+        if re.fullmatch(r"\d+%", parts[0]):
+            chance = parts.pop(0) + " "
+            if not parts:
+                raise ValueError("shopkeepers %s: sale %r has a chance and no amount"
+                                 % (name, clause))
         amount = parts[0]
         target = " ".join(parts[1:]) or "all"
         if not (amount in ("half", "free") or re.fullmatch(r"[+-]\d+", amount)):
             raise ValueError("shopkeepers %s: sale %r — the amount must be -N, +N, "
                              "half or free" % (name, clause))
-        known = ("all", "items", "loot") + RARITIES + LOOT_KINDS
+        known = ("all", "items", "loot", "packs") + RARITIES + LOOT_KINDS
         if target not in known and target not in tags:
             raise ValueError("shopkeepers %s: sale %r — %r is not all, items, loot, "
                              "a rarity, a loot kind or an item pool/tag"
                              % (name, clause, target))
-        out.append("%s %s" % (amount, target))
+        out.append("%s%s %s" % (chance, amount, target))
+    return out
+
+
+def _effects(raw, name: str) -> list:
+    out = []
+    for tok in _list(raw):
+        parts = tok.split()
+        if parts[0] not in EFFECTS:
+            raise ValueError("shopkeepers %s: Effect %r must be one of %s"
+                             % (name, tok, ", ".join(EFFECTS)))
+        if EFFECTS[parts[0]] != (len(parts) == 2 and parts[1].isdigit()):
+            raise ValueError("shopkeepers %s: Effect %r %s" % (name, tok,
+                             "needs a number" if EFFECTS[parts[0]] else "takes no number"))
+        out.append(" ".join(parts))
+    return out
+
+
+def _ids_in(folder: str) -> dict:
+    """lower-cased display name AND id -> id for every .tres in `folder`."""
+    out = {}
+    for path in glob.glob(os.path.join(folder, "*.tres")):
+        with open(path, encoding="utf-8") as f:
+            head = f.read(2048)
+        rid = re.search(r'^id = &"([^"]+)"', head, re.M)
+        nm = re.search(r'^display_name = "((?:[^"\\]|\\.)*)"', head, re.M)
+        if rid:
+            out[rid.group(1).lower()] = rid.group(1)
+            if nm:
+                out[nm.group(1).lower()] = rid.group(1)
+    return out
+
+
+def card_tags() -> set:
+    out = set()
+    for path in glob.glob(os.path.join(CARDS_DIR, "*.tres")):
+        with open(path, encoding="utf-8") as f:
+            m = re.search(r'^tags = PackedStringArray\((.*)\)$', f.read(), re.M)
+        if m:
+            out.update(t.lower() for t in re.findall(r'"([^"]+)"', m.group(1)))
     return out
 
 
@@ -119,7 +183,10 @@ def _packed(values) -> str:
     return "PackedStringArray(%s)" % ", ".join('"%s"' % dsl.gd_str(v) for v in values)
 
 
-def keeper_tres(row, games: dict, tags: set) -> tuple:
+def keeper_tres(row, games: dict, tags: set, bosses: dict = None,
+                ctags: set = None) -> tuple:
+    bosses = bosses if bosses is not None else _ids_in(BOSSES_DIR)
+    ctags = ctags if ctags is not None else card_tags()
     name = _clean(row.get("Name"))
     if not name:
         raise ValueError("shopkeepers: a row has no Name")
@@ -147,6 +214,25 @@ def keeper_tres(row, games: dict, tags: set) -> tuple:
         raise ValueError("shopkeepers %s: Currency %r must be gold or health"
                          % (name, currency))
 
+    rarity = (_clean(row.get("Rarity")) or "Common").capitalize()
+    if rarity.lower() not in RARITIES:
+        raise ValueError("shopkeepers %s: Rarity %r must be one of %s"
+                         % (name, rarity, ", ".join(r.capitalize() for r in RARITIES)))
+    boss_raw = _clean(row.get("Boss"))
+    boss = bosses.get(boss_raw.lower(), "") if boss_raw else ""
+    if boss_raw and not boss:
+        raise ValueError("shopkeepers %s: Boss %r is not a boss" % (name, boss_raw))
+    effects = _effects(row.get("Effect"), name)
+    if any(e.split()[0] in ("steal", "beaten_sale") for e in effects) and not boss:
+        raise ValueError("shopkeepers %s: steal and beaten_sale need a Boss" % name)
+    loot_tag = _clean(row.get("Loot Tag")).lower()
+    if loot_tag:
+        if kinds != ["card"]:
+            raise ValueError("shopkeepers %s: Loot Tag needs Loot Kinds to be card "
+                             "(only cards are rolled by tag)" % name)
+        if loot_tag not in ctags:
+            raise ValueError("shopkeepers %s: no card carries the tag %r" % (name, loot_tag))
+
     lines = [
         '[gd_resource type="Resource" script_class="ShopkeeperData" load_steps=2 '
         'format=3 uid="uid://shopkeeper_%s"]' % kid,
@@ -165,9 +251,13 @@ def keeper_tres(row, games: dict, tags: set) -> tuple:
         "loot_kinds = %s" % _packed(kinds),
         'currency = &"%s"' % currency,
         "sale = %s" % _packed(_sale(row.get("Sale"), name, tags)),
-        "effect = %s" % _packed(_list(row.get("Effect"))),
+        "effect = %s" % _packed(effects),
         "item_slots = %d" % _slots(row.get("Item Slots"), "Item Slots", name),
         "loot_slots = %d" % _slots(row.get("Loot Slots"), "Loot Slots", name),
+        'rarity = "%s"' % rarity,
+        'boss = &"%s"' % boss,
+        'loot_tag = "%s"' % dsl.gd_str(loot_tag),
+        "pack_slots = %d" % _slots(row.get("Pack Slots") or 0, "Pack Slots", name),
     ]
     return kid, "\n".join(lines) + "\n"
 
@@ -188,9 +278,11 @@ def main():
                          % (" and ".join(missing), " | ".join(HEADERS)))
     games = game_index()
     tags = item_tags()
+    bosses = _ids_in(BOSSES_DIR)
+    ctags = card_tags()
     keepers = {}
     for row in dsl.rows(wb[SHEET]):
-        kid, text = keeper_tres(row, games, tags)
+        kid, text = keeper_tres(row, games, tags, bosses, ctags)
         if kid in keepers:
             raise ValueError("shopkeepers: two rows make the id %r — give them "
                              "different names" % kid)

@@ -12,6 +12,11 @@ extends Control
 # top, their line under it, and the shelf where an event's choices would be.
 # Without a keeper there is no portrait and no line, and the title is "Shop".
 #
+# WHAT A KEEPER ADDS (§14.6), all through ShopSystem: their action buttons under
+# the shelf (Steal, Bomb), and the machines standing in their room (Isaac's
+# Donation Machine), which belong to the room the way an event's do — spawned on
+# opening, gone on closing.
+#
 # UNLIKE AN EVENT, LEAVING DECIDES NOTHING. The shelf persists for the run
 # (ShopSystem), so closing this is not an answer to anything: a click outside the
 # panel closes it, and so do Escape and Leave. The button on the page stays for the
@@ -24,11 +29,17 @@ signal finished
 
 const PANEL_WIDTH := 640.0
 const PORTRAIT_WIDTH := 180.0
+# The machine a `donation_shelf` keeper always has in the room.
+const DONATION_MACHINE := &"donation_machine"
 
 var _node_id: StringName = &""
 var _layer: CanvasLayer = null
 var _panel: PanelContainer = null
 var _shelf: ShopPanel2 = null
+var _portrait_rect: Control = null
+var _actions: HBoxContainer = null
+var _objects_box: HFlowContainer = null
+var _objects_before: Array = []
 var _done: bool = false
 
 
@@ -84,14 +95,31 @@ func _build() -> void:
 	body.add_theme_constant_override("separation", UITheme.GAP_SECTION)
 	root.add_child(body)
 	var portrait: Texture2D = keeper.portrait() if keeper != null else null
-	if portrait != null:
-		body.add_child(_portrait(portrait))
-	_shelf = ShopPanel2.mount(body, _node_id, false)
+	if portrait != null and not ShopSystem.is_bombed(_node_id):
+		_portrait_rect = _portrait(portrait)
+		body.add_child(_portrait_rect)
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", UITheme.GAP_WIDE)
+	column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	body.add_child(column)
+	_shelf = ShopPanel2.mount(column, _node_id, false)
 	if _shelf != null:
 		_shelf.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		# Its item cards open over this pop-up, not under it.
 		_shelf.card_layer = UITheme.Layer.CHOICE
 		_shelf.finished.connect(close)
+
+	_objects_box = HFlowContainer.new()
+	_objects_box.add_theme_constant_override("h_separation", UITheme.GAP)
+	_objects_box.alignment = FlowContainer.ALIGNMENT_CENTER
+	column.add_child(_objects_box)
+	_open_room()
+
+	_actions = HBoxContainer.new()
+	_actions.name = "Actions"
+	_actions.alignment = BoxContainer.ALIGNMENT_CENTER
+	_actions.add_theme_constant_override("separation", UITheme.GAP)
+	column.add_child(_actions)
 
 	var leave := Button.new()
 	leave.name = "Leave"
@@ -101,6 +129,12 @@ func _build() -> void:
 	leave.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	leave.pressed.connect(close)
 	root.add_child(leave)
+
+	if not ShopSystem.shop_changed.is_connected(_on_shop_changed):
+		ShopSystem.shop_changed.connect(_on_shop_changed)
+	if not GameState.stats_changed.is_connected(_paint_actions):
+		GameState.stats_changed.connect(_paint_actions)
+	_paint_actions()
 
 
 # The keeper's name in the event's title style, and their line under it. A shop
@@ -152,12 +186,86 @@ func _portrait(tex: Texture2D) -> Control:
 	return rect
 
 
+# --- the keeper's buttons ---------------------------------------------------
+
+func _paint_actions() -> void:
+	if _actions == null or not is_instance_valid(_actions):
+		return
+	for child in _actions.get_children():
+		_actions.remove_child(child)
+		child.queue_free()
+	var steal: int = ShopSystem.keeper_number(_node_id, "steal")
+	if steal > 0 and not bool(ShopSystem.peek(_node_id).get("stolen", false)):
+		_actions.add_child(_action("Steal", "Steal ◉%d" % steal, UITheme.DANGER,
+			true, func(): ShopSystem.steal(_node_id)))
+	if ShopSystem.keeper_has(_node_id, "bombable") and not ShopSystem.is_bombed(_node_id):
+		_actions.add_child(_action("Bomb", "✸  Bomb", UITheme.DANGER,
+			ShopSystem.can_bomb(_node_id), func(): bomb()))
+	_actions.visible = _actions.get_child_count() > 0
+
+func _action(id: String, text: String, tint: Color, enabled: bool, press: Callable) -> Button:
+	var b := Button.new()
+	b.name = id
+	b.text = text
+	b.disabled = not enabled
+	b.custom_minimum_size = Vector2(96, 30)
+	b.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
+	b.add_theme_color_override("font_color", tint.lerp(Color.WHITE, 0.35))
+	b.pressed.connect(press)
+	return b
+
+# Bomb the keeper: what it rolled comes up as a toast, and the keeper is gone.
+func bomb() -> String:
+	var got: String = ShopSystem.bomb(_node_id)
+	if got == "":
+		return got
+	if _portrait_rect != null and is_instance_valid(_portrait_rect):
+		_portrait_rect.queue_free()
+		_portrait_rect = null
+	# Gold says itself (the purse's toast); the rest are named.
+	var say: String = {"steam_sale": "Steam Sale", "spider": "Spider",
+		"nothing": "Nothing"}.get(got, "")
+	if say != "":
+		Notifications.notify(say, UITheme.SHOP_GREEN)
+	return got
+
+func _on_shop_changed(node: StringName) -> void:
+	if node == _node_id:
+		_paint_actions()
+
+
+# --- the room's machines ----------------------------------------------------
+
+# A `donation_shelf` keeper's room always has a Donation Machine in it. Spawned on
+# opening and taken away on closing, as an event's machines are
+# (ObjectSystem.clear_spawned_since), and drawn as the page draws machines: a
+# compact row, its card one click away (ObjectPanel2).
+var _machines: ObjectPanel2 = null
+
+func _open_room() -> void:
+	_objects_before = ObjectSystem.live.duplicate()
+	if ShopSystem.keeper_has(_node_id, "donation_shelf"):
+		ObjectSystem.spawn(DONATION_MACHINE, false)
+		_machines = ObjectPanel2.mount(_objects_box)
+		if _machines != null:
+			_machines.card_layer = UITheme.Layer.CHOICE
+	_objects_box.visible = _machines != null
+
+func has_room_machines() -> bool:
+	return _machines != null and is_instance_valid(_machines)
+
+
 func close() -> void:
 	if _done:
 		return
 	_done = true
 	if _shelf != null and is_instance_valid(_shelf):
 		_shelf.close_card()
+	if ShopSystem.shop_changed.is_connected(_on_shop_changed):
+		ShopSystem.shop_changed.disconnect(_on_shop_changed)
+	if GameState.stats_changed.is_connected(_paint_actions):
+		GameState.stats_changed.disconnect(_paint_actions)
+	ObjectSystem.clear_spawned_since(_objects_before)
 	finished.emit()
 	if _layer != null and is_instance_valid(_layer):
 		_layer.queue_free()

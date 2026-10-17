@@ -552,6 +552,10 @@ const CLASS_NAMES := ["Common", "Uncommon", "Rare", "Legendary", "Starter", "Bos
 # Read by ShopSystem.mark_seen via GameState.sweeps_shops.
 @export var shop_sweep: bool = false
 
+# Steam Sale: every shop price cut by this percent (§14.6). Read by
+# ShopSystem.price_of through GameState.shop_price_cuts; copies multiply.
+@export var shop_discount: int = 0
+
 # Link Cable: every piece in the pack counts as touching every other, in every
 # direction (docs/loot-passives.md §15) — so a Whetstone reaches every weapon, a
 # food is beside every other food, and a Blueprint copies every passive. Read by

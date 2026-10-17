@@ -11,6 +11,13 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The first four shopkeepers** (the owner's design, 17 Oct 2026; spec §14.6).
+  Charon (steal 3 gold and fight him; beaten, shops are -20% for the run), Jimbo
+  (jokers and card packs), Isaac's Shopkeeper (a shelf that grows with the
+  Donation Machine's best bank across runs; bomb him for a 1% Steam Sale) and
+  Furcifer (5 loot, 10% half-price sales, a gold reroll that climbs). Keepers have
+  rarities; run-wide cuts multiply and round up.
+
 - **Shops: a pop-up behind a button, wider prices, and the groundwork for
   shopkeepers** (the owner's design, 17 Oct 2026; spec §14.1, §14.4, §14.6).
   - **The shop is a pop-up framed like an event** (`ShopModal2`), opened only by

@@ -116,6 +116,7 @@ var _done: bool = false
 
 var _cards_row: HFlowContainer = null
 var _loot_row: HFlowContainer = null
+var _pack_row: HFlowContainer = null
 # The open item's card, if one is open. One at a time: you are looking at a thing
 # on the shelf or you are not.
 var _card_layer: CanvasLayer = null
@@ -239,9 +240,14 @@ func _build() -> void:
 	_loot_row.add_theme_constant_override("v_separation", UITheme.GAP_WIDE)
 	_loot_row.custom_minimum_size.x = _cards_row.custom_minimum_size.x
 	root.add_child(_loot_row)
+	_pack_row = HFlowContainer.new()
+	_pack_row.add_theme_constant_override("h_separation", UITheme.GAP_WIDE)
+	_pack_row.add_theme_constant_override("v_separation", UITheme.GAP_WIDE)
+	root.add_child(_pack_row)
 	if not _show_title:
 		_cards_row.alignment = FlowContainer.ALIGNMENT_CENTER
 		_loot_row.alignment = FlowContainer.ALIGNMENT_CENTER
+		_pack_row.alignment = FlowContainer.ALIGNMENT_CENTER
 	_render()
 
 
@@ -335,6 +341,14 @@ func _render() -> void:
 		var loot: Array = ShopSystem.loot_stock(_game_id)
 		for i in range(loot.size()):
 			_loot_row.add_child(_loot_tile(i, loot[i]))
+	if _pack_row != null and is_instance_valid(_pack_row):
+		for child in _pack_row.get_children():
+			_pack_row.remove_child(child)
+			child.queue_free()
+		var packs: Array = ShopSystem.pack_stock(_game_id)
+		for i in range(packs.size()):
+			_pack_row.add_child(_pack_tile(i, packs[i]))
+		_pack_row.visible = not packs.is_empty()
 	_paint_chrome()
 
 # ONE PIECE OF LOOT on the shelf: a small tile with its art, its name — the MASK
@@ -382,8 +396,7 @@ func _loot_tile(slot: int, row: Dictionary) -> Control:
 	price_lbl.text = "Sold" if sold else _price_text(row)
 	price_lbl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	price_lbl.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
-	price_lbl.add_theme_color_override("font_color", UITheme.TEXT_FAINT if sold
-		else (UITheme.COIN_GOLD if afford else UITheme.DANGER))
+	price_lbl.add_theme_color_override("font_color", _price_color(row, sold))
 	price_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	line.add_child(price_lbl)
 	btn.modulate.a = 0.55 if sold else (1.0 if afford else 0.78)
@@ -562,8 +575,7 @@ func _shelf_row(slot: int, entry: Dictionary) -> Control:
 	var price_lbl := Label.new()
 	price_lbl.text = "Sold" if sold else _price_text(entry)
 	price_lbl.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
-	price_lbl.add_theme_color_override("font_color", UITheme.TEXT_FAINT if sold
-		else (UITheme.COIN_GOLD if afford else UITheme.DANGER))
+	price_lbl.add_theme_color_override("font_color", _price_color(entry, sold))
 	price_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	col.add_child(price_lbl)
 
@@ -645,6 +657,116 @@ func close_card() -> void:
 	_card_layer = null
 
 
+# A CARD PACK (§14.6): its art and price. Buying opens it to a pick of one card of
+# three; a pack bought and closed unpicked keeps its three and says so.
+const PACK_ART := "res://images2.0/general/Pack%d.png"
+const PACK_HEIGHT := 92.0
+
+func _pack_tile(slot: int, row: Dictionary) -> Control:
+	var sold: bool = bool(row.get("sold", false))
+	var opened: bool = row.has("cards")
+	var btn := Button.new()
+	btn.name = "PackTile%d" % slot
+	btn.custom_minimum_size = Vector2(PACK_HEIGHT * 0.75, PACK_HEIGHT)
+	btn.add_theme_stylebox_override("normal", UITheme.flat(Color(0, 0, 0, 0), 6, 0, 0))
+	btn.add_theme_stylebox_override("hover", UITheme.flat(Color(1, 1, 1, 0.06), 6, 0, 0))
+	btn.add_theme_stylebox_override("pressed", UITheme.flat(Color(1, 1, 1, 0.1), 6, 0, 0))
+	btn.add_theme_stylebox_override("disabled", UITheme.flat(Color(0, 0, 0, 0), 6, 0, 0))
+	btn.add_theme_stylebox_override("focus", UITheme.flat(Color(0, 0, 0, 0), 6, 0, 0))
+	var col := VBoxContainer.new()
+	col.set_anchors_preset(Control.PRESET_FULL_RECT)
+	col.add_theme_constant_override("separation", UITheme.GAP_NONE)
+	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	btn.add_child(col)
+	var art := TextureRect.new()
+	art.texture = load(PACK_ART % clampi(int(row.get("pack", 1)), 1, 4))
+	art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	art.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	UITheme.apply_crisp(art, art.texture)
+	col.add_child(art)
+	var price_lbl := Label.new()
+	price_lbl.text = "Sold" if sold else ("▶" if opened else _price_text(row))
+	price_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	price_lbl.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
+	price_lbl.add_theme_color_override("font_color", _price_color(row, sold))
+	price_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	col.add_child(price_lbl)
+	btn.modulate.a = 0.45 if sold else (1.0 if opened or ShopSystem.can_afford(row) else 0.78)
+	btn.disabled = sold or not (opened or ShopSystem.can_afford(row))
+	btn.pressed.connect(func(): open_pack(slot))
+	return btn
+
+# Buy (if not yet bought) and open pack `slot`: its cards, one to take.
+func open_pack(slot: int) -> Node:
+	close_card()
+	var cards: Array = ShopSystem.buy_pack(_game_id, slot)
+	if cards.is_empty():
+		return null
+	var layer := CanvasLayer.new()
+	layer.layer = card_layer
+	layer.process_mode = Node.PROCESS_MODE_ALWAYS
+	add_child(layer)
+	_card_layer = layer
+	var root := Control.new()
+	root.set_anchors_preset(Control.PRESET_FULL_RECT)
+	root.mouse_filter = Control.MOUSE_FILTER_STOP
+	layer.add_child(root)
+	var panel := ModalScaffold.build_panel(root, UITheme.SHOP_GREEN,
+		Callable(self, "close_card"), Vector2(0, 0))
+	var margin := MarginContainer.new()
+	margin.set_anchors_preset(Control.PRESET_FULL_RECT)
+	for side in ["left", "right", "top", "bottom"]:
+		margin.add_theme_constant_override("margin_" + side, 14)
+	panel.add_child(margin)
+	var row := HBoxContainer.new()
+	row.name = "PackCards"
+	row.add_theme_constant_override("separation", UITheme.GAP_WIDE)
+	margin.add_child(row)
+	for i in range(cards.size()):
+		var entry: Dictionary = cards[i]
+		var pick := Button.new()
+		pick.custom_minimum_size = Vector2(CARD_WIDTH * 0.7, 0)
+		var col := VBoxContainer.new()
+		col.set_anchors_preset(Control.PRESET_FULL_RECT)
+		col.add_theme_constant_override("separation", UITheme.GAP_TIGHT)
+		col.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		pick.add_child(col)
+		var art := LootSystem.art_tex(entry, ART_PX)
+		art.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		col.add_child(art)
+		var name_lbl := Label.new()
+		name_lbl.text = LootSystem.display_name(entry)
+		name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		name_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		name_lbl.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
+		name_lbl.add_theme_color_override("font_color",
+			UITheme.rarity_color(ShopSystem.rarity_rung(String(entry.get("rarity", "Common")))))
+		name_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		col.add_child(name_lbl)
+		pick.custom_minimum_size.y = ART_PX + 48.0
+		HoverCard.attach(pick, LootSystem.hover_card(entry))
+		var at: int = i
+		pick.pressed.connect(func(): take_pack_card(slot, at))
+		row.add_child(pick)
+	return layer
+
+func take_pack_card(slot: int, pick: int) -> bool:
+	if not ShopSystem.take_pack_card(_game_id, slot, pick):
+		return false
+	close_card()
+	return true
+
+# Gold for an ordinary price, green for one on sale, red for one out of reach.
+func _price_color(entry: Dictionary, sold: bool) -> Color:
+	if sold:
+		return UITheme.TEXT_FAINT
+	if not ShopSystem.can_afford(entry):
+		return UITheme.DANGER
+	return UITheme.SUCCESS if bool(entry.get("on_sale", false)) else UITheme.COIN_GOLD
+
 # A price as the shelf shows it: ◉ for gold, ♥ for a keeper who takes Health.
 func _price_text(entry: Dictionary, gap: String = " ") -> String:
 	return "%s%s%d" % ["♥" if ShopSystem.pays_in_health(entry) else "◉", gap,
@@ -663,12 +785,16 @@ func _paint_chrome() -> void:
 			UITheme.COIN_GOLD if GameState.gold > 0 else UITheme.TEXT_FAINT)
 	if _subtitle != null and is_instance_valid(_subtitle):
 		var left: int = ShopSystem.remaining(_game_id).size()
-		left += ShopSystem.remaining_loot(_game_id).size()
-		_subtitle.text = "Sold out — nothing left on the shelf." if left == 0 else ""
+		left += ShopSystem.remaining_loot(_game_id).size() + ShopSystem.remaining_packs(_game_id).size()
+		_subtitle.text = "Sold out" if left == 0 else ""
 	if _reroll_btn != null and is_instance_valid(_reroll_btn):
 		var charges: int = GameState.scramble
 		_reroll_btn.text = "🎲 %d" % charges
 		_reroll_btn.disabled = not ShopSystem.can_reroll(_game_id)
+		if ShopSystem.keeper_has(_game_id, "gold_reroll"):
+			_reroll_btn.text = "🎲 ◉%d" % ShopSystem.gold_reroll_cost(_game_id)
+			_reroll_btn.tooltip_text = ""
+			return
 		_reroll_btn.tooltip_text = ("Spend 1 Scramble to redraw the relics and the loot."
 			if charges >= ShopSystem.REROLL_COST
 			else "Needs a Scramble charge — you have none.")

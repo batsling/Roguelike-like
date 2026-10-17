@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="ShopkeeperData" load_steps=2 format=3 uid="uid://shopkeeper_jimbo"]
+
+[ext_resource type="Script" path="res://scripts/resources/ShopkeeperData.gd" id="1_keeper"]
+
+[resource]
+script = ExtResource("1_keeper")
+id = &"jimbo"
+display_name = "Jimbo"
+game_id = &"balatro"
+description = ""
+image = "Jimbo"
+pools = PackedStringArray()
+loot_kinds = PackedStringArray("card")
+currency = &"gold"
+sale = PackedStringArray()
+effect = PackedStringArray()
+item_slots = 1
+loot_slots = 2
+rarity = "Common"
+boss = &""
+loot_tag = "joker"
+pack_slots = 2

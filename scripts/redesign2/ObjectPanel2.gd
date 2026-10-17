@@ -33,6 +33,9 @@ var _row: HFlowContainer = null
 # The open machine's card, if one is open. One at a time: you are standing at a
 # machine or you are not.
 var _card_layer: CanvasLayer = null
+# Where an opened machine's card goes: over the page, or over the shop pop-up the
+# panel is mounted in (ShopModal2 raises it).
+var card_layer: int = UITheme.Layer.DROP
 
 
 # Mount the live objects into `parent`. Returns null when there are none, so the
@@ -215,7 +218,7 @@ func open_card(inst: Dictionary) -> Node:
 	if _card_layer != null and is_instance_valid(_card_layer):
 		return _card_layer
 	var layer := CanvasLayer.new()
-	layer.layer = UITheme.Layer.DROP
+	layer.layer = card_layer
 	layer.process_mode = Node.PROCESS_MODE_ALWAYS
 	add_child(layer)
 	_card_layer = layer

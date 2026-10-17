@@ -38,19 +38,29 @@ extends Resource
 # price is only affordable while it would leave at least 1).
 @export var currency: StringName = &"gold"
 
-# SALES, one clause each, `<amount> <target>`:
+# SALES, one clause each, `[N%] <amount> <target>` (a leading N% is a chance per
+# slot, rolled on the shelf's first roll only):
 #   amount  -N | +N | half | free
-#   target  all | items | loot | a rarity (common … legendary) | a loot kind |
+#   target  all | items | loot | packs | a rarity | a loot kind |
 #           an item pool or tag
 # So "-1 loot", "half rare", "-2 food". Applied in order on top of the going rate
 # (ShopSystem.price_for, which already carries a Fracture's surcharge). A price
 # never drops below 0, and "free" is 0.
 @export var sale: PackedStringArray = PackedStringArray()
 
-# FREE-FORM RULE TOKENS for what the columns above do not cover (buys curses, the
-# first piece free, the shelf grows as you spend). Nothing reads any yet; a rule
-# that gets built asks ShopSystem.keeper_has(node, token).
+# RULES, one token each, from generate_shopkeeper_tres.EFFECTS: `steal N`,
+# `beaten_sale N`, `bombable`, `donation_shelf`, `gold_reroll`. ShopSystem reads
+# them through keeper_has / keeper_number.
 @export var effect: PackedStringArray = PackedStringArray()
+
+# Common … Legendary: the keeper's weight in the run's deal (Data's 75/20/4/1).
+@export var rarity: String = "Common"
+# The boss a `steal` puts on the board, and whose defeat pays `beaten_sale`.
+@export var boss: StringName = &""
+# The tag every piece of loot on the shelf carries (Jimbo's `joker` cards).
+@export var loot_tag: String = ""
+# Card packs on the shelf: 4 gold, open to a pick of 1 of 3 cards.
+@export var pack_slots: int = 0
 
 # How many items and pieces of loot the shelf holds (ShopSystem.STOCK_SLOTS /
 # LOOT_SLOTS when the sheet leaves them blank). 0 is a row with nothing on it.

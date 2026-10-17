@@ -3231,6 +3231,8 @@ func open_shop():
 	_shop_modal = load(SHOP_MODAL_SCRIPT).open(self, _shop_here)
 	if _shop_modal == null:
 		return null
+	# The room's machines are drawn in it; the copy under the board steps aside.
+	_sync_object_panel()
 	# Walking into the shop is the moment (Chaos the Clown): once an arrival, the
 	# first time the door is opened, rather than every time.
 	if not _shop_entered_here:
@@ -3240,6 +3242,7 @@ func open_shop():
 	modal.finished.connect(func():
 		if _shop_modal == modal:
 			_shop_modal = null
+		_sync_object_panel()
 		_refresh()
 		autosave())
 	return _shop_modal
@@ -3297,7 +3300,8 @@ func _sync_object_panel() -> void:
 		return
 	# An event showing its own machines owns them for as long as it is open; a
 	# second copy under the board would be the same buttons twice.
-	if _event_modal != null and is_instance_valid(_event_modal):
+	if (_event_modal != null and is_instance_valid(_event_modal)) \
+			or (_shop_modal != null and is_instance_valid(_shop_modal)):
 		_clear_objects()
 		return
 	if _object_panel != null and is_instance_valid(_object_panel):
