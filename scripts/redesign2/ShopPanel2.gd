@@ -244,7 +244,9 @@ func _build() -> void:
 	# the shop grows in payment for the height the board just gave it.
 	# Three rows, their two gutters, and a few pixels of slack — measured exactly,
 	# a rounding pixel is enough to wrap the shelf onto a second line and cost 34px.
-	_cards_row.custom_minimum_size.x = _row_w() * 3.0 + 2.0 * 10.0
+	# In the pop-up: TWO across, and an odd one out centred on a row of its own.
+	_cards_row.custom_minimum_size.x = _row_w() * (2.0 if _big() else 3.0) \
+		+ (1.0 if _big() else 2.0) * 10.0
 	root.add_child(_cards_row)
 	_loot_row = HFlowContainer.new()
 	_loot_row.add_theme_constant_override("h_separation", UITheme.GAP_WIDE)
@@ -259,6 +261,11 @@ func _build() -> void:
 	_pack_rule = _rule()
 	root.add_child(_pack_rule)
 	root.add_child(_pack_row)
+	if _big():
+		for row in [_cards_row, _loot_row, _pack_row]:
+			row.alignment = FlowContainer.ALIGNMENT_CENTER
+			row.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		_pack_row.custom_minimum_size.x = _cards_row.custom_minimum_size.x
 	_render()
 
 # SIZES. Under the board the shelf is squeezed into the page's last pixels; in
@@ -266,7 +273,7 @@ func _build() -> void:
 func _big() -> bool:
 	return not _show_title
 func _row_w() -> float:
-	return 240.0 if _big() else ROW_WIDTH
+	return 260.0 if _big() else ROW_WIDTH
 func _row_h() -> float:
 	return 150.0 if _big() else ROW_HEIGHT
 func _row_icon() -> int:

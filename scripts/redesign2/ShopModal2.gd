@@ -27,7 +27,7 @@ extends Control
 # Emitted once when the pop-up closes, however it closed.
 signal finished
 
-const PANEL_WIDTH := 1000.0
+const PANEL_WIDTH := 0.0
 const PORTRAIT_WIDTH := 220.0
 const PORTRAIT_MAX_HEIGHT := 300.0
 # The option column under the portrait: wide enough for a machine's row.
@@ -92,7 +92,7 @@ func _build() -> void:
 	margin.add_child(root)
 
 	var keeper: ShopkeeperData = ShopSystem.keeper_for(_node_id)
-	root.add_child(_header(keeper))
+	root.add_child(_header())
 
 	# TWO SIDES: the keeper and everything you can DO here on the left (the
 	# portrait, then their options: Steal, Bomb, the reroll, a machine in the room),
@@ -110,6 +110,8 @@ func _build() -> void:
 	if portrait != null and not ShopSystem.is_bombed(_node_id):
 		_portrait_rect = _portrait(portrait)
 		side.add_child(_portrait_rect)
+	if keeper != null:
+		side.add_child(_keeper_label(keeper))
 	_actions = VBoxContainer.new()
 	_actions.name = "Actions"
 	_actions.add_theme_constant_override("separation", UITheme.GAP)
@@ -123,7 +125,9 @@ func _build() -> void:
 
 	_shelf = ShopPanel2.mount(body, _node_id, false)
 	if _shelf != null:
-		_shelf.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		# The shelf's width is its two-across grid (ShopPanel2), so the panel sizes
+		# to its content rather than leaving a third column standing empty.
+		_shelf.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		_shelf.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 		# Its item cards open over this pop-up, not under it.
 		_shelf.card_layer = UITheme.Layer.CHOICE
@@ -153,36 +157,48 @@ func _build() -> void:
 	_paint_actions()
 
 
-# The keeper's name in the event's title style, and their line under it. A shop
-# with no keeper says "Shop" and nothing else.
-func _header(keeper: ShopkeeperData) -> Control:
-	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", UITheme.GAP_NONE)
+# The pop-up's title: "Shop", always. Who keeps it is said under their portrait.
+func _header() -> Control:
 	var title := Label.new()
 	title.name = "Title"
-	title.text = "🛒  %s" % (keeper.display_name if keeper != null else "Shop")
+	title.text = "🛒  Shop"
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.add_theme_font_size_override("font_size", UITheme.FONT_DISPLAY)
 	title.add_theme_color_override("font_color", UITheme.SHOP_GREEN)
-	col.add_child(title)
-	if keeper != null and keeper.description != "":
+	return title
+
+
+# The keeper under their portrait: name, the game they come from, their line.
+func _keeper_label(keeper: ShopkeeperData) -> Control:
+	var col := VBoxContainer.new()
+	col.name = "Keeper"
+	col.add_theme_constant_override("separation", UITheme.GAP_NONE)
+	var name_lbl := Label.new()
+	name_lbl.name = "KeeperName"
+	name_lbl.text = keeper.display_name
+	name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	name_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	name_lbl.add_theme_font_size_override("font_size", UITheme.FONT_TITLE)
+	name_lbl.add_theme_color_override("font_color", UITheme.SHOP_GREEN.lerp(Color.WHITE, 0.25))
+	col.add_child(name_lbl)
+	var game: GameData = Data.get_game(keeper.game_id) if keeper.game_id != &"" else null
+	if game != null:
+		var from := Label.new()
+		from.text = game.display_name
+		from.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		from.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		from.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
+		from.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
+		col.add_child(from)
+	if keeper.description != "":
 		var line := Label.new()
 		line.name = "Line"
 		line.text = keeper.description
 		line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		line.add_theme_font_size_override("font_size", UITheme.FONT_LEAD)
+		line.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 		line.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 		col.add_child(line)
-	if keeper != null and keeper.game_id != &"":
-		var game: GameData = Data.get_game(keeper.game_id)
-		if game != null:
-			var from := Label.new()
-			from.text = "From: %s" % game.display_name
-			from.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-			from.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
-			from.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
-			col.add_child(from)
 	return col
 
 
