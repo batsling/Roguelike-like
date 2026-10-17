@@ -117,6 +117,8 @@ var _done: bool = false
 var _cards_row: HFlowContainer = null
 var _loot_row: HFlowContainer = null
 var _pack_row: HFlowContainer = null
+var _loot_rule: Control = null
+var _pack_rule: Control = null
 # The open item's card, if one is open. One at a time: you are looking at a thing
 # on the shelf or you are not.
 var _card_layer: CanvasLayer = null
@@ -222,7 +224,16 @@ func _build() -> void:
 	root.add_theme_constant_override("separation", UITheme.GAP_TIGHT)
 	margin.add_child(root)
 
-	root.add_child(_chrome_line())
+	# INSIDE THE POP-UP the shelf is only the things for sale (ShopModal2): the
+	# purse is on the run's header above it, and the reroll is one of the keeper's
+	# options in the column under the portrait (`reroll_button`).
+	var chrome: Control = _chrome_line()
+	if _show_title:
+		root.add_child(chrome)
+	else:
+		_reroll_btn.get_parent().remove_child(_reroll_btn)
+		chrome.queue_free()
+		root.add_theme_constant_override("separation", UITheme.GAP_WIDE)
 	_cards_row = HFlowContainer.new()
 	_cards_row.add_theme_constant_override("h_separation", UITheme.GAP_WIDE)
 	_cards_row.add_theme_constant_override("v_separation", UITheme.GAP_WIDE)
@@ -239,16 +250,29 @@ func _build() -> void:
 	_loot_row.add_theme_constant_override("h_separation", UITheme.GAP_WIDE)
 	_loot_row.add_theme_constant_override("v_separation", UITheme.GAP_WIDE)
 	_loot_row.custom_minimum_size.x = _cards_row.custom_minimum_size.x
+	_loot_rule = _rule()
+	root.add_child(_loot_rule)
 	root.add_child(_loot_row)
 	_pack_row = HFlowContainer.new()
 	_pack_row.add_theme_constant_override("h_separation", UITheme.GAP_WIDE)
 	_pack_row.add_theme_constant_override("v_separation", UITheme.GAP_WIDE)
+	_pack_rule = _rule()
+	root.add_child(_pack_rule)
 	root.add_child(_pack_row)
-	if not _show_title:
-		_cards_row.alignment = FlowContainer.ALIGNMENT_CENTER
-		_loot_row.alignment = FlowContainer.ALIGNMENT_CENTER
-		_pack_row.alignment = FlowContainer.ALIGNMENT_CENTER
 	_render()
+
+# The thin line between two kinds of thing for sale.
+func _rule() -> Control:
+	var line := ColorRect.new()
+	line.color = UITheme.BORDER
+	line.custom_minimum_size = Vector2(0, 1)
+	line.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	line.visible = false
+	return line
+
+# The reroll, for a host that places it itself (ShopModal2's option column).
+func reroll_button() -> Button:
+	return _reroll_btn
 
 
 # The shop's whole chrome on ONE LINE: who it is, what is left, what you are
@@ -348,7 +372,18 @@ func _render() -> void:
 		var packs: Array = ShopSystem.pack_stock(_game_id)
 		for i in range(packs.size()):
 			_pack_row.add_child(_pack_tile(i, packs[i]))
-		_pack_row.visible = not packs.is_empty()
+	# Each row only when it has something on it, with a line between rows.
+	var rows: Array = [_cards_row, _loot_row, _pack_row]
+	var rules: Array = [null, _loot_rule, _pack_rule]
+	var any_above: bool = false
+	for i in range(rows.size()):
+		var row: Control = rows[i]
+		if row == null or not is_instance_valid(row):
+			continue
+		row.visible = row.get_child_count() > 0
+		if rules[i] != null:
+			(rules[i] as Control).visible = row.visible and any_above and not _show_title
+		any_above = any_above or row.visible
 	_paint_chrome()
 
 # ONE PIECE OF LOOT on the shelf: a small tile with its art, its name — the MASK
@@ -789,10 +824,12 @@ func _paint_chrome() -> void:
 		_subtitle.text = "Sold out" if left == 0 else ""
 	if _reroll_btn != null and is_instance_valid(_reroll_btn):
 		var charges: int = GameState.scramble
-		_reroll_btn.text = "🎲 %d" % charges
+		# In the pop-up's option column the button has room for its word.
+		var word: String = "" if _show_title else "Reroll   "
+		_reroll_btn.text = "🎲 %s%d" % [word, charges]
 		_reroll_btn.disabled = not ShopSystem.can_reroll(_game_id)
 		if ShopSystem.keeper_has(_game_id, "gold_reroll"):
-			_reroll_btn.text = "🎲 ◉%d" % ShopSystem.gold_reroll_cost(_game_id)
+			_reroll_btn.text = "🎲 %s◉%d" % [word, ShopSystem.gold_reroll_cost(_game_id)]
 			_reroll_btn.tooltip_text = ""
 			return
 		_reroll_btn.tooltip_text = ("Spend 1 Scramble to redraw the relics and the loot."

@@ -29,6 +29,9 @@ signal finished
 
 const PANEL_WIDTH := 640.0
 const PORTRAIT_WIDTH := 180.0
+const PORTRAIT_MAX_HEIGHT := 250.0
+# The option column under the portrait: wide enough for a machine's row.
+const OPTION_WIDTH := 240.0
 # The machine a `donation_shelf` keeper always has in the room.
 const DONATION_MACHINE := &"donation_machine"
 
@@ -37,8 +40,8 @@ var _layer: CanvasLayer = null
 var _panel: PanelContainer = null
 var _shelf: ShopPanel2 = null
 var _portrait_rect: Control = null
-var _actions: HBoxContainer = null
-var _objects_box: HFlowContainer = null
+var _actions: VBoxContainer = null
+var _objects_box: VBoxContainer = null
 var _objects_before: Array = []
 var _done: bool = false
 
@@ -91,35 +94,48 @@ func _build() -> void:
 	var keeper: ShopkeeperData = ShopSystem.keeper_for(_node_id)
 	root.add_child(_header(keeper))
 
+	# TWO SIDES: the keeper and everything you can DO here on the left (the
+	# portrait, then their options: Steal, Bomb, the reroll, a machine in the room),
+	# and on the right only what you can BUY, one row per kind on a shared grid.
 	var body := HBoxContainer.new()
 	body.add_theme_constant_override("separation", UITheme.GAP_SECTION)
 	root.add_child(body)
+
+	var side := VBoxContainer.new()
+	side.name = "Options"
+	side.custom_minimum_size.x = OPTION_WIDTH
+	side.add_theme_constant_override("separation", UITheme.GAP)
+	body.add_child(side)
 	var portrait: Texture2D = keeper.portrait() if keeper != null else null
 	if portrait != null and not ShopSystem.is_bombed(_node_id):
 		_portrait_rect = _portrait(portrait)
-		body.add_child(_portrait_rect)
-	var column := VBoxContainer.new()
-	column.add_theme_constant_override("separation", UITheme.GAP_WIDE)
-	column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	body.add_child(column)
-	_shelf = ShopPanel2.mount(column, _node_id, false)
+		side.add_child(_portrait_rect)
+	_actions = VBoxContainer.new()
+	_actions.name = "Actions"
+	_actions.add_theme_constant_override("separation", UITheme.GAP)
+	side.add_child(_actions)
+
+	var divider := ColorRect.new()
+	divider.color = UITheme.BORDER
+	divider.custom_minimum_size = Vector2(1, 0)
+	divider.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	body.add_child(divider)
+
+	_shelf = ShopPanel2.mount(body, _node_id, false)
 	if _shelf != null:
 		_shelf.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		_shelf.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 		# Its item cards open over this pop-up, not under it.
 		_shelf.card_layer = UITheme.Layer.CHOICE
 		_shelf.finished.connect(close)
+		var reroll: Button = _shelf.reroll_button()
+		reroll.name = "Reroll"
+		_style_option(reroll, UITheme.ACCENT)
+		side.add_child(reroll)
 
-	_objects_box = HFlowContainer.new()
-	_objects_box.add_theme_constant_override("h_separation", UITheme.GAP)
-	_objects_box.alignment = FlowContainer.ALIGNMENT_CENTER
-	column.add_child(_objects_box)
+	_objects_box = VBoxContainer.new()
+	side.add_child(_objects_box)
 	_open_room()
-
-	_actions = HBoxContainer.new()
-	_actions.name = "Actions"
-	_actions.alignment = BoxContainer.ALIGNMENT_CENTER
-	_actions.add_theme_constant_override("separation", UITheme.GAP)
-	column.add_child(_actions)
 
 	var leave := Button.new()
 	leave.name = "Leave"
@@ -177,9 +193,11 @@ func _portrait(tex: Texture2D) -> Control:
 	rect.name = "Portrait"
 	rect.texture = tex
 	var aspect: float = float(tex.get_height()) / maxf(1.0, float(tex.get_width()))
-	rect.custom_minimum_size = Vector2(PORTRAIT_WIDTH, minf(PORTRAIT_WIDTH * aspect, 320.0))
+	rect.custom_minimum_size = Vector2(PORTRAIT_WIDTH,
+		minf(PORTRAIT_WIDTH * aspect, PORTRAIT_MAX_HEIGHT))
 	rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	rect.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	rect.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	UITheme.apply_crisp(rect, tex)
@@ -208,11 +226,23 @@ func _action(id: String, text: String, tint: Color, enabled: bool, press: Callab
 	b.name = id
 	b.text = text
 	b.disabled = not enabled
-	b.custom_minimum_size = Vector2(96, 30)
-	b.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
-	b.add_theme_color_override("font_color", tint.lerp(Color.WHITE, 0.35))
+	_style_option(b, tint)
 	b.pressed.connect(press)
 	return b
+
+# Every option in the column the same shape: full width, one height, its colour on
+# the edge and the word.
+func _style_option(b: Button, tint: Color) -> void:
+	b.custom_minimum_size = Vector2(0, 34)
+	b.size_flags_horizontal = Control.SIZE_FILL
+	b.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
+	b.add_theme_color_override("font_color", tint.lerp(Color.WHITE, 0.45))
+	b.add_theme_color_override("font_hover_color", Color.WHITE)
+	b.add_theme_stylebox_override("normal", UITheme.flat(tint.lerp(UITheme.BG, 0.82), 6, 8, 1, tint.lerp(UITheme.BG, 0.4)))
+	b.add_theme_stylebox_override("hover", UITheme.flat(tint.lerp(UITheme.BG, 0.68), 6, 8, 1, tint))
+	b.add_theme_stylebox_override("pressed", UITheme.flat(tint.lerp(UITheme.BG, 0.58), 6, 8, 1, tint))
+	b.add_theme_stylebox_override("disabled", UITheme.flat(UITheme.BG.lerp(UITheme.PANEL, 0.5), 6, 8, 1, UITheme.BORDER))
+	b.add_theme_stylebox_override("focus", UITheme.flat(Color(0, 0, 0, 0), 6, 0, 0))
 
 # Bomb the keeper: what it rolled comes up as a toast, and the keeper is gone.
 func bomb() -> String:
@@ -249,6 +279,8 @@ func _open_room() -> void:
 		_machines = ObjectPanel2.mount(_objects_box)
 		if _machines != null:
 			_machines.card_layer = UITheme.Layer.CHOICE
+			_machines.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			_machines.narrow()
 	_objects_box.visible = _machines != null
 
 func has_room_machines() -> bool:
