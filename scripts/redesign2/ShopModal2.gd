@@ -27,11 +27,11 @@ extends Control
 # Emitted once when the pop-up closes, however it closed.
 signal finished
 
-const PANEL_WIDTH := 640.0
-const PORTRAIT_WIDTH := 180.0
-const PORTRAIT_MAX_HEIGHT := 250.0
+const PANEL_WIDTH := 1000.0
+const PORTRAIT_WIDTH := 220.0
+const PORTRAIT_MAX_HEIGHT := 300.0
 # The option column under the portrait: wide enough for a machine's row.
-const OPTION_WIDTH := 240.0
+const OPTION_WIDTH := 260.0
 # The machine a `donation_shelf` keeper always has in the room.
 const DONATION_MACHINE := &"donation_machine"
 
@@ -140,9 +140,9 @@ func _build() -> void:
 	var leave := Button.new()
 	leave.name = "Leave"
 	leave.text = "Leave"
-	leave.custom_minimum_size = Vector2(140, 32)
+	leave.custom_minimum_size = Vector2(180, 40)
 	leave.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	leave.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
+	leave.add_theme_font_size_override("font_size", UITheme.FONT_LEAD)
 	leave.pressed.connect(close)
 	root.add_child(leave)
 
@@ -162,7 +162,7 @@ func _header(keeper: ShopkeeperData) -> Control:
 	title.name = "Title"
 	title.text = "🛒  %s" % (keeper.display_name if keeper != null else "Shop")
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_font_size_override("font_size", UITheme.FONT_TITLE_LG)
+	title.add_theme_font_size_override("font_size", UITheme.FONT_DISPLAY)
 	title.add_theme_color_override("font_color", UITheme.SHOP_GREEN)
 	col.add_child(title)
 	if keeper != null and keeper.description != "":
@@ -171,7 +171,7 @@ func _header(keeper: ShopkeeperData) -> Control:
 		line.text = keeper.description
 		line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		line.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
+		line.add_theme_font_size_override("font_size", UITheme.FONT_LEAD)
 		line.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 		col.add_child(line)
 	if keeper != null and keeper.game_id != &"":
@@ -180,7 +180,7 @@ func _header(keeper: ShopkeeperData) -> Control:
 			var from := Label.new()
 			from.text = "From: %s" % game.display_name
 			from.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-			from.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
+			from.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 			from.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
 			col.add_child(from)
 	return col
@@ -233,9 +233,9 @@ func _action(id: String, text: String, tint: Color, enabled: bool, press: Callab
 # Every option in the column the same shape: full width, one height, its colour on
 # the edge and the word.
 func _style_option(b: Button, tint: Color) -> void:
-	b.custom_minimum_size = Vector2(0, 34)
+	b.custom_minimum_size = Vector2(0, 40)
 	b.size_flags_horizontal = Control.SIZE_FILL
-	b.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
+	b.add_theme_font_size_override("font_size", UITheme.FONT_LEAD)
 	b.add_theme_color_override("font_color", tint.lerp(Color.WHITE, 0.45))
 	b.add_theme_color_override("font_hover_color", Color.WHITE)
 	b.add_theme_stylebox_override("normal", UITheme.flat(tint.lerp(UITheme.BG, 0.82), 6, 8, 1, tint.lerp(UITheme.BG, 0.4)))

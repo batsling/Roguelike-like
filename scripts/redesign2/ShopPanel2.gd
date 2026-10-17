@@ -244,7 +244,7 @@ func _build() -> void:
 	# the shop grows in payment for the height the board just gave it.
 	# Three rows, their two gutters, and a few pixels of slack — measured exactly,
 	# a rounding pixel is enough to wrap the shelf onto a second line and cost 34px.
-	_cards_row.custom_minimum_size.x = ROW_WIDTH * 3.0 + 2.0 * 10.0
+	_cards_row.custom_minimum_size.x = _row_w() * 3.0 + 2.0 * 10.0
 	root.add_child(_cards_row)
 	_loot_row = HFlowContainer.new()
 	_loot_row.add_theme_constant_override("h_separation", UITheme.GAP_WIDE)
@@ -260,6 +260,28 @@ func _build() -> void:
 	root.add_child(_pack_rule)
 	root.add_child(_pack_row)
 	_render()
+
+# SIZES. Under the board the shelf is squeezed into the page's last pixels; in
+# the pop-up it has the room, so everything on it is drawn bigger.
+func _big() -> bool:
+	return not _show_title
+func _row_w() -> float:
+	return 240.0 if _big() else ROW_WIDTH
+func _row_h() -> float:
+	return 150.0 if _big() else ROW_HEIGHT
+func _row_icon() -> int:
+	return 64 if _big() else ROW_ICON
+func _desc_lines() -> int:
+	return 5 if _big() else DESC_LINES
+func _loot_h() -> float:
+	return 54.0 if _big() else LOOT_ROW_HEIGHT
+func _loot_icon() -> int:
+	return 40 if _big() else LOOT_ICON
+func _pack_h() -> float:
+	return 130.0 if _big() else PACK_HEIGHT
+# A font size, one step up the scale in the pop-up.
+func _font(small: int, big: int) -> int:
+	return big if _big() else small
 
 # The thin line between two kinds of thing for sale.
 func _rule() -> Control:
@@ -396,7 +418,7 @@ func _loot_tile(slot: int, row: Dictionary) -> Control:
 	var tint: Color = LootSystem.LOOT_COLOR
 	var btn := Button.new()
 	btn.name = "LootTile%d" % slot
-	btn.custom_minimum_size = Vector2(ROW_WIDTH, LOOT_ROW_HEIGHT)
+	btn.custom_minimum_size = Vector2(_row_w(), _loot_h())
 	btn.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	var edge: Color = UITheme.TEXT_FAINT if sold else tint.lerp(UITheme.BG, 0.45)
 	var fill: Color = tint.lerp(UITheme.BG, 0.90 if sold else 0.86)
@@ -412,7 +434,7 @@ func _loot_tile(slot: int, row: Dictionary) -> Control:
 	line.add_theme_constant_override("separation", UITheme.GAP_SNUG)
 	line.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	btn.add_child(line)
-	var art := LootSystem.art_tex(entry, LOOT_ICON)
+	var art := LootSystem.art_tex(entry, _loot_icon())
 	art.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	art.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	line.add_child(art)
@@ -423,14 +445,14 @@ func _loot_tile(slot: int, row: Dictionary) -> Control:
 	name_lbl.custom_minimum_size.x = 0.0
 	name_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	name_lbl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	name_lbl.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
+	name_lbl.add_theme_font_size_override("font_size", _font(UITheme.FONT_SMALL, UITheme.FONT_TEXT))
 	name_lbl.add_theme_color_override("font_color", UITheme.TEXT_FAINT if sold else UITheme.TEXT)
 	name_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	line.add_child(name_lbl)
 	var price_lbl := Label.new()
 	price_lbl.text = "Sold" if sold else _price_text(row)
 	price_lbl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	price_lbl.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
+	price_lbl.add_theme_font_size_override("font_size", _font(UITheme.FONT_SMALL, UITheme.FONT_TEXT))
 	price_lbl.add_theme_color_override("font_color", _price_color(row, sold))
 	price_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	line.add_child(price_lbl)
@@ -534,10 +556,10 @@ func _shelf_row(slot: int, entry: Dictionary) -> Control:
 	var tint: Color = UITheme.item_color(item)
 
 	var btn := Button.new()
-	btn.custom_minimum_size = Vector2(ROW_WIDTH, ROW_HEIGHT)
+	btn.custom_minimum_size = Vector2(_row_w(), _row_h())
 	btn.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	btn.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
+	btn.add_theme_font_size_override("font_size", _font(UITheme.FONT_BODY, UITheme.FONT_LEAD))
 	if item == null:
 		btn.text = "(empty)"
 		btn.disabled = true
@@ -583,7 +605,7 @@ func _shelf_row(slot: int, entry: Dictionary) -> Control:
 	line.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	body.add_child(line)
 
-	var art := UITheme.crisp_tex(item.image, ROW_ICON)
+	var art := UITheme.crisp_tex(item.image, _row_icon())
 	art.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	line.add_child(art)
 
@@ -601,7 +623,7 @@ func _shelf_row(slot: int, entry: Dictionary) -> Control:
 	name_lbl.clip_text = true
 	name_lbl.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	name_lbl.custom_minimum_size.x = 0.0
-	name_lbl.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
+	name_lbl.add_theme_font_size_override("font_size", _font(UITheme.FONT_BODY, UITheme.FONT_LEAD))
 	name_lbl.add_theme_color_override("font_color",
 		UITheme.TEXT_FAINT if sold else tint)
 	name_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -609,7 +631,7 @@ func _shelf_row(slot: int, entry: Dictionary) -> Control:
 
 	var price_lbl := Label.new()
 	price_lbl.text = "Sold" if sold else _price_text(entry)
-	price_lbl.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
+	price_lbl.add_theme_font_size_override("font_size", _font(UITheme.FONT_TEXT, UITheme.FONT_LEAD))
 	price_lbl.add_theme_color_override("font_color", _price_color(entry, sold))
 	price_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	col.add_child(price_lbl)
@@ -623,12 +645,12 @@ func _shelf_row(slot: int, entry: Dictionary) -> Control:
 	var desc := Label.new()
 	desc.text = item.description
 	desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	desc.max_lines_visible = DESC_LINES
+	desc.max_lines_visible = _desc_lines()
 	desc.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	desc.clip_text = true
 	desc.custom_minimum_size.x = 0.0
 	desc.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	desc.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
+	desc.add_theme_font_size_override("font_size", _font(UITheme.FONT_SMALL, UITheme.FONT_TEXT))
 	desc.add_theme_color_override("font_color",
 		UITheme.TEXT_FAINT if sold else UITheme.TEXT_DIM)
 	desc.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -702,7 +724,7 @@ func _pack_tile(slot: int, row: Dictionary) -> Control:
 	var opened: bool = row.has("cards")
 	var btn := Button.new()
 	btn.name = "PackTile%d" % slot
-	btn.custom_minimum_size = Vector2(PACK_HEIGHT * 0.75, PACK_HEIGHT)
+	btn.custom_minimum_size = Vector2(_pack_h() * 0.75, _pack_h())
 	btn.add_theme_stylebox_override("normal", UITheme.flat(Color(0, 0, 0, 0), 6, 0, 0))
 	btn.add_theme_stylebox_override("hover", UITheme.flat(Color(1, 1, 1, 0.06), 6, 0, 0))
 	btn.add_theme_stylebox_override("pressed", UITheme.flat(Color(1, 1, 1, 0.1), 6, 0, 0))
@@ -724,7 +746,7 @@ func _pack_tile(slot: int, row: Dictionary) -> Control:
 	var price_lbl := Label.new()
 	price_lbl.text = "Sold" if sold else ("▶" if opened else _price_text(row))
 	price_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	price_lbl.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
+	price_lbl.add_theme_font_size_override("font_size", _font(UITheme.FONT_SMALL, UITheme.FONT_BODY))
 	price_lbl.add_theme_color_override("font_color", _price_color(row, sold))
 	price_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	col.add_child(price_lbl)
@@ -776,7 +798,7 @@ func open_pack(slot: int) -> Node:
 		name_lbl.text = LootSystem.display_name(entry)
 		name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		name_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		name_lbl.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
+		name_lbl.add_theme_font_size_override("font_size", _font(UITheme.FONT_SMALL, UITheme.FONT_BODY))
 		name_lbl.add_theme_color_override("font_color",
 			UITheme.rarity_color(ShopSystem.rarity_rung(String(entry.get("rarity", "Common")))))
 		name_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
