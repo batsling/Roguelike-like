@@ -343,7 +343,6 @@ func _render() -> void:
 func _loot_tile(slot: int, row: Dictionary) -> Control:
 	var entry: Dictionary = row.get("entry", {})
 	var sold: bool = bool(row.get("sold", false))
-	var price: int = ShopSystem.price_of(row)
 	var afford: bool = ShopSystem.can_afford(row)
 	var tint: Color = LootSystem.LOOT_COLOR
 	var btn := Button.new()
@@ -402,7 +401,6 @@ func open_loot_card(slot: int) -> Node:
 	var row: Dictionary = loot[slot]
 	var entry: Dictionary = row.get("entry", {})
 	var sold: bool = bool(row.get("sold", false))
-	var price: int = ShopSystem.price_of(row)
 	var afford: bool = ShopSystem.can_afford(row)
 	var layer := CanvasLayer.new()
 	layer.layer = card_layer
@@ -482,7 +480,6 @@ func open_loot_card(slot: int) -> Node:
 func _shelf_row(slot: int, entry: Dictionary) -> Control:
 	var item: ItemData = Data.get_item2(StringName(entry.get("item", &"")))
 	var sold: bool = bool(entry.get("sold", false))
-	var price: int = ShopSystem.price_of(entry)
 	var afford: bool = ShopSystem.can_afford(entry)
 	# item_color, not rarity_color: a Boss relic has a class of its own and should
 	# read as one here exactly as it does in the pack and on the drop modal.
@@ -680,7 +677,6 @@ func _paint_chrome() -> void:
 func _card(slot: int, entry: Dictionary) -> Control:
 	var item: ItemData = Data.get_item2(StringName(entry.get("item", &"")))
 	var sold: bool = bool(entry.get("sold", false))
-	var price: int = ShopSystem.price_of(entry)
 	var afford: bool = ShopSystem.can_afford(entry)
 	var tint: Color = UITheme.rarity_color(int(item.rarity)) if item != null else UITheme.TEXT_DIM
 
