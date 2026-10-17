@@ -2409,7 +2409,7 @@ func confirm_completed_game() -> void:
 			# other confirm.
 			if _checklist != null:
 				_checklist.drop_review_notes(),
-		review, REVIEW_PANEL_W)
+		review, REVIEW_PANEL_W, true)
 
 # asks: did you complete the real video game? It is the claim "✓ Completed Game"
 # makes once its confirm is answered, and it drives the RECORD half of the report — the run's beaten set, the
@@ -2958,7 +2958,7 @@ func _open_post_game() -> void:
 	if _boss_due_next() and not GameLoop2.run_over \
 			and _boss_notice_for != GameState.spawn_events:
 		_boss_notice_for = GameState.spawn_events
-		boss_tier = RunDifficulty.tier_name(_current_tier())
+		boss_tier = _boss_notice_tier()
 		for choice in _choices:
 			if bool(choice.get("boss", false)) and choice.get("enemy") != null:
 				bosses.append(choice.get("enemy"))
@@ -3647,7 +3647,7 @@ func _maybe_announce_boss() -> void:
 		if bool(choice.get("boss", false)) and choice.get("enemy") != null:
 			bosses.append(choice.get("enemy"))
 	_boss_notice = load(BOSS_NOTICE_MODAL_SCRIPT).open(self,
-		RunDifficulty.tier_name(_current_tier()), bosses)
+		_boss_notice_tier(), bosses)
 	_boss_notice.finished.connect(func():
 		_boss_notice = null
 		_finish_pending_detour())
@@ -4755,6 +4755,18 @@ func show_completed_goals() -> Node:
 # same band.
 func _boss_due_next() -> bool:
 	return RunDifficulty.is_boss_spawn(GameState.spawn_events + 1)
+
+# The tier the boss warning names: the one the NEXT spawn event steps the run up
+# to, since the warning is raised before that spawn happens. It used to name
+# `_current_tier()`, the tier being LEFT — so the first warning of every run read
+# "The run steps up to Low" on a run that was already Low. Empty once the ladder
+# is capped (Insane): the capstone still lands every band there, but nothing
+# steps, and the warning should not claim it does.
+func _boss_notice_tier() -> String:
+	var next: int = RunDifficulty.tier_for(GameState.spawn_events + 1)
+	if next <= _current_tier():
+		return ""
+	return RunDifficulty.tier_name(next)
 
 # The difficulty tier of the CURRENT offering — the plain ladder, for a boss round
 # exactly as for any other.

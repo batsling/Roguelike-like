@@ -12,10 +12,12 @@ extends Control
 # acknowledged is a popup; a thing that is true for a while is a banner. This is
 # the first kind.
 #
-# What it says is the part a banner never had room for: a boss round is not
-# "harder", it is a DIFFERENT SET OF RULES — every card on the table is a boss,
-# bombs do nothing to one, and the way out of a card (bash / transmute /
-# scramble) is still open but buys a different boss rather than a way past this.
+# What it says is the part a banner never had room for: the NEXT spawn event is
+# the capstone (§19.6) — the tier steps, the board grows, and a boss walks on with
+# whatever else arrives. Bombs do nothing to one, and since the capstone is not
+# any card's enemy (nor one of `arrivals`), no Scramble, Bash or Transmute can
+# send it back. It used to say every card on the table was a boss, which was the
+# every-third-GAME rule that §19.6 retired.
 #
 # Built in code on its own CanvasLayer, like every other 2.0 modal.
 #
@@ -118,9 +120,9 @@ func _build() -> void:
 	root.add_child(title)
 
 	var sub := Label.new()
-	sub.text = ("The run steps up to %s, and every game on the table now carries a boss."
+	sub.text = ("The next bodies to walk on step the run up to %s: the board grows a column and a row, and a boss walks on with them."
 		% _tier_name) if _tier_name != "" else \
-		"Every game on the table now carries a boss."
+		"The next bodies to walk on bring a boss with them."
 	sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	sub.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	sub.add_theme_font_size_override("font_size", UITheme.FONT_LABEL)
@@ -133,7 +135,8 @@ func _build() -> void:
 
 	for line in [
 		"A boss takes no damage from bombs — its goal is the only way it comes off the board.",
-		"Bash, Transmute and Scramble still work; they buy you a different boss, not a way past this one.",
+		"It lands with the next spawn, whichever comes first: taking an Enemies or Champion game, a lost run's spawn, or the end of a game.",
+		"It is no card's enemy, so Scramble, Bash and Transmute cannot send it back.",
 	]:
 		var l := Label.new()
 		l.text = "•  " + line

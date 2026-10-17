@@ -31,9 +31,13 @@ const PANEL_W := 460
 # report's winning-run review puts a notes field BESIDE each row, and two columns
 # in 460px is two columns of three words. Clamped to the viewport by the caller's
 # own judgement; nothing here can measure a screen it is not yet on.
+# `affirmative` is for the question whose Yes is good news rather than a loss —
+# the report's "Completion" review. Its Yes is drawn in UITheme.SUCCESS, the green
+# of the ✓ Completed Game button that raised it, rather than the red that says
+# "this cannot be undone" everywhere else this panel is used.
 static func ask(parent: Node, title: String, body: String, ok_text: String,
 		on_ok: Callable, on_cancel: Callable = Callable(),
-		extra: Control = null, width: int = 0) -> ConfirmPanel:
+		extra: Control = null, width: int = 0, affirmative: bool = false) -> ConfirmPanel:
 	var panel := ConfirmPanel.new()
 	panel._title = title
 	panel._body = body
@@ -42,6 +46,7 @@ static func ask(parent: Node, title: String, body: String, ok_text: String,
 	panel._on_cancel = on_cancel
 	panel._extra = extra
 	panel._width = maxi(PANEL_W, width)
+	panel._affirmative = affirmative
 	parent.add_child(panel)
 	return panel
 
@@ -55,6 +60,8 @@ var _on_cancel: Callable = Callable()
 var _extra: Control = null
 # How wide the panel is drawn, never narrower than PANEL_W. See `ask`.
 var _width: int = PANEL_W
+# Draw Yes (and the panel's rule) green instead of red. See `ask`.
+var _affirmative: bool = false
 # Set the instant Yes is pressed, so the tear-down below knows not to also call
 # the No handler for the same question.
 var _answered: bool = false
@@ -105,7 +112,7 @@ func _build() -> void:
 	sb.set_corner_radius_all(8)
 	sb.set_content_margin_all(20)
 	sb.set_border_width_all(2)
-	sb.border_color = Color(0.85, 0.45, 0.35)
+	sb.border_color = UITheme.SUCCESS if _affirmative else Color(0.85, 0.45, 0.35)
 	panel.add_theme_stylebox_override("panel", sb)
 	center.add_child(panel)
 
@@ -148,18 +155,22 @@ func _build() -> void:
 	cancel.pressed.connect(dismiss)
 	buttons.add_child(cancel)
 
-	var ok := Button.new()
+	var ok: Button
+	if _affirmative:
+		ok = UITheme.confirm_button(_ok_text, Vector2(120, 38))
+	else:
+		ok = Button.new()
+		ok.text = _ok_text
+		ok.custom_minimum_size = Vector2(120, 38)
+		var ok_style := StyleBoxFlat.new()
+		ok_style.bg_color = Color(0.34, 0.12, 0.12, 0.95)
+		ok_style.set_corner_radius_all(6)
+		ok_style.set_content_margin_all(8)
+		ok_style.set_border_width_all(1)
+		ok_style.border_color = Color(0.95, 0.45, 0.4)
+		ok.add_theme_stylebox_override("normal", ok_style)
+		ok.add_theme_color_override("font_color", Color(1, 0.72, 0.68))
 	ok.name = "OkBtn"
-	ok.text = _ok_text
-	ok.custom_minimum_size = Vector2(120, 38)
-	var ok_style := StyleBoxFlat.new()
-	ok_style.bg_color = Color(0.34, 0.12, 0.12, 0.95)
-	ok_style.set_corner_radius_all(6)
-	ok_style.set_content_margin_all(8)
-	ok_style.set_border_width_all(1)
-	ok_style.border_color = Color(0.95, 0.45, 0.4)
-	ok.add_theme_stylebox_override("normal", ok_style)
-	ok.add_theme_color_override("font_color", Color(1, 0.72, 0.68))
 	ok.pressed.connect(func() -> void:
 		_answered = true
 		if _on_ok.is_valid():
