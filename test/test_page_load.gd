@@ -18,7 +18,7 @@ const ON_DEMAND := [
 	"AtlasView", "Collection", "HowToPlayScreen", "SettingsModal",
 	"TierListScreen", "RunHistoryScreen", "RunLogScreen", "RunOverScreen",
 	"EventModal2", "RewardScreen", "GraveyardPanel", "CompletedGoalsPanel",
-	"RunMapModal", "GoalsBeatenView",
+	"RunMapModal", "GoalsBeatenView", "ShopModal2", "ShopPanel2",
 ]
 
 # The page, and the pieces it builds on its first frame. A screen named from
@@ -32,7 +32,6 @@ const EAGER_FILES := [
 	"res://scripts/redesign2/OfferingCards.gd",
 	"res://scripts/redesign2/DropQueue.gd",
 	"res://scripts/redesign2/PackStrip.gd",
-	"res://scripts/redesign2/ShopPanel2.gd",
 ]
 
 # The code on a line: comments dropped, string contents blanked, so a class

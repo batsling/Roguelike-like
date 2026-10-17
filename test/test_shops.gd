@@ -158,11 +158,19 @@ func test_bombing_an_enemy_pays_no_gold() -> void:
 
 # --- prices ----------------------------------------------------------------
 
-func test_the_price_ladder_is_three_and_one_per_rung() -> void:
+func test_the_price_ladder_is_three_and_two_per_rung() -> void:
+	GameState.fracture = 0
 	assert_eq(ShopSystem.price_for(ItemData.Rarity.COMMON), 3)
-	assert_eq(ShopSystem.price_for(ItemData.Rarity.UNCOMMON), 4)
-	assert_eq(ShopSystem.price_for(ItemData.Rarity.RARE), 5)
-	assert_eq(ShopSystem.price_for(ItemData.Rarity.LEGENDARY), 6)
+	assert_eq(ShopSystem.price_for(ItemData.Rarity.UNCOMMON), 5)
+	assert_eq(ShopSystem.price_for(ItemData.Rarity.RARE), 7)
+	assert_eq(ShopSystem.price_for(ItemData.Rarity.LEGENDARY), 9)
+
+func test_loot_costs_two_under_an_item_of_its_rarity() -> void:
+	GameState.fracture = 0
+	assert_eq(ShopSystem.loot_price_for("Common"), 1)
+	assert_eq(ShopSystem.loot_price_for("Uncommon"), 3)
+	assert_eq(ShopSystem.loot_price_for("Rare"), 5)
+	assert_eq(ShopSystem.loot_price_for("Legendary"), 7)
 
 func test_the_rarity_ladder_has_no_holes_in_it() -> void:
 	# Epic is gone, which is what lets the price be "base plus the rung". If the

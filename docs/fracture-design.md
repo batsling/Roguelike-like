@@ -32,14 +32,14 @@ normal run, in the shape Slay the Spire gave the idea.
 | # | Change | What it touches |
 |---|---|---|
 | 1 | **Shield gain −1**: normal 3 → 2, Traditional 5 → 4 | `GameLoop2.shields_for_game` |
-| 2 | **Enemies hit harder, ×1.5 rounded up** | the swing, `GameLoop2._take_hit` |
+| 2 | **Shops are dearer: every price +1 gold**, items and loot alike | `ShopSystem.price_for` / `loot_price_for` |
 | 3 | **Shield gain −1**: normal 2 → 1, Traditional 4 → 3 | as 1 |
 | 4 | **One more body on every arrival**, the capstone boss's included (bosses too) | `GameLoop2.choose_game`, `_land_capstone_boss` |
 | 5 | **Shield gain −1**: normal stays at 1 (the floor), Traditional 3 → 2 | as 1 |
 | 6 | **Difficulty rises 1 spawn faster**: the tier steps, and a boss comes, every 3rd spawn event instead of every 4th | `RunDifficulty.GAMES_PER_TIER` |
 | 7 | **+1 starting row**: the board starts one row taller, so more bodies can stand in the front column and hit at once. Columns are unchanged, so nothing spawns closer or farther | `GameLoop2.grid_growth` (rows only) |
 | 8 | **Enemies take 1 extra turn after each game beaten or escaped** | `_resolve_enemy_turn`'s `extra` beat |
-| 9 | **Enemies hit harder again, ×1.5 rounded up** on top of Fracture 2 | as 2 |
+| 9 | **Enemies hit harder, ×2** | the swing, `GameLoop2.enemy_damage` |
 | 10 | **The Collapse**: beat the Amulet, then carry it back to the start | §7 |
 
 Where a game's shields land at each level:
@@ -54,18 +54,29 @@ Where a game's shields land at each level:
 What a swing does at each level. Authored damage today is the enemy's tier
 (Low 1 … Insane 4) and, for bosses, 3 / 5 / 7 / 9:
 
-| | Today | Fracture 2–8 | Fracture 9–10 |
-|---|---|---|---|
-| Low enemy | 1 | 2 | 3 |
-| Medium enemy | 2 | 3 | 5 |
-| High enemy | 3 | 5 | 8 |
-| Insane enemy | 4 | 6 | 9 |
-| Low boss | 3 | 5 | 8 |
-| Medium boss | 5 | 8 | 12 |
-| High boss | 7 | 11 | 17 |
-| Insane boss | 9 | 14 | 21 |
+| | Fracture 0–8 | Fracture 9–10 |
+|---|---|---|
+| Low enemy | 1 | 2 |
+| Medium enemy | 2 | 4 |
+| High enemy | 3 | 6 |
+| Insane enemy | 4 | 8 |
+| Low boss | 3 | 6 |
+| Medium boss | 5 | 10 |
+| High boss | 7 | 14 |
+| Insane boss | 9 | 18 |
+
+What a shelf costs (`docs/games-first-redesign.md` §14):
+
+| | Item | Loot | Item, Fracture 2+ | Loot, Fracture 2+ |
+|---|---|---|---|---|
+| Common | 3 | 1 | 4 | 2 |
+| Uncommon | 5 | 3 | 6 | 4 |
+| Rare | 7 | 5 | 8 | 6 |
+| Legendary | 9 | 7 | 10 | 8 |
 
 Reordered by the owner on 16 October 2026 (1↔4, 2↔3, 5↔7 of the first draft).
+On 17 October 2026 the owner folded the two ×1.5 damage steps (2 and 9) into one
+×2 at Fracture 9 and gave Fracture 2 to the shops.
 The order is the owner's to move. It is written down here so a change to it is a
 change to this table first.
 
@@ -86,13 +97,12 @@ with no armour at all, and the third cut is the one that only reaches
 Traditional. Items that add to the grant (Anchor's +1 Temporary Shield) add on
 top as they do now.
 
-**Damage (2).** The enemy's **authored** damage is multiplied by 1.5 and rounded
-up; statuses that add damage (Strength and the rest) add on top of the result
-and **do not grow with the level** (the owner's call),
-so the number on the body's card is the number that lands. A shield stops one
-whole hit whatever its size (§3.2), so this level only bites once the shields
-are gone, which is why it sits right after the first shield cut. Bosses take it
-too.
+**Dearer shops (2).** +1 gold on every price a shelf is rolled with, the items
+row and the loot row alike, on top of whatever a shopkeeper's sale does. It is
+added when the shelf is rolled (`Fracture.shop_surcharge`), and the level is fixed
+for the run, so the price saved on a shelf is already the right one. It sits
+early because it bites from the first shop: the 3-gold starting purse no longer
+buys a Common item at the first shop on the road.
 
 **Starting row (7).** Rows only. The owner's intent is "more enemies can hit you
 at once", and a deeper board would have made them spawn farther away, which is
@@ -117,13 +127,18 @@ already uses, so:
 - a teleport out of a game skips it, the same way it skips the end-of-game
   spawn: it is not a game handed in.
 
-**Damage again (9).** A second ×1.5, applied to Fracture 2's result and rounded
-up again. Same rule, same place in the code.
+**Damage (9).** The enemy's **authored** damage is doubled; statuses that add
+damage (Strength and the rest) add on top of the result and **do not grow with
+the level** (the owner's call), so the number on the body's card is the number
+that lands. A shield stops one whole hit whatever its size (§3.2), so this level
+only bites once the shields are gone. Bosses take it too. It was two steps of
+×1.5, rounded up, at 2 and 9, until 17 October 2026; one ×2 is about what the
+pair came to (9 → 21 against 9 → 18 on an Insane boss) without the rounding.
 
 **DROPPED: +1 hop at the start.** This was Fracture 9 first: every start one game
 farther from the Amulet (the path band 4–8 moved to 5–9). It did not break the
 router, but it left Amulets out, and the owner scrapped it on 16 October 2026 in
-favour of the second damage step. The measurements stay here so the idea is not
+favour of a second damage step (since folded into the single ×2). The measurements stay here so the idea is not
 re-proposed without them.
 
 **A flat 5–9 leaves Amulets out (measured 15 October 2026).** A game can be

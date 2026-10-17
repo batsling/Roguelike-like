@@ -1,23 +1,18 @@
 class_name ShopPanel2
 extends PanelContainer
 
-# ShopPanel2 — the shop standing at a Shop node (docs/games-first-redesign.md §14, §19.1),
-# mounted BELOW THE BATTLEFIELD on the page rather than opened over it.
+# ShopPanel2 — the shelf of the shop at a Shop node (docs/games-first-redesign.md
+# §14, §19.1): the items, the loot, the purse and the reroll. It is mounted inside
+# ShopModal2, the pop-up the page's 🛒 Shop button opens (§14.4).
 #
-# It was a modal, and the modal was the problem: the run's rhythm is report the
-# game → see what it cost you on the board → choose where to go next, and a
-# full-screen shop dropped into the middle of that stopped the whole screen to
-# ask a question the player had not asked yet. It also covered the two things
-# they had just come back to read — the board and the offering — so buying
-# anything meant deciding without them.
-#
-# So the shop is now part of the page: it appears under the board when you beat a
-# Shop node's game and STAYS THERE for the whole visit, until you travel on. Nothing is
-# blocked while it is up, the offering is still one scroll away, and the decision
-# "spend now or keep the gold" is made next to the board it will be spent on.
-# Overworld2 floats a "🛒 Shop ↓" pointer at the foot of the screen until the
-# panel has been scrolled to, so a shop below the fold is never a shop missed.
-#
+# HISTORY, so the next move is not a return to an old answer. It was a modal over
+# the board first, and that dropped a full-screen question into the run's rhythm
+# before the player had asked it. Then it was mounted on the page under the board,
+# which asked nothing but was easy to miss below the fold and cost the board its
+# height. The owner chose the third shape (17 October 2026): a pop-up that looks
+# like an event, opened only by a button by the offering, so it interrupts nothing
+# and is never missed.
+
 # THE SHELF IS THREE ITEMS AND IT STAYS. Every slot is drawn whether or not it
 # has been bought — a sold one greys out and keeps its place — because the shelf
 # persists for the whole run (ShopSystem) and a player coming back to a shop needs
@@ -115,6 +110,7 @@ const LOOT_ICON := 30
 var card_layer: int = 122
 
 var _game_id: StringName = &""
+var _show_title: bool = true
 var _game: GameData = null
 var _done: bool = false
 
@@ -130,11 +126,15 @@ var _subtitle: Label = null
 
 # Mount a Shop node's shop into `parent`. Returns null when that node has no shop (or
 # its shelf could not be rolled), so the caller can simply not have one.
-static func mount(parent: Control, game_id: StringName) -> ShopPanel2:
+#
+# `show_title` is false inside ShopModal2, whose own header already names the
+# shop: the chrome line keeps the purse and the reroll and drops the "🛒 Shop".
+static func mount(parent: Control, game_id: StringName, show_title: bool = true) -> ShopPanel2:
 	if ShopSystem.shop_for(game_id).is_empty():
 		return null
 	var panel := ShopPanel2.new()
 	panel._game_id = game_id
+	panel._show_title = show_title
 	# The game PLAYED there names it, which on a transmuted Shop node is the
 	# replacement — the shelf rides the node (§19.2), the name the game you beat.
 	panel._game = GameLoop2.game_at(game_id)
@@ -151,8 +151,13 @@ func _ready() -> void:
 	size_flags_horizontal = Control.SIZE_FILL
 	# Tight padding, load-bearing rather than taste: this panel and the machines'
 	# are splitting the ~116px the page has left once the board is at its floor.
-	add_theme_stylebox_override("panel",
-		UITheme.panel_box(UITheme.PANEL, UITheme.SHOP_GREEN.lerp(UITheme.BORDER, 0.4), 10, 6, 2))
+	# Inside the pop-up the pop-up IS the frame (ShopModal2); a second green box
+	# inside it is a border around nothing.
+	if _show_title:
+		add_theme_stylebox_override("panel",
+			UITheme.panel_box(UITheme.PANEL, UITheme.SHOP_GREEN.lerp(UITheme.BORDER, 0.4), 10, 6, 2))
+	else:
+		add_theme_stylebox_override("panel", StyleBoxEmpty.new())
 	if not ShopSystem.shop_changed.is_connected(_on_shop_changed):
 		ShopSystem.shop_changed.connect(_on_shop_changed)
 	if not GameState.gold_changed.is_connected(_on_gold_changed):
@@ -175,12 +180,12 @@ func _exit_tree() -> void:
 		GameState.stats_changed.disconnect(_on_stats_changed)
 
 
-# The shop's name. `shopkeeper` is the seam for the authored roster that is still
-# to come — until a shop carries one, the game played there names the place.
+# The shop's name: its keeper's (§14.6), and until a shop has one, the game
+# played there names the place.
 func _shop_name() -> String:
-	var keeper: String = str(ShopSystem.peek(_game_id).get("shopkeeper", ""))
-	if keeper != "":
-		return keeper
+	var keeper: ShopkeeperData = ShopSystem.keeper_for(_game_id)
+	if keeper != null:
+		return keeper.display_name
 	return "%s" % (_game.display_name if _game != null else String(_game_id))
 
 
@@ -190,8 +195,8 @@ func _shop_name() -> String:
 # name over its own page is the screen repeating itself (see `_chrome_line`). So the
 # fallback is the flat word rather than `_shop_name`'s.
 func _header_name() -> String:
-	var keeper: String = str(ShopSystem.peek(_game_id).get("shopkeeper", ""))
-	return keeper if keeper != "" else "Shop"
+	var keeper: ShopkeeperData = ShopSystem.keeper_for(_game_id)
+	return keeper.display_name if keeper != null else "Shop"
 
 
 # The NODE this shop belongs to — the host reads it to tell "the shop already on
@@ -234,6 +239,9 @@ func _build() -> void:
 	_loot_row.add_theme_constant_override("v_separation", UITheme.GAP_WIDE)
 	_loot_row.custom_minimum_size.x = _cards_row.custom_minimum_size.x
 	root.add_child(_loot_row)
+	if not _show_title:
+		_cards_row.alignment = FlowContainer.ALIGNMENT_CENTER
+		_loot_row.alignment = FlowContainer.ALIGNMENT_CENTER
 	_render()
 
 
@@ -277,6 +285,7 @@ func _chrome_line() -> Control:
 	title.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 	title.add_theme_color_override("font_color", UITheme.SHOP_GREEN)
 	title.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	title.visible = _show_title
 	row.add_child(title)
 
 	# ONLY WHEN THERE IS NOTHING LEFT. This used to read "3 items on the shelf. What
@@ -371,7 +380,7 @@ func _loot_tile(slot: int, row: Dictionary) -> Control:
 	name_lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	line.add_child(name_lbl)
 	var price_lbl := Label.new()
-	price_lbl.text = "Sold" if sold else "◉ %d" % price
+	price_lbl.text = "Sold" if sold else _price_text(row)
 	price_lbl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	price_lbl.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 	price_lbl.add_theme_color_override("font_color", UITheme.TEXT_FAINT if sold
@@ -436,12 +445,12 @@ func open_loot_card(slot: int) -> Node:
 		buy_btn.text = "Sold"
 		buy_btn.disabled = true
 	else:
-		buy_btn.text = "◉  %d" % price
+		buy_btn.text = _price_text(row, "  ")
 		var fits: bool = GameState.is_bag_entry(entry) or GameState.loot_fits(entry)
 		buy_btn.disabled = not afford or not fits
-		buy_btn.tooltip_text = ("%d gold — you have %d." % [price, GameState.gold]) if not afford \
+		buy_btn.tooltip_text = _short_of(row) if not afford \
 			else ("No room in your pack for it." if not fits
-				else "Buy it for %d gold." % price)
+				else "Buy it for %s." % ShopSystem.price_words(row))
 	buy_btn.pressed.connect(func(): buy_loot(slot))
 	col.add_child(buy_btn)
 	var done := Button.new()
@@ -554,7 +563,7 @@ func _shelf_row(slot: int, entry: Dictionary) -> Control:
 	col.add_child(name_lbl)
 
 	var price_lbl := Label.new()
-	price_lbl.text = "Sold" if sold else "◉ %d" % price
+	price_lbl.text = "Sold" if sold else _price_text(entry)
 	price_lbl.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 	price_lbl.add_theme_color_override("font_color", UITheme.TEXT_FAINT if sold
 		else (UITheme.COIN_GOLD if afford else UITheme.DANGER))
@@ -639,6 +648,17 @@ func close_card() -> void:
 	_card_layer = null
 
 
+# A price as the shelf shows it: ◉ for gold, ♥ for a keeper who takes Health.
+func _price_text(entry: Dictionary, gap: String = " ") -> String:
+	return "%s%s%d" % ["♥" if ShopSystem.pays_in_health(entry) else "◉", gap,
+		ShopSystem.price_of(entry)]
+
+# What a price you cannot meet says, in what it is paid in.
+func _short_of(entry: Dictionary) -> String:
+	if ShopSystem.pays_in_health(entry):
+		return "%s — it has to leave you at least 1 Health." % ShopSystem.price_words(entry)
+	return "%s — you have %d." % [ShopSystem.price_words(entry), GameState.gold]
+
 func _paint_chrome() -> void:
 	if _purse != null and is_instance_valid(_purse):
 		_purse.text = "◉ %d" % GameState.gold
@@ -721,7 +741,7 @@ func _card(slot: int, entry: Dictionary) -> Control:
 		buy_btn.text = "Sold"
 		buy_btn.disabled = true
 	else:
-		buy_btn.text = "◉  %d" % price
+		buy_btn.text = _price_text(entry, "  ")
 		buy_btn.disabled = not afford
 		if afford:
 			buy_btn.add_theme_stylebox_override("normal",
@@ -729,9 +749,9 @@ func _card(slot: int, entry: Dictionary) -> Control:
 			buy_btn.add_theme_stylebox_override("hover",
 				UITheme.flat(UITheme.SUCCESS.lerp(UITheme.BG, 0.35), 8, 6, 2, UITheme.SUCCESS))
 			buy_btn.add_theme_color_override("font_color", UITheme.SUCCESS.lerp(Color.WHITE, 0.5))
-			buy_btn.tooltip_text = "Buy %s for %d gold." % [item.display_name, price]
+			buy_btn.tooltip_text = "Buy %s for %s." % [item.display_name, ShopSystem.price_words(entry)]
 		else:
-			buy_btn.tooltip_text = "%d gold — you have %d." % [price, GameState.gold]
+			buy_btn.tooltip_text = _short_of(entry)
 	buy_btn.pressed.connect(func(): buy(slot))
 	box.add_child(buy_btn)
 	return wrap

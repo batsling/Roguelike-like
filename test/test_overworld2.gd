@@ -7693,16 +7693,17 @@ func test_leaving_the_haul_screen_lands_the_shelf_under_the_board() -> void:
 		"and the way out NAMES it rather than saying 'see what's here'")
 	assert_eq(_ui._pending_shop, node,
 		"the shelf is still the PAGE's to mount — the screen never claimed it")
-	assert_null(_ui._shop_panel, "and nothing is mounted while the haul is up")
+	assert_null(_ui._shop_modal, "and nothing is open while the haul is up")
 	# `dismiss` emits `finished`, which the page wired to _on_post_game_finished —
 	# so this is the real way out, not a nudge past it.
 	screen.dismiss()
 	_ui._post_screen = null
-	assert_not_null(_ui._shop_panel, "leaving mounts the shelf")
-	if _ui._shop_panel != null:
-		assert_eq(_ui._shop_panel.game_id(), node, "and it is this node's")
-		assert_eq(_ui._shop_panel.get_parent(), _ui._right_col,
-			"under the board, where a shop lives for the rest of the visit")
+	assert_not_null(_ui._shop_modal, "'Go to Shop' opens the shop")
+	if _ui._shop_modal != null:
+		assert_eq(_ui._shop_modal.node_id(), node, "and it is this node's")
+		_ui._shop_modal.close()
+	assert_eq(_ui._shop_here, node, "and the button stays for the rest of the visit")
+	assert_true(_ui._shop_btn.visible)
 	_dismiss_event()
 
 # The boss warning is a banner on this screen rather than a sixth popup — a boss
@@ -7741,11 +7742,11 @@ func test_a_coming_capstone_warns_on_the_haul_screen_and_not_twice() -> void:
 	assert_null(_ui._boss_notice, "so no popup arrives afterwards to repeat it")
 
 # ---------------------------------------------------------------------------
-# The shop is part of the page, under the board (§14)
+# The shop is a pop-up behind a button by the offering (§14.4)
 # ---------------------------------------------------------------------------
 
 # The node the run is standing on, STAMPED a Shop (§19.1) — the only node a shop
-# can be mounted at, since the page mounts the one underfoot. Stamped rather than
+# can be opened at, since the page opens the one underfoot. Stamped rather than
 # searched for so no shop test rides on what the deal put where.
 func _a_shop() -> StringName:
 	var here: StringName = GameState.current_game_id
@@ -7753,28 +7754,66 @@ func _a_shop() -> StringName:
 		GameState.node_kinds[here] = RunGraph.NodeKind.SHOP
 	return here
 
-func test_a_shop_mounts_under_the_board_rather_than_over_it() -> void:
+func test_a_shop_puts_a_button_up_and_opens_nothing_by_itself() -> void:
 	var node: StringName = _a_shop()
 	if node == &"":
 		pending("the run is standing nowhere")
 		return
-	_ui._mount_shop(node)
-	assert_not_null(_ui._shop_panel, "the shop is on the page")
-	assert_eq(_ui._shop_panel.get_parent(), _ui._right_col,
-		"in the board's own column, under it")
-	assert_eq(_ui._shop_panel.game_id(), node, "and it is that node's shop")
-
-func test_the_pointer_at_the_shop_goes_up_with_it_and_down_with_it() -> void:
-	var node: StringName = _a_shop()
-	if node == &"":
-		pending("the run is standing nowhere")
-		return
-	_ui._mount_shop(node)
-	assert_eq(_ui._shop_hint.visible, not _ui._shop_in_view(),
-		"the pointer is up exactly while the shop it points at is off screen")
 	_ui._clear_shop()
-	assert_null(_ui._shop_panel, "leaving takes the shop off the page")
-	assert_false(_ui._shop_hint.visible, "and the pointer with it")
+	_ui._pending_shop = node
+	_ui._open_pending_shop()
+	assert_eq(_ui._shop_here, node, "the run is standing in that node's shop")
+	assert_true(_ui._shop_btn.visible, "so its button is up")
+	assert_true(_ui._shop_btn.is_visible_in_tree() or not _ui._select_box.is_visible_in_tree(),
+		"on the offering's heading")
+	assert_null(_ui._shop_modal, "and nothing opened by itself")
+
+func test_the_button_opens_the_shop_as_a_pop_up_over_the_page() -> void:
+	var node: StringName = _a_shop()
+	if node == &"":
+		pending("the run is standing nowhere")
+		return
+	_ui._set_shop_here(node)
+	_ui._shop_btn.pressed.emit()
+	var modal = _ui._shop_modal
+	assert_not_null(modal, "pressing it opens the shop")
+	if modal == null:
+		return
+	assert_eq(modal.node_id(), node, "that node's shop")
+	assert_not_null(modal.shelf(), "with its shelf in it")
+	assert_true(ShopSystem.has_seen(node), "and walking in is what makes the stock public")
+	assert_eq(_ui.open_shop(), modal, "pressing again does not stack a second one")
+	modal.close()
+	assert_null(_ui._shop_modal, "closing it takes it away")
+	assert_true(_ui._shop_btn.visible, "and the button stays for another look")
+
+func test_walking_in_fires_once_an_arrival_however_often_the_door_opens() -> void:
+	var node: StringName = _a_shop()
+	if node == &"":
+		pending("the run is standing nowhere")
+		return
+	var heard: Array = []
+	var hear := func(_p): heard.append(true)
+	TriggerBus.shop_entered.connect(hear)
+	_ui._clear_shop()
+	_ui._pending_shop = node
+	_ui._open_pending_shop()
+	_ui.open_shop().close()
+	_ui.open_shop().close()
+	TriggerBus.shop_entered.disconnect(hear)
+	assert_eq(heard.size(), 1, "shop_entered is the moment of walking in")
+
+func test_leaving_the_node_takes_the_button_and_the_pop_up_down() -> void:
+	var node: StringName = _a_shop()
+	if node == &"":
+		pending("the run is standing nowhere")
+		return
+	_ui._set_shop_here(node)
+	_ui.open_shop()
+	_ui._clear_shop()
+	assert_null(_ui._shop_modal, "the pop-up closes")
+	assert_eq(_ui._shop_here, &"")
+	assert_false(_ui._shop_btn.visible, "and the button goes")
 
 func test_travelling_on_closes_the_shop_but_not_the_shelf() -> void:
 	var node: StringName = _a_shop()
@@ -7782,9 +7821,9 @@ func test_travelling_on_closes_the_shop_but_not_the_shelf() -> void:
 		pending("the run is standing nowhere")
 		return
 	ShopSystem.shop_for(node)
-	_ui._mount_shop(node)
+	_ui._set_shop_here(node)
 	_pick_enemies(0)
-	assert_null(_ui._shop_panel, "picking the next game walks out of the shop")
+	assert_eq(_ui._shop_here, &"", "picking the next game walks out of the shop")
 	assert_false(ShopSystem.shop_for(node).is_empty(),
 		"but the shelf is still there to come back to")
 
@@ -8263,68 +8302,49 @@ func test_the_page_still_fits_the_window_with_a_shop_on_it() -> void:
 	_pick_enemies(0)
 	_crowd_board(8)
 	for node in shops:
-		_ui._mount_shop(node)
+		# The shop is a pop-up now (§14.4); what the PAGE carries is its button, on
+		# the offering's heading, which is a width the left column pays for.
+		_ui._set_shop_here(node)
 		await get_tree().process_frame
 		await get_tree().process_frame
-		assert_not_null(_ui._shop_panel, "the shop mounts under the board")
+		assert_true(_ui._shop_btn.visible, "the shop's button is up")
 		_ui._refresh()
 		await get_tree().process_frame
 		var game: GameData = Data.get_game(node)
 		_assert_fits("the page with %s's shop on it" % (
 			game.display_name if game != null else String(node)))
 
-# What the test above USED to vary on, pinned down. With a shop under it the
-# board drops to small cells and its width became the hero's shield row: five
-# shields left the strip's small print room for one row, three didn't, and the
-# second row it took was 17px more than the page has with a shop on it, so the
-# test above failed on roughly one seed in three. The board now holds that row
-# open while it shares the column (BattlefieldView._hold_small_print_on_one_row);
-# this stands the same shop page up at three shield counts and checks the row.
-func test_the_strip_small_print_stays_on_one_row_with_a_shop_whatever_the_shields() -> void:
-	_at_720p()
-	var node: StringName = _a_shop()
-	if node == &"":
+func test_a_shelf_item_is_a_row_in_the_pop_up_and_a_card_when_you_open_it() -> void:
+	var shop_node: StringName = _a_shop()
+	if shop_node == &"":
 		pending("the run is standing nowhere")
 		return
-	_pick_enemies(0)
-	_ui._mount_shop(node)
-	await get_tree().process_frame
-	for n in [1, 3, 5]:
-		GameState.shields = n
-		GameState.bonus_shields = 0
-		_ui._refresh()
-		await get_tree().process_frame
-		await get_tree().process_frame
-		var small: Control = _ui._board._pressure_small
-		var row: float = (_ui._board._pressure_why as Control).size.y
-		assert_true(small.visible, "the small print is up (no boss warning in its place)")
-		assert_lt(small.size.y, row * 2.0,
-			"with %d shield(s) and a shop below, the small print is one row (%.0fpx, a row is %.0f)"
-			% [n, small.size.y, row])
-	_assert_fits("the page with a shop and a one-shield hero")
-
-func test_a_shelf_item_is_a_row_on_the_page_and_a_card_when_you_open_it() -> void:
-	var shop_node: StringName = _a_shop()
-	_ui._mount_shop(shop_node)
-	await get_tree().process_frame
-	var shelf: Array = ShopSystem.stock(shop_node)
-	if shelf.is_empty():
-		# A shop that has not opened yet has nothing to draw; the fit test
-		# above is the one that matters for it.
-		assert_eq(_ui._shop_panel._cards_row.get_child_count(), 0)
+	_ui._set_shop_here(shop_node)
+	var modal = _ui.open_shop()
+	assert_not_null(modal)
+	if modal == null:
 		return
-	assert_eq(_ui._shop_panel._cards_row.get_child_count(), shelf.size(),
-		"one row per thing on the shelf")
-	_ui._shop_panel.open_card(0)
 	await get_tree().process_frame
-	assert_not_null(_ui._shop_panel._card_layer, "clicking a row opens its card")
+	var panel: ShopPanel2 = modal.shelf()
+	var shelf: Array = ShopSystem.stock(shop_node)
+	assert_eq(panel._cards_row.get_child_count(), shelf.size(),
+		"one row per thing on the shelf")
+	if shelf.is_empty():
+		pending("the shelf rolled empty")
+		modal.close()
+		return
+	panel.open_card(0)
+	await get_tree().process_frame
+	assert_not_null(panel._card_layer, "clicking a row opens its card")
+	assert_gt(panel._card_layer.layer, UITheme.Layer.EVENT, "over the pop-up, not under it")
 	var buys: int = 0
-	for node in _ui._shop_panel._card_layer.find_children("*", "Button", true, false):
+	for node in panel._card_layer.find_children("*", "Button", true, false):
 		if String((node as Button).text).begins_with("◉") or (node as Button).text == "Sold":
 			buys += 1
 	assert_gt(buys, 0, "with the Buy button on it — the card is where you buy")
-	_ui._shop_panel.close_card()
-	assert_null(_ui._shop_panel._card_layer, "and putting it back closes it")
+	panel.close_card()
+	assert_null(panel._card_layer, "and putting it back closes it")
+	modal.close()
 
 func test_a_machine_is_a_row_on_the_page_and_a_card_when_you_open_it() -> void:
 	ObjectSystem.spawn_by_tag(&"arcade", 1, 1)
@@ -8427,7 +8447,8 @@ func test_a_node_that_is_not_a_shop_mounts_no_shop() -> void:
 	_ui._clear_shop()
 	_ui._pending_shop = here
 	_ui._open_pending_shop()
-	assert_null(_ui._shop_panel, "so nothing mounts under the board")
+	assert_eq(_ui._shop_here, &"", "so no shop opens for business")
+	assert_false(_ui._shop_btn.visible, "and no button goes up")
 
 func test_the_fool_standing_on_the_start_says_so_rather_than_fizzling_vaguely() -> void:
 	# A card spent on a journey of nought steps. "There is no Starting Game to

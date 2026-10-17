@@ -11,6 +11,26 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Shops: a pop-up behind a button, wider prices, and the groundwork for
+  shopkeepers** (the owner's design, 17 Oct 2026; spec §14.1, §14.4, §14.6).
+  - **The shop is a pop-up framed like an event** (`ShopModal2`), opened only by
+    the green `🛒 Shop` button on the offering's heading, which stays up for the
+    whole visit, or by the haul screen's "Go to Shop". Nothing opens by itself.
+    The shelf under the board, its `🛒 Shop ↓` pointer and the board shrinking to
+    make room for it are gone.
+  - **Prices go up 2 a rarity, not 1**: items 3/5/7/9, loot 2 below the item
+    (1/3/5/7). Enemies nodes and Fractures stand more bodies, so pay more gold,
+    than the old ladder was set against.
+  - **Shopkeepers, groundwork only.** A `shopkeepers` sheet (empty, header only),
+    `tools/generate_shopkeeper_tres.py`, `ShopkeeperData`, and a per-run random
+    deal of one keeper per Shop node. Columns for a keeper's pool, loot kinds,
+    currency (gold or Health), sales, shelf size and free-form rule tokens are
+    all wired into `ShopSystem`. No keepers are authored: the owner is going over
+    the candidates.
+  - **Fractures: one damage step, and the shops get dearer.** Fracture 2 is now
+    +1 gold on every price; the two ×1.5 damage steps (2 and 9) are one ×2 at
+    Fracture 9 ([`docs/fracture-design.md`](docs/fracture-design.md) §2).
+
 - **Start panel: even across runs, never the same twice, and a kit per genre**
   (the owner's design, 16 Oct 2026; spec §19.3.4).
   - **Weighted by reach.** Each start is drawn in proportion to 1 / the Amulets

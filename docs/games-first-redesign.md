@@ -3274,7 +3274,7 @@ Deferred by decision (author later): **Fog** scroll and **Keys** + locked paths.
   **Max Health** is a raisable stat (§3).
 - **Currency & shops** (§14): 1 gold an enemy, 3 a boss, paid with the drop (so a
   bomb pays nothing); characters open on the sheet's new `Gold` column (3 each);
-  prices are 3 + the rarity rung; shops stand at **Shop nodes** (§19.1 — the
+  prices are 3 + 2 a rarity rung; shops stand at **Shop nodes** (§19.1 — the
   ten best-connected games until §19.7), open on beating one, keep their three-item shelf for the whole run, and reroll
   for a **Scramble**. Gold never carries between runs. **`Epic` was deleted from
   `ItemData.Rarity`** — nothing rolled it and nothing was authored at it, and the
@@ -3730,7 +3730,8 @@ banks that decision instead, and the shops are where it is spent.
 | Boss defeated | **+3 gold** |
 | …while the **Golden Idol** is held | **+1 more** off every body, boss or not (§8) |
 | Starting purse | the character's **`Gold`** column (**3** across the roster) |
-| Item price | **3 + the rarity's rung** — Common 3, Uncommon 4, Rare 5, Legendary 6 |
+| Item price | **3 + 2 a rarity rung** — Common 3, Uncommon 5, Rare 7, Legendary 9 (`ShopSystem.PRICE_PER_RUNG`; +1 a rung until 17 October 2026, when the owner widened it because Enemies nodes and Fractures stand more bodies, and so pay more gold, than the ladder was set against) |
+| …from **Fracture 2** | **+1** on every price, items and loot (`Fracture.shop_surcharge`, `docs/fracture-design.md` §3) |
 | Carries between runs | **No.** A run opens on the character and nothing else. |
 
 A run is 6–12 games, so a player clearing most of their goals earns roughly
@@ -3830,36 +3831,41 @@ row under the relics. Each is rolled exactly as a drop is
 tenth), so every loot kind can turn up, and an **unidentified piece stays
 unidentified on the shelf**: the row, its hover, its card and the offering's
 stock lines all draw it through `LootSystem`, which shows the mask. A piece costs
-**one gold less** than a relic of its rarity (Common 2, Uncommon 3, Rare 4 —
-`LOOT_DISCOUNT`). Buying needs room in the pack; a piece that does not fit is not
+**two gold less** than a relic of its rarity (Common 1, Uncommon 3, Rare 5,
+Legendary 7 — `LOOT_DISCOUNT`). Buying needs room in the pack; a piece that does not fit is not
 charged for and stays. **A reroll redraws both rows.** Lord's Parasol sweeps the
 loot row too, as far as the pack has room. A shelf saved before loot was sold
 gets its loot row the first time it is asked for.
 
 ### 14.4 When it opens, and what the road can see
 
-The shop appears **after a Shop node's game is beaten** (§19.1 — it was the ten
-hubs until §19.7), queued behind the board's
-resolve playback on the same path an event takes (`Overworld2._pending_shop`) —
-and it appears **on the page, under the battlefield** (`ShopPanel2`), not as a
-modal over it. A shop is not an interruption: the run's rhythm is report the
-game, see what it cost you on the board, choose where to go next, and a
-full-screen shop dropped into the middle of that stopped everything to ask a
-question the player had not asked yet — while covering the board and the offering
-the answer depends on. Mounted under the board it blocks nothing, stays for the
-whole visit (travelling on is what closes it), and is read next to the run it is
-being spent on. Because it can sit below the fold, a **`🛒 Shop ↓` pointer**
-floats at the foot of the screen until the panel has been scrolled to.
+The shop opens for business **after a Shop node's game is beaten** (§19.1 — it
+was the ten hubs until §19.7), queued behind the board's resolve playback on the
+same path an event takes (`Overworld2._pending_shop`). What appears is a **button,
+not the shop**: `🛒 Shop`, in the shop's green, on the left of the offering's
+*Choose a Game* heading (`Overworld2._shop_btn`), where the player is looking when
+the question of where to go next comes up. Pressing it opens the shop as a
+**pop-up framed like an event** (`ShopModal2`, holding `ShopPanel2`'s shelf): the
+keeper's name as the title, their line under it, their portrait beside the shelf
+(§14.6), and `Leave` under it. **Nothing opens it by itself.** Closing it decides
+nothing, since the shelf persists, so a click outside, Escape and Leave all close
+it, and the button stays up for the whole visit to open it again. Travelling on
+takes the button down (`Overworld2._clear_shop`).
 
-**It is shown once on arrival, then it goes under the board.** Everything above
-stays true, and the one thing it never fixed was that a shop mounted below the
-fold on the frame you arrive is a shop you may not notice at all — the pointer
-says it is down there, not what is on it. So the panel is *first* mounted on the
-screen the game ends on (§18) and handed back to the page — the same node,
-reparented — when the player leaves it. The moment of arrival gets the shelf in
-front of you; the rest of the visit gets it under the board, exactly as before.
-**Escaping opens nothing** — escape fires no `game_beaten` triggers anywhere in
-the build, and this is not the place to make it an exception.
+**The haul screen's exit says "🛒 Go to Shop"** at a Shop node (§18), and pressing
+it opens the pop-up: that is a button the player pressed, and an exit named after
+the shop that then opened nothing would be naming the wrong place.
+**Escaping opens nothing**: escape fires no `game_beaten` triggers anywhere in the
+build, and this is not the place to make it an exception. `shop_entered` (Chaos
+the Clown) fires the first time the door is opened on an arrival, not every time.
+
+**Why a button and not the page, or a modal on arrival.** The shop has had all
+three shapes. A full-screen shop on arrival stopped the run's rhythm (report the
+game, see what it cost on the board, choose where to go next) to ask a question
+the player had not asked yet. Mounted under the board it asked nothing, but sat
+below the fold behind a `🛒 Shop ↓` pointer and cost the board its height while it
+shared the column. The owner chose the third shape on 17 October 2026: asked for,
+never missed, and costing the page one button.
 
 **Lord's Parasol resolves the moment you stand in one.** The Boss relic (§8)
 sweeps the whole shelf into the pack for **no gold** — not "buy everything you can
@@ -3871,8 +3877,8 @@ Champion node, so it never carries a shop; the page still drops a pending shop
 when the run ends, as a guard for the day that changes.
 
 **A Shop node pays no event — the shop is what happens there.** An event fires
-after every other game played (§12), and for a while the shop's node paid both: the shop mounted
-under the board and the event opened a modal over it, so the shop the player had
+after every other game played (§12), and for a while the shop's node paid both: the shop
+appeared and the event opened a modal over it, so the shop the player had
 routed towards was something they had to dismiss an event to reach. Two things
 queued on one arrival was one thing too many, and of the two the shop is the one
 the player chose to be standing in. `EventSystem.roll_for_arrival` returns null
@@ -3923,28 +3929,53 @@ uses on its tokens (`PackStrip._item_token`), so a Legendary on a shelf and the
 same Legendary in your bag are recognisably one thing. It used to be said in the
 colour of the *name*, which is the one thing on a row allowed to trim away.
 
-**Where the height for that came from**, because it is not where you would look.
-The board is at its floor while it shares its column
-(`BattlefieldView.FIELD_HEIGHT_BUDGET_SHARED` clamps a 4x4 to `CELL_MIN`), so it
-had nothing to give. But a page's height is the taller of its two columns, and on
-a shop's page that is the **left** one — the report checklist, whose goal text
-wraps — by about sixty pixels. This panel is in the right column, so the room was
-already sitting there unspent. The row went 58 → 98px and the page did not move.
-`test_the_page_still_fits_the_window_with_a_shop_on_it` mounts a shop at the node
-underfoot and at the longest-named Shop node on the map, and is what holds the
-arrangement honest.
+The row's height (98px, three lines of description) was paid for out of the page
+while the shelf shared the board's column; in the pop-up it has room to spare.
+`test_the_page_still_fits_the_window_with_a_shop_on_it` now holds the page to the
+window with the shop's BUTTON up, at the node underfoot and at the longest-named
+Shop node on the map.
 
 ### 14.5 What is still to come
 
-**The shopkeepers.** `data/encounters/` already carries two combat-era ones (P
-Mart's Tracy from Mewgenics, Trorc from Enter the Gungeon) with pools and
-discounts. A `shopkeeper` field is read by `ShopPanel2` and is what a named
-shop would put in the header in place of the flat `Shop`, so an authored roster
-drops in without reshaping anything.
+**The shopkeepers' roster and their rules** (§14.6): the groundwork is built and
+the sheet is empty until the owner has gone over the candidates.
 
 **A wider stock.** A shop sells relics and loot (§14.3). The next step is the
 things drops *don't* give — bombs, verb charges, health, an extra try — so gold
 buys a different axis rather than a slower version of the same one.
+
+### 14.6 Shopkeepers
+
+Every Shop node in a run is dealt a **shopkeeper**, at random, per run, with no
+keeper at two shops until every keeper has one (`ShopSystem.keeper_for`): the
+roster is shuffled off the run's seed and handed out across `shop_nodes()` in
+order, so the same seed deals the same keepers. A shelf **pins** its keeper the
+moment it is rolled (`"keeper"` on the shelf, saved with it), so a later re-deal
+cannot change who is standing there, and a shelf saved before keepers existed
+stays the plain shop it was rolled as. **With an empty roster every shop is the
+plain one** and nothing changes: that is the state the game ships in, because the
+owner is going over the 29 candidates in `research/locations.csv` (`Sheet`
+`shopkeepers`) and none are in yet.
+
+**Authored in the `shopkeepers` sheet** of `tools/Roguelikes.xlsx`, generated by
+`tools/generate_shopkeeper_tres.py` into `data/shopkeepers/` (`ShopkeeperData`).
+Every rule column is *blank means the ordinary shop*:
+
+| Column | What it does |
+|---|---|
+| Name, Game, Description | the pop-up's title, its "From:" line, and the line under the name |
+| Image | portrait under `images2.0/shopkeepers/` (no extension); no file, no portrait |
+| Pool | item pools or tags the items row draws from (`shop`, `food`…); narrows the draw, widening back through every rarity before giving up |
+| Loot Kinds | loot kinds the loot row draws from (`potion`, `wand`…), weighted as drops are |
+| Currency | `gold`, or `health`: a price paid in Health, affordable only while it leaves at least 1 |
+| Sale | clauses `<-N, +N, half or free> <all, items, loot, a rarity, a loot kind, an item pool or tag>`, applied in order on top of the going rate (which already carries Fracture 2's +1), never below 0 |
+| Effect | free-form rule tokens for rules not built yet; a rule asks `ShopSystem.keeper_has(node, token)` |
+| Item Slots, Loot Slots | the shelf's size, 3 and 3 when blank |
+
+The generator refuses a row whose pool no item carries, an unknown loot kind or
+currency, or a sale clause it cannot read, by name. The old project's
+`encountersold` sheet had two shops in an older shape (P Mart, Trorc); they were
+not carried over.
 
 ---
 
@@ -3974,7 +4005,7 @@ Two places, and which one depends on what spawned it:
   room the cabinets are in, so they are laid out in there with you and the
   room's own `Leave` walks you out of both.
 - **spawned by anything else** → under the board, in the space a Shop node's shelf
-  takes (`ObjectPanel2`, §14.4). Same argument as the shop: the run's rhythm is
+  used to take (`ObjectPanel2`; the shop is a pop-up now, §14.4). Same argument as the shop: the run's rhythm is
   report the game → see the board → choose where to go, and neither a shop nor a
   machine may interrupt it. The one difference is what survives leaving — a
   shop's shelf persists on `ShopSystem` so coming back is a real option, and a
@@ -4438,7 +4469,7 @@ node owes one (clicking it is what opens the event, so the player leaves this
 screen *into* the next thing rather than having the next thing dropped on them),
 **"Go to Shop"** at a Shop node, which owes no event, and **"Travel on"** when it owes
 neither. The event wins when both are owed, because the event is what actually
-opens next and the shelf is still under the board on the far side of it. It
+opens next and the shop's button is still by the offering on the far side of it. It
 counts what it is about to bin (`exit_text`), because a Legendary left on the
 ground should be a decision and not a side effect of pressing Continue.
 
@@ -4550,7 +4581,7 @@ Where it disagrees with them, this section is the build.
 | **Enemies** | the ordinary game | on arrival | **2** | nothing extra — see below |
 | **Event** | an event fires | **on arrival**, before you play | 0 | the game's own post-report event still rolls ([`event-sheet-authoring.md`](event-sheet-authoring.md)) |
 | **Champion** | a boss of the run's current tier | on arrival | **1** | the boss's ordinary chest (§8.2), nothing extra |
-| **Shop** | a shelf under the board | **after the game is beaten** | 0 | three items, persistent for the run (§14.3) |
+| **Shop** | a shop, opened from the 🛒 Shop button by the offering (§14.4) | **after the game is beaten** | 0 | three items, persistent for the run (§14.3) |
 
 **The Event and the Shop deliberately land at opposite ends of the game**, and the
 reason is the purse. An event is a decision, and a decision is worth more before
@@ -4558,7 +4589,7 @@ you have committed an evening to the game it sits on. A shop is a *purchase*, an
 the gold to make one is what the game you just played pays out (§14.1) — open the
 shelf on arrival and the player shops broke, on a run that earns 8–15 gold in
 total. So the shop keeps §14.4's timing exactly: queued behind the resolve on the
-`Overworld2._pending_shop` path, mounted under the board, staying for the visit.
+`Overworld2._pending_shop` path, its button staying for the visit.
 
 **All four are a real video game.** Every one of them grants the selection
 shields (§3.2), ticks `GameState.games_played`, needs **✓ Completed Game** to

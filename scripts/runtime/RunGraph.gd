@@ -173,7 +173,7 @@ static func kind_tip(kind: int) -> String:
 		NodeKind.CHAMPION:
 			return "Champion — a boss of the run's current tier walks on, alone."
 		NodeKind.SHOP:
-			return "Shop — a shelf opens under the board once you have beaten the game. No bodies."
+			return "Shop — a shop opens once you have beaten the game. No bodies."
 	return "Enemies — two bodies walk on when you commit to it."
 
 # ---------------------------------------------------------------------------

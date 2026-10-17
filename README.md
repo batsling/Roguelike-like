@@ -61,8 +61,9 @@ Godot resource paths map directly onto folders: `res://scripts/…` is
 │   │                      #     EnemyInfoCard   — click-to-inspect enemy card
 │   │                      #     ItemInfoCard    — click-to-inspect item card
 │   │                      #     GameChoiceModal — the popup an offered card opens
-│   │                      #     ShopPanel2      — a Shop node's shelf, mounted under the board
-│   │                      #     ObjectPanel2    — the machines standing here, same place
+│   │                      #     ShopModal2      — a Shop node's shop, the pop-up its 🛒 button opens
+│   │                      #     ShopPanel2      — the shelf inside it
+│   │                      #     ObjectPanel2    — the machines standing here, under the board
 │   │                      #     ObjectCard      — one machine, in the panel or in an event
 │   │                      #     BossNoticeModal — the "⚠ BOSS INCOMING" popup
 │   │                      #     RouteLadder     — the arrowed shortest-path map
@@ -708,10 +709,11 @@ node and its script.
     nowhere to stand. Nothing is drawn over the top of a body — the boss skull and
     the "in 2" that used to be there covered the picture that identifies it.
   - **`EnemyInfoCard.gd`** — the click-to-inspect card for one enemy.
-  - **`ShopPanel2.gd`** — a Shop node's shelf (§14), mounted **under the battlefield** on
-    the page rather than opened over it: it blocks nothing, stays for the whole
-    visit, and travelling on is what closes it. The overworld floats a
-    `🛒 Shop ↓` pointer at the foot of the screen until it has been scrolled to.
+  - **`ShopModal2.gd`** — a Shop node's shop (§14.4, §14.6) as a pop-up framed like
+    an event: the shopkeeper's name, line and portrait, the shelf, and Leave. Opened
+    only by the `🛒 Shop` button on the offering's heading (up for the whole visit)
+    or the haul screen's "Go to Shop"; loaded by path, like the event modal.
+  - **`ShopPanel2.gd`** — the shelf inside it (§14).
     The shelf is drawn as **one row per item** — thumbnail, name, price — with
     the full card and its Buy button opening over the page on click. Three cards
     on the page ran the overworld to 1231px inside a 688px window; the page is a
@@ -760,8 +762,8 @@ node and its script.
     arrive with a report has no haul screen to be part of. **The shelf is not
     here** — it was briefly borrowed and handed back, which left four sections
     fighting for a 720p canvas and an exit button pointing at something already on
-    screen; it stays under the board per §14, and this screen keeps only the Shop
-    node's id so its button can name it.
+    screen; the shop is a pop-up of its own (§14.4), and this screen keeps only the
+    Shop node's id so its button can name it and open it.
 - **`RewardScreen.gd`** — chest rewards (level-ups, and the **Wand of Wishing**,
   which is a piece of loot rather than a relic now — `docs/wands-design.md` §5.2).
   **The obtain-any screen is its own layout**: reaching into the whole catalogue is a different decision
@@ -1530,7 +1532,8 @@ with their schemas defined in `scripts/resources/`:
 
 `GameData`, `GoalEnemyData`, `ItemData`, `CharacterData`, `ScrollData`,
 `StatusData`, `TileEffectData`, `UnitData`,
-`CurseData`, `StatDefinition`.
+`CurseData`, `StatDefinition`, `ShopkeeperData` (`data/shopkeepers/`, empty until the
+owner authors the `shopkeepers` sheet — §14.6).
 
 (`TileEffectData` rather than `TileData` because Godot ships a native `TileData`
 for TileMaps and a `class_name` that shadows one is a parse error — the sheet, the
