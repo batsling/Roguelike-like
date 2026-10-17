@@ -253,11 +253,39 @@ func test_picking_a_start_hands_over_its_kit_once() -> void:
 	var before: int = GameState.loot_items.size()
 	ui.choose_start(0)
 	assert_true(GameState.start_gear_given)
-	assert_eq(GameState.loot_items.size() - before, want, "the kit is in the pack")
+	# In the pack, or asked about on the drop screen when it did not fit: a
+	# character who starts with a weapon often has no room for a second big one.
+	assert_eq(GameState.loot_items.size() - before + _queued_loot(ui), want,
+		"the whole kit was handed over")
 	# A second game committed is not a second opening.
-	var after: int = GameState.loot_items.size()
+	var after: int = GameState.loot_items.size() + _queued_loot(ui)
 	ui._grant_start_gear_once(Data.get_game(GameState.current_game_id))
-	assert_eq(GameState.loot_items.size(), after, "the kit is paid once a run")
+	assert_eq(GameState.loot_items.size() + _queued_loot(ui), after, "the kit is paid once a run")
+
+# Loot pieces waiting on the drop screen.
+func _queued_loot(ui) -> int:
+	var n: int = 0
+	for d in ui._drop_queue:
+		if (d as Dictionary).has("loot"):
+			var l = d["loot"]
+			n += (l as Array).size() if l is Array else 1
+	return n
+
+# Most weapons take more than one cell, and a run that already carries one —
+# Antonio Belpaese and The Makeshift Sisyphus start with theirs — often has no
+# room for a second (CI caught it, one run in four for those two). The piece is
+# asked about on the drop screen, never dropped. Arranged with a full pack.
+func test_a_kit_that_does_not_fit_is_asked_about_rather_than_lost() -> void:
+	var ui = OVERWORLD.instantiate()
+	add_child_autofree(ui)
+	# Fill every free cell so nothing more can fit, whatever its shape.
+	while GameState.take_loot_entry({"type": "scroll", "id": GameState.IDENTIFY_SCROLL,
+			"rarity": "Common"}):
+		pass
+	var before: int = GameState.loot_items.size()
+	ui._grant_start_gear_once(_game_of(GameData.GameType.ACTION))
+	assert_eq(GameState.loot_items.size(), before, "the pack had no room")
+	assert_eq(_queued_loot(ui), 1, "so the weapon waits on the drop screen")
 
 func test_the_switch_the_suite_uses_pays_no_kit() -> void:
 	var ui = OVERWORLD.instantiate()
