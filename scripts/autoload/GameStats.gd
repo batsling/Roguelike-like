@@ -194,6 +194,21 @@ func record_rifts(ids: Array) -> void:
 		last_rifts.append(String(id))
 	save_data()
 
+# THE PREVIOUS RUN'S START PANEL — all three cards, whichever was picked — which
+# the next panel keeps off itself (RunGraph, NO REPEATS). One list for every
+# character and save slot, written when a panel is SHOWN, so a run abandoned on
+# the start screen still counts as having seen it.
+var last_starts: Array = []
+
+func last_start_panel() -> Array:
+	return last_starts
+
+func record_start_panel(ids: Array) -> void:
+	last_starts = []
+	for id in ids:
+		last_starts.append(String(id))
+	save_data()
+
 # A Rift Key opened a rift mid-run (docs/rifts-design.md §8): one more appearance
 # for the rotation, without touching last run's list, which is the dealt rifts'.
 func record_key_rift(id) -> void:
@@ -898,7 +913,7 @@ func save_data() -> bool:
 		 "character_game_log": character_game_log,
 		 "character_goal_log": character_goal_log,
 		 "donation_bank": donation_bank_total, "last_rifts": last_rifts,
-		 "fracture_log": fracture_log}, "  "))
+		 "last_starts": last_starts, "fracture_log": fracture_log}, "  "))
 	return true
 
 # --- the Donation Machine's bank -------------------------------------------
@@ -942,6 +957,7 @@ func load_data() -> void:
 	goal_log = {}
 	donation_bank_total = 0
 	last_rifts = []
+	last_starts = []
 	fracture_log = {}
 	if not FileAccess.file_exists(save_path()):
 		return
@@ -984,6 +1000,9 @@ func load_data() -> void:
 	if typeof(json.data.get("last_rifts")) == TYPE_ARRAY:
 		for id in json.data["last_rifts"]:
 			last_rifts.append(String(id))
+	if typeof(json.data.get("last_starts")) == TYPE_ARRAY:
+		for id in json.data["last_starts"]:
+			last_starts.append(String(id))
 	var games: Dictionary = json.data
 	if json.data.has("games") and typeof(json.data["games"]) == TYPE_DICTIONARY:
 		games = json.data["games"]

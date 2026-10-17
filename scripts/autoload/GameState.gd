@@ -29,6 +29,16 @@ var fracture: int = 0
 var save_name: String = ""
 var current_game_id: StringName = &""
 var start_game_id: StringName = &""
+# Whether this run has been handed its STARTING GEAR yet (START_GEAR, below). Set
+# the moment the first game is committed, saved with the run, so a save loaded
+# after the start never pays it a second time.
+var start_gear_given: bool = false
+# Whether starting gear is paid at all. Always on in the game; the GUT suite turns
+# it off in `test/pre_run_hook.gd`, because a random chest or weapon riding on
+# whichever genre card 0 rolled is noise in every test that is not about the kit,
+# and `test_start_panel.gd` turns it back on for the tests that are. Not part of
+# the run, so `reset_run` leaves it alone.
+var start_gear_enabled: bool = true
 var amulet_game_id: StringName = &""
 # FRACTURE 10's COLLAPSE (docs/fracture-design.md §7): the Amulet game has been
 # beaten and the run is carrying it back to the start. From then on the start is
@@ -1190,6 +1200,7 @@ func reset_run() -> void:
 	save_name = ""
 	current_game_id = &""
 	start_game_id = &""
+	start_gear_given = false
 	amulet_game_id = &""
 	visited_games.clear()
 	path_taken.clear()
@@ -1371,6 +1382,74 @@ func apply_character2(char_data: CharacterData) -> void:
 	emit_signal("stats_changed")
 	emit_signal("hp_changed", hp, max_hp)
 	emit_signal("inventory_changed")
+
+# STARTING GEAR BY GENRE: what the GAME the run opens on hands over, on top of
+# whatever the character starts with. The panel's three genres are therefore
+# three different kits, and each start card says which (start_gear_text).
+#
+#   Action       1 random weapon (empty, as one found is: it loads by playing)
+#   Deckbuilder  2 random cards
+#   Traditional  3 random unidentified loot
+#   Strategy     an item chest — pick 1 of 3, the chest a body drops
+#
+# Every piece is rolled the ordinary way (roll_loot_entry), so starting gear is
+# never better than a find. "Unidentified" is not a list of kinds: a piece is
+# rolled as ordinary loot and kept only if LootSystem.is_identified says no, so
+# a kind added later that starts hidden joins the pool without touching this.
+const START_GEAR := {
+	GameData.GameType.ACTION: {"loot": "weapon", "count": 1},
+	GameData.GameType.DECKBUILDER: {"loot": "card", "count": 2},
+	GameData.GameType.TRADITIONAL: {"loot": "unidentified", "count": 3},
+	GameData.GameType.STRATEGY: {"chest": 3},
+}
+
+# How many rolls an unidentified piece gets before the gear gives up on it. Most
+# kinds start hidden, so one roll in ~1.5 lands; 50 is "the catalogue has none".
+const UNIDENTIFIED_TRIES := 50
+
+# The kit's line on a start card: "+1 weapon", "+2 cards", …
+static func start_gear_text(game_type: int) -> String:
+	var g: Dictionary = START_GEAR.get(game_type, {})
+	if g.has("chest"):
+		return "+1 item chest (pick 1 of %d)" % int(g["chest"])
+	if not g.has("loot"):
+		return ""
+	var n: int = int(g.get("count", 1))
+	match String(g["loot"]):
+		"weapon": return "+%s" % Plural.count(n, "weapon")
+		"card": return "+%s" % Plural.count(n, "card")
+		"unidentified": return "+%d unidentified loot" % n
+	return "+%d %s" % [n, String(g["loot"])]
+
+# The size of the item chest this genre's kit opens, or 0 for none.
+static func start_gear_chest(game_type: int) -> int:
+	return int((START_GEAR.get(game_type, {}) as Dictionary).get("chest", 0))
+
+# The kit's loot pieces, rolled — not yet given; the caller seats them.
+func roll_start_gear(game_type: int) -> Array:
+	var g: Dictionary = START_GEAR.get(game_type, {})
+	var out: Array = []
+	if not g.has("loot"):
+		return out
+	for _i in range(maxi(1, int(g.get("count", 1)))):
+		var entry: Dictionary = roll_unidentified_entry() \
+			if String(g["loot"]) == "unidentified" else roll_loot_entry(String(g["loot"]))
+		if entry.is_empty():
+			continue
+		if String(entry.get("type", "")) == "wand":
+			WandSystem.ensure_materials()
+		if String(entry.get("type", "")) == "potion":
+			PotionSystem.ensure_colors()
+		out.append(entry)
+	return out
+
+# One piece of ordinary loot that the run does not know yet, or {} if none rolls.
+func roll_unidentified_entry() -> Dictionary:
+	for _try in range(UNIDENTIFIED_TRIES):
+		var entry: Dictionary = roll_loot_entry("loot")
+		if not entry.is_empty() and not LootSystem.is_identified(entry):
+			return entry
+	return {}
 
 # THE LOOT HALF OF A STARTING LOADOUT (CharacterData.starting_loot): a named
 # piece ({type, id}) or a fresh roll ({type, count[, tag]} — "1 random joker

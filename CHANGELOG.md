@@ -11,6 +11,21 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Start panel: even across runs, never the same twice, and a kit per genre**
+  (the owner's design, 16 Oct 2026; spec §19.3.4).
+  - **Weighted by reach.** Each start is drawn in proportion to 1 / the Amulets
+    inside the band from it, because a uniform draw per panel still offered
+    well-connected starts four times as often as the rest. Over 1000 runs the
+    most-offered start fell from 50 showings to 34 and five more starts were
+    offered at all; the rest of the skew is the three-genre rule.
+  - **No repeats.** None of the previous panel's three cards is offered on the
+    next (`GameStats.last_start_panel`, shared by every character and slot,
+    abandoned runs included), unless that would cost the Amulet a genre. A named
+    seed ignores it.
+  - **Starting gear.** Action opens with a weapon, Deckbuilder with two cards,
+    Traditional with three unidentified pieces, Strategy with an item chest
+    (pick 1 of 3), on top of the character's own kit. Each card says which.
+
 - **Fractures: ten harder runs, unlocked per character** (the owner's design,
   15–16 Oct 2026; [`docs/fracture-design.md`](docs/fracture-design.md)).
   - **The ladder**, each level carrying every level below it: a shield fewer per

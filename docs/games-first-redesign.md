@@ -5035,6 +5035,65 @@ for nearly all of the randomness of no rule. The cost is that runs lean shorter:
 score is still computed (`dag_branch_scores_to`) and still reported on each
 option; nothing chooses by it.
 
+### 19.3.4 EVEN ACROSS RUNS, NEVER THE SAME PANEL TWICE, AND A KIT PER GENRE
+
+Three additions (the owner's, 16 Oct 2026). None of them changes which starts are
+ALLOWED, so none of them can cost an Amulet: the first two only change the odds
+inside the pools §19.3.2 already decided, and the second gives way before an
+Amulet would.
+
+**Weighted by reach (`RunGraph.START_WEIGHTING`).** A uniform draw inside each
+panel is not uniform across runs: the Amulet is drawn first and a start can only
+be offered against an Amulet in its band, so a start that serves 400 Amulets was
+offered about four times as often as one serving 100. Step 2 above now draws each
+start in proportion to 1 / its reach (`start_reach`: the Amulet candidates inside
+the band from it, ignoring the route floor, which would cost a `route_slack` per
+pair). Measured over 1000 runs of the full catalogue:
+
+| | Starts ever offered (of 493) | Most-offered | Top-ten share |
+|---|---|---|---|
+| uniform (before) | 469 | 50 (Dicey Dungeons) | 11.3% |
+| **1 / reach** | **474** | **34** | **10.2%** |
+
+Part of the way. The rest is the three-genre rule, which a weight cannot reach:
+where an Amulet's Deckbuilders are two games, one of them is on the card whatever
+it weighs. Weighting the choice of genres by the weight each holds was tried and
+measured inside the noise, and left out. Generation costs ~25 ms more on average
+(~120 ms on the first panel, which computes the reach of the starts it meets;
+cached on the bare map's shape after that).
+
+**No repeats (`RunGraph._without_recent`).** None of the previous panel's three
+cards — all three, not only the one picked — is offered on the next.
+`GameStats.last_start_panel()` holds them, one list for every character and slot,
+written when a panel is SHOWN (`Overworld2._build_start_options`), so a run
+abandoned on the start screen still counts. If keeping last run's games out
+would leave the Amulet fewer than three genres, only the genres that emptied get
+their games back: a repeat is the price of never losing an Amulet. Over the same
+1000 runs that never happened. A **named seed** ignores the memory, because the
+same number has to deal the same map.
+
+**Starting gear (`GameState.START_GEAR`).** The genre of the game a run opens on
+hands over a kit, on top of the character's own:
+
+| Genre | Kit |
+|---|---|
+| Action | 1 random weapon (empty, as one found is) |
+| Deckbuilder | 2 random cards |
+| Traditional | 3 random unidentified loot |
+| Strategy | an item chest: pick 1 of 3, the chest a body drops |
+
+Every piece is an ordinary roll (`roll_loot_entry`), so a kit is never better
+than a find. "Unidentified" is not a list of kinds: a piece is rolled as ordinary
+loot and kept only if `LootSystem.is_identified` says no, so a kind added later
+that starts hidden joins the pool by itself. The kit is paid when the first game
+is committed (`Overworld2._grant_start_gear_once`, flagged by
+`GameState.start_gear_given` and saved with the run), so a custom run that opens
+without a panel still gets the kit of whatever card it opened on. Loot goes into
+the pack; what does not fit is asked about on the drop screen. Each start card
+says its kit under its genre (`GameState.start_gear_text`). The GUT suite runs
+with the kit switched off (`GameState.start_gear_enabled`, `test/pre_run_hook.gd`)
+and `test/test_start_panel.gd` switches it on.
+
 ### 19.4 The spawn model
 
 **An Enemies node lands exactly two bodies, at every tier.** This is §7.5's

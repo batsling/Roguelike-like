@@ -1363,7 +1363,8 @@ const AMULET_ATTEMPTS := 8
 # So nothing about a start is ranked any more (see `_random_spread`). The RULES
 # still hold — the band, the route floor, three genres, and as many distinct
 # distances as the Amulet's genres can show between them — and everything inside
-# them is a die roll: which genres, then which games, uniformly.
+# them is a die roll: which genres uniformly, then which games, weighted so a
+# start is about as common as any other across runs (START_WEIGHTING).
 #
 # THE DISTANCE RULE IS "AT LEAST TWO", not "as many as possible" (SPREAD_MIN_DISTANCES).
 # Most starts sit 4-5 hops out, so a draw that insisted on three distances kept
@@ -1604,11 +1605,12 @@ static func _cell_record(candidates: Array, path_len: int) -> Dictionary:
 #   1. THE GENRES. Every set of `count` genres that can meet the distance rule is
 #      equally likely. They were chosen by branching score, which
 #      put Action and Strategy on nearly every panel.
-#   2. THE GAMES. Each genre's card is a uniform draw over every start of that
-#      genre the rules allow, at any distance, redrawn until the set shows the
-#      distances step 1 promised. So a game is as likely as any other of its
-#      genre, rather than its DISTANCE being as likely as any other — the
-#      distances fall where the games are.
+#   2. THE GAMES. Each genre's card is a draw over every start of that genre the
+#      rules allow, at any distance, redrawn until the set shows the distances
+#      step 1 promised. So a game's chance rides the game rather than its
+#      DISTANCE — the distances fall where the games are. The draw is weighted
+#      by 1 / reach (START_WEIGHTING) so that across many runs a start is about
+#      as common as any other, which a uniform draw inside each panel was not.
 # If the redraws run out (a genre with nearly all its starts at one distance),
 # the distances are drawn first from the assignments that work and a game
 # uniformly within each — the same promise, kept the slow way.
@@ -1617,8 +1619,12 @@ const SPREAD_REDRAWS := 200
 # that many (see the note above `amulet_candidates_from`).
 const SPREAD_MIN_DISTANCES := 2
 
+#
+# `weights` (StringName -> float) turns step 2's uniform draw into a weighted one
+# (see START_WEIGHTING below). Empty means uniform, which is what every caller
+# that only cares about the RULES — the tests of the spread — still passes.
 static func _random_spread(by_type: Dictionary, count: int,
-		rng: RandomNumberGenerator) -> Array:
+		rng: RandomNumberGenerator, weights: Dictionary = {}) -> Array:
 	var types: Array = []
 	for type_val in TYPE_ORDER:
 		if by_type.has(type_val):
@@ -1657,7 +1663,8 @@ static func _random_spread(by_type: Dictionary, count: int,
 		var seen: Dictionary = {}
 		for t in genres:
 			var arr: Array = flat[t]
-			var p: Dictionary = arr[rng.randi() % arr.size()]
+			var p: Dictionary = arr[_weighted_index(arr, weights, rng,
+				func(e): return (e["cand"]["game"] as GameData).id)]
 			picks.append(p)
 			seen[int(p["path_len"])] = true
 		if seen.size() >= best:
@@ -1675,8 +1682,188 @@ static func _random_spread(by_type: Dictionary, count: int,
 	var picks: Array = []
 	for i in range(genres.size()):
 		var pool: Array = (by_type[genres[i]][lens_for[i]] as Dictionary)["pool"]
-		picks.append({"cand": pool[rng.randi() % pool.size()], "path_len": int(lens_for[i])})
+		var at: int = _weighted_index(pool, weights, rng,
+			func(c): return (c["game"] as GameData).id)
+		picks.append({"cand": pool[at], "path_len": int(lens_for[i])})
 	return _spread_records(picks)
+
+# One index into `arr`, uniform when `weights` is empty and otherwise in
+# proportion to each element's weight (`id_of` names the element's game). A game
+# missing from a non-empty `weights` counts 1.0, so a table that lags the pool
+# still draws everything in it.
+static func _weighted_index(arr: Array, weights: Dictionary,
+		rng: RandomNumberGenerator, id_of: Callable) -> int:
+	if weights.is_empty():
+		return rng.randi() % arr.size()
+	var total: float = 0.0
+	for e in arr:
+		total += float(weights.get(id_of.call(e), 1.0))
+	var roll: float = rng.randf() * total
+	for i in range(arr.size()):
+		roll -= float(weights.get(id_of.call(arr[i]), 1.0))
+		if roll < 0.0:
+			return i
+	return arr.size() - 1
+
+# --- making the panel even across runs (START_WEIGHTING) -----------------
+#
+# THE PANEL IS WEIGHTED SO EVERY START IS ABOUT AS COMMON AS ANY OTHER OVER MANY
+# RUNS, rather than equally likely within one panel. They are not the same thing:
+# the Amulet is drawn first and a start can only be offered against an Amulet it
+# sits in the band from, so a start that serves 400 Amulets was offered roughly
+# four times as often as one serving 100, even with a uniform draw inside every
+# panel. Measured over 1000 runs of the full catalogue before this: 469 of 493
+# eligible starts were ever offered, Dicey Dungeons 50 times against an even
+# share of 6, and the average showing rose from 1.3 (reach under 100) to ~12
+# (reach 400+).
+#
+# So each start is drawn in proportion to 1 / its REACH — the Amulet candidates
+# inside the band from it. That is what cancels the bias: a start's chance of
+# being on a panel is (Amulets it serves) x (its weight in each), and the weight
+# is the reciprocal of the first factor.
+#
+# REACH IGNORES THE ROUTE FLOOR on purpose. Counting the floor means a
+# route_slack per (start, Amulet) pair, which is the expensive half of
+# _strict_starts_for; the band alone is one BFS per start and carries the bias
+# the measurement found.
+#
+# WHAT IT BOUGHT, same 1000 runs: 474 of 493 offered, the most-offered 34 times
+# (Dicey Dungeons, Tower Factory, Gnomes), the top ten's share 11.3% -> 10.2%.
+# Part of the way, not all of it, and the rest is the genre rule rather than the
+# draw: a weight moves odds between the games of ONE genre for one Amulet, and
+# where an Amulet's Deckbuilders are two games one of them is on the card
+# whatever it weighs. Weighting the choice of genres by the weight each holds was
+# tried and measured inside the noise (max 38, 15 never offered), so it is not
+# here.
+#
+# A WEIGHT CANNOT LOSE AN AMULET. Which starts are ALLOWED is decided exactly as
+# before; this only says how likely each allowed one is.
+const START_WEIGHTING := true
+
+# Reach per start, on the bare map. Not cleared by invalidate_cache — that runs
+# twice per generation while a previous run's rifts are held (_on_bare_map) and
+# the bare map has not changed — but by the signature below moving: the band, the
+# bare graph's size, and the Amulet set reach is counted against, which a filter,
+# the catalogue, a custom band or a named Amulet changes.
+static var _reach_cache: Dictionary = {}     # StringName -> int
+static var _reach_sig: String = ""
+
+static func _reach_signature(amulets: Dictionary) -> String:
+	_build_adj()
+	var edges: int = 0
+	for id in _adj_cache:
+		edges += (_adj_cache[id] as Array).size()
+	var band: Vector2i = RunConfig.path_band()
+	return "%d:%d:%d:%d:%d:%d" % [band.x, band.y, _adj_cache.size(), edges,
+		_rift_games.size(), amulets.size()]
+
+# Drops the cached reach if the map or the Amulet set has moved since it was
+# counted. Once per panel: the signature walks the whole adjacency list.
+static func _refresh_reach_cache(amulets: Dictionary) -> void:
+	var sig: String = _reach_signature(amulets)
+	if sig != _reach_sig:
+		_reach_cache.clear()
+		_reach_sig = sig
+
+# How many of `amulets` (id -> anything) sit inside the band from `start_id`.
+# A plain BFS rather than bfs_distances: the memo is capped at BFS_CACHE_MAX and
+# a sweep of every start would clear it under the generation that is using it.
+# `fresh` says the caller has already checked the cache against this Amulet set
+# (start_weights does, once for the whole panel).
+static func start_reach(start_id: StringName, amulets: Dictionary, fresh: bool = false) -> int:
+	if not fresh:
+		_refresh_reach_cache(amulets)
+	if _reach_cache.has(start_id):
+		return int(_reach_cache[start_id])
+	var band: Vector2i = RunConfig.path_band()
+	var dist: Dictionary = {start_id: 0}
+	var queue: Array[StringName] = [start_id]
+	var qi := 0
+	var n: int = 0
+	while qi < queue.size():
+		var cur: StringName = queue[qi]
+		qi += 1
+		var d: int = dist[cur]
+		if d >= band.x and amulets.has(cur):
+			n += 1
+		if d >= band.y:
+			continue
+		for nb in (_adj_cache.get(cur, []) as Array):
+			if not dist.has(nb):
+				dist[nb] = d + 1
+				queue.append(nb)
+	_reach_cache[start_id] = n
+	return n
+
+# The draw weights for every start in `per_type`'s pools: 1 / reach.
+static func start_weights(per_type: Dictionary, amulets: Dictionary) -> Dictionary:
+	var out: Dictionary = {}
+	if not START_WEIGHTING:
+		return out
+	_refresh_reach_cache(amulets)
+	for t in per_type:
+		for l in per_type[t]:
+			for c in (per_type[t][l] as Dictionary)["pool"]:
+				var id: StringName = (c["game"] as GameData).id
+				if not out.has(id):
+					out[id] = 1.0 / float(maxi(1, start_reach(id, amulets, true)))
+	return out
+
+# --- never the same panel twice (NO REPEATS) ------------------------------
+#
+# None of the previous run's three cards is offered again on the next panel
+# (GameStats.last_start_panel — one memory for every character and slot, written
+# when a panel is SHOWN, so an abandoned run counts). Not the one picked: all
+# three, so the next panel is entirely new.
+#
+# IT GIVES WAY BEFORE AN AMULET DOES. If taking last run's games out leaves the
+# Amulet fewer than NUM_START_OPTIONS genres, the genres that were emptied get
+# their games back — only those, and only as many as are needed — rather than the
+# Amulet being refused. A repeat is the price of keeping every Amulet in the
+# draw. A genre emptied while three others remain is simply dropped: it still
+# leaves three genres and no repeat.
+#
+# Within a genre the same applies at the cell level: a distance whose only starts
+# were last run's is dropped, which can narrow the distances a genre offers; the
+# spread rule already falls back to fewer distances when a graph cannot show more.
+static func _without_recent(per_type: Dictionary, avoid: Dictionary) -> Dictionary:
+	if avoid.is_empty():
+		return per_type
+	var kept: Dictionary = {}
+	var emptied: Array = []
+	for t in TYPE_ORDER:
+		if not per_type.has(t):
+			continue
+		var per_len: Dictionary = {}
+		for l in per_type[t]:
+			var cell: Dictionary = per_type[t][l]
+			var pool: Array = (cell["pool"] as Array).filter(func(c):
+				return not avoid.has(String((c["game"] as GameData).id)))
+			if pool.is_empty():
+				continue
+			var trimmed: Dictionary = cell.duplicate()
+			trimmed["pool"] = pool
+			per_len[l] = trimmed
+		if per_len.is_empty():
+			emptied.append(t)
+		else:
+			kept[t] = per_len
+	for t in emptied:
+		if kept.size() >= NUM_START_OPTIONS:
+			break
+		kept[t] = per_type[t]
+	return kept
+
+# Last run's cards, as a set of id strings — empty when a NAMED seed is being
+# played, because the same number has to deal the same map, and a panel that
+# depended on what was shown last time would not.
+static func _recent_starts() -> Dictionary:
+	var out: Dictionary = {}
+	if RunConfig.seed != 0:
+		return out
+	for id in GameStats.last_start_panel():
+		out[String(id)] = true
+	return out
 
 static func _spread_records(picks: Array) -> Array:
 	var out: Array = []
@@ -1853,6 +2040,7 @@ static func _pick_on_bare_map(rng: RandomNumberGenerator) -> Dictionary:
 	var options: Array = []
 	var path_spots: Array = []
 	var untried: Array[GameData] = amulet_finalists.duplicate()
+	var recent: Dictionary = _recent_starts()
 	for _attempt in range(AMULET_ATTEMPTS):
 		if untried.is_empty():
 			break
@@ -1868,7 +2056,12 @@ static func _pick_on_bare_map(rng: RandomNumberGenerator) -> Dictionary:
 				d_to_cand, cand_floor, rifts_on)
 			if per_type.size() < NUM_START_OPTIONS:
 				continue
-			var drawn: Array = _draw_panel(candidate, per_type, rng)
+			# Last run's cards are kept off this one, unless that would cost the
+			# Amulet a genre (NO REPEATS, above) — so the count checked above is
+			# still the one that decides whether this Amulet can be the goal.
+			per_type = _without_recent(per_type, recent)
+			var drawn: Array = _draw_panel(candidate, per_type, rng,
+				start_weights(per_type, cand_game))
 			if drawn.is_empty():
 				continue
 			var spots: Array = []
@@ -1920,9 +2113,9 @@ static func _pick_on_bare_map(rng: RandomNumberGenerator) -> Dictionary:
 # what says out loud that the band held, and a reader who stops finding it will
 # assume nobody checked rather than that nobody had to.
 static func _draw_panel(amulet: GameData, per_type: Dictionary,
-		rng: RandomNumberGenerator) -> Array:
+		rng: RandomNumberGenerator, weights: Dictionary = {}) -> Array:
 	var options: Array = []
-	for drawn in _random_spread(per_type, NUM_START_OPTIONS, rng):
+	for drawn in _random_spread(per_type, NUM_START_OPTIONS, rng, weights):
 		var start_game: GameData = drawn["game"]
 		options.append({
 			"type": start_game.type,

@@ -276,6 +276,12 @@ godot --headless -s addons/gut/gut_cmdln.gd     # GUT suite: 57 scripts, ~2560 t
     page's Control tree with sizes on a passing and a failing run and diffing the
     two: same text, same grid, board 406 vs 369px. A layout test that varies is
     usually a WIDTH that varies upstream of a wrap; look for the wrap first.
+- **The suite runs with STARTING GEAR OFF.** `test/pre_run_hook.gd` (wired in
+  `.gutconfig.json`) sets `GameState.start_gear_enabled = false`, because the kit
+  rides the genre of whichever start a test picks and `choose_start(0)` is a
+  random genre: on, it put an item chest over the board or a weapon's goal on the
+  checklist in 8 unrelated `test_overworld2` tests. A test ABOUT the kit turns it
+  on and back off, as `test_start_panel.gd` does.
 - The leaked-RID / orphan warnings at the end of a GUT run are also pre-existing
   noise from UI tests that build Controls.
 - To see a change on screen rather than in assertions, use the `verify` skill

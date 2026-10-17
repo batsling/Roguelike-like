@@ -838,6 +838,9 @@ func _build_start_options(pick: Dictionary) -> Array:
 	var start_ids: Array = []
 	for opt in out:
 		start_ids.append((opt["game"] as GameData).id)
+	# What the NEXT run's panel keeps off itself (RunGraph, NO REPEATS) — recorded
+	# as the panel is shown, so walking away from it still counts as seeing it.
+	GameStats.record_start_panel(start_ids)
 	# THE RUN'S RIFTS (docs/rifts-design.md), laid before the kinds so the graph
 	# the kinds are dealt over is the one the run will walk, and so every rift game
 	# is stamped Enemies. Recorded once here for the rotation, which saves last
@@ -1481,6 +1484,9 @@ func _begin_game(game: GameData, enemy: GoalEnemyData, tier: int,
 	# GameLoop2.note_spawn_event has already grown the board by the time this
 	# returns; the announcement follows the growth rather than waiting for a report
 	# that would describe it a game late.
+	# The run's FIRST game hands over its genre's kit (GameState.START_GEAR) —
+	# from the panel or, on a custom run with none, from whatever card opened it.
+	_grant_start_gear_once(game)
 	var tier_before: int = _current_tier()
 	var board_before := Vector2i(GameLoop2.grid_cols(), GameLoop2.grid_rows())
 	_commit_board_for_kind(game, enemy, tier)
@@ -1495,6 +1501,35 @@ func _begin_game(game: GameData, enemy: GoalEnemyData, tier: int,
 	if log_shields:
 		GameLog.add("%s — %s, one hit stopped each." % [
 			game.display_name, GameState.temp_shields_text(granted)], SHIELD_BLUE)
+
+# STARTING GEAR (GameState.START_GEAR), once per run. The loot goes straight into
+# the pack; whatever does not fit is asked about on the drop screen rather than
+# lost. A Strategy start's item chest joins the drop queue and opens at once,
+# before anything has been played.
+func _grant_start_gear_once(game: GameData) -> void:
+	if game == null or GameState.start_gear_given or not GameState.start_gear_enabled:
+		return
+	GameState.start_gear_given = true
+	var genre: String = RunGraph.type_label(int(game.type))
+	var leftover: Array = []
+	var names: Array = []
+	for entry in GameState.roll_start_gear(int(game.type)):
+		names.append(LootSystem.display_name(entry))
+		if not GameState.take_loot_entry(entry):
+			leftover.append(entry)
+	if not names.is_empty():
+		GameLog.add("Starting gear (%s): %s." % [genre, ", ".join(names)], UITheme.GOLD)
+	if not leftover.is_empty():
+		_drops.on_loot_offered(leftover)
+	var chest: int = GameState.start_gear_chest(int(game.type))
+	if chest > 0:
+		var items: Array = _drops.roll_chest(false, chest)
+		if not items.is_empty():
+			GameLog.add("Starting gear (%s): an item chest, pick 1 of %d." % [
+				genre, items.size()], UITheme.GOLD)
+			_drops.queue.append({"items": items})
+			_drops.pump()
+	_refresh_items()
 
 # WHAT STANDS ON THE BOARD, which is the node's kind and nothing else (§19.1).
 #
