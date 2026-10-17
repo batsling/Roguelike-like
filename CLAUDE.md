@@ -279,6 +279,12 @@ godot --headless -s addons/gut/gut_cmdln.gd     # GUT suite: 57 scripts, ~2560 t
     the pack after the sweep and failed when the rolled shelf held an **Ultra
     Duplicator**, which copies the relic swept after it (one more than the shelf).
     It now checks each shelf relic is owned, by id.
+  - `test_overworld2.gd::test_bash_refills_the_slot_from_a_connected_game` failed
+    when the run laid a **rift** beside the hub it stands at: `_first_bashable`
+    took the first non-Amulet card, and bashing a rift card keeps the slot and
+    brings another game through it (`bash_rift`), so no slot was "bashed" and no
+    new game appeared. Confirmed by bashing rift cards on purpose in a stress
+    loop. Both bash helpers now skip rift and Rift Key cards.
   - `test_overworld2.gd::test_the_page_still_fits_the_window_with_a_shop_on_it`
     failed about one run in three at "needs 642 of 625", and **the random part
     was the CHARACTER**, not the map. With a shop under it the board's width is

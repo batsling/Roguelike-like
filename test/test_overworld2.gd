@@ -1506,11 +1506,16 @@ func test_cancel_dash_restores_the_limited_offering() -> void:
 # The first card a Bash may be aimed at. A CHAMPION node refuses a Bash (§7.1),
 # and about one card in ten is one, so the card is ARRANGED to be an Enemies node
 # rather than hoped to be — a test about bashing must not fail on the deal.
+#
+# And not a RIFT card either, for the reason `_first_bashable` gives: bashing one
+# keeps its slot and brings another game through, which is not this verb.
 func _first_bashable_index() -> int:
 	for i in range(_ui._choices.size()):
-		if not bool(_ui._choices[i].get("amulet", false)):
-			_set_kind(_ui._choices[i], RunGraph.NodeKind.ENEMIES)
-			return i
+		var c: Dictionary = _ui._choices[i]
+		if bool(c.get("amulet", false)) or c.has("rift_key") or RunGraph.is_rift_game(c["slot"]):
+			continue
+		_set_kind(c, RunGraph.NodeKind.ENEMIES)
+		return i
 	return -1
 
 func test_arming_bash_spends_nothing_and_aiming_at_a_card_destroys_it() -> void:
@@ -4809,11 +4814,20 @@ func _a_boss_is_standing() -> bool:
 # The first offered card that bash is actually allowed to destroy — bashing the
 # amulet is refused (it's the run's goal), and picking index 0 blindly makes any
 # bash test flaky on the runs where the amulet lands in the offering.
+# The first card an ORDINARY bash lands on: not the Amulet, and not a rift. A rift
+# card's bash is a different verb — the rift stays open and another off-map game
+# comes through it (GameLoop2.bash_rift), so the slot is never "bashed" and no new
+# game takes it — and a Rift Key card bashes its game, not its slot. Both are
+# test_rifts.gd's subject. Taking whichever card came first made the bash tests
+# here fail whenever a run laid a rift beside the hub they stand at (CI, 17 Oct;
+# confirmed by bashing six rift cards in a stress loop: every one kept its slot).
 func _first_bashable() -> int:
 	for i in range(_ui._choices.size()):
-		if not bool(_ui._choices[i]["amulet"]):
-			_set_kind(_ui._choices[i], RunGraph.NodeKind.ENEMIES)
-			return i
+		var c: Dictionary = _ui._choices[i]
+		if bool(c["amulet"]) or c.has("rift_key") or RunGraph.is_rift_game(c["slot"]):
+			continue
+		_set_kind(c, RunGraph.NodeKind.ENEMIES)
+		return i
 	return 0
 
 # THE RUN OPENS SOMEWHERE RANDOM, and once in a while that is a dead end: one
