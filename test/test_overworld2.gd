@@ -142,6 +142,20 @@ func _pick_solo(index: int) -> void:
 		GameLoop2.despawn(GameLoop2.second_body_instance())
 	_disarm_board()
 
+# Make the body `instance` die to ONE goal hit: 1 Health, no shield.
+#
+# A ticked goal deals one hit (GameLoop2.fulfill), and the offering rolls a RANDOM
+# enemy — some are authored with more Health (a Mysterious Tree has 3), and one of
+# those takes the hit, stays standing and drops nothing. That is the game working;
+# a test that expects the kill has to stand a body the kill is true of. Found by a
+# stress loop: 1 run in 60 rolled the Tree.
+func _one_hit(instance: int) -> void:
+	var entry: Dictionary = GameLoop2.entry_for(instance)
+	if entry.is_empty():
+		return
+	entry["health"] = 1
+	entry["shield"] = 0
+
 # Strip the abilities (§7.6) off everything standing on the board.
 #
 # The offering rolls a RANDOM enemy, and an ability changes what a turn of the
@@ -835,6 +849,7 @@ func test_fulfilling_a_follower_goal_defeats_and_drops_it() -> void:
 		"the old follower is offered for fulfilment, and so is this game's pair")
 	# Ticked and CONFIRMED, so the follower is cleared on the spot (§2.1); the
 	# report below is the miss on the game in play and nothing else.
+	_one_hit(int(_ui._fulfil_checks[0]["instance"]))
 	_tick(_ui._fulfil_checks[0]["check"])
 	# The drop is LOOT now, and it lands on the board the moment the row resolves
 	# (§8.2) rather than waiting for a report — which is the point of ticking early.
@@ -9609,6 +9624,7 @@ func test_confirming_a_goal_kills_the_enemy_there_and_then() -> void:
 		return
 	var inst: int = int(_ui._fulfil_checks[0]["instance"])
 	var check: CheckBox = _ui._fulfil_checks[0]["check"]
+	_one_hit(inst)
 	_tick(check)
 	assert_true(GameLoop2.entry_for(inst).is_empty(),
 		"the body came off the board while the game is still being played")
@@ -10156,6 +10172,8 @@ func _solo_with_bonus() -> int:
 	_disarm_board()
 	var inst: int = int(GameLoop2.stack[0]["instance"])
 	_clear_board_except(inst)
+	# A bonus pays WITH the body, so the body has to go down to its goal hit.
+	_one_hit(inst)
 	# Marked's enemy side is a `bonus` — the sheet's own optional objective.
 	GameLoop2.apply_status_to(inst, &"marked", 1)
 	_ui._populate_play_panel()
