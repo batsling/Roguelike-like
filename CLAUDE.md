@@ -275,6 +275,10 @@ godot --headless -s addons/gut/gut_cmdln.gd     # GUT suite: 57 scripts, ~2560 t
     stood, and dropped nothing. A stress loop printing the body on failure named
     it. Tests that expect the kill now call `_one_hit(instance)` on the body they
     tick, and so does `_solo_with_bonus` (a bonus pays with its body).
+  - `test_items2.gd::test_lords_parasol_takes_the_whole_shelf_for_nothing` counted
+    the pack after the sweep and failed when the rolled shelf held an **Ultra
+    Duplicator**, which copies the relic swept after it (one more than the shelf).
+    It now checks each shelf relic is owned, by id.
   - `test_overworld2.gd::test_the_page_still_fits_the_window_with_a_shop_on_it`
     failed about one run in three at "needs 642 of 625", and **the random part
     was the CHARACTER**, not the map. With a shop under it the board's width is
