@@ -7,7 +7,7 @@ extends Control
 # Reporting a game used to fire six unrelated surfaces at the player, none of
 # which knew about the others: one ItemDropModal per defeated enemy (the drops
 # were relic chests then, one per body), then the
-# LootDropModal, then the event, then the shop appearing under the board, then
+# LootDropModal, then the event, then the shop appearing, then
 # the boss notice, with the toasts running underneath all of it. Five popups in a
 # row on a boss round, each re-centring on the same spot, each with its own
 # Take/Leave, and nothing tying any of them to the game they came out of.

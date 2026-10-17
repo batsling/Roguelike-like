@@ -33,6 +33,9 @@ var _row: HFlowContainer = null
 # The open machine's card, if one is open. One at a time: you are standing at a
 # machine or you are not.
 var _card_layer: CanvasLayer = null
+# Where an opened machine's card goes: over the page, or over the shop pop-up the
+# panel is mounted in (ShopModal2 raises it).
+var card_layer: int = UITheme.Layer.DROP
 
 
 # Mount the live objects into `parent`. Returns null when there are none, so the
@@ -96,6 +99,21 @@ func _build() -> void:
 
 # A machine destroying itself takes its card with it. When the last one goes the
 # panel does too — an empty "Here" box under the board is furniture.
+# One row across instead of two, for a host narrower than the board's column (the
+# shop pop-up's option column). Rows stretch to the width they are given.
+func narrow() -> void:
+	if _row != null:
+		_row.custom_minimum_size.x = 0.0
+	_narrow = true
+	# The host is the frame; a second box inside it is a border around nothing.
+	add_theme_stylebox_override("panel", StyleBoxEmpty.new())
+	for m in find_children("*", "MarginContainer", false, false):
+		for side in ["left", "right", "top", "bottom"]:
+			(m as MarginContainer).add_theme_constant_override("margin_" + side, 0)
+	_refresh()
+
+var _narrow: bool = false
+
 func _on_objects_changed() -> void:
 	if not is_inside_tree():
 		return
@@ -138,10 +156,10 @@ func _refresh() -> void:
 func _machine_row(inst: Dictionary) -> Control:
 	var data: ObjectData = ObjectSystem.data_for(inst)
 	var btn := Button.new()
-	btn.custom_minimum_size = Vector2(ROW_WIDTH, ROW_HEIGHT)
-	btn.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	btn.custom_minimum_size = Vector2(0.0 if _narrow else ROW_WIDTH, ROW_HEIGHT)
+	btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL if _narrow else Control.SIZE_SHRINK_BEGIN
 	btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	btn.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
+	btn.add_theme_font_size_override("font_size", UITheme.FONT_SMALL if _narrow else UITheme.FONT_BODY)
 	btn.add_theme_constant_override("icon_max_width", ROW_ICON)
 	# CLIPPED, so the row is the width it was given rather than the width its
 	# label wants. A Button's minimum size is its content, so one long relic name
@@ -215,7 +233,7 @@ func open_card(inst: Dictionary) -> Node:
 	if _card_layer != null and is_instance_valid(_card_layer):
 		return _card_layer
 	var layer := CanvasLayer.new()
-	layer.layer = UITheme.Layer.DROP
+	layer.layer = card_layer
 	layer.process_mode = Node.PROCESS_MODE_ALWAYS
 	add_child(layer)
 	_card_layer = layer

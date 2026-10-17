@@ -309,15 +309,16 @@ func _shop_node() -> StringName:
 	GameState.node_kinds[gid] = RunGraph.NodeKind.SHOP
 	return gid
 
-func test_a_shop_sells_three_loot_at_one_under_the_item_price() -> void:
+func test_a_shop_sells_three_loot_at_two_under_the_item_price() -> void:
 	var gid: StringName = _shop_node()
 	var loot: Array = ShopSystem.loot_stock(gid) if ShopSystem.shop_for(gid).size() > 0 else []
 	assert_eq(loot.size(), ShopSystem.LOOT_SLOTS)
 	for row in loot:
 		var rarity: String = String((row["entry"] as Dictionary).get("rarity", "Common"))
-		var rung: int = {"uncommon": 1, "rare": 2, "legendary": 3}.get(rarity.to_lower(), 0)
-		assert_eq(ShopSystem.price_of(row), ShopSystem.price_for(rung) - 1,
-			"%s loot costs one under a %s relic" % [rarity, rarity])
+		var rung: int = ShopSystem.rarity_rung(rarity)
+		assert_eq(ShopSystem.price_of(row), maxi(ShopSystem.LOOT_MIN_PRICE,
+			ShopSystem.price_for(rung) - ShopSystem.LOOT_DISCOUNT),
+			"%s loot costs two under a %s relic, never under the floor" % [rarity, rarity])
 
 func test_buying_loot_puts_it_in_the_pack_and_rerolling_redraws_both_rows() -> void:
 	var gid: StringName = _shop_node()

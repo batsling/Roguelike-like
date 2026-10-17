@@ -26,6 +26,13 @@ var character_id: StringName = &""
 # saved with the run so a Continue resumes at the same level. Read it through
 # Fracture.level() / Fracture.at_least().
 var fracture: int = 0
+# SHOPKEEPERS (docs/games-first-redesign.md §14.6). `donation_best` is the profile's
+# best Donation Machine bank as this run STARTED, so a donation counts from the
+# next run; `shop_sales` are the percent cuts beaten keepers left (Charon's 20),
+# multiplied into every price for the rest of the run, keyed by keeper id so one
+# keeper's cut lands once.
+var donation_best: int = 0
+var shop_sales: Dictionary = {}
 var save_name: String = ""
 var current_game_id: StringName = &""
 var start_game_id: StringName = &""
@@ -1196,6 +1203,8 @@ func goal_word() -> String:
 func reset_run() -> void:
 	character_id = &""
 	fracture = 0
+	donation_best = 0
+	shop_sales = {}
 	carrying_amulet = false
 	save_name = ""
 	current_game_id = &""
@@ -2861,6 +2870,16 @@ func enemy_gold_bonus() -> int:
 		if it is ItemData:
 			n += it.gold_per_enemy
 	return n
+
+# Every percent cut on shop prices this run (§14.6): each held Steam Sale and each
+# beaten keeper's sale. ShopSystem.discounted multiplies them and rounds up.
+func shop_price_cuts() -> Array:
+	var out: Array = []
+	for it in inventory:
+		if it is ItemData and it.shop_discount > 0:
+			out.append(it.shop_discount)
+	out.append_array(shop_sales.values())
+	return out
 
 # Lord's Parasol: walking into a shop empties its shelf into the pack (§14).
 func sweeps_shops() -> bool:

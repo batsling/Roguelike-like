@@ -912,7 +912,8 @@ func save_data() -> bool:
 		 "character_enemy_log": character_enemy_log, "goal_log": goal_log,
 		 "character_game_log": character_game_log,
 		 "character_goal_log": character_goal_log,
-		 "donation_bank": donation_bank_total, "last_rifts": last_rifts,
+		 "donation_bank": donation_bank_total, "donation_best": donation_best_total,
+		 "last_rifts": last_rifts,
 		 "last_starts": last_starts, "fracture_log": fracture_log}, "  "))
 	return true
 
@@ -927,10 +928,16 @@ func save_data() -> bool:
 # a lifetime counter at all — at a coin a time it is a number you fill over many
 # runs, or blow up for pocket change in one.
 var donation_bank_total: int = 0
+# The highest the bank has ever stood. What Isaac's shop unlocks by (§14.6): a
+# level reached stays reached, so bombing the bank back down takes nothing away.
+var donation_best_total: int = 0
 
 
 func donation_bank() -> int:
 	return donation_bank_total
+
+func donation_best() -> int:
+	return donation_best_total
 
 
 # Add (or, with a negative amount, take) and persist immediately. Written on
@@ -940,6 +947,7 @@ func add_to_donation_bank(amount: int) -> void:
 	if amount == 0:
 		return
 	donation_bank_total = maxi(0, donation_bank_total + amount)
+	donation_best_total = maxi(donation_best_total, donation_bank_total)
 	save_data()
 	changed.emit()
 
@@ -956,6 +964,7 @@ func load_data() -> void:
 	character_goal_log = {}
 	goal_log = {}
 	donation_bank_total = 0
+	donation_best_total = 0
 	last_rifts = []
 	last_starts = []
 	fracture_log = {}
@@ -988,6 +997,8 @@ func load_data() -> void:
 	if json.data.has("goal_log") and typeof(json.data["goal_log"]) == TYPE_DICTIONARY:
 		goal_log = json.data["goal_log"]
 	donation_bank_total = maxi(0, int(json.data.get("donation_bank", 0)))
+	# A profile from before the best was kept: the bank is the best it can prove.
+	donation_best_total = maxi(donation_bank_total, int(json.data.get("donation_best", 0)))
 	if typeof(json.data.get("fracture_log")) == TYPE_DICTIONARY:
 		for ck in json.data["fracture_log"].keys():
 			var rec = json.data["fracture_log"][ck]

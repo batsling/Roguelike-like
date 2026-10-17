@@ -50,10 +50,10 @@ const SIDE_MARGIN := 16.0
 var _stack: VBoxContainer
 
 # What is already standing at the foot of the screen, in pixels, that the stack
-# has to sit above. The overworld's `🛒 Shop ↓` pointer is the one thing that
-# claims this band, and it publishes its own height here while it is up — the
-# same shape as `ModalScaffold.reserved_top`, which the pinned header uses to
-# keep modals out from under itself.
+# has to sit above, published by whatever stands there — the same shape as
+# `ModalScaffold.reserved_top`, which the pinned header uses to keep modals out
+# from under itself. Nothing claims it today: the `🛒 Shop ↓` pointer that did
+# went when the shop became a pop-up (docs/games-first-redesign.md §14.4).
 var _bottom_inset: float = 0.0
 
 func _ready() -> void:

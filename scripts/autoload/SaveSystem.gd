@@ -168,6 +168,8 @@ func _build_payload() -> Dictionary:
 		"saved_at": Time.get_unix_time_from_system(),
 		"character_id": String(GameState.character_id),
 		"fracture": GameState.fracture,
+		"donation_best": GameState.donation_best,
+		"shop_sales": GameState.shop_sales.duplicate(),
 		"carrying_amulet": GameState.carrying_amulet,
 		"current_game_id": String(GameState.current_game_id),
 		"start_game_id": String(GameState.start_game_id),
@@ -386,6 +388,12 @@ func _apply_save_data(data: Dictionary) -> void:
 	GameState.character_id = StringName(data.get("character_id", ""))
 	# A save from before Fractures existed has no level and was played at 0.
 	GameState.fracture = clampi(int(data.get("fracture", 0)), 0, Fracture.MAX)
+	GameState.donation_best = int(data.get("donation_best", 0))
+	GameState.shop_sales = {}
+	var sales = data.get("shop_sales", {})
+	if sales is Dictionary:
+		for k in sales.keys():
+			GameState.shop_sales[String(k)] = int(sales[k])
 	GameState.carrying_amulet = bool(data.get("carrying_amulet", false))
 	GameState.current_game_id = StringName(data.get("current_game_id", ""))
 	GameState.start_game_id = StringName(data.get("start_game_id", ""))

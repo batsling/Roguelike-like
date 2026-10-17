@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="ShopkeeperData" load_steps=2 format=3 uid="uid://shopkeeper_shopkeeper"]
+
+[ext_resource type="Script" path="res://scripts/resources/ShopkeeperData.gd" id="1_keeper"]
+
+[resource]
+script = ExtResource("1_keeper")
+id = &"shopkeeper"
+display_name = "Shopkeeper"
+game_id = &"the_binding_of_isaac_rebirth"
+description = ""
+image = "Shopkeeper(Isaac)"
+pools = PackedStringArray()
+loot_kinds = PackedStringArray()
+currency = &"gold"
+sale = PackedStringArray()
+effect = PackedStringArray("bombable", "donation_shelf")
+item_slots = 3
+loot_slots = 3
+rarity = "Common"
+boss = &""
+loot_tag = ""
+pack_slots = 0

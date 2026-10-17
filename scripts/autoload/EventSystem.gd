@@ -47,7 +47,7 @@ extends Node
 #
 # EXCEPT AT A SHOP NODE, where the shop is what happens (§14.4, §19.1). Two
 # things queued on top of each other after one game was one thing too many — the
-# shop mounts under the board and the event opens a modal over it, so the shop
+# shop opened and the event opened a modal over it, so the shop
 # the player walked here for was something they had to dismiss an event to reach.
 #
 # Read off the NODE, like the shop itself (§19.2): a transmuted Shop node still

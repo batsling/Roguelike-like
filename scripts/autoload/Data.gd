@@ -42,6 +42,7 @@ var _events2: Dictionary = {}           # StringName -> EventData2 (docs/event-s
 var _objects2: Dictionary = {}          # StringName -> ObjectData (docs/object-sheet-authoring.md)
 var _curses2: Dictionary = {}           # StringName -> CurseData2 (the checklist kind, not data/curses)
 var _songs: Dictionary = {}             # StringName -> SongData (Roguelike Radio, docs/roguelike-radio.md)
+var _shopkeepers: Dictionary = {}       # StringName -> ShopkeeperData (§14.6)
 
 func _ready() -> void:
 	_load_dir("res://data/items/", _items)
@@ -70,6 +71,7 @@ func _ready() -> void:
 	_load_dir("res://data/objects2.0/", _objects2)
 	_load_dir("res://data/curses2.0/", _curses2)
 	_load_dir("res://data/songs/", _songs)
+	_load_dir("res://data/shopkeepers/", _shopkeepers)
 	print("[Data] Loaded %d items, %d games, %d characters, %d curses" % [
 		_items.size(), _games.size(), _characters.size(), _curses.size()
 	])
@@ -697,6 +699,14 @@ func get_song(id: StringName) -> SongData:
 
 func all_songs() -> Array:
 	return _songs.values()
+
+# THE SHOPKEEPERS (§14.6), in id order. Empty until the owner authors a row, and
+# every shop is then the plain one.
+func get_shopkeeper(id: StringName) -> ShopkeeperData:
+	return _shopkeepers.get(id)
+
+func all_shopkeepers() -> Array:
+	return _shopkeepers.values()
 
 func get_status(id: StringName) -> StatusData:
 	return _statuses.get(id)

@@ -232,12 +232,21 @@ var _event_modal = null
 # what was waiting at the node, paid after the game rather than before it.
 # &"" when nothing is owed.
 var _pending_shop: StringName = &""
-# The shop currently ON THE PAGE, under the board (ShopPanel2), and the pointer
-# that says it is down there. The shop is no longer a modal: it is mounted below
-# the battlefield and stays for the whole visit, so these live as long as the
-# player stands at that node rather than as long as a dialog is open.
-var _shop_panel: ShopPanel2 = null
-var _shop_hint: Control = null
+# The Shop node the run is STANDING in with its shop open for business, &"" when
+# none (§14.4): set once the node's game is beaten, cleared when the run travels
+# on. While it is set the 🛒 Shop button on the offering's heading is up, and
+# pressing it opens the shop as a pop-up (ShopModal2). Nothing opens it by itself.
+var _shop_here: StringName = &""
+# The pop-up, while it is open. Untyped and loaded by path: it is a screen the page
+# only opens on demand (see SHOP_MODAL_SCRIPT).
+var _shop_modal = null
+var _shop_btn: Button = null
+# The haul screen's exit said "Go to Shop", so the shop opens when it closes —
+# the player pressed the button that promised it.
+var _shop_from_haul: bool = false
+# Whether this arrival has walked into the shop yet. `shop_entered` (Chaos the
+# Clown) is the moment of walking in, once an arrival, not once per opening.
+var _shop_entered_here: bool = false
 # The machines standing at this game, in the same space and on the same terms
 # (docs/object-sheet-authoring.md). Only ever mounted for objects spawned OUTSIDE
 # an event — an event draws its own inside its modal, because the room the
@@ -1062,8 +1071,7 @@ func capture_view_state() -> Dictionary:
 		"return_choice": String(_return_choice),
 		# The shop is a place on the page now, so a run saved standing in one comes
 		# back standing in it (the shelf itself lives on GameState either way).
-		"shop_open": String(_shop_panel.game_id()) if _shop_panel != null
-			and is_instance_valid(_shop_panel) else "",
+		"shop_open": String(_shop_here),
 		"visits": visits,
 		"drops": drops,
 		"last_played_game": String(_last_played_game.id) if _last_played_game != null else "",
@@ -1145,7 +1153,9 @@ func restore_view_state(view: Dictionary) -> void:
 	_visits.clear()
 	var shop_open: StringName = StringName(view.get("shop_open", ""))
 	if shop_open != &"":
-		_mount_shop(shop_open)
+		_set_shop_here(shop_open)
+		# A reload is not an arrival: the run walked in before it was saved.
+		_shop_entered_here = ShopSystem.has_seen(shop_open)
 	var vs: Dictionary = view.get("visits", {})
 	for gid in vs.keys():
 		_visits[StringName(gid)] = int(vs[gid])
@@ -2987,8 +2997,10 @@ func _open_post_game() -> void:
 # ended in — the event, then the shop, then the boss notice, then the detour
 # question. The shelf needs no handover any more; the screen never borrowed it, so
 # `_pending_shop` is still set and `_open_pending_shop` mounts it in its turn.
-func _on_post_game_finished(_screen: PostCombatScreen) -> void:
+func _on_post_game_finished(haul: PostCombatScreen) -> void:
 	_post_screen = null
+	# Its exit named the shop, so the shop is where it leads (_open_pending_shop).
+	_shop_from_haul = haul != null and is_instance_valid(haul) and haul.shop_id() != &""
 	_refresh()
 	autosave()
 	# THE COLLAPSE'S SCREEN comes first when the game just handed in was the
@@ -3006,8 +3018,8 @@ func _on_post_game_finished(_screen: PostCombatScreen) -> void:
 
 # `_adopt_shop` lived here: it took the shelf the haul screen had borrowed and
 # reparented it under the board. Nothing borrows the shelf now — the screen knows
-# only the shop's node id, so its exit button can name it — and `_mount_shop` builds the
-# panel in its own turn down the chain, which is what it always did on every path
+# only the shop's node id, so its exit button can name it — and `_set_shop_here` puts the
+# shop's button up in its own turn down the chain, which is what it always did on every path
 # that did not go through a haul screen.
 
 # Pull the screen off the wall for a reset. `abandon` rather than `dismiss`: the
@@ -3086,12 +3098,16 @@ func _on_event_finished(play_request: Dictionary) -> void:
 		return
 	_open_pending_shop()
 
-# Mount the shop owed at this node, if any (§14, §19.1) — under the board, where it stays
-# for the whole visit. Nothing is blocked by it and nothing waits on it, so the
-# chain carries straight on to the boss notice.
+# Open for business the shop owed at this node, if any (§14, §19.1): the 🛒 Shop
+# button goes up by the offering and stays for the whole visit. Nothing is blocked
+# by it and nothing waits on it, so the chain carries straight on to the boss
+# notice — unless the haul screen's "Go to Shop" was what got here, in which case
+# the shop opens, because that is the button the player pressed.
 func _open_pending_shop() -> void:
 	var gid: StringName = _pending_shop
 	_pending_shop = &""
+	var from_haul: bool = _shop_from_haul
+	_shop_from_haul = false
 	# Only where the player is actually STANDING. As a modal a shop could be raised
 	# anywhere; as a place on the page it cannot, and the one path that gets here
 	# from somewhere else is a node that owed both an event and a shop, where the
@@ -3101,12 +3117,10 @@ func _open_pending_shop() -> void:
 	# than no shop. The shelf is keyed by NODE, so "standing on it" is simply the
 	# node the run is on.
 	if gid != &"" and not GameLoop2.run_over and gid == GameState.current_game_id:
-		_mount_shop(gid)
-		# Walking into the shop is the moment (Chaos the Clown). Here, once per
-		# arrival, rather than in _mount_shop — which a save reload also calls to
-		# put a standing shelf back, and a reload is not an arrival.
-		if _shop_panel != null:
-			TriggerBus.shop_entered.emit({"game_id": gid})
+		_set_shop_here(gid)
+		_shop_entered_here = false
+		if from_haul:
+			open_shop()
 	_maybe_announce_boss()
 
 # --- screens the page opens, compiled when they are OPENED ------------------
@@ -3133,6 +3147,7 @@ const ROUTE_ARROW := preload("res://scripts/ui/RouteArrow.gd")
 const BOSS_NOTICE_MODAL_SCRIPT := "res://scripts/redesign2/BossNoticeModal.gd"
 const COMPLETED_GOALS_PANEL_SCRIPT := "res://scripts/redesign2/CompletedGoalsPanel.gd"
 const EVENT_MODAL2_SCRIPT := "res://scripts/redesign2/EventModal2.gd"
+const SHOP_MODAL_SCRIPT := "res://scripts/redesign2/ShopModal2.gd"
 const GRAVEYARD_PANEL_SCRIPT := "res://scripts/redesign2/GraveyardPanel.gd"
 const LOOT_USE_MODAL_SCRIPT := "res://scripts/redesign2/LootUseModal.gd"
 const RUN_LOG_SCREEN_SCRIPT := "res://scripts/redesign2/RunLogScreen.gd"
@@ -3195,26 +3210,71 @@ func _fit_checklist() -> void:
 	if absf(want - _verify_scroll.custom_minimum_size.y) >= 1.0:
 		_verify_scroll.custom_minimum_size.y = want
 
-# --- the shop on the page (§14) --------------------------------------------
+# --- the shop (§14.4) -------------------------------------------------------
 
-# Put `gid`'s shop under the battlefield and raise the pointer to it. Replaces
-# whatever shop was there — you can only be standing in one.
-func _mount_shop(gid: StringName) -> void:
+# The run stands in `gid`'s shop: put the 🛒 Shop button up. Replaces whatever
+# shop was there — you can only be standing in one.
+func _set_shop_here(gid: StringName) -> void:
 	_clear_shop()
-	if _right_col == null:
+	if not ShopSystem.is_shop(gid):
 		return
-	_shop_panel = ShopPanel2.mount(_right_col, gid)
-	if _shop_panel == null:
+	_shop_here = gid
+	_paint_shop_button()
+
+# Open the shop the run is standing in, as a pop-up. Returns the pop-up, or null
+# when there is no shop here (or one is already open, which is returned instead).
+func open_shop():
+	if _shop_modal != null and is_instance_valid(_shop_modal):
+		return _shop_modal
+	if _shop_here == &"" or GameLoop2.run_over:
+		return null
+	_shop_modal = load(SHOP_MODAL_SCRIPT).open(self, _shop_here)
+	if _shop_modal == null:
+		return null
+	# The room's machines are drawn in it; the copy under the board steps aside.
+	_sync_object_panel()
+	# Walking into the shop is the moment (Chaos the Clown): once an arrival, the
+	# first time the door is opened, rather than every time.
+	if not _shop_entered_here:
+		_shop_entered_here = true
+		TriggerBus.shop_entered.emit({"game_id": _shop_here})
+	var modal = _shop_modal
+	modal.finished.connect(func():
+		if _shop_modal == modal:
+			_shop_modal = null
+		_sync_object_panel()
+		_refresh()
+		autosave())
+	return _shop_modal
+
+# The button: up while a shop is open for business here, in the shop's green so it
+# reads as the thing to press. Always "Shop", never the keeper's name: a name is a
+# width, and the left column's width is the 720p page's fit (the pop-up names the
+# keeper the moment it opens).
+func _paint_shop_button() -> void:
+	if _shop_btn == null or not is_instance_valid(_shop_btn):
 		return
-	_shop_panel.finished.connect(func():
-		_shop_panel = null
-		_sync_board_budget())
-	_sync_board_budget()
-	# The panel has no height until the page has laid it out, and "is it on screen"
-	# is unanswerable before then — so ask once now (the pointer goes up) and again
-	# after the layout has happened (it may already be in view on a short board).
-	_update_shop_hint()
-	_update_shop_hint.call_deferred()
+	_shop_btn.visible = _shop_here != &""
+	if _shop_here != &"" and ShopSystem.has_seen(_shop_here):
+		_shop_btn.tooltip_text = ShopSystem.headline(_shop_here)
+
+func _build_shop_button() -> Button:
+	var btn := HoverButton.new()
+	btn.name = "ShopButton"
+	btn.text = "🛒  Shop"
+	btn.visible = false
+	btn.add_theme_font_size_override("font_size", UITheme.FONT_HEAD)
+	btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	var green: Color = UITheme.SHOP_GREEN
+	btn.add_theme_stylebox_override("normal", UITheme.flat(green.lerp(UITheme.BG, 0.62), 8, 10, 2, green))
+	btn.add_theme_stylebox_override("hover", UITheme.flat(green.lerp(UITheme.BG, 0.42), 8, 10, 2, green.lerp(Color.WHITE, 0.3)))
+	btn.add_theme_stylebox_override("pressed", UITheme.flat(green.lerp(UITheme.BG, 0.30), 8, 10, 2, green))
+	btn.add_theme_stylebox_override("focus", UITheme.flat(Color(0, 0, 0, 0), 8, 0, 0))
+	btn.add_theme_color_override("font_color", green.lerp(Color.WHITE, 0.55))
+	btn.add_theme_color_override("font_hover_color", Color.WHITE)
+	btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	btn.pressed.connect(func(): open_shop())
+	return btn
 
 # Everything mounted under the board because the run is STANDING HERE: the node's
 # shop and any machines. Both have the same lifetime — travelling on ends them —
@@ -3240,7 +3300,8 @@ func _sync_object_panel() -> void:
 		return
 	# An event showing its own machines owns them for as long as it is open; a
 	# second copy under the board would be the same buttons twice.
-	if _event_modal != null and is_instance_valid(_event_modal):
+	if (_event_modal != null and is_instance_valid(_event_modal)) \
+			or (_shop_modal != null and is_instance_valid(_shop_modal)):
 		_clear_objects()
 		return
 	if _object_panel != null and is_instance_valid(_object_panel):
@@ -3268,53 +3329,30 @@ func _clear_objects() -> void:
 # to come from but the board itself. It shrinks its cells while it is sharing the
 # column and springs back when it stops, which is when you travel on.
 func _sync_board_budget() -> void:
-	var shared: bool = (_object_panel != null and is_instance_valid(_object_panel)) \
-		or (_shop_panel != null and is_instance_valid(_shop_panel))
+	var shared: bool = _object_panel != null and is_instance_valid(_object_panel)
 	if BattlefieldView.set_sharing_column(shared) and _board != null:
 		_board.refit()
 
 # The shop closes when you travel on, which is what leaving a shop has always
-# meant. Also called by _mount_shop, which is replacing one rather than leaving
-# the node — which is why this stays separate from _leave_node.
+# meant: the pop-up if it is open, and the button. Also called by _set_shop_here,
+# which is replacing one rather than leaving the node — which is why this stays
+# separate from _leave_node.
 func _clear_shop() -> void:
-	if _shop_panel != null and is_instance_valid(_shop_panel):
-		_shop_panel.close()
-	_shop_panel = null
-	_sync_board_budget()
-	_update_shop_hint()
+	if _shop_modal != null and is_instance_valid(_shop_modal):
+		_shop_modal.close()
+	_shop_modal = null
+	_shop_here = &""
+	_paint_shop_button()
 
-# The "🛒 Shop ↓" pointer: shown while a shop is mounted and has NOT been scrolled
-# to. The whole point of moving the shop into the page is that it doesn't
-# interrupt — which is also how a shop below the fold gets missed entirely, so
-# the one thing that does reach over the page is a pointer at it.
-func _update_shop_hint() -> void:
-	if _shop_hint == null:
-		return
-	var up: bool = _shop_panel != null and is_instance_valid(_shop_panel) and not _shop_in_view()
-	_shop_hint.visible = up
-	# The toasts pile up from the bottom edge too, so tell them how much of it this
-	# pointer is standing on. Without this the two share the same band and a burst
-	# of "Acquired …" lands on top of the one control saying a shop is open.
-	if _toasts != null and is_instance_valid(_toasts):
-		var hint_h: float = maxf(_shop_hint.size.y, _shop_hint.get_combined_minimum_size().y)
-		_toasts.set_bottom_inset((hint_h + 10.0) if up else 0.0)
-	# Only worth watching while there is a shop to point at. "Has it been scrolled
-	# to yet" cannot be answered off the scroll signal alone — the value moves
-	# before the layout does, so the answer measured at that moment is one frame
-	# stale and the pointer stayed up over a shop in plain view.
-	set_process(_wants_process())
-
-# Two things want a frame hook: the shop pointer above, and the loot overlay,
-# which has to FOLLOW the board it is standing on. One gate for both, so neither
-# can switch the other off — which is exactly what happened when each called
-# set_process with only its own answer.
+# Two things want a frame hook: the loot overlay, which has to FOLLOW the board it
+# is standing on, and the run clock. One gate for both, so neither can switch the
+# other off — which is exactly what happened when each called set_process with
+# only its own answer.
 func _wants_process() -> bool:
-	return (_shop_panel != null and is_instance_valid(_shop_panel)) \
-		or (_loot_panel != null and is_instance_valid(_loot_panel)) \
+	return (_loot_panel != null and is_instance_valid(_loot_panel)) \
 		or (RunTimer.run_running and not RunTimer.paused)
 
 func _process(_delta: float) -> void:
-	_update_shop_hint()
 	_follow_loot_overlay()
 	_refresh_split_panel()
 
@@ -3580,21 +3618,6 @@ func _follow_loot_overlay() -> void:
 	if now == _loot_anchor_rect:
 		return
 	_place_loot_overlay()
-
-# Is any of the shop panel inside the scroll viewport? Measured against the
-# viewport's own rect rather than the page's, because "on screen" is what the
-# pointer is about.
-func _shop_in_view() -> bool:
-	if _shop_panel == null or not is_instance_valid(_shop_panel) or _scroll == null:
-		return false
-	if _shop_panel.size.y <= 0.0:
-		return false        # not laid out yet — treat it as still below the fold
-	var top: float = _shop_panel.global_position.y - _scroll.global_position.y
-	return top < _scroll.size.y - SHOP_HINT_REVEAL
-
-# How much of the shop has to be on screen before the pointer stands down. A
-# sliver of a panel edge is not "you have seen the shop".
-const SHOP_HINT_REVEAL := 60.0
 
 # An item bought down there is a pickup like any other, so it comes back through
 # GameState.inventory_changed (_on_inventory_changed) exactly as a drop does —
@@ -5086,8 +5109,7 @@ func _refresh(_a = null) -> void:
 		if game != null:
 			UITheme.attach_tier_badge(_now_playing_cover, game.id)
 		# The clock wants the frame hook for as long as this game is in play, and
-		# _wants_process is the one gate that decides (the shop pointer and the loot
-		# overlay share it). Asked here because taking a game is the moment the
+		# _wants_process is the one gate that decides (the loot overlay shares it). Asked here because taking a game is the moment the
 		# answer changes.
 		_refresh_split_panel()
 		set_process(_wants_process())
@@ -5341,9 +5363,6 @@ func _refresh_stage() -> void:
 	_np_box.visible = playing
 	_attempt_wrap.visible = playing
 	_done_btn.visible = playing
-	# The page just changed height around the shop, so where it sits relative to
-	# the window has changed with it.
-	_update_shop_hint()
 
 # The row above the offering. Dash and Scramble used to keep their buttons here
 # AND their counts on the HUD; they are one chip apiece on the stat row under the
@@ -6798,9 +6817,16 @@ func _build_ui() -> void:
 	# CENTRED ON THE PANEL, not on what the button leaves of it: a pad on the left
 	# as wide as the Optimal Path button on the right, so the title sits over the
 	# middle of the cards it is the question for.
-	var head_pad := Control.new()
+	#
+	# THE SHOP'S BUTTON STANDS IN THAT PAD (§14.4): the offering is where the
+	# player is looking when the shop opens for business, so the way into it is
+	# here, on the left of the question, in the shop's green. The pad keeps the
+	# title centred whether it is up or not.
+	var head_pad := HBoxContainer.new()
 	head_pad.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	select_head_row.add_child(head_pad)
+	_shop_btn = _build_shop_button()
+	head_pad.add_child(_shop_btn)
 	_select_head = _section("Choose a Game")
 	_select_head.add_theme_font_size_override("font_size", UITheme.FONT_TITLE_LG)
 	_select_head.add_theme_color_override("font_color", UITheme.GOLD)
@@ -6821,6 +6847,12 @@ func _build_ui() -> void:
 	map_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	map_btn.pressed.connect(open_optimal_path)
 	map_btn.resized.connect(func(): head_pad.custom_minimum_size.x = map_btn.size.x)
+	# And the Optimal Path side matches it back when the shop button is the wider,
+	# so the title stays over the middle either way.
+	_shop_btn.resized.connect(func(): map_btn.custom_minimum_size.x = _shop_btn.size.x \
+		if _shop_btn.visible else 0.0)
+	_shop_btn.visibility_changed.connect(func(): map_btn.custom_minimum_size.x = _shop_btn.size.x \
+		if _shop_btn.visible else 0.0)
 	select_head_row.add_child(map_btn)
 	_select_box.add_child(select_head_row)
 	# Controls row (Dash) — populated per refresh.
@@ -7156,14 +7188,6 @@ func _build_ui() -> void:
 	_play_panel.add_child(_log)
 
 
-	# The pointer at the shop under the board (§14). Mounted OUTSIDE the
-	# ScrollContainer, on the page itself, because its whole job is to be visible
-	# while the thing it points at is not.
-	_shop_hint = _build_shop_hint()
-	add_child(_shop_hint)
-	# It stands down the moment the shop is scrolled to. The page is watched while
-	# a shop is up (see _update_shop_hint) rather than sampled on the scroll signal,
-	# which fires before the layout it would be measured against.
 	set_process(false)
 
 	# The toast layer: pickups, item procs and the repeat-beat Dash all post to
@@ -7249,51 +7273,6 @@ func _publish_header_strip(shown: bool) -> void:
 		return
 	ModalScaffold.reserved_top = maxf(_header_bar.size.y,
 		_header_bar.get_combined_minimum_size().y)
-
-# "🛒 Shop ↓" — the pointer at the shop mounted under the board. It floats at the
-# bottom of the SCREEN (not of the page), over everything, until the shop has
-# been scrolled into view; pressing it scrolls there.
-#
-# This is the one thing the inline shop still owes the old modal. A popup could
-# not be missed and did not have to advertise itself; a panel below the fold can
-# be both, and a shop the player never noticed is worse than the interruption
-# that moving it out of the way was meant to avoid.
-func _build_shop_hint() -> Control:
-	var wrap := PanelContainer.new()
-	wrap.visible = false
-	wrap.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
-	wrap.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	wrap.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	wrap.offset_bottom = -18
-	wrap.add_theme_stylebox_override("panel",
-		UITheme.flat(UITheme.SHOP_GREEN.lerp(UITheme.BG, 0.72), 10, 6, 2, UITheme.SHOP_GREEN))
-	var btn := HoverButton.new()
-	btn.text = "🛒  Shop      ↓"
-	btn.flat = true
-	btn.tooltip_text = "A shop is open under the battlefield — scroll down to it."
-	btn.add_theme_font_size_override("font_size", UITheme.FONT_HEAD)
-	btn.add_theme_color_override("font_color", UITheme.SHOP_GREEN.lerp(Color.WHITE, 0.45))
-	btn.add_theme_color_override("font_hover_color", Color.WHITE)
-	btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	btn.pressed.connect(_scroll_to_shop)
-	wrap.add_child(btn)
-	# The arrow breathes rather than sitting still: the pointer is competing with a
-	# page the player is already reading, and a static chip at the bottom edge is
-	# exactly the kind of thing an eye filters out.
-	var t: Tween = wrap.create_tween().set_loops()
-	t.tween_property(wrap, "modulate:a", 0.55, 0.7).set_trans(Tween.TRANS_SINE)
-	t.tween_property(wrap, "modulate:a", 1.0, 0.7).set_trans(Tween.TRANS_SINE)
-	return wrap
-
-# Take the page to the shop. Pressing the pointer is the shortcut for the scroll
-# it is asking for, so it does the scroll itself.
-func _scroll_to_shop() -> void:
-	if _shop_panel == null or not is_instance_valid(_shop_panel) or _scroll == null:
-		return
-	var target: float = _scroll.scroll_vertical \
-		+ (_shop_panel.global_position.y - _scroll.global_position.y) - 40.0
-	_scroll.scroll_vertical = int(maxf(0.0, target))
-	_update_shop_hint()
 
 # The attempt tracker (§3): the strip the player drives between runs of the real
 # game. "Lost a run" is the only destructive button on the page, so it's tinted

@@ -133,7 +133,7 @@ func test_the_economy_the_manual_quotes_is_the_real_one() -> void:
 	assert_string_contains(text, "+%d gold" % GameLoop2.GOLD_PER_ENEMY)
 	assert_string_contains(text, "+%d gold" % GameLoop2.GOLD_PER_BOSS)
 	assert_string_contains(text, "Common %d" % ShopSystem.BASE_PRICE)
-	assert_string_contains(text, "Legendary %d" % (ShopSystem.BASE_PRICE + 3))
+	assert_string_contains(text, "Legendary %d" % (ShopSystem.BASE_PRICE + 3 * ShopSystem.PRICE_PER_RUNG))
 	assert_string_contains(text, "SHOP NODE")
 	assert_string_contains(text, "%d items, rolled once" % ShopSystem.STOCK_SLOTS)
 

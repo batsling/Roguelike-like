@@ -352,8 +352,16 @@ func test_lords_parasol_takes_the_whole_shelf_for_nothing() -> void:
 	GameState.gold = 100
 	var before: int = GameState.inventory.size()
 	ShopSystem.mark_seen(hub)
-	assert_eq(GameState.inventory.size(), before + shelf.size(),
-		"every slot lands in the pack")
+	# EVERY SLOT IS OWNED, asked by id rather than by counting the pack. A count
+	# was only usually true: the shelf is rolled, and a swept Ultra Duplicator
+	# (duplicate_items) copies the relic swept after it, so the pack gained one
+	# more than the shelf held about one run in thirty. That is the Duplicator
+	# working; what the Parasol promises is that the whole shelf comes with you.
+	for entry in shelf:
+		assert_true(GameState.has_item(StringName(entry["item"])),
+			"%s came off the shelf into the pack" % entry["item"])
+	assert_gte(GameState.inventory.size(), before + shelf.size(),
+		"and nothing on it was left behind")
 	assert_true(GameState.gold >= 100,
 		"and not a coin of it is paid for (gold %d, started at 100)" % GameState.gold)
 	assert_true(ShopSystem.is_sold_out(hub), "the shelf is bare behind you")

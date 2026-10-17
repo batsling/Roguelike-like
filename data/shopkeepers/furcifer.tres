@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="ShopkeeperData" load_steps=2 format=3 uid="uid://shopkeeper_furcifer"]
+
+[ext_resource type="Script" path="res://scripts/resources/ShopkeeperData.gd" id="1_keeper"]
+
+[resource]
+script = ExtResource("1_keeper")
+id = &"furcifer"
+display_name = "Furcifer"
+game_id = &"backpack_battles"
+description = ""
+image = "ShopkeeperFurcifer"
+pools = PackedStringArray()
+loot_kinds = PackedStringArray()
+currency = &"gold"
+sale = PackedStringArray("10% half all")
+effect = PackedStringArray("gold_reroll")
+item_slots = 0
+loot_slots = 5
+rarity = "Common"
+boss = &""
+loot_tag = ""
+pack_slots = 0

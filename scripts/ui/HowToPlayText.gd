@@ -640,6 +640,11 @@ static func _ch_verbs() -> Dictionary:
 # 8. Gold and shops
 # ---------------------------------------------------------------------------
 
+# An item's price at Fracture 0 — the manual quotes the ladder, not this run's
+# surcharge (which the Fracture's own line says).
+static func _item_price(rung: int) -> int:
+	return ShopSystem.BASE_PRICE + ShopSystem.PRICE_PER_RUNG * rung
+
 static func _ch_gold() -> Dictionary:
 	return {
 		"id": &"gold", "icon": "🛒", "title": "Gold and shops",
@@ -651,10 +656,11 @@ static func _ch_gold() -> Dictionary:
 			_row(["Where gold comes from", "How much"], true),
 			_row(["Enemy defeated", "+%d gold" % GameLoop2.GOLD_PER_ENEMY]),
 			_row(["Boss defeated", "+%d gold" % GameLoop2.GOLD_PER_BOSS]),
-			_row(["Item price", "%d plus the rarity rung — Common %d, Uncommon %d, "
-				% [ShopSystem.BASE_PRICE, ShopSystem.BASE_PRICE, ShopSystem.BASE_PRICE + 1]
-				+ "Rare %d, Legendary %d"
-				% [ShopSystem.BASE_PRICE + 2, ShopSystem.BASE_PRICE + 3]]),
+			_row(["Item price", "%d, and %d more a rarity — Common %d, Uncommon %d, "
+				% [ShopSystem.BASE_PRICE, ShopSystem.PRICE_PER_RUNG, _item_price(0), _item_price(1)]
+				+ "Rare %d, Legendary %d" % [_item_price(2), _item_price(3)]]),
+			_row(["Loot price", "%d less than an item of its rarity, never under %d"
+				% [ShopSystem.LOOT_DISCOUNT, ShopSystem.LOOT_MIN_PRICE]]),
 			_row(["Carries between runs", "None of it. A run opens on your "
 				+ "character and nothing else."]),
 			_p("A run is six to twelve games, so clearing most of your goals earns "
@@ -677,8 +683,9 @@ static func _ch_gold() -> Dictionary:
 				+ "rather than clearing it.") % ShopSystem.STOCK_SLOTS),
 			_b("So a shop you cleared out is a shop you know is empty, and a shop "
 				+ "you left two items at is a reason to walk back."),
-			_b("The shop opens under the board when you beat the game there, and "
-				+ "stays for the whole visit. Travelling on is what closes it."),
+			_b("Beat the game there and a 🛒 Shop button appears by the games "
+				+ "to choose from. It stays for the whole visit; travelling on is "
+				+ "what takes it away."),
 			_b("A Scramble charge rerolls the whole shelf, sold slots included."),
 			_b("A shop card shows you what is left on a shelf you have already "
 				+ "stood in — which is what makes going back a real decision. A "
@@ -722,7 +729,7 @@ static func _ch_events() -> Dictionary:
 				+ "when you answer it; a machine stands in front of you for as "
 				+ "long as you are on that game, and travelling on is what ends "
 				+ "it. Several can be there at once."),
-			_p("Machines draw under the board where a shop does, and their buttons "
+			_p("Machines draw under the board, and their buttons "
 				+ "are greyed rather than hidden when you cannot use them — the "
 				+ "button itself tells you why. Jammed. Full. Needs 1 Bomb. A "
 				+ "machine is a physical object and its buttons do not disappear "

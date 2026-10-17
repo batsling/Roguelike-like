@@ -260,16 +260,24 @@ func test_shields_fall_at_one_three_and_five() -> void:
 		assert_eq(GameLoop2.shields_for_game(normal), want[lv][0], "normal game at Fracture %d" % lv)
 		assert_eq(GameLoop2.shields_for_game(trad), want[lv][1], "Traditional at Fracture %d" % lv)
 
-func test_damage_is_one_and_a_half_rounded_up_per_step() -> void:
+func test_damage_doubles_at_fracture_nine_and_not_before() -> void:
 	# The doc's table (§2): Low/Medium/High/Insane and the bosses' 3/5/7/9.
-	var want := {1: [2, 3], 2: [3, 5], 3: [5, 8], 4: [6, 9], 5: [8, 12], 7: [11, 17], 9: [14, 21]}
-	for base in want.keys():
-		GameState.fracture = 1
-		assert_eq(Fracture.damage(base), base, "no step yet at Fracture 1")
-		GameState.fracture = 2
-		assert_eq(Fracture.damage(base), want[base][0], "%d at Fracture 2" % base)
+	for base in [1, 2, 3, 4, 5, 7, 9]:
+		GameState.fracture = 8
+		assert_eq(Fracture.damage(base), base, "no step yet at Fracture 8")
 		GameState.fracture = 9
-		assert_eq(Fracture.damage(base), want[base][1], "%d at Fracture 9" % base)
+		assert_eq(Fracture.damage(base), base * 2, "%d at Fracture 9" % base)
+
+func test_shops_cost_one_more_from_fracture_two() -> void:
+	GameState.fracture = 1
+	assert_eq(Fracture.shop_surcharge(), 0)
+	GameState.fracture = 2
+	assert_eq(Fracture.shop_surcharge(), 1)
+	assert_eq(ShopSystem.price_for(ItemData.Rarity.COMMON), 4, "a Common item")
+	assert_eq(ShopSystem.loot_price_for("Common"), 3, "a Common piece of loot")
+	assert_eq(ShopSystem.price_for(ItemData.Rarity.LEGENDARY), 10)
+	GameState.fracture = 10
+	assert_eq(Fracture.shop_surcharge(), 1, "once, not once per level")
 
 func test_a_swing_carries_the_fracture_and_strength_adds_on_top() -> void:
 	var e: GoalEnemyData = _plain_enemy()
@@ -279,7 +287,7 @@ func test_a_swing_carries_the_fracture_and_strength_adds_on_top() -> void:
 	var strength_at_0: int = GameLoop2.enemy_damage(strong) - GameLoop2.enemy_damage(plain)
 	GameState.fracture = 9
 	assert_eq(GameLoop2.enemy_damage(plain), Fracture.damage(int(e.damage)),
-		"the swing is the authored damage with both steps on it")
+		"the swing is the authored damage, doubled")
 	assert_eq(GameLoop2.enemy_damage(strong) - GameLoop2.enemy_damage(plain), strength_at_0,
 		"Strength adds the same on top, and does not grow with the level")
 
@@ -351,6 +359,7 @@ func test_fracture_zero_changes_nothing() -> void:
 	assert_eq(GameLoop2.shields_for_game(_game_of_type(GameData.GameType.ACTION)),
 		GameLoop2.SHIELDS_PER_GAME)
 	assert_eq(Fracture.damage(4), 4)
+	assert_eq(Fracture.shop_surcharge(), 0)
 	assert_eq(RunDifficulty.games_per_tier(), RunDifficulty.GAMES_PER_TIER)
 	assert_eq(Fracture.extra_bodies(), 0)
 	assert_eq(Fracture.extra_rows(), 0)

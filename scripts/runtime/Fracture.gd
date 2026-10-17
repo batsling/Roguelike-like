@@ -33,7 +33,8 @@ static func at_least(n: int) -> bool:
 # done it once already) is an edit here and nowhere else. Each level carries
 # every level below it, so every rule reads `at_least(<its level>)`.
 const SHIELD_CUT_LEVELS := [1, 3, 5]   # -1 shield per game at each
-const DAMAGE_LEVELS := [2, 9]          # x1.5, rounded up, at each
+const PRICIER_SHOPS_LEVEL := 2         # every price on a shelf +1 gold
+const DAMAGE_LEVEL := 9                # enemies' authored damage x2
 const EXTRA_BODY_LEVEL := 4            # one more body on every arrival and capstone
 const FASTER_TIER_LEVEL := 6           # the tier steps every 3rd spawn, not 4th
 const EXTRA_ROW_LEVEL := 7             # the board starts a row taller
@@ -51,16 +52,20 @@ static func shields(base: int) -> int:
 			cuts += 1
 	return maxi(base - cuts, MIN_SHIELDS)
 
-# An enemy's AUTHORED damage after this run's damage steps: x1.5 rounded up, once
-# per step reached, each step on the last one's result. Statuses (Strength and
-# the rest) add on top of what this returns and do not grow with the level (§3).
+# An enemy's AUTHORED damage after this run's damage step: doubled from Fracture
+# 9. It was two x1.5 steps (2 and 9) until the owner folded them into one and gave
+# Fracture 2 to the shops (§2). Statuses (Strength and the rest) add on top of what
+# this returns and do not grow with the level (§3).
+const DAMAGE_MULTIPLIER := 2
+
 static func damage(base: int) -> int:
-	var d: int = base
-	for lv in DAMAGE_LEVELS:
-		if at_least(lv):
-			@warning_ignore("integer_division")
-			d = (d * 3 + 1) / 2
-	return d
+	return base * DAMAGE_MULTIPLIER if at_least(DAMAGE_LEVEL) else base
+
+# What every price on a shelf costs on top of its ladder (§3), items and loot
+# alike. ShopSystem adds it when a shelf is rolled; the level is fixed for the run,
+# so a price saved on the shelf is already the right one.
+static func shop_surcharge() -> int:
+	return 1 if at_least(PRICIER_SHOPS_LEVEL) else 0
 
 # How many more bodies every arrival and every capstone boss brings (§3).
 static func extra_bodies() -> int:
@@ -97,9 +102,11 @@ static func tag(level: int) -> String:
 static func change_text(level: int) -> String:
 	if level in SHIELD_CUT_LEVELS:
 		return "Every game grants 1 fewer shield (never below 1)."
-	if level in DAMAGE_LEVELS:
-		return "Enemies hit harder: their damage x1.5, rounded up."
 	match level:
+		PRICIER_SHOPS_LEVEL:
+			return "Shops are dearer: everything on a shelf costs 1 more gold."
+		DAMAGE_LEVEL:
+			return "Enemies hit harder: their damage is doubled."
 		EXTRA_BODY_LEVEL:
 			return "Every arrival brings one more body, bosses included."
 		FASTER_TIER_LEVEL:
