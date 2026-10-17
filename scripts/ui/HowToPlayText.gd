@@ -659,8 +659,8 @@ static func _ch_gold() -> Dictionary:
 			_row(["Item price", "%d, and %d more a rarity — Common %d, Uncommon %d, "
 				% [ShopSystem.BASE_PRICE, ShopSystem.PRICE_PER_RUNG, _item_price(0), _item_price(1)]
 				+ "Rare %d, Legendary %d" % [_item_price(2), _item_price(3)]]),
-			_row(["Loot price", "%d less than an item of its rarity"
-				% ShopSystem.LOOT_DISCOUNT]),
+			_row(["Loot price", "%d less than an item of its rarity, never under %d"
+				% [ShopSystem.LOOT_DISCOUNT, ShopSystem.LOOT_MIN_PRICE]]),
 			_row(["Carries between runs", "None of it. A run opens on your "
 				+ "character and nothing else."]),
 			_p("A run is six to twelve games, so clearing most of your goals earns "

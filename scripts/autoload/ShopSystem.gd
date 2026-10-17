@@ -234,8 +234,15 @@ const PACK_PRICE := 4
 const PACK_CARDS := 3
 
 # What a piece of loot of `rarity` ("Common".."Legendary") costs on a shelf.
+# Two under the item ladder, never below LOOT_MIN_PRICE, and then a Fracture's
+# surcharge on top — so a Common piece is 2, and 3 from Fracture 2.
 func loot_price_for(rarity: String) -> int:
-	return maxi(1, price_for(rarity_rung(rarity)) - LOOT_DISCOUNT)
+	var ladder: int = BASE_PRICE + PRICE_PER_RUNG * rarity_rung(rarity) - LOOT_DISCOUNT
+	return maxi(LOOT_MIN_PRICE, ladder) + Fracture.shop_surcharge()
+
+# The cheapest a piece of loot is, before a Fracture or a sale (the owner, 17 Oct
+# 2026: a Common piece at 1 gold was too cheap to be a decision).
+const LOOT_MIN_PRICE := 2
 
 # "Common".."Legendary" as a rung on ItemData.Rarity — loot carries its rarity as
 # a word, items as the enum.

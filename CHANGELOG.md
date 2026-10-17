@@ -26,7 +26,7 @@ For how the project is laid out and how its systems fit together, see
     The shelf under the board, its `🛒 Shop ↓` pointer and the board shrinking to
     make room for it are gone.
   - **Prices go up 2 a rarity, not 1**: items 3/5/7/9, loot 2 below the item
-    (1/3/5/7). Enemies nodes and Fractures stand more bodies, so pay more gold,
+    (2/3/5/7, never under 2). Enemies nodes and Fractures stand more bodies, so pay more gold,
     than the old ladder was set against.
   - **Shopkeepers, groundwork only.** A `shopkeepers` sheet (empty, header only),
     `tools/generate_shopkeeper_tres.py`, `ShopkeeperData`, and a per-run random

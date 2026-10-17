@@ -167,7 +167,7 @@ func test_the_price_ladder_is_three_and_two_per_rung() -> void:
 
 func test_loot_costs_two_under_an_item_of_its_rarity() -> void:
 	GameState.fracture = 0
-	assert_eq(ShopSystem.loot_price_for("Common"), 1)
+	assert_eq(ShopSystem.loot_price_for("Common"), 2, "the floor, not 3 - 2")
 	assert_eq(ShopSystem.loot_price_for("Uncommon"), 3)
 	assert_eq(ShopSystem.loot_price_for("Rare"), 5)
 	assert_eq(ShopSystem.loot_price_for("Legendary"), 7)

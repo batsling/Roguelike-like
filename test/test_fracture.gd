@@ -274,7 +274,7 @@ func test_shops_cost_one_more_from_fracture_two() -> void:
 	GameState.fracture = 2
 	assert_eq(Fracture.shop_surcharge(), 1)
 	assert_eq(ShopSystem.price_for(ItemData.Rarity.COMMON), 4, "a Common item")
-	assert_eq(ShopSystem.loot_price_for("Common"), 2, "a Common piece of loot")
+	assert_eq(ShopSystem.loot_price_for("Common"), 3, "a Common piece of loot")
 	assert_eq(ShopSystem.price_for(ItemData.Rarity.LEGENDARY), 10)
 	GameState.fracture = 10
 	assert_eq(Fracture.shop_surcharge(), 1, "once, not once per level")

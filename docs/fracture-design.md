@@ -69,7 +69,7 @@ What a shelf costs (`docs/games-first-redesign.md` §14):
 
 | | Item | Loot | Item, Fracture 2+ | Loot, Fracture 2+ |
 |---|---|---|---|---|
-| Common | 3 | 1 | 4 | 2 |
+| Common | 3 | 2 | 4 | 3 |
 | Uncommon | 5 | 3 | 6 | 4 |
 | Rare | 7 | 5 | 8 | 6 |
 | Legendary | 9 | 7 | 10 | 8 |

@@ -3831,8 +3831,8 @@ row under the relics. Each is rolled exactly as a drop is
 tenth), so every loot kind can turn up, and an **unidentified piece stays
 unidentified on the shelf**: the row, its hover, its card and the offering's
 stock lines all draw it through `LootSystem`, which shows the mask. A piece costs
-**two gold less** than a relic of its rarity (Common 1, Uncommon 3, Rare 5,
-Legendary 7 — `LOOT_DISCOUNT`). Buying needs room in the pack; a piece that does not fit is not
+**two gold less** than a relic of its rarity, never under 2 (Common 2, Uncommon 3,
+Rare 5, Legendary 7 — `LOOT_DISCOUNT`, `LOOT_MIN_PRICE`). Buying needs room in the pack; a piece that does not fit is not
 charged for and stays. **A reroll redraws both rows.** Lord's Parasol sweeps the
 loot row too, as far as the pack has room. A shelf saved before loot was sold
 gets its loot row the first time it is asked for.

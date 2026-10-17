@@ -316,8 +316,9 @@ func test_a_shop_sells_three_loot_at_two_under_the_item_price() -> void:
 	for row in loot:
 		var rarity: String = String((row["entry"] as Dictionary).get("rarity", "Common"))
 		var rung: int = ShopSystem.rarity_rung(rarity)
-		assert_eq(ShopSystem.price_of(row), ShopSystem.price_for(rung) - ShopSystem.LOOT_DISCOUNT,
-			"%s loot costs two under a %s relic" % [rarity, rarity])
+		assert_eq(ShopSystem.price_of(row), maxi(ShopSystem.LOOT_MIN_PRICE,
+			ShopSystem.price_for(rung) - ShopSystem.LOOT_DISCOUNT),
+			"%s loot costs two under a %s relic, never under the floor" % [rarity, rarity])
 
 func test_buying_loot_puts_it_in_the_pack_and_rerolling_redraws_both_rows() -> void:
 	var gid: StringName = _shop_node()
