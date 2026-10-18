@@ -336,6 +336,8 @@ def character_tres(row, catalog=None, games=None) -> tuple:
     lines.append('description = "%s"' % gd_str(row.get("Description")))
     # Several games read as one line on the card ("From: A, B").
     lines.append('source_game = "%s"' % gd_str(", ".join(game_names(row))))
+    lines.append("source_games = PackedStringArray(%s)" % ", ".join(
+        '"%s"' % gd_str(g) for g in game_names(row)))
     # Whose songs the character's ranks draw (§20.9). Without a games table (a
     # test feeding one row) there is nothing to resolve names against.
     lines.append("music_games = %s" % string_name_array(

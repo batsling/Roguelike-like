@@ -8,6 +8,10 @@ extends Resource
 # e.g. "Slay the Spire"; several are joined by ", "). Shown as a "From: <game>" line on character
 # select / Collection, like the HTML details panel. Purely informational.
 @export var source_game: String = ""
+# The same games one by one, exactly as the games sheet spells them — what to match
+# against when a character comes from several (a game name can hold a comma, so
+# `source_game` cannot be split back apart).
+@export var source_games: PackedStringArray = PackedStringArray()
 # The games whose SOUNDTRACKS this character's ranks draw songs from
 # (docs/games-first-redesign.md §20.9): every game in the sheet's Game column
 # (`;`-separated) that is on the chart. Isaac draws from two, The Binding of

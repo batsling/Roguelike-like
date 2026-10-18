@@ -10,6 +10,7 @@ id = &"isaac"
 display_name = "Isaac"
 description = "Who am I?"
 source_game = "The Binding of Isaac, The Binding of Isaac: Rebirth"
+source_games = PackedStringArray("The Binding of Isaac", "The Binding of Isaac: Rebirth")
 music_games = Array[StringName]([&"the_binding_of_isaac", &"the_binding_of_isaac_rebirth"])
 base_max_hp = 6
 start_gold = 3

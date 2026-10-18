@@ -10,6 +10,7 @@ id = &"the_makeshift_sisyphus"
 display_name = "The Makeshift Sisyphus"
 description = "A former king, tormented by time"
 source_game = "Ball x Pit"
+source_games = PackedStringArray("Ball x Pit")
 music_games = Array[StringName]([&"ball_x_pit"])
 base_max_hp = 7
 start_gold = 3
