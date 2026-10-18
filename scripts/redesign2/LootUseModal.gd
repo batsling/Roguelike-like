@@ -589,6 +589,21 @@ func _pick_stun(req: Dictionary) -> void:
 		_report("There was nothing following you to Stun.")
 		_body.add_child(_continue_button())
 		return
+	# ON THE BOARD, the way a Bomb is aimed (the owner, 18 Oct 2026).
+	var bodies: Array = GameLoop2.stack.map(func(e): return int(e["instance"]))
+	if _overworld != null and _overworld.has_method("begin_board_pick"):
+		var ok: bool = _overworld.begin_board_pick({"candidates": bodies,
+			"count": max_pick, "exact": false, "verb": "stun", "noun": "enemy",
+			"nouns": "enemies", "where": "on the board", "accent": ACCENT},
+			func(chosen: Array):
+				if not is_instance_valid(self):
+					return
+				visible = true
+				_report(ScrollSystem.stun_enemies_chosen(chosen))
+				_process_next_request())
+		if ok:
+			visible = false
+			return
 	_body.add_child(_muted("Choose up to %d following enemy to Stun (it loses its next turn — %s)."
 		% [max_pick, ScrollSystem.stun_worth()]))
 	for entry in GameLoop2.stack:

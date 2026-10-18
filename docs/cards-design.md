@@ -420,7 +420,10 @@ ring the pieces that can be chosen and dim the rest, and clicking one is choosin
 — the Bomb's shape rather than a popup (`Overworld2.begin_owned_pick`,
 `OwnedPick.gd`). The click that meets the count resolves it; a chosen piece can be
 clicked again to put it back first, and an "up to N" pick (Identify) carries a
-Done. Destroy, charge, identify and ? Card's copy all go this way. Under the drop
+Done. Destroy, charge, identify and ? Card's copy all go this way, and so does
+Scare Monster's "which to Stun" — on the BOARD, where its bodies light up as for a
+Bomb, a click chooses one and a chosen body wears the pick's ring
+(`Overworld2.begin_board_pick`, `BattlefieldView.body_pick`). Under the drop
 screen, which owns the screen while it is answered, the use screen still asks in
 its own grid.
 

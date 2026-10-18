@@ -4565,12 +4565,53 @@ func owned_pick() -> Node:
 		_owned_pick = null
 	return _owned_pick
 
+# The same pick, of BODIES on the board (Scare Monster's "which to Stun"): the
+# candidates are instance handles, the board lights them, and a click on one is
+# the choice — the Bomb's own gesture. False with no board to pick on, and the
+# caller asks in its own screen.
+func begin_board_pick(cfg: Dictionary, on_done: Callable) -> bool:
+	if _board == null or not is_instance_valid(_board):
+		return false
+	if _drop_modal != null and is_instance_valid(_drop_modal):
+		return false
+	var candidates: Array = cfg.get("candidates", [])
+	if candidates.is_empty():
+		return false
+	cancel_owned_pick()
+	# Nothing else is armed while the board is answering.
+	_board.cancel_push()
+	_board.cancel_bomb()
+	_board.cancel_item_aim()
+	var pick: Node = load(OWNED_PICK_SCRIPT).new()
+	pick.setup(cfg)
+	pick.on_change = func():
+		if _board != null and is_instance_valid(_board):
+			_board.refresh()
+	pick.on_done = func(chosen: Array):
+		_owned_pick = null
+		if _board != null and is_instance_valid(_board):
+			_board.body_pick = null
+		on_done.call(chosen)
+		_refresh()
+	_owned_pick = pick
+	add_child(pick)
+	_board.body_pick = pick
+	# Off the board, as for a throw: the loot window floats over it.
+	if _loot_window != null:
+		_loot_window.open = false
+		refresh_loot_window()
+	_close_item_card()
+	_board.refresh()
+	return true
+
 # Put a pick away WITHOUT answering it — only for a pick being replaced, or a page
 # being torn down. A pick the player started is finished by them.
 func cancel_owned_pick() -> void:
 	if _owned_pick != null and is_instance_valid(_owned_pick):
 		_owned_pick.queue_free()
 	_owned_pick = null
+	if _board != null and is_instance_valid(_board):
+		_board.body_pick = null
 
 # Bash the offered game at `index` (§4): destroy it out of the pool for the rest of
 # the run — it is never offered again — and REFILL its slot from the same pool the

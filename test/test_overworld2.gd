@@ -3281,6 +3281,33 @@ func test_identify_takes_any_copy_of_an_unknown_kind() -> void:
 	if is_instance_valid(modal):
 		modal._finish()
 
+# SCARE MONSTER'S PICK IS ON THE BOARD (the owner, 18 Oct 2026): the bodies light
+# up as for a Bomb and a click on one is the choice.
+func test_scare_monster_is_aimed_by_clicking_bodies_on_the_board() -> void:
+	GameLoop2.stack.clear()
+	var a: int = GameLoop2.summon(Data.get_goal_enemy_any(&"monkey"), Vector2i(3, 0))
+	var b: int = GameLoop2.summon(Data.get_goal_enemy_any(&"monkey"), Vector2i(3, 1))
+	_ui._board.refresh()
+	GameState.loot_items.clear()
+	GameState.add_pill_loot(&"luck_up")
+	var modal: Node = await _use_modal_asking({"kind": "stun_enemies", "count": 2})
+	assert_false(modal.visible, "the use screen gets out of the way")
+	assert_eq(_ui._board.body_pick, _ui.owned_pick(), "the board is the one being asked")
+	var lit: Array = _ui._board.armed_targets()
+	assert_true(lit.has(a) and lit.has(b), "every body is lit to be chosen")
+	_ui._board.click_enemy(a, GameLoop2.entry_for(a), 3)
+	await wait_frames(2)
+	assert_false(GameLoop2.is_stunned(GameLoop2.entry_for(a)), "one of two: nothing yet")
+	assert_null(_ui._info_popup, "and the click chose rather than opening its card")
+	_ui._board.click_enemy(b, GameLoop2.entry_for(b), 3)
+	await wait_frames(2)
+	assert_true(GameLoop2.is_stunned(GameLoop2.entry_for(a)), "the second click stunned both")
+	assert_true(GameLoop2.is_stunned(GameLoop2.entry_for(b)))
+	assert_null(_ui._board.body_pick, "the board lets go")
+	assert_true(is_instance_valid(modal) and modal.visible, "and the use screen says so")
+	if is_instance_valid(modal):
+		modal._finish()
+
 func test_under_the_drop_screen_the_pick_stays_in_the_use_screen() -> void:
 	GameState.loot_items.clear()
 	for i in range(2):

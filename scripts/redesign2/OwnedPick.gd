@@ -24,7 +24,8 @@ extends CanvasLayer
 # identify, where fewer is a fine answer — also carries a Done button.
 
 # Everything that can be chosen: pack entries (Dictionaries) and relics (ItemData),
-# held by identity.
+# held by identity — or, for a pick on the BOARD, enemy instance handles (ints,
+# which `is_same` compares by value).
 var candidates: Array = []
 # How many the pick wants. Clamped to the candidates at `setup`.
 var need: int = 1
@@ -38,6 +39,12 @@ var selected: Array = []
 var accent: Color = UITheme.ACCENT
 # "destroy", "identify", "charge", "copy" — the verb the banner asks with.
 var verb: String = "choose"
+# What the banner calls one candidate and where it says to click, when the pick
+# is not of pieces you carry — a Scare Monster's bodies on the BOARD ("enemy",
+# "on the board"). Blank: worked out from the candidates.
+var noun: String = ""
+var nouns: String = ""
+var where: String = ""
 # Called once with the chosen things (candidates, never the stand-ins).
 var on_done: Callable = Callable()
 # What redraws the pack and the strip after a click (the page's `_refresh_items`).
@@ -58,6 +65,9 @@ func setup(cfg: Dictionary) -> void:
 	by_kind = bool(cfg.get("by_kind", false))
 	verb = String(cfg.get("verb", "choose"))
 	accent = cfg.get("accent", UITheme.ACCENT)
+	noun = String(cfg.get("noun", ""))
+	nouns = String(cfg.get("nouns", noun))
+	where = String(cfg.get("where", ""))
 	need = clampi(int(cfg.get("count", 1)), 1, maxi(1, candidates.size()))
 	_build()
 
@@ -114,6 +124,8 @@ static func _kind(entry: Dictionary) -> String:
 	return "%s/%s" % [entry.get("type", ""), entry.get("id", "")]
 
 func _where() -> String:
+	if where != "":
+		return where
 	var loot: bool = candidates.any(func(c): return c is Dictionary)
 	var relic: bool = candidates.any(func(c): return c is ItemData)
 	if loot and relic:
@@ -121,10 +133,12 @@ func _where() -> String:
 	return "among your relics" if relic else "in your pack"
 
 func _prompt() -> String:
-	var noun: String = "piece" if need == 1 else "pieces"
-	if candidates.all(func(c): return c is ItemData):
-		noun = "relic" if need == 1 else "relics"
-	return "Click %s%d %s %s to %s." % ["up to " if not exact else "", need, noun, _where(), verb]
+	var what: String = "piece" if need == 1 else "pieces"
+	if noun != "":
+		what = noun if need == 1 else nouns
+	elif candidates.all(func(c): return c is ItemData):
+		what = "relic" if need == 1 else "relics"
+	return "Click %s%d %s %s to %s." % ["up to " if not exact else "", need, what, _where(), verb]
 
 func _build() -> void:
 	var holder := Control.new()

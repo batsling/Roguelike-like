@@ -229,6 +229,11 @@ var _throw_index: int = -1
 # Rebuilt at the top of every repaint (`refresh`) rather than asked per body, so
 # the whole board is drawn against one answer.
 var _armed: Dictionary = {}
+# A PICK OF BODIES under way (OwnedPick.gd, candidates are instance handles), or
+# null — Scare Monster's "which to Stun". It lights its candidates like any armed
+# verb, a click on one chooses it (and again un-chooses it), and the bodies chosen
+# so far are drawn selected. Set and cleared by the overworld.
+var body_pick = null
 var _arrow_layer: Control            # the direction arrows, above every body
 var _boss_warning: Label             # "the next spawn brings a boss", above the grid
 var _pressure_small: Control         # the strip's small-print row, which the warning replaces
@@ -1174,7 +1179,8 @@ func _check_thrown_loot() -> void:
 
 # Whether a verb is waiting to be pointed at something.
 func is_aiming() -> bool:
-	return push_mode or bomb_mode or aiming_item != null or not throwing_loot.is_empty()
+	return push_mode or bomb_mode or aiming_item != null or not throwing_loot.is_empty() \
+		or body_pick != null
 
 # The bodies an armed verb could actually land on, as instance handles. Empty
 # when nothing is armed — this is what the board lights up, and it is the whole
@@ -1191,6 +1197,13 @@ func is_aiming() -> bool:
 func armed_targets() -> Array:
 	if not is_aiming():
 		return []
+	if body_pick != null:
+		var picks: Array = []
+		for entry in GameLoop2.stack:
+			var pi: int = int(entry.get("instance", 0))
+			if body_pick.candidate_for(pi) != null:
+				picks.append(pi)
+		return picks
 	# A tile-aimed item lights up GROUND, not bodies (see aim_cells) — so the
 	# bodies stay unlit and a click on one reads its card as usual, which is what
 	# stops a picker for the floor from hijacking the board.
@@ -1289,7 +1302,9 @@ func refresh_toolbar() -> void:
 	# show on its own: the lit cells say where you may click, not what will happen
 	# when you do.
 	if _hint_label != null:
-		if push_mode:
+		if body_pick != null:
+			_hint_label.text = "%s — click a body:" % body_pick.verb.capitalize()
+		elif push_mode:
 			_hint_label.text = "⇤ Push — click a body:"
 		elif bomb_mode:
 			_hint_label.text = "✸ Bomb — click a square:"
@@ -2049,6 +2064,14 @@ func click_enemy(instance: int, entry: Dictionary, col: int) -> void:
 	#
 	# Only a PUSH holds the body it was clicked with, because only a push has a
 	# second question to ask about it.
+	# A PICK OF BODIES (Scare Monster): the click chooses, and a body that is not a
+	# candidate is swallowed rather than opening its card over the lit ones.
+	if body_pick != null:
+		if body_pick.candidate_for(instance) != null:
+			# Deferred: the choice redraws the board this body is drawn on.
+			body_pick.choose.call_deferred(instance)
+		refresh()
+		return
 	if push_mode:
 		push_target = instance
 	# An armed BOMB goes off here. This click is the whole of the aiming — a bomb
@@ -2532,12 +2555,19 @@ func _add_enemy_node(entry: Dictionary) -> Control:
 	# from the checklist — "this is the one that box will take down" — has to read
 	# whatever its picture looks like. Filled in once the badge slot exists below.
 	var rings: Array = []
+	# …and the ring a body CHOSEN by a pick wears (Scare Monster, `body_pick`),
+	# over the art for the same reason: the frame's own border is under the sprite.
+	var pick_rings: Array = []
 	var repaint := func() -> void:
-		_style_enemy_cell(frames, accent, inst == push_target, _is_lit(inst),
-			_armed.has(inst))
+		_style_enemy_cell(frames, accent,
+			inst == push_target or (body_pick != null and body_pick.is_selected(inst)),
+			_is_lit(inst), _armed.has(inst))
 		for r in rings:
 			if is_instance_valid(r):
 				r.visible = _is_lit(inst)
+		for r in pick_rings:
+			if is_instance_valid(r):
+				r.visible = body_pick != null and body_pick.is_selected(inst)
 	_repaint_fns[inst] = repaint
 	repaint.call()
 
@@ -2632,6 +2662,22 @@ func _add_enemy_node(entry: Dictionary) -> Control:
 		ring.visible = _is_lit(inst)
 		badges.add_child(ring)
 		rings.append(ring)
+	if body_pick != null:
+		var pick_box := StyleBoxFlat.new()
+		pick_box.bg_color = Color(body_pick.accent, 0.3)
+		pick_box.border_color = body_pick.accent.lerp(Color.WHITE, 0.3)
+		pick_box.set_border_width_all(4)
+		pick_box.set_corner_radius_all(6)
+		for off in cells:
+			var chosen := Panel.new()
+			chosen.name = "PickRing"
+			chosen.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			chosen.position = Vector2(off.x, off.y) * float(_cell_step)
+			chosen.size = Vector2(_cell, _cell)
+			chosen.add_theme_stylebox_override("panel", pick_box)
+			chosen.visible = body_pick.is_selected(inst)
+			badges.add_child(chosen)
+			pick_rings.append(chosen)
 	_add_enemy_badges(badges, entry, e, accent, selected)
 	return node
 
