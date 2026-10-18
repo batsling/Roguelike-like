@@ -3162,6 +3162,141 @@ func test_backing_out_of_a_use_says_nothing_about_what_it_did() -> void:
 	assert_true(done[0], "cancelling closes it outright")
 	assert_eq(GameState.loot_items.size(), 1, "and the piece is still in the pack")
 
+# CHOOSING SOMETHING YOU OWN HAPPENS IN THE PACK (the owner, 18 Oct 2026): a use
+# that asks "which of your pieces" puts its screen away, lights the pieces up where
+# they sit, and a click on one is the answer — the Bomb's shape, not a popup.
+func _use_modal_asking(req: Dictionary) -> Node:
+	var modal = preload("res://scripts/redesign2/LootUseModal.gd").new()
+	modal.start(_ui, 0, _ui)
+	await wait_frames(2)
+	modal._requests = [req]
+	modal._process_next_request()
+	await wait_frames(2)
+	return modal
+
+func _pack_slot_for(entry: Dictionary) -> LootSlot:
+	if _ui._loot_panel == null:
+		return null
+	for n in _ui._loot_panel.find_children("*", "LootSlot", true, false):
+		var slot := n as LootSlot
+		if slot.visible and slot.slot_index >= 0 and is_same(slot.entry, entry):
+			return slot
+	return null
+
+func _click(control: Control) -> void:
+	var ev := InputEventMouseButton.new()
+	ev.button_index = MOUSE_BUTTON_LEFT
+	ev.pressed = true
+	control._gui_input(ev)
+
+func test_destroying_loot_is_chosen_by_clicking_it_in_the_pack() -> void:
+	GameState.loot_items.clear()
+	for i in range(3):
+		GameState.add_pill_loot(&"luck_up")
+	var a: Dictionary = GameState.loot_items[1]
+	var b: Dictionary = GameState.loot_items[2]
+	var modal: Node = await _use_modal_asking({"kind": "destroy_loot", "count": 2,
+		"candidates": [a, b]})
+	assert_false(modal.visible, "the use screen gets out of the way, as it does for a throw")
+	assert_not_null(_ui.owned_pick(), "and the pack is waiting for the answer")
+	assert_true(_ui._loot_window.open, "with the pack open to click in")
+	var slot: LootSlot = _pack_slot_for(a)
+	assert_not_null(slot, "the candidate is a cell of the pack itself")
+	if slot == null:
+		return
+	assert_false(slot.grid.can_drag_from(slot), "nothing moves while the pack is answering")
+	_click(slot)
+	await wait_frames(2)
+	assert_eq(GameState.loot_items.size(), 3, "one of two chosen: nothing is destroyed yet")
+	assert_true(_ui.owned_pick().is_selected(a), "but it is marked")
+	_click(_pack_slot_for(b))
+	await wait_frames(2)
+	assert_eq(GameState.loot_items.size(), 1, "the click that met the count destroyed both")
+	assert_false(GameState.loot_items.any(func(e): return is_same(e, a) or is_same(e, b)))
+	assert_null(_ui.owned_pick(), "and the pick is over")
+	assert_true(is_instance_valid(modal) and modal.visible,
+		"the use screen comes back to say what happened")
+	if is_instance_valid(modal):
+		modal._finish()
+
+func test_a_piece_that_is_not_a_candidate_cannot_be_chosen() -> void:
+	GameState.loot_items.clear()
+	for i in range(2):
+		GameState.add_pill_loot(&"luck_up")
+	var used: Dictionary = GameState.loot_items[0]
+	var other: Dictionary = GameState.loot_items[1]
+	var modal: Node = await _use_modal_asking({"kind": "destroy_loot", "count": 1,
+		"candidates": [other]})
+	var slot: LootSlot = _pack_slot_for(used)
+	assert_not_null(slot)
+	if slot == null:
+		return
+	assert_lt(slot.modulate.a, 1.0, "it is dimmed")
+	_click(slot)
+	await wait_frames(2)
+	assert_eq(GameState.loot_items.size(), 2, "and clicking it does nothing")
+	assert_not_null(_ui.owned_pick(), "the pick still waits for a real answer")
+	_ui.owned_pick().finish()
+	await wait_frames(2)
+	if is_instance_valid(modal):
+		modal._finish()
+
+func test_charging_a_relic_is_chosen_on_the_relic_strip() -> void:
+	GameState.loot_items.clear()
+	GameState.add_pill_loot(&"luck_up")
+	var relic: ItemData = null
+	for it in Data.all_items2():
+		if it is ItemData and it.is_charged():
+			relic = it
+			break
+	if relic == null:
+		pending("no charged relic in the catalog to stand on the strip")
+		return
+	relic = GameState.add_item(relic)
+	var modal: Node = await _use_modal_asking({"kind": "charge_loot", "amount": 1,
+		"candidates": [relic]})
+	assert_false(modal.visible)
+	assert_true(_ui.owned_pick().candidate_for(relic) != null, "the relic is the candidate")
+	_ui.owned_pick().choose(relic)
+	await wait_frames(2)
+	assert_null(_ui.owned_pick(), "one click answers a pick of one")
+	assert_true(is_instance_valid(modal) and modal.visible)
+	if is_instance_valid(modal):
+		modal._finish()
+
+func test_identify_takes_any_copy_of_an_unknown_kind() -> void:
+	PillSystem.unidentify(&"luck_up")
+	GameState.loot_items.clear()
+	GameState.add_pill_loot(&"health_up")
+	GameState.add_pill_loot(&"luck_up")
+	GameState.add_pill_loot(&"luck_up")
+	var first: Dictionary = GameState.loot_items[1]
+	var copy: Dictionary = GameState.loot_items[2]
+	var modal: Node = await _use_modal_asking({"kind": "identify_loot", "count": 1,
+		"candidates": [first]})
+	assert_not_null(_ui.owned_pick())
+	_click(_pack_slot_for(copy))
+	await wait_frames(2)
+	assert_true(PillSystem.is_identified(&"luck_up"), "the copy stood for its kind")
+	if is_instance_valid(modal):
+		modal._finish()
+
+func test_under_the_drop_screen_the_pick_stays_in_the_use_screen() -> void:
+	GameState.loot_items.clear()
+	for i in range(2):
+		GameState.add_pill_loot(&"luck_up")
+	var drop := LootDropModal.open(_ui, {"type": "scroll", "id": &"scroll_of_fire"})
+	_ui._drop_modal = drop
+	await wait_frames(2)
+	var modal: Node = await _use_modal_asking({"kind": "destroy_loot", "count": 1,
+		"candidates": [GameState.loot_items[1]]})
+	assert_null(_ui.owned_pick(), "the drop owns the screen, so the pack is not asked")
+	assert_true(modal.visible, "and the use screen asks in its own grid")
+	modal._finish()
+	_ui._drop_modal = null
+	drop.queue_free()
+	await wait_frames(2)
+
 func _find_use_modal() -> Node:
 	for c in _ui.get_children():
 		if c is CanvasLayer and c.layer == LootDropModal.USE_LAYER:

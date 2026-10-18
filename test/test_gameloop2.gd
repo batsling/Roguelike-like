@@ -2833,6 +2833,25 @@ func test_a_stunned_front_body_is_shoved_without_swinging() -> void:
 	var hits: Array = GameLoop2.take_crashes()[0]["hits"]
 	assert_true(bool(hits[0].get("stunned", false)))
 
+# The lost run's case (the owner, 18 Oct 2026): the turn wears a one-stack stun off
+# as it is sat out, and the run's spawn lands AFTER that turn. The body the player
+# watched sit the turn out must not then be shoved into them and swing.
+func test_a_body_that_sat_the_turn_out_stunned_does_not_swing_when_shoved() -> void:
+	_pack_to_the_front(3)
+	for entry in GameLoop2.stack:
+		if int(entry["col"]) == 1:
+			GameLoop2.stun(int(entry["instance"]), 1)
+	GameLoop2.attempt_turn()
+	for entry in GameLoop2.stack:
+		if int(entry["col"]) == 1:
+			assert_false(GameLoop2.is_stunned(entry), "the turn wore the one stack off")
+	assert_eq(GameState.hp, 100, "nobody in reach swung on the turn")
+	GameLoop2.spawn_to_stack(_enemy(0))
+	assert_eq(GameState.hp, 100, "and the body shoved into you had lost this action already")
+	var hits: Array = GameLoop2.take_crashes()[0]["hits"]
+	assert_true(bool(hits[0].get("stunned", false)))
+	GameLoop2._sat_out_stunned.clear()
+
 func test_shields_stop_a_crash_hit_like_any_other() -> void:
 	_pack_to_the_front(4)
 	GameState.shields = 1

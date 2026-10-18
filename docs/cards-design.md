@@ -413,7 +413,16 @@ pays Trading Card, whose line now says "when destroying a card". The destroying
 cards, an enemy's Degradation (`GameLoop2._destroy_loot`) and a scroll burning
 all come through it. A piece binned by hand is on the pile too.
 
-**The pickers** are requests, fulfilled by `LootUseModal`:
+**The pickers** are requests, fulfilled by `LootUseModal`. **The ones that ask for
+something you own are answered IN THE PACK** (the owner, 18 Oct 2026): the use
+screen puts itself away as it does for a throw, the loot window and the relic strip
+ring the pieces that can be chosen and dim the rest, and clicking one is choosing it
+— the Bomb's shape rather than a popup (`Overworld2.begin_owned_pick`,
+`OwnedPick.gd`). The click that meets the count resolves it; a chosen piece can be
+clicked again to put it back first, and an "up to N" pick (Identify) carries a
+Done. Destroy, charge, identify and ? Card's copy all go this way. Under the drop
+screen, which owns the screen while it is answered, the use screen still asks in
+its own grid.
 
 - `destroy_loot` (Prepared): exactly 2, or every piece if the pack holds fewer, out
   of the pack as it stood when the card was played — so the two cards it hands

@@ -176,6 +176,7 @@ const GAP_BREAK := 24
 #
 # Read it top to bottom: later entries draw over earlier ones.
 class Layer:
+	const PICK_BANNER := 110   # "click a piece in your pack" — a caption on the page
 	const MENU_SCREEN := 120   # a screen the MAIN MENU raises (custom run)
 	const DROP := 122          # loot drop, an object's card
 	const EVENT := 123         # the D20 event, the boss notice

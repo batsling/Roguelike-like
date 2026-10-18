@@ -4510,6 +4510,68 @@ func _on_loot_throw_cancelled(_entry: Dictionary, _index: int) -> void:
 	if modal != null and is_instance_valid(modal) and modal.has_method("throw_cancelled"):
 		modal.throw_cancelled()
 
+# --- choosing something you own, in the pack (OwnedPick.gd) -----------------
+
+# A use asked "which of your pieces" — destroy, identify, charge, copy — and the
+# answer is clicked in the pack and the relic strip themselves, the way a Bomb is
+# clicked onto the board. `cfg` is OwnedPick's (candidates, count, exact, by_kind,
+# verb, accent); `on_done` gets the chosen things once the count is met.
+#
+# Returns false when the pick cannot be made HERE, and the caller asks in its own
+# screen instead: under the drop modal, which owns the screen while it is answered
+# (the throw's reason), or when a candidate is not somewhere a click can reach it.
+const OWNED_PICK_SCRIPT := "res://scripts/redesign2/OwnedPick.gd"
+var _owned_pick: Node = null
+
+func begin_owned_pick(cfg: Dictionary, on_done: Callable) -> bool:
+	if _drop_modal != null and is_instance_valid(_drop_modal):
+		return false
+	var candidates: Array = cfg.get("candidates", [])
+	if candidates.is_empty():
+		return false
+	var any_loot: bool = false
+	for c in candidates:
+		if c is ItemData:
+			if not GameState.inventory.has(c):
+				return false
+		elif c is Dictionary:
+			if not GameState.loot_items.any(func(x): return is_same(x, c)):
+				return false
+			any_loot = true
+		else:
+			return false
+	cancel_owned_pick()
+	var pick: Node = load(OWNED_PICK_SCRIPT).new()
+	pick.setup(cfg)
+	pick.on_change = _refresh_items
+	pick.on_done = func(chosen: Array):
+		_owned_pick = null
+		on_done.call(chosen)
+		_refresh_items()
+	_owned_pick = pick
+	add_child(pick)
+	# The pack is where the clicks go, so it opens; the relic card would sit over
+	# the strip, so it goes.
+	if any_loot and _loot_window != null:
+		_loot_window.open = true
+	_close_item_card()
+	_refresh_items()
+	return true
+
+# The pick under way, or null. What the loot grid and the pack strip ask as they
+# draw.
+func owned_pick() -> Node:
+	if _owned_pick != null and (not is_instance_valid(_owned_pick) or _owned_pick.is_finished()):
+		_owned_pick = null
+	return _owned_pick
+
+# Put a pick away WITHOUT answering it — only for a pick being replaced, or a page
+# being torn down. A pick the player started is finished by them.
+func cancel_owned_pick() -> void:
+	if _owned_pick != null and is_instance_valid(_owned_pick):
+		_owned_pick.queue_free()
+	_owned_pick = null
+
 # Bash the offered game at `index` (§4): destroy it out of the pool for the rest of
 # the run — it is never offered again — and REFILL its slot from the same pool the
 # offering is drawn from, i.e. another game connected to where the player is
