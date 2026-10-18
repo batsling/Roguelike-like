@@ -78,7 +78,10 @@ The three lonely decks (Balatro, the Ironclad rare, the MTG icon) **do** name
 their card outright when it is face down. That is the roster's shape rather than a
 hole in the mask: the two crowded decks are where the guessing happens, and
 `test_card_system.gd` pins the split (`LONELY_DECKS`) so the day a fourth Balatro
-card arrives, somebody decides on purpose.
+card arrives, somebody decides on purpose. (Since the Slay the Spire set, §5.9,
+the one-card decks are the MTG icon, the Defect Rare, and four of the new decks:
+Defect Common and Uncommon, Silent Common and Uncommon. The Ironclad Rare holds
+five now.)
 
 That makes the floor's question *"is a Major Arcana worth a slot?"* — a real
 question, because the five arcana in the roster do five unrelated things (Shields,
@@ -162,6 +165,10 @@ twice.
 | Queen of Hearts | Rare | `gain_hp 1-20` | §5.5 |
 | Ancient Recall | Rare | `gain_loot card 3` | §5.6 |
 | ? Card | Uncommon | `copy_item` | §5.7 |
+
+The rows above were the first pass; the sheet now has 37 cards (the joker
+passives of [`loot-passives.md`](loot-passives.md), and the Slay the Spire set of
+§5.9).
 
 Two `Image` cells were corrected in the same pass, because both named a file that
 is not on disk and a card whose art cannot be found draws nothing:
@@ -354,18 +361,90 @@ names it — the property §3 already accepts for Balatro, the MTG icon and the
 Ironclad rare. `test_card_system.gd`'s `LONELY_DECKS` is where that is pinned, and
 it failed on this card exactly as its comment promised it would.
 
+### 5.9 The Slay the Spire set (18 Oct 2026)
+
+The owner added fifteen Ironclad, Silent and Defect cards with art and prose, and
+Effect left blank as always; `tools/_cards_slay_the_spire_set.py` wrote the cells.
+
+| Card | Effect cell |
+|---|---|
+| After Image | `card_used: gain_stat shields 1` (passive, the relic grammar) |
+| Alchemize | `gain_loot potion 1` |
+| Bloodletting | `lose_hp 2; charge_pick 4` |
+| Bullseye | `stun 1; apply_status marked 1` |
+| Cleave | `stun 1 area=row` |
+| Exhume | `exhume` |
+| Fiend Fire | `destroy_row; stun 1 per=destroyed` |
+| Finisher | `stun 1 per=cards_used` |
+| Offering | `lose_hp 6; charge_pick 4; gain_loot card 3` |
+| Pommel Strike | `stun 1; gain_loot card 1` |
+| Prepared | `destroy_pick 2; gain_loot card 2` |
+| Reaper | `stun 1 area=board; gain_hp 1 per=hit` |
+| Second Wind | `destroy_row; gain_stat shields 2 per=destroyed` |
+| Shrug it Off | `gain_stat shields 1; gain_loot card 1` |
+| Stack | `gain_stat shields 1 per=cards_used` |
+
+**Aiming.** A `stun` or `apply_status` with no `area` lands on the one body the
+card is pointed at; `area=row` on every body in the lane of the square it is
+pointed at (Cleave — the player picks the lane); `area=board` on every body with
+no aiming (Reaper). `CardData.aim()` reads that off the clauses, and a card that
+aims goes through the same board picker a wand does (`LootSystem.must_aim`,
+`BattlefieldView.throw_request`, `CardSystem.aim_cells`). No body to point at
+means the card cannot be played yet, and nothing is spent.
+
+**`per=`** repeats a clause by a count kept for the one play: `destroyed` (pieces
+an earlier clause destroyed), `hit` (bodies an earlier clause covered) or
+`cards_used` (`GameState.cards_used_this_game`, read BEFORE this card is counted —
+"each **other** card used this game", the owner's wording for Finisher and Stack).
+Every card that resolves is counted in `CardSystem.notify_used`, a copy from Echo
+Form, Echo Chamber or a Blueprint included (the owner: copies count). The count
+goes back to 0 as each game resolves, beside `loot_uses_this_game`, and is saved.
+
+**"This row"** (Fiend Fire, Second Wind) is the card's row in the PACK, read off
+the slot it was played from (`ctx.card_slot`); the 3x3 and the bags share one grid,
+so a row runs across bags. A card played off the floor has no row and destroys
+nothing. Under Link Cable every piece touches every other
+([`loot-passives.md`](loot-passives.md) §15), so the row is the whole pack.
+
+**Destroying loot trashes it** (the owner). `GameState.destroy_loot_at` is the one
+door: the piece leaves the pack and goes through `note_loot_binned`, so it joins
+the run's destroyed pile (`GameState.destroyed_loot`, saved) and a destroyed card
+pays Trading Card, whose line now says "when destroying a card". The destroying
+cards, an enemy's Degradation (`GameLoop2._destroy_loot`) and a scroll burning
+all come through it. A piece binned by hand is on the pile too.
+
+**The pickers** are requests, fulfilled by `LootUseModal`:
+
+- `destroy_loot` (Prepared): exactly 2, or every piece if the pack holds fewer, out
+  of the pack as it stood when the card was played — so the two cards it hands
+  over cannot be fed back into it.
+- `charge_loot` (Bloodletting, Offering): one thing from
+  `GameState.chargeable_things` — a relic with a bar, a wand, a weapon or a food.
+  It fills to its top and the rest is lost.
+- `exhume`: any piece on the destroyed pile, newest first. It comes back offered,
+  like any piece the run hands over (`GameState.offer_loot_entries`).
+
+**Health as a price.** Bloodletting and Offering's `lose_hp` is not damage — no
+shield stops it — and it can be the Health that ends the run (the owner: allowed).
+
+Two art notes. Four of the new rows spell their back `Slay_The_Spire_Ironclad_Rare`
+where the file is `Slay_the_Spire_Ironclad_Rare`; the generator now resolves
+`Image` and `Icon Image` against the files on disk case-blind (`on_disk`), because
+an exported build's `res://` is case-sensitive. And Alchemize's back is the Silent
+Rare, as the sheet says.
+
 ## 6. Where the code lives
 
 | Thing | File |
 |---|---|
 | Schema | `scripts/resources/CardData.gd` |
 | Generator | `tools/generate_card2_tres.py` → `data/cards2.0/*.tres` |
-| Sheet one-shots | `tools/_cards_effect_cells.py`, `tools/_items_drop_card_relics.py` |
+| Sheet one-shots | `tools/_cards_effect_cells.py`, `tools/_items_drop_card_relics.py`, `tools/_cards_slay_the_spire_set.py` |
 | Brain | `scripts/autoload/CardSystem.gd` (autoload #24) |
 | Rolling | `Data.roll_card`, `CardSystem.roll_card_loot`, `GameState.roll_loot_entry` |
 | Kind-blind arms | `LootSystem` (every function in its describe and knowledge sections) |
 | Floor mask | `BattlefieldView._drop_node` / `drop_hover`, `FloorLoot`, `LootGrid` |
-| Requests | `LootUseModal._do_card_teleport` / `_pick_copy_item` |
+| Requests | `LootUseModal._do_card_teleport` / `_pick_copy_item` / `_pick_destroy` / `_pick_charge` / `_pick_exhume` |
 | Teleports | `Overworld2.card_teleport` / `_teleport_into` / the three pools |
 | Catalog | `Collection._populate_cards` (the Loot tab's fourth sub-tab) |
 | Dev grants | `DevTools._list_cards` |
@@ -390,6 +469,6 @@ Recall offers six.
 - **`spawn_object` on a card takes an id, not a tag.** The tag form exists on
   `EffectSystem` for events; if a card ever wants "a random arcade cabinet" the
   DSL has room for it and `CardSystem._spawn_object` does not.
-- **Nothing reads `TriggerBus.card_used` yet.** It is emitted once per play from
-  `CardSystem.notify_used`, including for a card that fizzled, and is there for the
-  relic that will eventually want it — the way Reptile Trinket wants `potion_used`.
+- **`TriggerBus.card_used` is a relic-grammar hook now** (`card_used:`), emitted
+  once per play from `CardSystem.notify_used`, a card that fizzled included. After
+  Image is the first thing to read it.

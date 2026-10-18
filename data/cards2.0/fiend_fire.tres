@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3 uid="uid://card2_fiend_fire"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"fiend_fire"
+display_name = "Fiend Fire"
+rarity = "Rare"
+source_game = "Slay the Spire"
+set_name = "Ironclad Rare"
+description = "Destroy all other loot in this row and Apply Stun 1 to an Enemy for each loot destroyed"
+effect = [{"op": "destroy_row"}, {"op": "stun", "value": 1, "per": "destroyed"}]
+file = "FiendFire"
+icon = "Slay_the_Spire_Ironclad_Rare"
+loot_type = "Usable"
+tags = PackedStringArray("ironclad", "attack")

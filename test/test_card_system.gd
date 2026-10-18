@@ -35,7 +35,7 @@ func _entry(id: StringName) -> Dictionary:
 
 func test_every_card_loads_with_an_effect_and_both_pictures() -> void:
 	var cards: Array = Data.all_cards()
-	assert_eq(cards.size(), 22, "the sheet's 22 rows all generated")
+	assert_eq(cards.size(), 37, "the sheet's 37 rows all generated")
 	for c in cards:
 		assert_true(c is CardData)
 		var card: CardData = c
@@ -146,10 +146,15 @@ func test_the_face_down_hover_says_nothing_about_the_effect() -> void:
 # would mean either inventing a deck the card does not belong to or holding a
 # finished card back until it has a sibling. The guessing lives in the two decks
 # of five, and those are untouched.
+# The Slay the Spire set (18 Oct 2026) filled the Ironclad Rare deck and brought four
+# one-card decks of its own. Sorted the way GDScript sorts: capital T first.
 const LONELY_DECKS := [
-	"Isaac_MTG_Cards",              # Ancient Recall
-	"Slay_the_Spire_Defect_Rare",   # Echo Form
-	"Slay_the_Spire_Ironclad_Rare", # Barricade
+	"Isaac_MTG_Cards",                  # Ancient Recall
+	"Slay_The_Spire_Defect_Common",     # Stack
+	"Slay_The_Spire_Defect_Uncommon",   # Bullseye
+	"Slay_The_Spire_Silent_Common",     # Prepared
+	"Slay_The_Spire_Silent_Uncommon",   # Finisher
+	"Slay_the_Spire_Defect_Rare",       # Echo Form
 ]
 
 func test_which_decks_give_their_card_away_when_it_is_face_down() -> void:
@@ -163,7 +168,7 @@ func test_which_decks_give_their_card_away_when_it_is_face_down() -> void:
 			lonely.append(icon)
 	lonely.sort()
 	assert_eq(lonely, LONELY_DECKS,
-		"three decks hold one card each and name it on the floor — see LONELY_DECKS")
+		"these decks hold one card each and name it on the floor — see LONELY_DECKS")
 	assert_eq(int(counts.get("Balatro_Playing_Cards", 0)), 6,
 		"Ride the Bus and the five jokers")
 	assert_eq(int(counts.get("Isaac_Major_Arcana", 0)), 7,
@@ -435,3 +440,226 @@ func test_the_bus_and_barricade_are_gone_as_relics() -> void:
 	assert_null(Data.get_item2(&"ride_the_bus"), "and so is Ride the Bus")
 	assert_not_null(Data.get_card(&"barricade"))
 	assert_not_null(Data.get_card(&"ride_the_bus"))
+
+
+# --- The Slay the Spire set (18 Oct 2026) ------------------------------------
+#
+# Fifteen cards with five new words between them: Stun on a body, a lane or the
+# board; Marked; Temporary Shield per something counted; destroying loot (which is
+# binning it); and charging a thing the player picks.
+
+# A one-cell, one-Health body standing at (col, row), built the way the game builds
+# one (test_gameloop2.gd's `_body` has the argument for the full shape).
+func _stand(instance: int, col: int, row: int) -> int:
+	var e := GoalEnemyData.new()
+	e.id = &"card_test_dummy"
+	e.display_name = "Dummy"
+	e.health = 1
+	GameLoop2.stack.append({"instance": instance, "enemy": e, "health": 1,
+		"max_health": 1, "shield": 0, "col": col, "row": row, "statuses": {}})
+	return instance
+
+func _stun_on(instance: int) -> int:
+	return GameLoop2.stun_stacks(GameLoop2.entry_for(instance))
+
+func _play(id: StringName, ctx: Dictionary = {}) -> Dictionary:
+	ctx["rng"] = _rng()
+	return CardSystem.play_card(_entry(id), ctx)
+
+func test_which_cards_ask_for_a_square() -> void:
+	assert_eq(Data.get_card(&"pommel_strike").aim(), "enemy", "one body")
+	assert_eq(Data.get_card(&"bullseye").aim(), "enemy")
+	assert_eq(Data.get_card(&"fiend_fire").aim(), "enemy")
+	assert_eq(Data.get_card(&"cleave").aim(), "row", "a lane")
+	assert_eq(Data.get_card(&"reaper").aim(), "", "the whole board asks for nothing")
+	assert_eq(Data.get_card(&"stack").aim(), "")
+	assert_true(LootSystem.must_aim(_entry(&"cleave")))
+	assert_false(LootSystem.must_aim(_entry(&"shrug_it_off")))
+
+func test_pommel_strike_stuns_the_body_it_is_aimed_at_and_offers_a_card() -> void:
+	var a: int = _stand(9001, 1, 0)
+	var b: int = _stand(9002, 2, 0)
+	_play(&"pommel_strike", {"target": Vector2i(2, 0)})
+	assert_eq(_stun_on(b), 1, "the body aimed at")
+	assert_eq(_stun_on(a), 0, "and nobody else")
+	assert_eq(GameState.loot_items.size(), 1, "+1 Random Card")
+	assert_eq(String(GameState.loot_items[0].get("type", "")), "card")
+
+func test_cleave_stuns_the_whole_lane_and_only_that_lane() -> void:
+	var a: int = _stand(9001, 1, 1)
+	var b: int = _stand(9002, 3, 1)
+	var c: int = _stand(9003, 1, 2)
+	_play(&"cleave", {"target": Vector2i(2, 1)})
+	assert_eq(_stun_on(a), 1)
+	assert_eq(_stun_on(b), 1)
+	assert_eq(_stun_on(c), 0, "the next lane down is not in it")
+
+func test_reaper_stuns_every_body_and_heals_one_per_body() -> void:
+	for i in range(3):
+		_stand(9001 + i, 1 + i, i)
+	GameState.hp = GameState.max_hp - 5
+	_play(&"reaper")
+	for i in range(3):
+		assert_eq(_stun_on(9001 + i), 1)
+	assert_eq(GameState.hp, GameState.max_hp - 2, "+1 Health for each enemy hit")
+
+func test_bullseye_lays_stun_and_marked() -> void:
+	var a: int = _stand(9001, 1, 0)
+	_play(&"bullseye", {"target": Vector2i(1, 0)})
+	var body: Dictionary = GameLoop2.entry_for(a)
+	assert_eq(_stun_on(a), 1)
+	assert_eq(GameLoop2.entry_status_stacks(body, &"marked"), 1)
+
+func test_finisher_counts_each_other_card_used_this_game() -> void:
+	var a: int = _stand(9001, 1, 0)
+	_play(&"finisher", {"target": Vector2i(1, 0)})
+	assert_eq(_stun_on(a), 0, "the game's first card has no others to count")
+	_play(&"vi_the_lovers")
+	# Finisher itself was a card used too: two others now.
+	_play(&"finisher", {"target": Vector2i(1, 0)})
+	assert_eq(_stun_on(a), 2)
+
+func test_stack_shields_for_each_other_card_and_the_count_ends_with_the_game() -> void:
+	_play(&"vi_the_lovers")
+	_play(&"vi_the_lovers")
+	GameState.shields = 0
+	_play(&"stack")
+	assert_eq(GameState.shields, 2)
+	GameState.cards_used_this_game = 0
+	GameState.shields = 0
+	_play(&"stack")
+	assert_eq(GameState.shields, 0, "nothing to count, nothing gained")
+
+func test_an_echoed_card_counts_as_a_card_used() -> void:
+	var before: int = GameState.cards_used_this_game
+	_play(&"vi_the_lovers")
+	_play(&"vi_the_lovers")
+	assert_eq(GameState.cards_used_this_game, before + 2,
+		"every play is counted, so a copy through play_card is too")
+
+func test_fiend_fire_burns_its_own_row_and_stuns_once_per_piece() -> void:
+	var a: int = _stand(9001, 1, 0)
+	# Slots 0-2 are the 3x3's top row, 3-5 the middle (GameState.loot_layout).
+	GameState.add_card_loot(&"fiend_fire")
+	GameState.add_card_loot(&"vi_the_lovers")
+	GameState.add_card_loot(&"v_the_hierophant")
+	GameState.add_card_loot(&"queen_of_hearts")
+	assert_eq(GameState.loot_slot_of(3), 3, "the fourth piece is in the next row")
+	LootSystem.use_loot(0, {"target": Vector2i(1, 0)})
+	assert_eq(GameState.loot_items.size(), 1, "the other two in its row are gone")
+	assert_eq(String(GameState.loot_items[0].get("id", "")), "queen_of_hearts",
+		"and the row below is not")
+	assert_eq(_stun_on(a), 2, "Stun 1 for each piece destroyed")
+	assert_eq(GameState.destroyed_loot.size(), 2, "destroyed is binned")
+
+func test_fiend_fire_off_the_floor_has_no_row() -> void:
+	GameState.add_card_loot(&"vi_the_lovers")
+	var a: int = _stand(9001, 1, 0)
+	LootSystem.use_entry(_entry(&"fiend_fire"), {"target": Vector2i(1, 0)})
+	assert_eq(GameState.loot_items.size(), 1, "nothing in the pack is touched")
+	assert_eq(_stun_on(a), 0)
+
+func test_second_wind_shields_two_per_piece_destroyed() -> void:
+	GameState.add_card_loot(&"second_wind")
+	GameState.add_card_loot(&"vi_the_lovers")
+	GameState.add_card_loot(&"vi_the_lovers")
+	GameState.shields = 0
+	LootSystem.use_loot(0)
+	assert_eq(GameState.shields, 4)
+	assert_true(GameState.loot_items.is_empty())
+
+func test_a_destroyed_card_is_trashed_and_pays_trading_card() -> void:
+	watch_signals(TriggerBus)
+	GameState.add_card_loot(&"vi_the_lovers")
+	GameState.destroy_loot_at(0)
+	assert_signal_emitted(TriggerBus, "card_binned", "destroying a card is trashing it")
+	assert_eq(GameState.destroyed_loot.size(), 1)
+	assert_false(GameState.destroyed_loot[0].has("pack_slot"), "kept without a slot")
+
+func test_an_enemy_destroying_loot_puts_it_on_the_pile() -> void:
+	GameState.add_card_loot(&"vi_the_lovers")
+	assert_eq(GameLoop2._destroy_loot(1), 1)
+	assert_true(GameState.loot_items.is_empty())
+	assert_eq(GameState.destroyed_loot.size(), 1, "Degradation's burn can be exhumed")
+
+func test_trading_card_says_destroying() -> void:
+	assert_string_contains(Data.get_card(&"trading_card").description, "destroying")
+
+func test_prepared_asks_for_two_and_destroys_exactly_those() -> void:
+	GameState.add_card_loot(&"vi_the_lovers")
+	GameState.add_card_loot(&"v_the_hierophant")
+	GameState.add_card_loot(&"queen_of_hearts")
+	var out: Dictionary = _play(&"prepared")
+	var req: Dictionary = (out["requests"] as Array)[0]
+	assert_eq(String(req["kind"]), "destroy_loot")
+	assert_eq(int(req["count"]), 2)
+	assert_eq((req["candidates"] as Array).size(), 3,
+		"the pack as it stood, not the two cards it hands over")
+	assert_eq(GameState.loot_items.size(), 5, "+2 Random Cards")
+	var pick: Array = [GameState.loot_items[0], GameState.loot_items[2]]
+	CardSystem.destroy_chosen(pick)
+	assert_eq(GameState.loot_items.size(), 3)
+	assert_eq(String(GameState.loot_items[0].get("id", "")), "v_the_hierophant")
+
+func test_bloodletting_costs_health_and_asks_what_to_charge() -> void:
+	GameState.hp = 5
+	var out: Dictionary = _play(&"bloodletting")
+	assert_eq(GameState.hp, 3)
+	var req: Dictionary = (out["requests"] as Array)[0]
+	assert_eq(String(req["kind"]), "charge_loot")
+	assert_eq(int(req["amount"]), 4)
+
+func test_the_health_a_card_costs_can_end_the_run() -> void:
+	GameState.hp = 2
+	_play(&"bloodletting")
+	assert_eq(GameState.hp, 0, "the owner's call: allowed, like any price")
+
+func test_a_charge_fills_to_the_top_and_no_further() -> void:
+	var w: WeaponData = Data.all_weapons()[0]
+	var entry: Dictionary = WeaponSystem.new_entry(w)
+	GameState.loot_items.append(entry)
+	CardSystem.charge_chosen(GameState.loot_items[0], w.max_charges + 10)
+	assert_eq(WeaponSystem.charges_of(GameState.loot_items[0]), w.max_charges)
+
+func test_offering_costs_six_charges_four_and_offers_three_cards() -> void:
+	GameState.hp = 10
+	GameState.max_hp = maxi(GameState.max_hp, 10)
+	var out: Dictionary = _play(&"offering")
+	assert_eq(GameState.hp, 4)
+	assert_eq(String((out["requests"] as Array)[0]["kind"]), "charge_loot")
+	assert_eq(GameState.loot_items.size(), 3)
+
+func test_exhume_brings_back_any_destroyed_piece() -> void:
+	GameState.add_card_loot(&"vi_the_lovers")
+	GameState.add_card_loot(&"v_the_hierophant")
+	GameState.discard_loot_at(1)
+	GameState.destroy_loot_at(0)
+	var out: Dictionary = _play(&"exhume")
+	assert_eq(String((out["requests"] as Array)[0]["kind"]), "exhume")
+	CardSystem.exhume_chosen(0)
+	assert_eq(GameState.loot_items.size(), 1)
+	assert_eq(String(GameState.loot_items[0].get("id", "")), "v_the_hierophant",
+		"a piece binned by hand is on the pile too")
+	assert_eq(GameState.destroyed_loot.size(), 1)
+
+func test_after_image_shields_whenever_a_card_is_used() -> void:
+	GameState.add_card_loot(&"after_image")
+	GameState.shields = 0
+	_play(&"vi_the_lovers")
+	assert_eq(GameState.shields, 1)
+
+func test_simple_cards_of_the_set() -> void:
+	GameState.shields = 0
+	_play(&"shrug_it_off")
+	assert_eq(GameState.shields, 1)
+	assert_eq(GameState.loot_items.size(), 1)
+	_play(&"alchemize")
+	assert_eq(String(GameState.loot_items[1].get("type", "")), "potion")
+
+func test_the_pile_and_the_count_go_with_the_run() -> void:
+	GameState.add_card_loot(&"vi_the_lovers")
+	GameState.destroy_loot_at(0)
+	GameState.cards_used_this_game = 3
+	GameState.reset_run()
+	assert_true(GameState.destroyed_loot.is_empty())
+	assert_eq(GameState.cards_used_this_game, 0)

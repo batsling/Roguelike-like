@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3 uid="uid://card2_second_wind"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"second_wind"
+display_name = "Second Wind"
+rarity = "Uncommon"
+source_game = "Slay the Spire"
+set_name = "Ironclad Uncommon"
+description = "Destroy all other loot in this row and Gain +2 Temporary Shield for each loot destroyed"
+effect = [{"op": "destroy_row"}, {"op": "gain_stat", "stat": "shields", "value": 2, "per": "destroyed"}]
+file = "SecondWind"
+icon = "Slay_The_Spire_Ironclad_Uncommon"
+loot_type = "Usable"
+tags = PackedStringArray("ironclad")

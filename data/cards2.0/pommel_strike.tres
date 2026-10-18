@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3 uid="uid://card2_pommel_strike"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"pommel_strike"
+display_name = "Pommel Strike"
+rarity = "Common"
+source_game = "Slay the Spire"
+set_name = "Ironclad Common"
+description = "Apply Stun 1 to an Enemy and Gain +1 Random Card"
+effect = [{"op": "stun", "value": 1}, {"op": "gain_loot", "kind": "card", "count": 1}]
+file = "PommelStrike"
+icon = "Slay_The_Spire_Ironclad_Common"
+loot_type = "Usable"
+tags = PackedStringArray("ironclad", "attack")

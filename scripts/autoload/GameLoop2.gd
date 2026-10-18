@@ -2795,6 +2795,7 @@ func beat_game(clear_advertised: bool = false, fulfilled_instances: Array = [],
 	# the first loot used in each game, so the count of pieces this game spent goes
 	# back to zero on the beat the game ends — however it ended.
 	GameState.loot_uses_this_game = 0
+	GameState.cards_used_this_game = 0
 	# The tracker went with it: `res` already carries the count for the log, and the
 	# board must not keep counting a finished game's lost runs. The escape gate is
 	# the same kind of per-game fact and goes at the same moment — the swings above
@@ -7904,10 +7905,10 @@ func _destroy_loot(count: int) -> int:
 	for _i in range(count):
 		if GameState.loot_items.is_empty():
 			break
-		GameState.loot_items.remove_at(randi() % GameState.loot_items.size())
+		# Destroyed, which is binned (GameState.destroy_loot_at): Exhume can bring it
+		# back, and a card burned this way pays Trading Card.
+		GameState.destroy_loot_at(randi() % GameState.loot_items.size())
 		gone += 1
-	if gone > 0:
-		GameState.emit_signal("inventory_changed")
 	return gone
 
 # --- DRAIN -----------------------------------------------------------------

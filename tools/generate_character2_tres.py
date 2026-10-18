@@ -12,7 +12,7 @@ level_up_reward_type here).
 
   characters2.0: Name | Game | Health | Gold | Bash | Dash | Push | Transmute |
                  Scramble | Bombs | Keys | Random | Level Up | Reward |
-                 Description | Starting loadout | File | Radio
+                 Description | Starting loadout | File
 
 Health -> base_max_hp (a 2.0 run's tiny Health/Max Health reuse hp/max_hp).
 Gold -> start_gold, the run's starting purse (§14). It sits beside Health rather
@@ -39,11 +39,13 @@ icon from images2.0/characters/Icon/<File>.png (case-insensitive). File falls
 back to the de-spaced Name for rows that leave it blank. Missing art just leaves
 that field unset (placeholder later).
 
-Radio -> music_games: the games whose soundtracks the character's RANKS draw
-          songs from (docs/games-first-redesign.md §20.9), `;`-separated game
-          names. Blank means the Game column. A name the `games` sheet does not
-          have is a refusal; a blank Radio whose Game is not on the chart is just
-          an empty list (a rank with no songs to give).
+Game -> source_game and music_games. One game, or several separated by `;`
+          (Isaac: "The Binding of Isaac; The Binding of Isaac: Rebirth").
+          source_game is the card's "From:" line, the names joined by ", ";
+          music_games is every one of them that is on the chart, as ids — the
+          soundtracks the character's RANKS draw songs from (§20.9). This was a
+          separate `Radio` column until the owner folded it into Game (Oct 2026):
+          a character's songs are its games' songs.
 
   python3 tools/generate_character2_tres.py            # regenerate the 2.0 roster
   python3 tools/generate_character2_tres.py --list      # print, write nothing
@@ -271,21 +273,20 @@ def game_ids(wb) -> dict:
             for r in rows(wb["games"]) if r.get("Name")}
 
 
+def game_names(row) -> list:
+    """The Game column as names: one game, or several separated by `;` (Isaac is
+    both The Binding of Isaac and its Rebirth)."""
+    return [g.strip() for g in _clean(row.get("Game")).split(";") if g.strip()]
+
+
 def music_games(name, row, games) -> list:
-    """The Radio column as game ids; blank falls back to Game."""
-    raw = _clean(row.get("Radio"))
-    if not raw:
-        gid = games.get(_norm(row.get("Game") or ""))
-        return [gid] if gid else []
+    """Every game in the Game column, as game ids. A name the chart does not have
+    is skipped rather than refused: a character can come from a game that is not
+    a node, and it just has no songs from it to give."""
     out = []
-    for g in raw.split(";"):
-        if not g.strip():
-            continue
+    for g in game_names(row):
         gid = games.get(_norm(g))
-        if gid is None:
-            raise SystemExit("%s: Radio names %r, which is not on the games sheet"
-                             % (name, g.strip()))
-        if gid not in out:
+        if gid is not None and gid not in out:
             out.append(gid)
     return out
 
@@ -333,7 +334,8 @@ def character_tres(row, catalog=None, games=None) -> tuple:
     lines.append('id = &"%s"' % cid)
     lines.append('display_name = "%s"' % gd_str(name))
     lines.append('description = "%s"' % gd_str(row.get("Description")))
-    lines.append('source_game = "%s"' % gd_str(row.get("Game")))
+    # Several games read as one line on the card ("From: A, B").
+    lines.append('source_game = "%s"' % gd_str(", ".join(game_names(row))))
     # Whose songs the character's ranks draw (§20.9). Without a games table (a
     # test feeding one row) there is nothing to resolve names against.
     lines.append("music_games = %s" % string_name_array(

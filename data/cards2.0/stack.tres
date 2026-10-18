@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3 uid="uid://card2_stack"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"stack"
+display_name = "Stack"
+rarity = "Common"
+source_game = "Slay the Spire"
+set_name = "Defect Common"
+description = "Gain +1 Temporary Shield for each other Card used this game"
+effect = [{"op": "gain_stat", "stat": "shields", "value": 1, "per": "cards_used"}]
+file = "Stack"
+icon = "Slay_The_Spire_Defect_Common"
+loot_type = "Usable"
+tags = PackedStringArray("defect")

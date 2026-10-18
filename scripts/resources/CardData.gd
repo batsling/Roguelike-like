@@ -114,3 +114,22 @@ func art_file() -> String:
 # which shows the player more than the design intends rather than nothing at all.
 func icon_file() -> String:
 	return icon
+
+
+# WHERE THE CARD IS POINTED before it is played, read off its own clauses: "enemy"
+# when one lays a Stun or a status on a single body (Pommel Strike, Bullseye),
+# "row" when one covers a lane (Cleave), "" when nothing aims (Reaper's `area=board`
+# hits every body and asks for no square). One card with both answers aims at a
+# lane, the wider of the two.
+func aim() -> String:
+	var out := ""
+	for e in effect:
+		if not (e is Dictionary) or not (String(e.get("op", "")) in ["stun", "apply_status"]):
+			continue
+		match String(e.get("area", "cell")):
+			"row":
+				out = "row"
+			"cell":
+				if out == "":
+					out = "enemy"
+	return out

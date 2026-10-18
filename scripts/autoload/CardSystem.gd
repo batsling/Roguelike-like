@@ -70,6 +70,10 @@ func data_for(entry: Dictionary) -> CardData:
 func notify_used(card: CardData) -> void:
 	if card == null:
 		return
+	# Counted HERE, after the card's own ops have read the count, so "each OTHER
+	# card used this game" (Finisher, Stack) never counts the card being played —
+	# and a copy (Echo Form, Echo Chamber, a Blueprint) counts like any card.
+	GameState.cards_used_this_game += 1
 	TriggerBus.card_used.emit({"card": card.id})
 
 
@@ -77,7 +81,9 @@ func notify_used(card: CardData) -> void:
 # "requests": Array[Dictionary] } — the contract ScrollSystem.read_scroll,
 # PillSystem.take_pill and PotionSystem.quaff_potion all answer with, so one
 # caller can spend any of the four.
-#   ctx (optional): { "rng": RandomNumberGenerator }
+#   ctx (optional): { "rng": RandomNumberGenerator, "target": Vector2i (the square
+#   an aimed card was pointed at), "card_slot": int (the pack slot it was played
+#   out of, -1 for one played off the floor) }
 func play_card(entry: Dictionary, ctx: Dictionary = {}) -> Dictionary:
 	var out := {"logs": [], "requests": []}
 	var card: CardData = data_for(entry)
@@ -92,21 +98,59 @@ func play_card(entry: Dictionary, ctx: Dictionary = {}) -> Dictionary:
 	if rng == null:
 		rng = RandomNumberGenerator.new()
 		rng.randomize()
+	# WHAT THIS PLAY HAS DONE SO FAR, for the clauses that count it ("for each loot
+	# destroyed", "for each enemy hit"). One card's clauses run in order and a later
+	# one reads what an earlier one left here; nothing outlives the play.
+	var tally := {"destroyed": 0, "hit": 0,
+		"cards_used": GameState.cards_used_this_game}
 	for e in card.effect:
 		if e is Dictionary:
-			_apply_one(e, out, rng)
+			_apply_one(e, out, rng, ctx, tally)
 	notify_used(card)
 	return out
 
 
+# `per=` on a clause: the clause happens that many times over (its value
+# multiplied), counted off `tally`. No `per` is once. A count of 0 is nothing at
+# all — Finisher played as the game's first card stuns no one.
+static func _times(effect: Dictionary, tally: Dictionary) -> int:
+	var per := String(effect.get("per", ""))
+	if per == "":
+		return 1
+	return maxi(0, int(tally.get(per, 0)))
+
+
 func _apply_one(effect: Dictionary, out: Dictionary,
-		rng: RandomNumberGenerator) -> void:
+		rng: RandomNumberGenerator, ctx: Dictionary = {}, tally: Dictionary = {}) -> void:
 	var op := String(effect.get("op", ""))
+	if effect.has("per"):
+		var times: int = _times(effect, tally)
+		if times <= 0:
+			return
+		effect = effect.duplicate()
+		effect.erase("per")
+		effect["value"] = int(effect.get("value", 1)) * times
 	match op:
 		"gain_hp":
 			_gain_hp(effect, out, rng)
+		"lose_hp":
+			_lose_hp(effect, out)
 		"gain_stat":
 			_gain_stat(effect, out)
+		"stun", "apply_status":
+			_hit_enemies(effect, out, ctx, tally)
+		"destroy_row":
+			_destroy_row(out, ctx, tally)
+		"destroy_pick":
+			out["requests"].append({"kind": "destroy_loot",
+				"count": maxi(1, int(effect.get("value", 1))),
+				"candidates": GameState.loot_items.duplicate()})
+		"charge_pick":
+			out["requests"].append({"kind": "charge_loot",
+				"amount": maxi(1, int(effect.get("value", 1))),
+				"candidates": GameState.chargeable_things()})
+		"exhume":
+			out["requests"].append({"kind": "exhume"})
 		"double_stat":
 			_double_stat(effect, out)
 		"gain_loot":
@@ -173,6 +217,165 @@ func _gain_hp(effect: Dictionary, out: Dictionary, rng: RandomNumberGenerator) -
 			% [landed, landed, amount])
 	else:
 		out["logs"].append("+%d Health." % landed)
+
+
+# Bloodletting, Offering: Health paid as a price. NOT damage — no shield stops it
+# and no status scales it, the same as an event's `lose_hp` bill — and it CAN be the
+# Health that ends the run (the owner, 18 Oct 2026): the card says what it costs.
+func _lose_hp(effect: Dictionary, out: Dictionary) -> void:
+	var amount: int = maxi(0, int(effect.get("value", 0)))
+	if amount <= 0:
+		return
+	GameState.change_hp(-amount)
+	out["logs"].append("You lose %d Health." % amount)
+
+
+# STUN OR A STATUS, laid on enemies. Where depends on `area`:
+#   (none)  the one body on the square the card was aimed at (Pommel Strike).
+#   row     every body in the lane of the square it was aimed at (Cleave).
+#   board   every body on the board, no aiming (Reaper).
+# Each body counts once however many squares of it are covered, and the bodies hit
+# are added to `tally.hit` (Reaper's Health).
+func _hit_enemies(effect: Dictionary, out: Dictionary, ctx: Dictionary,
+		tally: Dictionary) -> void:
+	var stacks: int = maxi(0, int(effect.get("value", 1)))
+	if stacks <= 0:
+		return
+	var status := StringName(String(effect.get("status", "stun")))
+	if String(effect.get("op", "")) == "stun":
+		status = &"stun"
+	var sdata: StatusData = Data.get_status(status)
+	var area := String(effect.get("area", "cell"))
+	var cells: Array = []
+	if area == "board":
+		cells = GameLoop2.area_cells(Vector2i(1, 0), "board")
+	elif ctx.get("target") is Vector2i:
+		cells = GameLoop2.area_cells(ctx["target"], area)
+	var bodies: Array = GameLoop2.area_instances(cells)
+	if area == "cell" and bodies.size() > 1:
+		bodies = bodies.slice(0, 1)
+	var landed: int = 0
+	for inst in bodies:
+		if GameLoop2.apply_status_to(int(inst), status, stacks) > 0:
+			landed += 1
+	if landed <= 0:
+		out["logs"].append("No enemy is there to take it.")
+		return
+	tally["hit"] = int(tally.get("hit", 0)) + landed
+	var word: String = sdata.display_name if sdata != null else String(status).capitalize()
+	out["logs"].append("%d enem%s gain%s +%d %s." % [landed,
+		"y" if landed == 1 else "ies", "s" if landed == 1 else "", stacks, word])
+
+
+# Fiend Fire, Second Wind: "destroy all OTHER loot in this row" — every piece with
+# a cell in the pack row the card was played out of (the card has already left
+# it). A card played off the floor has no row, and destroys nothing. Under Link
+# Cable every piece counts as touching every other (docs/loot-passives.md §15), so
+# the row is the whole pack. Destroyed is binned (GameState.destroy_loot_at); the
+# count goes to `tally.destroyed`.
+func _destroy_row(out: Dictionary, ctx: Dictionary, tally: Dictionary) -> void:
+	var slot: int = int(ctx.get("card_slot", -1))
+	if slot < 0:
+		out["logs"].append("Played off the floor, it has no row to burn.")
+		return
+	var victims: Array = pieces_in_row(slot)
+	for entry in victims:
+		var at: int = -1
+		for i in range(GameState.loot_items.size()):
+			if is_same(GameState.loot_items[i], entry):
+				at = i
+				break
+		GameState.destroy_loot_at(at)
+	tally["destroyed"] = int(tally.get("destroyed", 0)) + victims.size()
+	if victims.is_empty():
+		out["logs"].append("Nothing else is in its row.")
+	else:
+		out["logs"].append("Destroyed %d piece%s of loot in its row." % [
+			victims.size(), "" if victims.size() == 1 else "s"])
+
+
+# The carried pieces with a cell in the same pack row as `slot` (live entries, in
+# pack order). The 3x3 and every bag share one grid of cells, so a row runs across
+# bags too. Linked (Link Cable): every carried piece.
+func pieces_in_row(slot: int) -> Array:
+	var out: Array = []
+	if LootPassives.linked():
+		for e in GameState.loot_items:
+			if e is Dictionary:
+				out.append(e)
+		return out
+	var y: int = GameState.pack_cell_of(slot).y
+	var layout: Array = GameState.loot_layout()
+	for s in range(layout.size()):
+		var index: int = int(layout[s])
+		if index < 0 or GameState.pack_cell_of(s).y != y:
+			continue
+		var entry = GameState.loot_items[index]
+		if not out.any(func(e): return is_same(e, entry)):
+			out.append(entry)
+	return out
+
+
+# PREPARED's pick: destroy exactly these carried pieces (live entries). Returns the
+# line to report.
+func destroy_chosen(entries: Array) -> String:
+	var names: Array = []
+	for entry in entries:
+		for i in range(GameState.loot_items.size()):
+			if is_same(GameState.loot_items[i], entry):
+				names.append(LootSystem.display_name(entry))
+				GameState.destroy_loot_at(i)
+				break
+	if names.is_empty():
+		return "Nothing was destroyed."
+	return "Destroyed %s." % ", ".join(PackedStringArray(names))
+
+
+# BLOODLETTING / OFFERING's pick: put `amount` charges into one chargeable thing —
+# a relic, a wand, a weapon or a food. A bar fills to its top and no further (the
+# owner, 18 Oct 2026); what does not fit is lost.
+func charge_chosen(thing, amount: int) -> String:
+	var name: String = GameState.charge_thing_name(thing)
+	if not GameState.charge_thing(thing, amount):
+		return "%s is already full." % name
+	return "%s takes %d Charge%s." % [name, amount, "" if amount == 1 else "s"]
+
+
+# EXHUME's pick: the piece at `at` on the run's destroyed pile comes back.
+func exhume_chosen(at: int) -> String:
+	var entry: Dictionary = GameState.exhume_loot(at)
+	if entry.is_empty():
+		return "Nothing comes back."
+	return "%s comes back." % LootSystem.display_name(entry)
+
+
+# THE SQUARES AN AIMED CARD MAY BE POINTED AT (CardData.aim): a body's squares for
+# a card that hits one enemy, any square for one that hits a lane (the click picks
+# the row). Empty for a card that does not aim.
+func aim_cells(entry: Dictionary) -> Array:
+	var card: CardData = data_for(entry)
+	if card == null:
+		return []
+	match card.aim():
+		"enemy":
+			return GameLoop2.occupancy().keys()
+		"row":
+			return GameLoop2.target_cells("all")
+	return []
+
+
+func needs_target(entry: Dictionary) -> bool:
+	var card: CardData = data_for(entry)
+	return card != null and card.aim() != ""
+
+
+# What an aimed card would cover from `cell`, for the board's preview: the lane for
+# a row card, the square for the rest.
+func preview_cells(entry: Dictionary, cell: Vector2i) -> Array:
+	var card: CardData = data_for(entry)
+	if card != null and card.aim() == "row":
+		return GameLoop2.area_cells(cell, "row")
+	return [cell]
 
 
 func _gain_stat(effect: Dictionary, out: Dictionary) -> void:

@@ -703,7 +703,15 @@ func all_songs() -> Array:
 # THE SHOPKEEPERS (§14.6), in id order. Empty until the owner authors a row, and
 # every shop is then the plain one.
 func get_shopkeeper(id: StringName) -> ShopkeeperData:
-	return _shopkeepers.get(id)
+	return _shopkeepers.get(SHOPKEEPER_RENAMES.get(id, id))
+
+# Ids a keeper USED to have, for a shelf saved under one. A shelf pins its keeper by
+# id (ShopSystem.keeper_at), and the id is the slug of the sheet's Name, so renaming
+# a keeper on the sheet would leave every saved shelf with nobody behind it.
+const SHOPKEEPER_RENAMES := {
+	&"shopkeeper": &"shopkeeper_isaac",
+	&"furcifer": &"shopkeeper_furcifer",
+}
 
 func all_shopkeepers() -> Array:
 	return _shopkeepers.values()

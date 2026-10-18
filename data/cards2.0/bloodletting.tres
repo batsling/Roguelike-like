@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3 uid="uid://card2_bloodletting"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"bloodletting"
+display_name = "Bloodletting"
+rarity = "Uncommon"
+source_game = "Slay the Spire"
+set_name = "Ironclad Uncommon"
+description = "Lose 2 Health and Give 4 Charges to a Chargabe Item or Loot"
+effect = [{"op": "lose_hp", "value": 2}, {"op": "charge_pick", "value": 4}]
+file = "Bloodletting"
+icon = "Slay_The_Spire_Ironclad_Uncommon"
+loot_type = "Usable"
+tags = PackedStringArray("ironclad")

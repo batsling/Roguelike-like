@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3 uid="uid://card2_after_image"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"after_image"
+display_name = "After Image"
+rarity = "Rare"
+source_game = "Slay the Spire"
+set_name = "Silent Rare"
+description = "Whenever you use a Card, Gain +1 Temporary Shield"
+effect = []
+file = "AfterImage"
+icon = "Slay_The_Spire_Silent_Rare"
+loot_type = "Passive"
+tags = PackedStringArray("silent")
+passive = true
+triggers = [{"on": "card_used", "effects": [{"type": "gain_stat", "stat": "shields", "value": 1}]}]
+stat_bonuses = {}
+status_bonuses = {}

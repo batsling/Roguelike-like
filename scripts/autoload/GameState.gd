@@ -400,6 +400,19 @@ var bonus_shields: int = 0
 # (GameLoop2), and saved, so a mid-game reload does not hand the copy out twice.
 var loot_uses_this_game: int = 0
 
+# CARDS PLAYED THIS GAME (Finisher, Stack: "for each other card used this game").
+# Counted by CardSystem.notify_used — once per card that resolved, a copy from Echo
+# Form, Echo Chamber or a Blueprint included — zeroed beside `loot_uses_this_game`
+# as the game resolves, and saved with it.
+var cards_used_this_game: int = 0
+
+# EVERYTHING DESTROYED THIS RUN, oldest first: each piece binned out of the pack or
+# off the floor, and each one an effect destroyed (a card's, an enemy's Degradation,
+# a scroll burning). One list because destroying a piece IS binning it (the owner,
+# 18 Oct 2026). Exhume brings any one of them back. Stored as plain entries without
+# a slot, so a piece comes back the way it dropped.
+var destroyed_loot: Array = []
+
 # How many EXTRA copies of the piece being used are owed right now. Its own reader
 # so the loot path never touches the pack directly — the same shape
 # `banks_shields()` gives Barricade.
@@ -634,7 +647,7 @@ func _connect_lifecycle_hooks() -> void:
 	# The loot-passive hooks (docs/loot-passives.md §3). Same runner, same shape:
 	# no scene, one event per moment, and whatever is held — relic or pack piece —
 	# answers from the far end.
-	for hook in ["game_won", "shop_entered", "boss_spawned", "loot_used", "card_binned",
+	for hook in ["game_won", "shop_entered", "boss_spawned", "loot_used", "card_binned", "card_used",
 			"weapon_stunned", "weapon_hit", "weapon_charged", "game_perfected"]:
 		var sig: Signal = TriggerBus.get(hook)
 		# One Callable per hook, kept, so is_connected can recognise it on a second
@@ -1302,6 +1315,7 @@ func reset_run() -> void:
 	shields = 0
 	bonus_shields = 0
 	loot_uses_this_game = 0
+	cards_used_this_game = 0
 	bash = 0
 	push = 0
 	transmute = 0
@@ -1338,6 +1352,7 @@ func reset_run() -> void:
 	masked_characters.clear()
 	pending_masks = 0
 	smelted_loot.clear()
+	destroyed_loot.clear()
 	smelt_target = null
 	Notifications.clear()
 	phase = Phase.MENU
@@ -2115,7 +2130,7 @@ func _burn_a_carried_scroll() -> void:
 	# Named BEFORE it is removed, for the reason ScrollSystem.stun_enemies_chosen
 	# reads its names first: the entry is gone by the time the line is shown.
 	var burned: String = LootSystem.display_name(loot_items[index])
-	remove_loot_at(index)
+	destroy_loot_at(index)
 	Notifications.notify("%s burns to ash!" % burned, ScrollSystem.SCROLL_COLOR)
 
 # Tick `stacks` off a player status (default 1), removing it at zero. Returns what
@@ -3506,10 +3521,54 @@ func discard_loot_at(index: int) -> void:
 	remove_loot_at(index)
 	note_loot_binned(entry)
 
-# A piece went into the bin from anywhere — the pack, or the battlefield floor.
+# A piece went into the bin from anywhere — the pack, the battlefield floor, or an
+# effect that destroyed it (`destroy_loot_at`). It joins the destroyed pile Exhume
+# draws from, and a card is Trading Card's moment.
 func note_loot_binned(entry) -> void:
-	if entry is Dictionary and String(entry.get("type", "")) == "card":
+	if not (entry is Dictionary) or (entry as Dictionary).is_empty():
+		return
+	var kept: Dictionary = (entry as Dictionary).duplicate(true)
+	kept.erase("pack_slot")
+	kept.erase("rot")
+	destroyed_loot.append(kept)
+	if String(entry.get("type", "")) == "card":
 		TriggerBus.card_binned.emit({"card": entry.get("id", &"")})
+
+# DESTROY the carried piece at `index`: gone from the pack, and binned — destroying
+# loot trashes it (the owner, 18 Oct 2026), so it is on the destroyed pile and a
+# destroyed card pays Trading Card exactly as one dragged to the bin does. Every
+# effect that destroys a piece comes through here (the destroying cards, an enemy's
+# Degradation, a scroll catching fire). Returns the entry, or {} for a bad index.
+func destroy_loot_at(index: int) -> Dictionary:
+	if index < 0 or index >= loot_items.size() or not (loot_items[index] is Dictionary):
+		return {}
+	var entry: Dictionary = loot_items[index]
+	remove_loot_at(index)
+	note_loot_binned(entry)
+	return entry
+
+# Take back the piece at `at` on the destroyed pile (Exhume): off the pile and
+# OFFERED, like any piece the run hands over, so a full pack asks rather than losing
+# it. Returns the entry, or {} when there is nothing there.
+func exhume_loot(at: int) -> Dictionary:
+	if at < 0 or at >= destroyed_loot.size():
+		return {}
+	var entry: Dictionary = destroyed_loot[at]
+	destroyed_loot.remove_at(at)
+	offer_loot_entries([entry.duplicate(true)])
+	return entry
+
+# OFFER pieces already rolled, as `offer_loot` offers fresh ones: on `loot_offered`
+# when a screen is listening, straight into the pack when not (headless, tests).
+func offer_loot_entries(entries: Array) -> void:
+	if entries.is_empty():
+		return
+	if has_connections("loot_offered"):
+		loot_offered.emit(entries)
+		return
+	for e in entries:
+		if e is Dictionary:
+			take_loot_entry(e)
 
 # Removes a specific owned item instance by reference (Unstable Genome's
 # destroy_self). No-op if it isn't in the inventory.

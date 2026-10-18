@@ -405,6 +405,12 @@ func _process_next_request() -> void:
 			_pick_copy_item(req)
 		"obtain_item":
 			_do_obtain_item(req)
+		"destroy_loot":
+			_pick_destroy(req)
+		"charge_loot":
+			_pick_charge(req)
+		"exhume":
+			_pick_exhume(req)
 		_:
 			_process_next_request()
 
@@ -709,6 +715,104 @@ func _pick_copy_item(req: Dictionary) -> void:
 			_report(CardSystem.copy_item(item))
 			_process_next_request())
 		_body.add_child(btn)
+
+# --- Prepared: destroy N carried pieces, chosen -----------------------------
+#
+# EXACTLY N, or every piece when the pack holds fewer (the owner, 18 Oct 2026: the
+# card can be played with fewer than two). The confirm stays off until the count is
+# met, because "destroy 2" is the price of the cards and not a ceiling on it. The
+# candidates are the pack as it stood when the card was played, so the cards it
+# hands over cannot be fed straight back into it.
+func _pick_destroy(req: Dictionary) -> void:
+	var candidates: Array = []
+	for e in req.get("candidates", []):
+		if e is Dictionary and GameState.loot_items.any(func(x): return is_same(x, e)):
+			candidates.append(e)
+	var need: int = mini(int(req.get("count", 1)), candidates.size())
+	_rebuild_panel()
+	_body.add_child(_heading("Destroy Loot", ACCENT, 20))
+	if need <= 0:
+		_report("There was nothing else in the pack to destroy.")
+		_body.add_child(_muted("There is nothing else in your pack to destroy."))
+		_body.add_child(_continue_button())
+		return
+	_body.add_child(_muted("Choose %d to destroy." % need))
+	var selected: Dictionary = {}   # index in candidates -> entry
+	var confirm := UITheme.confirm_button("Destroy Selected", Vector2(180, 34))
+	confirm.disabled = true
+	var grid := GridContainer.new()
+	grid.columns = LootGrid.COLS
+	grid.add_theme_constant_override("h_separation", UITheme.GAP_SNUG)
+	grid.add_theme_constant_override("v_separation", UITheme.GAP_SNUG)
+	grid.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	for i in range(candidates.size()):
+		var entry: Dictionary = candidates[i]
+		var btn := _pick_cell(entry)
+		btn.toggled.connect(func(on):
+			_toggle_select(selected, i, on, need, btn, entry)
+			confirm.disabled = selected.size() != need)
+		grid.add_child(btn)
+	_body.add_child(grid)
+	confirm.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	confirm.pressed.connect(func():
+		_report(CardSystem.destroy_chosen(selected.values()))
+		_process_next_request())
+	_body.add_child(confirm)
+
+# --- Bloodletting / Offering: charge one chargeable thing --------------------
+#
+# Relics with a bar, wands, weapons and food: everything a charge can land on
+# (GameState.chargeable_things). One press, like ? Card's copy: it is one choice.
+func _pick_charge(req: Dictionary) -> void:
+	var amount: int = int(req.get("amount", 1))
+	var candidates: Array = req.get("candidates", [])
+	_rebuild_panel()
+	_body.add_child(_heading("Give %d Charge%s" % [amount, "" if amount == 1 else "s"],
+		ACCENT, 20))
+	if candidates.is_empty():
+		_body.add_child(_muted("You are carrying nothing that takes a charge."))
+		_report("There was nothing to charge.")
+		_body.add_child(_continue_button())
+		return
+	_body.add_child(_muted("Choose one. It fills to its top and no further."))
+	for thing in candidates:
+		var btn := Button.new()
+		btn.text = "%s — %d to fill" % [GameState.charge_thing_name(thing),
+			GameState.charge_thing_room(thing)]
+		btn.pressed.connect(func():
+			_report(CardSystem.charge_chosen(thing, amount))
+			_process_next_request())
+		_body.add_child(btn)
+
+# --- Exhume: bring back one destroyed piece ----------------------------------
+#
+# Anything on the run's destroyed pile (GameState.destroyed_loot) — binned by hand
+# or destroyed by an effect — and the player picks which. It comes back the way any
+# handed-over piece does, offered, so a full pack still gets asked.
+func _pick_exhume(_req: Dictionary) -> void:
+	_rebuild_panel()
+	_body.add_child(_heading("Exhume", ACCENT, 20))
+	if GameState.destroyed_loot.is_empty():
+		_body.add_child(_muted("Nothing has been destroyed yet."))
+		_report("Nothing has been destroyed for it to bring back.")
+		_body.add_child(_continue_button())
+		return
+	_body.add_child(_muted("Choose one to bring back."))
+	var grid := GridContainer.new()
+	grid.columns = LootGrid.COLS
+	grid.add_theme_constant_override("h_separation", UITheme.GAP_SNUG)
+	grid.add_theme_constant_override("v_separation", UITheme.GAP_SNUG)
+	grid.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	# Newest first: what was just burned is usually what is wanted back.
+	for i in range(GameState.destroyed_loot.size() - 1, -1, -1):
+		var at: int = i
+		var btn := _pick_cell(GameState.destroyed_loot[i])
+		btn.toggle_mode = false
+		btn.pressed.connect(func():
+			_report(CardSystem.exhume_chosen(at))
+			_process_next_request())
+		grid.add_child(btn)
+	_body.add_child(grid)
 
 # --- Wand of Wishing: obtain any item in the game --------------------------
 #
