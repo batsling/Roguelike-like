@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3 uid="uid://card2_offering"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"offering"
+display_name = "Offering"
+rarity = "Rare"
+source_game = "Slay the Spire"
+set_name = "Ironclad Rare"
+description = "Lose 6 Health, Give 4 Charges to a Chargeable Item or Loot, and Gain +3 Random Cards"
+effect = [{"op": "lose_hp", "value": 6}, {"op": "charge_pick", "value": 4}, {"op": "gain_loot", "kind": "card", "count": 3}]
+file = "Offering"
+icon = "Slay_the_Spire_Ironclad_Rare"
+loot_type = "Usable"
+tags = PackedStringArray("ironclad")

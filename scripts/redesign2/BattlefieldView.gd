@@ -1263,6 +1263,9 @@ func throw_request(entry: Dictionary = throwing_loot) -> Dictionary:
 	# A WAND IS FENCED BY ITS AIM TOO, once it is known (WandSystem.aim_cells).
 	if LootSystem.is_wand(entry):
 		return {"target_kind": "tile", "cells": WandSystem.aim_cells(entry)}
+	# …and an aimed CARD by its own: a body's squares, or any square for a lane.
+	if String(entry.get("type", "")) == "card":
+		return {"target_kind": "tile", "cells": CardSystem.aim_cells(entry)}
 	return {"target_kind": "tile", "col_min": 0, "col_max": 0}
 
 # Re-label and enable/disable the combat verbs for the current selection.
@@ -1302,10 +1305,8 @@ func refresh_toolbar() -> void:
 			# learn. The VERB is the piece's own too (docs/wands-design.md §4.2): a
 			# wand is zapped and never thrown, and the picker is the only screen
 			# where the two look alike.
-			var wand: bool = LootSystem.is_wand(throwing_loot)
 			_hint_label.text = "%s %s %s:" % [
-				LootSystem.glyph(throwing_loot),
-				"Swing" if LootSystem.is_weapon(throwing_loot) else "Zap" if wand else "Throw",
+				LootSystem.glyph(throwing_loot), _aim_verb(throwing_loot),
 				LootSystem.display_name(throwing_loot)]
 		else:
 			_hint_label.text = ""
@@ -2137,7 +2138,8 @@ func _refresh_aim_cells() -> void:
 		# its aim line — for a weapon, and for EVERY wand (its Aim is on its card,
 		# so the line gives nothing away): a ray wand draws its line, a square-aimed
 		# one lights where it lands (WandSystem.preview_cells).
-		if WeaponSystem.is_weapon(throwing_loot) or LootSystem.is_wand(throwing_loot):
+		if WeaponSystem.is_weapon(throwing_loot) or LootSystem.is_wand(throwing_loot) \
+				or String(throwing_loot.get("type", "")) == "card":
 			btn.mouse_entered.connect(_show_swing_preview.bind(cell))
 			btn.mouse_exited.connect(_clear_swing_preview)
 		_arrow_layer.add_child(btn)
@@ -2164,6 +2166,8 @@ func _show_swing_preview(cell: Vector2i) -> void:
 		if WandSystem.previews_ray(throwing_loot):
 			path = RayAim.trace(cell, WandSystem.data_for(throwing_loot).bounce)
 		lit = WandSystem.preview_cells(throwing_loot, cell)
+	elif String(throwing_loot.get("type", "")) == "card":
+		lit = CardSystem.preview_cells(throwing_loot, cell)
 	else:
 		return
 	for hit in lit:
@@ -2263,9 +2267,20 @@ func _target_cell_hint(cell: Vector2i) -> String:
 			WeaponSystem.stun_for(_throw_index) if _throw_index >= 0
 				else int(WeaponSystem.def(throwing_loot).stun)]
 	if not throwing_loot.is_empty():
-		return "Throw %s here (column %d, row %d)." % [
+		return "%s %s here (column %d, row %d)." % [_aim_verb(throwing_loot),
 			LootSystem.display_name(throwing_loot), cell.x, cell.y + 1]
 	return ""
+
+# What the armed piece is DONE with, in the words its own button uses: a weapon is
+# swung, a wand zapped, a card played, and only a potion is thrown.
+func _aim_verb(entry: Dictionary) -> String:
+	if LootSystem.is_weapon(entry):
+		return "Swing"
+	if LootSystem.is_wand(entry):
+		return "Zap"
+	if String(entry.get("type", "")) == "card":
+		return "Play"
+	return "Throw"
 
 # The stack entry whose footprint covers `cell`, or {} for bare ground. First
 # match wins — footprints don't overlap (`occupancy`), so there is only ever one.

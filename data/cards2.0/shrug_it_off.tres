@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3 uid="uid://card2_shrug_it_off"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"shrug_it_off"
+display_name = "Shrug it Off"
+rarity = "Common"
+source_game = "Slay the Spire"
+set_name = "Ironclad Common"
+description = "Gain +1 Temporary Shield and +1 Random Card"
+effect = [{"op": "gain_stat", "stat": "shields", "value": 1}, {"op": "gain_loot", "kind": "card", "count": 1}]
+file = "ShrugItOff"
+icon = "Slay_The_Spire_Ironclad_Common"
+loot_type = "Usable"
+tags = PackedStringArray("ironclad")

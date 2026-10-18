@@ -14,6 +14,7 @@ effect = []
 file = "Barricade"
 icon = "Slay_the_Spire_Ironclad_Rare"
 loot_type = "Passive"
+tags = PackedStringArray("ironclad")
 passive = true
 triggers = []
 stat_bonuses = {}

@@ -1,11 +1,11 @@
-[gd_resource type="Resource" script_class="ShopkeeperData" load_steps=2 format=3 uid="uid://shopkeeper_shopkeeper"]
+[gd_resource type="Resource" script_class="ShopkeeperData" load_steps=2 format=3 uid="uid://shopkeeper_shopkeeper_isaac"]
 
 [ext_resource type="Script" path="res://scripts/resources/ShopkeeperData.gd" id="1_keeper"]
 
 [resource]
 script = ExtResource("1_keeper")
-id = &"shopkeeper"
-display_name = "Shopkeeper"
+id = &"shopkeeper_isaac"
+display_name = "Shopkeeper (Isaac)"
 game_id = &"the_binding_of_isaac_rebirth"
 description = ""
 image = "Shopkeeper(Isaac)"

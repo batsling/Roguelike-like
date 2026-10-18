@@ -37,7 +37,25 @@ Effect token DSL (semicolons separate clauses, as in every other sheet):
     spawn_object <object_id>    -> {op:spawn_object, object}
     spawn_boss                  -> {op:spawn_boss}
     copy_item                   -> {op:copy_item}
+    lose_hp <n>                 -> {op:lose_hp, value:n}       Health as a price
+    stun <n> [area=row|board]   -> {op:stun, value:n, area?}
+    apply_status <id> <n> [area=row|board]
+                                -> {op:apply_status, status, value:n, area?}
+    destroy_row                 -> {op:destroy_row}    every OTHER piece in its pack row
+    destroy_pick <n>            -> {op:destroy_pick, value:n}  the player picks n
+    charge_pick <n>             -> {op:charge_pick, value:n}   n charges into one thing
+    exhume                      -> {op:exhume}         a destroyed piece back
     none                        -> nothing
+
+WHERE A STUN OR STATUS LANDS is its `area`: none is the one body the card is
+aimed at, `row` the lane of the square it is aimed at, `board` every body with no
+aiming. A card with either of the first two asks for a square before it plays
+(CardData.aim).
+
+`per=<count>` on gain_hp, gain_stat, stun or apply_status repeats the clause that
+many times, counted off the play so far: `destroyed` (pieces an earlier clause of
+this card destroyed), `hit` (bodies an earlier clause covered), `cards_used`
+(OTHER cards used this game). A count of 0 does nothing.
 
 `floor=` is the "if you have none, gain this instead" clause the two doubling
 pickup cards author and the doubling Health card does not — see docs/cards-design.md
@@ -102,12 +120,41 @@ def icon_credit(icon: str) -> tuple:
     """"Isaac_Major_Arcana" -> ("The Binding of Isaac", "Major Arcana")."""
     if not icon:
         return "", ""
+    # Case-blind: the Slay the Spire icons on disk are spelled both
+    # "Slay_the_Spire_…" and "Slay_The_Spire_…".
     for prefix, game in ICON_SOURCES:
-        if icon == prefix:
+        if icon.lower() == prefix.lower():
             return game, ""
-        if icon.startswith(prefix + "_"):
+        if icon.lower().startswith(prefix.lower() + "_"):
             return game, icon[len(prefix) + 1:].replace("_", " ")
     return "", icon.replace("_", " ")
+
+
+def _png_stems(folder: str) -> dict:
+    """Lowercased stem -> on-disk stem for the PNGs in images2.0/<folder>/."""
+    d = os.path.join(PROJECT_ROOT, "images2.0", folder)
+    out = {}
+    if os.path.isdir(d):
+        for fn in os.listdir(d):
+            if fn.lower().endswith(".png"):
+                out[fn[:-4].lower()] = fn[:-4]
+    return out
+
+
+_ART = {}
+
+
+def on_disk(folder: str, stem: str) -> str:
+    """The art name AS IT IS ON DISK. The game loads res:// paths, which are
+    case-sensitive on every exported build, so a sheet cell that spells the file
+    with different capitals ("Slay_The_Spire_Ironclad_Rare" for
+    "Slay_the_Spire_Ironclad_Rare") would draw nothing. A name with no file is
+    passed through as written."""
+    if not stem:
+        return stem
+    if folder not in _ART:
+        _ART[folder] = _png_stems(folder)
+    return _ART[folder].get(stem.lower(), stem)
 
 
 def _kv(tokens):
@@ -126,6 +173,27 @@ def _kv(tokens):
 DOUBLE_STATS = ("gold", "bombs", "keys", "hp")
 
 RANGE_RE = re.compile(r"^(\d+)\s*-\s*(\d+)$")
+
+PER_COUNTS = ("destroyed", "hit", "cards_used")
+AREAS = ("row", "board")
+
+
+def _with_per(op: dict, kv: dict, s: str) -> dict:
+    if "per" in kv:
+        if kv["per"] not in PER_COUNTS:
+            raise ValueError("card effect DSL: per=%r is not one of %s in %r"
+                             % (kv["per"], ", ".join(PER_COUNTS), s))
+        op["per"] = kv["per"]
+    return op
+
+
+def _with_area(op: dict, kv: dict, s: str) -> dict:
+    if "area" in kv:
+        if kv["area"] not in AREAS:
+            raise ValueError("card effect DSL: area=%r is not one of %s in %r"
+                             % (kv["area"], ", ".join(AREAS), s))
+        op["area"] = kv["area"]
+    return op
 
 
 def parse_clause(s: str) -> list:
@@ -147,12 +215,32 @@ def parse_clause(s: str) -> list:
             if lo > hi:
                 raise ValueError("card effect DSL: gain_hp range %r is backwards" % bare[0])
             return [{"op": "gain_hp", "min": lo, "max": hi}]
-        return [{"op": "gain_hp", "value": int(bare[0])}]
+        return [_with_per({"op": "gain_hp", "value": int(bare[0])}, kv, s)]
 
     if verb == "gain_stat":
         if len(bare) < 2:
             raise ValueError("card effect DSL: gain_stat needs a stat and an amount in %r" % s)
-        return [{"op": "gain_stat", "stat": bare[0], "value": int(bare[1])}]
+        return [_with_per({"op": "gain_stat", "stat": bare[0], "value": int(bare[1])}, kv, s)]
+
+    if verb in ("lose_hp", "destroy_pick", "charge_pick"):
+        if not bare:
+            raise ValueError("card effect DSL: %s needs an amount in %r" % (verb, s))
+        return [{"op": verb, "value": int(bare[0])}]
+
+    if verb == "stun":
+        if not bare:
+            raise ValueError("card effect DSL: stun needs an amount in %r" % s)
+        op = {"op": "stun", "value": int(bare[0])}
+        return [_with_per(_with_area(op, kv, s), kv, s)]
+
+    if verb == "apply_status":
+        if len(bare) < 2:
+            raise ValueError("card effect DSL: apply_status needs a status and an amount in %r" % s)
+        op = {"op": "apply_status", "status": bare[0].lower(), "value": int(bare[1])}
+        return [_with_per(_with_area(op, kv, s), kv, s)]
+
+    if verb in ("destroy_row", "exhume"):
+        return [{"op": verb}]
 
     if verb == "double_stat":
         if not bare:
@@ -230,8 +318,8 @@ def card_tres(row) -> tuple:
         effect = []
     else:
         effect = parse_effect(row.get("Effect"), name)
-    file = _clean(row.get("Image"))
-    icon = _clean(row.get("Icon Image"))
+    file = on_disk("cards", _clean(row.get("Image")))
+    icon = on_disk("cards_icons", _clean(row.get("Icon Image")))
     source_game, set_name = icon_credit(icon)
     source_game = _clean(row.get("Game")) or source_game
 

@@ -10,6 +10,7 @@ id = &"zoe"
 display_name = "Zoe"
 description = "Express Delivery: Arrives with haste, before the world ends."
 source_game = "Haste"
+source_games = PackedStringArray("Haste")
 music_games = Array[StringName]([&"haste"])
 base_max_hp = 7
 start_gold = 3

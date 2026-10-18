@@ -3983,10 +3983,15 @@ shelf was rolled still reaches it.
 |---|---|---|
 | **Charon** (Hades) | 3 items | **Steal ◉3**, once: +3 gold and his boss onto the board; the shop stays open. Beating him: every price -20% for the run (`GameState.shop_sales`) |
 | **Jimbo** (Balatro) | 1 item, 2 `joker` cards, 2 packs | A **pack** (`Pack1-4` art) is 4 gold and opens to 3 cards, rarities rolled; keep one (`ShopSystem.buy_pack` / `take_pack_card`) |
-| **Shopkeeper** (Isaac) | 2-6 slots by the Donation Machine | A Donation Machine stands in his room. The shelf's size is the best bank the profile has ever reached (`GameStats.donation_best`, never lowered), as of the run's start: 0 → 2, 20 → 3, 100 → 4, 200 → 5, 600 → 6; items take 1-2, loot the rest, and a reroll keeps each slot's kind. **✸ Bomb** him, once (he leaves): a third nothing, a third 1-5 gold, a third a Spider on the board, and 1% **Steam Sale** |
-| **Furcifer** (Backpack Battles) | 5 loot | Each piece 10% to be half price on the first roll only. Rerolls cost gold, 1 then +1 each |
+| **Shopkeeper (Isaac)** (The Binding of Isaac: Rebirth) | 2-6 slots by the Donation Machine | A Donation Machine stands in his room. The shelf's size is the best bank the profile has ever reached (`GameStats.donation_best`, never lowered), as of the run's start: 0 → 2, 20 → 3, 100 → 4, 200 → 5, 600 → 6; items take 1-2, loot the rest, and a reroll keeps each slot's kind. **✸ Bomb** him, once (he leaves): a third nothing, a third 1-5 gold, a third a Spider on the board, and 1% **Steam Sale** |
+| **Shopkeeper Furcifer** (Backpack Battles) | 5 loot | Each piece 10% to be half price on the first roll only. Rerolls cost gold, 1 then +1 each |
 
-**Steam Sale** is an `Event` relic (`shop_discount: 50`): every price -50%. No
+The two were `Shopkeeper` and `Furcifer` until the owner renamed them (18 Oct);
+their ids followed (`shopkeeper_isaac`, `shopkeeper_furcifer`) and
+`Data.SHOPKEEPER_RENAMES` still answers to the old ones, for a shelf saved
+under them.
+
+**Steam Sale** is an `Event` relic (`shop_discount: 50`): every price is 50% off. No
 drop, chest or shelf draws it; bombing Isaac's Shopkeeper is the only way in.
 
 The suite runs with an empty roster (`test/pre_run_hook.gd`), since a random
@@ -5696,8 +5701,8 @@ character being PLAYED (it is the masked character's condition, met by
 someone else).
 
 **The songs: the same pool as the game's, added up.** A character draws from its
-`music_games` (the `characters` sheet's `Radio` column, `;`-separated game
-names, blank meaning its `Game`): Isaac draws from both The Binding of Isaac and
+`music_games` (the `characters` sheet's `Game` column, `;`-separated game
+names — it was a separate `Radio` column until Oct 2026): Isaac draws from both The Binding of Isaac and
 Rebirth, everyone else from their one game. Each drawn song remembers whose
 rank drew it (`radio.json`'s `drawn_by`), so a game is owed its rank minus the
 songs IT drew and a character its rank minus the songs IT drew: Slay the Spire

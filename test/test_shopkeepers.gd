@@ -255,7 +255,7 @@ func _stand(keeper: ShopkeeperData) -> StringName:
 
 func test_the_roster_is_four_commons() -> void:
 	var all: Dictionary = Data.get_meta("all_shopkeepers", {})
-	for id in [&"charon", &"jimbo", &"shopkeeper", &"furcifer"]:
+	for id in [&"charon", &"jimbo", &"shopkeeper_isaac", &"shopkeeper_furcifer"]:
 		assert_true(all.has(id), "%s is authored" % id)
 		if all.has(id):
 			assert_eq((all[id] as ShopkeeperData).rarity, "Common")
@@ -327,10 +327,10 @@ func test_isaacs_shelf_grows_with_the_best_donation_bank() -> void:
 	var want := {0: 2, 19: 2, 20: 3, 100: 4, 200: 5, 599: 5, 600: 6, 999: 6}
 	for best in want.keys():
 		assert_eq(ShopSystem.donation_slots(best), want[best], "%d banked" % best)
-	_real(&"shopkeeper")
+	_real(&"shopkeeper_isaac")
 	for best in [0, 20, 100, 200, 600]:
 		GameState.donation_best = best
-		var node: StringName = _stand(Data.get_shopkeeper(&"shopkeeper"))
+		var node: StringName = _stand(Data.get_shopkeeper(&"shopkeeper_isaac"))
 		var items: int = ShopSystem.stock(node).size()
 		var loot: int = ShopSystem.loot_stock(node).size()
 		assert_eq(items + loot, ShopSystem.donation_slots(best))
@@ -354,7 +354,7 @@ func test_a_donation_level_reached_stays_reached() -> void:
 	GameStats.save_data()
 
 func test_bombing_isaacs_shopkeeper_happens_once_and_costs_a_bomb() -> void:
-	var node: StringName = _stand(_real(&"shopkeeper"))
+	var node: StringName = _stand(_real(&"shopkeeper_isaac"))
 	GameLoop2.reset()
 	GameState.bombs = 2
 	var got: String = ShopSystem.bomb(node)
@@ -367,7 +367,7 @@ func test_bombing_isaacs_shopkeeper_happens_once_and_costs_a_bomb() -> void:
 func test_the_bomb_odds_are_thirds_and_one_percent() -> void:
 	var seen: Dictionary = {}
 	for i in range(400):
-		var node: StringName = _stand(_real(&"shopkeeper"))
+		var node: StringName = _stand(_real(&"shopkeeper_isaac"))
 		GameLoop2.reset()
 		GameState.bombs = 1
 		var got: String = ShopSystem.bomb(node)
@@ -378,7 +378,7 @@ func test_the_bomb_odds_are_thirds_and_one_percent() -> void:
 	assert_lt(int(seen.get("steam_sale", 0)), 15, "Steam Sale about 1%")
 
 func test_isaacs_room_has_a_donation_machine_while_it_is_open() -> void:
-	var node: StringName = _stand(_real(&"shopkeeper"))
+	var node: StringName = _stand(_real(&"shopkeeper_isaac"))
 	ObjectSystem.reset_run()
 	var modal = _open(node)
 	assert_true(modal.has_room_machines(), "the machine is in the room")
@@ -386,7 +386,7 @@ func test_isaacs_room_has_a_donation_machine_while_it_is_open() -> void:
 	assert_false(ObjectSystem.has_live(), "and leaves with it")
 
 func test_furcifer_sells_five_loot_and_his_reroll_costs_more_each_time() -> void:
-	var node: StringName = _stand(_real(&"furcifer"))
+	var node: StringName = _stand(_real(&"shopkeeper_furcifer"))
 	assert_eq(ShopSystem.stock(node).size(), 0)
 	assert_eq(ShopSystem.loot_stock(node).size(), 5)
 	GameState.gold = 10

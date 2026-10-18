@@ -174,7 +174,11 @@ an event, a shop, a spent pill, an active relic.
 - Swallowed Penny pays on **any Health lost** (the Piggy Bank hook), not only an
   enemy hit. Its sheet line was reworded to say so.
 - "Trashing a card" means dragging a loot card into the bin: from the pack or off
-  the floor, not declining an offer.
+  the floor, not declining an offer. **Destroying loot is trashing it** (the owner,
+  18 Oct 2026): every effect that destroys a piece goes through
+  `GameState.destroy_loot_at`, so a destroyed card pays Trading Card, whose line
+  now says "when destroying a card", and the piece joins the run's destroyed pile
+  that Exhume draws from (docs/cards-design.md §5.9).
 - "At the start of combat" (Wooden Cross) is `game_selected`, the hook Anchor uses
   for the same words.
 - Rocket **scales permanently**, as in Balatro: +1 Gold per won game, and every

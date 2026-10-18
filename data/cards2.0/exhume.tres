@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3 uid="uid://card2_exhume"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"exhume"
+display_name = "Exhume"
+rarity = "Rare"
+source_game = "Slay the Spire"
+set_name = "Ironclad Rare"
+description = "Put a destroyed Loot back into your inventory"
+effect = [{"op": "exhume"}]
+file = "Exhume"
+icon = "Slay_the_Spire_Ironclad_Rare"
+loot_type = "Usable"
+tags = PackedStringArray("ironclad")

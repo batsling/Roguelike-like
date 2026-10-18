@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3 uid="uid://card2_reaper"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"reaper"
+display_name = "Reaper"
+rarity = "Rare"
+source_game = "Slay the Spire"
+set_name = "Ironclad Rare"
+description = "Apply 1 Stun to all Enemies and Gain +1 Health for Each Enemy Hit"
+effect = [{"op": "stun", "value": 1, "area": "board"}, {"op": "gain_hp", "value": 1, "per": "hit"}]
+file = "Reaper"
+icon = "Slay_the_Spire_Ironclad_Rare"
+loot_type = "Usable"
+tags = PackedStringArray("ironclad", "attack")

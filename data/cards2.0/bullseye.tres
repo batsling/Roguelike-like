@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3 uid="uid://card2_bullseye"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"bullseye"
+display_name = "Bullseye"
+rarity = "Uncommon"
+source_game = "Slay the Spire"
+set_name = "Defect Uncommon"
+description = "Apply 1 Stun and 1 Marked to an Enemy"
+effect = [{"op": "stun", "value": 1}, {"op": "apply_status", "status": "marked", "value": 1}]
+file = "Bullseye"
+icon = "Slay_The_Spire_Defect_Uncommon"
+loot_type = "Usable"
+tags = PackedStringArray("defect", "attack")

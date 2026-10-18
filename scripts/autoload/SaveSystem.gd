@@ -269,6 +269,7 @@ func _build_payload() -> Dictionary:
 		# Echo Form copies the FIRST one, so a reload mid-game must not hand the
 		# copy out a second time.
 		"loot_uses_this_game": GameState.loot_uses_this_game,
+		"cards_used_this_game": GameState.cards_used_this_game,
 		"bash": GameState.base_verb_value("bash"),
 		"push": GameState.base_verb_value("push"),
 		"transmute": GameState.base_verb_value("transmute"),
@@ -300,6 +301,7 @@ func _build_payload() -> Dictionary:
 		"pending_masks": GameState.pending_masks,
 		# Smelter: the pieces taken out of the pack that work as relics.
 		"smelted_loot": GameState.smelted_loot.duplicate(true),
+		"destroyed_loot": GameState.destroyed_loot.duplicate(true),
 		"total_combats_completed": GameState.total_combats_completed,
 		# The enemy stack, the destroyed games, the attempt tracker.
 		"loop": GameLoop2.serialize(),
@@ -468,6 +470,7 @@ func _apply_save_data(data: Dictionary) -> void:
 	# by nothing now: both cards are passives, and a run that had one armed has
 	# the card itself to hold instead.)
 	GameState.loot_uses_this_game = int(data.get("loot_uses_this_game", 0))
+	GameState.cards_used_this_game = int(data.get("cards_used_this_game", 0))
 	GameState.bash = int(data.get("bash", 0))
 	GameState.push = int(data.get("push", 0))
 	GameState.transmute = int(data.get("transmute", 0))
@@ -597,6 +600,10 @@ func _apply_save_data(data: Dictionary) -> void:
 	for id in data.get("masked_characters", []):
 		GameState.masked_characters.append(StringName(String(id)))
 	GameState.pending_masks = int(data.get("pending_masks", 0))
+	GameState.destroyed_loot.clear()
+	for e in data.get("destroyed_loot", []):
+		if e is Dictionary:
+			GameState.destroyed_loot.append((e as Dictionary).duplicate(true))
 	GameState.smelted_loot.clear()
 	for e in data.get("smelted_loot", []):
 		if e is Dictionary:

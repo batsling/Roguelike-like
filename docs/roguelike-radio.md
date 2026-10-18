@@ -195,8 +195,9 @@ songs it holds).
   what is held; favourites are kept either way.
 - **A rank with no locked song left draws nothing.** The rank still shows.
 - **Characters earn songs too** (spec §20.9): one per character rank, from
-  the character's own game's soundtrack (the `characters` sheet's `Radio`
-  column, blank = its `Game`; Isaac's is both Isaac soundtracks). It is the
+  the character's own games' soundtracks (the `characters` sheet's `Game`
+  column, which can name several games separated by `;`; Isaac's is both
+  Isaac soundtracks). It is the
   SAME pool the game's ranks draw from, and the two add up: each draw is
   remembered as the game's or the character's (`drawn_by` in `radio.json`), so
   neither one's songs count against the other. Games draw first. The Radio

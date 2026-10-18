@@ -10,6 +10,7 @@ id = &"manager"
 display_name = "Manager"
 description = "Master in using  Math coins and earning tickets."
 source_game = "Raccoin: Coin Pusher Roguelike"
+source_games = PackedStringArray("Raccoin: Coin Pusher Roguelike")
 music_games = Array[StringName]([&"raccoin_coin_pusher_roguelike"])
 base_max_hp = 7
 start_gold = 3

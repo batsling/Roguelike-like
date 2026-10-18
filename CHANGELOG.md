@@ -11,6 +11,23 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Fifteen Slay the Spire cards, and destroying loot is binning it** (the owner's
+  upload, 18 Oct 2026; [`docs/cards-design.md`](docs/cards-design.md) §5.9).
+  After Image, Alchemize, Bloodletting, Bullseye, Cleave, Exhume, Fiend Fire,
+  Finisher, Offering, Pommel Strike, Prepared, Reaper, Second Wind, Shrug it Off
+  and Stack. New card verbs: Stun or a status on the body a card is aimed at, on a
+  lane (Cleave) or on the board (Reaper); `per=` counts (pieces destroyed, bodies
+  hit, other cards used this game); Health as a price (it can end the run);
+  destroying the other pieces in the card's pack row; and three pickers (destroy
+  2, charge one thing to its top, exhume any destroyed piece). Every effect that
+  destroys loot now goes through `GameState.destroy_loot_at`, so it lands on the
+  run's destroyed pile and a destroyed card pays Trading Card ("when destroying a
+  card"). `card_used:` is a relic-grammar hook. The same upload: the `characters`
+  sheet's Radio column is folded into Game, which can name several games
+  (Isaac's); the Isaac and Backpack Battles keepers are renamed
+  `Shopkeeper (Isaac)` / `Shopkeeper Furcifer` (old ids still load); Shattered
+  Pixel Dungeon and SULFUR owned; Rift Wizard → Roguefort connected.
+
 - **The first four shopkeepers** (the owner's design, 17 Oct 2026; spec §14.6).
   Charon (steal 3 gold and fight him; beaten, shops are -20% for the run), Jimbo
   (jokers and card packs), Isaac's Shopkeeper (a shelf that grows with the

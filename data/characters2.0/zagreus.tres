@@ -10,6 +10,7 @@ id = &"zagreus"
 display_name = "Zagreus"
 description = "... All right, let's give it another shot."
 source_game = "Hades"
+source_games = PackedStringArray("Hades")
 music_games = Array[StringName]([&"hades"])
 base_max_hp = 7
 start_gold = 3

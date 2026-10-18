@@ -559,8 +559,13 @@ func test_every_source_game_names_a_real_game() -> void:
 		for entry in roster:
 			if entry.source_game == "":
 				continue
-			assert_true(known.has(entry.source_game),
-				"%s: source game %s is not in the games sheet" % [entry.id, entry.source_game])
+			# A character can come from several games (Isaac), named one by one.
+			var names: Array = Array(entry.source_games) \
+				if entry is CharacterData and not entry.source_games.is_empty() \
+				else [entry.source_game]
+			for n in names:
+				assert_true(known.has(n),
+					"%s: source game %s is not in the games sheet" % [entry.id, n])
 
 # Every game on the map is drawn as a COVER CARD — in the offering, the Games
 # compendium, and the Atlas's card. The importer resolves each cover by the

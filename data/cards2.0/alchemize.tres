@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3 uid="uid://card2_alchemize"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"alchemize"
+display_name = "Alchemize"
+rarity = "Rare"
+source_game = "Slay the Spire"
+set_name = "Silent Rare"
+description = "Gain +1 Random Potion"
+effect = [{"op": "gain_loot", "kind": "potion", "count": 1}]
+file = "Alchemize"
+icon = "Slay_The_Spire_Silent_Rare"
+loot_type = "Usable"
+tags = PackedStringArray("silent")

@@ -131,6 +131,9 @@ TRIGGER_SIGNALS = {
     # pickup twin of card_used; nothing to do with the retired combat deck's
     # card_played.
     "card_obtained": "card_obtained",
+    # "whenever you use a Card" — a card of the LOOT kind played, copies included,
+    # fired once per card by CardSystem.notify_used (After Image).
+    "card_used": "card_used",
     # The loot-passive hooks (docs/loot-passives.md §3). Each is a moment the
     # trinkets and passive cards named that the run had not:
     #   game_won      — a game actually BEATEN (not escaped, not lost). Narrower
@@ -167,7 +170,7 @@ TRIGGER_SIGNALS = {
 SELF_DEFAULT_TRIGGERS = ("combat_started", "turn_started", "turn_ended",
                          "item_acquired", "game_beaten", "game_selected",
                          "bomb_used", "health_lost", "run_lost", "potion_used",
-                         "gold_gained", "card_obtained", "game_won",
+                         "gold_gained", "card_obtained", "card_used", "game_won",
                          "shop_entered", "boss_spawned", "loot_used",
                          "card_binned", "weapon_hit", "weapon_charged",
                          "game_perfected")

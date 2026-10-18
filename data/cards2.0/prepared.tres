@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3 uid="uid://card2_prepared"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"prepared"
+display_name = "Prepared"
+rarity = "Common"
+source_game = "Slay the Spire"
+set_name = "Silent Common"
+description = "Destroy 2 Loot and Gain +2 Random Cards"
+effect = [{"op": "destroy_pick", "value": 2}, {"op": "gain_loot", "kind": "card", "count": 2}]
+file = "Prepared"
+icon = "Slay_The_Spire_Silent_Common"
+loot_type = "Usable"
+tags = PackedStringArray("silent")

@@ -108,6 +108,12 @@ func use_loot(index: int, ctx: Dictionary = {}) -> Dictionary:
 		GameState.emit_signal("inventory_changed")
 		return WeaponSystem.swing(entry, wctx)
 	entry = (entry as Dictionary).duplicate(true)
+	# A CARD PINS THE PACK FIRST. A piece with no slot of its own takes the lowest
+	# free one (GameState.loot_layout), so emptying this slot would slide the pieces
+	# after it up — and a card about its own row (Fiend Fire, Second Wind) would
+	# then read a row that was not the one it was played from.
+	if String(entry.get("type", "")) == "card":
+		GameState._freeze_loot_layout(GameState.loot_layout())
 	# Where it was, for the hook: a bag's passive asks whether the piece was spent
 	# from one of its own cells (Potion Belt, docs/loot-passives.md §6). Read now,
 	# before the slot is emptied below.
@@ -159,6 +165,8 @@ func use_entry(entry: Dictionary, ctx: Dictionary = {}) -> Dictionary:
 	# Dictionary is a reference), so the caller's copy is what the screen reads.
 	if is_wand(entry):
 		WandSystem.spend_charge(entry)
+	# Not from any slot (a card off the floor has no row).
+	_spent_slot = -1
 	return _spend(entry, ctx)
 
 # Resolve one piece that has already had its slot and its charge settled: the
@@ -170,6 +178,11 @@ func _spend(entry: Dictionary, ctx: Dictionary = {}) -> Dictionary:
 	if entry.is_empty():
 		return out
 	var spent: Dictionary = entry.duplicate(true)
+	# WHERE IT WAS SPENT FROM, for a card about its own pack row (Fiend Fire,
+	# Second Wind: CardSystem._destroy_row). -1 for a piece used off the floor.
+	if not ctx.has("card_slot"):
+		ctx = ctx.duplicate()
+		ctx["card_slot"] = _spent_slot
 	_merge(out, _resolve(spent, ctx))
 	# A WAND'S ZAP IS COPIED LIKE ANY OTHER USE (docs/loot-passives.md §9). It used
 	# to stand outside every copy in both directions, on the argument that a copied
@@ -716,6 +729,10 @@ func can_throw(entry: Dictionary) -> bool:
 func must_aim(entry: Dictionary) -> bool:
 	if is_weapon(entry):
 		return WeaponSystem.needs_aim(entry)
+	# A CARD THAT HITS AN ENEMY IS POINTED AT ONE first (CardData.aim) — Pommel
+	# Strike at a body, Cleave at a lane.
+	if String(entry.get("type", "")) == "card":
+		return CardSystem.needs_target(entry)
 	if not is_wand(entry):
 		return false
 	return WandSystem.needs_target(entry)

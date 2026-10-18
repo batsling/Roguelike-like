@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3 uid="uid://card2_finisher"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"finisher"
+display_name = "Finisher"
+rarity = "Uncommon"
+source_game = "Slay the Spire"
+set_name = "Silent Uncommon"
+description = "Apply Stun 1 for each other Card used during this game"
+effect = [{"op": "stun", "value": 1, "per": "cards_used"}]
+file = "Finisher"
+icon = "Slay_The_Spire_Silent_Uncommon"
+loot_type = "Usable"
+tags = PackedStringArray("silent", "attack")
