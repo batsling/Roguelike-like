@@ -1305,10 +1305,8 @@ func refresh_toolbar() -> void:
 			# learn. The VERB is the piece's own too (docs/wands-design.md §4.2): a
 			# wand is zapped and never thrown, and the picker is the only screen
 			# where the two look alike.
-			var wand: bool = LootSystem.is_wand(throwing_loot)
 			_hint_label.text = "%s %s %s:" % [
-				LootSystem.glyph(throwing_loot),
-				"Swing" if LootSystem.is_weapon(throwing_loot) else "Zap" if wand else "Throw",
+				LootSystem.glyph(throwing_loot), _aim_verb(throwing_loot),
 				LootSystem.display_name(throwing_loot)]
 		else:
 			_hint_label.text = ""
@@ -2269,9 +2267,20 @@ func _target_cell_hint(cell: Vector2i) -> String:
 			WeaponSystem.stun_for(_throw_index) if _throw_index >= 0
 				else int(WeaponSystem.def(throwing_loot).stun)]
 	if not throwing_loot.is_empty():
-		return "Throw %s here (column %d, row %d)." % [
+		return "%s %s here (column %d, row %d)." % [_aim_verb(throwing_loot),
 			LootSystem.display_name(throwing_loot), cell.x, cell.y + 1]
 	return ""
+
+# What the armed piece is DONE with, in the words its own button uses: a weapon is
+# swung, a wand zapped, a card played, and only a potion is thrown.
+func _aim_verb(entry: Dictionary) -> String:
+	if LootSystem.is_weapon(entry):
+		return "Swing"
+	if LootSystem.is_wand(entry):
+		return "Zap"
+	if String(entry.get("type", "")) == "card":
+		return "Play"
+	return "Throw"
 
 # The stack entry whose footprint covers `cell`, or {} for bare ground. First
 # match wins — footprints don't overlap (`occupancy`), so there is only ever one.

@@ -590,15 +590,19 @@ func test_prepared_asks_for_two_and_destroys_exactly_those() -> void:
 	GameState.add_card_loot(&"v_the_hierophant")
 	GameState.add_card_loot(&"queen_of_hearts")
 	var out: Dictionary = _play(&"prepared")
+	assert_eq((out["requests"] as Array).size(), 2)
 	var req: Dictionary = (out["requests"] as Array)[0]
 	assert_eq(String(req["kind"]), "destroy_loot")
 	assert_eq(int(req["count"]), 2)
-	assert_eq((req["candidates"] as Array).size(), 3,
-		"the pack as it stood, not the two cards it hands over")
-	assert_eq(GameState.loot_items.size(), 5, "+2 Random Cards")
+	assert_eq((req["candidates"] as Array).size(), 3, "the pack as it stood")
+	var then: Dictionary = (out["requests"] as Array)[1]
+	assert_eq(String(then["kind"]), "offer_loot",
+		"the two cards wait for the pick, so their screen cannot cover it")
+	assert_eq(int(then["count"]), 2)
+	assert_eq(GameState.loot_items.size(), 3, "nothing handed over yet")
 	var pick: Array = [GameState.loot_items[0], GameState.loot_items[2]]
 	CardSystem.destroy_chosen(pick)
-	assert_eq(GameState.loot_items.size(), 3)
+	assert_eq(GameState.loot_items.size(), 1)
 	assert_eq(String(GameState.loot_items[0].get("id", "")), "v_the_hierophant")
 
 func test_bloodletting_costs_health_and_asks_what_to_charge() -> void:
@@ -627,7 +631,9 @@ func test_offering_costs_six_charges_four_and_offers_three_cards() -> void:
 	var out: Dictionary = _play(&"offering")
 	assert_eq(GameState.hp, 4)
 	assert_eq(String((out["requests"] as Array)[0]["kind"]), "charge_loot")
-	assert_eq(GameState.loot_items.size(), 3)
+	assert_eq(String((out["requests"] as Array)[1]["kind"]), "offer_loot",
+		"the three cards come after the charge is placed")
+	assert_eq(int((out["requests"] as Array)[1]["count"]), 3)
 
 func test_exhume_brings_back_any_destroyed_piece() -> void:
 	GameState.add_card_loot(&"vi_the_lovers")

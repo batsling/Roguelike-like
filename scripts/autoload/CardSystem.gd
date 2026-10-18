@@ -463,6 +463,13 @@ func _gain_loot(effect: Dictionary, out: Dictionary) -> void:
 	var count: int = int(effect.get("count", 1))
 	if count <= 0:
 		return
+	# AFTER THE PICKERS, when the card has any (Prepared, Offering). The offer opens
+	# its own screen over everything, and handed over now it would cover the
+	# picker the player still has to answer. Queued as a request, it is offered
+	# once the choices before it are made — in the order the card reads.
+	if not (out["requests"] as Array).is_empty():
+		out["requests"].append({"kind": "offer_loot", "loot_kind": kind, "count": count})
+		return
 	GameState.offer_loot(kind, count)
 	var what: String = "card" if kind == "card" else "piece"
 	out["logs"].append("%d more %s%s." % [count, what, "" if count == 1 else "s"])

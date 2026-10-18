@@ -22,6 +22,9 @@ The rulings the owner gave while these were authored (18 Oct 2026):
     so their lines say "other" now.
   - Bullseye's Marked is the existing status.
 
+Three typos in the owner's prose are fixed on the way: "Destory" (Prepared) and
+"Chargabe" (Bloodletting, Offering).
+
 Through _xlsx_surgery rather than openpyxl: a round-trip of this workbook
 silently drops its charts (see that module's docstring). Afterwards, regenerate:
 python3 tools/generate_card2_tres.py
@@ -43,7 +46,10 @@ SHEET = "cards"
 EDITS = {
     "After Image": {"Effect": "card_used: gain_stat shields 1"},
     "Alchemize": {"Effect": "gain_loot potion 1"},
-    "Bloodletting": {"Effect": "lose_hp 2; charge_pick 4"},
+    "Bloodletting": {
+        "Description": "Lose 2 Health and Give 4 Charges to a Chargeable Item or Loot",
+        "Effect": "lose_hp 2; charge_pick 4",
+    },
     "Bullseye": {"Effect": "stun 1; apply_status marked 1"},
     "Cleave": {"Effect": "stun 1 area=row"},
     "Exhume": {"Effect": "exhume"},
@@ -52,9 +58,15 @@ EDITS = {
         "Description": "Apply Stun 1 for each other Card used during this game",
         "Effect": "stun 1 per=cards_used",
     },
-    "Offering": {"Effect": "lose_hp 6; charge_pick 4; gain_loot card 3"},
+    "Offering": {
+        "Description": "Lose 6 Health, Give 4 Charges to a Chargeable Item or Loot, and Gain +3 Random Cards",
+        "Effect": "lose_hp 6; charge_pick 4; gain_loot card 3",
+    },
     "Pommel Strike": {"Effect": "stun 1; gain_loot card 1"},
-    "Prepared": {"Effect": "destroy_pick 2; gain_loot card 2"},
+    "Prepared": {
+        "Description": "Destroy 2 Loot and Gain +2 Random Cards",
+        "Effect": "destroy_pick 2; gain_loot card 2",
+    },
     "Reaper": {"Effect": "stun 1 area=board; gain_hp 1 per=hit"},
     "Second Wind": {"Effect": "destroy_row; gain_stat shields 2 per=destroyed"},
     "Shrug it Off": {"Effect": "gain_stat shields 1; gain_loot card 1"},

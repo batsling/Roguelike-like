@@ -411,6 +411,10 @@ func _process_next_request() -> void:
 			_pick_charge(req)
 		"exhume":
 			_pick_exhume(req)
+		"offer_loot":
+			# A card's "gain" that waited for its pickers (CardSystem._gain_loot).
+			GameState.offer_loot(String(req.get("loot_kind", "loot")), int(req.get("count", 1)))
+			_process_next_request()
 		_:
 			_process_next_request()
 

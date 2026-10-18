@@ -421,6 +421,10 @@ all come through it. A piece binned by hand is on the pile too.
 - `charge_loot` (Bloodletting, Offering): one thing from
   `GameState.chargeable_things` — a relic with a bar, a wand, a weapon or a food.
   It fills to its top and the rest is lost.
+- **A card with a picker hands its new cards over AFTER it** (Prepared, Offering):
+  `CardSystem._gain_loot` queues an `offer_loot` request instead of offering on
+  the spot, because the drop screen opens over everything and would cover the
+  picker still waiting for an answer. Found by looking, not by a test.
 - `exhume`: any piece on the destroyed pile, newest first. It comes back offered,
   like any piece the run hands over (`GameState.offer_loot_entries`).
 
