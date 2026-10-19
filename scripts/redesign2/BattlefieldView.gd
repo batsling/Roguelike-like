@@ -1172,6 +1172,8 @@ func end_body_pick() -> void:
 func cancel_aim() -> void:
 	disarm()
 
+# --- what the armed aim lights, and what it says ----------------------------
+
 # The bodies an armed verb could actually land on, as instance handles. Empty
 # when nothing is armed — this is what the board lights up, and it is the whole
 # of the instruction the player gets.
@@ -1290,6 +1292,8 @@ func throw_request(entry: Dictionary = throwing_loot) -> Dictionary:
 		return {"target_kind": "tile", "cells": CardSystem.aim_cells(entry)}
 	return {"target_kind": "tile", "col_min": 0, "col_max": 0}
 
+# --- the toolbar ------------------------------------------------------------
+
 # Re-label and enable/disable the combat verbs for the current selection.
 func refresh_toolbar() -> void:
 	if push_btn == null:
@@ -1386,6 +1390,8 @@ func _stack_entry(instance: int) -> Dictionary:
 		if int(entry.get("instance", 0)) == instance:
 			return entry
 	return {}
+
+# --- building the board, and repainting it ----------------------------------
 
 # Build the battlefield once: the hero on the left, then a grid_cols() x grid_rows()
 # grid of cells (col 1 = melee/front nearest the hero, col grid_cols() = spawn), then
