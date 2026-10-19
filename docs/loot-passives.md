@@ -734,3 +734,25 @@ an item. Doubles the chances of finding trinkets."**
   Duplicator auras, Stankus' Toothpick) has no neighbours off the grid, so it
   would be smelted into nothing, and is refused. A weapon is swung, not held,
   so it is not passive loot.
+
+## 17. Gecko Gi — a status that costs no Health
+
+**Gecko Gi** is a trinket (`trinkets`, Rare, 2x2, Backpack Battles): **"Burn
+does not deal damage to the Player."** Its Effect is `harmless_status burn`,
+which compiles to `TrinketData.harmless_statuses` (a list, so a later piece can
+name several: `harmless_status burn,marked`).
+
+- **Only the damage is waived.** Burn still lands on you, still stacks, still
+  has a 1-in-4 chance to set a scroll alight, and its row is still on the
+  checklist: paying it still sheds a stack. What changes is the price of NOT
+  paying it. In `GameLoop2._resolve_status_demands` a `take_damage` penalty whose
+  status a working piece wards (`LootPassives.warding`) is skipped, and the bill
+  is recorded with `damage` 0 and `warded_by` set, so the report says
+  "Burn bites — Gecko Gi takes it, no damage." rather than nothing.
+- **The checklist row says so first.** A warded demand's row ends
+  "(Gecko Gi: no damage)", because "or take 3 Damage" over a bill that will not
+  land would misstate what skipping it costs.
+- **It is held like any passive**: read off `LootPassives.active()`, so a
+  Blueprint copying it wards too, and a smelted Gecko Gi (§16) keeps working
+  from the shelf. Cards, bags and weapons refuse the keyword in their
+  generators. It is a trinket's rule.

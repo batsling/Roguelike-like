@@ -6174,6 +6174,15 @@ func _resolve_status_demands(claims: Dictionary, res: Dictionary) -> void:
 		for eff in sd.penalty_effects(StatusData.PLAYER, stacks):
 			var d: Dictionary = eff
 			if String(d.get("type", "")) == "take_damage":
+				# WARDED (Gecko Gi, docs/loot-passives.md §17): the bill is still
+				# read and still announced, as nothing — the player who skipped the
+				# items should see why the bar did not move.
+				var ward: Dictionary = LootPassives.warding(sd.id)
+				if not ward.is_empty():
+					(res["status_penalties"] as Array).append({
+						"status": sd.id, "damage": 0, "blocked": 0,
+						"warded_by": String(LootPassives.proxy(ward["def"]).display_name)})
+					continue
 				# Through the board's own resolver, so a shield can stop it like any
 				# other instance of damage and a lethal burn ends the run where every
 				# other lethal hit does.

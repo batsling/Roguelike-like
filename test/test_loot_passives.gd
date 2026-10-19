@@ -31,13 +31,15 @@ func after_each() -> void:
 
 func test_every_trinket_loads_with_art_and_a_passive() -> void:
 	var all: Array = Data.all_trinkets()
-	assert_eq(all.size(), 21, "the sheet's twenty-one trinkets all generated")
+	assert_eq(all.size(), Fixtures.tres_count("res://data/trinkets2.0"),
+		"every trinket the sheet generated loads")
 	for t in all:
 		var trinket: TrinketData = t
 		assert_ne(trinket.description, "", "%s prints what it does" % trinket.id)
 		assert_true(not trinket.triggers.is_empty() or not trinket.stat_bonuses.is_empty()
 			or not trinket.status_bonuses.is_empty() or not trinket.weapon_stun.is_empty()
-			or not trinket.weapon_retrigger.is_empty(),
+			or not trinket.weapon_retrigger.is_empty()
+			or not trinket.harmless_statuses.is_empty(),
 			"%s does something" % trinket.id)
 		var shape: Vector2i = FOOD_SHAPES.get(trinket.id, Vector2i.ONE)
 		assert_eq(trinket.size, shape, "%s is %d wide, %d tall" % [trinket.id, shape.x, shape.y])
@@ -47,7 +49,9 @@ func test_every_trinket_loads_with_art_and_a_passive() -> void:
 # The sheet writes "HxW", rows first, so Broccoli's "2x1" is one column by two
 # rows — Vector2i(columns, rows) — the way its picture is painted.
 const FOOD_SHAPES := {&"broccoli": Vector2i(1, 2), &"carrot": Vector2i(2, 1),
-	&"cheese": Vector2i(2, 1), &"cupcake": Vector2i.ONE, &"garlic": Vector2i(1, 2)}
+	&"cheese": Vector2i(2, 1), &"cupcake": Vector2i.ONE, &"garlic": Vector2i(1, 2),
+	# Not a food, and the one other trinket bigger than a cell (§17).
+	&"gecko_gi": Vector2i(2, 2)}
 
 func test_the_passive_cards_are_passive_and_the_rest_are_not() -> void:
 	for id in [&"blueprint", &"chaos_the_clown", &"rocket", &"to_the_moon", &"trading_card",

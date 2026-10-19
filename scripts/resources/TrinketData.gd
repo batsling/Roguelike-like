@@ -63,6 +63,9 @@ extends Resource
 # Duplicator: weapons in these directions fire their whole swing +amount extra
 # times ({amount, dirs}, §12). Empty for everything else.
 @export var weapon_retrigger: Dictionary = {}
+# Gecko Gi: the statuses whose missed bill deals the player no damage while this is
+# held (["burn"], docs/loot-passives.md §17). Empty for everything else.
+@export var harmless_statuses: PackedStringArray = PackedStringArray()
 
 
 # Whether the sheet tags it `food` — the one tag the pack reads (docs/loot-passives.md

@@ -658,6 +658,8 @@ func test_simple_cards_of_the_set() -> void:
 	assert_eq(GameState.loot_items.size(), 1)
 	_play(&"alchemize")
 	assert_eq(String(GameState.loot_items[1].get("type", "")), "potion")
+	assert_true(LootSystem.is_identified(GameState.loot_items[1]),
+		"Alchemize identifies the potion it hands over")
 
 func test_the_pile_and_the_count_go_with_the_run() -> void:
 	GameState.add_card_loot(&"vi_the_lovers")

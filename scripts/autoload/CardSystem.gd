@@ -458,10 +458,18 @@ func _stat_word(stat: String) -> String:
 # holds nine and the run may be carrying eight — `offer_loot` is the call that asks
 # instead of silently swallowing the surplus, and it falls back to a direct grant
 # where nothing is listening, which is what keeps this working headless.
+#
+# `identify` (Alchemize): the pieces are rolled HERE and identified before they are
+# offered, so the offer already shows a potion the player can read. Learnt even if
+# the pack has no room for it — the card taught the name, and turning the bottle
+# down does not unteach it.
 func _gain_loot(effect: Dictionary, out: Dictionary) -> void:
 	var kind := String(effect.get("kind", "loot"))
 	var count: int = int(effect.get("count", 1))
 	if count <= 0:
+		return
+	if bool(effect.get("identify", false)):
+		_gain_identified_loot(kind, count, out)
 		return
 	# AFTER THE PICKERS, when the card has any (Prepared, Offering). The offer opens
 	# its own screen over everything, and handed over now it would cover the
@@ -473,6 +481,26 @@ func _gain_loot(effect: Dictionary, out: Dictionary) -> void:
 	GameState.offer_loot(kind, count)
 	var what: String = "card" if kind == "card" else "piece"
 	out["logs"].append("%d more %s%s." % [count, what, "" if count == 1 else "s"])
+
+
+func _gain_identified_loot(kind: String, count: int, out: Dictionary) -> void:
+	var entries: Array = []
+	var names: Array = []
+	for _i in range(count):
+		var entry: Dictionary = GameState.roll_loot_entry(kind)
+		if entry.is_empty():
+			continue
+		LootSystem.identify(entry)
+		entries.append(entry)
+		names.append(LootSystem.display_name(entry))
+	if entries.is_empty():
+		return
+	# After the pickers, for the reason above.
+	if not (out["requests"] as Array).is_empty():
+		out["requests"].append({"kind": "offer_loot", "entries": entries})
+	else:
+		GameState.offer_loot_entries(entries)
+	out["logs"].append("%s — identified." % ", ".join(names))
 
 
 # Temperance: put a named machine under the board. NAMED, where an event's

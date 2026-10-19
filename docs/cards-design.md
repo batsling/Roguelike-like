@@ -369,7 +369,7 @@ Effect left blank as always; `tools/_cards_slay_the_spire_set.py` wrote the cell
 | Card | Effect cell |
 |---|---|
 | After Image | `card_used: gain_stat shields 1` (passive, the relic grammar) |
-| Alchemize | `gain_loot potion 1` |
+| Alchemize | `gain_loot potion 1 identify`: the potion is rolled and identified before it is offered, and stays known if the pack has no room for it |
 | Bloodletting | `lose_hp 2; charge_pick 4` |
 | Bullseye | `stun 1; apply_status marked 1` |
 | Cleave | `stun 1 area=row` |

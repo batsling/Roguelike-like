@@ -1041,6 +1041,17 @@ def parse_item(row):
             mm = re.search(r"\d+", clause)
             fields["front_column_slow"] = max(1, int(mm.group(0))) if mm else 1
             last_trigger = None
+        elif kl0 == "harmless_status":
+            # Gecko Gi, held: a status's missed bill deals the player NO DAMAGE
+            # (docs/loot-passives.md §17). `harmless_status burn[,marked]` — the
+            # status still sits on you and its row is still on the checklist;
+            # only the `take_damage` half of its price is waived.
+            mm = re.match(r"harmless_status\s+([a-z_,\s]+)$", kl)
+            if not mm:
+                raise ValueError("item DSL: harmless_status wants a status id in %r" % clause)
+            fields["harmless_statuses"] = [t.strip() for t in mm.group(1).split(",")
+                                           if t.strip()]
+            last_trigger = None
         elif kl0 == "bank_shields":
             # Barricade, held: every game that resolves banks the Temporary
             # Shields it left standing into Shields (docs/loot-passives.md §8).
@@ -1227,7 +1238,7 @@ def parse_item(row):
 LOOT_PASSIVE_FIELDS = ("triggers", "stat_bonuses", "status_bonuses", "copy_neighbour",
                        "bank_shields", "echo_first_loot", "weapon_stun",
                        "stun_per_food", "charge_bonus_chance", "replay_gain",
-                       "weapon_retrigger")
+                       "weapon_retrigger", "harmless_statuses")
 # Everything parse_item always emits whatever the Effect said, so never a refusal.
 _ROW_FIELDS = ("id", "display_name", "kind", "rarity", "description", "max_uses",
                "card_grants", "stat_multipliers", "scaling")
@@ -1246,7 +1257,8 @@ def parse_loot_passive(name, effect_text, allow_empty=False):
         raise ValueError("%s: a loot passive cannot author %s — only triggers, "
                          "passive:, passive_status:, copy_right, bank_shields, "
                          "echo_first_loot, weapon_stun, stun_per_food, "
-                         "replay_on_use, weapon_retrigger and charge_bonus "
+                         "replay_on_use, weapon_retrigger, harmless_status "
+                         "and charge_bonus "
                          "reach the pack "
                          "(docs/loot-passives.md §3)" % (name, ", ".join(sorted(extra))))
     if not out and not allow_empty:
@@ -1261,7 +1273,8 @@ def parse_loot_passive(name, effect_text, allow_empty=False):
             "stun_per_food": out.get("stun_per_food", {}),
             "charge_bonus_chance": float(out.get("charge_bonus_chance", 0.0)),
             "replay_gain": out.get("replay_gain", {}),
-            "weapon_retrigger": out.get("weapon_retrigger", {})}
+            "weapon_retrigger": out.get("weapon_retrigger", {}),
+            "harmless_statuses": out.get("harmless_statuses", [])}
 
 
 def _split_head(clause):

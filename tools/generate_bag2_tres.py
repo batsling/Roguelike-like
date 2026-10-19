@@ -71,9 +71,9 @@ def bag_tres(row) -> tuple:
     effect = _clean(row.get("Effect"))
     passive = items.parse_loot_passive(name, effect) if effect else None
     if passive and (passive["copy_neighbour"] or passive["bank_shields"]
-                    or passive["echo_first_loot"]):
-        raise ValueError("bag %r: copy_right / bank_shields / echo_first_loot are "
-                         "rules about a piece's slot, and a bag has none" % name)
+                    or passive["echo_first_loot"] or passive["harmless_statuses"]):
+        raise ValueError("bag %r: copy_right / bank_shields / echo_first_loot / "
+                         "harmless_status are not bag passives" % name)
     w, h = parse_size(row.get("Size"), name)
     file = _clean(row.get("Image"))
     if file and not os.path.exists(os.path.join(IMG_DIR, file + ".png")):

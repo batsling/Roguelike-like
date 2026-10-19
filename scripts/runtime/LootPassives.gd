@@ -420,6 +420,16 @@ static func total(field: String) -> int:
 		n += int(p["def"].get(field))
 	return n
 
+# The working piece that makes `status_id`'s missed bill deal no damage (Gecko Gi's
+# `harmless_statuses`, §17), as an active() row — {} when nothing does. Asked by
+# GameLoop2 as the bill lands, and by the checklist so the row can say so first.
+static func warding(status_id: StringName) -> Dictionary:
+	for p in active():
+		var list = p["def"].get("harmless_statuses")
+		if list is PackedStringArray and (list as PackedStringArray).has(String(status_id)):
+			return p
+	return {}
+
 # Toast a held rule that just did something, as the piece that did it — a
 # Blueprint copying the rule fires as itself, like every other copy.
 static func announce(row: Dictionary, line: String) -> void:

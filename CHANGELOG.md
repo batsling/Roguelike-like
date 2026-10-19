@@ -11,6 +11,17 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Alchemize identifies its potion, The Necronomicon, Gecko Gi** (the owner's
+  upload, 19 Oct 2026). Alchemize now reads "Gain +1 Random Potion and Identify
+  it": a card's `gain_loot` takes `identify`, which rolls the piece, identifies
+  it and then offers it, so the offer shows a potion the player can read
+  ([`docs/cards-design.md`](docs/cards-design.md) §5.9). The Necronomicon
+  (Isaac, Uncommon, Charged 3, `devil_room`) stuns every body on the board.
+  Gecko Gi (Backpack Battles, Rare, 2x2) brings `harmless_status burn`: Burn's
+  missed bill deals no damage while it is held, and the checklist row says so
+  ([`docs/loot-passives.md`](docs/loot-passives.md) §17). Worlds Upon The Wind
+  owned.
+
 - **Fifteen Slay the Spire cards, and destroying loot is binning it** (the owner's
   upload, 18 Oct 2026; [`docs/cards-design.md`](docs/cards-design.md) §5.9).
   After Image, Alchemize, Bloodletting, Bullseye, Cleave, Exhume, Fiend Fire,

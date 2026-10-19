@@ -191,9 +191,16 @@ func populate_play_panel() -> void:
 		# SYMBOL and a bare "×3" (_status_prefix), which reads because the art is
 		# right beside it; the record is a line of text on another screen, so it
 		# says which status in as many words.
+		# A demand whose damage a held piece takes (Gecko Gi, docs/loot-passives.md
+		# §17) says so on the row: "or take 3 Damage" over a bill that will not
+		# land would be the list lying about what skipping it costs.
+		var objective: String = sd.objective_text(StatusData.PLAYER, stacks)
+		var ward: Dictionary = LootPassives.warding(sd.id) \
+			if sd.is_demand(StatusData.PLAYER) else {}
+		if not ward.is_empty():
+			objective += " (%s: no damage)" % LootPassives.proxy(ward["def"]).display_name
 		var srow := verify_row(
-			"%s %s%s" % [_status_prefix(sd, stacks),
-				sd.objective_text(StatusData.PLAYER, stacks),
+			"%s %s%s" % [_status_prefix(sd, stacks), objective,
 				StatusData.clock_suffix(games)],
 			_status_row_tint(sd), false, null, null, 0,
 			_status_mark(sd, stacks, StatusData.PLAYER, false, games))
@@ -205,8 +212,7 @@ func populate_play_panel() -> void:
 		# either be reparented out of this list or be a freed node by then. So the
 		# row carries what it takes to build a SECOND one — see `_review_mark`.
 		winning_rows.append({"check": srow["check"],
-			"label": "%s ×%d — %s" % [sd.display_name, stacks,
-				sd.objective_text(StatusData.PLAYER, stacks)],
+			"label": "%s ×%d — %s" % [sd.display_name, stacks, objective],
 			"mark": {"status": sd, "stacks": stacks, "games": games},
 			"note": _status_note_hooks(sd)})
 
@@ -1021,6 +1027,12 @@ func announce_status_penalties(res: Dictionary) -> void:
 		var bite: Dictionary = raw
 		var sd: StatusData = Data.get_status(StringName(bite.get("status", &"")))
 		if sd == null:
+			continue
+		var ward: String = String(bite.get("warded_by", ""))
+		if ward != "":
+			var safe: String = "%s bites — %s takes it, no damage." % [sd.display_name, ward]
+			Notifications.notify(safe, UITheme.TEXT_DIM)
+			GameLog.add(safe, UITheme.TEXT_DIM)
 			continue
 		var dealt: int = int(bite.get("damage", 0))
 		var blocked: int = int(bite.get("blocked", 0))

@@ -2342,6 +2342,7 @@ and so brought a piece of machinery with it:
 | **The Book of Sin** | Uncommon, Charged 2 | `one_of` — Gold, Health, a Bomb, a Key or a piece of Loot, one at random. |
 | **Latch Key** | Common | Nothing new: +1 Key and +1 Shield kept, +1 Luck while held. |
 | **Book of Revelations** | Rare, Charged 3 | Nothing new: +1 Shield (the pool that stays) per use. |
+| **The Necronomicon** | Uncommon, Charged 3, `devil_room` | Nothing new: Stun 1 on every body on the board and the enemy in play (`apply_status stun 1 target=all`). |
 
 **The Mewgenics three** are one rule wearing three hats — **Lucky Hat**
 (Common, +1 Luck), **Bionic Face Plating** (Uncommon, +3 Speed) and **Fortune
