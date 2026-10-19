@@ -549,6 +549,35 @@ harness before the machine**: read what is inside the timed region first.
 ---
 
 
+## 7. The test suite: where its 25 minutes went (19 Oct 2026)
+
+**831 tests build the whole game page**, 579 of them in `test_overworld2`, and that
+setup was ~918 ms a test before anything was tested: ~250 ms building the page's
+UI, ~430 ms dealing a run (`RunGraph.pick_amulet_and_starts`), ~270 ms playing the
+opening game out. Timed step by step from a temporary test inheriting the file's
+own helpers, since a guess here had been wrong before.
+
+**FIXED: dealing a run.** Nearly all of it was `route_slack`, asked once per
+eligible start per Amulet tried, each ask a full BFS from the start (~900 games)
+that also thrashed the 320-entry BFS cache. It walks the route corridor off the
+Amulet's one distance map now (the map is undirected, so "on a shortest route" is
+"reachable by steps that each come one closer"). Same answer on 20,412 pairs.
+Dealing: 425 -> 194 ms. Page + opening: 1,086 -> 651 ms. Suite: ~25 -> 15.7 min.
+
+**TRIED AND REVERTED: one page per test file.** `before_all` built the page and
+each test restarted it with `start_run` (which `_reboot` already did). 64 of
+`test_overworld2`'s 579 tests failed, and the file got SLOWER (10.5 min), so the
+shared page carries state between tests that a fresh one never has — open windows,
+a loot grid mid-layout — and seems to accumulate. Not worth chasing 64 leaks for a
+saving that may not survive them. If it is tried again, start from the failures in
+the loot-window, map and playback tests; they were most of the 64.
+
+**What stays slow:** the ~250 ms page build and the ~270 ms opening game per test,
+and `test_overworld2` alone being most of the suite. `tools/gut.sh <file> [name]`
+runs one file or one test in seconds, which is what to use while working.
+
+---
+
 ## The dead-code scan
 
 Three functions were found unreferenced and deleted (`GameLoop2._pull_from_stack`,
