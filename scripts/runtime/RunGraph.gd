@@ -1096,33 +1096,36 @@ const NO_ROUTE := -999
 
 # DAG nodes minus hops. NO_ROUTE when the two are not connected.
 #
-# COUNTED OFF THE TWO DISTANCE MAPS RATHER THAN OFF THE DAG, which is a
-# performance decision and not a stylistic one. `shortest_path_dag` builds the
-# layer lists, a set per layer and the whole edge list, because that is what
-# draws a ladder; slack wants a node COUNT and nothing else. Worse, it memoizes
-# into a 64-entry cache that CLEARS WHOLE when it fills — and `_strict_starts_for`
-# now asks this once per eligible start per amulet attempt, which on the full
-# catalogue is a couple of thousand asks against 64 slots. Measured by its
-# absence: routing every ask through the DAG took the test suite from ~460s to
-# past 600s before it was cut short.
+# COUNTED OFF THE AMULET'S DISTANCE MAP ALONE, which is a performance decision and
+# not a stylistic one. `_strict_starts_for` asks this once per eligible start per
+# amulet attempt — a few hundred asks per run dealt, and every test that builds the
+# game page deals one. It used to run a full BFS from each START as well (~900
+# games each) and count the nodes with `d(s,n) + d(n,a) == d(s,a)`; that was most
+# of the ~430 ms a run took to deal, and the per-start maps also filled the
+# 320-entry BFS cache, which clears whole when it fills.
 #
-# `n is on the DAG` is exactly `d(s,n) + d(n,a) == d(s,a)`, so the two BFS the
-# DAG builder would have run are the whole of what is needed. They are memoized
-# separately and each start is asked for once per sweep either way.
+# The map is undirected, so the same set can be walked instead of counted: a game
+# is on a shortest start->amulet path exactly when it can be reached from the start
+# by steps that each come one closer to the Amulet (`d_amulet` falling by 1). Every
+# shortest path is such a walk, and any such walk is as long as the drop in
+# distance, so it IS a shortest path. That walk only ever visits the route's own
+# corridor — `hops + slack` games — and the Amulet's map is shared by every start
+# asked about it.
 static func route_slack(start_id: StringName, amulet_id: StringName) -> int:
-	var d_start: Dictionary = bfs_distances(start_id)
-	if not d_start.has(amulet_id):
-		return NO_ROUTE
-	var hops: int = int(d_start[amulet_id])
 	var d_amulet: Dictionary = bfs_distances(amulet_id)
-	var nodes := 0
-	for n in d_start:
-		var ds: int = int(d_start[n])
-		if ds > hops:
-			continue
-		if d_amulet.has(n) and ds + int(d_amulet[n]) == hops:
-			nodes += 1
-	return nodes - hops
+	if not d_amulet.has(start_id):
+		return NO_ROUTE
+	var hops: int = int(d_amulet[start_id])
+	var seen: Dictionary = {start_id: true}
+	var frontier: Array = [start_id]
+	while not frontier.is_empty():
+		var cur: StringName = frontier.pop_back()
+		var closer: int = int(d_amulet[cur]) - 1
+		for nb in (_adj_cache.get(cur, []) as Array):
+			if not seen.has(nb) and int(d_amulet.get(nb, -1)) == closer:
+				seen[nb] = true
+				frontier.append(nb)
+	return seen.size() - hops
 
 
 # Does this route carry enough road to hold what §19.3 promises?
