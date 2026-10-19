@@ -1336,6 +1336,15 @@ func test_a_buffed_body_wears_its_statuses_under_its_checklist_portrait() -> voi
 	# two halves of the screen say the same thing in the same way.
 	_reboot(&"isaac")
 	_pick_enemies(0)
+	# AN UNBUFFED BOARD IS ARRANGED, not assumed. The picked game's bodies are
+	# rolled, and about one deal in a hundred one arrives BURNING — it walked onto
+	# Fire (a Flaming Fatty's Aftermath leaves some), measured at 3 of 300 — which
+	# put a strip on its row before this test had buffed anything.
+	_disarm_board()
+	for entry in GameLoop2.stack:
+		entry["statuses"] = {}
+		entry.erase("timed_statuses")
+	_ui._populate_play_panel()
 	assert_eq(_strips_under(_ui._verify_box).size(), 0,
 		"an unbuffed board puts no strip on any row")
 	GameLoop2.apply_enemy_status(&"strength", 1, "current")

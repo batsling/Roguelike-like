@@ -324,8 +324,20 @@ func _a_shop_node() -> StringName:
 
 func test_lords_parasol_takes_the_whole_shelf_for_nothing() -> void:
 	var hub: StringName = _a_shop_node()
-	var shelf: Array = ShopSystem.shop_for(hub).get("stock", [])
+	var shop: Dictionary = ShopSystem.shop_for(hub)
+	var shelf: Array = shop.get("stock", [])
 	assert_eq(shelf.size(), ShopSystem.STOCK_SLOTS, "a full shelf to sweep")
+	# THE LOOT ON THE SHELF IS ARRANGED, not rolled. A rolled shelf now and then
+	# carried a piece the pack could not seat — a weapon with no spot its shape fits
+	# once the other pieces were in, or a second bag with nowhere to go — and a
+	# sweep rightly leaves what you cannot carry, so "the shelf is bare" failed now
+	# and then in a full suite run (never in 3,000 isolated deals, so the shelf it
+	# needs leans on state earlier files leave behind). What fits a pack is the
+	# pack's business and has tests of its own; one-cell scrolls are this test's.
+	shop["loot"] = []
+	for i in ShopSystem.LOOT_SLOTS:
+		shop["loot"].append({"entry": {"type": "scroll", "id": &"scroll_of_fire",
+			"rarity": "Common"}, "sold": false, "price": 10})
 	Fixtures.give(self, &"lords_parasol")
 	# THE PURSE STARTS FULL, AND THE TEST IS THAT NOTHING COMES OUT OF IT. It used
 	# to start at 0 and assert 0 afterwards, which is a different claim and one the
