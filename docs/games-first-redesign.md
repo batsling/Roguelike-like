@@ -479,6 +479,19 @@ Health, the shield pips and the player's statuses. **Keys are not drawn at all**
 they are deferred and unauthored (§4.1), so there is nothing yet for a count to
 mean.
 
+**Everything the board is pointed with is ONE armed aim** (the owner, 18 Oct
+2026): `BattlefieldView._aim`, `{use, …}`, with five uses — `push`, `bomb`, `item`
+(Staff of Flame, Red Candle), `loot` (a thrown potion, a zapped wand, a swung
+weapon, a played card) and `pick` (Scare Monster's "which to Stun", an
+`OwnedPick` of bodies). Each is armed first and aimed second, nothing is spent
+until the click, and only one is armed at a time — arming one puts the last away,
+except that nothing displaces a pick, which a use is waiting on. One `arm` /
+`disarm`, one validity check (`_check_aim`), one set of lit bodies
+(`armed_targets`) and squares (`target_cells`), one click handler each for bodies
+and squares, one toolbar hint (`aim_hint`). `push_mode`, `bomb_mode`,
+`aiming_item`, `throwing_loot` and `body_pick` are read-only views of it. A new
+thing that aims at the board is a new use, not a new field.
+
 ### Verbs (map manipulation)
 | Verb | Effect |
 |---|---|

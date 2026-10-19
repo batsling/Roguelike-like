@@ -181,59 +181,50 @@ var bomb_btn: Button
 var graveyard_btn: Button            # ☠ The Fallen — only once something has
 var aim_btn: Button                  # only on screen while an item is aiming
 var _hint_label: Label
-# PUSH MODE. The verb is armed FIRST and aimed second: pressing Push arms it,
-# clicking an enemy picks the body, and an arrow appears on every side of that
-# body a shove could actually land on. Nothing is spent until an arrow is
-# pressed, so arming and re-aiming are both free and Cancel costs nothing.
+# THE ARMED AIM — ONE SYSTEM FOR EVERYTHING THE BOARD CAN BE POINTED WITH (the
+# owner, 18 Oct 2026). Push, Bomb, an aimed relic (Staff of Flame, Red Candle), a
+# piece of loot (a thrown potion, a zapped wand, a swung weapon, a played card) and
+# a pick of bodies (Scare Monster's "which to Stun") are all the same bargain: the
+# verb is ARMED first and AIMED second, the board lights what it may be pointed at,
+# the click is what spends it, and nothing is spent until then — so arming,
+# re-aiming and Cancel are all free. They used to be five fields with five arm and
+# cancel functions, and every click handler, hint and validity check written out
+# once per field. Now there is one record and the five are uses of it.
 #
-# It is a mode rather than a button-per-direction on the toolbar because the
-# arrows have to be ON the board: "which way" is a question about a position, and
-# four toolbar buttons would ask it a metre away from the thing being moved.
-var push_mode: bool = false
-# BOMB MODE, and the same bargain. Bomb used to fire the instant its button was
-# pressed, at whatever body happened to still be selected — which was routinely a
-# body clicked several turns earlier to read its card, so a charge went into an
-# enemy the player was not looking at. It is armed and aimed like the Push now:
-# pressing Bomb clears the selection and lights the bodies it could land on, and
-# the CLICK is what spends the charge. One click after arming rather than two,
-# because a bomb has no direction to pick.
-var bomb_mode: bool = false
-# THE AIMED ITEM, on the same bargain again: Staff of Flame is armed from the pack
-# and aimed here, and the click on a body is what fires and spends it. Held as the
-# item rather than as a bool because the board has to say WHICH relic is waiting —
-# the pack is a scroll away from the board, and "something is armed" is not an
-# answer the player can act on. null when nothing is aiming.
+# `_aim` is {} when nothing is armed, otherwise {"use": …} and what that use needs:
+#   &"push"  — Push. A click on a body picks it (`push_target`) and arrows appear on
+#              every side a shove could land on; the arrow spends the charge.
+#   &"bomb"  — Bomb. A click on a square (or the body on it) spends the charge.
+#   &"item"  — "item": the relic armed from the pack. Body- or tile-aimed by its own
+#              `target_kind`.
+#   &"loot"  — "entry": the piece of loot ({type, id}), "index": the pack slot it
+#              will be spent out of, or -1 for a loose piece. Aims at ground.
+#   &"pick"  — "pick": an OwnedPick whose candidates are body instance handles. A
+#              click chooses (again un-chooses); the pick resolves itself.
 #
-# Nothing is spent while it sits here, which is the whole reason the pack does not
-# just fire it: a charged item that emptied its bar on the press would charge the
-# player for opening a picker they then cancelled.
-var aiming_item: ItemData = null
-# THE THROWN PIECE OF LOOT, and the same bargain a third time (potions-design.md
-# §4.2). A potion is armed from the use modal and aimed here, and the click on a
-# square is what resolves it — the piece is not spent while it sits in this field,
-# so backing out of the picker costs the player nothing.
-#
-# It is a loot ENTRY ({type, id}) rather than a resource, because that is what
-# LootSystem spends and what a slot holds; `_throw_index` is the slot it came out
-# of, or -1 for a loose piece taken on the spot. Empty when nothing is being
-# thrown.
-#
-# It aims at GROUND like a tile-aimed item and never at a body, which is Red
-# Candle's rule (§17.3) and is right here for the same reason: a Fire Potion
-# thrown at empty ground two columns in front of the stack is one of the best
-# things you can do with one, and a picker that only lit up bodies would make it
-# impossible.
-var throwing_loot: Dictionary = {}
-var _throw_index: int = -1
+# ONLY ONE IS ARMED AT A TIME, and arming one puts the other away — except a PICK,
+# which is the answer to a question a use has already asked and is waiting on, so
+# nothing displaces it (`arm`).
+var _aim: Dictionary = {}
+
+# The questions the rest of the board, the overworld and the tests ask, as VIEWS of
+# the one record. Read-only: arming and disarming go through `arm` / `disarm`.
+var push_mode: bool:
+	get: return aim_use() == &"push"
+var bomb_mode: bool:
+	get: return aim_use() == &"bomb"
+var aiming_item: ItemData:
+	get: return _aim.get("item") if aim_use() == &"item" else null
+var throwing_loot: Dictionary:
+	get: return _aim.get("entry", {}) if aim_use() == &"loot" else {}
+var _throw_index: int:
+	get: return int(_aim.get("index", -1)) if aim_use() == &"loot" else -1
+var body_pick:
+	get: return _aim.get("pick") if aim_use() == &"pick" else null
 # The bodies an armed verb can be pointed at, as a set of instance handles.
 # Rebuilt at the top of every repaint (`refresh`) rather than asked per body, so
 # the whole board is drawn against one answer.
 var _armed: Dictionary = {}
-# A PICK OF BODIES under way (OwnedPick.gd, candidates are instance handles), or
-# null — Scare Monster's "which to Stun". It lights its candidates like any armed
-# verb, a click on one chooses it (and again un-chooses it), and the bodies chosen
-# so far are drawn selected. Set and cleared by the overworld.
-var body_pick = null
 var _arrow_layer: Control            # the direction arrows, above every body
 var _boss_warning: Label             # "the next spawn brings a boss", above the grid
 var _pressure_small: Control         # the strip's small-print row, which the warning replaces
@@ -1016,32 +1007,95 @@ func _build_battle_toolbar() -> Control:
 	bar.add_child(aim_btn)
 	return bar
 
-# --- armed verbs -----------------------------------------------------------
+# --- the armed aim -----------------------------------------------------------
 #
-# Push and Bomb are both ARMED first and AIMED second, and neither spends
-# anything until the aiming click. The selection is cleared on the way in — a
-# body left selected from reading its card is not a target the player just chose
-# — and the board says who can be hit by LIGHTING THE BODIES rather than by
-# printing an instruction: `armed_targets` is what the cells are drawn against.
-#
-# Only one can be armed at a time. Arming either puts the other away.
+# Every verb is ARMED first and AIMED second (see `_aim`), and the board says what
+# it may be pointed at by LIGHTING it rather than by printing an instruction:
+# `armed_targets` and `target_cells` are what the board is drawn against, and
+# `click_enemy` / `_click_cell` are where the click lands, each one `match` on the
+# use rather than one branch per field.
 
-# Arm the Push verb: click a body, then pick one of the arrows that appear on it.
+# What is armed, or &"" for nothing.
+func aim_use() -> StringName:
+	return StringName(_aim.get("use", &""))
+
+# Whether a verb is waiting to be pointed at something.
+func is_aiming() -> bool:
+	return not _aim.is_empty()
+
+# Arm `aim` ({"use": …} and its payload), putting away whatever was armed. False
+# when a pick is under way: that is a use waiting on an answer, and a Bomb pressed
+# over it would strand the screen that asked.
+func arm(aim: Dictionary) -> bool:
+	if aim_use() == &"pick" and StringName(aim.get("use", &"")) != &"pick":
+		return false
+	disarm(false)
+	_aim = aim
+	push_target = 0
+	refresh()
+	return true
+
+# Put the armed verb away UNSPENT. A piece of loot goes back to the screen that
+# armed it (`loot_throw_cancelled`), which shows the same choice again. A pick is
+# not put away here — the use that asked is waiting on it, so it ends only with its
+# answer (`end_body_pick`).
+func disarm(redraw: bool = true) -> void:
+	if _aim.is_empty() or aim_use() == &"pick":
+		return
+	var was: Dictionary = _take_aim()
+	if StringName(was.get("use", &"")) == &"loot":
+		loot_throw_cancelled.emit(was.get("entry", {}), int(was.get("index", -1)))
+	if redraw:
+		refresh()
+
+# Take the armed verb off the board because it LANDED, and hand it back: what it
+# costs and whether it works are the overworld's, and a board still holding a spent
+# verb would be one press from firing it twice.
+func _take_aim() -> Dictionary:
+	var was: Dictionary = _aim
+	_aim = {}
+	return was
+
+# THE ONE VALIDITY CHECK, asked before anything is drawn against the aim. A verb
+# whose charges ran out, a relic sold or emptied, a bottle with no legal square
+# left: none of them is armed any more.
+#
+# A cleared board disarms a BODY-aimed item and not a tile-aimed one or a throw:
+# ground is still there when the last follower dies, and Red Candle down an empty
+# column or Fire in front of an empty stack is a perfectly good use (§17, §4.2).
+func _check_aim() -> void:
+	match aim_use():
+		&"push":
+			if GameState.push <= 0:
+				_take_aim()
+		&"bomb":
+			if GameState.bombs <= 0:
+				_take_aim()
+		&"item":
+			var item: ItemData = aiming_item
+			if not GameState.can_fire_item(item):
+				_take_aim()
+			elif item.target_kind() == &"tile":
+				if aim_cells(item).is_empty():
+					_take_aim()
+			elif GameLoop2.stack.is_empty():
+				_take_aim()
+		&"loot":
+			if aim_cells(throw_request()).is_empty():
+				var was: Dictionary = _take_aim()
+				loot_throw_cancelled.emit(was.get("entry", {}), int(was.get("index", -1)))
+
+# --- the uses, as the overworld and the toolbar arm them --------------------
+
+# Push: click a body, then pick one of the arrows that appear on it.
 func begin_push() -> void:
 	if push_mode or GameState.push <= 0:
 		return
-	push_mode = true
-	bomb_mode = false
-	aiming_item = null
-	cancel_loot_throw()
-	push_target = 0
-	refresh()
+	arm({"use": &"push"})
 
 func cancel_push() -> void:
-	if not push_mode:
-		return
-	push_mode = false
-	refresh()
+	if push_mode:
+		disarm()
 
 func toggle_push_mode() -> void:
 	if push_mode:
@@ -1049,22 +1103,15 @@ func toggle_push_mode() -> void:
 	else:
 		begin_push()
 
-# Arm the Bomb verb: the next body clicked is the one it goes off on.
+# Bomb: the next square (or body) clicked is where it goes off.
 func begin_bomb() -> void:
 	if bomb_mode or GameState.bombs <= 0:
 		return
-	bomb_mode = true
-	push_mode = false
-	aiming_item = null
-	cancel_loot_throw()
-	push_target = 0
-	refresh()
+	arm({"use": &"bomb"})
 
 func cancel_bomb() -> void:
-	if not bomb_mode:
-		return
-	bomb_mode = false
-	refresh()
+	if bomb_mode:
+		disarm()
 
 func toggle_bomb_mode() -> void:
 	if bomb_mode:
@@ -1072,152 +1119,114 @@ func toggle_bomb_mode() -> void:
 	else:
 		begin_bomb()
 
-# Arm an ITEM: the next body clicked is the one it goes off on (Staff of Flame).
-# The same shape as the Bomb, and deliberately so — an item that aims is a verb
-# the player happens to be holding, and it should not have manners of its own.
-# Returns false when there is nothing on the board to point it at, so the caller
-# can say so rather than arming a picker over an empty field.
+# An ITEM (Staff of Flame, Red Candle): the next body — or, for a tile-aimed one,
+# the next square inside its authored reach — is where it goes off. False when there
+# is nothing to point it at, so the caller can say so rather than arming a picker
+# over an empty field.
 func begin_item_aim(item: ItemData) -> bool:
 	if item == null:
 		return false
-	# A TILE-AIMED item points at GROUND, so an empty board is no obstacle — Red
-	# Candle laying fire on an empty column is exactly what it is for, and the
-	# "nothing to aim at" refusal below is about bodies. What it does need is a
-	# legal cell inside its authored reach, which a board too narrow for the
-	# columns it names would not have.
 	if item.target_kind() == &"tile":
 		if aim_cells(item).is_empty():
 			return false
 	elif GameLoop2.stack.is_empty():
 		return false
-	aiming_item = item
-	push_mode = false
-	bomb_mode = false
-	cancel_loot_throw()
-	push_target = 0
-	refresh()
-	return true
+	return arm({"use": &"item", "item": item})
 
 func cancel_item_aim() -> void:
-	if aiming_item == null:
-		return
-	aiming_item = null
-	refresh()
+	if aiming_item != null:
+		disarm()
 
-# Arm a THROWN piece of loot: the next square clicked is where the bottle lands.
-# `index` is the pack slot it will be spent out of, or -1 for a loose piece.
+# A PIECE OF LOOT: the next square clicked is where the bottle lands, the wand is
+# pointed, the weapon swings or the card is played. `index` is the pack slot it
+# will be spent out of, or -1 for a loose piece. It aims at ground, so an empty
+# board is no obstacle (§4.2); what it needs is a legal square, which a weapon's or
+# a wand's own Aim may fence (`throw_request`).
 #
-# It aims at ground, so an empty board is no obstacle — throwing Fire at the
-# squares in front of the stack is one of the best things you can do with a bottle
-# (§4.2). What it does need is a board to aim at, which a run with no battlefield
-# up does not have.
-#
-# NO CONFIRMATION FOLLOWS THE CLICK (decision #27). Arming the picker and clicking
-# a square are two deliberate acts, and a dialog between them would sit in front of
-# the fastest board verb in the game: a throw cannot land anywhere the player did
-# not click.
+# NO CONFIRMATION FOLLOWS THE CLICK (decision #27): arming and clicking are two
+# deliberate acts, and a dialog between them would sit in front of the fastest
+# board verb in the game.
 func begin_loot_throw(entry: Dictionary, index: int = -1) -> bool:
 	if entry.is_empty() or aim_cells(throw_request(entry)).is_empty():
 		return false
-	throwing_loot = entry.duplicate(true)
-	_throw_index = index
-	aiming_item = null
-	push_mode = false
-	bomb_mode = false
-	push_target = 0
-	refresh()
-	return true
+	return arm({"use": &"loot", "entry": entry.duplicate(true), "index": index})
 
 func cancel_loot_throw() -> void:
-	if throwing_loot.is_empty():
-		return
-	var put_back: Dictionary = throwing_loot
-	var idx: int = _throw_index
-	throwing_loot = {}
-	_throw_index = -1
-	loot_throw_cancelled.emit(put_back, idx)
-	refresh()
+	if not throwing_loot.is_empty():
+		disarm()
 
-# Put away whichever ground-aiming verb is armed. What the toolbar's one Cancel
-# calls, so the button does not have to know which of the two it is cancelling.
+# A PICK OF BODIES (OwnedPick.gd): Scare Monster's "which to Stun". Armed and ended
+# by the overworld, which owns the pick and the screen waiting on it.
+func begin_body_pick(pick) -> bool:
+	if pick == null:
+		return false
+	return arm({"use": &"pick", "pick": pick})
+
+func end_body_pick() -> void:
+	if aim_use() == &"pick":
+		_take_aim()
+		refresh()
+
+# What the toolbar's one Cancel calls, so the button does not have to know which
+# verb it is cancelling.
 func cancel_aim() -> void:
-	cancel_item_aim()
-	cancel_loot_throw()
-
-# The armed item's own version of the charge check the other two verbs get: an
-# item sold, dropped, spent elsewhere or emptied of charges is not aiming any
-# more, and neither is one left armed over a board that has since been cleared.
-func _check_aimed_item() -> void:
-	if aiming_item == null:
-		return
-	if not GameState.can_fire_item(aiming_item):
-		aiming_item = null
-		return
-	# A cleared board disarms a BODY-aimed item and not a tile-aimed one: ground is
-	# still there when the last follower dies, and Red Candle laying fire down an
-	# empty column is a perfectly good use of it (§17).
-	if aiming_item.target_kind() == &"tile":
-		if aim_cells(aiming_item).is_empty():
-			aiming_item = null
-	elif GameLoop2.stack.is_empty():
-		aiming_item = null
-
-# The same check for an armed THROW: a bottle sold, spent elsewhere or binned is
-# not aiming any more, and neither is one left armed over a board that has no
-# legal square left to aim at. A cleared board is NOT one of those cases — ground
-# is still there when the last follower dies, and Fire in front of an empty stack
-# is a perfectly good throw (§4.2).
-func _check_thrown_loot() -> void:
-	if throwing_loot.is_empty():
-		return
-	if aim_cells(throw_request()).is_empty():
-		var put_back: Dictionary = throwing_loot
-		var idx: int = _throw_index
-		throwing_loot = {}
-		_throw_index = -1
-		loot_throw_cancelled.emit(put_back, idx)
-
-# Whether a verb is waiting to be pointed at something.
-func is_aiming() -> bool:
-	return push_mode or bomb_mode or aiming_item != null or not throwing_loot.is_empty() \
-		or body_pick != null
+	disarm()
 
 # The bodies an armed verb could actually land on, as instance handles. Empty
 # when nothing is armed — this is what the board lights up, and it is the whole
 # of the instruction the player gets.
 #
-# EVERY body on the board, with no exceptions. There used to be one: the enemy of
-# the game being played could not be bombed or pushed, because it was that game's
-# own and shoving it would have answered the game you had just committed to.
-# Nothing belongs to a game any more (GameLoop2.arrivals), so nothing is exempt —
-# what walked on this game takes a bomb exactly like what has been chasing you
-# since the third. A boss is included too: the damage bounces off it, but that is
-# the only way to leave Sticky Bombs' Web under it, and a push moves it like
-# anything else.
+# EVERY body on the board for a verb that aims at bodies, with no exceptions: the
+# enemy of the game in play is a follower like any other (GameLoop2.arrivals), and
+# a boss is included — the damage bounces off it, but that is the only way to leave
+# Sticky Bombs' Web under it, and a push moves it like anything else. A pick lights
+# its own candidates. Ground-aimed uses (a tile item, a piece of loot) light no
+# bodies, so a click on one still reads its card and a picker for the floor cannot
+# hijack the board.
 func armed_targets() -> Array:
-	if not is_aiming():
-		return []
-	if body_pick != null:
-		var picks: Array = []
-		for entry in GameLoop2.stack:
-			var pi: int = int(entry.get("instance", 0))
-			if body_pick.candidate_for(pi) != null:
-				picks.append(pi)
-		return picks
-	# A tile-aimed item lights up GROUND, not bodies (see aim_cells) — so the
-	# bodies stay unlit and a click on one reads its card as usual, which is what
-	# stops a picker for the floor from hijacking the board.
-	if aiming_item != null and aiming_item.target_kind() == &"tile":
-		return []
-	# A THROW lights up ground for the same reason and by the same rule.
-	if not throwing_loot.is_empty():
-		return []
 	var out: Array = []
+	match aim_use():
+		&"":
+			return out
+		&"loot":
+			return out
+		&"item":
+			if aiming_item.target_kind() == &"tile":
+				return out
+		&"pick":
+			for entry in GameLoop2.stack:
+				var pi: int = int(entry.get("instance", 0))
+				if body_pick.candidate_for(pi) != null:
+					out.append(pi)
+			return out
 	for entry in GameLoop2.stack:
 		var inst: int = int(entry.get("instance", 0))
 		if inst > 0:
 			out.append(inst)
 	return out
+
+# What the toolbar strip says while a verb is armed: the verb, because THAT is the
+# thing the board cannot show on its own — the lit cells say where you may click,
+# not what will happen when you do. "" when nothing is armed: the strip says
+# nothing then, rather than captioning a board that can speak for itself.
+func aim_hint() -> String:
+	match aim_use():
+		&"push":
+			return "⇤ Push — click a body:"
+		&"bomb":
+			return "✸ Bomb — click a square:"
+		&"item":
+			# The relic's own name: the pack it was armed from is a scroll away.
+			return "%s:" % aiming_item.display_name
+		&"loot":
+			# The piece's own name, which for an UNKNOWN potion or wand is its colour
+			# or material — the word the player is about to learn — and its own verb:
+			# a wand is zapped, never thrown (docs/wands-design.md §4.2).
+			return "%s %s %s:" % [LootSystem.glyph(throwing_loot), _aim_verb(throwing_loot),
+				LootSystem.display_name(throwing_loot)]
+		&"pick":
+			return "%s — click a body:" % String(body_pick.verb).capitalize()
+	return ""
 
 # The CELLS a ground-aimed thing could be pointed at right now: every square of
 # the board inside the columns it authored, or every square when it authored no
@@ -1288,12 +1297,7 @@ func refresh_toolbar() -> void:
 	# A charge spent elsewhere (or the last one spent here) disarms the verb — an
 	# armed Push with nothing to spend is a board full of arrows that do nothing,
 	# and an armed Bomb with none is a board lit up for a click that can't happen.
-	if push_mode and GameState.push <= 0:
-		push_mode = false
-	if bomb_mode and GameState.bombs <= 0:
-		bomb_mode = false
-	_check_aimed_item()
-	_check_thrown_loot()
+	_check_aim()
 	# THE STRIP SAYS NOTHING UNTIL A VERB IS ARMED. It used to carry an instruction
 	# ("Click an enemy:") and a readout of the last body clicked ("> Carcass (col
 	# 3, row 2)") — a caption over a board that is perfectly able to speak for
@@ -1302,29 +1306,7 @@ func refresh_toolbar() -> void:
 	# show on its own: the lit cells say where you may click, not what will happen
 	# when you do.
 	if _hint_label != null:
-		if body_pick != null:
-			_hint_label.text = "%s — click a body:" % body_pick.verb.capitalize()
-		elif push_mode:
-			_hint_label.text = "⇤ Push — click a body:"
-		elif bomb_mode:
-			_hint_label.text = "✸ Bomb — click a square:"
-		elif aiming_item != null:
-			# The relic's own name, because the pack it was armed from is a scroll
-			# away from here: "something is armed" is not an answer the player can
-			# act on, and the lit bodies say everything else.
-			_hint_label.text = "%s:" % aiming_item.display_name
-		elif not throwing_loot.is_empty():
-			# The piece's own name for the same reason — and for a potion or a wand
-			# it is doing a second job, since an UNKNOWN one is named by its colour
-			# or its material, and that word is the thing the player is about to
-			# learn. The VERB is the piece's own too (docs/wands-design.md §4.2): a
-			# wand is zapped and never thrown, and the picker is the only screen
-			# where the two look alike.
-			_hint_label.text = "%s %s %s:" % [
-				LootSystem.glyph(throwing_loot), _aim_verb(throwing_loot),
-				LootSystem.display_name(throwing_loot)]
-		else:
-			_hint_label.text = ""
+		_hint_label.text = aim_hint()
 		_hint_label.visible = _hint_label.text != ""
 		_hint_label.add_theme_color_override("font_color", UITheme.ACCENT)
 
@@ -1339,9 +1321,12 @@ func refresh_toolbar() -> void:
 	# A THROW borrows the same Cancel, and the same standing-in for the other two
 	# verbs: the bottle is not spent while the picker is up, so backing out costs
 	# nothing and the button has to say so.
-	var armed_aside: bool = aiming_item != null or not throwing_loot.is_empty()
+	# A PICK stands the other verbs aside too (they could not be armed over it — see
+	# `arm`) but has no Cancel: it is a question a use is waiting on, and its own
+	# banner carries the Done.
+	var armed_aside: bool = aim_use() in [&"item", &"loot", &"pick"]
 	if aim_btn != null:
-		aim_btn.visible = armed_aside
+		aim_btn.visible = armed_aside and aim_use() != &"pick"
 		if aiming_item != null:
 			aim_btn.text = "✕  Cancel"
 			aim_btn.tooltip_text = "Put %s away — nothing has been spent yet." \
@@ -1577,12 +1562,7 @@ func refresh() -> void:
 		_play_loose_crashes.call_deferred()
 	# A verb that has run out of charges is not armed any more, whatever the last
 	# click left set — asked here, before anything is drawn against it.
-	if push_mode and GameState.push <= 0:
-		push_mode = false
-	if bomb_mode and GameState.bombs <= 0:
-		bomb_mode = false
-	_check_aimed_item()
-	_check_thrown_loot()
+	_check_aim()
 	# Who an armed verb could be pointed at, answered once and drawn against by
 	# every body below (see _style_enemy_cell). Empty whenever nothing is armed.
 	_armed = {}
@@ -2060,50 +2040,40 @@ func click_enemy(instance: int, entry: Dictionary, col: int) -> void:
 	# enemy of the game in play — it could not be selected, bombed or pushed,
 	# because it was that game's own and shoving it would have answered the game
 	# you had just committed to. Nothing belongs to a game now
-	# (GameLoop2.arrivals), so nothing is exempt.
-	#
-	# Only a PUSH holds the body it was clicked with, because only a push has a
-	# second question to ask about it.
-	# A PICK OF BODIES (Scare Monster): the click chooses, and a body that is not a
-	# candidate is swallowed rather than opening its card over the lit ones.
-	if body_pick != null:
-		if body_pick.candidate_for(instance) != null:
-			# Deferred: the choice redraws the board this body is drawn on.
-			body_pick.choose.call_deferred(instance)
-		refresh()
-		return
-	if push_mode:
-		push_target = instance
-	# An armed BOMB goes off here. This click is the whole of the aiming — a bomb
-	# has no direction to pick — so it is also what spends the charge, which is why
-	# nothing was spent when the button was pressed. The verb disarms itself either
-	# way: one press, one bomb.
-	if bomb_mode:
-		bomb_mode = false
-		bomb_requested.emit(instance)
-		return
-	# An armed ITEM fires here for the same reason and on the same click. The board
-	# lets go of it first: what it costs and whether it lands are the overworld's
-	# to decide, and a board still holding an armed relic afterwards would be a
-	# second press away from firing a spent one.
-	if aiming_item != null:
-		var armed: ItemData = aiming_item
-		aiming_item = null
-		item_aimed.emit(armed, instance)
-		return
-	# WHILE A THROW IS ARMED, a click on a body is not a request to read its card —
-	# the picker's squares are drawn over the board and the body under one of them
-	# is exactly what the player is aiming at. Swallowed here rather than routed,
-	# because the lit square above it already took the press.
-	if not throwing_loot.is_empty():
-		refresh()
-		return
-	# While a push is being aimed the click is the AIM, not a request to read the
-	# card: a full-screen info card over the board would bury the arrows the same
-	# click just put there.
-	if push_mode:
-		refresh()
-		return
+	# (GameLoop2.arrivals), so nothing is exempt. What the click DOES is the armed
+	# use's to say (`_aim`); with nothing armed it opens the body's card.
+	match aim_use():
+		# A PICK OF BODIES (Scare Monster): the click chooses, and a body that is
+		# not a candidate is swallowed rather than opening its card over the lit
+		# ones. Deferred: the choice redraws the board this body is drawn on.
+		&"pick":
+			if body_pick.candidate_for(instance) != null:
+				body_pick.choose.call_deferred(instance)
+			refresh()
+			return
+		# A PUSH holds the body it was clicked with, because only a push has a
+		# second question to ask about it — and the click is the AIM, not a request
+		# to read the card, which would bury the arrows it just put there.
+		&"push":
+			push_target = instance
+			refresh()
+			return
+		# A BOMB goes off here: the click is the whole of its aiming, so it is also
+		# what spends the charge. One press, one bomb.
+		&"bomb":
+			_take_aim()
+			bomb_requested.emit(instance)
+			return
+		# An ITEM fires here for the same reason and on the same click.
+		&"item":
+			var armed: ItemData = _take_aim().get("item")
+			item_aimed.emit(armed, instance)
+			return
+		# WHILE A PIECE OF LOOT IS ARMED the lit square over this body already took
+		# the press, so the click is swallowed rather than read as a look at a card.
+		&"loot":
+			refresh()
+			return
 	enemy_inspected.emit(entry, col)
 	refresh()
 
@@ -2119,11 +2089,14 @@ func click_enemy(instance: int, entry: Dictionary, col: int) -> void:
 # Empty when no ground-aiming verb is armed, which is what the picker draws
 # against.
 func target_cells() -> Array:
-	if bomb_mode:
-		return GameLoop2.target_cells("all")
-	if not throwing_loot.is_empty():
-		return aim_cells(throw_request())
-	return aim_cells(aiming_item)
+	match aim_use():
+		&"bomb":
+			return GameLoop2.target_cells("all")
+		&"loot":
+			return aim_cells(throw_request())
+		&"item":
+			return aim_cells(aiming_item)
+	return []
 
 # The cell picker a ground-aiming verb arms. Buttons over every legal square, in
 # the topmost layer — the same place and for the same reason the push arrows live
@@ -2276,22 +2249,23 @@ func _draw_last_strike() -> void:
 # of the loop (`bomb_cell_hint`) so the picker and the rule can't drift; an item's
 # is its own name, since what it does is written on its card.
 func _target_cell_hint(cell: Vector2i) -> String:
-	if bomb_mode:
-		var entry: Dictionary = _entry_at(cell)
-		if not entry.is_empty():
-			return GameLoop2.bomb_hint(entry.get("enemy"))
-		return GameLoop2.bomb_cell_hint(cell)
-	if aiming_item != null:
-		return "Aim %s here (column %d, row %d)." % [
-			aiming_item.display_name, cell.x, cell.y + 1]
-	if WeaponSystem.is_weapon(throwing_loot):
-		return "Swing %s here (column %d, row %d) — %d Stun." % [
-			LootSystem.display_name(throwing_loot), cell.x, cell.y + 1,
-			WeaponSystem.stun_for(_throw_index) if _throw_index >= 0
-				else int(WeaponSystem.def(throwing_loot).stun)]
-	if not throwing_loot.is_empty():
-		return "%s %s here (column %d, row %d)." % [_aim_verb(throwing_loot),
-			LootSystem.display_name(throwing_loot), cell.x, cell.y + 1]
+	match aim_use():
+		&"bomb":
+			var entry: Dictionary = _entry_at(cell)
+			if not entry.is_empty():
+				return GameLoop2.bomb_hint(entry.get("enemy"))
+			return GameLoop2.bomb_cell_hint(cell)
+		&"item":
+			return "Aim %s here (column %d, row %d)." % [
+				aiming_item.display_name, cell.x, cell.y + 1]
+		&"loot":
+			if WeaponSystem.is_weapon(throwing_loot):
+				return "Swing %s here (column %d, row %d) — %d Stun." % [
+					LootSystem.display_name(throwing_loot), cell.x, cell.y + 1,
+					WeaponSystem.stun_for(_throw_index) if _throw_index >= 0
+						else int(WeaponSystem.def(throwing_loot).stun)]
+			return "%s %s here (column %d, row %d)." % [_aim_verb(throwing_loot),
+				LootSystem.display_name(throwing_loot), cell.x, cell.y + 1]
 	return ""
 
 # What the armed piece is DONE with, in the words its own button uses: a weapon is
@@ -2324,32 +2298,21 @@ func _entry_at(cell: Vector2i) -> Dictionary:
 # the blast — which is what a boss (immune to the damage, stunnable by Sticky
 # Bombs) and the `bomb_used` trigger read.
 func _click_cell(cell: Vector2i) -> void:
-	if bomb_mode:
-		bomb_mode = false
-		var entry: Dictionary = _entry_at(cell)
-		if not entry.is_empty():
-			bomb_requested.emit(int(entry.get("instance", 0)))
-		else:
-			bomb_cell_requested.emit(cell)
-		refresh()
-		return
-	# A THROWN BOTTLE lands here, and the board lets go of it first for the reason
-	# every other armed verb does: what it costs and what it does are the
-	# overworld's, and a board still holding a spent piece would be one press from
-	# throwing it twice.
-	if not throwing_loot.is_empty():
-		var thrown: Dictionary = throwing_loot
-		var idx: int = _throw_index
-		throwing_loot = {}
-		_throw_index = -1
-		loot_thrown_at_cell.emit(thrown, idx, cell)
-		refresh()
-		return
-	if aiming_item == null:
-		return
-	var armed: ItemData = aiming_item
-	aiming_item = null
-	item_aimed_at_cell.emit(armed, cell)
+	match aim_use():
+		&"bomb":
+			_take_aim()
+			var entry: Dictionary = _entry_at(cell)
+			if not entry.is_empty():
+				bomb_requested.emit(int(entry.get("instance", 0)))
+			else:
+				bomb_cell_requested.emit(cell)
+		&"loot":
+			var thrown: Dictionary = _take_aim()
+			loot_thrown_at_cell.emit(thrown.get("entry", {}), int(thrown.get("index", -1)), cell)
+		&"item":
+			item_aimed_at_cell.emit(_take_aim().get("item"), cell)
+		_:
+			return
 	refresh()
 
 # --- the push arrows -------------------------------------------------------
@@ -2434,7 +2397,7 @@ func _push_arrow(dir: Vector2i, at: Vector2, e: GoalEnemyData) -> Button:
 	b.pressed.connect(func():
 		# Disarmed on the way out, so one press of Push spends at most one charge
 		# and the arrows don't linger over a body that has already moved.
-		push_mode = false
+		_take_aim()
 		push_requested.emit(inst, dir))
 	return b
 

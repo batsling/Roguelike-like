@@ -1419,9 +1419,7 @@ func pick(index: int) -> void:
 	# An armed verb doesn't survive committing to a game: the board it was aimed at
 	# is about to be marched a column, and nothing has been spent either way.
 	if _board != null:
-		_board.cancel_push()
-		_board.cancel_bomb()
-		_board.cancel_item_aim()
+		_board.disarm()
 	_phase = Phase.PLAYING
 	_populate_play_panel()
 	_refresh()
@@ -4169,9 +4167,7 @@ func arrive_at_game(dest: StringName, announce: String = "") -> void:
 	if _offering != null:
 		_offering.reset_hover_grant()
 	if _board != null:
-		_board.cancel_push()
-		_board.cancel_bomb()
-		_board.cancel_item_aim()
+		_board.disarm()
 	_phase = Phase.PLAYING
 	_populate_play_panel()
 	_refresh()
@@ -4579,9 +4575,7 @@ func begin_board_pick(cfg: Dictionary, on_done: Callable) -> bool:
 		return false
 	cancel_owned_pick()
 	# Nothing else is armed while the board is answering.
-	_board.cancel_push()
-	_board.cancel_bomb()
-	_board.cancel_item_aim()
+	_board.disarm()
 	var pick: Node = load(OWNED_PICK_SCRIPT).new()
 	pick.setup(cfg)
 	pick.on_change = func():
@@ -4590,12 +4584,12 @@ func begin_board_pick(cfg: Dictionary, on_done: Callable) -> bool:
 	pick.on_done = func(chosen: Array):
 		_owned_pick = null
 		if _board != null and is_instance_valid(_board):
-			_board.body_pick = null
+			_board.end_body_pick()
 		on_done.call(chosen)
 		_refresh()
 	_owned_pick = pick
 	add_child(pick)
-	_board.body_pick = pick
+	_board.begin_body_pick(pick)
 	# Off the board, as for a throw: the loot window floats over it.
 	if _loot_window != null:
 		_loot_window.open = false
@@ -4611,7 +4605,7 @@ func cancel_owned_pick() -> void:
 		_owned_pick.queue_free()
 	_owned_pick = null
 	if _board != null and is_instance_valid(_board):
-		_board.body_pick = null
+		_board.end_body_pick()
 
 # Bash the offered game at `index` (§4): destroy it out of the pool for the rest of
 # the run — it is never offered again — and REFILL its slot from the same pool the
