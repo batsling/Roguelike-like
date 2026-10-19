@@ -186,8 +186,10 @@ def weapon_tres(row) -> tuple:
     wtype = parse_type(row.get("Type"), name)
     passive_text = _clean(row.get("Passive Effect"))
     passive = items.parse_loot_passive(name, passive_text, allow_empty=True)
-    if passive["copy_neighbour"] or passive["bank_shields"] or passive["echo_first_loot"]:
-        raise ValueError("weapon %r: copy_right / bank_shields / echo_first_loot "
+    if (passive["copy_neighbour"] or passive["bank_shields"] or passive["echo_first_loot"]
+            or passive["harmless_statuses"]):
+        raise ValueError("weapon %r: copy_right / bank_shields / echo_first_loot / "
+                         "harmless_status "
                          "are not weapon passives" % name)
     goal = _clean(row.get("Goal"))
     if not goal:

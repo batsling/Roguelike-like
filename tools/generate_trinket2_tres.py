@@ -125,6 +125,8 @@ def trinket_tres(row) -> tuple:
         lines.append("weapon_stun = %s" % gd(passive["weapon_stun"]))
     if passive["weapon_retrigger"]:
         lines.append("weapon_retrigger = %s" % gd(passive["weapon_retrigger"]))
+    if passive["harmless_statuses"]:
+        lines.append("harmless_statuses = %s" % items.packed(passive["harmless_statuses"]))
     return tid, "\n".join(lines) + "\n"
 
 

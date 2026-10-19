@@ -856,6 +856,19 @@ func test_wooden_nickel_pays_at_most_one_gold_per_flip() -> void:
 # board aims it, and the click is what spends the charge. The UI half of that
 # lives in test_statuses.gd beside the rest of Burn; these are the rules under it.
 
+# The Necronomicon: no aim, every body on the board.
+func test_the_necronomicon_stuns_every_body() -> void:
+	var book: ItemData = Fixtures.give(self, &"the_necronomicon")
+	assert_eq(book.max_charge(), 3, "three games per firing")
+	assert_false(book.wants_target(), "nothing to aim")
+	var first: int = Fixtures.choose_solo(_synthetic(&"synthetic", &"action", GoalEnemyData.Difficulty.LOW))
+	GameLoop2.beat_game(false)                 # it walks onto the board
+	var second: int = Fixtures.choose_solo(_synthetic(&"other", &"action", GoalEnemyData.Difficulty.LOW))
+	assert_true(GameState.use_item(book), "fired")
+	for inst in [first, second]:
+		assert_eq(GameLoop2.stun_stacks(GameLoop2.entry_for(inst)), 1,
+			"Stun 1 on body %d" % inst)
+
 func test_the_staff_is_a_charged_active_that_aims_at_a_body() -> void:
 	var staff: ItemData = Fixtures.give(self, &"staff_of_flame")
 	assert_true(staff.is_charged(), "a charged active")

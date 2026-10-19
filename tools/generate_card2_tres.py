@@ -30,7 +30,9 @@ Effect token DSL (semicolons separate clauses, as in every other sheet):
     gain_stat <stat> <n>        -> {op:gain_stat, stat, value:n}
     double_stat <what> [floor=<n>]
                                 -> {op:double_stat, stat, floor?}
-    gain_loot <kind> <n>        -> {op:gain_loot, kind, count:n}
+    gain_loot <kind> <n> [identify]
+                                -> {op:gain_loot, kind, count:n, identify?}
+                                   `identify` teaches what was rolled (Alchemize)
     teleport_type <game_type>   -> {op:teleport_type, game_type}
     teleport_shop               -> {op:teleport_shop}
     teleport_start              -> {op:teleport_start}
@@ -257,7 +259,15 @@ def parse_clause(s: str) -> list:
     if verb == "gain_loot":
         if len(bare) < 2:
             raise ValueError("card effect DSL: gain_loot needs a kind and a count in %r" % s)
-        return [{"op": "gain_loot", "kind": bare[0].lower(), "count": int(bare[1])}]
+        op = {"op": "gain_loot", "kind": bare[0].lower(), "count": int(bare[1])}
+        # Alchemize: the piece rolled is identified before it is offered, so the
+        # player picks up a potion they can already read.
+        if len(bare) > 2:
+            if [b.lower() for b in bare[2:]] != ["identify"]:
+                raise ValueError("card effect DSL: gain_loot takes only `identify` "
+                                 "after the count in %r" % s)
+            op["identify"] = True
+        return [op]
 
     if verb == "teleport_type":
         if not bare:
@@ -358,6 +368,9 @@ def card_tres(row) -> tuple:
             lines.append("bank_shields = true")
         if passive["echo_first_loot"]:
             lines.append("echo_first_loot = %d" % passive["echo_first_loot"])
+        if passive["harmless_statuses"]:
+            raise ValueError("card %r: harmless_status is a trinket's rule "
+                             "(docs/loot-passives.md §17)" % name)
     return cid, "\n".join(lines) + "\n"
 
 

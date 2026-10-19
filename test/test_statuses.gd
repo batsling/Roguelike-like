@@ -802,6 +802,31 @@ func test_a_missed_demand_bites_at_the_end_of_the_game() -> void:
 	assert_eq(bites.size(), 1, "and reported, so the run can say what happened")
 	assert_eq((bites[0] as Dictionary)["status"], &"burn")
 
+# Gecko Gi (docs/loot-passives.md §17): the bill is read, and costs nothing.
+func test_gecko_gi_takes_the_damage_of_a_missed_burn() -> void:
+	Fixtures.trinket(self, &"gecko_gi", 0)
+	GameState.apply_status(&"burn", 1)
+	GameState.shields = 0
+	Fixtures.choose_solo(_enemy("Beat it"))
+	var before: int = GameState.hp
+	var res: Dictionary = GameLoop2.beat_game(true)
+	assert_eq(GameState.hp, before, "no Health lost")
+	assert_eq(int(res.get("damage_taken", 0)), 0, "and none billed")
+	var bites: Array = res.get("status_penalties", [])
+	assert_eq(bites.size(), 1, "still reported, so the run can say why")
+	assert_eq(String((bites[0] as Dictionary).get("warded_by", "")), "Gecko Gi")
+	assert_eq(GameState.status_stacks(&"burn"), 1, "and the Burn is still on you")
+
+func test_gecko_gi_out_of_the_pack_wards_nothing() -> void:
+	Fixtures.trinket(self, &"gecko_gi", 0)
+	GameState.destroy_loot_at(0)
+	GameState.apply_status(&"burn", 1)
+	GameState.shields = 0
+	Fixtures.choose_solo(_enemy("Beat it"))
+	var before: int = GameState.hp
+	GameLoop2.beat_game(true)
+	assert_eq(before - GameState.hp, 3, "the bill bites as ever")
+
 func test_answering_a_demand_costs_nothing_and_sheds_a_stack() -> void:
 	GameState.apply_status(&"burn", 2)
 	GameState.shields = 0
