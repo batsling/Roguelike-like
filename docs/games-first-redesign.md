@@ -479,6 +479,19 @@ Health, the shield pips and the player's statuses. **Keys are not drawn at all**
 they are deferred and unauthored (§4.1), so there is nothing yet for a count to
 mean.
 
+**Everything the board is pointed with is ONE armed aim** (the owner, 18 Oct
+2026): `BattlefieldView._aim`, `{use, …}`, with five uses — `push`, `bomb`, `item`
+(Staff of Flame, Red Candle), `loot` (a thrown potion, a zapped wand, a swung
+weapon, a played card) and `pick` (Scare Monster's "which to Stun", an
+`OwnedPick` of bodies). Each is armed first and aimed second, nothing is spent
+until the click, and only one is armed at a time — arming one puts the last away,
+except that nothing displaces a pick, which a use is waiting on. One `arm` /
+`disarm`, one validity check (`_check_aim`), one set of lit bodies
+(`armed_targets`) and squares (`target_cells`), one click handler each for bodies
+and squares, one toolbar hint (`aim_hint`). `push_mode`, `bomb_mode`,
+`aiming_item`, `throwing_loot` and `body_pick` are read-only views of it. A new
+thing that aims at the board is a new use, not a new field.
+
 ### Verbs (map manipulation)
 | Verb | Effect |
 |---|---|
@@ -1638,7 +1651,11 @@ would strand off the edge is put back in the queue rather than left hanging.
   random; a lane with an anchored spawner in its chain cannot be leaned through,
   and a gap stops a chain short of you (but a gap would have let the forward
   shove through in the first place). Shields stop a crash hit like any other; a
-  stunned body is shoved along without swinging. Only a FRESH spawn crashes, as
+  stunned body is shoved along without swinging — **and so is one that sat this
+  action's turn out stunned** (the owner, 18 Oct 2026): a one-stack stun wears off
+  on the turn it costs, and a lost run's spawn lands after that turn, so the body
+  the player had just watched sit out was being shoved into them and swinging
+  (`GameLoop2._sat_out_stunned`). Only a FRESH spawn crashes, as
   only a fresh spawn shoves. The board plays it (`BattlefieldView.play_crashes`):
   the push runs down the lane from the back, each body jolting toward the hero,
   then the front body's hit lands. Inside a resolve it plays after the

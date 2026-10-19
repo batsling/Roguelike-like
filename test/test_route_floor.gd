@@ -73,6 +73,36 @@ func test_the_floor_is_the_budget_plus_two() -> void:
 	assert_eq(RunGraph.ROUTE_SLACK_FLOOR, 5)
 
 
+# `route_slack` WALKS the route corridor off the Amulet's distance map rather than
+# counting every game off a second, per-start BFS (it was most of what dealing a run
+# cost). The two must agree for every start, so this counts it the old way —
+# `d(s,n) + d(n,a) == d(s,a)` over the start's whole map — against two Amulets.
+func test_the_walked_slack_is_the_counted_slack_for_every_start() -> void:
+	var games: Array = Data.all_games().filter(func(g):
+		return g is GameData and RunGraph.bfs_distances(g.id).size() > 1)
+	if games.size() < 2:
+		pending("the catalogue has no map to walk")
+		return
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 4242
+	var mismatches: Array = []
+	for _a in 2:
+		var amulet: StringName = (games[rng.randi() % games.size()] as GameData).id
+		var d_amulet: Dictionary = RunGraph.bfs_distances(amulet)
+		for g in games:
+			var d_start: Dictionary = RunGraph.bfs_distances(g.id)
+			var counted: int = RunGraph.NO_ROUTE
+			if d_start.has(amulet):
+				var hops: int = int(d_start[amulet])
+				var nodes := 0
+				for n in d_start:
+					if d_amulet.has(n) and int(d_start[n]) + int(d_amulet[n]) == hops:
+						nodes += 1
+				counted = nodes - hops
+			if RunGraph.route_slack(g.id, amulet) != counted:
+				mismatches.append("%s->%s" % [g.id, amulet])
+	assert_eq(mismatches, [], "walked and counted slack agree for every start")
+
 # Slack on real routes: never below 1 (a corridor), and consistent with the DAG
 # the ladder actually draws.
 func test_slack_matches_the_dag_it_is_read_from() -> void:

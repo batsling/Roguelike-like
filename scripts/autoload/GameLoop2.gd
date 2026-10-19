@@ -870,6 +870,7 @@ func _ready() -> void:
 func reset() -> void:
 	arrivals.clear()
 	_crashes.clear()
+	_sat_out_stunned.clear()
 	game_in_play = false
 	stack.clear()
 	graveyard.clear()
@@ -2149,6 +2150,7 @@ func log_attempt() -> String:
 	# the Health, the ground it walks onto, a trinket the hit shatters — is what
 	# the undo has to put back (see _run_snapshot).
 	_attempt_snapshots.append(_run_snapshot())
+	_sat_out_stunned.clear()
 	last_attempt_turn = attempt_turn()
 	# One entry per tick, all of them "turn" now that there is only one thing a
 	# tick can cost. Kept as the list rather than collapsed to a count because it
@@ -2170,6 +2172,7 @@ func log_attempt() -> String:
 	# on at the back and acts from the next lost run like any other arrival.
 	if not run_over:
 		last_attempt_turn["lost_run_spawn"] = _roll_lost_run_spawn()
+	_sat_out_stunned.clear()
 	attempt_logged.emit("turn", false)
 	loop_changed.emit()
 	return "turn"
@@ -2640,6 +2643,7 @@ func beat_game(clear_advertised: bool = false, fulfilled_instances: Array = [],
 	if run_over:
 		last_result = res
 		return res
+	_sat_out_stunned.clear()
 	games_beaten += 1
 
 	# 0. STATUS PAYOUTS, before anything is removed from the board. An enemy bonus
@@ -2872,6 +2876,7 @@ func beat_game(clear_advertised: bool = false, fulfilled_instances: Array = [],
 	# move — `fades` counting down, `revives` being spent, a phase advancing — so
 	# the board is answered for here as well as at the end of a turn.
 	_check_stack("end of game")
+	_sat_out_stunned.clear()
 	loop_changed.emit()
 	return res
 
@@ -2926,6 +2931,7 @@ func _resolve_enemy_turn(turn: int, res: Dictionary, only: Array = [],
 			res["attacks"].append({"instance": inst, "turn": turn,
 				"stunned": true})
 			spent[inst] = true
+			_sat_out_stunned[inst] = true
 			continue
 		# THE CENSER (§8.2). Read off the body's own column rather than off a set
 		# built before the loop, because the loop MOVES bodies: something that
@@ -6749,12 +6755,23 @@ func _side_shove_lane(enemy: GoalEnemyData, row: int, col: int, exclude: int) ->
 # The lane is the one whose chain is SHORTEST (fewest bodies to swing), ties at
 # random, the same "least pushing" rule the forward shove picks by. A lane with a
 # spawner that never attacks in its chain cannot be leaned through (_is_anchored:
-# it holds its ground). A STUNNED body is shoved along without swinging, and one
-# whose swing is 0 lands nothing, exactly as on its own turn.
+# it holds its ground). A STUNNED body is shoved along without swinging — and so is
+# one that sat this action's turn out stunned and has just worn the stun off
+# (`_sat_out_stunned`) — and one whose swing is 0 lands nothing, exactly as on its
+# own turn.
 #
 # Each crash is recorded in `_crashes` for the board to play back (the shove, then
 # the hits): see `take_crashes` and BattlefieldView.play_crashes.
 var _crashes: Array = []
+
+# Bodies that sat a turn out STUNNED during the action being resolved right now —
+# a lost run, or a game handed in — cleared at either end of it. A stun of one
+# stack is worn off by the very turn it costs (step c of `_resolve_enemy_turn`),
+# and a lost run's spawn lands AFTER that turn: so without this, the body the
+# player watched sit the turn out stunned was shoved into them a beat later and
+# swung, stun gone. The owner (18 Oct 2026): a stunned enemy cannot attack even
+# when it is bumped into you. The turn it lost and the bump are one action.
+var _sat_out_stunned: Dictionary = {}
 
 # Every crash since the last call, oldest first, and forget them: the board plays
 # each one once.
@@ -6834,7 +6851,7 @@ func _crash_into_player(entry: Dictionary, col: int) -> int:
 		if e.is_empty():
 			continue
 		var row_hit := {"instance": int(body), "damage": 0, "blocked": 0}
-		if not is_stunned(e) and not run_over:
+		if not is_stunned(e) and not _sat_out_stunned.has(int(body)) and not run_over:
 			_reveal(e)
 			var hit: Dictionary = _take_hit(enemy_damage(e), scratch)
 			row_hit["damage"] = int(hit["damage"])
@@ -6849,12 +6866,24 @@ func _crash_into_player(entry: Dictionary, col: int) -> int:
 		"chain": (pick["chain"] as Array).duplicate(), "hits": hits})
 	var who: String = enemy.display_name if enemy != null else "A newcomer"
 	var front_names: Array = []
+	var stunned_names: Array = []
 	for h in hits:
 		var fe: Dictionary = entry_for(int(h["instance"]))
 		var fg: GoalEnemyData = fe.get("enemy") if not fe.is_empty() else null
-		front_names.append(fg.display_name if fg != null else "a body")
-	var msg: String = "%s had no room and shoved its lane into you: %s hit you for %d." % [
-		who, " and ".join(PackedStringArray(front_names)), total]
+		var fname: String = fg.display_name if fg != null else "a body"
+		if bool(h.get("stunned", false)):
+			stunned_names.append(fname)
+		else:
+			front_names.append(fname)
+	var msg: String = "%s had no room and shoved its lane into you" % who
+	if not front_names.is_empty():
+		msg += ": %s hit you for %d" % [" and ".join(PackedStringArray(front_names)), total]
+	if not stunned_names.is_empty():
+		msg += "%s %s %s stunned and could not swing" % [
+			"," if not front_names.is_empty() else ", but",
+			" and ".join(PackedStringArray(stunned_names)),
+			"was" if stunned_names.size() == 1 else "were"]
+	msg += "."
 	GameLog.add(msg, UITheme.DANGER)
 	Notifications.notify(msg, UITheme.DANGER)
 	return int(pick["row"])

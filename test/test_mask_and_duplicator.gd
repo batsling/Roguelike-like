@@ -1,5 +1,7 @@
 extends GutTest
 
+const Fixtures := preload("res://test/helpers/fixtures.gd")
+
 # The three items of the 12 Oct 2026 upload:
 #   Ceremonial Dagger — every defeat stuns a random body still standing
 #   Ultra Duplicator  — every ITEM obtained arrives with an extra copy
@@ -16,11 +18,6 @@ func before_each() -> void:
 func after_each() -> void:
 	GameState.reset_run()
 	GameLoop2.reset()
-
-func _give(id: StringName) -> ItemData:
-	var tmpl: ItemData = Data.get_item2(id)
-	assert_not_null(tmpl, "items2.0 has %s" % id)
-	return GameState.add_item(tmpl)
 
 func _body(id: StringName) -> GoalEnemyData:
 	var e := GoalEnemyData.new()
@@ -44,7 +41,7 @@ func test_the_dagger_hangs_a_random_stun_on_a_defeat() -> void:
 	assert_eq(String(fx.get("target", "")), "random")
 
 func test_a_defeat_stuns_the_body_left_standing() -> void:
-	_give(&"ceremonial_dagger")
+	Fixtures.give(self, &"ceremonial_dagger")
 	var first: int = GameLoop2.choose_game(_body(&"first"))
 	var second: int = GameLoop2.second_body_instance()
 	if second <= 0:
@@ -58,43 +55,43 @@ func test_a_defeat_stuns_the_body_left_standing() -> void:
 	assert_eq(GameLoop2.stun_stacks(survivor), 1, "the one left standing is stunned")
 
 func test_a_defeat_on_an_empty_board_stuns_nothing() -> void:
-	_give(&"ceremonial_dagger")
+	Fixtures.give(self, &"ceremonial_dagger")
 	TriggerBus.enemy_killed.emit({"enemy": null})
 	assert_eq(GameLoop2.stack.size(), 0, "nothing stood up to be stunned")
 
 # --- Ultra Duplicator ------------------------------------------------------
 
 func test_the_duplicator_copies_the_next_item() -> void:
-	_give(&"ultra_duplicator")
-	_give(&"anchor")
+	Fixtures.give(self, &"ultra_duplicator")
+	Fixtures.give(self, &"anchor")
 	assert_eq(GameState._count_items(&"anchor"), 2, "one obtained, one copy")
 
 func test_the_duplicator_does_not_copy_itself() -> void:
-	_give(&"ultra_duplicator")
+	Fixtures.give(self, &"ultra_duplicator")
 	assert_eq(GameState._count_items(&"ultra_duplicator"), 1)
 
 func test_a_copy_pays_its_pickup_again() -> void:
-	_give(&"ultra_duplicator")
+	Fixtures.give(self, &"ultra_duplicator")
 	var before: int = GameState.max_hp
-	_give(&"lunch")
+	Fixtures.give(self, &"lunch")
 	assert_eq(GameState.max_hp, before + 4, "two Lunches, +2 Max Health each")
 
 func test_two_duplicators_make_two_copies_and_no_more() -> void:
-	_give(&"ultra_duplicator")
-	_give(&"ultra_duplicator")  # the second is itself copied by the first
+	Fixtures.give(self, &"ultra_duplicator")
+	Fixtures.give(self, &"ultra_duplicator")  # the second is itself copied by the first
 	var held: int = GameState._count_items(&"ultra_duplicator")
-	_give(&"anchor")
+	Fixtures.give(self, &"anchor")
 	assert_eq(GameState._count_items(&"anchor"), 1 + held,
 		"one copy per Duplicator held; the copies do not copy each other")
 
 func test_without_the_duplicator_one_is_one() -> void:
-	_give(&"anchor")
+	Fixtures.give(self, &"anchor")
 	assert_eq(GameState._count_items(&"anchor"), 1)
 
 # --- Mysterious Mask -------------------------------------------------------
 
 func test_the_mask_banks_a_choice() -> void:
-	_give(&"mysterious_mask")
+	Fixtures.give(self, &"mysterious_mask")
 	assert_eq(GameState.pending_masks, 1)
 
 func test_the_offer_is_three_characters_who_are_not_the_hero() -> void:
@@ -171,7 +168,7 @@ func test_the_overworld_opens_the_mask_and_the_report_pays_it() -> void:
 	add_child_autofree(ui)
 	ui.choose_start(0)
 	await get_tree().process_frame
-	_give(&"mysterious_mask")
+	Fixtures.give(self, &"mysterious_mask")
 	await get_tree().process_frame
 	assert_null(_find_modal(get_tree().root), "not over a game in play")
 	ui.report(false, [])

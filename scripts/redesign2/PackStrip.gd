@@ -86,13 +86,28 @@ func _item_token(item: ItemData, reporting: bool) -> Control:
 	# something rather than the gap above the tile saying nothing.
 	var card: Dictionary = item_hover(item, active, ready, reporting)
 	HoverCard.attach(col, card)
-	if active:
+	# A PICK UNDER WAY (OwnedPick.gd) makes the strip part of the answer: a relic it
+	# can take is ringed in its colour and chosen by a click, the rest dim, and
+	# nothing fires until it is answered.
+	var pick = _page.owned_pick() if _page.has_method("owned_pick") else null
+	if active and pick == null:
 		col.add_child(_item_fire_control(item, ready, reporting))
 
 	var tile := HoverPanel.new()
 	var border: Color = UITheme.GOLD if ready else tint.lerp(UITheme.BG, 0.45)
+	var fill: Color = tint.lerp(UITheme.BG, 0.86)
+	var border_w: int = 2 if ready else 1
+	var pickable: bool = pick != null and pick.candidate_for(item) != null
+	if pickable:
+		var chosen: bool = pick.is_selected(item)
+		border = pick.accent
+		border_w = 3 if chosen else 2
+		if chosen:
+			fill = pick.accent.lerp(UITheme.BG, 0.45)
+	elif pick != null:
+		col.modulate = Color(1, 1, 1, 0.35)
 	tile.add_theme_stylebox_override("panel",
-		UITheme.flat(tint.lerp(UITheme.BG, 0.86), 5, 3, 2 if ready else 1, border))
+		UITheme.flat(fill, 5, 3, border_w, border))
 	HoverCard.attach(tile, card)
 	tile.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	col.add_child(tile)
@@ -112,7 +127,11 @@ func _item_token(item: ItemData, reporting: bool) -> Control:
 	var target_item: ItemData = item
 	tile.gui_input.connect(func(ev: InputEvent):
 		if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
-			_page.open_item_card(target_item))
+			if pickable:
+				# Deferred: the choice redraws the strip this tile is part of.
+				pick.choose.call_deferred(target_item)
+			elif pick == null:
+				_page.open_item_card(target_item))
 	return col
 
 # A smelted piece: its pack art on a relic tile, in the Smelter's colour, with a

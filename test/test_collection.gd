@@ -1,5 +1,7 @@
 extends GutTest
 
+const Page := preload("res://test/helpers/run_page.gd")
+
 # Smoke test for the Collection compendium: every tab builds and populates against
 # the real Data autoload without runtime errors, search/filter narrows results,
 # and the detail panels fill in on selection. The compendium tracks the shipping
@@ -284,7 +286,7 @@ func test_a_pill_card_carries_both_doses() -> void:
 	assert_not_null(pill, "some pill has a horse dose authored")
 	if pill == null:
 		return
-	var text: String = _text_of(col._grid)
+	var text: String = Page.text_of(col._grid)
 	assert_true(pill.display_name in text, "the pill is named")
 	assert_true(String(pill.description) in text, "its normal dose is described")
 	assert_true(String(pill.horse_description) in text, "and so is its horse dose")
@@ -307,7 +309,7 @@ func test_pill_cells_all_wear_the_same_stand_in_capsule() -> void:
 	assert_true(seen.has(Collection.PILL_STANDIN), "and it is the stand-in")
 
 # Every node of a type under `node`, for the tests that want the pictures rather
-# than the words. (`_text_of`, further down, is the one for the words.)
+# than the words. (`Page.text_of`, in test/helpers/run_page.gd, is the one for the words.)
 func _all_of_type(node: Node, type_name: String) -> Array:
 	var out: Array = []
 	if node.is_class(type_name):
@@ -481,7 +483,7 @@ func test_every_event_renders_its_choices_in_full() -> void:
 		col._show_event_detail(ev)
 		assert_gt(col._detail_box.get_child_count(), 0,
 			"%s renders a detail panel" % ev.display_name)
-		var text: String = _text_of(col._detail_box)
+		var text: String = Page.text_of(col._detail_box)
 		assert_true(text.contains(ev.display_name), "which names %s" % ev.display_name)
 		for c in ev.choices:
 			# Through the name holes, the way the panel draws it: outside a run
@@ -501,7 +503,7 @@ func test_an_options_random_curse_reads_random() -> void:
 	var found: bool = false
 	for ev in Data.all_events2():
 		col._show_event_detail(ev)
-		var text: String = _text_of(col._detail_box)
+		var text: String = Page.text_of(col._detail_box)
 		for line in text.split("\n"):
 			assert_false(line.strip_edges() == "Curse:",
 				"%s has a curse line with no curse named" % ev.display_name)
@@ -565,16 +567,6 @@ func test_events_search_reaches_the_choice_text() -> void:
 	col._search["events"] = ""
 	col._populate_events()
 	assert_eq(col._grid.get_child_count(), total, "and clearing it brings them all back")
-
-func _text_of(node: Node) -> String:
-	var out: String = ""
-	if node is Label:
-		out += (node as Label).text + "\n"
-	elif node is Button:
-		out += (node as Button).text + "\n"
-	for c in node.get_children():
-		out += _text_of(c)
-	return out
 
 # --- grid thumbnails -------------------------------------------------------
 #
@@ -649,7 +641,7 @@ func _tile_text_for(tab: int, grid_index: int) -> String:
 	col._set_tab(tab)
 	if col._grid.get_child_count() <= grid_index:
 		return ""
-	return _text_of(col._grid.get_child(grid_index))
+	return Page.text_of(col._grid.get_child(grid_index))
 
 func test_an_enemy_tile_says_type_and_tier_and_nothing_else() -> void:
 	var col := _new_collection()
@@ -665,7 +657,7 @@ func test_an_enemy_tile_says_type_and_tier_and_nothing_else() -> void:
 		return
 	# The one with a footprint worth printing, so this cannot pass by picking an
 	# enemy that never had the line to begin with.
-	var text: String = _text_of(col._enemy_cell(big))
+	var text: String = Page.text_of(col._enemy_cell(big))
 	assert_true(text.contains(big.display_name), "the name is there")
 	assert_true(text.contains(_tier_word(big)), "and its tier: %s" % text)
 	assert_false(text.contains("dmg"), "damage is detail-panel material: %s" % text)
@@ -684,7 +676,7 @@ func test_an_event_tile_says_its_rarity_but_not_how_many_choices() -> void:
 	col._set_tab(Collection.Tab.EVENTS)
 	assert_gt(col._grid.get_child_count(), 0, "there are events to read")
 	var ev: EventData2 = Data.all_events2()[0]
-	var text: String = _text_of(col._event_cell(ev))
+	var text: String = Page.text_of(col._event_cell(ev))
 	assert_true(text.contains(ev.rarity.to_upper()), "the rarity is there: %s" % text)
 	assert_false(text.contains("choice"), "the choice count is not: %s" % text)
 
@@ -695,7 +687,7 @@ func test_an_item_tile_keeps_its_rarity() -> void:
 	col._set_tab(Collection.Tab.ITEMS)
 	assert_gt(Data.all_items2().size(), 0, "there is an item roster")
 	var it: ItemData = Data.all_items2()[0]
-	var text: String = _text_of(col._item_cell(it))
+	var text: String = Page.text_of(col._item_cell(it))
 	assert_true(text.contains(it.display_name), "the name is there")
 	assert_true(text.contains(col._item_rarity_label(it).to_upper()),
 		"and the rarity it is sorted by: %s" % text)
@@ -734,7 +726,7 @@ func test_the_game_detail_offers_the_steam_page() -> void:
 		return
 	var col := _new_collection()
 	col._show_game_detail(with_page)
-	assert_true(_text_of(col._detail_box).contains("Steam page"),
+	assert_true(Page.text_of(col._detail_box).contains("Steam page"),
 		"the detail panel carries the shortcut")
 
 func test_a_game_with_no_store_page_gets_no_steam_button() -> void:
@@ -743,7 +735,7 @@ func test_a_game_with_no_store_page_gets_no_steam_button() -> void:
 	bare.display_name = "Nowhere In Particular"
 	var col := _new_collection()
 	col._show_game_detail(bare)
-	assert_false(_text_of(col._detail_box).contains("Steam page"),
+	assert_false(Page.text_of(col._detail_box).contains("Steam page"),
 		"and a game without one stays clean")
 
 # --- the detail pane is a pane, not a page ----------------------------------
@@ -795,12 +787,12 @@ func test_a_games_facts_are_on_the_first_screen_of_its_entry() -> void:
 	if head == null:
 		return
 	assert_gte(head.get_child_count(), 1, "with the identity column in it")
-	var text: String = _text_of(head)
+	var text: String = Page.text_of(head)
 	assert_string_contains(text, g.display_name, "the name is in that first row")
 	assert_string_contains(text, "⚔", "and so is the lifetime record")
 	# …which is a LINE now, not a section: "📊 Tracked Stats" over "Beaten … 3"
 	# over "Amulet wins … 1" was a heading and two rows to say two numbers.
-	assert_false(_text_of(col._detail_box).contains("Tracked Stats"),
+	assert_false(Page.text_of(col._detail_box).contains("Tracked Stats"),
 		"the record needs no heading of its own any more")
 
 func test_the_owned_toggle_is_still_a_direct_child_of_the_pane() -> void:

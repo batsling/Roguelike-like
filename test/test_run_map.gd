@@ -1,31 +1,24 @@
 extends GutTest
 
+const Page := preload("res://test/helpers/run_page.gd")
+
 # Tests for the "Map to the Amulet" overview (RunMapModal) and the journey
 # tracking that feeds it. The map is the ported old-web bird's-eye view: a
 # layered shortest-path DAG from the current game down to the amulet. It must
 # build headless, place the player at the top layer and the amulet at the
 # bottom, and expose a step count that matches the DAG depth.
 
-const OVERWORLD := preload("res://scenes/redesign2/Overworld2.tscn")
 const MAP_MODAL := preload("res://scripts/redesign2/RunMapModal.gd")
 
 var _ui
 
 func before_each() -> void:
-	_ui = OVERWORLD.instantiate()
-	add_child_autofree(_ui)   # _ready -> rolls the amulet + the three start options
-	# Take the first offered start. It is the run's FIRST GAME now, so the run opens
+	_ui = Page.build(self)    # _ready -> rolls the amulet + the three start options
+	# Take the first offered start. It is the run's FIRST GAME, so the run opens
 	# in the report step — play it out, since the map is read from a run that is
-	# standing at an offering.
-	_ui.choose_start(0)
-	if _ui._phase == _ui.Phase.PLAYING:
-		_report_beat(_ui)
-		_ui._end_resolve()
-		# The report hands its haul to a PostCombatScreen now; walk off it, which
-		# is also what puts the map's own page back in front.
-		if _ui._post_screen != null and is_instance_valid(_ui._post_screen):
-			_ui._post_screen.dismiss()
-		_ui._drop_queue.clear()
+	# standing at an offering. Walking off the haul screen is also what puts the
+	# map's own page back in front.
+	Page.play_opening(_ui)
 
 func after_each() -> void:
 	GameState.reset_run()
@@ -96,7 +89,7 @@ func test_moving_records_the_journey_trail() -> void:
 	# append the game just left (mirrors the old gameState.visitedGames).
 	var start_id: StringName = GameState.current_game_id
 	assert_false(GameState.visited_games.has(start_id), "start not yet 'visited'")
-	_pick_enemies(_ui, 0)
+	Page.pick_enemies(_ui, 0)
 	assert_true(GameState.visited_games.has(start_id),
 		"the game we left is recorded on the journey trail")
 
@@ -251,7 +244,7 @@ func test_clicking_a_rung_opens_a_card_on_that_game() -> void:
 	var modal = _open_map()
 	var card = modal.open_node_card(GameState.current_game_id, 0)
 	assert_not_null(card, "a rung opens a card")
-	assert_true(_text_of(card).contains(Data.get_game(GameState.current_game_id).display_name),
+	assert_true(Page.text_of(card).contains(Data.get_game(GameState.current_game_id).display_name),
 		"and the card is about the game that was clicked")
 
 func test_the_card_says_which_rung_it_is_without_a_step_count() -> void:
@@ -260,7 +253,7 @@ func test_the_card_says_which_rung_it_is_without_a_step_count() -> void:
 	var modal = _open_map()
 	var total: int = modal.shortest_distance()
 	var card = modal.open_node_card(GameState.amulet_game_id, total)
-	var text: String = _text_of(card)
+	var text: String = Page.text_of(card)
 	assert_true(text.contains("The Amulet"), "the Amulet's card says what it is")
 	assert_false(text.contains("On this route"), "and no longer counts the steps")
 	assert_false(text.contains("On the road to the Amulet"), "nor says it is on the road")
@@ -291,7 +284,7 @@ func test_goals_beaten_opens_the_record_as_pictures() -> void:
 	var saved: Dictionary = GameStats.enemy_log.duplicate(true)
 	GameStats.enemy_log[String(here)] = {String(enemy.id): {"beaten": 2, "note": ""}}
 	var card = modal.open_node_card(here, 0)
-	var text: String = _text_of(card)
+	var text: String = Page.text_of(card)
 	var btn: Button = card.find_child("GoalsBeaten", true, false)
 	var view: Control = null
 	if btn != null:
@@ -358,7 +351,7 @@ func test_no_rung_card_offers_to_route_through_it() -> void:
 		return
 	var mid: StringName = StringName((layers[1] as Array)[0])
 	modal.open_node_card(mid, 1)
-	assert_false(_text_of(modal._node_card).contains("Route through"),
+	assert_false(Page.text_of(modal._node_card).contains("Route through"),
 		"pinning is gone, so no card offers it")
 
 # --- the DAG memo -----------------------------------------------------------
@@ -396,18 +389,6 @@ func test_the_memo_is_bounded() -> void:
 	assert_lte(RunGraph._dag_cache.size(), RunGraph.DAG_CACHE_MAX,
 		"the DAG memo never exceeds its cap")
 
-# Every rung's text, flattened — enough to assert what a card actually says
-# without reaching into its layout.
-func _text_of(node: Node) -> String:
-	var out: String = ""
-	if node is Label:
-		out += (node as Label).text + "\n"
-	elif node is Button:
-		out += (node as Button).text + "\n"
-	for c in node.get_children():
-		out += _text_of(c)
-	return out
-
 # --- minimise --------------------------------------------------------------
 #
 # The window rolls up to its title bar instead of closing. Over the star chart
@@ -439,7 +420,7 @@ func test_a_map_with_no_chart_under_it_still_has_a_way_out() -> void:
 	# Opened standalone, this panel is the only thing on screen — minimise alone
 	# would leave nothing that closes it.
 	var modal = _open_map()
-	assert_true(_text_of(modal._panel).contains("Close"),
+	assert_true(Page.text_of(modal._panel).contains("Close"),
 		"a chartless map keeps a Close of its own")
 
 # --- what a rung says, and what it opens ------------------------------------
@@ -496,33 +477,3 @@ func test_a_bashed_neighbour_is_not_a_way_on() -> void:
 		"a door Bash destroyed is not a door")
 	assert_eq(RunGraph.degree(here), before,
 		"…though the graph itself is unchanged — that is the difference between them")
-
-# Report the game as completed AND tick the row for the body that walked on with
-# it. This is what a bare `report(true)` used to do in one flag, back when that
-# body was the game's own enemy and beating the game answered for it; it is spelled
-# out now because the flag only records the GAME any more (GameLoop2.arrivals),
-# and clearing an enemy is ticking its checklist row like any other.
-func _report_beat(ui) -> void:
-	var landed: Dictionary = GameLoop2.arrival()
-	ui.report(true, [] if landed.is_empty() else [int(landed["instance"])])
-
-# Pick the first card, having first made sure it is an ordinary fight (§19.1).
-#
-# What a committed game stands on the board is decided by the NODE'S KIND now —
-# two bodies on an Enemies node, one boss on a Champion, none at all on an Event
-# or a Shop — and the offering deals those at 60/20/10/10. So a test that picks
-# and then expects something to be standing there is a test whose subject is a
-# die roll. Forcing the kind on the one node about to be picked is the ARRANGE
-# step; the rest of the map is left as the run dealt it.
-func _pick_enemies(ui, idx: int = 0) -> void:
-	if idx >= 0 and idx < ui._choices.size():
-		# ON THE SLOT (§19.2): the kind rides the node, so a transmuted card plays a
-		# different game at the same kind and the game id is the wrong key.
-		var choice: Dictionary = ui._choices[idx]
-		var slot := StringName(choice.get("slot", &""))
-		if slot == &"":
-			var game: GameData = choice.get("game")
-			slot = game.id if game != null else &""
-		if slot != &"":
-			GameState.node_kinds[slot] = RunGraph.NodeKind.ENEMIES
-	ui.pick(idx)

@@ -1,5 +1,7 @@
 extends GutTest
 
+const Fixtures := preload("res://test/helpers/fixtures.gd")
+
 # Tile effects and units (docs/games-first-redesign.md §17) — the two things that
 # can be on a cell of the battlefield that are not a body.
 #
@@ -12,16 +14,6 @@ extends GutTest
 #      Landmines;
 #   4. the WIRING — routing around a minefield, save/load, and the keyword strip
 #      an item's description carries.
-
-# Choose a game and take its ESCORT straight back off the board — the same helper
-# every other 2.0 suite uses, and for the same reason: a stranger from the
-# authored roster standing on the board would put content these tests never asked
-# about inside their assertions.
-func _choose_solo(enemy: GoalEnemyData) -> int:
-	var inst: int = GameLoop2.choose_game(enemy)
-	if GameLoop2.second_body_instance() > 0:
-		GameLoop2.despawn(GameLoop2.second_body_instance())
-	return inst
 
 func before_each() -> void:
 	GameState.reset_run()
@@ -44,19 +36,6 @@ func _enemy(goal: String = "Beat it", health: int = 3) -> GoalEnemyData:
 	e.health = health
 	e.difficulty = GoalEnemyData.Difficulty.LOW
 	return e
-
-func _give(id: StringName) -> ItemData:
-	var tmpl: ItemData = Data.get_item2(id)
-	assert_not_null(tmpl, "items2.0 has %s" % id)
-	return GameState.add_item(tmpl)
-
-# Stand the only body on the board at a known cell, so a test about the GROUND
-# doesn't also have to be about where the spawner happened to put someone.
-func _park(instance: int, cell: Vector2i) -> Dictionary:
-	var entry: Dictionary = GameLoop2.entry_for(instance)
-	entry["col"] = cell.x
-	entry["row"] = cell.y
-	return entry
 
 # ---------------------------------------------------------------------------
 # 1. The content
@@ -120,8 +99,8 @@ func test_a_tile_off_the_board_is_refused() -> void:
 	assert_false(GameLoop2.apply_tile(Vector2i(2, 0), &"no_such_tile"))
 
 func test_walking_into_fire_burns_the_body() -> void:
-	var inst: int = _choose_solo(_enemy())
-	_park(inst, Vector2i(3, 0))
+	var inst: int = Fixtures.choose_solo(_enemy())
+	Fixtures.park(inst, Vector2i(3, 0))
 	GameLoop2.apply_tile(Vector2i(2, 0), &"fire")
 	assert_eq(int(GameLoop2.entry_for(inst)["statuses"].get(&"burn", 0)), 0, "not yet")
 	# A shove is a way of ARRIVING in a cell, and every arrival pays the same
@@ -137,15 +116,15 @@ func test_fire_lit_under_a_body_burns_it_on_the_spot() -> void:
 	# into it, so it costs the same stack and costs it now. It used to wait for the
 	# enemy's next turn, which made a Red Candle aimed at an occupied square look
 	# like a click that had missed.
-	var inst: int = _choose_solo(_enemy())
-	var entry: Dictionary = _park(inst, Vector2i(2, 1))
+	var inst: int = Fixtures.choose_solo(_enemy())
+	var entry: Dictionary = Fixtures.park(inst, Vector2i(2, 1))
 	GameLoop2.apply_tile(Vector2i(2, 1), &"fire")
 	assert_eq(int(entry["statuses"].get(&"burn", 0)), 1,
 		"lighting the square a body is standing on burns it immediately")
 
 func test_fire_lit_on_bare_ground_burns_nobody() -> void:
-	var inst: int = _choose_solo(_enemy())
-	var entry: Dictionary = _park(inst, Vector2i(3, 0))
+	var inst: int = Fixtures.choose_solo(_enemy())
+	var entry: Dictionary = Fixtures.park(inst, Vector2i(3, 0))
 	GameLoop2.apply_tile(Vector2i(2, 0), &"fire")
 	assert_eq(int(entry["statuses"].get(&"burn", 0)), 0,
 		"a square away is a square away")
@@ -153,8 +132,8 @@ func test_fire_lit_on_bare_ground_burns_nobody() -> void:
 func test_fire_that_annihilates_on_arrival_burns_nobody() -> void:
 	# Fire laid onto a mine is taken straight back off the board (§17), and a body
 	# standing there must not be billed for ground that never existed.
-	var inst: int = _choose_solo(_enemy("Beat it", 9))
-	var entry: Dictionary = _park(inst, Vector2i(2, 1))
+	var inst: int = Fixtures.choose_solo(_enemy("Beat it", 9))
+	var entry: Dictionary = Fixtures.park(inst, Vector2i(2, 1))
 	GameLoop2.apply_unit(Vector2i(2, 1), &"landmine")
 	GameLoop2.apply_tile(Vector2i(2, 1), &"fire")
 	assert_null(GameLoop2.tile_at(Vector2i(2, 1)), "the fire went out on arrival")
@@ -165,8 +144,8 @@ func test_standing_in_fire_burns_again_each_turn() -> void:
 	# On the FRONT column, where the body strikes rather than steps — so it is
 	# standing on the same burning cell for every turn of the game, and the count
 	# is a fact about the fire rather than about where the walk took it.
-	var inst: int = _choose_solo(_enemy("Beat it", 9))
-	var entry: Dictionary = _park(inst, Vector2i(1, 0))
+	var inst: int = Fixtures.choose_solo(_enemy("Beat it", 9))
+	var entry: Dictionary = Fixtures.park(inst, Vector2i(1, 0))
 	GameLoop2.apply_tile(Vector2i(1, 0), &"fire")
 	assert_eq(int(entry["statuses"].get(&"burn", 0)), 1, "one for the lighting")
 	# Two turns of the board, bought outright — a reported game hands out only the
@@ -196,8 +175,8 @@ func test_a_tile_ticks_on_a_game_that_was_missed_too() -> void:
 	assert_eq(GameLoop2.tile_games_left(Vector2i(2, 0)), 2)
 
 func test_a_mine_goes_off_under_whoever_steps_on_it() -> void:
-	var inst: int = _choose_solo(_enemy("Beat it", 1))
-	_park(inst, Vector2i(3, 0))
+	var inst: int = Fixtures.choose_solo(_enemy("Beat it", 1))
+	Fixtures.park(inst, Vector2i(3, 0))
 	assert_true(GameLoop2.apply_unit(Vector2i(2, 0), &"landmine"))
 	GameState.push = 1
 	GameLoop2.push(inst, GameLoop2.PUSH_FORWARD)
@@ -208,8 +187,8 @@ func test_a_mine_goes_off_under_whoever_steps_on_it() -> void:
 func test_a_mine_leaves_no_drop_the_way_a_bomb_does_not() -> void:
 	# A body destroyed by a blast is destroyed, not defeated (§4) — no item, no
 	# gold — and a mine is a blast.
-	var inst: int = _choose_solo(_enemy("Beat it", 1))
-	_park(inst, Vector2i(3, 0))
+	var inst: int = Fixtures.choose_solo(_enemy("Beat it", 1))
+	Fixtures.park(inst, Vector2i(3, 0))
 	GameLoop2.apply_unit(Vector2i(2, 0), &"landmine")
 	var gold_before: int = GameState.gold
 	var defeated_before: int = GameLoop2.defeated_count
@@ -223,11 +202,11 @@ func test_a_mine_fires_the_bomb_trigger_so_bomb_relics_pay() -> void:
 	# The whole reason a Landmine is a UNIT rather than a one-off trap: it is a
 	# proxy bomb, so the pack's bomb relics read it. Blood Bombs pays +1 Health per
 	# bomb used, and a mine going off is a bomb used.
-	_give(&"blood_bombs")
+	Fixtures.give(self, &"blood_bombs")
 	GameState.hp = 10
 	var bombs_before: int = GameState.bombs
-	var inst: int = _choose_solo(_enemy("Beat it", 1))
-	_park(inst, Vector2i(3, 0))
+	var inst: int = Fixtures.choose_solo(_enemy("Beat it", 1))
+	Fixtures.park(inst, Vector2i(3, 0))
 	GameLoop2.apply_unit(Vector2i(2, 0), &"landmine")
 	GameState.push = 1
 	GameLoop2.push(inst, GameLoop2.PUSH_FORWARD)
@@ -249,7 +228,7 @@ func test_fire_and_a_mine_annihilate_each_other_either_way_round() -> void:
 
 func test_the_board_loses_its_furniture_when_it_shrinks() -> void:
 	# A tile at column 6 of a 5-wide board is ground nothing can ever walk into.
-	var item: ItemData = _give(&"mine_r_construction")
+	var item: ItemData = Fixtures.give(self, &"mine_r_construction")
 	GameLoop2.sync_grid_bounds()
 	var edge := Vector2i(GameLoop2.grid_cols(), GameLoop2.grid_rows() - 1)
 	GameLoop2.apply_tile(edge, &"fire")
@@ -274,7 +253,7 @@ func test_scroll_of_fire_lights_the_front_column() -> void:
 	assert_eq(GameState.status_stacks(&"burn"), 3, "the reader burns too")
 
 func test_red_candle_reaches_only_the_columns_it_authored() -> void:
-	var candle: ItemData = _give(&"red_candle")
+	var candle: ItemData = Fixtures.give(self, &"red_candle")
 	assert_eq(candle.target_kind(), &"tile", "it points at ground, not at a body")
 	assert_eq(candle.target_columns(), Vector2i(2, 3))
 	# A cell inside the fence lights up…
@@ -286,15 +265,15 @@ func test_red_candle_refuses_a_column_outside_its_reach() -> void:
 	# swinging, and never the back, where nothing would walk over it before it
 	# burned out. Re-checked in the effect as well as in the board's highlight, so
 	# a cell that arrived some other way obeys the same fence.
-	var candle: ItemData = _give(&"red_candle")
+	var candle: ItemData = Fixtures.give(self, &"red_candle")
 	GameState.use_item(candle, Vector2i(1, 0))
 	assert_null(GameLoop2.tile_at(Vector2i(1, 0)), "column 1 is out of reach")
 
 func test_hot_bombs_leaves_fire_where_the_blast_was() -> void:
-	_give(&"hot_bombs")
+	Fixtures.give(self, &"hot_bombs")
 	assert_eq(GameState.bomb_tile(), &"fire")
-	var inst: int = _choose_solo(_enemy("Beat it", 5))
-	var entry: Dictionary = _park(inst, Vector2i(2, 1))
+	var inst: int = Fixtures.choose_solo(_enemy("Beat it", 5))
+	var entry: Dictionary = Fixtures.park(inst, Vector2i(2, 1))
 	GameState.bombs = 1
 	assert_true(GameLoop2.bomb(inst))
 	for cell in GameLoop2.entry_cells(entry):
@@ -303,9 +282,9 @@ func test_hot_bombs_leaves_fire_where_the_blast_was() -> void:
 func test_hot_bombs_reaches_a_landmines_blast_too() -> void:
 	# A mine is a proxy bomb, so what the pack has done to bombs it has done to
 	# mines. The mine's own cell is left on fire behind it.
-	_give(&"hot_bombs")
-	var inst: int = _choose_solo(_enemy("Beat it", 5))
-	_park(inst, Vector2i(3, 0))
+	Fixtures.give(self, &"hot_bombs")
+	var inst: int = Fixtures.choose_solo(_enemy("Beat it", 5))
+	Fixtures.park(inst, Vector2i(3, 0))
 	GameLoop2.apply_unit(Vector2i(2, 0), &"landmine")
 	GameState.push = 1
 	GameLoop2.push(inst, GameLoop2.PUSH_FORWARD)
@@ -330,21 +309,21 @@ func test_gasoline_is_authored_as_ground_on_a_kill() -> void:
 
 func test_the_death_tile_rule_reads_off_the_inventory() -> void:
 	assert_eq(GameState.death_tile(), &"", "nothing owned lays ground on a kill")
-	_give(&"gasoline")
+	Fixtures.give(self, &"gasoline")
 	assert_eq(GameState.death_tile(), &"fire", "owning it flips the rule")
 
 func test_gasoline_sets_alight_the_square_a_body_fell_in() -> void:
-	_give(&"gasoline")
-	var inst: int = _choose_solo(_enemy("Beat it", 1))
-	_park(inst, Vector2i(2, 1))
+	Fixtures.give(self, &"gasoline")
+	var inst: int = Fixtures.choose_solo(_enemy("Beat it", 1))
+	Fixtures.park(inst, Vector2i(2, 1))
 	assert_null(GameLoop2.tile_at(Vector2i(2, 1)), "bare ground while it stands there")
 	assert_true(GameLoop2.fulfill(inst, true), "the goal was met and the body cleared")
 	assert_not_null(GameLoop2.tile_at(Vector2i(2, 1)),
 		"the square it died on is burning")
 
 func test_a_body_beaten_without_gasoline_leaves_bare_ground() -> void:
-	var inst: int = _choose_solo(_enemy("Beat it", 1))
-	_park(inst, Vector2i(2, 1))
+	var inst: int = Fixtures.choose_solo(_enemy("Beat it", 1))
+	Fixtures.park(inst, Vector2i(2, 1))
 	assert_true(GameLoop2.fulfill(inst, true))
 	assert_null(GameLoop2.tile_at(Vector2i(2, 1)),
 		"a kill lays nothing on its own — the ground is the item's")
@@ -354,9 +333,9 @@ func test_gasoline_lays_nothing_behind_a_bombed_body() -> void:
 	# and a relic that paid ground for it would make the bomb the cheapest way to
 	# set the board alight. Nothing in _defeat says so — the bomb simply never
 	# goes through it.
-	_give(&"gasoline")
-	var inst: int = _choose_solo(_enemy("Beat it", 1))
-	var entry: Dictionary = _park(inst, Vector2i(2, 1))
+	Fixtures.give(self, &"gasoline")
+	var inst: int = Fixtures.choose_solo(_enemy("Beat it", 1))
+	var entry: Dictionary = Fixtures.park(inst, Vector2i(2, 1))
 	var cells: Array = GameLoop2.entry_cells(entry)
 	GameState.bombs = 1
 	assert_true(GameLoop2.bomb(inst), "the bomb took the body off the board")
@@ -368,14 +347,14 @@ func test_gasoline_burns_a_neighbour_standing_in_the_square_it_lit() -> void:
 	# The ground goes down through apply_tile like any other, so a body whose
 	# footprint covers the dead one's square is bitten on the spot — Gasoline
 	# gets that for free rather than reimplementing it.
-	_give(&"gasoline")
-	var dying: int = _choose_solo(_enemy("Beat it", 1))
-	_park(dying, Vector2i(2, 1))
+	Fixtures.give(self, &"gasoline")
+	var dying: int = Fixtures.choose_solo(_enemy("Beat it", 1))
+	Fixtures.park(dying, Vector2i(2, 1))
 	var bystander: int = GameLoop2.spawn_to_stack(_enemy("Beat it", 9))
 	if bystander <= 0:
 		pending("the board had no room for a second body")
 		return
-	var other: Dictionary = _park(bystander, Vector2i(2, 1))
+	var other: Dictionary = Fixtures.park(bystander, Vector2i(2, 1))
 	assert_true(GameLoop2.fulfill(dying, true))
 	assert_eq(int(other["statuses"].get(&"burn", 0)), 1,
 		"the survivor standing on that square takes the stack now")
@@ -384,8 +363,8 @@ func test_a_body_that_fell_off_the_board_sets_nothing_alight() -> void:
 	# An off-grid arrival (§7.3) was never standing anywhere, so there is no
 	# square to light. The board must come back with no ground on it at all
 	# rather than with fire at whatever OFF_FIELD happens to equal.
-	_give(&"gasoline")
-	var inst: int = _choose_solo(_enemy("Beat it", 1))
+	Fixtures.give(self, &"gasoline")
+	var inst: int = Fixtures.choose_solo(_enemy("Beat it", 1))
 	var entry: Dictionary = GameLoop2.entry_for(inst)
 	entry["col"] = GameLoop2.offgrid_col()
 	entry["row"] = 0
@@ -401,7 +380,7 @@ func test_a_bomb_spent_on_bare_ground_still_goes_off() -> void:
 	# A bomb aimed at a square rather than at a body (§17). Nothing is standing
 	# there, so nothing takes damage — and with Hot Bombs the square is left
 	# burning, which is the whole reason to spend one that way.
-	_give(&"hot_bombs")
+	Fixtures.give(self, &"hot_bombs")
 	GameState.bombs = 1
 	assert_true(GameLoop2.bomb_cell(Vector2i(3, 1)))
 	assert_eq(GameState.bombs, 0, "the charge went")
@@ -409,8 +388,8 @@ func test_a_bomb_spent_on_bare_ground_still_goes_off() -> void:
 		"and the ground it went off on is alight")
 
 func test_a_bomb_on_the_ground_hits_whoever_is_standing_there() -> void:
-	var inst: int = _choose_solo(_enemy("Beat it", 5))
-	var entry: Dictionary = _park(inst, Vector2i(2, 1))
+	var inst: int = Fixtures.choose_solo(_enemy("Beat it", 5))
+	var entry: Dictionary = Fixtures.park(inst, Vector2i(2, 1))
 	GameState.bombs = 1
 	var before: int = int(entry["health"])
 	assert_true(GameLoop2.bomb_cell(Vector2i(2, 1)))
@@ -428,14 +407,14 @@ func test_a_bomb_needs_a_charge_and_a_square_on_the_board() -> void:
 func test_a_bomb_on_the_ground_pays_the_bomb_relics() -> void:
 	# One bomb, one `bomb_used` trigger, wherever it was pointed — Blood Bombs pays
 	# for a bomb spent on an empty square exactly as for one spent on a body.
-	_give(&"blood_bombs")
+	Fixtures.give(self, &"blood_bombs")
 	GameState.hp = 10
 	GameState.bombs = 1
 	GameLoop2.bomb_cell(Vector2i(3, 2))
 	assert_eq(GameState.hp, 11)
 
 func test_landmines_puts_one_mine_down_after_a_game() -> void:
-	_give(&"landmines")
+	Fixtures.give(self, &"landmines")
 	assert_true(GameLoop2.units.is_empty(), "nothing on the ground yet")
 	TriggerBus.game_beaten.emit({"game_id": &"whatever"})
 	assert_eq(GameLoop2.units.size(), 1, "one mine, on ground nothing was standing on")
@@ -450,7 +429,7 @@ func test_an_empty_cell_is_one_with_nothing_on_it_at_all() -> void:
 		for row in range(GameLoop2.grid_rows()):
 			GameLoop2.apply_tile(Vector2i(col, row), &"fire")
 	assert_true(GameLoop2.empty_cells().is_empty(), "every cell is spoken for")
-	_give(&"landmines")
+	Fixtures.give(self, &"landmines")
 	TriggerBus.game_beaten.emit({"game_id": &"whatever"})
 	assert_true(GameLoop2.units.is_empty(), "so no mine was laid this game")
 
@@ -480,8 +459,8 @@ func test_a_walled_lane_still_beats_a_merely_mined_one() -> void:
 	# The ranking, the other way up. Row 0 is mined; row 1 has a BODY parked in it.
 	# The mined lane wins, because the mine costs a point of Health and the body
 	# might never move.
-	var blocker: int = _choose_solo(_enemy())
-	_park(blocker, Vector2i(2, 1))
+	var blocker: int = Fixtures.choose_solo(_enemy())
+	Fixtures.park(blocker, Vector2i(2, 1))
 	for row in range(GameLoop2.grid_rows()):
 		if row != 1:
 			GameLoop2.apply_unit(Vector2i(2, row), &"landmine")
@@ -626,9 +605,9 @@ func test_web_is_a_one_shot_and_fire_is_a_clock() -> void:
 	assert_gt(fire.decay_games, 0)
 
 func test_walking_into_a_web_stuns_and_clears_the_square() -> void:
-	var inst: int = _choose_solo(_enemy())
+	var inst: int = Fixtures.choose_solo(_enemy())
 	var cell := Vector2i(2, 0)
-	_park(inst, Vector2i(3, 0))
+	Fixtures.park(inst, Vector2i(3, 0))
 	GameLoop2.apply_tile(cell, &"web")
 	assert_not_null(GameLoop2.tile_at(cell), "the web is laid")
 	var entry: Dictionary = GameLoop2.entry_for(inst)
@@ -638,7 +617,7 @@ func test_walking_into_a_web_stuns_and_clears_the_square() -> void:
 		"and the web is gone — it caught something, which is its whole clock")
 
 func test_a_web_nobody_steps_in_outlives_a_game() -> void:
-	_choose_solo(_enemy())
+	Fixtures.choose_solo(_enemy())
 	var cell := Vector2i(4, 2)
 	GameLoop2.apply_tile(cell, &"web")
 	GameLoop2.beat_game()
@@ -646,7 +625,7 @@ func test_a_web_nobody_steps_in_outlives_a_game() -> void:
 		"a clock measured in bites does not tick with the calendar")
 
 func test_a_stunned_body_loses_its_turn_and_the_stack_wears_off() -> void:
-	var inst: int = _choose_solo(_enemy())
+	var inst: int = Fixtures.choose_solo(_enemy())
 	var entry: Dictionary = GameLoop2.entry_for(inst)
 	GameLoop2.apply_status_to(inst, &"stun", 2)
 	assert_true(GameLoop2.is_stunned(entry), "two stacks is two turns off")
@@ -661,7 +640,7 @@ func test_the_scrolls_stun_is_the_same_status_the_web_applies() -> void:
 	# ONE BOOK (§13.2). `GameLoop2.stun` was the board's own counter and it applies
 	# the Stun status now, so a scared monster and a webbed one are the same body in
 	# the same state — and everything that reads a stun reads one number.
-	var inst: int = _choose_solo(_enemy())
+	var inst: int = Fixtures.choose_solo(_enemy())
 	var entry: Dictionary = GameLoop2.entry_for(inst)
 	GameLoop2.stun(inst)
 	assert_true(GameLoop2.is_stunned(entry), "it does not act")
@@ -672,6 +651,6 @@ func test_the_scrolls_stun_is_the_same_status_the_web_applies() -> void:
 
 func test_sticky_bombs_lays_web_where_hot_bombs_lays_fire() -> void:
 	assert_eq(GameState.bomb_tile(), &"")
-	_give(&"sticky_bombs")
+	Fixtures.give(self, &"sticky_bombs")
 	assert_eq(GameState.bomb_tile(), &"web",
 		"the item does what its card says, through the tile layer")

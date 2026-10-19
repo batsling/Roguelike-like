@@ -1,5 +1,7 @@
 extends GutTest
 
+const Fixtures := preload("res://test/helpers/fixtures.gd")
+
 # Games-first (2.0) item + reward wiring: the items2.0 relics that drop from
 # defeated enemies must actually DO something. Covers the reward pool, the
 # "after beating a game" trigger (Anchor / Burning Blood / Meat on the Bone),
@@ -7,19 +9,6 @@ extends GutTest
 # board-verb pickups, the chest choice-count queue, and the
 # active-item effect handlers (Unstable Genome's random_item_choice +
 # destroy_self). See docs/games-first-redesign.md §8.
-
-# Choose a game and take its ESCORT straight back off the board.
-#
-# Committing to a game stands a second, randomly-rolled body beside the game's
-# own enemy (§7.5, and test_gameloop2.gd, which is where that rule is tested).
-# These tests are about something else, and a stranger from the authored roster
-# standing on the board would put content they never asked about inside their
-# assertions.
-func _choose_solo(enemy: GoalEnemyData) -> int:
-	var inst: int = GameLoop2.choose_game(enemy)
-	if GameLoop2.second_body_instance() > 0:
-		GameLoop2.despawn(GameLoop2.second_body_instance())
-	return inst
 
 func before_each() -> void:
 	GameState.reset_run()
@@ -30,11 +19,6 @@ func before_each() -> void:
 func after_each() -> void:
 	GameState.reset_run()
 	GameLoop2.reset()
-
-func _give(id: StringName) -> ItemData:
-	var tmpl: ItemData = Data.get_item2(id)
-	assert_not_null(tmpl, "items2.0 has %s" % id)
-	return GameState.add_item(tmpl)
 
 # --- reward pool ----------------------------------------------------------
 
@@ -57,7 +41,7 @@ func test_anchor_grants_a_shield_on_game_selected() -> void:
 	var anchor: ItemData = Data.get_item2(&"anchor")
 	assert_eq(String(anchor.triggers[0].get("on", "")), "game_selected",
 		"Anchor hangs on the selection hook")
-	_give(&"anchor")
+	Fixtures.give(self, &"anchor")
 	var before: int = GameState.shields
 	TriggerBus.game_beaten.emit({"game_id": &"rogue"})
 	assert_eq(GameState.shields, before, "beating a game is not when Anchor pays")
@@ -65,14 +49,14 @@ func test_anchor_grants_a_shield_on_game_selected() -> void:
 	assert_eq(GameState.shields, before + 1, "Anchor: +1 Shield when a game is selected")
 
 func test_burning_blood_heals_on_game_beaten() -> void:
-	_give(&"burning_blood")
+	Fixtures.give(self, &"burning_blood")
 	GameState.max_hp = 10
 	GameState.hp = 5
 	TriggerBus.game_beaten.emit({"game_id": &"rogue"})
 	assert_eq(GameState.hp, 6, "Burning Blood: +1 Health after beating a game")
 
 func test_meat_on_the_bone_heals_only_when_low() -> void:
-	_give(&"meat_on_the_bone")
+	Fixtures.give(self, &"meat_on_the_bone")
 	GameState.max_hp = 10
 	# Above 50% -> no heal.
 	GameState.hp = 8
@@ -91,20 +75,20 @@ func test_meat_on_the_bone_heals_only_when_low() -> void:
 # grant is made once on acquisition and is not a stat_bonus that unwinds if the
 # item leaves.
 func test_vajra_pickup_grants_the_strength_status_permanently() -> void:
-	var v: ItemData = _give(&"vajra")
+	var v: ItemData = Fixtures.give(self, &"vajra")
 	assert_eq(GameState.status_stacks(&"strength"), 1, "Vajra: +1 Strength on pickup")
 	GameState.remove_item(v)
 	assert_eq(GameState.status_stacks(&"strength"), 1,
 		"a pickup's grant is kept, not rented")
 
 func test_oddly_smooth_stone_grants_the_dexterity_status() -> void:
-	_give(&"oddly_smooth_stone")
+	Fixtures.give(self, &"oddly_smooth_stone")
 	assert_eq(GameState.status_stacks(&"dexterity"), 1, "+1 Dexterity on pickup")
 
 func test_the_two_stat_relics_stack_by_intensity() -> void:
 	# Two Vajras are one Strength at 2, not two separate Strengths (§13).
-	_give(&"vajra")
-	_give(&"vajra")
+	Fixtures.give(self, &"vajra")
+	Fixtures.give(self, &"vajra")
 	assert_eq(GameState.status_stacks(&"strength"), 2)
 	assert_eq(GameState.status_list().size(), 1, "still one status")
 
@@ -121,7 +105,7 @@ func test_chest_choice_queue_tracks_sizes() -> void:
 # --- Unstable Genome: random_item_choice + destroy_self -------------------
 
 func test_unstable_genome_destroys_self_and_banks_a_chest() -> void:
-	var genome: ItemData = _give(&"unstable_genome")
+	var genome: ItemData = Fixtures.give(self, &"unstable_genome")
 	var chests_before: int = GameState.pending_chests
 	EffectSystem.apply(
 		{"type": "random_item_choice", "count": 3, "destroy_self": true},
@@ -133,12 +117,12 @@ func test_unstable_genome_destroys_self_and_banks_a_chest() -> void:
 # --- Alien Baby: enemies take an extra goal completion to kill -------------
 
 func test_alien_baby_makes_enemies_take_two_goal_completions() -> void:
-	_give(&"alien_baby")
+	Fixtures.give(self, &"alien_baby")
 	assert_eq(GameState.enemy_health_bonus(), 1, "Alien Baby: +1 enemy Health")
 	var enemy: GoalEnemyData = Data.all_goal_enemies()[0]
 	assert_eq(GameLoop2.effective_health(enemy), 2, "the enemy now needs two hits")
 	# Spawn it and beat its goal once: it survives with 1 Health, still following.
-	_choose_solo(enemy)
+	Fixtures.choose_solo(enemy)
 	var res1: Dictionary = GameLoop2.beat_game(true)
 	assert_eq(GameLoop2.stack_size(), 1, "one goal completion doesn't kill it yet")
 	assert_eq(int(res1.get("drops", 0)), 0, "no drop until it dies")
@@ -150,12 +134,12 @@ func test_alien_baby_makes_enemies_take_two_goal_completions() -> void:
 	assert_eq(int(res2.get("drops", 0)), 1, "and it drops its relic (inline)")
 
 func test_alien_baby_survivor_still_attacks_when_goal_missed() -> void:
-	_give(&"alien_baby")
+	Fixtures.give(self, &"alien_baby")
 	GameState.max_hp = 10
 	GameState.hp = 10
 	GameState.shields = 0
 	var enemy: GoalEnemyData = Data.all_goal_enemies()[0]
-	_choose_solo(enemy)
+	Fixtures.choose_solo(enemy)
 	GameLoop2.beat_game(true)                 # first hit -> survives, follows @ spawn col
 	assert_eq(GameLoop2.stack_size(), 1)
 	# March it to the front — it only strikes from column 1 (§grid) — with TURNS,
@@ -175,7 +159,7 @@ func test_pickup_effects_land_and_are_reported_on_acquire() -> void:
 	GameState.max_hp = 10
 	GameState.hp = 10
 	var before_history: int = Notifications.history.size()
-	_give(&"lunch")                               # +2 Max Health and +2 Health
+	Fixtures.give(self, &"lunch")                               # +2 Max Health and +2 Health
 	assert_eq(GameState.max_hp, 12, "Lunch's Max Health lands on acquire")
 	assert_eq(GameState.hp, 12, "and so does the Health")
 	assert_gt(Notifications.history.size(), before_history, "the pickup posted a notification")
@@ -190,7 +174,7 @@ func test_pickup_reports_its_verb_bonus() -> void:
 	# Blood Bombs' +1 Bomb arrives through an item_acquired effect; the snapshot
 	# straddles the recompute, so it is reported like any other resource move.
 	var before_history: int = Notifications.history.size()
-	_give(&"blood_bombs")
+	Fixtures.give(self, &"blood_bombs")
 	var texts: Array = []
 	for entry in Notifications.history.slice(before_history):
 		texts.append(String(entry.get("text", "")))
@@ -207,14 +191,14 @@ func test_pickup_reports_its_verb_bonus() -> void:
 func test_max_health_arrives_full() -> void:
 	GameState.max_hp = 20
 	GameState.hp = 8
-	_give(&"mango")                               # gain_max_hp 4
+	Fixtures.give(self, &"mango")                               # gain_max_hp 4
 	assert_eq(GameState.max_hp, 24, "Mango raises the cap by 4")
 	assert_eq(GameState.hp, 12, "and fills the room it just made")
 
 func test_an_empty_container_raises_the_cap_and_nothing_else() -> void:
 	GameState.max_hp = 20
 	GameState.hp = 8
-	_give(&"hollow_heart")                        # gain_empty_max_hp 4
+	Fixtures.give(self, &"hollow_heart")                        # gain_empty_max_hp 4
 	assert_eq(GameState.max_hp, 24, "Hollow Heart raises the cap by 4")
 	assert_eq(GameState.hp, 8, "and leaves it empty — that is the whole item")
 
@@ -232,7 +216,7 @@ func test_a_full_pool_still_gains_the_cap() -> void:
 	# ends at full Health — not above it, and not with the gain silently dropped.
 	GameState.max_hp = 20
 	GameState.hp = 20
-	_give(&"mango")
+	Fixtures.give(self, &"mango")
 	assert_eq(GameState.max_hp, 24)
 	assert_eq(GameState.hp, 24, "topped up to the new cap, not past it")
 
@@ -245,7 +229,7 @@ func test_resource_gain_report_names_only_what_moved() -> void:
 # --- charged actives recharge per game beaten ----------------------------
 
 func test_charged_item_recharges_on_game_beaten() -> void:
-	var d6: ItemData = _give(&"d6")
+	var d6: ItemData = Fixtures.give(self, &"d6")
 	assert_true(d6.is_charged())
 	d6.current_charge = 0
 	TriggerBus.game_beaten.emit({"game_id": &"the_binding_of_isaac"})
@@ -286,15 +270,15 @@ func test_sacred_bark_doubles_what_a_scroll_does() -> void:
 	var aggravate: ScrollData = Data.get_scroll(&"scroll_of_aggravate_monsters")
 	assert_not_null(aggravate, "scrolls2.0 has Aggravate Monsters")
 	assert_eq(GameState.loot_multiplier(), 1, "nothing owned yet, so nothing doubles")
-	_choose_solo(Data.all_goal_enemies()[0])
+	Fixtures.choose_solo(Data.all_goal_enemies()[0])
 	ScrollSystem.read_scroll(aggravate)
 	assert_eq(int((GameLoop2.arrival()["statuses"] as Dictionary).get(&"strength", 0)), 1,
 		"authored at +1 Strength")
 
-	_give(&"sacred_bark")
+	Fixtures.give(self, &"sacred_bark")
 	assert_eq(GameState.loot_multiplier(), 2, "the Bark doubles loot")
 	GameLoop2.reset()
-	_choose_solo(Data.all_goal_enemies()[0])
+	Fixtures.choose_solo(Data.all_goal_enemies()[0])
 	ScrollSystem.read_scroll(aggravate)
 	assert_eq(int((GameLoop2.arrival()["statuses"] as Dictionary).get(&"strength", 0)), 2,
 		"and doubles the BAD scrolls too — that is what makes it a decision")
@@ -303,7 +287,7 @@ func test_sacred_bark_does_not_widen_a_teleport() -> void:
 	# `spread` is how far a Teleportation scroll's landing may VARY. Doubling it
 	# is not twice the scroll, so the multiplier is authored per op rather than
 	# sprayed over every integer in the dict.
-	_give(&"sacred_bark")
+	Fixtures.give(self, &"sacred_bark")
 	var effect: Dictionary = {"op": "teleport", "dir": "same", "spread": 1}
 	assert_eq(int(ScrollSystem._scaled(effect).get("spread", 0)), 1, "spread is left alone")
 
@@ -311,7 +295,7 @@ func test_sacred_bark_does_not_widen_a_teleport() -> void:
 
 func test_calling_bell_pays_one_item_per_rarity_and_a_permanent_curse() -> void:
 	var before: int = GameState.inventory.size()
-	_give(&"calling_bell")
+	Fixtures.give(self, &"calling_bell")
 	# The Bell itself, plus one Common, one Uncommon and one Rare.
 	assert_eq(GameState.inventory.size(), before + 4,
 		"the Bell and its three relics")
@@ -340,9 +324,21 @@ func _a_shop_node() -> StringName:
 
 func test_lords_parasol_takes_the_whole_shelf_for_nothing() -> void:
 	var hub: StringName = _a_shop_node()
-	var shelf: Array = ShopSystem.shop_for(hub).get("stock", [])
+	var shop: Dictionary = ShopSystem.shop_for(hub)
+	var shelf: Array = shop.get("stock", [])
 	assert_eq(shelf.size(), ShopSystem.STOCK_SLOTS, "a full shelf to sweep")
-	_give(&"lords_parasol")
+	# THE LOOT ON THE SHELF IS ARRANGED, not rolled. A rolled shelf now and then
+	# carried a piece the pack could not seat — a weapon with no spot its shape fits
+	# once the other pieces were in, or a second bag with nowhere to go — and a
+	# sweep rightly leaves what you cannot carry, so "the shelf is bare" failed now
+	# and then in a full suite run (never in 3,000 isolated deals, so the shelf it
+	# needs leans on state earlier files leave behind). What fits a pack is the
+	# pack's business and has tests of its own; one-cell scrolls are this test's.
+	shop["loot"] = []
+	for i in ShopSystem.LOOT_SLOTS:
+		shop["loot"].append({"entry": {"type": "scroll", "id": &"scroll_of_fire",
+			"rarity": "Common"}, "sold": false, "price": 10})
+	Fixtures.give(self, &"lords_parasol")
 	# THE PURSE STARTS FULL, AND THE TEST IS THAT NOTHING COMES OUT OF IT. It used
 	# to start at 0 and assert 0 afterwards, which is a different claim and one the
 	# shelf itself can falsify: the stock is rolled, several relics pay out on
@@ -384,14 +380,14 @@ func test_the_golden_idol_pays_on_top_of_every_drop() -> void:
 	enemy.difficulty = GoalEnemyData.Difficulty.LOW
 
 	GameState.gold = 0
-	_choose_solo(enemy)
+	Fixtures.choose_solo(enemy)
 	GameLoop2.beat_game(true)
 	var plain: int = GameState.gold
 	assert_eq(plain, GameLoop2.GOLD_PER_ENEMY, "a body is worth its base gold")
 
-	_give(&"golden_idol")
+	Fixtures.give(self, &"golden_idol")
 	GameState.gold = 0
-	_choose_solo(enemy)
+	Fixtures.choose_solo(enemy)
 	GameLoop2.beat_game(true)
 	assert_eq(GameState.gold, plain + 1, "and one more while the Idol is held")
 
@@ -408,7 +404,7 @@ func test_the_golden_idol_pays_on_top_of_every_drop() -> void:
 # worth nothing.
 
 func test_piggy_bank_pays_when_health_actually_goes_down() -> void:
-	_give(&"piggy_bank")
+	Fixtures.give(self, &"piggy_bank")
 	GameState.max_hp = 10
 	GameState.hp = 10
 	GameState.gold = 0
@@ -416,7 +412,7 @@ func test_piggy_bank_pays_when_health_actually_goes_down() -> void:
 	assert_eq(GameState.gold, 1, "one loss, one coin — not one per point")
 
 func test_piggy_bank_ignores_a_hit_the_shields_ate() -> void:
-	_give(&"piggy_bank")
+	Fixtures.give(self, &"piggy_bank")
 	GameState.max_hp = 10
 	GameState.hp = 10
 	GameState.shields = 5
@@ -427,7 +423,7 @@ func test_piggy_bank_ignores_a_hit_the_shields_ate() -> void:
 	assert_eq(GameState.gold, 0, "damage taken is not Health lost")
 
 func test_piggy_bank_pays_on_the_hit_no_shield_was_left_for() -> void:
-	_give(&"piggy_bank")
+	Fixtures.give(self, &"piggy_bank")
 	GameState.max_hp = 10
 	GameState.hp = 10
 	GameState.shields = 1
@@ -444,7 +440,7 @@ func test_piggy_bank_pays_on_the_hit_no_shield_was_left_for() -> void:
 func test_piggy_bank_pays_off_the_map_too() -> void:
 	# "Anytime you lose Health" — an event's bill is not a battlefield hit, and
 	# the relic must not care which.
-	_give(&"piggy_bank")
+	Fixtures.give(self, &"piggy_bank")
 	GameState.max_hp = 10
 	GameState.hp = 10
 	GameState.gold = 0
@@ -454,11 +450,11 @@ func test_piggy_bank_pays_off_the_map_too() -> void:
 func test_a_lost_try_pays_and_undoing_it_takes_the_coin_back() -> void:
 	# The one Health loss in the game that can be taken back. Without the refund
 	# the undo button is a coin press: tick, untick, tick, untick.
-	_give(&"piggy_bank")
-	var a: int = _choose_solo(_fighter(1))
+	Fixtures.give(self, &"piggy_bank")
+	var a: int = Fixtures.choose_solo(_fighter(1))
 	GameLoop2.beat_game(false)        # released as a follower, so the next pick keeps it
 	_march_to_front(a)
-	_choose_solo(_fighter(0))         # a game in play, with nothing of its own to add
+	Fixtures.choose_solo(_fighter(0))         # a game in play, with nothing of its own to add
 	GameState.shields = 0
 	GameState.bonus_shields = 0
 	GameState.max_hp = 10
@@ -476,11 +472,11 @@ func test_every_undone_try_gives_back_its_own_winnings() -> void:
 	# gives back its own winnings rather than the most recent one's. A lost run
 	# pays Piggy Bank through the TURN it now buys (§3): the front line swings, the
 	# Health comes off, and the relic pays on the loss like any other.
-	_give(&"piggy_bank")
-	var a: int = _choose_solo(_fighter(1))
+	Fixtures.give(self, &"piggy_bank")
+	var a: int = Fixtures.choose_solo(_fighter(1))
 	GameLoop2.beat_game(false)        # released as a follower, so the next pick keeps it
 	_march_to_front(a)
-	_choose_solo(_fighter(0))         # a game in play, with nothing of its own to add
+	Fixtures.choose_solo(_fighter(0))         # a game in play, with nothing of its own to add
 	GameState.shields = 0
 	GameState.bonus_shields = 0
 	GameState.max_hp = 10
@@ -500,8 +496,8 @@ func test_every_undone_try_gives_back_its_own_winnings() -> void:
 func test_a_try_whose_turn_took_no_health_leaves_the_purse_alone() -> void:
 	# Piggy Bank pays on HEALTH LOST, and a turn that reaches nobody takes none:
 	# the tick still happened, the board still moved, and the purse is untouched.
-	_give(&"piggy_bank")
-	_choose_solo(_fighter(2))         # spawns at the back, so it walks rather than swings
+	Fixtures.give(self, &"piggy_bank")
+	Fixtures.choose_solo(_fighter(2))         # spawns at the back, so it walks rather than swings
 	GameState.shields = 0
 	GameState.bonus_shields = 0
 	GameState.gold = 4
@@ -514,9 +510,9 @@ func test_a_try_whose_turn_took_no_health_leaves_the_purse_alone() -> void:
 
 func test_theres_options_is_a_chest_point_and_sums() -> void:
 	assert_eq(GameState.boss_chest_bonus(), 0, "nothing owned, nothing added")
-	_give(&"theres_options")
+	Fixtures.give(self, &"theres_options")
 	assert_eq(GameState.boss_chest_bonus(), 1)
-	_give(&"theres_options")
+	Fixtures.give(self, &"theres_options")
 	assert_eq(GameState.boss_chest_bonus(), 2, "a second copy is a second rung")
 
 func test_a_chest_point_ladder_turns_the_bonus_into_choices() -> void:
@@ -532,7 +528,7 @@ func test_a_chest_point_ladder_turns_the_bonus_into_choices() -> void:
 func test_moms_key_raises_the_point_a_beaten_game_is_worth() -> void:
 	assert_eq(GameState.base_chest_bonus(), 0, "nothing owned, nothing added")
 	var keys_before: int = GameState.keys
-	_give(&"moms_key")
+	Fixtures.give(self, &"moms_key")
 	assert_eq(GameState.keys, keys_before + 1, "Mom's Key: +1 Key on pickup")
 	assert_eq(GameState.base_chest_bonus(), 1)
 	var chests: Array = GameLoop2.claim_chests(true)
@@ -541,12 +537,12 @@ func test_moms_key_raises_the_point_a_beaten_game_is_worth() -> void:
 		"a clear-board win is a Medium chest instead of a Small one")
 
 func test_moms_key_buys_nothing_for_a_game_you_did_not_beat() -> void:
-	_give(&"moms_key")
+	Fixtures.give(self, &"moms_key")
 	assert_true(GameLoop2.claim_chests(false).is_empty(),
 		"the base point is a reward for beating the game, and so is the bonus on it")
 
 func test_moms_key_leaves_a_boss_chest_alone() -> void:
-	_give(&"moms_key")
+	Fixtures.give(self, &"moms_key")
 	assert_eq(GameState.boss_chest_bonus(), 0, "that is There's Options' job")
 
 # --- Latch Key / Book of Revelations: the Shield that stays ---------------
@@ -554,13 +550,13 @@ func test_moms_key_leaves_a_boss_chest_alone() -> void:
 func test_latch_key_pays_a_key_and_a_shield_and_holds_a_luck() -> void:
 	var keys_before: int = GameState.keys
 	var shields_before: int = GameState.bonus_shields
-	var latch: ItemData = _give(&"latch_key")
+	var latch: ItemData = Fixtures.give(self, &"latch_key")
 	assert_eq(GameState.keys, keys_before + 1, "+1 Key")
 	assert_eq(GameState.bonus_shields, shields_before + 1, "+1 Shield — the pool that stays")
 	assert_eq(int(latch.stat_bonuses.get("luck", 0)), 1, "+1 Luck while it is held")
 
 func test_book_of_revelations_is_a_three_charge_shield() -> void:
-	var book: ItemData = _give(&"book_of_revelations")
+	var book: ItemData = Fixtures.give(self, &"book_of_revelations")
 	assert_true(book.is_charged())
 	assert_eq(book.max_charge(), 3)
 	var before: int = GameState.bonus_shields
@@ -592,7 +588,7 @@ func test_one_of_applies_exactly_one_option() -> void:
 	assert_eq(seen.size(), 3, "and over forty uses every option comes up")
 
 func test_the_book_of_sin_is_a_two_charge_pick_of_five() -> void:
-	var book: ItemData = _give(&"the_book_of_sin")
+	var book: ItemData = Fixtures.give(self, &"the_book_of_sin")
 	assert_eq(book.max_charge(), 2)
 	var effect: Dictionary = book.triggers[0]["effects"][0]
 	assert_eq(String(effect["type"]), "one_of")
@@ -605,7 +601,7 @@ func test_the_book_of_sin_is_a_two_charge_pick_of_five() -> void:
 
 func test_the_mark_grants_a_bash_and_the_speed_status() -> void:
 	var before: int = GameState.bash
-	_give(&"the_mark")
+	Fixtures.give(self, &"the_mark")
 	assert_eq(GameState.bash, before + 1, "The Mark: +1 Bash")
 	assert_eq(GameState.status_stacks(&"speed"), 1, "and +1 Speed, the 2.0 status")
 
@@ -613,7 +609,7 @@ func test_stigmata_fills_the_container_it_adds_and_pays_a_bash() -> void:
 	GameState.max_hp = 10
 	GameState.hp = 10
 	var before: int = GameState.bash
-	_give(&"stigmata")
+	Fixtures.give(self, &"stigmata")
 	assert_eq(GameState.max_hp, 12, "+2 Max Health")
 	assert_eq(GameState.hp, 12, "which arrives full — +2 Health")
 	assert_eq(GameState.bash, before + 1, "and +1 Bash")
@@ -626,7 +622,7 @@ func test_stigmata_fills_the_container_it_adds_and_pays_a_bash() -> void:
 func test_stigmatas_heal_is_on_top_of_the_container_it_fills() -> void:
 	GameState.max_hp = 10
 	GameState.hp = 5
-	_give(&"stigmata")
+	Fixtures.give(self, &"stigmata")
 	assert_eq(GameState.max_hp, 12, "+2 Max Health")
 	assert_eq(GameState.hp, 9, "the raise heals 2 and the authored +2 Health follows it")
 
@@ -634,7 +630,7 @@ func test_stigmatas_heal_is_on_top_of_the_container_it_fills() -> void:
 
 func test_ban_hammer_pays_two_bashes() -> void:
 	var before: int = GameState.bash
-	_give(&"ban_hammer")
+	Fixtures.give(self, &"ban_hammer")
 	assert_eq(GameState.bash, before + 2, "Ban Hammer: +2 Bashes")
 
 # --- the Mewgenics trinkets: passive grants that break on a hit (§8.1) ----
@@ -646,13 +642,13 @@ func test_ban_hammer_pays_two_bashes() -> void:
 
 func test_lucky_hat_rents_its_luck() -> void:
 	var before: int = Stats.get_value(&"luck")
-	var hat: ItemData = _give(&"lucky_hat")
+	var hat: ItemData = Fixtures.give(self, &"lucky_hat")
 	assert_eq(Stats.get_value(&"luck"), before + 1, "Lucky Hat: +1 Luck while worn")
 	GameState.remove_item(hat)
 	assert_eq(Stats.get_value(&"luck"), before, "and the luck goes with the hat")
 
 func test_bionic_face_plating_rents_the_speed_status() -> void:
-	var plating: ItemData = _give(&"bionic_face_plating")
+	var plating: ItemData = Fixtures.give(self, &"bionic_face_plating")
 	assert_eq(GameState.status_stacks(&"speed"), 3, "+3 Speed while it is bolted on")
 	GameState.remove_item(plating)
 	assert_eq(GameState.status_stacks(&"speed"), 0, "and none of it once it is off")
@@ -660,15 +656,15 @@ func test_bionic_face_plating_rents_the_speed_status() -> void:
 func test_a_passive_status_grant_only_takes_back_its_own_share() -> void:
 	# The Mark's Speed is a pickup and is not the plating's to take away, and a
 	# second plating stacks with the first rather than replacing it.
-	_give(&"the_mark")
-	var first: ItemData = _give(&"bionic_face_plating")
-	_give(&"bionic_face_plating")
+	Fixtures.give(self, &"the_mark")
+	var first: ItemData = Fixtures.give(self, &"bionic_face_plating")
+	Fixtures.give(self, &"bionic_face_plating")
 	assert_eq(GameState.status_stacks(&"speed"), 7, "1 kept + 3 + 3 rented")
 	GameState.remove_item(first)
 	assert_eq(GameState.status_stacks(&"speed"), 4, "one plating's worth comes off")
 
 func test_fortune_necklace_pays_a_gold_on_selection() -> void:
-	_give(&"fortune_necklace")
+	Fixtures.give(self, &"fortune_necklace")
 	GameState.gold = 0
 	TriggerBus.game_beaten.emit({"game_id": &"rogue"})
 	assert_eq(GameState.gold, 0, "beating a game is not when it pays")
@@ -676,8 +672,8 @@ func test_fortune_necklace_pays_a_gold_on_selection() -> void:
 	assert_eq(GameState.gold, 1, "Fortune Necklace: +1 Gold when a game is selected")
 
 func test_an_enemy_attack_destroys_every_fragile_trinket_at_once() -> void:
-	var hat: ItemData = _give(&"lucky_hat")
-	var necklace: ItemData = _give(&"fortune_necklace")
+	var hat: ItemData = Fixtures.give(self, &"lucky_hat")
+	var necklace: ItemData = Fixtures.give(self, &"fortune_necklace")
 	var luck_before: int = Stats.get_value(&"luck")
 	GameState.max_hp = 10
 	GameState.hp = 10
@@ -687,7 +683,7 @@ func test_an_enemy_attack_destroys_every_fragile_trinket_at_once() -> void:
 	assert_eq(Stats.get_value(&"luck"), luck_before - 1, "the luck went with it")
 
 func test_health_lost_to_anything_else_leaves_the_trinkets_alone() -> void:
-	var hat: ItemData = _give(&"lucky_hat")
+	var hat: ItemData = Fixtures.give(self, &"lucky_hat")
 	GameState.max_hp = 10
 	GameState.hp = 10
 	# The Health a failed try charges, an event's bill, a curse's drain: all of
@@ -697,10 +693,10 @@ func test_health_lost_to_anything_else_leaves_the_trinkets_alone() -> void:
 	assert_eq(GameState.hp, 9, "and it still cost the Health")
 
 func test_the_trinkets_survive_an_attack_the_shields_eat():
-	var hat: ItemData = _give(&"lucky_hat")
+	var hat: ItemData = Fixtures.give(self, &"lucky_hat")
 	GameState.max_hp = 10
 	GameState.hp = 10
-	var inst: int = _choose_solo(_fighter(2))
+	var inst: int = Fixtures.choose_solo(_fighter(2))
 	GameLoop2.beat_game(false)
 	_march_to_front(inst)
 	GameState.shields = 3
@@ -710,10 +706,10 @@ func test_the_trinkets_survive_an_attack_the_shields_eat():
 	assert_true(GameState.inventory.has(hat), "so nothing broke")
 
 func test_a_swing_that_gets_past_the_shields_breaks_them() -> void:
-	var hat: ItemData = _give(&"lucky_hat")
+	var hat: ItemData = Fixtures.give(self, &"lucky_hat")
 	GameState.max_hp = 10
 	GameState.hp = 10
-	var inst: int = _choose_solo(_fighter(2))
+	var inst: int = Fixtures.choose_solo(_fighter(2))
 	GameLoop2.beat_game(false)
 	_march_to_front(inst)
 	GameState.shields = 0
@@ -748,7 +744,7 @@ func _kill_one() -> void:
 	TriggerBus.enemy_killed.emit({"enemy": null})
 
 func test_charm_of_the_vampire_counts_to_three_then_heals() -> void:
-	var charm: ItemData = _give(&"charm_of_the_vampire")
+	var charm: ItemData = Fixtures.give(self, &"charm_of_the_vampire")
 	GameState.max_hp = 10
 	GameState.hp = 5
 	_kill_one()
@@ -765,12 +761,12 @@ func test_the_counter_is_per_copy_not_per_run() -> void:
 	# Slay the Spire's rule: two of the same relic each keep their own count.
 	# A copy taken later starts at zero rather than inheriting a tally it was
 	# not there for.
-	var first: ItemData = _give(&"charm_of_the_vampire")
+	var first: ItemData = Fixtures.give(self, &"charm_of_the_vampire")
 	GameState.max_hp = 10
 	GameState.hp = 1
 	_kill_one()
 	_kill_one()
-	var second: ItemData = _give(&"charm_of_the_vampire")
+	var second: ItemData = Fixtures.give(self, &"charm_of_the_vampire")
 	assert_eq(first.counter_value, 2, "the first copy has been counting")
 	assert_eq(second.counter_value, 0, "the second starts fresh")
 	_kill_one()
@@ -799,7 +795,7 @@ func _synthetic(id: StringName, typ: StringName, tier: int, boss := false) -> Go
 
 func test_d10_rerolls_the_board_keeping_difficulty_and_type() -> void:
 	var body: GoalEnemyData = _synthetic(&"synthetic", &"action", GoalEnemyData.Difficulty.LOW)
-	_choose_solo(body)
+	Fixtures.choose_solo(body)
 	var swapped: int = GameLoop2.reroll_enemies()
 	assert_eq(swapped, 1, "the one body on the board was re-rolled")
 	var now: GoalEnemyData = GameLoop2.stack[0]["enemy"]
@@ -810,7 +806,7 @@ func test_d10_rerolls_the_board_keeping_difficulty_and_type() -> void:
 func test_d10_leaves_bosses_alone() -> void:
 	var boss: GoalEnemyData = _synthetic(&"synthetic_boss", &"action",
 		GoalEnemyData.Difficulty.LOW, true)
-	_choose_solo(boss)
+	Fixtures.choose_solo(boss)
 	assert_eq(GameLoop2.reroll_enemies(), 0, "a boss shrugs off the die")
 	assert_eq(GameLoop2.stack[0]["enemy"], boss, "and is still standing there")
 
@@ -818,7 +814,7 @@ func test_d10_resets_health_to_the_new_bodys_own() -> void:
 	# Health here is goal completions, and the goal just changed — carrying a hit
 	# over would credit a goal that is no longer on the board.
 	var body: GoalEnemyData = _synthetic(&"synthetic", &"action", GoalEnemyData.Difficulty.LOW)
-	var inst: int = _choose_solo(body)
+	var inst: int = Fixtures.choose_solo(body)
 	GameLoop2.entry_for(inst)["health"] = 0
 	GameLoop2.reroll_enemies()
 	assert_eq(int(GameLoop2.stack[0]["health"]),
@@ -826,18 +822,18 @@ func test_d10_resets_health_to_the_new_bodys_own() -> void:
 		"the fresh body needs its own goal done in full")
 
 func test_the_d10_is_a_two_charge_active_that_spends_its_bar() -> void:
-	var d10: ItemData = _give(&"d10")
+	var d10: ItemData = Fixtures.give(self, &"d10")
 	assert_true(d10.is_charged(), "the D10 is a charged active")
 	assert_eq(d10.max_charge(), 2)
 	assert_eq(d10.current_charge, 2, "and arrives full")
-	_choose_solo(_synthetic(&"synthetic", &"action", GoalEnemyData.Difficulty.LOW))
+	Fixtures.choose_solo(_synthetic(&"synthetic", &"action", GoalEnemyData.Difficulty.LOW))
 	assert_true(GameState.use_item(d10), "it fires")
 	assert_eq(d10.current_charge, 0, "and empties its bar")
 
 # --- Wooden Nickel: a coin flip for a coin -------------------------------
 
 func test_wooden_nickel_is_a_one_charge_coin_flip() -> void:
-	var nickel: ItemData = _give(&"wooden_nickel")
+	var nickel: ItemData = Fixtures.give(self, &"wooden_nickel")
 	assert_eq(nickel.max_charge(), 1, "one beat between flips")
 	var effect: Dictionary = nickel.triggers[0]["effects"][0]
 	assert_eq(String(effect["type"]), "chance")
@@ -846,7 +842,7 @@ func test_wooden_nickel_is_a_one_charge_coin_flip() -> void:
 	assert_eq(int(effect["effect"]["value"]), 1, "for one gold")
 
 func test_wooden_nickel_pays_at_most_one_gold_per_flip() -> void:
-	var nickel: ItemData = _give(&"wooden_nickel")
+	var nickel: ItemData = Fixtures.give(self, &"wooden_nickel")
 	GameState.gold = 0
 	assert_true(GameState.use_item(nickel))
 	assert_true(GameState.gold == 0 or GameState.gold == 1,
@@ -861,7 +857,7 @@ func test_wooden_nickel_pays_at_most_one_gold_per_flip() -> void:
 # lives in test_statuses.gd beside the rest of Burn; these are the rules under it.
 
 func test_the_staff_is_a_charged_active_that_aims_at_a_body() -> void:
-	var staff: ItemData = _give(&"staff_of_flame")
+	var staff: ItemData = Fixtures.give(self, &"staff_of_flame")
 	assert_true(staff.is_charged(), "a charged active")
 	assert_eq(staff.max_charge(), 2, "two games beaten per firing")
 	assert_true(staff.wants_target(),
@@ -870,10 +866,10 @@ func test_the_staff_is_a_charged_active_that_aims_at_a_body() -> void:
 		"a BODY specifically — the tile-aimed items say `tile` here (§17)")
 
 func test_the_staff_burns_the_body_it_was_pointed_at() -> void:
-	var staff: ItemData = _give(&"staff_of_flame")
-	var aimed: int = _choose_solo(_synthetic(&"synthetic", &"action", GoalEnemyData.Difficulty.LOW))
+	var staff: ItemData = Fixtures.give(self, &"staff_of_flame")
+	var aimed: int = Fixtures.choose_solo(_synthetic(&"synthetic", &"action", GoalEnemyData.Difficulty.LOW))
 	GameLoop2.beat_game(false)                 # it walks onto the board
-	var other: int = _choose_solo(_synthetic(&"other", &"action", GoalEnemyData.Difficulty.LOW))
+	var other: int = Fixtures.choose_solo(_synthetic(&"other", &"action", GoalEnemyData.Difficulty.LOW))
 	assert_true(GameState.use_item(staff, aimed), "fired at the body it was given")
 	assert_eq(int((GameLoop2.entry_for(aimed)["statuses"] as Dictionary).get(&"burn", 0)), 3,
 		"+3 Burn on that one")
@@ -884,8 +880,8 @@ func test_the_staff_burns_the_body_it_was_pointed_at() -> void:
 func test_the_staff_fired_at_nobody_burns_nobody() -> void:
 	# The guard behind the picker: `target=enemy` with no body aimed must not fall
 	# through to "current" and set light to whatever is standing closest.
-	var staff: ItemData = _give(&"staff_of_flame")
-	var inst: int = _choose_solo(_synthetic(&"synthetic", &"action", GoalEnemyData.Difficulty.LOW))
+	var staff: ItemData = Fixtures.give(self, &"staff_of_flame")
+	var inst: int = Fixtures.choose_solo(_synthetic(&"synthetic", &"action", GoalEnemyData.Difficulty.LOW))
 	GameState.use_item(staff)
 	assert_eq(int((GameLoop2.entry_for(inst).get("statuses", {}) as Dictionary).get(&"burn", 0)), 0,
 		"nothing was burned")
@@ -894,8 +890,8 @@ func test_the_staff_can_be_pointed_at_a_boss() -> void:
 	# Same rule as a bomb: a boss is a legal target. Burn's halving is what lands —
 	# its way out of the goal is refused on a boss (§13), which is a rule about the
 	# goal rather than about what can be set alight.
-	var staff: ItemData = _give(&"staff_of_flame")
-	var boss: int = _choose_solo(
+	var staff: ItemData = Fixtures.give(self, &"staff_of_flame")
+	var boss: int = Fixtures.choose_solo(
 		_synthetic(&"synthetic_boss", &"action", GoalEnemyData.Difficulty.LOW, true))
 	assert_true(GameState.use_item(staff, boss))
 	assert_eq(int((GameLoop2.entry_for(boss)["statuses"] as Dictionary).get(&"burn", 0)), 3,
@@ -904,8 +900,8 @@ func test_the_staff_can_be_pointed_at_a_boss() -> void:
 		"and still has no way out of its goal")
 
 func test_the_staffs_burn_stops_at_the_status_cap() -> void:
-	var staff: ItemData = _give(&"staff_of_flame")
-	var inst: int = _choose_solo(_synthetic(&"synthetic", &"action", GoalEnemyData.Difficulty.LOW))
+	var staff: ItemData = Fixtures.give(self, &"staff_of_flame")
+	var inst: int = Fixtures.choose_solo(_synthetic(&"synthetic", &"action", GoalEnemyData.Difficulty.LOW))
 	GameLoop2.apply_status_to(inst, &"burn", 2)
 	assert_true(GameState.use_item(staff, inst))
 	assert_eq(int((GameLoop2.entry_for(inst)["statuses"] as Dictionary).get(&"burn", 0)), 3,
@@ -1012,7 +1008,7 @@ func test_a_chest_is_still_a_chest() -> void:
 # piece of loot for Lucky Fysh.
 
 func test_dragon_fruit_pays_once_per_payout_not_per_coin() -> void:
-	_give(&"dragon_fruit")
+	Fixtures.give(self, &"dragon_fruit")
 	GameState.max_hp = 10
 	GameState.hp = 10
 	GameState.change_gold(5)
@@ -1020,7 +1016,7 @@ func test_dragon_fruit_pays_once_per_payout_not_per_coin() -> void:
 	assert_eq(GameState.hp, 11, "and the new point comes filled, like every gain_max_hp")
 
 func test_dragon_fruit_ignores_gold_going_the_other_way() -> void:
-	_give(&"dragon_fruit")
+	Fixtures.give(self, &"dragon_fruit")
 	GameState.max_hp = 10
 	GameState.gold = 20
 	GameState.spend_gold(5)
@@ -1032,13 +1028,13 @@ func test_dragon_fruit_does_not_pay_for_gold_that_was_only_put_back() -> void:
 	# `set_gold` is the setter the opening purse and the undo's restore both go
 	# through. Neither is gold the player obtained, and a relic that paid on them
 	# would turn the undo button into a Max Health press.
-	_give(&"dragon_fruit")
+	Fixtures.give(self, &"dragon_fruit")
 	GameState.max_hp = 10
 	GameState.set_gold(50)
 	assert_eq(GameState.max_hp, 10, "a number written back is not a payout")
 
 func test_lucky_fysh_pays_when_a_card_enters_the_pack() -> void:
-	_give(&"lucky_fysh")
+	Fixtures.give(self, &"lucky_fysh")
 	GameState.gold = 0
 	var card: Dictionary = CardSystem.roll_card_loot()
 	if card.is_empty():
@@ -1048,7 +1044,7 @@ func test_lucky_fysh_pays_when_a_card_enters_the_pack() -> void:
 	assert_eq(GameState.gold, 1, "Lucky Fysh: +1 Gold for the card")
 
 func test_lucky_fysh_ignores_the_other_four_kinds_of_loot() -> void:
-	_give(&"lucky_fysh")
+	Fixtures.give(self, &"lucky_fysh")
 	GameState.gold = 0
 	for kind in ["scroll", "pill", "potion", "wand"]:
 		var entry: Dictionary = GameState.roll_loot_entry(kind)
@@ -1058,7 +1054,7 @@ func test_lucky_fysh_ignores_the_other_four_kinds_of_loot() -> void:
 	assert_eq(GameState.gold, 0, "a card is a card, and a potion is not one")
 
 func test_lucky_fysh_pays_nothing_for_a_card_the_pack_had_no_room_for() -> void:
-	_give(&"lucky_fysh")
+	Fixtures.give(self, &"lucky_fysh")
 	GameState.gold = 0
 	while not GameState.loot_is_full():
 		GameState.add_loot("scroll", 1)
@@ -1073,8 +1069,8 @@ func test_a_card_can_pay_a_coin_that_pays_a_max_health_but_no_further() -> void:
 	# The two relics chain — the card's coin IS a gold gain — and the chain has to
 	# stop there. `_on_gold_gained` refuses to re-enter, so a relic that answered
 	# gold with gold could not run away with the run.
-	_give(&"lucky_fysh")
-	_give(&"dragon_fruit")
+	Fixtures.give(self, &"lucky_fysh")
+	Fixtures.give(self, &"dragon_fruit")
 	GameState.max_hp = 10
 	GameState.hp = 10
 	GameState.gold = 0
@@ -1100,7 +1096,7 @@ func test_the_rack_doubles_a_heal() -> void:
 	GameState.change_hp(3)
 	assert_eq(GameState.hp, 13, "the bare heal is what was asked for")
 
-	_give(&"rejuvenation_rack")
+	Fixtures.give(self, &"rejuvenation_rack")
 	assert_eq(GameState.heal_multiplier(), 2, "the Rack doubles healing")
 	GameState.change_hp(3)
 	assert_eq(GameState.hp, 19, "and 3 lands as 6")
@@ -1109,14 +1105,14 @@ func test_the_rack_reaches_a_heal_it_has_never_heard_of() -> void:
 	# Read at GameState.change_hp, the one point every gain in the run funnels
 	# through — which is the whole reason a pill, a potion and a relic's report
 	# payout all double without knowing the Rack exists.
-	_give(&"rejuvenation_rack")
+	Fixtures.give(self, &"rejuvenation_rack")
 	GameState.max_hp = 40
 	GameState.hp = 10
 	EffectSystem.apply({"type": "gain_hp", "value": 4}, {})
 	assert_eq(GameState.hp, 18, "an effect-driven heal doubles like any other")
 
 func test_the_rack_leaves_damage_alone() -> void:
-	_give(&"rejuvenation_rack")
+	Fixtures.give(self, &"rejuvenation_rack")
 	GameState.max_hp = 40
 	GameState.hp = 20
 	GameState.change_hp(-4)
@@ -1126,15 +1122,15 @@ func test_the_rack_does_not_double_the_health_a_container_arrives_with() -> void
 	# "+4 Max Health" hands over a pool that comes full (§3). That fill is the
 	# container, not a heal — a Rack that paid 8 for it would quietly be an item
 	# about Max Health relics rather than one about healing.
-	_give(&"rejuvenation_rack")
+	Fixtures.give(self, &"rejuvenation_rack")
 	GameState.max_hp = 20
 	GameState.hp = 8
-	_give(&"mango")                               # gain_max_hp 4
+	Fixtures.give(self, &"mango")                               # gain_max_hp 4
 	assert_eq(GameState.max_hp, 24, "the cap rose by what the item said")
 	assert_eq(GameState.hp, 12, "and filled the room it made, once")
 
 func test_the_rack_cannot_heal_past_the_pool() -> void:
-	_give(&"rejuvenation_rack")
+	Fixtures.give(self, &"rejuvenation_rack")
 	GameState.max_hp = 20
 	GameState.hp = 18
 	GameState.change_hp(2)
@@ -1144,8 +1140,8 @@ func test_two_racks_quadruple_rather_than_double_twice() -> void:
 	# The Sacred Bark rule, for the same reason: "double the effect" applied
 	# twice is quadruple, and summing the copies would make the second one the
 	# weaker buy.
-	_give(&"rejuvenation_rack")
-	_give(&"rejuvenation_rack")
+	Fixtures.give(self, &"rejuvenation_rack")
+	Fixtures.give(self, &"rejuvenation_rack")
 	assert_eq(GameState.heal_multiplier(), 4)
 	GameState.max_hp = 40
 	GameState.hp = 10
@@ -1156,7 +1152,7 @@ func test_infusion_widens_the_pool_on_every_body() -> void:
 	# The container WITHOUT the Health in it, paid per kill — so Infusion is a
 	# pool that grows all run and never fills itself, which is what makes it a
 	# relic that wants a healer beside it.
-	_give(&"infusion")
+	Fixtures.give(self, &"infusion")
 	GameState.max_hp = 20
 	GameState.hp = 20
 	TriggerBus.enemy_killed.emit({"enemy": null})
@@ -1166,7 +1162,7 @@ func test_infusion_widens_the_pool_on_every_body() -> void:
 	assert_eq(GameState.max_hp, 22, "it pays again on the next body")
 
 func test_infusion_pays_for_a_body_beaten_on_the_board() -> void:
-	_give(&"infusion")
+	Fixtures.give(self, &"infusion")
 	GameState.max_hp = 20
 	# A synthetic one-Health body, so the test is about the payout rather than
 	# about whatever the enemies2.0 sheet last set the first roster entry to.
@@ -1177,15 +1173,15 @@ func test_infusion_pays_for_a_body_beaten_on_the_board() -> void:
 	e.health = 1
 	e.damage = 1
 	e.difficulty = GoalEnemyData.Difficulty.LOW
-	var inst: int = _choose_solo(e)
+	var inst: int = Fixtures.choose_solo(e)
 	assert_true(GameLoop2.fulfill(inst, true), "the goal was met and the body cleared")
 	assert_eq(GameState.max_hp, 21, "a real defeat pays it, not just the signal")
 
 func test_the_rack_can_fill_the_room_infusion_made() -> void:
 	# The two relics are the halves of one pool, and the pair only works because
 	# Infusion's room is empty: the Rack doubles the heal that fills it.
-	_give(&"infusion")
-	_give(&"rejuvenation_rack")
+	Fixtures.give(self, &"infusion")
+	Fixtures.give(self, &"rejuvenation_rack")
 	GameState.max_hp = 20
 	GameState.hp = 20
 	TriggerBus.enemy_killed.emit({"enemy": null})
@@ -1234,7 +1230,7 @@ func _hunt(inst: int, res: Dictionary) -> Dictionary:
 
 func test_the_censer_holds_the_front_line_out_of_an_extra_turn() -> void:
 	var inst: int = _hunter_at(1)
-	_give(&"censer")
+	Fixtures.give(self, &"censer")
 	var res: Dictionary = GameLoop2.beat_game(false, [], {"status_goals": []})
 	assert_false((res.get("predators", []) as Array).is_empty(), "the hunt was on")
 	var seen: Dictionary = _hunt(inst, res)
@@ -1254,7 +1250,7 @@ func test_the_censer_leaves_the_bodies_behind_the_front_line_alone() -> void:
 	# It is armour, not a global slow: a body still crossing the board spends its
 	# extra turn WALKING, and the Censer only reaches the front column.
 	var inst: int = _hunter_at(3)
-	_give(&"censer")
+	Fixtures.give(self, &"censer")
 	GameLoop2.beat_game(false, [], {"status_goals": []})
 	assert_eq(int(_entry_of(inst).get("col", -1)), 2,
 		"a body back down the board still closed on the player")
@@ -1264,15 +1260,15 @@ func test_the_censer_reaches_the_second_column_too() -> void:
 	# held as well, so its extra turn is not a free step into reach.
 	assert_eq(Data.get_item2(&"censer").front_column_slow, 2)
 	var inst: int = _hunter_at(2)
-	_give(&"censer")
+	Fixtures.give(self, &"censer")
 	var res: Dictionary = GameLoop2.beat_game(false, [], {"status_goals": []})
 	assert_eq(int(_hunt(inst, res)["censed"]), 1,
 		"the body in column 2 sat its extra turn out rather than stepping into reach")
 
 func test_the_censer_does_not_touch_a_lost_runs_turn() -> void:
 	# A lost run's turn is the board's own clock, not an extra one.
-	_give(&"censer")
-	var inst: int = _choose_solo(_fighter(2))
+	Fixtures.give(self, &"censer")
+	var inst: int = Fixtures.choose_solo(_fighter(2))
 	var entry: Dictionary = _entry_of(inst)
 	entry["col"] = 1
 	GameState.hp = 20
@@ -1289,8 +1285,8 @@ func test_the_censer_does_not_touch_a_lost_runs_turn() -> void:
 # in the pack — a piece you have to go and stand on.
 
 func test_the_fanny_pack_puts_its_loot_on_the_board_not_in_the_pack() -> void:
-	_give(&"fanny_pack")
-	_choose_solo(_fighter(1))        # a board to drop onto
+	Fixtures.give(self, &"fanny_pack")
+	Fixtures.choose_solo(_fighter(1))        # a board to drop onto
 	GameState.max_hp = 40
 	GameState.hp = 40
 	var pack_before: int = GameState.loot.size()
@@ -1310,8 +1306,8 @@ func test_the_fanny_pack_puts_its_loot_on_the_board_not_in_the_pack() -> void:
 		"the square is holding a real piece of loot")
 
 func test_the_fanny_pack_ignores_a_swing_the_shields_ate() -> void:
-	_give(&"fanny_pack")
-	_choose_solo(_fighter(1))
+	Fixtures.give(self, &"fanny_pack")
+	Fixtures.choose_solo(_fighter(1))
 	GameState.max_hp = 40
 	GameState.hp = 40
 	GameState.shields = 99
@@ -1327,8 +1323,8 @@ func test_nothing_is_paid_onto_a_board_with_no_room_for_it() -> void:
 	# `drop_loot_anywhere` answers OFF_FIELD on a full floor and the grant is
 	# quietly dropped. The relic must not throw, and must not put two pieces on
 	# one square.
-	_give(&"fanny_pack")
-	_choose_solo(_fighter(1))
+	Fixtures.give(self, &"fanny_pack")
+	Fixtures.choose_solo(_fighter(1))
 	GameState.max_hp = 80
 	GameState.hp = 80
 	for _i in range(60):
@@ -1367,7 +1363,7 @@ func _pip_on(item: ItemData) -> Control:
 	return strip._counter_badge(item)
 
 func test_only_an_incremental_relic_carries_a_counter() -> void:
-	var charm: ItemData = _give(&"charm_of_the_vampire")
+	var charm: ItemData = Fixtures.give(self, &"charm_of_the_vampire")
 	assert_not_null(_pip_on(charm), "it counts to three, so it shows how far it is")
 	# Almost every item, this one: a badge reading 0 on a relic that counts
 	# nothing would be a number with no meaning.
@@ -1378,14 +1374,14 @@ func test_only_an_incremental_relic_carries_a_counter() -> void:
 			break
 
 func test_the_counter_says_the_number_it_is_on() -> void:
-	var charm: ItemData = _give(&"charm_of_the_vampire")
+	var charm: ItemData = Fixtures.give(self, &"charm_of_the_vampire")
 	_kill_one()
 	_kill_one()
 	var label: Label = _pip_on(charm).find_children("*", "Label", true, false)[0]
 	assert_eq(label.text, "2", "the count, not '2/3' — the threshold is in the text")
 
 func test_the_counter_is_a_pip_the_art_can_afford() -> void:
-	var charm: ItemData = _give(&"charm_of_the_vampire")
+	var charm: ItemData = Fixtures.give(self, &"charm_of_the_vampire")
 	var pip: Control = _pip_on(charm)
 	assert_lt(pip.custom_minimum_size.y, float(PackStrip.ITEM_TOKEN) * 0.5,
 		"the badge is a footnote to the picture, not half of it")
@@ -1398,7 +1394,7 @@ func test_the_counter_is_a_pip_the_art_can_afford() -> void:
 		"the plate is the glyph and a hairline, not the glyph and 8px of padding")
 
 func test_the_counter_hangs_off_the_corner_rather_than_standing_on_the_art() -> void:
-	var pip: Control = _pip_on(_give(&"charm_of_the_vampire"))
+	var pip: Control = _pip_on(Fixtures.give(self, &"charm_of_the_vampire"))
 	assert_eq(pip.anchor_bottom, 1.0, "pinned to the bottom of the tile")
 	assert_eq(pip.anchor_right, 1.0, "…and the right of it")
 	assert_gt(pip.offset_bottom, 0.0,
@@ -1408,7 +1404,7 @@ func test_the_counter_hangs_off_the_corner_rather_than_standing_on_the_art() -> 
 func test_the_digit_is_centred_in_the_pip() -> void:
 	# "The number sits too high" was a Label's line box being taller than its
 	# glyph — a left-and-top-aligned Label in a plate that had grown around it.
-	var label: Label = _pip_on(_give(&"charm_of_the_vampire")).find_children(
+	var label: Label = _pip_on(Fixtures.give(self, &"charm_of_the_vampire")).find_children(
 		"*", "Label", true, false)[0]
 	assert_eq(label.horizontal_alignment, HORIZONTAL_ALIGNMENT_CENTER)
 	assert_eq(label.vertical_alignment, VERTICAL_ALIGNMENT_CENTER)
@@ -1424,7 +1420,7 @@ func test_candy_bag_gives_one_verb_after_every_game() -> void:
 	var bag: ItemData = Data.get_item2(&"candy_bag")
 	assert_not_null(bag)
 	assert_eq(String(bag.triggers[0].get("on", "")), "game_beaten", "After Combat ends")
-	_give(&"candy_bag")
+	Fixtures.give(self, &"candy_bag")
 	var before: int = _verbs()
 	TriggerBus.game_beaten.emit({"game_id": &"rogue"})
 	assert_eq(_verbs(), before + 1, "+1 Bash, Dash, Push, Transmute or Scramble")

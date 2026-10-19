@@ -435,6 +435,13 @@ func _process_next_request() -> void:
 func _pick_identify(req: Dictionary) -> void:
 	var candidates: Array = req.get("candidates", [])
 	var max_pick: int = int(req.get("count", 1))
+	# By KIND: the candidates are one per type/id, and every copy of an unknown
+	# capsule in the pack is that capsule, so clicking any of them answers.
+	if _pick_in_pack({"candidates": candidates, "count": max_pick, "exact": false,
+			"by_kind": true, "verb": "identify"}, func(chosen: Array):
+				_report(ScrollSystem.identify_loot_chosen(chosen))
+				_process_next_request()):
+		return
 	var selected: Dictionary = {}   # "type/id" -> entry
 	_rebuild_panel()
 	_body.add_child(_heading("Identify Loot", ACCENT, 20))
@@ -512,6 +519,29 @@ func _pick_cell(entry: Dictionary) -> Button:
 	col.add_child(name)
 	return btn
 
+# --- Choosing in the pack itself (OwnedPick.gd) ------------------------------
+#
+# The pickers below that ask for something the player OWNS — a piece to identify,
+# destroy or charge, a relic to copy — are answered in the pack and the relic strip
+# rather than in this screen (the owner, 18 Oct 2026): this screen gets out of the
+# way as it does for a throw, the pieces that can be chosen light up where they
+# already sit, and the click that completes the count brings it back with the
+# answer. False when the page cannot host that (no overworld, the drop screen up,
+# a candidate out of reach), and the picker draws its own grid as it always did.
+func _pick_in_pack(cfg: Dictionary, on_done: Callable) -> bool:
+	if _overworld == null or not _overworld.has_method("begin_owned_pick"):
+		return false
+	if not cfg.has("accent"):
+		cfg["accent"] = ACCENT
+	var ok: bool = _overworld.begin_owned_pick(cfg, func(chosen: Array):
+		if not is_instance_valid(self):
+			return
+		visible = true
+		on_done.call(chosen))
+	if ok:
+		visible = false
+	return ok
+
 # --- Lift which curse (choose up to N) -------------------------------------
 #
 # The rows are the run's curse GOALS — the ones the checklist draws as things to
@@ -559,6 +589,21 @@ func _pick_stun(req: Dictionary) -> void:
 		_report("There was nothing following you to Stun.")
 		_body.add_child(_continue_button())
 		return
+	# ON THE BOARD, the way a Bomb is aimed (the owner, 18 Oct 2026).
+	var bodies: Array = GameLoop2.stack.map(func(e): return int(e["instance"]))
+	if _overworld != null and _overworld.has_method("begin_board_pick"):
+		var ok: bool = _overworld.begin_board_pick({"candidates": bodies,
+			"count": max_pick, "exact": false, "verb": "stun", "noun": "enemy",
+			"nouns": "enemies", "where": "on the board", "accent": ACCENT},
+			func(chosen: Array):
+				if not is_instance_valid(self):
+					return
+				visible = true
+				_report(ScrollSystem.stun_enemies_chosen(chosen))
+				_process_next_request())
+		if ok:
+			visible = false
+			return
 	_body.add_child(_muted("Choose up to %d following enemy to Stun (it loses its next turn — %s)."
 		% [max_pick, ScrollSystem.stun_worth()]))
 	for entry in GameLoop2.stack:
@@ -696,6 +741,11 @@ func _do_card_teleport(req: Dictionary) -> void:
 # between names — a pack of five actives is five sentences, not five nouns.
 func _pick_copy_item(req: Dictionary) -> void:
 	var candidates: Array = req.get("candidates", [])
+	if _pick_in_pack({"candidates": candidates, "count": 1, "exact": true,
+			"verb": "copy its effect (it keeps its uses)"}, func(chosen: Array):
+				_report(CardSystem.copy_item(chosen[0]))
+				_process_next_request()):
+		return
 	_rebuild_panel()
 	_body.add_child(_heading("Copy an Item", ACCENT, 20))
 	if candidates.is_empty():
@@ -733,6 +783,11 @@ func _pick_destroy(req: Dictionary) -> void:
 		if e is Dictionary and GameState.loot_items.any(func(x): return is_same(x, e)):
 			candidates.append(e)
 	var need: int = mini(int(req.get("count", 1)), candidates.size())
+	if need > 0 and _pick_in_pack({"candidates": candidates, "count": need, "exact": true,
+			"verb": "destroy", "accent": UITheme.DANGER}, func(chosen: Array):
+				_report(CardSystem.destroy_chosen(chosen))
+				_process_next_request()):
+		return
 	_rebuild_panel()
 	_body.add_child(_heading("Destroy Loot", ACCENT, 20))
 	if need <= 0:
@@ -770,6 +825,12 @@ func _pick_destroy(req: Dictionary) -> void:
 func _pick_charge(req: Dictionary) -> void:
 	var amount: int = int(req.get("amount", 1))
 	var candidates: Array = req.get("candidates", [])
+	if _pick_in_pack({"candidates": candidates, "count": 1, "exact": true,
+			"verb": "give %d charge%s" % [amount, "" if amount == 1 else "s"]},
+			func(chosen: Array):
+				_report(CardSystem.charge_chosen(chosen[0], amount))
+				_process_next_request()):
+		return
 	_rebuild_panel()
 	_body.add_child(_heading("Give %d Charge%s" % [amount, "" if amount == 1 else "s"],
 		ACCENT, 20))

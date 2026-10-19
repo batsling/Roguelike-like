@@ -1,5 +1,7 @@
 extends GutTest
 
+const Page := preload("res://test/helpers/run_page.gd")
+
 # Rifts: generation (step 1) and presentation (step 2) — docs/rifts-design.md.
 #
 # Every case seeds its own roll rather than hoping a random graph reaches it
@@ -359,14 +361,6 @@ func _find_shader_rect(node: Node) -> ColorRect:
 			return deeper
 	return null
 
-func _all_text(node: Node) -> String:
-	var out: String = ""
-	if node is Label:
-		out += (node as Label).text + "\n"
-	for child in node.get_children():
-		out += _all_text(child)
-	return out
-
 # A rift game's card in the offering carries the swirl behind its cover and says
 # RIFT in the flag line; an ordinary game's card carries neither.
 func test_a_rift_card_wears_the_swirl_and_the_flag() -> void:
@@ -381,12 +375,12 @@ func test_a_rift_card_wears_the_swirl_and_the_flag() -> void:
 		"slot": rift_id, "amulet": false, "boss": false})
 	autofree(rift_card)
 	assert_not_null(_find_shader_rect(rift_card), "the rift card has the swirl behind its cover")
-	assert_string_contains(_all_text(rift_card), "RIFT", "and says so in its flag line")
+	assert_string_contains(Page.labels_text(rift_card), "RIFT", "and says so in its flag line")
 	var plain_card: Control = ui._offering._make_choice_card(1, {"game": Data.get_game(plain_id),
 		"slot": plain_id, "amulet": false, "boss": false})
 	autofree(plain_card)
 	assert_null(_find_shader_rect(plain_card), "an influence game's card has no swirl")
-	assert_false(_all_text(plain_card).contains("RIFT"), "and no rift flag")
+	assert_false(Page.labels_text(plain_card).contains("RIFT"), "and no rift flag")
 
 # Standing on a rift game, a step to either end is not an influence, and the
 # popup's proof slot says so instead of showing nothing.
@@ -408,7 +402,7 @@ func test_the_proof_slot_on_a_rift_step_says_no_known_influence() -> void:
 		return
 	autofree(block)
 	assert_eq(String(block.name), "RiftBlock", "and it is the rift's")
-	assert_string_contains(_all_text(block), "Rift: no known influence")
+	assert_string_contains(Page.labels_text(block), "Rift: no known influence")
 	assert_null(block.find_child("Proof", true, false), "with no screenshot pretending otherwise")
 
 # The route ladder draws a step through a rift in its own dashed line: the
@@ -772,9 +766,9 @@ func test_a_key_gained_at_the_offering_shows_and_deals_at_once() -> void:
 	GameState.keys = 1
 	ui._refresh()
 	assert_gt(_key_cards(ui).size(), 0, "the key deals rift cards without waiting for a move")
-	var chip_text: String = _all_text(ui._select_stats)
+	var chip_text: String = Page.labels_text(ui._select_stats)
 	assert_string_contains(chip_text, "Keys 1", "and the count is under the offering")
 	GameState.keys = 0
 	ui._refresh()
 	assert_eq(_key_cards(ui).size(), 0, "and they go when the last key does")
-	assert_string_contains(_all_text(ui._select_stats), "Keys 0")
+	assert_string_contains(Page.labels_text(ui._select_stats), "Keys 0")

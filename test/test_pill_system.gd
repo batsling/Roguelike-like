@@ -1,5 +1,7 @@
 extends GutTest
 
+const Fixtures := preload("res://test/helpers/fixtures.gd")
+
 # Tests for the games-first (2.0) PILL system (docs/games-first-redesign.md §4.3):
 # the per-run colour deal, horse doses, colour-scoped identification, the ten
 # pills' effects, Bad Trip's health-dependent name, Lucky Foot's reroll, Bonus
@@ -17,40 +19,11 @@ func before_each() -> void:
 	# A lost run's random body (§3.2) is not what this suite is about.
 	GameLoop2.lost_run_spawn_ladder = [0.0]
 
-func _rng() -> RandomNumberGenerator:
-	var r := RandomNumberGenerator.new()
-	r.seed = 7
-	return r
-
 func _entry(id: StringName, horse: bool = false) -> Dictionary:
 	return {"type": "pill", "id": id, "horse": horse}
 
 func _take(id: StringName, horse: bool = false) -> Dictionary:
-	return PillSystem.take_pill(_entry(id, horse), {"rng": _rng()})
-
-func _enemy(dmg: int) -> GoalEnemyData:
-	var e := GoalEnemyData.new()
-	e.id = &"synthetic"
-	e.display_name = "Synthetic"
-	e.damage = dmg
-	return e
-
-# Choose a game and take its escort straight back off the board (§7.5) — these
-# tests are not about the escort, and a stranger from the roster standing on the
-# board would put content they never asked about inside their assertions.
-func _choose_solo(enemy: GoalEnemyData) -> int:
-	var inst: int = GameLoop2.choose_game(enemy)
-	if GameLoop2.second_body_instance() > 0:
-		GameLoop2.despawn(GameLoop2.second_body_instance())
-	return inst
-
-# The grid column a stacked body stands in (1 = the front line), or -1 when it is
-# no longer on the board. What a turn moves, and so how these tests see one.
-func _col_of(instance: int) -> int:
-	for e in GameLoop2.stack:
-		if int(e["instance"]) == instance:
-			return int(e.get("col", -1))
-	return -1
+	return PillSystem.take_pill(_entry(id, horse), {"rng": Fixtures.rng()})
 
 # --- Data ------------------------------------------------------------------
 
@@ -168,7 +141,7 @@ func test_a_loose_piece_can_be_used_without_a_slot_to_spend_it_from() -> void:
 	var held: int = GameState.loot_items.size()
 	var luck: int = GameState.luck
 	var out: Dictionary = LootSystem.use_entry(
-		{"type": "pill", "id": &"health_up", "horse": false}, {"rng": _rng()})
+		{"type": "pill", "id": &"health_up", "horse": false}, {"rng": Fixtures.rng()})
 	assert_eq(GameState.loot_items.size(), held,
 		"the pack is untouched — nothing was carried and nothing was spent from it")
 	assert_false(out.get("logs", []).is_empty(), "but the pill really fired")
@@ -178,7 +151,7 @@ func test_a_loose_use_identifies_and_is_remembered_like_any_other() -> void:
 	# It is a use: the colour is learned, and Echo Chamber will copy it next time.
 	GameState.loot_items.clear()
 	assert_false(PillSystem.is_identified(&"health_up"))
-	LootSystem.use_entry({"type": "pill", "id": &"health_up", "horse": false}, {"rng": _rng()})
+	LootSystem.use_entry({"type": "pill", "id": &"health_up", "horse": false}, {"rng": Fixtures.rng()})
 	assert_true(PillSystem.is_identified(&"health_up"), "spending it teaches the colour")
 	var memory: Array = LootSystem.used_memory()
 	assert_false(memory.is_empty(), "and it enters the memory the echo reads")
@@ -192,7 +165,7 @@ func test_a_loose_use_can_be_made_with_a_completely_full_pack() -> void:
 		GameState.add_pill_loot(&"luck_up")
 	assert_true(GameState.loot_is_full())
 	var out: Dictionary = LootSystem.use_entry(
-		{"type": "pill", "id": &"health_up", "horse": false}, {"rng": _rng()})
+		{"type": "pill", "id": &"health_up", "horse": false}, {"rng": Fixtures.rng()})
 	assert_false(out.get("logs", []).is_empty(), "a full pack does not stop it")
 	assert_true(GameState.loot_is_full(), "and it is still full afterwards")
 
@@ -385,7 +358,7 @@ func test_the_horse_48_hour_energy_fills_the_relics_it_picks() -> void:
 
 func test_a_stat_dose_signs_the_number_not_the_verb() -> void:
 	var out: Dictionary = PillSystem.take_pill(
-		{"type": "pill", "id": &"luck_up", "horse": false}, {"rng": _rng()})
+		{"type": "pill", "id": &"luck_up", "horse": false}, {"rng": Fixtures.rng()})
 	assert_true(str(out["logs"]).contains("gain +1 Luck"),
 		"the sign belongs to the number: %s" % str(out["logs"]))
 	assert_false(str(out["logs"]).contains("+ 1"),
@@ -393,7 +366,7 @@ func test_a_stat_dose_signs_the_number_not_the_verb() -> void:
 
 func test_a_negative_stat_dose_reads_the_same_way_round() -> void:
 	var out: Dictionary = PillSystem.take_pill(
-		{"type": "pill", "id": &"luck_down", "horse": false}, {"rng": _rng()})
+		{"type": "pill", "id": &"luck_down", "horse": false}, {"rng": Fixtures.rng()})
 	assert_true(str(out["logs"]).contains("lose 1 Luck"),
 		"both directions of one verb, phrased alike: %s" % str(out["logs"]))
 
@@ -409,7 +382,7 @@ func test_every_dose_of_every_pill_says_something_about_itself() -> void:
 			GameState.set_max_hp(30, true)
 			GameState.add_item(Data.get_item2(&"d6"))   # something a charge can land on
 			var out: Dictionary = PillSystem.take_pill(
-				{"type": "pill", "id": pill.id, "horse": horse}, {"rng": _rng()})
+				{"type": "pill", "id": pill.id, "horse": horse}, {"rng": Fixtures.rng()})
 			var said: bool = not (out["logs"] as Array).is_empty()
 			# A teleport is the one op that resolves in the overworld, so its line
 			# comes back from the fulfilment rather than from here — the request IS
@@ -424,24 +397,24 @@ func test_a_lost_run_spends_neither_pool() -> void:
 	# A tick costs a turn of the board and nothing else (§3.2) — the shields are
 	# armour now, so failing at a game does not thin the wall you meet the stack
 	# with.
-	var a: int = _choose_solo(_enemy(1))
+	var a: int = Fixtures.choose_solo(Fixtures.enemy(1))
 	GameState.shields = 1
 	GameState.bonus_shields = 2
-	var col: int = _col_of(a)
+	var col: int = Fixtures.col_of(a)
 	assert_eq(GameLoop2.log_attempt(), "turn")
 	assert_eq(GameState.shields, 1, "the per-game pool is untouched")
 	assert_eq(GameState.bonus_shields, 2, "and so is the bonus pool")
-	assert_eq(_col_of(a), col - 1, "what the tick moved was the board")
+	assert_eq(Fixtures.col_of(a), col - 1, "what the tick moved was the board")
 
 func test_undoing_a_try_puts_the_board_back() -> void:
-	var a: int = _choose_solo(_enemy(1))
+	var a: int = Fixtures.choose_solo(Fixtures.enemy(1))
 	GameState.shields = 0
 	GameState.bonus_shields = 1
-	var col: int = _col_of(a)
+	var col: int = Fixtures.col_of(a)
 	GameLoop2.log_attempt()
-	assert_eq(_col_of(a), col - 1)
+	assert_eq(Fixtures.col_of(a), col - 1)
 	GameLoop2.undo_attempt()
-	assert_eq(_col_of(a), col, "the body walks back to where it stood")
+	assert_eq(Fixtures.col_of(a), col, "the body walks back to where it stood")
 	assert_eq(GameState.bonus_shields, 1, "and the pool it never spent is still there")
 
 func test_bonus_shields_block_after_the_per_game_pool() -> void:
@@ -464,7 +437,7 @@ func test_bonus_shields_block_after_the_per_game_pool() -> void:
 
 func test_bonus_shields_survive_the_game_that_did_not_spend_them() -> void:
 	GameState.bonus_shields = 2
-	var _a: int = _choose_solo(_enemy(0))
+	var _a: int = Fixtures.choose_solo(Fixtures.enemy(0))
 	GameState.shields = 3
 	GameLoop2.beat_game(true)
 	assert_eq(GameState.shields, 0, "the game's own armour expires with it")
@@ -585,7 +558,7 @@ func test_a_full_pack_refuses_a_taken_drop_rather_than_swallowing_it() -> void:
 func test_using_loot_consumes_it() -> void:
 	GameState.add_pill_loot(&"luck_up")
 	GameState.luck = 0
-	LootSystem.use_loot(0, {"rng": _rng()})
+	LootSystem.use_loot(0, {"rng": Fixtures.rng()})
 	assert_eq(GameState.loot_items.size(), 0, "the pill is gone")
 	assert_eq(GameState.luck, 1, "and it did what it says")
 
@@ -723,7 +696,7 @@ func test_sacred_bark_and_echo_chamber_compose() -> void:
 
 func test_loot_of_either_kind_goes_through_one_door() -> void:
 	GameState.add_scroll_loot(&"scroll_of_teleportation")
-	var out: Dictionary = LootSystem.use_loot(0, {"rng": _rng()})
+	var out: Dictionary = LootSystem.use_loot(0, {"rng": Fixtures.rng()})
 	assert_eq(out["requests"].size(), 1, "a scroll still resolves through LootSystem")
 	assert_eq(GameState.loot_items.size(), 0)
 
@@ -732,8 +705,8 @@ func test_a_pill_echoing_a_scroll_fires_the_scrolls_own_effect() -> void:
 	GameState.add_scroll_loot(&"scroll_of_teleportation")
 	GameState.add_pill_loot(&"luck_up")
 	GameState.luck = 0
-	LootSystem.use_loot(0, {"rng": _rng()})      # the scroll
-	var out: Dictionary = LootSystem.use_loot(0, {"rng": _rng()})   # the pill
+	LootSystem.use_loot(0, {"rng": Fixtures.rng()})      # the scroll
+	var out: Dictionary = LootSystem.use_loot(0, {"rng": Fixtures.rng()})   # the pill
 	assert_eq(GameState.luck, 1, "the pill landed")
 	assert_eq(out["requests"].size(), 1, "and the scroll it echoed asked to move you")
 

@@ -55,6 +55,7 @@ const MIGRATED_FONTS := [
 	"res://scripts/redesign2/LootTrash.gd",
 	"res://scripts/redesign2/LootUseModal.gd",
 	"res://scripts/redesign2/LootWindow.gd",
+	"res://scripts/redesign2/OwnedPick.gd",
 	"res://scripts/redesign2/ObjectCard.gd",
 	"res://scripts/redesign2/ObjectPanel2.gd",
 	"res://scripts/redesign2/OfferingCards.gd",
@@ -125,6 +126,7 @@ const MIGRATED_GAPS := [
 	"res://scripts/redesign2/LootTrash.gd",
 	"res://scripts/redesign2/LootUseModal.gd",
 	"res://scripts/redesign2/LootWindow.gd",
+	"res://scripts/redesign2/OwnedPick.gd",
 	"res://scripts/redesign2/ObjectCard.gd",
 	"res://scripts/redesign2/ObjectPanel2.gd",
 	"res://scripts/redesign2/OfferingCards.gd",
@@ -342,6 +344,7 @@ func test_the_scale_still_holds_the_values_it_was_built_from() -> void:
 # haul screen, and the start screen's own two popups below it.)
 func test_the_layer_registry_reads_bottom_to_top() -> void:
 	var order: Array = [
+		["PICK_BANNER", UITheme.Layer.PICK_BANNER],
 		["MENU_SCREEN", UITheme.Layer.MENU_SCREEN], ["DROP", UITheme.Layer.DROP],
 		["EVENT", UITheme.Layer.EVENT], ["CHOICE", UITheme.Layer.CHOICE],
 		["POST_COMBAT", UITheme.Layer.POST_COMBAT], ["MAP", UITheme.Layer.MAP],

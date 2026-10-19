@@ -1,5 +1,7 @@
 extends GutTest
 
+const Fixtures := preload("res://test/helpers/fixtures.gd")
+
 # Data-foundation tests for the games-first redesign (2.0). Covers the generator
 # round-trip (sheet -> .tres -> Data load), the extended CharacterData / new
 # GoalEnemyData / extended ScrollData resources, the item Effect-DSL compilation,
@@ -10,20 +12,10 @@ extends GutTest
 func before_each() -> void:
 	GameState.reset_run()
 
-# Number of .tres resource files in a data directory — the count Data._load_dir
-# is expected to load, so the roster tests stay correct as content grows and
-# still catch a file that fails to load (e.g. a broken image reference).
-func _tres_count(path: String) -> int:
-	var n := 0
-	for f in DirAccess.get_files_at(path):
-		if f.ends_with(".tres") or f.ends_with(".res"):
-			n += 1
-	return n
-
 # --- Characters2.0 --------------------------------------------------------
 
 func test_character2_roster_loads() -> void:
-	assert_eq(Data.all_characters2().size(), _tres_count("res://data/characters2.0/"),
+	assert_eq(Data.all_characters2().size(), Fixtures.tres_count("res://data/characters2.0/"),
 		"every characters2.0 .tres loads")
 
 func test_manager_levels_push() -> void:
@@ -270,7 +262,7 @@ func test_the_rarity_ladder_is_75_20_4_1() -> void:
 # --- Items2.0 (Effect DSL) ------------------------------------------------
 
 func test_items2_roster_loads() -> void:
-	assert_eq(Data.all_items2().size(), _tres_count("res://data/items2.0/"), "every items2.0 .tres loads")
+	assert_eq(Data.all_items2().size(), Fixtures.tres_count("res://data/items2.0/"), "every items2.0 .tres loads")
 
 func test_anchor_game_selected_grants_a_shield() -> void:
 	var anchor: ItemData = Data.get_item2(&"anchor")
@@ -453,7 +445,7 @@ func test_meat_on_the_bone_conditional_heal() -> void:
 # --- GoalEnemyData --------------------------------------------------------
 
 func test_goal_enemies_load() -> void:
-	assert_eq(Data.all_goal_enemies().size(), _tres_count("res://data/enemies2.0/"), "every enemies2.0 .tres loads")
+	assert_eq(Data.all_goal_enemies().size(), Fixtures.tres_count("res://data/enemies2.0/"), "every enemies2.0 .tres loads")
 
 func test_spike_slime_goal_enemy_fields() -> void:
 	var slime: GoalEnemyData = Data.get_goal_enemy(&"spike_slime_l")

@@ -1,5 +1,7 @@
 extends GutTest
 
+const Fixtures := preload("res://test/helpers/fixtures.gd")
+
 # Tests for the games-first (2.0) ScrollSystem (docs/games-first-redesign.md §4.1):
 # global per-type identification, mystery-vs-identified display, and read_scroll's
 # six effects wired into GameLoop2 + GameState. Pure logic, no UI: interactive
@@ -11,34 +13,9 @@ const SCROLL_IDS := [
 	"scroll_of_fire", "scroll_of_remove_curse",
 ]
 
-# Choose a game and take its ESCORT straight back off the board.
-#
-# Committing to a game stands a second, randomly-rolled body beside the game's
-# own enemy (§7.5, and test_gameloop2.gd, which is where that rule is tested).
-# These tests are about something else, and a stranger from the authored roster
-# standing on the board would put content they never asked about inside their
-# assertions.
-func _choose_solo(enemy: GoalEnemyData) -> int:
-	var inst: int = GameLoop2.choose_game(enemy)
-	if GameLoop2.second_body_instance() > 0:
-		GameLoop2.despawn(GameLoop2.second_body_instance())
-	return inst
-
 func before_each() -> void:
 	GameState.reset_run()
 	GameLoop2.reset()
-
-func _rng() -> RandomNumberGenerator:
-	var r := RandomNumberGenerator.new()
-	r.seed = 7
-	return r
-
-func _enemy(dmg: int) -> GoalEnemyData:
-	var e := GoalEnemyData.new()
-	e.id = &"synthetic"
-	e.display_name = "Synthetic"
-	e.damage = dmg
-	return e
 
 # --- Data ------------------------------------------------------------------
 
@@ -206,7 +183,7 @@ func test_forgetting_restores_the_same_title() -> void:
 func test_reading_learns_by_use() -> void:
 	var s: ScrollData = Data.get_scroll(&"scroll_of_teleportation")
 	assert_false(ScrollSystem.is_identified(s.id))
-	ScrollSystem.read_scroll(s, {"rng": _rng()})
+	ScrollSystem.read_scroll(s, {"rng": Fixtures.rng()})
 	assert_true(ScrollSystem.is_identified(s.id), "reading a scroll identifies its type")
 
 # Walk the one body on the board into the front column, a TURN at a time — what a
@@ -228,10 +205,10 @@ func test_aggravate_puts_strength_on_every_body() -> void:
 	# moves nobody out here (§7.4).
 	GameState.shields = 0
 	GameState.bonus_shields = 0
-	_choose_solo(_enemy(2)) ; GameLoop2.beat_game(false)   # spawn column
+	Fixtures.choose_solo(Fixtures.enemy(2)) ; GameLoop2.beat_game(false)   # spawn column
 	_march_to_front()
 	var s: ScrollData = Data.get_scroll(&"scroll_of_aggravate_monsters")
-	ScrollSystem.read_scroll(s, {"rng": _rng()})
+	ScrollSystem.read_scroll(s, {"rng": Fixtures.rng()})
 	var entry: Dictionary = GameLoop2.stack[0]
 	assert_eq(int((entry["statuses"] as Dictionary).get(&"strength", 0)), 1,
 		"Aggravate is +1 Strength, on the body")
@@ -248,10 +225,10 @@ func test_aggravate_does_not_wear_off() -> void:
 	GameState.hp = 20
 	GameState.shields = 0
 	GameState.bonus_shields = 0
-	_choose_solo(_enemy(2)) ; GameLoop2.beat_game(false)
+	Fixtures.choose_solo(Fixtures.enemy(2)) ; GameLoop2.beat_game(false)
 	_march_to_front()
 	ScrollSystem.read_scroll(Data.get_scroll(&"scroll_of_aggravate_monsters"),
-		{"rng": _rng()})
+		{"rng": Fixtures.rng()})
 	GameLoop2.attempt_turn()
 	var after_one: int = GameState.hp
 	GameLoop2.attempt_turn()
@@ -260,14 +237,14 @@ func test_aggravate_does_not_wear_off() -> void:
 func test_create_monster_grows_the_stack() -> void:
 	var s: ScrollData = Data.get_scroll(&"scroll_of_create_monster")
 	var before: int = GameLoop2.stack_size()
-	ScrollSystem.read_scroll(s, {"rng": _rng()})
+	ScrollSystem.read_scroll(s, {"rng": Fixtures.rng()})
 	assert_eq(GameLoop2.stack_size(), before + 1, "Create Monster adds a following enemy")
 
 func test_amnesia_forgets_a_known_scroll() -> void:
 	ScrollSystem.identify(&"scroll_of_teleportation")
 	assert_eq(GameState.identified_scroll_types.size(), 1)
 	var s: ScrollData = Data.get_scroll(&"scroll_of_amnesia")
-	ScrollSystem.read_scroll(s, {"rng": _rng()})
+	ScrollSystem.read_scroll(s, {"rng": Fixtures.rng()})
 	# Reading identifies Amnesia (learn-by-use), taking the known set to 2, then it
 	# forgets one random known scroll — so exactly one type remains identified.
 	assert_eq(GameState.identified_scroll_types.size(), 1, "net one scroll forgotten")
@@ -276,20 +253,20 @@ func test_identify_returns_a_choice_request() -> void:
 	# A carried, still-unidentified scroll is a candidate to identify.
 	GameState.add_scroll_loot(&"scroll_of_teleportation")
 	var s: ScrollData = Data.get_scroll(&"scroll_of_identify")
-	var out: Dictionary = ScrollSystem.read_scroll(s, {"rng": _rng()})
+	var out: Dictionary = ScrollSystem.read_scroll(s, {"rng": Fixtures.rng()})
 	assert_eq(out["requests"].size(), 1, "Identify surfaces a choose request")
 	assert_eq(String(out["requests"][0]["kind"]), "identify_loot")
 
 func test_scare_monster_returns_a_stun_request() -> void:
-	GameLoop2.spawn_to_stack(_enemy(2))
+	GameLoop2.spawn_to_stack(Fixtures.enemy(2))
 	var s: ScrollData = Data.get_scroll(&"scroll_of_scare_monster")
-	var out: Dictionary = ScrollSystem.read_scroll(s, {"rng": _rng()})
+	var out: Dictionary = ScrollSystem.read_scroll(s, {"rng": Fixtures.rng()})
 	assert_eq(out["requests"].size(), 1, "Scare Monster surfaces a choose request")
 	assert_eq(String(out["requests"][0]["kind"]), "stun_enemies")
 
 func test_teleport_returns_a_teleport_request() -> void:
 	var s: ScrollData = Data.get_scroll(&"scroll_of_teleportation")
-	var out: Dictionary = ScrollSystem.read_scroll(s, {"rng": _rng()})
+	var out: Dictionary = ScrollSystem.read_scroll(s, {"rng": Fixtures.rng()})
 	assert_eq(out["requests"].size(), 1)
 	assert_eq(String(out["requests"][0]["kind"]), "teleport")
 
@@ -315,9 +292,9 @@ func _march_to_the_front() -> void:
 func test_fire_burns_the_reader_and_the_front_column() -> void:
 	GameState.max_hp = 20
 	GameState.hp = 20
-	_choose_solo(_enemy(2)) ; GameLoop2.beat_game(false)
+	Fixtures.choose_solo(Fixtures.enemy(2)) ; GameLoop2.beat_game(false)
 	_march_to_the_front()
-	ScrollSystem.read_scroll(Data.get_scroll(&"scroll_of_fire"), {"rng": _rng()})
+	ScrollSystem.read_scroll(Data.get_scroll(&"scroll_of_fire"), {"rng": Fixtures.rng()})
 	assert_eq(GameState.status_stacks(&"burn"), 3, "the reader catches fire")
 	assert_eq(int((GameLoop2.stack[0]["statuses"] as Dictionary).get(&"burn", 0)), 3,
 		"and so does what is standing in front of them")
@@ -326,12 +303,12 @@ func test_fire_leaves_the_back_of_the_board_alone() -> void:
 	# `front` is the column that strikes next, not the whole board — a body still
 	# walking in is not in your face yet, and Aggravate Monsters is the scroll for
 	# hitting everything.
-	_choose_solo(_enemy(2)) ; GameLoop2.beat_game(false)
+	Fixtures.choose_solo(Fixtures.enemy(2)) ; GameLoop2.beat_game(false)
 	_march_to_the_front()
 	var near: int = int(GameLoop2.stack[0]["instance"])
-	var far: int = _choose_solo(_enemy(2))       # fresh, out at the spawn column
+	var far: int = Fixtures.choose_solo(Fixtures.enemy(2))       # fresh, out at the spawn column
 	GameLoop2.beat_game(false)                   # released; nothing moves out here
-	ScrollSystem.read_scroll(Data.get_scroll(&"scroll_of_fire"), {"rng": _rng()})
+	ScrollSystem.read_scroll(Data.get_scroll(&"scroll_of_fire"), {"rng": Fixtures.rng()})
 	assert_true(GameLoop2.in_front(GameLoop2.entry_for(near)), "the near body is in front")
 	assert_eq(int((GameLoop2.entry_for(near)["statuses"] as Dictionary).get(&"burn", 0)), 3,
 		"which is what burned")
@@ -343,7 +320,7 @@ func test_fire_read_into_an_empty_room_still_burns_you() -> void:
 	# The scroll is Negative for a reason: its cost lands whether or not its
 	# payoff finds anything.
 	var out: Dictionary = ScrollSystem.read_scroll(
-		Data.get_scroll(&"scroll_of_fire"), {"rng": _rng()})
+		Data.get_scroll(&"scroll_of_fire"), {"rng": Fixtures.rng()})
 	assert_eq(GameState.status_stacks(&"burn"), 3, "you burn regardless")
 	# And the log says NOTHING about the half that found nobody: it lists what
 	# landed, so an empty room reads as one line about you rather than as a line
@@ -355,7 +332,7 @@ func test_fire_read_into_an_empty_room_still_burns_you() -> void:
 func test_a_second_reading_cannot_push_burn_past_its_cap() -> void:
 	GameState.apply_status(&"burn", 2)
 	var out: Dictionary = ScrollSystem.read_scroll(
-		Data.get_scroll(&"scroll_of_fire"), {"rng": _rng()})
+		Data.get_scroll(&"scroll_of_fire"), {"rng": Fixtures.rng()})
 	assert_eq(GameState.status_stacks(&"burn"), 3, "Max: 3 (§13)")
 	assert_true(str(out["logs"]).contains("+1 Burn"),
 		"and the log quotes what actually landed, not what was asked for")
@@ -381,7 +358,7 @@ func test_the_fire_scrolls_wording_names_all_three_halves() -> void:
 # board's own; everything that stuns anything goes through `GameLoop2.stun` and that
 # goes through `apply_status_to`, so what this asserts is a stack rather than a field.
 func test_stun_enemies_chosen_stuns_the_target() -> void:
-	var inst: int = GameLoop2.spawn_to_stack(_enemy(2))
+	var inst: int = GameLoop2.spawn_to_stack(Fixtures.enemy(2))
 	ScrollSystem.stun_enemies_chosen([inst])
 	var entry: Dictionary = GameLoop2.entry_for(inst)
 	assert_eq(GameLoop2.stun_stacks(entry), 1, "the chosen enemy is stunned")
@@ -397,7 +374,7 @@ func test_stun_enemies_chosen_stuns_the_target() -> void:
 # themselves.
 
 func test_stunning_says_which_enemy_and_what_it_cost_them() -> void:
-	var inst: int = GameLoop2.spawn_to_stack(_enemy(2))
+	var inst: int = GameLoop2.spawn_to_stack(Fixtures.enemy(2))
 	var said: String = ScrollSystem.stun_enemies_chosen([inst])
 	assert_true(said.contains("Synthetic"), "it names the body it landed on: %s" % said)
 	assert_true(said.contains("turn") or said.contains("lost run"),
@@ -433,7 +410,7 @@ func test_a_random_identify_names_what_it_revealed() -> void:
 		"the random mode used to reveal something and never say what: %s" % str(out["logs"]))
 
 func test_a_random_stun_names_who_it_hit() -> void:
-	GameLoop2.spawn_to_stack(_enemy(2))
+	GameLoop2.spawn_to_stack(Fixtures.enemy(2))
 	var out: Dictionary = ScrollSystem.read_scroll(
 		_scroll_with([{"op": "stun_enemies", "mode": "random", "count": 1}]))
 	assert_true(str(out["logs"]).contains("Synthetic"),
@@ -458,7 +435,7 @@ func test_every_scroll_says_something_about_itself() -> void:
 		GameLoop2.reset()
 		GameState.add_scroll_loot(&"scroll_of_fire")
 		ScrollSystem.unidentify(&"scroll_of_fire")
-		GameLoop2.spawn_to_stack(_enemy(1))
+		GameLoop2.spawn_to_stack(Fixtures.enemy(1))
 		var out: Dictionary = ScrollSystem.read_scroll(scroll)
 		var said: bool = not (out["logs"] as Array).is_empty()
 		# A request is what a scroll has to say for itself at this layer: the choice
@@ -483,7 +460,7 @@ func test_amnesia_forgets_loot_and_not_just_scrolls() -> void:
 	# `all`, so which two of the three known types the draw happens to take is not
 	# what is under test — that the pill is reachable at all is.
 	var out: Dictionary = ScrollSystem.read_scroll(
-		_scroll_with([{"op": "forget", "kind": "loot", "count": -1}]), {"rng": _rng()})
+		_scroll_with([{"op": "forget", "kind": "loot", "count": -1}]), {"rng": Fixtures.rng()})
 	assert_false(ScrollSystem.is_identified(&"scroll_of_fire"), "the scroll is forgotten")
 	assert_false(PillSystem.is_identified(&"telepills"), "and so is the pill")
 	assert_false((out["logs"] as Array).is_empty(), "and it says so")
@@ -495,7 +472,7 @@ func test_amnesia_can_still_be_narrowed_to_one_kind() -> void:
 	ScrollSystem.identify(&"scroll_of_fire")
 	PillSystem.identify(&"telepills")
 	ScrollSystem.read_scroll(
-		_scroll_with([{"op": "forget", "kind": "scroll", "count": 5}]), {"rng": _rng()})
+		_scroll_with([{"op": "forget", "kind": "scroll", "count": 5}]), {"rng": Fixtures.rng()})
 	assert_false(ScrollSystem.is_identified(&"scroll_of_fire"), "the scroll goes")
 	assert_true(PillSystem.is_identified(&"telepills"), "the pill is not touched")
 
@@ -506,7 +483,7 @@ func test_a_forget_of_one_forgets_ONE_thing() -> void:
 	ScrollSystem.identify(&"scroll_of_fire")
 	PillSystem.identify(&"telepills")
 	ScrollSystem.read_scroll(
-		_scroll_with([{"op": "forget", "kind": "loot", "count": 1}]), {"rng": _rng()})
+		_scroll_with([{"op": "forget", "kind": "loot", "count": 1}]), {"rng": Fixtures.rng()})
 	var still_known: int = GameState.identified_scroll_types.size() \
 		+ GameState.identified_pill_types.size()
 	# Reading the synthetic scroll identifies it too, so the run knows its own id
@@ -520,7 +497,7 @@ func test_an_amnesia_read_by_a_run_that_knows_nothing_forgets_itself() -> void:
 	# same shape — the dose that erases the run's knowledge erases its own name.
 	assert_true(GameState.identified_scroll_types.is_empty(), "a fresh run knows nothing")
 	var out: Dictionary = ScrollSystem.read_scroll(
-		_scroll_with([{"op": "forget", "kind": "loot", "count": 1}]), {"rng": _rng()})
+		_scroll_with([{"op": "forget", "kind": "loot", "count": 1}]), {"rng": Fixtures.rng()})
 	assert_true(GameState.identified_scroll_types.is_empty(),
 		"learned and then forgotten, in that order")
 	assert_false((out["logs"] as Array).is_empty(), "and it reports the one it took")
@@ -532,7 +509,7 @@ func test_identify_offers_pills_as_well_as_scrolls() -> void:
 	GameState.add_scroll_loot(&"scroll_of_teleportation")
 	GameState.add_pill_loot(&"telepills")
 	var out: Dictionary = ScrollSystem.read_scroll(
-		Data.get_scroll(&"scroll_of_identify"), {"rng": _rng()})
+		Data.get_scroll(&"scroll_of_identify"), {"rng": Fixtures.rng()})
 	assert_eq(out["requests"].size(), 1)
 	var kinds: Array = []
 	for entry in out["requests"][0]["candidates"]:
@@ -546,7 +523,7 @@ func test_identify_lists_a_type_once_however_many_are_carried() -> void:
 	GameState.add_pill_loot(&"telepills")
 	GameState.add_pill_loot(&"telepills")
 	var out: Dictionary = ScrollSystem.read_scroll(
-		Data.get_scroll(&"scroll_of_identify"), {"rng": _rng()})
+		Data.get_scroll(&"scroll_of_identify"), {"rng": Fixtures.rng()})
 	assert_eq((out["requests"][0]["candidates"] as Array).size(), 1,
 		"identification is of the TYPE — two capsules are one thing to learn")
 
@@ -555,7 +532,7 @@ func test_identify_skips_what_is_already_known() -> void:
 	GameState.add_pill_loot(&"telepills")
 	PillSystem.identify(&"telepills")
 	var out: Dictionary = ScrollSystem.read_scroll(
-		Data.get_scroll(&"scroll_of_identify"), {"rng": _rng()})
+		Data.get_scroll(&"scroll_of_identify"), {"rng": Fixtures.rng()})
 	assert_true((out["requests"] as Array).is_empty(), "nothing left to ask about")
 	assert_true(str(out["logs"]).contains("nothing unidentified"),
 		"and it fizzles in words: %s" % str(out["logs"]))
@@ -573,7 +550,7 @@ func test_a_random_identify_can_land_on_a_pill() -> void:
 	PillSystem.ensure_colors()
 	GameState.add_pill_loot(&"telepills")
 	ScrollSystem.read_scroll(
-		_scroll_with([{"op": "identify_loot", "mode": "random", "count": 1}]), {"rng": _rng()})
+		_scroll_with([{"op": "identify_loot", "mode": "random", "count": 1}]), {"rng": Fixtures.rng()})
 	assert_true(PillSystem.is_identified(&"telepills"))
 
 # --- Remove Curse ----------------------------------------------------------
@@ -590,13 +567,13 @@ func test_remove_curse_lifts_the_permanent_row() -> void:
 func test_remove_curse_asks_which_one() -> void:
 	GameState.add_curse_goal(&"injury")
 	var out: Dictionary = ScrollSystem.read_scroll(
-		Data.get_scroll(&"scroll_of_remove_curse"), {"rng": _rng()})
+		Data.get_scroll(&"scroll_of_remove_curse"), {"rng": Fixtures.rng()})
 	assert_eq(out["requests"].size(), 1)
 	assert_eq(String(out["requests"][0]["kind"]), "remove_curse")
 
 func test_remove_curse_with_nothing_held_fizzles() -> void:
 	var out: Dictionary = ScrollSystem.read_scroll(
-		Data.get_scroll(&"scroll_of_remove_curse"), {"rng": _rng()})
+		Data.get_scroll(&"scroll_of_remove_curse"), {"rng": Fixtures.rng()})
 	assert_true((out["requests"] as Array).is_empty(), "no picker over an empty list")
 	assert_true(str(out["logs"]).contains("Nothing is weighing on you"),
 		"it fizzles in words: %s" % str(out["logs"]))
@@ -618,7 +595,7 @@ func test_remove_curse_all_clears_the_list() -> void:
 	GameState.add_curse_goal(&"injury")
 	GameState.add_curse_goal(&"poor_sleep")
 	var out: Dictionary = ScrollSystem.read_scroll(
-		_scroll_with([{"op": "remove_curse", "mode": "all", "count": 1}]), {"rng": _rng()})
+		_scroll_with([{"op": "remove_curse", "mode": "all", "count": 1}]), {"rng": Fixtures.rng()})
 	assert_eq(GameState.curse_goals.size(), 0)
 	assert_false((out["logs"] as Array).is_empty())
 

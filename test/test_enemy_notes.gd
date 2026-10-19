@@ -1,5 +1,7 @@
 extends GutTest
 
+const Page := preload("res://test/helpers/run_page.gd")
+
 # Per-game enemy notes — which enemies fell at which game, and what the player
 # wrote about how.
 #
@@ -116,7 +118,7 @@ func test_completing_a_game_logs_its_goal_enemy() -> void:
 	var ui = OVERWORLD.instantiate()
 	add_child_autofree(ui)
 	ui.choose_start(0)
-	_pick_enemies(ui, 0)
+	Page.pick_enemies(ui, 0)
 	var chosen: Dictionary = ui._chosen
 	if chosen.is_empty():
 		pending("nothing was chosen — the offering did not reach this case")
@@ -126,7 +128,7 @@ func test_completing_a_game_logs_its_goal_enemy() -> void:
 	if game == null or enemy == null:
 		pending("the run did not reach a game to ask about")
 		return
-	_report_beat(ui)
+	Page.report_beat(ui)
 	assert_gte(GameStats.enemy_beaten_count(game.id, enemy.id), 1,
 		"the goal enemy is logged against the game it was beaten at")
 
@@ -134,7 +136,7 @@ func test_failing_the_goal_logs_nothing() -> void:
 	var ui = OVERWORLD.instantiate()
 	add_child_autofree(ui)
 	ui.choose_start(0)
-	_pick_enemies(ui, 0)
+	Page.pick_enemies(ui, 0)
 	var chosen: Dictionary = ui._chosen
 	if chosen.is_empty():
 		pending("nothing was chosen — the offering did not reach this case")
@@ -313,16 +315,6 @@ func _card(ui: Node, choice: Dictionary) -> GameChoiceModal:
 	autofree(modal._layer)
 	return modal
 
-func _text_of(node: Node) -> String:
-	var out: String = ""
-	if node is Label:
-		out += (node as Label).text + "\n"
-	elif node is Button:
-		out += (node as Button).text + "\n"
-	for c in node.get_children():
-		out += _text_of(c)
-	return out
-
 func test_no_record_button_without_a_record() -> void:
 	var ui = _offering()
 	if ui._choices.is_empty():
@@ -351,7 +343,7 @@ func test_the_card_enemy_is_marked_approaching_when_beaten_here_before() -> void
 		return
 	assert_true(btn.text.contains("1 enemy"), "the line counts it: %s" % btn.text)
 	var view: Control = modal.open_beaten(game)
-	var text: String = _text_of(view)
+	var text: String = Page.text_of(view)
 	assert_true(text.contains(enemy.display_name), "the list names it")
 	assert_true(text.contains("Approaching"),
 		"and marks it as the one walking on with this game: %s" % text)
@@ -371,33 +363,3 @@ func test_beating_the_same_enemy_elsewhere_does_not_count() -> void:
 	var modal = _card(ui, ui._choices[0])
 	assert_null(modal.find_child("BeatenHere", true, false),
 		"a clear at a different game says nothing about this one")
-
-# Report the game as completed AND tick the row for the body that walked on with
-# it. This is what a bare `report(true)` used to do in one flag, back when that
-# body was the game's own enemy and beating the game answered for it; it is spelled
-# out now because the flag only records the GAME any more (GameLoop2.arrivals),
-# and clearing an enemy is ticking its checklist row like any other.
-func _report_beat(ui) -> void:
-	var landed: Dictionary = GameLoop2.arrival()
-	ui.report(true, [] if landed.is_empty() else [int(landed["instance"])])
-
-# Pick the first card, having first made sure it is an ordinary fight (§19.1).
-#
-# What a committed game stands on the board is decided by the NODE'S KIND now —
-# two bodies on an Enemies node, one boss on a Champion, none at all on an Event
-# or a Shop — and the offering deals those at 60/20/10/10. So a test that picks
-# and then expects something to be standing there is a test whose subject is a
-# die roll. Forcing the kind on the one node about to be picked is the ARRANGE
-# step; the rest of the map is left as the run dealt it.
-func _pick_enemies(ui, idx: int = 0) -> void:
-	if idx >= 0 and idx < ui._choices.size():
-		# ON THE SLOT (§19.2): the kind rides the node, so a transmuted card plays a
-		# different game at the same kind and the game id is the wrong key.
-		var choice: Dictionary = ui._choices[idx]
-		var slot := StringName(choice.get("slot", &""))
-		if slot == &"":
-			var game: GameData = choice.get("game")
-			slot = game.id if game != null else &""
-		if slot != &"":
-			GameState.node_kinds[slot] = RunGraph.NodeKind.ENEMIES
-	ui.pick(idx)

@@ -220,14 +220,19 @@ func _panel(reporting: bool) -> Control:
 	head.add_child(close)
 
 	var grid := LootGrid.new()
-	grid.allow_reorder = true
-	grid.show_use = true
+	# A PICK UNDER WAY (OwnedPick.gd) turns the pack into the answer: the pieces it
+	# can take light up, a click chooses, and nothing moves, spends or is binned
+	# until it is answered.
+	var pick = _page.owned_pick() if _page.has_method("owned_pick") else null
+	grid.pick = pick
+	grid.allow_reorder = pick == null
+	grid.show_use = pick == null
 	# REARRANGING IS NEVER LOCKED, only BINNING is (§4.3). The report step can be an
 	# hour of someone else's game, and it is exactly when a player wants to sort a
 	# pack they cannot spend out of in the order it is in. Moving and turning a piece
 	# changes nothing the report reads; throwing one away is a decision about the run
 	# and still waits until the game has been said to be over.
-	grid.allow_discard = not reporting
+	grid.allow_discard = not reporting and pick == null
 	grid.use_requested.connect(func(i: int): _page.use_loot(i))
 	grid.moved.connect(func(from: int, to: int, rot: int):
 		if GameState.move_loot(from, to, rot):
@@ -242,7 +247,8 @@ func _panel(reporting: bool) -> Control:
 	# of loot the run will never willingly use, and reading the Amnesia scroll to
 	# make room is a worse answer than throwing it away. Hidden mid-report —
 	# nothing can leave the pack then, even though it can be rearranged.
-	if not reporting and (not GameState.loot_items.is_empty() or not GameState.pack_bags.is_empty()):
+	if not reporting and pick == null \
+			and (not GameState.loot_items.is_empty() or not GameState.pack_bags.is_empty()):
 		var bin := LootTrash.new()
 		bin.grid = grid
 		box.add_child(bin)

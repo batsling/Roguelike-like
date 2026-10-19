@@ -1,5 +1,7 @@
 extends GutTest
 
+const Page := preload("res://test/helpers/run_page.gd")
+
 # The two records that hang off the CHARACTER: the level-up note, keyed to the
 # (game, character) pair exactly as an enemy note is keyed to (game, enemy), and
 # the trophy shelf of every enemy that character has put down.
@@ -32,19 +34,6 @@ func after_each() -> void:
 	GameLoop2.reset()
 
 # --- level-ups: the (game, character) pair --------------------------------
-
-# Tick a checklist box the way a player does (§2.1): the click, and then the
-# confirm it raises. A row only resolves once Yes is pressed.
-func _tick(check, host) -> void:
-	if check == null or not is_instance_valid(check) or check.disabled:
-		return
-	check.button_pressed = true
-	var panel = host.get_node_or_null("Confirm")
-	if panel == null:
-		return
-	var ok = panel.find_child("OkBtn", true, false)
-	if ok != null:
-		ok.pressed.emit()
 
 func test_nothing_is_logged_to_start_with() -> void:
 	assert_eq(GameStats.level_up_count(&"rogue", &"rodney"), 0)
@@ -170,7 +159,7 @@ func test_reporting_a_level_up_logs_it_against_the_game() -> void:
 	var ui = OVERWORLD.instantiate()
 	add_child_autofree(ui)
 	ui.choose_start(0)
-	_pick_enemies(ui, 0)
+	Page.pick_enemies(ui, 0)
 	var chosen: Dictionary = ui._chosen
 	if chosen.is_empty():
 		pending("nothing was chosen — the offering did not reach this case")
@@ -183,7 +172,7 @@ func test_reporting_a_level_up_logs_it_against_the_game() -> void:
 	if ch == null or ch.level_up_condition == "":
 		pending("the run did not reach this case (ch == null or ch.level_up_condition == '')")
 		return
-	_tick(ui._levelup_check, ui)
+	Page.tick(ui._levelup_check, ui)
 	ui.report(false, [])
 	assert_eq(GameStats.level_up_count(game.id, GameState.character_id), 1,
 		"the level is banked against the game it was taken at")
@@ -192,7 +181,7 @@ func test_not_ticking_the_level_up_logs_nothing() -> void:
 	var ui = OVERWORLD.instantiate()
 	add_child_autofree(ui)
 	ui.choose_start(0)
-	_pick_enemies(ui, 0)
+	Page.pick_enemies(ui, 0)
 	var chosen: Dictionary = ui._chosen
 	if chosen.is_empty():
 		pending("nothing was chosen — the offering did not reach this case")
@@ -211,7 +200,7 @@ func test_beating_a_goal_fills_both_records() -> void:
 	var ui = OVERWORLD.instantiate()
 	add_child_autofree(ui)
 	ui.choose_start(0)
-	_pick_enemies(ui, 0)
+	Page.pick_enemies(ui, 0)
 	var chosen: Dictionary = ui._chosen
 	if chosen.is_empty():
 		pending("nothing was chosen — the offering did not reach this case")
@@ -222,42 +211,12 @@ func test_beating_a_goal_fills_both_records() -> void:
 		pending("the run did not reach a game to ask about")
 		return
 	var who: StringName = GameState.character_id
-	_report_beat(ui)
+	Page.report_beat(ui)
 	assert_gte(GameStats.enemy_beaten_count(game.id, enemy.id), 1,
 		"logged against the game")
 	assert_eq(GameStats.character_enemy_count(who, enemy.id),
 		GameStats.enemy_beaten_count(game.id, enemy.id),
 		"and against the character, the same number of times")
-
-# Report the game as completed AND tick the row for the body that walked on with
-# it. This is what a bare `report(true)` used to do in one flag, back when that
-# body was the game's own enemy and beating the game answered for it; it is spelled
-# out now because the flag only records the GAME any more (GameLoop2.arrivals),
-# and clearing an enemy is ticking its checklist row like any other.
-func _report_beat(ui) -> void:
-	var landed: Dictionary = GameLoop2.arrival()
-	ui.report(true, [] if landed.is_empty() else [int(landed["instance"])])
-
-# Pick the first card, having first made sure it is an ordinary fight (§19.1).
-#
-# What a committed game stands on the board is decided by the NODE'S KIND now —
-# two bodies on an Enemies node, one boss on a Champion, none at all on an Event
-# or a Shop — and the offering deals those at 60/20/10/10. So a test that picks
-# and then expects something to be standing there is a test whose subject is a
-# die roll. Forcing the kind on the one node about to be picked is the ARRANGE
-# step; the rest of the map is left as the run dealt it.
-func _pick_enemies(ui, idx: int = 0) -> void:
-	if idx >= 0 and idx < ui._choices.size():
-		# ON THE SLOT (§19.2): the kind rides the node, so a transmuted card plays a
-		# different game at the same kind and the game id is the wrong key.
-		var choice: Dictionary = ui._choices[idx]
-		var slot := StringName(choice.get("slot", &""))
-		if slot == &"":
-			var game: GameData = choice.get("game")
-			slot = game.id if game != null else &""
-		if slot != &"":
-			GameState.node_kinds[slot] = RunGraph.NodeKind.ENEMIES
-	ui.pick(idx)
 
 
 # --- games beaten, per character --------------------------------------------

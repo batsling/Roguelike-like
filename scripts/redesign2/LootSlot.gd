@@ -147,6 +147,13 @@ func _gui_input(event: InputEvent) -> void:
 		return
 	if get_viewport() == null or get_viewport().gui_is_dragging():
 		return
+	# A PICK UNDER WAY (OwnedPick.gd): the click chooses, and nothing is picked up.
+	if grid != null and grid.pick != null:
+		if is_filled() and slot_index >= 0:
+			accept_event()
+			# Deferred: the choice redraws the pack this cell is part of.
+			grid.pick.choose.call_deferred(entry)
+		return
 	var data = _get_drag_data(mb.position)
 	if data == null:
 		return

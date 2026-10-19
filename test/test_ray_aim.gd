@@ -1,5 +1,7 @@
 extends GutTest
 
+const Fixtures := preload("res://test/helpers/fixtures.gd")
+
 # THE RAY (RayAim, docs/loot-passives.md §12.1): the Aim a weapon or wand takes
 # when the sheet says `ray` — a ball from the hero's side through the clicked
 # square, mirrored off walls and enemies until its bounces run out, landing its
@@ -16,20 +18,6 @@ func before_each() -> void:
 func after_each() -> void:
 	GameState.reset_run()
 	GameLoop2.reset()
-
-# A plain one-cell body with 3 Health standing on `cell`.
-func _body(cell: Vector2i) -> int:
-	var e := GoalEnemyData.new()
-	e.id = &"synthetic"
-	e.display_name = "Synthetic"
-	e.health = 3
-	e.damage = 1
-	e.difficulty = GoalEnemyData.Difficulty.LOW
-	var inst: int = GameLoop2.spawn_to_stack(e)
-	var entry: Dictionary = GameLoop2.entry_for(inst)
-	entry["col"] = cell.x
-	entry["row"] = cell.y
-	return inst
 
 func _hit_ids(path: Dictionary) -> Array:
 	return (path["hits"] as Array).map(func(h): return int(h["instance"]))
@@ -61,8 +49,8 @@ func test_a_ray_carries_on_past_the_square_clicked_to_the_wall() -> void:
 func test_a_ray_with_no_bounce_stops_at_the_first_enemy() -> void:
 	if not _board_is_base():
 		return
-	var near: int = _body(Vector2i(3, 1))
-	var far: int = _body(Vector2i(4, 1))
+	var near: int = Fixtures.body(Vector2i(3, 1))
+	var far: int = Fixtures.body(Vector2i(4, 1))
 	var path: Dictionary = RayAim.trace(Vector2i(4, 1), 0)
 	assert_eq(_hit_ids(path), [near], "the body in front shields the one behind it")
 	assert_eq(path["end"], Vector2i(3, 1))
@@ -81,8 +69,8 @@ func test_a_bounce_off_the_top_wall_mirrors_the_ray_down() -> void:
 func test_a_bounce_off_an_enemy_carries_on_into_a_second_one() -> void:
 	if not _board_is_base():
 		return
-	var first: int = _body(Vector2i(1, 0))
-	var second: int = _body(Vector2i(3, 2))
+	var first: int = Fixtures.body(Vector2i(1, 0))
+	var second: int = Fixtures.body(Vector2i(3, 2))
 	var path: Dictionary = RayAim.trace(Vector2i(2, 0), 1)
 	assert_eq(_hit_ids(path), [first, second],
 		"up into the first body, mirrored off its underside, down into the second")
@@ -91,14 +79,14 @@ func test_a_bounce_off_an_enemy_carries_on_into_a_second_one() -> void:
 func test_without_the_bounce_the_second_enemy_is_safe() -> void:
 	if not _board_is_base():
 		return
-	var first: int = _body(Vector2i(1, 0))
-	_body(Vector2i(3, 2))
+	var first: int = Fixtures.body(Vector2i(1, 0))
+	Fixtures.body(Vector2i(3, 2))
 	assert_eq(_hit_ids(RayAim.trace(Vector2i(2, 0), 0)), [first])
 
 func test_a_ray_mirrored_back_past_the_hero_goes_home() -> void:
 	if not _board_is_base():
 		return
-	var front: int = _body(Vector2i(1, 1))
+	var front: int = Fixtures.body(Vector2i(1, 1))
 	var path: Dictionary = RayAim.trace(Vector2i(4, 1), 3)
 	assert_eq(_hit_ids(path), [front], "it strikes the body in front of you once")
 	assert_eq(path["end"], GameLoop2.OFF_FIELD, "and, flipped back toward you, leaves the board")
@@ -128,7 +116,7 @@ func test_a_big_body_is_struck_once_however_often_the_ray_meets_it() -> void:
 func test_every_trace_ends() -> void:
 	# Every square of the board, with a body in the way and without, at a generous
 	# bounce count: a ray must always stop, and inside the board.
-	_body(Vector2i(2, 2))
+	Fixtures.body(Vector2i(2, 2))
 	for col in range(1, GameLoop2.grid_cols() + 1):
 		for row in range(GameLoop2.grid_rows()):
 			var path: Dictionary = RayAim.trace(Vector2i(col, row), 5)
@@ -162,10 +150,10 @@ func test_the_makeshift_sisyphus_starts_with_earthquake() -> void:
 func test_a_ray_swing_stuns_both_enemies_and_the_ground_round_each() -> void:
 	if not _board_is_base():
 		return
-	var first: int = _body(Vector2i(1, 0))
-	var second: int = _body(Vector2i(3, 2))
-	var beside: int = _body(Vector2i(4, 3))     # in the 3x3 round the second
-	var clear: int = _body(Vector2i(4, 0))      # in neither 3x3, and off the line
+	var first: int = Fixtures.body(Vector2i(1, 0))
+	var second: int = Fixtures.body(Vector2i(3, 2))
+	var beside: int = Fixtures.body(Vector2i(4, 3))     # in the 3x3 round the second
+	var clear: int = Fixtures.body(Vector2i(4, 0))      # in neither 3x3, and off the line
 	var entry: Dictionary = WeaponSystem.new_entry(Data.get_weapon(&"earthquake"))
 	WeaponSystem.swing(entry, {"target": Vector2i(2, 0)})
 	for inst in [first, second, beside]:
@@ -176,8 +164,8 @@ func test_a_ray_swing_stuns_both_enemies_and_the_ground_round_each() -> void:
 	assert_gt((strike.get("ray", []) as Array).size(), 2, "the board is handed the line")
 
 func test_the_preview_and_the_swing_agree() -> void:
-	_body(Vector2i(1, 0))
-	_body(Vector2i(3, 2))
+	Fixtures.body(Vector2i(1, 0))
+	Fixtures.body(Vector2i(3, 2))
 	var w: WeaponData = Data.get_weapon(&"earthquake")
 	var entry: Dictionary = WeaponSystem.new_entry(w)
 	var lit: Array = WeaponSystem.hit_cells(entry, Vector2i(2, 0))
@@ -200,9 +188,9 @@ func test_the_wands_aim_in_the_weapons_words() -> void:
 func test_a_ray_wand_does_its_effect_to_both_enemies_it_hits() -> void:
 	if not _board_is_base():
 		return
-	var first: int = _body(Vector2i(1, 0))
-	var second: int = _body(Vector2i(3, 2))
-	var bystander: int = _body(Vector2i(4, 3))
+	var first: int = Fixtures.body(Vector2i(1, 0))
+	var second: int = Fixtures.body(Vector2i(3, 2))
+	var bystander: int = Fixtures.body(Vector2i(4, 3))
 	WandSystem.zap_wand(_wand(&"wand_of_magic_missile"), {"target": Vector2i(2, 0)})
 	assert_eq(int(GameLoop2.entry_for(first)["health"]), 2, "the first body took the missile")
 	assert_eq(int(GameLoop2.entry_for(second)["health"]), 2, "and so did the one it bounced into")

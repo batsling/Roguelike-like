@@ -1,5 +1,7 @@
 extends GutTest
 
+const Fixtures := preload("res://test/helpers/fixtures.gd")
+
 # Tests for the games-first (2.0) PotionSystem (docs/potions-design.md §11 step 4):
 # the run's vial alphabet, identification, naming, art and the QUAFF verb.
 #
@@ -9,11 +11,6 @@ extends GutTest
 func before_each() -> void:
 	GameState.reset_run()
 	GameLoop2.reset()
-
-func _rng() -> RandomNumberGenerator:
-	var r := RandomNumberGenerator.new()
-	r.seed = 11
-	return r
 
 # --- The alphabet ----------------------------------------------------------
 
@@ -168,7 +165,7 @@ func test_an_identified_potion_with_NO_art_keeps_wearing_its_vial() -> void:
 
 func test_quaffing_identifies_the_bottle() -> void:
 	PotionSystem.ensure_colors()
-	PotionSystem.quaff_potion({"type": "potion", "id": &"block_potion"}, {"rng": _rng()})
+	PotionSystem.quaff_potion({"type": "potion", "id": &"block_potion"}, {"rng": Fixtures.rng(11)})
 	assert_true(PotionSystem.is_identified(&"block_potion"))
 
 func test_quaffing_a_useless_potion_says_so_and_teaches_nothing() -> void:
@@ -178,24 +175,24 @@ func test_quaffing_a_useless_potion_says_so_and_teaches_nothing() -> void:
 	# nothing else. The joke still reads as one rather than as a silent use.
 	PotionSystem.ensure_colors()
 	var out: Dictionary = PotionSystem.quaff_potion(
-		{"type": "potion", "id": &"potion_of_uselessness"}, {"rng": _rng()})
+		{"type": "potion", "id": &"potion_of_uselessness"}, {"rng": Fixtures.rng(11)})
 	assert_false(PotionSystem.is_identified(&"potion_of_uselessness"),
 		"a draught that did nothing taught nothing")
 	assert_false((out["logs"] as Array).is_empty(), "it says nothing happened")
 
 func test_block_potion_pays_the_shield_pool_that_does_not_expire() -> void:
 	var before: int = GameState.bonus_shields
-	PotionSystem.quaff_potion({"type": "potion", "id": &"block_potion"}, {"rng": _rng()})
+	PotionSystem.quaff_potion({"type": "potion", "id": &"block_potion"}, {"rng": Fixtures.rng(11)})
 	assert_eq(GameState.bonus_shields, before + 2)
 
 func test_a_healing_potion_heals_and_fruit_juice_raises_the_ceiling() -> void:
 	GameState.change_hp(-4)
 	var hp: int = GameState.hp
-	PotionSystem.quaff_potion({"type": "potion", "id": &"potion_of_healing"}, {"rng": _rng()})
+	PotionSystem.quaff_potion({"type": "potion", "id": &"potion_of_healing"}, {"rng": Fixtures.rng(11)})
 	assert_eq(GameState.hp, hp + 2)
 	var cap: int = GameState.max_hp
 	hp = GameState.hp
-	PotionSystem.quaff_potion({"type": "potion", "id": &"fruit_juice"}, {"rng": _rng()})
+	PotionSystem.quaff_potion({"type": "potion", "id": &"fruit_juice"}, {"rng": Fixtures.rng(11)})
 	assert_eq(GameState.max_hp, cap + 2, "the ceiling moves")
 	assert_eq(GameState.hp, hp + 2, "and the container arrives full")
 
@@ -207,7 +204,7 @@ func test_fire_potion_sets_the_drinker_alight_and_costs_them_nothing_up_front() 
 	# would not notice it coming back.
 	var hp: int = GameState.hp
 	var out: Dictionary = PotionSystem.quaff_potion(
-		{"type": "potion", "id": &"fire_potion"}, {"rng": _rng()})
+		{"type": "potion", "id": &"fire_potion"}, {"rng": Fixtures.rng(11)})
 	assert_eq(GameState.hp, hp, "nothing up front")
 	assert_gt(GameState.status_stacks(&"burn"), 0, "+3 Burn, and that is the whole cost")
 	assert_false((out["logs"] as Array).is_empty())
@@ -215,7 +212,7 @@ func test_fire_potion_sets_the_drinker_alight_and_costs_them_nothing_up_front() 
 func test_a_quaffed_burn_has_NO_clock_on_it() -> void:
 	# Only the rows whose prose says "until the end of the next combat" are timed.
 	# Burn is a debt, and a debt that expires by itself is a suggestion (§5.2).
-	PotionSystem.quaff_potion({"type": "potion", "id": &"fire_potion"}, {"rng": _rng()})
+	PotionSystem.quaff_potion({"type": "potion", "id": &"fire_potion"}, {"rng": Fixtures.rng(11)})
 	var burn: int = GameState.status_stacks(&"burn")
 	GameLoop2.beat_game(true)
 	assert_eq(GameState.status_stacks(&"burn"), burn, "it is still owed")
@@ -224,26 +221,26 @@ func test_a_speed_potion_is_borrowed_for_exactly_one_game() -> void:
 	# The whole reason the timed layer was built first (§5.1): the potion is the
 	# content, and it passes `games` straight through rather than growing a second
 	# path for timed stacks.
-	PotionSystem.quaff_potion({"type": "potion", "id": &"speed_potion"}, {"rng": _rng()})
+	PotionSystem.quaff_potion({"type": "potion", "id": &"speed_potion"}, {"rng": Fixtures.rng(11)})
 	assert_eq(GameState.status_stacks(&"dexterity"), 5)
 	GameLoop2.beat_game(true)
 	assert_eq(GameState.status_stacks(&"dexterity"), 0, "one game, and the game counts")
 
 func test_a_borrowed_stack_does_not_take_a_permanent_one_with_it() -> void:
 	GameState.apply_status(&"dexterity", 2)          # owned
-	PotionSystem.quaff_potion({"type": "potion", "id": &"speed_potion"}, {"rng": _rng()})
+	PotionSystem.quaff_potion({"type": "potion", "id": &"speed_potion"}, {"rng": Fixtures.rng(11)})
 	assert_eq(GameState.status_stacks(&"dexterity"), 7)
 	GameLoop2.beat_game(true)
 	assert_eq(GameState.status_stacks(&"dexterity"), 2, "the two you owned stay")
 
 func test_a_timed_clause_says_so_in_the_line_it_reports() -> void:
 	var out: Dictionary = PotionSystem.quaff_potion(
-		{"type": "potion", "id": &"flex_potion"}, {"rng": _rng()})
+		{"type": "potion", "id": &"flex_potion"}, {"rng": Fixtures.rng(11)})
 	assert_true(str(out["logs"]).to_lower().contains("this game"),
 		"a clause the player cannot tell is temporary is a trap: %s" % str(out["logs"]))
 
 func test_fysh_oil_is_two_clauses_and_both_are_borrowed() -> void:
-	PotionSystem.quaff_potion({"type": "potion", "id": &"fysh_oil"}, {"rng": _rng()})
+	PotionSystem.quaff_potion({"type": "potion", "id": &"fysh_oil"}, {"rng": Fixtures.rng(11)})
 	assert_eq(GameState.status_stacks(&"strength"), 1)
 	assert_eq(GameState.status_stacks(&"dexterity"), 1)
 	GameLoop2.beat_game(true)
@@ -258,7 +255,7 @@ func test_raise_level_pays_the_characters_ordinary_level_up() -> void:
 	var level: int = GameState.player_level
 	var chests: int = GameState.pending_chests
 	var out: Dictionary = PotionSystem.quaff_potion(
-		{"type": "potion", "id": &"potion_of_raise_level"}, {"rng": _rng()})
+		{"type": "potion", "id": &"potion_of_raise_level"}, {"rng": Fixtures.rng(11)})
 	assert_eq(GameState.player_level, level + 1)
 	assert_eq(GameState.pending_chests, chests + 1,
 		"the character's own reward, not a payout invented for the potion")
@@ -269,7 +266,7 @@ func test_raise_level_with_no_character_fizzles_rather_than_lying() -> void:
 	# one cannot level. The line has to follow the fact.
 	GameState.character_id = &""
 	var out: Dictionary = PotionSystem.quaff_potion(
-		{"type": "potion", "id": &"potion_of_raise_level"}, {"rng": _rng()})
+		{"type": "potion", "id": &"potion_of_raise_level"}, {"rng": Fixtures.rng(11)})
 	assert_eq(GameState.player_level, 1, "nothing to level up")
 	assert_true(str(out["logs"]).to_lower().contains("fizzle"), str(out["logs"]))
 
@@ -279,7 +276,7 @@ func test_sacred_bark_doubles_a_NEGATIVE_potion_too() -> void:
 	# minigame cannot afford (§8.2).
 	var hp: int = GameState.hp
 	PotionSystem.quaff_potion({"type": "potion", "id": &"potion_of_self_mutilation"},
-		{"rng": _rng()})
+		{"rng": Fixtures.rng(11)})
 	var plain: int = hp - GameState.hp
 	GameState.reset_run()
 	GameLoop2.reset()
@@ -287,7 +284,7 @@ func test_sacred_bark_doubles_a_NEGATIVE_potion_too() -> void:
 	assert_eq(GameState.loot_multiplier(), 2, "the Bark doubles loot")
 	hp = GameState.hp
 	PotionSystem.quaff_potion({"type": "potion", "id": &"potion_of_self_mutilation"},
-		{"rng": _rng()})
+		{"rng": Fixtures.rng(11)})
 	assert_eq(hp - GameState.hp, plain * 2, "6 damage, not 3")
 
 # --- As a piece of loot ----------------------------------------------------
@@ -305,7 +302,7 @@ func test_a_potion_is_loot_like_anything_else() -> void:
 func test_spending_a_carried_potion_goes_through_the_one_loot_path() -> void:
 	GameState.add_potion_loot(&"block_potion")
 	var before: int = GameState.bonus_shields
-	var out: Dictionary = LootSystem.use_loot(0, {"rng": _rng()})
+	var out: Dictionary = LootSystem.use_loot(0, {"rng": Fixtures.rng(11)})
 	assert_eq(GameState.loot_items.size(), 0, "the piece is consumed")
 	assert_eq(GameState.bonus_shields, before + 2, "and it resolved")
 	assert_false((out["logs"] as Array).is_empty())
@@ -403,16 +400,9 @@ func _wide(health: int = 9) -> GoalEnemyData:
 	e.shape_mask = PackedInt32Array()
 	return e
 
-# Stand the only body on the board at a known cell.
-func _park(instance: int, cell: Vector2i) -> Dictionary:
-	var entry: Dictionary = GameLoop2.entry_for(instance)
-	entry["col"] = cell.x
-	entry["row"] = cell.y
-	return entry
-
 func _throw(id: StringName, cell: Vector2i) -> Dictionary:
 	return PotionSystem.throw_potion({"type": "potion", "id": id},
-		{"rng": _rng(), "target": cell})
+		{"rng": Fixtures.rng(11), "target": cell})
 
 # --- The shapes (§4.3) -----------------------------------------------------
 
@@ -478,7 +468,7 @@ func test_a_wide_body_under_a_wide_throw_is_hit_ONCE() -> void:
 	# difference between a thing that happens once and ground that keeps happening.
 	var e: GoalEnemyData = _wide(9)
 	var inst: int = _solo(e)
-	_park(inst, Vector2i(2, 0))
+	Fixtures.park(inst, Vector2i(2, 0))
 	var covered: Array = GameLoop2.entry_cells(GameLoop2.entry_for(inst))
 	assert_eq(covered.size(), 4, "the body really is a 2x2")
 	var hit: Array = GameLoop2.area_instances(GameLoop2.area_cells(Vector2i(2, 0), "3x3"))
@@ -502,7 +492,7 @@ func test_a_wide_body_takes_the_DAMAGE_once_and_the_fire_every_turn() -> void:
 	# clause it is being read for — Explosive Ampoule for the damage (1 over a whole
 	# ROW, which a 2x2 spans two cells of), Fire Potion for the ground.
 	var wide: int = _solo(_wide(9))
-	_park(wide, Vector2i(2, 0))
+	Fixtures.park(wide, Vector2i(2, 0))
 	_throw(&"explosive_ampoule", Vector2i(2, 0))
 	assert_eq(int(GameLoop2.entry_for(wide)["health"]), 8,
 		"1 damage, not 2 — the clause lands on the BODY, once")
@@ -523,7 +513,7 @@ func test_a_wide_body_takes_the_DAMAGE_once_and_the_fire_every_turn() -> void:
 		if int(entry.get("instance", 0)) != wide:
 			narrow = int(entry.get("instance", 0))
 	assert_true(narrow > 0, "there is a second body")
-	_park(narrow, Vector2i(1, 2))
+	Fixtures.park(narrow, Vector2i(1, 2))
 	GameLoop2.apply_tile(Vector2i(1, 2), &"fire")
 	# Both start the turn from nothing, so what they gain is the turn's own bill.
 	GameLoop2.entry_for(wide)["statuses"] = {}
@@ -552,7 +542,7 @@ func test_a_body_from_before_the_field_existed_reads_its_own_health() -> void:
 
 func test_healing_a_body_stops_at_its_ceiling_and_says_when_it_did_nothing() -> void:
 	var inst: int = _solo(_enemy(3))
-	_park(inst, Vector2i(2, 1))
+	Fixtures.park(inst, Vector2i(2, 1))
 	var out: Dictionary = _throw(&"potion_of_healing", Vector2i(2, 1))
 	assert_eq(int(GameLoop2.entry_for(inst)["health"]), 3, "already whole")
 	assert_true(String((out["logs"] as Array)[0]).contains("already whole"),
@@ -561,14 +551,14 @@ func test_healing_a_body_stops_at_its_ceiling_and_says_when_it_did_nothing() -> 
 
 func test_healing_a_chipped_body_stops_at_the_ceiling_it_started_with() -> void:
 	var inst: int = _solo(_enemy(3))
-	var entry: Dictionary = _park(inst, Vector2i(2, 1))
+	var entry: Dictionary = Fixtures.park(inst, Vector2i(2, 1))
 	entry["health"] = 1
 	_throw(&"potion_of_extra_healing", Vector2i(2, 1))   # heals 5
 	assert_eq(int(GameLoop2.entry_for(inst)["health"]), 3, "up to the ceiling, no further")
 
 func test_fruit_juice_raises_the_ceiling_and_the_pool_together() -> void:
 	var inst: int = _solo(_enemy(1))
-	var entry: Dictionary = _park(inst, Vector2i(2, 1))
+	var entry: Dictionary = Fixtures.park(inst, Vector2i(2, 1))
 	_throw(&"fruit_juice", Vector2i(2, 1))
 	entry = GameLoop2.entry_for(inst)
 	assert_eq(GameLoop2.entry_max_health(entry), 3, "a 1-Health goblin is a 3-Health goblin")
@@ -576,7 +566,7 @@ func test_fruit_juice_raises_the_ceiling_and_the_pool_together() -> void:
 
 func test_fruit_juice_on_a_damaged_body_keeps_the_damage_it_has_taken() -> void:
 	var inst: int = _solo(_enemy(3))
-	var entry: Dictionary = _park(inst, Vector2i(2, 1))
+	var entry: Dictionary = Fixtures.park(inst, Vector2i(2, 1))
 	entry["health"] = 1
 	_throw(&"fruit_juice", Vector2i(2, 1))
 	entry = GameLoop2.entry_for(inst)
@@ -590,7 +580,7 @@ func test_the_ceiling_survives_a_save_and_a_load() -> void:
 	var real: GoalEnemyData = Data.all_goal_enemies()[0]
 	var inst: int = _solo(real)
 	var started: int = GameLoop2.entry_max_health(GameLoop2.entry_for(inst))
-	_park(inst, Vector2i(2, 1))
+	Fixtures.park(inst, Vector2i(2, 1))
 	_throw(&"fruit_juice", Vector2i(2, 1))
 	var blob: Dictionary = GameLoop2.serialize()
 	GameLoop2.reset()
@@ -601,7 +591,7 @@ func test_the_ceiling_survives_a_save_and_a_load() -> void:
 
 func test_a_thrown_ampoule_damages_what_it_covers() -> void:
 	var inst: int = _solo(_enemy(3))
-	_park(inst, Vector2i(2, 1))
+	Fixtures.park(inst, Vector2i(2, 1))
 	var out: Dictionary = _throw(&"explosive_ampoule", Vector2i(1, 1))   # area=row
 	assert_eq(int(GameLoop2.entry_for(inst)["health"]), 2, "one damage down that row")
 	assert_false((out["logs"] as Array).is_empty())
@@ -613,7 +603,7 @@ func test_a_thrown_potion_fires_NO_bomb_trigger() -> void:
 	GameState.max_hp = 40
 	GameState.hp = 10
 	var inst: int = _solo(_enemy(3))
-	_park(inst, Vector2i(2, 1))
+	Fixtures.park(inst, Vector2i(2, 1))
 	_throw(&"explosive_ampoule", Vector2i(1, 1))
 	assert_eq(GameState.hp, 10, "no bomb was used, so nothing paid")
 
@@ -623,7 +613,7 @@ func test_brimstone_does_not_widen_a_bottle() -> void:
 	GameState.add_item(Data.get_item2(&"brimstone_bombs"))
 	assert_true(GameState.bombs_cardinal(), "the relic really is on")
 	var inst: int = _solo(_enemy(3))
-	_park(inst, Vector2i(2, 1))
+	Fixtures.park(inst, Vector2i(2, 1))
 	# A body one row up and one column across: in the cross of (1,1), not in its row.
 	var other: GoalEnemyData = _enemy(3)
 	other.id = &"synthetic_two"
@@ -633,7 +623,7 @@ func test_brimstone_does_not_widen_a_bottle() -> void:
 		if int(entry.get("instance", 0)) != inst:
 			second = int(entry.get("instance", 0))
 	assert_true(second > 0, "there is a second body to miss")
-	_park(second, Vector2i(1, 0))
+	Fixtures.park(second, Vector2i(1, 0))
 	_throw(&"explosive_ampoule", Vector2i(1, 1))
 	assert_eq(int(GameLoop2.entry_for(inst)["health"]), 2, "the row was hit")
 	assert_eq(int(GameLoop2.entry_for(second)["health"]), 3,
@@ -649,7 +639,7 @@ func test_a_thrown_bottle_chips_a_boss_but_never_finishes_one() -> void:
 	# board (docs/wands-design.md §5.5) without moving what a boss is. Only its goal
 	# takes the last point off it, and only Wand of Death is the exception.
 	var inst: int = _solo(_enemy(3, true))
-	_park(inst, Vector2i(2, 1))
+	Fixtures.park(inst, Vector2i(2, 1))
 	_throw(&"potion_of_self_mutilation", Vector2i(2, 1))   # deal_damage 3 area=cell
 	assert_eq(int(GameLoop2.entry_for(inst)["health"]), 1,
 		"the bottle chipped it down to its last point")
@@ -660,7 +650,7 @@ func test_a_thrown_bottle_chips_a_boss_but_never_finishes_one() -> void:
 
 func test_a_body_killed_by_a_bottle_is_destroyed_not_defeated() -> void:
 	var inst: int = _solo(_enemy(1))
-	_park(inst, Vector2i(2, 1))
+	Fixtures.park(inst, Vector2i(2, 1))
 	var gold: int = GameState.gold
 	var defeated: int = GameLoop2.defeated_count
 	_throw(&"potion_of_self_mutilation", Vector2i(2, 1))
@@ -681,7 +671,7 @@ func test_fire_potion_covers_the_whole_3x3_with_both_its_clauses() -> void:
 	# dropped, because "the impact does nothing by itself" is now the rule and a
 	# test that simply stopped looking would not notice it coming back.
 	var inst: int = _solo(_enemy(3))
-	_park(inst, Vector2i(2, 1))
+	Fixtures.park(inst, Vector2i(2, 1))
 	var before: int = int(GameLoop2.entry_for(inst)["health"])
 	_throw(&"fire_potion", Vector2i(2, 1))
 	var entry: Dictionary = GameLoop2.entry_for(inst)
@@ -694,7 +684,7 @@ func test_a_thrown_speed_potion_borrows_its_stacks_for_one_game() -> void:
 	# The timed layer takes `games` straight through — there is no second path for
 	# a thrown clock (§5.4).
 	var inst: int = _solo(_enemy(9))
-	_park(inst, Vector2i(2, 1))
+	Fixtures.park(inst, Vector2i(2, 1))
 	_throw(&"speed_potion", Vector2i(2, 1))
 	var entry: Dictionary = GameLoop2.entry_for(inst)
 	assert_eq(GameLoop2.entry_status_stacks(entry, &"dexterity"), 5)
@@ -705,7 +695,7 @@ func test_a_thrown_speed_potion_borrows_its_stacks_for_one_game() -> void:
 
 func test_a_thrown_block_potion_hands_a_body_shields() -> void:
 	var inst: int = _solo(_enemy(3))
-	_park(inst, Vector2i(2, 1))
+	Fixtures.park(inst, Vector2i(2, 1))
 	_throw(&"block_potion", Vector2i(2, 1))
 	assert_eq(GameLoop2.enemy_shield(GameLoop2.entry_for(inst)), 2)
 
@@ -733,7 +723,7 @@ func test_throwing_identifies_the_QUAFF_side_too() -> void:
 	# ON A BODY, so the throw actually lands — a throw that fizzles teaches nothing
 	# at all now (§4.5), which would make this test about the wrong rule.
 	GameLoop2.reset()
-	_park(GameLoop2.spawn_to_stack(_enemy(9)), Vector2i(2, 1))
+	Fixtures.park(GameLoop2.spawn_to_stack(_enemy(9)), Vector2i(2, 1))
 	_throw(&"fire_potion", Vector2i(2, 1))
 	var entry := {"type": "potion", "id": &"fire_potion"}
 	assert_true(PotionSystem.description(entry).contains("Quaff:"))
@@ -741,7 +731,7 @@ func test_throwing_identifies_the_QUAFF_side_too() -> void:
 
 func test_a_potion_with_no_cell_in_hand_fizzles_rather_than_no_opping() -> void:
 	var out: Dictionary = PotionSystem.throw_potion(
-		{"type": "potion", "id": &"fire_potion"}, {"rng": _rng()})
+		{"type": "potion", "id": &"fire_potion"}, {"rng": Fixtures.rng(11)})
 	assert_false(PotionSystem.is_identified(&"fire_potion"),
 		"spent, and with nothing learned for it (§4.5)")
 	assert_false((out["logs"] as Array).is_empty())
@@ -771,9 +761,9 @@ func test_nothing_but_a_potion_can_be_thrown() -> void:
 func test_the_loot_path_routes_on_the_verb() -> void:
 	GameState.add_potion_loot(&"block_potion")
 	var inst: int = _solo(_enemy(3))
-	_park(inst, Vector2i(2, 1))
+	Fixtures.park(inst, Vector2i(2, 1))
 	var before: int = GameState.bonus_shields
-	LootSystem.use_loot(0, {"rng": _rng(), "verb": "throw", "target": Vector2i(2, 1)})
+	LootSystem.use_loot(0, {"rng": Fixtures.rng(11), "verb": "throw", "target": Vector2i(2, 1)})
 	assert_eq(GameState.bonus_shields, before, "the drinker got nothing")
 	assert_eq(GameLoop2.enemy_shield(GameLoop2.entry_for(inst)), 2, "the body did")
 	assert_eq(GameState.loot_items.size(), 0, "and the piece is spent either way")
@@ -784,13 +774,13 @@ func test_an_echoed_potion_lands_on_the_same_cell() -> void:
 	GameState.add_item(Data.get_item2(&"echo_chamber"))
 	assert_true(GameState.loot_echo_depth() > 0, "the relic really is on")
 	var inst: int = _solo(_enemy(9))
-	_park(inst, Vector2i(2, 1))
+	Fixtures.park(inst, Vector2i(2, 1))
 	# One use to fill the echo memory, then a second that replays it.
 	LootSystem.use_entry({"type": "potion", "id": &"block_potion"},
-		{"rng": _rng(), "verb": "throw", "target": Vector2i(2, 1)})
+		{"rng": Fixtures.rng(11), "verb": "throw", "target": Vector2i(2, 1)})
 	assert_eq(GameLoop2.enemy_shield(GameLoop2.entry_for(inst)), 2)
 	LootSystem.use_entry({"type": "potion", "id": &"block_potion"},
-		{"rng": _rng(), "verb": "throw", "target": Vector2i(2, 1)})
+		{"rng": Fixtures.rng(11), "verb": "throw", "target": Vector2i(2, 1)})
 	assert_eq(GameLoop2.enemy_shield(GameLoop2.entry_for(inst)), 6,
 		"the throw and its echo both landed on the body that was aimed at")
 
@@ -806,7 +796,7 @@ func test_the_bark_leaves_a_single_square_alone() -> void:
 	# what doubling a potion should mean.
 	_bark()
 	var inst: int = _solo(_enemy(3))
-	_park(inst, Vector2i(2, 1))
+	Fixtures.park(inst, Vector2i(2, 1))
 	var neighbour: GoalEnemyData = _enemy(3)
 	neighbour.id = &"synthetic_two"
 	GameLoop2.spawn_to_stack(neighbour)
@@ -814,7 +804,7 @@ func test_the_bark_leaves_a_single_square_alone() -> void:
 	for entry in GameLoop2.stack:
 		if int(entry.get("instance", 0)) != inst:
 			second = int(entry.get("instance", 0))
-	_park(second, Vector2i(1, 1))
+	Fixtures.park(second, Vector2i(1, 1))
 	_throw(&"block_potion", Vector2i(2, 1))   # area=cell
 	assert_eq(GameLoop2.enemy_shield(GameLoop2.entry_for(inst)), 4, "doubled in VALUE")
 	assert_eq(GameLoop2.enemy_shield(GameLoop2.entry_for(second)), 0,
@@ -836,7 +826,7 @@ func test_the_bark_widens_a_3x3_to_a_5x5_and_a_row_to_the_cross() -> void:
 func test_a_barked_ampoule_covers_the_cross_and_hits_the_column_too() -> void:
 	_bark()
 	var inst: int = _solo(_enemy(9))
-	_park(inst, Vector2i(2, 1))
+	Fixtures.park(inst, Vector2i(2, 1))
 	var other: GoalEnemyData = _enemy(9)
 	other.id = &"synthetic_two"
 	GameLoop2.spawn_to_stack(other)
@@ -844,7 +834,7 @@ func test_a_barked_ampoule_covers_the_cross_and_hits_the_column_too() -> void:
 	for entry in GameLoop2.stack:
 		if int(entry.get("instance", 0)) != inst:
 			second = int(entry.get("instance", 0))
-	_park(second, Vector2i(1, 0))
+	Fixtures.park(second, Vector2i(1, 0))
 	_throw(&"explosive_ampoule", Vector2i(1, 1))
 	assert_eq(int(GameLoop2.entry_for(inst)["health"]), 7, "2 damage down the row")
 	assert_eq(int(GameLoop2.entry_for(second)["health"]), 7,
@@ -853,7 +843,7 @@ func test_a_barked_ampoule_covers_the_cross_and_hits_the_column_too() -> void:
 func test_the_bark_doubles_a_thrown_healing_potion_too() -> void:
 	_bark()
 	var inst: int = _solo(_enemy(9))
-	var entry: Dictionary = _park(inst, Vector2i(2, 1))
+	var entry: Dictionary = Fixtures.park(inst, Vector2i(2, 1))
 	entry["health"] = 1
 	_throw(&"potion_of_healing", Vector2i(2, 1))   # heals 2, doubled to 4
 	assert_eq(int(GameLoop2.entry_for(inst)["health"]), 5)
@@ -896,7 +886,7 @@ func test_a_bomb_blast_sets_off_a_mine_it_covers() -> void:
 	# "…or in anything else that ever damages ground" (§4.7). A mine has Health 1,
 	# and a Health nothing can damage is a number carried for decoration.
 	var inst: int = _solo(_enemy(9))
-	_park(inst, Vector2i(3, 1))
+	Fixtures.park(inst, Vector2i(3, 1))
 	GameLoop2.apply_unit(Vector2i(2, 1), &"landmine")
 	GameState.bombs = 1
 	GameLoop2.bomb_cell(Vector2i(2, 1))

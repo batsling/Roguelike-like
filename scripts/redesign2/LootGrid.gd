@@ -116,6 +116,10 @@ var allow_floor_take: bool = false
 var show_use: bool = false
 # The bin will take a piece from this grid (LootTrash).
 var allow_discard: bool = false
+# A PICK UNDER WAY (OwnedPick.gd), or null. While it is set the pack is the answer
+# to "which of your pieces": the ones it can take are ringed in its colour, the rest
+# are dimmed, a click on a candidate chooses it, and nothing can be dragged.
+var pick = null
 # MOVING is off while a game is mid-report — the report step is between "played
 # the game" and "said what happened", and the pack cannot be rearranged, taken from
 # or binned in that gap.
@@ -471,7 +475,7 @@ func _draw_ghost() -> void:
 # ---------------------------------------------------------------------------
 
 func can_drag_from(slot: LootSlot) -> bool:
-	if locked:
+	if locked or pick != null:
 		return false
 	# The loose piece a modal is offering is always draggable when it is drawn at
 	# all — it is the offer. Pieces in the pack move only where reordering is on.
@@ -746,7 +750,7 @@ func _process(_delta: float) -> void:
 
 # Can a bag be picked up off this grid right now?
 func can_drag_bag() -> bool:
-	return allow_reorder and not locked
+	return allow_reorder and not locked and pick == null
 
 func bag_payload(bag: int) -> Dictionary:
 	var row: Dictionary = GameState.pack_bags[bag]
@@ -1203,6 +1207,8 @@ func _slot(slot_index: int, index: int, entry: Dictionary) -> LootSlot:
 	# is shared with the loose-offer layout and a future rule may want it back.
 	slot.add_child(_cell_body(entry, use_cb, false, true, true, extras))
 	add_direction_arrow(slot, entry)
+	if pick != null:
+		_dress_for_pick(slot, entry)
 	# HOVER READS, DRAG MOVES, THE BUTTON SPENDS — and a click does nothing.
 	#
 	# A cell used to open a reading card on click (LootInfoCard), which meant two
@@ -1212,6 +1218,31 @@ func _slot(slot_index: int, index: int, entry: Dictionary) -> LootSlot:
 	# read was the one nothing was decided on, so it is gone; the hover card is the
 	# fast read on the way past, and Use is where the piece is actually looked at.
 	return slot
+
+# A filled cell while a pick is under way: ringed in the pick's colour when it can
+# be chosen (and filled with it once it has been), dimmed when it cannot. The click
+# itself is LootSlot's (`_gui_input`), which hands it to `pick.choose`.
+func _dress_for_pick(slot: LootSlot, entry: Dictionary) -> void:
+	if pick.candidate_for(entry) == null:
+		slot.modulate = Color(1, 1, 1, 0.35)
+		slot.mouse_default_cursor_shape = Control.CURSOR_ARROW
+		return
+	var accent: Color = pick.accent
+	var chosen: bool = pick.is_selected(entry)
+	slot.add_theme_stylebox_override("panel", UITheme.flat(
+		accent.lerp(UITheme.BG, 0.45 if chosen else 0.8), 6, 0, 3 if chosen else 2, accent))
+	slot.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	if chosen:
+		var tick := Label.new()
+		tick.text = "✓"
+		tick.add_theme_font_size_override("font_size", UITheme.FONT_SUB)
+		tick.add_theme_color_override("font_color", Color.WHITE)
+		# The cell is a container and lays the label over its whole face, so the
+		# corner is the TEXT's alignment rather than the label's anchors.
+		tick.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		tick.vertical_alignment = VERTICAL_ALIGNMENT_TOP
+		tick.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		slot.add_child(tick)
 
 # The art band, the name, the preference chip and (when the grid spends) the Use
 # button. Static so the loose piece a modal offers is built by the same code as a

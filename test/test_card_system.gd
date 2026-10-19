@@ -1,5 +1,7 @@
 extends GutTest
 
+const Fixtures := preload("res://test/helpers/fixtures.gd")
+
 # Tests for the games-first (2.0) CardSystem (docs/cards-design.md): the roster,
 # the four-way loot split, the floor mask, and every op the sheet authors.
 #
@@ -20,11 +22,6 @@ func before_each() -> void:
 # test_overworld2 would quietly be about two cabinets instead of three.
 func after_each() -> void:
 	ObjectSystem.reset_run()
-
-func _rng() -> RandomNumberGenerator:
-	var r := RandomNumberGenerator.new()
-	r.seed = 7
-	return r
 
 func _entry(id: StringName) -> Dictionary:
 	var c: CardData = Data.get_card(id)
@@ -213,13 +210,13 @@ func test_add_loot_card_puts_one_in_the_pack() -> void:
 
 func test_the_lovers_heals_and_says_what_landed() -> void:
 	GameState.hp = GameState.max_hp - 5
-	var out: Dictionary = CardSystem.play_card(_entry(&"vi_the_lovers"), {"rng": _rng()})
+	var out: Dictionary = CardSystem.play_card(_entry(&"vi_the_lovers"), {"rng": Fixtures.rng()})
 	assert_eq(GameState.hp, GameState.max_hp - 3)
 	assert_string_contains(String(out["logs"][0]), "+2 Health")
 
 func test_a_heal_that_does_not_fit_says_so_rather_than_reporting_the_roll() -> void:
 	GameState.hp = GameState.max_hp
-	var out: Dictionary = CardSystem.play_card(_entry(&"queen_of_hearts"), {"rng": _rng()})
+	var out: Dictionary = CardSystem.play_card(_entry(&"queen_of_hearts"), {"rng": Fixtures.rng()})
 	assert_eq(GameState.hp, GameState.max_hp)
 	assert_string_contains(String(out["logs"][0]).to_lower(), "already")
 
@@ -227,13 +224,13 @@ func test_the_queen_rolls_inside_her_range() -> void:
 	for _i in range(40):
 		GameState.hp = 1
 		GameState.max_hp = 200
-		CardSystem.play_card(_entry(&"queen_of_hearts"), {"rng": _rng()})
+		CardSystem.play_card(_entry(&"queen_of_hearts"), {"rng": Fixtures.rng()})
 		var gained: int = GameState.hp - 1
 		assert_between(gained, 1, 20, "the roll stays inside +1..+20")
 
 func test_the_hierophant_grants_the_pool_that_stays() -> void:
 	var before: int = GameState.bonus_shields
-	var out: Dictionary = CardSystem.play_card(_entry(&"v_the_hierophant"), {"rng": _rng()})
+	var out: Dictionary = CardSystem.play_card(_entry(&"v_the_hierophant"), {"rng": Fixtures.rng()})
 	assert_eq(GameState.bonus_shields, before + 2, "Shields, not Temporary Shields")
 	# And it is called what every other screen calls it. `capitalize()` would have
 	# made this "Bonus Shields", a pool by a name nothing else in the game uses.
@@ -243,26 +240,26 @@ func test_the_hierophant_grants_the_pool_that_stays() -> void:
 func test_the_twos_double_what_you_have() -> void:
 	GameState.gold = 17
 	GameState.bombs = 3
-	CardSystem.play_card(_entry(&"2_of_diamonds"), {"rng": _rng()})
+	CardSystem.play_card(_entry(&"2_of_diamonds"), {"rng": Fixtures.rng()})
 	assert_eq(GameState.gold, 34)
-	CardSystem.play_card(_entry(&"2_of_clubs"), {"rng": _rng()})
+	CardSystem.play_card(_entry(&"2_of_clubs"), {"rng": Fixtures.rng()})
 	assert_eq(GameState.bombs, 6)
 
 func test_the_twos_pay_their_floor_when_you_have_none() -> void:
 	GameState.gold = 0
 	GameState.bombs = 0
-	var out: Dictionary = CardSystem.play_card(_entry(&"2_of_diamonds"), {"rng": _rng()})
+	var out: Dictionary = CardSystem.play_card(_entry(&"2_of_diamonds"), {"rng": Fixtures.rng()})
 	assert_eq(GameState.gold, 2, "no Gold pays the authored floor instead")
 	assert_string_contains(String(out["logs"][0]), "you had none")
-	CardSystem.play_card(_entry(&"2_of_clubs"), {"rng": _rng()})
+	CardSystem.play_card(_entry(&"2_of_clubs"), {"rng": Fixtures.rng()})
 	assert_eq(GameState.bombs, 2)
 
 func test_the_two_of_spades_doubles_keys_or_pays_two() -> void:
 	GameState.keys = 3
-	CardSystem.play_card(_entry(&"2_of_spades"), {"rng": _rng()})
+	CardSystem.play_card(_entry(&"2_of_spades"), {"rng": Fixtures.rng()})
 	assert_eq(GameState.keys, 6)
 	GameState.keys = 0
-	CardSystem.play_card(_entry(&"2_of_spades"), {"rng": _rng()})
+	CardSystem.play_card(_entry(&"2_of_spades"), {"rng": Fixtures.rng()})
 	assert_eq(GameState.keys, 2, "no Keys pays the authored floor instead")
 
 func test_justice_pays_a_key_a_bomb_a_health_and_a_gold() -> void:
@@ -272,7 +269,7 @@ func test_justice_pays_a_key_a_bomb_a_health_and_a_gold() -> void:
 	var bombs: int = GameState.bombs
 	var gold: int = GameState.gold
 	watch_signals(GameState)
-	CardSystem.play_card(_entry(&"viii_justice"), {"rng": _rng()})
+	CardSystem.play_card(_entry(&"viii_justice"), {"rng": Fixtures.rng()})
 	assert_eq(GameState.keys, keys + 1)
 	assert_eq(GameState.bombs, bombs + 1)
 	assert_eq(GameState.hp, 11)
@@ -283,21 +280,21 @@ func test_justice_pays_a_key_a_bomb_a_health_and_a_gold() -> void:
 func test_doubling_health_is_capped_like_every_other_heal() -> void:
 	GameState.max_hp = 100
 	GameState.hp = 80
-	CardSystem.play_card(_entry(&"2_of_hearts"), {"rng": _rng()})
+	CardSystem.play_card(_entry(&"2_of_hearts"), {"rng": Fixtures.rng()})
 	assert_eq(GameState.hp, 100, "80 doubled is 160, and 100 is what fits")
 
 func test_ancient_recall_offers_three_more_cards() -> void:
 	# Nothing is listening to `loot_offered` in a headless run, so `offer_loot`
 	# falls back to the direct grant — which is what makes this assertable here and
 	# is the same fallback PlaySession2 relies on.
-	CardSystem.play_card(_entry(&"ancient_recall"), {"rng": _rng()})
+	CardSystem.play_card(_entry(&"ancient_recall"), {"rng": Fixtures.rng()})
 	assert_eq(GameState.loot_cards().size(), 3)
 
 # BARRICADE AND ECHO FORM ARE HELD, not played (docs/loot-passives.md §8).
 
 func test_barricade_banks_while_held_and_is_never_played() -> void:
 	assert_false(GameState.banks_shields(), "nothing banks to start with")
-	CardSystem.play_card(_entry(&"barricade"), {"rng": _rng()})
+	CardSystem.play_card(_entry(&"barricade"), {"rng": Fixtures.rng()})
 	assert_false(GameState.banks_shields(), "playing it does nothing — it is a passive")
 	GameState.add_card_loot(&"barricade")
 	assert_true(GameState.banks_shields(), "holding it is what banks")
@@ -337,7 +334,7 @@ func test_the_three_teleports_hand_back_a_request_rather_than_moving_you() -> vo
 	var wants: Dictionary = {
 		&"ride_the_bus": "type", &"ix_the_hermit": "shop", &"0_the_fool": "start"}
 	for id in wants.keys():
-		var out: Dictionary = CardSystem.play_card(_entry(id), {"rng": _rng()})
+		var out: Dictionary = CardSystem.play_card(_entry(id), {"rng": Fixtures.rng()})
 		assert_eq(out["requests"].size(), 1, "%s asks the overworld to move you" % id)
 		var req: Dictionary = out["requests"][0]
 		assert_eq(String(req.get("kind", "")), "card_teleport")
@@ -363,7 +360,7 @@ func test_the_question_card_offers_only_usable_relics() -> void:
 	# reads the pack.
 	var usable: ItemData = GameState.add_item(usable_t)
 	var charged: ItemData = GameState.add_item(charged_t) if charged_t != null else null
-	var out: Dictionary = CardSystem.play_card(_entry(&"question_mark_card"), {"rng": _rng()})
+	var out: Dictionary = CardSystem.play_card(_entry(&"question_mark_card"), {"rng": Fixtures.rng()})
 	assert_eq(out["requests"].size(), 1)
 	var candidates: Array = out["requests"][0].get("candidates", [])
 	assert_true(candidates.has(usable), "the usable is offered")
@@ -394,7 +391,7 @@ func test_copying_an_item_spends_none_of_its_uses() -> void:
 
 func test_temperance_stands_a_named_machine_at_this_game() -> void:
 	assert_false(ObjectSystem.has_live())
-	var out: Dictionary = CardSystem.play_card(_entry(&"xiv_temperance"), {"rng": _rng()})
+	var out: Dictionary = CardSystem.play_card(_entry(&"xiv_temperance"), {"rng": Fixtures.rng()})
 	assert_true(ObjectSystem.has_live(), "the machine is in front of you")
 	assert_eq(ObjectSystem.live.size(), 1)
 	assert_eq(StringName(ObjectSystem.live[0].get("id", &"")), &"blood_donation_machine",
@@ -406,14 +403,14 @@ func test_temperance_stands_a_named_machine_at_this_game() -> void:
 	assert_eq(out["requests"].size(), 0)
 
 func test_the_machine_goes_when_the_run_travels_on() -> void:
-	CardSystem.play_card(_entry(&"xiv_temperance"), {"rng": _rng()})
+	CardSystem.play_card(_entry(&"xiv_temperance"), {"rng": Fixtures.rng()})
 	assert_true(ObjectSystem.has_live())
 	ObjectSystem.clear()
 	assert_false(ObjectSystem.has_live(), "an object's lifetime is standing on this game")
 
 func test_a_machine_the_run_is_done_with_says_so_rather_than_lying() -> void:
 	ObjectSystem.destroyed_for_run[&"blood_donation_machine"] = true
-	var out: Dictionary = CardSystem.play_card(_entry(&"xiv_temperance"), {"rng": _rng()})
+	var out: Dictionary = CardSystem.play_card(_entry(&"xiv_temperance"), {"rng": Fixtures.rng()})
 	assert_false(ObjectSystem.has_live())
 	assert_string_contains(String(out["logs"][0]), "does not come")
 
@@ -463,7 +460,7 @@ func _stun_on(instance: int) -> int:
 	return GameLoop2.stun_stacks(GameLoop2.entry_for(instance))
 
 func _play(id: StringName, ctx: Dictionary = {}) -> Dictionary:
-	ctx["rng"] = _rng()
+	ctx["rng"] = Fixtures.rng()
 	return CardSystem.play_card(_entry(id), ctx)
 
 func test_which_cards_ask_for_a_square() -> void:

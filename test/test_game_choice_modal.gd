@@ -1,5 +1,7 @@
 extends GutTest
 
+const Page := preload("res://test/helpers/run_page.gd")
+
 # GameChoiceModal — the popup a card opens (§4).
 #
 # Clicking an offered game used to commit to it on the spot, which meant every
@@ -21,24 +23,12 @@ const SCENE := preload("res://scenes/redesign2/Overworld2.tscn")
 var _ui
 
 func before_each() -> void:
-	_ui = SCENE.instantiate()
-	add_child_autofree(_ui)
-	# The start is the run's first game now (Overworld2.choose_start), so the run
+	_ui = Page.build(self)
+	# The start is the run's first game (Overworld2.choose_start), so the run
 	# opens in the report step. This file is about the popup an OFFERED card opens,
 	# which means playing that opening game out first: report it, skip the board's
-	# playback, drop its relic on the floor.
-	_ui.choose_start(0)
-	if _ui._phase == _ui.Phase.PLAYING:
-		_report_beat(_ui)
-		_ui._end_resolve()
-		# The opening game's haul is one PostCombatScreen now, relic and all —
-		# leaving it drops what is on its table, which is what this file wants.
-		if _ui._post_screen != null and is_instance_valid(_ui._post_screen):
-			_ui._post_screen.dismiss()
-		_ui._drop_queue.clear()
-		if _ui._drop_modal != null and is_instance_valid(_ui._drop_modal):
-			_ui._drop_modal.queue_free()
-			_ui._drop_modal = null
+	# playback, and walk off the haul screen, dropping its relic with it.
+	Page.play_opening(_ui)
 
 func after_each() -> void:
 	GameState.reset_run()
@@ -58,7 +48,7 @@ func test_opening_a_card_does_not_choose_it() -> void:
 func test_the_popup_names_the_game_and_its_enemy() -> void:
 	var choice: Dictionary = _ui._choices[0]
 	var modal = _ui.open_choice(0)
-	var text: String = _text_of(modal)
+	var text: String = Page.text_of(modal)
 	assert_true(text.contains(choice["game"].display_name),
 		"the game is named: %s" % text)
 	assert_true(text.contains(choice["enemy"].display_name),
@@ -74,7 +64,7 @@ func test_a_card_that_is_not_on_the_table_opens_nothing() -> void:
 	assert_null(_ui.open_choice(-1), "and below it")
 
 func test_nothing_opens_while_a_game_is_being_played() -> void:
-	_pick_enemies(_ui, 0)
+	Page.pick_enemies(_ui, 0)
 	assert_null(_ui.open_choice(0),
 		"the offering is gone once you've committed, so there is nothing to open")
 
@@ -218,7 +208,7 @@ func test_the_popup_offers_no_verbs_even_with_charges_in_hand() -> void:
 	var idx: int = _first_bashable()
 	if idx < 0:
 		idx = 0
-	var text: String = _text_of(_ui.open_choice(idx))
+	var text: String = Page.text_of(_ui.open_choice(idx))
 	assert_false(text.contains("⛏  Bash"),
 		"no Bash button on the card, charge or no charge: %s" % text)
 	assert_false(text.contains("⚗  Transmute"),
@@ -250,7 +240,7 @@ func test_the_card_itself_is_just_the_cover_and_the_name() -> void:
 	# the card is the game's name and, when it is the one, the Amulet's flag.
 	var choice: Dictionary = _ui._choices[0]
 	var card: Control = _ui._choices_row.get_child(0)
-	var text: String = _text_of(card)
+	var text: String = Page.text_of(card)
 	assert_true(text.contains(choice["game"].display_name), "the name stays: %s" % text)
 	for moved in ["Shield", "Map", "OPTIMAL", "Detour", "Enemies speed up", "Beatable"]:
 		assert_false(text.contains(moved), "'%s' moved into the popup: %s" % [moved, text])
@@ -259,7 +249,7 @@ func test_the_amulet_is_flagged_on_the_card_without_opening_anything() -> void:
 	for i in range(_ui._choices.size()):
 		if not bool(_ui._choices[i]["amulet"]):
 			continue
-		assert_true(_text_of(_ui._choices_row.get_child(i)).contains("THE AMULET"),
+		assert_true(Page.text_of(_ui._choices_row.get_child(i)).contains("THE AMULET"),
 			"the run's destination is legible from the offering itself")
 		return
 	pass_test("the Amulet isn't on this offering — nothing to check")
@@ -270,7 +260,7 @@ func test_the_popup_counts_the_connections_the_game_opens_onto() -> void:
 	var slot: StringName = StringName(_ui._choices[0]["slot"])
 	var counts: Dictionary = GameChoiceModal.connection_counts(slot)
 	var modal = _ui.open_choice(0)
-	var text: String = _text_of(modal)
+	var text: String = Page.text_of(modal)
 	assert_eq(int(counts["total"]), RunGraph.neighbors(slot).filter(
 		func(n): return not GameLoop2.is_bashed(n)).size(),
 		"the total is the graph's own, minus anything destroyed")
@@ -330,7 +320,7 @@ func test_the_popup_names_who_inspired_whom() -> void:
 	var there: GameData = Data.get_game(slot)
 	var found: Dictionary = GameData.describe_influence(here, there)
 	var modal = _ui.open_choice(0)
-	var text: String = _text_of(modal)
+	var text: String = Page.text_of(modal)
 	if found.is_empty():
 		# An offered card is a neighbour, so this is all but unreachable — and if it
 		# ever is reached, the section says nothing rather than inventing a claim.
@@ -359,7 +349,7 @@ func test_a_transmuted_road_names_its_former_connection() -> void:
 	var off: Array = RunGraph.off_map_ids()
 	GameLoop2.transmuted[slot] = off[0]
 	var modal = _ui.open_choice(0)
-	var text: String = _text_of(modal)
+	var text: String = Page.text_of(modal)
 	assert_true(text.contains("FORMER CONNECTION"), "the section says it is a former one: %s" % text)
 	assert_true(text.contains("Previously a connection between %s and %s" % [
 		here.display_name, there.display_name]), "between the original pair: %s" % text)
@@ -369,7 +359,7 @@ func test_a_transmuted_road_names_its_former_connection() -> void:
 
 func test_an_untouched_road_is_not_called_former() -> void:
 	var modal = _ui.open_choice(0)
-	assert_false(_text_of(modal).contains("FORMER CONNECTION"))
+	assert_false(Page.text_of(modal).contains("FORMER CONNECTION"))
 	modal._close()
 
 func test_the_popup_shows_the_evidence_the_sheet_records() -> void:
@@ -380,7 +370,7 @@ func test_the_popup_shows_the_evidence_the_sheet_records() -> void:
 		pass_test("nothing connects these two — covered by the test above")
 		return
 	var modal = _ui.open_choice(0)
-	var text: String = _text_of(modal)
+	var text: String = Page.text_of(modal)
 	var source: String = String(found.get("source", "")).strip_edges()
 	if source == "":
 		assert_true(text.contains("No source recorded"),
@@ -500,7 +490,7 @@ func test_the_card_shows_the_proof_for_the_edge_it_walks() -> void:
 		"and shrunk no further than that width needs")
 	var source: String = String(Data.get_game(edge[0]).influence_evidence(edge[1]).get("source", ""))
 	if GameData.is_openable_source(source.strip_edges()):
-		assert_true(_text_of(modal).contains("Open source"), "with the link still under it")
+		assert_true(Page.text_of(modal).contains("Open source"), "with the link still under it")
 	modal._close()
 
 func test_the_proof_is_looked_up_the_way_the_sheet_runs() -> void:
@@ -539,7 +529,7 @@ func test_a_check_folder_note_gives_way_to_the_screenshot_it_meant() -> void:
 	GameState.current_game_id = edge[0]
 	var modal := GameChoiceModal.open(_ui, 0, {"game": Data.get_game(edge[1]), "slot": edge[1]})
 	assert_not_null(modal.find_child("Proof", true, false), "the screenshot is shown")
-	assert_false(_text_of(modal).contains(note), "and the note that pointed at it is not")
+	assert_false(Page.text_of(modal).contains(note), "and the note that pointed at it is not")
 	modal._close()
 
 func test_a_connection_with_no_capture_shows_the_link_alone() -> void:
@@ -635,18 +625,6 @@ func _first_bashable() -> int:
 			return i
 	return -1
 
-func _text_of(node: Node) -> String:
-	var out: String = ""
-	if node is Label:
-		out += (node as Label).text + "\n"
-	elif node is Button:
-		out += (node as Button).text + "\n"
-	elif node is RichTextLabel:
-		out += (node as RichTextLabel).get_parsed_text() + "\n"
-	for c in node.get_children():
-		out += _text_of(c)
-	return out
-
 # --- the route ladder's rungs ----------------------------------------------
 #
 # The ladder is half of what this popup is for, and a rung is a clipped name in a
@@ -660,7 +638,7 @@ func test_a_rung_opens_the_game_it_names() -> void:
 	assert_null(modal._node_card, "nothing is open to begin with")
 	modal.open_node_card(slot, 0)
 	assert_not_null(modal._node_card, "clicking a rung opens its card")
-	var text: String = _text_of(modal._node_card)
+	var text: String = Page.text_of(modal._node_card)
 	var game: GameData = Data.get_game(slot)
 	assert_true(text.contains(game.display_name), "the card names the game")
 	assert_true(text.contains("Connections"), "and says how many ways there are on")
@@ -670,7 +648,7 @@ func test_a_rung_opens_the_game_it_names() -> void:
 func test_a_previewed_rung_offers_nothing_only_a_map_could_do() -> void:
 	var modal = _ui.open_choice(0)
 	modal.open_node_card(_ui._choices[0]["slot"], 0)
-	var text: String = _text_of(modal._node_card)
+	var text: String = Page.text_of(modal._node_card)
 	assert_false(text.contains("star chart"),
 		"there is no chart on this screen to find it on")
 	assert_true(text.contains("Close"), "the card can be put away")
@@ -678,33 +656,3 @@ func test_a_previewed_rung_offers_nothing_only_a_map_could_do() -> void:
 		"and it no longer says a rung is on the road it was clicked on")
 	modal.close_node_card()
 	assert_null(modal._node_card, "and closing it closes only it")
-
-# Report the game as completed AND tick the row for the body that walked on with
-# it. This is what a bare `report(true)` used to do in one flag, back when that
-# body was the game's own enemy and beating the game answered for it; it is spelled
-# out now because the flag only records the GAME any more (GameLoop2.arrivals),
-# and clearing an enemy is ticking its checklist row like any other.
-func _report_beat(ui) -> void:
-	var landed: Dictionary = GameLoop2.arrival()
-	ui.report(true, [] if landed.is_empty() else [int(landed["instance"])])
-
-# Pick the first card, having first made sure it is an ordinary fight (§19.1).
-#
-# What a committed game stands on the board is decided by the NODE'S KIND now —
-# two bodies on an Enemies node, one boss on a Champion, none at all on an Event
-# or a Shop — and the offering deals those at 60/20/10/10. So a test that picks
-# and then expects something to be standing there is a test whose subject is a
-# die roll. Forcing the kind on the one node about to be picked is the ARRANGE
-# step; the rest of the map is left as the run dealt it.
-func _pick_enemies(ui, idx: int = 0) -> void:
-	if idx >= 0 and idx < ui._choices.size():
-		# ON THE SLOT (§19.2): the kind rides the node, so a transmuted card plays a
-		# different game at the same kind and the game id is the wrong key.
-		var choice: Dictionary = ui._choices[idx]
-		var slot := StringName(choice.get("slot", &""))
-		if slot == &"":
-			var game: GameData = choice.get("game")
-			slot = game.id if game != null else &""
-		if slot != &"":
-			GameState.node_kinds[slot] = RunGraph.NodeKind.ENEMIES
-	ui.pick(idx)

@@ -1,5 +1,7 @@
 extends GutTest
 
+const Fixtures := preload("res://test/helpers/fixtures.gd")
+
 # Weapons, evolutions, food on charges, the weapon area shapes, the adjacency glow
 # and the shop's loot row (docs/loot-passives.md §11-§13, games-first-redesign §14).
 #
@@ -23,35 +25,10 @@ func _weapon(id: StringName, slot: int, charges: int = 0) -> Dictionary:
 	assert_false(entry.is_empty(), "weapon '%s' is in the catalog" % id)
 	entry["charges"] = charges
 	assert_true(GameState.take_loot_entry_at(entry, slot), "%s fits at %d" % [id, slot])
-	return _at(slot)
-
-func _trinket(id: StringName, slot: int) -> Dictionary:
-	var t: TrinketData = Data.get_trinket(id)
-	assert_not_null(t, "trinket '%s' is in the catalog" % id)
-	assert_true(GameState.take_loot_entry_at({"type": "trinket", "id": id,
-		"rarity": t.rarity if t != null else "Common"}, slot), "%s fits" % id)
-	return _at(slot)
-
-func _at(slot: int) -> Dictionary:
-	var i: int = GameState.loot_index_at_slot(slot)
-	return GameState.loot_items[i] if i >= 0 else {}
+	return Fixtures.at(slot)
 
 func _index(slot: int) -> int:
 	return GameState.loot_index_at_slot(slot)
-
-# A plain one-cell body standing on `cell`.
-func _body(cell: Vector2i) -> int:
-	var e := GoalEnemyData.new()
-	e.id = &"synthetic"
-	e.display_name = "Synthetic"
-	e.health = 3
-	e.damage = 1
-	e.difficulty = GoalEnemyData.Difficulty.LOW
-	var inst: int = GameLoop2.spawn_to_stack(e)
-	var entry: Dictionary = GameLoop2.entry_for(inst)
-	entry["col"] = cell.x
-	entry["row"] = cell.y
-	return inst
 
 # --- the roster ------------------------------------------------------------------
 
@@ -117,21 +94,21 @@ func test_charged_penny_can_charge_a_weapon() -> void:
 
 func test_a_weapon_swings_only_when_full_and_keeps_its_slot() -> void:
 	var sword: Dictionary = _weapon(&"wooden_sword", 0, 2)
-	var inst: int = _body(Vector2i(1, 1))
+	var inst: int = Fixtures.body(Vector2i(1, 1))
 	var out: Dictionary = LootSystem.use_loot(_index(0), {"target": Vector2i(1, 1)})
 	assert_true((out.get("logs", []) as Array).is_empty(), "2 of 3 does not swing")
 	assert_eq(GameLoop2.stun_stacks(GameLoop2.entry_for(inst)), 0)
 	GameState.charge_loot_entry(sword, 1)
 	LootSystem.use_loot(_index(0), {"target": Vector2i(1, 1)})
 	assert_eq(GameLoop2.stun_stacks(GameLoop2.entry_for(inst)), 1, "Wooden Sword's stun 1")
-	assert_eq(WeaponSystem.charges_of(_at(0)), 0, "the swing spent every charge")
-	assert_true(WeaponSystem.is_weapon(_at(0)), "and the weapon is still in the pack")
+	assert_eq(WeaponSystem.charges_of(Fixtures.at(0)), 0, "the swing spent every charge")
+	assert_true(WeaponSystem.is_weapon(Fixtures.at(0)), "and the weapon is still in the pack")
 
 func test_a_swing_hits_its_area_and_each_body_once() -> void:
 	_weapon(&"lil_bomber", 0, 3)
-	var centre: int = _body(Vector2i(2, 1))
-	var above: int = _body(Vector2i(2, 0))
-	var corner: int = _body(Vector2i(3, 0))
+	var centre: int = Fixtures.body(Vector2i(2, 1))
+	var above: int = Fixtures.body(Vector2i(2, 0))
+	var corner: int = Fixtures.body(Vector2i(3, 0))
 	LootSystem.use_loot(_index(0), {"target": Vector2i(2, 1)})
 	assert_eq(GameLoop2.stun_stacks(GameLoop2.entry_for(centre)), 1, "the aimed square")
 	assert_eq(GameLoop2.stun_stacks(GameLoop2.entry_for(above)), 1, "a plus reaches up")
@@ -141,9 +118,9 @@ func test_a_whetstone_above_and_a_hero_sword_beside_sharpen_a_weapon() -> void:
 	_weapon(&"wooden_sword", 4)          # stands in 4 and 7
 	var sword: int = _index(4)
 	assert_eq(WeaponSystem.stun_for(sword), 1, "its own stun 1")
-	_trinket(&"whetstone", 1)             # above it
+	Fixtures.trinket(self, &"whetstone", 1)             # above it
 	assert_eq(WeaponSystem.stun_for(sword), 2, "+1 from the Whetstone above")
-	_trinket(&"whetstone", 5)             # beside it — a Whetstone only reaches up/down
+	Fixtures.trinket(self, &"whetstone", 5)             # beside it — a Whetstone only reaches up/down
 	assert_eq(WeaponSystem.stun_for(sword), 2, "a Whetstone to the side does nothing")
 	_weapon(&"hero_sword", 3)             # stands in 3 and 6, beside it
 	assert_eq(WeaponSystem.stun_for(sword), 3, "+1 from the Hero Sword beside it")
@@ -153,15 +130,15 @@ func test_a_whetstone_above_and_a_hero_sword_beside_sharpen_a_weapon() -> void:
 func test_stankus_toothpick_counts_every_two_food() -> void:
 	_weapon(&"stankus_toothpick", 4)      # 4 and 7
 	var pick: int = _index(4)
-	_trinket(&"garlic", 3)                # 3 and 6
+	Fixtures.trinket(self, &"garlic", 3)                # 3 and 6
 	assert_eq(WeaponSystem.stun_for(pick), 1, "one food is not two")
-	_trinket(&"garlic", 5)                # 5 and 8
+	Fixtures.trinket(self, &"garlic", 5)                # 5 and 8
 	assert_eq(WeaponSystem.stun_for(pick), 2, "two food pieces — even the same kind — are +1")
 
 func test_king_bomber_pays_a_gold_per_enemy_it_stuns() -> void:
 	_weapon(&"king_bomber", 0, 3)
-	_body(Vector2i(2, 1))
-	_body(Vector2i(1, 1))
+	Fixtures.body(Vector2i(2, 1))
+	Fixtures.body(Vector2i(1, 1))
 	var gold: int = GameState.gold
 	LootSystem.use_loot(_index(0), {"target": Vector2i(2, 1)})
 	assert_eq(GameState.gold, gold + 2, "two stunned, two gold")
@@ -204,7 +181,7 @@ func test_a_rectangle_is_rows_centred_and_columns_away_from_you() -> void:
 func test_a_wooden_sword_and_a_whetstone_make_a_hero_sword() -> void:
 	var sword: Dictionary = _weapon(&"wooden_sword", 0, 2)
 	assert_true(WeaponSystem.evolutions_ready(sword).is_empty(), "nothing to evolve with yet")
-	_trinket(&"whetstone", 8)
+	Fixtures.trinket(self, &"whetstone", 8)
 	var ready: Array = WeaponSystem.evolutions_ready(sword)
 	assert_eq(ready.size(), 1)
 	var grown: Dictionary = WeaponSystem.evolve(_index(0), ready[0]["evo"], ready[0]["candidates"])
@@ -216,17 +193,17 @@ func test_a_wooden_sword_and_a_whetstone_make_a_hero_sword() -> void:
 func test_king_bomber_keeps_its_crown() -> void:
 	_weapon(&"lil_bomber", 0)
 	GameState.add_item(Data.get_item2(&"crown"))
-	var ready: Array = WeaponSystem.evolutions_ready(_at(0))
+	var ready: Array = WeaponSystem.evolutions_ready(Fixtures.at(0))
 	assert_eq(ready.size(), 1, "a Crown relic counts, wherever it is")
 	WeaponSystem.evolve(_index(0), ready[0]["evo"], ready[0]["candidates"])
-	assert_eq(StringName(_at(0).get("id", "")), &"king_bomber")
+	assert_eq(StringName(Fixtures.at(0).get("id", "")), &"king_bomber")
 	assert_true(GameState.has_item(&"crown"), "Consume None")
 
 func test_the_player_chooses_when_more_than_enough_are_held() -> void:
 	_weapon(&"wooden_sword", 0)
-	var keep: Dictionary = _trinket(&"whetstone", 5)
-	var spend: Dictionary = _trinket(&"whetstone", 8)
-	var ready: Array = WeaponSystem.evolutions_ready(_at(0))
+	var keep: Dictionary = Fixtures.trinket(self, &"whetstone", 5)
+	var spend: Dictionary = Fixtures.trinket(self, &"whetstone", 8)
+	var ready: Array = WeaponSystem.evolutions_ready(Fixtures.at(0))
 	assert_eq((ready[0]["candidates"] as Array).size(), 2)
 	var chosen: Array = (ready[0]["candidates"] as Array).filter(
 		func(c): return is_same(c["entry"], spend))
@@ -238,40 +215,40 @@ func test_the_player_chooses_when_more_than_enough_are_held() -> void:
 
 func test_the_wrong_number_of_picks_does_not_evolve() -> void:
 	_weapon(&"wooden_sword", 0)
-	_trinket(&"whetstone", 8)
-	var evo: EvolutionData = WeaponSystem.evolutions_ready(_at(0))[0]["evo"]
+	Fixtures.trinket(self, &"whetstone", 8)
+	var evo: EvolutionData = WeaponSystem.evolutions_ready(Fixtures.at(0))[0]["evo"]
 	assert_true(WeaponSystem.evolve(_index(0), evo, []).is_empty())
-	assert_eq(StringName(_at(0).get("id", "")), &"wooden_sword")
+	assert_eq(StringName(Fixtures.at(0).get("id", "")), &"wooden_sword")
 
 # --- food on charges (§11) -------------------------------------------------------
 
 func test_charging_a_food_counts_toward_its_payout() -> void:
-	_trinket(&"garlic", 0)
+	Fixtures.trinket(self, &"garlic", 0)
 	var shields: int = GameState.shields
 	assert_true(GameState.chargeable_foods().size() == 1, "food is Chargeable Loot")
-	GameState.charge_loot_entry(_at(0), 3)
+	GameState.charge_loot_entry(Fixtures.at(0), 3)
 	assert_eq(GameState.shields, shields, "three charges of four")
-	GameState.charge_loot_entry(_at(0), 1)
+	GameState.charge_loot_entry(Fixtures.at(0), 1)
 	assert_eq(GameState.shields, shields + 3, "the fourth pays, however it came")
 
 func test_a_move_that_meets_the_target_waits_for_one_more_charge() -> void:
-	_trinket(&"garlic", 0)                # 0 and 3
+	Fixtures.trinket(self, &"garlic", 0)                # 0 and 3
 	TriggerBus.enemy_killed.emit({"enemy": null, "boss": false})
 	TriggerBus.enemy_killed.emit({"enemy": null, "boss": false})
 	TriggerBus.enemy_killed.emit({"enemy": null, "boss": false})
 	var shields: int = GameState.shields
-	_trinket(&"cupcake", 1)               # beside it: 4 becomes 3, and it holds 3
+	Fixtures.trinket(self, &"cupcake", 1)               # beside it: 4 becomes 3, and it holds 3
 	var p: Dictionary = LootPassives.kill_progress(_index(0))
 	assert_true(bool(p.get("ready", false)), "it is ready")
 	assert_eq(GameState.shields, shields, "but a move does not pay it")
 	var said: bool = Notifications.history.any(
 		func(n): return String(n.get("text", "")).contains("needs one more charge"))
 	assert_true(said, "and the player is told")
-	GameState.charge_loot_entry(_at(0), 1)
+	GameState.charge_loot_entry(Fixtures.at(0), 1)
 	assert_eq(GameState.shields, shields + 3, "the next charge pays")
 
 func test_food_says_its_rule_and_its_type() -> void:
-	var garlic: Dictionary = _trinket(&"garlic", 0)
+	var garlic: Dictionary = Fixtures.trinket(self, &"garlic", 0)
 	var card: Dictionary = LootSystem.hover_card(garlic)
 	assert_true(String(card["subtitle"]).contains("Charged"), "the Type column's chip")
 	assert_true((card["lines"] as Array).has(LootSystem.FOOD_RULE), "the food rule, in game")
@@ -280,22 +257,22 @@ func test_food_says_its_rule_and_its_type() -> void:
 
 func test_hovering_a_whetstone_lights_the_weapon_it_sharpens() -> void:
 	_weapon(&"wooden_sword", 4)
-	_trinket(&"whetstone", 1)
+	Fixtures.trinket(self, &"whetstone", 1)
 	var inf: Dictionary = LootPassives.influence(_index(1))
 	assert_eq(inf["affects"], [_index(4)])
 	assert_eq(LootPassives.influence(_index(4))["affected_by"], [_index(1)])
 
 func test_food_lights_up_the_different_food_it_speeds() -> void:
-	_trinket(&"garlic", 0)
-	_trinket(&"cupcake", 1)
-	_trinket(&"garlic", 2)
+	Fixtures.trinket(self, &"garlic", 0)
+	Fixtures.trinket(self, &"cupcake", 1)
+	Fixtures.trinket(self, &"garlic", 2)
 	var cup: Dictionary = LootPassives.influence(_index(1))
 	assert_eq((cup["affects"] as Array).size(), 2, "the cupcake speeds both garlics")
 	assert_true((LootPassives.influence(_index(0))["affects"] as Array).has(_index(1)))
 
 func test_the_pack_grid_draws_the_glow() -> void:
 	_weapon(&"wooden_sword", 4)
-	_trinket(&"whetstone", 1)
+	Fixtures.trinket(self, &"whetstone", 1)
 	var grid := LootGrid.new()
 	add_child_autofree(grid)
 	grid.rebuild()
@@ -383,7 +360,7 @@ func test_a_weapon_tile_has_its_charge_and_a_swing_button() -> void:
 		assert_eq((buttons[0] as Button).text, "Swing")
 		assert_false((buttons[0] as Button).disabled, "full, so it can swing")
 	assert_eq(grid.find_children("Charge", "", true, false).size(), 1, "and wears 3/3")
-	_trinket(&"whetstone", 8)
+	Fixtures.trinket(self, &"whetstone", 8)
 	grid.rebuild()
 	buttons = grid.find_children("WeaponButton", "Button", true, false)
 	assert_eq((buttons[0] as Button).text, "Evolve", "Evolve, once it can")
@@ -393,7 +370,7 @@ func test_a_weapon_tile_has_its_charge_and_a_swing_button() -> void:
 func test_a_turned_whetstone_sharpens_to_its_sides() -> void:
 	_weapon(&"wooden_sword", 3)           # 3 and 6
 	var sword: int = _index(3)
-	var stone: Dictionary = _trinket(&"whetstone", 4)   # beside it, to the right
+	var stone: Dictionary = Fixtures.trinket(self, &"whetstone", 4)   # beside it, to the right
 	assert_eq(WeaponSystem.stun_for(sword), 1, "unturned, it reaches up and down only")
 	stone["rot"] = 1
 	assert_eq(WeaponSystem.stun_for(sword), 2, "turned, it reaches left and right")
@@ -405,8 +382,8 @@ func test_a_turned_whetstone_sharpens_to_its_sides() -> void:
 
 func test_a_random_weapon_needs_no_click_and_lands_on_an_enemy() -> void:
 	_weapon(&"lightning_ring", 0, 3)
-	assert_false(LootSystem.must_aim(_at(0)), "a random swing opens no picker")
-	var inst: int = _body(Vector2i(3, 1))
+	assert_false(LootSystem.must_aim(Fixtures.at(0)), "a random swing opens no picker")
+	var inst: int = Fixtures.body(Vector2i(3, 1))
 	LootSystem.use_loot(_index(0), {})
 	assert_eq(GameLoop2.stun_stacks(GameLoop2.entry_for(inst)), 1,
 		"the one body on the board is the one it found")
@@ -418,28 +395,28 @@ func test_a_random_swing_at_an_empty_board_whiffs() -> void:
 
 func test_lightning_ring_gains_a_replay_each_swing_up_to_four() -> void:
 	var ring: Dictionary = _weapon(&"lightning_ring", 0, 3)
-	var inst: int = _body(Vector2i(2, 1))
+	var inst: int = Fixtures.body(Vector2i(2, 1))
 	LootSystem.use_loot(_index(0), {})
-	assert_eq(WeaponSystem.replays_of(_at(0)), 1, "one swing, one Replay")
+	assert_eq(WeaponSystem.replays_of(Fixtures.at(0)), 1, "one swing, one Replay")
 	assert_eq(GameLoop2.stun_stacks(GameLoop2.entry_for(inst)), 1, "the first swing strikes once")
-	GameState.charge_loot_entry(_at(0), 3)
+	GameState.charge_loot_entry(Fixtures.at(0), 3)
 	LootSystem.use_loot(_index(0), {})
 	assert_eq(GameLoop2.stun_stacks(GameLoop2.entry_for(inst)), 3,
 		"the second strikes twice — 1 + its Replay")
 	assert_eq((GameLoop2.last_strike["strikes"] as Array).size(), 2,
 		"and the board is told about both strikes")
 	for _i in range(5):
-		GameState.charge_loot_entry(_at(0), 3)
+		GameState.charge_loot_entry(Fixtures.at(0), 3)
 		LootSystem.use_loot(_index(0), {})
-	assert_eq(WeaponSystem.replays_of(_at(0)), 4, "Replays stop at 4")
+	assert_eq(WeaponSystem.replays_of(Fixtures.at(0)), 4, "Replays stop at 4")
 	assert_true(WeaponSystem.is_weapon(ring))
 
 func test_replays_ride_the_evolution_into_thunder_loop() -> void:
 	var ring: Dictionary = _weapon(&"lightning_ring", 0, 2)
 	ring["replays"] = 3
-	assert_true(WeaponSystem.evolutions_ready(_at(0)).is_empty(), "no Duplicator yet")
-	_trinket(&"duplicator", 8)
-	var ready: Array = WeaponSystem.evolutions_ready(_at(0))
+	assert_true(WeaponSystem.evolutions_ready(Fixtures.at(0)).is_empty(), "no Duplicator yet")
+	Fixtures.trinket(self, &"duplicator", 8)
+	var ready: Array = WeaponSystem.evolutions_ready(Fixtures.at(0))
 	assert_eq(ready.size(), 1, "a NAMED requirement: the Duplicator itself")
 	assert_eq(WeaponSystem.need_words(ready[0]["evo"]), "Duplicator")
 	var grown: Dictionary = WeaponSystem.evolve(_index(0), ready[0]["evo"], ready[0]["candidates"])
@@ -450,9 +427,9 @@ func test_replays_ride_the_evolution_into_thunder_loop() -> void:
 
 func test_a_duplicator_fires_an_adjacent_weapon_twice() -> void:
 	_weapon(&"wooden_sword", 0, 3)        # 0 and 3
-	var inst: int = _body(Vector2i(1, 1))
+	var inst: int = Fixtures.body(Vector2i(1, 1))
 	assert_eq(WeaponSystem.retriggers_for(_index(0)), 0)
-	_trinket(&"duplicator", 1)             # beside it
+	Fixtures.trinket(self, &"duplicator", 1)             # beside it
 	assert_eq(WeaponSystem.retriggers_for(_index(0)), 1, "one extra firing")
 	LootSystem.use_loot(_index(0), {"target": Vector2i(1, 1)})
 	assert_eq(GameLoop2.stun_stacks(GameLoop2.entry_for(inst)), 2,
@@ -460,15 +437,15 @@ func test_a_duplicator_fires_an_adjacent_weapon_twice() -> void:
 
 func test_a_duplicator_out_of_reach_does_nothing() -> void:
 	_weapon(&"wooden_sword", 0)            # 0 and 3
-	_trinket(&"duplicator", 8)
+	Fixtures.trinket(self, &"duplicator", 8)
 	assert_eq(WeaponSystem.retriggers_for(_index(0)), 0)
 
 func test_hero_longsword_pushes_what_it_hits_away_from_you() -> void:
 	var w: WeaponData = Data.get_weapon(&"hero_longsword")
 	assert_eq([w.push_dir, w.push], ["right", 1], "the sheet's `push right 1`")
 	_weapon(&"hero_longsword", 0, 3)       # 0, 3 and 6
-	var front: int = _body(Vector2i(1, 1))
-	var behind: int = _body(Vector2i(2, 1))
+	var front: int = Fixtures.body(Vector2i(1, 1))
+	var behind: int = Fixtures.body(Vector2i(2, 1))
 	LootSystem.use_loot(_index(0), {"target": Vector2i(1, 1)})
 	assert_eq(int(GameLoop2.entry_for(behind).get("col", 0)), 3,
 		"the body further back moves first…")
@@ -477,14 +454,14 @@ func test_hero_longsword_pushes_what_it_hits_away_from_you() -> void:
 	assert_eq(GameLoop2.stun_stacks(GameLoop2.entry_for(front)), 2, "after its Stun")
 
 func test_a_push_into_a_wall_stays_put() -> void:
-	var inst: int = _body(Vector2i(GameLoop2.grid_cols(), 0))
+	var inst: int = Fixtures.body(Vector2i(GameLoop2.grid_cols(), 0))
 	assert_eq(GameLoop2.shove(inst, GameLoop2.PUSH_BACK, 1), 0, "no room past the back")
 	assert_eq(int(GameLoop2.entry_for(inst).get("col", 0)), GameLoop2.grid_cols())
 
 func test_bloody_tear_heals_for_every_enemy_it_hits() -> void:
 	_weapon(&"bloody_tear", 0, 3)          # 0, 1, 3, 4
-	_body(Vector2i(1, 0))
-	_body(Vector2i(1, 1))
+	Fixtures.body(Vector2i(1, 0))
+	Fixtures.body(Vector2i(1, 1))
 	GameState.max_hp = 20
 	GameState.hp = 10
 	LootSystem.use_loot(_index(0), {"target": Vector2i(1, 1)})
@@ -492,7 +469,7 @@ func test_bloody_tear_heals_for_every_enemy_it_hits() -> void:
 
 func test_the_board_forgets_the_swing_when_it_moves() -> void:
 	_weapon(&"wooden_sword", 0, 3)
-	_body(Vector2i(1, 1))
+	Fixtures.body(Vector2i(1, 1))
 	LootSystem.use_loot(_index(0), {"target": Vector2i(1, 1)})
 	var strike: Array = GameLoop2.last_strike.get("strikes", [])
 	assert_eq(strike.size(), 1)
@@ -529,12 +506,12 @@ func test_enchant_weapon_gives_a_weapon_stun_for_the_rest_of_the_run() -> void:
 	var scroll: ScrollData = Data.get_scroll(&"scroll_of_enchant_weapon")
 	assert_not_null(scroll, "the scroll generated")
 	var out: Dictionary = ScrollSystem.read_scroll(scroll)
-	assert_eq(WeaponSystem.stun_bonus_of(_at(4)), 1, "kept on the piece")
+	assert_eq(WeaponSystem.stun_bonus_of(Fixtures.at(4)), 1, "kept on the piece")
 	assert_eq(WeaponSystem.stun_for(sword), 2, "+1 Stun on its swing")
-	assert_string_contains(LootSystem.weapon_description(_at(4)), "Enchanted: +1 Stun")
+	assert_string_contains(LootSystem.weapon_description(Fixtures.at(4)), "Enchanted: +1 Stun")
 	assert_false((out["logs"] as Array).is_empty(), "the read says what it did")
 	GameState.move_loot(4, 5)
-	assert_eq(WeaponSystem.stun_bonus_of(_at(5)), 1, "and it moves with the piece")
+	assert_eq(WeaponSystem.stun_bonus_of(Fixtures.at(5)), 1, "and it moves with the piece")
 
 func test_enchant_weapon_with_no_weapon_does_nothing_and_stays_unread() -> void:
 	var scroll: ScrollData = Data.get_scroll(&"scroll_of_enchant_weapon")
@@ -546,7 +523,7 @@ func test_enchant_weapon_with_no_weapon_does_nothing_and_stays_unread() -> void:
 func test_an_enchanted_weapon_keeps_its_stun_when_it_evolves() -> void:
 	var sword: Dictionary = _weapon(&"wooden_sword", 0)
 	sword["stun_bonus"] = 2
-	_trinket(&"whetstone", 8)
+	Fixtures.trinket(self, &"whetstone", 8)
 	var ready: Array = WeaponSystem.evolutions_ready(sword)
 	assert_eq(ready.size(), 1)
 	var grown: Dictionary = WeaponSystem.evolve(_index(0), ready[0]["evo"], ready[0]["candidates"])
