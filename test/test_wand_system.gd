@@ -1,5 +1,7 @@
 extends GutTest
 
+const Fixtures := preload("res://test/helpers/fixtures.gd")
+
 # Tests for the games-first (2.0) WandSystem (docs/wands-design.md): the roster,
 # the material alphabet, the charge economy, the five-way loot split, and every op
 # the sheet authors.
@@ -18,11 +20,6 @@ extends GutTest
 func before_each() -> void:
 	GameState.reset_run()
 	GameLoop2.reset()
-
-func _rng() -> RandomNumberGenerator:
-	var r := RandomNumberGenerator.new()
-	r.seed = 11
-	return r
 
 # A carried wand, FULL, exactly as a drop would hand it over.
 func _entry(id: StringName) -> Dictionary:
@@ -153,7 +150,7 @@ func test_the_wand_of_nothing_cannot_be_learned_by_zapping_it() -> void:
 	# from the inside it is indistinguishable from a stick aimed badly.
 	var entry: Dictionary = _entry(&"wand_of_nothing")
 	assert_false(WandSystem.is_identified(&"wand_of_nothing"))
-	var out: Dictionary = WandSystem.zap_wand(entry, {"rng": _rng()})
+	var out: Dictionary = WandSystem.zap_wand(entry, {"rng": Fixtures.rng(11)})
 	assert_false(WandSystem.is_identified(&"wand_of_nothing"),
 		"the fizzle teaches nothing")
 	assert_false((out["logs"] as Array).is_empty(), "but it still says so")
@@ -209,7 +206,7 @@ func test_an_entry_with_no_count_reads_as_full() -> void:
 func test_zapping_from_the_pack_spends_a_charge_and_keeps_the_slot() -> void:
 	GameState.add_wand_loot(&"wand_of_nothing")
 	assert_eq(GameState.loot_items.size(), 1)
-	LootSystem.use_loot(0, {"rng": _rng()})
+	LootSystem.use_loot(0, {"rng": Fixtures.rng(11)})
 	assert_eq(GameState.loot_items.size(), 1, "a wand with charges left stays put")
 	assert_eq(WandSystem.charges_of(GameState.loot_items[0]), 3,
 		"one charge off the four")
@@ -217,20 +214,20 @@ func test_zapping_from_the_pack_spends_a_charge_and_keeps_the_slot() -> void:
 func test_the_last_charge_takes_the_wand_with_it() -> void:
 	GameState.add_wand_loot(&"wand_of_nothing")
 	for _i in range(4):
-		LootSystem.use_loot(0, {"rng": _rng()})
+		LootSystem.use_loot(0, {"rng": Fixtures.rng(11)})
 	assert_eq(GameState.loot_items.size(), 0,
 		"the fourth zap is the one that empties the slot")
 
 func test_a_one_charge_wand_leaves_on_its_first_zap() -> void:
 	GameState.add_wand_loot(&"wand_of_wishing")
-	LootSystem.use_loot(0, {"rng": _rng()})
+	LootSystem.use_loot(0, {"rng": Fixtures.rng(11)})
 	assert_eq(GameState.loot_items.size(), 0, "one charge is one use, like every other kind")
 
 func test_a_zapped_wand_does_not_move_out_of_its_slot() -> void:
 	GameState.add_scroll_loot(&"scroll_of_fire")
 	GameState.add_wand_loot(&"wand_of_nothing")
 	GameState.add_pill_loot(Data.all_pills()[0].id)
-	LootSystem.use_loot(1, {"rng": _rng()})
+	LootSystem.use_loot(1, {"rng": Fixtures.rng(11)})
 	assert_eq(String(GameState.loot_items[1].get("type", "")), "wand",
 		"index 1 is still the wand — firing it is not a rearrangement")
 	assert_eq(GameState.loot_items.size(), 3)
@@ -257,7 +254,7 @@ func test_echo_form_copies_a_zap_for_one_charge() -> void:
 	var full: int = WandSystem.charges_of(GameState.loot_items[0])
 	GameState.add_card_loot(&"echo_form")
 	var before: int = _bodies()
-	LootSystem.use_loot(0, {"rng": _rng()})
+	LootSystem.use_loot(0, {"rng": Fixtures.rng(11)})
 	assert_eq(_bodies(), before + 2, "the zap and its copy each call a body")
 	if full > 1:
 		assert_eq(WandSystem.charges_of(GameState.loot_items[0]), full - 1,
@@ -266,17 +263,17 @@ func test_echo_form_copies_a_zap_for_one_charge() -> void:
 
 func test_a_zap_joins_the_echo_memory() -> void:
 	GameState.add_wand_loot(&"wand_of_nothing")
-	LootSystem.use_loot(0, {"rng": _rng()})
+	LootSystem.use_loot(0, {"rng": Fixtures.rng(11)})
 	assert_eq(LootSystem.used_memory().size(), 1, "remembered like any other use")
 	assert_eq(StringName(LootSystem.used_memory()[0].get("type", "")), &"wand")
 
 func test_echo_chamber_replays_a_zap() -> void:
 	GameState.add_item(Data.get_item2(&"echo_chamber"))
 	GameState.add_wand_loot(&"wand_of_create_monster")
-	LootSystem.use_loot(0, {"rng": _rng()})
+	LootSystem.use_loot(0, {"rng": Fixtures.rng(11)})
 	GameState.add_pill_loot(Data.all_pills()[0].id)
 	var before: int = _bodies()
-	LootSystem.use_loot(GameState.loot_items.size() - 1, {"rng": _rng()})
+	LootSystem.use_loot(GameState.loot_items.size() - 1, {"rng": Fixtures.rng(11)})
 	assert_gt(_bodies(), before, "the pill's use replayed the remembered zap")
 
 func test_a_replayed_ray_lands_where_it_was_aimed() -> void:
@@ -288,12 +285,12 @@ func test_a_replayed_ray_lands_where_it_was_aimed() -> void:
 	GameState.add_item(Data.get_item2(&"echo_chamber"))
 	WandSystem.identify(&"wand_of_fire")
 	GameState.add_wand_loot(&"wand_of_fire")
-	LootSystem.use_loot(0, {"rng": _rng(), "target": cell})
+	LootSystem.use_loot(0, {"rng": Fixtures.rng(11), "target": cell})
 	assert_eq(LootSystem.used_memory()[-1].get("echo_target"), [cell.x, cell.y])
 	GameLoop2.tiles.clear()
 	assert_null(GameLoop2.tile_at(land))
 	GameState.add_pill_loot(Data.all_pills()[0].id)
-	LootSystem.use_loot(GameState.loot_items.size() - 1, {"rng": _rng()})
+	LootSystem.use_loot(GameState.loot_items.size() - 1, {"rng": Fixtures.rng(11)})
 	assert_not_null(GameLoop2.tile_at(land), "the replayed bolt set the square alight again")
 
 # --- Aiming (§4.2) ---------------------------------------------------------
@@ -350,12 +347,12 @@ func test_a_known_random_wand_picks_its_own_enemy() -> void:
 # --- The ops (§5) ----------------------------------------------------------
 
 func test_the_wand_of_nothing_says_the_nothing_out_loud() -> void:
-	var out: Dictionary = WandSystem.zap_wand(_entry(&"wand_of_nothing"), {"rng": _rng()})
+	var out: Dictionary = WandSystem.zap_wand(_entry(&"wand_of_nothing"), {"rng": Fixtures.rng(11)})
 	assert_eq(out["logs"], ["Nothing happens."])
 	assert_eq(out["requests"].size(), 0)
 
 func test_the_wand_of_wishing_hands_back_a_picker() -> void:
-	var out: Dictionary = WandSystem.zap_wand(_entry(&"wand_of_wishing"), {"rng": _rng()})
+	var out: Dictionary = WandSystem.zap_wand(_entry(&"wand_of_wishing"), {"rng": Fixtures.rng(11)})
 	assert_eq(out["requests"].size(), 1)
 	assert_eq(String(out["requests"][0].get("kind", "")), "obtain_item")
 	assert_eq(String(out["requests"][0].get("pool", "")), "any")
@@ -363,7 +360,7 @@ func test_the_wand_of_wishing_hands_back_a_picker() -> void:
 func test_the_wand_of_create_monster_puts_a_body_on_the_board() -> void:
 	var before: int = GameLoop2.stack.size()
 	var out: Dictionary = WandSystem.zap_wand(
-		_entry(&"wand_of_create_monster"), {"rng": _rng()})
+		_entry(&"wand_of_create_monster"), {"rng": Fixtures.rng(11)})
 	assert_eq(GameLoop2.stack.size(), before + 1, "one more thing to beat")
 	assert_eq(out["logs"].size(), 1)
 	assert_string_contains(String(out["logs"][0]), "answers the wand")
@@ -373,7 +370,7 @@ func test_the_wand_of_fire_burns_the_square_and_lights_the_ground() -> void:
 	var cell: Vector2i = RayAim.trace(Vector2i(2, 0), Data.get_wand(&"wand_of_fire").bounce)["end"]
 	assert_true(GameLoop2._on_board(cell.x, cell.y), "(the ray stops on the board)")
 	var out: Dictionary = WandSystem.zap_wand(_entry(&"wand_of_fire"),
-		{"rng": _rng(), "target": Vector2i(2, 0)})
+		{"rng": Fixtures.rng(11), "target": Vector2i(2, 0)})
 	assert_not_null(GameLoop2.tile_at(cell), "the ground catches")
 	assert_eq(StringName(GameLoop2.tile_at(cell).id), &"fire")
 	assert_true(str(out["logs"]).contains("Fire"), "and it says so: %s" % str(out["logs"]))
@@ -401,7 +398,7 @@ func _body_at(cell: Vector2i, boss := false) -> int:
 	return inst
 
 func _zap(id: StringName, cell: Vector2i) -> Dictionary:
-	return WandSystem.zap_wand(_entry(id), {"rng": _rng(), "target": cell})
+	return WandSystem.zap_wand(_entry(id), {"rng": Fixtures.rng(11), "target": cell})
 
 func test_the_wand_of_death_takes_a_body_off_the_board() -> void:
 	var cell := Vector2i(2, 1)
@@ -508,7 +505,7 @@ func test_a_unit_wand_aimed_at_an_empty_square_fizzles() -> void:
 	assert_string_contains(String(out["logs"][0]), "without finding anything")
 
 func test_a_ray_with_nowhere_to_land_fizzles_rather_than_no_opping() -> void:
-	var out: Dictionary = WandSystem.zap_wand(_entry(&"wand_of_fire"), {"rng": _rng()})
+	var out: Dictionary = WandSystem.zap_wand(_entry(&"wand_of_fire"), {"rng": Fixtures.rng(11)})
 	assert_eq(out["logs"].size(), 1)
 	assert_string_contains(String(out["logs"][0]), "goes wide")
 
@@ -523,7 +520,7 @@ func test_a_kind_blind_drop_can_roll_a_wand() -> void:
 	assert_true(found, "a wand is one of the five things a beaten game can pay")
 
 func test_a_rolled_wand_arrives_full() -> void:
-	var entry: Dictionary = WandSystem.roll_wand_loot(_rng())
+	var entry: Dictionary = WandSystem.roll_wand_loot(Fixtures.rng(11))
 	assert_eq(String(entry.get("type", "")), "wand")
 	assert_eq(WandSystem.charges_of(entry), WandSystem.max_charges(entry),
 		"what was found is what the card says — a half-spent drop is unreadable")
@@ -602,7 +599,7 @@ func test_the_charge_op_fills_a_wand_and_names_it() -> void:
 	GameState.add_wand_loot(&"wand_of_fire")
 	GameState.loot_items[0]["charges"] = 1
 	var out: Dictionary = PillSystem.take_pill(
-		{"type": "pill", "id": &"48_hour_energy", "horse": false}, {"rng": _rng()})
+		{"type": "pill", "id": &"48_hour_energy", "horse": false}, {"rng": Fixtures.rng(11)})
 	assert_eq(WandSystem.charges_of(GameState.loot_items[0]), 3,
 		"two charges, one wand, nothing else in the pack to take them")
 	assert_true(str(out["logs"]).contains("charged"),
@@ -615,7 +612,7 @@ func test_charging_an_unknown_wand_does_not_name_it() -> void:
 	GameState.add_wand_loot(&"wand_of_fire")
 	GameState.loot_items[0]["charges"] = 1
 	var out: Dictionary = PillSystem.take_pill(
-		{"type": "pill", "id": &"48_hour_energy", "horse": false}, {"rng": _rng()})
+		{"type": "pill", "id": &"48_hour_energy", "horse": false}, {"rng": Fixtures.rng(11)})
 	assert_false(str(out["logs"]).contains("Wand of Fire"),
 		"the charge does not spoil the stick: %s" % str(out["logs"]))
 	assert_false(WandSystem.is_identified(&"wand_of_fire"))
@@ -656,21 +653,21 @@ func test_a_half_spent_wand_and_its_alphabet_survive_a_round_trip() -> void:
 
 func test_a_loose_wand_still_spends_a_charge() -> void:
 	var entry: Dictionary = _entry(&"wand_of_nothing")
-	LootSystem.use_entry(entry, {"rng": _rng()})
+	LootSystem.use_entry(entry, {"rng": Fixtures.rng(11)})
 	assert_eq(WandSystem.charges_of(entry), 3,
 		"a wand used where you stand costs a charge like any other")
 	assert_eq(GameState.loot_items.size(), 0, "and it was never in the pack")
 
 func test_the_result_carries_what_is_left_on_both_paths() -> void:
 	var loose: Dictionary = LootSystem.use_entry(_entry(&"wand_of_fire"),
-		{"rng": _rng(), "target": Vector2i(1, 0)})
+		{"rng": Fixtures.rng(11), "target": Vector2i(1, 0)})
 	assert_eq(int(loose.get("charges_left", -1)), 2, "loose: 3 - 1")
 	GameState.add_wand_loot(&"wand_of_fire")
 	var packed: Dictionary = LootSystem.use_loot(0,
-		{"rng": _rng(), "target": Vector2i(1, 0)})
+		{"rng": Fixtures.rng(11), "target": Vector2i(1, 0)})
 	assert_eq(int(packed.get("charges_left", -1)), 2, "and the pack path agrees")
 
 func test_only_a_wand_reports_a_charge_count() -> void:
 	GameState.add_scroll_loot(&"scroll_of_fire")
-	var out: Dictionary = LootSystem.use_loot(0, {"rng": _rng()})
+	var out: Dictionary = LootSystem.use_loot(0, {"rng": Fixtures.rng(11)})
 	assert_false(out.has("charges_left"), "no other kind is counting")

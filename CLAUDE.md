@@ -155,6 +155,15 @@ python3 tools/outline.py scripts/redesign2/Overworld2.gd --grep stun   # a file'
   top of it, so `godot ... -gtest=res://test/test_x.gd` quietly runs all ~3,100
   tests. `tools/gut.sh` passes `-gconfig=` to drop the directory and hands the
   pre-run hook back by hand. Run the full suite once, before pushing.
+- **Shared test helpers live in `test/helpers/`, so use them rather than writing
+  another copy.** `run_page.gd` (`const Page := preload(...)`) builds the game page
+  and stands it where a test wants it: `Page.build(self)`, `Page.play_opening(_ui)`,
+  `Page.open_at_first_offering(_ui)` (the opening played out, its event closed and
+  its escort taken off), `report_beat`, `pick_enemies`, `leave_post_game`,
+  `text_of`. `fixtures.gd` holds the small ones: `choose_solo`, `body`, `park`,
+  `trinket(self, …)`, `give(self, …)`, `rng(seed)`. Each was copied into two to six
+  files before it was shared; a fix to how a test stands on the page now lands in
+  every file at once. Not named `test_*`, so GUT does not run them.
 - **Find your way into a big script with `tools/outline.py` before reading it.**
   `GameLoop2.gd` (8.4k lines) and `Overworld2.gd` (7.7k) are about 45% comments
   and are cut into `# --- section ---` blocks; the outline lists each block's line

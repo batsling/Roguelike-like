@@ -1,5 +1,8 @@
 extends GutTest
 
+const Page := preload("res://test/helpers/run_page.gd")
+const Fixtures := preload("res://test/helpers/fixtures.gd")
+
 # Tests for Statuses 2.0 (docs/games-first-redesign.md §13) — the goal-rewriting
 # balance lever locations, items and scrolls reach the run through.
 #
@@ -10,19 +13,6 @@ extends GutTest
 #      goals the way §13 says, and decay only where the sheet asks for it;
 #   3. the WIRING — the apply_status effect verb, and save/load round-trips for
 #      both the player's statuses and the ones riding bodies on the board.
-
-# Choose a game and take its ESCORT straight back off the board.
-#
-# Committing to a game stands a second, randomly-rolled body beside the game's
-# own enemy (§7.5, and test_gameloop2.gd, which is where that rule is tested).
-# These tests are about something else, and a stranger from the authored roster
-# standing on the board would put content they never asked about inside their
-# assertions.
-func _choose_solo(enemy: GoalEnemyData) -> int:
-	var inst: int = GameLoop2.choose_game(enemy)
-	if GameLoop2.second_body_instance() > 0:
-		GameLoop2.despawn(GameLoop2.second_body_instance())
-	return inst
 
 func before_each() -> void:
 	GameState.reset_run()
@@ -96,19 +86,6 @@ func _register_player_clause(decay: bool = true) -> StatusData:
 # ---------------------------------------------------------------------------
 # 1. The content
 # ---------------------------------------------------------------------------
-
-# Tick a checklist box the way a player does (§2.1): the click, and then the
-# confirm it raises. A row only resolves once Yes is pressed.
-func _tick(check, host) -> void:
-	if check == null or not is_instance_valid(check) or check.disabled:
-		return
-	check.button_pressed = true
-	var panel = host.get_node_or_null("Confirm")
-	if panel == null:
-		return
-	var ok = panel.find_child("OkBtn", true, false)
-	if ok != null:
-		ok.pressed.emit()
 
 func test_the_statuses_sheet_loaded() -> void:
 	assert_gt(Data.all_statuses().size(), 0, "data/statuses2.0 loaded at least one status")
@@ -218,7 +195,7 @@ func test_a_body_picks_the_wording_by_its_own_ticked() -> void:
 	for pair in [[quick, "you must do it within 3 hours of starting the game"],
 			[slow, "the game must be beaten in 3 hours or less"]]:
 		GameLoop2.reset()
-		var inst: int = _choose_solo(pair[0])
+		var inst: int = Fixtures.choose_solo(pair[0])
 		GameLoop2.apply_status_to(inst, &"speed", 1)
 		var entry: Dictionary = GameLoop2.entry_for(inst)
 		assert_string_contains(GameLoop2.goal_text_for(entry), String(pair[1]),
@@ -285,7 +262,7 @@ func test_every_status_has_art_and_does_something() -> void:
 
 func test_a_goal_on_the_player_side_is_an_extra_objective_not_a_clause() -> void:
 	GameState.apply_status(&"strength", 2)
-	_choose_solo(_enemy("Beat it"))
+	Fixtures.choose_solo(_enemy("Beat it"))
 	# It pays the player; it does not tighten anything the enemy asked for.
 	assert_eq(GameLoop2.goal_text_for(GameLoop2.arrival()), "Beat it",
 		"a player-side goal leaves enemy goals alone")
@@ -295,16 +272,16 @@ func test_a_goal_on_the_player_side_is_an_extra_objective_not_a_clause() -> void
 		"If the difficulty is increased 2 times or as much as possible, gain +1 Medium Chest, +1 Bash")
 
 func test_a_clause_on_an_enemy_tightens_that_enemys_goal() -> void:
-	_choose_solo(_enemy("Beat it"))
+	Fixtures.choose_solo(_enemy("Beat it"))
 	GameLoop2.apply_enemy_status(&"strength", 2, "current")
 	assert_eq(GameLoop2.goal_text_for(GameLoop2.arrival()),
 		"Beat it and the difficulty must be increased 2 times or as much as possible")
 
 func test_a_clause_on_the_player_tightens_every_enemys_goal() -> void:
 	_register_player_clause()
-	_choose_solo(_enemy("Beat it"))
+	Fixtures.choose_solo(_enemy("Beat it"))
 	GameLoop2.beat_game(false)          # it walks onto the board
-	_choose_solo(_enemy("Beat another"))
+	Fixtures.choose_solo(_enemy("Beat another"))
 	GameState.apply_status(CLAUSE_ID, 3)
 	assert_eq(GameLoop2.goal_text_for(GameLoop2.arrival()),
 		"Beat another and you must get 3 achievements", "the current enemy")
@@ -312,7 +289,7 @@ func test_a_clause_on_the_player_tightens_every_enemys_goal() -> void:
 		"Beat it and you must get 3 achievements", "and the follower too")
 
 func test_a_bonus_on_an_enemy_is_claimable_not_required() -> void:
-	_choose_solo(_enemy("Beat it"))
+	Fixtures.choose_solo(_enemy("Beat it"))
 	GameLoop2.apply_enemy_status(&"marked", 2, "current")
 	assert_eq(GameLoop2.goal_text_for(GameLoop2.arrival()), "Beat it",
 		"the goal itself is untouched")
@@ -323,7 +300,7 @@ func test_a_bonus_on_an_enemy_is_claimable_not_required() -> void:
 
 func test_clauses_stack_enemy_first_then_player() -> void:
 	_register_player_clause()
-	_choose_solo(_enemy("Beat it"))
+	Fixtures.choose_solo(_enemy("Beat it"))
 	GameLoop2.apply_enemy_status(&"strength", 1, "current")
 	GameState.apply_status(CLAUSE_ID, 2)
 	assert_eq(GameLoop2.goal_text_for(GameLoop2.arrival()),
@@ -334,25 +311,25 @@ func test_clauses_stack_enemy_first_then_player() -> void:
 # --- targeting ------------------------------------------------------------
 
 func test_target_all_covers_the_board_and_the_current_enemy() -> void:
-	_choose_solo(_enemy("A"))
+	Fixtures.choose_solo(_enemy("A"))
 	GameLoop2.beat_game(false)
-	_choose_solo(_enemy("B"))
+	Fixtures.choose_solo(_enemy("B"))
 	assert_eq(GameLoop2.apply_enemy_status(&"marked", 1, "all"), 2, "both bodies")
 	assert_eq(GameLoop2.enemy_statuses(GameLoop2.arrival()).size(), 1)
 	assert_eq(GameLoop2.enemy_statuses(GameLoop2.stack[0]).size(), 1)
 
 func test_target_current_leaves_the_followers_alone() -> void:
-	_choose_solo(_enemy("A"))
+	Fixtures.choose_solo(_enemy("A"))
 	GameLoop2.beat_game(false)
-	_choose_solo(_enemy("B"))
+	Fixtures.choose_solo(_enemy("B"))
 	assert_eq(GameLoop2.apply_enemy_status(&"marked", 1, "current"), 1)
 	assert_eq(GameLoop2.enemy_statuses(GameLoop2.stack[0]).size(), 0,
 		"the follower is untouched")
 
 func test_target_random_lands_on_exactly_one_body() -> void:
-	_choose_solo(_enemy("A"))
+	Fixtures.choose_solo(_enemy("A"))
 	GameLoop2.beat_game(false)
-	_choose_solo(_enemy("B"))
+	Fixtures.choose_solo(_enemy("B"))
 	assert_eq(GameLoop2.apply_enemy_status(&"marked", 1, "random"), 1)
 	var total: int = GameLoop2.enemy_statuses(GameLoop2.arrival()).size() \
 		+ GameLoop2.enemy_statuses(GameLoop2.stack[0]).size()
@@ -374,7 +351,7 @@ func test_an_unknown_status_id_is_refused_rather_than_stored() -> void:
 func test_a_status_on_the_current_enemy_survives_it_walking_onto_the_board() -> void:
 	# The one place this could silently break: the current enemy is not on the
 	# stack, and joining it rebuilds the entry.
-	_choose_solo(_enemy("Beat it"))
+	Fixtures.choose_solo(_enemy("Beat it"))
 	GameLoop2.apply_enemy_status(&"marked", 2, "current")
 	GameLoop2.beat_game(false)
 	assert_eq(GameLoop2.stack.size(), 1)
@@ -389,7 +366,7 @@ func test_a_status_on_the_current_enemy_survives_it_walking_onto_the_board() -> 
 func test_an_enemy_clause_survives_it_walking_onto_the_board() -> void:
 	# The same move for the other mode: a clause has to still be welded onto the
 	# goal once the enemy is a follower.
-	_choose_solo(_enemy("Beat it"))
+	Fixtures.choose_solo(_enemy("Beat it"))
 	GameLoop2.apply_enemy_status(&"strength", 2, "current")
 	GameLoop2.beat_game(false)
 	assert_eq(GameLoop2.goal_text_for(GameLoop2.stack[0]),
@@ -402,14 +379,14 @@ func test_an_enemy_clause_survives_it_walking_onto_the_board() -> void:
 func test_a_player_clause_ticks_once_for_a_game_whose_goal_was_met() -> void:
 	_register_player_clause()
 	GameState.apply_status(CLAUSE_ID, 3)
-	_choose_solo(_enemy("Beat it"))
+	Fixtures.choose_solo(_enemy("Beat it"))
 	GameLoop2.beat_game(true)
 	assert_eq(GameState.status_stacks(CLAUSE_ID), 2, "one stack for the completion")
 
 func test_a_player_clause_does_not_tick_on_a_missed_goal() -> void:
 	_register_player_clause()
 	GameState.apply_status(CLAUSE_ID, 3)
-	_choose_solo(_enemy("Beat it"))
+	Fixtures.choose_solo(_enemy("Beat it"))
 	GameLoop2.beat_game(false)
 	assert_eq(GameState.status_stacks(CLAUSE_ID), 3, "nothing was completed")
 
@@ -428,16 +405,16 @@ func test_a_player_clause_ticks_once_per_game_not_once_per_goal() -> void:
 	GameState.apply_status(CLAUSE_ID, 4)
 	var instances: Array = []
 	for i in range(3):
-		instances.append(_choose_solo(_enemy("Goal %d" % i)))
+		instances.append(Fixtures.choose_solo(_enemy("Goal %d" % i)))
 		GameLoop2.beat_game(false)
-	_choose_solo(_enemy("Current"))
+	Fixtures.choose_solo(_enemy("Current"))
 	GameLoop2.beat_game(true, instances)
 	assert_eq(GameState.status_stacks(CLAUSE_ID), 3, "one tick for the whole game")
 
 func test_a_player_clause_falls_off_at_zero() -> void:
 	_register_player_clause()
 	GameState.apply_status(CLAUSE_ID, 1)
-	_choose_solo(_enemy("Beat it"))
+	Fixtures.choose_solo(_enemy("Beat it"))
 	GameLoop2.beat_game(true)
 	assert_false(GameState.has_status(CLAUSE_ID), "spent")
 	assert_eq(GameState.status_list().size(), 0, "and pruned, not left at zero")
@@ -445,7 +422,7 @@ func test_a_player_clause_falls_off_at_zero() -> void:
 func test_a_player_objective_pays_out_and_stays() -> void:
 	GameState.apply_status(&"strength", 2)
 	GameState.bash = 0
-	_choose_solo(_enemy("Beat it"))
+	Fixtures.choose_solo(_enemy("Beat it"))
 	GameLoop2.beat_game(true, [], {"status_goals": [&"strength"]})
 	assert_eq(GameState.bash, 1, "a flat +1 Bash, whatever the stack")
 	# [chest reward] 2 is ONE Medium chest, not two Small ones (§8.2).
@@ -457,12 +434,12 @@ func test_a_player_objective_pays_out_and_stays() -> void:
 func test_a_player_objective_pays_nothing_when_it_is_not_ticked() -> void:
 	GameState.apply_status(&"strength", 2)
 	GameState.bash = 0
-	_choose_solo(_enemy("Beat it"))
+	Fixtures.choose_solo(_enemy("Beat it"))
 	GameLoop2.beat_game(true)
 	assert_eq(GameState.bash, 0, "an unticked standing goal is simply not claimed")
 
 func test_claiming_an_enemy_bonus_pays_and_ticks_that_enemy() -> void:
-	var inst: int = _choose_solo(_enemy("Beat it"))
+	var inst: int = Fixtures.choose_solo(_enemy("Beat it"))
 	GameLoop2.apply_enemy_status(&"marked", 2, "current")
 	var res: Dictionary = GameLoop2.beat_game(false, [],
 		{"bonuses": [{"instance": inst, "status": &"marked"}]})
@@ -474,7 +451,7 @@ func test_claiming_an_enemy_bonus_pays_and_ticks_that_enemy() -> void:
 func test_an_enemy_bonus_can_be_claimed_on_the_game_that_kills_it() -> void:
 	# The claim is resolved BEFORE the board is, so beating an enemy and claiming
 	# its bonus in the same game pays both rather than swallowing the bonus.
-	var inst: int = _choose_solo(_enemy("Beat it"))
+	var inst: int = Fixtures.choose_solo(_enemy("Beat it"))
 	GameLoop2.apply_enemy_status(&"marked", 1, "current")
 	var res: Dictionary = GameLoop2.beat_game(true, [],
 		{"bonuses": [{"instance": inst, "status": &"marked"}]})
@@ -484,7 +461,7 @@ func test_an_enemy_bonus_can_be_claimed_on_the_game_that_kills_it() -> void:
 func test_a_clause_side_cannot_be_claimed_as_an_enemy_bonus() -> void:
 	# The modes are not interchangeable: Strength's enemy side is a tax, and there
 	# is nothing to claim on it.
-	var inst: int = _choose_solo(_enemy("Beat it"))
+	var inst: int = Fixtures.choose_solo(_enemy("Beat it"))
 	GameLoop2.apply_enemy_status(&"strength", 2, "current")
 	assert_false(GameLoop2.claim_enemy_bonus(inst, &"strength"))
 	assert_eq(GameState.pending_chests, 0)
@@ -551,7 +528,7 @@ func test_burn_stops_climbing_at_its_authored_cap() -> void:
 	assert_eq(Data.get_status(&"burn").max_stacks, 3, "the sheet's Max: 3")
 	GameState.apply_status(&"burn", 5)
 	assert_eq(GameState.status_stacks(&"burn"), 3, "on the player")
-	var inst: int = _choose_solo(_enemy("Beat it"))
+	var inst: int = Fixtures.choose_solo(_enemy("Beat it"))
 	GameLoop2.apply_status_to(inst, &"burn", 9)
 	assert_eq(GameLoop2.enemy_statuses(GameLoop2.stack[0])[0]["stacks"], 3,
 		"and on a body")
@@ -655,7 +632,7 @@ func test_a_capped_status_still_ticks_down_from_over_the_cap() -> void:
 	assert_eq(GameState.status_stacks(&"burn"), 4, "down, not clamped up to 3")
 
 func test_an_instead_side_offers_a_second_way_through_the_goal() -> void:
-	_choose_solo(_enemy("Beat it"))
+	Fixtures.choose_solo(_enemy("Beat it"))
 	GameLoop2.apply_enemy_status(&"burn", 1, "current")
 	assert_eq(GameLoop2.goal_text_for(GameLoop2.arrival()),
 		"Beat it or instead skip or trash 3 items/upgrades")
@@ -667,7 +644,7 @@ func test_the_way_out_comes_after_every_clause_it_is_an_alternative_to() -> void
 	# It replaces the goal AND its clauses, so it reads last — "or instead" hanging
 	# off the middle of the line would say it replaced only the tail of it.
 	_register_player_clause()
-	_choose_solo(_enemy("Beat it"))
+	Fixtures.choose_solo(_enemy("Beat it"))
 	GameLoop2.apply_enemy_status(&"burn", 1, "current")
 	GameState.apply_status(CLAUSE_ID, 2)
 	assert_eq(GameLoop2.goal_text_for(GameLoop2.arrival()),
@@ -677,7 +654,7 @@ func test_the_way_out_comes_after_every_clause_it_is_an_alternative_to() -> void
 func test_a_boss_is_never_offered_the_way_out() -> void:
 	# A boss's goal is the whole of what the boss is (§7.1). A way around it would
 	# be a way around the run's own gates.
-	var inst: int = _choose_solo(_boss("Beat the boss"))
+	var inst: int = Fixtures.choose_solo(_boss("Beat the boss"))
 	GameLoop2.apply_enemy_status(&"burn", 2, "current")
 	assert_eq(GameLoop2.alternatives_for(GameLoop2.arrival()).size(), 0,
 		"no row is offered")
@@ -691,7 +668,7 @@ func test_a_boss_is_never_offered_the_way_out() -> void:
 # tick anywhere. That reads as the burn having failed to apply, not as a rule about
 # bosses — so the alternatives a boss is carrying and ignoring are their own list.
 func test_a_boss_says_which_ways_out_it_is_nullifying() -> void:
-	var inst: int = _choose_solo(_boss("Beat the boss"))
+	var inst: int = Fixtures.choose_solo(_boss("Beat the boss"))
 	GameLoop2.apply_enemy_status(&"burn", 2, "current")
 	var entry: Dictionary = GameLoop2.arrival()
 	assert_eq(GameLoop2.alternatives_for(entry).size(), 0, "still not on offer")
@@ -704,7 +681,7 @@ func test_a_boss_says_which_ways_out_it_is_nullifying() -> void:
 		"naming it changes nothing about what it buys")
 
 func test_an_ordinary_body_nullifies_nothing() -> void:
-	_choose_solo(_enemy("Beat it"))
+	Fixtures.choose_solo(_enemy("Beat it"))
 	GameLoop2.apply_enemy_status(&"burn", 1, "current")
 	var entry: Dictionary = GameLoop2.arrival()
 	assert_eq(GameLoop2.alternatives_for(entry).size(), 1, "the way out is real here")
@@ -771,7 +748,7 @@ func test_a_one_sided_status_says_its_one_side_without_a_heading() -> void:
 	assert_true(only_mine.contains("Standing goal"), "and it is the player's side")
 
 func test_clearing_a_goal_the_other_way_hits_the_body_like_a_goal_does() -> void:
-	var inst: int = _choose_solo(_enemy("Beat it"))
+	var inst: int = Fixtures.choose_solo(_enemy("Beat it"))
 	GameLoop2.apply_enemy_status(&"burn", 1, "current")
 	var res: Dictionary = GameLoop2.beat_game(false, [],
 		{"instead": [{"instance": inst, "status": &"burn"}]})
@@ -783,7 +760,7 @@ func test_clearing_a_goal_the_other_way_sheds_a_stack() -> void:
 	# "On Completion" — the same rule on the enemy's side as on the player's.
 	var e: GoalEnemyData = _enemy("Beat it")
 	e.health = 2                       # survives the hit, so its stacks can be read
-	var inst: int = _choose_solo(e)
+	var inst: int = Fixtures.choose_solo(e)
 	GameLoop2.apply_enemy_status(&"burn", 2, "current")
 	GameLoop2.beat_game(false, [], {"instead": [{"instance": inst, "status": &"burn"}]})
 	assert_eq(GameLoop2.enemy_statuses(GameLoop2.stack[0])[0]["stacks"], 1,
@@ -792,7 +769,7 @@ func test_clearing_a_goal_the_other_way_sheds_a_stack() -> void:
 func test_the_way_out_does_not_satisfy_a_player_clause() -> void:
 	# A player clause rides every enemy's GOAL. A goal cleared without its condition
 	# ever being set carried nothing to satisfy, so the clause does not tick.
-	var inst: int = _choose_solo(_enemy("Beat it"))
+	var inst: int = Fixtures.choose_solo(_enemy("Beat it"))
 	GameLoop2.apply_enemy_status(&"burn", 1, "current")
 	GameState.apply_status(&"marked", 2)
 	var res: Dictionary = GameLoop2.beat_game(false, [],
@@ -801,7 +778,7 @@ func test_the_way_out_does_not_satisfy_a_player_clause() -> void:
 	assert_eq(GameState.status_stacks(&"marked"), 2, "and the clause is untouched")
 
 func test_a_way_out_cannot_be_claimed_off_a_body_that_is_not_burned() -> void:
-	var inst: int = _choose_solo(_enemy("Beat it"))
+	var inst: int = Fixtures.choose_solo(_enemy("Beat it"))
 	GameLoop2.apply_enemy_status(&"marked", 1, "current")
 	assert_false(GameLoop2.claim_enemy_alternative(inst, &"burn"), "no Burn on it")
 	assert_false(GameLoop2.claim_enemy_alternative(inst, &"marked"),
@@ -816,7 +793,7 @@ func test_a_way_out_cannot_be_claimed_off_a_body_that_is_not_burned() -> void:
 func test_a_missed_demand_bites_at_the_end_of_the_game() -> void:
 	GameState.apply_status(&"burn", 1)
 	GameState.shields = 0
-	_choose_solo(_enemy("Beat it"))
+	Fixtures.choose_solo(_enemy("Beat it"))
 	var before: int = GameState.hp
 	var res: Dictionary = GameLoop2.beat_game(true)
 	assert_eq(before - GameState.hp, 3, "3 Damage, as the sheet says")
@@ -828,7 +805,7 @@ func test_a_missed_demand_bites_at_the_end_of_the_game() -> void:
 func test_answering_a_demand_costs_nothing_and_sheds_a_stack() -> void:
 	GameState.apply_status(&"burn", 2)
 	GameState.shields = 0
-	_choose_solo(_enemy("Beat it"))
+	Fixtures.choose_solo(_enemy("Beat it"))
 	var before: int = GameState.hp
 	var res: Dictionary = GameLoop2.beat_game(true, [], {"status_goals": [&"burn"]})
 	assert_eq(GameState.hp, before, "nothing to pay")
@@ -838,7 +815,7 @@ func test_answering_a_demand_costs_nothing_and_sheds_a_stack() -> void:
 func test_the_last_stack_of_an_answered_demand_takes_the_status_with_it() -> void:
 	GameState.apply_status(&"burn", 1)
 	GameState.shields = 0
-	_choose_solo(_enemy("Beat it"))
+	Fixtures.choose_solo(_enemy("Beat it"))
 	var before: int = GameState.hp
 	GameLoop2.beat_game(true, [], {"status_goals": [&"burn"]})
 	assert_false(GameState.has_status(&"burn"), "paid off and gone")
@@ -851,7 +828,7 @@ func test_a_burn_bites_every_game_it_goes_unanswered() -> void:
 	GameState.shields = 0
 	var before: int = GameState.hp
 	for i in range(2):
-		_choose_solo(_enemy("Beat it"))
+		Fixtures.choose_solo(_enemy("Beat it"))
 		GameLoop2.beat_game(true)
 	assert_eq(before - GameState.hp, 6, "two games, two bites")
 	assert_eq(GameState.status_stacks(&"burn"), 1, "and it is still on you")
@@ -862,7 +839,7 @@ func test_the_shields_are_still_standing_when_a_burn_bites() -> void:
 	GameState.apply_status(&"burn", 1)
 	GameState.shields = 5
 	GameState.bonus_shields = 0
-	_choose_solo(_enemy("Beat it"))
+	Fixtures.choose_solo(_enemy("Beat it"))
 	var before: int = GameState.hp
 	var res: Dictionary = GameLoop2.beat_game(true)
 	assert_eq(GameState.hp, before, "a shield took it")
@@ -876,9 +853,9 @@ func test_a_burn_does_not_bite_a_run_the_enemies_already_ended() -> void:
 	GameState.apply_status(&"burn", 1)
 	GameState.shields = 0
 	GameState.bonus_shields = 0
-	_choose_solo(_enemy("Beat it"))
+	Fixtures.choose_solo(_enemy("Beat it"))
 	GameLoop2.beat_game(false)                 # its enemy walks onto the board
-	_choose_solo(_enemy("Beat another"))
+	Fixtures.choose_solo(_enemy("Beat another"))
 	for entry in GameLoop2.stack:
 		entry["col"] = 1                       # everything is in the front column
 	GameState.hp = 1
@@ -891,7 +868,7 @@ func test_a_lethal_burn_ends_the_run() -> void:
 	GameState.apply_status(&"burn", 1)
 	GameState.shields = 0
 	GameState.hp = 2
-	_choose_solo(_enemy("Beat it"))
+	Fixtures.choose_solo(_enemy("Beat it"))
 	GameLoop2.beat_game(true)
 	assert_eq(GameState.hp, 0, "it took the last of it")
 	assert_true(GameLoop2.run_over, "and the run went with it")
@@ -916,7 +893,7 @@ func test_burn_halves_what_a_body_hits_for() -> void:
 	# 1-damage body is already as small as a hit gets.
 	var e: GoalEnemyData = _enemy("Beat it")
 	e.damage = 2
-	_choose_solo(e)
+	Fixtures.choose_solo(e)
 	GameLoop2.apply_enemy_status(&"burn", 1, "current")
 	assert_eq(GameLoop2.enemy_damage(GameLoop2.arrival()), 1, "halved")
 	GameLoop2.apply_enemy_status(&"burn", 2, "current")
@@ -941,7 +918,7 @@ func test_the_apply_status_effect_reaches_the_player() -> void:
 	assert_eq(GameState.status_stacks(&"marked"), 2, "target defaults to the player")
 
 func test_the_apply_status_effect_reaches_the_board() -> void:
-	_choose_solo(_enemy("Beat it"))
+	Fixtures.choose_solo(_enemy("Beat it"))
 	EffectSystem.apply({"type": "apply_status", "status": "strength", "value": 1,
 		"target": "current"}, {})
 	assert_eq(GameLoop2.enemy_statuses(GameLoop2.arrival()).size(), 1)
@@ -964,7 +941,7 @@ func test_a_status_id_the_catalog_lost_is_dropped_on_load() -> void:
 		"a status with no resource would render as a blank clause")
 
 func test_enemy_statuses_round_trip_through_a_save() -> void:
-	_choose_solo(_enemy("Beat it"))
+	Fixtures.choose_solo(_enemy("Beat it"))
 	GameLoop2.apply_enemy_status(&"marked", 2, "current")
 	GameLoop2.beat_game(false)
 	var blob: Dictionary = GameLoop2.serialize()
@@ -980,7 +957,7 @@ func test_enemy_statuses_round_trip_through_a_save() -> void:
 
 func test_a_real_enemy_keeps_its_statuses_across_a_save() -> void:
 	var real: GoalEnemyData = Data.all_goal_enemies()[0]
-	_choose_solo(real)
+	Fixtures.choose_solo(real)
 	GameLoop2.apply_enemy_status(&"marked", 2, "current")
 	GameLoop2.beat_game(false)
 	var blob: Dictionary = GameLoop2.serialize()
@@ -1031,7 +1008,7 @@ func _booted():
 	ui.choose_start(0)
 	# The opening game stands an ESCORT beside its enemy (§7.5). Everything below
 	# is about what a status does to ONE body, so it comes straight back off —
-	# same reason as _choose_solo above.
+	# same reason as Fixtures.choose_solo.
 	if GameLoop2.second_body_instance() > 0:
 		GameLoop2.despawn(GameLoop2.second_body_instance())
 	return ui
@@ -1048,13 +1025,6 @@ func _booted():
 func _disarm_board() -> void:
 	for entry in GameLoop2.stack:
 		entry["abilities"] = []
-
-# A SETUP REPORT, not the subject. A game handed in with nothing defeated spawns
-# random authored bodies (§19.5), and a test that reports only to put its one body
-# on the board would then be measuring those too. Defeating anything shuts the tap
-# for the game, which is what this says. Called after the pick, which wipes it.
-func _shut_failure_tap() -> void:
-	GameLoop2.defeated_this_game = maxi(1, GameLoop2.defeated_this_game)
 
 func test_the_hero_strip_shows_the_players_statuses() -> void:
 	var ui = _booted()
@@ -1102,18 +1072,9 @@ func test_a_hover_card_draws_its_model() -> void:
 	var speed: StatusData = Data.get_status(&"speed")
 	var card: Control = HoverCard.build(speed.hover_card(StatusData.PLAYER, 3))
 	assert_not_null(card, "the model builds a card")
-	assert_string_contains(_all_text(card), "Speed", "with the name on it")
-	assert_string_contains(_all_text(card), "3 stacks", "and the stack count")
+	assert_string_contains(Page.labels_text(card), "Speed", "with the name on it")
+	assert_string_contains(Page.labels_text(card), "3 stacks", "and the stack count")
 	card.queue_free()
-
-# Every Label in a built card, joined — which of them holds a line is layout.
-func _all_text(node: Node) -> String:
-	var out: String = ""
-	if node is Label:
-		out += (node as Label).text + "\n"
-	for child in node.get_children():
-		out += _all_text(child)
-	return out
 
 func test_the_tooltip_names_what_each_side_does() -> void:
 	var marked: StatusData = Data.get_status(&"marked")
@@ -1141,7 +1102,7 @@ func test_the_report_offers_the_way_out_as_a_row_of_its_own() -> void:
 	# Two rows for one body: the goal, and the alternative to it. They are separate
 	# because the run records them differently — see the test below.
 	var ui = _booted()
-	_pick_enemies(ui, 0)
+	Page.pick_enemies(ui, 0)
 	GameLoop2.apply_enemy_status(&"burn", 1, "current")
 	ui._populate_play_panel()
 	assert_eq(ui._instead_checks.size(), 1, "one way-out row, for the burned body")
@@ -1154,7 +1115,7 @@ func test_clearing_a_goal_the_other_way_banks_no_record_of_the_beat() -> void:
 	# The whole reason the two are separate lists: the enemy's condition was never
 	# set, so nothing about it goes on the record it would have gone on.
 	var ui = _booted()
-	_pick_enemies(ui, 0)
+	Page.pick_enemies(ui, 0)
 	var game: GameData = ui._chosen["game"]
 	var enemy: GoalEnemyData = GameLoop2.arrival()["enemy"]
 	GameLoop2.apply_enemy_status(&"burn", 1, "current")
@@ -1162,7 +1123,7 @@ func test_clearing_a_goal_the_other_way_banks_no_record_of_the_beat() -> void:
 	# GameStats is a LIFETIME store that outlives the run, so the question is what
 	# this report added rather than what the tally reads.
 	var before: int = GameStats.enemy_beaten_count(game.id, enemy.id)
-	_tick(ui._instead_checks[0]["check"], ui)
+	Page.tick(ui._instead_checks[0]["check"], ui)
 	ui.report(true)
 	assert_eq(GameStats.enemy_beaten_count(game.id, enemy.id), before,
 		"no 'beaten in <game>' — its goal was never met")
@@ -1171,7 +1132,7 @@ func test_clearing_a_goal_the_other_way_banks_no_record_of_the_beat() -> void:
 
 func test_the_staff_arms_the_board_rather_than_firing_where_it_stands() -> void:
 	var ui = _booted()
-	_pick_enemies(ui, 0)
+	Page.pick_enemies(ui, 0)
 	ui.report(false)                       # a body walks onto the board
 	var staff: ItemData = GameState.add_item(Data.get_item2(&"staff_of_flame"))
 	ui.use_item(staff)
@@ -1181,7 +1142,7 @@ func test_the_staff_arms_the_board_rather_than_firing_where_it_stands() -> void:
 
 func test_putting_the_staff_away_costs_nothing() -> void:
 	var ui = _booted()
-	_pick_enemies(ui, 0)
+	Page.pick_enemies(ui, 0)
 	ui.report(false)
 	var staff: ItemData = GameState.add_item(Data.get_item2(&"staff_of_flame"))
 	ui.use_item(staff)
@@ -1191,7 +1152,7 @@ func test_putting_the_staff_away_costs_nothing() -> void:
 
 func test_clicking_a_body_with_the_staff_armed_sets_it_alight() -> void:
 	var ui = _booted()
-	_pick_enemies(ui, 0)
+	Page.pick_enemies(ui, 0)
 	ui.report(false)
 	var staff: ItemData = GameState.add_item(Data.get_item2(&"staff_of_flame"))
 	ui.use_item(staff)
@@ -1219,7 +1180,7 @@ func test_the_way_out_row_offers_no_notes_button() -> void:
 	# about a goal you didn't do. `_verify_row` grows the button only when it is
 	# handed the enemy, so this row is built without one.
 	var ui = _booted()
-	_pick_enemies(ui, 0)
+	Page.pick_enemies(ui, 0)
 	GameLoop2.apply_enemy_status(&"burn", 1, "current")
 	ui._populate_play_panel()
 	var row: Node = ui._instead_checks[0]["check"].get_parent()
@@ -1231,9 +1192,9 @@ func test_the_way_out_row_offers_no_notes_button() -> void:
 
 func test_an_enemys_statuses_draw_under_its_box() -> void:
 	var ui = _booted()
-	_pick_enemies(ui, 0)
+	Page.pick_enemies(ui, 0)
 	GameLoop2.apply_enemy_status(&"marked", 2, "current")
-	_shut_failure_tap()
+	Fixtures.shut_failure_tap()
 	ui.report(false)                      # it walks onto the board carrying Marked
 	ui._board.refresh()
 	assert_eq(GameLoop2.stack.size(), 1)
@@ -1350,7 +1311,7 @@ func test_the_bonus_lands_before_the_multiplier() -> void:
 
 func test_strength_raises_what_an_enemy_hits_for() -> void:
 	var ui = _booted()
-	_pick_enemies(ui, 0)
+	Page.pick_enemies(ui, 0)
 	var base: int = int(GameLoop2.arrival()["enemy"].damage)
 	assert_eq(GameLoop2.enemy_damage(GameLoop2.arrival()), base, "unbuffed, it is the stat")
 	GameLoop2.apply_enemy_status(&"strength", 2, "current")
@@ -1358,8 +1319,8 @@ func test_strength_raises_what_an_enemy_hits_for() -> void:
 
 func test_a_strength_stack_is_felt_on_the_players_health() -> void:
 	var ui = _booted()
-	_pick_enemies(ui, 0)
-	_shut_failure_tap()
+	Page.pick_enemies(ui, 0)
+	Fixtures.shut_failure_tap()
 	ui.report(false)                       # it walks onto the board and starts closing
 	GameState.shields = 0                  # no tries left, so every point lands on Health
 	GameLoop2.apply_enemy_status(&"strength", 3, "all")
@@ -1387,7 +1348,7 @@ func test_the_damage_badge_quotes_the_buffed_number() -> void:
 	# A badge reading the base stat would be telling the player the board is safer
 	# than it is.
 	var ui = _booted()
-	_pick_enemies(ui, 0)
+	Page.pick_enemies(ui, 0)
 	ui.report(false)
 	var entry: Dictionary = GameLoop2.stack[0]
 	GameLoop2.apply_enemy_status(&"strength", 2, "all")
@@ -1398,14 +1359,14 @@ func test_the_damage_badge_quotes_the_buffed_number() -> void:
 
 func test_dexterity_grants_shield_points_when_it_lands() -> void:
 	var ui = _booted()
-	_pick_enemies(ui, 0)
+	Page.pick_enemies(ui, 0)
 	assert_eq(GameLoop2.enemy_shield(GameLoop2.arrival()), 0)
 	GameLoop2.apply_enemy_status(&"dexterity", 2, "current")
 	assert_eq(GameLoop2.enemy_shield(GameLoop2.arrival()), 2, "one point per stack")
 
 func test_a_shield_absorbs_a_hit_instead_of_the_body_taking_it() -> void:
 	var ui = _booted()
-	_pick_enemies(ui, 0)
+	Page.pick_enemies(ui, 0)
 	var inst: int = int(GameLoop2.arrival()["instance"])
 	GameLoop2.apply_enemy_status(&"dexterity", 2, "current")
 	var health: int = int(GameLoop2.arrival()["health"])
@@ -1419,7 +1380,7 @@ func test_a_spent_shield_does_not_come_back_with_the_stacks() -> void:
 	# The shield is what Dexterity GAVE the body, not a reading of how much
 	# Dexterity it has — so soaking a hit costs a point that stays gone.
 	var ui = _booted()
-	_pick_enemies(ui, 0)
+	Page.pick_enemies(ui, 0)
 	var inst: int = int(GameLoop2.arrival()["instance"])
 	GameLoop2.apply_enemy_status(&"dexterity", 2, "current")
 	GameLoop2.beat_game(true)
@@ -1429,7 +1390,7 @@ func test_a_spent_shield_does_not_come_back_with_the_stacks() -> void:
 
 func test_a_second_application_tops_the_shield_up() -> void:
 	var ui = _booted()
-	_pick_enemies(ui, 0)
+	Page.pick_enemies(ui, 0)
 	GameLoop2.apply_enemy_status(&"dexterity", 1, "current")
 	GameLoop2.apply_enemy_status(&"dexterity", 2, "current")
 	assert_eq(GameLoop2.enemy_shield(GameLoop2.arrival()), 3,
@@ -1437,7 +1398,7 @@ func test_a_second_application_tops_the_shield_up() -> void:
 
 func test_a_shielded_body_dies_once_the_shield_is_gone() -> void:
 	var ui = _booted()
-	_pick_enemies(ui, 0)
+	Page.pick_enemies(ui, 0)
 	var inst: int = int(GameLoop2.arrival()["instance"])
 	GameLoop2.apply_enemy_status(&"dexterity", 1, "current")
 	GameLoop2.beat_game(true)              # shield 1 -> 0
@@ -1449,7 +1410,7 @@ func test_a_shield_survives_a_save() -> void:
 	# Recomputing it from the stacks on load would hand back the point the body
 	# already spent, which is why it is saved beside Health.
 	var ui = _booted()
-	_pick_enemies(ui, 0)
+	Page.pick_enemies(ui, 0)
 	GameLoop2.apply_enemy_status(&"dexterity", 3, "current")
 	GameLoop2.beat_game(true)
 	var inst: int = int(GameLoop2.stack[0]["instance"])
@@ -1463,7 +1424,7 @@ func test_a_shield_survives_a_save() -> void:
 
 func test_marked_doubles_the_damage_an_enemy_takes() -> void:
 	var ui = _booted()
-	_pick_enemies(ui, 0)
+	Page.pick_enemies(ui, 0)
 	var inst: int = int(GameLoop2.arrival()["instance"])
 	# Alien Baby makes a body take two goals to put down; Marked puts it down in
 	# one, which is the whole point of the status.
@@ -1474,7 +1435,7 @@ func test_marked_doubles_the_damage_an_enemy_takes() -> void:
 
 func test_marked_ignores_a_shield_rather_than_spending_it() -> void:
 	var ui = _booted()
-	_pick_enemies(ui, 0)
+	Page.pick_enemies(ui, 0)
 	var inst: int = int(GameLoop2.arrival()["instance"])
 	GameLoop2.apply_enemy_status(&"dexterity", 5, "current")
 	GameLoop2.apply_enemy_status(&"marked", 1, "current")
@@ -1486,8 +1447,8 @@ func test_marked_on_the_player_doubles_what_lands_and_skips_the_tries() -> void:
 	# The rule that makes EnemyOnly worth having: a debuff is felt by whoever is
 	# carrying it, Shields included.
 	var ui = _booted()
-	_pick_enemies(ui, 0)
-	_shut_failure_tap()
+	Page.pick_enemies(ui, 0)
+	Fixtures.shut_failure_tap()
 	ui.report(false)
 	for entry in GameLoop2.stack:
 		entry["col"] = 1
@@ -1532,7 +1493,7 @@ func test_marked_on_the_player_doubles_what_lands_and_skips_the_tries() -> void:
 
 func test_an_unmarked_player_still_blocks_with_shields_first() -> void:
 	var ui = _booted()
-	_pick_enemies(ui, 0)
+	Page.pick_enemies(ui, 0)
 	ui.report(false)
 	for entry in GameLoop2.stack:
 		entry["col"] = 1
@@ -1564,7 +1525,7 @@ func _turns_then_report(turns: int) -> Dictionary:
 
 func test_speed_closes_extra_columns_per_turn() -> void:
 	var ui = _booted()
-	_pick_enemies(ui, 0)
+	Page.pick_enemies(ui, 0)
 	ui.report(false)
 	var entry: Dictionary = GameLoop2.stack[0]
 	entry["col"] = GameLoop2.grid_cols()
@@ -1575,7 +1536,7 @@ func test_speed_closes_extra_columns_per_turn() -> void:
 
 func test_speed_stops_at_the_front_column_rather_than_overshooting() -> void:
 	var ui = _booted()
-	_pick_enemies(ui, 0)
+	Page.pick_enemies(ui, 0)
 	ui.report(false)
 	var entry: Dictionary = GameLoop2.stack[0]
 	entry["col"] = 2
@@ -1585,7 +1546,7 @@ func test_speed_stops_at_the_front_column_rather_than_overshooting() -> void:
 
 func test_a_stunned_body_does_not_move_however_fast_it_is() -> void:
 	var ui = _booted()
-	_pick_enemies(ui, 0)
+	Page.pick_enemies(ui, 0)
 	ui.report(false)
 	var entry: Dictionary = GameLoop2.stack[0]
 	entry["col"] = GameLoop2.grid_cols()
@@ -1615,7 +1576,7 @@ func test_the_tooltip_says_when_a_buff_is_enemies_only() -> void:
 
 func test_the_addons_split_the_goal_line_into_its_parts() -> void:
 	_register_player_clause()
-	_choose_solo(_enemy("Beat it"))
+	Fixtures.choose_solo(_enemy("Beat it"))
 	GameLoop2.apply_enemy_status(&"burn", 1, "current")
 	GameState.apply_status(CLAUSE_ID, 2)
 	var addons: Array = GameLoop2.goal_addons_for(GameLoop2.arrival())
@@ -1628,7 +1589,7 @@ func test_a_required_addon_is_red_and_an_offered_one_is_green() -> void:
 	# The whole point of the split: a clause is a condition ADDED to the goal, an
 	# `instead` or a `bonus` is something OFFERED.
 	_register_player_clause()
-	_choose_solo(_enemy("Beat it"))
+	Fixtures.choose_solo(_enemy("Beat it"))
 	GameLoop2.apply_enemy_status(&"burn", 1, "current")
 	GameLoop2.apply_enemy_status(&"marked", 2, "current")
 	GameState.apply_status(CLAUSE_ID, 2)
@@ -1646,7 +1607,7 @@ func test_the_goal_sentence_is_still_written_from_the_same_parts() -> void:
 	# and a screen drawing the line cannot word the same add-on differently — and
 	# the bonus stays off the sentence, because it is not part of what is asked.
 	_register_player_clause()
-	_choose_solo(_enemy("Beat it"))
+	Fixtures.choose_solo(_enemy("Beat it"))
 	GameLoop2.apply_enemy_status(&"burn", 1, "current")
 	GameLoop2.apply_enemy_status(&"marked", 2, "current")
 	GameState.apply_status(CLAUSE_ID, 2)
@@ -1660,7 +1621,7 @@ func test_the_goal_sentence_is_still_written_from_the_same_parts() -> void:
 				"a bonus is optional, so it is not in the sentence of what is asked")
 
 func test_an_addon_row_leads_with_its_status_symbol() -> void:
-	_choose_solo(_enemy("Beat it"))
+	Fixtures.choose_solo(_enemy("Beat it"))
 	GameLoop2.apply_enemy_status(&"burn", 1, "current")
 	var addons: Array = GameLoop2.goal_addons_for(GameLoop2.arrival())
 	assert_eq(addons.size(), 1)
@@ -1752,7 +1713,7 @@ func test_a_bleeding_body_hurts_itself_when_it_swings() -> void:
 	seed(1)
 	var enemy: GoalEnemyData = _enemy()
 	enemy.health = 20
-	var inst: int = _choose_solo(enemy)
+	var inst: int = Fixtures.choose_solo(enemy)
 	GameLoop2.apply_status_to(inst, &"bleed", 8)
 	var before: int = int(GameLoop2.entry_for(inst).get("health", 0))
 	# Walk it to the front line so the turn below is a swing rather than a step.
@@ -1765,7 +1726,7 @@ func test_a_bleeding_body_hurts_itself_when_it_swings() -> void:
 func test_swinging_wears_a_bleed_stack_whether_or_not_the_roll_bit() -> void:
 	var enemy: GoalEnemyData = _enemy()
 	enemy.health = 20
-	var inst: int = _choose_solo(enemy)
+	var inst: int = Fixtures.choose_solo(enemy)
 	GameLoop2.apply_status_to(inst, &"bleed", 3)
 	var entry: Dictionary = GameLoop2.entry_for(inst)
 	entry["col"] = 1
@@ -1777,7 +1738,7 @@ func test_swinging_wears_a_bleed_stack_whether_or_not_the_roll_bit() -> void:
 func test_a_body_that_does_not_swing_keeps_its_bleed() -> void:
 	var enemy: GoalEnemyData = _enemy()
 	enemy.health = 20
-	var inst: int = _choose_solo(enemy)
+	var inst: int = Fixtures.choose_solo(enemy)
 	GameLoop2.apply_status_to(inst, &"bleed", 3)
 	var entry: Dictionary = GameLoop2.entry_for(inst)
 	# Parked out of reach: it steps this turn rather than striking.
@@ -1791,7 +1752,7 @@ func test_a_body_that_does_not_swing_keeps_its_bleed() -> void:
 func test_a_players_bleed_wears_off_a_stack_per_game() -> void:
 	GameState.apply_status(&"bleed", 3)
 	assert_eq(GameState.status_stacks(&"bleed"), 3)
-	_choose_solo(_enemy())
+	Fixtures.choose_solo(_enemy())
 	GameLoop2.beat_game()
 	assert_eq(GameState.status_stacks(&"bleed"), 2,
 		"the game is the unit the player counts in")
@@ -1800,7 +1761,7 @@ func test_a_players_stun_wears_off_even_on_a_game_they_lost() -> void:
 	# Unconditional where a `clause` is not: a duration sheds by ELAPSING, and a
 	# game you failed still happened.
 	GameState.apply_status(&"stun", 2)
-	_choose_solo(_enemy())
+	Fixtures.choose_solo(_enemy())
 	# Resolved with NOTHING fulfilled, which is what a game you did not beat is:
 	# no goal met, so `_tick_player_clauses` sheds nothing, and the duration sheds
 	# anyway.
@@ -1812,7 +1773,7 @@ func test_a_players_stun_wears_off_even_on_a_game_they_lost() -> void:
 
 func test_a_status_with_no_wear_survives_the_game() -> void:
 	GameState.apply_status(&"strength", 2)
-	_choose_solo(_enemy())
+	Fixtures.choose_solo(_enemy())
 	GameLoop2.beat_game()
 	assert_eq(GameState.status_stacks(&"strength"), 2,
 		"Strength's Decrease is N/A — nothing wears it away")
@@ -1827,24 +1788,3 @@ func test_the_combat_line_says_the_rolls_rather_than_an_average() -> void:
 
 func test_stuns_combat_line_says_it_loses_its_turn() -> void:
 	assert_string_contains(Data.get_status(&"stun").combat_line(1), "loses its turn")
-
-# Pick the first card, having first made sure it is an ordinary fight (§19.1).
-#
-# What a committed game stands on the board is decided by the NODE'S KIND now —
-# two bodies on an Enemies node, one boss on a Champion, none at all on an Event
-# or a Shop — and the offering deals those at 60/20/10/10. So a test that picks
-# and then expects something to be standing there is a test whose subject is a
-# die roll. Forcing the kind on the one node about to be picked is the ARRANGE
-# step; the rest of the map is left as the run dealt it.
-func _pick_enemies(ui, idx: int = 0) -> void:
-	if idx >= 0 and idx < ui._choices.size():
-		# ON THE SLOT (§19.2): the kind rides the node, so a transmuted card plays a
-		# different game at the same kind and the game id is the wrong key.
-		var choice: Dictionary = ui._choices[idx]
-		var slot := StringName(choice.get("slot", &""))
-		if slot == &"":
-			var game: GameData = choice.get("game")
-			slot = game.id if game != null else &""
-		if slot != &"":
-			GameState.node_kinds[slot] = RunGraph.NodeKind.ENEMIES
-	ui.pick(idx)

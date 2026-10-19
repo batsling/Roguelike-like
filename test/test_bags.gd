@@ -1,5 +1,7 @@
 extends GutTest
 
+const Fixtures := preload("res://test/helpers/fixtures.gd")
+
 # Tests for BAGS (docs/loot-passives.md §6): the seventh loot kind, which is more
 # pack rather than a piece in it — and for the weighted kind roll they arrived with.
 #
@@ -36,12 +38,6 @@ func _put(entry: Dictionary, slot: int) -> Dictionary:
 	assert_true(GameState.take_loot_entry_at(entry, slot), "%s fits in slot %d" % [entry.get("id"), slot])
 	var i: int = GameState.loot_index_at_slot(slot)
 	return GameState.loot_items[i] if i >= 0 else {}
-
-func _index_of(entry: Dictionary) -> int:
-	for i in range(GameState.loot_items.size()):
-		if is_same(GameState.loot_items[i], entry):
-			return i
-	return -1
 
 # --- the roster ------------------------------------------------------------------
 
@@ -150,7 +146,7 @@ func test_whats_in_a_bag_moves_and_turns_with_it() -> void:
 	var fire: Dictionary = _put({"type": "scroll", "id": &"scroll_of_fire"}, 11)
 	assert_eq(GameState.pack_cell_of(11), Vector2i(0, 5))
 	assert_true(GameState.move_bag(0, Vector2i(3, 0), 1), "laid down beside the 3x3")
-	assert_eq(GameState.loot_slot_of(_index_of(fire)), 11, "the piece keeps its slot…")
+	assert_eq(GameState.loot_slot_of(Fixtures.index_of(fire)), 11, "the piece keeps its slot…")
 	assert_eq(GameState.pack_cell_of(11), Vector2i(4, 0), "…which is now drawn where the bag took it")
 
 func test_a_move_that_strands_another_bag_is_refused() -> void:
@@ -165,7 +161,7 @@ func test_a_bag_comes_off_only_empty() -> void:
 	_place(&"leather_bag", Vector2i(3, 0))
 	var fire: Dictionary = _put({"type": "scroll", "id": &"scroll_of_fire"}, 10)
 	assert_false(GameState.can_remove_bag(0), "binning it would bin the scroll")
-	GameState.remove_loot_at(_index_of(fire))
+	GameState.remove_loot_at(Fixtures.index_of(fire))
 	assert_true(GameState.can_remove_bag(0))
 	assert_false(GameState.remove_bag(0).is_empty())
 	assert_eq(GameState.loot_capacity(), 9)
@@ -176,7 +172,7 @@ func test_taking_a_bag_off_keeps_the_later_bags_pieces_in_their_cells() -> void:
 	var fire: Dictionary = _put({"type": "scroll", "id": &"scroll_of_fire"}, 12)
 	var cell: Vector2i = GameState.pack_cell_of(12)
 	assert_false(GameState.remove_bag(0).is_empty(), "the empty purse comes off")
-	var slot: int = GameState.loot_slot_of(_index_of(fire))
+	var slot: int = GameState.loot_slot_of(Fixtures.index_of(fire))
 	assert_eq(slot, 11, "its slot number moved down by the purse's one cell…")
 	assert_eq(GameState.pack_cell_of(slot), cell, "…and it is in the same cell")
 
@@ -379,10 +375,10 @@ func test_a_turned_blueprint_copies_the_way_it_faces() -> void:
 		"rarity": Data.get_card(&"blueprint").rarity}, 0)
 	_put({"type": "trinket", "id": &"goat_hoof", "rarity": "Common"}, 3)   # below it
 	assert_eq(LootPassives.copying_name(0), "", "facing right, it copies nothing")
-	assert_true(GameState.turn_loot(_index_of(bp), 1))
+	assert_true(GameState.turn_loot(Fixtures.index_of(bp), 1))
 	assert_eq(LootPassives.copying_name(0), "Goat Hoof", "a quarter turn aims it down")
 	assert_eq(LootPassives.facing(bp, Data.get_card(&"blueprint")), "down")
-	assert_true(GameState.turn_loot(_index_of(bp), 3))
+	assert_true(GameState.turn_loot(Fixtures.index_of(bp), 3))
 	assert_eq(LootSystem.hover_card(bp)["lines"].size() > 0, true)
 	assert_eq(LootPassives.facing(bp, Data.get_card(&"blueprint")), "up")
 
@@ -396,7 +392,7 @@ func test_any_piece_turns_in_place_by_dropping_it_back_on_its_slot() -> void:
 	assert_true(grid.get_child(4)._can_drop_data(Vector2.ZERO, data), "turned, it is")
 	grid.get_child(4)._drop_data(Vector2.ZERO, data)
 	assert_eq(int(fire.get("rot", 0)), 1, "it is turned")
-	assert_eq(GameState.loot_slot_of(_index_of(fire)), 4, "and stayed put")
+	assert_eq(GameState.loot_slot_of(Fixtures.index_of(fire)), 4, "and stayed put")
 
 func test_a_turn_rides_a_move_and_a_save() -> void:
 	var fire: Dictionary = _put({"type": "scroll", "id": &"scroll_of_fire"}, 0)
@@ -405,7 +401,7 @@ func test_a_turn_rides_a_move_and_a_save() -> void:
 	data["rot"] = 2
 	grid.moved.connect(func(a: int, b: int, r: int): GameState.move_loot(a, b, r))
 	grid.get_child(8)._drop_data(Vector2.ZERO, data)
-	assert_eq(GameState.loot_slot_of(_index_of(fire)), 8)
+	assert_eq(GameState.loot_slot_of(Fixtures.index_of(fire)), 8)
 	assert_eq(int(fire.get("rot", 0)), 2)
 	var saved: Dictionary = JSON.parse_string(JSON.stringify(SaveSystem._build_payload()))
 	GameState.reset_run()
@@ -434,7 +430,7 @@ func test_a_piece_that_acts_on_a_neighbour_wears_an_arrow_pointing_at_it() -> vo
 		assert_eq(arrows[0].dir, "right", "pointing at what it copies")
 	assert_true(grid.get_child(1).get_children().filter(
 		func(c): return c is LootGrid.DirArrow).is_empty(), "a scroll acts on nothing and has none")
-	GameState.turn_loot(_index_of(bp), 1)
+	GameState.turn_loot(Fixtures.index_of(bp), 1)
 	grid.rebuild()
 	var turned: Array = grid.get_child(0).get_children().filter(func(c): return c is LootGrid.DirArrow)
 	assert_true(turned.size() == 1 and turned[0].dir == "down", "and it turns with the piece")

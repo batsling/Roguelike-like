@@ -1,5 +1,7 @@
 extends GutTest
 
+const Page := preload("res://test/helpers/run_page.gd")
+
 # Tests for the tier-list board (TierListScreen) and the cross-run TierList
 # store behind it.
 #
@@ -51,17 +53,7 @@ func _tile_for(id: StringName):
 
 # All the text in the detail panel, flattened.
 func _detail_text() -> String:
-	return _text_of(_screen._detail_box)
-
-func _text_of(node: Node) -> String:
-	var out: String = ""
-	if node is Label:
-		out += (node as Label).text + "\n"
-	elif node is Button:
-		out += (node as Button).text + "\n"
-	for c in node.get_children():
-		out += _text_of(c)
-	return out
+	return Page.text_of(_screen._detail_box)
 
 # --- the board ---------------------------------------------------------------
 
@@ -390,26 +382,26 @@ func _opened_on(id: StringName):
 func test_opening_on_a_game_opens_that_game_s_card() -> void:
 	var s = _opened_on(_game_a.id)
 	assert_eq(s.selected_game(), _game_a.id, "the board came up on the game it was given")
-	assert_true(_text_of(s._detail_box).contains(_game_a.display_name),
+	assert_true(Page.text_of(s._detail_box).contains(_game_a.display_name),
 		"and its card is the one showing")
 
 func test_an_unplaced_game_is_asked_for_a_tier() -> void:
 	TierList.place(_game_a.id, -1)          # in the Unranked tray, which is where a score leaves it
 	var s = _opened_on(_game_a.id)
-	assert_true(_text_of(s._detail_box).contains("Now pick its tier"),
+	assert_true(Page.text_of(s._detail_box).contains("Now pick its tier"),
 		"the card says what is left to do")
 
 func test_the_ask_goes_away_once_the_game_is_placed() -> void:
 	TierList.place(_game_a.id, -1)
 	var s = _opened_on(_game_a.id)
 	TierList.place(_game_a.id, 0)           # dragged, or moved with the buttons — same call
-	assert_false(_text_of(s._detail_box).contains("Now pick its tier"),
+	assert_false(Page.text_of(s._detail_box).contains("Now pick its tier"),
 		"a game that is in a row is not still being asked for one")
 
 func test_a_board_opened_on_nothing_is_the_board_it_always_was() -> void:
 	var s = _opened_on(&"")
 	assert_eq(s.selected_game(), &"", "no game, no card")
-	assert_false(_text_of(s._detail_box).contains("Now pick its tier"),
+	assert_false(Page.text_of(s._detail_box).contains("Now pick its tier"),
 		"and nothing is being asked of anyone")
 
 # --- the badge on the box art -----------------------------------------------

@@ -1,5 +1,8 @@
 extends GutTest
 
+const Page := preload("res://test/helpers/run_page.gd")
+const Fixtures := preload("res://test/helpers/fixtures.gd")
+
 # Drive tests for the Overworld2 panel — the click-to-choose games-first
 # overworld. It must build headless, boot a real start/amulet graph, and drive a
 # run through the same public methods its cards call (pick -> report), plus the
@@ -11,10 +14,9 @@ const OVERWORLD := preload("res://scripts/redesign2/Overworld2.gd")
 var _ui
 
 func before_each() -> void:
-	_ui = SCENE.instantiate()
-	add_child_autofree(_ui)   # _ready -> builds UI + rolls the choose-your-start panel
+	_ui = Page.build(self)    # _ready -> builds UI + rolls the choose-your-start panel
 	_drop_starting_loot()
-	_open_at_first_offering()
+	Page.open_at_first_offering(_ui)
 	# A lost run's random body (§3.2) is not what this suite is about.
 	GameLoop2.lost_run_spawn_ladder = [0.0]
 
@@ -43,45 +45,6 @@ func after_each() -> void:
 	# The tier list is a cross-run store backed by a real file, and set_rating
 	# saves — so the rating tests below would otherwise outlive themselves.
 	TierList._reset_defaults()
-
-# A fresh run opens on the START-SELECT panel (one card per genre, each inside the
-# 4..7 band), and taking one is the run's FIRST GAME — its enemy spawns, it hands
-# over its tries, and the run lands in the report step (Overworld2.choose_start).
-#
-# Nearly every test in this file is about the OFFERING and what you can do to it,
-# which is where beating that opening game leaves you. So this is the opening
-# played out: take the start, report it beaten, skip the board's playback, clear
-# the drop it paid and walk out of the event it raised — what a player does
-# before the first card is on the table. Tests that are about the opening itself
-# call `start_run` and drive the picker directly instead.
-func _open_at_first_offering() -> void:
-	_ui.choose_start(0)
-	if _ui._phase != OVERWORLD.Phase.PLAYING:
-		return
-	_report_beat(_ui)
-	_ui._end_resolve()             # don't wait out the strike/advance animation
-	# ...and drop what the playback was holding with it. The board freezes the
-	# hero's Health at its pre-resolve value for the length of the animation
-	# (BattlefieldView._hp_shown) and lets go when the tween ends — which, in a
-	# test that never waits out the tween, is never. This used to come out in the
-	# wash because the opening game had an empty board and so played back nothing
-	# at all; the escort (§7.5) gives it a body to slide, so the playback is real
-	# now and has to be cut short deliberately.
-	_ui._board.clear_fx()
-	# …and walk off the screen the game ended on. Every report now hands its haul
-	# to one PostCombatScreen — the relics, the loot, the shelf, the boss warning —
-	# and its way out is what opens the event behind it, so a test that reports a
-	# game and then looks at the offering has to leave it the way a player does.
-	# The opening game's relic goes on the floor with it; it isn't what's under test.
-	_leave_post_game()
-	_dismiss_event()
-	# The opening game's ESCORT (§7.5) survived it — beating a game answers for its
-	# own enemy and nothing else — so a run that opens perfectly still walks away
-	# from the first card with one body on the board. That is correct, and it is
-	# ALSO a body every test below would then be counting without having asked for
-	# it. Cleared here so each test starts on an empty board and the followers it
-	# counts are the ones it put there itself.
-	_clear_board()
 
 # Tick a checklist box the way a player does (§2.1): the click, and then the
 # confirm it raises. A row only resolves once Yes is pressed — and once it has,
@@ -231,40 +194,11 @@ func _pack_the_back_column() -> void:
 		e.damage = 0
 		GameLoop2.summon(e, Vector2i(cols, row))
 
-# An event fires after EVERY game now, so the opening game raises one and it is
-# sitting over the board for every test in this file that isn't about it. Closed
-# through the modal's own path rather than freed, so the chain behind it still
-# runs — the shop a Shop node owes opens off `finished`, and half a dozen shop tests
-# depend on that.
-# Leave the screen a game ends on, and drop anything still on its table. The
-# player's own way out (`dismiss`), so the chain behind it runs exactly as it does
-# in a real run — which is what puts the event on screen for `_dismiss_event` to
-# find. `_drop_queue` is cleared afterwards for the drops that never reached the
-# screen at all (a test that queued one by hand).
-func _leave_post_game(page = null) -> void:
-	var ui = page if page != null else _ui
-	if ui._post_screen != null and is_instance_valid(ui._post_screen):
-		ui._post_screen.dismiss()
-	ui._post_screen = null
-	ui._post_snapshot = {}
-	ui._drop_queue.clear()
-	if ui._drop_modal != null and is_instance_valid(ui._drop_modal):
-		ui._drop_modal.queue_free()
-		ui._drop_modal = null
-
-func _dismiss_event() -> void:
-	if _ui._event_modal != null and is_instance_valid(_ui._event_modal):
-		_ui._event_modal._close()
-	_ui._event_modal = null
-	_ui._pending_event = null
-	_ui._pending_event_node = &""
-	ObjectSystem.clear()
-
 # Re-boot the run on a specific character and play out its opening, so a test that
 # needs a particular level-up / loadout lands where before_each does.
 func _reboot(character_id: StringName) -> void:
 	_ui.start_run(character_id)
-	_open_at_first_offering()
+	Page.open_at_first_offering(_ui)
 
 # PICK A CARD, HAVING FIRST MADE SURE IT IS AN ORDINARY FIGHT (§19.1).
 #
@@ -294,16 +228,7 @@ func _reboot(character_id: StringName) -> void:
 func _quiet_ladder() -> void:
 	GameState.spawn_events = 0
 
-# A SETUP REPORT, not the subject. A game handed in with nothing defeated spawns
-# bodies (§19.5), rolled at random from the roster — so a test that misses a game
-# only to leave its body following would also get an authored stranger beside it,
-# and every count, portrait and swing after it would be about that stranger too.
-# Defeating anything shuts the tap for the game, which is what this says; the
-# failure price has tests of its own. Called after the pick, which wipes it.
-func _shut_failure_tap() -> void:
-	GameLoop2.defeated_this_game = maxi(1, GameLoop2.defeated_this_game)
-
-# USE THIS, NOT `_shut_failure_tap()` + `report(false)`, whenever a test counts
+# USE THIS, NOT `Fixtures.shut_failure_tap()` + `report(false)`, whenever a test counts
 # or follows bodies across a miss: eleven tests paired those two, and each failed
 # about one run in fifty on the road's own spawn (§19.5).
 #
@@ -313,7 +238,7 @@ func _shut_failure_tap() -> void:
 # graph happened to put the run. The Amulet is parked for the length of the
 # report — no route to it reads as the calmest band — and put back after.
 func _quiet_report() -> void:
-	_shut_failure_tap()
+	Fixtures.shut_failure_tap()
 	var amulet: StringName = GameState.amulet_game_id
 	GameState.amulet_game_id = &""
 	_ui.report(false)
@@ -321,23 +246,8 @@ func _quiet_report() -> void:
 
 func _pick_enemies(idx: int = 0) -> void:
 	if idx >= 0 and idx < _ui._choices.size():
-		_set_kind(_ui._choices[idx], RunGraph.NodeKind.ENEMIES)
+		Page.set_kind(_ui._choices[idx], RunGraph.NodeKind.ENEMIES)
 	_ui.pick(idx)
-
-# Force a choice's kind, ON THE SLOT (§19.2).
-#
-# The kind rides the NODE, not the game standing on it — that is what makes a
-# transmuted card play a different game at the same kind — so setting it against
-# the game id works for an ordinary card and silently does nothing for a
-# transmuted one, where the two differ. That is not a distinction a test should
-# have to remember, so it lives here.
-func _set_kind(choice: Dictionary, kind: int) -> void:
-	var slot := StringName(choice.get("slot", &""))
-	if slot == &"":
-		var g: GameData = choice.get("game")
-		slot = g.id if g != null else &""
-	if slot != &"":
-		GameState.node_kinds[slot] = kind
 
 func test_boots_a_run_with_a_graph_and_choices() -> void:
 	assert_false(GameLoop2.run_over, "a fresh run is live")
@@ -397,7 +307,7 @@ func test_the_kinds_do_not_move_while_the_run_is_walked() -> void:
 
 func _pick_as(kind: int, idx: int = 0) -> GameData:
 	var game: GameData = _ui._choices[idx]["game"]
-	_set_kind(_ui._choices[idx], kind)
+	Page.set_kind(_ui._choices[idx], kind)
 	_ui.pick(idx)
 	_disarm_board()
 	return game
@@ -428,7 +338,7 @@ func test_a_champion_node_stands_one_boss_and_nothing_beside_it() -> void:
 # ordinary enemy and then roll a different body — a boss — at the commit, so the
 # preview named something that never arrived.
 func test_a_champion_card_advertises_the_boss_that_walks_on() -> void:
-	_set_kind(_ui._choices[0], RunGraph.NodeKind.CHAMPION)
+	Page.set_kind(_ui._choices[0], RunGraph.NodeKind.CHAMPION)
 	var slot: StringName = StringName(_ui._choices[0]["slot"])
 	_ui._slot_enemies.clear()
 	_ui._build_choices()
@@ -556,8 +466,8 @@ func test_a_quiet_nodes_end_ticks_the_ladder_once_if_it_spawned() -> void:
 		assert_eq(GameState.spawn_events - before, 1 if landed > 0 else 0,
 			"an Event node's end is one spawn event when it stood %d up" % landed)
 		_ui._end_resolve()
-		_leave_post_game()
-		_dismiss_event()
+		Page.leave_post_game(_ui)
+		Page.dismiss_event(_ui)
 	assert_gt(played, 0, "the run was out there playing games all the while")
 
 
@@ -617,7 +527,7 @@ func test_report_goal_met_defeats_and_drops() -> void:
 	# and the random offering sometimes stands one: read which it is up front.
 	var landed: Dictionary = GameLoop2.arrival()
 	var boss: bool = not landed.is_empty() and (landed["enemy"] as GoalEnemyData).is_boss()
-	_report_beat(_ui)              # met -> defeat + a drop to be asked about
+	Page.report_beat(_ui)              # met -> defeat + a drop to be asked about
 	# THE ROAD CAN STAND BODIES UP AT THE END OF ANY GAME (§19.5, `pressure()`),
 	# kill or no kill — usually none this early, but it rides the random road. Both
 	# of these used to be asserted as exactly 1 and failed about one run in ten.
@@ -630,7 +540,7 @@ func test_report_goal_met_defeats_and_drops() -> void:
 	assert_not_null(_ui._post_screen, "the report ended on the haul screen")
 	assert_eq(_ui._post_screen._chest_sections.size(), 2 if boss else 1,
 		"carrying the kill's chest (and a boss's own, if it was one)")
-	_leave_post_game()
+	Page.leave_post_game(_ui)
 
 # An enemy kill ASKS whether you want what fell off it (§8): the item at full
 # size, Take or Leave, no tray to notice later. What changed is WHERE it asks —
@@ -639,7 +549,7 @@ func test_report_goal_met_defeats_and_drops() -> void:
 # one haul they are. Taking it still adds the item and clears the drop.
 func test_defeat_drop_is_asked_about_on_the_screen_the_game_ends_on() -> void:
 	_pick_enemies(0)
-	_report_beat(_ui)
+	Page.report_beat(_ui)
 	assert_null(_ui._drop_modal,
 		"the kill does NOT open a modal of its own over the board")
 	_ui._end_resolve()                           # the board finishes its playback
@@ -670,7 +580,7 @@ func test_defeat_drop_is_asked_about_on_the_screen_the_game_ends_on() -> void:
 	assert_eq(GameState.inventory.size(), inv_before + 1, "taking it adds the item")
 	assert_eq(_ui._items_box.get_child_count(), GameState.inventory.size(),
 		"and the pack strip above the board holds a token for it")
-	_leave_post_game()
+	Page.leave_post_game(_ui)
 
 # The drops used to be pumped onto the screen on the next idle frame, in the
 # middle of the resolve animation — the one place the run's consequences are ever
@@ -685,10 +595,10 @@ func test_defeat_drop_is_asked_about_on_the_screen_the_game_ends_on() -> void:
 # is put in that state and asked to pump — both ways round.
 func test_a_report_asks_nothing_while_the_board_is_still_moving() -> void:
 	_pick_enemies(0)
-	_report_beat(_ui)
+	Page.report_beat(_ui)
 	_ui._end_resolve()                           # land the playback, so the test owns the flag
-	_leave_post_game()
-	_dismiss_event()
+	Page.leave_post_game(_ui)
+	Page.dismiss_event(_ui)
 	_ui._resolving = true                        # as it is between a report and its playback
 	_ui._drop_queue.append({"item": Data.reward_item2_pool_of(0)[0]})
 	_ui._pump_drops()
@@ -708,7 +618,7 @@ func test_a_report_asks_nothing_while_the_board_is_still_moving() -> void:
 # nothing is left behind on the page to open afterwards.
 func test_the_playback_landing_hands_the_whole_queue_to_the_haul_screen() -> void:
 	_pick_enemies(0)
-	_report_beat(_ui)
+	Page.report_beat(_ui)
 	# The playback can be instantaneous now — out in the wilds a report hands the
 	# board no turns at all (§7.4), so there may be nothing to animate and
 	# _end_resolve has already run. Either way the promise is the same: the queue
@@ -718,7 +628,7 @@ func test_the_playback_landing_hands_the_whole_queue_to_the_haul_screen() -> voi
 	assert_gt(_ui._post_screen._chest_sections.size(), 0, "the report's drop is on it")
 	assert_eq(_ui._drop_queue.size(), 0, "and the page's queue is empty behind it")
 	assert_null(_ui._drop_modal, "with no modal left over to open on top of it")
-	_leave_post_game()
+	Page.leave_post_game(_ui)
 
 # A payout that does NOT arrive with a report still asks for itself, immediately,
 # on its own modal: GameState.offer_loot fires from EffectSystem, so an item, an
@@ -770,7 +680,7 @@ func test_the_drop_asks_in_the_middle_of_the_screen() -> void:
 
 func test_leaving_a_drop_discards_it() -> void:
 	_pick_enemies(0)
-	_report_beat(_ui)
+	Page.report_beat(_ui)
 	_ui._end_resolve()
 	var chest = _ui._post_screen.chest()
 	assert_not_null(chest)
@@ -787,7 +697,7 @@ func test_leaving_a_drop_discards_it() -> void:
 	assert_true(chest.answered_already(), "the drop was cleared")
 	assert_false(_ui._post_screen._live_chests().has(chest), "and is no longer offered")
 	assert_eq(GameState.inventory.size(), inv_before, "leaving it keeps the inventory unchanged")
-	_leave_post_game()
+	Page.leave_post_game(_ui)
 
 # Two kills in one report ask twice, one after the other, rather than stacking
 # two chests side by side: a chest is "which one of these", and two of those
@@ -803,7 +713,7 @@ func test_drops_are_asked_about_one_at_a_time() -> void:
 	var landed: Dictionary = GameLoop2.arrival()
 	var extra: int = 1 if not landed.is_empty() \
 		and (landed["enemy"] as GoalEnemyData).is_boss() else 0
-	_report_beat(_ui)
+	Page.report_beat(_ui)
 	_ui._end_resolve()
 	var screen = _ui._post_screen
 	assert_not_null(screen, "the haul screen took both")
@@ -817,7 +727,7 @@ func test_drops_are_asked_about_one_at_a_time() -> void:
 	first.leave()
 	assert_not_null(screen.chest(), "and comes up once the first is answered")
 	assert_eq(screen.chests_waiting(), extra)
-	_leave_post_game()
+	Page.leave_post_game(_ui)
 
 func test_fulfilling_a_follower_goal_defeats_and_drops_it() -> void:
 	# Miss a goal so an enemy follows, then on the next game tick its fulfilment
@@ -855,7 +765,7 @@ func test_fulfilling_a_follower_goal_defeats_and_drops_it() -> void:
 	# (§8.2) rather than waiting for a report — which is the point of ticking early.
 	assert_false(GameLoop2.drop_cells().is_empty(),
 		"the fulfilled follower dropped its loot where it fell")
-	_shut_failure_tap()
+	Fixtures.shut_failure_tap()
 	_quiet_report()                              # miss current, but fulfil the follower
 	assert_eq(GameState.hp, hp_before, "fulfilling it before it hit means no damage")
 	# The old follower is gone; what stands is this game's own pair.
@@ -1251,7 +1161,7 @@ func test_level_up_checkbox_grants_the_reward() -> void:
 	_pick_enemies(0)
 	assert_not_null(_ui._levelup_check, "Zoe has a level-up condition -> a checkbox")
 	_tick(_ui._levelup_check)
-	_report_beat(_ui)
+	Page.report_beat(_ui)
 	assert_eq(GameState.dash_charges, dash_before + 1, "level-up granted +1 Dash")
 	assert_eq(GameState.player_level, lvl_before + 1, "player level advanced")
 
@@ -1259,7 +1169,7 @@ func test_level_up_not_applied_when_unchecked() -> void:
 	_reboot(&"zoe")
 	var dash_before: int = GameState.dash_charges
 	_pick_enemies(0)
-	_report_beat(_ui)                              # box left unticked
+	Page.report_beat(_ui)                              # box left unticked
 	assert_eq(GameState.dash_charges, dash_before, "no level-up without the tick")
 
 # A CHEST THE LEVEL-UP EARNS WAITS FOR THE HAUL SCREEN (§18). It used to throw a
@@ -1291,7 +1201,7 @@ func test_isaac_level_up_banks_a_chest_and_the_haul_screen_takes_it() -> void:
 	assert_eq(GameState.pending_chests, 0, "which took the whole queue")
 	assert_gt(_ui._post_screen._chest_sections.size(), 0,
 		"and the level-up's chest is on it")
-	_leave_post_game()
+	Page.leave_post_game(_ui)
 
 func test_poe_level_up_grants_a_size_rolled_chest() -> void:
 	_reboot(&"poe_ratcho")                  # reward_type random_sized_chest
@@ -1308,7 +1218,7 @@ func test_poe_level_up_grants_a_size_rolled_chest() -> void:
 			rolled.append(int(GameState.pending_chest_choices.back())))
 	# A BEATEN report, because a missed one can end the run under the level-up: the
 	# bodies swing, and `_apply_level_up` is skipped once GameLoop2.run_over.
-	_report_beat(_ui)
+	Page.report_beat(_ui)
 	assert_false(GameLoop2.run_over, "the run is still on, so the level was takeable")
 	assert_false(rolled.is_empty(), "Poe's level-up banks a chest")
 	if rolled.is_empty():
@@ -1321,8 +1231,8 @@ func test_poe_level_up_grants_a_size_rolled_chest() -> void:
 	assert_not_null(_ui._post_screen, "the report ends on the haul screen")
 	assert_gt(_ui._post_screen._chest_sections.size(), 0,
 		"and the level-up's chest is on it")
-	_leave_post_game()
-	_dismiss_event()
+	Page.leave_post_game(_ui)
+	Page.dismiss_event(_ui)
 
 # --- a completed goal sinks (§2.1) ------------------------------------------
 #
@@ -1514,7 +1424,7 @@ func _first_bashable_index() -> int:
 		var c: Dictionary = _ui._choices[i]
 		if bool(c.get("amulet", false)) or c.has("rift_key") or RunGraph.is_rift_game(c["slot"]):
 			continue
-		_set_kind(c, RunGraph.NodeKind.ENEMIES)
+		Page.set_kind(c, RunGraph.NodeKind.ENEMIES)
 		return i
 	return -1
 
@@ -1750,7 +1660,7 @@ func test_anchor_adds_a_try_on_top_of_the_grant() -> void:
 func test_shields_expire_when_the_game_is_reported() -> void:
 	_pick_enemies(0)
 	assert_gt(GameState.shields, 0)
-	_report_beat(_ui)
+	Page.report_beat(_ui)
 	assert_eq(GameState.shields, 0, "the armour belonged to that game")
 
 # --- the attempt tracker ---------------------------------------------------
@@ -1803,7 +1713,7 @@ func test_the_tracker_is_only_live_while_a_game_is_in_play() -> void:
 	assert_true(_ui._attempt_btn.disabled, "no game selected -> nothing to lose runs of")
 	_pick_enemies(0)
 	assert_false(_ui._attempt_btn.disabled, "a game in play -> the tracker is live")
-	_report_beat(_ui)
+	Page.report_beat(_ui)
 	assert_true(_ui._attempt_btn.disabled, "reported -> closed again")
 
 # CLEARING THE BOARD IS NOT REPORTING THE GAME. A wand that takes the last body
@@ -1856,7 +1766,7 @@ func test_every_offered_card_says_how_far_the_amulet_is() -> void:
 	for i in _ui._choices.size():
 		var card: Node = _ui._choices_row.get_child(i)
 		var hops: int = _ui.steps_to_amulet(StringName(_ui._choices[i].get("slot", &"")))
-		var text: String = _text_of(card)
+		var text: String = Page.text_of(card)
 		if hops > 0:
 			assert_string_contains(text,
 				"%d from the Amulet" % hops,
@@ -1898,7 +1808,7 @@ func test_the_distance_sits_over_the_cover_and_under_the_flag() -> void:
 # does not need to be told it is the inventory — the tokens are the label, and
 # the row it was spending is worth more to the board under it.
 func test_the_pack_has_no_heading() -> void:
-	var text: String = _text_of(_ui._inv_wrap)
+	var text: String = Page.text_of(_ui._inv_wrap)
 	assert_false(text.contains("Inventory"),
 		"nothing calls the pack anything: %s" % text)
 
@@ -1953,7 +1863,7 @@ func test_the_checklist_follows_a_reroll_of_the_board() -> void:
 	assert_false(GameLoop2.stack.is_empty(), "there is a body to re-roll")
 	_clear_board_except(int(GameLoop2.stack[0].get("instance", 0)))
 	_ui._populate_play_panel()
-	var before: String = _text_of(_ui._verify_box)
+	var before: String = Page.text_of(_ui._verify_box)
 	var names_before: Array = []
 	for entry in GameLoop2.stack:
 		names_before.append((entry["enemy"] as GoalEnemyData).display_name)
@@ -1961,7 +1871,7 @@ func test_the_checklist_follows_a_reroll_of_the_board() -> void:
 	if swapped <= 0:
 		pending("nothing else in this body's bucket for it to become")
 		return
-	var after: String = _text_of(_ui._verify_box)
+	var after: String = Page.text_of(_ui._verify_box)
 	var names_after: Array = []
 	for entry in GameLoop2.stack:
 		names_after.append((entry["enemy"] as GoalEnemyData).display_name)
@@ -2027,7 +1937,7 @@ func test_the_checklist_grows_a_row_for_a_body_conjured_mid_game() -> void:
 	_ui._refresh()
 	assert_eq(_bodies_listed(), rows_before + 1,
 		"what just walked on is something you can be asked about")
-	assert_string_contains(_text_of(_ui._verify_box), conjured.display_name)
+	assert_string_contains(Page.text_of(_ui._verify_box), conjured.display_name)
 
 # --- the note is asked for by the tick, not by a button on the row ----------
 #
@@ -2112,7 +2022,7 @@ func test_saying_no_to_the_tick_throws_the_note_away_with_it() -> void:
 
 func test_there_is_no_emphasised_goal_row() -> void:
 	_pick_enemies(0)
-	var text: String = _text_of(_ui._verify_box)
+	var text: String = Page.text_of(_ui._verify_box)
 	assert_false(text.contains("Goal —"),
 		"no box claims to be the game's own goal: %s" % text)
 	assert_false(text.contains("Also cleared"),
@@ -2128,7 +2038,7 @@ func test_beating_the_game_clears_nothing_by_itself() -> void:
 	_disarm_board()
 	var before: int = GameLoop2.stack.size()
 	assert_gt(before, 0, "something walked on")
-	_shut_failure_tap()
+	Fixtures.shut_failure_tap()
 	_ui.report(true)                      # completed, ticked nothing
 	# Less what the ROAD stood up as the game ended (§19.5, `end_spawns`): those
 	# are new bodies, and this is a claim about the ones that were already there.
@@ -2345,8 +2255,8 @@ func test_the_popup_shows_the_shields_the_game_grants() -> void:
 	# cover and the name now — this is one of the facts that moved into the popup.
 	var modal = _ui.open_choice(0)
 	var grant: int = GameLoop2.shields_for_game(_ui._choices[0]["game"])
-	assert_true(_text_of(modal).contains(GameState.temp_shields_text(grant)),
-		"the popup states the game's shield grant: %s" % _text_of(modal))
+	assert_true(Page.text_of(modal).contains(GameState.temp_shields_text(grant)),
+		"the popup states the game's shield grant: %s" % Page.text_of(modal))
 
 # --- the HUD carries the player, and only the player -----------------------
 #
@@ -2541,7 +2451,7 @@ func test_the_choosing_verbs_sit_under_the_offering() -> void:
 	GameState.scramble = 3
 	GameState.dash_charges = 1
 	_ui._refresh_stats()
-	var text: String = _text_of(_ui._select_stats)
+	var text: String = Page.text_of(_ui._select_stats)
 	for want in ["Bash 2", "Dash 1", "Transmute 1", "Scramble 3"]:
 		assert_true(text.contains(want), "%s is under the offering: %s" % [want, text])
 	# And it is genuinely inside the offering panel, not merely built.
@@ -2563,7 +2473,7 @@ func test_the_board_draws_its_own_verbs_and_tier() -> void:
 		RunDifficulty.tier_name(RunDifficulty.current_tier())),
 		"and the pressure bar carries the tier: %s" % _ui._board._size_label.text)
 	# Nothing in the overworld's own chip row repeats them.
-	var chips: String = _text_of(_ui._select_stats)
+	var chips: String = Page.text_of(_ui._select_stats)
 	for dup in ["Push", "Bombs", "Tier"]:
 		assert_false(chips.contains(dup), "%s isn't drawn twice: %s" % [dup, chips])
 
@@ -2598,9 +2508,9 @@ func test_loot_lives_in_its_own_window_beside_the_pack() -> void:
 	GameState.add_scroll_loot(&"scroll_of_teleportation")
 	_ui._refresh_items()
 	assert_true(_ui._inv_wrap.is_ancestor_of(_ui._items_box), "the relics are still a strip")
-	assert_false(_text_of(_ui._items_box).contains("Read"),
+	assert_false(Page.text_of(_ui._items_box).contains("Read"),
 		"and the strip is relics only — loot is not on it")
-	var toggle: String = _text_of(_ui._loot_toggle_box)
+	var toggle: String = Page.text_of(_ui._loot_toggle_box)
 	assert_true(toggle.contains("Loot"), "the toggle says what it opens: %s" % toggle)
 	assert_true(toggle.contains("1/%d" % GameState.LOOT_CAPACITY),
 		"and how full the pack is: %s" % toggle)
@@ -2628,7 +2538,7 @@ func test_the_loot_window_opens_onto_a_full_3x3_over_the_left_column() -> void:
 	# they are what keeps it a grid rather than a row that wraps.
 	assert_eq(grid.get_child_count(), GameState.LOOT_CAPACITY,
 		"nine slots whatever is in them")
-	var text: String = _text_of(_ui._loot_panel)
+	var text: String = Page.text_of(_ui._loot_panel)
 	assert_true(text.contains("Use"), "each carried piece can be spent from here: %s" % text)
 	assert_true(text.contains("Unidentified Pill"),
 		"an unlearned colour says only what it looks like: %s" % text)
@@ -2808,8 +2718,8 @@ func test_the_whole_cell_is_what_follows_the_cursor() -> void:
 		"and it is a whole cell — a panel, not a loose texture")
 	assert_eq(body.size.x, float(LootSlot.CELL_W),
 		"at the size the slot draws one, so it covers the slot it is aimed at")
-	assert_true(_text_of(preview).contains(LootSystem.display_name(GameState.loot_items[0])),
-		"carrying the piece's name with it: %s" % _text_of(preview))
+	assert_true(Page.text_of(preview).contains(LootSystem.display_name(GameState.loot_items[0])),
+		"carrying the piece's name with it: %s" % Page.text_of(preview))
 	# A real drag hands this to the viewport, which owns it from then on; built here
 	# it belongs to nobody, so this test has to be the one to take it away.
 	preview.free()
@@ -3016,7 +2926,7 @@ func test_taking_a_pill_says_what_it_did_before_it_closes() -> void:
 	modal._on_read()
 	await wait_frames(2)
 	assert_true(is_instance_valid(modal), "the outcome is on a screen, not only in the log")
-	assert_string_contains(_text_of(modal).to_lower(), "health",
+	assert_string_contains(Page.text_of(modal).to_lower(), "health",
 		"and it names what happened")
 	assert_string_contains(_log_since(log_from), "Health",
 		"which is the same thing the log got")
@@ -3032,7 +2942,7 @@ func test_learning_a_capsule_is_said_where_the_player_is_looking() -> void:
 	var modal = preload("res://scripts/redesign2/LootUseModal.gd").new()
 	modal.start(_ui, 0, _ui)
 	await wait_frames(2)
-	var before: String = _text_of(modal)
+	var before: String = Page.text_of(modal)
 	assert_true(before.contains("Unidentified"),
 		"it goes in a gamble: %s" % before.substr(0, 80))
 	modal._on_read()
@@ -3107,7 +3017,7 @@ func test_a_piece_that_does_nothing_at_all_still_says_so() -> void:
 	await wait_frames(2)
 	assert_true(is_instance_valid(modal),
 		"the report puts the outcome on a screen rather than closing on it")
-	assert_string_contains(_text_of(modal).to_lower(), "nothing happens",
+	assert_string_contains(Page.text_of(modal).to_lower(), "nothing happens",
 		"and the empty case is stated rather than passing in silence")
 	modal._finish()
 
@@ -3478,7 +3388,7 @@ func test_a_payout_of_several_pieces_asks_about_all_of_them_at_once() -> void:
 	var modal := LootDropModal.open(_ui, offers)
 	await wait_frames(2)
 	assert_eq(modal._offers.size(), 4, "all four are on the table")
-	var text: String = _text_of(modal)
+	var text: String = Page.text_of(modal)
 	assert_true(text.contains("4"), "and the screen says so: %s" % text.substr(0, 80))
 	modal.leave()
 
@@ -3533,7 +3443,7 @@ func test_the_reward_screen_carries_the_same_record_the_window_does() -> void:
 	PillSystem.identify(&"luck_up")
 	var modal := LootDropModal.open(_ui, {"type": "scroll", "id": &"scroll_of_fire"})
 	await wait_frames(2)
-	var text: String = _text_of(modal)
+	var text: String = Page.text_of(modal)
 	assert_true(text.contains("Known this run"),
 		"the reward screen carries the record too: %s" % text.substr(0, 120))
 	modal.leave()
@@ -3547,7 +3457,7 @@ func test_the_record_is_one_fold_shared_by_both_surfaces() -> void:
 		"the window's own name for it writes through to the shared flag")
 	var modal := LootDropModal.open(_ui, {"type": "scroll", "id": &"scroll_of_fire"})
 	await wait_frames(2)
-	assert_true(_text_of(modal).contains("▾"),
+	assert_true(Page.text_of(modal).contains("▾"),
 		"so the reward screen opens it unfolded too")
 	modal.leave()
 	LootDiscoveries.open = false
@@ -3616,7 +3526,7 @@ func test_the_loot_toggle_carries_the_count_and_says_when_it_is_full() -> void:
 	for i in range(GameState.LOOT_CAPACITY):
 		GameState.add_pill_loot(&"luck_up")
 	_ui._refresh_items()
-	var text: String = _text_of(_ui._loot_toggle_box)
+	var text: String = Page.text_of(_ui._loot_toggle_box)
 	assert_true(text.contains("9/9"), "the toggle carries the count: %s" % text)
 	var btn: Button = null
 	for c in _ui._loot_toggle_box.get_children():
@@ -3662,7 +3572,7 @@ func test_the_window_records_what_the_run_has_learned() -> void:
 	_ui._loot_window.open = true
 	_ui._loot_window.discoveries_open = true
 	_ui._refresh_items()
-	var text: String = _text_of(_ui._loot_panel)
+	var text: String = Page.text_of(_ui._loot_panel)
 	assert_true(text.contains("Known this run"), "the fold is there: %s" % text)
 	var learned: PillData = Data.get_pill(&"luck_up")
 	assert_true(text.contains(learned.display_name),
@@ -3676,7 +3586,7 @@ func test_the_window_counts_unlearned_colours_rather_than_naming_them() -> void:
 	_ui._loot_window.open = true
 	_ui._loot_window.discoveries_open = true
 	_ui._refresh_items()
-	var text: String = _text_of(_ui._loot_panel)
+	var text: String = Page.text_of(_ui._loot_panel)
 	var unknown: PillData = Data.get_pill(&"bad_trip")
 	if unknown != null and not PillSystem.is_identified(&"bad_trip"):
 		assert_false(text.contains(unknown.display_name),
@@ -3731,7 +3641,7 @@ func test_the_map_opens_from_the_header_while_a_game_is_in_play() -> void:
 	assert_true(_ui._header_map_btn.visible, "and the button is still there")
 	var modal = _ui.open_map()
 	assert_not_null(modal, "which opens the map from inside the game")
-	_leave_post_game()
+	Page.leave_post_game(_ui)
 
 # The header's mid-game map must not star the last offering's cards: those three
 # games are not on offer any more, and the map's whole job is where you go NEXT.
@@ -3742,7 +3652,7 @@ func test_the_mid_game_map_stars_nothing() -> void:
 	if modal != null:
 		assert_true((modal._choice_ids as Dictionary).is_empty(),
 			"no card is flagged while there is no offering: %s" % str(modal._choice_ids))
-	_leave_post_game()
+	Page.leave_post_game(_ui)
 
 # --- the run owns what it opens --------------------------------------------
 #
@@ -3784,11 +3694,11 @@ func test_reporting_a_game_takes_the_map_down_with_it() -> void:
 	_pick_enemies(0)
 	assert_not_null(_ui.open_map(), "the map opens mid-game")
 	assert_not_null(_ui._route_map)
-	_report_beat(_ui)
+	Page.report_beat(_ui)
 	_ui._end_resolve()
 	_ui._board.clear_fx()
 	assert_null(_ui._route_map, "and the haul screen is not opened underneath it")
-	_leave_post_game()
+	Page.leave_post_game(_ui)
 
 func test_travelling_takes_the_map_and_the_card_down_with_it() -> void:
 	assert_not_null(_ui.open_choice(0), "a card is open")
@@ -3796,7 +3706,7 @@ func test_travelling_takes_the_map_and_the_card_down_with_it() -> void:
 	_pick_enemies(0)
 	assert_null(_ui._route_map, "travelling clears the map")
 	assert_null(_ui._choice_modal, "and the card that described where you went")
-	_leave_post_game()
+	Page.leave_post_game(_ui)
 
 # `New run` used to drop a fresh run behind whatever was standing over the old
 # one — a card describing a game off an offering that no longer exists.
@@ -3990,9 +3900,9 @@ func test_the_title_and_the_menu_keep_the_right_edge_before_a_game_is_picked() -
 
 func test_the_road_walked_carries_only_games_the_run_has_reached() -> void:
 	_pick_enemies(0)
-	_report_beat(_ui)
+	Page.report_beat(_ui)
 	_ui._end_resolve()
-	_leave_post_game()
+	Page.leave_post_game(_ui)
 	_ui._refresh()
 	var walked: Array = GameState.walked_path()
 	var stops: Array = _ui.route_strip_stops()
@@ -4113,7 +4023,7 @@ func test_a_search_that_matches_nothing_says_the_games_are_still_there() -> void
 	_ui._dash_search = "zzzznosuchgamezzzz"
 	_ui._apply_dash_filter()
 	assert_eq(_ui._choices.size(), 0, "nothing matches")
-	var said: String = _text_of(_ui._choices_row)
+	var said: String = Page.text_of(_ui._choices_row)
 	assert_false(said.contains("dead end"),
 		"the road is not gone — the box is hiding it: %s" % said)
 	assert_string_contains(said, "clear the search",
@@ -4204,7 +4114,7 @@ func test_dashing_back_to_a_game_you_played_leaves_you_a_dash_up() -> void:
 	var before: int = GameState.dash_charges
 	_pick_enemies(0)
 	assert_eq(GameState.dash_charges, before - 1, "the trip itself cost a charge")
-	_report_beat(_ui)
+	Page.report_beat(_ui)
 	assert_eq(GameState.dash_charges, before + OVERWORLD.REPEAT_BEAT_DASH,
 		"and the clear pays the +%d the card advertised, on top of the fare"
 			% OVERWORLD.REPEAT_BEAT_DASH)
@@ -4216,7 +4126,7 @@ func test_walking_back_to_a_game_you_played_still_pays_exactly_one_dash() -> voi
 	var before: int = GameState.dash_charges
 	_pick_enemies(0)
 	assert_eq(GameState.dash_charges, before, "an ordinary pick costs nothing")
-	_report_beat(_ui)
+	Page.report_beat(_ui)
 	assert_eq(GameState.dash_charges, before + OVERWORLD.REPEAT_BEAT_DASH,
 		"so the clear is the only thing that moved the counter")
 
@@ -4292,7 +4202,7 @@ func test_a_curse_you_ticked_costs_nothing() -> void:
 		pending("the run did not reach this case (checks.is_empty())")
 		return
 	_tick(checks[0])                                 # "I didn't use a rest site"
-	_report_beat(_ui)
+	Page.report_beat(_ui)
 	# Less what the ROAD stood up as the game ended (§19.5, `end_spawns`): Amulet
 	# pressure stands bodies up near the goal whatever was ticked, and this is a
 	# claim about the curse's bill, not about the road.
@@ -4303,7 +4213,7 @@ func test_a_curse_you_ticked_costs_nothing() -> void:
 func test_a_curse_left_unticked_is_what_bites() -> void:
 	GameState.add_curse_goal(&"poor_sleep")
 	_arrange_a_plain_curse_game()
-	_report_beat(_ui)                       # the row left exactly as it opened
+	Page.report_beat(_ui)                       # the row left exactly as it opened
 	# Less the road's own spawns as the game ended (§19.5), as above.
 	var walked: int = int(GameLoop2.last_result.get("end_spawns", 0))
 	assert_eq(GameLoop2.stack_size() - walked, 1,
@@ -4714,18 +4624,18 @@ func _rating_modal():
 
 func test_reporting_a_game_never_pops_the_rating_modal() -> void:
 	_pick_enemies(0)
-	_report_beat(_ui)
+	Page.report_beat(_ui)
 	assert_null(_rating_modal(), "finishing a game doesn't force the rating prompt")
 
 func test_the_played_game_is_remembered_and_its_card_carries_the_rate_button() -> void:
 	var played: GameData = _ui._choices[0]["game"]
 	_pick_enemies(0)
-	_report_beat(_ui)
+	Page.report_beat(_ui)
 	assert_eq(_ui._last_played_game, played, "the reported game is remembered for rating")
 	# The offering's controls row no longer offers it: ★ Rate lives on the card a
 	# game opens, for the game on that card.
-	assert_false(_text_of(_ui._controls_row).contains("Rate"),
-		"no Rate button over the offering: %s" % _text_of(_ui._controls_row))
+	assert_false(Page.text_of(_ui._controls_row).contains("Rate"),
+		"no Rate button over the offering: %s" % Page.text_of(_ui._controls_row))
 	# Pressing the page's own prompt still opens the modal.
 	_ui._prompt_rating(played)
 	var modal: Control = _rating_modal()
@@ -4761,7 +4671,7 @@ func test_first_clear_records_the_game_and_grants_no_dash() -> void:
 	var dash_before: int = GameState.dash_charges
 	var lifetime_before: int = GameStats.beaten_count(played.id)
 	_pick_enemies(0)
-	_report_beat(_ui)
+	Page.report_beat(_ui)
 	assert_true(GameState.has_beaten_game(played.id), "the clear is banked on the run")
 	assert_eq(GameState.dash_charges, dash_before, "a first clear pays nothing extra")
 	assert_eq(GameStats.beaten_count(played.id), lifetime_before + 1,
@@ -4777,7 +4687,7 @@ func test_going_back_to_a_game_and_beating_it_grants_a_dash() -> void:
 	assert_true(bool(_ui._choices[0]["repeat"]), "the card is flagged as a return")
 	var dash_before: int = GameState.dash_charges
 	_pick_enemies(0)
-	_report_beat(_ui)
+	Page.report_beat(_ui)
 	assert_eq(GameState.dash_charges, dash_before + _ui.REPEAT_BEAT_DASH,
 		"going back and beating it granted a Dash")
 
@@ -4792,7 +4702,7 @@ func test_the_return_dash_asks_only_that_you_went_there_before() -> void:
 	assert_true(bool(_ui._choices[0]["repeat"]), "and the card still flags the return")
 	var dash_before: int = GameState.dash_charges
 	_pick_enemies(0)
-	_report_beat(_ui)
+	Page.report_beat(_ui)
 	assert_eq(GameState.dash_charges, dash_before + _ui.REPEAT_BEAT_DASH,
 		"beating it this time pays, even though last time did not")
 
@@ -4864,32 +4774,20 @@ func _body_row_index() -> int:
 		return -1
 	return _row_index(GameLoop2.entry_goal(GameLoop2.stack[0]))
 
-func _text_of(node: Node) -> String:
-	var out: String = ""
-	if node is Label:
-		out += (node as Label).text + "\n"
-	elif node is Button:
-		out += (node as Button).text + "\n"
-	elif node is RichTextLabel:
-		out += (node as RichTextLabel).get_parsed_text() + "\n"
-	for c in node.get_children():
-		out += _text_of(c)
-	return out
-
 func test_the_popup_shows_the_dash_bonus_for_a_repeat() -> void:
 	var target: GameData = _ui._choices[0]["game"]
 	GameState.note_game_played(target.id)
 	_ui._build_choices()
 	_ui._render_choices()
 	var bonus: String = "⚡ Gain +%d Dash" % _ui.REPEAT_BEAT_DASH
-	assert_true(_text_of(_ui.open_choice(0)).contains(bonus),
+	assert_true(Page.text_of(_ui.open_choice(0)).contains(bonus),
 		"the popup says what going back and beating it grants")
 	_ui._choice_modal._close()
 	# A game the run has not been to says nothing about it.
 	GameState.played_games.clear()
 	_ui._build_choices()
 	_ui._render_choices()
-	assert_false(_text_of(_ui.open_choice(0)).contains(bonus),
+	assert_false(Page.text_of(_ui.open_choice(0)).contains(bonus),
 		"and nothing about it on a game you have never been to")
 
 # --- revisiting a game offers a different draw -----------------------------
@@ -4942,9 +4840,9 @@ func test_the_verb_chips_follow_a_gain_without_a_loop_resolve() -> void:
 	# Dash sits under the offering now rather than on the HUD, but it has to move
 	# for the same reason the HUD's numbers do: an item off a drop or a chest can
 	# hand you a charge between one frame and the next.
-	var before: String = _text_of(_ui._select_stats)
+	var before: String = Page.text_of(_ui._select_stats)
 	GameState.grant_run_stat("dash", 2)      # emits stats_changed, no loop tick
-	var after: String = _text_of(_ui._select_stats)
+	var after: String = Page.text_of(_ui._select_stats)
 	assert_ne(after, before, "the chips repaint off the stat change")
 	assert_true(after.contains("Dash %d" % GameState.dash_charges),
 		"showing the new Dash count: %s" % after)
@@ -5017,7 +4915,7 @@ func _first_bashable() -> int:
 		var c: Dictionary = _ui._choices[i]
 		if bool(c["amulet"]) or c.has("rift_key") or RunGraph.is_rift_game(c["slot"]):
 			continue
-		_set_kind(c, RunGraph.NodeKind.ENEMIES)
+		Page.set_kind(c, RunGraph.NodeKind.ENEMIES)
 		return i
 	return 0
 
@@ -5326,14 +5224,14 @@ func test_a_champion_node_cannot_be_bashed() -> void:
 	if idx < 0 or _ui._choices.size() <= 1:
 		pending("nothing on this offering could be bashed at all")
 		return
-	_set_kind(_ui._choices[idx], RunGraph.NodeKind.CHAMPION)
+	Page.set_kind(_ui._choices[idx], RunGraph.NodeKind.CHAMPION)
 	var slot: StringName = StringName(_ui._choices[idx]["slot"])
 	GameState.bash = 1
 	assert_false(_ui.bash_choice(idx), "the bash is refused")
 	assert_eq(GameState.bash, 1, "the charge is not spent")
 	assert_false(GameLoop2.is_bashed(slot), "and the Champion node is still on the road")
 	# The same card as an Enemies node goes, so it was the KIND that refused it.
-	_set_kind(_ui._choices[idx], RunGraph.NodeKind.ENEMIES)
+	Page.set_kind(_ui._choices[idx], RunGraph.NodeKind.ENEMIES)
 	assert_true(_ui.bash_choice(idx), "an Enemies node on the same slot can be bashed")
 
 func test_an_armed_bash_stays_up_after_aiming_at_a_champion() -> void:
@@ -5342,7 +5240,7 @@ func test_an_armed_bash_stays_up_after_aiming_at_a_champion() -> void:
 	if idx < 0:
 		pending("nothing on this offering could be bashed at all")
 		return
-	_set_kind(_ui._choices[idx], RunGraph.NodeKind.CHAMPION)
+	Page.set_kind(_ui._choices[idx], RunGraph.NodeKind.CHAMPION)
 	GameState.bash = 1
 	_ui.arm_bash()
 	_ui.open_choice(idx)
@@ -5356,7 +5254,7 @@ func test_a_champion_node_can_still_be_scrambled() -> void:
 		return
 	for c in _ui._choices:
 		if not bool(c.get("amulet", false)):
-			_set_kind(c, RunGraph.NodeKind.CHAMPION)
+			Page.set_kind(c, RunGraph.NodeKind.CHAMPION)
 	GameState.scramble = 1
 	assert_true(_ui.scramble(), "the offering redraws with a Champion on it")
 	assert_eq(GameState.scramble, 0, "and the charge is spent")
@@ -5939,8 +5837,8 @@ func test_the_board_plays_then_the_haul_and_the_offering_waits_for_both() -> voi
 	_pick_solo(0)
 	_quiet_report()
 	await _playback_done()                    # let the first playback finish
-	_leave_post_game()                        # …and walk off its haul, as a player does
-	_dismiss_event()
+	Page.leave_post_game(_ui)                        # …and walk off its haul, as a player does
+	Page.dismiss_event(_ui)
 	assert_eq(GameLoop2.stack_size(), 1, "the miss left an enemy standing on the board")
 	assert_false(_ui._resolving, "and its own playback is done before the real test")
 
@@ -5959,7 +5857,7 @@ func test_the_board_plays_then_the_haul_and_the_offering_waits_for_both() -> voi
 	assert_false(_ui._resolving, "which finishes on its own, with nothing to press")
 	assert_not_null(_ui._post_screen, "and THEN the haul lands")
 	assert_false(_ui._select_box.visible, "with the offering still behind it")
-	_leave_post_game()
+	Page.leave_post_game(_ui)
 	assert_true(_ui._select_box.visible, "walking off the haul is what deals the table")
 
 func test_the_end_of_run_screen_is_what_the_playback_still_holds_back() -> void:
@@ -6102,7 +6000,7 @@ func test_beating_the_amulet_game_wins_the_run() -> void:
 	assert_gt(idx, -1, "the Amulet is offered once it's reachable")
 	assert_true(bool(_ui._choices[idx]["amulet"]), "and the card knows what it is")
 	_pick_enemies(idx)
-	_report_beat(_ui)                          # the goal is met — that's the run
+	Page.report_beat(_ui)                          # the goal is met — that's the run
 	assert_true(GameLoop2.run_over, "clearing the Amulet game ends the run")
 	assert_true(GameLoop2.won, "as a win")
 	_ui._end_resolve()                        # the board finishes its playback
@@ -6121,7 +6019,7 @@ func test_the_win_is_banked_on_the_amulet_game() -> void:
 	var amulet: StringName = GameState.amulet_game_id
 	var wins_before: int = GameStats.amulet_wins(amulet)
 	_pick_enemies(idx)
-	_report_beat(_ui)
+	Page.report_beat(_ui)
 	assert_eq(GameStats.amulet_wins(amulet), wins_before + 1,
 		"the game you won on carries the crown afterwards")
 
@@ -6159,7 +6057,7 @@ func test_the_win_is_banked_even_when_the_amulet_goal_was_missed() -> void:
 func test_the_amulet_report_says_the_goal_is_a_bonus() -> void:
 	var idx: int = _offer_the_amulet_next_door()
 	_pick_enemies(idx)
-	var said: String = _text_of(_ui._verify_box)
+	var said: String = Page.text_of(_ui._verify_box)
 	assert_true(said.contains("bonus"),
 		"the Amulet's goal row is marked a bonus: %s" % said)
 	assert_true(said.contains("Completing this game wins the run"),
@@ -6427,7 +6325,7 @@ func test_the_popup_states_the_pace_the_game_puts_you_on() -> void:
 	for i in range(_ui._choices.size()):
 		var note: Dictionary = _ui.turn_note(_ui._choices[i])
 		var said: String = String(note["text"])
-		var text: String = _text_of(_ui.open_choice(i))
+		var text: String = Page.text_of(_ui.open_choice(i))
 		if said == "":
 			assert_false(text.contains("per game"),
 				"choice %d costs nothing, so it carries no pace row: %s" % [i, text])
@@ -7469,7 +7367,7 @@ func _haul() -> PostCombatScreen:
 func test_the_haul_screen_says_which_report_this_was() -> void:
 	_pick_enemies(0)
 	var played: GameData = _ui._chosen.get("game")
-	_report_beat(_ui)
+	Page.report_beat(_ui)
 	_ui._end_resolve()
 	var screen := _haul()
 	assert_not_null(screen)
@@ -7483,21 +7381,21 @@ func test_the_haul_screen_says_which_report_this_was() -> void:
 	if fill != null:
 		assert_true(fill.label.trim_suffix("…") in played.display_name,
 			"which names the game: %s" % fill.label)
-	_leave_post_game()
+	Page.leave_post_game(_ui)
 
 func test_a_missed_goal_and_a_walk_away_read_differently() -> void:
 	_pick_enemies(0)
 	_ui.report(false)
 	_ui._end_resolve()
 	assert_eq(_haul().verdict(), "missed", "played it, goal unmet")
-	_leave_post_game()
-	_dismiss_event()
+	Page.leave_post_game(_ui)
+	Page.dismiss_event(_ui)
 	_clear_board()
 	_pick_enemies(0)
 	_ui.report(false, [], true)                  # escaped
 	_ui._end_resolve()
 	assert_eq(_haul().verdict(), "escaped", "walked away from it")
-	_leave_post_game()
+	Page.leave_post_game(_ui)
 
 # ==========================================================================
 # Why the chest is the size it is (§8.2)
@@ -7513,7 +7411,7 @@ func test_a_missed_goal_and_a_walk_away_read_differently() -> void:
 func test_the_chest_sum_starts_with_the_point_the_win_is_worth() -> void:
 	_clear_board()
 	_pick_enemies(0)
-	_report_beat(_ui)
+	Page.report_beat(_ui)
 	_ui._end_resolve()
 	var screen := _haul()
 	assert_not_null(screen)
@@ -7525,15 +7423,15 @@ func test_the_chest_sum_starts_with_the_point_the_win_is_worth() -> void:
 		"and it opens with the point the win is worth on its own")
 	assert_eq(int(terms[0].get("points", 0)), 1)
 	assert_null(terms[0].get("enemy"), "which has no face behind it")
-	_leave_post_game()
-	_dismiss_event()
+	Page.leave_post_game(_ui)
+	Page.dismiss_event(_ui)
 
 # Every body that paid appears, worth its own difficulty — and the terms ADD UP to
 # the chest the player was actually handed. That is the whole point of showing the
 # arithmetic: a breakdown that did not total the payout would be worse than none.
 func test_the_chest_sum_adds_up_to_the_chest_it_explains() -> void:
 	_pick_enemies(0)
-	_report_beat(_ui)
+	Page.report_beat(_ui)
 	_ui._end_resolve()
 	var screen := _haul()
 	assert_not_null(screen)
@@ -7555,10 +7453,10 @@ func test_the_chest_sum_adds_up_to_the_chest_it_explains() -> void:
 		"the line reads as a sum: %s" % screen.chest_reason())
 	# And the row SAYS what it is totalling. A line of faces and numbers is
 	# arithmetic without a subject until something names the quantity.
-	assert_string_contains(_text_of(screen).to_upper(), "ITEM CHEST SIZE",
+	assert_string_contains(Page.text_of(screen).to_upper(), "ITEM CHEST SIZE",
 		"the sum is labelled")
-	_leave_post_game()
-	_dismiss_event()
+	Page.leave_post_game(_ui)
+	Page.dismiss_event(_ui)
 
 # No chest, no explanation. A missed goal and a walk-away bank nothing from the
 # bodies (§8.2), so there is no size to justify and the section is not drawn.
@@ -7572,15 +7470,15 @@ func test_a_report_that_earns_no_chest_explains_nothing() -> void:
 		return
 	assert_true(screen.chest_terms().is_empty(), "a missed goal buys no chest")
 	assert_eq(screen.chest_reason(), "", "so it has nothing to explain")
-	_leave_post_game()
-	_dismiss_event()
+	Page.leave_post_game(_ui)
+	Page.dismiss_event(_ui)
 
 # ★ RATE MOVED HERE from the play panel's checklist, where it offered the score
 # while the game was still in front of the player. It sits beside the cover now.
 func test_the_haul_screen_carries_the_rate_button() -> void:
 	_pick_enemies(0)
 	var played: GameData = _ui._chosen.get("game")
-	_report_beat(_ui)
+	Page.report_beat(_ui)
 	_ui._end_resolve()
 	var screen := _haul()
 	assert_not_null(screen)
@@ -7594,8 +7492,8 @@ func test_the_haul_screen_carries_the_rate_button() -> void:
 	if rate != null and played != null:
 		assert_string_contains(rate.tooltip_text, played.display_name,
 			"for the game that just ended")
-	_leave_post_game()
-	_dismiss_event()
+	Page.leave_post_game(_ui)
+	Page.dismiss_event(_ui)
 
 # …and the play panel does NOT, which is the other half of the move. Asserted
 # while a game is in play and BEFORE any haul screen exists: the screen mounts its
@@ -7619,7 +7517,7 @@ func test_the_play_panel_no_longer_asks_for_a_score_mid_game() -> void:
 # the animation had played them: what it cost you, and what is still on your tail.
 func test_the_haul_screen_carries_the_fight_in_numbers() -> void:
 	_pick_enemies(0)
-	_report_beat(_ui)
+	Page.report_beat(_ui)
 	_ui._end_resolve()
 	var screen := _haul()
 	assert_not_null(screen)
@@ -7630,7 +7528,7 @@ func test_the_haul_screen_carries_the_fight_in_numbers() -> void:
 		keys.append(String(row[0]))
 	for expected in ["Damage taken", "Health", "Goals cleared", "Still following", "Difficulty"]:
 		assert_true(keys.has(expected), "the tally says %s: %s" % [expected, keys])
-	_leave_post_game()
+	Page.leave_post_game(_ui)
 
 # THE WAY OUT IS THE EVENT. The event used to be dropped on the player the moment
 # the board stopped; it is now behind a button, so leaving the haul is what opens
@@ -7658,7 +7556,7 @@ func test_the_way_out_names_the_event_and_is_what_opens_it() -> void:
 	screen.dismiss()
 	assert_not_null(_ui._event_modal, "and pressing it is what opens the event")
 	_ui._post_screen = null
-	_dismiss_event()
+	Page.dismiss_event(_ui)
 
 func test_the_way_out_says_travel_on_when_nothing_is_waiting() -> void:
 	# Built with nothing pending rather than reported into: an event fires after
@@ -7678,7 +7576,7 @@ func test_the_way_out_says_travel_on_when_nothing_is_waiting() -> void:
 # shows what is left; the button only names where it goes.
 func test_the_way_out_does_not_print_a_count_beside_the_follower_tally() -> void:
 	_pick_enemies(0)
-	_report_beat(_ui)
+	Page.report_beat(_ui)
 	_ui._end_resolve()
 	var screen := _haul()
 	assert_not_null(screen)
@@ -7687,14 +7585,14 @@ func test_the_way_out_does_not_print_a_count_beside_the_follower_tally() -> void
 	assert_not_null(screen.chest(), "there is a chest on the table")
 	assert_false(screen.exit_text().contains("leaving"),
 		"and the way out names a place, not a number: %s" % screen.exit_text())
-	_leave_post_game()
+	Page.leave_post_game(_ui)
 
 # The payout is a column of the same screen rather than a modal after it, and it
 # is the REAL one — the same live 3x3, the same bin, the same "use it where you
 # stand" — so a piece taken here lands in the pack exactly as it does anywhere.
 func test_the_payout_is_a_column_of_the_haul_screen() -> void:
 	_pick_enemies(0)
-	_report_beat(_ui)
+	Page.report_beat(_ui)
 	_ui._end_resolve()
 	var screen := _haul()
 	assert_not_null(screen)
@@ -7722,7 +7620,7 @@ func test_the_payout_is_a_column_of_the_haul_screen() -> void:
 	# that.
 	assert_not_null(screen.payout(),
 		"the payout column stays, with the pack it just filled still live on it")
-	_leave_post_game()
+	Page.leave_post_game(_ui)
 
 # EVERY CHEST AT ONCE, which is the point of the screen. They were drained one at
 # a time at first — a queue hides the thing a player most needs when several relics
@@ -7735,7 +7633,7 @@ func test_every_chest_the_report_dropped_is_on_the_screen_together() -> void:
 	_ui._drop_queue.append({"items": [Data.reward_item2_pool_of(0)[0]]})
 	_ui._drop_queue.append({"items": [Data.reward_item2_pool_of(1)[0],
 		Data.reward_item2_pool_of(2)[0]]})
-	_report_beat(_ui)
+	Page.report_beat(_ui)
 	_ui._end_resolve()
 	var screen := _haul()
 	assert_not_null(screen)
@@ -7752,14 +7650,14 @@ func test_every_chest_the_report_dropped_is_on_the_screen_together() -> void:
 	# Answering one leaves the others exactly where they were.
 	screen.chest().leave()
 	assert_eq(screen.chests_waiting(), mounted - 2, "the rest are untouched")
-	_leave_post_game()
+	Page.leave_post_game(_ui)
 
 # A relic is ALWAYS a picture. Both card layouts used to draw art only when
 # `item.image` was non-null, so an unarted row would come up as a name over a gap
 # on the screen where the player is deciding whether to take it.
 func test_every_relic_on_offer_is_drawn_with_a_picture() -> void:
 	_pick_enemies(0)
-	_report_beat(_ui)
+	Page.report_beat(_ui)
 	_ui._end_resolve()
 	var screen := _haul()
 	assert_not_null(screen)
@@ -7775,7 +7673,7 @@ func test_every_relic_on_offer_is_drawn_with_a_picture() -> void:
 					art = true
 			assert_true(art, "%s is drawn with its art" % card["item"].display_name)
 	assert_gt(cards, 0, "there was a relic on offer to check")
-	_leave_post_game()
+	Page.leave_post_game(_ui)
 
 # …and an item with NO art still draws something rather than a hole.
 func test_an_unarted_relic_draws_a_stand_in_rather_than_a_gap() -> void:
@@ -7797,7 +7695,7 @@ func test_an_unarted_relic_draws_a_stand_in_rather_than_a_gap() -> void:
 # reward was invisible until the player had already left.
 func test_a_chest_banked_while_the_screen_is_up_lands_on_it() -> void:
 	_pick_enemies(0)
-	_report_beat(_ui)
+	Page.report_beat(_ui)
 	_ui._end_resolve()
 	var screen := _haul()
 	assert_not_null(screen)
@@ -7814,13 +7712,13 @@ func test_a_chest_banked_while_the_screen_is_up_lands_on_it() -> void:
 		if c is RewardScreen:
 			found = c
 	assert_null(found, "no RewardScreen opened underneath it")
-	_leave_post_game()
+	Page.leave_post_game(_ui)
 
 # A test checking the shelf's item-card LAYER on the haul screen lived here. The
 # shelf is not on that screen any more (see
 # test_leaving_the_haul_screen_lands_the_shelf_under_the_board), so there is no
 # card of its own to raise — and the test was not earning its place anyway: it set
-# the hub up AFTER `_report_beat`, which already builds the screen in the same
+# the hub up AFTER `Page.report_beat`, which already builds the screen in the same
 # breath (§7.4), so `screen._shop` was null and its own guard returned early
 # without asserting. Its subject is covered where the shelf actually lands now.
 
@@ -7831,7 +7729,7 @@ func test_a_chest_banked_while_the_screen_is_up_lands_on_it() -> void:
 # decision that earned it.
 func test_loot_granted_on_the_screen_lands_on_its_own_table() -> void:
 	_pick_enemies(0)
-	_report_beat(_ui)
+	Page.report_beat(_ui)
 	_ui._end_resolve()
 	var screen := _haul()
 	assert_not_null(screen)
@@ -7847,7 +7745,7 @@ func test_loot_granted_on_the_screen_lands_on_its_own_table() -> void:
 	assert_eq(payout.remaining(), before + 2, "the grant is on the table already")
 	assert_eq(_ui._drop_queue.size(), queued,
 		"and nothing was queued behind the screen for later")
-	_leave_post_game()
+	Page.leave_post_game(_ui)
 
 # A run saved with a payout still queued has to come back. The queue holds EITHER
 # shape — one entry for a game's own payout, a whole handful for a relic's grant —
@@ -7883,7 +7781,7 @@ func test_leaving_the_haul_screen_lands_the_shelf_under_the_board() -> void:
 		return
 	# THE PAGE MAY ALREADY HAVE A SHOP ON IT. This bit when the shops stood at
 	# the ten hubs: `choose_start(0)` takes the first of a RANDOM offering, once in
-	# a while that was a node, and `_open_at_first_offering` then walked off its
+	# a while that was a node, and `Page.open_at_first_offering` then walked off its
 	# haul screen, which is precisely the thing that mounts a shelf. (The opening
 	# game is always an Enemies node now, §19.1, but the guard costs nothing.) The page arrives here with a
 	# shop already on it and `assert_null` below fails, on a run that did nothing
@@ -7924,7 +7822,7 @@ func test_leaving_the_haul_screen_lands_the_shelf_under_the_board() -> void:
 		_ui._shop_modal.close()
 	assert_eq(_ui._shop_here, node, "and the button stays for the rest of the visit")
 	assert_true(_ui._shop_btn.visible)
-	_dismiss_event()
+	Page.dismiss_event(_ui)
 
 # The boss warning is a banner on this screen rather than a sixth popup — a boss
 # round is announced between two games, and this screen is what stands between
@@ -7943,10 +7841,10 @@ func test_a_coming_capstone_warns_on_the_haul_screen_and_not_twice() -> void:
 	# defeated) it landed the capstone right here, before the screen that is
 	# meant to warn about it: the test failed about one run in two. Shut both
 	# taps, the way `_quiet_report` does.
-	_shut_failure_tap()
+	Fixtures.shut_failure_tap()
 	var amulet: StringName = GameState.amulet_game_id
 	GameState.amulet_game_id = &""
-	_report_beat(_ui)
+	Page.report_beat(_ui)
 	GameState.amulet_game_id = amulet
 	assert_true(_ui._boss_due_next(), "the run is one spawn from closing the band")
 	_ui._end_resolve()
@@ -7956,8 +7854,8 @@ func test_a_coming_capstone_warns_on_the_haul_screen_and_not_twice() -> void:
 		return
 	assert_eq(_ui._boss_notice_for, GameState.spawn_events,
 		"the band is marked announced by the screen")
-	_leave_post_game()
-	_dismiss_event()
+	Page.leave_post_game(_ui)
+	Page.dismiss_event(_ui)
 	_ui._maybe_announce_boss()
 	assert_null(_ui._boss_notice, "so no popup arrives afterwards to repeat it")
 
@@ -8629,7 +8527,7 @@ func test_the_hermit_lands_on_a_shop_node() -> void:
 			"it only fizzles on a map with no Shop node on it")
 	_ui._end_resolve()
 	_close_arrival_card()
-	_leave_post_game()
+	Page.leave_post_game(_ui)
 
 func test_the_hermit_takes_the_nearest_shop_and_no_further() -> void:
 	# "Nearest" is measured in ROADS. Asserted over the pool rather than over one
@@ -8707,7 +8605,7 @@ func test_a_card_can_stand_a_machine_up_with_a_game_in_play() -> void:
 	assert_not_null(_ui._object_panel, "the machine is on the page mid-game")
 	assert_eq(_machine_rows().size(), 1, "and it is pressable rather than drawn dead")
 	ObjectSystem.clear()
-	_leave_post_game()
+	Page.leave_post_game(_ui)
 
 func test_the_cards_machine_is_left_behind_when_the_run_travels_on() -> void:
 	GameState.add_card_loot(&"xiv_temperance")
@@ -8866,10 +8764,6 @@ func _bodies_listed() -> int:
 		n += maxi(1, (f.get("group", []) as Array).size())
 	return n
 
-func _report_beat(ui) -> void:
-	var landed: Dictionary = GameLoop2.arrival()
-	ui.report(true, [] if landed.is_empty() else [int(landed["instance"])])
-
 
 # ==========================================================================
 # Repaint guards
@@ -8896,20 +8790,20 @@ func test_every_verb_the_chips_draw_moves_them() -> void:
 	# is a value the rebuild reads and the signature forgot.
 	for verb in ["bash", "dash", "transmute", "scramble"]:
 		_ui._refresh_select_stats()
-		var before: String = _text_of(_ui._select_stats)
+		var before: String = Page.text_of(_ui._select_stats)
 		GameState.grant_run_stat(verb, 1)
 		_ui._refresh_select_stats()
-		assert_ne(_text_of(_ui._select_stats), before,
+		assert_ne(Page.text_of(_ui._select_stats), before,
 			"a +1 %s repaints the chips" % verb)
 
 func test_luck_moves_the_chips_even_though_no_verb_did() -> void:
 	# Luck is drawn from Stats rather than from a GameState field, and its own
 	# chip quotes the odds it changes — so it is the value most easily left out.
 	_ui._refresh_select_stats()
-	var before: String = _text_of(_ui._select_stats)
+	var before: String = Page.text_of(_ui._select_stats)
 	GameState.add_item(Data.get_item2(&"clover"))     # +1 Luck
 	_ui._refresh_select_stats()
-	var after: String = _text_of(_ui._select_stats)
+	var after: String = Page.text_of(_ui._select_stats)
 	assert_ne(after, before, "a Clover repaints the chips")
 	assert_true(after.contains("Luck %d" % Stats.get_value(&"luck")),
 		"showing the new Luck: %s" % after)
@@ -8937,7 +8831,7 @@ func test_the_standing_checklist_is_not_rebuilt_when_the_board_is_still() -> voi
 
 func test_a_body_arriving_repaints_the_standing_checklist() -> void:
 	_ui._populate_standing_checklist()
-	var before: String = _text_of(_ui._verify_box)
+	var before: String = Page.text_of(_ui._verify_box)
 	var e := GoalEnemyData.new()
 	e.id = &"guard_probe"
 	e.display_name = "Guard Probe"
@@ -8945,7 +8839,7 @@ func test_a_body_arriving_repaints_the_standing_checklist() -> void:
 	e.damage = 1
 	GameLoop2.spawn_to_stack(e)
 	_ui._populate_standing_checklist()
-	var after: String = _text_of(_ui._verify_box)
+	var after: String = Page.text_of(_ui._verify_box)
 	assert_ne(after, before, "the checklist noticed the arrival")
 	assert_true(after.contains("Guard Probe"), "and lists it: %s" % after)
 
@@ -8957,10 +8851,10 @@ func test_a_body_leaving_repaints_the_standing_checklist() -> void:
 	e.damage = 1
 	var inst: int = GameLoop2.spawn_to_stack(e)
 	_ui._populate_standing_checklist()
-	assert_true(_text_of(_ui._verify_box).contains("Guard Probe"), "it is listed first")
+	assert_true(Page.text_of(_ui._verify_box).contains("Guard Probe"), "it is listed first")
 	GameLoop2.despawn(inst)
 	_ui._populate_standing_checklist()
-	assert_false(_text_of(_ui._verify_box).contains("Guard Probe"),
+	assert_false(Page.text_of(_ui._verify_box).contains("Guard Probe"),
 		"and gone once it stops following")
 
 func test_the_report_step_hands_the_checklist_back_intact() -> void:
@@ -8969,18 +8863,18 @@ func test_the_report_step_hands_the_checklist_back_intact() -> void:
 	# signature describing rows the report step had already replaced, and leave the
 	# tick boxes on screen with no game in play.
 	_ui._populate_standing_checklist()
-	var standing: String = _text_of(_ui._verify_box)
+	var standing: String = Page.text_of(_ui._verify_box)
 	assert_true(standing.contains("Goals"), "the standing list is up")
 	_pick_enemies(0)
-	var playing: String = _text_of(_ui._verify_box)
+	var playing: String = Page.text_of(_ui._verify_box)
 	assert_true(playing.contains("Tick what you did"),
 		"the report step took the box over: %s" % playing)
-	_report_beat(_ui)
+	Page.report_beat(_ui)
 	_ui._end_resolve()
-	_leave_post_game()
-	assert_true(_text_of(_ui._verify_box).contains("Goals"),
+	Page.leave_post_game(_ui)
+	assert_true(Page.text_of(_ui._verify_box).contains("Goals"),
 		"and the standing list is back after the report")
-	assert_false(_text_of(_ui._verify_box).contains("Tick what you did"),
+	assert_false(Page.text_of(_ui._verify_box).contains("Tick what you did"),
 		"with the report step's header gone")
 
 # ---------------------------------------------------------------------------
@@ -9040,7 +8934,7 @@ func test_a_wand_in_the_pack_is_spendable_with_a_game_in_play() -> void:
 	assert_false(LootSystem.is_wand(GameState.loot_items[0]) \
 		and GameState.loot_items[0].get("charges", 0) == 0,
 		"and it has something in it")
-	_leave_post_game()
+	Page.leave_post_game(_ui)
 
 func test_a_usable_consumable_still_waits_for_the_report() -> void:
 	var usable: ItemData = null
@@ -9123,8 +9017,8 @@ func test_a_teleport_mid_game_escapes_the_game_and_then_moves_the_run() -> void:
 		assert_false(GameState.has_beaten_game(played.id),
 			"walking out on the loot's ticket still banks no beat")
 	_ui._end_resolve()
-	_leave_post_game()
-	_dismiss_event()
+	Page.leave_post_game(_ui)
+	Page.dismiss_event(_ui)
 
 # …AND THE BOARD DOES NOT FILL BEHIND YOU. The escape a teleport forces is a real
 # escape in every way but one: the game is still uncredited, the evening is still
@@ -9146,8 +9040,8 @@ func test_a_teleport_off_a_game_stands_nobody_up() -> void:
 	assert_eq(int(res.get("turns", -1)), 0, "and hands the board no turn either")
 	_ui._end_resolve()
 	_close_arrival_card()
-	_leave_post_game()
-	_dismiss_event()
+	Page.leave_post_game(_ui)
+	Page.dismiss_event(_ui)
 
 # RIDE THE BUS DOES THE SAME. It moves the run and it used to do it by hand —
 # `travel_to_game` set the phase back to SELECT and that was that — so a player
@@ -9186,7 +9080,7 @@ func test_riding_the_bus_mid_game_escapes_the_game_first() -> void:
 		assert_false(RunGraph.is_off_map(GameState.current_game_id),
 			"and the bus only stops at games that are ON the map")
 	_ui._end_resolve()
-	_leave_post_game()
+	Page.leave_post_game(_ui)
 
 # THE BUS RUNS ON THE ROADS. It used to draw from the whole 854-game catalogue,
 # which is not what a bus is: everything off the run's connected component is a
@@ -9218,7 +9112,7 @@ func test_the_bus_only_stops_at_games_on_the_map() -> void:
 		if GameState.current_game_id != before:
 			_ui._end_resolve()
 			_close_arrival_card()
-	_leave_post_game()
+	Page.leave_post_game(_ui)
 
 # Close the card an arrival raises, so the next thing a test does is not blocked
 # behind it. Harmless when there is none.
@@ -9270,8 +9164,8 @@ func test_an_arrival_opens_the_games_card_over_the_board() -> void:
 	assert_eq(_ui._phase, OVERWORLD.Phase.PLAYING, "closing the card changes nothing")
 	assert_eq(_ui._chosen.get("game"), landed_on, "the same game is still in play")
 	_ui._end_resolve()
-	_leave_post_game()
-	_dismiss_event()
+	Page.leave_post_game(_ui)
+	Page.dismiss_event(_ui)
 
 # An arrival card has NO WAY BACK, because there is nowhere to go back to: the
 # teleport already moved the run and already spawned what is waiting.
@@ -9299,9 +9193,9 @@ func test_the_arrival_card_offers_no_way_back() -> void:
 	assert_eq(plays, 1, "one button, and it only takes the card down: %s" % str(labels))
 	card._close()
 	_ui._end_resolve()
-	_leave_post_game()
-	_dismiss_event()
-	_dismiss_event()
+	Page.leave_post_game(_ui)
+	Page.dismiss_event(_ui)
+	Page.dismiss_event(_ui)
 
 # The identification half, which the escape above does not change: both systems
 # learn the piece before they ask the overworld for anything, so what the move
@@ -9358,11 +9252,11 @@ func test_the_offering_offers_no_rate_button_after_a_report() -> void:
 	# ★ Rate moved onto the card a game opens (GameChoiceModal); the controls row
 	# over the offering is for the verbs that act on the offering.
 	_pick_enemies(0)
-	_report_beat(_ui)
+	Page.report_beat(_ui)
 	_ui._end_resolve()
-	_leave_post_game()
+	Page.leave_post_game(_ui)
 	_ui._render_controls()
-	assert_false(_text_of(_ui._controls_row).contains("Rate"),
+	assert_false(Page.text_of(_ui._controls_row).contains("Rate"),
 		"the offering row does not ask for a score")
 
 func test_the_start_panel_empties_the_controls_row_for_good() -> void:
@@ -9695,14 +9589,14 @@ func test_reporting_the_game_sweeps_the_floor_onto_the_haul_screen() -> void:
 	_ui._drop_queue.clear()
 	_floor_loot(Vector2i(2, 1), &"one")
 	_floor_loot(Vector2i(3, 0), &"two")
-	_report_beat(_ui)
+	Page.report_beat(_ui)
 	assert_true(GameLoop2.drop_cells().is_empty(),
 		"the floor belonged to the game that was just handed in")
 	_ui._end_resolve()
 	assert_not_null(_ui._post_screen, "and what was on it went where every haul goes")
 	assert_gt(_ui._post_screen._loot.size(), 1, "both pieces, on one table")
-	_leave_post_game()
-	_dismiss_event()
+	Page.leave_post_game(_ui)
+	Page.dismiss_event(_ui)
 
 func test_loot_the_player_took_mid_game_is_not_swept_again() -> void:
 	_pick_solo(0)
@@ -9789,14 +9683,14 @@ func test_a_boss_chest_is_paid_either_way_and_stays_a_chest_of_its_own() -> void
 func test_the_report_s_chests_reach_the_haul_screen() -> void:
 	_pick_solo(0)
 	_ui._drop_queue.clear()
-	_report_beat(_ui)
+	Page.report_beat(_ui)
 	_ui._end_resolve()
 	assert_not_null(_ui._post_screen)
 	if _ui._post_screen != null:
 		assert_gt(_ui._post_screen._chest_sections.size(), 0,
 			"a beaten game arrives with at least the Small chest the win is worth")
-	_leave_post_game()
-	_dismiss_event()
+	Page.leave_post_game(_ui)
+	Page.dismiss_event(_ui)
 
 # --- a tick is a confirm, and a confirm resolves NOW (§2.1) -----------------
 #
@@ -9887,8 +9781,8 @@ func test_the_report_does_not_hit_a_body_twice_for_one_goal() -> void:
 	assert_lte(GameLoop2.stack_size() - walked, standing,
 		"and the report hit nothing that was already down")
 	_ui._end_resolve()
-	_leave_post_game()
-	_dismiss_event()
+	Page.leave_post_game(_ui)
+	Page.dismiss_event(_ui)
 
 func test_a_goal_answered_mid_game_still_engages_the_body_that_survived_it() -> void:
 	# An Alien-Baby-buffed body needs two clears, so one leaves it standing — and a
@@ -10026,8 +9920,8 @@ func test_the_review_note_is_written_on_yes() -> void:
 	assert_eq(GameStats.level_up_note(game.id, GameState.character_id),
 		"beat it on the third try", "the note went in with the report")
 	_ui._end_resolve()
-	_leave_post_game()
-	_dismiss_event()
+	Page.leave_post_game(_ui)
+	Page.dismiss_event(_ui)
 
 func test_the_review_note_is_dropped_on_no() -> void:
 	_reboot(&"zoe")
@@ -10123,7 +10017,7 @@ func test_the_haul_screen_says_what_the_level_up_paid() -> void:
 	_reboot(&"zoe")                          # +1 Dash, no chest
 	_pick_enemies(0)
 	_tick(_ui._levelup_check)
-	_report_beat(_ui)
+	Page.report_beat(_ui)
 	_ui._end_resolve()
 	assert_not_null(_ui._post_screen)
 	if _ui._post_screen == null:
@@ -10131,8 +10025,8 @@ func test_the_haul_screen_says_what_the_level_up_paid() -> void:
 	var text: String = str(_labels_under(_ui._post_screen))
 	assert_string_contains(text, "LEVELLED UP", "the haul screen says a level was taken")
 	assert_string_contains(text, "Dash", "and what it actually paid")
-	_leave_post_game()
-	_dismiss_event()
+	Page.leave_post_game(_ui)
+	Page.dismiss_event(_ui)
 
 # A LOOT reward goes onto the haul screen's own table rather than appearing in
 # the pack with nothing said. Rodney's level pays "1 Loot", and `grant_level_up`
@@ -10146,7 +10040,7 @@ func test_a_loot_level_up_reward_lands_on_the_haul_screen() -> void:
 		return
 	var carried: int = GameState.loot_items.size()
 	_tick(_ui._levelup_check)
-	_report_beat(_ui)
+	Page.report_beat(_ui)
 	assert_eq(GameState.loot_items.size(), carried,
 		"it is not shovelled into the pack behind the player's back")
 	_ui._end_resolve()
@@ -10155,21 +10049,21 @@ func test_a_loot_level_up_reward_lands_on_the_haul_screen() -> void:
 		return
 	assert_true(_ui._post_screen.has_loot_section(),
 		"it is on the table the haul screen offers")
-	_leave_post_game()
-	_dismiss_event()
+	Page.leave_post_game(_ui)
+	Page.dismiss_event(_ui)
 
 func test_a_report_with_no_level_up_says_nothing_about_one() -> void:
 	_reboot(&"zoe")
 	_pick_enemies(0)
-	_report_beat(_ui)                        # box left unticked
+	Page.report_beat(_ui)                        # box left unticked
 	_ui._end_resolve()
 	if _ui._post_screen == null:
 		pending("the run did not reach this case (_ui._post_screen == null)")
 		return
 	assert_false(str(_labels_under(_ui._post_screen)).contains("LEVELLED UP"),
 		"no level, no panel")
-	_leave_post_game()
-	_dismiss_event()
+	Page.leave_post_game(_ui)
+	Page.dismiss_event(_ui)
 
 # THE LEVEL-UP IS TAKEN AT THE REPORT, and only there. It asks about a run rather
 # than about the hour just spent, so the box arms while the game is on and handing
@@ -10186,11 +10080,11 @@ func test_the_level_up_is_taken_at_the_report_and_not_before() -> void:
 	assert_eq(GameState.dash_charges, dash_before,
 		"nothing landed mid-game — the row is armed, not answered")
 	assert_false(_ui._levelup_check.disabled, "and it can still be taken back")
-	_report_beat(_ui)
+	Page.report_beat(_ui)
 	assert_eq(GameState.dash_charges, dash_before + 1, "the report is what takes it")
 	_ui._end_resolve()
-	_leave_post_game()
-	_dismiss_event()
+	Page.leave_post_game(_ui)
+	Page.dismiss_event(_ui)
 
 func test_an_unticked_level_up_is_not_taken_at_the_report() -> void:
 	_reboot(&"zoe")
@@ -10201,12 +10095,12 @@ func test_an_unticked_level_up_is_not_taken_at_the_report() -> void:
 		return
 	_tick(_ui._levelup_check)
 	_ui._levelup_check.button_pressed = false      # thought better of it
-	_report_beat(_ui)
+	Page.report_beat(_ui)
 	assert_eq(GameState.dash_charges, dash_before,
 		"a row you took back is a row you did not claim")
 	_ui._end_resolve()
-	_leave_post_game()
-	_dismiss_event()
+	Page.leave_post_game(_ui)
+	Page.dismiss_event(_ui)
 
 func test_an_armed_winning_run_row_survives_the_checklist_being_rebuilt() -> void:
 	# The page rebuilds this list on every repaint. A tick the player made must not
@@ -10240,12 +10134,12 @@ func test_the_answered_rows_go_with_the_game() -> void:
 	# being handed in, and the next game asks again.
 	_tick(checks[0])
 	assert_true(GameLoop2.row_armed(key))
-	_report_beat(_ui)
+	Page.report_beat(_ui)
 	assert_false(GameLoop2.row_armed(key),
 		"what this game was answered for is not true of the next one")
 	_ui._end_resolve()
-	_leave_post_game()
-	_dismiss_event()
+	Page.leave_post_game(_ui)
+	Page.dismiss_event(_ui)
 
 func test_the_armed_rows_go_with_the_game_too() -> void:
 	# The winning-run half of the same rule. A tick is a claim about the game just
@@ -10256,12 +10150,12 @@ func test_the_armed_rows_go_with_the_game_too() -> void:
 		return
 	_tick(_ui._levelup_check)
 	assert_true(GameLoop2.row_armed("levelup"))
-	_report_beat(_ui)
+	Page.report_beat(_ui)
 	assert_false(GameLoop2.row_armed("levelup"),
 		"the next game asks the question again")
 	_ui._end_resolve()
-	_leave_post_game()
-	_dismiss_event()
+	Page.leave_post_game(_ui)
+	Page.dismiss_event(_ui)
 
 # --- the run's ledger of what is DONE ---------------------------------------
 #
@@ -10305,7 +10199,7 @@ func test_the_ledger_outlives_the_game_the_goal_was_done_at() -> void:
 		return
 	_tick(_ui._levelup_check)
 	var before: int = GameLoop2.completed_goals.size()
-	_report_beat(_ui)
+	Page.report_beat(_ui)
 	# A WINNING-RUN ROW IS BANKED AT THE REPORT, because that is where it resolves.
 	assert_gt(GameLoop2.completed_goals.size(), before,
 		"the level-up went onto the ledger when the game was handed in")
@@ -10317,8 +10211,8 @@ func test_the_ledger_outlives_the_game_the_goal_was_done_at() -> void:
 	assert_eq(GameLoop2.completed_goals.size(), done,
 		"…and the record of them does not — it is the RUN's")
 	_ui._end_resolve()
-	_leave_post_game()
-	_dismiss_event()
+	Page.leave_post_game(_ui)
+	Page.dismiss_event(_ui)
 
 func test_the_checklist_head_carries_the_count_and_opens_the_panel() -> void:
 	var btn: Button = _completed_button()
@@ -10903,7 +10797,7 @@ func test_an_unknown_piece_with_no_visible_effect_stays_unknown() -> void:
 	PillSystem.unidentify(&"luck_up")            # …and it stayed a mystery
 	modal._show_outcome()
 	await wait_frames(2)
-	var text: String = _text_of(modal)
+	var text: String = Page.text_of(modal)
 	assert_string_contains(text, "???", "the screen says it could not tell: %s" % text)
 	assert_false(text.to_lower().contains("luck"),
 		"and never names the piece it failed to identify: %s" % text)
@@ -10921,7 +10815,7 @@ func test_a_known_piece_that_does_nothing_says_nothing_happens() -> void:
 	modal._outcome_logs = []
 	modal._show_outcome()
 	await wait_frames(2)
-	var text: String = _text_of(modal)
+	var text: String = Page.text_of(modal)
 	assert_string_contains(text.to_lower(), "nothing happens",
 		"a known piece that no-ops says so plainly: %s" % text)
 	assert_false(text.contains("???"), "it is not a mystery: %s" % text)
@@ -11177,7 +11071,7 @@ func test_a_counted_goal_draws_a_counter_instead_of_a_tick_box() -> void:
 	assert_not_null(cb, "the body still has a row")
 	assert_false(cb.visible,
 		"a counted row's box is state, not a control — the counter is the control")
-	assert_string_contains(_text_of(_ui._verify_box), "0 / 3",
+	assert_string_contains(Page.text_of(_ui._verify_box), "0 / 3",
 		"the row opens at zero of three")
 	assert_eq(_count_buttons("+").size(), 1, "one + to press")
 	assert_eq(_count_buttons("−").size(), 1,
@@ -11201,7 +11095,7 @@ func test_pressing_plus_short_of_the_target_asks_nothing_and_spends_nothing() ->
 	# frame that would flush it — so the repaint is asked for by hand here, the
 	# same way `_make_front_body` does.
 	_ui._populate_play_panel()
-	assert_string_contains(_text_of(_ui._verify_box), "1 / 3",
+	assert_string_contains(Page.text_of(_ui._verify_box), "1 / 3",
 		"the row says so")
 
 func test_the_press_that_reaches_the_target_confirms_and_resolves() -> void:
@@ -11353,7 +11247,7 @@ func test_a_game_beaten_goal_is_in_the_completed_game_review() -> void:
 	var review: Control = _ui._checklist.winning_run_review()
 	assert_not_null(review, "there is a review to show")
 	var e: GoalEnemyData = GameLoop2.entry_for(inst)["enemy"]
-	assert_string_contains(_text_of(review), e.display_name,
+	assert_string_contains(Page.text_of(review), e.display_name,
 		"the body whose goal the win settles is in the review")
 	# …AND IT LEADS WITH THE BODY'S PORTRAIT, like every other row in there leads
 	# with the picture its checklist row leads with. Without this the mirrored row
@@ -11363,7 +11257,7 @@ func test_a_game_beaten_goal_is_in_the_completed_game_review() -> void:
 	var pictured := false
 	for line in review.get_children():
 		if line is HBoxContainer and not _texture_rects_under(line).is_empty() \
-				and _text_of(line).contains(e.display_name):
+				and Page.text_of(line).contains(e.display_name):
 			pictured = true
 	assert_true(pictured, "the mirrored row wears %s's own portrait" % e.display_name)
 
@@ -11474,7 +11368,7 @@ func test_the_board_warns_when_a_lost_run_could_bring_the_boss() -> void:
 	GameState.spawn_events = 0
 	_ui._board.refresh()
 	assert_false(_ui._board._boss_warning.visible, "and it is gone when the boss is further off")
-	_leave_post_game()
+	Page.leave_post_game(_ui)
 
 # ==========================================================================
 # The stream-clarity pass
@@ -11634,7 +11528,7 @@ func test_a_group_moves_on_from_a_body_that_survived_its_tick() -> void:
 func test_a_game_won_without_a_lost_run_is_perfected() -> void:
 	var game: GameData = _pick_as(RunGraph.NodeKind.ENEMIES)
 	var before: int = GameStats.perfect_count(game.id)
-	_report_beat(_ui)
+	Page.report_beat(_ui)
 	assert_eq(GameStats.perfect_count(game.id), before + 1,
 		"no lost run on this visit, and won: perfected")
 
@@ -11645,14 +11539,14 @@ func test_a_lost_run_on_the_visit_costs_the_perfect() -> void:
 	if GameLoop2.run_over:
 		pending("the lost run's turn ended the run")
 		return
-	_report_beat(_ui)
+	Page.report_beat(_ui)
 	assert_eq(GameStats.perfect_count(game.id), before, "won, but not perfectly")
 
 func test_the_haul_screen_fills_the_rank_from_where_the_game_was_picked() -> void:
 	var game: GameData = _pick_as(RunGraph.NodeKind.ENEMIES)
 	var start: int = GameRanks.xp(game.id)
 	assert_eq(int(GameLoop2.rank_start.get("xp", -1)), start, "snapshotted on the pick")
-	_report_beat(_ui)
+	Page.report_beat(_ui)
 	_ui._end_resolve()
 	if GameLoop2.run_over or _ui._post_screen == null:
 		pending("the report ended the run before the haul screen")
