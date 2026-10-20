@@ -136,3 +136,59 @@ static func brace() -> String:
 # camp open to be made again.
 static func spend() -> void:
 	GameState.games_beaten_since_camp.clear()
+	mark_session()
+
+# --- the session ---------------------------------------------------------------
+#
+# A SESSION is the stretch between two camps (or the run's start and its first
+# camp). The camp screen shows it — the stops walked in it, lit on the road, and
+# what was done in it — so the mark is where the run's own running records stood
+# when the session began, and everything below is "now minus the mark". Nothing
+# new is counted: the road is GameState.walked_path, the goals
+# GameLoop2.completed_goals, the games and lost runs RunTimer's splits, the time
+# RunTimer's clock. An empty mark (a new run, an older save) is the run's start.
+
+static func mark_session() -> void:
+	GameState.session_mark = {
+		"path": GameState.walked_path().size(),
+		"goals": GameLoop2.completed_goals.size(),
+		"splits": RunTimer.splits.size(),
+		"seconds": RunTimer.run_seconds,
+		"hp": GameState.hp,
+	}
+
+# The index on walked_path() where this session's stops begin.
+static func session_start_index() -> int:
+	return int(GameState.session_mark.get("path", 0))
+
+# What this session did, as numbers: games finished (and how each closed), lost
+# runs, goals answered (and how many of those were enemies), time, and Health.
+static func session_stats() -> Dictionary:
+	var mark: Dictionary = GameState.session_mark
+	var out := {"games": 0, "beaten": 0, "escaped": 0, "lost_runs": 0,
+		"goals": 0, "enemies": 0, "seconds": 0.0, "hp_change": 0}
+	var splits: Array = RunTimer.splits
+	for i in range(mini(int(mark.get("splits", 0)), splits.size()), splits.size()):
+		var sp: Dictionary = splits[i]
+		out["games"] += 1
+		out["lost_runs"] += (sp.get("attempts", []) as Array).size()
+		match String(sp.get("outcome", "")):
+			"beaten":
+				out["beaten"] += 1
+			"escaped":
+				out["escaped"] += 1
+	var goals: Array = GameLoop2.completed_goals
+	for i in range(mini(int(mark.get("goals", 0)), goals.size()), goals.size()):
+		out["goals"] += 1
+		if String((goals[i] as Dictionary).get("kind", "")) == "enemy":
+			out["enemies"] += 1
+	out["seconds"] = maxf(0.0, RunTimer.run_seconds - float(mark.get("seconds", 0.0)))
+	out["hp_change"] = GameState.hp - int(mark.get("hp", GameState.hp))
+	return out
+
+# "2h 05m", "14m": a session's length, to the minute.
+static func duration_text(seconds: float) -> String:
+	var m: int = int(seconds / 60.0)
+	if m >= 60:
+		return "%dh %02dm" % [m / 60, m % 60]
+	return "%dm" % m

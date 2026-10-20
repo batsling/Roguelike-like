@@ -11,6 +11,16 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The camp shows the journey and the session** (the owner, 20 Oct 2026).
+  Above the two cards: the whole road walked, cover to cover with arrows, this
+  session's stops lit and the earlier ones faded; under it the session in
+  numbers — games played and beaten, goals, enemies, lost runs, Health, time. A
+  session runs camp to camp (`GameState.session_mark`, saved; `Camp.session_stats`
+  reads "now minus the mark" off records the run already keeps). The road stays
+  two rows at 720p, shrinking and then folding its oldest stops. Also fixed: a
+  save whose per-stop outcomes did not line up with its road assigned an untyped
+  `[]` to `path_beaten` and stopped loading halfway.
+
 - **Camp: the end of a session is a decision** (the owner's design, 20 Oct 2026;
   [`docs/rest-site-design.md`](docs/rest-site-design.md)). ☰ Menu → ▲ Make camp,
   between games, once a game has been beaten since the last camp. Two cards, take

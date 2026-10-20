@@ -302,6 +302,7 @@ func _build_payload() -> Dictionary:
 		# Camp (scripts/runtime/Camp.gd): the games beaten since the last one. Absent
 		# from an older save, which loads with no camp earned yet.
 		"games_beaten_since_camp": Array(GameState.games_beaten_since_camp).map(func(id): return String(id)),
+		"session_mark": GameState.session_mark.duplicate(),
 		# Smelter: the pieces taken out of the pack that work as relics.
 		"smelted_loot": GameState.smelted_loot.duplicate(true),
 		"destroyed_loot": GameState.destroyed_loot.duplicate(true),
@@ -421,7 +422,13 @@ func _apply_save_data(data: Dictionary) -> void:
 	var walk_won: Array[bool] = []
 	for v in data.get("path_beaten", []):
 		walk_won.append(bool(v))
-	GameState.path_beaten = walk_won if walk_won.size() == GameState.path_taken.size() else []
+	# Cleared rather than assigned `[]`: an untyped empty array cannot be assigned
+	# to the typed field, and the error stopped the load halfway down this function
+	# on exactly the saves this branch is for.
+	if walk_won.size() == GameState.path_taken.size():
+		GameState.path_beaten = walk_won
+	else:
+		GameState.path_beaten.clear()
 	GameState.beaten_games = _strings_to_stringnames(data.get("beaten_games", []))
 	# A save written before this list existed falls back to the games it BEAT,
 	# which is the part of "where have I been" that old save knew about.
@@ -606,6 +613,8 @@ func _apply_save_data(data: Dictionary) -> void:
 	GameState.games_beaten_since_camp.clear()
 	for id in data.get("games_beaten_since_camp", []):
 		GameState.games_beaten_since_camp.append(StringName(String(id)))
+	var mark = data.get("session_mark", {})
+	GameState.session_mark = (mark as Dictionary).duplicate() if mark is Dictionary else {}
 	GameState.destroyed_loot.clear()
 	for e in data.get("destroyed_loot", []):
 		if e is Dictionary:

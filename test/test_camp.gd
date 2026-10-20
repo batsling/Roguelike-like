@@ -170,3 +170,92 @@ func test_the_menu_entry_is_dark_until_a_camp_is_owed() -> void:
 	_earn_a_camp()
 	_ui._sync_camp_entry(pop)
 	assert_false(pop.is_item_disabled(idx), "a win opens it")
+
+# --- the session: the journey and its numbers --------------------------------
+
+func _split(outcome: String, tries: int) -> Dictionary:
+	var attempts: Array = []
+	for _i in range(tries):
+		attempts.append(60.0)
+	return {"id": "x", "seconds": 600.0, "attempts": attempts, "outcome": outcome}
+
+func test_a_new_run_is_one_session_from_its_start() -> void:
+	assert_true(GameState.session_mark.is_empty())
+	assert_eq(Camp.session_start_index(), 0, "every stop on the road is this session's")
+
+func test_the_session_counts_only_what_happened_since_the_last_camp() -> void:
+	RunTimer.begin_run()
+	GameLoop2.completed_goals.clear()
+	# Before the camp: one game, two goals.
+	RunTimer.splits.append(_split("beaten", 3))
+	GameLoop2.completed_goals.append({"kind": "enemy", "text": "a", "game": &""})
+	GameLoop2.completed_goals.append({"kind": "levelup", "text": "b", "game": &""})
+	GameState.note_game_beaten(_game_of(GameData.GameType.ACTION).id)
+	Camp.spend()
+	assert_eq(int(Camp.session_stats()["games"]), 0, "a camp starts the next session at zero")
+	# After it: a win, an escape, a miss; three goals, two of them enemies.
+	RunTimer.splits.append(_split("beaten", 1))
+	RunTimer.splits.append(_split("escaped", 3))
+	RunTimer.splits.append(_split("missed", 0))
+	for k in ["enemy", "enemy", "status"]:
+		GameLoop2.completed_goals.append({"kind": k, "text": "c", "game": &""})
+	GameState.hp -= 2
+	var st: Dictionary = Camp.session_stats()
+	assert_eq(int(st["games"]), 3)
+	assert_eq(int(st["beaten"]), 1)
+	assert_eq(int(st["escaped"]), 1)
+	assert_eq(int(st["lost_runs"]), 4)
+	assert_eq(int(st["goals"]), 3)
+	assert_eq(int(st["enemies"]), 2)
+	assert_eq(int(st["hp_change"]), -2)
+
+func test_the_session_mark_rides_the_save() -> void:
+	GameState.path_taken.append(_game_of(GameData.GameType.ACTION).id)
+	Camp.mark_session()
+	var data: Dictionary = SaveSystem._build_payload()
+	GameState.session_mark = {}
+	SaveSystem._apply_save_data(data)
+	assert_eq(Camp.session_start_index(), 1)
+
+func test_a_session_reads_in_hours_and_minutes() -> void:
+	assert_eq(Camp.duration_text(14 * 60 + 30), "14m")
+	assert_eq(Camp.duration_text(2 * 3600 + 5 * 60), "2h 05m")
+
+func test_the_camp_draws_the_whole_road_and_lights_this_sessions_stops() -> void:
+	_ui = Page.build(self)
+	Page.open_at_first_offering(_ui)
+	_earn_a_camp()
+	# A road of three, with the last camp made after the first stop.
+	GameState.path_taken.clear()
+	GameState.path_beaten.clear()
+	for t in [GameData.GameType.STRATEGY, GameData.GameType.ACTION, GameData.GameType.DECKBUILDER]:
+		GameState.path_taken.append(_game_of(t).id)
+		GameState.path_beaten.append(true)
+	GameState.session_mark = {"path": 1}
+	var road: Array = GameState.walked_path()
+	var screen = _ui.open_camp()
+	var stops: Array = screen.journey_stops()
+	assert_eq(stops.map(func(s): return StringName(s["id"])), Array(road),
+		"every stop walked, in order")
+	assert_false(bool(stops[0]["this_session"]), "the stop before the camp is faded")
+	assert_true(bool(stops[stops.size() - 1]["this_session"]), "the latest is lit")
+	screen.close()
+
+func test_a_long_road_folds_its_oldest_stops_and_keeps_this_sessions() -> void:
+	_ui = Page.build(self)
+	Page.open_at_first_offering(_ui)
+	_earn_a_camp()
+	GameState.path_taken.clear()
+	GameState.path_beaten.clear()
+	var games: Array = Data.all_games().slice(0, 60)
+	for g in games:
+		GameState.path_taken.append(g.id)
+		GameState.path_beaten.append(true)
+	GameState.session_mark = {"path": 56}
+	var screen = _ui.open_camp()
+	var stops: Array = screen.journey_stops()
+	assert_lt(stops.size(), 60, "sixty stops do not all fit")
+	assert_eq(StringName(stops[stops.size() - 1]["id"]), games[59].id, "the newest is drawn")
+	assert_eq(stops.filter(func(s): return bool(s["this_session"])).size(), 4,
+		"and every stop of this session")
+	screen.close()

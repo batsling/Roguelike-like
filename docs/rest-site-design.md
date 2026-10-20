@@ -40,6 +40,31 @@ The second card names the game that dealt it ("from Hades") under what it does,
 so the choice reads as what that game taught you. No cover: the two cards are
 the same size and as big as the screen allows, read across a room on stream.
 
+## 2a. The journey and the session, above the cards
+
+The camp is also the session's recap, because it is the stream's outro:
+
+- **The journey so far**: every stop the run has walked, repeats included
+  (`GameState.walked_path`), cover to cover with the road's own arrows. Each is
+  bordered green (beaten) or orange (walked away from), as on the header strip
+  and the run-over screen. **This session's stops are lit and ringed thicker; the
+  earlier ones are faded.**
+- **The session in numbers** (`Camp.session_stats`): games played, beaten,
+  goals done, enemies down, lost runs, the Health it gained or lost, and time
+  played.
+
+A **session** runs from one camp to the next, or from the run's start to its
+first camp. `GameState.session_mark` (saved) records where the run's own records
+stood when it began: the road's length, `GameLoop2.completed_goals`, RunTimer's
+splits and clock, and Health. The stats are "now minus the mark", so nothing new
+is counted. Making camp moves the mark.
+
+**It fits 1280×720 whatever the run's length.** The road keeps to two rows:
+- At first the stops are full size.
+- On a longer road they shrink.
+- On a longer one still, the oldest fold into a "+N earlier" chip, so this
+  session's stops are always drawn.
+
 ## 3. When it can be made
 
 - **Earned by a win.** `GameState.games_beaten_since_camp` records every game
