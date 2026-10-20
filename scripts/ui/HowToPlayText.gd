@@ -48,6 +48,8 @@ extends RefCounted
 #   {"k": "step", "t": "...", "n": 1}            a numbered step
 #   {"k": "row",  "c": ["a", "b"], "head": bool} a table row
 
+const Camp := preload("res://scripts/runtime/Camp.gd")
+
 static func _p(t: String) -> Dictionary: return {"k": "p", "t": t}
 static func _b(t: String) -> Dictionary: return {"k": "b", "t": t}
 static func _h(t: String) -> Dictionary: return {"k": "h", "t": t}
@@ -219,7 +221,7 @@ static func _ch_choosing() -> Dictionary:
 static func _ch_playing() -> Dictionary:
 	return {
 		"id": &"playing", "icon": "🎮", "title": "Playing the game",
-		"blurb": "Shields, lost runs, the checklist, and getting out.",
+		"blurb": "Shields, lost runs, the checklist, getting out, and making camp.",
 		"blocks": [
 			_p("You have chosen a game. The app now does nothing until you come "
 				+ "back — go and play. What follows is what the screen is for "
@@ -308,9 +310,12 @@ static func _ch_playing() -> Dictionary:
 				+ "for three games and clear it later."),
 			_h("Escaping"),
 			_p(("If a game is going nowhere you can leave it — once you have LOST "
-				+ "%d RUNS of it. The count starts again at every game you land on, "
-				+ "so escape is for the game you have tried and cannot beat, not "
-				+ "for the one you would rather not try.") % GameLoop2.ESCAPE_AFTER_LOST_RUNS),
+				+ "%d RUNS of it, or just %d of a Traditional roguelike, where one "
+				+ "run can be a whole evening. The count starts again at every game "
+				+ "you land on, so escape is for the game you have tried and cannot "
+				+ "beat, not for the one you would rather not try.") % [
+				GameLoop2.ESCAPE_AFTER_LOST_RUNS,
+				GameLoop2.ESCAPE_AFTER_LOST_RUNS_TRADITIONAL]),
 			_p("Walking out ends the game, so the board fills behind you. If you "
 				+ "put a body down to its goal here, it costs exactly what handing "
 				+ "the game in would; if you put nothing down, it costs one more "
@@ -318,6 +323,18 @@ static func _ch_playing() -> Dictionary:
 				% GameLoop2.ESCAPE_MIN_BODIES + "enemy comes with you, alive and "
 				+ "following: escape answers the goal with a no, it does not "
 				+ "delete the question."),
+			_h("Ending a session: make camp"),
+			_p(("A run lasts more than one sitting, so end each one by making camp: "
+				+ "☰ Menu → Make camp, between games, once you have beaten a game "
+				+ "since your last camp. It offers two cards and you take one. REST "
+				+ "is always there: +%d Health. The other is dealt from one of the "
+				+ "games you beat since the last camp, by its type — a Traditional "
+				+ "game lets you identify a piece of loot, a Deckbuilder hands you a "
+				+ "random card, a Strategy game puts %d charges into something you "
+				+ "carry, and an Action game gives you %d Shield that stays. Making "
+				+ "camp saves the run, so it is safe to close. Exit offers it too "
+				+ "when one is owed.") % [Camp.REST_HEAL, Camp.CHARGE_AMOUNT,
+				Camp.SHIELD_GAIN]),
 			_note("★ Rate is always optional: it is on the card a game opens and "
 				+ "on the screen a game ends on. Score a game "
 				+ "out of ten and write a note; it feeds the Tier List, which is "
@@ -980,10 +997,12 @@ static func _ch_wrong() -> Dictionary:
 				+ "— and debts in this game are payable in any currency."),
 			_h("I keep losing runs of this game"),
 			_p(("Each lost run hands the board a turn, and the board is closer "
-				+ "every time. After %d lost runs Escape opens: it pays no chest "
-				+ "and costs at least two enemies unless you beat a goal here, but "
-				+ "it stops the bleeding, and every goal stays on your checklist to "
-				+ "clear somewhere friendlier.") % GameLoop2.ESCAPE_AFTER_LOST_RUNS),
+				+ "every time. After %d lost runs (%d at a Traditional game) Escape "
+				+ "opens: it pays no chest and costs at least two enemies unless you "
+				+ "beat a goal here, but it stops the bleeding, and every goal stays "
+				+ "on your checklist to clear somewhere friendlier.") % [
+				GameLoop2.ESCAPE_AFTER_LOST_RUNS,
+				GameLoop2.ESCAPE_AFTER_LOST_RUNS_TRADITIONAL]),
 			_p("And beat ONE body's goal if you possibly can — any goal on the list. "
 				+ "A game that ends with no goal beaten stands one more enemy up."),
 			_h("I have four followers and they are killing me"),

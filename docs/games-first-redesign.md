@@ -423,14 +423,19 @@ one (`GameLoop2._take_hit`).
   simply gone before the swing that broke it was drawn — the one thing a shield
   exists to do was the one thing never shown happening.
 
-**ESCAPE OPENS AFTER THREE LOST RUNS, AND IT HAS A PRICE.** A game you cannot
-beat is not a run-ender, but the door out of it is earned at the game itself:
-`Overworld2.can_escape` asks that a game is in play AND that
-`GameLoop2.ESCAPE_AFTER_LOST_RUNS` (3) runs of it have been lost
+**ESCAPE OPENS AFTER THREE LOST RUNS — ONE AT A TRADITIONAL — AND IT HAS A
+PRICE.** A game you cannot beat is not a run-ender, but the door out of it is
+earned at the game itself: `Overworld2.can_escape` asks that a game is in play
+AND that `GameLoop2.escape_after_lost_runs()` runs of it have been lost
 (`GameLoop2.attempts()`, which every game starts at zero — the count is per
-landing, including a game this run has beaten before). Until then the button is
-up but dark and the line under it counts down (*"Unlocks after 3 lost runs here
-— 2 to go."*). Walking out ENDS the game, so the board fills behind you exactly as
+landing, including a game this run has beaten before). That is
+`ESCAPE_AFTER_LOST_RUNS` (3), or `ESCAPE_AFTER_LOST_RUNS_TRADITIONAL` (1) at a
+Traditional game: the owner's call (20 Oct 2026), because a lost run of NetHack
+or Caves of Qud can be a whole evening, so three of them put the door days
+away, while a lost Spelunky run is minutes and one would make the door free.
+It is the same split, for the same reason, as Traditional's larger shield grant.
+Until then the button is up but dark and the line under it counts down
+(*"Unlocks after 3 lost runs here — 2 to go."*). Walking out ENDS the game, so the board fills behind you exactly as
 a hand-in fills it (§19.5):
 
 - **With a body put down to its goal here, the board: what a hand-in costs** —
@@ -648,7 +653,7 @@ existing `images2.0/scrolls/Unidentified.png`. Scrolls get the identical treatme
 stay in the design but no `2.0` content exists for them yet.)*
 
 The game opens in an ordinary **window** (2560×1440, clamped to whatever the
-screen leaves free) — see README's "The window" for why a window rather than
+screen leaves free) — see "The window" in [`architecture.md`](architecture.md) for why a window rather than
 either fullscreen, and for the fact that the **canvas** stays a fixed 1280×720
 that is *scaled* into that window rather than enlarged by it.
 
@@ -2905,7 +2910,7 @@ stream — so the overlay dims only when the beat actually stops.
   It is **text in the page, not payload** — the game does not know what anyone's
   bot is called — so it is edited in `obs/overlay.html` or hidden from
   `custom.css`. The two lines cost the card 42px, which is why the source the
-  README recommends went from 640 to 680 tall.
+  docs/streaming.md recommends went from 640 to 680 tall.
 
   **EVERY ROW WEARS ITS OWN ART**, and this is the layout's one big idea. A goal
   *is* an enemy (§7.2), and a column of sentences never said so; with the face on
@@ -5201,7 +5206,7 @@ surcharges, all in `GameLoop2.end_of_game_price`:
 - **An escape with nothing down is never fewer than 2**
   (`GameLoop2.ESCAPE_MIN_BODIES`, §3.2): out in the wilds a single body was too
   cheap to be a price. An escape after a goal was beaten costs what the hand-in
-  would; the door is already gated behind three lost runs.
+  would; the door is already gated behind lost runs (three, one at a Traditional).
 - **At every node kind.** An Event or a Shop node stood nothing up, but the
   evening still ended, and the road charges for where it ended.
 - **Not at the Amulet** — there is no next game for anything to walk into — and

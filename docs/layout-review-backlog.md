@@ -374,5 +374,5 @@ The shop fit test now stands **eight** extra bodies instead of clearing the boar
 The original pass and everything it changed are in [`CHANGELOG.md`](../CHANGELOG.md),
 newest first — the start screen, Map vs Optimal Path, the toasts, the design
 tokens and z-order registry, the collapsing detail panes, the star chart's
-ambient links, the run's menu, and the dropdown palette. [`README.md`](../README.md)'s
+ambient links, the run's menu, and the dropdown palette. [`architecture.md`](architecture.md)'s
 "Screens & flow" section is the current description of how each screen works.

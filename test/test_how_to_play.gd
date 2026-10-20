@@ -143,6 +143,8 @@ func test_the_escape_rule_the_manual_quotes_is_the_real_one() -> void:
 	# constant — and the retired hit gate must not still be taught beside it.
 	var text: String = _all_text()
 	assert_string_contains(text, "%d RUNS of it" % GameLoop2.ESCAPE_AFTER_LOST_RUNS)
+	assert_string_contains(text, "just %d of a Traditional roguelike"
+		% GameLoop2.ESCAPE_AFTER_LOST_RUNS_TRADITIONAL)
 	assert_string_contains(text, "starts again at every game you land on")
 	assert_false(text.contains("takes Health off you during this game"),
 		"the old draw-blood gate is gone from the manual")
@@ -227,3 +229,12 @@ func test_the_menu_opens_the_manual_from_its_button() -> void:
 			opened = c
 	assert_not_null(opened, "the button still opens the manual")
 
+
+func test_the_manual_teaches_the_camp_from_its_constants() -> void:
+	# The camp's numbers are read off Camp.gd, so a retune cannot leave the manual
+	# quoting the old ones (docs/rest-site-design.md).
+	const Camp := preload("res://scripts/runtime/Camp.gd")
+	var text: String = _all_text()
+	assert_string_contains(text, "Make camp")
+	assert_string_contains(text, "+%d Health" % Camp.REST_HEAL)
+	assert_string_contains(text, "%d charges" % Camp.CHARGE_AMOUNT)

@@ -11,6 +11,49 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The camp shows the journey and the session** (the owner, 20 Oct 2026).
+  Above the two cards: the whole road walked, cover to cover with arrows, this
+  session's stops lit and the earlier ones faded; under it the session in
+  numbers — games played and beaten, goals, enemies, lost runs, Health, time. A
+  session runs camp to camp (`GameState.session_mark`, saved; `Camp.session_stats`
+  reads "now minus the mark" off records the run already keeps). The road stays
+  two rows at 720p, shrinking and then folding its oldest stops. Also fixed: a
+  save whose per-stop outcomes did not line up with its road assigned an untyped
+  `[]` to `path_beaten` and stopped loading halfway.
+
+- **Camp: the end of a session is a decision** (the owner's design, 20 Oct 2026;
+  [`docs/rest-site-design.md`](docs/rest-site-design.md)). ☰ Menu → ▲ Make camp,
+  between games, once a game has been beaten since the last camp. Two cards, take
+  one: **Rest** (+2 Health) always, and one dealt from a random game beaten since
+  the last camp by its type — Traditional identifies a piece of loot, Deckbuilder
+  a random card, Strategy 2 charges into something, Action +1 Shield that stays.
+  A card that could do nothing is never dealt. Making camp saves the run; Exit
+  offers it when one is owed. `scripts/runtime/Camp.gd`, `CampScreen.gd`,
+  `GameState.games_beaten_since_camp` (saved), `test_camp.gd`; the manual's
+  *Playing the game* teaches it, so `docs/rules.md` does too.
+
+- **The README is split, and the rules are a page** (the owner, 20 Oct 2026).
+  The README was 161 KB and its pointer in CLAUDE.md still said ~20 KB. It is a
+  short front door now — the pitch, a run in brief, what is in the build, getting
+  started, the layout, a map of every doc, the roadmap — and its sections moved
+  whole to [`docs/architecture.md`](docs/architecture.md) (autoloads, screens,
+  window, data, Luck, conventions), [`docs/streaming.md`](docs/streaming.md) (the
+  overlay) and [`docs/content-authoring.md`](docs/content-authoring.md) (art,
+  generators, events, objects), corrected where they had gone stale: the escort,
+  the 5–7 start band, the deleted D20 `EventModal`, Run History "still a stub",
+  the old content counts, gaps "only on the nine run screens". New:
+  [`docs/rules.md`](docs/rules.md), the in-game manual rendered as a page by
+  `HowToPlayMarkdown.gd` and held to it by `test_rules_doc.gd`, and
+  [`docs/rest-site-design.md`](docs/rest-site-design.md), the end-of-session Camp,
+  designed and waiting on the owner.
+
+- **Escape opens after ONE lost run at a Traditional game** (the owner, 20 Oct
+  2026). Three everywhere else. A lost run of NetHack or Caves of Qud can be an
+  evening, so three of them put the door days away; a lost Spelunky run is
+  minutes, so the others keep three. `GameLoop2.escape_after_lost_runs(game)`
+  is the one question the button, its hint, its hover and the manual ask
+  ([`docs/games-first-redesign.md`](docs/games-first-redesign.md) §3.2).
+
 - **Alchemize identifies its potion, The Necronomicon, Gecko Gi** (the owner's
   upload, 19 Oct 2026). Alchemize now reads "Gain +1 Random Potion and Identify
   it": a card's `gain_loot` takes `identify`, which rolls the piece, identifies

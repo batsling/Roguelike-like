@@ -88,6 +88,14 @@ var beaten_games: Array[StringName] = []
 # what the returning-to-a-game Dash is paid for (Overworld2._grant_repeat_dash).
 var played_games: Array[StringName] = []
 var total_games_beaten: int = 0
+# Every game BEATEN since the last camp (scripts/runtime/Camp.gd), one entry per
+# win, repeats included: what earns a camp, and what its second card is dealt
+# from. Emptied when a camp is made.
+var games_beaten_since_camp: Array[StringName] = []
+# Where the run's records stood when this SESSION began — at the run's start
+# (empty) or at the last camp (Camp.mark_session). The camp screen reads what
+# this session did as the difference.
+var session_mark: Dictionary = {}
 # Count of games the player has *played* (entered + resolved, win or
 # lose), as opposed to beaten.
 #
@@ -1230,6 +1238,8 @@ func reset_run() -> void:
 	beaten_games.clear()
 	played_games.clear()
 	total_games_beaten = 0
+	games_beaten_since_camp.clear()
+	session_mark = {}
 	games_played = 0
 	spawn_events = 0
 	# THE RUN'S SEED, AND THE STREAM IT DEALS. `run_seed` has existed and been
@@ -1591,6 +1601,7 @@ func note_game_beaten(game_id: StringName) -> bool:
 	if game_id == &"":
 		return false
 	total_games_beaten += 1
+	games_beaten_since_camp.append(game_id)
 	# THIS VISIT, not this game. The stop being reported is always the one under
 	# the player's feet, which is the last entry on the walk — so a game beaten on
 	# the second trip leaves the first trip's cover exactly as unbeaten as it was.

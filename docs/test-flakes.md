@@ -107,3 +107,12 @@ failure; diffing a passing and failing run's Control tree) are the reusable part
     page's Control tree with sizes on a passing and a failing run and diffing the
     two: same text, same grid, board 406 vs 369px. A layout test that varies is
     usually a WIDTH that varies upstream of a wrap; look for the wrap first.
+  - `test_overworld2.gd::test_report_goal_met_defeats_and_drops` failed once in a
+    full suite run ("[3] expected to equal [2]") and passed six reruns in a row.
+    The random offering had stood **Mysterious Tree**, the one enemy authored at
+    **Health 3**: a met goal deals one hit, so the tree took it, survived stunned
+    (§7.2), and the body count came out one over. Confirmed by giving the arrived
+    bodies 3 Health on purpose, which failed the same way every time.
+    `_disarm_board` now sets every non-boss body to Health 1, beside the
+    abilities and goal modes it already strips. Bosses keep theirs, since their
+    phases are what a boss is.

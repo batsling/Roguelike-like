@@ -1770,8 +1770,9 @@ func _announce_attempt_turn(game_name: String, res: Dictionary) -> void:
 # report that doesn't fire them. Neither one banks a beat — beaten means won (see
 # report) — so an escape and a miss are alike in earning no repeat-beat Dash, no
 # Atlas mark and no movement in either beaten tally.
-# The door out of the game in play. It opens after ESCAPE_AFTER_LOST_RUNS lost
-# runs OF THIS GAME — every game starts the count again at zero — so escaping is
+# The door out of the game in play. It opens after GameLoop2.escape_after_lost_runs()
+# lost runs OF THIS GAME (three, or one at a Traditional game, where a run can be
+# an evening) — every game starts the count again at zero — so escaping is
 # what you do with a game you have tried and cannot beat, not with one you would
 # rather not try. A teleport is not the door and does not ask (escape_game's
 # `force`).
@@ -1781,7 +1782,7 @@ func can_escape() -> bool:
 
 # Lost runs still needed before the door opens; 0 once it is open.
 func escape_runs_to_go() -> int:
-	return maxi(GameLoop2.ESCAPE_AFTER_LOST_RUNS - GameLoop2.attempts(), 0)
+	return maxi(GameLoop2.escape_after_lost_runs() - GameLoop2.attempts(), 0)
 
 # The line under the button: while the door is shut, what opens it ("Unlocks after
 # 3 lost runs — 2 to go"); once it is open, its price ("Leave now: 3 enemies walk
@@ -1791,8 +1792,9 @@ func escape_hint_text() -> String:
 		return ""
 	var to_go: int = escape_runs_to_go()
 	if to_go > 0:
-		return "Unlocks after %d lost runs here — %d to go." % [
-			GameLoop2.ESCAPE_AFTER_LOST_RUNS, to_go]
+		var gate: int = GameLoop2.escape_after_lost_runs()
+		return "Unlocks after %d lost run%s here — %d to go." % [
+			gate, "" if gate == 1 else "s", to_go]
 	var price: Dictionary = GameLoop2.end_of_game_price(true)
 	var bodies: int = int(price["bodies"])
 	if bodies <= 0:
@@ -1805,8 +1807,9 @@ func escape_hover() -> Dictionary:
 	var to_go: int = escape_runs_to_go()
 	var lines: Array = []
 	if to_go > 0:
-		lines.append("Opens after %d lost runs of this game — %d to go." % [
-			GameLoop2.ESCAPE_AFTER_LOST_RUNS, to_go])
+		var gate: int = GameLoop2.escape_after_lost_runs()
+		lines.append("Opens after %d lost run%s of this game — %d to go." % [
+			gate, "" if gate == 1 else "s", to_go])
 	var owed: int = int(GameLoop2.end_of_game_price(true)["bodies"])
 	if GameLoop2.defeated_this_game > 0:
 		lines.append("You beat a goal here, so it costs only what ending the game does: %s."
@@ -3147,6 +3150,8 @@ const COMPLETED_GOALS_PANEL_SCRIPT := "res://scripts/redesign2/CompletedGoalsPan
 const EVENT_MODAL2_SCRIPT := "res://scripts/redesign2/EventModal2.gd"
 const SHOP_MODAL_SCRIPT := "res://scripts/redesign2/ShopModal2.gd"
 const GRAVEYARD_PANEL_SCRIPT := "res://scripts/redesign2/GraveyardPanel.gd"
+const CAMP_SCRIPT := "res://scripts/runtime/Camp.gd"
+const CAMP_SCREEN_SCRIPT := "res://scripts/redesign2/CampScreen.gd"
 const LOOT_USE_MODAL_SCRIPT := "res://scripts/redesign2/LootUseModal.gd"
 const RUN_LOG_SCREEN_SCRIPT := "res://scripts/redesign2/RunLogScreen.gd"
 const RUN_MAP_MODAL_SCRIPT := "res://scripts/redesign2/RunMapModal.gd"
@@ -4600,6 +4605,67 @@ func begin_board_pick(cfg: Dictionary, on_done: Callable) -> bool:
 
 # Put a pick away WITHOUT answering it — only for a pick being replaced, or a page
 # being torn down. A pick the player started is finished by them.
+# --- camp: the end-of-session rest (scripts/runtime/Camp.gd) -----------------
+
+var _camp_screen: Control = null
+
+# Opens the camp's two cards, or says why it cannot. Returned for tests.
+func open_camp() -> Control:
+	var camp = load(CAMP_SCRIPT)
+	var why: String = camp.why_not()
+	if why != "":
+		Notifications.notify(why, UITheme.TEXT_DIM)
+		return null
+	if _camp_screen != null and is_instance_valid(_camp_screen):
+		return _camp_screen
+	_camp_screen = load(CAMP_SCREEN_SCRIPT).open(self, camp.deal(_rng))
+	_camp_screen.chose.connect(camp_choose)
+	return _camp_screen
+
+# A card was taken. The camp is SPENT first, so a pick put away cannot leave it
+# open to be made again; then the card pays — on the spot for Rest and Brace, by
+# a pick in the pack for Study and Tinker (the click there is the choice, as for a
+# Scroll of Identify), and through the ordinary loot offer for Draft, so a full
+# pack is asked rather than refused.
+func camp_choose(opt: Dictionary) -> void:
+	var camp = load(CAMP_SCRIPT)
+	var id: StringName = StringName(opt.get("id", &""))
+	camp.spend()
+	match id:
+		camp.REST:
+			_camp_made(camp.rest())
+		camp.SHIELD:
+			_camp_made(camp.brace())
+		camp.CARD:
+			_camp_made("You draft a card.")
+			GameState.offer_loot("card", camp.CARD_COUNT)
+		camp.IDENTIFY:
+			var unknown: Array = LootSystem.carried_unidentified()
+			if unknown.is_empty():
+				_camp_made("There was nothing to study.")
+			elif not begin_owned_pick({"candidates": unknown, "count": 1, "exact": false,
+					"by_kind": true, "verb": "identify"}, func(chosen: Array):
+						_camp_made(ScrollSystem.identify_loot_chosen(chosen))):
+				_camp_made(ScrollSystem.identify_loot_chosen(
+					[unknown[_rng.randi_range(0, unknown.size() - 1)]]))
+		camp.CHARGE:
+			var things: Array = camp.chargeable()
+			if things.is_empty():
+				_camp_made("There was nothing to charge.")
+			elif not begin_owned_pick({"candidates": things, "count": 1, "exact": true,
+					"verb": "give %d charges" % camp.CHARGE_AMOUNT}, func(chosen: Array):
+						_camp_made(CardSystem.charge_chosen(chosen[0], camp.CHARGE_AMOUNT))):
+				_camp_made(CardSystem.charge_chosen(
+					things[_rng.randi_range(0, things.size() - 1)], camp.CHARGE_AMOUNT))
+
+# The camp's last word: log it, save the run, and say it is safe to close.
+func _camp_made(line: String) -> void:
+	GameLog.add("Camp: %s" % line, UITheme.SUCCESS)
+	autosave()
+	Notifications.notify("Camp made. %s The run is saved — safe to close." % line,
+		UITheme.SUCCESS)
+	_refresh()
+
 func cancel_owned_pick() -> void:
 	if _owned_pick != null and is_instance_valid(_owned_pick):
 		_owned_pick.queue_free()
@@ -7472,7 +7538,7 @@ func _refresh_attempts() -> void:
 	# undo history), so half the time it was a grey button with a paragraph saying
 	# why. `GameLoop2.undo_attempt` and its snapshots stay — they are what makes a
 	# turn a restore rather than a refund (§3) — they simply have no button.
-	# The escape hatch opens after ESCAPE_AFTER_LOST_RUNS lost runs of this game
+	# The escape hatch opens after escape_after_lost_runs() lost runs of this game
 	# (can_escape); until then it is up but dark, and the line under it counts
 	# down. Its hover is a compact card rather than a paragraph of plain tooltip.
 	if _escape_btn != null:
@@ -7567,7 +7633,7 @@ func open_history() -> Node:
 	return screen
 
 enum MenuItem { HOW_TO_PLAY, COLLECTION, TIER_LIST, SAVE, NEW_RUN, SETTINGS,
-	MAIN_MENU, EXIT_GAME }
+	MAIN_MENU, EXIT_GAME, CAMP }
 
 # THE MENU IS THREE GROUPS, AND THE GROUPS ARE NAMED.
 #
@@ -7599,13 +7665,26 @@ func _build_menu_button() -> MenuButton:
 	pop.add_item("🏆  Tier List", MenuItem.TIER_LIST)
 	pop.add_separator("This run")
 	pop.add_item("💾  Save run", MenuItem.SAVE)
+	pop.add_item("▲  Make camp", MenuItem.CAMP)
 	pop.add_item("⟳  New run", MenuItem.NEW_RUN)
 	pop.add_separator("Game")
 	pop.add_item("⚙  Settings", MenuItem.SETTINGS)
 	pop.add_item("←  Main menu", MenuItem.MAIN_MENU)
 	pop.add_item("⏻  Exit game", MenuItem.EXIT_GAME)
 	pop.id_pressed.connect(menu_action)
+	# Make camp is only open between games, with a game beaten since the last
+	# one (Camp.why_not), and the entry says which of those it is waiting on.
+	pop.about_to_popup.connect(func(): _sync_camp_entry(pop))
 	return mb
+
+func _sync_camp_entry(pop: PopupMenu) -> void:
+	var idx: int = pop.get_item_index(MenuItem.CAMP)
+	if idx < 0:
+		return
+	var why: String = load(CAMP_SCRIPT).why_not()
+	pop.set_item_disabled(idx, why != "")
+	pop.set_item_tooltip(idx, why if why != "" else
+		"End the session: rest, or take what the games you beat taught you.")
 
 # How far the popup hangs below the button, and how much of the canvas edge it
 # will not stand on.
@@ -7650,6 +7729,8 @@ func menu_action(id: int) -> void:
 			open_tier_list()
 		MenuItem.SAVE:
 			prompt_save()
+		MenuItem.CAMP:
+			open_camp()
 		MenuItem.NEW_RUN:
 			start_run()
 		MenuItem.SETTINGS:
@@ -7677,11 +7758,21 @@ func prompt_quit() -> ConfirmationDialog:
 	dlg.ok_button_text = "Exit"
 	dlg.get_cancel_button().text = "Cancel"
 	dlg.add_button("Save & exit", true, "save_and_exit")
+	# The end of a session is what a camp is for, so a camp still to make is
+	# offered here rather than left in the menu to be remembered (Camp.gd).
+	if load(CAMP_SCRIPT).can_camp():
+		var n: int = GameState.games_beaten_since_camp.size()
+		dlg.dialog_text += "\n\nYou have a camp to make: %d game%s beaten since the last one." % [
+			n, "" if n == 1 else "s"]
+		dlg.add_button("Make camp first", true, "camp")
 	dlg.confirmed.connect(quit_game)
 	dlg.custom_action.connect(func(action: StringName):
 		if action == &"save_and_exit":
 			dlg.queue_free()
-			prompt_save(quit_game))
+			prompt_save(quit_game)
+		elif action == &"camp":
+			dlg.queue_free()
+			open_camp())
 	dlg.canceled.connect(func(): dlg.queue_free())
 	add_child(dlg)
 	dlg.popup_centered(Vector2i(480, 230))
