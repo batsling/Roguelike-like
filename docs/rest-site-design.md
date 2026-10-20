@@ -36,8 +36,9 @@ Making camp offers **two cards, and you take one**:
 | Strategy | **Tinker** | 2 charges (`Camp.CHARGE_AMOUNT`) into one thing you carry that takes a charge, chosen in the pack |
 | Action | **Brace** | +1 Shield, the kind that stays until something breaks it (§3.2) |
 
-The second card shows the cover of the game that dealt it ("from Hades"), so the
-choice reads as what that game taught you.
+The second card names the game that dealt it ("from Hades") under what it does,
+so the choice reads as what that game taught you. No cover: the two cards are
+the same size and as big as the screen allows, read across a room on stream.
 
 ## 3. When it can be made
 

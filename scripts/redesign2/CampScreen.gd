@@ -14,8 +14,12 @@ signal finished
 
 const Camp := preload("res://scripts/runtime/Camp.gd")
 const ACCENT := Color(1.0, 0.62, 0.3)
-const CARD_W := 230.0
-const COVER_H := 96.0
+# Two cards and nothing else on the screen, so each is big: the choice is the
+# whole of the scene, and on stream it is read across a room. Both are the same
+# size, whatever their words, with what is on them centred in it.
+const CARD_W := 300.0
+const CARD_H := 240.0
+const ICON_PX := 64
 
 var _options: Array = []
 var _layer: CanvasLayer = null
@@ -53,7 +57,7 @@ func _build() -> void:
 	root.add_theme_constant_override("separation", UITheme.GAP_LOOSE)
 	margin.add_child(root)
 
-	root.add_child(_line("Make Camp", ACCENT, UITheme.FONT_TITLE, width))
+	root.add_child(_line("Make Camp", ACCENT, UITheme.FONT_TITLE_LG, width))
 	var n: int = GameState.games_beaten_since_camp.size()
 	root.add_child(_line("%d game%s beaten since your last camp. Take one." % [
 		n, "" if n == 1 else "s"], UITheme.TEXT_DIM, UITheme.FONT_BODY, width))
@@ -71,12 +75,13 @@ func _build() -> void:
 	later.pressed.connect(close)
 	root.add_child(later)
 
-# One option: what it is, what it does, and — for the dealt one — the game whose
-# type dealt it, as its cover.
+# One option: its mark, what it is, what it does, and — for the dealt one — the
+# game whose type dealt it, named under the rest. No cover: the card is about
+# what you take, and the game is a line of credit, not the picture.
 func _card(opt: Dictionary) -> Control:
 	var info: Dictionary = Camp.describe(StringName(opt.get("id", &"")))
 	var btn := Button.new()
-	btn.custom_minimum_size = Vector2(CARD_W, 0)
+	btn.custom_minimum_size = Vector2(CARD_W, CARD_H)
 	btn.focus_mode = Control.FOCUS_ALL
 	btn.add_theme_stylebox_override("normal", UITheme.flat(UITheme.BG, 8, 8, 1, UITheme.BORDER))
 	btn.add_theme_stylebox_override("hover", UITheme.flat(ACCENT.lerp(UITheme.BG, 0.85), 8, 8, 2, ACCENT))
@@ -91,35 +96,30 @@ func _card(opt: Dictionary) -> Control:
 	col.offset_right = -UITheme.GAP
 	col.offset_top = UITheme.GAP
 	col.offset_bottom = -UITheme.GAP
-	col.add_theme_constant_override("separation", UITheme.GAP_SNUG)
+	col.add_theme_constant_override("separation", UITheme.GAP_WIDE)
+	col.alignment = BoxContainer.ALIGNMENT_CENTER
 	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	btn.add_child(col)
 
-	var game: GameData = Data.get_game(StringName(opt.get("game", &"")))
-	if game != null and game.cover_image != null:
-		var cover := TextureRect.new()
-		cover.texture = game.cover_image
-		cover.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		cover.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		cover.custom_minimum_size = Vector2(0, COVER_H)
-		cover.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		col.add_child(cover)
-	elif String(info.get("icon", "")) == "":
-		var art: TextureRect = UITheme.crisp_tex(UITheme.SHIELD_ART, 48)
+	if String(info.get("icon", "")) == "":
+		var art: TextureRect = UITheme.crisp_tex(UITheme.SHIELD_ART, ICON_PX)
 		art.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		art.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		col.add_child(art)
 	else:
 		col.add_child(_line(String(info["icon"]), ACCENT, UITheme.FONT_HERO, CARD_W))
-	col.add_child(_line(String(info["title"]), ACCENT, UITheme.FONT_SUB, CARD_W))
-	col.add_child(_line(String(info["text"]), UITheme.TEXT, UITheme.FONT_TEXT, CARD_W))
+	col.add_child(_line(String(info["title"]), ACCENT, UITheme.FONT_DISPLAY, CARD_W))
+	col.add_child(_line(String(info["text"]), UITheme.TEXT, UITheme.FONT_LEAD, CARD_W))
+	var game: GameData = Data.get_game(StringName(opt.get("game", &"")))
 	if game != null:
 		col.add_child(_line("from %s" % game.display_name, UITheme.TEXT_FAINT,
-			UITheme.FONT_TINY, CARD_W))
-	# A Button does not grow to a child it does not lay out, so the card takes the
-	# column's height once the labels have wrapped.
+			UITheme.FONT_SMALL, CARD_W))
+	# A Button does not grow to a child it does not lay out, so a card whose words
+	# wrap past CARD_H takes the column's height — never less than CARD_H, so the
+	# two stay the same size.
 	col.minimum_size_changed.connect(func():
-		btn.custom_minimum_size = Vector2(CARD_W, col.get_combined_minimum_size().y + UITheme.GAP * 2))
+		btn.custom_minimum_size = Vector2(CARD_W, maxf(CARD_H,
+			col.get_combined_minimum_size().y + UITheme.GAP * 2)))
 	return btn
 
 func _line(text: String, color: Color, size: int, width: float) -> Label:
