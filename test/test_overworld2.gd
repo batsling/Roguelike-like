@@ -131,6 +131,14 @@ func _one_hit(instance: int) -> void:
 func _disarm_board() -> void:
 	for entry in GameLoop2.stack:
 		entry["abilities"] = []
+		# …and one goal is one kill. Mysterious Tree is authored at Health 3, so
+		# the one random offering in ~60 that stood it left a met goal's body
+		# standing (stunned, §7.2) and a test counting bodies one over. Bosses keep
+		# theirs: their phases are what a boss IS.
+		var e: GoalEnemyData = entry.get("enemy")
+		if e != null and not e.is_boss():
+			entry["health"] = 1
+			entry["max_health"] = 1
 	_plain_goals()
 
 # …and strip the two things the `goals` sheet now says about a goal (§7.7), for
