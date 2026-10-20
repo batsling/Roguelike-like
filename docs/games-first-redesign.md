@@ -653,7 +653,7 @@ existing `images2.0/scrolls/Unidentified.png`. Scrolls get the identical treatme
 stay in the design but no `2.0` content exists for them yet.)*
 
 The game opens in an ordinary **window** (2560×1440, clamped to whatever the
-screen leaves free) — see README's "The window" for why a window rather than
+screen leaves free) — see "The window" in [`architecture.md`](architecture.md) for why a window rather than
 either fullscreen, and for the fact that the **canvas** stays a fixed 1280×720
 that is *scaled* into that window rather than enlarged by it.
 
@@ -2910,7 +2910,7 @@ stream — so the overlay dims only when the beat actually stops.
   It is **text in the page, not payload** — the game does not know what anyone's
   bot is called — so it is edited in `obs/overlay.html` or hidden from
   `custom.css`. The two lines cost the card 42px, which is why the source the
-  README recommends went from 640 to 680 tall.
+  docs/streaming.md recommends went from 640 to 680 tall.
 
   **EVERY ROW WEARS ITS OWN ART**, and this is the layout's one big idea. A goal
   *is* an enemy (§7.2), and a column of sentences never said so; with the face on

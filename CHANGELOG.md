@@ -11,6 +11,21 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The README is split, and the rules are a page** (the owner, 20 Oct 2026).
+  The README was 161 KB and its pointer in CLAUDE.md still said ~20 KB. It is a
+  short front door now — the pitch, a run in brief, what is in the build, getting
+  started, the layout, a map of every doc, the roadmap — and its sections moved
+  whole to [`docs/architecture.md`](docs/architecture.md) (autoloads, screens,
+  window, data, Luck, conventions), [`docs/streaming.md`](docs/streaming.md) (the
+  overlay) and [`docs/content-authoring.md`](docs/content-authoring.md) (art,
+  generators, events, objects), corrected where they had gone stale: the escort,
+  the 5–7 start band, the deleted D20 `EventModal`, Run History "still a stub",
+  the old content counts, gaps "only on the nine run screens". New:
+  [`docs/rules.md`](docs/rules.md), the in-game manual rendered as a page by
+  `HowToPlayMarkdown.gd` and held to it by `test_rules_doc.gd`, and
+  [`docs/rest-site-design.md`](docs/rest-site-design.md), the end-of-session Camp,
+  designed and waiting on the owner.
+
 - **Escape opens after ONE lost run at a Traditional game** (the owner, 20 Oct
   2026). Three everywhere else. A lost run of NetHack or Caves of Qud can be an
   evening, so three of them put the door days away; a lost Spelunky run is

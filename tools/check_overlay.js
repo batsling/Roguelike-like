@@ -37,7 +37,7 @@
  * first failure, so CI can call it the day there is CI.
  *
  * The fixture below is a deliberately HEAVY run: nine goals, seven swings, both
- * shield pools, six statuses, twenty-two stops. Every measurement in the README's
+ * shield pools, six statuses, twenty-two stops. Every measurement in the docs/streaming.md's
  * layout tables should be taken from a payload at least this size, because the
  * sizes that bite are the ones a real run reaches on hour three. */
 
@@ -51,7 +51,7 @@ const path = require('path');
 const REPO = path.resolve(__dirname, '..');
 const SRC = path.join(REPO, 'obs');
 
-/* The browser source the README tells a streamer to make. 352 wide since the
+/* The browser source docs/streaming.md tells a streamer to make. 352 wide since the
  * checklist dropped its checkbox column and spent the width on the art; the
  * page is fluid, but this is the width the layout is tuned against and every
  * height below is measured at. It is deliberately 352 and not 350: 350 is the
@@ -66,7 +66,7 @@ const HEIGHT = 828;
  * fourteen deep does not fit 352 at any readable type size. It was drawn for
  * 640x720 first and that was still too small to read: a route runs LEFT TO
  * RIGHT now, so the 1920 is the axis distance is measured along, and a
- * full-screen source is what the README tells a streamer to make.
+ * full-screen source is what docs/streaming.md tells a streamer to make.
  *
  * The page is fluid and works at any size — MAP_SMALL below is a real
  * alternative and is what the growth check measures against — but every map
@@ -946,7 +946,7 @@ async function main() {
     walked[walked.length - 1] > walked[0], 'scrollLeft ' + walked.join(' -> '));
 
   /* Back to the default page for everything below — the road's own source is not
-   * the shape the README's layout tables are about. */
+   * the shape the docs/streaming.md's layout tables are about. */
   await page.goto('file://' + path.join(dir, 'overlay.html'));
   await sleep(900);
 
@@ -1102,11 +1102,11 @@ async function main() {
   check('and the next good payload is a real retry',
     !recovered.waiting && recovered.goals > 0, JSON.stringify(recovered));
 
-  /* 7. the heights the README's layout tables promise. Asserted against the HEAVY
+  /* 7. the heights the docs/streaming.md's layout tables promise. Asserted against the HEAVY
    *    column, not the ceiling: the ceiling is a pathological run and the tables
    *    are what a streamer sizes a scene against. A page that grows past these has
    *    either gained a card or lost the ticker's anchoring, and either way the
-   *    README is now wrong — which is the thing that is hard to notice by eye. */
+   *    docs/streaming.md is now wrong — which is the thing that is hard to notice by eye. */
   /* The whole page came down from 777 to 608 on the same heavy run — the road
    * left the default column and the hero card lost its status strip, and the
    * checklist took ~60px of that back as a taller scroller (260 -> 320), which is
@@ -1119,7 +1119,7 @@ async function main() {
    * the current game's cover and the run card makes room for its overhang. */
   const DOCUMENTED = { '': 716, '#top': 386, '#bottom': 346, '#goals': 346,
     '#road': 116, '#timer': 224 };
-  console.log('the shape the README documents');
+  console.log('the shape docs/streaming.md documents');
   write((s) => { s.at++; s.events = []; Object.assign(s, fixture(dir)); s.at = Date.now(); });
   await sleep(1000);
   for (const [hash, label] of [['', 'whole page'], ['#top', '#top'], ['#bottom', '#bottom'],
@@ -1128,7 +1128,7 @@ async function main() {
     await sleep(900);
     const h = await page.evaluate(() =>
       Math.round(document.getElementById('overlay').getBoundingClientRect().height));
-    check(label + ' still measures what the README says on a heavy run',
+    check(label + ' still measures what docs/streaming.md says on a heavy run',
       h === DOCUMENTED[hash], h + 'px, documented ' + DOCUMENTED[hash]);
   }
 
@@ -1347,7 +1347,7 @@ async function main() {
    * not the `.map` stage scale, so on any source that is not exactly the
    * stage's own 2560x1440 the whole bundle was drawn at `--stage-scale` of its
    * proper size, pulled toward the middle of the panel. At the 1920x1080 the
-   * README recommends that is 0.75, and the only size it looked right at was
+   * docs/streaming.md recommends that is 0.75, and the only size it looked right at was
    * one nobody runs.
    *
    * So this asserts the thing the picture is FOR: a wire starts on the right
@@ -1525,7 +1525,7 @@ async function main() {
     JSON.stringify({ small: stageSmall.overflow, full: stageFull.overflow,
       scrollW: stageFull.scrollW }));
   /* A 16:9 source takes the whole width of a 16:9 stage. This is the promise the
-   * README makes about matching the aspect, and the reason the scale is a single
+   * docs/streaming.md makes about matching the aspect, and the reason the scale is a single
    * `min` rather than two. */
   check('…filling a source of the same aspect edge to edge',
     Math.abs(stageFull.drawn[0] - MAP_SIZE.width) <= 1

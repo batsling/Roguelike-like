@@ -881,7 +881,7 @@ func _build_flow_tab() -> void:
 # EVENTS
 # ---------------------------------------------------------------------------
 
-# The authoring tab (docs/event-sheet-authoring.md, README "Authoring an event").
+# The authoring tab (docs/event-sheet-authoring.md, docs/content-authoring.md "Authoring an event").
 #
 # Starting an event is the obvious half. The half that actually saves the time is
 # the SECOND column: a new event you cannot get to give you nothing to go on — it

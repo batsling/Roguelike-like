@@ -241,8 +241,7 @@ times over, out of step.
 
 **The track is staged beside the page** (`user://obs/radio/`, only the current
 one kept), for the reason the covers are: nothing the page loads may point
-outside its folder, or OBS's browser source refuses it (README, "The stream
-overlay").
+outside its folder, or OBS's browser source refuses it ([`streaming.md`](streaming.md)).
 
 ## 5. The queue
 

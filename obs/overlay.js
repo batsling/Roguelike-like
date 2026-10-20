@@ -943,7 +943,7 @@ function layoutWires(edges) {
    *
    * Dividing by the squeeze alone left the stage's factor in, so the wires were
    * laid out in a coordinate space a factor of `--stage-scale` away from the one
-   * they were drawn into. The stage is 2560x1440 and the README tells a streamer
+   * they were drawn into. The stage is 2560x1440 and docs/streaming.md tells a streamer
    * to make a 1920x1080 source, so that factor was 0.75 on the recommended
    * setup and 1 only on a source of the stage's exact size: every arrow on a
    * real stream was drawn at three quarters of its length, pulled toward the

@@ -9,8 +9,13 @@ the honour system.
 
 | you need | read |
 |---|---|
+| the rules as a player sees them | `docs/rules.md` — **generated** from the in-game manual (`HowToPlayText.gd`) by `tools/dump_rules_doc.gd`; never edit it by hand, `test_rules_doc.gd` fails when it is stale. Change the manual, then regenerate |
 | how the current build works | `docs/games-first-redesign.md` — **the canonical spec**, referenced from 25 places |
-| repo layout, autoloads, screen flow | `README.md` (~20 KB, all of it current) |
+| what the project is, repo layout, which doc to read | `README.md` — a short front door with the docs map (split on 20 Oct 2026) |
+| autoloads, every screen, the window, data loading, Luck, code conventions | `docs/architecture.md` (was most of the README) |
+| the OBS overlay, scene layouts, the speedrun clock | `docs/streaming.md` |
+| art folders, the generators, authoring events and objects | `docs/content-authoring.md` |
+| the end-of-session Camp (designed with open questions, not built) | `docs/rest-site-design.md` |
 | what changed and why | `CHANGELOG.md` — narrative history, not needed to make a change |
 | what is known-slow and not yet fixed | `docs/performance-backlog.md` — measured findings with the fix for each. The Events tab and the page's cold compile are fixed; `GameLoop2.gd` has been measured and is cheap. What stays useful is the method: `Overworld2.gd` carries a seam table re-measured rather than guessed, and `test_page_load.gd` keeps the screens a run only opens on demand out of the page's compile |
 | what the layout pass left open | `docs/layout-review-backlog.md` — all eight items closed. Fonts and gaps are both on `UITheme`'s scales project-wide, with `test_design_tokens.gd` asserting both lists complete and no value off the scale. All of it stays in the doc with its reasoning so none of it gets re-litigated. Two standing notes in it are worth reading before touching any UI: judge colour by sampling the rendered pixel rather than by eye off a screenshot (that produced one confidently wrong finding), and use the `verify` skill to look at a screen rather than reasoning about it |
@@ -45,7 +50,7 @@ the honour system.
   that matter most: `GameState` (run-persistent state), `Data` (loads every
   `.tres` and serves it by id), `GameLoop2` (the run loop — `Overworld2` is a view
   over it), `EffectSystem` + `TriggerBus` (effect dispatch and the signal hub).
-  README's "Autoload singletons" table covers all 29. Count them with
+  `docs/architecture.md`'s "Autoload singletons" table covers all 29. Count them with
   `sed -n '/^\[autoload\]/,/^\[/p' project.godot | grep -c '=\"\*res://'` rather
   than trusting this line — it has been wrong before.
 - **Content is data, never code.** Everything lives as typed `.tres` under `data/`,
