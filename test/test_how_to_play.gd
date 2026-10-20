@@ -143,6 +143,8 @@ func test_the_escape_rule_the_manual_quotes_is_the_real_one() -> void:
 	# constant — and the retired hit gate must not still be taught beside it.
 	var text: String = _all_text()
 	assert_string_contains(text, "%d RUNS of it" % GameLoop2.ESCAPE_AFTER_LOST_RUNS)
+	assert_string_contains(text, "just %d of a Traditional roguelike"
+		% GameLoop2.ESCAPE_AFTER_LOST_RUNS_TRADITIONAL)
 	assert_string_contains(text, "starts again at every game you land on")
 	assert_false(text.contains("takes Health off you during this game"),
 		"the old draw-blood gate is gone from the manual")

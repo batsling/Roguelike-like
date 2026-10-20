@@ -598,6 +598,14 @@ func test_selection_grants_three_shields_and_five_for_traditional() -> void:
 	assert_eq(GameLoop2.shields_for_game(_game_of_type(GameData.GameType.TRADITIONAL)), 5,
 		"a Traditional roguelike is the long haul")
 
+func test_escape_opens_after_one_lost_run_of_a_traditional_and_three_elsewhere() -> void:
+	# A lost run of NetHack can be an evening; a lost run of Spelunky is minutes.
+	for t in [GameData.GameType.ACTION, GameData.GameType.STRATEGY,
+			GameData.GameType.DECKBUILDER]:
+		assert_eq(GameLoop2.escape_after_lost_runs(_game_of_type(t)), 3)
+	assert_eq(GameLoop2.escape_after_lost_runs(_game_of_type(GameData.GameType.TRADITIONAL)), 1,
+		"a Traditional roguelike opens the door after one")
+
 func test_grant_selection_shields_adds_and_announces() -> void:
 	watch_signals(TriggerBus)
 	assert_eq(GameState.shields, 0)

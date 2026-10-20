@@ -6718,31 +6718,36 @@ func _pick_an_unplayed_game() -> GameData:
 	assert_false(GameState.has_beaten_game(game.id), "this run has not beaten it")
 	return game
 
-# The door opens after ESCAPE_AFTER_LOST_RUNS lost runs of THIS game. Faked by
-# filling the tracker's count rather than playing the turns, so the board and the
-# Health a test is about are left exactly as it arranged them.
+# The door opens after escape_after_lost_runs() lost runs of THIS game (three, one
+# at a Traditional). Faked by filling the tracker's count rather than playing the
+# turns, so the board and the Health a test is about are left exactly as it
+# arranged them.
 func _unlock_escape() -> void:
-	while GameLoop2.attempts() < GameLoop2.ESCAPE_AFTER_LOST_RUNS:
+	while GameLoop2.attempts() < GameLoop2.escape_after_lost_runs():
 		GameLoop2.attempt_costs.append("shield")
 	_ui._refresh()
 
-func test_escape_is_shut_until_three_runs_are_lost() -> void:
+func test_escape_is_shut_until_its_runs_are_lost() -> void:
 	# Escaping is for a game you have tried and cannot beat, not one you would
-	# rather not try — so the door stays shut until you have lost at it.
-	_pick_an_unplayed_game()
+	# rather not try — so the door stays shut until you have lost at it. The game
+	# is random, so the gate is read off it: three runs, or one at a Traditional.
+	var game: GameData = _pick_an_unplayed_game()
+	var gate: int = GameLoop2.escape_after_lost_runs(game)
+	assert_eq(gate, 1 if game.type == GameData.GameType.TRADITIONAL else 3,
+		"the gate is the one for %s's type" % game.display_name)
 	assert_eq(GameLoop2.attempts(), 0, "not a single run has been lost")
 	assert_false(_ui.can_escape(), "so the door is shut")
 	_ui._refresh()
 	assert_true(_ui._escape_btn.visible, "the button is still up, so the door is known about")
 	assert_true(_ui._escape_btn.disabled, "but dark")
-	assert_string_contains(_ui.escape_hint_text(), "%d to go" % GameLoop2.ESCAPE_AFTER_LOST_RUNS,
+	assert_string_contains(_ui.escape_hint_text(), "%d to go" % gate,
 		"and the line under it counts down: %s" % _ui.escape_hint_text())
-	GameLoop2.attempt_costs.append("shield")
-	GameLoop2.attempt_costs.append("shield")
-	assert_false(_ui.can_escape(), "two lost runs are not three")
+	while GameLoop2.attempts() < gate - 1:
+		GameLoop2.attempt_costs.append("shield")
+	assert_false(_ui.can_escape(), "one short of the gate is still shut")
 	assert_string_contains(_ui.escape_hint_text(), "1 to go", _ui.escape_hint_text())
 	GameLoop2.attempt_costs.append("shield")
-	assert_true(_ui.can_escape(), "the third opens it")
+	assert_true(_ui.can_escape(), "the last one opens it")
 	_ui._refresh()
 	assert_false(_ui._escape_btn.disabled, "and lights the button")
 

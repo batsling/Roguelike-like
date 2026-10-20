@@ -1902,7 +1902,7 @@ func _land_capstone_boss(type_key: StringName = &"", tier: int = -1) -> void:
 #   * AN ESCAPE with no goal beaten pays the +1 and never less than
 #     ESCAPE_MIN_BODIES. An escape AFTER a body went down to its goal pays what
 #     handing the game in would: the player answered the board, and the door is
-#     already gated behind ESCAPE_AFTER_LOST_RUNS lost runs, so it is not the
+#     already gated behind escape_after_lost_runs() lost runs, so it is not the
 #     cheap way out of a game they simply did not fancy.
 #
 # An Event or a Shop node is NOT exempt. It stood nothing on the board, but the
@@ -1925,6 +1925,20 @@ const ESCAPE_MIN_BODIES := 2
 # game starts at zero. Without it escape was the answer to any game that looked
 # hard — walk out before trying — and the whole run is built on trying.
 const ESCAPE_AFTER_LOST_RUNS := 3
+# …and ONE at a Traditional game (the owner, 20 Oct 2026). A lost run of NetHack
+# or Caves of Qud can be a whole evening, so three of them was days before the
+# door opened; a lost Spelunky run is three minutes, which is why the others keep
+# three. The same split, for the same reason, as SHIELDS_TRADITIONAL.
+const ESCAPE_AFTER_LOST_RUNS_TRADITIONAL := 1
+
+# The gate for `game`, defaulting to the game in play — read this, not either
+# constant, so the button, its hint and the manual all ask the same question.
+func escape_after_lost_runs(game: GameData = null) -> int:
+	if game == null:
+		game = Data.get_game(GameState.current_game_id)
+	if game != null and game.type == GameData.GameType.TRADITIONAL:
+		return ESCAPE_AFTER_LOST_RUNS_TRADITIONAL
+	return ESCAPE_AFTER_LOST_RUNS
 
 func end_of_game_price(escaped: bool = false) -> Dictionary:
 	if not game_in_play or run_over:

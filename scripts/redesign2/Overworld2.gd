@@ -1770,8 +1770,9 @@ func _announce_attempt_turn(game_name: String, res: Dictionary) -> void:
 # report that doesn't fire them. Neither one banks a beat — beaten means won (see
 # report) — so an escape and a miss are alike in earning no repeat-beat Dash, no
 # Atlas mark and no movement in either beaten tally.
-# The door out of the game in play. It opens after ESCAPE_AFTER_LOST_RUNS lost
-# runs OF THIS GAME — every game starts the count again at zero — so escaping is
+# The door out of the game in play. It opens after GameLoop2.escape_after_lost_runs()
+# lost runs OF THIS GAME (three, or one at a Traditional game, where a run can be
+# an evening) — every game starts the count again at zero — so escaping is
 # what you do with a game you have tried and cannot beat, not with one you would
 # rather not try. A teleport is not the door and does not ask (escape_game's
 # `force`).
@@ -1781,7 +1782,7 @@ func can_escape() -> bool:
 
 # Lost runs still needed before the door opens; 0 once it is open.
 func escape_runs_to_go() -> int:
-	return maxi(GameLoop2.ESCAPE_AFTER_LOST_RUNS - GameLoop2.attempts(), 0)
+	return maxi(GameLoop2.escape_after_lost_runs() - GameLoop2.attempts(), 0)
 
 # The line under the button: while the door is shut, what opens it ("Unlocks after
 # 3 lost runs — 2 to go"); once it is open, its price ("Leave now: 3 enemies walk
@@ -1791,8 +1792,9 @@ func escape_hint_text() -> String:
 		return ""
 	var to_go: int = escape_runs_to_go()
 	if to_go > 0:
-		return "Unlocks after %d lost runs here — %d to go." % [
-			GameLoop2.ESCAPE_AFTER_LOST_RUNS, to_go]
+		var gate: int = GameLoop2.escape_after_lost_runs()
+		return "Unlocks after %d lost run%s here — %d to go." % [
+			gate, "" if gate == 1 else "s", to_go]
 	var price: Dictionary = GameLoop2.end_of_game_price(true)
 	var bodies: int = int(price["bodies"])
 	if bodies <= 0:
@@ -1805,8 +1807,9 @@ func escape_hover() -> Dictionary:
 	var to_go: int = escape_runs_to_go()
 	var lines: Array = []
 	if to_go > 0:
-		lines.append("Opens after %d lost runs of this game — %d to go." % [
-			GameLoop2.ESCAPE_AFTER_LOST_RUNS, to_go])
+		var gate: int = GameLoop2.escape_after_lost_runs()
+		lines.append("Opens after %d lost run%s of this game — %d to go." % [
+			gate, "" if gate == 1 else "s", to_go])
 	var owed: int = int(GameLoop2.end_of_game_price(true)["bodies"])
 	if GameLoop2.defeated_this_game > 0:
 		lines.append("You beat a goal here, so it costs only what ending the game does: %s."
@@ -7472,7 +7475,7 @@ func _refresh_attempts() -> void:
 	# undo history), so half the time it was a grey button with a paragraph saying
 	# why. `GameLoop2.undo_attempt` and its snapshots stay — they are what makes a
 	# turn a restore rather than a refund (§3) — they simply have no button.
-	# The escape hatch opens after ESCAPE_AFTER_LOST_RUNS lost runs of this game
+	# The escape hatch opens after escape_after_lost_runs() lost runs of this game
 	# (can_escape); until then it is up but dark, and the line under it counts
 	# down. Its hover is a compact card rather than a paragraph of plain tooltip.
 	if _escape_btn != null:

@@ -308,9 +308,12 @@ static func _ch_playing() -> Dictionary:
 				+ "for three games and clear it later."),
 			_h("Escaping"),
 			_p(("If a game is going nowhere you can leave it — once you have LOST "
-				+ "%d RUNS of it. The count starts again at every game you land on, "
-				+ "so escape is for the game you have tried and cannot beat, not "
-				+ "for the one you would rather not try.") % GameLoop2.ESCAPE_AFTER_LOST_RUNS),
+				+ "%d RUNS of it, or just %d of a Traditional roguelike, where one "
+				+ "run can be a whole evening. The count starts again at every game "
+				+ "you land on, so escape is for the game you have tried and cannot "
+				+ "beat, not for the one you would rather not try.") % [
+				GameLoop2.ESCAPE_AFTER_LOST_RUNS,
+				GameLoop2.ESCAPE_AFTER_LOST_RUNS_TRADITIONAL]),
 			_p("Walking out ends the game, so the board fills behind you. If you "
 				+ "put a body down to its goal here, it costs exactly what handing "
 				+ "the game in would; if you put nothing down, it costs one more "
@@ -980,10 +983,12 @@ static func _ch_wrong() -> Dictionary:
 				+ "— and debts in this game are payable in any currency."),
 			_h("I keep losing runs of this game"),
 			_p(("Each lost run hands the board a turn, and the board is closer "
-				+ "every time. After %d lost runs Escape opens: it pays no chest "
-				+ "and costs at least two enemies unless you beat a goal here, but "
-				+ "it stops the bleeding, and every goal stays on your checklist to "
-				+ "clear somewhere friendlier.") % GameLoop2.ESCAPE_AFTER_LOST_RUNS),
+				+ "every time. After %d lost runs (%d at a Traditional game) Escape "
+				+ "opens: it pays no chest and costs at least two enemies unless you "
+				+ "beat a goal here, but it stops the bleeding, and every goal stays "
+				+ "on your checklist to clear somewhere friendlier.") % [
+				GameLoop2.ESCAPE_AFTER_LOST_RUNS,
+				GameLoop2.ESCAPE_AFTER_LOST_RUNS_TRADITIONAL]),
 			_p("And beat ONE body's goal if you possibly can — any goal on the list. "
 				+ "A game that ends with no goal beaten stands one more enemy up."),
 			_h("I have four followers and they are killing me"),

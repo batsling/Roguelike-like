@@ -11,6 +11,13 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Escape opens after ONE lost run at a Traditional game** (the owner, 20 Oct
+  2026). Three everywhere else. A lost run of NetHack or Caves of Qud can be an
+  evening, so three of them put the door days away; a lost Spelunky run is
+  minutes, so the others keep three. `GameLoop2.escape_after_lost_runs(game)`
+  is the one question the button, its hint, its hover and the manual ask
+  ([`docs/games-first-redesign.md`](docs/games-first-redesign.md) §3.2).
+
 - **Alchemize identifies its potion, The Necronomicon, Gecko Gi** (the owner's
   upload, 19 Oct 2026). Alchemize now reads "Gain +1 Random Potion and Identify
   it": a card's `gain_loot` takes `identify`, which rolls the piece, identifies
