@@ -19,6 +19,15 @@ failure; diffing a passing and failing run's Control tree) are the reusable part
 - **The varying failures that used to live here are FIXED.** All were
   assertions that were only *usually* true, and they are worth reading before
   blaming a seed for a new one.
+  - `test_statuses.gd`'s Speed and Marked tests (20 Oct 2026) failed only in
+    FULL runs, a different one each time, and never alone or across 80 seeds of
+    `seed()`, because the offering's random enemy is not drawn off the global
+    seed. They stood a random body and assumed its turn was a step and its
+    Health one goal's worth. Forcing each of the 25 ability-carrying enemies'
+    abilities onto the body in turn found it: a Host or a Mysterious Tree spends its turn
+    without walking. They now call the file's own `_disarm_board()` (and the
+    shield test sets the body's Health to 2, as its sibling does), the fix
+    CLAUDE.md already names for this.
   - `test_overworld2.gd::test_leaving_the_haul_screen_lands_the_shelf_under_the_board`
     failed roughly one full-suite run in six, and only in a FULL run, which is
     what made it look like cross-file leakage. It isn't: `before_each` →
