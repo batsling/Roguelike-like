@@ -2,7 +2,7 @@ extends Control
 
 # CampScreen — the end-of-session camp (scripts/runtime/Camp.gd,
 # docs/rest-site-design.md). Two cards, Rest and the one the session's games
-# dealt, and a Not yet. Picking one emits `chose`; what the choice DOES is the
+# dealt, and a way back to the run. Picking one emits `chose`; what the choice DOES is the
 # page's (Overworld2.camp_choose), because two of the five open a pick in the pack
 # and one opens the loot offer, and both of those live on the page.
 #
@@ -85,9 +85,9 @@ func _build() -> void:
 	for opt in _options:
 		row.add_child(_card(opt))
 
-	var later := UITheme.confirm_button("Not yet", Vector2(140, 32))
+	var later := UITheme.confirm_button("Back to the run", Vector2(160, 32))
 	later.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	later.tooltip_text = "Close without camping. The games you beat still count toward the next one."
+	later.tooltip_text = "Don't leave yet. These two cards wait for you on the way out."
 	later.pressed.connect(close)
 	root.add_child(later)
 

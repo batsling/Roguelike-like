@@ -16,8 +16,14 @@ extends RefCounted
 #
 # A camp needs a game BEATEN since the last one (GameState.games_beaten_since_camp),
 # which is what keeps it from being farmed: quitting after every game earns one
-# camp a game, and camping twice in a row is refused. Only between games — never
-# with one in play, whose board is mid-turn.
+# camp a game, and camping twice in a row is refused. With that, it is the whole
+# camp whether or not a game is in play: a session that ends mid-game (a long
+# Traditional run) still earned it with the wins before.
+#
+# It is made on the way OUT of a run — the Exit and Main menu doors offer it, and
+# taking a card saves and leaves (Overworld2.camp_choose). The deal is dealt once
+# and kept (GameState.camp_deal) until a card is taken, so backing out to the run
+# and coming back shows the same two cards: no rerolling by reopening.
 #
 # An option that could do nothing (nothing unidentified to study, nothing that
 # takes a charge) is never dealt: the deal draws from the beaten games whose
@@ -77,8 +83,6 @@ static func can_camp() -> bool:
 static func why_not() -> String:
 	if GameLoop2.run_over:
 		return "The run is over."
-	if GameLoop2.game_in_play:
-		return "Finish or escape the game in play first."
 	if GameState.games_beaten_since_camp.is_empty():
 		return "Beat a game first — a camp is earned by the games since the last one."
 	return ""
@@ -117,6 +121,20 @@ static func deal(rng: RandomNumberGenerator) -> Array:
 		out.append({"id": option_for(g), "game": g.id})
 	return out
 
+# The deal this camp shows: the one already dealt, if it still stands, else a fresh
+# one, kept in GameState.camp_deal until a card is taken (spend). It is dealt anew
+# only when there was nothing to keep — no deal yet, Rest alone (a win since may
+# have earned a second card), or a second card that would now do nothing (the
+# last unknown piece got identified some other way).
+static func current_deal(rng: RandomNumberGenerator) -> Array:
+	var kept: Array = GameState.camp_deal
+	if kept.size() >= 2 and usable(StringName(String((kept[1] as Dictionary).get("id", "")))):
+		return kept.duplicate(true)
+	var fresh: Array = deal(rng)
+	GameState.camp_deal = fresh.map(func(c): return {
+		"id": String(c["id"]), "game": String(c["game"])})
+	return GameState.camp_deal.duplicate(true)
+
 # --- doing it ----------------------------------------------------------------
 
 # The two options that need no further choice. The other three need the page —
@@ -131,11 +149,12 @@ static func brace() -> String:
 	GameState.stats_changed.emit()
 	return "You brace: +%d %s." % [SHIELD_GAIN, GameState.SHIELD_NAME]
 
-# The camp is made: the games it was earned by are spent. Called the moment a
-# card is chosen, before any pick it opens, so a pick put away cannot leave the
-# camp open to be made again.
+# The camp is made: the games it was earned by are spent, with its deal. Called
+# when the card actually pays — at once for Rest and Brace, when its pick is
+# answered for Study and Tinker — so backing out of a pick spends nothing.
 static func spend() -> void:
 	GameState.games_beaten_since_camp.clear()
+	GameState.camp_deal = []
 	mark_session()
 
 # --- the session ---------------------------------------------------------------

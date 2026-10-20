@@ -302,6 +302,7 @@ func _build_payload() -> Dictionary:
 		# Camp (scripts/runtime/Camp.gd): the games beaten since the last one. Absent
 		# from an older save, which loads with no camp earned yet.
 		"games_beaten_since_camp": Array(GameState.games_beaten_since_camp).map(func(id): return String(id)),
+		"camp_deal": GameState.camp_deal.duplicate(true),
 		"session_mark": GameState.session_mark.duplicate(),
 		# Smelter: the pieces taken out of the pack that work as relics.
 		"smelted_loot": GameState.smelted_loot.duplicate(true),
@@ -613,6 +614,8 @@ func _apply_save_data(data: Dictionary) -> void:
 	GameState.games_beaten_since_camp.clear()
 	for id in data.get("games_beaten_since_camp", []):
 		GameState.games_beaten_since_camp.append(StringName(String(id)))
+	var deal = data.get("camp_deal", [])
+	GameState.camp_deal = (deal as Array).duplicate(true) if deal is Array else []
 	var mark = data.get("session_mark", {})
 	GameState.session_mark = (mark as Dictionary).duplicate() if mark is Dictionary else {}
 	GameState.destroyed_loot.clear()
