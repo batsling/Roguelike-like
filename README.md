@@ -39,6 +39,8 @@ a lost run will cost. A run is meant to last a day or two of streaming.
 5. **Choose the next game** from the ones connected to where you stand, with
    Bash, Dash, Transmute and Scramble to reshape the offering. Repeat until the
    Amulet or zero Health.
+6. **End each stream by making camp**: rest for Health, or take what one of the
+   session's games taught you.
 
 Above a won run sit **Fractures**, ten harder levels unlocked per character.
 Across runs, every game and character **ranks up**, and each rank unlocks a song
@@ -55,13 +57,10 @@ rather than trusting them later.
 | **Characters** | 12, each with a level-up goal; Mysterious Mask adds a second |
 | **Enemies** | 66 goal-enemies and 50 bosses (some with phases) across four game types, 31 abilities, 7 statuses, tile effects and units on the board |
 | **Things you carry** | 77 relics, plus eight kinds of loot in a shaped pack: 9 scrolls, 10 pills and 15 potions (each identified per run), 37 cards, 12 wands, 22 trinkets, 5 bags, 11 weapons with 6 evolutions |
-| **Between games** | 16 events, 2 machines, 3 curse goals, Shop nodes with 4 shopkeepers |
+| **Between games** | 16 events, 2 machines, 3 curse goals, Shop nodes with 4 shopkeepers, and the end-of-session Camp |
 | **Difficulty** | Amulet pressure, a tier ladder stepped by spawns, boss capstones, Fractures 1–10 and Fracture 10's Collapse (carry the Amulet home) |
 | **Across runs** | Profiles, game and character ranks, the Collection, a tier list, notes per goal, Run History, custom runs with seeds |
 | **Streaming** | The OBS overlay (eight browser sources), a speedrun clock, and Roguelike Radio (1,933 songs on the sheet, the player's own audio) |
-
-**Designed, not built:** the end-of-session **Camp**
-([`docs/rest-site-design.md`](docs/rest-site-design.md)).
 
 ## Getting started
 
@@ -164,7 +163,7 @@ The repository root **is** the Godot project, so `res://x` is `./x`.
 | Difficulty above a won run | [`docs/fracture-design.md`](docs/fracture-design.md) |
 | Rifts: off-map games pulled into the map | [`docs/rifts-design.md`](docs/rifts-design.md) |
 | Roguelike Radio | [`docs/roguelike-radio.md`](docs/roguelike-radio.md) |
-| The end-of-session Camp (designed, not built) | [`docs/rest-site-design.md`](docs/rest-site-design.md) |
+| The end-of-session Camp | [`docs/rest-site-design.md`](docs/rest-site-design.md) |
 | Locations and events, design | [`docs/locations-and-events-design.md`](docs/locations-and-events-design.md) |
 | Stats and how they resolve | [`docs/stat-dispatcher.md`](docs/stat-dispatcher.md) |
 | The systems graph (what feeds what) | [`docs/systems-graph.md`](docs/systems-graph.md) |
@@ -177,12 +176,12 @@ The repository root **is** the Godot project, so `res://x` is `./x`.
 ## Roadmap
 
 The core loop, node kinds, shops, events and objects, all eight loot kinds,
-enemy abilities, bosses with phases, Fractures, rifts, ranks, the radio, Run
-History and the overlay are built. What is still ahead:
+enemy abilities, bosses with phases, Fractures, rifts, ranks, the radio, the
+Camp, Run History and the overlay are built. What is still ahead:
 
-- **The Camp**: an end-of-session choice drawn from the games beaten that
-  session. Designed in [`docs/rest-site-design.md`](docs/rest-site-design.md),
-  with open questions for the owner.
+- **The Camp's next steps** ([`docs/rest-site-design.md`](docs/rest-site-design.md)
+  §5): the last camp on the overlay, a game's own camp card, and what a session
+  that ends mid-game gets.
 - **Chat interaction**: ideas are being collected and parked until the audience
   is big enough to use them.
 - **Keys, locked paths and the Fog scroll** are deferred by decision (spec §4).

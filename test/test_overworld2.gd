@@ -10527,8 +10527,8 @@ func test_the_menu_reaches_the_screens_that_used_to_need_quitting_the_run() -> v
 	for i in range(pop.item_count):
 		labels.append(pop.get_item_text(i))
 	var joined: String = " | ".join(labels)
-	for wanted in ["How to Play", "Collection", "Tier List", "Save run", "New run",
-			"Settings", "Main menu", "Exit game"]:
+	for wanted in ["How to Play", "Collection", "Tier List", "Save run", "Make camp",
+			"New run", "Settings", "Main menu", "Exit game"]:
 		assert_true(joined.contains(wanted), "%s is on the menu: %s" % [wanted, joined])
 
 # The groups are the point — eight entries in one column is a wall. Each is a

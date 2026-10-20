@@ -6,7 +6,7 @@
 
 1. [Start here](#-start-here) — The whole game in one page.
 2. [Choosing where to go](#-choosing-where-to-go) — The offering, the card, and the route to the Amulet.
-3. [Playing the game](#-playing-the-game) — Shields, lost runs, the checklist, and getting out.
+3. [Playing the game](#-playing-the-game) — Shields, lost runs, the checklist, getting out, and making camp.
 4. [Enemies are goals](#-enemies-are-goals) — What they want, what they do if you refuse.
 5. [The board](#-the-board) — Where the enemies you owe are standing, and how close.
 6. [Health and dying](#-health-and-dying) — The two numbers that end a run.
@@ -92,7 +92,7 @@ This is the whole reason routing is a decision. Route wide and the board fills s
 
 ## 🎮 Playing the game
 
-*Shields, lost runs, the checklist, and getting out.*
+*Shields, lost runs, the checklist, getting out, and making camp.*
 
 You have chosen a game. The app now does nothing until you come back — go and play. What follows is what the screen is for while you are away and when you return.
 
@@ -153,6 +153,10 @@ So you can finish a game and leave everything on the board still following you, 
 If a game is going nowhere you can leave it — once you have LOST 3 RUNS of it, or just 1 of a Traditional roguelike, where one run can be a whole evening. The count starts again at every game you land on, so escape is for the game you have tried and cannot beat, not for the one you would rather not try.
 
 Walking out ends the game, so the board fills behind you. If you put a body down to its goal here, it costs exactly what handing the game in would; if you put nothing down, it costs one more and never fewer than 2. Either way there is no chest. The enemy comes with you, alive and following: escape answers the goal with a no, it does not delete the question.
+
+### Ending a session: make camp
+
+A run lasts more than one sitting, so end each one by making camp: ☰ Menu → Make camp, between games, once you have beaten a game since your last camp. It offers two cards and you take one. REST is always there: +2 Health. The other is dealt from one of the games you beat since the last camp, by its type — a Traditional game lets you identify a piece of loot, a Deckbuilder hands you a random card, a Strategy game puts 2 charges into something you carry, and an Action game gives you 1 Shield that stays. Making camp saves the run, so it is safe to close. Exit offers it too when one is owed.
 
 > ★ Rate is always optional: it is on the card a game opens and on the screen a game ends on. Score a game out of ten and write a note; it feeds the Tier List, which is yours across every run and is not a game mechanic at all.
 

@@ -48,6 +48,8 @@ extends RefCounted
 #   {"k": "step", "t": "...", "n": 1}            a numbered step
 #   {"k": "row",  "c": ["a", "b"], "head": bool} a table row
 
+const Camp := preload("res://scripts/runtime/Camp.gd")
+
 static func _p(t: String) -> Dictionary: return {"k": "p", "t": t}
 static func _b(t: String) -> Dictionary: return {"k": "b", "t": t}
 static func _h(t: String) -> Dictionary: return {"k": "h", "t": t}
@@ -219,7 +221,7 @@ static func _ch_choosing() -> Dictionary:
 static func _ch_playing() -> Dictionary:
 	return {
 		"id": &"playing", "icon": "🎮", "title": "Playing the game",
-		"blurb": "Shields, lost runs, the checklist, and getting out.",
+		"blurb": "Shields, lost runs, the checklist, getting out, and making camp.",
 		"blocks": [
 			_p("You have chosen a game. The app now does nothing until you come "
 				+ "back — go and play. What follows is what the screen is for "
@@ -321,6 +323,18 @@ static func _ch_playing() -> Dictionary:
 				% GameLoop2.ESCAPE_MIN_BODIES + "enemy comes with you, alive and "
 				+ "following: escape answers the goal with a no, it does not "
 				+ "delete the question."),
+			_h("Ending a session: make camp"),
+			_p(("A run lasts more than one sitting, so end each one by making camp: "
+				+ "☰ Menu → Make camp, between games, once you have beaten a game "
+				+ "since your last camp. It offers two cards and you take one. REST "
+				+ "is always there: +%d Health. The other is dealt from one of the "
+				+ "games you beat since the last camp, by its type — a Traditional "
+				+ "game lets you identify a piece of loot, a Deckbuilder hands you a "
+				+ "random card, a Strategy game puts %d charges into something you "
+				+ "carry, and an Action game gives you %d Shield that stays. Making "
+				+ "camp saves the run, so it is safe to close. Exit offers it too "
+				+ "when one is owed.") % [Camp.REST_HEAL, Camp.CHARGE_AMOUNT,
+				Camp.SHIELD_GAIN]),
 			_note("★ Rate is always optional: it is on the card a game opens and "
 				+ "on the screen a game ends on. Score a game "
 				+ "out of ten and write a note; it feeds the Tier List, which is "

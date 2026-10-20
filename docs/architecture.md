@@ -587,6 +587,7 @@ it says the rest.
 | `redesign2/RunLogScreen.gd` | The header's 🕮 History: `GameLog` grouped into the run's stops |
 | `redesign2/MaskChoiceModal.gd` | Mysterious Mask's pick of a second character's level-up (§3.1) |
 | `redesign2/SmeltChoiceModal.gd` | Smelter: take a passive piece out of the pack and keep it working (`docs/loot-passives.md` §16) |
+| `redesign2/CampScreen.gd` | The end-of-session Camp: Rest or the card a game beaten since the last camp dealt (`docs/rest-site-design.md`) |
 | `redesign2/CollapseScreen.gd` | Fracture 10's turnaround once the Amulet is beaten (`docs/fracture-design.md` §7) |
 | `redesign2/LootWindow.gd`, `LootGrid.gd`, `LootSlot.gd`, `LootTrash.gd`, `LootDiscoveries.gd`, `LootUseModal.gd` | The pack: the loot grid, its slots and bin, "Known this run", and using a piece (`docs/loot-passives.md`) |
 | `redesign2/OwnedPick.gd` | Pick one of the bodies on the board, for an effect that asks "which" |
@@ -601,6 +602,7 @@ it says the rest.
 | `LootPassives.gd` | What a piece does from its pack slot, and every neighbour rule (`docs/loot-passives.md`) |
 | `LootOps.gd` | The ops loot effects are built from |
 | `WeaponSystem.gd` | Weapons: aiming, areas and the goal that charges them (`docs/loot-passives.md` §12) |
+| `Camp.gd` | The Camp's rules: when one is owed, what it deals, Rest and Brace (`docs/rest-site-design.md`). Loaded by path, no `class_name` |
 | `RayAim.gd` | The ray that bounces (Ball x Pit's ball, Earthquake, the ray wands) |
 | `AudioTags.gd` | Reads a music file's own tags, for filling the `radio` sheet from a folder |
 

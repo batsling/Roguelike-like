@@ -1,116 +1,87 @@
-# Camp — the end-of-session rest (design)
+# Camp — the end-of-session rest
 
-**Status: proposal for the owner to edit. Nothing here is built.** Section
-numbers (§3.2, §7.4, …) refer to [`games-first-redesign.md`](games-first-redesign.md).
+**Status: built** (the owner's design, 20 Oct 2026). The rules are in
+`scripts/runtime/Camp.gd`, the screen is `scripts/redesign2/CampScreen.gd`, and
+the flow is `Overworld2.open_camp` / `camp_choose`. Tests: `test/test_camp.gd`.
+Section numbers (§3.2, …) refer to
+[`games-first-redesign.md`](games-first-redesign.md).
 
 ## 1. Why
 
-A run spans one or two days of streaming, so it is split into **sessions**:
-each stream ends with a save, and the next one opens with a load. Today that
-boundary isn't part of the game. Saving is a menu item, and the run picks up
-exactly where it left off.
-
-The between-game decision (which card to take, §4.2) comes about once per game,
-which can be hours apart. The camp adds one decision per stream session, at a
-moment the stream already has: the outro. It also gives the next stream an
-opening line ("last time we camped and took…").
+A run lasts a day or two of streaming, so it is played in **sessions**: each
+stream ends with a save, and the next opens with a load. Before the camp, that
+boundary wasn't part of the game. The between-game decision (which card to take,
+§4.2) comes about once per game, and a game can take hours. The camp adds one
+decision per stream session, at a moment the stream already has: the outro. Its
+result is also the next stream's opening line.
 
 **Name.** It is called **Camp** and not "rest site", because a curse goal already
-uses that phrase about the *real* game. Poor Sleep reads "you use a rest site
-to replenish health", meaning a campfire in Slay the Spire or similar. Two
-different things answering to one name would make that curse ambiguous.
+uses that phrase about the *real* game: Poor Sleep, "you use a rest site to
+replenish health", means a campfire in Slay the Spire or similar. Two things
+answering to one name would make that curse ambiguous.
 
-## 2. When it is offered
+## 2. The rule
 
-- **A menu entry, `🔥 Make camp`**, under *This run*, beside 💾 Save run. Making
-  camp resolves the choice, saves, and returns to the main menu, because it is
-  how a session ends.
-- **Main menu / Exit game ask once**: *"You've beaten N games since your last
-  camp. Make camp before you go?"* with **Make camp**, **Just save** and
-  **Cancel**. Nothing forces it: closing the stream without a choice must stay
-  possible.
-- **Only between games, never with one in play.** A game in play is a board
-  mid-turn, and the camp should not reach into it. A Traditional game that spans
-  two streams is the case this rule makes awkward (see §6).
+Making camp offers **two cards, and you take one**:
 
-## 3. What it offers: one card per game beaten since the last camp
-
-The camp deals **one option per game beaten since the last camp**, each drawn
-from that game's **type pool**, plus a **Rest** card that is always there. You
-take **one**.
-
-- **Beaten**, not merely played. A missed or escaped game earns nothing here,
-  which fits the run's existing rule that beaten means won (§19).
-- **Capped at three game cards**, the three most recently beaten, so the screen
-  stays a choice rather than a list. Two games of the same type deal two
-  different options from that pool.
-- **The counter resets at camp** (`GameState.games_beaten_since_camp`, saved with
-  the run). This stops it being farmed: with no game beaten since the last camp,
-  *Make camp* is just Rest. Quitting after every game earns one card a game,
-  which is no better than quitting once after three games.
-
-Each card shows the **game's cover** and the option, so the choice reads as
-"what this game taught me". A game played on stream turns into a thing you
-carry.
-
-### 3.1 The pools (first draft, built from verbs that already exist)
-
-| Type | Options (one is dealt per beaten game) | Why this type |
+| Card | When | What it does |
 |---|---|---|
-| **Traditional** | **Identify**: name one unidentified scroll, pill or potion kind · **Study**: +1 Luck for the rest of the run | the genre of identification and long knowledge |
-| **Deckbuilder** | **Purge**: remove one curse goal or one player status · **Draw**: +1 random card | thinning and drafting |
-| **Action** | **Brace**: +2 Shields (the pool that stays, §3.2) · **Sharpen**: charge one weapon | reflexes and armour |
-| **Strategy** | **Scout**: push every body on the board back one column · **Plan**: +1 Scramble | position and tempo |
-| *(always)* | **Rest**: +2 Health, up to max | the floor, so a camp is never empty |
+| **Rest** | always | +2 Health, up to max (`Camp.REST_HEAL`) |
+| **one more** | dealt from a random game beaten since the last camp, by that game's type | see below |
 
-These are placeholders in the run's own vocabulary. Most map onto effect
-clauses that already exist (`gain_stat` for Luck, Health, Shields and Scramble;
-`gain_loot` for a card; Scroll of Identify's `identify_loot`; `remove_curse`),
-so the pools can be data, not code (§5). Scout (push the whole board back) and
-Sharpen (charge a chosen weapon) would be new clauses.
+| Type of the game it came from | Card | What it does |
+|---|---|---|
+| Traditional | **Study** | identify one piece of loot you carry, chosen in the pack |
+| Deckbuilder | **Draft** | a random card, through the ordinary loot offer, so a full pack is asked rather than refused |
+| Strategy | **Tinker** | 2 charges (`Camp.CHARGE_AMOUNT`) into one thing you carry that takes a charge, chosen in the pack |
+| Action | **Brace** | +1 Shield, the kind that stays until something breaks it (§3.2) |
 
-### 3.2 Later: a game's own camp option
+The second card shows the cover of the game that dealt it ("from Hades"), so the
+choice reads as what that game taught you.
 
-A `Camp` column on the `games` sheet would let a game replace its type's draw
-with its own option, for example:
+## 3. When it can be made
 
-- Slay the Spire: **Smith**, evolve one piece
-- Hades: **Mirror**, +1 Max Health
-- Darkest Dungeon: **Hamlet**, remove every player status
+- **Earned by a win.** `GameState.games_beaten_since_camp` records every game
+  beaten since the last camp, one entry per win, repeats included. A camp needs
+  at least one. Making camp empties the list, so a camp can't be made twice in a
+  row, and quitting after every game earns no more than quitting once.
+- **Only between games.** A game in play has a board that is mid-turn, so the
+  menu entry is dark while one is.
+- **Never a dead card.** The second card is drawn only from the beaten games
+  whose card would do something right now:
+  - Study needs something unidentified to study.
+  - Tinker needs something with room for a charge.
+  
+  If none of them qualify, the camp offers Rest alone.
+- **Spent the moment a card is taken**, before any pick it opens. Putting that
+  pick away therefore can't leave the camp open to be made again.
 
-That is what makes beating a *particular* game worth something at camp. It
-should be added only once the type pools have been played with.
+## 4. Where it is
 
-## 4. On stream
+- **☰ Menu → ▲ Make camp**, under *This run*, beside Save run. While it is shut,
+  its tooltip says why: a game is in play, nothing has been beaten since the
+  last camp, or the run is over.
+- **Exit asks.** When a camp is owed, the Exit dialog says so and adds **Make
+  camp first** beside Save & exit.
+- **Making camp saves the run** and says it is safe to close. It doesn't quit
+  for you: a card that opens a pick or a loot offer needs the page.
+- The in-game manual teaches it in *Playing the game* → "Ending a session: make
+  camp", so it is in [`rules.md`](rules.md) too.
 
-- The camp screen should be **readable as a scene**: the covers of the games
-  beaten this session in a row, the options under them, the choice made live.
-- The overlay carries **"Last camp: Brace (from Hades)"** until the next game is
-  chosen, so the next stream opens on it.
-- `RunTimer` already stops when the application closes (it sums `_process`
-  time), so the camp needs nothing from the clock. The session's own time could
-  appear on the camp screen as a recap line.
+`▲` is the menu's glyph because the UI fonts already ship it. A campfire 🔥 would
+need `tools/build_glyph_font.py` re-run, which needs network access to
+fontsource.
 
-## 5. Where it would live
+## 5. Not (yet)
 
-- `data/camp2.0/`, from a `camp` sheet (`Type`, `Name`, `Effect`, `Weight`), so
-  the pools are authored like everything else. The `games` sheet's `Camp`
-  column comes later (§3.2).
-- `GameState.games_beaten_since_camp: Array[StringName]`, appended in
-  `Overworld2.report` beside the other beat records, cleared at camp, saved.
-- `CampScreen.gd`, built in code like every other screen past the menu.
-- The `Make camp` menu entry and the leave-prompt on `MenuItem.MAIN_MENU` /
-  `EXIT_GAME`.
-- A chapter in `HowToPlayText.gd`, which flows into `docs/rules.md`.
-
-## 6. Open questions for the owner
-
-1. **The Traditional game that spans two streams.** Allow a camp with a game in
-   play (Rest only, or the cards earned before it)? Or ask the player to camp at
-   the last game boundary?
-2. **Rest's size.** Is +2 Health right, against characters with 5–10 Health?
-3. **The cap of three.** Three most recent, or let the player pick which games
-   to "spend"?
-4. **Fractures.** Should a high Fracture weaken the camp (no Rest card, say), or
-   leave it alone?
-5. **Run-ending choices.** Should the last camp before the Amulet be special?
+- **The overlay doesn't show the last camp.** A "Last camp: Brace (from Hades)"
+  line until the next game is chosen would give the next stream its opening.
+  It would need a field on the run and a line in `ObsCompanion`'s payload.
+- **A game's own camp card.** A `Camp` column on the `games` sheet could let one
+  game replace its type's card: Smith for Slay the Spire, the Mirror for Hades.
+  Worth adding once the type cards have been played with.
+- **A Traditional game that spans two streams.** The camp is shut while a game is
+  in play, so a session that ends mid-game ends without one. The game's win
+  earns the camp at the end of the next session. The open question is whether a
+  mid-game session end should get Rest alone.
+- **Fractures don't touch the camp.**

@@ -229,3 +229,12 @@ func test_the_menu_opens_the_manual_from_its_button() -> void:
 			opened = c
 	assert_not_null(opened, "the button still opens the manual")
 
+
+func test_the_manual_teaches_the_camp_from_its_constants() -> void:
+	# The camp's numbers are read off Camp.gd, so a retune cannot leave the manual
+	# quoting the old ones (docs/rest-site-design.md).
+	const Camp := preload("res://scripts/runtime/Camp.gd")
+	var text: String = _all_text()
+	assert_string_contains(text, "Make camp")
+	assert_string_contains(text, "+%d Health" % Camp.REST_HEAL)
+	assert_string_contains(text, "%d charges" % Camp.CHARGE_AMOUNT)

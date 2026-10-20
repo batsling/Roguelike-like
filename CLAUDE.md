@@ -15,7 +15,7 @@ the honour system.
 | autoloads, every screen, the window, data loading, Luck, code conventions | `docs/architecture.md` (was most of the README) |
 | the OBS overlay, scene layouts, the speedrun clock | `docs/streaming.md` |
 | art folders, the generators, authoring events and objects | `docs/content-authoring.md` |
-| the end-of-session Camp (designed with open questions, not built) | `docs/rest-site-design.md` |
+| the end-of-session Camp — Rest or one card dealt by a game beaten since the last camp | `docs/rest-site-design.md`; rules in `scripts/runtime/Camp.gd`, screen `CampScreen.gd`, tests `test_camp.gd` |
 | what changed and why | `CHANGELOG.md` — narrative history, not needed to make a change |
 | what is known-slow and not yet fixed | `docs/performance-backlog.md` — measured findings with the fix for each. The Events tab and the page's cold compile are fixed; `GameLoop2.gd` has been measured and is cheap. What stays useful is the method: `Overworld2.gd` carries a seam table re-measured rather than guessed, and `test_page_load.gd` keeps the screens a run only opens on demand out of the page's compile |
 | what the layout pass left open | `docs/layout-review-backlog.md` — all eight items closed. Fonts and gaps are both on `UITheme`'s scales project-wide, with `test_design_tokens.gd` asserting both lists complete and no value off the scale. All of it stays in the doc with its reasoning so none of it gets re-litigated. Two standing notes in it are worth reading before touching any UI: judge colour by sampling the rendered pixel rather than by eye off a screenshot (that produced one confidently wrong finding), and use the `verify` skill to look at a screen rather than reasoning about it |

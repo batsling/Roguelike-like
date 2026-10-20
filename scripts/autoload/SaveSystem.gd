@@ -299,6 +299,9 @@ func _build_payload() -> Dictionary:
 		# Mysterious Mask: the characters worn and the choices still to make.
 		"masked_characters": Array(GameState.masked_characters).map(func(id): return String(id)),
 		"pending_masks": GameState.pending_masks,
+		# Camp (scripts/runtime/Camp.gd): the games beaten since the last one. Absent
+		# from an older save, which loads with no camp earned yet.
+		"games_beaten_since_camp": Array(GameState.games_beaten_since_camp).map(func(id): return String(id)),
 		# Smelter: the pieces taken out of the pack that work as relics.
 		"smelted_loot": GameState.smelted_loot.duplicate(true),
 		"destroyed_loot": GameState.destroyed_loot.duplicate(true),
@@ -600,6 +603,9 @@ func _apply_save_data(data: Dictionary) -> void:
 	for id in data.get("masked_characters", []):
 		GameState.masked_characters.append(StringName(String(id)))
 	GameState.pending_masks = int(data.get("pending_masks", 0))
+	GameState.games_beaten_since_camp.clear()
+	for id in data.get("games_beaten_since_camp", []):
+		GameState.games_beaten_since_camp.append(StringName(String(id)))
 	GameState.destroyed_loot.clear()
 	for e in data.get("destroyed_loot", []):
 		if e is Dictionary:
