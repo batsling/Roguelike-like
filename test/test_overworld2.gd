@@ -8426,6 +8426,18 @@ func test_the_page_still_fits_the_window_with_a_shop_on_it() -> void:
 	# the case that bit; the hubs are gone, so that is the roster worth walking.
 	_at_720p()
 	var shops: Array = [_a_shop()]
+	# A CROWDED BOARD, on purpose. This test used to clear the board first,
+	# because every body standing added a checklist row the page had no room for
+	# and the shop page fitted ZERO of them. The checklist is capped to the room
+	# the window leaves now (Overworld2._fit_checklist), so the case that used to
+	# be scoped out is the one worth standing here.
+	_pick_enemies(0)
+	_crowd_board(8)
+	# The longest-named shop is looked up AFTER the pick, never before:
+	# `_pick_enemies` makes the card it picks an Enemies node, and when the run
+	# dealt that card as the map's longest-named Shop it stopped being a shop
+	# under the test — `_set_shop_here` then refused it and the button stayed
+	# down (an intermittent, roughly one deal in a few dozen).
 	var longest: StringName = &""
 	for gid in ShopSystem.shop_nodes():
 		var g: GameData = Data.get_game(gid)
@@ -8434,13 +8446,6 @@ func test_the_page_still_fits_the_window_with_a_shop_on_it() -> void:
 			longest = gid
 	if longest != &"" and longest != shops[0]:
 		shops.append(longest)
-	# A CROWDED BOARD, on purpose. This test used to clear the board first,
-	# because every body standing added a checklist row the page had no room for
-	# and the shop page fitted ZERO of them. The checklist is capped to the room
-	# the window leaves now (Overworld2._fit_checklist), so the case that used to
-	# be scoped out is the one worth standing here.
-	_pick_enemies(0)
-	_crowd_board(8)
 	for node in shops:
 		# The shop is a pop-up now (§14.4); what the PAGE carries is its button, on
 		# the offering's heading, which is a width the left column pays for.
