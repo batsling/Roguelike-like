@@ -40,15 +40,6 @@ const LOOT_BAGS := "bags"
 const LOOT_WEAPONS := "weapons"
 const LOOT_EVOLUTIONS := "evolutions"
 
-# The stand-in capsule every pill cell wears. A PILL HAS NO ART OF ITS OWN
-# (PillData carries no image field): its picture is the COLOUR the run deals it
-# out of PillSystem.COLORS, and the Collection opens from the main menu where no
-# run exists to have dealt one. So every cell wears the same capsule, dimmed, and
-# the tab says why — drawing each pill in some particular colour would teach an
-# association the game randomises on purpose.
-const PILL_STANDIN := "res://images2.0/pills/WhiteWhite.png"
-const PILL_STANDIN_TINT := Color(0.62, 0.62, 0.66)
-
 const GAME_TYPE_NAMES := ["Action", "Strategy", "Deckbuilder", "Traditional"]
 const GAME_STATUS_OPTIONS := [
 	["All", "all"], ["Completed", "completed"],
@@ -1221,9 +1212,16 @@ func _clear_children(node: Node) -> void:
 		_grid_laid_out = false
 		_nav.clear()
 		_nav_index = -1
+	# DETACHED NOW, FREED AT THE END OF THE FRAME — never `free()`d on the spot.
+	# Every sort button, sub-tab and type filter rebuilds the tab from inside its
+	# own `pressed` / `item_selected`, and the tab it rebuilds is the one the
+	# button sits in: freeing it there destroyed the object mid-emit ("freed or
+	# unreferenced while a signal is being emitted from it"), which crashed the
+	# game. Removing it still empties the node at once, so everything after this
+	# line (counts, the window, the tests) sees exactly what it did before.
 	for c in node.get_children():
 		node.remove_child(c)
-		c.free()
+		c.queue_free()
 
 func _populate() -> void:
 	match _tab:
@@ -2332,17 +2330,7 @@ func _build_loot() -> void:
 	gap.size_flags_stretch_ratio = 2.0
 	row.add_child(gap)
 	_add_count_label(row)
-	var scroll := ScrollContainer.new()
-	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	var flow := HFlowContainer.new()
-	flow.add_theme_constant_override("h_separation", UITheme.GAP_WIDE)
-	flow.add_theme_constant_override("v_separation", UITheme.GAP_WIDE)
-	flow.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.add_child(flow)
-	_grid = flow
-	_content.add_child(scroll)
+	_grid_and_detail()
 	_populate_loot()
 
 # The line under the sub-tabs, per half. A POTION'S IDENTIFIED ART IS NOT A
@@ -2414,6 +2402,109 @@ func _populate_loot() -> void:
 		_:
 			_populate_scrolls()
 
+# --- loot cells, drawn the way items are --------------------------------------
+#
+# EVERY LOOT KIND IS A GRID OF PICTURES NOW, with the words in the popup, the way
+# the Items tab has always been. The sub-tabs used to be walls of 300px text
+# cards: a dozen pieces to a screen, and nothing to scan by. A cell is the art,
+# the name and one caption line; a click opens everything the old card said.
+#
+# A PIECE WITH NO ART OF ITS OWN LOOPS THROUGH ITS DISGUISES. A pill, a wand and
+# six of the potions have no identified picture — in a run they wear whatever
+# capsule, stick or vial the run dealt them. So the cell cycles through that
+# whole alphabet at random rather than standing one in: it shows what the piece
+# actually looks like in a run (any of these) without pinning it to one colour,
+# which would teach an association the game randomises on purpose.
+
+# How long one disguise stays up. Each cell starts on its own random frame and
+# runs a slightly different clock, so a grid of them does not flip in unison.
+const LOOT_CYCLE_SEC := 0.9
+const LOOT_CYCLE_JITTER := 0.35
+
+# Its OWN generator, never the global stream: the Collection can be opened
+# mid-run, and reading a page must not move a seeded run's dice.
+var _cycle_rng: RandomNumberGenerator = null
+
+func _cycle_dice() -> RandomNumberGenerator:
+	if _cycle_rng == null:
+		_cycle_rng = RandomNumberGenerator.new()
+		_cycle_rng.randomize()
+	return _cycle_rng
+
+# Every texture that loads out of `folder` for `bases`, in order.
+func _textures(folder: String, bases: Array) -> Array:
+	var out: Array = []
+	for base in bases:
+		var path := "res://images2.0/%s/%s.png" % [folder, base]
+		if ResourceLoader.exists(path):
+			var tex: Texture2D = load(path)
+			if tex != null:
+				out.append(tex)
+	return out
+
+# The framed picture for a loot piece. One texture is drawn as it is; several are
+# looped through at random (see above). Null when there is nothing to draw.
+func _loot_art(art: Array, size: int, border: Color, pad: int = IMAGE_PAD) -> Control:
+	if art.is_empty():
+		return null
+	var dice := _cycle_dice()
+	var frame := _image_with_bg(art[dice.randi_range(0, art.size() - 1)], size, border,
+		false, pad)
+	if art.size() > 1:
+		var tr: TextureRect = frame.get_child(0)
+		var timer := Timer.new()
+		timer.wait_time = LOOT_CYCLE_SEC + dice.randf_range(0.0, LOOT_CYCLE_JITTER)
+		timer.autostart = true
+		timer.timeout.connect(func():
+			var tex: Texture2D = art[dice.randi_range(0, art.size() - 1)]
+			if tex == tr.texture:
+				tex = art[(art.find(tex) + 1) % art.size()]
+			tr.texture = tex
+			UITheme.apply_crisp(tr, tex))
+		frame.add_child(timer)
+	return frame
+
+# A loot cell: art, name, one caption line — `_item_cell`'s shape. `body` fills
+# the popup below the heading, and is only run when the cell is opened.
+func _loot_cell(art: Array, name_text: String, col: Color, caption: String,
+		meta: String, body: Callable) -> Control:
+	var cell := _cell(col, func(): _show_loot_detail(art, name_text, col, meta, body))
+	cell.panel.custom_minimum_size = Vector2(GRID_ITEM_SIZE + CELL_PAD + CELL_TEXT_SLACK, 0)
+	var vb: VBoxContainer = cell.vbox
+	vb.alignment = BoxContainer.ALIGNMENT_CENTER
+	var pic := _loot_art(art, GRID_ITEM_SIZE, col)
+	if pic != null:
+		vb.add_child(pic)
+	var nm := _label(name_text, col, GRID_NAME_FONT, true, true)
+	nm.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	vb.add_child(nm)
+	if caption != "":
+		vb.add_child(_label(caption.to_upper(), col, GRID_META_FONT, true, true))
+	return cell.panel
+
+func _show_loot_detail(art: Array, name_text: String, col: Color, meta: String,
+		body: Callable) -> void:
+	_set_detail_open(true)
+	_clear_children(_detail_box)
+	_detail_game = null
+	var pic := _loot_art(art, DETAIL_ITEM_SIZE, col, DETAIL_IMAGE_PAD)
+	if pic != null:
+		pic.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		_detail_box.add_child(pic)
+	_detail_box.add_child(_label(name_text, col, 18, true, true))
+	if meta != "":
+		_detail_box.add_child(_detail_meta(meta, col))
+	_detail_box.add_child(HSeparator.new())
+	body.call(_detail_box)
+
+func _body_text(vb: VBoxContainer, text: String) -> void:
+	vb.add_child(_label(text if text.strip_edges() != "" else "—",
+		Color(0.85, 0.85, 0.88), 13, false, true))
+
+func _source_line(vb: VBoxContainer, source: String) -> void:
+	if source != "":
+		vb.add_child(_label("From: %s" % source, Color(0.65, 0.7, 0.8), 11, false, true))
+
 func _populate_scrolls() -> void:
 	_clear_children(_grid)
 	var term: String = _search["scrolls"].to_lower()
@@ -2425,37 +2516,22 @@ func _populate_scrolls() -> void:
 			continue
 		if term != "" and not (term in s.display_name.to_lower()):
 			continue
-		_grid.add_child(_scroll_card(s))
+		_grid.add_child(_scroll_cell(s))
 		shown += 1
 	_set_count(shown, Data.all_scrolls().size())
 
-# 2.0 scroll cell: art + name + Preference, then a plain-language effect summary.
-func _scroll_card(s: ScrollData) -> Control:
+# A scroll: its revealed art where it has one, the shared Unidentified sheet where
+# it does not — a scroll's disguise is one picture for all of them, so there is
+# nothing to loop through.
+func _scroll_cell(s: ScrollData) -> Control:
 	var pcol := _preference_color(s.preference)
-	var cell := _cell(pcol, Callable())
-	cell.panel.custom_minimum_size = Vector2(300, 0)
-	var vb: VBoxContainer = cell.vbox
-	var top := HBoxContainer.new()
-	top.add_theme_constant_override("separation", UITheme.GAP)
-	vb.add_child(top)
-	# Revealed art for the catalog (falls back to Unidentified when artless).
-	var path := "res://images2.0/scrolls/%s.png" % s.art_file()
-	if s.art_file() == "" or not ResourceLoader.exists(path):
-		path = "res://images2.0/scrolls/Unidentified.png"
-	var tex: Texture2D = load(path) if ResourceLoader.exists(path) else null
-	if tex != null:
-		top.add_child(UITheme.crisp_tex(tex, 48))
-	var head := VBoxContainer.new()
-	head.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	top.add_child(head)
-	head.add_child(_label(s.display_name, pcol, 14))
-	head.add_child(_label("%s Preference" % s.preference, Color(0.7, 0.7, 0.75), 11))
-	var eff := _scroll_effect_text(s)
-	if eff != "":
-		vb.add_child(_label(eff, Color(0.85, 0.85, 0.88), 12, false, true))
-	if s.reference != "":
-		vb.add_child(_label("from %s" % s.reference, Color(0.55, 0.6, 0.7), 10))
-	return cell.panel
+	var art: Array = _textures("scrolls", [s.art_file()]) if s.art_file() != "" else []
+	if art.is_empty():
+		art = _textures("scrolls", ["Unidentified"])
+	return _loot_cell(art, s.display_name, pcol, s.preference,
+		"%s Preference" % s.preference, func(vb: VBoxContainer):
+			_body_text(vb, _scroll_effect_text(s))
+			_source_line(vb, s.reference))
 
 func _preference_color(pref: String) -> Color:
 	match pref.to_lower():
@@ -2476,40 +2552,26 @@ func _populate_pills() -> void:
 	var pills: Array = Data.all_pills()
 	pills.sort_custom(func(a, b): return a.display_name.to_lower() < b.display_name.to_lower())
 	var shown: int = 0
+	var capsules: Array = _textures("pills", PillSystem.COLORS)
 	for p in pills:
 		if not (p is PillData):
 			continue
 		if term != "" and not (term in p.display_name.to_lower()):
 			continue
-		_grid.add_child(_pill_card(p))
+		_grid.add_child(_pill_cell(p, capsules))
 		shown += 1
 	_set_count(shown, Data.all_pills().size())
 
-# 2.0 pill cell: the stand-in capsule, the name and Preference, then BOTH DOSES.
-# A pill is one resource with two effects — the 5% horse roll is the same colour
-# and the same identification, so a card that showed only the normal dose would
-# be describing half of what taking one can do (§4.3).
-func _pill_card(p: PillData) -> Control:
+# A pill: the run's capsules, looped, then BOTH DOSES in the popup. A pill is one
+# resource with two effects — the 5% horse roll is the same colour and the same
+# identification, so a page that showed only the normal dose would be describing
+# half of what taking one can do (§4.3).
+func _pill_cell(p: PillData, capsules: Array) -> Control:
 	var pcol := _preference_color(p.preference)
-	var cell := _cell(pcol, Callable())
-	cell.panel.custom_minimum_size = Vector2(300, 0)
-	var vb: VBoxContainer = cell.vbox
-	var top := HBoxContainer.new()
-	top.add_theme_constant_override("separation", UITheme.GAP)
-	vb.add_child(top)
-	var tex: Texture2D = load(PILL_STANDIN) if ResourceLoader.exists(PILL_STANDIN) else null
-	if tex != null:
-		var art := UITheme.crisp_tex(tex, 48)
-		art.modulate = PILL_STANDIN_TINT
-		top.add_child(art)
-	var head := VBoxContainer.new()
-	head.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	top.add_child(head)
-	head.add_child(_label(p.display_name, pcol, 14))
-	head.add_child(_label("%s Preference" % p.preference, Color(0.7, 0.7, 0.75), 11))
-	vb.add_child(_pill_dose("Normal dose", p.line(false), Color(0.85, 0.85, 0.88)))
-	vb.add_child(_pill_dose("Horse dose (5%)", p.line(true), Color(0.95, 0.82, 0.55)))
-	return cell.panel
+	return _loot_cell(capsules, p.display_name, pcol, p.preference,
+		"%s Preference" % p.preference, func(vb: VBoxContainer):
+			vb.add_child(_pill_dose("Normal dose", p.line(false), Color(0.85, 0.85, 0.88)))
+			vb.add_child(_pill_dose("Horse dose (5%)", p.line(true), Color(0.95, 0.82, 0.55))))
 
 func _populate_potions() -> void:
 	_clear_children(_grid)
@@ -2517,50 +2579,32 @@ func _populate_potions() -> void:
 	var potions: Array = Data.all_potions()
 	potions.sort_custom(func(a, b): return a.display_name.to_lower() < b.display_name.to_lower())
 	var shown: int = 0
+	var vials: Array = _textures("potions_unidentified", PotionSystem.COLORS)
 	for p in potions:
 		if not (p is PotionData):
 			continue
 		if term != "" and not (term in p.display_name.to_lower()):
 			continue
-		_grid.add_child(_potion_card(p))
+		_grid.add_child(_potion_cell(p, vials))
 		shown += 1
 	_set_count(shown, Data.all_potions().size())
 
-# 2.0 potion cell: the identified bottle where there is one, the name, Rarity and
-# Preference, then BOTH VERBS. A potion is one resource with two effects and the
-# choice between them is what the kind is for, so a card showing one of them would
-# be describing half of what spending one can do (§6.5).
-#
-# UNLIKE A PILL, THE ART IS THE POTION'S OWN. A pill's picture is the colour the
-# run deals it, so the catalog draws a stand-in rather than teaching an
-# association the game randomises on purpose. A potion's identified art is not a
-# per-run secret — the six rows without any fall back to a plain vial here, the
-# same way they do in a run.
-func _potion_card(p: PotionData) -> Control:
+# A potion: its identified bottle where there is one — that is a fact about the
+# potion, not a per-run secret (docs/potions-design.md §9.2) — and the run's vials,
+# looped, for the rows that have none and wear a vial forever (§6.3). Then BOTH
+# VERBS: the choice between them is what the kind is for (§6.5).
+func _potion_cell(p: PotionData, vials: Array) -> Control:
 	var pcol := _preference_color(p.preference)
-	var cell := _cell(pcol, Callable())
-	cell.panel.custom_minimum_size = Vector2(300, 0)
-	var vb: VBoxContainer = cell.vbox
-	var top := HBoxContainer.new()
-	top.add_theme_constant_override("separation", UITheme.GAP)
-	vb.add_child(top)
-	var path := "res://images2.0/potions_identified/%s.png" % p.art_file()
-	var tex: Texture2D = load(path) if p.art_file() != "" and ResourceLoader.exists(path) \
-		else null
-	if tex != null:
-		top.add_child(UITheme.crisp_tex(tex, 48))
-	var head := VBoxContainer.new()
-	head.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	top.add_child(head)
-	head.add_child(_label(p.display_name, pcol, 14))
-	head.add_child(_label("%s  ·  %s Preference" % [p.rarity, p.preference],
-		Color(0.7, 0.7, 0.75), 11))
-	vb.add_child(_pill_dose("Quaff", p.quaff_text, Color(0.85, 0.85, 0.88)))
-	vb.add_child(_pill_dose("Throw", p.throw_text if p.has_throw()
-		else "Nothing — this one cannot be thrown.", Color(0.78, 0.72, 0.95)))
-	if p.reference != "":
-		vb.add_child(_label("from %s" % p.reference, Color(0.55, 0.6, 0.7), 10))
-	return cell.panel
+	var art: Array = _textures("potions_identified", [p.art_file()]) \
+		if p.art_file() != "" else []
+	if art.is_empty():
+		art = vials
+	return _loot_cell(art, p.display_name, pcol, p.rarity,
+		"%s  ·  %s Preference" % [p.rarity, p.preference], func(vb: VBoxContainer):
+			vb.add_child(_pill_dose("Quaff", p.quaff_text, Color(0.85, 0.85, 0.88)))
+			vb.add_child(_pill_dose("Throw", p.throw_text if p.has_throw()
+				else "Nothing — this one cannot be thrown.", Color(0.78, 0.72, 0.95)))
+			_source_line(vb, p.reference))
 
 func _populate_cards() -> void:
 	_clear_children(_grid)
@@ -2573,44 +2617,38 @@ func _populate_cards() -> void:
 			continue
 		if term != "" and not (term in c.display_name.to_lower()):
 			continue
-		_grid.add_child(_card_card(c))
+		_grid.add_child(_card_cell(c))
 		shown += 1
 	_set_count(shown, Data.all_cards().size())
 
-# 2.0 card cell: BOTH SIDES, side by side, which is the only cell on this tab that
-# needs two pictures. A card's face is what the pack draws and its deck icon is
-# what the board draws while it is lying face down, and the whole of what the kind
-# withholds is the difference between them — so a page showing only the face would
-# leave out the half a player actually has to learn to read.
+# A card: its face in the grid, and BOTH SIDES in the popup. The face is what the
+# pack draws and the deck icon is what the board draws while it lies face down,
+# and the whole of what the kind withholds is the difference between them.
 #
-# No Preference row, because a card has none (docs/cards-design.md §2). The deck
-# and the source game take that line instead: they are what the icon means.
-func _card_card(c: CardData) -> Control:
+# No Preference, because a card has none (docs/cards-design.md §2). The deck and
+# the source game take that line instead: they are what the icon means.
+func _card_cell(c: CardData) -> Control:
 	var ccol := Color(0.86, 0.72, 0.44)
-	var cell := _cell(ccol, Callable())
-	cell.panel.custom_minimum_size = Vector2(300, 0)
-	var vb: VBoxContainer = cell.vbox
-	var top := HBoxContainer.new()
-	top.add_theme_constant_override("separation", UITheme.GAP)
-	vb.add_child(top)
 	var face: Texture2D = _card_art("cards", c.art_file())
-	if face != null:
-		top.add_child(UITheme.crisp_tex(face, 48))
 	var back: Texture2D = _card_art("cards_icons", c.icon_file())
-	if back != null:
-		var icon: Control = UITheme.crisp_tex(back, 28)
-		icon.modulate = Color(1, 1, 1, 0.75)
-		top.add_child(icon)
-	var head := VBoxContainer.new()
-	head.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	top.add_child(head)
-	head.add_child(_label(c.display_name, ccol, 14))
+	var art: Array = [face] if face != null else ([back] if back != null else [])
 	var deck: String = c.set_name if c.set_name != "" else "Card"
-	head.add_child(_label("%s  ·  %s" % [c.rarity, deck], Color(0.7, 0.7, 0.75), 11))
-	vb.add_child(_label(c.description, Color(0.85, 0.85, 0.88), 12, false, true))
-	if c.source_game != "":
-		vb.add_child(_label("from %s" % c.source_game, Color(0.55, 0.6, 0.7), 10))
-	return cell.panel
+	return _loot_cell(art, c.display_name, ccol, c.rarity, "%s  ·  %s" % [c.rarity, deck],
+		func(vb: VBoxContainer):
+			if back != null:
+				var row := HBoxContainer.new()
+				row.add_theme_constant_override("separation", UITheme.GAP)
+				var icon: Control = UITheme.crisp_tex(back, 28)
+				icon.modulate = Color(1, 1, 1, 0.75)
+				row.add_child(icon)
+				var said := _label("Face down on the floor, it shows only this.",
+					Color(0.7, 0.7, 0.75), 11, false, true)
+				said.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+				said.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+				row.add_child(said)
+				vb.add_child(row)
+			_body_text(vb, c.description)
+			_source_line(vb, c.source_game))
 
 func _populate_wands() -> void:
 	_clear_children(_grid)
@@ -2618,38 +2656,28 @@ func _populate_wands() -> void:
 	var wands: Array = Data.all_wands()
 	wands.sort_custom(func(a, b): return a.display_name.to_lower() < b.display_name.to_lower())
 	var shown: int = 0
+	var sticks: Array = _textures("wands_unidentified", WandSystem.MATERIALS)
 	for w in wands:
 		if not (w is WandData):
 			continue
 		if term != "" and not (term in w.display_name.to_lower()):
 			continue
-		_grid.add_child(_wand_card(w))
+		_grid.add_child(_wand_cell(w, sticks))
 		shown += 1
 	_set_count(shown, Data.all_wands().size())
 
-# 2.0 wand cell: the potion cell plus the two facts only a wand has — how many
-# CHARGES it ships with, and what it wants pointed at it.
-#
-# NO ART, and that is the roster rather than a hole (docs/wands-design.md §6.3):
-# no wand has a picture of its own, so every one of them wears the material the run
-# dealt it forever. Drawing a stand-in stick here would be showing the player a
-# material that means nothing — the association is randomised every run, which is
-# the same reason a pill's capsule is not drawn on its cell either.
-func _wand_card(w: WandData) -> Control:
+# A wand: the potion's page plus the two facts only a wand has — how many CHARGES
+# it ships with, and what it wants pointed at it. No wand has a picture of its own
+# (docs/wands-design.md §6.3), so every one loops the run's sticks.
+func _wand_cell(w: WandData, sticks: Array) -> Control:
 	var wcol := _preference_color(w.preference)
-	var cell := _cell(wcol, Callable())
-	cell.panel.custom_minimum_size = Vector2(300, 0)
-	var vb: VBoxContainer = cell.vbox
-	vb.add_child(_label(w.display_name, wcol, 14))
-	vb.add_child(_label("%s  ·  %s Preference" % [w.rarity, w.preference],
-		Color(0.7, 0.7, 0.75), 11))
-	vb.add_child(_label("%d charge%s  ·  %s" % [
-		w.starting_charges(), "" if w.starting_charges() == 1 else "s",
-		_wand_aim_words(w)], Color(0.55, 0.74, 0.86), 11))
-	vb.add_child(_label(w.description, Color(0.85, 0.85, 0.88), 12, false, true))
-	if w.reference != "":
-		vb.add_child(_label("from %s" % w.reference, Color(0.55, 0.6, 0.7), 10))
-	return cell.panel
+	return _loot_cell(sticks, w.display_name, wcol, w.rarity,
+		"%s  ·  %s Preference" % [w.rarity, w.preference], func(vb: VBoxContainer):
+			vb.add_child(_label("%s  ·  %s" % [
+				Plural.count(w.starting_charges(), "charge"), _wand_aim_words(w)],
+				Color(0.55, 0.74, 0.86), 12, false, true))
+			_body_text(vb, w.description)
+			_source_line(vb, w.reference))
 
 # The Aim column in the words a player meets rather than the sheet's — the
 # weapons' words, since a wand is aimed in them (WeaponSystem.aim_phrase).
@@ -2685,7 +2713,7 @@ func _populate_trinkets() -> void:
 	var shown: int = 0
 	for t in _sorted_by_name(Data.all_trinkets()):
 		if t is TrinketData and _loot_piece_matches(term, t):
-			_grid.add_child(_trinket_card(t))
+			_grid.add_child(_trinket_cell(t))
 			shown += 1
 	_set_count(shown, Data.all_trinkets().size())
 
@@ -2695,7 +2723,7 @@ func _populate_bags() -> void:
 	var shown: int = 0
 	for b in _sorted_by_name(Data.all_bags()):
 		if b is BagData and _loot_piece_matches(term, b):
-			_grid.add_child(_bag_card(b))
+			_grid.add_child(_bag_cell(b))
 			shown += 1
 	_set_count(shown, Data.all_bags().size())
 
@@ -2705,7 +2733,7 @@ func _populate_weapons() -> void:
 	var shown: int = 0
 	for w in _sorted_by_name(Data.all_weapons()):
 		if w is WeaponData and _loot_piece_matches(term, w):
-			_grid.add_child(_weapon_card(w))
+			_grid.add_child(_weapon_cell(w))
 			shown += 1
 	_set_count(shown, Data.all_weapons().size())
 
@@ -2725,7 +2753,7 @@ func _populate_evolutions() -> void:
 			WeaponSystem.need_words(evo)]
 		if term != "" and not (term in hay.to_lower()):
 			continue
-		_grid.add_child(_evolution_card(evo))
+		_grid.add_child(_evolution_cell(evo))
 		shown += 1
 	_set_count(shown, evos.size())
 
@@ -2733,19 +2761,8 @@ func _weapon_name(id: StringName) -> String:
 	var w: WeaponData = Data.get_weapon(id)
 	return w.display_name if w != null else String(id)
 
-# The shared top of a piece's cell: its art, its name, and one line of facts.
-func _piece_head(vb: VBoxContainer, tex: Texture2D, name_text: String, color: Color,
-		facts: String) -> void:
-	var top := HBoxContainer.new()
-	top.add_theme_constant_override("separation", UITheme.GAP)
-	vb.add_child(top)
-	if tex != null:
-		top.add_child(UITheme.crisp_tex(tex, 48))
-	var head := VBoxContainer.new()
-	head.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	top.add_child(head)
-	head.add_child(_label(name_text, color, 14))
-	head.add_child(_label(facts, Color(0.7, 0.7, 0.75), 11, false, true))
+func _one(tex: Texture2D) -> Array:
+	return [tex] if tex != null else []
 
 # How many pack cells a piece takes, said only when it is more than one.
 func _footprint_words(size: Vector2i) -> String:
@@ -2756,89 +2773,70 @@ func _footprint_words(size: Vector2i) -> String:
 func _facts(parts: Array) -> String:
 	return "  ·  ".join(parts.filter(func(p): return String(p) != ""))
 
-func _source_line(vb: VBoxContainer, source: String) -> void:
-	if source != "":
-		vb.add_child(_label("from %s" % source, Color(0.55, 0.6, 0.7), 10))
-
 # A trinket: its Type (a Charged one counts charges toward its payout, §11), its
 # shape, and its line.
-func _trinket_card(t: TrinketData) -> Control:
+func _trinket_cell(t: TrinketData) -> Control:
 	var col: Color = RarityStyle.color(t.rarity_index())
-	var cell := _cell(col, Callable())
-	cell.panel.custom_minimum_size = Vector2(300, 0)
-	var vb: VBoxContainer = cell.vbox
-	_piece_head(vb, LootPassives.load_trinket_art(t), t.display_name, col,
+	return _loot_cell(_one(LootPassives.load_trinket_art(t)), t.display_name, col, t.rarity,
 		_facts([t.rarity, t.loot_type, _footprint_words(t.size),
-			"food" if t.is_food() else ""]))
-	vb.add_child(_label(t.description if t.description != "" else "—",
-		Color(0.85, 0.85, 0.88), 12, false, true))
-	_source_line(vb, t.source_game)
-	return cell.panel
+			"food" if t.is_food() else ""]), func(vb: VBoxContainer):
+			_body_text(vb, t.description)
+			_source_line(vb, t.source_game))
 
 # A bag: the room it adds, then its own rule — the line the pack prints.
-func _bag_card(b: BagData) -> Control:
+func _bag_cell(b: BagData) -> Control:
 	var col: Color = RarityStyle.color(b.rarity_index())
-	var cell := _cell(col, Callable())
-	cell.panel.custom_minimum_size = Vector2(300, 0)
-	var vb: VBoxContainer = cell.vbox
-	_piece_head(vb, LootPassives.load_bag_art(b), b.display_name, col,
-		_facts([b.rarity, _footprint_words(b.size)]))
-	vb.add_child(_label(LootSystem.bag_description(b), Color(0.85, 0.85, 0.88), 12,
-		false, true))
-	_source_line(vb, b.source_game)
-	return cell.panel
+	return _loot_cell(_one(LootPassives.load_bag_art(b)), b.display_name, col, b.rarity,
+		_facts([b.rarity, _footprint_words(b.size)]), func(vb: VBoxContainer):
+			_body_text(vb, LootSystem.bag_description(b))
+			_source_line(vb, b.source_game))
 
 # A weapon: the swing, what charges it and its passive — the pack's own words —
 # then where it sits in the evolution chart, both ways.
-func _weapon_card(w: WeaponData) -> Control:
+func _weapon_cell(w: WeaponData) -> Control:
 	var col: Color = RarityStyle.color(w.rarity_index())
-	var cell := _cell(col, Callable())
-	cell.panel.custom_minimum_size = Vector2(300, 0)
-	var vb: VBoxContainer = cell.vbox
-	_piece_head(vb, LootPassives.load_weapon_art(w), w.display_name, col,
+	return _loot_cell(_one(LootPassives.load_weapon_art(w)), w.display_name, col, w.rarity,
 		_facts([w.rarity, w.weapon_type.capitalize(), _footprint_words(w.size),
-			Plural.count(w.max_charges, "charge") + " to swing"]))
-	# A bare entry rather than WeaponSystem.new_entry: that one rolls a uid off the
-	# global random stream, and the Collection can be opened mid-run — reading a
-	# page must not move a seeded run's dice.
-	vb.add_child(_label(LootSystem.weapon_description({"type": "weapon", "id": w.id}),
-		Color(0.85, 0.85, 0.88), 12, false, true))
-	for evo in Data.all_evolutions():
-		if evo is EvolutionData and evo.result == w.id:
-			vb.add_child(_label("Evolves from %s" % _weapon_name(evo.base),
-				Color(0.95, 0.82, 0.55), 11, false, true))
-	for evo in Data.evolutions_from(w.id):
-		vb.add_child(_label("⟳ Evolves into %s" % _weapon_name(evo.result),
-			Color(0.95, 0.82, 0.55), 11, false, true))
-	_source_line(vb, w.source_game)
-	return cell.panel
+			Plural.count(w.max_charges, "charge") + " to swing"]), func(vb: VBoxContainer):
+			# A bare entry rather than WeaponSystem.new_entry: that one rolls a uid
+			# off the global random stream, and the Collection can be opened mid-run
+			# — reading a page must not move a seeded run's dice.
+			_body_text(vb, LootSystem.weapon_description({"type": "weapon", "id": w.id}))
+			for evo in Data.all_evolutions():
+				if evo is EvolutionData and evo.result == w.id:
+					vb.add_child(_label("Evolves from %s" % _weapon_name(evo.base),
+						Color(0.95, 0.82, 0.55), 12, false, true))
+			for evo in Data.evolutions_from(w.id):
+				vb.add_child(_label("⟳ Evolves into %s" % _weapon_name(evo.result),
+					Color(0.95, 0.82, 0.55), 12, false, true))
+			_source_line(vb, w.source_game))
 
-# An evolution: the weapon it starts from, the one it makes, and what it asks for.
-func _evolution_card(evo: EvolutionData) -> Control:
+# An evolution: what it makes in the grid; the weapon it starts from, the one it
+# makes and what it asks for in the popup.
+func _evolution_cell(evo: EvolutionData) -> Control:
 	var into: WeaponData = Data.get_weapon(evo.result)
 	var from: WeaponData = Data.get_weapon(evo.base)
 	var col: Color = RarityStyle.color(into.rarity_index() if into != null else 0)
-	var cell := _cell(col, Callable())
-	cell.panel.custom_minimum_size = Vector2(300, 0)
-	var vb: VBoxContainer = cell.vbox
-	var pics := HBoxContainer.new()
-	pics.add_theme_constant_override("separation", UITheme.GAP)
-	vb.add_child(pics)
-	var a: Texture2D = LootPassives.load_weapon_art(from)
-	if a != null:
-		pics.add_child(UITheme.crisp_tex(a, 48))
-	var arrow := _label("→", Color(0.95, 0.82, 0.55), 18)
-	arrow.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	pics.add_child(arrow)
-	var b: Texture2D = LootPassives.load_weapon_art(into)
-	if b != null:
-		pics.add_child(UITheme.crisp_tex(b, 48))
-	vb.add_child(_label("%s  →  %s" % [_weapon_name(evo.base), _weapon_name(evo.result)],
-		col, 14, false, true))
-	vb.add_child(_pill_dose("Needs", WeaponSystem.need_words(evo), Color(0.85, 0.85, 0.88)))
-	vb.add_child(_label("Uses them up." if evo.consumes else "Keeps them.",
-		Color(0.7, 0.7, 0.75), 11))
-	return cell.panel
+	var title := "%s  →  %s" % [_weapon_name(evo.base), _weapon_name(evo.result)]
+	return _loot_cell(_one(LootPassives.load_weapon_art(into)), title, col, "",
+		"Evolution", func(vb: VBoxContainer):
+			var pics := HBoxContainer.new()
+			pics.add_theme_constant_override("separation", UITheme.GAP)
+			pics.alignment = BoxContainer.ALIGNMENT_CENTER
+			vb.add_child(pics)
+			var a: Texture2D = LootPassives.load_weapon_art(from)
+			if a != null:
+				pics.add_child(UITheme.crisp_tex(a, 48))
+			var arrow := _label("→", Color(0.95, 0.82, 0.55), 18)
+			arrow.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+			pics.add_child(arrow)
+			var b: Texture2D = LootPassives.load_weapon_art(into)
+			if b != null:
+				pics.add_child(UITheme.crisp_tex(b, 48))
+			vb.add_child(_pill_dose("Needs", WeaponSystem.need_words(evo),
+				Color(0.85, 0.85, 0.88)))
+			vb.add_child(_label("Uses them up." if evo.consumes else "Keeps them.",
+				Color(0.7, 0.7, 0.75), 11)))
 
 func _card_art(folder: String, base: String) -> Texture2D:
 	if base == "":

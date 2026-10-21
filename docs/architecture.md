@@ -112,23 +112,22 @@ ordinary scene.
     nine top-level tabs would say the opposite. The sub-tab buttons sit in a row
     that WRAPS, since nine do not fit across the 1280 canvas. The tab's own count
     (`Collection.loot_total`) is every piece the sub-tabs list; evolutions are
-    recipes whose results are weapons already counted, so they are not in it. **A potion's cell shows its identified art and both
-    verbs**, which is the one place this tab does not draw a stand-in: a pill's
-    picture is the colour the run deals it, but what a potion looks like once you
-    know it is a fact about the potion rather than a per-run secret. **A card's
-    cell shows BOTH SIDES** — its face and its deck icon — because the difference
-    between them is the whole of what the kind withholds, and it is the one half of
-    this tab that spoils nothing: a card is readable in a run the moment it is in
-    the pack.
-    Both halves are the **revealed reference**, which a run hides until you
-    identify it. A pill cell wears a **stand-in capsule and says so**: a pill
-    carries no art of its own (`PillData` has no image field) because its picture
-    is the colour the run deals it out of `PillSystem.COLORS`, and this screen
-    opens from the main menu where no run has dealt one — drawing each pill in
-    some particular colour would teach an association the game randomises on
-    purpose. It shows **both doses**, since the 5% horse roll is the same colour
-    and the same identification, and a card showing only the normal one would be
-    describing half of what taking it can do.
+    recipes whose results are weapons already counted, so they are not in it.
+    **Every sub-tab is a grid of pictures that opens a popup**, the Items tab's
+    shape (`_loot_cell` / `_show_loot_detail`): art, name and one caption in the
+    grid, everything the piece says in the popup. **A piece with no art of its
+    own loops through the run's disguises at random** (`_loot_art`, a Timer per
+    cell, its own RNG so a mid-run visit cannot move the run's dice): every pill
+    the capsules of `PillSystem.COLORS`, every wand the sticks of
+    `WandSystem.MATERIALS`, an artless potion the vials of `PotionSystem.COLORS`.
+    It shows what the piece looks like in a run — any of these — without pinning
+    it to one colour, which would teach an association the game deals at random.
+    A potion with identified art keeps it (that is a fact about the potion, not a
+    per-run secret); a scroll without art wears the one shared Unidentified sheet.
+    A card's popup shows **both sides**, face and deck icon, because the
+    difference is the whole of what the kind withholds. A pill's popup shows
+    **both doses**, since the 5% horse roll is the same colour and the same
+    identification.
   - **`HowToPlayScreen.gd`** — **📖 How to Play**, the written manual: a chapter
     list down the left, one chapter down the right. Every word of it is data in
     **`HowToPlayText.gd`**, which the screen draws and does not read — so the

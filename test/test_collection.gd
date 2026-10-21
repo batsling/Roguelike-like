@@ -271,42 +271,109 @@ func test_the_pills_sub_tab_renders_every_pill() -> void:
 	assert_eq(col._grid.get_child_count(), Data.all_pills().size(), "every 2.0 pill shows")
 
 # A pill is ONE resource with TWO effects, and the 5% horse roll is the same
-# colour and the same identification — so a catalog card that showed only the
-# normal dose would be describing half of what taking one can do (§4.3).
-func test_a_pill_card_carries_both_doses() -> void:
+# colour and the same identification — so a page that showed only the normal
+# dose would be describing half of what taking one can do (§4.3). The words are
+# in the popup now, the way an item's are.
+func test_a_pills_page_carries_both_doses() -> void:
 	var col := _new_collection()
 	col._set_tab(Collection.Tab.LOOT)
 	col._loot_sub = Collection.LOOT_PILLS
 	col._refresh()
+	var at: int = -1
 	var pill: PillData = null
-	for p in Data.all_pills():
-		if p is PillData and String(p.horse_description).strip_edges() != "":
-			pill = p
+	var pills: Array = Data.all_pills().filter(func(p): return p is PillData)
+	pills.sort_custom(func(a, b): return a.display_name.to_lower() < b.display_name.to_lower())
+	for i in pills.size():
+		if String(pills[i].horse_description).strip_edges() != "":
+			pill = pills[i]
+			at = i
 			break
 	assert_not_null(pill, "some pill has a horse dose authored")
 	if pill == null:
 		return
-	var text: String = Page.text_of(col._grid)
-	assert_true(pill.display_name in text, "the pill is named")
+	assert_true(pill.display_name in Page.text_of(col._grid), "the grid names it")
+	col._select(at)
+	var text: String = Page.text_of(col._detail_box)
+	assert_true(pill.display_name in text, "the popup is that pill's")
 	assert_true(String(pill.description) in text, "its normal dose is described")
 	assert_true(String(pill.horse_description) in text, "and so is its horse dose")
 
-# Every pill wears the SAME stand-in capsule. A pill's picture is the colour the
-# run deals it out of PillSystem.COLORS, and the Collection opens where no run
-# exists — drawing each one in some particular colour would teach an association
-# the game randomises on purpose.
-func test_pill_cells_all_wear_the_same_stand_in_capsule() -> void:
+# EVERY LOOT KIND IS A GRID OF PICTURES that opens a popup, the way items are.
+func test_every_loot_sub_tab_is_a_grid_that_opens_a_popup() -> void:
 	var col := _new_collection()
 	col._set_tab(Collection.Tab.LOOT)
-	col._loot_sub = Collection.LOOT_PILLS
+	for sub in [Collection.LOOT_SCROLLS, Collection.LOOT_PILLS, Collection.LOOT_POTIONS,
+			Collection.LOOT_CARDS, Collection.LOOT_WANDS, Collection.LOOT_TRINKETS,
+			Collection.LOOT_BAGS, Collection.LOOT_WEAPONS, Collection.LOOT_EVOLUTIONS]:
+		col._loot_sub = sub
+		col._refresh()
+		assert_not_null(col._detail_box, "%s has a popup" % sub)
+		assert_eq(col._nav.size(), col._grid.get_child_count(), "every %s cell opens" % sub)
+		if col._nav.is_empty():
+			continue
+		col._select(0)
+		assert_true(col._detail_panel.visible, "a click on a %s opens it" % sub)
+		assert_gt(col._detail_box.get_child_count(), 2, "and fills it: %s" % sub)
+
+# A PIECE WITH NO ART OF ITS OWN LOOPS THROUGH THE RUN'S DISGUISES: a pill the
+# capsules, a wand the sticks, an artless potion the vials. One fixed stand-in
+# would teach an association the game deals at random every run.
+func test_an_artless_piece_loops_its_disguises() -> void:
+	var col := _new_collection()
+	col._set_tab(Collection.Tab.LOOT)
+	for pair in [[Collection.LOOT_PILLS, "res://images2.0/pills/"],
+			[Collection.LOOT_WANDS, "res://images2.0/wands_unidentified/"]]:
+		col._loot_sub = pair[0]
+		col._refresh()
+		for cell in col._grid.get_children():
+			assert_eq(_all_of_type(cell, "Timer").size(), 1, "%s cell loops" % pair[0])
+			for tr in _all_of_type(cell, "TextureRect"):
+				assert_true(String(tr.texture.resource_path).begins_with(pair[1]),
+					"wearing one of the run's own: %s" % tr.texture.resource_path)
+	col._loot_sub = Collection.LOOT_POTIONS
 	col._refresh()
-	var seen := {}
+	var looping: int = 0
+	var still: int = 0
 	for cell in col._grid.get_children():
-		for tr in _all_of_type(cell, "TextureRect"):
-			if tr.texture != null:
-				seen[tr.texture.resource_path] = true
-	assert_eq(seen.size(), 1, "one capsule across the whole grid, not one per pill")
-	assert_true(seen.has(Collection.PILL_STANDIN), "and it is the stand-in")
+		if _all_of_type(cell, "Timer").is_empty():
+			still += 1
+		else:
+			looping += 1
+	assert_gt(looping, 0, "an artless potion loops the vials")
+	assert_gt(still, 0, "and one with its own bottle keeps it")
+
+func test_a_loop_steps_to_another_disguise() -> void:
+	var col := _new_collection()
+	col._set_tab(Collection.Tab.LOOT)
+	col._loot_sub = Collection.LOOT_WANDS
+	col._refresh()
+	var cell: Node = col._grid.get_child(0)
+	var tr: TextureRect = _all_of_type(cell, "TextureRect")[0]
+	var before: Texture2D = tr.texture
+	(_all_of_type(cell, "Timer")[0] as Timer).timeout.emit()
+	assert_ne(tr.texture, before, "the stick changes")
+
+# THE CRASH: every sort button and sub-tab rebuilds the tab it sits in from
+# inside its own `pressed`, and the rebuild used to `free()` the button mid-emit
+# — "freed or unreferenced while a signal is being emitted from it". The button
+# is now taken off the page at once and freed once its signal is done.
+func test_a_sort_button_survives_its_own_press() -> void:
+	var col := _new_collection()
+	col._set_tab(Collection.Tab.LOOT)
+	var pressed: Array = []
+	for b in _all_of_type(col._content, "Button"):
+		if (b as Button).text.begins_with("💊"):
+			pressed.append(b)
+	assert_eq(pressed.size(), 1, "the Pills sub-tab is on the page")
+	if pressed.is_empty():
+		return
+	var b: Button = pressed[0]
+	b.pressed.emit()
+	assert_eq(col._loot_sub, Collection.LOOT_PILLS, "the press did its job")
+	assert_true(is_instance_valid(b), "the button outlives its own signal")
+	assert_false(b.is_inside_tree(), "but is already off the page")
+	await get_tree().process_frame
+	assert_false(is_instance_valid(b), "and is gone by the next frame")
 
 # Every node of a type under `node`, for the tests that want the pictures rather
 # than the words. (`Page.text_of`, in test/helpers/run_page.gd, is the one for the words.)
