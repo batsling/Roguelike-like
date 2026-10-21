@@ -66,6 +66,9 @@ var _restore_size: Vector2 = Vector2.ZERO   # the height to unroll back to
 # Whether the opening zoom-to-fit has happened. Only the FIRST build does it —
 # after that the zoom is whatever the player set with the −/+ buttons.
 var _auto_zoomed: bool = false
+# How many times the route may be re-fitted once the window has laid out (see
+# _refit_after_layout). Bounded, so a route that will not fit stops and scrolls.
+const REFIT_PASSES := 4
 # Panel dragging, off the header bar.
 var _dragging: bool = false
 
@@ -648,13 +651,44 @@ func _settle() -> void:
 		# natural size, so shrink it until the whole route fits.
 		if spread_room() != Vector2.ZERO:
 			_set_zoom(_zoom)
+			_refit_after_layout()
 			return
 		var fit: float = _fit_zoom()
 		if fit < 0.995:
 			_set_zoom(fit)          # rebuilds, and settles again behind it
+			_refit_after_layout()
 			return
 	if _atlas != null and is_instance_valid(_atlas):
 		_frame_route()
+
+# THE ROUTE IS FITTED BEFORE THE WINDOW HAS FINISHED LAYING OUT. The room it is
+# fitted to is the window's ceiling less its furniture (_chrome), and one piece
+# of that furniture wraps: the Journey line, every game behind you by name. It is
+# measured at the width the window has THEN, which is the inflated one this whole
+# dance exists to undo; once the window is put back to size, the line wraps onto
+# more rows and takes height the route had already been given. A route sized to
+# fill its room opened 11-95px too tall for it, with a scrollbar — more often the
+# longer the journey (test_run_map's fit test failed on it intermittently).
+#
+# So once the window HAS laid out, look again: alone, build the route once more to
+# the room there really is; over the chart, or if the room still cannot take it,
+# shrink. Each pass a frame later, so it measures a laid-out window.
+func _refit_after_layout() -> void:
+	for i in range(REFIT_PASSES):
+		await get_tree().process_frame
+		if not is_inside_tree() or _canvas_holder == null or _scroller == null or _minimized:
+			return
+		var ladder: Vector2 = _canvas_holder.custom_minimum_size
+		var room: Vector2 = _scroller.size
+		if ladder.x <= room.x + 1.0 and ladder.y <= room.y + 1.0:
+			return
+		if i == 0 and spread_room() != Vector2.ZERO:
+			_set_zoom(_zoom)        # the room is measured afresh in the rebuild
+			continue
+		if _zoom <= FIT_ZOOM_MIN + 0.001:
+			return
+		var fit: float = RouteLadder.fit_zoom(ladder, room, _zoom, FIT_ZOOM_MIN, FIT_SLACK)
+		_set_zoom(maxf(FIT_ZOOM_MIN, minf(fit, _zoom - 0.02)))
 
 # Size the window to what is inside it — and, more to the point, size it OURSELVES.
 #

@@ -219,6 +219,41 @@ func test_the_route_fits_the_window_it_opens_in() -> void:
 	assert_lte(ladder.x, room.x + 1.0, "the whole route is visible across")
 	assert_lte(ladder.y, room.y + 1.0, "and all the way down")
 
+# The Journey line names every game behind you and wraps, and it is measured
+# before the window has laid out: put back to size, it can wrap onto more rows
+# and take height the route was already sized to (a 70-run stress caught it at 3
+# and 6 rows, the route 91-103px too tall). Which runs hit that is a race, so
+# this stands the end state up on purpose — the line grown after the route was
+# fitted — and asks the refit to put the route back inside the window.
+func test_a_journey_line_that_grows_after_the_fit_is_refitted() -> void:
+	# A road behind you, so there is a Journey line at all: the opening game is
+	# where you stand, not where you have been.
+	GameState.visited_games.clear()
+	GameState.visited_games.append((Data.all_games()[0] as GameData).id)
+	var modal = _open_map()
+	await _settled(modal)
+	var trail: Label = null
+	for c in modal._scroller.get_parent().get_children():
+		if c is Label and (c as Label).text.begins_with("Journey:"):
+			trail = c
+	if trail == null:
+		pending("this run has no journey line to grow")
+		return
+	var names: Array = Data.all_games().slice(0, 60).map(func(g): return g.display_name)
+	trail.text = "Journey:  " + " → ".join(names) + "  → 📍"
+	for _i in range(2):
+		await get_tree().process_frame
+	var room: Vector2 = modal._scroller.size
+	assert_gt(modal._canvas_holder.custom_minimum_size.y, room.y + 1.0,
+		"the grown line has pushed the route past its room — the case being fixed")
+	modal._refit_after_layout()
+	await _settled(modal)
+	await _settled(modal)
+	var ladder: Vector2 = modal._canvas_holder.custom_minimum_size
+	room = modal._scroller.size
+	assert_lte(ladder.y, room.y + 1.0, "and the refit fits it back down: ladder %s in %s" % [ladder, room])
+	assert_lte(ladder.x, room.x + 1.0, "and across")
+
 func test_a_short_route_is_never_blown_up() -> void:
 	# Fit only ever shrinks. A two-rung ladder in a 760px window should stay at
 	# its natural size rather than being stretched to fill it.
