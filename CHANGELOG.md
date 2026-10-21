@@ -11,6 +11,16 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The Collection no longer crashes on a sort button, and Loot draws like
+  Items** (the owner, 21 Oct 2026). Every sort button, sub-tab and type filter
+  rebuilds the tab it sits in from inside its own signal, and the rebuild
+  `free()`d that button mid-emit ("freed or unreferenced while a signal is being
+  emitted from it"). `_clear_children` now detaches and `queue_free`s.
+  All nine Loot sub-tabs are a grid of pictures with a popup, the Items tab's
+  shape, and a piece with no art of its own (every pill and wand, six potions)
+  loops through the run's capsules, sticks or vials at random rather than
+  wearing one stand-in.
+
 - **Camp is made on the way out** (the owner, 20 Oct 2026). It left the ☰ Menu:
   Exit and Main menu offer **Make camp first** when one is owed, and taking a
   card saves and returns to the main menu. The deal is kept until a card is
