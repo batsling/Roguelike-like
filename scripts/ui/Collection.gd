@@ -726,9 +726,9 @@ func _stream_cells() -> void:
 	var want_from: int = -1
 	var want_to: int = -1
 	for i in _cell_slots.size():
-		var cell: Control = (_cell_slots[i] as Dictionary)["cell"]
-		if not is_instance_valid(cell):
+		if not is_instance_valid((_cell_slots[i] as Dictionary)["cell"]):
 			continue
+		var cell: Control = (_cell_slots[i] as Dictionary)["cell"]
 		# Before the flow has placed it, a cell is at y=0 while already carrying its
 		# full size, so every one of them reads as on screen. A zero-height cell is
 		# one that has not been placed yet.
@@ -770,9 +770,9 @@ func _fill_cell(index: int) -> void:
 	var slot: Dictionary = _cell_slots[index]
 	if bool(slot.get("filled", false)):
 		return
-	var box: VBoxContainer = slot["box"]
-	if not is_instance_valid(box):
+	if not is_instance_valid(slot["box"]):
 		return
+	var box: VBoxContainer = slot["box"]
 	var g: GameData = slot["game"]
 	var tc := _game_type_color(int(g.type))
 	if g.cover_path != "":
@@ -815,17 +815,19 @@ func _empty_cell(index: int) -> void:
 	var slot: Dictionary = _cell_slots[index]
 	if not bool(slot.get("filled", false)):
 		return
-	var box: VBoxContainer = slot["box"]
 	slot["filled"] = false
 	# The tick goes with the cell, so the id must stop pointing at a freed Button —
 	# `_paint_owned_mark` is called for games that are nowhere on screen and answers
 	# by finding nothing, which is exactly right once this id is gone.
 	_owned_marks.erase((slot["game"] as GameData).id)
-	if not is_instance_valid(box):
+	if not is_instance_valid(slot["box"]):
 		return
+	var box: VBoxContainer = slot["box"]
+	# Queued, for `_clear_children`'s reason: the cell holds the owned tick, and
+	# nothing may free a Button that could be the one whose signal is running.
 	for c in box.get_children():
 		box.remove_child(c)
-		c.free()
+		c.queue_free()
 
 # The name, clamped to NAME_LINES.
 #
@@ -1148,9 +1150,9 @@ func _paint_selected(index: int, on: bool) -> void:
 	if index < 0 or index >= _nav.size():
 		return
 	var entry: Dictionary = _nav[index]
-	var panel: PanelContainer = entry["panel"]
-	if not is_instance_valid(panel):
+	if not is_instance_valid(entry["panel"]):
 		return
+	var panel: PanelContainer = entry["panel"]
 	var border: Color = entry["border"]
 	if on:
 		var sb := StyleBoxFlat.new()
@@ -1695,9 +1697,12 @@ func _game_cover_flow(ids, counts: Dictionary = {}) -> HFlowContainer:
 func _fill_covers(pending: Array) -> void:
 	var decoded: int = 0
 	for pair in pending:
-		var tile: Control = pair[0]
-		if not is_instance_valid(tile):
+		# Checked BEFORE the typed assignment: putting a freed instance in a
+		# `Control` variable is itself a script error, so the check below it never
+		# got the chance to run when ◀ ▶ tore a page down mid-fill.
+		if not is_instance_valid(pair[0]):
 			return
+		var tile: Control = pair[0]
 		var game: GameData = pair[1]
 		var cached: bool = game.cover_path == "" or ResourceLoader.has_cached(game.cover_path)
 		var art: TextureRect = tile.get_meta(&"art")

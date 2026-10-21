@@ -1298,3 +1298,21 @@ func test_a_goal_is_a_picture_with_its_count_and_its_story_on_the_hover() -> voi
 	assert_eq((badges[0].get_child(0) as Label).text, "3")
 	assert_eq(tile.find_children("*", "TextureRect", true, false).size(), 1,
 		"a picture, not a name")
+
+# ◀ ▶ through game pages tears a page down while its covers are still loading a
+# few a frame. The loader woke up holding freed tiles and put one in a typed
+# `Control` variable before checking it — a script error per stale tile.
+func test_the_cover_loader_stops_quietly_on_a_torn_down_page() -> void:
+	var col := _new_collection()
+	var g: GameData = null
+	for one in Data.all_games():
+		if one is GameData:
+			g = one
+			break
+	assert_not_null(g, "some game to draw")
+	if g == null:
+		return
+	var tile := Control.new()
+	tile.free()
+	await col._fill_covers([[tile, g]])
+	assert_true(true, "no error raised over a freed tile")
