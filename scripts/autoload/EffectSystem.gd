@@ -514,6 +514,7 @@ func _h_gain_random_item(effect: Dictionary, ctx: Dictionary) -> void:
 	# instant the cost is charged before the payout.
 	var given := StringName(ctx.get("given_item", &""))
 	var names: Array = []
+	var ids: Array = []
 	for _i in range(count):
 		var pool: Array = Data.reward_item2_pool().filter(
 			func(it): return not GameState.has_item(it.id) and it.id != given)
@@ -524,9 +525,14 @@ func _h_gain_random_item(effect: Dictionary, ctx: Dictionary) -> void:
 		var pick: ItemData = pool[_rng.randi_range(0, pool.size() - 1)]
 		GameState.add_item(pick)
 		names.append(pick.display_name)
+		ids.append(pick.id)
 	if names.is_empty():
 		return
 	ctx["granted_item_name"] = " and ".join(PackedStringArray(names))
+	# What THIS effect paid, as ids. The pack's size is not the same claim: a relic
+	# paid here can bring more of its own (Ultra Duplicator copies the next one,
+	# Calling Bell brings three), so a count of the pack over-reads the payout.
+	ctx["granted_item_ids"] = ids
 
 
 # The two prices paid in KIND. Which potion and which relic was rolled when the

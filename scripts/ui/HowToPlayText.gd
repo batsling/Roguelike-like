@@ -324,16 +324,18 @@ static func _ch_playing() -> Dictionary:
 				+ "following: escape answers the goal with a no, it does not "
 				+ "delete the question."),
 			_h("Ending a session: make camp"),
-			_p(("A run lasts more than one sitting, so end each one by making camp: "
-				+ "☰ Menu → Make camp, between games, once you have beaten a game "
-				+ "since your last camp. It offers two cards and you take one. REST "
+			_p(("A run lasts more than one sitting, so end each one by making camp. "
+				+ "When you leave the run (Exit, or Main menu) having beaten a game "
+				+ "since your last camp, you are offered Make camp first — even with "
+				+ "a game still in play. It offers two cards and you take one. REST "
 				+ "is always there: +%d Health. The other is dealt from one of the "
 				+ "games you beat since the last camp, by its type — a Traditional "
 				+ "game lets you identify a piece of loot, a Deckbuilder hands you a "
 				+ "random card, a Strategy game puts %d charges into something you "
-				+ "carry, and an Action game gives you %d Shield that stays. Making "
-				+ "camp saves the run, so it is safe to close. Exit offers it too "
-				+ "when one is owed.") % [Camp.REST_HEAL, Camp.CHARGE_AMOUNT,
+				+ "carry, and an Action game gives you %d Shield that stays. Taking "
+				+ "a card saves the run and returns you to the main menu. Going back "
+				+ "to the run instead keeps the same two cards for the next time you "
+				+ "leave.") % [Camp.REST_HEAL, Camp.CHARGE_AMOUNT,
 				Camp.SHIELD_GAIN]),
 			_note("★ Rate is always optional: it is on the card a game opens and "
 				+ "on the screen a game ends on. Score a game "

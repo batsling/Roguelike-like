@@ -47,6 +47,11 @@ var nouns: String = ""
 var where: String = ""
 # Called once with the chosen things (candidates, never the stand-ins).
 var on_done: Callable = Callable()
+# Set by an opener that lets the pick be put away unanswered — the camp's Study
+# and Tinker, where backing out returns you to the run with the camp unspent. It
+# adds a Back button, and is called instead of `on_done`. Unset, there is no way
+# out but answering: a pick a use paid for is finished by the player.
+var on_cancel: Callable = Callable()
 # What redraws the pack and the strip after a click (the page's `_refresh_items`).
 var on_change: Callable = Callable()
 
@@ -68,6 +73,7 @@ func setup(cfg: Dictionary) -> void:
 	noun = String(cfg.get("noun", ""))
 	nouns = String(cfg.get("nouns", noun))
 	where = String(cfg.get("where", ""))
+	on_cancel = cfg.get("on_cancel", Callable())
 	need = clampi(int(cfg.get("count", 1)), 1, maxi(1, candidates.size()))
 	_build()
 
@@ -116,6 +122,14 @@ func finish() -> void:
 	queue_free()
 	if on_done.is_valid():
 		on_done.call(chosen)
+
+# Put away unanswered, for an opener that set `on_cancel`.
+func cancel() -> void:
+	if _finished or not on_cancel.is_valid():
+		return
+	_finished = true
+	queue_free()
+	on_cancel.call()
 
 func is_finished() -> bool:
 	return _finished
@@ -170,6 +184,10 @@ func _build() -> void:
 		_done_btn = UITheme.confirm_button("Done", Vector2(80, 28))
 		_done_btn.pressed.connect(finish)
 		row.add_child(_done_btn)
+	if on_cancel.is_valid():
+		var back := UITheme.confirm_button("Back", Vector2(80, 28))
+		back.pressed.connect(cancel)
+		row.add_child(back)
 	_update_label()
 
 func _update_label() -> void:

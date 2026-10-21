@@ -1450,6 +1450,7 @@ func test_a_shield_survives_a_save() -> void:
 func test_marked_doubles_the_damage_an_enemy_takes() -> void:
 	var ui = _booted()
 	Page.pick_enemies(ui, 0)
+	_disarm_board()
 	var inst: int = int(GameLoop2.arrival()["instance"])
 	# Alien Baby makes a body take two goals to put down; Marked puts it down in
 	# one, which is the whole point of the status.
@@ -1461,7 +1462,11 @@ func test_marked_doubles_the_damage_an_enemy_takes() -> void:
 func test_marked_ignores_a_shield_rather_than_spending_it() -> void:
 	var ui = _booted()
 	Page.pick_enemies(ui, 0)
+	_disarm_board()
 	var inst: int = int(GameLoop2.arrival()["instance"])
+	# Two Health, as above, so the one goal has to land as two damage — and a boss
+	# the offering stood (one run in seven) has no more than an ordinary body.
+	GameLoop2.arrival()["health"] = 2
 	GameLoop2.apply_enemy_status(&"dexterity", 5, "current")
 	GameLoop2.apply_enemy_status(&"marked", 1, "current")
 	GameLoop2.beat_game(true)
@@ -1551,6 +1556,7 @@ func _turns_then_report(turns: int) -> Dictionary:
 func test_speed_closes_extra_columns_per_turn() -> void:
 	var ui = _booted()
 	Page.pick_enemies(ui, 0)
+	_disarm_board()
 	ui.report(false)
 	var entry: Dictionary = GameLoop2.stack[0]
 	entry["col"] = GameLoop2.grid_cols()
@@ -1562,6 +1568,7 @@ func test_speed_closes_extra_columns_per_turn() -> void:
 func test_speed_stops_at_the_front_column_rather_than_overshooting() -> void:
 	var ui = _booted()
 	Page.pick_enemies(ui, 0)
+	_disarm_board()
 	ui.report(false)
 	var entry: Dictionary = GameLoop2.stack[0]
 	entry["col"] = 2
@@ -1572,6 +1579,7 @@ func test_speed_stops_at_the_front_column_rather_than_overshooting() -> void:
 func test_a_stunned_body_does_not_move_however_fast_it_is() -> void:
 	var ui = _booted()
 	Page.pick_enemies(ui, 0)
+	_disarm_board()
 	ui.report(false)
 	var entry: Dictionary = GameLoop2.stack[0]
 	entry["col"] = GameLoop2.grid_cols()

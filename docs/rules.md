@@ -156,7 +156,7 @@ Walking out ends the game, so the board fills behind you. If you put a body down
 
 ### Ending a session: make camp
 
-A run lasts more than one sitting, so end each one by making camp: ☰ Menu → Make camp, between games, once you have beaten a game since your last camp. It offers two cards and you take one. REST is always there: +2 Health. The other is dealt from one of the games you beat since the last camp, by its type — a Traditional game lets you identify a piece of loot, a Deckbuilder hands you a random card, a Strategy game puts 2 charges into something you carry, and an Action game gives you 1 Shield that stays. Making camp saves the run, so it is safe to close. Exit offers it too when one is owed.
+A run lasts more than one sitting, so end each one by making camp. When you leave the run (Exit, or Main menu) having beaten a game since your last camp, you are offered Make camp first — even with a game still in play. It offers two cards and you take one. REST is always there: +2 Health. The other is dealt from one of the games you beat since the last camp, by its type — a Traditional game lets you identify a piece of loot, a Deckbuilder hands you a random card, a Strategy game puts 2 charges into something you carry, and an Action game gives you 1 Shield that stays. Taking a card saves the run and returns you to the main menu. Going back to the run instead keeps the same two cards for the next time you leave.
 
 > ★ Rate is always optional: it is on the card a game opens and on the screen a game ends on. Score a game out of ten and write a note; it feeds the Tier List, which is yours across every run and is not a game mechanic at all.
 

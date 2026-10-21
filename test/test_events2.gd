@@ -1698,11 +1698,17 @@ func test_the_relic_price_pays_two_relics_back() -> void:
 	_stock_ranwid()
 	EventSystem.begin_event(ev)
 	var eaten: StringName = EventSystem.offered_relic()
-	var held: int = GameState.inventory.size()
-	EventSystem.resolve_choice(ev, _choice(ev, "give_relic"), 0)
+	var ctx: Dictionary = {}
+	EventSystem.resolve_choice(ev, _choice(ev, "give_relic"), 0, ctx)
 	assert_false(GameState.has_item(eaten), "he ate it")
-	assert_eq(GameState.inventory.size(), held + 1,
-		"one out, two in — the pack is one relic bigger")
+	# TWO PAID, asserted as what the event handed over rather than as the pack's
+	# size. The size used to be `held + 1`, and a relic he pays with can bring more
+	# of its own — an Ultra Duplicator as the first copies the second — so the runs
+	# that rolled one failed and the rest passed.
+	var paid: Array = ctx.get("granted_item_ids", [])
+	assert_eq(paid.size(), 2, "one out, two in")
+	for id in paid:
+		assert_true(GameState.has_item(id), "%s is in the pack" % id)
 
 
 # A price he cannot be paid is not a button. The Requirement keeps him off the

@@ -11,6 +11,15 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Camp is made on the way out** (the owner, 20 Oct 2026). It left the ☰ Menu:
+  Exit and Main menu offer **Make camp first** when one is owed, and taking a
+  card saves and returns to the main menu. The deal is kept until a card is
+  taken (`GameState.camp_deal`, saved), so backing out and reopening can't
+  reroll it. Study and Tinker spend the camp when their pick is answered, and
+  their pick has a **Back** to the run (`OwnedPick.on_cancel`). A game in play no
+  longer shuts the camp: a win this session earns all of it. Draft opens its own
+  loot screen so the camp leaves only once the card is answered.
+
 - **The camp shows the journey and the session** (the owner, 20 Oct 2026).
   Above the two cards: the whole road walked, cover to cover with arrows, this
   session's stops lit and the earlier ones faded; under it the session in

@@ -1,6 +1,7 @@
 # Camp — the end-of-session rest
 
-**Status: built** (the owner's design, 20 Oct 2026). The rules are in
+**Status: built** (the owner's design, 20 Oct 2026; made on the way out, the
+same day). The rules are in
 `scripts/runtime/Camp.gd`, the screen is `scripts/redesign2/CampScreen.gd`, and
 the flow is `Overworld2.open_camp` / `camp_choose`. Tests: `test/test_camp.gd`.
 Section numbers (§3.2, …) refer to
@@ -71,26 +72,35 @@ is counted. Making camp moves the mark.
   beaten since the last camp, one entry per win, repeats included. A camp needs
   at least one. Making camp empties the list, so a camp can't be made twice in a
   row, and quitting after every game earns no more than quitting once.
-- **Only between games.** A game in play has a board that is mid-turn, so the
-  menu entry is dark while one is.
+- **Game in play or not.** A session that ends mid-game (a long Traditional
+  game that spans two streams) gets the whole camp, as long as a game was
+  beaten since the last one. With none beaten, there is no camp, not even Rest.
 - **Never a dead card.** The second card is drawn only from the beaten games
   whose card would do something right now:
   - Study needs something unidentified to study.
   - Tinker needs something with room for a charge.
   
   If none of them qualify, the camp offers Rest alone.
-- **Spent the moment a card is taken**, before any pick it opens. Putting that
-  pick away therefore can't leave the camp open to be made again.
+- **Dealt once, kept until a card is taken.** The deal is saved with the run
+  (`GameState.camp_deal`), so going back to the run and leaving again shows the
+  same two cards: closing and reopening can't reroll them. It is dealt again
+  only if there was nothing to keep: Rest alone (a win since may have earned a
+  second card), or a second card that would now do nothing.
+- **Spent when the card pays.** Rest and Brace pay at once. Study and Tinker pay
+  when their pick in the pack is answered. Their pick has a **Back**, and backing
+  out (or a Study's Done with nothing picked) returns you to the run with the
+  camp unspent. Draft is spent when its card is offered.
 
 ## 4. Where it is
 
-- **☰ Menu → ▲ Make camp**, under *This run*, beside Save run. While it is shut,
-  its tooltip says why: a game is in play, nothing has been beaten since the
-  last camp, or the run is over.
-- **Exit asks.** When a camp is owed, the Exit dialog says so and adds **Make
-  camp first** beside Save & exit.
-- **Making camp saves the run** and says it is safe to close. It doesn't quit
-  for you: a card that opens a pick or a loot offer needs the page.
+- **Only on the way out of the run.** It isn't on the ☰ Menu. When a camp is
+  owed, both doors out ask: the **Exit** dialog says so and adds **Make camp
+  first** beside Save & exit, and **Main menu**, which otherwise leaves at once,
+  opens the same question (`Overworld2.prompt_main_menu`, `_offer_camp`).
+- **Taking a card saves the run and leaves for the main menu**, once its pick or
+  its card offer is answered (Draft opens its own loot screen so the camp knows
+  when). The camp screen's **Back to the run** cancels the exit and keeps the
+  cards.
 - The in-game manual teaches it in *Playing the game* → "Ending a session: make
   camp", so it is in [`rules.md`](rules.md) too.
 
@@ -103,11 +113,12 @@ fontsource.
 - **The overlay doesn't show the last camp.** A "Last camp: Brace (from Hades)"
   line until the next game is chosen would give the next stream its opening.
   It would need a field on the run and a line in `ObsCompanion`'s payload.
-- **A game's own camp card.** A `Camp` column on the `games` sheet could let one
-  game replace its type's card: Smith for Slay the Spire, the Mirror for Hades.
-  Worth adding once the type cards have been played with.
-- **A Traditional game that spans two streams.** The camp is shut while a game is
-  in play, so a session that ends mid-game ends without one. The game's win
-  earns the camp at the end of the next session. The open question is whether a
-  mid-game session end should get Rest alone.
+- **Cards from tags.** The owner may later deal cards by a game's tags rather
+  than (or as well as) its type. A card per individual game (Smith for Slay the
+  Spire) was considered and turned down.
+- **Bigger sessions.** Five wins deal the same one card as one win: more wins
+  only widen the pool it is drawn from (a game beaten twice is twice as likely).
+  The owner is thinking about whether a long session should pay more.
+- **Rest at full Health does nothing.** Accepted: there is always a second card
+  beside it, or the camp is Rest alone and costs nothing to take.
 - **Fractures don't touch the camp.**

@@ -92,6 +92,10 @@ var total_games_beaten: int = 0
 # win, repeats included: what earns a camp, and what its second card is dealt
 # from. Emptied when a camp is made.
 var games_beaten_since_camp: Array[StringName] = []
+# The camp's cards once they have been dealt (Camp.current_deal), kept until one
+# is taken, so backing out of the camp and making it again shows the same two
+# rather than a fresh deal. [{id, game}] as Strings; empty when none is dealt.
+var camp_deal: Array = []
 # Where the run's records stood when this SESSION began — at the run's start
 # (empty) or at the last camp (Camp.mark_session). The camp screen reads what
 # this session did as the difference.
@@ -1239,6 +1243,7 @@ func reset_run() -> void:
 	played_games.clear()
 	total_games_beaten = 0
 	games_beaten_since_camp.clear()
+	camp_deal = []
 	session_mark = {}
 	games_played = 0
 	spawn_events = 0
