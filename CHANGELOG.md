@@ -11,6 +11,15 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Ripple Basin's shield now lands before the swing it is for.** A lost run
+  fired its `run_lost` hook after the enemies' turn, so the Temporary Shield
+  only ever covered the next lost run's hit, while the comment above the emit
+  said it came first. The owner ruled for the comment: `GameLoop2.log_attempt`
+  now fires `run_lost` and then runs the turn. The Ripple Basin tests had stood
+  their body at the back where nothing swings, so they passed either way;
+  `test_the_shield_stops_the_swing_the_lost_run_buys` stands one in reach.
+  `docs/turn-order.md` §3 and its order block moved with it.
+
 - **`docs/turn-order.md`: what fires first, and a check that keeps it true.**
   One game in the order the code runs it: picking a game, everything you can
   press while playing, a lost run's turn (ground, then one action per body,
@@ -20,9 +29,8 @@ For how the project is laid out and how its systems fit together, see
   in an ` ```order ` block — a function and the source snippets that must
   appear in it in that order — and `tools/check_turn_order.py`, now in CI's
   Content pipeline, fails when one is missing or has moved up. Tracing it found
-  one disagreement, left open for the owner: `log_attempt`'s comment says
-  `run_lost` (Ripple Basin's shield) fires before the enemies swing; the code
-  fires it after.
+  one disagreement, `run_lost` firing after the swing its comment said it came
+  before, fixed in the entry above.
 
 - **The owner's 22 Oct upload: 26 games, 18 connections, a proof clip, and
   their research.** Bloodletter, Bravery and Greed, Chained Beasts,

@@ -141,7 +141,10 @@ everything in it is put back by Undo.
 
 1. **Snapshot for Undo**: the board, Health, gold, both shield pools, your
    statuses, your inventory.
-2. **One enemy turn** (`attempt_turn` → `_resolve_enemy_turn`):
+2. Signal `run_lost` → items, **before anything swings**: what an item hands out
+   for a lost run (Ripple Basin's +1 Temporary Shield while no goal is done) is
+   armour against this very turn's swing, not a consolation after it.
+3. **One enemy turn** (`attempt_turn` → `_resolve_enemy_turn`):
    - **a0. The ground first.** Every body standing on a tile fires its turn-start
      effect (fire adds Burn, so the halved damage is on it before it swings). A
      body can die here → kill chain.
@@ -155,8 +158,6 @@ everything in it is put back by Undo.
      only. Entering a tile fires its on-enter effect (a mine goes off); loot lying
      there is pushed aside; the off-grid queue slides in as cells free.
    - **c. Turn-measured statuses wear off** — the one place a Stun stack ticks down.
-3. Signal `run_lost` → items (Ripple Basin's +1 Temporary Shield while no goal is
-   done). **After the swing** — see *Open question* below.
 4. The **lost-run spawn roll**, Luck included: a hit walks a body of this game's
    type on at the back column and resets the ladder; a miss climbs a rung. A hit
    is a spawn event, so the board can grow and a capstone boss can arrive →
@@ -166,9 +167,9 @@ everything in it is put back by Undo.
 ```order
 scripts/autoload/GameLoop2.gd :: log_attempt
 _attempt_snapshots.append(_run_snapshot())
-attempt_turn()
 attempt_costs.append("turn")
 TriggerBus.run_lost.emit(
+attempt_turn()
 _roll_lost_run_spawn()
 attempt_logged.emit(
 ```
@@ -205,15 +206,6 @@ GameLoop2.log_attempt()
 _announce_attempt_turn(
 _board.animate_resolve(
 ```
-
-### Open question: when `run_lost` fires
-
-The comment above the emit in `GameLoop2.log_attempt` says the hook fires *"before
-the board takes its turn"*, so that Ripple Basin's shield is armour against the
-swing the tick is buying. The code runs `attempt_turn()` first, so the shield only
-covers the **next** hit. The Ripple Basin tests (`test_potion_items.gd`) never put
-a body in reach, so they pass either way. One of the two is wrong and it is the
-owner's call which; until then this doc describes what the code does.
 
 ## 4. Handing the game in
 
