@@ -101,6 +101,9 @@ jobs:
       - name: Every path named in a live doc exists
         run: python3 tools/check_doc_paths.py
 
+      - name: The turn order is what docs/turn-order.md says
+        run: python3 tools/check_turn_order.py
+
       - name: The owner sheets are what `goals` says
         # `goals` is the SOURCE for every goal in the game, and the five sheets
         # the generators actually read are written from it. Drift between them is

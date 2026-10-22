@@ -11,6 +11,19 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **`docs/turn-order.md`: what fires first, and a check that keeps it true.**
+  One game in the order the code runs it: picking a game, everything you can
+  press while playing, a lost run's turn (ground, then one action per body,
+  then the step, then stuns wearing off), every step of the report, the
+  screens after, and the two chains everything calls into (a kill, a hit on
+  you). §0 is the order a single trigger walks your items in. Each section ends
+  in an ` ```order ` block — a function and the source snippets that must
+  appear in it in that order — and `tools/check_turn_order.py`, now in CI's
+  Content pipeline, fails when one is missing or has moved up. Tracing it found
+  one disagreement, left open for the owner: `log_attempt`'s comment says
+  `run_lost` (Ripple Basin's shield) fires before the enemies swing; the code
+  fires it after.
+
 - **The owner's 22 Oct upload: 26 games, 18 connections, a proof clip, and
   their research.** Bloodletter, Bravery and Greed, Chained Beasts,
   Cursemark, Enter the Chronosphere, Grail, Hell Deck, I.Rule, Infinity
