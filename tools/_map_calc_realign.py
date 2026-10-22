@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 """One-shot: put `Map Calc` back on its own rows, and give it room to grow.
 
+SUPERSEDED by `tools/map_calc.py` (22 Oct 2026), whose formulas no row edit can
+move. Kept as the record of the second break; do not run it, since it writes the
+old row-by-row references back.
+
 The owner found `Map Analysis` wrong "in some areas". The cause was `Map Calc`'s
 per-connection block (T/U/V: influencer year, influencee year, span):
 

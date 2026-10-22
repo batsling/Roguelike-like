@@ -951,6 +951,14 @@ def cmd_devcheck(args):
 
 # ── X / Twitter ─────────────────────────────────────────────────────────────
 
+# The X searches each new game's brief asks for by hand. A search engine indexes
+# tweets but does not stem them, so "inspired" never finds a developer writing
+# "our inspiration was…" — which is how Enter the Chronosphere's Hades and
+# NetHack were found (the owner, 22 Oct 2026). Both words, every time.
+def x_searches(g):
+    return (f'site:x.com "{g}" inspiration', f'site:x.com "{g}" inspired')
+
+
 def read_tweet(url):
     """Author, date and text of one tweet, without logging in.
 
@@ -2405,6 +2413,8 @@ def write_new_report(args, games, conns, failed):
         lines += ["", "**By hand:** search the web for "
                   + ", ".join(f"[{t}](https://duckduckgo.com/?q={q(t)})" for t in
                               (f'"{g}" inspired by', f'"{g}" developer interview', f'"{g}" devlog'))
+                  + "; search X for "
+                  + ", ".join(f"[{t}](https://duckduckgo.com/?q={q(t)})" for t in x_searches(g))
                   + "; read the Steam page's \"About\" and the developer's replies in its forum.", ""]
     path = wpath(args, "new_games.md")
     open(path, "w", encoding="utf8").write("\n".join(lines))

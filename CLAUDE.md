@@ -84,8 +84,13 @@ the honour system.
 **The workbook comes first in every upload.** When the owner uploads, assume
 `tools/Roguelikes.xlsx` has already been updated before anything else (images,
 proof clips, music lists): fetch `main`, diff the sheet against the last commit
-sheet by sheet, run `python3 tools/apply_goals_sheet.py --check` and
-`python3 tools/check_data_sync.py`, and regenerate, then wire up the art. An
+sheet by sheet, run `python3 tools/apply_goals_sheet.py --check`,
+`python3 tools/check_data_sync.py` and `python3 tools/map_calc.py --check`, and
+regenerate, then wire up the art. `map_calc.py` (no flag) rewrites `Map Calc`
+and `Map Analysis`'s formulas; they read rows as `INDEX(games!$A:$A,ROW())`, which
+no delete, insert or sort in `games` or `connections` can turn into `#REF!` (a
+row-by-row `games!$A933` broke the dashboard three times). Its "on the map"
+figures match `RunGraph`'s main group, and `--check` says when they can't. An
 owner edit typed into an owner sheet's goal column (as Stumpy Stump's was, 14 Oct)
 is carried up into `goals` rather than reverted; see
 `tools/_goals_stumpy_stump_wording.py`.
@@ -101,7 +106,10 @@ research runs over the new games (`docs/research.md` §7 has the detail):
    `.research_work/briefs/`. It prints the hand work left.
 2. **Connections:** read every line of `.influence_work/new_games.md`, then do
    the hand half the script can't: a web search per game for an interview, a
-   devlog or a press release in the developer's own words. What holds up goes
+   devlog or a press release in the developer's own words, and an X search
+   with **both** "inspiration" and "inspired" (the brief links them; search
+   engines don't stem tweets, and "inspiration" is the one that found Enter the
+   Chronosphere's). What holds up goes
    in `research/connections.csv` (`to review` for a pair of chart games, `lead`
    for a roguelike the chart lacks, `nothing found` for a game searched with
    nothing found), **never** into `connections`. **Also the developer's other
@@ -257,7 +265,7 @@ python3 tools/outline.py scripts/redesign2/Overworld2.gd --grep stun   # a file'
   part-way through being authored goes in the script's `KNOWN_UNFINISHED` list
   with its reason, the way `check_doc_paths.py` lists its deliberate exceptions.
 - **CI runs all of this** (`.github/workflows/ci.yml`): GUT, `check_doc_paths`,
-  `check_data_sync`, `check_map_sync` (informational — it drifts in both
+  `check_data_sync`, `map_calc --check`, `check_map_sync` (informational — it drifts in both
   directions by design) and `check_overlay.js`. Three jobs, so a red build says
   which KIND of thing broke — the game, the content pipeline, or the browser page
   GUT cannot see. The engine version is pinned there and in
