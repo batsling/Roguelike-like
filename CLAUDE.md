@@ -15,6 +15,7 @@ the honour system.
 | autoloads, every screen, the window, data loading, Luck, code conventions | `docs/architecture.md` (was most of the README) |
 | the OBS overlay, scene layouts, the speedrun clock | `docs/streaming.md` |
 | art folders, the generators, authoring events and objects | `docs/content-authoring.md` |
+| **what fires first** in a game — the ground or the swing, a kill's gold or `enemy_killed`, `game_beaten` or the game's own loot | `docs/turn-order.md`: picking a game, a lost run's turn, the report's steps, the screens after, and the kill and hit chains. **It is checked**: each section ends in an ` ```order ` block of source snippets that `tools/check_turn_order.py` (CI) holds to the code's order. Moving, adding or removing a step in any function it names means updating that section's prose and block in the same commit. A new signal or report step goes in too — the check can't see a step the doc has never named |
 | the end-of-session Camp — Rest or one card dealt by a game beaten since the last camp | `docs/rest-site-design.md`; rules in `scripts/runtime/Camp.gd`, screen `CampScreen.gd`, tests `test_camp.gd` |
 | what changed and why | `CHANGELOG.md` — narrative history, not needed to make a change |
 | what is known-slow and not yet fixed | `docs/performance-backlog.md` — measured findings with the fix for each. The Events tab and the page's cold compile are fixed; `GameLoop2.gd` has been measured and is cheap. What stays useful is the method: `Overworld2.gd` carries a seam table re-measured rather than guessed, and `test_page_load.gd` keeps the screens a run only opens on demand out of the page's compile |
@@ -265,7 +266,7 @@ python3 tools/outline.py scripts/redesign2/Overworld2.gd --grep stun   # a file'
   part-way through being authored goes in the script's `KNOWN_UNFINISHED` list
   with its reason, the way `check_doc_paths.py` lists its deliberate exceptions.
 - **CI runs all of this** (`.github/workflows/ci.yml`): GUT, `check_doc_paths`,
-  `check_data_sync`, `map_calc --check`, `check_map_sync` (informational — it drifts in both
+  `check_turn_order`, `check_data_sync`, `map_calc --check`, `check_map_sync` (informational — it drifts in both
   directions by design) and `check_overlay.js`. Three jobs, so a red build says
   which KIND of thing broke — the game, the content pipeline, or the browser page
   GUT cannot see. The engine version is pinned there and in

@@ -165,6 +165,7 @@ The repository root **is** the Godot project, so `res://x` is `./x`.
 | Roguelike Radio | [`docs/roguelike-radio.md`](docs/roguelike-radio.md) |
 | The end-of-session Camp | [`docs/rest-site-design.md`](docs/rest-site-design.md) |
 | Locations and events, design | [`docs/locations-and-events-design.md`](docs/locations-and-events-design.md) |
+| What fires first in a game: a lost run's turn, the report, kills and hits | [`docs/turn-order.md`](docs/turn-order.md), held to the code's order by `tools/check_turn_order.py` |
 | Stats and how they resolve | [`docs/stat-dispatcher.md`](docs/stat-dispatcher.md) |
 | The systems graph (what feeds what) | [`docs/systems-graph.md`](docs/systems-graph.md) |
 | Research: influences, tags, and what each game could give this one | [`docs/research.md`](docs/research.md), [`influence-research.md`](docs/influence-research.md), [`influence-media.md`](docs/influence-media.md), [`map-organization-research.md`](docs/map-organization-research.md), [`goal-enemy-candidates.md`](docs/goal-enemy-candidates.md), [`proof-missing.md`](docs/proof-missing.md) |

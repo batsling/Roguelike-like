@@ -2165,7 +2165,6 @@ func log_attempt() -> String:
 	# the undo has to put back (see _run_snapshot).
 	_attempt_snapshots.append(_run_snapshot())
 	_sat_out_stunned.clear()
-	last_attempt_turn = attempt_turn()
 	# One entry per tick, all of them "turn" now that there is only one thing a
 	# tick can cost. Kept as the list rather than collapsed to a count because it
 	# is what a save writes and what an older save reads back — and because the
@@ -2179,9 +2178,14 @@ func log_attempt() -> String:
 	# lost run (Ripple Basin's Temporary Shield) is armour against the swing this
 	# very tick is about to buy, not a consolation after it. Inside the snapshot
 	# taken above, so an undone try takes the grant back with it.
+	#
+	# IT USED TO FIRE AFTER THE TURN while this comment said before, so the shield
+	# only ever covered the NEXT lost run's swing. The owner ruled for the comment
+	# (docs/turn-order.md §3); test_potion_items pins it with a body in reach.
 	TriggerBus.run_lost.emit({
 		"attempt": attempt_costs.size(), "goals_met": goals_met_this_game,
 	})
+	last_attempt_turn = attempt_turn()
 	# …and then the chance of a body walking on (§3.2). AFTER the turn, so it walks
 	# on at the back and acts from the next lost run like any other arrival.
 	if not run_over:

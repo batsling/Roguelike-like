@@ -119,6 +119,27 @@ func test_a_lost_run_with_nothing_ticked_hands_back_a_shield() -> void:
 	GameLoop2.log_attempt()
 	assert_eq(GameState.shields, before + 1, "+1 Temporary Shield for the failed run")
 
+# THE SHIELD LANDS BEFORE THE SWING (docs/turn-order.md §3). The tests above stand
+# their body at the back, where nothing swings, so they passed whichever side of
+# the turn the hook fired on — and for a while it fired on the wrong one. Here a
+# body is in reach and the run starts with no armour: the grant has to be what
+# stops the hit.
+func test_the_shield_stops_the_swing_the_lost_run_buys() -> void:
+	GameState.add_item(Data.get_item2(&"ripple_basin"))
+	var e := _enemy()
+	e.damage = 1
+	var inst: int = GameLoop2.choose_game(e)
+	if GameLoop2.second_body_instance() > 0:
+		GameLoop2.despawn(GameLoop2.second_body_instance())
+	var entry: Dictionary = GameLoop2.entry_for(inst)
+	entry["col"] = 1
+	entry["row"] = 0
+	GameState.shields = 0
+	GameState.bonus_shields = 0
+	GameLoop2.log_attempt()
+	assert_eq(GameState.hp, 20, "the Temporary Shield was up in time to eat the hit")
+	assert_eq(GameState.shields, 0, "…and was spent doing it")
+
 func test_it_pays_on_every_lost_run_while_the_game_is_still_blank() -> void:
 	GameState.add_item(Data.get_item2(&"ripple_basin"))
 	_choose_solo()
