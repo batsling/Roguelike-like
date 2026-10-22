@@ -11,6 +11,37 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The owner's 22 Oct upload: 26 games, 18 connections, a proof clip, and
+  their research.** Bloodletter, Bravery and Greed, Chained Beasts,
+  Cursemark, Enter the Chronosphere, Grail, Hell Deck, I.Rule, Infinity
+  Sweeper, Kinny and the Cosmic Cauldron, Metal Bringer, Necropolis,
+  Nullpoint Protocol, RentPoly, Rogue Monster Rush, Rogue Waters, RogueDiceR,
+  Roundguard, Samurai Bringer, Spell Disk, Tales & Tactics, The Land Beneath
+  Us, Thysiastery, Touhou Hero of Ice Fairy, Transcendence and Uncle Chop's
+  Rocket Shop are on the sheet, all with covers. Gecko Gi is Backpack Hero's.
+  The Kinny clip is an `.ogv`, and `teamfight-tactics---tales_tactics.png` is
+  renamed with underscores (a hyphen inside an id splits it into two games).
+  **Research, every kind:** 9 connection rows (Hades → Nullpoint Protocol, to
+  review; leads for the studios' other roguelikes, among them Arcane Eats,
+  whose announcement names Slay the Spire and Monster Train; and one
+  `nothing found` row covering the rest). The content kinds got 26 rows:
+  Thysiastery's Mirror and Bloodthirsty Shrine events, Pain Reversal and Rot,
+  Accursed Coin and Tear of the Dead; Grail's Rabid Rat, Ratagnan and three
+  cheese cards; Necropolis' Raven's Wing, two Codexes and the Brazen Head's
+  task; Spell Disk's Bear set; Infinity Sweeper's Gold Mine and Goggles;
+  Alidanna, Cirno, I.Rule's Curse of Vanishing, and Chained Beasts' Broken Leg
+  and Paranoia. Seven more ideas went into the Clones of rows they repeat
+  (Screamer, Yamata-no-Orochi, Kinny, Captain Cutter, Suria, Adventurer's
+  Backpack, Avenger's Tome). Every game is marked for every kind. Two wiki
+  matches are wrong (Transcendence's is another work, Bloodletter's is Tomb of
+  the Bloodletter's), and the ledger says so. Reddit refused the container,
+  so that pass found nothing. Left for the owner: Enter the Chronosphere's
+  tweet shows "three of the inspirations" in an image, and the sheet has two;
+  RPGamer's Thysiastery interview refused the container. The sheet's four
+  backward-in-time edges (HyperRogue ×2, Red Rogue, Wayward) and four duplicate
+  rows (Balatro → Driving Rogue, Insider Trading and LexiSpell; Baroque →
+  Kernel Hearts) predate this upload and are untouched.
+
 - **`Map Analysis` can't be broken by editing rows any more, and it measures
   the map a run actually walks.** The owner's 22 Oct upload had the dashboard
   at `#REF!`: Median degree, Largest hub, Average degree (owned), both hub
