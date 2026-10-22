@@ -437,6 +437,14 @@ fans and news accounts. Searching x.com for ten unconnected games found nothing
 first-hand. When a developer's handle is known, the useful move is to read the
 specific tweets other sources link to.
 
+**Search with "inspiration" as well as "inspired".** Search engines don't stem
+tweets, so `"<game>" inspired` misses a developer who wrote "our inspiration
+was…". That is how the owner found Enter the Chronosphere's Hades and NetHack
+(EffortStarGames, May 2024), after the earlier searches came up empty. Each new
+game's brief in `new_games.md` now links both searches,
+`site:x.com "<game>" inspiration` and `site:x.com "<game>" inspired`
+(`x_searches()` in `influence_research.py`).
+
 The first check (82 rows) found every tweet still readable except one deleted,
 almost all posted by the game's own account, and two posted by someone else (a
 PR agency and a publisher). Those are `source check` rows of

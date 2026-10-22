@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 """Add a live graph-analysis dashboard to tools/Roguelikes.xlsx.
 
+HISTORY ONLY: this built the two sheets once, through openpyxl, which this
+workbook cannot survive a round-trip of (CLAUDE.md). The formulas now belong to
+`tools/map_calc.py`, which edits the sheet XML in place and has a `--check`.
+
 Everything is written as formulas over the `games` and `connections` sheets, so
 adding a game or a connection and reopening the file updates every number and
 every chart. Nothing is a baked-in constant.

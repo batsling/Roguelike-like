@@ -11,6 +11,89 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The owner's 22 Oct upload: 26 games, 18 connections, a proof clip, and
+  their research.** Bloodletter, Bravery and Greed, Chained Beasts,
+  Cursemark, Enter the Chronosphere, Grail, Hell Deck, I.Rule, Infinity
+  Sweeper, Kinny and the Cosmic Cauldron, Metal Bringer, Necropolis,
+  Nullpoint Protocol, RentPoly, Rogue Monster Rush, Rogue Waters, RogueDiceR,
+  Roundguard, Samurai Bringer, Spell Disk, Tales & Tactics, The Land Beneath
+  Us, Thysiastery, Touhou Hero of Ice Fairy, Transcendence and Uncle Chop's
+  Rocket Shop are on the sheet, all with covers. Gecko Gi is Backpack Hero's.
+  The Kinny clip is an `.ogv`, and `teamfight-tactics---tales_tactics.png` is
+  renamed with underscores (a hyphen inside an id splits it into two games).
+  **Research, every kind:** 9 connection rows (Hades → Nullpoint Protocol, to
+  review; leads for the studios' other roguelikes, among them Arcane Eats,
+  whose announcement names Slay the Spire and Monster Train; and one
+  `nothing found` row covering the rest). The content kinds got 26 rows:
+  Thysiastery's Mirror and Bloodthirsty Shrine events, Pain Reversal and Rot,
+  Accursed Coin and Tear of the Dead; Grail's Rabid Rat, Ratagnan and three
+  cheese cards; Necropolis' Raven's Wing, two Codexes and the Brazen Head's
+  task; Spell Disk's Bear set; Infinity Sweeper's Gold Mine and Goggles;
+  Alidanna, Cirno, I.Rule's Curse of Vanishing, and Chained Beasts' Broken Leg
+  and Paranoia. Seven more ideas went into the Clones of rows they repeat
+  (Screamer, Yamata-no-Orochi, Kinny, Captain Cutter, Suria, Adventurer's
+  Backpack, Avenger's Tome). Every game is marked for every kind. Two wiki
+  matches are wrong (Transcendence's is another work, Bloodletter's is Tomb of
+  the Bloodletter's), and the ledger says so. Reddit refused the container,
+  so that pass found nothing. Left for the owner: Enter the Chronosphere's
+  tweet shows "three of the inspirations" in an image, and the sheet has two;
+  RPGamer's Thysiastery interview refused the container. The sheet's four
+  backward-in-time edges (HyperRogue ×2, Red Rogue, Wayward) predate this
+  upload and are untouched.
+
+- **Four duplicate rows are gone from `connections`.** Balatro → Driving
+  Rogue, Balatro → Insider Trading, Baroque → Kernel Hearts and Balatro →
+  Lexispell came in on 18 Sep (`d532ab3e`) and again, every cell the same, in
+  the 23 Sep upload (`5d73bbf9`), and they sat on the sheet for a month. The game
+  never counted them twice, because the importer and `RunGraph` skip a repeated
+  pair, but the sheet's Connections count, Average degree and the four games'
+  Degree did. `tools/_connections_duplicates_setup.py` deletes them in the
+  sheet's XML, so the styles and the 1006 Source hyperlinks stay with their rows.
+  It refuses to run unless each deleted row is identical to the one above it.
+  1556 rows → 1552, the same 1552 connections the game already had; `data/`
+  is unchanged.
+
+- **`Map Analysis` can't be broken by editing rows any more, and it measures
+  the map a run actually walks.** The owner's 22 Oct upload had the dashboard
+  at `#REF!`: Median degree, Largest hub, Average degree (owned), both hub
+  tables. `Map Calc` read the other sheets row by row (`games!$A933`). When a
+  row is deleted, Excel turns that reference into `games!#REF!` and moves every
+  reference below it to the row above. A single `#REF!` in the degree column
+  fails every MEDIAN, MAX and LARGE over it. That is the third time
+  (see the 12 Oct entry and the realign below). The cause is fixed this time,
+  not just the rows: `tools/map_calc.py` writes every per-row read as
+  `INDEX(games!$A:$A,ROW())`, a whole-column reference Excel never rewrites. It
+  mirrors the connection names into `Map Calc` so that no COUNTIFS pairs ranges
+  from two sheets (a deleted row there is a `#VALUE!`). Deleting a game,
+  inserting a blank row and deleting a connection in LibreOffice now leaves
+  every figure right and no `#REF!` anywhere. `map_calc.py --check` runs in CI.
+  It fails on any `#REF!`, on a `Map Calc` formula that isn't what the script
+  writes, and on a block or the year table running out of room; a rerun lays
+  them down larger.
+  **New: an "On the map" section** under the measures, for the owned games in
+  `RunGraph`'s main group (the games a default run's routes reach): 533 games,
+  915 roads, **average degree on the map 3.43** (only roads to other map
+  games), median 2, largest hub 102 (Slay the Spire), 228 dead ends (43%), 61
+  owned games off the map, 51 of them in the rift pool, and 23% of connections
+  crossing genres. "Average degree (owned)" (4.09) still counts links to games
+  you don't own; the new figure doesn't. The degree table has an "On the map"
+  column, and there are two new tables: the biggest hubs on the map, and
+  **Game to buy**, which ranks unowned games by how many owned games each
+  would join (PengPong and DoomRL, 7 each). A spreadsheet can't find connected
+  components, so "on the map" means owned, with an owned neighbour, and not
+  half of a two-game island. That is exact while every island is a pair (all
+  five are). `--check` computes the real component and names any bigger
+  island. All of it matches `dump_map_health.gd` (533 on, 61 off), and an
+  independent Python count matches every figure. The charts moved down 13 rows
+  to make room, keeping the owner's two-column layout.
+
+- **The X searches in each new game's brief include "inspiration".** Search
+  engines don't stem tweets, so `"<game>" inspired` missed the tweet that gave
+  Enter the Chronosphere its Hades and NetHack (the owner found it with
+  "inspiration"). `new_games.md` now links `site:x.com "<game>" inspiration` and
+  `site:x.com "<game>" inspired` for every game (`x_searches()` in
+  `influence_research.py`).
+
 - **The Collection no longer crashes on a sort button, and Loot draws like
   Items** (the owner, 21 Oct 2026). Every sort button, sub-tab and type filter
   rebuilds the tab it sits in from inside its own signal, and the rebuild

@@ -2128,6 +2128,30 @@
   "checked": "2026-10-11",
   "wiki": null
  },
+ "Bloodletter": {
+  "api": "https://bloodletter.fandom.com/api.php",
+  "articles": 7,
+  "blurb": "A wiki covering the video game Tomb of the Bloodletter by Ethan Goldreyer ## Important articles the game __noeditsection__",
+  "categories": {},
+  "checked": "2026-10-22",
+  "counts": {
+   "characters": 0,
+   "events": 0,
+   "goals": 0,
+   "locations": 0,
+   "loot": 0,
+   "statuses": 0
+  },
+  "match": "check",
+  "pages": {
+   "goals": [
+    "Enemies"
+   ]
+  },
+  "signal": "",
+  "sitename": "Tomb Of The Bloodletter Wiki",
+  "wiki": "https://bloodletter.fandom.com"
+ },
  "Bloodshed": {
   "checked": "2026-10-11",
   "wiki": null
@@ -2399,6 +2423,10 @@
   },
   "sitename": "Boyfriend Dungeon Wiki",
   "wiki": "https://boyfrienddungeon.fandom.com"
+ },
+ "Bravery and Greed": {
+  "checked": "2026-10-22",
+  "wiki": null
  },
  "Brawl Tactics: Origins": {
   "checked": "2026-10-11",
@@ -3078,6 +3106,10 @@
  },
  "Centipede Gun": {
   "checked": "2026-10-11",
+  "wiki": null
+ },
+ "Chained Beasts": {
+  "checked": "2026-10-22",
   "wiki": null
  },
  "Change: A Homeless Survival Experience": {
@@ -4526,6 +4558,10 @@
   },
   "sitename": "Cursed Words Wiki",
   "wiki": "https://cursedwords.wiki.gg/"
+ },
+ "Cursemark": {
+  "checked": "2026-10-22",
+  "wiki": null
  },
  "Cursorblade": {
   "api": "https://cursorblade.fandom.com/api.php",
@@ -7696,6 +7732,26 @@
   "checked": "2026-10-11",
   "wiki": null
  },
+ "Enter the Chronosphere": {
+  "api": "https://enterthechronosphere.wiki.gg/api.php",
+  "articles": 8,
+  "blurb": "Welcome to the official The is written and maintained by the players.Please feel free to contribute by creating new articles or expanding on existing ones.About Enter the ChronosphereEnter the Chronosphere is a psychedelic roguelike that bl",
+  "categories": {},
+  "checked": "2026-10-22",
+  "counts": {
+   "characters": 0,
+   "events": 0,
+   "goals": 0,
+   "locations": 0,
+   "loot": 0,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {},
+  "signal": "rogue",
+  "sitename": "Enter the Chronosphere Wiki",
+  "wiki": "https://enterthechronosphere.wiki.gg/"
+ },
  "Enter the Gungeon": {
   "also": [
    "https://enterthegungeon.fandom.com/api.php",
@@ -9249,6 +9305,67 @@
   "sitename": "Gordian Quest Wiki",
   "wiki": "https://gordian-quest.fandom.com"
  },
+ "Grail": {
+  "also": [
+   "https://grail.fandom.com/api.php"
+  ],
+  "api": "https://grail.wiki.gg/api.php",
+  "articles": 308,
+  "blurb": "",
+  "categories": {
+   "characters": [
+    "Character"
+   ],
+   "events": [
+    "Event",
+    "Middle Event",
+    "Secret Event",
+    "Grace Event",
+    "Location Event",
+    "Sub-Location Event"
+   ],
+   "goals": [
+    "Enemy"
+   ],
+   "locations": [
+    "Location Event",
+    "Location Card",
+    "Sub-Location Event"
+   ],
+   "loot": [
+    "Card",
+    "Medium Cost Card",
+    "Ratagnan Card",
+    "Attack Card",
+    "Mabel Card",
+    "High Cost Card",
+    "Food Card",
+    "Energy Card",
+    "Block Card",
+    "Ingredient Card",
+    "Low Cost Card",
+    "Exotic Card"
+   ]
+  },
+  "checked": "2026-10-22",
+  "counts": {
+   "characters": 3,
+   "events": 135,
+   "goals": 19,
+   "locations": 20,
+   "loot": 374,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "goals": [
+    "Enemies"
+   ]
+  },
+  "signal": "",
+  "sitename": "Grail Wiki",
+  "wiki": "https://grail.wiki.gg/"
+ },
  "Granvir": {
   "checked": "2026-10-11",
   "wiki": null
@@ -10392,6 +10509,10 @@
   "sitename": "Hell Clock Wiki",
   "wiki": "https://hellclock.wiki.gg/"
  },
+ "Hell Deck": {
+  "checked": "2026-10-22",
+  "wiki": null
+ },
  "Hell Maiden": {
   "api": "https://hellmaiden.wiki.gg/api.php",
   "articles": 122,
@@ -10721,6 +10842,48 @@
   "checked": "2026-10-11",
   "wiki": null
  },
+ "I.Rule": {
+  "api": "https://i-rule.fandom.com/api.php",
+  "articles": 97,
+  "blurb": "## Welcome to the I.RULE Wiki! I.RULE is a roguelike tower defense fangame based on gameplay from both Plants vs. Zombies, a popular tower defense game developed by Popcap, and The Binding of Isaac: Rebirth, an indie roguelike designed by E",
+  "categories": {
+   "goals": [
+    "Enemies"
+   ],
+   "loot": [
+    "Items",
+    "Item"
+   ]
+  },
+  "checked": "2026-10-22",
+  "counts": {
+   "characters": 0,
+   "events": 0,
+   "goals": 20,
+   "locations": 0,
+   "loot": 10,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "goals": [
+    "Enemies",
+    "Bosses"
+   ],
+   "locations": [
+    "Floors"
+   ],
+   "loot": [
+    "Items"
+   ],
+   "statuses": [
+    "Curses"
+   ]
+  },
+  "signal": "rogue",
+  "sitename": "I RULE Wiki",
+  "wiki": "https://i-rule.fandom.com"
+ },
  "Icewall": {
   "checked": "2026-10-11",
   "wiki": null
@@ -10821,6 +10984,30 @@
   "note": "infinitespace.fandom.com is the wiki of PlatinumGames' Infinite Space (DS, 2009), not Digital Eel's game",
   "set": "by hand",
   "wiki": null
+ },
+ "Infinity Sweeper": {
+  "api": "https://infinity-sweeper.fandom.com/api.php",
+  "articles": 11,
+  "blurb": "Welcome to the ! Infinity Sweeper is a Rogue-like puzzle solver based on Minesweeper. It was developed and published by Sova Games, with the main developer being Vidra. The demo was release on Feburary 22 on Steam. ## Purchasables Effects T",
+  "categories": {},
+  "checked": "2026-10-22",
+  "counts": {
+   "characters": 0,
+   "events": 0,
+   "goals": 0,
+   "locations": 0,
+   "loot": 0,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "loot": [
+    "Cards"
+   ]
+  },
+  "signal": "rogue",
+  "sitename": "Infinity Sweeper Wiki",
+  "wiki": "https://infinity-sweeper.fandom.com"
  },
  "Infra Arcana": {
   "checked": "2026-10-11",
@@ -11470,6 +11657,10 @@
   "signal": "",
   "sitename": "Kingsway Wiki",
   "wiki": "https://kingsway.fandom.com"
+ },
+ "Kinny and the Cosmic Cauldron": {
+  "checked": "2026-10-22",
+  "wiki": null
  },
  "Kitty Survivors: Rogues of Catmere": {
   "checked": "2026-10-11",
@@ -12418,6 +12609,10 @@
   },
   "sitename": "Merge Maestro Wiki",
   "wiki": "https://mergemaestro.wiki.gg/"
+ },
+ "Metal Bringer": {
+  "checked": "2026-10-22",
+  "wiki": null
  },
  "Metal Slug Tactics": {
   "api": "https://metalslug.fandom.com/api.php",
@@ -13471,6 +13666,53 @@
   "checked": "2026-10-11",
   "wiki": null
  },
+ "Necropolis": {
+  "api": "https://necropolis.fandom.com/api.php",
+  "articles": 328,
+  "blurb": "The #1 wiki source of information for Necropolis; a game of brutal combat and survival, set in a magical deathtrap that shifts and reconstructs itself around you. Check out guides and more information coming soon! Main page sections: 1 · 2",
+  "categories": {
+   "characters": [
+    "Characters"
+   ],
+   "goals": [
+    "Monsters",
+    "Creatures"
+   ],
+   "locations": [
+    "Locations"
+   ],
+   "loot": [
+    "Weapons",
+    "Items"
+   ]
+  },
+  "checked": "2026-10-22",
+  "counts": {
+   "characters": 4,
+   "events": 0,
+   "goals": 90,
+   "locations": 4,
+   "loot": 13,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "characters": [
+    "Characters"
+   ],
+   "goals": [
+    "Monsters"
+   ],
+   "loot": [
+    "Weapons",
+    "Equipment",
+    "Consumables"
+   ]
+  },
+  "signal": "",
+  "sitename": "Necropolis Wiki",
+  "wiki": "https://necropolis.fandom.com"
+ },
  "Necrosmith": {
   "api": "https://necrosmith.fandom.com/api.php",
   "articles": 440,
@@ -14318,6 +14560,10 @@
   },
   "sitename": "Nuclear Throne Wiki",
   "wiki": "https://nuclear-throne.fandom.com"
+ },
+ "Nullpoint Protocol": {
+  "checked": "2026-10-22",
+  "wiki": null
  },
  "Nunholy": {
   "checked": "2026-10-11",
@@ -16163,6 +16409,10 @@
   "sitename": "Renowned Explorers: International Society Wiki",
   "wiki": "https://renownedexplorers.fandom.com"
  },
+ "RentPoly": {
+  "checked": "2026-10-22",
+  "wiki": null
+ },
  "Repetendium": {
   "checked": "2026-10-11",
   "wiki": null
@@ -17087,6 +17337,10 @@
   "sitename": "Rogue Lords Wiki",
   "wiki": "https://roguelords.fandom.com"
  },
+ "Rogue Monster Rush": {
+  "checked": "2026-10-22",
+  "wiki": null
+ },
  "Rogue Tower": {
   "api": "https://rogue-tower.fandom.com/api.php",
   "articles": 99,
@@ -17169,6 +17423,10 @@
   },
   "sitename": "Rogue Voltage Wiki",
   "wiki": "https://roguevoltage.wiki.gg/"
+ },
+ "Rogue Waters": {
+  "checked": "2026-10-22",
+  "wiki": null
  },
  "Rogue Wizards": {
   "also": [
@@ -17253,6 +17511,10 @@
   "sitename": "Rogue:Genesia Wiki",
   "wiki": "https://roguegenesia.fandom.com"
  },
+ "RogueDiceR": {
+  "checked": "2026-10-22",
+  "wiki": null
+ },
  "RogueJack21": {
   "checked": "2026-10-11",
   "wiki": null
@@ -17309,6 +17571,10 @@
  },
  "Roulette Hero": {
   "checked": "2026-10-11",
+  "wiki": null
+ },
+ "Roundguard": {
+  "checked": "2026-10-22",
   "wiki": null
  },
  "Rounds": {
@@ -17488,6 +17754,43 @@
   },
   "sitename": "SULFUR Wiki",
   "wiki": "https://sulfur.wiki.gg/"
+ },
+ "Samurai Bringer": {
+  "api": "https://samurai-bringer.fandom.com/api.php",
+  "articles": 27,
+  "blurb": "Welcome to the ! This is a wiki about the video game . We're a collaborative community website about that anyone, including you, can build and expand. Wikis like this one depend on readers getting involved and adding content. Click the \"ADD",
+  "categories": {
+   "characters": [
+    "Characters"
+   ],
+   "loot": [
+    "Weapons"
+   ]
+  },
+  "checked": "2026-10-22",
+  "counts": {
+   "characters": 5,
+   "events": 0,
+   "goals": 0,
+   "locations": 0,
+   "loot": 2,
+   "statuses": 0
+  },
+  "match": "check",
+  "pages": {
+   "characters": [
+    "Characters"
+   ],
+   "goals": [
+    "Enemies"
+   ],
+   "loot": [
+    "Weapons"
+   ]
+  },
+  "signal": "",
+  "sitename": "Samurai Bringer Wiki",
+  "wiki": "https://samurai-bringer.fandom.com"
  },
  "Sanae no Chou Tokkyuu: The Express Trial": {
   "checked": "2026-10-11",
@@ -18701,6 +19004,39 @@
   "pages": {},
   "sitename": "Sparklite Wiki",
   "wiki": "https://sparklite.fandom.com"
+ },
+ "Spell Disk": {
+  "api": "https://spell-disk.fandom.com/api.php",
+  "articles": 11,
+  "blurb": "This is a wiki about the video game . More content will be coming soon! We're a collaborative community website about that anyone, including you, can build and expand. Wikis like this one depend on readers getting involved and adding conten",
+  "categories": {
+   "loot": [
+    "Spell Disk Wiki"
+   ]
+  },
+  "checked": "2026-10-22",
+  "counts": {
+   "characters": 0,
+   "events": 0,
+   "goals": 0,
+   "locations": 0,
+   "loot": 6,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "goals": [
+    "Enemies"
+   ],
+   "loot": [
+    "Weapons",
+    "Artifacts",
+    "Spells"
+   ]
+  },
+  "signal": "",
+  "sitename": "Spell Disk Wiki",
+  "wiki": "https://spell-disk.fandom.com"
  },
  "SpellRogue": {
   "api": "https://spellrogue.wiki.gg/api.php",
@@ -20114,6 +20450,34 @@
   "sitename": "Talented Wiki",
   "wiki": "https://talented.wiki.gg/"
  },
+ "Tales & Tactics": {
+  "api": "https://talesandtactics.wiki.gg/api.php",
+  "articles": 167,
+  "blurb": "Welcome to the Official The Official is written and maintained by the players.Please feel free to contribute by creating new articles or expanding on existing ones.About the GameTales and Tactics blends roguelike strategy with a squad-based",
+  "categories": {
+   "characters": [
+    "Playable Characters"
+   ]
+  },
+  "checked": "2026-10-22",
+  "counts": {
+   "characters": 3,
+   "events": 0,
+   "goals": 0,
+   "locations": 0,
+   "loot": 0,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "loot": [
+    "Items"
+   ]
+  },
+  "signal": "rogue",
+  "sitename": "Tales and Tactics Wiki",
+  "wiki": "https://talesandtactics.wiki.gg/"
+ },
  "Tales of Maj'Eyal": {
   "api": "https://te4.org/w/api.php",
   "articles": 2928,
@@ -20937,6 +21301,10 @@
   "sitename": "The King is Watching Wiki",
   "wiki": "https://thekingiswatching.wiki.gg/"
  },
+ "The Land Beneath Us": {
+  "checked": "2026-10-22",
+  "wiki": null
+ },
  "The Last Flame": {
   "api": "https://the-last-flame.fandom.com/api.php",
   "articles": 125,
@@ -21331,6 +21699,71 @@
   "checked": "2026-10-11",
   "wiki": null
  },
+ "Thysiastery": {
+  "api": "https://thysiastery.fandom.com/api.php",
+  "articles": 936,
+  "blurb": "Welcome to the THYSIASTERY Wiki, a community reference for the game by DIRGA. This reference covers 115 creature IDs, 456 skill IDs, 170 item IDs, 71 status conditions, and 22 dungeon event IDs from Steam build 23928610. ## Browse Section !",
+  "categories": {
+   "characters": [
+    "Character progression"
+   ],
+   "events": [
+    "Events"
+   ],
+   "goals": [
+    "Monsters",
+    "Construct creatures",
+    "Beast creatures",
+    "Eldritch creatures",
+    "Undead creatures",
+    "Humanoid creatures",
+    "Fantasy creatures",
+    "Spirit creatures",
+    "Flora creatures",
+    "Abomination creatures",
+    "Cryptid creatures",
+    "Elemental creatures"
+   ],
+   "loot": [
+    "Items",
+    "Weapon items",
+    "Armor items",
+    "None items",
+    "Relic items"
+   ],
+   "statuses": [
+    "Status conditions",
+    "Buff skills",
+    "Debuff skills",
+    "Harmful status conditions",
+    "Beneficial status conditions"
+   ]
+  },
+  "checked": "2026-10-22",
+  "counts": {
+   "characters": 5,
+   "events": 24,
+   "goals": 233,
+   "locations": 0,
+   "loot": 342,
+   "statuses": 238
+  },
+  "match": "sure",
+  "pages": {
+   "events": [
+    "Events"
+   ],
+   "goals": [
+    "Monsters"
+   ],
+   "loot": [
+    "Items"
+   ]
+  },
+  "signal": "",
+  "sitename": "Thysiastery Wiki",
+  "wiki": "https://thysiastery.fandom.com"
+ },
  "Tic Tactic": {
   "checked": "2026-10-11",
   "wiki": null
@@ -21560,6 +21993,10 @@
  },
  "Touhou Genso Wanderer: Lotus Labyrinth R": {
   "checked": "2026-10-11",
+  "wiki": null
+ },
+ "Touhou Hero of Ice Fairy": {
+  "checked": "2026-10-22",
   "wiki": null
  },
  "Touhou: Lost Branch of Legend": {
@@ -21858,6 +22295,37 @@
   "checked": "2026-10-11",
   "wiki": null
  },
+ "Transcendence": {
+  "api": "https://transcendence.fandom.com/api.php",
+  "articles": 58,
+  "blurb": "style=\"margin: 0; background-color: #949494; font-size: 120%; font-weight: bold; color:#FFF; padding:0.2em 0.4em;\" |In this world...God Has Lost style=\"color: #FFF;\" | Welcome to the world of Transcendence, a dystopian neo-noir thriller set",
+  "categories": {
+   "characters": [
+    "Characters",
+    "Living Characters"
+   ],
+   "events": [
+    "Events"
+   ],
+   "locations": [
+    "Locations"
+   ]
+  },
+  "checked": "2026-10-22",
+  "counts": {
+   "characters": 11,
+   "events": 4,
+   "goals": 0,
+   "locations": 15,
+   "loot": 0,
+   "statuses": 0
+  },
+  "match": "check",
+  "pages": {},
+  "signal": "",
+  "sitename": "Transcendence Wiki",
+  "wiki": "https://transcendence.fandom.com"
+ },
  "Trash of the Titans": {
   "checked": "2026-10-11",
   "wiki": null
@@ -21997,6 +22465,34 @@
   "signal": "",
   "sitename": "Unreal World Wiki",
   "wiki": "https://unrealworld.fandom.com"
+ },
+ "Uncle Chop's Rocket Shop": {
+  "api": "https://unclechopsrocketshop.wiki.gg/api.php",
+  "articles": 22,
+  "blurb": "",
+  "categories": {
+   "characters": [
+    "Characters"
+   ]
+  },
+  "checked": "2026-10-22",
+  "counts": {
+   "characters": 4,
+   "events": 0,
+   "goals": 0,
+   "locations": 0,
+   "loot": 0,
+   "statuses": 0
+  },
+  "match": "check",
+  "pages": {
+   "characters": [
+    "Characters"
+   ]
+  },
+  "signal": "",
+  "sitename": "Uncle Chop's Rocket Shop Wiki",
+  "wiki": "https://unclechopsrocketshop.wiki.gg/"
  },
  "UnderMine": {
   "api": "https://undermine.wiki.gg/api.php",

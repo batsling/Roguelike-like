@@ -136,6 +136,11 @@ jobs:
         # is still being written rather than after it ships.
         run: python3 tools/check_goal_candidates.py
 
+      - name: Map Calc and Map Analysis are sound
+        # No #REF!, every Map Calc formula what map_calc.py writes, and room left
+        # in its blocks and year table. Each of those broke the dashboard once.
+        run: python3 tools/map_calc.py --check
+
       - name: The drawn map and the sheet agree
         # Reports drift in both directions and is informational by design — games
         # get drawn before they are sheeted and vice versa — so its exit code is

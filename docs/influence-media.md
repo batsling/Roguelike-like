@@ -6,10 +6,10 @@ Videos and podcast episodes where a developer may say what inspired their game, 
 
 | | games | results |
 |---|---|---|
-| 1. Confirm a suspected connection | 109 | 307 |
-| 2. Games with few connections | 174 | 554 |
+| 1. Confirm a suspected connection | 110 | 308 |
+| 2. Games with few connections | 178 | 559 |
 
-Searched 523 of the 523 games that qualify; 240 had nothing that looked like the developer talking.
+Searched 543 of the 543 games that qualify; 255 had nothing that looked like the developer talking.
 
 ---
 
@@ -139,6 +139,12 @@ Listen for: **Vampire Survivors** (sheet says "look at it")
 Listen for: **Slay the Spire** (sheet says "check folder"); **Vampire Survivors** (sheet says "look at it")
 
 - [ ] video [BOUNTY OF ONE: NEW CONTENT! Q&A Reveal Session! Next Characters/boss/items (Interview session RE-UP)](https://www.youtube.com/watch?v=kvCj7ZQxTHA) — Slickdeviant · 31:21 · 4y ago — interview, q&a
+
+### Bravery and Greed (2022) — 1 connection
+
+Listen for: **Risk of Rain** (sheet says "check folder")
+
+- [ ] video [We're Talkin' All About Bravery And Greed w/ Rekka Games!](https://www.youtube.com/watch?v=mD25KHu5PCY) — The Level 857 Video Game Podcast · 2:20:58 · Streamed 3y ago — names the developer
 
 ### Brotato (2022) — 22 connections
 
@@ -949,6 +955,13 @@ Held on the map by one connection or none. Listen for any game on the chart.
 
 - [ ] podcast [Unter der Erfolgshaube des Schweizer Indie-Hits "Goblin Sushi": OK COOL trifft Annika Gerber](https://podcasts.apple.com/us/podcast/unter-der-erfolgshaube-des-schweizer-indie-hits-goblin/id1509985306?i=1000759303756) — OK COOL · 68 min · 2026-04-04 — names the developer
 
+### Grail (2026) — 0 connections
+
+- [ ] video [Holy Grail Layout / Frontend Machine Coding Question / CSS Interview](https://www.youtube.com/watch?v=WcEop9MnNS4) — JsCafe · 23:05 · 3y ago — interview
+- [ ] video [Holy Grail in React / UI Interview Question](https://www.youtube.com/watch?v=0g-vXobLXr8) — Akash Ingole · 6:19 · 1y ago — interview
+- [ ] video [Brian Jackson of Perfmatters: "Holy Grail" WordPress Site Speed Interview / HolyGrail WP](https://www.youtube.com/watch?v=LYheSY3z_bQ) — Matchless Web · 1:11:06 · 5y ago — interview
+- [ ] video [Tainted Grail: The Fall of Avalon - Dev Q&A](https://www.youtube.com/watch?v=Uw6gfuzKZIw) — Awaken Realms · 7:28 · 4mo ago — dev, q&a
+
 ### Granvir (2025) — 0 connections
 
 - [ ] video [Granvir Developer Interview](https://www.youtube.com/watch?v=jbeZN5TJPH4) — Paper Prototypes Podcast · 1:23:44 · 7mo ago — developer, interview
@@ -1088,6 +1101,10 @@ Held on the map by one connection or none. Listen for any game on the chart.
 - [ ] podcast [Интервью об игре The King is Watching](https://podcasts.apple.com/us/podcast/%D0%B8%D0%BD%D1%82%D0%B5%D1%80%D0%B2%D1%8C%D1%8E-%D0%BE%D0%B1-%D0%B8%D0%B3%D1%80%D0%B5-the-king-is-watching/id884391810?i=1000774198941) — Ноль кадров в секунду · 78 min · 2026-06-25 — интервью
 - [ ] podcast [428. История успеха The King Is Watching](https://podcasts.apple.com/us/podcast/428-%D0%B8%D1%81%D1%82%D0%BE%D1%80%D0%B8%D1%8F-%D1%83%D1%81%D0%BF%D0%B5%D1%85%D0%B0-the-king-is-watching/id560881209?i=1000726410571) — Как делают игры · 88 min · 2025-09-11 — names the developer
 - [ ] podcast [The King is Watching и путь к 300к копиям](https://podcasts.apple.com/us/podcast/the-king-is-watching-%D0%B8-%D0%BF%D1%83%D1%82%D1%8C-%D0%BA-300%D0%BA-%D0%BA%D0%BE%D0%BF%D0%B8%D1%8F%D0%BC/id1834730098?i=1000729406864) — Посиделки с инди · 122 min · 2025-09-30 — names the developer
+
+### Touhou Hero of Ice Fairy (2023) — 0 connections
+
+- [ ] video [Touhou Hero of Ice Fairy DEMO (English release)](https://www.youtube.com/watch?v=LWwRnl76EGU) — Fahmi4869 · 21:00 · 4y ago — names the developer
 
 ### Underdogs (2024) — 0 connections
 
@@ -1594,6 +1611,10 @@ Held on the map by one connection or none. Listen for any game on the chart.
 - [ ] podcast [EP: A Year of UFO 50 - Mooncat](https://podcasts.apple.com/us/podcast/ep-a-year-of-ufo-50-mooncat/id1435365252?i=1000681152215) — Eggplant: The Secret Lives of Games · 101 min · 2024-12-20 — names the developer
 - [ ] podcast [EP: A Year of UFO 50 - Mooncat](https://podcasts.apple.com/us/podcast/ep-a-year-of-ufo-50-mooncat/id1840758452?i=1000741998925) — Eggplant Presents: A Year of UFO 50 (encore feed) · 101 min · 2025-12-19 — names the developer
 
+### Necropolis (2016) — 1 connection
+
+- [ ] video [Behind the Great Pyramid: Exploring the Necropolis That Most People Miss](https://www.youtube.com/watch?v=qR86AtDFl5M) — History with Cy · 2:06:04 · 2mo ago — behind the
+
 ### OneBit Adventure (2019) — 1 connection
 
 - [ ] video [SBU Podcast Episode 7 (OneBit Adventure Developer)](https://www.youtube.com/watch?v=LMLBbPgqyUI) — SpaceBetween Us · 34:48 · 6y ago — developer
@@ -1695,6 +1716,12 @@ Held on the map by one connection or none. Listen for any game on the chart.
 - [ ] podcast [S.2 Ep.43 :// An Interview with X-Men '97's Lenore Zann on Her New Book "A Rogue's Tale: A Memoir"](https://podcasts.apple.com/us/podcast/s-2-ep-43-an-interview-with-x-men-97s-lenore-zann-on/id1678136588?i=1000670755265) — Vigilante Vibes: A Marvel Podcast · 66 min · 2024-09-26 — interview
 - [ ] podcast [Lenore Zann on Becoming Rogue, X-Men '97 Season 2, New Memoir 'A Rogue's Tale' / X-Men '97 Interview](https://podcasts.apple.com/us/podcast/lenore-zann-on-becoming-rogue-x-men-97-season-2-new/id1611395454?i=1000671450290) — Agents of Fandom · 20 min · 2024-10-01 — interview
 - [ ] podcast [Lenore Zann on Becoming Rogue, X-Men '97 Season 2, New Memoir 'A Rogue's Tale' / X-Men '97 Interview](https://podcasts.apple.com/us/podcast/lenore-zann-on-becoming-rogue-x-men-97-season-2-new/id1616922430?i=1000671450730) — Agents of Fandom · 20 min · 2024-10-01 — interview
+
+### Roundguard (2020) — 1 connection
+
+- [ ] video [SWW Interviews Episode 24: Galactic Ruler, Kakatte Koi Yo, and Roundguard](https://www.youtube.com/watch?v=5c5cPiZhQNk) — The SWW Show · 1:33:11 · 1y ago — interview
+- [ ] video [Roundguard with Andrea Roberts (AAP - 0012)](https://www.youtube.com/watch?v=R-D0NEDiZw8) — Tim Chaten · 32:40 · 6y ago — names the developer
+- [ ] video [PAX West Spotlight: Roundguard](https://www.youtube.com/watch?v=ce1mg-msPyc) — The Geekly Grind · 4:27 · 8y ago — cue in the description
 
 ### Rounds (2021) — 1 connection
 
@@ -1799,17 +1826,6 @@ Held on the map by one connection or none. Listen for any game on the chart.
 - [ ] video [Tears of Metal Interview with Game Director Raphaël Toulouse / PAX West 2024](https://www.youtube.com/watch?v=MNuKoA5rT_Q) — The Longhouse Gaming Podcast · 3:21 · 2y ago — director, interview
 - [ ] video [Tears Of Metal / Dynasty Warriors Meets Braveheart?](https://www.youtube.com/watch?v=PNJMsVJZsMQ) — Let's Talk Nerdy · 9:40 · 2y ago — names the developer
 
-### The Binding of Isaac: Rebirth (2014) — 1 connection
-
-- [ ] video [The Binding of Isaac Rebirth Q&A with Edmund McMillen!](https://www.youtube.com/watch?v=Q2smE5C05Z4) — Northernlion · 1:17:23 · 12y ago — q&a, names the developer
-- [ ] video [Edmund McMillen on the Future of The Binding of Isaac (Full Interview)](https://www.youtube.com/watch?v=HkVT6dYprME) — Polygon · 31:26 · 8y ago — interview, names the developer
-- [ ] video [Interviewing the creator of Isaac, Edmund McMillen, about Repentance and MORE!](https://www.youtube.com/watch?v=8Ol_buboqS8) — Olexa · 1:02:52 · 5y ago — creator, interview, names the developer
-- [ ] video [Interview with Adrian Gavrilita / Programmer at Nicalis (The Binding of Isaac)](https://www.youtube.com/watch?v=zenk4XwbgIA) — Games Moldova · 27:06 · 9y ago — interview
-- [ ] podcast [Best of BAM: The Binding of Isaac, and Q&A](https://podcasts.apple.com/us/podcast/best-of-bam-the-binding-of-isaac-and-q-a/id569236334?i=1000637263846) — Bible Answer Man Podcast with Hank Hanegraaff · 28 min · 2023-12-02 — q&a
-- [ ] podcast [Q&A: The Binding of Isaac, Answered Prayers, and Jephthah’s Daughter](https://podcasts.apple.com/us/podcast/q-a-the-binding-of-isaac-answered/id569236334?i=1000631661402) — Bible Answer Man Podcast with Hank Hanegraaff · 28 min · 2023-10-17 — q&a
-- [ ] podcast [The Binding of Isaac: Rebirth](https://podcasts.apple.com/us/podcast/the-binding-of-isaac-rebirth/id1774367401?i=1000769797322) — RoguePod LiteCast · 132 min · 2026-05-27 — cue in the description
-- [ ] podcast [The Binding of Isaac: Rebirth](https://podcasts.apple.com/us/podcast/the-binding-of-isaac-rebirth/id1650474911?i=1000584170914) — GROGPOD Roguelike Podcast · 59 min · 2022-10-25 — cue in the description
-
 ### The Flame in the Flood (2016) — 1 connection
 
 - [ ] video [IndieSider #40: The Flame in the Flood — developer interview](https://www.youtube.com/watch?v=pjRZ1Nqk2r4) — Gamebits · 46:06 · 10y ago — developer, interview, names the developer
@@ -1860,6 +1876,13 @@ Held on the map by one connection or none. Listen for any game on the chart.
 ### Tower Fortress (2017) — 1 connection
 
 - [ ] video [Tower Fortress - Keybol / Meet the Devs - Casual Connect Asia 2017](https://www.youtube.com/watch?v=7R9xP8geev0) — Quit Stalling · 14:52 · 9y ago — devs, names the developer
+
+### Transcendence (2003) — 1 connection
+
+- [ ] video [DEVIN TOWNSEND - "Transcendence" interview](https://www.youtube.com/watch?v=bBW3rjyK8M8) — GuitarManiaEU · 18:58 · 9y ago — interview
+- [ ] video [Transcendence 2017 / Interview with Navin Tauro](https://www.youtube.com/watch?v=qDuVc_wjJbM) — CSOL TISS · 1:31 · 9y ago — interview
+- [ ] video [Transcendence 2017 / Interview with Mathivathani Rathinam](https://www.youtube.com/watch?v=8h6bcIgoWVQ) — CSOL TISS · 2:04 · 9y ago — interview
+- [ ] video [Transcendence 2017 / Interview with Silna Nair](https://www.youtube.com/watch?v=wDSHQXPDa20) — CSOL TISS · 1:26 · 9y ago — interview
 
 ### Ultra Mega Cats (2025) — 1 connection
 
