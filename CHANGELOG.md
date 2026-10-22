@@ -38,9 +38,20 @@ For how the project is laid out and how its systems fit together, see
   so that pass found nothing. Left for the owner: Enter the Chronosphere's
   tweet shows "three of the inspirations" in an image, and the sheet has two;
   RPGamer's Thysiastery interview refused the container. The sheet's four
-  backward-in-time edges (HyperRogue ×2, Red Rogue, Wayward) and four duplicate
-  rows (Balatro → Driving Rogue, Insider Trading and LexiSpell; Baroque →
-  Kernel Hearts) predate this upload and are untouched.
+  backward-in-time edges (HyperRogue ×2, Red Rogue, Wayward) predate this
+  upload and are untouched.
+
+- **Four duplicate rows are gone from `connections`.** Balatro → Driving
+  Rogue, Balatro → Insider Trading, Baroque → Kernel Hearts and Balatro →
+  Lexispell came in on 18 Sep (`d532ab3e`) and again, every cell the same, in
+  the 23 Sep upload (`5d73bbf9`), and they sat on the sheet for a month. The game
+  never counted them twice, because the importer and `RunGraph` skip a repeated
+  pair, but the sheet's Connections count, Average degree and the four games'
+  Degree did. `tools/_connections_duplicates_setup.py` deletes them in the
+  sheet's XML, so the styles and the 1006 Source hyperlinks stay with their rows.
+  It refuses to run unless each deleted row is identical to the one above it.
+  1556 rows → 1552, the same 1552 connections the game already had; `data/`
+  is unchanged.
 
 - **`Map Analysis` can't be broken by editing rows any more, and it measures
   the map a run actually walks.** The owner's 22 Oct upload had the dashboard
