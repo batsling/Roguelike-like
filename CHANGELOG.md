@@ -11,6 +11,22 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The board's strip is DIFFICULTY now, in two lines.** "AMULET PRESSURE"
+  over a row of six equal-weight labels became: the tier with its four pips and
+  the location on the first line; the spawns to the next boss, the Amulet's
+  distance with its pressure pips, and what ending this game costs on the
+  second. The panel keeps the pressure band's colour, the boss warning still
+  takes the second line while it is up, and the strip is a line shorter.
+
+- **A location's "when entered" waits for the next game picked, once.** The
+  run's first location arrives with its first game instead of onto an empty
+  board, and one dealt mid-game or at a game's end waits for the next pick
+  (`GameLoop2.location_arrival_due`). An Event or Shop node enters it too; a
+  Scramble does not. Its popup says so while it waits.
+
+- **A body blocked by a poop hits it for what it would hit you for** —
+  Strength, Burn, Fractures and rifts included — rather than for 1.
+
 - **Locations: the floor the run is standing on.** The run is dealt a Low
   location at its start and a new one of the new tier at every difficulty up.
   Nobody chooses it, and it has no goal (the owner, 23 Oct): it arrives with a

@@ -82,6 +82,10 @@ func _build() -> void:
 		root.add_child(art)
 
 	root.add_child(_line(_loc.description, UITheme.TEXT, UITheme.FONT_TEXT))
+	# "When entered" waits for the next game picked (GameLoop2.location_arrival_due).
+	if GameLoop2.location_arrival_due:
+		root.add_child(_line("What happens when you enter comes with the next game you pick.",
+			UITheme.GOLD, UITheme.FONT_BODY))
 	var lean: String = Locations.lean_text(_loc)
 	if lean != "":
 		root.add_child(_line(lean, UITheme.TEXT_DIM, UITheme.FONT_BODY))

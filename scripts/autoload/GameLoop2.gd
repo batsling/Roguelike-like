@@ -470,6 +470,12 @@ var location_uses: Array = []
 # quiet moment, and clears it. Saved, so a location dealt by the spawn that ended
 # a session is still announced when the run is picked up again.
 var location_unseen: bool = false
+# Dealt, and its "when entered" not yet run: a location's ARRIVE effects wait for
+# the next game the player picks (the owner, 23 Oct 2026), so a difficulty up
+# that lands mid-game never drops bodies into a game already being played, and
+# the run's first location arrives with its first game rather than onto an empty
+# board before it. Cashed once, by `_land_location_arrival`.
+var location_arrival_due: bool = false
 
 # Games removed from the pool by Bash (§4) — destroyed outright, never offered
 # again this run. The overworld consults is_bashed() when drawing games.
@@ -906,6 +912,7 @@ func reset() -> void:
 	location_tier = -1
 	location_uses = []
 	location_unseen = false
+	location_arrival_due = false
 	chest_points = 0
 	chest_point_sources.clear()
 	boss_chests.clear()
@@ -1041,6 +1048,7 @@ func serialize() -> Dictionary:
 		"location_tier": location_tier,
 		"location_uses": location_uses.duplicate(),
 		"location_unseen": location_unseen,
+		"location_arrival_due": location_arrival_due,
 		"units": _serialize_cells(units, "health"),
 		"drops": _serialize_drops(),
 		# The chest the report owes (§8.2) — banked at the kill and paid at the
@@ -1222,6 +1230,7 @@ func restore(data: Dictionary) -> void:
 	location_tier = int(data.get("location_tier", -2))
 	location_uses = (data.get("location_uses", []) as Array).duplicate()
 	location_unseen = bool(data.get("location_unseen", false)) and location_id != &""
+	location_arrival_due = bool(data.get("location_arrival_due", false)) and location_id != &""
 	_restore_drops(data.get("drops", []))
 	chest_points = int(data.get("chest_points", 0))
 	_restore_chest_sources(data.get("chest_point_sources", []))
@@ -1843,6 +1852,8 @@ func choose_game(enemy: GoalEnemyData, escort_type: StringName = &"",
 	# capstone, on top of the bodies that just walked on.
 	if is_arrival:
 		_capstone_if_due(escort_type, escort_tier)
+		# …and a location's "when entered", if one is waiting for this pick.
+		land_location_arrival()
 	loop_changed.emit()
 	return inst
 
@@ -2083,6 +2094,9 @@ func begin_bodiless_game() -> void:
 	game_in_play = true
 	_pay_revivals()
 	arrivals = []
+	# An Event or a Shop node is still the game picked: a location waiting to be
+	# entered is entered here too.
+	land_location_arrival()
 	loop_changed.emit()
 
 # THE SECOND OF AN ENEMIES NODE'S TWO BODIES (§19.4). Returns its instance
@@ -4366,23 +4380,39 @@ func _location_if_due() -> void:
 		return        # an empty roster: the run carries on with no floor
 	enter_location(loc)
 
-# Stand the run in `loc`: it replaces whatever was there, its actions start
-# fresh, and its ARRIVE effects run now. Public so the dev panel and the tests can
-# put a run anywhere.
+# Stand the run in `loc`: it replaces whatever was there and its actions start
+# fresh at once, but its ARRIVE effects wait for the next game picked
+# (`location_arrival_due`). Public so the dev panel and the tests can put a run
+# anywhere.
 func enter_location(loc: LocationData) -> void:
 	if loc == null:
 		return
 	location_id = loc.id
 	location_unseen = true
+	location_arrival_due = not loc.arrive.is_empty()
 	location_uses = []
 	for _a in loc.actions:
 		location_uses.append(0)
 	var msg: String = "You enter %s." % loc.display_name
 	GameLog.add(msg, UITheme.GOLD)
+	location_changed.emit(location_id)
+	loop_changed.emit()
+
+# "WHEN ENTERED": the location's arrive effects, ONCE, as the player enters it —
+# which is the first game picked there. Called by every node arrival
+# (choose_game and begin_bodiless_game), after that arrival's own bodies and
+# capstone, so a location dealt by this very arrival lands with it. Public for
+# the tests and the dev panel.
+func land_location_arrival() -> void:
+	if not location_arrival_due:
+		return
+	location_arrival_due = false
+	var loc: LocationData = location()
+	if loc == null:
+		return
 	for effect in loc.arrive:
 		if effect is Dictionary:
 			_run_location_effect(effect)
-	location_changed.emit(location_id)
 	loop_changed.emit()
 
 func location() -> LocationData:
@@ -7338,14 +7368,18 @@ func _walk_one(entry: Dictionary, row: int, col: int) -> bool:
 				return _move_entry(entry, row + dr, col - 1)
 
 	# A WALL IN THE WAY IS STRUCK (docs/locations-design.md §5). A blocking unit —
-	# a poop — stops the step, and the body spends it hitting the thing instead:
-	# 1 damage to each blocking unit its footprint would have walked into. That is
-	# how the stack chews through a wall the player left standing, and why a poop
-	# is worth breaking yourself before they do (its drop lands either way).
+	# a poop — stops the step, and the body spends it hitting the thing instead,
+	# for EXACTLY WHAT IT WOULD HIT YOU FOR (`enemy_damage`: Strength, Burn's
+	# halving, a Fracture, a rift), once per blocking unit its footprint would
+	# have walked into. That is how the stack chews through a wall the player left
+	# standing, and why a poop is worth breaking yourself before they do (its drop
+	# lands either way). A body that would hit for 0 still dents it for 1: a wall
+	# nothing can wear down would seal the lane for good.
+	var hit: int = maxi(1, enemy_damage(entry))
 	var struck: bool = false
 	for cell in footprint_at(enemy, row, col - 1):
 		if blocks_at(cell):
-			damage_unit(cell, 1)
+			damage_unit(cell, hit)
 			struck = true
 	if struck:
 		loop_changed.emit()

@@ -862,7 +862,8 @@ static func _ch_pack() -> Dictionary:
 				+ "Whichever arrives second, the heat sets the mine off and the "
 				+ "blast blows the fire out."),
 			_kv("Poops (units that block)", "A WALL. Nothing can step onto one, so "
-				+ "an enemy that reaches it spends its step hitting it for 1 instead. "
+				+ "an enemy that reaches it spends its step hitting it instead, for "
+				+ "exactly what it would hit you for. "
 				+ "You can break it too — a bomb, a thrown potion, anything that hits "
 				+ "the ground. Broken, it pays out whoever broke it: a Poop drops a "
 				+ "piece of loot or lets a fly out, a Golden Poop pays gold, a "
@@ -940,8 +941,11 @@ static func _ch_bosses() -> Dictionary:
 				+ "arrives with a popup of its picture and what it does, and then "
 				+ "sits beside the difficulty on the strip over the board. Hover it "
 				+ "to read it again; click it to open it."),
-			_b("Some do something the moment you arrive: bodies of their kind "
-				+ "walk on, fire is lit, poops are left on the board."),
+			_b("Some do something WHEN YOU ENTER — once, with the first game you "
+				+ "pick there: bodies of their kind walk on, fire is lit, poops are "
+				+ "left on the board. A location dealt in the middle of a game waits "
+				+ "for the next one, so nothing lands in a game you are already "
+				+ "playing."),
 			_b("Some change a rule for as long as you are there: damage you take "
 				+ "is doubled, or one game on every offering is a free rift."),
 			_b("Some have a TRADE you can make a few times while you are there — "
@@ -1081,13 +1085,15 @@ static func _ch_screen() -> Dictionary:
 				+ "ones after them with a clock on them. Anything wearing that "
 				+ "clock is going away, statuses included."),
 			_kv("Gold", "A chip in the top bar."),
-			_kv("Board size and tier", "The right-hand end of the board's pressure "
-				+ "bar."),
-			_kv("Amulet pressure", "The strip across the top of the board: how "
-				+ "many enemies every game that ends stands up, in the band's "
-				+ "colour, with the hop count that caused it. Zero out in the "
-				+ "wilds. Beside it, what ending THIS game will stand up (☠ +N when "
-				+ "this game ends) and how many spawns until the next difficulty up."),
+			_kv("Difficulty and location", "The first line of the DIFFICULTY strip "
+				+ "over the board: the tier (Low to Insane) with its four pips, and "
+				+ "the location you are in on the right — hover it, or click it."),
+			_kv("Amulet pressure", "The second line of the DIFFICULTY strip: how "
+				+ "many spawns until the next difficulty up, how far the Amulet is "
+				+ "and the pressure that puts on you (its two pips, in the band's "
+				+ "colour — empty out in the wilds), and on the right what ending "
+				+ "THIS game will stand up (☠ +N when this game ends). The strip "
+				+ "takes the band's colour."),
 			_kv("What kind of place a game is", "Its mark — ! ? !! $ — on the "
 				+ "card, on the 🗺 map and on the route ladder."),
 			_kv("Push and Bomb charges", "On their own buttons, on the board's "

@@ -100,6 +100,9 @@ static func card(loc: LocationData) -> Control:
 		sub += " · %s" % loc.game
 	col.add_child(_text(sub, UITheme.TEXT_DIM, UITheme.FONT_SMALL))
 	col.add_child(_text(loc.description, UITheme.TEXT, UITheme.FONT_BODY))
+	if GameLoop2.location_arrival_due and Locations.current() == loc:
+		col.add_child(_text("Its arrival comes with the next game you pick.", UITheme.GOLD,
+			UITheme.FONT_SMALL))
 	var lean: String = Locations.lean_text(loc)
 	if lean != "":
 		col.add_child(_text(lean, UITheme.TEXT_DIM, UITheme.FONT_SMALL))

@@ -80,7 +80,8 @@ var _pressure_panel: HoverPanel
 # and this is kept because it is the LONG form the same facts have — the manual
 # and any future full readout should quote this rather than re-derive it.
 var _pressure_ladder_text: String = ""
-var _pressure_turns: Label          # "☠ AMULET PRESSURE 1"
+var _pressure_turns: Label          # "DIFFICULTY", the strip's heading
+var _tier_rungs: Array = []          # the tier's four pips, Low → Insane
 var _pressure_rungs: Array = []     # the three ladder pips, far -> near
 var _pressure_why: Label            # "Amulet 4 hops away — Closing"
 var _spawn_price: Label             # "☠ +2 on a loss" (§19.8)
@@ -689,16 +690,20 @@ func _span_size(rows: int, cols: int) -> Vector2:
 # the band's colour up to the pressure, dark past it.
 const RUNG_W := 18
 const RUNG_H := 10
+# The narrowest the end-of-game price wraps to when the board shares its column
+# with a shop and there is no room for it on one line beside the small print.
+const SPAWN_PRICE_MIN_W := 120.0
 
 func _build_pressure_bar() -> Control:
 	_pressure_panel = HoverPanel.new()
-	# TWO LINES, EACH WITH ONE JOB. It was a single flowing row of six labels,
-	# which wrapped wherever the widths happened to fall — the price of ending the
-	# game one run, the board size the next — and read as a pile. Now the top line
-	# is the headline (the pressure and its ladder on the left, what ending this
-	# game costs on the right) and the second is the small print: how far the
-	# Amulet is, when the next boss comes, the difficulty. The board's size is
-	# gone from it: the grid is right under it and says that itself.
+	# ONE AREA, TWO LINES: DIFFICULTY (the owner, 23 Oct 2026). It was "AMULET
+	# PRESSURE" over a small-print row that carried the tier, the boss count, the
+	# hops and the location as six labels of equal weight. Now:
+	#   line 1  DIFFICULTY · the tier and its four-step ladder · the location
+	#   line 2  when the next boss comes · how far the Amulet is, and its pressure
+	#           ladder · what ending this game costs, on the right
+	# The pressure is still its own ladder (it is a different axis from the tier,
+	# and the one the player steers), it just no longer names the whole strip.
 	var lines := VBoxContainer.new()
 	lines.add_theme_constant_override("separation", UITheme.GAP_HAIR)
 	_pressure_panel.add_child(lines)
@@ -712,11 +717,66 @@ func _build_pressure_bar() -> Control:
 	_pressure_turns.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	head.add_child(_pressure_turns)
 
-	# The ladder: one pip per body the Amulet pressure alone can stand up at the
-	# end of a game. Filled up to where the run stands, so "how much worse can this
-	# get?" is answerable without a tooltip — and empty out in the wilds, which is
-	# the reading that matters: finish a game there with a body down and nothing
-	# walks on.
+	# The tier. Still named `_size_label` for the tests that know it; it said
+	# "▦ 4×4 · Low" once, and then "Low difficulty" in the small print.
+	_size_label = Label.new()
+	_size_label.add_theme_font_size_override("font_size", UITheme.FONT_LABEL)
+	_size_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	head.add_child(_size_label)
+
+	# The tier's own ladder: Low, Medium, High, Insane, lit up to where the run is.
+	var tiers := HBoxContainer.new()
+	tiers.add_theme_constant_override("separation", UITheme.GAP_HAIR)
+	tiers.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_tier_rungs.clear()
+	for i in range(RunDifficulty.MAX_TIER + 1):
+		var pip := Panel.new()
+		pip.custom_minimum_size = Vector2(RUNG_W, RUNG_H)
+		pip.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		pip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		tiers.add_child(pip)
+		_tier_rungs.append(pip)
+	head.add_child(tiers)
+
+	var spacer := Control.new()
+	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	head.add_child(spacer)
+
+	# THE LOCATION (docs/locations-design.md §6), on the difficulty's own line,
+	# since the two change at the same moment. It answers its own hover and its
+	# own click; hidden while the run has none.
+	_location_chip = LocationChip.new()
+	_location_chip.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_location_chip.opened.connect(func(): location_requested.emit())
+	head.add_child(_location_chip)
+
+	var row2 := HBoxContainer.new()
+	row2.add_theme_constant_override("separation", UITheme.GAP)
+	lines.add_child(row2)
+
+	# The small print, flowing so a narrow column takes a second line instead of
+	# a wider minimum.
+	var small := HFlowContainer.new()
+	small.add_theme_constant_override("h_separation", UITheme.GAP_SNUG)
+	small.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	small.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row2.add_child(small)
+	_pressure_small = small
+
+	_boss_count = Label.new()
+	_boss_count.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
+	small.add_child(_boss_count)
+	small.add_child(_strip_dot())
+
+	_pressure_why = Label.new()
+	_pressure_why.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
+	small.add_child(_pressure_why)
+
+	# The Amulet pressure's ladder: one pip per body the road alone can stand up
+	# at the end of a game. Filled up to where the run stands, and empty out in
+	# the wilds, which is the reading that matters: finish a game there with a
+	# body down and nothing walks on.
 	var ladder := HBoxContainer.new()
 	ladder.add_theme_constant_override("separation", UITheme.GAP_HAIR)
 	ladder.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -728,67 +788,36 @@ func _build_pressure_bar() -> Control:
 		pip.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		ladder.add_child(pip)
 		_pressure_rungs.append(pip)
-	head.add_child(ladder)
-
-	# WHAT ENDING THIS GAME COSTS (§19.8), pushed to the right-hand end of the
-	# headline: it is the one number on the strip that changes with what you do
-	# in the game in play — the +1 for nothing defeated included. Wraps rather
-	# than widening the board: an HBox's minimum is the sum of its labels, and
-	# that sum is what once pushed the board off the page.
-	_spawn_price = Label.new()
-	_spawn_price.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
-	_spawn_price.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	_spawn_price.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_spawn_price.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_spawn_price.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	head.add_child(_spawn_price)
-
-	# The small print, flowing so a narrow column takes a second line instead of
-	# a wider minimum.
-	var small := HFlowContainer.new()
-	small.add_theme_constant_override("h_separation", UITheme.GAP_SNUG)
-	lines.add_child(small)
-	_pressure_small = small
-
-	_pressure_why = Label.new()
-	_pressure_why.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
-	_pressure_why.add_theme_color_override("font_color", UITheme.TEXT_DIM)
-	small.add_child(_pressure_why)
-	small.add_child(_strip_dot())
-
-	_boss_count = Label.new()
-	_boss_count.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
-	small.add_child(_boss_count)
-	small.add_child(_strip_dot())
-
-	# The difficulty tier. Still named `_size_label` for the tests and saves that
-	# know it; it said "▦ 4×4 · Low" and the dimensions were the half nobody
-	# needed read to them.
-	_size_label = Label.new()
-	_size_label.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
-	_size_label.add_theme_color_override("font_color", UITheme.TEXT_DIM)
-	small.add_child(_size_label)
-
-	# THE LOCATION (docs/locations-design.md §6), right after the difficulty, since
-	# the two change at the same moment. It answers its own hover and its own click;
-	# hidden while the run has none.
-	_location_chip = LocationChip.new()
-	_location_chip.opened.connect(func(): location_requested.emit())
-	small.add_child(_location_chip)
+	small.add_child(ladder)
 
 	# THE WARNING (§3.2, §19.6): shown only while the next spawn is a difficulty up
 	# and a game is in play — the one moment a LOST RUN can bring a boss on mid-
-	# game. Says what the next press risks, in words, right above the grid it
-	# would land on. It TAKES THE SMALL PRINT'S ROW while it is up rather than
-	# adding one: the page is fitted to a 720p window to the pixel, and the small
-	# print (hops, boss countdown, difficulty) is all on the strip's hover card.
+	# game. It TAKES THE SMALL PRINT'S PLACE while it is up rather than adding a
+	# line: the page is fitted to a 720p window to the pixel, and the small print
+	# is all on the strip's hover card.
 	_boss_warning = Label.new()
 	_boss_warning.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 	_boss_warning.add_theme_color_override("font_color", UITheme.DANGER)
 	_boss_warning.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_boss_warning.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_boss_warning.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_boss_warning.visible = false
-	lines.add_child(_boss_warning)
+	row2.add_child(_boss_warning)
+
+	# WHAT ENDING THIS GAME COSTS (§19.8), at the right-hand end of the second
+	# line: the one number on the strip that changes with what you do in the game
+	# in play. Wraps rather than widening the board: an HBox's minimum is the sum
+	# of its labels, and that sum is what once pushed the board off the page.
+	_spawn_price = Label.new()
+	_spawn_price.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
+	_spawn_price.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	# It takes the width it needs and no more, so the small print beside it keeps
+	# to one line; it only wraps when the board is too narrow for both, and then
+	# no narrower than SPAWN_PRICE_MIN_W.
+	_spawn_price.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_spawn_price.size_flags_horizontal = Control.SIZE_SHRINK_END
+	_spawn_price.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row2.add_child(_spawn_price)
 	return _pressure_panel
 
 func _strip_dot() -> Label:
@@ -809,12 +838,23 @@ func _refresh_pressure() -> void:
 	var hops: int = GameLoop2.hops_to_amulet()
 	var band: Color = RunDifficulty.band_color(pressure)
 
+	var tier: int = RunDifficulty.current_tier()
+	var tier_col: Color = UITheme.rarity_color(tier)
+	# The panel wears the PRESSURE's band, as it always has: Doorstep red is the
+	# one colour on the strip that has to be noticed from across the page.
 	_pressure_panel.add_theme_stylebox_override("panel",
 		UITheme.flat(band.lerp(UITheme.BG, 0.82), 6, 6, 1, band.lerp(UITheme.BG, 0.45)))
-	# AMULET PRESSURE: the bodies the road stands up at the end of every game
-	# (§7.4). Zero is the normal reading out in the wilds and says so plainly.
-	_pressure_turns.text = "☠  AMULET PRESSURE  %d" % pressure
-	_pressure_turns.add_theme_color_override("font_color", band)
+	_pressure_turns.text = "DIFFICULTY"
+	_pressure_turns.add_theme_color_override("font_color", UITheme.TEXT_DIM)
+	_size_label.text = RunDifficulty.tier_name(tier)
+	_size_label.add_theme_color_override("font_color", tier_col)
+	for i in range(_tier_rungs.size()):
+		var tp: Panel = _tier_rungs[i]
+		var on: bool = i <= tier
+		tp.add_theme_stylebox_override("panel", UITheme.flat(
+			UITheme.rarity_color(i) if on else Color(0.05, 0.05, 0.06, 0.85), 2, 0, 1,
+			UITheme.rarity_color(i).lerp(Color.WHITE, 0.2) if on else tier_col.lerp(UITheme.BG, 0.5)))
+	_pressure_why.add_theme_color_override("font_color", band)
 
 	for i in range(_pressure_rungs.size()):
 		var pip: Panel = _pressure_rungs[i]
@@ -829,12 +869,12 @@ func _refresh_pressure() -> void:
 	# docs/fracture-design.md), where the pressure ladder counts down to it.
 	var goal: String = "Home" if GameState.carrying_amulet else "Amulet"
 	if hops < 0:
-		_pressure_why.text = "no route to %s" % GameState.goal_word()
+		_pressure_why.text = "No route to %s" % GameState.goal_word()
 	elif hops == 0:
-		_pressure_why.text = "standing ON %s — %s" % [GameState.goal_word(),
+		_pressure_why.text = "Standing ON %s (%s)" % [GameState.goal_word(),
 			RunDifficulty.band_name(pressure)]
 	else:
-		_pressure_why.text = "%s %d hop%s away — %s" % [goal,
+		_pressure_why.text = "%s %d hop%s (%s)" % [goal,
 			hops, "" if hops == 1 else "s", RunDifficulty.band_name(pressure)]
 
 	var price: Dictionary = GameLoop2.end_of_game_price()
@@ -855,10 +895,14 @@ func _refresh_pressure() -> void:
 		_spawn_price.text += " · +1 turn"
 		_spawn_price.add_theme_color_override("font_color", UITheme.DANGER)
 	_spawn_price.visible = _spawn_price.text != ""
+	var font: Font = _spawn_price.get_theme_font(&"font")
+	var want: float = font.get_string_size(_spawn_price.text, HORIZONTAL_ALIGNMENT_LEFT, -1,
+		_spawn_price.get_theme_font_size(&"font_size")).x if _spawn_price.visible else 0.0
+	_spawn_price.custom_minimum_size.x = minf(ceilf(want), SPAWN_PRICE_MIN_W) if _height_budget == FIELD_HEIGHT_BUDGET_SHARED else ceilf(want)
 
 	var to_boss: int = RunDifficulty.spawns_to_boss(GameState.spawn_events)
-	_boss_count.text = ("boss on the next spawn" if to_boss == 1
-		else "boss in %d spawns" % to_boss)
+	_boss_count.text = ("Boss on the next spawn" if to_boss == 1
+		else "Boss in %d spawns" % to_boss)
 	_boss_count.add_theme_color_override("font_color",
 		UITheme.DANGER if to_boss == 1 else UITheme.TEXT_DIM)
 
@@ -870,15 +914,15 @@ func _refresh_pressure() -> void:
 		+ "%s\n\nRush the Amulet and every game fills the board faster; take the "
 		+ "long way and it fills slower.") % [acts, RunDifficulty.ladder_text(pressure)]
 	HoverCard.attach(_pressure_panel, {
-		"title": "Amulet pressure %d" % pressure,
-		"subtitle": RunDifficulty.band_name(pressure),
-		"accent": band,
+		"title": "Difficulty: %s" % RunDifficulty.tier_name(tier),
+		"subtitle": "Amulet pressure %d — %s" % [pressure, RunDifficulty.band_name(pressure)],
+		"accent": tier_col,
 		"lines": [
+			_boss_tip(to_boss),
 			"%s — +1 if nothing went down, and escaping always adds 1." % acts,
 			"A lost run moves them one turn — and from the second lost run of a game, may stand one more up.",
 			_pressure_why.text,
 			_spawn_tip(owed, why_free),
-			_boss_tip(to_boss),
 		] + ([("Fracture %d: when this game is beaten or escaped, every enemy takes "
 			+ "one more turn.") % Fracture.level()] if Fracture.extra_turn() else []),
 		"note": "Rush the Amulet and every game fills the board faster; take the long way and it fills slower.",
@@ -895,8 +939,6 @@ func _refresh_pressure() -> void:
 	_boss_warning.visible = _boss_warning.text != ""
 	_pressure_small.visible = not _boss_warning.visible
 
-	var tier: int = RunDifficulty.current_tier()
-	_size_label.text = "%s difficulty" % RunDifficulty.tier_name(tier)
 	_size_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	if _location_chip != null:
 		_location_chip.refresh()

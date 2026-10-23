@@ -26,14 +26,22 @@ the run**, which nothing else has:
 
 ## 1. When a location is dealt
 
-- **At the start of the run.** `GameLoop2.start_run` deals a Low one, so the
-  opening game's board is already the location's board.
+- **At the start of the run.** `GameLoop2.start_run` deals a Low one before
+  the start is picked.
 - **At every difficulty up.** The tier counts spawns (every 4th, or 3rd on a
   Fracture). `GameLoop2._capstone_if_due`, which ends every spawn path, calls
   `_location_if_due` after the capstone boss. When the tier is higher than the
-  one the location was dealt for, a new one of the new tier is dealt. Its
-  arrival effects land after everything that spawn put down
-  ([turn-order.md](turn-order.md) §1).
+  one the location was dealt for, a new one of the new tier is dealt.
+
+**"When entered" means the first game picked there, once** (the owner, 23 Oct).
+Dealing a location sets `location_arrival_due`; its arrive effects run at the
+next node arrival — `choose_game` (after that arrival's bodies and capstone) or
+`begin_bodiless_game` for an Event or Shop node — and never again. So the run's
+first location arrives with its first game rather than onto an empty board, and
+a difficulty up that lands mid-game (a lost run's spawn) or at a game's end never
+drops bodies into a game already being played. A Scramble is not entering. When
+the location is dealt by the arrival itself, it is entered by that same arrival
+([turn-order.md](turn-order.md) §1).
 
 `Locations.deal(tier)` picks a random location authored at that tier, skipping
 the one being left when it can. A tier with none authored steps **down** to the
@@ -140,7 +148,10 @@ On the board:
 - `fits_at` treats a blocking unit's cell as taken. So no step, spawn, push
   or Trample stands a body there, and the spawn shove plans around it.
 - A body whose step it stops tries Trample, then Agile, and only then
-  **strikes the poop for 1** instead of stepping (`_walk_one`).
+  **strikes the poop for what it would hit you for** (`enemy_damage`:
+  Strength, Burn's halving, a Fracture, a rift; never less than 1) instead of
+  stepping (`_walk_one`). Only when the poop blocks its step: a Ranged body does
+  not shoot one from range.
 - The player breaks it with anything that hits the ground: a bomb, a thrown
   potion. **It pays whoever breaks it** (`_unit_destroyed`). That gives a
   Golden Poop a reason to be bombed before the stack chews through it.
@@ -149,15 +160,22 @@ On the board:
 
 ## 6. Showing it
 
+- **The DIFFICULTY strip** over the board (it was "AMULET PRESSURE") is two
+  lines: the tier, its four pips (Low to Insane) and the location; then the
+  spawns to the next boss, the Amulet's distance with its pressure pips, and
+  what ending this game costs. The panel keeps the pressure band's colour, and
+  the boss warning still takes the second line's place while it is up.
 - **The arrival popup** (`scripts/redesign2/LocationPopup.gd`, loaded by path
   so it stays out of the page's compile): "YOU ENTER", the name, tier and
   source game, the art, the description, the lean in words, and the actions as
-  buttons. `GameLoop2.location_unseen` is the flag, saved with the run. The
+  buttons, plus a gold line while its arrival is still waiting for the next
+  game. `GameLoop2.location_unseen` is the flag, saved with the run. The
   page opens it at its next quiet moment: not over the start screen, the
   board's playback, the haul screen, a reward or another popup. Each of those,
   when it closes, asks again.
-- **The chip** (`LocationChip`) sits on the board strip's small-print row,
-  right after "Low difficulty", because the two change at the same moment. It
+- **The chip** (`LocationChip`) sits at the right of the DIFFICULTY strip's
+  first line, after the tier and its pips, because the two change at the same
+  moment. It
   shows a thumbnail and the name. Hovering shows the art at a readable size and
   everything the popup says. A hover card cannot hold a button, so clicking
   reopens the popup, and that is where the actions are used.
@@ -166,9 +184,9 @@ On the board:
 
 ## 7. Saving
 
-`location_id`, `location_tier`, `location_uses` (per action) and
-`location_unseen` are saved by `GameLoop2.serialize`. A location since deleted
-from the sheet loads as none. The art is 1920×1200, so `LocationData.image`
+`location_id`, `location_tier`, `location_uses` (per action), `location_unseen`
+and `location_arrival_due` are saved by `GameLoop2.serialize`. A location since
+deleted from the sheet loads as none. The art is 1920×1200, so `LocationData.image`
 loads lazily, like a game cover.
 
 ## 8. Adding one

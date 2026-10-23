@@ -30,7 +30,14 @@ func _roster() -> void:
 func _enter(id: StringName) -> LocationData:
 	_roster()
 	var loc: LocationData = Data.get_location(id)
+	GameLoop2.location_tier = loc.tier     # as a real deal records it
 	GameLoop2.enter_location(loc)
+	return loc
+
+# Dealt AND entered: its "when entered" effects run, as picking the next game does.
+func _arrive(id: StringName) -> LocationData:
+	var loc: LocationData = _enter(id)
+	GameLoop2.land_location_arrival()
 	return loc
 
 func _enemy_with_tag(tag: StringName, has: bool) -> GoalEnemyData:
@@ -109,7 +116,7 @@ func test_an_old_save_adopts_its_tier_rather_than_dealing() -> void:
 
 func test_burning_basement_stands_a_fire_body_and_lights_two_squares() -> void:
 	var before: int = GameLoop2.stack.size()
-	_enter(&"burning_basement")
+	_arrive(&"burning_basement")
 	assert_eq(GameLoop2.tiles.size(), 2, "two squares on fire")
 	for cell in GameLoop2.tiles:
 		assert_eq(String(GameLoop2.tiles[cell]["id"]), "fire")
@@ -118,8 +125,32 @@ func test_burning_basement_stands_a_fire_body_and_lights_two_squares() -> void:
 		var e: GoalEnemyData = GameLoop2.stack[-1]["enemy"]
 		assert_true(e.has_tag(&"fire"), "and it is a fire thing")
 
-func test_dross_stands_two_poops() -> void:
+func test_when_entered_waits_for_the_next_game_picked() -> void:
+	var before: int = GameLoop2.stack.size()
+	_enter(&"burning_basement")
+	assert_eq(GameLoop2.tiles.size(), 0, "dealing it lights nothing yet")
+	assert_eq(GameLoop2.stack.size(), before, "and stands nobody up")
+	assert_true(GameLoop2.location_arrival_due, "its arrival is waiting")
+	Fx.choose_solo(Fx.enemy(1))
+	assert_eq(GameLoop2.tiles.size(), 2, "the next game picked lands it")
+	assert_false(GameLoop2.location_arrival_due)
+	var lit: int = GameLoop2.tiles.size()
+	Fx.choose_solo(Fx.enemy(1))
+	assert_eq(GameLoop2.tiles.size(), lit, "and only once: the game after lights no more")
+
+func test_an_event_or_shop_node_enters_it_too() -> void:
 	_enter(&"dross")
+	GameLoop2.begin_bodiless_game()
+	assert_eq(GameLoop2.units.size(), 2, "a game with no bodies is still the game picked")
+
+func test_a_scramble_is_not_entering() -> void:
+	_enter(&"dross")
+	GameLoop2.choose_game(Fx.enemy(1), &"", -1, false, false)
+	assert_eq(GameLoop2.units.size(), 0, "a re-deal of the same pick enters nothing")
+	assert_true(GameLoop2.location_arrival_due)
+
+func test_dross_stands_two_poops() -> void:
+	_arrive(&"dross")
 	assert_eq(GameLoop2.units.size(), 2, "two units")
 	for cell in GameLoop2.units:
 		var u: UnitData = GameLoop2.unit_at(cell)
@@ -128,7 +159,7 @@ func test_dross_stands_two_poops() -> void:
 
 func test_the_hive_stands_two_bugs() -> void:
 	var before: int = GameLoop2.stack.size()
-	_enter(&"the_hive")
+	_arrive(&"the_hive")
 	assert_eq(GameLoop2.stack.size(), before + 2)
 
 
@@ -142,7 +173,19 @@ func test_a_poop_is_a_wall_a_body_strikes_instead_of_walking_into() -> void:
 	assert_false(GameLoop2.fits_at(entry["enemy"], 0, 2, inst), "nothing can stand on it")
 	GameLoop2._advance_stack()
 	assert_eq(Fx.col_of(inst), 3, "the body did not step")
-	assert_eq(int(GameLoop2.units[cell]["health"]), 2, "it struck the poop instead")
+	assert_eq(int(GameLoop2.units[cell]["health"]), 2, "it struck the poop instead, for its 1")
+
+func test_a_body_hits_a_poop_for_what_it_would_hit_you_for() -> void:
+	var cell := Vector2i(2, 0)
+	GameLoop2.apply_unit(cell, &"golden_poop")      # 5 Health
+	var inst: int = Fx.body(Vector2i(3, 0))
+	var entry: Dictionary = GameLoop2.entry_for(inst)
+	(entry["enemy"] as GoalEnemyData).damage = 3
+	GameLoop2.apply_status_to(inst, &"strength", 1)
+	var hit: int = GameLoop2.enemy_damage(entry)
+	assert_eq(hit, 4, "3 and a stack of Strength")
+	GameLoop2._advance_stack()
+	assert_eq(int(GameLoop2.units[cell]["health"]), 1, "the poop took the same 4")
 
 func test_a_rainbow_poop_heals_when_it_breaks() -> void:
 	var cell := Vector2i(2, 1)
@@ -335,6 +378,7 @@ func test_an_arrive_clause_can_be_anything_an_item_can_say() -> void:
 	Data._locations[loc.id] = loc
 	var before: int = GameState.bombs
 	GameLoop2.enter_location(loc)
+	GameLoop2.land_location_arrival()
 	assert_eq(GameState.bombs, before + 2, "an item's `gain_stat bombs 2`, run on arrival")
 
 func test_an_action_names_its_cost_in_the_game_s_words() -> void:
