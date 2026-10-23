@@ -76,7 +76,13 @@ _run_trigger(item, trig, ctx_extras, loot)
    - board: the game's enemy is placed, then the second body (plus any a Fracture
      adds), each running its spawn-time abilities as it lands;
    - on the 4th spawn event, board: the **capstone boss** walks on →
-     signal `boss_spawned` → items.
+     signal `boss_spawned` → items;
+   - and if the tier stepped, a new **location** is dealt
+     (`docs/locations-design.md`): its arrival runs last, on top of everything
+     the spawn put down (bodies of its tag, tiles lit, poops stood up), then
+     signal `location_changed`. The run's first location is dealt the same way by
+     `start_run`, before the start is picked. Its popup waits for the page's next
+     quiet moment.
 4. The **difficulty step** is announced, if step 3 crossed one.
 5. An **Event node fires its event now**, before the game. (Every other node rolls
    its event at the report.)
@@ -102,6 +108,19 @@ _pay_revivals()
 _add_to_grid(inst, enemy
 _spawn_second_body(
 _capstone_if_due(
+```
+
+```order
+scripts/autoload/GameLoop2.gd :: _capstone_if_due
+_land_capstone_boss(type_key, tier)
+_location_if_due()
+```
+
+```order
+scripts/autoload/GameLoop2.gd :: enter_location
+location_id = loc.id
+_run_location_effect(effect)
+location_changed.emit(location_id)
 ```
 
 ```order
@@ -156,13 +175,24 @@ everything in it is put back by Undo.
      invisible body is revealed, then it swings → the hit chain (§7) ☠.
    - **b. The step.** Every body that hasn't acted closes a column, into free rows
      only. Entering a tile fires its on-enter effect (a mine goes off); loot lying
-     there is pushed aside; the off-grid queue slides in as cells free.
+     there is pushed aside; the off-grid queue slides in as cells free. A body
+     whose way is blocked tries Trample, then Agile's diagonal, and only then, if
+     a **blocking unit** (a poop) is in the way, strikes it for 1 instead of
+     stepping. A unit that breaks pays its On Destruction there and then.
    - **c. Turn-measured statuses wear off** — the one place a Stun stack ticks down.
 4. The **lost-run spawn roll**, Luck included: a hit walks a body of this game's
    type on at the back column and resets the ladder; a miss climbs a rung. A hit
    is a spawn event, so the board can grow and a capstone boss can arrive →
-   `boss_spawned`.
+   `boss_spawned`, and a new location can be dealt (§1).
 5. The log line, then the animation replays the turn.
+
+```order
+scripts/autoload/GameLoop2.gd :: _walk_one
+if fits_at(enemy, row, col - 1, inst):
+push_through
+move_diagonal
+damage_unit(cell, 1)
+```
 
 ```order
 scripts/autoload/GameLoop2.gd :: log_attempt

@@ -43,6 +43,7 @@ var _objects2: Dictionary = {}          # StringName -> ObjectData (docs/object-
 var _curses2: Dictionary = {}           # StringName -> CurseData2 (the checklist kind, not data/curses)
 var _songs: Dictionary = {}             # StringName -> SongData (Roguelike Radio, docs/roguelike-radio.md)
 var _shopkeepers: Dictionary = {}       # StringName -> ShopkeeperData (§14.6)
+var _locations: Dictionary = {}         # StringName -> LocationData (docs/locations-design.md)
 
 func _ready() -> void:
 	_load_dir("res://data/items/", _items)
@@ -72,6 +73,7 @@ func _ready() -> void:
 	_load_dir("res://data/curses2.0/", _curses2)
 	_load_dir("res://data/songs/", _songs)
 	_load_dir("res://data/shopkeepers/", _shopkeepers)
+	_load_dir("res://data/locations/", _locations)
 	print("[Data] Loaded %d items, %d games, %d characters, %d curses" % [
 		_items.size(), _games.size(), _characters.size(), _curses.size()
 	])
@@ -364,7 +366,8 @@ func _rarity_bucket(pool: Array, rng: RandomNumberGenerator) -> Array:
 func _roll_by_rarity(pool: Array, rng: RandomNumberGenerator) -> Variant:
 	var r: RandomNumberGenerator = _rng_or_new(rng)
 	var bucket: Array = _rarity_bucket(pool, r)
-	return null if bucket.is_empty() else bucket[r.randi_range(0, bucket.size() - 1)]
+	# Within the rung, leaned by the location (docs/locations-design.md §4).
+	return null if bucket.is_empty() else Locations.pick(bucket, r)
 
 func _rng_or_new(rng: RandomNumberGenerator) -> RandomNumberGenerator:
 	if rng != null:
@@ -391,6 +394,13 @@ func roll_scroll(rng: RandomNumberGenerator = null) -> ScrollData:
 # tenth of every drop, taken off the top by GameState.roll_loot_entry, and leaving
 # it in the Common bucket as well would make that tenth an eighth.
 func _pick_by_find_weight(bucket: Array, rng: RandomNumberGenerator) -> ScrollData:
+	# A location's lean MULTIPLIES the find rate (docs/locations-design.md §4), so a
+	# weight of 0 still means never.
+	if Locations.is_leaning():
+		var weights: Array = []
+		for s: ScrollData in bucket:
+			weights.append(maxf(0.0, s.find_weight) * Locations.weight_of(s))
+		return Locations.pick_weighted(bucket, weights, rng)
 	var total: float = 0.0
 	for s: ScrollData in bucket:
 		total += maxf(0.0, s.find_weight)
@@ -656,8 +666,9 @@ func roll_object_by_tag(tag: StringName, rng: RandomNumberGenerator,
 		return null
 	var bucket: Array = rarity_bucket_of(pool, roll_item_rarity(rng))
 	# Which of the bucket is a Favour.NONE decision — one Common object is not a
-	# better draw than another — so Luck has no say past the rung.
-	return bucket[rng.randi_range(0, bucket.size() - 1)]
+	# better draw than another — so Luck has no say past the rung. A location's
+	# lean still has one (docs/locations-design.md §4).
+	return Locations.pick(bucket, rng)
 
 # The rung of `pool` at `target`, falling DOWN the ladder to the nearest stocked
 # one and then up if there is nothing below. Shared so the object roll and any
@@ -741,6 +752,20 @@ func get_unit(id: StringName) -> UnitData:
 func all_units() -> Array:
 	return _units.values()
 
+# --- Locations (docs/locations-design.md) ----------------------------------
+func get_location(id: StringName) -> LocationData:
+	return _locations.get(id)
+
+func all_locations() -> Array:
+	return _locations.values()
+
+# The locations dealt at `tier`, sorted by id so a seeded deal is the same deal.
+func locations_at(tier: int) -> Array:
+	var out: Array = _locations.values().filter(
+		func(l): return l is LocationData and (l as LocationData).tier == tier)
+	out.sort_custom(func(a, b): return String(a.id) < String(b.id))
+	return out
+
 # --- enemy abilities (§7.6) ------------------------------------------------
 #
 # The CATALOGUE only: an ability's name, its type, how many arguments it takes and
@@ -795,6 +820,18 @@ func reward_item2_pool_of(rarity: int) -> Array:
 		var bucket: Array = pool.filter(func(it): return int(it.rarity) == rarity)
 		_reward_bucket_cache[key] = pool if bucket.is_empty() else bucket
 	return _reward_bucket_cache[key]
+
+# THE 2.0 POOL NARROWED TO ONE WORD — the items carrying it as a TAG or a POOL,
+# the same either-or a shopkeeper's Pool column reads. What a tagged chest draws
+# from (the Dark Room's devilish chest, docs/locations-design.md §3). Empty when
+# nothing rollable carries the word; the chest then falls back to the ordinary
+# pool rather than offering nothing.
+func reward_item2_pool_tagged(word: String) -> Array:
+	var key: String = "items2:tag:%s" % word
+	if not _reward_pool_cache.has(key):
+		_reward_pool_cache[key] = reward_item2_pool().filter(
+			func(it): return (it as ItemData).tags.has(word) or (it as ItemData).pools.has(word))
+	return _reward_pool_cache[key]
 
 func _reward_pool(key: String, catalog: Dictionary) -> Array:
 	if not _reward_pool_cache.has(key):

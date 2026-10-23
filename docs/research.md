@@ -16,6 +16,7 @@ gets found. It is organised as **eight kinds**, one system, one entry point
 | characters | which playable characters could become a character | `characters` | its wiki, by hand: §6.4 |
 | statuses | which status effects and curses could become one here | `statuses`, `curses` | its wiki, by hand: §6.5 |
 | locations | which places or map objects could become a location or object | `locations`, `objects` | its wiki, by hand: §6.6 |
+| location effects | what a location could DO, from this game's own content — not from any one source game | `locations` (Description, Effect) | by hand from the project, not a wiki: §6.7 |
 
 **The rule that does not change:** nothing goes into `tools/Roguelikes.xlsx`
 until the owner has said `yes` to it. `Research.xlsx` is a **brainstorming
@@ -247,7 +248,7 @@ written from memory of the game, with no page to point at, is allowed but is
 | events | the game's own decision screens: shrines, altars, gambles, strangers, offers with a price. Not from Slay the Spire unless exceptional (13 of 16 live events are) | `add_goal`, chests, curses, gold, loot |
 | characters | its starting classes or heroes: a stat spread and a level-up goal that say who they are | the verbs and stats |
 | statuses | effects that rewrite a goal (Terrified, Lovesick) or change a body on the board; conditions to avoid, for curses | statuses' goal modes, curses' `spawn_enemy` |
-| locations | themed areas with a goal; machines and features you stand at (fountains, altars, slot machines, forges); shopkeepers for the planned named shops | locations' goals, objects' choices, `ShopPanel2`'s `shopkeeper` |
+| locations | themed areas, written as what they DO to the run and the board (no goal: [locations-design.md](locations-design.md)); machines and features you stand at (fountains, altars, slot machines, forges); shopkeepers for the planned named shops | a location's arrive / while / action effects and its tag lean, objects' choices, `ShopPanel2`'s `shopkeeper` |
 | board | hazards and placed things for the battlefield (acid, oil, ice, spikes, a turret): `research/locations.csv` with `Sheet` `tiles` or `units`. A wand or item that LAYS one is loot, and names the tile in `Needs` | the Fire and Web tiles, the Landmine unit |
 
 ### 6.1 goals → `research/goals.csv`
@@ -357,12 +358,32 @@ game's own rule, so the translation can be judged against it.
 Five sheets. A **tile** or a **unit** (`Sheet` tiles / units) is something on
 the battlefield: terrain that does something to whatever stands in it, or a
 placed thing with Health. A **shopkeeper** (`Sheet` shopkeepers) is a named
-shop for `ShopPanel2`. A **location** (`Sheet` locations) is a place with a goal and a
-payout: `Difficulty`, `Goal Type`, `Goal`, `Goal Effect` ("Gain +1 Small
-Chest") and the enemy `Tag` it favours. An **object** (`Sheet` objects) is
+shop for `ShopPanel2`. A **location** (`Sheet` locations) is a place the run is
+dealt at a difficulty up, and it has **no goal** (the owner, 23 Oct 2026;
+[locations-design.md](locations-design.md)). Its `Description` says what it does
+in the owner's style ("When entered, spawn 2 random bug tagged Enemies"), its
+`Effect` is that in the location grammar where the grammar can say it (blank
+otherwise, with `Needs` naming what is missing), and `Tag` / `Tag % Up` are its
+lean (`fire`, `0.2`). Every row is checked against the grammar before it is
+written: `python3 tools/generate_location_tres.py`'s `parse_effect` must read
+it. An **object** (`Sheet` objects) is
 something standing in an event, with choices (an arcade machine, a shrine):
 `Tag` groups it (`arcade`), and `Choices` lists its buttons and what each does,
 in words.
+
+### 6.7 location effects → `research/location_effects.csv`
+
+Not research into a game: a pool of things a location could DO, each built out
+of what this game already has (its tiles, units, statuses, curses, verbs,
+shops, machines, events and rules), for the owner to MATCH to locations. So the
+rows have no `Game`, are in no ledger and have no wiki. `Kind` is when it
+happens (`arrive`, `while`, `action`, `leave`), `Tier` the difficulty it suits,
+`Built from` the content it reuses, `Suits` the kind of place it fits, and
+`Needs` either `ready` (the `Effect` cell is valid location grammar today) or
+the one piece of code it is waiting for. The owner reads them in the `location_effects`
+sheet of `Research.xlsx` beside `locations`, or grouped on one page in
+[location-effects.md](location-effects.md) (written from the CSV; regenerate it
+when the CSV changes).
 
 ## 7. When games are added
 

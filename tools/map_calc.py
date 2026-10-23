@@ -433,6 +433,12 @@ def write(wb):
         for c, w in (("A", 34), ("W", 30), ("X", 30), ("AL", 30))), head, flags=re.S)
     wb._dirty[part] = (head + join_rows_raw(new) + tail).encode("utf-8")
 
+    # How many cell styles the workbook has, so a fixed S_* can be checked.
+    n_styles = int(re.search(r'<cellXfs count="(\d+)"',
+                             wb._by_name["xl/styles.xml"].decode("utf-8")).group(1))
+    if hs >= n_styles:
+        hs = None
+
     # Map Analysis: only the cells this script owns are touched.
     part, _ = wb.sheet_parts(DASH)
     xml = wb._by_name[part].decode("utf-8")
@@ -446,10 +452,18 @@ def write(wb):
         col, n = re.match(r"([A-Z]+)(\d+)", addr).groups()
         n = int(n)
         attrs, cells = rows.setdefault(n, ("", {}))
-        if style is None and col in cells:
-            # Keep the owner's formatting of an existing cell.
+        if col in cells:
+            # Keep the formatting the cell already has. The fixed S_* numbers are
+            # only right for the workbook build_map_charts.py styled: Excel
+            # renumbers `cellXfs` whenever it saves (the 23 Oct upload took the
+            # list from 26 entries to 23), so an S_* written over a styled cell
+            # can point at a different style or past the end of the list, which
+            # openpyxl then refuses to load at all.
             m = re.search(r'\ss="(\d+)"', cells[col][0] if isinstance(cells[col], tuple) else cells[col])
-            style = int(m.group(1)) if m else None
+            if m:
+                style = int(m.group(1))
+        if style is not None and style >= n_styles:
+            style = None
         if kind == "f" and value.startswith(("IFERROR(INDEX('%s'!$A" % CALC,)):
             kind = "fs"
         cells[col] = cell_xml(addr, kind, value, style)

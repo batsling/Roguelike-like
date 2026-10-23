@@ -456,23 +456,32 @@ func roll_drop(from_boss: bool = false) -> ItemData:
 	if from_boss:
 		var boss_pool: Array = Data.boss_item2_pool()
 		if not boss_pool.is_empty():
-			return boss_pool[rng.randi_range(0, boss_pool.size() - 1)]
+			return Locations.pick(boss_pool, rng)
 	var bucket: Array = Data.reward_item2_pool_of(Data.roll_item_rarity(rng))
 	if bucket.is_empty():
 		return null
-	return bucket[rng.randi_range(0, bucket.size() - 1)]
+	# Leaned by the location (docs/locations-design.md §4) — and, with no lean,
+	# exactly the uniform draw this always was.
+	return Locations.pick(bucket, rng)
 
 # `count` DISTINCT items for one chest, each rolled by roll_drop. Distinct is a
 # preference and not a rule, the same way the shop shelf treats it: two of the
 # same relic side by side is not a choice, but a thin pool still owes a full
 # chest, so the draw gives up after a few tries rather than shrinking the offer.
 # Fewer than `count` only when the pool itself is empty.
-func roll_chest(from_boss: bool, count: int) -> Array:
+#
+# `pool` is a TAGGED chest (docs/locations-design.md §3): its items come only from
+# what carries that tag or pool (Data.reward_item2_pool_tagged), drawn by the
+# location's lean rather than by rarity, since a pool that small has no ladder to
+# climb. A word nothing carries rolls the ordinary chest instead.
+func roll_chest(from_boss: bool, count: int, pool: String = "") -> Array:
 	var out: Array = []
 	var tries: int = 0
+	var tagged: Array = Data.reward_item2_pool_tagged(pool) if pool != "" else []
 	while out.size() < maxi(1, count) and tries < 40:
 		tries += 1
-		var item: ItemData = roll_drop(from_boss)
+		var item: ItemData = Locations.pick(tagged, _page.drop_rng()) if not tagged.is_empty() \
+			else roll_drop(from_boss)
 		if item == null:
 			break
 		if not out.has(item):

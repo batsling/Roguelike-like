@@ -891,6 +891,13 @@ func _matches_pool(item: ItemData, pools: PackedStringArray) -> bool:
 # SHOP_POOL_WEIGHT times. Plain uniform when nothing in the pool is a shop item,
 # which is the common case and costs one pass to establish.
 func _weighted_pick(rng: RandomNumberGenerator, pool: Array) -> ItemData:
+	# A location's lean on top of the shop weight (docs/locations-design.md §4).
+	if Locations.is_leaning():
+		var weights: Array = []
+		for it in pool:
+			weights.append((SHOP_POOL_WEIGHT if (it as ItemData).in_pool(&"shop") else 1)
+				* Locations.weight_of(it))
+		return Locations.pick_weighted(pool, weights, rng)
 	var total: int = 0
 	for it in pool:
 		total += SHOP_POOL_WEIGHT if (it as ItemData).in_pool(&"shop") else 1

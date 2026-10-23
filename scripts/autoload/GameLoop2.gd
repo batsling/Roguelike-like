@@ -76,6 +76,9 @@ signal player_hit(damage, blocked)    # a stacked enemy landed a hit this resolv
 signal attempt_logged(cost: String, undone: bool)
 signal run_lost()
 signal run_won()
+# A LOCATION WAS DEALT (docs/locations-design.md): the run's start, or a
+# difficulty up. The page shows its popup off this.
+signal location_changed(location_id: StringName)
 
 # Shields granted when a game is SELECTED — the hits you get to not take at it
 # (§3). A Traditional roguelike is the long haul, so it grants more.
@@ -447,8 +450,26 @@ var tiles: Dictionary = {}
 # "health": int}. A unit is a body of the PLAYER's — the Landmine is the whole
 # roster today — and it layers ON TOP of a tile effect rather than competing with
 # one for the cell. It does not block an enemy: a body walks into the cell and the
-# unit reacts, which for the mine means going off.
+# unit reacts, which for the mine means going off — unless the unit says it
+# BLOCKS (the poops), and then it is a wall the stack has to break.
 var units: Dictionary = {}
+
+# THE LOCATION THE RUN IS STANDING IN (docs/locations-design.md). Dealt a Low one
+# at the start and a new one at every difficulty up; nobody chooses it. Kept here
+# rather than on GameState because what it does lands on this board.
+#   location_id     the LocationData id, or &"" (an empty roster, or a test)
+#   location_tier   the tier it was dealt FOR — a difficulty up is "the tier is
+#                   higher than this". -2 is a save from before locations: it
+#                   adopts the run's tier at the next check rather than dealing
+#                   one on the spot.
+#   location_uses   how many times each of its actions has been taken, by index
+var location_id: StringName = &""
+var location_tier: int = -1
+var location_uses: Array = []
+# Dealt and not yet SHOWN: the page opens the arrival popup off this at its next
+# quiet moment, and clears it. Saved, so a location dealt by the spawn that ended
+# a session is still announced when the run is picked up again.
+var location_unseen: bool = false
 
 # Games removed from the pool by Bash (§4) — destroyed outright, never offered
 # again this run. The overworld consults is_bashed() when drawing games.
@@ -881,6 +902,10 @@ func reset() -> void:
 	tiles.clear()
 	units.clear()
 	drops.clear()
+	location_id = &""
+	location_tier = -1
+	location_uses = []
+	location_unseen = false
 	chest_points = 0
 	chest_point_sources.clear()
 	boss_chests.clear()
@@ -964,6 +989,9 @@ func start_run(character: CharacterData) -> void:
 	# splits would be wrong from its first frame.
 	RunTimer.begin_run()
 	reset()
+	# THE RUN'S FIRST FLOOR (docs/locations-design.md §2): a Low location, dealt
+	# here so the board the opening game walks onto is already the location's.
+	_location_if_due()
 
 # --- save / load ----------------------------------------------------------
 #
@@ -1006,6 +1034,13 @@ func serialize() -> Dictionary:
 		# which restores as a board with nothing on the ground — correct, since
 		# there was nothing to put there.
 		"tiles": _serialize_cells(tiles, "games"),
+		# THE LOCATION (docs/locations-design.md): which, for what tier, and how much
+		# of its actions is spent. Absent from an older save, which comes back with
+		# no location and adopts the run's tier (location_tier -2, see restore).
+		"location_id": String(location_id),
+		"location_tier": location_tier,
+		"location_uses": location_uses.duplicate(),
+		"location_unseen": location_unseen,
 		"units": _serialize_cells(units, "health"),
 		"drops": _serialize_drops(),
 		# The chest the report owes (§8.2) — banked at the kill and paid at the
@@ -1181,6 +1216,12 @@ func restore(data: Dictionary) -> void:
 	# draw as a blank badge and trigger nothing.
 	tiles = _deserialize_cells(data.get("tiles", []), "games", func(id): return Data.get_tile(id) != null)
 	units = _deserialize_cells(data.get("units", []), "health", func(id): return Data.get_unit(id) != null)
+	location_id = StringName(String(data.get("location_id", "")))
+	if location_id != &"" and Data.get_location(location_id) == null:
+		location_id = &""        # a location since deleted from the sheet
+	location_tier = int(data.get("location_tier", -2))
+	location_uses = (data.get("location_uses", []) as Array).duplicate()
+	location_unseen = bool(data.get("location_unseen", false)) and location_id != &""
 	_restore_drops(data.get("drops", []))
 	chest_points = int(data.get("chest_points", 0))
 	_restore_chest_sources(data.get("chest_point_sources", []))
@@ -1568,7 +1609,7 @@ func roll_conjured_enemy(tier: int = -1, tag: StringName = &"") -> GoalEnemyData
 	for step in range(clampi(tier, 0, GoalEnemyData.Difficulty.INSANE), -1, -1):
 		var bucket: Array = pool.filter(func(e): return e is GoalEnemyData and e.tier_index() == step)
 		if not bucket.is_empty():
-			return bucket[randi() % bucket.size()]
+			return Locations.pick(bucket)
 	# A tagged pool is a handful of bodies and may have none at or below the run's
 	# tier at all (every robot is Medium; a Low run asking for one finds nothing
 	# under it). Rather than pay the bill with an untagged enemy, widen UPWARD
@@ -1577,7 +1618,7 @@ func roll_conjured_enemy(tier: int = -1, tag: StringName = &"") -> GoalEnemyData
 	if tag != &"":
 		var above: Array = pool.filter(func(e): return e is GoalEnemyData)
 		if not above.is_empty():
-			return above[randi() % above.size()]
+			return Locations.pick(above)
 	return null
 
 # THE ESCORT (§7.5): the second body that spawns alongside the enemy of the game
@@ -1666,7 +1707,10 @@ func _pick_by_type_tier(pool: Array, typ: StringName, tier: int,
 	for step in range(clampi(tier, 0, GoalEnemyData.Difficulty.INSANE), -1, -1):
 		var rung: Array = type_tiers.get(step, [])
 		if not rung.is_empty():
-			return rung[randi() % rung.size()]
+			# Leaned by the location (docs/locations-design.md §4): its tagged bodies
+			# weigh more WITHIN the bucket the type and tier already chose, so a lean
+			# never trades the genre or the difficulty away.
+			return Locations.pick(rung)
 	# Nothing this type has is at or below the tier asked for. `by_type` holds only
 	# what is ABOVE it now, every rung at or below having just been looked at.
 	var fallback: Array = by_type
@@ -1674,7 +1718,7 @@ func _pick_by_type_tier(pool: Array, typ: StringName, tier: int,
 		fallback = by_tier
 	if fallback.is_empty():
 		fallback = anything
-	return fallback[randi() % fallback.size()] if not fallback.is_empty() else null
+	return Locations.pick(fallback) if not fallback.is_empty() else null
 
 # Rolls an enemy for a game of `game_type` at `tier` and chooses it in one step
 # (the common overworld path: pick a game -> its enemy spawns). Returns the
@@ -1831,6 +1875,10 @@ func _count_spawn_event() -> void:
 func _capstone_if_due(type_key: StringName = &"", tier: int = -1) -> void:
 	if RunDifficulty.is_boss_spawn(GameState.spawn_events):
 		_land_capstone_boss(type_key, tier)
+	# …and the difficulty up's third half: a NEW LOCATION (docs/locations-design.md
+	# §2), after the boss, so what it stands up arrives on top of everything the
+	# spawn already put down. Every spawn path ends here, which is why it lives here.
+	_location_if_due()
 
 # THE EVERY-THIRD-SPAWN CAPSTONE (§19.6): a boss, on top of whatever else this
 # spawn event was already putting down.
@@ -4006,8 +4054,69 @@ func damage_unit(cell: Vector2i, amount: int = 1) -> bool:
 	# off the board is still destroyed — the Health column is what it takes to
 	# break the thing, and a `damaged:` list is what breaking it sets off.
 	units.erase(cell)
+	if unit != null:
+		_unit_destroyed(unit, cell)
 	loop_changed.emit()
 	return true
+
+# WHAT A BROKEN UNIT LEAVES (UnitData.on_destruction): every `always` outcome, then
+# one weighted draw from `one_of`. After it is off the board, so a drop can lie on
+# the square it stood on. Who broke it does not matter — a body's swing pays out
+# the same as the player's bomb.
+func _unit_destroyed(unit: UnitData, cell: Vector2i) -> void:
+	var table: Dictionary = unit.on_destruction
+	for outcome in table.get("always", []):
+		_run_destruction(outcome, cell, unit)
+	var one_of: Array = table.get("one_of", [])
+	if not one_of.is_empty():
+		var weights: Array = []
+		for o in one_of:
+			weights.append(float((o as Dictionary).get("chance", 0.0)))
+		var got = Locations.pick_weighted(one_of, weights)
+		if got is Dictionary:
+			_run_destruction(got, cell, unit)
+
+func _run_destruction(outcome: Dictionary, cell: Vector2i, unit: UnitData) -> void:
+	var what: String = unit.display_name
+	match String(outcome.get("op", "")):
+		"loot":
+			place_drop(cell, GameState.roll_loot_entry())
+		"give":
+			var entry: Dictionary = _loot_entry_for(String(outcome.get("kind", "")),
+				StringName(String(outcome.get("id", ""))))
+			if not entry.is_empty():
+				place_drop(cell, entry)
+		"spawn_enemy":
+			var e: GoalEnemyData = roll_conjured_enemy(RunDifficulty.current_tier(),
+				StringName(String(outcome.get("tag", ""))))
+			if e != null and spawn_to_stack(e) > 0:
+				var msg: String = "%s crawled out of the %s." % [e.display_name, what]
+				GameLog.add(msg, UITheme.DANGER)
+				Notifications.notify(msg, UITheme.DANGER)
+		"gold":
+			GameState.change_gold(int(outcome.get("value", 0)))
+			GameLog.add("The %s paid %d Gold." % [what, int(outcome.get("value", 0))], UITheme.GOLD)
+		"heal":
+			GameState.change_hp(int(outcome.get("value", 0)))
+			GameLog.add("The %s healed you for %d." % [what, int(outcome.get("value", 0))],
+				UITheme.GOLD)
+
+# A pack entry for one named piece of loot, or {} for an id the catalog lacks.
+func _loot_entry_for(kind: String, id: StringName) -> Dictionary:
+	var def: Resource = null
+	match kind:
+		"trinket": def = Data.get_trinket(id)
+		"scroll": def = Data.get_scroll(id)
+		"potion": def = Data.get_potion(id)
+		"card": def = Data.get_card(id)
+		"wand": def = Data.get_wand(id)
+		"bag": def = Data.get_bag(id)
+		"weapon":
+			var w: WeaponData = Data.get_weapon(id)
+			return WeaponSystem.new_entry(w) if w != null else {}
+	if def == null:
+		return {}
+	return {"type": kind, "id": id, "rarity": def.get("rarity")}
 
 # The same blow across a list of cells — what a thrown potion's `deal_damage` and
 # a bomb blast both do to the GROUND they cover, after they have finished with the
@@ -4232,6 +4341,185 @@ func stun(instance: int, stacks: int = 1) -> bool:
 # a body, so nothing has to know it is a status rather than a field.
 func stun_stacks(entry: Dictionary) -> int:
 	return entry_status_stacks(entry, &"stun")
+
+# --- the location (docs/locations-design.md) --------------------------------
+#
+# The floor the run stands on between two difficulty steps. Dealt, never chosen:
+# a Low one at the start (start_run), a new one of the new tier at every
+# difficulty up (_capstone_if_due). What it does is LocationData's; the three
+# halves below are what doing it means on this board.
+
+# DEAL A NEW LOCATION if the run's tier has climbed past the one the current
+# location was dealt for. Idempotent between steps, so every spawn path can ask.
+func _location_if_due() -> void:
+	var tier: int = RunDifficulty.current_tier()
+	if location_tier == -2:
+		# A save from before locations: adopt the tier it is at, and let the next
+		# step be the first one that deals.
+		location_tier = tier
+		return
+	if tier <= location_tier:
+		return
+	location_tier = tier
+	var loc: LocationData = Locations.deal(tier, null, location_id)
+	if loc == null:
+		return        # an empty roster: the run carries on with no floor
+	enter_location(loc)
+
+# Stand the run in `loc`: it replaces whatever was there, its actions start
+# fresh, and its ARRIVE effects run now. Public so the dev panel and the tests can
+# put a run anywhere.
+func enter_location(loc: LocationData) -> void:
+	if loc == null:
+		return
+	location_id = loc.id
+	location_unseen = true
+	location_uses = []
+	for _a in loc.actions:
+		location_uses.append(0)
+	var msg: String = "You enter %s." % loc.display_name
+	GameLog.add(msg, UITheme.GOLD)
+	for effect in loc.arrive:
+		if effect is Dictionary:
+			_run_location_effect(effect)
+	location_changed.emit(location_id)
+	loop_changed.emit()
+
+func location() -> LocationData:
+	return Locations.current()
+
+# One ARRIVE effect. A short vocabulary on purpose (the sheet's grammar lives in
+# tools/generate_location_tres.py); anything else says so rather than failing
+# silently.
+func _run_location_effect(effect: Dictionary) -> void:
+	var n: int = maxi(1, int(effect.get("count", 1)))
+	match String(effect.get("op", "")):
+		"spawn_enemy":
+			# Conjured, the way a curse's bill is: the run's tier, widening only
+			# DOWN, and the tag is the promise — nothing is substituted for it.
+			var tag := StringName(String(effect.get("tag", "")))
+			var names: Array = []
+			for _i in range(n):
+				var e: GoalEnemyData = roll_conjured_enemy(RunDifficulty.current_tier(), tag)
+				if e == null:
+					break
+				if spawn_to_stack(e) > 0:
+					names.append(e.display_name)
+			if not names.is_empty():
+				var msg: String = "%s walked on." % ", ".join(PackedStringArray(names))
+				GameLog.add(msg, UITheme.DANGER)
+				Notifications.notify(msg, UITheme.DANGER)
+		"place_tile":
+			var tile_id := StringName(String(effect.get("tile", "")))
+			for cell in _random_empty_cells(n):
+				apply_tile(cell, tile_id)
+		"place_unit":
+			for cell in _random_empty_cells(n):
+				var unit: UnitData = _roll_location_unit(effect)
+				if unit != null:
+					apply_unit(cell, unit.id)
+		"effect":
+			# Anything an item can do, in the item grammar (generate_location_tres.py).
+			var inner = effect.get("effect", {})
+			if inner is Dictionary:
+				EffectSystem.apply(inner, {"source": "location"})
+		_:
+			push_warning("GameLoop2: unknown location effect %s" % effect)
+
+# `n` distinct empty squares, at random — fewer when the board has fewer.
+func _random_empty_cells(n: int) -> Array:
+	var free: Array = empty_cells()
+	free.shuffle()
+	return free.slice(0, mini(n, free.size()))
+
+# One unit of the effect's tag. `favour` takes `favour_pct` of the draw and the
+# others share the rest evenly (Dross: an 80% plain Poop); each is then leaned by
+# the location like any other roll.
+func _roll_location_unit(effect: Dictionary) -> UnitData:
+	var tag := StringName(String(effect.get("tag", "")))
+	var pool: Array = Data.all_units().filter(func(u): return (u as UnitData).has_tag(tag))
+	pool.sort_custom(func(a, b): return String(a.id) < String(b.id))
+	if pool.is_empty():
+		return null
+	var favour := StringName(String(effect.get("favour", "")))
+	var pct: float = clampf(float(effect.get("favour_pct", 0)), 0.0, 100.0)
+	var others: int = pool.filter(func(u): return (u as UnitData).id != favour).size()
+	var weights: Array = []
+	for u in pool:
+		var w: float = 1.0
+		if favour != &"":
+			if (u as UnitData).id == favour:
+				w = pct if others > 0 else 100.0
+			else:
+				w = (100.0 - pct) / float(maxi(1, others))
+		weights.append(w * Locations.weight_of(u))
+	return Locations.pick_weighted(pool, weights)
+
+# --- the location's actions: a button on its card, a few times per stay -------
+
+func location_action_used(index: int) -> int:
+	return int(location_uses[index]) if index >= 0 and index < location_uses.size() else 0
+
+# Why action `index` cannot be taken right now, or "" when it can. Greyed rather
+# than hidden on the card, like a machine's buttons: the reason is the text.
+func location_action_blocked(index: int) -> String:
+	var loc: LocationData = location()
+	if loc == null or index < 0 or index >= loc.actions.size():
+		return "Nothing here"
+	if run_over:
+		return "The run is over"
+	var action: Dictionary = loc.actions[index]
+	if location_action_used(index) >= int(action.get("limit", 1)):
+		return "Used up"
+	var cost: Dictionary = action.get("cost", {})
+	var n: int = int(cost.get("value", 1))
+	match String(cost.get("op", "")):
+		"lose_max_hp":
+			# Never the last of it: a button that kills you outright is not a trade.
+			if GameState.max_hp - n < 1:
+				return "Not enough Max Health"
+		"spend":
+			var stat: String = String(cost.get("stat", ""))
+			if int(GameState.get(stat)) < n:
+				return "Needs %d %s" % [n, stat.capitalize()]
+	return ""
+
+# Take action `index`: pay its cost, bank its payout. Returns false (and changes
+# nothing) when it is blocked.
+func use_location_action(index: int) -> bool:
+	if location_action_blocked(index) != "":
+		return false
+	var loc: LocationData = location()
+	var action: Dictionary = loc.actions[index]
+	var cost: Dictionary = action.get("cost", {})
+	var n: int = int(cost.get("value", 1))
+	match String(cost.get("op", "")):
+		"lose_max_hp":
+			GameState.change_max_hp(-n)
+		"spend":
+			var stat: String = String(cost.get("stat", ""))
+			if stat == "gold":
+				GameState.change_gold(-n)
+			else:
+				GameState.set(stat, int(GameState.get(stat)) - n)
+	var pay: Dictionary = action.get("pay", {})
+	match String(pay.get("op", "")):
+		"gain_chest":
+			var size: int = int(pay.get("size", 0))
+			GameState.grant_chest(1, int(Data.CHEST_SIZE_CHOICES.get(size, 1)),
+				String(pay.get("pool", "")))
+		"effect":
+			var inner = pay.get("effect", {})
+			if inner is Dictionary:
+				EffectSystem.apply(inner, {"source": "location"})
+	while location_uses.size() <= index:
+		location_uses.append(0)
+	location_uses[index] = location_action_used(index) + 1
+	GameLog.add("%s: %s." % [loc.display_name,
+		Locations.action_text(action, location_action_used(index))], UITheme.GOLD)
+	GameState.emit_signal("inventory_changed")
+	loop_changed.emit()
+	return true
 
 # --- push (§grid) ----------------------------------------------------------
 #
@@ -6348,9 +6636,16 @@ func fits_at(enemy: GoalEnemyData, row: int, col: int, exclude: int = 0) -> bool
 		return false
 	var taken: Dictionary = occupancy(exclude)
 	for cell in cells:
-		if taken.has(cell):
+		if taken.has(cell) or blocks_at(cell):
 			return false
 	return true
+
+# Whether a BLOCKING unit stands on `cell` (UnitData.blocks — the poops). Asked by
+# fits_at, so every way a body can come to stand somewhere — a step, a spawn, a
+# push, a shove — treats it as taken.
+func blocks_at(cell: Vector2i) -> bool:
+	var unit: UnitData = unit_at(cell)
+	return unit != null and unit.blocks
 
 # Every row `enemy` could stand in at column `col` right now.
 func _open_rows(enemy: GoalEnemyData, col: int, exclude: int = 0) -> Array:
@@ -6656,6 +6951,11 @@ func _shove_lane(enemy: GoalEnemyData, row: int, col: int, exclude: int) -> Dict
 		if _is_anchored(e):
 			anchored[inst] = true
 	var newcomer: Array = footprint_at(enemy, row, col)
+	# A blocking unit is a wall a shove cannot move: a lane with one where the
+	# newcomer would stand, or where a shoved body would go, cannot be shoved.
+	for cell in newcomer:
+		if blocks_at(cell):
+			return {}
 	var steps: Dictionary = {}
 	var cost: int = 0
 	for _pass in range(grid_cols()):
@@ -6678,6 +6978,9 @@ func _shove_lane(enemy: GoalEnemyData, row: int, col: int, exclude: int) -> Dict
 			var cells: Array = footprint_at(who[inst], lane[inst], pos[inst] - 1)
 			if cells.is_empty():
 				return {}     # it would be shoved off the front edge: lane is full
+			for c in cells:
+				if blocks_at(c):
+					return {}
 			frontier.append_array(cells)
 		if moved.is_empty():
 			return {"row": row, "steps": steps, "cost": cost}
@@ -7033,6 +7336,19 @@ func _walk_one(entry: Dictionary, row: int, col: int) -> bool:
 		for dr in _agile_rows(entry):
 			if fits_at(enemy, row + dr, col - 1, inst):
 				return _move_entry(entry, row + dr, col - 1)
+
+	# A WALL IN THE WAY IS STRUCK (docs/locations-design.md §5). A blocking unit —
+	# a poop — stops the step, and the body spends it hitting the thing instead:
+	# 1 damage to each blocking unit its footprint would have walked into. That is
+	# how the stack chews through a wall the player left standing, and why a poop
+	# is worth breaking yourself before they do (its drop lands either way).
+	var struck: bool = false
+	for cell in footprint_at(enemy, row, col - 1):
+		if blocks_at(cell):
+			damage_unit(cell, 1)
+			struck = true
+	if struck:
+		loop_changed.emit()
 	return false
 
 # The two lanes an Agile body will try, nearest-to-the-middle first so it drifts

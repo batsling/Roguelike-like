@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="LocationData" load_steps=2 format=3 uid="uid://location_the_chest"]
+
+[ext_resource type="Script" path="res://scripts/resources/LocationData.gd" id="1_loc"]
+
+[resource]
+script = ExtResource("1_loc")
+id = &"the_chest"
+display_name = "The Chest"
+game = "The Binding of Isaac"
+tier = 2
+description = "Damage taken here is doubled. When entered, Use a key to Gain +1 Small Chest up to 4 times"
+arrive = []
+standing = [{"op": "damage_taken_mult", "value": 2.0}]
+actions = [{"limit": 4, "cost": {"op": "spend", "stat": "keys", "value": 1}, "pay": {"op": "gain_chest", "size": 0}}]
+tag_types = PackedStringArray()
+tag_up = 0.0
+file = "TheChest"
+image_path = "res://images2.0/locations/TheChest.png"

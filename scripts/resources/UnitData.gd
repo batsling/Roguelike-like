@@ -12,8 +12,9 @@ extends Resource
 # resources rather than one with a flag, and what happens when a particular pair
 # meets is authored in `interactions` rather than hard-coded.
 #
-# A unit does NOT block a body: an enemy walks into the cell and the unit reacts,
-# which for the Landmine means going off. What it does instead is make that lane
+# A unit does NOT block a body unless it says it does (`blocks`, the poops): an
+# enemy walks into the cell and the unit reacts, which for the Landmine means
+# going off. What it does instead is make that lane
 # expensive, and the enemies' own routing reads it (GameLoop2._spawn_rows), so a
 # mined board is one the stack walks AROUND rather than one it cannot cross.
 #
@@ -70,6 +71,29 @@ extends Resource
 @export var file: String = ""
 @export var image: Texture2D
 
+# A WALL rather than a toll (docs/locations-design.md §5). No body can step onto
+# a blocking unit's cell; a body whose step it stops strikes it for 1 instead, so
+# the stack chews through it while the player can break it with anything that
+# damages the ground. The poops Dross lays are the first.
+@export var blocks: bool = false
+
+# What it leaves behind when its Health runs out (the sheet's On Destruction):
+#   {"always": [outcome, …], "one_of": [{…outcome, "chance": 50.0}, …]}
+# `always` all happen; `one_of` is ONE weighted draw. An outcome is
+#   {"op": "loot"}                          a random piece, on that square
+#   {"op": "give", "kind": …, "id": …}      that piece, on that square
+#   {"op": "spawn_enemy", "tag": …}         a body of that tag walks on
+#   {"op": "gold", "value": N}
+#   {"op": "heal", "value": N}
+@export var on_destruction: Dictionary = {}
+
+# What the unit is (`poop`), for anything that picks units by tag and for a
+# location's tag boost (docs/locations-design.md §4).
+@export var tags: PackedStringArray = PackedStringArray()
+
+func has_tag(tag: StringName) -> bool:
+	return tags.has(String(tag))
+
 # The effects one trigger fires, or [] when this unit does nothing on it.
 func effects_for(trigger: StringName) -> Array:
 	var got = triggers.get(String(trigger), [])
@@ -115,10 +139,11 @@ func hover_card(health_left: int = -1) -> Dictionary:
 		"title": display_name,
 		"accent": ACCENT,
 		"art": image,
-		"subtitle": "Unit  ·  yours, standing on the ground",
+		"subtitle": "Unit  ·  a wall on the ground" if blocks else "Unit  ·  yours, standing on the ground",
 		"pips": [{"text": "❤ %d" % hp, "good": true}],
 		"lines": lines,
-		"note": "Nothing is blocked by it — an enemy walks in and it reacts.",
+		"note": ("Nothing can step onto it: an enemy that reaches it hits it for 1 instead. Break it yourself with anything that hits the ground."
+			if blocks else "Nothing is blocked by it — an enemy walks in and it reacts."),
 	}
 
 # One authored interaction, in words — the mirror of TileEffectData.interaction_line,

@@ -646,6 +646,10 @@ func _ready() -> void:
 	# than banking a RewardScreen chest.
 	if not GameLoop2.enemy_defeated.is_connected(_on_enemy_defeated):
 		GameLoop2.enemy_defeated.connect(_on_enemy_defeated)
+	# A location was dealt (docs/locations-design.md): its popup, at the page's
+	# next quiet moment (_show_location_if_unseen).
+	if not GameLoop2.location_changed.is_connected(_on_location_changed):
+		GameLoop2.location_changed.connect(_on_location_changed)
 	# A save being resumed takes precedence over booting a fresh run: the state is
 	# already on GameState / GameLoop2, and this restores the screen over it.
 	if SaveSystem.has_pending_resume():
@@ -791,6 +795,7 @@ func _close_start_picker() -> void:
 		_start_picker.close()
 	_start_picker = null
 	_set_run_page_visible(true)
+	call_deferred("_show_location_if_unseen")
 
 # The pinned header stands down while the start screen is up: at that moment the
 # bar is reporting a Health pool, a purse, a character and a road walked that no
@@ -991,6 +996,7 @@ func choose_start(index: int) -> void:
 # capture_view_state() stored; an empty one (a save written outside the overworld,
 # or a pre-2.0 save) falls back to a fresh offering at the saved position.
 func resume_run(view: Dictionary) -> void:
+	call_deferred("_show_location_if_unseen")
 	if view.is_empty():
 		_phase = Phase.OVER if GameLoop2.run_over else Phase.SELECT
 		_start_options.clear()
@@ -2871,6 +2877,7 @@ func _end_resolve() -> void:
 	if not _resolving:
 		return
 	_resolving = false
+	call_deferred("_show_location_if_unseen")
 	_refresh_stage()
 	# The tracker's buttons go dead for the length of a playback (a second tick
 	# mid-animation would be resolving a turn onto a board still sliding through
@@ -3000,6 +3007,7 @@ func _open_post_game() -> void:
 # `_pending_shop` is still set and `_open_pending_shop` mounts it in its turn.
 func _on_post_game_finished(haul: PostCombatScreen) -> void:
 	_post_screen = null
+	call_deferred("_show_location_if_unseen")
 	# Its exit named the shop, so the shop is where it leads (_open_pending_shop).
 	_shop_from_haul = haul != null and is_instance_valid(haul) and haul.shop_id() != &""
 	_refresh()
@@ -3773,11 +3781,13 @@ func _redeem_pending_chests() -> void:
 	# a different chest. One screen with a labelled group per chest says what you
 	# actually got: "2 Small Chests" is two chests of one item, not one of two.
 	var sizes: Array = []
+	var pools: Array = []
 	while GameState.pending_chests > 0:
 		var choices: int = GameState.take_pending_chest()  # -1 none / 0 default / N
 		if choices < 0:
 			break
 		sizes.append(maxi(0, choices))
+		pools.append(GameState.last_chest_pool)
 	if sizes.is_empty():
 		return
 	_reward_open = true
@@ -3786,7 +3796,7 @@ func _redeem_pending_chests() -> void:
 		_reward_open = false
 		_redeem_pending_chests())
 	add_child(screen)
-	screen.setup_chests(sizes)
+	screen.setup_chests(sizes, pools)
 
 # A Mysterious Mask was picked up: open its choice when the page is next idle.
 func _on_mask_granted() -> void:
@@ -3838,7 +3848,7 @@ func _hand_chests_to_post_game() -> void:
 		if choices < 0:
 			break
 		var count: int = choices if choices > 0 else load(REWARD_SCREEN_SCRIPT).BASE_ITEM_CHOICES + discovery
-		var offer: Array = _roll_chest(false, maxi(1, count))
+		var offer: Array = _drops.roll_chest(false, maxi(1, count), GameState.last_chest_pool)
 		if offer.is_empty():
 			continue
 		if _post_screen != null and is_instance_valid(_post_screen):
@@ -5174,6 +5184,7 @@ func _build_choices() -> void:
 			"repeat": GameState.has_played_game(game.id),
 		})
 	_add_rift_key_cards(tier)
+	_add_location_rift_cards(tier)
 
 # RIFT KEY CARDS (docs/rifts-design.md §8). While the player holds a key, every
 # slot the offering leaves empty — a game with fewer connections than cards — is
@@ -5230,6 +5241,119 @@ func _add_rift_key_cards(tier: int) -> void:
 			"rift_key": dest,
 		})
 
+# --- the location (docs/locations-design.md §6) ------------------------------
+#
+# A location is DEALT by the loop (the run's start, a difficulty up) and SHOWN by
+# the page: its popup — art, name, what it does — at the next moment nothing else
+# is on screen for the player to read. Not over the start screen, the board's
+# playback or the haul screen, and not over a reward or another popup; each of
+# those, when it goes, asks again. `GameLoop2.location_unseen` is the flag, so a
+# location dealt just before a save is still announced when the run comes back.
+
+const LOCATION_POPUP := "res://scripts/redesign2/LocationPopup.gd"
+var _location_popup: Control = null
+
+func _on_location_changed(_id: StringName) -> void:
+	if _board != null:
+		_board.refresh()
+	call_deferred("_show_location_if_unseen")
+
+func _show_location_if_unseen() -> void:
+	if not is_inside_tree() or not GameLoop2.location_unseen or GameLoop2.run_over:
+		return
+	if _resolving or _reward_open or _phase == Phase.START_SELECT:
+		return
+	if _start_picker != null and is_instance_valid(_start_picker):
+		return
+	if _post_screen != null and is_instance_valid(_post_screen):
+		return
+	if _location_popup != null and is_instance_valid(_location_popup):
+		return
+	show_location(true)
+
+# Open the location's popup — the arrival (`arrival`) or the chip's click. Public
+# for the chip, the tests and the driver. Null with no location.
+func show_location(arrival: bool = false) -> Control:
+	var loc: LocationData = Locations.current()
+	if loc == null:
+		return null
+	if _location_popup != null and is_instance_valid(_location_popup):
+		_location_popup.close()
+	GameLoop2.location_unseen = false
+	_location_popup = load(LOCATION_POPUP).new()
+	_location_popup.setup(self, loc, arrival)
+	_location_popup.finished.connect(func():
+		_location_popup = null
+		_refresh()
+		autosave())
+	return _location_popup
+
+# THE VOID'S RIFT (docs/locations-design.md §3): while the location says
+# `offering_rift`, that many cards of every offering are a rift card — the same
+# card a Rift Key deals (§8 of the rifts doc: a rift game, and the game two away
+# it leads on to), except that it is FREE: taking it spends no key.
+#
+# It TAKES THE PLACE of an ordinary card rather than waiting for an empty slot,
+# because the location's promise is "one of the games on offer is a rift", not
+# "a rift if there is room". Two cards are never the one replaced: the Amulet, and
+# the last card left on a shortest road to it — a rift may never shorten anything
+# (rifts doc §2), and it must not quietly lengthen the road either. With nothing
+# safe to replace it is added past the end instead.
+func _add_location_rift_cards(tier: int) -> void:
+	var want: int = Locations.offering_rifts()
+	if want <= 0 or _dash_mode or _asking_return() or not Settings.rifts_enabled:
+		return
+	var dests: Array = RunGraph.rift_key_destinations(GameState.current_game_id).filter(
+		func(gid): return not GameLoop2.is_bashed(StringName(gid)))
+	if dests.is_empty():
+		return
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash(_offer_seed() + "location-rift")
+	var exclude: Dictionary = _key_skip.duplicate()
+	for gid in GameLoop2.bashed:
+		exclude[StringName(gid)] = true
+	for c in _choices:
+		exclude[StringName(c["slot"])] = true
+		exclude[(c["game"] as GameData).id] = true
+	var games: Array = RunGraph.rift_key_games(rng, exclude)
+	var here: int = steps_to_amulet(GameState.current_game_id)
+	for i in range(mini(want, games.size())):
+		var gid := StringName(games[i])
+		var game: GameData = Data.get_game(gid)
+		if game == null:
+			continue
+		var dest := StringName(dests[rng.randi() % dests.size()])
+		var slot_key: String = "%s>%s>void" % [String(gid), String(dest)]
+		var enemy: GoalEnemyData = _slot_enemies.get(slot_key)
+		if enemy == null:
+			enemy = GameLoop2.roll_enemy(GameLoop2.game_type_key(game), tier)
+			_slot_enemies[slot_key] = enemy
+		var card := {
+			"game": game, "enemy": enemy, "slot": gid,
+			"boss": false, "amulet": false,
+			"repeat": GameState.has_played_game(gid),
+			"rift_key": dest, "free_rift": true,
+		}
+		_key_cards[gid] = dest
+		# Which ordinary card makes room: not the Amulet, not a rift, and not the
+		# last one standing on a shortest road.
+		var optimal: Array = []
+		var ordinary: Array = []
+		for j in range(_choices.size()):
+			var c: Dictionary = _choices[j]
+			if bool(c.get("amulet", false)) or c.has("rift_key"):
+				continue
+			ordinary.append(j)
+			var there: int = steps_to_amulet(StringName(c["slot"]))
+			if here >= 0 and there >= 0 and there < here:
+				optimal.append(j)
+		var replaceable: Array = ordinary.filter(
+			func(j): return optimal.size() > 1 or not optimal.has(j))
+		if replaceable.is_empty():
+			_choices.append(card)
+		else:
+			_choices[int(replaceable[rng.randi() % replaceable.size()])] = card
+
 # OPEN THE RIFT a key card promised (docs/rifts-design.md §8): spend the key and
 # lay the rift ONE-ENDED, off its destination only. The way back to where it was
 # opened from is never laid, so it is a one-way passage, and a game hanging off
@@ -5238,7 +5362,9 @@ func _add_rift_key_cards(tier: int) -> void:
 func _open_rift_key(choice: Dictionary) -> void:
 	var gid := StringName(choice["slot"])
 	var dest := StringName(choice["rift_key"])
-	GameState.keys = maxi(0, GameState.keys - 1)
+	# The Void's card is free (docs/locations-design.md §3): no key is spent.
+	if not bool(choice.get("free_rift", false)):
+		GameState.keys = maxi(0, GameState.keys - 1)
 	var laid: Array = GameState.rifts.duplicate(true)
 	laid.append({"game": String(gid), "a": String(dest), "b": "", "kind": RunGraph.RIFT_KEYED})
 	GameState.set_rifts(laid)
@@ -7250,6 +7376,7 @@ func _build_ui() -> void:
 	_board.loot_throw_cancelled.connect(_on_loot_throw_cancelled)
 	_board.enemy_inspected.connect(_show_enemy_info)
 	_board.graveyard_requested.connect(show_graveyard)
+	_board.location_requested.connect(show_location)
 	# The board points back at the checklist: hovering a body lights the goal row
 	# written about it (_bind_row_to_body).
 	_board.enemy_hovered.connect(_on_enemy_hovered)

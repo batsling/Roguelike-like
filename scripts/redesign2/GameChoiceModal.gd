@@ -475,7 +475,13 @@ func _build_game_column(game: GameData, accent: Color) -> Control:
 
 	# THE RIFT'S DEAL (docs/rifts-design.md §6), said where the decision is made:
 	# the risk and the payout in one line.
-	if _key_dest() != &"":
+	if _key_dest() != &"" and bool(_choice.get("free_rift", false)):
+		var free_dest: GameData = Data.get_game(_key_dest())
+		var free_name: String = free_dest.display_name if free_dest != null else String(_key_dest())
+		facts.add_child(_fact_line("🌀 A free rift — one way to %s" % free_name, UITheme.RIFT,
+			"The place you are standing in opens this rift without a key. It leads on to %s and never back to where you are now."
+			% free_name))
+	elif _key_dest() != &"":
 		var dest: GameData = Data.get_game(_key_dest())
 		facts.add_child(_fact_line("🗝 Spends a Rift Key — one way to %s"
 			% (dest.display_name if dest != null else String(_key_dest())), UITheme.RIFT,

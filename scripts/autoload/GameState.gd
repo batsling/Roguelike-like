@@ -1028,6 +1028,12 @@ var pending_chests: int = 0
 # pending_chests so the RewardScreen knows how many items to roll for the chest
 # it's opening. `pending_chests` stays the authoritative count (tests read it).
 var pending_chest_choices: Array[int] = []
+# …and the POOL each one draws from, in the same lock-step: "" is the ordinary
+# reward pool, a word is a chest only items carrying that tag or pool can come
+# out of (the Dark Room's devilish chest, docs/locations-design.md §3). Read off
+# `last_chest_pool` by whoever just called take_pending_chest.
+var pending_chest_pools: Array[String] = []
+var last_chest_pool: String = ""
 
 # MYSTERIOUS MASK (§3.1): the characters whose Level Up condition the player has
 # taken on IN ADDITION to their own, in the order they were chosen. Each one is a
@@ -1163,13 +1169,16 @@ func smelt_loot(entry) -> bool:
 # from (0 = the RewardScreen's default of BASE_ITEM_CHOICES + Discovery). Banks
 # them and announces via chest_granted so the overworld can open the item-choice
 # screens.
-func grant_chest(count: int = 1, choices: int = 0) -> void:
+func grant_chest(count: int = 1, choices: int = 0, pool: String = "") -> void:
 	if count <= 0:
 		return
+	_align_chest_pools()
 	pending_chests += count
 	for _i in range(count):
 		pending_chest_choices.append(choices)
-	Notifications.notify("Gained %d Chest%s!" % [count, "" if count == 1 else "s"],
+		pending_chest_pools.append(pool)
+	Notifications.notify("Gained %d %sChest%s!" % [count,
+		(pool.capitalize() + " ") if pool != "" else "", "" if count == 1 else "s"],
 		Color(1.0, 0.85, 0.4))
 	TriggerBus.emit_signal("chest_granted", {"count": count})
 
@@ -1182,9 +1191,11 @@ func grant_chest(count: int = 1, choices: int = 0) -> void:
 func grant_chests(sizes: Array) -> void:
 	if sizes.is_empty():
 		return
+	_align_chest_pools()
 	pending_chests += sizes.size()
 	for size in sizes:
 		pending_chest_choices.append(int(Data.CHEST_SIZE_CHOICES[int(size)]))
+		pending_chest_pools.append("")
 	Notifications.notify("Gained %s!" % Data.chest_sizes_text(sizes),
 		Color(1.0, 0.85, 0.4))
 	TriggerBus.emit_signal("chest_granted", {"count": sizes.size()})
@@ -1193,10 +1204,24 @@ func grant_chests(sizes: Array) -> void:
 # or -1 if none were pending. The overworld calls this as it opens each
 # item-reward screen.
 func take_pending_chest() -> int:
+	last_chest_pool = ""
 	if pending_chests <= 0:
 		return -1
+	_align_chest_pools()
 	pending_chests -= 1
+	if not pending_chest_pools.is_empty():
+		last_chest_pool = String(pending_chest_pools.pop_front())
 	return int(pending_chest_choices.pop_front()) if not pending_chest_choices.is_empty() else 0
+
+# The pools list is newer than the choices list, and a save (or a test) that set
+# the choices alone has no pools to go with them: pad the front with ordinary
+# chests so the two stay in step, rather than letting one chest's pool slide onto
+# the next.
+func _align_chest_pools() -> void:
+	while pending_chest_pools.size() < pending_chest_choices.size():
+		pending_chest_pools.push_front("")
+	while pending_chest_pools.size() > pending_chest_choices.size():
+		pending_chest_pools.pop_front()
 
 # Put every private random stream in the game back onto the run's seed.
 #
@@ -1364,6 +1389,7 @@ func reset_run() -> void:
 	set_rifts([])
 	pending_chests = 0
 	pending_chest_choices.clear()
+	pending_chest_pools.clear()
 	masked_characters.clear()
 	pending_masks = 0
 	smelted_loot.clear()
@@ -2369,7 +2395,15 @@ func _alloc_timed_instance() -> int:
 # their Shields, exactly as it does on an enemy. Same aggregator either side, so
 # the two can't drift.
 func combat_totals() -> Dictionary:
-	return StatusData.combat_totals(effective_statuses(), StatusData.PLAYER)
+	var out: Dictionary = StatusData.combat_totals(effective_statuses(), StatusData.PLAYER)
+	# THE LOCATION'S HALF (docs/locations-design.md §3): Dark Room and The Chest
+	# double every hit that lands on you. Folded in HERE so the swing, a status's
+	# bill and every preview of them (the board's strip, the overlay) read one
+	# number rather than three places each remembering to ask.
+	var loc_mult: float = Locations.damage_taken_mult()
+	if loc_mult != 1.0:
+		out["damage_taken_mult"] = float(out.get("damage_taken_mult", 1.0)) * loc_mult
+	return out
 
 # The statuses whose PLAYER side is a `clause` — the requirements that get ANDed
 # onto every enemy's goal.
@@ -2679,6 +2713,7 @@ func snapshot_run_resources() -> Dictionary:
 		"bonus_shields": bonus_shields,
 		"pending_chests": pending_chests,
 		"pending_chest_choices": pending_chest_choices.duplicate(),
+		"pending_chest_pools": pending_chest_pools.duplicate(),
 		"statuses": serialize_statuses(),
 		# The BORROWED stacks too, not only the owned ones: a turn can hand out a
 		# timed status (a fire tile, a body's swing) as readily as a permanent one,
@@ -2706,6 +2741,9 @@ func restore_run_resources(snap: Dictionary) -> void:
 	pending_chest_choices.clear()
 	for choices in snap.get("pending_chest_choices", []):
 		pending_chest_choices.append(int(choices))
+	pending_chest_pools.clear()
+	for pool in snap.get("pending_chest_pools", []):
+		pending_chest_pools.append(String(pool))
 	restore_statuses(snap.get("statuses", {}))
 	if snap.has("timed_statuses"):
 		restore_timed_statuses(snap["timed_statuses"])

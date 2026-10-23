@@ -62,6 +62,8 @@ signal graveyard_requested
 signal enemy_hovered(instance: int, hovered: bool)
 # A repaint finished — the host repaints anything anchored to the board with it.
 signal repainted
+# The location chip beside the difficulty was clicked (docs/locations-design.md §6).
+signal location_requested
 # The Health the board is showing moved. During a resolve playback that is NOT
 # the run's Health (which moved all at once, at report time) but the number the
 # strikes have got through so far — the host's HUD follows it so both copies of
@@ -84,6 +86,7 @@ var _pressure_why: Label            # "Amulet 4 hops away — Closing"
 var _spawn_price: Label             # "☠ +2 on a loss" (§19.8)
 var _boss_count: Label              # "boss in 2 spawns" (§19.8)
 var _size_label: Label              # "Medium difficulty"
+var _location_chip: LocationChip     # the run's location, beside the difficulty
 var _hero_icon: TextureRect
 var _hero_hp: Label
 var _hero_statuses: HBoxContainer   # the player's statuses, under the portrait (§13)
@@ -766,6 +769,13 @@ func _build_pressure_bar() -> Control:
 	_size_label.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 	small.add_child(_size_label)
 
+	# THE LOCATION (docs/locations-design.md §6), right after the difficulty, since
+	# the two change at the same moment. It answers its own hover and its own click;
+	# hidden while the run has none.
+	_location_chip = LocationChip.new()
+	_location_chip.opened.connect(func(): location_requested.emit())
+	small.add_child(_location_chip)
+
 	# THE WARNING (§3.2, §19.6): shown only while the next spawn is a difficulty up
 	# and a game is in play — the one moment a LOST RUN can bring a boss on mid-
 	# game. Says what the next press risks, in words, right above the grid it
@@ -888,6 +898,8 @@ func _refresh_pressure() -> void:
 	var tier: int = RunDifficulty.current_tier()
 	_size_label.text = "%s difficulty" % RunDifficulty.tier_name(tier)
 	_size_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if _location_chip != null:
+		_location_chip.refresh()
 	_hold_small_print_on_one_row()
 
 # THE SMALL PRINT KEEPS TO ONE ROW WHILE A PANEL SHARES THE COLUMN. The row flows
@@ -1782,6 +1794,19 @@ func _unit_node(cell: Vector2i, unit: UnitData) -> Control:
 		art.position = Vector2((_cell - side) * 0.5, (_cell - side) * 0.5)
 		art.size = Vector2(side, side)
 		holder.add_child(art)
+	# A unit that takes more than one blow wears its Health, the way a body does —
+	# a poop is a wall the stack chews through, and how far through is the read.
+	var hp: int = int((GameLoop2.units.get(cell, {}) as Dictionary).get("health", unit.health))
+	if unit.health > 1:
+		var badge := Label.new()
+		badge.text = "❤%d" % hp
+		badge.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
+		badge.add_theme_color_override("font_color", UITheme.TEXT)
+		badge.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
+		badge.add_theme_constant_override("outline_size", 4)
+		badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		badge.position = Vector2(UITheme.GAP_HAIR, _cell - UITheme.FONT_SMALL - UITheme.GAP_SNUG)
+		holder.add_child(badge)
 	return holder
 
 # --- loot on the floor (§8.2) -----------------------------------------------

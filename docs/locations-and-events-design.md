@@ -1,7 +1,9 @@
 # Locations & Events — design brainstorm
 
-Status: **brainstorm / proposal.** Companion to `games-first-redesign.md`; nothing
-here is built yet. Written to answer two questions: *do locations and events
+Status: **superseded for locations** by [locations-design.md](locations-design.md)
+(23 Oct 2026): locations were built with no goal and no choice, so §2–§5 and §7–§9
+below describe a design that was not taken. The events half (§6) is kept because
+`event-sheet-authoring.md` argues from it. Companion to `games-first-redesign.md`. Written to answer two questions: *do locations and events
 overlap, and which should be built first?*
 
 ---

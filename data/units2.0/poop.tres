@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="UnitData" load_steps=3 format=3 uid="uid://unit2_poop"]
+
+[ext_resource type="Script" path="res://scripts/resources/UnitData.gd" id="1_unit"]
+[ext_resource type="Texture2D" path="res://images2.0/units/Poop.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_unit")
+id = &"poop"
+display_name = "Poop"
+unit_type = "Inanimate"
+description = "Will block the enemy's path and can be damaged by both player and enemy. May drop loot or spawn an Enemy"
+health = 3
+blocks = true
+triggers = {}
+on_destruction = {"always": [], "one_of": [{"op": "loot", "chance": 50.0}, {"op": "spawn_enemy", "tag": "fly", "chance": 50.0}]}
+tags = PackedStringArray("poop")
+interactions = {}
+file = "Poop"
+image = ExtResource("2_img")

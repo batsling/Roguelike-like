@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="UnitData" load_steps=3 format=3 uid="uid://unit2_rainbow_poop"]
+
+[ext_resource type="Script" path="res://scripts/resources/UnitData.gd" id="1_unit"]
+[ext_resource type="Texture2D" path="res://images2.0/units/RainbowPoop.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_unit")
+id = &"rainbow_poop"
+display_name = "Rainbow Poop"
+unit_type = "Inanimate"
+description = "Will block the enemy's path and can be damaged by both player and enemy. Heals the Player when destroyed"
+health = 3
+blocks = true
+triggers = {}
+on_destruction = {"always": [{"op": "heal", "value": 3}], "one_of": []}
+tags = PackedStringArray("poop")
+interactions = {}
+file = "RainbowPoop"
+image = ExtResource("2_img")

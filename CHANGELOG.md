@@ -11,6 +11,40 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Locations: the floor the run is standing on.** The run is dealt a Low
+  location at its start and a new one of the new tier at every difficulty up.
+  Nobody chooses it, and it has no goal (the owner, 23 Oct): it arrives with a
+  popup of its art and what it does, then sits beside "Low difficulty" on the
+  board's strip — hover for the card, click to reopen the popup. A location
+  does things on arrival (Burning Basement lights fire and stands a fire body,
+  Dross lays poops, The Hive stands bugs), changes a rule while you are there
+  (Dark Room and The Chest double the damage you take, The Void puts a free
+  rift in every offering), and can offer a trade a few times (Dark Room: 2 Max
+  Health for a devilish chest; The Chest: a Key for a chest). Its `Tag Type` /
+  `Tag % Up` lean every roll a tag means something to — enemies, bosses,
+  relics, loot, shop shelves — by weighting tagged things up inside the bucket
+  the roll already chose, and with no lean the draws are exactly what they were.
+  An `arrive:` clause or an action's payout can be anything an item's Effect can
+  say, so a location can already do most of what an item can. The **poops** are
+  the first units that BLOCK: a body that walks into one hits it instead, the
+  player can bomb it, and it pays whoever breaks it (loot or a fly, gold, or
+  Health). `docs/locations-design.md`; `tools/generate_location_tres.py`;
+  `test_locations.gd`.
+
+- **Location research has no goals any more, and there is a pool of effects to
+  match.** The 45 location candidates in `research/locations.csv` lost their
+  goal columns and say what they do instead, with an Effect wherever the
+  location grammar can already write it (38 of them). `research/location_effects.csv`
+  is 106 effects built from the game's own content — tiles, units, statuses,
+  curses, verbs, shops, machines and rules — each with what it reuses, what
+  kind of place it suits and, for the 54 not writable yet, the one piece of code
+  it waits for. Both are sheets of `tools/Research.xlsx`.
+
+- **`map_calc.py` keeps the styles Excel gave its cells.** It wrote fixed style
+  numbers over the dashboard, and the 23 Oct upload had been re-saved by Excel
+  with three fewer styles, so a rerun pointed cells past the end of the list and
+  openpyxl — every generator — refused to open the workbook at all.
+
 - **Ripple Basin's shield now lands before the swing it is for.** A lost run
   fired its `run_lost` hook after the enemies' turn, so the Temporary Shield
   only ever covered the next lost run's hit, while the comment above the emit

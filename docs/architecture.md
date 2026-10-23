@@ -587,6 +587,8 @@ it says the rest.
 | `redesign2/MaskChoiceModal.gd` | Mysterious Mask's pick of a second character's level-up (§3.1) |
 | `redesign2/SmeltChoiceModal.gd` | Smelter: take a passive piece out of the pack and keep it working (`docs/loot-passives.md` §16) |
 | `redesign2/CampScreen.gd` | The end-of-session Camp: Rest or the card a game beaten since the last camp dealt (`docs/rest-site-design.md`) |
+| `redesign2/LocationPopup.gd` | A location's arrival popup, and the same popup off the strip's chip, where its actions are (`docs/locations-design.md`). Loaded by path, no `class_name` |
+| `redesign2/LocationChip.gd` | The location on the board strip, beside the difficulty: its hover card and its click |
 | `redesign2/CollapseScreen.gd` | Fracture 10's turnaround once the Amulet is beaten (`docs/fracture-design.md` §7) |
 | `redesign2/LootWindow.gd`, `LootGrid.gd`, `LootSlot.gd`, `LootTrash.gd`, `LootDiscoveries.gd`, `LootUseModal.gd` | The pack: the loot grid, its slots and bin, "Known this run", and using a piece (`docs/loot-passives.md`) |
 | `redesign2/OwnedPick.gd` | Pick one of the bodies on the board, for an effect that asks "which" |
@@ -602,6 +604,7 @@ it says the rest.
 | `LootOps.gd` | The ops loot effects are built from |
 | `WeaponSystem.gd` | Weapons: aiming, areas and the goal that charges them (`docs/loot-passives.md` §12) |
 | `Camp.gd` | The Camp's rules: when one is owed, what it deals, Rest and Brace (`docs/rest-site-design.md`). Loaded by path, no `class_name` |
+| `Locations.gd` | The location rules: the deal, the tag lean every roll goes through (`Locations.pick`), and what a location makes true while you are there (`docs/locations-design.md`). The state is `GameLoop2.location_*` |
 | `RayAim.gd` | The ray that bounces (Ball x Pit's ball, Earthquake, the ray wands) |
 | `AudioTags.gd` | Reads a music file's own tags, for filling the `radio` sheet from a folder |
 

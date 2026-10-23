@@ -25,7 +25,7 @@ BOOK = os.path.join(ROOT, "tools", "Research.xlsx")
 # Sheet order in the workbook. A sheet not named here goes after these, so an
 # owner's own scratch sheet survives a rebuild (at the end).
 ORDER = ["about", "status", "connections", "goals", "loot", "events", "characters", "statuses",
-         "locations", "tag suggestions", "new tag ideas", "vocabulary", "tags about", "_built"]
+         "locations", "location_effects", "tag suggestions", "new tag ideas", "vocabulary", "tags about", "_built"]
 
 BOLD = Font(bold=True)
 HEAD_FILL = PatternFill("solid", fgColor="D9E1F2")

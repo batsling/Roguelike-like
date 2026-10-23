@@ -840,8 +840,8 @@ static func _ch_pack() -> Dictionary:
 				+ "yours for a halving to sit on, so the sheet says enemies only."),
 			_h("The ground: tiles and units"),
 			_p("Two things can be on a square of the board that are not a body, and "
-				+ "they layer — a unit stands on top of a tile effect. Neither of "
-				+ "them BLOCKS anything: an enemy walks in and whatever is there "
+				+ "they layer — a unit stands on top of a tile effect. Mostly they "
+				+ "do not BLOCK anything: an enemy walks in and whatever is there "
 				+ "reacts. Wherever an item or a scroll names one, hover the chip "
 				+ "under its description to read it."),
 			_kv("Fire (a tile effect)", "Anything that walks into it, or starts its "
@@ -861,6 +861,12 @@ static func _ch_pack() -> Dictionary:
 			_kv("The two together", "Fire and a mine cannot share a square. "
 				+ "Whichever arrives second, the heat sets the mine off and the "
 				+ "blast blows the fire out."),
+			_kv("Poops (units that block)", "A WALL. Nothing can step onto one, so "
+				+ "an enemy that reaches it spends its step hitting it for 1 instead. "
+				+ "You can break it too — a bomb, a thrown potion, anything that hits "
+				+ "the ground. Broken, it pays out whoever broke it: a Poop drops a "
+				+ "piece of loot or lets a fly out, a Golden Poop pays gold, a "
+				+ "Rainbow Poop heals you for 3."),
 			_b("Enemies steer around mines when they have anywhere else to go, and "
 				+ "walk straight through them when they don't — a body in the lane "
 				+ "is a wall that might never move, a mine is a toll paid once. So "
@@ -927,6 +933,25 @@ static func _ch_bosses() -> Dictionary:
 				+ "buys you a DIFFERENT boss, not a way past this one."),
 			_note("A boss cannot be dashed past either. It follows you like "
 				+ "everything else on the board, and only its goal removes it."),
+			_h("Locations"),
+			_p("The run is always SOMEWHERE. It starts in a Low location, and every "
+				+ "difficulty up moves it to a new one of the new tier — Burning "
+				+ "Basement, The Hive, the Dark Room. You do not choose it: it "
+				+ "arrives with a popup of its picture and what it does, and then "
+				+ "sits beside the difficulty on the strip over the board. Hover it "
+				+ "to read it again; click it to open it."),
+			_b("Some do something the moment you arrive: bodies of their kind "
+				+ "walk on, fire is lit, poops are left on the board."),
+			_b("Some change a rule for as long as you are there: damage you take "
+				+ "is doubled, or one game on every offering is a free rift."),
+			_b("Some have a TRADE you can make a few times while you are there — "
+				+ "the button is on the location's popup, greyed with the reason "
+				+ "when you cannot pay."),
+			_b("Most LEAN the rolls: things carrying their tag — enemies, bosses, "
+				+ "relics, loot — turn up a little more often there. Burning "
+				+ "Basement's fire things are 20% likelier."),
+			_note("A location has no goal and nothing to fail. It lasts until the "
+				+ "next difficulty up, and then the run moves on."),
 		],
 	}
 
