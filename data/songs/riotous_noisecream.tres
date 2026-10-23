@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_riotous_noisecream"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"riotous_noisecream"
+title = "Riotous"
+artist = "Noisecream"
+album = "Roboquest Soundtrack"
+year = 2023
+game_id = &"roboquest"
+file = "Roboquest/27. Riotous.mp3"
+tags = PackedStringArray()

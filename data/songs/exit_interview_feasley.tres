@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_exit_interview_feasley"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"exit_interview_feasley"
+title = "exit interview"
+artist = "Feasley"
+album = "Going Under OST"
+year = 2020
+game_id = &"going_under"
+file = "Going Under/26. exit interview.mp3"
+tags = PackedStringArray()

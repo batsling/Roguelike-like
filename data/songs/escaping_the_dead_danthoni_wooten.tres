@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_escaping_the_dead_danthoni_wooten"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"escaping_the_dead_danthoni_wooten"
+title = "Escaping The Dead"
+artist = "D'Anthoni Wooten"
+album = "DAVE THE DIVER"
+year = 2023
+game_id = &"dave_the_diver"
+file = "Dave the Diver/17. Escaping the Dead.mp3"
+tags = PackedStringArray()

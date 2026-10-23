@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_the_end_ben_ridge"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"the_end_ben_ridge"
+title = "The End"
+artist = "Ben Ridge"
+album = "Cavity Busters (Original Game Soundtrack)"
+year = 2021
+game_id = &"cavity_busters"
+file = "Cavity Busters/06. The End.mp3"
+tags = PackedStringArray()

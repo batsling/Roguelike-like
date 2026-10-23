@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_progression_mike_mirabello"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"progression_mike_mirabello"
+title = "Progression"
+artist = "Mike Mirabello"
+album = "Tower of Guns"
+year = 2014
+game_id = &"tower_of_guns"
+file = "Tower of Guns/26. Progression.mp3"
+tags = PackedStringArray()

@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_minetown_theme_chris_kukla"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"minetown_theme_chris_kukla"
+title = "Minetown Theme"
+artist = "Chris Kukla"
+album = "Barony Extended OST"
+year = 2015
+game_id = &"barony"
+file = "Barony/11. Minetown Theme.mp3"
+tags = PackedStringArray()

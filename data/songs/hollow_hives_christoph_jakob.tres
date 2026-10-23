@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_hollow_hives_christoph_jakob"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"hollow_hives_christoph_jakob"
+title = "Hollow Hives"
+artist = "Christoph Jakob"
+album = "Revita (Original Soundtrack)"
+year = 2022
+game_id = &"revita"
+file = "Revita/24. Hollow Hives.mp3"
+tags = PackedStringArray()

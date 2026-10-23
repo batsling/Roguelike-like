@@ -156,7 +156,7 @@ for N = 1…6.
 | `Game` | event | The real game this is lifted from. Flavour credit (the modal's "From: *game*" line), and the target when `Where` is `Game`. |
 | `Tier` | event | `All`, or a comma list of `Low` / `Medium` / `High` / `Insane`. Gates an event to part of the tier ladder, the same vocabulary `enemies2.0` gates on. |
 | `Where` | event | **Leave blank.** An event fires after every game (§1.1), so this answers no placement question today. It stays wired — `Dead End` (a node with one connection), `Any`, `Game` (only ever on its own `Game`) — for the per-location work, and nothing authored sets it. |
-| `Requirement` | event | A condition on the **run state** that must hold before the event can be dealt. A gated event is skipped and stays in the bag. — `<stat> <op> <value>`, a trailing `%` reading against the maximum (`hp <= 70%`), and several of those joined by **`and`** (`gold>=2 and potions>=1 and relics>=1`) when an event needs more than one thing at once. Blank = always eligible. `Tier` gates on the ladder, `Where` on the map, this on the player. The stats are a closed list (a typo'd one would silently never pass): `hp`, `max_hp`, `gold`, `games`, `keys`, `bombs`, `bash`, `dash`, `push`, `transmute`, `scramble`, `shields`, `relics` — **tradeable** relics carried, excluding Starter, Boss and Event ones, which is what the Relic Trader gates on (§13) — and `potions`, bottles carried, which is what Ranwid gates on (§14). |
+| `Requirement` | event | A condition on the **run state** that must hold before the event can be dealt. A gated event is skipped and stays in the bag. — `<stat> <op> <value>`, a trailing `%` reading against the maximum (`hp <= 70%`), and several of those joined by **`and`** (`gold>=4 and potions>=1 and relics>=1`) when an event needs more than one thing at once. Blank = always eligible. `Tier` gates on the ladder, `Where` on the map, this on the player. The stats are a closed list (a typo'd one would silently never pass): `hp`, `max_hp`, `gold`, `games`, `keys`, `bombs`, `bash`, `dash`, `push`, `transmute`, `scramble`, `shields`, `relics` — **tradeable** relics carried, excluding Starter, Boss and Event ones, which is what the Relic Trader gates on (§13) — and `potions`, bottles carried, which is what Ranwid gates on (§14). |
 | `Trigger` | event | `After` (default — fires once the game there is beaten, so it reads as an extra reward) or `Before` (fires on arrival, before the game is played, so it can hand you a goal for it). **`Before` is not implemented** — see §19. |
 | `Rarity` | event | `Common` / `Uncommon` / `Rare`. **Which bag it is dealt from** (§1.1), same ordering as items and scrolls. |
 | `Image` | event | Art base name → `res://images2.0/events/<Image>.png`. Blank falls back to the de-spaced `Event`, matching every other 2.0 sheet. |
@@ -1136,12 +1136,12 @@ are things rather than numbers**.
 
 | | |
 |---|---|
-| `Requirement` | `gold>=2 and potions>=1 and relics>=1` |
+| `Requirement` | `gold>=4 and potions>=1 and relics>=1` |
 | `Prompt` | *"You are approached by the oldest person you have ever seen. 'We meet once more... it's me, Ranwid!' You do not know this man."* |
 
 | Choice | Effect | Result |
 |---|---|---|
-| **Give 2 Gold** | `needs gold 2; lose_gold 2; gain_random_item 1` | *"Mag.. nificent..." Ranwid mumbles while chewing the gold.* |
+| **Give 4 Gold** | `needs gold 4; lose_gold 4; gain_random_item 1` | *"Mag.. nificent..." Ranwid mumbles while chewing the gold.* |
 | **Give `<potion>`** | `lose_potion; gain_random_item 1` | *"Exquisite..." Glup glup glup. He downs the `<potion>` in one go.* |
 | **Give `<relic>`** | `lose_relic; gain_random_item 2` | *"Exemplary..." Ranwid observes the relic studiously for several minutes... Then eats the `<relic>`.* |
 
@@ -1283,7 +1283,7 @@ both in the bag on purpose, and what tells them apart is what he asks for.
 | Choice | Effect |
 |---|---|
 | **Give `<potion>`** | `lose_potion; gain_random_item 1` |
-| **Give 2 Gold** | `needs gold 2; lose_gold 2; gain_random_item 1` |
+| **Give 4 Gold** | `needs gold 4; lose_gold 4; gain_random_item 1` |
 | **Give `<card>`** | `lose_card uncommon+; gain_random_item 1` |
 | **Attack** | `nothing` |
 

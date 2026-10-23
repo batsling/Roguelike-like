@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_fed_to_worms_instrumental_doseone"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"fed_to_worms_instrumental_doseone"
+title = "Fed to Worms (Instrumental)"
+artist = "Doseone"
+album = "Heavy Bullets EP (Original Soundtrack)"
+year = 2014
+game_id = &"heavy_bullets"
+file = "Heavy Bullets/09. Fed to Worms (Instrumental).mp3"
+tags = PackedStringArray()

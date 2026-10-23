@@ -3060,6 +3060,12 @@ func _open_pending_event() -> void:
 	if ev == null:
 		_open_pending_shop()
 		return
+	# An arrival popup already up gives way to the event and comes back after it
+	# (_show_location_if_unseen), so the location is always read second.
+	if _location_popup != null and is_instance_valid(_location_popup) \
+			and _location_popup.get("_arrival") == true:
+		_location_popup.close()
+		GameLoop2.location_unseen = true
 	_event_modal = load(EVENT_MODAL2_SCRIPT).open(self, ev, node)
 	_event_modal.finished.connect(_on_event_finished)
 
@@ -3084,6 +3090,7 @@ func open_event(ev: EventData2) -> bool:
 
 func _on_event_finished(play_request: Dictionary) -> void:
 	_event_modal = null
+	call_deferred("_show_location_if_unseen")
 	# Machines an event put in front of you belong to that event, and the modal
 	# has already taken them away (EventModal2._end_objects) — precisely the ones
 	# it spawned, where this used to clear the board outright and take a machine
@@ -3782,12 +3789,14 @@ func _redeem_pending_chests() -> void:
 	# actually got: "2 Small Chests" is two chests of one item, not one of two.
 	var sizes: Array = []
 	var pools: Array = []
+	var gold: int = 0
 	while GameState.pending_chests > 0:
 		var choices: int = GameState.take_pending_chest()  # -1 none / 0 default / N
 		if choices < 0:
 			break
 		sizes.append(maxi(0, choices))
 		pools.append(GameState.last_chest_pool)
+		gold += Data.chest_gold(choices)
 	if sizes.is_empty():
 		return
 	_reward_open = true
@@ -3796,7 +3805,8 @@ func _redeem_pending_chests() -> void:
 		_reward_open = false
 		_redeem_pending_chests())
 	add_child(screen)
-	screen.setup_chests(sizes, pools)
+	# Every chest's gold, on the one screen they open on — paid by the screen.
+	screen.setup_chests(sizes, pools, gold)
 
 # A Mysterious Mask was picked up: open its choice when the page is next idle.
 func _on_mask_granted() -> void:
@@ -3847,6 +3857,12 @@ func _hand_chests_to_post_game() -> void:
 		var choices: int = GameState.take_pending_chest()
 		if choices < 0:
 			break
+		# The chest's gold (Data.chest_gold) is paid as it lands on the haul,
+		# taken or not — the same rule the RewardScreen keeps.
+		var gold: int = Data.chest_gold(choices)
+		if gold > 0:
+			GameState.change_gold(gold)
+			GameLog.add("Chest: +%d gold." % gold, Color(1.0, 0.9, 0.3))
 		var count: int = choices if choices > 0 else load(REWARD_SCREEN_SCRIPT).BASE_ITEM_CHOICES + discovery
 		var offer: Array = _drops.roll_chest(false, maxi(1, count), GameState.last_chest_pool)
 		if offer.is_empty():
@@ -5268,6 +5284,10 @@ func _show_location_if_unseen() -> void:
 	if _post_screen != null and is_instance_valid(_post_screen):
 		return
 	if _location_popup != null and is_instance_valid(_location_popup):
+		return
+	# AFTER THE EVENT, never over it (the owner, 23 Oct): an event open or queued
+	# owns the screen, and `_on_event_finished` asks again once it has gone.
+	if (_event_modal != null and is_instance_valid(_event_modal)) or _pending_event != null:
 		return
 	show_location(true)
 

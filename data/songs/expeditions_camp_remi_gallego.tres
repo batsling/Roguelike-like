@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_expeditions_camp_remi_gallego"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"expeditions_camp_remi_gallego"
+title = "Expedition's Camp"
+artist = "Remi Gallego"
+album = "Abyssus (Original Game Soundtrack)"
+year = 2025
+game_id = &"abyssus"
+file = "Abyssus/02. Expedition's Camp.mp3"
+tags = PackedStringArray()

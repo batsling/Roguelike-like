@@ -753,6 +753,7 @@ func _h_drop_copy(_effect: Dictionary, ctx: Dictionary) -> void:
 		return
 	var copy: Dictionary = (used as Dictionary).duplicate(true)
 	copy.erase("pack_slot")
+	copy.erase("pack_cells")
 	copy.erase("echo_target")
 	# A WAND'S DUPLICATE IS THE WAND AS IT NOW STANDS, charges and all — but never
 	# an empty one. The zap that set this off may have spent the stick's last charge,

@@ -118,6 +118,12 @@ static func offering_rifts() -> int:
 	var loc: LocationData = current()
 	return int(loc.standing_value(&"offering_rift", 0.0)) if loc != null else 0
 
+# How many times as far every push goes (The Moon): the Push verb's one cell and a
+# weapon's shove alike. A whole number, because a body stands on whole squares.
+static func push_mult() -> int:
+	var loc: LocationData = current()
+	return maxi(1, int(loc.standing_value(&"push_mult", 1.0))) if loc != null else 1
+
 # --- the deal ---------------------------------------------------------------
 
 # The location dealt at `tier`: a random one authored there. A tier with none
@@ -141,15 +147,26 @@ static func deal(tier: int, rng: RandomNumberGenerator = null, avoid: StringName
 static func tier_name(loc: LocationData) -> String:
 	return RunDifficulty.tier_name(loc.tier) if loc != null else ""
 
-# The lean in words — "Fire things turn up 20% more often here." — or "".
+# The lean in words, as short as the owner asked for (23 Oct) — "Fire Tags up
+# 20%", "Cat, Spider & Mining Tags up 20%" — or "".
 static func lean_text(loc: LocationData) -> String:
 	if loc == null or loc.tag_up <= 0.0 or loc.tag_types.is_empty():
 		return ""
-	var names: PackedStringArray = []
+	var names: Array = []
 	for t in loc.tag_types:
 		names.append(String(t).capitalize())
-	return "%s things turn up %d%% more often here — enemies, bosses, relics and loot." % [
-		" and ".join(names), roundi(loc.tag_up * 100.0)]
+	var said: String = String(names[0])
+	if names.size() > 1:
+		said = ", ".join(PackedStringArray(names.slice(0, names.size() - 1))) \
+			+ " & " + String(names[-1])
+	return "%s Tags up %d%%" % [said, roundi(loc.tag_up * 100.0)]
+
+# The line under a location's name: its tier and its game — "Low · Mewgenics".
+static func sub_text(loc: LocationData) -> String:
+	var sub: String = tier_name(loc)
+	if loc != null and loc.game != "":
+		sub += " · %s" % loc.game
+	return sub
 
 # What a `spend` cost is called on a button, where the field's own name is not
 # the game's word for it.

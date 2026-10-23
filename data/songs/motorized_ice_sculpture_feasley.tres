@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_motorized_ice_sculpture_feasley"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"motorized_ice_sculpture_feasley"
+title = "motorized ice sculpture"
+artist = "Feasley"
+album = "Going Under OST"
+year = 2020
+game_id = &"going_under"
+file = "Going Under/11. motorized ice sculpture.mp3"
+tags = PackedStringArray()

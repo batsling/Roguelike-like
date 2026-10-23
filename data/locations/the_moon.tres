@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="LocationData" load_steps=2 format=3 uid="uid://location_the_moon"]
+
+[ext_resource type="Script" path="res://scripts/resources/LocationData.gd" id="1_loc"]
+
+[resource]
+script = ExtResource("1_loc")
+id = &"the_moon"
+display_name = "The Moon"
+game = "Mewgenics"
+tier = 2
+description = "When entered, spawn 1 random alien tagged Enemy. Push effects are tripled."
+arrive = [{"op": "spawn_enemy", "tag": "alien", "count": 1}]
+standing = [{"op": "push_mult", "value": 3}]
+actions = []
+tag_types = PackedStringArray("alien", "space")
+tag_up = 0.2
+file = "TheMoon"
+image_path = "res://images2.0/locations/TheMoon.png"

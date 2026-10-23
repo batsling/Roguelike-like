@@ -465,6 +465,9 @@ static func _ch_enemies() -> Dictionary:
 				+ "— and past a Huge they split into a second chest rather than "
 				+ "running off the end. Three High bodies on a game you beat is ten "
 				+ "points: two Huge chests and a Medium."),
+			_p("Every chest also holds gold, one per rung: a Small 1, a Medium 2, "
+				+ "a Large 3, a Huge 4. It is paid as the chest opens, whether or not "
+				+ "you take anything out of it."),
 			_note("Bosses are not in that pool. A boss drops a chest of its own, "
 				+ "on its own terms, and it is paid whether or not the game went "
 				+ "your way."),

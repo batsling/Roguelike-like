@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_first_date_feasley"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"first_date_feasley"
+title = "first date"
+artist = "Feasley"
+album = "Going Under OST"
+year = 2020
+game_id = &"going_under"
+file = "Going Under/09. first date.mp3"
+tags = PackedStringArray()

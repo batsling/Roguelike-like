@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_concealed_christoph_jakob"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"concealed_christoph_jakob"
+title = "Concealed"
+artist = "Christoph Jakob"
+album = "Revita (Original Soundtrack)"
+year = 2022
+game_id = &"revita"
+file = "Revita/08. Concealed.mp3"
+tags = PackedStringArray()

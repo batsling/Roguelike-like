@@ -1581,8 +1581,9 @@ func _deserialize_statuses(raw) -> Dictionary:
 # is thin (§7) — DOWN the tier ladder first, so the body a game advertises reflects
 # the difficulty the run has climbed to. See _pick_by_type_tier.
 # Returns null only when no goal-enemies exist at all.
-func roll_enemy(game_type: StringName = &"", tier: int = -1) -> GoalEnemyData:
-	var pool: Array = Data.all_goal_enemies()
+func roll_enemy(game_type: StringName = &"", tier: int = -1,
+		without: StringName = &"") -> GoalEnemyData:
+	var pool: Array = _without_ability(Data.all_goal_enemies(), without)
 	if pool.is_empty():
 		return null
 	if tier < 0:
@@ -1607,8 +1608,9 @@ func roll_enemy(game_type: StringName = &"", tier: int = -1) -> GoalEnemyData:
 # would otherwise silently conjure an untagged body, which is not what the row
 # said either — so a tag that empties the pool rolls NOTHING and the caller says
 # so, rather than substituting a stranger.
-func roll_conjured_enemy(tier: int = -1, tag: StringName = &"") -> GoalEnemyData:
-	var pool: Array = Data.all_goal_enemies()
+func roll_conjured_enemy(tier: int = -1, tag: StringName = &"",
+		without: StringName = &"") -> GoalEnemyData:
+	var pool: Array = _without_ability(Data.all_goal_enemies(), without)
 	if tag != &"":
 		pool = pool.filter(func(e): return e is GoalEnemyData and e.has_tag(tag))
 	if pool.is_empty():
@@ -1629,6 +1631,14 @@ func roll_conjured_enemy(tier: int = -1, tag: StringName = &"") -> GoalEnemyData
 		if not above.is_empty():
 			return Locations.pick(above)
 	return null
+
+# The pool less every enemy authored with ability `id` (none left out for &"").
+# What a Split rolls is drawn from this with `split` left out.
+func _without_ability(pool: Array, id: StringName) -> Array:
+	if id == &"":
+		return pool
+	return pool.filter(func(e): return e is GoalEnemyData \
+		and not (e as GoalEnemyData).ability_ids().has(id))
 
 # THE ESCORT (§7.5): the second body that spawns alongside the enemy of the game
 # you just picked. It is rolled from the SAME pool, by the same type+tier filter
@@ -4101,9 +4111,15 @@ func _run_destruction(outcome: Dictionary, cell: Vector2i, unit: UnitData) -> vo
 			if not entry.is_empty():
 				place_drop(cell, entry)
 		"spawn_enemy":
+			# OUT OF THE UNIT, not in at the back: the body stands on the square the
+			# unit stood on, or the nearest one its shape fits — a fly that crawled
+			# out of a poop in the front column and appeared five columns away was
+			# not the poop's fly. Only a board with no room for it at all walks it
+			# on the ordinary way.
 			var e: GoalEnemyData = roll_conjured_enemy(RunDifficulty.current_tier(),
 				StringName(String(outcome.get("tag", ""))))
-			if e != null and spawn_to_stack(e) > 0:
+			if e != null and summon(e, nearest_open_cell(e, cell)) > 0:
+				loop_changed.emit()
 				var msg: String = "%s crawled out of the %s." % [e.display_name, what]
 				GameLog.add(msg, UITheme.DANGER)
 				Notifications.notify(msg, UITheme.DANGER)
@@ -4621,6 +4637,10 @@ func push(instance: int, dir: Vector2i = PUSH_BACK) -> bool:
 	# (§17). That is what makes a Push a way to USE the ground you have laid.
 	_move_entry(stack[idx], int(stack[idx].get("row", 0)) + dir.y,
 		int(stack[idx].get("col", spawn_col())) + dir.x)
+	# THE MOON (Locations.push_mult): the cells past the first ride free, on
+	# shove's terms — as far as there is room, each one an arrival.
+	if _index_of(instance) >= 0 and Locations.push_mult() > 1:
+		_shove_cells(instance, dir, Locations.push_mult() - 1)
 	# Shoving a body off the front line can open the gap a waiting enemy needs.
 	_admit_offgrid()
 	loop_changed.emit()
@@ -4633,6 +4653,11 @@ func push(instance: int, dir: Vector2i = PUSH_BACK) -> bool:
 # is an arrival (`_move_entry`), so shoving into fire or onto a mine costs what
 # walking there would. Returns how many squares it moved.
 func shove(instance: int, dir: Vector2i, squares: int = 1) -> int:
+	return _shove_cells(instance, dir, squares * Locations.push_mult())
+
+# The steps themselves, at face value — Push's own extra cells come through here
+# so The Moon multiplies them once rather than twice.
+func _shove_cells(instance: int, dir: Vector2i, squares: int) -> int:
 	var moved: int = 0
 	for _i in range(maxi(0, squares)):
 		if not can_push(instance, dir):
@@ -7750,21 +7775,28 @@ func summon(enemy: GoalEnemyData, at: Vector2i = OFF_FIELD) -> int:
 #   self          another copy of the summoner
 # An empty selector rolls the summoner's own type and tier, which is what a bare
 # summoner ability should mean.
-func roll_ability_enemy(selector: StringName, source: GoalEnemyData) -> GoalEnemyData:
+#
+# `without` leaves out every enemy carrying that ability — a Split's pieces are
+# rolled `without` split — and a named enemy or `self` that carries it is no
+# roll at all (null).
+func roll_ability_enemy(selector: StringName, source: GoalEnemyData,
+		without: StringName = &"") -> GoalEnemyData:
 	var sel: String = String(selector)
 	var tier: int = source.tier_index() if source != null else 0
-	if sel == "self":
-		return source
-	if sel.begins_with("enemy:"):
-		return Data.get_goal_enemy_any(StringName(sel.substr(6)))
+	if sel == "self" or sel.begins_with("enemy:"):
+		var named: GoalEnemyData = source if sel == "self" \
+			else Data.get_goal_enemy_any(StringName(sel.substr(6)))
+		if named != null and without != &"" and named.ability_ids().has(without):
+			return null
+		return named
 	if sel.begins_with("tag:"):
-		return roll_conjured_enemy(tier, StringName(sel.substr(4)))
+		return roll_conjured_enemy(tier, StringName(sel.substr(4)), without)
 	if sel.begins_with("tier:"):
 		var name: String = sel.substr(5)
 		if name != "":
 			tier = RunDifficulty.tier_from_name(name)
-		return roll_conjured_enemy(tier)
-	return roll_enemy(source.game_type if source != null else &"", tier)
+		return roll_conjured_enemy(tier, &"", without)
+	return roll_enemy(source.game_type if source != null else &"", tier, without)
 
 # The cell a spawner drops a body into: the row in front of it, in its own lane.
 # OFF_FIELD when there is no such cell (it is already at the front) or something
@@ -8481,10 +8513,16 @@ func _body_died(entry: Dictionary, fell: Vector2i) -> void:
 				# SPLIT — X new bodies of the named type. The first takes the square
 				# it fell on when that square is free; the rest walk on the ordinary
 				# way.
+				#
+				# NOTHING IT SPAWNS HAS SPLIT (the sheet's own wording, 23 Oct): the
+				# pieces are rolled from the enemies NOT authored with Split, so a
+				# slime never comes apart into slimes that come apart again. A
+				# selector that can only name a splitter (`self`, a named one) spawns
+				# nothing.
 				if args.size() >= 2:
 					var selector: StringName = StringName(args[1])
 					for i in range(maxi(1, int(args[0]))):
-						var spawn: GoalEnemyData = roll_ability_enemy(selector, enemy)
+						var spawn: GoalEnemyData = roll_ability_enemy(selector, enemy, &"split")
 						if spawn == null:
 							continue
 						var at: Vector2i = OFF_FIELD

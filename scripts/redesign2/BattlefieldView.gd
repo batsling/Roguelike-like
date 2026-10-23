@@ -906,6 +906,11 @@ func _refresh_pressure() -> void:
 	_boss_count.add_theme_color_override("font_color",
 		UITheme.DANGER if to_boss == 1 else UITheme.TEXT_DIM)
 
+	# THE CARD IS THREE SHORT LINES (the owner, 23 Oct): when the boss comes, what
+	# ending this game costs, and how far the Amulet is — the same three things the
+	# strip shows, in the same words. The prose that used to explain the ladder is
+	# the manual's (📖 How to Play); `_pressure_ladder_text` still carries the
+	# ladder for anything that wants the long form.
 	var acts: String = ("Every game that ends here stands up %s at the back"
 		% RunDifficulty.bodies_text(pressure))
 	var ladder_tip: String = ("%s.\n"
@@ -913,19 +918,15 @@ func _refresh_pressure() -> void:
 		+ "from the front column or a step closer.\n\n"
 		+ "%s\n\nRush the Amulet and every game fills the board faster; take the "
 		+ "long way and it fills slower.") % [acts, RunDifficulty.ladder_text(pressure)]
+	var lines: Array = [_boss_count.text, _spawn_tip(owed, why_free, pressure),
+		_pressure_why.text]
+	if Fracture.extra_turn():
+		lines.append("Fracture %d: +1 enemy turn when a game is beaten or escaped"
+			% Fracture.level())
 	HoverCard.attach(_pressure_panel, {
 		"title": "Difficulty: %s" % RunDifficulty.tier_name(tier),
-		"subtitle": "Amulet pressure %d — %s" % [pressure, RunDifficulty.band_name(pressure)],
 		"accent": tier_col,
-		"lines": [
-			_boss_tip(to_boss),
-			"%s — +1 if nothing went down, and escaping always adds 1." % acts,
-			"A lost run moves them one turn — and from the second lost run of a game, may stand one more up.",
-			_pressure_why.text,
-			_spawn_tip(owed, why_free),
-		] + ([("Fracture %d: when this game is beaten or escaped, every enemy takes "
-			+ "one more turn.") % Fracture.level()] if Fracture.extra_turn() else []),
-		"note": "Rush the Amulet and every game fills the board faster; take the long way and it fills slower.",
+		"lines": lines,
 	})
 	# The two labels inside it are MOUSE-TRANSPARENT so the panel owns the hover —
 	# a card that changed shape depending on which word of the strip the cursor
@@ -982,23 +983,14 @@ func boss_warning_text() -> String:
 		return "⚠ Next spawn brings a BOSS — your next lost run can't spawn it."
 	return "⚠ Next spawn brings a BOSS — a lost run now has a %d%% chance." % pct
 
-# The strip's two §19.8 readouts, in a sentence each for the hover card.
-func _spawn_tip(owed: int, why_free: String) -> String:
+# What ending this game costs, in one short line for the hover card — with the
+# reason when it costs nothing, and the standing rate between games.
+func _spawn_tip(owed: int, why_free: String, pressure: int) -> String:
 	if owed > 0:
-		return ("End this game now and %s walk on at the back — fewer the further you "
-			+ "are from the Amulet, and one fewer once you beat a goal here.") % (
-			RunDifficulty.bodies_text(owed))
+		return "+%s when this game ends" % RunDifficulty.bodies_text(owed)
 	if why_free != "":
-		return "Ending this game stands nobody up: %s." % why_free
-	return "Every game that ends stands bodies up — 0 far out, up to 2 near the Amulet, +1 if no goal was beaten."
-
-func _boss_tip(to_boss: int) -> String:
-	if to_boss == 1:
-		return ("The next spawn is a DIFFICULTY UP: the tier steps, the board grows, and "
-			+ "a boss walks on top of whatever else arrives — a lost run's spawn included.")
-	return ("Every %s spawn is a difficulty up — the tier steps, the board grows and a "
-		+ "boss walks on: %d more to go. A node arriving, a game ending and a lost "
-		+ "run's spawn each count once, however many bodies they bring.") % [RunDifficulty.games_per_tier_ordinal(), to_boss]
+		return "No enemies when this game ends: %s" % why_free
+	return "+%s when a game ends" % RunDifficulty.bodies_text(pressure)
 
 # The combat verbs live with the combat: Push and Bomb sit on a toolbar attached to
 # the battlefield. ARM FIRST, THEN AIM — press the verb, the bodies it can reach

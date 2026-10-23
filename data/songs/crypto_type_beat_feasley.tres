@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_crypto_type_beat_feasley"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"crypto_type_beat_feasley"
+title = "'crypto' type beat"
+artist = "Feasley"
+album = "Going Under OST"
+year = 2020
+game_id = &"going_under"
+file = "Going Under/13. 'crypto' type beat.mp3"
+tags = PackedStringArray()

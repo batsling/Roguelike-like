@@ -400,7 +400,7 @@ func test_entering_the_arcade_costs_a_coin_and_stocks_the_room() -> void:
 	assert_false(enter.is_empty(), "the room has an Enter")
 	var before: int = GameState.gold
 	EventSystem.resolve_choice(ev, enter, 0)
-	assert_eq(GameState.gold, before - 1, "entering costs the gold it gates on")
+	assert_eq(GameState.gold, before - 2, "entering costs the gold it gates on")
 	assert_true(ObjectSystem.has_live(), "and there are machines in there")
 
 

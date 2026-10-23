@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_arena_de_arena_ii_tee_lopes"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"arena_de_arena_ii_tee_lopes"
+title = "Arena de Arena II"
+artist = "Tee Lopes"
+album = "Metal Slug Tactics (Original Game Soundtrack)"
+year = 2024
+game_id = &"metal_slug_tactics"
+file = "Metal Slug Tactics/03. Arena de Arena II.mp3"
+tags = PackedStringArray()

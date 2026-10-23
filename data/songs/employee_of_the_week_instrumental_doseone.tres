@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_employee_of_the_week_instrumental_doseone"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"employee_of_the_week_instrumental_doseone"
+title = "Employee of the Week (Instrumental)"
+artist = "Doseone"
+album = "Heavy Bullets EP (Original Soundtrack)"
+year = 2014
+game_id = &"heavy_bullets"
+file = "Heavy Bullets/14. Employee of the Week (Instrumental).mp3"
+tags = PackedStringArray()

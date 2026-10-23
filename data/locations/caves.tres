@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="LocationData" load_steps=2 format=3 uid="uid://location_caves"]
+
+[ext_resource type="Script" path="res://scripts/resources/LocationData.gd" id="1_loc"]
+
+[resource]
+script = ExtResource("1_loc")
+id = &"caves"
+display_name = "Caves"
+game = "Mewgenics"
+tier = 2
+description = "When entered, spawn 2 Random spider tagged Enemies and 3 web tiles on random tiles"
+arrive = [{"op": "spawn_enemy", "tag": "spider", "count": 2}, {"op": "place_tile", "tile": "web", "count": 3}]
+standing = []
+actions = []
+tag_types = PackedStringArray("cat", "spider", "mining")
+tag_up = 0.2
+file = "Caves"
+image_path = "res://images2.0/locations/Caves.png"

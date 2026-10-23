@@ -9,7 +9,7 @@ display_name = "Arcade Room"
 source_game = "The Binding of Isaac"
 tier_tags = PackedStringArray()
 where = ""
-requirement = {"stat": "gold", "op": ">=", "value": 1, "percent": false}
+requirement = {"stat": "gold", "op": ">=", "value": 2, "percent": false}
 trigger = "after"
 rarity = "Common"
 file = "ArcadeRoom"
@@ -19,4 +19,4 @@ goal_met = ""
 goal_missed = ""
 chance_won = ""
 chance_lost = ""
-choices = [{"id": "enter", "text": "Enter", "repeat": "stay", "repeat_max": 0, "results": [], "gates": [], "effects": [{"type": "lose_gold", "value": 1}, {"type": "spawn_object", "tag": "arcade", "min": 2, "max": 3}], "effects_text": "-1 Gold, 2-3 arcade machines", "goal": {}, "curse": {}, "play": {}, "chance": {}}, {"id": "leave", "text": "Leave", "repeat": "end", "repeat_max": 0, "results": [], "gates": [], "effects": [{"type": "none"}], "effects_text": "Nothing", "goal": {}, "curse": {}, "play": {}, "chance": {}}]
+choices = [{"id": "enter", "text": "Enter", "repeat": "stay", "repeat_max": 0, "results": [], "gates": [], "effects": [{"type": "lose_gold", "value": 2}, {"type": "spawn_object", "tag": "arcade", "min": 2, "max": 3}], "effects_text": "-2 Gold, 2-3 arcade machines", "goal": {}, "curse": {}, "play": {}, "chance": {}}, {"id": "leave", "text": "Leave", "repeat": "end", "repeat_max": 0, "results": [], "gates": [], "effects": [{"type": "none"}], "effects_text": "Nothing", "goal": {}, "curse": {}, "play": {}, "chance": {}}]

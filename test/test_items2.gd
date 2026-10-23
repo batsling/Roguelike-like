@@ -523,6 +523,23 @@ func test_a_chest_point_ladder_turns_the_bonus_into_choices() -> void:
 	assert_eq(Data.CHEST_SIZE_CHOICES[Data.chest_reward_sizes(2)[0]], 2,
 		"one There's Options makes a boss's drop 1 of 2")
 
+# --- the gold in a chest: +1 per rung ---------------------------------------
+
+func test_a_chest_holds_a_gold_per_rung() -> void:
+	assert_eq(Data.chest_gold(1), 1, "Small")
+	assert_eq(Data.chest_gold(2), 2, "Medium")
+	assert_eq(Data.chest_gold(3), 3, "Large")
+	assert_eq(Data.chest_gold(5), 4, "Huge")
+	assert_eq(Data.chest_gold(4), 3, "between rungs is paid at the rung below")
+	assert_eq(Data.chest_gold(0), 2, "the screen's default chest is a Medium's")
+
+func test_a_chest_pays_its_gold_as_it_opens_taken_or_not() -> void:
+	var before: int = GameState.gold
+	var screen = load("res://scripts/ui/RewardScreen.gd").new()
+	add_child_autofree(screen)
+	screen.setup_chests([1, 5], ["", ""], Data.chest_gold(1) + Data.chest_gold(5))
+	assert_eq(GameState.gold, before + 5, "a Small and a Huge: 1 + 4, before any pick")
+
 # --- Mom's Key: the WIN's chest goes up a size ---------------------------
 
 func test_moms_key_raises_the_point_a_beaten_game_is_worth() -> void:

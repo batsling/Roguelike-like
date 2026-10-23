@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_this_is_not_safe_doseone"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"this_is_not_safe_doseone"
+title = "This Is Not Safe"
+artist = "Doseone"
+album = "Heavy Bullets EP (Original Soundtrack)"
+year = 2014
+game_id = &"heavy_bullets"
+file = "Heavy Bullets/03. This Is Not Safe.mp3"
+tags = PackedStringArray()

@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_bittersweet_victory_music_feasley_chong_the_nomad"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"bittersweet_victory_music_feasley_chong_the_nomad"
+title = "bittersweet victory music"
+artist = "Feasley, Chong the Nomad"
+album = "Going Under OST"
+year = 2020
+game_id = &"going_under"
+file = "Going Under/29. bittersweet victory music (Prod. Chong the Nomad).mp3"
+tags = PackedStringArray()

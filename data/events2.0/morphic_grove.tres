@@ -9,7 +9,7 @@ display_name = "Morphic Grove"
 source_game = "Slay the Spire 2"
 tier_tags = PackedStringArray()
 where = ""
-requirement = {"stat": "gold", "op": ">=", "value": 3, "percent": false}
+requirement = {"stat": "gold", "op": ">=", "value": 6, "percent": false}
 trigger = "after"
 rarity = "Common"
 file = "MorphicGrove"

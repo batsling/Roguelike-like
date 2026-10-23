@@ -231,6 +231,59 @@ func test_a_big_piece_rides_its_bag_and_turns_with_it() -> void:
 	var b: Vector2i = GameState.pack_cell_of(10)
 	assert_eq(absi(a.x - b.x) + absi(a.y - b.y), 1, "still side by side on screen")
 
+# A BIG PIECE CAN SIT ACROSS OWNERS (23 Oct): half in the 3x3, half in a bag, or
+# across two bags — and it is then in each bag.
+func _bag(id: StringName, at: Vector2i) -> void:
+	assert_true(GameState.place_bag({"type": "bag", "id": id, "rarity": "Common"}, at),
+		"%s attaches at %s" % [id, at])
+
+func test_a_big_piece_can_lie_across_the_3x3_and_a_bag() -> void:
+	_bag(&"leather_bag", Vector2i(3, 0))            # slots 9-12, drawn at (3..4, 0..1)
+	var hoof: Dictionary = Fixtures.trinket(self, &"goat_hoof", 2)
+	var carrot: Dictionary = {"type": "trinket", "id": &"carrot", "rarity": "Common"}
+	assert_true(GameState.piece_fits_at(carrot, 1, 0) == false, "1 and 2: the hoof is in 2")
+	GameState.remove_loot_at(Fixtures.index_of(hoof))
+	assert_true(GameState.piece_fits_at(carrot, 2, 0), "2 in the 3x3 and 9 in the bag")
+	assert_true(GameState.take_loot_entry_at(carrot, 2))
+	var i: int = GameState.loot_index_at_slot(2)
+	assert_eq(GameState.loot_slots_of(i), [2, 9], "one piece on both owners' cells")
+	assert_eq(GameState.bags_of_slot(2), [0], "and it is in the bag")
+	assert_eq(GameState.loot_slots_of(i), [2, 9], "a second read lands it in the same place")
+
+func test_a_bag_under_a_piece_across_it_stays_put() -> void:
+	_bag(&"leather_bag", Vector2i(3, 0))
+	assert_true(GameState.take_loot_entry_at(
+		{"type": "trinket", "id": &"carrot", "rarity": "Common"}, 2))
+	assert_true(GameState.bag_is_straddled(0))
+	assert_false(GameState.move_bag(0, Vector2i(3, 1), 0),
+		"moving it would pull the carrot in two")
+	var i: int = GameState.loot_index_at_slot(2)
+	assert_true(GameState.move_loot(2, 9), "moved wholly into the bag")
+	assert_eq(GameState.loot_slots_of(i), [9, 10])
+	assert_false(GameState.bag_is_straddled(0))
+	assert_true(GameState.move_bag(0, Vector2i(3, 1), 0), "and now the bag moves, carrot and all")
+
+func test_a_piece_across_two_bags_is_in_both() -> void:
+	_bag(&"fanny_pack", Vector2i(3, 0))             # 1 tall, 2 wide: slots 9-10 at (3..4, 0)
+	_bag(&"fanny_pack", Vector2i(3, 1))             # slots 11-12 at (3..4, 1)
+	var broccoli: Dictionary = {"type": "trinket", "id": &"broccoli", "rarity": "Common"}
+	assert_true(GameState.take_loot_entry_at(broccoli, 9), "2 tall: one cell in each bag")
+	var i: int = GameState.loot_index_at_slot(9)
+	assert_eq(GameState.loot_slots_of(i), [9, 11])
+	assert_eq(GameState.bags_of_slot(9), [0, 1], "it is in both Fanny Packs")
+	assert_eq(GameState.bags_of_slot(11), [0, 1], "asked from either of its cells")
+
+func test_removing_an_earlier_bag_keeps_a_straddler_on_its_cells() -> void:
+	_bag(&"protective_purse", Vector2i(0, 3))       # slot 9, below the 3x3
+	_bag(&"leather_bag", Vector2i(3, 0))            # slots 10-13
+	assert_true(GameState.take_loot_entry_at(
+		{"type": "trinket", "id": &"carrot", "rarity": "Common"}, 2))
+	var i: int = GameState.loot_index_at_slot(2)
+	assert_eq(GameState.loot_slots_of(i), [2, 10])
+	assert_false(GameState.remove_bag(0).is_empty(), "the empty purse comes off")
+	assert_eq(GameState.loot_slots_of(GameState.loot_index_at_slot(2)), [2, 9],
+		"the bag's cell renumbered down, the carrot still on it")
+
 func test_the_grid_draws_a_big_piece_once_across_its_cells() -> void:
 	Fixtures.trinket(self, &"carrot", 0)
 	var grid := LootGrid.new()

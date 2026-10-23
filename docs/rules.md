@@ -240,6 +240,8 @@ Beating a game is worth one point on its own: a Small chest even if nothing was 
 
 Points climb the chest ladder — 1 Small, 2 Medium, 3 Large, 4 Huge — and past a Huge they split into a second chest rather than running off the end. Three High bodies on a game you beat is ten points: two Huge chests and a Medium.
 
+Every chest also holds gold, one per rung: a Small 1, a Medium 2, a Large 3, a Huge 4. It is paid as the chest opens, whether or not you take anything out of it.
+
 > Bosses are not in that pool. A boss drops a chest of its own, on its own terms, and it is paid whether or not the game went your way.
 
 - A BOSS takes no bomb damage at all and can only be removed by its goal.

@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_welcome_to_my_bistro_jongho_yoo"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"welcome_to_my_bistro_jongho_yoo"
+title = "Welcome to My Bistro"
+artist = "Jongho Yoo"
+album = "DAVE THE DIVER"
+year = 2023
+game_id = &"dave_the_diver"
+file = "Dave the Diver/10. Welcome to My Bistro.mp3"
+tags = PackedStringArray()

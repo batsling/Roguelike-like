@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_toraka_king_of_the_abyss_pt_ii_remi_gallego"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"toraka_king_of_the_abyss_pt_ii_remi_gallego"
+title = "To'raka, King of the Abyss, Pt. II"
+artist = "Remi Gallego"
+album = "Abyssus (Original Game Soundtrack)"
+year = 2025
+game_id = &"abyssus"
+file = "Abyssus/13. To'raka, King of the Abyss, Pt. II.mp3"
+tags = PackedStringArray()

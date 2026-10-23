@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_cyberwar_noisecream"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"cyberwar_noisecream"
+title = "Cyberwar"
+artist = "Noisecream"
+album = "Roboquest Soundtrack"
+year = 2023
+game_id = &"roboquest"
+file = "Roboquest/05. Cyberwar.mp3"
+tags = PackedStringArray()

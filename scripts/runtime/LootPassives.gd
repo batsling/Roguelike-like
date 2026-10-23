@@ -335,6 +335,7 @@ static func usable_copy(index: int) -> Dictionary:
 		return {}
 	var out: Dictionary = (src["usable"] as Dictionary).duplicate(true)
 	out.erase("pack_slot")
+	out.erase("pack_cells")
 	out.erase("rot")
 	return out
 
