@@ -2157,8 +2157,13 @@ func test_the_pressure_readout_carries_a_hover_card() -> void:
 	var panel: Control = _ui._board._pressure_panel
 	assert_true(panel.has_meta(HoverCard.META), "the pressure readout carries a card")
 	var card: Dictionary = panel.get_meta(HoverCard.META)
-	assert_string_contains(String(card.get("title", "")), "Amulet pressure",
+	# The strip is DIFFICULTY since 23 Oct 2026: the tier names the card, and the
+	# Amulet pressure — still its own ladder — is the line under the name.
+	assert_string_contains(String(card.get("title", "")),
+		"Difficulty: %s" % RunDifficulty.tier_name(RunDifficulty.current_tier()),
 		"named for what it is")
+	assert_string_contains(String(card.get("subtitle", "")), "Amulet pressure",
+		"with the pressure under it")
 	assert_string_contains("\n".join(PackedStringArray(card.get("lines", []))),
 		"Amulet", "and it says WHY the number is what it is")
 
