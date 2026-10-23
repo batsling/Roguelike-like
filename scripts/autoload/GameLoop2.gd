@@ -1581,8 +1581,9 @@ func _deserialize_statuses(raw) -> Dictionary:
 # is thin (§7) — DOWN the tier ladder first, so the body a game advertises reflects
 # the difficulty the run has climbed to. See _pick_by_type_tier.
 # Returns null only when no goal-enemies exist at all.
-func roll_enemy(game_type: StringName = &"", tier: int = -1) -> GoalEnemyData:
-	var pool: Array = Data.all_goal_enemies()
+func roll_enemy(game_type: StringName = &"", tier: int = -1,
+		without: StringName = &"") -> GoalEnemyData:
+	var pool: Array = _without_ability(Data.all_goal_enemies(), without)
 	if pool.is_empty():
 		return null
 	if tier < 0:
@@ -1607,8 +1608,9 @@ func roll_enemy(game_type: StringName = &"", tier: int = -1) -> GoalEnemyData:
 # would otherwise silently conjure an untagged body, which is not what the row
 # said either — so a tag that empties the pool rolls NOTHING and the caller says
 # so, rather than substituting a stranger.
-func roll_conjured_enemy(tier: int = -1, tag: StringName = &"") -> GoalEnemyData:
-	var pool: Array = Data.all_goal_enemies()
+func roll_conjured_enemy(tier: int = -1, tag: StringName = &"",
+		without: StringName = &"") -> GoalEnemyData:
+	var pool: Array = _without_ability(Data.all_goal_enemies(), without)
 	if tag != &"":
 		pool = pool.filter(func(e): return e is GoalEnemyData and e.has_tag(tag))
 	if pool.is_empty():
@@ -1629,6 +1631,14 @@ func roll_conjured_enemy(tier: int = -1, tag: StringName = &"") -> GoalEnemyData
 		if not above.is_empty():
 			return Locations.pick(above)
 	return null
+
+# The pool less every enemy authored with ability `id` (none left out for &"").
+# What a Split rolls is drawn from this with `split` left out.
+func _without_ability(pool: Array, id: StringName) -> Array:
+	if id == &"":
+		return pool
+	return pool.filter(func(e): return e is GoalEnemyData \
+		and not (e as GoalEnemyData).ability_ids().has(id))
 
 # THE ESCORT (§7.5): the second body that spawns alongside the enemy of the game
 # you just picked. It is rolled from the SAME pool, by the same type+tier filter
@@ -4824,18 +4834,6 @@ func cancel_abilities(instance: int) -> bool:
 	loop_changed.emit()
 	return true
 
-# The one-ability version, for what a Split leaves behind: the piece forgets
-# `split` and keeps the rest. On the entry, as above, so it is this body only.
-func _strip_split(instance: int) -> void:
-	var entry: Dictionary = entry_for(instance)
-	if entry.is_empty() or not entry_has_ability(entry, &"split"):
-		return
-	var kept: Array = []
-	for row in entry_abilities(entry):
-		if StringName((row as Dictionary).get("id", &"")) != &"split":
-			kept.append(row)
-	entry["abilities"] = kept
-
 # DEATH — off the board, now, whatever it is. Shields are drained rather than
 # spent one at a time: a Legendary wand with a single charge that a Dexterity pip
 # could eat would be a wand whose worth the player cannot read off its card.
@@ -7777,21 +7775,28 @@ func summon(enemy: GoalEnemyData, at: Vector2i = OFF_FIELD) -> int:
 #   self          another copy of the summoner
 # An empty selector rolls the summoner's own type and tier, which is what a bare
 # summoner ability should mean.
-func roll_ability_enemy(selector: StringName, source: GoalEnemyData) -> GoalEnemyData:
+#
+# `without` leaves out every enemy carrying that ability — a Split's pieces are
+# rolled `without` split — and a named enemy or `self` that carries it is no
+# roll at all (null).
+func roll_ability_enemy(selector: StringName, source: GoalEnemyData,
+		without: StringName = &"") -> GoalEnemyData:
 	var sel: String = String(selector)
 	var tier: int = source.tier_index() if source != null else 0
-	if sel == "self":
-		return source
-	if sel.begins_with("enemy:"):
-		return Data.get_goal_enemy_any(StringName(sel.substr(6)))
+	if sel == "self" or sel.begins_with("enemy:"):
+		var named: GoalEnemyData = source if sel == "self" \
+			else Data.get_goal_enemy_any(StringName(sel.substr(6)))
+		if named != null and without != &"" and named.ability_ids().has(without):
+			return null
+		return named
 	if sel.begins_with("tag:"):
-		return roll_conjured_enemy(tier, StringName(sel.substr(4)))
+		return roll_conjured_enemy(tier, StringName(sel.substr(4)), without)
 	if sel.begins_with("tier:"):
 		var name: String = sel.substr(5)
 		if name != "":
 			tier = RunDifficulty.tier_from_name(name)
-		return roll_conjured_enemy(tier)
-	return roll_enemy(source.game_type if source != null else &"", tier)
+		return roll_conjured_enemy(tier, &"", without)
+	return roll_enemy(source.game_type if source != null else &"", tier, without)
 
 # The cell a spawner drops a body into: the row in front of it, in its own lane.
 # OFF_FIELD when there is no such cell (it is already at the front) or something
@@ -8509,21 +8514,21 @@ func _body_died(entry: Dictionary, fell: Vector2i) -> void:
 				# it fell on when that square is free; the rest walk on the ordinary
 				# way.
 				#
-				# THE PIECES DO NOT SPLIT (the sheet's own wording, 23 Oct): a Split
-				# rolling its own type would otherwise come apart again on every
-				# death, and a slime that never stops dividing is a board that never
-				# clears. Only `split` is stripped — a piece keeps every other ability
-				# its enemy was authored with.
+				# NOTHING IT SPAWNS HAS SPLIT (the sheet's own wording, 23 Oct): the
+				# pieces are rolled from the enemies NOT authored with Split, so a
+				# slime never comes apart into slimes that come apart again. A
+				# selector that can only name a splitter (`self`, a named one) spawns
+				# nothing.
 				if args.size() >= 2:
 					var selector: StringName = StringName(args[1])
 					for i in range(maxi(1, int(args[0]))):
-						var spawn: GoalEnemyData = roll_ability_enemy(selector, enemy)
+						var spawn: GoalEnemyData = roll_ability_enemy(selector, enemy, &"split")
 						if spawn == null:
 							continue
 						var at: Vector2i = OFF_FIELD
 						if i == 0 and fell != OFF_FIELD and fits_at(spawn, fell.y, fell.x, 0):
 							at = fell
-						_strip_split(summon(spawn, at))
+						summon(spawn, at)
 			&"revive_next_game":
 				# UNDYING — owe the board this body back at the start of the next
 				# game, one PHASE further on. It is not put back now: "revive at the

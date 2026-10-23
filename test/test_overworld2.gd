@@ -10446,7 +10446,7 @@ func test_leaving_the_lab_leaves_the_bottles_behind() -> void:
 # the same embedded drop screen the Potion Lab opens with.
 
 func _buy_from_the_woman(index: int):
-	GameState.gold = 3
+	GameState.gold = 6
 	GameState.loot_items.clear()
 	assert_true(_ui.open_event(Data.get_event2(&"the_woman_in_blue")))
 	var modal = _ui._event_modal

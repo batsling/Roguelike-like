@@ -665,20 +665,24 @@ func test_split_puts_new_bodies_up_when_it_goes_down() -> void:
 	GameLoop2.fulfill(int(entry["instance"]))
 	assert_eq(GameLoop2.stack_size(), 2, "two took its place")
 
-# "…that don't have Split" (the sheet, 23 Oct): a split rolling its own kind would
-# divide on every death for ever.
-func test_what_a_split_leaves_does_not_split_again() -> void:
-	var slime: GoalEnemyData = _enemy([_ability(&"split", 2, &"self", "Itself"),
-		_ability(&"aftermath", 0, &"fire", "Fire")])
-	var entry: Dictionary = _put(slime, Vector2i(2, 1))
+# "…that don't have Split" (the sheet, 23 Oct): what a Split spawns is never an
+# enemy that splits, so a slime never comes apart into more splitters.
+func test_a_split_never_spawns_a_splitter() -> void:
+	for _i in range(20):
+		GameLoop2.reset()
+		var entry: Dictionary = _put(_enemy([_ability(&"split", 2, &"tag:slime", "slime tag")]),
+			Vector2i(2, 1))
+		GameLoop2.fulfill(int(entry["instance"]))
+		assert_gt(GameLoop2.stack_size(), 0, "it split into slimes")
+		for piece in GameLoop2.stack:
+			assert_false((piece["enemy"] as GoalEnemyData).ability_ids().has(&"split"),
+				"%s does not split" % (piece["enemy"] as GoalEnemyData).display_name)
+
+func test_a_split_naming_itself_spawns_nothing() -> void:
+	var entry: Dictionary = _put(_enemy([_ability(&"split", 2, &"self", "Itself")]),
+		Vector2i(2, 1))
 	GameLoop2.fulfill(int(entry["instance"]))
-	assert_eq(GameLoop2.stack_size(), 2, "it split into two of itself")
-	for piece in GameLoop2.stack:
-		assert_false(GameLoop2.entry_has_ability(piece, &"split"), "a piece does not split")
-		assert_true(GameLoop2.entry_has_ability(piece, &"aftermath"), "and keeps the rest")
-	GameLoop2.fulfill(int(GameLoop2.stack[0]["instance"]))
-	assert_eq(GameLoop2.stack_size(), 1, "a piece going down leaves nothing behind")
-	assert_true(slime.ability_ids().has(&"split"), "the enemy itself still splits")
+	assert_eq(GameLoop2.stack_size(), 0, "a splitter can only spawn more splitters, so none")
 
 # A bomb never reaches `_defeat`, which is why the death abilities hang off the
 # damage resolver instead. A bombed slime still splits.

@@ -9,7 +9,7 @@ display_name = "Whispering Hollow"
 source_game = "Slay the Spire 2"
 tier_tags = PackedStringArray()
 where = ""
-requirement = {"stat": "gold", "op": ">=", "value": 1, "percent": false}
+requirement = {"stat": "gold", "op": ">=", "value": 2, "percent": false}
 trigger = "after"
 rarity = "Common"
 file = "WhisperingHollow"
@@ -19,4 +19,4 @@ goal_met = ""
 goal_missed = ""
 chance_won = ""
 chance_lost = ""
-choices = [{"id": "exchange_gold", "text": "Exchange Gold", "repeat": "end", "repeat_max": 0, "results": ["You scatter some gold at the base of the tree and two of the clay vessels drop to the floor soundlessly. They break open, and contain perfectly intact potions within. You nab the potions and flee."], "gates": [], "effects": [{"type": "lose_gold", "value": 1}, {"type": "gain_loot", "value": 2}], "effects_text": "-1 Gold, +2 Loot", "goal": {}, "curse": {}, "play": {}, "chance": {}}, {"id": "hug_the_tree", "text": "Hug the Tree", "repeat": "end", "repeat_max": 0, "results": ["The whispering compels you to give it gold but you resist and give the tree a big hug instead! It thrashes about, scratching you with its branches, but eventually calms down. The tree-hugging experience transforms you. ...make hug.....?"], "gates": [], "effects": [{"type": "lose_hp", "value": 1}, {"type": "gain_stat", "stat": "transmute", "value": 1}], "effects_text": "-1 Health, +1 Transmute", "goal": {}, "curse": {}, "play": {}, "chance": {}}]
+choices = [{"id": "exchange_gold", "text": "Exchange Gold", "repeat": "end", "repeat_max": 0, "results": ["You scatter some gold at the base of the tree and two of the clay vessels drop to the floor soundlessly. They break open, and contain perfectly intact potions within. You nab the potions and flee."], "gates": [], "effects": [{"type": "lose_gold", "value": 2}, {"type": "gain_loot", "value": 2}], "effects_text": "-2 Gold, +2 Loot", "goal": {}, "curse": {}, "play": {}, "chance": {}}, {"id": "hug_the_tree", "text": "Hug the Tree", "repeat": "end", "repeat_max": 0, "results": ["The whispering compels you to give it gold but you resist and give the tree a big hug instead! It thrashes about, scratching you with its branches, but eventually calms down. The tree-hugging experience transforms you. ...make hug.....?"], "gates": [], "effects": [{"type": "lose_hp", "value": 1}, {"type": "gain_stat", "stat": "transmute", "value": 1}], "effects_text": "-1 Health, +1 Transmute", "goal": {}, "curse": {}, "play": {}, "chance": {}}]
