@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="LocationData" load_steps=2 format=3 uid="uid://location_the_hive"]
+
+[ext_resource type="Script" path="res://scripts/resources/LocationData.gd" id="1_loc"]
+
+[resource]
+script = ExtResource("1_loc")
+id = &"the_hive"
+display_name = "The Hive"
+game = "Slay the Spire 2"
+tier = 1
+description = "When entered, spawn 2 random bug tagged Enemies"
+arrive = [{"op": "spawn_enemy", "tag": "bug", "count": 2}]
+standing = []
+actions = []
+tag_types = PackedStringArray("bug")
+tag_up = 0.3
+file = "TheHive"
+image_path = "res://images2.0/locations/TheHive.png"

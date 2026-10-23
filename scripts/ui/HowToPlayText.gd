@@ -840,8 +840,8 @@ static func _ch_pack() -> Dictionary:
 				+ "yours for a halving to sit on, so the sheet says enemies only."),
 			_h("The ground: tiles and units"),
 			_p("Two things can be on a square of the board that are not a body, and "
-				+ "they layer — a unit stands on top of a tile effect. Neither of "
-				+ "them BLOCKS anything: an enemy walks in and whatever is there "
+				+ "they layer — a unit stands on top of a tile effect. Mostly they "
+				+ "do not BLOCK anything: an enemy walks in and whatever is there "
 				+ "reacts. Wherever an item or a scroll names one, hover the chip "
 				+ "under its description to read it."),
 			_kv("Fire (a tile effect)", "Anything that walks into it, or starts its "
@@ -861,6 +861,13 @@ static func _ch_pack() -> Dictionary:
 			_kv("The two together", "Fire and a mine cannot share a square. "
 				+ "Whichever arrives second, the heat sets the mine off and the "
 				+ "blast blows the fire out."),
+			_kv("Poops (units that block)", "A WALL. Nothing can step onto one, so "
+				+ "an enemy that reaches it spends its step hitting it instead, for "
+				+ "exactly what it would hit you for. "
+				+ "You can break it too — a bomb, a thrown potion, anything that hits "
+				+ "the ground. Broken, it pays out whoever broke it: a Poop drops a "
+				+ "piece of loot or lets a fly out, a Golden Poop pays gold, a "
+				+ "Rainbow Poop heals you for 3."),
 			_b("Enemies steer around mines when they have anywhere else to go, and "
 				+ "walk straight through them when they don't — a body in the lane "
 				+ "is a wall that might never move, a mine is a toll paid once. So "
@@ -927,6 +934,28 @@ static func _ch_bosses() -> Dictionary:
 				+ "buys you a DIFFERENT boss, not a way past this one."),
 			_note("A boss cannot be dashed past either. It follows you like "
 				+ "everything else on the board, and only its goal removes it."),
+			_h("Locations"),
+			_p("The run is always SOMEWHERE. It starts in a Low location, and every "
+				+ "difficulty up moves it to a new one of the new tier — Burning "
+				+ "Basement, The Hive, the Dark Room. You do not choose it: it "
+				+ "arrives with a popup of its picture and what it does, and then "
+				+ "sits beside the difficulty on the strip over the board. Hover it "
+				+ "to read it again; click it to open it."),
+			_b("Some do something WHEN YOU ENTER — once, with the first game you "
+				+ "pick there: bodies of their kind walk on, fire is lit, poops are "
+				+ "left on the board. A location dealt in the middle of a game waits "
+				+ "for the next one, so nothing lands in a game you are already "
+				+ "playing."),
+			_b("Some change a rule for as long as you are there: damage you take "
+				+ "is doubled, or one game on every offering is a free rift."),
+			_b("Some have a TRADE you can make a few times while you are there — "
+				+ "the button is on the location's popup, greyed with the reason "
+				+ "when you cannot pay."),
+			_b("Most LEAN the rolls: things carrying their tag — enemies, bosses, "
+				+ "relics, loot — turn up a little more often there. Burning "
+				+ "Basement's fire things are 20% likelier."),
+			_note("A location has no goal and nothing to fail. It lasts until the "
+				+ "next difficulty up, and then the run moves on."),
 		],
 	}
 
@@ -1056,13 +1085,15 @@ static func _ch_screen() -> Dictionary:
 				+ "ones after them with a clock on them. Anything wearing that "
 				+ "clock is going away, statuses included."),
 			_kv("Gold", "A chip in the top bar."),
-			_kv("Board size and tier", "The right-hand end of the board's pressure "
-				+ "bar."),
-			_kv("Amulet pressure", "The strip across the top of the board: how "
-				+ "many enemies every game that ends stands up, in the band's "
-				+ "colour, with the hop count that caused it. Zero out in the "
-				+ "wilds. Beside it, what ending THIS game will stand up (☠ +N when "
-				+ "this game ends) and how many spawns until the next difficulty up."),
+			_kv("Difficulty and location", "The first line of the DIFFICULTY strip "
+				+ "over the board: the tier (Low to Insane) with its four pips, and "
+				+ "the location you are in on the right — hover it, or click it."),
+			_kv("Amulet pressure", "The second line of the DIFFICULTY strip: how "
+				+ "many spawns until the next difficulty up, how far the Amulet is "
+				+ "and the pressure that puts on you (its two pips, in the band's "
+				+ "colour — empty out in the wilds), and on the right what ending "
+				+ "THIS game will stand up (☠ +N when this game ends). The strip "
+				+ "takes the band's colour."),
 			_kv("What kind of place a game is", "Its mark — ! ? !! $ — on the "
 				+ "card, on the 🗺 map and on the route ladder."),
 			_kv("Push and Bomb charges", "On their own buttons, on the board's "

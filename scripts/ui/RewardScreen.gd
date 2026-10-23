@@ -39,6 +39,12 @@ var _choice_count_override: int = -1
 #   _chest_choices  the rolled items for each, parallel to _chest_sizes
 #   _chest_taken    which of them have been answered
 var _chest_sizes: Array = []
+#   _chest_pools    the tag each chest draws from ("" the ordinary pool), parallel
+#                   to _chest_sizes (docs/locations-design.md §3)
+var _chest_pools: Array = []
+# The tag the chest being rolled RIGHT NOW draws from, or "" — what _roll_choices
+# reads, set per chest by _roll_every_chest and once by a single-chest setup.
+var _pool_tag: String = ""
 var _chest_choices: Array = []
 var _chest_taken: Array = []
 # Screen title; "Reward!" for an enemy-drop chest, "Victory!" for the (legacy)
@@ -92,10 +98,12 @@ func setup_chest(choices: int = 0) -> void:
 # per chest — [1, 1] is two Small chests — and each gets its own group with its
 # own roll, so "2 Small Chests" is visibly two chests of one item rather than one
 # chest of two.
-func setup_chests(sizes: Array) -> void:
+func setup_chests(sizes: Array, pools: Array = []) -> void:
 	if sizes.size() <= 1:
+		_pool_tag = String(pools[0]) if not pools.is_empty() else ""
 		setup_chest(int(sizes[0]) if sizes.size() == 1 else 0)
 		return
+	_chest_pools = pools.duplicate()
 	_gold = 0
 	_game = null
 	_title = "Choose a Reward"
@@ -430,7 +438,9 @@ func _refresh_multi() -> void:
 		col.add_theme_constant_override("separation", UITheme.GAP_SNUG)
 
 		var head := Label.new()
-		head.text = "%s Chest" % _size_name(int(_chest_sizes[i]))
+		var pool_word: String = String(_chest_pools[i]) if i < _chest_pools.size() else ""
+		head.text = "%s%s Chest" % [(pool_word.capitalize() + " ") if pool_word != "" else "",
+			_size_name(int(_chest_sizes[i]))]
 		head.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		head.add_theme_font_size_override("font_size", UITheme.FONT_LEAD)
 		head.add_theme_color_override("font_color",
@@ -464,11 +474,13 @@ func _size_name(choices: int) -> String:
 
 func _roll_every_chest() -> void:
 	_chest_choices.clear()
-	for size in _chest_sizes:
-		_choice_count_override = maxi(1, int(size))
+	for i in range(_chest_sizes.size()):
+		_choice_count_override = maxi(1, int(_chest_sizes[i]))
+		_pool_tag = String(_chest_pools[i]) if i < _chest_pools.size() else ""
 		_roll_choices()
 		_chest_choices.append(_choices.duplicate())
 	_choice_count_override = -1
+	_pool_tag = ""
 
 
 func _build_choice_tile(item: ItemData, chest: int = -1) -> Control:
@@ -520,6 +532,22 @@ func _roll_choices() -> void:
 	if not _explicit_pool.is_empty():
 		_choices = _explicit_pool.duplicate()
 		return
+	# A TAGGED chest (the Dark Room's devilish one, docs/locations-design.md §3)
+	# draws only from what carries the tag, leaned and without a rarity roll — a
+	# pool that small has no ladder to climb. A tag nothing rollable carries falls
+	# through to the ordinary chest below.
+	var tagged: Array = Data.reward_item2_pool_tagged(_pool_tag) if _pool_tag != "" else []
+	if not tagged.is_empty():
+		var want: int = _choice_count_override if _choice_count_override >= 0 \
+			else BASE_ITEM_CHOICES + maxi(0, Stats.get_value(&"discovery"))
+		want = maxi(1, mini(want, tagged.size()))
+		var guard: int = 0
+		while _choices.size() < want and guard < 100:
+			guard += 1
+			var got: ItemData = Locations.pick(tagged, _rng)
+			if not _choices.has(got):
+				_choices.append(got)
+		return
 	# Enemy-drop relics come from the games-first items2.0 table (§8).
 	var pool: Array = Data.reward_item2_pool()
 	if pool.is_empty():
@@ -532,7 +560,7 @@ func _roll_choices() -> void:
 	while _choices.size() < n and attempts < 100:
 		attempts += 1
 		var bucket: Array = Data.reward_item2_pool_of(_roll_rarity())
-		var pick: ItemData = bucket[_rng.randi_range(0, bucket.size() - 1)]
+		var pick: ItemData = Locations.pick(bucket, _rng)
 		# Sacred Orb: reroll low-rarity picks — Commons always, Uncommons 25%.
 		# Re-loops (re-rolling rarity) until the pick survives, biasing the
 		# offered choices toward higher rarities.

@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="LocationData" load_steps=2 format=3 uid="uid://location_dross"]
+
+[ext_resource type="Script" path="res://scripts/resources/LocationData.gd" id="1_loc"]
+
+[resource]
+script = ExtResource("1_loc")
+id = &"dross"
+display_name = "Dross"
+game = "The Binding of Isaac: Rebirth"
+tier = 0
+description = "When entered, spawn 2 random poop tagged objects on random tiles. There is an 80% chance it is the normal Poop."
+arrive = [{"op": "place_unit", "tag": "poop", "count": 2, "favour": "poop", "favour_pct": 80}]
+standing = []
+actions = []
+tag_types = PackedStringArray("poop", "stinky")
+tag_up = 0.2
+file = "Dross"
+image_path = "res://images2.0/locations/Dross.png"

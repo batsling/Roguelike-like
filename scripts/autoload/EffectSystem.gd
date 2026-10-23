@@ -442,7 +442,7 @@ func _h_gain_item_per_rarity(effect: Dictionary, _ctx: Dictionary) -> void:
 		var fresh: Array = bucket.filter(func(it):
 			return not taken.has(it.id) and not GameState.has_item(it.id))
 		var pick_from: Array = fresh if not fresh.is_empty() else bucket
-		var pick: ItemData = pick_from[_rng.randi_range(0, pick_from.size() - 1)]
+		var pick: ItemData = Locations.pick(pick_from, _rng)
 		taken[pick.id] = true
 		GameState.add_item(pick)
 
@@ -522,7 +522,7 @@ func _h_gain_random_item(effect: Dictionary, ctx: Dictionary) -> void:
 			pool = Data.reward_item2_pool().filter(func(it): return it.id != given)
 		if pool.is_empty():
 			break
-		var pick: ItemData = pool[_rng.randi_range(0, pool.size() - 1)]
+		var pick: ItemData = Locations.pick(pool, _rng)
 		GameState.add_item(pick)
 		names.append(pick.display_name)
 		ids.append(pick.id)

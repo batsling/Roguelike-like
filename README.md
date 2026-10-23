@@ -164,7 +164,8 @@ The repository root **is** the Godot project, so `res://x` is `./x`.
 | Rifts: off-map games pulled into the map | [`docs/rifts-design.md`](docs/rifts-design.md) |
 | Roguelike Radio | [`docs/roguelike-radio.md`](docs/roguelike-radio.md) |
 | The end-of-session Camp | [`docs/rest-site-design.md`](docs/rest-site-design.md) |
-| Locations and events, design | [`docs/locations-and-events-design.md`](docs/locations-and-events-design.md) |
+| Locations: dealt at each difficulty up, what they do, the tag lean, the poops | [`docs/locations-design.md`](docs/locations-design.md) |
+| Locations and events, the earlier brainstorm (its events half still argued from) | [`docs/locations-and-events-design.md`](docs/locations-and-events-design.md) |
 | What fires first in a game: a lost run's turn, the report, kills and hits | [`docs/turn-order.md`](docs/turn-order.md), held to the code's order by `tools/check_turn_order.py` |
 | Stats and how they resolve | [`docs/stat-dispatcher.md`](docs/stat-dispatcher.md) |
 | The systems graph (what feeds what) | [`docs/systems-graph.md`](docs/systems-graph.md) |

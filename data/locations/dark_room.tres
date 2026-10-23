@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="LocationData" load_steps=2 format=3 uid="uid://location_dark_room"]
+
+[ext_resource type="Script" path="res://scripts/resources/LocationData.gd" id="1_loc"]
+
+[resource]
+script = ExtResource("1_loc")
+id = &"dark_room"
+display_name = "Dark Room"
+game = "The Binding of Isaac: Rebirth"
+tier = 2
+description = "Damage taken here is doubled. When entered, Lose 2 Max Health to Gain +1 Devilish Small Chest up to 4 times"
+arrive = []
+standing = [{"op": "damage_taken_mult", "value": 2.0}]
+actions = [{"limit": 4, "cost": {"op": "lose_max_hp", "value": 2}, "pay": {"op": "gain_chest", "size": 0, "pool": "devilish"}}]
+tag_types = PackedStringArray("devilish")
+tag_up = 0.2
+file = "DarkRoom"
+image_path = "res://images2.0/locations/DarkRoom.png"

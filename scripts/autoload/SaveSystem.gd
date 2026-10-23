@@ -296,6 +296,7 @@ func _build_payload() -> Dictionary:
 		"run_seed": GameState.run_seed,
 		"pending_chests": GameState.pending_chests,
 		"pending_chest_choices": Array(GameState.pending_chest_choices),
+		"pending_chest_pools": Array(GameState.pending_chest_pools),
 		# Mysterious Mask: the characters worn and the choices still to make.
 		"masked_characters": Array(GameState.masked_characters).map(func(id): return String(id)),
 		"pending_masks": GameState.pending_masks,
@@ -607,6 +608,9 @@ func _apply_save_data(data: Dictionary) -> void:
 	GameState.pending_chest_choices.clear()
 	for n in data.get("pending_chest_choices", []):
 		GameState.pending_chest_choices.append(int(n))
+	GameState.pending_chest_pools.clear()
+	for pool in data.get("pending_chest_pools", []):
+		GameState.pending_chest_pools.append(String(pool))
 	GameState.masked_characters.clear()
 	for id in data.get("masked_characters", []):
 		GameState.masked_characters.append(StringName(String(id)))

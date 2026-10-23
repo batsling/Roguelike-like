@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="UnitData" load_steps=3 format=3 uid="uid://unit2_golden_poop"]
+
+[ext_resource type="Script" path="res://scripts/resources/UnitData.gd" id="1_unit"]
+[ext_resource type="Texture2D" path="res://images2.0/units/GoldenPoop.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_unit")
+id = &"golden_poop"
+display_name = "Golden Poop"
+unit_type = "Inanimate"
+description = "Will block the enemy's path and can be damaged by both player and enemy. May drop gold or Counterfeit Penny"
+health = 5
+blocks = true
+triggers = {}
+on_destruction = {"always": [], "one_of": [{"op": "gold", "value": 2, "chance": 50.0}, {"op": "gold", "value": 3, "chance": 30.0}, {"op": "gold", "value": 4, "chance": 10.0}, {"op": "gold", "value": 5, "chance": 5.0}, {"op": "give", "kind": "trinket", "id": "counterfeit_penny", "chance": 5.0}]}
+tags = PackedStringArray("poop")
+interactions = {}
+file = "GoldenPoop"
+image = ExtResource("2_img")

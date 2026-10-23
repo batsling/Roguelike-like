@@ -248,9 +248,13 @@ func _make_choice_card(index: int, choice: Dictionary) -> Control:
 		flag.add_theme_color_override("font_color", UITheme.SHOP_GREEN)
 	elif keyed:
 		var dest: GameData = Data.get_game(StringName(choice["rift_key"]))
-		flag.text = "🗝 RIFT"
-		flag.tooltip_text = ("Spend a Rift Key to open a rift onto %s. It leads one way, on to %s."
-			% [game.display_name, dest.display_name if dest != null else String(choice["rift_key"])])
+		var free: bool = bool(choice.get("free_rift", false))
+		flag.text = "🌀 RIFT" if free else "🗝 RIFT"
+		flag.tooltip_text = (("%s opens a rift onto %s — no key needed. It leads one way, on to %s."
+			% [Locations.current().display_name if Locations.current() != null else "This place",
+				game.display_name, dest.display_name if dest != null else String(choice["rift_key"])])
+			if free else ("Spend a Rift Key to open a rift onto %s. It leads one way, on to %s."
+			% [game.display_name, dest.display_name if dest != null else String(choice["rift_key"])]))
 		flag.add_theme_color_override("font_color", UITheme.RIFT)
 	elif rift:
 		# A rift is never the Amulet nor a shop (both rules of the generator), so

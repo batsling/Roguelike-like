@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="LocationData" load_steps=2 format=3 uid="uid://location_the_void"]
+
+[ext_resource type="Script" path="res://scripts/resources/LocationData.gd" id="1_loc"]
+
+[resource]
+script = ExtResource("1_loc")
+id = &"the_void"
+display_name = "The Void"
+game = "The Binding of Isaac: Rebirth"
+tier = 3
+description = "1 Random Game in the Game Choice Select will be a Random Game Rift"
+arrive = []
+standing = [{"op": "offering_rift", "value": 1}]
+actions = []
+tag_types = PackedStringArray()
+tag_up = 0.0
+file = "TheVoid"
+image_path = "res://images2.0/locations/TheVoid.png"

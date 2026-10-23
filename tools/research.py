@@ -146,19 +146,32 @@ KINDS = {
         name="Name", sheets=["statuses", "curses"], categories="statuses"),
     "locations": dict(
         title="Locations and objects: places on the map, and things standing in them",
-        columns=["Sheet", "Name", "Game", "Difficulty", "Goal Type", "Goal", "Goal Effect", "Tag", "Rarity",
-                 "Description", "Choices", "Image"] + STAGE,
+        # A location has NO GOAL since 23 Oct 2026 (docs/locations-design.md): its
+        # `Description` says what it does to the run and the board, in the owner's
+        # own style ("When entered, spawn 2 random bug tagged Enemies"), and `Tag`
+        # / `Tag % Up` are the lean (the sheet's Tag Type / Tag % Up). `Effect` is
+        # the machine column, left blank like every Effect cell here.
+        columns=["Sheet", "Name", "Game", "Difficulty", "Description", "Effect", "Tag", "Tag % Up", "Rarity",
+                 "Choices", "Image"] + STAGE,
         # `shopkeepers` has no sheet yet: ShopPanel2 reads a `shopkeeper` field
         # and nothing is authored for it (spec §14.5), so ideas wait here.
         # `tiles` and `units` are the battlefield's terrain and placed things
         # (Fire, Web, Landmine): what stands ON the board rather than on the map.
         name="Name", sheets=["locations", "objects", "shopkeepers", "tiles", "units"], categories="locations"),
+    # NOT FROM ONE GAME: what a location could DO, built from what this game
+    # already has (its tiles, units, statuses, verbs, shops, events and rules),
+    # for the owner to match to a location. So no `Game`, no ledger and no wiki.
+    "location_effects": dict(
+        title="Location effects: what a location could do, built from the game's own content",
+        columns=["Name", "Kind", "Tier", "Description", "Effect", "Tag", "Tag % Up", "Built from", "Suits",
+                 "Needs", "Confidence", "Status", "Owner", "Owner Notes", "ID"],
+        name="Name", targets=["location effects"], gameless=True),
 }
 # Kinds whose rows are written by hand from a game's sources, game by game.
 # `connections` is researched by tools/influence_research.py, and `tags` by
 # tools/tag_research.py, which writes its own sheets and needs no CSV.
 WIKI_KINDS = [k for k in KINDS if KINDS[k].get("categories")]
-LEDGER_KINDS = list(KINDS)
+LEDGER_KINDS = [k for k in KINDS if not KINDS[k].get("gameless")]
 
 STATUSES = {
     "to review": "waiting for the owner",
@@ -1306,7 +1319,7 @@ def check(verbose=True):
                 continue
             if r.get("Confidence", "") not in CONFIDENCE:
                 bad.append(f"{where}: Confidence {r['Confidence']!r} should be ok, check or empty")
-            if r["Game"] not in games:
+            if not k.get("gameless") and r["Game"] not in games:
                 bad.append(f"{where}: Game {r['Game']!r} is not spelled as the games sheet spells it")
             if "sheets" in k and r.get("Sheet") not in k["sheets"]:
                 bad.append(f"{where}: Sheet {r.get('Sheet')!r} should be one of {k['sheets']}")
@@ -1468,7 +1481,8 @@ ABOUT = [
     "  events       events in the events sheet's own columns; the Effect cells are left for you",
     "  characters   playable characters in the characters sheet's columns",
     "  statuses     statuses and curses (Sheet says which)",
-    "  locations    locations and objects (Sheet says which)",
+    "  locations    locations and objects (Sheet says which). A location has no goal: Description says what it does",
+    "  location effects   ideas for what a location could DO, from the game's own content: match them to locations",
     "  tag suggestions / new tag ideas / vocabulary   from tools/tag_research.py, as before",
     "",
     "COLUMNS EVERY CANDIDATE SHEET HAS",
@@ -1478,7 +1492,9 @@ ABOUT = [
     "  Status        " + "; ".join(f"{k} = {v}" for k, v in STATUSES.items()),
     "  ID            how the row is matched when you sort or filter. Leave it alone.",
     "",
-    "Effect cells are deliberately blank: a mechanic is the owner's to write.",
+    "Effect cells are deliberately blank: a mechanic is the owner's to write. (A location effect's Effect cell is",
+    "  filled in on locations and location effects where the location grammar can already say it:",
+    "  docs/locations-design.md §3.)",
     "How the research is done: docs/research.md.",
 ]
 
