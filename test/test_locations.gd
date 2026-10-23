@@ -386,6 +386,52 @@ func test_the_page_shows_a_dealt_location_and_the_chip_beside_the_difficulty() -
 	assert_string_contains(Page.labels_text(card), "doubled", "its card says what the place does")
 	card.free()
 
+# AFTER THE EVENT (the owner, 23 Oct): a location dealt while an event is up waits
+# for it, and an arrival popup already up gives way to one.
+func test_the_location_waits_for_the_event_screen() -> void:
+	var ui = Page.build(self)
+	ui.choose_start(0)
+	var ev: EventData2 = Data.all_events2()[0] if not Data.all_events2().is_empty() else null
+	if ev == null:
+		pending("no event authored")
+		return
+	if ui._event_modal != null and is_instance_valid(ui._event_modal):
+		ui._event_modal.dismiss()
+		ui._event_modal = null
+	assert_true(ui.open_event(ev), "an event is up")
+	_enter(&"dark_room")
+	await get_tree().process_frame
+	await get_tree().process_frame
+	assert_null(ui._location_popup, "not over the event")
+	assert_true(GameLoop2.location_unseen, "still owed")
+	ui._event_modal.dismiss()
+	ui._on_event_finished({})
+	await get_tree().process_frame
+	await get_tree().process_frame
+	assert_not_null(ui._location_popup, "shown once the event has gone")
+	if ui._location_popup != null:
+		ui._location_popup.close()
+
+func test_an_arrival_popup_gives_way_to_an_event() -> void:
+	var ui = Page.build(self)
+	ui.choose_start(0)
+	var ev: EventData2 = Data.all_events2()[0] if not Data.all_events2().is_empty() else null
+	if ev == null:
+		pending("no event authored")
+		return
+	if ui._event_modal != null and is_instance_valid(ui._event_modal):
+		ui._event_modal.dismiss()
+		ui._event_modal = null
+	_enter(&"dark_room")
+	await get_tree().process_frame
+	await get_tree().process_frame
+	assert_not_null(ui._location_popup, "the arrival is up")
+	assert_true(ui.open_event(ev))
+	assert_null(ui._location_popup, "and closes for the event")
+	assert_true(GameLoop2.location_unseen, "to be shown again after it")
+	ui._event_modal.dismiss()
+	ui._on_event_finished({})
+
 func test_the_void_puts_a_free_rift_card_in_the_offering() -> void:
 	var ui = Page.build(self)
 	ui.choose_start(0)

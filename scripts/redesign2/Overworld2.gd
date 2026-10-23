@@ -3060,6 +3060,12 @@ func _open_pending_event() -> void:
 	if ev == null:
 		_open_pending_shop()
 		return
+	# An arrival popup already up gives way to the event and comes back after it
+	# (_show_location_if_unseen), so the location is always read second.
+	if _location_popup != null and is_instance_valid(_location_popup) \
+			and _location_popup.get("_arrival") == true:
+		_location_popup.close()
+		GameLoop2.location_unseen = true
 	_event_modal = load(EVENT_MODAL2_SCRIPT).open(self, ev, node)
 	_event_modal.finished.connect(_on_event_finished)
 
@@ -3084,6 +3090,7 @@ func open_event(ev: EventData2) -> bool:
 
 func _on_event_finished(play_request: Dictionary) -> void:
 	_event_modal = null
+	call_deferred("_show_location_if_unseen")
 	# Machines an event put in front of you belong to that event, and the modal
 	# has already taken them away (EventModal2._end_objects) — precisely the ones
 	# it spawned, where this used to clear the board outright and take a machine
@@ -5277,6 +5284,10 @@ func _show_location_if_unseen() -> void:
 	if _post_screen != null and is_instance_valid(_post_screen):
 		return
 	if _location_popup != null and is_instance_valid(_location_popup):
+		return
+	# AFTER THE EVENT, never over it (the owner, 23 Oct): an event open or queued
+	# owns the screen, and `_on_event_finished` asks again once it has gone.
+	if (_event_modal != null and is_instance_valid(_event_modal)) or _pending_event != null:
 		return
 	show_location(true)
 

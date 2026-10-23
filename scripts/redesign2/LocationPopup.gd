@@ -64,10 +64,7 @@ func _build() -> void:
 	root.add_child(_line("YOU ENTER" if _arrival else "YOU ARE IN", UITheme.TEXT_FAINT,
 		UITheme.FONT_TINY))
 	root.add_child(_line(_loc.display_name, ACCENT, UITheme.FONT_TITLE))
-	var sub: String = "%s location" % Locations.tier_name(_loc)
-	if _loc.game != "":
-		sub += " · from %s" % _loc.game
-	root.add_child(_line(sub, UITheme.TEXT_DIM, UITheme.FONT_SMALL))
+	root.add_child(_line(Locations.sub_text(_loc), UITheme.TEXT_DIM, UITheme.FONT_SMALL))
 
 	var tex: Texture2D = _loc.image
 	if tex != null:
@@ -95,9 +92,9 @@ func _build() -> void:
 	root.add_child(_actions_box)
 	_refresh_actions()
 
-	var note: String = ("Until the next difficulty up. Hover it beside the difficulty on the board to read this again."
-		if _arrival else "Until the next difficulty up.")
-	root.add_child(_line(note, UITheme.TEXT_FAINT, UITheme.FONT_SMALL))
+	if _arrival:
+		root.add_child(_line("Hover it beside the difficulty on the board to read this again.",
+			UITheme.TEXT_FAINT, UITheme.FONT_SMALL))
 
 	var ok := Button.new()
 	ok.text = "Onward" if _arrival else "Close"

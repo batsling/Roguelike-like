@@ -2162,9 +2162,9 @@ func test_the_pressure_readout_carries_a_hover_card() -> void:
 	assert_string_contains(String(card.get("title", "")),
 		"Difficulty: %s" % RunDifficulty.tier_name(RunDifficulty.current_tier()),
 		"named for what it is")
-	assert_string_contains(String(card.get("subtitle", "")), "Amulet pressure",
-		"with the pressure under it")
-	assert_string_contains("\n".join(PackedStringArray(card.get("lines", []))),
+	var lines: Array = card.get("lines", [])
+	assert_eq(lines.size(), 3, "three short lines (the owner, 23 Oct)")
+	assert_string_contains("\n".join(PackedStringArray(lines)),
 		"Amulet", "and it says WHY the number is what it is")
 
 # §19.8: the strip says what ENDING this game costs — the whole bill, the +1 for
@@ -2201,7 +2201,7 @@ func test_the_strip_carries_the_end_of_game_price_and_the_boss_count() -> void:
 	var card: Dictionary = board._pressure_panel.get_meta(HoverCard.META)
 	var lines: String = "\n".join(PackedStringArray(card.get("lines", [])))
 	assert_string_contains(lines, "went down", "the hover card gives the reason")
-	assert_string_contains(lines, "boss", "and explains the count")
+	assert_string_contains(lines, "Boss", "and the count")
 	GameState.amulet_game_id = amulet
 	GameLoop2.defeated_this_game = 0
 	GameState.spawn_events = 0

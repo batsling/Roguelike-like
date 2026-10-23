@@ -95,10 +95,7 @@ static func card(loc: LocationData) -> Control:
 		art.clip_contents = true
 		col.add_child(art)
 	col.add_child(_text(loc.display_name, Color(1.0, 0.85, 0.4), UITheme.FONT_SUB))
-	var sub: String = "%s location" % Locations.tier_name(loc)
-	if loc.game != "":
-		sub += " · %s" % loc.game
-	col.add_child(_text(sub, UITheme.TEXT_DIM, UITheme.FONT_SMALL))
+	col.add_child(_text(Locations.sub_text(loc), UITheme.TEXT_DIM, UITheme.FONT_SMALL))
 	col.add_child(_text(loc.description, UITheme.TEXT, UITheme.FONT_BODY))
 	if GameLoop2.location_arrival_due and Locations.current() == loc:
 		col.add_child(_text("Its arrival comes with the next game you pick.", UITheme.GOLD,
@@ -109,7 +106,7 @@ static func card(loc: LocationData) -> Control:
 	for i in range(loc.actions.size()):
 		col.add_child(_text("▸ " + Locations.action_text(loc.actions[i],
 			GameLoop2.location_action_used(i)), UITheme.TEXT, UITheme.FONT_SMALL))
-	col.add_child(_text("Until the next difficulty up. Click to open it%s." % (
+	col.add_child(_text("Click to open it%s." % (
 		" and use it" if not loc.actions.is_empty() else ""), UITheme.TEXT_FAINT, UITheme.FONT_SMALL))
 	return panel
 
