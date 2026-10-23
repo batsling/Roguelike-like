@@ -60,7 +60,7 @@ Clauses are separated by `;` and sit under a header:
 | header | when | effects |
 |---|---|---|
 | `arrive:` | once, when it is dealt | `spawn_enemy <tag> <n>`, `place_tile <tile> <n>`, `place_unit <tag> <n> [favour=<unit>:<pct>]`, or **anything an item's Effect column can say** |
-| `while:` | as long as the run is there | `damage_taken_mult <x>`, `offering_rift <n>` |
+| `while:` | as long as the run is there | `damage_taken_mult <x>`, `offering_rift <n>`, `push_mult <n>` |
 | `action <limit>:` | a button, up to `<limit>` times | `<cost> => <pay>`. Cost: `lose_max_hp <n>` or `spend <stat> <n>` (keys, bombs, gold, bash, dash, transmute, scramble, push, shields, bonus_shields). Pay: `gain_chest <size> [<tag>]`, or any item effect |
 
 **The item grammar is the fallback.** An `arrive:` clause or an action's payout
@@ -70,19 +70,22 @@ that is not one of the location's own verbs is read by
 `gain_scroll 2` and `apply_unit landmine random_empty` all work with no new
 code. That is why 52 of the 106 effect ideas are already writable.
 
-The six authored:
+The eight authored:
 
 | location | tier | Effect |
 |---|---|---|
 | Burning Basement | Low | `arrive: spawn_enemy fire 1; place_tile fire 2` |
 | Dross | Low | `arrive: place_unit poop 2 favour=poop:80` |
 | The Hive | Medium | `arrive: spawn_enemy bug 2` |
+| Caves | High | `arrive: spawn_enemy spider 2; place_tile web 3` |
 | Dark Room | High | `while: damage_taken_mult 2; action 4: lose_max_hp 2 => gain_chest small devilish` |
 | The Chest | High | `while: damage_taken_mult 2; action 4: spend keys 1 => gain_chest small` |
+| The Moon | High | `arrive: spawn_enemy alien 1; while: push_mult 3` |
 | The Void | Insane | `while: offering_rift 1` |
 
 The `Effect` cells were written from the owner's `Description`s by
-`tools/_locations_effect_column_setup.py`. The descriptions are what the
+`tools/_locations_effect_column_setup.py` (Caves and The Moon by
+`tools/_units_destruction_effect_setup.py`). The descriptions are what the
 player reads, and the Effect is what runs.
 
 ### 3. The pieces each one needed
@@ -102,6 +105,10 @@ player reads, and the Effect is what runs.
   REPLACES an ordinary card, never the Amulet and never the last card on a
   shortest road. With nothing safe to replace it is added past the end. It
   respects Settings → rifts.
+- **`push_mult`** (The Moon). `Locations.push_mult()`: the Push verb moves its
+  body that many cells for its one charge (the first as ever, the rest on
+  `shove`'s terms, as far as there is room), and a weapon's shove goes that
+  many times its squares.
 - **Actions** are greyed with their reason when they cannot be paid, like a
   machine's buttons: `GameLoop2.location_action_blocked`. Lose Max Health never
   takes the last point of it.
@@ -137,10 +144,13 @@ Seeded runs, saves and tests are unaffected; `test_locations.gd` holds that.
 Dross lays poops, the first units that BLOCK (the sheet's Effect `block`;
 `UnitData.blocks`). The units sheet gained two columns for them:
 
-- **On Destruction** — what the unit leaves when its Health runs out. Parts
-  with a `N%` are one weighted draw; a bare part always happens. Outcomes:
-  `Random Loot`, `Random <tag> tagged Enemy`, `N Gold`, `Gain +N Health`, or a
-  named loot piece (`Counterfeit Penny`).
+- **On Destruction** — what the unit leaves when its Health runs out, in the
+  owner's words. Since 23 Oct the generator reads the machine version beside it,
+  **On Destruction Effect**: parts with a `N%` are one weighted draw; a bare
+  part always happens. Outcomes: `loot`, `spawn_enemy <tag>`, `gold <n>`,
+  `heal <n>`, `give <loot id>`. An enemy that crawls out stands on the unit's
+  square, or the nearest one its shape fits; it walks on at the back only when
+  the board has no room for it at all.
 - **Tag** — what the unit is (`poop`), for picking units by tag and for the lean.
 
 On the board:

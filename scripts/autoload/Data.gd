@@ -314,6 +314,21 @@ func _size_for_points(points: int) -> int:
 			return size
 	return ChestSize.SMALL
 
+# GOLD IN THE CHEST (23 Oct): +1 per rung — Small 1, Medium 2, Large 3, Huge 4,
+# the same rungs CHEST_REWARD_POINTS costs them at. Paid when the chest OPENS,
+# whatever is taken out of it, so a skipped chest is still worth its gold. Asked
+# by choice count because that is what a banked chest carries: 0 is the reward
+# screen's own default (BASE_ITEM_CHOICES, 2 — a Medium), and a count between two
+# rungs (a 4-item choice) is paid at the rung below it.
+func chest_gold(choices: int) -> int:
+	if choices <= 0:
+		return int(CHEST_REWARD_POINTS[ChestSize.MEDIUM])
+	var rank: int = 0
+	for size in [ChestSize.SMALL, ChestSize.MEDIUM, ChestSize.LARGE, ChestSize.HUGE]:
+		if choices >= int(CHEST_SIZE_CHOICES[size]):
+			rank = int(CHEST_REWARD_POINTS[size])
+	return rank
+
 const CHEST_SIZE_NAMES := {
 	ChestSize.SMALL: "Small", ChestSize.MEDIUM: "Medium",
 	ChestSize.LARGE: "Large", ChestSize.HUGE: "Huge",

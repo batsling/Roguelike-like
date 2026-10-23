@@ -408,10 +408,16 @@ kind is one cell.
   own turn first, then a quarter turn, so a 2x1 goes in standing rather than not
   at all). A grant with no room for the shape is not paid, as a piece into a full
   pack is not.
-- **A big piece lives inside one owner**: the 3x3 or one bag. Slots are numbered by
-  who owns the cell (§6), so a piece across two owners would be torn apart when its
-  bag moved.
-- **Its footprint is kept in its owner's frame**: the anchor is the top-left of
+- **A big piece can sit across owners** (23 Oct): half in the 3x3 and half in a
+  bag, or across two bags. It is then **in every bag under it**, once per bag:
+  two Fanny Packs under one Longsword are two chances at the extra charge, and
+  Potion Belt's `if_in_bag` and Holdall's count both see it
+  (`GameState.bags_of_slot`). Slots are numbered by who owns the cell (§6), so
+  such a piece keeps the slots it covers as a list (`pack_cells`, written by
+  `_seat`), and **a bag under it cannot move or turn** (`bag_is_straddled`) —
+  that would pull the piece in two. Move the piece off it first. Removing an
+  earlier bag shifts the list down the way it shifts every `pack_slot`.
+- **Inside one owner its footprint is kept in that owner's frame**: the anchor is the top-left of
   the rectangle in the bag's unturned reading order (`piece_slots`). A placement
   from the screen is asked by the cell the piece's top-left is dropped on
   (`piece_slots_from`).

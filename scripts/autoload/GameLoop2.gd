@@ -4101,9 +4101,15 @@ func _run_destruction(outcome: Dictionary, cell: Vector2i, unit: UnitData) -> vo
 			if not entry.is_empty():
 				place_drop(cell, entry)
 		"spawn_enemy":
+			# OUT OF THE UNIT, not in at the back: the body stands on the square the
+			# unit stood on, or the nearest one its shape fits — a fly that crawled
+			# out of a poop in the front column and appeared five columns away was
+			# not the poop's fly. Only a board with no room for it at all walks it
+			# on the ordinary way.
 			var e: GoalEnemyData = roll_conjured_enemy(RunDifficulty.current_tier(),
 				StringName(String(outcome.get("tag", ""))))
-			if e != null and spawn_to_stack(e) > 0:
+			if e != null and summon(e, nearest_open_cell(e, cell)) > 0:
+				loop_changed.emit()
 				var msg: String = "%s crawled out of the %s." % [e.display_name, what]
 				GameLog.add(msg, UITheme.DANGER)
 				Notifications.notify(msg, UITheme.DANGER)
@@ -4621,6 +4627,10 @@ func push(instance: int, dir: Vector2i = PUSH_BACK) -> bool:
 	# (§17). That is what makes a Push a way to USE the ground you have laid.
 	_move_entry(stack[idx], int(stack[idx].get("row", 0)) + dir.y,
 		int(stack[idx].get("col", spawn_col())) + dir.x)
+	# THE MOON (Locations.push_mult): the cells past the first ride free, on
+	# shove's terms — as far as there is room, each one an arrival.
+	if _index_of(instance) >= 0 and Locations.push_mult() > 1:
+		_shove_cells(instance, dir, Locations.push_mult() - 1)
 	# Shoving a body off the front line can open the gap a waiting enemy needs.
 	_admit_offgrid()
 	loop_changed.emit()
@@ -4633,6 +4643,11 @@ func push(instance: int, dir: Vector2i = PUSH_BACK) -> bool:
 # is an arrival (`_move_entry`), so shoving into fire or onto a mine costs what
 # walking there would. Returns how many squares it moved.
 func shove(instance: int, dir: Vector2i, squares: int = 1) -> int:
+	return _shove_cells(instance, dir, squares * Locations.push_mult())
+
+# The steps themselves, at face value — Push's own extra cells come through here
+# so The Moon multiplies them once rather than twice.
+func _shove_cells(instance: int, dir: Vector2i, squares: int) -> int:
 	var moved: int = 0
 	for _i in range(maxi(0, squares)):
 		if not can_push(instance, dir):
@@ -4808,6 +4823,18 @@ func cancel_abilities(instance: int) -> bool:
 	entry["abilities"] = []
 	loop_changed.emit()
 	return true
+
+# The one-ability version, for what a Split leaves behind: the piece forgets
+# `split` and keeps the rest. On the entry, as above, so it is this body only.
+func _strip_split(instance: int) -> void:
+	var entry: Dictionary = entry_for(instance)
+	if entry.is_empty() or not entry_has_ability(entry, &"split"):
+		return
+	var kept: Array = []
+	for row in entry_abilities(entry):
+		if StringName((row as Dictionary).get("id", &"")) != &"split":
+			kept.append(row)
+	entry["abilities"] = kept
 
 # DEATH — off the board, now, whatever it is. Shields are drained rather than
 # spent one at a time: a Legendary wand with a single charge that a Dexterity pip
@@ -8481,6 +8508,12 @@ func _body_died(entry: Dictionary, fell: Vector2i) -> void:
 				# SPLIT — X new bodies of the named type. The first takes the square
 				# it fell on when that square is free; the rest walk on the ordinary
 				# way.
+				#
+				# THE PIECES DO NOT SPLIT (the sheet's own wording, 23 Oct): a Split
+				# rolling its own type would otherwise come apart again on every
+				# death, and a slime that never stops dividing is a board that never
+				# clears. Only `split` is stripped — a piece keeps every other ability
+				# its enemy was authored with.
 				if args.size() >= 2:
 					var selector: StringName = StringName(args[1])
 					for i in range(maxi(1, int(args[0]))):
@@ -8490,7 +8523,7 @@ func _body_died(entry: Dictionary, fell: Vector2i) -> void:
 						var at: Vector2i = OFF_FIELD
 						if i == 0 and fell != OFF_FIELD and fits_at(spawn, fell.y, fell.x, 0):
 							at = fell
-						summon(spawn, at)
+						_strip_split(summon(spawn, at))
 			&"revive_next_game":
 				# UNDYING — owe the board this body back at the start of the next
 				# game, one PHASE further on. It is not put back now: "revive at the

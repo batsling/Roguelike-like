@@ -576,6 +576,10 @@ static func evolve(index: int, evo: EvolutionData, chosen: Array) -> Dictionary:
 	grown["charges"] = mini(charges_of(old), result.max_charges)
 	grown["pack_slot"] = int(old.get("pack_slot", -1))
 	grown["rot"] = int(old.get("rot", 0))
+	# A weapon across two bags keeps that seat when the new one is the same shape
+	# (GameState._cells_of ignores a list that is the wrong size for it).
+	if old.get("pack_cells", null) is Array:
+		grown["pack_cells"] = (old["pack_cells"] as Array).duplicate()
 	# WHAT IT HAS GROWN rides across too: Lightning Ring's Replays are Thunder Loop's.
 	if replays_of(old) > 0:
 		grown["replays"] = replays_of(old)
@@ -597,9 +601,10 @@ static func evolve(index: int, evo: EvolutionData, chosen: Array) -> Dictionary:
 	# Where the old one stood, if the new shape fits there; otherwise the first place
 	# it fits (GameState.loot_layout re-seats a piece whose slot will not hold it).
 	var anchor: int = int(grown["pack_slot"])
-	var cells: Array = GameState.piece_slots(grown, anchor, int(grown["rot"])) if anchor >= 0 else []
+	var cells: Array = GameState._cells_of(grown, anchor) if anchor >= 0 else []
 	if cells.is_empty() or not GameState._all_free(GameState.loot_layout(), cells):
 		grown.erase("pack_slot")
+		grown.erase("pack_cells")
 		grown["rot"] = 0
 		grown = GameState._seated(grown)
 	GameState.loot_items.append(grown)

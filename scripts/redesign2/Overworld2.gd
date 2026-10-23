@@ -3782,12 +3782,14 @@ func _redeem_pending_chests() -> void:
 	# actually got: "2 Small Chests" is two chests of one item, not one of two.
 	var sizes: Array = []
 	var pools: Array = []
+	var gold: int = 0
 	while GameState.pending_chests > 0:
 		var choices: int = GameState.take_pending_chest()  # -1 none / 0 default / N
 		if choices < 0:
 			break
 		sizes.append(maxi(0, choices))
 		pools.append(GameState.last_chest_pool)
+		gold += Data.chest_gold(choices)
 	if sizes.is_empty():
 		return
 	_reward_open = true
@@ -3796,7 +3798,8 @@ func _redeem_pending_chests() -> void:
 		_reward_open = false
 		_redeem_pending_chests())
 	add_child(screen)
-	screen.setup_chests(sizes, pools)
+	# Every chest's gold, on the one screen they open on — paid by the screen.
+	screen.setup_chests(sizes, pools, gold)
 
 # A Mysterious Mask was picked up: open its choice when the page is next idle.
 func _on_mask_granted() -> void:
@@ -3847,6 +3850,12 @@ func _hand_chests_to_post_game() -> void:
 		var choices: int = GameState.take_pending_chest()
 		if choices < 0:
 			break
+		# The chest's gold (Data.chest_gold) is paid as it lands on the haul,
+		# taken or not — the same rule the RewardScreen keeps.
+		var gold: int = Data.chest_gold(choices)
+		if gold > 0:
+			GameState.change_gold(gold)
+			GameLog.add("Chest: +%d gold." % gold, Color(1.0, 0.9, 0.3))
 		var count: int = choices if choices > 0 else load(REWARD_SCREEN_SCRIPT).BASE_ITEM_CHOICES + discovery
 		var offer: Array = _drops.roll_chest(false, maxi(1, count), GameState.last_chest_pool)
 		if offer.is_empty():

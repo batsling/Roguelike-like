@@ -118,6 +118,12 @@ static func offering_rifts() -> int:
 	var loc: LocationData = current()
 	return int(loc.standing_value(&"offering_rift", 0.0)) if loc != null else 0
 
+# How many times as far every push goes (The Moon): the Push verb's one cell and a
+# weapon's shove alike. A whole number, because a body stands on whole squares.
+static func push_mult() -> int:
+	var loc: LocationData = current()
+	return maxi(1, int(loc.standing_value(&"push_mult", 1.0))) if loc != null else 1
+
 # --- the deal ---------------------------------------------------------------
 
 # The location dealt at `tier`: a random one authored there. A tier with none

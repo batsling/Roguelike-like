@@ -210,6 +210,56 @@ func test_a_plain_poop_leaves_loot_or_a_fly() -> void:
 	assert_true(GameLoop2.has_drop(cell) or GameLoop2.stack.size() == before + 1,
 		"a piece on the square, or something crawled out")
 
+# What crawls out of a poop stands where the poop stood — not at the back.
+func test_what_crawls_out_of_a_unit_stands_on_its_square() -> void:
+	var cell := Vector2i(2, 1)
+	var u: UnitData = Data.get_unit(&"poop").duplicate()
+	u.on_destruction = {"always": [{"op": "spawn_enemy", "tag": "fly"}], "one_of": []}
+	GameLoop2._unit_destroyed(u, cell)
+	assert_eq(GameLoop2.stack.size(), 1, "a fly crawled out")
+	var fly: Dictionary = GameLoop2.stack[0]
+	assert_eq(Vector2i(int(fly["col"]), int(fly["row"])), cell, "on the poop's own square")
+
+func test_with_the_square_taken_it_stands_beside_it() -> void:
+	var cell := Vector2i(2, 1)
+	var u: UnitData = Data.get_unit(&"poop").duplicate()
+	u.on_destruction = {"always": [{"op": "spawn_enemy", "tag": "fly"}], "one_of": []}
+	GameLoop2.apply_unit(cell, &"poop")         # something still on the square
+	GameLoop2._unit_destroyed(u, cell)
+	var fly: Dictionary = GameLoop2.stack[0]
+	var at := Vector2i(int(fly["col"]), int(fly["row"]))
+	assert_eq(absi(at.x - cell.x) + absi(at.y - cell.y), 1, "one step from it: %s" % at)
+
+# --- The Moon and Caves ------------------------------------------------------------
+
+func test_the_moon_triples_a_push() -> void:
+	var e := GoalEnemyData.new()
+	e.id = &"synthetic"
+	e.health = 3
+	var inst: int = GameLoop2.spawn_to_stack(e)
+	var entry: Dictionary = GameLoop2.entry_for(inst)
+	GameLoop2._move_entry(entry, 0, 1)
+	GameState.push = 2
+	assert_true(GameLoop2.push(inst))
+	assert_eq(int(GameLoop2.entry_for(inst)["col"]), 2, "one cell anywhere else")
+	GameLoop2._move_entry(GameLoop2.entry_for(inst), 0, 1)
+	_enter(&"the_moon")
+	assert_eq(Locations.push_mult(), 3)
+	assert_true(GameLoop2.push(inst))
+	assert_eq(int(GameLoop2.entry_for(inst)["col"]), 4, "three on the Moon: 1 to 4")
+	assert_eq(GameState.push, 0, "for one charge each")
+
+func test_caves_bring_spiders_and_webs() -> void:
+	_arrive(&"caves")
+	var webs: int = 0
+	for c in GameLoop2.tiles:
+		if GameLoop2.tile_at(c) != null and GameLoop2.tile_at(c).id == &"web":
+			webs += 1
+	assert_eq(webs, 3, "three web tiles")
+	assert_eq(GameLoop2.stack.size(), 2, "two spiders")
+	for b in GameLoop2.stack:
+		assert_true((b["enemy"] as GoalEnemyData).has_tag(&"spider"))
+
 
 # --- standing ---------------------------------------------------------------------
 

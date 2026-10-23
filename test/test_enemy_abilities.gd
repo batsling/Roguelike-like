@@ -665,6 +665,21 @@ func test_split_puts_new_bodies_up_when_it_goes_down() -> void:
 	GameLoop2.fulfill(int(entry["instance"]))
 	assert_eq(GameLoop2.stack_size(), 2, "two took its place")
 
+# "…that don't have Split" (the sheet, 23 Oct): a split rolling its own kind would
+# divide on every death for ever.
+func test_what_a_split_leaves_does_not_split_again() -> void:
+	var slime: GoalEnemyData = _enemy([_ability(&"split", 2, &"self", "Itself"),
+		_ability(&"aftermath", 0, &"fire", "Fire")])
+	var entry: Dictionary = _put(slime, Vector2i(2, 1))
+	GameLoop2.fulfill(int(entry["instance"]))
+	assert_eq(GameLoop2.stack_size(), 2, "it split into two of itself")
+	for piece in GameLoop2.stack:
+		assert_false(GameLoop2.entry_has_ability(piece, &"split"), "a piece does not split")
+		assert_true(GameLoop2.entry_has_ability(piece, &"aftermath"), "and keeps the rest")
+	GameLoop2.fulfill(int(GameLoop2.stack[0]["instance"]))
+	assert_eq(GameLoop2.stack_size(), 1, "a piece going down leaves nothing behind")
+	assert_true(slime.ability_ids().has(&"split"), "the enemy itself still splits")
+
 # A bomb never reaches `_defeat`, which is why the death abilities hang off the
 # damage resolver instead. A bombed slime still splits.
 func test_the_death_abilities_fire_for_a_bomb_too() -> void:

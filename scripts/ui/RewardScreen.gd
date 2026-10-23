@@ -81,11 +81,12 @@ func setup(gold: int, game: GameData = null) -> void:
 		_started = true
 		_begin()
 
-# Enemy-drop chest (games-first §8): a gold-less item-choice screen offering
-# `choices` relics rolled by rarity from items2.0 (0 = the BASE + Discovery
-# default). Add the node to the tree, then call this.
-func setup_chest(choices: int = 0) -> void:
-	_gold = 0
+# Enemy-drop chest (games-first §8): an item-choice screen offering `choices`
+# relics rolled by rarity from items2.0 (0 = the BASE + Discovery default), and
+# `gold` — the chest's own (Data.chest_gold), paid as the screen opens. Add the
+# node to the tree, then call this.
+func setup_chest(choices: int = 0, gold: int = 0) -> void:
+	_gold = gold
 	_game = null
 	_title = "Choose a Reward"
 	_choice_count_override = choices if choices > 0 else -1
@@ -98,13 +99,13 @@ func setup_chest(choices: int = 0) -> void:
 # per chest — [1, 1] is two Small chests — and each gets its own group with its
 # own roll, so "2 Small Chests" is visibly two chests of one item rather than one
 # chest of two.
-func setup_chests(sizes: Array, pools: Array = []) -> void:
+func setup_chests(sizes: Array, pools: Array = [], gold: int = 0) -> void:
 	if sizes.size() <= 1:
 		_pool_tag = String(pools[0]) if not pools.is_empty() else ""
-		setup_chest(int(sizes[0]) if sizes.size() == 1 else 0)
+		setup_chest(int(sizes[0]) if sizes.size() == 1 else 0, gold)
 		return
 	_chest_pools = pools.duplicate()
-	_gold = 0
+	_gold = gold
 	_game = null
 	_title = "Choose a Reward"
 	_chest_sizes = sizes.duplicate()

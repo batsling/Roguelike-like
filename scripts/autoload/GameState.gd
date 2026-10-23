@@ -882,7 +882,9 @@ func _loot_gates_pass(trig: Dictionary, ctx: Dictionary, loot: Dictionary) -> bo
 	if bool(trig.get("if_in_bag", false)):
 		if not loot.has("bag"):
 			return false
-		if bag_at_slot(int(ctx.get("slot", -1))) != int(loot["bag"]):
+		# Any bag the piece was in: a big one across two bags is inside each.
+		var spent: int = int(ctx.get("slot", -1))
+		if spent < 0 or not bags_of_slot(spent).has(int(loot["bag"])):
 			return false
 	# `if_self` (King Bomber's `weapon_stunned if_self:`): the hook is about THIS
 	# piece — the slot it names is this piece's. A relic has no slot and refuses.
@@ -1155,6 +1157,7 @@ func smelt_loot(entry) -> bool:
 		return false
 	loot_items.remove_at(index)
 	(entry as Dictionary).erase("pack_slot")
+	(entry as Dictionary).erase("pack_cells")
 	(entry as Dictionary).erase("rot")
 	smelted_loot.append(entry)
 	var piece: String = LootSystem.display_name(entry)
@@ -3188,22 +3191,25 @@ func _passive_row_for(entry) -> Dictionary:
 
 # FANNY PACK (docs/loot-passives.md §12): a charge landing on a piece in a bag with
 # a `charge_bonus` has that chance to land a second time. 1 when it does, else 0.
+#
+# A PIECE ACROSS TWO BAGS IS IN BOTH (§10): each bag under it rolls its own
+# chance, so two Fanny Packs under one Longsword are two chances at +1 each.
 func _bag_charge_bonus(slot: int) -> int:
-	if slot < LOOT_CAPACITY:
+	if slot < 0:
 		return 0
-	var b: int = bag_at_slot(slot)
-	if b < 0 or b >= pack_bags.size():
-		return 0
-	var bdef: BagData = bag_def(pack_bags[b])
-	if bdef == null or bdef.charge_bonus_chance <= 0.0:
-		return 0
-	if randf() >= bdef.charge_bonus_chance:
-		return 0
-	for r in LootPassives.active():
-		if int(r.get("bag", -1)) == b:
-			LootPassives.announce(r, "+1 extra Charge")
-			break
-	return 1
+	var landed: int = 0
+	for b in bags_of_slot(slot):
+		var bdef: BagData = bag_def(pack_bags[b])
+		if bdef == null or bdef.charge_bonus_chance <= 0.0:
+			continue
+		if randf() >= bdef.charge_bonus_chance:
+			continue
+		for r in LootPassives.active():
+			if int(r.get("bag", -1)) == b:
+				LootPassives.announce(r, "+1 extra Charge")
+				break
+		landed += 1
+	return landed
 
 # CHARGE ONE PIECE OF LOOT by `amount` — a wand, a weapon or a food — and report how
 # many charges landed. The one door every source comes through (a goal, a pill, a
@@ -3583,6 +3589,7 @@ func note_loot_binned(entry) -> void:
 		return
 	var kept: Dictionary = (entry as Dictionary).duplicate(true)
 	kept.erase("pack_slot")
+	kept.erase("pack_cells")
 	kept.erase("rot")
 	destroyed_loot.append(kept)
 	if String(entry.get("type", "")) == "card":
@@ -4195,7 +4202,7 @@ func take_loot_entry_at(entry: Dictionary, slot: int) -> bool:
 		rot = int(spot["rot"])
 	_freeze_loot_layout(layout)
 	var taken: Dictionary = entry.duplicate(true)
-	taken["pack_slot"] = int(cells[0])
+	_seat(taken, cells)
 	_set_rot(taken, rot)
 	loot_items.append(taken)
 	emit_signal("inventory_changed")
@@ -4233,8 +4240,9 @@ func swap_loot_entry_at(entry: Dictionary, slot: int) -> Dictionary:
 	# The slot belongs to the pack, not to the piece leaving it: a traded-out piece
 	# lying on the board must not remember a cell of a grid it is no longer in.
 	out.erase("pack_slot")
+	out.erase("pack_cells")
 	var taken: Dictionary = entry.duplicate(true)
-	taken["pack_slot"] = int(cells[0])
+	_seat(taken, cells)
 	loot_items[index] = taken
 	emit_signal("inventory_changed")
 	_note_loot_gained(taken)
@@ -4351,8 +4359,7 @@ func loot_layout() -> Array:
 	for i in range(loot_items.size()):
 		var entry = loot_items[i]
 		var slot: int = int(entry.get("pack_slot", -1)) if entry is Dictionary else -1
-		var cells: Array = piece_slots(entry, slot, int(entry.get("rot", 0))) \
-			if entry is Dictionary else []
+		var cells: Array = _cells_of(entry, slot) if entry is Dictionary else []
 		if _all_free(layout, cells):
 			for c in cells:
 				layout[c] = i
@@ -4401,13 +4408,15 @@ func loot_slots_of(index: int) -> Array:
 # claimed a slot ahead of it — the player would drag one piece and watch two move.
 # A piece is written ONCE, at the first (lowest) slot it covers: its anchor.
 func _freeze_loot_layout(layout: Array) -> void:
-	var done: Dictionary = {}
+	var cells_of: Dictionary = {}
 	for slot in range(layout.size()):
 		var index: int = int(layout[slot])
-		if index >= 0 and index < loot_items.size() and loot_items[index] is Dictionary \
-				and not done.has(index):
-			done[index] = true
-			loot_items[index]["pack_slot"] = slot
+		if index >= 0 and index < loot_items.size() and loot_items[index] is Dictionary:
+			if not cells_of.has(index):
+				cells_of[index] = []
+			(cells_of[index] as Array).append(slot)
+	for index in cells_of:
+		_seat(loot_items[index], cells_of[index])
 
 # ---------------------------------------------------------------------------
 # Pieces bigger than one cell (docs/loot-passives.md §10)
@@ -4417,10 +4426,12 @@ func _freeze_loot_layout(layout: Array) -> void:
 # pack had was written for one cell. Four facts make it fit without anything else
 # about slots changing:
 #
-#   * A BIG PIECE LIVES INSIDE ONE OWNER — the 3x3, or one bag. Slots are numbered
-#     by who owns the cell, and a piece straddling two owners would be torn apart
-#     the moment its bag moved.
-#   * ITS FOOTPRINT IS KEPT IN THE OWNER'S OWN FRAME: its anchor is the top-left of
+#   * A BIG PIECE CAN SIT ACROSS OWNERS (23 Oct) — the 3x3 and a bag, or two bags —
+#     and is then IN each of them: every bag under it gives it that bag's effect,
+#     once per bag. Slots are numbered by who owns the cell, so such a piece keeps
+#     the slots it covers as a list (`pack_cells`, written by `_seat`), and a bag
+#     under it cannot move or turn (`move_bag`), which would tear it in two.
+#   * INSIDE ONE OWNER ITS FOOTPRINT IS KEPT IN THE OWNER'S OWN FRAME: its anchor is the top-left of
 #     the rectangle in the bag's unturned reading order, and it covers `size`
 #     turned by (its turn minus its bag's). So when a bag moves or turns, what is
 #     in it comes along whole, exactly as a 1x1 piece always has.
@@ -4445,6 +4456,58 @@ func piece_size(entry) -> Vector2i:
 
 func is_big_piece(entry) -> bool:
 	return piece_size(entry) != Vector2i.ONE
+
+# The slots a piece covers with its anchor on `anchor`: its own list when it sits
+# across owners (`pack_cells`), else the rectangle in its owner's frame. A list
+# that no longer matches the piece's size (a save from another shape) is ignored.
+func _cells_of(entry: Dictionary, anchor: int) -> Array:
+	var kept = entry.get("pack_cells", null)
+	if kept is Array and not (kept as Array).is_empty():
+		var size: Vector2i = piece_size(entry)
+		if (kept as Array).size() == size.x * size.y:
+			var out: Array = []
+			for s in kept:
+				out.append(int(s))
+			out.sort()
+			return out
+	return piece_slots(entry, anchor, int(entry.get("rot", 0)))
+
+# SEAT a piece on `cells` (lowest first): the anchor always, and the whole list
+# only when the cells belong to more than one owner — inside one owner the anchor
+# and the turn already say where it is, and moving its bag carries it whole.
+func _seat(entry: Dictionary, cells: Array) -> void:
+	if cells.is_empty():
+		return
+	var sorted: Array = cells.duplicate()
+	sorted.sort()
+	entry["pack_slot"] = int(sorted[0])
+	if _owners_of(sorted).size() > 1:
+		entry["pack_cells"] = sorted
+	else:
+		entry.erase("pack_cells")
+
+# The owners under `cells`, each once: -1 for the 3x3, else a bag's index.
+func _owners_of(cells: Array) -> Array:
+	var out: Array = []
+	for s in cells:
+		var o: int = bag_at_slot(int(s))
+		if not out.has(o):
+			out.append(o)
+	return out
+
+# EVERY BAG a carried piece is in, each once — one for a piece inside a bag, two
+# or more for a big piece across bags, none for the 3x3. Asked by slot (any of
+# the piece's cells; a slot with no piece on it answers for its own bag), which is
+# what the hooks carry. What a bag does to what is in it (Fanny Pack's extra
+# charge, Potion Belt's gate) asks this, so a piece across two bags gets both.
+func bags_of_slot(slot: int) -> Array:
+	var index: int = loot_index_at_slot(slot)
+	var cells: Array = loot_slots_of(index) if index >= 0 else [slot]
+	var out: Array = []
+	for o in _owners_of(cells):
+		if int(o) >= 0:
+			out.append(int(o))
+	return out
 
 # The frame the slot's owner numbers its cells in: {start, w, h, rot}.
 func _slot_frame(slot: int) -> Dictionary:
@@ -4481,8 +4544,9 @@ func piece_slots(entry, anchor: int, rot: int) -> Array:
 	return out
 
 # The slots a piece would cover dropped with its TOP-LEFT CELL, as drawn, on slot
-# `at`, turned `rot` — [] when any of them is off the pack or owned by something
-# else than `at`'s owner. Lowest first, so [0] is the anchor to store.
+# `at`, turned `rot` — [] when any of them is off the pack. They may belong to
+# more than one owner (the 3x3 and a bag, two bags). Lowest first, so [0] is the
+# anchor to store.
 func piece_slots_from(entry, at: int, rot: int) -> Array:
 	if at < 0 or at >= loot_capacity():
 		return []
@@ -4491,12 +4555,11 @@ func piece_slots_from(entry, at: int, rot: int) -> Array:
 		return [at]
 	var ext: Vector2i = bag_extent(size, rot)
 	var c0: Vector2i = pack_cell_of(at)
-	var owner: int = bag_at_slot(at)
 	var out: Array = []
 	for dy in range(ext.y):
 		for dx in range(ext.x):
 			var s: int = pack_slot_at(c0 + Vector2i(dx, dy))
-			if s < 0 or bag_at_slot(s) != owner:
+			if s < 0:
 				return []
 			out.append(s)
 	out.sort()
@@ -4569,7 +4632,7 @@ func _seated(entry: Dictionary) -> Dictionary:
 	if spot.is_empty():
 		return out
 	_freeze_loot_layout(layout)
-	out["pack_slot"] = int(spot["cells"][0])
+	_seat(out, spot["cells"])
 	_set_rot(out, int(spot["rot"]))
 	return out
 
@@ -4636,10 +4699,10 @@ func move_loot(from: int, to: int, rot: int = -1) -> bool:
 		if not _all_free(after, loser_cells):
 			return false
 	_freeze_loot_layout(layout)
-	entry["pack_slot"] = int(cells[0])
+	_seat(entry, cells)
 	_set_rot(entry, r)
 	if under.size() == 1:
-		loot_items[int(under[0])]["pack_slot"] = int(loser_cells[0])
+		_seat(loot_items[int(under[0])], loser_cells)
 	emit_signal("inventory_changed")
 	return true
 
@@ -4699,7 +4762,7 @@ func turn_loot(index: int, rot: int) -> bool:
 		if cells.is_empty() or not _occupants(layout, cells, index).is_empty():
 			return false
 		_freeze_loot_layout(layout)
-		entry["pack_slot"] = int(cells[0])
+		_seat(entry, cells)
 	_set_rot(entry, r)
 	emit_signal("inventory_changed")
 	return true
@@ -4947,6 +5010,8 @@ func move_bag(i: int, origin: Vector2i, rot: int) -> bool:
 		return false
 	if not can_place_bag(bag_size(bag), origin, rot, i):
 		return false
+	if bag_is_straddled(i):
+		return false
 	# WHAT IS IN A TURNED BAG TURNS WITH IT (docs/loot-passives.md §10): a piece's
 	# `rot` is the way it faces on screen, so a Blueprint in a bag given a quarter
 	# turn now copies the piece below it, and a 2x1 stays the shape its cells are.
@@ -4965,6 +5030,21 @@ func move_bag(i: int, origin: Vector2i, rot: int) -> bool:
 	bag["rot"] = posmod(rot, 4)
 	emit_signal("inventory_changed")
 	return true
+
+# Whether a piece sits across bag `i` and another owner. Such a bag stays where it
+# is — moving or turning it would pull the piece's cells apart — until the piece
+# is moved off it.
+func bag_is_straddled(i: int) -> bool:
+	if i < 0 or i >= pack_bags.size():
+		return false
+	var start: int = bag_slot_start(i)
+	var n: int = bag_size(pack_bags[i]).x * bag_size(pack_bags[i]).y
+	var layout: Array = loot_layout()
+	for slot in range(start, mini(start + n, layout.size())):
+		var index: int = int(layout[slot])
+		if index >= 0 and _owners_of(loot_slots_of(index)).size() > 1:
+			return true
+	return false
 
 # Whether bag `i` can come off: empty, and not holding up another bag.
 func can_remove_bag(i: int) -> bool:
@@ -4993,6 +5073,13 @@ func remove_bag(i: int) -> Dictionary:
 	for entry in loot_items:
 		if entry is Dictionary and int(entry.get("pack_slot", -1)) >= start + n:
 			entry["pack_slot"] = int(entry["pack_slot"]) - n
+		# A piece across owners keeps its own list; the cells past this bag shift
+		# the same way (none are IN it — the bag is empty to come off).
+		if entry is Dictionary and entry.get("pack_cells", null) is Array:
+			var moved: Array = []
+			for s in entry["pack_cells"]:
+				moved.append(int(s) - n if int(s) >= start + n else int(s))
+			entry["pack_cells"] = moved
 	var bag: Dictionary = pack_bags[i]
 	pack_bags.remove_at(i)
 	emit_signal("inventory_changed")

@@ -334,6 +334,7 @@ func _remember(entry: Dictionary, ctx: Dictionary = {}) -> void:
 	var memory: Array = used_memory()
 	var kept: Dictionary = entry.duplicate(true)
 	kept.erase("pack_slot")
+	kept.erase("pack_cells")
 	var at = ctx.get("target")
 	if at is Vector2i:
 		kept["echo_target"] = [at.x, at.y]
