@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_braving_the_unknown_chris_kukla"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"braving_the_unknown_chris_kukla"
+title = "Braving the Unknown"
+artist = "Chris Kukla"
+album = "Barony Extended OST"
+year = 2015
+game_id = &"barony"
+file = "Barony/08. Braving the Unknown.mp3"
+tags = PackedStringArray()

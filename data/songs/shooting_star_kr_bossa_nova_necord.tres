@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_shooting_star_kr_bossa_nova_necord"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"shooting_star_kr_bossa_nova_necord"
+title = "Shooting Star (KR - Bossa Nova)"
+artist = "Necord"
+album = "DAVE THE DIVER"
+year = 2023
+game_id = &"dave_the_diver"
+file = "Dave the Diver/52. Shooting Star (Bossa Nova Version).mp3"
+tags = PackedStringArray()

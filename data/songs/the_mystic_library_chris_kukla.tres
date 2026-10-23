@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_the_mystic_library_chris_kukla"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"the_mystic_library_chris_kukla"
+title = "The Mystic Library"
+artist = "Chris Kukla"
+album = "Barony Extended OST"
+year = 2015
+game_id = &"barony"
+file = "Barony/26. The Mystic Library.mp3"
+tags = PackedStringArray()

@@ -9,7 +9,7 @@ display_name = "Split"
 kind = &"death"
 variables = "Amount, Enemy Type"
 params = PackedStringArray("amount", "enemy")
-description = "On Death, Splits into X number of Y type Enemies"
+description = "On Death, Splits into X number of Y type Enemies that don't have Split"
 effect = "death: summon_here X Y"
 triggers = {
     &"death": [{"op": &"summon_here", "args": PackedStringArray("X", "Y")}]

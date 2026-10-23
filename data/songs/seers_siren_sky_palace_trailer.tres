@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_seers_siren_sky_palace_trailer"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"seers_siren_sky_palace_trailer"
+title = "Seer's Siren -Sky Palace Trailer-"
+artist = ""
+album = ""
+year = 0
+game_id = &"wizard_of_legend"
+file = "Wizard of Legend/15. Seer's Siren -Sky Palace Trailer-.mp3"
+tags = PackedStringArray()

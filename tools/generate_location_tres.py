@@ -37,6 +37,7 @@ EFFECT GRAMMAR — semicolon-separated clauses, each under the header before it:
   while: <rule>[; …]           true for as long as the run is there
     damage_taken_mult <x>      every hit that lands on you is worth x times
     offering_rift <n>          n cards of every offering are a free rift card
+    push_mult <n>              every push and shove goes n times as far
 
   action <limit>: <cost> => <pay>
                                a button on the location card, usable up to
@@ -144,6 +145,8 @@ def parse_standing(clause: str, what: str) -> dict:
         return {"op": op, "value": float(words[1].lstrip("x"))}
     if op == "offering_rift" and len(words) == 2:
         return {"op": op, "value": int(words[1])}
+    if op == "push_mult" and len(words) == 2:
+        return {"op": op, "value": int(float(words[1].lstrip("x")))}
     raise ValueError("%s: unknown while rule %r" % (what, clause))
 
 

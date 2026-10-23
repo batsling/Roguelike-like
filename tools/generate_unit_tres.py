@@ -10,7 +10,7 @@ meets is authored in the two sheets' `Interactions` columns rather than anywhere
 in code.
 
   units: Name | Type | Description | Effect | Interactions | On Destruction |
-         Health | Tag | Img
+         On Destruction Effect | Health | Tag | Img
 
 The Effect and Interactions DSLs are the TILE sheet's, unchanged and imported
 rather than restated — a unit and a tile effect react to the same board and the
@@ -33,22 +33,27 @@ for 1 — so both sides can break it, the player with anything that damages the
 ground. The poops Dross lays are the first. `block` may stand alone, or before
 the triggers (`block; damaged: detonate`).
 
-ON DESTRUCTION is what a unit leaves behind when its Health runs out, in prose
-the owner writes and this reads:
+ON DESTRUCTION is what a unit leaves behind when its Health runs out. The owner
+writes it in prose in `On Destruction`; the generator reads the machine version
+beside it in `On Destruction Effect` (added 23 Oct, the same split Description
+and Effect already have), so rewording the prose can never change the drop:
 
-  50% Random Loot, 50% Random fly tagged Enemy
-  50% 2 Gold, 30% 3 Gold, 10% 4 Gold, 5% 5 Gold, 5% Counterfeit Penny
-  Gain +3 Health
+  50% loot, 50% spawn_enemy fly
+  50% gold 2, 30% gold 3, 10% gold 4, 5% gold 5, 5% give counterfeit_penny
+  heal 3
 
 Comma-separated. Parts that carry a `N%` are ONE weighted draw between them (they
 must add up to 100); a part with no percentage always happens. Each outcome is
 one of:
 
-  Random Loot                    -> {op: loot}            a piece, on that square
-  Random <tag> tagged Enemy      -> {op: spawn_enemy, tag}
-  N Gold                         -> {op: gold, value}
-  Gain +N Health                 -> {op: heal, value}
-  <a loot piece's name>          -> {op: give, kind, id}  that piece, on that square
+  loot                -> {op: loot}            a random piece, on that square
+  spawn_enemy <tag>   -> {op: spawn_enemy, tag} on that square, or the nearest
+  gold <n>            -> {op: gold, value}
+  heal <n>            -> {op: heal, value}
+  give <loot id>      -> {op: give, kind, id}  that piece, on that square
+
+A row with prose in On Destruction and nothing in On Destruction Effect is
+refused: it is a sheet half-authored, not a unit that drops nothing.
 
 `Tag` is what the unit is (`poop`), for anything that picks units by tag — a
 location laying "2 random poop-tagged units" — and for the tag boost a location
@@ -95,27 +100,26 @@ def split_block(cell, what: str):
 
 
 def parse_outcome(text: str, what: str) -> dict:
-    low = text.strip().lower()
-    if low == "random loot":
+    words = text.strip().split()
+    op = words[0].lower() if words else ""
+    if op == "loot" and len(words) == 1:
         return {"op": "loot"}
-    m = re.match(r"^random\s+([a-z_]+)\s+tagged\s+enemy$", low)
-    if m:
-        return {"op": "spawn_enemy", "tag": m.group(1)}
-    m = re.match(r"^(\d+)\s+gold$", low)
-    if m:
-        return {"op": "gold", "value": int(m.group(1))}
-    m = re.match(r"^gain\s+\+?(\d+)\s+health$", low)
-    if m:
-        return {"op": "heal", "value": int(m.group(1))}
-    slug = base.slugify(text)
-    for folder, kind in LOOT_FOLDERS:
-        if os.path.exists(os.path.join(PROJECT_ROOT, "data", folder, slug + ".tres")):
-            return {"op": "give", "kind": kind, "id": slug}
-    raise ValueError("%s: cannot read On Destruction outcome %r" % (what, text))
+    if op == "spawn_enemy" and len(words) == 2:
+        return {"op": "spawn_enemy", "tag": words[1].lower()}
+    if op in ("gold", "heal") and len(words) == 2 and words[1].lstrip("+").isdigit():
+        return {"op": op, "value": int(words[1].lstrip("+"))}
+    if op == "give" and len(words) == 2:
+        slug = words[1].lower()
+        for folder, kind in LOOT_FOLDERS:
+            if os.path.exists(os.path.join(PROJECT_ROOT, "data", folder, slug + ".tres")):
+                return {"op": "give", "kind": kind, "id": slug}
+        raise ValueError("%s: On Destruction Effect gives %r, which is no loot piece"
+                         % (what, slug))
+    raise ValueError("%s: cannot read On Destruction Effect outcome %r" % (what, text))
 
 
 def parse_destruction(cell, what: str) -> dict:
-    """`On Destruction` -> {"always": [outcome…], "one_of": [{chance, …}…]}."""
+    """`On Destruction Effect` -> {"always": [outcome…], "one_of": [{chance, …}…]}."""
     raw = base._clean(cell)
     always, one_of = [], []
     if not raw:
@@ -144,7 +148,10 @@ def unit_tres(row: dict):
     if not triggers and not blocks:
         raise ValueError("%s: the Effect column is empty — a unit that does "
                          "nothing is not content" % what)
-    destruction = parse_destruction(row.get("On Destruction"), what)
+    if base._clean(row.get("On Destruction")) and not base._clean(row.get("On Destruction Effect")):
+        raise ValueError("%s: On Destruction says what it drops but On Destruction "
+                         "Effect is empty" % what)
+    destruction = parse_destruction(row.get("On Destruction Effect"), what)
     tags = [t.strip().lower() for t in base._clean(row.get("Tag")).split(",") if t.strip()]
     interactions = base.parse_interactions(row.get("Interactions"), what)
     health = row.get("Health")

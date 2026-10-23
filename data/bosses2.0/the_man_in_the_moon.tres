@@ -17,6 +17,7 @@ goal_type = &"discovery"
 goal = "Go to a Moon"
 abilities = [{"id": &"trample", "amount": 0, "arg": &"", "text": ""}]
 ability_text = "Trample"
+tag = &"space"
 size = "3x3"
 shape_rows = 3
 shape_cols = 3

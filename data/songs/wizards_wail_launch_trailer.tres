@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_wizards_wail_launch_trailer"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"wizards_wail_launch_trailer"
+title = "Wizard's Wail -Launch Trailer-"
+artist = ""
+album = ""
+year = 0
+game_id = &"wizard_of_legend"
+file = "Wizard of Legend/14. Wizard's Wail -Launch Trailer-.mp3"
+tags = PackedStringArray()

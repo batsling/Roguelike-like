@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_toraka_unleashed_remi_gallego"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"toraka_unleashed_remi_gallego"
+title = "To'raka, Unleashed"
+artist = "Remi Gallego"
+album = "Abyssus (Original Game Soundtrack)"
+year = 2025
+game_id = &"abyssus"
+file = "Abyssus/14. To'raka, Unleashed.mp3"
+tags = PackedStringArray()

@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_together_are_we_cheers_for_the_sea_danthoni_wooten"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"together_are_we_cheers_for_the_sea_danthoni_wooten"
+title = "Together Are We (Cheers for the Sea)"
+artist = "D'Anthoni Wooten"
+album = "DAVE THE DIVER"
+year = 2023
+game_id = &"dave_the_diver"
+file = "Dave the Diver/54. Together Are We (Cheers for the Sea).mp3"
+tags = PackedStringArray()

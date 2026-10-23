@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_the_blue_builders_chris_kukla"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"the_blue_builders_chris_kukla"
+title = "The Blue Builders"
+artist = "Chris Kukla"
+album = "Barony Extended OST"
+year = 2015
+game_id = &"barony"
+file = "Barony/23. The Blue Builders.mp3"
+tags = PackedStringArray()

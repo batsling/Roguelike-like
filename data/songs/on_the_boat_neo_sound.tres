@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_on_the_boat_neo_sound"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"on_the_boat_neo_sound"
+title = "On the boat"
+artist = "Neo Sound"
+album = "DAVE THE DIVER"
+year = 2023
+game_id = &"dave_the_diver"
+file = "Dave the Diver/09. On the Boat.mp3"
+tags = PackedStringArray()

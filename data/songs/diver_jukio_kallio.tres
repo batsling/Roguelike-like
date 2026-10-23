@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_diver_jukio_kallio"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"diver_jukio_kallio"
+title = "Diver"
+artist = "Jukio Kallio"
+album = "DAVE THE DIVER"
+year = 2023
+game_id = &"dave_the_diver"
+file = "Dave the Diver/03. Diver.mp3"
+tags = PackedStringArray()

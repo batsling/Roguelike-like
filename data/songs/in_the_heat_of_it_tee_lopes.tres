@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_in_the_heat_of_it_tee_lopes"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"in_the_heat_of_it_tee_lopes"
+title = "In the Heat of It"
+artist = "Tee Lopes"
+album = "Metal Slug Tactics (Original Game Soundtrack)"
+year = 2024
+game_id = &"metal_slug_tactics"
+file = "Metal Slug Tactics/08. In the Heat of It.mp3"
+tags = PackedStringArray()

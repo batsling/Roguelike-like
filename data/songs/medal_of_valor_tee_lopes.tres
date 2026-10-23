@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_medal_of_valor_tee_lopes"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"medal_of_valor_tee_lopes"
+title = "Medal of Valor"
+artist = "Tee Lopes"
+album = "Metal Slug Tactics (Original Game Soundtrack)"
+year = 2024
+game_id = &"metal_slug_tactics"
+file = "Metal Slug Tactics/21. Medal of Valor.mp3"
+tags = PackedStringArray()

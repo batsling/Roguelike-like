@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_tunnel_of_darkness_hansol_kim"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"tunnel_of_darkness_hansol_kim"
+title = "Tunnel of Darkness"
+artist = "Hansol Kim"
+album = "DAVE THE DIVER"
+year = 2023
+game_id = &"dave_the_diver"
+file = "Dave the Diver/13. Tunnel of Darkness.mp3"
+tags = PackedStringArray()
