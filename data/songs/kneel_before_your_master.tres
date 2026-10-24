@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_kneel_before_your_master"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"kneel_before_your_master"
+title = "Kneel Before Your Master"
+artist = ""
+album = ""
+year = 0
+game_id = &"orbital_bullet"
+file = "Orbital Bullet/23. Kneel Before Your Master.mp3"
+tags = PackedStringArray()

@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_the_ritual_of_binding_david_pittman"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"the_ritual_of_binding_david_pittman"
+title = "The Ritual of Binding"
+artist = "David Pittman"
+album = "Eldritch Original Soundtrack"
+year = 2013
+game_id = &"eldritch"
+file = "Eldritch/09. The Ritual of Binding.mp3"
+tags = PackedStringArray()

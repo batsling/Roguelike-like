@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_land_of_blooming_mushrooms_hiroki_kikuta"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"land_of_blooming_mushrooms_hiroki_kikuta"
+title = "Land of Blooming Mushrooms"
+artist = "Hiroki Kikuta"
+album = "Tangledeep Original Soundtrack"
+year = 2018
+game_id = &"tangledeep"
+file = "Tangledeep/11 Land of Blooming Mushrooms.mp3"
+tags = PackedStringArray()

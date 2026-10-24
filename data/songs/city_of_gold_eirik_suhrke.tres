@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_city_of_gold_eirik_suhrke"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"city_of_gold_eirik_suhrke"
+title = "City of Gold"
+artist = "Eirik Suhrke"
+album = "Spelunky OST"
+year = 2012
+game_id = &"spelunky"
+file = "Spelunky/12. City of Gold.mp3"
+tags = PackedStringArray()

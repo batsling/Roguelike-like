@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_earthen_labyrinth_andrew_aversa"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"earthen_labyrinth_andrew_aversa"
+title = "Earthen Labyrinth"
+artist = "Andrew Aversa"
+album = "Tangledeep Original Soundtrack"
+year = 2018
+game_id = &"tangledeep"
+file = "Tangledeep/06 Earthen Labyrinth.mp3"
+tags = PackedStringArray()

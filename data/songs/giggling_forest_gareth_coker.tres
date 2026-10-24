@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_giggling_forest_gareth_coker"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"giggling_forest_gareth_coker"
+title = "Giggling Forest"
+artist = "Gareth Coker"
+album = "Absolum (Original Game Soundtrack)"
+year = 2025
+game_id = &"absolum"
+file = "Absolum/04. Giggling Forest.mp3"
+tags = PackedStringArray()

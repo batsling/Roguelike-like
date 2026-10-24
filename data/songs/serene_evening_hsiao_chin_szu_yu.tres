@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_serene_evening_hsiao_chin_szu_yu"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"serene_evening_hsiao_chin_szu_yu"
+title = "Serene Evening | 靜謐夜晚"
+artist = "Hsiao-Chin & Szu-Yu"
+album = "ZOETI (Original Game Soundtrack)"
+year = 2023
+game_id = &"zoeti"
+file = "Zoeti/03. Serene Evening  靜謐夜晚.mp3"
+tags = PackedStringArray()

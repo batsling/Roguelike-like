@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_krog"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"krog"
+title = "Krog"
+artist = ""
+album = ""
+year = 0
+game_id = &"roguebook"
+file = "Roguebook/03 Krog.mp3"
+tags = PackedStringArray()

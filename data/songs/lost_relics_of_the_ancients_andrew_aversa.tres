@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_lost_relics_of_the_ancients_andrew_aversa"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"lost_relics_of_the_ancients_andrew_aversa"
+title = "Lost Relics of the Ancients"
+artist = "Andrew Aversa"
+album = "Tangledeep Original Soundtrack"
+year = 2018
+game_id = &"tangledeep"
+file = "Tangledeep/20 Lost Relics of the Ancients.mp3"
+tags = PackedStringArray()

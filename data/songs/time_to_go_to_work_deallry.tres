@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_time_to_go_to_work_deallry"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"time_to_go_to_work_deallry"
+title = "Time to Go to Work"
+artist = "Deallry"
+album = "Wall World"
+year = 0
+game_id = &"wall_world"
+file = "Wall World/17. Time to Go to Work.mp3"
+tags = PackedStringArray()

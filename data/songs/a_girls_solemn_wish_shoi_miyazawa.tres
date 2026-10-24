@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_a_girls_solemn_wish_shoi_miyazawa"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"a_girls_solemn_wish_shoi_miyazawa"
+title = "A Girl's Solemn Wish"
+artist = "Shoi Miyazawa"
+album = "Elden Ring Nightreign (Original Soundtrack)"
+year = 2025
+game_id = &"elden_ring_nightreign"
+file = "Elden Ring - Nightreign/34 A Girl's Solemn Wish.mp3"
+tags = PackedStringArray()

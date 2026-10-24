@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_trapped_souls_david_pittman"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"trapped_souls_david_pittman"
+title = "Trapped Souls"
+artist = "David Pittman"
+album = "Eldritch Original Soundtrack"
+year = 2013
+game_id = &"eldritch"
+file = "Eldritch/14. Trapped Souls.mp3"
+tags = PackedStringArray()

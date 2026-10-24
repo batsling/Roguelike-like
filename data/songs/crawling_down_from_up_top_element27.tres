@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_crawling_down_from_up_top_element27"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"crawling_down_from_up_top_element27"
+title = "Crawling Down From Up Top"
+artist = "Element27"
+album = ""
+year = 2024
+game_id = &"dungeons_degenerate_gamblers"
+file = "Dungeons & Degenerate Gamblers/19. Office (Boss).mp3"
+tags = PackedStringArray()

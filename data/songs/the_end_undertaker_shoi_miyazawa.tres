@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_the_end_undertaker_shoi_miyazawa"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"the_end_undertaker_shoi_miyazawa"
+title = "The End (Undertaker)"
+artist = "Shoi Miyazawa"
+album = "Elden Ring Nightreign: The Forsaken Hollows (Original Soundtrack)"
+year = 2026
+game_id = &"elden_ring_nightreign"
+file = "Elden Ring - Nightreign/11. The End (Undertaker).mp3"
+tags = PackedStringArray()

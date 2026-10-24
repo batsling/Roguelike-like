@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_freiyas_cage_ice_dale_north"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"freiyas_cage_ice_dale_north"
+title = "Freiya's Cage -Ice-"
+artist = "Dale North"
+album = "Wizard of Legend"
+year = 2018
+game_id = &"wizard_of_legend"
+file = "Wizard of Legend/04. Freiya's Cage -Ice-.mp3"
+tags = PackedStringArray()

@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_mine_folk_wesley_slover"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"mine_folk_wesley_slover"
+title = "Mine Folk"
+artist = "Wesley Slover"
+album = "UnderMine (Original Soundtrack)"
+year = 2020
+game_id = &"undermine"
+file = "UnderMine/03. Mine Folk.mp3"
+tags = PackedStringArray()

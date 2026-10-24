@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_zoeti_s_guidance_hsiao_chin_szu_yu"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"zoeti_s_guidance_hsiao_chin_szu_yu"
+title = "Zoeti’s Guidance | 若伊蒂的指引"
+artist = "Hsiao-Chin & Szu-Yu"
+album = "ZOETI (Original Game Soundtrack)"
+year = 2023
+game_id = &"zoeti"
+file = "Zoeti/04. Zoeti’s Guidance  若伊蒂的指引.mp3"
+tags = PackedStringArray()

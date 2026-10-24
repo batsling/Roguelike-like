@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_a_remembrance_of_the_duchess_yoshikazu_takayama"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"a_remembrance_of_the_duchess_yoshikazu_takayama"
+title = "A Remembrance of the Duchess"
+artist = "Yoshikazu Takayama"
+album = "Elden Ring Nightreign (Original Soundtrack)"
+year = 2025
+game_id = &"elden_ring_nightreign"
+file = "Elden Ring - Nightreign/30 A Remembrance of the Duchess.mp3"
+tags = PackedStringArray()

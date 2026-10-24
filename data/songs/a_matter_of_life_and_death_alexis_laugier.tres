@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_a_matter_of_life_and_death_alexis_laugier"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"a_matter_of_life_and_death_alexis_laugier"
+title = "A Matter of Life and Death"
+artist = "Alexis Laugier"
+album = "Have a Nice Death (Original Game Soundtrack)"
+year = 2023
+game_id = &"have_a_nice_death"
+file = "Have a Nice Death/34. A Matter of Life and Death.mp3"
+tags = PackedStringArray()

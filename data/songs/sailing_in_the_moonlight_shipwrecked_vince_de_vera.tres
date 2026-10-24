@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_sailing_in_the_moonlight_shipwrecked_vince_de_vera"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"sailing_in_the_moonlight_shipwrecked_vince_de_vera"
+title = "Sailing In The Moonlight (Shipwrecked)"
+artist = "Vince de Vera"
+album = "Don't Starve Soundtrack"
+year = 2020
+game_id = &"don_t_starve"
+file = "Don't Starve/41. Sailing In The Moonlight (Shipwrecked).mp3"
+tags = PackedStringArray()

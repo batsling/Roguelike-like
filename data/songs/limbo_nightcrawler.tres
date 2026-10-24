@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_limbo_nightcrawler"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"limbo_nightcrawler"
+title = "Limbo"
+artist = "Nightcrawler"
+album = "Perverse Visionary Collection"
+year = 2024
+game_id = &"heretic_s_fork"
+file = "Heretic's Fork/1-05. Limbo.mp3"
+tags = PackedStringArray()

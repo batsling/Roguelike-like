@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_unearthing_the_roguebook"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"unearthing_the_roguebook"
+title = "Unearthing the Roguebook"
+artist = ""
+album = ""
+year = 0
+game_id = &"roguebook"
+file = "Roguebook/01 Unearthing the Roguebook.mp3"
+tags = PackedStringArray()

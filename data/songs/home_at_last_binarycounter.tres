@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_home_at_last_binarycounter"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"home_at_last_binarycounter"
+title = "Home At Last"
+artist = "BinaryCounter"
+album = "Backpack Hero OST"
+year = 2022
+game_id = &"backpack_hero"
+file = "Backpack Hero/18. Home At Last.mp3"
+tags = PackedStringArray()

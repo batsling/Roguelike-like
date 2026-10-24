@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_13_counting_arms_cameron_paxton"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"13_counting_arms_cameron_paxton"
+title = "13 Counting Arms"
+artist = "Cameron Paxton"
+album = "Dome Keeper"
+year = 2022
+game_id = &"dome_keeper"
+file = "Dome Keeper/13. Counting Arms.mp3"
+tags = PackedStringArray()

@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_pollution_section_yann_cleophas"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"pollution_section_yann_cleophas"
+title = "Pollution Section"
+artist = "Yann Cleophas"
+album = "Have a Nice Death (Original Game Soundtrack)"
+year = 2023
+game_id = &"have_a_nice_death"
+file = "Have a Nice Death/11. Pollution Section.mp3"
+tags = PackedStringArray()

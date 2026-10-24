@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_mortal_dangling_a_sword_wesley_slover"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"mortal_dangling_a_sword_wesley_slover"
+title = "Mortal Dangling a Sword"
+artist = "Wesley Slover"
+album = "UnderMine (Original Soundtrack)"
+year = 2020
+game_id = &"undermine"
+file = "UnderMine/27. Mortal Dangling a Sword.mp3"
+tags = PackedStringArray()

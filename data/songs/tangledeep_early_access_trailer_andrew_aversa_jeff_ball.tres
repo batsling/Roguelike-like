@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_tangledeep_early_access_trailer_andrew_aversa_jeff_ball"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"tangledeep_early_access_trailer_andrew_aversa_jeff_ball"
+title = "Tangledeep Early Access Trailer"
+artist = "Andrew Aversa, Jeff Ball"
+album = "Tangledeep Original Soundtrack"
+year = 2018
+game_id = &"tangledeep"
+file = "Tangledeep/30 Tangledeep Early Access Trailer.mp3"
+tags = PackedStringArray()

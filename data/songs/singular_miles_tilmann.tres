@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_singular_miles_tilmann"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"singular_miles_tilmann"
+title = "Singular"
+artist = "Miles Tilmann"
+album = "Nova Drift OST"
+year = 2019
+game_id = &"nova_drift"
+file = "Nova Drift/11. Singular.mp3"
+tags = PackedStringArray()

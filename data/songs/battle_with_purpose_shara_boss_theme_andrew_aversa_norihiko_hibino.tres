@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_battle_with_purpose_shara_boss_theme_andrew_aversa_norihiko_hibino"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"battle_with_purpose_shara_boss_theme_andrew_aversa_norihiko_hibino"
+title = "Battle With Purpose (Shara Boss Theme)"
+artist = "Andrew Aversa, Norihiko Hibino"
+album = "Tangledeep: Legend of Shara Original Soundtrack"
+year = 2019
+game_id = &"tangledeep"
+file = "Tangledeep/04 Battle With Purpose (Shara Boss Theme).mp3"
+tags = PackedStringArray()

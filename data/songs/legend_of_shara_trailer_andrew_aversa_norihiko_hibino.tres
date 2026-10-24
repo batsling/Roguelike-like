@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_legend_of_shara_trailer_andrew_aversa_norihiko_hibino"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"legend_of_shara_trailer_andrew_aversa_norihiko_hibino"
+title = "Legend of Shara Trailer"
+artist = "Andrew Aversa, Norihiko Hibino"
+album = "Tangledeep: Legend of Shara Original Soundtrack"
+year = 2019
+game_id = &"tangledeep"
+file = "Tangledeep/08 Legend of Shara Trailer.mp3"
+tags = PackedStringArray()

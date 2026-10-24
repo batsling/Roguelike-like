@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_lands_above_the_clouds_realm_of_the_gods_jeff_ball"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"lands_above_the_clouds_realm_of_the_gods_jeff_ball"
+title = "Lands Above the Clouds (Realm of the Gods)"
+artist = "Jeff Ball"
+album = "Tangledeep: Legend of Shara Original Soundtrack"
+year = 2019
+game_id = &"tangledeep"
+file = "Tangledeep/07 Lands Above the Clouds (Realm of the Gods).mp3"
+tags = PackedStringArray()

@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_at_journeys_end_journey_theme_3_jeff_ball"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"at_journeys_end_journey_theme_3_jeff_ball"
+title = "At Journey's End (Journey Theme 3)"
+artist = "Jeff Ball"
+album = "Tangledeep: Legend of Shara Original Soundtrack"
+year = 2019
+game_id = &"tangledeep"
+file = "Tangledeep/06 At Journey's End (Journey Theme 3).mp3"
+tags = PackedStringArray()

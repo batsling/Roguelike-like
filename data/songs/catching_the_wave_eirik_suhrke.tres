@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_catching_the_wave_eirik_suhrke"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"catching_the_wave_eirik_suhrke"
+title = "Catching the wave"
+artist = "Eirik Suhrke"
+album = "Spelunky 2"
+year = 2020
+game_id = &"spelunky_2"
+file = "Spelunky 2/44. Catching the wave.mp3"
+tags = PackedStringArray()

@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_kron_s_challenge_keisuke_ito"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"kron_s_challenge_keisuke_ito"
+title = "Kron’s Challenge"
+artist = "Keisuke Ito"
+album = "Shiren the Wanderer: The Mystery Dungeon of Serpentcoil Island Original Soundtrack"
+year = 2024
+game_id = &"shiren_the_wanderer_the_mystery_dungeon_of_serpentcoil_island"
+file = "Shiren the Wanderer - The Mystery Dungeon of Serpentcoil Island/2-08. Kron’s Challenge.mp3"
+tags = PackedStringArray()

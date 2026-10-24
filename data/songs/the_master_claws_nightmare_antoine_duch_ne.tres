@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_the_master_claws_nightmare_antoine_duch_ne"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"the_master_claws_nightmare_antoine_duch_ne"
+title = "The Master Claws Nightmare"
+artist = "Antoine Duchêne"
+album = "Ravenswatch (Original Game Soundtrack)"
+year = 2024
+game_id = &"ravenswatch"
+file = "Ravenswatch/18. The Master Claws Nightmare.mp3"
+tags = PackedStringArray()

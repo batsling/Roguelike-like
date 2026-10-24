@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_into_action_binarycounter"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"into_action_binarycounter"
+title = "Into Action"
+artist = "BinaryCounter"
+album = "Backpack Hero OST"
+year = 2022
+game_id = &"backpack_hero"
+file = "Backpack Hero/10. Into Action.mp3"
+tags = PackedStringArray()

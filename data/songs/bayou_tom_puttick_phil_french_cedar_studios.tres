@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_bayou_tom_puttick_phil_french_cedar_studios"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"bayou_tom_puttick_phil_french_cedar_studios"
+title = "Bayou"
+artist = "Tom Puttick & Phil French, Cedar Studios"
+album = "West Of Dead Original Soundtrack"
+year = 0
+game_id = &"west_of_dead"
+file = "West Of Dead/05. Bayou.mp3"
+tags = PackedStringArray()

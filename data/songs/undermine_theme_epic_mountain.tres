@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_undermine_theme_epic_mountain"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"undermine_theme_epic_mountain"
+title = "UnderMine Theme"
+artist = "Epic Mountain"
+album = "UnderMine (Original Soundtrack)"
+year = 2020
+game_id = &"undermine"
+file = "UnderMine/01. UnderMine Theme.mp3"
+tags = PackedStringArray()

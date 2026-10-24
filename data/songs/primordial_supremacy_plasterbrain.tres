@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_primordial_supremacy_plasterbrain"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"primordial_supremacy_plasterbrain"
+title = "Primordial Supremacy"
+artist = "plasterbrain"
+album = "StarVaders - Original Soundtrack"
+year = 2025
+game_id = &"starvaders"
+file = "StarVaders/06. Primordial Supremacy.mp3"
+tags = PackedStringArray()

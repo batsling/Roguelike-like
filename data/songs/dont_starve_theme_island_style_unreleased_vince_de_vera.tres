@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_dont_starve_theme_island_style_unreleased_vince_de_vera"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"dont_starve_theme_island_style_unreleased_vince_de_vera"
+title = "Don't Starve Theme (Island Style) (Unreleased)"
+artist = "Vince de Vera"
+album = "Don't Starve Soundtrack"
+year = 2020
+game_id = &"don_t_starve"
+file = "Don't Starve/44. Don't Starve Theme (Island Style) (Unreleased).mp3"
+tags = PackedStringArray()

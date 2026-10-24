@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_an_adventure_awaits_winter_binarycounter"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"an_adventure_awaits_winter_binarycounter"
+title = "An Adventure Awaits (Winter)"
+artist = "BinaryCounter"
+album = "Backpack Hero OST"
+year = 2022
+game_id = &"backpack_hero"
+file = "Backpack Hero/21. An Adventure Awaits (Winter).mp3"
+tags = PackedStringArray()

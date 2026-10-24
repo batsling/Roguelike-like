@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_all_that_glitters_is_not_gold_wesley_slover"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"all_that_glitters_is_not_gold_wesley_slover"
+title = "All that Glitters is Not Gold"
+artist = "Wesley Slover"
+album = "UnderMine (Original Soundtrack)"
+year = 2020
+game_id = &"undermine"
+file = "UnderMine/20. All that Glitters is Not Gold.mp3"
+tags = PackedStringArray()

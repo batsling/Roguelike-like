@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_48th_and_desperation_david_pittman"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"48th_and_desperation_david_pittman"
+title = "48th and Desperation"
+artist = "David Pittman"
+album = "Eldritch Original Soundtrack"
+year = 2013
+game_id = &"eldritch"
+file = "Eldritch/10. 48th and Desperation.mp3"
+tags = PackedStringArray()

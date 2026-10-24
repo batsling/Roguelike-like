@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_overgrowth_riverstone_waterway_jeff_ball"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"overgrowth_riverstone_waterway_jeff_ball"
+title = "Overgrowth (Riverstone Waterway)"
+artist = "Jeff Ball"
+album = "Tangledeep: Legend of Shara Original Soundtrack"
+year = 2019
+game_id = &"tangledeep"
+file = "Tangledeep/02 Overgrowth (Riverstone Waterway).mp3"
+tags = PackedStringArray()

@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_researcher_s_experimental_site_keisuke_ito"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"researcher_s_experimental_site_keisuke_ito"
+title = "Researcher’s Experimental Site"
+artist = "Keisuke Ito"
+album = "Shiren the Wanderer: The Mystery Dungeon of Serpentcoil Island Original Soundtrack"
+year = 2024
+game_id = &"shiren_the_wanderer_the_mystery_dungeon_of_serpentcoil_island"
+file = "Shiren the Wanderer - The Mystery Dungeon of Serpentcoil Island/3-26. Researcher’s Experimental Site.mp3"
+tags = PackedStringArray()

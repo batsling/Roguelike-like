@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_where_magic_and_mayhem_collide"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"where_magic_and_mayhem_collide"
+title = "Where Magic and Mayhem Collide"
+artist = ""
+album = ""
+year = 0
+game_id = &"roguebook"
+file = "Roguebook/05 Where Magic and Mayhem Collide.mp3"
+tags = PackedStringArray()
