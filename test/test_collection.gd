@@ -426,6 +426,39 @@ func test_the_objects_tab_opens_on_its_grid_too() -> void:
 	col._select(0)
 	assert_true(col._detail_panel.visible, "a click opens it")
 
+# SHOPKEEPERS HAVE A TAB (the owner, 24 Oct 2026): every keeper in the roster is a
+# card, and its detail puts the sheet's rule columns into words.
+# The suite runs with the roster EMPTY (pre_run_hook.gd), so this puts the real one
+# back for itself and takes it away again.
+func test_the_shopkeepers_tab_lists_every_keeper_with_their_rules() -> void:
+	var real: Dictionary = Data.get_meta("all_shopkeepers", {})
+	var was: Dictionary = Data._shopkeepers.duplicate()
+	Data._shopkeepers.merge(real)
+	_check_shopkeepers_tab()
+	Data._shopkeepers.clear()
+	Data._shopkeepers.merge(was)
+
+func _check_shopkeepers_tab() -> void:
+	if Data.all_shopkeepers().is_empty():
+		pending("no shopkeepers authored")
+		return
+	var col := _new_collection()
+	col._set_tab(Collection.Tab.SHOPKEEPERS)
+	assert_eq(col._nav.size(), Data.all_shopkeepers().size(), "a card per keeper")
+	for k in Data.all_shopkeepers():
+		var rules: Array = Collection.shopkeeper_rules(k)
+		assert_true(String(rules[0]).begins_with("Shelf: "), "%s says what is on the shelf" % k.id)
+		for line in rules:
+			assert_false(String(line).contains("_"),
+				"%s: no raw token in '%s'" % [k.id, line])
+	var charon: ShopkeeperData = Data.get_shopkeeper(&"charon")
+	if charon == null:
+		pending("Charon is not in the roster")
+		return
+	var words: String = " ".join(Collection.shopkeeper_rules(charon))
+	assert_string_contains(words, "Steals 3 gold")
+	assert_string_contains(words, "20% off")
+
 # An object's "If a roll lands" prose carries an {ITEM} hole the run fills with
 # the relic it rolled. The reference has no roll, so the hole must not show raw.
 func test_an_objects_roll_prose_never_shows_its_item_hole() -> void:

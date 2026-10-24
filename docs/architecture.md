@@ -83,7 +83,9 @@ ordinary scene.
     `%ModalLayer` rather than a `CanvasLayer` of its own so the Exit Game corner
     stays underneath it.
   - **`Collection.gd`** — the compendium: Games, Items, Characters, Enemies,
-    Bosses, **Loot**, Events, Objects. **An entry opens in a popup over the
+    Bosses, **Loot**, Events, Objects, Shopkeepers (each keeper's sheet columns put
+    into words by `Collection.shopkeeper_rules`). The tabs share the title's row,
+    compact (`_compact`), and so do the Loot sub-tabs. **An entry opens in a popup over the
     grid** (`_new_detail_panel` / `_select`), not a pane beside it: the grid
     never gives up a column, the picked cell stays lit underneath, and ◀ ▶ (or the
     arrow keys) step through the grid in layout order. Escape or a click on the
