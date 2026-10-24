@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_synthetic_coolant_deallry"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"synthetic_coolant_deallry"
+title = "Synthetic Coolant"
+artist = "Deallry"
+album = "Wall World 2"
+year = 2025
+game_id = &"wall_world_2"
+file = "Wall World 2/17. Synthetic Coolant.mp3"
+tags = PackedStringArray()

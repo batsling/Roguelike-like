@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_climb_it_like_its_hot_juha_korpelainen_niilo_takalainen"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"climb_it_like_its_hot_juha_korpelainen_niilo_takalainen"
+title = "Climb It Like It's Hot"
+artist = "Juha Korpelainen & Niilo Takalainen"
+album = "Orbital Bullet"
+year = 2022
+game_id = &"orbital_bullet"
+file = "Orbital Bullet/20. Climb It Like It's Hot.mp3"
+tags = PackedStringArray()

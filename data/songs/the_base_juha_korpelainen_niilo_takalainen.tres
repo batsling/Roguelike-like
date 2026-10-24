@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_the_base_juha_korpelainen_niilo_takalainen"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"the_base_juha_korpelainen_niilo_takalainen"
+title = "The Base"
+artist = "Juha Korpelainen & Niilo Takalainen"
+album = "Orbital Bullet"
+year = 2022
+game_id = &"orbital_bullet"
+file = "Orbital Bullet/02. The Base.mp3"
+tags = PackedStringArray()

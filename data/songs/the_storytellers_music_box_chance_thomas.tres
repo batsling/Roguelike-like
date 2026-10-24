@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_the_storytellers_music_box_chance_thomas"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"the_storytellers_music_box_chance_thomas"
+title = "The Storyteller's Music Box"
+artist = "Chance Thomas"
+album = "Roguebook"
+year = 2021
+game_id = &"roguebook"
+file = "Roguebook/04 The Storyteller's Music Box.mp3"
+tags = PackedStringArray()
