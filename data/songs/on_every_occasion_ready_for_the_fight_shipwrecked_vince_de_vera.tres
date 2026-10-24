@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_on_every_occasion_ready_for_the_fight_shipwrecked_vince_de_vera"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"on_every_occasion_ready_for_the_fight_shipwrecked_vince_de_vera"
+title = "On Every Occasion Ready For The Fight (Shipwrecked)"
+artist = "Vince de Vera"
+album = "Don't Starve Soundtrack"
+year = 2020
+game_id = &"don_t_starve"
+file = "Don't Starve/27. On Every Occasion Ready For The Fight (Shipwrecked).mp3"
+tags = PackedStringArray()

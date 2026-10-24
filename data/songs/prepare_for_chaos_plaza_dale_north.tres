@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_prepare_for_chaos_plaza_dale_north"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"prepare_for_chaos_plaza_dale_north"
+title = "Prepare for Chaos -Plaza-"
+artist = "Dale North"
+album = "Wizard of Legend"
+year = 2018
+game_id = &"wizard_of_legend"
+file = "Wizard of Legend/03. Prepare for Chaos -Plaza-.mp3"
+tags = PackedStringArray()

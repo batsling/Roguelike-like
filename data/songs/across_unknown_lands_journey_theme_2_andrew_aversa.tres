@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_across_unknown_lands_journey_theme_2_andrew_aversa"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"across_unknown_lands_journey_theme_2_andrew_aversa"
+title = "Across Unknown Lands (Journey Theme 2)"
+artist = "Andrew Aversa"
+album = "Tangledeep: Legend of Shara Original Soundtrack"
+year = 2019
+game_id = &"tangledeep"
+file = "Tangledeep/05 Across Unknown Lands (Journey Theme 2).mp3"
+tags = PackedStringArray()

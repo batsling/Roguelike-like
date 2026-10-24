@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_a_remembrance_of_the_executor_tai_tomisawa"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"a_remembrance_of_the_executor_tai_tomisawa"
+title = "A Remembrance of the Executor"
+artist = "Tai Tomisawa"
+album = "Elden Ring Nightreign (Original Soundtrack)"
+year = 2025
+game_id = &"elden_ring_nightreign"
+file = "Elden Ring - Nightreign/38 A Remembrance of the Executor.mp3"
+tags = PackedStringArray()

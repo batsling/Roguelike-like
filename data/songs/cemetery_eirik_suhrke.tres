@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_cemetery_eirik_suhrke"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"cemetery_eirik_suhrke"
+title = "Cemetery"
+artist = "Eirik Suhrke"
+album = "Spelunky OST"
+year = 2012
+game_id = &"spelunky"
+file = "Spelunky/42. Cemetery.mp3"
+tags = PackedStringArray()

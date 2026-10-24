@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_reunion_of_hope_zircon_norihiko_hibino"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"reunion_of_hope_zircon_norihiko_hibino"
+title = "Reunion of Hope"
+artist = "zircon, Norihiko Hibino"
+album = "Tangledeep Original Soundtrack"
+year = 2018
+game_id = &"tangledeep"
+file = "Tangledeep/26 Reunion of Hope.mp3"
+tags = PackedStringArray()

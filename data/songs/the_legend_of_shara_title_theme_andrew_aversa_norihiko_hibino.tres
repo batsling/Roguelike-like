@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_the_legend_of_shara_title_theme_andrew_aversa_norihiko_hibino"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"the_legend_of_shara_title_theme_andrew_aversa_norihiko_hibino"
+title = "The Legend of Shara (Title Theme)"
+artist = "Andrew Aversa, Norihiko Hibino"
+album = "Tangledeep: Legend of Shara Original Soundtrack"
+year = 2019
+game_id = &"tangledeep"
+file = "Tangledeep/01 The Legend of Shara (Title Theme).mp3"
+tags = PackedStringArray("menu")

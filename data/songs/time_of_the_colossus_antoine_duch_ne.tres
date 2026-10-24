@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_time_of_the_colossus_antoine_duch_ne"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"time_of_the_colossus_antoine_duch_ne"
+title = "Time of the Colossus"
+artist = "Antoine Duchêne"
+album = "Ravenswatch (Original Game Soundtrack)"
+year = 2024
+game_id = &"ravenswatch"
+file = "Ravenswatch/11. Time of the Colossus.mp3"
+tags = PackedStringArray()

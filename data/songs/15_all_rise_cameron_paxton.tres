@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_15_all_rise_cameron_paxton"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"15_all_rise_cameron_paxton"
+title = "15 All Rise"
+artist = "Cameron Paxton"
+album = "Dome Keeper"
+year = 2022
+game_id = &"dome_keeper"
+file = "Dome Keeper/15. All Rise.mp3"
+tags = PackedStringArray()

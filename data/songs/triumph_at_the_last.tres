@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_triumph_at_the_last"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"triumph_at_the_last"
+title = "Triumph at the Last"
+artist = ""
+album = ""
+year = 0
+game_id = &"roguebook"
+file = "Roguebook/13 Triumph at the Last.mp3"
+tags = PackedStringArray()

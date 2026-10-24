@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_mines_proto_eirik_suhrke"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"mines_proto_eirik_suhrke"
+title = "Mines Proto"
+artist = "Eirik Suhrke"
+album = "Spelunky OST"
+year = 2012
+game_id = &"spelunky"
+file = "Spelunky/60. Mines Proto.mp3"
+tags = PackedStringArray()

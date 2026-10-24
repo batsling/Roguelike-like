@@ -125,6 +125,24 @@ func test_the_main_menu_fits() -> void:
 	await wait_frames(6)
 	_assert_fits("the main menu", menu)
 
+# A PLAYER WITH SAVES has a Continue button the first launch does not, and the
+# list it opens sits in the middle of the column. Both used to push Settings and
+# the list's own rows off the bottom of the canvas (the owner, 1440p, 24 Oct).
+func test_the_main_menu_fits_with_saves_and_the_list_open() -> void:
+	var menu = load("res://scenes/menu/MainMenu.tscn").instantiate()
+	add_child_autofree(menu)
+	await wait_frames(2)
+	(menu.get_node("%ContinueBtn") as Control).visible = true
+	_assert_fits("the main menu with Continue", menu)
+	menu._show_save_list(true)
+	var list: Control = menu.get_node("%SaveList")
+	for i in 8:
+		list.add_child(menu._save_row({"name": "Save %d" % i, "hp": 10, "max_hp": 20,
+			"games_beaten": 3}))
+	menu._fit_save_list()
+	await wait_frames(6)
+	_assert_fits("the main menu with eight saves listed", menu)
+
 func test_the_character_picker_fits() -> void:
 	var menu = load("res://scenes/menu/MainMenu.tscn").instantiate()
 	add_child_autofree(menu)

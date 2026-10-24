@@ -6,7 +6,7 @@
 script = ExtResource("1_song")
 id = &"boss_battle_beating_doseone"
 title = "BOSS BATTLE BEATING"
-artist = "doseone"
+artist = "Doseone"
 album = "ENTER THE GUNGEON (Original SoundTrack)"
 year = 2016
 game_id = &"enter_the_gungeon"

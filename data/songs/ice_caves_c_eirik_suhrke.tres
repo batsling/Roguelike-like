@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_ice_caves_c_eirik_suhrke"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"ice_caves_c_eirik_suhrke"
+title = "Ice Caves C"
+artist = "Eirik Suhrke"
+album = "Spelunky OST"
+year = 2012
+game_id = &"spelunky"
+file = "Spelunky/15. Ice Caves C.mp3"
+tags = PackedStringArray()

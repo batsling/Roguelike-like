@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_enter_the_lost_prism_plasterbrain"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"enter_the_lost_prism_plasterbrain"
+title = "Enter The Lost Prism"
+artist = "plasterbrain"
+album = "StarVaders - Original Soundtrack"
+year = 2025
+game_id = &"starvaders"
+file = "StarVaders/07. Enter The Lost Prism.mp3"
+tags = PackedStringArray()

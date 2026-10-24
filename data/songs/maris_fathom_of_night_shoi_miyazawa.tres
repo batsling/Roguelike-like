@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_maris_fathom_of_night_shoi_miyazawa"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"maris_fathom_of_night_shoi_miyazawa"
+title = "Maris, Fathom of Night"
+artist = "Shoi Miyazawa"
+album = "Elden Ring Nightreign (Original Soundtrack)"
+year = 2025
+game_id = &"elden_ring_nightreign"
+file = "Elden Ring - Nightreign/21 Maris, Fathom of Night.mp3"
+tags = PackedStringArray()

@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_call_of_the_wall"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"call_of_the_wall"
+title = "Call of the Wall"
+artist = ""
+album = ""
+year = 0
+game_id = &"wall_world_2"
+file = "Wall World 2/04. Call of the Wall.mp3"
+tags = PackedStringArray()

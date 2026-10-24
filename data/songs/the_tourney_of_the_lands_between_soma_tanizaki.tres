@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_the_tourney_of_the_lands_between_soma_tanizaki"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"the_tourney_of_the_lands_between_soma_tanizaki"
+title = "The Tourney of the Lands Between"
+artist = "Soma Tanizaki"
+album = "Elden Ring Nightreign (Original Soundtrack)"
+year = 2025
+game_id = &"elden_ring_nightreign"
+file = "Elden Ring - Nightreign/31 The Tourney of the Lands Between.mp3"
+tags = PackedStringArray()

@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_a_soldier_and_sanctum_bookworm_wesley_slover"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"a_soldier_and_sanctum_bookworm_wesley_slover"
+title = "A Soldier and Sanctum Bookworm"
+artist = "Wesley Slover"
+album = "UnderMine (Original Soundtrack)"
+year = 2020
+game_id = &"undermine"
+file = "UnderMine/09. A Soldier and Sanctum Bookworm.mp3"
+tags = PackedStringArray()

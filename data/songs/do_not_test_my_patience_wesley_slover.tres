@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_do_not_test_my_patience_wesley_slover"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"do_not_test_my_patience_wesley_slover"
+title = "Do Not Test My Patience!"
+artist = "Wesley Slover"
+album = "UnderMine (Original Soundtrack)"
+year = 2020
+game_id = &"undermine"
+file = "UnderMine/28. Do Not Test My Patience!.mp3"
+tags = PackedStringArray()

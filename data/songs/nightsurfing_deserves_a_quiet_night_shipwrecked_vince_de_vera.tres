@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_nightsurfing_deserves_a_quiet_night_shipwrecked_vince_de_vera"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"nightsurfing_deserves_a_quiet_night_shipwrecked_vince_de_vera"
+title = "Nightsurfing (Deserves A Quiet Night) (Shipwrecked)"
+artist = "Vince de Vera"
+album = "Don't Starve Soundtrack"
+year = 2020
+game_id = &"don_t_starve"
+file = "Don't Starve/39. Nightsurfing (Deserves A Quiet Night) (Shipwrecked).mp3"
+tags = PackedStringArray()

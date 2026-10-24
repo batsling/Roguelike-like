@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_march_of_the_undead"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"march_of_the_undead"
+title = "March of the Undead"
+artist = ""
+album = ""
+year = 0
+game_id = &"necrosmith_2"
+file = "Necrosmith 2/10. March of the Undead.mp3"
+tags = PackedStringArray()

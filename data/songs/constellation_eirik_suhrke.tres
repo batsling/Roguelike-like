@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_constellation_eirik_suhrke"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"constellation_eirik_suhrke"
+title = "Constellation"
+artist = "Eirik Suhrke"
+album = "Spelunky 2"
+year = 2020
+game_id = &"spelunky_2"
+file = "Spelunky 2/51. Constellation.mp3"
+tags = PackedStringArray()

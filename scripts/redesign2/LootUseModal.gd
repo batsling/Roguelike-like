@@ -372,6 +372,12 @@ func resolve_throw(cell: Vector2i) -> void:
 # The picker was put away without landing. The piece is still in the pack — a
 # bottle unthrown, a wand unfired — so the screen comes back to the same choice it
 # offered before.
+# Another use took over while this one was still being aimed
+# (Overworld2.put_away_pending_use). Nothing was spent, and the player has moved
+# on, so the screen goes rather than coming back.
+func put_away() -> void:
+	_finish()
+
 func throw_cancelled() -> void:
 	_verb = "quaff"
 	_target = null

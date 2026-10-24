@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_uchawis_hearth_gareth_coker"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"uchawis_hearth_gareth_coker"
+title = "Uchawi's Hearth"
+artist = "Gareth Coker"
+album = "Absolum (Original Game Soundtrack)"
+year = 2025
+game_id = &"absolum"
+file = "Absolum/03. Uchawi's Hearth.mp3"
+tags = PackedStringArray()

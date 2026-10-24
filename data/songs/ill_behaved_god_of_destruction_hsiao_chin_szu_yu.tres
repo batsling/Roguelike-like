@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_ill_behaved_god_of_destruction_hsiao_chin_szu_yu"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"ill_behaved_god_of_destruction_hsiao_chin_szu_yu"
+title = "Ill-Behaved God of Destruction | 調皮的破壞神"
+artist = "Hsiao-Chin & Szu-Yu"
+album = "ZOETI (Original Game Soundtrack)"
+year = 2023
+game_id = &"zoeti"
+file = "Zoeti/08. Ill-Behaved God of Destruction  調皮的破壞神.mp3"
+tags = PackedStringArray()

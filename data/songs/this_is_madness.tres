@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_this_is_madness"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"this_is_madness"
+title = "This Is Madness"
+artist = ""
+album = ""
+year = 0
+game_id = &"orbital_bullet"
+file = "Orbital Bullet/01. This Is Madness.mp3"
+tags = PackedStringArray()

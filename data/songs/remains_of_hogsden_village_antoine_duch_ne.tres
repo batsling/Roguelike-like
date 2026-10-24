@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_remains_of_hogsden_village_antoine_duch_ne"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"remains_of_hogsden_village_antoine_duch_ne"
+title = "Remains of Hogsden Village"
+artist = "Antoine Duchêne"
+album = "Ravenswatch (Original Game Soundtrack)"
+year = 2024
+game_id = &"ravenswatch"
+file = "Ravenswatch/5. Remains of Hogsden Village.mp3"
+tags = PackedStringArray()

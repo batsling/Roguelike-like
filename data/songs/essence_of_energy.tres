@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_essence_of_energy"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"essence_of_energy"
+title = "Essence Of Energy"
+artist = ""
+album = ""
+year = 0
+game_id = &"orbital_bullet"
+file = "Orbital Bullet/17. Essence Of Energy.mp3"
+tags = PackedStringArray()

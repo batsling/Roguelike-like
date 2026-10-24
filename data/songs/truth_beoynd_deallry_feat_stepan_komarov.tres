@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_truth_beoynd_deallry_feat_stepan_komarov"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"truth_beoynd_deallry_feat_stepan_komarov"
+title = "Truth Beoynd"
+artist = "Deallry feat. Stepan Komarov"
+album = "WW Deep Threat"
+year = 2023
+game_id = &"wall_world"
+file = "Wall World/19. Truth Beoynd.mp3"
+tags = PackedStringArray()

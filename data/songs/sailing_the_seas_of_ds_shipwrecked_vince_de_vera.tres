@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_sailing_the_seas_of_ds_shipwrecked_vince_de_vera"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"sailing_the_seas_of_ds_shipwrecked_vince_de_vera"
+title = "Sailing The Seas Of DS (Shipwrecked)"
+artist = "Vince de Vera"
+album = "Don't Starve Soundtrack"
+year = 2020
+game_id = &"don_t_starve"
+file = "Don't Starve/40. Sailing The Seas Of DS (Shipwrecked).mp3"
+tags = PackedStringArray()

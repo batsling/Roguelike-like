@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_cave_work_vince_de_vera_jason_garner"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"cave_work_vince_de_vera_jason_garner"
+title = "Cave Work"
+artist = "Vince de Vera & Jason Garner"
+album = "Don't Starve Soundtrack"
+year = 2020
+game_id = &"don_t_starve"
+file = "Don't Starve/10. Cave Work.mp3"
+tags = PackedStringArray()

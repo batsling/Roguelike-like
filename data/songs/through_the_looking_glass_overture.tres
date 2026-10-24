@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_through_the_looking_glass_overture"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"through_the_looking_glass_overture"
+title = "Through the Looking Glass (Overture)"
+artist = ""
+album = ""
+year = 0
+game_id = &"starlight_revolver"
+file = "Starlight ReVolver/14. Through the Looking Glass (Overture).mp3"
+tags = PackedStringArray()

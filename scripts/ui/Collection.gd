@@ -23,7 +23,7 @@ extends Control
 #   Events     — every 2.0 event (data/events2.0), grid + detail: what it asks,
 #                what each answer does, and where on the map it can appear.
 
-enum Tab { GAMES, ITEMS, CHARACTERS, ENEMIES, BOSSES, LOOT, EVENTS, OBJECTS }
+enum Tab { GAMES, ITEMS, CHARACTERS, ENEMIES, BOSSES, LOOT, EVENTS, OBJECTS, SHOPKEEPERS }
 
 # Which half of the Loot tab is showing. A sub-tab rather than a filter chip
 # because the two sets share nothing but the pack they end up in: a scroll has a
@@ -123,7 +123,7 @@ var _tab: int = Tab.GAMES
 
 var _search := {"items": "", "characters": "", "enemies": "", "scrolls": "", "pills": "",
 	"potions": "", "cards": "", "wands": "", "trinkets": "", "bags": "", "weapons": "",
-	"evolutions": "", "games": "", "events": "", "objects": ""}
+	"evolutions": "", "games": "", "events": "", "objects": "", "shopkeepers": ""}
 # Which sub-tab the Loot tab is on: one of the LOOT_* constants.
 var _loot_sub: String = LOOT_SCROLLS
 var _games_sort: String = "name"
@@ -266,22 +266,23 @@ func _build_shell() -> void:
 	margin.add_child(root)
 	panel.add_child(margin)
 
+	# ONE ROW FOR THE TITLE, THE TABS AND CLOSE (the owner, 24 Oct 2026: "the tabs
+	# and sub-tabs take up less space by a significant margin"). The title over a
+	# row of full-size tabs cost the grid about 90px of a 720 canvas before a
+	# single card was drawn; on one line, with the tabs compact, it costs 30.
 	var header := HBoxContainer.new()
+	header.add_theme_constant_override("separation", UITheme.GAP_LOOSE)
 	root.add_child(header)
 	var title := Label.new()
 	title.text = "Collection"
-	title.add_theme_font_size_override("font_size", UITheme.FONT_HERO)
+	title.add_theme_font_size_override("font_size", UITheme.FONT_TITLE)
 	title.add_theme_color_override("font_color", Color(1, 0.85, 0.45))
-	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header.add_child(title)
-	var close_btn := HoverButton.new()
-	close_btn.text = "✕ Close"
-	close_btn.pressed.connect(close)
-	header.add_child(close_btn)
-
-	var tabs := HBoxContainer.new()
-	tabs.add_theme_constant_override("separation", UITheme.GAP_SNUG)
-	root.add_child(tabs)
+	var tabs := HFlowContainer.new()
+	tabs.add_theme_constant_override("h_separation", UITheme.GAP_TIGHT)
+	tabs.add_theme_constant_override("v_separation", UITheme.GAP_TIGHT)
+	tabs.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	header.add_child(tabs)
 	_add_tab_button(tabs, Tab.GAMES, "Games (%d)" % Data.game_count())
 	_add_tab_button(tabs, Tab.ITEMS, "Items (%d)" % Data.all_items2().size())
 	_add_tab_button(tabs, Tab.CHARACTERS, "Characters (%d)" % Data.all_characters2().size())
@@ -290,6 +291,13 @@ func _build_shell() -> void:
 	_add_tab_button(tabs, Tab.LOOT, "Loot (%d)" % loot_total())
 	_add_tab_button(tabs, Tab.EVENTS, "Events (%d)" % Data.all_events2().size())
 	_add_tab_button(tabs, Tab.OBJECTS, "Objects (%d)" % Data.all_objects2().size())
+	_add_tab_button(tabs, Tab.SHOPKEEPERS, "Shopkeepers (%d)" % Data.all_shopkeepers().size())
+	var close_btn := HoverButton.new()
+	close_btn.text = "✕ Close"
+	close_btn.pressed.connect(close)
+	close_btn.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	_compact(close_btn)
+	header.add_child(close_btn)
 
 	root.add_child(HSeparator.new())
 
@@ -298,12 +306,30 @@ func _build_shell() -> void:
 	_content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	root.add_child(_content)
 
-func _add_tab_button(bar: HBoxContainer, tab: int, label: String) -> void:
+func _add_tab_button(bar: Container, tab: int, label: String) -> void:
 	var b := HoverButton.new()
 	b.text = label
 	b.pressed.connect(func(): _set_tab(tab))
+	_compact(b)
 	bar.add_child(b)
 	_tab_buttons[tab] = b
+
+# A TAB'S SIZE: the body font and a few pixels round it, rather than a full
+# button's padding. Both the tabs and the Loot sub-tabs wear it.
+func _compact(b: Button) -> void:
+	b.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
+	for state in ["normal", "hover", "pressed", "hover_pressed", "focus", "disabled"]:
+		# From the game's theme, not off the button: it is not in the tree yet, so
+		# asking it would answer with Godot's stock box.
+		var box: StyleBox = UITheme.shared().get_stylebox(state, "Button")
+		if box == null:
+			continue
+		box = box.duplicate()
+		box.content_margin_left = UITheme.GAP
+		box.content_margin_right = UITheme.GAP
+		box.content_margin_top = UITheme.GAP_HAIR
+		box.content_margin_bottom = UITheme.GAP_HAIR
+		b.add_theme_stylebox_override(state, box)
 
 func _set_tab(tab: int) -> void:
 	_tab = tab
@@ -339,6 +365,8 @@ func _refresh() -> void:
 			_build_events()
 		Tab.OBJECTS:
 			_build_objects()
+		Tab.SHOPKEEPERS:
+			_build_shopkeepers()
 
 # ------------------------------------------------------------------
 # Shared building blocks
@@ -2295,8 +2323,8 @@ func _build_loot() -> void:
 	var bg := PanelContainer.new()
 	bg.add_theme_stylebox_override("panel", _flat(Color(0, 0, 0, 0.35)))
 	var subs := HFlowContainer.new()
-	subs.add_theme_constant_override("h_separation", UITheme.GAP_SNUG)
-	subs.add_theme_constant_override("v_separation", UITheme.GAP_SNUG)
+	subs.add_theme_constant_override("h_separation", UITheme.GAP_TIGHT)
+	subs.add_theme_constant_override("v_separation", UITheme.GAP_TIGHT)
 	subs.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	bg.add_child(subs)
 	_content.add_child(bg)
@@ -2384,6 +2412,7 @@ func _loot_sub_button(label: String, sub: String) -> Button:
 		_loot_sub = sub
 		_refresh())
 	b.tooltip_text = _loot_note(sub)
+	_compact(b)
 	return b
 
 func _populate_loot() -> void:
@@ -3303,6 +3332,147 @@ func _populate_objects() -> void:
 	if list.is_empty():
 		_grid.add_child(_label("No objects match.", Color(0.55, 0.55, 0.6), 13))
 	_set_count(list.size(), total)
+
+# ------------------------------------------------------------------
+# Shopkeepers — who can stand behind a Shop node's counter (§14.6)
+# ------------------------------------------------------------------
+#
+# The roster a run deals its shops from. A keeper is a plain shop with a name and
+# a face until a column of the `shopkeepers` sheet says otherwise, so the detail is
+# mostly those columns put into words (`shopkeeper_rules`).
+
+func _build_shopkeepers() -> void:
+	var row := _controls_row()
+	row.add_child(_search_box("shopkeepers"))
+	_add_count_label(row)
+	_grid_and_detail()
+	_populate_shopkeepers()
+
+func _populate_shopkeepers() -> void:
+	_clear_children(_grid)
+	var term: String = _search["shopkeepers"].to_lower()
+	var all: Array = Data.all_shopkeepers()
+	var list: Array = []
+	for k in all:
+		if not (k is ShopkeeperData):
+			continue
+		if term != "" and not (term in k.display_name.to_lower()
+				or term in _shopkeeper_game(k).to_lower()
+				or term in " ".join(shopkeeper_rules(k)).to_lower()):
+			continue
+		list.append(k)
+	list.sort_custom(func(a, b): return a.display_name.naturalnocasecmp_to(b.display_name) < 0)
+	for k in list:
+		_grid.add_child(_shopkeeper_cell(k))
+	if list.is_empty():
+		_grid.add_child(_label("No shopkeepers match.", Color(0.55, 0.55, 0.6), 13))
+	_set_count(list.size(), all.size())
+
+func _shopkeeper_game(k: ShopkeeperData) -> String:
+	var g: GameData = Data.get_game(k.game_id) if k.game_id != &"" else null
+	return g.display_name if g != null else ""
+
+func _shopkeeper_cell(k: ShopkeeperData) -> Control:
+	var ac := _rarity_color_by_name(k.rarity)
+	var cell := _cell(ac, func(): _show_shopkeeper_detail(k))
+	cell.panel.custom_minimum_size = Vector2(GRID_EVENT_SIZE + CELL_PAD + CELL_TEXT_SLACK, 0)
+	var vb: VBoxContainer = cell.vbox
+	vb.alignment = BoxContainer.ALIGNMENT_CENTER
+	var tex: Texture2D = k.portrait()
+	if tex != null:
+		vb.add_child(_image_with_bg(tex, GRID_EVENT_SIZE, ac))
+	var nm := _label(k.display_name, ac, GRID_NAME_FONT, true, true)
+	nm.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	vb.add_child(nm)
+	var game: String = _shopkeeper_game(k)
+	if game != "":
+		vb.add_child(_label(game, Color(0.65, 0.7, 0.8), GRID_META_FONT, true, true))
+	return cell.panel
+
+func _show_shopkeeper_detail(k: ShopkeeperData) -> void:
+	_set_detail_open(true)
+	_clear_children(_detail_box)
+	var ac := _rarity_color_by_name(k.rarity)
+	var tex: Texture2D = k.portrait()
+	if tex != null:
+		var img := _image_with_bg(tex, DETAIL_ITEM_SIZE, ac, false, DETAIL_IMAGE_PAD)
+		img.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		_detail_box.add_child(img)
+	_detail_box.add_child(_label(k.display_name, ac, 18, true))
+	_detail_box.add_child(_detail_meta(k.rarity, ac))
+	var game: String = _shopkeeper_game(k)
+	if game != "":
+		_detail_box.add_child(_label("From: %s" % game, Color(0.65, 0.7, 0.8), 11, false, true))
+	if k.description != "":
+		_detail_box.add_child(HSeparator.new())
+		_detail_box.add_child(_label(k.description, Color(0.88, 0.88, 0.9), 13, false, true))
+	_detail_box.add_child(_detail_section("Their shop"))
+	for line in shopkeeper_rules(k):
+		_detail_box.add_child(_label("•  " + line, Color(0.85, 0.85, 0.88), 12, false, true))
+
+# A keeper's columns, one plain sentence each, in the order a player meets them:
+# what is on the shelf, what it costs, and what else the room does.
+static func shopkeeper_rules(k: ShopkeeperData) -> Array:
+	var out: Array = []
+	var shelf: Array = []
+	if k.item_slots > 0:
+		shelf.append(Plural.count(k.item_slots, "item"))
+	if k.loot_slots > 0:
+		shelf.append("%d %s" % [k.loot_slots, "piece" if k.loot_slots == 1 else "pieces"]
+			+ (" of %s" % ", ".join(k.loot_kinds) if not k.loot_kinds.is_empty() else " of loot"))
+	if k.pack_slots > 0:
+		shelf.append(Plural.count(k.pack_slots, "card pack")
+			+ " (4 gold, open to a pick of 1 of 3)")
+	out.append("Shelf: " + (", ".join(shelf) if not shelf.is_empty() else "nothing"))
+	if not k.pools.is_empty():
+		out.append("Items drawn from: %s" % ", ".join(k.pools))
+	if k.loot_tag != "":
+		out.append("Every piece of loot on the shelf is a %s." % k.loot_tag)
+	if k.pays_in_health():
+		out.append("Prices are paid in Health (never your last point).")
+	for clause in k.sale:
+		out.append(_sale_words(String(clause)))
+	var boss: GoalEnemyData = Data.get_boss(k.boss) if k.boss != &"" else null
+	var boss_name: String = boss.display_name if boss != null else "their boss"
+	for token in k.effect:
+		var parts: PackedStringArray = String(token).split(" ", false)
+		var n: String = parts[1] if parts.size() > 1 else ""
+		match parts[0] if not parts.is_empty() else "":
+			"steal":
+				out.append("Steals %s gold from you once, and puts %s on the board." % [n, boss_name])
+			"beaten_sale":
+				out.append("Beat %s and every price is %s%% off for the rest of the run." % [boss_name, n])
+			"bombable":
+				out.append("Can be bombed: nothing, 1–5 gold, a spider, or a Steam Sale.")
+			"donation_shelf":
+				out.append("A Donation Machine stands in the room; the shelf grows with its best bank.")
+			"gold_reroll":
+				out.append("Rerolls the shelf for 1 gold, +1 each time.")
+			_:
+				out.append(String(token))
+	return out
+
+# "10% half all" -> "10% chance per slot: half price on everything".
+static func _sale_words(clause: String) -> String:
+	var parts: PackedStringArray = clause.split(" ", false)
+	var chance: String = ""
+	if not parts.is_empty() and parts[0].ends_with("%"):
+		chance = parts[0]
+		parts = parts.slice(1)
+	var amount: String = parts[0] if parts.size() > 0 else ""
+	var target: String = " ".join(parts.slice(1)) if parts.size() > 1 else "all"
+	var what: String = "everything" if target == "all" else target
+	var deal: String
+	match amount:
+		"half":
+			deal = "half price on %s" % what
+		"free":
+			deal = "%s free" % what
+		_:
+			deal = "%s gold on %s" % [amount, what]
+	if chance != "":
+		return "Sale: a %s chance per slot of %s." % [chance, deal]
+	return "Sale: %s." % deal
 
 func _object_choice_blob(obj: ObjectData) -> String:
 	var out: String = ""

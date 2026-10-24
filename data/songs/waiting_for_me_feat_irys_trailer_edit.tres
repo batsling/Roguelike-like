@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_waiting_for_me_feat_irys_trailer_edit"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"waiting_for_me_feat_irys_trailer_edit"
+title = "Waiting for Me (feat. IRyS) (Trailer Edit)"
+artist = ""
+album = ""
+year = 0
+game_id = &"starlight_revolver"
+file = "Starlight ReVolver/29. Waiting for Me (feat. IRyS) (Trailer Edit).mp3"
+tags = PackedStringArray()

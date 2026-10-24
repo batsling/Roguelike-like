@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_chill_at_mark_s_yann_cleophas"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"chill_at_mark_s_yann_cleophas"
+title = "Chill at Mark’s"
+artist = "Yann Cleophas"
+album = "Have a Nice Death (Original Game Soundtrack)"
+year = 2023
+game_id = &"have_a_nice_death"
+file = "Have a Nice Death/13. Chill at Mark’s.mp3"
+tags = PackedStringArray()

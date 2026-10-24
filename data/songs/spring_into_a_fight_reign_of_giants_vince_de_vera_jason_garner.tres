@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_spring_into_a_fight_reign_of_giants_vince_de_vera_jason_garner"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"spring_into_a_fight_reign_of_giants_vince_de_vera_jason_garner"
+title = "Spring Into A Fight (Reign Of Giants)"
+artist = "Vince de Vera & Jason Garner"
+album = "Don't Starve Soundtrack"
+year = 2020
+game_id = &"don_t_starve"
+file = "Don't Starve/18. Spring Into A Fight (Reign Of Giants).mp3"
+tags = PackedStringArray()

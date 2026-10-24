@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_a_lone_blue_light_hsiao_chin_szu_yu"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"a_lone_blue_light_hsiao_chin_szu_yu"
+title = "A Lone Blue Light | 獨行的蒼藍燈火"
+artist = "Hsiao-Chin & Szu-Yu"
+album = "ZOETI (Original Game Soundtrack)"
+year = 2023
+game_id = &"zoeti"
+file = "Zoeti/07. A Lone Blue Light  獨行的蒼藍燈火.mp3"
+tags = PackedStringArray()

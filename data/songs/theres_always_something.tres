@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_theres_always_something"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"theres_always_something"
+title = "There's Always Something"
+artist = ""
+album = ""
+year = 0
+game_id = &"roguebook"
+file = "Roguebook/07 There's Always Something.mp3"
+tags = PackedStringArray()

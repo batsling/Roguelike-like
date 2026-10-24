@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_ending_credits_andrew_aversa"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"ending_credits_andrew_aversa"
+title = "Ending Credits"
+artist = "Andrew Aversa"
+album = "Tangledeep Original Soundtrack"
+year = 2018
+game_id = &"tangledeep"
+file = "Tangledeep/22 Ending Credits.mp3"
+tags = PackedStringArray()

@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_closer_to_the_truth_deallry"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"closer_to_the_truth_deallry"
+title = "Closer to the Truth"
+artist = "Deallry"
+album = "WW Deep Threat"
+year = 2023
+game_id = &"wall_world"
+file = "Wall World/01. Closer to the Truth.mp3"
+tags = PackedStringArray()

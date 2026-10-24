@@ -11,6 +11,18 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **24 Oct upload: one use at a time, weapon batteries, a Shopkeepers tab.**
+  Using an item or a piece of loot while another use is still waiting for its
+  target puts the waiting one back unspent (an armed relic, a throw, zap or
+  swing, Push, Bomb, the Smelter's popup); a pick a spent scroll is waiting on
+  is finished first instead. A weapon in the pack wears the item battery in
+  place of its Swing button until it is full. The Collection's tabs share the
+  title's row and, with the Loot sub-tabs, are compact; Shopkeepers is a new
+  tab. The main menu fits with saves on it (Continue was pushing the column off
+  the bottom of the 720 canvas, which a 1440p screen draws at 2x), and its save
+  list scrolls. Jungle Maze Adventure pays double gold. 834 songs from 25 new
+  albums are on the radio, with the owner's radio-sheet fixes.
+
 - **The board's strip is DIFFICULTY now, in two lines.** "AMULET PRESSURE"
   over a row of six equal-weight labels became: the tier with its four pips and
   the location on the first line; the spawns to the next boss, the Amulet's

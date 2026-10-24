@@ -1280,7 +1280,10 @@ static func _cell_body(entry: Dictionary, use_cb: Callable, locked_now: bool,
 		# A WEAPON is a big piece that is USED (docs/loot-passives.md §12): its charge
 		# in the corner, and Swing / Evolve where a trinket says "Passive".
 		if LootSystem.is_weapon(entry):
-			span.add_child(_weapon_chip(entry))
+			# In the pack the battery under it says the charge (`_weapon_button`); a
+			# loose one on an offer has no button, so it wears the chip.
+			if not (with_name and use_cb.is_valid()):
+				span.add_child(_weapon_chip(entry))
 			if with_name:
 				return _overlaid(col, span, _name_label(entry, face_up),
 					_weapon_button(entry, use_cb, locked_now) if use_cb.is_valid() else null)
@@ -1366,8 +1369,9 @@ static func _cell_body(entry: Dictionary, use_cb: Callable, locked_now: bool,
 			Plural.count(int(bar[1]), "charge")] \
 			if counted else "Zap it to find out what it is — and how much of it is left."
 		band.add_child(count)
-	# A WEAPON WEARS ITS CHARGE in the wand's corner, green once it can swing.
-	if weapon:
+	# A WEAPON WEARS ITS CHARGE in the wand's corner, green once it can swing —
+	# loose, that is. In the pack its battery says it (`_weapon_button`).
+	if weapon and not (with_name and use_cb.is_valid()):
 		band.add_child(_weapon_chip(entry))
 	# A PASSIVE THAT GROWS WEARS ITS GROWTH in the same corner (Rocket's payout,
 	# docs/loot-passives.md §4) — the relic strip draws an incremental relic's
@@ -1448,7 +1452,9 @@ static func _overlaid(col: VBoxContainer, art: Control, name: Label, bottom: Con
 	# cell's bottom edge.
 	if bottom is Button:
 		_tighten(bottom as Button)
-	if bottom != null:
+	# A charging weapon's battery keeps its own height: a Button sizes itself off its
+	# text, and the battery's has none.
+	if bottom != null and bottom.get_node_or_null("Battery") == null:
 		bottom.custom_minimum_size = Vector2(LootSlot.USE_W, 0)
 	# The button's REAL height, plus the inset it sits at, so the corner chips
 	# above it stay clear.
@@ -1543,17 +1549,36 @@ static func _weapon_chip(entry: Dictionary) -> Control:
 	return wc
 
 # A WEAPON'S BUTTON SAYS EVOLVE when it can (docs/loot-passives.md §13) — the rarer
-# and bigger news — and Swing otherwise, live only when full. Both open its card.
+# and bigger news — and Swing once it is full. Until then the button IS the
+# battery an item wears in the relic strip (PackStrip.battery): a segment per
+# charge filling left to right, and the same strip turns into Swing when the last
+# one lands — so a weapon's charge reads the way an item's does (the owner, 24 Oct).
 static func _weapon_button(entry: Dictionary, use_cb: Callable, locked_now: bool) -> Button:
 	var evolvable: bool = not WeaponSystem.evolutions_ready(entry).is_empty()
 	var ready: bool = WeaponSystem.is_ready(entry)
+	if not evolvable and not ready:
+		var have: int = WeaponSystem.charges_of(entry)
+		var maxc: int = WeaponSystem.max_charges(entry)
+		var charging := Button.new()
+		charging.name = "WeaponButton"
+		charging.disabled = true
+		charging.flat = true
+		charging.focus_mode = Control.FOCUS_NONE
+		charging.custom_minimum_size = Vector2(LootSlot.USE_W, LootSlot.USE_H - 4)
+		charging.tooltip_text = "%d of %s — complete its goal for +1. Swings when full." % [
+			have, Plural.count(maxc, "charge")]
+		var cell: PanelContainer = PackStrip.battery(have, maxc,
+			Vector2(LootSlot.USE_W, LootSlot.USE_H - 4))
+		cell.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		cell.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		charging.add_child(cell)
+		return charging
 	var use := UITheme.confirm_button("Evolve" if evolvable else "Swing",
 		Vector2(0, LootSlot.USE_H), 10)
 	use.name = "WeaponButton"
-	use.disabled = locked_now or (not evolvable and not ready)
+	use.disabled = locked_now
 	use.tooltip_text = "It can evolve — open it to choose." if evolvable \
-		else "Aim it at the board — spends every charge." if ready \
-		else "Needs a full charge to swing."
+		else "Aim it at the board — spends every charge."
 	use.pressed.connect(use_cb)
 	return use
 

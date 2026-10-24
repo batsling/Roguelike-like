@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_absolum_a_broken_dream_gareth_coker"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"absolum_a_broken_dream_gareth_coker"
+title = "Absolum, A Broken Dream"
+artist = "Gareth Coker"
+album = "Absolum (Original Game Soundtrack)"
+year = 2025
+game_id = &"absolum"
+file = "Absolum/50. Absolum, A Broken Dream.mp3"
+tags = PackedStringArray()

@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_ms_imamura_cataclysm_lady_yann_cleophas"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"ms_imamura_cataclysm_lady_yann_cleophas"
+title = "Ms Imamura, Cataclysm Lady"
+artist = "Yann Cleophas"
+album = "Have a Nice Death (Original Game Soundtrack)"
+year = 2023
+game_id = &"have_a_nice_death"
+file = "Have a Nice Death/30. Ms Imamura, Cataclysm Lady.mp3"
+tags = PackedStringArray()

@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_noklateo_the_shrouded_city_soma_tanizaki"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"noklateo_the_shrouded_city_soma_tanizaki"
+title = "Noklateo, the Shrouded City"
+artist = "Soma Tanizaki"
+album = "Elden Ring Nightreign (Original Soundtrack)"
+year = 2025
+game_id = &"elden_ring_nightreign"
+file = "Elden Ring - Nightreign/15 Noklateo, the Shrouded City.mp3"
+tags = PackedStringArray()

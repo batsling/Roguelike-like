@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_it_s_about_time_yann_cleophas"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"it_s_about_time_yann_cleophas"
+title = "It’s About Time"
+artist = "Yann Cleophas"
+album = "Have a Nice Death (Original Game Soundtrack)"
+year = 2023
+game_id = &"have_a_nice_death"
+file = "Have a Nice Death/33. It’s About Time.mp3"
+tags = PackedStringArray()

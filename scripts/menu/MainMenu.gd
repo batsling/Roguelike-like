@@ -37,7 +37,8 @@ func _ready() -> void:
 	%HowToPlayBtn.pressed.connect(_on_how_to_play)
 	%QuitBtn.pressed.connect(quit_game)
 
-	_save_list_container.visible = false
+	_wrap_save_list()
+	_show_save_list(false)
 	_build_profile_row()
 	# A switch replaces every save on disk, so the Continue list has to be asked
 	# again — it is showing the previous player's runs until it is.
@@ -134,6 +135,17 @@ func _build_profile_row() -> void:
 	switch_btn.pressed.connect(_on_profiles)
 	row.add_child(switch_btn)
 
+	# HOW TO PLAY RIDES THIS ROW rather than standing on one of its own. The scene
+	# gives it a row (TopControls), which cost the column 60px, and with Continue
+	# showing that was what pushed the bottom button off a 1440p screen's 720 canvas.
+	var how: Button = %HowToPlayBtn
+	var top: Node = how.get_parent()
+	how.reparent(row, false)
+	how.custom_minimum_size = Vector2(0, 38)
+	how.add_theme_font_size_override("font_size", UITheme.FONT_SUB)
+	if top != panel and top.get_child_count() == 0:
+		top.queue_free()
+
 	panel.add_child(row)
 	var title := panel.get_node_or_null("TitleBox")
 	panel.move_child(row, (title.get_index() + 1) if title != null else 0)
@@ -214,7 +226,7 @@ func _on_profiles() -> void:
 
 func _on_profile_switched() -> void:
 	_refresh_profile_row()
-	_save_list_container.visible = false
+	_show_save_list(false)
 	_refresh_continue_button()
 
 # ---------------------------------------------------------------------------
@@ -277,12 +289,51 @@ func _refresh_continue_button() -> void:
 	_continue_btn.disabled = count == 0
 	_continue_btn.text = "Continue"
 	if count == 0:
-		_save_list_container.visible = false
+		_show_save_list(false)
 
 func _on_continue_toggle() -> void:
-	_save_list_container.visible = not _save_list_container.visible
+	_show_save_list(not _save_list_container.visible)
 	if _save_list_container.visible:
 		_populate_save_list()
+
+# THE SAVE LIST SCROLLS rather than growing the column. It sits in the middle of
+# the buttons, and a player with five saves opened it to a column taller than the
+# 720 canvas: Exit, Settings and the bottom of the list went off the bottom of the
+# screen with no way to reach them. The scene keeps `%SaveList` where it was; this
+# slips a ScrollContainer in around it, and `_fit_save_list` gives that box only
+# the height the screen has left once everything else in the column is counted.
+var _save_scroll: ScrollContainer = null
+
+func _wrap_save_list() -> void:
+	var parent: Node = _save_list_container.get_parent()
+	var at: int = _save_list_container.get_index()
+	_save_scroll = ScrollContainer.new()
+	_save_scroll.name = "SaveScroll"
+	_save_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	parent.add_child(_save_scroll)
+	parent.move_child(_save_scroll, at)
+	_save_list_container.reparent(_save_scroll, false)
+	_save_list_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+
+# `%SaveList.visible` stays the one flag (the tests and every caller read it); the
+# box around it follows.
+func _show_save_list(on: bool) -> void:
+	_save_list_container.visible = on
+	if _save_scroll != null:
+		_save_scroll.visible = on
+		if on:
+			_fit_save_list.call_deferred()
+
+func _fit_save_list() -> void:
+	if _save_scroll == null or not _save_scroll.visible:
+		return
+	# The scroll sits in Buttons, and Buttons in the Panel that is the whole column.
+	var panel: Control = _save_scroll.get_parent().get_parent()
+	_save_scroll.custom_minimum_size.y = 0
+	var rest: float = panel.get_combined_minimum_size().y
+	var room: float = get_viewport_rect().size.y - rest - 2 * UITheme.GAP_SECTION
+	var want: float = _save_list_container.get_combined_minimum_size().y
+	_save_scroll.custom_minimum_size.y = clampf(want, 0.0, maxf(room, 90.0))
 
 func _populate_save_list() -> void:
 	for c in _save_list_container.get_children():
@@ -300,6 +351,7 @@ func _populate_save_list() -> void:
 		return
 	for entry in saves:
 		_save_list_container.add_child(_save_row(entry))
+	_fit_save_list.call_deferred()
 
 func _save_row(entry: Dictionary) -> Control:
 	var is_auto: bool = bool(entry.get("autosave", false))

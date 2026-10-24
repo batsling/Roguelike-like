@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_what_you_wanted_element27"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"what_you_wanted_element27"
+title = "What You Wanted"
+artist = "Element27"
+album = ""
+year = 2024
+game_id = &"dungeons_degenerate_gamblers"
+file = "Dungeons & Degenerate Gamblers/15. Casino (Boss).mp3"
+tags = PackedStringArray()

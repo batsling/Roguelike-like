@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_purgatory_the_late_repentant_occams_laser"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"purgatory_the_late_repentant_occams_laser"
+title = "Purgatory - The Late Repentant"
+artist = "Occams Laser"
+album = "The Divine Trilogy"
+year = 2024
+game_id = &"heretic_s_fork"
+file = "Heretic's Fork/5-02. Purgatory - The Late Repentant.mp3"
+tags = PackedStringArray()

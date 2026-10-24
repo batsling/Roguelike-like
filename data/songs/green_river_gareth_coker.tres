@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_green_river_gareth_coker"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"green_river_gareth_coker"
+title = "Green River"
+artist = "Gareth Coker"
+album = "Absolum (Original Game Soundtrack)"
+year = 2025
+game_id = &"absolum"
+file = "Absolum/05. Green River.mp3"
+tags = PackedStringArray()

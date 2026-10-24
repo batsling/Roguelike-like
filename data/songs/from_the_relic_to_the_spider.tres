@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_from_the_relic_to_the_spider"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"from_the_relic_to_the_spider"
+title = "From the Relic to the Spider"
+artist = ""
+album = ""
+year = 0
+game_id = &"wall_world_2"
+file = "Wall World 2/09. From the Relic to the Spider.mp3"
+tags = PackedStringArray()
