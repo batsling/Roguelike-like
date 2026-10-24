@@ -359,11 +359,35 @@ func test_a_weapon_tile_has_its_charge_and_a_swing_button() -> void:
 	if not buttons.is_empty():
 		assert_eq((buttons[0] as Button).text, "Swing")
 		assert_false((buttons[0] as Button).disabled, "full, so it can swing")
-	assert_eq(grid.find_children("Charge", "", true, false).size(), 1, "and wears 3/3")
+	assert_eq(grid.find_children("Charge", "", true, false).size(), 0,
+		"in the pack the button says the charge, so there is no 3/3 chip as well")
 	Fixtures.trinket(self, &"whetstone", 8)
 	grid.rebuild()
 	buttons = grid.find_children("WeaponButton", "Button", true, false)
 	assert_eq((buttons[0] as Button).text, "Evolve", "Evolve, once it can")
+
+# UNTIL IT IS FULL THE SWING BUTTON IS A BATTERY, the one an item wears in the relic
+# strip: a segment per charge, the filled ones first, and nothing to press.
+func test_a_charging_weapon_wears_the_items_battery() -> void:
+	var w: Dictionary = _weapon(&"wooden_sword", 4, 1)
+	var maxc: int = WeaponSystem.max_charges(w)
+	assert_gt(maxc, 1, "a sword that needs more than one charge")
+	var grid := LootGrid.new()
+	grid.show_use = true
+	add_child_autofree(grid)
+	grid.rebuild()
+	var buttons: Array = grid.find_children("WeaponButton", "Button", true, false)
+	assert_eq(buttons.size(), 1)
+	if buttons.is_empty():
+		pending("the tile drew no WeaponButton at all")
+		return
+	var btn: Button = buttons[0]
+	assert_true(btn.disabled, "not full, so it cannot swing")
+	assert_eq(btn.text, "", "no word on it — the battery is the button")
+	var battery: Node = btn.get_node_or_null("Battery")
+	assert_not_null(battery, "the battery sits where Swing will be")
+	if battery != null:
+		assert_eq(battery.get_child(0).get_child_count(), maxc, "a segment per charge")
 
 # A Whetstone turned a quarter reaches LEFT and RIGHT instead of up and down: its
 # directions turn with the piece, as a Blueprint's does.

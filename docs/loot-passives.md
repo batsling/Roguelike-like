@@ -514,7 +514,9 @@ any other door. It resolves the moment it is confirmed, so **a game you then los
 still charges the weapon**. It is Chargeable Loot, so everything else that charges
 loot charges it too. At `Charge` (3) it is **READY**.
 
-**Swinging.** The pack tile's button reads **Swing** (live only when full). The
+**Swinging.** Until it is full, the pack tile's button is the same segmented
+gold battery an item wears in the relic strip (`PackStrip.battery`), one segment
+per charge; when the last one lands it becomes **Swing**. The
 board lights the squares the weapon's `Aim` allows; hovering one previews the
 squares its `Area` would hit from there, in the weapon's orange; clicking one
 swings. Every enemy covered takes the Stun **once**, however many of its squares

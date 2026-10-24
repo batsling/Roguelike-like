@@ -291,12 +291,21 @@ func _item_fire_control(item: ItemData, ready: bool, reporting: bool) -> Control
 func _charge_battery(item: ItemData, reporting: bool) -> Control:
 	var maxc: int = maxi(1, item.max_charge())
 	var have: int = clampi(item.current_charge, 0, maxc)
-	var wrap := PanelContainer.new()
-	wrap.custom_minimum_size = Vector2(ITEM_TOKEN + 6, ITEM_USE_H)
-	wrap.add_theme_stylebox_override("panel",
-		UITheme.flat(Color(0.10, 0.10, 0.13, 0.9), 2, 2, 1, UITheme.BORDER))
+	var wrap: Control = battery(have, maxc, Vector2(ITEM_TOKEN + 6, ITEM_USE_H))
 	wrap.tooltip_text = "%s — %d/%d charged%s" % [item.display_name, have, maxc,
 		"; finish reporting this game to use it" if reporting else ""]
+	return wrap
+
+# The meter on its own, so a WEAPON in the pack (LootGrid._weapon_button) wears the
+# same battery an item does rather than a "2/3" chip of its own.
+static func battery(have: int, maxc: int, box: Vector2) -> PanelContainer:
+	maxc = maxi(1, maxc)
+	have = clampi(have, 0, maxc)
+	var wrap := PanelContainer.new()
+	wrap.name = "Battery"
+	wrap.custom_minimum_size = box
+	wrap.add_theme_stylebox_override("panel",
+		UITheme.flat(Color(0.10, 0.10, 0.13, 0.9), 2, 2, 1, UITheme.BORDER))
 	var cells := HBoxContainer.new()
 	cells.add_theme_constant_override("separation", UITheme.GAP_NONE)
 	cells.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -304,7 +313,7 @@ func _charge_battery(item: ItemData, reporting: bool) -> Control:
 	for i in range(maxc):
 		var seg := PanelContainer.new()
 		seg.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		seg.custom_minimum_size = Vector2(3, ITEM_USE_H - 6)
+		seg.custom_minimum_size = Vector2(3, box.y - 6)
 		var filled: bool = i < have
 		seg.add_theme_stylebox_override("panel", UITheme.flat(
 			UITheme.GOLD.lerp(UITheme.BG, 0.15) if filled else Color(0.18, 0.18, 0.22, 0.9),
