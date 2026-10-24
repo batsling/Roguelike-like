@@ -1825,9 +1825,8 @@ func choose_game(enemy: GoalEnemyData, escort_type: StringName = &"",
 	# From here the game is in play until it is handed in, whatever becomes of the
 	# bodies below (see game_in_play).
 	game_in_play = true
-	# ONE SPAWN EVENT, however many bodies are about to walk on (§19.6). An
-	# Enemies node and a Champion node each count once, and an Event or a Shop
-	# node never reaches here at all — see begin_bodiless_game. COUNTED BEFORE
+	# ONE SPAWN EVENT, however many bodies are about to walk on (§19.6): two
+	# bodies or the Amulet's boss alone count once alike. COUNTED BEFORE
 	# ANYTHING IS PLACED, because counting it can grow the board, and the bodies
 	# below belong on the back column of the board they walk onto rather than the
 	# one they left (see note_spawn_event). The capstone it may owe lands after
@@ -2083,31 +2082,6 @@ func _land_end_of_game_bodies(want: int, escaped: bool = false) -> int:
 	_capstone_if_due(type_key, tier)
 	loop_changed.emit()
 	return landed
-
-# Commit a game that stands NO BODY at all — an Event or a Shop node (§19.1).
-#
-# It is not `choose_game(null)`: that means "nothing is in play" and drops
-# `game_in_play`, which is the state the screen is in between games. An Event
-# node is a game you go away and play like any other — it grants the selection
-# shields, ticks `games_played`, needs ✓ Completed Game to advance and pays the
-# game's own loot (§19.1). The only thing it does not do is put something on the
-# board. So this is choose_game's whole prologue, minus the bodies.
-#
-# The revival payout stays, because it is about a NEW COMBAT beginning rather
-# than about anything arriving: a body that died last game with a revive left has
-# earned its walk back on, and an Event node is still the next game.
-func begin_bodiless_game() -> void:
-	_clear_attempts()
-	_clear_game_record()
-	hurt_this_game = false
-	_clear_arrivals()
-	game_in_play = true
-	_pay_revivals()
-	arrivals = []
-	# An Event or a Shop node is still the game picked: a location waiting to be
-	# entered is entered here too.
-	land_location_arrival()
-	loop_changed.emit()
 
 # THE SECOND OF AN ENEMIES NODE'S TWO BODIES (§19.4). Returns its instance
 # handle, or 0 when there is nothing to roll — an empty goal-enemy roster, where
@@ -4416,7 +4390,7 @@ func enter_location(loc: LocationData) -> void:
 
 # "WHEN ENTERED": the location's arrive effects, ONCE, as the player enters it —
 # which is the first game picked there. Called by every node arrival
-# (choose_game and begin_bodiless_game), after that arrival's own bodies and
+# (choose_game), after that arrival's own bodies and
 # capstone, so a location dealt by this very arrival lands with it. Public for
 # the tests and the dev panel.
 func land_location_arrival() -> void:
@@ -5494,6 +5468,10 @@ func _defeat(enemy: GoalEnemyData, drop: bool, res: Dictionary,
 		coins += GameState.enemy_gold_bonus()
 		GameState.change_gold(coins)
 		res["gold"] = int(res.get("gold", 0)) + coins
+		# …and the SHOP BAR (§19.10), on the same terms and for the same reason: a
+		# bombed body never reaches here, so a bomb cannot fill it either. A boss
+		# is one kill like any other.
+		ShopSystem.add_kill()
 	# GASOLINE lays its ground on the square the body fell in (§17), and it is laid
 	# OUTSIDE the `drop` branch above: what this reads is a defeat, not a payout, so
 	# a body cleared by a goal met games later burns exactly as one cleared at the

@@ -38,7 +38,7 @@ There is no combat here to play. The combat is Hades.
 
 Two rows on that list do not behave like a plain tick box. A goal that COUNTS something — Defeat 3 bugs — is a + button with a running total beside it instead, and only the press that reaches the number resolves anything; − takes a misclick back, and the tally follows the enemy into later games, so the three need not all be in one. A goal that says Beat a game without something waits for the game to be beaten: tick it whenever, but nothing happens until you hand the game in, and reporting a loss drops the claim.
 
-7. You are offered a new set of games, connected to where you stand. Each card wears a mark saying what kind of place it is: ! two enemies, !! a boss, ? an event, $ a shop. Choose one. Go to 3.
+7. You are offered a new set of games, connected to where you stand. Choose one. Go to 3.
 
 The run ends when you reach and clear the AMULET game — that is the win — or when your Health hits zero.
 
@@ -60,14 +60,13 @@ After every game you are shown an OFFERING: a few cover cards, drawn from the ga
 
 ### Click the card, do not just take it
 
-Clicking a card OPENS it rather than travelling to it. The card itself is only the cover, the name, its KIND mark, and a flag if it is the Amulet or a shop. Everything you need is inside.
+Clicking a card OPENS it rather than travelling to it. The card itself is only the cover, the name, and a flag if it is the Amulet or a game you opened a shop at. Everything you need is inside.
 
-- **The kind** — What stands there, fixed for the whole run: ! Enemies (two bodies walk on), !! Champion (a boss, alone), ? Event (an event the moment you arrive, no bodies), $ Shop (a shelf once you beat the game, no bodies). The 🗺 map and the route ladder mark every node the same way, so the road ahead can be read before you walk it.
 - **The route** — The optimal path from that game to the Amulet, drawn as the real ladder — so you can see what taking this card does to the road, not just where it puts you.
-- **The enemy** — Who is waiting there, and the exact goal you would be playing for, written out with any clauses your own statuses add to it — plus a line saying how many bodies walk on, which is the node's kind: two, one boss, or none.
+- **The enemy** — Who is waiting there, and the exact goal you would be playing for, written out with any clauses your own statuses add to it — plus a line saying how many bodies walk on: two, or the Amulet's boss alone.
 - **The shields** — How many Temporary Shields that game hands you — one hit stopped each. See §3.
 - **The pace** — What taking it does to how fast the board moves — speeds up, slows down, or no change.
-- **Connections** — How many games it opens onto, how many of those still owe you an event, and how many are shops.
+- **Connections** — How many games it opens onto, how many of those still owe you an event, and how many have a shop you opened.
 - **Your record** — Whether you have beaten it before, in this run and in your life.
 
 ### The route badge
@@ -166,9 +165,9 @@ A run lasts more than one sitting, so end each one by making camp. When you leav
 
 An enemy is rolled from a pool matched to the game's type and the run's current difficulty. The enemy IS its goal. Killing it and doing the goal are the same act.
 
-### What a node stands up
+### What a game stands up
 
-How many bodies a game puts on the board is decided by the NODE, not by the game. An Enemies node stands TWO — its own enemy and a second rolled from the same pool. A Champion node stands ONE: a boss of the run's current tier, alone. An Event or a Shop node stands none at all. The card says how many; which ones is rolled on arrival.
+Every game puts TWO bodies on the board — its own enemy and a second rolled from the same pool. The Amulet stands ONE: a boss of the run's current tier, alone. The card says how many; which ones is rolled on arrival.
 
 - Neither of the two is a companion to the other. Both carry their own goal, both are ordinary followers from the moment they land, and beating the game answers for neither of them on its own.
 - So a missed goal costs you two followers rather than one, and both lots of loot and gold are still there to be collected whenever you get round to their goals.
@@ -339,7 +338,7 @@ Verbs are how you change the board instead of playing it. They are small integer
 
 All of them are answers to a goal you cannot or will not do. Read the enemy on a card BEFORE deciding — that is the moment a Bash or a Transmute is worth spending, because after you travel the enemy is already on the board and only a bomb or the goal itself will move it.
 
-> Three Bashes are refused outright: the Amulet game (destroying the win condition would make the run unwinnable), the last card on the table with nothing to replace it, and a CHAMPION node (!!) — a boss cannot be bashed out of the road. Scramble the offering instead and you are dealt a different fight.
+> Two Bashes are refused outright: the Amulet game (destroying the win condition would make the run unwinnable), and the last card on the table with nothing to replace it. Scramble the offering instead and you are dealt a different fight.
 
 > Traditional roguelikes have a setting of their own for Transmute. By default they swap for another Traditional game, which is arguably no relief at all — a Traditional game is the run's long haul. Turn on the other option in Settings and a Traditional game can transmute into any other type instead.
 
@@ -361,21 +360,22 @@ A run is six to twelve games, so clearing most of your goals earns you somewhere
 
 Gold rides the DROP, not the corpse. Beating an enemy on time pays; clearing an old goal games later pays exactly the same, because the goal was the price either way. Bombing pays nothing at all.
 
-### Where the shops are
+### Where the shops are: the shop bar
 
-A shop stands at every SHOP NODE — the `$` on a card, on the map and on the route. About one game in ten on the map is one, dealt when the run begins and fixed from then on, so a shop can never appear or vanish under you.
+There are no shops on the map until you open one. The 🛒 SHOP BAR, beside your gold, fills by one for every enemy you defeat (a boss is one too; a bomb is none). When it is full, press it to open a shop at the game you are standing at — before you play it or after. The first shop costs 4 kills, and every shop after it one more.
 
-Every start you are offered has at least one somewhere on its shortest roads to the Amulet, and the map shows the rest. A shop one step off the straight road is often the better way to go.
+- The shop STAYS at that game for the rest of the run. Come back to the game and it is still there; the 🗺 map, the route and the game's card all wear a 🛒 so you can find it.
+- One shop a game. A full bar keeps until you are standing at a game without one — but kills past a full bar are lost, so it is worth spending.
 
 ### The shelf
 
 - 3 items, rolled once, and they STAY. Buying marks a slot sold rather than clearing it.
 - So a shop you cleared out is a shop you know is empty, and a shop you left two items at is a reason to walk back.
-- Beat the game there and a 🛒 Shop button appears by the games to choose from. It stays for the whole visit; travelling on is what takes it away.
+- At a game with a shop, the bar reads Shop: press it to walk in. Once you have played the game a 🛒 Shop button also stands by the games to choose from.
 - A Scramble charge rerolls the whole shelf, sold slots included.
 - A shop card shows you what is left on a shelf you have already stood in — which is what makes going back a real decision. A shop you have never visited only tells you it is there.
 
-> A Shop node pays NO EVENT. The shop is what happens there instead. Transmute the game on one and it still sells — the shop belongs to the spot on the map, not to the game.
+> Transmute the game a shop stands at and it still sells — the shop belongs to the spot on the map, not to the game.
 
 ## ✦ Events and machines
 
@@ -384,8 +384,6 @@ Every start you are offered has at least one somewhere on its shortest roads to 
 An EVENT fires after every game you play — won, lost, or escaped. The games this is a map of are hour-long roguelikes, and the event is the beat in between: a decision that takes a minute and costs something.
 
 - Every game pays one, and is then spent for the rest of the run — so walking a two-node loop is not a way to farm them.
-- A Shop node pays none. The shop is what happens there.
-- An EVENT node (?) fires one the moment you ARRIVE, before you play — and always finds one, even at a node that has paid before.
 - A game you were SENT to by another event pays none, and neither does the Amulet, where the run is already over.
 - Which event you get is dealt from a shuffle bag: nothing comes round again until the rest of the deck has been seen.
 
@@ -463,12 +461,12 @@ Negative Luck is the same machine backwards — a chance of extra rolls, keep th
 
 There are two difficulty axes. The pressure ladder in §2 is the one you steer. This is the one that ticks up on its own.
 
-The tier counts SPAWNS, not games: every time bodies land — arriving at an Enemies or Champion node, or losing with nothing down — is one spawn, and every 4 of them the run's tier goes up: Low, Medium, High, Insane, and there it stops. An Event or a Shop node lands nothing, so routing through them holds the tier where it is. A higher tier means enemies that hit harder — and a bigger board to cross before they reach you, which is the counterweight.
+The tier counts SPAWNS, not games: every time bodies land — arriving at a game, or losing with nothing down — is one spawn, and every 4 of them the run's tier goes up: Low, Medium, High, Insane, and there it stops. A higher tier means enemies that hit harder — and a bigger board to cross before they reach you, which is the counterweight.
 
 ### Where bosses come from
 
-- A CHAMPION node (!!) stands a boss of the current tier, alone.
-- Every 4th spawn lands a boss ON TOP of whatever else was arriving — so a lost run can be the one that brings a boss, and a Champion node that is also that spawn brings two.
+- The AMULET stands a boss of the current tier, alone.
+- Every 4th spawn lands a boss ON TOP of whatever else was arriving — so a lost run can be the one that brings a boss.
 
 The count to the next one is on the strip over the board, and the spawn before it is announced in a popup, once.
 
@@ -478,7 +476,6 @@ A boss is a different set of rules:
 - It hits for 3 to 9, where an ordinary enemy hits for 1 to 4.
 - It drops a Boss relic, out of a pool nothing else can reach.
 - Bombs do it no damage at all. The goal is the only thing that removes it. You can still throw one — it spends the charge and deals nothing, but what the blast LEAVES still lands, which is how Hot Bombs burns a boss and Sticky Bombs webs one.
-- A Champion node cannot be BASHED. Scrambling or transmuting it buys you a DIFFERENT boss, not a way past this one.
 
 > A boss cannot be dashed past either. It follows you like everything else on the board, and only its goal removes it.
 
@@ -580,7 +577,7 @@ There is no HUD strip. Every number is drawn once, by whatever owns it, which ta
 - **Gold** — A chip in the top bar.
 - **Difficulty and location** — The first line of the DIFFICULTY strip over the board: the tier (Low to Insane) with its four pips, and the location you are in on the right — hover it, or click it.
 - **Amulet pressure** — The second line of the DIFFICULTY strip: how many spawns until the next difficulty up, how far the Amulet is and the pressure that puts on you (its two pips, in the band's colour — empty out in the wilds), and on the right what ending THIS game will stand up (☠ +N when this game ends). The strip takes the band's colour.
-- **What kind of place a game is** — Its mark — ! ? !! $ — on the card, on the 🗺 map and on the route ladder.
+- **Where your shops are** — A 🛒 on the game's card, on the 🗺 map and on the route ladder. The bar beside your gold says how close the next one is.
 - **Push and Bomb charges** — On their own buttons, on the board's toolbar.
 - **Bash, Dash, Transmute, Scramble** — Chips on the row under the offering. Dash and Scramble act at once; Bash and Transmute ARM, and the next card you click is the one they hit.
 - **Shields a game would grant** — On the offering's hover line, and in full on the card.
@@ -592,7 +589,7 @@ There is no HUD strip. Every number is drawn once, by whatever owns it, which ta
 
 ### Elsewhere in the menus
 
-- **→ Optimal Path** — The shortest road from where you stand to the Amulet, rung by rung, with every node's kind marked. It lives in the offering's heading row, and on every offered card — a card's own button routes the path as it would be if you took it.
+- **→ Optimal Path** — The shortest road from where you stand to the Amulet, rung by rung, with your shops marked. It lives in the offering's heading row, and on every offered card — a card's own button routes the path as it would be if you took it.
 - **🗺 Map** — The star chart, with the road ahead drawn over it. It lives in the header, so it opens from anywhere in a run.
 - **✦ Atlas** — The same star chart opened from the menus, with no run on it. Not a run tool — a thing to look at.
 - **Collection** — Every item, scroll, enemy, event and status in the game, and whether you have met it.

@@ -177,6 +177,10 @@ var _health_chip: Label = null
 var _shield_chip: Label = null
 var _shield_chip_art: TextureRect = null
 var _gold_chip: Label = null
+# The shop bar (§19.10), right of the purse: how close the next shop is, and the
+# button that opens one once it is full.
+var _shop_bar_chip: Button = null
+var _shop_bar_fill: ProgressBar = null
 # The character's token, immediately left of Health (see _build_character_chip),
 # and the frame around it — held so the pair can be hidden together when the
 # character has no art to draw.
@@ -624,6 +628,8 @@ func _ready() -> void:
 	# sit on a stale number until something else happened to repaint the header.
 	if not GameState.gold_changed.is_connected(_on_gold_changed):
 		GameState.gold_changed.connect(_on_gold_changed)
+	if not ShopSystem.bar_changed.is_connected(_paint_shop_bar):
+		ShopSystem.bar_changed.connect(_paint_shop_bar)
 	# A status applied off a loop resolve (a location entered, an item picked up)
 	# changes what the checklist says the player has to DO, so it repaints the
 	# screen rather than just the HUD strip (§13). Note _refresh rebuilds the
@@ -866,8 +872,6 @@ func _build_start_options(pick: Dictionary) -> Array:
 		for r in dealt:
 			rift_ids.append(String(r["game"]))
 		GameStats.record_rifts(rift_ids)
-	GameState.node_kinds = RunGraph.assign_node_kinds(
-		_rng, GameState.amulet_game_id, start_ids)
 	return out
 
 # One start option in the shape the offering's cards and GameChoiceModal read, so
@@ -913,7 +917,6 @@ func open_start_choice(index: int) -> GameChoiceModal:
 		"pace": _start_pace_note(int(opt["path_len"])),
 		"shields": GameLoop2.shields_for_game(choice["game"]),
 		"bodies": _bodies_note(choice),
-		"kind": _kind_of(choice),
 		"extra_bodies": maxi(_offering.bodies_expected(choice) - 1, 0) if _offering != null else 0,
 		"no_verbs": true,
 		"action_text": "▶  Start at %s" % opt["game"].display_name,
@@ -1359,7 +1362,6 @@ func open_choice(index: int) -> GameChoiceModal:
 		"enemy_hidden": _enemy_hidden(choice),
 		"hidden_note": "The Runic Dome hides what is waiting there. You are routing on the game alone — the enemy, its goal and its damage are all found out on arrival.",
 		"bodies": _bodies_note(choice),
-		"kind": _kind_of(choice),
 		"extra_bodies": maxi(_offering.bodies_expected(choice) - 1, 0) if _offering != null else 0,
 	}
 	# The stay-or-return question opens the same card for a different verb: it
@@ -1422,6 +1424,7 @@ func pick(index: int) -> void:
 	# The machines go too, and they do not survive: a Blood Donation Machine is
 	# not a place you can come back to.
 	_leave_node()
+	_arrive_at_shop()
 	# An armed verb doesn't survive committing to a game: the board it was aimed at
 	# is about to be marched a column, and nothing has been spent either way.
 	if _board != null:
@@ -1503,12 +1506,11 @@ func _begin_game(game: GameData, enemy: GoalEnemyData, tier: int,
 	_grant_start_gear_once(game)
 	var tier_before: int = _current_tier()
 	var board_before := Vector2i(GameLoop2.grid_cols(), GameLoop2.grid_rows())
-	_commit_board_for_kind(game, enemy, tier)
+	_commit_board(game, enemy, tier)
 	if not GameLoop2.run_over:
 		_announce_difficulty_step(tier_before, board_before)
 	_log_second_body()
 	_remind_twitch_category(game)
-	_fire_arrival_event(game)
 	# Selecting the game hands over your ARMOUR for it (§3): 3 shields, 5 for a
 	# Traditional roguelike, plus whatever "when a game is selected" items add.
 	var granted: int = GameLoop2.grant_selection_shields(game)
@@ -1561,84 +1563,41 @@ func _grant_start_gear_once(game: GameData) -> void:
 # about kinds. When the roster cannot supply a boss at all, the advertised enemy
 # stands instead — a Champion node with an empty board would be the badge telling
 # a lie, and §19.1 would rather it told a smaller truth.
-# AN EVENT NODE FIRES ITS EVENT ON ARRIVAL, before the game is played (§19.1).
-#
-# The timing is the point, and it is deliberately the opposite end of the game
-# from the Shop's. An event is a DECISION, and a decision is worth more before
-# you have committed an evening to the game it sits on; a shop is a PURCHASE, and
-# the gold to make one is what the game you just played pays out (§14.1).
-#
-# This is on top of the game's own post-report event, which still rolls — an
-# Event node is a node that pays an extra one, not one that moves the ordinary
-# one forward.
-#
-# IT ALWAYS FINDS ONE, which is why this asks `roll_for_node` rather than the
-# `roll_for_arrival` a reported game uses. That one refuses at a node which has
-# already paid an event and at a Shop node (§14.4) — right for "does this
-# arrival happen to owe one", wrong for a badge that PROMISED one. The shop gate
-# is the one that bit in practice, back when it was a HUB gate: an Event node
-# landing on one of the ten hubs delivered silence, and a node whose kind said
-# event and then delivered nothing is the badge telling a lie.
-#
-# Past those gates it re-shows an event the run has already had rather than
-# relaxing anything — see roll_for_node for why both available relaxations are
-# worse than a repeat.
-func _fire_arrival_event(game: GameData) -> void:
-	if game == null or _committed_kind(game) != RunGraph.NodeKind.EVENT:
-		return
-	# `open_event` refuses while a modal is up or an event is already queued behind
-	# a resolve, which is the right answer: it would otherwise silently eat the one
-	# the run had already earned.
-	open_event(EventSystem.roll_for_node(game.id))
-
-# THE KIND OF THE NODE BEING COMMITTED TO, read off the SLOT rather than off the
-# game standing on it (§19.2).
-#
-# The difference is Transmute, which "repaints which game sits on a node without
-# touching a single edge": the kind rides the node, so a transmuted card plays a
-# different game AT THE SAME KIND. Reading the game would let a transmute change
-# what the node does, which is a badge moving under the player — the one thing
-# §19.2 exists to prevent — and it would disagree with the report path, which has
-# read the slot since the Shop node landed.
-#
-# Falls back to the game's own id when there is no slot: the play_game detour and
-# the tests both commit a game without one, and a game that is not on the map has
-# no node to inherit from.
-func _committed_kind(game: GameData) -> int:
+# WHETHER THIS SLOT IS THE AMULET'S, which stands a boss (§19.1, §19.10). Read off
+# the SLOT rather than the game on it, so a transmuted Amulet card still holds
+# its boss; falls back to the game's own id when there is no slot (the play_game
+# detour and the tests commit a game without one).
+func _committed_is_amulet(game: GameData) -> bool:
 	if game == null:
-		return RunGraph.NodeKind.ENEMIES
+		return false
 	var slot := StringName(_chosen.get("slot", &""))
-	return GameState.node_kind(slot if slot != &"" else game.id)
+	return (slot if slot != &"" else game.id) == GameState.amulet_game_id
 
-# THE BODY A CARD ADVERTISES, rolled for the node's KIND (§19.1). A Champion node
-# stands a boss, so its card rolls the boss up front — the one the card shows is
-# the one that walks on. It used to roll an ordinary enemy for every card and swap
-# in a freshly rolled boss at the commit, so a Champion card previewed a body that
-# never arrived and hid the one that did.
+# THE BODY A CARD ADVERTISES. The Amulet stands a boss, so its card rolls the
+# boss up front — the one the card shows is the one that walks on. It used to roll
+# an ordinary enemy for every card and swap in a freshly rolled boss at the
+# commit, so the card previewed a body that never arrived and hid the one that did.
 func _roll_card_enemy(slot: StringName, type_key: StringName, tier: int) -> GoalEnemyData:
-	if GameState.node_kind(slot) == RunGraph.NodeKind.CHAMPION:
+	if slot != &"" and slot == GameState.amulet_game_id:
 		var boss: GoalEnemyData = GameLoop2.roll_boss(type_key, tier)
 		if boss != null:
 			return boss
 	return GameLoop2.roll_enemy(type_key, tier)
 
-func _commit_board_for_kind(game: GameData, enemy: GoalEnemyData, tier: int) -> void:
+func _commit_board(game: GameData, enemy: GoalEnemyData, tier: int) -> void:
 	var type_key: StringName = GameLoop2.game_type_key(game)
 	# A RIFT GAME's bodies hit twice as hard and pay twice over (docs/rifts-design.md
 	# §6). Read off the SLOT, like the kind: a rift Transmute has refilled is still a
 	# rift. Passed in because the run has not moved onto the slot yet (see pick).
 	var slot := StringName(_chosen.get("slot", &""))
 	var rift: bool = RunGraph.is_rift_game(slot if slot != &"" else game.id)
-	match _committed_kind(game):
-		RunGraph.NodeKind.EVENT, RunGraph.NodeKind.SHOP:
-			GameLoop2.begin_bodiless_game()
-		RunGraph.NodeKind.CHAMPION:
-			var boss: GoalEnemyData = enemy if enemy != null and enemy.is_boss() \
-				else GameLoop2.roll_boss(type_key, tier)
-			GameLoop2.choose_game(boss if boss != null else enemy, type_key, tier, false,
-				true, rift)
-		_:
-			GameLoop2.choose_game(enemy, type_key, tier, true, true, rift)
+	if _committed_is_amulet(game):
+		var boss: GoalEnemyData = enemy if enemy != null and enemy.is_boss() \
+			else GameLoop2.roll_boss(type_key, tier)
+		GameLoop2.choose_game(boss if boss != null else enemy, type_key, tier, false,
+			true, rift)
+	else:
+		GameLoop2.choose_game(enemy, type_key, tier, true, true, rift)
 
 # Say who else walked on with this game (§19.4). Called at each of the places a
 # game is committed to, straight after choose_game, because the second body is
@@ -2591,10 +2550,10 @@ func report(beaten: bool, fulfilled: Variant = null, escaped: bool = false,
 		_pending_event = EventSystem.roll_for_arrival(slot_here)
 		_pending_event_node = slot_here
 	if played_game != null and not escaped:
-		# The shop, if this is a Shop node (§19.1). Read off the SLOT, not the game
-		# played there: the kind rides the node, so a transmuted Shop node plays a
-		# different game and still sells from the same shelf (§19.2). The shelf is
-		# keyed by that node id too (ShopSystem).
+		# The shop, if the player has opened one at this node (§19.10): the haul
+		# screen's exit names it and its button is put back up behind the chain.
+		# Read off the SLOT, not the game played there — the shelf is keyed by
+		# node, so a transmuted node still sells from the same shelf.
 		if ShopSystem.is_shop(slot_here):
 			_pending_shop = slot_here
 		# The item trigger fires on FINISHING a game, win or lose. Note that this
@@ -2895,9 +2854,8 @@ func _end_resolve() -> void:
 	if _run_over_pending:
 		_run_over_pending = false
 		# A run that just ended has no room for either. The shop matters as much as
-		# the event here. The Amulet is always a Champion node (§19.1), so it
-		# cannot owe a shop today — this stays as the guard for the day that rule
-		# moves, because winning the run is not a cue to go shopping.
+		# the event here: a shop can stand at the Amulet (§19.10), and winning the
+		# run is not a cue to go shopping.
 		_pending_event = null
 		_pending_event_node = &""
 		_pending_shop = &""
@@ -3241,6 +3199,31 @@ func _set_shop_here(gid: StringName) -> void:
 	_shop_here = gid
 	_paint_shop_button()
 
+# Arriving at a game the player has opened a shop at puts its button straight up
+# (§19.10): the shop is there for the whole visit, before the game as well as after.
+func _arrive_at_shop() -> void:
+	_set_shop_here(GameState.current_game_id)
+	_shop_entered_here = false
+
+# THE SHOP BAR, PRESSED (§19.10). Standing at a game with a shop opens it; standing
+# at one without, with the bar full, opens a new shop here and then walks in.
+# Returns the pop-up, or null when there was nothing to open.
+func press_shop_bar():
+	var here: StringName = GameState.current_game_id
+	if GameLoop2.run_over or here == &"":
+		return null
+	if not ShopSystem.is_shop(here):
+		if not ShopSystem.open_at(here):
+			return null
+		var game: GameData = Data.get_game(here)
+		GameLog.add("🛒 A shop opens at %s — it stays here for the rest of the run." % (
+			game.display_name if game != null else String(here)), UITheme.SHOP_GREEN)
+		_set_shop_here(here)
+		_shop_entered_here = false
+	elif _shop_here != here:
+		_set_shop_here(here)
+	return open_shop()
+
 # Open the shop the run is standing in, as a pop-up. Returns the pop-up, or null
 # when there is no shop here (or one is already open, which is returned instead).
 func open_shop():
@@ -3277,6 +3260,7 @@ func _paint_shop_button() -> void:
 	_shop_btn.visible = _shop_here != &""
 	if _shop_here != &"" and ShopSystem.has_seen(_shop_here):
 		_shop_btn.tooltip_text = ShopSystem.headline(_shop_here)
+	_paint_shop_bar()
 
 func _build_shop_button() -> Button:
 	var btn := HoverButton.new()
@@ -3706,6 +3690,8 @@ func _on_arrived(game_id: StringName) -> void:
 	if game_id == &"":
 		return
 	_visits[game_id] = int(_visits.get(game_id, 0)) + 1
+	# The shop bar's button says "Shop" or "Open shop" by where the run stands.
+	_paint_shop_bar()
 
 func _exit_tree() -> void:
 	GameState.clear_overworld_context(self)
@@ -3732,6 +3718,8 @@ func _exit_tree() -> void:
 		ObjectSystem.objects_changed.disconnect(_sync_object_panel)
 	if GameState.gold_changed.is_connected(_on_gold_changed):
 		GameState.gold_changed.disconnect(_on_gold_changed)
+	if ShopSystem.bar_changed.is_connected(_paint_shop_bar):
+		ShopSystem.bar_changed.disconnect(_paint_shop_bar)
 	if GameState.current_game_changed.is_connected(_on_arrived):
 		GameState.current_game_changed.disconnect(_on_arrived)
 
@@ -3891,7 +3879,7 @@ func _hand_chests_to_post_game() -> void:
 
 # THE THREE CARD TELEPORTS, AND RIDE THE BUS, ARE ONE MOVE WITH THREE DESTINATIONS
 # (docs/cards-design.md §5). Each names a different pool — every Deckbuilder game
-# on the map, the nearest Shop node, the game the run started on — and everything after that
+# on the map, the nearest shop, the game the run started on — and everything after that
 # is identical: escape whatever is in play, pick, log, land ON the game. Written
 # once, so the day the escape rule changes it changes for all four.
 #
@@ -3943,15 +3931,16 @@ func _type_pool(type_key: StringName) -> Array:
 			out.append(g.id)
 	return out
 
-# THE HERMIT GOES TO THE NEAREST SHOP NODE, and "nearest" is measured in ROADS
-# rather than in anything the map is drawn with: the Shop node the fewest steps
+# THE HERMIT GOES TO THE NEAREST SHOP, and "nearest" is measured in ROADS
+# rather than in anything the map is drawn with: the shop the fewest steps
 # from where you are standing. Ties are left in the pool and drawn between,
 # because two shops two steps away are two equally good answers and picking the
 # first by array order would make the card quietly deterministic.
 #
-# It went to the nearest of the ten HUB games until §19.7 moved the shops onto
-# Shop nodes. The card was always about the shop rather than the landmark, so it
-# follows the shops.
+# It went to the nearest of the ten HUB games until §19.7, then the nearest Shop
+# node until §19.10; now it is the nearest shop the player has opened, so a run
+# with none yet has nowhere for it to go. The card was always about the shop
+# rather than the landmark, so it follows the shops.
 func _shop_pool() -> Array:
 	var here: StringName = GameState.current_game_id
 	var dist: Dictionary = RunGraph.bfs_distances(here)
@@ -4195,6 +4184,7 @@ func arrive_at_game(dest: StringName, announce: String = "") -> void:
 		"repeat": GameState.has_played_game(game.id),
 	}
 	_begin_game(game, enemy, tier)
+	_arrive_at_shop()
 	# You did not spend a Dash to get here, so there is nothing for the return-trip
 	# refund to give back (see `_dashed_here`).
 	_dash_mode = false
@@ -4233,7 +4223,6 @@ func _open_arrival_card(announce: String = "") -> GameChoiceModal:
 		"enemy_hidden": _enemy_hidden(_chosen),
 		"hidden_note": "The Runic Dome hides what is waiting here. You found the game; the enemy, its goal and its damage are found out as you play.",
 		"bodies": _bodies_note(_chosen),
-		"kind": _kind_of(_chosen),
 		"arrival": true,
 		"arrival_note": announce,
 		# UNDER everything the game you just left still owes: the haul screen (128),
@@ -4339,6 +4328,7 @@ func _start_play_game(request: Dictionary) -> void:
 	_begin_game(game, enemy, tier, false)
 	GameLog.arriving_at = &""
 	GameState.set_current_game(dest)
+	_arrive_at_shop()
 	_dash_mode = false
 	# A detour is posted by an event, not paid for with a charge, so there is
 	# nothing for the return-trip Dash to refund at the far end of it.
@@ -4836,11 +4826,6 @@ func bash_choice(index: int) -> bool:
 			"%s holds the Amulet — bashing it would end the run's goal.") % game.display_name
 		GameLog.add(amulet_msg, UITheme.DANGER)
 		Notifications.notify(amulet_msg, UITheme.DANGER)
-		return false
-	if _kind_of(choice) == RunGraph.NodeKind.CHAMPION:
-		var boss_msg: String = "%s is a Champion node — a boss cannot be bashed out of the road. A Scramble redraws it." % game.display_name
-		GameLog.add(boss_msg, UITheme.DANGER)
-		Notifications.notify(boss_msg, UITheme.DANGER)
 		return false
 	# A RIFT KEY CARD (docs/rifts-design.md §8): Bash knocks its game out of the pool
 	# and the card is dealt again with another, the rift still waiting to be opened.
@@ -5432,7 +5417,6 @@ func _open_rift_key(choice: Dictionary) -> void:
 	var laid: Array = GameState.rifts.duplicate(true)
 	laid.append({"game": String(gid), "a": String(dest), "b": "", "kind": RunGraph.RIFT_KEYED})
 	GameState.set_rifts(laid)
-	GameState.node_kinds[gid] = RunGraph.NodeKind.ENEMIES
 	GameStats.record_key_rift(gid)
 	_key_cards.clear()
 	var game: GameData = Data.get_game(gid)
@@ -5878,12 +5862,6 @@ func _enemy_hidden(choice: Dictionary) -> bool:
 
 func _bodies_note(choice: Dictionary) -> String:
 	return _offering.bodies_note(choice) if _offering != null else ""
-
-# The kind of the node a choice sits on, or -1 when there is no arrival to
-# describe. One question, asked through the offering so the card's mark and the
-# popup's block cannot drift apart.
-func _kind_of(choice: Dictionary) -> int:
-	return _offering.kind_of(choice) if _offering != null else -1
 
 # The Amulet, by name.
 #
@@ -6353,6 +6331,97 @@ func _paint_gold_chip() -> void:
 		UITheme.COIN_GOLD.lerp(UITheme.TEXT_DIM, 0.55) if GameState.gold <= 0 else UITheme.COIN_GOLD)
 
 
+# THE SHOP BAR (§19.10), beside the purse because the two are read together: what
+# you can spend, and how far off the next place to spend it is. It is a button so
+# the shop is reachable from INSIDE a game — the offering panel, where the 🛒 Shop
+# button stands, is put away while one is being played. Pressing it is
+# `press_shop_bar`: the shop here if there is one, else a new one off a full bar.
+func _build_shop_bar_chip() -> Control:
+	var btn := HoverButton.new()
+	btn.name = "ShopBarChip"
+	btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	btn.focus_mode = Control.FOCUS_NONE
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", UITheme.GAP_TIGHT)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	row.offset_left = 8
+	row.offset_right = -8
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	btn.add_child(row)
+	var cart := Label.new()
+	cart.name = "Cart"
+	cart.text = "🛒"
+	cart.add_theme_font_size_override("font_size", UITheme.FONT_SUB)
+	cart.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(cart)
+	_shop_bar_fill = ProgressBar.new()
+	_shop_bar_fill.show_percentage = false
+	_shop_bar_fill.custom_minimum_size = Vector2(46, 10)
+	_shop_bar_fill.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_shop_bar_fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_shop_bar_fill.add_theme_stylebox_override("background",
+		UITheme.flat(Color(0, 0, 0, 0.5), 4, 0, 1, UITheme.SHOP_GREEN.lerp(UITheme.BORDER, 0.5)))
+	_shop_bar_fill.add_theme_stylebox_override("fill", UITheme.flat(UITheme.SHOP_GREEN, 4, 0))
+	row.add_child(_shop_bar_fill)
+	var count := Label.new()
+	count.name = "Count"
+	count.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
+	count.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(count)
+	btn.pressed.connect(func(): press_shop_bar())
+	# The row is laid out by hand inside a Button, so the button is told its size.
+	row.minimum_size_changed.connect(func(): btn.custom_minimum_size = row.get_combined_minimum_size() + Vector2(16, 12))
+	_shop_bar_chip = btn
+	_paint_shop_bar()
+	btn.custom_minimum_size = row.get_combined_minimum_size() + Vector2(16, 12)
+	return btn
+
+func _paint_shop_bar() -> void:
+	if _shop_bar_chip == null or not is_instance_valid(_shop_bar_chip):
+		return
+	var here: StringName = GameState.current_game_id
+	var target: int = ShopSystem.bar_target()
+	var full: bool = ShopSystem.bar_full()
+	var shop_here: bool = ShopSystem.is_shop(here)
+	var can_open: bool = ShopSystem.can_open_at(here) and not GameLoop2.run_over
+	var live: bool = (shop_here or can_open) and not GameLoop2.run_over
+	_shop_bar_fill.max_value = target
+	_shop_bar_fill.value = mini(GameState.shop_bar, target)
+	var count: Label = _shop_bar_chip.find_child("Count", true, false)
+	if shop_here:
+		count.text = "Shop"
+	elif can_open:
+		count.text = "Open shop"
+	else:
+		count.text = "%d / %d" % [mini(GameState.shop_bar, target), target]
+	count.add_theme_color_override("font_color",
+		UITheme.SHOP_GREEN.lerp(Color.WHITE, 0.4) if live else UITheme.TEXT_DIM)
+	_shop_bar_chip.disabled = not live
+	_shop_bar_chip.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND if live \
+		else Control.CURSOR_ARROW
+	var green: Color = UITheme.SHOP_GREEN
+	var rest := UITheme.flat(green.lerp(UITheme.BG, 0.62) if live else Color(0.06, 0.12, 0.08, 0.85),
+		8, 0, 2 if live else 1, green if live else green.lerp(UITheme.BORDER, 0.6))
+	_shop_bar_chip.add_theme_stylebox_override("normal", rest)
+	_shop_bar_chip.add_theme_stylebox_override("disabled", rest)
+	_shop_bar_chip.add_theme_stylebox_override("hover",
+		UITheme.flat(green.lerp(UITheme.BG, 0.42), 8, 0, 2, green.lerp(Color.WHITE, 0.3)))
+	_shop_bar_chip.add_theme_stylebox_override("pressed", rest)
+	var tip: String = ("The shop bar. Every enemy you defeat fills it by one (a bomb doesn't); "
+		+ "full, it opens a shop at any game that has none, and that shop stays there for "
+		+ "the rest of the run. One shop a game. Each shop opened puts the next one a kill "
+		+ "further off.\n\n")
+	if shop_here:
+		tip += "There is a shop here — press to walk in."
+	elif can_open:
+		tip += "Full. Press to open a shop at this game."
+	elif full:
+		tip += "Full — kills past it are lost. This game has a shop already, or you are not at one."
+	else:
+		tip += "%d more to go." % (target - GameState.shop_bar)
+	_shop_bar_chip.tooltip_text = tip
+
 func _paint_health_chip() -> void:
 	if _health_chip == null or not is_instance_valid(_health_chip):
 		return
@@ -6393,6 +6462,7 @@ func _refresh_stats(_a = null) -> void:
 	_paint_character_chip()
 	_paint_health_chip()
 	_paint_gold_chip()
+	_paint_shop_bar()
 	_refresh_select_stats()
 	# Luck leans on the lost-run spawn (§3.2), and the tracker button quotes that
 	# chance, so a pill or an item that moves Luck mid-game has to repaint it.
@@ -7134,6 +7204,7 @@ func _build_ui() -> void:
 	header.add_child(_build_character_chip())
 	header.add_child(_build_health_chip())
 	header.add_child(_build_gold_chip())
+	header.add_child(_build_shop_bar_chip())
 	_route_strip = HBoxContainer.new()
 	_route_strip.add_theme_constant_override("separation", UITheme.GAP_NONE)
 	_route_strip.size_flags_horizontal = Control.SIZE_EXPAND_FILL

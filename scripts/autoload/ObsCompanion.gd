@@ -1072,12 +1072,13 @@ func _rung(id: StringName, depth: int, last: int) -> Dictionary:
 		# Amulet and is never dimmed for it.
 		"beaten": depth > 0 and depth < last and GameState.beaten_games.has(id),
 		"rift": RunGraph.is_rift_game(id),
-		# THE NODE'S KIND (§19.8), as the in-game map's corner badge draws it: the
-		# mark, its word for the hover, and its colour. Read off the NODE, never the
-		# game played there (§19.2).
-		"kind": RunGraph.kind_mark(GameState.node_kind(id)),
-		"kind_name": RunGraph.kind_label(GameState.node_kind(id)),
-		"kind_color": "#" + UITheme.kind_color(GameState.node_kind(id)).to_html(false),
+		# A SHOP THE PLAYER OPENED (§19.10), as the in-game map's corner badge draws
+		# it: the mark, its word for the hover, and its colour; blank elsewhere.
+		# Read off the NODE, never the game played there. (The fields kept their
+		# names from the node kinds, which this badge used to carry.)
+		"kind": RouteLadder.SHOP_MARK if ShopSystem.is_shop(id) else "",
+		"kind_name": "Shop" if ShopSystem.is_shop(id) else "",
+		"kind_color": "#" + UITheme.SHOP_GREEN.to_html(false) if ShopSystem.is_shop(id) else "",
 		# How far this box strays from its slot, in -1..1 on each axis — the same
 		# hash the in-game map nudges by (RouteLadder.jitter), so the two agree.
 		"nudge": [RouteLadder.jitter(RouteLadder.node_key(depth, id), 1),

@@ -1,21 +1,20 @@
 extends Node
 
-# SHOPS (docs/games-first-redesign.md §14, §19.1) — what the gold is for.
+# SHOPS (docs/games-first-redesign.md §14, §19.10) — what the gold is for.
 #
-# A shop stands at every SHOP NODE: one of §19's four node kinds, dealt across
-# the map at run start (10% of it) and frozen there, so a card's `$` can never
-# become a lie. Beating the game on one opens its shelf under the board.
+# A shop stands where the PLAYER OPENED ONE (§19.10). Every enemy defeated fills
+# the shop bar by one; full, it opens a shop at any game that has none yet, and
+# that shop stays at that game for the rest of the run. The first costs
+# BAR_BASE kills and each one after it a kill more.
 #
-# It used to stand at the run's ten HUB games instead — the ten best-connected,
-# the genre's landmarks — and §19.7 retired that. The hubs gave routing a second
-# axis, but a fixed ten on a fixed map meant the same ten shops every run; the
-# kinds give the same axis with a road that is different each time, and §19.3
-# guarantees one on every start's route.
+# It has stood in two other places. The ten HUB games (retired at §19.7) were the
+# same ten shops every run; the SHOP NODE KIND (retired at §19.10) dealt them across
+# the map at run start, which made them hard to find — the player's road was
+# rarely on screen — and added a routing axis that did not route.
 #
-# THE SHOP BELONGS TO THE NODE, not to the game played there (§19.2). Every
-# function here takes a NODE id — the map spot — so a transmuted Shop node plays
-# a different game and still sells from the shelf it had. That is the opposite of
-# the hub rule, which read the game played and let the shop leave with it.
+# THE SHOP BELONGS TO THE NODE, not to the game played there. Every function here
+# takes a NODE id — the map spot — so a transmuted node plays a different game
+# and still sells from the shelf it had.
 #
 # THREE THINGS DEFINE THE SHAPE, and each is a deliberate answer to "what stops
 # this being a second, slower version of the drops":
@@ -35,8 +34,8 @@ extends Node
 #     run in total, not per visit.
 #
 # THE SPLIT: this autoload is the LOGIC. The state — each shop's shelf — lives on
-# GameState, and where the shops ARE is GameState.node_kinds (run-scope, saved, reset), the same division
-# EventSystem and ScrollSystem use.
+# GameState (`shops`, keyed by node, and `shop_bar`; run-scope, saved, reset), the
+# same division EventSystem and ScrollSystem use.
 
 # What a shop puts on the shelf. Three is the same number as the base offering
 # (Overworld2.BASE_OFFER_COUNT), which is not a coincidence worth breaking: a
@@ -84,57 +83,80 @@ signal shop_changed(game_id: StringName)
 # Where the shops are
 # ---------------------------------------------------------------------------
 
-# Whether a shop stands at this NODE: its kind is Shop (§19.1). Read off the map
-# spot, never the game played there — see the header.
+# Whether a shop stands at this NODE: one has been opened there.
 func is_shop(node_id: StringName) -> bool:
-	return node_id != &"" and GameState.node_kinds.has(node_id) \
-		and GameState.node_kind(node_id) == RunGraph.NodeKind.SHOP
+	return node_id != &"" and GameState.shops.has(node_id)
 
 
-# Every Shop node on the map, in a stable order (the kinds are a Dictionary, and
-# a teleport drawing from its key order would ride insertion order).
+# Every shop on the map, in the order they were opened.
 func shop_nodes() -> Array[StringName]:
 	var out: Array[StringName] = []
-	for gid in GameState.node_kinds.keys():
-		if int(GameState.node_kinds[gid]) == RunGraph.NodeKind.SHOP:
-			out.append(StringName(gid))
-	# By NAME. A bare sort() on StringNames orders them by where they were
-	# interned, which depends on what the process happened to touch first — the
-	# same two ids came back in either order depending on which tests had run.
-	out.sort_custom(func(a: StringName, b: StringName) -> bool: return String(a) < String(b))
+	for gid in GameState.shops.keys():
+		out.append(StringName(gid))
 	return out
+
+
+# ---------------------------------------------------------------------------
+# The shop bar (§19.10)
+# ---------------------------------------------------------------------------
+
+# Kills the FIRST shop costs; each shop opened puts the next one a kill further
+# off (the owner, 24 Oct 2026), so a run's later shops are rarer.
+const BAR_BASE := 4
+
+# Emitted whenever the bar moves or a shop opens, so the header repaints.
+signal bar_changed
+
+# Kills the next shop costs.
+func bar_target() -> int:
+	return BAR_BASE + GameState.shops.size()
+
+func bar_full() -> bool:
+	return GameState.shop_bar >= bar_target()
+
+# One body defeated. A full bar stays full: the kills past it are lost, so a full
+# bar is worth spending rather than banking forever.
+func add_kill(n: int = 1) -> void:
+	if n <= 0 or bar_full():
+		return
+	GameState.shop_bar = mini(GameState.shop_bar + n, bar_target())
+	bar_changed.emit()
+
+# Whether a shop can be opened at this node right now: the bar is full and the
+# node has none. One shop per game.
+func can_open_at(node_id: StringName) -> bool:
+	return node_id != &"" and bar_full() and not is_shop(node_id)
+
+# Spend the full bar on a shop at this node. Rolls its shelf and deals its keeper
+# at once, so the shop is fixed from the moment it exists. False when it can't.
+func open_at(node_id: StringName) -> bool:
+	if not can_open_at(node_id):
+		return false
+	GameState.shop_bar = 0
+	_create_shelf(node_id)
+	bar_changed.emit()
+	shop_changed.emit(node_id)
+	return true
 
 
 # ---------------------------------------------------------------------------
 # Who keeps it (§14.6)
 # ---------------------------------------------------------------------------
 #
-# Every Shop node is dealt one keeper from Data.all_shopkeepers(), at random and
-# per run: the roster is shuffled off the run's seed and handed out across the Shop
-# nodes in their stable order, so no keeper stands at two shops until every one is
-# standing somewhere, and the same seed deals the same keepers. With no roster
-# every shop is the plain one, keeper null, and nothing below changes a thing.
+# Every shop is dealt one keeper from Data.all_shopkeepers() the moment it is
+# opened, weighted by rarity and drawn without replacement — no keeper stands at
+# two shops until every one is standing somewhere — seeded off the run and how
+# many shops came before, so the same seed and the same order deal the same
+# keepers. The keeper is pinned on the shelf. With no roster every shop is the
+# plain one, keeper null, and nothing below changes a thing.
 
-# The deal for the run in progress, node -> keeper id, and the seed it was made
-# for. Rebuilt whenever the seed or the roster moves; never saved, because a
-# shelf pins its keeper the moment it is rolled (shop_for) and that IS saved.
-var _deal: Dictionary = {}
-var _deal_key: String = ""
-
-# The keeper standing at this node: the one pinned on its shelf once it has one,
-# else the one the deal hands it. null for a plain shop or a node with no shop.
+# The keeper standing at this node, or null for a plain shop or no shop.
 func keeper_for(node_id: StringName) -> ShopkeeperData:
 	if not is_shop(node_id):
 		return null
-	# A shelf that exists answers for itself — including one saved before keepers
-	# were dealt, which was rolled plain and stays plain.
-	if not peek(node_id).is_empty():
-		return keeper_at(node_id)
-	var id: String = String(_dealt().get(node_id, ""))
-	return Data.get_shopkeeper(StringName(id)) if id != "" else null
+	return keeper_at(node_id)
 
-# keeper_for without the is_shop gate, for the rolls inside shop_for — the shelf
-# exists by then, so the pinned keeper is the one asked.
+# The keeper pinned on this node's shelf.
 func keeper_at(node_id: StringName) -> ShopkeeperData:
 	var id: String = String(peek(node_id).get("keeper", ""))
 	return Data.get_shopkeeper(StringName(id)) if id != "" else null
@@ -156,41 +178,32 @@ func keeper_number(node_id: StringName, token: String) -> int:
 			return int(parts[1])
 	return 0
 
-func _dealt() -> Dictionary:
+# The keeper the NEXT shop gets: from the roster less the keepers already standing
+# in this cycle of the deck (a full cycle refills it).
+func _deal_keeper() -> ShopkeeperData:
 	var roster: Array = Data.all_shopkeepers()
-	var nodes: Array[StringName] = shop_nodes()
-	# The roster by ID, not by count: the same number of different keepers is a
-	# different deal.
-	var key: String = "%d|%s|%s" % [GameState.run_seed,
-		",".join(roster.map(func(k): return String(k.id))), ",".join(nodes)]
-	if key == _deal_key:
-		return _deal
-	_deal_key = key
-	_deal = {}
 	if roster.is_empty():
-		return _deal
+		return null
+	var used: Array = []
+	for gid in GameState.shops.keys():
+		used.append(String((GameState.shops[gid] as Dictionary).get("keeper", "")))
+	# How far into the current cycle the deck is: the last `shops % roster` dealt.
+	var into: int = used.size() % roster.size()
+	var this_cycle: Array = used.slice(used.size() - into) if into > 0 else []
+	var deck: Array = roster.filter(func(k): return not this_cycle.has(String(k.id)))
+	if deck.is_empty():
+		deck = roster.duplicate()
 	var rng := RandomNumberGenerator.new()
-	rng.seed = hash("%s|%d" % [_KEEPER_SALT, GameState.run_seed])
-	var deck: Array = []
-	for node in nodes:
-		# Drawn WITHOUT replacement, weighted by rarity (Data.RARITY_WEIGHTS): more
-		# Shop nodes than keepers refills the deck, so a keeper repeats only once
-		# every keeper has had a shop.
-		if deck.is_empty():
-			deck = roster.duplicate()
-		var total: float = 0.0
-		for k in deck:
-			total += _keeper_weight(k)
-		var roll: float = rng.randf() * total
-		var pick: int = deck.size() - 1
-		for i in range(deck.size()):
-			roll -= _keeper_weight(deck[i])
-			if roll < 0.0:
-				pick = i
-				break
-		_deal[node] = String((deck[pick] as ShopkeeperData).id)
-		deck.remove_at(pick)
-	return _deal
+	rng.seed = hash("%s|%d|%d" % [_KEEPER_SALT, GameState.run_seed, used.size()])
+	var total: float = 0.0
+	for k in deck:
+		total += _keeper_weight(k)
+	var roll: float = rng.randf() * total
+	for k in deck:
+		roll -= _keeper_weight(k)
+		if roll < 0.0:
+			return k
+	return deck[deck.size() - 1]
 
 func _keeper_weight(k: ShopkeeperData) -> float:
 	return float(Data.RARITY_WEIGHTS[rarity_rung(k.rarity)])
@@ -254,31 +267,29 @@ static func rarity_rung(rarity: String) -> int:
 # The shelf
 # ---------------------------------------------------------------------------
 
-# This node's shop, rolling its stock if this is the first time anyone has asked.
-# Returns {} for a game with no shop, so callers can use it as the test.
+# This node's shop, or {} for a node with none, so callers can use it as the test.
 func shop_for(game_id: StringName) -> Dictionary:
 	if not is_shop(game_id):
 		return {}
-	if not GameState.shops.has(game_id):
-		# The keeper is PINNED on the shelf the moment it is rolled, so the deal
-		# below can never hand this node a different one later in the run (a rift
-		# or a reload re-dealing over a changed node list).
-		var keeper: ShopkeeperData = keeper_for(game_id)
-		GameState.shops[game_id] = {
-			"keeper": String(keeper.id) if keeper != null else "",
-			"rerolls": 0,
-			"seen": false,
-		}
-		var counts: Vector2i = _slot_counts(keeper)
-		GameState.shops[game_id]["stock"] = _roll_stock(game_id, 0, counts.x)
-		GameState.shops[game_id]["loot"] = _roll_loot(game_id, counts.y, true)
-		GameState.shops[game_id]["packs"] = _roll_packs(game_id,
-			keeper.pack_slots if keeper != null else 0, true)
 	# A shelf saved before loot was sold gets its loot row the first time it is
 	# asked for, rather than standing half-empty for the rest of that run.
 	if not (GameState.shops[game_id] as Dictionary).has("loot"):
 		GameState.shops[game_id]["loot"] = _roll_loot(game_id, LOOT_SLOTS, false)
 	return GameState.shops[game_id]
+
+# Roll a new shop's shelf and pin its keeper on it (open_at).
+func _create_shelf(game_id: StringName) -> void:
+	var keeper: ShopkeeperData = _deal_keeper()
+	GameState.shops[game_id] = {
+		"keeper": String(keeper.id) if keeper != null else "",
+		"rerolls": 0,
+		"seen": false,
+	}
+	var counts: Vector2i = _slot_counts(keeper)
+	GameState.shops[game_id]["stock"] = _roll_stock(game_id, 0, counts.x)
+	GameState.shops[game_id]["loot"] = _roll_loot(game_id, counts.y, true)
+	GameState.shops[game_id]["packs"] = _roll_packs(game_id,
+		keeper.pack_slots if keeper != null else 0, true)
 
 # DONATION SHELF (§14.6): how many slots the profile's best Donation Machine bank
 # had unlocked when this run started. Items take 1-2 of them (1 on the smallest),

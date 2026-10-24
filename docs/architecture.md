@@ -28,8 +28,8 @@ the same folder but are static helpers, not autoloads.)
 | `Stats` | Stat dispatcher; loads `StatDefinition`s and answers stat queries. See `docs/stat-dispatcher.md`. |
 | `EventSystem` | Events (`docs/event-sheet-authoring.md`): dealing an event from the per-rarity shuffle bag when a game is played, the Requirement/`needs` gates, and resolving a choice into effects, an event goal, a curse, or a `chance` roll. Objects go through the same resolution. |
 | `ObjectSystem` | Objects (`docs/object-sheet-authoring.md`): the machines standing in front of the player, spawning them by tag, and their state — jams, what has been blown off the run, and the Donation Machine's cross-run bank. |
-| `GameLoop2` | The run loop: the spawn-event clock the difficulty reads (§19.6), the enemy stack, and the grid the followers advance across. What a game stands on the board is its node's KIND (§19.1) — an Enemies node **two** bodies, a Champion its boss, an Event or a Shop nothing — and the end of every game stands more up at the back (§19.5). **None of them belongs to the game.** There is no "this game's enemy": what walks on is a follower like every other body from the moment it lands — bombable, pushable, one ordinary row in the report checklist — and `arrivals` is only the record of which bodies came with the game in play, kept so a Scramble can supersede them. `Overworld2` is a view over it. It also owns the OPS every **ability** is built out of (§7.6): the catalogue in `data/abilities2.0` authors `trigger: op args` in its `Effect` column and this file dispatches on that rather than on the ability's id, so an ability composed of ops that already exist is a sheet row and nothing else. `ABILITY_OPS` is the list that exists, and the generator refuses to write a row naming anything outside it. The pure half of that — the queries over a body Dictionary (`entry_goal`, `entry_image`, `entry_phase`, `ability_lines`, `entry_tags`, the `entry_ability_*` family) — is **`BodyFacts.gd`**, a file of `static` functions that touch no run state at all; `GameLoop2` forwards each one, so `GameLoop2.entry_goal(entry)` still reads the same everywhere. See `docs/performance-backlog.md` §1b for why the ability behaviour did not come with it — `BodyFacts` gained the pure half of the op layer (`ops_at`, `has_op`, `op_row`, `resolve_op_args`) for the same reason, while the ops themselves run on the loop. |
-| `ShopSystem` | Shops (`docs/games-first-redesign.md` §14, §19.1): a shop stands at every **Shop node** (`is_shop` reads `GameState.node_kinds`; the ten hub games that used to carry them were retired in §19.7). Each shop's three-item shelf, keyed by **node** id so a transmuted Shop node keeps it, its prices, buying, and the Scramble reroll. State lives on `GameState` (`shops`), the same split `EventSystem` uses. |
+| `GameLoop2` | The run loop: the spawn-event clock the difficulty reads (§19.6), the enemy stack, and the grid the followers advance across. Every game stands **two** bodies on the board and the Amulet its boss (§19.10; the node KINDS of §19.1 are retired), and the end of every game stands more up at the back (§19.5). **None of them belongs to the game.** There is no "this game's enemy": what walks on is a follower like every other body from the moment it lands — bombable, pushable, one ordinary row in the report checklist — and `arrivals` is only the record of which bodies came with the game in play, kept so a Scramble can supersede them. `Overworld2` is a view over it. It also owns the OPS every **ability** is built out of (§7.6): the catalogue in `data/abilities2.0` authors `trigger: op args` in its `Effect` column and this file dispatches on that rather than on the ability's id, so an ability composed of ops that already exist is a sheet row and nothing else. `ABILITY_OPS` is the list that exists, and the generator refuses to write a row naming anything outside it. The pure half of that — the queries over a body Dictionary (`entry_goal`, `entry_image`, `entry_phase`, `ability_lines`, `entry_tags`, the `entry_ability_*` family) — is **`BodyFacts.gd`**, a file of `static` functions that touch no run state at all; `GameLoop2` forwards each one, so `GameLoop2.entry_goal(entry)` still reads the same everywhere. See `docs/performance-backlog.md` §1b for why the ability behaviour did not come with it — `BodyFacts` gained the pure half of the op layer (`ops_at`, `has_op`, `op_row`, `resolve_op_args`) for the same reason, while the ops themselves run on the loop. |
+| `ShopSystem` | Shops (`docs/games-first-redesign.md` §14, §19.10): the **shop bar** (`add_kill` on every defeat; full at `bar_target()`, 4 and a kill more per shop opened) and a shop **opened by the player** off it at any game without one (`open_at`; the hub games and the Shop node kind before it are retired). Each shop's three-item shelf, keyed by **node** id so a transmuted node keeps it, its keeper, prices, buying, and the Scramble reroll. State lives on `GameState` (`shops`, `shop_bar`), the same split `EventSystem` uses. |
 | `RunTimer` | The **speedrun clock** (see "The speedrun clock" in [`streaming.md`](streaming.md)). Starts on the game the run stands on (`TriggerBus.game_selected`), banks a split per lost attempt, stops when the game is reported — beaten, missed or escaped — and keeps a running total for the whole run. Time is accumulated in `_process` rather than measured between timestamps, so a run left open overnight comes back where it was. Rides the save (`SaveSystem` `timer`), drawn as a one-row split strip in the Now Playing panel (with the full LiveSplit list behind `⏱`) and by the overlay. **It can be PAUSED** (`set_paused` / `toggle_pause`) — the clock counts real time for as long as the app is open, so answering the door should not cost the run twelve minutes; nothing else about the run pauses, and the pause rides the save. |
 | `Radio` | **Roguelike Radio** (`docs/roguelike-radio.md`): the player's own music, unlocked by playing the real games. Songs are rows of the `radio` sheet (`data/songs/`, `SongData`); the audio is the player's and sits in a folder they pick (by default `C:\Users\Owner\Documents\Roguelike Roguelike\radio` on Windows, `user://radio/` elsewhere), never in the repo. Each song belongs to a game, and the game EARNS songs: one per RANK (`GameRanks`, docs/games-first-redesign.md §20; wins and distinct goals fill a game's XP bar). Each one earned is drawn at random from that game's songs still locked, and the draws are kept per profile (`radio.json`); nothing is unlocked by hand. It keeps the clock itself (a position is `offset + (now - since)`) because the OBS page cannot talk back, and plays out of ONE speaker — `radio.html` in OBS, or the game window — chosen in its own screen (`RadioScreen`, the 📻 on the run header and the main menu). |
 | `ObsCompanion` | The **stream overlay** (`docs/games-first-redesign.md` §9). Mirrors the run to `user://obs/` for an OBS **Browser Source** — no server, no port: the state is written as `state.js` (`window.OBS_STATE = {…}`), because a `file://` page may *load* a sibling as a script where it may not `fetch()` one. Registered **last** among the autoloads and a pure reader of the rest. Writes are debounced to 4/sec and deduped on content, over a 5-second heartbeat that lets the page tell "the run has not moved" from "the game is not running". The page itself lives in `obs/` and is reinstalled at every boot; `user://obs/custom.css` is the seam left alone for the streamer. See [`streaming.md`](streaming.md). |
@@ -392,9 +392,9 @@ ordinary scene.
     cover, the name and the Amulet's flag; everything else about the decision
     lives here. The **optimal path from that game, drawn as the real route map**,
     takes the whole right-hand side from the top of the popup to its buttons, with
-    the popup's ✕ over its corner. On the left, under the title: the node's kind
-    (`! Enemies`, `? Event`, `!! Champion`, `$ Shop` — a Shop node's shelf is in that
-    line's hover), its connections with the shops and champions among them, the
+    the popup's ✕ over its corner. On the left, under the title: `🛒 Shop` when the
+    player opened one there (its shelf in that line's hover), its connections with
+    the shops among them, the
     Temporary Shields it grants (with the shield's own art), the pace it puts the
     board on, and **your record there** — one line, `⚔ Beaten N times · M
     enemies ›`, which opens the list of every enemy you have beaten at that game,
@@ -477,10 +477,11 @@ ordinary scene.
     nowhere to stand. Nothing is drawn over the top of a body — the boss skull and
     the "in 2" that used to be there covered the picture that identifies it.
   - **`EnemyInfoCard.gd`** — the click-to-inspect card for one enemy.
-  - **`ShopModal2.gd`** — a Shop node's shop (§14.4, §14.6) as a pop-up framed like
+  - **`ShopModal2.gd`** — a shop (§14.4, §14.6, §19.10) as a pop-up framed like
     an event: the shopkeeper's name, line and portrait, the shelf, and Leave. Opened
-    only by the `🛒 Shop` button on the offering's heading (up for the whole visit)
-    or the haul screen's "Go to Shop"; loaded by path, like the event modal.
+    by the header's shop bar (`press_shop_bar`), the `🛒 Shop` button on the
+    offering's heading (up for the whole visit) or the haul screen's "Go to Shop";
+    loaded by path, like the event modal.
   - **`ShopPanel2.gd`** — the shelf inside it (§14).
     The shelf is drawn as **one row per item** — thumbnail, name, price — with
     the full card and its Buy button opening over the page on click. Three cards
@@ -519,8 +520,8 @@ ordinary scene.
     the pool is spent — *not* re-derived from the report's defeat list, which
     misses a body a mine killed during a lost run.
     **One button out, and it names where it goes**: "Go to Event" when the node
-    owes one (clicking it is what opens the event), "Go to Shop" at a Shop node, which
-    owes no event, "Travel on" otherwise; the event wins when both are owed. It
+    owes one (clicking it is what opens the event), "Go to Shop" at a game the
+    player opened a shop at, "Travel on" otherwise; the event wins when both are owed. It
     counts what it is about to bin, because a Legendary left on the ground should
     be a decision and not a side effect of pressing Continue. The sections are the
     **real modals, embedded** (`ItemDropModal.embed` / `LootDropModal.embed` /
@@ -531,7 +532,7 @@ ordinary scene.
     here** — it was briefly borrowed and handed back, which left four sections
     fighting for a 720p canvas and an exit button pointing at something already on
     screen; the shop is a pop-up of its own (§14.4), and this screen keeps only the
-    Shop node's id so its button can name it and open it.
+    shop's node id so its button can name it and open it.
 - **`RewardScreen.gd`** — chest rewards (level-ups, and the **Wand of Wishing**,
   which is a piece of loot rather than a relic now — `docs/wands-design.md` §5.2).
   **The obtain-any screen is its own layout**: reaching into the whole catalogue is a different decision
@@ -562,8 +563,8 @@ ordinary scene.
   popup, beside the cover on the end-of-game screen, and on the tier list.
 - **`EventModal2.gd`** — an event (`docs/event-sheet-authoring.md`): the prompt,
   the art, the choices with what each costs printed on its button, and a loot
-  table when the row `Opens With` one. Opened by an Event node on arrival and by
-  the end-of-game screen's "Go to Event". (The combat era's D20 `EventModal` is
+  table when the row `Opens With` one. Opened by the end-of-game screen's "Go to
+  Event". (The combat era's D20 `EventModal` is
   deleted.)
 
 ### Screens added since this list was written

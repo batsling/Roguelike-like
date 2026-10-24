@@ -107,75 +107,6 @@ const TYPE_ORDER: Array = [
 	GameData.GameType.TRADITIONAL,
 ]
 
-# --- node kinds (§19) ------------------------------------------------------
-#
-# WHAT STANDS AT A GAME, as opposed to what the game is. Every node on the run's
-# graph carries one, assigned when the run begins and never changed
-# (docs/games-first-redesign.md §19.2) — a badge on an offered card that could
-# move under the player is a lie, and every badge in this build is placed around
-# not telling one.
-#
-# The kind rides the SLOT rather than the game sitting on it, which is what makes
-# Transmute leave it alone: that verb repaints which game a node holds without
-# touching a single edge.
-#
-# Declared here because a kind is a fact about the MAP; the run's own copy of the
-# assignment lives on GameState.node_kinds, so a save
-# carries it rather than re-deriving it against a graph that may have been
-# rebuilt since.
-enum NodeKind { ENEMIES, EVENT, CHAMPION, SHOP }
-
-# The share of the map each kind takes (§19.1), before the two overrides — the
-# run's opening game is always ENEMIES and the Amulet is always CHAMPION — and
-# before the per-route guarantees, which are placed first and COUNT against these
-# odds rather than sitting on top of them (§19.3).
-const KIND_WEIGHTS: Dictionary = {
-	NodeKind.ENEMIES: 60,
-	NodeKind.EVENT: 20,
-	NodeKind.CHAMPION: 10,
-	NodeKind.SHOP: 10,
-}
-
-# One word for a kind, for a badge or a log line. Unknown values read as Enemies,
-# which is the kind a node falls back to everywhere else too.
-static func kind_label(kind: int) -> String:
-	match kind:
-		NodeKind.EVENT: return "Event"
-		NodeKind.CHAMPION: return "Champion"
-		NodeKind.SHOP: return "Shop"
-		_: return "Enemies"
-
-# THE MARK A NODE WEARS (§19.8), on every surface that draws one: the offered
-# card, the popup it opens, the 🗺 map and the route ladder.
-#
-# One or two ASCII characters rather than an icon, and that is the point. These
-# sit on a 🗺 map where a node is a dot and on a badge row that fits 139px of a
-# card's 160 at its widest, so anything with width to it would have to displace
-# something already there. Punctuation also reads at a glance in a COLUMN — a
-# route ladder is a stack of nodes, and "! ! ? ! $ !!" says the shape of the road
-# ahead in one line of sight.
-#
-# ASCII deliberately: a new pictograph would need tools/build_glyph_font.py
-# re-run and a Godot re-import, and these four are in every font already.
-static func kind_mark(kind: int) -> String:
-	match kind:
-		NodeKind.EVENT: return "?"
-		NodeKind.CHAMPION: return "!!"
-		NodeKind.SHOP: return "$"
-		_: return "!"
-
-# What the mark MEANS, for the hover behind it. The mark is deliberately terse,
-# so the sentence has to carry what it costs.
-static func kind_tip(kind: int) -> String:
-	match kind:
-		NodeKind.EVENT:
-			return "Event — an event fires the moment you arrive, before you play. No bodies."
-		NodeKind.CHAMPION:
-			return "Champion — a boss of the run's current tier walks on, alone."
-		NodeKind.SHOP:
-			return "Shop — a shop opens once you have beaten the game. No bodies."
-	return "Enemies — two bodies walk on when you commit to it."
-
 # ---------------------------------------------------------------------------
 # Graph access — `games_influenced` is directed in the .tres files but
 # the HTML build treats it as undirected (you can travel back along
@@ -1078,10 +1009,10 @@ static func shortest_path_dag(start_id: StringName, amulet_id: StringName) -> Di
 # than its own length, so SLACK 1 IS THE CORRIDOR and everything above it is
 # games standing on alternative routes at the same distance.
 #
-# The floor is the kind budget (`hops + 2` — `hops - 1` Enemies, one Event, one
-# Shop, and the Amulet) plus two spare nodes, so that a guaranteed route is not
-# entirely pinned by the budget and has somewhere for the ordinary 60/20/10/10
-# to say something.
+# The floor was set as the node-kind budget (`hops + 2`) plus two spare nodes,
+# back when §19 dealt every node a kind and promised each start an Event and a
+# Shop. The kinds are gone (§19.10); the floor stays, because what it measured —
+# a road with more than one way along it — is still what a start is for.
 #
 # A FIXED OFFSET IS NOT A FIXED BRANCHINESS, and the long routes are the thin
 # ones: the spares spread over however many middle layers the route has, so at
@@ -1135,7 +1066,7 @@ static func route_clears_floor(start_id: StringName, amulet_id: StringName) -> b
 
 # Every game on the shortest-path DAG between `start_id` and `amulet_id`, as one
 # flat list. `shortest_path_dag` groups them by depth because that is what draws
-# a ladder; §19's budget only ever counts them, so this is the shape it wants.
+# a ladder; the route floor only ever counts them, so this is the shape it wants.
 #
 # Read-only, like the DAG it flattens — the cached Dictionary is shared.
 static func dag_node_ids(start_id: StringName, amulet_id: StringName) -> Array:
@@ -1144,141 +1075,6 @@ static func dag_node_ids(start_id: StringName, amulet_id: StringName) -> Array:
 		for id in (layer as Array):
 			out.append(id)
 	return out
-
-
-# ASSIGN A KIND TO EVERY GAME ON THE MAP (§19.3), in the order the spec states:
-#
-#   1. Stamp the Amulet CHAMPION and every offered start ENEMIES.
-#   2. For each start's DAG, place the kinds that route still lacks — an EVENT
-#      and a SHOP — on RANDOM nodes of it, never the start or the Amulet.
-#   3. Roll every remaining node, so that the map as a whole lands on
-#      KIND_WEIGHTS' 60/20/10/10.
-#
-# A SHARED NODE USUALLY HELPS RATHER THAN CONFLICTING, which is why step 2 asks
-# what a route still lacks rather than placing blindly. Three cards over one
-# Amulet means three DAGs that converge near it, so an Event placed for the first
-# route is very often already standing on the second — and a node has exactly one
-# kind, so placing blindly would be the only way to make them fight.
-#
-# STEP 3 COUNTS WHAT STEP 2 PLACED. The remainder is dealt to hit the whole
-# map's target rather than rolled independently, so the odds on the tin stay true
-# of the map and the guarantee is visibly paid for somewhere: a guaranteed route
-# reads slightly richer in Event and Shop than average, the rest slightly poorer.
-#
-# `rng` carries every random choice so the map is reproducible from the run's
-# seed. Returns `game id -> NodeKind` covering every in-component game; a caller
-# that hands it an unreachable start or amulet gets whatever the DAG could still
-# be built from, never a crash.
-static func assign_node_kinds(rng: RandomNumberGenerator, amulet_id: StringName,
-		start_ids: Array) -> Dictionary:
-	var all_ids: Array = []
-	for g in Data.all_games():
-		if g is GameData and _passes_filter(g) and not is_off_map(g.id):
-			all_ids.append(g.id)
-	if all_ids.is_empty():
-		return {}
-
-	var kinds: Dictionary = {}
-	# 1. The two overrides. The Amulet first, so a start that somehow IS the
-	#    Amulet (no legal run, but the caller decides that, not this) does not
-	#    silently un-stamp the goal.
-	if amulet_id != &"":
-		kinds[amulet_id] = NodeKind.CHAMPION
-	for sid in start_ids:
-		if StringName(sid) != amulet_id:
-			kinds[StringName(sid)] = NodeKind.ENEMIES
-	# A rift game is always ENEMIES (docs/rifts-design.md §6), stamped before the
-	# routes' guarantees so the Event and the Shop a route promises never land in
-	# a rift. It counts toward the route's Enemies share.
-	for id in _rift_games:
-		if id != amulet_id:
-			kinds[id] = NodeKind.ENEMIES
-
-	# 2. What each route still lacks, placed at random on that route.
-	for sid in start_ids:
-		var start := StringName(sid)
-		if start == amulet_id:
-			continue
-		var route: Array = dag_node_ids(start, amulet_id)
-		for needed in [NodeKind.EVENT, NodeKind.SHOP]:
-			if _route_has_kind(route, kinds, int(needed)):
-				continue
-			var spot: StringName = _free_route_node(route, kinds, start,
-				amulet_id, rng)
-			if spot != &"":
-				kinds[spot] = needed
-
-	# 3. Everything else, dealt to land the whole map on KIND_WEIGHTS.
-	var rest: Array = []
-	for id in all_ids:
-		if not kinds.has(id):
-			rest.append(id)
-	if rest.is_empty():
-		return kinds
-	for i in range(rest.size()):
-		var j: int = rng.randi() % rest.size()
-		var swap = rest[i]
-		rest[i] = rest[j]
-		rest[j] = swap
-	var bag: Array = _kind_bag(all_ids.size(), kinds, rest.size(), rng)
-	for i in range(rest.size()):
-		kinds[rest[i]] = bag[i]
-	return kinds
-
-
-# Is any node of `route` already carrying `kind`? Step 2's "ask before placing".
-static func _route_has_kind(route: Array, kinds: Dictionary, kind: int) -> bool:
-	for id in route:
-		if kinds.has(id) and int(kinds[id]) == kind:
-			return true
-	return false
-
-
-# A random node of `route` that nothing has claimed yet, never the start or the
-# Amulet — they carry the two overrides and a guarantee landing on the terminal
-# node would guarantee nothing about the road. `&""` when the route is full,
-# which is the case §19.3's three spare nodes exist to prevent and which the
-# caller treats as "this start cannot be offered".
-static func _free_route_node(route: Array, kinds: Dictionary, start: StringName,
-		amulet: StringName, rng: RandomNumberGenerator) -> StringName:
-	var free: Array = []
-	for id in route:
-		if id == start or id == amulet or kinds.has(id):
-			continue
-		free.append(id)
-	if free.is_empty():
-		return &""
-	return StringName(free[rng.randi() % free.size()])
-
-
-# The kinds to deal across the `remaining` unassigned nodes so that the map of
-# `total` lands on KIND_WEIGHTS, given what step 2 has already placed.
-#
-# Rounding and the placements both mean the bag rarely comes out the exact size
-# needed, so it is padded or trimmed with ENEMIES — the majority kind, where one
-# node either way is least visible.
-static func _kind_bag(total: int, placed: Dictionary, remaining: int,
-		rng: RandomNumberGenerator) -> Array:
-	var want: Dictionary = {}
-	for kind in KIND_WEIGHTS.keys():
-		want[kind] = int(round(float(total) * float(KIND_WEIGHTS[kind]) / 100.0))
-	for id in placed.keys():
-		var k: int = int(placed[id])
-		want[k] = int(want.get(k, 0)) - 1
-	var bag: Array = []
-	for kind in want.keys():
-		for _i in range(maxi(0, int(want[kind]))):
-			bag.append(int(kind))
-	while bag.size() < remaining:
-		bag.append(int(NodeKind.ENEMIES))
-	if bag.is_empty():
-		return bag
-	for i in range(bag.size()):
-		var j: int = rng.randi() % bag.size()
-		var swap = bag[i]
-		bag[i] = bag[j]
-		bag[j] = swap
-	return bag.slice(0, remaining)
 
 
 static func _build_shortest_path_dag(start_id: StringName, amulet_id: StringName) -> Dictionary:

@@ -104,7 +104,7 @@ for; [locations-design.md](locations-design.md) §9 groups those.
 | **Double Loot** | High | Every enemy defeated here drops 2 pieces of loot. |  | needs a location-scoped `loot_multiplier 2` |
 | **Bigger Chests** | High | Every chest here is one size bigger. |  | needs a location-scoped `base_chest_bonus 1` |
 | **Bosses Pay More** | High | Bosses defeated here drop +1 more chest. |  | needs a location-scoped `boss_chest_bonus` |
-| **Market Day** | Low | Every game you beat here opens a shop shelf, as a Shop node does. |  | needs a shelf off any game beaten while here |
+| **Market Day** | Low | Every game you beat here opens a shop shelf, as a full shop bar does. |  | needs a shelf off any game beaten while here |
 | **Ferryman's Toll** | High | Every shelf here is Charon's: it takes Health, not Gold. |  | needs forcing a shopkeeper while here |
 | **Jimbo's Stall** | Medium | Every shelf here is Jimbo's: cards and jokers. | joker +30% | needs forcing a shopkeeper while here |
 | **Busy Roads** | Medium | Every game here pays a second event. |  | needs a location-scoped extra event roll |

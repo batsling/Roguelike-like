@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_a_war_in_my_name_deallry"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"a_war_in_my_name_deallry"
+title = "A War In My Name"
+artist = "Deallry"
+album = "Necrosmith 2"
+year = 0
+game_id = &"necrosmith_2"
+file = "Necrosmith 2/01. A War In My Name.mp3"
+tags = PackedStringArray()

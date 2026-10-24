@@ -1,6 +1,7 @@
 extends GutTest
 
 const Page := preload("res://test/helpers/run_page.gd")
+const Fixtures := preload("res://test/helpers/fixtures.gd")
 
 # Tests for the "Map to the Amulet" overview (RunMapModal) and the journey
 # tracking that feeds it. The map is the ported old-web bird's-eye view: a
@@ -300,16 +301,17 @@ func test_the_card_stays_below_the_header_bar() -> void:
 	assert_gte(card.position.y, ModalScaffold.free_rect(modal).position.y,
 		"the card's title is not under the run's header")
 
-func test_the_cover_carries_the_times_beaten_and_the_kind() -> void:
-	var modal = _open_map()
+func test_the_cover_carries_the_times_beaten_and_the_shop() -> void:
 	var here: StringName = GameState.current_game_id
+	Fixtures.open_shop(here)
+	var modal = _open_map()
 	var card = modal.open_node_card(here, 0)
 	var badge: Control = card.find_child("BeatenBadge", true, false)
 	assert_not_null(badge, "⚔ and the count sit on the cover")
 	if badge != null:
 		assert_eq((badge.find_child("Text", true, false) as Label).text,
 			"⚔ %d" % GameStats.beaten_count(here))
-	assert_not_null(card.find_child("KindMarker", true, false), "and the kind's mark")
+	assert_not_null(card.find_child("ShopMarker", true, false), "and the 🛒 of a shop opened there")
 
 func test_goals_beaten_opens_the_record_as_pictures() -> void:
 	var modal = _open_map()

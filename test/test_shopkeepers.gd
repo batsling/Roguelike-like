@@ -5,6 +5,8 @@ extends GutTest
 # four real ones are put back by `_real()` for the tests about them. Everything
 # added is taken out again in after_each, so no keeper leaks into another file.
 
+const Fixtures := preload("res://test/helpers/fixtures.gd")
+
 var _added: Array = []
 
 func before_each() -> void:
@@ -39,14 +41,16 @@ func _keeper(id: String, fields: Dictionary = {}) -> ShopkeeperData:
 	_added.append(k.id)
 	return k
 
-# `n` on-map games stamped as Shop nodes, in the order shop_nodes() returns them.
+# Shops opened at `n` on-map games, off a full bar each (§19.10), in the order
+# shop_nodes() returns them. The keeper is dealt as each opens, so a test adds
+# its keepers to the roster BEFORE calling this.
 func _shops(n: int) -> Array[StringName]:
 	var made: int = 0
 	for g in Data.all_games():
 		if made >= n:
 			break
 		if g is GameData and not RunGraph.is_off_map(g.id):
-			GameState.node_kinds[g.id] = RunGraph.NodeKind.SHOP
+			Fixtures.open_shop(g.id)
 			made += 1
 	return ShopSystem.shop_nodes()
 
@@ -93,9 +97,9 @@ func test_the_same_seed_deals_the_same_keepers() -> void:
 		_keeper("seeded_%d" % i)
 	var nodes: Array[StringName] = _shops(3)
 	var first: Array = nodes.map(func(n): return ShopSystem.keeper_for(n).id)
-	GameState.run_seed = 1
-	ShopSystem.keeper_for(nodes[0])
+	GameState.reset_run()
 	GameState.run_seed = 20261017
+	nodes = _shops(3)
 	var again: Array = nodes.map(func(n): return ShopSystem.keeper_for(n).id)
 	assert_eq(again, first, "a seed is a promise the same keepers stand in the same shops")
 
@@ -244,14 +248,13 @@ func test_escape_or_leave_closes_it() -> void:
 
 # --- the authored four (§14.6) -------------------------------------------------
 
+# A fresh shop kept by `keeper` alone — fresh each call, so a test can loop it.
 func _stand(keeper: ShopkeeperData) -> StringName:
-	var node: StringName = _shops(1)[0]
-	GameState.shops.erase(node)
+	GameState.shops.clear()
 	for k in Data._shopkeepers.keys():
 		if k != keeper.id:
 			Data._shopkeepers.erase(k)
-	ShopSystem.shop_for(node)
-	return node
+	return _shops(1)[0]
 
 func test_the_roster_is_four_commons() -> void:
 	var all: Dictionary = Data.get_meta("all_shopkeepers", {})
@@ -416,6 +419,7 @@ func test_rarer_keepers_are_dealt_less() -> void:
 	_keeper("legend_k", {"rarity": "Legendary"})
 	var legend: int = 0
 	for seed in range(200):
+		GameState.reset_run()
 		GameState.run_seed = seed
 		var node: StringName = _shops(1)[0]
 		if ShopSystem.keeper_for(node).id == &"legend_k":

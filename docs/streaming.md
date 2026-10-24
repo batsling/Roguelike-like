@@ -378,9 +378,10 @@ fills the whole box — cropped from near the top, where the title art lives, ne
 letterboxed — and the name sits on a dark band across its foot, up to two lines.
 The cover is what a viewer recognises — box art is how anyone reads a shelf — and
 the name is what they can actually search for, which is most of the point of
-putting a map on a stream. The game's **node kind** (combat, event, shop…) is a
-badge straddling the top-right corner in the kind's own colour, exactly where
-`RouteLadder.kind_marker` puts it; `Here` / `Amulet` / `Beaten` / `Rift` is a
+putting a map on a stream. A **shop the player opened** there is a 🛒 badge
+straddling the top-right corner in the shop's green, exactly where
+`RouteLadder.shop_marker` puts it (the payload's `kind` fields, named for the node
+kinds this badge used to carry); `Here` / `Amulet` / `Beaten` / `Rift` is a
 small tag top-left. A game you have **already beaten** is drained to greyscale and
 tagged, because revisiting is legal and its goal is rolled fresh, but you know the
 game.

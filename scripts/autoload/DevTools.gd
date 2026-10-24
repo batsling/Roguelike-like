@@ -910,12 +910,9 @@ func _build_events_tab() -> void:
 	# that actually decides what comes up next.
 	var seen: int = GameState.events_seen.size()
 	var total: int = Data.all_events2().size()
-	# Same two reasons roll_for_arrival gives back nothing, in the same order it
-	# checks them: a Shop node never owes one, and an ordinary node owes one once.
+	# The reason roll_for_arrival gives back nothing: a node owes one event, once.
 	var why_none: String = ""
-	if ShopSystem.is_shop(here):
-		why_none = "\nA shop stands here, so this node never pays an event."
-	elif GameState.event_nodes_fired.has(here):
+	if GameState.event_nodes_fired.has(here):
 		why_none = "\nThis game has already paid its event."
 	_body.add_child(_note("Standing on: %s (%d connection%s)\nBag: %d/%d seen · last was %s%s" % [
 		game.display_name if game != null else "(nowhere)",

@@ -33,8 +33,9 @@ const NUM_SLOTS := 5
 const AUTOSAVE_SLOT := 0
 # Bumped when the payload shape changes. 1 = the pre-2.0 combat-era shape (no
 # games-first loop state); 2 = the games-first run; 3 = the same with node kinds
-# and spawn events on it (§19).
-const SAVE_VERSION := 3
+# and spawn events on it (§19); 4 = node kinds gone again, shops opened off the
+# shop bar (§19.10).
+const SAVE_VERSION := 4
 
 # The oldest version this build will RESUME. It tracks SAVE_VERSION because both
 # retirements so far were for the same reason: a run whose shape cannot be
@@ -46,7 +47,11 @@ const SAVE_VERSION := 3
 # true-except-once. Retiring the run keeps it literally true. THE SAVE FILE IS
 # NOT LOST: only the in-flight run inside it, the way version 1 was retired at
 # the 2.0 cut. A file below this simply does not appear in the Continue list.
-const MIN_RESUMABLE_VERSION := 3
+#
+# Version 3 goes at §19.10 for the mirror-image reason: its map has Shop nodes
+# whose shelves were never opened off a bar, and kind badges the player was
+# routing on that no longer mean anything.
+const MIN_RESUMABLE_VERSION := 4
 
 # The overworld view state of a just-loaded save, waiting for an overworld to boot
 # and claim it (see take_pending_view_state). Empty when nothing is pending.
@@ -143,8 +148,8 @@ static func describe_run_config(entry: Dictionary) -> String:
 # The Continue list: the run's own recovery point first (it's the most recent
 # thing that happened by definition), then every named save, newest first. A
 # save below MIN_RESUMABLE_VERSION is skipped — version 1 (the pre-2.0 combat
-# era) has no games-first run in it to resume, and version 2 has no node kinds,
-# which §19.2 freezes at run start and so cannot be invented at load.
+# era) has no games-first run in it to resume; versions 2 and 3 are the two
+# sides of the node-kind era (see MIN_RESUMABLE_VERSION).
 func list_resumable() -> Array:
 	var out: Array = []
 	if has_autosave():
@@ -285,12 +290,9 @@ func _build_payload() -> Dictionary:
 		# permanent statuses and simply has no borrowed ones.
 		"timed_statuses": GameState.serialize_timed_statuses(),
 		"event_goals": GameState.serialize_event_goals(),
-		# The hub list and every shop's remaining shelf (§14).
+		# Every shop's remaining shelf (§14) and the shop bar (§19.10).
 		"shops": GameState.serialize_shops(),
-		# What stands at each game on the map (§19) — frozen at run start, so the
-		# save carries it rather than re-deriving it.
-		"node_kinds": GameState.serialize_node_kinds(),
-		# The run's rifts, dealt with the kinds and frozen with them. Absent from a
+		# The run's rifts, dealt at run start and frozen. Absent from a
 		# save written before rifts, which loads as a run without any.
 		"rifts": GameState.rifts.duplicate(true),
 		"run_seed": GameState.run_seed,
@@ -494,7 +496,6 @@ func _apply_save_data(data: Dictionary) -> void:
 	GameState.restore_timed_statuses(data.get("timed_statuses", []))
 	GameState.restore_event_goals(data.get("event_goals", {}))
 	GameState.restore_shops(data.get("shops", {}))
-	GameState.restore_node_kinds(data.get("node_kinds", {}))
 	var saved_rifts = data.get("rifts", [])
 	GameState.set_rifts(saved_rifts if saved_rifts is Array else [])
 	GameState.run_seed = int(data.get("run_seed", 0))

@@ -84,13 +84,11 @@ _run_trigger(item, trig, ctx_extras, loot)
      effects (bodies of its tag, tiles lit, poops stood up), once, on top of
      everything this pick put down. That is the location this very pick dealt,
      or one dealt since the last pick (a game's end, a lost run), or the run's
-     first, dealt by `start_run` before the start was picked. An Event or Shop
-     node enters it too (`begin_bodiless_game`); a Scramble does not. The popup
+     first, dealt by `start_run` before the start was picked. A Scramble does
+     not enter it. The popup
      waits for the page's next quiet moment.
 4. The **difficulty step** is announced, if step 3 crossed one.
-5. An **Event node fires its event now**, before the game. (Every other node rolls
-   its event at the report.)
-6. **Shields**: 3 Temporary Shields, 5 for a Traditional roguelike, fewer on some
+5. **Shields**: 3 Temporary Shields, 5 for a Traditional roguelike, fewer on some
    Fractures. *Then* signal `game_selected` → items (Anchor's +1 lands on top), the
    speedrun clock starts, the overlay updates.
 
@@ -98,9 +96,8 @@ _run_trigger(item, trig, ctx_extras, loot)
 scripts/redesign2/Overworld2.gd :: _begin_game
 GameLoop2.rank_start =
 _grant_start_gear_once(game)
-_commit_board_for_kind(game, enemy, tier)
+_commit_board(game, enemy, tier)
 _announce_difficulty_step(tier_before, board_before)
-_fire_arrival_event(game)
 GameLoop2.grant_selection_shields(game)
 ```
 
@@ -281,8 +278,8 @@ Then, back in `Overworld2.report`:
 1. The **floor** is swept onto the haul; the **report chest** is queued (beaten,
    not escaped); status penalties are announced; each kill is recorded to the
    Atlas and the character.
-2. An **event** is rolled for after the haul (not on a detour); a **Shop** node
-   queues its shelf.
+2. An **event** is rolled for after the haul (not on a detour); a game the
+   player opened a **shop** at queues its button.
 3. Signal `game_beaten` (any report but an escape, won or not) → items (Burning
    Blood), every charged item +1, Harvesting, the toast, the overlay.
 4. Signal `game_won` (goal met) → items; then `game_perfected` (won with no lost
@@ -348,11 +345,11 @@ Once the animation ends (`_end_resolve`):
 1. If the run ended at any ☠ step, the **run-over screen** opens and nothing below
    happens.
 2. The **end-of-game screen** — the haul: floor loot, kill drops, chests, the
-   game's own loot, the boss warning, and *Go to Shop* on a Shop node. Autosave
+   game's own loot, the boss warning, and *Go to Shop* at a game with a shop. Autosave
    when it closes.
 3. The **Collapse** screen, Fracture 10's Amulet only.
 4. The **event** rolled at the report.
-5. The **shop**, if this was a Shop node.
+5. The **shop**'s button, if the player opened a shop at this game.
 
 ```order
 scripts/redesign2/Overworld2.gd :: _end_resolve
@@ -380,7 +377,7 @@ Any hit on a body — a goal, the weapon, a bomb, a tile, Bleed:
    it made die too, each through this same chain. Chains stop 16 deep. Then the
    off-grid queue slides in.
 5. **Chest points** are banked (a boss banks a boss chest), then **gold** →
-   `gold_gained` → items.
+   `gold_gained` → items, then the **shop bar** fills by one.
 6. **Your item's death tile** is laid where it fell.
 7. Signal `enemy_killed` → items (Charm of the Vampire).
 8. Signal `enemy_defeated` → its loot lands on the square it fell on; the shop and
@@ -410,6 +407,7 @@ scripts/autoload/GameLoop2.gd :: _defeat
 boss_chests.append(
 chest_points += worth
 GameState.change_gold(coins)
+ShopSystem.add_kill()
 GameState.death_tile()
 TriggerBus.enemy_killed.emit(
 enemy_defeated.emit(enemy, fell)

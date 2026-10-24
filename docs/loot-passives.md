@@ -120,7 +120,7 @@ relic shelf, so a trinket authoring one would be a promise nothing keeps.
 | Hook | Fires when | Emitted from | Used by |
 |---|---|---|---|
 | `game_won` | A game was actually **beaten**: the report said so and it was not an escape. Narrower than `game_beaten`, which is every game seen through, win or lose. | `Overworld2`, beside `game_beaten` | Isaac's Fork, Rocket, To the Moon |
-| `shop_entered` | A Shop node's shelf opens where the player stands, once per arrival (not when a save reload re-mounts it). | `Overworld2._open_pending_shop` | Chaos the Clown |
+| `shop_entered` | The player walks into a shop where they stand, the first time the door is opened on an arrival (not when a save reload re-mounts it). | `Overworld2.open_shop` | Chaos the Clown |
 | `boss_spawned` | A boss walks onto the board, whatever put it there. Fresh bodies only, so a save load does not re-fire it. | `GameLoop2._add_to_grid` | Hairpin |
 | `loot_used` | A piece of loot was spent (a wand zap included, §9), once per use, never for its echoes. | `LootSystem._spend` | Endless Nameless |
 | `card_binned` | A card of the loot kind went into the bin, from the pack or off the floor. | `GameState.discard_loot_at` / `note_loot_binned` | Trading Card |

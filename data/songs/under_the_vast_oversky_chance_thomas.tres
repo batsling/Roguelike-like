@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="SongData" load_steps=2 format=3 uid="uid://song_under_the_vast_oversky_chance_thomas"]
+
+[ext_resource type="Script" path="res://scripts/resources/SongData.gd" id="1_song"]
+
+[resource]
+script = ExtResource("1_song")
+id = &"under_the_vast_oversky_chance_thomas"
+title = "Under the Vast Oversky"
+artist = "Chance Thomas"
+album = "Roguebook"
+year = 2021
+game_id = &"roguebook"
+file = "Roguebook/08 Under the Vast Oversky.mp3"
+tags = PackedStringArray()

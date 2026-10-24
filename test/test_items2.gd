@@ -317,8 +317,10 @@ func test_calling_bell_pays_one_item_per_rarity_and_a_permanent_curse() -> void:
 func _a_shop_node() -> StringName:
 	for g in Data.all_games():
 		if g is GameData and not RunGraph.is_off_map(g.id):
-			GameState.node_kinds[g.id] = RunGraph.NodeKind.SHOP
+			# A fresh shelf, opened off a full bar (§19.10).
 			GameState.shops.erase(g.id)
+			GameState.shop_bar = ShopSystem.bar_target()
+			ShopSystem.open_at(g.id)
 			return g.id
 	return &""
 

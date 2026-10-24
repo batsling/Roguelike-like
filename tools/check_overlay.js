@@ -453,13 +453,13 @@ function fixture(dir) {
   ].map((layer, d) => layer.map((n, i) => Object.assign({
     here: false, amulet: false, rift: false, beaten: false,
     cover: games[(d * 3 + i) % games.length] || '',
-    /* The node's kind as ObsCompanion._rung sends it — a different one per
-     * layer so the badge's colour is not a constant the check could pass by
-     * accident — and a nudge off the slot in -1..1, as RouteLadder.jitter
-     * deals them, including the extremes. */
-    kind: ['!', '?', '$', '!!'][d % 4],
-    kind_name: ['Enemies', 'Event', 'Shop', 'Champion'][d % 4],
-    kind_color: ['#b9b2a6', '#f0a050', '#6fdc8d', '#ff5a5a'][d % 4],
+    /* A shop the player opened, as ObsCompanion._rung sends it — on some boxes
+     * and blank on the rest, so "no badge" is drawn as well as "a badge" — and a
+     * nudge off the slot in -1..1, as RouteLadder.jitter deals them, including
+     * the extremes. */
+    kind: (d + i) % 3 === 1 ? '🛒' : '',
+    kind_name: (d + i) % 3 === 1 ? 'Shop' : '',
+    kind_color: (d + i) % 3 === 1 ? '#6fdc8d' : '',
     nudge: [[1, -1], [-1, 1], [0.4, 0.6]][i % 3],
   }, n)));
   const routeEdges = [];
@@ -1358,14 +1358,18 @@ async function main() {
   check('…and every wire actually joins the two rungs it runs between',
     joinsAll(joined), describeJoin(joined));
 
-  /* EVERY BOX WEARS ITS KIND ON ITS TOP-RIGHT CORNER, as the in-game map does
-   * (RouteLadder.kind_marker): the badge straddles the box's top edge, sits in
-   * its right half, carries the kind's mark, and is ringed in the kind's colour.
-   * A badge that drifted into the middle of a cover, or off the box entirely,
-   * would pass every count above. */
-  const kinds = await page.evaluate(() => [...document.querySelectorAll('.rung')].map((n) => {
+  /* A SHOP'S BOX WEARS 🛒 ON ITS TOP-RIGHT CORNER, as the in-game map does
+   * (RouteLadder.shop_marker): the badge straddles the box's top edge, sits in
+   * its right half, carries the mark, and is ringed in its colour. A badge that
+   * drifted into the middle of a cover, or off the box entirely, would pass
+   * every count above; a box with no shop wears none. */
+  const shopKeys = new Set(fixture(dir).route.layers.flat().filter((n) => n.kind)
+    .map((n) => n.depth + '|' + n.id));
+  const kinds = await page.evaluate((keys) => [...document.querySelectorAll('.rung')].map((n) => {
     const b = n.querySelector('.rung-kind');
     const r = n.getBoundingClientRect();
+    const want = keys.includes(n.dataset.key);
+    if (!want) return { ok: !b, why: 'a badge on ' + n.dataset.key + ', which has no shop' };
     if (!b) return { ok: false, why: 'no badge on ' + n.dataset.key };
     const k = b.getBoundingClientRect();
     const midY = (k.top + k.bottom) / 2;
@@ -1376,9 +1380,9 @@ async function main() {
       why: n.dataset.key + ' badge at ' + Math.round(k.left - r.left) + ','
         + Math.round(midY - r.top) + ' of a ' + Math.round(r.width) + 'px box',
     };
-  }));
-  check('every box wears its kind as a badge on its top-right corner',
-    kinds.length === map.rungs && kinds.every((k) => k.ok),
+  }), [...shopKeys]);
+  check('every shop\'s box wears 🛒 on its top-right corner, and no other box does',
+    shopKeys.size > 0 && kinds.length === map.rungs && kinds.every((k) => k.ok),
     (kinds.find((k) => !k.ok) || { why: kinds.length + ' badges' }).why);
 
   /* …AND THE LAYERS ARE SPREAD, as the in-game map's are: a layer's games take

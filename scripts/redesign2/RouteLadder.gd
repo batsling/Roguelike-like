@@ -203,7 +203,7 @@ static func build(cfg: Dictionary) -> Control:
 	var box_cfg: Dictionary = cfg.duplicate()
 	box_cfg["name_font"] = maxi(uniform, UNIFORM_FLOOR)
 
-	# The boxes on top of the arrows — and the kind markers on top of the boxes,
+	# The boxes on top of the arrows — and the shop markers on top of the boxes,
 	# all of them last: a marker straddles its box's top edge, and drawn with its
 	# own box it would sit under the next box down a crowded column.
 	var seen: Dictionary = {}      # id -> the depth it was FIRST met at
@@ -216,7 +216,9 @@ static func build(cfg: Dictionary) -> Control:
 				seen[sid] = i
 			var rect: Rect2 = rects[node_key(i, sid)]
 			canvas.add_child(node_box(box_cfg, sid, rect, i, revisit))
-			markers.append(kind_marker(sid, rect))
+			var marker: Control = shop_marker(sid, rect)
+			if marker != null:
+				markers.append(marker)
 	for m in markers:
 		canvas.add_child(m)
 	return canvas
@@ -264,43 +266,41 @@ static func jitter(key: String, salt: int) -> float:
 	return float(absi(hash("%s#%d" % [key, salt])) % 10000) / 10000.0 * 2.0 - 1.0
 
 # ---------------------------------------------------------------------------
-# The kind marker — a badge on the box's top-right corner
+# The shop marker — a badge on the box's top-right corner
 #
-# THE NODE'S KIND (§19.8) as a small pill STRADDLING the cover's top-right
-# corner, half over the edge, the way a count sits on an app icon: it reads as
-# belonging to the game, and only half of it costs the box any room — the name,
-# along the bottom, keeps the rest. Read off the BOX's id, never the game played
-# there, for the reason §19.2 gives: the kind rides the node, so a transmuted
-# spot keeps its kind while it plays a different game. (It rode the path into
-# the box for a while, where the arrows had to aim above the box's middle to
-# meet it.)
+# A SHOP THE PLAYER OPENED (§19.10) as a small pill STRADDLING the cover's
+# top-right corner, half over the edge, the way a count sits on an app icon. Only
+# on a game with a shop: it is a reason to route back, and the one thing about a
+# node the road should say at a glance. It was the node KIND's mark on every box
+# until §19.10 retired the kinds. Read off the BOX's id, never the game played
+# there, so a transmuted spot keeps its shop.
 # ---------------------------------------------------------------------------
 
 const MARKER_H := 16.0
 const MARKER_INSET := 3.0      # in from the box's right edge
+const SHOP_MARK := "🛒"
 
-static func marker_w(kind: int) -> float:
-	return maxf(MARKER_H, 8.0 + 6.0 * RunGraph.kind_mark(kind).length())
-
-static func kind_marker(id: StringName, rect: Rect2) -> Control:
-	var kind: int = GameState.node_kind(id)
-	var w: float = marker_w(kind)
+# The marker for `id`, or null when no shop stands there.
+static func shop_marker(id: StringName, rect: Rect2) -> Control:
+	if not ShopSystem.is_shop(id):
+		return null
+	var w: float = MARKER_H + 6.0
 	var pill := Panel.new()
-	pill.name = "KindMarker"
+	pill.name = "ShopMarker"
 	pill.add_theme_stylebox_override("panel", UITheme.flat(Color(0.06, 0.06, 0.07, 0.95),
-		int(MARKER_H * 0.5), 0, 1, UITheme.kind_color(kind)))
+		int(MARKER_H * 0.5), 0, 1, UITheme.SHOP_GREEN))
 	pill.size = Vector2(w, MARKER_H)
 	pill.position = Vector2(rect.end.x - w - MARKER_INSET, rect.position.y - MARKER_H * 0.5)
-	pill.tooltip_text = RunGraph.kind_tip(kind)
+	pill.tooltip_text = ShopSystem.headline(id)
 	pill.mouse_filter = Control.MOUSE_FILTER_PASS
 	var mark := Label.new()
-	mark.name = "KindMark"
-	mark.text = RunGraph.kind_mark(kind)
+	mark.name = "ShopMark"
+	mark.text = SHOP_MARK
 	mark.set_anchors_preset(Control.PRESET_FULL_RECT)
 	mark.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	mark.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	mark.add_theme_font_size_override("font_size", UITheme.FONT_MICRO)
-	mark.add_theme_color_override("font_color", UITheme.kind_color(kind))
+	mark.add_theme_color_override("font_color", UITheme.SHOP_GREEN)
 	mark.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	pill.add_child(mark)
 	return pill
@@ -384,8 +384,8 @@ static func node_box(cfg: Dictionary, id: StringName, rect: Rect2, depth: int,
 				on_node.call(id, depth))
 	else:
 		panel.tooltip_text = name_text
-	var kind: int = GameState.node_kind(id)
-	panel.tooltip_text = "%s\n%s" % [panel.tooltip_text, RunGraph.kind_tip(kind)]
+	if ShopSystem.is_shop(id):
+		panel.tooltip_text = "%s\n%s" % [panel.tooltip_text, ShopSystem.headline(id)]
 
 	# THE COVER FILLS THE BOX, cut to the box's shape (cover_crop), and the name
 	# sits on a fade along the bottom. The fade is the ROLE's colour on the three
@@ -562,7 +562,7 @@ const NAME_INSET := 4.0
 # A Label's default `line_spacing`, which a wrapped name pays between lines.
 const LINE_SPACING := 3.0
 
-# Where a box's name may start: below the half of the kind marker that hangs
+# Where a box's name may start: below the half of a shop marker that hangs
 # inside the box, or under the badge strip on a box wide enough to have one.
 static func name_top(size: Vector2) -> float:
 	return 13.0 if size.x >= WIDE_W else MARKER_H * 0.5 + 2.0
@@ -678,8 +678,8 @@ static func node_card_body(cfg: Dictionary) -> VBoxContainer:
 	# 248px cover and then every fact stacked beneath it — and on a short window the
 	# bottom of it was under a scrollbar. The cover is narrower now and the facts
 	# stand to its left, and the two that were words about the picture's game (the
-	# node's kind, how often you have beaten it) are ON the picture: the kind's mark
-	# in its top-right corner, ⚔ and the count in its bottom-left.
+	# shop opened there, how often you have beaten it) are ON the picture: 🛒 in
+	# its top-right corner, ⚔ and the count in its bottom-left.
 	var row := HBoxContainer.new()
 	row.name = "FactsAndCover"
 	row.add_theme_constant_override("separation", UITheme.GAP_LOOSE)
@@ -797,16 +797,15 @@ static func card_cover(id: StringName, game: GameData) -> Control:
 		blank.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		stack.add_child(blank)
 
-	var kind: int = GameState.node_kind(id)
-	var kind_pill := _corner_pill(RunGraph.kind_mark(kind), UITheme.kind_color(kind),
-		UITheme.FONT_LEAD)
-	kind_pill.name = "KindMarker"
-	kind_pill.tooltip_text = RunGraph.kind_tip(kind)
-	kind_pill.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	kind_pill.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-	kind_pill.offset_right = -CORNER_INSET
-	kind_pill.offset_top = CORNER_INSET
-	stack.add_child(kind_pill)
+	if ShopSystem.is_shop(id):
+		var shop_pill := _corner_pill(SHOP_MARK, UITheme.SHOP_GREEN, UITheme.FONT_LEAD)
+		shop_pill.name = "ShopMarker"
+		shop_pill.tooltip_text = ShopSystem.headline(id)
+		shop_pill.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+		shop_pill.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+		shop_pill.offset_right = -CORNER_INSET
+		shop_pill.offset_top = CORNER_INSET
+		stack.add_child(shop_pill)
 
 	var beaten: int = GameStats.beaten_count(id)
 	var beaten_pill := _corner_pill("⚔ %d" % beaten,

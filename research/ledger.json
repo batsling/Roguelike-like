@@ -2996,6 +2996,15 @@
   "loot": "2026-10-12: nothing usable: a small wiki about its worlds and hub; Ikk's heads and backpacks are equipment without described effects",
   "statuses": "2026-10-12: nothing usable: a small wiki about its worlds and hub; Ikk's heads and backpacks are equipment without described effects"
  },
+ "Goaldeck": {
+  "characters": "2026-10-24: nothing usable: no playable heroes",
+  "connections": "2026-10-24",
+  "events": "2026-10-24: nothing usable: no wiki, no event screens on its store page",
+  "goals": "2026-10-24: nothing usable: no wiki and no creatures; a puzzle/card game of tiles, players or items",
+  "locations": "2026-10-24: nothing usable: no wiki",
+  "loot": "2026-10-24: nothing usable: no wiki; its cards are footballers with no named effects on the store page. No weapons or evolutions",
+  "statuses": "2026-10-24: nothing usable: no wiki; no status effects on its store page"
+ },
  "Goblin Sushi": {
   "characters": "2026-10-12: nothing usable: no wiki under its name on Fandom or wiki.gg, or a stub with no item or enemy pages",
   "connections": "before 2026-10-07",
@@ -3662,6 +3671,15 @@
   "loot": "2026-10-12: nothing usable: a 15-article wiki of menus and four characters",
   "statuses": "2026-10-12: nothing usable: a 15-article wiki of menus and four characters"
  },
+ "Internet Survivor Survivors": {
+  "characters": "2026-10-24: nothing usable: its cast is a doujin music circle's own characters, not documented anywhere readable here",
+  "connections": "2026-10-24",
+  "events": "2026-10-24: nothing usable: no wiki, no event screens",
+  "goals": "2026-10-24: nothing usable: no wiki; a Japanese meme-parody bullet heaven (COOL&CREATE) whose foes are internet memes, not creatures with a goal",
+  "locations": "2026-10-24: nothing usable: no wiki",
+  "loot": "2026-10-24: nothing usable: no wiki; weapons are not named on the store page. Evolutions: none documented",
+  "statuses": "2026-10-24: nothing usable: no wiki; no named statuses on its store page"
+ },
  "Into The Grid": {
   "characters": "2026-10-12: nothing usable: no wiki under its name on Fandom or wiki.gg, or one with no item or enemy pages",
   "connections": "before 2026-10-07",
@@ -3680,6 +3698,15 @@
   "loot": "2026-10-12: 2 rows (Vek Hormones, Attraction Pulse); its 98 weapons are mech weapons, the passives repeat stats; no evolutions",
   "statuses": "2026-10-12: nothing usable: none listed"
  },
+ "Inventorix": {
+  "characters": "2026-10-24: nothing usable: no playable heroes",
+  "connections": "2026-10-24",
+  "events": "2026-10-24: nothing usable: no wiki, no event screens on its store page",
+  "goals": "2026-10-24: nothing usable: no wiki and no creatures; a puzzle/card game of tiles, players or items",
+  "locations": "2026-10-24: nothing usable: no wiki",
+  "loot": "2026-10-24: nothing usable: no wiki; its items are not named on the store page. No weapons or evolutions",
+  "statuses": "2026-10-24: nothing usable: no wiki; no status effects on its store page"
+ },
  "Iratus: Lord of the Dead": {
   "characters": "2026-10-12: nothing usable: Iratus alone, minions are crafted",
   "connections": "before 2026-10-07",
@@ -3688,6 +3715,15 @@
   "locations": "2026-10-12: nothing usable: the Mortuary, Obelisk and Altar are base buildings",
   "loot": "2026-10-12: nothing usable: no loot pages",
   "statuses": "2026-10-12: nothing usable: none listed"
+ },
+ "Islantiles": {
+  "characters": "2026-10-24: nothing usable: no playable heroes",
+  "connections": "2026-10-24",
+  "events": "2026-10-24: nothing usable: no wiki, no event screens on its store page",
+  "goals": "2026-10-24: nothing usable: no wiki and no creatures; a puzzle/card game of tiles, players or items",
+  "locations": "2026-10-24: nothing usable: no wiki",
+  "loot": "2026-10-24: nothing usable: no wiki; its 100+ technologies are scoring rules for tile placement with no names on the store page. No weapons or evolutions",
+  "statuses": "2026-10-24: nothing usable: no wiki; no status effects on its store page"
  },
  "Iter Vehemens Ad Necem": {
   "characters": "2026-10-12: nothing usable: one hero",
@@ -4039,6 +4075,15 @@
   "locations": "2026-10-12: nothing usable: a 13-page wiki of overview pages",
   "loot": "2026-10-12: nothing usable: a 13-page wiki of overview pages",
   "statuses": "2026-10-12: nothing usable: a 13-page wiki of overview pages"
+ },
+ "Lootbound": {
+  "characters": "2026-10-24: nothing usable: Warrior, Paladin, Bard and Witch are generic classes with identical placeholder stats on the wiki; nothing a fan would recognise as Lootbound's",
+  "connections": "2026-10-24",
+  "events": "2026-10-24: nothing usable: no event pages on the wiki",
+  "goals": "2026-10-24: nothing usable: the 24-page wiki has no monster pages; its foes are generic dungeon fighters",
+  "locations": "2026-10-24: nothing usable: its Buildings page is empty",
+  "loot": "2026-10-24: nothing usable: its weapons, instruments and staves (Combat Drum, Acid Staff, Blood Gold…) are stat lines (+Initiative, +Acid Damage) with no effect of their own; the adjacency auras it is known for are only on Legendary/Divine items and no page says what one does. No evolutions",
+  "statuses": "2026-10-24: nothing usable: Fury is named in a skill but not documented"
  },
  "Lootplot": {
   "characters": "2026-10-12: nothing usable: no wiki (Fandom and wiki.gg tried), and nothing beyond store blurbs",
@@ -4813,6 +4858,15 @@
   "locations": "2026-10-12: nothing usable: its charms are stat bonuses",
   "loot": "2026-10-12: nothing usable: its charms are stat bonuses",
   "statuses": "2026-10-12: nothing usable: its charms are stat bonuses"
+ },
+ "Nitro Kid": {
+  "characters": "2026-10-24: nothing usable: its agents L33, J4X and K31 are described only in reviews (as Bruce Lee, Mike Tyson and Ripley/Sarah Connor nods); no page gives a kit to translate",
+  "connections": "2026-10-24",
+  "events": "2026-10-24: nothing usable: no wiki, no event screens",
+  "goals": "2026-10-24: nothing usable: no wiki; its cops and goons are generic",
+  "locations": "2026-10-24: nothing usable: no wiki",
+  "loot": "2026-10-24: nothing usable: no wiki; its cards are moves (punch, slide) with no names on the store page. No weapons or evolutions",
+  "statuses": "2026-10-24: nothing usable: no wiki; no named statuses on its store page"
  },
  "No-Skin": {
   "characters": "2026-10-12: nothing usable: no wiki under its name on Fandom or wiki.gg, or one with no item or enemy pages",
@@ -7091,6 +7145,15 @@
   "loot": "2026-10-11: weapons and evolutions: Memento Mori; no evolutions (ship guns are bought or earned whole); the curiosities are story tokens and trade goods with no effect of their own",
   "statuses": "2026-10-11: nothing: Terror repeats the fear candidates (Don't Starve's Insanity and Darkness, Caves of Qud's Terrified) and Hunger NetHack's Hungry"
  },
+ "Super Alloy Crush": {
+  "characters": "2026-10-24: nothing usable: no wiki; its fighters are not documented",
+  "connections": "2026-10-24",
+  "events": "2026-10-24: nothing usable: no wiki, no event screens",
+  "goals": "2026-10-24: nothing usable: no wiki; its bosses are not named on the store page",
+  "locations": "2026-10-24: nothing usable: no wiki",
+  "loot": "2026-10-24: nothing usable: no wiki; its 50+ Tech Arts and passive Chips are not named anywhere readable. No evolutions",
+  "statuses": "2026-10-24: nothing usable: no wiki; no named statuses on its store page"
+ },
  "Super Auto Pets": {
   "characters": "2026-10-10: nothing: no heroes, only packs",
   "connections": "before 2026-10-07",
@@ -7450,6 +7513,15 @@
   "locations": "2026-10-12: nothing usable: river landings are levels",
   "loot": "2026-10-12: 1 row (Polluted Water); Devil's Trumpet is bait for a trap; weapons are bows and clubs, no evolutions",
   "statuses": "2026-10-12: nothing usable: its diseases are what Polluted Water gives"
+ },
+ "The Gate Must Stand": {
+  "characters": "2026-10-24: nothing usable: one unnamed warrior",
+  "connections": "2026-10-24",
+  "events": "2026-10-24: nothing usable: no wiki, no event screens",
+  "goals": "2026-10-24: nothing usable: no wiki; its invaders are unnamed waves",
+  "locations": "2026-10-24: nothing usable: no wiki",
+  "loot": "2026-10-24: nothing usable: no wiki; no named weapons or items. No evolutions",
+  "statuses": "2026-10-24: nothing usable: no wiki; no named statuses on its store page"
  },
  "The Ground Gives Way": {
   "characters": "2026-10-12: nothing usable: one hero",

@@ -197,23 +197,6 @@ func test_reset_run_lifts_the_rifts() -> void:
 	assert_true(RunGraph.rifts().is_empty(), "and the graph is the bare map again")
 
 
-func test_rift_games_are_always_enemies() -> void:
-	var pick: Dictionary = _dealt(31415)
-	if pick.is_empty():
-		pending("this catalogue deals no rifts")
-		return
-	GameState.set_rifts(pick["rifts"])
-	var starts: Array = []
-	for opt in pick["options"]:
-		starts.append(StringName(opt["start_id"]))
-	var rng := RandomNumberGenerator.new()
-	rng.seed = 271828
-	var kinds: Dictionary = RunGraph.assign_node_kinds(rng, StringName(pick["amulet_id"]), starts)
-	for r in pick["rifts"]:
-		assert_eq(int(kinds.get(StringName(r["game"]), -1)), RunGraph.NodeKind.ENEMIES,
-			"%s is a rift game and must be Enemies" % r["game"])
-
-
 # --- the rotation (§3.3) -----------------------------------------------------
 
 func test_last_runs_rift_games_are_saved_for_last() -> void:
@@ -381,6 +364,29 @@ func test_a_rift_card_wears_the_swirl_and_the_flag() -> void:
 	autofree(plain_card)
 	assert_null(_find_shader_rect(plain_card), "an influence game's card has no swirl")
 	assert_false(Page.labels_text(plain_card).contains("RIFT"), "and no rift flag")
+
+# A rift that costs a key wears one on its cover's bottom edge; a free rift (a
+# location's) and a rift already on the map do not.
+func test_a_keyed_rift_card_wears_the_key_on_its_cover() -> void:
+	var got: Dictionary = _overworld_with_a_rift()
+	if got.is_empty():
+		pending("this catalogue deals no rifts")
+		return
+	var ui = got["ui"]
+	var rift_id := StringName(got["rift"]["game"])
+	var dest := StringName(got["rift"]["a"])
+	var keyed: Control = ui._offering._make_choice_card(0, {"game": Data.get_game(rift_id),
+		"slot": rift_id, "amulet": false, "boss": false, "rift_key": dest})
+	autofree(keyed)
+	assert_not_null(keyed.find_child("KeyBadge", true, false), "a keyed rift wears the key")
+	var free: Control = ui._offering._make_choice_card(1, {"game": Data.get_game(rift_id),
+		"slot": rift_id, "amulet": false, "boss": false, "rift_key": dest, "free_rift": true})
+	autofree(free)
+	assert_null(free.find_child("KeyBadge", true, false), "a free rift needs no key, so shows none")
+	var laid: Control = ui._offering._make_choice_card(2, {"game": Data.get_game(rift_id),
+		"slot": rift_id, "amulet": false, "boss": false})
+	autofree(laid)
+	assert_null(laid.find_child("KeyBadge", true, false), "nor does a rift already on the map")
 
 # Standing on a rift game, a step to either end is not an influence, and the
 # popup's proof slot says so instead of showing nothing.
@@ -587,8 +593,6 @@ func test_picking_a_rift_card_stands_rift_bodies() -> void:
 		c["boss"] = false
 		ui._choices[0] = c
 		idx = 0
-	# The kinds were dealt for the run's own rifts; this one is seeded, so say it.
-	GameState.node_kinds[rift_id] = RunGraph.NodeKind.ENEMIES
 	ui.pick(idx)
 	assert_gt(GameLoop2.arrivals.size(), 0, "the rift game stood bodies up")
 	for inst in GameLoop2.arrivals:
