@@ -1189,6 +1189,61 @@ func test_clicking_a_body_with_the_staff_armed_sets_it_alight() -> void:
 	assert_eq(staff.current_charge, 0, "and THAT is what spent the charge")
 	assert_null(ui._board.aiming_item, "one press, one firing")
 
+# --- one use at a time (Overworld2.put_away_pending_use) ---------------------
+
+# Using a second item while the first still waits for its target puts the first
+# back — an instant item used to fire over an armed Staff and leave it armed.
+func test_a_second_item_puts_the_armed_staff_back() -> void:
+	var ui = _booted()
+	Page.pick_enemies(ui, 0)
+	ui.report(false)
+	var staff: ItemData = GameState.add_item(Data.get_item2(&"staff_of_flame"))
+	var bag: ItemData = GameState.add_item(Data.get_item2(&"iv_bag"))
+	ui.use_item(staff)
+	assert_eq(ui._board.aiming_item, staff, "armed")
+	var gold: int = GameState.gold
+	ui.use_item(bag)
+	assert_null(ui._board.aiming_item, "the staff is put back, not left armed")
+	assert_eq(staff.current_charge, staff.max_charge(), "with nothing spent")
+	assert_gt(GameState.gold, gold, "and the second item fired")
+
+# A throw being aimed is put back the same way, and its use screen goes rather
+# than coming back up over the board.
+func test_a_second_use_puts_an_armed_throw_back_and_closes_its_screen() -> void:
+	var ui = _booted()
+	Page.pick_enemies(ui, 0)
+	ui.report(false)
+	var stub := Node.new()
+	var calls: Array = []
+	var script := GDScript.new()
+	script.source_code = "extends Node\nfunc put_away() -> void:\n\tget_meta(\"calls\").append(\"put_away\")\nfunc throw_cancelled() -> void:\n\tget_meta(\"calls\").append(\"back\")\n"
+	script.reload()
+	stub.set_script(script)
+	stub.set_meta("calls", calls)
+	add_child_autofree(stub)
+	var entry: Dictionary = {"type": "potion", "id": Data.all_potions()[0].id}
+	if not ui.begin_loot_throw(stub, entry, -1):
+		pending("the board had no square to throw at")
+		return
+	assert_true(ui._board.is_aiming(), "the bottle is in hand")
+	assert_true(ui.put_away_pending_use(), "nothing spent, so it can go back")
+	assert_false(ui._board.is_aiming(), "and it has")
+	assert_eq(calls, ["put_away"], "its screen is closed, not brought back")
+
+# A pick a SPENT scroll is waiting on cannot be undone, so it is finished first.
+func test_a_pick_a_spent_scroll_waits_on_is_finished_first() -> void:
+	var ui = _booted()
+	Page.pick_enemies(ui, 0)
+	ui.report(false)
+	var bodies: Array = GameLoop2.stack.map(func(e): return int(e["instance"]))
+	assert_true(ui.begin_board_pick({"candidates": bodies, "count": 1, "exact": false,
+		"verb": "stun"}, func(_c): pass), "a Scare Monster pick on the board")
+	var bag: ItemData = GameState.add_item(Data.get_item2(&"iv_bag"))
+	var gold: int = GameState.gold
+	ui.use_item(bag)
+	assert_eq(GameState.gold, gold, "the second use is refused")
+	assert_not_null(ui.owned_pick(), "and the pick is still waiting")
+
 func test_the_staff_will_not_arm_over_an_empty_board() -> void:
 	# The one thing the pack cannot see from where its button is: whether there is
 	# anything out there to point at.

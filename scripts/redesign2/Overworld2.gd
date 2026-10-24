@@ -2237,6 +2237,8 @@ func turn_note(choice: Dictionary) -> Dictionary:
 # can replay the other, so a path that only knew about scrolls would drop half of
 # what its own use just did.
 func use_loot(idx: int) -> void:
+	if not put_away_pending_use():
+		return
 	var modal = load(LOOT_USE_MODAL_SCRIPT).new()
 	modal.finished.connect(_refresh)
 	modal.start(self, idx, self)
@@ -4047,6 +4049,8 @@ func obtain_any_item() -> void:
 func use_item(item: ItemData) -> void:
 	if item == null or not GameState.can_fire_item(item):
 		return
+	if not put_away_pending_use():
+		return
 	# AN ITEM THAT AIMS IS ARMED HERE AND FIRED ON THE BOARD (Staff of Flame).
 	# Nothing is spent by this press: GameState.use_item empties a charged bar the
 	# moment it fires, so an item whose effect needs a body picked has to wait for
@@ -4536,6 +4540,46 @@ func _on_loot_throw_cancelled(_entry: Dictionary, _index: int) -> void:
 	_throw_modal = null
 	if modal != null and is_instance_valid(modal) and modal.has_method("throw_cancelled"):
 		modal.throw_cancelled()
+
+# --- one use at a time ------------------------------------------------------
+
+# ONE USE AT A TIME (the owner, 24 Oct 2026). A use that is still waiting for its
+# target — an aimed relic, a bottle or a wand or a weapon armed over the board, a
+# Push or a Bomb, the Smelter's popup — is PUT BACK when another item or piece of
+# loot is used, rather than left armed under it. Before this, an instant item
+# (Ride the Bus) fired straight over an armed Staff of Flame and left it waiting,
+# so the next click on the board fired a use the player had moved on from.
+#
+# Every one of those has spent nothing yet (the charge comes off when the click
+# lands), so putting it back costs nothing; a throw's use screen is closed rather
+# than brought back, since the player has chosen something else. A pick that can
+# be backed out of (`on_cancel`) is backed out of.
+#
+# THE ONE THING THAT CANNOT BE PUT BACK is a pick a piece of loot is waiting on
+# AFTER it was spent — a Scroll of Identify asking which piece, a Scare Monster
+# asking which body. The scroll is gone and its echoes have fired, so there is no
+# "before" to return to. That one is finished first: the new use is refused, and
+# says so. False when the new use should not go ahead.
+func put_away_pending_use() -> bool:
+	var pick: Node = owned_pick()
+	if pick != null:
+		if not pick.on_cancel.is_valid():
+			Notifications.notify("Finish choosing for the piece you already used first.",
+				UITheme.TEXT_DIM)
+			return false
+		pick.cancel()
+	if _smelt_modal != null and is_instance_valid(_smelt_modal):
+		_smelt_modal.close()
+		_smelt_modal = null
+	if _board != null and is_instance_valid(_board) and _board.is_aiming():
+		# Taken off the overworld first, so the board's cancel does not bring the
+		# throw's use screen back up.
+		var modal: Node = _throw_modal
+		_throw_modal = null
+		_board.disarm()
+		if modal != null and is_instance_valid(modal) and modal.has_method("put_away"):
+			modal.put_away()
+	return true
 
 # --- choosing something you own, in the pack (OwnedPick.gd) -----------------
 
