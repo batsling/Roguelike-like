@@ -513,6 +513,10 @@ func _build_game_column(game: GameData, accent: Color) -> Control:
 		art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		UITheme.attach_tier_badge(art, game.id)
+		# The offering card's key, on the same cover — lifted clear of the rank
+		# circle that sits on this frame's bottom middle.
+		if _key_dest() != &"" and not bool(_choice.get("free_rift", false)):
+			UITheme.attach_key_badge(art, RankBadge.diameter_for(COVER.x) * 0.5)
 		var frame := PanelContainer.new()
 		frame.add_theme_stylebox_override("panel", UITheme.flat(UITheme.BG, 8, 5, 1, accent))
 		frame.size_flags_vertical = Control.SIZE_SHRINK_BEGIN

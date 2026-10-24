@@ -402,10 +402,14 @@ func _make_choice_card(index: int, choice: Dictionary) -> Control:
 		art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		art.texture = game.cover_image
 		UITheme.attach_tier_badge(art, game.id)
+		if keyed and not bool(choice.get("free_rift", false)):
+			UITheme.attach_key_badge(art)
 		btn.add_child(art)
 	else:
 		btn.text = game.display_name
 		btn.add_theme_color_override("font_color", accent)
+		if keyed and not bool(choice.get("free_rift", false)):
+			UITheme.attach_key_badge(btn)
 	card.add_child(btn)
 
 	var name_lbl := Label.new()

@@ -514,6 +514,54 @@ static func attach_tier_badge(art: Control, game_id, min_art: float = TIER_BADGE
 	art.clip_contents = false
 	art.add_child(badge)
 
+# A RIFT THAT NEEDS A KEY wears one: a 🗝 disc centred on the BOTTOM edge of its
+# cover, half hanging off it, so the price is on the picture itself and a keyed
+# rift card reads differently from a rift that is simply on the map
+# (docs/rifts-design.md §8). The top-right corner is the tier badge's, which is
+# why this is the bottom. Follows the drawn picture under a letterbox, the same
+# way the tier badge does. `lift` raises it off the edge, for a cover whose
+# bottom middle already carries a RankBadge (the game popup).
+const KEY_BADGE_SIZE := 28
+
+static func attach_key_badge(art: Control, lift: float = 0.0) -> void:
+	if art == null or not is_instance_valid(art):
+		return
+	var badge := PanelContainer.new()
+	badge.name = "KeyBadge"
+	badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	badge.add_theme_stylebox_override("panel", flat(BG, KEY_BADGE_SIZE / 2, 0, 2, RIFT))
+	var glyph := Label.new()
+	glyph.text = "🗝"
+	glyph.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	glyph.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	glyph.add_theme_font_size_override("font_size", FONT_BODY)
+	glyph.add_theme_color_override("font_color", GOLD)
+	badge.add_child(glyph)
+	badge.custom_minimum_size = Vector2(KEY_BADGE_SIZE, KEY_BADGE_SIZE)
+	badge.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
+	badge.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	badge.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	var half: float = float(KEY_BADGE_SIZE) * 0.5
+	badge.offset_left = -half
+	badge.offset_right = half
+	badge.offset_top = -half - lift
+	badge.offset_bottom = half - lift
+	if art is TextureRect and (art as TextureRect).stretch_mode == TextureRect.STRETCH_KEEP_ASPECT_CENTERED:
+		var tr := art as TextureRect
+		var place := func() -> void:
+			if tr.texture == null or not is_instance_valid(badge):
+				return
+			var tex: Vector2 = tr.texture.get_size()
+			if tex.x <= 0.0 or tex.y <= 0.0 or tr.size.y <= 0.0:
+				return
+			var drawn_h: float = tex.y * minf(tr.size.x / tex.x, tr.size.y / tex.y)
+			var gap: float = (tr.size.y - drawn_h) * 0.5 + lift
+			badge.offset_top = -half - gap
+			badge.offset_bottom = half - gap
+		tr.resized.connect(place)
+	art.clip_contents = false
+	art.add_child(badge)
+
 # HOW FAR THE BADGE STANDS OUT past the art's top and right edges.
 static func tier_badge_overhang() -> int:
 	return ceili(float(TIER_BADGE_H) * TIER_BADGE_OUT)

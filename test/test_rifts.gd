@@ -382,6 +382,29 @@ func test_a_rift_card_wears_the_swirl_and_the_flag() -> void:
 	assert_null(_find_shader_rect(plain_card), "an influence game's card has no swirl")
 	assert_false(Page.labels_text(plain_card).contains("RIFT"), "and no rift flag")
 
+# A rift that costs a key wears one on its cover's bottom edge; a free rift (a
+# location's) and a rift already on the map do not.
+func test_a_keyed_rift_card_wears_the_key_on_its_cover() -> void:
+	var got: Dictionary = _overworld_with_a_rift()
+	if got.is_empty():
+		pending("this catalogue deals no rifts")
+		return
+	var ui = got["ui"]
+	var rift_id := StringName(got["rift"]["game"])
+	var dest := StringName(got["rift"]["a"])
+	var keyed: Control = ui._offering._make_choice_card(0, {"game": Data.get_game(rift_id),
+		"slot": rift_id, "amulet": false, "boss": false, "rift_key": dest})
+	autofree(keyed)
+	assert_not_null(keyed.find_child("KeyBadge", true, false), "a keyed rift wears the key")
+	var free: Control = ui._offering._make_choice_card(1, {"game": Data.get_game(rift_id),
+		"slot": rift_id, "amulet": false, "boss": false, "rift_key": dest, "free_rift": true})
+	autofree(free)
+	assert_null(free.find_child("KeyBadge", true, false), "a free rift needs no key, so shows none")
+	var laid: Control = ui._offering._make_choice_card(2, {"game": Data.get_game(rift_id),
+		"slot": rift_id, "amulet": false, "boss": false})
+	autofree(laid)
+	assert_null(laid.find_child("KeyBadge", true, false), "nor does a rift already on the map")
+
 # Standing on a rift game, a step to either end is not an influence, and the
 # popup's proof slot says so instead of showing nothing.
 func test_the_proof_slot_on_a_rift_step_says_no_known_influence() -> void:
