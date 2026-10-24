@@ -6,10 +6,10 @@ Videos and podcast episodes where a developer may say what inspired their game, 
 
 | | games | results |
 |---|---|---|
-| 1. Confirm a suspected connection | 110 | 308 |
-| 2. Games with few connections | 178 | 559 |
+| 1. Confirm a suspected connection | 111 | 312 |
+| 2. Games with few connections | 181 | 576 |
 
-Searched 543 of the 543 games that qualify; 255 had nothing that looked like the developer talking.
+Searched 554 of the 554 games that qualify; 262 had nothing that looked like the developer talking.
 
 ---
 
@@ -76,7 +76,7 @@ Listen for: **Torneko's Great Adventure: Mystery Dungeon** (sheet says "look at 
 
 - [ ] podcast [Azure Dreams](https://podcasts.apple.com/us/podcast/azure-dreams/id1650474911?i=1000696127812) — GROGPOD Roguelike Podcast · 123 min · 2025-02-26 — cue in the description
 
-### Backpack Battles (2023) — 10 connections
+### Backpack Battles (2023) — 11 connections
 
 Listen for: **Super Auto Pets** (sheet says "check folder")
 
@@ -145,6 +145,7 @@ Listen for: **Slay the Spire** (sheet says "check folder"); **Vampire Survivors*
 Listen for: **Risk of Rain** (sheet says "check folder")
 
 - [ ] video [We're Talkin' All About Bravery And Greed w/ Rekka Games!](https://www.youtube.com/watch?v=mD25KHu5PCY) — The Level 857 Video Game Podcast · 2:20:58 · Streamed 3y ago — names the developer
+- [ ] podcast [We're Talkin' All About Bravery And Greed w/ Rekka Games!](https://podcasts.apple.com/us/podcast/were-talkin-all-about-bravery-and-greed-w-rekka-games/id1185249645?i=1000610405923) — The Level 857 Video Game Podcast · 132 min · 2023-04-24 — names the developer
 
 ### Brotato (2022) — 22 connections
 
@@ -561,6 +562,14 @@ Listen for: **Vampire Survivors** (sheet says "check folder")
 - [ ] podcast [Bobby Lee and Nimrods](https://podcasts.apple.com/us/podcast/bobby-lee-and-nimrods/id1480311435?i=1000782881219) — Office Ladies · 49 min · 2026-08-12 — cue in the description
 - [ ] podcast [Lanterns + Nimrods + Brink of War + More Reviews](https://podcasts.apple.com/us/podcast/lanterns-nimrods-brink-of-war-more-reviews/id1202134377?i=1000783361263) — Film Threat · 123 min · 2026-08-14 — cue in the description
 
+### Nitro Kid (2022) — 2 connections
+
+Listen for: **Slay the Spire** (sheet says "check folder"); **Into the Breach** (sheet says "check folder")
+
+- [ ] video [The Sloanes: Live Exclusives ft. Chris Cole & Nitro Kid](https://www.youtube.com/watch?v=Sog4rJAnXXg) — Suds and Squared Circle Media · 1:54:11 · Streamed 3mo ago — ft.
+- [ ] video [The Sloanes: Live Exclusives ft. Chris Cole & Nitro Kid](https://www.youtube.com/watch?v=RDWjXbn3wYg) — Ringside Rivalries · 1:54:11 · Streamed 3mo ago — ft.
+- [ ] podcast [The Sloanes: Live Exclusives ft. Chris Cole & Nitro Kid](https://podcasts.apple.com/us/podcast/the-sloanes-live-exclusives-ft-chris-cole-nitro-kid/id1448325904?i=1000777544639) — Suds and Squared Circle Media · 114 min · 2026-07-20 — ft.
+
 ### Noita (2019) — 10 connections
 
 Listen for: **Spelunky Classic** (sheet says "check folder")
@@ -883,6 +892,12 @@ Held on the map by one connection or none. Listen for any game on the chart.
 
 - [ ] video [Blade Assault / Holden's Half Hour](https://www.youtube.com/watch?v=rBRXnzAdtdk) — Holden's Game Archive · 29:34 · 3y ago — names the developer
 
+### Bloodletter (2026) — 0 connections
+
+- [ ] podcast [Episode 80 with The Shadow Cabinet and Bloodletter Writer and Editor Joseph Illidge](https://podcasts.apple.com/us/podcast/episode-80-with-the-shadow-cabinet-and/id1651963393?i=1000730912717) — Super Powered Fancast · 56 min · 2025-10-09 — cue in the description
+- [ ] podcast [Episode 80 with The Shadow Cabinet and Bloodletter Writer and Editor Joseph Illidge](https://podcasts.apple.com/us/podcast/episode-80-with-the-shadow-cabinet-and/id1105090324?i=1000730913024) — Super Powered Fancast · 56 min · 2025-10-09 — cue in the description
+- [ ] podcast [#12 - A Different Kind of Hell with Pete Carparelli of Bloodletter](https://podcasts.apple.com/us/podcast/12-a-different-kind-of-hell-with/id1683728776?i=1000621167403) — Lost in the Catacombs · 64 min · 2023-07-14 — cue in the description
+
 ### Blue Prince (2025) — 0 connections
 
 - [ ] video [BLUE PRINCE: An Interview with Tonda Ros](https://www.youtube.com/watch?v=7kX5jeBMWjE) — Myster Rogers · 1:22:08 · 1y ago — interview
@@ -957,10 +972,14 @@ Held on the map by one connection or none. Listen for any game on the chart.
 
 ### Grail (2026) — 0 connections
 
-- [ ] video [Holy Grail Layout / Frontend Machine Coding Question / CSS Interview](https://www.youtube.com/watch?v=WcEop9MnNS4) — JsCafe · 23:05 · 3y ago — interview
+- [ ] video [Tainted Grail: The Fall of Avalon - Dev Q&A](https://www.youtube.com/watch?v=Uw6gfuzKZIw) — Awaken Realms · 7:28 · 5mo ago — dev, q&a
 - [ ] video [Holy Grail in React / UI Interview Question](https://www.youtube.com/watch?v=0g-vXobLXr8) — Akash Ingole · 6:19 · 1y ago — interview
-- [ ] video [Brian Jackson of Perfmatters: "Holy Grail" WordPress Site Speed Interview / HolyGrail WP](https://www.youtube.com/watch?v=LYheSY3z_bQ) — Matchless Web · 1:11:06 · 5y ago — interview
-- [ ] video [Tainted Grail: The Fall of Avalon - Dev Q&A](https://www.youtube.com/watch?v=Uw6gfuzKZIw) — Awaken Realms · 7:28 · 4mo ago — dev, q&a
+- [ ] video [GreatFrontEnd Frontend React Interview Question - Holy Grail](https://www.youtube.com/watch?v=tLbgfxyquDg) — Alpha-Code · 5:09 · 1y ago — interview
+- [ ] video [Holy Grail In React / Front-end machine coding interview questions / 2025 #react](https://www.youtube.com/watch?v=ZiKPvBcylGU) — formulaC Coder · 8:02 · 1y ago — interview
+- [ ] podcast [Detecting Cancer Before Symptoms: How GRAIL’s Galleri Test Is Transforming Early Detection with Trudy McKanna,  Senior Field Medical Director for GRAIL](https://podcasts.apple.com/us/podcast/detecting-cancer-before-symptoms-how-grails-galleri/id1246067757?i=1000739838409) — Outcomes Rocket · 12 min · 2025-12-05 — director
+- [ ] podcast [833 Galahad and the Grail (with Malcolm Guite)](https://podcasts.apple.com/us/podcast/833-galahad-and-the-grail-with-malcolm-guite/id1048375034?i=1000791957816) — The History of Literature · 54 min · 2026-09-28 — cue in the description
+- [ ] podcast [The Power of Story and "Galahad and the Grail" with Malcolm Guite](https://podcasts.apple.com/us/podcast/the-power-of-story-and-galahad/id1460580357?i=1000766174130) — The Literary Life Podcast · 72 min · 2026-05-05 — cue in the description
+- [ ] podcast [The Holy Grail with Tansy Baigent](https://podcasts.apple.com/us/podcast/the-holy-grail-with-tansy-baigent/id732915228?i=1000391738454) — Stuff They Don't Want You To Know · 51 min · 2017-09-01 — cue in the description
 
 ### Granvir (2025) — 0 connections
 
@@ -1060,6 +1079,10 @@ Held on the map by one connection or none. Listen for any game on the chart.
 
 - [ ] video [NoC - Indie Game Recommendation: Rogue Flight](https://www.youtube.com/watch?v=P4MXYoDF62k) — TheEliteX1 · 2:29 · 1y ago — names the developer
 
+### Rogue Waters (2024) — 0 connections
+
+- [ ] podcast ["Rogue Waters". Gra inspirowana wielkim kinowym hitem](https://podcasts.apple.com/us/podcast/rogue-waters-gra-inspirowana-wielkim-kinowym-hitem/id1735317655?i=1000770950274) — 24. poziom · 27 min · 2025-02-09 — names the developer
+
 ### Slots & Daggers (2025) — 0 connections
 
 - [ ] video [Episode 34 - Slots & Daggers](https://www.youtube.com/watch?v=tdMbpAMqkDY) — tiny game chronicles · 46:21 · 8mo ago — names the developer
@@ -1084,6 +1107,10 @@ Held on the map by one connection or none. Listen for any game on the chart.
 - [ ] video [Sulfur Dev Interview // Six One Indie Showcase](https://www.youtube.com/watch?v=s9xKFq3XdPo) — Six One Indie · 35:32 · 2y ago — dev, interview
 - [ ] podcast [The Spawn Chunks 411: Straw Slabs And Sulfur Stories](https://podcasts.apple.com/us/podcast/the-spawn-chunks-411-straw-slabs-and-sulfur-stories/id1433556215?i=1000777601016) — The Spawn Chunks - A Minecraft Podcast · 63 min · 2026-07-20 — cue in the description
 
+### Super Alloy Crush (2026) — 0 connections
+
+- [ ] video [Super Alloy Crush Ft. Rafinhia ("first time")](https://www.youtube.com/watch?v=ZNlAm57YqhQ) — EmilioLoco28 · 1:37:25 · Streamed 5mo ago — ft.
+
 ### Tangy TD (2026) — 0 connections
 
 - [ ] video [An indie dev made $250k in a week and EARNED IT. / Tangy TD](https://www.youtube.com/watch?v=sooW5ABU_LY) — Haelian · 48:51 · 6mo ago — dev, names the developer
@@ -1101,10 +1128,6 @@ Held on the map by one connection or none. Listen for any game on the chart.
 - [ ] podcast [Интервью об игре The King is Watching](https://podcasts.apple.com/us/podcast/%D0%B8%D0%BD%D1%82%D0%B5%D1%80%D0%B2%D1%8C%D1%8E-%D0%BE%D0%B1-%D0%B8%D0%B3%D1%80%D0%B5-the-king-is-watching/id884391810?i=1000774198941) — Ноль кадров в секунду · 78 min · 2026-06-25 — интервью
 - [ ] podcast [428. История успеха The King Is Watching](https://podcasts.apple.com/us/podcast/428-%D0%B8%D1%81%D1%82%D0%BE%D1%80%D0%B8%D1%8F-%D1%83%D1%81%D0%BF%D0%B5%D1%85%D0%B0-the-king-is-watching/id560881209?i=1000726410571) — Как делают игры · 88 min · 2025-09-11 — names the developer
 - [ ] podcast [The King is Watching и путь к 300к копиям](https://podcasts.apple.com/us/podcast/the-king-is-watching-%D0%B8-%D0%BF%D1%83%D1%82%D1%8C-%D0%BA-300%D0%BA-%D0%BA%D0%BE%D0%BF%D0%B8%D1%8F%D0%BC/id1834730098?i=1000729406864) — Посиделки с инди · 122 min · 2025-09-30 — names the developer
-
-### Touhou Hero of Ice Fairy (2023) — 0 connections
-
-- [ ] video [Touhou Hero of Ice Fairy DEMO (English release)](https://www.youtube.com/watch?v=LWwRnl76EGU) — Fahmi4869 · 21:00 · 4y ago — names the developer
 
 ### Underdogs (2024) — 0 connections
 
@@ -1516,6 +1539,10 @@ Held on the map by one connection or none. Listen for any game on the chart.
 - [ ] video [Hardest Part of Making an Indie Game - Hexagod Devlog](https://www.youtube.com/watch?v=kQLxKlyGILk) — Aarimous · 0:31 · 2y ago — devlog, names the developer
 - [ ] video [Thomas Stewart #6: Post Game Launch Blues? / Scope Creepers a Game Dev Podcast](https://www.youtube.com/watch?v=GfqOQaciyD4) — Scope Creepers: A Game Dev Podcast and 2 more · 1:17:04 · 1y ago — dev, names the developer
 
+### Insider Trading (2026) — 1 connection
+
+- [ ] podcast [The Batista brothers: Meat and money](https://podcasts.apple.com/us/podcast/the-batista-brothers-meat-and-money/id1701585239?i=1000777896368) — Good Bad Billionaire · 39 min · 2026-08-03 — cue in the description
+
 ### Jupiter Hell (2019) — 1 connection
 
 - [ ] video [An interview with the Lead Artist of Jupiter Hell - eXputer Exclusive](https://www.youtube.com/watch?v=VOpnOdAgDjM) — eXputer · 43:10 · 5y ago — interview, names the developer
@@ -1613,7 +1640,11 @@ Held on the map by one connection or none. Listen for any game on the chart.
 
 ### Necropolis (2016) — 1 connection
 
-- [ ] video [Behind the Great Pyramid: Exploring the Necropolis That Most People Miss](https://www.youtube.com/watch?v=qR86AtDFl5M) — History with Cy · 2:06:04 · 2mo ago — behind the
+- [ ] video [E3 2016 - Bandai Namco Necropolis Interview](https://www.youtube.com/watch?v=x7VQG-C5YzI) — Neoseeker · 4:06 · 10y ago — interview, names the developer
+- [ ] video [NECROPOLIS Co-Op Death Jam! / Wolfbrandt Interview! / Lobos Jr., DreadedCone, Knutaf, & rbFrosty!](https://www.youtube.com/watch?v=7HgPUcjkDkI) — Hyper RPG · 8:37 · 10y ago — interview, names the developer
+- [ ] video [NECROPOLIS Developer Q&A!](https://www.youtube.com/watch?v=68dBVhiR6o4) — Hyper RPG · 39:36 · 10y ago — developer, q&a, names the developer
+- [ ] video [Necropolis - Mike McCain Interview](https://www.youtube.com/watch?v=v0eVHplBvoc) — Gamereactor · 7:17 · 11y ago — interview, names the developer
+- [ ] podcast [The Necropolis - Dissection](https://podcasts.apple.com/us/podcast/the-necropolis-dissection/id1707858879?i=1000661686110) — RPG Reanimators · 51 min · 2024-07-09 — cue in the description
 
 ### OneBit Adventure (2019) — 1 connection
 
@@ -1722,6 +1753,10 @@ Held on the map by one connection or none. Listen for any game on the chart.
 - [ ] video [SWW Interviews Episode 24: Galactic Ruler, Kakatte Koi Yo, and Roundguard](https://www.youtube.com/watch?v=5c5cPiZhQNk) — The SWW Show · 1:33:11 · 1y ago — interview
 - [ ] video [Roundguard with Andrea Roberts (AAP - 0012)](https://www.youtube.com/watch?v=R-D0NEDiZw8) — Tim Chaten · 32:40 · 6y ago — names the developer
 - [ ] video [PAX West Spotlight: Roundguard](https://www.youtube.com/watch?v=ce1mg-msPyc) — The Geekly Grind · 4:27 · 8y ago — cue in the description
+- [ ] podcast [MomoCon 2019: Roundguard Interview](https://podcasts.apple.com/us/podcast/momocon-2019-roundguard-interview/id1468954668?i=1000441838399) — Altered Confusion Interviews · 4 min · 2019-06-12 — interview
+- [ ] podcast [SWW Interviews Episode 24: Galactic Ruler, Kakatte Koi Yo, and Roundguard](https://podcasts.apple.com/us/podcast/sww-interviews-episode-24-galactic-ruler-kakatte-koi/id1435072446?i=1000473660852) — The SWW Show · 93 min · 2020-05-05 — interview
+- [ ] podcast [Roundguard with Andrea Roberts (AAP - 0012)](https://podcasts.apple.com/us/podcast/roundguard-with-andrea-roberts-aap-0012/id1482011806?i=1000470748093) — Apple Arcade Plus · 32 min · 2020-04-07 — names the developer
+- [ ] podcast [The Physics of Uncertainly with Andrea Roberts (Roundguard)](https://podcasts.apple.com/us/podcast/the-physics-of-uncertainly-with-andrea-roberts-roundguard/id1435365252?i=1000468341198) — The Secret Lives of Games · 82 min · 2020-03-13 — names the developer
 
 ### Rounds (2021) — 1 connection
 
@@ -1882,7 +1917,7 @@ Held on the map by one connection or none. Listen for any game on the chart.
 - [ ] video [DEVIN TOWNSEND - "Transcendence" interview](https://www.youtube.com/watch?v=bBW3rjyK8M8) — GuitarManiaEU · 18:58 · 9y ago — interview
 - [ ] video [Transcendence 2017 / Interview with Navin Tauro](https://www.youtube.com/watch?v=qDuVc_wjJbM) — CSOL TISS · 1:31 · 9y ago — interview
 - [ ] video [Transcendence 2017 / Interview with Mathivathani Rathinam](https://www.youtube.com/watch?v=8h6bcIgoWVQ) — CSOL TISS · 2:04 · 9y ago — interview
-- [ ] video [Transcendence 2017 / Interview with Silna Nair](https://www.youtube.com/watch?v=wDSHQXPDa20) — CSOL TISS · 1:26 · 9y ago — interview
+- [ ] video [Transcendence Developer Journal #1](https://www.youtube.com/watch?v=TrRmJZwmVUc) — InfernoPlus · 1:18 · 15y ago — developer
 
 ### Ultra Mega Cats (2025) — 1 connection
 
