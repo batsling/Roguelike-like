@@ -128,3 +128,12 @@ static func tres_count(path: String) -> int:
 		if f.ends_with(".tres") or f.ends_with(".res"):
 			n += 1
 	return n
+
+# A shop at `node`, opened the way a player opens one (§19.10): the bar filled to
+# what the next shop costs, then spent there. Its shelf and keeper are rolled on
+# the spot. Returns `node`, so a test can write `var shop := F.open_shop(id)`.
+static func open_shop(node: StringName) -> StringName:
+	if not ShopSystem.is_shop(node):
+		GameState.shop_bar = ShopSystem.bar_target()
+		ShopSystem.open_at(node)
+	return node

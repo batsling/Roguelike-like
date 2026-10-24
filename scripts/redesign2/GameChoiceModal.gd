@@ -18,8 +18,8 @@ extends Control
 #     arrowed graph the 🗺 map window shows, for the road as it would stand if
 #     you took this game. It takes the whole right-hand side, top to buttons,
 #     with the popup's ✕ over its corner;
-#   • the GAME — its cover, type and year, the node's kind, its connections and
-#     the shops and champions among them, the Temporary Shields it grants, the
+#   • the GAME — its cover, type and year, its shop if one was opened there, its
+#     connections and the shops among them, the Temporary Shields it grants, the
 #     pace it puts the board on, and your record there (which opens the list of
 #     every enemy you have beaten at it);
 #   • the ENEMIES APPROACHING — as the checklist will list them once you commit:
@@ -91,7 +91,7 @@ var _zoom: float = 1.0
 # decision, not a second decision.
 var _node_card: PanelContainer = null
 var _node_card_body: VBoxContainer = null
-# The NODE this card stands on when it is a Shop node, read by the kind line.
+# The NODE this card stands on, read by the shop line.
 var _shop_node: StringName = &""
 
 func _init() -> void:
@@ -156,12 +156,9 @@ func _build() -> void:
 	if bool(_notes.get("arrival", false)):
 		root.add_child(_build_arrival_banner(String(_notes.get("arrival_note", ""))))
 
-	# A SHOP NODE (§14, §19.1) is said in the game's facts as its kind — "$ Shop",
-	# like every other kind — with what the banner that used to sit here said (a
-	# shop stands here INSTEAD of an event, §14.4, and what is left on a visited
-	# shelf) in that line's hover. The banner cost the map two rows on every shop.
-	#
-	# Asked of the NODE (the slot), not the game on it (§19.2).
+	# A SHOP opened here (§19.10) is said in the game's facts as "🛒 Shop", with
+	# what is left on a visited shelf in that line's hover. Asked of the NODE (the
+	# slot), not the game on it.
 	var shop_node: StringName = StringName(_choice.get("slot", &""))
 	if shop_node == &"" and game != null:
 		shop_node = game.id
@@ -205,9 +202,9 @@ func _build() -> void:
 # places you can actually go next. Destroyed games are dropped for the same
 # reason — a bashed neighbour is a door that no longer opens.
 #
-# Returns {"total": int, "events": int, "shops": int, "champions": int}.
+# Returns {"total": int, "events": int, "shops": int}.
 static func connection_counts(game_id: StringName) -> Dictionary:
-	var out := {"total": 0, "events": 0, "shops": 0, "champions": 0}
+	var out := {"total": 0, "events": 0, "shops": 0}
 	if game_id == &"":
 		return out
 	for n in RunGraph.neighbors(game_id):
@@ -218,15 +215,11 @@ static func connection_counts(game_id: StringName) -> Dictionary:
 		# but "would one fire". Every game pays an event the first time it is
 		# played, so this counts the neighbours the run has not already taken one
 		# from, which is the number that actually shapes where to go next.
-		#
-		# A Shop node is not one of them. A shop is what happens there, INSTEAD of
-		# an event (§14.4), so counting it under both headings would promise the
-		# same neighbour twice and overstate the events on offer.
-		if GameState.node_kind(n) == RunGraph.NodeKind.CHAMPION:
-			out["champions"] += 1
+		# A shop the player opened (§19.10) is counted too: going back to one is a
+		# routing reason.
 		if ShopSystem.is_shop(n):
 			out["shops"] += 1
-		elif not GameState.event_nodes_fired.has(n):
+		if not GameState.event_nodes_fired.has(n):
 			out["events"] += 1
 	return out
 
@@ -234,8 +227,8 @@ static func connection_counts(game_id: StringName) -> Dictionary:
 #
 # TWO LINES, because one was misread: "2 connections · 1 event · 🛒 1 shop" was
 # taken for THIS node's own shop. Now the count stands alone, and under it, in
-# smaller print, the neighbours worth routing for — "$ 1 nearby shop · !! 1 nearby
-# champion", in the marks the map's markers wear — or nothing when there are none.
+# smaller print, the neighbours worth routing for — "🛒 1 nearby shop", a shop the
+# player opened — or nothing when there are none.
 static func connection_text(counts: Dictionary) -> String:
 	var total: int = int(counts.get("total", 0))
 	if total <= 0:
@@ -245,13 +238,8 @@ static func connection_text(counts: Dictionary) -> String:
 static func nearby_text(counts: Dictionary) -> String:
 	var parts: Array = []
 	var shops: int = int(counts.get("shops", 0))
-	var champs: int = int(counts.get("champions", 0))
 	if shops > 0:
-		parts.append("%s %d nearby shop%s" % [RunGraph.kind_mark(RunGraph.NodeKind.SHOP),
-			shops, "" if shops == 1 else "s"])
-	if champs > 0:
-		parts.append("%s %d nearby champion%s" % [RunGraph.kind_mark(RunGraph.NodeKind.CHAMPION),
-			champs, "" if champs == 1 else "s"])
+		parts.append("🛒 %d nearby shop%s" % [shops, "" if shops == 1 else "s"])
 	return "  ·  ".join(PackedStringArray(parts))
 
 static func connection_tip(game: GameData, counts: Dictionary) -> String:
@@ -260,11 +248,10 @@ static func connection_tip(game: GameData, counts: Dictionary) -> String:
 	var events: int = int(counts.get("events", 0))
 	var shops: int = int(counts.get("shops", 0))
 	return ("%s %s to %s — the pool the next offering is drawn from. "
-		+ "%d of them still %s an event; %d %s, where the shop is "
-		+ "what happens instead of one.") % [
+		+ "%d of them still %s an event; %d %s a shop you opened.") % [
 		Plural.count(total, "game"), "connects" if total == 1 else "connect", name_text,
 		events, "owes" if events == 1 else "owe",
-		shops, "is a Shop node" if shops == 1 else "are Shop nodes"]
+		shops, "has" if shops == 1 else "have"]
 
 # The room the popup has: the screen minus the run's pinned header bar, which is
 # drawn OVER this modal and would otherwise take the popup's title row with it
@@ -399,21 +386,15 @@ func _build_game_column(game: GameData, accent: Color) -> Control:
 	chip.add_theme_color_override("font_color", RunGraph.type_color(game.type))
 	facts.add_child(chip)
 
-	# THE NODE'S KIND (§19.8), every kind, in the mark and colour the map's marker
-	# on the path wears — so "$ Shop" here and "$" on the road are one fact. On a
-	# Shop node the hover says what the banner over the popup used to: a shop
-	# stands here INSTEAD of an event (§14.4), and what is left on a visited shelf.
-	var kind: int = int(_notes.get("kind", -1))
-	if kind >= 0:
-		var tip: String = RunGraph.kind_tip(kind)
-		if _shop_node != &"" and ShopSystem.is_shop(_shop_node):
-			var lines: Array = [ShopSystem.headline(_shop_node),
-				"No event fires here — the shop is what happens instead."]
-			for line in ShopSystem.stock_lines(_shop_node):
-				lines.append("• %s" % line)
-			tip = "\n".join(PackedStringArray(lines))
-		facts.add_child(_fact_line("%s  %s" % [RunGraph.kind_mark(kind), RunGraph.kind_label(kind)],
-			UITheme.kind_color(kind), tip))
+	# A SHOP THE PLAYER OPENED HERE (§19.10), with what is left on a visited shelf
+	# on the hover.
+	if _shop_node != &"" and ShopSystem.is_shop(_shop_node):
+		var lines: Array = [ShopSystem.headline(_shop_node),
+			"You opened a shop here; it stays for the rest of the run."]
+		for line in ShopSystem.stock_lines(_shop_node):
+			lines.append("• %s" % line)
+		facts.add_child(_fact_line("🛒  Shop", UITheme.SHOP_GREEN,
+			"\n".join(PackedStringArray(lines))))
 
 	# "How many doors does this open" is a routing fact, and routing is what the
 	# popup is opened to decide — so it heads the list.
@@ -421,7 +402,7 @@ func _build_game_column(game: GameData, accent: Color) -> Control:
 	# A RIFT KEY card's game is not on the map until the key is spent, so the graph
 	# has no doors to count for it; it will have exactly one, its destination.
 	if _key_dest() != &"":
-		counts = {"total": 1, "events": 0, "shops": 0, "champions": 0}
+		counts = {"total": 1, "events": 0, "shops": 0}
 	var conn := Label.new()
 	conn.text = connection_text(counts)
 	conn.tooltip_text = connection_tip(game, counts)
@@ -1406,7 +1387,7 @@ func _build_route_column() -> Control:
 	# NO HEADING AND NO LEGEND: the map takes the column's whole height, from the
 	# top of the popup to its buttons, with the popup's ✕ over its corner. The
 	# "★ OPTIMAL — N steps left" line and the sentence under it cost the map two
-	# rows; the kind marks are explained on every marker's hover.
+	# rows; a shop's marker explains itself on its hover.
 	var frame := PanelContainer.new()
 	frame.add_theme_stylebox_override("panel",
 		UITheme.panel_box(UITheme.BG, UITheme.BORDER, 8, 6, 1))

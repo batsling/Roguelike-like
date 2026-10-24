@@ -1,12 +1,14 @@
 extends GutTest
 
 # Tests for CURRENCY AND SHOPS (docs/games-first-redesign.md §14): the gold a
-# defeated enemy pays, the node games a shop stands at, the price ladder, the
+# defeated enemy pays, where a shop stands, the price ladder, the
 # shelf that persists across a run, buying, the Scramble reroll, and the whole
 # lot surviving a save/load round-trip.
 #
 # Data-layer only — ShopModal2 is the view and every mechanical thing it does
 # goes through ShopSystem, which is what's driven here.
+
+const Fixtures := preload("res://test/helpers/fixtures.gd")
 
 func before_each() -> void:
 	GameState.reset_run()
@@ -26,15 +28,14 @@ func _enemy(boss := false) -> GoalEnemyData:
 	e.boss = boss
 	return e
 
-# A Shop node to stand at — every shop test needs one, and which it is doesn't
-# matter to any of them. `before_each` resets the run, which clears the node
-# kinds, so this STAMPS a real on-map game as a Shop rather than hoping the deal
-# put one somewhere findable (§19.1). Returns &"" only on an empty catalogue.
+# A shop to stand at — every shop test needs one, and which game it is doesn't
+# matter to any of them. `before_each` resets the run, which takes every shop, so
+# this OPENS one at a real on-map game off a full bar, the way a player does
+# (§19.10). Returns &"" only on an empty catalogue.
 func _a_shop() -> StringName:
 	for g in Data.all_games():
 		if g is GameData and not RunGraph.is_off_map(g.id):
-			GameState.node_kinds[g.id] = RunGraph.NodeKind.SHOP
-			return g.id
+			return Fixtures.open_shop(g.id)
 	return &""
 
 # A shop's shelf, BROUGHT INTO BEING rather than read. `ShopSystem.stock` reports
@@ -47,50 +48,32 @@ func _rolled_shelf(shop_node: StringName) -> Array:
 	return ShopSystem.stock(shop_node)
 
 
-# --- where the shops are (§19.1, §19.7) -------------------------------------
+# --- where the shops are (§19.10) --------------------------------------------
 
-func test_a_shop_stands_at_a_shop_node_and_nowhere_else() -> void:
+func test_a_shop_stands_where_one_was_opened_and_nowhere_else() -> void:
 	var shop_node: StringName = _a_shop()
-	assert_true(ShopSystem.is_shop(shop_node), "a Shop node sells")
+	assert_true(ShopSystem.is_shop(shop_node), "an opened shop sells")
 	assert_false(ShopSystem.shop_for(shop_node).is_empty(), "and has a shelf")
-	for kind in [RunGraph.NodeKind.ENEMIES, RunGraph.NodeKind.EVENT,
-			RunGraph.NodeKind.CHAMPION]:
-		GameState.node_kinds[shop_node] = int(kind)
-		assert_false(ShopSystem.is_shop(shop_node),
-			"a %s node does not" % RunGraph.kind_label(int(kind)))
-	GameState.node_kinds.erase(shop_node)
-	assert_false(ShopSystem.is_shop(shop_node),
-		"nor does a game the run never dealt a kind, which reads as Enemies")
-	assert_false(ShopSystem.is_shop(&""), "and neither does nowhere")
+	assert_false(ShopSystem.is_shop(&""), "nowhere does not")
 	assert_true(ShopSystem.shop_for(&"__not_a_game__").is_empty(),
-		"a node that isn't a Shop has no shop")
+		"a node nobody opened a shop at has no shop")
 
 
-# THE HUBS ARE GONE (§19.7). The best-connected game on the map used to sell
-# whatever its kind; now it sells only if its node was dealt Shop.
-func test_the_best_connected_game_does_not_sell_unless_it_is_a_shop_node() -> void:
+# THE HUBS ARE GONE (§19.7), and so are Shop nodes (§19.10): the best-connected
+# game on the map sells only if the player opened a shop there.
+func test_the_best_connected_game_does_not_sell_unless_a_shop_was_opened() -> void:
 	var biggest: Array = RunGraph.best_connected(1)
 	if biggest.is_empty():
 		pending("no graph in this catalogue")
 		return
-	GameState.node_kinds[StringName(biggest[0])] = RunGraph.NodeKind.ENEMIES
 	assert_false(ShopSystem.is_shop(StringName(biggest[0])),
 		"the old first node is an ordinary node now")
 	assert_true(ShopSystem.shop_for(StringName(biggest[0])).is_empty())
 
 
-func test_shop_nodes_lists_every_shop_node_and_only_those() -> void:
-	GameState.node_kinds.clear()
-	GameState.node_kinds[&"b_game"] = RunGraph.NodeKind.SHOP
-	GameState.node_kinds[&"a_game"] = RunGraph.NodeKind.SHOP
-	GameState.node_kinds[&"c_game"] = RunGraph.NodeKind.EVENT
-	assert_eq(ShopSystem.shop_nodes(), [&"a_game", &"b_game"] as Array[StringName],
-		"both Shop nodes, in a stable order, and not the Event")
-
-
 # A save written while the hubs stood carries a `hubs` list beside the shelves.
 # It loads, the shelves come back, and the list is simply not read — where the
-# shops are is the node kinds now, which ride a blob of their own.
+# shops are is the shelves themselves now.
 func test_a_save_from_the_hub_era_still_restores_its_shelves() -> void:
 	var shop_node: StringName = _a_shop()
 	ShopSystem.shop_for(shop_node)
@@ -214,12 +197,17 @@ func test_the_stock_is_rolled_once_and_kept() -> void:
 	assert_eq(first, again, "asking twice does not re-roll the shelf")
 
 func test_peeking_does_not_bring_a_shop_into_existence() -> void:
-	# The offering redraws constantly; drawing a card must not decide what is in
-	# a shop the player has not walked into.
-	var shop_node: StringName = _a_shop()
-	assert_true(ShopSystem.peek(shop_node).is_empty(), "nothing rolled yet")
-	assert_true(ShopSystem.stock(shop_node).is_empty(), "and no stock to read")
-	assert_false(GameState.shops.has(shop_node), "the state is untouched")
+	# The offering redraws constantly, and asking after a game's shop must never
+	# put one there: a shop is opened by the player off the bar (§19.10).
+	var game: StringName = &""
+	for g in Data.all_games():
+		if g is GameData and not RunGraph.is_off_map(g.id):
+			game = g.id
+			break
+	assert_true(ShopSystem.peek(game).is_empty(), "no shop here")
+	assert_true(ShopSystem.stock(game).is_empty(), "and no stock to read")
+	assert_true(ShopSystem.shop_for(game).is_empty(), "nor does shop_for roll one")
+	assert_false(GameState.shops.has(game), "the state is untouched")
 
 func test_a_shop_says_nothing_about_its_stock_until_it_has_been_seen() -> void:
 	var shop_node: StringName = _a_shop()

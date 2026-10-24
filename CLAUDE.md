@@ -227,7 +227,7 @@ python3 tools/outline.py scripts/redesign2/Overworld2.gd --grep stun   # a file'
   each with how it was found — read it before blaming a seed. The usual suspects:
   the random offering stands a BOSS about one run in seven, the road stands
   bodies up at the end of ANY game (`pressure()`), two bodies can swap enemies in
-  one re-roll, node kinds are dealt per run (the "first game" may be a Shop), and
+  one re-roll, and
   a WIDTH that varies upstream of a text wrap. Find which case stopped being
   reachable with a stress loop that prints the state on failure.
 - **TWO ENEMY OBJECTS CAN SHARE ONE ID, so compare bodies by `id` and never by

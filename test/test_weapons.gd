@@ -283,7 +283,8 @@ func test_the_pack_grid_draws_the_glow() -> void:
 
 func _shop_node() -> StringName:
 	var gid: StringName = &"test_shop_node"
-	GameState.node_kinds[gid] = RunGraph.NodeKind.SHOP
+	GameState.shop_bar = ShopSystem.bar_target()
+	ShopSystem.open_at(gid)
 	return gid
 
 func test_a_shop_sells_three_loot_at_two_under_the_item_price() -> void:

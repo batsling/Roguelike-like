@@ -245,7 +245,7 @@ Keys already exist as a character stat, reserved by the spec for exactly this
   without the last run's rifts). Rift games are never a start or the Amulet, and
   leave the off-map pool while laid.
 - `GameState.rifts` is the run's copy, saved by `SaveSystem` and cleared by
-  `reset_run`; `Overworld2._build_start_options` lays them before node kinds.
+  `reset_run`; `Overworld2._build_start_options` lays them.
 - `GameStats` keeps each game's rift count and last run's rift games.
 - `Settings.rifts_enabled`, with a toggle in the Settings panel under Amulet generation.
 - `test/test_rifts.gd`.

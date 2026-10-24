@@ -33,32 +33,11 @@ static func report_beat(ui) -> void:
 	var landed: Dictionary = GameLoop2.arrival()
 	ui.report(true, [] if landed.is_empty() else [int(landed["instance"])])
 
-# Pick the card at `idx`, having first made sure it is an ordinary fight (§19.1).
-#
-# What a committed game stands on the board is decided by the NODE'S KIND — two
-# bodies on an Enemies node, one boss on a Champion, none at all on an Event or a
-# Shop — and the offering deals those at 60/20/10/10. So a test that picks and
-# then expects something to be standing there is a test whose subject is a die
-# roll. Forcing the kind on the one node about to be picked is the ARRANGE step;
-# the rest of the map is left as the run dealt it.
+# Pick the card at `idx`. It used to force the node's KIND to Enemies first, since
+# §19 dealt Event, Champion and Shop nodes that stood fewer bodies; every game
+# but the Amulet stands two since §19.10, so the name is all that is left of it.
 static func pick_enemies(ui, idx: int = 0) -> void:
-	if idx >= 0 and idx < ui._choices.size():
-		set_kind(ui._choices[idx], RunGraph.NodeKind.ENEMIES)
 	ui.pick(idx)
-
-# Force a choice's kind, ON THE SLOT (§19.2).
-#
-# The kind rides the NODE, not the game standing on it — that is what makes a
-# transmuted card play a different game at the same kind — so setting it against
-# the game id works for an ordinary card and silently does nothing for a
-# transmuted one, where the two differ.
-static func set_kind(choice: Dictionary, kind: int) -> void:
-	var slot := StringName(choice.get("slot", &""))
-	if slot == &"":
-		var g: GameData = choice.get("game")
-		slot = g.id if g != null else &""
-	if slot != &"":
-		GameState.node_kinds[slot] = kind
 
 # Walk off the screen a game ended on. Every report hands its haul to one
 # PostCombatScreen, and the drops it queued (the game's loot, a relic) are not what

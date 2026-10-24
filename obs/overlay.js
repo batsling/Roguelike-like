@@ -710,8 +710,9 @@ function drawMap(route, run) {
       label.textContent = n.name;
       text.appendChild(label);
       box.appendChild(text);
-      /* THE NODE'S KIND, as a badge on the cover's top-right corner — the in-game
-       * map's own (RouteLadder.kind_marker): its mark, in its colour. */
+      /* A SHOP THE PLAYER OPENED, as a badge on the cover's top-right corner —
+       * the in-game map's own (RouteLadder.shop_marker): its mark, in its colour.
+       * Blank `kind` on every other box. */
       if (n.kind) {
         const kind = document.createElement('span');
         kind.className = 'rung-kind';

@@ -208,20 +208,6 @@ func _reboot(character_id: StringName) -> void:
 	_ui.start_run(character_id)
 	Page.open_at_first_offering(_ui)
 
-# PICK A CARD, HAVING FIRST MADE SURE IT IS AN ORDINARY FIGHT (§19.1).
-#
-# Since the node kinds landed, what stands on the board when a game is committed
-# is decided by the KIND of the node picked: an Enemies node stands two bodies, a
-# Champion one boss, and an Event or a Shop none at all. The offering deals those
-# at 60/20/10/10, so a test that simply picks and then counts bodies is a test
-# whose subject is decided by a die roll — the exact shape this file's header
-# warns about, and one that would fail roughly two runs in five rather than
-# reliably.
-#
-# So forcing the kind is the ARRANGE step, not a workaround. It touches the one
-# node about to be picked and leaves the rest of the map as the run dealt it, so
-# the run-start assertions above still read a real distribution. Tests that are
-# ABOUT a kind set the kind themselves and call `_ui.pick` directly.
 # Hold the ladder away from a band boundary, so the next few spawns cannot be
 # the every-third-spawn capstone (§19.6).
 #
@@ -252,9 +238,9 @@ func _quiet_report() -> void:
 	_ui.report(false)
 	GameState.amulet_game_id = amulet
 
+# Pick a card. It forced the node's KIND to Enemies first while §19 dealt kinds
+# that stood fewer bodies; every game but the Amulet stands two since §19.10.
 func _pick_enemies(idx: int = 0) -> void:
-	if idx >= 0 and idx < _ui._choices.size():
-		Page.set_kind(_ui._choices[idx], RunGraph.NodeKind.ENEMIES)
 	_ui.pick(idx)
 
 func test_boots_a_run_with_a_graph_and_choices() -> void:
@@ -263,91 +249,36 @@ func test_boots_a_run_with_a_graph_and_choices() -> void:
 	assert_ne(String(GameState.amulet_game_id), "", "an amulet was picked")
 	assert_gt(_ui._choices.size(), 0, "the start's neighbours are offered as choices")
 
-# --- node kinds (§19) ------------------------------------------------------
+# --- what a game puts on the board (§19.10) ----------------------------------
 #
-# The map is dealt its kinds once, when the run begins, and frozen there. These
-# read the live run rather than the pure assignment function (which
-# test_node_kind_assignment covers) — the question here is whether booting a run
-# actually lays them down.
+# Every game stands two bodies, and the Amulet its boss alone. The node kinds that
+# stood one or none (§19.1) are retired. Disarmed, because an ability can add a
+# body on the board's own turn and the subject here is what the COMMIT stood up.
 
-func test_booting_a_run_deals_the_map_its_kinds() -> void:
-	assert_gt(GameState.node_kinds.size(), 0,
-		"a booted run has a kind for every game on its map")
-
-func test_the_amulet_is_dealt_a_champion() -> void:
-	var amulet: StringName = GameState.amulet_game_id
-	if amulet == &"":
-		pending("this run has no amulet to check")
-		return
-	assert_eq(GameState.node_kind(amulet), RunGraph.NodeKind.CHAMPION,
-		"the Amulet carries the one Champion the road is promised")
-
-func test_the_opening_game_is_dealt_enemies() -> void:
-	var start: StringName = GameState.start_game_id
-	if start == &"":
-		pending("this run recorded no start game")
-		return
-	assert_eq(GameState.node_kind(start), RunGraph.NodeKind.ENEMIES,
-		"a run opens on a fight")
-
-# Frozen means frozen: walking the run must not re-deal anything. Takes the
-# whole map's fingerprint, plays a game, and compares.
-func test_the_kinds_do_not_move_while_the_run_is_walked() -> void:
-	var before: Dictionary = GameState.node_kinds.duplicate(true)
-	_ui.pick(0)                     # NOT _pick_enemies: forcing a kind is what this test detects
-	_disarm_board()
-	_ui.report(false)
-	assert_eq(GameState.node_kinds.size(), before.size(),
-		"no game gained or lost a kind by the run moving")
-	var moved := 0
-	for gid in before.keys():
-		if int(GameState.node_kinds.get(gid, -1)) != int(before[gid]):
-			moved += 1
-	assert_eq(moved, 0, "a kind that moved under the player is a badge telling a lie")
-
-
-# --- what each kind puts on the board (§19.1) -------------------------------
-#
-# Enemies 2, Champion 1, Event 0, Shop 0. These set the kind on the node about to
-# be picked and then pick it, which is the only way to ask the question without
-# waiting for a 10% roll to come up. Disarmed, because an ability can add a body
-# on the board's own turn and the subject here is what the COMMIT stood up.
-
-func _pick_as(kind: int, idx: int = 0) -> GameData:
+func _pick_as(idx: int = 0) -> GameData:
 	var game: GameData = _ui._choices[idx]["game"]
-	Page.set_kind(_ui._choices[idx], kind)
 	_ui.pick(idx)
 	_disarm_board()
 	return game
 
 
-func test_an_enemies_node_stands_two_bodies() -> void:
-	_pick_as(RunGraph.NodeKind.ENEMIES)
+func test_booting_a_run_opens_no_shop_anywhere() -> void:
+	assert_true(ShopSystem.shop_nodes().is_empty(),
+		"a shop is opened by the player off the bar, never dealt (§19.10)")
+
+
+func test_a_game_stands_two_bodies() -> void:
+	_pick_as()
 	assert_eq(GameLoop2.stack_size(), 2,
 		"the game's own enemy and one beside it")
 
 
-func test_a_champion_node_stands_one_boss_and_nothing_beside_it() -> void:
-	_pick_as(RunGraph.NodeKind.CHAMPION)
-	assert_eq(GameLoop2.stack_size(), 1,
-		"a Champion is the boss alone — the escort exemption is the whole point")
-	var body: Dictionary = GameLoop2.stack[0]
-	var e: GoalEnemyData = body["enemy"]
-	assert_not_null(e, "and there is a body there")
-	# The roster could in principle fail to supply a boss of this type and tier, in
-	# which case §19.1 says the advertised enemy stands rather than an empty board.
-	if not e.is_boss():
-		pending("no boss in the roster for this type/tier; the advertised enemy stood")
-		return
-	assert_true(e.is_boss(), "and it is a boss")
-
-
-# THE CARD SHOWS THE BOSS THAT WALKS ON. A Champion card used to advertise an
-# ordinary enemy and then roll a different body — a boss — at the commit, so the
-# preview named something that never arrived.
-func test_a_champion_card_advertises_the_boss_that_walks_on() -> void:
-	Page.set_kind(_ui._choices[0], RunGraph.NodeKind.CHAMPION)
+# THE AMULET STANDS ITS BOSS ALONE, and the card shows the boss that walks on.
+# Arranged by making the first card's slot the Amulet, so the question does not
+# wait on the run reaching it.
+func test_the_amulet_stands_the_boss_its_card_shows_and_nothing_beside_it() -> void:
 	var slot: StringName = StringName(_ui._choices[0]["slot"])
+	GameState.amulet_game_id = slot
 	_ui._slot_enemies.clear()
 	_ui._build_choices()
 	var idx := -1
@@ -356,131 +287,46 @@ func test_a_champion_card_advertises_the_boss_that_walks_on() -> void:
 			idx = i
 	assert_gte(idx, 0, "the card is still on the table")
 	var shown: GoalEnemyData = _ui._choices[idx]["enemy"]
-	assert_not_null(shown)
 	if shown == null or not shown.is_boss():
 		pending("no boss in the roster for this type/tier; the card falls back to an enemy")
 		return
 	_ui.pick(idx)
-	# By ID and off the ARRIVAL rather than stack[0]: an authored Escort ability
-	# can stand bodies beside a boss the moment it lands.
+	_disarm_board()
 	var landed: GoalEnemyData = GameLoop2.arrival().get("enemy")
 	assert_eq(landed.id if landed != null else &"", shown.id,
 		"the body on the board is the one the card showed")
+	assert_eq(GameLoop2.arrivals.size(), 1, "and it walked on alone")
 
 
-func test_an_event_node_stands_no_body() -> void:
-	_pick_as(RunGraph.NodeKind.EVENT)
-	assert_eq(GameLoop2.stack_size(), 0, "the event is what is here, not a fight")
+func test_a_game_is_still_a_game_you_go_and_play() -> void:
+	var played_before: int = GameState.games_played
+	var game: GameData = _pick_as()
+	assert_true(GameLoop2.game_in_play, "the game is in play")
+	assert_eq(GameState.current_game_id, game.id, "the run travelled to it")
+	_ui.report(false)
+	assert_eq(GameState.games_played, played_before + 1, "it counts as a game played")
 
 
-func test_a_shop_node_stands_no_body() -> void:
-	_pick_as(RunGraph.NodeKind.SHOP)
-	assert_eq(GameLoop2.stack_size(), 0, "a shelf is not a fight either")
-
-
-# All four are a real video game (§19.1) — the kind decides what stands on the
-# board, not whether you go and play. This is the claim the whole section rests
-# on, so it is asked of every kind rather than of the interesting ones.
-func test_every_kind_is_still_a_game_you_go_and_play() -> void:
-	for kind in [RunGraph.NodeKind.ENEMIES, RunGraph.NodeKind.EVENT,
-			RunGraph.NodeKind.CHAMPION, RunGraph.NodeKind.SHOP]:
-		_reboot(&"ironclad")
-		var played_before: int = GameState.games_played
-		var game: GameData = _pick_as(int(kind))
-		assert_true(GameLoop2.game_in_play,
-			"%s: the game is in play" % RunGraph.kind_label(int(kind)))
-		assert_eq(GameState.current_game_id, game.id,
-			"%s: the run travelled to it" % RunGraph.kind_label(int(kind)))
-		_ui.report(false)
-		assert_eq(GameState.games_played, played_before + 1,
-			"%s: it counts as a game played" % RunGraph.kind_label(int(kind)))
-
-
-# An Event node fires ON ARRIVAL, before the game is played — the opposite end of
-# the game from the Shop, because a decision is worth more before you have spent
-# the evening and a purchase needs the gold that evening pays out.
-func test_an_event_node_raises_its_event_on_arrival() -> void:
-	_pick_as(RunGraph.NodeKind.EVENT)
-	assert_not_null(_ui._event_modal,
-		"the event is up before a word has been reported about the game")
-
-
-# An Event node steps over BOTH of `roll_for_arrival`'s gates. The one that bit
-# was the hub gate — an Event node on one of the ten hubs delivered silence, about
-# one full run in three — and §19.7 retired it with the hubs: a node has one kind,
-# so an Event node cannot be a Shop node. The gate still standing is "this node
-# has already paid its event", and a badge that says Event is a promise about
-# this arrival, so it steps over that one too.
-func test_an_event_node_that_already_paid_still_finds_its_event() -> void:
-	var node: StringName = StringName(_ui._choices[0]["slot"])
-	GameState.event_nodes_fired[node] = true
-	assert_null(EventSystem.roll_for_arrival(node),
-		"a node that has paid pays no ordinary event — the rule being stepped over")
-	assert_not_null(EventSystem.roll_for_node(node),
-		"but a node whose badge says Event finds one anyway")
-	GameState.node_kinds[node] = RunGraph.NodeKind.EVENT
-	_ui.pick(0)
-	assert_not_null(_ui._event_modal, "and it is raised on arrival like any other")
-
-
-func test_an_ordinary_node_raises_nothing_on_arrival() -> void:
-	_pick_as(RunGraph.NodeKind.ENEMIES)
-	assert_null(_ui._event_modal,
-		"only an Event node pays an event at the front of the game")
+# No game raises an event on ARRIVAL since the Event node went (§19.10); every game
+# still rolls one at its report.
+func test_nothing_is_raised_on_arrival() -> void:
+	_pick_as()
+	assert_null(_ui._event_modal, "an event waits for the game to be reported")
 
 
 # --- difficulty is a consequence (§19.6) ------------------------------------
 #
 # The tier reads `spawn_events`, not `games_played`: one per arrival that landed
-# bodies, one per failure spawn. An Event or a Shop node lands nothing and so
-# ticks nothing, which is what turns the ladder from a clock the player rides
-# into something they steer.
+# bodies, one per failure spawn.
 
-func test_a_node_that_lands_bodies_is_one_spawn_event() -> void:
-	for kind in [RunGraph.NodeKind.ENEMIES, RunGraph.NodeKind.CHAMPION]:
-		_reboot(&"ironclad")
-		var before: int = GameState.spawn_events
-		_pick_as(int(kind))
-		assert_eq(GameState.spawn_events, before + 1,
-			"%s: one event, however many bodies walked on" % RunGraph.kind_label(int(kind)))
-
-
-func test_a_node_that_lands_nothing_ticks_nothing() -> void:
-	for kind in [RunGraph.NodeKind.EVENT, RunGraph.NodeKind.SHOP]:
-		_reboot(&"ironclad")
-		var before: int = GameState.spawn_events
-		_pick_as(int(kind))
-		assert_eq(GameState.spawn_events, before,
-			"%s: nothing spawned, so nothing is owed to the ladder"
-				% RunGraph.kind_label(int(kind)))
-
-
-# A quiet node's ARRIVAL ticks nothing (the test above), but its END does when it
-# stands bodies up (§19.5) — the evening still ended, and the road charges for
-# where it ended. One event per game that landed any, however many.
-func test_a_quiet_nodes_end_ticks_the_ladder_once_if_it_spawned() -> void:
-	var played := 0
-	for _i in range(RunDifficulty.GAMES_PER_TIER + 1):
-		if _ui._choices.is_empty():
-			break
-		_pick_as(RunGraph.NodeKind.EVENT)
-		if _ui._event_modal != null:
-			_ui._event_modal.queue_free()
-			_ui._event_modal = null
-		var before: int = GameState.spawn_events
-		_ui.report(false)
-		played += 1
-		var landed: int = int(GameLoop2.last_result.get("end_spawns", 0))
-		assert_eq(GameState.spawn_events - before, 1 if landed > 0 else 0,
-			"an Event node's end is one spawn event when it stood %d up" % landed)
-		_ui._end_resolve()
-		Page.leave_post_game(_ui)
-		Page.dismiss_event(_ui)
-	assert_gt(played, 0, "the run was out there playing games all the while")
+func test_an_arrival_is_one_spawn_event() -> void:
+	var before: int = GameState.spawn_events
+	_pick_as()
+	assert_eq(GameState.spawn_events, before + 1, "one event, however many bodies walked on")
 
 
 func test_a_scramble_does_not_buy_its_way_up_the_ladder() -> void:
-	_pick_as(RunGraph.NodeKind.ENEMIES)
+	_pick_as()
 	GameState.scramble = 1
 	var before: int = GameState.spawn_events
 	if GameLoop2.scramble() == null:
@@ -496,7 +342,7 @@ func test_crossing_a_tier_on_arrival_grows_the_board_there_and_then() -> void:
 	GameState.spawn_events = RunDifficulty.GAMES_PER_TIER - 1
 	GameLoop2.sync_grid_bounds()
 	var cols_before: int = GameLoop2.grid_cols()
-	_pick_as(RunGraph.NodeKind.ENEMIES)
+	_pick_as()
 	assert_eq(GameState.spawn_events, RunDifficulty.GAMES_PER_TIER,
 		"the arrival crossed the band")
 	assert_eq(GameLoop2.grid_cols(), cols_before + 1,
@@ -1430,9 +1276,7 @@ func test_cancel_dash_restores_the_limited_offering() -> void:
 # pointed at a game card's popup. So the surface showing you had a Bash could not
 # spend it. They arm from those chips now and the click on a card is the aim.
 
-# The first card a Bash may be aimed at. A CHAMPION node refuses a Bash (§7.1),
-# and about one card in ten is one, so the card is ARRANGED to be an Enemies node
-# rather than hoped to be — a test about bashing must not fail on the deal.
+# The first card a Bash may be aimed at: not the Amulet, which refuses one (§7.1).
 #
 # And not a RIFT card either, for the reason `_first_bashable` gives: bashing one
 # keeps its slot and brings another game through, which is not this verb.
@@ -1441,7 +1285,6 @@ func _first_bashable_index() -> int:
 		var c: Dictionary = _ui._choices[i]
 		if bool(c.get("amulet", false)) or c.has("rift_key") or RunGraph.is_rift_game(c["slot"]):
 			continue
-		Page.set_kind(c, RunGraph.NodeKind.ENEMIES)
 		return i
 	return -1
 
@@ -1593,9 +1436,9 @@ func test_the_offering_deals_no_bosses_even_on_the_bands_last_spawn() -> void:
 	assert_true(_ui._boss_due_next(), "the next spawn closes the band")
 	for c in _ui._choices:
 		assert_false(bool(c["boss"]), "no card advertises a boss")
-		# A CHAMPION card is the one that does show a boss — the one it lands
-		# (§19.4) — which is not the capstone this test is about.
-		if _ui._kind_of(c) == RunGraph.NodeKind.CHAMPION:
+		# The AMULET's card is the one that does show a boss — the one it lands
+		# (§19.10) — which is not the capstone this test is about.
+		if bool(c.get("amulet", false)):
 			continue
 		var e: GoalEnemyData = c["enemy"]
 		if e != null:
@@ -4329,15 +4172,18 @@ func _texture_rects_under(node: Node) -> Array:
 	return out
 
 func test_a_boss_wears_its_portrait_on_both_checklists() -> void:
-	# A CHAMPION NODE is where a boss comes from now (§19.1) — the offering deals
-	# none, so there is no boss round to stand on.
+	# THE CAPSTONE is where a boss comes from off the Amulet (§19.6) — the
+	# offering deals none, so the pick is made the spawn that closes the band.
 	assert_eq(_texture_rects_under(_ui._verify_box).size(), 0,
 		"nothing is following yet, so no portraits on the list")
-	var champion: GameData = _ui._choices[0]["game"]
-	GameState.node_kinds[champion.id] = RunGraph.NodeKind.CHAMPION
+	_force_boss_due()
 	_ui.pick(0)
-	var stood: GoalEnemyData = GameLoop2.stack[0]["enemy"] if not GameLoop2.stack.is_empty() else null
-	if stood == null or not stood.is_boss():
+	var stood: GoalEnemyData = null
+	for entry in GameLoop2.stack:
+		var e: GoalEnemyData = entry["enemy"]
+		if e != null and e.is_boss():
+			stood = e
+	if stood == null:
 		pending("no boss in the roster for this type/tier")
 		return
 	# DISARMED, because this test is about the SCREEN and not about abilities
@@ -4346,11 +4192,9 @@ func test_a_boss_wears_its_portrait_on_both_checklists() -> void:
 	# spawner between the two assertions makes the second one count a portrait the
 	# first could not have known about. Seen: 3 where 2 was counted.
 	_disarm_board()
-	# The body that STOOD, read off the board. The card rolls its boss when it is
-	# drawn now (Overworld2._roll_card_enemy), but this card's kind was forced after
-	# the offering was dealt, so its advertised enemy is still the ordinary one.
+	# The body that STOOD, read off the board.
 	var boss: GoalEnemyData = stood
-	assert_true(boss.is_boss(), "a Champion node stood a boss up")
+	assert_true(boss.is_boss(), "the capstone stood a boss up")
 	if boss.image == null:
 		return                                # this boss ships without art
 	# One portrait per body carrying art — a boss round stands its own escort
@@ -4896,7 +4740,7 @@ func test_bashing_does_not_dodge_the_capstone() -> void:
 	assert_eq(GameState.bash, 0, "bash is allowed with a capstone due")
 	assert_true(GameLoop2.is_bashed(bashed_id), "the game was destroyed")
 	assert_true(_ui._boss_due_next(), "and the band still closes on the next spawn")
-	_pick_as(RunGraph.NodeKind.ENEMIES)
+	_pick_as()
 	assert_true(_a_boss_is_standing(), "the capstone walked on anyway")
 
 
@@ -4909,7 +4753,7 @@ func test_transmuting_does_not_dodge_the_capstone() -> void:
 		return
 	_ui.transmute_choice(0)
 	assert_true(_ui._boss_due_next(), "a transmute does not move the counter")
-	_pick_as(RunGraph.NodeKind.ENEMIES)
+	_pick_as()
 	assert_true(_a_boss_is_standing(), "the capstone walked on anyway")
 
 
@@ -4937,7 +4781,6 @@ func _first_bashable() -> int:
 		var c: Dictionary = _ui._choices[i]
 		if bool(c["amulet"]) or c.has("rift_key") or RunGraph.is_rift_game(c["slot"]):
 			continue
-		Page.set_kind(c, RunGraph.NodeKind.ENEMIES)
 		return i
 	return 0
 
@@ -5237,49 +5080,6 @@ func test_the_amulet_game_cannot_be_bashed() -> void:
 	_ui.bash_choice(idx)
 	assert_eq(GameState.bash, 1, "the charge is not spent")
 	assert_false(GameLoop2.is_bashed(amulet), "the run's goal survives")
-
-# §7.1, settled: a boss cannot be BASHED out of the road, but it can be
-# SCRAMBLED — a redraw is choosing a different fight, a Bash is refusing one.
-func test_a_champion_node_cannot_be_bashed() -> void:
-	_ui._build_choices()
-	var idx: int = _first_bashable_index()
-	if idx < 0 or _ui._choices.size() <= 1:
-		pending("nothing on this offering could be bashed at all")
-		return
-	Page.set_kind(_ui._choices[idx], RunGraph.NodeKind.CHAMPION)
-	var slot: StringName = StringName(_ui._choices[idx]["slot"])
-	GameState.bash = 1
-	assert_false(_ui.bash_choice(idx), "the bash is refused")
-	assert_eq(GameState.bash, 1, "the charge is not spent")
-	assert_false(GameLoop2.is_bashed(slot), "and the Champion node is still on the road")
-	# The same card as an Enemies node goes, so it was the KIND that refused it.
-	Page.set_kind(_ui._choices[idx], RunGraph.NodeKind.ENEMIES)
-	assert_true(_ui.bash_choice(idx), "an Enemies node on the same slot can be bashed")
-
-func test_an_armed_bash_stays_up_after_aiming_at_a_champion() -> void:
-	_ui._build_choices()
-	var idx: int = _first_bashable_index()
-	if idx < 0:
-		pending("nothing on this offering could be bashed at all")
-		return
-	Page.set_kind(_ui._choices[idx], RunGraph.NodeKind.CHAMPION)
-	GameState.bash = 1
-	_ui.arm_bash()
-	_ui.open_choice(idx)
-	assert_eq(_ui._armed_verb, &"bash",
-		"a refused aim leaves the verb up to be pointed somewhere else")
-
-func test_a_champion_node_can_still_be_scrambled() -> void:
-	_ui._build_choices()
-	if _ui._choices.is_empty():
-		pending("the offering is empty")
-		return
-	for c in _ui._choices:
-		if not bool(c.get("amulet", false)):
-			Page.set_kind(c, RunGraph.NodeKind.CHAMPION)
-	GameState.scramble = 1
-	assert_true(_ui.scramble(), "the offering redraws with a Champion on it")
-	assert_eq(GameState.scramble, 0, "and the charge is spent")
 
 func test_bash_is_refused_when_it_would_leave_nowhere_to_go() -> void:
 	# A node with exactly one connection: destroying that one card would strand
@@ -7304,8 +7104,7 @@ func test_the_lit_set_is_dropped_when_the_checklist_is_rebuilt() -> void:
 # It used to set `games_played` and assert `_boss_round`, back when the boss rode
 # the offering as a card's own enemy. The capstone lands on the BOARD now and
 # belongs to the spawn, so the warning asks about the next one rather than about
-# the cards — and an Event or a Shop node, spawning nothing, does not bring it
-# closer.
+# the cards.
 func _force_boss_due() -> void:
 	GameState.spawn_events = RunDifficulty.GAMES_PER_TIER - 1
 	_ui._build_choices()
@@ -7809,8 +7608,8 @@ func test_leaving_the_haul_screen_lands_the_shelf_under_the_board() -> void:
 	# THE PAGE MAY ALREADY HAVE A SHOP ON IT. This bit when the shops stood at
 	# the ten hubs: `choose_start(0)` takes the first of a RANDOM offering, once in
 	# a while that was a node, and `Page.open_at_first_offering` then walked off its
-	# haul screen, which is precisely the thing that mounts a shelf. (The opening
-	# game is always an Enemies node now, §19.1, but the guard costs nothing.) The page arrives here with a
+	# haul screen, which is precisely the thing that mounts a shelf. (No shop stands
+	# anywhere at a run's start now, §19.10, but the guard costs nothing.) The page arrives here with a
 	# shop already on it and `assert_null` below fails, on a run that did nothing
 	# wrong.
 	#
@@ -7890,13 +7689,12 @@ func test_a_coming_capstone_warns_on_the_haul_screen_and_not_twice() -> void:
 # The shop is a pop-up behind a button by the offering (§14.4)
 # ---------------------------------------------------------------------------
 
-# The node the run is standing on, STAMPED a Shop (§19.1) — the only node a shop
-# can be opened at, since the page opens the one underfoot. Stamped rather than
-# searched for so no shop test rides on what the deal put where.
+# A shop opened at the node the run is standing on, off a full bar (§19.10) — the
+# only node a shop can be opened at, since the page opens the one underfoot.
 func _a_shop() -> StringName:
 	var here: StringName = GameState.current_game_id
 	if here != &"":
-		GameState.node_kinds[here] = RunGraph.NodeKind.SHOP
+		Fixtures.open_shop(here)
 	return here
 
 func test_a_shop_puts_a_button_up_and_opens_nothing_by_itself() -> void:
@@ -8039,15 +7837,9 @@ func test_the_verbs_are_held_while_the_question_is_up() -> void:
 
 # Every game pays an event now, so this is any on-map game the run has not
 # already taken one from.
-# NOT A SHOP: a Shop node pays no event on arrival (§14.4, EventSystem.
-# roll_for_arrival), and node kinds are dealt per run — so the first game in the
-# catalog (100 Rogues) was a Shop about one run in seven, and the event test below
-# failed on a rule it is not about.
 func _node_carrying_an_event() -> StringName:
 	for g in Data.all_games():
 		if not (g is GameData) or RunGraph.is_off_map(g.id):
-			continue
-		if ShopSystem.is_shop(g.id):
 			continue
 		if not GameState.event_nodes_fired.has(g.id):
 			return g.id
@@ -8548,15 +8340,32 @@ func test_the_board_gives_up_height_while_it_is_sharing_its_column() -> void:
 
 # --- the three card teleports (docs/cards-design.md §5.2) -------------------
 
-func test_the_hermit_lands_on_a_shop_node() -> void:
+# A game two roads off, to open a shop at so the Hermit has somewhere to go.
+func _two_away() -> StringName:
+	var dist: Dictionary = RunGraph.bfs_distances(GameState.current_game_id)
+	var ids: Array = dist.keys()
+	ids.sort()
+	for gid in ids:
+		if int(dist[gid]) == 2 and not RunGraph.is_rift_game(gid) \
+				and not GameLoop2.is_bashed(gid) and gid != GameState.amulet_game_id:
+			return StringName(gid)
+	return &""
+
+func test_the_hermit_fizzles_with_no_shop_open() -> void:
+	assert_true(ShopSystem.shop_nodes().is_empty(), "a run opens with no shop")
 	var landed: String = _ui.card_teleport({"dest": "shop"})
-	assert_ne(landed, "", "it says something either way")
-	if not landed.begins_with("There is no"):
-		assert_true(ShopSystem.is_shop(GameState.current_game_id),
-			"the nearest shop is a Shop node: %s" % landed)
-	else:
-		assert_true(ShopSystem.shop_nodes().is_empty(),
-			"it only fizzles on a map with no Shop node on it")
+	assert_true(landed.begins_with("There is no"),
+		"so the Hermit has nowhere to go: %s" % landed)
+
+func test_the_hermit_lands_on_a_shop() -> void:
+	var far: StringName = _two_away()
+	if far == &"":
+		pending("nothing on this map is two roads away")
+		return
+	Fixtures.open_shop(far)
+	var landed: String = _ui.card_teleport({"dest": "shop"})
+	assert_false(landed.begins_with("There is no"), "there is a shop to go to")
+	assert_eq(GameState.current_game_id, far, "and it lands there: %s" % landed)
 	_ui._end_resolve()
 	_close_arrival_card()
 	Page.leave_post_game(_ui)
@@ -8564,6 +8373,9 @@ func test_the_hermit_lands_on_a_shop_node() -> void:
 func test_the_hermit_takes_the_nearest_shop_and_no_further() -> void:
 	# "Nearest" is measured in ROADS. Asserted over the pool rather than over one
 	# trip, because ties are drawn between and a single landing proves nothing.
+	var far: StringName = _two_away()
+	if far != &"":
+		Fixtures.open_shop(far)
 	var dist: Dictionary = RunGraph.bfs_distances(GameState.current_game_id)
 	var pool: Array = _ui._shop_pool()
 	if pool.is_empty():
@@ -8577,7 +8389,7 @@ func test_the_hermit_takes_the_nearest_shop_and_no_further() -> void:
 		return
 	var best: int = int(dist.get(pool[0], 0))
 	for gid in pool:
-		assert_true(ShopSystem.is_shop(gid), "%s is a Shop node" % gid)
+		assert_true(ShopSystem.is_shop(gid), "%s has a shop" % gid)
 		assert_eq(int(dist.get(gid, -1)), best, "every candidate is equally near")
 	for gid in ShopSystem.shop_nodes():
 		if gid == GameState.current_game_id or not dist.has(gid):
@@ -8585,15 +8397,13 @@ func test_the_hermit_takes_the_nearest_shop_and_no_further() -> void:
 		assert_gte(int(dist[gid]), best, "and nothing reachable is nearer")
 
 
-# THE HUBS DO NOT SELL (§19.7): the best-connected game on the map is an ordinary
-# node unless the deal made it a Shop, so beating it queues no shelf.
+# A game nobody opened a shop at mounts none, whatever it is (§19.10).
 func test_a_node_that_is_not_a_shop_mounts_no_shop() -> void:
 	var here: StringName = GameState.current_game_id
 	if here == &"":
 		pending("the run is standing nowhere")
 		return
-	GameState.node_kinds[here] = RunGraph.NodeKind.ENEMIES
-	assert_false(ShopSystem.is_shop(here), "an Enemies node does not sell")
+	assert_false(ShopSystem.is_shop(here), "no shop was opened here")
 	_ui._clear_shop()
 	_ui._pending_shop = here
 	_ui._open_pending_shop()
@@ -11558,14 +11368,14 @@ func test_a_group_moves_on_from_a_body_that_survived_its_tick() -> void:
 # ==========================================================================
 
 func test_a_game_won_without_a_lost_run_is_perfected() -> void:
-	var game: GameData = _pick_as(RunGraph.NodeKind.ENEMIES)
+	var game: GameData = _pick_as()
 	var before: int = GameStats.perfect_count(game.id)
 	Page.report_beat(_ui)
 	assert_eq(GameStats.perfect_count(game.id), before + 1,
 		"no lost run on this visit, and won: perfected")
 
 func test_a_lost_run_on_the_visit_costs_the_perfect() -> void:
-	var game: GameData = _pick_as(RunGraph.NodeKind.ENEMIES)
+	var game: GameData = _pick_as()
 	var before: int = GameStats.perfect_count(game.id)
 	_lose_runs(1)
 	if GameLoop2.run_over:
@@ -11575,7 +11385,7 @@ func test_a_lost_run_on_the_visit_costs_the_perfect() -> void:
 	assert_eq(GameStats.perfect_count(game.id), before, "won, but not perfectly")
 
 func test_the_haul_screen_fills_the_rank_from_where_the_game_was_picked() -> void:
-	var game: GameData = _pick_as(RunGraph.NodeKind.ENEMIES)
+	var game: GameData = _pick_as()
 	var start: int = GameRanks.xp(game.id)
 	assert_eq(int(GameLoop2.rank_start.get("xp", -1)), start, "snapshotted on the pick")
 	Page.report_beat(_ui)

@@ -138,11 +138,6 @@ func test_when_entered_waits_for_the_next_game_picked() -> void:
 	Fx.choose_solo(Fx.enemy(1))
 	assert_eq(GameLoop2.tiles.size(), lit, "and only once: the game after lights no more")
 
-func test_an_event_or_shop_node_enters_it_too() -> void:
-	_enter(&"dross")
-	GameLoop2.begin_bodiless_game()
-	assert_eq(GameLoop2.units.size(), 2, "a game with no bodies is still the game picked")
-
 func test_a_scramble_is_not_entering() -> void:
 	_enter(&"dross")
 	GameLoop2.choose_game(Fx.enemy(1), &"", -1, false, false)

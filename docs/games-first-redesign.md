@@ -25,12 +25,10 @@ so every number must stay small and glanceable.
 ## 2. Core loop
 
 1. **Choose a game** on the graph. Routing is the core decision (see §6).
-2. The game presents what its **node kind** says it does (§19.1): an Enemies node
-   stands **two** bodies on the board, each with its own goal and its own
-   guaranteed loot drop, neither of which beating the game answers for on its
-   own; a Champion node stands **one** boss; an Event or a Shop node stands
-   nothing and hands over an event or a shelf instead. All four are a real game
-   you go and play.
+2. The game stands **two** bodies on the board, each with its own goal and its
+   own guaranteed loot drop, neither of which beating the game answers for on
+   its own; the Amulet stands its **one** boss (§19.10). The node kinds that
+   stood one or none (§19.1) are retired.
 3. **Go play the real game. You must beat the game to advance to the next area.**
 4. Resolve:
    - **Goal met → enemy defeated → loot drops where it fell, and its difficulty
@@ -3862,6 +3860,11 @@ gets its loot row the first time it is asked for.
 
 ### 14.4 When it opens, and what the road can see
 
+> **SUPERSEDED IN PART BY §19.10.** A shop no longer opens after a Shop node's
+> game is beaten: the player opens one off the shop bar, at any game, before or
+> after playing it. The pop-up, the button by the offering, the haul screen's
+> *Go to Shop*, the shelf keyed by node and the stock lines below all stand.
+
 The shop opens for business **after a Shop node's game is beaten** (§19.1 — it
 was the ten hubs until §19.7), queued behind the board's resolve playback on the
 same path an event takes (`Overworld2._pending_shop`). What appears is a **button,
@@ -4606,6 +4609,13 @@ every other modal is (`ModalScaffold.reserved_top`).
 ---
 
 ## 19. Node kinds, and where the enemies come from
+
+> **THE NODE KINDS ARE RETIRED (§19.10, 24 October 2026).** Every game stands two
+> bodies, the Amulet its boss, no event fires on arrival, and a shop stands where
+> the player opens one off the shop bar. §19.1, §19.2, §19.3's Event-and-Shop
+> clause and §19.8's marks describe the build as it was, and are kept for the
+> reasoning; the spawn model (§19.4–19.6), the route floor and the start rules
+> (§19.3.1–19.3.4) and the Amulet selection (§19.9) still stand.
 
 Two changes that only work together. **A game on the map is now one of four
 kinds**, and **enemies no longer arrive only because you chose to fight them**.
@@ -5533,6 +5543,50 @@ still keeps its no-softlock fallback. That one is a player's preference rather
 than a property of the map, which is exactly why it is the only narrowing left.
 
 ---
+
+### 19.10 The shop bar, and the node kinds retired
+
+**The owner's call, 24 October 2026:** the node kinds were "a little too much
+and only complicated things". They did not make for interesting pathing — the
+player's final route is usually not on screen when the choice is made — and they
+made shops hard to find. So:
+
+- **Every game stands two bodies** (`Overworld2._commit_board`), and the
+  **Amulet** stands its boss alone (`_committed_is_amulet`; the card rolls the
+  boss up front, `_roll_card_enemy`). No game raises an event on arrival; every
+  game still rolls one at its report, a game with a shop included
+  (`EventSystem.roll_for_arrival` lost its shop gate, `roll_for_node` is gone).
+  `RunGraph.NodeKind`, `assign_node_kinds`, `GameState.node_kinds`,
+  `UITheme.kind_color` and `GameLoop2.begin_bodiless_game` are gone with them.
+  The Amulet is the only card a Bash refuses on these grounds.
+- **The shop bar.** Every enemy defeated fills it by one (`ShopSystem.add_kill`,
+  called beside the gold in `GameLoop2._defeat`, so a bomb fills nothing and a
+  boss counts one). The first shop costs **`ShopSystem.BAR_BASE` = 4** kills and
+  each shop opened puts the next **one kill further off** (`bar_target`). Kills
+  past a full bar are lost. Full, it can be spent at **any game without a shop**,
+  before the game is reported or after (`can_open_at` / `open_at`): the shelf is
+  rolled and the keeper dealt on the spot (`_create_shelf`, `_deal_keeper` —
+  without replacement across the shops opened, seeded off the run and the count
+  before). **One shop per game**, and it **stays for the rest of the run**:
+  `GameState.shops`, keyed by node, is now where the shops are as well as what
+  is on them.
+- **On screen.** The bar sits right of the purse in the header
+  (`Overworld2._build_shop_bar_chip`): `🛒 [bar] n / N`, `Open shop` when full at
+  a game with none, `Shop` at a game with one. It is a button, because the
+  offering panel and its `🛒 Shop` button are put away while a game is played;
+  pressing it is `press_shop_bar`. Arriving at a game with a shop puts the
+  offering's button up for the visit (`_arrive_at_shop`). A shop is marked with
+  🛒 on its offering card (the `🛒 SHOP` flag, unchanged), in the game popup's
+  facts, on the route ladder's and the map's rung (`RouteLadder.shop_marker`),
+  on the rung's card, and on the OBS overlay's map; the popup's connection line
+  counts nearby shops. The ASCII kind marks are gone.
+- **Saves.** `SAVE_VERSION` 4 carries `shops.bar`; version 3 is not resumed, for
+  the reason version 2 was not: its map had Shop nodes nobody opened and badges
+  that no longer mean anything.
+- **What did NOT change.** The route floor (`ROUTE_SLACK_FLOOR`) stays: it was
+  sized off the kind budget, but what it guarantees — a road with more than one
+  way along it — is still what a start is for. The Hermit goes to the nearest
+  shop the player has opened, and fizzles when there is none.
 
 ## 20. Game ranks — every game levels up, and its rank is what unlocks its music
 

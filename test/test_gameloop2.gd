@@ -2293,12 +2293,11 @@ func test_taking_back_a_lost_run_puts_the_floor_back_too() -> void:
 # ESCAPE_MIN_BODIES. An escape after a kill costs what handing the game in does. It replaced both the extra
 # turns and the bodies a lost run used to stand up.
 
-# Put the run at `hops` from the Amulet on a node of `kind`, with a real game
-# under it so the roll has a type to ask for.
-func _stand_for_end(hops: int, kind: int = RunGraph.NodeKind.ENEMIES) -> bool:
+# Put the run at `hops` from the Amulet, with a real game under it so the roll
+# has a type to ask for.
+func _stand_for_end(hops: int) -> bool:
 	if not _stand_at_hops(hops):
 		return false
-	GameState.node_kinds[GameState.current_game_id] = kind
 	GameLoop2.game_in_play = true
 	GameLoop2.defeated_this_game = 0
 	return true
@@ -2366,17 +2365,6 @@ func test_the_amulet_owes_nothing() -> void:
 	var price: Dictionary = GameLoop2.end_of_game_price()
 	assert_eq(int(price["bodies"]), 0, "there is no next game for anything to walk into")
 	assert_string_contains(String(price["why"]), "Amulet", "and says so")
-
-
-func test_the_quiet_kinds_owe_it_too() -> void:
-	# An Event or a Shop node stood nothing up, but the evening still ended — and
-	# the road charges for where it ended.
-	for kind in [RunGraph.NodeKind.EVENT, RunGraph.NodeKind.SHOP]:
-		if not _stand_for_end(2, int(kind)):
-			pending("the catalog could not stand the run 2 hops out")
-			return
-		assert_eq(int(GameLoop2.end_of_game_price()["bodies"]), GameLoop2.pressure() + 1,
-			"%s: owes the same as any other node" % RunGraph.kind_label(int(kind)))
 
 
 func test_between_games_there_is_no_price() -> void:
@@ -3091,6 +3079,3 @@ func test_choosing_a_game_resets_the_lost_run_spawn() -> void:
 	GameLoop2.lost_run_spawn_step = 3
 	var _a: int = Fixtures.choose_solo(_enemy(1))
 	assert_eq(GameLoop2.lost_run_spawn_step, 0, "a new game always opens on the free rung")
-	GameLoop2.lost_run_spawn_step = 3
-	GameLoop2.begin_bodiless_game()
-	assert_eq(GameLoop2.lost_run_spawn_step, 0, "an Event or Shop node too")

@@ -84,9 +84,10 @@ change to this table first.
 
 **Extra body (4).** Written as "escorts +1", but the escort had already been
 retired by the time this was built: §19.4 replaced it with an Enemies node's
-SECOND BODY, and a Champion node stands its boss alone. So it is built as **one
-more body on every arrival**, rolled the way the second body is: an Enemies node
-stands three, a Champion's boss gets one beside it, and the every-fourth-spawn
+SECOND BODY, and the Amulet stands its boss alone (§19.10; a Champion node did
+until the node kinds were retired). So it is built as **one more body on every
+arrival**, rolled the way the second body is: a game stands three, the Amulet's
+boss gets one beside it, and the every-fourth-spawn
 capstone boss (every third, from Fracture 6) brings one too. It does not touch
 the end-of-game pressure count (§7.4).
 

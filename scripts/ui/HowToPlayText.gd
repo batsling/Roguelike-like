@@ -119,9 +119,7 @@ static func _ch_start() -> Dictionary:
 				+ "but nothing happens until you hand the game in, and reporting "
 				+ "a loss drops the claim."),
 			_step(7, "You are offered a new set of games, connected to where you "
-				+ "stand. Each card wears a mark saying what kind of place it is: "
-				+ "! two enemies, !! a boss, ? an event, $ a shop. Choose one. Go "
-				+ "to 3."),
+				+ "stand. Choose one. Go to 3."),
 			_p("The run ends when you reach and clear the AMULET game — that is "
 				+ "the win — or when your Health hits zero."),
 			_h("What makes it a game rather than a list"),
@@ -160,27 +158,22 @@ static func _ch_choosing() -> Dictionary:
 				+ "it is the one with everything behind it."),
 			_h("Click the card, do not just take it"),
 			_p("Clicking a card OPENS it rather than travelling to it. The card "
-				+ "itself is only the cover, the name, its KIND mark, and a flag if "
-				+ "it is the Amulet or a shop. Everything you need is inside."),
-			_kv("The kind", "What stands there, fixed for the whole run: ! Enemies "
-				+ "(two bodies walk on), !! Champion (a boss, alone), ? Event (an "
-				+ "event the moment you arrive, no bodies), $ Shop (a shelf once "
-				+ "you beat the game, no bodies). The 🗺 map and the route ladder "
-				+ "mark every node the same way, so the road ahead can be read "
-				+ "before you walk it."),
+				+ "itself is only the cover, the name, and a flag if it is the "
+				+ "Amulet or a game you opened a shop at. Everything you need is "
+				+ "inside."),
 			_kv("The route", "The optimal path from that game to the Amulet, drawn "
 				+ "as the real ladder — so you can see what taking this card does "
 				+ "to the road, not just where it puts you."),
 			_kv("The enemy", "Who is waiting there, and the exact goal you would "
 				+ "be playing for, written out with any clauses your own statuses "
-				+ "add to it — plus a line saying how many bodies walk on, which is "
-				+ "the node's kind: two, one boss, or none."),
+				+ "add to it — plus a line saying how many bodies walk on: two, or "
+				+ "the Amulet's boss alone."),
 			_kv("The shields", "How many Temporary Shields that game hands you — "
 				+ "one hit stopped each. See §3."),
 			_kv("The pace", "What taking it does to how fast the board moves — "
 				+ "speeds up, slows down, or no change."),
 			_kv("Connections", "How many games it opens onto, how many of those "
-				+ "still owe you an event, and how many are shops."),
+				+ "still owe you an event, and how many have a shop you opened."),
 			_kv("Your record", "Whether you have beaten it before, in this run and "
 				+ "in your life."),
 			_h("The route badge"),
@@ -357,13 +350,11 @@ static func _ch_enemies() -> Dictionary:
 			_p("An enemy is rolled from a pool matched to the game's type and the "
 				+ "run's current difficulty. The enemy IS its goal. Killing it and "
 				+ "doing the goal are the same act."),
-			_h("What a node stands up"),
-			_p("How many bodies a game puts on the board is decided by the NODE, "
-				+ "not by the game. An Enemies node stands TWO — its own enemy and "
-				+ "a second rolled from the same pool. A Champion node stands ONE: "
-				+ "a boss of the run's current tier, alone. An Event or a Shop node "
-				+ "stands none at all. The card says how many; which ones is rolled "
-				+ "on arrival."),
+			_h("What a game stands up"),
+			_p("Every game puts TWO bodies on the board — its own enemy and a "
+				+ "second rolled from the same pool. The Amulet stands ONE: a boss "
+				+ "of the run's current tier, alone. The card says how many; which "
+				+ "ones is rolled on arrival."),
 			_b("Neither of the two is a companion to the other. Both carry their "
 				+ "own goal, both are ordinary followers from the moment they land, "
 				+ "and beating the game answers for neither of them on its own."),
@@ -642,11 +633,10 @@ static func _ch_verbs() -> Dictionary:
 				+ "Bash or a Transmute is worth spending, because after you travel "
 				+ "the enemy is already on the board and only a bomb or the goal "
 				+ "itself will move it."),
-			_note("Three Bashes are refused outright: the Amulet game (destroying "
-				+ "the win condition would make the run unwinnable), the last "
-				+ "card on the table with nothing to replace it, and a CHAMPION "
-				+ "node (!!) — a boss cannot be bashed out of the road. Scramble "
-				+ "the offering instead and you are dealt a different fight."),
+			_note("Two Bashes are refused outright: the Amulet game (destroying "
+				+ "the win condition would make the run unwinnable), and the last "
+				+ "card on the table with nothing to replace it. Scramble the "
+				+ "offering instead and you are dealt a different fight."),
 			_note("Traditional roguelikes have a setting of their own for "
 				+ "Transmute. By default they swap for another Traditional game, "
 				+ "which is arguably no relief at all — a Traditional game is the "
@@ -690,28 +680,32 @@ static func _ch_gold() -> Dictionary:
 			_p("Gold rides the DROP, not the corpse. Beating an enemy on time pays; "
 				+ "clearing an old goal games later pays exactly the same, because "
 				+ "the goal was the price either way. Bombing pays nothing at all."),
-			_h("Where the shops are"),
-			_p("A shop stands at every SHOP NODE — the `$` on a card, on the map "
-				+ "and on the route. About one game in ten on the map is one, dealt "
-				+ "when the run begins and fixed from then on, so a shop can never "
-				+ "appear or vanish under you."),
-			_p("Every start you are offered has at least one somewhere on its "
-				+ "shortest roads to the Amulet, and the map shows the rest. A shop one step off the "
-				+ "straight road is often the better way to go."),
+			_h("Where the shops are: the shop bar"),
+			_p(("There are no shops on the map until you open one. The 🛒 SHOP "
+				+ "BAR, beside your gold, fills by one for every enemy you defeat "
+				+ "(a boss is one too; a bomb is none). When it is full, press it to "
+				+ "open a shop at the game you are standing at — before you play "
+				+ "it or after. The first shop costs %d kills, and every shop after "
+				+ "it one more.") % ShopSystem.BAR_BASE),
+			_b("The shop STAYS at that game for the rest of the run. Come back to "
+				+ "the game and it is still there; the 🗺 map, the route and the "
+				+ "game's card all wear a 🛒 so you can find it."),
+			_b("One shop a game. A full bar keeps until you are standing at a "
+				+ "game without one — but kills past a full bar are lost, so it is "
+				+ "worth spending."),
 			_h("The shelf"),
 			_b(("%d items, rolled once, and they STAY. Buying marks a slot sold "
 				+ "rather than clearing it.") % ShopSystem.STOCK_SLOTS),
 			_b("So a shop you cleared out is a shop you know is empty, and a shop "
 				+ "you left two items at is a reason to walk back."),
-			_b("Beat the game there and a 🛒 Shop button appears by the games "
-				+ "to choose from. It stays for the whole visit; travelling on is "
-				+ "what takes it away."),
+			_b("At a game with a shop, the bar reads Shop: press it to walk in. "
+				+ "Once you have played the game a 🛒 Shop button also stands by "
+				+ "the games to choose from."),
 			_b("A Scramble charge rerolls the whole shelf, sold slots included."),
 			_b("A shop card shows you what is left on a shelf you have already "
 				+ "stood in — which is what makes going back a real decision. A "
 				+ "shop you have never visited only tells you it is there."),
-			_note("A Shop node pays NO EVENT. The shop is what happens there "
-				+ "instead. Transmute the game on one and it still sells — the "
+			_note("Transmute the game a shop stands at and it still sells — the "
 				+ "shop belongs to the spot on the map, not to the game."),
 		],
 	}
@@ -732,9 +726,6 @@ static func _ch_events() -> Dictionary:
 				+ "and costs something."),
 			_b("Every game pays one, and is then spent for the rest of the run — "
 				+ "so walking a two-node loop is not a way to farm them."),
-			_b("A Shop node pays none. The shop is what happens there."),
-			_b("An EVENT node (?) fires one the moment you ARRIVE, before you play "
-				+ "— and always finds one, even at a node that has paid before."),
 			_b("A game you were SENT to by another event pays none, and neither "
 				+ "does the Amulet, where the run is already over."),
 			_b("Which event you get is dealt from a shuffle bag: nothing comes "
@@ -908,18 +899,15 @@ static func _ch_bosses() -> Dictionary:
 			_p("There are two difficulty axes. The pressure ladder in §2 is the "
 				+ "one you steer. This is the one that ticks up on its own."),
 			_p(("The tier counts SPAWNS, not games: every time bodies land — "
-				+ "arriving at an Enemies or Champion node, or losing with nothing "
-				+ "down — is one spawn, and every %d of them the run's tier goes "
-				+ "up: Low, Medium, High, Insane, and there it stops. An Event or a "
-				+ "Shop node lands nothing, so routing through them holds the tier "
-				+ "where it is. A higher tier means enemies that hit harder — and a "
-				+ "bigger board to cross before they reach you, which is the "
-				+ "counterweight.") % RunDifficulty.games_per_tier()),
+				+ "arriving at a game, or losing with nothing down — is one spawn, "
+				+ "and every %d of them the run's tier goes up: Low, Medium, High, "
+				+ "Insane, and there it stops. A higher tier means enemies that hit "
+				+ "harder — and a bigger board to cross before they reach you, "
+				+ "which is the counterweight.") % RunDifficulty.games_per_tier()),
 			_h("Where bosses come from"),
-			_b("A CHAMPION node (!!) stands a boss of the current tier, alone."),
+			_b("The AMULET stands a boss of the current tier, alone."),
 			_b(("Every %d%s spawn lands a boss ON TOP of whatever else was "
-				+ "arriving — so a lost run can be the one that brings a boss, and "
-				+ "a Champion node that is also that spawn brings two.") % [
+				+ "arriving — so a lost run can be the one that brings a boss.") % [
 				RunDifficulty.games_per_tier(),
 				"rd" if RunDifficulty.games_per_tier() == 3 else "th"]),
 			_p("The count to the next one is on the strip over the board, and the "
@@ -933,8 +921,6 @@ static func _ch_bosses() -> Dictionary:
 				+ "removes it. You can still throw one — it spends the charge and "
 				+ "deals nothing, but what the blast LEAVES still lands, which is "
 				+ "how Hot Bombs burns a boss and Sticky Bombs webs one."),
-			_b("A Champion node cannot be BASHED. Scrambling or transmuting it "
-				+ "buys you a DIFFERENT boss, not a way past this one."),
 			_note("A boss cannot be dashed past either. It follows you like "
 				+ "everything else on the board, and only its goal removes it."),
 			_h("Locations"),
@@ -1097,8 +1083,9 @@ static func _ch_screen() -> Dictionary:
 				+ "colour — empty out in the wilds), and on the right what ending "
 				+ "THIS game will stand up (☠ +N when this game ends). The strip "
 				+ "takes the band's colour."),
-			_kv("What kind of place a game is", "Its mark — ! ? !! $ — on the "
-				+ "card, on the 🗺 map and on the route ladder."),
+			_kv("Where your shops are", "A 🛒 on the game's card, on the 🗺 map and "
+				+ "on the route ladder. The bar beside your gold says how close the "
+				+ "next one is."),
 			_kv("Push and Bomb charges", "On their own buttons, on the board's "
 				+ "toolbar."),
 			_kv("Bash, Dash, Transmute, Scramble", "Chips on the row under the "
@@ -1117,7 +1104,7 @@ static func _ch_screen() -> Dictionary:
 			_kv("What is chasing you", "The board, right column."),
 			_h("Elsewhere in the menus"),
 			_kv("→ Optimal Path", "The shortest road from where you stand to the "
-				+ "Amulet, rung by rung, with every node's kind marked. It lives in the "
+				+ "Amulet, rung by rung, with your shops marked. It lives in the "
 				+ "offering's heading row, and on every offered card — a card's "
 				+ "own button routes the path as it would be if you took it."),
 			_kv("🗺 Map", "The star chart, with the road ahead drawn over it. It "

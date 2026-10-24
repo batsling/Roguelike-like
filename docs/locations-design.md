@@ -35,8 +35,8 @@ the run**, which nothing else has:
 
 **"When entered" means the first game picked there, once** (the owner, 23 Oct).
 Dealing a location sets `location_arrival_due`; its arrive effects run at the
-next node arrival — `choose_game` (after that arrival's bodies and capstone) or
-`begin_bodiless_game` for an Event or Shop node — and never again. So the run's
+next node arrival — `choose_game`, after that arrival's bodies and capstone —
+and never again. So the run's
 first location arrives with its first game rather than onto an empty board, and
 a difficulty up that lands mid-game (a lost run's spawn) or at a game's end never
 drops bodies into a game already being played. A Scramble is not entering. When

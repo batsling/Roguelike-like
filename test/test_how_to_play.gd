@@ -112,13 +112,14 @@ func test_the_pressure_ladder_the_manual_prints_is_the_real_one() -> void:
 		"the extra turns a report handed the board are retired")
 
 
-# §19: the node kinds and the end-of-game spawn are taught, from the real
-# numbers, and the retired escort and the every-third-GAME boss are gone.
-func test_the_manual_teaches_node_kinds_and_the_end_of_game_price() -> void:
+# §19.10: the shop bar and the end-of-game spawn are taught, from the real
+# numbers, and the retired node kinds, escort and every-third-GAME boss are gone.
+func test_the_manual_teaches_the_shop_bar_and_the_end_of_game_price() -> void:
 	var text: String = _all_text()
-	for kind in [RunGraph.NodeKind.ENEMIES, RunGraph.NodeKind.EVENT,
-			RunGraph.NodeKind.CHAMPION, RunGraph.NodeKind.SHOP]:
-		assert_string_contains(text, RunGraph.kind_mark(int(kind)) + " ")
+	assert_string_contains(text, "SHOP BAR")
+	assert_string_contains(text, "The first shop costs %d kills" % ShopSystem.BAR_BASE)
+	assert_false(text.contains("Champion"), "the node kinds were retired in §19.10")
+	assert_false(text.contains("Shop node"), "and with them the Shop node")
 	assert_string_contains(text, "Every game that ends brings more of them")
 	assert_string_contains(text, "Escaping with nothing down adds that 1 too")
 	assert_string_contains(text, "Every %dth spawn" % RunDifficulty.GAMES_PER_TIER)
@@ -134,7 +135,7 @@ func test_the_economy_the_manual_quotes_is_the_real_one() -> void:
 	assert_string_contains(text, "+%d gold" % GameLoop2.GOLD_PER_BOSS)
 	assert_string_contains(text, "Common %d" % ShopSystem.BASE_PRICE)
 	assert_string_contains(text, "Legendary %d" % (ShopSystem.BASE_PRICE + 3 * ShopSystem.PRICE_PER_RUNG))
-	assert_string_contains(text, "SHOP NODE")
+	assert_string_contains(text, "SHOP BAR")
 	assert_string_contains(text, "%d items, rolled once" % ShopSystem.STOCK_SLOTS)
 
 

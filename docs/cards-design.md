@@ -208,8 +208,10 @@ was its only author, and a sheet keyword nothing can write is a keyword that rot
 ### 5.2 The three teleports
 
 `teleport_type` (every Deckbuilder game on the map), `teleport_shop` (the nearest
-Shop node, measured in roads — it was `teleport_hub`, the nearest of the ten hub
-games, until [§19.7](games-first-redesign.md) moved the shops onto Shop nodes) and `teleport_start` (the game the run opened on) are one
+shop the player has opened, measured in roads — it was `teleport_hub`, the nearest
+of the ten hub games, until [§19.7](games-first-redesign.md) moved the shops onto
+Shop nodes, and §19.10 onto the shops the player opens; with none open it fizzles)
+and `teleport_start` (the game the run opened on) are one
 move with three pools. They land in `Overworld2.card_teleport` → `_teleport_into`,
 which is the old `teleport_to_type` generalised: the same shared `_reachable`
 filter, the same forced escape of whatever is in play, the same "off the bus is ON
@@ -220,7 +222,7 @@ They resolve as **requests**, like Scroll of Teleportation and for the same reas
 ended up can only come from whoever moved you.
 
 **The Hermit's ties are drawn between rather than resolved by array order.** Two
-Shop nodes two steps away are two equally good answers, and taking the first would make
+shops two steps away are two equally good answers, and taking the first would make
 the card quietly deterministic.
 
 ### 5.3 Temperance — a machine under the board
@@ -235,7 +237,7 @@ cabinets it has; a tarot card is a promise about which one you get.
 Everything after that is machinery that already existed
 ([`object-sheet-authoring.md`](object-sheet-authoring.md)). The spawn emits
 `objects_changed`, `Overworld2._sync_object_panel` answers it, and `ObjectPanel2`
-mounts **under the battlefield, where a Shop node's shelf mounts** — not in a popup. That
+mounts **under the battlefield, where a shop's shelf once mounted** — not in a popup. That
 is the whole difference from the Arcade Room event, which draws its cabinets inside
 its own modal because the arcade *is* a room you are standing in. A card gives you
 no room to be in, so the machine stands where a shop would: on the page, blocking

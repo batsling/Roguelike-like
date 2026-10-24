@@ -163,10 +163,8 @@ const NAME_BOX_H := 51               # three lines of NAME_FONT — "Shotgun Kin
 # actually been in there. Both come from ShopSystem so this and the popup's shop
 # block cannot end up describing the same shelf differently.
 func _shop_card_tooltip(node_id: StringName) -> String:
-	# "…and no event" is worth a line here because a Shop node pays no event
-	# after the game: a shop stands here instead of one, not as well as one (§14.4).
 	var lines: Array = [ShopSystem.headline(node_id),
-		"A shop stands here, so no event fires — this is what happens instead."]
+		"You opened a shop here off the shop bar; it stays for the rest of the run."]
 	var stock: Array = ShopSystem.stock_lines(node_id)
 	if not stock.is_empty():
 		lines.append("")
@@ -219,17 +217,6 @@ func _make_choice_card(index: int, choice: Dictionary) -> Control:
 	badge_row.custom_minimum_size = Vector2(COVER_SIZE.x, BADGE_LINE)
 	card.add_child(badge_row)
 
-	# THE KIND MARK (§19.8), first on the row and on EVERY card — which is the
-	# whole reason it is one or two characters of punctuation rather than a word.
-	# What a node does to the board is half of what routing is about, and the
-	# badge row had 21px of its 160 left; a mark this size is the only thing that
-	# fits without displacing the Amulet's flag or the Dash badge.
-	#
-	# Leftmost so the offering can be read DOWN the column: three cards side by
-	# side put their marks in a row, and "? ! $" says what the table is offering
-	# before a single cover has been looked at.
-	badge_row.add_child(_kind_mark_label(choice))
-
 	var flag := Label.new()
 	if amulet and GameState.carrying_amulet:
 		# The Collapse's goal (docs/fracture-design.md §7): arriving is the win.
@@ -241,8 +228,8 @@ func _make_choice_card(index: int, choice: Dictionary) -> Control:
 		flag.tooltip_text = "Beat this game's goal and you win the run."
 		flag.add_theme_color_override("font_color", UITheme.GOLD)
 	elif ShopSystem.is_shop(slot_of(choice)):
-		# The shelf, beside the `$` kind mark: the mark says what the node IS,
-		# and this carries what is left on it once you have stood there.
+		# A shop the player opened here (§19.10), and what is left on its shelf
+		# once they have stood in it.
 		flag.text = "🛒 SHOP"
 		flag.tooltip_text = _shop_card_tooltip(slot_of(choice))
 		flag.add_theme_color_override("font_color", UITheme.SHOP_GREEN)
@@ -424,40 +411,10 @@ func _make_choice_card(index: int, choice: Dictionary) -> Control:
 	card.add_child(name_lbl)
 	return card
 
-# The kind mark, as a label. Blank on a stay-or-return card, which MOVES the run
-# rather than committing it to a node — there is no arrival for a kind to
-# describe, and a mark there would be answering a question nobody asked.
-func _kind_mark_label(choice: Dictionary) -> Label:
-	var mark := Label.new()
-	mark.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	mark.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	mark.custom_minimum_size = Vector2(0, BADGE_LINE)
-	mark.add_theme_font_size_override("font_size", BADGE_FONT)
-	var kind: int = kind_of(choice)
-	if kind < 0:
-		mark.text = ""
-		return mark
-	mark.text = RunGraph.kind_mark(kind)
-	mark.tooltip_text = RunGraph.kind_tip(kind)
-	mark.add_theme_color_override("font_color", UITheme.kind_color(kind))
-	return mark
-
-# The KIND of the node this choice sits on, or -1 when the choice is not an
-# arrival at all (the stay-or-return pair).
-#
-# Read off the SLOT, never off the game standing on it (§19.2): the kind rides
-# the node, so a transmuted card plays a different game at the same kind. Public
-# because the popup asks the same question and the two must not drift.
-func kind_of(choice: Dictionary) -> int:
-	var slot: StringName = slot_of(choice)
-	if slot == &"":
-		return -1
-	return GameState.node_kind(slot)
-
 # The NODE a choice sits on — its map slot, which a transmuted card keeps while
 # it plays a different game — or &"" for the stay-or-return pair, which is not
-# an arrival. Everything that belongs to the node rather than the game (its kind,
-# its shop) is read through this.
+# an arrival. Everything that belongs to the node rather than the game (its
+# shop, whether it is a rift) is read through this.
 func slot_of(choice: Dictionary) -> StringName:
 	if choice.is_empty() or choice.has("stay"):
 		return &""
@@ -542,7 +499,7 @@ const HIDDEN_ENEMY_TEXT := "something you can't see"
 #
 # It used to be THE ESCORT WARNING, and said "one more enemy spawns with it". The
 # escort is retired (§19.4): there is no companion, and the count is a property
-# of the node's kind rather than of the enemy that happened to be advertised — so
+# of the node rather than of the enemy that happened to be advertised — so
 # the line says how many walk on rather than how many come along.
 const BODIES_TWO := "⚠ Two bodies walk on — the second is rolled on arrival."
 const BODIES_ONE_BOSS := "⚠ A boss of this tier walks on, alone."
@@ -550,26 +507,22 @@ const BODIES_NONE := ""
 const BODIES_TWO_SHORT := "⚠ 2 bodies"
 const BODIES_ONE_SHORT := "⚠ boss"
 
-# How many bodies committing to `choice` stands up, read off the node's KIND
-# (§19.1): Enemies 2, Champion 1, Event and Shop none.
+# How many bodies committing to `choice` stands up: 2 at every game, and the
+# Amulet's boss alone (§19.10). The Event and Shop node kinds, which stood none,
+# are retired.
 #
-# -1 means "nothing to say" rather than zero: the stay-or-return card moves the
-# run rather than committing it, and a card with no enemy at all is a free game.
-# Both are different from a node that genuinely stands nothing up, which is a
-# fact worth printing.
+# -1 means "nothing to say": the stay-or-return card moves the run rather than
+# committing it, and a card with no enemy at all is a free game.
 func bodies_expected(choice: Dictionary) -> int:
 	if choice.is_empty() or choice.has("stay"):
 		return -1
 	if Data.all_goal_enemies().is_empty():
 		return -1
-	var kind: int = kind_of(choice)
-	if kind < 0:
+	if slot_of(choice) == &"":
 		return -1
-	match kind:
-		RunGraph.NodeKind.EVENT, RunGraph.NodeKind.SHOP:
-			return 0
-		RunGraph.NodeKind.CHAMPION:
-			return 1
+	# The Amulet stands its boss alone; every other game stands two (§19.10).
+	if slot_of(choice) == GameState.amulet_game_id:
+		return 1
 	return 2 if choice.get("enemy") != null else -1
 
 # The line for a card: a WARNING while the game is still an offer, and the second

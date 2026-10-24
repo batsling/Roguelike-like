@@ -272,10 +272,8 @@ func test_the_popup_counts_the_connections_the_game_opens_onto() -> void:
 	modal._close()
 
 func test_the_connection_line_breaks_out_events_and_shops() -> void:
-	# The two headings are EXCLUSIVE: a shop is what happens at a Shop node,
-	# instead of an event (§14.4), so a Shop neighbour is counted under 🛒 and
-	# never under ✦.
-	# Counting it under both promised the same neighbour twice.
+	# A neighbour with a shop the player opened (§19.10) is counted under 🛒, and
+	# still under ✦ while it owes its event: the shop no longer stands in for one.
 	for i in range(_ui._choices.size()):
 		var slot: StringName = StringName(_ui._choices[i]["slot"])
 		var counts: Dictionary = GameChoiceModal.connection_counts(slot)
@@ -286,10 +284,10 @@ func test_the_connection_line_breaks_out_events_and_shops() -> void:
 				continue
 			if ShopSystem.is_shop(n):
 				shops += 1
-			elif not GameState.event_nodes_fired.has(n):
+			if not GameState.event_nodes_fired.has(n):
 				events += 1
 		assert_eq(int(counts["events"]), events, "events counted off the same rule")
-		assert_eq(int(counts["shops"]), shops, "shops counted off the same node kinds")
+		assert_eq(int(counts["shops"]), shops, "shops counted off the same shelves")
 		var line: String = GameChoiceModal.nearby_text(counts)
 		if shops > 0:
 			assert_true(line.contains("%d nearby shop" % shops),
@@ -616,12 +614,10 @@ func test_a_proof_clip_shows_a_poster_and_plays_when_clicked() -> void:
 	view.gui_input.emit(click)
 	assert_null(modal._proof_view, "and a click outside it puts it away")
 
-# A Champion node refuses a Bash (§7.1), so the card is arranged to be an
-# Enemies node — on its SLOT, where the kind lives (§19.2) — rather than hoped.
+# The Amulet refuses a Bash (§7.1); any other card takes one.
 func _first_bashable() -> int:
 	for i in range(_ui._choices.size()):
 		if not bool(_ui._choices[i]["amulet"]):
-			GameState.node_kinds[StringName(_ui._choices[i]["slot"])] = RunGraph.NodeKind.ENEMIES
 			return i
 	return -1
 

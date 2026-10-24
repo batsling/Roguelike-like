@@ -57,7 +57,7 @@ rather than trusting them later.
 | **Characters** | 12, each with a level-up goal; Mysterious Mask adds a second |
 | **Enemies** | 66 goal-enemies and 50 bosses (some with phases) across four game types, 31 abilities, 7 statuses, tile effects and units on the board |
 | **Things you carry** | 77 relics, plus eight kinds of loot in a shaped pack: 9 scrolls, 10 pills and 15 potions (each identified per run), 37 cards, 12 wands, 22 trinkets, 5 bags, 11 weapons with 6 evolutions |
-| **Between games** | 16 events, 2 machines, 3 curse goals, Shop nodes with 4 shopkeepers, and the end-of-session Camp |
+| **Between games** | 16 events, 2 machines, 3 curse goals, shops opened off the shop bar with 4 shopkeepers, and the end-of-session Camp |
 | **Difficulty** | Amulet pressure, a tier ladder stepped by spawns, boss capstones, Fractures 1–10 and Fracture 10's Collapse (carry the Amulet home) |
 | **Across runs** | Profiles, game and character ranks, the Collection, a tier list, notes per goal, Run History, custom runs with seeds |
 | **Streaming** | The OBS overlay (eight browser sources), a speedrun clock, and Roguelike Radio (1,933 songs on the sheet, the player's own audio) |
@@ -177,7 +177,7 @@ The repository root **is** the Godot project, so `res://x` is `./x`.
 
 ## Roadmap
 
-The core loop, node kinds, shops, events and objects, all eight loot kinds,
+The core loop, the shop bar, shops, events and objects, all eight loot kinds,
 enemy abilities, bosses with phases, Fractures, rifts, ranks, the radio, the
 Camp, Run History and the overlay are built. What is still ahead:
 

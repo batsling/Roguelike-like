@@ -11,6 +11,26 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The node kinds are gone; shops come off a shop bar (§19.10).** The owner
+  found the kinds complicated things without making for interesting pathing —
+  the final route is rarely on screen when the choice is made — and made shops
+  hard to find. Every game now stands two bodies and the Amulet its boss; no
+  event fires on arrival. A 🛒 bar beside the gold fills by one per enemy
+  defeated (bombs don't count). Full, it opens a shop at the game you are
+  standing at, before or after playing it, and the shop stays there for the run:
+  one per game, marked 🛒 on its card, the route, the map and the stream
+  overlay. The first shop costs 4 kills, each after it one more. Saves from
+  before this are not resumed (`SAVE_VERSION` 4).
+
+- **A rift that needs a key wears one.** A 🗝 sits on the bottom edge of the
+  cover of a Rift Key card, on the offering and in its popup, so it reads apart
+  from a rift that is already on the map and from a free rift.
+
+- **24 Oct upload: 8 new games, connections, radio fixes.** Islantiles,
+  Goaldeck, Internet Survivor Survivors, The Gate Must Stand, Nitro Kid, Super
+  Alloy Crush, Lootbound and Inventorix are on the chart; 121 radio songs now
+  carry their artist and album, so their ids gained the artist.
+
 - **24 Oct upload: one use at a time, weapon batteries, a Shopkeepers tab.**
   Using an item or a piece of loot while another use is still waiting for its
   target puts the waiting one back unspent (an armed relic, a throw, zap or

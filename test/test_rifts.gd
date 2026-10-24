@@ -197,23 +197,6 @@ func test_reset_run_lifts_the_rifts() -> void:
 	assert_true(RunGraph.rifts().is_empty(), "and the graph is the bare map again")
 
 
-func test_rift_games_are_always_enemies() -> void:
-	var pick: Dictionary = _dealt(31415)
-	if pick.is_empty():
-		pending("this catalogue deals no rifts")
-		return
-	GameState.set_rifts(pick["rifts"])
-	var starts: Array = []
-	for opt in pick["options"]:
-		starts.append(StringName(opt["start_id"]))
-	var rng := RandomNumberGenerator.new()
-	rng.seed = 271828
-	var kinds: Dictionary = RunGraph.assign_node_kinds(rng, StringName(pick["amulet_id"]), starts)
-	for r in pick["rifts"]:
-		assert_eq(int(kinds.get(StringName(r["game"]), -1)), RunGraph.NodeKind.ENEMIES,
-			"%s is a rift game and must be Enemies" % r["game"])
-
-
 # --- the rotation (§3.3) -----------------------------------------------------
 
 func test_last_runs_rift_games_are_saved_for_last() -> void:
@@ -610,8 +593,6 @@ func test_picking_a_rift_card_stands_rift_bodies() -> void:
 		c["boss"] = false
 		ui._choices[0] = c
 		idx = 0
-	# The kinds were dealt for the run's own rifts; this one is seeded, so say it.
-	GameState.node_kinds[rift_id] = RunGraph.NodeKind.ENEMIES
 	ui.pick(idx)
 	assert_gt(GameLoop2.arrivals.size(), 0, "the rift game stood bodies up")
 	for inst in GameLoop2.arrivals:

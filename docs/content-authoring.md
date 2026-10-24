@@ -209,9 +209,8 @@ games hung off one hub moves it a lot.
 ## Authoring an event
 
 An **event** is what the run does between games. One fires after every game
-the run plays — win, loss, or escape — on top of whatever the game itself paid,
-**except at a Shop node**, where the shop is what happens; and an **Event node**
-deals one more on arrival, before you play (spec §19.1).
+the run plays — win, loss, or escape — on top of whatever the game itself paid
+(spec §12; the Event node that dealt one more on arrival was retired in §19.10).
 The games this is a graph of are hour-long roguelikes, and an event is the beat
 between two of them: a decision that takes a minute and costs something.
 Everything about one lives in the **`events2.0` tab** of
