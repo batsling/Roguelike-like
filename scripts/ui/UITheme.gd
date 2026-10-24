@@ -518,7 +518,7 @@ static func attach_key_badge(art: Control, lift: float = 0.0) -> void:
 	glyph.text = "🗝"
 	glyph.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	glyph.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	glyph.add_theme_font_size_override("font_size", FONT_BODY)
+	glyph.add_theme_font_size_override("font_size", FONT_SUB)
 	glyph.add_theme_color_override("font_color", GOLD)
 	badge.add_child(glyph)
 	badge.custom_minimum_size = Vector2(KEY_BADGE_SIZE, KEY_BADGE_SIZE)
