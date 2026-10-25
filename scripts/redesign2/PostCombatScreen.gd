@@ -48,7 +48,8 @@ extends Control
 # And one button out, which NAMES WHERE IT GOES: "Go to Event" when the node owes
 # one (clicking it is what opens the event, so the player leaves this screen into
 # the next thing rather than having the next thing dropped on them), "Go to Shop"
-# at a Shop node, which owes no event, and "Travel on" when it owes neither.
+# at a game with a shop, and "Travel on" when it owes neither. The event wins
+# when both are owed.
 #
 # Built in code on its own CanvasLayer, BELOW the run's header bar (135) so Health
 # and Gold stay readable over it, and below the loot use modal (130) so spending a
@@ -96,7 +97,7 @@ var _chests: Array = []
 var _loot: Array = []
 # Whether an event is queued behind this screen, which is what the way out says.
 var _event_pending: bool = false
-# The Shop node this screen's exit leads to, when the game was played on one. Only ever
+# The shop this screen's exit leads to, when the game was played at one. Only ever
 # read for the button's wording — the shelf itself is the page's (see `shop_id`).
 var _shop_id: StringName = &""
 # The boss round this screen is warning about: the tier it steps to and the

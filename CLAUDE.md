@@ -161,7 +161,7 @@ the checkout, not what a full clone downloads.
 ```bash
 tools/gut.sh test_gameloop2            # ONE file, ~5 s (test_overworld2 is the slow one: 10+ min)
 tools/gut.sh test_overworld2 crash     # only the tests in it whose name contains "crash"
-tools/gut.sh                           # the whole suite: 63 scripts, ~3130 tests, ~25 min
+tools/gut.sh                           # the whole suite: 65 scripts, ~3200 tests, ~25 min
 python3 tools/outline.py scripts/redesign2/Overworld2.gd --grep stun   # a file's sections + funcs, with lines
 ```
 
@@ -180,7 +180,7 @@ python3 tools/outline.py scripts/redesign2/Overworld2.gd --grep stun   # a file'
   files before it was shared; a fix to how a test stands on the page now lands in
   every file at once. Not named `test_*`, so GUT does not run them.
 - **Find your way into a big script with `tools/outline.py` before reading it.**
-  `GameLoop2.gd` (8.4k lines) and `Overworld2.gd` (7.7k) are about 45% comments
+  `GameLoop2.gd` (8.8k lines) and `Overworld2.gd` (8.1k) are about 45% comments
   and are cut into `# --- section ---` blocks; the outline lists each block's line
   range and members, so a Read can start at the right line instead of a grep
   landing on a name with no context.
@@ -309,10 +309,10 @@ python3 tools/outline.py scripts/redesign2/Overworld2.gd --grep stun   # a file'
   wiring it up — it says "hides a native class" in one line.
 - **Game covers load lazily.** `GameData.cover_path` holds the path and
   `GameData.cover_image` loads it on first read. Do **not** turn `cover_image`
-  back into an `@export var ... : Texture2D` — `Data` loads all 927 games at
+  back into an `@export var ... : Texture2D` — `Data` loads all 967 games at
   startup and an ExtResource resolves eagerly, which meant decoding ~206 MB of
   PNG on every boot and every headless test run (~5.2s of a ~5.7s startup).
-- **`data/games/` has 927 files.** Never glob or read it wholesale to answer a
+- **`data/games/` has 967 files.** Never glob or read it wholesale to answer a
   question; query it with `grep` for the field you care about.
 - **The repo tracks source only.** `.godot/`, `*.import`, `*.uid` and
   `export_presets.cfg` are gitignored and regenerate. They show up in local file

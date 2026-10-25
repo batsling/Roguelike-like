@@ -3334,7 +3334,7 @@ func _populate_objects() -> void:
 	_set_count(list.size(), total)
 
 # ------------------------------------------------------------------
-# Shopkeepers — who can stand behind a Shop node's counter (§14.6)
+# Shopkeepers — who can stand behind a shop's counter (§14.6)
 # ------------------------------------------------------------------
 #
 # The roster a run deals its shops from. A keeper is a plain shop with a name and

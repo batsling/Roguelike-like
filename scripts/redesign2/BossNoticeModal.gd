@@ -135,7 +135,7 @@ func _build() -> void:
 
 	for line in [
 		"A boss takes no damage from bombs — its goal is the only way it comes off the board.",
-		"It lands with the next spawn, whichever comes first: taking an Enemies or Champion game, a lost run's spawn, or the end of a game.",
+		"It lands with the next spawn, whichever comes first: taking a game, a lost run's spawn, or the end of a game.",
 		"It is no card's enemy, so Scramble, Bash and Transmute cannot send it back.",
 	]:
 		var l := Label.new()

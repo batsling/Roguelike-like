@@ -272,8 +272,8 @@ Transmuting is simpler, because **it keeps the map's shape**:
   played now holds a game you haven't.
 - Rift slots stay rift slots. A transmuted rift game draws from the rift pool, as
   Transmute already does (rifts §7).
-- A node's kind (shop, hub, …) belongs to the node, so shops stay where they
-  spawned, the owner's rule.
+- A shop belongs to the node it was opened at, so shops stay where they were
+  opened, the owner's rule.
 
 ### 7.4 The one real problem: running out of games to transmute into
 

@@ -1,7 +1,7 @@
 class_name ShopModal2
 extends Control
 
-# ShopModal2 — the shop at a Shop node, as a pop-up (docs/games-first-redesign.md
+# ShopModal2 — a shop the player has opened (§19.10), as a pop-up (docs/games-first-redesign.md
 # §14.4, §14.6). It opens when the player asks for it: the 🛒 Shop button on the
 # offering's heading (Overworld2._shop_btn), or the haul screen's "Go to Shop"
 # exit. Nothing opens it by itself.

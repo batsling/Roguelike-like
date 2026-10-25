@@ -677,7 +677,7 @@ The fixture is synthetic on purpose — it has to force states a real run reache
 rarely, and be reproducible. The cost is that it never disagrees with itself:
 every fixture that ever exercised this page named its own hero, which is how
 `_hero()` came to look the character up in `Data.get_character` (the two-strong
-combat-era roster) while the run is dealt from `get_character2` (eleven). Ten of
+combat-era roster, since deleted) while the run is dealt from `get_character2` (eleven). Ten of
 the eleven drew a **nameless, portraitless hero card for an entire stream**, and
 no test could see it because no test used a real character id. One real payload
 showed it immediately. A test walks the roster now, but the lesson is the tool:

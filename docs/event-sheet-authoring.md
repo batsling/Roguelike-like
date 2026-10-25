@@ -79,14 +79,13 @@ destination is somewhere the run was *sent*, and an event there would land on
 top of the stay-or-return question. Nor does the **Amulet** game: the run is
 over.
 
-**Nor does a hub** (§14.2): a **shop** is what happens at a hub, instead of an
-event rather than as well as one. Both used to queue on the same arrival — the
-shop mounting under the board, the event opening a modal over it — so the shop
-the player had routed towards was something they had to dismiss an event to
-reach. `EventSystem.roll_for_arrival` returns null at a hub, so this holds for
-every caller rather than for the overworld only, and it reads off the game
-actually PLAYED at the node: transmute a hub and the shop leaves with the game
-it belonged to, so the spot goes back to paying an event.
+**A game with a shop pays its event like any other** (spec §19.10). For a while
+it did not: a shop stood at a hub (spec §14.2) and then at a Shop node, instead
+of an event, because both queued on one arrival and the shop the player had
+routed towards was something they had to dismiss an event to reach. Since shops
+are opened off the shop bar, the player chose the shop *and* the game, so
+`EventSystem.roll_for_arrival` lost its shop gate; the event opens first and the
+shop's button waits behind it (`Overworld2._open_pending_event`).
 
 **Placement is gone, and so is the badge — and now so is the line that replaced
 it.** An event used to be hashed onto a specific node from the node id and the
@@ -96,9 +95,9 @@ is no subset of nodes to badge, and no honest answer to "which event is over
 there" before the run arrives — so the badge came off the cards along with the
 placement that justified it. The card's popup kept a line saying an event *will*
 fire; that has gone too, for the same reason one step further on. It was true of
-every card but the Amulet's and a hub's, and **a fact that is always true is not
-information.** What a card says about events now is what a **hub** card says:
-`🛒 SHOP`, and a tooltip that a shop stands here so no event fires.
+every card but the Amulet's, and **a fact that is always true is not
+information.** A card says nothing about events now; a game with a shop the
+player has opened carries `🛒 SHOP`.
 
 **The exchange rate moved with it.** §1 prices an event at one game's reward
 because a leaf cost two games and paid one. At one event per game that is no

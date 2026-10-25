@@ -229,14 +229,14 @@ var _pending_detour: bool = false
 # lands on a game played to a verdict (an escape walks away from it).
 var _detour_beaten: bool = false
 var _event_modal = null
-# The Shop node whose shelf is owed to the player once the board stops moving
-# (§14, §19.1).
+# The node whose shop is owed to the player once the board stops moving
+# (§14, §19.10).
 # Set on the same terms an event is — the game at this node was played through
 # and not escaped — because a shop and an event are the same kind of thing:
 # what was waiting at the node, paid after the game rather than before it.
 # &"" when nothing is owed.
 var _pending_shop: StringName = &""
-# The Shop node the run is STANDING in with its shop open for business, &"" when
+# The node the run is STANDING at with its shop open for business, &"" when
 # none (§14.4): set once the node's game is beaten, cleared when the run travels
 # on. While it is set the 🛒 Shop button on the offering's heading is up, and
 # pressing it opens the shop as a pop-up (ShopModal2). Nothing opens it by itself.
@@ -1559,7 +1559,7 @@ func _grant_start_gear_once(game: GameData) -> void:
 # The Champion's boss is rolled HERE rather than carried on the card, because
 # `enemy` is whatever the offering advertised and the offering does not yet know
 # about kinds. When the roster cannot supply a boss at all, the advertised enemy
-# stands instead — a Champion node with an empty board would be the badge telling
+# stands instead — an Amulet with an empty board would be the card telling
 # a lie, and §19.1 would rather it told a smaller truth.
 # WHETHER THIS SLOT IS THE AMULET'S, which stands a boss (§19.1, §19.10). Read off
 # the SLOT rather than the game on it, so a transmuted Amulet card still holds
@@ -1585,8 +1585,7 @@ func _roll_card_enemy(slot: StringName, type_key: StringName, tier: int) -> Goal
 func _commit_board(game: GameData, enemy: GoalEnemyData, tier: int) -> void:
 	var type_key: StringName = GameLoop2.game_type_key(game)
 	# A RIFT GAME's bodies hit twice as hard and pay twice over (docs/rifts-design.md
-	# §6). Read off the SLOT, like the kind: a rift Transmute has refilled is still a
-	# rift. Passed in because the run has not moved onto the slot yet (see pick).
+	# §6). Read off the SLOT: a rift Transmute has refilled is still a rift. Passed in because the run has not moved onto the slot yet (see pick).
 	var slot := StringName(_chosen.get("slot", &""))
 	var rift: bool = RunGraph.is_rift_game(slot if slot != &"" else game.id)
 	if _committed_is_amulet(game):
@@ -1607,7 +1606,7 @@ func _commit_board(game: GameData, enemy: GoalEnemyData, tier: int) -> void:
 # a surprise should have to be noticed.
 #
 # The wording lost the word ESCORT with §19.4. There is no companion any more:
-# an Enemies node stands two bodies and neither of them is attached to the other,
+# every game stands two bodies and neither of them is attached to the other,
 # so this says one walked on beside the first rather than that it came with it.
 func _log_second_body() -> void:
 	var second: GoalEnemyData = GameLoop2.second_body()
@@ -3002,14 +3001,10 @@ func _dismiss_post_game() -> void:
 # the modal lands on the screen the player is about to act on rather than on a
 # board mid-resolve.
 #
-# A node never owes both any more. The shop still opens behind the event here,
-# and the ordering is kept deliberately rather than collapsed into one path: a
-# Shop node pays no event (§14.4), so `_pending_event` is null at exactly the arrivals
-# `_pending_shop` is set on, and the fall-through below is the whole story. It
-# stays written as an order because the day something else queues an event on an
-# arrival — an item, a scroll — the shop should still come second: an event is a
-# decision with consequences and a shop is spending, so the money should be spent
-# knowing how the event went.
+# A game with a shop pays its event like any other since §19.10, so a node can
+# owe both, and the shop opens behind the event here. The shop comes second
+# because an event is a decision with consequences and a shop is spending, so the
+# money should be spent knowing how the event went.
 func _open_pending_event() -> void:
 	var ev: EventData2 = _pending_event
 	var node: StringName = _pending_event_node
@@ -3085,8 +3080,7 @@ func _open_pending_shop() -> void:
 	# Only where the player is actually STANDING. As a modal a shop could be raised
 	# anywhere; as a place on the page it cannot, and the one path that gets here
 	# from somewhere else is a node that owed both an event and a shop, where the
-	# event posted the run off to another game (§10). The spec calls that pairing
-	# unreal (a Shop node pays no event of its own), and a shop mounted under the
+	# event posted the run off to another game (§10). A shop mounted under the
 	# board while the run stands two games away from it would be a worse answer
 	# than no shop. The shelf is keyed by NODE, so "standing on it" is simply the
 	# node the run is on.
@@ -3281,7 +3275,7 @@ func _build_shop_button() -> Button:
 # Everything mounted under the board because the run is STANDING HERE: the node's
 # shop and any machines. Both have the same lifetime — travelling on ends them —
 # and they differ in what survives it. A shop's shelf lives on in ShopSystem, so
-# coming back to a Shop node is a real option; a machine is simply gone, and the next
+# coming back to a game with a shop is a real option; a machine is simply gone, and the next
 # one you meet is a different machine with its own press counts.
 func _leave_node() -> void:
 	_clear_shop()
@@ -5018,8 +5012,8 @@ func show_completed_goals() -> Node:
 # boss round", back when the boss rode the offering as a card's own enemy. The
 # capstone lands on the BOARD now and belongs to the spawn rather than to the
 # game, so the question is one step ahead of the counter rather than one behind
-# it — and an Event or a Shop node, which spawns nothing, does not bring it
-# closer.
+# it. (While the node kinds lasted, an Event or a Shop node spawned nothing and
+# did not bring it closer; since §19.10 every game stands bodies.)
 #
 # Keyed on `spawn_events` rather than `games_played` everywhere it is used, so a
 # bash, a transmute or a scramble redrawing the offering cannot re-announce the
@@ -5216,8 +5210,8 @@ func _build_choices() -> void:
 			_slot_enemies[slot_key] = enemy
 		_choices.append({
 			"game": game, "enemy": enemy, "slot": gid,
-			# `boss` stays on the record and is always false now: a Champion node
-			# stands a boss (§19.1) and the capstone spawns one, but neither is the
+			# `boss` stays on the record and is always false now: the Amulet
+			# stands a boss (§19.10) and the capstone spawns one, but neither is the
 			# card's advertised enemy. Kept because the card, the modal and the
 			# checklist all read it, and a key that vanishes reads as a bug rather
 			# than as a rule.
@@ -5404,8 +5398,8 @@ func _add_location_rift_cards(tier: int) -> void:
 # OPEN THE RIFT a key card promised (docs/rifts-design.md §8): spend the key and
 # lay the rift ONE-ENDED, off its destination only. The way back to where it was
 # opened from is never laid, so it is a one-way passage, and a game hanging off
-# one end can never shorten anything. The rift game is an Enemies node like every
-# rift (§6), so the commit that follows stands rift bodies on it.
+# one end can never shorten anything. The commit that follows stands rift bodies
+# on it, as on every rift (§6).
 func _open_rift_key(choice: Dictionary) -> void:
 	var gid := StringName(choice["slot"])
 	var dest := StringName(choice["rift_key"])
@@ -6558,7 +6552,7 @@ func _refresh_select_stats() -> void:
 	# are finally the same object.
 	_select_stats.add_child(_stat_chip("⛏ Bash %d" % GameState.bash, GameState.bash,
 		BASH_ORANGE,
-		"Destroy an offered game outright — it leaves the pool for good and another connected game takes the slot.\nNot a Champion node (!!): a boss cannot be bashed away.\nClick, then click the game you want gone.",
+		"Destroy an offered game outright — it leaves the pool for good and another connected game takes the slot.\nNot the Amulet: it is the way home.\nClick, then click the game you want gone.",
 		arm_bash, _armed_verb == &"bash"))
 	_select_stats.add_child(_stat_chip("⚡ Dash %d" % GameState.dash_charges,
 		GameState.dash_charges, DASH_BLUE,

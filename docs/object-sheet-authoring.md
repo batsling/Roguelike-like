@@ -67,8 +67,8 @@ is an arcade.
 - spawned by an **event** → inside that event's modal. The Arcade Room *is* the
   room the cabinets are in, so the machines are in there with you and the room's
   own `Leave` walks you out of both.
-- spawned by **anything else** → under the board, in the space a hub's shop
-  takes (`ObjectPanel2`). Nothing is blocked, and travelling on clears it.
+- spawned by **anything else** → under the board, in the space a shop's shelf
+  used to take (`ObjectPanel2`; the shop is a pop-up now). Nothing is blocked, and travelling on clears it.
 
 **An event shows the machines IT spawned and no others.** That reads as a
 tautology and was not one: `EventModal2` drew `ObjectSystem.live` outright, which

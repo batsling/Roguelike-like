@@ -113,7 +113,7 @@ first):
 ## 3. Unlocking
 
 **A game earns one song per rank; the draw decides which.** One rule for every
-game (`Radio.earned`, `Radio.earned_for`): **a game at rank N has earned N
+game (`Radio.earned`): **a game at rank N has earned N
 songs.** The rank is the game's, worked out from its XP by `GameRanks`, and the
 whole XP table (wins, Amulet and perfect bonuses, every kind of goal by tier) is
 `docs/games-first-redesign.md` §20.1. A rank costs 250 XP; a typical first win is

@@ -1,8 +1,8 @@
 class_name ShopPanel2
 extends PanelContainer
 
-# ShopPanel2 — the shelf of the shop at a Shop node (docs/games-first-redesign.md
-# §14, §19.1): the items, the loot, the purse and the reroll. It is mounted inside
+# ShopPanel2 — the shelf of a shop the player has opened (docs/games-first-redesign.md
+# §14, §19.10): the items, the loot, the purse and the reroll. It is mounted inside
 # ShopModal2, the pop-up the page's 🛒 Shop button opens (§14.4).
 #
 # HISTORY, so the next move is not a return to an old answer. It was a modal over
@@ -127,7 +127,7 @@ var _reroll_btn: Button = null
 var _subtitle: Label = null
 
 
-# Mount a Shop node's shop into `parent`. Returns null when that node has no shop (or
+# Mount a node's shop into `parent`. Returns null when that node has no shop (or
 # its shelf could not be rolled), so the caller can simply not have one.
 #
 # `show_title` is false inside ShopModal2, whose own header already names the
@@ -138,7 +138,7 @@ static func mount(parent: Control, game_id: StringName, show_title: bool = true)
 	var panel := ShopPanel2.new()
 	panel._game_id = game_id
 	panel._show_title = show_title
-	# The game PLAYED there names it, which on a transmuted Shop node is the
+	# The game PLAYED there names it, which on a transmuted node is the
 	# replacement — the shelf rides the node (§19.2), the name the game you beat.
 	panel._game = GameLoop2.game_at(game_id)
 	parent.add_child(panel)

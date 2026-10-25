@@ -90,7 +90,7 @@ ordinary scene.
     never gives up a column, the picked cell stays lit underneath, and ◀ ▶ (or the
     arrow keys) step through the grid in layout order. Escape or a click on the
     backdrop closes it. Before that it was a right-hand pane, and before THAT one
-    mounted open and empty — both cost the grid columns while you scan 927 covers.
+    mounted open and empty — both cost the grid columns while you scan 967 covers.
     One property on one node covers every tab, because all eight are built by
     `_grid_and_detail`. `TierListScreen` does the same thing for the same reason.
     **A grid tile is a picture with a caption, not a stat line with a thumbnail.**
@@ -135,7 +135,7 @@ ordinary scene.
     **`HowToPlayText.gd`**, which the screen draws and does not read — so the
     text, which changes every time the build does, is edited without touching
     layout code. The manual's **numbers are interpolated from the constants that
-    govern them** (`GameLoop2.SHIELDS_PER_GAME`, `RunDifficulty.bonus_turns_for_hops`,
+    govern them** (`GameLoop2.SHIELDS_PER_GAME`, `RunDifficulty.FAR_HOPS`,
     `ShopSystem.BASE_PRICE`, `ShopSystem.STOCK_SLOTS` …), and `test_how_to_play.gd`
     asserts the prose still quotes them, so a balance change cannot leave the
     manual lying. The menu's **bottom-left corner is its table of contents** —
@@ -287,7 +287,7 @@ ordinary scene.
     why and stays armed.
   - **the shields a game grants** ride the offering's one-line hover, which also
     carries the enemy's **portrait** — sized by the line rather than setting its
-    height, so it costs the page nothing (`Overworld2.HOVER_ART`).
+    height, so it costs the page nothing (`OfferingCards.HOVER_ART`).
   - **everything else on the page describes itself on hover**, as a small themed
     card rather than Godot's grey tooltip — see "Hover cards" below.
   - **the pack has no heading.** A bordered strip of relic and scroll tiles is

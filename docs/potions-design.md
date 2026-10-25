@@ -952,9 +952,9 @@ the held curses by name and condition, and a line naming what was lifted. It nee
 one new function, `GameState.remove_curse_goal(index)`: the list has `add`, `has`,
 `trigger` and `tick`, and nothing that takes a row off it early.
 
-> **Do not reach for `GameState.remove_active_curse`.** That is the *card* system's
-> removal and it operates on a different list. Same word, different thing — the
-> warning `CurseData2.gd` opens with.
+> **Curse goals are the only curses now.** The combat-era curse *cards* and their
+> removal (`GameState.remove_active_curse`, a different list) were deleted on
+> 25 Oct 2026, so there is no second system to reach for by mistake.
 
 A fizzle when the player holds none — *"Nothing is weighing on you."* — and the
 scroll is **not** identified by it (§4.5): a Remove Curse read with nothing to lift

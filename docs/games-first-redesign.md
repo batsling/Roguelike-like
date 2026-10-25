@@ -690,10 +690,9 @@ The popup is where the decision is actually made. It carries:
   map's legend were removed to give it that height: the card on the offering
   already says how far the game is from the Amulet, and every kind marker on the
   map explains itself on hover;
-- the **game**: cover, type and year, the node's **kind** (`$ Shop` and so on — a
-  Shop node's "a shop stands here instead of an event", and its shelf once
-  visited, are that line's hover), its **connections** with the shops and
-  champions among them, the **shields** it grants (§3.2), what taking it does to
+- the **game**: cover, type and year, a **🛒** when the player has opened a shop
+  there (§19.10; its shelf is that line's hover), its **connections** with the
+  shops among them, the **shields** it grants (§3.2), what taking it does to
   the board's **pace** (§7.4), whether going back to it pays a Dash (see below),
   and the player's own **record** there — one line that opens the list of every
   enemy beaten at this game, marking the ones approaching now;
@@ -1409,9 +1408,10 @@ Deckbuilder/Slay the Spire), Baby Alien (Action/Brotato).
 ### 7.1 Bosses
 
 > **THE CADENCE BELOW IS SUPERSEDED BY §19.6.** A boss is no longer the last
-> *game* of a band. It arrives from a **Champion node** (§19.1), or on **every
-> fourth spawn event** — where it lands on top of whatever else was spawning, an
-> end-of-game spawn included. Bands, tiers and the table below still describe which
+> *game* of a band. It arrives on **every fourth spawn event** — where it lands on
+> top of whatever else was spawning, an end-of-game spawn included — and stands at
+> the Amulet. (A **Champion node** brought one too, until §19.10 retired the node
+> kinds.) Bands, tiers and the table below still describe which
 > tier a boss rolls at; what changed is what counts the band.
 > Everything else in this section — the heavier bomb-immune pool, triple gold,
 > the boss's own chest — is unchanged.
@@ -1487,6 +1487,10 @@ past**, and unlike a normal enemy **takes no damage from bombs** — a boss can
 throw is legal and spends the charge, it just does no damage, which is how
 **Sticky Bombs**' stun (§4) reaches a boss at all.
 
+> **Since §19.10 there are no Champion nodes**: the Amulet is the only card a Bash
+> refuses on these grounds. What follows is kept for the reasoning, which the
+> Amulet's refusal shares.
+
 **SETTLED: a boss can be SCRAMBLED but not BASHED.** A Champion node refuses a
 Bash (`Overworld2.bash_choice`, read off the node's kind, so it holds whatever
 game the node is playing) and says why on screen; the charge is kept and the
@@ -1503,9 +1507,9 @@ single number to decide.
 
 ### 7.2 Enemy timing — spawn onto the board, then walk
 
-An enemy **spawns onto the battlefield the moment you choose its game** — if that
-game is an **Enemies** or a **Champion** node (§19.1); an Event or a Shop node
-stands nothing. **Bodies also arrive as a game ends** — handed in or escaped
+An enemy **spawns onto the battlefield the moment you choose its game**: every game
+stands two bodies, and the Amulet its boss (§19.10; until then an Event or a Shop
+node stood nothing). **Bodies also arrive as a game ends** — handed in or escaped
 (§19.5) — and they walk on at the same back column on the same terms as
 everything else here, shoving a full lane forward to make room (§7.3). Mid-game, a **lost run** may
 stand one up (a climbing chance, §3.2).
@@ -1789,9 +1793,9 @@ covered without touching either.
 
 ### 7.5 The escort — nothing spawns alone
 
-> **SUPERSEDED BY §19.4.** The escort is retired as a concept: an Enemies node
-> lands **two bodies** flat, neither of them the game's, and a Champion node
-> lands **one** (the boss). The reasoning below is kept because §19 inherits its
+> **SUPERSEDED BY §19.4.** The escort is retired as a concept: every game lands
+> **two bodies** flat, neither of them the game's, and the Amulet its boss
+> (§19.10). The reasoning below is kept because §19 inherits its
 > argument — the stack must be the baseline rather than the punishment — and
 > because the boss-escort decision it records is one §19.4 explicitly overrules
 > rather than forgets.
@@ -2222,7 +2226,7 @@ per-enemy rendering is needed. If that prose is ever put ON SCREEN it would need
 one: a placeholder in the clause resolved from the body's `ticked` at draw time.
 
 **It is not on screen today.** What a player reads is built from the
-`On Player Effect` / `On Enemy Effect` columns (`StatusData.condition`, via
+`On Player Effect` / `On Enemy Effect` columns (`StatusData.on_player` / `on_enemy`, via
 `condition_text`), and none of those contain the word "run" at all.
 `on_player_text` / `on_enemy_text` carry the prose and are exported but read by
 nothing — so this pass corrected the SOURCE, not the build. Marked's
@@ -3295,8 +3299,9 @@ Deferred by decision (author later): **Fog** scroll and **Keys** + locked paths.
   **Max Health** is a raisable stat (§3).
 - **Currency & shops** (§14): 1 gold an enemy, 3 a boss, paid with the drop (so a
   bomb pays nothing); characters open on the sheet's new `Gold` column (3 each);
-  prices are 3 + 2 a rarity rung; shops stand at **Shop nodes** (§19.1 — the
-  ten best-connected games until §19.7), open on beating one, keep their three-item shelf for the whole run, and reroll
+  prices are 3 + 2 a rarity rung; a shop opens off the **shop bar** at any game
+  the player chooses (§19.10 — Shop nodes until then, and the ten best-connected
+  games before §19.7), keeps its three-item shelf for the whole run, and rerolls
   for a **Scramble**. Gold never carries between runs. **`Epic` was deleted from
   `ItemData.Rarity`** — nothing rolled it and nothing was authored at it, and the
   price ladder wants no holes in it.
@@ -3736,7 +3741,7 @@ be answered twice.
 
 ---
 
-## 14. Currency & shops (`gold`, Shop nodes)
+## 14. Currency & shops (`gold`, the shop bar)
 
 Gold is what the drops were never allowed to be: a reward you **choose what to do
 with**. Every other payout in the run is a thing arriving — an item off a corpse,
@@ -3864,6 +3869,10 @@ gets its loot row the first time it is asked for.
 > game is beaten: the player opens one off the shop bar, at any game, before or
 > after playing it. The pop-up, the button by the offering, the haul screen's
 > *Go to Shop*, the shelf keyed by node and the stock lines below all stand.
+> Three things below do **not**: a game with a shop **pays its event** like every
+> other (`EventSystem.roll_for_arrival` lost its shop gate); there are no `$`
+> kind marks (the `🛒 SHOP` flag and `RouteLadder.shop_marker` say where the shops
+> are); and the Amulet is not a Champion node, because there are none.
 
 The shop opens for business **after a Shop node's game is beaten** (§19.1 — it
 was the ten hubs until §19.7), queued behind the board's resolve playback on the
@@ -3972,10 +3981,11 @@ buys a different axis rather than a slower version of the same one.
 
 ### 14.6 Shopkeepers
 
-Every Shop node in a run is dealt a **shopkeeper**, at random, per run, weighted
-by the keeper's rarity (`Data.RARITY_WEIGHTS`, 75/20/4/1) and drawn without
-replacement, so no keeper stands at two shops until every keeper has one
-(`ShopSystem.keeper_for`). The same seed deals the same keepers. A shelf **pins**
+Every shop the player opens is dealt a **shopkeeper** the moment it opens
+(§19.10), at random, weighted by the keeper's rarity (`Data.RARITY_WEIGHTS`,
+75/20/4/1) and drawn without replacement across the shops opened, so no keeper
+stands at two shops until every keeper has one (`ShopSystem._deal_keeper`, read
+back by `ShopSystem.keeper_for`). The same seed deals the same keepers. A shelf **pins**
 its keeper the moment it is rolled (`"keeper"` on the shelf, saved with it), and a
 shelf saved before keepers existed stays plain.
 
@@ -4050,7 +4060,7 @@ Two places, and which one depends on what spawned it:
 - **spawned by an event** → inside that event's modal. The Arcade Room *is* the
   room the cabinets are in, so they are laid out in there with you and the
   room's own `Leave` walks you out of both.
-- **spawned by anything else** → under the board, in the space a Shop node's shelf
+- **spawned by anything else** → under the board, in the space a shop's shelf
   used to take (`ObjectPanel2`; the shop is a pop-up now, §14.4). Same argument as the shop: the run's rhythm is
   report the game → see the board → choose where to go, and neither a shop nor a
   machine may interrupt it. The one difference is what survives leaving — a
@@ -4513,8 +4523,9 @@ sum would under-count exactly the bodies the player is proudest of.
 And **one button out, which names where it goes**: **"Go to Event"** when the
 node owes one (clicking it is what opens the event, so the player leaves this
 screen *into* the next thing rather than having the next thing dropped on them),
-**"Go to Shop"** at a Shop node, which owes no event, and **"Travel on"** when it owes
-neither. The event wins when both are owed, because the event is what actually
+**"Go to Shop"** at a game with a shop, and **"Travel on"** when it owes
+neither. The event wins when both are owed (since §19.10 a game with a shop pays
+its event like any other), because the event is what actually
 opens next and the shop's button is still by the offering on the far side of it. It
 counts what it is about to bin (`exit_text`), because a Legendary left on the
 ground should be a decision and not a side effect of pressing Continue.
@@ -4526,7 +4537,7 @@ right but the moment of *arrival* was never seen. What that produced was four
 sections competing for a 720p canvas and a way out that could not honestly name
 itself — a button reading "Go to Shop" beside a shelf the player is already
 looking at describes nothing. So the shelf stays where §14 put it, under the
-board, and this screen keeps only the Shop node's id to know that is where its exit
+board, and this screen keeps only the shop's node id to know that is where its exit
 leads (`PostCombatScreen.shop_id`).
 
 **The sections are the real modals, embedded.** `ItemDropModal.embed`,
@@ -4550,11 +4561,10 @@ onto this screen the moment the game is reported
 spoils column is the whole haul either way, and picking a relic up during the
 game is a matter of *when* you answer for it, never of whether you get to.
 
-**The shelf is borrowed, not moved.** §14's decision that a shop blocks nothing
-and stays for the whole visit is still right; what was missing was it being seen
-at the moment you arrive. So this screen mounts the panel and hands **the same
-node** back to the page on the way out (`release_shop` → `Overworld2._adopt_shop`),
-reparented rather than rebuilt, so a card left open survives the handover.
+**The shelf was briefly borrowed** — mounted here and handed back to the page on
+the way out (`release_shop` → `Overworld2._adopt_shop`) — and is not any more:
+see "The shelf is not a section of this screen" above. Nothing borrows the shelf
+now; the screen keeps only the shop's node id.
 
 **Every chest is on the screen at once**, and that is the point of the screen.
 They were drained one at a time at first, which is how the page's queue had always
@@ -4715,7 +4725,7 @@ Amulet is always Champion**.
 
 The Amulet's champion is **atmosphere and not a gate**. Reaching the Amulet game
 and beating it wins the run whether or not the boss standing there ever went
-down — that is the existing rule (`Overworld2.beat_game`'s `was_amulet` branch,
+down — that is the existing rule (`Overworld2.report`'s `was_amulet` branch,
 which records the win even when the goal went unmet) and it is deliberate: a
 player who walked the whole road should not be held at the door by a goal they
 cannot do. The boss is there because the last game of a run should not be its

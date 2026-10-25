@@ -53,14 +53,14 @@ rather than trusting them later.
 
 | Area | What there is |
 |---|---|
-| **The map** | 927 real games (586 owned), the influence graph between them, rifts that pull off-map games in, and an Atlas star chart of the whole catalogue |
+| **The map** | 967 real games (597 owned), the influence graph between them, rifts that pull off-map games in, and an Atlas star chart of the whole catalogue |
 | **Characters** | 12, each with a level-up goal; Mysterious Mask adds a second |
 | **Enemies** | 66 goal-enemies and 50 bosses (some with phases) across four game types, 31 abilities, 7 statuses, tile effects and units on the board |
 | **Things you carry** | 77 relics, plus eight kinds of loot in a shaped pack: 9 scrolls, 10 pills and 15 potions (each identified per run), 37 cards, 12 wands, 22 trinkets, 5 bags, 11 weapons with 6 evolutions |
 | **Between games** | 16 events, 2 machines, 3 curse goals, shops opened off the shop bar with 4 shopkeepers, and the end-of-session Camp |
 | **Difficulty** | Amulet pressure, a tier ladder stepped by spawns, boss capstones, Fractures 1–10 and Fracture 10's Collapse (carry the Amulet home) |
 | **Across runs** | Profiles, game and character ranks, the Collection, a tier list, notes per goal, Run History, custom runs with seeds |
-| **Streaming** | The OBS overlay (eight browser sources), a speedrun clock, and Roguelike Radio (1,933 songs on the sheet, the player's own audio) |
+| **Streaming** | The OBS overlay (eight browser sources), a speedrun clock, and Roguelike Radio (3,112 songs on the sheet, the player's own audio) |
 
 ## Getting started
 
@@ -76,7 +76,7 @@ rather than trusting them later.
 ### Running the tests
 
 The tests use [GUT](https://github.com/bitwes/Gut) (bundled in `addons/gut/`):
-64 scripts and about 3,100 tests in `test/`.
+65 scripts and about 3,200 tests in `test/`.
 
 ```bash
 tools/gut.sh test_gameloop2            # one file, seconds
@@ -119,7 +119,7 @@ The repository root **is** the Godot project, so `res://x` is `./x`.
 │   └── resources/   # the Resource schemas every .tres is typed by
 │
 ├── data/            # all content as .tres, generated from the spreadsheet:
-│                    #   games/ (927), enemies2.0/, bosses2.0/, characters2.0/, items2.0/,
+│                    #   games/ (967), enemies2.0/, bosses2.0/, characters2.0/, items2.0/,
 │                    #   abilities2.0/, statuses2.0/, tiles2.0/, units2.0/, events2.0/,
 │                    #   objects2.0/, curses2.0/, the loot kinds (scrolls2.0/, pills2.0/,
 │                    #   potions2.0/, cards2.0/, wands2.0/, trinkets2.0/, bags2.0/,

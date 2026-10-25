@@ -108,14 +108,14 @@ signal game_won(ctx: Dictionary)            # ctx.game_id — a game actually BE
                                             # or lose. Emitted beside it by
                                             # Overworld2 (Isaac's Fork, Rocket, To
                                             # the Moon).
-signal shop_entered(ctx: Dictionary)        # ctx.game_id — a Shop node's shelf was
+signal shop_entered(ctx: Dictionary)        # ctx.game_id — a shop's shelf was
                                             # opened where the player stands, once
                                             # per arrival (Overworld2.
                                             # _open_pending_shop). Not on a save
                                             # reload re-mounting it. Chaos the Clown.
 signal boss_spawned(ctx: Dictionary)        # ctx.enemy, ctx.instance — a BOSS walked
                                             # onto the board, whatever put it there
-                                            # (a Champion node, the capstone, a
+                                            # (the Amulet, the capstone, a
                                             # revival, The Emperor). Fired from
                                             # GameLoop2._add_to_grid on a FRESH body
                                             # only, so a save load re-standing the

@@ -54,7 +54,7 @@ helpers) instead of firing an effect:
 | `bomb_stun` | Sticky Bombs | Anything a bomb hits and fails to destroy is stunned instead — in practice bosses, the only thing that survives one (§4). |
 | `bomb_cardinal` | Brimstone Bombs | A bomb blasts down the target's whole row *and* column rather than hitting one body. |
 | `grid_grow` | Mine-r Construction | The battlefield gains a column and a row (§7.3). Alone among these it **stacks**: `GameState.grid_growth` counts the copies instead of answering a bool, so a second one is a second column and a second lane. |
-| `front_column_slow` | Censer | Every body standing in the **front column** (col 1) sits out one of the extra turns the road hands the board at a report (§7.4) — armour, not a global slow: a body further back would only spend that turn walking. Stacks the way `grid_grow` does (`GameState.front_column_turn_drain` counts the copies), and it is read off each body's LIVE column inside the turn loop, so something that steps into the front line mid-resolve is held off too. |
+| `front_column_slow` | Censer | Every body standing in the **front column** (col 1) sits out one of the extra turns the road hands the board at a report (§7.4) — armour, not a global slow: a body further back would only spend that turn walking. Stacks the way `grid_grow` does (`GameState.censer_columns` counts the copies), and it is read off each body's LIVE column inside the turn loop, so something that steps into the front line mid-resolve is held off too. |
 
 The matching per-bomb *effect* hook is the `bomb_used` trigger (Blood Bombs:
 `item_acquired: gain_stat bombs 1; bomb_used: gain_hp 1`), fired once per bomb by
@@ -99,7 +99,7 @@ Don't put quote marks inside the verify question — the parity harness's
 - A counter / streak effect's `label` is the item's display name.
 - The `tags` column becomes `ItemData.tags` (what the item is *about*) and the
   `pools` column `ItemData.pools` (where it is *drawn from*). Only `shop` is read
-  today: it doubles the item's weight when a hub's shelf is rolled
+  today: it doubles the item's weight when a shop's shelf is rolled
   (`ShopSystem.SHOP_POOL_WEIGHT`). Both are comma-separated; `n/a` and `none`
   drop out.
 - `block`/`heal`/buff effects under a self-facing trigger (`combat_started`,
