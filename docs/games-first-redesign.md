@@ -1320,10 +1320,10 @@ cards or wands it drew.
 
 **The combat-era curses are not part of the current design.** The
 enemy-with-a-goal *is* the challenge mechanic, so `CurseData` / `data/curses` —
-the 16 curse cards of the build this one replaced — are deliberately set aside to
-avoid duplicating that role. That content and its hooks stay in the repo (not
-deleted), and they may return later as an opt-in gambit layer, but nothing in the
-core loop depends on them.
+the 16 curse cards of the build this one replaced — were set aside to avoid
+duplicating that role, and deleted on 25 Oct 2026 (they are in git history, and
+in the owner's own archive, if an opt-in gambit layer ever brings them back).
+Nothing in the core loop depended on them.
 
 **Not to be confused with a CURSE GOAL**, which is live and authored: a row on the
 post-game checklist that you are trying *not* to complete, defined in the
@@ -2479,7 +2479,7 @@ previously name:
 
 Scrolls/encounters keep their **semicolon-separated, space-delimited token** DSL
 (`generate_scroll_tres.py` / `generate_encounter_tres.py`); the item generator
-(`generate_item_tres.py`) compiles the `Effect` column into `triggers`.
+(`item_dsl.py`) compiles the `Effect` column into `triggers`.
 
 ### 8.2 Chests (reuse `grant_chest` + `RewardScreen`)
 
@@ -3495,7 +3495,7 @@ Three things fall out of that, and each is worth knowing:
   gets something else.
 - **Sticky Bombs' `bomb_stun` is deleted**, not merely unauthored: the field, the
   `GameState.bombs_stun()` reader and the `_explode` branch are all gone, and
-  `generate_item_tres.py` refuses the token out loud pointing at `bomb_tile web`.
+  `item_dsl.py` refuses the token out loud pointing at `bomb_tile web`.
   A bomb stuns by laying Web now.
 
 Speed's window halves toward a floor of one hour: **3 hours** at one stack,

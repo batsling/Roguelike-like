@@ -1,15 +1,14 @@
 # Item sheet-authoring
 
-Items are generated from the `items` sheet of `tools/Roguelikes.xlsx` by
-`tools/generate_item_tres.py`, the same way the card catalog is generated from
-`cardsnew`. The structured behavior lives in the sheet's **`Effect`** column, a
+Items are generated from the `items` sheet of `tools/Roguelikes.xlsx` into
+`data/items2.0/` by `tools/generate_item2_tres.py`, which runs the item DSL in
+`tools/item_dsl.py` (the card, trinket, bag and weapon generators borrow the same
+parsers). The structured behavior lives in the sheet's **`Effect`** column, a
 colon/semicolon DSL that parses into the `ItemData` fields Godot consumes.
 
 ```
-python3 tools/generate_item_tres.py          # regenerate every item that has a .tres
-python3 tools/generate_item_tres.py --all    # also emit sheet rows with no .tres yet
-python3 tools/generate_item_tres.py --list    # print parses without writing
-python3 tools/_item_parity.py                 # parity check vs the hand-authored .tres
+python3 tools/generate_item2_tres.py          # regenerate every items row
+python3 tools/generate_item2_tres.py --list   # print parses without writing
 ```
 
 ## Effect DSL
@@ -110,17 +109,13 @@ Don't put quote marks inside the verify question — the parity harness's
   line used to carry called them "pills" — that word means the loot consumable of
   §4.3 now, which is not an item at all.)
 
-## Parity
+## Status
 
-`tools/_item_parity.py` parses each hand-authored `data/items/*.tres` and diffs
-it field-by-field against the in-memory parse, normalizing away cosmetic noise
-(field order, implicit `enemy` target, log-only `label`/`notify`/`silent`).
-
-**Status: items are fully sheet-authored.** All 89 `data/items/*.tres` are
-generated from the `items` sheet by `generate_item_tres.py`, including the
-`Description` text (authored in the sheet's `Description` column). Re-run the
-generator after any sheet edit; effects round-trip with 0 gameplay-critical
-diffs (verified by `_item_parity.py`).
+**Items are fully sheet-authored**, including the `Description` text (the
+sheet's `Description` column). Re-run the generator after any sheet edit;
+`tools/check_data_sync.py` (CI) fails when `data/items2.0/` and the sheet
+disagree. (A `_item_parity.py` once diffed the hand-authored pre-2.0
+`data/items/` against this parse; both are gone.)
 
 ## DSL-portability cells in `tools/Roguelikes.xlsx`
 

@@ -8,7 +8,7 @@ authored into the `items` sheet with a Description and nothing else.
 Both needed a hook that did not exist yet, so the Effect column could not be
 written until it did. `gold_gained` and `card_obtained` are now TriggerBus
 signals fired from GameState's own choke points (change_gold and the loot takes)
-and are in generate_item_tres.py's TRIGGER_SIGNALS, so these two parse like any
+and are in item_dsl.py's TRIGGER_SIGNALS, so these two parse like any
 other 2.0 trigger item.
 
 An item with an EMPTY Effect cell generates a .tres with no triggers on it — the

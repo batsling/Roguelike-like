@@ -10,7 +10,7 @@ extends Node
 #     functions in the Luck section below. See the comment there; it is the one
 #     stat that touches everything else.
 #   * note_max_hp_change (Constitution auto-gain) + the harvesting gold payout.
-# See docs/stat-dispatcher.md for the original design.
+# docs/archive/stat-dispatcher.md is the combat-era design it began as.
 
 var _stat_defs: Dictionary = {}     # StringName -> StatDefinition
 

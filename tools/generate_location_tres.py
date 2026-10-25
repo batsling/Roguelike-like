@@ -28,7 +28,7 @@ EFFECT GRAMMAR — semicolon-separated clauses, each under the header before it:
                                squares; `favour` makes one of them pct% of the
                                draw and shares the rest between the others
     <anything an item's Effect column can say>
-                               handed to the item grammar (generate_item_tres.py)
+                               handed to the item grammar (item_dsl.py)
                                and run through EffectSystem — `gain_stat bombs 2`,
                                `apply_status burn 1`, `add_curse injury`,
                                `gain_loot 2`… — so a location can do whatever
@@ -64,7 +64,7 @@ import openpyxl
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import generate_tile_tres as base  # noqa: E402  (slugify, gd_str, gd_value, _clean)
-import generate_item_tres as items  # noqa: E402  (parse_one_effect: the item grammar)
+import item_dsl as items  # noqa: E402  (parse_one_effect: the item grammar)
 
 PROJECT_ROOT = base.PROJECT_ROOT
 XLSX_PATH = base.XLSX_PATH

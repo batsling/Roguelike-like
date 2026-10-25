@@ -106,7 +106,7 @@ same piece (`DropQueue._same_piece` ignores `rot`).
 ## 3. Hooks, gates and verbs
 
 Passives are authored in the **relic grammar** (spec §8.1) and compiled by
-`generate_item_tres.parse_loot_passive`, which trinkets and passive cards share.
+`item_dsl.parse_loot_passive`, which trinkets and passive cards share.
 Each piece is handed to the relic runner as a relic-shaped `ItemData`
 (`LootPassives.proxy`), so hooks, gates, chance rolls and Luck mean exactly what
 they mean on a relic.
@@ -723,7 +723,7 @@ move.
 an item. Doubles the chances of finding trinkets."**
 
 - **The Type is two words.** `Charged` decides how it is used, so it is a
-  charged item (`generate_item_tres._kind_of`): three games to fill, and
+  charged item (`item_dsl._kind_of`): three games to fill, and
   `Charged, 3` is read wherever `Charged` sits in the cell. The passive half is
   `loot_kind_weight: {trinket: 2}`: while it is held, the trinket kind's weight
   in the kind-blind loot roll is doubled (`GameState.loot_kind_weight`).

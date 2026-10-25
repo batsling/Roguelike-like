@@ -1,7 +1,7 @@
 extends Control
 
 # RunMapModal — the "Map to the Amulet" overview, ported from the old web build
-# (legacy-web/js/map-render.js: showMapModal / generateMapView / drawMapArrows).
+# (its map-render.js: showMapModal / generateMapView / drawMapArrows).
 #
 # The games-first overworld (Overworld2) only ever shows the games reachable from
 # where you stand. This restores the old bird's-eye map: a left-to-right LAYERED

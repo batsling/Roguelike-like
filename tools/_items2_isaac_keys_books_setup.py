@@ -22,7 +22,7 @@ Temporary one, which these cards do not say.
   VIII - Justice       +1 Key, Bomb, Health and Gold
   2 of Spades          the Keys arm of the 2s: double_stat keys floor=2
 
-TWO DSL ADDITIONS, made to tools/generate_item_tres.py in the same commit:
+TWO DSL ADDITIONS, made to tools/item_dsl.py in the same commit:
 
   one_of A | B | ...   ONE of the listed effects at random each time it fires
                        (EffectSystem._h_one_of). The Book of Sin.

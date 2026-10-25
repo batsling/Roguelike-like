@@ -6871,10 +6871,6 @@ func test_dev_mode_offers_only_the_2_0_item_set() -> void:
 	for it in pool:
 		assert_true(live.has(it.id),
 			"%s is a 2.0 item the run can actually honour" % it.id)
-	# The combat-era set is still loaded (the archive reads it); it just must not
-	# be on this list.
-	assert_gt(Data.all_items().size(), pool.size(),
-		"the old set is still there to be wrongly included, so this is a real guard")
 
 # --- the board survives a repaint under the cursor -------------------------
 #

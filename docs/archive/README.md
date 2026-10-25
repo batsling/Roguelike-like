@@ -22,6 +22,20 @@ build works.** Treat every path, class and sheet name in these files as historic
 | `addon-sheet-authoring-handoff.md` | sheet-authoring the **addon** catalog (never implemented) |
 | `addon-translation-dsl.md` | the DSL that handoff was to translate into |
 
+**Finished plans and superseded designs from the games-first build** (moved here
+on 25 Oct 2026). These describe the current build's history, not the combat era,
+but every one of them is done or replaced, and the paths in them (`data/items/`,
+`generate_item_tres.py`, `legacy-web/`, `ReferenceCatalog.gd`) have since been
+deleted:
+
+| doc | described | now |
+|---|---|---|
+| `games-first-redesign-implementation-plan.md` | Phase 1 of the games-first cut: the data foundation and the decisions locked in discovery | built; the spec is `../games-first-redesign.md` |
+| `sheet-authoring-handoff.md` | sheet-authoring items, events and addons | items and events built (`../item-sheet-authoring.md`, `../event-sheet-authoring.md`), addons never |
+| `potions-handoff.md` | the session handoff while potions were being built | built; `../potions-design.md` |
+| `stat-dispatcher.md` | the per-combat-mode stat dispatcher | the `Stats` autoload kept the run stats and Luck (`../architecture.md`) |
+| `locations-and-events-design.md` | the brainstorm that gave every location a goal and a choice | replaced by `../locations-design.md`; `../event-sheet-authoring.md` still argues from its §1 and §6 |
+
 **The two addon docs were in the live `docs/` folder until they were moved here**,
 which is worth recording because it is the failure this README exists to prevent:
 they name `scripts/action/ActionCombat.gd`,

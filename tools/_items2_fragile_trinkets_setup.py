@@ -4,7 +4,7 @@
 Lucky Hat, Bionic Face Plating and Fortune Necklace were authored with an empty
 Effect cell — there was no DSL for "destroyed when taking damage", and an empty
 Effect generates an inert item. This writes the clauses now that
-generate_item_tres.py understands `passive_status:` and `destroy_on_damage`.
+item_dsl.py understands `passive_status:` and `destroy_on_damage`.
 
 One-shot; kept alongside the other `_*_setup.py` edits as the record of what was
 written into the sheet and why. Re-running it is a no-op.

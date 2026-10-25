@@ -12,7 +12,7 @@ looser "take damage" (a hit your Shields eat is damage taken and no Health lost,
 and the relic must not pay for it).
 
 Three of the Effect cells are new DSL verbs, added to
-tools/generate_item_tres.py in the same commit:
+tools/item_dsl.py in the same commit:
 
   health_lost:        a trigger prefix — the player's Health went down, from any
                       source anywhere in the run (a failed try, an enemy swing,

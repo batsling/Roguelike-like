@@ -22,9 +22,8 @@ vial deal, identification, art, `quaff_potion`, and the potion arm on every
 kind-blind surface. **The THROW is the whole of what is left** — step 5, plus the
 three smaller steps after it. §9.1 is the plumbing that already exists for them.
 
-Picking this up in a fresh session: [`potions-handoff.md`](potions-handoff.md) has
-the branch, the state of the suite, the next step in order, and the repo-specific
-traps worth knowing before touching any of it.
+The session handoff written while it was being built is in
+[`archive/potions-handoff.md`](archive/potions-handoff.md); every step it lists is done.
 
 *A bare §x.y is a section of this document. The spec's own §4.1 (scrolls) and §4.3
 (pills) collide with the numbering here, so those two are always written **spec
@@ -36,7 +35,7 @@ here and is left plain.*
 ## 1. Decisions locked
 
 Thirty forks were settled before any code, in the same discovery-pass style as the
-[implementation plan](games-first-redesign-implementation-plan.md#1-decisions-locked-in-discovery):
+[implementation plan](archive/games-first-redesign-implementation-plan.md#1-decisions-locked-in-discovery):
 
 | # | Decision | Choice |
 |---|---|---|
@@ -823,8 +822,8 @@ bearing in the best way — **the save format already has potions in it**:
 - **`GameState.potion_color_map`** — same: declared, cleared, saved, restored.
 - **`TriggerBus.potion_used`** — declared, and `GameState._on_potion_used` already
   forwards it to `fire_run_item_triggers("potion_used", ctx)`. A relic hanging off
-  `potion_used` works the day a potion is used (`data/items/toy_ornithopter.tres`
-  is one, from the old build). *Since resolved:* the signal was declared and
+  `potion_used` works the day a potion is used (the old build's Toy
+  Ornithopter was one). *Since resolved:* the signal was declared and
   emitted by nothing — `PotionSystem.notify_used` is now the choke point, hit once
   by `quaff_potion` and once by `throw_potion`, and Reptile Trinket is the 2.0 item
   on the other end of it.
@@ -849,7 +848,7 @@ bearing in the best way — **the save format already has potions in it**:
 | `scripts/autoload/GameState.gd` | `remove_curse_goal(index)` (§10.1); the three-way loot roll; `_add_random_potion_loot`; `add_potion_loot` for DevTools; `loot_potions()`; the timed-status layer (§5.4); `LOOT_CAPACITY` → `loot_capacity()` (§8.1). |
 | `scripts/autoload/LootSystem.gd` | A `"potion"` arm in each dispatch, plus `can_throw(entry)` — the only kind that answers yes. |
 | `scripts/autoload/GameLoop2.gd` | `area_cells(cell, area)`; `_expire_timed_statuses()` in `beat_game`, for the player and every body; `max_health` on an entry (§4.6) and the `grant_health` / `grant_max_health` / `grant_shield` paths onto one; the timed half of `goal_text_for` (§5.3). |
-| `scripts/autoload/EffectSystem.gd` | `gain_potion`, and `games=` on `apply_status` — **both halves**: the handler alone is a verb the sheet can write and silently get nothing from, so `generate_item_tres.py` learned to parse them in the same pass. **`deal_damage` and `gain_level` were NOT added here**, deliberately: the potion path dispatches through `PotionSystem`'s own table, not this one, and an item-side `deal_damage` needs a target/area vocabulary on `items2.0` that nothing is asking for. Register them the day a sheet cell wants one. |
+| `scripts/autoload/EffectSystem.gd` | `gain_potion`, and `games=` on `apply_status` — **both halves**: the handler alone is a verb the sheet can write and silently get nothing from, so `item_dsl.py` learned to parse them in the same pass. **`deal_damage` and `gain_level` were NOT added here**, deliberately: the potion path dispatches through `PotionSystem`'s own table, not this one, and an item-side `deal_damage` needs a target/area vocabulary on `items2.0` that nothing is asking for. Register them the day a sheet cell wants one. |
 | `scripts/autoload/ScrollSystem.gd` | `identify_loot` (widened, §10); `forget` across all three kinds; `remove_curse` + its picker (§10.1); the potion half of `LOOT_SCALED_FIELDS`, area ladder included (§8.2). |
 | `scripts/resources/StatusData.gd` | `tooltip_for` grows the `⏱ this game` line, so every pip that draws a timed status says so (§5.3). |
 | `scripts/autoload/SaveSystem.gd` | Serialize the timed layer. The two potion fields are **already saved**. |
@@ -931,7 +930,7 @@ otherwise copy in its broken state.
 
 **A correction to an earlier draft of this doc, which read the spec's §5 too fast.**
 §5 shelves the combat-era **curse CARDS** (`CurseData`, `data/curses/`, the 16-card
-gambit layer). It does not shelve **curse GOALS**, which are live, authored and
+gambit layer, since deleted). It does not shelve **curse GOALS**, which are live, authored and
 drawn on screen every game:
 
 - `data/curses2.0/` holds three — **Curse of the Bell**, **Injury**, **Poor Sleep**

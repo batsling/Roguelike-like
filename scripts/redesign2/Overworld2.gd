@@ -1179,8 +1179,6 @@ func restore_view_state(view: Dictionary) -> void:
 		var offer: Array = []
 		for iid in ids:
 			var it: ItemData = Data.get_item2(StringName(iid))
-			if it == null:
-				it = Data.get_item(StringName(iid))
 			if it != null:
 				offer.append(it)
 		if not offer.is_empty():

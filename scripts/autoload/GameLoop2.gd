@@ -8434,10 +8434,7 @@ func _drop_stolen(entry: Dictionary, fell: Vector2i) -> void:
 			"gold":
 				GameState.change_gold(int(row.get("amount", 0)))
 			"item":
-				# EITHER table, 2.0 first: `get_item` alone is the pre-2.0 set, and
-				# every relic a run actually carries today is a 2.0 one — so a
-				# stolen Golden Idol would have been taken and never given back.
-				var relic: ItemData = Data.get_item_any(StringName(row.get("id", "")))
+				var relic: ItemData = Data.get_item2(StringName(row.get("id", "")))
 				if relic != null:
 					GameState.add_item(relic)
 			_:

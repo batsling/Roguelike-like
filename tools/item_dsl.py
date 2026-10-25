@@ -1,17 +1,14 @@
 #!/usr/bin/env python3
 """
-Generate Godot ItemData .tres files from the `items` sheet of
-tools/Roguelikes.xlsx.
+The item Effect-column DSL: parses the `items` sheet of tools/Roguelikes.xlsx
+into the ItemData fields Godot consumes (triggers, card_grants, stat_bonuses,
+scaling, weapon / verification, perfect, and the long tail of one-off flags),
+and writes ItemData .tres. A library, not a generator: `generate_item2_tres.py`
+runs it into data/items2.0/, and the card, bag, trinket, weapon, evolution,
+location and shopkeeper generators borrow its parsers and writers.
 
-Mirrors generate_card_tres.py: the spreadsheet is the source of truth and the
-.tres are produced by this tool. The structured information lives in the items
-sheet's `Effect` column, a colon/semicolon DSL that parses into the ItemData
-fields Godot consumes (triggers, card_grants, stat_bonuses, scaling, weapon /
-verification, perfect, and the long tail of one-off flags).
-
-  python3 tools/generate_item_tres.py            # regenerate every item with a .tres
-  python3 tools/generate_item_tres.py --all      # also emit sheet rows with no .tres yet
-  python3 tools/generate_item_tres.py --list      # print the parse without writing
+(It was `generate_item_tres.py` until 25 Oct 2026, when the pre-2.0 `itemsold`
+sheet's output, data/items/, was deleted; its own run is gone with it.)
 
 Effect DSL (one item = `clause; clause; ...`, paren/bracket aware):
   passive:        passive: +3 strength, -2 discovery        -> stat_bonuses
@@ -46,7 +43,7 @@ Columns consumed beyond the DSL: `tags` (what the item is about) and `pools`
 
 Targets are written in parens after an effect value: (self) / (enemy) /
 (all_enemies) / (random_enemies count=2). Bare prose in parens (explanatory
-notes) is ignored. See docs/sheet-authoring-handoff.md (Target 2).
+notes) is ignored. See docs/archive/sheet-authoring-handoff.md (Target 2).
 """
 
 import argparse
@@ -61,14 +58,12 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.dirname(SCRIPT_DIR)
 XLSX_PATH = os.environ.get(
     "ITEMS_XLSX", os.path.join(PROJECT_ROOT, "tools", "Roguelikes.xlsx"))
-# Output / art paths and the source sheet are module-level so a variant importer
-# (tools/generate_item2_tres.py, the games-first 2.0 items) can reuse this whole
-# DSL by repointing these before calling the emit functions. The base run keeps
-# the legacy items sheet + data/items + images/items.
-SHEET_NAME = "itemsold"
-OUT_DIR = os.path.join(PROJECT_ROOT, "data", "items")
-ITEM_IMG_DIR = os.path.join(PROJECT_ROOT, "images", "items")
-IMG_RES_PREFIX = "res://images/items/"
+# Output / art paths and the source sheet are module-level, so a variant importer
+# could repoint them before calling `main`.
+SHEET_NAME = "items"
+OUT_DIR = os.path.join(PROJECT_ROOT, "data", "items2.0")
+ITEM_IMG_DIR = os.path.join(PROJECT_ROOT, "images2.0", "items")
+IMG_RES_PREFIX = "res://images2.0/items/"
 
 # ItemData.ItemKind enum order. "status" is the items2.0 sheet's word for an
 # item whose whole job is to hand the player a status (Vajra, Oddly Smooth
@@ -1606,7 +1601,3 @@ def main():
         written.append(iid2)
     if not args.list:
         print("Wrote %d item .tres to %s" % (len(written), OUT_DIR))
-
-
-if __name__ == "__main__":
-    main()

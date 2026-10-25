@@ -12,7 +12,7 @@ extends Node
 #             matching the HTML's incrementGameBeaten(name, true).
 #
 # Also tracks which DECKS each character has won a run with (the HTML build's
-# `deckWins` localStorage record — see legacy-web/js/main.js recordDeckWin).
+# `deckWins` localStorage record, its main.js recordDeckWin).
 # Drives the "Beaten With Deck" checklist on character select + Collection.
 #
 # Persisted shape (user://game_stats.json):

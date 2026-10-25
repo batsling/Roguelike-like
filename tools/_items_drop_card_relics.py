@@ -17,7 +17,7 @@ author, and a sheet keyword nothing can write is a keyword that rots.
 
 Through _xlsx_surgery rather than openpyxl: a round-trip of this workbook
 silently drops the charts on `Map Analysis` (see that module's docstring).
-Afterwards, regenerate: python3 tools/generate_item_tres.py
+Afterwards, regenerate: python3 tools/generate_item2_tres.py
 
     python3 tools/_items_drop_card_relics.py
 """

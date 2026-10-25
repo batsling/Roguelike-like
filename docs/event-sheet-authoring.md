@@ -3,7 +3,7 @@
 Status: **built, illustrated and running.** Sixteen events authored, generators
 and runtime in place, art in `images2.0/`, tests in `test/test_events2.gd`. §19 is how it runs and the little
 that's left. Companion to `games-first-redesign.md` and
-`locations-and-events-design.md` §6, which argued events should wait for
+`archive/locations-and-events-design.md` §6, which argued events should wait for
 somewhere to live — §1 is that somewhere.
 
 ```bash
@@ -363,7 +363,7 @@ There is **no `kill` / `end_run` token and there should not be one**: a `lose_hp
 that empties Health ends the run through the rule that already exists (§2), which
 is how Abyssal Baths kills you in Slay the Spire 2 as well.
 
-The event-only forms carry the weight `locations-and-events-design.md` §6
+The event-only forms carry the weight `archive/locations-and-events-design.md` §6
 asked them to:
 
 ```
@@ -488,7 +488,7 @@ Each gets **its own section of the post-game checklist**, and that separation is
 the point rather than decoration: an enemy goal is a debt that bites when missed,
 an event goal is a bonus that merely lapses, and a curse is a bill that arrives
 when you *succeed* at the wrong thing. A checklist that renders all three alike
-is lying about which one hurts (`locations-and-events-design.md` §1 draws the
+is lying about which one hurts (`archive/locations-and-events-design.md` §1 draws the
 same line for locations). **Curse rows read purple**, so the one objective on the
 list you are trying to avoid never looks like the ones you are chasing.
 
@@ -496,8 +496,8 @@ Event goals and curse goals tick to the **same three-game clock** by default,
 which is deliberate: whatever the checklist is carrying, it clears at about the
 same rate, and the player is never tracking two different countdowns.
 
-Two things this is *not*. It is not the shelved `CurseData` / `data/curses`
-system (`games-first-redesign.md` §5) — same word, different thing: a curse goal
+Two things this is *not*. It is not the combat-era `CurseData` / `data/curses`
+system (deleted) (`games-first-redesign.md` §5) — same word, different thing: a curse goal
 is a row on the checklist, not a card, and nothing should wire the two together.
 And `Goal Met` never means "it went well" — it means the condition happened. On a
 curse that is the bad outcome. The sign lives in the token, not in the column
@@ -1497,7 +1497,7 @@ the other's shape.
 
 ### What is still left
 
-1. **The `encounters` merge.** `locations-and-events-design.md` §6 argues for one
+1. **The `encounters` merge.** `archive/locations-and-events-design.md` §6 argues for one
    modal serving events *and* `encounters`. `EventModal2` is the modal that
    should absorb them; the combat-era `scripts/events/EventModal.gd` (d20 rolls
    against stats the redesign deleted) is now dead weight and can go with them.

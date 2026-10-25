@@ -6,8 +6,8 @@ how-to for the two sheet-authored systems with the most moving parts (events and
 objects). The full specs for each sheet are their own docs —
 [`event-sheet-authoring.md`](event-sheet-authoring.md),
 [`object-sheet-authoring.md`](object-sheet-authoring.md),
-[`item-sheet-authoring.md`](item-sheet-authoring.md) and
-[`sheet-authoring-handoff.md`](sheet-authoring-handoff.md); research is
+and [`item-sheet-authoring.md`](item-sheet-authoring.md) (the plan they were built
+from is [`archive/sheet-authoring-handoff.md`](archive/sheet-authoring-handoff.md)); research is
 [`research.md`](research.md). This page was the README's authoring half until
 the README was split on 20 Oct 2026.
 
@@ -43,9 +43,6 @@ To add or replace art:
    | `images2.0/statuses/` | Status art (`data/statuses2.0`) |
    | `images2.0/tiles/` | Tile-effect art (`data/tiles2.0`) |
    | `images2.0/units/` | Unit art (`data/units2.0`) |
-   | `images/items/` | Legacy (1.0) item art for `data/items` |
-   | `images/events/`, `images/encounters/` | Event / encounter art |
-   | `images/characters/Full/`, `images/characters/Icon/` | Legacy character portraits |
 
 2. **Reopen / refocus the Godot editor** so it imports the new file (Godot
    auto-imports anything placed under the project root).
@@ -56,9 +53,9 @@ To add or replace art:
 
 > Art with nothing referencing it is deleted rather than kept "just in case" — the
 > pruned folders (cards, statuses, covers, potions, spells, …) belonged to combat
-> content whose `data/` resources are already gone. `legacy-web/images` is a
-> **symlink** to `images/`, so the old HTML build resolves whatever art survives
-> there; its cover/card pages are dead now that those folders are pruned.
+> content whose `data/` resources are already gone. The last of the pre-2.0 art
+> (`images/items/`, `images/characters/`) went with its data on 25 Oct 2026, and
+> the old HTML build with it.
 
 ## The spreadsheet and the generators
 
@@ -70,7 +67,9 @@ editing the sheet, then review the diff):
 `items2.0` is `items`, and so on for characters, bosses, statuses, tiles, units,
 scrolls, pills, potions, events, curses and objects; the pre-2.0 sheets they
 displaced gained `old` (`itemsold`, `eventsold`, `charactersold`,
-`encountersold`, `cursesold2`). The **output folders did not move** — the
+`encountersold`, `cursesold2`). Nothing reads the `old` sheets any more: their
+output (`data/items/`, `data/characters/`, `data/curses/`) and generators were
+deleted on 25 Oct 2026. The **output folders did not move** — the
 generators still write `data/enemies2.0/` — so only the `SHEET_NAME` at the top
 of each script changed. If a generator ever reports zero rows, this is the first
 thing to check: openpyxl raises on a missing sheet, but a *renamed* one that
@@ -79,8 +78,8 @@ still exists under an old name silently generates the wrong content.
 > **`data/games/` is NOT in this table, and that is the point.** It is written by
 > `import-games-godot.py` (below), out of the `games` and `connections` sheets.
 > There used to be a `generate_game_tres.py` beside these, named like them and
-> writing to the same folder, but reading `legacy-web/data/games-data.js` — the
-> retired HTML build — through a hardcoded 15-game subset. Running it did not
+> writing to the same folder, but reading the retired HTML build's
+> `games-data.js` through a hardcoded 15-game subset. Running it did not
 > regenerate anything: it overwrote 15 of the 861 real files with a lossy copy,
 > dropping `influence_sources`, `influence_relations`, `owned`, `file_location`
 > and `steam_page`, and cutting `games_influenced` down to whatever was inside
@@ -98,7 +97,7 @@ still exists under an old name silently generates the wrong content.
 | `generate_pill2_tres.py` | `data/pills2.0/*.tres` from the `pills` sheet — one row is one pill and BOTH its doses, so it parses two effect columns onto one resource |
 | `generate_potion2_tres.py` | `data/potions2.0/*.tres` from the `potions` sheet — two effect columns again, but they are two VERBS rather than two doses, so they parse in two dialects: the quaff side targets the drinker, the throw side takes an `area=` around the aimed cell |
 | `generate_wand2_tres.py` | `data/wands2.0/*.tres` from the `wands` sheet — one effect column, plus the two columns only a wand has: `Charges` (what a fresh one holds) and `Type` (what it wants pointed at it). `nothing` is a verb here, and every *other* empty Effect cell is refused — Wand of Nothing is the roster's authored blank and a hole must not be able to look like one |
-| `generate_trinket2_tres.py` | `data/trinkets2.0/*.tres` from the `trinkets` sheet — the Effect column is in the RELIC grammar, compiled by `generate_item_tres.parse_loot_passive` (shared with the passive cards), which refuses any relic field the pack cannot honour. `Size` is `HxW`, rows first (as the art is painted) — the foods are 2x1 and 1x2, and the pack places any rectangle (docs/loot-passives.md §10) |
+| `generate_trinket2_tres.py` | `data/trinkets2.0/*.tres` from the `trinkets` sheet — the Effect column is in the RELIC grammar, compiled by `item_dsl.parse_loot_passive` (shared with the passive cards), which refuses any relic field the pack cannot honour. `Size` is `HxW`, rows first (as the art is painted) — the foods are 2x1 and 1x2, and the pack places any rectangle (docs/loot-passives.md §10) |
 | `generate_weapon_tres.py` | `data/weapons2.0/*.tres` from the `weapons` sheet — `Aim` (any/front/back/column N/enemy/none) and `Area` (a word, an `RxC` rectangle, or a `#.O` drawing) are validated here with the same grammar `GameLoop2.area_cells` reads; `Effect` is `stun N`; `Passive Effect` is the loot-passive grammar; `Goal` is written by `apply_goals_sheet.py` (docs/loot-passives.md §12) |
 | `generate_evolution_tres.py` | `data/evolutions2.0/*.tres` from the `evolutions` sheet — both weapon names are checked against `weapons`, Requirement 2 must read `Any [N] Item(s) or Trinket(s) with "tag"` (docs/loot-passives.md §13) |
 | `generate_bag2_tres.py` | `data/bags2.0/*.tres` from the `bags` sheet — `Size` is any `HxW` rectangle, rows first (the Potion Belt's `4x1` stands), and the Effect column (relic grammar, same parser) may be blank for a bag that only adds room (docs/loot-passives.md §6) |
@@ -109,9 +108,7 @@ still exists under an old name silently generates the wrong content.
 | `generate_event2_tres.py` | `data/events2.0/*.tres` from the `events` sheet — see [Authoring an event](#authoring-an-event) |
 | `generate_curse2_tres.py` | `data/curses2.0/*.tres` from the `curses` sheet |
 | `build_glyph_font.py` | `fonts/*.ttf` — the UI's symbol glyphs, subsetted from Noto. Not sheet-driven: it scans `scripts/**/*.gd` for the glyphs actually used. Run it after adding a new one; `--check` verifies without writing |
-| `generate_item_tres.py` | `data/items/*.tres` from the items sheet (pre-2.0 set) |
-| `generate_character_tres.py` | `data/characters/*.tres` (pre-2.0) |
-| `generate_curse_tres.py` | `data/curses/*.tres` from the `cursesold2` sheet |
+| `item_dsl.py` | **not a generator**: the item Effect-column DSL and ItemData writer that `generate_item2_tres.py` runs and the loot generators borrow (it was `generate_item_tres.py`) |
 | `import-games-godot.py` | `data/games/*.tres` (incl. per-connection source + sequel flag), resolving each cover in `images2.0/games/` — then re-bakes the Atlas, and lists the games `research/ledger.json` has no entry for (`research.py new` researches them) |
 | `research.py` | **not data**: every kind of research (connections, tags, goals, loot, events, characters, statuses, locations) in one place. Candidates in `research/<kind>.csv`; `build` writes them into `tools/Research.xlsx` for the owner and `sync` reads the owner's yes/no and edits back; `research/ledger.json` records what has been researched and `research/wikis.json` each game's wiki. `new` runs everything for games just added. See `docs/research.md` |
 | `influence_research.py new` | **not data**: researches the games added since the last pass for influences (every scan that works from the cloud, over just those games) into `.influence_work/new_games.md`; `--mark` records them in `research/ledger.json`. See `docs/influence-research.md` |
@@ -119,7 +116,6 @@ still exists under an old name silently generates the wrong content.
 | `apply_radio_import.py` | the `radio` sheet, from the Radio screen's *Export song list* (`tools/radio_import.json`): a row per new audio file in the player's music folder, from the file's own tags, its game matched from the folder it sits in. Only adds; through `_xlsx_surgery`, then runs `generate_song_tres.py`. `--dry-run`, `--game "Folder=Game"`; see `docs/roguelike-radio.md` §2a |
 | `tag_research.py` | **not data**: the tag sheets of `tools/Research.xlsx` (it leaves the other sheets alone), tag suggestions for the owner from each game's Steam tags, store text and title. It never writes `Roguelikes.xlsx`; the owner types the tags they agree with into `games` |
 | `bake_atlas.py` | `data/atlas_layout.tres` — the Atlas star chart's positions |
-| `import-reference-godot.py` | `scripts/data/ReferenceCatalog.gd` (Collection catalog) |
 | `_relics_events_sheet_edit.py` | one-shot: the Boss/Event relic effects, the curse penalties, and the two new event rows |
 | `_events2_ranwid_setup.py` | one-shot: the Ranwid the Elder event row |
 | `_events2_tiny_rogues_setup.py` | one-shot: the `Opens With` column, the Potion Lab and Golden Monkey rows, and Ranwid's credit line |
@@ -459,4 +455,4 @@ Full format spec, the eight object-only verbs, and the two authored machines:
 files in there. Without it the editor rasterises `RoguelikeMap.svg` — a
 133,638 × 51,748 px canvas — into a clamped 16384² texture on every fresh import.
 
-See `docs/stat-dispatcher.md` for how stats resolve.
+See `docs/architecture.md` (the `Stats` autoload and its Luck section) for how stats resolve; `docs/archive/stat-dispatcher.md` is the combat-era design it began as.

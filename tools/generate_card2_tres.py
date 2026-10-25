@@ -18,7 +18,7 @@ only say "Isaac") and the icon's game when it is not.
 PASSIVE CARDS (docs/loot-passives.md). A row whose `Type` is `Passive` is
 a card that is never spent — it works from its pack slot, like a Balatro joker —
 and its Effect is written in the RELIC grammar rather than this one, compiled by
-generate_item_tres.parse_loot_passive into the same four fields a trinket carries.
+item_dsl.parse_loot_passive into the same four fields a trinket carries.
 `Type` is the switch, and it is shown on the card as a chip, which is why the
 Description no longer opens "Passive:" — the chip says it once, and the line is
 left to say what the card does. A Type other than Usable or Passive is refused.
@@ -79,7 +79,7 @@ import sys
 import openpyxl
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import generate_item_tres as items  # noqa: E402
+import item_dsl as items  # noqa: E402
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.dirname(SCRIPT_DIR)
