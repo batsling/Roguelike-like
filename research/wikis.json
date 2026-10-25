@@ -393,6 +393,35 @@
   "sitename": "Absolum Wiki",
   "wiki": "https://absolum.wiki.gg/"
  },
+ "Abyss Odyssey": {
+  "api": "https://abyss-odyssey.fandom.com/api.php",
+  "articles": 41,
+  "blurb": "## Welcome to the Abyss Odyssey Wiki Abyss Odyssey is a game created by ACE Team and published by Atlus. Inspired by games like Street Fighter and Super Smash Bros Melee, the game takes aspects from those games and blends them with the char",
+  "categories": {
+   "characters": [
+    "Characters",
+    "Boss Characters",
+    "Main Characters"
+   ],
+   "goals": [
+    "Boss Characters"
+   ]
+  },
+  "checked": "2026-10-25",
+  "counts": {
+   "characters": 45,
+   "events": 0,
+   "goals": 8,
+   "locations": 0,
+   "loot": 0,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {},
+  "signal": "rogue",
+  "sitename": "Abyss Odyssey Wiki",
+  "wiki": "https://abyss-odyssey.fandom.com"
+ },
  "Abyssus": {
   "also": [
    "https://abyssus.fandom.com/api.php"
@@ -8665,6 +8694,10 @@
   "sitename": "From The Top Wiki",
   "wiki": "https://from-the-top.fandom.com"
  },
+ "Frost": {
+  "checked": "2026-10-25",
+  "wiki": null
+ },
  "Frozen Depths": {
   "checked": "2026-10-11",
   "wiki": null
@@ -13898,6 +13931,53 @@
   "sitename": "Neon Abyss Wiki",
   "wiki": "https://neonabyss.fandom.com"
  },
+ "Neon Chrome": {
+  "api": "https://neonchrome.fandom.com/api.php",
+  "articles": 158,
+  "blurb": "align=\"center\" width=\"100%\"| Welcome to the Official Neon Chrome Wiki!The comprehensive Neon Chrome wiki reference; written and maintained by the players. We are currently maintaining pages ( articles) with participating in this Wiki so far",
+  "categories": {
+   "goals": [
+    "Enemies"
+   ],
+   "locations": [
+    "Locations"
+   ],
+   "loot": [
+    "Weapons",
+    "Guns",
+    "Items"
+   ]
+  },
+  "checked": "2026-10-25",
+  "counts": {
+   "characters": 0,
+   "events": 0,
+   "goals": 4,
+   "locations": 2,
+   "loot": 29,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "characters": [
+    "Roles"
+   ],
+   "goals": [
+    "Enemies"
+   ],
+   "locations": [
+    "Locations",
+    "Levels"
+   ],
+   "loot": [
+    "Weapons",
+    "Guns"
+   ]
+  },
+  "signal": "rogue",
+  "sitename": "Neon Chrome Wiki",
+  "wiki": "https://neonchrome.fandom.com"
+ },
  "Neophyte": {
   "api": "https://neophyte.fandom.com/api.php",
   "articles": 102,
@@ -15151,6 +15231,10 @@
   "sitename": "Our Darker Purpose Wiki",
   "wiki": "https://our-darker-purpose.fandom.com"
  },
+ "Out There": {
+  "checked": "2026-10-25",
+  "wiki": null
+ },
  "Overlooting": {
   "checked": "2026-10-11",
   "wiki": null
@@ -15202,6 +15286,59 @@
   },
   "sitename": "Paper Planet Wiki",
   "wiki": "https://paperplanet.wiki.gg/"
+ },
+ "Paranautical Activity": {
+  "api": "https://paranautical-activity.fandom.com/api.php",
+  "articles": 202,
+  "blurb": "Welcome to the Paranautical Activity Wiki Content Weapons Items Consumables Mobs Mini-Bosses Bosses Patch Notes",
+  "categories": {
+   "characters": [
+    "Characters"
+   ],
+   "goals": [
+    "Mini Bosses",
+    "Bosses"
+   ],
+   "locations": [
+    "Rooms"
+   ],
+   "loot": [
+    "Weapons",
+    "Items"
+   ]
+  },
+  "checked": "2026-10-25",
+  "counts": {
+   "characters": 6,
+   "events": 0,
+   "goals": 9,
+   "locations": 6,
+   "loot": 6,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "characters": [
+    "Characters"
+   ],
+   "goals": [
+    "Enemies",
+    "Bosses",
+    "Mobs"
+   ],
+   "locations": [
+    "Rooms"
+   ],
+   "loot": [
+    "Items",
+    "Weapons",
+    "Consumables",
+    "Pickups"
+   ]
+  },
+  "signal": "",
+  "sitename": "Paranautical Activity Wiki",
+  "wiki": "https://paranautical-activity.fandom.com"
  },
  "Pass the Fear": {
   "api": "https://pass-the-fear.fandom.com/api.php",
@@ -20728,6 +20865,42 @@
  "Teenage Mutant Ninja Turtles: Splintered Fate": {
   "checked": "2026-10-11",
   "wiki": null
+ },
+ "Teleglitch": {
+  "api": "https://teleglitch.fandom.com/api.php",
+  "articles": 24,
+  "blurb": "## Index Enemies Levels Weapons Crafting Tips & Tricks Secret Rooms Die More Edition Lore ## Welcome to the Teleglitch Wiki Welcome to the TELEGLITCH wiki that anyone can edit! ## What is Teleglitch? Teleglitch employs a number of gameplay ",
+  "categories": {
+   "loot": [
+    "Weapons",
+    "Craftable Items"
+   ]
+  },
+  "checked": "2026-10-25",
+  "counts": {
+   "characters": 0,
+   "events": 0,
+   "goals": 0,
+   "locations": 0,
+   "loot": 15,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "goals": [
+    "Enemies"
+   ],
+   "locations": [
+    "Levels"
+   ],
+   "loot": [
+    "Items",
+    "Weapons"
+   ]
+  },
+  "signal": "",
+  "sitename": "Teleglitch Wiki",
+  "wiki": "https://teleglitch.fandom.com"
  },
  "Temtem: Swarm": {
   "also": [

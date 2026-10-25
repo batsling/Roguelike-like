@@ -7,9 +7,9 @@ Videos and podcast episodes where a developer may say what inspired their game, 
 | | games | results |
 |---|---|---|
 | 1. Confirm a suspected connection | 111 | 312 |
-| 2. Games with few connections | 181 | 576 |
+| 2. Games with few connections | 185 | 592 |
 
-Searched 554 of the 554 games that qualify; 262 had nothing that looked like the developer talking.
+Searched 559 of the 559 games that qualify; 263 had nothing that looked like the developer talking.
 
 ---
 
@@ -564,7 +564,7 @@ Listen for: **Vampire Survivors** (sheet says "check folder")
 
 ### Nitro Kid (2022) — 2 connections
 
-Listen for: **Slay the Spire** (sheet says "check folder"); **Into the Breach** (sheet says "check folder")
+Listen for: **Into the Breach** (sheet says "check folder"); **Slay the Spire** (sheet says "check folder")
 
 - [ ] video [The Sloanes: Live Exclusives ft. Chris Cole & Nitro Kid](https://www.youtube.com/watch?v=Sog4rJAnXXg) — Suds and Squared Circle Media · 1:54:11 · Streamed 3mo ago — ft.
 - [ ] video [The Sloanes: Live Exclusives ft. Chris Cole & Nitro Kid](https://www.youtube.com/watch?v=RDWjXbn3wYg) — Ringside Rivalries · 1:54:11 · Streamed 3mo ago — ft.
@@ -888,6 +888,14 @@ Listen for: **Angband** (sheet says "check folder")
 
 Held on the map by one connection or none. Listen for any game on the chart.
 
+### Abyss Odyssey (2014) — 0 connections
+
+- [ ] video [My interview with Chilean game developer ACE team on their new game Abyss Odyssey](https://www.youtube.com/watch?v=OI1KiksxK3Y) — Chronicles of an Expat · 12:44 · 12y ago — developer, interview, names the developer
+- [ ] video [Abyss Odyssey - Interview with Carlos Bordeu of ACE Team](https://www.youtube.com/watch?v=Fz6ucoriaaw) — RetroRequiem · 15:59 · 12y ago — interview, names the developer
+- [ ] video [(PC) Abyss Odyssey - From Indie Chilean developer](https://www.youtube.com/watch?v=BcT-2RO3cyQ) — Redx113 · 12:49 · 9y ago — developer, names the developer
+- [ ] video [Abyss Odyssey - Know your enemy: Bauta](https://www.youtube.com/watch?v=En_wGbju798) — ACE Team · 1:37 · 12y ago — names the developer
+- [ ] podcast [Abyss Odyssey](https://podcasts.apple.com/us/podcast/abyss-odyssey/id1141733876?i=1000396709166) — Konglomerat Podcastowy · 21 min · 2017-12-07 — names the developer
+
 ### Blade Assault (2021) — 0 connections
 
 - [ ] video [Blade Assault / Holden's Half Hour](https://www.youtube.com/watch?v=rBRXnzAdtdk) — Holden's Game Archive · 29:34 · 3y ago — names the developer
@@ -958,6 +966,16 @@ Held on the map by one connection or none. Listen for any game on the chart.
 
 - [ ] podcast [Episode 166: One Step at a Time](https://podcasts.apple.com/us/podcast/episode-166-one-step-at-a-time/id1508010170?i=1000665489832) — The Devolver Digital Forkcast · 64 min · 2024-08-15 — cue in the description
 
+### Frost (2016) — 0 connections
+
+- [ ] video [Frost/YIIKson: An Interview With The Developers of YIIK.](https://www.youtube.com/watch?v=T4KFSfBI5io) — KEMONOFRIENDZONE · 2:33:41 · 4mo ago — developer, interview
+- [ ] video [Frost Giant Developer Interview - Esports with Trevor Housten](https://www.youtube.com/watch?v=rurgY5iZCro) — feardragon64 · 20:41 · 4y ago — developer, interview
+- [ ] video [Frost Giant Developer Interview - User Generated Content with Ryan Schutter](https://www.youtube.com/watch?v=PhFrM42KybQ) — feardragon64 · 19:19 · 4y ago — developer, interview
+- [ ] video [Frost Giant’s Mission To Revive The RTS Genre - MinnMax Interview](https://www.youtube.com/watch?v=vp6CAOBjU0Q) — MinnMax · 1:06:45 · 5y ago — interview
+- [ ] podcast [1 Young Politician vs 20 Boomers (ft. Maxwell Frost) / Surrounded](https://podcasts.apple.com/us/podcast/1-young-politician-vs-20-boomers-ft-maxwell-frost-surrounded/id1811866283?i=1000786812850) — Surrounded · 114 min · 2026-08-30 — ft.
+- [ ] podcast [1081 - Bucket Bunnies feat. P*****o Time (10/20/26)](https://podcasts.apple.com/us/podcast/1081-bucket-bunnies-feat-p-o-time-10-20-26/id1097417804?i=1000797347387) — Chapo Trap House · 86 min · 2026-10-20 — feat.
+- [ ] podcast [Famous quotes we've been getting wrong, from Robert Frost to 'Don't mess with Texas,' with Eli Burnstein](https://podcasts.apple.com/us/podcast/famous-quotes-weve-been-getting-wrong-from-robert-frost/id173429229?i=1000793831793) — Grammar Girl · 45 min · 2026-10-08 — cue in the description
+
 ### Go Mecha Ball (2024) — 0 connections
 
 - [ ] video [Gameable Audio #030 – Go Mecha Ball special (feat. Joonas Turner)](https://www.youtube.com/watch?v=Rt0H2WxyXo0) — Gameable Audio - A VGM Podcast · 2:02:14 · 1y ago — feat.
@@ -1024,6 +1042,10 @@ Held on the map by one connection or none. Listen for any game on the chart.
 
 - [ ] podcast [On Queer Horror, with Cursed Morsels Press](https://podcasts.apple.com/us/podcast/on-queer-horror-with-cursed-morsels-press/id1665378700?i=1000770510854) — Workers' Lit · 64 min · 2026-06-01 — cue in the description
 
+### Neon Chrome (2016) — 0 connections
+
+- [ ] video [Neon Chrome ,interview recorded for Satanic Mass with Rev. Black](https://www.youtube.com/watch?v=PjYv_RAFkbc) — Rev. Black · 27:11 · 3y ago — interview
+
 ### Octogeddon (2018) — 0 connections
 
 - [ ] video [All Yes Good Interview, 8K Monitors, Uber/Lyft Wage Study, Voice Shopping](https://www.youtube.com/watch?v=SJkNMDH7AJY) — Computer America · 1:00:58 · Streamed 8y ago — interview, names the developer
@@ -1048,6 +1070,12 @@ Held on the map by one connection or none. Listen for any game on the chart.
 - [ ] video [OTXO / Holden's Half Hour](https://www.youtube.com/watch?v=vV6st6zJdWI) — Holden's Game Archive · 30:48 · 2y ago — names the developer
 - [ ] video [OTXO OST - Silent Scream (EXTENDED)](https://www.youtube.com/watch?v=MspIPiUpr0k) — Tragic · 11:33 · 3y ago — cue in the description
 - [ ] podcast [OTXO](https://podcasts.apple.com/us/podcast/otxo/id1662404177?i=1000619209433) — Die and Retry · 52 min · 2023-07-04 — cue in the description
+
+### Out There (2014) — 0 connections
+
+- [ ] video [Out There Podcast Outtake: Full Interview with Saravanan](https://www.youtube.com/watch?v=kaiaOSAP2uU) — outtherepodcastsg · 34:01 · 5mo ago — interview
+- [ ] video [How To Prepare For Front-End Coding Interviews](https://www.youtube.com/watch?v=YM-9nPLqezQ) — Conner Ardman · 8:18 · 4y ago — interview
+- [ ] video [EXCLUSIVE INTERVIEW WITH DEI DEVELOPER KAM2150! Total War: Rome 2 DEI News](https://www.youtube.com/watch?v=jII_BCYm0VM) — STRATMAN · 54:55 · 5y ago — developer, interview
 
 ### PlateUp! (2022) — 0 connections
 

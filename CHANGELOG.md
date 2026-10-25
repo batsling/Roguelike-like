@@ -11,6 +11,14 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **25 Oct upload: 6 new games, 3 proven connections.** Abyss Odyssey, Frost,
+  Neon Chrome, Out There, Paranautical Activity and Teleglitch are on the chart.
+  Paranautical Activity (from Spelunky Classic and The Binding of Isaac) and
+  Teleglitch (from Spelunky Classic) arrive with proof screenshots; the other
+  four have no connections yet, so they sit off the map. Their research found
+  developer leads for five of them and eleven candidates (Dobee, Poseidon, Canned
+  Meat, the Nailgun, Paganini's bargain, Ekeko's shop and more).
+
 - **The node kinds are gone; shops come off a shop bar (§19.10).** The owner
   found the kinds complicated things without making for interesting pathing —
   the final route is rarely on screen when the choice is made — and made shops
