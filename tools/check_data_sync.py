@@ -58,7 +58,7 @@ DATA = os.path.join(ROOT, "data")
 # entry when the cell is filled in; do not add one to quiet a generator that is
 # refusing for a reason you have not read.
 # Empty, and that is the state to keep it in. Its one entry was Echo Form, whose
-# Effect cell has since been authored (`tools/_cards_echo_form_effect.py`), so the
+# Effect cell has since been authored (`tools/oneshots/_cards_echo_form_effect.py`), so the
 # generator runs and the card ships. An entry here is a REMINDER that something is
 # half-written, not a way to quiet a generator that is refusing for a reason
 # nobody has read.

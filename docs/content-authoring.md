@@ -133,6 +133,13 @@ still exists under an old name silently generates the wrong content.
 | `check_data_sync.py` | **is `data/` still what the sheet says?** Runs every generator over the checked-in workbook and asks git whether anything moved, then puts the tree back. This is the rule in CLAUDE.md ("the spreadsheet is upstream of `data/`") with something behind it: the first run found three rows that had drifted, two of them in one direction and one in the other. `check_map_sync.py` covers `data/games/`; this covers the other twenty folders. Run by CI. |
 | `_xlsx_surgery.py` | shared helper: edit ONE sheet of `Roguelikes.xlsx` in place. An openpyxl round-trip drops the workbook's eight charts, so the sheet-editing one-shots (`_statuses_sheet_setup.py`, `_statuses2_combat_setup.py`, `_statuses2_burn_setup.py`, `_items2_statuses_setup.py`, `_events2_sheet_setup.py`, `_curses2_sheet_setup.py`, `_abilities_sheet_setup.py`, `_abilities_effect_column_setup.py`) rewrite just that sheet's XML parts and copy every other zip entry through untouched. |
 
+**The one-shots live in `tools/oneshots/`** (moved there on 25 Oct 2026, so
+`tools/` holds the generators, checks and research tools). Every `_*.py` named in
+the table above is there except `_xlsx_surgery.py`, `_proof_names.py` and
+`_candidates_to_sheet.py`, which real tools import or still use. Each moved script
+carries a few lines at the top that resolve its paths as if it were still in
+`tools/`, so `python3 tools/oneshots/<name>.py` behaves as it always did.
+
 The `_*_setup.py` scripts are **bootstraps, not generators**: they lay a sheet's
 header row down and re-author the rows they hold in Python. Once you are editing
 a tab by hand you never need them again — and they will refuse to run rather than
@@ -430,10 +437,10 @@ screenshot it.
   a detour the player chose to walk; they turn up after any game at all.
 - **Quote the source game verbatim** where you can, and leave a `Result` blank
   rather than inventing prose and presenting it as the game's.
-- **Don't run `tools/_events2_sheet_setup.py`** once you've authored by hand. It
+- **Don't run `tools/oneshots/_events2_sheet_setup.py`** once you've authored by hand. It
   is the bootstrap that laid the tab down and it rewrites it wholesale from a
   Python list; it will refuse rather than drop your rows, but it has nothing you
-  want. The same goes for `tools/_objects2_sheet_setup.py`.
+  want. The same goes for `tools/oneshots/_objects2_sheet_setup.py`.
 
 ## Authoring an object
 

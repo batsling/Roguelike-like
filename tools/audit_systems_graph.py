@@ -37,7 +37,7 @@ SHEET = "chart"
 BLOCKS = [("D", "E", "F", "G"), ("H", "I", "J", "K"),
           ("L", "M", "N", "O"), ("P", "Q", "R", "S")]
 
-# The sheet settled on plural (see tools/_chart_system_vocabulary.py), so this
+# The sheet settled on plural (see tools/oneshots/_chart_system_vocabulary.py), so this
 # is now a REGRESSION DETECTOR rather than a fixer: the collapse still folds a
 # singular so one stray cell cannot skew the graph, but the hygiene pass reports
 # it and main() exits non-zero. That is the whole point — a singular/plural

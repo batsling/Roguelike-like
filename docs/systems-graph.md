@@ -388,7 +388,7 @@ new, because several of these looked like different problems than they were:
 - **The singular/plural collisions are gone.** `Bomb`/`Bombs`, `Tile`/`Tiles`,
   `Object`/`Objects` and `Pill`/`Pills` were folded onto plural, and `Item` went
   with them so the System column and the Groups tree finally use one spelling.
-  `tools/_chart_system_vocabulary.py` did it and is idempotent; `CANON` in the
+  `tools/oneshots/_chart_system_vocabulary.py` did it and is idempotent; `CANON` in the
   audit is now a regression detector rather than a fixer.
 - **`Teleport Start Game ` carried a trailing space on BOTH sides** — the arrow
   (E3) and the Good Dir lookup (U50) — so the join worked and nothing complained.
@@ -495,7 +495,7 @@ layer no other roguelike chart has (§7 question 6).
 ### The review fixes, applied
 
 All ten items from the review are in the sheet, via
-`tools/_chart_abilities_review_fixes.py` (idempotent). What they bought:
+`tools/oneshots/_chart_abilities_review_fixes.py` (idempotent). What they bought:
 
 | | before abilities | after abilities | after fixes | + tiles | + enemy goals |
 |---|---|---|---|---|---|
@@ -722,8 +722,8 @@ The renderer is still unbuilt. The intended shape:
   SVG/drawio with computed colours and content-count thickness, plus an audit
   block written back onto the sheet.
 - **Writing back to the workbook goes through `tools/_xlsx_surgery.py`, never
-  openpyxl** — a round-trip drops the workbook's eight charts. The `_*_setup.py`
-  one-shots are the worked examples. (See `CLAUDE.md`.)
+  openpyxl** — a round-trip drops the workbook's eight charts. The one-shots in
+  `tools/oneshots/` are the worked examples. (See `CLAUDE.md`.)
 - Existing map-diagram assets that may be worth reusing for layout or styling:
   `tools/Roguelikes.drawio`, `tools/map_layout.py`, `tools/map_declutter.py`.
 

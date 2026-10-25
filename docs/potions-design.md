@@ -68,7 +68,7 @@ Thirty forks were settled before any code, in the same discovery-pass style as t
 | 27 | **Confirming a throw** | **No confirmation.** Arming a picker and clicking a square are two deliberate acts already (§4.2). |
 | 28 | **Potion of Uselessness** | **Uncommon**, not Common — the joke, met less often. Sheet edit made (§3). |
 | 29 | **The six potions with no art** | **The fallback IS the design.** An identified potion with no `File` keeps showing its run colour, permanently (§6.3). |
-| 30 | **Who fills the 30 empty effect cells** | **The next build session**, through `_xlsx_surgery` from §7.3 — so the workbook is not hand-edited in the meantime (it is a binary blob; concurrent edits do not merge). **Done**, in `tools/_potions2_effect_cells.py`. |
+| 30 | **Who fills the 30 empty effect cells** | **The next build session**, through `_xlsx_surgery` from §7.3 — so the workbook is not hand-edited in the meantime (it is a binary blob; concurrent edits do not merge). **Done**, in `tools/oneshots/_potions2_effect_cells.py`. |
 
 ---
 
@@ -135,7 +135,7 @@ Four things the table says out loud:
   potion drops and, once potions take their third of the payout, ~2.5% of **all**
   loot spent on a bottle that does nothing in either direction. The joke is worth
   keeping and worth meeting less often. The edit is made — through
-  `tools/_potions2_uselessness_uncommon.py`, which goes via `_xlsx_surgery` because
+  `tools/oneshots/_potions2_uselessness_uncommon.py`, which goes via `_xlsx_surgery` because
   an openpyxl round-trip of this workbook silently drops its seven charts.
 - **The throw is weaker per body and wider per square.** Dexterity and Strength
   Potions give the drinker +2 and a body +1; the Ampoule takes 3 off you and gives
@@ -620,7 +620,7 @@ verb.
 
 Prose column, machine column, in pairs — the `statuses2.0` shape (§13.1). Both
 machine columns were empty for all 15 rows; §7.3 was the proposed first pass and
-is now what the sheet says, written by `tools/_potions2_effect_cells.py`.
+is now what the sheet says, written by `tools/oneshots/_potions2_effect_cells.py`.
 
 `PotionData` (`scripts/resources/PotionData.gd`) carries
 `id, display_name, rarity, preference, reference, file, quaff: Array, throw: Array`
@@ -986,7 +986,7 @@ taught the reader nothing about what it was.
    which is what makes an unknown potion offerable at all.
 3. ~~**Data**: `PotionData`, the generator, both Effect columns authored (§7.3),
    `Data` wiring, the editor rescan.~~ **DONE.** All 30 cells are written
-   (`tools/_potions2_effect_cells.py`) and all 15 rows load, 9/3/3 on the shared
+   (`tools/oneshots/_potions2_effect_cells.py`) and all 15 rows load, 9/3/3 on the shared
    ladder. Two things the build turned up: Raise Level's `On Tile` PROSE cell is
    the sheet's `N/A` as well as its effect, so one potion in fifteen has no throw
    line for a card to draw — step 4 has to read a blank there as *"this one cannot

@@ -269,7 +269,7 @@ def main():
 
     wb = openpyxl.load_workbook(XLSX_PATH, data_only=True)
     if SHEET not in wb.sheetnames:
-        raise SystemExit("%s has no %r sheet — run tools/_shopkeepers_sheet_setup.py"
+        raise SystemExit("%s has no %r sheet — run tools/oneshots/_shopkeepers_sheet_setup.py"
                          % (XLSX_PATH, SHEET))
     header = [str(c.value).strip() if c.value is not None else "" for c in wb[SHEET][1]]
     missing = [h for h in HEADERS if h not in header]

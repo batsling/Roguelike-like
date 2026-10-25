@@ -97,7 +97,7 @@ OWNER_SHEETS = {
 #                 confirm, beside the status and level-up rows.
 #
 # There is no third value on purpose. The sheet briefly carried one `run`, which
-# was a typo for `any time` (tools/_goals_ticked_run_fix.py).
+# was a typo for `any time` (tools/oneshots/_goals_ticked_run_fix.py).
 ANY_TIME, GAME_BEATEN = "any time", "game beaten"
 TICKED_VALUES = (ANY_TIME, GAME_BEATEN)
 

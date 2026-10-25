@@ -84,8 +84,8 @@ The eight authored:
 | The Void | Insane | `while: offering_rift 1` |
 
 The `Effect` cells were written from the owner's `Description`s by
-`tools/_locations_effect_column_setup.py` (Caves and The Moon by
-`tools/_units_destruction_effect_setup.py`). The descriptions are what the
+`tools/oneshots/_locations_effect_column_setup.py` (Caves and The Moon by
+`tools/oneshots/_units_destruction_effect_setup.py`). The descriptions are what the
 player reads, and the Effect is what runs.
 
 ### 3. The pieces each one needed

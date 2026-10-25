@@ -3491,7 +3491,7 @@ Three things fall out of that, and each is worth knowing:
   from a paid-for one (so only the latter paid the bonus) went with the bonus. A
   Stun on the PLAYER would do nothing — the player takes no turns to skip — so the
   one thing that put it there, Spider Kitten's `Infliction (1, Stun)`, was taken
-  off the kitten (`tools/_enemies_spider_kitten_no_ability_setup.py`) until it
+  off the kitten (`tools/oneshots/_enemies_spider_kitten_no_ability_setup.py`) until it
   gets something else.
 - **Sticky Bombs' `bomb_stun` is deleted**, not merely unauthored: the field, the
   `GameState.bombs_stun()` reader and the `_explode` branch are all gone, and
@@ -3672,9 +3672,9 @@ spawns while it is owned.
   of the self-report: `{"status_goals": [id…], "bonuses": [{instance, status}…]}`.
   Claims resolve **before** the board does, so beating an enemy and claiming its
   bonus in the same game pays both.
-- **Editing the sheet** — `tools/_statuses_sheet_setup.py`,
-  `tools/_statuses2_combat_setup.py` (the combat columns, §13.4) and
-  `tools/_items2_statuses_setup.py` go through `tools/_xlsx_surgery.py`, which
+- **Editing the sheet** — `tools/oneshots/_statuses_sheet_setup.py`,
+  `tools/oneshots/_statuses2_combat_setup.py` (the combat columns, §13.4) and
+  `tools/oneshots/_items2_statuses_setup.py` go through `tools/_xlsx_surgery.py`, which
   rewrites one sheet's two XML parts and copies every other zip entry through
   untouched. An openpyxl round-trip of this workbook silently drops its seven
   charts, so nothing here may use one.

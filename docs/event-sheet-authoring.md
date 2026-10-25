@@ -7,8 +7,8 @@ that's left. Companion to `games-first-redesign.md` and
 somewhere to live — §1 is that somewhere.
 
 ```bash
-python3 tools/_curses2_sheet_setup.py    # (re)lay the curses2.0 sheet
-python3 tools/_events2_sheet_setup.py    # (re)lay the events2.0 sheet
+python3 tools/oneshots/_curses2_sheet_setup.py    # (re)lay the curses2.0 sheet
+python3 tools/oneshots/_events2_sheet_setup.py    # (re)lay the events2.0 sheet
 python3 tools/generate_curse2_tres.py    # sheet -> data/curses2.0/
 python3 tools/generate_event2_tres.py    # sheet -> data/events2.0/
 ```

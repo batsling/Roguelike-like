@@ -77,8 +77,8 @@ the honour system.
   (`any time` / `game beaten`) and `Count` (blank, or 2+) — see §7.7 of the spec.
   **Never edit the workbook with openpyxl** — a round-trip drops its eight charts.
   `tools/_xlsx_surgery.py` rewrites one sheet's XML and copies every other zip
-  entry through byte-for-byte; the `_*_setup.py` one-shots beside it are the
-  worked examples. Note the sheet names lost their `2.0` suffixes (`enemies2.0` →
+  entry through byte-for-byte; the one-shots in `tools/oneshots/` are the worked
+  examples. Note the sheet names lost their `2.0` suffixes (`enemies2.0` →
   `enemies`, and so on); the output folders did not move.
 
 ## Working here
@@ -95,7 +95,7 @@ row-by-row `games!$A933` broke the dashboard three times). Its "on the map"
 figures match `RunGraph`'s main group, and `--check` says when they can't. An
 owner edit typed into an owner sheet's goal column (as Stumpy Stump's was, 14 Oct)
 is carried up into `goals` rather than reverted; see
-`tools/_goals_stumpy_stump_wording.py`.
+`tools/oneshots/_goals_stumpy_stump_wording.py`.
 
 **Porting games from the owner's upload is several jobs, not one.** After
 `import-games-godot.py` (which prints the games still waiting), every kind of

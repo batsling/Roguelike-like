@@ -174,7 +174,7 @@ def main():
 
     wb = openpyxl.load_workbook(XLSX_PATH, data_only=True)
     if SHEET not in wb.sheetnames:
-        raise SystemExit("%s has no %r sheet — run tools/_objects2_sheet_setup.py"
+        raise SystemExit("%s has no %r sheet — run tools/oneshots/_objects2_sheet_setup.py"
                          % (XLSX_PATH, SHEET))
     curse_ids, item_ids, enemy_tags = ev.cross_sheet_ids(wb)
     object_tags = sheet_tags(wb)
