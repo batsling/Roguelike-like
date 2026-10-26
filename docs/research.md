@@ -500,10 +500,11 @@ neither describes a game's contents anyway.
 
 ## 9. What is not built yet
 
-- **Main-page blurbs are missing for most wikis.** Fandom was rate-limiting
-  this client when they were read, so most records have no `blurb` or
-  `signal` yet (and are judged by name alone). `research.py wikis --blurbs`
-  reads them again without rediscovering anything; run it in a later session.
+- **Main-page blurbs are missing for some wikis.** Fandom was rate-limiting
+  this client when they were first read. A re-read on 26 Oct 2026 took them
+  from 291 of 534 wikis to 413 (and the `signal` from 93 to 260); the other
+  121 are still judged by name alone. `research.py wikis --blurbs` reads them
+  again without rediscovering anything.
 
 - **Pills are not researched, on purpose** (the owner, 12 Oct 2026). The pill
   system is modelled closely on Isaac's, and few other games have anything
