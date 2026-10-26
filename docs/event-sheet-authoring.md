@@ -3,12 +3,12 @@
 Status: **built, illustrated and running.** Sixteen events authored, generators
 and runtime in place, art in `images2.0/`, tests in `test/test_events2.gd`. §19 is how it runs and the little
 that's left. Companion to `games-first-redesign.md` and
-`locations-and-events-design.md` §6, which argued events should wait for
+`archive/locations-and-events-design.md` §6, which argued events should wait for
 somewhere to live — §1 is that somewhere.
 
 ```bash
-python3 tools/_curses2_sheet_setup.py    # (re)lay the curses2.0 sheet
-python3 tools/_events2_sheet_setup.py    # (re)lay the events2.0 sheet
+python3 tools/oneshots/_curses2_sheet_setup.py    # (re)lay the curses2.0 sheet
+python3 tools/oneshots/_events2_sheet_setup.py    # (re)lay the events2.0 sheet
 python3 tools/generate_curse2_tres.py    # sheet -> data/curses2.0/
 python3 tools/generate_event2_tres.py    # sheet -> data/events2.0/
 ```
@@ -79,14 +79,13 @@ destination is somewhere the run was *sent*, and an event there would land on
 top of the stay-or-return question. Nor does the **Amulet** game: the run is
 over.
 
-**Nor does a hub** (§14.2): a **shop** is what happens at a hub, instead of an
-event rather than as well as one. Both used to queue on the same arrival — the
-shop mounting under the board, the event opening a modal over it — so the shop
-the player had routed towards was something they had to dismiss an event to
-reach. `EventSystem.roll_for_arrival` returns null at a hub, so this holds for
-every caller rather than for the overworld only, and it reads off the game
-actually PLAYED at the node: transmute a hub and the shop leaves with the game
-it belonged to, so the spot goes back to paying an event.
+**A game with a shop pays its event like any other** (spec §19.10). For a while
+it did not: a shop stood at a hub (spec §14.2) and then at a Shop node, instead
+of an event, because both queued on one arrival and the shop the player had
+routed towards was something they had to dismiss an event to reach. Since shops
+are opened off the shop bar, the player chose the shop *and* the game, so
+`EventSystem.roll_for_arrival` lost its shop gate; the event opens first and the
+shop's button waits behind it (`Overworld2._open_pending_event`).
 
 **Placement is gone, and so is the badge — and now so is the line that replaced
 it.** An event used to be hashed onto a specific node from the node id and the
@@ -96,9 +95,9 @@ is no subset of nodes to badge, and no honest answer to "which event is over
 there" before the run arrives — so the badge came off the cards along with the
 placement that justified it. The card's popup kept a line saying an event *will*
 fire; that has gone too, for the same reason one step further on. It was true of
-every card but the Amulet's and a hub's, and **a fact that is always true is not
-information.** What a card says about events now is what a **hub** card says:
-`🛒 SHOP`, and a tooltip that a shop stands here so no event fires.
+every card but the Amulet's, and **a fact that is always true is not
+information.** A card says nothing about events now; a game with a shop the
+player has opened carries `🛒 SHOP`.
 
 **The exchange rate moved with it.** §1 prices an event at one game's reward
 because a leaf cost two games and paid one. At one event per game that is no
@@ -363,7 +362,7 @@ There is **no `kill` / `end_run` token and there should not be one**: a `lose_hp
 that empties Health ends the run through the rule that already exists (§2), which
 is how Abyssal Baths kills you in Slay the Spire 2 as well.
 
-The event-only forms carry the weight `locations-and-events-design.md` §6
+The event-only forms carry the weight `archive/locations-and-events-design.md` §6
 asked them to:
 
 ```
@@ -488,7 +487,7 @@ Each gets **its own section of the post-game checklist**, and that separation is
 the point rather than decoration: an enemy goal is a debt that bites when missed,
 an event goal is a bonus that merely lapses, and a curse is a bill that arrives
 when you *succeed* at the wrong thing. A checklist that renders all three alike
-is lying about which one hurts (`locations-and-events-design.md` §1 draws the
+is lying about which one hurts (`archive/locations-and-events-design.md` §1 draws the
 same line for locations). **Curse rows read purple**, so the one objective on the
 list you are trying to avoid never looks like the ones you are chasing.
 
@@ -496,8 +495,8 @@ Event goals and curse goals tick to the **same three-game clock** by default,
 which is deliberate: whatever the checklist is carrying, it clears at about the
 same rate, and the player is never tracking two different countdowns.
 
-Two things this is *not*. It is not the shelved `CurseData` / `data/curses`
-system (`games-first-redesign.md` §5) — same word, different thing: a curse goal
+Two things this is *not*. It is not the combat-era `CurseData` / `data/curses`
+system (deleted) (`games-first-redesign.md` §5) — same word, different thing: a curse goal
 is a row on the checklist, not a card, and nothing should wire the two together.
 And `Goal Met` never means "it went well" — it means the condition happened. On a
 curse that is the bad outcome. The sign lives in the token, not in the column
@@ -1497,7 +1496,7 @@ the other's shape.
 
 ### What is still left
 
-1. **The `encounters` merge.** `locations-and-events-design.md` §6 argues for one
+1. **The `encounters` merge.** `archive/locations-and-events-design.md` §6 argues for one
    modal serving events *and* `encounters`. `EventModal2` is the modal that
    should absorb them; the combat-era `scripts/events/EventModal.gd` (d20 rolls
    against stats the redesign deleted) is now dead weight and can go with them.

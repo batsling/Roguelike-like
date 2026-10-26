@@ -25,7 +25,7 @@ the same folder but are static helpers, not autoloads.)
 | `Data` | Loads every `.tres` under `res://data/…` at startup, exposes lookups by id, and owns the shared rarity ladder. |
 | `EffectSystem` | Central dispatch for structured effects (`{type, value, target}`) applied via `EffectSystem.apply()`. |
 | `TriggerBus` | Global signal hub wiring item/event triggers to game moments (`game_beaten`, `chest_granted`, …). |
-| `Stats` | Stat dispatcher; loads `StatDefinition`s and answers stat queries. See `docs/stat-dispatcher.md`. |
+| `Stats` | Stat dispatcher; loads `StatDefinition`s and answers stat queries, and rolls every random decision through Luck (below). `docs/archive/stat-dispatcher.md` is the combat-era design it began as. |
 | `EventSystem` | Events (`docs/event-sheet-authoring.md`): dealing an event from the per-rarity shuffle bag when a game is played, the Requirement/`needs` gates, and resolving a choice into effects, an event goal, a curse, or a `chance` roll. Objects go through the same resolution. |
 | `ObjectSystem` | Objects (`docs/object-sheet-authoring.md`): the machines standing in front of the player, spawning them by tag, and their state — jams, what has been blown off the run, and the Donation Machine's cross-run bank. |
 | `GameLoop2` | The run loop: the spawn-event clock the difficulty reads (§19.6), the enemy stack, and the grid the followers advance across. Every game stands **two** bodies on the board and the Amulet its boss (§19.10; the node KINDS of §19.1 are retired), and the end of every game stands more up at the back (§19.5). **None of them belongs to the game.** There is no "this game's enemy": what walks on is a follower like every other body from the moment it lands — bombable, pushable, one ordinary row in the report checklist — and `arrivals` is only the record of which bodies came with the game in play, kept so a Scramble can supersede them. `Overworld2` is a view over it. It also owns the OPS every **ability** is built out of (§7.6): the catalogue in `data/abilities2.0` authors `trigger: op args` in its `Effect` column and this file dispatches on that rather than on the ability's id, so an ability composed of ops that already exist is a sheet row and nothing else. `ABILITY_OPS` is the list that exists, and the generator refuses to write a row naming anything outside it. The pure half of that — the queries over a body Dictionary (`entry_goal`, `entry_image`, `entry_phase`, `ability_lines`, `entry_tags`, the `entry_ability_*` family) — is **`BodyFacts.gd`**, a file of `static` functions that touch no run state at all; `GameLoop2` forwards each one, so `GameLoop2.entry_goal(entry)` still reads the same everywhere. See `docs/performance-backlog.md` §1b for why the ability behaviour did not come with it — `BodyFacts` gained the pure half of the op layer (`ops_at`, `has_op`, `op_row`, `resolve_op_args`) for the same reason, while the ops themselves run on the loop. |
@@ -49,7 +49,7 @@ the same folder but are static helpers, not autoloads.)
 | `RunConfig` | A **custom run**'s setup, held for the run it configures: three independent filters (**map** / **start** / **amulet**, each with library, genre, record and release-year axes), the run-length band, an optional named target game, and an optional **seed** (0 = roll one; `seed_for_run()` is what `GameState.reset_run` asks for the number the whole run is dealt from). Off by default, in which case `RunGraph` reads `Settings.game_filter` exactly as before. Written by `CustomRunScreen`, read by `RunGraph`, and saved with the run — the filters *are* the map, so a save resumed without them comes back on a different one. `RunConfig.describe()` is what the menu's Continue list prints on a custom run's row, read off that save's own stored block rather than off the loaded run. |
 | `TierList` | Cross-run tier list / ranking store that outlives any single run. **Its colours live in `UITheme.TIER_COLORS`**, not on the tier screen, because every large cover in the game wears the player's tier in its top-right corner now (`UITheme.attach_tier_badge` — the collection, the game-choice modal, the offering cards, the route ladder, the atlas, the Now Playing panel, the run-over and run-history screens). A badge in a different red from the row the game sits in would be two answers to one question, so there is one list and both read it. The badge is a pill carrying the tier's own name in full — names are editable, so a renamed tier is drawn as the player wrote it — **centred on the art's top-right corner** rather than tucked inside it, so it reads as a mark pinned to the picture and gives back the corner it would otherwise cover. An unranked game draws nothing at all. Anything that draws a cover inside a clipping parent (the collection's rounded plate) hands the badge an unclipped layer of its own, or the overhang comes back cut into quarters. |
 | `GameStats` | Cross-run lifetime stats, per game and per character: wins, Amulet wins, perfected visits, goals and level-ups — what `GameRanks` derives every rank from (§20), what the Collection's pages list — plus the Donation Machine's bank, the one number in the build that deliberately outlives a run. |
-| `DevTools` | Developer panel (press `` ` ``), gated on `Settings.dev_mode`. Five tabs: **Grant** (items / scrolls / pills / statuses, with a player-or-enemy target picker — the item list is `DevTools.item_pool()`, the **2.0 set only**: it used to append the 112 combat-era relics from `data/items`, which grant cleanly and then do nothing because no games-first code honours them), **Run** (vitals, every board verb, gold, chests, level, games played), **Board** (spawn a goal-enemy or boss; stun / push / bomb / defeat / remove or status any standing body), **Flow** (jump to a game, heal, clear the board, force the win or loss), **Events** (start any authored event where you stand and read the state of the shuffle bag, each row saying why it is or isn't turning up on its own — see [Authoring an event](content-authoring.md#authoring-an-event); the same tab spawns any **object** under the board, which is the only way to reach the non-event half of how a machine appears). Everything routes through the same public API the game uses. |
+| `DevTools` | Developer panel (press `` ` ``), gated on `Settings.dev_mode`. Five tabs: **Grant** (items / scrolls / pills / statuses, with a player-or-enemy target picker — the item list is `DevTools.item_pool()`, the **2.0 set only**: it used to append the 112 combat-era relics (since deleted), which grant cleanly and then do nothing because no games-first code honours them), **Run** (vitals, every board verb, gold, chests, level, games played), **Board** (spawn a goal-enemy or boss; stun / push / bomb / defeat / remove or status any standing body), **Flow** (jump to a game, heal, clear the board, force the win or loss), **Events** (start any authored event where you stand and read the state of the shuffle bag, each row saying why it is or isn't turning up on its own — see [Authoring an event](content-authoring.md#authoring-an-event); the same tab spawns any **object** under the board, which is the only way to reach the non-event half of how a machine appears). Everything routes through the same public API the game uses. |
 
 ## Screens & flow
 
@@ -90,7 +90,7 @@ ordinary scene.
     never gives up a column, the picked cell stays lit underneath, and ◀ ▶ (or the
     arrow keys) step through the grid in layout order. Escape or a click on the
     backdrop closes it. Before that it was a right-hand pane, and before THAT one
-    mounted open and empty — both cost the grid columns while you scan 927 covers.
+    mounted open and empty — both cost the grid columns while you scan 967 covers.
     One property on one node covers every tab, because all eight are built by
     `_grid_and_detail`. `TierListScreen` does the same thing for the same reason.
     **A grid tile is a picture with a caption, not a stat line with a thumbnail.**
@@ -135,7 +135,7 @@ ordinary scene.
     **`HowToPlayText.gd`**, which the screen draws and does not read — so the
     text, which changes every time the build does, is edited without touching
     layout code. The manual's **numbers are interpolated from the constants that
-    govern them** (`GameLoop2.SHIELDS_PER_GAME`, `RunDifficulty.bonus_turns_for_hops`,
+    govern them** (`GameLoop2.SHIELDS_PER_GAME`, `RunDifficulty.FAR_HOPS`,
     `ShopSystem.BASE_PRICE`, `ShopSystem.STOCK_SLOTS` …), and `test_how_to_play.gd`
     asserts the prose still quotes them, so a balance change cannot leave the
     manual lying. The menu's **bottom-left corner is its table of contents** —
@@ -287,7 +287,7 @@ ordinary scene.
     why and stays armed.
   - **the shields a game grants** ride the offering's one-line hover, which also
     carries the enemy's **portrait** — sized by the line rather than setting its
-    height, so it costs the page nothing (`Overworld2.HOVER_ART`).
+    height, so it costs the page nothing (`OfferingCards.HOVER_ART`).
   - **everything else on the page describes itself on hover**, as a small themed
     card rather than Godot's grey tooltip — see "Hover cards" below.
   - **the pack has no heading.** A bordered strip of relic and scroll tiles is
@@ -671,8 +671,9 @@ with their schemas defined in `scripts/resources/`:
 `ObjectData`, `CurseData2`, `ShopkeeperData`, `SongData`, the loot kinds
 (`ScrollData` + `ScrollNames`, `PillData`, `PotionData`, `CardData`, `WandData`,
 `TrinketData`, `BagData`, `WeaponData`, `EvolutionData`), `StatDefinition`, and
-`AtlasLayout` (the baked star chart). `CurseData` is the shelved combat-era set
-(§5), still loaded.
+`AtlasLayout` (the baked star chart). The combat-era `CurseData` and its
+`data/curses/` set were deleted on 25 Oct 2026, with the pre-2.0 items and
+characters.
 
 (`TileEffectData` rather than `TileData` because Godot ships a native `TileData`
 for TileMaps and a `class_name` that shadows one is a parse error — the sheet, the

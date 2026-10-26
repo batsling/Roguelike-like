@@ -13,7 +13,7 @@ trinket is one whose Effect counts CHARGES (`charges=N`, the foods), and the
 generator refuses a Type that disagrees with its Effect.
 
 `Effect` is authored in the RELIC grammar (docs/games-first-redesign.md §8.1) and
-compiled by generate_item_tres.parse_loot_passive, the one implementation shared
+compiled by item_dsl.parse_loot_passive, the one implementation shared
 with passive cards — so `gold_gained: 25% chance gain_hp 1` means exactly what it
 means on a relic. A blank Effect raises: a trinket's whole pitch is the line on
 it, and one that compiles to nothing is an authoring hole, not a design.
@@ -36,7 +36,7 @@ import sys
 import openpyxl
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import generate_item_tres as items  # noqa: E402
+import item_dsl as items  # noqa: E402
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.dirname(SCRIPT_DIR)

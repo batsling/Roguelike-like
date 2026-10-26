@@ -22,9 +22,8 @@ vial deal, identification, art, `quaff_potion`, and the potion arm on every
 kind-blind surface. **The THROW is the whole of what is left** — step 5, plus the
 three smaller steps after it. §9.1 is the plumbing that already exists for them.
 
-Picking this up in a fresh session: [`potions-handoff.md`](potions-handoff.md) has
-the branch, the state of the suite, the next step in order, and the repo-specific
-traps worth knowing before touching any of it.
+The session handoff written while it was being built is in
+[`archive/potions-handoff.md`](archive/potions-handoff.md); every step it lists is done.
 
 *A bare §x.y is a section of this document. The spec's own §4.1 (scrolls) and §4.3
 (pills) collide with the numbering here, so those two are always written **spec
@@ -36,7 +35,7 @@ here and is left plain.*
 ## 1. Decisions locked
 
 Thirty forks were settled before any code, in the same discovery-pass style as the
-[implementation plan](games-first-redesign-implementation-plan.md#1-decisions-locked-in-discovery):
+[implementation plan](archive/games-first-redesign-implementation-plan.md#1-decisions-locked-in-discovery):
 
 | # | Decision | Choice |
 |---|---|---|
@@ -69,7 +68,7 @@ Thirty forks were settled before any code, in the same discovery-pass style as t
 | 27 | **Confirming a throw** | **No confirmation.** Arming a picker and clicking a square are two deliberate acts already (§4.2). |
 | 28 | **Potion of Uselessness** | **Uncommon**, not Common — the joke, met less often. Sheet edit made (§3). |
 | 29 | **The six potions with no art** | **The fallback IS the design.** An identified potion with no `File` keeps showing its run colour, permanently (§6.3). |
-| 30 | **Who fills the 30 empty effect cells** | **The next build session**, through `_xlsx_surgery` from §7.3 — so the workbook is not hand-edited in the meantime (it is a binary blob; concurrent edits do not merge). **Done**, in `tools/_potions2_effect_cells.py`. |
+| 30 | **Who fills the 30 empty effect cells** | **The next build session**, through `_xlsx_surgery` from §7.3 — so the workbook is not hand-edited in the meantime (it is a binary blob; concurrent edits do not merge). **Done**, in `tools/oneshots/_potions2_effect_cells.py`. |
 
 ---
 
@@ -136,7 +135,7 @@ Four things the table says out loud:
   potion drops and, once potions take their third of the payout, ~2.5% of **all**
   loot spent on a bottle that does nothing in either direction. The joke is worth
   keeping and worth meeting less often. The edit is made — through
-  `tools/_potions2_uselessness_uncommon.py`, which goes via `_xlsx_surgery` because
+  `tools/oneshots/_potions2_uselessness_uncommon.py`, which goes via `_xlsx_surgery` because
   an openpyxl round-trip of this workbook silently drops its seven charts.
 - **The throw is weaker per body and wider per square.** Dexterity and Strength
   Potions give the drinker +2 and a body +1; the Ampoule takes 3 off you and gives
@@ -621,7 +620,7 @@ verb.
 
 Prose column, machine column, in pairs — the `statuses2.0` shape (§13.1). Both
 machine columns were empty for all 15 rows; §7.3 was the proposed first pass and
-is now what the sheet says, written by `tools/_potions2_effect_cells.py`.
+is now what the sheet says, written by `tools/oneshots/_potions2_effect_cells.py`.
 
 `PotionData` (`scripts/resources/PotionData.gd`) carries
 `id, display_name, rarity, preference, reference, file, quaff: Array, throw: Array`
@@ -823,8 +822,8 @@ bearing in the best way — **the save format already has potions in it**:
 - **`GameState.potion_color_map`** — same: declared, cleared, saved, restored.
 - **`TriggerBus.potion_used`** — declared, and `GameState._on_potion_used` already
   forwards it to `fire_run_item_triggers("potion_used", ctx)`. A relic hanging off
-  `potion_used` works the day a potion is used (`data/items/toy_ornithopter.tres`
-  is one, from the old build). *Since resolved:* the signal was declared and
+  `potion_used` works the day a potion is used (the old build's Toy
+  Ornithopter was one). *Since resolved:* the signal was declared and
   emitted by nothing — `PotionSystem.notify_used` is now the choke point, hit once
   by `quaff_potion` and once by `throw_potion`, and Reptile Trinket is the 2.0 item
   on the other end of it.
@@ -849,7 +848,7 @@ bearing in the best way — **the save format already has potions in it**:
 | `scripts/autoload/GameState.gd` | `remove_curse_goal(index)` (§10.1); the three-way loot roll; `_add_random_potion_loot`; `add_potion_loot` for DevTools; `loot_potions()`; the timed-status layer (§5.4); `LOOT_CAPACITY` → `loot_capacity()` (§8.1). |
 | `scripts/autoload/LootSystem.gd` | A `"potion"` arm in each dispatch, plus `can_throw(entry)` — the only kind that answers yes. |
 | `scripts/autoload/GameLoop2.gd` | `area_cells(cell, area)`; `_expire_timed_statuses()` in `beat_game`, for the player and every body; `max_health` on an entry (§4.6) and the `grant_health` / `grant_max_health` / `grant_shield` paths onto one; the timed half of `goal_text_for` (§5.3). |
-| `scripts/autoload/EffectSystem.gd` | `gain_potion`, and `games=` on `apply_status` — **both halves**: the handler alone is a verb the sheet can write and silently get nothing from, so `generate_item_tres.py` learned to parse them in the same pass. **`deal_damage` and `gain_level` were NOT added here**, deliberately: the potion path dispatches through `PotionSystem`'s own table, not this one, and an item-side `deal_damage` needs a target/area vocabulary on `items2.0` that nothing is asking for. Register them the day a sheet cell wants one. |
+| `scripts/autoload/EffectSystem.gd` | `gain_potion`, and `games=` on `apply_status` — **both halves**: the handler alone is a verb the sheet can write and silently get nothing from, so `item_dsl.py` learned to parse them in the same pass. **`deal_damage` and `gain_level` were NOT added here**, deliberately: the potion path dispatches through `PotionSystem`'s own table, not this one, and an item-side `deal_damage` needs a target/area vocabulary on `items2.0` that nothing is asking for. Register them the day a sheet cell wants one. |
 | `scripts/autoload/ScrollSystem.gd` | `identify_loot` (widened, §10); `forget` across all three kinds; `remove_curse` + its picker (§10.1); the potion half of `LOOT_SCALED_FIELDS`, area ladder included (§8.2). |
 | `scripts/resources/StatusData.gd` | `tooltip_for` grows the `⏱ this game` line, so every pip that draws a timed status says so (§5.3). |
 | `scripts/autoload/SaveSystem.gd` | Serialize the timed layer. The two potion fields are **already saved**. |
@@ -931,7 +930,7 @@ otherwise copy in its broken state.
 
 **A correction to an earlier draft of this doc, which read the spec's §5 too fast.**
 §5 shelves the combat-era **curse CARDS** (`CurseData`, `data/curses/`, the 16-card
-gambit layer). It does not shelve **curse GOALS**, which are live, authored and
+gambit layer, since deleted). It does not shelve **curse GOALS**, which are live, authored and
 drawn on screen every game:
 
 - `data/curses2.0/` holds three — **Curse of the Bell**, **Injury**, **Poor Sleep**
@@ -953,9 +952,9 @@ the held curses by name and condition, and a line naming what was lifted. It nee
 one new function, `GameState.remove_curse_goal(index)`: the list has `add`, `has`,
 `trigger` and `tick`, and nothing that takes a row off it early.
 
-> **Do not reach for `GameState.remove_active_curse`.** That is the *card* system's
-> removal and it operates on a different list. Same word, different thing — the
-> warning `CurseData2.gd` opens with.
+> **Curse goals are the only curses now.** The combat-era curse *cards* and their
+> removal (`GameState.remove_active_curse`, a different list) were deleted on
+> 25 Oct 2026, so there is no second system to reach for by mistake.
 
 A fizzle when the player holds none — *"Nothing is weighing on you."* — and the
 scroll is **not** identified by it (§4.5): a Remove Curse read with nothing to lift
@@ -987,7 +986,7 @@ taught the reader nothing about what it was.
    which is what makes an unknown potion offerable at all.
 3. ~~**Data**: `PotionData`, the generator, both Effect columns authored (§7.3),
    `Data` wiring, the editor rescan.~~ **DONE.** All 30 cells are written
-   (`tools/_potions2_effect_cells.py`) and all 15 rows load, 9/3/3 on the shared
+   (`tools/oneshots/_potions2_effect_cells.py`) and all 15 rows load, 9/3/3 on the shared
    ladder. Two things the build turned up: Raise Level's `On Tile` PROSE cell is
    the sheet's `N/A` as well as its effect, so one potion in fifteen has no throw
    line for a card to draw — step 4 has to read a blank there as *"this one cannot

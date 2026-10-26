@@ -366,7 +366,7 @@ it failed on this card exactly as its comment promised it would.
 ### 5.9 The Slay the Spire set (18 Oct 2026)
 
 The owner added fifteen Ironclad, Silent and Defect cards with art and prose, and
-Effect left blank as always; `tools/_cards_slay_the_spire_set.py` wrote the cells.
+Effect left blank as always; `tools/oneshots/_cards_slay_the_spire_set.py` wrote the cells.
 
 | Card | Effect cell |
 |---|---|
@@ -457,7 +457,7 @@ Rare, as the sheet says.
 |---|---|
 | Schema | `scripts/resources/CardData.gd` |
 | Generator | `tools/generate_card2_tres.py` → `data/cards2.0/*.tres` |
-| Sheet one-shots | `tools/_cards_effect_cells.py`, `tools/_items_drop_card_relics.py`, `tools/_cards_slay_the_spire_set.py` |
+| Sheet one-shots | `tools/oneshots/_cards_effect_cells.py`, `tools/oneshots/_items_drop_card_relics.py`, `tools/oneshots/_cards_slay_the_spire_set.py` |
 | Brain | `scripts/autoload/CardSystem.gd` (autoload #24) |
 | Rolling | `Data.roll_card`, `CardSystem.roll_card_loot`, `GameState.roll_loot_entry` |
 | Kind-blind arms | `LootSystem` (every function in its describe and knowledge sections) |

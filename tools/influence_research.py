@@ -67,7 +67,7 @@ import openpyxl  # read-only here. NEVER save the workbook with it: it drops the
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 XLSX = os.path.join(ROOT, "tools", "Roguelikes.xlsx")
-LEGACY = os.path.join(ROOT, "legacy-web", "data", "games-data.js")
+LEGACY = os.path.join(ROOT, "tools", "legacy_games.txt")  # one name a line, `#` comments
 # A full browser string: some studio sites (Grid Sage Games, for Cogmind)
 # answer 406 to the bare "Mozilla/5.0" that bots send.
 UA = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) "
@@ -249,7 +249,8 @@ def cmd_targets(args):
         incoming[r[1]] = incoming.get(r[1], 0) + 1
     legacy = set()
     if os.path.exists(LEGACY):
-        legacy = set(re.findall(r'"name":\s*"((?:[^"\\]|\\.)*)"', open(LEGACY).read()))
+        legacy = {ln.strip() for ln in open(LEGACY, encoding="utf-8")
+                  if ln.strip() and not ln.startswith("#")}
     out = []
     for r in games:
         if incoming.get(r[0]):

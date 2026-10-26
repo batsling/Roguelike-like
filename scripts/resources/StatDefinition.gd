@@ -20,5 +20,5 @@ extends Resource
 
 # Bag of mode-specific numeric knobs. Keys are stat-specific; the
 # Stats autoload methods read them with safe defaults. See
-# docs/stat-dispatcher.md for the per-stat key map.
+# docs/archive/stat-dispatcher.md for the per-stat key map (combat-era).
 @export var mode_data: Dictionary = {}

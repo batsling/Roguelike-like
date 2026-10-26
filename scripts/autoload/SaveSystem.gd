@@ -774,11 +774,9 @@ func _item_ids(inv: Array) -> Array:
 			out.append(String(it.id))
 	return out
 
-# Resolve a saved item id against the 2.0 pool first (the run's item economy),
-# then the legacy 1.0 pool, so either round-trips.
+# Resolve a saved item id against the 2.0 pool (the run's item economy).
 func _lookup_item(id: StringName) -> ItemData:
-	var it: ItemData = Data.get_item2(id)
-	return it if it != null else Data.get_item(id)
+	return Data.get_item2(id)
 
 func _resolve_items(ids: Array) -> Array:
 	# Legacy id-list path. Each entry becomes a fresh duplicate at

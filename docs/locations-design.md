@@ -5,7 +5,7 @@ sheet; 45 more are candidates in `research/locations.csv`, and 106 effects to
 match them with are in `research/location_effects.csv`.
 
 This replaces the location half of
-[locations-and-events-design.md](locations-and-events-design.md), the earlier
+[archive/locations-and-events-design.md](archive/locations-and-events-design.md), the earlier
 brainstorm. That doc gave every location a GOAL, and had the player pick one of
 two or three at each difficulty step. The owner dropped both:
 
@@ -65,7 +65,7 @@ Clauses are separated by `;` and sit under a header:
 
 **The item grammar is the fallback.** An `arrive:` clause or an action's payout
 that is not one of the location's own verbs is read by
-`generate_item_tres.parse_one_effect` and run through `EffectSystem.apply`. So
+`item_dsl.parse_one_effect` and run through `EffectSystem.apply`. So
 `gain_stat bombs 2`, `heal_full`, `spawn_boss`, `add_curse injury`,
 `gain_scroll 2` and `apply_unit landmine random_empty` all work with no new
 code. That is why 52 of the 106 effect ideas are already writable.
@@ -84,8 +84,8 @@ The eight authored:
 | The Void | Insane | `while: offering_rift 1` |
 
 The `Effect` cells were written from the owner's `Description`s by
-`tools/_locations_effect_column_setup.py` (Caves and The Moon by
-`tools/_units_destruction_effect_setup.py`). The descriptions are what the
+`tools/oneshots/_locations_effect_column_setup.py` (Caves and The Moon by
+`tools/oneshots/_units_destruction_effect_setup.py`). The descriptions are what the
 player reads, and the Effect is what runs.
 
 ### 3. The pieces each one needed

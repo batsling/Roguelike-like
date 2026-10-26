@@ -11,6 +11,25 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **A clean-up: the old build's leftovers are gone, and the docs say what is
+  true.** The pre-2.0 items, characters and curses (`data/items/`,
+  `data/characters/`, `data/curses/`, their art in `images/`), the old HTML
+  build (`legacy-web/`) and a catalogue nothing read are deleted; the owner keeps
+  a copy. The item grammar that eight generators share is `tools/item_dsl.py`
+  now. The 87 scripts that each edited the workbook once moved into
+  `tools/oneshots/`, and still run from there. Five finished plans moved to
+  `docs/archive/`, and the live docs, a few code comments and two tooltips that
+  still talked about Shop and Champion nodes were brought up to date with the
+  shop bar. Monstrum shows its PNG cover.
+
+- **25 Oct upload: 6 new games, 3 proven connections.** Abyss Odyssey, Frost,
+  Neon Chrome, Out There, Paranautical Activity and Teleglitch are on the chart.
+  Paranautical Activity (from Spelunky Classic and The Binding of Isaac) and
+  Teleglitch (from Spelunky Classic) arrive with proof screenshots; the other
+  four have no connections yet, so they sit off the map. Their research found
+  developer leads for five of them and eleven candidates (Dobee, Poseidon, Canned
+  Meat, the Nailgun, Paganini's bargain, Ekeko's shop and more).
+
 - **The node kinds are gone; shops come off a shop bar (§19.10).** The owner
   found the kinds complicated things without making for interesting pathing —
   the final route is rarely on screen when the choice is made — and made shops

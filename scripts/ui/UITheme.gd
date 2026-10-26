@@ -4,7 +4,7 @@ extends RefCounted
 # Shared visual language for the games-first (2.0) UI. The screens are built in
 # code, so before this they each hand-rolled their own colours and styleboxes and
 # drifted apart. This centralises the palette — a warm, dark, parchment-and-ember
-# fantasy look carried over from the original web build (legacy-web/css/styles.css)
+# fantasy look carried over from the original web build (its styles.css)
 # — plus a ready-made Godot Theme so every Button / Panel / Label / input picks up
 # a consistent style just by setting `theme = UITheme.make_theme()` on a screen
 # root. Individual stylebox overrides (rarity tiles, enemy cards) still win where a

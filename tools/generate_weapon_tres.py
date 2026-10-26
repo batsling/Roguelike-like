@@ -43,7 +43,7 @@ off their own goal.
   Type            Melee | Ranged — what kind of weapon it is (blank: Melee).
   Passive         the prose the player reads.
   Passive Effect  that prose in the loot-passive grammar
-                  (generate_item_tres.parse_loot_passive); blank for none.
+                  (item_dsl.parse_loot_passive); blank for none.
   Goal            written by tools/apply_goals_sheet.py from `goals` — edit it
                   there, never here.
   Charge          charges a swing needs and spends.
@@ -60,7 +60,7 @@ import sys
 import openpyxl
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import generate_item_tres as items  # noqa: E402
+import item_dsl as items  # noqa: E402
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.dirname(SCRIPT_DIR)

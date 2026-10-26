@@ -125,7 +125,7 @@ def title_from_file(path: str, game_name: str) -> str:
 def sheet_grid(wb) -> list:
     grid = wb.read_grid(SHEET)
     if not grid:
-        sys.exit("radio: the sheet is empty — run tools/_radio_sheet_setup.py")
+        sys.exit("radio: the sheet is empty — run tools/oneshots/_radio_sheet_setup.py")
     header = [str(h).strip() for h in grid[0]]
     if header[:len(HEADERS)] != HEADERS:
         sys.exit("radio headers are %r, expected %r — the sheet's shape moved; "

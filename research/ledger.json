@@ -143,6 +143,15 @@
   "loot": "2026-10-10: nothing: its Moxes only tune its own Rituals, its charms are percent ups; no evolutions",
   "statuses": "2026-10-10: nothing"
  },
+ "Abyss Odyssey": {
+  "characters": "2026-10-25: 1 row: Katrien; Ghost Monk and Pincoya differ only by weapon class",
+  "connections": "2026-10-25",
+  "events": "2026-10-25: 1 row: Paganini",
+  "goals": "2026-10-25: nothing usable: its bosses are nightmare copies of the heroes and the Warlock; Paganini went to events",
+  "locations": "2026-10-25: 1 row: Ekeko (shopkeeper)",
+  "loot": "2026-10-25: nothing usable: the wiki has no item or weapon pages; no evolutions",
+  "statuses": "2026-10-25: nothing usable: no statuses on the wiki"
+ },
  "Abyssus": {
   "characters": "2026-10-10: small wiki; the brief's pages for this kind hold nothing usable or new on a read (generic enemies, stat upgrades)",
   "connections": "before 2026-10-07",
@@ -2780,6 +2789,15 @@
   "loot": "2026-10-12: nothing usable: a stub wiki with no item or enemy text",
   "statuses": "2026-10-12: nothing usable: a stub wiki with no item or enemy text"
  },
+ "Frost": {
+  "characters": "2026-10-25: nothing usable: no wiki; the Steam page describes a survival card game (lead a group to the Refuge ahead of a storm) with no named cards, people or places",
+  "connections": "2026-10-25",
+  "events": "2026-10-25: nothing usable: no wiki; the Steam page describes a survival card game (lead a group to the Refuge ahead of a storm) with no named cards, people or places",
+  "goals": "2026-10-25: nothing usable: no wiki; the Steam page describes a survival card game (lead a group to the Refuge ahead of a storm) with no named cards, people or places",
+  "locations": "2026-10-25: nothing usable: no wiki; the Steam page describes a survival card game (lead a group to the Refuge ahead of a storm) with no named cards, people or places",
+  "loot": "2026-10-25: nothing usable: no wiki; the Steam page describes a survival card game (lead a group to the Refuge ahead of a storm) with no named cards, people or places",
+  "statuses": "2026-10-25: nothing usable: no wiki; the Steam page describes a survival card game (lead a group to the Refuge ahead of a storm) with no named cards, people or places"
+ },
  "Frozen Depths": {
   "characters": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
   "connections": "before 2026-10-07",
@@ -4805,6 +4823,15 @@
   "loot": "2026-10-12: nothing new: the wiki found is the first game's (Neon Abyss, already read); nothing on it is marked as this game's own",
   "statuses": "2026-10-12: nothing new: the wiki found is the first game's (Neon Abyss, already read); nothing on it is marked as this game's own"
  },
+ "Neon Chrome": {
+  "characters": "2026-10-25: nothing usable: its Roles (Hacker, Cyber Psycho, ...) are bare names on the wiki, and Hacker repeats Operator's goal",
+  "connections": "2026-10-25",
+  "events": "2026-10-25: nothing usable: no event screens",
+  "goals": "2026-10-25: 1 row: Overseer; the other bosses' pages are empty stubs, and its drones and turrets are covered (Kamikaze Dwarf, Turret)",
+  "locations": "2026-10-25: nothing usable: one location, the Arcology, which is the whole game",
+  "loot": "2026-10-25: nothing usable: weapon and item pages are one-line stubs; no evolutions",
+  "statuses": "2026-10-25: nothing usable: no statuses on the wiki"
+ },
  "Neophyte": {
   "characters": "2026-10-12: nothing usable: its enemies are the genre's (flies, golems, skeletons) and its spells too (Fireball, Chain Lightning)",
   "connections": "before 2026-10-07",
@@ -5174,6 +5201,15 @@
   "loot": "2026-10-12: nothing usable: none read; no evolutions",
   "statuses": "2026-10-12: nothing usable: none"
  },
+ "Out There": {
+  "characters": "2026-10-25: nothing usable: no wiki (the outthere.fandom match was a TV show, dropped from wikis.json); the Steam page names no creatures, items or events",
+  "connections": "2026-10-25",
+  "events": "2026-10-25: nothing usable: no wiki (the outthere.fandom match was a TV show, dropped from wikis.json); the Steam page names no creatures, items or events",
+  "goals": "2026-10-25: nothing usable: no wiki (the outthere.fandom match was a TV show, dropped from wikis.json); the Steam page names no creatures, items or events",
+  "locations": "2026-10-25: nothing usable: no wiki (the outthere.fandom match was a TV show, dropped from wikis.json); the Steam page names no creatures, items or events",
+  "loot": "2026-10-25: nothing usable: no wiki (the outthere.fandom match was a TV show, dropped from wikis.json); the Steam page names no creatures, items or events",
+  "statuses": "2026-10-25: nothing usable: no wiki (the outthere.fandom match was a TV show, dropped from wikis.json); the Steam page names no creatures, items or events"
+ },
  "Overlooting": {
   "characters": "2026-10-12: nothing usable: no wiki (Fandom and wiki.gg tried), and nothing beyond store blurbs",
   "connections": "before 2026-10-07",
@@ -5218,6 +5254,15 @@
   "locations": "2026-10-10: one planet; nothing",
   "loot": "2026-10-10: no loot category on the brief; nothing read; no weapons, no evolutions",
   "statuses": "2026-10-10: no statuses"
+ },
+ "Paranautical Activity": {
+  "characters": "2026-10-25: 1 row: Gilead; the others are a weapon each (Crossbow, Grenade Launcher) with no identity a level-up can carry",
+  "connections": "2026-10-25",
+  "events": "2026-10-25: nothing usable: no event screens, rooms are fights and shops",
+  "goals": "2026-10-25: 3 rows: Dobee, Poseidon, Big B; the other mini-bosses are a spider (live: Defeat 3 spiders), a moth, a jellyfish and a gargoyle with nothing past their shape",
+  "locations": "2026-10-25: nothing usable: its rooms (Armory, Boss, Shop, Superboss) are Isaac's and already here",
+  "loot": "2026-10-25: 1 row: Grenade Launcher (weapon). Items are bare stat lines (Kiss of Death: more damage; Vitamin C: +2 max health); no evolutions in the game",
+  "statuses": "2026-10-25: nothing usable: the wiki has no statuses or curses"
  },
  "Pass the Fear": {
   "characters": "2026-10-12: nothing usable: a stub wiki with no item or enemy text",
@@ -7414,6 +7459,15 @@
   "locations": "2026-10-12: nothing usable: no wiki (Fandom and wiki.gg tried), and nothing beyond store blurbs",
   "loot": "2026-10-12: nothing usable: no wiki (Fandom and wiki.gg tried), and nothing beyond store blurbs",
   "statuses": "2026-10-12: nothing usable: no wiki (Fandom and wiki.gg tried), and nothing beyond store blurbs"
+ },
+ "Teleglitch": {
+  "characters": "2026-10-25: nothing usable: one unnamed hero",
+  "connections": "2026-10-25",
+  "events": "2026-10-25: nothing usable: no event screens",
+  "goals": "2026-10-25: nothing usable: no enemy pages beyond a list; its zombies and mutants are covered",
+  "locations": "2026-10-25: nothing usable: its levels are facility sectors with no rule of their own",
+  "loot": "2026-10-25: 2 rows: Canned Meat (food trinket), Nailgun (weapon). Teleport repeats the candidate Amulet of Life Saving; crafting builds weapons from scrap, and Nailgun+1 needs a Tube piece the game lacks, so no evolution",
+  "statuses": "2026-10-25: nothing usable: Stimulant is a speed boost, nothing a goal can carry"
  },
  "Temtem: Swarm": {
   "characters": "2026-10-12: nothing new: the Official Temtem Wiki is the main game's creature catalogue",

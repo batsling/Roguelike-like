@@ -9,8 +9,8 @@ new covers straight in there, named after the sheet's File column).
 Connections from the `connections` sheet are baked into each game's
 `games_influenced` array using the same id slug.
 
-Mirrors legacy-web/scripts/import-games.py (which targets the old web
-build) but writes Godot .tres files instead of a JS object.
+Began as a port of the old web build's import-games.py, writing Godot
+.tres files instead of a JS object.
 """
 
 import json

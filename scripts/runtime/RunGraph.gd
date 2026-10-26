@@ -753,7 +753,7 @@ static func open_degree(game_id: StringName) -> int:
 # `degree`.
 #
 # This used to be `hub_ids`, and the ten it returned were the run's shops (§14).
-# §19.7 moved the shops onto Shop nodes; what is left is a graph question with
+# §19.7 moved the shops onto Shop nodes, and §19.10 onto the shop bar; what is left is a graph question with
 # no rule hanging off it, which a test that wants somewhere well-connected to
 # stand still asks.
 static func best_connected(count: int) -> Array[StringName]:

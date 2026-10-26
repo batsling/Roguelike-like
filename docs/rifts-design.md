@@ -141,9 +141,9 @@ and **every offered card cleared its floor** with its rifts laid.
 
 ## 6. Rift games when you get there
 
-- **Always an Enemies node.** In the node-kind budget (§19.3) a rift counts toward
-  the Enemies share, so the Event and the Shop a route promises are never placed
-  in a rift.
+- **It stands bodies like every game.** (While the node kinds lasted, a rift was
+  always an Enemies node, so the Event and the Shop a route promised were never
+  placed in one; §19.10 retired the kinds, so there is nothing left to keep out.)
 - **Rift enemies deal ×2 damage and drop ×2 loot**, including **×2 chest value**
   toward the report's chest (§8.2). A rift body that follows you off the rift
   keeps its double damage for as long as it stands. This is the risk and the payout.
@@ -278,7 +278,7 @@ Keys already exist as a character stat, reserved by the spec for exactly this
 
 - **The body carries it.** `GameLoop2.choose_game` takes `rift`, and marks every
   arrival with the body key `"rift"` (in `BODY_KEYS`, saved and loaded with the
-  body). `Overworld2._commit_board_for_kind` reads it off the committed SLOT,
+  body). `Overworld2._commit_board` reads it off the committed SLOT,
   because `pick` moves the run onto the slot only after the commit. Scramble
   re-rolls on the current game and keeps it. The every-third capstone boss is the
   road's pressure, not the rift's, and is not marked.
@@ -316,7 +316,7 @@ Keys already exist as a character stat, reserved by the spec for exactly this
   Transmute. So a redraw keeps the cards and a Scramble (which moves the seed)
   re-deals both halves.
 - `_open_rift_key`, from `pick`, before the commit: spends the key, lays the rift
-  (`RunGraph.RIFT_KEYED`, one end), makes it an Enemies node, and records the
+  (`RunGraph.RIFT_KEYED`, one end), and records the
   appearance (`GameStats.record_key_rift`, which leaves last run's list alone).
   The commit then stands rift bodies on it like any rift.
 - **Bash on a rift card** knocks its game out of the pool (`bashed`) and the card

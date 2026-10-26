@@ -1,15 +1,14 @@
 # Item sheet-authoring
 
-Items are generated from the `items` sheet of `tools/Roguelikes.xlsx` by
-`tools/generate_item_tres.py`, the same way the card catalog is generated from
-`cardsnew`. The structured behavior lives in the sheet's **`Effect`** column, a
+Items are generated from the `items` sheet of `tools/Roguelikes.xlsx` into
+`data/items2.0/` by `tools/generate_item2_tres.py`, which runs the item DSL in
+`tools/item_dsl.py` (the card, trinket, bag and weapon generators borrow the same
+parsers). The structured behavior lives in the sheet's **`Effect`** column, a
 colon/semicolon DSL that parses into the `ItemData` fields Godot consumes.
 
 ```
-python3 tools/generate_item_tres.py          # regenerate every item that has a .tres
-python3 tools/generate_item_tres.py --all    # also emit sheet rows with no .tres yet
-python3 tools/generate_item_tres.py --list    # print parses without writing
-python3 tools/_item_parity.py                 # parity check vs the hand-authored .tres
+python3 tools/generate_item2_tres.py          # regenerate every items row
+python3 tools/generate_item2_tres.py --list   # print parses without writing
 ```
 
 ## Effect DSL
@@ -55,7 +54,7 @@ helpers) instead of firing an effect:
 | `bomb_stun` | Sticky Bombs | Anything a bomb hits and fails to destroy is stunned instead — in practice bosses, the only thing that survives one (§4). |
 | `bomb_cardinal` | Brimstone Bombs | A bomb blasts down the target's whole row *and* column rather than hitting one body. |
 | `grid_grow` | Mine-r Construction | The battlefield gains a column and a row (§7.3). Alone among these it **stacks**: `GameState.grid_growth` counts the copies instead of answering a bool, so a second one is a second column and a second lane. |
-| `front_column_slow` | Censer | Every body standing in the **front column** (col 1) sits out one of the extra turns the road hands the board at a report (§7.4) — armour, not a global slow: a body further back would only spend that turn walking. Stacks the way `grid_grow` does (`GameState.front_column_turn_drain` counts the copies), and it is read off each body's LIVE column inside the turn loop, so something that steps into the front line mid-resolve is held off too. |
+| `front_column_slow` | Censer | Every body standing in the **front column** (col 1) sits out one of the extra turns the road hands the board at a report (§7.4) — armour, not a global slow: a body further back would only spend that turn walking. Stacks the way `grid_grow` does (`GameState.censer_columns` counts the copies), and it is read off each body's LIVE column inside the turn loop, so something that steps into the front line mid-resolve is held off too. |
 
 The matching per-bomb *effect* hook is the `bomb_used` trigger (Blood Bombs:
 `item_acquired: gain_stat bombs 1; bomb_used: gain_hp 1`), fired once per bomb by
@@ -100,7 +99,7 @@ Don't put quote marks inside the verify question — the parity harness's
 - A counter / streak effect's `label` is the item's display name.
 - The `tags` column becomes `ItemData.tags` (what the item is *about*) and the
   `pools` column `ItemData.pools` (where it is *drawn from*). Only `shop` is read
-  today: it doubles the item's weight when a hub's shelf is rolled
+  today: it doubles the item's weight when a shop's shelf is rolled
   (`ShopSystem.SHOP_POOL_WEIGHT`). Both are comma-separated; `n/a` and `none`
   drop out.
 - `block`/`heal`/buff effects under a self-facing trigger (`combat_started`,
@@ -110,17 +109,13 @@ Don't put quote marks inside the verify question — the parity harness's
   line used to carry called them "pills" — that word means the loot consumable of
   §4.3 now, which is not an item at all.)
 
-## Parity
+## Status
 
-`tools/_item_parity.py` parses each hand-authored `data/items/*.tres` and diffs
-it field-by-field against the in-memory parse, normalizing away cosmetic noise
-(field order, implicit `enemy` target, log-only `label`/`notify`/`silent`).
-
-**Status: items are fully sheet-authored.** All 89 `data/items/*.tres` are
-generated from the `items` sheet by `generate_item_tres.py`, including the
-`Description` text (authored in the sheet's `Description` column). Re-run the
-generator after any sheet edit; effects round-trip with 0 gameplay-critical
-diffs (verified by `_item_parity.py`).
+**Items are fully sheet-authored**, including the `Description` text (the
+sheet's `Description` column). Re-run the generator after any sheet edit;
+`tools/check_data_sync.py` (CI) fails when `data/items2.0/` and the sheet
+disagree. (A `_item_parity.py` once diffed the hand-authored pre-2.0
+`data/items/` against this parse; both are gone.)
 
 ## DSL-portability cells in `tools/Roguelikes.xlsx`
 

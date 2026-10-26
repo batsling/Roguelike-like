@@ -58,7 +58,7 @@ const LOOT_DISCOUNT := 2
 
 # Price = BASE_PRICE + PRICE_PER_RUNG x the rarity's rung on ItemData.Rarity, so
 # Common 3, Uncommon 5, Rare 7, Legendary 9. The ladder was +1 a rung (3-6) while
-# a run earned about a dozen gold; Enemies nodes stand two bodies and Fractures
+# a run earned about a dozen gold; every game stands two bodies and Fractures
 # stand more, so a run earns more than the ladder was set against, and the owner
 # widened the steps to two (17 October 2026). Common stays at 3, so the 3-gold
 # starting purse still buys one Common item at Fracture 0. This is also the third

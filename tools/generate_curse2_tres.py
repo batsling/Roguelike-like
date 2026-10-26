@@ -98,7 +98,7 @@ def main():
 
     wb = openpyxl.load_workbook(XLSX_PATH, data_only=True)
     if SHEET not in wb.sheetnames:
-        raise SystemExit("%s has no %r sheet — run tools/_curses2_sheet_setup.py"
+        raise SystemExit("%s has no %r sheet — run tools/oneshots/_curses2_sheet_setup.py"
                          % (XLSX_PATH, SHEET))
     os.makedirs(OUT_DIR, exist_ok=True)
     written = []

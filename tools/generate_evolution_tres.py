@@ -27,7 +27,7 @@ import sys
 import openpyxl
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import generate_item_tres as items  # noqa: E402
+import item_dsl as items  # noqa: E402
 from generate_weapon_tres import slugify, rows, _clean  # noqa: E402
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))

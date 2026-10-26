@@ -408,7 +408,7 @@ quietly tops up a wand is the card lying about what it does.
 | Piece | File |
 |---|---|
 | Schema | `scripts/resources/WandData.gd` |
-| Generator | `tools/generate_wand2_tres.py` (+ the one-shot `tools/_wands_sheet_setup.py`) |
+| Generator | `tools/generate_wand2_tres.py` (+ the one-shot `tools/oneshots/_wands_sheet_setup.py`) |
 | Content | `data/wands2.0/*.tres` (4) |
 | Brain | `scripts/autoload/WandSystem.gd` (autoload #25) |
 | Catalog | `Data.get_wand` / `all_wands` / `roll_wand` |

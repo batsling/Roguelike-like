@@ -3,8 +3,8 @@ extends Node
 # Loads all .tres data files at startup and exposes lookups by id.
 # Post games-first cut (docs/games-first-redesign.md §11), the simulated-combat
 # content (cards, combat enemies, potions, action tunables) is gone; what remains
-# is the run-graph content (games, characters, items, curses) plus the 2.0
-# games-first content (characters2.0, items2.0, enemies2.0, bosses2.0, scrolls2.0).
+# is the games themselves plus the 2.0 games-first content (characters2.0,
+# items2.0, enemies2.0, bosses2.0, scrolls2.0 and the rest).
 # Scrolls are 2.0-only now, so get_scroll/all_scrolls resolve the scrolls2.0 set
 # directly.
 #
@@ -14,11 +14,14 @@ extends Node
 # that never landed — both loaded on every boot and were read by nothing. Deleted
 # with their schemas, their generator and their tests rather than left as content
 # the next reader has to work out is dead.
+#
+# SO ARE THE PRE-2.0 ITEMS, CHARACTERS AND CURSES (25 Oct 2026). `data/items`
+# (112 combat-era relics), `data/characters` (Ironclad and Silent) and
+# `data/curses` were loaded on every boot; nothing read the curses, and the items
+# and characters were only a fallback for saves that `SAVE_VERSION` 4 no longer
+# resumes. Gone with their generators and art.
 
-var _items: Dictionary = {}             # StringName -> ItemData
 var _games: Dictionary = {}             # StringName -> GameData
-var _characters: Dictionary = {}        # StringName -> CharacterData
-var _curses: Dictionary = {}            # StringName -> CurseData (shelved, kept — §5)
 var _scrolls: Dictionary = {}           # StringName -> ScrollData (2.0)
 var _pills: Dictionary = {}             # StringName -> PillData (2.0, §4.3)
 var _potions: Dictionary = {}           # StringName -> PotionData (2.0, potions-design)
@@ -46,10 +49,7 @@ var _shopkeepers: Dictionary = {}       # StringName -> ShopkeeperData (§14.6)
 var _locations: Dictionary = {}         # StringName -> LocationData (docs/locations-design.md)
 
 func _ready() -> void:
-	_load_dir("res://data/items/", _items)
 	_load_dir("res://data/games/", _games)
-	_load_dir("res://data/characters/", _characters)
-	_load_dir("res://data/curses/", _curses)
 	# Games-first redesign (2.0) content.
 	_load_dir("res://data/characters2.0/", _characters2)
 	_load_dir("res://data/items2.0/", _items2)
@@ -74,9 +74,7 @@ func _ready() -> void:
 	_load_dir("res://data/songs/", _songs)
 	_load_dir("res://data/shopkeepers/", _shopkeepers)
 	_load_dir("res://data/locations/", _locations)
-	print("[Data] Loaded %d items, %d games, %d characters, %d curses" % [
-		_items.size(), _games.size(), _characters.size(), _curses.size()
-	])
+	print("[Data] Loaded %d games" % _games.size())
 	print("[Data] Loaded 2.0: %d characters, %d items, %d goal-enemies, %d bosses, %d scrolls, %d pills, %d cards, %d wands, %d trinkets, %d bags, %d weapons, %d evolutions, %d statuses, %d tiles, %d units, %d abilities, %d events, %d curses, %d objects" % [
 		_characters2.size(), _items2.size(), _goal_enemies.size(), _bosses.size(),
 		_scrolls.size(), _pills.size(), _cards.size(), _wands.size(),
@@ -153,10 +151,6 @@ func _load_dir(path: String, target: Dictionary) -> void:
 				id, path, from_file[id], fn])
 		from_file[id] = fn
 		target[id] = res
-
-# Lookup APIs
-func get_curse(id: StringName) -> CurseData:
-	return _curses.get(id)
 
 # --- Scrolls (2.0) ---------------------------------------------------------
 func get_scroll(id: StringName) -> ScrollData:
@@ -539,14 +533,8 @@ func all_wands() -> Array:
 func roll_wand(rng: RandomNumberGenerator = null) -> WandData:
 	return _roll_by_rarity(_wands.values(), rng)
 
-func get_item(id: StringName) -> ItemData:
-	return _items.get(id)
-
 func get_game(id: StringName) -> GameData:
 	return _games.get(id)
-
-func get_character(id: StringName) -> CharacterData:
-	return _characters.get(id)
 
 # === Games-first redesign (2.0) lookups ===
 func get_character2(id: StringName) -> CharacterData:
@@ -555,26 +543,17 @@ func get_character2(id: StringName) -> CharacterData:
 func get_item2(id: StringName) -> ItemData:
 	return _items2.get(id)
 
-# An item by id from EITHER set, 2.0 first. For the places that hold an id taken
-# off a relic the player was actually carrying and have to find it again — a
-# Theft's haul coming back off a dead thief (§7.6), and anything else that has to
-# round-trip an inventory entry through a save. `get_item` alone is the pre-2.0
-# table and would quietly fail to give back every relic in the current build.
-func get_item_any(id: StringName) -> ItemData:
-	var found: ItemData = _items2.get(id)
-	return found if found != null else _items.get(id)
-
-# The display names of a list of item ids, resolved through `get_item_any` and
+# The display names of a list of item ids, resolved through `get_item2` and
 # falling back to the raw id for one the catalogue no longer carries — a starting
 # loadout that names a retired relic prints the id rather than a gap in the list,
 # which is the difference between a visible content bug and an invisible one.
 #
 # Both character screens print a `starting_items` list this way and both used to
-# do the two-table lookup and the fallback by hand.
+# do the lookup and the fallback by hand.
 func item_names(ids: Array) -> PackedStringArray:
 	var out := PackedStringArray()
 	for iid in ids:
-		var it: ItemData = get_item_any(StringName(iid))
+		var it: ItemData = get_item2(StringName(iid))
 		out.append(it.display_name if it != null else String(iid))
 	return out
 
@@ -792,9 +771,6 @@ func get_ability(id: StringName) -> AbilityData:
 
 func all_abilities() -> Array:
 	return _abilities.values()
-
-func all_items() -> Array:
-	return _items.values()
 
 # --- reward pools ----------------------------------------------------------
 #

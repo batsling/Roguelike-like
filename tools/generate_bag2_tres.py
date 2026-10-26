@@ -13,7 +13,7 @@ one wide, and its picture stands up. Any rectangle is allowed. The .tres keeps
 `size` as Vector2i(columns, rows), so only this parse knows the sheet's order.
 
 `Effect` is authored in the RELIC grammar and compiled by
-generate_item_tres.parse_loot_passive, the one implementation shared with
+item_dsl.parse_loot_passive, the one implementation shared with
 trinkets and passive cards. UNLIKE A TRINKET'S, IT MAY BE BLANK (or N/A): a bag
 that only adds room is a whole design, and Leather Bag is one.
 
@@ -29,7 +29,7 @@ import sys
 import openpyxl
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import generate_item_tres as items  # noqa: E402
+import item_dsl as items  # noqa: E402
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.dirname(SCRIPT_DIR)

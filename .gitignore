@@ -11,7 +11,7 @@ export_presets.cfg
 # generated siblings are cache.
 *.translation
 
-# ── legacy-web (old HTML/JS version) ────────────────────────────────────
+# ── node / browser tooling (tools/check_overlay.js) ────────────────────────────────────
 node_modules/
 dist/
 .cache/

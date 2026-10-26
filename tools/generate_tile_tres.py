@@ -310,7 +310,7 @@ def generate(sheet_name: str, out_dir: str, required: tuple, build, label: str) 
     for needed in required:
         if needed not in headers:
             raise SystemExit("%s has no %r column — run "
-                             "tools/_tiles2_units2_setup.py first."
+                             "tools/oneshots/_tiles2_units2_setup.py first."
                              % (sheet_name, needed))
 
     os.makedirs(out_dir, exist_ok=True)

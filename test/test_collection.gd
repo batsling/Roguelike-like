@@ -1248,7 +1248,7 @@ func test_a_games_page_is_wider_and_the_other_tabs_are_not() -> void:
 	col._show_game_detail(Data.get_game(&"hades"))
 	await wait_frames(2)
 	assert_eq(col._detail_panel.custom_minimum_size.x, float(Collection.GAME_DETAIL_PANEL_W))
-	col._show_item_detail(Data.all_items2()[0] if not Data.all_items2().is_empty() else Data.all_items()[0])
+	col._show_item_detail(Data.all_items2()[0])
 	await wait_frames(2)
 	assert_eq(col._detail_panel.custom_minimum_size.x, float(Collection.DETAIL_PANEL_W),
 		"an item's card keeps the narrow measure")

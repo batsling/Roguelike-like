@@ -41,8 +41,6 @@ ALLOWED = {
         "event-sheet-authoring.md names it as 'the combat-era' one, i.e. history",
     "test/_verify_driver.gd":
         "performance-backlog.md describes creating it, using it and deleting it again",
-    "images2.0/statuses/CritChanceUp.png":
-        "stat-dispatcher.md says the icon falls back 'until' this is added — art not drawn yet",
     "tools/build_systems_graph.py":
         "systems-graph.md says outright 'the renderer is still unbuilt' and sketches it",
     "tools/tag_edits.json":

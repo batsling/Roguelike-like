@@ -10,7 +10,7 @@ candidates found so far, with quotes and links, are rows in
 added yet), `not an influence` (checked, and no), `source check` (a row already
 on the sheet whose source needs a look), `lead`, `nothing found` (searched
 without result) and `on sheet`. Until October 2026 these were sections 1–7 of a
-markdown doc, `docs/influence-candidates.md`; `tools/_research_migrate.py` moved
+markdown doc, `docs/influence-candidates.md`; `tools/oneshots/_research_migrate.py` moved
 every line into a row word for word, and the doc's research log is now the
 last section here. Videos and podcasts to listen to are in
 `docs/influence-media.md` (see `media` below).
@@ -719,9 +719,9 @@ worth listing.
 Approved candidates go into the `connections` sheet: Influencer, Influencee,
 Influencer Time (the influencer's year), Dev/Series Relation (`Yes` for
 same-studio pairs), and the source URL. Edit through `tools/_xlsx_surgery.py`
-like the `tools/_connections_*.py` one-shots (never by saving with openpyxl,
+like the `tools/oneshots/_connections_*.py` one-shots (never by saving with openpyxl,
 which drops the workbook's charts), then run `python3 tools/import-games-godot.py`.
-`tools/_connections_stolen_realm_survivors.py` is the closest worked example.
+`tools/oneshots/_connections_stolen_realm_survivors.py` is the closest worked example.
 
 The owner usually adds rows straight into the sheet, so afterwards bring the
 candidate list up to date:

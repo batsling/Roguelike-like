@@ -17,9 +17,9 @@ extends RefCounted
 #
 # …and then §19.6 moved the count off games played entirely. The ladder used to
 # be a clock: three games, one step, whatever the player did in them. It is a
-# CONSEQUENCE now — an Event or a Shop node lands nothing and ticks nothing, so
-# routing through them holds the tier where it is, while a run that fights
-# everything climbs faster than the old clock ever allowed. The constant is still
+# CONSEQUENCE now — it counts spawn events, so a run that fights everything
+# climbs faster than the old clock ever allowed. (While the node kinds lasted, an
+# Event or a Shop node landed nothing and ticked nothing; §19.10 retired them.) The constant is still
 # called GAMES_PER_TIER because the band width did not change; what it counts did.
 #
 # The tier feeds the goal-enemy / boss roll, the action-floor room count (see
@@ -81,9 +81,7 @@ static func tier_value(tier: int) -> int:
 # `GameState.spawn_events` — one per node arrival that landed bodies, one per
 # end-of-game spawn. The function itself did not have to change, because it was
 # always "a count, divided into bands"; what changed is WHICH count, and with it
-# whether the tier is a clock the player rides or a consequence they steer. An
-# Event or a Shop node never ticks it, so routing through them holds the tier
-# where it is.
+# whether the tier is a clock the player rides or a consequence they steer.
 static func tier_for(spawn_events: int) -> int:
 	if spawn_events < 0:
 		spawn_events = 0

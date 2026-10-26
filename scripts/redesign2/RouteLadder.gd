@@ -433,7 +433,7 @@ static func node_box(cfg: Dictionary, id: StringName, rect: Rect2, depth: int,
 		fade.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		panel.add_child(fade)
 
-	# The top-LEFT corner of a WIDE box (the right is the kind marker's): what you
+	# The top-LEFT corner of a WIDE box: what you
 	# have DONE here, and how many ways there are on from here.
 	#
 	# The connection count is the one that changes the decision. A box is a place

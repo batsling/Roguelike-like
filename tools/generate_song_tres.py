@@ -10,7 +10,7 @@ The audio is the player's own and is never in the repo; `File` only names it.
 catalog: a song is unlocked by playing that game, drawn at random from its songs
 still locked (Radio.earned has the rule). A row with no `Game` is never drawn.
 The sheet once had `Unlock` and `Count` columns, one rule per song; they were
-taken off in October 2026 (tools/_radio_random_unlocks_setup.py), and a sheet
+taken off in October 2026 (tools/oneshots/_radio_random_unlocks_setup.py), and a sheet
 that still has them is refused rather than silently ignored, and so is one
 missing any of the seven columns. It also once had an `Image` column for album
 art; the owner took it off on 12 Oct 2026, because a song's picture is its
@@ -46,8 +46,8 @@ SHEET = "radio"
 # The columns songs no longer have, and what to do about one still there (see
 # the docstring).
 RETIRED = {
-    "Unlock": "songs are drawn at random now; run tools/_radio_random_unlocks_setup.py",
-    "Count": "songs are drawn at random now; run tools/_radio_random_unlocks_setup.py",
+    "Unlock": "songs are drawn at random now; run tools/oneshots/_radio_random_unlocks_setup.py",
+    "Count": "songs are drawn at random now; run tools/oneshots/_radio_random_unlocks_setup.py",
     "Image": "every song shows its game's cover; delete the column",
 }
 # Every column the generator reads. A missing one is refused by name: read as
@@ -144,7 +144,7 @@ def main():
 
     wb = openpyxl.load_workbook(XLSX_PATH, data_only=True)
     if SHEET not in wb.sheetnames:
-        raise SystemExit("%s has no %r sheet — run tools/_radio_sheet_setup.py"
+        raise SystemExit("%s has no %r sheet — run tools/oneshots/_radio_sheet_setup.py"
                          % (XLSX_PATH, SHEET))
     header = [str(c.value).strip() if c.value is not None else "" for c in wb[SHEET][1]]
     stale = [h for h in RETIRED if h in header]
