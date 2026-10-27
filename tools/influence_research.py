@@ -220,15 +220,17 @@ def native_aliases(title):
 
 
 def load_titles(args):
-    """{chart name: [native titles]} from `titles`, or {} if it hasn't run.
+    """{chart name: [native titles]} from `titles` (Steam's and Wikidata's), or
+    {} if it hasn't run.
 
     An alias two games share is dropped from both: it can't say which one a
     sentence means.
     """
-    path = wpath(args, "titles.json")
-    if not os.path.exists(path):
-        return {}
-    raw = json.load(open(path))
+    raw = {}
+    for f in ("titles.json", "titles_wikidata.json"):
+        if os.path.exists(wpath(args, f)):
+            for g, titles in json.load(open(wpath(args, f))).items():
+                raw[g] = list(dict.fromkeys((raw.get(g) or []) + (titles or [])))
     owners = {}
     for g, titles in raw.items():
         for a in {a for t in titles or [] for a in native_aliases(t)}:
@@ -1656,6 +1658,49 @@ def cmd_titles(args):
     missing = sum(1 for n, v in devs.items() if v.get("aid") and n not in cache)
     print(f"{sum(1 for v in cache.values() if v)} of {len(cache)} games have a native-script title"
           + (f"; {missing} failed, run again for them" if missing else "") + f" -> {path}")
+    wd_path = wpath(args, "titles_wikidata.json")
+    try:
+        wd = wikidata_titles(devs)
+    except Exception as e:
+        print(f"Wikidata didn't answer ({e}); {wd_path} left as it was")
+        return
+    json.dump(wd, open(wd_path, "w"), indent=0, ensure_ascii=False)
+    print(f"{len(wd)} games have a native name on Wikidata -> {wd_path}")
+
+
+# Wikimedia asks scripts to say who they are; a browser User-Agent gets throttled.
+WIKIMEDIA_UA = {"User-Agent": "RoguelikeLikeResearch/1.0 (https://github.com/batsling/Roguelike-like)"}
+# Native names that are also ordinary words, and would match every page:
+# witch (Noita), isolation (Sundered), famine (Don't Starve), "log" (Rogue).
+# And one that is wrong: Rogue's Chinese label on Wikidata is its co-author,
+# Michael Toy.
+WIKIDATA_SKIP = {"女巫", "隔离", "饥荒", "로그", "迈克尔·托依"}
+
+
+def wikidata_titles(devs):
+    """Native-script names from Wikidata's labels and aliases, by Steam app id.
+
+    Steam only knows a localised title when the store page is localised, so
+    the name a Japanese or Chinese developer actually writes is often missing
+    from titles.json: TOKOYO's developer credits ローグレガシー (Rogue Legacy),
+    which Steam has no Japanese title for. Wikidata has it. One query.
+    """
+    ids = {str(v["aid"]): n for n, v in devs.items() if v.get("aid")}
+    q = ("SELECT ?app ?l WHERE { VALUES ?app { %s } ?g wdt:P1733 ?app . "
+         "{ ?g rdfs:label ?l } UNION { ?g skos:altLabel ?l } FILTER(LANG(?l) IN (%s)) }"
+         % (" ".join(f'"{a}"' for a in ids),
+            ",".join(f'"{l}"' for l in ("ja", "zh", "zh-hans", "zh-hant", "zh-cn", "zh-tw", "zh-hk", "ko"))))
+    req = urllib.request.Request("https://query.wikidata.org/sparql",
+                                 data=urllib.parse.urlencode({"query": q}).encode(),
+                                 headers={**WIKIMEDIA_UA, "Accept": "application/sparql-results+json"})
+    out = {}
+    for r in json.loads(urllib.request.urlopen(req, timeout=180).read())["results"]["bindings"]:
+        # "小丑牌 (电子游戏)": the bracket is Wikipedia's "(video game)", and left
+        # in, native_aliases would make 电子游戏 a name for Balatro.
+        t = re.sub(r"\s*[(（][^)）]*[)）]", "", r["l"]["value"]).strip()
+        if _non_latin(t) and t not in WIKIDATA_SKIP:
+            out.setdefault(ids[r["app"]["value"]], set()).add(t)
+    return {n: sorted(v) for n, v in sorted(out.items())}
 
 
 # ── first-hand pages beyond Steam: itch, Kickstarter, Reddit, studio sites ──
