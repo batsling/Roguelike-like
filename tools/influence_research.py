@@ -130,7 +130,10 @@ def get(url, timeout=40):
 
 
 def clean(text):
-    text = re.sub(r"\[/?[^\]]+\]|<[^>]+>", " ", text)  # BBCode and HTML
+    # BBCode and HTML. Only lowercase tags ([b], [url=…], [h2], [*]) are markup: a
+    # bracketed name like "[Dream Quest]" or "[REDACTED]" is a game, and stripping
+    # every bracket is how Night of Full Moon's "inspiration came from [Dream Quest]" went unread.
+    text = re.sub(r"\[/?[a-z][a-z0-9]*(?:[ =][^\]]*)?\]|\[\*\]|<[^>]+>", " ", text)
     return re.sub(r"\s+", " ", html.unescape(text)).strip()
 
 
