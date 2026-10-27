@@ -205,6 +205,10 @@ def load_devs(args):
 # a dozen localised titles and would name all of them.
 EDITION = re.compile(r"^(?:豪华版|豪華版|完全版|決定版|完整版|中文版|日本語版|한국어판|디럭스|デラックス|"
                      r"エディション|版|원작|에디션)$")
+# A genre word in a localised title ("Orbital Bullet – 360° ローグライト") is not
+# the game's name: it would match every Japanese page about a roguelite.
+GENRE_WORD = re.compile(r"^(?:ローグ|ローグライク|ローグライト|ローグライクゲーム|로그라이크|로그라이트|"
+                        r"肉鸽|类Rogue|动作肉鸽|ローグライクアクション|デッキ構築|ダンジョン)$")
 
 
 def native_aliases(title):
@@ -214,9 +218,24 @@ def native_aliases(title):
     ("杀戮尖塔 Slay the Spire") gives its non-Latin runs, since the Latin part
     is the English name already matched. Runs under three letters are
     dropped: Skul's 小骨 is also just the words "small bone".
+
+    A katakana name stays whole across its ・, and is also tried without it:
+    split there, ループ・ヒーロー gave Loop Hero the aliases ループ ("loop") and
+    ヒーロー ("hero"), and スーパー, ランダム and マスター answered for three
+    other games. A sequel keeps its number (ローグ・レガシー 2), or it would
+    share ローグレガシー with the first game and the rule in load_titles would
+    drop it from both; "ローグレガシー2" in a sentence still means only the
+    sequel, since named_in drops a name found inside another one.
     """
-    runs = re.findall(r"[^\x00-\u024f\s:：\-–—!！?？()（）「」『』【】・·,，.。/／]{3,}", title)
-    return [r for r in runs if not EDITION.match(r)]
+    runs = re.findall(r"[^\x00-\u024f\s:：\-–—!！?？()（）「」『』【】,，.。/／]{3,}"
+                      r"(?:\s?[0-9０-９ⅡⅢⅣⅤ]+(?![0-9]))?", title)
+    out = []
+    for r in runs:
+        for v in (r, r.replace("・", ""), re.sub(r"\s", "", r), re.sub(r"[・\s]", "", r)):
+            v = v.strip("・")
+            if len(v) >= 3 and not EDITION.match(v) and not GENRE_WORD.match(v) and v not in out:
+                out.append(v)
+    return out
 
 
 def load_titles(args):
@@ -1700,7 +1719,15 @@ def wikidata_titles(devs):
         t = re.sub(r"\s*[(（][^)）]*[)）]", "", r["l"]["value"]).strip()
         if _non_latin(t) and t not in WIKIDATA_SKIP:
             out.setdefault(ids[r["app"]["value"]], set()).add(t)
-    return {n: sorted(v) for n, v in sorted(out.items())}
+    # A sequel labelled without its number (Rogue Legacy 2 is ローグ・レガシー on
+    # Wikidata) would share the first game's name, and load_titles drops a
+    # shared name from both. It stays with the first game.
+    key = lambda t: re.sub(r"[・\s]", "", t)
+    for n in list(out):
+        base = re.sub(r"\s+(?:2|3|4|II|III|IV)$", "", n)
+        if base != n and base in out:
+            out[n] -= {t for t in out[n] if key(t) in {key(b) for b in out[base]}}
+    return {n: sorted(v) for n, v in sorted(out.items()) if v}
 
 
 # ── first-hand pages beyond Steam: itch, Kickstarter, Reddit, studio sites ──
