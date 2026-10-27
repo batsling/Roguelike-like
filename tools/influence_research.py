@@ -149,7 +149,10 @@ def name_patterns(names, aliases=None):
     # "Dungeon Crawl: Stone Soup" and "Cataclysm Dark Days Ahead" for the
     # sheet's "Dungeon Crawl Stone Soup" and "Cataclysm: Dark Days Ahead".
     gap = r"[\s:\-–—]+"
-    pats = [(g, re.compile(r"(?<![\w])" + gap.join(map(re.escape, re.split(gap, g))) + r"(?![\w])",
+    # An apostrophe is typed straight or curly: Niche's store page lists "Don’t
+    # Starve" among the games that inspired it, and every pass read past it.
+    word = lambda w: re.escape(w).replace("'", "['’‘]")
+    pats = [(g, re.compile(r"(?<![\w])" + gap.join(map(word, re.split(gap, g))) + r"(?![\w])",
                            0 if g in AMBIGUOUS else re.I))
             for g in names if len(g) > 2]
     names = set(names)
