@@ -654,8 +654,20 @@ func test_after_image_shields_whenever_a_card_is_used() -> void:
 func test_simple_cards_of_the_set() -> void:
 	GameState.shields = 0
 	_play(&"shrug_it_off")
-	assert_eq(GameState.shields, 1)
 	assert_eq(GameState.loot_items.size(), 1)
+	# The card it deals is random, and it lands in the pack BEFORE `card_used`
+	# fires for Shrug it Off itself — so a dealt After Image shields once on the
+	# way in. That was about one run in 400 of this test failing with 2.
+	var dealt: CardData = Data.get_card(StringName(GameState.loot_items[0].get("id", "")))
+	var from_dealt: int = 0
+	if dealt != null:
+		for t in dealt.triggers:
+			if String(t.get("on", "")) != "card_used":
+				continue
+			for e in t.get("effects", []):
+				if String(e.get("type", "")) == "gain_stat" and String(e.get("stat", "")) == "shields":
+					from_dealt += int(e.get("value", 0))
+	assert_eq(GameState.shields, 1 + from_dealt)
 	_play(&"alchemize")
 	assert_eq(String(GameState.loot_items[1].get("type", "")), "potion")
 	assert_true(LootSystem.is_identified(GameState.loot_items[1]),

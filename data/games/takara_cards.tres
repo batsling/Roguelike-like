@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="GameData" load_steps=2 format=3 uid="uid://game_takara_cards"]
+
+[ext_resource type="Script" path="res://scripts/resources/GameData.gd" id="1_game"]
+
+[resource]
+script = ExtResource("1_game")
+id = &"takara_cards"
+display_name = "Takara Cards"
+year = 2023
+type = 2
+games_influenced = Array[StringName]([])
+influence_sources = PackedStringArray()
+influence_relations = PackedStringArray()
+tags = PackedStringArray("space")
+enemy_pool = Array[StringName]([])
+item_pool = Array[StringName]([])
+special_effects = PackedStringArray()
+cover_path = "res://images2.0/games/takara-cards.png"
+owned = true
+file_location = "C:\\Users\\Owner\\Documents\\Roguelike Roguelike\\Roguelikes\\Takara Cards.url"
+steam_page = "https://store.steampowered.com/app/1932210/Takara_Cards/"

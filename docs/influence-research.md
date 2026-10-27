@@ -400,7 +400,17 @@ asks Steam for every game's page in Japanese, Chinese and Korean and keeps the
 localised title when it is in that script (Crown Trick is 不思议的皇冠,
 Super Bullet Break is スーパーバレットブレイク). From then on `steam`, `cues`,
 `wanted`, `forums`, the page scans and `radio` match a game by either name.
-Before it, a Japanese announcement naming 風来のシレン matched nothing. Two
+Before it, a Japanese announcement naming 風来のシレン matched nothing. Steam
+only has a native title for a game whose store page is localised, so `titles`
+also asks Wikidata (one query, by Steam app id) for the labels and aliases
+people actually write, into `titles_wikidata.json`: Rogue Legacy is
+ローグレガシー there and nowhere on Steam, and that is how TOKOYO's credit to it
+went unread on its developer's site. Wikidata's brackets ("小丑牌 (电子游戏)", its
+"(video game)") are stripped, and a few labels that are ordinary words are
+skipped (`WIKIDATA_SKIP`). A katakana name is kept whole across its ・ rather
+than split into words (split, Loop Hero answered to ループ, "loop", and three
+games to スーパー, ランダム and マスター), a sequel keeps its number, and a genre
+word in a title (ローグライト) is never a name. Two
 limits: a title shared by several games (不思議のダンジョン, the whole series)
 is dropped, because it can't say which game is meant, and runs of under three
 letters are dropped, because Skul's 小骨 is also just the words "small bone".

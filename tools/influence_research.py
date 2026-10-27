@@ -91,14 +91,18 @@ CLAIM = re.compile(
     r"inspir|influenc|homage|love letter|\btribute|spiritual successor|big fans? of|"
     r"heavily based|took (?:a lot )?from|borrow|in the vein|cues from|blend of|"
     r"mix of|\bmeets\b|cross between|"
+    # The same pitch said with a verb: "blends elements of FTL, Isaac, and Dota",
+    # "combines the deep theory-crafting… of classic ARPGs like Diablo". Nine
+    # off-chart store pages said it this way and none of them was read.
+    r"\bblends?\b|\bblending\b|\bcombin(?:es|ing)\b|\bfusion of\b|"
     # Developers outside the English-speaking world often post in their own
     # language even on an English store page. Japanese, Chinese, Korean,
     # German, French, Spanish/Portuguese, Polish and Russian. The game they
     # name is often still written in Latin script, so the name match below works.
-    r"影響|インスパイア|参考に|オマージュ|影响|灵感|启发|啟發|靈感|致敬|"
+    r"影響|インスパイア|インスピレーション|触発|参考に|オマージュ|影响|灵感|启发|啟發|靈感|致敬|借鉴|"
     r"영감|영향|오마주|inspiriert|beeinflusst|inspiré|influencé|hommage|"
-    r"inspirad|influenciad|homenaje|homenagem|inspiracj|inspirowan|"
-    r"вдохнов|влияни|отсылк", re.I)
+    r"inspirad|influenciad|homenaje|homenagem|inspiracj|inspirowan|ispirat|"
+    r"вдохнов|влияни|отсылк|натхн|esinlen", re.I)
 
 # Sentences that name other games for reasons that are not influence. Crossovers
 # ("X x Y"), bundles and sales are the bulk of what a Steam announcement scan
@@ -130,7 +134,10 @@ def get(url, timeout=40):
 
 
 def clean(text):
-    text = re.sub(r"\[/?[^\]]+\]|<[^>]+>", " ", text)  # BBCode and HTML
+    # BBCode and HTML. Only lowercase tags ([b], [url=…], [h2], [*]) are markup: a
+    # bracketed name like "[Dream Quest]" or "[REDACTED]" is a game, and stripping
+    # every bracket is how Night of Full Moon's "inspiration came from [Dream Quest]" went unread.
+    text = re.sub(r"\[/?[a-z][a-z0-9]*(?:[ =][^\]]*)?\]|\[\*\]|<[^>]+>", " ", text)
     return re.sub(r"\s+", " ", html.unescape(text)).strip()
 
 
@@ -146,7 +153,10 @@ def name_patterns(names, aliases=None):
     # "Dungeon Crawl: Stone Soup" and "Cataclysm Dark Days Ahead" for the
     # sheet's "Dungeon Crawl Stone Soup" and "Cataclysm: Dark Days Ahead".
     gap = r"[\s:\-–—]+"
-    pats = [(g, re.compile(r"(?<![\w])" + gap.join(map(re.escape, re.split(gap, g))) + r"(?![\w])",
+    # An apostrophe is typed straight or curly: Niche's store page lists "Don’t
+    # Starve" among the games that inspired it, and every pass read past it.
+    word = lambda w: re.escape(w).replace("'", "['’‘]")
+    pats = [(g, re.compile(r"(?<![\w])" + gap.join(map(word, re.split(gap, g))) + r"(?![\w])",
                            0 if g in AMBIGUOUS else re.I))
             for g in names if len(g) > 2]
     names = set(names)
@@ -199,6 +209,10 @@ def load_devs(args):
 # a dozen localised titles and would name all of them.
 EDITION = re.compile(r"^(?:豪华版|豪華版|完全版|決定版|完整版|中文版|日本語版|한국어판|디럭스|デラックス|"
                      r"エディション|版|원작|에디션)$")
+# A genre word in a localised title ("Orbital Bullet – 360° ローグライト") is not
+# the game's name: it would match every Japanese page about a roguelite.
+GENRE_WORD = re.compile(r"^(?:ローグ|ローグライク|ローグライト|ローグライクゲーム|로그라이크|로그라이트|"
+                        r"肉鸽|类Rogue|动作肉鸽|ローグライクアクション|デッキ構築|ダンジョン)$")
 
 
 def native_aliases(title):
@@ -208,21 +222,38 @@ def native_aliases(title):
     ("杀戮尖塔 Slay the Spire") gives its non-Latin runs, since the Latin part
     is the English name already matched. Runs under three letters are
     dropped: Skul's 小骨 is also just the words "small bone".
+
+    A katakana name stays whole across its ・, and is also tried without it:
+    split there, ループ・ヒーロー gave Loop Hero the aliases ループ ("loop") and
+    ヒーロー ("hero"), and スーパー, ランダム and マスター answered for three
+    other games. A sequel keeps its number (ローグ・レガシー 2), or it would
+    share ローグレガシー with the first game and the rule in load_titles would
+    drop it from both; "ローグレガシー2" in a sentence still means only the
+    sequel, since named_in drops a name found inside another one.
     """
-    runs = re.findall(r"[^\x00-\u024f\s:：\-–—!！?？()（）「」『』【】・·,，.。/／]{3,}", title)
-    return [r for r in runs if not EDITION.match(r)]
+    runs = re.findall(r"[^\x00-\u024f\s:：\-–—!！?？()（）「」『』【】,，.。/／]{3,}"
+                      r"(?:\s?[0-9０-９ⅡⅢⅣⅤ]+(?![0-9]))?", title)
+    out = []
+    for r in runs:
+        for v in (r, r.replace("・", ""), re.sub(r"\s", "", r), re.sub(r"[・\s]", "", r)):
+            v = v.strip("・")
+            if len(v) >= 3 and not EDITION.match(v) and not GENRE_WORD.match(v) and v not in out:
+                out.append(v)
+    return out
 
 
 def load_titles(args):
-    """{chart name: [native titles]} from `titles`, or {} if it hasn't run.
+    """{chart name: [native titles]} from `titles` (Steam's and Wikidata's), or
+    {} if it hasn't run.
 
     An alias two games share is dropped from both: it can't say which one a
     sentence means.
     """
-    path = wpath(args, "titles.json")
-    if not os.path.exists(path):
-        return {}
-    raw = json.load(open(path))
+    raw = {}
+    for f in ("titles.json", "titles_wikidata.json"):
+        if os.path.exists(wpath(args, f)):
+            for g, titles in json.load(open(wpath(args, f))).items():
+                raw[g] = list(dict.fromkeys((raw.get(g) or []) + (titles or [])))
     owners = {}
     for g, titles in raw.items():
         for a in {a for t in titles or [] for a in native_aliases(t)}:
@@ -1650,6 +1681,57 @@ def cmd_titles(args):
     missing = sum(1 for n, v in devs.items() if v.get("aid") and n not in cache)
     print(f"{sum(1 for v in cache.values() if v)} of {len(cache)} games have a native-script title"
           + (f"; {missing} failed, run again for them" if missing else "") + f" -> {path}")
+    wd_path = wpath(args, "titles_wikidata.json")
+    try:
+        wd = wikidata_titles(devs)
+    except Exception as e:
+        print(f"Wikidata didn't answer ({e}); {wd_path} left as it was")
+        return
+    json.dump(wd, open(wd_path, "w"), indent=0, ensure_ascii=False)
+    print(f"{len(wd)} games have a native name on Wikidata -> {wd_path}")
+
+
+# Wikimedia asks scripts to say who they are; a browser User-Agent gets throttled.
+WIKIMEDIA_UA = {"User-Agent": "RoguelikeLikeResearch/1.0 (https://github.com/batsling/Roguelike-like)"}
+# Native names that are also ordinary words, and would match every page:
+# witch (Noita), isolation (Sundered), famine (Don't Starve), "log" (Rogue).
+# And one that is wrong: Rogue's Chinese label on Wikidata is its co-author,
+# Michael Toy.
+WIKIDATA_SKIP = {"女巫", "隔离", "饥荒", "로그", "迈克尔·托依"}
+
+
+def wikidata_titles(devs):
+    """Native-script names from Wikidata's labels and aliases, by Steam app id.
+
+    Steam only knows a localised title when the store page is localised, so
+    the name a Japanese or Chinese developer actually writes is often missing
+    from titles.json: TOKOYO's developer credits ローグレガシー (Rogue Legacy),
+    which Steam has no Japanese title for. Wikidata has it. One query.
+    """
+    ids = {str(v["aid"]): n for n, v in devs.items() if v.get("aid")}
+    q = ("SELECT ?app ?l WHERE { VALUES ?app { %s } ?g wdt:P1733 ?app . "
+         "{ ?g rdfs:label ?l } UNION { ?g skos:altLabel ?l } FILTER(LANG(?l) IN (%s)) }"
+         % (" ".join(f'"{a}"' for a in ids),
+            ",".join(f'"{l}"' for l in ("ja", "zh", "zh-hans", "zh-hant", "zh-cn", "zh-tw", "zh-hk", "ko"))))
+    req = urllib.request.Request("https://query.wikidata.org/sparql",
+                                 data=urllib.parse.urlencode({"query": q}).encode(),
+                                 headers={**WIKIMEDIA_UA, "Accept": "application/sparql-results+json"})
+    out = {}
+    for r in json.loads(urllib.request.urlopen(req, timeout=180).read())["results"]["bindings"]:
+        # "小丑牌 (电子游戏)": the bracket is Wikipedia's "(video game)", and left
+        # in, native_aliases would make 电子游戏 a name for Balatro.
+        t = re.sub(r"\s*[(（][^)）]*[)）]", "", r["l"]["value"]).strip()
+        if _non_latin(t) and t not in WIKIDATA_SKIP:
+            out.setdefault(ids[r["app"]["value"]], set()).add(t)
+    # A sequel labelled without its number (Rogue Legacy 2 is ローグ・レガシー on
+    # Wikidata) would share the first game's name, and load_titles drops a
+    # shared name from both. It stays with the first game.
+    key = lambda t: re.sub(r"[・\s]", "", t)
+    for n in list(out):
+        base = re.sub(r"\s+(?:2|3|4|II|III|IV)$", "", n)
+        if base != n and base in out:
+            out[n] -= {t for t in out[n] if key(t) in {key(b) for b in out[base]}}
+    return {n: sorted(v) for n, v in sorted(out.items()) if v}
 
 
 # ── first-hand pages beyond Steam: itch, Kickstarter, Reddit, studio sites ──

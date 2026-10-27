@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="GameData" load_steps=2 format=3 uid="uid://game_none_shall_intrude"]
+
+[ext_resource type="Script" path="res://scripts/resources/GameData.gd" id="1_game"]
+
+[resource]
+script = ExtResource("1_game")
+id = &"none_shall_intrude"
+display_name = "None Shall Intrude"
+year = 2024
+type = 2
+games_influenced = Array[StringName]([&"daice"])
+influence_sources = PackedStringArray("")
+influence_relations = PackedStringArray("dev/series")
+tags = PackedStringArray()
+enemy_pool = Array[StringName]([])
+item_pool = Array[StringName]([])
+special_effects = PackedStringArray()
+cover_path = "res://images2.0/games/none-shall-intrude.png"
+owned = true
+file_location = "C:\\Users\\Owner\\Documents\\Roguelike Roguelike\\Roguelikes\\None Shall Intrude.url"
+steam_page = "https://store.steampowered.com/app/2518630/None_Shall_Intrude/"

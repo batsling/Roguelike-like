@@ -34,6 +34,7 @@ content and copies them across by hand.
 | `research/wikis.json` | each game's wiki, how sure the match is, and how much it documents per kind | yes |
 | `research/.gdignore` | keeps Godot from importing the CSVs as translation tables | yes |
 | `tools/Research.xlsx` | where the owner reviews: a sheet per kind, built from the CSVs | yes |
+| `docs/new-roguelikes.md` | Steam roguelikes with 100+ reviews that are not on the chart, whose own pages name a chart game (Oct 2026), for the owner to pick from | yes |
 | `.research_work/` | cached wiki reads and per-game briefs | no |
 | `.influence_work/` | the influence scans' and tag research's caches | no |
 
@@ -500,10 +501,11 @@ neither describes a game's contents anyway.
 
 ## 9. What is not built yet
 
-- **Main-page blurbs are missing for most wikis.** Fandom was rate-limiting
-  this client when they were read, so most records have no `blurb` or
-  `signal` yet (and are judged by name alone). `research.py wikis --blurbs`
-  reads them again without rediscovering anything; run it in a later session.
+- **Main-page blurbs are missing for some wikis.** Fandom was rate-limiting
+  this client when they were first read. A re-read on 26 Oct 2026 took them
+  from 291 of 534 wikis to 413 (and the `signal` from 93 to 260); the other
+  121 are still judged by name alone. `research.py wikis --blurbs` reads them
+  again without rediscovering anything.
 
 - **Pills are not researched, on purpose** (the owner, 12 Oct 2026). The pill
   system is modelled closely on Isaac's, and few other games have anything

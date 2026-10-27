@@ -7,9 +7,9 @@ Videos and podcast episodes where a developer may say what inspired their game, 
 | | games | results |
 |---|---|---|
 | 1. Confirm a suspected connection | 111 | 312 |
-| 2. Games with few connections | 185 | 592 |
+| 2. Games with few connections | 188 | 601 |
 
-Searched 559 of the 559 games that qualify; 263 had nothing that looked like the developer talking.
+Searched 565 of the 565 games that qualify; 266 had nothing that looked like the developer talking.
 
 ---
 
@@ -1592,6 +1592,13 @@ Held on the map by one connection or none. Listen for any game on the chart.
 
 - [ ] podcast [#572 - Cat Fight!](https://podcasts.apple.com/us/podcast/572-cat-fight/id151800917?i=1000697860059) — One Life Left · 68 min · 2025-03-05 — names the developer
 
+### Leap of Fate (2016) — 1 connection
+
+- [ ] video [Leap of Fate interview - PAX East 2015](https://www.youtube.com/watch?v=XGdyZdKfiDE) — 2XP Gaming · 6:01 · 11y ago — interview, names the developer
+- [ ] video [Clever Plays - Leap of Fate Interview - MTL IGF / T-Dude](https://www.youtube.com/watch?v=OnAd4r85BN4) — TDude64 · 6:21 · 11y ago — interview, names the developer
+- [ ] video [How to Ace Your Job Interview: Tips and Examples From Hiring Managers / Leap of Fate Pod 81](https://www.youtube.com/watch?v=Lg3iSwbc_DM) — Randy Silver  · 43:05 · 4y ago — interview
+- [ ] video [PAX East 2015: Leap of Fate / Indie Games](https://www.youtube.com/watch?v=7P_u5cKQR8Y) — AList · 1:21 · 11y ago — names the developer
+
 ### Legend of Dungeon (2013) — 1 connection
 
 - [ ] video [Legend of Dungeon - Gameplay & Developer Interview](https://www.youtube.com/watch?v=kv5ddojYc4Y) — The Killer Bits · 30:39 · 13y ago — developer, interview, names the developer
@@ -1716,6 +1723,11 @@ Held on the map by one connection or none. Listen for any game on the chart.
 - [ ] video [Popup Dungeon - Exclusive Developer Interview](https://www.youtube.com/watch?v=_01xBKfcojI) — Shacknews Interviews · 16:06 · 6y ago — developer, interview
 - [ ] podcast [SWW Interviews Episode 40: Popup Dungeon, Tin Can, and StressOut](https://podcasts.apple.com/us/podcast/sww-interviews-episode-40-popup-dungeon-tin-can-and/id1435072446?i=1000490919152) — The SWW Show · 57 min · 2020-09-11 — interview
 - [ ] podcast [SWW Interviews Episode 7: Popup Dungeon](https://podcasts.apple.com/us/podcast/sww-interviews-episode-7-popup-dungeon/id1435072446?i=1000452295588) — The SWW Show · 32 min · 2019-10-04 — interview
+
+### Post Void (2020) — 1 connection
+
+- [ ] video [(post void) y como Adri tendrá los ojos ensangrentados en 10 minutos.](https://www.youtube.com/watch?v=OjcuE-nQ_G4) — Durum and Games · 20:44 · 6y ago — names the developer
+- [ ] video [Gaming With Game Devs - Post Void](https://www.youtube.com/watch?v=P9WeDF2nQU4) — Game Development World Championship · 25:15 · 5y ago — devs
 
 ### Primordialis (2024) — 1 connection
 
@@ -1881,6 +1893,12 @@ Held on the map by one connection or none. Listen for any game on the chart.
 
 - [ ] video [Tainted Grail: Fall of Avalon - Dev Update January](https://www.youtube.com/watch?v=XL7ls6-Evzg) — Awaken Realms · 10:32 · 2y ago — dev
 - [ ] podcast [Tainted Grail: The Fall of Avalon Act 1 - 001 Radio Games Club](https://podcasts.apple.com/us/podcast/tainted-grail-the-fall-of-avalon-act-1-001-radio-games-club/id1518512406?i=1000756252259) — 001 Radio Gamescast · 90 min · 2026-03-19 — cue in the description
+
+### Takara Cards (2023) — 1 connection
+
+- [ ] video [Takara Cards](https://www.youtube.com/watch?v=rUQeP45XwtA) — kawa keiko · 0:41 · 4y ago — names the developer
+- [ ] video [Takara Cards on Steam Deck](https://www.youtube.com/watch?v=apWA8OpsXPk) — Post Mortem Pixels · 3:43 · 3y ago — names the developer
+- [ ] video [Takara Cards / Holden's Half Hour #sponsored](https://www.youtube.com/watch?v=vrILcbOVWCM) — Holden's Game Archive · 43:40 · 1y ago — names the developer
 
 ### Tears of Metal (2026) — 1 connection
 

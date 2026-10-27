@@ -600,7 +600,7 @@
   "goals": "2026-10-09: 4: Nachzehrer, Alp, Hexe, Unhold (Necrosavant = vampire, Barbarian King = king, Geist's morale breaking and the Kraken's drag are other games' rows)",
   "locations": "2026-10-09: Sunken Library, Grotesque Tree (Black Monolith and Witch Hut are fights for a reward)",
   "loot": "2026-10-09: nothing: weapons and armour are stat variants; the named artifacts (Emperor's Armor, Black Book) are location rewards; weapons and evolutions: none; named weapons are stat variants of ordinary ones",
-  "statuses": "2026-10-09: Hangover; Drunk is a live goal, Charmed is Lovesick, Overwhelmed and Swarm are stat penalties"
+  "statuses": "2026-10-26: second pass: nothing new; its traits are stat changes, and Bloodthirsty's fatalities repeat beheading goals. Earlier: 2026-10-09: Hangover; Drunk is a live goal, Charmed is Lovesick, Overwhelmed and Swarm are stat penalties"
  },
  "Battle Shapers": {
   "characters": "2026-10-10: Characters page not read: a stub",
@@ -1628,6 +1628,15 @@
   "loot": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
   "statuses": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs"
  },
+ "Daice": {
+  "characters": "2026-10-26: nothing usable: no named heroes (Next Jump's ships and Takara's races are classes without a page)",
+  "connections": "2026-10-26",
+  "events": "2026-10-26: nothing usable: no events named",
+  "goals": "2026-10-26: nothing usable: no wiki, and the Steam page names no enemy or boss (Takara's and Next Jump's Space Dragons would repeat Rogue's dragon boss)",
+  "locations": "2026-10-26: nothing usable: no named places, machines or shopkeepers (Takara's Pirates are the event)",
+  "loot": "2026-10-26: nothing usable: no wiki and the Steam page names no piece; no named weapons or evolutions",
+  "statuses": "2026-10-26: nothing usable: no statuses named"
+ },
  "Dark Devotion": {
   "characters": "2026-10-10: nothing: one hero, the Templar knight; the NPCs (Blacksmith, Dicecaster, Ferryman) aren't playable",
   "connections": "before 2026-10-07",
@@ -1661,8 +1670,8 @@
   "events": "2026-10-09: nothing: its interactions are curios, filed as objects",
   "goals": "2026-10-09: checked 8 rows on the wiki: 7 right, Bone Courtier fixed; Hag added",
   "locations": "2026-10-09: 2 curios, the Nomad Wagon, the Cove and the Weald",
-  "loot": "2026-10-09: 2 provisions; weapons and evolutions: none; weapons are hero upgrades at the blacksmith",
-  "statuses": "2026-10-09: Stress, Blight"
+  "loot": "2026-10-26: second pass: 1 row (Ancestor's Lantern); its trinkets are mostly stat trades; Martyr's Seal is a clone on Beset Dead Man's Ring. Earlier: 2026-10-09: 2 provisions; weapons and evolutions: none; weapons are hero upgrades at the blacksmith",
+  "statuses": "2026-10-26: second pass: 1 row (Phengophobia) from its quirks; Thanatophobia repeats the live Injury curse, Kleptomaniac the live thief goals. Earlier: 2026-10-09: Stress, Blight"
  },
  "Darkest Dungeon 2": {
   "characters": "2026-10-09: Flagellant, Runaway, Abomination (the first game's four are already candidates)",
@@ -1956,9 +1965,9 @@
   "characters": "2026-10-09: the 3 classes",
   "connections": "before 2026-10-07",
   "events": "2026-10-09: 2 quests as add_goal events",
-  "goals": "2026-10-09: checked 2 rows against the Diablo wiki (both right); 3 added",
-  "locations": "2026-10-09: 2 locations, 2 shrines, 4 Tristram shopkeepers",
-  "loot": "2026-10-09: 3 rows: Diablo I's item pool is mostly generic affixes; weapons and evolutions: The Butcher's Cleaver (Griswold's Edge was already a candidate); Diablo I has no evolutions",
+  "goals": "2026-10-26: second pass: Diablo himself is in King Yama's Clones (the king of hell), for the owner to swap. Earlier: 2026-10-09: checked 2 rows against the Diablo wiki (both right); 3 added",
+  "locations": "2026-10-26: second pass: 1 row (Hidden Shrine); its other shrines repeat Goat Shrine's random effects or live identify and heal objects. Earlier: 2026-10-09: 2 locations, 2 shrines, 4 Tristram shopkeepers",
+  "loot": "2026-10-26: second pass: 1 row (Constricting Ring). Earlier: 2026-10-09: 3 rows: Diablo I's item pool is mostly generic affixes; weapons and evolutions: The Butcher's Cleaver (Griswold's Edge was already a candidate); Diablo I has no evolutions",
   "statuses": "2026-10-09: 1 curse; Diablo I has few statuses"
  },
  "Dice & Fold": {
@@ -2414,11 +2423,11 @@
  "Dwarf Fortress": {
   "characters": "2026-10-09: nothing usable: fortress mode has no hero, and its adventurer is a blank",
   "connections": "before 2026-10-07",
-  "events": "2026-10-09: Strange Mood",
+  "events": "2026-10-26: second pass: 1 row (Siege). Earlier: 2026-10-09: Strange Mood",
   "goals": "2026-10-09: checked 3 rows (all right); Carp added; its Vampire is noted on Spelunky 2's row",
   "locations": "2026-10-09: Magma tile, Cage Trap unit, Hidden Fun Stuff, the Dwarven Caravan",
   "loot": "2026-10-09: Adamantine; weapons and evolutions: none; artifact weapons are randomly named strange-mood crafts",
-  "statuses": "2026-10-09: Cave Adaptation"
+  "statuses": "2026-10-26: second pass: 1 row (Tantrum). Earlier: 2026-10-09: Cave Adaptation"
  },
  "Dwarves: Glory, Death and Loot": {
   "characters": "2026-10-12: nothing usable: its items are gear with stat lines",
@@ -2662,6 +2671,15 @@
   "locations": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
   "loot": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
   "statuses": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs"
+ },
+ "Few Nights More": {
+  "characters": "2026-10-26: nothing usable: no named heroes (Next Jump's ships and Takara's races are classes without a page)",
+  "connections": "2026-10-26",
+  "events": "2026-10-26: nothing usable: no events named",
+  "goals": "2026-10-26: nothing usable: no wiki, and the Steam page names no enemy or boss (Takara's and Next Jump's Space Dragons would repeat Rogue's dragon boss)",
+  "locations": "2026-10-26: nothing usable: no named places, machines or shopkeepers (Takara's Pirates are the event)",
+  "loot": "2026-10-26: nothing usable: no wiki and the Steam page names no piece; no named weapons or evolutions",
+  "statuses": "2026-10-26: nothing usable: no statuses named"
  },
  "Fights in Tight Spaces": {
   "characters": "2026-10-12: nothing usable: one agent",
@@ -3137,7 +3155,7 @@
   "events": "2026-10-12: 2 rows (Wandering Chef, A Jake by the Road); The Totem repeats card removal",
   "goals": "2026-10-12: 1 row (Yote); old rows checked against the wiki (second wiki pass): all five were the game's systems, not its characters. Kashio fixed (a debt-broker: pay off a debt), Arint fixed (probe her weakness before the fight); Fellemo, Plocka (a merchant you never fight) and Jake Smuggler (no page) marked ?",
   "locations": "2026-10-12: nothing usable: its locations are story places",
-  "loot": "2026-10-12: nothing usable: its 1000+ cards are negotiation and battle numbers; no weapons as such, no evolutions",
+  "loot": "2026-10-26: second pass: 2 rows from its grafts (Three Fingers, Shell); Rugged Wiring repeats Flawless and Wax Wings. Earlier: 2026-10-12: nothing usable: its 1000+ cards are negotiation and battle numbers; no weapons as such, no evolutions",
   "statuses": "2026-10-12: nothing usable: its keywords are card mechanics"
  },
  "Guidus": {
@@ -3976,6 +3994,15 @@
   "locations": "2026-10-11: 2 rows (Sphere of Annihilation unit, College of Larn object); its throne, fountain, altar and bank are candidates from NetHack and Moonlighter",
   "loot": "2026-10-11: 2 rows (Scroll of Gem Perfection, Scroll of Annihilation); its weapons are generic, no evolutions; the device of theft prevention repeats Silver Padlock (For the King 2)",
   "statuses": "2026-10-11: nothing usable: dianthroritis is the daughter's illness, not a status"
+ },
+ "Leap of Fate": {
+  "characters": "2026-10-26: 1 row: Aeon (check). Big Mo, Mukai and Rasimov are named only by a word each",
+  "connections": "2026-10-26",
+  "events": "2026-10-26: nothing usable: no events named",
+  "goals": "2026-10-26: nothing usable: no wiki, and the Steam page names no enemy or boss (Takara's and Next Jump's Space Dragons would repeat Rogue's dragon boss)",
+  "locations": "2026-10-26: nothing usable: no named places, machines or shopkeepers (Takara's Pirates are the event)",
+  "loot": "2026-10-26: nothing usable: no wiki and the Steam page names no piece; no named weapons or evolutions",
+  "statuses": "2026-10-26: nothing usable: no statuses named"
  },
  "Legend of Dungeon": {
   "characters": "2026-10-12: nothing usable: its monsters and bosses are the genre's (Grim Reaper, Lich King, Deep Minotaur)",
@@ -4859,6 +4886,15 @@
   "loot": "2026-10-12: nothing usable: no wiki under its name on Fandom or wiki.gg, or one with no item or enemy pages",
   "statuses": "2026-10-12: nothing usable: no wiki under its name on Fandom or wiki.gg, or one with no item or enemy pages"
  },
+ "Next Jump: Shmup Tactics": {
+  "characters": "2026-10-26: nothing usable: no named heroes (Next Jump's ships and Takara's races are classes without a page)",
+  "connections": "2026-10-26",
+  "events": "2026-10-26: nothing usable: no events named",
+  "goals": "2026-10-26: nothing usable: no wiki, and the Steam page names no enemy or boss (Takara's and Next Jump's Space Dragons would repeat Rogue's dragon boss)",
+  "locations": "2026-10-26: nothing usable: no named places, machines or shopkeepers (Takara's Pirates are the event)",
+  "loot": "2026-10-26: nothing usable: no wiki and the Steam page names no piece; no named weapons or evolutions",
+  "statuses": "2026-10-26: nothing usable: no statuses named"
+ },
  "Nigate Tale": {
   "characters": "2026-10-12: nothing usable: no wiki under its name on Fandom or wiki.gg, or one with no item or enemy pages",
   "connections": "before 2026-10-07",
@@ -4928,7 +4964,7 @@
   "events": "2026-10-09: nothing: Noita has no events",
   "goals": "2026-10-09: checked 4 rows: 3 fixed; Stevari added",
   "locations": "2026-10-09: Holy Mountain, Perk Altar",
-  "loot": "2026-10-09: Polymorphine; its spell-built wands would need a whole new system; weapons and evolutions: none; its wands are built from spells, which would need a whole system",
+  "loot": "2026-10-26: second pass: 7 rows from its perks and flasks (Healthy Exploration, Eat Your Vegetables, Perk Lottery, Stainless Armour, Cordyceps, Trick Blood Money, Berserkium); Glass Cannon, Saving Grace and Exploding Corpses are clones on other games' rows. Earlier: 2026-10-09: Polymorphine; its spell-built wands would need a whole new system; weapons and evolutions: none; its wands are built from spells, which would need a whole system",
   "statuses": "2026-10-09: Teleportitis; its other stains duplicate Wet, Tarred and Burn"
  },
  "Nomad Survival": {
@@ -4939,6 +4975,15 @@
   "locations": "2026-10-11: nothing: none",
   "loot": "2026-10-11: nothing: its 17 active skills (Fireball, Magic Missile, Icicle Barrage) are generic auto-attacks that level in place; no weapons beyond them and no evolutions",
   "statuses": "2026-10-11: nothing: none"
+ },
+ "None Shall Intrude": {
+  "characters": "2026-10-26: Raid Boss repeats The Lost's level-up: in The Lost's Clones",
+  "connections": "2026-10-26",
+  "events": "2026-10-26: nothing usable: no events named",
+  "goals": "2026-10-26: nothing usable: no wiki, and the Steam page names no enemy or boss (Takara's and Next Jump's Space Dragons would repeat Rogue's dragon boss)",
+  "locations": "2026-10-26: nothing usable: no named places, machines or shopkeepers (Takara's Pirates are the event)",
+  "loot": "2026-10-26: nothing usable: no wiki and the Steam page names no piece; no named weapons or evolutions",
+  "statuses": "2026-10-26: nothing usable: no statuses named"
  },
  "Noobs Are Coming": {
   "characters": "2026-10-10: 34 characters, every page a stub",
@@ -5596,6 +5641,15 @@
   "locations": "2026-10-12: nothing usable: a small wiki of class and ability stat pages",
   "loot": "2026-10-12: nothing usable: a small wiki of class and ability stat pages",
   "statuses": "2026-10-12: nothing usable: a small wiki of class and ability stat pages"
+ },
+ "Post Void": {
+  "characters": "2026-10-26: nothing usable: no named heroes (Next Jump's ships and Takara's races are classes without a page)",
+  "connections": "2026-10-26",
+  "events": "2026-10-26: nothing usable: no events named",
+  "goals": "2026-10-26: 2 rows: Fleshwall, Bulb Hand (the other four enemies are generic shooters and biters)",
+  "locations": "2026-10-26: nothing usable: no named places, machines or shopkeepers (Takara's Pirates are the event)",
+  "loot": "2026-10-26: 2 rows: Idol, Explosive Ammo. Weapons: the Uzi repeats Ultra Mega Cats' Machine Gun and the Shotgun Buckshot Roulette's; no evolutions",
+  "statuses": "2026-10-26: nothing usable: no statuses named"
  },
  "Powder": {
   "characters": "2026-10-12: nothing usable: one avatar",
@@ -6397,6 +6451,15 @@
   "locations": "2026-10-12: nothing usable: 13 relics and 11 weapons with stat pages",
   "loot": "2026-10-12: nothing usable: 13 relics and 11 weapons with stat pages",
   "statuses": "2026-10-12: nothing usable: 13 relics and 11 weapons with stat pages"
+ },
+ "Scopa Sweep": {
+  "characters": "2026-10-26: nothing usable: no named heroes (Next Jump's ships and Takara's races are classes without a page)",
+  "connections": "2026-10-26",
+  "events": "2026-10-26: nothing usable: no events named",
+  "goals": "2026-10-26: nothing usable: no wiki, and the Steam page names no enemy or boss (Takara's and Next Jump's Space Dragons would repeat Rogue's dragon boss)",
+  "locations": "2026-10-26: nothing usable: no named places, machines or shopkeepers (Takara's Pirates are the event)",
+  "loot": "2026-10-26: 1 row: Settebello (card, check). No weapons or evolutions",
+  "statuses": "2026-10-26: nothing usable: no statuses named"
  },
  "Scourgebringer": {
   "characters": "2026-10-09: nothing: Kyhra, the only hero, has no page",
@@ -7360,6 +7423,15 @@
   "locations": "2026-10-10: nothing: its locations are the encounters above (the Hanging Tree is one); the Run-down Windmill is a quest door",
   "loot": "2026-10-10: Wooden Flute; weapons and evolutions: none (no weapon pages; runestones and cards are the gear, with no evolutions)",
   "statuses": "2026-10-10: nothing: no status pages"
+ },
+ "Takara Cards": {
+  "characters": "2026-10-26: nothing usable: no named heroes (Next Jump's ships and Takara's races are classes without a page)",
+  "connections": "2026-10-26",
+  "events": "2026-10-26: 1 row: Pirate Smugglers",
+  "goals": "2026-10-26: nothing usable: no wiki, and the Steam page names no enemy or boss (Takara's and Next Jump's Space Dragons would repeat Rogue's dragon boss)",
+  "locations": "2026-10-26: nothing usable: no named places, machines or shopkeepers (Takara's Pirates are the event)",
+  "loot": "2026-10-26: nothing usable: no wiki and the Steam page names no piece; no named weapons or evolutions",
+  "statuses": "2026-10-26: nothing usable: no statuses named"
  },
  "Talented": {
   "characters": "2026-10-10: classes read by name (Alchemist, Archer, Bandit, Summoner, Warrior, Wizard)",

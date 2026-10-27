@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="GameData" load_steps=2 format=3 uid="uid://game_next_jump_shmup_tactics"]
+
+[ext_resource type="Script" path="res://scripts/resources/GameData.gd" id="1_game"]
+
+[resource]
+script = ExtResource("1_game")
+id = &"next_jump_shmup_tactics"
+display_name = "Next Jump: Shmup Tactics"
+year = 2017
+type = 1
+games_influenced = Array[StringName]([&"takara_cards"])
+influence_sources = PackedStringArray("")
+influence_relations = PackedStringArray("dev/series")
+tags = PackedStringArray("space")
+enemy_pool = Array[StringName]([])
+item_pool = Array[StringName]([])
+special_effects = PackedStringArray()
+cover_path = "res://images2.0/games/next-jump-shmup-tactics.png"
+owned = true
+file_location = "C:\\Users\\Owner\\Documents\\Roguelike Roguelike\\Roguelikes\\NEXT JUMP Shmup Tactics.url"
+steam_page = "https://store.steampowered.com/app/624690/NEXT_JUMP_Shmup_Tactics/?curator_clanid=33043922"
