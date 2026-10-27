@@ -91,6 +91,10 @@ CLAIM = re.compile(
     r"inspir|influenc|homage|love letter|\btribute|spiritual successor|big fans? of|"
     r"heavily based|took (?:a lot )?from|borrow|in the vein|cues from|blend of|"
     r"mix of|\bmeets\b|cross between|"
+    # The same pitch said with a verb: "blends elements of FTL, Isaac, and Dota",
+    # "combines the deep theory-crafting… of classic ARPGs like Diablo". Nine
+    # off-chart store pages said it this way and none of them was read.
+    r"\bblends?\b|\bblending\b|\bcombin(?:es|ing)\b|\bfusion of\b|"
     # Developers outside the English-speaking world often post in their own
     # language even on an English store page. Japanese, Chinese, Korean,
     # German, French, Spanish/Portuguese, Polish and Russian. The game they
