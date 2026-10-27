@@ -8,16 +8,16 @@ Every Steam game tagged Roguelike, Roguelite, Action Roguelike, Roguelike Deckbu
 
 - **Inspiration finds** (part 1): each game's store text and developer announcements were matched with `tools/influence_research.py`'s own claim words and chart-name patterns (native-script titles included). 236 games had a sentence naming a chart game; after reading them all, the ones listed are the developer's own words about this game. Nine more came from interviews and forum posts found by hand, each checked at the source: EVERSPACE, NEO Scavenger, Jump Space, Mullet MadJack, Cuisineer, In Death, GetsuFumaDen: Undying Moon and Killing Room, plus Descenders, whose interview page refuses this machine (its entry says so).
 - **Deeper passes** over the 1,427 roguelikes and borderline games with no find: the research tool's studio-site and press-kit pass, its itch.io pass and its Bluesky pass, run over these games (every hit read, and each Bluesky poster checked against the game's Steam developer), plus a pass over the Chinese, Japanese and Korean versions of the Steam pages of the 106 games whose title or developer is written in those scripts. Bluesky gave six, studio sites five, the native-language pages one (Night of Full Moon), itch none.
-- **Wikipedia:** Wikidata's Steam-app links name the English Wikipedia article of 246 of the off-chart games. Each was scanned the same way and every hit followed to the interview it cites, since Wikipedia is second-hand: seven held up (Marvel's Midnight Suns, Tribes of Midgard, TOKOYO, Into the Stars, GALAK-Z, Little Noah, Towns); the rest were already listed, comparisons, or a citation that doesn't say it. The 202 games with an article in another language gave two more, FATE (from its French article) and Feed the Scorchpot (Czech). Wikidata's own "inspired by" statements gave two more (PROJECT TACHYON, Towa), each checked at the reference it carries.
+- **Wikipedia:** Wikidata's Steam-app links name the English Wikipedia article of 246 of the off-chart games. Each was scanned the same way and every hit followed to the interview it cites, since Wikipedia is second-hand: seven held up (Marvel's Midnight Suns, Tribes of Midgard, TOKOYO, Into the Stars, GALAK-Z, Little Noah, Towns); the rest were already listed, comparisons, or a citation that doesn't say it. The 202 games with an article in another language gave two more, FATE (from its French article) and Feed the Scorchpot (Czech). The Russian versions of the 1,427 Steam pages (657 of them really in Russian) gave two weaker lines, Envy the Dead and Neurodeck. Wikidata's own "inspired by" statements gave two more (PROJECT TACHYON, Towa), each checked at the reference it carries.
 - **Matching fixes** found along the way, all in `tools/influence_research.py`: pitch lines that say "blends", "combines" or "a fusion of" weren't read as claims (thirteen games' store pages, announcements and press kits, all now in part 1 as weaker); bracketed names ("[Dream Quest]") were stripped as markup; a curly apostrophe ("Don’t Starve") didn't match the sheet's straight one; the Japanese claim words lacked インスピレーション; and Japanese names came only from Steam's localised titles (now Wikidata's labels too, with katakana names kept whole). Re-matching the cached text gave Night of Full Moon, Niche and TOKOYO.
 - **Same-developer finds** (part 2): each game's developer, from its store page, matched exactly (ignoring Inc., Ltd. and the like) against the developers of chart games. Editions of chart games (prologues, demos, ports, remasters) are left out.
 - **Roguelike?** is where a rogue tag sits in the game's own Steam tags, ranked by votes. Calibrated on 79 chart games: 75 of them have one in their top 6, so *yes* = top 6, *borderline* = 7th–11th, *no* = lower or none.
 
 The scripts were one-offs and are not in the repo.
 
-## Part 1: the developer names a chart game (159 games)
+## Part 1: the developer names a chart game (161 games)
 
-114 are roguelikes by their Steam tags, 22 borderline, 23 not. Ranked by what each would do for the map first (fixes one of your owned dead ends, brings an off-map game on, links two or more chart games), then by reviews.
+115 are roguelikes by their Steam tags, 23 borderline, 23 not. Ranked by what each would do for the map first (fixes one of your owned dead ends, brings an off-map game on, links two or more chart games), then by reviews.
 
 | # | Game | Reviews | Roguelike? | Would connect to | Kind | Map effect |
 |---|---|---|---|---|---|---|
@@ -176,10 +176,12 @@ The scripts were one-offs and are not in the repo.
 | 153 | [Whispers of the Eyeless](https://store.steampowered.com/app/2523890/) | 229 | yes (#2) | Slay the Spire | weaker (one feature, or "X meets Y") | — |
 | 154 | [Loot Frog](https://store.steampowered.com/app/4294860/) | 198 | yes (#6) | Cult of the Lamb | weaker (one feature, or "X meets Y") | — |
 | 155 | [Doomsday Paradise](https://store.steampowered.com/app/1603420/) | 185 | borderline (#10) | Slay the Spire | weaker (one feature, or "X meets Y") | — |
-| 156 | [Motordoom](https://store.steampowered.com/app/1894720/) | 175 | yes (#1) | Vampire Survivors | weaker (one feature, or "X meets Y") | — |
-| 157 | [Swords And Magic: Path Of Conquest](https://store.steampowered.com/app/4254300/) | 159 | yes (#5) | Diablo | weaker (one feature, or "X meets Y") | — |
-| 158 | [IIslands of War](https://store.steampowered.com/app/1162470/) | 122 | yes (#5) | FTL | weaker (one feature, or "X meets Y") | — |
-| 159 | [Ampersat](https://store.steampowered.com/app/1356040/) | 116 | yes (#4) | Angband | weaker (one feature, or "X meets Y") | — |
+| 156 | [Envy the Dead](https://store.steampowered.com/app/453960/) | 180 | borderline (#8) | FTL | weaker (one feature, or "X meets Y") | — |
+| 157 | [Motordoom](https://store.steampowered.com/app/1894720/) | 175 | yes (#1) | Vampire Survivors | weaker (one feature, or "X meets Y") | — |
+| 158 | [Neurodeck : Psychological Deckbuilder](https://store.steampowered.com/app/1253860/) | 170 | yes (#1) | Slay the Spire | weaker (one feature, or "X meets Y") | — |
+| 159 | [Swords And Magic: Path Of Conquest](https://store.steampowered.com/app/4254300/) | 159 | yes (#5) | Diablo | weaker (one feature, or "X meets Y") | — |
+| 160 | [IIslands of War](https://store.steampowered.com/app/1162470/) | 122 | yes (#5) | FTL | weaker (one feature, or "X meets Y") | — |
+| 161 | [Ampersat](https://store.steampowered.com/app/1356040/) | 116 | yes (#4) | Angband | weaker (one feature, or "X meets Y") | — |
 
 ### The quotes
 
@@ -338,10 +340,12 @@ The scripts were one-offs and are not in the repo.
 153. **Whispers of the Eyeless** → Slay the Spire: “The Early Visions ​​ In the beginning, Tales were little winding paths on parchment, inspired by the branching routes of games like Slay the Spire.” ([source](https://steamstore-a.akamaihd.net/news/externalpost/steam_community_announcements/1823191198599890))
 154. **Loot Frog** → Cult of the Lamb: “Clumsy Dog: "cult of the lamb inspired bosses" (Bluesky)” ([source](https://bsky.app/profile/clumsydoggames.bsky.social/post/3ms54yaq3pk2r))
 155. **Doomsday Paradise** → Slay the Spire: “Lemonade Flashbang's press kit: "It could probably be best described as a fusion of Slay the Spire and Monster Prom- combining deckbuilding elements with a charming cast and large, branching narrative."” ([source](https://www.lemonadeflashbang.com/press-kit))
-156. **Motordoom** → Vampire Survivors: “Hobo Cat Games: "Its a mix of Tony Hawks Pro Skater and Vampire Survivors where you perform tricks and slay demons" (Bluesky)” ([source](https://bsky.app/profile/hobocatgames.bsky.social/post/3m52hcp53j22k))
-157. **Swords And Magic: Path Of Conquest** → Diablo: “ShadowMoon Wolf, in an update: "The entire UI has been redesigned with a new unified style, drawing inspiration from various RPGs, Diablo, Total War, and Warhammer 40K." (its UI only)” ([source](https://steamstore-a.akamaihd.net/news/externalpost/steam_community_announcements/1832700592797199))
-158. **IIslands of War** → FTL: “Inspired by games like Minecraft and FTL , it was the start of what was to come.” ([source](https://steamstore-a.akamaihd.net/news/externalpost/steam_community_announcements/2579939377831992168))
-159. **Ampersat** → Angband: “A blend of influences from Gauntlet & Smash TV to Zelda & Angband, Ampersat is a handcrafted adventure but with appeal to Roguelite fans.” ([source](https://store.steampowered.com/app/1356040/))
+156. **Envy the Dead** → FTL: “Its Russian store page: "Игра комбинирует точечную систему исследований, похожую на игры вроде FTL с боевой системой, вдохновленной играми Tower Defense." ("The game combines a node-based exploration system like that of games such as FTL with combat inspired by tower defense games.")” ([source](https://store.steampowered.com/app/453960/?l=russian))
+157. **Motordoom** → Vampire Survivors: “Hobo Cat Games: "Its a mix of Tony Hawks Pro Skater and Vampire Survivors where you perform tricks and slay demons" (Bluesky)” ([source](https://bsky.app/profile/hobocatgames.bsky.social/post/3m52hcp53j22k))
+158. **Neurodeck : Psychological Deckbuilder** → Slay the Spire: “Its Russian store page: "Колода собирается по мере прохождения игры (как в Slay The Spire)" ("The deck is built as you play through the game, as in Slay The Spire")” ([source](https://store.steampowered.com/app/1253860/?l=russian))
+159. **Swords And Magic: Path Of Conquest** → Diablo: “ShadowMoon Wolf, in an update: "The entire UI has been redesigned with a new unified style, drawing inspiration from various RPGs, Diablo, Total War, and Warhammer 40K." (its UI only)” ([source](https://steamstore-a.akamaihd.net/news/externalpost/steam_community_announcements/1832700592797199))
+160. **IIslands of War** → FTL: “Inspired by games like Minecraft and FTL , it was the start of what was to come.” ([source](https://steamstore-a.akamaihd.net/news/externalpost/steam_community_announcements/2579939377831992168))
+161. **Ampersat** → Angband: “A blend of influences from Gauntlet & Smash TV to Zelda & Angband, Ampersat is a handcrafted adventure but with appeal to Roguelite fans.” ([source](https://store.steampowered.com/app/1356040/))
 
 ## Part 2: by the same developer as a chart game (75 games)
 
