@@ -19,6 +19,12 @@ failure; diffing a passing and failing run's Control tree) are the reusable part
 - **The varying failures that used to live here are FIXED.** All were
   assertions that were only *usually* true, and they are worth reading before
   blaming a seed for a new one.
+  - `test_card_system.gd::test_simple_cards_of_the_set` (27 Oct 2026) got 2
+    shields from Shrug it Off about one run in 400. The card it deals is random
+    and reaches the pack before `card_used` fires for Shrug it Off, so a dealt
+    After Image shields on the way in. A 400-play stress loop showed the 2 every
+    time After Image was dealt and never otherwise; the test now adds whatever
+    the dealt card's `card_used` triggers grant.
   - `test_statuses.gd`'s Speed and Marked tests (20 Oct 2026) failed only in
     FULL runs, a different one each time, and never alone or across 80 seeds of
     `seed()`, because the offering's random enemy is not drawn off the global
