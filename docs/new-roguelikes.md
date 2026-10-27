@@ -1,203 +1,211 @@
 # New roguelikes for the chart: 26–27 Oct 2026 search
 
-Every Steam game tagged Roguelike, Roguelite, Action Roguelike, Roguelike Deckbuilder or Traditional Roguelike with **100+ reviews** (Steam's English-review count from its search results): **2,960**. **2,193** of them are not on the chart. Their store pages and developer posts were scanned for a sentence naming a chart game; **236** had one, and after reading them all **112** hold up: the developer's own words, about this game. Nothing below is on the games sheet or in research/connections.csv.
+**For the owner to go through.** Pick the ones you want, and say whether each goes on the games sheet (then its connections go in as usual) or into `research/connections.csv` as a lead first. Strike through or delete a line once it's decided. Nothing below is on the games sheet or in the research CSVs yet.
 
-**For the owner to go through.** Pick the ones you want, and say whether each goes on the games sheet (then its connections go in as usual) or into `research/connections.csv` as a lead first. Strike through or delete a line once it's decided.
+## How it was made
 
-How it was made: Steam's store search (`store.steampowered.com/search/results`, one tag at a time, every page) for the five tags; each kept game's store text and developer announcements read and matched with `tools/influence_research.py`'s own claim words and chart-name patterns (native-script titles included); then every hit read by hand. The scripts were one-offs and are not in the repo.
+Every Steam game tagged Roguelike, Roguelite, Action Roguelike, Roguelike Deckbuilder or Traditional Roguelike with **100+ reviews** (the English-review count Steam's search shows): **2,960**, of which **2,193** are not on the chart.
 
-Ranked by what each would do for the map first (fixes one of your owned dead ends, brings an off-map game on, links two or more chart games), then by reviews.
+- **Inspiration finds** (part 1): each game's store text and developer announcements were matched with `tools/influence_research.py`'s own claim words and chart-name patterns (native-script titles included). 236 games had a sentence naming a chart game; after reading them all, the ones listed are the developer's own words about this game.
+- **Same-developer finds** (part 2): each game's developer, from its store page, matched exactly (ignoring Inc., Ltd. and the like) against the developers of chart games. Editions of chart games (prologues, demos, ports, remasters) are left out.
+- **Roguelike?** is where a rogue tag sits in the game's own Steam tags, ranked by votes. Calibrated on 79 chart games: 75 of them have one in their top 6, so *yes* = top 6, *borderline* = 7th–11th, *no* = lower or none.
 
-| # | Game | Reviews | Would connect to | Kind | Map effect |
-|---|---|---|---|---|---|
-| 1 | [Berserk Mode](https://store.steampowered.com/app/1649630/) | 199 | Post Void, Noita | inspiration | fixes your owned dead end: Post Void |
-| 2 | [Force Reboot](https://store.steampowered.com/app/1766010/) | 664 | Post Void | inspiration | fixes your owned dead end: Post Void |
-| 3 | [Blood Vial](https://store.steampowered.com/app/3648730/) | 359 | Post Void | inspiration | fixes your owned dead end: Post Void |
-| 4 | [Dungeon Souls](https://store.steampowered.com/app/383230/) | 1,308 | Nuclear Throne, Risk of Rain, Shoot First | inspiration | fixes a dead end: Shoot First |
-| 5 | [Battlestar Galactica: Scattered Hopes](https://store.steampowered.com/app/2535950/) | 1,078 | Crying Suns | same developer | fixes your owned dead end: Crying Suns |
-| 6 | [SENTRY](https://store.steampowered.com/app/1252680/) | 863 | Abandon Ship | same developer | fixes your owned dead end: Abandon Ship |
-| 7 | [Shards of Order](https://store.steampowered.com/app/3432480/) | 668 | Fear & Hunger, Darkest Dungeon | inspiration | fixes a dead end: Fear & Hunger |
-| 8 | [Quantum Protocol](https://store.steampowered.com/app/1328530/) | 625 | Vault of the Void | weaker (one feature, or "X meets Y") | fixes your owned dead end: Vault of the Void |
-| 9 | [SNAKE FARM](https://store.steampowered.com/app/2491640/) | 393 | Fish Fear Me | same developer | fixes your owned dead end: Fish Fear Me |
-| 10 | [Hunter's Moon: A Sovereign Syndicate Adventure](https://store.steampowered.com/app/3877790/) | 212 | Darkest Dungeon, Slay the Spire, Knock on the Coffin Lid | inspiration | fixes a dead end: Knock on the Coffin Lid |
-| 11 | [Cat Bait](https://store.steampowered.com/app/2929730/) | 1,459 | Vampire Survivors, Brotato | inspiration | 2 links |
-| 12 | [Ravenbound](https://store.steampowered.com/app/1307660/) | 775 | Slay the Spire, Risk of Rain 2, Cult of the Lamb | inspiration | 3 links |
-| 13 | [Overture](https://store.steampowered.com/app/343100/) | 566 | Diablo, Realm of the Mad God, The Binding of Isaac | inspiration | 3 links |
-| 14 | [Fhtagn Simulator](https://store.steampowered.com/app/2050590/) | 538 | Luck be a Landlord, Slay the Spire, Monster Train | inspiration | 3 links |
-| 15 | [Fabled Lands](https://store.steampowered.com/app/1299620/) | 525 | Wildermyth | inspiration | brings on: Wildermyth |
-| 16 | [Lucky Hunter](https://store.steampowered.com/app/2824310/) | 415 | Slay the Spire, Luck be a Landlord | inspiration | 2 links |
-| 17 | [NITRO GEN OMEGA](https://store.steampowered.com/app/2525510/) | 408 | Battle Brothers, Darkest Dungeon | inspiration | 2 links |
-| 18 | [Biters & Bullets: Prologue](https://store.steampowered.com/app/1811430/) | 362 | Vampire Survivors, Magic Survival, Risk of Rain | inspiration | 3 links |
-| 19 | [Of Blades & Tails](https://store.steampowered.com/app/1768780/) | 360 | Diablo, Tales of Maj'Eyal, Stoneshard | inspiration | 3 links |
-| 20 | [Cozy Space Survivors](https://store.steampowered.com/app/2657850/) | 342 | Vampire Survivors, The Binding of Isaac, Halls of Torment | inspiration | 3 links |
-| 21 | [Murim Survival](https://store.steampowered.com/app/3449590/) | 270 | Vampire Survivors, Diablo | inspiration | 2 links |
-| 22 | [Gods vs Horrors](https://store.steampowered.com/app/2994240/) | 256 | Slay the Spire, Super Auto Pets, Teamfight Tactics, Balatro | inspiration | 4 links |
-| 23 | [CROPS!](https://store.steampowered.com/app/3057760/) | 211 | The Bazaar, Backpack Battles, Super Auto Pets | inspiration | 3 links |
-| 24 | [Towerful Defense: A Rogue TD](https://store.steampowered.com/app/2453610/) | 209 | Brotato, Vampire Survivors | inspiration | 2 links |
-| 25 | [Starforged Legacy](https://store.steampowered.com/app/3353390/) | 192 | Vampire Survivors, FTL | inspiration | 2 links |
-| 26 | [Lost In The Open](https://store.steampowered.com/app/2027380/) | 162 | Battle Brothers, Darkest Dungeon | inspiration | 2 links |
-| 27 | [Skeletal Avenger](https://store.steampowered.com/app/1277500/) | 158 | Hades, Dead Cells | inspiration | 2 links |
-| 28 | [Becoming Saint](https://store.steampowered.com/app/2643010/) | 136 | Bad North, Into the Breach | inspiration | 2 links |
-| 29 | [Monster X Monster](https://store.steampowered.com/app/1073490/) | 135 | Darkest Dungeon, Slay the Spire | inspiration | 2 links |
-| 30 | [Woodpunk](https://store.steampowered.com/app/878420/) | 119 | Nuclear Throne, Enter the Gungeon | inspiration | 2 links |
-| 31 | [REPLIKATOR](https://store.steampowered.com/app/1576370/) | 114 | Nuclear Throne, Dead Cells | inspiration | 2 links |
-| 32 | [INTO EVIL](https://store.steampowered.com/app/1893440/) | 107 | Teleglitch | inspiration | fixes a dead end: Teleglitch |
-| 33 | [Chrono Survival](https://store.steampowered.com/app/1897740/) | 104 | Vampire Survivors, The Binding of Isaac | inspiration | 2 links |
-| 34 | [UFO 50](https://store.steampowered.com/app/1147860/) | 6,612 | Spelunky, Downwell, Catacomb Kids | same developer | 3 links |
-| 35 | [Shortest Trip to Earth](https://store.steampowered.com/app/812040/) | 1,262 | Teleglitch | same developer | fixes a dead end: Teleglitch |
-| 36 | [Serious Sam: Tormental](https://store.steampowered.com/app/640340/) | 194 | Nuclear Throne, The Binding of Isaac, Enter the Gungeon | weaker (one feature, or "X meets Y") | 3 links |
-| 37 | [Power Chord](https://store.steampowered.com/app/1724390/) | 170 | Slay the Spire, Monster Train, Darkest Dungeon | weaker (one feature, or "X meets Y") | 3 links |
-| 38 | [GUNHEAD](https://store.steampowered.com/app/704000/) | 156 | Cryptark | same developer | brings on: Cryptark |
-| 39 | [Slimekeep](https://store.steampowered.com/app/1552500/) | 109 | Balatro, Inscryption | weaker (one feature, or "X meets Y") | 2 links |
-| 40 | [Rise to Ruins](https://store.steampowered.com/app/328080/) | 5,118 | Dwarf Fortress | inspiration | — |
-| 41 | [Magicite](https://store.steampowered.com/app/268750/) | 3,677 | Spelunky | inspiration | — |
-| 42 | [Relic Hunters Zero: Remix](https://store.steampowered.com/app/382490/) | 2,977 | Risk of Rain | inspiration | — |
-| 43 | [Moonstone Island](https://store.steampowered.com/app/1658150/) | 2,939 | Slay the Spire | inspiration | — |
-| 44 | [Trigon: Space Story](https://store.steampowered.com/app/1226510/) | 1,249 | FTL | inspiration | — |
-| 45 | [FrostBound](https://store.steampowered.com/app/3649580/) | 1,202 | Slay the Spire | inspiration | — |
-| 46 | [Dead Age 2: The Zombie Survival RPG](https://store.steampowered.com/app/951430/) | 1,157 | Darkest Dungeon | inspiration | — |
-| 47 | [OVIS LOOP](https://store.steampowered.com/app/2226730/) | 1,101 | Slay the Spire | inspiration | — |
-| 48 | [Wretch: Divine Ascent](https://store.steampowered.com/app/3081280/) | 983 | Backpack Battles | inspiration | — |
-| 49 | [Deathless. The Hero Quest](https://store.steampowered.com/app/2727210/) | 957 | Slay the Spire | inspiration | — |
-| 50 | [Down with the Ship](https://store.steampowered.com/app/3523750/) | 861 | Backpack Battles | inspiration | — |
-| 51 | [Vambrace: Cold Soul](https://store.steampowered.com/app/904380/) | 694 | FTL | inspiration | — |
-| 52 | [Poker Quest: Swords and Spades](https://store.steampowered.com/app/1184820/) | 685 | Slay the Spire | inspiration | — |
-| 53 | [红石遗迹 - Red Obsidian Remnant](https://store.steampowered.com/app/610960/) | 678 | The Binding of Isaac | inspiration | — |
-| 54 | [Backpack Jianghu](https://store.steampowered.com/app/3972650/) | 589 | Backpack Battles | inspiration | — |
-| 55 | [Dark Fairy Tale: Dreamland Survivors](https://store.steampowered.com/app/3288300/) | 479 | Vampire Survivors | inspiration | — |
-| 56 | [March of the Living](https://store.steampowered.com/app/458000/) | 433 | FTL | inspiration | — |
-| 57 | [Gangs of Space](https://store.steampowered.com/app/504300/) | 433 | The Binding of Isaac | inspiration | — |
-| 58 | [Westale: Peelgrimage](https://store.steampowered.com/app/1141760/) | 413 | Vampire Survivors | inspiration | — |
-| 59 | [All Walls Must Fall - A Tech-Noir Tactics Game](https://store.steampowered.com/app/628290/) | 406 | Crypt of the NecroDancer | inspiration | — |
-| 60 | [Pixel Starships 2](https://store.steampowered.com/app/2154270/) | 396 | FTL | inspiration | — |
-| 61 | [Farm Keeper](https://store.steampowered.com/app/2458940/) | 390 | Luck be a Landlord | inspiration | — |
-| 62 | [WAR RATS: The Rat em Up](https://store.steampowered.com/app/3167260/) | 388 | Kingdom: New Lands | inspiration | — |
-| 63 | [Draft of Darkness](https://store.steampowered.com/app/1380650/) | 341 | Slay the Spire | inspiration | — |
-| 64 | [Crimson Dawn](https://store.steampowered.com/app/1919720/) | 328 | Vampire Survivors | inspiration | — |
-| 65 | [Forgotten Mines](https://store.steampowered.com/app/2238630/) | 305 | FTL | inspiration | — |
-| 66 | [The Hand of Merlin](https://store.steampowered.com/app/600610/) | 302 | FTL | inspiration | — |
-| 67 | [Destropolis](https://store.steampowered.com/app/1316800/) | 259 | Nuclear Throne | inspiration | — |
-| 68 | [Rising Hell](https://store.steampowered.com/app/657000/) | 225 | Downwell | inspiration | — |
-| 69 | [Crawl Tactics](https://store.steampowered.com/app/1290750/) | 213 | FTL | inspiration | — |
-| 70 | [Against Great Darkness](https://store.steampowered.com/app/2302150/) | 206 | Hades | inspiration | — |
-| 71 | [Raining Blood: Hellfire](https://store.steampowered.com/app/2147530/) | 201 | Enter the Gungeon | inspiration | — |
-| 72 | [Hive Jump](https://store.steampowered.com/app/295670/) | 189 | Spelunky | inspiration | — |
-| 73 | [Galactic Glitch: Prologue](https://store.steampowered.com/app/640160/) | 184 | Dead Cells | inspiration | — |
-| 74 | [Nautical Survival](https://store.steampowered.com/app/2860990/) | 183 | Brotato | inspiration | — |
-| 75 | [Depth of Extinction](https://store.steampowered.com/app/636320/) | 176 | FTL | inspiration | — |
-| 76 | [Blood Rush](https://store.steampowered.com/app/2435870/) | 163 | Hades | inspiration | — |
-| 77 | [ARRIVAL: ZERO EARTH](https://store.steampowered.com/app/1613580/) | 155 | Risk of Rain 2 | inspiration | — |
-| 78 | [Cavern Kings](https://store.steampowered.com/app/321830/) | 155 | Risk of Rain | inspiration | — |
-| 79 | [The Amazing American Circus](https://store.steampowered.com/app/1433860/) | 138 | Slay the Spire | inspiration | — |
-| 80 | [Dead Monarchy](https://store.steampowered.com/app/1037940/) | 132 | Battle Brothers | inspiration | — |
-| 81 | [The Spire of Mech Zero](https://store.steampowered.com/app/3263280/) | 131 | Slay the Spire | inspiration | — |
-| 82 | [Bronana](https://store.steampowered.com/app/2492330/) | 129 | Vampire Survivors | inspiration | — |
-| 83 | [Wyvern](https://store.steampowered.com/app/1541710/) | 127 | NetHack | inspiration | — |
-| 84 | [Bloody Heaven 2](https://store.steampowered.com/app/2816940/) | 123 | Hades | inspiration | — |
-| 85 | [Half Hour Hexagon](https://store.steampowered.com/app/2144080/) | 115 | Vampire Survivors | inspiration | — |
-| 86 | [Dungeons & Jewels](https://store.steampowered.com/app/2323980/) | 101 | Slay the Spire | inspiration | — |
-| 87 | [ShoreTiles](https://store.steampowered.com/app/4268460/) | 101 | Bad North | inspiration | — |
-| 88 | [Void Crew](https://store.steampowered.com/app/1063420/) | 5,126 | FTL | weaker (one feature, or "X meets Y") | — |
-| 89 | [BOOK OF HOURS](https://store.steampowered.com/app/1028310/) | 2,735 | Cultist Simulator | same developer | — |
-| 90 | [Sunless Skies: Sovereign Edition](https://store.steampowered.com/app/596970/) | 2,318 | Sunless Sea | same developer | — |
-| 91 | [Destiny of Immortal](https://store.steampowered.com/app/2377930/) | 1,934 | Backpack Hero | weaker (one feature, or "X meets Y") | — |
-| 92 | [Skillshot City](https://store.steampowered.com/app/308600/) | 1,907 | Vampire Survivors | weaker (one feature, or "X meets Y") | — |
-| 93 | [COMPOUND](https://store.steampowered.com/app/615120/) | 1,863 | Nuclear Throne | weaker (one feature, or "X meets Y") | — |
-| 94 | [Wizard with a Gun](https://store.steampowered.com/app/1150530/) | 1,813 | Don't Starve | weaker (one feature, or "X meets Y") | — |
-| 95 | [Maniac](https://store.steampowered.com/app/1482380/) | 1,760 | Vampire Survivors | weaker (one feature, or "X meets Y") | — |
-| 96 | [Black Book](https://store.steampowered.com/app/1138660/) | 1,080 | Slay the Spire | weaker (one feature, or "X meets Y") | — |
-| 97 | [Fictorum](https://store.steampowered.com/app/503620/) | 1,034 | Slay the Spire | weaker (one feature, or "X meets Y") | — |
-| 98 | [Space Warlord Organ Trading Simulator](https://store.steampowered.com/app/1507780/) | 832 | Inscryption | weaker (one feature, or "X meets Y") | — |
-| 99 | [Ironcast](https://store.steampowered.com/app/327670/) | 775 | FTL | weaker (one feature, or "X meets Y") | — |
-| 100 | [Indies' Lies](https://store.steampowered.com/app/1638390/) | 663 | Hades | weaker (one feature, or "X meets Y") | — |
-| 101 | [Mech Armada](https://store.steampowered.com/app/1389360/) | 657 | Spelunky | weaker (one feature, or "X meets Y") | — |
-| 102 | [QuiVr](https://store.steampowered.com/app/489380/) | 483 | Sundered | weaker (one feature, or "X meets Y") | — |
-| 103 | [Viractal: Will You Trust Your Party?](https://store.steampowered.com/app/2909580/) | 469 | Baroque | weaker (one feature, or "X meets Y") | — |
-| 104 | [Tenebris: Terra Incognita](https://store.steampowered.com/app/2280060/) | 461 | Darkest Dungeon | weaker (one feature, or "X meets Y") | — |
-| 105 | [Archmage Rises](https://store.steampowered.com/app/506480/) | 394 | FTL | weaker (one feature, or "X meets Y") | — |
-| 106 | [Here Comes The Swarm](https://store.steampowered.com/app/3052730/) | 369 | Diablo | weaker (one feature, or "X meets Y") | — |
-| 107 | [Hold The Mine](https://store.steampowered.com/app/3164960/) | 356 | Dome Keeper | weaker (one feature, or "X meets Y") | — |
-| 108 | [Tyrant's Blessing](https://store.steampowered.com/app/1520760/) | 298 | Into the Breach | weaker (one feature, or "X meets Y") | — |
-| 109 | [Grit and Valor - 1949](https://store.steampowered.com/app/1911860/) | 275 | Hades | weaker (one feature, or "X meets Y") | — |
-| 110 | [Whispers of the Eyeless](https://store.steampowered.com/app/2523890/) | 229 | Slay the Spire | weaker (one feature, or "X meets Y") | — |
-| 111 | [IIslands of War](https://store.steampowered.com/app/1162470/) | 122 | FTL | weaker (one feature, or "X meets Y") | — |
-| 112 | [Ampersat](https://store.steampowered.com/app/1356040/) | 116 | Angband | weaker (one feature, or "X meets Y") | — |
+The scripts were one-offs and are not in the repo.
 
-## The quotes
+## Part 1: the developer names a chart game (112 games)
+
+79 are roguelikes by their Steam tags, 14 borderline, 19 not. Ranked by what each would do for the map first (fixes one of your owned dead ends, brings an off-map game on, links two or more chart games), then by reviews.
+
+| # | Game | Reviews | Roguelike? | Would connect to | Kind | Map effect |
+|---|---|---|---|---|---|---|
+| 1 | [Berserk Mode](https://store.steampowered.com/app/1649630/) | 199 | yes (#1) | Post Void, Noita | inspiration | fixes your owned dead end: Post Void |
+| 2 | [Force Reboot](https://store.steampowered.com/app/1766010/) | 664 | yes (#6) | Post Void | inspiration | fixes your owned dead end: Post Void |
+| 3 | [Blood Vial](https://store.steampowered.com/app/3648730/) | 359 | yes (#3) | Post Void | inspiration | fixes your owned dead end: Post Void |
+| 4 | [MULLET MADJACK](https://store.steampowered.com/app/2111190/) | 4,828 | no (FPS, Boomer Shooter, Fast-Paced) | Post Void | weaker (one feature, or "X meets Y") | fixes your owned dead end: Post Void |
+| 5 | [Dungeon Souls](https://store.steampowered.com/app/383230/) | 1,308 | yes (#3) | Nuclear Throne, Risk of Rain, Shoot First | inspiration | fixes a dead end: Shoot First |
+| 6 | [Battlestar Galactica: Scattered Hopes](https://store.steampowered.com/app/2535950/) *(already a lead)* | 1,078 | yes (#3) | Crying Suns | same developer | fixes your owned dead end: Crying Suns |
+| 7 | [SENTRY](https://store.steampowered.com/app/1252680/) *(already a lead)* | 863 | no (FPS, Tower Defense, Sci-fi) | Abandon Ship | same developer | fixes your owned dead end: Abandon Ship |
+| 8 | [Shards of Order](https://store.steampowered.com/app/3432480/) | 668 | no (RPG, Card Battler, Story Rich) | Fear & Hunger, Darkest Dungeon | inspiration | fixes a dead end: Fear & Hunger |
+| 9 | [Quantum Protocol](https://store.steampowered.com/app/1328530/) | 625 | borderline (#9) | Vault of the Void | weaker (one feature, or "X meets Y") | fixes your owned dead end: Vault of the Void |
+| 10 | [SNAKE FARM](https://store.steampowered.com/app/2491640/) *(already a lead)* | 393 | yes (#1) | Fish Fear Me | same developer | fixes your owned dead end: Fish Fear Me |
+| 11 | [Hunter's Moon: A Sovereign Syndicate Adventure](https://store.steampowered.com/app/3877790/) | 212 | yes (#1) | Darkest Dungeon, Slay the Spire, Knock on the Coffin Lid | inspiration | fixes a dead end: Knock on the Coffin Lid |
+| 12 | [Cat Bait](https://store.steampowered.com/app/2929730/) | 1,459 | borderline (#9) | Vampire Survivors, Brotato | inspiration | 2 links |
+| 13 | [Ravenbound](https://store.steampowered.com/app/1307660/) | 775 | yes (#2) | Slay the Spire, Risk of Rain 2, Cult of the Lamb | inspiration | 3 links |
+| 14 | [Overture](https://store.steampowered.com/app/343100/) | 566 | yes (#1) | Diablo, Realm of the Mad God, The Binding of Isaac | inspiration | 3 links |
+| 15 | [Fhtagn Simulator](https://store.steampowered.com/app/2050590/) | 538 | yes (#2) | Luck be a Landlord, Slay the Spire, Monster Train | inspiration | 3 links |
+| 16 | [Fabled Lands](https://store.steampowered.com/app/1299620/) | 525 | yes (#5) | Wildermyth | inspiration | brings on: Wildermyth |
+| 17 | [Lucky Hunter](https://store.steampowered.com/app/2824310/) | 415 | yes (#2) | Slay the Spire, Luck be a Landlord | inspiration | 2 links |
+| 18 | [NITRO GEN OMEGA](https://store.steampowered.com/app/2525510/) | 408 | no (Strategy, RPG, Open World) | Battle Brothers, Darkest Dungeon | inspiration | 2 links |
+| 19 | [Biters & Bullets: Prologue](https://store.steampowered.com/app/1811430/) | 362 | yes (#2) | Vampire Survivors, Magic Survival, Risk of Rain | inspiration | 3 links |
+| 20 | [Of Blades & Tails](https://store.steampowered.com/app/1768780/) | 360 | yes (#6) | Diablo, Tales of Maj'Eyal, Stoneshard | inspiration | 3 links |
+| 21 | [Cozy Space Survivors](https://store.steampowered.com/app/2657850/) | 342 | yes (#1) | Vampire Survivors, The Binding of Isaac, Halls of Torment | inspiration | 3 links |
+| 22 | [Murim Survival](https://store.steampowered.com/app/3449590/) | 270 | yes (#4) | Vampire Survivors, Diablo | inspiration | 2 links |
+| 23 | [Gods vs Horrors](https://store.steampowered.com/app/2994240/) | 256 | yes (#2) | Slay the Spire, Super Auto Pets, Teamfight Tactics, Balatro | inspiration | 4 links |
+| 24 | [CROPS!](https://store.steampowered.com/app/3057760/) | 211 | yes (#4) | The Bazaar, Backpack Battles, Super Auto Pets | inspiration | 3 links |
+| 25 | [Towerful Defense: A Rogue TD](https://store.steampowered.com/app/2453610/) | 209 | yes (#1) | Brotato, Vampire Survivors | inspiration | 2 links |
+| 26 | [Starforged Legacy](https://store.steampowered.com/app/3353390/) | 192 | yes (#2) | Vampire Survivors, FTL | inspiration | 2 links |
+| 27 | [Lost In The Open](https://store.steampowered.com/app/2027380/) | 162 | yes (#4) | Battle Brothers, Darkest Dungeon | inspiration | 2 links |
+| 28 | [Skeletal Avenger](https://store.steampowered.com/app/1277500/) *(already a lead)* | 158 | yes (#2) | Hades, Dead Cells | inspiration | 2 links |
+| 29 | [Becoming Saint](https://store.steampowered.com/app/2643010/) | 136 | borderline (#8) | Bad North, Into the Breach | inspiration | 2 links |
+| 30 | [Monster X Monster](https://store.steampowered.com/app/1073490/) | 135 | yes (#1) | Darkest Dungeon, Slay the Spire | inspiration | 2 links |
+| 31 | [Woodpunk](https://store.steampowered.com/app/878420/) | 119 | yes (#2) | Nuclear Throne, Enter the Gungeon | inspiration | 2 links |
+| 32 | [REPLIKATOR](https://store.steampowered.com/app/1576370/) | 114 | yes (#2) | Nuclear Throne, Dead Cells | inspiration | 2 links |
+| 33 | [INTO EVIL](https://store.steampowered.com/app/1893440/) | 107 | yes (#2) | Teleglitch | inspiration | fixes a dead end: Teleglitch |
+| 34 | [Chrono Survival](https://store.steampowered.com/app/1897740/) | 104 | yes (#2) | Vampire Survivors, The Binding of Isaac | inspiration | 2 links |
+| 35 | [UFO 50](https://store.steampowered.com/app/1147860/) *(already a lead)* | 6,612 | no (Indie, Pixel Graphics, Retro) | Spelunky, Downwell, Catacomb Kids | same developer | 3 links |
+| 36 | [Shortest Trip to Earth](https://store.steampowered.com/app/812040/) | 1,262 | yes (#1) | Teleglitch | same developer | fixes a dead end: Teleglitch |
+| 37 | [Serious Sam: Tormental](https://store.steampowered.com/app/640340/) | 194 | yes (#2) | Nuclear Throne, The Binding of Isaac, Enter the Gungeon | weaker (one feature, or "X meets Y") | 3 links |
+| 38 | [Power Chord](https://store.steampowered.com/app/1724390/) | 170 | yes (#1) | Slay the Spire, Monster Train, Darkest Dungeon | weaker (one feature, or "X meets Y") | 3 links |
+| 39 | [GUNHEAD](https://store.steampowered.com/app/704000/) *(already a lead)* | 156 | yes (#4) | Cryptark | same developer | brings on: Cryptark |
+| 40 | [Slimekeep](https://store.steampowered.com/app/1552500/) | 109 | yes (#1) | Balatro, Inscryption | weaker (one feature, or "X meets Y") | 2 links |
+| 41 | [Rise to Ruins](https://store.steampowered.com/app/328080/) | 5,118 | no (Tower Defense, Colony Sim, City Builder) | Dwarf Fortress | inspiration | — |
+| 42 | [Magicite](https://store.steampowered.com/app/268750/) | 3,677 | yes (#3) | Spelunky | inspiration | — |
+| 43 | [Relic Hunters Zero: Remix](https://store.steampowered.com/app/382490/) | 2,977 | yes (#5) | Risk of Rain | inspiration | — |
+| 44 | [Moonstone Island](https://store.steampowered.com/app/1658150/) | 2,939 | no (Creature Collector, Deckbuilding, 2D) | Slay the Spire | inspiration | — |
+| 45 | [Trigon: Space Story](https://store.steampowered.com/app/1226510/) | 1,249 | yes (#2) | FTL | inspiration | — |
+| 46 | [FrostBound](https://store.steampowered.com/app/3649580/) | 1,202 | yes (#3) | Slay the Spire | inspiration | — |
+| 47 | [Dead Age 2: The Zombie Survival RPG](https://store.steampowered.com/app/951430/) | 1,157 | no (Zombies, Party-Based RPG, Adventure) | Darkest Dungeon | inspiration | — |
+| 48 | [OVIS LOOP](https://store.steampowered.com/app/2226730/) | 1,101 | yes (#3) | Slay the Spire | inspiration | — |
+| 49 | [Wretch: Divine Ascent](https://store.steampowered.com/app/3081280/) | 983 | borderline (#7) | Backpack Battles | inspiration | — |
+| 50 | [Deathless. The Hero Quest](https://store.steampowered.com/app/2727210/) | 957 | yes (#1) | Slay the Spire | inspiration | — |
+| 51 | [Down with the Ship](https://store.steampowered.com/app/3523750/) | 861 | borderline (#8) | Backpack Battles | inspiration | — |
+| 52 | [Vambrace: Cold Soul](https://store.steampowered.com/app/904380/) | 694 | borderline (#7) | FTL | inspiration | — |
+| 53 | [Poker Quest: Swords and Spades](https://store.steampowered.com/app/1184820/) | 685 | yes (#2) | Slay the Spire | inspiration | — |
+| 54 | [红石遗迹 - Red Obsidian Remnant](https://store.steampowered.com/app/610960/) | 678 | yes (#1) | The Binding of Isaac | inspiration | — |
+| 55 | [Backpack Jianghu](https://store.steampowered.com/app/3972650/) | 589 | yes (#4) | Backpack Battles | inspiration | — |
+| 56 | [Dark Fairy Tale: Dreamland Survivors](https://store.steampowered.com/app/3288300/) | 479 | yes (#1) | Vampire Survivors | inspiration | — |
+| 57 | [March of the Living](https://store.steampowered.com/app/458000/) | 433 | yes (#2) | FTL | inspiration | — |
+| 58 | [Gangs of Space](https://store.steampowered.com/app/504300/) | 433 | no (Free to Play, Massively Multiplayer, Early Access) | The Binding of Isaac | inspiration | — |
+| 59 | [Westale: Peelgrimage](https://store.steampowered.com/app/1141760/) | 413 | yes (#1) | Vampire Survivors | inspiration | — |
+| 60 | [All Walls Must Fall - A Tech-Noir Tactics Game](https://store.steampowered.com/app/628290/) | 406 | yes (#6) | Crypt of the NecroDancer | inspiration | — |
+| 61 | [Pixel Starships 2](https://store.steampowered.com/app/2154270/) | 396 | yes (#5) | FTL | inspiration | — |
+| 62 | [Farm Keeper](https://store.steampowered.com/app/2458940/) | 390 | no (Strategy, Farming, Pixel Graphics) | Luck be a Landlord | inspiration | — |
+| 63 | [WAR RATS: The Rat em Up](https://store.steampowered.com/app/3167260/) | 388 | borderline (#11) | Kingdom: New Lands | inspiration | — |
+| 64 | [Draft of Darkness](https://store.steampowered.com/app/1380650/) | 341 | yes (#1) | Slay the Spire | inspiration | — |
+| 65 | [Crimson Dawn](https://store.steampowered.com/app/1919720/) | 328 | yes (#3) | Vampire Survivors | inspiration | — |
+| 66 | [Forgotten Mines](https://store.steampowered.com/app/2238630/) | 305 | yes (#3) | FTL | inspiration | — |
+| 67 | [The Hand of Merlin](https://store.steampowered.com/app/600610/) | 302 | yes (#3) | FTL | inspiration | — |
+| 68 | [Destropolis](https://store.steampowered.com/app/1316800/) | 259 | yes (#1) | Nuclear Throne | inspiration | — |
+| 69 | [Rising Hell](https://store.steampowered.com/app/657000/) | 225 | yes (#1) | Downwell | inspiration | — |
+| 70 | [Crawl Tactics](https://store.steampowered.com/app/1290750/) | 213 | no (Casual, RPG, Strategy) | FTL | inspiration | — |
+| 71 | [Against Great Darkness](https://store.steampowered.com/app/2302150/) | 206 | yes (#3) | Hades | inspiration | — |
+| 72 | [Raining Blood: Hellfire](https://store.steampowered.com/app/2147530/) | 201 | yes (#2) | Enter the Gungeon | inspiration | — |
+| 73 | [Hive Jump](https://store.steampowered.com/app/295670/) | 189 | yes (#3) | Spelunky | inspiration | — |
+| 74 | [Nautical Survival](https://store.steampowered.com/app/2860990/) | 183 | yes (#1) | Brotato | inspiration | — |
+| 75 | [Depth of Extinction](https://store.steampowered.com/app/636320/) | 176 | yes (#3) | FTL | inspiration | — |
+| 76 | [Blood Rush](https://store.steampowered.com/app/2435870/) | 163 | yes (#2) | Hades | inspiration | — |
+| 77 | [ARRIVAL: ZERO EARTH](https://store.steampowered.com/app/1613580/) | 155 | yes (#1) | Risk of Rain 2 | inspiration | — |
+| 78 | [Cavern Kings](https://store.steampowered.com/app/321830/) | 155 | yes (#6) | Risk of Rain | inspiration | — |
+| 79 | [The Amazing American Circus](https://store.steampowered.com/app/1433860/) | 138 | borderline (#9) | Slay the Spire | inspiration | — |
+| 80 | [Dead Monarchy](https://store.steampowered.com/app/1037940/) | 132 | no (Indie, Strategy, RPG) | Battle Brothers | inspiration | — |
+| 81 | [The Spire of Mech Zero](https://store.steampowered.com/app/3263280/) | 131 | no (Strategy, Deckbuilding, Card Game) | Slay the Spire | inspiration | — |
+| 82 | [Bronana](https://store.steampowered.com/app/2492330/) | 129 | yes (#2) | Vampire Survivors | inspiration | — |
+| 83 | [Wyvern](https://store.steampowered.com/app/1541710/) | 127 | borderline (#9) | NetHack | inspiration | — |
+| 84 | [Bloody Heaven 2](https://store.steampowered.com/app/2816940/) | 123 | yes (#2) | Hades | inspiration | — |
+| 85 | [Half Hour Hexagon](https://store.steampowered.com/app/2144080/) | 115 | yes (#3) | Vampire Survivors | inspiration | — |
+| 86 | [Dungeons & Jewels](https://store.steampowered.com/app/2323980/) | 101 | yes (#1) | Slay the Spire | inspiration | — |
+| 87 | [ShoreTiles](https://store.steampowered.com/app/4268460/) | 101 | yes (#3) | Bad North | inspiration | — |
+| 88 | [Void Crew](https://store.steampowered.com/app/1063420/) | 5,126 | yes (#4) | FTL | weaker (one feature, or "X meets Y") | — |
+| 89 | [BOOK OF HOURS](https://store.steampowered.com/app/1028310/) | 2,735 | no (RPG, Card Game, Exploration) | Cultist Simulator | same developer | — |
+| 90 | [Sunless Skies: Sovereign Edition](https://store.steampowered.com/app/596970/) | 2,318 | no (Steampunk, Lovecraftian, Exploration) | Sunless Sea | same developer | — |
+| 91 | [Destiny of Immortal](https://store.steampowered.com/app/2377930/) | 1,934 | no (Early Access, RPG, Xianxia) | Backpack Hero | weaker (one feature, or "X meets Y") | — |
+| 92 | [Skillshot City](https://store.steampowered.com/app/308600/) | 1,907 | yes (#2) | Vampire Survivors | weaker (one feature, or "X meets Y") | — |
+| 93 | [COMPOUND](https://store.steampowered.com/app/615120/) | 1,863 | yes (#2) | Nuclear Throne | weaker (one feature, or "X meets Y") | — |
+| 94 | [Wizard with a Gun](https://store.steampowered.com/app/1150530/) | 1,813 | borderline (#7) | Don't Starve | weaker (one feature, or "X meets Y") | — |
+| 95 | [Maniac](https://store.steampowered.com/app/1482380/) | 1,760 | yes (#3) | Vampire Survivors | weaker (one feature, or "X meets Y") | — |
+| 96 | [Black Book](https://store.steampowered.com/app/1138660/) | 1,080 | borderline (#8) | Slay the Spire | weaker (one feature, or "X meets Y") | — |
+| 97 | [Fictorum](https://store.steampowered.com/app/503620/) | 1,034 | yes (#1) | Slay the Spire | weaker (one feature, or "X meets Y") | — |
+| 98 | [Space Warlord Organ Trading Simulator](https://store.steampowered.com/app/1507780/) | 832 | yes (#3) | Inscryption | weaker (one feature, or "X meets Y") | — |
+| 99 | [Ironcast](https://store.steampowered.com/app/327670/) | 775 | borderline (#8) | FTL | weaker (one feature, or "X meets Y") | — |
+| 100 | [Indies' Lies](https://store.steampowered.com/app/1638390/) | 663 | yes (#1) | Hades | weaker (one feature, or "X meets Y") | — |
+| 101 | [Mech Armada](https://store.steampowered.com/app/1389360/) | 657 | yes (#3) | Spelunky | weaker (one feature, or "X meets Y") | — |
+| 102 | [QuiVr](https://store.steampowered.com/app/489380/) | 483 | no (Archery, VR, Co-op) | Sundered | weaker (one feature, or "X meets Y") | — |
+| 103 | [Viractal: Will You Trust Your Party?](https://store.steampowered.com/app/2909580/) | 469 | no (Board Game, RPG, Strategy) | Baroque | weaker (one feature, or "X meets Y") | — |
+| 104 | [Tenebris: Terra Incognita](https://store.steampowered.com/app/2280060/) | 461 | borderline (#10) | Darkest Dungeon | weaker (one feature, or "X meets Y") | — |
+| 105 | [Archmage Rises](https://store.steampowered.com/app/506480/) | 394 | borderline (#11) | FTL | weaker (one feature, or "X meets Y") | — |
+| 106 | [Here Comes The Swarm](https://store.steampowered.com/app/3052730/) | 369 | no (Early Access, Strategy, Survival) | Diablo | weaker (one feature, or "X meets Y") | — |
+| 107 | [Hold The Mine](https://store.steampowered.com/app/3164960/) | 356 | yes (#5) | Dome Keeper | weaker (one feature, or "X meets Y") | — |
+| 108 | [Tyrant's Blessing](https://store.steampowered.com/app/1520760/) | 298 | yes (#4) | Into the Breach | weaker (one feature, or "X meets Y") | — |
+| 109 | [Grit and Valor - 1949](https://store.steampowered.com/app/1911860/) | 275 | yes (#4) | Hades | weaker (one feature, or "X meets Y") | — |
+| 110 | [Whispers of the Eyeless](https://store.steampowered.com/app/2523890/) | 229 | yes (#2) | Slay the Spire | weaker (one feature, or "X meets Y") | — |
+| 111 | [IIslands of War](https://store.steampowered.com/app/1162470/) | 122 | yes (#5) | FTL | weaker (one feature, or "X meets Y") | — |
+| 112 | [Ampersat](https://store.steampowered.com/app/1356040/) | 116 | yes (#4) | Angband | weaker (one feature, or "X meets Y") | — |
+
+### The quotes
 
 1. **Berserk Mode** → Post Void, Noita: “FEATURES - Time-attack shooter rogue-lite gameplay, full runs take around 30 mins - Beast transformation mechanic with customisable beast weapons - Risk deadly curses and alternate zones in exchange f” ([source](https://store.steampowered.com/app/1649630/))
 2. **Force Reboot** → Post Void: “Force Reboot is directly inspired by Post Void and ULTRAKILL .” ([source](https://store.steampowered.com/app/1766010/))
 3. **Blood Vial** → Post Void: “Blood Vial was inspired by Post Void, Splatoon and Ultrakill.” ([source](https://store.steampowered.com/app/3648730/))
-4. **Dungeon Souls** → Nuclear Throne, Risk of Rain, Shoot First: “Dungeon Souls was inspired by Nuclear Throne, Risk of Rain, Overture, BitVenture and Shoot First.” ([source](https://store.steampowered.com/app/383230/))
-5. **Battlestar Galactica: Scattered Hopes** → Crying Suns: “cter research (Artbook) Staying true to the franchise’s canons, our 3D artists Louis-Julien Berthe and Uriel Lacroix (both already artists on our previous game Crying Suns) used a mix of 3D modeling and pixel art textures to recreate the series’ iconic spaceships, as well as to create new models essential to our game design consistent with the series’ univer” ([source](https://steamstore-a.akamaihd.net/news/externalpost/steam_community_announcements/1831432155577632))
-6. **SENTRY** → Abandon Ship: “While SENTRY is our priority, it was the anniversary of our last game Abandon Ship recently, so we found the time to add some free content to that game to celebrate – one of the new ships was inspired by a SENTRY, as you can see from this concept + model below: {STEAM_C” ([source](https://steamstore-a.akamaihd.net/news/externalpost/steam_community_announcements/5059268543375180305))
-7. **Shards of Order** → Fear & Hunger, Darkest Dungeon: “We looked for inspiration in games like Fear & Hunger, the Dark Souls series, Darkest Dungeon and Kingdom Death.” ([source](https://steamstore-a.akamaihd.net/news/externalpost/steam_community_announcements/1819386365114509))
-8. **Quantum Protocol** → Vault of the Void: “The deck is fast and aggressive, making use of a super cool combo system inspired by The Hidden from Vault of the Void.” ([source](https://steamstore-a.akamaihd.net/news/externalpost/steam_community_announcements/4516534149071730092))
-9. **SNAKE FARM** → Fish Fear Me: “I'm incredibly excited to announce the spiritual sequel to SNAKE FARM, titled FISH FEAR ME!” ([source](https://steamstore-a.akamaihd.net/news/externalpost/steam_community_announcements/5963413094348729449))
-10. **Hunter's Moon: A Sovereign Syndicate Adventure** → Darkest Dungeon, Slay the Spire, Knock on the Coffin Lid: “Many of you know the game was a large inspiration for Hunter’s Moon: A Sovereign Syndicate Adventure, along with other favourites like Darkest Dungeon, Slay the Spire, and Knock on the Coffin Lid.” ([source](https://steamstore-a.akamaihd.net/news/externalpost/steam_community_announcements/1816849002019886))
-11. **Cat Bait** → Vampire Survivors, Brotato: “Get ready for exciting battles in the world of Cat Bait , a casual game with cute pixel graphics inspired by Vampire Survivors and Brotato !” ([source](https://store.steampowered.com/app/2929730/))
-12. **Ravenbound** → Slay the Spire, Risk of Rain 2, Cult of the Lamb: “In terms of games that inspired us, Slay the Spire, Risk of Rain 2 and Cult of the Lamb are some of the biggest inspirations for the roguelite part.” ([source](https://steamstore-a.akamaihd.net/news/externalpost/steam_community_announcements/5138087875076347959))
-13. **Overture** → Diablo, Realm of the Mad God, The Binding of Isaac: “Overture is an action-adventure roguelike which draws heavy inspiration from hits such as Diablo, Realm of The Mad God, Zelda, and The Binding of Isaac.” ([source](https://store.steampowered.com/app/343100/))
-14. **Fhtagn Simulator** → Luck be a Landlord, Slay the Spire, Monster Train: “Fhtagn Simulator is a Roguelike card game inspired by deck-building games such as Luck be a Landlord, Slay the Spire, and Monster Train.” ([source](https://store.steampowered.com/app/2050590/))
-15. **Fabled Lands** → Wildermyth: “PS: Heavily inspired by Wildermyth, thank you Nate :)” ([source](https://steamstore-a.akamaihd.net/news/externalpost/steam_community_announcements/5124582150130783783))
-16. **Lucky Hunter** → Slay the Spire, Luck be a Landlord: “Lucky Hunter draws inspiration from many renowned games while incorporating the developer's unique ideas: the relic system and combat progression from Slay the Spire, the synergy mechanics from Luck Be a Landlord, and the merging and upgrading of pieces seen in auto-battler games.” ([source](https://steamstore-a.akamaihd.net/news/externalpost/steam_community_announcements/5746109972564067111))
-17. **NITRO GEN OMEGA** → Battle Brothers, Darkest Dungeon: “On the outside it's a turn-based sandbox tactical RPG inspired by games such as Battle Brothers, Darkest Dungeon and Fire Emblem.” ([source](https://steamstore-a.akamaihd.net/news/externalpost/steam_community_announcements/6350729003512695360))
-18. **Biters & Bullets: Prologue** → Vampire Survivors, Magic Survival, Risk of Rain: “Heavily inspired by great rogue-likes such as Vampire Survivors, Magic Survival and Risk of Rain.” ([source](https://store.steampowered.com/app/1811430/))
-19. **Of Blades & Tails** → Diablo, Tales of Maj'Eyal, Stoneshard: “The gameplay is inspired by classic Hack & Slays like Diablo and turn-based RPGs like Tales of Maj'Eyal or Stoneshard .” ([source](https://store.steampowered.com/app/1768780/))
-20. **Cozy Space Survivors** → Vampire Survivors, The Binding of Isaac, Halls of Torment: “I drew a lot of inspiration from other games, and here are the most important ones: Vampire Survivors for the general simple (but awesome!) gameplay Binding of Isaac for physicality of bullets Halls of Torment for adding Quests to a Vampire Survivors-Like Fallout for the story summar” ([source](https://store.steampowered.com/app/2657850/))
-21. **Murim Survival** → Vampire Survivors, Diablo: “Survive to the End Inspired by Vampire Survivors and Diablo , Murim Survival is a roguelite RPG focused on equipment looting and character growth.” ([source](https://store.steampowered.com/app/3449590/))
-22. **Gods vs Horrors** → Slay the Spire, Super Auto Pets, Teamfight Tactics, Balatro: “Game inspirations: Hearthstone's Battlegrounds mode, Slay the Spire, Super Auto Pets, Teamfight Tactics, Balatro, Magic the Gathering drafting.” ([source](https://store.steampowered.com/app/2994240/))
-23. **CROPS!** → The Bazaar, Backpack Battles, Super Auto Pets: “It's inspired by games like The Bazaar, Backpack Battles and Super Auto Pets The demo is available now for free!” ([source](https://steamstore-a.akamaihd.net/news/externalpost/steam_community_announcements/1797820624623866))
-24. **Towerful Defense: A Rogue TD** → Brotato, Vampire Survivors: “I was a huge fan of games like Brotato, Vampire Survivors, 20 Minutes to Dawn,...and so many more games that Towerful Defense: A Rogue TD has its inspiration from.” ([source](https://steamstore-a.akamaihd.net/news/externalpost/steam_community_announcements/5746109972567716737))
-25. **Starforged Legacy** → Vampire Survivors, FTL: “salvage and augment weapons to become a fleet-leveling cosmic killing machine in a war-torn, procedurally generated galaxy, inspired by renowned titles such as Vampire Survivors and Faster Than Light , and slated for a late 2025 Early Access release, we've prepared a brief trailer to get you up to speed.” ([source](https://steamstore-a.akamaihd.net/news/externalpost/steam_community_announcements/1807332909614115))
-26. **Lost In The Open** → Battle Brothers, Darkest Dungeon: “Over the past two years, we’ve been working hard on Lost in the Open, a challenging turn-based strategy game inspired by the likes of Battle Brothers, Darkest Dungeon, and many others.” ([source](https://steamstore-a.akamaihd.net/news/externalpost/steam_community_announcements/5124583599318216193))
-27. **Skeletal Avenger** → Hades, Dead Cells: “HADES and Dead Cells have influenced the core gameplay and our goals with it a lot.” ([source](https://steamstore-a.akamaihd.net/news/externalpost/steam_community_announcements/4644854581175360231))
-28. **Becoming Saint** → Bad North, Into the Breach: “For the combination of 2D characters and 3D settings, Bad North was a very cool inspiration.” ([source](https://steamstore-a.akamaihd.net/news/externalpost/steam_community_announcements/6240387642458238464))
-29. **Monster X Monster** → Darkest Dungeon, Slay the Spire: “The game is mainly inspired by Darkest Dungeon and Slay the spire.” ([source](https://store.steampowered.com/app/1073490/))
-30. **Woodpunk** → Nuclear Throne, Enter the Gungeon: “GAMES THAT INSPIRED US Nuclear Throne, Enter the Gungeon, Metal Slug, Golden Axe, and more!” ([source](https://store.steampowered.com/app/878420/))
-31. **REPLIKATOR** → Nuclear Throne, Dead Cells: “REPLIKATOR is a fast Top Down Shooter with roguelike elements, inspired by the games Nuclear Throne and Dead Cells.” ([source](https://steamstore-a.akamaihd.net/news/externalpost/steam_community_announcements/4516534149056291216))
-32. **INTO EVIL** → Teleglitch: “Teleglitch — a roguelike top-down shooter with retro pixel graphics, — can be considered to be the main source of inspiration for INTO EVIL.” ([source](https://steamstore-a.akamaihd.net/news/externalpost/steam_community_announcements/1791482680861975))
-33. **Chrono Survival** → Vampire Survivors, The Binding of Isaac: “Inspired by games such as Vampire Survivors, Path of Exile and The Binding of Isaac.” ([source](https://store.steampowered.com/app/1897740/))
-34. **UFO 50** → Spelunky, Downwell, Catacomb Kids: “UFO 50 is a collection of 50 single and multiplayer games from the creators of Spelunky, Downwell, and Catacomb Kids.” ([source](https://store.steampowered.com/app/1147860/))
-35. **Shortest Trip to Earth** → Teleglitch: “From the writer of ‘Teleglitch: Die More Edition’, Shortest Trip to Earth is a roguelike spaceship simulator featuring exploration, ship management, game-influencing decision-making and real-time tactical battles.” ([source](https://steamstore-a.akamaihd.net/news/externalpost/steam_community_announcements/2462791699388867490))
-36. **Serious Sam: Tormental** → Nuclear Throne, The Binding of Isaac, Enter the Gungeon: “Created by fans of Geometry Wars, Nuclear Throne, Binding of Isaac, Serious Sam, and Enter the Gungeon.” ([source](https://store.steampowered.com/app/640340/))
-37. **Power Chord** → Slay the Spire, Monster Train, Darkest Dungeon: “We're big fans of: Slay the Spire Monster Train Darkest Dungeon .” ([source](https://store.steampowered.com/app/1724390/))
-38. **GUNHEAD** → Cryptark: “Sequel to the 2d roguelite Cryptark.” ([source](https://store.steampowered.com/app/704000/))
-39. **Slimekeep** → Balatro, Inscryption: “I've taken inspiration from games like Balatro's "stakes" system and Inscryption's "Kaycee's Mod" to create something that will hopefully be fun to play around with.” ([source](https://steamstore-a.akamaihd.net/news/externalpost/steam_community_announcements/1800991756441970))
-40. **Rise to Ruins** → Dwarf Fortress: “Inspired by games like Black and White, Rimworld, and Dwarf Fortress but not quite like any of them.” ([source](https://store.steampowered.com/app/328080/))
-41. **Magicite** → Spelunky: “Magicite's main influences were Monster Hunter and Spelunky.” ([source](https://store.steampowered.com/app/268750/))
-42. **Relic Hunters Zero: Remix** → Risk of Rain: “I have been having a lot of fun with Risk of Rain recently, so I looked at Relic Hunters Zero and thought “hey, I could totally make a RoR-inspired gameplay work in here”...” ([source](https://steamstore-a.akamaihd.net/news/externalpost/steam_community_announcements/2405396896208818882))
-43. **Moonstone Island** → Slay the Spire: “We're really influenced by games like Slay the Spire, where individual cards can make or break a deck, but you can also create decks that center around one particular mechanic.” ([source](https://steamstore-a.akamaihd.net/news/externalpost/steam_community_announcements/5124585954863718071))
-44. **Trigon: Space Story** → FTL: “With a Demo currently available on Steam, this FTL-inspired galactic adventure will be released in 2022.” ([source](https://steamstore-a.akamaihd.net/news/externalpost/steam_community_announcements/4224939931846082860))
-45. **FrostBound** → Slay the Spire: “Naturally, the game’s rules were influenced by titles like Gwent and Slay the Spire.” ([source](https://steamstore-a.akamaihd.net/news/externalpost/steam_community_announcements/1815034433040658))
-46. **Dead Age 2: The Zombie Survival RPG** → Darkest Dungeon: “Inspired by Darkest Dungeon, Fallout 1+2, This War of Mine and The Walking Dead.” ([source](https://store.steampowered.com/app/951430/))
-47. **OVIS LOOP** → Slay the Spire: “c8613bdf1153101a26df1f39cb9d6edf.png While pondering over a solution, we were greatly inspired by the organic card combinations in the deck-building roguelike "Slay the Spire".” ([source](https://steamstore-a.akamaihd.net/news/externalpost/steam_community_announcements/5395938616812356939))
-48. **Wretch: Divine Ascent** → Backpack Battles: “It was inspired by Backpack Battles and developed with Unreal Engine.” ([source](https://store.steampowered.com/app/3081280/))
-49. **Deathless. The Hero Quest** → Slay the Spire: “Tales of Old Rus inspired by games like Slay the Spire is set in Belosvet, a fantasy world home to bogatyrs, wizards, and sorcerers, amusing little spirits known as nechistiks, and myriad creatures most foul.” ([source](https://steamstore-a.akamaihd.net/news/externalpost/steam_community_announcements/6890025005366992413))
-50. **Down with the Ship** → Backpack Battles: “Proxy Studios is teaming up with a new solo indie dev—Nate (Iron Anchor Games)—to publish Down with the Ship, a Backpack Battles-inspired spaceship auto battler.” ([source](https://steamstore-a.akamaihd.net/news/externalpost/steam_community_announcements/1806698490814102))
-51. **Vambrace: Cold Soul** → FTL: “It's a real love letter to the JRPGs we grew up with and newer indie titles like, FTL, that have heavily inspired Vambrace's mechanics."  Vambrace: Cold Soul will” ([source](https://steamstore-a.akamaihd.net/news/externalpost/steam_community_announcements/2434668385548400616))
-52. **Poker Quest: Swords and Spades** → Slay the Spire: “The world map takes inspiration from Slay the Spire, with the intent of providing a great variety of events.” ([source](https://store.steampowered.com/app/1184820/))
-53. **红石遗迹 - Red Obsidian Remnant** → The Binding of Isaac: “In the aspect of Roguelike elements, we borrow a lot from The Binding of Isaac.” ([source](https://store.steampowered.com/app/610960/))
-54. **Backpack Jianghu** → Backpack Battles: “Inspired by Backpack Battles , but with big innovations.” ([source](https://store.steampowered.com/app/3972650/))
-55. **Dark Fairy Tale: Dreamland Survivors** → Vampire Survivors: “Dark Fairy Tale: Dreamland Survivors is a roguelike game inspired by Vampire Survivors.” ([source](https://store.steampowered.com/app/3288300/))
-56. **March of the Living** → FTL: “Roguelike-like inspired by FTL and popular zombie fiction.” ([source](https://store.steampowered.com/app/458000/))
-57. **Gangs of Space** → The Binding of Isaac: “Isaac The Binding of Isaac by Edmund McMillen is one of our cult games that has greatly influenced the latest version of Gangs of Space.” ([source](https://steamstore-a.akamaihd.net/news/externalpost/steam_community_announcements/2145261379784527820))
-58. **Westale: Peelgrimage** → Vampire Survivors: “About the game Inspired by titles such as Vampire Survivors, Westale: Peelgrimage is Bullet Hell game with a very unique ink-and-wash art style to it.” ([source](https://steamstore-a.akamaihd.net/news/externalpost/steam_community_announcements/5409450219985740834))
-59. **All Walls Must Fall - A Tech-Noir Tactics Game** → Crypt of the NecroDancer: “All Walls Must Fall takes inspiration from genre classics like X-Com , Syndicate and REZ , as well more recent indie games like The Banner Saga , Braid , SUPERHOT and Crypt of the Necrodancer .” ([source](https://store.steampowered.com/app/628290/))
-60. **Pixel Starships 2** → FTL: “The strategy mechanics are inspired by games such as FTL, Eve online, and Final Fantasy, and XCom.” ([source](https://store.steampowered.com/app/2154270/))
-61. **Farm Keeper** → Luck be a Landlord: “This update is our heartfelt tribute to the game, Luck Be A Landlord , which has inspired Farm Keeper.” ([source](https://steamstore-a.akamaihd.net/news/externalpost/steam_community_announcements/5124582150174628736))
-62. **WAR RATS: The Rat em Up** → Kingdom: New Lands: “Inspired by games such as Kingdom: New Lands and Futurecop LAPD's Precinct Assault mode (now generally considered to be the first ever MOBA) delivered in a package that evokes the brutal, gory 90s gaming sprites of old, it's a” ([source](https://store.steampowered.com/app/3167260/))
-63. **Draft of Darkness** → Slay the Spire: “In Draft of Darkness, you will be: exploring procedurally generated maps, fighting enemies in "Slay The Spire" inspired card combat - with unique twists, recruiting new allies to aid you in battle, ma” ([source](https://steamstore-a.akamaihd.net/news/externalpost/steam_community_announcements/4050393736353765272))
-64. **Crimson Dawn** → Vampire Survivors: “Crimson Dawn is a bullet hell survival game inspired by Vampire Survivors.” ([source](https://store.steampowered.com/app/1919720/))
-65. **Forgotten Mines** → FTL: “1dd8846f11379b8ffa965643ee527898ff87.png Inspiration, innovation Forgotten Mines takes its inspiration from impactful roguelikes in the indie community such as FTL (Subset Games, 2012) which brings combat in real time where the enemy is always on the move.” ([source](https://steamstore-a.akamaihd.net/news/externalpost/steam_community_announcements/5409450219987516381))
-66. **The Hand of Merlin** → FTL: “The idea was inspired by FTL, where you unlock ships as you play the game, as a meta progression aspect.” ([source](https://steamstore-a.akamaihd.net/news/externalpost/steam_community_announcements/3819572206263534187))
-67. **Destropolis** → Nuclear Throne: “Destropolis is a top-down shooter game, inspired by such classic games like “Crimsonland”, “Alien Shooter” or “Nuclear Throne”.” ([source](https://store.steampowered.com/app/1316800/))
-68. **Rising Hell** → Downwell: “The game itself was heavily inspired by Downwell, which is also a vertical platformer.” ([source](https://steamstore-a.akamaihd.net/news/externalpost/steam_community_announcements/4738301364298846389))
-69. **Crawl Tactics** → FTL: “Influenced by the combat of Tactics Ogre and the roguelite progression of FTL, the aim was to create a game where each new battlefield offered fresh interactions and strategic combat.” ([source](https://steamstore-a.akamaihd.net/news/externalpost/steam_community_announcements/1818752592124702))
-70. **Against Great Darkness** → Hades: “The dynamic storytelling in Hades, seamlessly blending narrative into gameplay through the hub and in-run dialogue, has greatly inspired my approach.” ([source](https://steamstore-a.akamaihd.net/news/externalpost/steam_community_announcements/5124582150156783816))
-71. **Raining Blood: Hellfire** → Enter the Gungeon: “"Raining Blood: Hellfire" is a dungeon shooter game inspired by COD's zombie mode, Enter the Gungeon, and vampire survivor games.” ([source](https://steamstore-a.akamaihd.net/news/externalpost/steam_community_announcements/5288974951209229171))
-72. **Hive Jump** → Spelunky: “es on an awesome Arcade experience: action packed run-and-gun gameplay inspired by classics like contra with rouglike touches inspired by industry staples like Spelunky.” ([source](https://steamstore-a.akamaihd.net/news/externalpost/steam_community_announcements/4249665521680671981))
-73. **Galactic Glitch: Prologue** → Dead Cells: “We're Space game nerds and huge Dead Cells fans, so we've always wanted to make a game that combines these two genres in a way that's never been done before: Great feeling and super fluid controls, the upgrade paths, the physicality” ([source](https://steamstore-a.akamaihd.net/news/externalpost/steam_community_announcements/4588629064108016550))
+4. **MULLET MADJACK** → Post Void: “we know the post void devs at gamescom, they loved our idea and helped ur to make the game even faster.” ([source](https://steamcommunity.com/app/2111190/discussions/0/3812906855242189423/))
+5. **Dungeon Souls** → Nuclear Throne, Risk of Rain, Shoot First: “Dungeon Souls was inspired by Nuclear Throne, Risk of Rain, Overture, BitVenture and Shoot First.” ([source](https://store.steampowered.com/app/383230/))
+6. **Battlestar Galactica: Scattered Hopes** → Crying Suns: “cter research (Artbook) Staying true to the franchise’s canons, our 3D artists Louis-Julien Berthe and Uriel Lacroix (both already artists on our previous game Crying Suns) used a mix of 3D modeling and pixel art textures to recreate the series’ iconic spaceships, as well as to create new models essential to our game design consistent with the series’ univer” ([source](https://steamstore-a.akamaihd.net/news/externalpost/steam_community_announcements/1831432155577632))
+7. **SENTRY** → Abandon Ship: “While SENTRY is our priority, it was the anniversary of our last game Abandon Ship recently, so we found the time to add some free content to that game to celebrate – one of the new ships was inspired by a SENTRY, as you can see from this concept + model below: {STEAM_C” ([source](https://steamstore-a.akamaihd.net/news/externalpost/steam_community_announcements/5059268543375180305))
+8. **Shards of Order** → Fear & Hunger, Darkest Dungeon: “We looked for inspiration in games like Fear & Hunger, the Dark Souls series, Darkest Dungeon and Kingdom Death.” ([source](https://steamstore-a.akamaihd.net/news/externalpost/steam_community_announcements/1819386365114509))
+9. **Quantum Protocol** → Vault of the Void: “The deck is fast and aggressive, making use of a super cool combo system inspired by The Hidden from Vault of the Void.” ([source](https://steamstore-a.akamaihd.net/news/externalpost/steam_community_announcements/4516534149071730092))
+10. **SNAKE FARM** → Fish Fear Me: “I'm incredibly excited to announce the spiritual sequel to SNAKE FARM, titled FISH FEAR ME!” ([source](https://steamstore-a.akamaihd.net/news/externalpost/steam_community_announcements/5963413094348729449))
+11. **Hunter's Moon: A Sovereign Syndicate Adventure** → Darkest Dungeon, Slay the Spire, Knock on the Coffin Lid: “Many of you know the game was a large inspiration for Hunter’s Moon: A Sovereign Syndicate Adventure, along with other favourites like Darkest Dungeon, Slay the Spire, and Knock on the Coffin Lid.” ([source](https://steamstore-a.akamaihd.net/news/externalpost/steam_community_announcements/1816849002019886))
+12. **Cat Bait** → Vampire Survivors, Brotato: “Get ready for exciting battles in the world of Cat Bait , a casual game with cute pixel graphics inspired by Vampire Survivors and Brotato !” ([source](https://store.steampowered.com/app/2929730/))
+13. **Ravenbound** → Slay the Spire, Risk of Rain 2, Cult of the Lamb: “In terms of games that inspired us, Slay the Spire, Risk of Rain 2 and Cult of the Lamb are some of the biggest inspirations for the roguelite part.” ([source](https://steamstore-a.akamaihd.net/news/externalpost/steam_community_announcements/5138087875076347959))
+14. **Overture** → Diablo, Realm of the Mad God, The Binding of Isaac: “Overture is an action-adventure roguelike which draws heavy inspiration from hits such as Diablo, Realm of The Mad God, Zelda, and The Binding of Isaac.” ([source](https://store.steampowered.com/app/343100/))
+15. **Fhtagn Simulator** → Luck be a Landlord, Slay the Spire, Monster Train: “Fhtagn Simulator is a Roguelike card game inspired by deck-building games such as Luck be a Landlord, Slay the Spire, and Monster Train.” ([source](https://store.steampowered.com/app/2050590/))
+16. **Fabled Lands** → Wildermyth: “PS: Heavily inspired by Wildermyth, thank you Nate :)” ([source](https://steamstore-a.akamaihd.net/news/externalpost/steam_community_announcements/5124582150130783783))
+17. **Lucky Hunter** → Slay the Spire, Luck be a Landlord: “Lucky Hunter draws inspiration from many renowned games while incorporating the developer's unique ideas: the relic system and combat progression from Slay the Spire, the synergy mechanics from Luck Be a Landlord, and the merging and upgrading of pieces seen in auto-battler games.” ([source](https://steamstore-a.akamaihd.net/news/externalpost/steam_community_announcements/5746109972564067111))
+18. **NITRO GEN OMEGA** → Battle Brothers, Darkest Dungeon: “On the outside it's a turn-based sandbox tactical RPG inspired by games such as Battle Brothers, Darkest Dungeon and Fire Emblem.” ([source](https://steamstore-a.akamaihd.net/news/externalpost/steam_community_announcements/6350729003512695360))
+19. **Biters & Bullets: Prologue** → Vampire Survivors, Magic Survival, Risk of Rain: “Heavily inspired by great rogue-likes such as Vampire Survivors, Magic Survival and Risk of Rain.” ([source](https://store.steampowered.com/app/1811430/))
+20. **Of Blades & Tails** → Diablo, Tales of Maj'Eyal, Stoneshard: “The gameplay is inspired by classic Hack & Slays like Diablo and turn-based RPGs like Tales of Maj'Eyal or Stoneshard .” ([source](https://store.steampowered.com/app/1768780/))
+21. **Cozy Space Survivors** → Vampire Survivors, The Binding of Isaac, Halls of Torment: “I drew a lot of inspiration from other games, and here are the most important ones: Vampire Survivors for the general simple (but awesome!) gameplay Binding of Isaac for physicality of bullets Halls of Torment for adding Quests to a Vampire Survivors-Like Fallout for the story summar” ([source](https://store.steampowered.com/app/2657850/))
+22. **Murim Survival** → Vampire Survivors, Diablo: “Survive to the End Inspired by Vampire Survivors and Diablo , Murim Survival is a roguelite RPG focused on equipment looting and character growth.” ([source](https://store.steampowered.com/app/3449590/))
+23. **Gods vs Horrors** → Slay the Spire, Super Auto Pets, Teamfight Tactics, Balatro: “Game inspirations: Hearthstone's Battlegrounds mode, Slay the Spire, Super Auto Pets, Teamfight Tactics, Balatro, Magic the Gathering drafting.” ([source](https://store.steampowered.com/app/2994240/))
+24. **CROPS!** → The Bazaar, Backpack Battles, Super Auto Pets: “It's inspired by games like The Bazaar, Backpack Battles and Super Auto Pets The demo is available now for free!” ([source](https://steamstore-a.akamaihd.net/news/externalpost/steam_community_announcements/1797820624623866))
+25. **Towerful Defense: A Rogue TD** → Brotato, Vampire Survivors: “I was a huge fan of games like Brotato, Vampire Survivors, 20 Minutes to Dawn,...and so many more games that Towerful Defense: A Rogue TD has its inspiration from.” ([source](https://steamstore-a.akamaihd.net/news/externalpost/steam_community_announcements/5746109972567716737))
+26. **Starforged Legacy** → Vampire Survivors, FTL: “salvage and augment weapons to become a fleet-leveling cosmic killing machine in a war-torn, procedurally generated galaxy, inspired by renowned titles such as Vampire Survivors and Faster Than Light , and slated for a late 2025 Early Access release, we've prepared a brief trailer to get you up to speed.” ([source](https://steamstore-a.akamaihd.net/news/externalpost/steam_community_announcements/1807332909614115))
+27. **Lost In The Open** → Battle Brothers, Darkest Dungeon: “Over the past two years, we’ve been working hard on Lost in the Open, a challenging turn-based strategy game inspired by the likes of Battle Brothers, Darkest Dungeon, and many others.” ([source](https://steamstore-a.akamaihd.net/news/externalpost/steam_community_announcements/5124583599318216193))
+28. **Skeletal Avenger** → Hades, Dead Cells: “HADES and Dead Cells have influenced the core gameplay and our goals with it a lot.” ([source](https://steamstore-a.akamaihd.net/news/externalpost/steam_community_announcements/4644854581175360231))
+29. **Becoming Saint** → Bad North, Into the Breach: “For the combination of 2D characters and 3D settings, Bad North was a very cool inspiration.” ([source](https://steamstore-a.akamaihd.net/news/externalpost/steam_community_announcements/6240387642458238464))
+30. **Monster X Monster** → Darkest Dungeon, Slay the Spire: “The game is mainly inspired by Darkest Dungeon and Slay the spire.” ([source](https://store.steampowered.com/app/1073490/))
+31. **Woodpunk** → Nuclear Throne, Enter the Gungeon: “GAMES THAT INSPIRED US Nuclear Throne, Enter the Gungeon, Metal Slug, Golden Axe, and more!” ([source](https://store.steampowered.com/app/878420/))
+32. **REPLIKATOR** → Nuclear Throne, Dead Cells: “REPLIKATOR is a fast Top Down Shooter with roguelike elements, inspired by the games Nuclear Throne and Dead Cells.” ([source](https://steamstore-a.akamaihd.net/news/externalpost/steam_community_announcements/4516534149056291216))
+33. **INTO EVIL** → Teleglitch: “Teleglitch — a roguelike top-down shooter with retro pixel graphics, — can be considered to be the main source of inspiration for INTO EVIL.” ([source](https://steamstore-a.akamaihd.net/news/externalpost/steam_community_announcements/1791482680861975))
+34. **Chrono Survival** → Vampire Survivors, The Binding of Isaac: “Inspired by games such as Vampire Survivors, Path of Exile and The Binding of Isaac.” ([source](https://store.steampowered.com/app/1897740/))
+35. **UFO 50** → Spelunky, Downwell, Catacomb Kids: “UFO 50 is a collection of 50 single and multiplayer games from the creators of Spelunky, Downwell, and Catacomb Kids.” ([source](https://store.steampowered.com/app/1147860/))
+36. **Shortest Trip to Earth** → Teleglitch: “From the writer of ‘Teleglitch: Die More Edition’, Shortest Trip to Earth is a roguelike spaceship simulator featuring exploration, ship management, game-influencing decision-making and real-time tactical battles.” ([source](https://steamstore-a.akamaihd.net/news/externalpost/steam_community_announcements/2462791699388867490))
+37. **Serious Sam: Tormental** → Nuclear Throne, The Binding of Isaac, Enter the Gungeon: “Created by fans of Geometry Wars, Nuclear Throne, Binding of Isaac, Serious Sam, and Enter the Gungeon.” ([source](https://store.steampowered.com/app/640340/))
+38. **Power Chord** → Slay the Spire, Monster Train, Darkest Dungeon: “We're big fans of: Slay the Spire Monster Train Darkest Dungeon .” ([source](https://store.steampowered.com/app/1724390/))
+39. **GUNHEAD** → Cryptark: “Sequel to the 2d roguelite Cryptark.” ([source](https://store.steampowered.com/app/704000/))
+40. **Slimekeep** → Balatro, Inscryption: “I've taken inspiration from games like Balatro's "stakes" system and Inscryption's "Kaycee's Mod" to create something that will hopefully be fun to play around with.” ([source](https://steamstore-a.akamaihd.net/news/externalpost/steam_community_announcements/1800991756441970))
+41. **Rise to Ruins** → Dwarf Fortress: “Inspired by games like Black and White, Rimworld, and Dwarf Fortress but not quite like any of them.” ([source](https://store.steampowered.com/app/328080/))
+42. **Magicite** → Spelunky: “Magicite's main influences were Monster Hunter and Spelunky.” ([source](https://store.steampowered.com/app/268750/))
+43. **Relic Hunters Zero: Remix** → Risk of Rain: “I have been having a lot of fun with Risk of Rain recently, so I looked at Relic Hunters Zero and thought “hey, I could totally make a RoR-inspired gameplay work in here”...” ([source](https://steamstore-a.akamaihd.net/news/externalpost/steam_community_announcements/2405396896208818882))
+44. **Moonstone Island** → Slay the Spire: “We're really influenced by games like Slay the Spire, where individual cards can make or break a deck, but you can also create decks that center around one particular mechanic.” ([source](https://steamstore-a.akamaihd.net/news/externalpost/steam_community_announcements/5124585954863718071))
+45. **Trigon: Space Story** → FTL: “With a Demo currently available on Steam, this FTL-inspired galactic adventure will be released in 2022.” ([source](https://steamstore-a.akamaihd.net/news/externalpost/steam_community_announcements/4224939931846082860))
+46. **FrostBound** → Slay the Spire: “Naturally, the game’s rules were influenced by titles like Gwent and Slay the Spire.” ([source](https://steamstore-a.akamaihd.net/news/externalpost/steam_community_announcements/1815034433040658))
+47. **Dead Age 2: The Zombie Survival RPG** → Darkest Dungeon: “Inspired by Darkest Dungeon, Fallout 1+2, This War of Mine and The Walking Dead.” ([source](https://store.steampowered.com/app/951430/))
+48. **OVIS LOOP** → Slay the Spire: “c8613bdf1153101a26df1f39cb9d6edf.png While pondering over a solution, we were greatly inspired by the organic card combinations in the deck-building roguelike "Slay the Spire".” ([source](https://steamstore-a.akamaihd.net/news/externalpost/steam_community_announcements/5395938616812356939))
+49. **Wretch: Divine Ascent** → Backpack Battles: “It was inspired by Backpack Battles and developed with Unreal Engine.” ([source](https://store.steampowered.com/app/3081280/))
+50. **Deathless. The Hero Quest** → Slay the Spire: “Tales of Old Rus inspired by games like Slay the Spire is set in Belosvet, a fantasy world home to bogatyrs, wizards, and sorcerers, amusing little spirits known as nechistiks, and myriad creatures most foul.” ([source](https://steamstore-a.akamaihd.net/news/externalpost/steam_community_announcements/6890025005366992413))
+51. **Down with the Ship** → Backpack Battles: “Proxy Studios is teaming up with a new solo indie dev—Nate (Iron Anchor Games)—to publish Down with the Ship, a Backpack Battles-inspired spaceship auto battler.” ([source](https://steamstore-a.akamaihd.net/news/externalpost/steam_community_announcements/1806698490814102))
+52. **Vambrace: Cold Soul** → FTL: “It's a real love letter to the JRPGs we grew up with and newer indie titles like, FTL, that have heavily inspired Vambrace's mechanics."  Vambrace: Cold Soul will” ([source](https://steamstore-a.akamaihd.net/news/externalpost/steam_community_announcements/2434668385548400616))
+53. **Poker Quest: Swords and Spades** → Slay the Spire: “The world map takes inspiration from Slay the Spire, with the intent of providing a great variety of events.” ([source](https://store.steampowered.com/app/1184820/))
+54. **红石遗迹 - Red Obsidian Remnant** → The Binding of Isaac: “In the aspect of Roguelike elements, we borrow a lot from The Binding of Isaac.” ([source](https://store.steampowered.com/app/610960/))
+55. **Backpack Jianghu** → Backpack Battles: “Inspired by Backpack Battles , but with big innovations.” ([source](https://store.steampowered.com/app/3972650/))
+56. **Dark Fairy Tale: Dreamland Survivors** → Vampire Survivors: “Dark Fairy Tale: Dreamland Survivors is a roguelike game inspired by Vampire Survivors.” ([source](https://store.steampowered.com/app/3288300/))
+57. **March of the Living** → FTL: “Roguelike-like inspired by FTL and popular zombie fiction.” ([source](https://store.steampowered.com/app/458000/))
+58. **Gangs of Space** → The Binding of Isaac: “Isaac The Binding of Isaac by Edmund McMillen is one of our cult games that has greatly influenced the latest version of Gangs of Space.” ([source](https://steamstore-a.akamaihd.net/news/externalpost/steam_community_announcements/2145261379784527820))
+59. **Westale: Peelgrimage** → Vampire Survivors: “About the game Inspired by titles such as Vampire Survivors, Westale: Peelgrimage is Bullet Hell game with a very unique ink-and-wash art style to it.” ([source](https://steamstore-a.akamaihd.net/news/externalpost/steam_community_announcements/5409450219985740834))
+60. **All Walls Must Fall - A Tech-Noir Tactics Game** → Crypt of the NecroDancer: “All Walls Must Fall takes inspiration from genre classics like X-Com , Syndicate and REZ , as well more recent indie games like The Banner Saga , Braid , SUPERHOT and Crypt of the Necrodancer .” ([source](https://store.steampowered.com/app/628290/))
+61. **Pixel Starships 2** → FTL: “The strategy mechanics are inspired by games such as FTL, Eve online, and Final Fantasy, and XCom.” ([source](https://store.steampowered.com/app/2154270/))
+62. **Farm Keeper** → Luck be a Landlord: “This update is our heartfelt tribute to the game, Luck Be A Landlord , which has inspired Farm Keeper.” ([source](https://steamstore-a.akamaihd.net/news/externalpost/steam_community_announcements/5124582150174628736))
+63. **WAR RATS: The Rat em Up** → Kingdom: New Lands: “Inspired by games such as Kingdom: New Lands and Futurecop LAPD's Precinct Assault mode (now generally considered to be the first ever MOBA) delivered in a package that evokes the brutal, gory 90s gaming sprites of old, it's a” ([source](https://store.steampowered.com/app/3167260/))
+64. **Draft of Darkness** → Slay the Spire: “In Draft of Darkness, you will be: exploring procedurally generated maps, fighting enemies in "Slay The Spire" inspired card combat - with unique twists, recruiting new allies to aid you in battle, ma” ([source](https://steamstore-a.akamaihd.net/news/externalpost/steam_community_announcements/4050393736353765272))
+65. **Crimson Dawn** → Vampire Survivors: “Crimson Dawn is a bullet hell survival game inspired by Vampire Survivors.” ([source](https://store.steampowered.com/app/1919720/))
+66. **Forgotten Mines** → FTL: “1dd8846f11379b8ffa965643ee527898ff87.png Inspiration, innovation Forgotten Mines takes its inspiration from impactful roguelikes in the indie community such as FTL (Subset Games, 2012) which brings combat in real time where the enemy is always on the move.” ([source](https://steamstore-a.akamaihd.net/news/externalpost/steam_community_announcements/5409450219987516381))
+67. **The Hand of Merlin** → FTL: “The idea was inspired by FTL, where you unlock ships as you play the game, as a meta progression aspect.” ([source](https://steamstore-a.akamaihd.net/news/externalpost/steam_community_announcements/3819572206263534187))
+68. **Destropolis** → Nuclear Throne: “Destropolis is a top-down shooter game, inspired by such classic games like “Crimsonland”, “Alien Shooter” or “Nuclear Throne”.” ([source](https://store.steampowered.com/app/1316800/))
+69. **Rising Hell** → Downwell: “The game itself was heavily inspired by Downwell, which is also a vertical platformer.” ([source](https://steamstore-a.akamaihd.net/news/externalpost/steam_community_announcements/4738301364298846389))
+70. **Crawl Tactics** → FTL: “Influenced by the combat of Tactics Ogre and the roguelite progression of FTL, the aim was to create a game where each new battlefield offered fresh interactions and strategic combat.” ([source](https://steamstore-a.akamaihd.net/news/externalpost/steam_community_announcements/1818752592124702))
+71. **Against Great Darkness** → Hades: “The dynamic storytelling in Hades, seamlessly blending narrative into gameplay through the hub and in-run dialogue, has greatly inspired my approach.” ([source](https://steamstore-a.akamaihd.net/news/externalpost/steam_community_announcements/5124582150156783816))
+72. **Raining Blood: Hellfire** → Enter the Gungeon: “"Raining Blood: Hellfire" is a dungeon shooter game inspired by COD's zombie mode, Enter the Gungeon, and vampire survivor games.” ([source](https://steamstore-a.akamaihd.net/news/externalpost/steam_community_announcements/5288974951209229171))
+73. **Hive Jump** → Spelunky: “es on an awesome Arcade experience: action packed run-and-gun gameplay inspired by classics like contra with rouglike touches inspired by industry staples like Spelunky.” ([source](https://steamstore-a.akamaihd.net/news/externalpost/steam_community_announcements/4249665521680671981))
 74. **Nautical Survival** → Brotato: “Brotato was one of my biggest inspirations while creating Nautical Survival.” ([source](https://steamstore-a.akamaihd.net/news/externalpost/steam_community_announcements/1796551539185846))
 75. **Depth of Extinction** → FTL: “Inspired by genre stalwarts XCOM: Enemy Unknown and FTL: Faster Than Light, the game allows you to handpick fighters from a roster of hardened operatives to join your squad – then battle vicious factions and killer machines in defense of mankind.” ([source](https://steamstore-a.akamaihd.net/news/externalpost/steam_community_announcements/2450411965559054850))
 76. **Blood Rush** → Hades: “BLOOD RUSH is an intense roguelite FPS inspired by genre titans such as ULTRAKILL and Hades .” ([source](https://store.steampowered.com/app/2435870/))
@@ -238,6 +246,99 @@ Ranked by what each would do for the map first (fixes one of your owned dead end
 111. **IIslands of War** → FTL: “Inspired by games like Minecraft and FTL , it was the start of what was to come.” ([source](https://steamstore-a.akamaihd.net/news/externalpost/steam_community_announcements/2579939377831992168))
 112. **Ampersat** → Angband: “A blend of influences from Gauntlet & Smash TV to Zelda & Angband, Ampersat is a handcrafted adventure but with appeal to Roguelite fans.” ([source](https://store.steampowered.com/app/1356040/))
 
+## Part 2: by the same developer as a chart game (75 games)
+
+Not influences: these share a studio with a chart game, which the chart records as a Dev/Series connection. 39 of them were already found by the research's developer pass and are recorded as leads in `research/connections.csv`; the rest are new. A developer that is a large company (Square Enix, Cygames) makes a weak link and is marked.
+
+| # | Game | Reviews | Roguelike? | Developer | Same developer as | Map effect |
+|---|---|---|---|---|---|---|
+| 1 | [Karate Survivor](https://store.steampowered.com/app/3027930/) *(already a lead)* | 969 | yes (#3) | Alawar | Necrosmith, Necrosmith 2, Wall World, Wall World 2 | fixes your owned dead end: Necrosmith 2, Wall World |
+| 2 | [Few Nights More: Genesis](https://store.steampowered.com/app/2713070/) *(already a lead)* | 277 | yes (#2) | Aeterna Ludi | Daice, Few Nights More, None Shall Intrude | fixes a dead end: Daice, Few Nights More; brings on: Daice, Few Nights More, None Shall Intrude |
+| 3 | [None Shall Intrude: Descent](https://store.steampowered.com/app/3024640/) *(already a lead)* | 273 | yes (#4) | Aeterna Ludi | Daice, Few Nights More, None Shall Intrude | fixes a dead end: Daice, Few Nights More; brings on: Daice, Few Nights More, None Shall Intrude |
+| 4 | [RICO](https://store.steampowered.com/app/656700/) *(already a lead)* | 428 | yes (#3) | Ground Shatter | 2 Fights in 2 Tight Spaces, Fights in Tight Spaces, Knights in Tight Spaces | fixes your owned dead end: Knights in Tight Spaces |
+| 5 | [SYNTHETIK: Arena](https://store.steampowered.com/app/984110/) *(already a lead)* | 835 | borderline (#7) | Flow Fire Games | Synthetik 2, Synthetik: Legion Rising | fixes your owned dead end: Synthetik: Legion Rising |
+| 6 | [Shattered Planet](https://store.steampowered.com/app/305640/) *(already a lead)* | 407 | yes (#5) | Kitfox Games | Boyfriend Dungeon, Moon Hunters | fixes your owned dead end: Moon Hunters |
+| 7 | [Robothorium](https://store.steampowered.com/app/657090/) *(already a lead)* | 249 | yes (#4) | Goblinz Studio | Dungeon Rushers, Legend of Keepers: Career of a Dungeon Manager, Sandwalkers | fixes your owned dead end: Dungeon Rushers |
+| 8 | [Smash it Wild: Tactical Volleyball Roguelike](https://store.steampowered.com/app/2432240/) *(already a lead)* | 109 | yes (#4) | Goblinz Studio, Ernestine | Dungeon Rushers, Legend of Keepers: Career of a Dungeon Manager, Sandwalkers | fixes your owned dead end: Dungeon Rushers |
+| 9 | [Touhou Genso Wanderer -Reloaded-](https://store.steampowered.com/app/931500/) | 1,738 | yes (#4) | AQUASTYLE | Touhou Genso Wanderer: Foresight, Touhou Genso Wanderer: Lotus Labyrinth R | fixes a dead end: Touhou Genso Wanderer: Foresight, Touhou Genso Wanderer: Lotus Labyrinth R |
+| 10 | [Invisible, Inc.](https://store.steampowered.com/app/243970/) *(already a lead)* | 3,561 | borderline (#8) | Klei Entertainment | Don't Starve, Don't Starve Together, Griftlands | fixes your owned dead end: Don't Starve Together |
+| 11 | [Rotwood](https://store.steampowered.com/app/2015270/) *(already a lead)* | 2,234 | yes (#3) | Klei Entertainment | Don't Starve, Don't Starve Together, Griftlands | fixes your owned dead end: Don't Starve Together |
+| 12 | [Wedding Witch](https://store.steampowered.com/app/2529820/) *(already a lead)* | 1,937 | yes (#2) | Chowbie | Nunholy | fixes your owned dead end: Nunholy |
+| 13 | [Nomad Idle](https://store.steampowered.com/app/3042190/) *(already a lead)* | 865 | yes (#4) | The Fox Knocks | Nomad Survival | fixes your owned dead end: Nomad Survival |
+| 14 | [SKYHILL](https://store.steampowered.com/app/382140/) *(already a lead)* | 659 | yes (#2) | Mandragora | Freaky Awesome | fixes your owned dead end: Freaky Awesome |
+| 15 | [Kin and Quarry](https://store.steampowered.com/app/3505770/) *(already a lead)* | 404 | borderline (#11) | The Fox Knocks | Nomad Survival | fixes your owned dead end: Nomad Survival |
+| 16 | [Rogue Loops](https://store.steampowered.com/app/3275010/) *(already a lead)* | 263 | yes (#2) | Fubu Games | Night Swarm | fixes your owned dead end: Night Swarm |
+| 17 | [Cannibal Crossing](https://store.steampowered.com/app/1304090/) *(already a lead)* | 232 | yes (#1) | Everplay Interactive, Blow and Try Again, Rocketcat Games | Death Road to Canada | fixes your owned dead end: Death Road to Canada |
+| 18 | [GunSuit Guardians](https://store.steampowered.com/app/2278830/) *(already a lead)* | 228 | yes (#3) | Matt Glanville | Dungeon Deathball | fixes your owned dead end: Dungeon Deathball |
+| 19 | [Psionic Sentry : Infinite](https://store.steampowered.com/app/2598800/) *(already a lead)* | 214 | borderline (#7) | Roy, 響雨互動娛樂, HowlingRain | Endless Alice | fixes your owned dead end: Endless Alice |
+| 20 | [Doomed to Hell](https://store.steampowered.com/app/1916850/) *(already a lead)* | 209 | yes (#1) | Gagonfe, Ulon, Rhowsl | Rocket Rats | fixes your owned dead end: Rocket Rats |
+| 21 | [Kin and Conquest](https://store.steampowered.com/app/4540820/) *(already a lead)* | 205 | yes (#4) | The Fox Knocks | Nomad Survival | fixes your owned dead end: Nomad Survival |
+| 22 | [Orb Tower](https://store.steampowered.com/app/3496500/) *(already a lead)* | 200 | yes (#4) | Pierre Vandermaesen | Tinyfolks | fixes your owned dead end: Tinyfolks |
+| 23 | [Wayward Souls](https://store.steampowered.com/app/559260/) | 186 | yes (#4) | Rocketcat Games | Death Road to Canada | fixes your owned dead end: Death Road to Canada |
+| 24 | [Just Get Through](https://store.steampowered.com/app/338190/) *(already a lead)* | 158 | yes (#1) | Retrific | Colt Canyon | fixes your owned dead end: Colt Canyon |
+| 25 | [Toroom](https://store.steampowered.com/app/1684080/) *(already a lead)* | 150 | yes (#1) | Gagonfe, Ulon, Rhowsl | Rocket Rats | fixes your owned dead end: Rocket Rats |
+| 26 | [Curtain Call](https://store.steampowered.com/app/2812610/) | 134 | yes (#4) | 元气弹工作室(GD Studio) | Noobs Want to Live | fixes your owned dead end: Noobs Want to Live |
+| 27 | [Skogdal](https://store.steampowered.com/app/2452820/) *(already a lead)* | 116 | yes (#2) | Erlend Kirkeboe, Kay Arne Kirkeboe | Icewall | fixes your owned dead end: Icewall |
+| 28 | [Gemini](https://store.steampowered.com/app/1417720/) *(already a lead)* | 112 | yes (#4) | Gagonfe, Ulon, Rhowsl | Rocket Rats | fixes your owned dead end: Rocket Rats |
+| 29 | [ShapeHero Factory](https://store.steampowered.com/app/2389040/) | 993 | yes (#4) | Asobism.Co.,Ltd | Vivid Knight, Vivid World | fixes a dead end: Vivid World |
+| 30 | [Little Noah: Scion of Paradise](https://store.steampowered.com/app/1883260/) *(already a lead)* *(large company)* | 502 | yes (#1) | Cygames, Inc., Grounding Inc. | Uma Musume: Pretty Derby | fixes a dead end: Uma Musume: Pretty Derby; brings on: Uma Musume: Pretty Derby |
+| 31 | [魔物讨伐团](https://store.steampowered.com/app/905690/) *(already a lead)* | 302 | yes (#5) | Nerdook Productions | Monster Slayers | fixes your owned dead end: Monster Slayers |
+| 32 | [Vertical Drop Heroes HD](https://store.steampowered.com/app/311480/) *(already a lead)* | 154 | yes (#1) | Nerdook Productions | Monster Slayers | fixes your owned dead end: Monster Slayers |
+| 33 | [Stacklands](https://store.steampowered.com/app/1948280/) | 12,021 | yes (#4) | Sokpop Collective | Grail | brings on: Grail |
+| 34 | [The Mound: Omen of Cthulhu](https://store.steampowered.com/app/2569760/) *(already a lead)* | 2,256 | yes (#4) | ACE Team | Abyss Odyssey | brings on: Abyss Odyssey |
+| 35 | [Ascend to ZERO](https://store.steampowered.com/app/2697940/) | 910 | yes (#1) | Flyway Games, Inc. | Commander Quest | fixes a dead end: Commander Quest |
+| 36 | [Echoes of Mystralia](https://store.steampowered.com/app/974480/) *(already a lead)* | 724 | yes (#2) | Borealys Games | Lunchbreak Tactics | fixes a dead end: Lunchbreak Tactics |
+| 37 | [BORE BLASTERS](https://store.steampowered.com/app/2398170/) | 714 | borderline (#7) | 8BitSkull | Skull Horde, Void Scrappers | 2 links |
+| 38 | [Dragon Is Dead](https://store.steampowered.com/app/2803280/) *(already a lead)* | 666 | yes (#1) | TeamSuneat | Blade Assault | brings on: Blade Assault |
+| 39 | [Son of a Witch](https://store.steampowered.com/app/539400/) | 350 | yes (#1) | Bigosaur | Clutchtime: Basketball Deckbuilder | fixes a dead end: Clutchtime: Basketball Deckbuilder |
+| 40 | [Trinity Survivors](https://store.steampowered.com/app/2686580/) | 317 | yes (#1) | Flyway Games, Inc. | Commander Quest | fixes a dead end: Commander Quest |
+| 41 | [Infinity Strash: DRAGON QUEST The Adventure of Dai](https://store.steampowered.com/app/1895810/) *(large company)* | 312 | yes (#5) | Square Enix, GameStudio Inc., KAI GRAPHICS INC. | Dragon Quest Heroes: Torneko‘s Mystery Dungeon Classic HD | fixes a dead end: Dragon Quest Heroes: Torneko‘s Mystery Dungeon Classic HD |
+| 42 | [Skelly Selest](https://store.steampowered.com/app/685400/) | 265 | yes (#1) | caiys | Boneraiser Minions, Spirits Abyss, Voids Vigil | 3 links |
+| 43 | [Jupiter Hell Classic](https://store.steampowered.com/app/3126530/) *(already a lead)* | 239 | yes (#1) | ChaosForge | Jupiter Hell | fixes a dead end: Jupiter Hell |
+| 44 | [Lost Potato](https://store.steampowered.com/app/1365010/) | 229 | yes (#4) | Blobfish | Brotato, Space Gladiators | 2 links |
+| 45 | [Out There: Oceans of Time](https://store.steampowered.com/app/1145290/) *(already a lead)* | 211 | borderline (#9) | Mi-Clos Studio, Goblinz | Out There | brings on: Out There |
+| 46 | [Three Kingdom: The Journey](https://store.steampowered.com/app/1314770/) *(already a lead)* | 206 | yes (#1) | Senmu Studio | The Gate Must Stand | brings on: The Gate Must Stand |
+| 47 | [Nightmare Frontier](https://store.steampowered.com/app/3310950/) *(already a lead)* | 189 | yes (#3) | Ice Code Games | Rogue Waters | brings on: Rogue Waters |
+| 48 | [Space Gladiators: The Hole](https://store.steampowered.com/app/1433550/) | 162 | yes (#1) | Blobfish | Brotato, Space Gladiators | 2 links |
+| 49 | [Straimium Immortaly](https://store.steampowered.com/app/515650/) | 157 | yes (#1) | caiys | Boneraiser Minions, Spirits Abyss, Voids Vigil | 3 links |
+| 50 | [Tesla Force](https://store.steampowered.com/app/1149710/) *(already a lead)* | 151 | yes (#1) | 10tons Ltd | Neon Chrome | brings on: Neon Chrome |
+| 51 | [Echo of the Wilds](https://store.steampowered.com/app/305780/) | 142 | yes (#2) | caiys | Boneraiser Minions, Spirits Abyss, Voids Vigil | 3 links |
+| 52 | [Lords of Ravage](https://store.steampowered.com/app/1830320/) *(already a lead)* | 141 | yes (#4) | Synthetic Domain | Mainframe Defenders | fixes a dead end: Mainframe Defenders |
+| 53 | [Keep Keepers](https://store.steampowered.com/app/2354330/) *(already a lead)* | 135 | yes (#4) | Thunderrock Innovations | Islantiles | brings on: Islantiles |
+| 54 | [Clock Rogue](https://store.steampowered.com/app/2812120/) | 116 | yes (#2) | MONO ENTERTAINMENT | The Fable: Manga Build Roguelike | brings on: The Fable: Manga Build Roguelike |
+| 55 | [Deadzoned](https://store.steampowered.com/app/1602620/) | 103 | yes (#2) | caiys | Boneraiser Minions, Spirits Abyss, Voids Vigil | 3 links |
+| 56 | [Yao-Guai Hunter](https://store.steampowered.com/app/1915510/) | 2,098 | yes (#1) | MyACG Studio | Cinderia | — |
+| 57 | [Touhou Endless Dream](https://store.steampowered.com/app/1245540/) | 1,703 | yes (#3) | a10a010, MyACG Studio | Cinderia | — |
+| 58 | [Touhou Monster TD ~ 幻想乡妖怪塔防](https://store.steampowered.com/app/1671350/) | 954 | yes (#6) | MyACG Studio | Cinderia | — |
+| 59 | [Duelists of Eden](https://store.steampowered.com/app/1664200/) | 859 | yes (#1) | Thomas Moon Kang | One Step From Eden | — |
+| 60 | [Hole Is Mine](https://store.steampowered.com/app/4508020/) | 853 | borderline (#7) | Incrementalist | Astro Prospector | — |
+| 61 | [Tunche](https://store.steampowered.com/app/887450/) | 617 | yes (#1) | LEAP Game Studios | Dicefolk | — |
+| 62 | [Into the Necrovale](https://store.steampowered.com/app/1717090/) *(already a lead)* | 587 | yes (#1) | CLYDE games | Cursemark | — |
+| 63 | [Hellsweeper VR](https://store.steampowered.com/app/1341490/) | 522 | yes (#2) | Mixed Realms | Gordian Quest | — |
+| 64 | [Realm of Taiwu](https://store.steampowered.com/app/3452720/) | 496 | yes (#5) | Leap Studio | Realm of Ink | — |
+| 65 | [NeuroVoider](https://store.steampowered.com/app/400450/) | 495 | yes (#3) | Flying Oak Games | Scourgebringer | — |
+| 66 | [Seer's Gambit](https://store.steampowered.com/app/2219450/) | 490 | yes (#1) | Unleash The Giraffe | Obsidian Prince | — |
+| 67 | [Landnama](https://store.steampowered.com/app/2339040/) | 439 | yes (#1) | Sonderland | Bella Wants Blood | — |
+| 68 | [Last Man Sitting](https://store.steampowered.com/app/774291/) | 383 | yes (#1) | DoubleMoose Games | Abyssus | — |
+| 69 | [Hell is Other Demons](https://store.steampowered.com/app/595790/) | 311 | yes (#2) | Cuddle Monster Games | Lone Ruin | — |
+| 70 | [Wantless : Solace at World’s End](https://store.steampowered.com/app/1807090/) | 310 | yes (#4) | Drop Rate Studio | Dive or Die: Children of Rain | — |
+| 71 | [The Pit: Infinity](https://store.steampowered.com/app/577410/) | 238 | yes (#3) | Kerberos Productions | Sword of the Stars: The Pit | — |
+| 72 | [W.A.N.D. Project](https://store.steampowered.com/app/2581750/) | 172 | yes (#2) | The Knights of Unity | Death Roads: Tournament | — |
+| 73 | [The Madness of Little Emma](https://store.steampowered.com/app/418150/) | 125 | yes (#1) | Bartosz Bojarowski | Lost Flame | — |
+| 74 | [GREAT TOY SHOWDOWN](https://store.steampowered.com/app/2319940/) | 109 | yes (#2) | SANDY FLOOR | PengPong | — |
+| 75 | [The First Million](https://store.steampowered.com/app/4446010/) | 102 | yes (#1) | Sonderland | Bella Wants Blood | — |
+
+## Chart games with no Steam link
+
+These are on the chart, but the games sheet has no Steam Page for them, so the search counted them as new. Their Steam pages, if you want to fill the cells:
+
+- **Vampire Crawlers**: https://store.steampowered.com/app/3265700/ (Vampire Crawlers: The Turbo Wildcard from Vampire Survivors, 8,619 reviews)
+- **Cursed Words**: https://store.steampowered.com/app/3856460/ (Cursed Words: The Word Game That Isn't, 726 reviews)
+- **Menherarium**: https://store.steampowered.com/app/3394770/ (Menherarium: Deadly Dice, 693 reviews)
+- **Rogue Empire**: https://store.steampowered.com/app/650940/ (Rogue Empire: Dungeon Crawler RPG, 357 reviews)
+
 ## Read and left out
 
-Crossover content (BlazBlue Entropy Effect's Dead Cells character, Don't Starve Together's Cult of the Lamb skins), publishers promoting other games, sentences about a studio's other game (Himno, SanctuaryRPG, Vertical Drop Heroes HD, Chasm's prototypes), Diablo II / III rather than Diablo (Book of Yog, Darksburg, Liberte), comparisons and "if you liked…" lines (Gloomhaven, A Wizard's Lizard, Galaxy Squad, Desktop Dungeons: Rewind), free prologues of chart games (Halls of Torment: Prelude, RUNGORE: Beginner Experience, Sandwalkers - Prologue), Soulslinger (Returnal came out after it started), and chart names used as ordinary words.
+- **From part 1:** crossover content (BlazBlue Entropy Effect's Dead Cells character, Don't Starve Together's Cult of the Lamb skins), publishers promoting other games, sentences about a studio's other game (Himno, SanctuaryRPG, Vertical Drop Heroes HD, Chasm's prototypes), Diablo II / III rather than Diablo (Book of Yog, Darksburg, Liberte), comparisons and "if you liked…" lines (Gloomhaven, A Wizard's Lizard, Galaxy Squad, Desktop Dungeons: Rewind), free prologues of chart games (Halls of Torment: Prelude, RUNGORE: Beginner Experience, Sandwalkers - Prologue, Galactic Glitch: Prologue, whose Dead Cells link is already on the sheet), Soulslinger (Returnal came out after it started), and chart names used as ordinary words.
+- **From part 2:** 41 games by chart developers that aren't roguelikes by their tags (Deep Rock Galactic, R.E.P.O., UFO 50, Super Crate Box, Book of Hours, Hammerwatch, the Voice of Cards games…), and 16 editions of chart games (prologues, demos, VR ports, a remaster).
+- **Interviews searched by hand** with nothing usable: Against the Storm, Dungeon of the Endless, World of Horror, Nightmare Reaper, Othercide, Star Traders: Frontiers, Windowkill.
