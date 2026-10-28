@@ -67,6 +67,9 @@ _run_trigger(item, trig, ctx_extras, loot)
 
 `Overworld2._begin_game`, one click on the map, before anything is played:
 
+0. **The floor is cleared**: any loot still lying on the board (a kill's drop
+   nobody picked up, a piece the player put down) is gone, before this game's
+   bodies walk on (`DropQueue.clear_floor`).
 1. The game's and the character's **rank bars** are noted, for the end screen.
 2. **Starting gear**, first game of the run only.
 3. **The board is set up** (`GameLoop2.choose_game`):
@@ -94,6 +97,7 @@ _run_trigger(item, trig, ctx_extras, loot)
 
 ```order
 scripts/redesign2/Overworld2.gd :: _begin_game
+_drops.clear_floor()
 GameLoop2.rank_start =
 _grant_start_gear_once(game)
 _commit_board(game, enemy, tier)
@@ -275,8 +279,8 @@ The report button — beaten, missed and escaped all come through here.
 
 Then, back in `Overworld2.report`:
 
-1. The **floor** is swept onto the haul; the **report chest** is queued (beaten,
-   not escaped); status penalties are announced; each kill is recorded to the
+1. The **floor is left as it is** — it lasts until the next game is picked
+   (§1, step 0); the **report chest** is queued (beaten, not escaped); status penalties are announced; each kill is recorded to the
    Atlas and the character.
 2. An **event** is rolled for after the haul (not on a detour); a game the
    player opened a **shop** at queues its button.
@@ -318,7 +322,6 @@ _clear_game_record()
 ```order
 scripts/redesign2/Overworld2.gd :: report
 GameLoop2.beat_game(
-_sweep_floor_into_the_queue()
 _queue_report_chests(
 _announce_status_penalties(res)
 _record_defeat(played_game, cleared)
@@ -344,7 +347,7 @@ Once the animation ends (`_end_resolve`):
 
 1. If the run ended at any ☠ step, the **run-over screen** opens and nothing below
    happens.
-2. The **end-of-game screen** — the haul: floor loot, kill drops, chests, the
+2. The **end-of-game screen** — the haul: kill drops that had no square, chests, the
    game's own loot, the boss warning, and *Go to Shop* at a game with a shop. Autosave
    when it closes.
 3. The **Collapse** screen, Fracture 10's Amulet only.

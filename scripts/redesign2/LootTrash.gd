@@ -1,7 +1,11 @@
 class_name LootTrash
 extends PanelContainer
 
-# THE BIN. Drag a piece of loot onto it and the piece is gone (§4.3).
+# THE BIN. Drag a piece of loot onto it and the piece is DESTROYED (§4.3) — which
+# is not the same as putting it down. A piece dragged onto a free square of the
+# battlefield lies there, off the player, until the next game clears the floor
+# (the owner, 28 Oct 2026: putting loot down "is now different than destroying
+# loot"); the bin says "destroy" so the two read as two different verbs.
 #
 # The nine-piece cap is what makes taking a piece of loot a decision, and until
 # now the only way to act on that decision was to SPEND something — which is not
@@ -53,10 +57,10 @@ static func confirm(host: Node, piece_name: String, on_ok: Callable) -> ConfirmP
 	layer.layer = CONFIRM_LAYER
 	layer.process_mode = Node.PROCESS_MODE_ALWAYS
 	host.add_child(layer)
-	var panel := ConfirmPanel.ask(layer, "Throw it away?",
+	var panel := ConfirmPanel.ask(layer, "Destroy it?",
 		"%s is destroyed for good. Nothing is used and nothing is gained — " % piece_name
-		+ "this is only to make room.",
-		"Throw it away", on_ok)
+		+ "to keep it, put it down on the battlefield instead.",
+		"Destroy", on_ok)
 	panel.tree_exited.connect(func():
 		if is_instance_valid(layer):
 			layer.queue_free())
@@ -74,7 +78,7 @@ func _ready() -> void:
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(row)
 	var label := Label.new()
-	label.text = "Drag here to throw away"
+	label.text = "Drag here to destroy"
 	label.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 	label.add_theme_color_override("font_color", RED.lerp(Color.WHITE, 0.25))
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER

@@ -2580,7 +2580,7 @@ A defeated body's **loot** is **put on the board, on the square it died in**
 scroll / pill / potion / card split as a game's own payout (§4.3,
 `roll_loot_entry`), a boss included. A **card** lands there face down — it draws
 its deck's icon until it is picked up ([`cards-design.md`](cards-design.md) §3),
-which is the one thing on this board that is still a chest. It stays there until the player takes it or the game is reported.
+which is the one thing on this board that is still a chest. It stays there until the player takes it or the next game begins.
 That is the whole point of clearing a goal *during* a game: the reward is on the
 table in front of you rather than banked behind a screen you have not reached yet.
 
@@ -2626,13 +2626,47 @@ by the card being fully readable the instant it is picked up.
 - **A body that was not standing anywhere leaves nothing on the floor.** One
   waiting in the off-grid queue has no square to fall in
   (`_drop_cell_of` → `OFF_FIELD`), so its loot goes straight to the haul screen.
-- **Reporting the game sweeps the floor** (`sweep_drops`, called from
-  `Overworld2.report` the moment `beat_game` returns), **whatever the report
-  said** — the loot was earned by the kill, which already happened, and only the
-  relic chest is a reward for beating the game. What nobody stopped to pick up —
-  including whatever the bodies that very report cleared just dropped — goes onto
-  the haul screen (§18) as **one table** rather than one question per square,
-  rather than vanishing with the board the next game rebuilds.
+- **The floor lasts until the next game is picked, and then it is gone**
+  (`DropQueue.clear_floor`, the first thing `Overworld2._begin_game` does). It
+  used to be swept onto the haul screen at the report; the owner (28 Oct 2026)
+  asked for the floor to be a place loot can be LEFT — "when the player goes to
+  the next game, all loot on the floor is gone" — and leaving a piece only means
+  something if moving on costs it. Between the report and the next pick the
+  floor is still there, the report's own kills included, and the reward
+  screen's **⚔ Combat** button opens the board to reach it (§8.2, "the board
+  off the board", below). A body that had no square still sends its piece to
+  the haul screen: it never lay anywhere it could be picked up.
+- **You can put a piece DOWN.** Drag one out of the pack and let go on a free
+  square (`BattlefieldView` → `loot_put_down` → `DropQueue.put_down`). It is OFF
+  THE PLAYER from that moment — out of `loot_items`, so no passive, neighbour
+  rule or count reads it — and it is NOT destroyed: it is not on the destroyed
+  pile and pays no Trading Card. It lies there like a kill's drop, can be picked
+  back up, and goes with the floor when the next game begins. The board takes
+  only a pack piece (`loot_move`), only on bare ground (`is_free_floor`: on the
+  grid, nobody standing there, no unit, nothing lying there), and not while a
+  throw or a weapon is being aimed.
+- **The bin DESTROYS**, and says so ("Drag here to destroy", "Destroy it?"),
+  so putting down and destroying read as two different verbs.
+
+#### The board off the board — ⚔ Combat, and aiming from a covering screen
+
+Every screen that covers the board (the reward screen, Camp, an event, a shop, a
+game's card, the use screen: any CanvasLayer on the page from the arrival card's
+121 up to, not including, the header's 135) gets a **⚔ Combat** button in the
+top-right corner. Pressing it PEEKS: the covering layers are hidden, the real
+board underneath is shown with every hover and drag it always had (so floor loot
+can be picked up after a report), and a bar in the corner reads *⚔ The
+battlefield* with **◀ Back**, which puts the screens back exactly as they were.
+Layers are hidden rather than screens closed, so nothing rebuilds.
+
+**Anything that arms the board while it is covered peeks too** — a throw, a
+weapon, a wand, a card (Pommel Strike played off the reward screen armed its
+target on a board nobody could see), an aimed relic, a pick of bodies. The bar
+reads *⚔ Choose a target*, Back cancels the aim, and the screen it came from
+comes back by itself once the aim lands or is put away. The old refusal to arm
+under the drop modal went with it. `Overworld2` "the board off the board":
+`peek_board`, `end_peek`, `_tick_board_peek` (once a frame, so no screen has to
+know about any of this). Owner request, 28 Oct 2026.
 
 #### The drag — the pack shows up for as long as you are holding something
 
@@ -2675,10 +2709,9 @@ or destroyed, and the square is never left empty — so a mistake costs a drag
 rather than a piece. It is also the grammar the grid already speaks: dropping onto
 a piece has meant "swap these two" since the pack was allowed to have holes in it.
 
-**The bin asks first** (`LootTrash.confirm`, as it does for a carried piece).
-Binning a floor piece is strictly worse than doing nothing — a piece left lying is
-swept onto the haul screen and is still yours — so the one gesture on the board
-that destroys something and gives nothing back is the one that gets a question.
+**The bin asks first** (`LootTrash.confirm`, as it does for a carried piece):
+the one gesture on the board that destroys something and gives nothing back is
+the one that gets a question.
 
 **A click does nothing, deliberately.** A second way to take a piece would be a
 second set of rules about a full pack, and the drag is the one with the good
@@ -3484,7 +3517,7 @@ its counter in as stacks on load.
 Three things fall out of that, and each is worth knowing:
 
 - **A stunned body is drawn like any other status holder** — its own art in the
-  status strip under the token, no ❄ badge and no pip of its own. The token still
+  status strip in the token's top-right corner, no ❄ badge and no pip of its own. The token still
   *cools toward blue*, because that is a property of the token rather than a second
   listing of the same fact.
 - **Stun has no in-game effect** — no goal side on the player or on an enemy. It

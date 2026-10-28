@@ -535,7 +535,7 @@ static func _ch_board() -> Dictionary:
 				+ "rest of the game."),
 			_p("DRAG IT to pick it up. Your pack appears beside the board while "
 				+ "you are holding a piece, and goes away when you let go: drop it "
-				+ "in a slot to carry it, or on the bin to throw it away. Clicking "
+				+ "in a slot to carry it, or on the bin to destroy it. Clicking "
 				+ "does nothing — hover it instead to read what it is."),
 			_note("Pack full? Drop the piece onto one you are already carrying and "
 				+ "the two TRADE: the new one goes in your pack and the old one "
@@ -544,10 +544,14 @@ static func _ch_board() -> Dictionary:
 			_p("A body walking onto a piece SHOVES it: to the nearest free "
 				+ "square, and away from you when it has the choice. A board with "
 				+ "no room left pushes it off the field."),
-			_note("Nothing is ever lost by leaving one. Everything still on the "
-				+ "floor when you report the game goes to the reward screen with "
-				+ "the rest of the haul — win or lose, since the kill is what "
-				+ "earned it."),
+			_p("PUT ONE DOWN by dragging it out of your pack onto a free square. "
+				+ "A piece on the floor is not on you — nothing it does works while "
+				+ "it lies there — but it is not destroyed either, and you can pick "
+				+ "it back up."),
+			_note("The floor lasts until you pick your next game. The reward "
+				+ "screen's ⚔ Combat button opens the board, so you can still "
+				+ "pick a piece up after reporting; whatever is still lying there "
+				+ "when the next game begins is gone."),
 		],
 	}
 

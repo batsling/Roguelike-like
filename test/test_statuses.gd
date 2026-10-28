@@ -161,7 +161,7 @@ func test_speed_window_tightens_on_the_authored_curve() -> void:
 #
 # An enemy-side clause or bonus rides whatever body it lands on. On a body whose
 # goal is answered ANY TIME, mid-game, "the game must be beaten in 3 hours" and
-# "you didn't intentionally heal" asked for a promise — so those two carry a
+# "you didn't intentionally heal" asked for a promise — so those (and Dexterity) carry a
 # second wording that is true the moment the body is cleared.
 
 func test_speed_on_an_any_time_body_times_the_goal_not_the_game() -> void:
@@ -181,8 +181,17 @@ func test_bleed_on_an_any_time_body_asks_only_up_to_the_clear() -> void:
 	assert_string_contains(bleed.objective_text(StatusData.ENEMY, 1, true),
 		"and if you didn't intentionally heal before clearing it,")
 
+func test_dexterity_on_an_any_time_body_is_about_the_run() -> void:
+	# The owner, 28 Oct 2026: "you must beat 2 bosses without getting hit" made no
+	# sense on a body cleared mid-game. It is about the run that goal is met in.
+	var dex: StatusData = Data.get_status(&"dexterity")
+	assert_eq(dex.clause_text(StatusData.ENEMY, 2),
+		"you must beat 2 or all bosses without getting hit", "the end-of-game wording")
+	assert_eq(dex.clause_text(StatusData.ENEMY, 2, true),
+		"in a run where you beat 2 or all bosses without getting hit", "the any-time wording")
+
 func test_a_status_with_one_wording_reads_the_same_on_both() -> void:
-	for id in [&"strength", &"dexterity", &"marked", &"burn"]:
+	for id in [&"strength", &"marked", &"burn"]:
 		var sd: StatusData = Data.get_status(id)
 		assert_false(sd.has_any_time_wording(StatusData.ENEMY), "%s has one wording" % id)
 		assert_eq(sd.condition_text(StatusData.ENEMY, 2, true),
@@ -1270,7 +1279,7 @@ func test_the_way_out_row_offers_no_notes_button() -> void:
 			buttons += 1
 	assert_eq(buttons, 0, "no Notes button on the way out")
 
-func test_an_enemys_statuses_draw_under_its_box() -> void:
+func test_an_enemys_statuses_draw_in_its_top_right_corner() -> void:
 	var ui = _booted()
 	Page.pick_enemies(ui, 0)
 	GameLoop2.apply_enemy_status(&"marked", 2, "current")
@@ -1282,20 +1291,18 @@ func test_an_enemys_statuses_draw_under_its_box() -> void:
 	var node: Control = ui._board._enemy_nodes.get(inst)
 	assert_not_null(node, "the body has a node on the board")
 	var badges: Control = node.get_meta("badges")
-	# BY NAME. It used to be "the last HBoxContainer under the badges", which was an
-	# identity only while there were two of them — the ⚠ corner row (§7.6) is a
-	# third, and it is added last, so the old finder silently started asserting
-	# about the wrong node.
-	var strip: Control = badges.get_node_or_null(BattlefieldView.STATUS_STRIP_NAME)
+	# BY NAME, and it lives in the corner row now, beside the ! and ▸ marks.
+	var strip: Control = badges.find_child(BattlefieldView.STATUS_STRIP_NAME, true, false)
 	assert_not_null(strip, "a status strip was added")
 	assert_eq(strip.get_child_count(), 1, "one pip for the one status")
-	# Pinned to the box's BOTTOM edge and pushed outward from it — the two halves
-	# of "below the box, not over the art". The resolved offsets are asserted on
-	# the anchors rather than on pixels, because a Control's offsets are not
+	# The owner, 28 Oct 2026: on the top right, so it cuts off less. Asserted on
+	# the row's anchors rather than on pixels, because a Control's offsets are not
 	# settled until it has been laid out and this test never renders a frame.
-	assert_eq(strip.anchor_top, 1.0, "anchored to the bottom edge")
-	assert_eq(strip.anchor_bottom, 1.0)
-	assert_gt(BattlefieldView.STATUS_STRIP_DROP, 0, "and pushed out past it")
+	var corner: Control = strip.get_parent()
+	assert_eq(String(corner.name), "CornerMarks", "in the corner row")
+	assert_eq(corner.anchor_top, 0.0, "anchored to the top edge")
+	assert_eq(corner.anchor_right, 1.0, "and the right one")
+	assert_lt(BattlefieldView.STATUS_PIP_ENEMY, 14, "a little smaller than it was")
 
 # ---------------------------------------------------------------------------
 # 5. The COMBAT side (§13.4)

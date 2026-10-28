@@ -438,6 +438,12 @@ func _build_stream_section(col: VBoxContainer) -> void:
 		"Play every Roguelike Radio song, whatever the game ranks have unlocked. Turning it off goes back to what the ranks earned.")
 	all_songs.name = "UnlockAllSongsChk"
 
+	# Loudness levelling: off by default, so a song plays at the slider's volume.
+	var level := _toggle(grid, "Auto-level song volume", Radio.auto_level,
+		func(on: bool) -> void: Radio.set_auto_level(on),
+		"Listen to each Roguelike Radio song once and turn the loud ones down (and quiet ones up) to match. Off plays every song at the volume slider's level.")
+	level.name = "AutoLevelChk"
+
 # --- game tags ----------------------------------------------------------------
 #
 # THE TAG EXPORT (GameTags). Tags are edited per game, on the Collection's game

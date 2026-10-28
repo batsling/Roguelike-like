@@ -48,6 +48,8 @@ func before_each() -> void:
 	_saved_loudness_path = Radio.loudness_path
 	Radio.loudness_path = LOUDNESS
 	Radio._loudness = {}
+	# The levelling is off by default; its own tests turn it on.
+	Radio.auto_level = false
 	_saved_prefs = [Radio.output, Radio.volume, Radio.shuffle, Radio.station, Radio.paused,
 		Radio.unlock_all]
 	Data._songs = {}
@@ -95,6 +97,7 @@ func after_each() -> void:
 	Radio.loudness_path = _saved_loudness_path
 	Radio._loudness = _saved_loudness
 	Radio._gain_now = 0.0
+	Radio.auto_level = false
 	Data._songs = _saved_songs
 	GameStats.stats = _saved_stats
 	GameStats.enemy_log = _saved_log
@@ -763,6 +766,7 @@ func test_the_gain_brings_a_song_to_the_target_and_no_further_than_its_limits() 
 	assert_eq(Radio.gain_for_level(-90.0), Radio.GAIN_MAX, "never boosted past the ceiling")
 
 func test_a_learned_level_sets_the_speaker_and_rides_the_payload() -> void:
+	Radio.auto_level = true
 	var song: SongData = _song("a")
 	_rank(GAME, 1)
 	Radio._loudness[song.file] = Radio.TARGET_DB + 6.0
@@ -776,6 +780,7 @@ func test_a_learned_level_sets_the_speaker_and_rides_the_payload() -> void:
 	assert_eq(Radio._measuring, "", "a measured song is not measured again")
 
 func test_an_unmeasured_song_is_listened_to_but_tells_the_page_nothing_yet() -> void:
+	Radio.auto_level = true
 	_song("a")
 	_rank(GAME, 1)
 	Radio.next()
@@ -784,6 +789,7 @@ func test_an_unmeasured_song_is_listened_to_but_tells_the_page_nothing_yet() -> 
 		"the page plays it as it is until the level is learned")
 
 func test_a_learned_level_is_kept_and_can_be_forgotten() -> void:
+	Radio.auto_level = true
 	var song: SongData = _song("a")
 	_rank(GAME, 1)
 	Radio.next()
@@ -798,6 +804,28 @@ func test_a_learned_level_is_kept_and_can_be_forgotten() -> void:
 	Radio.forget_loudness()
 	assert_true(is_nan(Radio.measured_db(song)), "Re-measure forgets it")
 	assert_eq(Radio._measuring, "a.wav", "and listens to the current song again")
+
+func test_levelling_is_off_by_default_and_then_plays_songs_as_they_are() -> void:
+	# The owner, 28 Oct 2026: the levels "keep changing" — so it is a toggle, off.
+	var fresh: Node = Radio.get_script().new()
+	assert_false(fresh.auto_level, "a fresh radio does not level")
+	fresh.free()
+	var song: SongData = _song("a")
+	_rank(GAME, 1)
+	Radio._loudness[song.file] = Radio.TARGET_DB + 6.0
+	Radio.set_output(Radio.Output.GAME)
+	Radio.next()
+	assert_almost_eq(Radio._player.volume_db, linear_to_db(Radio.volume), 0.01,
+		"a song learned as loud still plays at the slider's volume")
+	assert_eq(float(Radio.payload()["gain_db"]), 0.0, "and the page is told no gain")
+	assert_eq(Radio._measuring, "", "and nothing is metered")
+	Radio.set_auto_level(true)
+	assert_almost_eq(Radio._player.volume_db, linear_to_db(Radio.volume) - 6.0, 0.01,
+		"turning it on applies what was learned at once")
+	Radio.set_auto_level(false)
+	assert_almost_eq(Radio._player.volume_db, linear_to_db(Radio.volume), 0.01,
+		"and turning it off takes it back off")
+	assert_false(is_nan(Radio.measured_db(song)), "without forgetting what was learned")
 
 func test_the_overlay_stages_the_track_beside_the_page() -> void:
 	_song("a")

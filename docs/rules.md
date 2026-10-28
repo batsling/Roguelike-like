@@ -285,13 +285,15 @@ Pushing BACK buys a game. Pushing UP or DOWN changes its lane, which is the one 
 
 A body you clear drops a piece of loot on the square it died in — a scroll, a pill or a potion, drawn as itself so you can see what it is from across the board — and it lies there for the rest of the game.
 
-DRAG IT to pick it up. Your pack appears beside the board while you are holding a piece, and goes away when you let go: drop it in a slot to carry it, or on the bin to throw it away. Clicking does nothing — hover it instead to read what it is.
+DRAG IT to pick it up. Your pack appears beside the board while you are holding a piece, and goes away when you let go: drop it in a slot to carry it, or on the bin to destroy it. Clicking does nothing — hover it instead to read what it is.
 
 > Pack full? Drop the piece onto one you are already carrying and the two TRADE: the new one goes in your pack and the old one lands on the square you took it from. Nothing is lost either way.
 
 A body walking onto a piece SHOVES it: to the nearest free square, and away from you when it has the choice. A board with no room left pushes it off the field.
 
-> Nothing is ever lost by leaving one. Everything still on the floor when you report the game goes to the reward screen with the rest of the haul — win or lose, since the kill is what earned it.
+PUT ONE DOWN by dragging it out of your pack onto a free square. A piece on the floor is not on you — nothing it does works while it lies there — but it is not destroyed either, and you can pick it back up.
+
+> The floor lasts until you pick your next game. The reward screen's ⚔ Combat button opens the board, so you can still pick a piece up after reporting; whatever is still lying there when the next game begins is gone.
 
 ## ♥ Health and dying
 

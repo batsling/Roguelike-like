@@ -72,14 +72,18 @@ const SPIN_MAX := 20.0
 # is gone before it reaches the floor, which is what makes the bottom read as a
 # drop rather than as an edge the art is sliding under.
 #
-# THE TOP DOES NOT FADE. It used to spend the first tenth of the height fading a
-# piece in, and the two together read as art materialising just under the top
-# edge rather than as art falling past the window: the fade-in band is exactly
-# where a piece is newest, so the eye that follows one down watches it appear out
-# of nothing. Pieces now enter already ABOVE the top edge at their full alpha
-# (`_spawn`), so they slide into view the way they slide out of the bottom.
-const ALPHA_MIN := 0.30
-const ALPHA_MAX := 0.62
+# THE TOP FADES IN, SLOWLY. For a while it did not: a fade over the first tenth
+# of the height read as art materialising just under the top edge, so pieces came
+# in at their full alpha instead — and the owner (28 Oct 2026) saw the other
+# failure, "there's no reason for things to start from the top already mostly
+# opaque". The fix for the first complaint was the band's LENGTH, not its
+# existence: over 40% of the height on a smoothstep, nothing appears anywhere,
+# a piece just brightens as it falls and peaks around the middle, under the
+# buttons' busiest rows least. Pieces still enter from above the top edge
+# (`_spawn`), so there is never a line where they start.
+const ALPHA_MIN := 0.22
+const ALPHA_MAX := 0.50
+const FADE_TOP := 0.40             # the height spent brightening out of the dark
 const FADE_BOTTOM := 0.34          # the height spent fading out into the dark
 
 # The middle of the canvas the buttons stand in, as a fraction of the width. The
@@ -633,14 +637,16 @@ const REENTRY_STAGGER := 0.33
 func _reentry_y(size: Vector2, box: Vector2) -> float:
 	return -box.y - _rng.randf() * size.y * REENTRY_STAGGER
 
-# The alpha a piece is drawn at: full until it fades out into the dark at the
-# bottom.
+# The alpha a piece is drawn at: brightening in out of the dark at the top, full
+# through the middle, and fading back out into it at the bottom.
 func _fade_at(y: float, height: float, base: float) -> float:
 	if height <= 0.0:
 		return base
 	var t: float = clampf(y / height, 0.0, 1.0)
 	var f: float = 1.0
-	if t > 1.0 - FADE_BOTTOM:
+	if t < FADE_TOP:
+		f = smoothstep(0.0, FADE_TOP, t)
+	elif t > 1.0 - FADE_BOTTOM:
 		f = (1.0 - t) / FADE_BOTTOM
 	return base * clampf(f, 0.0, 1.0)
 

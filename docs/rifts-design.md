@@ -309,8 +309,14 @@ Keys already exist as a character stat, reserved by the spec for exactly this
 - `Overworld2._add_rift_key_cards`, at the end of `_build_choices`: with a key
   held (and rifts on, and not in a Dash or a stay-or-return), each slot short of
   `offer_count()` gets a card `{game, enemy, slot, "rift_key": destination}`.
-  Destinations are `RunGraph.rift_key_destinations` (every game exactly two hops
-  away, never a rift game or a bashed one), shuffled off the offering's seed and
+  Destinations are `Overworld2.rift_key_dests`: `RunGraph.rift_key_destinations`
+  (every game exactly two hops away, never a rift game) less bashed games, and
+  **only those two hops nearer the Amulet** (home, when carrying it). The rift
+  game is a hop of its own, so a key that led anywhere else two hops out spent a
+  game for nothing or for lost ground (the owner, 28 Oct 2026: "it feels like a
+  bad decision cuz it makes the path so much longer"); now a key is never worse
+  than the best ordinary step, and with no such game no key cards are dealt.
+  Location rifts (free, no key) keep the wider list. Shuffled off the offering's seed and
   dealt round the cards; games are `RunGraph.rift_key_games`, the same rotation
   dealt rifts use, less anything bashed, on the table, or turned away by
   Transmute. So a redraw keeps the cards and a Scramble (which moves the seed)

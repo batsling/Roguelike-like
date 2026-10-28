@@ -411,15 +411,24 @@ func test_recycled_pieces_come_back_in_above_the_edge_and_not_in_lockstep() -> v
 	assert_gt(tops.size(), 3,
 		"and they do not all re-enter on the same line: %d distinct" % tops.size())
 
-func test_nothing_fades_in_at_the_top() -> void:
-	# A piece's alpha is its own from the moment it is visible; only the bottom
-	# fades. Read off `_fade_at` rather than off a constant, so it is the behaviour
-	# that is pinned and not the number that produces it.
+func test_the_top_fades_in_gently() -> void:
+	# The owner (28 Oct 2026): nothing should "start from the top already mostly
+	# opaque". A piece brightens out of the dark over the top of the screen, and
+	# over a LONG band, so it never reads as popping in under the edge. Read off
+	# `_fade_at` rather than off a constant, so it is the behaviour that is pinned
+	# and not the number that produces it.
 	var height := 720.0
 	var base := 0.5
-	assert_eq(_art._fade_at(0.0, height, base), base, "full alpha at the top edge")
-	assert_eq(_art._fade_at(height * 0.05, height, base), base, "and just under it")
+	assert_eq(_art._fade_at(0.0, height, base), 0.0, "nothing at the top edge")
+	assert_lt(_art._fade_at(height * 0.10, height, base), base * 0.25,
+		"still faint a tenth of the way down")
+	assert_eq(_art._fade_at(height * 0.5, height, base), base, "full alpha mid-screen")
 	assert_lt(_art._fade_at(height * 0.98, height, base), base, "the bottom still fades")
+	var last := -1.0
+	for i in 41:
+		var a: float = _art._fade_at(height * 0.01 * i, height, base)
+		assert_gte(a, last, "and it only ever brightens on the way in (%d%%)" % i)
+		last = a
 
 # --- how it starts ----------------------------------------------------------
 #
@@ -447,17 +456,17 @@ func test_the_menu_opens_with_every_piece_still_above_the_top_edge() -> void:
 
 func test_nothing_starts_part_way_faded_out() -> void:
 	# A piece dealt into the bottom third started in the fade-out band, which is
-	# what "it starts at low opacity" looked like. Asked of `_fade_at` at each
-	# piece's OPENING position, so it is the same question the draw asks.
+	# what "it starts at low opacity" looked like: half-faded pictures sliding off
+	# the floor the moment the menu opened. Every opening piece is above the top
+	# edge, so none of them is anywhere near the bottom band.
 	_seed()
 	var height: float = _art.get_viewport_rect().size.y
-	var faded: Array = []
+	var low: Array = []
 	for piece in _art._pieces:
-		var base: float = piece["alpha"]
-		var drawn: float = _art._fade_at((piece["pos"] as Vector2).y, height, base)
-		if drawn < base - 0.001:
-			faded.append("%.2f of %.2f" % [drawn, base])
-	assert_eq(faded, [], "every piece opens at its own full alpha: %s" % str(faded.slice(0, 6)))
+		var y: float = (piece["pos"] as Vector2).y
+		if y > height * (1.0 - _art.FADE_BOTTOM):
+			low.append("%.0f" % y)
+	assert_eq(low, [], "no piece opens in the fade-out band: %s" % str(low.slice(0, 6)))
 
 func test_the_screen_fills_from_the_top_rather_than_all_at_once() -> void:
 	# The other half of "start at the top": the pieces enter over a spread, so the
@@ -653,6 +662,11 @@ func test_the_downscale_leaves_a_picture_that_is_already_small_enough_alone() ->
 # refilled and the pieces go in by reference, so a frame allocates nothing.
 func test_a_frame_does_not_rebuild_the_draw_list() -> void:
 	_seed()
+	# The opening fill is all above the top edge, where the fade-in has it at
+	# nothing; stand a few mid-screen so there is something to draw.
+	var mid: float = _art.get_viewport_rect().size.y * 0.5
+	for i in mini(4, _art._pieces.size()):
+		_art._pieces[i]["pos"] = Vector2(40.0 + 60.0 * i, mid)
 	_art._redraw()
 	var drawn: Array = _art._pixel_batch + _art._smooth_batch
 	assert_gt(drawn.size(), 0, "something is queued to draw")
@@ -671,13 +685,13 @@ func test_a_frame_does_not_rebuild_the_draw_list() -> void:
 		"and so does the smooth one")
 
 func test_the_faded_alpha_reaches_the_layer() -> void:
-	# The layer draws `draw_alpha` — the piece's own alpha after the bottom fade —
+	# The layer draws `draw_alpha` — the piece's own alpha after the fades —
 	# so the fade has to survive the switch to drawing the pieces by reference.
 	_seed()
 	var height: float = _art.get_viewport_rect().size.y
 	# Put one piece deep into the fade band and one above it.
 	_art._pieces[0]["pos"] = Vector2(40.0, height * 0.995)
-	_art._pieces[1]["pos"] = Vector2(40.0, height * 0.2)
+	_art._pieces[1]["pos"] = Vector2(40.0, height * 0.5)
 	_art._redraw()
 	assert_lt(float(_art._pieces[0]["draw_alpha"]), float(_art._pieces[0]["alpha"]),
 		"a piece on the floor is drawn faded")

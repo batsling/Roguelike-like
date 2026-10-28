@@ -622,9 +622,9 @@ func _at_a_quiet_game(keys: int) -> Dictionary:
 			continue
 		if RunGraph.neighbors(gid).size() >= ui.offer_count():
 			continue
-		if RunGraph.rift_key_destinations(gid).is_empty():
-			continue
 		GameState.current_game_id = gid
+		if ui.rift_key_dests().is_empty():
+			continue
 		GameState.keys = keys
 		ui._build_choices()
 		return {"ui": ui, "here": gid}
@@ -653,8 +653,11 @@ func test_a_key_fills_the_empty_slots_with_rift_cards() -> void:
 	assert_eq(cards.size(), ui.offer_count() - plain, "every empty slot is filled")
 	var two_away: Array = RunGraph.rift_key_destinations(got["here"])
 	var pool: Array = RunGraph.rift_pool()
+	var d_here: int = ui.steps_to_amulet(got["here"])
 	for c in cards:
 		assert_true(two_away.has(StringName(c["rift_key"])), "the rift leads two hops away")
+		assert_eq(ui.steps_to_amulet(StringName(c["rift_key"])), d_here - 2,
+			"and two hops nearer the Amulet, so a key never costs ground")
 		assert_true(pool.has(StringName(c["slot"])), "and holds a connectionless game")
 		assert_false(RunGraph.is_rift_game(StringName(c["slot"])), "not laid until it is opened")
 

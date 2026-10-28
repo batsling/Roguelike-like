@@ -9,7 +9,7 @@ Videos and podcast episodes where a developer may say what inspired their game, 
 | 1. Confirm a suspected connection | 111 | 312 |
 | 2. Games with few connections | 186 | 603 |
 
-Searched 564 of the 564 games that qualify; 267 had nothing that looked like the developer talking.
+Searched 565 of the 565 games that qualify; 268 had nothing that looked like the developer talking.
 
 ---
 
@@ -488,7 +488,7 @@ Listen for: **Rogue** (sheet says "look at it")
 - [ ] podcast [Nine38 - E105 - New Resources for Missions](https://podcasts.apple.com/us/podcast/nine38-e105-new-resources-for-missions/id1569220508?i=1000793521617) — Project 938 Podcast · 30 min · 2026-10-06 — cue in the description
 - [ ] podcast [#39: Leading When the Road is Hard- Bob McNabb](https://podcasts.apple.com/us/podcast/39-leading-when-the-road-is-hard-bob-mcnabb/id1746681994?i=1000793340889) — Missions Life: Navigating Life, Leadership, and Ministry Abroad · 83 min · 2026-10-05 — cue in the description
 
-### Monster Train (2020) — 14 connections
+### Monster Train (2020) — 15 connections
 
 Listen for: **Slay the Spire** (sheet says "look at it")
 
@@ -1183,10 +1183,6 @@ Held on the map by one connection or none. Listen for any game on the chart.
 - [ ] podcast [Interviews with Wildermyth’s Nate Austin & Gaming’s First Union: Vodeo Workers United](https://podcasts.apple.com/us/podcast/interviews-with-wildermyths-nate-austin-gamings-first/id1516339779?i=1000545417498) — Thanks for the Knowledge · 94 min · 2021-12-19 — interview
 - [ ] podcast [Balancing Procedural and Intimate Storytelling in Wildermyth](https://podcasts.apple.com/us/podcast/balancing-procedural-and-intimate-storytelling-in/id1313004515?i=1000684439582) — Game Maker's Notebook · 67 min · 2025-01-20 — cue in the description
 - [ ] podcast [Wildermyth (2021)](https://podcasts.apple.com/us/podcast/wildermyth-2021/id1586162938?i=1000666005005) — Old Gamer’s Almanac · 59 min · 2024-08-20 — cue in the description
-
-### Wireworks (2026) — 0 connections
-
-- [ ] podcast [Episode 88 - Ay Up Duck Feat. Max Vaughan White Peak Distillery (Wireworks)](https://podcasts.apple.com/us/podcast/episode-88-ay-up-duck-feat-max-vaughan-white-peak-distillery/id1676843331?i=1000702769396) — Honest to a Malt · 76 min · 2025-04-08 — feat.
 
 ### 30XX (2021) — 1 connection
 
@@ -2035,6 +2031,10 @@ Held on the map by one connection or none. Listen for any game on the chart.
 - [ ] video [I spent 2 hours with Motion Twin to talk about Windblown!](https://www.youtube.com/watch?v=WMniC1mMzC8) — Veedotme · 1:21:24 · 1y ago — names the developer
 - [ ] video [Windblown Preview: A Lightning-Fast Roguelite from the Creators of Dead Cells / Early Impressions](https://www.youtube.com/watch?v=2VA43piVO1k) — Noisy Pixel · 4:19 · 2y ago — creator
 - [ ] podcast [🧙‍♂️ The Windblown Q&A / ASOIAF Quaranstream](https://podcasts.apple.com/us/podcast/the-windblown-q-a-asoiaf-quaranstream/id1437333634?i=1000506578598) — Wit and Wisdom of JoeMagician · 126 min · 2021-01-26 — q&a
+
+### Wireworks (2026) — 1 connection
+
+- [ ] podcast [Episode 88 - Ay Up Duck Feat. Max Vaughan White Peak Distillery (Wireworks)](https://podcasts.apple.com/us/podcast/episode-88-ay-up-duck-feat-max-vaughan-white-peak-distillery/id1676843331?i=1000702769396) — Honest to a Malt · 76 min · 2025-04-08 — feat.
 
 ### Witch's Apocalyptic Journey (2026) — 1 connection
 

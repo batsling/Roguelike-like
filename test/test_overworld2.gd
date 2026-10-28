@@ -2833,6 +2833,64 @@ func test_a_pill_already_known_teaches_nothing_and_says_nothing() -> void:
 	assert_false(_toasts_since(toast_from).contains("know"),
 		"nothing was learned, so nothing is announced")
 
+# --- the board off the board (the owner, 28 Oct 2026) ------------------------
+#
+# PROCESS frames, not wait_frames: the page's check rides SceneTree.process_frame,
+# and wait_frames counts physics frames, several of which can pass in one.
+
+# A covering screen stood up by hand: a CanvasLayer on the page at the haul
+# screen's number, with a full-rect panel in it.
+func _cover_board() -> CanvasLayer:
+	var layer := CanvasLayer.new()
+	layer.layer = UITheme.Layer.POST_COMBAT
+	var panel := Panel.new()
+	panel.set_anchors_preset(Control.PRESET_FULL_RECT)
+	layer.add_child(panel)
+	_ui.add_child(layer)
+	return layer
+
+func test_a_covered_board_has_a_combat_button_that_shows_it() -> void:
+	_pick_solo(0)
+	var cover := _cover_board()
+	await wait_process_frames(3)
+	assert_not_null(_ui._combat_button, "the Combat button is up while a screen covers the board")
+	assert_true(_ui._combat_button.visible)
+	_ui._combat_button.pressed.emit()
+	assert_false(cover.visible, "pressing it takes the screen off the board")
+	assert_true(_ui.is_peeking())
+	assert_false(_ui._combat_button.visible, "and the button gives way to the Back bar")
+	_ui._peek_back()
+	assert_true(cover.visible, "Back puts the screen back")
+	assert_false(_ui.is_peeking())
+	cover.queue_free()
+	await wait_process_frames(3)
+	assert_false(_ui._combat_button.visible, "with nothing covering the board, no button")
+
+func test_an_aim_armed_under_a_screen_shows_the_board_and_gives_it_back() -> void:
+	# Pommel Strike off the reward screen: the target was armed on a board nobody
+	# could see. Now the board is shown for the aim, and the screen comes back when
+	# the aim is done.
+	_pick_solo(0)
+	var cover := _cover_board()
+	var stub := Node.new()
+	var script := GDScript.new()
+	script.source_code = "extends Node\nfunc throw_cancelled() -> void:\n\tpass\nfunc put_away() -> void:\n\tpass\n"
+	script.reload()
+	stub.set_script(script)
+	add_child_autofree(stub)
+	var entry: Dictionary = {"type": "potion", "id": Data.all_potions()[0].id}
+	if not _ui.begin_loot_throw(stub, entry, -1):
+		cover.queue_free()
+		pending("the board had no square to throw at")
+		return
+	assert_false(cover.visible, "the board is shown for the aim")
+	assert_true(_ui._peek_for_aim)
+	_ui._board.disarm()
+	await wait_process_frames(3)
+	assert_true(cover.visible, "and the screen it came from is back once the aim is put away")
+	assert_false(_ui.is_peeking())
+	cover.queue_free()
+
 func test_a_teleport_says_where_it_put_you() -> void:
 	# THE PIECE THAT USED TO SAY NOTHING. A teleport is the one op on either
 	# consumable that resolves nowhere near the system that owns it — read_scroll and
@@ -2856,6 +2914,29 @@ func test_a_teleport_says_where_it_put_you() -> void:
 	if GameState.current_game_id != was:
 		assert_true(said.contains("from the Amulet"),
 			"and how far out that is, which is the fact the op is about: %s" % said)
+
+func test_the_teleport_screen_comes_up_before_the_move() -> void:
+	# The owner, 28 Oct 2026: "have the teleport screen popup before the player gets
+	# teleported, not after". The use screen says where you are going while the
+	# run is still where it was, and Done is what moves it.
+	GameState.loot_items.clear()
+	GameState.add_pill_loot(&"telepills")
+	var was: StringName = GameState.current_game_id
+	var modal = preload("res://scripts/redesign2/LootUseModal.gd").new()
+	modal.start(_ui, 0, _ui)
+	await wait_frames(2)
+	modal._on_read()
+	await wait_frames(2)
+	if not "\n".join(PackedStringArray(modal._outcome_logs)).contains("Teleported to"):
+		modal._finish()
+		pending("the teleport fizzled on this map, so there was no move to hold")
+		return
+	assert_eq(GameState.current_game_id, was, "the screen is up and the run has not moved")
+	assert_true(_ui._choice_modal == null or not is_instance_valid(_ui._choice_modal),
+		"and the next game's card has not opened over it")
+	modal._finish()
+	await wait_frames(2)
+	assert_ne(GameState.current_game_id, was, "Done is what moves it")
 
 func test_a_piece_that_does_nothing_at_all_still_says_so() -> void:
 	# Silence after a click reads as a click that did not register. A piece whose
@@ -9422,29 +9503,86 @@ func test_binning_a_floor_piece_asks_first() -> void:
 	assert_false(GameLoop2.has_drop(at), "and on Yes the square is bare")
 	panel.dismiss()
 
-func test_reporting_the_game_sweeps_the_floor_onto_the_haul_screen() -> void:
+func test_reporting_the_game_leaves_the_floor_until_the_next_game() -> void:
+	# The owner, 28 Oct 2026: "when the player goes to the next game, all loot on
+	# the floor is gone". The report no longer sweeps it onto the haul screen — the
+	# reward screen's Combat button can still reach it — and the next game's start
+	# is what clears it, taking nothing to any screen.
 	_pick_solo(0)
 	_ui._drop_queue.clear()
 	_floor_loot(Vector2i(2, 1), &"one")
 	_floor_loot(Vector2i(3, 0), &"two")
 	Page.report_beat(_ui)
-	assert_true(GameLoop2.drop_cells().is_empty(),
-		"the floor belonged to the game that was just handed in")
+	# At least the two: the bodies this very report cleared drop onto it too.
+	var ids: Array = []
+	for cell in GameLoop2.drop_cells():
+		ids.append(String((GameLoop2.drop_at(cell)["loot"] as Dictionary).get("id", "")))
+	assert_true(ids.has("one") and ids.has("two"), "the floor outlives the report: %s" % str(ids))
 	_ui._end_resolve()
-	assert_not_null(_ui._post_screen, "and what was on it went where every haul goes")
-	assert_gt(_ui._post_screen._loot.size(), 1, "both pieces, on one table")
+	if _ui._post_screen != null:
+		for entry in _ui._post_screen._loot:
+			assert_false(String((entry as Dictionary).get("id", "")) in ["one", "two"],
+				"and nothing on it was moved onto the haul table")
 	Page.leave_post_game(_ui)
 	Page.dismiss_event(_ui)
+	var pieces: int = GameState.loot_items.size()
+	if _ui._phase != _ui.Phase.SELECT:
+		pending("the run did not come back to an offering after the report")
+		return
+	_pick_enemies(0)
+	assert_true(GameLoop2.drop_cells().is_empty(), "a new game is a bare floor")
+	assert_eq(GameState.loot_items.size(), pieces, "and what was on it went nowhere")
 
-func test_loot_the_player_took_mid_game_is_not_swept_again() -> void:
+func test_a_piece_put_down_is_off_the_player_and_not_destroyed() -> void:
 	_pick_solo(0)
 	GameState.loot_items.clear()
-	_ui._drop_queue.clear()
-	var at: Vector2i = _floor_loot(Vector2i(2, 1))
-	_ui.take_floor_loot(_ui._floor_loot(GameLoop2.drop_at(at)), 0, at)
-	_ui._sweep_floor_into_the_queue()
-	assert_eq(_loot_pieces(), 0,
-		"it is in the pack; there is nothing left on the floor to ask about")
+	var binned: int = GameState.destroyed_loot.size()
+	GameState.take_loot_entry({"type": "scroll", "id": "set_down", "rarity": "Common"})
+	var cell := Vector2i(GameLoop2.grid_cols(), 0)
+	for row in GameLoop2.grid_rows():
+		if BattlefieldView.is_free_floor(Vector2i(GameLoop2.grid_cols(), row)):
+			cell = Vector2i(GameLoop2.grid_cols(), row)
+			break
+	if not BattlefieldView.is_free_floor(cell):
+		pending("no free square on the back column to put a piece down on")
+		return
+	_ui.put_loot_down(0, cell)
+	assert_eq(GameState.loot_items.size(), 0, "out of the pack, so nothing reads it as carried")
+	assert_true(GameLoop2.has_drop(cell), "lying on the square it was let go on")
+	assert_eq(String((GameLoop2.drop_at(cell)["loot"] as Dictionary).get("id", "")),
+		"set_down")
+	assert_false((GameLoop2.drop_at(cell)["loot"] as Dictionary).has("pack_slot"),
+		"with no memory of where it sat in the pack")
+	assert_eq(GameState.destroyed_loot.size(), binned,
+		"and putting a piece down is not destroying it")
+	_ui.take_floor_loot(_ui._floor_loot(GameLoop2.drop_at(cell)), 0, cell)
+	assert_eq(GameState.loot_items.size(), 1, "it can be picked back up")
+
+func test_the_board_takes_only_a_pack_piece_on_bare_ground() -> void:
+	_pick_solo(0)
+	var board: BattlefieldView = _ui._board
+	var free := Vector2i(-1, -1)
+	for col in range(GameLoop2.grid_cols(), 0, -1):
+		for row in GameLoop2.grid_rows():
+			if BattlefieldView.is_free_floor(Vector2i(col, row)):
+				free = Vector2i(col, row)
+				break
+		if free.x > 0:
+			break
+	if free.x < 0:
+		pending("no bare square on this board")
+		return
+	var at: Vector2 = board._cell_pos(free.y, free.x) + Vector2(board._cell, board._cell) * 0.5
+	assert_eq(board.cell_at(at), free, "the position maps back to its square")
+	var move := {"kind": "loot_move", "index": 0, "from": 0}
+	assert_true(board._can_put_down(at, move), "a pack piece may be put down there")
+	assert_false(board._can_put_down(at, {"kind": "loot_take", "entry": {}, "floor": free}),
+		"a piece off the floor is already on it")
+	assert_false(board._can_put_down(at, {"kind": "bag_move", "bag": 0}),
+		"and a bag is the pack's shape, not something in it")
+	GameLoop2.place_drop(free, {"type": "scroll", "id": "here", "rarity": "Common"})
+	assert_false(board._can_put_down(at, move), "nor on a square something already lies on")
+	GameLoop2.take_drop(free)
 
 func test_a_defeated_body_leaves_loot_where_it_fell() -> void:
 	_pick_solo(0)
@@ -9462,6 +9600,8 @@ func test_a_defeated_body_leaves_loot_where_it_fell() -> void:
 		"and what it left is a piece of loot, not a chest of relics")
 
 func test_a_body_that_fell_off_the_board_sends_its_loot_to_the_haul_screen() -> void:
+	# Still true: a body with no square never put anything on the floor, so its
+	# piece goes straight to the screen the game ends on.
 	_pick_solo(0)
 	_ui._drop_queue.clear()
 	var landed: Dictionary = GameLoop2.arrival()

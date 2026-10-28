@@ -715,6 +715,9 @@ func _do_evolve(evo: EvolutionData, chosen: Array) -> void:
 # line saying where you ended up can only come from whoever moved you.
 func _do_teleport(req: Dictionary) -> void:
 	var landed: String = ""
+	# Held until this screen closes (Overworld2.hold_arrival): the line that says
+	# where you are going is read BEFORE the board moves under it.
+	_hold_arrival()
 	if _overworld != null and _overworld.has_method("loot_teleport"):
 		# It writes its own log line — it is the overworld's move, and it happens
 		# whether a modal asked for it or not — so this only picks the sentence up.
@@ -735,6 +738,7 @@ func _do_teleport(req: Dictionary) -> void:
 # has to come back from whoever moved you.
 func _do_card_teleport(req: Dictionary) -> void:
 	var landed: String = ""
+	_hold_arrival()
 	if _overworld != null and _overworld.has_method("card_teleport"):
 		landed = String(_overworld.card_teleport(req))
 	# `card_teleport` writes its own log line for every outcome it has, the "nowhere
@@ -1053,7 +1057,21 @@ func _continue_button() -> Button:
 	b.pressed.connect(_process_next_request)
 	return b
 
+func _hold_arrival() -> void:
+	if _overworld != null and _overworld.has_method("hold_arrival"):
+		_overworld.hold_arrival()
+
+# A held teleport lands when the screen goes, however it goes.
+func _release_arrival() -> void:
+	if _overworld != null and is_instance_valid(_overworld) \
+			and _overworld.has_method("release_arrival"):
+		_overworld.release_arrival()
+
+func _exit_tree() -> void:
+	_release_arrival()
+
 func _finish() -> void:
+	_release_arrival()
 	finished.emit()
 	if _layer != null:
 		_layer.queue_free()
