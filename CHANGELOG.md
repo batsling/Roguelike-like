@@ -24,9 +24,12 @@ For how the project is laid out and how its systems fit together, see
   counts 1, the next generation ½, the one after ¼, over every path. It is
   live formulas in `Map Calc` (16 generation columns, because influence runs
   13 games deep and five generations would have cut Hack from 291 to 200),
-  with the decay α in `Map Analysis`!AN2 and the top 20 at AL:AO. Spelunky
+  with the decay α in `Map Analysis`!AN2 and the top 20 at AL:AR. Spelunky
   Classic leads (647), then NetHack, The Binding of Isaac and Slay the Spire,
-  which has the most direct influences (163) and is fourth.
+  which has the most direct influences (163) and is fourth. A stacked bar under
+  the table splits each score by generation (one blue, dark = direct), so a
+  game living on its descendants (Hack, NetHack) reads apart from one living on
+  its own reach (Slay the Spire, Vampire Survivors).
 
 - **A clean-up: the old build's leftovers are gone, and the docs say what is
   true.** The pre-2.0 items, characters and curses (`data/items/`,
