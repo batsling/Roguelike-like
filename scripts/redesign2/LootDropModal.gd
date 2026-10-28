@@ -341,12 +341,9 @@ func _build() -> void:
 		(offer_col as VBoxContainer).add_child(
 			LootDiscoveries.build(_rebuild, DISCOVERIES_H))
 
-	if GameState.loot_is_full():
-		# The cap, said where it bites — beside the nine full slots that are the
-		# reason, and beside the three things that can be done about it.
-		box.add_child(_line("Your pack is full (%d/%d) — use or bin something to make room, "
-			% [GameState.loot_capacity() - GameState.loot_space(), GameState.loot_capacity()]
-			+ "use these where you stand, or leave them.", UITheme.DANGER, 12))
+	# NO "YOUR PACK IS FULL" SENTENCE. It used to sit under the two columns, and
+	# the owner (28 Oct 2026) did not want it: the nine full slots beside the
+	# table already say it, and the pack's own count says it in numbers.
 
 	# THE ANSWER BUTTONS BELONG TO THE MODAL. "Take" and "Leave the rest" are how
 	# it ends itself, and an embedded section does not end — the host's own way out
@@ -397,10 +394,9 @@ func _offer_column(multi: bool) -> Control:
 	# piece — and it is the ordinary end of the section rather than an error state:
 	# what was paid out is in the pack now, and the pack beside this space is the
 	# thing still worth looking at.
+	# An empty table is just empty — no sentence about it (the owner, 28 Oct 2026).
 	if _offers.is_empty():
 		col.custom_minimum_size = Vector2(SINGLE_W, 0)
-		col.add_child(_line("Nothing — what you took is in the pack beside this, "
-			+ "and it can be spent from there.", UITheme.TEXT_FAINT, 11))
 		return col
 	if multi:
 		if _slot == null:

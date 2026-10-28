@@ -640,7 +640,7 @@ func _left_column() -> Control:
 # and the left column had half the screen empty below the tally to answer it in.
 #
 # So: the faces, one chip per KIND of body with ×N, the way the checklist groups
-# them; and the line that says how many walked on as the game was handed in.
+# them; and the line that says how many appeared as the game was handed in.
 const BOARD_FACE := 40
 
 func _board_panel() -> Control:
@@ -677,12 +677,13 @@ func _board_panel() -> Control:
 
 	var res: Dictionary = _snap.get("res", {})
 	var walked: int = int(res.get("end_spawns", 0))
+	# Said as what HAPPENED — "3 enemies appear" — and nothing more (the owner,
+	# 28 Oct 2026). It used to add why ("the road fills the board after every
+	# game"), which is a rule the manual teaches once, not news each game.
 	if walked > 0:
-		var why := _line("+%d walked on as the game ended — the road fills the board "
-			% walked + "after every game.", UITheme.DANGER.lerp(UITheme.TEXT, 0.35),
-			UITheme.FONT_BODY)
-		why.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		col.add_child(why)
+		col.add_child(_line("%s %s" % [Plural.count(walked, "enemy", "enemies"),
+			"appears" if walked == 1 else "appear"],
+			UITheme.DANGER.lerp(UITheme.TEXT, 0.35), UITheme.FONT_BODY))
 	return wrap
 
 func _board_face(entry: Dictionary, n: int) -> Control:
