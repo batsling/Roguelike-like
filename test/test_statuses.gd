@@ -161,7 +161,7 @@ func test_speed_window_tightens_on_the_authored_curve() -> void:
 #
 # An enemy-side clause or bonus rides whatever body it lands on. On a body whose
 # goal is answered ANY TIME, mid-game, "the game must be beaten in 3 hours" and
-# "you didn't intentionally heal" asked for a promise — so those two carry a
+# "you didn't intentionally heal" asked for a promise — so those (and Dexterity) carry a
 # second wording that is true the moment the body is cleared.
 
 func test_speed_on_an_any_time_body_times_the_goal_not_the_game() -> void:
@@ -181,8 +181,17 @@ func test_bleed_on_an_any_time_body_asks_only_up_to_the_clear() -> void:
 	assert_string_contains(bleed.objective_text(StatusData.ENEMY, 1, true),
 		"and if you didn't intentionally heal before clearing it,")
 
+func test_dexterity_on_an_any_time_body_is_about_the_run() -> void:
+	# The owner, 28 Oct 2026: "you must beat 2 bosses without getting hit" made no
+	# sense on a body cleared mid-game. It is about the run that goal is met in.
+	var dex: StatusData = Data.get_status(&"dexterity")
+	assert_eq(dex.clause_text(StatusData.ENEMY, 2),
+		"you must beat 2 or all bosses without getting hit", "the end-of-game wording")
+	assert_eq(dex.clause_text(StatusData.ENEMY, 2, true),
+		"in a run where you beat 2 or all bosses without getting hit", "the any-time wording")
+
 func test_a_status_with_one_wording_reads_the_same_on_both() -> void:
-	for id in [&"strength", &"dexterity", &"marked", &"burn"]:
+	for id in [&"strength", &"marked", &"burn"]:
 		var sd: StatusData = Data.get_status(id)
 		assert_false(sd.has_any_time_wording(StatusData.ENEMY), "%s has one wording" % id)
 		assert_eq(sd.condition_text(StatusData.ENEMY, 2, true),
