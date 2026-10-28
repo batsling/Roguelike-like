@@ -5223,10 +5223,26 @@ func _build_choices() -> void:
 	_add_rift_key_cards(tier)
 	_add_location_rift_cards(tier)
 
+# Where a Rift Key may lead from here: a game two hops away that is ALSO two hops
+# nearer the Amulet (home, when carrying it). The rift game is a hop of its own,
+# so a key that led anywhere else two hops out spent a game for no ground or for
+# ground lost — the owner, 28 Oct 2026: "it feels like a bad decision cuz it makes
+# the path so much longer". Now it is never worse than the best ordinary step: a
+# game to the rift and a game to its far end, two hops nearer for two games.
+# No such game (beside the Amulet, or off its route) means no key cards.
+func rift_key_dests() -> Array:
+	var here: StringName = GameState.current_game_id
+	var d_here: int = steps_to_amulet(here)
+	return RunGraph.rift_key_destinations(here).filter(func(gid):
+		var d: int = steps_to_amulet(StringName(gid))
+		return not GameLoop2.is_bashed(StringName(gid)) \
+			and d_here >= 2 and d >= 0 and d == d_here - 2)
+
 # RIFT KEY CARDS (docs/rifts-design.md §8). While the player holds a key, every
 # slot the offering leaves empty — a game with fewer connections than cards — is
 # filled with a rift card: a specific rift game, and the game exactly two away on
-# a neighbouring branch its rift would lead to. Picking one spends a key
+# a neighbouring branch its rift would lead to — two hops NEARER the Amulet
+# (`rift_key_dests`). Picking one spends a key
 # (`_open_rift_key`). Seeded off the offering, so redrawing the table keeps them
 # and a Scramble deals new ones, game and destination both.
 func _add_rift_key_cards(tier: int) -> void:
@@ -5237,8 +5253,7 @@ func _add_rift_key_cards(tier: int) -> void:
 	var empty: int = offer_count() - _choices.size()
 	if empty <= 0:
 		return
-	var dests: Array = RunGraph.rift_key_destinations(GameState.current_game_id).filter(
-		func(gid): return not GameLoop2.is_bashed(StringName(gid)))
+	var dests: Array = rift_key_dests()
 	if dests.is_empty():
 		return
 	var seed_key: String = _offer_seed()
