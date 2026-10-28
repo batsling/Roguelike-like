@@ -2857,6 +2857,29 @@ func test_a_teleport_says_where_it_put_you() -> void:
 		assert_true(said.contains("from the Amulet"),
 			"and how far out that is, which is the fact the op is about: %s" % said)
 
+func test_the_teleport_screen_comes_up_before_the_move() -> void:
+	# The owner, 28 Oct 2026: "have the teleport screen popup before the player gets
+	# teleported, not after". The use screen says where you are going while the
+	# run is still where it was, and Done is what moves it.
+	GameState.loot_items.clear()
+	GameState.add_pill_loot(&"telepills")
+	var was: StringName = GameState.current_game_id
+	var modal = preload("res://scripts/redesign2/LootUseModal.gd").new()
+	modal.start(_ui, 0, _ui)
+	await wait_frames(2)
+	modal._on_read()
+	await wait_frames(2)
+	if not "\n".join(PackedStringArray(modal._outcome_logs)).contains("Teleported to"):
+		modal._finish()
+		pending("the teleport fizzled on this map, so there was no move to hold")
+		return
+	assert_eq(GameState.current_game_id, was, "the screen is up and the run has not moved")
+	assert_true(_ui._choice_modal == null or not is_instance_valid(_ui._choice_modal),
+		"and the next game's card has not opened over it")
+	modal._finish()
+	await wait_frames(2)
+	assert_ne(GameState.current_game_id, was, "Done is what moves it")
+
 func test_a_piece_that_does_nothing_at_all_still_says_so() -> void:
 	# Silence after a click reads as a click that did not register. A piece whose
 	# ops ALL no-opped writes nothing to the log, so that one case is toasted.

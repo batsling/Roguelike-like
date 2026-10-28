@@ -4153,7 +4153,32 @@ func _on_item_aimed_at_cell(item: ItemData, cell: Vector2i) -> void:
 # `announce` is the line the teleport itself wants said at the top of the card —
 # "Teleported to X — 4 steps from the Amulet" — since the card cannot know how you
 # got here and the log line alone is the one nobody reads.
+# THE MOVE WAITS FOR THE SCREEN THAT ANNOUNCES IT. A teleport used from the use
+# screen (LootUseModal) used to move the run the instant it resolved, so the
+# board, the map and the next game's card had all changed before the screen that
+# said "Teleported to …" came up — the owner, 28 Oct 2026: "have the teleport
+# screen popup before the player gets teleported, not after". The use screen
+# HOLDS arrivals while it is open (`hold_arrival`) and lets the held one through
+# when it closes (`release_arrival`), so the sentence is read first and the move
+# follows it. Nothing else holds, so every other caller arrives at once.
+var _arrival_held: bool = false
+var _held_arrival: Array = []        # [dest, announce] waiting on the use screen
+
+func hold_arrival() -> void:
+	_arrival_held = true
+
+func release_arrival() -> void:
+	_arrival_held = false
+	if _held_arrival.is_empty():
+		return
+	var held: Array = _held_arrival
+	_held_arrival = []
+	arrive_at_game(held[0], held[1])
+
 func arrive_at_game(dest: StringName, announce: String = "") -> void:
+	if _arrival_held:
+		_held_arrival = [dest, announce]
+		return
 	var game: GameData = Data.get_game(dest)
 	if game == null or GameLoop2.run_over or _phase == Phase.OVER:
 		return
