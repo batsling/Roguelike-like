@@ -1547,6 +1547,15 @@
   "loot": "2026-10-12: nothing usable: no wiki under its name on Fandom or wiki.gg, or one with no item or enemy pages",
   "statuses": "2026-10-12: nothing usable: no wiki under its name on Fandom or wiki.gg, or one with no item or enemy pages"
  },
+ "Cuisineer": {
+  "characters": "2026-10-28: 1 row (Pom)",
+  "connections": "2026-10-28",
+  "events": "2026-10-28: nothing usable: side quests are deliveries for townsfolk",
+  "goals": "2026-10-28: 3 rows (Exploconut, Puffy, Ghost Pepper); crabs and the shrimp gunners repeat live goals",
+  "locations": "2026-10-28: nothing usable: Mala Caverns (fire) would repeat Burning Basement; the restaurant is a management loop",
+  "loot": "2026-10-28: nothing usable: its weapons are fish and food (Swordfish, Kebab Skewer), both live goals already; recipes are a crafting chain; no evolutions",
+  "statuses": "2026-10-28: nothing usable: no status system on the wiki"
+ },
  "Cult of PiN": {
   "characters": "2026-10-12: nothing usable: no wiki under its name on Fandom or wiki.gg, or one with no item or enemy pages",
   "connections": "before 2026-10-07",
@@ -2438,6 +2447,15 @@
   "loot": "2026-10-12: nothing usable: a stub wiki; its cards are blackjack cards with names",
   "statuses": "2026-10-12: nothing usable: a stub wiki; its cards are blackjack cards with names"
  },
+ "Dungeons & Jewels": {
+  "characters": "2026-10-28: no wiki; the Steam page has nothing to translate (no weapons or evolutions named)",
+  "connections": "2026-10-28",
+  "events": "2026-10-28: no wiki; the Steam page has nothing to translate (no weapons or evolutions named)",
+  "goals": "2026-10-28: no wiki; the Steam page has nothing to translate (no weapons or evolutions named)",
+  "locations": "2026-10-28: no wiki; the Steam page has nothing to translate (no weapons or evolutions named)",
+  "loot": "2026-10-28: no wiki; the Steam page has nothing to translate (no weapons or evolutions named)",
+  "statuses": "2026-10-28: no wiki; the Steam page has nothing to translate (no weapons or evolutions named)"
+ },
  "Dungeons of Blood and Dream": {
   "characters": "2026-10-12: nothing usable: a 26-article wiki whose item pages are weapon stats",
   "connections": "before 2026-10-07",
@@ -2636,6 +2654,15 @@
   "loot": "2026-10-12: nothing usable: no wiki under its name on Fandom or wiki.gg, or one with no item or enemy pages",
   "statuses": "2026-10-12: nothing usable: no wiki under its name on Fandom or wiki.gg, or one with no item or enemy pages"
  },
+ "Everspace": {
+  "characters": "2026-10-28: nothing usable: you fly a clone pilot; the named characters are NPCs",
+  "connections": "2026-10-28",
+  "events": "2026-10-28: nothing usable: encounters are NPCs selling equipment",
+  "goals": "2026-10-28: nothing usable: its enemies are ships and factions; Leviathan is already a candidate",
+  "locations": "2026-10-28: nothing usable: 200+ space sectors with no rule a location here could carry",
+  "loot": "2026-10-28: 1 row (Decoy Generator); Mine Cluster repeats Landmines; weapons are guns with no goal of their own; no evolutions",
+  "statuses": "2026-10-28: nothing usable: its conditions are Everspace 2's stat buffs and debuffs"
+ },
  "Everything is Crab": {
   "characters": "2026-10-10: Darwin, a blob that eats to grow, repeats the Monster Lord goal",
   "connections": "before 2026-10-07",
@@ -2734,6 +2761,15 @@
   "locations": "2026-10-26: nothing usable: no named places, machines or shopkeepers (Takara's Pirates are the event)",
   "loot": "2026-10-26: nothing usable: no wiki and the Steam page names no piece; no named weapons or evolutions",
   "statuses": "2026-10-26: nothing usable: no statuses named"
+ },
+ "Fhtagn Simulator": {
+  "characters": "2026-10-28: no wiki; the Steam page has nothing to translate (no weapons or evolutions named)",
+  "connections": "2026-10-28",
+  "events": "2026-10-28: no wiki; the Steam page has nothing to translate (no weapons or evolutions named)",
+  "goals": "2026-10-28: no wiki; the Steam page has nothing to translate (no weapons or evolutions named)",
+  "locations": "2026-10-28: no wiki; the Steam page has nothing to translate (no weapons or evolutions named)",
+  "loot": "2026-10-28: no wiki; the Steam page has nothing to translate (no weapons or evolutions named)",
+  "statuses": "2026-10-28: no wiki; the Steam page has nothing to translate (no weapons or evolutions named)"
  },
  "Fights in Tight Spaces": {
   "characters": "2026-10-12: nothing usable: one agent",
@@ -3707,6 +3743,15 @@
   "loot": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
   "statuses": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs"
  },
+ "Infected Shelter": {
+  "characters": "2026-10-28: no wiki; the Steam page has nothing to translate (no weapons or evolutions named)",
+  "connections": "2026-10-28",
+  "events": "2026-10-28: no wiki; the Steam page has nothing to translate (no weapons or evolutions named)",
+  "goals": "2026-10-28: no wiki; the Steam page has nothing to translate (no weapons or evolutions named)",
+  "locations": "2026-10-28: no wiki; the Steam page has nothing to translate (no weapons or evolutions named)",
+  "loot": "2026-10-28: no wiki; the Steam page has nothing to translate (no weapons or evolutions named)",
+  "statuses": "2026-10-28: no wiki; the Steam page has nothing to translate (no weapons or evolutions named)"
+ },
  "Infinite Space III: Sea of Stars": {
   "characters": "2026-10-12: nothing usable: the wiki found was PlatinumGames' Infinite Space, now set to none by hand; no other source",
   "connections": "before 2026-10-07",
@@ -3958,6 +4003,15 @@
   "locations": "2026-10-12: nothing usable: no wiki under its name on Fandom or wiki.gg, or one with no item or enemy pages",
   "loot": "2026-10-12: nothing usable: no wiki under its name on Fandom or wiki.gg, or one with no item or enemy pages",
   "statuses": "2026-10-12: nothing usable: no wiki under its name on Fandom or wiki.gg, or one with no item or enemy pages"
+ },
+ "Killing Room": {
+  "characters": "2026-10-28: no wiki; the Steam page has nothing to translate (no weapons or evolutions named)",
+  "connections": "2026-10-28",
+  "events": "2026-10-28: no wiki; the Steam page has nothing to translate (no weapons or evolutions named)",
+  "goals": "2026-10-28: no wiki; the Steam page has nothing to translate (no weapons or evolutions named)",
+  "locations": "2026-10-28: no wiki; the Steam page has nothing to translate (no weapons or evolutions named)",
+  "loot": "2026-10-28: no wiki; the Steam page has nothing to translate (no weapons or evolutions named)",
+  "statuses": "2026-10-28: no wiki; the Steam page has nothing to translate (no weapons or evolutions named)"
  },
  "Kingdom: New Lands": {
   "characters": "2026-10-12: nothing usable: the wiki found was the manga Kingdom's, now set to none by hand; no other source",
@@ -5903,6 +5957,15 @@
   "loot": "2026-10-10: 2 rows: Lottery, Treasure Map; its advisors are stat ups; weapons and evolutions: none (the Growth keyword turns unit cards into stronger ones after kills, which would need weapons that level up by kills)",
   "statuses": "2026-10-10: nothing: its Curse keyword is damage over time (Blight)"
  },
+ "Ravenbound": {
+  "characters": "2026-10-28: nothing usable: the six named characters are entombed gods, not heroes; you play an unnamed Vessel",
+  "connections": "2026-10-28",
+  "events": "2026-10-28: 1 row (Gold That Glitters)",
+  "goals": "2026-10-28: 1 row (Hulder); Trolls repeat 'Defeat a giant', Vittra repeats 'Defeat an enemy that teleports', Draugr summoners repeat live goals",
+  "locations": "2026-10-28: 1 row (Valda's Statue, an object); the regions are biomes with no rule of their own",
+  "loot": "2026-10-28: 2 card rows (Bottled Heart, Fossilized Leech); weapon classes are not weapons; no evolutions",
+  "statuses": "2026-10-28: nothing usable: Bleeding, Burning, Frozen and Cursed are live; Spored is the Hulder goal"
+ },
  "Ravenswatch": {
   "characters": "2026-10-10: 1 row: Scarlet; Geppetto repeats Wendy's companion, Melusine the Whorl's drowning, Carmilla the Necromancer, the Pied Piper shares a name with a Tainted Grail event",
   "connections": "before 2026-10-07",
@@ -6775,6 +6838,15 @@
   "locations": "2026-10-12: nothing usable: no wiki under its name on Fandom or wiki.gg, or one with no item or enemy pages",
   "loot": "2026-10-12: nothing usable: no wiki under its name on Fandom or wiki.gg, or one with no item or enemy pages",
   "statuses": "2026-10-12: nothing usable: no wiki under its name on Fandom or wiki.gg, or one with no item or enemy pages"
+ },
+ "ShoreTiles": {
+  "characters": "2026-10-28: no wiki; the Steam page has nothing to translate (no weapons or evolutions named)",
+  "connections": "2026-10-28",
+  "events": "2026-10-28: no wiki; the Steam page has nothing to translate (no weapons or evolutions named)",
+  "goals": "2026-10-28: no wiki; the Steam page has nothing to translate (no weapons or evolutions named)",
+  "locations": "2026-10-28: no wiki; the Steam page has nothing to translate (no weapons or evolutions named)",
+  "loot": "2026-10-28: no wiki; the Steam page has nothing to translate (no weapons or evolutions named)",
+  "statuses": "2026-10-28: no wiki; the Steam page has nothing to translate (no weapons or evolutions named)"
  },
  "Shotgun King: The Final Checkmate": {
   "characters": "2026-10-10: the Shotgun King is the only character",

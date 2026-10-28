@@ -4260,6 +4260,68 @@
   "checked": "2026-10-11",
   "wiki": null
  },
+ "Cuisineer": {
+  "also": [
+   "https://cuisineer.wiki.gg/api.php"
+  ],
+  "api": "https://cuisineer.fandom.com/api.php",
+  "articles": 284,
+  "blurb": "Welcome to ! articles • files • edits Cuisineer Wiki is a guide written and maintained by the players. We're a collaborative community website that anyone, including you, can build and expand. Wikis like this one depend on readers getting i",
+  "categories": {
+   "characters": [
+    "Characters"
+   ],
+   "events": [
+    "Side Quests",
+    "Story Quests",
+    "Quests"
+   ],
+   "goals": [
+    "Monsters",
+    "Bosses"
+   ],
+   "locations": [
+    "Locations",
+    "Dungeons"
+   ],
+   "loot": [
+    "Recipes",
+    "Tier 1 Recipes",
+    "Salty Recipes",
+    "Frying Pan Recipes",
+    "Chilly Recipes",
+    "Spicy Recipes",
+    "Umami Recipes",
+    "Pot Recipes",
+    "Tier 2 Recipes",
+    "Tier 3 Recipes",
+    "Oven Recipes",
+    "Bitter Recipes"
+   ]
+  },
+  "checked": "2026-10-28",
+  "counts": {
+   "characters": 33,
+   "events": 43,
+   "goals": 32,
+   "locations": 11,
+   "loot": 551,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "events": [
+    "Quests"
+   ],
+   "loot": [
+    "Weapons",
+    "Recipes"
+   ]
+  },
+  "signal": "year",
+  "sitename": "Cuisineer Wiki",
+  "wiki": "https://cuisineer.fandom.com"
+ },
  "Cult of PiN": {
   "api": "https://cult-of-pin.fandom.com/api.php",
   "articles": 8,
@@ -7340,6 +7402,10 @@
   "sitename": "Dungeons and Degenerate Gamblers Wiki",
   "wiki": "https://dungeons-and-degenerate-gamblers.fandom.com"
  },
+ "Dungeons & Jewels": {
+  "checked": "2026-10-28",
+  "wiki": null
+ },
  "Dungeons of Blood and Dream": {
   "api": "https://dungeons-of-blood-and-dream.fandom.com/api.php",
   "articles": 184,
@@ -8142,6 +8208,86 @@
   "checked": "2026-10-11",
   "wiki": null
  },
+ "Everspace": {
+  "api": "https://everspace.fandom.com/api.php",
+  "articles": 854,
+  "blurb": "Welcome to the Official Wiki for es1 and es2 Single-player 3D space shooters from the creators of the \"Galaxy on Fire\" series, Rockfish Games. Click either image to go to the main content portal for Everspace and Everspace 2 respectively. D",
+  "categories": {
+   "characters": [
+    "Characters",
+    "Characters (ES2)"
+   ],
+   "events": [
+    "Encounters"
+   ],
+   "goals": [
+    "Creatures (ES2)",
+    "Enemies (ES2)"
+   ],
+   "locations": [
+    "Location Challenges",
+    "Ceto locations (ES2)",
+    "Union locations (ES2)",
+    "Zharkov locations (ES2)",
+    "Drake locations (ES2)",
+    "Khaït Nebula locations (ES2)",
+    "Important locations",
+    "Protected locations (ES2)",
+    "Rhak Homeworlds locations (ES2)",
+    "Khaït Dominion locations (ES2)",
+    "Khione locations (ES2)",
+    "Aethon locations (ES2)"
+   ],
+   "loot": [
+    "Equipment",
+    "Primary weapons (ES2)",
+    "Legendary items",
+    "Equipment (ES2)",
+    "Secondary weapons (ES2)",
+    "Primary weapons",
+    "Consumables",
+    "Active devices",
+    "Passive devices",
+    "Secondary weapons",
+    "Backer items (ES2)"
+   ]
+  },
+  "checked": "2026-10-28",
+  "counts": {
+   "characters": 20,
+   "events": 34,
+   "goals": 4,
+   "locations": 222,
+   "loot": 370,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "characters": [
+    "Characters",
+    "Races"
+   ],
+   "events": [
+    "Encounters",
+    "Quests",
+    "NPCs"
+   ],
+   "goals": [
+    "Enemies"
+   ],
+   "loot": [
+    "Weapons",
+    "Consumables",
+    "Perks"
+   ],
+   "statuses": [
+    "Conditions"
+   ]
+  },
+  "signal": "",
+  "sitename": "Everspace Wiki",
+  "wiki": "https://everspace.fandom.com"
+ },
  "Everything is Crab": {
   "api": "https://everythingiscrab.wiki.gg/api.php",
   "articles": 195,
@@ -8505,6 +8651,10 @@
  },
  "Few Nights More": {
   "checked": "2026-10-26",
+  "wiki": null
+ },
+ "Fhtagn Simulator": {
+  "checked": "2026-10-28",
   "wiki": null
  },
  "Fights in Tight Spaces": {
@@ -11295,6 +11445,10 @@
   "checked": "2026-10-11",
   "wiki": null
  },
+ "Infected Shelter": {
+  "checked": "2026-10-28",
+  "wiki": null
+ },
  "Infinite Space III: Sea of Stars": {
   "checked": "2026-10-12",
   "note": "infinitespace.fandom.com is the wiki of PlatinumGames' Infinite Space (DS, 2009), not Digital Eel's game",
@@ -11918,6 +12072,10 @@
  },
  "Kill the Brickman": {
   "checked": "2026-10-11",
+  "wiki": null
+ },
+ "Killing Room": {
+  "checked": "2026-10-28",
   "wiki": null
  },
  "Kingdom: New Lands": {
@@ -16809,6 +16967,71 @@
   "sitename": "Ratropolis Wiki",
   "wiki": "https://ratropolis.fandom.com"
  },
+ "Ravenbound": {
+  "api": "https://ravenbound.fandom.com/api.php",
+  "articles": 523,
+  "blurb": "Welcome to the Official ! We're a collaborative community website about that anyone, including you, can build and expand. Wikis like this one depend on readers getting involved and adding content. Click the \"ADD NEW PAGE\" or \"EDIT\" button a",
+  "categories": {
+   "characters": [
+    "Characters"
+   ],
+   "events": [
+    "Quests"
+   ],
+   "goals": [
+    "Enemies"
+   ],
+   "locations": [
+    "Locations",
+    "Regions"
+   ],
+   "loot": [
+    "Cards",
+    "Equipment cards",
+    "Relic cards",
+    "Passive Upgrades",
+    "Bounty cards",
+    "Hatred cards",
+    "Items",
+    "Weapon Traits",
+    "Weapon Class"
+   ]
+  },
+  "checked": "2026-10-28",
+  "counts": {
+   "characters": 6,
+   "events": 18,
+   "goals": 13,
+   "locations": 33,
+   "loot": 534,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "events": [
+    "Quests"
+   ],
+   "goals": [
+    "Bosses"
+   ],
+   "locations": [
+    "Biomes"
+   ],
+   "loot": [
+    "Relics",
+    "Weapons",
+    "Cards",
+    "Equipment",
+    "Blessings"
+   ],
+   "statuses": [
+    "Status Effects"
+   ]
+  },
+  "signal": "rogue",
+  "sitename": "Ravenbound Wiki",
+  "wiki": "https://ravenbound.fandom.com"
+ },
  "Ravenswatch": {
   "also": [
    "https://ravenswatch.wiki.gg/api.php"
@@ -18889,6 +19112,10 @@
  },
  "Shoot First": {
   "checked": "2026-10-11",
+  "wiki": null
+ },
+ "ShoreTiles": {
+  "checked": "2026-10-28",
   "wiki": null
  },
  "Shotgun King: The Final Checkmate": {
