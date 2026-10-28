@@ -11,6 +11,23 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **27 Oct upload: 13 new games, 26 connections, and an Influence score on
+  `Map Analysis`.** Berserk Mode, Blood Vial, Force Reboot and Mullet Madjack
+  (all from Post Void, which stops being an owned dead end), Tribes of Midgard,
+  Dungeon Souls, Overture, Battlestar Galactica: Scattered Hopes, Sentry, Snake
+  Farm, Hunter's Moon, Descenders and Descenders Next are on the chart, with
+  proof screenshots. Their research found one new pair (Don't Starve → Tribes
+  of Midgard, in Norsfell's own words), three developer leads, Hel, a Raven
+  character and a Blood Vial relic. Two wikis matched the wrong work (a
+  Minecraft series for Overture, the TV show for Battlestar) and are set to
+  none by hand. **Influence** is Katz centrality: every game a game influenced
+  counts 1, the next generation ½, the one after ¼, over every path. It is
+  live formulas in `Map Calc` (16 generation columns, because influence runs
+  13 games deep and five generations would have cut Hack from 291 to 200),
+  with the decay α in `Map Analysis`!AN2 and the top 20 at AL:AO. Spelunky
+  Classic leads (647), then NetHack, The Binding of Isaac and Slay the Spire,
+  which has the most direct influences (163) and is fourth.
+
 - **A clean-up: the old build's leftovers are gone, and the docs say what is
   true.** The pre-2.0 items, characters and curses (`data/items/`,
   `data/characters/`, `data/curses/`, their art in `images/`), the old HTML

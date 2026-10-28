@@ -37,6 +37,19 @@ that only connect to each other: sequel pairs, mostly). That is exact while
 every island is a pair, as all five were on 22 Oct 2026. `--check` computes
 the real component and says when an island of three or more appears.
 
+**Influence (Katz centrality).** A game's score counts every game it
+influenced as 1, every game those influenced as α, the generation after as α²,
+and so on over every path: Katz (1953), the standard "reach, discounted by
+distance" measure from network science. Spreadsheets cannot recurse without a
+circular reference, so `Map Calc` lays it out one generation per column
+(Gen 1..GENS): a game's generation k+1 is the sum of generation k over the
+games it influenced, read through the connections block. The score is
+SUMPRODUCT(gens, α^{0..GENS-1}), with α read from `Map Analysis`!AN2, which the
+owner can change and a rerun never resets. The top 20 sit at AL:AO there.
+`--check` fails if the longest chain outgrows GENS or influence ever runs in a
+circle. On 28 Oct 2026 the longest chain is 13 games, and the formulas match a
+direct recursion exactly.
+
 Cached values are dropped from every cell written and Excel is asked to
 recalculate on open (`fullCalcOnLoad`), the same as `_map_calc_realign.py`
 did. Sheet XML is edited directly: openpyxl cannot round-trip this workbook
@@ -64,6 +77,39 @@ HEADROOM, MIN_HEADROOM, BLOCK = 500, 100, 500
 HUB_RANKS = 20
 # The first chart row (1-based) once the measure table's on-map section is in.
 CHARTS_FROM_ROW = 40
+
+# Influence (Katz centrality): every game a game influenced counts 1, every game
+# THOSE influenced counts ALPHA, the next generation ALPHA^2, and so on, over
+# every path. A spreadsheet cannot recurse without a circular reference, so each
+# generation is its own column: generation k+1 of a game is the sum of
+# generation k over the games it influenced. GENS has to cover the longest
+# influence chain on the sheet (13 on 28 Oct 2026); --check fails when it does
+# not. ALPHA is only the starting value: the cell on Map Analysis is the live one.
+GENS = 16
+ALPHA = 0.5
+ALPHA_CELL = "'%s'!$AN$2" % "Map Analysis"
+
+
+def _col(n):
+    s = ""
+    while n:
+        n, rem = divmod(n - 1, 26)
+        s = chr(65 + rem) + s
+    return s
+
+
+def _num(c):
+    n = 0
+    for ch in c:
+        n = n * 26 + ord(ch) - 64
+    return n
+
+
+# Map Calc: influence and its rank key, then generations 1..GENS on the games
+# block, then each connection's influencee at generations 1..GENS-1.
+K_SCORE, K_KEY = "AM", "AN"
+K_GEN = [_col(_num("AO") + i) for i in range(GENS)]
+K_DOWN = [_col(_num(K_GEN[-1]) + 2 + i) for i in range(GENS - 1)]
 
 # Styles already in the workbook (cellXfs indices), read off the cells that
 # build_map_charts.py styled: header, measure label, value, note, 0.00, 0%.
@@ -110,6 +156,15 @@ def calc_cells(r, G, C):
         f["AJ"] = 'IF($AI{0}="","",$AI{0}+ROW()/1000000)'
         f["AK"] = 'IF(OR($A{0}="",$P{0}="Yes",N($AG{0})=0),"",$AG{0}+ROW()/1000000)'
         f["AL"] = 'IF($A{0}="","",%s&"")' % row("games", "J")
+        # Influence: generation 1 is the games this one influenced directly;
+        # generation k+1 sums generation k over them (via the connections block).
+        f[K_GEN[0]] = 'IF($A{0}="","",COUNTIF(%s,$A{0}))' % rc("W")
+        for k in range(1, GENS):
+            f[K_GEN[k]] = 'IF($A{0}="","",SUMIFS(%s,%s,$A{0}))' % (rc(K_DOWN[k - 1]), rc("W"))
+        powers = ",".join(str(k) for k in range(GENS))
+        f[K_SCORE] = ('IF($A{0}="","",SUMPRODUCT($%s{0}:$%s{0},%s^{%s}))'
+                      % (K_GEN[0], K_GEN[-1], ALPHA_CELL, powers))
+        f[K_KEY] = 'IF($A{0}="","",$%s{0}+ROW()/10000000)' % K_SCORE
     if r <= C:
         name = "TRIM(%s)" % row("connections", "A")
         f["W"] = 'IF(%s="","",%s)' % (name, name)
@@ -128,6 +183,9 @@ def calc_cells(r, G, C):
         # island, which no route from the mainland reaches.
         f["AE"] = ('IF($AC{0}<>1,"",IF(AND(INDEX(%s,$Y{0})=1,INDEX(%s,$Z{0})=1),1,""))'
                    % (rg("AG"), rg("AG")))
+        # The influencee's own generations, for its influencer's next one.
+        for k in range(GENS - 1):
+            f[K_DOWN[k]] = 'IF($Z{0}="","",INDEX(%s,$Z{0}))' % rg(K_GEN[k])
     return {c: s.replace("{0}", str(r)) for c, s in f.items()}
 
 
@@ -142,7 +200,11 @@ CALC_HEADERS = {
     "AD": "Cross-genre", "AE": "Island pair",
     "AG": "Owned neighbours", "AH": "On map", "AI": "Map degree",
     "AJ": "Map rank key", "AK": "Buy rank key", "AL": "Steam page",
+    K_SCORE: "Influence (Katz)", K_KEY: "Influence rank key",
 }
+CALC_HEADERS.update({c: "Gen %d" % (k + 1) for k, c in enumerate(K_GEN)})
+CALC_HEADERS.update({c: "Influencee gen %d" % (k + 1) for k, c in enumerate(K_DOWN)})
+CALC_LAST = K_DOWN[-1]
 STR_COLS = {"A", "C", "P", "W", "X", "AA", "AB", "AH", "AL"}
 
 
@@ -272,6 +334,17 @@ def dash_cells(G, C, last_year):
         ranked("R", "S", "T", "Q", "D", r, k)
         ranked("AD", "AE", "AF", "AK", "AG", r, k)
         ranked("AH", "AI", "AJ", "AJ", "AI", r, k)
+        ranked("AL", "AM", "AN", K_KEY, K_SCORE, r, k)
+        put("AO%d" % r, "f", "IFERROR(INDEX(%s,MATCH(LARGE(%s,%d),%s,0)),\"\")"
+            % (m(K_GEN[0]), m(K_KEY), k, m(K_KEY)))
+
+    # Influence: the decay is the owner's to tune, so write() keeps a value
+    # already in its cell; this one is only the first.
+    put("AM2", "s", "Decay α: each generation further down counts α times the one above", S_NOTE)
+    put("AN2", "n", ALPHA, S_DEC)
+    for col, label in (("AL", "Rank"), ("AM", "Most influential (Katz)"), ("AN", "Influence"),
+                       ("AO", "Directly influenced")):
+        put("%s4" % col, "s", label, S_HEAD)
 
     for i, yr in enumerate(range(FIRST_YEAR, last_year + 1)):
         r = 5 + i
@@ -401,6 +474,34 @@ def main_component(games, conns):
     return owned, adj, main, islands
 
 
+def influence_depth(games, conns):
+    """The most generations any game's influence reaches (a game that influenced
+    nothing is 0), or None if influence runs in a circle."""
+    names = {str(r[0]).strip() for r in games}
+    out = defaultdict(set)
+    for r in conns:
+        a, b = str(r[0]).strip(), str(r[1] if len(r) > 1 else "").strip()
+        if a in names and b in names:
+            out[a].add(b)
+    depth, busy = {}, set()
+
+    def walk(n):
+        if n in depth:
+            return depth[n]
+        if n in busy:
+            raise ValueError
+        busy.add(n)
+        depth[n] = max((walk(x) + 1 for x in out[n]), default=0)
+        busy.discard(n)
+        return depth[n]
+
+    sys.setrecursionlimit(10000)
+    try:
+        return max((walk(n) for n in names), default=0)
+    except ValueError:
+        return None
+
+
 # ── write ───────────────────────────────────────────────────────────────────
 
 def write(wb):
@@ -427,7 +528,7 @@ def write(wb):
     for n in range(2, 6):
         if n not in genre:
             new[n][1]["R"] = cell_xml("R%d" % n, "s", TYPES[n - 2], None)
-    head = re.sub(r'<dimension ref="[^"]*"/>', '<dimension ref="A1:AL%d"/>' % max(G, C), head)
+    head = re.sub(r'<dimension ref="[^"]*"/>', '<dimension ref="A1:%s%d"/>' % (CALC_LAST, max(G, C)), head)
     head = re.sub(r"<cols>.*?</cols>", "<cols>%s</cols>" % "".join(
         '<col min="%d" max="%d" width="%d" customWidth="1"/>' % (col_index(c), col_index(c), w)
         for c, w in (("A", 34), ("W", 30), ("X", 30), ("AL", 30))), head, flags=re.S)
@@ -452,6 +553,8 @@ def write(wb):
         col, n = re.match(r"([A-Z]+)(\d+)", addr).groups()
         n = int(n)
         attrs, cells = rows.setdefault(n, ("", {}))
+        if addr == "AN2" and col in cells and isinstance(cells[col], tuple) and "<v>" in (cells[col][1] or ""):
+            continue   # the owner's decay, whatever they set it to
         if col in cells:
             # Keep the formatting the cell already has. The fixed S_* numbers are
             # only right for the workbook build_map_charts.py styled: Excel
@@ -464,12 +567,13 @@ def write(wb):
                 style = int(m.group(1))
         if style is not None and style >= n_styles:
             style = None
-        if kind == "f" and value.startswith(("IFERROR(INDEX('%s'!$A" % CALC,)):
+        if kind == "f" and value.startswith(("IFERROR(INDEX('%s'!$A$" % CALC,)):
             kind = "fs"
         cells[col] = cell_xml(addr, kind, value, style)
     last_row = max(rows)
-    head = re.sub(r'<dimension ref="[^"]*"/>', '<dimension ref="A1:AJ%d"/>' % last_row, head)
-    widths = {"AD": 7, "AE": 32, "AF": 12, "AH": 7, "AI": 32, "AJ": 11, "H": 10}
+    head = re.sub(r'<dimension ref="[^"]*"/>', '<dimension ref="A1:AO%d"/>' % last_row, head)
+    widths = {"AD": 7, "AE": 32, "AF": 12, "AH": 7, "AI": 32, "AJ": 11, "H": 10,
+              "AL": 7, "AM": 32, "AN": 11, "AO": 11}
     cols = re.search(r"<cols>(.*?)</cols>", head, re.S)
     if cols:
         have = cols.group(1)
@@ -584,6 +688,14 @@ def check(wb):
     year_rows = [a for a, f in fd.items() if re.match(r"W\d+$", a) and int(a[1:]) >= 5]
     if years and 4 + max(years) - FIRST_YEAR + 1 > max([int(a[1:]) for a in year_rows] or [0]):
         problems.append("%s's year table stops before %d" % (DASH, max(years)))
+
+    depth = influence_depth(games, conns)
+    if depth is None:
+        problems.append("the influence graph has a cycle, so Influence (Katz) depends on where "
+                        "its %d generations stop; find the pair that points both ways" % GENS)
+    elif depth > GENS:
+        problems.append("the longest influence chain is %d games deep and Map Calc counts %d "
+                        "generations: raise GENS in map_calc.py and rerun it" % (depth, GENS))
 
     owned, adj, main, islands = main_component(games, conns)
     pairs = {x for x in owned if len(adj[x]) == 1 and len(adj[next(iter(adj[x]))]) == 1}

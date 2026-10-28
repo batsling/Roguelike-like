@@ -1889,6 +1889,12 @@
   "sitename": "Battle Shapers Wiki",
   "wiki": "https://battleshapers.wiki.gg/"
  },
+ "Battlestar Galactica: Scattered Hopes": {
+  "checked": "2026-10-28",
+  "note": "galactica.fandom.com covers the TV franchise; it has no pages on Alt Shift's 2026 roguelite",
+  "set": "by hand",
+  "wiki": null
+ },
  "Be My Horde": {
   "checked": "2026-10-11",
   "wiki": null
@@ -1995,6 +2001,10 @@
   "signal": "rogue",
   "sitename": "Beneath Oresa Wiki",
   "wiki": "https://beneath-oresa.fandom.com"
+ },
+ "Berserk Mode": {
+  "checked": "2026-10-28",
+  "wiki": null
  },
  "Beyond Words": {
   "checked": "2026-10-11",
@@ -2196,6 +2206,10 @@
   "signal": "",
   "sitename": "Blood Dungeon Wiki",
   "wiki": "https://blood-dungeon.fandom.com"
+ },
+ "Blood Vial": {
+  "checked": "2026-10-28",
+  "wiki": null
  },
  "BloodDome99": {
   "checked": "2026-10-11",
@@ -5729,6 +5743,41 @@
   "checked": "2026-10-11",
   "wiki": null
  },
+ "Descenders": {
+  "api": "https://descenders.fandom.com/api.php",
+  "articles": 97,
+  "blurb": "Main page sections: 1 · 2 · 3 · 4. Changes for the main page can be proposed here. The official comprehensive wiki resource for the game",
+  "categories": {
+   "locations": [
+    "Regions"
+   ],
+   "loot": [
+    "Items"
+   ]
+  },
+  "checked": "2026-10-28",
+  "counts": {
+   "characters": 0,
+   "events": 0,
+   "goals": 0,
+   "locations": 10,
+   "loot": 4,
+   "statuses": 0
+  },
+  "match": "check",
+  "pages": {
+   "loot": [
+    "Items"
+   ]
+  },
+  "signal": "",
+  "sitename": "Descenders Wiki",
+  "wiki": "https://descenders.fandom.com"
+ },
+ "Descenders Next": {
+  "checked": "2026-10-28",
+  "wiki": null
+ },
  "Desktop Dungeons": {
   "checked": "2026-10-11",
   "wiki": null
@@ -7159,6 +7208,70 @@
  "Dungeon Rushers": {
   "checked": "2026-10-11",
   "wiki": null
+ },
+ "Dungeon Souls": {
+  "also": [
+   "https://dungeon-souls.fandom.com/api.php"
+  ],
+  "api": "https://dungeonsouls.fandom.com/api.php",
+  "articles": 159,
+  "blurb": "Hello! Welocme to the DungeonSouls Wiki Classes Items Weapons Difficutly Objects",
+  "categories": {
+   "characters": [
+    "Classes"
+   ],
+   "goals": [
+    "Bosses",
+    "Enemies"
+   ],
+   "locations": [
+    "Areas",
+    "Dungeon Souls",
+    "Objects"
+   ],
+   "loot": [
+    "Items",
+    "Potions"
+   ],
+   "statuses": [
+    "Status Effects"
+   ]
+  },
+  "checked": "2026-10-28",
+  "counts": {
+   "characters": 11,
+   "events": 0,
+   "goals": 14,
+   "locations": 13,
+   "loot": 73,
+   "statuses": 3
+  },
+  "match": "sure",
+  "pages": {
+   "characters": [
+    "Heroes"
+   ],
+   "goals": [
+    "Enemies",
+    "Monsters",
+    "Bosses"
+   ],
+   "locations": [
+    "Floors"
+   ],
+   "loot": [
+    "Items",
+    "Weapons",
+    "Potions"
+   ],
+   "statuses": [
+    "Buffs",
+    "Debuffs"
+   ]
+  },
+  "signal": "",
+  "sitename": "Dungeon Souls Wiki",
+  "wiki": "https://dungeonsouls.fandom.com"
  },
  "Dungeon of Windaria": {
   "checked": "2026-10-11",
@@ -8742,6 +8855,10 @@
   "signal": "",
   "sitename": "For The King Wiki",
   "wiki": "https://fortheking.wiki.gg/"
+ },
+ "Force Reboot": {
+  "checked": "2026-10-28",
+  "wiki": null
  },
  "Forestrike": {
   "checked": "2026-10-11",
@@ -10964,6 +11081,10 @@
  },
  "Hunter X Hunter: Nen X Survivor": {
   "checked": "2026-10-11",
+  "wiki": null
+ },
+ "Hunter's Moon: A Sovereign Syndicate Adventure": {
+  "checked": "2026-10-28",
   "wiki": null
  },
  "HyperRogue": {
@@ -13847,6 +13968,30 @@
   "sitename": "Muck Wiki",
   "wiki": "https://muck.fandom.com"
  },
+ "Mullet Madjack": {
+  "api": "https://mulletmadjack.fandom.com/api.php",
+  "articles": 7,
+  "blurb": "Welcome to the ! This is a wiki about the 2024 first-person shooter game . More content on this wiki will be coming soon! We're a collaborative community website about that anyone, including you, can build and expand. Wikis like this one de",
+  "categories": {},
+  "checked": "2026-10-28",
+  "counts": {
+   "characters": 0,
+   "events": 0,
+   "goals": 0,
+   "locations": 0,
+   "loot": 0,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "characters": [
+    "Characters"
+   ]
+  },
+  "signal": "year",
+  "sitename": "MULLET MADJACK Wiki",
+  "wiki": "https://mulletmadjack.fandom.com"
+ },
  "My Card Is Better Than Your Card!": {
   "api": "https://mycardisbetterthanyourcard.wiki.gg/api.php",
   "articles": 256,
@@ -15455,6 +15600,12 @@
  },
  "Overlooting": {
   "checked": "2026-10-11",
+  "wiki": null
+ },
+ "Overture": {
+  "checked": "2026-10-28",
+  "note": "overture.fandom.com is the wiki of a Minecraft machinima series (Creepers, Endermen, Naturellescraft), not Black Shell Games' 2015 roguelike",
+  "set": "by hand",
   "wiki": null
  },
  "Overworld": {
@@ -18476,6 +18627,10 @@
   "checked": "2026-10-11",
   "wiki": null
  },
+ "Sentry": {
+  "checked": "2026-10-28",
+  "wiki": null
+ },
  "Sephiria": {
   "api": "https://sephiria.fandom.com/api.php",
   "articles": 6,
@@ -19234,6 +19389,10 @@
   "signal": "",
   "sitename": "Slots & Daggers Wiki",
   "wiki": "https://slots-and-daggers.fandom.com"
+ },
+ "Snake Farm": {
+  "checked": "2026-10-28",
+  "wiki": null
  },
  "Sodaman": {
   "checked": "2026-10-11",
@@ -22960,6 +23119,85 @@
   "signal": "rogue",
   "sitename": "Trials of Fire Wiki",
   "wiki": "https://trials-of-fire.fandom.com"
+ },
+ "Tribes of Midgard": {
+  "api": "https://tribesofmidgard.fandom.com/api.php",
+  "articles": 1160,
+  "blurb": "style=\"width:5%; text-align:left;\" | style=\"width:90%\" | Welcome to the Official Tribes of Midgard - Wiki The -Wiki is your comprehensive collection of all things , written and maintained by the community. Please feel free to contribute by ",
+  "categories": {
+   "characters": [
+    "Classes"
+   ],
+   "events": [
+    "Quests",
+    "Festive Events",
+    "Events",
+    "Saga Quests"
+   ],
+   "goals": [
+    "Bestiary",
+    "Bosses"
+   ],
+   "locations": [
+    "Locations"
+   ],
+   "loot": [
+    "Armor",
+    "Cosmetic items",
+    "Weapons",
+    "Consumables",
+    "Tools",
+    "Blessings",
+    "Artifact",
+    "Items"
+   ]
+  },
+  "checked": "2026-10-28",
+  "counts": {
+   "characters": 10,
+   "events": 73,
+   "goals": 80,
+   "locations": 42,
+   "loot": 297,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "characters": [
+    "Characters",
+    "Classes"
+   ],
+   "events": [
+    "Events",
+    "Quests",
+    "Shrines",
+    "NPCs"
+   ],
+   "goals": [
+    "Bosses",
+    "Bestiary",
+    "Creatures"
+   ],
+   "locations": [
+    "Locations",
+    "Shrines",
+    "Dungeon"
+   ],
+   "loot": [
+    "Items",
+    "Weapons",
+    "Potions",
+    "Artifacts",
+    "Equipment",
+    "Consumables",
+    "Tools",
+    "Blessings",
+    "Recipes"
+   ]
+  },
+  "signal": "",
+  "sitename": "Tribes of Midgard Wiki",
+  "wiki": "https://tribesofmidgard.fandom.com"
  },
  "TumbleSeed": {
   "checked": "2026-10-11",

@@ -7,9 +7,9 @@ Videos and podcast episodes where a developer may say what inspired their game, 
 | | games | results |
 |---|---|---|
 | 1. Confirm a suspected connection | 111 | 312 |
-| 2. Games with few connections | 188 | 601 |
+| 2. Games with few connections | 186 | 603 |
 
-Searched 565 of the 565 games that qualify; 266 had nothing that looked like the developer talking.
+Searched 564 of the 564 games that qualify; 267 had nothing that looked like the developer talking.
 
 ---
 
@@ -570,7 +570,7 @@ Listen for: **Into the Breach** (sheet says "check folder"); **Slay the Spire** 
 - [ ] video [The Sloanes: Live Exclusives ft. Chris Cole & Nitro Kid](https://www.youtube.com/watch?v=RDWjXbn3wYg) — Ringside Rivalries · 1:54:11 · Streamed 3mo ago — ft.
 - [ ] podcast [The Sloanes: Live Exclusives ft. Chris Cole & Nitro Kid](https://podcasts.apple.com/us/podcast/the-sloanes-live-exclusives-ft-chris-cole-nitro-kid/id1448325904?i=1000777544639) — Suds and Squared Circle Media · 114 min · 2026-07-20 — ft.
 
-### Noita (2019) — 10 connections
+### Noita (2019) — 11 connections
 
 Listen for: **Spelunky Classic** (sheet says "check folder")
 
@@ -1211,14 +1211,6 @@ Held on the map by one connection or none. Listen for any game on the chart.
 - [ ] video [Premium Edition Games Interview with Matt Bitner (A Robot Named Fight!)](https://www.youtube.com/watch?v=AVCx20wms6o) — Premium Edition Games · 18:06 · 5y ago — interview
 - [ ] podcast [Developing Piece By Piece / Matt Bitner](https://podcasts.apple.com/us/podcast/developing-piece-by-piece-matt-bitner/id1493230843?i=1000526367595) — On The Lime · 26 min · 2021-06-22 — cue in the description
 
-### Abandon Ship (2019) — 1 connection
-
-- [ ] video [Abandon Ship - A Developer Interview / Schematics Interview](https://www.youtube.com/watch?v=7mXzEKLEf6Q) — Schematics Team · 21:25 · 8y ago — developer, interview, names the developer
-- [ ] video [Abandon Ship Interview The Arena Dev Interview](https://www.youtube.com/watch?v=8nTB0vn_naw) — NationFusion · 38:28 · 8y ago — dev, interview
-- [ ] video [Fragments of Silicon Season 12, Episode 3B: Gary Burchell of Fireblade Software](https://www.youtube.com/watch?v=gDxNt1AqlSM) — Adam Dayton · 54:28 · 6y ago — names the developer
-- [ ] podcast [Sue Hanley on 'Abandon Ship!' - a 5th Maine Exhibit](https://podcasts.apple.com/us/podcast/sue-hanley-on-abandon-ship-a-5th-maine-exhibit/id1477395877?i=1000781087826) — Peaks Island Radio · 35 min · 2026-08-08 — cue in the description
-- [ ] podcast [479. Fight the Future Minute #99: Abandon Ship!](https://podcasts.apple.com/us/podcast/479-fight-the-future-minute-99-abandon-ship/id1157097612?i=1000487487221) — The X-Cast: An X-Files Podcast · 23 min · 2020-08-08 — cue in the description
-
 ### Absolum (2025) — 1 connection
 
 - [ ] video [ABSOLUM DEVELOPER INTERVIEW LIVE - GUARD CRUSH GAMES](https://www.youtube.com/watch?v=MMW5cCr4chQ) — Major Playerz · 1:12:14 · Streamed 11mo ago — developer, interview, names the developer
@@ -1343,11 +1335,6 @@ Held on the map by one connection or none. Listen for any game on the chart.
 
 - [ ] podcast [Test PPG: Crown Trick (2020)](https://podcasts.apple.com/us/podcast/test-ppg-crown-trick-2020/id1457976034?i=1000621235996) — Pour Une Poignée de Gamers - Podcast Jeux Vidéo · 22 min · 2023-07-15 — names the developer
 
-### Crying Suns (2019) — 1 connection
-
-- [ ] video [Unity Creator Spotlight: Crying Suns by Alt Shift](https://www.youtube.com/watch?v=dFO9fPSg2DE) — Unity · 3:16:11 · 5y ago — creator, names the developer
-- [ ] podcast [148 - Crying Suns](https://podcasts.apple.com/us/podcast/148-crying-suns/id1260373097?i=1000490295473) — Seven Days to Play · 39 min · 2020-09-07 — names the developer
-
 ### Curious Expedition 2 (2020) — 1 connection
 
 - [ ] video [A Curious Chat With Maschinen-Mensch / Perceptive Podcast, Curious Expedition 2 interview, Roguelike](https://www.youtube.com/watch?v=-ZPp3SYDhfU) — Game Wisdom · 1:36:33 · 5y ago — chat with, interview, names the developer
@@ -1381,6 +1368,10 @@ Held on the map by one connection or none. Listen for any game on the chart.
 
 - [ ] video [SUPER UNIQUE Spooky Roguelite Deckbuilder!!!](https://www.youtube.com/watch?v=x2Pdh0Ht--Q) — TimeToGrind · 1:01:50 · 2y ago — cue in the description
 - [ ] podcast [#8.2 - GAMESCOM2021 Those Awesome Guys with Deepest Chamber](https://podcasts.apple.com/us/podcast/8-2-gamescom2021-those-awesome-guys-with-deepest-chamber/id1558287347?i=1000533075444) — openindie - your indie game podcast · 6 min · 2021-08-25 — cue in the description
+
+### Descenders Next (2025) — 1 connection
+
+- [ ] video [We convinced the developer of Descenders Next to add guns](https://www.youtube.com/watch?v=1BLq-UcI9sw) — Hat Films · 25:39 · 1y ago — developer
 
 ### Desktop Survivors 98 (2025) — 1 connection
 
@@ -1485,10 +1476,6 @@ Held on the map by one connection or none. Listen for any game on the chart.
 - [ ] video [Art Analysis of Fear & Hunger: Termina (+ Interview with a Developer)](https://www.youtube.com/watch?v=Yfv8S0quzfs) — Dreaddy · 43:36 · 2y ago — developer, interview
 - [ ] podcast [187: Fear & Hunger (with Adam Bucceri)](https://podcasts.apple.com/us/podcast/187-fear-hunger-with-adam-bucceri/id1591889877?i=1000731906128) — Tales from the Backlog · 173 min · 2025-10-15 — names the developer
 - [ ] podcast [Ludographie #89 - Fear & Hunger](https://podcasts.apple.com/us/podcast/ludographie-89-fear-hunger/id1526060540?i=1000638286791) — Ludographie · 16 min · 2023-12-12 — names the developer
-
-### Fish Fear Me (2024) — 1 connection
-
-- [ ] video [Bullet Heaven Basics With Heather Flowers and Fish Fear Me / Perceptive Podcast #gamewisdom](https://www.youtube.com/watch?v=Y2joFtBrrzg) — Game Wisdom · 54:32 · 1y ago — names the developer
 
 ### For the King 2 (2023) — 1 connection
 
@@ -1620,10 +1607,6 @@ Held on the map by one connection or none. Listen for any game on the chart.
 
 - [ ] video [Maid Survivors - a playtest of a forthcoming swarm survival game](https://www.youtube.com/watch?v=pyFOM35Xg0w) — Gentlemen's Pixel Club · 51:34 · 1y ago — cue in the description
 
-### Menace from the Deep (2024) — 1 connection
-
-- [ ] podcast [Історія Flat Lab і народження Menace from the Deep / Сейшн](https://podcasts.apple.com/us/podcast/%D1%96%D1%81%D1%82%D0%BE%D1%80%D1%96%D1%8F-flat-lab-%D1%96-%D0%BD%D0%B0%D1%80%D0%BE%D0%B4%D0%B6%D0%B5%D0%BD%D0%BD%D1%8F-menace-from-the-deep-%D1%81%D0%B5%D0%B9%D1%88%D0%BD/id1759365924?i=1000740075072) — Сейшн · 113 min · 2025-12-07 — names the developer
-
 ### Metal Slug Tactics (2024) — 1 connection
 
 - [ ] video [Enquête sur la fermeture de Leikir Studio (Metal Slug Tactics)](https://www.youtube.com/watch?v=p1F65brsjpQ) — ORIGAMI, Média jeu vidéo... mais pas que ! · 34:09 · 8mo ago — names the developer
@@ -1672,6 +1655,14 @@ Held on the map by one connection or none. Listen for any game on the chart.
 - [ ] podcast [#155: "The Roommate Revelation" w/ Kenny Sun](https://podcasts.apple.com/us/podcast/155-the-roommate-revelation-w-kenny-sun/id1517896727?i=1000614689117) — All N: a Nintendo podcast · 130 min · 2023-05-27 — names the developer
 - [ ] podcast [EP: A Year of UFO 50 - Mooncat](https://podcasts.apple.com/us/podcast/ep-a-year-of-ufo-50-mooncat/id1435365252?i=1000681152215) — Eggplant: The Secret Lives of Games · 101 min · 2024-12-20 — names the developer
 - [ ] podcast [EP: A Year of UFO 50 - Mooncat](https://podcasts.apple.com/us/podcast/ep-a-year-of-ufo-50-mooncat/id1840758452?i=1000741998925) — Eggplant Presents: A Year of UFO 50 (encore feed) · 101 min · 2025-12-19 — names the developer
+
+### Mullet Madjack (2024) — 1 connection
+
+- [ ] video [🎙️Epi #255 - 1 ano de Mullet Madjack! Bate-papo com o Sandro, direto da gamescom latam](https://www.youtube.com/watch?v=WrzXIHeqVy8) — XquadradoY_Hub · 25:20 · 1y ago — names the developer
+- [ ] podcast [PlayerCast #301 - MULLET MADJACK e entrevista com o diretor Sandro Martinello](https://podcasts.apple.com/us/podcast/playercast-301-mullet-madjack-e-entrevista-com-o-diretor/id566606429?i=1000659060418) — Player Select · 131 min · 2024-06-14 — entrevista
+- [ ] podcast [1H1D #245: Mullet MadJack](https://podcasts.apple.com/us/podcast/1h1d-245-mullet-madjack/id1543834887?i=1000728321502) — 1 Hour 1 Decision (1H1D) · 26 min · 2025-09-25 — names the developer
+- [ ] podcast [BonusCast #175: Mark of the Deep & Mullet Madjack](https://podcasts.apple.com/us/podcast/bonuscast-175-mark-of-the-deep-mullet-madjack/id556769674?i=1000691706155) — BonusCast: o podcast do Bonus Stage · 59 min · 2025-02-13 — names the developer
+- [ ] podcast [📹Epi #255 - 1 ano de Mullet Madjack! Bate-papo com o Sandro, direto da gamescom latam](https://podcasts.apple.com/us/podcast/epi-255-1-ano-de-mullet-madjack-bate-papo-com-o/id1514477057?i=1000708657633) — Podcast XQuadradoY · 25 min · 2025-05-15 — names the developer
 
 ### Necropolis (2016) — 1 connection
 
@@ -1723,11 +1714,6 @@ Held on the map by one connection or none. Listen for any game on the chart.
 - [ ] video [Popup Dungeon - Exclusive Developer Interview](https://www.youtube.com/watch?v=_01xBKfcojI) — Shacknews Interviews · 16:06 · 6y ago — developer, interview
 - [ ] podcast [SWW Interviews Episode 40: Popup Dungeon, Tin Can, and StressOut](https://podcasts.apple.com/us/podcast/sww-interviews-episode-40-popup-dungeon-tin-can-and/id1435072446?i=1000490919152) — The SWW Show · 57 min · 2020-09-11 — interview
 - [ ] podcast [SWW Interviews Episode 7: Popup Dungeon](https://podcasts.apple.com/us/podcast/sww-interviews-episode-7-popup-dungeon/id1435072446?i=1000452295588) — The SWW Show · 32 min · 2019-10-04 — interview
-
-### Post Void (2020) — 1 connection
-
-- [ ] video [(post void) y como Adri tendrá los ojos ensangrentados en 10 minutos.](https://www.youtube.com/watch?v=OjcuE-nQ_G4) — Durum and Games · 20:44 · 6y ago — names the developer
-- [ ] video [Gaming With Game Devs - Post Void](https://www.youtube.com/watch?v=P9WeDF2nQU4) — Game Development World Championship · 25:15 · 5y ago — devs
 
 ### Primordialis (2024) — 1 connection
 
@@ -1806,6 +1792,16 @@ Held on the map by one connection or none. Listen for any game on the chart.
 ### Section 13 (2023) — 1 connection
 
 - [ ] video [SRA Maharashtra Slum Areas Act 1971 Section 13(2) Change of Developer](https://www.youtube.com/watch?v=sq7UMeKcW0k) — SRA Information · 12:13 · 3y ago — developer
+
+### Sentry (2024) — 1 connection
+
+- [ ] video [Crash Reporting: Crashlytics vs Sentry / iOS Interview Booklet (17.4)](https://www.youtube.com/watch?v=kVdrDhp8a5s) — ProgrammingVerse | iOS & Mobile Dev · 3:29 · 3w ago — dev, interview
+- [ ] video [GopherCon 2015: Sentry Interview](https://www.youtube.com/watch?v=Lgzc1leDwSc) — Gopher Academy · 2:03 · 10y ago — interview
+- [ ] video [Frontend Observability: Sentry, Core Web Vitals & Distributed Tracing - Frontend Interview #50](https://www.youtube.com/watch?v=9tKjdDHv2_w) — How's This · 3:29 · 6d ago — interview
+- [ ] video [How to Successfully Hire  Sentry Developers -The Perfect Developer Fast Guide](https://www.youtube.com/watch?v=VtWIG5UHcic) — The Perfect Developer · 9:28 · 1y ago — developer
+- [ ] podcast [Vibe coding a 3D multiplayer game in 15 minutes—with no game dev experience / Cody De Arkland (Senior Director of Developer Experience at Sentry)](https://podcasts.apple.com/us/podcast/vibe-coding-a-3d-multiplayer-game-in-15-minutes-with/id1809663079?i=1000706343916) — How I AI · 31 min · 2025-05-05 — dev, developer, director
+- [ ] podcast [Buying Generational PDP Minerals Assets w/ Steve Foerster & Taylor McIntyre at Sentry Mineral Holdings](https://podcasts.apple.com/us/podcast/buying-generational-pdp-minerals-assets-w-steve-foerster/id1502759760?i=1000756895295) — The Minerals and Royalties Podcast · 40 min · 2026-03-24 — cue in the description
+- [ ] podcast [BDGS: #087 - The Sentry Showdown 2026 Recap](https://podcasts.apple.com/us/podcast/bdgs-087-the-sentry-showdown-2026-recap/id1735368514?i=1000792112224) — The Brown Duke Gun Show · 25 min · 2026-09-29 — cue in the description
 
 ### Shard Squad (2025) — 1 connection
 

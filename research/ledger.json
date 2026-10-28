@@ -611,6 +611,15 @@
   "loot": "2026-10-10: Misc. Items and Shaper Hacks read: health packs and floor-wide barrels; weapons are stat variants. No evolutions",
   "statuses": "2026-10-10: Status Effects read: Exposed; Weak, Break, Magnetize repeat existing statuses"
  },
+ "Battlestar Galactica: Scattered Hopes": {
+  "characters": "2026-10-28: nothing usable: one fixed hero or no wiki to draw a class from",
+  "connections": "2026-10-28: 27 Oct upload: Don't Starve -> Tribes of Midgard (to review); leads Acid Planet, Blacktower, KLETKA; nothing else first-hand",
+  "events": "2026-10-28: nothing usable: no wiki has an events page (Tribes of Midgard's are seasonal festivals and quests); Battlestar's faction crises are only described in patch notes",
+  "goals": "2026-10-28: nothing usable: no wiki (Overture's and Battlestar's matches were other works), and the Steam pages name no enemies with a goal to give",
+  "locations": "2026-10-28: nothing usable: Tribes of Midgard's places are biomes and village structures (Beacon repeats Aurelionite's beacons); Dungeon Souls' areas have no pages; the rest have no wiki",
+  "loot": "2026-10-28: nothing usable: no wiki or none with items; no weapons or evolutions to draw on",
+  "statuses": "2026-10-28: nothing usable: no status pages (Dungeon Souls' Buffs and Debuffs are empty)"
+ },
  "Be My Horde": {
   "characters": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
   "connections": "before 2026-10-07",
@@ -655,6 +664,15 @@
   "locations": "2026-10-10: nothing: Regroup is a rest site, Scavenge a choice of stat effects",
   "loot": "2026-10-10: 2 rows: Bargain, Spreading Infection (cards); weapons and evolutions: none (cards, no weapons); no evolutions",
   "statuses": "2026-10-10: 1 row: Black Retribution (curse); Fragility repeats the live Marked, Worthy Opponent the Tasty candidate"
+ },
+ "Berserk Mode": {
+  "characters": "2026-10-28: nothing usable: one fixed hero or no wiki to draw a class from",
+  "connections": "2026-10-28: 27 Oct upload: Don't Starve -> Tribes of Midgard (to review); leads Acid Planet, Blacktower, KLETKA; nothing else first-hand",
+  "events": "2026-10-28: nothing usable: no wiki has an events page (Tribes of Midgard's are seasonal festivals and quests); Battlestar's faction crises are only described in patch notes",
+  "goals": "2026-10-28: nothing usable: no wiki (Overture's and Battlestar's matches were other works), and the Steam pages name no enemies with a goal to give",
+  "locations": "2026-10-28: nothing usable: Tribes of Midgard's places are biomes and village structures (Beacon repeats Aurelionite's beacons); Dungeon Souls' areas have no pages; the rest have no wiki",
+  "loot": "2026-10-28: nothing usable: no wiki or none with items; no weapons or evolutions to draw on",
+  "statuses": "2026-10-28: nothing usable: no status pages (Dungeon Souls' Buffs and Debuffs are empty)"
  },
  "Beyond Words": {
   "characters": "2026-10-12: nothing usable: no wiki under its name on Fandom or wiki.gg, or one with no item or enemy pages",
@@ -754,6 +772,15 @@
   "locations": "2026-10-11: nothing: its wiki is a main page and nothing else",
   "loot": "2026-10-11: nothing: its wiki is a main page and nothing else",
   "statuses": "2026-10-11: nothing: its wiki is a main page and nothing else"
+ },
+ "Blood Vial": {
+  "characters": "2026-10-28: nothing usable: one fixed hero or no wiki to draw a class from",
+  "connections": "2026-10-28: 27 Oct upload: Don't Starve -> Tribes of Midgard (to review); leads Acid Planet, Blacktower, KLETKA; nothing else first-hand",
+  "events": "2026-10-28: nothing usable: no wiki has an events page (Tribes of Midgard's are seasonal festivals and quests); Battlestar's faction crises are only described in patch notes",
+  "goals": "2026-10-28: nothing usable: no wiki (Overture's and Battlestar's matches were other works), and the Steam pages name no enemies with a goal to give",
+  "locations": "2026-10-28: nothing usable: Tribes of Midgard's places are biomes and village structures (Beacon repeats Aurelionite's beacons); Dungeon Souls' areas have no pages; the rest have no wiki",
+  "loot": "2026-10-28: 1 row (Blood Vial, the leaking health vial)",
+  "statuses": "2026-10-28: nothing usable: no status pages (Dungeon Souls' Buffs and Debuffs are empty)"
  },
  "BloodDome99": {
   "characters": "2026-10-12: nothing usable: no wiki under its name on Fandom or wiki.gg, or one with no item or enemy pages",
@@ -1898,6 +1925,24 @@
   "loot": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
   "statuses": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs"
  },
+ "Descenders": {
+  "characters": "2026-10-28: nothing usable: one fixed hero or no wiki to draw a class from",
+  "connections": "2026-10-28: 27 Oct upload: Don't Starve -> Tribes of Midgard (to review); leads Acid Planet, Blacktower, KLETKA; nothing else first-hand",
+  "events": "2026-10-28: nothing usable: no wiki has an events page (Tribes of Midgard's are seasonal festivals and quests); Battlestar's faction crises are only described in patch notes",
+  "goals": "2026-10-28: nothing usable: no wiki (Overture's and Battlestar's matches were other works), and the Steam pages name no enemies with a goal to give",
+  "locations": "2026-10-28: nothing usable: Tribes of Midgard's places are biomes and village structures (Beacon repeats Aurelionite's beacons); Dungeon Souls' areas have no pages; the rest have no wiki",
+  "loot": "2026-10-28: nothing usable: no wiki or none with items; no weapons or evolutions to draw on",
+  "statuses": "2026-10-28: nothing usable: no status pages (Dungeon Souls' Buffs and Debuffs are empty)"
+ },
+ "Descenders Next": {
+  "characters": "2026-10-28: nothing usable: one fixed hero or no wiki to draw a class from",
+  "connections": "2026-10-28: 27 Oct upload: Don't Starve -> Tribes of Midgard (to review); leads Acid Planet, Blacktower, KLETKA; nothing else first-hand",
+  "events": "2026-10-28: nothing usable: no wiki has an events page (Tribes of Midgard's are seasonal festivals and quests); Battlestar's faction crises are only described in patch notes",
+  "goals": "2026-10-28: nothing usable: no wiki (Overture's and Battlestar's matches were other works), and the Steam pages name no enemies with a goal to give",
+  "locations": "2026-10-28: nothing usable: Tribes of Midgard's places are biomes and village structures (Beacon repeats Aurelionite's beacons); Dungeon Souls' areas have no pages; the rest have no wiki",
+  "loot": "2026-10-28: nothing usable: no wiki or none with items; no weapons or evolutions to draw on",
+  "statuses": "2026-10-28: nothing usable: no status pages (Dungeon Souls' Buffs and Debuffs are empty)"
+ },
  "Desktop Dungeons": {
   "characters": "2026-10-12: nothing usable: no wiki under its name on Fandom or wiki.gg, or one with no item or enemy pages",
   "connections": "before 2026-10-07",
@@ -2357,6 +2402,15 @@
   "loot": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
   "statuses": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs"
  },
+ "Dungeon Souls": {
+  "characters": "2026-10-28: 1 row (Necromancer); the other classes repeat live or candidate characters (Warrior, Archer, Thief, Wizard)",
+  "connections": "2026-10-28: 27 Oct upload: Don't Starve -> Tribes of Midgard (to review); leads Acid Planet, Blacktower, KLETKA; nothing else first-hand",
+  "events": "2026-10-28: nothing usable: no wiki has an events page (Tribes of Midgard's are seasonal festivals and quests); Battlestar's faction crises are only described in patch notes",
+  "goals": "2026-10-28: nothing usable: Gigantum Slime hides behind a shield (Hand of the King) and splits; Lady Laine summons snowmen, too narrow",
+  "locations": "2026-10-28: nothing usable: Tribes of Midgard's places are biomes and village structures (Beacon repeats Aurelionite's beacons); Dungeon Souls' areas have no pages; the rest have no wiki",
+  "loot": "2026-10-28: nothing usable: the wiki's item pages are titles only (Soul Jar, Price Tag, Golden Hand say nothing); no weapons or evolutions pages",
+  "statuses": "2026-10-28: nothing usable: no status pages (Dungeon Souls' Buffs and Debuffs are empty)"
+ },
  "Dungeon of Windaria": {
   "characters": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
   "connections": "before 2026-10-07",
@@ -2770,6 +2824,15 @@
   "locations": "2026-10-09: Embedded Blade",
   "loot": "2026-10-09: Fancy Umbrella, Silver Padlock; weapons and evolutions: Stool, Lute; Flaming Stool (the Stool's own tier-3 upgrade)",
   "statuses": "2026-10-09: Scared; Foolish (curse); Suicidal left out (the name)"
+ },
+ "Force Reboot": {
+  "characters": "2026-10-28: nothing usable: one fixed hero or no wiki to draw a class from",
+  "connections": "2026-10-28: 27 Oct upload: Don't Starve -> Tribes of Midgard (to review); leads Acid Planet, Blacktower, KLETKA; nothing else first-hand",
+  "events": "2026-10-28: nothing usable: no wiki has an events page (Tribes of Midgard's are seasonal festivals and quests); Battlestar's faction crises are only described in patch notes",
+  "goals": "2026-10-28: nothing usable: no wiki (Overture's and Battlestar's matches were other works), and the Steam pages name no enemies with a goal to give",
+  "locations": "2026-10-28: nothing usable: Tribes of Midgard's places are biomes and village structures (Beacon repeats Aurelionite's beacons); Dungeon Souls' areas have no pages; the rest have no wiki",
+  "loot": "2026-10-28: nothing usable: no wiki or none with items; no weapons or evolutions to draw on",
+  "statuses": "2026-10-28: nothing usable: no status pages (Dungeon Souls' Buffs and Debuffs are empty)"
  },
  "Forestrike": {
   "characters": "2026-10-12: nothing usable: no wiki under its name on Fandom or wiki.gg, or one with no item or enemy pages",
@@ -3562,6 +3625,15 @@
   "locations": "2026-10-12: nothing usable: no wiki (Fandom and wiki.gg tried), and nothing beyond store blurbs",
   "loot": "2026-10-12: nothing usable: no wiki (Fandom and wiki.gg tried), and nothing beyond store blurbs",
   "statuses": "2026-10-12: nothing usable: no wiki (Fandom and wiki.gg tried), and nothing beyond store blurbs"
+ },
+ "Hunter's Moon: A Sovereign Syndicate Adventure": {
+  "characters": "2026-10-28: nothing usable: one fixed hero or no wiki to draw a class from",
+  "connections": "2026-10-28: 27 Oct upload: Don't Starve -> Tribes of Midgard (to review); leads Acid Planet, Blacktower, KLETKA; nothing else first-hand",
+  "events": "2026-10-28: nothing usable: no wiki has an events page (Tribes of Midgard's are seasonal festivals and quests); Battlestar's faction crises are only described in patch notes",
+  "goals": "2026-10-28: nothing usable: no wiki (Overture's and Battlestar's matches were other works), and the Steam pages name no enemies with a goal to give",
+  "locations": "2026-10-28: nothing usable: Tribes of Midgard's places are biomes and village structures (Beacon repeats Aurelionite's beacons); Dungeon Souls' areas have no pages; the rest have no wiki",
+  "loot": "2026-10-28: nothing usable: no wiki or none with items; no weapons or evolutions to draw on",
+  "statuses": "2026-10-28: nothing usable: no status pages (Dungeon Souls' Buffs and Debuffs are empty)"
  },
  "HyperRogue": {
   "characters": "2026-10-12: nothing usable: one adventurer",
@@ -4742,6 +4814,15 @@
   "loot": "2026-10-10: 1 row: Chunky Hammer (weapon, from the live Big Chunk); its foods and armour are plain stat ups; no evolutions",
   "statuses": "2026-10-10: nothing: no statuses"
  },
+ "Mullet Madjack": {
+  "characters": "2026-10-28: nothing usable: one fixed hero or no wiki to draw a class from",
+  "connections": "2026-10-28: 27 Oct upload: Don't Starve -> Tribes of Midgard (to review); leads Acid Planet, Blacktower, KLETKA; nothing else first-hand",
+  "events": "2026-10-28: nothing usable: no wiki has an events page (Tribes of Midgard's are seasonal festivals and quests); Battlestar's faction crises are only described in patch notes",
+  "goals": "2026-10-28: nothing usable: no wiki (Overture's and Battlestar's matches were other works), and the Steam pages name no enemies with a goal to give",
+  "locations": "2026-10-28: nothing usable: Tribes of Midgard's places are biomes and village structures (Beacon repeats Aurelionite's beacons); Dungeon Souls' areas have no pages; the rest have no wiki",
+  "loot": "2026-10-28: nothing usable: no wiki or none with items; no weapons or evolutions to draw on",
+  "statuses": "2026-10-28: nothing new: its dopamine clock is Revita's Blood Lust curse, recorded in that row's Clones"
+ },
  "My Card Is Better Than Your Card!": {
   "characters": "2026-10-12: nothing usable: its items are everyday objects with card stats",
   "connections": "before 2026-10-07",
@@ -5263,6 +5344,15 @@
   "locations": "2026-10-12: nothing usable: no wiki (Fandom and wiki.gg tried), and nothing beyond store blurbs",
   "loot": "2026-10-12: nothing usable: no wiki (Fandom and wiki.gg tried), and nothing beyond store blurbs",
   "statuses": "2026-10-12: nothing usable: no wiki (Fandom and wiki.gg tried), and nothing beyond store blurbs"
+ },
+ "Overture": {
+  "characters": "2026-10-28: nothing usable: one fixed hero or no wiki to draw a class from",
+  "connections": "2026-10-28: 27 Oct upload: Don't Starve -> Tribes of Midgard (to review); leads Acid Planet, Blacktower, KLETKA; nothing else first-hand",
+  "events": "2026-10-28: nothing usable: no wiki has an events page (Tribes of Midgard's are seasonal festivals and quests); Battlestar's faction crises are only described in patch notes",
+  "goals": "2026-10-28: nothing usable: no wiki (Overture's and Battlestar's matches were other works), and the Steam pages name no enemies with a goal to give",
+  "locations": "2026-10-28: nothing usable: Tribes of Midgard's places are biomes and village structures (Beacon repeats Aurelionite's beacons); Dungeon Souls' areas have no pages; the rest have no wiki",
+  "loot": "2026-10-28: nothing usable: no wiki or none with items; no weapons or evolutions to draw on",
+  "statuses": "2026-10-28: nothing usable: no status pages (Dungeon Souls' Buffs and Debuffs are empty)"
  },
  "Overworld": {
   "characters": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
@@ -6497,6 +6587,15 @@
   "loot": "2026-10-12: nothing usable: no wiki under its name on Fandom or wiki.gg, or one with no item or enemy pages",
   "statuses": "2026-10-12: nothing usable: no wiki under its name on Fandom or wiki.gg, or one with no item or enemy pages"
  },
+ "Sentry": {
+  "characters": "2026-10-28: nothing usable: one fixed hero or no wiki to draw a class from",
+  "connections": "2026-10-28: 27 Oct upload: Don't Starve -> Tribes of Midgard (to review); leads Acid Planet, Blacktower, KLETKA; nothing else first-hand",
+  "events": "2026-10-28: nothing usable: no wiki has an events page (Tribes of Midgard's are seasonal festivals and quests); Battlestar's faction crises are only described in patch notes",
+  "goals": "2026-10-28: nothing usable: no wiki (Overture's and Battlestar's matches were other works), and the Steam pages name no enemies with a goal to give",
+  "locations": "2026-10-28: nothing usable: Tribes of Midgard's places are biomes and village structures (Beacon repeats Aurelionite's beacons); Dungeon Souls' areas have no pages; the rest have no wiki",
+  "loot": "2026-10-28: nothing usable: no wiki or none with items; no weapons or evolutions to draw on",
+  "statuses": "2026-10-28: nothing usable: no status pages (Dungeon Souls' Buffs and Debuffs are empty)"
+ },
  "Sephiria": {
   "characters": "2026-10-12: nothing usable: a stub wiki with no item or enemy text",
   "connections": "before 2026-10-07",
@@ -6856,6 +6955,15 @@
   "locations": "2026-10-11: nothing: its wiki has one page (a character, Friedemann) with no content",
   "loot": "2026-10-11: nothing: its wiki has one page (a character, Friedemann) with no content",
   "statuses": "2026-10-11: nothing: its wiki has one page (a character, Friedemann) with no content"
+ },
+ "Snake Farm": {
+  "characters": "2026-10-28: nothing usable: one fixed hero or no wiki to draw a class from",
+  "connections": "2026-10-28: 27 Oct upload: Don't Starve -> Tribes of Midgard (to review); leads Acid Planet, Blacktower, KLETKA; nothing else first-hand",
+  "events": "2026-10-28: nothing usable: no wiki has an events page (Tribes of Midgard's are seasonal festivals and quests); Battlestar's faction crises are only described in patch notes",
+  "goals": "2026-10-28: nothing usable: no wiki (Overture's and Battlestar's matches were other works), and the Steam pages name no enemies with a goal to give",
+  "locations": "2026-10-28: nothing usable: Tribes of Midgard's places are biomes and village structures (Beacon repeats Aurelionite's beacons); Dungeon Souls' areas have no pages; the rest have no wiki",
+  "loot": "2026-10-28: nothing usable: no wiki or none with items; no weapons or evolutions to draw on",
+  "statuses": "2026-10-28: nothing usable: no status pages (Dungeon Souls' Buffs and Debuffs are empty)"
  },
  "Sodaman": {
   "characters": "2026-10-12: nothing usable: no wiki (Fandom and wiki.gg tried), and nothing beyond store blurbs",
@@ -8098,6 +8206,15 @@
   "locations": "2026-10-12: nothing usable: none",
   "loot": "2026-10-12: nothing usable: its card pages are empty infoboxes; no evolutions",
   "statuses": "2026-10-12: nothing usable: the injury cards (Broken Arm, Cracked Skull) have empty pages"
+ },
+ "Tribes of Midgard": {
+  "characters": "2026-10-28: nothing usable: the class pages hold skill trees with no description of who the class is",
+  "connections": "2026-10-28: 27 Oct upload: Don't Starve -> Tribes of Midgard (to review); leads Acid Planet, Blacktower, KLETKA; nothing else first-hand",
+  "events": "2026-10-28: nothing usable: no wiki has an events page (Tribes of Midgard's are seasonal festivals and quests); Battlestar's faction crises are only described in patch notes",
+  "goals": "2026-10-28: 1 row (Hel); Jörmungandr repeats Abyssal Serpent's 'Defeat a giant serpent', the Seed of Yggdrasil's defence repeats Lightwing's, Bombling repeats Gas Spore",
+  "locations": "2026-10-28: nothing usable: Tribes of Midgard's places are biomes and village structures (Beacon repeats Aurelionite's beacons); Dungeon Souls' areas have no pages; the rest have no wiki",
+  "loot": "2026-10-28: nothing usable: gear sets and crafting materials; Valkyrie Delivery returns dropped loot chests, which this game has no counterpart for. No weapon with a goal no other game has; no evolutions (Recipes are crafting)",
+  "statuses": "2026-10-28: nothing usable: no status pages (Dungeon Souls' Buffs and Debuffs are empty)"
  },
  "TumbleSeed": {
   "characters": "2026-10-12: nothing usable: no wiki under its name on Fandom or wiki.gg, or one with no item or enemy pages",
