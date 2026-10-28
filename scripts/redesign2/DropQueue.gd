@@ -159,9 +159,7 @@ func take_floor_bag(entry: Dictionary, origin: Vector2i, rot: int, cell: Vector2
 
 # A piece dragged off the floor and onto the bin. It ASKS FIRST, on the same terms
 # a carried piece binned in the loot window does (LootTrash.confirm): this is the
-# one gesture on the board that destroys something and gives nothing back, and it
-# is a strictly worse outcome than the thing that happens if you do nothing at all
-# — a piece left lying is swept onto the haul screen and is still yours.
+# one gesture on the board that destroys something and gives nothing back.
 func bin_floor_loot(cell: Vector2i) -> void:
 	if GameLoop2.run_over:
 		return
@@ -174,7 +172,7 @@ func bin_floor_loot(cell: Vector2i) -> void:
 		if floor_loot(GameLoop2.drop_at(cell)) != entry:
 			return
 		GameLoop2.take_drop(cell)
-		GameLog.add("Threw away %s." % LootSystem.display_name(entry),
+		GameLog.add("Destroyed %s." % LootSystem.display_name(entry),
 			Color(0.8, 0.8, 0.8))
 		# A card thrown off the floor is binned as surely as one out of the pack
 		# (Trading Card, docs/loot-passives.md §3).
@@ -248,25 +246,43 @@ func floor_loot(held: Dictionary) -> Dictionary:
 	var entry = held.get("loot")
 	return (entry as Dictionary).duplicate(true) if entry is Dictionary else {}
 
-# Everything still lying on the board when a game is reported goes onto the haul
-# screen (§8.2/§18): the floor belongs to the game being played, and what the
-# player did not stop to pick up is still theirs to answer for once.
-#
-# ONE TABLE, not one question per square. Three bodies leaving three pieces is a
-# handful of loot, and LootDropModal has always taken a list — asking about them
-# one modal at a time would put the ninth-slot decision to the player three times
-# over with a different third of the answer each time.
-#
-# Swept whatever the report said. The loot was earned by the KILL, which already
-# happened; only the relic chest is a reward for beating the game (claim_chests).
-func sweep_floor() -> void:
-	var swept: Array = []
-	for held in GameLoop2.sweep_drops():
-		var entry: Dictionary = floor_loot(held)
-		if not entry.is_empty():
-			swept.append(entry)
-	if not swept.is_empty():
-		queue.append({"loot": swept})
+# A NEW GAME CLEARS THE FLOOR (§8.2). Everything still lying on the board when the
+# next game begins is GONE — not swept onto a screen, not banked anywhere. It used
+# to go onto the haul screen at the report; the owner (28 Oct 2026) asked for the
+# floor to be a place loot can be LEFT, and that only means something if leaving it
+# behind when you move on costs it. Between the report and the next game the floor
+# is still there (the reward screen's ⚔ Combat button opens the board), so a piece
+# a report's own kills dropped can still be picked up.
+func clear_floor() -> void:
+	var left: int = GameLoop2.sweep_drops().size()
+	if left > 0:
+		GameLog.add("%s left on the floor %s gone." % [
+			Plural.count(left, "piece of loot", "pieces of loot"),
+			"is" if left == 1 else "are"], Color(0.72, 0.62, 0.86))
+
+# PUTTING A PIECE DOWN (§8.2): a piece dragged out of the pack onto a free square of
+# the board. It is OFF THE PLAYER from that moment — out of `loot_items`, so no
+# passive, neighbour rule or count reads it — and it is NOT destroyed: it is not on
+# the destroyed pile and Trading Card does not pay for it. It lies there like a
+# kill's drop, can be picked back up, and goes when the next game clears the floor.
+func put_down(index: int, cell: Vector2i) -> void:
+	if GameLoop2.run_over or index < 0 or index >= GameState.loot_items.size():
+		return
+	if not BattlefieldView.is_free_floor(cell):
+		return
+	var entry = GameState.loot_items[index]
+	if not (entry is Dictionary) or (entry as Dictionary).is_empty():
+		return
+	var piece: Dictionary = (entry as Dictionary).duplicate(true)
+	# Where it sat in the pack is a fact about the pack, not about the piece.
+	piece.erase("pack_slot")
+	piece.erase("pack_cells")
+	if GameLoop2.place_drop(cell, piece) == GameLoop2.OFF_FIELD:
+		return
+	GameState.remove_loot_at(index)
+	GameLog.add("Put %s down." % LootSystem.display_name(piece), Color(0.72, 0.62, 0.86))
+	_page.refresh_board()
+	_page.refresh_loot_window()
 
 # THE RELICS THE EVENING EARNED (§8.2), spent and queued for the haul screen.
 #

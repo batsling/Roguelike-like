@@ -1487,6 +1487,10 @@ func _character_rank_from() -> int:
 
 func _begin_game(game: GameData, enemy: GoalEnemyData, tier: int,
 		log_shields: bool = true) -> void:
+	# A NEW GAME, A BARE FLOOR (§8.2). Whatever was left lying on the board — a kill's
+	# drop nobody picked up, a piece the player put down — is gone, before this
+	# game's bodies walk on.
+	_drops.clear_floor()
 	# Where the game's rank bar stood as it was picked (§20.4), for the end-of-game
 	# screen to fill from.
 	GameLoop2.rank_start = {"game": String(game.id), "xp": GameRanks.xp(game.id),
@@ -2484,12 +2488,12 @@ func report(beaten: bool, fulfilled: Variant = null, escaped: bool = false,
 	# they are already in `fulfilled_instances` if the player ticked them.
 	var res: Dictionary = GameLoop2.beat_game(false, fulfilled_instances, claims,
 		not free_exit, escaped, beaten)
-	# THE FLOOR IS SWEPT AT THE REPORT (§8.2). Loot lying on the board belongs to
-	# the game being played; handing the game in ends that, so anything nobody
-	# stopped to pick up — including whatever the bodies this very report cleared
-	# just dropped — goes onto the haul screen instead of sitting on a board the
-	# next game rebuilds.
-	_sweep_floor_into_the_queue()
+	# THE FLOOR IS NOT SWEPT AT THE REPORT ANY MORE (§8.2). It used to be, onto the
+	# haul screen; now loot lying on the board stays there through the screens
+	# after the game — the reward screen's ⚔ Combat button opens the board, and a
+	# piece can still be dragged off it there — and goes with the floor when the
+	# next game begins (`_begin_game` → DropQueue.clear_floor). The owner, 28 Oct
+	# 2026: "when the player goes to the next game, all loot on the floor is gone".
 	# …and the relic chest the evening earned, scaled by how much was killed and
 	# how hard it was, paid only for a game you actually BEAT (§8.2). An escape is
 	# not a win: the player walked away, and the bodies they cleared on the way out
@@ -6904,9 +6908,10 @@ func take_floor_loot(entry: Dictionary, slot: int, cell: Vector2i) -> void:
 func bin_floor_loot(cell: Vector2i) -> void:
 	_drops.bin_floor_loot(cell)
 
-# Called from the report path (`report`) and the machines.
-func _sweep_floor_into_the_queue() -> void:
-	_drops.sweep_floor()
+# A piece out of the pack, put down on a free square (§8.2). Public because the
+# board's signal lands here and the tests drive it directly.
+func put_loot_down(index: int, cell: Vector2i) -> void:
+	_drops.put_down(index, cell)
 
 func _queue_report_chests(beaten: bool) -> void:
 	_drops.queue_report_chests(beaten)
@@ -7541,6 +7546,7 @@ func _build_ui() -> void:
 	_board.item_aimed_at_cell.connect(_on_item_aimed_at_cell)
 	_board.loot_thrown_at_cell.connect(_on_loot_thrown_at_cell)
 	_board.loot_throw_cancelled.connect(_on_loot_throw_cancelled)
+	_board.loot_put_down.connect(put_loot_down)
 	_board.enemy_inspected.connect(_show_enemy_info)
 	_board.graveyard_requested.connect(show_graveyard)
 	_board.location_requested.connect(show_location)

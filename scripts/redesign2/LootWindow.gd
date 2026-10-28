@@ -169,7 +169,7 @@ func _discard(index: int) -> void:
 	var piece_name: String = LootSystem.display_name(GameState.loot_items[index])
 	LootTrash.confirm(_page, piece_name, func():
 		GameState.discard_loot_at(index)
-		GameLog.add("Threw away %s." % piece_name, UITheme.DANGER)
+		GameLog.add("Destroyed %s." % piece_name, UITheme.DANGER)
 		_page._refresh_items())
 
 # An attached bag dragged onto the bin (docs/loot-passives.md §6): only an empty
@@ -182,7 +182,7 @@ func _discard_bag(bag: int) -> void:
 	LootTrash.confirm(_page, bag_name, func():
 		if GameState.remove_bag(bag).is_empty():
 			return
-		GameLog.add("Threw away %s." % bag_name, UITheme.DANGER)
+		GameLog.add("Destroyed %s." % bag_name, UITheme.DANGER)
 		_page._refresh_items())
 
 # The floating panel: a heading with its own close button, the 3x3, and the

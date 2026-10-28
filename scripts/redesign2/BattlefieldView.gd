@@ -43,6 +43,11 @@ signal loot_thrown_at_cell(entry: Dictionary, index: int, cell: Vector2i)
 # armed it needs to know so it can come back rather than leaving the player on a
 # board with a bottle that has silently gone nowhere.
 signal loot_throw_cancelled(entry: Dictionary, index: int)
+# A piece dragged OUT OF THE PACK and let go on a free square of the board: put it
+# down there (docs/games-first-redesign.md §8.2, "putting loot down"). `index` is
+# the piece's place in `GameState.loot_items`. The host moves it — the board only
+# says where it was let go.
+signal loot_put_down(index: int, cell: Vector2i)
 # A Bomb was aimed at a CELL rather than at a body. Its own signal for the same
 # reason `item_aimed_at_cell` is one: the far end spends the charge on ground
 # (GameLoop2.bomb_cell) instead of on an instance handle.
@@ -122,6 +127,7 @@ var _hero_shields: HBoxContainer
 # drawn, and the one thing a shield exists to do is never seen happening.
 var _shields_shown := Vector2i(-1, -1)
 var _field: Control                  # fixed-size board the two layers stack inside
+var _put_down_layer: Control         # takes a pack piece let go on a free square
 var _cell_layer: Control             # the static backdrop of empty cells
 # The board dimensions the backdrop was last drawn at. The grid can GROW mid-run
 # (Mine-r Construction), so the panels are rebuilt when this stops matching
@@ -1521,6 +1527,19 @@ func _build() -> void:
 	_field.add_child(_cell_layer)
 	_rebuild_cells()
 
+	# THE FLOOR AS A DROP TARGET: a piece dragged out of the pack and let go on a
+	# free square is PUT DOWN there (§8.2). One layer over the whole grid rather
+	# than a target per cell, because the answer is arithmetic on the position.
+	# Above the backdrop and BELOW everything that can be clicked — the ground's
+	# hovers, the bodies, the floor tokens are all mounted after it — and PASS, so
+	# it never takes a click or a hover from anything; it only answers drops.
+	_put_down_layer = Control.new()
+	_put_down_layer.name = "PutDownLayer"
+	_put_down_layer.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_put_down_layer.mouse_filter = Control.MOUSE_FILTER_PASS
+	_put_down_layer.set_drag_forwarding(Callable(), _can_put_down, _put_down)
+	_field.add_child(_put_down_layer)
+
 	# THE GROUND (§17): units, and the hover that reads whatever is on a cell.
 	# BELOW the bodies, because that is where it is — a unit stands on the floor
 	# and a body walks over it — and because tree order is input order here: an
@@ -2362,6 +2381,48 @@ func _entry_at(cell: Vector2i) -> Dictionary:
 # press to the player, and only the body-aimed path carries the target through to
 # the blast — which is what a boss (immune to the damage, stunnable by Sticky
 # Bombs) and the `bomb_used` trigger read.
+# --- putting a piece down (§8.2) ------------------------------------------
+
+# The grid square under `at` (in the field's own coordinates), or OFF_FIELD for
+# the gutter between squares and anything off the grid.
+func cell_at(at: Vector2) -> Vector2i:
+	if _cell_step <= 0:
+		return GameLoop2.OFF_FIELD
+	var col: int = int(floor(at.x / _cell_step)) + 1
+	var row: int = int(floor(at.y / _cell_step))
+	if col < 1 or col > GameLoop2.grid_cols() or row < 0 or row >= GameLoop2.grid_rows():
+		return GameLoop2.OFF_FIELD
+	var inside: Vector2 = at - _cell_pos(row, col)
+	if inside.x > _cell or inside.y > _cell:
+		return GameLoop2.OFF_FIELD
+	return Vector2i(col, row)
+
+# Whether `cell` is bare ground a piece can be put down on: on the grid, with no
+# body standing in it, no unit on it and nothing already lying there.
+static func is_free_floor(cell: Vector2i) -> bool:
+	if cell == GameLoop2.OFF_FIELD or GameLoop2.run_over:
+		return false
+	if cell.x < 1 or cell.x > GameLoop2.grid_cols() or cell.y < 0 \
+			or cell.y >= GameLoop2.grid_rows():
+		return false
+	return not GameLoop2.occupancy().has(cell) and not GameLoop2.has_drop(cell) \
+		and not GameLoop2.units.has(cell)
+
+# A PIECE OUT OF THE PACK, and only that: `loot_move` is the pack's own payload.
+# A piece off the floor is already on the floor, an offer from a table was never
+# yours to put down, and a bag is the pack's shape rather than something in it.
+func _can_put_down(at: Vector2, data: Variant) -> bool:
+	if not (data is Dictionary) or String(data.get("kind", "")) != "loot_move":
+		return false
+	if int(data.get("index", -1)) < 0 or is_aiming():
+		return false
+	return is_free_floor(cell_at(at))
+
+func _put_down(at: Vector2, data: Variant) -> void:
+	if not _can_put_down(at, data):
+		return
+	loot_put_down.emit(int(data.get("index", -1)), cell_at(at))
+
 func _click_cell(cell: Vector2i) -> void:
 	match aim_use():
 		&"bomb":

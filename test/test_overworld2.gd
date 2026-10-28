@@ -9445,29 +9445,86 @@ func test_binning_a_floor_piece_asks_first() -> void:
 	assert_false(GameLoop2.has_drop(at), "and on Yes the square is bare")
 	panel.dismiss()
 
-func test_reporting_the_game_sweeps_the_floor_onto_the_haul_screen() -> void:
+func test_reporting_the_game_leaves_the_floor_until_the_next_game() -> void:
+	# The owner, 28 Oct 2026: "when the player goes to the next game, all loot on
+	# the floor is gone". The report no longer sweeps it onto the haul screen — the
+	# reward screen's Combat button can still reach it — and the next game's start
+	# is what clears it, taking nothing to any screen.
 	_pick_solo(0)
 	_ui._drop_queue.clear()
 	_floor_loot(Vector2i(2, 1), &"one")
 	_floor_loot(Vector2i(3, 0), &"two")
 	Page.report_beat(_ui)
-	assert_true(GameLoop2.drop_cells().is_empty(),
-		"the floor belonged to the game that was just handed in")
+	# At least the two: the bodies this very report cleared drop onto it too.
+	var ids: Array = []
+	for cell in GameLoop2.drop_cells():
+		ids.append(String((GameLoop2.drop_at(cell)["loot"] as Dictionary).get("id", "")))
+	assert_true(ids.has("one") and ids.has("two"), "the floor outlives the report: %s" % str(ids))
 	_ui._end_resolve()
-	assert_not_null(_ui._post_screen, "and what was on it went where every haul goes")
-	assert_gt(_ui._post_screen._loot.size(), 1, "both pieces, on one table")
+	if _ui._post_screen != null:
+		for entry in _ui._post_screen._loot:
+			assert_false(String((entry as Dictionary).get("id", "")) in ["one", "two"],
+				"and nothing on it was moved onto the haul table")
 	Page.leave_post_game(_ui)
 	Page.dismiss_event(_ui)
+	var pieces: int = GameState.loot_items.size()
+	if _ui._phase != _ui.Phase.SELECT:
+		pending("the run did not come back to an offering after the report")
+		return
+	_pick_enemies(0)
+	assert_true(GameLoop2.drop_cells().is_empty(), "a new game is a bare floor")
+	assert_eq(GameState.loot_items.size(), pieces, "and what was on it went nowhere")
 
-func test_loot_the_player_took_mid_game_is_not_swept_again() -> void:
+func test_a_piece_put_down_is_off_the_player_and_not_destroyed() -> void:
 	_pick_solo(0)
 	GameState.loot_items.clear()
-	_ui._drop_queue.clear()
-	var at: Vector2i = _floor_loot(Vector2i(2, 1))
-	_ui.take_floor_loot(_ui._floor_loot(GameLoop2.drop_at(at)), 0, at)
-	_ui._sweep_floor_into_the_queue()
-	assert_eq(_loot_pieces(), 0,
-		"it is in the pack; there is nothing left on the floor to ask about")
+	var binned: int = GameState.destroyed_loot.size()
+	GameState.take_loot_entry({"type": "scroll", "id": "set_down", "rarity": "Common"})
+	var cell := Vector2i(GameLoop2.grid_cols(), 0)
+	for row in GameLoop2.grid_rows():
+		if BattlefieldView.is_free_floor(Vector2i(GameLoop2.grid_cols(), row)):
+			cell = Vector2i(GameLoop2.grid_cols(), row)
+			break
+	if not BattlefieldView.is_free_floor(cell):
+		pending("no free square on the back column to put a piece down on")
+		return
+	_ui.put_loot_down(0, cell)
+	assert_eq(GameState.loot_items.size(), 0, "out of the pack, so nothing reads it as carried")
+	assert_true(GameLoop2.has_drop(cell), "lying on the square it was let go on")
+	assert_eq(String((GameLoop2.drop_at(cell)["loot"] as Dictionary).get("id", "")),
+		"set_down")
+	assert_false((GameLoop2.drop_at(cell)["loot"] as Dictionary).has("pack_slot"),
+		"with no memory of where it sat in the pack")
+	assert_eq(GameState.destroyed_loot.size(), binned,
+		"and putting a piece down is not destroying it")
+	_ui.take_floor_loot(_ui._floor_loot(GameLoop2.drop_at(cell)), 0, cell)
+	assert_eq(GameState.loot_items.size(), 1, "it can be picked back up")
+
+func test_the_board_takes_only_a_pack_piece_on_bare_ground() -> void:
+	_pick_solo(0)
+	var board: BattlefieldView = _ui._board
+	var free := Vector2i(-1, -1)
+	for col in range(GameLoop2.grid_cols(), 0, -1):
+		for row in GameLoop2.grid_rows():
+			if BattlefieldView.is_free_floor(Vector2i(col, row)):
+				free = Vector2i(col, row)
+				break
+		if free.x > 0:
+			break
+	if free.x < 0:
+		pending("no bare square on this board")
+		return
+	var at: Vector2 = board._cell_pos(free.y, free.x) + Vector2(board._cell, board._cell) * 0.5
+	assert_eq(board.cell_at(at), free, "the position maps back to its square")
+	var move := {"kind": "loot_move", "index": 0, "from": 0}
+	assert_true(board._can_put_down(at, move), "a pack piece may be put down there")
+	assert_false(board._can_put_down(at, {"kind": "loot_take", "entry": {}, "floor": free}),
+		"a piece off the floor is already on it")
+	assert_false(board._can_put_down(at, {"kind": "bag_move", "bag": 0}),
+		"and a bag is the pack's shape, not something in it")
+	GameLoop2.place_drop(free, {"type": "scroll", "id": "here", "rarity": "Common"})
+	assert_false(board._can_put_down(at, move), "nor on a square something already lies on")
+	GameLoop2.take_drop(free)
 
 func test_a_defeated_body_leaves_loot_where_it_fell() -> void:
 	_pick_solo(0)
@@ -9485,6 +9542,8 @@ func test_a_defeated_body_leaves_loot_where_it_fell() -> void:
 		"and what it left is a piece of loot, not a chest of relics")
 
 func test_a_body_that_fell_off_the_board_sends_its_loot_to_the_haul_screen() -> void:
+	# Still true: a body with no square never put anything on the floor, so its
+	# piece goes straight to the screen the game ends on.
 	_pick_solo(0)
 	_ui._drop_queue.clear()
 	var landed: Dictionary = GameLoop2.arrival()

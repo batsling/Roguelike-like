@@ -659,7 +659,7 @@ func _discard_bag(bag: int) -> void:
 	LootTrash.confirm(_page(), bag_name, func():
 		if GameState.remove_bag(bag).is_empty():
 			return
-		GameLog.add("Threw away %s." % bag_name, UITheme.DANGER)
+		GameLog.add("Destroyed %s." % bag_name, UITheme.DANGER)
 		_after_change())
 
 func _leave_offer(offer: int) -> void:
@@ -724,7 +724,7 @@ func _discard_carried(index: int) -> void:
 	var piece_name: String = LootSystem.display_name(GameState.loot_items[index])
 	LootTrash.confirm(_page(), piece_name, func():
 		GameState.discard_loot_at(index)
-		GameLog.add("Threw away %s." % piece_name, UITheme.DANGER)
+		GameLog.add("Destroyed %s." % piece_name, UITheme.DANGER)
 		_after_change())
 
 # One place for "something on this screen changed": redraw it, let the page redraw
