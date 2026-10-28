@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="GameData" load_steps=2 format=3 uid="uid://game_snake_farm"]
+
+[ext_resource type="Script" path="res://scripts/resources/GameData.gd" id="1_game"]
+
+[resource]
+script = ExtResource("1_game")
+id = &"snake_farm"
+display_name = "Snake Farm"
+year = 2023
+type = 0
+games_influenced = Array[StringName]([&"fish_fear_me"])
+influence_sources = PackedStringArray("")
+influence_relations = PackedStringArray("dev/series")
+tags = PackedStringArray("snake")
+enemy_pool = Array[StringName]([])
+item_pool = Array[StringName]([])
+special_effects = PackedStringArray()
+cover_path = "res://images2.0/games/snake-farm.png"
+owned = false
+file_location = ""
+steam_page = "https://store.steampowered.com/app/2491640/SNAKE_FARM/"
