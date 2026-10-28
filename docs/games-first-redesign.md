@@ -3484,7 +3484,7 @@ its counter in as stacks on load.
 Three things fall out of that, and each is worth knowing:
 
 - **A stunned body is drawn like any other status holder** — its own art in the
-  status strip under the token, no ❄ badge and no pip of its own. The token still
+  status strip in the token's top-right corner, no ❄ badge and no pip of its own. The token still
   *cools toward blue*, because that is a property of the token rather than a second
   listing of the same fact.
 - **Stun has no in-game effect** — no goal side on the player or on an enemy. It

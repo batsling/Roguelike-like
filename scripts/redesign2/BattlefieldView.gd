@@ -2834,26 +2834,24 @@ func _add_enemy_badges(holder: Control, entry: Dictionary, e: GoalEnemyData,
 	stat_row.offset_right = 0
 	holder.add_child(stat_row)
 
-	# Statuses BELOW the box, under the health/damage row (§13) — the one piece of
-	# an enemy's state that is not a number and does not belong over its picture.
-	# Drawn on the badge layer, which is above every body, so the overhang into the
-	# gutter stays legible.
+	# Statuses in the TOP-RIGHT corner (§13), in the corner row below. They used to
+	# hang under the box, past the ❤/⚔ row, and the owner (28 Oct 2026) saw what
+	# that cost: "lets have the statuses on enemies show on the top right so it
+	# cuts off less things". Under the box, the strip ran into the gutter and over
+	# the head of whatever stood in the cell below; in the corner it sits on this
+	# body's own frame, the one place the rest of the board does not need.
 	var statuses: Array = GameLoop2.enemy_statuses(entry)
+	var strip: HBoxContainer = null
 	if not statuses.is_empty():
-		var strip := HBoxContainer.new()
+		strip = HBoxContainer.new()
 		strip.name = STATUS_STRIP_NAME
-		strip.alignment = BoxContainer.ALIGNMENT_CENTER
 		strip.add_theme_constant_override("separation", UITheme.GAP_HAIR)
 		_fill_status_strip(strip, statuses, StatusData.ENEMY, STATUS_PIP_ENEMY,
 			_nullified_ids(entry), GameLoop2.answered_any_time(entry))
-		strip.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM,
-			Control.PRESET_MODE_MINSIZE, -(STATUS_STRIP_DROP + stat_badge_drop(stat_font)
-				- STAT_BADGE_DROP))
-		holder.add_child(strip)
 
 	# NO SNOWFLAKE CORNER BADGE ANY MORE (§13.2). Stun was the board's own counter
 	# with a symbol of its own, and it is an ordinary status now — so it is drawn in the
-	# status strip under the body with its own art, beside Burn and Marked, and the
+	# status strip in the top-right corner with its own art, beside Burn and Marked, and the
 	# board has one place statuses live instead of one place plus an exception. What
 	# stays is the cooled accent above: that is a property of the TOKEN rather than a
 	# second listing of the same fact.
@@ -2891,15 +2889,24 @@ func _add_enemy_badges(holder: Control, entry: Dictionary, e: GoalEnemyData,
 		# a red enemy.
 		mark.add_theme_color_override("font_color", ABILITY_MARK)
 		marks.append(mark)
-	if not marks.is_empty():
+	# The statuses go in the same row, to the LEFT of the marks: the ! and ▸ keep
+	# the very corner they have always had, and the pips run inward from them.
+	if strip != null or not marks.is_empty():
 		var corner := HBoxContainer.new()
 		corner.name = "CornerMarks"
 		corner.add_theme_constant_override("separation", UITheme.GAP_HAIR)
+		corner.alignment = BoxContainer.ALIGNMENT_END
 		corner.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		if strip != null:
+			strip.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+			corner.add_child(strip)
 		for m in marks:
 			corner.add_child(m)
 		corner.set_anchors_and_offsets_preset(
 			Control.PRESET_TOP_RIGHT, Control.PRESET_MODE_MINSIZE, 2)
+		# A row that outgrows the box grows INWARD, toward the art, rather than out
+		# past the right edge over the neighbour's corner.
+		corner.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 		holder.add_child(corner)
 
 	# THE BOSS SKULL, top-left — the one mark this file lets back over the top of
@@ -3121,14 +3128,13 @@ func _fill_shields() -> void:
 # and shrinking it with the board makes it unreadable exactly when the board is
 # busiest.
 const STATUS_PIP_HERO := 22
-# Smaller than the hero's, and smaller than it was (16): the strip hangs below the
-# box into the gutter and the top of the cell under it, and at 16px a body with
-# two statuses covered the head of whatever stood below it. The pip's hover still
-# carries the whole status; the chip only has to say which.
-# 14 for the stream pass: at 11, with a 9px count, a status on an enemy was a
-# speck on a 1080p capture. Still three under the 16 that covered the head of the
-# body below — the stat pills above it now carry most of the visual weight.
-const STATUS_PIP_ENEMY := 14
+# Smaller than the hero's. It was 16 under the box, where two statuses covered
+# the head of whatever stood below; 14 for the stream pass (at 11, with a 9px
+# count, a status was a speck on a 1080p capture); and 12 since the strip moved to
+# the top-right corner (28 Oct 2026, the owner: "make the icons a little
+# smaller"), where it shares the frame with the ! and ▸ marks. The pip's hover
+# still carries the whole status; the chip only has to say which.
+const STATUS_PIP_ENEMY := 12
 
 # How far the ❤ / ⚔ badges hang BELOW an enemy's box, and how far under them the
 # status strip sits. Both are negative insets on a bottom-anchored preset, so the
@@ -3155,7 +3161,6 @@ const BOSS_SKULL_INSET := 7
 const HUNT_BAND := Color(1.0, 0.78, 0.28)
 
 const STAT_BADGE_DROP := 7
-const STATUS_STRIP_DROP := 15
 
 # THE ❤ / ⚔ BADGES ARE READ OFF A STREAM, so they are sized to the cell rather
 # than fixed at the 10px they started at. At 10px, outlined white over the art,

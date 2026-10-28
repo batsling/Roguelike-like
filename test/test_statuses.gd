@@ -1279,7 +1279,7 @@ func test_the_way_out_row_offers_no_notes_button() -> void:
 			buttons += 1
 	assert_eq(buttons, 0, "no Notes button on the way out")
 
-func test_an_enemys_statuses_draw_under_its_box() -> void:
+func test_an_enemys_statuses_draw_in_its_top_right_corner() -> void:
 	var ui = _booted()
 	Page.pick_enemies(ui, 0)
 	GameLoop2.apply_enemy_status(&"marked", 2, "current")
@@ -1291,20 +1291,18 @@ func test_an_enemys_statuses_draw_under_its_box() -> void:
 	var node: Control = ui._board._enemy_nodes.get(inst)
 	assert_not_null(node, "the body has a node on the board")
 	var badges: Control = node.get_meta("badges")
-	# BY NAME. It used to be "the last HBoxContainer under the badges", which was an
-	# identity only while there were two of them — the ⚠ corner row (§7.6) is a
-	# third, and it is added last, so the old finder silently started asserting
-	# about the wrong node.
-	var strip: Control = badges.get_node_or_null(BattlefieldView.STATUS_STRIP_NAME)
+	# BY NAME, and it lives in the corner row now, beside the ! and ▸ marks.
+	var strip: Control = badges.find_child(BattlefieldView.STATUS_STRIP_NAME, true, false)
 	assert_not_null(strip, "a status strip was added")
 	assert_eq(strip.get_child_count(), 1, "one pip for the one status")
-	# Pinned to the box's BOTTOM edge and pushed outward from it — the two halves
-	# of "below the box, not over the art". The resolved offsets are asserted on
-	# the anchors rather than on pixels, because a Control's offsets are not
+	# The owner, 28 Oct 2026: on the top right, so it cuts off less. Asserted on
+	# the row's anchors rather than on pixels, because a Control's offsets are not
 	# settled until it has been laid out and this test never renders a frame.
-	assert_eq(strip.anchor_top, 1.0, "anchored to the bottom edge")
-	assert_eq(strip.anchor_bottom, 1.0)
-	assert_gt(BattlefieldView.STATUS_STRIP_DROP, 0, "and pushed out past it")
+	var corner: Control = strip.get_parent()
+	assert_eq(String(corner.name), "CornerMarks", "in the corner row")
+	assert_eq(corner.anchor_top, 0.0, "anchored to the top edge")
+	assert_eq(corner.anchor_right, 1.0, "and the right one")
+	assert_lt(BattlefieldView.STATUS_PIP_ENEMY, 14, "a little smaller than it was")
 
 # ---------------------------------------------------------------------------
 # 5. The COMBAT side (§13.4)
