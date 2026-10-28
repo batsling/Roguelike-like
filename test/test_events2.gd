@@ -278,16 +278,15 @@ func test_immersing_swaps_which_choices_are_offered() -> void:
 
 
 func test_lingering_costs_one_more_each_time() -> void:
-	# The baths run one rung LOWER than Slay the Spire 2's 4/5/6: the event opens
-	# at Immerse for 2 and every Linger adds one, so the authored hole is {3+X}
-	# and the printed ladder is 2, 3, 4, 5. Immerse gates the whole event — Linger
-	# and Exit Baths are both behind it — and at 3 it was a door most runs could
-	# not afford to open.
+	# Linger opens at 1 and every Linger adds one (the owner, 28 Oct 2026: "start
+	# abyssal baths at -1 health instead of 2 for linger"), so the authored hole
+	# is {1+X} and the printed ladder is 1, 2, 3. Immerse still costs 2, and gates
+	# the whole event — Linger and Exit Baths are both behind it.
 	#
 	# What lands on the player is one lower again, and that is not a bug in the
-	# hole: each dip is `gain_max_hp 1; lose_hp {3+X}`, and a Max Health gain now
-	# arrives with the Health to fill it. So the damage climbs 3/4/5 while the NET
-	# drop is 2/3/4, +1 Max Health a press either way. If the baths are meant to
+	# hole: each dip is `gain_max_hp 1; lose_hp {1+X}`, and a Max Health gain now
+	# arrives with the Health to fill it. So the damage climbs 1/2/3 while the NET
+	# drop is 0/1/2, +1 Max Health a press either way. If the baths are meant to
 	# hurt more, the sheet is where that is fixed — raise the hole, not the rule.
 	var linger: Dictionary = _choice(_event(BATHS), "linger")
 	GameState.max_hp = 40
@@ -297,7 +296,7 @@ func test_lingering_costs_one_more_each_time() -> void:
 		var before: int = GameState.hp
 		EventSystem.resolve_choice(_event(BATHS), linger, taken)
 		costs.append(before - GameState.hp)
-	assert_eq(costs, [2, 3, 4], "Linger climbs by one per Linger")
+	assert_eq(costs, [0, 1, 2], "Linger climbs by one per Linger")
 	assert_eq(GameState.max_hp, 43, "and each press paid its Max Health")
 
 
@@ -365,11 +364,11 @@ func test_a_single_rung_ladder_answers_every_press() -> void:
 
 
 func test_the_button_says_what_this_press_costs() -> void:
-	# The player should never have to read {3+X}. Slay the Spire 2 warns you the
+	# The player should never have to read {1+X}. Slay the Spire 2 warns you the
 	# baths may kill; here the number is just on the button.
 	var linger: Dictionary = _choice(_event(BATHS), "linger")
-	assert_string_contains(EventSystem.describe_choice(linger, 0), "3")
-	assert_string_contains(EventSystem.describe_choice(linger, 2), "5")
+	assert_string_contains(EventSystem.describe_choice(linger, 0), "-1 Health")
+	assert_string_contains(EventSystem.describe_choice(linger, 2), "-3 Health")
 	assert_false(EventSystem.describe_choice(linger, 0).contains("X"),
 		"the formula is for the sheet, not for the player")
 

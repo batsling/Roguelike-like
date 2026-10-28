@@ -74,6 +74,7 @@ var shuffle: bool = true
 var station: String = ""         # a tag, or "" for every song
 var paused: bool = false
 var unlock_all: bool = false     # every song plays as unlocked (§20.6)
+var auto_level: bool = false     # loudness levelling on (see "Loudness"); off by default
 
 # The track and its clock.
 var current: StringName = &""
@@ -190,6 +191,25 @@ func is_drawn(song: SongData) -> bool:
 # UNLOCK ALL SONGS (Settings, docs/games-first-redesign.md §20.6): every song
 # plays as unlocked while it is on. A preference of the PC's, beside the
 # speakers, and it changes no rank and draws nothing.
+# AUTO-LEVEL VOLUME (Settings). Off by default since 28 Oct 2026 — the owner: "the
+# audio levels keep changing, make sure there's a toggle for audio automatic
+# fixing and set it to default off". The learned levels are KEPT while it is off,
+# so turning it back on does not mean listening to every song again.
+func set_auto_level(value: bool) -> void:
+	if auto_level == value:
+		return
+	auto_level = value
+	save_config()
+	var song: SongData = current_song()
+	if song != null:
+		_begin_measuring(song)
+	else:
+		_gain_now = 0.0
+	# The volume and the meter only — a full _sync_player would re-seek the song.
+	_player.volume_db = _speaker_db()
+	_sync_meter()
+	changed.emit()
+
 func set_unlock_all(value: bool) -> void:
 	if unlock_all == value:
 		return
@@ -871,6 +891,10 @@ func payload() -> Dictionary:
 # balanced?")
 # ---------------------------------------------------------------------------
 #
+# ALL OF IT IS BEHIND `auto_level`, which is off by default: a song then plays at
+# exactly the slider's volume, nothing is metered, and the OBS page is told a gain
+# of 0. The owner heard the first-play slew as the volume "changing".
+#
 # THE GAME LEARNS HOW LOUD EACH SONG IS, by listening to it once. The music is the
 # player's own and never in the repo, so nothing can measure it ahead of time;
 # what the game CAN do is hear it. A second, silent player (`_meter_player`) plays
@@ -945,6 +969,8 @@ static func gain_for_level(level_db: float) -> float:
 	return clampf(TARGET_DB - level_db, GAIN_MIN, GAIN_MAX)
 
 func learned_gain_db(song: SongData) -> float:
+	if not auto_level:
+		return 0.0
 	return gain_for_level(measured_db(song))
 
 # The game window's speaker: the slider, then the song's gain.
@@ -957,8 +983,8 @@ func _begin_measuring(song: SongData) -> void:
 	_heard_n = 0
 	_heard_s = 0.0
 	var level: float = measured_db(song)
-	_gain_now = gain_for_level(level)
-	_measuring = song.file if song != null and is_nan(level) else ""
+	_gain_now = gain_for_level(level) if auto_level else 0.0
+	_measuring = song.file if auto_level and song != null and is_nan(level) else ""
 
 # The meter plays only while there is something to learn: an unmeasured song,
 # playing. It follows the same clock as both speakers.
@@ -1060,6 +1086,7 @@ func load_config() -> void:
 	station = String(cfg.get_value("radio", "station", station))
 	paused = bool(cfg.get_value("radio", "paused", paused))
 	unlock_all = bool(cfg.get_value("radio", "unlock_all", unlock_all))
+	auto_level = bool(cfg.get_value("radio", "auto_level", auto_level))
 	var saved: String = String(cfg.get_value("radio", "folder", ""))
 	if saved != "":
 		folder = saved
@@ -1072,6 +1099,7 @@ func save_config() -> void:
 	cfg.set_value("radio", "station", station)
 	cfg.set_value("radio", "paused", paused)
 	cfg.set_value("radio", "unlock_all", unlock_all)
+	cfg.set_value("radio", "auto_level", auto_level)
 	# Only a folder the player CHOSE is saved; the default stays a default, so a
 	# later build that moves the default moves this player with it.
 	if not is_default_folder():

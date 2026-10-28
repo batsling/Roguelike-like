@@ -260,6 +260,11 @@ func _build_controls() -> Control:
 		+ "listens to each one the first time it plays and remembers how loud it is.\n"
 		+ "This forgets all of that, so every song is measured again.")
 	level.pressed.connect(Radio.forget_loudness)
+	# Levelling is off unless Settings turns it on, and then there is nothing here
+	# to forget that anything would use.
+	level.disabled = not Radio.auto_level
+	if level.disabled:
+		level.tooltip_text = "Turn on Settings → Auto-level song volume to even songs out."
 	row.add_child(level)
 	return row
 

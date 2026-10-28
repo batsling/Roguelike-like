@@ -354,6 +354,12 @@ then on the song plays at `TARGET_DB - level` dB of gain (held between
   songs are turned down to meet it, which both speakers can do.
 - **⟳ Re-measure** forgets every level (`Radio.forget_loudness`), for a file
   swapped for a different master under the same name.
+- **It is a toggle, and off by default** (Settings → *Auto-level song volume*,
+  `Radio.auto_level`, saved in `radio.cfg`). The owner heard the first-play
+  easing as the volume "changing" (28 Oct 2026). Off, every song plays at the
+  slider's volume, nothing is metered, the page is told a gain of 0, and
+  Re-measure is greyed out; the learned levels are kept, so turning it back on
+  applies them at once.
 
 ## 7. Setting it up (for the streamer)
 
