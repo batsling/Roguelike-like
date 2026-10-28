@@ -586,6 +586,8 @@ func _ready() -> void:
 	# poked at without either, which is a test rather than a run.
 	_rng.randomize()
 	_build_ui()
+	# The board-peek's per-frame check (see "the board off the board").
+	get_tree().process_frame.connect(_tick_board_peek)
 	if not GameLoop2.loop_changed.is_connected(_refresh):
 		GameLoop2.loop_changed.connect(_refresh)
 	if not GameLoop2.run_lost.is_connected(_on_run_lost):
@@ -4097,6 +4099,7 @@ func aim_item(item: ItemData) -> void:
 	Notifications.notify("Click a tile to aim %s." % item.display_name
 		if at_ground else "Click an enemy to aim %s." % item.display_name,
 		UITheme.ACCENT)
+	peek_board(true)
 
 # The board handing back an armed item and the body it was pointed at. THIS is
 # where it fires and where the charge goes — the instance rides `use_item`'s
@@ -4480,6 +4483,179 @@ func _take_return_choice(index: int) -> void:
 	travel_to_game(back, false)   # coming home from a detour, not teleporting off a game
 	autosave()
 
+# --- the board off the board -------------------------------------------------
+#
+# EVERY SCREEN THAT COVERS THE BOARD CAN SHOW IT (the owner, 28 Oct 2026). The
+# reward screen, Camp, an event, a shop, a game's card, the use screen — each is a
+# CanvasLayer over the page, and while one was up the board behind it could not
+# be read or reached. Two things went wrong because of that: Pommel Strike played
+# off the reward screen armed its target on a board the player could not see, and
+# there was no way to look at the battlefield (hover a body, pick a piece up off
+# the floor) without leaving the screen first.
+#
+# So the page PEEKS: every covering layer is hidden, the board underneath is the
+# real one with every hover and drag it always had, and a bar in the top-right
+# corner says what is going on and has the way Back. Two doors in:
+#
+#   * the ⚔ COMBAT button, top right, shown whenever something covers the board;
+#   * anything that ARMS the board while it is covered — a throw, a weapon, a
+#     wand, a card, an aimed relic, a pick of bodies. The screen it was used from
+#     comes back by itself once the aim lands or is cancelled.
+#
+# It hides LAYERS rather than closing screens, so nothing is rebuilt, nothing
+# loses its place, and a screen that hid its own panel for an aim (the use
+# screen) keeps answering for its own visibility. "Covering" is a layer number:
+# from the arrival card (121) up to, not including, the run's header (135). The
+# header stays, and so does everything above it (the star chart, a confirm, the
+# verdict) — those are not screens the board sits behind.
+const PEEK_LAYER := UITheme.Layer.HEADER - 1
+const COVER_MIN := UITheme.Layer.MENU_SCREEN
+var _peek_layer: CanvasLayer = null
+var _combat_button: Button = null
+var _peek_bar: Control = null
+var _peeked: Array = []              # the CanvasLayers hidden for this peek
+var _peek_for_aim: bool = false
+
+func _covering_layers() -> Array:
+	var out: Array = []
+	for c in get_children():
+		if c is CanvasLayer and c != _peek_layer and (c as CanvasLayer).visible:
+			var l: int = (c as CanvasLayer).layer
+			if l >= COVER_MIN and l < UITheme.Layer.HEADER:
+				out.append(c)
+	return out
+
+func board_covered() -> bool:
+	return not _covering_layers().is_empty()
+
+func is_peeking() -> bool:
+	return _peek_bar != null
+
+# Show the board: hide what covers it and put the Back bar up. `for_aim` when an
+# aim armed it, so the screens come back on their own when the aim is done.
+func peek_board(for_aim: bool = false) -> void:
+	if _board == null or not is_instance_valid(_board):
+		return
+	if is_peeking():
+		_peek_for_aim = _peek_for_aim or for_aim
+		_paint_peek_bar()
+		return
+	var cover: Array = _covering_layers()
+	if cover.is_empty():
+		return
+	_peeked = cover
+	for l in cover:
+		(l as CanvasLayer).visible = false
+	_peek_for_aim = for_aim
+	_ensure_peek_layer()
+	_peek_bar = PanelContainer.new()
+	_peek_bar.name = "BoardPeekBar"
+	_peek_layer.add_child(_peek_bar)
+	_paint_peek_bar()
+	_sync_combat_button()
+
+# Put the covering screens back.
+func end_peek() -> void:
+	for l in _peeked:
+		if is_instance_valid(l):
+			(l as CanvasLayer).visible = true
+	_peeked = []
+	_peek_for_aim = false
+	if _peek_bar != null and is_instance_valid(_peek_bar):
+		_peek_bar.queue_free()
+	_peek_bar = null
+	_sync_combat_button()
+
+# BACK. Over an aim it is the aim's Cancel too — the screen the aim came from is
+# the one Back returns to, and a target left armed under it would fire on the next
+# click it could not see. A pick a spent scroll waits on cannot be backed out of
+# (put_away_pending_use says so), so Back waits for it like everything else does.
+func _peek_back() -> void:
+	if _board != null and is_instance_valid(_board) and _board.is_aiming():
+		if _board.aim_use() == &"pick":
+			if not put_away_pending_use():
+				return
+		else:
+			# A throw's screen comes back with the same choice (loot_throw_cancelled).
+			_board.disarm()
+	end_peek()
+
+func _ensure_peek_layer() -> void:
+	if _peek_layer != null and is_instance_valid(_peek_layer):
+		return
+	_peek_layer = CanvasLayer.new()
+	_peek_layer.name = "BoardPeekLayer"
+	_peek_layer.layer = PEEK_LAYER
+	add_child(_peek_layer)
+
+func _paint_peek_bar() -> void:
+	if _peek_bar == null or not is_instance_valid(_peek_bar):
+		return
+	for c in _peek_bar.get_children():
+		_peek_bar.remove_child(c)
+		c.queue_free()
+	_peek_bar.add_theme_stylebox_override("panel",
+		UITheme.panel_box(UITheme.PANEL, UITheme.ACCENT, 8, 8, 2))
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", UITheme.GAP)
+	_peek_bar.add_child(row)
+	var label := Label.new()
+	label.text = "⚔ Choose a target" if _peek_for_aim else "⚔ The battlefield"
+	label.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	row.add_child(label)
+	var back := UITheme.confirm_button("◀ Back", Vector2(0, 30), UITheme.FONT_BODY)
+	back.name = "PeekBack"
+	back.tooltip_text = ("Put the target away and go back to the screen you used it from."
+		if _peek_for_aim else "Go back to the screen you were on.")
+	back.pressed.connect(_peek_back)
+	row.add_child(back)
+	_place_top_right(_peek_bar)
+
+func _place_top_right(c: Control) -> void:
+	c.reset_size()
+	var view: Vector2 = get_viewport_rect().size
+	c.position = Vector2(view.x - c.get_combined_minimum_size().x - 12.0,
+		ModalScaffold.reserved_top + 8.0)
+
+# The ⚔ Combat button: up whenever something covers the board and the page is not
+# already showing it.
+func _sync_combat_button() -> void:
+	var want: bool = not is_peeking() and _board != null and is_instance_valid(_board) \
+		and not GameLoop2.run_over and _phase != Phase.OVER and board_covered()
+	if not want:
+		if _combat_button != null and is_instance_valid(_combat_button):
+			_combat_button.visible = false
+		return
+	_ensure_peek_layer()
+	if _combat_button == null or not is_instance_valid(_combat_button):
+		# The danger plate, because it is the button to the fight.
+		_combat_button = UITheme.action_button("⚔ Combat", UITheme.DANGER,
+			Vector2(0, 32), UITheme.FONT_BODY)
+		_combat_button.name = "CombatButton"
+		_combat_button.tooltip_text = ("See the battlefield behind this screen — hover "
+			+ "the bodies, read the ground, pick up loot off the floor. Back brings "
+			+ "this screen back.")
+		_combat_button.pressed.connect(func(): peek_board(false))
+		_peek_layer.add_child(_combat_button)
+	_combat_button.visible = true
+	_place_top_right(_combat_button)
+
+# Once a frame, because the screens that cover the board open and close from a
+# dozen places and none of them should have to know about this: show or hide the
+# Combat button, end an aim's peek once the aim is done, and end any peek whose
+# screens have all gone.
+func _tick_board_peek() -> void:
+	if not is_inside_tree():
+		return
+	if is_peeking():
+		var aiming: bool = _board != null and is_instance_valid(_board) and _board.is_aiming()
+		var any_left: bool = _peeked.any(func(l): return is_instance_valid(l))
+		if (_peek_for_aim and not aiming) or not any_left:
+			end_peek()
+		return
+	_sync_combat_button()
+
 # --- throwing a potion at the board (docs/potions-design.md §4.2) -----------
 
 # The use modal armed a THROW. The picker goes up on the board, the modal takes
@@ -4500,8 +4676,10 @@ func begin_loot_throw(modal: Node, entry: Dictionary, index: int) -> bool:
 	# cannot reach, and the offer would sit unanswered while they tried. The bottle
 	# is not spent, so the answer is "quaff it here or carry it out", and the modal
 	# says which.
-	if _drop_modal != null and is_instance_valid(_drop_modal):
-		return false
+	#
+	# That was the rule while a covered board could not be shown. It can now (the
+	# board off the board, above): the picker goes up, the drop screen is hidden
+	# with every other covering screen, and it comes back when the throw lands.
 	if not _board.begin_loot_throw(entry, index):
 		return false
 	_throw_modal = modal
@@ -4519,6 +4697,7 @@ func begin_loot_throw(modal: Node, entry: Dictionary, index: int) -> bool:
 		"swing" if LootSystem.is_weapon(entry) else "zap" if LootSystem.is_wand(entry)
 			else "play" if String(entry.get("type", "")) == "card" else "throw",
 		LootSystem.display_name(entry)], UITheme.ACCENT)
+	peek_board(true)
 	return true
 
 # The board handing back a thrown piece and the square it landed on. The modal
@@ -4663,8 +4842,6 @@ func owned_pick() -> Node:
 func begin_board_pick(cfg: Dictionary, on_done: Callable) -> bool:
 	if _board == null or not is_instance_valid(_board):
 		return false
-	if _drop_modal != null and is_instance_valid(_drop_modal):
-		return false
 	var candidates: Array = cfg.get("candidates", [])
 	if candidates.is_empty():
 		return false
@@ -4691,6 +4868,8 @@ func begin_board_pick(cfg: Dictionary, on_done: Callable) -> bool:
 		refresh_loot_window()
 	_close_item_card()
 	_board.refresh()
+	# Shown, if a screen covers it — the bodies are what is being chosen between.
+	peek_board(true)
 	return true
 
 # Put a pick away WITHOUT answering it — only for a pick being replaced, or a page

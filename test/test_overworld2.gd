@@ -2833,6 +2833,64 @@ func test_a_pill_already_known_teaches_nothing_and_says_nothing() -> void:
 	assert_false(_toasts_since(toast_from).contains("know"),
 		"nothing was learned, so nothing is announced")
 
+# --- the board off the board (the owner, 28 Oct 2026) ------------------------
+#
+# PROCESS frames, not wait_frames: the page's check rides SceneTree.process_frame,
+# and wait_frames counts physics frames, several of which can pass in one.
+
+# A covering screen stood up by hand: a CanvasLayer on the page at the haul
+# screen's number, with a full-rect panel in it.
+func _cover_board() -> CanvasLayer:
+	var layer := CanvasLayer.new()
+	layer.layer = UITheme.Layer.POST_COMBAT
+	var panel := Panel.new()
+	panel.set_anchors_preset(Control.PRESET_FULL_RECT)
+	layer.add_child(panel)
+	_ui.add_child(layer)
+	return layer
+
+func test_a_covered_board_has_a_combat_button_that_shows_it() -> void:
+	_pick_solo(0)
+	var cover := _cover_board()
+	await wait_process_frames(3)
+	assert_not_null(_ui._combat_button, "the Combat button is up while a screen covers the board")
+	assert_true(_ui._combat_button.visible)
+	_ui._combat_button.pressed.emit()
+	assert_false(cover.visible, "pressing it takes the screen off the board")
+	assert_true(_ui.is_peeking())
+	assert_false(_ui._combat_button.visible, "and the button gives way to the Back bar")
+	_ui._peek_back()
+	assert_true(cover.visible, "Back puts the screen back")
+	assert_false(_ui.is_peeking())
+	cover.queue_free()
+	await wait_process_frames(3)
+	assert_false(_ui._combat_button.visible, "with nothing covering the board, no button")
+
+func test_an_aim_armed_under_a_screen_shows_the_board_and_gives_it_back() -> void:
+	# Pommel Strike off the reward screen: the target was armed on a board nobody
+	# could see. Now the board is shown for the aim, and the screen comes back when
+	# the aim is done.
+	_pick_solo(0)
+	var cover := _cover_board()
+	var stub := Node.new()
+	var script := GDScript.new()
+	script.source_code = "extends Node\nfunc throw_cancelled() -> void:\n\tpass\nfunc put_away() -> void:\n\tpass\n"
+	script.reload()
+	stub.set_script(script)
+	add_child_autofree(stub)
+	var entry: Dictionary = {"type": "potion", "id": Data.all_potions()[0].id}
+	if not _ui.begin_loot_throw(stub, entry, -1):
+		cover.queue_free()
+		pending("the board had no square to throw at")
+		return
+	assert_false(cover.visible, "the board is shown for the aim")
+	assert_true(_ui._peek_for_aim)
+	_ui._board.disarm()
+	await wait_process_frames(3)
+	assert_true(cover.visible, "and the screen it came from is back once the aim is put away")
+	assert_false(_ui.is_peeking())
+	cover.queue_free()
+
 func test_a_teleport_says_where_it_put_you() -> void:
 	# THE PIECE THAT USED TO SAY NOTHING. A teleport is the one op on either
 	# consumable that resolves nowhere near the system that owns it — read_scroll and

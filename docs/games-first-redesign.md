@@ -2648,6 +2648,26 @@ by the card being fully readable the instant it is picked up.
 - **The bin DESTROYS**, and says so ("Drag here to destroy", "Destroy it?"),
   so putting down and destroying read as two different verbs.
 
+#### The board off the board — ⚔ Combat, and aiming from a covering screen
+
+Every screen that covers the board (the reward screen, Camp, an event, a shop, a
+game's card, the use screen: any CanvasLayer on the page from the arrival card's
+121 up to, not including, the header's 135) gets a **⚔ Combat** button in the
+top-right corner. Pressing it PEEKS: the covering layers are hidden, the real
+board underneath is shown with every hover and drag it always had (so floor loot
+can be picked up after a report), and a bar in the corner reads *⚔ The
+battlefield* with **◀ Back**, which puts the screens back exactly as they were.
+Layers are hidden rather than screens closed, so nothing rebuilds.
+
+**Anything that arms the board while it is covered peeks too** — a throw, a
+weapon, a wand, a card (Pommel Strike played off the reward screen armed its
+target on a board nobody could see), an aimed relic, a pick of bodies. The bar
+reads *⚔ Choose a target*, Back cancels the aim, and the screen it came from
+comes back by itself once the aim lands or is put away. The old refusal to arm
+under the drop modal went with it. `Overworld2` "the board off the board":
+`peek_board`, `end_peek`, `_tick_board_peek` (once a frame, so no screen has to
+know about any of this). Owner request, 28 Oct 2026.
+
 #### The drag — the pack shows up for as long as you are holding something
 
 Taking a piece off the floor used to be five steps: click the square, wait for a
