@@ -88,13 +88,13 @@ docstring has the detail. To add a logo:
 The defaults suit a light fill in a dark outline over a soft drop shadow
 (Balatro). `hades_ii.json` is the other worked example: white letters in a
 hand-inked black outline with a glow, thorns that must not be smoothed away, and
-a green II behind that has to go. It sets `"smooth": false`, `"shadow": false`
-and an `outline` that keeps the logo's own silhouette: `follow_original` paints
-the outline only over what was drawn there (never into the gaps between thorns),
-`keep_within` keeps every spike the logo drew near a letter (less near the A and
-D, which sit among the II's rocks, so the rocks' outlines stay out), and
-`drop_colours` takes the II's green out. Check a cut like this by putting the
-letters back where they were and comparing with the source. A logo with dark letters and no outline at all would
+a green II behind that has to go. It is cut, not repainted (`"cut"`): every pixel
+kept is the logo's own. Each letter takes what the logo drew near it on its own
+side of the line between letters; the II is found as the big regions of its
+green and followed out through its glow (never across ink), and the few bits of
+the II's rock outlines that touch a letter are cut away by hand (`erase`
+polygons). Check a cut like this by putting the letters back where they were and
+comparing with the source. A logo with dark letters and no outline at all would
 need more than the script does today.
 
 ## The spreadsheet and the generators

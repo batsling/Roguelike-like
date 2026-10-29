@@ -68,6 +68,15 @@ so Godot never imports the source), is JSON:
                   "min_channel": n} — what counts as fill. Defaults suit a light
                   fill in a dark outline; min_channel keeps a coloured glow out
                   of a white fill
+    cut           scissors instead of paint: every pixel kept is the logo's own.
+                  {"reach": px or {piece: px, "*": px} — how far from its fill a
+                  piece reaches; "background": {"colour": [r, g, b],
+                  "tolerance": n, "min_area": px, "grow": px, "spread_through":
+                  {"min_green": n, "max_red": n}} — a shape behind the letters,
+                  found as big regions of its colour (so a letter's own glow of
+                  that colour is never it) and followed out through its glow;
+                  "erase": [{"piece": name, "polygon": [[x, y], ...]}] — cut
+                  away by hand (bits of the background's outline)}
     smooth        default true. false keeps the fill's own edge, spikes and all
                   (Hades' thorns), instead of smoothing it and opening/closing it
     shadow        default true (measured and re-cast). false for a logo whose
@@ -300,6 +309,30 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
     border = np.unique(np.concatenate([cl[0], cl[-1], cl[:, 0], cl[:, -1]]))
     holes = clear & ~np.isin(cl, border)
 
+    # Cut mode: a shape behind the letters (Hades II's green II) is found as
+    # the BIG regions of its colour, so the small bits of a similar glow on
+    # the letters' own spikes are never mistaken for it.
+    cut = cfg.get("cut")
+    background = np.zeros((H, W), bool)
+    if cut and "background" in cut:
+        bg = cut["background"]
+        near = (a > 0) & (np.abs(A[..., :3] - np.array(bg["colour"])).max(-1) <= bg.get("tolerance", 40))
+        lab_g, ng = nd.label(near)
+        if ng:
+            sizes = nd.sum(near, lab_g, range(1, ng + 1))
+            background = np.isin(lab_g, 1 + np.flatnonzero(sizes >= bg.get("min_area", 3000)))
+        if bg.get("grow"):
+            # the soft edge where the shape blends into its own outline;
+            # never into a letter's fill
+            background = nd.binary_dilation(background, iterations=bg["grow"]) & ~fill
+        if "spread_through" in bg:
+            # its glow fades out in shades of its own colour: follow it outward
+            # through those shades only, never across ink or a letter's fill
+            st_ = bg["spread_through"]
+            glowish = ((a > 0) & (A[..., 1] >= st_.get("min_green", 200))
+                       & (A[..., 0] <= st_.get("max_red", 150)) & ~fill)
+            background = nd.binary_propagation(background, mask=glowish | background)
+
     written = []
     out_dir_game = cfg["game"]
     for i, n in enumerate(names):
@@ -311,6 +344,29 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
             body = nd.binary_dilation(nd.binary_fill_holes(f), iterations=2) & (a > 0) & mine
             rgb[body] = A[body][:, :3]
             al[body] = a[body] / 255
+        elif cut:
+            # Scissors, not paint: every pixel kept is the logo's own, as drawn.
+            # The letter is everything within `reach` of its fill on its side of
+            # the cut, less the background shape and anything erased by hand.
+            reach = cut.get("reach", 60)
+            if isinstance(reach, dict):
+                reach = reach.get(n, reach.get("*", 60))
+            ds = nd.distance_transform_edt(~f)
+            keep = f | ((a > 0) & ~background & mine & (ds <= reach))
+            for ex in cfg.get("extra_ink", []):
+                if ex["piece"] == n:
+                    d_other = np.min([D[o] for o in names if o != n], 0)
+                    keep |= (_polygon_mask((H, W), ex["polygon"]) & (a > 0) & ~background
+                             & (d_other > ex.get("clear", 4)))
+            for er in cut.get("erase", []):
+                if er["piece"] == n:
+                    keep &= ~_polygon_mask((H, W), er["polygon"])
+            # only what is joined to the letter (diagonals count: a thorn's tip
+            # is often a pixel wide)
+            lab_k, _ = nd.label(keep, structure=np.ones((3, 3)))
+            keep &= np.isin(lab_k, np.unique(lab_k[f & (lab_k > 0)]))
+            rgb[keep] = A[keep][:, :3]
+            al[keep] = a[keep] / 255
         else:
             fs = nd.gaussian_filter(f.astype(float), FILL_SMOOTH_SIGMA) > 0.5 if smooth else f
             ds = nd.distance_transform_edt(~fs)
