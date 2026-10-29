@@ -59,6 +59,11 @@ so Godot never imports the source), is JSON:
     restore       [{"piece": name, "polygon": [[x, y], ...], "copy_column": x}]
                   — part of a piece another piece hid; it is added to the piece
                   and painted with the colours of the piece's column `copy_column`
+    extra_ink     [{"piece": name, "polygon": [[x, y], ...], "clear": px}] — the
+                  outline inside the polygon (ink and glow) belongs to the piece
+                  however far from its fill, except within `clear` of another
+                  piece's fill (default: the outline width). Hades' A's thorns,
+                  which run down into the gap by the H
     fill          optional {"min_alpha": 200, "min_brightness": 140,
                   "min_channel": n} — what counts as fill. Defaults suit a light
                   fill in a dark outline; min_channel keeps a coloured glow out
@@ -315,6 +320,15 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
             tol = oc.get("match_tolerance")
             if tol is not None:
                 orig &= np.abs(A[..., :3] - lut[idx]).max(-1) <= tol
+            # Thorns: thin spikes of ink and glow that run further from the
+            # letter than any outline, often into the gap by a neighbour. Kept
+            # inside the config's polygon, clear of the neighbour's fill.
+            for ex in cfg.get("extra_ink", []):
+                if ex["piece"] != n:
+                    continue
+                d_other = np.min([D[o] for o in names if o != n], 0)
+                orig |= (_polygon_mask((H, W), ex["polygon"]) & solid & ~fill
+                         & (d_other > ex.get("clear", T - 2)))
             rgb[f] = colour[n][f]
             al[f] = 1
             rgb[band] = lut[idx[band]]
