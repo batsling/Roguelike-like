@@ -311,9 +311,9 @@ func test_calling_bell_pays_one_item_per_rarity_and_a_permanent_curse() -> void:
 
 # --- Lord's Parasol: the shop, emptied ------------------------------------
 
-# A Shop node to stand at (§19.1). STAMPED rather than looked for, so the test
-# does not ride whether the run's deal put one anywhere; after_each's reset_run
-# takes the kind back off.
+# A game with a shop open at it (§19.10), opened off a full bar rather than
+# looked for, so the test does not ride whether the run has opened one; after_each's
+# reset_run takes it back off.
 func _a_shop_node() -> StringName:
 	for g in Data.all_games():
 		if g is GameData and not RunGraph.is_off_map(g.id):

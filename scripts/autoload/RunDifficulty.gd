@@ -8,8 +8,8 @@ extends RefCounted
 # failures through everything that depends on them.
 #
 # Pure, scene-free difficulty model. The run's difficulty tier steps up every
-# GAMES_PER_TIER SPAWN EVENTS (see GameState.spawn_events) — one per node arrival
-# that landed bodies, one per end-of-game spawn.
+# GAMES_PER_TIER SPAWN EVENTS (see GameState.spawn_events) — one per game
+# arrival that landed bodies, one per end-of-game spawn.
 #
 # This mirrors the HTML build's tier ladder (Easy/Medium/Hard/Insane) but:
 #   * advances on games PLAYED rather than beaten, and
@@ -99,15 +99,15 @@ static func tier_for(spawn_events: int) -> int:
 # its own tier band, rolled onto the offering as the card's own enemy. Three
 # things change with the counter.
 #
-#   * A game that lands nothing — an Event or a Shop node — no longer brings the
-#     capstone a step closer. Bosses now arrive because the run has been
-#     fighting, which is the same sentence the tier ladder started telling.
+#   * A game that lands nothing (an Event or a Shop node, while the node kinds
+#     lasted) never brought the capstone a step closer. Bosses arrive because
+#     the run has been fighting, which is the same sentence the tier ladder tells.
 #   * AN END-OF-GAME SPAWN CAN BE THE FOURTH ONE, so a boss walks on with the
 #     bodies a game handed in (or walked out of) stood up. Nothing spawns
 #     mid-game any more, so the capstone never lands off a lost run.
-#   * A CHAMPION NODE CAN BE THE FOURTH ONE TOO, for two bosses. The rules compose
-#     rather than absorbing each other: the Champion lands its boss and the
-#     capstone lands another on top. "On top of whatever else was spawning" is
+#   * THE AMULET CAN BE THE FOURTH ONE TOO, for two bosses (as a Champion node
+#     could, until §19.10). The rules compose rather than absorbing each other:
+#     the Amulet lands its boss and the capstone lands another on top. "On top of whatever else was spawning" is
 #     meant literally, and a rule that quietly cancelled itself on the one node
 #     where it would hurt most would be the rule not meaning what it says.
 #

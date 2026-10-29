@@ -386,6 +386,14 @@ sheet of `Research.xlsx` beside `locations`, or grouped on one page in
 [location-effects.md](location-effects.md) (written from the CSV; regenerate it
 when the CSV changes).
 
+A location effect has no sheet of its own to land on, so it can't be found on
+the sheet by name the way other candidates are. Instead `build` (and `sync`)
+turn a `to review` row to `on sheet` once some location on the `locations`
+sheet already does ALL of it: every clause of its Effect, read with its kind
+(`arrive:`, `while:`, `action 4:`), is a clause of that location's Effect
+(`research.effect_clauses`). Free Passage is The Void's `while: offering_rift 1`,
+so it is not asked about again.
+
 ## 7. When games are added
 
 CLAUDE.md's porting steps hand off to one command:

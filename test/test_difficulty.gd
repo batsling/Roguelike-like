@@ -48,7 +48,8 @@ func test_tier_names() -> void:
 #
 # It replaced `is_boss_game`, which counted games and put the boss on the
 # offering as a card's own enemy. The band width did not change; what it counts
-# did, and an Event or a Shop node spawns nothing and so brings it no closer.
+# did (and while the node kinds lasted, an Event or a Shop node spawned nothing
+# and so brought it no closer).
 func test_every_fourth_spawn_event_closes_the_band() -> void:
 	for n in range(16):
 		assert_eq(RunDifficulty.is_boss_spawn(n),

@@ -12,11 +12,15 @@ for; [locations-design.md](locations-design.md) §9 groups those.
 
 `<tag>` rows are templates: write the location's own tag in.
 
+An effect marked *on the sheet already* is one a location on the `locations`
+sheet already does all of; `research.py build` sets its Status to `on sheet` by
+itself (§6.7 of research.md), so it drops out of what is left to review.
+
 ## When entered (51)
 
 | effect | tier | what it does | lean | ready? |
 |---|---|---|---|---|
-| **Scorched Floor** | Low | When entered, 2 random tiles catch Fire. | fire +20% | ✓ `arrive: place_tile fire 2` |
+| **Scorched Floor** *(on the sheet already: Burning Basement does it)* | Low | When entered, 2 random tiles catch Fire. | fire +20% | ✓ `arrive: place_tile fire 2` |
 | **Wall of Flame** | High | When entered, the whole back column catches Fire — everything that walks on starts burning. | fire +30% | needs a place_tile target of a whole column (`back`) |
 | **Burning Approach** | Medium | When entered, the front column catches Fire, as a Scroll of Fire would — and you with it. | fire +20% | needs Scroll of Fire's effect as a location verb (`read_scroll scroll_of_fire`) |
 | **Cobwebs** | Low | When entered, 3 random tiles are covered in Web. | spider +20% | ✓ `arrive: place_tile web 3` |
@@ -89,13 +93,13 @@ for; [locations-design.md](locations-design.md) §9 groups those.
 | **Clear Air** | Low | Nothing walks on when a game here ends. |  | needs a location-scoped override of the end-of-game spawn |
 | **Hold the Line** | Medium | Every game that ends here stands up 1 more body, and every game you beat here pays +1 Small Chest. |  | needs end-of-game spawn bonus and a `game_won:` payout on a location |
 | **Thin Air** | High | Every game here grants 1 fewer Temporary Shield (never below 1). |  | needs a location-scoped Fracture rule |
-| **Glass Floor** | High | Damage taken here is doubled. |  | ✓ `while: damage_taken_mult 2` |
+| **Glass Floor** *(on the sheet already: Dark Room, The Chest does it)* | High | Damage taken here is doubled. |  | ✓ `while: damage_taken_mult 2` |
 | **Soft Ground** | Low | Damage taken here is halved, rounded down. |  | ✓ `while: damage_taken_mult 0.5` |
 | **No Healing** | Medium | Healing does nothing here. |  | needs a location-scoped `heal_multiplier 0` |
 | **Double Healing** | Medium | Healing here heals twice as much. | heart +20% | needs a location-scoped `heal_multiplier 2` |
 | **Dud Powder** | Medium | Bombs can't be used here. |  | needs a location-scoped verb lock |
 | **Locked Doors** | Medium | Dash can't be used here — every road out is the offering's. |  | needs a location-scoped verb lock |
-| **Free Passage** | Insane | One game on every offering is a free rift. |  | ✓ `while: offering_rift 1` |
+| **Free Passage** *(on the sheet already: The Void does it)* | Insane | One game on every offering is a free rift. |  | ✓ `while: offering_rift 1` |
 | **Unstable Ground** | High | Two games on every offering are free rifts. |  | ✓ `while: offering_rift 2` |
 | **Bombardier** | Medium | Bombs thrown here blast a cross, as if you held Brimstone. | bomb +30% | needs a location-scoped bomb modifier |
 | **Heavy Push** | Medium | A Push here shoves a body two cells. |  | needs a location-scoped push distance |
@@ -125,7 +129,7 @@ for; [locations-design.md](locations-design.md) §9 groups those.
 | effect | tier | what it does | lean | ready? |
 |---|---|---|---|---|
 | **Blood Price** | Medium | Take 2 Damage to Gain +1 Small Chest, up to 3 times. | blood +20% | needs an action cost of Health (`lose_hp`) |
-| **Devil's Deal** | High | Lose 2 Max Health to Gain +1 Devilish Small Chest, up to 4 times. | devilish +20% | ✓ `action 4: lose_max_hp 2 => gain_chest small devilish` |
+| **Devil's Deal** *(on the sheet already: Dark Room does it)* | High | Lose 2 Max Health to Gain +1 Devilish Small Chest, up to 4 times. | devilish +20% | ✓ `action 4: lose_max_hp 2 => gain_chest small devilish` |
 | **Treasure Vault** | Medium | Spend a Key to Gain +1 Large Chest, once. | key +30% | ✓ `action 1: spend keys 1 => gain_chest large` |
 | **Secret Walls** | Low | Spend a Bomb to Gain +1 Small Chest, up to 3 times. | bomb +20% | ✓ `action 3: spend bombs 1 => gain_chest small` |
 | **Toll Gate** | Medium | Pay 5 Gold, once, to Gain +1 Large Chest. |  | ✓ `action 1: spend gold 5 => gain_chest large` |

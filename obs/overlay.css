@@ -1020,8 +1020,8 @@ html, body {
 
 /* ONE GAME ON THE MAP, as the in-game map draws it (RouteLadder.node_box): the
  * cover FILLS the box, cut from just below its top where the title sits; the
- * name runs along the bottom on a dark band; the node's kind is a badge
- * straddling the top-right corner; and a word for what the box is, when it is
+ * name runs along the bottom on a dark band; a shop the player opened is a
+ * badge straddling the top-right corner; and a word for what the box is, when it is
  * more than a game on the way, sits top-left.
  *
  * COVER PLUS NAME, not one or the other. The cover is what a viewer RECOGNISES

@@ -24,15 +24,11 @@ a lost run will cost. A run is meant to last a day or two of streaming.
    level-up goal you can meet at any game.
 2. **Pick a start.** Three games, 4–8 games from the Amulet, which is named on
    the panel. The one you take is the run's first game.
-3. **Play it.** Each game is a node of one of four **kinds**:
-   - `!` Enemies: two bodies, each a goal.
-   - `!!` Champion: a boss.
-   - `?` Event: an event before you play.
-   - `$` Shop: a shelf after you win.
-   
-   Ticking a goal resolves it on the spot. Each lost run of the real game gives
-   the board a turn. After three losses (one at a Traditional roguelike), you
-   can escape at a price.
+3. **Play it.** Every game stands two enemies on the board, each a goal; the
+   Amulet stands its boss alone. Ticking a goal resolves it on the spot. Each
+   lost run of the real game gives the board a turn. After three losses (one at
+   a Traditional roguelike), you can escape at a price. Every enemy defeated
+   fills the 🛒 shop bar; full, it opens a shop at the game you stand on.
 4. **Report it.** You get chests sized by what you killed, loot off the floor,
    gold, maybe a level-up and an event. Then the end of the game stands more
    bodies up, more the nearer the Amulet you are.
@@ -53,7 +49,7 @@ rather than trusting them later.
 
 | Area | What there is |
 |---|---|
-| **The map** | 967 real games (597 owned), the influence graph between them, rifts that pull off-map games in, and an Atlas star chart of the whole catalogue |
+| **The map** | 1,000 real games (612 owned, 28 Oct), the influence graph between them, rifts that pull off-map games in, and an Atlas star chart of the whole catalogue |
 | **Characters** | 12, each with a level-up goal; Mysterious Mask adds a second |
 | **Enemies** | 66 goal-enemies and 50 bosses (some with phases) across four game types, 31 abilities, 7 statuses, tile effects and units on the board |
 | **Things you carry** | 77 relics, plus eight kinds of loot in a shaped pack: 9 scrolls, 10 pills and 15 potions (each identified per run), 37 cards, 12 wands, 22 trinkets, 5 bags, 11 weapons with 6 evolutions |
@@ -119,7 +115,7 @@ The repository root **is** the Godot project, so `res://x` is `./x`.
 │   └── resources/   # the Resource schemas every .tres is typed by
 │
 ├── data/            # all content as .tres, generated from the spreadsheet:
-│                    #   games/ (967), enemies2.0/, bosses2.0/, characters2.0/, items2.0/,
+│                    #   games/ (1000), enemies2.0/, bosses2.0/, characters2.0/, items2.0/,
 │                    #   abilities2.0/, statuses2.0/, tiles2.0/, units2.0/, events2.0/,
 │                    #   objects2.0/, curses2.0/, the loot kinds (scrolls2.0/, pills2.0/,
 │                    #   potions2.0/, cards2.0/, wands2.0/, trinkets2.0/, bags2.0/,

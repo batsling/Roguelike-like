@@ -106,17 +106,17 @@ var session_mark: Dictionary = {}
 # IT NO LONGER DRIVES THE DIFFICULTY TIER — `spawn_events` does (§19.6). It is
 # not vestigial for that: RunOverScreen and the OBS overlay report it,
 # EventSystem gates requirements on "games", and SaveSystem derives the autosave
-# seed from it. It keeps ticking on all four node kinds.
+# seed from it. It ticks at every game.
 var games_played: int = 0
-# SPAWN EVENTS — one per node arrival that landed bodies, one per failure spawn,
+# SPAWN EVENTS — one per game arrival that landed bodies, one per failure spawn,
 # regardless of how many bodies each put down (§19.6). This is what the tier
 # ladder reads now (RunDifficulty.current_tier).
 #
 # The point of moving it off `games_played` is that difficulty becomes a
-# CONSEQUENCE rather than a clock. Event and Shop nodes never tick it, so a
-# player who routes through them and clears goals promptly keeps a small board
-# and a low tier for far longer than the old count allowed; one who fights
-# everything climbs faster than it ever did. The ladder used to be something the
+# CONSEQUENCE rather than a clock. A player who clears goals promptly keeps a
+# small board and a low tier for far longer than the old count allowed; one who
+# fights everything climbs faster than it ever did. (While the node kinds lasted,
+# Event and Shop nodes never ticked it; §19.10 retired them.) The ladder used to be something the
 # player rode. It is something they steer now, in both directions.
 #
 # It also means THE TIER CAN STEP MID-GAME, which `games_played` never could: a

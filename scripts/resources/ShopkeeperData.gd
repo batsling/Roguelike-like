@@ -1,8 +1,8 @@
 class_name ShopkeeperData
 extends Resource
 
-# ONE SHOPKEEPER: who stands behind a Shop node's counter (docs/games-first-redesign.md
-# §14.6). Every Shop node in a run is dealt one at random from the roster, no
+# ONE SHOPKEEPER: who stands behind a shop's counter (docs/games-first-redesign.md
+# §14.6). Every shop the player opens in a run is dealt one at random from the roster, no
 # repeats while the roster lasts (ShopSystem.keeper_for); with an empty roster
 # every shop is the plain one, which is what it always was.
 #
