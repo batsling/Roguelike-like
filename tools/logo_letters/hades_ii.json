@@ -16,5 +16,7 @@
   "fill": {"min_channel": 200},
   "smooth": false,
   "shadow": false,
-  "outline": {"width": 19, "clean_distance": 40, "match_tolerance": 90, "ink_beyond": 6}
+  "outline": {"width": 19, "clean_distance": 40, "match_tolerance": 90, "follow_original": true,
+              "keep_within": {"a": 24, "d": 24, "*": 70},
+              "drop_colours": [[82, 229, 166]], "drop_tolerance": 60}
 }

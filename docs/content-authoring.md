@@ -89,9 +89,12 @@ The defaults suit a light fill in a dark outline over a soft drop shadow
 (Balatro). `hades_ii.json` is the other worked example: white letters in a
 hand-inked black outline with a glow, thorns that must not be smoothed away, and
 a green II behind that has to go. It sets `"smooth": false`, `"shadow": false`
-and an `outline` whose `match_tolerance` repaints anything near a letter that is
-not the outline's colour (the II's green), with the width set by hand where the
-measurement came out short. A logo with dark letters and no outline at all would
+and an `outline` that keeps the logo's own silhouette: `follow_original` paints
+the outline only over what was drawn there (never into the gaps between thorns),
+`keep_within` keeps every spike the logo drew near a letter (less near the A and
+D, which sit among the II's rocks, so the rocks' outlines stay out), and
+`drop_colours` takes the II's green out. Check a cut like this by putting the
+letters back where they were and comparing with the source. A logo with dark letters and no outline at all would
 need more than the script does today.
 
 ## The spreadsheet and the generators

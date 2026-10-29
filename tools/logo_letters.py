@@ -78,7 +78,14 @@ so Godot never imports the source), is JSON:
                   must be to learn from; keep an original outline pixel only if
                   within n of the outline's colour at that distance (so a
                   background shape touching the letter is painted over); and
-                  how far past the width hand-inked outline is still kept
+                  how far past the width hand-inked outline is still kept.
+                  For a spiky inked logo: "follow_original": true paints the
+                  outline only where the logo drew something else (never into
+                  the gaps between spikes), "keep_within": px keeps everything
+                  the logo drew that near the letter (or {piece: px, "*": px}
+                  for less near a busy background), and "drop_colours":
+                  [[r, g, b], ...] are colours that are never the letter's,
+                  within "drop_tolerance" (default 30)
 
 How to add a logo: docs/content-authoring.md, "Title letters".
 """
@@ -309,6 +316,11 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
             ds = nd.distance_transform_edt(~fs)
             idx = np.clip(np.round(ds).astype(int), 0, len(lut) - 1)
             band = (ds > 0) & (ds <= T + 0.5) & ~f
+            if oc.get("follow_original"):
+                # Paint the outline only where the logo drew SOMETHING: over
+                # what is not this letter's (Hades' II), never into the gaps
+                # between its thorns, so the silhouette stays the logo's own.
+                band &= a > 40
             orig = band & solid & mine & ~fill & (ds <= T - 1.5)
             # Hand-inked outlines run thicker than their usual width in places;
             # that extra ink is kept, out to `ink_beyond` past the width.
@@ -320,15 +332,18 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
             tol = oc.get("match_tolerance")
             if tol is not None:
                 orig &= np.abs(A[..., :3] - lut[idx]).max(-1) <= tol
-            # Thorns: thin spikes of ink and glow that run further from the
-            # letter than any outline, often into the gap by a neighbour. Kept
-            # inside the config's polygon, clear of the neighbour's fill.
-            for ex in cfg.get("extra_ink", []):
-                if ex["piece"] != n:
-                    continue
-                d_other = np.min([D[o] for o in names if o != n], 0)
-                orig |= (_polygon_mask((H, W), ex["polygon"]) & solid & ~fill
-                         & (d_other > ex.get("clear", T - 2)))
+            # Spikes: everything the logo drew within `keep_within` of the
+            # letter is kept as drawn (thorns and all), except a colour that is
+            # some other shape's (the II's green). Close to the fill a matching
+            # colour is the glow, and stays.
+            within = oc.get("keep_within", 0)
+            if isinstance(within, dict):  # per piece; "*" for the rest
+                within = within.get(n, within.get("*", 0))
+            if within:
+                far = solid & mine & ~fill & (ds > 0) & (ds <= within)
+                for c in oc.get("drop_colours", []):
+                    far &= ~((np.abs(A[..., :3] - np.array(c)).max(-1) <= oc.get("drop_tolerance", 30)) & (ds > 8))
+                orig |= far
             rgb[f] = colour[n][f]
             al[f] = 1
             rgb[band] = lut[idx[band]]
@@ -337,7 +352,7 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
             al[orig] = 1
             al[holes & band] = np.minimum(al[holes & band], a[holes & band] / 255)
         body = al > 0.5
-        if n not in keep_original and oc.get("ink_beyond", 0):
+        if n not in keep_original and (oc.get("ink_beyond", 0) or oc.get("keep_within", 0)):
             # ink with none of the letter's fill in it is someone else's (a
             # part like Hades' A curl, drawn apart from the A, keeps its own)
             lab_b, nb = nd.label(al > 0)
