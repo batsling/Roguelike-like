@@ -57,6 +57,36 @@ To add or replace art:
 > (`images/items/`, `images/characters/`) went with its data on 25 Oct 2026, and
 > the old HTML build with it.
 
+### Title letters (cut from real logos)
+
+The main menu's title is to be spelled out of letters cut from real roguelikes'
+logos, with each place's game drawn again every time the game opens (not yet
+wired into the menu). The letters live one folder per letter, one file per game:
+`images2.0/custom/title/<letter>/<game id>.png` (`r/balatro.png`). A piece that
+is not a letter gets a name of its own; `dash` is the hyphen.
+
+They are made by `tools/logo_letters.py`, never by hand, because a logo's letters
+are not separate drawings: they share one outline, overlap, and sit on one drop
+shadow. The script finds each letter by its light fill, rebuilds an even outline
+round it in the logo's own shades, paints back anything a neighbour hid, and
+re-casts the logo's shadow per letter (measured off the logo itself). Its
+docstring has the detail. To add a logo:
+
+1. Put the logo in `tools/logo_letters/<game id>.<ext>` (transparent background,
+   as large as can be found — a Steam library logo or a press kit). `tools/` is
+   `.gdignore`d, so Godot never imports it.
+2. Copy `tools/logo_letters/balatro.json` to `<game id>.json` and give each piece
+   a point inside its fill. Two letters whose fills run together need a `splits`
+   line between them; a part one letter hid needs a `restore` polygon. Balatro
+   has one of each (its T crossbar is drawn over the R's top-left corner).
+3. `python3 tools/logo_letters.py tools/logo_letters/<game id>.json --preview <png>`
+   (needs `pip install numpy scipy pillow`) and look at the preview on magenta,
+   which shows any stray pixel. Commit the config, the source and the PNGs.
+
+The defaults suit a light fill in a dark outline. A logo built the other way round
+(dark letters, no outline) needs its `fill` thresholds set in the config, and may
+need more than the script does today.
+
 ## The spreadsheet and the generators
 
 `tools/Roguelikes.xlsx` is the **design source of truth** for bulk content. The
