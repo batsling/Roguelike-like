@@ -7695,7 +7695,7 @@ func test_leaving_the_haul_screen_lands_the_shelf_under_the_board() -> void:
 	# mounted whatever the opening rolled. Cleared through the page's own teardown
 	# rather than by nulling the field, so the panel is actually closed.
 	_ui._clear_shop()
-	# Standing ON the Shop node with its shelf owed — the state _open_post_game names a
+	# Standing ON a game with a shop and its shelf owed — the state _open_post_game names a
 	# shelf in. The screen is opened directly rather than reported into: a report
 	# moves the run to the card it just played and builds the screen in the same
 	# breath now that the resolve can land instantly (§7.4), so there is no moment
@@ -8296,8 +8296,8 @@ func test_the_page_still_fits_the_window_with_a_shop_on_it() -> void:
 	# long one ("Enter the Gungeon", 35px over) took the room out of the left
 	# column until the checklist wrapped and grew the page — so the same bug passed
 	# or failed on the seed. The header is the flat word "Shop" now, but the
-	# panel still knows its game, and the longest name any Shop node carries is
-	# the case that bit; the hubs are gone, so that is the roster worth walking.
+	# panel still knows its game, and the longest name a shop can stand at is the
+	# case that bit.
 	_at_720p()
 	var shops: Array = [_a_shop()]
 	# A CROWDED BOARD, on purpose. This test used to clear the board first,
@@ -8307,11 +8307,10 @@ func test_the_page_still_fits_the_window_with_a_shop_on_it() -> void:
 	# be scoped out is the one worth standing here.
 	_pick_enemies(0)
 	_crowd_board(8)
-	# The longest-named shop is looked up AFTER the pick, never before:
-	# `_pick_enemies` makes the card it picks an Enemies node, and when the run
-	# dealt that card as the map's longest-named Shop it stopped being a shop
-	# under the test — `_set_shop_here` then refused it and the button stayed
-	# down (an intermittent, roughly one deal in a few dozen).
+	# The shop is looked up AFTER the pick, never before. While the node kinds
+	# lasted, `_pick_enemies` turned the card it picked into an Enemies node, and
+	# when that card was the map's longest-named Shop it stopped being a shop
+	# under the test (an intermittent, roughly one deal in a few dozen).
 	var longest: StringName = &""
 	for gid in ShopSystem.shop_nodes():
 		var g: GameData = Data.get_game(gid)

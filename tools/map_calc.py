@@ -44,14 +44,25 @@ distance" measure from network science. Spreadsheets cannot recurse without a
 circular reference, so `Map Calc` lays it out one generation per column
 (Gen 1..GENS): a game's generation k+1 is the sum of generation k over the
 games it influenced, read through the connections block. The score is
-SUMPRODUCT(gens, α^{0..GENS-1}), with α read from `Map Analysis`!AN2, which the
-owner can change and a rerun never resets. The top 20 sit at AL:AR there (the
+SUMPRODUCT(gens, α^{0..GENS-1}), with α read from `Map Analysis`!AP2, which the
+owner can change and a rerun never resets. The top 20 sit at AN:AT there (the
 score, then what it is made of: direct, 2nd and 3rd generation, the rest), with
 a stacked bar of the same under the table (`influence_chart`, made on the first
 run and rewritten in place after).
 `--check` fails if the longest chain outgrows GENS or influence ever runs in a
 circle. On 28 Oct 2026 the longest chain is 13 games, and the formulas match a
 direct recursion exactly.
+
+**Games to buy.** The table at AD:AH ranks the unowned games by how many owned
+games they connect to, and names those games (`Connects to`, a TEXTJOIN array
+formula). `Adds to the map` is how many games a run's map would gain by buying
+it: none unless it touches a game already on the map, and otherwise itself,
+plus every owned game off the map it touches, plus each of those one's own
+owned neighbours (a two-game island comes on whole; a loner on its own). That
+reads one step past each neighbour, so a longer chain of off-map games counts
+short, and touching both halves of one island counts it twice. It sat at AD:AF
+until 28 Oct 2026; the hub and influence tables moved two columns right to make
+room, and `write` carries an old layout's cells (the owner's α included) across.
 
 Cached values are dropped from every cell written and Excel is asked to
 recalculate on open (`fullCalcOnLoad`), the same as `_map_calc_realign.py`
@@ -90,7 +101,7 @@ CHARTS_FROM_ROW = 40
 # not. ALPHA is only the starting value: the cell on Map Analysis is the live one.
 GENS = 16
 ALPHA = 0.5
-ALPHA_CELL = "'%s'!$AN$2" % "Map Analysis"
+ALPHA_CELL = "'%s'!$AP$2" % "Map Analysis"
 
 
 def _col(n):
@@ -113,6 +124,11 @@ def _num(c):
 K_SCORE, K_KEY = "AM", "AN"
 K_GEN = [_col(_num("AO") + i) for i in range(GENS)]
 K_DOWN = [_col(_num(K_GEN[-1]) + 2 + i) for i in range(GENS - 1)]
+# What buying a game would add to the map: on the games block, an off-map owned
+# game's group (itself and its owned neighbours), how many map games a game
+# touches, and the sum; on the connections block, both ends' reads of those.
+_B0 = _num(K_DOWN[-1]) + 2
+B_GROUP, B_MAPNB, B_ADDS, B_ON_A, B_ON_B, B_GRP_A, B_GRP_B = (_col(_B0 + i) for i in range(7))
 
 # Styles already in the workbook (cellXfs indices), read off the cells that
 # build_map_charts.py styled: header, measure label, value, note, 0.00, 0%.
@@ -168,6 +184,13 @@ def calc_cells(r, G, C):
         f[K_SCORE] = ('IF($A{0}="","",SUMPRODUCT($%s{0}:$%s{0},%s^{%s}))'
                       % (K_GEN[0], K_GEN[-1], ALPHA_CELL, powers))
         f[K_KEY] = 'IF($A{0}="","",$%s{0}+ROW()/10000000)' % K_SCORE
+        # Buying: an owned game off the map comes on with its own owned
+        # neighbours (all off the map too, or it would be on it).
+        f[B_GROUP] = 'IF(OR($A{0}="",$P{0}<>"Yes",$AH{0}="Yes"),"",1+N($AG{0}))'
+        f[B_MAPNB] = ('IF($A{0}="","",COUNTIFS(%s,$A{0},%s,"Yes")+COUNTIFS(%s,$A{0},%s,"Yes"))'
+                      % (rc("W"), rc(B_ON_B), rc("X"), rc(B_ON_A)))
+        f[B_ADDS] = ('IF(OR($A{0}="",$P{0}="Yes"),"",IF(N($%s{0})=0,0,1+SUMIFS(%s,%s,$A{0})+SUMIFS(%s,%s,$A{0})))'
+                     % (B_MAPNB, rc(B_GRP_B), rc("W"), rc(B_GRP_A), rc("X")))
     if r <= C:
         name = "TRIM(%s)" % row("connections", "A")
         f["W"] = 'IF(%s="","",%s)' % (name, name)
@@ -189,6 +212,10 @@ def calc_cells(r, G, C):
         # The influencee's own generations, for its influencer's next one.
         for k in range(GENS - 1):
             f[K_DOWN[k]] = 'IF($Z{0}="","",INDEX(%s,$Z{0}))' % rg(K_GEN[k])
+        f[B_ON_A] = 'IF($Y{0}="","",INDEX(%s,$Y{0})&"")' % rg("AH")
+        f[B_ON_B] = 'IF($Z{0}="","",INDEX(%s,$Z{0})&"")' % rg("AH")
+        f[B_GRP_A] = 'IF($Y{0}="","",INDEX(%s,$Y{0}))' % rg(B_GROUP)
+        f[B_GRP_B] = 'IF($Z{0}="","",INDEX(%s,$Z{0}))' % rg(B_GROUP)
     return {c: s.replace("{0}", str(r)) for c, s in f.items()}
 
 
@@ -207,8 +234,11 @@ CALC_HEADERS = {
 }
 CALC_HEADERS.update({c: "Gen %d" % (k + 1) for k, c in enumerate(K_GEN)})
 CALC_HEADERS.update({c: "Influencee gen %d" % (k + 1) for k, c in enumerate(K_DOWN)})
-CALC_LAST = K_DOWN[-1]
-STR_COLS = {"A", "C", "P", "W", "X", "AA", "AB", "AH", "AL"}
+CALC_HEADERS.update({B_GROUP: "Off-map group", B_MAPNB: "Map neighbours", B_ADDS: "Adds to the map",
+                     B_ON_A: "Influencer on map", B_ON_B: "Influencee on map",
+                     B_GRP_A: "Influencer off-map group", B_GRP_B: "Influencee off-map group"})
+CALC_LAST = B_GRP_B
+STR_COLS = {"A", "C", "P", "W", "X", "AA", "AB", "AH", "AL", B_ON_A, B_ON_B}
 
 
 # ── Map Analysis ────────────────────────────────────────────────────────────
@@ -268,7 +298,7 @@ def measures(G, C):
         ("Median degree on the map", "=MEDIAN(%s)" % m("AI"),
          "Half of the map's games have this many roads or fewer", S_VALUE),
         ("Largest hub on the map", "=MAX(%s)" % m("AI"),
-         "The most roads out of any one map game (see the table under AH)", S_VALUE),
+         "The most roads out of any one map game (see the table under AJ)", S_VALUE),
         ("Dead ends on the map", "=COUNTIF(%s,1)" % m("AI"),
          "One road in and out. Two off the same hub are where a rift usually goes", S_VALUE),
         ("Dead-end share on the map", "=IF({Games on the map}=0,0,{Dead ends on the map}/{Games on the map})",
@@ -282,7 +312,8 @@ def measures(G, C):
 
 def dash_cells(G, C, last_year):
     """{address: (kind, value, style)} for every cell this script owns on
-    `Map Analysis`. kind is 'f' (formula), 's' (text) or 'n' (number)."""
+    `Map Analysis`. kind is 'f' (formula), 'a' (array formula), 's' (text)
+    or 'n' (number)."""
     m = lambda col, last=G: "'%s'!$%s$2:$%s$%d" % (CALC, col, col, last)  # noqa: E731
     out = {}
 
@@ -329,31 +360,40 @@ def dash_cells(G, C, last_year):
         put("%s%d" % (val_col, r), "f", look % (m(val), m(key), k, m(key)))
 
     for col, label in (("AD", "Rank"), ("AE", "Game to buy"), ("AF", "Owned games it joins"),
-                       ("AH", "Rank"), ("AI", "Hub on the map"), ("AJ", "Map degree")):
+                       ("AG", "Connects to"), ("AH", "Adds to the map"),
+                       ("AJ", "Rank"), ("AK", "Hub on the map"), ("AL", "Map degree")):
         put("%s4" % col, "s", label, S_HEAD)
+    calc = lambda col: "'%s'!$%s$2:$%s$%d" % (CALC, col, col, C)  # noqa: E731
     for k in range(1, HUB_RANKS + 1):
         r = 4 + k
         ranked("N", "O", "P", "O", "D", r, k)
         ranked("R", "S", "T", "Q", "D", r, k)
         ranked("AD", "AE", "AF", "AK", "AG", r, k)
-        ranked("AH", "AI", "AJ", "AJ", "AI", r, k)
-        ranked("AL", "AM", "AN", K_KEY, K_SCORE, r, k)
-        put("AO%d" % r, "f", "IFERROR(INDEX(%s,MATCH(LARGE(%s,%d),%s,0)),\"\")"
+        # The owned games it connects to, by name: an array formula, since
+        # TEXTJOIN joins an IF over the whole connections block.
+        put("AG%d" % r, "a", 'IF($AE{0}="","",_xlfn.TEXTJOIN(", ",TRUE,'
+            'IF((%s=$AE{0})*(%s="Yes"),%s,""),IF((%s=$AE{0})*(%s="Yes"),%s,"")))'.replace("{0}", str(r))
+            % (calc("W"), calc("AB"), calc("X"), calc("X"), calc("AA"), calc("W")))
+        put("AH%d" % r, "f", "IFERROR(INDEX(%s,MATCH(LARGE(%s,%d),%s,0)),\"\")"
+            % (m(B_ADDS), m("AK"), k, m("AK")))
+        ranked("AJ", "AK", "AL", "AJ", "AI", r, k)
+        ranked("AN", "AO", "AP", K_KEY, K_SCORE, r, k)
+        put("AQ%d" % r, "f", "IFERROR(INDEX(%s,MATCH(LARGE(%s,%d),%s,0)),\"\")"
             % (m(K_GEN[0]), m(K_KEY), k, m(K_KEY)))
         # What the score is made of, for the stacked chart: generations 2 and
         # 3 weighted by the decay, and everything further down as one rest.
-        for col, gen in (("AP", 1), ("AQ", 2)):
+        for col, gen in (("AR", 1), ("AS", 2)):
             put("%s%d" % (col, r), "f", "IFERROR(%s^%d*INDEX(%s,MATCH(LARGE(%s,%d),%s,0)),\"\")"
                 % (ALPHA_CELL, gen, m(K_GEN[gen]), m(K_KEY), k, m(K_KEY)))
-        put("AR%d" % r, "f", 'IF($AN{0}="","",$AN{0}-$AO{0}-$AP{0}-$AQ{0})'.replace("{0}", str(r)))
+        put("AT%d" % r, "f", 'IF($AP{0}="","",$AP{0}-$AQ{0}-$AR{0}-$AS{0})'.replace("{0}", str(r)))
 
     # Influence: the decay is the owner's to tune, so write() keeps a value
     # already in its cell; this one is only the first.
-    put("AM2", "s", "Decay α: each generation further down counts α times the one above", S_NOTE)
-    put("AN2", "n", ALPHA, S_DEC)
-    for col, label in (("AL", "Rank"), ("AM", "Most influential (Katz)"), ("AN", "Influence"),
-                       ("AO", "Directly influenced"), ("AP", "2nd generation"),
-                       ("AQ", "3rd generation"), ("AR", "4th and beyond")):
+    put("AO2", "s", "Decay α: each generation further down counts α times the one above", S_NOTE)
+    put("AP2", "n", ALPHA, S_DEC)
+    for col, label in (("AN", "Rank"), ("AO", "Most influential (Katz)"), ("AP", "Influence"),
+                       ("AQ", "Directly influenced"), ("AR", "2nd generation"),
+                       ("AS", "3rd generation"), ("AT", "4th and beyond")):
         put("%s4" % col, "s", label, S_HEAD)
 
     for i, yr in enumerate(range(FIRST_YEAR, last_year + 1)):
@@ -396,6 +436,8 @@ def cell_xml(addr, kind, value, style):
         return '<c r="%s"%s><v>%s</v></c>' % (addr, s, value)
     if kind == "s":
         return '<c r="%s"%s t="inlineStr"><is><t>%s</t></is></c>' % (addr, s, _esc(value))
+    if kind == "a":
+        return '<c r="%s"%s t="str"><f t="array" ref="%s">%s</f></c>' % (addr, s, addr, _esc(value))
     t = ' t="str"' if kind == "fs" else ""
     return '<c r="%s"%s%s><f>%s</f></c>' % (addr, s, t, _esc(value))
 
@@ -554,6 +596,7 @@ def write(wb):
     part, _ = wb.sheet_parts(DASH)
     xml = wb._by_name[part].decode("utf-8")
     head, rows, tail = split_sheet(xml)
+    head = migrate_dash(wb, head, rows)
     # The old year table may have run longer; its tail goes before the new one.
     for n, (attrs, cells) in rows.items():
         if n >= 5:
@@ -563,7 +606,7 @@ def write(wb):
         col, n = re.match(r"([A-Z]+)(\d+)", addr).groups()
         n = int(n)
         attrs, cells = rows.setdefault(n, ("", {}))
-        if addr == "AN2" and col in cells and isinstance(cells[col], tuple) and "<v>" in (cells[col][1] or ""):
+        if addr == "AP2" and col in cells and isinstance(cells[col], tuple) and "<v>" in (cells[col][1] or ""):
             continue   # the owner's decay, whatever they set it to
         if col in cells:
             # Keep the formatting the cell already has. The fixed S_* numbers are
@@ -581,9 +624,9 @@ def write(wb):
             kind = "fs"
         cells[col] = cell_xml(addr, kind, value, style)
     last_row = max(rows)
-    head = re.sub(r'<dimension ref="[^"]*"/>', '<dimension ref="A1:AR%d"/>' % last_row, head)
-    widths = {"AD": 7, "AE": 32, "AF": 12, "AH": 7, "AI": 32, "AJ": 11, "H": 10,
-              "AL": 7, "AM": 32, "AN": 11, "AO": 11, "AP": 11, "AQ": 11, "AR": 11}
+    head = re.sub(r'<dimension ref="[^"]*"/>', '<dimension ref="A1:AT%d"/>' % last_row, head)
+    widths = {"AD": 7, "AE": 32, "AF": 12, "AG": 60, "AH": 12, "AJ": 7, "AK": 32, "AL": 11, "H": 10,
+              "AN": 7, "AO": 32, "AP": 11, "AQ": 11, "AR": 11, "AS": 11, "AT": 11}
     cols = re.search(r"<cols>(.*?)</cols>", head, re.S)
     if cols:
         have = cols.group(1)
@@ -624,10 +667,48 @@ def write(wb):
     return G, C, last_year
 
 
+# Before 28 Oct 2026 the buy table was three columns (AD:AF) and the hub and
+# influence tables sat at AH:AJ and AL:AR. They move two columns right; the
+# cells go with their formatting, and the owner's α with them (AN2 -> AP2).
+OLD_RIGHT = (col_index("AH"), col_index("AR"))
+MOVE = 2
+
+
+def migrate_dash(wb, head, rows):
+    """Move an old layout's right-hand tables across, in place. Returns head
+    with the column widths moved too. A no-op on the new layout."""
+    cell = rows.get(4, ("", {}))[1].get("AI")
+    if not cell or _cell_value(cell[0], cell[1] or "", wb._shared) != "Hub on the map":
+        return head
+    lo, hi = OLD_RIGHT
+    for n, (attrs, cells) in rows.items():
+        moved = {}
+        for c in [c for c in cells if lo <= col_index(c) <= hi]:
+            moved[letters(col_index(c) + MOVE)] = cells.pop(c)
+        for c, raw in moved.items():
+            if isinstance(raw, tuple) and "<f" in (raw[1] or ""):
+                raw = (raw[0], "")      # rewritten below; a stale formula would name the old columns
+            cells[c] = raw
+        # The cell addresses inside each raw tuple are rebuilt by join_rows_raw.
+    cols = re.search(r"<cols>(.*?)</cols>", head, re.S)
+    if cols:
+        out = []
+        for el in re.findall(r"<col [^>]*/>", cols.group(1)):
+            a, b = (int(x) for x in re.search(r'min="(\d+)" max="(\d+)"', el).groups())
+            if lo <= a and b <= hi:
+                el = re.sub(r'min="\d+" max="\d+"', 'min="%d" max="%d"' % (a + MOVE, b + MOVE), el)
+            elif a <= hi and b >= lo:
+                continue        # straddles the moved block: let write() set it afresh
+            if el not in out:
+                out.append(el)
+        head = head[:cols.start(1)] + "".join(out) + head[cols.end(1):]
+    return head
+
+
 # ── the influence chart ─────────────────────────────────────────────────────
 
 INFLUENCE_TITLE = "Influence by generation — the top 20"
-INFLUENCE_CHART_COL = 36          # AK, 0-based: left edge of the chart, under AL
+INFLUENCE_CHART_COL = 38          # AM, 0-based: left edge of the chart, under AN
 INFLUENCE_CHART_ROW = 25          # row 26, under the top-20 table
 # One hue, dark to light: direct, then each generation further downstream
 # (passes the dataviz ordinal check on a light surface).
@@ -647,14 +728,14 @@ def influence_chart_xml():
     """A stacked horizontal bar of the top 20, one segment per generation."""
     dash = "'%s'" % DASH
     sers = []
-    for i, (col, fill) in enumerate(zip(("AO", "AP", "AQ", "AR"), INFLUENCE_FILLS)):
+    for i, (col, fill) in enumerate(zip(("AQ", "AR", "AS", "AT"), INFLUENCE_FILLS)):
         sers.append(
             '<c:ser><c:idx val="%d"/><c:order val="%d"/>'
             '<c:tx><c:strRef><c:f>%s!$%s$4</c:f></c:strRef></c:tx>'
             '<c:spPr><a:solidFill><a:srgbClr val="%s"/></a:solidFill>'
             '<a:ln w="19050"><a:solidFill><a:srgbClr val="FFFFFF"/></a:solidFill></a:ln></c:spPr>'
             '<c:invertIfNegative val="0"/>'
-            '<c:cat><c:strRef><c:f>%s!$AM$5:$AM$%d</c:f></c:strRef></c:cat>'
+            '<c:cat><c:strRef><c:f>%s!$AO$5:$AO$%d</c:f></c:strRef></c:cat>'
             '<c:val><c:numRef><c:f>%s!$%s$5:$%s$%d</c:f></c:numRef></c:val></c:ser>'
             % (i, i, dash, col, fill, dash, 4 + HUB_RANKS, dash, col, col, 4 + HUB_RANKS))
     axis_text = ('<c:txPr><a:bodyPr/><a:lstStyle/><a:p><a:pPr><a:defRPr sz="900">'

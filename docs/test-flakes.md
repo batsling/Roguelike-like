@@ -93,8 +93,9 @@ failure; diffing a passing and failing run's Control tree) are the reusable part
     so a head count after a report is not a fact about the body you acted on.
     Follow THAT body by instance (`GameLoop2.entry_for`), and stand a known one
     with `_make_front_body(&"monkey")` when the test needs a plain one-hit body.
-    A third: node kinds are dealt per run, so a helper that picks "the first
-    game in the catalog" is sometimes standing on a Shop, which pays no event.
+    A third (until §19.10 retired them): node kinds were dealt per run, so a
+    helper that picked "the first game in the catalog" was sometimes standing
+    on a Shop, which paid no event.
     **Never run two GUT processes at once**: they share `user://`, race on
     `slot_0.json`, and produce a spray of failures that are not flakes at all.
   - **Two goal-tick tests** (`test_confirming_a_goal_kills_the_enemy_there_and_then`,

@@ -11,6 +11,27 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **28 Oct evening upload: 4 new games, 16 connections; a better "Game to
+  buy" table; docs caught up.** Lucky Hunter, Poker Quest, Tokoyo: The Tower
+  of Perpetuity and Wretch: Divine Ascent are on the chart with their proof
+  screenshots, and Dicealot and House of Necrosis are owned. The owner's new
+  wording for Whip and Bloody Tear ("Defeat a vampire with a melee weapon",
+  typed into `weapons`) is carried up into `goals`
+  (`tools/oneshots/_goals_vampire_melee_wording.py`). `Map Analysis`'s **Game to
+  buy** table gains **Connects to** (the owned games it links to, by name) and
+  **Adds to the map** (how many games a run's map gains if you buy it: itself
+  and any owned off-map games it pulls on, checked against the real graph for
+  all 20 rows); the hub and influence tables moved two columns right to make
+  room, α with them (now AP2). The README still listed the four node kinds
+  §19.10 retired; it, the architecture doc, the overlay's CSS and a dozen code
+  and test comments now say what a run does today. The research docs stopped
+  asking for done work: `docs/new-roguelikes.md` drops the 24 games now on the
+  sheet and works its Map effect out again from today's map, `proof-missing.md`
+  has the current proof count, and a location-effect idea that a sheet
+  location already does in full (Free Passage is The Void, Devil's Deal and
+  Glass Floor are Dark Room, Scorched Floor is Burning Basement, Cobwebs is Caves) is marked
+  `on sheet` by `research.py build` from now on.
+
 - **27 Oct upload: 13 new games, 26 connections, and an Influence score on
   `Map Analysis`.** Berserk Mode, Blood Vial, Force Reboot and Mullet Madjack
   (all from Post Void, which stops being an owned dead end), Tribes of Midgard,

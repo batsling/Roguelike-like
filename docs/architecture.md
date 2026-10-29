@@ -90,7 +90,7 @@ ordinary scene.
     never gives up a column, the picked cell stays lit underneath, and ◀ ▶ (or the
     arrow keys) step through the grid in layout order. Escape or a click on the
     backdrop closes it. Before that it was a right-hand pane, and before THAT one
-    mounted open and empty — both cost the grid columns while you scan 967 covers.
+    mounted open and empty — both cost the grid columns while you scan 1,000 covers.
     One property on one node covers every tab, because all eight are built by
     `_grid_and_detail`. `TierListScreen` does the same thing for the same reason.
     **A grid tile is a picture with a caption, not a stat line with a thumbnail.**
@@ -414,8 +414,9 @@ ordinary scene.
     route always looks the same), ordered to cross as few arrows as possible, with
     green arrows between them. Each game is a **box filled with its cover**, its
     name along the bottom on a fade in the box's role colour (blue for you, ember
-    for the Amulet, gold for an offer, near-black otherwise), and the node's
-    **kind marker as a badge on its top-right corner**; the arrows run from the
+    for the Amulet, gold for an offer, near-black otherwise), and a 🛒 **shop
+    marker as a badge on its top-right corner** where the player opened a shop
+    (`shop_marker`); the arrows run from the
     middle of one box's right edge to the middle of the next one's left. Every name on a map shares
     one size. Given a `room`, the map is sized to it on both axes. Shared: the 🗺
     map window (`RunMapModal`) and `GameChoiceModal` draw the same map from it; the

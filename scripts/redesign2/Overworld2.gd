@@ -5000,14 +5000,10 @@ func cancel_owned_pick() -> void:
 # LAST card on the board with nothing to replace it (destroying it leaves nowhere
 # to travel).
 #
-# THE THIRD IS A CHAMPION NODE (§7.1): a boss cannot be bashed out of the road.
-# That settles the question §7.1 left open, and it is split down the middle on
-# purpose — a SCRAMBLE is still allowed, because it redraws the offering and the
-# card's boss with it, which is choosing a different fight rather than dodging
-# one. A Bash removes the node for good, and a Champion's whole job is to be a
-# fight the road puts in front of you. Read off the node's KIND (§19.2), so it
-# holds for whatever game the node is playing; the Amulet is a Champion too, and
-# keeps its own sentence because its reason is the bigger one.
+# THE THIRD WAS A CHAMPION NODE (§7.1): a boss could not be bashed out of the
+# road, though a SCRAMBLE could redraw it. §19.10 retired the node kinds, so the
+# Amulet is the only card refused on these grounds, and it keeps its own
+# sentence because its reason is the bigger one.
 # Returns whether the bash actually happened, so an AIM that was refused can stay
 # armed and be pointed at another card (see `open_choice`) — the player has spent
 # nothing, and disarming them for aiming at the Amulet would make a warning feel

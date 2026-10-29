@@ -313,7 +313,7 @@ func test_every_arrival_brings_one_more_body_from_fracture_four() -> void:
 	GameLoop2.reset()
 	GameState.fracture = 3
 	GameLoop2.choose_game(_plain_enemy())
-	assert_eq(GameLoop2.arrivals.size(), 2, "an Enemies node stands two below Fracture 4")
+	assert_eq(GameLoop2.arrivals.size(), 2, "a game stands two below Fracture 4")
 	GameLoop2.reset()
 	GameState.fracture = 4
 	GameLoop2.choose_game(_plain_enemy())

@@ -316,8 +316,8 @@ func _road_card(index: int, opt: Dictionary) -> Control:
 # A body with no portrait authored falls back to its NAME rather than to a gap —
 # an empty row under one of three cards reads as that road having no enemy, which
 # is a different and much better thing than "we have no picture of it".
-# How many MORE bodies than the pictured one walk on with this start: an
-# Enemies node stands up two (§19.1) and the second is rolled on arrival, so the
+# How many MORE bodies than the pictured one walk on with this start: every
+# game stands up two (§19.10) and the second is rolled on arrival, so the
 # card can promise it without naming it. Asked of the page's own offering logic so
 # the picker and the popup behind ⚙ Details cannot disagree about the count.
 func _extra_bodies(index: int) -> int:

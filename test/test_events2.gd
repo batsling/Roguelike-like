@@ -819,8 +819,8 @@ func test_a_requirement_gates_the_event() -> void:
 
 
 # Any game the run could stand on. An event fires after every game now, so a
-# probe no longer has to hunt for a leaf — but it does have to skip a SHOP node,
-# which pays a shop instead of an event and would make every probe below read as
+# probe no longer has to hunt for a leaf — but it does skip a game with a SHOP,
+# which (while it was a Shop node) paid a shop instead of an event and would make every probe below read as
 # "no event here" for a reason that has nothing to do with what it asks.
 func _some_game() -> StringName:
 	for g in Data.all_games():

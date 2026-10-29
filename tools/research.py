@@ -416,11 +416,35 @@ def catalog():
 
 
 def on_sheet_index():
-    """{target sheet: {lower name: game}} for every sheet a candidate can land on."""
+    """{target sheet: {lower name: game}} for every sheet a candidate can land on,
+    and under "location effects" what each location on the sheet already does."""
     out = {}
     for sheet, (ncol, gcol) in TARGET_COLS.items():
         out[sheet] = {r.get(ncol, "").lower(): r.get(gcol, "") for r in sheet_table(sheet) if r.get(ncol)}
+    out["location effects"] = location_effects_on_sheet()
     return out
+
+
+def effect_clauses(effect):
+    """A location Effect as a set of clauses, each with its kind (`arrive:`,
+    `while:`, `action 4:`): a clause written after `;` without one keeps the
+    kind before it, so `arrive: a; b` reads as `arrive: a` and `arrive: b`."""
+    out, kind = set(), ""
+    for part in str(effect or "").split(";"):
+        part = re.sub(r"\s+", " ", part.strip().lower())
+        if not part:
+            continue
+        m = re.match(r"([a-z]+(?: \d+)?):\s*(.*)$", part)
+        if m:
+            kind, part = m.group(1), m.group(2)
+        out.add(f"{kind}: {part}")
+    return out
+
+
+def location_effects_on_sheet():
+    """[(location name, its effect clauses)] for every location on the sheet."""
+    return [(r.get("Name", ""), effect_clauses(r.get("Effect", ""))) for r in sheet_table("locations")
+            if r.get("Effect")]
 
 
 def connection_pairs():
@@ -1174,6 +1198,12 @@ def refresh_status(kind, rows, idx=None, pairs=None, names=None, verbose=False):
                 r["Status"] = "on sheet"
             elif before == "waiting for game row" and a in names and b in names:
                 r["Status"] = "to review"
+        elif kind == "location_effects":
+            # An idea for what a location could do has no sheet of its own: it is
+            # on the sheet once some location already does all of it.
+            want = effect_clauses(r.get("Effect", ""))
+            if before == "to review" and want and any(want <= have for _, have in idx.get("location effects", [])):
+                r["Status"] = "on sheet"
         else:
             sheet = target_sheet(kind, r)
             name = r.get(KINDS[kind]["name"], "").lower()
@@ -1440,7 +1470,11 @@ def write_status_sheet(wb, games, ledger, wikis, conflicts=()):
         done = sum(1 for g in games if researched(ledger, g, kind))
         done_owned = sum(1 for g in owned if researched(ledger, g, kind))
         nxt = order_games(kind, games, wikis, ledger)[:5] if kind in WIKI_KINDS else []
-        ws.append([kind, f"{done} / {len(games)}", f"{done_owned} / {len(owned)}", len(rows),
+        # A gameless kind (location effects) is never researched game by game,
+        # so "0 / 1000" would read as work nobody has done.
+        gameless = KINDS[kind].get("gameless")
+        ws.append([kind, "not per game" if gameless else f"{done} / {len(games)}",
+                   "" if gameless else f"{done_owned} / {len(owned)}", len(rows),
                    sum(r["Status"] == "to review" for r in rows), sum(r["Owner"] == "yes" for r in rows),
                    sum(r["Owner"] == "no" for r in rows), sum(r["Status"] == "on sheet" for r in rows),
                    ", ".join(nxt)])
@@ -1630,9 +1664,10 @@ def cmd_status(args):
                                                     "yes", "no", "on sheet"))
     for kind in KINDS:
         rows = read_rows(kind)
+        gameless = KINDS[kind].get("gameless")
         print("%-12s %12s %12s %10d %9d %5d %5d %8d" % (
-            kind, f"{sum(researched(ledger, g, kind) for g in games)}/{len(games)}",
-            f"{sum(researched(ledger, g, kind) for g in owned)}/{len(owned)}", len(rows),
+            kind, "not per game" if gameless else f"{sum(researched(ledger, g, kind) for g in games)}/{len(games)}",
+            "" if gameless else f"{sum(researched(ledger, g, kind) for g in owned)}/{len(owned)}", len(rows),
             sum(r["Status"] == "to review" for r in rows), sum(r["Owner"] == "yes" for r in rows),
             sum(r["Owner"] == "no" for r in rows), sum(r["Status"] == "on sheet" for r in rows)))
     looked = len(wikis)

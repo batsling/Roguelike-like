@@ -1791,11 +1791,11 @@ func choose_boss(game_type: StringName = &"", tier: int = -1) -> GoalEnemyData:
 # enemy's own type and tier, which is the same bucket whenever the game's roll
 # did not have to widen.
 #
-# `with_second_body` is what the node's KIND decides (§19.1). An Enemies node stands
-# two bodies and a Champion node stands one — the boss alone, with its ordinary
-# chest and nothing beside it — so the second body is a property of the node now
-# rather than of every committed game. It defaults to true because Scramble, the
-# dev panel and the tests all commit a game without having a node in hand.
+# `with_second_body` says whether a second body walks on beside the first. Every
+# game stands two; the Amulet stands its boss alone, with its ordinary chest and
+# nothing beside it (§19.10 — the node kinds that used to decide it are retired).
+# It defaults to true because Scramble, the dev panel and the tests all commit a
+# game without having a node in hand.
 #
 # `is_arrival` is what tells a node ARRIVAL from a REPLACEMENT. Scramble comes
 # through here too — it supersedes what arrived, with a new instance — and §19.2
@@ -1841,8 +1841,8 @@ func choose_game(enemy: GoalEnemyData, escort_type: StringName = &"",
 	_next_instance += 1
 	_add_to_grid(inst, enemy, effective_health(enemy), _spawn_statuses())
 	arrivals = [inst]
-	# An Enemies node's second body (§19.4), plus one more on a Fracture
-	# (docs/fracture-design.md §3) — which is also what gives a Champion's boss a
+	# A game's second body (§19.4), plus one more on a Fracture
+	# (docs/fracture-design.md §3) — which is also what gives the Amulet's boss a
 	# body beside it there. Rolled the same way, so they are ordinary arrivals.
 	var others: int = (1 if with_second_body else 0) + Fracture.extra_bodies()
 	for _i in range(others):
@@ -1867,8 +1867,8 @@ func choose_game(enemy: GoalEnemyData, escort_type: StringName = &"",
 	return inst
 
 # A SPAWN EVENT HAPPENED (§19.6): a node arrival that landed bodies, or an end-of-game
-# spawn. One per event, not one per body — two bodies on an Enemies node and one
-# on a Champion are the same single step up the ladder, because what the tier
+# spawn. One per event, not one per body — two bodies on a game and the Amulet's
+# boss alone are the same single step up the ladder, because what the tier
 # measures is how often the run is putting things on the board rather than how
 # crowded it got.
 #
@@ -1973,8 +1973,9 @@ func _land_capstone_boss(type_key: StringName = &"", tier: int = -1) -> void:
 #     already gated behind escape_after_lost_runs() lost runs, so it is not the
 #     cheap way out of a game they simply did not fancy.
 #
-# An Event or a Shop node is NOT exempt. It stood nothing on the board, but the
-# evening still ended, and the road still charges for where it ended.
+# A game with a shop is NOT exempt: the evening still ended, and the road still
+# charges for where it ended. (While the node kinds lasted, this was said of the
+# Event and Shop nodes, which stood nothing on the board.)
 #
 # `defeated_this_game` is the counter and the distinction it draws is load-
 # bearing. It moves in `_defeat` and nowhere else, so two things that look like
@@ -2031,7 +2032,7 @@ func end_of_game_price(escaped: bool = false) -> Dictionary:
 # actually landed.
 #
 # They roll from the GAME IN PLAY's type at the run's current tier — the same
-# roll an Enemies node makes, with the same widening — so a body that turns up
+# roll a game's own arrival makes, with the same widening — so a body that turns up
 # because you ended an evening at a Deckbuilder is a Deckbuilder body. The board
 # goes on describing where you were standing; the road changes how MANY walk on
 # rather than what kind of place this is.
@@ -2083,7 +2084,7 @@ func _land_end_of_game_bodies(want: int, escaped: bool = false) -> int:
 	loop_changed.emit()
 	return landed
 
-# THE SECOND OF AN ENEMIES NODE'S TWO BODIES (§19.4). Returns its instance
+# THE SECOND OF A GAME'S TWO BODIES (§19.4). Returns its instance
 # handle, or 0 when there is nothing to roll — an empty goal-enemy roster, where
 # the game still gets its first one.
 #
@@ -2095,7 +2096,8 @@ func _land_end_of_game_bodies(want: int, escaped: bool = false) -> int:
 # them on its own. What used to be "the enemy and its escort" is "the two bodies
 # this node stands up".
 #
-# A CHAMPION NODE GETS NONE OF THIS, which reverses the old boss-escort rule.
+# THE AMULET'S BOSS GETS NONE OF THIS (a Champion node's didn't either, until
+# §19.10 retired the node kinds), which reverses the old boss-escort rule.
 # That rule was taken when every ordinary game put two bodies down and a solo
 # boss made the run's biggest round its emptiest board; §19.4 overrules it,
 # because a boss of the current tier is a heavy enough board on its own and the
@@ -5386,11 +5388,11 @@ func arrival() -> Dictionary:
 	var idx: int = _index_of(arrivals[0])
 	return stack[idx] if idx >= 0 else {}
 
-# THERE IS NO ESCORT ANY MORE (§19.4). An Enemies node lands TWO BODIES, and the
+# THERE IS NO ESCORT ANY MORE (§19.4). A game lands TWO BODIES, and the
 # second one is not a companion to the first: both walk on at the back column,
 # both carry their own goal, both are old goals from the moment they land, and
 # beating the game answers for neither of them on its own. The escort was a rule
-# about one body being attached to another; it is a NUMBER on the node now.
+# about one body being attached to another; it is a NUMBER on the game now.
 #
 # What survives is the handle, because callers still need to name the second
 # arrival to act on it — bomb it, despawn it, ask what it is. `arrivals` is

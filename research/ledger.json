@@ -4355,6 +4355,15 @@
   "loot": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
   "statuses": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs"
  },
+ "Lucky Hunter": {
+  "characters": "2026-10-29: no wiki; the Steam page names nothing to translate (no weapons or evolutions named)",
+  "connections": "2026-10-29",
+  "events": "2026-10-29: no wiki; the Steam page names nothing to translate (no weapons or evolutions named)",
+  "goals": "2026-10-29: no wiki; the Steam page names nothing to translate (no weapons or evolutions named)",
+  "locations": "2026-10-29: no wiki; the Steam page names nothing to translate (no weapons or evolutions named)",
+  "loot": "2026-10-29: no wiki; the Steam page names nothing to translate (no weapons or evolutions named)",
+  "statuses": "2026-10-29: no wiki; the Steam page names nothing to translate (no weapons or evolutions named)"
+ },
  "Lucky Shot": {
   "characters": "2026-10-12: nothing usable: no wiki under its name on Fandom or wiki.gg, or a stub with no item or enemy pages",
   "connections": "before 2026-10-07",
@@ -5677,6 +5686,15 @@
   "locations": "2026-10-11: nothing: its wiki's one article is Traits (bonuses for Pokemon types on the team)",
   "loot": "2026-10-11: nothing: its wiki's one article is Traits (bonuses for Pokemon types on the team)",
   "statuses": "2026-10-11: nothing: its wiki's one article is Traits (bonuses for Pokemon types on the team)"
+ },
+ "Poker Quest": {
+  "characters": "2026-10-29: 1 row (Queen); the other 15 heroes' pages are stubs",
+  "connections": "2026-10-29",
+  "events": "2026-10-29: nothing usable: the 75 Random Encounter pages carry only a number, no text",
+  "goals": "2026-10-29: nothing usable: the wiki has no enemy pages",
+  "locations": "2026-10-29: 1 row (Church of Hearts); the Temples and other Churches are its siblings, named in it",
+  "loot": "2026-10-29: nothing usable: weapons (Sword of Pairs, Warhammer of Quads, Dagger of Queens and their Dark and Infernal upgrades) have no pages and fire on poker hands, which don't translate; no evolutions beyond those upgrades",
+  "statuses": "2026-10-29: nothing usable: the Keywords page is empty"
  },
  "PokéRogue": {
   "characters": "2026-10-12: nothing usable: no wiki under its name on Fandom or wiki.gg, or one with no item or enemy pages",
@@ -8099,6 +8117,15 @@
   "loot": "2026-10-12: nothing new: presents are the first game's; no evolutions",
   "statuses": "2026-10-12: nothing usable: none"
  },
+ "Tokoyo: The Tower of Perpetuity": {
+  "characters": "2026-10-29: no wiki; the Steam page names no characters, relics or traps (no weapons or evolutions named)",
+  "connections": "2026-10-29",
+  "events": "2026-10-29: no wiki; the Steam page names no characters, relics or traps (no weapons or evolutions named)",
+  "goals": "2026-10-29: no wiki; the Steam page names no characters, relics or traps (no weapons or evolutions named)",
+  "locations": "2026-10-29: no wiki; the Steam page names no characters, relics or traps (no weapons or evolutions named)",
+  "loot": "2026-10-29: no wiki; the Steam page names no characters, relics or traps (no weapons or evolutions named)",
+  "statuses": "2026-10-29: no wiki; the Steam page names no characters, relics or traps (no weapons or evolutions named)"
+ },
  "TombStar": {
   "characters": "2026-10-12: nothing usable: a 19-page wiki of overview pages (Items, Weapons, Upgrades) with no individual entries",
   "connections": "before 2026-10-07",
@@ -8836,6 +8863,15 @@
   "locations": "2026-10-12: nothing usable: no wiki under its name on Fandom or wiki.gg, or a stub with no item or enemy pages",
   "loot": "2026-10-12: nothing usable: no wiki under its name on Fandom or wiki.gg, or a stub with no item or enemy pages",
   "statuses": "2026-10-12: nothing usable: no wiki under its name on Fandom or wiki.gg, or a stub with no item or enemy pages"
+ },
+ "Wretch: Divine Ascent": {
+  "characters": "2026-10-29: nothing new: Executioner is a Clone on Dice & Fold's Executioner; Plague Doctor is Darkest Dungeon's candidate; Murmillo, Ronin, Wujiang and Pirate have no detail",
+  "connections": "2026-10-29",
+  "events": "2026-10-29: no wiki; the Steam page names classes and the Long Stairs only (no weapons or evolutions named beyond the Executioner's hammer)",
+  "goals": "2026-10-29: no wiki; the Steam page names classes and the Long Stairs only (no weapons or evolutions named beyond the Executioner's hammer)",
+  "locations": "2026-10-29: no wiki; the Steam page names classes and the Long Stairs only (no weapons or evolutions named beyond the Executioner's hammer)",
+  "loot": "2026-10-29: no wiki; the Steam page names classes and the Long Stairs only (no weapons or evolutions named beyond the Executioner's hammer)",
+  "statuses": "2026-10-29: no wiki; the Steam page names classes and the Long Stairs only (no weapons or evolutions named beyond the Executioner's hammer)"
  },
  "Yasha: Legends of the Demon Blade": {
   "characters": "2026-10-12: nothing usable: no wiki under its name on Fandom or wiki.gg, or one with no item or enemy pages",
