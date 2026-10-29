@@ -8,8 +8,9 @@ the game opens. This makes the letters. Each lands at
     images2.0/custom/title/<piece>/<game id>.png        e.g. title/r/balatro.png
 
 so a folder holds every game's version of one letter, and a new logo's letters
-join the pool with no code touched. A piece that is not a letter (Balatro's ace)
-gets a name of its own; `dash` is the one the title uses for its hyphen.
+join the pool with no code touched. A piece that is not a letter gets a name of
+its own; `dash` is the one the title uses for its hyphen. What a logo has that is
+no piece at all (Balatro's ace, Hades II's green II) is left out.
 
 A logo is never just its letters cut apart. In most logos the letters SHARE an
 outline (Balatro's B and A are joined by one stroke), some overlap (Balatro's T
@@ -47,7 +48,9 @@ so Godot never imports the source), is JSON:
     game          the game's id in data/games/ — the file name every piece gets
     source        the logo, transparent background, as big as can be found
     pieces        {name: [x, y]} — a point inside each piece's fill, in source
-                  pixels (the nearest fill pixel is used, so near is enough)
+                  pixels (the nearest fill pixel is used, so near is enough);
+                  [[x, y], ...] for a piece whose fill is in several parts
+    ignore        [[x, y], ...] — fill to leave out entirely (Balatro's ace)
     keep_original names of pieces that keep their own pixels (cards, icons)
     splits        [{"pieces": [upper, lower], "lower": name, "x_min": x,
                     "line": [[x, y], ...]}] — two pieces whose fills touch:
@@ -56,8 +59,21 @@ so Godot never imports the source), is JSON:
     restore       [{"piece": name, "polygon": [[x, y], ...], "copy_column": x}]
                   — part of a piece another piece hid; it is added to the piece
                   and painted with the colours of the piece's column `copy_column`
-    fill          optional {"min_alpha": 200, "min_brightness": 140} — what
-                  counts as fill. Defaults suit a light fill in a dark outline
+    fill          optional {"min_alpha": 200, "min_brightness": 140,
+                  "min_channel": n} — what counts as fill. Defaults suit a light
+                  fill in a dark outline; min_channel keeps a coloured glow out
+                  of a white fill
+    smooth        default true. false keeps the fill's own edge, spikes and all
+                  (Hades' thorns), instead of smoothing it and opening/closing it
+    shadow        default true (measured and re-cast). false for a logo whose
+                  dark edge is ink, not a shadow
+    outline       optional {"width": px, "clean_distance": px,
+                  "match_tolerance": n, "ink_beyond": px} — the outline's width
+                  if measuring gets it wrong; how far from other letters an edge
+                  must be to learn from; keep an original outline pixel only if
+                  within n of the outline's colour at that distance (so a
+                  background shape touching the letter is painted over); and
+                  how far past the width hand-inked outline is still kept
 
 How to add a logo: docs/content-authoring.md, "Title letters".
 """
@@ -88,7 +104,10 @@ SHADOW_ROUND_SIGMA = 7.0
 
 def _fill_mask(A: np.ndarray, cfg: dict) -> np.ndarray:
     f = cfg.get("fill", {})
-    return (A[..., 3] > f.get("min_alpha", 200)) & (A[..., :3].max(-1) > f.get("min_brightness", 140))
+    m = (A[..., 3] > f.get("min_alpha", 200)) & (A[..., :3].max(-1) > f.get("min_brightness", 140))
+    if "min_channel" in f:  # white fills: every channel high, so a coloured glow is not fill
+        m &= A[..., :3].min(-1) > f["min_channel"]
+    return m
 
 
 def _pieces(A: np.ndarray, fill: np.ndarray, cfg: dict) -> dict[str, np.ndarray]:
@@ -96,10 +115,17 @@ def _pieces(A: np.ndarray, fill: np.ndarray, cfg: dict) -> dict[str, np.ndarray]
     H, W = fill.shape
     lab, _ = nd.label(fill)
     _, (iy, ix) = nd.distance_transform_edt(~fill, return_indices=True)
-    comp = {}
-    for name, (x, y) in cfg["pieces"].items():
-        comp[name] = lab[iy[y, x], ix[y, x]]
-    pieces = {name: lab == c for name, c in comp.items()}
+    # A piece is one point, or a list of points when its fill is in several
+    # parts (Hades' D: a stem and a bowl the outline keeps apart).
+    pieces = {}
+    for name, pts in cfg["pieces"].items():
+        pts = [pts] if isinstance(pts[0], (int, float)) else pts
+        pieces[name] = np.isin(lab, [lab[iy[y, x], ix[y, x]] for x, y in pts])
+    # Fill that belongs to nothing wanted (Balatro's ace) is taken out of the
+    # logo first, so it neither becomes a piece nor joins its neighbour's.
+    # Everything inside it goes too (the white in the card's corner A's).
+    for x, y in cfg.get("ignore", []):
+        fill &= ~nd.binary_fill_holes(lab == lab[iy[y, x], ix[y, x]])
     yy, xx = np.mgrid[0:H, 0:W]
     for sp in cfg.get("splits", []):
         a, b = sp["pieces"]
@@ -205,6 +231,8 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
     fill = _fill_mask(A, cfg)
     solid = a >= 254
     keep_original = set(cfg.get("keep_original", []))
+    smooth = cfg.get("smooth", True)
+    oc = cfg.get("outline", {})
     pieces = _pieces(A, fill, cfg)
 
     # The logo's outline, learned from edges no neighbour touches: its width,
@@ -212,10 +240,10 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
     D = {n: nd.distance_transform_edt(~m) for n, m in pieces.items()}
     srt = np.sort(np.stack(list(D.values())), 0)
     d1, d2 = srt[0], srt[1] if len(D) > 1 else srt[0] + 1e9
-    clean = solid & ~fill & (d2 > 120)
+    clean = solid & ~fill & (d2 > oc.get("clean_distance", 120))
     edge = solid & ~nd.binary_erosion(solid)
     widths = d1[edge & clean & (d1 > 0) & (d1 < 60)]
-    T = float(np.median(widths)) if widths.size else 19.0
+    T = float(oc.get("width", np.median(widths) if widths.size else 19.0))
     lut = np.zeros((int(T) + 3, 3))
     for k in range(len(lut)):
         m = clean & (d1 > k - 0.5) & (d1 <= k + 0.5)
@@ -239,7 +267,7 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
     for n in pieces:
         before = pieces[n] | restored.get(n, False)
         base = np.where(restored.get(n, np.zeros((H, W), bool))[..., None], restored_rgb, A[..., :3])
-        if n in keep_original:
+        if n in keep_original or not smooth:
             pieces[n], colour[n] = before, base
             continue
         tidy = nd.binary_closing(nd.binary_opening(before, st, iterations=OPEN_ITER), st, iterations=CLOSE_ITER)
@@ -250,7 +278,9 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
     D = {n: nd.distance_transform_edt(~m) for n, m in pieces.items()}
     names = list(pieces)
     owner = np.stack([D[n] for n in names]).argmin(0)
-    r, dx, dy, (hd, ha), (gd, ga) = _measure_shadow(A, solid, pieces, keep_original)
+    shadow = cfg.get("shadow", True)
+    if shadow:
+        r, dx, dy, (hd, ha), (gd, ga) = _measure_shadow(A, solid, pieces, keep_original)
 
     # Counters (the holes in B, A, O...) stay as open as the logo drew them.
     clear = a < 40
@@ -270,29 +300,51 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
             rgb[body] = A[body][:, :3]
             al[body] = a[body] / 255
         else:
-            fs = nd.gaussian_filter(f.astype(float), FILL_SMOOTH_SIGMA) > 0.5
+            fs = nd.gaussian_filter(f.astype(float), FILL_SMOOTH_SIGMA) > 0.5 if smooth else f
             ds = nd.distance_transform_edt(~fs)
+            idx = np.clip(np.round(ds).astype(int), 0, len(lut) - 1)
             band = (ds > 0) & (ds <= T + 0.5) & ~f
             orig = band & solid & mine & ~fill & (ds <= T - 1.5)
-            idx = np.clip(np.round(ds).astype(int), 0, len(lut) - 1)
+            # Hand-inked outlines run thicker than their usual width in places;
+            # that extra ink is kept, out to `ink_beyond` past the width.
+            beyond = oc.get("ink_beyond", 0)
+            if beyond:
+                orig |= solid & mine & ~fill & (ds > 0) & (ds <= T + beyond) & ~f
+            # A pixel near the letter that is not the colour its outline has at
+            # that distance is something else's (Hades' green II): repainted.
+            tol = oc.get("match_tolerance")
+            if tol is not None:
+                orig &= np.abs(A[..., :3] - lut[idx]).max(-1) <= tol
             rgb[f] = colour[n][f]
             al[f] = 1
             rgb[band] = lut[idx[band]]
-            rgb[orig] = A[orig][:, :3]
             al[band] = np.clip(T + 0.5 - ds[band], 0, 1)
+            rgb[orig] = A[orig][:, :3]
+            al[orig] = 1
             al[holes & band] = np.minimum(al[holes & band], a[holes & band] / 255)
         body = al > 0.5
+        if n not in keep_original and oc.get("ink_beyond", 0):
+            # ink with none of the letter's fill in it is someone else's (a
+            # part like Hades' A curl, drawn apart from the A, keeps its own)
+            lab_b, nb = nd.label(al > 0)
+            own = np.unique(lab_b[f & (lab_b > 0)])
+            stray = (lab_b > 0) & ~np.isin(lab_b, own)
+            al[stray] = 0
+            body &= ~stray
+        if not shadow:
+            sh = np.zeros((H, W))
 
         # The shadow: the body extruded, its corners rounded so it curves, solid
         # near the body and fading out, then a glow beyond.
-        hard = nd.gaussian_filter(_extrude(body, r, dx, dy).astype(float), SHADOW_ROUND_SIGMA) > 0.5
-        hard |= body
-        db = nd.distance_transform_edt(~body)
-        sh = np.where(hard, np.interp(db, hd, ha) / 255, 0.0)
-        sh[body] = ha[0] / 255  # hidden under the body; keeps the blur off its edge
-        de = nd.distance_transform_edt(~hard)
-        sh = np.maximum(sh, np.where(~hard, np.interp(de, gd, ga, right=0) / 255, 0))
-        sh = nd.gaussian_filter(sh, 0.8)
+        if shadow:
+            hard = nd.gaussian_filter(_extrude(body, r, dx, dy).astype(float), SHADOW_ROUND_SIGMA) > 0.5
+            hard |= body
+            db = nd.distance_transform_edt(~body)
+            sh = np.where(hard, np.interp(db, hd, ha) / 255, 0.0)
+            sh[body] = ha[0] / 255  # hidden under the body; keeps the blur off its edge
+            de = nd.distance_transform_edt(~hard)
+            sh = np.maximum(sh, np.where(~hard, np.interp(de, gd, ga, right=0) / 255, 0))
+            sh = nd.gaussian_filter(sh, 0.8)
 
         out_a = al + sh * (1 - al)
         out_rgb = (rgb * al[..., None]) / np.maximum(out_a, 1e-6)[..., None]

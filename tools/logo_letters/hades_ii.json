@@ -1,0 +1,15 @@
+{
+  "game": "hades_ii",
+  "source": "hades_ii.webp",
+  "pieces": {
+    "h": [[221, 321], [157, 639]],
+    "a": [[725, 313], [546, 632]],
+    "d": [[1244, 429], [977, 613]],
+    "e": [1395, 611],
+    "s": [1850, 497]
+  },
+  "fill": {"min_channel": 200},
+  "smooth": false,
+  "shadow": false,
+  "outline": {"width": 19, "clean_distance": 40, "match_tolerance": 90, "ink_beyond": 6}
+}
