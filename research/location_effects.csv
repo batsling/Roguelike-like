@@ -1,8 +1,8 @@
 Name,Kind,Tier,Description,Effect,Tag,Tag % Up,Built from,Suits,Needs,Confidence,Status,Owner,Owner Notes,ID
-Scorched Floor,arrive,Low,"When entered, 2 random tiles catch Fire.",arrive: place_tile fire 2,fire,0.2,"Fire tile (tiles), Burning Basement","anywhere burning: a basement, a forge, a lava cave",ready,ok,to review,,,loc-x-scorched-floor
+Scorched Floor,arrive,Low,"When entered, 2 random tiles catch Fire.",arrive: place_tile fire 2,fire,0.2,"Fire tile (tiles), Burning Basement","anywhere burning: a basement, a forge, a lava cave",ready,ok,on sheet,,,loc-x-scorched-floor
 Wall of Flame,arrive,High,"When entered, the whole back column catches Fire — everything that walks on starts burning.",,fire,0.3,"Fire tile, Scroll of Fire (lights the front column)","a burning city, hell, the inside of a volcano",a place_tile target of a whole column (`back`),ok,to review,,,loc-x-wall-of-flame
 Burning Approach,arrive,Medium,"When entered, the front column catches Fire, as a Scroll of Fire would — and you with it.",,fire,0.2,Scroll of Fire (its two-edged burn),"a siege, a burning bridge",Scroll of Fire's effect as a location verb (`read_scroll scroll_of_fire`),ok,to review,,,loc-x-burning-approach
-Cobwebs,arrive,Low,"When entered, 3 random tiles are covered in Web.",arrive: place_tile web 3,spider,0.2,Web tile (Sticky Bombs),"spider caves, attics, abandoned houses",ready,ok,to review,,,loc-x-cobwebs
+Cobwebs,arrive,Low,"When entered, 3 random tiles are covered in Web.",arrive: place_tile web 3,spider,0.2,Web tile (Sticky Bombs),"spider caves, attics, abandoned houses",ready,ok,on sheet,,,loc-x-cobwebs
 Frozen Floor,arrive,Medium,"When entered, 4 random tiles freeze into Web: whatever walks in loses its next step.",arrive: place_tile web 4,ice,0.3,Web tile as ice,"ice caves, frozen lakes, the arctic",ready,ok,to review,,,loc-x-frozen-floor
 Embers That Linger,while,Medium,Fire lit here burns for 1 more game.,,fire,0.2,Fire tile's 3-game decay,volcanic places,a location-scoped tile decay bonus,ok,to review,,,loc-x-embers-that-linger
 Damp Ground,while,Low,Fire goes out the moment it is lit here: no Fire tile can be laid.,,fish,0.2,"Fire tile, apply_tile","sewers, coves, swamps, rain",a location-scoped refusal of one tile,ok,to review,,,loc-x-damp-ground
@@ -38,12 +38,12 @@ Fortified,arrive,Medium,"When entered, Gain +2 Shields that stay.",arrive: gain_
 Heart Container,arrive,High,"When entered, Gain +1 Max Health.",arrive: gain_max_hp 1,heart,0.3,gain_max_hp,"a boss's treasure room, a temple",ready,ok,to review,,,loc-x-heart-container
 Empty Vessel,arrive,Medium,"When entered, Gain +2 Max Health, empty.",arrive: gain_empty_max_hp 2,heart,0.2,gain_empty_max_hp,"a ruined temple, an abandoned lab",ready,ok,to review,,,loc-x-empty-vessel
 Thin Air,while,High,Every game here grants 1 fewer Temporary Shield (never below 1).,,,,Fracture 1's rule (fewer shields),"a mountain top, a vacuum, a void",a location-scoped Fracture rule,ok,to review,,,loc-x-thin-air
-Glass Floor,while,High,Damage taken here is doubled.,while: damage_taken_mult 2,,,damage_taken_mult (Dark Room),"the deep, a dark room, a cursed place",ready,ok,to review,,,loc-x-glass-floor
+Glass Floor,while,High,Damage taken here is doubled.,while: damage_taken_mult 2,,,damage_taken_mult (Dark Room),"the deep, a dark room, a cursed place",ready,ok,on sheet,,,loc-x-glass-floor
 Soft Ground,while,Low,"Damage taken here is halved, rounded down.",while: damage_taken_mult 0.5,,,damage_taken_mult,"a nursery, a dream, a padded cell",ready,ok,to review,,,loc-x-soft-ground
 No Healing,while,Medium,Healing does nothing here.,,,,heal_multiplier (an item flag),"a desert, a wasteland, a den with no rest",a location-scoped `heal_multiplier 0`,ok,to review,,,loc-x-no-healing
 Double Healing,while,Medium,Healing here heals twice as much.,,heart,0.2,heal_multiplier (an item flag),"a hospital, a spring",a location-scoped `heal_multiplier 2`,ok,to review,,,loc-x-double-healing
 Blood Price,action,Medium,"Take 2 Damage to Gain +1 Small Chest, up to 3 times.",,blood,0.2,"location actions, Blood Donation Machine","a sacrifice room, an altar",an action cost of Health (`lose_hp`),ok,to review,,,loc-x-blood-price
-Devil's Deal,action,High,"Lose 2 Max Health to Gain +1 Devilish Small Chest, up to 4 times.",action 4: lose_max_hp 2 => gain_chest small devilish,devilish,0.2,"Dark Room's action, tagged chests","a devil room, a pact",ready,ok,to review,,,loc-x-devil-s-deal
+Devil's Deal,action,High,"Lose 2 Max Health to Gain +1 Devilish Small Chest, up to 4 times.",action 4: lose_max_hp 2 => gain_chest small devilish,devilish,0.2,"Dark Room's action, tagged chests","a devil room, a pact",ready,ok,on sheet,,,loc-x-devil-s-deal
 Marked Ground,arrive,Medium,"When entered, you are Marked: each game, get an achievement in the game you are playing or take 3 damage.",arrive: apply_status marked 1,,,"Marked (status, your side)","a hunter's territory, a sniper's alley",ready,ok,to review,,,loc-x-marked-ground
 Smouldering,arrive,Medium,"When entered, you catch +1 Burn.",arrive: apply_status burn 1,fire,0.2,"Burn (status, your side; it burns scrolls)","a burning library, a forge",ready,ok,to review,,,loc-x-smouldering
 Blessing,arrive,Low,"When entered, Gain a random Buff.",arrive: gain_random_buff,holy,0.2,gain_random_buff,"a church, a shrine, an angel room",ready,ok,to review,,,loc-x-blessing
@@ -61,7 +61,7 @@ Boulder Hall,arrive,Low,"When entered, Gain +3 Push.",arrive: gain_stat push 3,r
 Lucky Floor,arrive,Medium,"When entered, Gain +1 Luck.",arrive: gain_stat luck 1,dice,0.3,gain_stat luck,"a casino, a four-leaf meadow",ready,ok,to review,,,loc-x-lucky-floor
 Dud Powder,while,Medium,Bombs can't be used here.,,,,Bombs,"a flooded mine, a holy place",a location-scoped verb lock,ok,to review,,,loc-x-dud-powder
 Locked Doors,while,Medium,Dash can't be used here — every road out is the offering's.,,,,Dash,"a prison, a sealed tomb",a location-scoped verb lock,ok,to review,,,loc-x-locked-doors
-Free Passage,while,Insane,One game on every offering is a free rift.,while: offering_rift 1,,,"offering_rift (The Void), Rift Keys","the void, a broken world",ready,ok,to review,,,loc-x-free-passage
+Free Passage,while,Insane,One game on every offering is a free rift.,while: offering_rift 1,,,"offering_rift (The Void), Rift Keys","the void, a broken world",ready,ok,on sheet,,,loc-x-free-passage
 Unstable Ground,while,High,Two games on every offering are free rifts.,while: offering_rift 2,,,offering_rift,a world coming apart,ready,ok,to review,,,loc-x-unstable-ground
 Bombardier,while,Medium,"Bombs thrown here blast a cross, as if you held Brimstone.",,bomb,0.3,Brimstone (bomb_cardinal),"crystal caves, a bomb factory",a location-scoped bomb modifier,ok,to review,,,loc-x-bombardier
 Heavy Push,while,Medium,A Push here shoves a body two cells.,,,,Push,"an ice rink, a slope",a location-scoped push distance,ok,to review,,,loc-x-heavy-push

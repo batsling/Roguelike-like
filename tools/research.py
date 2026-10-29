@@ -1470,7 +1470,11 @@ def write_status_sheet(wb, games, ledger, wikis, conflicts=()):
         done = sum(1 for g in games if researched(ledger, g, kind))
         done_owned = sum(1 for g in owned if researched(ledger, g, kind))
         nxt = order_games(kind, games, wikis, ledger)[:5] if kind in WIKI_KINDS else []
-        ws.append([kind, f"{done} / {len(games)}", f"{done_owned} / {len(owned)}", len(rows),
+        # A gameless kind (location effects) is never researched game by game,
+        # so "0 / 1000" would read as work nobody has done.
+        gameless = KINDS[kind].get("gameless")
+        ws.append([kind, "not per game" if gameless else f"{done} / {len(games)}",
+                   "" if gameless else f"{done_owned} / {len(owned)}", len(rows),
                    sum(r["Status"] == "to review" for r in rows), sum(r["Owner"] == "yes" for r in rows),
                    sum(r["Owner"] == "no" for r in rows), sum(r["Status"] == "on sheet" for r in rows),
                    ", ".join(nxt)])
@@ -1660,9 +1664,10 @@ def cmd_status(args):
                                                     "yes", "no", "on sheet"))
     for kind in KINDS:
         rows = read_rows(kind)
+        gameless = KINDS[kind].get("gameless")
         print("%-12s %12s %12s %10d %9d %5d %5d %8d" % (
-            kind, f"{sum(researched(ledger, g, kind) for g in games)}/{len(games)}",
-            f"{sum(researched(ledger, g, kind) for g in owned)}/{len(owned)}", len(rows),
+            kind, "not per game" if gameless else f"{sum(researched(ledger, g, kind) for g in games)}/{len(games)}",
+            "" if gameless else f"{sum(researched(ledger, g, kind) for g in owned)}/{len(owned)}", len(rows),
             sum(r["Status"] == "to review" for r in rows), sum(r["Owner"] == "yes" for r in rows),
             sum(r["Owner"] == "no" for r in rows), sum(r["Status"] == "on sheet" for r in rows)))
     looked = len(wikis)

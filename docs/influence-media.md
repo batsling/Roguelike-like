@@ -6,10 +6,10 @@ Videos and podcast episodes where a developer may say what inspired their game, 
 
 | | games | results |
 |---|---|---|
-| 1. Confirm a suspected connection | 111 | 312 |
-| 2. Games with few connections | 186 | 603 |
+| 1. Confirm a suspected connection | 110 | 310 |
+| 2. Games with few connections | 184 | 598 |
 
-Searched 565 of the 565 games that qualify; 268 had nothing that looked like the developer talking.
+Searched 562 of the 562 games that qualify; 268 had nothing that looked like the developer talking.
 
 ---
 
@@ -76,13 +76,13 @@ Listen for: **Torneko's Great Adventure: Mystery Dungeon** (sheet says "look at 
 
 - [ ] podcast [Azure Dreams](https://podcasts.apple.com/us/podcast/azure-dreams/id1650474911?i=1000696127812) — GROGPOD Roguelike Podcast · 123 min · 2025-02-26 — cue in the description
 
-### Backpack Battles (2023) — 11 connections
+### Backpack Battles (2023) — 12 connections
 
 Listen for: **Super Auto Pets** (sheet says "check folder")
 
 - [ ] podcast [The GAP Episode 700 - The Samurai](https://podcasts.apple.com/us/podcast/the-gap-episode-700-the-samurai/id351314225?i=1000649276600) — The GAP Podcast · 132 min · 2024-03-15 — cue in the description
 
-### Backpack Hero (2022) — 12 connections
+### Backpack Hero (2022) — 13 connections
 
 Listen for: **Dicey Dungeons** (sheet says "check folder"); **Inscryption** (sheet says "check folder"); **Luck be a Landlord** (sheet says "check folder")
 
@@ -541,13 +541,6 @@ Listen for: **Vampire Survivors** (sheet says "look at it")
 - [ ] podcast [Episode 310: feat. Neophyte!](https://podcasts.apple.com/us/podcast/episode-310-feat-neophyte/id517676879?i=1000405596925) — Keeping The Rave Alive! · 64 min · 2018-03-09 — feat.
 - [ ] podcast [Lisa Zetah, Director of Marketing and Opera Neophyte](https://podcasts.apple.com/us/podcast/lisa-zetah-director-of-marketing-and-opera-neophyte/id1130983944?i=1000390785405) — Central City Opera Podcast · 35 min · 2017-08-08 — director
 - [ ] podcast [Episode 243: feat Neophyte!](https://podcasts.apple.com/us/podcast/episode-243-feat-neophyte/id517676879?i=1000378213158) — Keeping The Rave Alive! · 60 min · 2016-11-24 — cue in the description
-
-### Night Swarm (2025) — 1 connection
-
-Listen for: **Vampire Survivors** (sheet says "look at it")
-
-- [ ] podcast [DLC: Night Swarm](https://podcasts.apple.com/us/podcast/dlc-night-swarm/id1566658659?i=1000712012237) — The Game Club Podcast · 7 min · 2025-06-08 — names the developer
-- [ ] podcast [DLC: Night Swarm](https://podcasts.apple.com/us/podcast/dlc-night-swarm/id1817152257?i=1000712012389) — The Game Club Podcast · 7 min · 2025-06-08 — names the developer
 
 ### Nimrods (2024) — 2 connections
 
@@ -1380,10 +1373,6 @@ Held on the map by one connection or none. Listen for any game on the chart.
 - [ ] video [После Титров #72. Konfa Games.](https://www.youtube.com/watch?v=CkCkKZhbQUs) — После Титров · 2:12:49 · Streamed 6y ago — names the developer
 - [ ] podcast [Интервью с основателем Konfa Games: Despotism 3K (675+ отзывов) и Despot’s Game (почти 1200 отзывов) в Стим](https://podcasts.apple.com/us/podcast/%D0%B8%D0%BD%D1%82%D0%B5%D1%80%D0%B2%D1%8C%D1%8E-%D1%81-%D0%BE%D1%81%D0%BD%D0%BE%D0%B2%D0%B0%D1%82%D0%B5%D0%BB%D0%B5%D0%BC-konfa-games-despotism-3k-675/id1537737157?i=1000547104653) — Геймдев в Плюс · 54 min · 2022-01-06 — интервью, names the developer
 
-### Dice Legends (2025) — 1 connection
-
-- [ ] video [A GWENT Dev Just Made the Dice Roguelike We’ve Been Waiting For](https://www.youtube.com/watch?v=JQdfy8gu4KA) — Indietorial · 53:51 · 11mo ago — dev
-
 ### Die in the Dungeon (2025) — 1 connection
 
 - [ ] video [BGMP 012 DIE in the Dungeon with Wes Woodbury](https://www.youtube.com/watch?v=E2maTdnx1AY) — Meeple Marketing · 31:05 · 6y ago — cue in the description
@@ -1574,13 +1563,6 @@ Held on the map by one connection or none. Listen for any game on the chart.
 ### Knights in Tight Spaces (2025) — 1 connection
 
 - [ ] podcast [#572 - Cat Fight!](https://podcasts.apple.com/us/podcast/572-cat-fight/id151800917?i=1000697860059) — One Life Left · 68 min · 2025-03-05 — names the developer
-
-### Leap of Fate (2016) — 1 connection
-
-- [ ] video [Leap of Fate interview - PAX East 2015](https://www.youtube.com/watch?v=XGdyZdKfiDE) — 2XP Gaming · 6:01 · 11y ago — interview, names the developer
-- [ ] video [Clever Plays - Leap of Fate Interview - MTL IGF / T-Dude](https://www.youtube.com/watch?v=OnAd4r85BN4) — TDude64 · 6:21 · 11y ago — interview, names the developer
-- [ ] video [How to Ace Your Job Interview: Tips and Examples From Hiring Managers / Leap of Fate Pod 81](https://www.youtube.com/watch?v=Lg3iSwbc_DM) — Randy Silver  · 43:05 · 4y ago — interview
-- [ ] video [PAX East 2015: Leap of Fate / Indie Games](https://www.youtube.com/watch?v=7P_u5cKQR8Y) — AList · 1:21 · 11y ago — names the developer
 
 ### Legend of Dungeon (2013) — 1 connection
 

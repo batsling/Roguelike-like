@@ -29,7 +29,7 @@ For how the project is laid out and how its systems fit together, see
   sheet and works its Map effect out again from today's map, `proof-missing.md`
   has the current proof count, and a location-effect idea that a sheet
   location already does in full (Free Passage is The Void, Devil's Deal and
-  Glass Floor are Dark Room, Scorched Floor is Burning Basement) is marked
+  Glass Floor are Dark Room, Scorched Floor is Burning Basement, Cobwebs is Caves) is marked
   `on sheet` by `research.py build` from now on.
 
 - **27 Oct upload: 13 new games, 26 connections, and an Influence score on

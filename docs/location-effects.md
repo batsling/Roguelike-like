@@ -23,7 +23,7 @@ itself (§6.7 of research.md), so it drops out of what is left to review.
 | **Scorched Floor** *(on the sheet already: Burning Basement does it)* | Low | When entered, 2 random tiles catch Fire. | fire +20% | ✓ `arrive: place_tile fire 2` |
 | **Wall of Flame** | High | When entered, the whole back column catches Fire — everything that walks on starts burning. | fire +30% | needs a place_tile target of a whole column (`back`) |
 | **Burning Approach** | Medium | When entered, the front column catches Fire, as a Scroll of Fire would — and you with it. | fire +20% | needs Scroll of Fire's effect as a location verb (`read_scroll scroll_of_fire`) |
-| **Cobwebs** | Low | When entered, 3 random tiles are covered in Web. | spider +20% | ✓ `arrive: place_tile web 3` |
+| **Cobwebs** *(on the sheet already: Caves does it)* | Low | When entered, 3 random tiles are covered in Web. | spider +20% | ✓ `arrive: place_tile web 3` |
 | **Frozen Floor** | Medium | When entered, 4 random tiles freeze into Web: whatever walks in loses its next step. | ice +30% | ✓ `arrive: place_tile web 4` |
 | **Minefield** | Low | When entered, place 2 Landmines on random tiles. | bomb +20% | ✓ `arrive: apply_unit landmine random_empty; apply_unit landmine random_empty` |
 | **Poop Room** | Low | When entered, place 3 random poop tagged objects on random tiles. | poop +20% | ✓ `arrive: place_unit poop 3` |

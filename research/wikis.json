@@ -12805,6 +12805,10 @@
   "checked": "2026-10-11",
   "wiki": null
  },
+ "Lucky Hunter": {
+  "checked": "2026-10-29",
+  "wiki": null
+ },
  "Lucky Shot": {
   "api": "https://luckyshot.fandom.com/api.php",
   "articles": 3,
@@ -16455,6 +16459,53 @@
   "signal": "",
   "sitename": "Pokelike Wiki",
   "wiki": "https://pokelike.fandom.com"
+ },
+ "Poker Quest": {
+  "also": [
+   "https://poker-quest.fandom.com/api.php"
+  ],
+  "api": "https://pokerquest.fandom.com/api.php",
+  "articles": 147,
+  "blurb": "Welcome to the... articles • files • edits About the game Poker Quest is a fantasy card battler rogue-like RPG where all your power comes from a deck of 52 playing cards - Ace, King, Queen, and so on. Select your hero and use your unique ab",
+  "categories": {
+   "characters": [
+    "Heroes"
+   ],
+   "events": [
+    "Random Encounter",
+    "Random Encounter, Combat",
+    "Poker Quest Wiki"
+   ],
+   "locations": [
+    "Location",
+    "Combat, Location"
+   ]
+  },
+  "checked": "2026-10-29",
+  "counts": {
+   "characters": 16,
+   "events": 78,
+   "goals": 0,
+   "locations": 31,
+   "loot": 0,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "locations": [
+    "Dungeon"
+   ],
+   "loot": [
+    "Items",
+    "Consumables"
+   ],
+   "statuses": [
+    "Keywords"
+   ]
+  },
+  "signal": "rogue",
+  "sitename": "Poker Quest Wiki",
+  "wiki": "https://poker-quest.fandom.com"
  },
  "PokéRogue": {
   "checked": "2026-10-11",
@@ -22911,6 +22962,10 @@
   "sitename": "Toejam and Earl Wiki",
   "wiki": "https://toejamandearl.fandom.com"
  },
+ "Tokoyo: The Tower of Perpetuity": {
+  "checked": "2026-10-29",
+  "wiki": null
+ },
  "TombStar": {
   "api": "https://tombstar.fandom.com/api.php",
   "articles": 17,
@@ -25086,6 +25141,10 @@
  },
  "Worlds Upon The Wind": {
   "checked": "2026-10-11",
+  "wiki": null
+ },
+ "Wretch: Divine Ascent": {
+  "checked": "2026-10-29",
   "wiki": null
  },
  "Yasha: Legends of the Demon Blade": {
