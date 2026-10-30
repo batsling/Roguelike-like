@@ -53,6 +53,11 @@ so Godot never imports the source), is JSON:
                   (fill), so glow, shadow and outline never shift it. The index
                   records it as body_center / body_height (vertical) and
                   body_center_x / body_width (horizontal), fractions of the PNG
+    centre        {piece: [y_top, y_bottom]} — source rows to sit on the line's
+                  middle, for a decoration whose own middle is not the part
+                  that should line up (Uma Musume's dash: its bar, not the
+                  sparkles above it). Unlike `body` it leaves the size alone;
+                  the index records it as line_center
     styles        [variant, ...] — piece variants (the part after the dot) drawn
                   at another size than the rest of the logo; each is sized as a
                   line of its own in images2.0/custom/title/index.json
@@ -608,6 +613,7 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
     body_heights = {}
     body_xs = {}
     body_widths = {}
+    line_centers = {}
     out_dir_game = cfg["game"]
     for i, n in enumerate(names):
         mine = owner == i
@@ -1051,6 +1057,11 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
                 fx = fx[rows]
         bx0, bx1 = fx.min(), fx.max() + 1
         body_centers[n] = ((by0 + by1) / 2 - y0) / (y1 - y0)
+        # `centre`: these rows sit on the line instead of the box's middle.
+        # The box (and so the size) is left as measured
+        cr = cfg.get("centre", {}).get(n)
+        if cr:
+            line_centers[n] = ((cr[0] + cr[1]) / 2 - y0) / (y1 - y0)
         body_heights[n] = (by1 - by0) / (y1 - y0)
         body_xs[n] = ((bx0 + bx1) / 2 - x0) / (x1 - x0)
         body_widths[n] = (bx1 - bx0) / (x1 - x0)
@@ -1137,6 +1148,9 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
             "body_center_x": round(body_xs[n_], 4),
             "body_width": round(body_widths[n_], 4),
         }
+        if n_ in line_centers:
+            # what sits on the line's middle, when it is not the box's middle
+            index[str(dest_.relative_to(OUT_DIR))]["line_center"] = round(line_centers[n_], 4)
     index_path.write_text(json.dumps(dict(sorted(index.items())), indent=1) + "\n")
     if preview:
         ims = [Image.open(p) for p in written]

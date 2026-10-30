@@ -123,22 +123,37 @@ func _paint_bats() -> void:
 # The title and subtitle, spelled in letters cut from roguelike logos and drawn
 # again every launch (TitleLetters). The scene's two Labels stay as the editor
 # preview and the fallback: hidden only once a row has actually been built.
+# Clicking either row draws that row again (_reroll), so the player can shuffle
+# through the logos without restarting the game.
 const TITLE_HEIGHT := 84.0
 const SUBTITLE_HEIGHT := 30.0
 const TITLE_MAX_WIDTH := 1100.0
 
 var title_row: TitleLetters = null
 var subtitle_row: TitleLetters = null
+var _title_rng := RandomNumberGenerator.new()
 
 func _build_title(rng: RandomNumberGenerator = null) -> void:
 	if rng == null:
 		rng = RandomNumberGenerator.new()
 		rng.randomize()
-	for row in [title_row, subtitle_row]:
-		if row != null:
-			row.queue_free()
-	title_row = _title_row(%Title, TITLE_HEIGHT, rng, true)
-	subtitle_row = _title_row(%Subtitle, SUBTITLE_HEIGHT, rng, false)
+	_title_rng = rng
+	_reroll(true)
+	_reroll(false)
+
+# Draw the title (or the subtitle) again in place of the one showing.
+func _reroll(title: bool) -> void:
+	var old: TitleLetters = title_row if title else subtitle_row
+	var row := _title_row(%Title if title else %Subtitle,
+			TITLE_HEIGHT if title else SUBTITLE_HEIGHT, _title_rng, title)
+	if old != null:
+		if row == null:
+			return
+		old.queue_free()
+	if title:
+		title_row = row
+	else:
+		subtitle_row = row
 
 func _title_row(label: Label, height: float, rng: RandomNumberGenerator, decorated: bool) -> TitleLetters:
 	var row := TitleLetters.make(label.text, height, rng, decorated, TITLE_MAX_WIDTH)
@@ -146,6 +161,13 @@ func _title_row(label: Label, height: float, rng: RandomNumberGenerator, decorat
 		row.free()
 		return null
 	row.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	# The row itself asks for no width (TitleLetters), so it is the letters that
+	# take the click.
+	row.ink.mouse_filter = Control.MOUSE_FILTER_STOP
+	row.ink.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	row.ink.gui_input.connect(func(ev: InputEvent) -> void:
+		if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
+			_reroll(decorated))
 	label.add_sibling(row)
 	label.visible = false
 	return row

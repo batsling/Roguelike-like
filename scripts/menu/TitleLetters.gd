@@ -10,7 +10,9 @@ extends Control
 # stalk, a knife — so the PNG's own middle is not the letter's. The tool records
 # in images2.0/custom/title/index.json where the letter itself sits in each PNG
 # (body_center / body_height down, body_center_x / body_width across, all
-# fractions of the PNG), and this lays every piece out by that box: each letter
+# fractions of the PNG; line_center, when present, is what sits on the line's
+# middle instead of the box's — Uma Musume's dash centres its bar, not the
+# sparkles over it), and this lays every piece out by that box: each letter
 # is scaled so its own height is the line's (one scale, never width or height
 # alone), centred on the line by its own middle, and spaced by its own width.
 # Whatever hangs off a letter overflows the line rather than growing it, so a
@@ -175,7 +177,7 @@ func _lay_out(pieces: Array, decor: Array, height: float) -> void:
 		rect.size = Vector2(tw * s, th * s)
 		rect.position = Vector2(
 			x + slot * 0.5 - float(e.get("body_center_x", 0.5)) * tw * s,
-			height * 0.5 - float(e.get("body_center", 0.5)) * th * s)
+			height * 0.5 - float(e.get("line_center", e.get("body_center", 0.5))) * th * s)
 		ink.add_child(rect)
 		var p := Placed.new()
 		p.entry = e

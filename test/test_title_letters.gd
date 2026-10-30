@@ -95,7 +95,7 @@ func test_every_letter_is_centred_on_the_line_and_in_its_slot() -> void:
 			for p in row.placed:
 				var r := p.rect
 				var cx: float = r.position.x + float(p.entry["body_center_x"]) * r.size.x
-				var cy: float = r.position.y + float(p.entry["body_center"]) * r.size.y
+				var cy: float = r.position.y + float(p.entry.get("line_center", p.entry["body_center"])) * r.size.y
 				var bw: float = float(p.entry["body_width"]) * r.size.x
 				var bh: float = float(p.entry["body_height"]) * r.size.y
 				var tag := "seed %d %s %s" % [s, spec[0], p.entry["path"]]
@@ -188,6 +188,31 @@ func test_the_menu_spells_its_title_in_cut_letters_and_centres_it() -> void:
 		var start := menu.get_node("%StartRunBtn") as Control
 		assert_lt(start.size.x, 500.0, "seed %d: the title does not widen the buttons" % s)
 
+
+# Clicking a row draws it again, in place: one row each, the new one where the
+# old one stood, and the other row left alone.
+func test_a_click_on_a_row_draws_it_again() -> void:
+	var menu = MENU.instantiate()
+	add_child_autofree(menu)
+	menu._build_title(_rng(5))
+	await wait_frames(2)
+	var title = menu.title_row
+	var sub = menu.subtitle_row
+	var ev := InputEventMouseButton.new()
+	ev.button_index = MOUSE_BUTTON_LEFT
+	ev.pressed = true
+	sub.ink.gui_input.emit(ev)
+	await wait_frames(2)
+	assert_ne(menu.subtitle_row, sub, "a new subtitle")
+	assert_eq(menu.title_row, title, "the title left alone")
+	assert_eq(menu.subtitle_row.get_index(), (menu.get_node("%Subtitle") as Label).get_index() + 1,
+		"standing where the old one stood")
+	title.ink.gui_input.emit(ev)
+	await wait_frames(2)
+	assert_ne(menu.title_row, title, "a new title")
+	var rows := (menu.get_node("Center/Panel/TitleBox") as Node).get_children().filter(
+		func(c): return c is TitleLetters)
+	assert_eq(rows.size(), 2, "one row each")
 
 func test_the_background_is_the_bats() -> void:
 	var menu = MENU.instantiate()
