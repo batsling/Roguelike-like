@@ -11,7 +11,7 @@ uniform vec4 rim : source_color = vec4(0.40, 0.92, 0.88, 1.0);
 uniform vec4 core : source_color = vec4(0.82, 1.0, 0.98, 1.0);
 uniform vec4 deep : source_color = vec4(0.08, 0.38, 0.42, 1.0);
 uniform vec2 px = vec2(1000.0, 200.0);
-uniform float speed = 0.08;
+uniform float speed = 0.06;   // MainMenu sets it to SWIRL_SPEED, the rift's own
 // Alpha starts falling here, 1 being the oval's edge.
 uniform float edge_in = 0.8;
 // The least the middle is lit, so no letter ever sits on the dark of the swirl.

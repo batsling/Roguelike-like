@@ -222,6 +222,10 @@ func test_the_background_is_the_red_rift() -> void:
 	assert_not_null(mat, "the background has its shader")
 	assert_eq(mat.shader, UITheme.RIFT_SHADER, "the rift cards' swirl")
 	assert_eq(mat.get_shader_parameter("rift_color"), menu.RIFT_RED, "in red")
+	var oval := menu.portal.oval.material as ShaderMaterial
+	assert_eq(mat.get_shader_parameter("speed"), oval.get_shader_parameter("speed"),
+		"turning with the portal")
+	assert_eq(mat.get_shader_parameter("seed"), 0.0, "from the same phase")
 
 
 # THE PORTAL stands round both rows' letters, and follows a row that is redrawn.

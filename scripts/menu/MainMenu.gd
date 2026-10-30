@@ -120,6 +120,10 @@ func _mount_falling_art() -> void:
 const RIFT_RED := Color(1.0, 0.36, 0.30)
 const RIFT_RED_DEEP := Color(0.36, 0.03, 0.06)
 const RIFT_RED_BASE := Color(0.06, 0.02, 0.02)
+# THE TWO SWIRLS TURN TOGETHER: the rift behind and the portal in front share one
+# speed and start from the same phase (seed 0), so with the title in the middle
+# of the screen they read as one vortex rather than two wheels at odds.
+const SWIRL_SPEED := 0.06
 
 func _paint_rift() -> void:
 	var mat := ShaderMaterial.new()
@@ -127,7 +131,8 @@ func _paint_rift() -> void:
 	mat.set_shader_parameter("rift_color", RIFT_RED)
 	mat.set_shader_parameter("deep_color", RIFT_RED_DEEP)
 	mat.set_shader_parameter("base_color", RIFT_RED_BASE)
-	mat.set_shader_parameter("seed", 1.3)
+	mat.set_shader_parameter("speed", SWIRL_SPEED)
+	mat.set_shader_parameter("seed", 0.0)
 	(%Background as ColorRect).material = mat
 
 # The blue portal the title stands in, with its fringe of bats (MenuPortal).
@@ -140,6 +145,7 @@ var portal: Control = null
 func _mount_portal() -> void:
 	portal = MenuPortal.mount(self, func() -> Array: return [title_row, subtitle_row])
 	portal.art = _art
+	(portal.oval.material as ShaderMaterial).set_shader_parameter("speed", SWIRL_SPEED)
 	move_child(portal, _art.get_index())
 
 # The title and subtitle, spelled in letters cut from roguelike logos and drawn
