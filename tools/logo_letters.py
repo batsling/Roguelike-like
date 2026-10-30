@@ -92,7 +92,16 @@ so Godot never imports the source), is JSON:
                   plate's colour round it instead of the plate as cut;
                   "hard_edge": [pieces] — pixel-font letters, every pixel fully
                   on or off; "scale": n — write the letters n times the logo's
-                  size, shapes redrawn crisp (for a small source logo)}
+                  size, shapes redrawn crisp (for a small source logo; an
+                  inked logo is redrawn in two tones, face and outline);
+                  "despeckle": px — specks up to that size on a letter's face
+                  are filled with "fill_colour"; "restore": [{"piece": name,
+                  "polygon": [[x, y], ...]}] — part of a letter another is
+                  drawn over, rebuilt in "fill_colour" with an outline of
+                  "outline_width" in "outline_colour"}
+                  "min_part": px drops loose flecks smaller than that
+    assign        [{"from": piece, "to": piece, "polygon": [[x, y], ...]}] —
+                  fill inside the polygon moved from one piece to another
     smooth        default true. false keeps the fill's own edge, spikes and all
                   (Hades' thorns), instead of smoothing it and opening/closing it
     shadow        default true (measured and re-cast). false for a logo whose
@@ -184,6 +193,12 @@ def _pieces(A: np.ndarray, fill: np.ndarray, cfg: dict) -> dict[str, np.ndarray]
         low = shared & (xx >= sp.get("x_min", 0)) & (yy >= line)
         pieces[lower] = low
         pieces[upper] = shared & ~low
+    # Fill inside a polygon moved from one piece to another (red Hades: the A's
+    # middle band runs on into the D's stem along the slash).
+    for asg in cfg.get("assign", []):
+        moved = pieces[asg["from"]] & _polygon_mask((H, W), asg["polygon"])
+        pieces[asg["from"]] &= ~moved
+        pieces[asg["to"]] |= moved
     # Stray bits of fill (a stripe's tip cut off by an outline) join the
     # piece they are nearest. Off for a logo whose other fill is whole letters
     # that are not wanted (Gungeon's repeated E's and T's).
@@ -272,7 +287,7 @@ def _measure_shadow(A, solid, pieces, keep_original):
     return r, dx, dy, (np.array(hd), np.array(ha)), (np.array(gd), np.array(ga, float))
 
 
-def _upscale(A, out, box, band_masks, s, hard=False):
+def _upscale(A, out, box, band_masks, s, hard=False, face=None):
     """A letter at `s` times the logo's resolution, so it stays crisp on a big
     title. A small source shown large is the blur this exists to avoid.
 
@@ -285,14 +300,31 @@ def _upscale(A, out, box, band_masks, s, hard=False):
     x0, y0, x1, y1 = box
     w, h = (x1 - x0) * s, (y1 - y0) * s
     crop = Image.fromarray(out[y0:y1, x0:x1])
-    if hard or band_masks is None:
-        return crop.resize((w, h), Image.NEAREST)
-    clean, grown, plate = (m[y0:y1, x0:x1] if m.ndim == 2 else m for m in band_masks)
 
     def cover(mask):
         # the mask scaled smoothly, then sharpened to a one-pixel soft edge
         v = np.asarray(Image.fromarray((mask * 255).astype(np.uint8)).resize((w, h), Image.LANCZOS), float) / 255
         return np.clip((v - 0.5) * 2.5 + 0.5, 0, 1)
+
+    def extend(colours, mask):
+        # each pixel takes the colour of the nearest pixel in mask, scaled up
+        _, (iy, ix) = nd.distance_transform_edt(~mask, return_indices=True)
+        return np.asarray(Image.fromarray(colours[iy, ix].clip(0, 255).astype(np.uint8))
+                          .resize((w, h), Image.NEAREST), float)
+
+    if face is not None and not hard and band_masks is None:
+        # An inked logo (red Hades): two tones, the face and the outline round
+        # it, each edge redrawn as one clean curve at the new size.
+        cut_px = out[y0:y1, x0:x1].astype(float)
+        f = face[y0:y1, x0:x1]
+        sil = cut_px[..., 3] > 127
+        ink = sil & ~f
+        c_face = cover(f)
+        rgb = extend(cut_px[..., :3], f) * c_face[..., None] + extend(cut_px[..., :3], ink if ink.any() else sil) * (1 - c_face[..., None])
+        return Image.fromarray(np.dstack([rgb.clip(0, 255), cover(sil) * 255]).astype(np.uint8))
+    if hard or band_masks is None:
+        return crop.resize((w, h), Image.NEAREST)
+    clean, grown, plate = (m[y0:y1, x0:x1] if m.ndim == 2 else m for m in band_masks)
 
     # the letter's colours, run out past its edge so the redrawn edge never
     # shows the plate's black from inside
@@ -402,6 +434,7 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
         f = pieces[n]
         rgb = np.zeros((H, W, 3))
         band_masks = None
+        face = None
         al = np.zeros((H, W))
         if n in keep_original:
             body = nd.binary_dilation(nd.binary_fill_holes(f), iterations=2) & (a > 0) & mine
@@ -414,6 +447,28 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
             reach = cut.get("reach", 60)
             if isinstance(reach, dict):
                 reach = reach.get(n, reach.get("*", 60))
+            fill_colour = np.array(cut.get("fill_colour", [255, 255, 255]), float)
+            painted = np.zeros((H, W), bool)
+            # Specks of the outline's colour on a letter's face (red Hades'
+            # spatter) are filled in with the face's colour.
+            if cut.get("despeckle"):
+                holes = nd.binary_fill_holes(f) & ~f
+                lab_h, nh = nd.label(holes)
+                if nh:
+                    sizes = nd.sum(holes, lab_h, range(1, nh + 1))
+                    specks = np.isin(lab_h, 1 + np.flatnonzero(sizes <= cut["despeckle"]))
+                    f = f | specks
+                    painted |= specks
+            # A part of this letter another letter is drawn over, rebuilt: the
+            # polygon filled with the letter's face colour, given an outline of
+            # the logo's own width and colour round it.
+            restored = np.zeros((H, W), bool)
+            for rs in cut.get("restore", []):
+                if rs["piece"] == n:
+                    restored |= _polygon_mask((H, W), rs["polygon"])
+            if restored.any():
+                f = f | restored
+                painted |= restored
             ds = nd.distance_transform_edt(~f)
             keep = f | ((a > 0) & ~background & mine & (ds <= reach))
             for ex in cfg.get("extra_ink", []):
@@ -433,6 +488,30 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
             keep &= np.isin(lab_k, np.unique(lab_k[f & (lab_k > 0)]))
             rgb[keep] = A[keep][:, :3]
             al[keep] = a[keep] / 255
+            rgb[painted] = fill_colour
+            al[painted] = 1
+            if cut.get("min_part"):
+                # loose flecks (streak ends, spatter) cut off from the letter
+                lab_p, npart = nd.label(al > 0, structure=np.ones((3, 3)))
+                if npart > 1:
+                    sizes = nd.sum(al > 0, lab_p, range(1, npart + 1))
+                    small = np.isin(lab_p, 1 + np.flatnonzero(sizes < cut["min_part"]))
+                    al[small] = 0
+                    keep &= ~small
+                    painted &= ~small
+            face = (f & keep) | painted  # fill that was erased is no face
+            if restored.any():
+                ow = cut.get("outline_width", 7)
+                # measured from what is left of the face once erasing is done,
+                # so a cut end gets its outline too
+                dv = nd.distance_transform_edt(~((f & keep) | painted))
+                ring = (dv > 0) & (dv <= ow) & (nd.distance_transform_edt(~restored) <= ow + 1)
+                rgb[ring] = cut.get("outline_colour", [240, 20, 10])
+                al[ring] = 1
+                if cut.get("min_part"):  # and any sliver of that outline left loose
+                    lab_p, npart = nd.label(al > 0, structure=np.ones((3, 3)))
+                    sizes = nd.sum(al > 0, lab_p, range(1, npart + 1))
+                    al[np.isin(lab_p, 1 + np.flatnonzero(sizes < cut["min_part"]))] = 0
             if n in cut.get("hard_edge", []):
                 # pixel-font letters: each pixel fully on or off, no soft fringe
                 on = al >= 0.5
@@ -544,7 +623,16 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
         scale = int((cut or {}).get("scale", 1))
         if scale > 1:
             img = _upscale(A, out, (x0, y0, x1, y1), band_masks, scale,
-                           hard=n in (cut or {}).get("hard_edge", []))
+                           hard=n in (cut or {}).get("hard_edge", []), face=face)
+        if scale > 1:
+            # the redraw can leave a pixel or two of anti-aliasing alone at a
+            # corner: anything that small and apart from the letter goes
+            px = np.array(img)
+            lab_s, ns = nd.label(px[..., 3] > 0, structure=np.ones((3, 3)))
+            if ns > 1:
+                sizes = nd.sum(px[..., 3] > 0, lab_s, range(1, ns + 1))
+                px[np.isin(lab_s, 1 + np.flatnonzero(sizes < 10 * scale * scale))] = 0
+                img = Image.fromarray(px)
         img.save(dest, optimize=True)
         written.append(dest)
         print(f"  {dest.relative_to(ROOT)}  {img.width}x{img.height}")

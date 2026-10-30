@@ -64,8 +64,8 @@ logos, with each place's game drawn again every time the game opens (not yet
 wired into the menu). The letters live one folder per letter, one file per game:
 `images2.0/custom/title/<letter>/<game id>.png` (`r/balatro.png`). A piece that
 is not a letter gets a name of its own; `dash` is the hyphen. So far: Balatro
-(B A L T R O), Hades II (H A D E S) and Enter the Gungeon (G U N G E O N, plus
-the pink E N T R H of "Enter the"). Two copies of one letter from the same logo
+(B A L T R O), Hades II (H A D E S), Hades (H A D E S) and Enter the Gungeon
+(G U N G E O N, plus the pink E N T R H of "Enter the"). Two copies of one letter from the same logo
 are `g/<game id>.png` and `g/<game id>_2.png` (a piece named `g.2` in the
 config); a logo's exact repeats (Gungeon's pink E, T) are left out.
 A small source shows blurry when the title draws it large, so Gungeon's config
@@ -103,6 +103,36 @@ the II's rock outlines that touch a letter are cut away by hand (`erase`
 polygons). Check a cut like this by putting the letters back where they were and
 comparing with the source. A logo with dark letters and no outline at all would
 need more than the script does today.
+
+**How every logo is cut — the owner's standing instructions** (each line is a
+correction they made along the way, so none of it is up for re-deciding):
+
+- **Cut, never repaint.** Every pixel is the logo's own (`"cut"`). Colour-picking
+  round a letter ("magic wand") lost spike detail and left messy retouches.
+  Repainting is only for a part another letter hid (`restore`), and then in the
+  logo's own face and outline colours.
+- **Keep every spike and detail as drawn**; never smooth a letter's edge.
+- **Nothing that is not the letter**: no background shape (Hades II's II), no
+  bits of a neighbour, no streak ends running past the letter, no spatter, no
+  loose flecks (`min_part`), no hole or loop a cut accidentally closes.
+- **Each letter whole.** A part one letter drew over another is rebuilt
+  (`restore`); a cut end gets the logo's outline round it.
+- **Clean pixels.** Check on magenta zoomed in, and count each image's separate
+  parts: a letter is one shape unless the logo itself splits it (red Hades'
+  slash). Pixel-font letters are fully on or off (`hard_edge`).
+- **Sharp at title size.** A letter only ~200px tall goes blurry when drawn
+  large: find a bigger source, or set `scale` so the shapes are redrawn crisp.
+- **Leave out a logo's exact repeats**; keep letters that differ (Gungeon's two
+  G's have different cracks).
+- **Ask** before deciding anything about the letters themselves: keep a slash or
+  mend it, keep a spike, keep spatter, which of two overlapping letters is in
+  front.
+
+`hades.json` (the red Hades logo) shows the most of these at once: `assign`
+moves the A's middle band out of the D, `restore` rebuilds the D's stem and
+serif behind the A's leg and caps the A's band where its slash streak is cut
+off, `despeckle` fills red flecks on the white faces, `min_part` drops loose
+spatter, and `"scale": 2` redraws it in two tones, face and outline.
 
 ## The spreadsheet and the generators
 
