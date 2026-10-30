@@ -69,24 +69,23 @@
   "smooth": false,
   "shadow": false,
   "cut": {
-    "reach": 16,
-    "keep_min_alpha": 100,
+    "reach": 0,
     "scale": 4,
     "band": {
       "colour": [
-        100,
-        101,
-        102
+        0,
+        0,
+        0
       ],
-      "shape": "source",
-      "max_brightness": 35,
-      "min_alpha": 100,
-      "edge_smooth": 1.6,
+      "shape": "round",
+      "width": 0,
       "join": 0,
       "close": 0,
       "open": 0,
       "smooth": 0.8,
-      "upscale_soft": 2.6
+      "upscale_soft": 2.6,
+      "face_defringe": 2,
+      "face_min_brightness": 185
     }
   }
 }

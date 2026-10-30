@@ -100,7 +100,9 @@ so Godot never imports the source), is JSON:
                   "join": 0 (keep gaps split on purpose), "visible_face": true,
                   "face_colour": [r, g, b], "shape": "source" (with "max_brightness",
                   "min_alpha", "edge_smooth") takes the band's shape from the
-                  logo's own outline, cleaned, "upscale_soft": n softens the
+                  logo's own outline, cleaned, "face_defringe": px recolours the face's rim from just inside,
+                  "face_min_brightness": n recolours darker flecks on the face
+                  (width 0: the face alone, no outline), "upscale_soft": n softens the
                   edges as they are scaled up, "keep": [{"piece", "polygon"}] for
                   ink drawn past the outline (a spike); "colour": "plate"
                   takes the band from the nearest plate pixel ("plate_max": n
@@ -403,7 +405,17 @@ def _upscale(A, out, box, band_masks, s, hard=False, face=None, silhouette=False
     # smoothly, or its brushwork turns into blocks
     hi = np.asarray(Image.fromarray(inside).resize((w, h), Image.LANCZOS if soft >= 2 else Image.NEAREST), float)
     c_letter, c_band = cover(clean, soft * 0.6), cover(grown, soft * 0.6)
-    rgb = hi * c_letter[..., None] + plate * (1 - c_letter[..., None])
+    if not (grown & ~clean).any():
+        rgb = hi  # no band (Slay the Spire, outline dropped): the edge stays the letter's colour
+        # smooth scaling rings a little darker beside a sharp change of shade;
+        # the letter's own darkest shade bounds it
+        lo = np.percentile(out[y0:y1, x0:x1, :3][clean].max(-1), 0.5) if clean.any() else 0
+        dull = rgb.max(-1) < lo
+        if dull.any() and (~dull).any():
+            _, (dy_, dx_) = nd.distance_transform_edt(dull, return_indices=True)
+            rgb = rgb[dy_, dx_]
+    else:
+        rgb = hi * c_letter[..., None] + plate * (1 - c_letter[..., None])
     rgb = np.broadcast_to(rgb, (h, w, 3))
     alpha = np.maximum(c_letter, c_band)
     return Image.fromarray(np.dstack([rgb.clip(0, 255), alpha * 255]).astype(np.uint8))
@@ -741,6 +753,30 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
                     rgb[clean] = band_cfg["face_colour"]
                 else:
                     rgb[clean] = A[clean][:, :3]
+                if band_cfg.get("face_defringe"):
+                    # smoothing can pull a notch of the dropped outline into the
+                    # face: those pixels take the nearest face colour too
+                    gained = clean & ~f
+                    if gained.any() and f.any():
+                        _, (gy, gx) = nd.distance_transform_edt(~f, return_indices=True)
+                        rgb[gained] = A[gy[gained], gx[gained], :3]
+                    # the face's outermost pixels blend into the outline that is
+                    # being dropped; they take the colour just inside instead
+                    dn = nd.distance_transform_edt(clean)
+                    inner = clean & (dn > band_cfg["face_defringe"])
+                    if inner.any():
+                        _, (iy, ix) = nd.distance_transform_edt(~inner, return_indices=True)
+                        rim = clean & ~inner & f
+                        rgb[rim] = A[iy[rim], ix[rim], :3]
+                if "face_min_brightness" in band_cfg:
+                    # dark flecks the outline left on the face (Slay the Spire's
+                    # brushwork where the grey met the gold) take the colour of
+                    # the nearest bright face pixel
+                    bright = clean & (rgb.max(-1) >= band_cfg["face_min_brightness"])
+                    dull = clean & ~bright
+                    if dull.any() and bright.any():
+                        _, (by, bx) = nd.distance_transform_edt(~bright, return_indices=True)
+                        rgb[dull] = rgb[by[dull], bx[dull]]
                 if "hole_colour" in band_cfg:
                     # another face showing inside this letter's hole (Repentance's
                     # C) is painted over in the hole's own colour
