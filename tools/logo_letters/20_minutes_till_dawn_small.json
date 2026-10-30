@@ -1,0 +1,72 @@
+{
+  "game": "20_minutes_till_dawn",
+  "source": "20_minutes_till_dawn.png",
+  "pieces": {
+    "t.small": [
+      [
+        18,
+        173
+      ]
+    ],
+    "i.small": [
+      [
+        71,
+        173
+      ]
+    ],
+    "l": [
+      [
+        131,
+        173
+      ]
+    ],
+    "d": [
+      [
+        279,
+        172
+      ]
+    ],
+    "a": [
+      [
+        353,
+        128
+      ]
+    ],
+    "w": [
+      [
+        423,
+        160
+      ]
+    ],
+    "n.small": [
+      [
+        511,
+        155
+      ]
+    ]
+  },
+  "fill": {
+    "min_alpha": 127,
+    "min_brightness": 100,
+    "rows": [
+      118,
+      174
+    ]
+  },
+  "adopt_strays": false,
+  "smooth": false,
+  "shadow": false,
+  "cut": {
+    "reach": 1.5,
+    "hard_edge": [
+      "t.small",
+      "i.small",
+      "l",
+      "d",
+      "a",
+      "w",
+      "n.small"
+    ],
+    "scale": 8
+  }
+}

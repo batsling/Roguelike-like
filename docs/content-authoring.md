@@ -89,7 +89,11 @@ letter keeps the logo's shadow, re-cast from its own shape with
 `recast_shadow` so a close neighbour never clips it), and Loop Hero (L O O P
 H E R O, all three O's as `o`, `o__2`, `o__3`; pixel art, so the face is its exact
 palette colours, given an even one-pixel black edge (`pixel_outline`) where the
-logo's own was broken by the disc behind, and scaled 8x as sharp pixels). A logo can
+logo's own was broken by the disc behind, and scaled 8x as sharp pixels), and 20
+Minutes Till Dawn (M I N U T E S cut through the middle as drawn, and T I L D A W N
+with the cream stripe, its T I N as `__small`; both sharp pixels). Digits have
+folders of their own: `2/` and `0/` from 20 Minutes Till Dawn, and `2/` from Slay
+the Spire 2's teal II. A logo can
 take more than one config when its parts are built differently: Uma Musume has
 three, one per line and one for the dash.
 `mewgenics.json` is the simple case: black letters that do not touch, cut as
