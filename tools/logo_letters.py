@@ -71,7 +71,9 @@ so Godot never imports the source), is JSON:
     fill          optional {"min_alpha": 200, "min_brightness": 140,
                   "min_channel": n} — what counts as fill. Defaults suit a light
                   fill in a dark outline; min_channel keeps a coloured glow out
-                  of a white fill; "not_colour": [r, g, b] (with
+                  of a white fill; "max_brightness": n with "min_brightness":
+                  -1 makes fill the DARK pixels (black letters, Mewgenics);
+                  "not_colour": [r, g, b] (with
                   "not_tolerance") makes fill everything that is not the plate
                   the letters sit on; "close": n with "close_region": [x0, y0,
                   x1, y1] shuts cracks that cross a letter
@@ -103,7 +105,8 @@ so Godot never imports the source), is JSON:
                   "polygon": [[x, y], ...]}] — part of a letter another is
                   drawn over, rebuilt in "fill_colour" with an outline of
                   "outline_width" in "outline_colour"}
-                  "min_part": px drops loose flecks smaller than that
+                  "min_part": px drops loose flecks smaller than that;
+                  "silhouette": true scales one-colour letters with a clean edge
     assign        [{"from": piece, "to": piece, "polygon": [[x, y], ...]}] —
                   fill inside the polygon moved from one piece to another
     smooth        default true. false keeps the fill's own edge, spikes and all
@@ -155,6 +158,8 @@ SHADOW_ROUND_SIGMA = 7.0
 def _fill_mask(A: np.ndarray, cfg: dict) -> np.ndarray:
     f = cfg.get("fill", {})
     m = (A[..., 3] > f.get("min_alpha", 200)) & (A[..., :3].max(-1) > f.get("min_brightness", 140))
+    if "max_brightness" in f:  # dark letters on nothing (Mewgenics' black ink)
+        m &= A[..., :3].max(-1) <= f["max_brightness"]
     if "min_channel" in f:  # white fills: every channel high, so a coloured glow is not fill
         m &= A[..., :3].min(-1) > f["min_channel"]
     if "not_colour" in f:  # fill is anything that is not the plate the letters sit on
@@ -291,7 +296,7 @@ def _measure_shadow(A, solid, pieces, keep_original):
     return r, dx, dy, (np.array(hd), np.array(ha)), (np.array(gd), np.array(ga, float))
 
 
-def _upscale(A, out, box, band_masks, s, hard=False, face=None):
+def _upscale(A, out, box, band_masks, s, hard=False, face=None, silhouette=False):
     """A letter at `s` times the logo's resolution, so it stays crisp on a big
     title. A small source shown large is the blur this exists to avoid.
 
@@ -318,6 +323,14 @@ def _upscale(A, out, box, band_masks, s, hard=False, face=None):
         return np.asarray(Image.fromarray(colours[iy, ix].clip(0, 255).astype(np.uint8))
                           .resize((w, h), Image.NEAREST), float)
 
+    if silhouette:
+        # One-colour letters (Mewgenics): the shape redrawn as one clean
+        # anti-aliased edge at the new size, the colour run out under it.
+        sil = out[y0:y1, x0:x1, 3] > 127
+        rgb = extend(out[y0:y1, x0:x1, :3].astype(float), sil)
+        a_hi = np.asarray(Image.fromarray(out[y0:y1, x0:x1, 3]).resize((w, h), Image.LANCZOS), float) / 255
+        alpha = np.clip((a_hi - 0.5) * 2.5 + 0.5, 0, 1)
+        return Image.fromarray(np.dstack([rgb.clip(0, 255), alpha * 255]).astype(np.uint8))
     if face is not None and not hard and band_masks is None:
         # An inked logo (red Hades): two tones, the face and the outline round
         # it, each edge redrawn as one clean curve at the new size.
@@ -660,7 +673,8 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
         scale = int((cut or {}).get("scale", 1))
         if scale > 1:
             img = _upscale(A, out, (x0, y0, x1, y1), band_masks, scale,
-                           hard=n in (cut or {}).get("hard_edge", []), face=face)
+                           hard=n in (cut or {}).get("hard_edge", []), face=face,
+                           silhouette=bool((cut or {}).get("silhouette")))
         if scale > 1:
             # the redraw can leave a pixel or two of anti-aliasing alone at a
             # corner: anything that small and apart from the letter goes
