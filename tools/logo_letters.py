@@ -63,11 +63,13 @@ so Godot never imports the source), is JSON:
     restore       [{"piece": name, "polygon": [[x, y], ...], "copy_column": x}]
                   — part of a piece another piece hid; it is added to the piece
                   and painted with the colours of the piece's column `copy_column`
-    extra_ink     [{"piece": name, "polygon": [[x, y], ...], "clear": px}] — the
+    extra_ink     [{"piece": name, "polygon": [[x, y], ...], "clear": px,
+                    "loose": bool}] — the
                   outline inside the polygon (ink and glow) belongs to the piece
                   however far from its fill, except within `clear` of another
                   piece's fill (default: the outline width). Hades' A's thorns,
-                  which run down into the gap by the H
+                  which run down into the gap by the H; loose keeps parts
+                  that do not touch the letter (blood drops)
     fill          optional {"min_alpha": 200, "min_brightness": 140,
                   "min_channel": n} — what counts as fill. Defaults suit a light
                   fill in a dark outline; min_channel keeps a coloured glow out
@@ -103,6 +105,9 @@ so Godot never imports the source), is JSON:
                   bands the face with its own outline and counters (Uma Musume);
                   "extrude": {"dx", "dy", "colour", "skip"} (in cut) gives a
                   block letter its 3D side by sweeping its face (Isaac);
+                  "outline_max": n keeps only dark pixels past the face (not
+                  a glow), "side": {"dy", "dx"} adds the dark 3D side the face
+                  sweeps over, "close_dark": n brings in dark counters;
                   "shared_outline": true (in cut) lets a line two letters share
                   belong to both;
                   "hard_edge": [pieces] — pixel-font letters, every pixel fully
@@ -522,6 +527,20 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
             if "outline_min" in cut:
                 # past the face, only the white line itself (not the plate)
                 keep &= f | (A[..., :3].min(-1) >= cut["outline_min"])
+            if "outline_max" in cut:
+                # past the face, only the dark outline (not the glow round it)
+                keep &= f | (A[..., :3].max(-1) <= cut["outline_max"])
+            if "side" in cut:
+                # a 3D side drawn straight below the face (Repentance): the dark
+                # pixels the face sweeps over going down, however far from it
+                sw = f.copy()
+                for k in range(1, cut["side"]["dy"] + 1):
+                    sw |= nd.shift(f, (k, round(cut["side"].get("dx", 0) * k / cut["side"]["dy"])), order=0, cval=False)
+                keep |= sw & (A[..., :3].max(-1) <= cut.get("outline_max", 60)) & (a > 200)
+            if cut.get("close_dark"):
+                # dark counters (S's notches, A's holes) a letter wraps round
+                closed = nd.binary_closing(keep, np.ones((3, 3)), iterations=cut["close_dark"], border_value=0)
+                keep |= closed & (A[..., :3].max(-1) <= cut.get("outline_max", 60)) & (a > 200)
             for ex in cfg.get("extra_ink", []):
                 if ex["piece"] == n:
                     d_other = np.min([D[o] for o in names if o != n], 0)
@@ -537,6 +556,10 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
             # is often a pixel wide)
             lab_k, _ = nd.label(keep, structure=np.ones((3, 3)))
             keep &= np.isin(lab_k, np.unique(lab_k[f & (lab_k > 0)]))
+            for ex in cfg.get("extra_ink", []):
+                if ex["piece"] == n and ex.get("loose"):
+                    # drops that fly free of the letter (Repentance's blood) kept too
+                    keep |= _polygon_mask((H, W), ex["polygon"]) & (a > 0) & ~background
             rgb[keep] = A[keep][:, :3]
             al[keep] = a[keep] / 255
             rgb[painted] = fill_colour

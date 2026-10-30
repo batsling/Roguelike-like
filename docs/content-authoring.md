@@ -72,7 +72,11 @@ UMAMUSUME, P R E T Y D B from PRETTY DERBY — its E as `e/<id>_derby.png` — a
 the running girl with her speed trail and sparkles as the `dash`), and The
 Binding of Isaac (the original, not Rebirth: I S A A C, each block with its
 whole 3D side rebuilt by sweeping its face along the logo's depth (`extrude`),
-and T H E B I N D G O F from the small line, its E and I as `_small`). A logo can
+and T H E B I N D G O F from the small line, its E and I as `_small`), and
+Isaac's Repentance logo, filed under Rebirth's id (only ISAAC: the I keeps the
+knife stabbed through it and the blood, `loose` so the flying drops stay; each
+letter keeps its dark outline and 3D side (`outline_max`, `side`, `close_dark`)
+and gets an even red glow). A logo can
 take more than one config when its parts are built differently: Uma Musume has
 three, one per line and one for the dash.
 `mewgenics.json` is the simple case: black letters that do not touch, cut as

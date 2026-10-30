@@ -1,0 +1,168 @@
+{
+  "game": "the_binding_of_isaac_rebirth",
+  "source": "the_binding_of_isaac_rebirth.png",
+  "pieces": {
+    "i": [
+      [
+        60,
+        200
+      ],
+      [
+        195,
+        258
+      ],
+      [
+        162,
+        246
+      ]
+    ],
+    "s": [
+      300,
+      200
+    ],
+    "a": [
+      460,
+      200
+    ],
+    "a.2": [
+      640,
+      200
+    ],
+    "c": [
+      [
+        820,
+        200
+      ],
+      [
+        869,
+        206
+      ],
+      [
+        811,
+        255
+      ],
+      [
+        892,
+        296
+      ]
+    ]
+  },
+  "fill": {
+    "min_alpha": 200,
+    "min_brightness": 60,
+    "rows": [
+      170,
+      320
+    ]
+  },
+  "extra_ink": [
+    {
+      "piece": "i",
+      "clear": 0,
+      "polygon": [
+        [
+          70,
+          0
+        ],
+        [
+          215,
+          0
+        ],
+        [
+          215,
+          178
+        ],
+        [
+          70,
+          178
+        ]
+      ]
+    },
+    {
+      "piece": "i",
+      "clear": 0,
+      "polygon": [
+        [
+          100,
+          315
+        ],
+        [
+          192,
+          315
+        ],
+        [
+          192,
+          345
+        ],
+        [
+          245,
+          345
+        ],
+        [
+          245,
+          521
+        ],
+        [
+          100,
+          521
+        ]
+      ]
+    },
+    {
+      "piece": "i",
+      "loose": true,
+      "polygon": [
+        [
+          0,
+          330
+        ],
+        [
+          192,
+          330
+        ],
+        [
+          192,
+          345
+        ],
+        [
+          245,
+          345
+        ],
+        [
+          245,
+          521
+        ],
+        [
+          0,
+          521
+        ]
+      ]
+    }
+  ],
+  "adopt_strays": false,
+  "smooth": false,
+  "shadow": false,
+  "cut": {
+    "reach": 8,
+    "outline_max": 60,
+    "shared_outline": true,
+    "side": {
+      "dy": 24
+    },
+    "close_dark": 6,
+    "scale": 4,
+    "band": {
+      "colour": [
+        215,
+        6,
+        6
+      ],
+      "width": 8,
+      "shape": "round",
+      "join": 0,
+      "close": 0,
+      "open": 0,
+      "whole_letter": true
+    }
+  }
+}
