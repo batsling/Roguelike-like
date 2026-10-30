@@ -69,9 +69,24 @@
   "smooth": false,
   "shadow": false,
   "cut": {
-    "reach": 14,
-    "keep_min_alpha": 120,
-    "silhouette": true,
-    "scale": 4
+    "reach": 16,
+    "keep_min_alpha": 100,
+    "scale": 4,
+    "band": {
+      "colour": [
+        100,
+        101,
+        102
+      ],
+      "shape": "source",
+      "max_brightness": 35,
+      "min_alpha": 100,
+      "edge_smooth": 1.6,
+      "join": 0,
+      "close": 0,
+      "open": 0,
+      "smooth": 0.8,
+      "upscale_soft": 2.6
+    }
   }
 }

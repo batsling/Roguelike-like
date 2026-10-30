@@ -98,7 +98,10 @@ so Godot never imports the source), is JSON:
                   plate's colour round it instead of the plate as cut. Also
                   for a rough inked outline (red Hades): "shape": "round",
                   "join": 0 (keep gaps split on purpose), "visible_face": true,
-                  "face_colour": [r, g, b], "keep": [{"piece", "polygon"}] for
+                  "face_colour": [r, g, b], "shape": "source" (with "max_brightness",
+                  "min_alpha", "edge_smooth") takes the band's shape from the
+                  logo's own outline, cleaned, "upscale_soft": n softens the
+                  edges as they are scaled up, "keep": [{"piece", "polygon"}] for
                   ink drawn past the outline (a spike); "colour": "plate"
                   takes the band from the nearest plate pixel ("plate_max": n
                   and "plate_gap": px keep light edge pixels out of it), "whole_letter"
@@ -396,7 +399,9 @@ def _upscale(A, out, box, band_masks, s, hard=False, face=None, silhouette=False
     # shows the plate's black from inside
     _, (iy, ix) = nd.distance_transform_edt(~clean, return_indices=True)
     inside = out[y0:y1, x0:x1, :3][iy, ix].clip(0, 255).astype(np.uint8)
-    hi = np.asarray(Image.fromarray(inside).resize((w, h), Image.NEAREST), float)
+    # pixel art keeps its pixels; a painted logo (Slay the Spire) is scaled
+    # smoothly, or its brushwork turns into blocks
+    hi = np.asarray(Image.fromarray(inside).resize((w, h), Image.LANCZOS if soft >= 2 else Image.NEAREST), float)
     c_letter, c_band = cover(clean, soft * 0.6), cover(grown, soft * 0.6)
     rgb = hi * c_letter[..., None] + plate * (1 - c_letter[..., None])
     rgb = np.broadcast_to(rgb, (h, w, 3))
@@ -706,7 +711,20 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
                 if band_cfg.get("join", 5):
                     whole = nd.binary_closing(clean, np.ones((3, 3)), iterations=band_cfg["join"] if "join" in band_cfg else 5,
                                               border_value=0) | clean
-                if band_cfg.get("shape") == "round":  # serif letters: an even band, round corners
+                if band_cfg.get("shape") == "source":
+                    # the logo's OWN outline shape (Slay the Spire's is heavier
+                    # below), told from the shadow by its colour, then given
+                    # a clean smooth edge and one even colour
+                    src_ol = (keep & (a >= band_cfg.get("min_alpha", 100))
+                              & (A[..., :3].max(-1) <= band_cfg.get("max_brightness", 35)))
+                    grown = nd.binary_fill_holes(src_ol | whole) & nd.binary_dilation(src_ol | whole, iterations=2)
+                    grown = nd.binary_opening(nd.binary_closing(grown, st4, iterations=2), st4, iterations=1) | whole
+                    grown = nd.gaussian_filter(grown.astype(float), band_cfg.get("edge_smooth", 1.2)) > 0.5
+                    # counters stay open: only fill holes the source outline filled
+                    hole_open = nd.binary_fill_holes(whole | src_ol) & ~(whole | src_ol) & (a < band_cfg.get("min_alpha", 100))
+                    grown &= ~nd.binary_opening(hole_open, iterations=1)
+                    grown |= whole
+                elif band_cfg.get("shape") == "round":  # serif letters: an even band, round corners
                     grown = nd.distance_transform_edt(~whole) <= band_cfg.get("width", 5)
                 else:
                     grown = whole.copy()
@@ -744,10 +762,10 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
                     _, (iy, ix) = nd.distance_transform_edt(~plate, return_indices=True)
                     band_rgb = A[iy, ix, :3]
                     rgb[ring] = band_rgb[ring]
-                    band_masks = (clean, grown, band_rgb, band_cfg.get("smooth", 0))
+                    band_masks = (clean, grown, band_rgb, band_cfg.get("upscale_soft", band_cfg.get("smooth", 0)))
                 else:
                     rgb[ring] = band_cfg["colour"]
-                    band_masks = (clean, grown, np.array(band_cfg["colour"], float), band_cfg.get("smooth", 0))
+                    band_masks = (clean, grown, np.array(band_cfg["colour"], float), band_cfg.get("upscale_soft", band_cfg.get("smooth", 0)))
                 al[ring] = 1
                 dr = drawn & (a > 0)
                 rgb[dr] = A[dr][:, :3]  # so the letter's box takes them in
