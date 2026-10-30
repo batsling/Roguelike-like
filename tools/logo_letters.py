@@ -799,9 +799,13 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
             if img.size != (x1 - x0, y1 - y0):
                 src = np.asarray(Image.fromarray(src).resize(img.size, Image.LANCZOS))
                 poly = np.asarray(Image.fromarray((poly * 255).astype(np.uint8)).resize(img.size, Image.NEAREST)) > 127
-            px = np.array(img)
-            px[poly] = src[poly]
-            img = Image.fromarray(px)
+            # laid OVER the letter, not swapped in: the drawn part's soft edge
+            # would otherwise punch see-through gaps in the outline under it
+            top = np.zeros_like(src)
+            top[poly] = src[poly]
+            base_img = img.convert("RGBA")
+            base_img.alpha_composite(Image.fromarray(top))
+            img = base_img
         if scale > 1:
             # the redraw can leave a pixel or two of anti-aliasing alone at a
             # corner: anything that small and apart from the letter goes
