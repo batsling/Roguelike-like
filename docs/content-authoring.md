@@ -68,34 +68,36 @@ is not a letter gets a name of its own; `dash` is the hyphen. So far: Balatro
 (G U N G E O N, plus the pink E N T R H of "Enter the") and Mewgenics
 (M E W G E N I C S, the I with its paw print for a dot, and its "!" as
 `exclaim/`), and Uma Musume Pretty Derby (U M A S E and a pink U and M from
-UMAMUSUME, P R E T Y D B from PRETTY DERBY — its E as `e/<id>_derby.png` — and
+UMAMUSUME, P R E T Y D B from PRETTY DERBY — its E as `e/<id>__derby.png` — and
 the running girl with her speed trail and sparkles as the `dash`), and The
 Binding of Isaac (the original, not Rebirth: I S A A C, each block with its
 whole 3D side rebuilt by sweeping its face along the logo's depth (`extrude`),
-and T H E B I N D G O F from the small line, its E and I as `_small`), and
+and T H E B I N D G O F from the small line, its E and I as `__small`), and
 Isaac's Repentance logo, filed under Rebirth's id (only ISAAC: the I keeps the
 knife stabbed through it and the blood, `loose` so the flying drops stay; each
 letter keeps its dark outline and 3D side (`outline_max`, `side`, `close_dark`)
 and gets an even red glow; its blood is laid over the glow exactly as drawn,
 `as_drawn`), and Nuclear Throne (N U C L E A R in green, T H R O N E in metal,
-its R N E as `_throne`; no backing, the N and R keep their slime; a straight
+its R N E as `__throne`; no backing, the N and R keep their slime; a straight
 cut, as each letter sits apart in the black), and Slay the Spire (S l a y t h e
-S p i r e, both S's and e's as `_2`; the blue flame is the i's dot; each letter
+S p i r e, both S's and e's as `__2`; the blue flame is the i's dot; each letter
 is the gold alone: no grey outline and no shadow, by the owner's choice, with
 the dark flecks the outline left on the gold recoloured from the gold round
 them, `face_min_brightness`), and Slay the Spire 2 (the same letters as the
 first, its SPIRE in capitals, the flame the I's dot, the teal II left out; each
 letter keeps the logo's shadow, re-cast from its own shape with
 `recast_shadow` so a close neighbour never clips it), and Loop Hero (L O O P
-H E R O, all three O's as `o`, `o_2`, `o_3`; pixel art, so the face is its exact
+H E R O, all three O's as `o`, `o__2`, `o__3`; pixel art, so the face is its exact
 palette colours, given an even one-pixel black edge (`pixel_outline`) where the
 logo's own was broken by the disc behind, and scaled 8x as sharp pixels). A logo can
 take more than one config when its parts are built differently: Uma Musume has
 three, one per line and one for the dash.
 `mewgenics.json` is the simple case: black letters that do not touch, cut as
 they are (`max_brightness` fill) and scaled 2x as one-colour `silhouette`s. Two copies of one letter from the same logo
-are `g/<game id>.png` and `g/<game id>_2.png` (a piece named `g.2` in the
-config); a logo's exact repeats (Gungeon's pink E, T) are left out.
+are `g/<game id>.png` and `g/<game id>__2.png` (a piece named `g.2` in the
+config) — two underscores, never one, since a game id can itself end in a digit
+(Slay the Spire's second e was once `e/slay_the_spire_2.png`, the very file Slay
+the Spire 2's e is, and each run of one overwrote the other); a logo's exact repeats (Gungeon's pink E, T) are left out.
 A small source shows blurry when the title draws it large, so Gungeon's config
 sets `"scale": 3`: its letters are written at three times the logo's size, the
 letter shapes and their black band redrawn crisp and the insides scaled pixel

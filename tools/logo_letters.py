@@ -49,7 +49,7 @@ so Godot never imports the source), is JSON:
     source        the logo, transparent background, as big as can be found
     pieces        {name: [x, y]} — a point inside each piece's fill, in source
                   pixels. The name is the letter; "g.2" is a second G from the
-                  same logo (title/g/<game>_2.png). The nearest fill pixel
+                  same logo (title/g/<game>__2.png). The nearest fill pixel
                   is used, so near is enough;
                   [[x, y], ...] for a piece whose fill is in several parts
     ignore        [[x, y], ...] — fill to leave out entirely (Balatro's ace)
@@ -942,9 +942,11 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
         ys, xs = np.where(out[..., 3] > 1)
         x0, x1 = max(xs.min() - 2, 0), min(xs.max() + 3, W)
         y0, y1 = max(ys.min() - 2, 0), min(ys.max() + 3, H)
-        # "g.2" is a second G from the same logo: title/g/<game>_2.png
+        # "g.2" is a second G from the same logo: title/g/<game>__2.png. Two
+        # underscores, never one: slay_the_spire's second e was once
+        # e/slay_the_spire_2.png, the very file slay_the_spire_2's e is.
         letter, _, variant = n.partition(".")
-        dest = OUT_DIR / letter / (f"{out_dir_game}_{variant}.png" if variant else f"{out_dir_game}.png")
+        dest = OUT_DIR / letter / (f"{out_dir_game}__{variant}.png" if variant else f"{out_dir_game}.png")
         dest.parent.mkdir(parents=True, exist_ok=True)
         img = Image.fromarray(out[y0:y1, x0:x1])
         scale = int((cut or {}).get("scale", 1))
@@ -1019,6 +1021,19 @@ def main() -> int:
     ap.add_argument("configs", nargs="+", type=Path, help="tools/logo_letters/<game>.json")
     ap.add_argument("--preview", type=Path, help="also write every piece side by side on magenta")
     args = ap.parse_args()
+    # Every config's files, so two logos can never write the same one (a
+    # game id ending in a digit once made two of them share files).
+    owners = {}
+    for c in sorted(Path(__file__).resolve().parent.joinpath("logo_letters").glob("*.json")):
+        cfg = json.loads(c.read_text())
+        for piece in cfg["pieces"]:
+            letter, _, variant = piece.partition(".")
+            path = f"{letter}/{cfg['game']}" + (f"__{variant}" if variant else "") + ".png"
+            if path in owners and owners[path] != (c.name, piece):
+                print(f"error: {path} is written by both {owners[path][0]} ({owners[path][1]}) "
+                      f"and {c.name} ({piece})", file=sys.stderr)
+                return 1
+            owners[path] = (c.name, piece)
     for c in args.configs:
         print(c)
         cut(c, args.preview)
