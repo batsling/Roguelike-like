@@ -25,7 +25,9 @@ func _ready() -> void:
 	GameState.phase = GameState.Phase.MENU
 	theme = UITheme.shared()
 	_style_menu()
+	_paint_bats()
 	_mount_falling_art()
+	_build_title()
 
 	%StartRunBtn.pressed.connect(_on_start_run)
 	%CustomRunBtn.pressed.connect(_on_custom_run)
@@ -102,6 +104,51 @@ func _mount_falling_art() -> void:
 	var art := MenuFallingArt.mount(self)
 	# Directly above the Background ColorRect, below Center and %ModalLayer.
 	move_child(art, 1)
+
+# The bats drifting behind everything: a shader on %Background, which keeps its
+# colour (what the editor previews, and what shows if the shader cannot load).
+const BATS_SHADER := preload("res://shaders/menu_bats.gdshader")
+const BAT_SPRITE := "res://images2.0/custom/menu_bat.png"
+
+func _paint_bats() -> void:
+	var bg := %Background as ColorRect
+	var mat := ShaderMaterial.new()
+	mat.shader = BATS_SHADER
+	mat.set_shader_parameter("bat", TitleLetters.texture(BAT_SPRITE))
+	bg.material = mat
+	var fit := func() -> void: mat.set_shader_parameter("size", bg.size)
+	bg.resized.connect(fit)
+	fit.call()
+
+# The title and subtitle, spelled in letters cut from roguelike logos and drawn
+# again every launch (TitleLetters). The scene's two Labels stay as the editor
+# preview and the fallback: hidden only once a row has actually been built.
+const TITLE_HEIGHT := 84.0
+const SUBTITLE_HEIGHT := 30.0
+const TITLE_MAX_WIDTH := 1100.0
+
+var title_row: TitleLetters = null
+var subtitle_row: TitleLetters = null
+
+func _build_title(rng: RandomNumberGenerator = null) -> void:
+	if rng == null:
+		rng = RandomNumberGenerator.new()
+		rng.randomize()
+	for row in [title_row, subtitle_row]:
+		if row != null:
+			row.queue_free()
+	title_row = _title_row(%Title, TITLE_HEIGHT, rng, true)
+	subtitle_row = _title_row(%Subtitle, SUBTITLE_HEIGHT, rng, false)
+
+func _title_row(label: Label, height: float, rng: RandomNumberGenerator, decorated: bool) -> TitleLetters:
+	var row := TitleLetters.make(label.text, height, rng, decorated, TITLE_MAX_WIDTH)
+	if row.placed.is_empty():
+		row.free()
+		return null
+	row.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	label.add_sibling(row)
+	label.visible = false
+	return row
 
 # ---------------------------------------------------------------------------
 # Profiles — who is playing

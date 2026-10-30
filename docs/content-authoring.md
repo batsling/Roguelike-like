@@ -59,9 +59,9 @@ To add or replace art:
 
 ### Title letters (cut from real logos)
 
-The main menu's title is to be spelled out of letters cut from real roguelikes'
-logos, with each place's game drawn again every time the game opens (not yet
-wired into the menu). The letters live one folder per letter, one file per game:
+The main menu's title and subtitle are spelled out of letters cut from real
+roguelikes' logos, with each place's game drawn again every time the game opens
+(`scripts/menu/TitleLetters.gd`, tests `test_title_letters.gd`). The letters live one folder per letter, one file per game:
 `images2.0/custom/title/<letter>/<game id>.png` (`r/balatro.png`). A piece that
 is not a letter gets a name of its own; `dash` is the hyphen. So far: Balatro
 (B A L T R O), Hades II (H A D E S), Hades (H A D E S), Enter the Gungeon
@@ -69,7 +69,8 @@ is not a letter gets a name of its own; `dash` is the hyphen. So far: Balatro
 (M E W G E N I C S, the I with its paw print for a dot, and its "!" as
 `exclaim/`), and Uma Musume Pretty Derby (U M A S E and a pink U and M from
 UMAMUSUME, P R E T Y D B from PRETTY DERBY — its E as `e/<id>__derby.png` — and
-the running girl with her speed trail and sparkles as the `dash`), and The
+the running girl and, cut apart from her, her rightmost speed dash with its
+sparkles, as a pair of DECORATIONS, below), and The
 Binding of Isaac (the original, not Rebirth: I S A A C, each block with its
 whole 3D side rebuilt by sweeping its face along the logo's depth (`extrude`),
 and T H E B I N D G O F from the small line, its E and I as `__small`), and
@@ -97,8 +98,11 @@ the Spire 2's teal II. Everything is Crab gives E v e r y t h i n g, i s and C r
 b (its r and h keep the crab's eye stalks growing out of them; each letter gets
 its own full black outline, `min_width` rebuilding it where it was shared), and
 the first DECORATIONS: `decor_left/` and `decor_right/` hold the big claws and
-the leg pairs (`__legs`), to be shown at the far left and right of the title or
-subtitle at random. Spelunky Classic gives S P E L U N K Y (the first K): its
+the leg pairs (`__legs`), shown at the far left and right of the title at random
+(half the launches). Decorations are always a matching PAIR, by file stem: the
+two claws, the two leg pairs, or Uma Musume's girl (`uma_musume_pretty_derby_girl.json`)
+and her dash (`uma_musume_pretty_derby_decor.json`) — so a new decoration needs
+both sides under one name. Spelunky Classic gives S P E L U N K Y (the first K): its
 source is a blurry 1920x1080 screenshot of pixel art, so `pixel_grid` rebuilds
 the logo pixel by pixel on the measured grid (11.707px a pixel), each snapped to
 the logo's three-colour palette, and the letters come out as sharp 12x blocks. Haste gives H A S T E, solid black
@@ -113,7 +117,7 @@ streaks behind it left out, each letter with an even dark slate outline. Caves o
 Qud gives C A V E S, O F, Q U D (the V and E touch and are split between them;
 the red bars round OF are left out), 2x as `silhouette`s. A logo can
 take more than one config when its parts are built differently: Uma Musume has
-three, one per line and one for the dash.
+four, one per line, one for the girl and one for her dash.
 `mewgenics.json` is the simple case: black letters that do not touch, cut as
 they are (`max_brightness` fill) and scaled 2x as one-colour `silhouette`s. Two copies of one letter from the same logo
 are `g/<game id>.png` and `g/<game id>__2.png` (a piece named `g.2` in the
@@ -142,7 +146,23 @@ docstring has the detail. To add a logo:
    `ignore`s its ace.
 3. `python3 tools/logo_letters.py tools/logo_letters/<game id>.json --preview <png>`
    (needs `pip install numpy scipy pillow`) and look at the preview on magenta,
-   which shows any stray pixel. Commit the config, the source and the PNGs.
+   which shows any stray pixel. Commit the config, the source, the PNGs and
+   `images2.0/custom/title/index.json`.
+
+**The index is what centres the title.** A cut letter is a PNG with whatever the
+logo drew round it (a glow on every side, a shadow pushed one way, an eye stalk,
+a knife), so the picture's middle is not the letter's. The script records each
+piece's LETTER BOX in `index.json` — `body_center` / `body_height` down,
+`body_center_x` / `body_width` across, fractions of the PNG — measured off the
+letter's face (its fill), so glow, shadow and outline never move it. The menu
+scales every letter by one factor so its own height is the line's, centres it
+on the line and in its own slot by that box, and lets the rest overflow. A
+piece with something attached above or below sets its rows by hand in the
+config (`"body": {"h": [y0, y1]}`, source pixels: the crab's h and r, the
+Repentance I, Nuclear Throne's slimed N and R); its width is then measured over
+those rows only, so a stalk or a drip off to one side does not pull the
+middle. `test_title_letters.gd` reads every PNG back and fails if a box does not
+hug its letter, so a stale index is caught.
 
 The defaults suit a light fill in a dark outline over a soft drop shadow
 (Balatro). `hades_ii.json` is the other worked example: white letters in a
