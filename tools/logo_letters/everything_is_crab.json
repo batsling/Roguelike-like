@@ -134,14 +134,15 @@
       "edge_smooth": 2.5,
       "min_width": 11,
       "join": 0,
-      "close": 0,
+      "close": 3,
       "open": 0,
       "smooth": 0.6,
       "upscale_soft": 2.2,
       "edge_soft": 0.7,
       "edge_sharp": 4.0,
       "max_width": 16,
-      "outline_open": 5
+      "outline_open": 5,
+      "fill_small_holes": 200
     }
   }
 }

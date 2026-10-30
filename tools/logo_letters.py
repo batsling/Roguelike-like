@@ -102,7 +102,7 @@ so Godot never imports the source), is JSON:
                   "join": 0 (keep gaps split on purpose), "visible_face": true,
                   "face_colour": [r, g, b], "shape": "source" (with "max_brightness",
                   "min_alpha", "edge_smooth", "min_width", "max_width",
-                  "outline_open") takes the band's shape from the
+                  "outline_open", "fill_small_holes": px) takes the band's shape from the
                   logo's own outline, cleaned, "face_defringe": px recolours the face's rim from just inside,
                   "face_min_brightness": n recolours darker flecks on the face
                   (width 0: the face alone, no outline), "edge_soft": n and "edge_sharp": n set how soft the scaled
@@ -776,6 +776,18 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
                 if band_cfg.get("smooth"):
                     # ticks and hooks a ragged hand-drawn face leaves, smoothed off
                     clean = nd.gaussian_filter(clean.astype(float), band_cfg["smooth"]) > 0.5
+                if band_cfg.get("fill_small_holes"):
+                    # dark dashes drawn inside a face (Everything is Crab's i
+                    # and s) are filled with the face's own colour; real
+                    # counters, bigger, stay open
+                    hl = nd.binary_fill_holes(clean) & ~clean
+                    lab_h, nh = nd.label(hl)
+                    if nh:
+                        sz = nd.sum(hl, lab_h, range(1, nh + 1))
+                        small = np.isin(lab_h, 1 + np.flatnonzero(sz <= band_cfg["fill_small_holes"]))
+                        _, (hy, hx) = nd.distance_transform_edt(~clean, return_indices=True)
+                        A[small, :3] = A[hy[small], hx[small], :3]
+                        clean = clean | small
                 if cut.get("min_part"):
                     lab_c, ncl = nd.label(clean, structure=np.ones((3, 3)))
                     if ncl:
