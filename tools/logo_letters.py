@@ -126,6 +126,8 @@ so Godot never imports the source), is JSON:
                   "min_part": px drops loose flecks smaller than that;
                   "silhouette": true scales letters with a clean edge;
                   "keep_small_holes": px keeps dark marks inside a letter;
+                  "see_through": [{"polygon", "max_brightness"}] makes the
+                  backing showing through gaps in a polygon see-through;
                   "defringe": px recolours the outermost px of a letter from
                   just inside it (no dark rim from the backing it sat on)
     assign        [{"from": piece, "to": piece, "polygon": [[x, y], ...]}] —
@@ -577,6 +579,12 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
                 if nh:
                     sizes = nd.sum(holes, lab_h, range(1, nh + 1))
                     keep |= np.isin(lab_h, 1 + np.flatnonzero(sizes <= cut["keep_small_holes"]))
+            for st_ in cut.get("see_through", []):
+                # the backing showing through a gap (Nuclear Throne's slime):
+                # see-through, not a dark mark
+                if st_.get("piece", n) == n:
+                    keep &= ~(_polygon_mask((H, W), st_["polygon"])
+                              & (A[..., :3].max(-1) <= st_.get("max_brightness", 20)))
             rgb[keep] = A[keep][:, :3]
             al[keep] = a[keep] / 255
             if cut.get("defringe"):
