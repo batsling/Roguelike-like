@@ -79,7 +79,10 @@ letter keeps its dark outline and 3D side (`outline_max`, `side`, `close_dark`)
 and gets an even red glow; its blood is laid over the glow exactly as drawn,
 `as_drawn`), and Nuclear Throne (N U C L E A R in green, T H R O N E in metal,
 its R N E as `_throne`; no backing, the N and R keep their slime; a straight
-cut, as each letter sits apart in the black). A logo can
+cut, as each letter sits apart in the black), and Slay the Spire (S l a y t h e
+S p i r e, both S's and e's as `_2`; the blue flame is the i's dot; each letter
+keeps its own translucent grey outline, the soft shadow round the logo left out
+with `keep_min_alpha`). A logo can
 take more than one config when its parts are built differently: Uma Musume has
 three, one per line and one for the dash.
 `mewgenics.json` is the simple case: black letters that do not touch, cut as

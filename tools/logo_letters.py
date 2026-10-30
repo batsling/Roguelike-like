@@ -126,6 +126,9 @@ so Godot never imports the source), is JSON:
                   "min_part": px drops loose flecks smaller than that;
                   "silhouette": true scales letters with a clean edge;
                   "keep_small_holes": px keeps dark marks inside a letter;
+                  "keep_min_alpha": n keeps only pixels that solid past the face
+                  (the outline, not a soft shadow), and the 2x/4x silhouette
+                  keeps their own alpha;
                   "see_through": [{"polygon", "max_brightness"}] makes the
                   backing showing through gaps in a polygon see-through;
                   "defringe": px recolours the outermost px of a letter from
@@ -330,7 +333,7 @@ def _measure_shadow(A, solid, pieces, keep_original):
     return r, dx, dy, (np.array(hd), np.array(ha)), (np.array(gd), np.array(ga, float))
 
 
-def _upscale(A, out, box, band_masks, s, hard=False, face=None, silhouette=False):
+def _upscale(A, out, box, band_masks, s, hard=False, face=None, silhouette=False, silhouette_cut=0):
     """A letter at `s` times the logo's resolution, so it stays crisp on a big
     title. A small source shown large is the blur this exists to avoid.
 
@@ -360,10 +363,17 @@ def _upscale(A, out, box, band_masks, s, hard=False, face=None, silhouette=False
     if silhouette:
         # One-colour letters (Mewgenics): the shape redrawn as one clean
         # anti-aliased edge at the new size, the colour run out under it.
-        sil = out[y0:y1, x0:x1, 3] > 127
+        sil = out[y0:y1, x0:x1, 3] > (silhouette_cut if silhouette_cut else 127)
         rgb = extend(out[y0:y1, x0:x1, :3].astype(float), sil)
-        a_hi = np.asarray(Image.fromarray(out[y0:y1, x0:x1, 3]).resize((w, h), Image.LANCZOS), float) / 255
-        alpha = np.clip((a_hi - 0.5) * 2.5 + 0.5, 0, 1)
+        if silhouette_cut:
+            # a translucent outline (Slay the Spire's) keeps its own alpha;
+            # only the shape's edge is redrawn crisp
+            shape = cover(sil)
+            inside_a = extend(np.repeat(out[y0:y1, x0:x1, 3:4].astype(float), 3, -1), sil)[..., 0] / 255
+            alpha = shape * inside_a
+        else:
+            a_hi = np.asarray(Image.fromarray(out[y0:y1, x0:x1, 3]).resize((w, h), Image.LANCZOS), float) / 255
+            alpha = np.clip((a_hi - 0.5) * 2.5 + 0.5, 0, 1)
         return Image.fromarray(np.dstack([rgb.clip(0, 255), alpha * 255]).astype(np.uint8))
     if face is not None and not hard and band_masks is None:
         # An inked logo (red Hades): two tones, the face and the outline round
@@ -538,6 +548,10 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
             if "outline_min" in cut:
                 # past the face, only the white line itself (not the plate)
                 keep &= f | (A[..., :3].min(-1) >= cut["outline_min"])
+            if "keep_min_alpha" in cut:
+                # past the face, only what is solid enough: the outline, not
+                # the soft shadow fading out round it (Slay the Spire)
+                keep &= f | (a >= cut["keep_min_alpha"])
             if "outline_max" in cut:
                 # past the face, only the dark outline (not the glow round it)
                 keep &= f | (A[..., :3].max(-1) <= cut["outline_max"])
@@ -818,7 +832,8 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
         if scale > 1:
             img = _upscale(A, out, (x0, y0, x1, y1), band_masks, scale,
                            hard=n in (cut or {}).get("hard_edge", []), face=face,
-                           silhouette=bool((cut or {}).get("silhouette")))
+                           silhouette=bool((cut or {}).get("silhouette")),
+                           silhouette_cut=(cut or {}).get("keep_min_alpha", 0))
         for ad in (cut or {}).get("as_drawn", []):
             if ad["piece"] != n:
                 continue
