@@ -68,6 +68,10 @@ is not a letter gets a name of its own; `dash` is the hyphen. So far: Balatro
 the pink E N T R H of "Enter the"). Two copies of one letter from the same logo
 are `g/<game id>.png` and `g/<game id>_2.png` (a piece named `g.2` in the
 config); a logo's exact repeats (Gungeon's pink E, T) are left out.
+A small source shows blurry when the title draws it large, so Gungeon's config
+sets `"scale": 3`: its letters are written at three times the logo's size, the
+letter shapes and their black band redrawn crisp and the insides scaled pixel
+for pixel. Prefer the biggest source there is; `scale` is for when there is none.
 
 They are made by `tools/logo_letters.py`, never by hand, because a logo's letters
 are not separate drawings: they share one outline, overlap, and sit on one drop

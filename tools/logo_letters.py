@@ -91,7 +91,8 @@ so Godot never imports the source), is JSON:
                   the letter tidied into one shape, with an even band of the
                   plate's colour round it instead of the plate as cut;
                   "hard_edge": [pieces] — pixel-font letters, every pixel fully
-                  on or off}
+                  on or off; "scale": n — write the letters n times the logo's
+                  size, shapes redrawn crisp (for a small source logo)}
     smooth        default true. false keeps the fill's own edge, spikes and all
                   (Hades' thorns), instead of smoothing it and opening/closing it
     shadow        default true (measured and re-cast). false for a logo whose
@@ -271,6 +272,39 @@ def _measure_shadow(A, solid, pieces, keep_original):
     return r, dx, dy, (np.array(hd), np.array(ha)), (np.array(gd), np.array(ga, float))
 
 
+def _upscale(A, out, box, band_masks, s, hard=False):
+    """A letter at `s` times the logo's resolution, so it stays crisp on a big
+    title. A small source shown large is the blur this exists to avoid.
+
+    A pixel-font letter is scaled pixel for pixel (each source pixel a sharp
+    block). A plate letter has its SHAPES redrawn at the new size, the letter's
+    edge and its band each as one clean anti-aliased curve, while what is
+    inside the letter (texture, cracks, stripes) is scaled pixel for pixel:
+    smooth scaling softened every stripe and highlight inside the letter.
+    """
+    x0, y0, x1, y1 = box
+    w, h = (x1 - x0) * s, (y1 - y0) * s
+    crop = Image.fromarray(out[y0:y1, x0:x1])
+    if hard or band_masks is None:
+        return crop.resize((w, h), Image.NEAREST)
+    clean, grown, plate = (m[y0:y1, x0:x1] if m.ndim == 2 else m for m in band_masks)
+
+    def cover(mask):
+        # the mask scaled smoothly, then sharpened to a one-pixel soft edge
+        v = np.asarray(Image.fromarray((mask * 255).astype(np.uint8)).resize((w, h), Image.LANCZOS), float) / 255
+        return np.clip((v - 0.5) * 2.5 + 0.5, 0, 1)
+
+    # the letter's colours, run out past its edge so the redrawn edge never
+    # shows the plate's black from inside
+    _, (iy, ix) = nd.distance_transform_edt(~clean, return_indices=True)
+    inside = A[y0:y1, x0:x1, :3][iy, ix].clip(0, 255).astype(np.uint8)
+    hi = np.asarray(Image.fromarray(inside).resize((w, h), Image.NEAREST), float)
+    c_letter, c_band = cover(clean), cover(grown)
+    rgb = hi * c_letter[..., None] + plate * (1 - c_letter[..., None])
+    alpha = np.maximum(c_letter, c_band)
+    return Image.fromarray(np.dstack([rgb.clip(0, 255), alpha * 255]).astype(np.uint8))
+
+
 def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
     cfg = json.loads(cfg_path.read_text())
     src = cfg_path.parent / cfg["source"]
@@ -367,6 +401,7 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
         mine = owner == i
         f = pieces[n]
         rgb = np.zeros((H, W, 3))
+        band_masks = None
         al = np.zeros((H, W))
         if n in keep_original:
             body = nd.binary_dilation(nd.binary_fill_holes(f), iterations=2) & (a > 0) & mine
@@ -413,18 +448,22 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
                 st4 = nd.generate_binary_structure(2, 1)
                 clean = nd.binary_closing(f, st4, iterations=band_cfg.get("close", 3))
                 clean = nd.binary_opening(clean, st4, iterations=band_cfg.get("open", 1))
-                grown = clean.copy()
+                # The band's outer edge is grown from the WHOLE letter, its
+                # parts joined across the plate lines between them first, so the
+                # edge runs straight past a join instead of dipping in a V
+                # between the two parts' corners.
+                # (a SQUARE closing: a diamond one leaves a small V of its own)
+                whole = nd.binary_closing(clean, np.ones((3, 3)), iterations=band_cfg.get("join", 5),
+                                          border_value=0) | clean
+                grown = whole.copy()
                 for k in range(band_cfg.get("width", 5)):  # square, cross, square...: an octagon
                     grown = nd.binary_dilation(grown, structure=np.ones((3, 3)) if k % 2 == 0 else st4)
-                # where the plate line between a letter's parts meets its side,
-                # the two parts' corners leave a V in the band: closed up
-                grown = nd.binary_closing(grown, st4, iterations=band_cfg.get("smooth_edge", 3),
-                                          border_value=0) | grown
                 rgb[:] = 0
                 al[:] = 0
                 rgb[clean] = A[clean][:, :3]
                 al[clean] = 1
                 ring = grown & ~clean
+                band_masks = (clean, grown, np.array(band_cfg["colour"], float))
                 rgb[ring] = band_cfg["colour"]
                 al[ring] = 1
         else:
@@ -501,9 +540,14 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
         letter, _, variant = n.partition(".")
         dest = OUT_DIR / letter / (f"{out_dir_game}_{variant}.png" if variant else f"{out_dir_game}.png")
         dest.parent.mkdir(parents=True, exist_ok=True)
-        Image.fromarray(out[y0:y1, x0:x1]).save(dest, optimize=True)
+        img = Image.fromarray(out[y0:y1, x0:x1])
+        scale = int((cut or {}).get("scale", 1))
+        if scale > 1:
+            img = _upscale(A, out, (x0, y0, x1, y1), band_masks, scale,
+                           hard=n in (cut or {}).get("hard_edge", []))
+        img.save(dest, optimize=True)
         written.append(dest)
-        print(f"  {dest.relative_to(ROOT)}  {x1 - x0}x{y1 - y0}")
+        print(f"  {dest.relative_to(ROOT)}  {img.width}x{img.height}")
 
     if preview:
         ims = [Image.open(p) for p in written]
