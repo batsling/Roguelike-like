@@ -1,0 +1,84 @@
+{
+  "game": "slay_the_spire_2",
+  "source": "slay_the_spire_2.png",
+  "pieces": {
+    "s": [
+      133,
+      220
+    ],
+    "l": [
+      210,
+      106
+    ],
+    "a": [
+      354,
+      198
+    ],
+    "y": [
+      435,
+      158
+    ],
+    "t": [
+      671,
+      194
+    ],
+    "h": [
+      741,
+      211
+    ],
+    "e": [
+      847,
+      243
+    ],
+    "s.2": [
+      324,
+      481
+    ],
+    "p": [
+      507,
+      403
+    ],
+    "i": [
+      [
+        577,
+        422
+      ],
+      [
+        580,
+        261
+      ]
+    ],
+    "r": [
+      663,
+      393
+    ],
+    "e.2": [
+      833,
+      492
+    ]
+  },
+  "fill": {
+    "min_alpha": 200,
+    "min_brightness": 150
+  },
+  "adopt_strays": false,
+  "smooth": false,
+  "shadow": false,
+  "cut": {
+    "reach": 0,
+    "recast_shadow": {
+      "spread": 8,
+      "dx": -2,
+      "dy": 6,
+      "blur": 2,
+      "alpha": 161,
+      "colour": [
+        0,
+        0,
+        0
+      ]
+    },
+    "smooth_scale": true,
+    "scale": 3
+  }
+}

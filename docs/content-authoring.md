@@ -83,7 +83,10 @@ cut, as each letter sits apart in the black), and Slay the Spire (S l a y t h e
 S p i r e, both S's and e's as `_2`; the blue flame is the i's dot; each letter
 is the gold alone: no grey outline and no shadow, by the owner's choice, with
 the dark flecks the outline left on the gold recoloured from the gold round
-them, `face_min_brightness`). A logo can
+them, `face_min_brightness`), and Slay the Spire 2 (the same letters as the
+first, its SPIRE in capitals, the flame the I's dot, the teal II left out; each
+letter keeps the logo's shadow, re-cast from its own shape with
+`recast_shadow` so a close neighbour never clips it). A logo can
 take more than one config when its parts are built differently: Uma Musume has
 three, one per line and one for the dash.
 `mewgenics.json` is the simple case: black letters that do not touch, cut as

@@ -131,6 +131,13 @@ so Godot never imports the source), is JSON:
                   "min_part": px drops loose flecks smaller than that;
                   "silhouette": true scales letters with a clean edge;
                   "keep_small_holes": px keeps dark marks inside a letter;
+                  "recast_shadow": {"spread", "dx", "dy", "blur", "alpha",
+                  "colour"} draws the logo's shadow again from each letter's
+                  own shape (measured off the logo);
+                  "own_by_shadow": {"dx", "dy", "grow"} gives a drop shadow to
+                  the letter casting it, not the nearest one;
+                  "smooth_scale": true scales the cut as it is, smoothly
+                  (a painted logo kept with its soft shadow);
                   "keep_min_alpha": n keeps only pixels that solid past the face
                   (the outline, not a soft shadow), and the 2x/4x silhouette
                   keeps their own alpha;
@@ -477,6 +484,24 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
     D = {n: nd.distance_transform_edt(~m) for n, m in pieces.items()}
     names = list(pieces)
     owner = np.stack([D[n] for n in names]).argmin(0)
+    obs = (cfg.get("cut") or {}).get("own_by_shadow")
+    if obs:
+        # A drop shadow belongs to the letter that casts it: pixels go to
+        # the letter whose face OR shadow (face pushed by the shadow's
+        # offset) is nearest, so a close neighbour does not take a bite out
+        # of the shadow (Slay the Spire 2's a and y).
+        Ds = []
+        for n_ in names:
+            cast = _extrude(pieces[n_], obs.get("grow", 0), obs["dx"], obs["dy"])
+            Ds.append(nd.distance_transform_edt(~cast))
+        owner = np.stack(Ds).argmin(0)
+        for i_, n_ in enumerate(names):  # a letter's own face is always its own
+            owner[pieces[n_]] = i_
+        # ...and a pixel that touches another face directly is that face's
+        # outline, not this letter's shadow
+        near = np.stack([D[n_] for n_ in names])
+        close = near.min(0) <= obs.get("outline", 6)
+        owner[close] = near.argmin(0)[close]
     shadow = cfg.get("shadow", True)
     if shadow:
         r, dx, dy, (hd, ha), (gd, ga) = _measure_shadow(A, solid, pieces, keep_original)
@@ -558,6 +583,12 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
             so = cut.get("shared_outline")
             shared = bool(so) and (so is True or n in so)  # true, or a list of pieces
             keep = f | ((a > 0) & ~background & (True if shared else mine) & (ds <= reach))
+            if cut.get("own_by_shadow"):
+                # each letter keeps its whole shadow, up to where a neighbour's
+                # own face and outline begin
+                d_other = np.min([D[o_] for o_ in names if o_ != n], 0) if len(names) > 1 else np.full((H, W), 1e9)
+                keep = f | ((a > 0) & ~background & (ds <= reach) & mine
+                            & (d_other > cut["own_by_shadow"].get("outline", 6)) & ~fill)
             if shared:
                 # ...but never past it into the next letter's face (counters a
                 # letter encloses come back with whole_letter's hole filling)
@@ -618,6 +649,19 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
                               & (A[..., :3].max(-1) <= st_.get("max_brightness", 20)))
             rgb[keep] = A[keep][:, :3]
             al[keep] = a[keep] / 255
+            rc = cut.get("recast_shadow")
+            if rc:
+                # The logo's shadow re-cast from this letter's own shape (Slay
+                # the Spire 2: a soft dark band, nudged down-left), so a close
+                # neighbour never clips it: the face over it, as drawn.
+                m_ = nd.distance_transform_edt(~keep) <= rc["spread"]
+                sh_ = nd.gaussian_filter(nd.shift(m_.astype(float), (rc["dy"], rc["dx"]), order=0),
+                                         rc.get("blur", 2)) * rc.get("alpha", 160) / 255
+                sh_ = np.where(keep, 0, sh_)
+                out_a_ = al + sh_ * (1 - al)
+                rgb = (rgb * al[..., None] + np.array(rc.get("colour", [0, 0, 0]), float) * (sh_ * (1 - al))[..., None]) \
+                    / np.maximum(out_a_, 1e-6)[..., None]
+                al = out_a_
             if cut.get("defringe"):
                 # The letter's outermost pixels are a blend into the backing it
                 # was cut from (Nuclear Throne's black): each takes the colour
@@ -883,7 +927,23 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
         dest.parent.mkdir(parents=True, exist_ok=True)
         img = Image.fromarray(out[y0:y1, x0:x1])
         scale = int((cut or {}).get("scale", 1))
-        if scale > 1:
+        if scale > 1 and (cut or {}).get("smooth_scale"):
+            # a painted logo with a soft shadow (Slay the Spire 2): scaled as
+            # it is, smoothly, colour weighted by alpha so edges stay clean
+            crop = out[y0:y1, x0:x1].astype(float)
+            al_ = crop[..., 3:4] / 255
+            pre = np.concatenate([crop[..., :3] * al_, crop[..., 3:4]], -1).clip(0, 255).astype(np.uint8)
+            big = np.asarray(Image.fromarray(pre).resize(((x1 - x0) * scale, (y1 - y0) * scale), Image.LANCZOS), float)
+            ab = big[..., 3:4] / 255
+            col = np.where(ab > 0, big[..., :3] / np.maximum(ab, 1e-6), 0)
+            px = np.concatenate([col, big[..., 3:4]], -1).clip(0, 255).astype(np.uint8)
+            # the faint specks smooth scaling rings off a cut edge
+            lab_s, ns = nd.label(px[..., 3] > 0, structure=np.ones((3, 3)))
+            if ns > 1:
+                sizes = nd.sum(px[..., 3] > 0, lab_s, range(1, ns + 1))
+                px[np.isin(lab_s, 1 + np.flatnonzero(sizes < sizes.max() * 0.01))] = 0
+            img = Image.fromarray(px)
+        elif scale > 1:
             img = _upscale(A, out, (x0, y0, x1, y1), band_masks, scale,
                            hard=n in (cut or {}).get("hard_edge", []), face=face,
                            silhouette=bool((cut or {}).get("silhouette")),
