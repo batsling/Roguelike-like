@@ -45,6 +45,9 @@ rebuild: it keeps its own pixels and only gets the shadow.
 The config, beside its source logo in tools/logo_letters/ (tools/ is .gdignored,
 so Godot never imports the source), is JSON:
 
+    styles        [variant, ...] — piece variants (the part after the dot) drawn
+                  at another size than the rest of the logo; each is sized as a
+                  line of its own in images2.0/custom/title/index.json
     pixel_grid    {"x0", "y0", "x1", "y1", "pitch", "palette", "tolerance"} —
                   rebuild pixel art from a blurry screenshot: one palette colour
                   per logo pixel on the measured grid, the rest see-through
@@ -1077,6 +1080,22 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
         written.append(dest)
         print(f"  {dest.relative_to(ROOT)}  {img.width}x{img.height}")
 
+    # The index: which config, game and style made each piece, so the title can
+    # size every line of every logo against its own letters (a logo's small
+    # line is not drawn at its big line's height).
+    index_path = OUT_DIR / "index.json"
+    index = json.loads(index_path.read_text()) if index_path.exists() else {}
+    index = {k: v for k, v in index.items() if v.get("config") != cfg_path.name}
+    for n_, dest_ in zip(names, written):
+        _, _, variant_ = n_.partition(".")
+        index[str(dest_.relative_to(OUT_DIR))] = {
+            "game": cfg["game"],
+            "config": cfg_path.name,
+            # pieces drawn at another size in the same logo (Gungeon's pink
+            # line, Nuclear Throne's THRONE) are listed as styles of their own
+            "style": cfg_path.stem + ("__" + variant_ if variant_ in cfg.get("styles", []) else ""),
+        }
+    index_path.write_text(json.dumps(dict(sorted(index.items())), indent=1) + "\n")
     if preview:
         ims = [Image.open(p) for p in written]
         h = max(i.height for i in ims)
