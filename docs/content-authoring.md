@@ -102,7 +102,10 @@ subtitle at random. Spelunky Classic gives S P E L U N K Y (the first K): its
 source is a blurry 1920x1080 screenshot of pixel art, so `pixel_grid` rebuilds
 the logo pixel by pixel on the measured grid (11.707px a pixel), each snapped to
 the logo's three-colour palette, and the letters come out as sharp 12x blocks. Haste gives H A S T E, solid black
-letters cut as they are and scaled 2x as `silhouette`s. A logo can
+letters cut as they are and scaled 2x as `silhouette`s. Dead Cells gives D E A D
+C E L L S (second D, E and L as `__2`) and its flame, droplet and all, as a
+`dash`; each keeps the logo's cyan glow, re-cast from its own shape
+(`recast_shadow` with no offset, fitted to the logo). A logo can
 take more than one config when its parts are built differently: Uma Musume has
 three, one per line and one for the dash.
 `mewgenics.json` is the simple case: black letters that do not touch, cut as
