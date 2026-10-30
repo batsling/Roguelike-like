@@ -57,7 +57,7 @@
   },
   "fill": {
     "min_alpha": 200,
-    "min_brightness": 50
+    "min_brightness": 21
   },
   "adopt_strays": false,
   "smooth": false,
