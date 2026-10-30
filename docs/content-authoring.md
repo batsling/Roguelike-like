@@ -107,7 +107,9 @@ C E L L S (second D, E and L as `__2`) and its flame, droplet and all, as a
 `dash`; each keeps the logo's cyan glow, re-cast from its own shape
 (`recast_shadow` with no offset, fitted to the logo). Rounds gives R O U N D S,
 cut as drawn (the O is the round character, its face see-through as the logo
-draws it), 2x as `silhouette`s. A logo can
+draws it), 2x as `silhouette`s. Risk of Rain 2 gives R I S K, O F, R A I N (second
+R and I as `__2`) and its cream 2 into `2/`; only the text, the planets and
+streaks behind it left out, each letter with an even dark slate outline. A logo can
 take more than one config when its parts are built differently: Uma Musume has
 three, one per line and one for the dash.
 `mewgenics.json` is the simple case: black letters that do not touch, cut as
