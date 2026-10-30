@@ -138,6 +138,10 @@ so Godot never imports the source), is JSON:
                   the letter casting it, not the nearest one;
                   "smooth_scale": true scales the cut as it is, smoothly
                   (a painted logo kept with its soft shadow);
+                  "pixel_outline": {"colour", "width"} draws an even ring of
+                  whole pixels round the face;
+                  "outline_colours": [[r, g, b], ...] keeps only those colours
+                  past the face (a pixel-art letter's edge);
                   "keep_min_alpha": n keeps only pixels that solid past the face
                   (the outline, not a soft shadow), and the 2x/4x silhouette
                   keeps their own alpha;
@@ -208,6 +212,10 @@ def _fill_mask(A: np.ndarray, cfg: dict) -> np.ndarray:
         # what the white line encloses, less the white itself
         wl = (A[..., 3] > 200) & (A[..., :3].min(-1) > f["inside_white"])
         m = nd.binary_fill_holes(wl) & ~wl & (A[..., 3] > 200)
+    if "colours" in f:  # pixel art: fill is exactly these palette colours (Loop Hero)
+        m = np.zeros(A.shape[:2], bool)
+        for col in f["colours"]:
+            m |= (A[..., 3] > 0) & (np.abs(A[..., :3] - np.array(col)).max(-1) <= f.get("tolerance", 6))
     if "rows" in f:  # only these rows of the logo (one line of a two-line logo)
         m = m.copy()
         m[: f["rows"][0]] = False
@@ -596,6 +604,12 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
             if "outline_min" in cut:
                 # past the face, only the white line itself (not the plate)
                 keep &= f | (A[..., :3].min(-1) >= cut["outline_min"])
+            if "outline_colours" in cut:
+                # past the face, only the letter's own edge colours (pixel art)
+                ok = np.zeros((H, W), bool)
+                for col in cut["outline_colours"]:
+                    ok |= np.abs(A[..., :3] - np.array(col)).max(-1) <= 6
+                keep &= f | ok
             if "keep_min_alpha" in cut:
                 # past the face, only what is solid enough: the outline, not
                 # the soft shadow fading out round it (Slay the Spire)
@@ -698,6 +712,13 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
                     lab_p, npart = nd.label(al > 0, structure=np.ones((3, 3)))
                     sizes = nd.sum(al > 0, lab_p, range(1, npart + 1))
                     al[np.isin(lab_p, 1 + np.flatnonzero(sizes < cut["min_part"]))] = 0
+            if cut.get("pixel_outline") and n not in cut.get("pixel_outline_skip", []):
+                # pixel art: one even ring of the edge colour round the face,
+                # holes included (Loop Hero's black edge is broken by the disc)
+                po = cut["pixel_outline"]
+                ring = nd.binary_dilation(f, structure=np.ones((3, 3)), iterations=po.get("width", 1)) & ~f
+                rgb[ring] = po["colour"]
+                al[ring] = 1
             if n in cut.get("hard_edge", []):
                 # pixel-font letters: each pixel fully on or off, no soft fringe
                 on = al >= 0.5

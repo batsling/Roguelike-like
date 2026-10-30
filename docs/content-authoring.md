@@ -86,7 +86,10 @@ the dark flecks the outline left on the gold recoloured from the gold round
 them, `face_min_brightness`), and Slay the Spire 2 (the same letters as the
 first, its SPIRE in capitals, the flame the I's dot, the teal II left out; each
 letter keeps the logo's shadow, re-cast from its own shape with
-`recast_shadow` so a close neighbour never clips it). A logo can
+`recast_shadow` so a close neighbour never clips it), and Loop Hero (L O O P
+H E R O, all three O's as `o`, `o_2`, `o_3`; pixel art, so the face is its exact
+palette colours, given an even one-pixel black edge (`pixel_outline`) where the
+logo's own was broken by the disc behind, and scaled 8x as sharp pixels). A logo can
 take more than one config when its parts are built differently: Uma Musume has
 three, one per line and one for the dash.
 `mewgenics.json` is the simple case: black letters that do not touch, cut as
