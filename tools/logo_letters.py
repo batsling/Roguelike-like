@@ -125,7 +125,9 @@ so Godot never imports the source), is JSON:
                   "outline_width" in "outline_colour"}
                   "min_part": px drops loose flecks smaller than that;
                   "silhouette": true scales letters with a clean edge;
-                  "keep_small_holes": px keeps dark marks inside a letter
+                  "keep_small_holes": px keeps dark marks inside a letter;
+                  "defringe": px recolours the outermost px of a letter from
+                  just inside it (no dark rim from the backing it sat on)
     assign        [{"from": piece, "to": piece, "polygon": [[x, y], ...]}] —
                   fill inside the polygon moved from one piece to another
     smooth        default true. false keeps the fill's own edge, spikes and all
@@ -577,6 +579,18 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
                     keep |= np.isin(lab_h, 1 + np.flatnonzero(sizes <= cut["keep_small_holes"]))
             rgb[keep] = A[keep][:, :3]
             al[keep] = a[keep] / 255
+            if cut.get("defringe"):
+                # The letter's outermost pixels are a blend into the backing it
+                # was cut from (Nuclear Throne's black): each takes the colour
+                # of the nearest pixel further in, so no dark rim is left. The
+                # shape is unchanged, holes and dark marks inside included.
+                dn = nd.distance_transform_edt(keep)
+                inner = keep & (dn > cut["defringe"])
+                if inner.any():
+                    _, (iy, ix) = nd.distance_transform_edt(~inner, return_indices=True)
+                    rim = keep & ~inner
+                    rgb[rim] = A[iy[rim], ix[rim], :3]
+                    al[rim] = np.maximum(al[rim], 1.0)
             rgb[painted] = fill_colour
             al[painted] = 1
             if cut.get("min_part"):
