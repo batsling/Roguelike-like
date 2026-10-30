@@ -47,7 +47,12 @@ so Godot never imports the source), is JSON:
 
     body          {piece: [y_top, y_bottom]} — source rows the letter itself fills,
                   for a piece with something attached (an eye stalk, a knife,
-                  slime); the title centres it on the line by those rows
+                  slime); its width is then measured over those rows only, so
+                  a stalk off to one side cannot pull the letter's middle with
+                  it. Otherwise the letter's box is measured from its face
+                  (fill), so glow, shadow and outline never shift it. The index
+                  records it as body_center / body_height (vertical) and
+                  body_center_x / body_width (horizontal), fractions of the PNG
     styles        [variant, ...] — piece variants (the part after the dot) drawn
                   at another size than the rest of the logo; each is sized as a
                   line of its own in images2.0/custom/title/index.json
@@ -601,6 +606,8 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
     written = []
     body_centers = {}
     body_heights = {}
+    body_xs = {}
+    body_widths = {}
     out_dir_game = cfg["game"]
     for i, n in enumerate(names):
         mine = owner == i
@@ -1026,9 +1033,27 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
         # where the letter itself sits in the piece, from 0 (top) to 1: a
         # piece with something attached above or below (an eye stalk, a
         # knife, slime) is centred on the line by its letter, not its whole
+        # The letter's own box, measured from its face (the fill), so a glow,
+        # a shadow pushed to one side or an outline never moves its centre or
+        # changes its size; `body` rows in the config override the height for
+        # a piece with something attached (an eye stalk, a knife, slime).
+        fy, fx = np.where(pieces[n] & (out[..., 3] > 0))
+        if fy.size == 0:
+            fy, fx = np.where(out[..., 3] > 127)
+        by0, by1 = fy.min(), fy.max() + 1
         bd = cfg.get("body", {}).get(n)
-        body_centers[n] = ((sum(bd) / 2 - y0) / (y1 - y0)) if bd else 0.5
-        body_heights[n] = ((bd[1] - bd[0]) / (y1 - y0)) if bd else 1.0
+        if bd:
+            # and its width from those rows only, so a stalk or a drip off
+            # to one side cannot pull the letter's middle with it
+            by0, by1 = bd
+            rows = (fy >= by0) & (fy < by1)
+            if rows.any():
+                fx = fx[rows]
+        bx0, bx1 = fx.min(), fx.max() + 1
+        body_centers[n] = ((by0 + by1) / 2 - y0) / (y1 - y0)
+        body_heights[n] = (by1 - by0) / (y1 - y0)
+        body_xs[n] = ((bx0 + bx1) / 2 - x0) / (x1 - x0)
+        body_widths[n] = (bx1 - bx0) / (x1 - x0)
         # "g.2" is a second G from the same logo: title/g/<game>__2.png. Two
         # underscores, never one: slay_the_spire's second e was once
         # e/slay_the_spire_2.png, the very file slay_the_spire_2's e is.
@@ -1109,6 +1134,8 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
             # the letter's own height as a share of the piece's, so every
             # letter can be drawn the same size whatever is attached to it
             "body_height": round(body_heights[n_], 4),
+            "body_center_x": round(body_xs[n_], 4),
+            "body_width": round(body_widths[n_], 4),
         }
     index_path.write_text(json.dumps(dict(sorted(index.items())), indent=1) + "\n")
     if preview:
