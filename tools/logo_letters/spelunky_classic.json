@@ -1,0 +1,104 @@
+{
+  "game": "spelunky_classic",
+  "source": "spelunky_classic.webp",
+  "pixel_grid": {
+    "x0": 8.16,
+    "y0": 95.83,
+    "x1": 1580,
+    "y1": 340,
+    "pitch": 11.707,
+    "palette": [
+      [
+        120,
+        108,
+        84
+      ],
+      [
+        176,
+        160,
+        108
+      ],
+      [
+        78,
+        64,
+        50
+      ]
+    ],
+    "tolerance": 26
+  },
+  "pieces": {
+    "s": [
+      12,
+      10
+    ],
+    "p": [
+      28,
+      10
+    ],
+    "e": [
+      44,
+      10
+    ],
+    "l": [
+      60,
+      10
+    ],
+    "u": [
+      76,
+      10
+    ],
+    "n": [
+      92,
+      10
+    ],
+    "k": [
+      108,
+      10
+    ],
+    "y": [
+      124,
+      10
+    ]
+  },
+  "fill": {
+    "min_alpha": 127,
+    "min_brightness": 40
+  },
+  "adopt_strays": false,
+  "smooth": false,
+  "shadow": false,
+  "cut": {
+    "reach": 0,
+    "hard_edge": [
+      "s",
+      "p",
+      "e",
+      "l",
+      "u",
+      "n",
+      "k",
+      "y"
+    ],
+    "scale": 12
+  },
+  "splits": [
+    {
+      "pieces": [
+        "e",
+        "l"
+      ],
+      "lower": "l",
+      "x_min": 52,
+      "line": [
+        [
+          0,
+          -1
+        ],
+        [
+          200,
+          -1
+        ]
+      ]
+    }
+  ]
+}

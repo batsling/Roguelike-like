@@ -98,7 +98,10 @@ b (its r and h keep the crab's eye stalks growing out of them; each letter gets
 its own full black outline, `min_width` rebuilding it where it was shared), and
 the first DECORATIONS: `decor_left/` and `decor_right/` hold the big claws and
 the leg pairs (`__legs`), to be shown at the far left and right of the title or
-subtitle at random. A logo can
+subtitle at random. Spelunky Classic gives S P E L U N K Y (the first K): its
+source is a blurry 1920x1080 screenshot of pixel art, so `pixel_grid` rebuilds
+the logo pixel by pixel on the measured grid (11.707px a pixel), each snapped to
+the logo's three-colour palette, and the letters come out as sharp 12x blocks. A logo can
 take more than one config when its parts are built differently: Uma Musume has
 three, one per line and one for the dash.
 `mewgenics.json` is the simple case: black letters that do not touch, cut as

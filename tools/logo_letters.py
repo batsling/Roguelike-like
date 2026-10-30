@@ -45,6 +45,9 @@ rebuild: it keeps its own pixels and only gets the shadow.
 The config, beside its source logo in tools/logo_letters/ (tools/ is .gdignored,
 so Godot never imports the source), is JSON:
 
+    pixel_grid    {"x0", "y0", "x1", "y1", "pitch", "palette", "tolerance"} —
+                  rebuild pixel art from a blurry screenshot: one palette colour
+                  per logo pixel on the measured grid, the rest see-through
     game          the game's id in data/games/ — the file name every piece gets
     source        the logo, transparent background, as big as can be found
     pieces        {name: [x, y]} — a point inside each piece's fill, in source
@@ -452,6 +455,39 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
     cfg = json.loads(cfg_path.read_text())
     src = cfg_path.parent / cfg["source"]
     A = np.array(Image.open(src).convert("RGBA")).astype(float)
+    pg = cfg.get("pixel_grid")
+    if pg:
+        # A blurry screenshot of pixel art (Spelunky Classic): one colour per
+        # logo pixel, sampled at the middle of its block on the measured grid,
+        # snapped to the logo's palette; anything nearer no palette colour
+        # is background and see-through.
+        x0, y0, p_ = pg["x0"], pg["y0"], pg["pitch"]
+        cols, rows = int((pg["x1"] - x0) / p_), int((pg["y1"] - y0) / p_)
+        pal = np.array(pg["palette"], float)
+        small = np.zeros((rows, cols, 4))
+        samp = np.zeros((rows, cols, 3))
+        for r_ in range(rows):
+            for c_ in range(cols):
+                cx, cy = x0 + (c_ + 0.5) * p_, y0 + (r_ + 0.5) * p_
+                blk = A[int(cy - 3):int(cy + 4), int(cx - 3):int(cx + 4), :3].reshape(-1, 3)
+                col = np.median(blk, 0)
+                d_ = np.abs(pal - col).max(-1)
+                if d_.min() <= pg.get("tolerance", 24):
+                    small[r_, c_, :3] = pal[d_.argmin()]
+                    small[r_, c_, 3] = 255
+                samp[r_, c_] = col
+        # a pixel or two INSIDE a letter whose colour matched nothing (a
+        # crack shade) is still the letter's: nearest palette colour
+        on = small[..., 3] > 0
+        gaps = nd.binary_fill_holes(on) & ~on
+        lab_g, ng = nd.label(gaps)
+        if ng:
+            sz = nd.sum(gaps, lab_g, range(1, ng + 1))
+            for gi in np.flatnonzero(sz <= pg.get("fill_gaps", 3)):
+                for r_, c_ in zip(*np.where(lab_g == gi + 1)):
+                    small[r_, c_, :3] = pal[np.abs(pal - samp[r_, c_]).max(-1).argmin()]
+                    small[r_, c_, 3] = 255
+        A = small
     H, W = A.shape[:2]
     a = A[..., 3]
     fill = _fill_mask(A, cfg)
