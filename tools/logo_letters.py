@@ -75,7 +75,9 @@ so Godot never imports the source), is JSON:
                   fill in a dark outline; min_channel keeps a coloured glow out
                   of a white fill; "max_brightness": n with "min_brightness":
                   -1 makes fill the DARK pixels (black letters, Mewgenics);
-                  "rows": [y0, y1] keeps fill to those rows; "inside_white": n makes fill what a
+                  "rows": [y0, y1] keeps fill to those rows; "exclude_white": n
+                  and "exclude_grey": {"spread", "below"} leave a white sticker
+                  border and a grey shadow out of the fill; "inside_white": n makes fill what a
                   white line encloses; "region": [[x, y], ...] keeps fill to a
                   polygon; "not_colour": [r, g, b] (with
                   "not_tolerance") makes fill everything that is not the plate
@@ -99,7 +101,7 @@ so Godot never imports the source), is JSON:
                   for a rough inked outline (red Hades): "shape": "round",
                   "join": 0 (keep gaps split on purpose), "visible_face": true,
                   "face_colour": [r, g, b], "shape": "source" (with "max_brightness",
-                  "min_alpha", "edge_smooth") takes the band's shape from the
+                  "min_alpha", "edge_smooth", "min_width") takes the band's shape from the
                   logo's own outline, cleaned, "face_defringe": px recolours the face's rim from just inside,
                   "face_min_brightness": n recolours darker flecks on the face
                   (width 0: the face alone, no outline), "upscale_soft": n softens the
@@ -200,6 +202,12 @@ SHADOW_ROUND_SIGMA = 7.0
 def _fill_mask(A: np.ndarray, cfg: dict) -> np.ndarray:
     f = cfg.get("fill", {})
     m = (A[..., 3] > f.get("min_alpha", 200)) & (A[..., :3].max(-1) > f.get("min_brightness", 140))
+    if "exclude_white" in f:  # a white sticker border round the logo is no letter
+        m &= ~(A[..., :3].min(-1) > f["exclude_white"])
+    if "exclude_grey" in f:  # nor is a grey drop shadow (low saturation, not bright)
+        g = f["exclude_grey"]
+        m &= ~(((A[..., :3].max(-1) - A[..., :3].min(-1)) < g.get("spread", 25))
+               & (A[..., :3].max(-1) < g.get("below", 215)))
     if "max_brightness" in f:  # dark letters on nothing (Mewgenics' black ink)
         m &= A[..., :3].max(-1) <= f["max_brightness"]
     if "min_channel" in f:  # white fills: every channel high, so a coloured glow is not fill
@@ -796,6 +804,10 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
                               & (A[..., :3].max(-1) <= band_cfg.get("max_brightness", 35)))
                     grown = nd.binary_fill_holes(src_ol | whole) & nd.binary_dilation(src_ol | whole, iterations=2)
                     grown = nd.binary_opening(nd.binary_closing(grown, st4, iterations=2), st4, iterations=1) | whole
+                    if band_cfg.get("min_width"):
+                        # where the outline was shared with a neighbour (and so
+                        # cut away), at least the logo's usual width all round
+                        grown |= nd.distance_transform_edt(~whole) <= band_cfg["min_width"]
                     grown = nd.gaussian_filter(grown.astype(float), band_cfg.get("edge_smooth", 1.2)) > 0.5
                     # counters stay open: only fill holes the source outline filled
                     hole_open = nd.binary_fill_holes(whole | src_ol) & ~(whole | src_ol) & (a < band_cfg.get("min_alpha", 100))

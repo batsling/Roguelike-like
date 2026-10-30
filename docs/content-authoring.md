@@ -93,7 +93,12 @@ logo's own was broken by the disc behind, and scaled 8x as sharp pixels), and 20
 Minutes Till Dawn (M I N U T E S cut through the middle as drawn, and T I L D A W N
 with the cream stripe, its T I N as `__small`; both sharp pixels). Digits have
 folders of their own: `2/` and `0/` from 20 Minutes Till Dawn, and `2/` from Slay
-the Spire 2's teal II. A logo can
+the Spire 2's teal II. Everything is Crab gives E v e r y t h i n g, i s and C r a
+b (its r and h keep the crab's eye stalks growing out of them; each letter gets
+its own full black outline, `min_width` rebuilding it where it was shared), and
+the first DECORATIONS: `decor_left/` and `decor_right/` hold the big claws and
+the leg pairs (`__legs`), to be shown at the far left and right of the title or
+subtitle at random. A logo can
 take more than one config when its parts are built differently: Uma Musume has
 three, one per line and one for the dash.
 `mewgenics.json` is the simple case: black letters that do not touch, cut as
