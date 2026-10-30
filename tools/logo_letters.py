@@ -102,7 +102,8 @@ so Godot never imports the source), is JSON:
                   ink drawn past the outline (a spike); "colour": "plate"
                   takes the band from the nearest plate pixel ("plate_max": n
                   and "plate_gap": px keep light edge pixels out of it), "whole_letter"
-                  bands the face with its own outline and counters (Uma Musume);
+                  bands the face with its own outline and counters (Uma Musume),
+                  "hole_colour" paints another face showing in a hole;
                   "extrude": {"dx", "dy", "colour", "skip"} (in cut) gives a
                   block letter its 3D side by sweeping its face (Isaac);
                   "outline_max": n keeps only dark pixels past the face (not
@@ -664,6 +665,11 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
                     rgb[clean] = band_cfg["face_colour"]
                 else:
                     rgb[clean] = A[clean][:, :3]
+                if "hole_colour" in band_cfg:
+                    # another face showing inside this letter's hole (Repentance's
+                    # C) is painted over in the hole's own colour
+                    other = nd.binary_dilation(clean & ~keep & fill, iterations=3) & clean & ~f
+                    rgb[other] = band_cfg["hole_colour"]  # with its soft edge
                 al[clean] = 1
                 ring = grown & ~clean
                 if band_cfg["colour"] == "plate":
