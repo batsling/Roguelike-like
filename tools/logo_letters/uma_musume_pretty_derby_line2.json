@@ -58,7 +58,9 @@
       "join": 0,
       "close": 1,
       "open": 0,
-      "whole_letter": true
+      "whole_letter": true,
+      "plate_max": 135,
+      "plate_gap": 5
     }
   }
 }

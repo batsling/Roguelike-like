@@ -98,7 +98,8 @@ so Godot never imports the source), is JSON:
                   "join": 0 (keep gaps split on purpose), "visible_face": true,
                   "face_colour": [r, g, b], "keep": [{"piece", "polygon"}] for
                   ink drawn past the outline (a spike); "colour": "plate"
-                  takes the band from the nearest plate pixel, "whole_letter"
+                  takes the band from the nearest plate pixel ("plate_max": n
+                  and "plate_gap": px keep light edge pixels out of it), "whole_letter"
                   bands the face with its own outline and counters (Uma Musume);
                   "shared_outline": true (in cut) lets a line two letters share
                   belong to both;
@@ -628,8 +629,11 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
                     # only the plate OUTSIDE the word's white line: between the
                     # letters it is mixed with their faces and lines
                     wl = (a > 200) & (A[..., :3].min(-1) > band_cfg.get("plate_white", 200))
-                    word = nd.binary_dilation(nd.binary_fill_holes(wl), iterations=3)
+                    word = nd.binary_dilation(nd.binary_fill_holes(wl), iterations=band_cfg.get("plate_gap", 3))
                     plate = (a > 240) & ~word
+                    if "plate_max" in band_cfg:
+                        # the white line's soft edge is no plate: no light spots in the band
+                        plate &= A[..., :3].min(-1) <= band_cfg["plate_max"]
                     _, (iy, ix) = nd.distance_transform_edt(~plate, return_indices=True)
                     band_rgb = A[iy, ix, :3]
                     rgb[ring] = band_rgb[ring]
