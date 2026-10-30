@@ -104,7 +104,8 @@ so Godot never imports the source), is JSON:
                   "min_alpha", "edge_smooth", "min_width") takes the band's shape from the
                   logo's own outline, cleaned, "face_defringe": px recolours the face's rim from just inside,
                   "face_min_brightness": n recolours darker flecks on the face
-                  (width 0: the face alone, no outline), "upscale_soft": n softens the
+                  (width 0: the face alone, no outline), "edge_soft": n and "edge_sharp": n set how soft the scaled
+                  edges are (low soft, high sharp: crisp), "upscale_soft": n softens the
                   edges as they are scaled up, "keep": [{"piece", "polygon"}] for
                   ink drawn past the outline (a spike); "colour": "plate"
                   takes the band from the nearest plate pixel ("plate_max": n
@@ -361,7 +362,8 @@ def _measure_shadow(A, solid, pieces, keep_original):
     return r, dx, dy, (np.array(hd), np.array(ha)), (np.array(gd), np.array(ga, float))
 
 
-def _upscale(A, out, box, band_masks, s, hard=False, face=None, silhouette=False, silhouette_cut=0):
+def _upscale(A, out, box, band_masks, s, hard=False, face=None, silhouette=False, silhouette_cut=0,
+             edge_soft=None, sharp=2.5):
     """A letter at `s` times the logo's resolution, so it stays crisp on a big
     title. A small source shown large is the blur this exists to avoid.
 
@@ -375,12 +377,12 @@ def _upscale(A, out, box, band_masks, s, hard=False, face=None, silhouette=False
     w, h = (x1 - x0) * s, (y1 - y0) * s
     crop = Image.fromarray(out[y0:y1, x0:x1])
 
-    def cover(mask, sigma=0.0):
+    def cover(mask, sigma=0.0, sharp=2.5):
         # the mask scaled smoothly, then sharpened to a one-pixel soft edge;
         # with sigma, softened first so a curve has no source-pixel steps
         m = nd.gaussian_filter(mask.astype(float), sigma) if sigma else mask.astype(float)
         v = np.asarray(Image.fromarray((m * 255).astype(np.uint8)).resize((w, h), Image.LANCZOS), float) / 255
-        return np.clip((v - 0.5) * 2.5 + 0.5, 0, 1)
+        return np.clip((v - 0.5) * sharp + 0.5, 0, 1)
 
     def extend(colours, mask):
         # each pixel takes the colour of the nearest pixel in mask, scaled up
@@ -427,7 +429,8 @@ def _upscale(A, out, box, band_masks, s, hard=False, face=None, silhouette=False
     # pixel art keeps its pixels; a painted logo (Slay the Spire) is scaled
     # smoothly, or its brushwork turns into blocks
     hi = np.asarray(Image.fromarray(inside).resize((w, h), Image.LANCZOS if soft >= 2 else Image.NEAREST), float)
-    c_letter, c_band = cover(clean, soft * 0.6), cover(grown, soft * 0.6)
+    es = edge_soft if edge_soft is not None else soft * 0.6
+    c_letter, c_band = cover(clean, es, sharp), cover(grown, es, sharp)
     if not (grown & ~clean).any():
         rgb = hi  # no band (Slay the Spire, outline dropped): the edge stays the letter's colour
         # smooth scaling rings a little darker beside a sharp change of shade;
@@ -982,7 +985,9 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
             img = _upscale(A, out, (x0, y0, x1, y1), band_masks, scale,
                            hard=n in (cut or {}).get("hard_edge", []), face=face,
                            silhouette=bool((cut or {}).get("silhouette")),
-                           silhouette_cut=(cut or {}).get("keep_min_alpha", 0))
+                           silhouette_cut=(cut or {}).get("keep_min_alpha", 0),
+                           edge_soft=((cut or {}).get("band") or {}).get("edge_soft"),
+                           sharp=((cut or {}).get("band") or {}).get("edge_sharp", 2.5))
         for ad in (cut or {}).get("as_drawn", []):
             if ad["piece"] != n:
                 continue

@@ -137,7 +137,9 @@
       "close": 0,
       "open": 0,
       "smooth": 0.6,
-      "upscale_soft": 2.2
+      "upscale_soft": 2.2,
+      "edge_soft": 0.7,
+      "edge_sharp": 4.0
     }
   }
 }
