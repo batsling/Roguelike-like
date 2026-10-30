@@ -89,7 +89,11 @@ so Godot never imports the source), is JSON:
                   "band": {"colour": [r, g, b], "width": px, "close": n,
                   "open": n, "skip": [pieces]} — for letters set in a plate:
                   the letter tidied into one shape, with an even band of the
-                  plate's colour round it instead of the plate as cut;
+                  plate's colour round it instead of the plate as cut. Also
+                  for a rough inked outline (red Hades): "shape": "round",
+                  "join": 0 (keep gaps split on purpose), "visible_face": true,
+                  "face_colour": [r, g, b], "keep": [{"piece", "polygon"}] for
+                  ink drawn past the outline (a spike);
                   "hard_edge": [pieces] — pixel-font letters, every pixel fully
                   on or off; "scale": n — write the letters n times the logo's
                   size, shapes redrawn crisp (for a small source logo; an
@@ -301,9 +305,11 @@ def _upscale(A, out, box, band_masks, s, hard=False, face=None):
     w, h = (x1 - x0) * s, (y1 - y0) * s
     crop = Image.fromarray(out[y0:y1, x0:x1])
 
-    def cover(mask):
-        # the mask scaled smoothly, then sharpened to a one-pixel soft edge
-        v = np.asarray(Image.fromarray((mask * 255).astype(np.uint8)).resize((w, h), Image.LANCZOS), float) / 255
+    def cover(mask, sigma=0.0):
+        # the mask scaled smoothly, then sharpened to a one-pixel soft edge;
+        # with sigma, softened first so a curve has no source-pixel steps
+        m = nd.gaussian_filter(mask.astype(float), sigma) if sigma else mask.astype(float)
+        v = np.asarray(Image.fromarray((m * 255).astype(np.uint8)).resize((w, h), Image.LANCZOS), float) / 255
         return np.clip((v - 0.5) * 2.5 + 0.5, 0, 1)
 
     def extend(colours, mask):
@@ -324,14 +330,15 @@ def _upscale(A, out, box, band_masks, s, hard=False, face=None):
         return Image.fromarray(np.dstack([rgb.clip(0, 255), cover(sil) * 255]).astype(np.uint8))
     if hard or band_masks is None:
         return crop.resize((w, h), Image.NEAREST)
-    clean, grown, plate = (m[y0:y1, x0:x1] if m.ndim == 2 else m for m in band_masks)
+    clean, grown, plate = (m[y0:y1, x0:x1] if m.ndim == 2 else m for m in band_masks[:3])
+    soft = band_masks[3] if len(band_masks) > 3 else 0
 
     # the letter's colours, run out past its edge so the redrawn edge never
     # shows the plate's black from inside
     _, (iy, ix) = nd.distance_transform_edt(~clean, return_indices=True)
-    inside = A[y0:y1, x0:x1, :3][iy, ix].clip(0, 255).astype(np.uint8)
+    inside = out[y0:y1, x0:x1, :3][iy, ix].clip(0, 255).astype(np.uint8)
     hi = np.asarray(Image.fromarray(inside).resize((w, h), Image.NEAREST), float)
-    c_letter, c_band = cover(clean), cover(grown)
+    c_letter, c_band = cover(clean, soft * 0.6), cover(grown, soft * 0.6)
     rgb = hi * c_letter[..., None] + plate * (1 - c_letter[..., None])
     alpha = np.maximum(c_letter, c_band)
     return Image.fromarray(np.dstack([rgb.clip(0, 255), alpha * 255]).astype(np.uint8))
@@ -525,26 +532,56 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
                 # the letter is tidied into one clean shape and given an even
                 # band of the plate's colour, with the logo's 45-degree corners.
                 st4 = nd.generate_binary_structure(2, 1)
-                clean = nd.binary_closing(f, st4, iterations=band_cfg.get("close", 3))
-                clean = nd.binary_opening(clean, st4, iterations=band_cfg.get("open", 1))
+                # the face as it stands once erasing is done
+                base = (f & keep) | painted if band_cfg.get("visible_face") else f
+                clean = base
+                if band_cfg.get("close", 3):
+                    clean = nd.binary_closing(clean, st4, iterations=band_cfg.get("close", 3))
+                if band_cfg.get("open", 1):
+                    # (thin slivers off: the slash's white streak caught in an outline)
+                    clean = nd.binary_opening(clean, st4, iterations=band_cfg.get("open", 1))
+                if band_cfg.get("smooth"):
+                    # ticks and hooks a ragged hand-drawn face leaves, smoothed off
+                    clean = nd.gaussian_filter(clean.astype(float), band_cfg["smooth"]) > 0.5
+                if cut.get("min_part"):
+                    lab_c, ncl = nd.label(clean, structure=np.ones((3, 3)))
+                    if ncl:
+                        sizes = nd.sum(clean, lab_c, range(1, ncl + 1))
+                        clean &= ~np.isin(lab_c, 1 + np.flatnonzero(sizes < cut["min_part"]))
                 # The band's outer edge is grown from the WHOLE letter, its
                 # parts joined across the plate lines between them first, so the
                 # edge runs straight past a join instead of dipping in a V
                 # between the two parts' corners.
                 # (a SQUARE closing: a diamond one leaves a small V of its own)
-                whole = nd.binary_closing(clean, np.ones((3, 3)), iterations=band_cfg.get("join", 5),
-                                          border_value=0) | clean
-                grown = whole.copy()
-                for k in range(band_cfg.get("width", 5)):  # square, cross, square...: an octagon
-                    grown = nd.binary_dilation(grown, structure=np.ones((3, 3)) if k % 2 == 0 else st4)
+                # An inked logo whose letters are split on purpose (red Hades'
+                # slash) sets join 0, so its gaps stay open.
+                whole = clean
+                if band_cfg.get("join", 5):
+                    whole = nd.binary_closing(clean, np.ones((3, 3)), iterations=band_cfg["join"] if "join" in band_cfg else 5,
+                                              border_value=0) | clean
+                if band_cfg.get("shape") == "round":  # serif letters: an even band, round corners
+                    grown = nd.distance_transform_edt(~whole) <= band_cfg.get("width", 5)
+                else:
+                    grown = whole.copy()
+                    for k in range(band_cfg.get("width", 5)):  # square, cross, square...: an octagon
+                        grown = nd.binary_dilation(grown, structure=np.ones((3, 3)) if k % 2 == 0 else st4)
+                # ink the logo drew past any outline (red Hades' A spike) kept
+                for kp in band_cfg.get("keep", []):
+                    if kp["piece"] == n:
+                        grown |= _polygon_mask((H, W), kp["polygon"]) & keep & ~clean & (a > 127)
+                face_rgb = rgb.copy()
                 rgb[:] = 0
                 al[:] = 0
-                rgb[clean] = A[clean][:, :3]
+                if "face_colour" in band_cfg:
+                    rgb[clean] = band_cfg["face_colour"]
+                else:
+                    rgb[clean] = A[clean][:, :3]
                 al[clean] = 1
                 ring = grown & ~clean
-                band_masks = (clean, grown, np.array(band_cfg["colour"], float))
+                band_masks = (clean, grown, np.array(band_cfg["colour"], float), band_cfg.get("smooth", 0))
                 rgb[ring] = band_cfg["colour"]
                 al[ring] = 1
+                face = None
         else:
             fs = nd.gaussian_filter(f.astype(float), FILL_SMOOTH_SIGMA) > 0.5 if smooth else f
             ds = nd.distance_transform_edt(~fs)

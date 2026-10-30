@@ -268,6 +268,48 @@
         ]
       }
     ],
-    "min_part": 200
+    "min_part": 200,
+    "band": {
+      "colour": [
+        240,
+        17,
+        8
+      ],
+      "width": 5,
+      "shape": "round",
+      "join": 0,
+      "close": 1,
+      "open": 2,
+      "visible_face": true,
+      "face_colour": [
+        255,
+        255,
+        255
+      ],
+      "keep": [
+        {
+          "piece": "a",
+          "polygon": [
+            [
+              615,
+              530
+            ],
+            [
+              705,
+              530
+            ],
+            [
+              705,
+              615
+            ],
+            [
+              615,
+              615
+            ]
+          ]
+        }
+      ],
+      "smooth": 1.5
+    }
   }
 }
