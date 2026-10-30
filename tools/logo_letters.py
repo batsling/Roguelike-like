@@ -104,6 +104,8 @@ so Godot never imports the source), is JSON:
                   and "plate_gap": px keep light edge pixels out of it), "whole_letter"
                   bands the face with its own outline and counters (Uma Musume),
                   "hole_colour" paints another face showing in a hole;
+                  "as_drawn": [{"piece", "polygon"}] (in cut) — inside the
+                  polygon, the logo's own pixels exactly (no band, no redraw);
                   "extrude": {"dx", "dy", "colour", "skip"} (in cut) gives a
                   block letter its 3D side by sweeping its face (Isaac);
                   "outline_max": n keeps only dark pixels past the face (not
@@ -772,6 +774,19 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
             img = _upscale(A, out, (x0, y0, x1, y1), band_masks, scale,
                            hard=n in (cut or {}).get("hard_edge", []), face=face,
                            silhouette=bool((cut or {}).get("silhouette")))
+        for ad in (cut or {}).get("as_drawn", []):
+            if ad["piece"] != n:
+                continue
+            # Inside this polygon the logo's own pixels, untouched: no band, no
+            # redraw (Repentance's blood, which a glow round every drop ruins).
+            poly = _polygon_mask((H, W), ad["polygon"])[y0:y1, x0:x1]
+            src = A[y0:y1, x0:x1].clip(0, 255).astype(np.uint8)
+            if img.size != (x1 - x0, y1 - y0):
+                src = np.asarray(Image.fromarray(src).resize(img.size, Image.LANCZOS))
+                poly = np.asarray(Image.fromarray((poly * 255).astype(np.uint8)).resize(img.size, Image.NEAREST)) > 127
+            px = np.array(img)
+            px[poly] = src[poly]
+            img = Image.fromarray(px)
         if scale > 1:
             # the redraw can leave a pixel or two of anti-aliasing alone at a
             # corner: anything that small and apart from the letter goes
