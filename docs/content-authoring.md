@@ -69,7 +69,10 @@ is not a letter gets a name of its own; `dash` is the hyphen. So far: Balatro
 (M E W G E N I C S, the I with its paw print for a dot, and its "!" as
 `exclaim/`), and Uma Musume Pretty Derby (U M A S E and a pink U and M from
 UMAMUSUME, P R E T Y D B from PRETTY DERBY — its E as `e/<id>_derby.png` — and
-the running girl with her speed trail and sparkles as the `dash`). A logo can
+the running girl with her speed trail and sparkles as the `dash`), and The
+Binding of Isaac (the original, not Rebirth: I S A A C, each block with its
+whole 3D side rebuilt by sweeping its face along the logo's depth (`extrude`),
+and T H E B I N D G O F from the small line, its E and I as `_small`). A logo can
 take more than one config when its parts are built differently: Uma Musume has
 three, one per line and one for the dash.
 `mewgenics.json` is the simple case: black letters that do not touch, cut as

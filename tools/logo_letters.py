@@ -101,6 +101,8 @@ so Godot never imports the source), is JSON:
                   takes the band from the nearest plate pixel ("plate_max": n
                   and "plate_gap": px keep light edge pixels out of it), "whole_letter"
                   bands the face with its own outline and counters (Uma Musume);
+                  "extrude": {"dx", "dy", "colour", "skip"} (in cut) gives a
+                  block letter its 3D side by sweeping its face (Isaac);
                   "shared_outline": true (in cut) lets a line two letters share
                   belong to both;
                   "hard_edge": [pieces] — pixel-font letters, every pixel fully
@@ -566,6 +568,24 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
                 on = al >= 0.5
                 al[:] = on
                 rgb[~on] = 0
+            ex_cfg = cut.get("extrude")
+            if ex_cfg and n not in ex_cfg.get("skip", []):
+                # A block-letter logo (Isaac): the face, and the 3D side made by
+                # sweeping the face along the logo's depth, so a side the next
+                # letter hid is whole again; in the side's own colour.
+                face_m = f.copy()
+                side = face_m.copy()
+                steps = max(abs(ex_cfg["dx"]), abs(ex_cfg["dy"]))
+                for k in range(1, steps + 1):
+                    # a shift that falls off the edge, never wraps round to the other side
+                    side |= nd.shift(face_m, (round(ex_cfg["dy"] * k / steps),
+                                              round(ex_cfg["dx"] * k / steps)), order=0, cval=False)
+                rgb[:] = 0
+                al[:] = 0
+                rgb[side] = ex_cfg["colour"]
+                rgb[face_m] = A[face_m][:, :3]
+                al[side] = 1
+                band_masks = (face_m, side, np.array(ex_cfg["colour"], float), 0)
             band_cfg = cut.get("band")
             if band_cfg and n not in band_cfg.get("skip", []):
                 # A plate logo (Gungeon): the letter's edge is the plate showing
