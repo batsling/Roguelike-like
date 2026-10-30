@@ -600,6 +600,7 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
 
     written = []
     body_centers = {}
+    body_heights = {}
     out_dir_game = cfg["game"]
     for i, n in enumerate(names):
         mine = owner == i
@@ -1027,6 +1028,7 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
         # knife, slime) is centred on the line by its letter, not its whole
         bd = cfg.get("body", {}).get(n)
         body_centers[n] = ((sum(bd) / 2 - y0) / (y1 - y0)) if bd else 0.5
+        body_heights[n] = ((bd[1] - bd[0]) / (y1 - y0)) if bd else 1.0
         # "g.2" is a second G from the same logo: title/g/<game>__2.png. Two
         # underscores, never one: slay_the_spire's second e was once
         # e/slay_the_spire_2.png, the very file slay_the_spire_2's e is.
@@ -1104,6 +1106,9 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
             # line, Nuclear Throne's THRONE) are listed as styles of their own
             "style": cfg_path.stem + ("__" + variant_ if variant_ in cfg.get("styles", []) else ""),
             "body_center": round(body_centers[n_], 4),
+            # the letter's own height as a share of the piece's, so every
+            # letter can be drawn the same size whatever is attached to it
+            "body_height": round(body_heights[n_], 4),
         }
     index_path.write_text(json.dumps(dict(sorted(index.items())), indent=1) + "\n")
     if preview:

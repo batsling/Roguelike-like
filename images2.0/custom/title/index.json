@@ -3,1230 +3,1435 @@
   "game": "20_minutes_till_dawn",
   "config": "20_minutes_till_dawn.json",
   "style": "20_minutes_till_dawn",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "2/20_minutes_till_dawn.png": {
   "game": "20_minutes_till_dawn",
   "config": "20_minutes_till_dawn.json",
   "style": "20_minutes_till_dawn",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "2/risk_of_rain_2.png": {
   "game": "risk_of_rain_2",
   "config": "risk_of_rain_2.json",
   "style": "risk_of_rain_2",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "2/slay_the_spire_2.png": {
   "game": "slay_the_spire_2",
   "config": "slay_the_spire_2.json",
   "style": "slay_the_spire_2",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "a/20_minutes_till_dawn.png": {
   "game": "20_minutes_till_dawn",
   "config": "20_minutes_till_dawn_small.json",
   "style": "20_minutes_till_dawn_small",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "a/balatro.png": {
   "game": "balatro",
   "config": "balatro.json",
   "style": "balatro",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "a/caves_of_qud.png": {
   "game": "caves_of_qud",
   "config": "caves_of_qud.json",
   "style": "caves_of_qud",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "a/dead_cells.png": {
   "game": "dead_cells",
   "config": "dead_cells.json",
   "style": "dead_cells",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "a/everything_is_crab.png": {
   "game": "everything_is_crab",
   "config": "everything_is_crab.json",
   "style": "everything_is_crab",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "a/hades.png": {
   "game": "hades",
   "config": "hades.json",
   "style": "hades",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "a/hades_ii.png": {
   "game": "hades_ii",
   "config": "hades_ii.json",
   "style": "hades_ii",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "a/haste.png": {
   "game": "haste",
   "config": "haste.json",
   "style": "haste",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "a/nuclear_throne.png": {
   "game": "nuclear_throne",
   "config": "nuclear_throne.json",
   "style": "nuclear_throne",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "a/risk_of_rain_2.png": {
   "game": "risk_of_rain_2",
   "config": "risk_of_rain_2.json",
   "style": "risk_of_rain_2",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "a/slay_the_spire.png": {
   "game": "slay_the_spire",
   "config": "slay_the_spire.json",
   "style": "slay_the_spire",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "a/slay_the_spire_2.png": {
   "game": "slay_the_spire_2",
   "config": "slay_the_spire_2.json",
   "style": "slay_the_spire_2",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "a/the_binding_of_isaac.png": {
   "game": "the_binding_of_isaac",
   "config": "the_binding_of_isaac.json",
   "style": "the_binding_of_isaac",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "a/the_binding_of_isaac__2.png": {
   "game": "the_binding_of_isaac",
   "config": "the_binding_of_isaac.json",
   "style": "the_binding_of_isaac",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "a/the_binding_of_isaac_rebirth.png": {
   "game": "the_binding_of_isaac_rebirth",
   "config": "the_binding_of_isaac_rebirth.json",
   "style": "the_binding_of_isaac_rebirth",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "a/the_binding_of_isaac_rebirth__2.png": {
   "game": "the_binding_of_isaac_rebirth",
   "config": "the_binding_of_isaac_rebirth.json",
   "style": "the_binding_of_isaac_rebirth",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "a/uma_musume_pretty_derby.png": {
   "game": "uma_musume_pretty_derby",
   "config": "uma_musume_pretty_derby.json",
   "style": "uma_musume_pretty_derby",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "b/balatro.png": {
   "game": "balatro",
   "config": "balatro.json",
   "style": "balatro",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "b/everything_is_crab.png": {
   "game": "everything_is_crab",
   "config": "everything_is_crab.json",
   "style": "everything_is_crab",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "b/the_binding_of_isaac.png": {
   "game": "the_binding_of_isaac",
   "config": "the_binding_of_isaac_small.json",
   "style": "the_binding_of_isaac_small",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "b/uma_musume_pretty_derby.png": {
   "game": "uma_musume_pretty_derby",
   "config": "uma_musume_pretty_derby_line2.json",
   "style": "uma_musume_pretty_derby_line2",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "c/caves_of_qud.png": {
   "game": "caves_of_qud",
   "config": "caves_of_qud.json",
   "style": "caves_of_qud",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "c/dead_cells.png": {
   "game": "dead_cells",
   "config": "dead_cells.json",
   "style": "dead_cells",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "c/everything_is_crab.png": {
   "game": "everything_is_crab",
   "config": "everything_is_crab.json",
   "style": "everything_is_crab",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "c/mewgenics.png": {
   "game": "mewgenics",
   "config": "mewgenics.json",
   "style": "mewgenics",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "c/nuclear_throne.png": {
   "game": "nuclear_throne",
   "config": "nuclear_throne.json",
   "style": "nuclear_throne",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "c/the_binding_of_isaac.png": {
   "game": "the_binding_of_isaac",
   "config": "the_binding_of_isaac.json",
   "style": "the_binding_of_isaac",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "c/the_binding_of_isaac_rebirth.png": {
   "game": "the_binding_of_isaac_rebirth",
   "config": "the_binding_of_isaac_rebirth.json",
   "style": "the_binding_of_isaac_rebirth",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "d/20_minutes_till_dawn.png": {
   "game": "20_minutes_till_dawn",
   "config": "20_minutes_till_dawn_small.json",
   "style": "20_minutes_till_dawn_small",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "d/caves_of_qud.png": {
   "game": "caves_of_qud",
   "config": "caves_of_qud.json",
   "style": "caves_of_qud",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "d/dead_cells.png": {
   "game": "dead_cells",
   "config": "dead_cells.json",
   "style": "dead_cells",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "d/dead_cells__2.png": {
   "game": "dead_cells",
   "config": "dead_cells.json",
   "style": "dead_cells",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "d/hades.png": {
   "game": "hades",
   "config": "hades.json",
   "style": "hades",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "d/hades_ii.png": {
   "game": "hades_ii",
   "config": "hades_ii.json",
   "style": "hades_ii",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "d/rounds.png": {
   "game": "rounds",
   "config": "rounds.json",
   "style": "rounds",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "d/the_binding_of_isaac.png": {
   "game": "the_binding_of_isaac",
   "config": "the_binding_of_isaac_small.json",
   "style": "the_binding_of_isaac_small",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "d/uma_musume_pretty_derby.png": {
   "game": "uma_musume_pretty_derby",
   "config": "uma_musume_pretty_derby_line2.json",
   "style": "uma_musume_pretty_derby_line2",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "dash/dead_cells.png": {
   "game": "dead_cells",
   "config": "dead_cells.json",
   "style": "dead_cells",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "dash/uma_musume_pretty_derby.png": {
   "game": "uma_musume_pretty_derby",
   "config": "uma_musume_pretty_derby_dash.json",
   "style": "uma_musume_pretty_derby_dash",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "decor_left/everything_is_crab.png": {
   "game": "everything_is_crab",
   "config": "everything_is_crab.json",
   "style": "everything_is_crab",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "decor_left/everything_is_crab__legs.png": {
   "game": "everything_is_crab",
   "config": "everything_is_crab.json",
   "style": "everything_is_crab",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "decor_right/everything_is_crab.png": {
   "game": "everything_is_crab",
   "config": "everything_is_crab.json",
   "style": "everything_is_crab",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "decor_right/everything_is_crab__legs.png": {
   "game": "everything_is_crab",
   "config": "everything_is_crab.json",
   "style": "everything_is_crab",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "e/20_minutes_till_dawn.png": {
   "game": "20_minutes_till_dawn",
   "config": "20_minutes_till_dawn.json",
   "style": "20_minutes_till_dawn",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "e/caves_of_qud.png": {
   "game": "caves_of_qud",
   "config": "caves_of_qud.json",
   "style": "caves_of_qud",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "e/dead_cells.png": {
   "game": "dead_cells",
   "config": "dead_cells.json",
   "style": "dead_cells",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "e/dead_cells__2.png": {
   "game": "dead_cells",
   "config": "dead_cells.json",
   "style": "dead_cells",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "e/enter_the_gungeon.png": {
   "game": "enter_the_gungeon",
   "config": "enter_the_gungeon.json",
   "style": "enter_the_gungeon",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "e/enter_the_gungeon__pink.png": {
   "game": "enter_the_gungeon",
   "config": "enter_the_gungeon.json",
   "style": "enter_the_gungeon__pink",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "e/everything_is_crab.png": {
   "game": "everything_is_crab",
   "config": "everything_is_crab.json",
   "style": "everything_is_crab",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "e/everything_is_crab__2.png": {
   "game": "everything_is_crab",
   "config": "everything_is_crab.json",
   "style": "everything_is_crab",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "e/hades.png": {
   "game": "hades",
   "config": "hades.json",
   "style": "hades",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "e/hades_ii.png": {
   "game": "hades_ii",
   "config": "hades_ii.json",
   "style": "hades_ii",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "e/haste.png": {
   "game": "haste",
   "config": "haste.json",
   "style": "haste",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "e/loop_hero.png": {
   "game": "loop_hero",
   "config": "loop_hero.json",
   "style": "loop_hero",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "e/mewgenics.png": {
   "game": "mewgenics",
   "config": "mewgenics.json",
   "style": "mewgenics",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "e/mewgenics__2.png": {
   "game": "mewgenics",
   "config": "mewgenics.json",
   "style": "mewgenics",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "e/nuclear_throne.png": {
   "game": "nuclear_throne",
   "config": "nuclear_throne.json",
   "style": "nuclear_throne",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "e/nuclear_throne__throne.png": {
   "game": "nuclear_throne",
   "config": "nuclear_throne.json",
   "style": "nuclear_throne__throne",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "e/slay_the_spire.png": {
   "game": "slay_the_spire",
   "config": "slay_the_spire.json",
   "style": "slay_the_spire",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "e/slay_the_spire_2.png": {
   "game": "slay_the_spire_2",
   "config": "slay_the_spire_2.json",
   "style": "slay_the_spire_2",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "e/slay_the_spire_2__2.png": {
   "game": "slay_the_spire_2",
   "config": "slay_the_spire_2.json",
   "style": "slay_the_spire_2",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "e/slay_the_spire__2.png": {
   "game": "slay_the_spire",
   "config": "slay_the_spire.json",
   "style": "slay_the_spire",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "e/spelunky_classic.png": {
   "game": "spelunky_classic",
   "config": "spelunky_classic.json",
   "style": "spelunky_classic",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "e/the_binding_of_isaac__small.png": {
   "game": "the_binding_of_isaac",
   "config": "the_binding_of_isaac_small.json",
   "style": "the_binding_of_isaac_small",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "e/uma_musume_pretty_derby.png": {
   "game": "uma_musume_pretty_derby",
   "config": "uma_musume_pretty_derby.json",
   "style": "uma_musume_pretty_derby",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "e/uma_musume_pretty_derby__derby.png": {
   "game": "uma_musume_pretty_derby",
   "config": "uma_musume_pretty_derby_line2.json",
   "style": "uma_musume_pretty_derby_line2",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "exclaim/mewgenics.png": {
   "game": "mewgenics",
   "config": "mewgenics.json",
   "style": "mewgenics",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "f/caves_of_qud.png": {
   "game": "caves_of_qud",
   "config": "caves_of_qud.json",
   "style": "caves_of_qud",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "f/risk_of_rain_2.png": {
   "game": "risk_of_rain_2",
   "config": "risk_of_rain_2.json",
   "style": "risk_of_rain_2",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "f/the_binding_of_isaac.png": {
   "game": "the_binding_of_isaac",
   "config": "the_binding_of_isaac_small.json",
   "style": "the_binding_of_isaac_small",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "g/enter_the_gungeon.png": {
   "game": "enter_the_gungeon",
   "config": "enter_the_gungeon.json",
   "style": "enter_the_gungeon",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "g/enter_the_gungeon__2.png": {
   "game": "enter_the_gungeon",
   "config": "enter_the_gungeon.json",
   "style": "enter_the_gungeon",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "g/everything_is_crab.png": {
   "game": "everything_is_crab",
   "config": "everything_is_crab.json",
   "style": "everything_is_crab",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "g/mewgenics.png": {
   "game": "mewgenics",
   "config": "mewgenics.json",
   "style": "mewgenics",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "g/the_binding_of_isaac.png": {
   "game": "the_binding_of_isaac",
   "config": "the_binding_of_isaac_small.json",
   "style": "the_binding_of_isaac_small",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "h/enter_the_gungeon__pink.png": {
   "game": "enter_the_gungeon",
   "config": "enter_the_gungeon.json",
   "style": "enter_the_gungeon__pink",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "h/everything_is_crab.png": {
   "game": "everything_is_crab",
   "config": "everything_is_crab.json",
   "style": "everything_is_crab",
-  "body_center": 0.8557
+  "body_center": 0.8557,
+  "body_height": 0.3229
  },
  "h/hades.png": {
   "game": "hades",
   "config": "hades.json",
   "style": "hades",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "h/hades_ii.png": {
   "game": "hades_ii",
   "config": "hades_ii.json",
   "style": "hades_ii",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "h/haste.png": {
   "game": "haste",
   "config": "haste.json",
   "style": "haste",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "h/loop_hero.png": {
   "game": "loop_hero",
   "config": "loop_hero.json",
   "style": "loop_hero",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "h/nuclear_throne.png": {
   "game": "nuclear_throne",
   "config": "nuclear_throne.json",
   "style": "nuclear_throne",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "h/slay_the_spire.png": {
   "game": "slay_the_spire",
   "config": "slay_the_spire.json",
   "style": "slay_the_spire",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "h/slay_the_spire_2.png": {
   "game": "slay_the_spire_2",
   "config": "slay_the_spire_2.json",
   "style": "slay_the_spire_2",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "h/the_binding_of_isaac.png": {
   "game": "the_binding_of_isaac",
   "config": "the_binding_of_isaac_small.json",
   "style": "the_binding_of_isaac_small",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "i/20_minutes_till_dawn.png": {
   "game": "20_minutes_till_dawn",
   "config": "20_minutes_till_dawn.json",
   "style": "20_minutes_till_dawn",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "i/20_minutes_till_dawn__small.png": {
   "game": "20_minutes_till_dawn",
   "config": "20_minutes_till_dawn_small.json",
   "style": "20_minutes_till_dawn_small",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "i/everything_is_crab.png": {
   "game": "everything_is_crab",
   "config": "everything_is_crab.json",
   "style": "everything_is_crab",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "i/everything_is_crab__2.png": {
   "game": "everything_is_crab",
   "config": "everything_is_crab.json",
   "style": "everything_is_crab",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "i/mewgenics.png": {
   "game": "mewgenics",
   "config": "mewgenics.json",
   "style": "mewgenics",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "i/risk_of_rain_2.png": {
   "game": "risk_of_rain_2",
   "config": "risk_of_rain_2.json",
   "style": "risk_of_rain_2",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "i/risk_of_rain_2__2.png": {
   "game": "risk_of_rain_2",
   "config": "risk_of_rain_2.json",
   "style": "risk_of_rain_2",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "i/slay_the_spire.png": {
   "game": "slay_the_spire",
   "config": "slay_the_spire.json",
   "style": "slay_the_spire",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "i/slay_the_spire_2.png": {
   "game": "slay_the_spire_2",
   "config": "slay_the_spire_2.json",
   "style": "slay_the_spire_2",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "i/the_binding_of_isaac.png": {
   "game": "the_binding_of_isaac",
   "config": "the_binding_of_isaac.json",
   "style": "the_binding_of_isaac",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "i/the_binding_of_isaac__small.png": {
   "game": "the_binding_of_isaac",
   "config": "the_binding_of_isaac_small.json",
   "style": "the_binding_of_isaac_small",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "i/the_binding_of_isaac_rebirth.png": {
   "game": "the_binding_of_isaac_rebirth",
   "config": "the_binding_of_isaac_rebirth.json",
   "style": "the_binding_of_isaac_rebirth",
-  "body_center": 0.4731
+  "body_center": 0.4731,
+  "body_height": 0.2745
  },
  "k/risk_of_rain_2.png": {
   "game": "risk_of_rain_2",
   "config": "risk_of_rain_2.json",
   "style": "risk_of_rain_2",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "k/spelunky_classic.png": {
   "game": "spelunky_classic",
   "config": "spelunky_classic.json",
   "style": "spelunky_classic",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "l/20_minutes_till_dawn.png": {
   "game": "20_minutes_till_dawn",
   "config": "20_minutes_till_dawn_small.json",
   "style": "20_minutes_till_dawn_small",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "l/balatro.png": {
   "game": "balatro",
   "config": "balatro.json",
   "style": "balatro",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "l/dead_cells.png": {
   "game": "dead_cells",
   "config": "dead_cells.json",
   "style": "dead_cells",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "l/dead_cells__2.png": {
   "game": "dead_cells",
   "config": "dead_cells.json",
   "style": "dead_cells",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "l/loop_hero.png": {
   "game": "loop_hero",
   "config": "loop_hero.json",
   "style": "loop_hero",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "l/nuclear_throne.png": {
   "game": "nuclear_throne",
   "config": "nuclear_throne.json",
   "style": "nuclear_throne",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "l/slay_the_spire.png": {
   "game": "slay_the_spire",
   "config": "slay_the_spire.json",
   "style": "slay_the_spire",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "l/slay_the_spire_2.png": {
   "game": "slay_the_spire_2",
   "config": "slay_the_spire_2.json",
   "style": "slay_the_spire_2",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "l/spelunky_classic.png": {
   "game": "spelunky_classic",
   "config": "spelunky_classic.json",
   "style": "spelunky_classic",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "m/20_minutes_till_dawn.png": {
   "game": "20_minutes_till_dawn",
   "config": "20_minutes_till_dawn.json",
   "style": "20_minutes_till_dawn",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "m/mewgenics.png": {
   "game": "mewgenics",
   "config": "mewgenics.json",
   "style": "mewgenics",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "m/uma_musume_pretty_derby.png": {
   "game": "uma_musume_pretty_derby",
   "config": "uma_musume_pretty_derby.json",
   "style": "uma_musume_pretty_derby",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "m/uma_musume_pretty_derby__pink.png": {
   "game": "uma_musume_pretty_derby",
   "config": "uma_musume_pretty_derby.json",
   "style": "uma_musume_pretty_derby",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "n/20_minutes_till_dawn.png": {
   "game": "20_minutes_till_dawn",
   "config": "20_minutes_till_dawn.json",
   "style": "20_minutes_till_dawn",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "n/20_minutes_till_dawn__small.png": {
   "game": "20_minutes_till_dawn",
   "config": "20_minutes_till_dawn_small.json",
   "style": "20_minutes_till_dawn_small",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "n/enter_the_gungeon.png": {
   "game": "enter_the_gungeon",
   "config": "enter_the_gungeon.json",
   "style": "enter_the_gungeon",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "n/enter_the_gungeon__2.png": {
   "game": "enter_the_gungeon",
   "config": "enter_the_gungeon.json",
   "style": "enter_the_gungeon",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "n/enter_the_gungeon__pink.png": {
   "game": "enter_the_gungeon",
   "config": "enter_the_gungeon.json",
   "style": "enter_the_gungeon__pink",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "n/everything_is_crab.png": {
   "game": "everything_is_crab",
   "config": "everything_is_crab.json",
   "style": "everything_is_crab",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "n/mewgenics.png": {
   "game": "mewgenics",
   "config": "mewgenics.json",
   "style": "mewgenics",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "n/nuclear_throne.png": {
   "game": "nuclear_throne",
   "config": "nuclear_throne.json",
   "style": "nuclear_throne",
-  "body_center": 0.252
+  "body_center": 0.252,
+  "body_height": 0.5039
  },
  "n/nuclear_throne__throne.png": {
   "game": "nuclear_throne",
   "config": "nuclear_throne.json",
   "style": "nuclear_throne__throne",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "n/risk_of_rain_2.png": {
   "game": "risk_of_rain_2",
   "config": "risk_of_rain_2.json",
   "style": "risk_of_rain_2",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "n/rounds.png": {
   "game": "rounds",
   "config": "rounds.json",
   "style": "rounds",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "n/spelunky_classic.png": {
   "game": "spelunky_classic",
   "config": "spelunky_classic.json",
   "style": "spelunky_classic",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "n/the_binding_of_isaac.png": {
   "game": "the_binding_of_isaac",
   "config": "the_binding_of_isaac_small.json",
   "style": "the_binding_of_isaac_small",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "o/balatro.png": {
   "game": "balatro",
   "config": "balatro.json",
   "style": "balatro",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "o/caves_of_qud.png": {
   "game": "caves_of_qud",
   "config": "caves_of_qud.json",
   "style": "caves_of_qud",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "o/enter_the_gungeon.png": {
   "game": "enter_the_gungeon",
   "config": "enter_the_gungeon.json",
   "style": "enter_the_gungeon",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "o/loop_hero.png": {
   "game": "loop_hero",
   "config": "loop_hero.json",
   "style": "loop_hero",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "o/loop_hero__2.png": {
   "game": "loop_hero",
   "config": "loop_hero.json",
   "style": "loop_hero",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "o/loop_hero__3.png": {
   "game": "loop_hero",
   "config": "loop_hero.json",
   "style": "loop_hero",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "o/nuclear_throne.png": {
   "game": "nuclear_throne",
   "config": "nuclear_throne.json",
   "style": "nuclear_throne",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "o/risk_of_rain_2.png": {
   "game": "risk_of_rain_2",
   "config": "risk_of_rain_2.json",
   "style": "risk_of_rain_2",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "o/rounds.png": {
   "game": "rounds",
   "config": "rounds.json",
   "style": "rounds",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "o/the_binding_of_isaac.png": {
   "game": "the_binding_of_isaac",
   "config": "the_binding_of_isaac_small.json",
   "style": "the_binding_of_isaac_small",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "p/loop_hero.png": {
   "game": "loop_hero",
   "config": "loop_hero.json",
   "style": "loop_hero",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "p/slay_the_spire.png": {
   "game": "slay_the_spire",
   "config": "slay_the_spire.json",
   "style": "slay_the_spire",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "p/slay_the_spire_2.png": {
   "game": "slay_the_spire_2",
   "config": "slay_the_spire_2.json",
   "style": "slay_the_spire_2",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "p/spelunky_classic.png": {
   "game": "spelunky_classic",
   "config": "spelunky_classic.json",
   "style": "spelunky_classic",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "p/uma_musume_pretty_derby.png": {
   "game": "uma_musume_pretty_derby",
   "config": "uma_musume_pretty_derby_line2.json",
   "style": "uma_musume_pretty_derby_line2",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "q/caves_of_qud.png": {
   "game": "caves_of_qud",
   "config": "caves_of_qud.json",
   "style": "caves_of_qud",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "r/balatro.png": {
   "game": "balatro",
   "config": "balatro.json",
   "style": "balatro",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "r/enter_the_gungeon__pink.png": {
   "game": "enter_the_gungeon",
   "config": "enter_the_gungeon.json",
   "style": "enter_the_gungeon__pink",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "r/everything_is_crab.png": {
   "game": "everything_is_crab",
   "config": "everything_is_crab.json",
   "style": "everything_is_crab",
-  "body_center": 0.8036
+  "body_center": 0.8036,
+  "body_height": 0.3344
  },
  "r/everything_is_crab__2.png": {
   "game": "everything_is_crab",
   "config": "everything_is_crab.json",
   "style": "everything_is_crab",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "r/loop_hero.png": {
   "game": "loop_hero",
   "config": "loop_hero.json",
   "style": "loop_hero",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "r/nuclear_throne.png": {
   "game": "nuclear_throne",
   "config": "nuclear_throne.json",
   "style": "nuclear_throne",
-  "body_center": 0.2512
+  "body_center": 0.2512,
+  "body_height": 0.5087
  },
  "r/nuclear_throne__throne.png": {
   "game": "nuclear_throne",
   "config": "nuclear_throne.json",
   "style": "nuclear_throne__throne",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "r/risk_of_rain_2.png": {
   "game": "risk_of_rain_2",
   "config": "risk_of_rain_2.json",
   "style": "risk_of_rain_2",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "r/risk_of_rain_2__2.png": {
   "game": "risk_of_rain_2",
   "config": "risk_of_rain_2.json",
   "style": "risk_of_rain_2",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "r/rounds.png": {
   "game": "rounds",
   "config": "rounds.json",
   "style": "rounds",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "r/slay_the_spire.png": {
   "game": "slay_the_spire",
   "config": "slay_the_spire.json",
   "style": "slay_the_spire",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "r/slay_the_spire_2.png": {
   "game": "slay_the_spire_2",
   "config": "slay_the_spire_2.json",
   "style": "slay_the_spire_2",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "r/uma_musume_pretty_derby.png": {
   "game": "uma_musume_pretty_derby",
   "config": "uma_musume_pretty_derby_line2.json",
   "style": "uma_musume_pretty_derby_line2",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "s/20_minutes_till_dawn.png": {
   "game": "20_minutes_till_dawn",
   "config": "20_minutes_till_dawn.json",
   "style": "20_minutes_till_dawn",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "s/caves_of_qud.png": {
   "game": "caves_of_qud",
   "config": "caves_of_qud.json",
   "style": "caves_of_qud",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "s/dead_cells.png": {
   "game": "dead_cells",
   "config": "dead_cells.json",
   "style": "dead_cells",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "s/everything_is_crab.png": {
   "game": "everything_is_crab",
   "config": "everything_is_crab.json",
   "style": "everything_is_crab",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "s/hades.png": {
   "game": "hades",
   "config": "hades.json",
   "style": "hades",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "s/hades_ii.png": {
   "game": "hades_ii",
   "config": "hades_ii.json",
   "style": "hades_ii",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "s/haste.png": {
   "game": "haste",
   "config": "haste.json",
   "style": "haste",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "s/mewgenics.png": {
   "game": "mewgenics",
   "config": "mewgenics.json",
   "style": "mewgenics",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "s/risk_of_rain_2.png": {
   "game": "risk_of_rain_2",
   "config": "risk_of_rain_2.json",
   "style": "risk_of_rain_2",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "s/rounds.png": {
   "game": "rounds",
   "config": "rounds.json",
   "style": "rounds",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "s/slay_the_spire.png": {
   "game": "slay_the_spire",
   "config": "slay_the_spire.json",
   "style": "slay_the_spire",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "s/slay_the_spire_2.png": {
   "game": "slay_the_spire_2",
   "config": "slay_the_spire_2.json",
   "style": "slay_the_spire_2",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "s/slay_the_spire_2__2.png": {
   "game": "slay_the_spire_2",
   "config": "slay_the_spire_2.json",
   "style": "slay_the_spire_2",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "s/slay_the_spire__2.png": {
   "game": "slay_the_spire",
   "config": "slay_the_spire.json",
   "style": "slay_the_spire",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "s/spelunky_classic.png": {
   "game": "spelunky_classic",
   "config": "spelunky_classic.json",
   "style": "spelunky_classic",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "s/the_binding_of_isaac.png": {
   "game": "the_binding_of_isaac",
   "config": "the_binding_of_isaac.json",
   "style": "the_binding_of_isaac",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "s/the_binding_of_isaac_rebirth.png": {
   "game": "the_binding_of_isaac_rebirth",
   "config": "the_binding_of_isaac_rebirth.json",
   "style": "the_binding_of_isaac_rebirth",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "s/uma_musume_pretty_derby.png": {
   "game": "uma_musume_pretty_derby",
   "config": "uma_musume_pretty_derby.json",
   "style": "uma_musume_pretty_derby",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "t/20_minutes_till_dawn.png": {
   "game": "20_minutes_till_dawn",
   "config": "20_minutes_till_dawn.json",
   "style": "20_minutes_till_dawn",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "t/20_minutes_till_dawn__small.png": {
   "game": "20_minutes_till_dawn",
   "config": "20_minutes_till_dawn_small.json",
   "style": "20_minutes_till_dawn_small",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "t/balatro.png": {
   "game": "balatro",
   "config": "balatro.json",
   "style": "balatro",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "t/enter_the_gungeon__pink.png": {
   "game": "enter_the_gungeon",
   "config": "enter_the_gungeon.json",
   "style": "enter_the_gungeon__pink",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "t/everything_is_crab.png": {
   "game": "everything_is_crab",
   "config": "everything_is_crab.json",
   "style": "everything_is_crab",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "t/haste.png": {
   "game": "haste",
   "config": "haste.json",
   "style": "haste",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "t/nuclear_throne.png": {
   "game": "nuclear_throne",
   "config": "nuclear_throne.json",
   "style": "nuclear_throne",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "t/slay_the_spire.png": {
   "game": "slay_the_spire",
   "config": "slay_the_spire.json",
   "style": "slay_the_spire",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "t/slay_the_spire_2.png": {
   "game": "slay_the_spire_2",
   "config": "slay_the_spire_2.json",
   "style": "slay_the_spire_2",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "t/the_binding_of_isaac.png": {
   "game": "the_binding_of_isaac",
   "config": "the_binding_of_isaac_small.json",
   "style": "the_binding_of_isaac_small",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "t/uma_musume_pretty_derby.png": {
   "game": "uma_musume_pretty_derby",
   "config": "uma_musume_pretty_derby_line2.json",
   "style": "uma_musume_pretty_derby_line2",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "u/20_minutes_till_dawn.png": {
   "game": "20_minutes_till_dawn",
   "config": "20_minutes_till_dawn.json",
   "style": "20_minutes_till_dawn",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "u/caves_of_qud.png": {
   "game": "caves_of_qud",
   "config": "caves_of_qud.json",
   "style": "caves_of_qud",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "u/enter_the_gungeon.png": {
   "game": "enter_the_gungeon",
   "config": "enter_the_gungeon.json",
   "style": "enter_the_gungeon",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "u/nuclear_throne.png": {
   "game": "nuclear_throne",
   "config": "nuclear_throne.json",
   "style": "nuclear_throne",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "u/rounds.png": {
   "game": "rounds",
   "config": "rounds.json",
   "style": "rounds",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "u/spelunky_classic.png": {
   "game": "spelunky_classic",
   "config": "spelunky_classic.json",
   "style": "spelunky_classic",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "u/uma_musume_pretty_derby.png": {
   "game": "uma_musume_pretty_derby",
   "config": "uma_musume_pretty_derby.json",
   "style": "uma_musume_pretty_derby",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "u/uma_musume_pretty_derby__pink.png": {
   "game": "uma_musume_pretty_derby",
   "config": "uma_musume_pretty_derby.json",
   "style": "uma_musume_pretty_derby",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "v/caves_of_qud.png": {
   "game": "caves_of_qud",
   "config": "caves_of_qud.json",
   "style": "caves_of_qud",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "v/everything_is_crab.png": {
   "game": "everything_is_crab",
   "config": "everything_is_crab.json",
   "style": "everything_is_crab",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "w/20_minutes_till_dawn.png": {
   "game": "20_minutes_till_dawn",
   "config": "20_minutes_till_dawn_small.json",
   "style": "20_minutes_till_dawn_small",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "w/mewgenics.png": {
   "game": "mewgenics",
   "config": "mewgenics.json",
   "style": "mewgenics",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "y/everything_is_crab.png": {
   "game": "everything_is_crab",
   "config": "everything_is_crab.json",
   "style": "everything_is_crab",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "y/slay_the_spire.png": {
   "game": "slay_the_spire",
   "config": "slay_the_spire.json",
   "style": "slay_the_spire",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "y/slay_the_spire_2.png": {
   "game": "slay_the_spire_2",
   "config": "slay_the_spire_2.json",
   "style": "slay_the_spire_2",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "y/spelunky_classic.png": {
   "game": "spelunky_classic",
   "config": "spelunky_classic.json",
   "style": "spelunky_classic",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  },
  "y/uma_musume_pretty_derby.png": {
   "game": "uma_musume_pretty_derby",
   "config": "uma_musume_pretty_derby_line2.json",
   "style": "uma_musume_pretty_derby_line2",
-  "body_center": 0.5
+  "body_center": 0.5,
+  "body_height": 1.0
  }
 }
