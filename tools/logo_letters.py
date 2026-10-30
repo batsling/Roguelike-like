@@ -101,7 +101,8 @@ so Godot never imports the source), is JSON:
                   for a rough inked outline (red Hades): "shape": "round",
                   "join": 0 (keep gaps split on purpose), "visible_face": true,
                   "face_colour": [r, g, b], "shape": "source" (with "max_brightness",
-                  "min_alpha", "edge_smooth", "min_width") takes the band's shape from the
+                  "min_alpha", "edge_smooth", "min_width", "max_width",
+                  "outline_open") takes the band's shape from the
                   logo's own outline, cleaned, "face_defringe": px recolours the face's rim from just inside,
                   "face_min_brightness": n recolours darker flecks on the face
                   (width 0: the face alone, no outline), "edge_soft": n and "edge_sharp": n set how soft the scaled
@@ -811,6 +812,15 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
                         # where the outline was shared with a neighbour (and so
                         # cut away), at least the logo's usual width all round
                         grown |= nd.distance_transform_edt(~whole) <= band_cfg["min_width"]
+                    if band_cfg.get("max_width"):
+                        # nor wider than the logo ever draws it: bits of a
+                        # neighbour's outline or the shadow stay out
+                        grown &= nd.distance_transform_edt(~whole) <= band_cfg["max_width"]
+                    if band_cfg.get("outline_open"):
+                        # small bumps and nicks along the outer edge, rounded off
+                        r_ = band_cfg["outline_open"]
+                        disk = (np.add.outer(np.arange(-r_, r_ + 1) ** 2, np.arange(-r_, r_ + 1) ** 2) <= r_ * r_)
+                        grown = nd.binary_closing(nd.binary_opening(grown, disk), disk) | whole
                     grown = nd.gaussian_filter(grown.astype(float), band_cfg.get("edge_smooth", 1.2)) > 0.5
                     # counters stay open: only fill holes the source outline filled
                     hole_open = nd.binary_fill_holes(whole | src_ol) & ~(whole | src_ol) & (a < band_cfg.get("min_alpha", 100))
