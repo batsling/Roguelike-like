@@ -45,6 +45,9 @@ rebuild: it keeps its own pixels and only gets the shadow.
 The config, beside its source logo in tools/logo_letters/ (tools/ is .gdignored,
 so Godot never imports the source), is JSON:
 
+    body          {piece: [y_top, y_bottom]} — source rows the letter itself fills,
+                  for a piece with something attached (an eye stalk, a knife,
+                  slime); the title centres it on the line by those rows
     styles        [variant, ...] — piece variants (the part after the dot) drawn
                   at another size than the rest of the logo; each is sized as a
                   line of its own in images2.0/custom/title/index.json
@@ -596,6 +599,7 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
             background = nd.binary_propagation(background, mask=glowish | background)
 
     written = []
+    body_centers = {}
     out_dir_game = cfg["game"]
     for i, n in enumerate(names):
         mine = owner == i
@@ -1018,6 +1022,11 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
         ys, xs = np.where(out[..., 3] > 1)
         x0, x1 = max(xs.min() - 2, 0), min(xs.max() + 3, W)
         y0, y1 = max(ys.min() - 2, 0), min(ys.max() + 3, H)
+        # where the letter itself sits in the piece, from 0 (top) to 1: a
+        # piece with something attached above or below (an eye stalk, a
+        # knife, slime) is centred on the line by its letter, not its whole
+        bd = cfg.get("body", {}).get(n)
+        body_centers[n] = ((sum(bd) / 2 - y0) / (y1 - y0)) if bd else 0.5
         # "g.2" is a second G from the same logo: title/g/<game>__2.png. Two
         # underscores, never one: slay_the_spire's second e was once
         # e/slay_the_spire_2.png, the very file slay_the_spire_2's e is.
@@ -1094,6 +1103,7 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
             # pieces drawn at another size in the same logo (Gungeon's pink
             # line, Nuclear Throne's THRONE) are listed as styles of their own
             "style": cfg_path.stem + ("__" + variant_ if variant_ in cfg.get("styles", []) else ""),
+            "body_center": round(body_centers[n_], 4),
         }
     index_path.write_text(json.dumps(dict(sorted(index.items())), indent=1) + "\n")
     if preview:
