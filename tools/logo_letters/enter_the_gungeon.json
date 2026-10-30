@@ -21,6 +21,9 @@
   "smooth": false,
   "shadow": false,
   "cut": {
-    "reach": {"*": 5, "e.pink": 1, "n.pink": 1, "t.pink": 1, "r.pink": 1, "h.pink": 1}
+    "reach": {"*": 5, "e.pink": 1, "n.pink": 1, "t.pink": 1, "r.pink": 1, "h.pink": 1},
+    "band": {"colour": [16, 16, 20], "width": 5, "close": 3, "open": 1,
+             "skip": ["e.pink", "n.pink", "t.pink", "r.pink", "h.pink"]},
+    "hard_edge": ["e.pink", "n.pink", "t.pink", "r.pink", "h.pink"]
   }
 }

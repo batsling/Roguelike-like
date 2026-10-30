@@ -85,7 +85,13 @@ so Godot never imports the source), is JSON:
                   "erase": [{"piece": name, "polygon": [[x, y], ...],
                   "colour": [r, g, b], "tolerance": n}] — cut away by hand
                   (bits of the background's outline); with a colour, only that
-                  colour inside the polygon goes (a mark, not the ink round it)}
+                  colour inside the polygon goes (a mark, not the ink round it);
+                  "band": {"colour": [r, g, b], "width": px, "close": n,
+                  "open": n, "skip": [pieces]} — for letters set in a plate:
+                  the letter tidied into one shape, with an even band of the
+                  plate's colour round it instead of the plate as cut;
+                  "hard_edge": [pieces] — pixel-font letters, every pixel fully
+                  on or off}
     smooth        default true. false keeps the fill's own edge, spikes and all
                   (Hades' thorns), instead of smoothing it and opening/closing it
     shadow        default true (measured and re-cast). false for a logo whose
@@ -392,6 +398,35 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
             keep &= np.isin(lab_k, np.unique(lab_k[f & (lab_k > 0)]))
             rgb[keep] = A[keep][:, :3]
             al[keep] = a[keep] / 255
+            if n in cut.get("hard_edge", []):
+                # pixel-font letters: each pixel fully on or off, no soft fringe
+                on = al >= 0.5
+                al[:] = on
+                rgb[~on] = 0
+            band_cfg = cut.get("band")
+            if band_cfg and n not in band_cfg.get("skip", []):
+                # A plate logo (Gungeon): the letter's edge is the plate showing
+                # round it. Rather than whatever plate falls within reach (which
+                # follows every crack that touches the edge and leaves blotches),
+                # the letter is tidied into one clean shape and given an even
+                # band of the plate's colour, with the logo's 45-degree corners.
+                st4 = nd.generate_binary_structure(2, 1)
+                clean = nd.binary_closing(f, st4, iterations=band_cfg.get("close", 3))
+                clean = nd.binary_opening(clean, st4, iterations=band_cfg.get("open", 1))
+                grown = clean.copy()
+                for k in range(band_cfg.get("width", 5)):  # square, cross, square...: an octagon
+                    grown = nd.binary_dilation(grown, structure=np.ones((3, 3)) if k % 2 == 0 else st4)
+                # where the plate line between a letter's parts meets its side,
+                # the two parts' corners leave a V in the band: closed up
+                grown = nd.binary_closing(grown, st4, iterations=band_cfg.get("smooth_edge", 3),
+                                          border_value=0) | grown
+                rgb[:] = 0
+                al[:] = 0
+                rgb[clean] = A[clean][:, :3]
+                al[clean] = 1
+                ring = grown & ~clean
+                rgb[ring] = band_cfg["colour"]
+                al[ring] = 1
         else:
             fs = nd.gaussian_filter(f.astype(float), FILL_SMOOTH_SIGMA) > 0.5 if smooth else f
             ds = nd.distance_transform_edt(~fs)
