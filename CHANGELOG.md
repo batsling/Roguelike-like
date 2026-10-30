@@ -11,6 +11,22 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The main menu's title is spelled in cut logo letters, over drifting bats.**
+  "Roguelike-like" and "The Search for the Amulet of Nivlac" are now built from
+  the ~200 letters cut out of 17 roguelikes' logos, a different mix every launch
+  (`TitleLetters.gd`; a word avoids reusing a game while another is left). Every
+  letter is sized by its own letter height and centred, across and down, by its
+  own letter box from `index.json`, so a glow, a shadow or an attached knife
+  never shifts it; what hangs off a letter overflows rather than growing the
+  row, and the row asks for no width, so the buttons stay 400px. Half the
+  launches put a matching pair of decorations at either end: the crab's claws,
+  its legs, or Uma Musume's runner and her speed dash (cut apart into a left and
+  a right piece). The scene's two Labels stay as the editor preview and the
+  fallback. Behind it, `shaders/menu_bats.gdshader` repeats one bat on the
+  owner's pattern's lattice in two dark greys, drifting from top right to bottom
+  left. `test_screens_fit` lets a title letter's overhang run past the canvas
+  (the letters' own line is still measured).
+
 - **28 Oct evening upload: 4 new games, 16 connections; a better "Game to
   buy" table; docs caught up.** Lucky Hunter, Poker Quest, Tokoyo: The Tower
   of Perpetuity and Wretch: Divine Ascent are on the chart with their proof

@@ -1,0 +1,39 @@
+{
+  "game": "haste",
+  "source": "haste.png",
+  "pieces": {
+    "h": [
+      269,
+      149
+    ],
+    "a": [
+      389,
+      203
+    ],
+    "s": [
+      604,
+      70
+    ],
+    "t": [
+      914,
+      70
+    ],
+    "e": [
+      1072,
+      140
+    ]
+  },
+  "fill": {
+    "min_alpha": 1,
+    "min_brightness": -1,
+    "max_brightness": 255
+  },
+  "adopt_strays": false,
+  "smooth": false,
+  "shadow": false,
+  "cut": {
+    "reach": 0,
+    "silhouette": true,
+    "scale": 2
+  }
+}

@@ -31,6 +31,14 @@ func _canvas() -> Vector2:
 # is what one is for, and its children are legitimately outside it. The
 # ScrollContainer itself is measured on the way past, so a scroll region that is
 # itself off the page is still caught.
+#
+# A cut title letter's PICTURE is skipped too (TitleLetters): the letter's own
+# line is measured (the row and its `ink`), but what hangs off a letter — the
+# Repentance knife, the crab's eye stalk — is allowed past the edge, and with the
+# save list open it can be.
+func _overhang(c: Control) -> bool:
+	return c.get_parent() != null and c.get_parent().get_parent() is TitleLetters
+
 func _overflow(root: Node) -> Vector2:
 	var box := Rect2(Vector2.ZERO, _canvas())
 	var worst := Vector2(-INF, -INF)
@@ -39,7 +47,7 @@ func _overflow(root: Node) -> Vector2:
 		var n: Node = stack.pop_back()
 		if n is Control:
 			var c: Control = n
-			if not c.is_visible_in_tree():
+			if not c.is_visible_in_tree() or _overhang(c):
 				continue
 			if c.size != Vector2.ZERO:
 				var r: Rect2 = c.get_global_rect()
@@ -62,7 +70,7 @@ func _worst_control(root: Node) -> String:
 		var n: Node = stack.pop_back()
 		if n is Control:
 			var c: Control = n
-			if not c.is_visible_in_tree():
+			if not c.is_visible_in_tree() or _overhang(c):
 				continue
 			if c.size != Vector2.ZERO:
 				var r: Rect2 = c.get_global_rect()

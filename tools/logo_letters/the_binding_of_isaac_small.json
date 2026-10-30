@@ -1,0 +1,74 @@
+{
+  "game": "the_binding_of_isaac",
+  "source": "the_binding_of_isaac.webp",
+  "adopt_strays": false,
+  "smooth": false,
+  "shadow": false,
+  "pieces": {
+    "t": [
+      124,
+      320
+    ],
+    "h": [
+      198,
+      320
+    ],
+    "e.small": [
+      276,
+      320
+    ],
+    "b": [
+      400,
+      320
+    ],
+    "i.small": [
+      474,
+      320
+    ],
+    "n": [
+      548,
+      320
+    ],
+    "d": [
+      626,
+      320
+    ],
+    "g": [
+      852,
+      320
+    ],
+    "o": [
+      975,
+      320
+    ],
+    "f": [
+      1053,
+      320
+    ]
+  },
+  "fill": {
+    "min_alpha": 250,
+    "min_brightness": -1,
+    "max_brightness": 100,
+    "rows": [
+      300,
+      390
+    ]
+  },
+  "cut": {
+    "reach": 1,
+    "scale": 3,
+    "hard_edge": [
+      "t",
+      "h",
+      "e.small",
+      "b",
+      "i.small",
+      "n",
+      "d",
+      "g",
+      "o",
+      "f"
+    ]
+  }
+}

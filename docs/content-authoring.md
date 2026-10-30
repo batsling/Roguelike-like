@@ -57,6 +57,155 @@ To add or replace art:
 > (`images/items/`, `images/characters/`) went with its data on 25 Oct 2026, and
 > the old HTML build with it.
 
+### Title letters (cut from real logos)
+
+The main menu's title and subtitle are spelled out of letters cut from real
+roguelikes' logos, with each place's game drawn again every time the game opens
+(`scripts/menu/TitleLetters.gd`, tests `test_title_letters.gd`). The letters live one folder per letter, one file per game:
+`images2.0/custom/title/<letter>/<game id>.png` (`r/balatro.png`). A piece that
+is not a letter gets a name of its own; `dash` is the hyphen. So far: Balatro
+(B A L T R O), Hades II (H A D E S), Hades (H A D E S), Enter the Gungeon
+(G U N G E O N, plus the pink E N T R H of "Enter the") and Mewgenics
+(M E W G E N I C S, the I with its paw print for a dot, and its "!" as
+`exclaim/`), and Uma Musume Pretty Derby (U M A S E and a pink U and M from
+UMAMUSUME, P R E T Y D B from PRETTY DERBY — its E as `e/<id>__derby.png` — and
+the running girl and, cut apart from her, her rightmost speed dash with its
+sparkles, as a pair of DECORATIONS, below), and The
+Binding of Isaac (the original, not Rebirth: I S A A C, each block with its
+whole 3D side rebuilt by sweeping its face along the logo's depth (`extrude`),
+and T H E B I N D G O F from the small line, its E and I as `__small`), and
+Isaac's Repentance logo, filed under Rebirth's id (only ISAAC: the I keeps the
+knife stabbed through it and the blood, `loose` so the flying drops stay; each
+letter keeps its dark outline and 3D side (`outline_max`, `side`, `close_dark`)
+and gets an even red glow; its blood is laid over the glow exactly as drawn,
+`as_drawn`), and Nuclear Throne (N U C L E A R in green, T H R O N E in metal,
+its R N E as `__throne`; no backing, the N and R keep their slime; a straight
+cut, as each letter sits apart in the black), and Slay the Spire (S l a y t h e
+S p i r e, both S's and e's as `__2`; the blue flame is the i's dot; each letter
+is the gold alone: no grey outline and no shadow, by the owner's choice, with
+the dark flecks the outline left on the gold recoloured from the gold round
+them, `face_min_brightness`), and Slay the Spire 2 (the same letters as the
+first, its SPIRE in capitals, the flame the I's dot, the teal II left out; each
+letter keeps the logo's shadow, re-cast from its own shape with
+`recast_shadow` so a close neighbour never clips it), and Loop Hero (L O O P
+H E R O, all three O's as `o`, `o__2`, `o__3`; pixel art, so the face is its exact
+palette colours, given an even one-pixel black edge (`pixel_outline`) where the
+logo's own was broken by the disc behind, and scaled 8x as sharp pixels), and 20
+Minutes Till Dawn (M I N U T E S cut through the middle as drawn, and T I L D A W N
+with the cream stripe, its T I N as `__small`; both sharp pixels). Digits have
+folders of their own: `2/` and `0/` from 20 Minutes Till Dawn, and `2/` from Slay
+the Spire 2's teal II. Everything is Crab gives E v e r y t h i n g, i s and C r a
+b (its r and h keep the crab's eye stalks growing out of them; each letter gets
+its own full black outline, `min_width` rebuilding it where it was shared), and
+the first DECORATIONS: `decor_left/` and `decor_right/` hold the big claws and
+the leg pairs (`__legs`), shown at the far left and right of the title at random
+(half the launches). Decorations are always a matching PAIR, by file stem: the
+two claws, the two leg pairs, or Uma Musume's girl (`uma_musume_pretty_derby_girl.json`)
+and her dash (`uma_musume_pretty_derby_decor.json`) — so a new decoration needs
+both sides under one name. Spelunky Classic gives S P E L U N K Y (the first K): its
+source is a blurry 1920x1080 screenshot of pixel art, so `pixel_grid` rebuilds
+the logo pixel by pixel on the measured grid (11.707px a pixel), each snapped to
+the logo's three-colour palette, and the letters come out as sharp 12x blocks. Haste gives H A S T E, solid black
+letters cut as they are and scaled 2x as `silhouette`s. Dead Cells gives D E A D
+C E L L S (second D, E and L as `__2`) and its flame, droplet and all, as a
+`dash`; each keeps the logo's cyan glow, re-cast from its own shape
+(`recast_shadow` with no offset, fitted to the logo). Rounds gives R O U N D S,
+cut as drawn (the O is the round character, its face see-through as the logo
+draws it), 2x as `silhouette`s. Risk of Rain 2 gives R I S K, O F, R A I N (second
+R and I as `__2`) and its cream 2 into `2/`; only the text, the planets and
+streaks behind it left out, each letter with an even dark slate outline. Caves of
+Qud gives C A V E S, O F, Q U D (the V and E touch and are split between them;
+the red bars round OF are left out), 2x as `silhouette`s. A logo can
+take more than one config when its parts are built differently: Uma Musume has
+four, one per line, one for the girl and one for her dash.
+`mewgenics.json` is the simple case: black letters that do not touch, cut as
+they are (`max_brightness` fill) and scaled 2x as one-colour `silhouette`s. Two copies of one letter from the same logo
+are `g/<game id>.png` and `g/<game id>__2.png` (a piece named `g.2` in the
+config) — two underscores, never one, since a game id can itself end in a digit
+(Slay the Spire's second e was once `e/slay_the_spire_2.png`, the very file Slay
+the Spire 2's e is, and each run of one overwrote the other); a logo's exact repeats (Gungeon's pink E, T) are left out.
+A small source shows blurry when the title draws it large, so Gungeon's config
+sets `"scale": 3`: its letters are written at three times the logo's size, the
+letter shapes and their black band redrawn crisp and the insides scaled pixel
+for pixel. Prefer the biggest source there is; `scale` is for when there is none.
+
+They are made by `tools/logo_letters.py`, never by hand, because a logo's letters
+are not separate drawings: they share one outline, overlap, and sit on one drop
+shadow. The script finds each letter by its light fill, rebuilds an even outline
+round it in the logo's own shades, paints back anything a neighbour hid, and
+re-casts the logo's shadow per letter (measured off the logo itself). Its
+docstring has the detail. To add a logo:
+
+1. Put the logo in `tools/logo_letters/<game id>.<ext>` (transparent background,
+   as large as can be found — a Steam library logo or a press kit). `tools/` is
+   `.gdignore`d, so Godot never imports it.
+2. Copy `tools/logo_letters/balatro.json` to `<game id>.json` and give each piece
+   a point inside its fill. Two letters whose fills run together need a `splits`
+   line between them; a part one letter hid needs a `restore` polygon. Balatro
+   has one of each (its T crossbar is drawn over the R's top-left corner), and
+   `ignore`s its ace.
+3. `python3 tools/logo_letters.py tools/logo_letters/<game id>.json --preview <png>`
+   (needs `pip install numpy scipy pillow`) and look at the preview on magenta,
+   which shows any stray pixel. Commit the config, the source, the PNGs and
+   `images2.0/custom/title/index.json`.
+
+**The index is what centres the title.** A cut letter is a PNG with whatever the
+logo drew round it (a glow on every side, a shadow pushed one way, an eye stalk,
+a knife), so the picture's middle is not the letter's. The script records each
+piece's LETTER BOX in `index.json` — `body_center` / `body_height` down,
+`body_center_x` / `body_width` across, fractions of the PNG — measured off the
+letter's face (its fill), so glow, shadow and outline never move it. The menu
+scales every letter by one factor so its own height is the line's, centres it
+on the line and in its own slot by that box, and lets the rest overflow. A
+piece with something attached above or below sets its rows by hand in the
+config (`"body": {"h": [y0, y1]}`, source pixels: the crab's h and r, the
+Repentance I, Nuclear Throne's slimed N and R); its width is then measured over
+those rows only, so a stalk or a drip off to one side does not pull the
+middle. `test_title_letters.gd` reads every PNG back and fails if a box does not
+hug its letter, so a stale index is caught.
+
+The defaults suit a light fill in a dark outline over a soft drop shadow
+(Balatro). `hades_ii.json` is the other worked example: white letters in a
+hand-inked black outline with a glow, thorns that must not be smoothed away, and
+a green II behind that has to go. It is cut, not repainted (`"cut"`): every pixel
+kept is the logo's own. Each letter takes what the logo drew near it on its own
+side of the line between letters; the II is found as the big regions of its
+green and followed out through its glow (never across ink), and the few bits of
+the II's rock outlines that touch a letter are cut away by hand (`erase`
+polygons). Check a cut like this by putting the letters back where they were and
+comparing with the source. A logo with dark letters and no outline at all would
+need more than the script does today.
+
+**How every logo is cut — the owner's standing instructions** (each line is a
+correction they made along the way, so none of it is up for re-deciding):
+
+- **Cut, never repaint.** Every pixel is the logo's own (`"cut"`). Colour-picking
+  round a letter ("magic wand") lost spike detail and left messy retouches.
+  Repainting is only for a part another letter hid (`restore`), and then in the
+  logo's own face and outline colours.
+- **Keep every spike and detail as drawn**; never smooth a letter's edge.
+- **Nothing that is not the letter**: no background shape (Hades II's II), no
+  bits of a neighbour, no streak ends running past the letter, no spatter, no
+  loose flecks (`min_part`), no hole or loop a cut accidentally closes.
+- **Each letter whole.** A part one letter drew over another is rebuilt
+  (`restore`); a cut end gets the logo's outline round it.
+- **Clean pixels.** Check on magenta zoomed in, and count each image's separate
+  parts: a letter is one shape unless the logo itself splits it (red Hades'
+  slash). Pixel-font letters are fully on or off (`hard_edge`).
+- **Sharp at title size.** A letter only ~200px tall goes blurry when drawn
+  large: find a bigger source, or set `scale` so the shapes are redrawn crisp.
+- **Leave out a logo's exact repeats**; keep letters that differ (Gungeon's two
+  G's have different cracks).
+- **Ask** before deciding anything about the letters themselves: keep a slash or
+  mend it, keep a spike, keep spatter, which of two overlapping letters is in
+  front.
+
+`hades.json` (the red Hades logo) shows the most of these at once: `assign`
+moves the A's middle band out of the D, `restore` rebuilds the D's stem and
+serif behind the A's leg and caps the A's band where its slash streak is cut
+off, `despeckle` fills red flecks on the white faces, `min_part` drops loose
+spatter, and `"scale": 2` redraws it in two tones, face and outline.
+
 ## The spreadsheet and the generators
 
 `tools/Roguelikes.xlsx` is the **design source of truth** for bulk content. The

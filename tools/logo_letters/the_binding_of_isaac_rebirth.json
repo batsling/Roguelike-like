@@ -1,0 +1,169 @@
+{
+  "game": "the_binding_of_isaac_rebirth",
+  "source": "the_binding_of_isaac_rebirth.png",
+  "pieces": {
+    "i": [
+      [
+        60,
+        200
+      ],
+      [
+        162,
+        246
+      ]
+    ],
+    "s": [
+      300,
+      200
+    ],
+    "a": [
+      460,
+      200
+    ],
+    "a.2": [
+      640,
+      200
+    ],
+    "c": [
+      [
+        820,
+        200
+      ],
+      [
+        869,
+        206
+      ],
+      [
+        892,
+        296
+      ]
+    ]
+  },
+  "fill": {
+    "min_alpha": 200,
+    "min_brightness": 60,
+    "rows": [
+      170,
+      320
+    ]
+  },
+  "extra_ink": [
+    {
+      "piece": "i",
+      "clear": 0,
+      "polygon": [
+        [
+          70,
+          0
+        ],
+        [
+          215,
+          0
+        ],
+        [
+          215,
+          178
+        ],
+        [
+          70,
+          178
+        ]
+      ]
+    },
+    {
+      "piece": "i",
+      "clear": 0,
+      "polygon": [
+        [
+          100,
+          315
+        ],
+        [
+          192,
+          315
+        ],
+        [
+          192,
+          344
+        ],
+        [
+          100,
+          344
+        ]
+      ]
+    }
+  ],
+  "adopt_strays": false,
+  "smooth": false,
+  "shadow": false,
+  "cut": {
+    "reach": 8,
+    "outline_max": 60,
+    "shared_outline": [
+      "s",
+      "a",
+      "a.2",
+      "c"
+    ],
+    "side": {
+      "dy": 24
+    },
+    "close_dark": 6,
+    "scale": 4,
+    "band": {
+      "colour": [
+        215,
+        6,
+        6
+      ],
+      "width": 8,
+      "shape": "round",
+      "join": 0,
+      "close": 0,
+      "open": 0,
+      "whole_letter": true,
+      "hole_colour": [
+        0,
+        0,
+        0
+      ]
+    },
+    "as_drawn": [
+      {
+        "piece": "i",
+        "polygon": [
+          [
+            0,
+            344
+          ],
+          [
+            200,
+            344
+          ],
+          [
+            200,
+            360
+          ],
+          [
+            250,
+            360
+          ],
+          [
+            250,
+            521
+          ],
+          [
+            0,
+            521
+          ]
+        ]
+      }
+    ]
+  },
+  "body": {
+    "i": [
+      175,
+      318
+    ]
+  }
+}

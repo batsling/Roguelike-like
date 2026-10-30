@@ -1,0 +1,165 @@
+{
+  "game": "enter_the_gungeon",
+  "source": "enter_the_gungeon.png",
+  "pieces": {
+    "g": [
+      [
+        80,
+        120
+      ],
+      [
+        120,
+        170
+      ],
+      [
+        80,
+        240
+      ]
+    ],
+    "u": [
+      [
+        210,
+        120
+      ],
+      [
+        210,
+        240
+      ]
+    ],
+    "n": [
+      [
+        330,
+        120
+      ],
+      [
+        330,
+        240
+      ]
+    ],
+    "g.2": [
+      [
+        450,
+        120
+      ],
+      [
+        490,
+        170
+      ],
+      [
+        450,
+        240
+      ]
+    ],
+    "e": [
+      [
+        570,
+        110
+      ],
+      [
+        570,
+        170
+      ],
+      [
+        570,
+        240
+      ]
+    ],
+    "o": [
+      [
+        700,
+        120
+      ],
+      [
+        700,
+        240
+      ]
+    ],
+    "n.2": [
+      [
+        820,
+        120
+      ],
+      [
+        820,
+        240
+      ]
+    ],
+    "e.pink": [
+      294,
+      38
+    ],
+    "n.pink": [
+      345,
+      38
+    ],
+    "t.pink": [
+      384,
+      35
+    ],
+    "r.pink": [
+      473,
+      38
+    ],
+    "h.pink": [
+      565,
+      38
+    ]
+  },
+  "fill": {
+    "min_alpha": 128,
+    "not_colour": [
+      16,
+      16,
+      20
+    ],
+    "not_tolerance": 14,
+    "close": 2,
+    "close_region": [
+      0,
+      70,
+      912,
+      296
+    ]
+  },
+  "adopt_strays": false,
+  "smooth": false,
+  "shadow": false,
+  "cut": {
+    "reach": {
+      "*": 5,
+      "e.pink": 1,
+      "n.pink": 1,
+      "t.pink": 1,
+      "r.pink": 1,
+      "h.pink": 1
+    },
+    "band": {
+      "colour": [
+        16,
+        16,
+        20
+      ],
+      "width": 5,
+      "close": 3,
+      "open": 1,
+      "skip": [
+        "e.pink",
+        "n.pink",
+        "t.pink",
+        "r.pink",
+        "h.pink"
+      ]
+    },
+    "hard_edge": [
+      "e.pink",
+      "n.pink",
+      "t.pink",
+      "r.pink",
+      "h.pink"
+    ],
+    "scale": 3
+  },
+  "styles": [
+    "pink"
+  ]
+}

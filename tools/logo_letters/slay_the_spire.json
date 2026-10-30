@@ -1,0 +1,91 @@
+{
+  "game": "slay_the_spire",
+  "source": "slay_the_spire.png",
+  "pieces": {
+    "s": [
+      205,
+      199
+    ],
+    "l": [
+      285,
+      166
+    ],
+    "a": [
+      351,
+      237
+    ],
+    "y": [
+      401,
+      256
+    ],
+    "t": [
+      515,
+      284
+    ],
+    "h": [
+      548,
+      287
+    ],
+    "e": [
+      593,
+      296
+    ],
+    "s.2": [
+      331,
+      429
+    ],
+    "p": [
+      371,
+      449
+    ],
+    "i": [
+      [
+        452,
+        449
+      ],
+      [
+        450,
+        338
+      ],
+      [
+        439,
+        307
+      ]
+    ],
+    "r": [
+      495,
+      392
+    ],
+    "e.2": [
+      556,
+      407
+    ]
+  },
+  "fill": {
+    "min_alpha": 200,
+    "min_brightness": 150
+  },
+  "adopt_strays": false,
+  "smooth": false,
+  "shadow": false,
+  "cut": {
+    "reach": 0,
+    "scale": 4,
+    "band": {
+      "colour": [
+        0,
+        0,
+        0
+      ],
+      "shape": "round",
+      "width": 0,
+      "join": 0,
+      "close": 0,
+      "open": 0,
+      "smooth": 0.8,
+      "upscale_soft": 2.6,
+      "face_defringe": 2,
+      "face_min_brightness": 185
+    }
+  }
+}

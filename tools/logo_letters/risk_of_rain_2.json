@@ -1,0 +1,77 @@
+{
+  "game": "risk_of_rain_2",
+  "source": "risk_of_rain_2.png",
+  "pieces": {
+    "r": [
+      243,
+      167
+    ],
+    "i": [
+      338,
+      126
+    ],
+    "s": [
+      489,
+      164
+    ],
+    "k": [
+      533,
+      161
+    ],
+    "o": [
+      304,
+      230
+    ],
+    "f": [
+      358,
+      246
+    ],
+    "r.2": [
+      474,
+      277
+    ],
+    "a": [
+      535,
+      272
+    ],
+    "i.2": [
+      685,
+      237
+    ],
+    "n": [
+      767,
+      243
+    ],
+    "2": [
+      959,
+      347
+    ]
+  },
+  "fill": {
+    "min_alpha": 200,
+    "min_brightness": -1,
+    "min_channel": 170
+  },
+  "adopt_strays": false,
+  "smooth": false,
+  "shadow": false,
+  "cut": {
+    "reach": 0,
+    "scale": 3,
+    "band": {
+      "colour": [
+        52,
+        60,
+        82
+      ],
+      "width": 5,
+      "shape": "round",
+      "join": 0,
+      "close": 1,
+      "open": 0,
+      "upscale_soft": 2.2,
+      "edge_soft": 0.7,
+      "edge_sharp": 4.0
+    }
+  }
+}

@@ -1,0 +1,158 @@
+{
+  "game": "everything_is_crab",
+  "source": "everything_is_crab.png",
+  "pieces": {
+    "e": [
+      324,
+      222
+    ],
+    "v": [
+      402,
+      320
+    ],
+    "e.2": [
+      456,
+      348
+    ],
+    "r": [
+      519,
+      288
+    ],
+    "y": [
+      579,
+      276
+    ],
+    "t": [
+      639,
+      295
+    ],
+    "h": [
+      726,
+      294
+    ],
+    "i": [
+      [
+        783,
+        272
+      ],
+      [
+        787,
+        234
+      ]
+    ],
+    "n": [
+      860,
+      302
+    ],
+    "g": [
+      938,
+      416
+    ],
+    "i.2": [
+      [
+        591,
+        422
+      ],
+      [
+        589,
+        382
+      ]
+    ],
+    "s": [
+      654,
+      437
+    ],
+    "c": [
+      445,
+      605
+    ],
+    "r.2": [
+      534,
+      529
+    ],
+    "a": [
+      707,
+      537
+    ],
+    "b": [
+      798,
+      604
+    ],
+    "decor_left": [
+      250,
+      348
+    ],
+    "decor_right": [
+      1029,
+      336
+    ],
+    "decor_left.legs": [
+      [
+        283,
+        576
+      ],
+      [
+        314,
+        641
+      ]
+    ],
+    "decor_right.legs": [
+      [
+        957,
+        572
+      ],
+      [
+        926,
+        638
+      ]
+    ]
+  },
+  "fill": {
+    "min_alpha": 200,
+    "min_brightness": 70,
+    "exclude_white": 245,
+    "exclude_grey": {
+      "spread": 25,
+      "below": 215
+    }
+  },
+  "adopt_strays": false,
+  "smooth": false,
+  "shadow": false,
+  "cut": {
+    "reach": 40,
+    "scale": 3,
+    "band": {
+      "colour": [
+        27,
+        22,
+        18
+      ],
+      "shape": "source",
+      "max_brightness": 70,
+      "min_alpha": 127,
+      "edge_smooth": 2.5,
+      "min_width": 11,
+      "join": 0,
+      "close": 3,
+      "open": 0,
+      "smooth": 0.6,
+      "upscale_soft": 2.2,
+      "edge_soft": 0.7,
+      "edge_sharp": 4.0,
+      "max_width": 16,
+      "outline_open": 5,
+      "fill_small_holes": 200
+    }
+  },
+  "body": {
+    "h": [
+      262,
+      375
+    ],
+    "r": [
+      262,
+      365
+    ]
+  }
+}
