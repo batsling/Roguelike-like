@@ -124,7 +124,8 @@ so Godot never imports the source), is JSON:
                   drawn over, rebuilt in "fill_colour" with an outline of
                   "outline_width" in "outline_colour"}
                   "min_part": px drops loose flecks smaller than that;
-                  "silhouette": true scales one-colour letters with a clean edge
+                  "silhouette": true scales letters with a clean edge;
+                  "keep_small_holes": px keeps dark marks inside a letter
     assign        [{"from": piece, "to": piece, "polygon": [[x, y], ...]}] —
                   fill inside the polygon moved from one piece to another
     smooth        default true. false keeps the fill's own edge, spikes and all
@@ -566,6 +567,14 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
                 if ex["piece"] == n and ex.get("loose"):
                     # drops that fly free of the letter (Repentance's blood) kept too
                     keep |= _polygon_mask((H, W), ex["polygon"]) & (a > 0) & ~background
+            if cut.get("keep_small_holes"):
+                # dark marks drawn inside a letter (rivets, bevel lines) stay;
+                # a real counter, bigger, stays see-through
+                holes = nd.binary_fill_holes(keep) & ~keep
+                lab_h, nh = nd.label(holes)
+                if nh:
+                    sizes = nd.sum(holes, lab_h, range(1, nh + 1))
+                    keep |= np.isin(lab_h, 1 + np.flatnonzero(sizes <= cut["keep_small_holes"]))
             rgb[keep] = A[keep][:, :3]
             al[keep] = a[keep] / 255
             rgb[painted] = fill_colour
