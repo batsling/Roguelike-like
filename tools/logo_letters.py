@@ -48,9 +48,13 @@ so Godot never imports the source), is JSON:
     game          the game's id in data/games/ — the file name every piece gets
     source        the logo, transparent background, as big as can be found
     pieces        {name: [x, y]} — a point inside each piece's fill, in source
-                  pixels (the nearest fill pixel is used, so near is enough);
+                  pixels. The name is the letter; "g.2" is a second G from the
+                  same logo (title/g/<game>_2.png). The nearest fill pixel
+                  is used, so near is enough;
                   [[x, y], ...] for a piece whose fill is in several parts
     ignore        [[x, y], ...] — fill to leave out entirely (Balatro's ace)
+    adopt_strays  default true: fill that is no piece's joins the nearest one.
+                  false when that fill is whole letters left out on purpose
     keep_original names of pieces that keep their own pixels (cards, icons)
     splits        [{"pieces": [upper, lower], "lower": name, "x_min": x,
                     "line": [[x, y], ...]}] — two pieces whose fills touch:
@@ -67,7 +71,10 @@ so Godot never imports the source), is JSON:
     fill          optional {"min_alpha": 200, "min_brightness": 140,
                   "min_channel": n} — what counts as fill. Defaults suit a light
                   fill in a dark outline; min_channel keeps a coloured glow out
-                  of a white fill
+                  of a white fill; "not_colour": [r, g, b] (with
+                  "not_tolerance") makes fill everything that is not the plate
+                  the letters sit on; "close": n with "close_region": [x0, y0,
+                  x1, y1] shuts cracks that cross a letter
     cut           scissors instead of paint: every pixel kept is the logo's own.
                   {"reach": px or {piece: px, "*": px} — how far from its fill a
                   piece reaches; "background": {"colour": [r, g, b],
@@ -130,6 +137,16 @@ def _fill_mask(A: np.ndarray, cfg: dict) -> np.ndarray:
     m = (A[..., 3] > f.get("min_alpha", 200)) & (A[..., :3].max(-1) > f.get("min_brightness", 140))
     if "min_channel" in f:  # white fills: every channel high, so a coloured glow is not fill
         m &= A[..., :3].min(-1) > f["min_channel"]
+    if "not_colour" in f:  # fill is anything that is not the plate the letters sit on
+        m = (A[..., 3] > f.get("min_alpha", 200)) & (
+            np.abs(A[..., :3] - np.array(f["not_colour"])).max(-1) > f.get("not_tolerance", 14))
+    if "close" in f:
+        # cracks drawn across a letter would split it into parts; close them,
+        # but only inside the region given (not across gaps between letters)
+        x0, y0, x1, y1 = f.get("close_region", [0, 0, m.shape[1], m.shape[0]])
+        sub = nd.binary_closing(m[y0:y1, x0:x1], iterations=f["close"], border_value=0)
+        m = m.copy()
+        m[y0:y1, x0:x1] |= sub
     return m
 
 
@@ -161,7 +178,10 @@ def _pieces(A: np.ndarray, fill: np.ndarray, cfg: dict) -> dict[str, np.ndarray]
         pieces[lower] = low
         pieces[upper] = shared & ~low
     # Stray bits of fill (a stripe's tip cut off by an outline) join the
-    # piece they are nearest.
+    # piece they are nearest. Off for a logo whose other fill is whole letters
+    # that are not wanted (Gungeon's repeated E's and T's).
+    if not cfg.get("adopt_strays", True):
+        return pieces
     claimed = np.zeros_like(fill)
     for m in pieces.values():
         claimed |= m
@@ -442,7 +462,9 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
         ys, xs = np.where(out[..., 3] > 1)
         x0, x1 = max(xs.min() - 2, 0), min(xs.max() + 3, W)
         y0, y1 = max(ys.min() - 2, 0), min(ys.max() + 3, H)
-        dest = OUT_DIR / n / f"{out_dir_game}.png"
+        # "g.2" is a second G from the same logo: title/g/<game>_2.png
+        letter, _, variant = n.partition(".")
+        dest = OUT_DIR / letter / (f"{out_dir_game}_{variant}.png" if variant else f"{out_dir_game}.png")
         dest.parent.mkdir(parents=True, exist_ok=True)
         Image.fromarray(out[y0:y1, x0:x1]).save(dest, optimize=True)
         written.append(dest)

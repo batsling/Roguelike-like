@@ -64,7 +64,10 @@ logos, with each place's game drawn again every time the game opens (not yet
 wired into the menu). The letters live one folder per letter, one file per game:
 `images2.0/custom/title/<letter>/<game id>.png` (`r/balatro.png`). A piece that
 is not a letter gets a name of its own; `dash` is the hyphen. So far: Balatro
-(B A L T R O) and Hades II (H A D E S).
+(B A L T R O), Hades II (H A D E S) and Enter the Gungeon (G U N G E O N, plus
+the pink E N T R H of "Enter the"). Two copies of one letter from the same logo
+are `g/<game id>.png` and `g/<game id>_2.png` (a piece named `g.2` in the
+config); a logo's exact repeats (Gungeon's pink E, T) are left out.
 
 They are made by `tools/logo_letters.py`, never by hand, because a logo's letters
 are not separate drawings: they share one outline, overlap, and sit on one drop
