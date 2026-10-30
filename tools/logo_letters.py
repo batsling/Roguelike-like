@@ -105,14 +105,15 @@ so Godot never imports the source), is JSON:
                   bands the face with its own outline and counters (Uma Musume),
                   "hole_colour" paints another face showing in a hole;
                   "as_drawn": [{"piece", "polygon"}] (in cut) — inside the
-                  polygon, the logo's own pixels exactly (no band, no redraw);
+                  polygon, the logo's own pixels exactly (no redraw), over a
+                  band grown round the rest of the letter;
                   "extrude": {"dx", "dy", "colour", "skip"} (in cut) gives a
                   block letter its 3D side by sweeping its face (Isaac);
                   "outline_max": n keeps only dark pixels past the face (not
                   a glow), "side": {"dy", "dx"} adds the dark 3D side the face
                   sweeps over, "close_dark": n brings in dark counters;
-                  "shared_outline": true (in cut) lets a line two letters share
-                  belong to both;
+                  "shared_outline": true or [pieces] (in cut) lets a line two
+                  letters share belong to both;
                   "hard_edge": [pieces] — pixel-font letters, every pixel fully
                   on or off; "scale": n — write the letters n times the logo's
                   size, shapes redrawn crisp (for a small source logo; an
@@ -522,8 +523,10 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
                 painted |= restored
             ds = nd.distance_transform_edt(~f)
             # shared_outline: a white line between two letters belongs to both
-            keep = f | ((a > 0) & ~background & (True if cut.get("shared_outline") else mine) & (ds <= reach))
-            if cut.get("shared_outline"):
+            so = cut.get("shared_outline")
+            shared = bool(so) and (so is True or n in so)  # true, or a list of pieces
+            keep = f | ((a > 0) & ~background & (True if shared else mine) & (ds <= reach))
+            if shared:
                 # ...but never past it into the next letter's face (counters a
                 # letter encloses come back with whole_letter's hole filling)
                 keep &= f | ~fill
@@ -646,6 +649,14 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
                 # (a SQUARE closing: a diamond one leaves a small V of its own)
                 # An inked logo whose letters are split on purpose (red Hades'
                 # slash) sets join 0, so its gaps stay open.
+                # A part kept exactly as drawn (Repentance's blood) is no part of
+                # the shape the band is grown round: the band rings the letter
+                # alone, and the drawn part sits over it
+                drawn = np.zeros((H, W), bool)
+                for ad in cut.get("as_drawn", []):
+                    if ad["piece"] == n:
+                        drawn |= _polygon_mask((H, W), ad["polygon"])
+                clean = clean & ~drawn
                 whole = clean
                 if band_cfg.get("join", 5):
                     whole = nd.binary_closing(clean, np.ones((3, 3)), iterations=band_cfg["join"] if "join" in band_cfg else 5,
@@ -693,6 +704,9 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
                     rgb[ring] = band_cfg["colour"]
                     band_masks = (clean, grown, np.array(band_cfg["colour"], float), band_cfg.get("smooth", 0))
                 al[ring] = 1
+                dr = drawn & (a > 0)
+                rgb[dr] = A[dr][:, :3]  # so the letter's box takes them in
+                al[dr] = a[dr] / 255
                 face = None
         else:
             fs = nd.gaussian_filter(f.astype(float), FILL_SMOOTH_SIGMA) > 0.5 if smooth else f
@@ -779,7 +793,8 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
                 continue
             # Inside this polygon the logo's own pixels, untouched: no band, no
             # redraw (Repentance's blood, which a glow round every drop ruins).
-            poly = _polygon_mask((H, W), ad["polygon"])[y0:y1, x0:x1]
+            # where the logo drew nothing, the letter's own outline stays
+            poly = (_polygon_mask((H, W), ad["polygon"]) & (a > 0))[y0:y1, x0:x1]
             src = A[y0:y1, x0:x1].clip(0, 255).astype(np.uint8)
             if img.size != (x1 - x0, y1 - y0):
                 src = np.asarray(Image.fromarray(src).resize(img.size, Image.LANCZOS))
