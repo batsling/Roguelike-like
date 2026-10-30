@@ -198,6 +198,37 @@ var _running := false
 var _pixel_batch: Array = []
 var _smooth_batch: Array = []
 
+# --- into the portal ----------------------------------------------------------
+#
+# THE MENU'S ART FLIES INTO ITS PORTAL. With `sink` set (MenuPortal sets it to
+# its oval, in this control's coordinates), pieces stop falling: each comes in
+# over a random edge of the screen — any of the four — and travels toward the
+# oval's middle on a slow inward spiral, shrinking and fading as it reaches the
+# rim and recycled once it is SINK_GONE of the way in. Without it (the tests,
+# or a menu with no portal) the art falls, as everything above describes.
+var sink := Rect2()
+# What the art dims behind, in sink mode: the button grid, read off this node's
+# rect every frame (the falling mode's CLEAR_BAND is a column, which is the
+# wrong shape once the buttons are a block under the middle).
+var dim_node: Control = null
+
+# The art's own fall speed, this much faster: it crosses half a screen, not a
+# whole one, and should arrive while you are still looking.
+const SINK_SPEED := 1.4
+# The sideways share of a piece's speed, always the same way round, which is
+# what turns a straight-in path into a spiral.
+const SINK_SWIRL := 0.35
+# Of the oval's radii: a piece starts shrinking and fading at SINK_FADE and is
+# gone at SINK_GONE, drawn at SINK_MIN_SCALE of its size by then.
+const SINK_FADE := 1.5
+const SINK_GONE := 0.35
+const SINK_MIN_SCALE := 0.25
+# Seconds a piece takes to brighten in after it enters, so nothing pops at an edge.
+const SINK_FADE_IN := 1.2
+
+func _sinking() -> bool:
+	return sink.has_area()
+
 static func mount(parent: Node) -> MenuFallingArt:
 	var art := MenuFallingArt.new()
 	parent.add_child(art)
@@ -511,13 +542,17 @@ func _spawn() -> Dictionary:
 	# same density as the column on screen and the picture fills in evenly rather
 	# than as a front of art with a gap behind it.
 	var top: float = _rng.randf_range(-size.y, -box.y)
+	var pos := Vector2(_column_x(size, box.x), top)
+	if _sinking():
+		pos = _edge_start(size, box, 1.0)
 	return {
 		"tex": tex,
 		"pixel": bool(entry["pixel"]),
 		"kind": kind,
 		"index": index,
-		"pos": Vector2(_column_x(size, box.x), top),
+		"pos": pos,
 		"box": box,
+		"age": 0.0,
 		"fall": _rng.randf_range(FALL_MIN, FALL_MAX),
 		"drift": _rng.randf_range(-DRIFT, DRIFT),
 		"rot": _rng.randf_range(0.0, TAU),
@@ -525,6 +560,33 @@ func _spawn() -> Dictionary:
 			* (1.0 if _rng.randf() < 0.5 else -1.0),
 		"alpha": _rng.randf_range(ALPHA_MIN, ALPHA_MAX),
 	}
+
+# Somewhere just outside the screen, on the line out from the sink's middle at a
+# random angle: so pieces come in over all four edges, each the far side of the
+# screen from where it is heading. Pushed out by up to `stagger` of a screen
+# more, so the arrivals are spread out in time rather than a ring of them.
+func _edge_start(size: Vector2, box: Vector2, stagger: float) -> Vector2:
+	var c := sink.get_center()
+	var a: float = _rng.randf_range(0.0, TAU)
+	var u := Vector2(cos(a), sin(a))
+	# how far along u the screen's edge is from c
+	var tx: float = INF if is_zero_approx(u.x) else ((size.x if u.x > 0.0 else 0.0) - c.x) / u.x
+	var ty: float = INF if is_zero_approx(u.y) else ((size.y if u.y > 0.0 else 0.0) - c.y) / u.y
+	var t: float = minf(tx, ty) + box.length() * 0.5
+	return c + u * (t + _rng.randf() * size.y * stagger * 0.5)
+
+# How far into the oval a point is: 1 on its rim, 0 at its middle.
+func _sink_depth(p: Vector2) -> float:
+	var r := sink.size * 0.5
+	return ((p - sink.get_center()) / Vector2(maxf(r.x, 1.0), maxf(r.y, 1.0))).length()
+
+# How much of its alpha a piece keeps over the button grid: BAND_DIM inside it,
+# all of it once it is half its own size clear of it.
+func _rect_dim(p: Vector2, box: Vector2, rect: Rect2) -> float:
+	var dx: float = maxf(maxf(rect.position.x - p.x, p.x - rect.end.x), 0.0)
+	var dy: float = maxf(maxf(rect.position.y - p.y, p.y - rect.end.y), 0.0)
+	var d := Vector2(dx, dy).length()
+	return lerpf(BAND_DIM, 1.0, clampf(d / maxf(box.length() * 0.5, 1.0), 0.0, 1.0))
 
 # Hand a piece's pool entry back, so the picture it was using can fall again.
 func _release(piece: Dictionary) -> void:
@@ -593,6 +655,10 @@ func _process(delta: float) -> void:
 		if piece.is_empty():
 			break
 		_pieces.append(piece)
+	if _sinking():
+		_sink_step(delta, size)
+		_redraw()
+		return
 	for piece in _pieces:
 		# Moved, then held on screen — the drift is what would carry it off an
 		# edge (see `_hold_on_screen`).
@@ -623,6 +689,33 @@ func _process(delta: float) -> void:
 					_reentry_y(size, fresh["box"]))
 				piece.merge(fresh, true)
 	_redraw()
+
+# One step of the art flying in: each piece toward the sink's middle and a little
+# round it, and one that has gone SINK_GONE of the way in handed back and dealt
+# again at an edge (the same recycling as a piece falling off the bottom).
+func _sink_step(delta: float, size: Vector2) -> void:
+	var c := sink.get_center()
+	for piece in _pieces:
+		var pos: Vector2 = piece["pos"]
+		var to := c - pos
+		var dir := to.normalized() if to.length() > 0.001 else Vector2.ZERO
+		var speed: float = float(piece["fall"]) * SINK_SPEED
+		pos += (dir + dir.orthogonal() * SINK_SWIRL) * speed * delta
+		piece["pos"] = pos
+		piece["rot"] = (piece["rot"] as float) + (piece["spin"] as float) * delta
+		piece["age"] = float(piece.get("age", 0.0)) + delta
+		if _sink_depth(pos) > SINK_GONE:
+			continue
+		_release(piece)
+		var fresh: Dictionary = _spawn()
+		if fresh.is_empty():
+			piece["pos"] = _edge_start(size, piece["box"], 0.33)
+			piece["age"] = 0.0
+			if _free[int(piece["kind"])].has(int(piece["index"])):
+				_free[int(piece["kind"])].erase(int(piece["index"]))
+		else:
+			fresh["pos"] = _edge_start(size, fresh["box"], 0.33)
+			piece.merge(fresh, true)
 
 # Where a piece that has just fallen off the bottom comes back on: clear of the
 # top edge, by anything up to `REENTRY_STAGGER` of a screen.
@@ -668,10 +761,26 @@ func _redraw() -> void:
 	_smooth_batch.clear()
 	var view: Vector2 = get_viewport_rect().size
 	var height: float = view.y
+	var sinking := _sinking()
+	var dim_rect := Rect2()
+	if sinking and dim_node != null and is_instance_valid(dim_node):
+		dim_rect = Rect2(get_global_transform().affine_inverse() * dim_node.global_position,
+			dim_node.size)
 	for piece in _pieces:
 		var pos: Vector2 = piece["pos"]
-		var a: float = _fade_at(pos.y, height, piece["alpha"]) \
-			* _band_dim(pos.x, (piece["box"] as Vector2).x, view.x)
+		var a: float
+		if sinking:
+			var depth := _sink_depth(pos)
+			var near: float = smoothstep(SINK_GONE, SINK_FADE, depth)
+			a = float(piece["alpha"]) * near \
+				* smoothstep(0.0, SINK_FADE_IN, float(piece.get("age", 0.0)))
+			if dim_rect.has_area():
+				a *= _rect_dim(pos, piece["box"], dim_rect)
+			piece["draw_scale"] = lerpf(SINK_MIN_SCALE, 1.0, near)
+		else:
+			a = _fade_at(pos.y, height, piece["alpha"]) \
+				* _band_dim(pos.x, (piece["box"] as Vector2).x, view.x)
+			piece["draw_scale"] = 1.0
 		piece["draw_alpha"] = a
 		if a <= 0.005:
 			continue

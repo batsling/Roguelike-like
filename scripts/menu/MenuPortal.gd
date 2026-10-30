@@ -37,6 +37,8 @@ var oval := ColorRect.new()
 var bats := CPUParticles2D.new()
 var _rows: Callable
 var _last := Rect2()
+# The menu's art (MenuFallingArt), told where the oval is so it flies into it.
+var art: Control = null
 
 # `rows` returns the TitleLetters rows to stand round (null entries skipped).
 static func mount(parent: Control, rows: Callable) -> Control:
@@ -108,6 +110,9 @@ func measure() -> Rect2:
 func _fit(r: Rect2) -> void:
 	_last = r
 	visible = r.has_area()
+	if art != null and is_instance_valid(art):
+		art.sink = Rect2(art.get_global_transform().affine_inverse()
+			* (get_global_transform() * r.position), r.size) if visible else Rect2()
 	if not visible:
 		return
 	oval.position = r.position

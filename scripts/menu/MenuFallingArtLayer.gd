@@ -38,7 +38,9 @@ func _draw() -> void:
 		var box: Vector2 = piece["box"]
 		# Rotate about the piece's own centre: `draw_set_transform` puts the origin
 		# at `pos`, so the rect is drawn back by half its size from there.
-		draw_set_transform(piece["pos"], piece["rot"], Vector2.ONE)
+		# `draw_scale` is MenuFallingArt's shrink as a piece is drawn into the
+		# menu's portal; 1 while the art is falling.
+		draw_set_transform(piece["pos"], piece["rot"], Vector2.ONE * float(piece.get("draw_scale", 1.0)))
 		draw_texture_rect(tex, Rect2(-box * 0.5, box), false,
 			Color(1.0, 1.0, 1.0, piece.get("draw_alpha", piece["alpha"])))
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)

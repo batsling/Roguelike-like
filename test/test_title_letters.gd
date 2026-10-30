@@ -232,7 +232,9 @@ func test_the_portal_stands_round_the_title_and_subtitle() -> void:
 	await wait_frames(3)
 	var portal: Control = menu.portal
 	assert_not_null(portal, "a portal")
-	assert_lt(portal.get_index(), menu.get_node("Center").get_index(), "behind the column")
+	assert_lt(portal.get_index(), menu.get_node("Center").get_index(), "behind the letters")
+	assert_lt(portal.get_index(), menu._art.get_index(), "and behind the art flying into it")
+	assert_eq(menu._art.sink, portal.oval.get_rect(), "which is told where it is")
 	assert_gt(portal.get_index(), menu.get_node("%Background").get_index(), "over the rift")
 	for row in [menu.title_row, menu.subtitle_row]:
 		var g: Rect2 = row.ink.get_global_rect()
