@@ -1,0 +1,64 @@
+{
+  "game": "uma_musume_pretty_derby",
+  "source": "uma_musume_pretty_derby.png",
+  "pieces": {
+    "p": [
+      372,
+      437
+    ],
+    "r": [
+      460,
+      437
+    ],
+    "e.derby": [
+      548,
+      437
+    ],
+    "t": [
+      650,
+      437
+    ],
+    "y": [
+      822,
+      437
+    ],
+    "d": [
+      [
+        984,
+        418
+      ],
+      [
+        947,
+        437
+      ]
+    ],
+    "b": [
+      1210,
+      437
+    ]
+  },
+  "fill": {
+    "min_alpha": 200,
+    "min_channel": 200,
+    "rows": [
+      380,
+      500
+    ]
+  },
+  "adopt_strays": false,
+  "smooth": false,
+  "shadow": false,
+  "cut": {
+    "reach": 2,
+    "scale": 3,
+    "band": {
+      "colour": "plate",
+      "width": 8,
+      "shape": "round",
+      "join": 0,
+      "close": 1,
+      "open": 0,
+      "whole_letter": true
+    }
+  }
+}

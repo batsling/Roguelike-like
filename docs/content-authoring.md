@@ -66,7 +66,12 @@ wired into the menu). The letters live one folder per letter, one file per game:
 is not a letter gets a name of its own; `dash` is the hyphen. So far: Balatro
 (B A L T R O), Hades II (H A D E S), Hades (H A D E S), Enter the Gungeon
 (G U N G E O N, plus the pink E N T R H of "Enter the") and Mewgenics
-(M E W G E N I C S, the I with its paw print for a dot; the "!" left out).
+(M E W G E N I C S, the I with its paw print for a dot, and its "!" as
+`exclaim/`), and Uma Musume Pretty Derby (U M A S E and a pink U and M from
+UMAMUSUME, P R E T Y D B from PRETTY DERBY — its E as `e/<id>_derby.png` — and
+the running girl with her speed trail and sparkles as the `dash`). A logo can
+take more than one config when its parts are built differently: Uma Musume has
+three, one per line and one for the dash.
 `mewgenics.json` is the simple case: black letters that do not touch, cut as
 they are (`max_brightness` fill) and scaled 2x as one-colour `silhouette`s. Two copies of one letter from the same logo
 are `g/<game id>.png` and `g/<game id>_2.png` (a piece named `g.2` in the

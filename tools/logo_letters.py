@@ -73,7 +73,9 @@ so Godot never imports the source), is JSON:
                   fill in a dark outline; min_channel keeps a coloured glow out
                   of a white fill; "max_brightness": n with "min_brightness":
                   -1 makes fill the DARK pixels (black letters, Mewgenics);
-                  "not_colour": [r, g, b] (with
+                  "rows": [y0, y1] keeps fill to those rows; "inside_white": n makes fill what a
+                  white line encloses; "region": [[x, y], ...] keeps fill to a
+                  polygon; "not_colour": [r, g, b] (with
                   "not_tolerance") makes fill everything that is not the plate
                   the letters sit on; "close": n with "close_region": [x0, y0,
                   x1, y1] shuts cracks that cross a letter
@@ -95,7 +97,11 @@ so Godot never imports the source), is JSON:
                   for a rough inked outline (red Hades): "shape": "round",
                   "join": 0 (keep gaps split on purpose), "visible_face": true,
                   "face_colour": [r, g, b], "keep": [{"piece", "polygon"}] for
-                  ink drawn past the outline (a spike);
+                  ink drawn past the outline (a spike); "colour": "plate"
+                  takes the band from the nearest plate pixel, "whole_letter"
+                  bands the face with its own outline and counters (Uma Musume);
+                  "shared_outline": true (in cut) lets a line two letters share
+                  belong to both;
                   "hard_edge": [pieces] — pixel-font letters, every pixel fully
                   on or off; "scale": n — write the letters n times the logo's
                   size, shapes redrawn crisp (for a small source logo; an
@@ -165,6 +171,17 @@ def _fill_mask(A: np.ndarray, cfg: dict) -> np.ndarray:
     if "not_colour" in f:  # fill is anything that is not the plate the letters sit on
         m = (A[..., 3] > f.get("min_alpha", 200)) & (
             np.abs(A[..., :3] - np.array(f["not_colour"])).max(-1) > f.get("not_tolerance", 14))
+    if "inside_white" in f:
+        # letters whose face sits inside a white line (Uma Musume): fill is
+        # what the white line encloses, less the white itself
+        wl = (A[..., 3] > 200) & (A[..., :3].min(-1) > f["inside_white"])
+        m = nd.binary_fill_holes(wl) & ~wl & (A[..., 3] > 200)
+    if "rows" in f:  # only these rows of the logo (one line of a two-line logo)
+        m = m.copy()
+        m[: f["rows"][0]] = False
+        m[f["rows"][1]:] = False
+    if "region" in f:  # only fill inside this polygon (a figure that touches a plate)
+        m &= _polygon_mask(m.shape, f["region"])
     if "close" in f:
         # cracks drawn across a letter would split it into parts; close them,
         # but only inside the region given (not across gaps between letters)
@@ -343,7 +360,9 @@ def _upscale(A, out, box, band_masks, s, hard=False, face=None, silhouette=False
         return Image.fromarray(np.dstack([rgb.clip(0, 255), cover(sil) * 255]).astype(np.uint8))
     if hard or band_masks is None:
         return crop.resize((w, h), Image.NEAREST)
-    clean, grown, plate = (m[y0:y1, x0:x1] if m.ndim == 2 else m for m in band_masks[:3])
+    clean, grown, plate = (m[y0:y1, x0:x1] if m.ndim >= 2 else m for m in band_masks[:3])
+    if plate.ndim == 3:  # a band in colours that vary: scaled with it
+        plate = np.asarray(Image.fromarray(plate.clip(0, 255).astype(np.uint8)).resize((w, h), Image.NEAREST), float)
     soft = band_masks[3] if len(band_masks) > 3 else 0
 
     # the letter's colours, run out past its edge so the redrawn edge never
@@ -353,6 +372,7 @@ def _upscale(A, out, box, band_masks, s, hard=False, face=None, silhouette=False
     hi = np.asarray(Image.fromarray(inside).resize((w, h), Image.NEAREST), float)
     c_letter, c_band = cover(clean, soft * 0.6), cover(grown, soft * 0.6)
     rgb = hi * c_letter[..., None] + plate * (1 - c_letter[..., None])
+    rgb = np.broadcast_to(rgb, (h, w, 3))
     alpha = np.maximum(c_letter, c_band)
     return Image.fromarray(np.dstack([rgb.clip(0, 255), alpha * 255]).astype(np.uint8))
 
@@ -490,7 +510,15 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
                 f = f | restored
                 painted |= restored
             ds = nd.distance_transform_edt(~f)
-            keep = f | ((a > 0) & ~background & mine & (ds <= reach))
+            # shared_outline: a white line between two letters belongs to both
+            keep = f | ((a > 0) & ~background & (True if cut.get("shared_outline") else mine) & (ds <= reach))
+            if cut.get("shared_outline"):
+                # ...but never past it into the next letter's face (counters a
+                # letter encloses come back with whole_letter's hole filling)
+                keep &= f | ~fill
+            if "outline_min" in cut:
+                # past the face, only the white line itself (not the plate)
+                keep &= f | (A[..., :3].min(-1) >= cut["outline_min"])
             for ex in cfg.get("extra_ink", []):
                 if ex["piece"] == n:
                     d_other = np.min([D[o] for o in names if o != n], 0)
@@ -547,6 +575,9 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
                 st4 = nd.generate_binary_structure(2, 1)
                 # the face as it stands once erasing is done
                 base = (f & keep) | painted if band_cfg.get("visible_face") else f
+                if band_cfg.get("whole_letter"):
+                    # the letter is its face AND its own outline, counters too
+                    base = nd.binary_fill_holes(keep & (a > 200))
                 clean = base
                 if band_cfg.get("close", 3):
                     clean = nd.binary_closing(clean, st4, iterations=band_cfg.get("close", 3))
@@ -591,8 +622,21 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
                     rgb[clean] = A[clean][:, :3]
                 al[clean] = 1
                 ring = grown & ~clean
-                band_masks = (clean, grown, np.array(band_cfg["colour"], float), band_cfg.get("smooth", 0))
-                rgb[ring] = band_cfg["colour"]
+                if band_cfg["colour"] == "plate":
+                    # the band in the plate's own colours (Uma Musume's plate
+                    # is a gradient), each pixel from the nearest plate pixel
+                    # only the plate OUTSIDE the word's white line: between the
+                    # letters it is mixed with their faces and lines
+                    wl = (a > 200) & (A[..., :3].min(-1) > band_cfg.get("plate_white", 200))
+                    word = nd.binary_dilation(nd.binary_fill_holes(wl), iterations=3)
+                    plate = (a > 240) & ~word
+                    _, (iy, ix) = nd.distance_transform_edt(~plate, return_indices=True)
+                    band_rgb = A[iy, ix, :3]
+                    rgb[ring] = band_rgb[ring]
+                    band_masks = (clean, grown, band_rgb, band_cfg.get("smooth", 0))
+                else:
+                    rgb[ring] = band_cfg["colour"]
+                    band_masks = (clean, grown, np.array(band_cfg["colour"], float), band_cfg.get("smooth", 0))
                 al[ring] = 1
                 face = None
         else:
