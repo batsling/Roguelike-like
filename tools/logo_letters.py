@@ -75,8 +75,10 @@ so Godot never imports the source), is JSON:
                   {"min_green": n, "max_red": n}} — a shape behind the letters,
                   found as big regions of its colour (so a letter's own glow of
                   that colour is never it) and followed out through its glow;
-                  "erase": [{"piece": name, "polygon": [[x, y], ...]}] — cut
-                  away by hand (bits of the background's outline)}
+                  "erase": [{"piece": name, "polygon": [[x, y], ...],
+                  "colour": [r, g, b], "tolerance": n}] — cut away by hand
+                  (bits of the background's outline); with a colour, only that
+                  colour inside the polygon goes (a mark, not the ink round it)}
     smooth        default true. false keeps the fill's own edge, spikes and all
                   (Hades' thorns), instead of smoothing it and opening/closing it
     shadow        default true (measured and re-cast). false for a logo whose
@@ -360,7 +362,10 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
                              & (d_other > ex.get("clear", 4)))
             for er in cut.get("erase", []):
                 if er["piece"] == n:
-                    keep &= ~_polygon_mask((H, W), er["polygon"])
+                    gone = _polygon_mask((H, W), er["polygon"])
+                    if "colour" in er:  # only that colour inside it (a mark, not the ink round it)
+                        gone &= np.abs(A[..., :3] - np.array(er["colour"])).max(-1) <= er.get("tolerance", 40)
+                    keep &= ~gone
             # only what is joined to the letter (diagonals count: a thorn's tip
             # is often a pixel wide)
             lab_k, _ = nd.label(keep, structure=np.ones((3, 3)))
