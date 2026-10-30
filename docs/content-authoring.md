@@ -165,7 +165,11 @@ middle. A decoration whose box is right but whose middle is not the part that
 should line up sets `"centre": {"decor_right": [y0, y1]}` instead: those source
 rows sit on the line (`line_center` in the index) and the size is left alone —
 Uma Musume's dash centres its bar, not the sparkles above it. Clicking the
-title or subtitle on the menu draws that row again. `test_title_letters.gd` reads every PNG back and fails if a box does not
+title or subtitle on the menu draws that row again. Behind both rows stands a
+blue portal over the menu's red rift background (`scripts/menu/MenuPortal.gd`,
+`shaders/menu_portal.gdshader`), re-measured off the rows' letters whenever
+they move, with a fringe of the menu's bat (`images2.0/custom/menu_bat.png`)
+peeling off its rim so the blue breaks up into the red. `test_title_letters.gd` reads every PNG back and fails if a box does not
 hug its letter, so a stale index is caught.
 
 The defaults suit a light fill in a dark outline over a soft drop shadow

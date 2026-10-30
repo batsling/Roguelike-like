@@ -214,10 +214,50 @@ func test_a_click_on_a_row_draws_it_again() -> void:
 		func(c): return c is TitleLetters)
 	assert_eq(rows.size(), 2, "one row each")
 
-func test_the_background_is_the_bats() -> void:
+func test_the_background_is_the_red_rift() -> void:
 	var menu = MENU.instantiate()
 	add_child_autofree(menu)
 	await wait_frames(1)
 	var mat := (menu.get_node("%Background") as ColorRect).material as ShaderMaterial
 	assert_not_null(mat, "the background has its shader")
-	assert_not_null(mat.get_shader_parameter("bat"), "and its bat")
+	assert_eq(mat.shader, UITheme.RIFT_SHADER, "the rift cards' swirl")
+	assert_eq(mat.get_shader_parameter("rift_color"), menu.RIFT_RED, "in red")
+
+
+# THE PORTAL stands round both rows' letters, and follows a row that is redrawn.
+func test_the_portal_stands_round_the_title_and_subtitle() -> void:
+	var menu = MENU.instantiate()
+	add_child_autofree(menu)
+	menu._build_title(_rng(6))
+	await wait_frames(3)
+	var portal: Control = menu.portal
+	assert_not_null(portal, "a portal")
+	assert_lt(portal.get_index(), menu.get_node("Center").get_index(), "behind the column")
+	assert_gt(portal.get_index(), menu.get_node("%Background").get_index(), "over the rift")
+	for row in [menu.title_row, menu.subtitle_row]:
+		var g: Rect2 = row.ink.get_global_rect()
+		assert_true(portal.oval.get_global_rect().encloses(g), "round every letter of a row")
+	assert_eq(portal.bats.position, portal.oval.get_rect().get_center(), "the bats come off its rim")
+	assert_false(portal.bats.emission_points.is_empty(), "from points on it")
+	var before: Rect2 = portal.oval.get_global_rect()
+	menu._reroll(true)
+	await wait_frames(3)
+	assert_true(portal.oval.get_global_rect().encloses(menu.title_row.ink.get_global_rect()),
+		"still round a title drawn again")
+	assert_eq(portal.oval.get_global_rect().position.y, before.position.y, "and in the same place")
+
+
+# THE SUBTITLE'S WORDS stand further apart than the title's.
+func test_the_subtitle_spaces_its_words_wider() -> void:
+	var a := TitleLetters.make(SUBTITLE, 30.0, _rng(3))
+	var b := TitleLetters.make(SUBTITLE, 30.0, _rng(3), false, 0.0, 0.6)
+	add_child_autofree(a)
+	add_child_autofree(b)
+	var spaces := SUBTITLE.count(" ")
+	assert_almost_eq(b.ink_width - a.ink_width, spaces * 30.0 * (0.6 - TitleLetters.SPACE), 0.01,
+		"each gap a quarter of a line wider")
+	var menu = MENU.instantiate()
+	add_child_autofree(menu)
+	await wait_frames(1)
+	assert_eq(menu.subtitle_row.space, menu.SUBTITLE_SPACE, "the menu's subtitle uses it")
+	assert_eq(menu.title_row.space, TitleLetters.SPACE, "and the title does not")

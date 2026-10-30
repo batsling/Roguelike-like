@@ -47,6 +47,8 @@ var line_height := 0.0
 # overflows both ways rather than stretching the button column to match.
 var ink := Control.new()
 var ink_width := 0.0
+# A space's width, of the line height (SPACE unless make() was given another).
+var space := SPACE
 
 func _init() -> void:
 	ink.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -126,8 +128,9 @@ static func texture(path: String) -> Texture2D:
 
 # A word laid out at `height` px a letter, no wider than `max_width`.
 static func make(text: String, height: float, rng: RandomNumberGenerator,
-		decorated: bool = false, max_width: float = 0.0) -> TitleLetters:
+		decorated: bool = false, max_width: float = 0.0, word_gap: float = SPACE) -> TitleLetters:
 	var w := TitleLetters.new()
+	w.space = word_gap
 	w.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var pieces := pick(text, rng)
 	var decor := pick_decor(rng) if decorated and rng.randf() < DECOR_CHANCE else []
@@ -156,7 +159,7 @@ func _lay_out(pieces: Array, decor: Array, height: float) -> void:
 		if i > 0:
 			x += height * GAP
 		if e.is_empty() or e.has("missing"):
-			x += height * SPACE
+			x += height * space
 			continue
 		var tex := texture(e["path"])
 		if tex == null:

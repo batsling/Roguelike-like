@@ -25,9 +25,10 @@ func _ready() -> void:
 	GameState.phase = GameState.Phase.MENU
 	theme = UITheme.shared()
 	_style_menu()
-	_paint_bats()
+	_paint_rift()
 	_mount_falling_art()
 	_build_title()
+	_mount_portal()
 
 	%StartRunBtn.pressed.connect(_on_start_run)
 	%CustomRunBtn.pressed.connect(_on_custom_run)
@@ -105,20 +106,31 @@ func _mount_falling_art() -> void:
 	# Directly above the Background ColorRect, below Center and %ModalLayer.
 	move_child(art, 1)
 
-# The bats drifting behind everything: a shader on %Background, which keeps its
-# colour (what the editor previews, and what shows if the shader cannot load).
-const BATS_SHADER := preload("res://shaders/menu_bats.gdshader")
-const BAT_SPRITE := "res://images2.0/custom/menu_bat.png"
+# The red rift behind everything: the rift cards' swirl (UITheme.rift_backdrop's
+# shader) in the rift's red, as a shader on %Background, which keeps its colour
+# (what the editor previews, and what shows if the shader cannot load).
+const RIFT_RED := Color(1.0, 0.36, 0.30)
+const RIFT_RED_DEEP := Color(0.36, 0.03, 0.06)
+const RIFT_RED_BASE := Color(0.06, 0.02, 0.02)
 
-func _paint_bats() -> void:
-	var bg := %Background as ColorRect
+func _paint_rift() -> void:
 	var mat := ShaderMaterial.new()
-	mat.shader = BATS_SHADER
-	mat.set_shader_parameter("bat", TitleLetters.texture(BAT_SPRITE))
-	bg.material = mat
-	var fit := func() -> void: mat.set_shader_parameter("size", bg.size)
-	bg.resized.connect(fit)
-	fit.call()
+	mat.shader = UITheme.RIFT_SHADER
+	mat.set_shader_parameter("rift_color", RIFT_RED)
+	mat.set_shader_parameter("deep_color", RIFT_RED_DEEP)
+	mat.set_shader_parameter("base_color", RIFT_RED_BASE)
+	mat.set_shader_parameter("seed", 1.3)
+	(%Background as ColorRect).material = mat
+
+# The blue portal the title stands in, with its fringe of bats (MenuPortal).
+# Above the falling art and below the column, so pieces fall behind it and the
+# letters stand on it.
+const MenuPortal := preload("res://scripts/menu/MenuPortal.gd")
+var portal: Control = null
+
+func _mount_portal() -> void:
+	portal = MenuPortal.mount(self, func() -> Array: return [title_row, subtitle_row])
+	move_child(portal, $Center.get_index())
 
 # The title and subtitle, spelled in letters cut from roguelike logos and drawn
 # again every launch (TitleLetters). The scene's two Labels stay as the editor
@@ -128,6 +140,9 @@ func _paint_bats() -> void:
 const TITLE_HEIGHT := 84.0
 const SUBTITLE_HEIGHT := 30.0
 const TITLE_MAX_WIDTH := 1100.0
+# The subtitle's word gap, of its line height: wider than TitleLetters.SPACE,
+# since at 30px a mixed-logo subtitle's words otherwise run together.
+const SUBTITLE_SPACE := 0.6
 
 var title_row: TitleLetters = null
 var subtitle_row: TitleLetters = null
@@ -156,7 +171,8 @@ func _reroll(title: bool) -> void:
 		subtitle_row = row
 
 func _title_row(label: Label, height: float, rng: RandomNumberGenerator, decorated: bool) -> TitleLetters:
-	var row := TitleLetters.make(label.text, height, rng, decorated, TITLE_MAX_WIDTH)
+	var row := TitleLetters.make(label.text, height, rng, decorated, TITLE_MAX_WIDTH,
+			TitleLetters.SPACE if decorated else SUBTITLE_SPACE)
 	if row.placed.is_empty():
 		row.free()
 		return null
