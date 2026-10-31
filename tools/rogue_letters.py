@@ -32,7 +32,7 @@ SCALE x as sharp pixels.
 
 The font is Px437 IBM VGA 8x16 from VileR's Ultimate Oldschool PC Font Pack
 (https://int10h.org/oldschool-pc-fonts/), CC BY-SA 4.0 — the licence is beside
-it in tools/rogue_font/, and the PNGs this writes are under the same licence.
+it in fonts/ (LICENSE-Px437-CC-BY-SA-4.0.txt), and the PNGs this writes are under the same licence.
 """
 import json
 from pathlib import Path
@@ -40,7 +40,7 @@ from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont
 
 ROOT = Path(__file__).resolve().parent.parent
-FONT = ROOT / "tools" / "rogue_font" / "Px437_IBM_VGA_8x16.ttf"
+FONT = ROOT / "fonts" / "Px437_IBM_VGA_8x16.ttf"
 OUT_DIR = ROOT / "images2.0" / "custom" / "title"
 GAME = "rogue"
 CONFIG = "rogue_letters.py"

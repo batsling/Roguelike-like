@@ -744,6 +744,13 @@ Machine pays a point on a 5% roll per coin. There is no cap.
 - Art filenames are **PascalCase** and matched to content ids by convention.
 - The spreadsheet (`tools/Roguelikes.xlsx`) drives generated content — edit it
   there and regenerate rather than hand-editing generated `.tres` in bulk.
+- **Headings and buttons are in Rogue's font, by one rule, not per screen.**
+  `UITheme._on_node_added` (wired by `Settings`) looks once at each Label and
+  Button entering the tree: a Label sized `FONT_SUB` or larger, or a Button at
+  `FONT_BODY` or more that neither wraps nor runs to two lines, gets
+  `UITheme.rogue_font()` (Px437 IBM VGA 8x16, a bitmap font) at 16px, or 32px from
+  `FONT_DISPLAY` up. A control that sets its own font keeps it. So a new screen
+  gets it for free; a heading that must NOT have it sets a font of its own.
 - **Font sizes, gaps and CanvasLayer numbers come from `UITheme`.** There is a
   type scale (`FONT_MICRO` … `FONT_HERO`), a spacing scale (`GAP_NONE` …
   `GAP_SECTION`) and a z-order registry (`UITheme.Layer`). They exist because the

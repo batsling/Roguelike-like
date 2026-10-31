@@ -11,9 +11,19 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Headings and buttons are set in Rogue's font.** The same IBM PC font the
+  title starts in (`fonts/Px437_IBM_VGA_8x16.ttf`) is now on every Label at a
+  heading's size (FONT_SUB and up) and every Button labelled at FONT_BODY or more.
+  It is a bitmap font drawn for 16px, so sizes snap to 16 (32 for verdict-sized
+  text) with antialiasing off. Body text, chips, and buttons that wrap or run
+  to two lines (the checklist's goals, the lost-run tracker) keep the ordinary
+  font. One rule in `UITheme` ("Rogue's font"), applied to each Label and Button
+  as it enters the tree (wired by `Settings`), rather than a hundred call sites;
+  tests `test_rogue_font.gd`. The owner looked at the whole UI in it first and
+  chose this: below 16px the font falls apart.
 - **The title starts in Rogue's own font; the logo letters are earned.** Every
   printable character of the IBM PC font Rogue was played in (VileR's Px437 IBM
-  VGA 8x16, CC BY-SA 4.0, in `tools/rogue_font/`) is rendered by
+  VGA 8x16, CC BY-SA 4.0, in `fonts/`) is rendered by
   `tools/rogue_letters.py` into the title-letter folders as `<piece>/rogue.png`
   (and `rogue__lower.png`), sharp pixels with a black edge, boxed by the font's
   cap band so lower case and punctuation keep their size. Those are everyone's

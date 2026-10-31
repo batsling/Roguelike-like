@@ -62,7 +62,7 @@ To add or replace art:
 **Rogue's letters are the ones you start with; every logo letter is earned.**
 `tools/rogue_letters.py` renders every printable character of the IBM PC font
 Rogue was played in (Px437 IBM VGA 8x16, CC BY-SA 4.0, kept with its licence in
-`tools/rogue_font/`) into `<piece>/rogue.png` (`rogue__lower.png` for a letter's
+`fonts/`, where the UI's headings and buttons use it too) into `<piece>/rogue.png` (`rogue__lower.png` for a letter's
 lower case). Their index entries carry `case` (the title matches the text's) and
 `pixel` (drawn NEAREST), and their box, down, is the font's cap band. A piece
 that is not a letter or digit is filed under its name in `TitleLetters.PUNCT`

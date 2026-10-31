@@ -1161,6 +1161,103 @@ static func glyph_font() -> Font:
 	_glyph_font = variation
 	return _glyph_font
 
+# --- Rogue's font, for headings and buttons -----------------------------------
+#
+# THE HEADINGS AND THE BUTTONS ARE SET IN THE FONT ROGUE WAS PLAYED IN (the owner,
+# 31 Oct 2026, after seeing the whole UI in it: "do the headings and buttons
+# version"). Px437 IBM VGA 8x16 (fonts/, CC BY-SA 4.0 — the title's starting
+# letters are cut from the same font, tools/rogue_letters.py).
+#
+# IT IS A BITMAP FONT, DRAWN FOR 16px, and that decides everything here. At any
+# other size its pixels land unevenly; below 16 it falls apart (the mock-up of the
+# whole UI in it was unreadable in the 9–13px lines). So:
+#   * only text at FONT_SUB (16) or larger becomes a heading, and a button whose
+#     own size is at least FONT_BODY (12) — the chips and pills under that keep
+#     the ordinary font;
+#   * its size is SNAPPED to a whole multiple of 16 (`rogue_size`): 16 for every
+#     heading up to FONT_TITLE_LG, 32 for the verdict-sized ones;
+#   * antialiasing off and positions on whole pixels, so the pixels stay square.
+#
+# ONE RULE IN ONE PLACE rather than a hundred call sites: every Label and Button
+# that enters the tree is looked at once, a frame later, after the code building
+# it has set its size (`_on_node_added`, wired by Settings). Symbols the font lacks
+# (⚔ ☠ 🏆 …) fall through to the glyph fonts as they always have.
+const ROGUE_FONT_PATH := "res://fonts/Px437_IBM_VGA_8x16.ttf"
+const ROGUE_PX := 16
+# The rule is on unless something turns it off (a test that measures the
+# ordinary font's metrics could; nothing does today).
+static var rogue_headings: bool = true
+static var _rogue_font: Font = null
+
+static func rogue_font() -> Font:
+	if _rogue_font != null:
+		return _rogue_font
+	var f: FontFile = null
+	if ResourceLoader.exists(ROGUE_FONT_PATH):
+		var res = load(ROGUE_FONT_PATH)
+		if res is FontFile:
+			f = (res as FontFile).duplicate()
+	if f == null:
+		# Not imported yet (a fresh checkout before the editor has scanned).
+		f = FontFile.new()
+		if f.load_dynamic_font(ProjectSettings.globalize_path(ROGUE_FONT_PATH)) != OK:
+			return null
+	f.antialiasing = TextServer.FONT_ANTIALIASING_NONE
+	f.hinting = TextServer.HINTING_NONE
+	f.subpixel_positioning = TextServer.SUBPIXEL_POSITIONING_DISABLED
+	f.allow_system_fallback = false
+	var chain: Array[Font] = []
+	var glyphs: Font = glyph_font()
+	if glyphs != null:
+		chain.append(glyphs)
+	f.fallbacks = chain
+	_rogue_font = f
+	return _rogue_font
+
+# The crisp size for text that asked for `size`: 16, or 32 for the largest.
+static func rogue_size(size: int) -> int:
+	return ROGUE_PX * 2 if size >= FONT_DISPLAY else ROGUE_PX
+
+# Whether `c` is set in Rogue's font: a heading-sized Label, or a Button whose
+# text is at least FONT_BODY.
+static func wants_rogue(c: Control) -> bool:
+	if c is Label:
+		return c.has_theme_font_size_override("font_size") \
+			and c.get_theme_font_size("font_size") >= FONT_SUB
+	if c is Button:
+		# A button that WRAPS or runs to a second line is a sentence you click (a
+		# checklist goal, the lost-run tracker), not a label on a button: in a
+		# monospace font eight pixels to the letter it is cut off, so it reads in
+		# the ordinary one.
+		var b := c as Button
+		if b.autowrap_mode != TextServer.AUTOWRAP_OFF or b.text.contains("\n"):
+			return false
+		return c.get_theme_font_size("font_size") >= FONT_BODY
+	return false
+
+# Set `c` in Rogue's font, at its snapped size. Safe to call twice.
+static func use_rogue(c: Control) -> void:
+	var f: Font = rogue_font()
+	if f == null or c == null:
+		return
+	c.add_theme_font_override("font", f)
+	c.add_theme_font_size_override("font_size", rogue_size(c.get_theme_font_size("font_size")))
+
+static func _on_node_added(node: Node) -> void:
+	if rogue_headings and (node is Label or node is Button):
+		_apply_rogue_rule.call_deferred(node)
+
+static func _apply_rogue_rule(node: Node) -> void:
+	if not is_instance_valid(node) or not node.is_inside_tree():
+		return
+	var c := node as Control
+	# A control that chose its own font (the title letters' fallbacks, a
+	# monospace readout) keeps it.
+	if c.has_theme_font_override("font"):
+		return
+	if wants_rogue(c):
+		use_rogue(c)
+
 static func make_theme() -> Theme:
 	var t := Theme.new()
 	t.default_font_size = FONT_LABEL
