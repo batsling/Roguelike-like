@@ -4,9 +4,9 @@ extends Control
 # the subtitle together, which the menu's vortex (shaders/menu_vortex.gdshader,
 # MainMenu._paint_vortex) draws as the blue heart of the same swirl as the red
 # rift; this tells it where the oval is. And a fringe of small bats — the menu's
-# own bat, images2.0/custom/menu_bat.png — peeling off its rim and dissolving
-# into the red within a second. The bats are what keep a blue oval from looking
-# pasted on the red: the edge breaks up rather than stopping.
+# own bat, images2.0/custom/menu_bat.png — appearing just outside it and drawn
+# in on the swirl, gone a little way inside. The bats are what keep the blue from
+# looking pasted on the red: its edge is where they cross.
 #
 # It follows the two rows it is given rather than being laid out: a row is
 # rebuilt when it is clicked (MainMenu._reroll) and the window can change size,
@@ -21,26 +21,35 @@ const REACH := Vector2(168.0, 64.0)
 const MARGIN := 4.0
 # Its shape: a superellipse of this power (2 would be an ellipse). Squarer, so the
 # blue reaches the first and last letters of both lines, which sit in the corners
-# of the box an ellipse cuts off. Given to the vortex, and used for the bats' rim.
+# of the box an ellipse cuts off. Given to the vortex, and the shape the bats fly in.
 const ROUNDNESS := 3.0
 
-# The fringe. A bat starts on the rim (between these fractions of the oval's
-# radii), flies outward a little and is gone within LIFETIME seconds, teal
-# going to the rift's red as it fades.
-const RIM_FROM := 0.78
-const RIM_TO := 0.98
-const BATS := 220
-const LIFETIME := 1.2
-const SPEED_MIN := 7.0
-const SPEED_MAX := 16.0
+# THE BATS. Each one appears just outside the blue (between ENTER_FROM and
+# ENTER_TO of the portal's size, in its own superellipse terms), is drawn in at
+# PULL of that size a second while turning with the vortex (SWIRL radians a
+# second, clockwise like the swirl and the art), and fades out over the first
+# stretch inside, gone by GONE. Moving in the portal's own shape is what keeps
+# the timing even all the way round: the long ends are four times as far from
+# the middle as the top and bottom, and a particle system's speed in pixels
+# would cross one in a blink and never reach the other.
+const BATS := 160
+const ENTER_FROM := 1.04
+const ENTER_TO := 1.22
+const PULL_MIN := 0.10
+const PULL_MAX := 0.16
+const SWIRL := 0.22
+const FADE_FROM := 0.94
+const GONE := 0.80
+const FADE_IN := 0.5               # seconds
 const BAT_SCALE_MIN := 0.07
 const BAT_SCALE_MAX := 0.15
 const BAT_TEAL := Color(0.24, 0.60, 0.60)
+const BAT_ALPHA := 0.9
 
 # The oval's rect, kept as a Control so its place can be read and tested; the
 # vortex draws it, so it draws nothing itself.
 var oval := Control.new()
-var bats := CPUParticles2D.new()
+var bats := BatSwarm.new()
 var _rows: Callable
 var _last := Rect2()
 # The menu's art (MenuFallingArt), told where the oval is so it flies into it.
@@ -61,36 +70,74 @@ func _init() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	oval.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(oval)
-	_dress_bats()
 	add_child(bats)
 
-func _dress_bats() -> void:
-	bats.texture = TitleLetters.texture(BAT)
-	bats.emission_shape = CPUParticles2D.EMISSION_SHAPE_DIRECTED_POINTS
-	bats.amount = BATS
-	bats.lifetime = LIFETIME
-	bats.preprocess = LIFETIME * 3.0
-	bats.spread = 30.0
-	bats.gravity = Vector2.ZERO
-	bats.initial_velocity_min = SPEED_MIN
-	bats.initial_velocity_max = SPEED_MAX
-	bats.damping_min = 4.0
-	bats.damping_max = 10.0
-	bats.angular_velocity_min = -15.0
-	bats.angular_velocity_max = 15.0
-	bats.scale_amount_min = BAT_SCALE_MIN
-	bats.scale_amount_max = BAT_SCALE_MAX
-	var shrink := Curve.new()
-	shrink.add_point(Vector2(0.0, 1.0))
-	shrink.add_point(Vector2(1.0, 0.45))
-	bats.scale_amount_curve = shrink
-	var fade := Gradient.new()
-	fade.offsets = PackedFloat32Array([0.0, 0.08, 0.5, 1.0])
-	fade.colors = PackedColorArray([Color(BAT_TEAL, 0.0), Color(BAT_TEAL, 0.95),
-		Color(0.45, 0.16, 0.25, 0.6), Color(0.50, 0.06, 0.06, 0.0)])
-	bats.color_ramp = fade
+# The swarm: drawn in one _draw, positioned on the portal's middle, each bat a
+# dictionary — its angle round the portal `a`, how far out `k` (1 on the rim),
+# how fast it is pulled in, its size, spin and age.
+class BatSwarm extends Node2D:
+	var tex: Texture2D
+	var radii := Vector2.ZERO
+	var list: Array = []
+	var _rng := RandomNumberGenerator.new()
 
-func _process(_delta: float) -> void:
+	func _init() -> void:
+		tex = TitleLetters.texture(BAT)
+		_rng.randomize()
+
+	func deal(fill: bool) -> Dictionary:
+		return {
+			"a": _rng.randf_range(0.0, TAU),
+			# spread through the whole path on the first fill, so it starts full
+			"k": _rng.randf_range(GONE, ENTER_TO) if fill else _rng.randf_range(ENTER_FROM, ENTER_TO),
+			"pull": _rng.randf_range(PULL_MIN, PULL_MAX),
+			"scale": _rng.randf_range(BAT_SCALE_MIN, BAT_SCALE_MAX),
+			"rot": _rng.randf_range(-0.4, 0.4),
+			"spin": _rng.randf_range(-0.3, 0.3),
+			"age": FADE_IN if fill else 0.0,
+		}
+
+	# Where a bat at angle `a`, `k` of the way out, stands, from the middle.
+	static func spot(a: float, k: float, r: Vector2) -> Vector2:
+		var cx: float = signf(cos(a)) * pow(absf(cos(a)), 2.0 / ROUNDNESS)
+		var cy: float = signf(sin(a)) * pow(absf(sin(a)), 2.0 / ROUNDNESS)
+		return Vector2(cx * r.x, cy * r.y) * k
+
+	static func alpha_of(b: Dictionary) -> float:
+		return BAT_ALPHA * smoothstep(0.0, FADE_IN, float(b["age"])) \
+			* smoothstep(GONE, FADE_FROM, float(b["k"]))
+
+	func step(delta: float) -> void:
+		if list.is_empty():
+			for i in BATS:
+				list.append(deal(true))
+		for i in list.size():
+			var b: Dictionary = list[i]
+			b["k"] = float(b["k"]) - float(b["pull"]) * delta
+			b["a"] = float(b["a"]) + SWIRL * delta
+			b["rot"] = float(b["rot"]) + float(b["spin"]) * delta
+			b["age"] = float(b["age"]) + delta
+			if float(b["k"]) <= GONE:
+				list[i] = deal(false)
+		queue_redraw()
+
+	func _draw() -> void:
+		if tex == null or radii == Vector2.ZERO:
+			return
+		var half := Vector2(tex.get_width(), tex.get_height()) * 0.5
+		for b in list:
+			var al := alpha_of(b)
+			if al <= 0.005:
+				continue
+			# a little smaller as it goes in
+			var sc: float = float(b["scale"]) * lerpf(0.6, 1.0, smoothstep(GONE, ENTER_TO, float(b["k"])))
+			draw_set_transform(spot(b["a"], b["k"], radii), b["rot"], Vector2(sc, sc))
+			draw_texture(tex, -half, Color(BAT_TEAL, al))
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+func _process(delta: float) -> void:
+	if visible:
+		bats.step(minf(delta, 1.0 / 30.0))
 	var r := measure()
 	if r != _last:
 		_fit(r)
@@ -131,19 +178,4 @@ func _fit(r: Rect2) -> void:
 		vortex.set_shader_parameter("portal_center", r.get_center())
 		vortex.set_shader_parameter("portal_radii", r.size * 0.5)
 	bats.position = r.get_center()
-	var pts := PackedVector2Array()
-	var out := PackedVector2Array()
-	var rx := r.size.x * 0.5
-	var ry := r.size.y * 0.5
-	for j in 4:
-		var k: float = lerpf(RIM_FROM, RIM_TO, j / 3.0)
-		for i in 96:
-			var a: float = TAU * (i + j * 0.37) / 96.0
-			# a point on the superellipse, and the way straight out of it there
-			var cx: float = signf(cos(a)) * pow(absf(cos(a)), 2.0 / ROUNDNESS)
-			var cy: float = signf(sin(a)) * pow(absf(sin(a)), 2.0 / ROUNDNESS)
-			pts.append(Vector2(cx * rx * k, cy * ry * k))
-			out.append(Vector2(signf(cx) * pow(absf(cx), ROUNDNESS - 1.0) / rx,
-				signf(cy) * pow(absf(cy), ROUNDNESS - 1.0) / ry).normalized())
-	bats.emission_points = pts
-	bats.emission_normals = out
+	bats.radii = r.size * 0.5

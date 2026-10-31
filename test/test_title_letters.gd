@@ -253,8 +253,8 @@ func test_the_portal_stands_round_the_title_and_subtitle() -> void:
 			var e: Vector2 = ((corner - o.get_center()) / (o.size * 0.5)).abs()
 			assert_lt(pow(pow(e.x, n) + pow(e.y, n), 1.0 / n), 0.95,
 				"the corner %s of a line inside the blue" % str(corner))
-	assert_eq(portal.bats.position, portal.oval.get_rect().get_center(), "the bats come off its rim")
-	assert_false(portal.bats.emission_points.is_empty(), "from points on it")
+	assert_eq(portal.bats.position, portal.oval.get_rect().get_center(), "the bats circle its middle")
+	assert_eq(portal.bats.radii, portal.oval.size * 0.5, "in its shape")
 	var before: Rect2 = portal.oval.get_global_rect()
 	menu._reroll(true)
 	await wait_frames(3)
@@ -277,3 +277,29 @@ func test_the_subtitle_spaces_its_words_wider() -> void:
 	await wait_frames(1)
 	assert_eq(menu.subtitle_row.space, menu.SUBTITLE_SPACE, "the menu's subtitle uses it")
 	assert_eq(menu.title_row.space, TitleLetters.SPACE, "and the title does not")
+
+
+# THE BATS COME IN FROM THE RED: each appears just outside the blue, is drawn in
+# while turning with the swirl, and is gone a little way inside.
+func test_the_bats_are_drawn_in_from_just_outside_the_blue() -> void:
+	var swarm = load("res://scripts/menu/MenuPortal.gd").BatSwarm.new()
+	add_child_autofree(swarm)
+	var Portal = load("res://scripts/menu/MenuPortal.gd")
+	var fresh: Dictionary = swarm.deal(false)
+	assert_gt(fresh["k"], 1.0, "a new bat starts outside the rim")
+	assert_almost_eq(swarm.alpha_of(fresh), 0.0, 0.001, "and fades in rather than popping")
+	swarm.list = [fresh]
+	var k0: float = fresh["k"]
+	var a0: float = fresh["a"]
+	swarm.step(0.5)
+	assert_lt(fresh["k"], k0, "drawn in")
+	assert_gt(fresh["a"], a0, "turning the swirl's way")
+	fresh["k"] = 1.0
+	fresh["age"] = 5.0
+	assert_gt(swarm.alpha_of(fresh), 0.5, "plain to see as it crosses into the blue")
+	fresh["k"] = Portal.GONE + 0.01
+	assert_lt(swarm.alpha_of(fresh), 0.05, "and all but gone a little way in")
+	fresh["k"] = Portal.GONE + 0.001
+	swarm.step(0.1)
+	assert_ne(swarm.list[0], fresh, "then dealt again outside")
+	assert_gt(swarm.list[0]["k"], 1.0, "outside")
