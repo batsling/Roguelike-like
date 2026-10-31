@@ -971,10 +971,22 @@ static func rift_backdrop(seed: float = 0.0) -> ColorRect:
 	rect.material = mat
 	return rect
 
-# The grey bat pattern (menu_bats.gdshader) as a full-rect ColorRect that ignores the
+# The bat pattern (menu_bats.gdshader) as a full-rect ColorRect that ignores the
 # mouse: the owner's bat on their pattern's lattice, drifting down and to the left.
 const BATS_SHADER := preload("res://shaders/menu_bats.gdshader")
 const BATS_ART := preload("res://images2.0/custom/menu_bat.png")
+
+# Its colours, as [ground, bat]. Several on trial while the owner picks one to
+# sit beside the main menu's red vortex; `bat_palette` says which is in use.
+const BAT_PALETTES := {
+	"grey": [Color("3b3a39"), Color("2f2e2d")],
+	"oxblood": [Color("2e1517"), Color("221012")],
+	"crimson": [Color("3d1217"), Color("2b0b0f")],
+	"rift": [Color("4a0b12"), Color("33070c")],
+	"red_on_grey": [Color("2d2b2b"), Color("4a1419")],
+	"ember_black": [Color("140909"), Color("3a0d11")],
+}
+static var bat_palette := "grey"
 
 static func bat_backdrop() -> ColorRect:
 	var rect := ColorRect.new()
@@ -983,6 +995,9 @@ static func bat_backdrop() -> ColorRect:
 	var mat := ShaderMaterial.new()
 	mat.shader = BATS_SHADER
 	mat.set_shader_parameter("bat", BATS_ART)
+	var colours: Array = BAT_PALETTES.get(bat_palette, BAT_PALETTES["grey"])
+	mat.set_shader_parameter("base", colours[0])
+	mat.set_shader_parameter("ink", colours[1])
 	rect.material = mat
 	rect.resized.connect(func() -> void: mat.set_shader_parameter("size", rect.size))
 	return rect
