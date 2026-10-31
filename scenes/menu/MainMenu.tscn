@@ -36,7 +36,7 @@ alignment = 1
 
 [node name="TitleBox" type="VBoxContainer" parent="Center/Panel"]
 layout_mode = 2
-theme_override_constants/separation = 18
+theme_override_constants/separation = 30
 
 [node name="Title" type="Label" parent="Center/Panel/TitleBox"]
 unique_name_in_owner = true

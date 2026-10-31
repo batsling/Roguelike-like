@@ -31,8 +31,8 @@ uniform vec4 rim : source_color = vec4(0.40, 0.92, 0.88, 1.0);
 uniform vec4 core : source_color = vec4(0.82, 1.0, 0.98, 1.0);
 uniform vec4 deep : source_color = vec4(0.08, 0.38, 0.42, 1.0);
 
-uniform float speed = 0.06;       // the turn
-uniform float inflow = 0.05;      // zoom cycles a second: the pull inward
+uniform float speed = 0.045;      // the turn
+uniform float inflow = 0.035;     // zoom cycles a second: the pull inward
 uniform float twist = 2.6;
 // Of the portal's radii: blue from here in, red past 1.
 uniform float edge_in = 0.8;
