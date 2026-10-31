@@ -36,7 +36,7 @@ alignment = 1
 
 [node name="TitleBox" type="VBoxContainer" parent="Center/Panel"]
 layout_mode = 2
-theme_override_constants/separation = 2
+theme_override_constants/separation = 30
 
 [node name="Title" type="Label" parent="Center/Panel/TitleBox"]
 unique_name_in_owner = true
@@ -54,69 +54,84 @@ horizontal_alignment = 1
 theme_override_font_sizes/font_size = 20
 theme_override_colors/font_color = Color(0.659, 0.612, 0.529, 1)
 
-[node name="TopControls" type="HBoxContainer" parent="Center/Panel"]
-layout_mode = 2
+[node name="TopControls" type="HBoxContainer" parent="."]
+layout_mode = 1
+offset_left = 16.0
+offset_top = 16.0
 theme_override_constants/separation = 18
-alignment = 1
 
-[node name="HowToPlayBtn" type="Button" parent="Center/Panel/TopControls"]
+[node name="HowToPlayBtn" type="Button" parent="TopControls"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "📖 How to Play"
 custom_minimum_size = Vector2(225, 48)
 
-[node name="Buttons" type="VBoxContainer" parent="Center/Panel"]
-layout_mode = 2
+[node name="Below" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = -1
+anchor_top = 0.5
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = 100.0
+offset_bottom = -16.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
 theme_override_constants/separation = 8
 
-[node name="StartRunBtn" type="Button" parent="Center/Panel/Buttons"]
+[node name="Buttons" type="VBoxContainer" parent="Below"]
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_constants/separation = 8
+
+[node name="StartRunBtn" type="Button" parent="Below/Buttons"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "Start Run"
 custom_minimum_size = Vector2(400, 60)
 
-[node name="CustomRunBtn" type="Button" parent="Center/Panel/Buttons"]
+[node name="CustomRunBtn" type="Button" parent="Below/Buttons"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "⚙  Custom Run"
 custom_minimum_size = Vector2(400, 48)
 
-[node name="ContinueBtn" type="Button" parent="Center/Panel/Buttons"]
+[node name="ContinueBtn" type="Button" parent="Below/Buttons"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "Continue"
 custom_minimum_size = Vector2(400, 48)
 
-[node name="SaveList" type="VBoxContainer" parent="Center/Panel/Buttons"]
+[node name="SaveList" type="VBoxContainer" parent="Below/Buttons"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_constants/separation = 5
 
-[node name="RunHistoryBtn" type="Button" parent="Center/Panel/Buttons"]
+[node name="RunHistoryBtn" type="Button" parent="Below/Buttons"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "Run History"
 custom_minimum_size = Vector2(400, 48)
 
-[node name="CollectionBtn" type="Button" parent="Center/Panel/Buttons"]
+[node name="CollectionBtn" type="Button" parent="Below/Buttons"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "Collection"
 custom_minimum_size = Vector2(400, 48)
 
-[node name="TierListBtn" type="Button" parent="Center/Panel/Buttons"]
+[node name="TierListBtn" type="Button" parent="Below/Buttons"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "🏆 Tier List"
 custom_minimum_size = Vector2(400, 48)
 
-[node name="SettingsBtn" type="Button" parent="Center/Panel/Buttons"]
+[node name="SettingsBtn" type="Button" parent="Below/Buttons"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "⚙ Settings"
 custom_minimum_size = Vector2(400, 48)
 
-[node name="QuitBtn" type="Button" parent="Center/Panel/Buttons"]
+[node name="QuitBtn" type="Button" parent="Below/Buttons"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "⏻ Exit Game"

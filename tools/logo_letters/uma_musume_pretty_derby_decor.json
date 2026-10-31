@@ -21,6 +21,12 @@
       ]
     ]
   },
+  "centre": {
+    "decor_right": [
+      437,
+      451
+    ]
+  },
   "fill": {
     "min_alpha": 100,
     "min_brightness": -1,

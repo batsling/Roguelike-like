@@ -161,7 +161,18 @@ piece with something attached above or below sets its rows by hand in the
 config (`"body": {"h": [y0, y1]}`, source pixels: the crab's h and r, the
 Repentance I, Nuclear Throne's slimed N and R); its width is then measured over
 those rows only, so a stalk or a drip off to one side does not pull the
-middle. `test_title_letters.gd` reads every PNG back and fails if a box does not
+middle. A decoration whose box is right but whose middle is not the part that
+should line up sets `"centre": {"decor_right": [y0, y1]}` instead: those source
+rows sit on the line (`line_center` in the index) and the size is left alone —
+Uma Musume's dash centres its bar, not the sparkles above it. Clicking the
+title or subtitle on the menu draws that row again. Behind both rows stands a
+blue portal, the heart of one swirl with the menu's red rift background, both
+turning and drawn inward (`shaders/menu_vortex.gdshader`); `scripts/menu/MenuPortal.gd`
+re-measures its oval off the rows' letters whenever they move, with a fringe of the menu's bat (`images2.0/custom/menu_bat.png`)
+drawn in from just outside it on the swirl, gone a little way inside, so the
+blue breaks up into the red. The menu's art
+(`MenuFallingArt`) is given the portal's oval as its `sink` and flies into it
+from every edge instead of falling. `test_title_letters.gd` reads every PNG back and fails if a box does not
 hug its letter, so a stale index is caught.
 
 The defaults suit a light fill in a dark outline over a soft drop shadow

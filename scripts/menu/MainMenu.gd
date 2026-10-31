@@ -25,9 +25,10 @@ func _ready() -> void:
 	GameState.phase = GameState.Phase.MENU
 	theme = UITheme.shared()
 	_style_menu()
-	_paint_bats()
+	_paint_vortex()
 	_mount_falling_art()
 	_build_title()
+	_mount_portal()
 
 	%StartRunBtn.pressed.connect(_on_start_run)
 	%CustomRunBtn.pressed.connect(_on_custom_run)
@@ -46,9 +47,12 @@ func _ready() -> void:
 	# again — it is showing the previous player's runs until it is.
 	Profiles.profile_switched.connect(_on_profile_switched)
 	Profiles.profile_wiped.connect(_on_profile_switched)
-	_refresh_continue_button()
 	_move_quit_to_corner()
+	_refresh_continue_button()
+	_rearrange_on_visibility()
 	_build_radio_corner()
+	# The pop-over goes over both corners: nothing on the menu under it is live.
+	move_child(_save_overlay, _modal_layer.get_index() - 1)
 
 # ---------------------------------------------------------------------------
 # Menu styling
@@ -100,52 +104,101 @@ func _style_menu() -> void:
 # It deliberately keeps running while the modals are up: `%ModalLayer` is a
 # sibling above this, so the character picker and the settings panel dim it
 # rather than stop it, and the menu behind them still looks alive.
+var _art: MenuFallingArt = null
+
 func _mount_falling_art() -> void:
 	var art := MenuFallingArt.mount(self)
 	# Directly above the Background ColorRect, below Center and %ModalLayer.
 	move_child(art, 1)
+	# Dimmed behind the buttons; flying into the portal once it is up (_mount_portal).
+	art.dim_node = %StartRunBtn.get_parent()
+	_art = art
 
-# The bats drifting behind everything: a shader on %Background, which keeps its
-# colour (what the editor previews, and what shows if the shader cannot load).
-const BATS_SHADER := preload("res://shaders/menu_bats.gdshader")
-const BAT_SPRITE := "res://images2.0/custom/menu_bat.png"
+# The vortex behind everything: the red rift across the screen and the blue
+# portal the title stands in, one swirl (shaders/menu_vortex.gdshader), on
+# %Background, which keeps its colour (what the editor previews, and what shows
+# if the shader cannot load). MenuPortal tells it where the portal is.
+const VORTEX_SHADER := preload("res://shaders/menu_vortex.gdshader")
+const RIFT_RED := Color(1.0, 0.36, 0.30)
+const RIFT_RED_DEEP := Color(0.36, 0.03, 0.06)
+const RIFT_RED_BASE := Color(0.06, 0.02, 0.02)
 
-func _paint_bats() -> void:
+func _paint_vortex() -> void:
 	var bg := %Background as ColorRect
 	var mat := ShaderMaterial.new()
-	mat.shader = BATS_SHADER
-	mat.set_shader_parameter("bat", TitleLetters.texture(BAT_SPRITE))
+	mat.shader = VORTEX_SHADER
+	mat.set_shader_parameter("rift_color", RIFT_RED)
+	mat.set_shader_parameter("deep_color", RIFT_RED_DEEP)
+	mat.set_shader_parameter("base_color", RIFT_RED_BASE)
 	bg.material = mat
 	var fit := func() -> void: mat.set_shader_parameter("size", bg.size)
 	bg.resized.connect(fit)
 	fit.call()
 
+# Where the blue portal is, and its fringe of bats (MenuPortal). UNDER the art,
+# which flies into it (MenuFallingArt.sink) and is seen shrinking away over the
+# blue; under the letters, which stand on it.
+const MenuPortal := preload("res://scripts/menu/MenuPortal.gd")
+var portal: Control = null
+
+func _mount_portal() -> void:
+	portal = MenuPortal.mount(self, func() -> Array: return [title_row, subtitle_row])
+	portal.art = _art
+	portal.vortex = (%Background as ColorRect).material
+	move_child(portal, _art.get_index())
+
 # The title and subtitle, spelled in letters cut from roguelike logos and drawn
 # again every launch (TitleLetters). The scene's two Labels stay as the editor
 # preview and the fallback: hidden only once a row has actually been built.
+# Clicking either row draws that row again (_reroll), so the player can shuffle
+# through the logos without restarting the game.
 const TITLE_HEIGHT := 84.0
 const SUBTITLE_HEIGHT := 30.0
 const TITLE_MAX_WIDTH := 1100.0
+# The subtitle's word gap, of its line height: wider than TitleLetters.SPACE,
+# since at 30px a mixed-logo subtitle's words otherwise run together.
+const SUBTITLE_SPACE := 0.6
 
 var title_row: TitleLetters = null
 var subtitle_row: TitleLetters = null
+var _title_rng := RandomNumberGenerator.new()
 
 func _build_title(rng: RandomNumberGenerator = null) -> void:
 	if rng == null:
 		rng = RandomNumberGenerator.new()
 		rng.randomize()
-	for row in [title_row, subtitle_row]:
-		if row != null:
-			row.queue_free()
-	title_row = _title_row(%Title, TITLE_HEIGHT, rng, true)
-	subtitle_row = _title_row(%Subtitle, SUBTITLE_HEIGHT, rng, false)
+	_title_rng = rng
+	_reroll(true)
+	_reroll(false)
+
+# Draw the title (or the subtitle) again in place of the one showing.
+func _reroll(title: bool) -> void:
+	var old: TitleLetters = title_row if title else subtitle_row
+	var row := _title_row(%Title if title else %Subtitle,
+			TITLE_HEIGHT if title else SUBTITLE_HEIGHT, _title_rng, title)
+	if old != null:
+		if row == null:
+			return
+		old.queue_free()
+	if title:
+		title_row = row
+	else:
+		subtitle_row = row
 
 func _title_row(label: Label, height: float, rng: RandomNumberGenerator, decorated: bool) -> TitleLetters:
-	var row := TitleLetters.make(label.text, height, rng, decorated, TITLE_MAX_WIDTH)
+	var row := TitleLetters.make(label.text, height, rng, decorated, TITLE_MAX_WIDTH,
+			TitleLetters.SPACE if decorated else SUBTITLE_SPACE)
 	if row.placed.is_empty():
 		row.free()
 		return null
 	row.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	# The row itself asks for no width (TitleLetters), so it is the letters that
+	# take the click.
+	row.ink.mouse_filter = Control.MOUSE_FILTER_STOP
+	row.ink.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	row.ink.gui_input.connect(func(ev: InputEvent) -> void:
+		if ev is InputEventMouseButton and ev.pressed and ev.button_index == MOUSE_BUTTON_LEFT:
+			_reroll(decorated))
 	label.add_sibling(row)
 	label.visible = false
 	return row
@@ -154,19 +207,16 @@ func _title_row(label: Label, height: float, rng: RandomNumberGenerator, decorat
 # Profiles — who is playing
 # ---------------------------------------------------------------------------
 
-# A row under the title saying whose game this is, with the way to change it.
-# Built in code and inserted into the menu's own column, so it sits with the
-# title rather than among the actions — switching player is not a thing you do
-# in the middle of choosing a run.
+# Whose game this is, with the way to change it, in the top-left corner: the
+# scene's TopControls, which already holds How to Play. Out of the middle of the
+# screen since the title moved to its centre — switching player is not a thing
+# you do in the middle of choosing a run.
 var _profile_lbl: Label = null
 
 func _build_profile_row() -> void:
-	var panel := get_node_or_null("Center/Panel")
-	if panel == null:
+	var row: HBoxContainer = get_node_or_null("TopControls")
+	if row == null:
 		return
-	var row := HBoxContainer.new()
-	row.name = "ProfileRow"
-	row.alignment = BoxContainer.ALIGNMENT_CENTER
 	row.add_theme_constant_override("separation", UITheme.GAP_LOOSE)
 
 	_profile_lbl = Label.new()
@@ -182,21 +232,76 @@ func _build_profile_row() -> void:
 	switch_btn.pressed.connect(_on_profiles)
 	row.add_child(switch_btn)
 
-	# HOW TO PLAY RIDES THIS ROW rather than standing on one of its own. The scene
-	# gives it a row (TopControls), which cost the column 60px, and with Continue
-	# showing that was what pushed the bottom button off a 1440p screen's 720 canvas.
 	var how: Button = %HowToPlayBtn
-	var top: Node = how.get_parent()
-	how.reparent(row, false)
 	how.custom_minimum_size = Vector2(0, 38)
 	how.add_theme_font_size_override("font_size", UITheme.FONT_SUB)
-	if top != panel and top.get_child_count() == 0:
-		top.queue_free()
-
-	panel.add_child(row)
-	var title := panel.get_node_or_null("TitleBox")
-	panel.move_child(row, (title.get_index() + 1) if title != null else 0)
+	row.move_child(how, -1)
 	_refresh_profile_row()
+
+# THE BUTTONS UNDER THE TITLE: Start Run across the top, the rest two to a row
+# beneath it. The title stands in the middle of the screen now, which leaves
+# about 270px below it on the 720 canvas, and the old single column of seven
+# needed 400. The scene keeps every button in %Buttons in its old order; this
+# deals the visible ones after Start Run into rows of two (HBoxes named Row0…),
+# and is run again whenever Continue comes or goes, so an odd one out is centred
+# on a row of its own rather than leaving a hole.
+const GRID_W := 196.0
+const GRID_H := 48.0
+
+var _arrange_pending := false
+# Set while the rows are being dealt: moving a button between parents can raise
+# its own visibility_changed, which must not ask for another deal.
+var _arranging := false
+
+# Showing or hiding any of the buttons re-deals the rows at the end of the frame,
+# whoever did it — Continue is the one that comes and goes.
+func _rearrange_on_visibility() -> void:
+	for b in _grid_order:
+		b.visibility_changed.connect(func() -> void:
+			if not _arrange_pending and not _arranging:
+				_arrange_pending = true
+				_arrange_buttons.call_deferred())
+
+func _arrange_buttons() -> void:
+	_arrange_pending = false
+	_arranging = true
+	_deal_rows()
+	_arranging = false
+
+# The buttons in the scene's order, taken the first time the rows are dealt, so
+# Continue always comes back in its own place rather than at the end.
+var _grid_order: Array[Button] = []
+
+func _deal_rows() -> void:
+	var box: VBoxContainer = %StartRunBtn.get_parent()
+	if _grid_order.is_empty():
+		for c in box.get_children():
+			if c is Button and c != %StartRunBtn:
+				_grid_order.append(c)
+	var deal: Array[Button] = _grid_order
+	for b in deal:
+		b.reparent(box, false)
+	for c in box.get_children():
+		if c is HBoxContainer and String(c.name).begins_with("Row"):
+			box.remove_child(c)
+			c.queue_free()
+	var shown := deal.filter(func(b: Button) -> bool: return b.visible)
+	var at := %StartRunBtn.get_index() + 1
+	for i in range(0, shown.size(), 2):
+		var row := HBoxContainer.new()
+		row.name = "Row%d" % (i / 2)
+		row.alignment = BoxContainer.ALIGNMENT_CENTER
+		row.add_theme_constant_override("separation", UITheme.GAP)
+		box.add_child(row)
+		box.move_child(row, at)
+		at += 1
+		for b in shown.slice(i, i + 2):
+			b.reparent(row, false)
+			b.custom_minimum_size = Vector2(GRID_W, GRID_H)
+	# Hidden ones stay in the box, out of the rows, until they are shown.
+	for b in deal:
+		if not b.visible:
+			box.move_child(b, -1)
 
 # Exit Game lives in the bottom-right corner rather than at the foot of the
 # button column. It is the one entry that isn't a way INTO the game, and sitting
@@ -337,47 +442,78 @@ func _refresh_continue_button() -> void:
 	_continue_btn.text = "Continue"
 	if count == 0:
 		_show_save_list(false)
+	_arrange_buttons()
 
 func _on_continue_toggle() -> void:
 	_show_save_list(not _save_list_container.visible)
 	if _save_list_container.visible:
 		_populate_save_list()
 
-# THE SAVE LIST SCROLLS rather than growing the column. It sits in the middle of
-# the buttons, and a player with five saves opened it to a column taller than the
-# 720 canvas: Exit, Settings and the bottom of the list went off the bottom of the
-# screen with no way to reach them. The scene keeps `%SaveList` where it was; this
-# slips a ScrollContainer in around it, and `_fit_save_list` gives that box only
-# the height the screen has left once everything else in the column is counted.
+# THE SAVE LIST IS A POP-OVER. It used to open in the middle of the button
+# column; with the buttons in a grid under a centred title there is no column to
+# open it in, so Continue raises it over the menu instead: a panel in the middle
+# of the screen on a dim backdrop, which a click outside it (or Continue again)
+# closes. The scene keeps `%SaveList` among the buttons; this moves it into a
+# ScrollContainer in that panel, and `_fit_save_list` gives the scroll only the
+# height the screen has left once the panel's own furniture is counted.
 var _save_scroll: ScrollContainer = null
+var _save_overlay: Control = null
+var _save_panel: PanelContainer = null
 
 func _wrap_save_list() -> void:
-	var parent: Node = _save_list_container.get_parent()
-	var at: int = _save_list_container.get_index()
+	_save_overlay = Control.new()
+	_save_overlay.name = "SaveOverlay"
+	_save_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
+	add_child(_save_overlay)
+	# Over the menu, under %ModalLayer: a screen raised from a row (a resume
+	# asking to confirm) still comes up in front of the list.
+	move_child(_save_overlay, _modal_layer.get_index())
+	var dim := ColorRect.new()
+	dim.color = Color(0, 0, 0, 0.55)
+	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	dim.gui_input.connect(func(ev: InputEvent) -> void:
+		if ev is InputEventMouseButton and ev.pressed:
+			_show_save_list(false))
+	_save_overlay.add_child(dim)
+	var centre := CenterContainer.new()
+	centre.set_anchors_preset(Control.PRESET_FULL_RECT)
+	centre.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_save_overlay.add_child(centre)
+	_save_panel = PanelContainer.new()
+	_save_panel.add_theme_stylebox_override("panel",
+		UITheme.panel_box(UITheme.BG, UITheme.GOLD.lerp(UITheme.BORDER, 0.6), 10, 14, 1))
+	centre.add_child(_save_panel)
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", UITheme.GAP)
+	_save_panel.add_child(col)
+	var head := Label.new()
+	head.text = "Continue a run"
+	head.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	head.add_theme_font_size_override("font_size", MENU_FONT)
+	head.add_theme_color_override("font_color", UITheme.GOLD)
+	col.add_child(head)
 	_save_scroll = ScrollContainer.new()
 	_save_scroll.name = "SaveScroll"
 	_save_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	parent.add_child(_save_scroll)
-	parent.move_child(_save_scroll, at)
+	_save_scroll.custom_minimum_size.x = 400
+	col.add_child(_save_scroll)
 	_save_list_container.reparent(_save_scroll, false)
 	_save_list_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 
 # `%SaveList.visible` stays the one flag (the tests and every caller read it); the
-# box around it follows.
+# pop-over around it follows.
 func _show_save_list(on: bool) -> void:
 	_save_list_container.visible = on
-	if _save_scroll != null:
-		_save_scroll.visible = on
+	if _save_overlay != null:
+		_save_overlay.visible = on
 		if on:
 			_fit_save_list.call_deferred()
 
 func _fit_save_list() -> void:
-	if _save_scroll == null or not _save_scroll.visible:
+	if _save_scroll == null or not _save_overlay.visible:
 		return
-	# The scroll sits in Buttons, and Buttons in the Panel that is the whole column.
-	var panel: Control = _save_scroll.get_parent().get_parent()
 	_save_scroll.custom_minimum_size.y = 0
-	var rest: float = panel.get_combined_minimum_size().y
+	var rest: float = _save_panel.get_combined_minimum_size().y
 	var room: float = get_viewport_rect().size.y - rest - 2 * UITheme.GAP_SECTION
 	var want: float = _save_list_container.get_combined_minimum_size().y
 	_save_scroll.custom_minimum_size.y = clampf(want, 0.0, maxf(room, 90.0))

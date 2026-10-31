@@ -95,7 +95,7 @@ func test_every_letter_is_centred_on_the_line_and_in_its_slot() -> void:
 			for p in row.placed:
 				var r := p.rect
 				var cx: float = r.position.x + float(p.entry["body_center_x"]) * r.size.x
-				var cy: float = r.position.y + float(p.entry["body_center"]) * r.size.y
+				var cy: float = r.position.y + float(p.entry.get("line_center", p.entry["body_center"])) * r.size.y
 				var bw: float = float(p.entry["body_width"]) * r.size.x
 				var bh: float = float(p.entry["body_height"]) * r.size.y
 				var tag := "seed %d %s %s" % [s, spec[0], p.entry["path"]]
@@ -189,10 +189,117 @@ func test_the_menu_spells_its_title_in_cut_letters_and_centres_it() -> void:
 		assert_lt(start.size.x, 500.0, "seed %d: the title does not widen the buttons" % s)
 
 
-func test_the_background_is_the_bats() -> void:
+# Clicking a row draws it again, in place: one row each, the new one where the
+# old one stood, and the other row left alone.
+func test_a_click_on_a_row_draws_it_again() -> void:
+	var menu = MENU.instantiate()
+	add_child_autofree(menu)
+	menu._build_title(_rng(5))
+	await wait_frames(2)
+	var title = menu.title_row
+	var sub = menu.subtitle_row
+	var ev := InputEventMouseButton.new()
+	ev.button_index = MOUSE_BUTTON_LEFT
+	ev.pressed = true
+	sub.ink.gui_input.emit(ev)
+	await wait_frames(2)
+	assert_ne(menu.subtitle_row, sub, "a new subtitle")
+	assert_eq(menu.title_row, title, "the title left alone")
+	assert_eq(menu.subtitle_row.get_index(), (menu.get_node("%Subtitle") as Label).get_index() + 1,
+		"standing where the old one stood")
+	title.ink.gui_input.emit(ev)
+	await wait_frames(2)
+	assert_ne(menu.title_row, title, "a new title")
+	var rows := (menu.get_node("Center/Panel/TitleBox") as Node).get_children().filter(
+		func(c): return c is TitleLetters)
+	assert_eq(rows.size(), 2, "one row each")
+
+func test_the_background_is_the_vortex_with_the_portal_in_it() -> void:
+	var menu = MENU.instantiate()
+	add_child_autofree(menu)
+	menu._build_title(_rng(6))
+	await wait_frames(3)
+	var mat := (menu.get_node("%Background") as ColorRect).material as ShaderMaterial
+	assert_not_null(mat, "the background has its shader")
+	assert_eq(mat.shader, menu.VORTEX_SHADER, "the one swirl, red and blue")
+	assert_eq(mat.get_shader_parameter("rift_color"), menu.RIFT_RED, "red outside")
+	var oval: Rect2 = menu.portal.oval.get_rect()
+	assert_eq(mat.get_shader_parameter("portal_center"), oval.get_center(), "blue round the title")
+	assert_eq(mat.get_shader_parameter("portal_radii"), oval.size * 0.5, "the oval's size")
+
+
+# THE PORTAL stands round both rows' letters, and follows a row that is redrawn.
+func test_the_portal_stands_round_the_title_and_subtitle() -> void:
+	var menu = MENU.instantiate()
+	add_child_autofree(menu)
+	menu._build_title(_rng(6))
+	await wait_frames(3)
+	var portal: Control = menu.portal
+	assert_not_null(portal, "a portal")
+	assert_lt(portal.get_index(), menu.get_node("Center").get_index(), "behind the letters")
+	assert_lt(portal.get_index(), menu._art.get_index(), "and behind the art flying into it")
+	assert_eq(menu._art.sink, portal.oval.get_rect(), "which is told where it is")
+	assert_gt(portal.get_index(), menu.get_node("%Background").get_index(), "over the rift")
+	for row in [menu.title_row, menu.subtitle_row]:
+		var g: Rect2 = row.ink.get_global_rect()
+		assert_true(portal.oval.get_global_rect().encloses(g), "round every letter of a row")
+	# THE CORNERS OF THE TEXT ARE IN THE BLUE, not just its middle: the first and
+	# last letters of each line, which an ellipse round the box leaves out.
+	var o: Rect2 = portal.oval.get_global_rect()
+	var n: float = portal.ROUNDNESS
+	for row in [menu.title_row, menu.subtitle_row]:
+		var g: Rect2 = row.ink.get_global_rect()
+		for corner in [g.position, g.end, Vector2(g.position.x, g.end.y), Vector2(g.end.x, g.position.y)]:
+			var e: Vector2 = ((corner - o.get_center()) / (o.size * 0.5)).abs()
+			assert_lt(pow(pow(e.x, n) + pow(e.y, n), 1.0 / n), 0.95,
+				"the corner %s of a line inside the blue" % str(corner))
+	assert_eq(portal.bats.position, portal.oval.get_rect().get_center(), "the bats circle its middle")
+	assert_eq(portal.bats.radii, portal.oval.size * 0.5, "in its shape")
+	var before: Rect2 = portal.oval.get_global_rect()
+	menu._reroll(true)
+	await wait_frames(3)
+	assert_true(portal.oval.get_global_rect().encloses(menu.title_row.ink.get_global_rect()),
+		"still round a title drawn again")
+	assert_eq(portal.oval.get_global_rect().position.y, before.position.y, "and in the same place")
+
+
+# THE SUBTITLE'S WORDS stand further apart than the title's.
+func test_the_subtitle_spaces_its_words_wider() -> void:
+	var a := TitleLetters.make(SUBTITLE, 30.0, _rng(3))
+	var b := TitleLetters.make(SUBTITLE, 30.0, _rng(3), false, 0.0, 0.6)
+	add_child_autofree(a)
+	add_child_autofree(b)
+	var spaces := SUBTITLE.count(" ")
+	assert_almost_eq(b.ink_width - a.ink_width, spaces * 30.0 * (0.6 - TitleLetters.SPACE), 0.01,
+		"each gap a quarter of a line wider")
 	var menu = MENU.instantiate()
 	add_child_autofree(menu)
 	await wait_frames(1)
-	var mat := (menu.get_node("%Background") as ColorRect).material as ShaderMaterial
-	assert_not_null(mat, "the background has its shader")
-	assert_not_null(mat.get_shader_parameter("bat"), "and its bat")
+	assert_eq(menu.subtitle_row.space, menu.SUBTITLE_SPACE, "the menu's subtitle uses it")
+	assert_eq(menu.title_row.space, TitleLetters.SPACE, "and the title does not")
+
+
+# THE BATS COME IN FROM THE RED: each appears just outside the blue, is drawn in
+# while turning with the swirl, and is gone a little way inside.
+func test_the_bats_are_drawn_in_from_just_outside_the_blue() -> void:
+	var swarm = load("res://scripts/menu/MenuPortal.gd").BatSwarm.new()
+	add_child_autofree(swarm)
+	var Portal = load("res://scripts/menu/MenuPortal.gd")
+	var fresh: Dictionary = swarm.deal(false)
+	assert_gt(fresh["k"], 1.0, "a new bat starts outside the rim")
+	assert_almost_eq(swarm.alpha_of(fresh), 0.0, 0.001, "and fades in rather than popping")
+	swarm.list = [fresh]
+	var k0: float = fresh["k"]
+	var a0: float = fresh["a"]
+	swarm.step(0.5)
+	assert_lt(fresh["k"], k0, "drawn in")
+	assert_gt(fresh["a"], a0, "turning the swirl's way")
+	fresh["k"] = 1.0
+	fresh["age"] = 5.0
+	assert_gt(swarm.alpha_of(fresh), 0.5, "plain to see as it crosses into the blue")
+	fresh["k"] = Portal.GONE + 0.01
+	assert_lt(swarm.alpha_of(fresh), 0.05, "and all but gone a little way in")
+	fresh["k"] = Portal.GONE + 0.001
+	swarm.step(0.1)
+	assert_ne(swarm.list[0], fresh, "then dealt again outside")
+	assert_gt(swarm.list[0]["k"], 1.0, "outside")

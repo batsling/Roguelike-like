@@ -429,7 +429,8 @@
   "body_center": 0.5,
   "body_height": 0.92,
   "body_center_x": 0.4962,
-  "body_width": 0.9621
+  "body_width": 0.9621,
+  "line_center": 0.8667
  },
  "e/20_minutes_till_dawn.png": {
   "game": "20_minutes_till_dawn",

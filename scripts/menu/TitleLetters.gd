@@ -10,7 +10,9 @@ extends Control
 # stalk, a knife — so the PNG's own middle is not the letter's. The tool records
 # in images2.0/custom/title/index.json where the letter itself sits in each PNG
 # (body_center / body_height down, body_center_x / body_width across, all
-# fractions of the PNG), and this lays every piece out by that box: each letter
+# fractions of the PNG; line_center, when present, is what sits on the line's
+# middle instead of the box's — Uma Musume's dash centres its bar, not the
+# sparkles over it), and this lays every piece out by that box: each letter
 # is scaled so its own height is the line's (one scale, never width or height
 # alone), centred on the line by its own middle, and spaced by its own width.
 # Whatever hangs off a letter overflows the line rather than growing it, so a
@@ -45,6 +47,8 @@ var line_height := 0.0
 # overflows both ways rather than stretching the button column to match.
 var ink := Control.new()
 var ink_width := 0.0
+# A space's width, of the line height (SPACE unless make() was given another).
+var space := SPACE
 
 func _init() -> void:
 	ink.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -124,8 +128,9 @@ static func texture(path: String) -> Texture2D:
 
 # A word laid out at `height` px a letter, no wider than `max_width`.
 static func make(text: String, height: float, rng: RandomNumberGenerator,
-		decorated: bool = false, max_width: float = 0.0) -> TitleLetters:
+		decorated: bool = false, max_width: float = 0.0, word_gap: float = SPACE) -> TitleLetters:
 	var w := TitleLetters.new()
+	w.space = word_gap
 	w.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var pieces := pick(text, rng)
 	var decor := pick_decor(rng) if decorated and rng.randf() < DECOR_CHANCE else []
@@ -154,7 +159,7 @@ func _lay_out(pieces: Array, decor: Array, height: float) -> void:
 		if i > 0:
 			x += height * GAP
 		if e.is_empty() or e.has("missing"):
-			x += height * SPACE
+			x += height * space
 			continue
 		var tex := texture(e["path"])
 		if tex == null:
@@ -175,7 +180,7 @@ func _lay_out(pieces: Array, decor: Array, height: float) -> void:
 		rect.size = Vector2(tw * s, th * s)
 		rect.position = Vector2(
 			x + slot * 0.5 - float(e.get("body_center_x", 0.5)) * tw * s,
-			height * 0.5 - float(e.get("body_center", 0.5)) * th * s)
+			height * 0.5 - float(e.get("line_center", e.get("body_center", 0.5))) * th * s)
 		ink.add_child(rect)
 		var p := Placed.new()
 		p.entry = e

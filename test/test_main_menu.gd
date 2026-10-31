@@ -128,12 +128,12 @@ func test_the_quit_button_is_still_wired_up() -> void:
 func test_the_menu_column_has_no_atlas_button_of_its_own() -> void:
 	var menu = _menu()
 	await wait_frames(2)
-	var buttons: Node = menu.get_node("Center/Panel/Buttons")
-	for c in buttons.get_children():
+	var buttons: Node = menu.get_node("Below/Buttons")
+	for c in buttons.find_children("*", "Button", true, false):
 		if c is Button:
 			assert_false(String((c as Button).text).to_lower().contains("atlas"),
 				"no Atlas button in the menu column: %s" % (c as Button).text)
-	assert_null(menu.get_node_or_null("Center/Panel/Buttons/AtlasBtn"),
+	assert_null(menu.get_node("Below/Buttons").find_child("AtlasBtn", true, false),
 		"and the node is gone rather than merely hidden")
 
 # …and Run History still opens over it, which is the one place the sky is part of

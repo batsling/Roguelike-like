@@ -718,3 +718,28 @@ func test_the_amount_on_screen_is_the_setting() -> void:
 	Settings.menu_falling_art_count = 9999
 	assert_eq(_art.piece_count(), MenuFallingArt.PIECE_COUNT_MAX, "and clamped to the slider's range")
 	Settings.menu_falling_art_count = was
+
+# INTO THE PORTAL (`sink`): a piece keeps its own size and alpha until it is
+# nearly at the blue, then shrinks fast and BRIGHTENS as it goes in, rather than
+# fading out on the way there.
+func test_a_piece_drawn_into_the_portal_brightens_and_shrinks_only_near_it() -> void:
+	_seed()
+	var view := _art.get_viewport_rect().size
+	_art.sink = Rect2(view * 0.5 - Vector2(300, 80), Vector2(600, 160))
+	var piece: Dictionary = _art._pieces[0]
+	piece["age"] = 10.0
+	var c := _art.sink.get_center()
+	var at := func(depth: float) -> Dictionary:
+		piece["pos"] = c + Vector2(300.0 * depth, 0.0)
+		_art._redraw()
+		return {"a": float(piece["draw_alpha"]), "s": float(piece["draw_scale"])}
+	var far: Dictionary = at.call(1.6)
+	assert_almost_eq(far["a"], float(piece["alpha"]), 0.001, "full alpha well outside")
+	assert_almost_eq(far["s"], 1.0, 0.001, "and full size")
+	var edge: Dictionary = at.call(MenuFallingArt.SINK_NEAR)
+	assert_almost_eq(edge["s"], 1.0, 0.001, "still full size at the blue's edge")
+	var inside: Dictionary = at.call(0.7)
+	assert_gt(inside["a"], float(piece["alpha"]), "brighter once in the blue")
+	assert_lt(inside["s"], 0.7, "and shrinking fast")
+	var gone: Dictionary = at.call(MenuFallingArt.SINK_GONE)
+	assert_almost_eq(gone["a"], 0.0, 0.001, "gone by the time it is recycled")
