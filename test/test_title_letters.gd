@@ -93,6 +93,12 @@ func test_each_box_hugs_its_letter() -> void:
 # screen is worked out again from the TextureRect the layout made (its position
 # and size) and the index's fractions, never from the layout's own record.
 func test_every_letter_is_centred_on_the_line_and_in_its_slot() -> void:
+	# every logo letter earned, so the logos are laid out and not just Rogue's
+	var was: Dictionary = TitleUnlocks._unlocked
+	TitleUnlocks._unlocked = {}
+	for k in TitleLetters.units():
+		TitleUnlocks._unlocked[k] = "test"
+	var logo_lower := 0
 	for s in SEEDS:
 		for spec in [[TITLE, 84.0, true], [SUBTITLE, 30.0, false]]:
 			var row := TitleLetters.make(spec[0], spec[1], _rng(s), spec[2])
@@ -106,12 +112,19 @@ func test_every_letter_is_centred_on_the_line_and_in_its_slot() -> void:
 				var bw: float = float(p.entry["body_width"]) * r.size.x
 				var bh: float = float(p.entry["body_height"]) * r.size.y
 				var tag := "seed %d %s %s" % [s, spec[0], p.entry["path"]]
-				assert_almost_eq(cy, h / 2.0, 0.01, tag + ": middle on the line's middle")
+				var is_decor: bool = String(p.entry["folder"]).begins_with("decor")
+				if is_decor:
+					assert_almost_eq(cy, h / 2.0, 0.01, tag + ": middle on the line's middle")
+				else:
+					var top: float = r.position.y + (float(p.entry["body_center"]) - float(p.entry["body_height"]) * 0.5) * r.size.y
+					assert_almost_eq(top, p.body.position.y, 0.01, tag + ": its top where its case puts it")
 				assert_almost_eq(cx, p.body.get_center().x, 0.01, tag + ": middle in its slot")
 				assert_almost_eq(bw, p.body.size.x, 0.01, tag + ": its own width is its slot")
-				var is_decor: bool = String(p.entry["folder"]).begins_with("decor")
-				assert_almost_eq(bh, h * (TitleLetters.DECOR_SIZE if is_decor else 1.0), 0.01,
-					tag + ": every letter the line's height")
+				var want: float = TitleLetters.DECOR_SIZE if is_decor else TitleLetters._size(p.entry, p.ch).x
+				if not p.entry.has("case") and want < 1.0:
+					logo_lower += 1
+				assert_almost_eq(bh, h * want, 0.01, tag + ": as tall as its case makes it")
+				assert_almost_eq(bh, p.body.size.y, 0.01, tag + ": its own height is its box")
 				# one scale for both directions: the picture keeps its shape
 				var tex := r.texture
 				assert_almost_eq(r.size.x / r.size.y, float(tex.get_width()) / tex.get_height(), 0.001,
@@ -121,6 +134,8 @@ func test_every_letter_is_centred_on_the_line_and_in_its_slot() -> void:
 			assert_almost_eq(row.custom_minimum_size.y, h * (1.0 + 2.0 * TitleLetters.PAD), 0.01,
 				"the row is one line tall, whatever overflows")
 			assert_eq(row.custom_minimum_size.x, 0.0, "and asks for no width")
+	assert_gt(logo_lower, 0, "logo letters stood in lowercase places")
+	TitleUnlocks._unlocked = was
 
 
 func test_the_same_seed_spells_the_same_title() -> void:
@@ -210,6 +225,28 @@ func test_every_logo_piece_is_a_unit_and_rogue_is_none() -> void:
 	assert_gt(TitleLetters.units_of(&"hades").size(), 3, "Hades' own letters")
 	assert_eq(TitleLetters.units_of(&"rogue").size(), 0)
 
+
+# THE TEXT'S CASE SIZES A LOGO LETTER, not the logo's: a capital place is the
+# whole line, a capital in a lowercase place a small cap, and a lowercase-shaped
+# letter itself: the x-height, the whole line if tall, a g hanging below.
+func test_a_letter_is_sized_by_the_case_of_its_place() -> void:
+	var cap := {"game": "balatro"}                    # a capital O, B, G...
+	var low := {"game": "darkest_dungeon", "form": "lower"}
+	var x := TitleLetters.X_HEIGHT
+	assert_eq(TitleLetters._size(cap, "O"), Vector2(1, 0), "a capital place: the whole line")
+	assert_eq(TitleLetters._size(low, "R"), Vector2(1, 0), "whatever stands in it")
+	assert_eq(TitleLetters._size(cap, "o"), Vector2(x, 1 - x), "a capital in a lowercase place: small caps")
+	assert_eq(TitleLetters._size(low, "a"), Vector2(x, 1 - x), "a lowercase a: the x-height, on the baseline")
+	assert_eq(TitleLetters._size(low, "k"), Vector2(1, 0), "a tall letter is the whole line")
+	assert_eq(TitleLetters._size(cap, "k"), Vector2(x, 1 - x), "a capital K in a k's place is a small cap")
+	assert_eq(TitleLetters._size(low, "i"), Vector2(1, 0), "a dotted i reaches up")
+	assert_eq(TitleLetters._size(cap, "i"), Vector2(x, 1 - x), "a capital I in an i's place is small")
+	assert_eq(TitleLetters._size(low, "g"), Vector2(x + TitleLetters.DESCENDER, 1 - x),
+		"a lowercase g hangs below the line")
+	assert_eq(TitleLetters._size(cap, "g"), Vector2(x, 1 - x), "a capital G does not")
+	assert_eq(TitleLetters._size({"game": "rogue", "case": "lower"}, "a"), Vector2(1, 0),
+		"Rogue's letters keep their own band")
+	assert_eq(TitleLetters._size(cap, "-"), Vector2(1, 0), "not a letter: the whole line")
 
 func test_decorations_come_in_matching_pairs() -> void:
 	var stems := {}

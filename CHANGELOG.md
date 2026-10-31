@@ -11,6 +11,19 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Title letters are sized by case.** Every logo letter used to be drawn the
+  whole line's height, so Darkest Dungeon's small a stood as tall as a
+  capital. Now the text's case decides (the owner's choice over keeping each
+  logo's own proportions, which made Slay the Spire's e a quarter height and
+  Hades' H D E S half height beside its big A). A capital place is the whole
+  line. A lowercase place draws a capital as a small cap at Rogue's x-height
+  (0.7) on the baseline, and a letter cut as a lowercase shape (`lowercase` in
+  four configs, `form` in the index) as lowercase, with ascenders full height
+  and g j p q y hanging 0.3 below. Rogue's letters already worked this way and
+  are unchanged. `TitleLetters._size`, tests in `test_title_letters.gd`, whose
+  layout test now unlocks every logo letter (it had only been laying out
+  Rogue's).
+
 - **Darkest Dungeon's letters, and its torch as the first one-sided
   decoration.** D a r k e s t, D u n g e o n are cut from the logo like
   Mewgenics' black ink (`tools/logo_letters/darkest_dungeon.json`). The joined

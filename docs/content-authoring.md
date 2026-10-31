@@ -175,8 +175,17 @@ a knife), so the picture's middle is not the letter's. The script records each
 piece's LETTER BOX in `index.json` — `body_center` / `body_height` down,
 `body_center_x` / `body_width` across, fractions of the PNG — measured off the
 letter's face (its fill), so glow, shadow and outline never move it. The menu
-scales every letter by one factor so its own height is the line's, centres it
-on the line and in its own slot by that box, and lets the rest overflow. A
+scales every letter by one factor so its box is as tall as THE TEXT'S CASE
+makes it, puts it in its own slot by that box, and lets the rest overflow
+(`TitleLetters._size`). A capital place is the whole line. In a lowercase place
+a capital is a small cap, at Rogue's x-height (0.7 of the line) on the
+baseline, even for a k or an l. A letter cut as a lowercase SHAPE (a config's
+`"lowercase": [pieces]`, `"form": "lower"` in the index: Darkest Dungeon,
+Slay the Spire, Slay the Spire 2's "Slay the", Everything is Crab) is drawn as
+one: the x-height, the whole line for b d f h k l t and a dotted i, and the
+x-height with its tail hanging 0.3 below the line for g j p q y. So a new
+logo with lowercase letters needs its `lowercase` list, or its small a is
+blown up to a capital's height as every letter once was. A
 piece with something attached above or below sets its rows by hand in the
 config (`"body": {"h": [y0, y1]}`, source pixels: the crab's h and r, the
 Repentance I, Nuclear Throne's slimed N and R); its width is then measured over

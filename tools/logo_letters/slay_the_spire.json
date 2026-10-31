@@ -87,5 +87,17 @@
       "face_defringe": 2,
       "face_min_brightness": 185
     }
-  }
+  },
+  "lowercase": [
+    "l",
+    "a",
+    "y",
+    "t",
+    "h",
+    "e",
+    "p",
+    "i",
+    "r",
+    "e.2"
+  ]
 }

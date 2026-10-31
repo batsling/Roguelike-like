@@ -57,12 +57,21 @@ const DECOR_SIZE := 0.9
 const PAD := 0.12
 # How often a word that takes decorations gets a pair.
 const DECOR_CHANCE := 0.5
+# A lowercase letter's height, and how far a g or y hangs below the line, of a
+# capital's: Rogue's own (7 and 3 of its 10 font pixels), so a logo's a and a
+# Rogue a stand the same height side by side.
+const X_HEIGHT := 0.7
+const DESCENDER := 0.3
+# Lowercase letters as tall as a capital, and the ones that hang below the line.
+const ASCENDERS := "bdfhklt"
+const DESCENDERS := "gjpqy"
 
 # One letter as laid out: its entry, its texture, and where its letter box is.
 class Placed:
 	var entry: Dictionary
 	var rect: TextureRect
 	var body: Rect2      # the letter's own box, in `ink`'s coordinates
+	var ch := ""         # the character it stands for ("" for a decoration)
 
 var placed: Array[Placed] = []
 var line_height := 0.0
@@ -205,6 +214,27 @@ static func texture(path: String) -> Texture2D:
 	var img := Image.load_from_file(ProjectSettings.globalize_path(path))
 	return ImageTexture.create_from_image(img) if img != null and not img.is_empty() else null
 
+# How tall a logo letter stands for `ch`, and where its top is, both of the line
+# height (the line runs from the capitals' top, 0, to the baseline, 1). THE
+# TEXT'S CASE DECIDES, not the logo's (the owner, 31 Oct 2026): a capital place
+# is the whole line whatever stands in it. In a lowercase place a CAPITAL is
+# drawn as a small cap, the x-height on the baseline, even for a k or an l (a
+# full-height capital mid-word read as a capital). A lowercase-SHAPED letter
+# (`form` in the index) is drawn as one: the x-height, the whole line for a tall
+# one (b d f h k l t, and an i with its dot), its tail below the line for a g j
+# p q y. Rogue's
+# letters (`case`) are drawn in a shared band already and keep it.
+static func _size(e: Dictionary, ch: String) -> Vector2:
+	if ch == "" or e.has("case") or ch == ch.to_upper():
+		return Vector2(1.0, 0.0)
+	if String(e.get("form", "")) != "lower":
+		return Vector2(X_HEIGHT, 1.0 - X_HEIGHT)  # a capital: small caps, even for a k
+	if ASCENDERS.contains(ch) or ch == "i":
+		return Vector2(1.0, 0.0)
+	if DESCENDERS.contains(ch):
+		return Vector2(X_HEIGHT + DESCENDER, 1.0 - X_HEIGHT)
+	return Vector2(X_HEIGHT, 1.0 - X_HEIGHT)
+
 # A word laid out at `height` px a letter, no wider than `max_width`.
 static func make(text: String, height: float, rng: RandomNumberGenerator,
 		decorated: bool = false, max_width: float = 0.0, word_gap: float = SPACE) -> TitleLetters:
@@ -214,12 +244,13 @@ static func make(text: String, height: float, rng: RandomNumberGenerator,
 	var from := available()
 	var pieces := pick(text, rng, from)
 	var decor := pick_decor(rng, from) if decorated and rng.randf() < DECOR_CHANCE else []
-	w._lay_out(pieces, decor, height)
+	w._lay_out(pieces, decor, height, text)
 	if max_width > 0.0 and w.ink_width > max_width:
-		w._lay_out(pieces, decor, height * max_width / w.ink_width)
+		w._lay_out(pieces, decor, height * max_width / w.ink_width, text)
 	return w
 
-func _lay_out(pieces: Array, decor: Array, height: float) -> void:
+# `text` is what `pieces` spell, one character each: its case sizes them (_size).
+func _lay_out(pieces: Array, decor: Array, height: float, text: String = "") -> void:
 	for c in ink.get_children():
 		ink.remove_child(c)
 		c.queue_free()
@@ -228,11 +259,11 @@ func _lay_out(pieces: Array, decor: Array, height: float) -> void:
 	var x := 0.0
 	var seq: Array = []
 	if not decor.is_empty():
-		seq.append([decor[0], true])
-	for e in pieces:
-		seq.append([e, false])
+		seq.append([decor[0], true, ""])
+	for j in pieces.size():
+		seq.append([pieces[j], false, text[j] if j < text.length() else ""])
 	if decor.size() > 1:
-		seq.append([decor[1], true])
+		seq.append([decor[1], true, ""])
 	for i in seq.size():
 		var e: Dictionary = seq[i][0]
 		var is_decor: bool = seq[i][1]
@@ -249,7 +280,10 @@ func _lay_out(pieces: Array, decor: Array, height: float) -> void:
 		var th := float(tex.get_height())
 		var bh := float(e.get("body_height", 1.0))
 		var bw := float(e.get("body_width", 1.0))
-		var target := height * (DECOR_SIZE if is_decor else 1.0)
+		# a decoration is centred at DECOR_SIZE; a letter is sized by its case
+		var size_top := Vector2(DECOR_SIZE, 0.5 - DECOR_SIZE * 0.5) if is_decor \
+			else _size(e, String(seq[i][2]))
+		var target := height * size_top.x
 		var s := target / (th * bh)          # one scale: the letter's own height to the line's
 		var slot := tw * s * bw              # the letter's own width
 		var rect := TextureRect.new()
@@ -260,14 +294,19 @@ func _lay_out(pieces: Array, decor: Array, height: float) -> void:
 		if bool(e.get("pixel", false)):
 			rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 		rect.size = Vector2(tw * s, th * s)
-		rect.position = Vector2(
-			x + slot * 0.5 - float(e.get("body_center_x", 0.5)) * tw * s,
-			height * 0.5 - float(e.get("line_center", e.get("body_center", 0.5))) * th * s)
+		# its box's top at size_top.y; a decoration's line_center (Uma Musume's
+		# dash: its bar) sits on the line's middle instead
+		var bc := float(e.get("body_center", 0.5))
+		var top := height * size_top.y - (bc - bh * 0.5) * th * s
+		if is_decor and e.has("line_center"):
+			top = height * 0.5 - float(e["line_center"]) * th * s
+		rect.position = Vector2(x + slot * 0.5 - float(e.get("body_center_x", 0.5)) * tw * s, top)
 		ink.add_child(rect)
 		var p := Placed.new()
 		p.entry = e
 		p.rect = rect
-		p.body = Rect2(x, height * 0.5 - target * 0.5, slot, target)
+		p.body = Rect2(x, height * size_top.y, slot, target)
+		p.ch = String(seq[i][2])
 		placed.append(p)
 		x += slot
 	ink_width = x

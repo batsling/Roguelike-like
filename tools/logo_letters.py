@@ -58,6 +58,11 @@ so Godot never imports the source), is JSON:
                   that should line up (Uma Musume's dash: its bar, not the
                   sparkles above it). Unlike `body` it leaves the size alone;
                   the index records it as line_center
+    lowercase     [piece, ...] — pieces drawn as lowercase letters (a small a,
+                  not a capital A); the index records "form": "lower". A
+                  lowercase place in the title draws every letter at Rogue's
+                  x-height unless it is a tall one (b d f h k l t, and a
+                  lowercase-shaped i), and lets a lowercase g j p q y hang below
     styles        [variant, ...] — piece variants (the part after the dot) drawn
                   at another size than the rest of the logo; each is sized as a
                   line of its own in images2.0/custom/title/index.json
@@ -1148,6 +1153,11 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
             "body_center_x": round(body_xs[n_], 4),
             "body_width": round(body_widths[n_], 4),
         }
+        if n_ in cfg.get("lowercase", []):
+            # a lowercase SHAPE (Darkest Dungeon's a, Slay the Spire's e): the
+            # title draws it at the x-height in a lowercase place, and lets a
+            # g or y hang below the line (TitleLetters._size)
+            index[str(dest_.relative_to(OUT_DIR))]["form"] = "lower"
         if n_ in line_centers:
             # what sits on the line's middle, when it is not the box's middle
             index[str(dest_.relative_to(OUT_DIR))]["line_center"] = round(line_centers[n_], 4)
