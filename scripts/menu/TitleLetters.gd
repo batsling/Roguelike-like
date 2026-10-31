@@ -224,7 +224,15 @@ static func texture(path: String) -> Texture2D:
 # one (b d f h k l t, and an i with its dot), its tail below the line for a g j
 # p q y. Rogue's
 # letters (`case`) are drawn in a shared band already and keep it.
+#
+# A piece's `size` (from its config: the owner's eye, as Dead Cells' thin letters
+# drawn a little bigger) then grows or shrinks that on the baseline.
 static func _size(e: Dictionary, ch: String) -> Vector2:
+	var c := _case_size(e, ch)
+	var f := float(e.get("size", 1.0))
+	return Vector2(c.x * f, 1.0 - (1.0 - c.y) * f)
+
+static func _case_size(e: Dictionary, ch: String) -> Vector2:
 	if ch == "" or e.has("case") or ch == ch.to_upper():
 		return Vector2(1.0, 0.0)
 	if String(e.get("form", "")) != "lower":
@@ -284,6 +292,9 @@ func _lay_out(pieces: Array, decor: Array, height: float, text: String = "") -> 
 		var size_top := Vector2(DECOR_SIZE, 0.5 - DECOR_SIZE * 0.5) if is_decor \
 			else _size(e, String(seq[i][2]))
 		var target := height * size_top.x
+		# room kept clear either side of it (Dead Cells' flame), of the line
+		var pad := height * float(e.get("pad", 0.0))
+		x += pad
 		var s := target / (th * bh)          # one scale: the letter's own height to the line's
 		var slot := tw * s * bw              # the letter's own width
 		var rect := TextureRect.new()
@@ -308,6 +319,7 @@ func _lay_out(pieces: Array, decor: Array, height: float, text: String = "") -> 
 		p.body = Rect2(x, height * size_top.y, slot, target)
 		p.ch = String(seq[i][2])
 		placed.append(p)
+		x += pad
 		x += slot
 	ink_width = x
 	ink.size = Vector2(x, height)

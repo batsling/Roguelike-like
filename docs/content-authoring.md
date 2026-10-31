@@ -185,7 +185,14 @@ Slay the Spire, Slay the Spire 2's "Slay the", Everything is Crab) is drawn as
 one: the x-height, the whole line for b d f h k l t and a dotted i, and the
 x-height with its tail hanging 0.3 below the line for g j p q y. So a new
 logo with lowercase letters needs its `lowercase` list, or its small a is
-blown up to a capital's height as every letter once was. A
+blown up to a capital's height as every letter once was. Two settings are the
+owner's eye on a piece once it is on screen, by piece name or `"*"` for the
+whole config: `"size"` draws it that many times as big, grown or shrunk on the
+baseline (Dead Cells' thin letters 1.12, Darkest Dungeon's k 0.88), and `"pad"`
+keeps that much of the line clear either side (Dead Cells' flame, 0.08). A
+`body` that starts below the letter's real top blows the letter up and pushes
+it above the line: the crab's h was `[262, 375]` and sat too high until its
+stem's real top, 215, was used. A
 piece with something attached above or below sets its rows by hand in the
 config (`"body": {"h": [y0, y1]}`, source pixels: the crab's h and r, the
 Repentance I, Nuclear Throne's slimed N and R); its width is then measured over

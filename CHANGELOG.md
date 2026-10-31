@@ -11,6 +11,15 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The owner's notes on the title.** The menu's title is now "Roguelike-Like"
+  (a capital L, so the second word gets a capital-height letter too). The
+  crab's h sat too high and too big: its hand-set `body` rows started 47
+  source pixels below the h's real top, so it was blown up to fill the line
+  and poked out above. Two new per-piece settings, `size` and `pad`, carry the
+  owner's eye into the index: Dead Cells' thin letters are drawn 1.12 times as
+  big, Darkest Dungeon's k 0.88, both on the baseline, and Dead Cells' flame
+  keeps 0.08 of the line clear on each side.
+
 - **Title letters are sized by case.** Every logo letter used to be drawn the
   whole line's height, so Darkest Dungeon's small a stood as tall as a
   capital. Now the text's case decides (the owner's choice over keeping each

@@ -72,5 +72,12 @@
     },
     "smooth_scale": true,
     "scale": 2
+  },
+  "size": {
+    "*": 1.12,
+    "dash": 1.0
+  },
+  "pad": {
+    "dash": 0.08
   }
 }

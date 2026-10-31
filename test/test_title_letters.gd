@@ -8,7 +8,7 @@ extends GutTest
 # against the pixels of each picture, so a stale index fails here too.
 
 const MENU := preload("res://scenes/menu/MainMenu.tscn")
-const TITLE := "Roguelike-like"
+const TITLE := "Roguelike-Like"
 const SUBTITLE := "The Search for the Amulet of Nivlac"
 const SEEDS := [1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233]
 
@@ -247,6 +247,31 @@ func test_a_letter_is_sized_by_the_case_of_its_place() -> void:
 	assert_eq(TitleLetters._size({"game": "rogue", "case": "lower"}, "a"), Vector2(1, 0),
 		"Rogue's letters keep their own band")
 	assert_eq(TitleLetters._size(cap, "-"), Vector2(1, 0), "not a letter: the whole line")
+
+# A PIECE'S `size` grows or shrinks it ON THE BASELINE, and its `pad` keeps room
+# clear either side (the owner's eye: Dead Cells' thin letters a little bigger,
+# Darkest Dungeon's k a little smaller, Dead Cells' flame given room).
+func test_size_scales_on_the_baseline_and_pad_keeps_room() -> void:
+	var x := TitleLetters.X_HEIGHT
+	var big := {"game": "dead_cells", "size": 1.2}
+	var sz := TitleLetters._size(big, "D")
+	assert_almost_eq(sz.x, 1.2, 0.001, "a capital 1.2 times the line")
+	assert_almost_eq(sz.y + sz.x, 1.0, 0.001, "standing on the baseline")
+	sz = TitleLetters._size({"game": "darkest_dungeon", "form": "lower", "size": 0.9}, "g")
+	assert_almost_eq(sz.x, (x + TitleLetters.DESCENDER) * 0.9, 0.001, "a g shrunk...")
+	assert_almost_eq(sz.y + x * 0.9, 1.0, 0.001, "...keeps its x-height on the baseline")
+	var idx := TitleLetters.pool()
+	var flame: Dictionary = (idx["dash"] as Array).filter(func(e): return e["game"] == "dead_cells")[0]
+	var a_: Dictionary = (idx["a"] as Array).filter(func(e): return e["game"] == "balatro")[0]
+	var row := TitleLetters.new()
+	add_child_autofree(row)
+	row._lay_out([a_, flame, a_], [], 100.0, "A-A")
+	var pad := 100.0 * float(flame["pad"])
+	assert_gt(pad, 0.0, "Dead Cells' flame keeps room round it")
+	assert_almost_eq(row.placed[1].body.position.x - row.placed[0].body.end.x,
+		100.0 * TitleLetters.GAP + pad, 0.01, "before it")
+	assert_almost_eq(row.placed[2].body.position.x - row.placed[1].body.end.x,
+		100.0 * TitleLetters.GAP + pad, 0.01, "and after it")
 
 func test_decorations_come_in_matching_pairs() -> void:
 	var stems := {}

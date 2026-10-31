@@ -179,7 +179,8 @@
   "body_center": 0.5095,
   "body_height": 0.8937,
   "body_center_x": 0.5,
-  "body_width": 0.602
+  "body_width": 0.602,
+  "size": 1.12
  },
  "a/everything_is_crab.png": {
   "game": "everything_is_crab",
@@ -508,7 +509,8 @@
   "body_center": 0.5,
   "body_height": 0.8374,
   "body_center_x": 0.5027,
-  "body_width": 0.5798
+  "body_width": 0.5798,
+  "size": 1.12
  },
  "c/everything_is_crab.png": {
   "game": "everything_is_crab",
@@ -650,7 +652,8 @@
   "body_center": 0.5,
   "body_height": 0.8371,
   "body_center_x": 0.5,
-  "body_width": 0.6098
+  "body_width": 0.6098,
+  "size": 1.12
  },
  "d/dead_cells__2.png": {
   "game": "dead_cells",
@@ -659,7 +662,8 @@
   "body_center": 0.5,
   "body_height": 0.8371,
   "body_center_x": 0.5,
-  "body_width": 0.604
+  "body_width": 0.604,
+  "size": 1.12
  },
  "d/hades.png": {
   "game": "hades",
@@ -735,7 +739,9 @@
   "body_center": 0.4959,
   "body_height": 0.7945,
   "body_center_x": 0.5,
-  "body_width": 0.7
+  "body_width": 0.7,
+  "size": 1.0,
+  "pad": 0.08
  },
  "dash/rogue.png": {
   "game": "rogue",
@@ -866,7 +872,8 @@
   "body_center": 0.5,
   "body_height": 0.8371,
   "body_center_x": 0.5162,
-  "body_width": 0.662
+  "body_width": 0.662,
+  "size": 1.12
  },
  "e/dead_cells__2.png": {
   "game": "dead_cells",
@@ -875,7 +882,8 @@
   "body_center": 0.5,
   "body_height": 0.8374,
   "body_center_x": 0.5026,
-  "body_width": 0.582
+  "body_width": 0.582,
+  "size": 1.12
  },
  "e/enter_the_gungeon.png": {
   "game": "enter_the_gungeon",
@@ -1262,8 +1270,8 @@
   "game": "everything_is_crab",
   "config": "everything_is_crab.json",
   "style": "everything_is_crab",
-  "body_center": 0.8557,
-  "body_height": 0.3229,
+  "body_center": 0.7886,
+  "body_height": 0.4571,
   "body_center_x": 0.581,
   "body_width": 0.5905,
   "form": "lower"
@@ -1537,6 +1545,7 @@
   "body_height": 0.9739,
   "body_center_x": 0.4937,
   "body_width": 0.9623,
+  "size": 0.88,
   "form": "lower"
  },
  "k/risk_of_rain_2.png": {
@@ -1604,7 +1613,8 @@
   "body_center": 0.4942,
   "body_height": 0.858,
   "body_center_x": 0.522,
-  "body_width": 0.6044
+  "body_width": 0.6044,
+  "size": 1.12
  },
  "l/dead_cells__2.png": {
   "game": "dead_cells",
@@ -1613,7 +1623,8 @@
   "body_center": 0.493,
   "body_height": 0.8537,
   "body_center_x": 0.5217,
-  "body_width": 0.6087
+  "body_width": 0.6087,
+  "size": 1.12
  },
  "l/loop_hero.png": {
   "game": "loop_hero",
@@ -2390,7 +2401,8 @@
   "body_center": 0.5,
   "body_height": 0.8371,
   "body_center_x": 0.5028,
-  "body_width": 0.5611
+  "body_width": 0.5611,
+  "size": 1.12
  },
  "s/everything_is_crab.png": {
   "game": "everything_is_crab",

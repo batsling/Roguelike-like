@@ -63,6 +63,11 @@ so Godot never imports the source), is JSON:
                   lowercase place in the title draws every letter at Rogue's
                   x-height unless it is a tall one (b d f h k l t, and a
                   lowercase-shaped i), and lets a lowercase g j p q y hang below
+    size          {piece or "*": factor} — drawn this many times as big as its
+                  case makes it, grown or shrunk on the baseline (Dead Cells'
+                  thin letters a little bigger, Darkest Dungeon's k smaller)
+    pad           {piece or "*": fraction} — that much of the line height kept
+                  clear on each side of the piece (Dead Cells' flame)
     styles        [variant, ...] — piece variants (the part after the dot) drawn
                   at another size than the rest of the logo; each is sized as a
                   line of its own in images2.0/custom/title/index.json
@@ -1153,6 +1158,13 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
             "body_center_x": round(body_xs[n_], 4),
             "body_width": round(body_widths[n_], 4),
         }
+        # `size` and `pad` are the owner's eye on a piece, by name or "*" for
+        # the whole config: drawn this many times as big (on the baseline), and
+        # this much of the line kept clear either side (TitleLetters)
+        for key in ("size", "pad"):
+            val = cfg.get(key, {}).get(n_, cfg.get(key, {}).get("*"))
+            if val is not None:
+                index[str(dest_.relative_to(OUT_DIR))][key] = val
         if n_ in cfg.get("lowercase", []):
             # a lowercase SHAPE (Darkest Dungeon's a, Slay the Spire's e): the
             # title draws it at the x-height in a lowercase place, and lets a
