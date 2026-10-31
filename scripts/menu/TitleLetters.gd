@@ -226,11 +226,12 @@ static func texture(path: String) -> Texture2D:
 # letters (`case`) are drawn in a shared band already and keep it.
 #
 # A piece's `size` (from its config: the owner's eye, as Dead Cells' thin letters
-# drawn a little bigger) then grows or shrinks that on the baseline.
+# drawn a little bigger) then grows or shrinks that on the baseline, and its
+# `drop` moves it down (Balatro's A sat high).
 static func _size(e: Dictionary, ch: String) -> Vector2:
 	var c := _case_size(e, ch)
 	var f := float(e.get("size", 1.0))
-	return Vector2(c.x * f, 1.0 - (1.0 - c.y) * f)
+	return Vector2(c.x * f, 1.0 - (1.0 - c.y) * f + float(e.get("drop", 0.0)))
 
 static func _case_size(e: Dictionary, ch: String) -> Vector2:
 	if ch == "" or e.has("case") or ch == ch.to_upper():

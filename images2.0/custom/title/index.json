@@ -16,7 +16,9 @@
   "body_height": 0.5556,
   "body_center_x": 0.45,
   "body_width": 0.7,
-  "pixel": true
+  "pixel": true,
+  "size": 0.94,
+  "pad": 0.03
  },
  "1/rogue.png": {
   "game": "rogue",
@@ -26,7 +28,9 @@
   "body_height": 0.5556,
   "body_center_x": 0.5,
   "body_width": 0.6,
-  "pixel": true
+  "pixel": true,
+  "size": 0.94,
+  "pad": 0.03
  },
  "2/20_minutes_till_dawn.png": {
   "game": "20_minutes_till_dawn",
@@ -54,7 +58,9 @@
   "body_height": 0.5556,
   "body_center_x": 0.45,
   "body_width": 0.7,
-  "pixel": true
+  "pixel": true,
+  "size": 0.94,
+  "pad": 0.03
  },
  "2/slay_the_spire_2.png": {
   "game": "slay_the_spire_2",
@@ -73,7 +79,9 @@
   "body_height": 0.5556,
   "body_center_x": 0.45,
   "body_width": 0.7,
-  "pixel": true
+  "pixel": true,
+  "size": 0.94,
+  "pad": 0.03
  },
  "4/rogue.png": {
   "game": "rogue",
@@ -83,7 +91,9 @@
   "body_height": 0.5556,
   "body_center_x": 0.45,
   "body_width": 0.7,
-  "pixel": true
+  "pixel": true,
+  "size": 0.94,
+  "pad": 0.03
  },
  "5/rogue.png": {
   "game": "rogue",
@@ -93,7 +103,9 @@
   "body_height": 0.5556,
   "body_center_x": 0.45,
   "body_width": 0.7,
-  "pixel": true
+  "pixel": true,
+  "size": 0.94,
+  "pad": 0.03
  },
  "6/rogue.png": {
   "game": "rogue",
@@ -103,7 +115,9 @@
   "body_height": 0.5556,
   "body_center_x": 0.45,
   "body_width": 0.7,
-  "pixel": true
+  "pixel": true,
+  "size": 0.94,
+  "pad": 0.03
  },
  "7/rogue.png": {
   "game": "rogue",
@@ -113,7 +127,9 @@
   "body_height": 0.5556,
   "body_center_x": 0.45,
   "body_width": 0.7,
-  "pixel": true
+  "pixel": true,
+  "size": 0.94,
+  "pad": 0.03
  },
  "8/rogue.png": {
   "game": "rogue",
@@ -123,7 +139,9 @@
   "body_height": 0.5556,
   "body_center_x": 0.45,
   "body_width": 0.7,
-  "pixel": true
+  "pixel": true,
+  "size": 0.94,
+  "pad": 0.03
  },
  "9/rogue.png": {
   "game": "rogue",
@@ -133,7 +151,9 @@
   "body_height": 0.5556,
   "body_center_x": 0.45,
   "body_width": 0.7,
-  "pixel": true
+  "pixel": true,
+  "size": 0.94,
+  "pad": 0.03
  },
  "a/20_minutes_till_dawn.png": {
   "game": "20_minutes_till_dawn",
@@ -151,7 +171,9 @@
   "body_center": 0.4899,
   "body_height": 0.8396,
   "body_center_x": 0.5221,
-  "body_width": 0.625
+  "body_width": 0.625,
+  "size": 1.05,
+  "drop": 0.05
  },
  "a/caves_of_qud.png": {
   "game": "caves_of_qud",
@@ -246,6 +268,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
+  "size": 0.94,
+  "pad": 0.03,
   "case": "upper"
  },
  "a/rogue__lower.png": {
@@ -257,6 +281,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
+  "size": 0.94,
+  "pad": 0.03,
   "case": "lower"
  },
  "a/slay_the_spire.png": {
@@ -332,7 +358,9 @@
   "body_height": 0.5556,
   "body_center_x": 0.45,
   "body_width": 0.7,
-  "pixel": true
+  "pixel": true,
+  "size": 0.94,
+  "pad": 0.03
  },
  "apostrophe/rogue.png": {
   "game": "rogue",
@@ -342,7 +370,9 @@
   "body_height": 0.5556,
   "body_center_x": 0.35,
   "body_width": 0.3,
-  "pixel": true
+  "pixel": true,
+  "size": 0.94,
+  "pad": 0.03
  },
  "asterisk/rogue.png": {
   "game": "rogue",
@@ -352,7 +382,9 @@
   "body_height": 0.5556,
   "body_center_x": 0.5,
   "body_width": 0.8,
-  "pixel": true
+  "pixel": true,
+  "size": 0.94,
+  "pad": 0.03
  },
  "at/rogue.png": {
   "game": "rogue",
@@ -362,7 +394,9 @@
   "body_height": 0.5556,
   "body_center_x": 0.45,
   "body_width": 0.7,
-  "pixel": true
+  "pixel": true,
+  "size": 0.94,
+  "pad": 0.03
  },
  "b/balatro.png": {
   "game": "balatro",
@@ -392,6 +426,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
+  "size": 0.94,
+  "pad": 0.03,
   "case": "upper"
  },
  "b/rogue__lower.png": {
@@ -403,6 +439,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
+  "size": 0.94,
+  "pad": 0.03,
   "case": "lower"
  },
  "b/the_binding_of_isaac.png": {
@@ -431,7 +469,9 @@
   "body_height": 0.5556,
   "body_center_x": 0.45,
   "body_width": 0.7,
-  "pixel": true
+  "pixel": true,
+  "size": 0.94,
+  "pad": 0.03
  },
  "backtick/rogue.png": {
   "game": "rogue",
@@ -441,7 +481,9 @@
   "body_height": 0.5556,
   "body_center_x": 0.45,
   "body_width": 0.3,
-  "pixel": true
+  "pixel": true,
+  "size": 0.94,
+  "pad": 0.03
  },
  "bar/rogue.png": {
   "game": "rogue",
@@ -451,7 +493,9 @@
   "body_height": 0.5556,
   "body_center_x": 0.5,
   "body_width": 0.2,
-  "pixel": true
+  "pixel": true,
+  "size": 0.94,
+  "pad": 0.03
  },
  "brace_left/rogue.png": {
   "game": "rogue",
@@ -461,7 +505,9 @@
   "body_height": 0.5556,
   "body_center_x": 0.5,
   "body_width": 0.6,
-  "pixel": true
+  "pixel": true,
+  "size": 0.94,
+  "pad": 0.03
  },
  "brace_right/rogue.png": {
   "game": "rogue",
@@ -471,7 +517,9 @@
   "body_height": 0.5556,
   "body_center_x": 0.5,
   "body_width": 0.6,
-  "pixel": true
+  "pixel": true,
+  "size": 0.94,
+  "pad": 0.03
  },
  "bracket_left/rogue.png": {
   "game": "rogue",
@@ -481,7 +529,9 @@
   "body_height": 0.5556,
   "body_center_x": 0.5,
   "body_width": 0.4,
-  "pixel": true
+  "pixel": true,
+  "size": 0.94,
+  "pad": 0.03
  },
  "bracket_right/rogue.png": {
   "game": "rogue",
@@ -491,7 +541,9 @@
   "body_height": 0.5556,
   "body_center_x": 0.5,
   "body_width": 0.4,
-  "pixel": true
+  "pixel": true,
+  "size": 0.94,
+  "pad": 0.03
  },
  "c/caves_of_qud.png": {
   "game": "caves_of_qud",
@@ -548,6 +600,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
+  "size": 0.94,
+  "pad": 0.03,
   "case": "upper"
  },
  "c/rogue__lower.png": {
@@ -559,6 +613,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
+  "size": 0.94,
+  "pad": 0.03,
   "case": "lower"
  },
  "c/the_binding_of_isaac.png": {
@@ -587,7 +643,9 @@
   "body_height": 0.5556,
   "body_center_x": 0.45,
   "body_width": 0.7,
-  "pixel": true
+  "pixel": true,
+  "size": 0.94,
+  "pad": 0.03
  },
  "colon/rogue.png": {
   "game": "rogue",
@@ -597,7 +655,9 @@
   "body_height": 0.5556,
   "body_center_x": 0.5,
   "body_width": 0.2,
-  "pixel": true
+  "pixel": true,
+  "size": 0.94,
+  "pad": 0.03
  },
  "comma/rogue.png": {
   "game": "rogue",
@@ -607,7 +667,9 @@
   "body_height": 0.5556,
   "body_center_x": 0.45,
   "body_width": 0.3,
-  "pixel": true
+  "pixel": true,
+  "size": 0.94,
+  "pad": 0.03
  },
  "d/20_minutes_till_dawn.png": {
   "game": "20_minutes_till_dawn",
@@ -692,6 +754,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
+  "size": 0.94,
+  "pad": 0.03,
   "case": "upper"
  },
  "d/rogue__lower.png": {
@@ -703,6 +767,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
+  "size": 0.94,
+  "pad": 0.03,
   "case": "lower"
  },
  "d/rounds.png": {
@@ -751,7 +817,9 @@
   "body_height": 0.5556,
   "body_center_x": 0.45,
   "body_width": 0.7,
-  "pixel": true
+  "pixel": true,
+  "size": 0.94,
+  "pad": 0.03
  },
  "decor_left/darkest_dungeon.png": {
   "game": "darkest_dungeon",
@@ -825,7 +893,9 @@
   "body_height": 0.5556,
   "body_center_x": 0.45,
   "body_width": 0.7,
-  "pixel": true
+  "pixel": true,
+  "size": 0.94,
+  "pad": 0.03
  },
  "e/20_minutes_till_dawn.png": {
   "game": "20_minutes_till_dawn",
@@ -1003,6 +1073,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
+  "size": 0.94,
+  "pad": 0.03,
   "case": "upper"
  },
  "e/rogue__lower.png": {
@@ -1014,6 +1086,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
+  "size": 0.94,
+  "pad": 0.03,
   "case": "lower"
  },
  "e/slay_the_spire.png": {
@@ -1099,7 +1173,9 @@
   "body_height": 0.5556,
   "body_center_x": 0.5,
   "body_width": 0.6,
-  "pixel": true
+  "pixel": true,
+  "size": 0.94,
+  "pad": 0.03
  },
  "exclaim/mewgenics.png": {
   "game": "mewgenics",
@@ -1118,7 +1194,9 @@
   "body_height": 0.5556,
   "body_center_x": 0.5,
   "body_width": 0.4,
-  "pixel": true
+  "pixel": true,
+  "size": 0.94,
+  "pad": 0.03
  },
  "f/caves_of_qud.png": {
   "game": "caves_of_qud",
@@ -1147,6 +1225,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
+  "size": 0.94,
+  "pad": 0.03,
   "case": "upper"
  },
  "f/rogue__lower.png": {
@@ -1158,6 +1238,8 @@
   "body_center_x": 0.4,
   "body_width": 0.6,
   "pixel": true,
+  "size": 0.94,
+  "pad": 0.03,
   "case": "lower"
  },
  "f/the_binding_of_isaac.png": {
@@ -1225,6 +1307,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
+  "size": 0.94,
+  "pad": 0.03,
   "case": "upper"
  },
  "g/rogue__lower.png": {
@@ -1236,6 +1320,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
+  "size": 0.94,
+  "pad": 0.03,
   "case": "lower"
  },
  "g/the_binding_of_isaac.png": {
@@ -1255,7 +1341,9 @@
   "body_height": 0.5556,
   "body_center_x": 0.5,
   "body_width": 0.6,
-  "pixel": true
+  "pixel": true,
+  "size": 0.94,
+  "pad": 0.03
  },
  "h/enter_the_gungeon__pink.png": {
   "game": "enter_the_gungeon",
@@ -1330,6 +1418,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
+  "size": 0.94,
+  "pad": 0.03,
   "case": "upper"
  },
  "h/rogue__lower.png": {
@@ -1341,6 +1431,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
+  "size": 0.94,
+  "pad": 0.03,
   "case": "lower"
  },
  "h/slay_the_spire.png": {
@@ -1380,7 +1472,9 @@
   "body_height": 0.5556,
   "body_center_x": 0.45,
   "body_width": 0.7,
-  "pixel": true
+  "pixel": true,
+  "size": 0.94,
+  "pad": 0.03
  },
  "i/20_minutes_till_dawn.png": {
   "game": "20_minutes_till_dawn",
@@ -1456,6 +1550,8 @@
   "body_center_x": 0.5,
   "body_width": 0.4,
   "pixel": true,
+  "size": 0.94,
+  "pad": 0.03,
   "case": "upper"
  },
  "i/rogue__lower.png": {
@@ -1467,6 +1563,8 @@
   "body_center_x": 0.5,
   "body_width": 0.4,
   "pixel": true,
+  "size": 0.94,
+  "pad": 0.03,
   "case": "lower"
  },
  "i/slay_the_spire.png": {
@@ -1524,6 +1622,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
+  "size": 0.94,
+  "pad": 0.03,
   "case": "upper"
  },
  "j/rogue__lower.png": {
@@ -1535,6 +1635,8 @@
   "body_center_x": 0.5,
   "body_width": 0.6,
   "pixel": true,
+  "size": 0.94,
+  "pad": 0.03,
   "case": "lower"
  },
  "k/darkest_dungeon.png": {
@@ -1545,7 +1647,6 @@
   "body_height": 0.9739,
   "body_center_x": 0.4937,
   "body_width": 0.9623,
-  "size": 0.88,
   "form": "lower"
  },
  "k/risk_of_rain_2.png": {
@@ -1566,6 +1667,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
+  "size": 0.94,
+  "pad": 0.03,
   "case": "upper"
  },
  "k/rogue__lower.png": {
@@ -1577,6 +1680,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
+  "size": 0.86,
+  "pad": 0.03,
   "case": "lower"
  },
  "k/spelunky_classic.png": {
@@ -1653,6 +1758,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
+  "size": 0.94,
+  "pad": 0.03,
   "case": "upper"
  },
  "l/rogue__lower.png": {
@@ -1664,6 +1771,8 @@
   "body_center_x": 0.5,
   "body_width": 0.4,
   "pixel": true,
+  "size": 0.94,
+  "pad": 0.03,
   "case": "lower"
  },
  "l/slay_the_spire.png": {
@@ -1703,7 +1812,9 @@
   "body_height": 0.5556,
   "body_center_x": 0.5,
   "body_width": 0.6,
-  "pixel": true
+  "pixel": true,
+  "size": 0.94,
+  "pad": 0.03
  },
  "m/20_minutes_till_dawn.png": {
   "game": "20_minutes_till_dawn",
@@ -1732,6 +1843,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
+  "size": 0.94,
+  "pad": 0.03,
   "case": "upper"
  },
  "m/rogue__lower.png": {
@@ -1743,6 +1856,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
+  "size": 0.94,
+  "pad": 0.03,
   "case": "lower"
  },
  "m/uma_musume_pretty_derby.png": {
@@ -1883,6 +1998,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
+  "size": 0.94,
+  "pad": 0.03,
   "case": "upper"
  },
  "n/rogue__lower.png": {
@@ -1894,6 +2011,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
+  "size": 0.94,
+  "pad": 0.03,
   "case": "lower"
  },
  "n/rounds.png": {
@@ -2014,6 +2133,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
+  "size": 0.94,
+  "pad": 0.03,
   "case": "upper"
  },
  "o/rogue__lower.png": {
@@ -2025,6 +2146,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
+  "size": 0.94,
+  "pad": 0.03,
   "case": "lower"
  },
  "o/rounds.png": {
@@ -2063,6 +2186,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
+  "size": 0.94,
+  "pad": 0.03,
   "case": "upper"
  },
  "p/rogue__lower.png": {
@@ -2074,6 +2199,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
+  "size": 0.94,
+  "pad": 0.03,
   "case": "lower"
  },
  "p/slay_the_spire.png": {
@@ -2121,7 +2248,9 @@
   "body_height": 0.5556,
   "body_center_x": 0.5,
   "body_width": 0.4,
-  "pixel": true
+  "pixel": true,
+  "size": 0.94,
+  "pad": 0.03
  },
  "paren_right/rogue.png": {
   "game": "rogue",
@@ -2131,7 +2260,9 @@
   "body_height": 0.5556,
   "body_center_x": 0.5,
   "body_width": 0.4,
-  "pixel": true
+  "pixel": true,
+  "size": 0.94,
+  "pad": 0.03
  },
  "percent/rogue.png": {
   "game": "rogue",
@@ -2141,7 +2272,9 @@
   "body_height": 0.5556,
   "body_center_x": 0.45,
   "body_width": 0.7,
-  "pixel": true
+  "pixel": true,
+  "size": 0.94,
+  "pad": 0.03
  },
  "period/rogue.png": {
   "game": "rogue",
@@ -2151,7 +2284,9 @@
   "body_height": 0.5556,
   "body_center_x": 0.5,
   "body_width": 0.2,
-  "pixel": true
+  "pixel": true,
+  "size": 0.94,
+  "pad": 0.03
  },
  "plus/rogue.png": {
   "game": "rogue",
@@ -2161,7 +2296,9 @@
   "body_height": 0.5556,
   "body_center_x": 0.5,
   "body_width": 0.6,
-  "pixel": true
+  "pixel": true,
+  "size": 0.94,
+  "pad": 0.03
  },
  "q/caves_of_qud.png": {
   "game": "caves_of_qud",
@@ -2181,6 +2318,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
+  "size": 0.94,
+  "pad": 0.03,
   "case": "upper"
  },
  "q/rogue__lower.png": {
@@ -2192,6 +2331,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
+  "size": 0.94,
+  "pad": 0.03,
   "case": "lower"
  },
  "question/rogue.png": {
@@ -2202,7 +2343,9 @@
   "body_height": 0.5556,
   "body_center_x": 0.45,
   "body_width": 0.7,
-  "pixel": true
+  "pixel": true,
+  "size": 0.94,
+  "pad": 0.03
  },
  "quote/rogue.png": {
   "game": "rogue",
@@ -2212,7 +2355,9 @@
   "body_height": 0.5556,
   "body_center_x": 0.5,
   "body_width": 0.6,
-  "pixel": true
+  "pixel": true,
+  "size": 0.94,
+  "pad": 0.03
  },
  "r/balatro.png": {
   "game": "balatro",
@@ -2316,6 +2461,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
+  "size": 0.94,
+  "pad": 0.03,
   "case": "upper"
  },
  "r/rogue__lower.png": {
@@ -2327,6 +2474,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
+  "size": 0.94,
+  "pad": 0.03,
   "case": "lower"
  },
  "r/rounds.png": {
@@ -2468,6 +2617,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
+  "size": 0.94,
+  "pad": 0.03,
   "case": "upper"
  },
  "s/rogue__lower.png": {
@@ -2479,6 +2630,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
+  "size": 0.94,
+  "pad": 0.03,
   "case": "lower"
  },
  "s/rounds.png": {
@@ -2570,7 +2723,9 @@
   "body_height": 0.5556,
   "body_center_x": 0.45,
   "body_width": 0.3,
-  "pixel": true
+  "pixel": true,
+  "size": 0.94,
+  "pad": 0.03
  },
  "slash/rogue.png": {
   "game": "rogue",
@@ -2580,7 +2735,9 @@
   "body_height": 0.5556,
   "body_center_x": 0.45,
   "body_width": 0.7,
-  "pixel": true
+  "pixel": true,
+  "size": 0.94,
+  "pad": 0.03
  },
  "t/20_minutes_till_dawn.png": {
   "game": "20_minutes_till_dawn",
@@ -2665,6 +2822,8 @@
   "body_center_x": 0.5,
   "body_width": 0.6,
   "pixel": true,
+  "size": 0.94,
+  "pad": 0.03,
   "case": "upper"
  },
  "t/rogue__lower.png": {
@@ -2676,6 +2835,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
+  "size": 0.94,
+  "pad": 0.03,
   "case": "lower"
  },
  "t/slay_the_spire.png": {
@@ -2724,7 +2885,9 @@
   "body_height": 0.5556,
   "body_center_x": 0.45,
   "body_width": 0.7,
-  "pixel": true
+  "pixel": true,
+  "size": 0.94,
+  "pad": 0.03
  },
  "u/20_minutes_till_dawn.png": {
   "game": "20_minutes_till_dawn",
@@ -2781,6 +2944,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
+  "size": 0.94,
+  "pad": 0.03,
   "case": "upper"
  },
  "u/rogue__lower.png": {
@@ -2792,6 +2957,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
+  "size": 0.94,
+  "pad": 0.03,
   "case": "lower"
  },
  "u/rounds.png": {
@@ -2838,7 +3005,9 @@
   "body_height": 0.5556,
   "body_center_x": 0.5,
   "body_width": 0.8,
-  "pixel": true
+  "pixel": true,
+  "size": 0.94,
+  "pad": 0.03
  },
  "v/caves_of_qud.png": {
   "game": "caves_of_qud",
@@ -2868,6 +3037,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
+  "size": 0.94,
+  "pad": 0.03,
   "case": "upper"
  },
  "v/rogue__lower.png": {
@@ -2879,6 +3050,8 @@
   "body_center_x": 0.5,
   "body_width": 0.6,
   "pixel": true,
+  "size": 0.94,
+  "pad": 0.03,
   "case": "lower"
  },
  "w/20_minutes_till_dawn.png": {
@@ -2908,6 +3081,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
+  "size": 0.94,
+  "pad": 0.03,
   "case": "upper"
  },
  "w/rogue__lower.png": {
@@ -2919,6 +3094,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
+  "size": 0.94,
+  "pad": 0.03,
   "case": "lower"
  },
  "x/rogue.png": {
@@ -2930,6 +3107,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
+  "size": 0.94,
+  "pad": 0.03,
   "case": "upper"
  },
  "x/rogue__lower.png": {
@@ -2941,6 +3120,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
+  "size": 0.94,
+  "pad": 0.03,
   "case": "lower"
  },
  "y/everything_is_crab.png": {
@@ -2962,6 +3143,8 @@
   "body_center_x": 0.5,
   "body_width": 0.6,
   "pixel": true,
+  "size": 0.94,
+  "pad": 0.03,
   "case": "upper"
  },
  "y/rogue__lower.png": {
@@ -2973,6 +3156,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
+  "size": 0.94,
+  "pad": 0.03,
   "case": "lower"
  },
  "y/slay_the_spire.png": {
@@ -3022,6 +3207,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
+  "size": 0.94,
+  "pad": 0.03,
   "case": "upper"
  },
  "z/rogue__lower.png": {
@@ -3033,6 +3220,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
+  "size": 0.94,
+  "pad": 0.03,
   "case": "lower"
  }
 }

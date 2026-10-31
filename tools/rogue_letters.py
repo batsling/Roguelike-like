@@ -48,6 +48,13 @@ CELL = (8, 16)
 SCALE = 8
 FACE = (0xD8, 0xD8, 0xD8, 255)    # the grey of a PC's text mode (colour 7)
 EDGE = (0, 0, 0, 255)
+# The owner's eye (TitleLetters reads these as it does a logo config's): every
+# Rogue character drawn this much smaller, on the baseline, and this much of the
+# line kept clear either side; a character listed here drawn at its own size
+# instead (the lowercase k stood out large).
+SIZE = 0.94
+PAD = 0.03
+SIZE_OF = {"k": 0.86}
 
 # Keep in step with TitleLetters.PUNCT (test_title_letters.gd checks every
 # entry this writes is a folder some character reaches).
@@ -129,6 +136,8 @@ def main():
             "body_center_x": round((x0 + x1) / 2.0 / w, 4),
             "body_width": round((x1 - x0) / w, 4),
             "pixel": True,
+            "size": SIZE_OF.get(ch, SIZE),
+            "pad": PAD,
         }
         if ch.isalpha():
             entry["case"] = "lower" if lower else "upper"

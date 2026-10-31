@@ -260,6 +260,8 @@ func test_size_scales_on_the_baseline_and_pad_keeps_room() -> void:
 	sz = TitleLetters._size({"game": "darkest_dungeon", "form": "lower", "size": 0.9}, "g")
 	assert_almost_eq(sz.x, (x + TitleLetters.DESCENDER) * 0.9, 0.001, "a g shrunk...")
 	assert_almost_eq(sz.y + x * 0.9, 1.0, 0.001, "...keeps its x-height on the baseline")
+	sz = TitleLetters._size({"game": "balatro", "drop": 0.05}, "A")
+	assert_almost_eq(sz.y, 0.05, 0.001, "a drop moves it down")
 	var idx := TitleLetters.pool()
 	var flame: Dictionary = (idx["dash"] as Array).filter(func(e): return e["game"] == "dead_cells")[0]
 	var a_: Dictionary = (idx["a"] as Array).filter(func(e): return e["game"] == "balatro")[0]

@@ -188,8 +188,11 @@ logo with lowercase letters needs its `lowercase` list, or its small a is
 blown up to a capital's height as every letter once was. Two settings are the
 owner's eye on a piece once it is on screen, by piece name or `"*"` for the
 whole config: `"size"` draws it that many times as big, grown or shrunk on the
-baseline (Dead Cells' thin letters 1.12, Darkest Dungeon's k 0.88), and `"pad"`
-keeps that much of the line clear either side (Dead Cells' flame, 0.08). A
+baseline (Dead Cells' thin letters 1.12, Balatro's A 1.05), `"pad"` keeps that
+much of the line clear either side (Dead Cells' flame, 0.08), and `"drop"` moves
+it down by that much of the line (Balatro's A, 0.05). Rogue's letters carry the
+same keys from `tools/rogue_letters.py`'s `SIZE`, `PAD` and `SIZE_OF`: every one
+0.94 and padded 0.03, the lowercase k 0.86. A
 `body` that starts below the letter's real top blows the letter up and pushes
 it above the line: the crab's h was `[262, 375]` and sat too high until its
 stem's real top, 215, was used. A

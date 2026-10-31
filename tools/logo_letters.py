@@ -68,6 +68,8 @@ so Godot never imports the source), is JSON:
                   thin letters a little bigger, Darkest Dungeon's k smaller)
     pad           {piece or "*": fraction} — that much of the line height kept
                   clear on each side of the piece (Dead Cells' flame)
+    drop          {piece or "*": fraction} — moved down by that much of the line
+                  height (Balatro's A sat high)
     styles        [variant, ...] — piece variants (the part after the dot) drawn
                   at another size than the rest of the logo; each is sized as a
                   line of its own in images2.0/custom/title/index.json
@@ -1161,7 +1163,7 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
         # `size` and `pad` are the owner's eye on a piece, by name or "*" for
         # the whole config: drawn this many times as big (on the baseline), and
         # this much of the line kept clear either side (TitleLetters)
-        for key in ("size", "pad"):
+        for key in ("size", "pad", "drop"):
             val = cfg.get(key, {}).get(n_, cfg.get(key, {}).get("*"))
             if val is not None:
                 index[str(dest_.relative_to(OUT_DIR))][key] = val

@@ -17,8 +17,12 @@ For how the project is laid out and how its systems fit together, see
   source pixels below the h's real top, so it was blown up to fill the line
   and poked out above. Two new per-piece settings, `size` and `pad`, carry the
   owner's eye into the index: Dead Cells' thin letters are drawn 1.12 times as
-  big, Darkest Dungeon's k 0.88, both on the baseline, and Dead Cells' flame
-  keeps 0.08 of the line clear on each side.
+  big, on the baseline, and Dead Cells' flame keeps 0.08 of the line clear on
+  each side. Then, on a second look: the k the owner meant was Rogue's, not
+  Darkest Dungeon's (put back). Rogue's letters are all drawn 0.94 with 0.03 of
+  the line either side, its lowercase k 0.86 (`tools/rogue_letters.py`'s
+  `SIZE`, `PAD`, `SIZE_OF`), and Balatro's A is 1.05 and moved down 0.05 of the
+  line by a third setting, `drop`.
 
 - **Title letters are sized by case.** Every logo letter used to be drawn the
   whole line's height, so Darkest Dungeon's small a stood as tall as a
