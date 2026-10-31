@@ -59,6 +59,21 @@ To add or replace art:
 
 ### Title letters (cut from real logos)
 
+**Rogue's letters are the ones you start with; every logo letter is earned.**
+`tools/rogue_letters.py` renders every printable character of the IBM PC font
+Rogue was played in (Px437 IBM VGA 8x16, CC BY-SA 4.0, kept with its licence in
+`fonts/`, where the UI's headings and buttons use it too) into `<piece>/rogue.png` (`rogue__lower.png` for a letter's
+lower case). Their index entries carry `case` (the title matches the text's) and
+`pixel` (drawn NEAREST), and their box, down, is the font's cap band. A piece
+that is not a letter or digit is filed under its name in `TitleLetters.PUNCT`
+(the script carries the same map). A cut letter joins the title once a rank pays
+it: each game or character rank is a radio song or a title letter, 50/50
+(`scripts/runtime/RankRewards.gd`); a game's ranks draw its own logo's letters, a
+character's any logo's, and the draws are kept per profile by the `TitleUnlocks`
+autoload (tests `test_title_unlocks.gd`). A decoration pair is earned as one,
+filed under its left half. The menu spells from `TitleLetters.available()`.
+
+
 The main menu's title and subtitle are spelled out of letters cut from real
 roguelikes' logos, with each place's game drawn again every time the game opens
 (`scripts/menu/TitleLetters.gd`, tests `test_title_letters.gd`). The letters live one folder per letter, one file per game:

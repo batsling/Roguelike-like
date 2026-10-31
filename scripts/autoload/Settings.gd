@@ -185,6 +185,9 @@ func _ready() -> void:
 	# CanvasLayer of its own and dresses itself (UITheme.dress, called from
 	# ModalScaffold).
 	get_tree().root.theme = UITheme.shared()
+	# Headings and buttons in Rogue's font (UITheme "Rogue's font"): every Label and
+	# Button is looked at once as it enters the tree.
+	get_tree().node_added.connect(UITheme._on_node_added)
 	# The window mode is a SAVED preference applied over the project's default, so
 	# the player's choice survives a restart. Deferred: on some platforms setting
 	# the mode in the same frame the window is created is ignored.

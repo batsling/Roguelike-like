@@ -34,6 +34,9 @@ var _saved_loudness: Dictionary
 var _saved_loudness_path: String
 
 func before_each() -> void:
+	# These are about SONGS: every rank pays one (RankRewards' letter half has its
+	# own tests in test_title_unlocks.gd).
+	RankRewards.songs_only = true
 	_saved_songs = Data._songs.duplicate()
 	_saved_stats = GameStats.stats.duplicate(true)
 	_saved_log = GameStats.enemy_log.duplicate(true)
@@ -87,6 +90,7 @@ func before_each() -> void:
 	Notifications.clear()
 
 func after_each() -> void:
+	RankRewards.songs_only = false
 	Radio._stop_track()
 	Radio._queue.clear()
 	Radio._history.clear()

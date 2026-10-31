@@ -51,6 +51,13 @@ func test_each_box_hugs_its_letter() -> void:
 		if img == null or img.is_empty():
 			fail_test("%s loads" % e["path"])
 			continue
+		# ROGUE'S BOX, DOWN, IS THE FONT'S CAP BAND (tools/rogue_letters.py), so only
+		# a capital or a digit fills it top to bottom; a lower-case letter or a dash
+		# sits inside it, and a g's tail, a comma or an underscore hangs below. Those
+		# are held to their PIXELS by test_rogue_has_every_printable_character_*.
+		if TitleLetters.is_starter(e) and not (String(e.get("case", "")) == "upper"
+				or String(e["folder"]).is_valid_int()):
+			continue
 		var w := img.get_width()
 		var h := img.get_height()
 		var y0 := int(round((e["body_center"] - e["body_height"] / 2.0) * h))
@@ -138,7 +145,70 @@ func test_a_word_does_not_repeat_a_game_while_another_is_left() -> void:
 				assert_true(unused.is_empty(), "seed %d: %s repeats %s with %s unused" % [s, ch, e["game"], unused.size()])
 
 func _folder_for_test(ch: String) -> String:
-	return "dash" if ch == "-" else ch.to_lower()
+	return TitleLetters._folder_for(ch)
+
+
+# --- Rogue's letters, and the logos earned ------------------------------------
+
+# Every printable ASCII character has a Rogue glyph, so anything typed into the
+# title or subtitle can be spelled from the start.
+func test_rogue_has_every_printable_character_in_both_cases() -> void:
+	var p := TitleLetters.pool()
+	for code in range(0x21, 0x7F):
+		var ch := char(code)
+		var want := "" if ch.to_upper() == ch.to_lower() else ("upper" if ch == ch.to_upper() else "lower")
+		var found := (p.get(TitleLetters._folder_for(ch), []) as Array).filter(func(e):
+			return TitleLetters.is_starter(e) and String(e.get("case", "")) == want)
+		assert_eq(found.size(), 1, "one Rogue glyph for '%s'" % ch)
+		if found.size() == 1:
+			var img := Image.load_from_file(ProjectSettings.globalize_path(found[0]["path"]))
+			assert_false(img.is_invisible(), "'%s' has ink" % ch)
+
+# NOTHING EARNED: the title is Rogue's alone, letter for letter in the text's case.
+func test_with_nothing_earned_the_title_is_rogues_font() -> void:
+	var was: Dictionary = TitleUnlocks._unlocked
+	TitleUnlocks._unlocked = {}
+	for text in [TITLE, SUBTITLE]:
+		var picks := TitleLetters.pick(text, _rng(3), TitleLetters.available())
+		for i in text.length():
+			if text[i] == " ":
+				continue
+			var e: Dictionary = picks[i]
+			assert_eq(String(e.get("game", "")), "rogue", "'%s' is Rogue's" % text[i])
+			if e.has("case"):
+				assert_eq(String(e["case"]), "upper" if text[i] == text[i].to_upper() else "lower",
+					"in the text's own case: '%s'" % text[i])
+	assert_eq(TitleLetters.pick_decor(_rng(3), TitleLetters.available()), [],
+		"and no decorations until a pair is earned")
+	var row := TitleLetters.make(TITLE, 84.0, _rng(3), true)
+	add_child_autofree(row)
+	for p in row.placed:
+		assert_eq(p.rect.texture_filter, CanvasItem.TEXTURE_FILTER_NEAREST,
+			"Rogue's letters are sharp pixels")
+	TitleUnlocks._unlocked = was
+
+# AN EARNED LETTER JOINS THE POOL, and an earned decoration brings its other half.
+func test_an_earned_logo_letter_joins_the_title() -> void:
+	var was: Dictionary = TitleUnlocks._unlocked
+	TitleUnlocks._unlocked = {"h/hades.png": "game:hades",
+		"decor_left/everything_is_crab.png": "game:everything_is_crab"}
+	var avail := TitleLetters.available()
+	var hs: Array = (avail["h"] as Array).map(func(e): return String(e["key"]))
+	assert_true(hs.has("h/hades.png"), "Hades' H is there")
+	assert_eq((avail["r"] as Array).filter(func(e): return not TitleLetters.is_starter(e)).size(), 0,
+		"and nothing that was not earned")
+	var d := TitleLetters.pick_decor(_rng(1), avail)
+	assert_eq(d.size(), 2, "the crab's claws, both halves")
+	TitleUnlocks._unlocked = was
+
+func test_every_logo_piece_is_a_unit_and_rogue_is_none() -> void:
+	var units := TitleLetters.units()
+	assert_gt(units.size(), 150, "the cut letters")
+	for k in units:
+		assert_false(String(k).get_file().begins_with("rogue"), "%s is not Rogue's" % k)
+		assert_false(String(k).begins_with("decor_right"), "a pair is filed under its left half")
+	assert_gt(TitleLetters.units_of(&"hades").size(), 3, "Hades' own letters")
+	assert_eq(TitleLetters.units_of(&"rogue").size(), 0)
 
 
 func test_decorations_come_in_matching_pairs() -> void:
@@ -169,7 +239,7 @@ func test_the_menu_spells_its_title_in_cut_letters_and_centres_it() -> void:
 		var menu = MENU.instantiate()
 		add_child_autofree(menu)
 		menu._build_title(_rng(s))
-		await wait_frames(2)
+		await wait_process_frames(2)
 		assert_not_null(menu.title_row, "a title row")
 		assert_not_null(menu.subtitle_row, "a subtitle row")
 		assert_false((menu.get_node("%Title") as Label).visible, "the label stands down")
@@ -195,20 +265,20 @@ func test_a_click_on_a_row_draws_it_again() -> void:
 	var menu = MENU.instantiate()
 	add_child_autofree(menu)
 	menu._build_title(_rng(5))
-	await wait_frames(2)
+	await wait_process_frames(2)
 	var title = menu.title_row
 	var sub = menu.subtitle_row
 	var ev := InputEventMouseButton.new()
 	ev.button_index = MOUSE_BUTTON_LEFT
 	ev.pressed = true
 	sub.ink.gui_input.emit(ev)
-	await wait_frames(2)
+	await wait_process_frames(2)
 	assert_ne(menu.subtitle_row, sub, "a new subtitle")
 	assert_eq(menu.title_row, title, "the title left alone")
 	assert_eq(menu.subtitle_row.get_index(), (menu.get_node("%Subtitle") as Label).get_index() + 1,
 		"standing where the old one stood")
 	title.ink.gui_input.emit(ev)
-	await wait_frames(2)
+	await wait_process_frames(2)
 	assert_ne(menu.title_row, title, "a new title")
 	var rows := (menu.get_node("Center/Panel/TitleBox") as Node).get_children().filter(
 		func(c): return c is TitleLetters)
@@ -218,7 +288,7 @@ func test_the_background_is_the_vortex_with_the_portal_in_it() -> void:
 	var menu = MENU.instantiate()
 	add_child_autofree(menu)
 	menu._build_title(_rng(6))
-	await wait_frames(3)
+	await wait_process_frames(3)
 	var mat := (menu.get_node("%Background") as ColorRect).material as ShaderMaterial
 	assert_not_null(mat, "the background has its shader")
 	assert_eq(mat.shader, menu.VORTEX_SHADER, "the one swirl, red and blue")
@@ -233,7 +303,7 @@ func test_the_portal_stands_round_the_title_and_subtitle() -> void:
 	var menu = MENU.instantiate()
 	add_child_autofree(menu)
 	menu._build_title(_rng(6))
-	await wait_frames(3)
+	await wait_process_frames(3)
 	var portal: Control = menu.portal
 	assert_not_null(portal, "a portal")
 	assert_lt(portal.get_index(), menu.get_node("Center").get_index(), "behind the letters")
@@ -257,7 +327,7 @@ func test_the_portal_stands_round_the_title_and_subtitle() -> void:
 	assert_eq(portal.bats.radii, portal.oval.size * 0.5, "in its shape")
 	var before: Rect2 = portal.oval.get_global_rect()
 	menu._reroll(true)
-	await wait_frames(3)
+	await wait_process_frames(3)
 	assert_true(portal.oval.get_global_rect().encloses(menu.title_row.ink.get_global_rect()),
 		"still round a title drawn again")
 	assert_eq(portal.oval.get_global_rect().position.y, before.position.y, "and in the same place")
@@ -274,7 +344,7 @@ func test_the_subtitle_spaces_its_words_wider() -> void:
 		"each gap a quarter of a line wider")
 	var menu = MENU.instantiate()
 	add_child_autofree(menu)
-	await wait_frames(1)
+	await wait_process_frames(1)
 	assert_eq(menu.subtitle_row.space, menu.SUBTITLE_SPACE, "the menu's subtitle uses it")
 	assert_eq(menu.title_row.space, TitleLetters.SPACE, "and the title does not")
 

@@ -158,9 +158,11 @@ const MENU_TAG := "menu"
 func is_menu(song: SongData) -> bool:
 	return song != null and song.tags.has(MENU_TAG)
 
-# How many songs `game` has earned so far: its rank.
+# How many songs `game` has earned so far: its ranks' SONG share. Since 31 Oct
+# 2026 a rank pays a song or a title letter, 50/50 (RankRewards) — a game with
+# no logo letters to give (nearly every game) still earns a song every rank.
 func earned(game: StringName) -> int:
-	return GameRanks.rank(game)
+	return int(RankRewards.for_game(game)["songs"])
 
 # What `game` still needs for its NEXT song: {rank, needed}, the XP left to its
 # next rank.
@@ -313,7 +315,9 @@ func rule_text(song: SongData) -> String:
 	var game: GameData = Data.get_game(song.game_id)
 	var name: String = game.display_name if game != null else String(song.game_id)
 	var left: Dictionary = to_next(song.game_id)
-	return "Next %s song: %d XP more (rank %d)" % [name, int(left["needed"]),
+	var reward: String = "song or title letter" if not RankRewards.songs_only \
+		and not TitleLetters.units_of(song.game_id).is_empty() else "song"
+	return "Next %s %s: %d XP more (rank %d)" % [name, reward, int(left["needed"]),
 		int(left["rank"])]
 
 # What has counted at the song's game so far, kind by kind in the Collection's
@@ -474,9 +478,10 @@ func _take(song: SongData, by: String, fresh: Array) -> void:
 
 # --- what a character has earned (§20.9) -------------------------------------
 
-# How many songs `character` has earned so far: its rank.
+# How many songs `character` has earned so far: its ranks' SONG share (the rest
+# are title letters, RankRewards).
 func character_earned(character: StringName) -> int:
-	return GameRanks.character_rank(character)
+	return int(RankRewards.for_character(character)["songs"])
 
 # How many songs have been drawn FOR `character`.
 func character_drawn(character: StringName) -> int:
@@ -511,8 +516,9 @@ func character_rank_line(character: StringName) -> String:
 		var from: String = " / ".join(names) if not names.is_empty() \
 			else (ch.source_game if ch != null else "")
 		return "Rank %d · no %s songs on the radio yet" % [int(p["rank"]), from]
-	return "Rank %d · %d XP to the next %s song" % [int(p["rank"]), int(p["needed"]),
-		" / ".join(names)]
+	return "Rank %d · %d XP to the next %s song%s" % [int(p["rank"]),
+		int(p["needed"]), " / ".join(names),
+		"" if RankRewards.songs_only else " or title letter"]
 
 # Which character a song was drawn for, or &"" when its game drew it (or it is
 # still locked).

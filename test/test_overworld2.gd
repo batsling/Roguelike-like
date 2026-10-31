@@ -5775,7 +5775,12 @@ func test_the_end_of_run_screen_is_what_the_playback_still_holds_back() -> void:
 # The end of a run
 # ---------------------------------------------------------------------------
 
+# A death outside a report stops at the death card first (DeathCard.gd), and the
+# verdict is what its Continue raises — so asking for the end screen presses it,
+# the way a player would. test_the_death_card_* cover the card itself.
 func _end_screen():
+	if _ui._death_card != null and is_instance_valid(_ui._death_card):
+		_ui._death_card.press_continue()
 	for c in _ui.get_children():
 		if c is CanvasLayer:
 			for g in c.get_children():
@@ -8022,9 +8027,49 @@ func test_dying_in_an_event_raises_the_end_screen_over_it() -> void:
 	var modal = _ui._event_modal
 	modal.take(_lethal_choice_index(modal))
 	await get_tree().process_frame
-	assert_not_null(_ui._run_over_screen, "the verdict lands")
+	# The death card first (the owner, 31 Oct 2026): the event stays where the
+	# fatal press left it, and the verdict waits for Continue.
+	assert_not_null(_ui._death_card, "a death outside a report shows the death card")
+	assert_null(_ui._run_over_screen, "and the verdict waits for it")
+	assert_not_null(_ui._event_modal, "with the event that did it still behind it")
+	_ui._death_card.press_continue()
+	await get_tree().process_frame
+	assert_not_null(_ui._run_over_screen, "Continue: the verdict lands")
 	assert_null(_ui._event_modal,
 		"and the event it happened in steps aside rather than sitting under it")
+
+func test_the_death_card_says_what_the_log_said() -> void:
+	GameState.set_hp(1)
+	GameLog.add("The cursed idol drains you.")
+	GameState.change_hp(-1)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	assert_true(GameLoop2.run_over, "the run is over")
+	var card = _ui._death_card
+	assert_not_null(card, "the death card is up")
+	assert_true(card.lines.has("The cursed idol drains you."), "with the log's last lines on it")
+	assert_null(_ui._run_over_screen, "the verdict waits")
+	card.continue_button.pressed.emit()
+	await get_tree().process_frame
+	assert_not_null(_ui._run_over_screen, "until Continue is pressed")
+	assert_null(_ui._death_card, "and the card is gone")
+
+func test_a_fatal_use_from_the_pack_waits_for_its_own_screen() -> void:
+	# The use screen IS the account of what the piece did, so the run waits for its
+	# button rather than putting a second card over it.
+	var modal = load("res://scripts/redesign2/LootUseModal.gd").new()
+	add_child_autofree(modal)
+	GameState.set_hp(1)
+	GameState.change_hp(-1)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	assert_true(GameLoop2.run_over, "the run is over")
+	assert_true(modal._fatal, "the use screen is told it was fatal")
+	assert_null(_ui._death_card, "no second card over it")
+	assert_null(_ui._run_over_screen, "and the verdict waits")
+	modal.finished.emit()
+	await get_tree().process_frame
+	assert_not_null(_ui._run_over_screen, "closing the use screen raises the verdict")
 
 func test_a_health_cost_that_is_paid_back_in_the_same_breath_is_not_a_death() -> void:
 	# The death check is deferred for this: effects are applied as a BATCH, and a
