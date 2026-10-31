@@ -36,6 +36,10 @@ uniform float inflow = 0.035;     // zoom cycles a second: the pull inward
 uniform float twist = 2.6;
 // Of the portal's radii: blue from here in, red past 1.
 uniform float edge_in = 0.8;
+// The portal's shape: 2 is an ellipse; higher is squarer, a rounded rectangle
+// that reaches into the corners of the text an ellipse leaves out. MenuPortal
+// sets it (ROUNDNESS) so its bats leave the same edge.
+uniform float roundness = 3.0;
 // The least the portal's middle is lit, so no letter sits on its dark.
 uniform float floor_bright = 0.55;
 
@@ -97,7 +101,8 @@ void fragment() {
 	if (portal_radii.x <= 0.0 || portal_radii.y <= 0.0) {
 		COLOR = vec4(red, 1.0);
 	} else {
-		float d = length(rel / portal_radii);   // 1 on the portal's rim
+		vec2 e = abs(rel / portal_radii);
+		float d = pow(pow(e.x, roundness) + pow(e.y, roundness), 1.0 / roundness);   // 1 on the rim
 		vec3 blue = mix(deep.rgb, rim.rgb, smoothstep(0.25, 0.7, n));
 		float hot = max(floor_bright, smoothstep(0.35, 0.8, n)) * smoothstep(1.0, 0.15, d);
 		blue = mix(blue, core.rgb, hot);

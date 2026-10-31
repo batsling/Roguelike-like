@@ -580,10 +580,14 @@ func _edge_start(size: Vector2, box: Vector2, stagger: float) -> Vector2:
 	var t: float = minf(tx, ty) + box.length() * 0.5
 	return c + u * (t + _rng.randf() * size.y * stagger * 0.5)
 
-# How far into the oval a point is: 1 on its rim, 0 at its middle.
+# How far into the portal a point is: 1 on its rim, 0 at its middle. The rim is
+# a superellipse of power `sink_roundness` (MenuPortal.ROUNDNESS; 2 is an oval).
+var sink_roundness := 2.0
+
 func _sink_depth(p: Vector2) -> float:
 	var r := sink.size * 0.5
-	return ((p - sink.get_center()) / Vector2(maxf(r.x, 1.0), maxf(r.y, 1.0))).length()
+	var e := ((p - sink.get_center()) / Vector2(maxf(r.x, 1.0), maxf(r.y, 1.0))).abs()
+	return pow(pow(e.x, sink_roundness) + pow(e.y, sink_roundness), 1.0 / sink_roundness)
 
 # How much of its alpha a piece keeps over the button grid: BAND_DIM inside it,
 # all of it once it is half its own size clear of it.

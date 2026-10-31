@@ -17,8 +17,12 @@ const BAT := "res://images2.0/custom/menu_bat.png"
 # How far the oval reaches past the letters, px: round the ends, and above and
 # below the two lines. It never reaches past the window less MARGIN, though: a
 # title wide with decorations would otherwise run its oval off both sides.
-const REACH := Vector2(168.0, 48.0)
+const REACH := Vector2(168.0, 64.0)
 const MARGIN := 4.0
+# Its shape: a superellipse of this power (2 would be an ellipse). Squarer, so the
+# blue reaches the first and last letters of both lines, which sit in the corners
+# of the box an ellipse cuts off. Given to the vortex, and used for the bats' rim.
+const ROUNDNESS := 3.0
 
 # The fringe. A bat starts on the rim (between these fractions of the oval's
 # radii), flies outward a little and is gone within LIFETIME seconds, teal
@@ -112,6 +116,7 @@ func _fit(r: Rect2) -> void:
 	_last = r
 	visible = r.has_area()
 	if art != null and is_instance_valid(art):
+		art.sink_roundness = ROUNDNESS
 		art.sink = Rect2(art.get_global_transform().affine_inverse()
 			* (get_global_transform() * r.position), r.size) if visible else Rect2()
 	if not visible:
@@ -121,6 +126,7 @@ func _fit(r: Rect2) -> void:
 	oval.position = r.position
 	oval.size = r.size
 	if vortex != null:
+		vortex.set_shader_parameter("roundness", ROUNDNESS)
 		# this control and the background both fill the menu, so one rect serves
 		vortex.set_shader_parameter("portal_center", r.get_center())
 		vortex.set_shader_parameter("portal_radii", r.size * 0.5)
@@ -133,8 +139,11 @@ func _fit(r: Rect2) -> void:
 		var k: float = lerpf(RIM_FROM, RIM_TO, j / 3.0)
 		for i in 96:
 			var a: float = TAU * (i + j * 0.37) / 96.0
-			pts.append(Vector2(cos(a) * rx * k, sin(a) * ry * k))
-			# straight out of the oval, not out of its centre
-			out.append(Vector2(cos(a) / rx, sin(a) / ry).normalized())
+			# a point on the superellipse, and the way straight out of it there
+			var cx: float = signf(cos(a)) * pow(absf(cos(a)), 2.0 / ROUNDNESS)
+			var cy: float = signf(sin(a)) * pow(absf(sin(a)), 2.0 / ROUNDNESS)
+			pts.append(Vector2(cx * rx * k, cy * ry * k))
+			out.append(Vector2(signf(cx) * pow(absf(cx), ROUNDNESS - 1.0) / rx,
+				signf(cy) * pow(absf(cy), ROUNDNESS - 1.0) / ry).normalized())
 	bats.emission_points = pts
 	bats.emission_normals = out

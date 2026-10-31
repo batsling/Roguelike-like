@@ -243,6 +243,16 @@ func test_the_portal_stands_round_the_title_and_subtitle() -> void:
 	for row in [menu.title_row, menu.subtitle_row]:
 		var g: Rect2 = row.ink.get_global_rect()
 		assert_true(portal.oval.get_global_rect().encloses(g), "round every letter of a row")
+	# THE CORNERS OF THE TEXT ARE IN THE BLUE, not just its middle: the first and
+	# last letters of each line, which an ellipse round the box leaves out.
+	var o: Rect2 = portal.oval.get_global_rect()
+	var n: float = portal.ROUNDNESS
+	for row in [menu.title_row, menu.subtitle_row]:
+		var g: Rect2 = row.ink.get_global_rect()
+		for corner in [g.position, g.end, Vector2(g.position.x, g.end.y), Vector2(g.end.x, g.position.y)]:
+			var e: Vector2 = ((corner - o.get_center()) / (o.size * 0.5)).abs()
+			assert_lt(pow(pow(e.x, n) + pow(e.y, n), 1.0 / n), 0.95,
+				"the corner %s of a line inside the blue" % str(corner))
 	assert_eq(portal.bats.position, portal.oval.get_rect().get_center(), "the bats come off its rim")
 	assert_false(portal.bats.emission_points.is_empty(), "from points on it")
 	var before: Rect2 = portal.oval.get_global_rect()
