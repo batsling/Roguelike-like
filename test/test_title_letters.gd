@@ -239,7 +239,7 @@ func test_the_menu_spells_its_title_in_cut_letters_and_centres_it() -> void:
 		var menu = MENU.instantiate()
 		add_child_autofree(menu)
 		menu._build_title(_rng(s))
-		await wait_frames(2)
+		await wait_process_frames(2)
 		assert_not_null(menu.title_row, "a title row")
 		assert_not_null(menu.subtitle_row, "a subtitle row")
 		assert_false((menu.get_node("%Title") as Label).visible, "the label stands down")
@@ -265,20 +265,20 @@ func test_a_click_on_a_row_draws_it_again() -> void:
 	var menu = MENU.instantiate()
 	add_child_autofree(menu)
 	menu._build_title(_rng(5))
-	await wait_frames(2)
+	await wait_process_frames(2)
 	var title = menu.title_row
 	var sub = menu.subtitle_row
 	var ev := InputEventMouseButton.new()
 	ev.button_index = MOUSE_BUTTON_LEFT
 	ev.pressed = true
 	sub.ink.gui_input.emit(ev)
-	await wait_frames(2)
+	await wait_process_frames(2)
 	assert_ne(menu.subtitle_row, sub, "a new subtitle")
 	assert_eq(menu.title_row, title, "the title left alone")
 	assert_eq(menu.subtitle_row.get_index(), (menu.get_node("%Subtitle") as Label).get_index() + 1,
 		"standing where the old one stood")
 	title.ink.gui_input.emit(ev)
-	await wait_frames(2)
+	await wait_process_frames(2)
 	assert_ne(menu.title_row, title, "a new title")
 	var rows := (menu.get_node("Center/Panel/TitleBox") as Node).get_children().filter(
 		func(c): return c is TitleLetters)
@@ -288,7 +288,7 @@ func test_the_background_is_the_vortex_with_the_portal_in_it() -> void:
 	var menu = MENU.instantiate()
 	add_child_autofree(menu)
 	menu._build_title(_rng(6))
-	await wait_frames(3)
+	await wait_process_frames(3)
 	var mat := (menu.get_node("%Background") as ColorRect).material as ShaderMaterial
 	assert_not_null(mat, "the background has its shader")
 	assert_eq(mat.shader, menu.VORTEX_SHADER, "the one swirl, red and blue")
@@ -303,7 +303,7 @@ func test_the_portal_stands_round_the_title_and_subtitle() -> void:
 	var menu = MENU.instantiate()
 	add_child_autofree(menu)
 	menu._build_title(_rng(6))
-	await wait_frames(3)
+	await wait_process_frames(3)
 	var portal: Control = menu.portal
 	assert_not_null(portal, "a portal")
 	assert_lt(portal.get_index(), menu.get_node("Center").get_index(), "behind the letters")
@@ -327,7 +327,7 @@ func test_the_portal_stands_round_the_title_and_subtitle() -> void:
 	assert_eq(portal.bats.radii, portal.oval.size * 0.5, "in its shape")
 	var before: Rect2 = portal.oval.get_global_rect()
 	menu._reroll(true)
-	await wait_frames(3)
+	await wait_process_frames(3)
 	assert_true(portal.oval.get_global_rect().encloses(menu.title_row.ink.get_global_rect()),
 		"still round a title drawn again")
 	assert_eq(portal.oval.get_global_rect().position.y, before.position.y, "and in the same place")
@@ -344,7 +344,7 @@ func test_the_subtitle_spaces_its_words_wider() -> void:
 		"each gap a quarter of a line wider")
 	var menu = MENU.instantiate()
 	add_child_autofree(menu)
-	await wait_frames(1)
+	await wait_process_frames(1)
 	assert_eq(menu.subtitle_row.space, menu.SUBTITLE_SPACE, "the menu's subtitle uses it")
 	assert_eq(menu.title_row.space, TitleLetters.SPACE, "and the title does not")
 

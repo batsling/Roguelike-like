@@ -1244,7 +1244,16 @@ static func use_rogue(c: Control) -> void:
 	c.add_theme_font_size_override("font_size", rogue_size(c.get_theme_font_size("font_size")))
 
 static func _on_node_added(node: Node) -> void:
-	if rogue_headings and (node is Label or node is Button):
+	if not rogue_headings or not (node is Label or node is Button):
+		return
+	# A control INSTANCED FROM A SCENE FILE (it has an owner) arrives with its
+	# sizes already set, so it is done now, before the first layout pass: done a
+	# frame later, the main menu's buttons grew under a laid-out screen and the
+	# portal round the title stood a frame behind them. A control built in code
+	# has its sizes set around add_child, so it waits for the frame to end.
+	if node.owner != null:
+		_apply_rogue_rule(node)
+	else:
 		_apply_rogue_rule.call_deferred(node)
 
 # Untyped on purpose: a control can be freed in the frame between being added and
