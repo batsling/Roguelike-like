@@ -70,3 +70,14 @@ func test_a_control_with_its_own_font_keeps_it() -> void:
 	await _added(l)
 	assert_eq(l.get_theme_font("font"), mine)
 	assert_eq(l.get_theme_font_size("font_size"), UITheme.FONT_TITLE, "at its own size")
+
+# A control freed in the frame between being added and the rule running (a screen
+# built and torn down at once) is passed over quietly rather than erroring.
+func test_a_control_freed_before_the_rule_runs_is_passed_over() -> void:
+	var l := Label.new()
+	l.add_theme_font_size_override("font_size", UITheme.FONT_TITLE)
+	add_child(l)
+	l.free()
+	await get_tree().process_frame
+	UITheme._apply_rogue_rule(l)
+	assert_true(true, "no crash on a freed control")

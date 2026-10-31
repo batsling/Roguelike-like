@@ -1247,8 +1247,12 @@ static func _on_node_added(node: Node) -> void:
 	if rogue_headings and (node is Label or node is Button):
 		_apply_rogue_rule.call_deferred(node)
 
-static func _apply_rogue_rule(node: Node) -> void:
-	if not is_instance_valid(node) or not node.is_inside_tree():
+# Untyped on purpose: a control can be freed in the frame between being added and
+# this running (a screen built and torn down at once), and a freed object cannot
+# be passed to a `Node` parameter — the deferred call would error before the
+# validity check could answer.
+static func _apply_rogue_rule(node) -> void:
+	if not is_instance_valid(node) or not (node as Node).is_inside_tree():
 		return
 	var c := node as Control
 	# A control that chose its own font (the title letters' fallbacks, a
