@@ -36,7 +36,7 @@ func _make_custom_tooltip(_for_text: String) -> Object:
 
 	var panel := PanelContainer.new()
 	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.07, 0.07, 0.1, 0.98)
+	sb.bg_color = Color(UITheme.BG_DEEP, 0.98)
 	sb.set_corner_radius_all(8)
 	sb.set_border_width_all(1)
 	sb.border_color = Color(1.0, 0.6, 0.0, 0.85)

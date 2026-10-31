@@ -19,7 +19,7 @@ extends RefCounted
 # The square a goal's art is drawn in.
 const TILE := 56
 # The frame behind a picture — the Collection's IMAGE_BG.
-const IMAGE_BG := Color(0.16, 0.17, 0.22, 1.0)
+const IMAGE_BG := UITheme.PANEL
 const POPUP_W := 520.0
 
 # The headers and tile flows for every kind done at `g`, added to `box`. Returns

@@ -133,7 +133,7 @@ func _on_notified(text: String, color: Color, icon: Texture2D = null, key: Strin
 	# a column of differently rimmed boxes is four different shapes, and a column
 	# of striped ones is one list.
 	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.07, 0.07, 0.09, 0.96)
+	sb.bg_color = Color(UITheme.BG_DEEP, 0.96)
 	sb.border_color = color
 	sb.set_border_width_all(1)
 	sb.border_width_left = STRIPE_W

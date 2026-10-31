@@ -133,11 +133,11 @@ func _profile_row(p: Dictionary) -> Control:
 
 	var panel := PanelContainer.new()
 	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.13, 0.17, 0.13, 0.9) if is_active else Color(0.10, 0.10, 0.13, 0.85)
+	sb.bg_color = Color(UITheme.GO_FILL, 0.9) if is_active else Color(UITheme.BG, 0.85)
 	sb.set_corner_radius_all(6)
 	sb.set_content_margin_all(8)
 	sb.set_border_width_all(1)
-	sb.border_color = Color(0.5, 0.8, 0.55) if is_active else Color(0.28, 0.28, 0.34)
+	sb.border_color = Color(0.5, 0.8, 0.55) if is_active else UITheme.BORDER
 	panel.add_theme_stylebox_override("panel", sb)
 
 	var row := HBoxContainer.new()

@@ -11,21 +11,94 @@ extends RefCounted
 # screen needs something bespoke.
 
 # --- Palette ---------------------------------------------------------------
-# Warm near-blacks and embers rather than the old cold blue-greys.
-const BG_DEEP := Color(0.078, 0.063, 0.047)      # #14100c page background
-const BG := Color(0.114, 0.094, 0.071)           # #1d1812 base surface
-const PANEL := Color(0.145, 0.122, 0.094)         # #251f18 raised panel
-const PANEL_HI := Color(0.192, 0.161, 0.122)      # #312920 hover / header
-const BORDER := Color(0.290, 0.247, 0.180)        # #4a3f2e hairline border
+# The surfaces come in palettes, one per backdrop that was on trial beside the
+# main menu's red vortex: each is the five surfaces below plus the bat pattern's
+# ground and bat. PALETTE names the one in use; the owner chose "rift" (31 Oct
+# 2026). The others stay so a retune is one word.
+const PALETTES := {
+	"grey": {
+		"well": Color(0.055, 0.053, 0.051),
+		"bg_deep": Color(0.102, 0.098, 0.094),
+		"bg": Color(0.125, 0.122, 0.118),
+		"panel": Color(0.161, 0.157, 0.153),
+		"panel_hi": Color(0.204, 0.200, 0.192),
+		"border": Color(0.294, 0.286, 0.275),
+		"bat_ground": Color("3b3a39"),
+		"bat": Color("2f2e2d"),
+	},
+	"oxblood": {
+		"well": Color(0.060, 0.039, 0.041),
+		"bg_deep": Color(0.100, 0.065, 0.068),
+		"bg": Color(0.125, 0.081, 0.085),
+		"panel": Color(0.160, 0.104, 0.109),
+		"panel_hi": Color(0.205, 0.133, 0.140),
+		"border": Color(0.300, 0.195, 0.204),
+		"bat_ground": Color(0.240, 0.132, 0.142),
+		"bat": Color(0.165, 0.091, 0.097),
+	},
+	"crimson": {
+		"well": Color(0.060, 0.033, 0.035),
+		"bg_deep": Color(0.100, 0.055, 0.059),
+		"bg": Color(0.125, 0.069, 0.074),
+		"panel": Color(0.160, 0.088, 0.094),
+		"panel_hi": Color(0.205, 0.113, 0.121),
+		"border": Color(0.300, 0.165, 0.177),
+		"bat_ground": Color(0.260, 0.091, 0.106),
+		"bat": Color(0.175, 0.061, 0.071),
+	},
+	"rift": {
+		"well": Color(0.060, 0.027, 0.030),
+		"bg_deep": Color(0.100, 0.045, 0.050),
+		"bg": Color(0.125, 0.056, 0.062),
+		"panel": Color(0.160, 0.072, 0.080),
+		"panel_hi": Color(0.205, 0.092, 0.102),
+		"border": Color(0.300, 0.135, 0.150),
+		"bat_ground": Color(0.300, 0.045, 0.068),
+		"bat": Color(0.195, 0.029, 0.044),
+	},
+	"red_on_grey": {
+		"well": Color(0.060, 0.053, 0.053),
+		"bg_deep": Color(0.100, 0.088, 0.089),
+		"bg": Color(0.125, 0.110, 0.111),
+		"panel": Color(0.160, 0.141, 0.143),
+		"panel_hi": Color(0.205, 0.180, 0.183),
+		"border": Color(0.300, 0.264, 0.267),
+		"bat_ground": Color("3b3a39"),
+		"bat": Color(0.380, 0.095, 0.121),
+	},
+	"ember_black": {
+		"well": Color(0.060, 0.036, 0.038),
+		"bg_deep": Color(0.100, 0.060, 0.064),
+		"bg": Color(0.125, 0.075, 0.079),
+		"panel": Color(0.160, 0.096, 0.102),
+		"panel_hi": Color(0.205, 0.123, 0.130),
+		"border": Color(0.300, 0.180, 0.191),
+		"bat_ground": Color(0.090, 0.045, 0.049),
+		"bat": Color(0.270, 0.054, 0.073),
+	},
+}
+const PALETTE := "rift"
+const BG_DEEP: Color = PALETTES[PALETTE]["bg_deep"]     # page background
+const BG: Color = PALETTES[PALETTE]["bg"]               # base surface
+const PANEL: Color = PALETTES[PALETTE]["panel"]         # raised panel
+const PANEL_HI: Color = PALETTES[PALETTE]["panel_hi"]   # hover / header
+const BORDER: Color = PALETTES[PALETTE]["border"]       # hairline border
+const WELL: Color = PALETTES[PALETTE]["well"]           # the darkest recess: pips, pills, ink on a chip
 
 const ACCENT := Color(1.0, 0.541, 0.235)          # #ff8a3c ember orange
 const ACCENT_DIM := Color(0.80, 0.40, 0.0)        # #cc6600 pressed / muted ember
 const GOLD := Color(1.0, 0.80, 0.40)              # #ffcc66 highlight gold
 const TEXT := Color(0.902, 0.835, 0.722)          # #e6d5b8 parchment text
-const TEXT_DIM := Color(0.659, 0.612, 0.529)      # #a89c87 secondary text
-const TEXT_FAINT := Color(0.46, 0.43, 0.38)       # tertiary / placeholders
+const TEXT_DIM := Color(0.639, 0.624, 0.596)      # #a39f98 secondary text
+const TEXT_FAINT := Color(0.45, 0.44, 0.42)       # tertiary / placeholders
 
 const SUCCESS := Color(0.30, 0.78, 0.42)
+# THE GO BUTTON: a green fill and rim for the one action a panel is there for
+# (Play, Use, the active profile). Five screens each typed these in by hand.
+const GO_FILL := Color(0.10, 0.22, 0.16)
+const GO_FILL_HI := Color(0.14, 0.30, 0.21)
+const GO_RIM := Color(0.4, 0.9, 0.6)
+const GO_RIM_HI := Color(0.55, 1.0, 0.75)
 
 # A STOP THE RUN WALKED AWAY FROM — a game visited and left standing, whether the
 # goal was missed, the run escaped it (§3.2), or a teleport passed straight
@@ -420,7 +493,7 @@ static func tier_badge(game_id, height: int = TIER_BADGE_H) -> Control:
 	l.add_theme_font_size_override("font_size", FONT_TEXT)
 	# Dark on the bright plate. Every tier colour is a pastel, so the readable
 	# text on all six is the same near-black rather than a per-tier choice.
-	l.add_theme_color_override("font_color", Color(0.08, 0.06, 0.05))
+	l.add_theme_color_override("font_color", WELL)
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -971,6 +1044,25 @@ static func rift_backdrop(seed: float = 0.0) -> ColorRect:
 	rect.material = mat
 	return rect
 
+# The bat pattern (menu_bats.gdshader) as a full-rect ColorRect that ignores the
+# mouse: the owner's bat on their pattern's lattice, drifting down and to the left.
+const BATS_SHADER := preload("res://shaders/menu_bats.gdshader")
+const BATS_ART := preload("res://images2.0/custom/menu_bat.png")
+
+
+static func bat_backdrop() -> ColorRect:
+	var rect := ColorRect.new()
+	rect.set_anchors_preset(Control.PRESET_FULL_RECT)
+	rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var mat := ShaderMaterial.new()
+	mat.shader = BATS_SHADER
+	mat.set_shader_parameter("bat", BATS_ART)
+	mat.set_shader_parameter("base", PALETTES[PALETTE]["bat_ground"])
+	mat.set_shader_parameter("ink", PALETTES[PALETTE]["bat"])
+	rect.material = mat
+	rect.resized.connect(func() -> void: mat.set_shader_parameter("size", rect.size))
+	return rect
+
 static func shared() -> Theme:
 	if _shared == null:
 		_shared = make_theme()
@@ -1210,7 +1302,7 @@ static func make_theme() -> Theme:
 	# stock LABEL's own (TooltipLabel is a Label variation), and a card is drawn
 	# exactly as HoverCard built it.
 	t.set_stylebox("panel", "TooltipPanel", StyleBoxEmpty.new())
-	t.set_stylebox("normal", "TooltipLabel", flat(Color(0.075, 0.065, 0.085, 0.985), 6, 8, 1, BORDER))
+	t.set_stylebox("normal", "TooltipLabel", flat(Color(BG_DEEP, 0.985), 6, 8, 1, BORDER))
 	t.set_color("font_color", "TooltipLabel", TEXT)
 	t.set_font_size("font_size", "TooltipLabel", FONT_BODY)
 

@@ -114,7 +114,7 @@ func _build() -> void:
 	# (transparent here) and the whole overworld reads straight through the tool
 	# you are trying to use.
 	panel.add_theme_stylebox_override("panel",
-		UITheme.flat(Color(0.08, 0.08, 0.11, 0.99), 0, 0, 2, UITheme.ACCENT))
+		UITheme.flat(Color(UITheme.BG_DEEP, 0.99), 0, 0, 2, UITheme.ACCENT))
 	_layer.add_child(panel)
 
 	var margin := MarginContainer.new()
@@ -758,7 +758,7 @@ func _board_row(entry: Dictionary) -> Control:
 
 	var wrap := PanelContainer.new()
 	wrap.add_theme_stylebox_override("panel",
-		UITheme.flat(Color(0.11, 0.11, 0.14, 0.85), 6, 5, 1, UITheme.BORDER))
+		UITheme.flat(Color(UITheme.BG, 0.85), 6, 5, 1, UITheme.BORDER))
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", UITheme.GAP_TIGHT)
 	wrap.add_child(col)

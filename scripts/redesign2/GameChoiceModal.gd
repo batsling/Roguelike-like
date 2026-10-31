@@ -1228,7 +1228,7 @@ func _stat_pair(hp: int, dmg: int) -> Control:
 		l.add_theme_color_override("font_color", (b[1] as Color).lerp(Color.WHITE, 0.3))
 		l.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
 		l.add_theme_constant_override("outline_size", 2)
-		var pill := UITheme.flat(Color(0.06, 0.05, 0.06, 0.9), 4, 0, 1, (b[1] as Color).lerp(UITheme.BG, 0.25))
+		var pill := UITheme.flat(Color(UITheme.WELL, 0.9), 4, 0, 1, (b[1] as Color).lerp(UITheme.BG, 0.25))
 		pill.content_margin_left = 4
 		pill.content_margin_right = 4
 		l.add_theme_stylebox_override("normal", pill)
@@ -1242,7 +1242,7 @@ func _stat_pair(hp: int, dmg: int) -> Control:
 func _goal_row(chip: Control, text: String, color: Color, tip: String, trailing: Control = null) -> Control:
 	var wrap := PanelContainer.new()
 	wrap.add_theme_stylebox_override("panel",
-		UITheme.flat(Color(0.10, 0.10, 0.13, 0.6), 5, 4, 1, color.lerp(UITheme.BORDER, 0.35)))
+		UITheme.flat(Color(UITheme.BG, 0.6), 5, 4, 1, color.lerp(UITheme.BORDER, 0.35)))
 	wrap.tooltip_text = tip
 	var line := HBoxContainer.new()
 	line.add_theme_constant_override("separation", UITheme.GAP)
@@ -1496,7 +1496,7 @@ func open_node_card(id: StringName, depth: int = 0) -> Control:
 
 	var card := PanelContainer.new()
 	card.add_theme_stylebox_override("panel",
-		UITheme.flat(Color(0.075, 0.062, 0.05, 0.98), 8, 12, 2, UITheme.GOLD))
+		UITheme.flat(Color(UITheme.BG_DEEP, 0.98), 8, 12, 2, UITheme.GOLD))
 	card.custom_minimum_size = Vector2(NODE_CARD_W, 0)
 	card.mouse_filter = Control.MOUSE_FILTER_STOP
 	_node_card = card

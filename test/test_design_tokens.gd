@@ -277,6 +277,54 @@ func test_every_screen_that_sets_a_gap_is_on_the_gap_list() -> void:
 	assert_eq(missing, [], "these set a gap in code but are not in MIGRATED_GAPS, "
 		+ "so nothing checks them — put each on the scale and add it to the list: %s" % str(missing))
 
+# --- surfaces ---------------------------------------------------------------
+
+# A DARK SURFACE COMES FROM THE PALETTE. When the game went red (UITheme.PALETTES,
+# 31 Oct 2026), ~45 panels, pips, pills and wells across 20 files had their own
+# dark brown or blue-grey typed in, and each stayed that colour while the theme
+# turned red round it. They all read UITheme's surfaces now (WELL, BG_DEEP, BG,
+# PANEL, PANEL_HI, BORDER) or derive from them, so a palette change reaches every
+# one; this keeps a new screen from typing its own back in.
+#
+# What it catches: a `Color(r, g, b[, a])` literal whose brightest channel is
+# 0.36 or less and that is not strongly coloured — a surface, not a tint. Pure
+# black is left alone (the dims and shadows are black on purpose).
+# The ones that are dark on purpose and are NOT surfaces, each with its reason.
+const OWN_DARK_COLOURS := {
+	"res://scripts/menu/MainMenu.gd": ["Color(0.06, 0.02, 0.02)"],      # the vortex's own red, not the theme's
+	"res://scripts/ui/AtlasView.gd": ["Color(0.32, 0.30, 0.28)"],       # a modulate that darkens art
+	"res://scripts/ui/Collection.gd": ["Color(0.10, 0.16, 0.26, 0.9)"], # Steam's own blue on its button
+}
+
+func _dark_surface_literals(text: String) -> Array:
+	var re := RegEx.new()
+	re.compile("Color\\(\\s*([0-9.]+)\\s*,\\s*([0-9.]+)\\s*,\\s*([0-9.]+)\\s*(,\\s*[0-9.]+\\s*)?\\)")
+	var out: Array = []
+	var lines: PackedStringArray = text.split("\n")
+	for i in range(lines.size()):
+		if lines[i].strip_edges().begins_with("#"):
+			continue
+		for m in re.search_all(lines[i]):
+			var c := Color(float(m.get_string(1)), float(m.get_string(2)), float(m.get_string(3)))
+			if c.v > 0.0 and c.v <= 0.36 and c.s < 0.75:
+				out.append([i + 1, m.get_string()])
+	return out
+
+func test_no_screen_types_its_own_dark_surface() -> void:
+	var found: Array = []
+	_collect_scripts("res://scripts", found)
+	var bad: Array = []
+	for path in found:
+		if path == "res://scripts/ui/UITheme.gd":
+			continue
+		var allowed: Array = OWN_DARK_COLOURS.get(path, [])
+		for hit in _dark_surface_literals(_source(path)):
+			if not allowed.has(hit[1]):
+				bad.append("%s:%d %s" % [path.get_file(), hit[0], hit[1]])
+	assert_eq(bad, [], "a dark surface typed in by hand stays that colour whatever the palette is "
+		+ "— use UITheme's WELL / BG_DEEP / BG / PANEL / PANEL_HI / BORDER, or add it to "
+		+ "OWN_DARK_COLOURS with the reason it is not a surface: %s" % str(bad))
+
 func _collect_scripts(dir_path: String, out: Array) -> void:
 	var dir: DirAccess = DirAccess.open(dir_path)
 	if dir == null:

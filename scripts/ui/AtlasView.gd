@@ -90,7 +90,7 @@ const COL_EDGE_CROSS := Color(0.86, 0.74, 0.62, 0.06)
 const COL_HULL := Color(0.902, 0.835, 0.722, 0.028)
 const COL_TRAIL := Color(1.0, 0.60, 0.24, 0.95)          # road ahead — ember
 const COL_HISTORY := Color(0.36, 0.85, 0.48, 0.92)       # the path actually walked — green
-const COL_TRAIL_CASING := Color(0.055, 0.04, 0.028, 0.92)
+const COL_TRAIL_CASING := Color(UITheme.WELL, 0.92)
 const COL_SELECTED_EDGE := Color(0.98, 0.94, 0.86, 0.85) # a clicked game's links
 # Sequel / same-studio links. The hand-drawn draw.io map has always drawn these
 # blue and apart from plain influence; the game flattened the distinction until
@@ -119,7 +119,7 @@ const COL_DIM := Color(1, 1, 1, 0.11)
 # Scenery, while a route is on the sky: a game off the optimal path keeps its
 # place and its shape, and gives up some of its colour so the corridor reads as
 # the near thing and everything else as the far one (StarCanvas._draw_stars).
-const COL_OFF_ROUTE_BG := Color(0.20, 0.20, 0.22)
+const COL_OFF_ROUTE_BG := UITheme.PANEL_HI
 const OFF_ROUTE_FADE := 0.5
 # How far a non-branch link fades on a tree sky. The influence graph is not a
 # tree — most of its links cut across the branches — so they have to stay

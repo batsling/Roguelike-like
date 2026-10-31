@@ -858,7 +858,7 @@ func _refresh_pressure() -> void:
 		var tp: Panel = _tier_rungs[i]
 		var on: bool = i <= tier
 		tp.add_theme_stylebox_override("panel", UITheme.flat(
-			UITheme.rarity_color(i) if on else Color(0.05, 0.05, 0.06, 0.85), 2, 0, 1,
+			UITheme.rarity_color(i) if on else Color(UITheme.WELL, 0.85), 2, 0, 1,
 			UITheme.rarity_color(i).lerp(Color.WHITE, 0.2) if on else tier_col.lerp(UITheme.BG, 0.5)))
 	_pressure_why.add_theme_color_override("font_color", band)
 
@@ -866,7 +866,7 @@ func _refresh_pressure() -> void:
 		var pip: Panel = _pressure_rungs[i]
 		var lit: bool = i < pressure
 		pip.add_theme_stylebox_override("panel", UITheme.flat(
-			band if lit else Color(0.05, 0.05, 0.06, 0.85), 2, 0, 1,
+			band if lit else Color(UITheme.WELL, 0.85), 2, 0, 1,
 			band.lerp(Color.WHITE, 0.2) if lit else band.lerp(UITheme.BG, 0.5)))
 
 	# WHY it's that number. Without the hop count the pressure reads as a random
@@ -2988,7 +2988,7 @@ func _add_enemy_badges(holder: Control, entry: Dictionary, e: GoalEnemyData,
 		skull.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		var disc := StyleBoxFlat.new()
 		disc.bg_color = BOSS_ORANGE
-		disc.border_color = Color(0.07, 0.06, 0.07, 0.94)
+		disc.border_color = Color(UITheme.WELL, 0.94)
 		disc.set_border_width_all(2)
 		disc.set_corner_radius_all(BOSS_SKULL_FONT)
 		disc.content_margin_left = 3
@@ -3211,7 +3211,7 @@ const ABILITY_FONT := 15
 # The boss's ☠ in the top-left corner of its box: dark, on an orange disc (see
 # _add_enemy_badges), a size up from the stat badges so it reads as a label on
 # the body rather than as one more number.
-const BOSS_SKULL := Color(0.10, 0.07, 0.06)
+const BOSS_SKULL := UITheme.WELL
 const BOSS_SKULL_FONT := 15
 const BOSS_SKULL_INSET := 7
 
@@ -3286,7 +3286,7 @@ func _stat_badge(text: String, accent: Color, font_size: int) -> Label:
 	l.add_theme_color_override("font_color", accent.lerp(Color.WHITE, 0.3))
 	l.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
 	l.add_theme_constant_override("outline_size", 2)
-	var pill := UITheme.flat(Color(0.06, 0.05, 0.06, 0.9), 4, 0, 1,
+	var pill := UITheme.flat(Color(UITheme.WELL, 0.9), 4, 0, 1,
 		accent.lerp(UITheme.BG, 0.25))
 	pill.content_margin_left = 4
 	pill.content_margin_right = 4

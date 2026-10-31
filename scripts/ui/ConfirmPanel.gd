@@ -108,7 +108,7 @@ func _build() -> void:
 	var panel := PanelContainer.new()
 	panel.custom_minimum_size = Vector2(_width, 0)
 	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.10, 0.09, 0.11, 0.99)
+	sb.bg_color = Color(UITheme.BG_DEEP, 0.99)
 	sb.set_corner_radius_all(8)
 	sb.set_content_margin_all(20)
 	sb.set_border_width_all(2)
@@ -163,7 +163,7 @@ func _build() -> void:
 		ok.text = _ok_text
 		ok.custom_minimum_size = Vector2(120, 38)
 		var ok_style := StyleBoxFlat.new()
-		ok_style.bg_color = Color(0.34, 0.12, 0.12, 0.95)
+		ok_style.bg_color = Color(UITheme.DANGER.lerp(UITheme.BG_DEEP, 0.7), 0.95)
 		ok_style.set_corner_radius_all(6)
 		ok_style.set_content_margin_all(8)
 		ok_style.set_border_width_all(1)

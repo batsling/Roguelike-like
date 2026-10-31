@@ -167,7 +167,7 @@ func setup(item: ItemData, usable: bool) -> void:
 		use_btn.text = "▶  Use"
 		use_btn.custom_minimum_size = Vector2(0, 34)
 		use_btn.add_theme_stylebox_override("normal",
-			UITheme.flat(Color(0.10, 0.22, 0.16, 0.9), 10, 6, 1, Color(0.4, 0.9, 0.6)))
+			UITheme.flat(Color(UITheme.GO_FILL, 0.9), 10, 6, 1, UITheme.GO_RIM))
 		use_btn.add_theme_color_override("font_color", Color(0.6, 1.0, 0.8))
 		use_btn.pressed.connect(func():
 			use_requested.emit(item)

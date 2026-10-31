@@ -121,7 +121,7 @@ func _draw_circle() -> void:
 	var d: float = circle()
 	var c := Vector2(d, d) * 0.5
 	var up: bool = shown_rank() > GameRanks.rank_for(from_xp)
-	_circle.draw_circle(c, d * 0.5, Color(0.08, 0.07, 0.06, 0.95))
+	_circle.draw_circle(c, d * 0.5, Color(UITheme.BG_DEEP, 0.95))
 	_circle.draw_arc(c, d * 0.5 - 1.0, 0.0, TAU, 40,
 		UITheme.GOLD if up or shown_rank() > 0 else UITheme.BORDER, 2.0, true)
 
