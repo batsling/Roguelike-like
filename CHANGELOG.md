@@ -27,7 +27,8 @@ For how the project is laid out and how its systems fit together, see
   the title's R read as a T); a decoration is lifted rather than hung into the
   subtitle (Darkest Dungeon's torch covered its first letters); and the
   subtitle's letters are spaced 0.16 of its line apart instead of 0.06
-  (`MainMenu.SUBTITLE_GAP`), since at 30px they ran together.
+  (`MainMenu.SUBTITLE_GAP`), since at 30px they ran together. The subtitle is
+  now 36px tall (`MainMenu.SUBTITLE_HEIGHT`, was 30).
 
 - **Title letters are sized by case.** Every logo letter used to be drawn the
   whole line's height, so Darkest Dungeon's small a stood as tall as a

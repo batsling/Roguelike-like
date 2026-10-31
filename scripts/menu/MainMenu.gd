@@ -153,12 +153,12 @@ func _mount_portal() -> void:
 # Clicking either row draws that row again (_reroll), so the player can shuffle
 # through the logos without restarting the game.
 const TITLE_HEIGHT := 84.0
-const SUBTITLE_HEIGHT := 30.0
+const SUBTITLE_HEIGHT := 36.0
 const TITLE_MAX_WIDTH := 1100.0
 # The subtitle's word gap, of its line height: wider than TitleLetters.SPACE,
-# since at 30px a mixed-logo subtitle's words otherwise run together.
+# since at 36px a mixed-logo subtitle's words otherwise run together.
 const SUBTITLE_SPACE := 0.6
-# ...and its gap between letters, likewise: at 30px TitleLetters.GAP is under two
+# ...and its gap between letters, likewise: at 36px TitleLetters.GAP is about two
 # pixels, and a mixed subtitle's glows and outlines ran into each other.
 const SUBTITLE_GAP := 0.16
 

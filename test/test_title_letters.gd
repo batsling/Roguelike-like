@@ -100,7 +100,7 @@ func test_every_letter_is_centred_on_the_line_and_in_its_slot() -> void:
 		TitleUnlocks._unlocked[k] = "test"
 	var logo_lower := 0
 	for s in SEEDS:
-		for spec in [[TITLE, 84.0, true], [SUBTITLE, 30.0, false]]:
+		for spec in [[TITLE, 84.0, true], [SUBTITLE, 36.0, false]]:
 			var row := TitleLetters.make(spec[0], spec[1], _rng(s), spec[2])
 			add_child_autofree(row)
 			var h: float = row.line_height
