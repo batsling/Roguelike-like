@@ -188,11 +188,16 @@ logo with lowercase letters needs its `lowercase` list, or its small a is
 blown up to a capital's height as every letter once was. Two settings are the
 owner's eye on a piece once it is on screen, by piece name or `"*"` for the
 whole config: `"size"` draws it that many times as big, grown or shrunk on the
-baseline (Dead Cells' thin letters 1.12, Balatro's A 1.05), `"pad"` keeps that
+baseline (Dead Cells' thin letters 1.12, every Balatro letter 1.05), `"pad"` keeps that
 much of the line clear either side (Dead Cells' flame, 0.08), and `"drop"` moves
 it down by that much of the line (Balatro's A, 0.05). Rogue's letters carry the
 same keys from `tools/rogue_letters.py`'s `SIZE`, `PAD` and `SIZE_OF`: every one
-0.94 and padded 0.03, the lowercase k 0.86. A
+0.94 and padded 0.03, the lowercase k 0.86. A capital place prefers a capital
+SHAPE: a lowercase-shaped letter (Darkest Dungeon's r, which read as a T) is
+picked for one only when no capital can be. A decoration is never drawn down
+into the row below its own (the torch's long handle covered the subtitle): it
+is lifted until it clears. The subtitle spaces its letters wider than the title
+(`MainMenu.SUBTITLE_GAP`, 0.16 of its line, against `TitleLetters.GAP`'s 0.06). A
 `body` that starts below the letter's real top blows the letter up and pushes
 it above the line: the crab's h was `[262, 375]` and sat too high until its
 stem's real top, 215, was used. A

@@ -82,6 +82,8 @@ var ink := Control.new()
 var ink_width := 0.0
 # A space's width, of the line height (SPACE unless make() was given another).
 var space := SPACE
+# The gap between letters, of the line height (GAP unless make() was given another).
+var gap := GAP
 
 func _init() -> void:
 	ink.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -183,6 +185,13 @@ static func pick(text: String, rng: RandomNumberGenerator, from: Dictionary = {}
 			else ("upper" if ch == ch.to_upper() else "lower")
 		var opts: Array = (p.get(_folder_for(ch), []) as Array).filter(
 			func(o): return not o.has("case") or String(o["case"]) == want_case)
+		# A capital place takes a capital SHAPE when there is one: Darkest
+		# Dungeon's r as the title's R read as a T (the owner, 31 Oct 2026). A
+		# lowercase shape stands there only when nothing else can.
+		if want_case == "upper":
+			var caps := opts.filter(func(o): return String(o.get("form", "")) != "lower")
+			if not caps.is_empty():
+				opts = caps
 		if opts.is_empty():
 			out.append({"missing": ch})
 			continue
@@ -246,9 +255,11 @@ static func _case_size(e: Dictionary, ch: String) -> Vector2:
 
 # A word laid out at `height` px a letter, no wider than `max_width`.
 static func make(text: String, height: float, rng: RandomNumberGenerator,
-		decorated: bool = false, max_width: float = 0.0, word_gap: float = SPACE) -> TitleLetters:
+		decorated: bool = false, max_width: float = 0.0, word_gap: float = SPACE,
+		letter_gap: float = GAP) -> TitleLetters:
 	var w := TitleLetters.new()
 	w.space = word_gap
+	w.gap = letter_gap
 	w.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var from := available()
 	var pieces := pick(text, rng, from)
@@ -277,7 +288,7 @@ func _lay_out(pieces: Array, decor: Array, height: float, text: String = "") -> 
 		var e: Dictionary = seq[i][0]
 		var is_decor: bool = seq[i][1]
 		if i > 0:
-			x += height * GAP
+			x += height * gap
 		if e.is_empty() or e.has("missing"):
 			x += height * space
 			continue
@@ -312,6 +323,10 @@ func _lay_out(pieces: Array, decor: Array, height: float, text: String = "") -> 
 		var top := height * size_top.y - (bc - bh * 0.5) * th * s
 		if is_decor and e.has("line_center"):
 			top = height * 0.5 - float(e["line_center"]) * th * s
+		if is_decor:
+			# never down into the row below: Darkest Dungeon's torch hangs its
+			# handle far under the line, and covered the subtitle's first letters
+			top = minf(top, height * (1.0 + PAD) - th * s)
 		rect.position = Vector2(x + slot * 0.5 - float(e.get("body_center_x", 0.5)) * tw * s, top)
 		ink.add_child(rect)
 		var p := Placed.new()

@@ -114,7 +114,13 @@ func test_every_letter_is_centred_on_the_line_and_in_its_slot() -> void:
 				var tag := "seed %d %s %s" % [s, spec[0], p.entry["path"]]
 				var is_decor: bool = String(p.entry["folder"]).begins_with("decor")
 				if is_decor:
-					assert_almost_eq(cy, h / 2.0, 0.01, tag + ": middle on the line's middle")
+					# on the line's middle, unless that would hang it into the row
+					# below: then lifted until it just clears it (the torch)
+					var bottom: float = r.position.y + r.size.y
+					if bottom < h * (1.0 + TitleLetters.PAD) - 0.01:
+						assert_almost_eq(cy, h / 2.0, 0.01, tag + ": middle on the line's middle")
+					else:
+						assert_lt(cy, h / 2.0, tag + ": lifted, not dropped")
 				else:
 					var top: float = r.position.y + (float(p.entry["body_center"]) - float(p.entry["body_height"]) * 0.5) * r.size.y
 					assert_almost_eq(top, p.body.position.y, 0.01, tag + ": its top where its case puts it")
@@ -274,6 +280,43 @@ func test_size_scales_on_the_baseline_and_pad_keeps_room() -> void:
 		100.0 * TitleLetters.GAP + pad, 0.01, "before it")
 	assert_almost_eq(row.placed[2].body.position.x - row.placed[1].body.end.x,
 		100.0 * TitleLetters.GAP + pad, 0.01, "and after it")
+
+# A CAPITAL PLACE TAKES A CAPITAL SHAPE when one is there: Darkest Dungeon's r
+# as the title's R read as a T. A lowercase shape only when nothing else can.
+func test_a_capital_place_prefers_a_capital_shape() -> void:
+	var pool := TitleLetters.pool()
+	var rs: Array = (pool["r"] as Array).filter(func(e): return not e.has("case"))
+	var lower_r: Array = rs.filter(func(e): return String(e.get("form", "")) == "lower")
+	assert_gt(lower_r.size(), 0, "some r is cut as a lowercase shape")
+	for sd in range(40):
+		var e: Dictionary = TitleLetters.pick("R", _rng(sd), {"r": rs})[0]
+		assert_ne(String(e.get("form", "")), "lower", "seed %d: %s" % [sd, e["path"]])
+	var only_lower: Dictionary = TitleLetters.pick("R", _rng(1), {"r": lower_r})[0]
+	assert_eq(String(only_lower.get("form", "")), "lower", "...and one stands there when nothing else can")
+	var seen_lower := false
+	for sd in range(80):
+		seen_lower = seen_lower or String(TitleLetters.pick("r", _rng(sd), {"r": rs})[0].get("form", "")) == "lower"
+	assert_true(seen_lower, "a lowercase place still takes either")
+
+# A DECORATION NEVER HANGS INTO THE ROW BELOW: the torch's handle covered the
+# subtitle's first letters until it was lifted.
+func test_a_decoration_stays_above_the_row_below() -> void:
+	for folder in ["decor_left", "decor_right"]:
+		for e in TitleLetters.pool()[folder]:
+			var row := TitleLetters.new()
+			add_child_autofree(row)
+			row._lay_out([], [e, e] if folder == "decor_left" else [{}, e], 84.0)
+			for p in row.placed:
+				assert_true(p.rect.position.y + p.rect.size.y <= 84.0 * (1.0 + TitleLetters.PAD) + 0.01,
+					"%s ends inside its own row" % e["path"])
+
+func test_make_takes_its_gap_between_letters() -> void:
+	var a := TitleLetters.make("ROGUE", 30.0, _rng(2), false, 0.0, TitleLetters.SPACE, 0.2)
+	add_child_autofree(a)
+	for i in range(1, a.placed.size()):
+		var gap: float = a.placed[i].body.position.x - a.placed[i - 1].body.end.x
+		var pads: float = 30.0 * (float(a.placed[i].entry.get("pad", 0.0)) + float(a.placed[i - 1].entry.get("pad", 0.0)))
+		assert_almost_eq(gap - pads, 30.0 * 0.2, 0.01, "the gap asked for")
 
 func test_decorations_come_in_matching_pairs() -> void:
 	var stems := {}

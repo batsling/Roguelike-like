@@ -158,6 +158,9 @@ const TITLE_MAX_WIDTH := 1100.0
 # The subtitle's word gap, of its line height: wider than TitleLetters.SPACE,
 # since at 30px a mixed-logo subtitle's words otherwise run together.
 const SUBTITLE_SPACE := 0.6
+# ...and its gap between letters, likewise: at 30px TitleLetters.GAP is under two
+# pixels, and a mixed subtitle's glows and outlines ran into each other.
+const SUBTITLE_GAP := 0.16
 
 var title_row: TitleLetters = null
 var subtitle_row: TitleLetters = null
@@ -187,7 +190,8 @@ func _reroll(title: bool) -> void:
 
 func _title_row(label: Label, height: float, rng: RandomNumberGenerator, decorated: bool) -> TitleLetters:
 	var row := TitleLetters.make(label.text, height, rng, decorated, TITLE_MAX_WIDTH,
-			TitleLetters.SPACE if decorated else SUBTITLE_SPACE)
+			TitleLetters.SPACE if decorated else SUBTITLE_SPACE,
+			TitleLetters.GAP if decorated else SUBTITLE_GAP)
 	if row.placed.is_empty():
 		row.free()
 		return null

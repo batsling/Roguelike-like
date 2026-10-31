@@ -22,7 +22,12 @@ For how the project is laid out and how its systems fit together, see
   Darkest Dungeon's (put back). Rogue's letters are all drawn 0.94 with 0.03 of
   the line either side, its lowercase k 0.86 (`tools/rogue_letters.py`'s
   `SIZE`, `PAD`, `SIZE_OF`), and Balatro's A is 1.05 and moved down 0.05 of the
-  line by a third setting, `drop`.
+  line by a third setting, `drop`. Then every Balatro letter got the A's 1.05;
+  a capital place now prefers a capital-shaped letter (Darkest Dungeon's r as
+  the title's R read as a T); a decoration is lifted rather than hung into the
+  subtitle (Darkest Dungeon's torch covered its first letters); and the
+  subtitle's letters are spaced 0.16 of its line apart instead of 0.06
+  (`MainMenu.SUBTITLE_GAP`), since at 30px they ran together.
 
 - **Title letters are sized by case.** Every logo letter used to be drawn the
   whole line's height, so Darkest Dungeon's small a stood as tall as a

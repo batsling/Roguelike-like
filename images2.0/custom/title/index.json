@@ -405,7 +405,8 @@
   "body_center": 0.4884,
   "body_height": 0.8275,
   "body_center_x": 0.5155,
-  "body_width": 0.7364
+  "body_width": 0.7364,
+  "size": 1.05
  },
  "b/everything_is_crab.png": {
   "game": "everything_is_crab",
@@ -1709,7 +1710,8 @@
   "body_center": 0.4875,
   "body_height": 0.837,
   "body_center_x": 0.5196,
-  "body_width": 0.6667
+  "body_width": 0.6667,
+  "size": 1.05
  },
  "l/dead_cells.png": {
   "game": "dead_cells",
@@ -2049,7 +2051,8 @@
   "body_center": 0.4865,
   "body_height": 0.8215,
   "body_center_x": 0.5193,
-  "body_width": 0.672
+  "body_width": 0.672,
+  "size": 1.05
  },
  "o/caves_of_qud.png": {
   "game": "caves_of_qud",
@@ -2366,7 +2369,8 @@
   "body_center": 0.4893,
   "body_height": 0.83,
   "body_center_x": 0.5194,
-  "body_width": 0.671
+  "body_width": 0.671,
+  "size": 1.05
  },
  "r/darkest_dungeon.png": {
   "game": "darkest_dungeon",
@@ -2764,7 +2768,8 @@
   "body_center": 0.4873,
   "body_height": 0.8378,
   "body_center_x": 0.5141,
-  "body_width": 0.7611
+  "body_width": 0.7611,
+  "size": 1.05
  },
  "t/darkest_dungeon.png": {
   "game": "darkest_dungeon",
