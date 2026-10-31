@@ -11,9 +11,10 @@ extends RefCounted
 # screen needs something bespoke.
 
 # --- Palette ---------------------------------------------------------------
-# The surfaces come in palettes, one per backdrop on trial (the owner is choosing
-# which sits best beside the main menu's red vortex): each is the five surfaces
-# below plus the bat pattern's ground and bat. PALETTE names the one in use.
+# The surfaces come in palettes, one per backdrop that was on trial beside the
+# main menu's red vortex: each is the five surfaces below plus the bat pattern's
+# ground and bat. PALETTE names the one in use; the owner chose "rift" (31 Oct
+# 2026). The others stay so a retune is one word.
 const PALETTES := {
 	"grey": {
 		"bg_deep": Color(0.102, 0.098, 0.094),
@@ -70,7 +71,7 @@ const PALETTES := {
 		"bat": Color(0.270, 0.054, 0.073),
 	},
 }
-const PALETTE := "grey"
+const PALETTE := "rift"
 const BG_DEEP: Color = PALETTES[PALETTE]["bg_deep"]     # page background
 const BG: Color = PALETTES[PALETTE]["bg"]               # base surface
 const PANEL: Color = PALETTES[PALETTE]["panel"]         # raised panel
