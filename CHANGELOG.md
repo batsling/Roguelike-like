@@ -11,6 +11,15 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Darkest Dungeon's letters, and its torch as the first one-sided
+  decoration.** D a r k e s t, D u n g e o n are cut from the logo like
+  Mewgenics' black ink (`tools/logo_letters/darkest_dungeon.json`). The joined
+  `ar` and `ung` are parted with vertical `splits`, and the a's foot is moved
+  back off the r with `assign`. The torch (`darkest_dungeon_torch.json`) is a
+  `decor_left/` with no right half, so `TitleLetters.pick_decor` now returns a
+  left decoration alone when it has no partner, and the title puts it on the
+  left only. It is sized by its ring (`body` rows), so the flame and handle
+  overflow the line the way the logo draws it, at about twice letter height.
 - **Headings and buttons are set in Rogue's font.** The same IBM PC font the
   title starts in (`fonts/Px437_IBM_VGA_8x16.ttf`) is now on every Label at a
   heading's size (FONT_SUB and up) and every Button labelled at FONT_BODY or more.

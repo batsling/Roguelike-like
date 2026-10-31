@@ -213,16 +213,31 @@ func test_every_logo_piece_is_a_unit_and_rogue_is_none() -> void:
 
 func test_decorations_come_in_matching_pairs() -> void:
 	var stems := {}
-	for s in range(40):
+	for s in range(60):
 		var d := TitleLetters.pick_decor(_rng(s))
-		assert_eq(d.size(), 2, "a left and a right")
 		assert_eq(d[0]["folder"], "decor_left")
+		if d.size() == 1:
+			stems[d[0]["stem"]] = "alone"
+			continue
+		assert_eq(d.size(), 2, "a left and a right")
 		assert_eq(d[1]["folder"], "decor_right")
 		assert_eq(d[0]["stem"], d[1]["stem"], "from one pair: %s / %s" % [d[0]["path"], d[1]["path"]])
-		stems[d[0]["stem"]] = true
-	assert_true(stems.has("uma_musume_pretty_derby"), "Uma Musume's runner and dash are a pair")
-	assert_true(stems.has("everything_is_crab"), "the crab's claws are a pair")
-	assert_true(stems.has("everything_is_crab__legs"), "the crab's legs are a pair")
+		stems[d[0]["stem"]] = "pair"
+	assert_eq(stems.get("uma_musume_pretty_derby"), "pair", "Uma Musume's runner and dash are a pair")
+	assert_eq(stems.get("everything_is_crab"), "pair", "the crab's claws are a pair")
+	assert_eq(stems.get("everything_is_crab__legs"), "pair", "the crab's legs are a pair")
+	assert_eq(stems.get("darkest_dungeon"), "alone", "Darkest Dungeon's torch has no right half")
+
+# A LONE LEFT DECORATION takes the left end and leaves the right end to the word.
+func test_a_lone_decoration_stands_at_the_left_only() -> void:
+	var torch: Dictionary = (TitleLetters.pool()["decor_left"] as Array).filter(
+		func(e): return e["stem"] == "darkest_dungeon")[0]
+	var row := TitleLetters.new()
+	add_child_autofree(row)
+	row._lay_out(TitleLetters.pick("AB", _rng(1)), [torch], 84.0)
+	assert_eq(row.placed.size(), 3, "the torch and two letters")
+	assert_eq(row.placed[0].entry["folder"], "decor_left", "the torch first")
+	assert_eq(row.placed[2].entry["folder"], "b", "and the word ends the row")
 
 
 func test_a_long_word_is_scaled_down_to_fit_whole() -> void:

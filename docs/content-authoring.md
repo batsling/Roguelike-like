@@ -116,8 +116,13 @@ the first DECORATIONS: `decor_left/` and `decor_right/` hold the big claws and
 the leg pairs (`__legs`), shown at the far left and right of the title at random
 (half the launches). Decorations are always a matching PAIR, by file stem: the
 two claws, the two leg pairs, or Uma Musume's girl (`uma_musume_pretty_derby_girl.json`)
-and her dash (`uma_musume_pretty_derby_decor.json`) — so a new decoration needs
-both sides under one name. Spelunky Classic gives S P E L U N K Y (the first K): its
+and her dash (`uma_musume_pretty_derby_decor.json`) — so a pair needs both sides
+under one name. A `decor_left/` piece with no `decor_right/` of its own stands at
+the left alone: Darkest Dungeon's torch (`darkest_dungeon_torch.json`, cut whole
+in its own colours, the flame's open core left as the logo draws it). Darkest
+Dungeon also gives D a r k e s t, D u n g e o n (second D, e and n as `__2`),
+black ink cut like Mewgenics', with the joined `ar` and `ung` parted by vertical
+`splits` and the a's foot moved back off the r with `assign`. Spelunky Classic gives S P E L U N K Y (the first K): its
 source is a blurry 1920x1080 screenshot of pixel art, so `pixel_grid` rebuilds
 the logo pixel by pixel on the measured grid (11.707px a pixel), each snapped to
 the logo's three-colour palette, and the letters come out as sharp 12x blocks. Haste gives H A S T E, solid black

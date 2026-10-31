@@ -20,7 +20,8 @@ extends Control
 #
 # Decorations (decor_left/, decor_right/) stand at either end as a PAIR from one
 # file stem — a crab's two claws, its two leg pairs, Uma Musume's runner and her
-# trailing dash — never a claw facing legs.
+# trailing dash — never a claw facing legs. A left one with no right half of its
+# own (Darkest Dungeon's torch) stands at the left alone.
 #
 # ROGUE'S OWN LETTERS ARE THE ONES YOU START WITH; THE LOGOS ARE EARNED (the owner,
 # 31 Oct 2026). Every printable character of the IBM PC font Rogue was played in
@@ -183,17 +184,18 @@ static func pick(text: String, rng: RandomNumberGenerator, from: Dictionary = {}
 		out.append(e)
 	return out
 
-# A matching left and right decoration, or [] for none.
+# A matching left and right decoration, or a left one alone when it has no right
+# half (Darkest Dungeon's torch), or [] for none.
 static func pick_decor(rng: RandomNumberGenerator, from: Dictionary = {}) -> Array:
 	var p := from if not from.is_empty() else pool()
 	var right := {}
 	for e in p.get("decor_right", []):
 		right[e["stem"]] = e
-	var pairs := (p.get("decor_left", []) as Array).filter(func(e): return right.has(e["stem"]))
-	if pairs.is_empty():
+	var lefts: Array = p.get("decor_left", [])
+	if lefts.is_empty():
 		return []
-	var left: Dictionary = pairs[rng.randi() % pairs.size()]
-	return [left, right[left["stem"]]]
+	var left: Dictionary = lefts[rng.randi() % lefts.size()]
+	return [left, right[left["stem"]]] if right.has(left["stem"]) else [left]
 
 static func texture(path: String) -> Texture2D:
 	if ResourceLoader.exists(path):
@@ -229,7 +231,7 @@ func _lay_out(pieces: Array, decor: Array, height: float) -> void:
 		seq.append([decor[0], true])
 	for e in pieces:
 		seq.append([e, false])
-	if not decor.is_empty():
+	if decor.size() > 1:
 		seq.append([decor[1], true])
 	for i in seq.size():
 		var e: Dictionary = seq[i][0]

@@ -162,6 +162,15 @@
   "body_center_x": 0.5,
   "body_width": 0.9819
  },
+ "a/darkest_dungeon.png": {
+  "game": "darkest_dungeon",
+  "config": "darkest_dungeon.json",
+  "style": "darkest_dungeon",
+  "body_center": 0.5022,
+  "body_height": 0.9777,
+  "body_center_x": 0.5034,
+  "body_width": 0.9662
+ },
  "a/dead_cells.png": {
   "game": "dead_cells",
   "config": "dead_cells.json",
@@ -611,6 +620,24 @@
   "body_center_x": 0.5,
   "body_width": 0.9763
  },
+ "d/darkest_dungeon.png": {
+  "game": "darkest_dungeon",
+  "config": "darkest_dungeon.json",
+  "style": "darkest_dungeon",
+  "body_center": 0.5,
+  "body_height": 0.9787,
+  "body_center_x": 0.5,
+  "body_width": 0.9742
+ },
+ "d/darkest_dungeon__2.png": {
+  "game": "darkest_dungeon",
+  "config": "darkest_dungeon.json",
+  "style": "darkest_dungeon",
+  "body_center": 0.5,
+  "body_height": 0.9717,
+  "body_center_x": 0.5,
+  "body_width": 0.9742
+ },
  "d/dead_cells.png": {
   "game": "dead_cells",
   "config": "dead_cells.json",
@@ -715,6 +742,15 @@
   "body_width": 0.7,
   "pixel": true
  },
+ "decor_left/darkest_dungeon.png": {
+  "game": "darkest_dungeon",
+  "config": "darkest_dungeon_torch.json",
+  "style": "darkest_dungeon_torch",
+  "body_center": 0.4406,
+  "body_height": 0.4713,
+  "body_center_x": 0.5,
+  "body_width": 0.9908
+ },
  "decor_left/everything_is_crab.png": {
   "game": "everything_is_crab",
   "config": "everything_is_crab.json",
@@ -797,6 +833,24 @@
   "body_height": 0.9801,
   "body_center_x": 0.5,
   "body_width": 0.9683
+ },
+ "e/darkest_dungeon.png": {
+  "game": "darkest_dungeon",
+  "config": "darkest_dungeon.json",
+  "style": "darkest_dungeon",
+  "body_center": 0.5,
+  "body_height": 0.9736,
+  "body_center_x": 0.5081,
+  "body_width": 0.9512
+ },
+ "e/darkest_dungeon__2.png": {
+  "game": "darkest_dungeon",
+  "config": "darkest_dungeon.json",
+  "style": "darkest_dungeon",
+  "body_center": 0.4978,
+  "body_height": 0.978,
+  "body_center_x": 0.5,
+  "body_width": 0.9512
  },
  "e/dead_cells.png": {
   "game": "dead_cells",
@@ -1095,6 +1149,15 @@
   "body_height": 0.913,
   "body_center_x": 0.5,
   "body_width": 0.9211
+ },
+ "g/darkest_dungeon.png": {
+  "game": "darkest_dungeon",
+  "config": "darkest_dungeon.json",
+  "style": "darkest_dungeon",
+  "body_center": 0.4985,
+  "body_height": 0.9851,
+  "body_center_x": 0.4966,
+  "body_width": 0.966
  },
  "g/enter_the_gungeon.png": {
   "game": "enter_the_gungeon",
@@ -1447,6 +1510,15 @@
   "pixel": true,
   "case": "lower"
  },
+ "k/darkest_dungeon.png": {
+  "game": "darkest_dungeon",
+  "config": "darkest_dungeon.json",
+  "style": "darkest_dungeon",
+  "body_center": 0.5,
+  "body_height": 0.9739,
+  "body_center_x": 0.4937,
+  "body_width": 0.9623
+ },
  "k/risk_of_rain_2.png": {
   "game": "risk_of_rain_2",
   "config": "risk_of_rain_2.json",
@@ -1676,6 +1748,24 @@
   "body_center_x": 0.525,
   "body_width": 0.95
  },
+ "n/darkest_dungeon.png": {
+  "game": "darkest_dungeon",
+  "config": "darkest_dungeon.json",
+  "style": "darkest_dungeon",
+  "body_center": 0.4979,
+  "body_height": 0.971,
+  "body_center_x": 0.4922,
+  "body_width": 0.9531
+ },
+ "n/darkest_dungeon__2.png": {
+  "game": "darkest_dungeon",
+  "config": "darkest_dungeon.json",
+  "style": "darkest_dungeon",
+  "body_center": 0.5,
+  "body_height": 0.9752,
+  "body_center_x": 0.4969,
+  "body_width": 0.9686
+ },
  "n/enter_the_gungeon.png": {
   "game": "enter_the_gungeon",
   "config": "enter_the_gungeon.json",
@@ -1814,6 +1904,15 @@
   "body_height": 0.9626,
   "body_center_x": 0.5,
   "body_width": 0.9615
+ },
+ "o/darkest_dungeon.png": {
+  "game": "darkest_dungeon",
+  "config": "darkest_dungeon.json",
+  "style": "darkest_dungeon",
+  "body_center": 0.4976,
+  "body_height": 0.9665,
+  "body_center_x": 0.5,
+  "body_width": 0.9565
  },
  "o/enter_the_gungeon.png": {
   "game": "enter_the_gungeon",
@@ -2086,6 +2185,15 @@
   "body_center_x": 0.5194,
   "body_width": 0.671
  },
+ "r/darkest_dungeon.png": {
+  "game": "darkest_dungeon",
+  "config": "darkest_dungeon.json",
+  "style": "darkest_dungeon",
+  "body_center": 0.4952,
+  "body_height": 0.971,
+  "body_center_x": 0.4964,
+  "body_width": 0.9643
+ },
  "r/enter_the_gungeon__pink.png": {
   "game": "enter_the_gungeon",
   "config": "enter_the_gungeon.json",
@@ -2233,6 +2341,15 @@
   "body_height": 0.981,
   "body_center_x": 0.5,
   "body_width": 0.9695
+ },
+ "s/darkest_dungeon.png": {
+  "game": "darkest_dungeon",
+  "config": "darkest_dungeon.json",
+  "style": "darkest_dungeon",
+  "body_center": 0.5,
+  "body_height": 0.9842,
+  "body_center_x": 0.4922,
+  "body_width": 0.9535
  },
  "s/dead_cells.png": {
   "game": "dead_cells",
@@ -2447,6 +2564,15 @@
   "body_center_x": 0.5141,
   "body_width": 0.7611
  },
+ "t/darkest_dungeon.png": {
+  "game": "darkest_dungeon",
+  "config": "darkest_dungeon.json",
+  "style": "darkest_dungeon",
+  "body_center": 0.5,
+  "body_height": 0.9784,
+  "body_center_x": 0.4954,
+  "body_width": 0.9358
+ },
  "t/enter_the_gungeon__pink.png": {
   "game": "enter_the_gungeon",
   "config": "enter_the_gungeon.json",
@@ -2568,6 +2694,15 @@
   "body_height": 0.9806,
   "body_center_x": 0.5,
   "body_width": 0.9773
+ },
+ "u/darkest_dungeon.png": {
+  "game": "darkest_dungeon",
+  "config": "darkest_dungeon.json",
+  "style": "darkest_dungeon",
+  "body_center": 0.5024,
+  "body_height": 0.9758,
+  "body_center_x": 0.5033,
+  "body_width": 0.9542
  },
  "u/enter_the_gungeon.png": {
   "game": "enter_the_gungeon",
