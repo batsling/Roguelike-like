@@ -19,6 +19,17 @@ failure; diffing a passing and failing run's Control tree) are the reusable part
 - **The varying failures that used to live here are FIXED.** All were
   assertions that were only *usually* true, and they are worth reading before
   blaming a seed for a new one.
+  - `test_title_letters.gd`'s portal and vortex tests (31 Oct 2026) passed or
+    failed with the machine's speed. They waited `wait_frames(3)`, which GUT
+    counts in `_physics_process`, but the portal only fits itself in `_process`
+    (`MenuPortal._process`). On a slow first frame several physics ticks run
+    before one process frame, so the test read an unfitted oval (size 0, the
+    shader's parameters null). Adding the heading-font rule made the menu's
+    first frame slightly heavier and the failure regular. A debug print of
+    `portal._last` per frame showed it fitting on the fifth wait. The file now
+    waits `wait_process_frames`, the clock the portal and layout run on.
+    **`wait_frames` is deprecated in this GUT and means physics frames**: use
+    `wait_process_frames` for anything that waits for layout, drawing or `_process`.
   - `test_card_system.gd::test_simple_cards_of_the_set` (27 Oct 2026) got 2
     shields from Shrug it Off about one run in 400. The card it deals is random
     and reaches the pack before `card_used` fires for Shrug it Off, so a dealt

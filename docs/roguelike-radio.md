@@ -15,6 +15,12 @@ out of the game window). This is the design and the reasoning; the code is
   **Since the fifth ask, a game earns one song per RANK** (game ranks,
   `docs/games-first-redesign.md` §20): beats and goals fill the game's XP bar,
   and each rank-up draws one song. That replaced the beats-and-goals rule above.
+  **Since 31 Oct 2026 a rank pays a song OR a title letter, 50/50**
+  (`RankRewards`; the letters are the main menu's logo letters, drawn by
+  `TitleUnlocks`, `docs/content-authoring.md` "Title letters"). A side with
+  nothing left pays the other, so a game with no logo cut (nearly every game)
+  still earns a song every rank. `Radio.earned` and `character_earned` are the
+  song share.
 - **A game's first song is its menu song** (the third ask): the first Hades
   song you get is the Hades song tagged `menu`, and the same for every game
   that has one.

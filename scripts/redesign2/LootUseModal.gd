@@ -69,6 +69,9 @@ func _init() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
+	# So a death this use causes can find the screen and wait for it
+	# (Overworld2._hold_death, LOOT_USE_MODAL_GROUP).
+	add_to_group(&"loot_use_modal")
 	# Seeded out of the global stream rather than off the clock, for the reason
 	# RewardScreen is: a modal built per use should be repeatable within a seeded
 	# run (see GameState.reset_run).
@@ -1009,7 +1012,22 @@ func _report_outcome() -> void:
 # lines the systems actually WROTE: what happened, in the terms it happened in. A
 # piece that is still unidentified and wrote nothing says so and stays a mystery,
 # which is itself the honest answer — you took it and could not tell.
+# THIS USE KILLED YOU (Overworld2._hold_death). The death is noticed a frame after
+# the Health came off (GameLoop2._check_death is deferred), so the outcome is
+# usually already up when this is called: it is drawn again with the death on it.
+# The run's end screen waits for this one to close.
+var _fatal: bool = false
+var _at_outcome: bool = false
+
+func mark_fatal() -> void:
+	if _fatal:
+		return
+	_fatal = true
+	if _at_outcome:
+		_show_outcome()
+
 func _show_outcome() -> void:
+	_at_outcome = true
 	_rebuild_panel()
 	var art: TextureRect = LootSystem.art_tex(_entry, 72)
 	art.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
@@ -1042,7 +1060,10 @@ func _show_outcome() -> void:
 		_body.add_child(_muted("Echo Chamber also used: %s."
 			% ", ".join(PackedStringArray(_echoed))))
 
-	var done := UITheme.confirm_button("Done", Vector2(150, 34))
+	if _fatal:
+		_body.add_child(_heading("💀  That was the last of your Health — %d / %d." % [
+			GameState.hp, GameState.max_hp], UITheme.DANGER, UITheme.FONT_LEAD))
+	var done := UITheme.confirm_button("Continue" if _fatal else "Done", Vector2(150, 34))
 	done.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	done.pressed.connect(_finish)
 	_body.add_child(done)

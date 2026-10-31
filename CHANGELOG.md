@@ -11,6 +11,38 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Headings and buttons are set in Rogue's font.** The same IBM PC font the
+  title starts in (`fonts/Px437_IBM_VGA_8x16.ttf`) is now on every Label at a
+  heading's size (FONT_SUB and up) and every Button labelled at FONT_BODY or more.
+  It is a bitmap font drawn for 16px, so sizes snap to 16 (32 for verdict-sized
+  text) with antialiasing off. Body text, chips, and buttons that wrap or run
+  to two lines (the checklist's goals, the lost-run tracker) keep the ordinary
+  font. One rule in `UITheme` ("Rogue's font"), applied to each Label and Button
+  as it enters the tree (wired by `Settings`), rather than a hundred call sites;
+  tests `test_rogue_font.gd`. The owner looked at the whole UI in it first and
+  chose this: below 16px the font falls apart.
+- **The title starts in Rogue's own font; the logo letters are earned.** Every
+  printable character of the IBM PC font Rogue was played in (VileR's Px437 IBM
+  VGA 8x16, CC BY-SA 4.0, in `fonts/`) is rendered by
+  `tools/rogue_letters.py` into the title-letter folders as `<piece>/rogue.png`
+  (and `rogue__lower.png`), sharp pixels with a black edge, boxed by the font's
+  cap band so lower case and punctuation keep their size. Those are everyone's
+  from the start. A letter cut from a logo now has to be EARNED: a game or
+  character rank pays a radio song or a title letter, 50/50 (`RankRewards`, a coin
+  worked out from the owner and the rank, never stored; a side with nothing left
+  pays the other, so a game with no logo cut still earns a song every rank). A
+  game draws from its own logo, a character from any; the new `TitleUnlocks`
+  autoload keeps the draws per profile (`title_letters.json`) and toasts each one.
+  Punctuation has named folders now (`TitleLetters.PUNCT`).
+- **A death outside a game report waits to be seen.** A potion, a pill, an event's
+  bill or a curse used to raise the end screen on the frame Health hit 0, over
+  whatever did it. A piece used from the pack now shows its outcome with the
+  death on it and a Continue button; anything else puts up the death card
+  (`DeathCard.gd`: Health 0 and the log's last lines). The end screen opens on
+  Continue (`Overworld2._hold_death`). Deaths in a report are unchanged: they
+  already wait for the playback.
+- **The menu's art comes into the portal whole and fades as it goes in**, rather
+  than starting faint and brightening (`MenuFallingArt.SINK_ALPHA`).
 - **The game is red now, to match the main menu's vortex, over drifting bats.**
   The owner's bat pattern is back (`shaders/menu_bats.gdshader`, served by
   `UITheme.bat_backdrop()`), drifting down and to the left at 18 x 12 px/s,

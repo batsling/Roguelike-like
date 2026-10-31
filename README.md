@@ -96,7 +96,7 @@ The repository root **is** the Godot project, so `res://x` is `./x`.
 
 ```
 .
-├── project.godot           # the project: 29 autoloads, display, input
+├── project.godot           # the project: 30 autoloads, display, input
 ├── README.md               # this page
 ├── CHANGELOG.md            # what changed and why, newest first
 ├── CLAUDE.md               # orientation for coding agents

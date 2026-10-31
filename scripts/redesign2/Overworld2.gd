@@ -7258,9 +7258,56 @@ func _queue_run_over(did_win: bool) -> void:
 	if _resolving:
 		_run_over_pending = true
 		return
+	if not did_win:
+		_hold_death()
+		return
+	_show_run_over()
+
+# A DEATH OUTSIDE A GAME REPORT WAITS TO BE SEEN (the owner, 31 Oct 2026). A
+# report's death has its beat already — the board plays the blow back and the
+# verdict waits on `_resolving`. Everything else (a potion, a pill off the haul,
+# an event's bill, a curse) used to raise the end screen on the frame Health hit
+# 0, over whatever did it. Now:
+#
+#   * a piece used from the pack: its use screen IS the account of what it did,
+#     so it is told it was fatal (LootUseModal.mark_fatal: a death line, and its
+#     button reads Continue) and the verdict waits for that screen to close;
+#   * anything else: the death card (DeathCard.gd) — Health 0 and the log's last
+#     lines, over the page left exactly as the fatal moment left it — and its
+#     Continue raises the verdict.
+const DEATH_CARD_SCRIPT := "res://scripts/redesign2/DeathCard.gd"
+var _death_card: Control = null
+
+func _hold_death() -> void:
+	if _death_card != null and is_instance_valid(_death_card):
+		return
+	if not is_inside_tree():
+		return
+	_refresh()
+	for m in get_tree().get_nodes_in_group(LOOT_USE_MODAL_GROUP):
+		if is_instance_valid(m) and m.has_method("mark_fatal") and not m.is_queued_for_deletion():
+			m.mark_fatal()
+			if not m.finished.is_connected(_on_fatal_use_closed):
+				m.finished.connect(_on_fatal_use_closed, CONNECT_ONE_SHOT)
+			return
+	_death_card = load(DEATH_CARD_SCRIPT).open(self, load(DEATH_CARD_SCRIPT).recent_lines())
+	_death_card.continued.connect(_on_death_card_continued)
+
+const LOOT_USE_MODAL_GROUP := &"loot_use_modal"
+
+func _on_fatal_use_closed() -> void:
+	if not GameLoop2.run_over or GameLoop2.won:
+		return
+	_show_run_over()
+
+func _on_death_card_continued() -> void:
+	_death_card = null
 	_show_run_over()
 
 func _show_run_over() -> void:
+	if _death_card != null and is_instance_valid(_death_card):
+		_death_card.close()
+	_death_card = null
 	# Nothing left to spend it on, and nothing under the board to scroll to.
 	_leave_node()
 	# An event can now be the thing that KILLS you (a Health cost taken on the
@@ -7291,6 +7338,9 @@ func _show_run_over() -> void:
 # fresh run clears the old verdict off the page.
 func _dismiss_run_over() -> void:
 	_run_over_pending = false
+	if _death_card != null and is_instance_valid(_death_card):
+		_death_card.close()
+	_death_card = null
 	if _run_over_screen != null and is_instance_valid(_run_over_screen):
 		_run_over_screen._close()
 	_run_over_screen = null
