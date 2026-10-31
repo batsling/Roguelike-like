@@ -54,8 +54,8 @@ const RARITY_COLORS := [
 ]
 
 const ACCENT := UITheme.ACCENT
-const PANEL_BG := Color(0.094, 0.078, 0.059, 0.99)
-const CELL_BG := Color(0.071, 0.059, 0.043, 0.9)
+const PANEL_BG := Color(UITheme.BG_DEEP, 0.62)
+const CELL_BG := Color(UITheme.BG, 0.95)
 
 const ENEMY_TIER_NAMES := ["Low", "Medium", "High", "Insane"]
 
@@ -243,9 +243,7 @@ func _build_shell() -> void:
 	# the menu's falling art is the one thing on that screen worth keeping in view
 	# around the edges; at 0.72 it was a smear. The panel itself is opaque, so the
 	# art stays OUTSIDE the part being read and never behind a line of text.
-	var dim := ColorRect.new()
-	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
-	dim.color = Color(0, 0, 0, 0.18)
+	var dim := UITheme.bat_backdrop()
 	dim.mouse_filter = Control.MOUSE_FILTER_STOP
 	add_child(dim)
 
@@ -703,7 +701,7 @@ func _new_grid() -> Control:
 func _fade_texture() -> GradientTexture2D:
 	var ramp := Gradient.new()
 	ramp.set_color(0, Color(PANEL_BG.r, PANEL_BG.g, PANEL_BG.b, 0.0))
-	ramp.set_color(1, Color(PANEL_BG.r, PANEL_BG.g, PANEL_BG.b, 1.0))
+	ramp.set_color(1, Color(PANEL_BG.r, PANEL_BG.g, PANEL_BG.b, PANEL_BG.a))
 	var tex := GradientTexture2D.new()
 	tex.gradient = ramp
 	tex.width = 4

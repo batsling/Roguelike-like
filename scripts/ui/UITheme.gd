@@ -12,18 +12,18 @@ extends RefCounted
 
 # --- Palette ---------------------------------------------------------------
 # Warm near-blacks and embers rather than the old cold blue-greys.
-const BG_DEEP := Color(0.078, 0.063, 0.047)      # #14100c page background
-const BG := Color(0.114, 0.094, 0.071)           # #1d1812 base surface
-const PANEL := Color(0.145, 0.122, 0.094)         # #251f18 raised panel
-const PANEL_HI := Color(0.192, 0.161, 0.122)      # #312920 hover / header
-const BORDER := Color(0.290, 0.247, 0.180)        # #4a3f2e hairline border
+const BG_DEEP := Color(0.102, 0.098, 0.094)      # #1a1918 page background
+const BG := Color(0.125, 0.122, 0.118)           # #201f1e base surface
+const PANEL := Color(0.161, 0.157, 0.153)         # #292827 raised panel
+const PANEL_HI := Color(0.204, 0.200, 0.192)      # #343331 hover / header
+const BORDER := Color(0.294, 0.286, 0.275)        # #4b4946 hairline border
 
 const ACCENT := Color(1.0, 0.541, 0.235)          # #ff8a3c ember orange
 const ACCENT_DIM := Color(0.80, 0.40, 0.0)        # #cc6600 pressed / muted ember
 const GOLD := Color(1.0, 0.80, 0.40)              # #ffcc66 highlight gold
 const TEXT := Color(0.902, 0.835, 0.722)          # #e6d5b8 parchment text
-const TEXT_DIM := Color(0.659, 0.612, 0.529)      # #a89c87 secondary text
-const TEXT_FAINT := Color(0.46, 0.43, 0.38)       # tertiary / placeholders
+const TEXT_DIM := Color(0.639, 0.624, 0.596)      # #a39f98 secondary text
+const TEXT_FAINT := Color(0.45, 0.44, 0.42)       # tertiary / placeholders
 
 const SUCCESS := Color(0.30, 0.78, 0.42)
 
@@ -969,6 +969,22 @@ static func rift_backdrop(seed: float = 0.0) -> ColorRect:
 	mat.set_shader_parameter("base_color", BG_DEEP.lerp(RIFT_DEEP, 0.3))
 	mat.set_shader_parameter("seed", seed)
 	rect.material = mat
+	return rect
+
+# The grey bat pattern (menu_bats.gdshader) as a full-rect ColorRect that ignores the
+# mouse: the owner's bat on their pattern's lattice, drifting down and to the left.
+const BATS_SHADER := preload("res://shaders/menu_bats.gdshader")
+const BATS_ART := preload("res://images2.0/custom/menu_bat.png")
+
+static func bat_backdrop() -> ColorRect:
+	var rect := ColorRect.new()
+	rect.set_anchors_preset(Control.PRESET_FULL_RECT)
+	rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var mat := ShaderMaterial.new()
+	mat.shader = BATS_SHADER
+	mat.set_shader_parameter("bat", BATS_ART)
+	rect.material = mat
+	rect.resized.connect(func() -> void: mat.set_shader_parameter("size", rect.size))
 	return rect
 
 static func shared() -> Theme:
