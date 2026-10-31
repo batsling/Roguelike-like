@@ -11,12 +11,71 @@ extends RefCounted
 # screen needs something bespoke.
 
 # --- Palette ---------------------------------------------------------------
-# Warm near-blacks and embers rather than the old cold blue-greys.
-const BG_DEEP := Color(0.102, 0.098, 0.094)      # #1a1918 page background
-const BG := Color(0.125, 0.122, 0.118)           # #201f1e base surface
-const PANEL := Color(0.161, 0.157, 0.153)         # #292827 raised panel
-const PANEL_HI := Color(0.204, 0.200, 0.192)      # #343331 hover / header
-const BORDER := Color(0.294, 0.286, 0.275)        # #4b4946 hairline border
+# The surfaces come in palettes, one per backdrop on trial (the owner is choosing
+# which sits best beside the main menu's red vortex): each is the five surfaces
+# below plus the bat pattern's ground and bat. PALETTE names the one in use.
+const PALETTES := {
+	"grey": {
+		"bg_deep": Color(0.102, 0.098, 0.094),
+		"bg": Color(0.125, 0.122, 0.118),
+		"panel": Color(0.161, 0.157, 0.153),
+		"panel_hi": Color(0.204, 0.200, 0.192),
+		"border": Color(0.294, 0.286, 0.275),
+		"bat_ground": Color("3b3a39"),
+		"bat": Color("2f2e2d"),
+	},
+	"oxblood": {
+		"bg_deep": Color(0.100, 0.065, 0.068),
+		"bg": Color(0.125, 0.081, 0.085),
+		"panel": Color(0.160, 0.104, 0.109),
+		"panel_hi": Color(0.205, 0.133, 0.140),
+		"border": Color(0.300, 0.195, 0.204),
+		"bat_ground": Color(0.240, 0.132, 0.142),
+		"bat": Color(0.165, 0.091, 0.097),
+	},
+	"crimson": {
+		"bg_deep": Color(0.100, 0.055, 0.059),
+		"bg": Color(0.125, 0.069, 0.074),
+		"panel": Color(0.160, 0.088, 0.094),
+		"panel_hi": Color(0.205, 0.113, 0.121),
+		"border": Color(0.300, 0.165, 0.177),
+		"bat_ground": Color(0.260, 0.091, 0.106),
+		"bat": Color(0.175, 0.061, 0.071),
+	},
+	"rift": {
+		"bg_deep": Color(0.100, 0.045, 0.050),
+		"bg": Color(0.125, 0.056, 0.062),
+		"panel": Color(0.160, 0.072, 0.080),
+		"panel_hi": Color(0.205, 0.092, 0.102),
+		"border": Color(0.300, 0.135, 0.150),
+		"bat_ground": Color(0.300, 0.045, 0.068),
+		"bat": Color(0.195, 0.029, 0.044),
+	},
+	"red_on_grey": {
+		"bg_deep": Color(0.100, 0.088, 0.089),
+		"bg": Color(0.125, 0.110, 0.111),
+		"panel": Color(0.160, 0.141, 0.143),
+		"panel_hi": Color(0.205, 0.180, 0.183),
+		"border": Color(0.300, 0.264, 0.267),
+		"bat_ground": Color("3b3a39"),
+		"bat": Color(0.380, 0.095, 0.121),
+	},
+	"ember_black": {
+		"bg_deep": Color(0.100, 0.060, 0.064),
+		"bg": Color(0.125, 0.075, 0.079),
+		"panel": Color(0.160, 0.096, 0.102),
+		"panel_hi": Color(0.205, 0.123, 0.130),
+		"border": Color(0.300, 0.180, 0.191),
+		"bat_ground": Color(0.090, 0.045, 0.049),
+		"bat": Color(0.270, 0.054, 0.073),
+	},
+}
+const PALETTE := "grey"
+const BG_DEEP: Color = PALETTES[PALETTE]["bg_deep"]     # page background
+const BG: Color = PALETTES[PALETTE]["bg"]               # base surface
+const PANEL: Color = PALETTES[PALETTE]["panel"]         # raised panel
+const PANEL_HI: Color = PALETTES[PALETTE]["panel_hi"]   # hover / header
+const BORDER: Color = PALETTES[PALETTE]["border"]       # hairline border
 
 const ACCENT := Color(1.0, 0.541, 0.235)          # #ff8a3c ember orange
 const ACCENT_DIM := Color(0.80, 0.40, 0.0)        # #cc6600 pressed / muted ember
@@ -976,17 +1035,6 @@ static func rift_backdrop(seed: float = 0.0) -> ColorRect:
 const BATS_SHADER := preload("res://shaders/menu_bats.gdshader")
 const BATS_ART := preload("res://images2.0/custom/menu_bat.png")
 
-# Its colours, as [ground, bat]. Several on trial while the owner picks one to
-# sit beside the main menu's red vortex; `bat_palette` says which is in use.
-const BAT_PALETTES := {
-	"grey": [Color("3b3a39"), Color("2f2e2d")],
-	"oxblood": [Color("2e1517"), Color("221012")],
-	"crimson": [Color("3d1217"), Color("2b0b0f")],
-	"rift": [Color("4a0b12"), Color("33070c")],
-	"red_on_grey": [Color("2d2b2b"), Color("4a1419")],
-	"ember_black": [Color("140909"), Color("3a0d11")],
-}
-static var bat_palette := "grey"
 
 static func bat_backdrop() -> ColorRect:
 	var rect := ColorRect.new()
@@ -995,9 +1043,8 @@ static func bat_backdrop() -> ColorRect:
 	var mat := ShaderMaterial.new()
 	mat.shader = BATS_SHADER
 	mat.set_shader_parameter("bat", BATS_ART)
-	var colours: Array = BAT_PALETTES.get(bat_palette, BAT_PALETTES["grey"])
-	mat.set_shader_parameter("base", colours[0])
-	mat.set_shader_parameter("ink", colours[1])
+	mat.set_shader_parameter("base", PALETTES[PALETTE]["bat_ground"])
+	mat.set_shader_parameter("ink", PALETTES[PALETTE]["bat"])
 	rect.material = mat
 	rect.resized.connect(func() -> void: mat.set_shader_parameter("size", rect.size))
 	return rect
