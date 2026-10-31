@@ -24,3 +24,7 @@ func run() -> void:
 	Data._shopkeepers.clear()
 	Data.set_meta("all_locations", Data._locations.duplicate())
 	Data._locations.clear()
+	# The title's earned letters are drawn whenever GameStats moves, and the suite
+	# shares user:// with the real game: draw into a scratch file, from nothing.
+	TitleUnlocks.path_override = "user://test_title_letters.json"
+	TitleUnlocks.reset_for_tests()

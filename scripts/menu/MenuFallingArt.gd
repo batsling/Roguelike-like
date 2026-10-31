@@ -203,7 +203,7 @@ var _smooth_batch: Array = []
 # THE MENU'S ART FLIES INTO ITS PORTAL. With `sink` set (MenuPortal sets it to
 # its oval, in this control's coordinates), pieces stop falling: each comes in
 # over a random edge of the screen — any of the four — and travels toward the
-# oval's middle on a slow inward spiral, shrinking and brightening as it crosses
+# oval's middle on a slow inward spiral, shrinking and fading out as it crosses
 # into the blue and recycled once it is SINK_GONE of the way in. Without it (the tests,
 # or a menu with no portal) the art falls, as everything above describes.
 var sink := Rect2()
@@ -218,16 +218,18 @@ const SINK_SPEED := 1.4
 # The sideways share of a piece's speed, always the same way round, which is
 # what turns a straight-in path into a spiral.
 const SINK_SWIRL := 0.35
-# Of the oval's radii. A piece keeps its size and alpha all the way to
-# SINK_NEAR, just outside the blue; from there it shrinks fast, to SINK_MIN_SCALE
-# by SINK_GONE, and BRIGHTENS as it crosses into the blue — up to SINK_GLOW of
-# full alpha, so it reads as being pulled in rather than as fading out — and
-# only goes in the last SINK_VANISH of the way, too small by then to pop.
+# Of the oval's radii. A piece comes in as the WHOLE PICTURE — SINK_ALPHA, not
+# the faint ALPHA_MIN..ALPHA_MAX the falling mode uses — and keeps its size and
+# alpha all the way to SINK_NEAR, just outside the blue; from there it shrinks
+# fast, to SINK_MIN_SCALE by SINK_GONE, and FADES OUT as it is pulled in, gone by
+# SINK_GONE. (It used to start faint and brighten into the blue; the owner, 31 Oct
+# 2026: "they should start as full images but then disappear as they get close,
+# not the other way around".) Over the button grid it is still dimmed
+# (_rect_dim), so the buttons read.
 const SINK_NEAR := 1.15
 const SINK_GONE := 0.35
 const SINK_MIN_SCALE := 0.2
-const SINK_GLOW := 0.9
-const SINK_VANISH := 0.12
+const SINK_ALPHA := 1.0
 # Seconds a piece takes to brighten in after it enters, so nothing pops at an edge.
 const SINK_FADE_IN := 1.2
 
@@ -781,8 +783,7 @@ func _redraw() -> void:
 		if sinking:
 			var depth := _sink_depth(pos)
 			var into: float = 1.0 - smoothstep(SINK_GONE, SINK_NEAR, depth)   # 0 outside, 1 at the end
-			a = lerpf(float(piece["alpha"]), SINK_GLOW, smoothstep(0.0, 0.5, into)) \
-				* smoothstep(SINK_GONE, SINK_GONE + SINK_VANISH, depth) \
+			a = SINK_ALPHA * (1.0 - smoothstep(0.0, 1.0, into)) \
 				* smoothstep(0.0, SINK_FADE_IN, float(piece.get("age", 0.0)))
 			if dim_rect.has_area():
 				a *= _rect_dim(pos, piece["box"], dim_rect)

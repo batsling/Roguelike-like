@@ -346,7 +346,10 @@ _board.animate_resolve(
 Once the animation ends (`_end_resolve`):
 
 1. If the run ended at any ☠ step, the **run-over screen** opens and nothing below
-   happens.
+   happens. (A death OUTSIDE a report — a potion, a pill off the haul, an event's
+   bill — has no playback to wait for, so it waits for the player instead:
+   `Overworld2._hold_death` puts up the **death card** (`DeathCard.gd`), or tells a
+   pack piece's use screen it was fatal, and the run-over screen opens on Continue.)
 2. The **end-of-game screen** — the haul: kill drops that had no square, chests, the
    game's own loot, the boss warning, and *Go to Shop* at a game with a shop. Autosave
    when it closes.

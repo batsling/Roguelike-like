@@ -21,9 +21,32 @@ extends Control
 # Decorations (decor_left/, decor_right/) stand at either end as a PAIR from one
 # file stem — a crab's two claws, its two leg pairs, Uma Musume's runner and her
 # trailing dash — never a claw facing legs.
+#
+# ROGUE'S OWN LETTERS ARE THE ONES YOU START WITH; THE LOGOS ARE EARNED (the owner,
+# 31 Oct 2026). Every printable character of the IBM PC font Rogue was played in
+# (tools/rogue_letters.py, `"game": "rogue"`) is always in the pool; a letter cut
+# from a logo joins it once a rank has paid it (RankRewards: each game or
+# character rank is a song or a letter, 50/50; TitleUnlocks keeps which). The
+# menu spells from `available()`; `pool()` is still every piece, for the tests
+# that hold each picture to its box. A Rogue letter matches the CASE of the text
+# (`case` in the index) and is drawn with sharp pixels (`pixel`).
 
 const ROOT := "res://images2.0/custom/title/"
 const INDEX := ROOT + "index.json"
+# The game whose letters are everyone's from the start.
+const STARTER_GAME := "rogue"
+# A character that is not a letter or a digit, and the folder it is filed under.
+# Keep in step with tools/rogue_letters.py's PUNCT.
+const PUNCT := {
+	"-": "dash", "!": "exclaim", "\"": "quote", "#": "hash", "$": "dollar",
+	"%": "percent", "&": "ampersand", "'": "apostrophe", "(": "paren_left",
+	")": "paren_right", "*": "asterisk", "+": "plus", ",": "comma",
+	".": "period", "/": "slash", ":": "colon", ";": "semicolon", "<": "less",
+	"=": "equals", ">": "greater", "?": "question", "@": "at",
+	"[": "bracket_left", "\\": "backslash", "]": "bracket_right", "^": "caret",
+	"_": "underscore", "`": "backtick", "{": "brace_left", "|": "bar",
+	"}": "brace_right", "~": "tilde",
+}
 
 # Of the line height: the gap between letters, a space, a decoration's size,
 # and the room kept above and below the line so two rows do not touch.
@@ -70,6 +93,7 @@ static func pool() -> Dictionary:
 		return {}
 	for rel in idx:
 		var e: Dictionary = (idx[rel] as Dictionary).duplicate()
+		e["key"] = rel
 		e["path"] = ROOT + rel
 		e["folder"] = rel.get_base_dir()
 		e["stem"] = rel.get_file().get_basename()
@@ -79,11 +103,60 @@ static func pool() -> Dictionary:
 	return _pool_cache
 
 static func _folder_for(ch: String) -> String:
-	if ch == "-":
-		return "dash"
-	if ch == "!":
-		return "exclaim"
-	return ch.to_lower()
+	return PUNCT.get(ch, ch.to_lower())
+
+# --- what can be earned, and what has been ------------------------------------
+
+# Whether `e` is one of Rogue's, which everyone has.
+static func is_starter(e: Dictionary) -> bool:
+	return String(e.get("game", "")) == STARTER_GAME
+
+# Every piece a rank can pay, by its index key ("h/hades.png"): every cut letter,
+# and each decoration PAIR as its left half (the right comes with it). Sorted, so a
+# draw over it is repeatable.
+static func units() -> Array:
+	var out: Array = []
+	var p := pool()
+	for folder in p:
+		if folder == "decor_right":
+			continue
+		for e in p[folder]:
+			if not is_starter(e):
+				out.append(String(e["key"]))
+	out.sort()
+	return out
+
+# The pieces `game`'s own ranks pay out of: its logo's.
+static func units_of(game: StringName) -> Array:
+	var out: Array = []
+	var p := pool()
+	for folder in p:
+		if folder == "decor_right":
+			continue
+		for e in p[folder]:
+			if String(e.get("game", "")) == String(game) and not is_starter(e):
+				out.append(String(e["key"]))
+	out.sort()
+	return out
+
+# The pool the menu spells from: Rogue's letters, and every piece that has been
+# earned (TitleUnlocks). A decoration's right half is earned with its left.
+static func available() -> Dictionary:
+	var p := pool()
+	var tu: Node = Engine.get_main_loop().root.get_node_or_null(^"TitleUnlocks") \
+		if Engine.get_main_loop() is SceneTree else null
+	var out := {}
+	for folder in p:
+		var keep: Array = []
+		for e in p[folder]:
+			var key: String = String(e["key"])
+			if folder == "decor_right":
+				key = "decor_left/" + String(e["key"]).get_file()
+			if is_starter(e) or (tu != null and tu.is_unlocked(key)):
+				keep.append(e)
+		if not keep.is_empty():
+			out[folder] = keep
+	return out
 
 # The pieces for `text`, one per character (a space is an empty dictionary).
 # Prefers a game not yet used in this word, so a title is a real mix.
@@ -95,7 +168,11 @@ static func pick(text: String, rng: RandomNumberGenerator, from: Dictionary = {}
 		if ch == " ":
 			out.append({})
 			continue
-		var opts: Array = p.get(_folder_for(ch), [])
+		# A piece with a `case` (Rogue's) only stands for its own case of a letter.
+		var want_case: String = "" if ch.to_upper() == ch.to_lower() \
+			else ("upper" if ch == ch.to_upper() else "lower")
+		var opts: Array = (p.get(_folder_for(ch), []) as Array).filter(
+			func(o): return not o.has("case") or String(o["case"]) == want_case)
 		if opts.is_empty():
 			out.append({"missing": ch})
 			continue
@@ -132,8 +209,9 @@ static func make(text: String, height: float, rng: RandomNumberGenerator,
 	var w := TitleLetters.new()
 	w.space = word_gap
 	w.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var pieces := pick(text, rng)
-	var decor := pick_decor(rng) if decorated and rng.randf() < DECOR_CHANCE else []
+	var from := available()
+	var pieces := pick(text, rng, from)
+	var decor := pick_decor(rng, from) if decorated and rng.randf() < DECOR_CHANCE else []
 	w._lay_out(pieces, decor, height)
 	if max_width > 0.0 and w.ink_width > max_width:
 		w._lay_out(pieces, decor, height * max_width / w.ink_width)
@@ -177,6 +255,8 @@ func _lay_out(pieces: Array, decor: Array, height: float) -> void:
 		rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		rect.stretch_mode = TextureRect.STRETCH_SCALE
 		rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		if bool(e.get("pixel", false)):
+			rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 		rect.size = Vector2(tw * s, th * s)
 		rect.position = Vector2(
 			x + slot * 0.5 - float(e.get("body_center_x", 0.5)) * tw * s,
