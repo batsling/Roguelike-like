@@ -1,17 +1,17 @@
 extends Control
 
-# The blue portal the main menu's title stands in, over the red rift
-# (MainMenu._paint_rift): one oval round the title and the subtitle together
-# (shaders/menu_portal.gdshader), and a fringe of small bats — the menu's own
-# bat, images2.0/custom/menu_bat.png — peeling off its rim and dissolving into
-# the red within a second. The bats are what keep a blue oval from looking
+# The blue portal the main menu's title stands in: one oval round the title and
+# the subtitle together, which the menu's vortex (shaders/menu_vortex.gdshader,
+# MainMenu._paint_vortex) draws as the blue heart of the same swirl as the red
+# rift; this tells it where the oval is. And a fringe of small bats — the menu's
+# own bat, images2.0/custom/menu_bat.png — peeling off its rim and dissolving
+# into the red within a second. The bats are what keep a blue oval from looking
 # pasted on the red: the edge breaks up rather than stopping.
 #
 # It follows the two rows it is given rather than being laid out: a row is
 # rebuilt when it is clicked (MainMenu._reroll) and the window can change size,
 # so the oval is re-measured off the rows' letters whenever they move.
 
-const SHADER := preload("res://shaders/menu_portal.gdshader")
 const BAT := "res://images2.0/custom/menu_bat.png"
 
 # How far the oval reaches past the letters, px: round the ends, and above and
@@ -33,12 +33,16 @@ const BAT_SCALE_MIN := 0.07
 const BAT_SCALE_MAX := 0.15
 const BAT_TEAL := Color(0.24, 0.60, 0.60)
 
-var oval := ColorRect.new()
+# The oval's rect, kept as a Control so its place can be read and tested; the
+# vortex draws it, so it draws nothing itself.
+var oval := Control.new()
 var bats := CPUParticles2D.new()
 var _rows: Callable
 var _last := Rect2()
 # The menu's art (MenuFallingArt), told where the oval is so it flies into it.
 var art: Control = null
+# The vortex's material (MainMenu._paint_vortex), told where to draw the blue.
+var vortex: ShaderMaterial = null
 
 # `rows` returns the TitleLetters rows to stand round (null entries skipped).
 static func mount(parent: Control, rows: Callable) -> Control:
@@ -52,9 +56,6 @@ func _init() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	oval.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var mat := ShaderMaterial.new()
-	mat.shader = SHADER
-	oval.material = mat
 	add_child(oval)
 	_dress_bats()
 	add_child(bats)
@@ -114,10 +115,15 @@ func _fit(r: Rect2) -> void:
 		art.sink = Rect2(art.get_global_transform().affine_inverse()
 			* (get_global_transform() * r.position), r.size) if visible else Rect2()
 	if not visible:
+		if vortex != null:
+			vortex.set_shader_parameter("portal_radii", Vector2.ZERO)
 		return
 	oval.position = r.position
 	oval.size = r.size
-	(oval.material as ShaderMaterial).set_shader_parameter("px", r.size)
+	if vortex != null:
+		# this control and the background both fill the menu, so one rect serves
+		vortex.set_shader_parameter("portal_center", r.get_center())
+		vortex.set_shader_parameter("portal_radii", r.size * 0.5)
 	bats.position = r.get_center()
 	var pts := PackedVector2Array()
 	var out := PackedVector2Array()

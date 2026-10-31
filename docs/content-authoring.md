@@ -166,9 +166,9 @@ should line up sets `"centre": {"decor_right": [y0, y1]}` instead: those source
 rows sit on the line (`line_center` in the index) and the size is left alone —
 Uma Musume's dash centres its bar, not the sparkles above it. Clicking the
 title or subtitle on the menu draws that row again. Behind both rows stands a
-blue portal over the menu's red rift background (`scripts/menu/MenuPortal.gd`,
-`shaders/menu_portal.gdshader`), re-measured off the rows' letters whenever
-they move, with a fringe of the menu's bat (`images2.0/custom/menu_bat.png`)
+blue portal, the heart of one swirl with the menu's red rift background, both
+turning and drawn inward (`shaders/menu_vortex.gdshader`); `scripts/menu/MenuPortal.gd`
+re-measures its oval off the rows' letters whenever they move, with a fringe of the menu's bat (`images2.0/custom/menu_bat.png`)
 peeling off its rim so the blue breaks up into the red. The menu's art
 (`MenuFallingArt`) is given the portal's oval as its `sink` and flies into it
 from every edge instead of falling. `test_title_letters.gd` reads every PNG back and fails if a box does not

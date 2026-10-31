@@ -214,18 +214,18 @@ func test_a_click_on_a_row_draws_it_again() -> void:
 		func(c): return c is TitleLetters)
 	assert_eq(rows.size(), 2, "one row each")
 
-func test_the_background_is_the_red_rift() -> void:
+func test_the_background_is_the_vortex_with_the_portal_in_it() -> void:
 	var menu = MENU.instantiate()
 	add_child_autofree(menu)
-	await wait_frames(1)
+	menu._build_title(_rng(6))
+	await wait_frames(3)
 	var mat := (menu.get_node("%Background") as ColorRect).material as ShaderMaterial
 	assert_not_null(mat, "the background has its shader")
-	assert_eq(mat.shader, UITheme.RIFT_SHADER, "the rift cards' swirl")
-	assert_eq(mat.get_shader_parameter("rift_color"), menu.RIFT_RED, "in red")
-	var oval := menu.portal.oval.material as ShaderMaterial
-	assert_eq(mat.get_shader_parameter("speed"), oval.get_shader_parameter("speed"),
-		"turning with the portal")
-	assert_eq(mat.get_shader_parameter("seed"), 0.0, "from the same phase")
+	assert_eq(mat.shader, menu.VORTEX_SHADER, "the one swirl, red and blue")
+	assert_eq(mat.get_shader_parameter("rift_color"), menu.RIFT_RED, "red outside")
+	var oval: Rect2 = menu.portal.oval.get_rect()
+	assert_eq(mat.get_shader_parameter("portal_center"), oval.get_center(), "blue round the title")
+	assert_eq(mat.get_shader_parameter("portal_radii"), oval.size * 0.5, "the oval's size")
 
 
 # THE PORTAL stands round both rows' letters, and follows a row that is redrawn.

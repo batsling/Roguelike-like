@@ -25,7 +25,7 @@ func _ready() -> void:
 	GameState.phase = GameState.Phase.MENU
 	theme = UITheme.shared()
 	_style_menu()
-	_paint_rift()
+	_paint_vortex()
 	_mount_falling_art()
 	_build_title()
 	_mount_portal()
@@ -114,38 +114,37 @@ func _mount_falling_art() -> void:
 	art.dim_node = %StartRunBtn.get_parent()
 	_art = art
 
-# The red rift behind everything: the rift cards' swirl (UITheme.rift_backdrop's
-# shader) in the rift's red, as a shader on %Background, which keeps its colour
-# (what the editor previews, and what shows if the shader cannot load).
+# The vortex behind everything: the red rift across the screen and the blue
+# portal the title stands in, one swirl (shaders/menu_vortex.gdshader), on
+# %Background, which keeps its colour (what the editor previews, and what shows
+# if the shader cannot load). MenuPortal tells it where the portal is.
+const VORTEX_SHADER := preload("res://shaders/menu_vortex.gdshader")
 const RIFT_RED := Color(1.0, 0.36, 0.30)
 const RIFT_RED_DEEP := Color(0.36, 0.03, 0.06)
 const RIFT_RED_BASE := Color(0.06, 0.02, 0.02)
-# THE TWO SWIRLS TURN TOGETHER: the rift behind and the portal in front share one
-# speed and start from the same phase (seed 0), so with the title in the middle
-# of the screen they read as one vortex rather than two wheels at odds.
-const SWIRL_SPEED := 0.06
 
-func _paint_rift() -> void:
+func _paint_vortex() -> void:
+	var bg := %Background as ColorRect
 	var mat := ShaderMaterial.new()
-	mat.shader = UITheme.RIFT_SHADER
+	mat.shader = VORTEX_SHADER
 	mat.set_shader_parameter("rift_color", RIFT_RED)
 	mat.set_shader_parameter("deep_color", RIFT_RED_DEEP)
 	mat.set_shader_parameter("base_color", RIFT_RED_BASE)
-	mat.set_shader_parameter("speed", SWIRL_SPEED)
-	mat.set_shader_parameter("seed", 0.0)
-	(%Background as ColorRect).material = mat
+	bg.material = mat
+	var fit := func() -> void: mat.set_shader_parameter("size", bg.size)
+	bg.resized.connect(fit)
+	fit.call()
 
-# The blue portal the title stands in, with its fringe of bats (MenuPortal).
-# UNDER the art, which flies into it (MenuFallingArt.sink) and is seen shrinking
-# away over the blue rather than vanishing behind its edge; under the letters,
-# which stand on it.
+# Where the blue portal is, and its fringe of bats (MenuPortal). UNDER the art,
+# which flies into it (MenuFallingArt.sink) and is seen shrinking away over the
+# blue; under the letters, which stand on it.
 const MenuPortal := preload("res://scripts/menu/MenuPortal.gd")
 var portal: Control = null
 
 func _mount_portal() -> void:
 	portal = MenuPortal.mount(self, func() -> Array: return [title_row, subtitle_row])
 	portal.art = _art
-	(portal.oval.material as ShaderMaterial).set_shader_parameter("speed", SWIRL_SPEED)
+	portal.vortex = (%Background as ColorRect).material
 	move_child(portal, _art.get_index())
 
 # The title and subtitle, spelled in letters cut from roguelike logos and drawn
