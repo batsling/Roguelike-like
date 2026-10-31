@@ -38,7 +38,7 @@ static func color(rarity: int) -> Color:
 static func panel(rarity: int, content_margin: int = 10) -> StyleBoxFlat:
 	var rc: Color = color(rarity)
 	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.13, 0.12, 0.16, 0.97).lerp(rc, 0.10)
+	sb.bg_color = Color(UITheme.BG, 0.97).lerp(rc, 0.10)
 	sb.set_corner_radius_all(8)
 	sb.set_border_width_all(1)
 	sb.border_width_left = 4   # left accent, like the HTML item-display

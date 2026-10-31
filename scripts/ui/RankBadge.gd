@@ -22,7 +22,7 @@ extends Control
 
 const SILVER := Color(0.80, 0.82, 0.88)
 const RING := Color(0.0, 0.0, 0.0, 0.55)
-const FACE := Color(0.08, 0.07, 0.06, 0.88)
+const FACE := Color(UITheme.BG_DEEP, 0.88)
 const BAR_BACK := Color(0.0, 0.0, 0.0, 0.6)
 
 # The circle as a share of the art's width, held between a floor that keeps the

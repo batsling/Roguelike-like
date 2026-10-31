@@ -210,7 +210,7 @@ func _counter_badge(item: ItemData) -> Control:
 	# Its own dark plate rather than bare text on the art: item art is 852 games'
 	# worth of colours and a naked glyph is illegible over half of them.
 	wrap.add_theme_stylebox_override("panel",
-		UITheme.flat(Color(0.06, 0.06, 0.09, 0.92), COUNTER_PIP / 2, 0, 1, UITheme.GOLD))
+		UITheme.flat(Color(UITheme.WELL, 0.92), COUNTER_PIP / 2, 0, 1, UITheme.GOLD))
 	var label := Label.new()
 	label.text = str(count)
 	label.add_theme_font_size_override("font_size", UITheme.FONT_TINY)
@@ -260,9 +260,9 @@ func _item_fire_control(item: ItemData, ready: bool, reporting: bool) -> Control
 		btn.custom_minimum_size = Vector2(ITEM_TOKEN + 6, ITEM_USE_H)
 		btn.add_theme_font_size_override("font_size", UITheme.FONT_TINY)
 		btn.add_theme_stylebox_override("normal",
-			UITheme.flat(Color(0.10, 0.22, 0.16, 0.95), 4, 1, 1, Color(0.4, 0.9, 0.6)))
+			UITheme.flat(Color(UITheme.GO_FILL, 0.95), 4, 1, 1, UITheme.GO_RIM))
 		btn.add_theme_stylebox_override("hover",
-			UITheme.flat(Color(0.14, 0.30, 0.21, 1.0), 4, 1, 1, Color(0.55, 1.0, 0.75)))
+			UITheme.flat(UITheme.GO_FILL_HI, 4, 1, 1, UITheme.GO_RIM_HI))
 		btn.add_theme_color_override("font_color", Color(0.6, 1.0, 0.8))
 		btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 		btn.tooltip_text = "Use %s" % item.display_name
@@ -305,7 +305,7 @@ static func battery(have: int, maxc: int, box: Vector2) -> PanelContainer:
 	wrap.name = "Battery"
 	wrap.custom_minimum_size = box
 	wrap.add_theme_stylebox_override("panel",
-		UITheme.flat(Color(0.10, 0.10, 0.13, 0.9), 2, 2, 1, UITheme.BORDER))
+		UITheme.flat(Color(UITheme.BG, 0.9), 2, 2, 1, UITheme.BORDER))
 	var cells := HBoxContainer.new()
 	cells.add_theme_constant_override("separation", UITheme.GAP_NONE)
 	cells.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -316,7 +316,7 @@ static func battery(have: int, maxc: int, box: Vector2) -> PanelContainer:
 		seg.custom_minimum_size = Vector2(3, box.y - 6)
 		var filled: bool = i < have
 		seg.add_theme_stylebox_override("panel", UITheme.flat(
-			UITheme.GOLD.lerp(UITheme.BG, 0.15) if filled else Color(0.18, 0.18, 0.22, 0.9),
+			UITheme.GOLD.lerp(UITheme.BG, 0.15) if filled else Color(UITheme.PANEL_HI, 0.9),
 			1, 0, 0))
 		seg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		cells.add_child(seg)

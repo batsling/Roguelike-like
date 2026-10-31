@@ -116,7 +116,7 @@ func populate_play_panel() -> void:
 		play_btn.text = "▶  Play %s" % game.display_name
 		play_btn.custom_minimum_size = Vector2(0, 38)
 		play_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		play_btn.add_theme_stylebox_override("normal", UITheme.flat(Color(0.10, 0.22, 0.16, 0.9), 8, 8, 1, Color(0.4, 0.9, 0.6)))
+		play_btn.add_theme_stylebox_override("normal", UITheme.flat(Color(UITheme.GO_FILL, 0.9), 8, 8, 1, UITheme.GO_RIM))
 		play_btn.add_theme_color_override("font_color", Color(0.6, 1.0, 0.8))
 		play_btn.pressed.connect(func(): game.launch())
 		_launch.add_child(play_btn)
@@ -2242,7 +2242,7 @@ func _nullified_row(row: Dictionary, instance: int = 0) -> Control:
 func _objective_row(text: String, color: Color, icon: Control = null,
 		instance: int = 0, mark: Control = null) -> Control:
 	var wrap := PanelContainer.new()
-	var idle: StyleBox = UITheme.flat(Color(0.10, 0.10, 0.13, 0.6), 5, 4, 1,
+	var idle: StyleBox = UITheme.flat(Color(UITheme.BG, 0.6), 5, 4, 1,
 		color.lerp(UITheme.BORDER, 0.35))
 	var lit: StyleBox = UITheme.flat(color.lerp(UITheme.BG, 0.78), 5, 4, 2,
 		color.lerp(Color.WHITE, 0.35))
@@ -2575,7 +2575,7 @@ func verify_row(text: String, color: Color, emphasise: bool,
 	var wrap := PanelContainer.new()
 	var border: Color = color.lerp(UITheme.BORDER, 0.35)
 	var width: int = 2 if emphasise else 1
-	var idle: StyleBox = UITheme.flat(Color(0.10, 0.10, 0.13, 0.6), 5, 4, width, border)
+	var idle: StyleBox = UITheme.flat(Color(UITheme.BG, 0.6), 5, 4, width, border)
 	# The WHOLE ROW answers, not just the box: a ticked row goes green-washed and
 	# green-rimmed, so a filled checklist reads at a glance from the board beside
 	# it rather than needing each little box squinted at in turn.

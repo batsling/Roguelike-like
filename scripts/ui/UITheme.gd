@@ -17,6 +17,7 @@ extends RefCounted
 # 2026). The others stay so a retune is one word.
 const PALETTES := {
 	"grey": {
+		"well": Color(0.055, 0.053, 0.051),
 		"bg_deep": Color(0.102, 0.098, 0.094),
 		"bg": Color(0.125, 0.122, 0.118),
 		"panel": Color(0.161, 0.157, 0.153),
@@ -26,6 +27,7 @@ const PALETTES := {
 		"bat": Color("2f2e2d"),
 	},
 	"oxblood": {
+		"well": Color(0.060, 0.039, 0.041),
 		"bg_deep": Color(0.100, 0.065, 0.068),
 		"bg": Color(0.125, 0.081, 0.085),
 		"panel": Color(0.160, 0.104, 0.109),
@@ -35,6 +37,7 @@ const PALETTES := {
 		"bat": Color(0.165, 0.091, 0.097),
 	},
 	"crimson": {
+		"well": Color(0.060, 0.033, 0.035),
 		"bg_deep": Color(0.100, 0.055, 0.059),
 		"bg": Color(0.125, 0.069, 0.074),
 		"panel": Color(0.160, 0.088, 0.094),
@@ -44,6 +47,7 @@ const PALETTES := {
 		"bat": Color(0.175, 0.061, 0.071),
 	},
 	"rift": {
+		"well": Color(0.060, 0.027, 0.030),
 		"bg_deep": Color(0.100, 0.045, 0.050),
 		"bg": Color(0.125, 0.056, 0.062),
 		"panel": Color(0.160, 0.072, 0.080),
@@ -53,6 +57,7 @@ const PALETTES := {
 		"bat": Color(0.195, 0.029, 0.044),
 	},
 	"red_on_grey": {
+		"well": Color(0.060, 0.053, 0.053),
 		"bg_deep": Color(0.100, 0.088, 0.089),
 		"bg": Color(0.125, 0.110, 0.111),
 		"panel": Color(0.160, 0.141, 0.143),
@@ -62,6 +67,7 @@ const PALETTES := {
 		"bat": Color(0.380, 0.095, 0.121),
 	},
 	"ember_black": {
+		"well": Color(0.060, 0.036, 0.038),
 		"bg_deep": Color(0.100, 0.060, 0.064),
 		"bg": Color(0.125, 0.075, 0.079),
 		"panel": Color(0.160, 0.096, 0.102),
@@ -77,6 +83,7 @@ const BG: Color = PALETTES[PALETTE]["bg"]               # base surface
 const PANEL: Color = PALETTES[PALETTE]["panel"]         # raised panel
 const PANEL_HI: Color = PALETTES[PALETTE]["panel_hi"]   # hover / header
 const BORDER: Color = PALETTES[PALETTE]["border"]       # hairline border
+const WELL: Color = PALETTES[PALETTE]["well"]           # the darkest recess: pips, pills, ink on a chip
 
 const ACCENT := Color(1.0, 0.541, 0.235)          # #ff8a3c ember orange
 const ACCENT_DIM := Color(0.80, 0.40, 0.0)        # #cc6600 pressed / muted ember
@@ -86,6 +93,12 @@ const TEXT_DIM := Color(0.639, 0.624, 0.596)      # #a39f98 secondary text
 const TEXT_FAINT := Color(0.45, 0.44, 0.42)       # tertiary / placeholders
 
 const SUCCESS := Color(0.30, 0.78, 0.42)
+# THE GO BUTTON: a green fill and rim for the one action a panel is there for
+# (Play, Use, the active profile). Five screens each typed these in by hand.
+const GO_FILL := Color(0.10, 0.22, 0.16)
+const GO_FILL_HI := Color(0.14, 0.30, 0.21)
+const GO_RIM := Color(0.4, 0.9, 0.6)
+const GO_RIM_HI := Color(0.55, 1.0, 0.75)
 
 # A STOP THE RUN WALKED AWAY FROM — a game visited and left standing, whether the
 # goal was missed, the run escaped it (§3.2), or a teleport passed straight
@@ -480,7 +493,7 @@ static func tier_badge(game_id, height: int = TIER_BADGE_H) -> Control:
 	l.add_theme_font_size_override("font_size", FONT_TEXT)
 	# Dark on the bright plate. Every tier colour is a pastel, so the readable
 	# text on all six is the same near-black rather than a per-tier choice.
-	l.add_theme_color_override("font_color", Color(0.08, 0.06, 0.05))
+	l.add_theme_color_override("font_color", WELL)
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -1289,7 +1302,7 @@ static func make_theme() -> Theme:
 	# stock LABEL's own (TooltipLabel is a Label variation), and a card is drawn
 	# exactly as HoverCard built it.
 	t.set_stylebox("panel", "TooltipPanel", StyleBoxEmpty.new())
-	t.set_stylebox("normal", "TooltipLabel", flat(Color(0.075, 0.065, 0.085, 0.985), 6, 8, 1, BORDER))
+	t.set_stylebox("normal", "TooltipLabel", flat(Color(BG_DEEP, 0.985), 6, 8, 1, BORDER))
 	t.set_color("font_color", "TooltipLabel", TEXT)
 	t.set_font_size("font_size", "TooltipLabel", FONT_BODY)
 

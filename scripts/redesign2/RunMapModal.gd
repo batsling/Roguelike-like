@@ -217,7 +217,7 @@ func _build() -> void:
 func _build_floating_panel() -> PanelContainer:
 	var panel := PanelContainer.new()
 	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.075, 0.062, 0.05, 0.97)
+	sb.bg_color = Color(UITheme.BG_DEEP, 0.97)
 	sb.border_color = UITheme.GOLD
 	sb.set_border_width_all(2)
 	sb.set_corner_radius_all(8)
@@ -510,7 +510,7 @@ func open_node_card(id: StringName, depth: int = 0) -> Control:
 
 	var card := PanelContainer.new()
 	card.add_theme_stylebox_override("panel",
-		UITheme.flat(Color(0.075, 0.062, 0.05, 0.98), 8, 12, 2, UITheme.GOLD))
+		UITheme.flat(Color(UITheme.BG_DEEP, 0.98), 8, 12, 2, UITheme.GOLD))
 	card.custom_minimum_size = Vector2(CARD_W, 0)
 	card.mouse_filter = Control.MOUSE_FILTER_STOP
 	_node_card = card

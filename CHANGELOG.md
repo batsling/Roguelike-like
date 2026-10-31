@@ -21,9 +21,12 @@ For how the project is laid out and how its systems fit together, see
   from the theme (buttons, dropdowns, the run's Menu, Settings, every panel)
   follows it; the menu itself keeps the vortex. The dim text colours lost their
   brown. The Collection's panel is see-through so the bats show behind its grid.
-  Still on their own colours, and so not red yet: the screens that hardcode a
-  dark brown (`Overworld2`, `BattlefieldView`, `ReportChecklist`, the Tier List's
-  Unranked chip and others).
+  Every surface that used to be typed in by hand (~45 across 20 files: pips,
+  pills, wells, panels, the Tier List's Unranked chip, the tooltips) now reads
+  the palette, including a sixth surface, `WELL`, for the darkest recesses; the
+  green go button is `UITheme.GO_*`, and the gold and red notice boxes mix
+  their accent into `BG_DEEP`. `test_design_tokens` fails on a new dark surface
+  literal outside `UITheme`, with three deliberate exceptions listed by reason.
 
 - **The main menu's title is spelled in cut logo letters, over drifting bats.**
   "Roguelike-like" and "The Search for the Amulet of Nivlac" are now built from

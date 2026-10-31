@@ -6484,7 +6484,7 @@ func _paint_character_chip() -> void:
 func _build_health_chip() -> Control:
 	var wrap := PanelContainer.new()
 	wrap.add_theme_stylebox_override("panel",
-		UITheme.flat(Color(0.18, 0.06, 0.06, 0.85), 8, 8, 1, UITheme.DANGER.lerp(UITheme.BORDER, 0.4)))
+		UITheme.flat(Color(UITheme.DANGER.lerp(UITheme.BG_DEEP, 0.85), 0.85), 8, 8, 1, UITheme.DANGER.lerp(UITheme.BORDER, 0.4)))
 	wrap.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", UITheme.GAP)
@@ -6519,7 +6519,7 @@ func _build_health_chip() -> Control:
 func _build_gold_chip() -> Control:
 	var wrap := PanelContainer.new()
 	wrap.add_theme_stylebox_override("panel",
-		UITheme.flat(Color(0.16, 0.13, 0.05, 0.85), 8, 8, 1, UITheme.GOLD.lerp(UITheme.BORDER, 0.4)))
+		UITheme.flat(Color(UITheme.GOLD.lerp(UITheme.BG_DEEP, 0.88), 0.85), 8, 8, 1, UITheme.GOLD.lerp(UITheme.BORDER, 0.4)))
 	wrap.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_gold_chip = Label.new()
 	_gold_chip.add_theme_font_size_override("font_size", UITheme.FONT_HEAD)
@@ -6612,7 +6612,7 @@ func _paint_shop_bar() -> void:
 	_shop_bar_chip.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND if live \
 		else Control.CURSOR_ARROW
 	var green: Color = UITheme.SHOP_GREEN
-	var rest := UITheme.flat(green.lerp(UITheme.BG, 0.62) if live else Color(0.06, 0.12, 0.08, 0.85),
+	var rest := UITheme.flat(green.lerp(UITheme.BG, 0.62) if live else Color(UITheme.SUCCESS.lerp(UITheme.BG_DEEP, 0.88), 0.85),
 		8, 0, 2 if live else 1, green if live else green.lerp(UITheme.BORDER, 0.6))
 	_shop_bar_chip.add_theme_stylebox_override("normal", rest)
 	_shop_bar_chip.add_theme_stylebox_override("disabled", rest)

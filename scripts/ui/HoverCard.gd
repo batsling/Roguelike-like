@@ -112,7 +112,7 @@ static func text_card(text: String) -> Control:
 		return null
 	var panel := PanelContainer.new()
 	panel.add_theme_stylebox_override("panel",
-		UITheme.flat(Color(0.075, 0.065, 0.085, 0.985), 6, 8, 1, UITheme.BORDER))
+		UITheme.flat(Color(UITheme.BG_DEEP, 0.985), 6, 8, 1, UITheme.BORDER))
 	var l := Label.new()
 	l.text = text
 	l.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
@@ -137,7 +137,7 @@ static func build(cfg: Dictionary) -> Control:
 
 	var panel := PanelContainer.new()
 	panel.add_theme_stylebox_override("panel",
-		UITheme.flat(Color(0.075, 0.065, 0.085, 0.985), 8, 10, 1,
+		UITheme.flat(Color(UITheme.BG_DEEP, 0.985), 8, 10, 1,
 			accent.lerp(UITheme.BORDER, 0.35)))
 
 	var col := VBoxContainer.new()

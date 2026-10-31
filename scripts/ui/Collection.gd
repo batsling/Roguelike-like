@@ -479,7 +479,7 @@ func _cell(border: Color, on_click: Callable) -> Dictionary:
 # every cell now has the same visible rectangle whatever shape its cover is, and
 # no cover is cropped — which matters when the art is 865 pieces of real box art
 # and some of them carry their title at the edge.
-const COVER_PLATE := Color(0.145, 0.132, 0.118, 1.0)
+const COVER_PLATE := UITheme.PANEL
 
 # `game_id` is only ever the tier badge's business (UITheme.attach_tier_badge) —
 # the plate itself does not care which game it is drawing. Optional so the two
@@ -534,7 +534,7 @@ func _cover_rect(tex: Texture2D, w: int, game_id = &"") -> Control:
 	UITheme.attach_tier_badge(tr, game_id)
 	return UITheme.tier_badge_room(RankBadge.wrap(tr, game_id, true), game_id)
 
-const IMAGE_BG := Color(0.16, 0.17, 0.22, 1.0)
+const IMAGE_BG := UITheme.PANEL
 # The frame's inset. `size` is the ART, so the pad is paid on top of it twice over
 # — at 8 an item's plate was 66px around 50px of picture, a fifth of the cell's
 # width spent on a margin inside a margin inside a margin. The detail panel, where
@@ -569,7 +569,7 @@ func _image_with_bg(tex: Texture2D, size: int, border: Color, crisp: bool = fals
 # on the left stay artwork-only; they just note the size as text.
 
 const BOARD_GAP := 3
-const BOARD_CELL_EMPTY := Color(0.13, 0.13, 0.17, 0.9)
+const BOARD_CELL_EMPTY := Color(UITheme.BG, 0.9)
 
 func _footprint_board(e: GoalEnemyData, accent: Color, cell: int) -> Control:
 	var rows: int = GameLoop2.grid_rows()
@@ -591,7 +591,7 @@ func _footprint_board(e: GoalEnemyData, accent: Color, cell: int) -> Control:
 		if int(off.x) >= fc or int(off.y) >= fr:
 			continue
 		board.add_child(_board_tile(Vector2((col0 + int(off.x)) * step, int(off.y) * step),
-			cell, accent.lerp(Color(0.05, 0.05, 0.07), 0.55), accent))
+			cell, accent.lerp(UITheme.WELL, 0.55), accent))
 	if e.image != null:
 		var art := TextureRect.new()
 		art.texture = e.image
@@ -1486,7 +1486,7 @@ func _paint_owned_mark(id: StringName) -> void:
 	# Owned reads as a filled green tick; unowned as an empty box, which is what
 	# makes "not yet marked" legible rather than just absent — on the player's own
 	# list that empty box IS the thing to click.
-	var fill := Color(0.16, 0.42, 0.26, 0.95) if owns else Color(0.05, 0.06, 0.08, 0.78)
+	var fill := Color(0.16, 0.42, 0.26, 0.95) if owns else Color(UITheme.WELL, 0.78)
 	var edge := Color(0.55, 0.85, 0.65) if owns else Color(0.72, 0.72, 0.78, 0.9)
 	for state in ["normal", "hover", "pressed", "disabled"]:
 		badge.add_theme_stylebox_override(state, _badge_style(fill, edge))
@@ -1611,7 +1611,7 @@ func _show_game_detail(g: GameData) -> void:
 		play_btn.tooltip_text = "Open %s." % g.display_name
 		play_btn.custom_minimum_size = Vector2(0, 32)
 		play_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		play_btn.add_theme_stylebox_override("normal", _flat(Color(0.10, 0.22, 0.16, 0.9), Color(0.4, 0.9, 0.6), 1))
+		play_btn.add_theme_stylebox_override("normal", _flat(Color(UITheme.GO_FILL, 0.9), UITheme.GO_RIM, 1))
 		play_btn.add_theme_color_override("font_color", Color(0.6, 1.0, 0.8))
 		play_btn.pressed.connect(func(): g.launch())
 		launch_row.add_child(play_btn)

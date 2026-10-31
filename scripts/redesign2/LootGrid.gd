@@ -1481,7 +1481,7 @@ static func _overlaid(col: VBoxContainer, art: Control, name: Label, bottom: Con
 	var scrim := PanelContainer.new()
 	scrim.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var dark := StyleBoxFlat.new()
-	dark.bg_color = Color(0.05, 0.04, 0.06, 0.62)
+	dark.bg_color = Color(UITheme.WELL, 0.62)
 	dark.set_corner_radius_all(3)
 	scrim.add_theme_stylebox_override("panel", dark)
 	name.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
@@ -1523,7 +1523,7 @@ static func _passive_plate(text: String, tip: String) -> Control:
 	plate.add_theme_font_size_override("font_size", UITheme.FONT_TINY)
 	plate.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 	var dark := StyleBoxFlat.new()
-	dark.bg_color = Color(0.05, 0.04, 0.06, 0.62)
+	dark.bg_color = Color(UITheme.WELL, 0.62)
 	dark.set_corner_radius_all(6)
 	dark.content_margin_left = 6
 	dark.content_margin_right = 6

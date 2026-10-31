@@ -32,12 +32,12 @@ extends RefCounted
 const COL_CURRENT := Color(0.13, 0.59, 0.95)      # #2196F3 you-are-here blue
 const COL_AMULET := Color(0.80, 0.40, 0.0)        # ember/gold amulet fill
 const COL_CHOICE_BG := Color(0.24, 0.18, 0.0)     # reachable-now choice
-const COL_PATH_BG := Color(0.29, 0.27, 0.25)      # on the road to the amulet
-const COL_VISITED_BG := Color(0.16, 0.16, 0.16)   # already behind you
+const COL_PATH_BG := UITheme.BORDER      # on the road to the amulet
+const COL_VISITED_BG := UITheme.PANEL   # already behind you
 const COL_ARROW := Color(0.30, 0.78, 0.42, 0.85)  # shortest-path arrow green
 # What a plain box's name sits on. Near-black, not the old grey fill: the cover is
 # the colour now, and only the roles (you, the Amulet, an offer) keep their own.
-const COL_FADE := Color(0.03, 0.03, 0.04)
+const COL_FADE := UITheme.WELL
 
 # --- layout (pre-zoom) -------------------------------------------------------
 #
@@ -287,7 +287,7 @@ static func shop_marker(id: StringName, rect: Rect2) -> Control:
 	var w: float = MARKER_H + 6.0
 	var pill := Panel.new()
 	pill.name = "ShopMarker"
-	pill.add_theme_stylebox_override("panel", UITheme.flat(Color(0.06, 0.06, 0.07, 0.95),
+	pill.add_theme_stylebox_override("panel", UITheme.flat(Color(UITheme.WELL, 0.95),
 		int(MARKER_H * 0.5), 0, 1, UITheme.SHOP_GREEN))
 	pill.size = Vector2(w, MARKER_H)
 	pill.position = Vector2(rect.end.x - w - MARKER_INSET, rect.position.y - MARKER_H * 0.5)
@@ -458,7 +458,7 @@ static func node_box(cfg: Dictionary, id: StringName, rect: Rect2, depth: int,
 		badge.add_theme_font_size_override("font_size", UITheme.FONT_MICRO)
 		badge.add_theme_color_override("font_color", UITheme.GOLD if fought > 0
 			else UITheme.TEXT_DIM)
-		var backing := UITheme.flat(Color(0.05, 0.05, 0.05, 0.85), 3, 0)
+		var backing := UITheme.flat(Color(UITheme.WELL, 0.85), 3, 0)
 		backing.content_margin_left = 3
 		backing.content_margin_right = 3
 		badge.add_theme_stylebox_override("normal", backing)
@@ -827,7 +827,7 @@ const CORNER_INSET := 4.0
 # A dark pill with one short coloured line in it, for a corner of the cover.
 static func _corner_pill(text: String, color: Color, font_size: int) -> PanelContainer:
 	var pill := PanelContainer.new()
-	var sb := UITheme.flat(Color(0.05, 0.05, 0.06, 0.9), 6, 0, 1, color)
+	var sb := UITheme.flat(Color(UITheme.WELL, 0.9), 6, 0, 1, color)
 	sb.content_margin_left = UITheme.GAP_SNUG
 	sb.content_margin_right = UITheme.GAP_SNUG
 	sb.content_margin_top = UITheme.GAP_HAIR

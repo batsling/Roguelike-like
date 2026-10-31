@@ -27,7 +27,7 @@ extends Control
 # game sits in would be two answers to one question. Kept under its old name so
 # the screen and its tests read the same as they did.
 const TIER_COLORS := UITheme.TIER_COLORS
-const UNRANKED_COLOR := Color(0.36, 0.32, 0.26)
+const UNRANKED_COLOR := Color(UITheme.BORDER * 1.25, 1.0)
 
 const TILE_SIZE := Vector2(88, 104)
 const LABEL_CELL := Vector2(96, 100)
@@ -437,8 +437,8 @@ func _build_tier_row(index: int, label_text: String, game_ids: Array) -> Control
 	# left of the six above it. Zero here lets the cell be the width the const
 	# says, which is also the width `_board_height` assumes when it fits the board.
 	name_edit.add_theme_constant_override("minimum_character_width", 0)
-	name_edit.add_theme_color_override("font_color", Color(0.08, 0.06, 0.05))
-	name_edit.add_theme_color_override("caret_color", Color(0.08, 0.06, 0.05))
+	name_edit.add_theme_color_override("font_color", UITheme.WELL)
+	name_edit.add_theme_color_override("caret_color", UITheme.WELL)
 	name_edit.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	name_edit.tooltip_text = "Rename this tier"
 	name_edit.text_submitted.connect(func(t: String):
