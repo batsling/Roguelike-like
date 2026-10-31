@@ -34,9 +34,9 @@ const ROUNDNESS := 3.0
 # would cross one in a blink and never reach the other.
 const BATS := 160
 const ENTER_FROM := 1.04
-const ENTER_TO := 1.22
-const PULL_MIN := 0.10
-const PULL_MAX := 0.16
+const ENTER_TO := 1.32
+const PULL_MIN := 0.22
+const PULL_MAX := 0.32
 const SWIRL := 0.22
 const FADE_FROM := 0.94
 const GONE := 0.80
