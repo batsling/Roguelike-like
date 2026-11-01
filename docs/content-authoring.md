@@ -144,17 +144,19 @@ The sword, staff and bow touch the letters' sides, so they are told apart by
 colour (`rgb_ranges`, each colour only in its own box: the browns with red
 under 215 are never a face, which is always red 255); the bow's string and limb
 cross E and S, so the string's colours are left out of the faces
-(`exclude_rgb_ranges`). The S under the bow is REBUILT, not painted flat
-(`repaint`, run on the source before cutting): inside a polygon, every pixel
-that is not one of the S's own colours (its yellow, the white top edge, the
-cream side edge, listed as `clean`) takes its colour from the S's clean pixels
-along its row, so the white edge runs on under the limb and the colour stays in
-its bands; two strips whose colour is plain (the cream edge, the yellow beside
-it, where the string crosses the lowest step) are given it outright, and so is
-the white edge of the step the limb hid entirely. A flat yellow patch lost the
-white top line, which is what the owner noticed. The string crossing the S's
-top also cut the S's stepped top-left off from the rest of its face, so the S
-takes a second anchor point there. The bow keeps its
+(`exclude_rgb_ranges`). The S is the exception, cut AS DRAWN by a config of
+its own (`tiny_rogues_s.json`; the letters config `hold`s it so the E still stops
+where it starts): every pixel of the original S, its own sides, the red wedges on
+its stepped top-left and the dark red strip down its left (the E's wall, which
+the owner wants on the S), measured by its face alone (`box_fill`) and given the
+other letters' round 40px outline. Under the bow it is rebuilt pixel by pixel on
+the source before cutting (`repaint`): the hidden top-right corner drawn outright
+as three steps (24px across, 23px down, each a 9-row white top over yellow, read
+off the step tops the bow leaves showing and the S's own steps elsewhere), the
+outline under the bow black, the top bar's rows run on from the S's clean pixels
+(its pure yellow, white top line and cream edge only), and the strip's diagonal
+outline edge and red drawn row by row. The string also cut the S's top-left off
+from the rest of its face, so the S takes a second anchor point there. The bow keeps its
 string and the ties round its lower limb (the string's colour allowed along its
 path), and the staff and bow are cut with `reach` 0: any reach pulled in the
 white highlight along the R's and S's top edges where they touch. Spelunky Classic gives S P E L U N K Y (the first K): its

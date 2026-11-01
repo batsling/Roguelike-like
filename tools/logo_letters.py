@@ -72,12 +72,18 @@ so Godot never imports the source), is JSON:
                   height (Balatro's A sat high)
     subtitle      [piece, ...] — decorations drawn round the subtitle, never the
                   title (the crab's legs); list both halves
-    repaint       [{"polygon": [[x, y], ...], "dirty": [ranges] or "clean":
+    repaint       [{"rects": [[x0, y0, x1, y1, [r, g, b]], ...]}] drawn outright,
+                  or [{"polygon": [[x, y], ...], "dirty": [ranges] or "clean":
                   [ranges] (the letter's own colours, all else dirty), "agree": n,
                   "prefer": "row"/"column", "colour": [r, g, b]}] —
                   pixels of those colours inside the polygon, drawn OVER a
                   letter (a bow, its string, a shadow), rebuilt from the
                   letter's own clean pixels along their row or column
+    hold          [piece, ...] — found (so a neighbour split from it stops where
+                  it starts) but not written: another config cuts it
+    box_fill      a fill spec measuring each piece's box (`body_*` in the
+                  index) instead of the fill itself, for a piece cut with more
+                  than its face (Tiny Rogues' S, sides and all)
     styles        [variant, ...] — piece variants (the part after the dot) drawn
                   at another size than the rest of the logo; each is sized as a
                   line of its own in images2.0/custom/title/index.json
@@ -262,6 +268,13 @@ def _repaint(A: np.ndarray, cfg: dict) -> np.ndarray:
     A = A.copy()
     H, W = A.shape[:2]
     for rp in cfg.get("repaint", []):
+        if "rects" in rp:
+            # drawn outright, pixel for pixel: [x0, y0, x1, y1, [r, g, b]]
+            # (Tiny Rogues' S: the steps the bow hid, the outline under it)
+            for x0, y0, x1, y1, col in rp["rects"]:
+                A[y0:y1, x0:x1, :3] = col
+                A[y0:y1, x0:x1, 3] = 255
+            continue
         poly = _polygon_mask((H, W), rp["polygon"])
         dirty = np.zeros((H, W), bool)
         for rg in rp["dirty"]:
@@ -812,7 +825,10 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
     line_centers = {}
     src_boxes = {}
     out_dir_game = cfg["game"]
+    written_names = []
     for i, n in enumerate(names):
+        if n in cfg.get("hold", []):
+            continue  # found so its neighbours stop at it; cut by another config
         mine = owner == i
         f = pieces[n]
         rgb = np.zeros((H, W, 3))
@@ -982,7 +998,11 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
                 # pixel art: one even ring of the edge colour round the face,
                 # holes included (Loop Hero's black edge is broken by the disc)
                 po = cut["pixel_outline"]
-                ring = nd.binary_dilation(f, structure=np.ones((3, 3)), iterations=po.get("width", 1)) & ~f
+                if po.get("round"):
+                    # an even, round-cornered ring, as `extrude`'s outline
+                    ring = (nd.distance_transform_edt(~f) <= po.get("width", 1)) & ~f
+                else:
+                    ring = nd.binary_dilation(f, structure=np.ones((3, 3)), iterations=po.get("width", 1)) & ~f
                 rgb[ring] = po["colour"]
                 al[ring] = 1
             if n in cut.get("hard_edge", []):
@@ -1299,7 +1319,12 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
         # a shadow pushed to one side or an outline never moves its centre or
         # changes its size; `body` rows in the config override the height for
         # a piece with something attached (an eye stalk, a knife, slime).
-        fy, fx = np.where(pieces[n] & (out[..., 3] > 0))
+        face_only = pieces[n] & (out[..., 3] > 0)
+        if "box_fill" in cfg:
+            # a piece cut with more than its face (Tiny Rogues' S, as drawn,
+            # sides and all) is still measured by its face
+            face_only &= _fill_mask(A, {"fill": cfg["box_fill"]})
+        fy, fx = np.where(face_only)
         if fy.size == 0:
             fy, fx = np.where(out[..., 3] > 127)
         by0, by1 = fy.min(), fy.max() + 1
@@ -1381,6 +1406,7 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
                 img = Image.fromarray(px)
         img.save(dest, optimize=True)
         written.append(dest)
+        written_names.append(n)
         print(f"  {dest.relative_to(ROOT)}  {img.width}x{img.height}")
 
     # The index: which config, game and style made each piece, so the title can
@@ -1389,7 +1415,7 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
     index_path = OUT_DIR / "index.json"
     index = json.loads(index_path.read_text()) if index_path.exists() else {}
     index = {k: v for k, v in index.items() if v.get("config") != cfg_path.name}
-    for n_, dest_ in zip(names, written):
+    for n_, dest_ in zip(written_names, written):
         _, _, variant_ = n_.partition(".")
         index[str(dest_.relative_to(OUT_DIR))] = {
             "game": cfg["game"],
@@ -1451,6 +1477,8 @@ def main() -> int:
     for c in sorted(Path(__file__).resolve().parent.joinpath("logo_letters").glob("*.json")):
         cfg = json.loads(c.read_text())
         for piece in cfg["pieces"]:
+            if piece in cfg.get("hold", []):
+                continue
             letter, _, variant = piece.partition(".")
             path = f"{letter}/{cfg['game']}" + (f"__{variant}" if variant else "") + ".png"
             if path in owners and owners[path] != (c.name, piece):
