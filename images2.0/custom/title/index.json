@@ -1153,6 +1153,21 @@
   ],
   "subtitle": true
  },
+ "decor_left/tiny_rogues.png": {
+  "game": "tiny_rogues",
+  "config": "tiny_rogues_decor.json",
+  "style": "tiny_rogues_decor",
+  "body_center": 0.5,
+  "body_height": 0.9226,
+  "body_center_x": 0.5,
+  "body_width": 0.9046,
+  "src": [
+   0.04275,
+   0.0307,
+   0.27117,
+   0.48909
+  ]
+ },
  "decor_left/uma_musume_pretty_derby.png": {
   "game": "uma_musume_pretty_derby",
   "config": "uma_musume_pretty_derby_girl.json",
@@ -1198,6 +1213,21 @@
    0.97203
   ],
   "subtitle": true
+ },
+ "decor_right/tiny_rogues.png": {
+  "game": "tiny_rogues",
+  "config": "tiny_rogues_decor.json",
+  "style": "tiny_rogues_decor",
+  "body_center": 0.5,
+  "body_height": 0.9136,
+  "body_center_x": 0.5,
+  "body_width": 0.9125,
+  "src": [
+   0.74602,
+   0.09277,
+   0.99497,
+   0.50341
+  ]
  },
  "decor_right/uma_musume_pretty_derby.png": {
   "game": "uma_musume_pretty_derby",
@@ -1621,6 +1651,22 @@
    0.13412
   ]
  },
+ "e/tiny_rogues.png": {
+  "game": "tiny_rogues",
+  "config": "tiny_rogues.json",
+  "style": "tiny_rogues",
+  "body_center": 0.4753,
+  "body_height": 0.7674,
+  "body_center_x": 0.4621,
+  "body_width": 0.731,
+  "src": [
+   0.63956,
+   0.4161,
+   0.82188,
+   0.8854
+  ],
+  "form": "lower"
+ },
  "e/uma_musume_pretty_derby.png": {
   "game": "uma_musume_pretty_derby",
   "config": "uma_musume_pretty_derby.json",
@@ -1893,6 +1939,22 @@
    0.44018,
    0.13412
   ]
+ },
+ "g/tiny_rogues.png": {
+  "game": "tiny_rogues",
+  "config": "tiny_rogues.json",
+  "style": "tiny_rogues",
+  "body_center": 0.4719,
+  "body_height": 0.8431,
+  "body_center_x": 0.4642,
+  "body_width": 0.7462,
+  "src": [
+   0.33906,
+   0.43042,
+   0.53227,
+   1.0
+  ],
+  "form": "lower"
  },
  "greater/rogue.png": {
   "game": "rogue",
@@ -2304,6 +2366,21 @@
    0.0,
    0.24675,
    1.0
+  ]
+ },
+ "i/tiny_rogues.png": {
+  "game": "tiny_rogues",
+  "config": "tiny_rogues_sword.json",
+  "style": "tiny_rogues_sword",
+  "body_center": 0.6509,
+  "body_height": 0.6555,
+  "body_center_x": 0.5344,
+  "body_width": 0.7138,
+  "src": [
+   0.36588,
+   0.01228,
+   0.48156,
+   0.45975
   ]
  },
  "i/vampire_survivors.png": {
@@ -2967,6 +3044,22 @@
    0.13412
   ]
  },
+ "n/tiny_rogues.png": {
+  "game": "tiny_rogues",
+  "config": "tiny_rogues.json",
+  "style": "tiny_rogues",
+  "body_center": 0.4588,
+  "body_height": 0.7916,
+  "body_center_x": 0.4633,
+  "body_width": 0.74,
+  "src": [
+   0.45432,
+   0.03206,
+   0.64292,
+   0.48704
+  ],
+  "form": "lower"
+ },
  "o/balatro.png": {
   "game": "balatro",
   "config": "balatro.json",
@@ -3159,6 +3252,22 @@
    0.50227,
    0.13412
   ]
+ },
+ "o/tiny_rogues.png": {
+  "game": "tiny_rogues",
+  "config": "tiny_rogues.json",
+  "style": "tiny_rogues",
+  "body_center": 0.4588,
+  "body_height": 0.7919,
+  "body_center_x": 0.4621,
+  "body_width": 0.731,
+  "src": [
+   0.19321,
+   0.42974,
+   0.37552,
+   0.8854
+  ],
+  "form": "lower"
  },
  "o/vampire_survivors.png": {
   "game": "vampire_survivors",
@@ -3643,6 +3752,21 @@
    0.99689
   ]
  },
+ "r/tiny_rogues.png": {
+  "game": "tiny_rogues",
+  "config": "tiny_rogues.json",
+  "style": "tiny_rogues",
+  "body_center": 0.4676,
+  "body_height": 0.8361,
+  "body_center_x": 0.4696,
+  "body_width": 0.7845,
+  "src": [
+   0.00126,
+   0.36835,
+   0.22883,
+   0.94679
+  ]
+ },
  "r/uma_musume_pretty_derby.png": {
   "game": "uma_musume_pretty_derby",
   "config": "uma_musume_pretty_derby_line2.json",
@@ -4002,6 +4126,21 @@
    0.66795
   ]
  },
+ "s/tiny_rogues.png": {
+  "game": "tiny_rogues",
+  "config": "tiny_rogues.json",
+  "style": "tiny_rogues",
+  "body_center": 0.5012,
+  "body_height": 0.7647,
+  "body_center_x": 0.4942,
+  "body_width": 0.8256,
+  "src": [
+   0.78374,
+   0.37858,
+   1.0,
+   0.94679
+  ]
+ },
  "s/uma_musume_pretty_derby.png": {
   "game": "uma_musume_pretty_derby",
   "config": "uma_musume_pretty_derby.json",
@@ -4267,6 +4406,22 @@
    0.13412
   ]
  },
+ "t/tiny_rogues.png": {
+  "game": "tiny_rogues",
+  "config": "tiny_rogues.json",
+  "style": "tiny_rogues",
+  "body_center": 0.4588,
+  "body_height": 0.7919,
+  "body_center_x": 0.4654,
+  "body_width": 0.7547,
+  "src": [
+   0.20453,
+   0.03206,
+   0.40444,
+   0.48772
+  ],
+  "form": "lower"
+ },
  "t/uma_musume_pretty_derby.png": {
   "game": "uma_musume_pretty_derby",
   "config": "uma_musume_pretty_derby_line2.json",
@@ -4425,6 +4580,22 @@
    0.63281,
    1.0625
   ]
+ },
+ "u/tiny_rogues.png": {
+  "game": "tiny_rogues",
+  "config": "tiny_rogues.json",
+  "style": "tiny_rogues",
+  "body_center": 0.4588,
+  "body_height": 0.7916,
+  "body_center_x": 0.4632,
+  "body_width": 0.7388,
+  "src": [
+   0.4891,
+   0.43042,
+   0.67687,
+   0.8854
+  ],
+  "form": "lower"
  },
  "u/uma_musume_pretty_derby.png": {
   "game": "uma_musume_pretty_derby",
@@ -4755,6 +4926,22 @@
    1.00781,
    1.0625
   ]
+ },
+ "y/tiny_rogues.png": {
+  "game": "tiny_rogues",
+  "config": "tiny_rogues.json",
+  "style": "tiny_rogues",
+  "body_center": 0.4588,
+  "body_height": 0.7919,
+  "body_center_x": 0.4648,
+  "body_width": 0.7505,
+  "src": [
+   0.59053,
+   0.03206,
+   0.78709,
+   0.48772
+  ],
+  "form": "lower"
  },
  "y/uma_musume_pretty_derby.png": {
   "game": "uma_musume_pretty_derby",

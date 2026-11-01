@@ -11,6 +11,15 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Tiny Rogues' letters, its sword i, and its staff and bow.** Cut from the
+  main title alone (the "between Heaven & Hell" lines cropped off): t n y,
+  R o g u e S with each face kept and its 3D side rebuilt, the sword as the i,
+  and the staff and bow as a decoration pair. `extrude` learned to shade by
+  direction (`colour_down`: maroon walls, navy floors) and to ring a letter in
+  its own outline (`outline`), and fill learned `rgb_ranges` and
+  `exclude_rgb_ranges`, since the sword, staff and bow touch the letters and
+  can only be told apart by colour.
+
 - **The game card and the Collection page put the logo beside the cover, and
   the Collection counts a game's songs.** The year, type and connections now
   stand under the cover, and the logo takes the room beside it as large as it

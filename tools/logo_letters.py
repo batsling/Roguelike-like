@@ -108,6 +108,9 @@ so Godot never imports the source), is JSON:
                   fill in a dark outline; min_channel keeps a coloured glow out
                   of a white fill; "max_brightness": n with "min_brightness":
                   -1 makes fill the DARK pixels (black letters, Mewgenics);
+                  "rgb_ranges": [[r0, r1, g0, g1, b0, b1 (, x0, y0, x1, y1)]]
+                  makes fill those colours, each only in its box if given;
+                  "exclude_rgb_ranges" (same form) takes colours out of it;
                   "rows": [y0, y1] keeps fill to those rows; "exclude_white": n
                   and "exclude_grey": {"spread", "below"} leave a white sticker
                   border and a grey shadow out of the fill; "inside_white": n makes fill what a
@@ -152,7 +155,11 @@ so Godot never imports the source), is JSON:
                   "extrude": {"dx", "dy", "colour", "skip"} (in cut) gives a
                   block letter its 3D side by sweeping its face (Isaac);
                   "colour_far", "alpha", "alpha_far" shade it from the face
-                  out and let it fade (Vampire Survivors);
+                  out and let it fade (Vampire Survivors); "colour_down"
+                  (and "colour_down_far") colours the walls swept from the
+                  face's bottom edges apart from its side walls, and
+                  "outline": {"width", "colour"} rings face and side
+                  together (Tiny Rogues);
                   "outline_max": n keeps only dark pixels past the face (not
                   a glow), "side": {"dy", "dx"} adds the dark 3D side the face
                   sweeps over, "close_dark": n brings in dark counters;
@@ -261,6 +268,35 @@ def _fill_mask(A: np.ndarray, cfg: dict) -> np.ndarray:
         m = np.zeros(A.shape[:2], bool)
         for col in f["colours"]:
             m |= (A[..., 3] > 0) & (np.abs(A[..., :3] - np.array(col)).max(-1) <= f.get("tolerance", 6))
+    if "rgb_ranges" in f:
+        # pieces told apart by colour alone, each colour only inside its own
+        # box (Tiny Rogues' sword, staff and bow, all touching the letters):
+        # [r0, r1, g0, g1, b0, b1] or [..., x0, y0, x1, y1]
+        m = np.zeros(A.shape[:2], bool)
+        H_, W_ = A.shape[:2]
+        for rg in f["rgb_ranges"]:
+            hit = ((A[..., 3] > f.get("min_alpha", 200))
+                   & (A[..., 0] >= rg[0]) & (A[..., 0] <= rg[1])
+                   & (A[..., 1] >= rg[2]) & (A[..., 1] <= rg[3])
+                   & (A[..., 2] >= rg[4]) & (A[..., 2] <= rg[5]))
+            if len(rg) == 10:
+                box = np.zeros((H_, W_), bool)
+                box[rg[7]:rg[9], rg[6]:rg[8]] = True
+                hit &= box
+            m |= hit
+    if "exclude_rgb_ranges" in f:
+        # colours that are never a piece's, in the same form (Tiny Rogues' bow
+        # string, the face's own orange give or take, drawn across E and S)
+        H_, W_ = A.shape[:2]
+        for rg in f["exclude_rgb_ranges"]:
+            hit = ((A[..., 0] >= rg[0]) & (A[..., 0] <= rg[1])
+                   & (A[..., 1] >= rg[2]) & (A[..., 1] <= rg[3])
+                   & (A[..., 2] >= rg[4]) & (A[..., 2] <= rg[5]))
+            if len(rg) == 10:
+                box = np.zeros((H_, W_), bool)
+                box[rg[7]:rg[9], rg[6]:rg[8]] = True
+                hit &= box
+            m = m & ~hit
     if "rows" in f:  # only these rows of the logo (one line of a two-line logo)
         m = m.copy()
         m[: f["rows"][0]] = False
@@ -866,17 +902,44 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
                 near_a = float(ex_cfg.get("alpha", 1.0))
                 far_a = float(ex_cfg.get("alpha_far", near_a))
                 side_a = np.zeros((H, W))
+                # "colour_down" / "colour_down_far": the walls swept from the
+                # face's BOTTOM edges in a colour of their own, the ones from its
+                # side edges keeping "colour" (Tiny Rogues: maroon right walls,
+                # navy floors). A pixel is the wall of the edge that reached it.
+                down = "colour_down" in ex_cfg
+                if down:
+                    d_near = np.array(ex_cfg["colour_down"], float)
+                    d_far = np.array(ex_cfg.get("colour_down_far", ex_cfg["colour_down"]), float)
+                    sx_ = int(np.sign(ex_cfg["dx"]))
+                    sy_ = int(np.sign(ex_cfg["dy"]))
+                    # the edges the face sweeps out of: where the next pixel
+                    # the way it moves is not face
+                    edge_b = face_m & ~nd.shift(face_m, (-sy_, 0), order=0, cval=False) if sy_ else np.zeros_like(face_m)
                 for k in range(1, steps + 1):
                     # a shift that falls off the edge, never wraps round to the other side
-                    step = nd.shift(face_m, (round(ex_cfg["dy"] * k / steps),
-                                             round(ex_cfg["dx"] * k / steps)), order=0, cval=False)
-                    side_rgb[step & ~side] = near_c + (far_c - near_c) * (k / steps)
-                    side_a[step & ~side] = near_a + (far_a - near_a) * (k / steps)
+                    off = (round(ex_cfg["dy"] * k / steps), round(ex_cfg["dx"] * k / steps))
+                    step = nd.shift(face_m, off, order=0, cval=False)
+                    new = step & ~side
+                    side_rgb[new] = near_c + (far_c - near_c) * (k / steps)
+                    if down:
+                        floor = new & nd.shift(edge_b, off, order=0, cval=False)
+                        side_rgb[floor] = d_near + (d_far - d_near) * (k / steps)
+                    side_a[new] = near_a + (far_a - near_a) * (k / steps)
                     side |= step
                 rgb[:] = 0
                 al[:] = 0
+                ol = ex_cfg.get("outline")
+                if ol:
+                    # an even outline of the logo's own width round the face and
+                    # its side together (Tiny Rogues' black), counters included
+                    ring = (nd.distance_transform_edt(~side) <= ol["width"]) & ~side
+                    rgb[ring] = ol.get("colour", [0, 0, 0])
+                    al[ring] = 1
                 rgb[side] = side_rgb[side]
                 rgb[face_m] = A[face_m][:, :3]
+                # a part of the face something else was drawn over, rebuilt
+                # (`restore`): the face colour, not what covered it
+                rgb[painted & face_m] = fill_colour
                 al[side] = side_a[side] if "alpha" in ex_cfg else 1
                 al[face_m] = 1
                 if ex_cfg.get("soft_edge"):

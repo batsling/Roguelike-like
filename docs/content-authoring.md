@@ -132,7 +132,20 @@ by sweeping each face 17 right and 8 down (`extrude`), see-through grey-brown
 shading from the face out and fading (`colour_far`, `alpha`, `alpha_far`,
 measured along the logo's own side), with its edge softened (`soft_edge`). So
 the joined faces only needed parting: AMP, RE, UR and VIV by vertical `splits`
-at the serifs where they touch, the sides never mattering. Spelunky Classic gives S P E L U N K Y (the first K): its
+at the serifs where they touch, the sides never mattering. Tiny Rogues
+gives t n y, R o g u e S, the sword as its i (sized by the blade, the hilt over
+the line, `body`) and the crystal staff and bow as a decoration pair. Its source
+is the main title only, cropped out of the full "between Heaven & Hell" logo.
+The faces are cut and the 3D side rebuilt, now shaded by DIRECTION: walls swept
+from the side edges in maroon, floors from the bottom edges in navy
+(`colour_down`), and the whole letter ringed by its own black outline
+(`extrude`'s `outline`), since the logo's black was one shape round the block.
+The sword, staff and bow touch the letters' sides, so they are told apart by
+colour (`rgb_ranges`, each colour only in its own box: the browns with red
+under 215 are never a face, which is always red 255); the bow's string and limb
+cross E and S, so the string's colours are left out of the faces
+(`exclude_rgb_ranges`) and the face they hid is painted back (`restore`). The
+bow's lower limb has a gap where the S hides it. Spelunky Classic gives S P E L U N K Y (the first K): its
 source is a blurry 1920x1080 screenshot of pixel art, so `pixel_grid` rebuilds
 the logo pixel by pixel on the measured grid (11.707px a pixel), each snapped to
 the logo's three-colour palette, and the letters come out as sharp 12x blocks. Haste gives H A S T E, solid black
