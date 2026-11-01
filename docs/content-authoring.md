@@ -222,7 +222,10 @@ d are exact repeats and left out. Don't Starve gives D o n ' t S t a r v e
 that run into each other through their black edges and grey shadow, so each
 letter is found by its white (`min_brightness` 200) and cut as drawn with what
 lies within 8px (`reach`), 2x `smooth_scale` from a 594px source; the v's right
-stroke rises far above the line, so the v is sized by its body. A logo can
+stroke rises far above the line, so the v is sized by its body. Returnal gives
+R E T U R N A L (the second R as `__2`): yellow faces (`rgb_ranges`) in a soft
+white smoke that runs from letter to letter, so each keeps the smoke within
+110px and fades it out into its neighbour's (`glow_share`, as Diablo). A logo can
 take more than one config when its parts are built differently: Uma Musume has
 four, one per line, one for the girl and one for her dash.
 `mewgenics.json` is the simple case: black letters that do not touch, cut as

@@ -11,6 +11,11 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Returnal's letters.** R E T U R N A L (the second R as `__2`), each yellow
+  face with the white smoke and yellow haze round it. The smoke runs from
+  letter to letter, so each keeps the part nearest it and fades out into its
+  neighbour's (`glow_share`, as Diablo's flames) instead of stopping on a seam.
+
 - **Don't Starve's letters.** D o n ' t S t a r v e (the second t as `__2`, the
   apostrophe in `apostrophe/`), scratchy white strokes cut as drawn at 2x with
   their black edge and grey drop shadow. The letters run into each other

@@ -442,6 +442,21 @@
    0.51176
   ]
  },
+ "a/returnal.png": {
+  "game": "returnal",
+  "config": "returnal.json",
+  "style": "returnal",
+  "body_center": 0.5047,
+  "body_height": 0.3323,
+  "body_center_x": 0.5247,
+  "body_width": 0.6726,
+  "src": [
+   0.69506,
+   0.06345,
+   0.85469,
+   0.8731
+  ]
+ },
  "a/risk_of_rain_2.png": {
   "game": "risk_of_rain_2",
   "config": "risk_of_rain_2.json",
@@ -1980,6 +1995,21 @@
    0.92059
   ]
  },
+ "e/returnal.png": {
+  "game": "returnal",
+  "config": "returnal.json",
+  "style": "returnal",
+  "body_center": 0.4595,
+  "body_height": 0.3649,
+  "body_center_x": 0.482,
+  "body_width": 0.5856,
+  "src": [
+   0.16178,
+   0.1269,
+   0.32069,
+   0.87817
+  ]
+ },
  "e/rogue.png": {
   "game": "rogue",
   "config": "rogue_letters.py",
@@ -3371,6 +3401,21 @@
    0.50882
   ]
  },
+ "l/returnal.png": {
+  "game": "returnal",
+  "config": "returnal.json",
+  "style": "returnal",
+  "body_center": 0.4984,
+  "body_height": 0.3386,
+  "body_center_x": 0.4026,
+  "body_width": 0.4382,
+  "src": [
+   0.8053,
+   0.06853,
+   0.99642,
+   0.87817
+  ]
+ },
  "l/rogue.png": {
   "game": "rogue",
   "config": "rogue_letters.py",
@@ -3906,6 +3951,21 @@
    0.52206,
    0.70677,
    0.92059
+  ]
+ },
+ "n/returnal.png": {
+  "game": "returnal",
+  "config": "returnal.json",
+  "style": "returnal",
+  "body_center": 0.5,
+  "body_height": 0.363,
+  "body_center_x": 0.5023,
+  "body_width": 0.5991,
+  "src": [
+   0.58626,
+   0.09898,
+   0.74517,
+   0.8401
   ]
  },
  "n/risk_of_rain_2.png": {
@@ -4829,6 +4889,36 @@
    0.92206
   ]
  },
+ "r/returnal.png": {
+  "game": "returnal",
+  "config": "returnal.json",
+  "style": "returnal",
+  "body_center": 0.4415,
+  "body_height": 0.3679,
+  "body_center_x": 0.5743,
+  "body_width": 0.5181,
+  "src": [
+   0.01646,
+   0.13198,
+   0.21403,
+   0.89086
+  ]
+ },
+ "r/returnal__2.png": {
+  "game": "returnal",
+  "config": "returnal.json",
+  "style": "returnal",
+  "body_center": 0.4649,
+  "body_height": 0.3684,
+  "body_center_x": 0.5,
+  "body_width": 0.6182,
+  "src": [
+   0.47459,
+   0.13198,
+   0.63207,
+   0.85533
+  ]
+ },
  "r/risk_of_rain_2.png": {
   "game": "risk_of_rain_2",
   "config": "risk_of_rain_2.json",
@@ -5711,6 +5801,21 @@
    0.92059
   ]
  },
+ "t/returnal.png": {
+  "game": "returnal",
+  "config": "returnal.json",
+  "style": "returnal",
+  "body_center": 0.4691,
+  "body_height": 0.3677,
+  "body_center_x": 0.5025,
+  "body_width": 0.6386,
+  "src": [
+   0.2713,
+   0.12437,
+   0.41589,
+   0.86294
+  ]
+ },
  "t/rogue.png": {
   "game": "rogue",
   "config": "rogue_letters.py",
@@ -5948,6 +6053,21 @@
    0.03824,
    0.31979,
    0.51324
+  ]
+ },
+ "u/returnal.png": {
+  "game": "returnal",
+  "config": "returnal.json",
+  "style": "returnal",
+  "body_center": 0.436,
+  "body_height": 0.3737,
+  "body_center_x": 0.5048,
+  "body_width": 0.6,
+  "src": [
+   0.37079,
+   0.15228,
+   0.52112,
+   0.88579
   ]
  },
  "u/rogue.png": {
