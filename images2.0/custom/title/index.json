@@ -131,21 +131,6 @@
   "size": 0.94,
   "pad": 0.03
  },
- "6/868_back.png": {
-  "game": "868_back",
-  "config": "868_back.json",
-  "style": "868_back",
-  "body_center": 0.4812,
-  "body_height": 0.9323,
-  "body_center_x": 0.5,
-  "body_width": 0.8947,
-  "src": [
-   0.13808,
-   0.06338,
-   0.25732,
-   1.0
-  ]
- },
  "6/rogue.png": {
   "game": "rogue",
   "config": "rogue_letters.py",
@@ -169,36 +154,6 @@
   "pixel": true,
   "size": 0.94,
   "pad": 0.03
- },
- "8/868_back.png": {
-  "game": "868_back",
-  "config": "868_back.json",
-  "style": "868_back",
-  "body_center": 0.5,
-  "body_height": 0.9677,
-  "body_center_x": 0.5615,
-  "body_width": 0.7846,
-  "src": [
-   -0.00418,
-   0.06338,
-   0.1318,
-   0.93662
-  ]
- },
- "8/868_back__2.png": {
-  "game": "868_back",
-  "config": "868_back.json",
-  "style": "868_back",
-  "body_center": 0.5259,
-  "body_height": 0.9185,
-  "body_center_x": 0.5,
-  "body_width": 0.8947,
-  "src": [
-   0.26151,
-   -0.01408,
-   0.38075,
-   0.93662
-  ]
  },
  "8/rogue.png": {
   "game": "rogue",
@@ -237,21 +192,6 @@
    0.6954,
    0.73438,
    1.0
-  ]
- },
- "a/868_back.png": {
-  "game": "868_back",
-  "config": "868_back.json",
-  "style": "868_back",
-  "body_center": 0.5188,
-  "body_height": 0.9323,
-  "body_center_x": 0.5089,
-  "body_width": 0.9107,
-  "src": [
-   0.61925,
-   0.0,
-   0.7364,
-   0.93662
   ]
  },
  "a/balatro.png": {
@@ -423,6 +363,36 @@
    0.17505,
    0.481,
    0.77565
+  ]
+ },
+ "a/hand_of_fate.png": {
+  "game": "hand_of_fate",
+  "config": "hand_of_fate.json",
+  "style": "hand_of_fate",
+  "body_center": 0.5055,
+  "body_height": 0.5912,
+  "body_center_x": 0.4731,
+  "body_width": 0.5769,
+  "src": [
+   0.23294,
+   -0.02278,
+   0.53882,
+   0.43544
+  ]
+ },
+ "a/hand_of_fate__2.png": {
+  "game": "hand_of_fate",
+  "config": "hand_of_fate.json",
+  "style": "hand_of_fate",
+  "body_center": 0.5234,
+  "body_height": 0.6257,
+  "body_center_x": 0.5035,
+  "body_width": 0.5208,
+  "src": [
+   0.22353,
+   0.58734,
+   0.56235,
+   1.02025
   ]
  },
  "a/haste.png": {
@@ -759,21 +729,6 @@
   "size": 0.94,
   "pad": 0.03
  },
- "b/868_back.png": {
-  "game": "868_back",
-  "config": "868_back.json",
-  "style": "868_back",
-  "body_center": 0.5,
-  "body_height": 0.9677,
-  "body_center_x": 0.5515,
-  "body_width": 0.8088,
-  "src": [
-   0.47071,
-   0.06338,
-   0.61297,
-   0.93662
-  ]
- },
  "b/balatro.png": {
   "game": "balatro",
   "config": "balatro.json",
@@ -1006,21 +961,6 @@
   "pixel": true,
   "size": 0.94,
   "pad": 0.03
- },
- "c/868_back.png": {
-  "game": "868_back",
-  "config": "868_back.json",
-  "style": "868_back",
-  "body_center": 0.4741,
-  "body_height": 0.9185,
-  "body_center_x": 0.5,
-  "body_width": 0.8947,
-  "src": [
-   0.74268,
-   0.06338,
-   0.86192,
-   1.01408
-  ]
  },
  "c/caves_of_qud.png": {
   "game": "caves_of_qud",
@@ -1418,6 +1358,21 @@
    0.69819
   ]
  },
+ "d/hand_of_fate.png": {
+  "game": "hand_of_fate",
+  "config": "hand_of_fate.json",
+  "style": "hand_of_fate",
+  "body_center": 0.4752,
+  "body_height": 0.6441,
+  "body_center_x": 0.453,
+  "body_width": 0.5746,
+  "src": [
+   0.61882,
+   -0.02785,
+   1.04471,
+   0.53418
+  ]
+ },
  "d/luck_be_a_landlord.png": {
   "game": "luck_be_a_landlord",
   "config": "luck_be_a_landlord.json",
@@ -1519,23 +1474,6 @@
    0.45092,
    1.04734
   ]
- },
- "dash/868_back.png": {
-  "game": "868_back",
-  "config": "868_back.json",
-  "style": "868_back",
-  "body_center": 0.5,
-  "body_height": 0.7391,
-  "body_center_x": 0.5,
-  "body_width": 0.875,
-  "src": [
-   0.38703,
-   0.47887,
-   0.48745,
-   0.64085
-  ],
-  "size": 0.142,
-  "drop": -0.358
  },
  "dash/dead_cells.png": {
   "game": "dead_cells",
@@ -1966,6 +1904,21 @@
    0.71127
   ]
  },
+ "e/hand_of_fate.png": {
+  "game": "hand_of_fate",
+  "config": "hand_of_fate.json",
+  "style": "hand_of_fate",
+  "body_center": 0.537,
+  "body_height": 0.6667,
+  "body_center_x": 0.4937,
+  "body_width": 0.5443,
+  "src": [
+   0.63765,
+   0.47595,
+   1.00941,
+   1.02278
+  ]
+ },
  "e/haste.png": {
   "game": "haste",
   "config": "haste.json",
@@ -2381,6 +2334,36 @@
    0.91604
   ]
  },
+ "f/hand_of_fate.png": {
+  "game": "hand_of_fate",
+  "config": "hand_of_fate.json",
+  "style": "hand_of_fate",
+  "body_center": 0.5222,
+  "body_height": 0.5259,
+  "body_center_x": 0.4609,
+  "body_width": 0.4,
+  "src": [
+   0.43765,
+   0.33418,
+   0.70824,
+   0.67595
+  ]
+ },
+ "f/hand_of_fate__2.png": {
+  "game": "hand_of_fate",
+  "config": "hand_of_fate.json",
+  "style": "hand_of_fate",
+  "body_center": 0.531,
+  "body_height": 0.681,
+  "body_center_x": 0.5162,
+  "body_width": 0.5784,
+  "src": [
+   -0.04,
+   0.48354,
+   0.39529,
+   1.01519
+  ]
+ },
  "f/risk_of_rain_2.png": {
   "game": "risk_of_rain_2",
   "config": "risk_of_rain_2.json",
@@ -2701,6 +2684,21 @@
    0.21328,
    0.402,
    0.71026
+  ]
+ },
+ "h/hand_of_fate.png": {
+  "game": "hand_of_fate",
+  "config": "hand_of_fate.json",
+  "style": "hand_of_fate",
+  "body_center": 0.4979,
+  "body_height": 0.7448,
+  "body_center_x": 0.5327,
+  "body_width": 0.506,
+  "src": [
+   -0.04235,
+   -0.02278,
+   0.35294,
+   0.58228
   ]
  },
  "h/haste.png": {
@@ -3265,21 +3263,6 @@
   "size": 0.94,
   "pad": 0.03,
   "case": "lower"
- },
- "k/868_back.png": {
-  "game": "868_back",
-  "config": "868_back.json",
-  "style": "868_back",
-  "body_center": 0.5188,
-  "body_height": 0.9323,
-  "body_center_x": 0.5,
-  "body_width": 0.9077,
-  "src": [
-   0.8682,
-   0.0,
-   1.00418,
-   0.93662
-  ]
  },
  "k/darkest_dungeon.png": {
   "game": "darkest_dungeon",
@@ -3984,6 +3967,21 @@
   ],
   "form": "lower"
  },
+ "n/hand_of_fate.png": {
+  "game": "hand_of_fate",
+  "config": "hand_of_fate.json",
+  "style": "hand_of_fate",
+  "body_center": 0.5257,
+  "body_height": 0.6057,
+  "body_center_x": 0.4964,
+  "body_width": 0.558,
+  "src": [
+   0.41647,
+   -0.02278,
+   0.74118,
+   0.42025
+  ]
+ },
  "n/into_the_breach.png": {
   "game": "into_the_breach",
   "config": "into_the_breach.json",
@@ -4312,6 +4310,21 @@
    0.22642,
    0.85,
    0.97358
+  ]
+ },
+ "o/hand_of_fate.png": {
+  "game": "hand_of_fate",
+  "config": "hand_of_fate.json",
+  "style": "hand_of_fate",
+  "body_center": 0.5221,
+  "body_height": 0.5294,
+  "body_center_x": 0.541,
+  "body_width": 0.3934,
+  "src": [
+   0.28471,
+   0.33418,
+   0.57176,
+   0.67848
   ]
  },
  "o/into_the_breach.png": {
@@ -5846,6 +5859,21 @@
    0.51888
   ],
   "form": "lower"
+ },
+ "t/hand_of_fate.png": {
+  "game": "hand_of_fate",
+  "config": "hand_of_fate.json",
+  "style": "hand_of_fate",
+  "body_center": 0.5534,
+  "body_height": 0.6011,
+  "body_center_x": 0.515,
+  "body_width": 0.594,
+  "src": [
+   0.43529,
+   0.56709,
+   0.74824,
+   1.01772
+  ]
  },
  "t/haste.png": {
   "game": "haste",

@@ -225,15 +225,13 @@ lies within 8px (`reach`), 2x `smooth_scale` from a 594px source; the v's right
 stroke rises far above the line, so the v is sized by its body. Returnal gives
 R E T U R N A L (the second R as `__2`): yellow faces (`rgb_ranges`) in a soft
 white smoke that runs from letter to letter, so each keeps the smoke within
-110px and fades it out into its neighbour's (`glow_share`, as Diablo). 868-BACK
-gives 8 6 8, a `dash` and B A C K (the second 8 as `8/868_back__2.png`): glitched
-pixel letters cut as they are, 3x `smooth_scale`. The glitch breaks each letter
-into fragments and scatters specks round it, so every piece lists a point in
-each of its fragments and specks, by position; the specks would stretch the
-letter's box, so `body` holds it to the letter's rows, and for the specks
-beside the first 8 and the B its columns too (`[y0, y1, x0, x1]`). Its dash is
-only the bar, so it would fill the line: `size` 0.142 and `drop` -0.358 put it
-back where the logo has it (rows 81-98 of the letters' 21-141). A logo can
+110px and fades it out into its neighbour's (`glow_share`, as Diablo). 868-BACK was cut and then dropped
+(the owner, 1 Nov 2026), its pale glitch letters hard to read on the title's
+band; `body`'s column bounds (`[y0, y1, x0, x1]`), built for its stray specks,
+stay in the script. Hand of Fate gives H A N D, O F, F A T E (FATE's F and A
+as `__2`): carved gold letters cut solid (`min_alpha` 250) at 2x `smooth_scale`,
+the soft dark shadow round them shared out within 45px (`glow_share`); the D
+and FATE's F keep their sparkles. A logo can
 take more than one config when its parts are built differently: Uma Musume has
 four, one per line, one for the girl and one for her dash.
 `mewgenics.json` is the simple case: black letters that do not touch, cut as

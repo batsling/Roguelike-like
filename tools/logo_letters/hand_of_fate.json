@@ -1,0 +1,30 @@
+{
+  "game": "hand_of_fate",
+  "source": "hand_of_fate.png",
+  "pieces": {
+    "h": [110, 120],
+    "a": [200, 100],
+    "n": [288, 100],
+    "d": [388, 110],
+    "o": [230, 218],
+    "f": [282, 218],
+    "f.2": [120, 300],
+    "a.2": [210, 340],
+    "t": [296, 340],
+    "e": [392, 320]
+  },
+  "fill": {
+    "min_alpha": 250,
+    "min_brightness": -1
+  },
+  "adopt_strays": false,
+  "smooth": false,
+  "shadow": false,
+  "cut": {
+    "reach": 45,
+    "glow_share": {"falloff": 6},
+    "min_part": 30,
+    "scale": 2,
+    "smooth_scale": true
+  }
+}
