@@ -56,5 +56,11 @@
     "reach": 1,
     "silhouette": true,
     "scale": 3
+  },
+  "size": {
+    "decor_right": 0.85
+  },
+  "drop": {
+    "decor_right": 0.2
   }
 }
