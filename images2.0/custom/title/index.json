@@ -131,6 +131,21 @@
   "size": 0.94,
   "pad": 0.03
  },
+ "6/868_back.png": {
+  "game": "868_back",
+  "config": "868_back.json",
+  "style": "868_back",
+  "body_center": 0.4812,
+  "body_height": 0.9323,
+  "body_center_x": 0.5,
+  "body_width": 0.8947,
+  "src": [
+   0.13808,
+   0.06338,
+   0.25732,
+   1.0
+  ]
+ },
  "6/rogue.png": {
   "game": "rogue",
   "config": "rogue_letters.py",
@@ -154,6 +169,36 @@
   "pixel": true,
   "size": 0.94,
   "pad": 0.03
+ },
+ "8/868_back.png": {
+  "game": "868_back",
+  "config": "868_back.json",
+  "style": "868_back",
+  "body_center": 0.5,
+  "body_height": 0.9677,
+  "body_center_x": 0.5615,
+  "body_width": 0.7846,
+  "src": [
+   -0.00418,
+   0.06338,
+   0.1318,
+   0.93662
+  ]
+ },
+ "8/868_back__2.png": {
+  "game": "868_back",
+  "config": "868_back.json",
+  "style": "868_back",
+  "body_center": 0.5259,
+  "body_height": 0.9185,
+  "body_center_x": 0.5,
+  "body_width": 0.8947,
+  "src": [
+   0.26151,
+   -0.01408,
+   0.38075,
+   0.93662
+  ]
  },
  "8/rogue.png": {
   "game": "rogue",
@@ -192,6 +237,21 @@
    0.6954,
    0.73438,
    1.0
+  ]
+ },
+ "a/868_back.png": {
+  "game": "868_back",
+  "config": "868_back.json",
+  "style": "868_back",
+  "body_center": 0.5188,
+  "body_height": 0.9323,
+  "body_center_x": 0.5089,
+  "body_width": 0.9107,
+  "src": [
+   0.61925,
+   0.0,
+   0.7364,
+   0.93662
   ]
  },
  "a/balatro.png": {
@@ -699,6 +759,21 @@
   "size": 0.94,
   "pad": 0.03
  },
+ "b/868_back.png": {
+  "game": "868_back",
+  "config": "868_back.json",
+  "style": "868_back",
+  "body_center": 0.5,
+  "body_height": 0.9677,
+  "body_center_x": 0.5515,
+  "body_width": 0.8088,
+  "src": [
+   0.47071,
+   0.06338,
+   0.61297,
+   0.93662
+  ]
+ },
  "b/balatro.png": {
   "game": "balatro",
   "config": "balatro.json",
@@ -931,6 +1006,21 @@
   "pixel": true,
   "size": 0.94,
   "pad": 0.03
+ },
+ "c/868_back.png": {
+  "game": "868_back",
+  "config": "868_back.json",
+  "style": "868_back",
+  "body_center": 0.4741,
+  "body_height": 0.9185,
+  "body_center_x": 0.5,
+  "body_width": 0.8947,
+  "src": [
+   0.74268,
+   0.06338,
+   0.86192,
+   1.01408
+  ]
  },
  "c/caves_of_qud.png": {
   "game": "caves_of_qud",
@@ -1428,6 +1518,21 @@
    -0.04734,
    0.45092,
    1.04734
+  ]
+ },
+ "dash/868_back.png": {
+  "game": "868_back",
+  "config": "868_back.json",
+  "style": "868_back",
+  "body_center": 0.5,
+  "body_height": 0.7391,
+  "body_center_x": 0.5,
+  "body_width": 0.875,
+  "src": [
+   0.38703,
+   0.47887,
+   0.48745,
+   0.64085
   ]
  },
  "dash/dead_cells.png": {
@@ -3158,6 +3263,21 @@
   "size": 0.94,
   "pad": 0.03,
   "case": "lower"
+ },
+ "k/868_back.png": {
+  "game": "868_back",
+  "config": "868_back.json",
+  "style": "868_back",
+  "body_center": 0.5188,
+  "body_height": 0.9323,
+  "body_center_x": 0.5,
+  "body_width": 0.9077,
+  "src": [
+   0.8682,
+   0.0,
+   1.00418,
+   0.93662
+  ]
  },
  "k/darkest_dungeon.png": {
   "game": "darkest_dungeon",

@@ -225,7 +225,13 @@ lies within 8px (`reach`), 2x `smooth_scale` from a 594px source; the v's right
 stroke rises far above the line, so the v is sized by its body. Returnal gives
 R E T U R N A L (the second R as `__2`): yellow faces (`rgb_ranges`) in a soft
 white smoke that runs from letter to letter, so each keeps the smoke within
-110px and fades it out into its neighbour's (`glow_share`, as Diablo). A logo can
+110px and fades it out into its neighbour's (`glow_share`, as Diablo). 868-BACK
+gives 8 6 8, a `dash` and B A C K (the second 8 as `8/868_back__2.png`): glitched
+pixel letters cut as they are, 3x `smooth_scale`. The glitch breaks each letter
+into fragments and scatters specks round it, so every piece lists a point in
+each of its fragments and specks, by position; the specks would stretch the
+letter's box, so `body` holds it to the letter's rows, and for the specks
+beside the first 8 and the B its columns too (`[y0, y1, x0, x1]`). A logo can
 take more than one config when its parts are built differently: Uma Musume has
 four, one per line, one for the girl and one for her dash.
 `mewgenics.json` is the simple case: black letters that do not touch, cut as

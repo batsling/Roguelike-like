@@ -11,6 +11,14 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **868-BACK's letters.** 8 6 8, its hyphen and B A C K (the second 8 as `__2`),
+  glitched pixel letters cut as they are at 3x. The glitch breaks each letter
+  into several fragments and scatters specks round it, so every fragment and
+  speck is given by position to the letter it belongs to. A speck above, below
+  or beside a letter would have stretched the box it is sized and centred by, so
+  those letters carry `body` rows, and `body` can now bound columns too
+  (`[y0, y1, x0, x1]`) for the specks beside the first 8 and the B.
+
 - **Returnal's letters.** R E T U R N A L (the second R as `__2`), each yellow
   face with the white smoke and yellow haze round it. The smoke runs from
   letter to letter, so each keeps the part nearest it and fades out into its

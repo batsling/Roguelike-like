@@ -49,7 +49,8 @@ so Godot never imports the source), is JSON:
                   for a piece with something attached (an eye stalk, a knife,
                   slime); its width is then measured over those rows only, so
                   a stalk off to one side cannot pull the letter's middle with
-                  it. Otherwise the letter's box is measured from its face
+                  it. [y_top, y_bottom, x_left, x_right] bounds the columns
+                  too (a loose speck beside the letter, 868-BACK). Otherwise the letter's box is measured from its face
                   (fill), so glow, shadow and outline never shift it. The index
                   records it as body_center / body_height (vertical) and
                   body_center_x / body_width (horizontal), fractions of the PNG
@@ -1603,8 +1604,12 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
         if bd:
             # and its width from those rows only, so a stalk or a drip off
             # to one side cannot pull the letter's middle with it
-            by0, by1 = bd
+            by0, by1 = bd[:2]
             rows = (fy >= by0) & (fy < by1)
+            if len(bd) == 4:
+                # [y0, y1, x0, x1]: its columns too, so a glitch speck
+                # beside the letter (868-BACK) is not its edge
+                rows &= (fx >= bd[2]) & (fx < bd[3])
             if rows.any():
                 fx = fx[rows]
         bx0, bx1 = fx.min(), fx.max() + 1
