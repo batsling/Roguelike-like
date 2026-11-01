@@ -1345,7 +1345,8 @@
         0,
         0
       ],
-      "width": 40
+      "width": 44,
+      "miter": true
     }
   }
 }

@@ -1655,15 +1655,15 @@
   "game": "tiny_rogues",
   "config": "tiny_rogues.json",
   "style": "tiny_rogues",
-  "body_center": 0.4549,
-  "body_height": 0.7323,
-  "body_center_x": 0.554,
-  "body_width": 0.6248,
+  "body_center": 0.4554,
+  "body_height": 0.7243,
+  "body_center_x": 0.5532,
+  "body_width": 0.6151,
   "src": [
-   0.60562,
-   0.41542,
-   0.81894,
-   0.90723
+   0.60394,
+   0.41269,
+   0.82062,
+   0.90996
   ],
   "form": "lower"
  },
@@ -1944,15 +1944,15 @@
   "game": "tiny_rogues",
   "config": "tiny_rogues.json",
   "style": "tiny_rogues",
-  "body_center": 0.4871,
-  "body_height": 0.8244,
-  "body_center_x": 0.5092,
-  "body_width": 0.5782,
+  "body_center": 0.4878,
+  "body_height": 0.8177,
+  "body_center_x": 0.5091,
+  "body_width": 0.5705,
   "src": [
-   0.30176,
-   0.41542,
-   0.55113,
-   0.99795
+   0.30008,
+   0.41269,
+   0.55281,
+   1.0
   ],
   "form": "lower"
  },
@@ -3048,15 +3048,15 @@
   "game": "tiny_rogues",
   "config": "tiny_rogues.json",
   "style": "tiny_rogues",
-  "body_center": 0.4359,
-  "body_height": 0.7521,
-  "body_center_x": 0.4679,
-  "body_width": 0.5936,
+  "body_center": 0.4366,
+  "body_height": 0.7437,
+  "body_center_x": 0.4684,
+  "body_width": 0.5852,
   "src": [
-   0.43168,
-   0.03206,
-   0.66681,
-   0.51091
+   0.43001,
+   0.02933,
+   0.66848,
+   0.51364
   ],
   "form": "lower"
  },
@@ -3257,15 +3257,15 @@
   "game": "tiny_rogues",
   "config": "tiny_rogues.json",
   "style": "tiny_rogues",
-  "body_center": 0.455,
-  "body_height": 0.7327,
-  "body_center_x": 0.4982,
-  "body_width": 0.5638,
+  "body_center": 0.4555,
+  "body_height": 0.7247,
+  "body_center_x": 0.4983,
+  "body_width": 0.5559,
   "src": [
-   0.15968,
-   0.41473,
-   0.39606,
-   0.90723
+   0.15801,
+   0.41201,
+   0.39774,
+   0.90996
   ],
   "form": "lower"
  },
@@ -3756,15 +3756,15 @@
   "game": "tiny_rogues",
   "config": "tiny_rogues.json",
   "style": "tiny_rogues",
-  "body_center": 0.4589,
-  "body_height": 0.8206,
-  "body_center_x": 0.4267,
-  "body_width": 0.71,
+  "body_center": 0.4593,
+  "body_height": 0.8131,
+  "body_center_x": 0.4257,
+  "body_width": 0.703,
   "src": [
-   0.00084,
-   0.36835,
-   0.25231,
-   0.95771
+   0.0,
+   0.36562,
+   0.25398,
+   0.96044
   ]
  },
  "r/uma_musume_pretty_derby.png": {
@@ -4130,15 +4130,15 @@
   "game": "tiny_rogues",
   "config": "tiny_rogues_s.json",
   "style": "tiny_rogues_s",
-  "body_center": 0.4595,
-  "body_height": 0.8194,
-  "body_center_x": 0.5242,
-  "body_width": 0.7952,
+  "body_center": 0.4599,
+  "body_height": 0.8119,
+  "body_center_x": 0.5239,
+  "body_width": 0.7835,
   "src": [
-   0.77284,
-   0.36835,
-   0.9979,
-   0.95771
+   0.77117,
+   0.36562,
+   0.99958,
+   0.96044
   ]
  },
  "s/uma_musume_pretty_derby.png": {
@@ -4410,15 +4410,15 @@
   "game": "tiny_rogues",
   "config": "tiny_rogues.json",
   "style": "tiny_rogues",
-  "body_center": 0.4474,
-  "body_height": 0.7723,
-  "body_center_x": 0.4414,
-  "body_width": 0.7157,
+  "body_center": 0.4481,
+  "body_height": 0.7633,
+  "body_center_x": 0.4423,
+  "body_width": 0.7045,
   "src": [
-   0.20453,
-   0.03206,
-   0.41534,
-   0.49932
+   0.20285,
+   0.02933,
+   0.41702,
+   0.50205
   ],
   "form": "lower"
  },
@@ -4585,15 +4585,15 @@
   "game": "tiny_rogues",
   "config": "tiny_rogues.json",
   "style": "tiny_rogues",
-  "body_center": 0.4781,
-  "body_height": 0.7697,
-  "body_center_x": 0.4932,
-  "body_width": 0.5658,
+  "body_center": 0.4784,
+  "body_height": 0.7608,
+  "body_center_x": 0.4933,
+  "body_width": 0.5582,
   "src": [
-   0.45516,
-   0.41542,
-   0.70034,
-   0.88336
+   0.45348,
+   0.41269,
+   0.70201,
+   0.88608
   ],
   "form": "lower"
  },
@@ -4931,15 +4931,15 @@
   "game": "tiny_rogues",
   "config": "tiny_rogues.json",
   "style": "tiny_rogues",
-  "body_center": 0.4474,
-  "body_height": 0.7723,
-  "body_center_x": 0.5365,
-  "body_width": 0.6943,
+  "body_center": 0.4481,
+  "body_height": 0.7633,
+  "body_center_x": 0.5359,
+  "body_width": 0.6835,
   "src": [
-   0.5679,
-   0.03206,
-   0.78039,
-   0.49932
+   0.56622,
+   0.02933,
+   0.78206,
+   0.50205
   ],
   "form": "lower"
  },

@@ -144,9 +144,13 @@ y, u and e); a rebuild that swept every face the same way blacked out the left
 walls, which is what the owner caught. The shading between two letters belongs
 to both, as the S's left strip does. It stops at another letter's face, at the
 sword, staff and bow (`barrier`), 90px from the face, and 22 rows above it; the
-E is clipped at the S's cream edge. Each letter is ringed by a square-cornered
-40px outline (`pixel_outline` round everything kept), so the logo's right-angle
-steps stay. Where the bow string crossed the E's wall its 45-degree top edge is
+E is clipped at the S's cream edge. Each letter is the logo's own pixels with
+the black taken off, then given an outline measured to match the logo's
+(`pixel_outline` with `"miter": true`, round everything kept): 44px out from
+every edge, square where straight edges meet, and 44px ACROSS a 45-degree edge,
+which a square measure makes 1.4 times as thick. Each edge pixel is classed by
+its slope (a smoothed gradient): straight ones grow square, diagonal ones by
+perpendicular distance. The logo's right-angle steps stay. Where the bow string crossed the E's wall its 45-degree top edge is
 drawn back row by row (`repaint` rects). The earlier rebuild's options
 (`extrude`'s `colour_down`, `outline`, `wall_gradient`, `square_corners`,
 `close_face`) stay in the script, unused here.
@@ -159,7 +163,7 @@ its own (`tiny_rogues_s.json`; the letters config `hold`s it so the E still stop
 where it starts): every pixel of the original S, its own sides, the red wedges on
 its stepped top-left and the dark red strip down its left (the E's wall, which
 the owner wants on the S), measured by its face alone (`box_fill`) and given the
-other letters' square 40px outline. Under the bow it is rebuilt pixel by pixel on
+other letters' 44px mitred outline. Under the bow it is rebuilt pixel by pixel on
 the source before cutting (`repaint`): the hidden top-right corner drawn outright
 as three steps (24px across, 23px down, each a 9-row white top over yellow, read
 off the step tops the bow leaves showing and the S's own steps elsewhere), the

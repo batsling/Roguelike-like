@@ -1044,7 +1044,26 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
                 po = cut["pixel_outline"]
                 # round the face, or round everything kept (a letter as drawn)
                 body_ = (keep | painted) if cut.get("drawn") else f
-                if po.get("round"):
+                if po.get("miter"):
+                    # A pen-stroke outline, measured off the logo (Tiny Rogues):
+                    # `width` out from every edge, square where straight edges
+                    # meet, and the same width ACROSS a 45-degree edge (a square
+                    # measure makes a diagonal 1.4 times as thick). Each edge
+                    # pixel is classed by the edge's slope: straight ones grow
+                    # square, diagonal ones by perpendicular distance.
+                    w_ = po.get("width", 1)
+                    edge_ = body_ & ~nd.binary_erosion(body_)
+                    sm = nd.gaussian_filter(body_.astype(float), 3)
+                    ang = np.degrees(np.arctan2(nd.sobel(sm, 0), nd.sobel(sm, 1))) % 90
+                    diag_ = edge_ & (np.abs(ang - 45) < 15)
+                    axis_ = edge_ & ~diag_
+                    ring = nd.distance_transform_cdt(~axis_, metric="chessboard") <= w_ if axis_.any() else np.zeros_like(body_)
+                    if diag_.any():
+                        ch = nd.distance_transform_cdt(~diag_, metric="chessboard")
+                        tx = nd.distance_transform_cdt(~diag_, metric="taxicab")
+                        ring |= np.maximum(ch, tx / np.sqrt(2)) <= w_
+                    ring &= ~body_
+                elif po.get("round"):
                     # an even, round-cornered ring, as `extrude`'s outline
                     ring = (nd.distance_transform_edt(~body_) <= po.get("width", 1)) & ~body_
                 else:
