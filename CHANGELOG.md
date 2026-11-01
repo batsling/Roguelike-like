@@ -11,6 +11,134 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The title is centred whatever opens it.** A piece's `pad` (room either
+  side, given to Rogue's letters) now only goes between pieces: at the start
+  of a row it pushed the whole row 1.26px right whenever Rogue's R opened the
+  title, which CI caught one draw in about twenty-five.
+- **Uma Musume's decoration:** the right half is smaller, and its bar lowered
+  onto the line the runner trails (a `line_center` decoration now takes its
+  `drop` too; it used to ignore it).
+
+- **Noita's letters.** N o i t a, pixel art rebuilt on the logo's own pixel
+  grid and cut sharp, the i with its dot; pixel for pixel the logo's own.
+
+- **Diablo's letters.** D I A B L O, each in its own flame with its soft
+  glow. Two new cutter options: `glow_share` fades a glow two letters share
+  out into the neighbour's instead of cutting it on a seam, and `inpaint`
+  rebuilds the ® as the glow it sits in.
+
+- **Into the Breach's letters.** I N T O, T H E, B R E A C H, pixel art cut
+  at 8x from the owner's sharper logo, each letter's haze and drop shadow
+  drawn to the logo's own recipe, measured pixel by pixel (a new
+  `synth_shadow` option): the dark-pink haze right outside the white outline
+  is 14 alpha per unit of a 1-2-1 kernel over the body, the shadow the body
+  moved 3px down-right. Laid back in place, the letters rebuild the logo.
+
+- **Wildfrost's letters.** W I L D F R O S T, the O the gem, each with the
+  logo's soft shadow drawn again under it.
+
+- **Ember Knights' letters.** E M B E R with each letter's glow drawn again
+  round its own shape (the logo's runs from letter to letter) and its flames
+  hanging over the line, and K N I G H T S cut plain.
+
+- **Dwarf Fortress's letters.** D W A R F and F O R T R E S S, the O the
+  dwarf's head. Each DWARF letter's dark bottom band, cut short where the red
+  row is drawn over it, is finished as a curve and a straight line at the
+  height of its own clean columns.
+
+- **Tiny Rogues dropped; Demonic Mahjong instead.** Tiny Rogues' letters,
+  sword, staff, bow and logo are gone (the owner, after a long round of fixes
+  to its perspective 3D sides). The cutter options built for it stay. Demonic
+  Mahjong gives D E M O N I C, M A H J O N G, cut as drawn at 2x, and its red
+  seal is the first decoration that stands alone on the RIGHT: `pick_decor`
+  can now return `[{}, right]`, and a right piece with no left half is a unit
+  of its own (`TitleLetters.unit_key`).
+
+- **Tiny Rogues' letters, its sword i, and its staff and bow.** Cut from the
+  main title alone (the "between Heaven & Hell" lines cropped off): t n y,
+  R o g u e S with each face kept and its 3D side rebuilt, the sword as the i,
+  and the staff and bow as a decoration pair. `extrude` learned to shade by
+  direction (`colour_down`: maroon walls, navy floors) and to ring a letter in
+  its own outline (`outline`), and fill learned `rgb_ranges` and
+  `exclude_rgb_ranges`, since the sword, staff and bow touch the letters and
+  can only be told apart by colour.
+
+- **The game card and the Collection page put the logo beside the cover, and
+  the Collection counts a game's songs.** The year, type and connections now
+  stand under the cover, and the logo takes the room beside it as large as it
+  fits (`LogoProgress` fits itself to whatever it is given). On the map card
+  the rest of the facts (shop, shields, pace, rift) run under the pair at
+  full width, or stand beside the cover when there is no logo. On the
+  Collection page the name is the heading above a game with a logo; a game
+  without one keeps the same shape with its name large beside the cover.
+  Beside the record, "♪ 12 / 71" counts the game's songs on Roguelike Radio
+  (hidden when it has none), and opens the radio filtered to that game, with
+  a chip to clear it.
+
+- **A game's logo fills in on its page as its letters are earned.** Every game
+  with letters cut from its logo shows the logo under its cover on the run
+  map's game card and the Collection's game page: greyed until earned, each
+  earned piece laid on in the very picture the title draws, at the place it
+  was cut from, and the original in full colour once complete, with "5 / 14"
+  under it. A piece earned since a game's page last showed it glows once
+  (`TitleUnlocks` now keeps `seen` beside its draws). `LogoProgress`;
+  `tools/logo_letters.py` now writes each logo to `title/logos/` and each
+  piece's `src`. The grey was first just dimmed, which left Darkest Dungeon's
+  black ink black, so its earned letters looked locked; it is now a see-through
+  mid grey.
+
+- **Vampire Survivors' letters, all sixteen, and the crab's legs move to the
+  subtitle.** Only the gold faces are cut from the logo; the 3D side is
+  rebuilt per letter by sweeping the face (`extrude`), which can now shade
+  from one colour to another and fade out (`colour_far`, `alpha`,
+  `alpha_far`, `soft_edge`), matched to the logo's see-through grey-brown
+  side. Rebuilding the side is what let the joined faces (AMP, RE, UR, VIV)
+  come apart with plain vertical splits: a first cut kept each letter's side
+  as drawn and so could only take the six that touched nothing. Decorations
+  now belong to a row: `subtitle` in a config marks the crab's legs as the
+  subtitle's, which flips its own coin for a pair; the title draws the rest.
+
+- **The owner's notes on the title.** The menu's title is now "Roguelike-Like"
+  (a capital L, so the second word gets a capital-height letter too). The
+  crab's h sat too high and too big: its hand-set `body` rows started 47
+  source pixels below the h's real top, so it was blown up to fill the line
+  and poked out above. Two new per-piece settings, `size` and `pad`, carry the
+  owner's eye into the index: Dead Cells' thin letters are drawn 1.12 times as
+  big, on the baseline, and Dead Cells' flame keeps 0.08 of the line clear on
+  each side. Then, on a second look: the k the owner meant was Rogue's, not
+  Darkest Dungeon's (put back). Rogue's letters are all drawn 0.94 with 0.03 of
+  the line either side, its lowercase k 0.86 (`tools/rogue_letters.py`'s
+  `SIZE`, `PAD`, `SIZE_OF`), and Balatro's A is 1.05 and moved down 0.05 of the
+  line by a third setting, `drop`. Then every Balatro letter got the A's 1.05;
+  a capital place now prefers a capital-shaped letter (Darkest Dungeon's r as
+  the title's R read as a T); a decoration is lifted rather than hung into the
+  subtitle (Darkest Dungeon's torch covered its first letters); and the
+  subtitle's letters are spaced 0.16 of its line apart instead of 0.06
+  (`MainMenu.SUBTITLE_GAP`), since at 30px they ran together. The subtitle is
+  now 36px tall (`MainMenu.SUBTITLE_HEIGHT`, was 30).
+
+- **Title letters are sized by case.** Every logo letter used to be drawn the
+  whole line's height, so Darkest Dungeon's small a stood as tall as a
+  capital. Now the text's case decides (the owner's choice over keeping each
+  logo's own proportions, which made Slay the Spire's e a quarter height and
+  Hades' H D E S half height beside its big A). A capital place is the whole
+  line. A lowercase place draws a capital as a small cap at Rogue's x-height
+  (0.7) on the baseline, and a letter cut as a lowercase shape (`lowercase` in
+  four configs, `form` in the index) as lowercase, with ascenders full height
+  and g j p q y hanging 0.3 below. Rogue's letters already worked this way and
+  are unchanged. `TitleLetters._size`, tests in `test_title_letters.gd`, whose
+  layout test now unlocks every logo letter (it had only been laying out
+  Rogue's).
+
+- **Darkest Dungeon's letters, and its torch as the first one-sided
+  decoration.** D a r k e s t, D u n g e o n are cut from the logo like
+  Mewgenics' black ink (`tools/logo_letters/darkest_dungeon.json`). The joined
+  `ar` and `ung` are parted with vertical `splits`, and the a's foot is moved
+  back off the r with `assign`. The torch (`darkest_dungeon_torch.json`) is a
+  `decor_left/` with no right half, so `TitleLetters.pick_decor` now returns a
+  left decoration alone when it has no partner, and the title puts it on the
+  left only. It is sized by its ring (`body` rows), so the flame and handle
+  overflow the line the way the logo draws it, at about twice letter height.
 - **Headings and buttons are set in Rogue's font.** The same IBM PC font the
   title starts in (`fonts/Px437_IBM_VGA_8x16.ttf`) is now on every Label at a
   heading's size (FONT_SUB and up) and every Button labelled at FONT_BODY or more.

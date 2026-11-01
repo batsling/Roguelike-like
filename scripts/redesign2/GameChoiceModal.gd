@@ -65,6 +65,9 @@ const VIEW_MARGIN := Vector2(48, 56)
 # wrapping every second word comes out of the half that is already the least
 # informative.
 const COVER := Vector2(112, 150)
+# The least room the game's logo (LogoProgress) asks for beside the cover; it
+# takes the rest of the row.
+const LOGO_MIN := Vector2(120, 60)
 # The column beside the cover. Not a hard width — the source block expands into
 # whatever the row has — but the floor the game column is sized to hold, so the
 # pair never has to wrap at the modal's narrowest.
@@ -375,6 +378,16 @@ func _build_game_column(game: GameData, accent: Color) -> Control:
 	facts.add_theme_constant_override("separation", UITheme.GAP_SNUG)
 	facts.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	facts.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	# UNDER THE COVER: the game's own stats, year and type, its connections (the
+	# owner, 1 Nov 2026), so the room beside the cover goes to its logo
+	# (LogoProgress) as large as it fits. The rest of `facts` is about this
+	# choice, not the game, and stands beside the cover only when there is no
+	# logo; with one, it runs under the pair at the column's full width.
+	var under := VBoxContainer.new()
+	under.name = "UnderCover"
+	under.add_theme_constant_override("separation", UITheme.GAP_HAIR)
+	under.custom_minimum_size = Vector2(COVER.x, 0)
+	under.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 
 	var meta: Array = []
 	if game.year > 0:
@@ -384,7 +397,9 @@ func _build_game_column(game: GameData, accent: Color) -> Control:
 	chip.text = "  •  ".join(meta).to_upper()
 	chip.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 	chip.add_theme_color_override("font_color", RunGraph.type_color(game.type))
-	facts.add_child(chip)
+	chip.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	chip.custom_minimum_size = Vector2(COVER.x, 0)
+	under.add_child(chip)
 
 	# A SHOP THE PLAYER OPENED HERE (§19.10), with what is left on a visited shelf
 	# on the hover.
@@ -411,7 +426,8 @@ func _build_game_column(game: GameData, accent: Color) -> Control:
 	conn.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	conn.add_theme_color_override("font_color",
 		UITheme.TEXT_DIM if int(counts.get("total", 0)) > 0 else UITheme.DANGER)
-	facts.add_child(conn)
+	conn.custom_minimum_size = Vector2(COVER.x, 0)
+	under.add_child(conn)
 	var near: String = nearby_text(counts)
 	if near != "":
 		var nearby := Label.new()
@@ -420,7 +436,8 @@ func _build_game_column(game: GameData, accent: Color) -> Control:
 		nearby.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		nearby.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 		nearby.add_theme_color_override("font_color", UITheme.TEXT_DIM)
-		facts.add_child(nearby)
+		nearby.custom_minimum_size = Vector2(COVER.x, 0)
+		under.add_child(nearby)
 
 	# Transmuted (§4): this SPOT is no longer playing its own game. Everything
 	# else on the card already speaks for the REPLACEMENT — its cover, its type,
@@ -516,14 +533,24 @@ func _build_game_column(game: GameData, accent: Color) -> Control:
 			frame.add_child(holder)
 		else:
 			frame.add_child(art)
-		var cover_row := HBoxContainer.new()
-		cover_row.add_theme_constant_override("separation", UITheme.GAP_WIDE)
 		# The game's rank, half below the frame's bottom middle (§20.5).
-		cover_row.add_child(UITheme.tier_badge_room(RankBadge.wrap(frame, game.id), game.id))
+		under.add_child(UITheme.tier_badge_room(RankBadge.wrap(frame, game.id), game.id))
+		under.move_child(under.get_child(under.get_child_count() - 1), 0)
+	var cover_row := HBoxContainer.new()
+	cover_row.add_theme_constant_override("separation", UITheme.GAP_WIDE)
+	cover_row.add_child(under)
+	# The game's logo, filled in as its title letters are earned (LogoProgress),
+	# beside the cover and as big as fits: only for a game with letters cut from
+	# its logo. Without one, the choice's facts stand there instead.
+	var logo := LogoProgress.make(game.id, LOGO_MIN)
+	if logo != null:
+		cover_row.add_child(logo)
+		col.add_child(cover_row)
+		if facts.get_child_count() > 0:
+			col.add_child(facts)
+	else:
 		cover_row.add_child(facts)
 		col.add_child(cover_row)
-	else:
-		col.add_child(facts)
 
 	# The evidence for the connection you would be walking, under the pair.
 	var source_block: Control = _build_source_block()

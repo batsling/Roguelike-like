@@ -41,7 +41,7 @@ theme_override_constants/separation = 30
 [node name="Title" type="Label" parent="Center/Panel/TitleBox"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "Roguelike-like"
+text = "Roguelike-Like"
 horizontal_alignment = 1
 theme_override_font_sizes/font_size = 45
 theme_override_colors/font_color = Color(1, 0.8, 0.4, 1)

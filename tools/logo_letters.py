@@ -58,9 +58,42 @@ so Godot never imports the source), is JSON:
                   that should line up (Uma Musume's dash: its bar, not the
                   sparkles above it). Unlike `body` it leaves the size alone;
                   the index records it as line_center
+    lowercase     [piece, ...] — pieces drawn as lowercase letters (a small a,
+                  not a capital A); the index records "form": "lower". A
+                  lowercase place in the title draws every letter at Rogue's
+                  x-height unless it is a tall one (b d f h k l t, and a
+                  lowercase-shaped i), and lets a lowercase g j p q y hang below
+    size          {piece or "*": factor} — drawn this many times as big as its
+                  case makes it, grown or shrunk on the baseline (Dead Cells'
+                  thin letters a little bigger, Darkest Dungeon's k smaller)
+    pad           {piece or "*": fraction} — that much of the line height kept
+                  clear on each side of the piece (Dead Cells' flame)
+    drop          {piece or "*": fraction} — moved down by that much of the line
+                  height (Balatro's A sat high)
+    subtitle      [piece, ...] — decorations drawn round the subtitle, never the
+                  title (the crab's legs); list both halves
+    repaint       [{"rects": [[x0, y0, x1, y1, [r, g, b]], ...]}] drawn outright,
+                  or [{"polygon": [[x, y], ...], "dirty": [ranges] or "clean":
+                  [ranges] (the letter's own colours, all else dirty), "agree": n,
+                  "prefer": "row"/"column", "colour": [r, g, b]}] —
+                  pixels of those colours inside the polygon, drawn OVER a
+                  letter (a bow, its string, a shadow), rebuilt from the
+                  letter's own clean pixels along their row or column
+    cut.drawn     {"reach", "own_grow", "min_bright", "above", "barrier": [ranges],
+                  "clip": {piece: [x0, y0, x1, y1]}, "cast": {piece: [dx, dy]},
+                  "cast_slack": px} — a
+                  letter as drawn with all the shading touching its face (Tiny
+                  Rogues), stopping at other faces and the barrier colours
+    hold          [piece, ...] — found (so a neighbour split from it stops where
+                  it starts) but not written: another config cuts it
+    box_fill      a fill spec measuring each piece's box (`body_*` in the
+                  index) instead of the fill itself, for a piece cut with more
+                  than its face (Tiny Rogues' S, sides and all)
     styles        [variant, ...] — piece variants (the part after the dot) drawn
                   at another size than the rest of the logo; each is sized as a
                   line of its own in images2.0/custom/title/index.json
+    inpaint       [[[x, y], ...]] — polygons rebuilt as the glow round them
+                  (its alpha by distance from the solid flame) (a mark in a glow: Diablo's ®), before cutting;
     pixel_grid    {"x0", "y0", "x1", "y1", "pitch", "palette", "tolerance"} —
                   rebuild pixel art from a blurry screenshot: one palette colour
                   per logo pixel on the measured grid, the rest see-through
@@ -94,6 +127,9 @@ so Godot never imports the source), is JSON:
                   fill in a dark outline; min_channel keeps a coloured glow out
                   of a white fill; "max_brightness": n with "min_brightness":
                   -1 makes fill the DARK pixels (black letters, Mewgenics);
+                  "rgb_ranges": [[r0, r1, g0, g1, b0, b1 (, x0, y0, x1, y1)]]
+                  makes fill those colours, each only in its box if given;
+                  "exclude_rgb_ranges" (same form) takes colours out of it;
                   "rows": [y0, y1] keeps fill to those rows; "exclude_white": n
                   and "exclude_grey": {"spread", "below"} leave a white sticker
                   border and a grey shadow out of the fill; "inside_white": n makes fill what a
@@ -137,6 +173,16 @@ so Godot never imports the source), is JSON:
                   band grown round the rest of the letter;
                   "extrude": {"dx", "dy", "colour", "skip"} (in cut) gives a
                   block letter its 3D side by sweeping its face (Isaac);
+                  "colour_far", "alpha", "alpha_far" shade it from the face
+                  out and let it fade (Vampire Survivors); "colour_down"
+                  (and "colour_down_far") colours the walls swept from the
+                  face's bottom edges apart from its side walls, and
+                  "outline": {"width", "colour", "square"} rings face and
+                  side together, square-cornered with "square" (Tiny Rogues);
+                  "wall_gradient": {"top", "bottom"} shades the walls down
+                  the letter; "square_corners": px extrudes a stepped corner
+                  as square; "fill_face_holes": px fills specks in the face;
+                  "close_face": n closes n-pixel notches along its edge;
                   "outline_max": n keeps only dark pixels past the face (not
                   a glow), "side": {"dy", "dx"} adds the dark 3D side the face
                   sweeps over, "close_dark": n brings in dark counters;
@@ -155,10 +201,20 @@ so Godot never imports the source), is JSON:
                   "silhouette": true scales letters with a clean edge;
                   "keep_small_holes": px keeps dark marks inside a letter;
                   "recast_shadow": {"spread", "dx", "dy", "blur", "alpha",
-                  "colour"} draws the logo's shadow again from each letter's
-                  own shape (measured off the logo);
+                  "colour", "soft_face"} draws the logo's shadow again from each
+                  letter's own shape (measured off the logo); "soft_face": sigma
+                  eases the face into it instead of a hard step;
                   "own_by_shadow": {"dx", "dy", "grow"} gives a drop shadow to
                   the letter casting it, not the nearest one;
+                  "synth_shadow": {"dx", "dy", "haze" (RGB + alpha per unit),
+                  "shadow" (RGBA)} draws a pixel-art letter's 1-2-1 haze and
+                  drop shadow to the logo's recipe round its solid body, layered
+                  as the logo was (Into the Breach);
+                  "shadow_after": {"dx", "dy", "colour_max"} drops shadow pixels
+                  with none of the letter before them on their row or above
+                  them in their column (a neighbour's shadow tip);
+                  "glow_share": {"falloff": px} lets a soft glow two letters
+                  share fade from one into the other, not stop at a seam;
                   "smooth_scale": true scales the cut as it is, smoothly
                   (a painted logo kept with its soft shadow);
                   "pixel_outline": {"colour", "width"} draws an even ring of
@@ -220,6 +276,110 @@ OPEN_ITER, CLOSE_ITER = 3, 4
 SHADOW_ROUND_SIGMA = 7.0
 
 
+def _repaint(A: np.ndarray, cfg: dict) -> np.ndarray:
+    """Rebuild what something drew OVER a letter, from the letter itself (Tiny
+    Rogues' bow, its string and their shadows, over the S): inside each
+    `repaint` polygon, a pixel matching one of its `dirty` colour ranges (same
+    form as the fill's `rgb_ranges`) takes its colour from the clean pixels
+    nearest it on its own column or row. Pixel art runs in straight lines, so
+    where the clean pixels either side agree (above and below, or left and
+    right) the shorter gap wins; failing that, the nearest clean pixel. So the
+    face's white top edge runs on under the limb, its pale side edge runs down
+    past the string, and its colour bands stay in their rows."""
+    A = A.copy()
+    H, W = A.shape[:2]
+    for rp in cfg.get("repaint", []):
+        if "rects" in rp:
+            # drawn outright, pixel for pixel: [x0, y0, x1, y1, [r, g, b]]
+            # (Tiny Rogues' S: the steps the bow hid, the outline under it)
+            for x0, y0, x1, y1, col in rp["rects"]:
+                A[y0:y1, x0:x1, :3] = col
+                A[y0:y1, x0:x1, 3] = 255
+            continue
+        poly = _polygon_mask((H, W), rp["polygon"])
+        dirty = np.zeros((H, W), bool)
+        for rg in rp["dirty"]:
+            hit = ((A[..., 0] >= rg[0]) & (A[..., 0] <= rg[1]) & (A[..., 1] >= rg[2])
+                   & (A[..., 1] <= rg[3]) & (A[..., 2] >= rg[4]) & (A[..., 2] <= rg[5]))
+            if len(rg) == 10:
+                box = np.zeros((H, W), bool)
+                box[rg[7]:rg[9], rg[6]:rg[8]] = True
+                hit &= box
+            dirty |= hit
+        if "clean" in rp:
+            # or the other way round: the letter's OWN colours are listed, and
+            # anything else in the polygon was drawn over it (a soft edge or a
+            # shadow comes in more shades than a list of them can catch)
+            ok = np.zeros((H, W), bool)
+            for rg in rp["clean"]:
+                hit = ((A[..., 0] >= rg[0]) & (A[..., 0] <= rg[1]) & (A[..., 1] >= rg[2])
+                       & (A[..., 1] <= rg[3]) & (A[..., 2] >= rg[4]) & (A[..., 2] <= rg[5]))
+                if len(rg) == 10:
+                    box = np.zeros((H, W), bool)
+                    box[rg[7]:rg[9], rg[6]:rg[8]] = True
+                    hit &= box
+                ok |= hit
+            dirty |= ~ok
+        dirty &= poly
+        clean = poly & ~dirty & (A[..., 3] > 200)
+        tol = rp.get("agree", 60)
+        src = A.copy()
+        _, (ny, nx) = nd.distance_transform_edt(~clean, return_indices=True)
+        if "colour" in rp:
+            # a strip whose colour is known (a white edge the bow hid)
+            A[dirty, :3] = rp["colour"]
+            A[dirty, 3] = 255
+            continue
+        prefer = {"column": 0, "row": 1}.get(rp.get("prefer", ""))
+        for y, x in zip(*np.nonzero(dirty)):
+            if prefer is not None:
+                # along this axis first, the nearer clean pixel either way;
+                # then the other axis; then the nearest at all
+                got = None
+                for axis in (prefer, 1 - prefer):
+                    for dist in range(1, max(H, W)):
+                        for step in (-dist, dist):
+                            yy, xx = (y + step, x) if axis == 0 else (y, x + step)
+                            if 0 <= yy < H and 0 <= xx < W and poly[yy, xx] and clean[yy, xx]:
+                                got = src[yy, xx]
+                                break
+                        if got is not None:
+                            break
+                        # stop at the polygon's edge both ways
+                        a_ = (y - dist, x) if axis == 0 else (y, x - dist)
+                        b_ = (y + dist, x) if axis == 0 else (y, x + dist)
+                        if not any(0 <= p_[0] < H and 0 <= p_[1] < W and poly[p_] for p_ in (a_, b_)):
+                            break
+                    if got is not None:
+                        break
+                A[y, x] = got if got is not None else src[ny[y, x], nx[y, x]]
+                A[y, x, 3] = 255
+                continue
+            best = None
+            for axis in (0, 1):
+                pair = []
+                for step in (-1, 1):
+                    yy, xx = y, x
+                    while True:
+                        if axis == 0:
+                            yy += step
+                        else:
+                            xx += step
+                        if not (0 <= yy < H and 0 <= xx < W) or not poly[yy, xx]:
+                            break
+                        if clean[yy, xx]:
+                            pair.append(((abs(yy - y) + abs(xx - x)), src[yy, xx]))
+                            break
+                if len(pair) == 2 and np.abs(pair[0][1][:3] - pair[1][1][:3]).max() <= tol:
+                    span = pair[0][0] + pair[1][0]
+                    near = pair[0][1] if pair[0][0] <= pair[1][0] else pair[1][1]
+                    if best is None or span < best[0]:
+                        best = (span, near)
+            A[y, x] = best[1] if best is not None else src[ny[y, x], nx[y, x]]
+            A[y, x, 3] = 255
+    return A
+
+
 def _fill_mask(A: np.ndarray, cfg: dict) -> np.ndarray:
     f = cfg.get("fill", {})
     m = (A[..., 3] > f.get("min_alpha", 200)) & (A[..., :3].max(-1) > f.get("min_brightness", 140))
@@ -245,6 +405,35 @@ def _fill_mask(A: np.ndarray, cfg: dict) -> np.ndarray:
         m = np.zeros(A.shape[:2], bool)
         for col in f["colours"]:
             m |= (A[..., 3] > 0) & (np.abs(A[..., :3] - np.array(col)).max(-1) <= f.get("tolerance", 6))
+    if "rgb_ranges" in f:
+        # pieces told apart by colour alone, each colour only inside its own
+        # box (Tiny Rogues' sword, staff and bow, all touching the letters):
+        # [r0, r1, g0, g1, b0, b1] or [..., x0, y0, x1, y1]
+        m = np.zeros(A.shape[:2], bool)
+        H_, W_ = A.shape[:2]
+        for rg in f["rgb_ranges"]:
+            hit = ((A[..., 3] > f.get("min_alpha", 200))
+                   & (A[..., 0] >= rg[0]) & (A[..., 0] <= rg[1])
+                   & (A[..., 1] >= rg[2]) & (A[..., 1] <= rg[3])
+                   & (A[..., 2] >= rg[4]) & (A[..., 2] <= rg[5]))
+            if len(rg) == 10:
+                box = np.zeros((H_, W_), bool)
+                box[rg[7]:rg[9], rg[6]:rg[8]] = True
+                hit &= box
+            m |= hit
+    if "exclude_rgb_ranges" in f:
+        # colours that are never a piece's, in the same form (Tiny Rogues' bow
+        # string, the face's own orange give or take, drawn across E and S)
+        H_, W_ = A.shape[:2]
+        for rg in f["exclude_rgb_ranges"]:
+            hit = ((A[..., 0] >= rg[0]) & (A[..., 0] <= rg[1])
+                   & (A[..., 1] >= rg[2]) & (A[..., 1] <= rg[3])
+                   & (A[..., 2] >= rg[4]) & (A[..., 2] <= rg[5]))
+            if len(rg) == 10:
+                box = np.zeros((H_, W_), bool)
+                box[rg[7]:rg[9], rg[6]:rg[8]] = True
+                hit &= box
+            m = m & ~hit
     if "rows" in f:  # only these rows of the logo (one line of a two-line logo)
         m = m.copy()
         m[: f["rows"][0]] = False
@@ -467,10 +656,61 @@ def _upscale(A, out, box, band_masks, s, hard=False, face=None, silhouette=False
     return Image.fromarray(np.dstack([rgb.clip(0, 255), alpha * 255]).astype(np.uint8))
 
 
+LOGO_DIR = OUT_DIR / "logos"
+# A logo is shown a few hundred pixels wide on a game's page; past this it is
+# only bytes in the download.
+LOGO_MAX = 1200
+
+
+def _write_logo(cfg: dict, A: np.ndarray) -> tuple:
+    """Write logos/<game>.png: the source trimmed to what it draws, no longer
+    than LOGO_MAX on its long side. Returns (tx, ty, w, h): the trim, in the
+    source's (or the rebuilt grid's) pixels, that `src` is measured against.
+    Every config of one game writes the same file from the same source."""
+    a = A[..., 3]
+    ys, xs = np.where(a > 8)
+    tx, ty = int(xs.min()), int(ys.min())
+    w, h = int(xs.max()) + 1 - tx, int(ys.max()) + 1 - ty
+    img = Image.fromarray(A[ty:ty + h, tx:tx + w].clip(0, 255).astype(np.uint8))
+    if cfg.get("pixel_grid"):
+        # one logo pixel per grid cell: blown up as sharp blocks
+        k = max(1, LOGO_MAX // max(w, h))
+        img = img.resize((w * k, h * k), Image.NEAREST)
+    elif max(w, h) > LOGO_MAX:
+        f = LOGO_MAX / max(w, h)
+        img = img.resize((round(w * f), round(h * f)), Image.LANCZOS)
+    LOGO_DIR.mkdir(parents=True, exist_ok=True)
+    img.save(LOGO_DIR / f"{cfg['game']}.png", optimize=True)
+    return tx, ty, w, h
+
+
+def _src_fraction(box: tuple, logo_box: tuple) -> list:
+    tx, ty, w, h = logo_box
+    x0, y0, x1, y1 = box
+    return [round((x0 - tx) / w, 5), round((y0 - ty) / h, 5), round((x1 - tx) / w, 5), round((y1 - ty) / h, 5)]
+
+
 def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
     cfg = json.loads(cfg_path.read_text())
     src = cfg_path.parent / cfg["source"]
     A = np.array(Image.open(src).convert("RGBA")).astype(float)
+    for poly in cfg.get("inpaint", []):
+        # A mark that is no letter's, sitting in a soft glow (Diablo's ®): the
+        # polygon rebuilt as the glow round it, which fades with distance from
+        # the solid flame. Each pixel takes the average of the glow outside the
+        # polygon (within 40px of it) at the same distance from the nearest
+        # solid pixel: no hole, and no blob where the mark was.
+        m_ = _polygon_mask(A.shape[:2], poly)
+        d_ = nd.distance_transform_edt(~((A[..., 3] >= 250) & ~m_))
+        ref = (nd.distance_transform_edt(~m_) <= 40) & ~m_
+        P_ = np.concatenate([A[..., :3] * A[..., 3:] / 255, A[..., 3:]], -1)
+        bins = np.round(d_).astype(int)
+        for k in np.unique(bins[m_]):
+            src_ = ref & (np.abs(d_ - k) <= 1.0)
+            val = P_[src_].mean(0) if src_.any() else np.zeros(4)
+            P_[m_ & (bins == k)] = val
+        A[m_, 3] = P_[m_, 3]
+        A[m_, :3] = P_[m_, :3] / np.maximum(P_[m_, 3:], 1e-6) * 255
     pg = cfg.get("pixel_grid")
     if pg:
         # A blurry screenshot of pixel art (Spelunky Classic): one colour per
@@ -505,6 +745,13 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
                     small[r_, c_, 3] = 255
         A = small
     H, W = A.shape[:2]
+    # The logo as the game shows it on a game's page (LogoProgress): trimmed to
+    # what it draws, and where each piece came from in it (`src` in the index).
+    # A pixel_grid logo is its rebuilt pixels, not the screenshot they came from.
+    # Written before `repaint`: the page shows the logo as drawn.
+    logo_box = _write_logo(cfg, A)
+    # whatever was drawn over a letter, rebuilt from the letter (`repaint`)
+    A = _repaint(A, cfg)
     a = A[..., 3]
     fill = _fill_mask(A, cfg)
     solid = a >= 254
@@ -614,8 +861,12 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
     body_xs = {}
     body_widths = {}
     line_centers = {}
+    src_boxes = {}
     out_dir_game = cfg["game"]
+    written_names = []
     for i, n in enumerate(names):
+        if n in cfg.get("hold", []):
+            continue  # found so its neighbours stop at it; cut by another config
         mine = owner == i
         f = pieces[n]
         rgb = np.zeros((H, W, 3))
@@ -666,6 +917,68 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
                 d_other = np.min([D[o_] for o_ in names if o_ != n], 0) if len(names) > 1 else np.full((H, W), 1e9)
                 keep = f | ((a > 0) & ~background & (ds <= reach) & mine
                             & (d_other > cut["own_by_shadow"].get("outline", 6)) & ~fill)
+            gs_ = cut.get("glow_share")
+            if gs_:
+                # A GLOW TWO LETTERS SHARE, SHARED (Diablo): past its fill a
+                # letter keeps the glow round it up to `reach`, across the
+                # midline too, at the part of it that is its own, weighed by how
+                # much nearer it is than the nearest other letter (a logistic
+                # over `falloff` px). Its half fades out into the neighbour's
+                # instead of stopping on a hard edge.
+                d_other = np.min([D[o_] for o_ in names if o_ != n], 0) if len(names) > 1 else np.full((H, W), 1e9)
+                keep = f | ((a > 0) & ~background & (ds <= reach) & ~(fill & ~f))
+                share = np.where(f, 1.0, 1.0 / (1.0 + np.exp((ds - d_other) / gs_.get("falloff", 6.0))))
+            if cut.get("drawn"):
+                # AS DRAWN, SHADING AND ALL (Tiny Rogues): the letter is its
+                # face and every bit of the logo's 3D shading that touches it,
+                # on either side and below, as the logo drew it. A perspective
+                # extrusion casts walls left on some letters and right on
+                # others, so no one sweep rebuilds them; and the shading between
+                # two letters belongs to both, the way the owner reads it.
+                # It stops at another letter's face (its yellow, orange, white
+                # or cream), at anything in `barrier` (the sword, staff, bow),
+                # at `reach` px from the face, and never rises above the face.
+                dr = cut["drawn"]
+                own = nd.binary_dilation(f, iterations=dr.get("own_grow", 12)) & (a > 200)
+                cand = (a > 200) & (A[..., :3].max(-1) >= dr.get("min_bright", 25))
+                bar = np.zeros((H, W), bool)
+                for rg in dr.get("barrier", []):
+                    hit = ((A[..., 0] >= rg[0]) & (A[..., 0] <= rg[1]) & (A[..., 1] >= rg[2])
+                           & (A[..., 1] <= rg[3]) & (A[..., 2] >= rg[4]) & (A[..., 2] <= rg[5]))
+                    if len(rg) == 10:
+                        bx = np.zeros((H, W), bool)
+                        bx[rg[7]:rg[9], rg[6]:rg[8]] = True
+                        hit &= bx
+                    bar |= hit
+                facelike = (A[..., 0] > 200) & (A[..., 1] > 60)
+                allowed = cand & ~bar & (~facelike | own) & (ds <= dr.get("reach", 75))
+                rows_ = np.nonzero(f.any(1))[0]
+                if rows_.size:
+                    allowed[:max(rows_.min() - dr.get("above", 0), 0)] = False
+                cast = dr.get("cast", {}).get(n)
+                if cast:
+                    # ONLY THE SHADING THIS LETTER CASTS (Tiny Rogues): the logo
+                    # is a perspective extrusion, each letter swept its own way
+                    # (fitted per letter: the left half down-right, the right
+                    # half down-left), so a neighbour's wall beside it is not
+                    # its own. The face slid along its own direction, with a few
+                    # pixels' slack for the logo's blended edges.
+                    cdx, cdy = cast
+                    st_ = max(abs(cdx), abs(cdy), 1)
+                    cast_m = np.zeros((H, W), bool)
+                    for k in range(1, st_ + 1):
+                        cast_m |= nd.shift(f, (round(cdy * k / st_), round(cdx * k / st_)), order=0, cval=False)
+                    cast_m = nd.binary_dilation(cast_m, iterations=dr.get("cast_slack", 4))
+                    allowed &= cast_m | own
+                clip = dr.get("clip", {}).get(n)
+                if clip:
+                    # this letter's shading ends where its neighbour's own edge
+                    # begins (Tiny Rogues' E, at the S's cream edge)
+                    bx = np.zeros((H, W), bool)
+                    bx[clip[1]:clip[3], clip[0]:clip[2]] = True
+                    allowed &= bx
+                lab_d, _ = nd.label(allowed, structure=np.ones((3, 3)))
+                keep = np.isin(lab_d, np.unique(lab_d[f & allowed & (lab_d > 0)])) | f
             if shared:
                 # ...but never past it into the next letter's face (counters a
                 # letter encloses come back with whole_letter's hole filling)
@@ -730,8 +1043,53 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
                 if st_.get("piece", n) == n:
                     keep &= ~(_polygon_mask((H, W), st_["polygon"])
                               & (A[..., :3].max(-1) <= st_.get("max_brightness", 20)))
-            rgb[keep] = A[keep][:, :3]
-            al[keep] = a[keep] / 255
+            ss_ = cut.get("synth_shadow")
+            if ss_:
+                # A LETTER DRAWN TO ITS LOGO'S RECIPE, pixel for pixel (Into the
+                # Breach): its solid body (face and white outline, the logo's own
+                # pixels); a haze round it, the `haze` colour at an alpha of its
+                # last value times the body under a 1-2-1 kernel (4 beside a
+                # straight edge, 1 off a lone corner, 7 in an inside corner:
+                # 701 of the logo's 702 haze pixels to the unit); and the
+                # shadow, the body moved (`dx`, `dy`), in `shadow` colour under
+                # the haze. Drawn whole for every letter, so a neighbour that
+                # covered part of a letter's shadow in the logo costs it nothing.
+                lab_b, _ = nd.label(a >= 250, structure=np.ones((3, 3)))
+                body = np.isin(lab_b, np.unique(lab_b[f & (lab_b > 0)]))
+                kern = np.array([[1, 2, 1], [2, 4, 2], [1, 2, 1]], float)
+                hz_n = nd.convolve(body.astype(float), kern, mode="constant") * ~body
+                cast_ = nd.shift(body, (ss_["dy"], ss_["dx"]), order=0, cval=False) & ~body
+                keep = body | (hz_n > 0) | cast_
+                # layers, bottom up, composited as the logo was: the shadow, then
+                # the haze, then the body
+                sh_c = np.array(ss_["shadow"][:3], float)
+                sh_a = np.where(cast_, ss_["shadow"][3] / 255, 0.0)
+                hz_c = np.array(ss_["haze"][:3], float)
+                hz_a = np.minimum(hz_n * ss_["haze"][3], 255) / 255
+                out_a = hz_a + sh_a * (1 - hz_a)
+                rgb = (hz_c * hz_a[..., None] + sh_c * (sh_a * (1 - hz_a))[..., None]) / np.maximum(out_a, 1e-6)[..., None]
+                al = out_a
+                rgb[body] = A[body][:, :3]
+                al[body] = a[body] / 255
+                face = body
+            sa = cut.get("shadow_after")
+            if sa:
+                # A letter's own drop shadow falls after it (right and down for
+                # Into the Breach): a shadow pixel with nothing of the letter
+                # before it on its row AND nothing above it in its column is a
+                # neighbour's shadow tip touching this letter at a corner.
+                dk = keep & (A[..., :3].max(-1) <= sa.get("colour_max", 60))
+                body_k = keep & ~dk
+                left = np.maximum.accumulate(body_k, axis=1) if sa.get("dx", 1) > 0 \
+                    else np.maximum.accumulate(body_k[:, ::-1], axis=1)[:, ::-1]
+                up = np.maximum.accumulate(body_k, axis=0) if sa.get("dy", 1) > 0 \
+                    else np.maximum.accumulate(body_k[::-1], axis=0)[::-1]
+                keep &= ~(dk & ~left & ~up)
+            if not ss_:
+                rgb[keep] = A[keep][:, :3]
+                al[keep] = a[keep] / 255
+                if gs_:
+                    al *= share
             rc = cut.get("recast_shadow")
             if rc:
                 # The logo's shadow re-cast from this letter's own shape (Slay
@@ -740,7 +1098,17 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
                 m_ = nd.distance_transform_edt(~keep) <= rc["spread"]
                 sh_ = nd.gaussian_filter(nd.shift(m_.astype(float), (rc["dy"], rc["dx"]), order=0),
                                          rc.get("blur", 2)) * rc.get("alpha", 160) / 255
-                sh_ = np.where(keep, 0, sh_)
+                if rc.get("soft_face"):
+                    # The face's edge eased into its glow over about a pixel
+                    # (Ember Knights), as the logo draws it, rather than cut
+                    # off on a hard step: the face's colours run out past its
+                    # edge, and its own alpha is the blurred shape of it.
+                    _, (fy_, fx_) = nd.distance_transform_edt(~keep, return_indices=True)
+                    rgb = A[fy_, fx_, :3].astype(float)
+                    al = np.clip((nd.gaussian_filter(keep.astype(float), rc["soft_face"]) - 0.5)
+                                 * rc.get("soft_face_slope", 2.0) + 0.5, 0, 1)
+                else:
+                    sh_ = np.where(keep, 0, sh_)
                 out_a_ = al + sh_ * (1 - al)
                 rgb = (rgb * al[..., None] + np.array(rc.get("colour", [0, 0, 0]), float) * (sh_ * (1 - al))[..., None]) \
                     / np.maximum(out_a_, 1e-6)[..., None]
@@ -785,10 +1153,35 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
                 # pixel art: one even ring of the edge colour round the face,
                 # holes included (Loop Hero's black edge is broken by the disc)
                 po = cut["pixel_outline"]
-                ring = nd.binary_dilation(f, structure=np.ones((3, 3)), iterations=po.get("width", 1)) & ~f
+                # round the face, or round everything kept (a letter as drawn)
+                body_ = (keep | painted) if cut.get("drawn") else f
+                if po.get("miter"):
+                    # A pen-stroke outline, measured off the logo (Tiny Rogues):
+                    # `width` out from every edge, square where straight edges
+                    # meet, and the same width ACROSS a 45-degree edge (a square
+                    # measure makes a diagonal 1.4 times as thick). Each edge
+                    # pixel is classed by the edge's slope: straight ones grow
+                    # square, diagonal ones by perpendicular distance.
+                    w_ = po.get("width", 1)
+                    edge_ = body_ & ~nd.binary_erosion(body_)
+                    sm = nd.gaussian_filter(body_.astype(float), 3)
+                    ang = np.degrees(np.arctan2(nd.sobel(sm, 0), nd.sobel(sm, 1))) % 90
+                    diag_ = edge_ & (np.abs(ang - 45) < 15)
+                    axis_ = edge_ & ~diag_
+                    ring = nd.distance_transform_cdt(~axis_, metric="chessboard") <= w_ if axis_.any() else np.zeros_like(body_)
+                    if diag_.any():
+                        ch = nd.distance_transform_cdt(~diag_, metric="chessboard")
+                        tx = nd.distance_transform_cdt(~diag_, metric="taxicab")
+                        ring |= np.maximum(ch, tx / np.sqrt(2)) <= w_
+                    ring &= ~body_
+                elif po.get("round"):
+                    # an even, round-cornered ring, as `extrude`'s outline
+                    ring = (nd.distance_transform_edt(~body_) <= po.get("width", 1)) & ~body_
+                else:
+                    ring = (nd.distance_transform_cdt(~body_, metric="chessboard") <= po.get("width", 1)) & ~body_
                 rgb[ring] = po["colour"]
                 al[ring] = 1
-            if n in cut.get("hard_edge", []):
+            if n in cut.get("hard_edge", []) and not cut.get("synth_shadow"):
                 # pixel-font letters: each pixel fully on or off, no soft fringe
                 on = al >= 0.5
                 al[:] = on
@@ -799,18 +1192,168 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
                 # sweeping the face along the logo's depth, so a side the next
                 # letter hid is whole again; in the side's own colour.
                 face_m = f.copy()
-                side = face_m.copy()
+                if ex_cfg.get("fill_face_holes"):
+                    # specks the fill missed inside a face (a colour band's
+                    # edge row) are face: swept, each one drew a hairline
+                    hl = nd.binary_fill_holes(face_m) & ~face_m
+                    lab_h, nh = nd.label(hl)
+                    if nh:
+                        sz = nd.sum(hl, lab_h, range(1, nh + 1))
+                        face_m |= np.isin(lab_h, 1 + np.flatnonzero(sz <= ex_cfg["fill_face_holes"]))
+                if ex_cfg.get("close_face"):
+                    # one-pixel notches along a face's edge (a blended edge
+                    # pixel the fill turned down) closed: each was a floor
+                    # edge, swept into a hairline across the wall
+                    face_m = face_m | nd.binary_closing(face_m, np.ones((3, 3)),
+                                                         iterations=ex_cfg["close_face"], border_value=0)
+                sweep_m = face_m
+                sq = ex_cfg.get("square_corners")
+                if sq:
+                    # A stepped corner on the side the face is swept toward is
+                    # extruded as if square (Tiny Rogues): the side's outer
+                    # edge, and the outline round it, run straight into a square
+                    # corner, the face's steps showing as facets inside it. A
+                    # pixel is filled when the face lies within `sq` of it
+                    # behind it both ways (left and up, for a sweep right and
+                    # down) and nowhere within `sq` ahead of it either way, so a
+                    # counter or a notch between two strokes is left alone.
+                    L = int(sq)
+                    sx_ = 1 if ex_cfg["dx"] >= 0 else -1
+                    sy_ = 1 if ex_cfg["dy"] >= 0 else -1
+                    def within(m, axis, sign):
+                        # face within L pixels in that direction (not counting p)
+                        acc = np.zeros_like(m)
+                        for k in range(1, L + 1):
+                            acc |= nd.shift(m, (sign * k, 0) if axis == 0 else (0, sign * k), order=0, cval=False)
+                        return acc
+                    behind_x = within(face_m, 1, sx_)    # face to the left (sweep right)
+                    behind_y = within(face_m, 0, sy_)    # face above (sweep down)
+                    ahead_x = within(face_m, 1, -sx_)
+                    ahead_y = within(face_m, 0, -sy_)
+                    sweep_m = face_m | (behind_x & behind_y & ~ahead_x & ~ahead_y)
+                side = sweep_m.copy()
                 steps = max(abs(ex_cfg["dx"]), abs(ex_cfg["dy"]))
+                # "colour_far": the side shades from "colour" next to the face
+                # to this at its far edge (Vampire Survivors' maroon going dark)
+                near_c = np.array(ex_cfg["colour"], float)
+                far_c = np.array(ex_cfg.get("colour_far", ex_cfg["colour"]), float)
+                side_rgb = np.zeros((H, W, 3))
+                # "alpha" / "alpha_far": a see-through side, fading out as it
+                # goes (Vampire Survivors'); 1 (solid) unless given
+                near_a = float(ex_cfg.get("alpha", 1.0))
+                far_a = float(ex_cfg.get("alpha_far", near_a))
+                side_a = np.zeros((H, W))
+                # "colour_down" / "colour_down_far": the walls swept from the
+                # face's BOTTOM edges in a colour of their own, the ones from its
+                # side edges keeping "colour" (Tiny Rogues: maroon right walls,
+                # navy floors). A pixel is the wall of the edge that reached it.
+                down = "colour_down" in ex_cfg
+                if down:
+                    d_near = np.array(ex_cfg["colour_down"], float)
+                    d_far = np.array(ex_cfg.get("colour_down_far", ex_cfg["colour_down"]), float)
+                    sx_ = int(np.sign(ex_cfg["dx"]))
+                    sy_ = int(np.sign(ex_cfg["dy"]))
+                    # the edges the face sweeps out of: where the next pixel
+                    # the way it moves is not face
+                    edge_b = sweep_m & ~nd.shift(sweep_m, (-sy_, 0), order=0, cval=False) if sy_ else np.zeros_like(sweep_m)
+                    # a floor is a run along the bottom, not a pixel: a one-
+                    # pixel bump on a side edge swept into a hairline
+                    edge_b = nd.binary_opening(edge_b, structure=np.ones((1, 5)))
+                floor_all = np.zeros((H, W), bool)
+                reached = sweep_m.copy()
                 for k in range(1, steps + 1):
                     # a shift that falls off the edge, never wraps round to the other side
-                    side |= nd.shift(face_m, (round(ex_cfg["dy"] * k / steps),
-                                              round(ex_cfg["dx"] * k / steps)), order=0, cval=False)
+                    off = (round(ex_cfg["dy"] * k / steps), round(ex_cfg["dx"] * k / steps))
+                    step = nd.shift(sweep_m, off, order=0, cval=False)
+                    new = step & ~side
+                    side_rgb[new] = near_c + (far_c - near_c) * (k / steps)
+                    if down:
+                        floor = new & nd.shift(edge_b, off, order=0, cval=False)
+                        side_rgb[floor] = d_near + (d_far - d_near) * (k / steps)
+                        floor_all |= floor
+                    side_a[new] = near_a + (far_a - near_a) * (k / steps)
+                    side |= step
+                    reached |= step
+                # the squared corners themselves are side, never face
+                side |= sweep_m
+                if sq and down:
+                    # ...but inside them the face's own steps still cast their
+                    # facets: what sweeping the stepped face alone gives there
+                    # (a lighter wall per step, as the logo draws them) wins
+                    edge_bf = face_m & ~nd.shift(face_m, (-sy_, 0), order=0, cval=False)
+                    edge_bf = nd.binary_opening(edge_bf, structure=np.ones((1, 5)))
+                    seen_f = face_m.copy()
+                    for k in range(1, steps + 1):
+                        off = (round(ex_cfg["dy"] * k / steps), round(ex_cfg["dx"] * k / steps))
+                        step = nd.shift(face_m, off, order=0, cval=False)
+                        new = step & ~seen_f & side
+                        fl = new & nd.shift(edge_bf, off, order=0, cval=False)
+                        floor_all[new] = False
+                        floor_all[fl] = True
+                        side_rgb[fl] = d_near + (d_far - d_near) * (k / steps)
+                        seen_f |= step
+                    # what the stepped sweep never reaches inside a squared
+                    # corner is floor (the corner's own bottom), as drawn
+                    corner = sweep_m & ~face_m & ~seen_f
+                    floor_all[corner] = True
+                    side_rgb[corner] = d_far
+                    reached |= corner
+                wg = ex_cfg.get("wall_gradient")
+                if wg:
+                    # walls shaded top to bottom down the letter, not by depth
+                    # (Tiny Rogues: maroon at the face's top edge, navy at its
+                    # foot); floors keep "colour_down"
+                    fy_ = np.nonzero(face_m.any(1))[0]
+                    t_ = np.clip((np.arange(H) - fy_.min()) / max(fy_.max() - fy_.min(), 1), 0, 1)
+                    grad = np.array(wg["top"], float)[None, :] + (np.array(wg["bottom"], float) - np.array(wg["top"], float))[None, :] * t_[:, None]
+                    walls = side & ~face_m & ~floor_all if down else side & ~face_m
+                    side_rgb[walls] = grad[np.nonzero(walls)[0]]
+                # squared-corner pixels the sweep never reached take the
+                # nearest side colour
+                gap = side & ~face_m & ~reached
+                if gap.any() and (reached & ~face_m).any():
+                    _, (gy, gx) = nd.distance_transform_edt(~(reached & ~face_m), return_indices=True)
+                    side_rgb[gap] = side_rgb[gy[gap], gx[gap]]
                 rgb[:] = 0
                 al[:] = 0
-                rgb[side] = ex_cfg["colour"]
+                ol = ex_cfg.get("outline")
+                if ol:
+                    # an even outline of the logo's own width round the face and
+                    # its side together (Tiny Rogues' black), counters included
+                    if ol.get("square"):
+                        # square-cornered, the way pixel art is outlined: steps
+                        # stay steps, corners stay sharp, and only a diagonal
+                        # side gets a diagonal outline (Tiny Rogues)
+                        ring = (nd.distance_transform_cdt(~side, metric="chessboard") <= ol["width"]) & ~side
+                    else:
+                        ring = (nd.distance_transform_edt(~side) <= ol["width"]) & ~side
+                    rgb[ring] = ol.get("colour", [0, 0, 0])
+                    al[ring] = 1
+                rgb[side] = side_rgb[side]
                 rgb[face_m] = A[face_m][:, :3]
-                al[side] = 1
-                band_masks = (face_m, side, np.array(ex_cfg["colour"], float), 0)
+                # a part of the face something else was drawn over, rebuilt
+                # (`restore`): the face colour, not what covered it
+                rgb[painted & face_m] = fill_colour
+                al[side] = side_a[side] if "alpha" in ex_cfg else 1
+                al[face_m] = 1
+                if ex_cfg.get("soft_edge"):
+                    # drawn at the logo's own size (no `scale` to redraw it), so
+                    # the side's outer edge is softened here instead of stepping
+                    cov = nd.gaussian_filter(side.astype(float), ex_cfg["soft_edge"])
+                    al[side] *= np.clip(cov[side] * 2.0, 0, 1)
+                    ring = nd.binary_dilation(side) & ~side
+                    _, (ry, rx) = nd.distance_transform_edt(~side, return_indices=True)
+                    rgb[ring] = rgb[ry[ring], rx[ring]]
+                    al[ring] = np.clip(cov[ring] * 2.0 - 0.2, 0, 1) * (side_a[ry[ring], rx[ring]] if "alpha" in ex_cfg else 1)
+                plate = side_rgb if "colour_far" in ex_cfg else near_c
+                if "colour_far" in ex_cfg:
+                    # under the face (never seen) and past the side's edge, the
+                    # nearest side colour, so the redrawn edge has no seam
+                    sm = side & ~face_m
+                    if sm.any():
+                        _, (sy, sx) = nd.distance_transform_edt(~sm, return_indices=True)
+                        plate = side_rgb[sy, sx]
+                band_masks = (face_m, side, plate, 0)
             band_cfg = cut.get("band")
             if band_cfg and n not in band_cfg.get("skip", []):
                 # A plate logo (Gungeon): the letter's edge is the plate showing
@@ -1036,6 +1579,7 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
         ys, xs = np.where(out[..., 3] > 1)
         x0, x1 = max(xs.min() - 2, 0), min(xs.max() + 3, W)
         y0, y1 = max(ys.min() - 2, 0), min(ys.max() + 3, H)
+        src_boxes[n] = (x0, y0, x1, y1)
         # where the letter itself sits in the piece, from 0 (top) to 1: a
         # piece with something attached above or below (an eye stalk, a
         # knife, slime) is centred on the line by its letter, not its whole
@@ -1043,7 +1587,12 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
         # a shadow pushed to one side or an outline never moves its centre or
         # changes its size; `body` rows in the config override the height for
         # a piece with something attached (an eye stalk, a knife, slime).
-        fy, fx = np.where(pieces[n] & (out[..., 3] > 0))
+        face_only = pieces[n] & (out[..., 3] > 0)
+        if "box_fill" in cfg:
+            # a piece cut with more than its face (Tiny Rogues' S, as drawn,
+            # sides and all) is still measured by its face
+            face_only &= _fill_mask(A, {"fill": cfg["box_fill"]})
+        fy, fx = np.where(face_only)
         if fy.size == 0:
             fy, fx = np.where(out[..., 3] > 127)
         by0, by1 = fy.min(), fy.max() + 1
@@ -1125,6 +1674,7 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
                 img = Image.fromarray(px)
         img.save(dest, optimize=True)
         written.append(dest)
+        written_names.append(n)
         print(f"  {dest.relative_to(ROOT)}  {img.width}x{img.height}")
 
     # The index: which config, game and style made each piece, so the title can
@@ -1133,7 +1683,7 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
     index_path = OUT_DIR / "index.json"
     index = json.loads(index_path.read_text()) if index_path.exists() else {}
     index = {k: v for k, v in index.items() if v.get("config") != cfg_path.name}
-    for n_, dest_ in zip(names, written):
+    for n_, dest_ in zip(written_names, written):
         _, _, variant_ = n_.partition(".")
         index[str(dest_.relative_to(OUT_DIR))] = {
             "game": cfg["game"],
@@ -1147,7 +1697,25 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
             "body_height": round(body_heights[n_], 4),
             "body_center_x": round(body_xs[n_], 4),
             "body_width": round(body_widths[n_], 4),
+            # where the piece was cut from, as fractions of the game's logo
+            # (logos/<game>.png): x0, y0, x1, y1
+            "src": _src_fraction(src_boxes[n_], logo_box),
         }
+        # `size` and `pad` are the owner's eye on a piece, by name or "*" for
+        # the whole config: drawn this many times as big (on the baseline), and
+        # this much of the line kept clear either side (TitleLetters)
+        for key in ("size", "pad", "drop"):
+            val = cfg.get(key, {}).get(n_, cfg.get(key, {}).get("*"))
+            if val is not None:
+                index[str(dest_.relative_to(OUT_DIR))][key] = val
+        if n_ in cfg.get("subtitle", []):
+            # a decoration for the subtitle's row, not the title's
+            index[str(dest_.relative_to(OUT_DIR))]["subtitle"] = True
+        if n_ in cfg.get("lowercase", []):
+            # a lowercase SHAPE (Darkest Dungeon's a, Slay the Spire's e): the
+            # title draws it at the x-height in a lowercase place, and lets a
+            # g or y hang below the line (TitleLetters._size)
+            index[str(dest_.relative_to(OUT_DIR))]["form"] = "lower"
         if n_ in line_centers:
             # what sits on the line's middle, when it is not the box's middle
             index[str(dest_.relative_to(OUT_DIR))]["line_center"] = round(line_centers[n_], 4)
@@ -1177,6 +1745,8 @@ def main() -> int:
     for c in sorted(Path(__file__).resolve().parent.joinpath("logo_letters").glob("*.json")):
         cfg = json.loads(c.read_text())
         for piece in cfg["pieces"]:
+            if piece in cfg.get("hold", []):
+                continue
             letter, _, variant = piece.partition(".")
             path = f"{letter}/{cfg['game']}" + (f"__{variant}" if variant else "") + ".png"
             if path in owners and owners[path] != (c.name, piece):
@@ -1184,6 +1754,15 @@ def main() -> int:
                       f"and {c.name} ({piece})", file=sys.stderr)
                 return 1
             owners[path] = (c.name, piece)
+    # One logo per game (logos/<game>.png): every config of a game cuts the same
+    # source, or the game's page would show one logo and lay another's letters on it.
+    sources = {}
+    for c in sorted(Path(__file__).resolve().parent.joinpath("logo_letters").glob("*.json")):
+        cfg = json.loads(c.read_text())
+        if sources.setdefault(cfg["game"], cfg["source"]) != cfg["source"]:
+            print(f"error: {cfg['game']} has two sources, {sources[cfg['game']]} and {cfg['source']}",
+                  file=sys.stderr)
+            return 1
     for c in args.configs:
         print(c)
         cut(c, args.preview)

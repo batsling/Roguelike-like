@@ -23,6 +23,10 @@ signal changed
 signal letter_unlocked(key: String)
 
 var _unlocked: Dictionary = {}   # index key -> owner key ("game:hades")
+# The earned letters a game's page has already SHOWN (LogoProgress): one not in
+# here glows once the first time its logo is drawn, then goes in. Per profile,
+# beside the draws.
+var _seen: Dictionary = {}
 # Where the draws are saved instead of the profile, when set. The GUT suite sets
 # it (test/pre_run_hook.gd): it shares user:// with the real game, and a test
 # moving GameStats would otherwise draw letters into the owner's own profile.
@@ -39,6 +43,19 @@ func _ready() -> void:
 
 func is_unlocked(key: String) -> bool:
 	return _unlocked.has(key)
+
+func is_seen(key: String) -> bool:
+	return _seen.has(key)
+
+# The game's page has shown these: they will not glow again.
+func mark_seen(keys: Array) -> void:
+	var moved := false
+	for k in keys:
+		if not _seen.has(String(k)):
+			_seen[String(k)] = true
+			moved = true
+	if moved:
+		_save()
 
 func unlocked_keys() -> Array:
 	var out: Array = _unlocked.keys()
@@ -121,6 +138,7 @@ func _path() -> String:
 
 func _load() -> void:
 	_unlocked = {}
+	_seen = {}
 	var f := FileAccess.open(_path(), FileAccess.READ)
 	if f == null:
 		return
@@ -130,15 +148,22 @@ func _load() -> void:
 		if got is Dictionary:
 			for k in got:
 				_unlocked[String(k)] = String(got[k])
+		var seen: Variant = (parsed as Dictionary).get("seen", [])
+		if seen is Array:
+			for k in seen:
+				_seen[String(k)] = true
 
 func _save() -> void:
 	var f := FileAccess.open(_path(), FileAccess.WRITE)
 	if f == null:
 		return
-	f.store_string(JSON.stringify({"unlocked": _unlocked}, "  ", true))
+	var seen: Array = _seen.keys()
+	seen.sort()
+	f.store_string(JSON.stringify({"unlocked": _unlocked, "seen": seen}, "  ", true))
 
 # For tests: forget every draw (the file too).
 func reset_for_tests() -> void:
 	_unlocked = {}
+	_seen = {}
 	_save()
 	changed.emit()

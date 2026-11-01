@@ -410,3 +410,12 @@ tab's card keeps 360. Its two lists are grids of pictures:
   the name and "beaten / levelled / done / followed ×N", the goal itself, and
   your note. A click on an enemy, boss or level-up opens its note editor; the
   other kinds have no note. A goal with no art shows its name instead.
+
+## One game's songs
+
+A game's Collection page shows its songs beside its record, as "♪ unlocked /
+all" (`Collection._songs_button`, none for a game with no songs on the sheet).
+Pressed, it opens the radio filtered to that game (`RadioScreen.open(parent,
+game)`, `game_filter`): its unlocked songs, then its one locked row, no
+characters, and a "Showing: <game> ✕" chip that clears the filter back to every
+song. Tests in `test_radio.gd`.

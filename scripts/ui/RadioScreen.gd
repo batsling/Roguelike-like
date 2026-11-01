@@ -42,11 +42,22 @@ var _folder_shown: String = ""
 var _list_key: String = "-"       # `_list_state` the list was last built for
 var _rows: Dictionary = {}        # unlocked song id -> its row
 var _shown_current: StringName = &""
+# ONE GAME'S SONGS ONLY, when opened from a game's page (Collection's ♪, the
+# owner, 1 Nov 2026): its unlocked songs, then its locked row, and a chip at the
+# top that clears it back to every song. &"" is every song.
+var game_filter: StringName = &""
+var _filter_chip: Button
 
-static func open(parent: Node) -> RadioScreen:
+static func open(parent: Node, game: StringName = &"") -> RadioScreen:
 	var s := RadioScreen.new()
+	s.game_filter = game
 	parent.add_child(s)
 	return s
+
+# Back to every song (the chip's ✕).
+func clear_filter() -> void:
+	game_filter = &""
+	_refresh()
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -154,9 +165,18 @@ func _build_ui() -> void:
 	vbox.add_child(_build_options())
 	vbox.add_child(_build_folder_row())
 
+	var sum_row := HBoxContainer.new()
+	sum_row.add_theme_constant_override("separation", UITheme.GAP)
+	vbox.add_child(sum_row)
 	_summary = Label.new()
 	_summary.add_theme_font_size_override("font_size", UITheme.FONT_SUB)
-	vbox.add_child(_summary)
+	_summary.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	sum_row.add_child(_summary)
+	_filter_chip = Button.new()
+	_filter_chip.name = "FilterChip"
+	_filter_chip.tooltip_text = "Show every song"
+	_filter_chip.pressed.connect(clear_filter)
+	sum_row.add_child(_filter_chip)
 
 	var scroll := ScrollContainer.new()
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -530,6 +550,11 @@ func _fill_list() -> void:
 	var unlocked: Array = []
 	var locked_by_game: Dictionary = {}   # game id -> its locked songs
 	var all: Array = Radio.songs()
+	var game: GameData = Data.get_game(game_filter) if game_filter != &"" else null
+	_filter_chip.visible = game_filter != &""
+	_filter_chip.text = "Showing: %s  ✕" % (game.display_name if game != null else String(game_filter))
+	if game_filter != &"":
+		all = all.filter(func(s) -> bool: return s.game_id == game_filter)
 	for s in all:
 		if Radio.is_unlocked(s):
 			unlocked.append(s)
@@ -551,7 +576,7 @@ func _fill_list() -> void:
 	var waiting: Array = []   # [{"key": [needed, name], "game" or "character": id}]
 	for g in locked_by_game.keys():
 		waiting.append({"key": _game_key(g), "game": g})
-	for ch in _characters_waiting():
+	for ch in ([] if game_filter != &"" else _characters_waiting()):
 		waiting.append({"key": _character_key(ch.id), "character": ch})
 	waiting.sort_custom(func(a, b) -> bool:
 		var ka: Array = a["key"]
@@ -582,6 +607,7 @@ func _list_state() -> String:
 		var p: Dictionary = GameRanks.character_progress(ch.id)
 		parts.append("%s:%s:%s" % [ch.id, p["rank"], p["needed"]])
 	parts.append("station=" + Radio.station)
+	parts.append("game=" + String(game_filter))
 	parts.append("gen=%d" % Radio.library_generation)
 	return "|".join(parts)
 

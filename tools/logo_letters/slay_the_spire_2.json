@@ -84,5 +84,13 @@
     },
     "smooth_scale": true,
     "scale": 3
-  }
+  },
+  "lowercase": [
+    "l",
+    "a",
+    "y",
+    "t",
+    "h",
+    "e"
+  ]
 }

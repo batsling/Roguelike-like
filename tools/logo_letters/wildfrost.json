@@ -1,0 +1,66 @@
+{
+  "game": "wildfrost",
+  "source": "wildfrost.png",
+  "pieces": {
+    "w": [
+      159,
+      200
+    ],
+    "i": [
+      426,
+      190
+    ],
+    "l": [
+      471,
+      228
+    ],
+    "d": [
+      700,
+      183
+    ],
+    "f": [
+      856,
+      170
+    ],
+    "r": [
+      1137,
+      184
+    ],
+    "o": [
+      1455,
+      192
+    ],
+    "s": [
+      1528,
+      192
+    ],
+    "t": [
+      1733,
+      134
+    ]
+  },
+  "fill": {
+    "min_alpha": 250,
+    "min_brightness": -1
+  },
+  "adopt_strays": false,
+  "smooth": false,
+  "shadow": false,
+  "cut": {
+    "reach": 0,
+    "recast_shadow": {
+      "spread": 4,
+      "dx": 0,
+      "dy": 10,
+      "blur": 26,
+      "alpha": 120,
+      "colour": [
+        45,
+        30,
+        43
+      ],
+      "soft_face": 0.8,
+      "soft_face_slope": 2.0
+    }
+  }
+}

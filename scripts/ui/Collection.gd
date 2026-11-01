@@ -74,6 +74,9 @@ const DETAIL_ITEM_SIZE := 132
 # are 132-176px square, they were never what pushed a page down, and an item you
 # opened the pane to look at is the one thing that should not shrink.
 const GAME_DETAIL_COVER := 120
+# The least room the game's logo (LogoProgress) asks for beside the cover; it
+# takes the rest of the row.
+const GAME_DETAIL_LOGO_MIN := Vector2(140, 60)
 # The name beside that cover. Down from 18 because the column it sits in is now
 # about 120px wide, and 18px of a long title in 120px is five wrapped lines.
 const GAME_DETAIL_NAME_FONT := UITheme.FONT_SUB
@@ -1194,6 +1197,25 @@ func _paint_selected(index: int, on: bool) -> void:
 		panel.add_theme_stylebox_override("panel", _flat(CELL_BG, border, 2))
 
 # Empty the popup and put it away, and let go of the lit cell with it.
+# "♪ 2 / 5": the game's songs on Roguelike Radio, unlocked of all; pressed, the
+# radio opens on this game's songs alone (RadioScreen.game_filter). None for a
+# game with no songs on the sheet.
+func _songs_button(g: GameData) -> Button:
+	var all: Array = Radio.game_songs(g.id)
+	if all.is_empty():
+		return null
+	var got: int = all.filter(func(s) -> bool: return Radio.is_unlocked(s)).size()
+	var b := Button.new()
+	b.name = "SongsButton"
+	b.flat = true
+	b.text = "♪ %d / %d" % [got, all.size()]
+	b.tooltip_text = "%s's songs on Roguelike Radio: %d of %d unlocked" % [g.display_name, got, all.size()]
+	b.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
+	b.add_theme_color_override("font_color", UITheme.GOLD if got > 0 else Color(0.6, 0.6, 0.65))
+	b.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	b.pressed.connect(func() -> void: RadioScreen.open(self, g.id))
+	return b
+
 func _close_detail() -> void:
 	if _detail_box != null and is_instance_valid(_detail_box):
 		_clear_children(_detail_box)
@@ -1556,42 +1578,63 @@ func _show_game_detail(g: GameData) -> void:
 	_detail_game = g
 	var tc := _game_type_color(int(g.type))
 
+	# THE COVER WITH THE GAME'S STATS UNDER IT, ITS LOGO BESIDE (the owner, 1 Nov
+	# 2026). The name is the page's heading; the logo (LogoProgress, filled in
+	# as its title letters are earned) takes the room beside the cover as large
+	# as it fits. A game with no logo cut (most of them) keeps the same shape,
+	# its name standing large in that room instead.
+	var logo := LogoProgress.make(g.id, GAME_DETAIL_LOGO_MIN)
+	if logo != null:
+		_detail_box.add_child(_label(g.display_name, tc, GAME_DETAIL_NAME_FONT, false, true))
+
 	var head := HBoxContainer.new()
-	head.add_theme_constant_override("separation", UITheme.GAP_TIGHT)
+	head.add_theme_constant_override("separation", UITheme.GAP_WIDE)
 	head.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	if g.cover_image != null:
-		var tr := _cover_rect(g.cover_image, GAME_DETAIL_COVER, g.id)
-		tr.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-		head.add_child(tr)
 
 	var ident := VBoxContainer.new()
+	ident.name = "UnderCover"
 	ident.add_theme_constant_override("separation", UITheme.GAP_HAIR)
-	ident.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	# LEFT-ALIGNED, all of it. `_label`'s `bold_center` and `_detail_meta` centre
-	# their text, which was right while this block was a caption under a centred
-	# cover and is wrong now that it is a column beside one: centred lines in a
-	# narrow column give you a ragged left edge to read down.
-	#
-	# The name wraps rather than clips — it is the one string on the page that has
-	# to be readable in full, and the column beside a cover is narrow.
-	ident.add_child(_label(g.display_name, tc, GAME_DETAIL_NAME_FONT, false, true))
+	ident.custom_minimum_size = Vector2(GAME_DETAIL_COVER, 0)
+	ident.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	if g.cover_image != null:
+		var tr := _cover_rect(g.cover_image, GAME_DETAIL_COVER, g.id)
+		tr.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+		ident.add_child(tr)
+	# LEFT-ALIGNED, all of it: a column of short lines read down its left edge.
 	var meta_parts: Array = []
 	if g.year > 0:
 		meta_parts.append(str(g.year))
 	meta_parts.append(GAME_TYPE_NAMES[clampi(int(g.type), 0, 3)])
 	ident.add_child(_label("  •  ".join(meta_parts), tc, 12))
-	# The lifetime record, in the two glyphs it is drawn in everywhere else.
+	# The lifetime record, in the two glyphs it is drawn in everywhere else, and
+	# the game's songs on the radio beside it: unlocked of all, the note opening
+	# the radio on this game's songs alone.
+	var stats := HBoxContainer.new()
+	stats.add_theme_constant_override("separation", UITheme.GAP_WIDE)
 	var beaten: int = GameStats.beaten_count(g.id)
 	var amulets: int = GameStats.amulet_wins(g.id)
 	var record := _label("⚔ %d    👑 %d" % [beaten, amulets],
 		UITheme.GOLD if beaten > 0 or amulets > 0 else Color(0.6, 0.6, 0.65), 13)
 	record.tooltip_text = "Beaten %d time%s  ·  %d Amulet win%s" % [
 		beaten, "" if beaten == 1 else "s", amulets, "" if amulets == 1 else "s"]
-	ident.add_child(record)
+	stats.add_child(record)
+	var songs := _songs_button(g)
+	if songs != null:
+		stats.add_child(songs)
+	ident.add_child(stats)
 	# The tags, editable: through GameTags, so what is added here counts at
 	# once and rides out to the sheet on the next Export.
 	ident.add_child(TagEditor.make(g))
 	head.add_child(ident)
+	if logo != null:
+		head.add_child(logo)
+	else:
+		# The name wraps rather than clips: it is the one string on the page
+		# that has to be readable in full.
+		var name_l := _label(g.display_name, tc, UITheme.FONT_DISPLAY, false, true)
+		name_l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		name_l.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		head.add_child(name_l)
 	_detail_box.add_child(head)
 
 	_detail_box.add_child(HSeparator.new())

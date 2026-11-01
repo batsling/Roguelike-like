@@ -116,8 +116,86 @@ the first DECORATIONS: `decor_left/` and `decor_right/` hold the big claws and
 the leg pairs (`__legs`), shown at the far left and right of the title at random
 (half the launches). Decorations are always a matching PAIR, by file stem: the
 two claws, the two leg pairs, or Uma Musume's girl (`uma_musume_pretty_derby_girl.json`)
-and her dash (`uma_musume_pretty_derby_decor.json`) — so a new decoration needs
-both sides under one name. Spelunky Classic gives S P E L U N K Y (the first K): its
+and her dash (`uma_musume_pretty_derby_decor.json`) — so a pair needs both sides
+under one name, or one side alone: a left one with no right half (the torch)
+stands at the left, a right one with no left (Demonic Mahjong's seal) at the
+right. Decorations belong to one row: the crab's legs are the
+subtitle's (`"subtitle": [both halves]` in the config, `subtitle` in the index),
+every other one the title's, and each row flips its own coin for a pair. A
+`decor_left/` piece with no `decor_right/` of its own stands at
+the left alone: Darkest Dungeon's torch (`darkest_dungeon_torch.json`, cut whole
+in its own colours, the flame's open core left as the logo draws it). Darkest
+Dungeon also gives D a r k e s t, D u n g e o n (second D, e and n as `__2`),
+black ink cut like Mewgenics', with the joined `ar` and `ung` parted by vertical
+`splits` and the a's foot moved back off the r with `assign`. Vampire Survivors
+gives V A M P I R E, S U R V I V O R S (second and third R and V, second I
+and S as `__2`, `__3`). Only the gold faces are cut; the 3D side is REBUILT
+by sweeping each face 17 right and 8 down (`extrude`), see-through grey-brown
+shading from the face out and fading (`colour_far`, `alpha`, `alpha_far`,
+measured along the logo's own side), with its edge softened (`soft_edge`). So
+the joined faces only needed parting: AMP, RE, UR and VIV by vertical `splits`
+at the serifs where they touch, the sides never mattering. Tiny Rogues was cut and then dropped (the owner, 1 Nov 2026), its 3D
+letters' perspective sides and the bow across them more trouble than the
+letters were worth; the options built for it stay in the script and its
+docstring (`cut.drawn` with `cast`, `pixel_outline`'s `miter`, `repaint`,
+`rgb_ranges`, `hold`, `box_fill`, `extrude`'s `colour_down` and `outline`).
+Demonic Mahjong gives D E M O N I C, M A H J O N G (the second M, O and N as
+`__2`), gold brushwork with no outline and every letter a shape of its own, cut
+as drawn at 2x (`smooth_scale`, the source being 640px wide); the spiked N and
+the dripping M, A and H are sized by their bodies (`body` rows). Its red seal
+is a `decor_right/` with NO left half: a right decoration standing alone at the
+title's right end, earned as a unit of its own (`TitleLetters.unit_key`),
+small and high as the logo has it: a decoration honours `size` and `drop`
+(`TitleLetters._decor_size`), the seal 0.65 of a decoration's usual size and
+lifted 0.36 of the line, measured off the logo (64px against the D's 110, its
+middle a third of the line above the line's). Dwarf Fortress gives D W A R F
+in green and F O R T R E S S in red (the O the dwarf's head; FORTRESS's F and R's
+as `__2`, `__3`), two configs on one source, told apart by colour since the two
+rows touch: `dwarf_fortress.json` (DWARF) and `dwarf_fortress_2.json` (FORTRESS,
+R|T and S|S split where they meet). The red row's tops are drawn over the foot
+of every DWARF letter's dark band, so each band is finished on the source first
+(`repaint` rects): a column the red cut off runs on down to the bottom line of
+the clean columns beside it, and the band's ends round off on a 12px corner,
+so every DWARF bottom is a curve then a straight line. DWARF is cut with `reach`
+0, or the red row's top edge rides along in a one-pixel line. Ember Knights
+gives E M B E R (the second E as `__2`) and K N I G H T S, two configs at 2x
+(`smooth_scale`, the source 500px wide). EMBER's orange glow runs from letter
+to letter and down onto KNIGHTS, so each letter is cut solid and its glow drawn
+again round its own shape (`recast_shadow`: spread 3, blur 7, (243, 45, 19),
+fitted to the logo's glow falling from about 200 to 10 over 14px), the face
+eased into it over about a pixel (`soft_face` 1.3, `soft_face_slope` 1.6) where a
+hard cut at the logo's soft edge left every edge stair-stepped; its flames
+reach far above the letters, so each is sized by its body (`body` rows 86-183)
+and the flame hangs over the line. KNIGHTS is cut plain; the warm gold on its
+edges is its own rim, not EMBER's glow. Wildfrost gives W I L D F R O S T,
+the O the gem: nine separate shapes cut solid, and the soft purple-grey shadow
+the logo spreads under the whole word drawn again under each (`recast_shadow`:
+spread 4, blur 26, 10px down, alpha 120, (45, 30, 43), fitted to the I's shadow
+above and below it), the face eased into it (`soft_face` 0.8). Into the
+Breach gives I N T O, T H E, B R E A C H (the second T, H and E as `__2`): pixel
+art at one pixel a pixel (151x104), cut at 8x as sharp pixels. Each letter
+is found by its purple face and keeps its own body (face and white outline,
+the logo's pixels); the rest is DRAWN to the logo's recipe (`synth_shadow`),
+measured pixel by pixel: a faint pink haze whose alpha is 14 times the body
+under a 1-2-1 kernel (4 beside a straight edge, 1 off a lone corner, up to 8
+in an inside corner — 701 of the logo's 702 haze pixels to the unit), over a
+drop shadow that is the body moved 3px right and down. Drawn whole for every
+letter, a neighbour that covered part of a shadow in the logo costs nothing;
+laid back in place, the 13 letters rebuild the logo to within 3 levels on all
+but a handful of pixels (where two letters' haze overlaps). Diablo gives
+D I A B L O, each letter in its own flame, cut as drawn from a logo that is
+already see-through. The flames' soft glows run into each other, so each letter
+keeps the glow round it past the midline and fades out into its neighbour's
+(`glow_share`, a logistic over 6px of how much nearer it is) rather than
+stopping on a seam; the ® beside the O is rebuilt as the O's glow (`inpaint`:
+each pixel the average of the glow at the same distance from the flame).
+I A B L are small capitals (body to the shared baseline, the A's leg hanging
+below it). Noita gives N o i t a (o i t a lowercase): pixel art scaled up
+about 17x into a webp, rebuilt on its own grid (`pixel_grid`, pitch 17.395,
+measured from where the colour edges fall) and snapped to its eight colours,
+then cut sharp at 12x; the i's dot is its own island, joined to the i by
+`extra_ink` (`loose`), its box stopping a row above the t's crossbar. Every
+letter is the logo's own pixels exactly. Spelunky Classic gives S P E L U N K Y (the first K): its
 source is a blurry 1920x1080 screenshot of pixel art, so `pixel_grid` rebuilds
 the logo pixel by pixel on the measured grid (11.707px a pixel), each snapped to
 the logo's three-colour palette, and the letters come out as sharp 12x blocks. Haste gives H A S T E, solid black
@@ -164,14 +242,52 @@ docstring has the detail. To add a logo:
    which shows any stray pixel. Commit the config, the source, the PNGs and
    `images2.0/custom/title/index.json`.
 
+**Each game's page shows its logo filling in** (`scripts/ui/LogoProgress.gd`,
+tests `test_logo_progress.gd`), beside the cover on the run map's game card and
+the Collection's game page, as large as fits the room left of the cover column
+(the game's year, type and connections stand under the cover): the whole logo greyed (`shaders/locked_grey.gdshader`,
+squeezed into mid grey and partly see-through, since only dimming left a black
+logo black), each earned piece laid on where it was cut from, the original in
+colour once every piece is earned, a count ("5 / 14"), and a glow the first time
+a new piece is shown (`TitleUnlocks.mark_seen`). `tools/logo_letters.py` writes
+what it needs: the logo itself as `images2.0/custom/title/logos/<game>.png`
+(trimmed to what it draws, at most 1200px; for a `pixel_grid` logo its rebuilt
+pixels rather than the screenshot), and each piece's `src` in the index, its
+cut box as fractions of that logo. Every config of one game must cut the same
+source, and the script refuses two.
+
 **The index is what centres the title.** A cut letter is a PNG with whatever the
 logo drew round it (a glow on every side, a shadow pushed one way, an eye stalk,
 a knife), so the picture's middle is not the letter's. The script records each
 piece's LETTER BOX in `index.json` — `body_center` / `body_height` down,
 `body_center_x` / `body_width` across, fractions of the PNG — measured off the
 letter's face (its fill), so glow, shadow and outline never move it. The menu
-scales every letter by one factor so its own height is the line's, centres it
-on the line and in its own slot by that box, and lets the rest overflow. A
+scales every letter by one factor so its box is as tall as THE TEXT'S CASE
+makes it, puts it in its own slot by that box, and lets the rest overflow
+(`TitleLetters._size`). A capital place is the whole line. In a lowercase place
+a capital is a small cap, at Rogue's x-height (0.7 of the line) on the
+baseline, even for a k or an l. A letter cut as a lowercase SHAPE (a config's
+`"lowercase": [pieces]`, `"form": "lower"` in the index: Darkest Dungeon,
+Slay the Spire, Slay the Spire 2's "Slay the", Everything is Crab) is drawn as
+one: the x-height, the whole line for b d f h k l t and a dotted i, and the
+x-height with its tail hanging 0.3 below the line for g j p q y. So a new
+logo with lowercase letters needs its `lowercase` list, or its small a is
+blown up to a capital's height as every letter once was. Two settings are the
+owner's eye on a piece once it is on screen, by piece name or `"*"` for the
+whole config: `"size"` draws it that many times as big, grown or shrunk on the
+baseline (Dead Cells' thin letters 1.12, every Balatro letter 1.05), `"pad"` keeps that
+much of the line clear either side (Dead Cells' flame, 0.08), and `"drop"` moves
+it down by that much of the line (Balatro's A, 0.05). Rogue's letters carry the
+same keys from `tools/rogue_letters.py`'s `SIZE`, `PAD` and `SIZE_OF`: every one
+0.94 and padded 0.03, the lowercase k 0.86. A capital place prefers a capital
+SHAPE: a lowercase-shaped letter (Darkest Dungeon's r, which read as a T) is
+picked for one only when no capital can be. A decoration is never drawn down
+into the row below its own (the torch's long handle covered the subtitle): it
+is lifted until it clears. The subtitle spaces its letters wider than the title
+(`MainMenu.SUBTITLE_GAP`, 0.16 of its line, against `TitleLetters.GAP`'s 0.06). A
+`body` that starts below the letter's real top blows the letter up and pushes
+it above the line: the crab's h was `[262, 375]` and sat too high until its
+stem's real top, 215, was used. A
 piece with something attached above or below sets its rows by hand in the
 config (`"body": {"h": [y0, y1]}`, source pixels: the crab's h and r, the
 Repentance I, Nuclear Throne's slimed N and R); its width is then measured over

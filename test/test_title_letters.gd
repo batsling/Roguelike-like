@@ -8,7 +8,7 @@ extends GutTest
 # against the pixels of each picture, so a stale index fails here too.
 
 const MENU := preload("res://scenes/menu/MainMenu.tscn")
-const TITLE := "Roguelike-like"
+const TITLE := "Roguelike-Like"
 const SUBTITLE := "The Search for the Amulet of Nivlac"
 const SEEDS := [1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233]
 
@@ -93,8 +93,14 @@ func test_each_box_hugs_its_letter() -> void:
 # screen is worked out again from the TextureRect the layout made (its position
 # and size) and the index's fractions, never from the layout's own record.
 func test_every_letter_is_centred_on_the_line_and_in_its_slot() -> void:
+	# every logo letter earned, so the logos are laid out and not just Rogue's
+	var was: Dictionary = TitleUnlocks._unlocked
+	TitleUnlocks._unlocked = {}
+	for k in TitleLetters.units():
+		TitleUnlocks._unlocked[k] = "test"
+	var logo_lower := 0
 	for s in SEEDS:
-		for spec in [[TITLE, 84.0, true], [SUBTITLE, 30.0, false]]:
+		for spec in [[TITLE, 84.0, true], [SUBTITLE, 36.0, false]]:
 			var row := TitleLetters.make(spec[0], spec[1], _rng(s), spec[2])
 			add_child_autofree(row)
 			var h: float = row.line_height
@@ -106,12 +112,33 @@ func test_every_letter_is_centred_on_the_line_and_in_its_slot() -> void:
 				var bw: float = float(p.entry["body_width"]) * r.size.x
 				var bh: float = float(p.entry["body_height"]) * r.size.y
 				var tag := "seed %d %s %s" % [s, spec[0], p.entry["path"]]
-				assert_almost_eq(cy, h / 2.0, 0.01, tag + ": middle on the line's middle")
+				var is_decor: bool = String(p.entry["folder"]).begins_with("decor")
+				if is_decor:
+					# on the line's middle, unless that would hang it into the row
+					# below: then lifted until it just clears it (the torch)
+					var bottom: float = r.position.y + r.size.y
+					if bottom < h * (1.0 + TitleLetters.PAD) - 0.01:
+						# its own place: the line's middle, moved by its `drop`
+						var dsz := TitleLetters._decor_size(p.entry)
+						var box_top: float = r.position.y + (float(p.entry["body_center"]) - float(p.entry["body_height"]) * 0.5) * r.size.y
+						if p.entry.has("line_center"):
+							assert_almost_eq(cy, h * (0.5 + float(p.entry.get("drop", 0.0))), 0.01,
+								tag + ": middle on the line's middle, moved by its drop")
+						else:
+							assert_almost_eq(box_top, h * dsz.y, 0.01, tag + ": where its size and drop put it")
+						assert_almost_eq(bh, h * dsz.x, 0.01, tag + ": as tall as its size makes it")
+					else:
+						assert_lt(cy, h / 2.0, tag + ": lifted, not dropped")
+				else:
+					var top: float = r.position.y + (float(p.entry["body_center"]) - float(p.entry["body_height"]) * 0.5) * r.size.y
+					assert_almost_eq(top, p.body.position.y, 0.01, tag + ": its top where its case puts it")
 				assert_almost_eq(cx, p.body.get_center().x, 0.01, tag + ": middle in its slot")
 				assert_almost_eq(bw, p.body.size.x, 0.01, tag + ": its own width is its slot")
-				var is_decor: bool = String(p.entry["folder"]).begins_with("decor")
-				assert_almost_eq(bh, h * (TitleLetters.DECOR_SIZE if is_decor else 1.0), 0.01,
-					tag + ": every letter the line's height")
+				var want: float = TitleLetters._decor_size(p.entry).x if is_decor else TitleLetters._size(p.entry, p.ch).x
+				if not p.entry.has("case") and want < 1.0:
+					logo_lower += 1
+				assert_almost_eq(bh, h * want, 0.01, tag + ": as tall as its case makes it")
+				assert_almost_eq(bh, p.body.size.y, 0.01, tag + ": its own height is its box")
 				# one scale for both directions: the picture keeps its shape
 				var tex := r.texture
 				assert_almost_eq(r.size.x / r.size.y, float(tex.get_width()) / tex.get_height(), 0.001,
@@ -121,6 +148,8 @@ func test_every_letter_is_centred_on_the_line_and_in_its_slot() -> void:
 			assert_almost_eq(row.custom_minimum_size.y, h * (1.0 + 2.0 * TitleLetters.PAD), 0.01,
 				"the row is one line tall, whatever overflows")
 			assert_eq(row.custom_minimum_size.x, 0.0, "and asks for no width")
+	assert_gt(logo_lower, 0, "logo letters stood in lowercase places")
+	TitleUnlocks._unlocked = was
 
 
 func test_the_same_seed_spells_the_same_title() -> void:
@@ -140,8 +169,19 @@ func test_a_word_does_not_repeat_a_game_while_another_is_left() -> void:
 			var e: Dictionary = picks[i]
 			var before := picks.slice(0, i).map(func(x): return x["game"])
 			if e["game"] in before:
-				var ch := _folder_for_test(TITLE.replace(" ", "")[i])
-				var unused := (TitleLetters.pool()[ch] as Array).filter(func(o): return not o["game"] in before)
+				var raw: String = TITLE.replace(" ", "")[i]
+				var ch := _folder_for_test(raw)
+				# only what `pick` could have chosen there: the place's case, and
+				# a capital SHAPE in a capital place when there is one
+				var want: String = "" if raw.to_upper() == raw.to_lower() \
+					else ("upper" if raw == raw.to_upper() else "lower")
+				var opts: Array = (TitleLetters.pool()[ch] as Array).filter(
+					func(o): return not o.has("case") or String(o["case"]) == want)
+				if want == "upper":
+					var caps := opts.filter(func(o): return String(o.get("form", "")) != "lower")
+					if not caps.is_empty():
+						opts = caps
+				var unused := opts.filter(func(o): return not o["game"] in before)
 				assert_true(unused.is_empty(), "seed %d: %s repeats %s with %s unused" % [s, ch, e["game"], unused.size()])
 
 func _folder_for_test(ch: String) -> String:
@@ -206,23 +246,169 @@ func test_every_logo_piece_is_a_unit_and_rogue_is_none() -> void:
 	assert_gt(units.size(), 150, "the cut letters")
 	for k in units:
 		assert_false(String(k).get_file().begins_with("rogue"), "%s is not Rogue's" % k)
-		assert_false(String(k).begins_with("decor_right"), "a pair is filed under its left half")
+		if String(k).begins_with("decor_right"):
+			var stem := String(k).get_file().get_basename()
+			assert_eq((TitleLetters.pool()["decor_left"] as Array).filter(
+				func(e): return e["stem"] == stem).size(), 0,
+				"a pair is filed under its left half; %s is a right one standing alone" % k)
 	assert_gt(TitleLetters.units_of(&"hades").size(), 3, "Hades' own letters")
 	assert_eq(TitleLetters.units_of(&"rogue").size(), 0)
 
 
+# THE TEXT'S CASE SIZES A LOGO LETTER, not the logo's: a capital place is the
+# whole line, a capital in a lowercase place a small cap, and a lowercase-shaped
+# letter itself: the x-height, the whole line if tall, a g hanging below.
+func test_a_letter_is_sized_by_the_case_of_its_place() -> void:
+	var cap := {"game": "balatro"}                    # a capital O, B, G...
+	var low := {"game": "darkest_dungeon", "form": "lower"}
+	var x := TitleLetters.X_HEIGHT
+	assert_eq(TitleLetters._size(cap, "O"), Vector2(1, 0), "a capital place: the whole line")
+	assert_eq(TitleLetters._size(low, "R"), Vector2(1, 0), "whatever stands in it")
+	assert_eq(TitleLetters._size(cap, "o"), Vector2(x, 1 - x), "a capital in a lowercase place: small caps")
+	assert_eq(TitleLetters._size(low, "a"), Vector2(x, 1 - x), "a lowercase a: the x-height, on the baseline")
+	assert_eq(TitleLetters._size(low, "k"), Vector2(1, 0), "a tall letter is the whole line")
+	assert_eq(TitleLetters._size(cap, "k"), Vector2(x, 1 - x), "a capital K in a k's place is a small cap")
+	assert_eq(TitleLetters._size(low, "i"), Vector2(1, 0), "a dotted i reaches up")
+	assert_eq(TitleLetters._size(cap, "i"), Vector2(x, 1 - x), "a capital I in an i's place is small")
+	assert_eq(TitleLetters._size(low, "g"), Vector2(x + TitleLetters.DESCENDER, 1 - x),
+		"a lowercase g hangs below the line")
+	assert_eq(TitleLetters._size(cap, "g"), Vector2(x, 1 - x), "a capital G does not")
+	assert_eq(TitleLetters._size({"game": "rogue", "case": "lower"}, "a"), Vector2(1, 0),
+		"Rogue's letters keep their own band")
+	assert_eq(TitleLetters._size(cap, "-"), Vector2(1, 0), "not a letter: the whole line")
+
+# A PIECE'S `size` grows or shrinks it ON THE BASELINE, and its `pad` keeps room
+# clear either side (the owner's eye: Dead Cells' thin letters a little bigger,
+# Darkest Dungeon's k a little smaller, Dead Cells' flame given room).
+func test_size_scales_on_the_baseline_and_pad_keeps_room() -> void:
+	var x := TitleLetters.X_HEIGHT
+	var big := {"game": "dead_cells", "size": 1.2}
+	var sz := TitleLetters._size(big, "D")
+	assert_almost_eq(sz.x, 1.2, 0.001, "a capital 1.2 times the line")
+	assert_almost_eq(sz.y + sz.x, 1.0, 0.001, "standing on the baseline")
+	sz = TitleLetters._size({"game": "darkest_dungeon", "form": "lower", "size": 0.9}, "g")
+	assert_almost_eq(sz.x, (x + TitleLetters.DESCENDER) * 0.9, 0.001, "a g shrunk...")
+	assert_almost_eq(sz.y + x * 0.9, 1.0, 0.001, "...keeps its x-height on the baseline")
+	sz = TitleLetters._size({"game": "balatro", "drop": 0.05}, "A")
+	assert_almost_eq(sz.y, 0.05, 0.001, "a drop moves it down")
+	var idx := TitleLetters.pool()
+	var flame: Dictionary = (idx["dash"] as Array).filter(func(e): return e["game"] == "dead_cells")[0]
+	var a_: Dictionary = (idx["a"] as Array).filter(func(e): return e["game"] == "balatro")[0]
+	var row := TitleLetters.new()
+	add_child_autofree(row)
+	row._lay_out([a_, flame, a_], [], 100.0, "A-A")
+	var pad := 100.0 * float(flame["pad"])
+	assert_gt(pad, 0.0, "Dead Cells' flame keeps room round it")
+	assert_almost_eq(row.placed[1].body.position.x - row.placed[0].body.end.x,
+		100.0 * TitleLetters.GAP + pad, 0.01, "before it")
+	assert_almost_eq(row.placed[2].body.position.x - row.placed[1].body.end.x,
+		100.0 * TitleLetters.GAP + pad, 0.01, "and after it")
+	# ...but only between pieces: at either END of a row it pushed the row off
+	# centre by half of it (CI, 1 Nov 2026: Rogue's padded R opening the title)
+	row._lay_out([flame, a_, flame], [], 100.0, "-A-")
+	assert_almost_eq(row.placed[0].body.position.x, 0.0, 0.01, "no room before the first piece")
+	assert_almost_eq(row.placed[-1].body.end.x, row.ink_width, 0.01, "nor after the last")
+
+# A CAPITAL PLACE TAKES A CAPITAL SHAPE when one is there: Darkest Dungeon's r
+# as the title's R read as a T. A lowercase shape only when nothing else can.
+func test_a_capital_place_prefers_a_capital_shape() -> void:
+	var pool := TitleLetters.pool()
+	var rs: Array = (pool["r"] as Array).filter(func(e): return not e.has("case"))
+	var lower_r: Array = rs.filter(func(e): return String(e.get("form", "")) == "lower")
+	assert_gt(lower_r.size(), 0, "some r is cut as a lowercase shape")
+	for sd in range(40):
+		var e: Dictionary = TitleLetters.pick("R", _rng(sd), {"r": rs})[0]
+		assert_ne(String(e.get("form", "")), "lower", "seed %d: %s" % [sd, e["path"]])
+	var only_lower: Dictionary = TitleLetters.pick("R", _rng(1), {"r": lower_r})[0]
+	assert_eq(String(only_lower.get("form", "")), "lower", "...and one stands there when nothing else can")
+	var seen_lower := false
+	for sd in range(80):
+		seen_lower = seen_lower or String(TitleLetters.pick("r", _rng(sd), {"r": rs})[0].get("form", "")) == "lower"
+	assert_true(seen_lower, "a lowercase place still takes either")
+
+# A DECORATION NEVER HANGS INTO THE ROW BELOW: the torch's handle covered the
+# subtitle's first letters until it was lifted.
+func test_a_decoration_stays_above_the_row_below() -> void:
+	for folder in ["decor_left", "decor_right"]:
+		for e in TitleLetters.pool()[folder]:
+			var row := TitleLetters.new()
+			add_child_autofree(row)
+			row._lay_out([], [e, e] if folder == "decor_left" else [{}, e], 84.0)
+			for p in row.placed:
+				assert_true(p.rect.position.y + p.rect.size.y <= 84.0 * (1.0 + TitleLetters.PAD) + 0.01,
+					"%s ends inside its own row" % e["path"])
+
+func test_make_takes_its_gap_between_letters() -> void:
+	var a := TitleLetters.make("ROGUE", 30.0, _rng(2), false, 0.0, TitleLetters.SPACE, 0.2)
+	add_child_autofree(a)
+	for i in range(1, a.placed.size()):
+		var gap: float = a.placed[i].body.position.x - a.placed[i - 1].body.end.x
+		var pads: float = 30.0 * (float(a.placed[i].entry.get("pad", 0.0)) + float(a.placed[i - 1].entry.get("pad", 0.0)))
+		assert_almost_eq(gap - pads, 30.0 * 0.2, 0.01, "the gap asked for")
+
+# THE CRAB'S LEGS ARE THE SUBTITLE'S (the owner, 1 Nov 2026): the subtitle's
+# decorations come from those marked `subtitle`, the title's from the rest.
+func test_the_subtitle_has_decorations_of_its_own() -> void:
+	var seen := {}
+	for sd in range(30):
+		var d := TitleLetters.pick_decor(_rng(sd), {}, true)
+		assert_eq(d.size(), 2, "a pair")
+		assert_true(bool(d[0].get("subtitle", false)), "%s is a subtitle decoration" % d[0]["path"])
+		assert_eq(d[0]["stem"], d[1]["stem"], "from one pair")
+		seen[d[0]["stem"]] = true
+	assert_true(seen.has("everything_is_crab__legs"), "the crab's legs")
+
 func test_decorations_come_in_matching_pairs() -> void:
 	var stems := {}
-	for s in range(40):
+	for s in range(60):
 		var d := TitleLetters.pick_decor(_rng(s))
-		assert_eq(d.size(), 2, "a left and a right")
+		if (d[0] as Dictionary).is_empty():
+			assert_eq(d[1]["folder"], "decor_right", "a right one alone")
+			stems[d[1]["stem"]] = "right alone"
+			continue
 		assert_eq(d[0]["folder"], "decor_left")
+		if d.size() == 1:
+			stems[d[0]["stem"]] = "alone"
+			continue
+		assert_eq(d.size(), 2, "a left and a right")
 		assert_eq(d[1]["folder"], "decor_right")
 		assert_eq(d[0]["stem"], d[1]["stem"], "from one pair: %s / %s" % [d[0]["path"], d[1]["path"]])
-		stems[d[0]["stem"]] = true
-	assert_true(stems.has("uma_musume_pretty_derby"), "Uma Musume's runner and dash are a pair")
-	assert_true(stems.has("everything_is_crab"), "the crab's claws are a pair")
-	assert_true(stems.has("everything_is_crab__legs"), "the crab's legs are a pair")
+		stems[d[0]["stem"]] = "pair"
+	assert_eq(stems.get("uma_musume_pretty_derby"), "pair", "Uma Musume's runner and dash are a pair")
+	assert_eq(stems.get("everything_is_crab"), "pair", "the crab's claws are a pair")
+	assert_false(stems.has("everything_is_crab__legs"), "the crab's legs are not the title's")
+	assert_eq(stems.get("darkest_dungeon"), "alone", "Darkest Dungeon's torch has no right half")
+	assert_eq(stems.get("demonic_mahjong"), "right alone", "Demonic Mahjong's seal has no left half")
+
+# A LONE RIGHT DECORATION takes the right end and leaves the left to the word, and
+# is earned as a unit of its own (Demonic Mahjong's seal).
+func test_a_lone_right_decoration_stands_at_the_right_only() -> void:
+	# ...small, and up by the top of the line, as its logo has it
+	var sz := TitleLetters._decor_size((TitleLetters.pool()["decor_right"] as Array).filter(
+		func(e): return e["stem"] == "demonic_mahjong")[0])
+	assert_lt(sz.x, TitleLetters.DECOR_SIZE, "smaller than a decoration's usual size")
+	assert_lt(sz.y + sz.x * 0.5, 0.5, "its middle above the line's")
+	var seal: Dictionary = (TitleLetters.pool()["decor_right"] as Array).filter(
+		func(e): return e["stem"] == "demonic_mahjong")[0]
+	assert_eq(TitleLetters.unit_key(seal), String(seal["key"]), "earned as itself")
+	assert_true(TitleLetters.units_of(&"demonic_mahjong").has(String(seal["key"])), "one of the game's units")
+	var row := TitleLetters.new()
+	add_child_autofree(row)
+	row._lay_out(TitleLetters.pick("AB", _rng(1)), [{}, seal], 84.0)
+	assert_eq(row.placed.size(), 3, "two letters and the seal")
+	assert_eq(row.placed[0].entry["folder"], "a", "the word starts the row")
+	assert_eq(row.placed[2].entry["folder"], "decor_right", "the seal ends it")
+
+# A LONE LEFT DECORATION takes the left end and leaves the right end to the word.
+func test_a_lone_decoration_stands_at_the_left_only() -> void:
+	var torch: Dictionary = (TitleLetters.pool()["decor_left"] as Array).filter(
+		func(e): return e["stem"] == "darkest_dungeon")[0]
+	var row := TitleLetters.new()
+	add_child_autofree(row)
+	row._lay_out(TitleLetters.pick("AB", _rng(1)), [torch], 84.0)
+	assert_eq(row.placed.size(), 3, "the torch and two letters")
+	assert_eq(row.placed[0].entry["folder"], "decor_left", "the torch first")
+	assert_eq(row.placed[2].entry["folder"], "b", "and the word ends the row")
 
 
 func test_a_long_word_is_scaled_down_to_fit_whole() -> void:

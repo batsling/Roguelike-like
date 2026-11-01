@@ -153,11 +153,14 @@ func _mount_portal() -> void:
 # Clicking either row draws that row again (_reroll), so the player can shuffle
 # through the logos without restarting the game.
 const TITLE_HEIGHT := 84.0
-const SUBTITLE_HEIGHT := 30.0
+const SUBTITLE_HEIGHT := 36.0
 const TITLE_MAX_WIDTH := 1100.0
 # The subtitle's word gap, of its line height: wider than TitleLetters.SPACE,
-# since at 30px a mixed-logo subtitle's words otherwise run together.
+# since at 36px a mixed-logo subtitle's words otherwise run together.
 const SUBTITLE_SPACE := 0.6
+# ...and its gap between letters, likewise: at 36px TitleLetters.GAP is about two
+# pixels, and a mixed subtitle's glows and outlines ran into each other.
+const SUBTITLE_GAP := 0.16
 
 var title_row: TitleLetters = null
 var subtitle_row: TitleLetters = null
@@ -185,9 +188,12 @@ func _reroll(title: bool) -> void:
 	else:
 		subtitle_row = row
 
+# `decorated` is true for the title. Both rows take decorations, each from its
+# own (TitleLetters.pick_decor): the crab's legs are the subtitle's.
 func _title_row(label: Label, height: float, rng: RandomNumberGenerator, decorated: bool) -> TitleLetters:
-	var row := TitleLetters.make(label.text, height, rng, decorated, TITLE_MAX_WIDTH,
-			TitleLetters.SPACE if decorated else SUBTITLE_SPACE)
+	var row := TitleLetters.make(label.text, height, rng, true, TITLE_MAX_WIDTH,
+			TitleLetters.SPACE if decorated else SUBTITLE_SPACE,
+			TitleLetters.GAP if decorated else SUBTITLE_GAP, not decorated)
 	if row.placed.is_empty():
 		row.free()
 		return null
