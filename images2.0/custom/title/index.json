@@ -1158,14 +1158,14 @@
   "config": "tiny_rogues_decor.json",
   "style": "tiny_rogues_decor",
   "body_center": 0.5,
-  "body_height": 0.9226,
+  "body_height": 0.9225,
   "body_center_x": 0.5,
   "body_width": 0.9046,
   "src": [
    0.04275,
    0.0307,
    0.27117,
-   0.48909
+   0.4884
   ]
  },
  "decor_left/uma_musume_pretty_derby.png": {
@@ -1655,13 +1655,13 @@
   "game": "tiny_rogues",
   "config": "tiny_rogues.json",
   "style": "tiny_rogues",
-  "body_center": 0.4753,
-  "body_height": 0.7674,
+  "body_center": 0.4588,
+  "body_height": 0.7916,
   "body_center_x": 0.4621,
   "body_width": 0.731,
   "src": [
    0.63956,
-   0.4161,
+   0.43042,
    0.82188,
    0.8854
   ],
@@ -4130,13 +4130,13 @@
   "game": "tiny_rogues",
   "config": "tiny_rogues.json",
   "style": "tiny_rogues",
-  "body_center": 0.5012,
-  "body_height": 0.7647,
+  "body_center": 0.4676,
+  "body_height": 0.8361,
   "body_center_x": 0.4942,
   "body_width": 0.8256,
   "src": [
    0.78374,
-   0.37858,
+   0.36835,
    1.0,
    0.94679
   ]

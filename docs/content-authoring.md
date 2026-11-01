@@ -145,7 +145,11 @@ colour (`rgb_ranges`, each colour only in its own box: the browns with red
 under 215 are never a face, which is always red 255); the bow's string and limb
 cross E and S, so the string's colours are left out of the faces
 (`exclude_rgb_ranges`) and the face they hid is painted back (`restore`). The
-bow's lower limb has a gap where the S hides it. Spelunky Classic gives S P E L U N K Y (the first K): its
+string crossing the S's top also cut the S's stepped top-left off from the rest
+of its face, so the S takes a second anchor point there. The bow keeps its
+string and the ties round its lower limb (the string's colour allowed along its
+path), and the staff and bow are cut with `reach` 0: any reach pulled in the
+white highlight along the R's and S's top edges where they touch. Spelunky Classic gives S P E L U N K Y (the first K): its
 source is a blurry 1920x1080 screenshot of pixel art, so `pixel_grid` rebuilds
 the logo pixel by pixel on the measured grid (11.707px a pixel), each snapped to
 the logo's three-colour palette, and the letters come out as sharp 12x blocks. Haste gives H A S T E, solid black
