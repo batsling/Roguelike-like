@@ -11,6 +11,9 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Noita's letters.** N o i t a, pixel art rebuilt on the logo's own pixel
+  grid and cut sharp, the i with its dot; pixel for pixel the logo's own.
+
 - **Diablo's letters.** D I A B L O, each in its own flame with its soft
   glow. Two new cutter options: `glow_share` fades a glow two letters share
   out into the neighbour's instead of cutting it on a seam, and `inpaint`

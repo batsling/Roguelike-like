@@ -190,7 +190,12 @@ keeps the glow round it past the midline and fades out into its neighbour's
 stopping on a seam; the ® beside the O is rebuilt as the O's glow (`inpaint`:
 each pixel the average of the glow at the same distance from the flame).
 I A B L are small capitals (body to the shared baseline, the A's leg hanging
-below it). Spelunky Classic gives S P E L U N K Y (the first K): its
+below it). Noita gives N o i t a (o i t a lowercase): pixel art scaled up
+about 17x into a webp, rebuilt on its own grid (`pixel_grid`, pitch 17.395,
+measured from where the colour edges fall) and snapped to its eight colours,
+then cut sharp at 12x; the i's dot is its own island, joined to the i by
+`extra_ink` (`loose`), its box stopping a row above the t's crossbar. Every
+letter is the logo's own pixels exactly. Spelunky Classic gives S P E L U N K Y (the first K): its
 source is a blurry 1920x1080 screenshot of pixel art, so `pixel_grid` rebuilds
 the logo pixel by pixel on the measured grid (11.707px a pixel), each snapped to
 the logo's three-colour palette, and the letters come out as sharp 12x blocks. Haste gives H A S T E, solid black

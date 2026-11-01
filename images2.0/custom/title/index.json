@@ -379,6 +379,22 @@
    0.97115
   ]
  },
+ "a/noita.png": {
+  "game": "noita",
+  "config": "noita.json",
+  "style": "noita",
+  "body_center": 0.5,
+  "body_height": 0.9048,
+  "body_center_x": 0.5,
+  "body_width": 0.8621,
+  "src": [
+   0.75,
+   0.26866,
+   1.01852,
+   0.89552
+  ],
+  "form": "lower"
+ },
  "a/nuclear_throne.png": {
   "game": "nuclear_throne",
   "config": "nuclear_throne.json",
@@ -2671,6 +2687,22 @@
    0.88406
   ]
  },
+ "i/noita.png": {
+  "game": "noita",
+  "config": "noita.json",
+  "style": "noita",
+  "body_center": 0.6379,
+  "body_height": 0.6552,
+  "body_center_x": 0.5,
+  "body_width": 0.7647,
+  "src": [
+   0.51852,
+   0.02985,
+   0.67593,
+   0.89552
+  ],
+  "form": "lower"
+ },
  "i/risk_of_rain_2.png": {
   "game": "risk_of_rain_2",
   "config": "risk_of_rain_2.json",
@@ -3528,6 +3560,21 @@
    0.90145
   ]
  },
+ "n/noita.png": {
+  "game": "noita",
+  "config": "noita.json",
+  "style": "noita",
+  "body_center": 0.5,
+  "body_height": 0.9437,
+  "body_center_x": 0.5,
+  "body_width": 0.9024,
+  "src": [
+   -0.01852,
+   -0.02985,
+   0.36111,
+   1.02985
+  ]
+ },
  "n/nuclear_throne.png": {
   "game": "nuclear_throne",
   "config": "nuclear_throne.json",
@@ -3825,6 +3872,22 @@
    0.86911,
    0.83246
   ]
+ },
+ "o/noita.png": {
+  "game": "noita",
+  "config": "noita.json",
+  "style": "noita",
+  "body_center": 0.5,
+  "body_height": 0.9048,
+  "body_center_x": 0.5,
+  "body_width": 0.8519,
+  "src": [
+   0.31481,
+   0.26866,
+   0.56481,
+   0.89552
+  ],
+  "form": "lower"
  },
  "o/nuclear_throne.png": {
   "game": "nuclear_throne",
@@ -5155,6 +5218,22 @@
    0.4702,
    0.63462
   ]
+ },
+ "t/noita.png": {
+  "game": "noita",
+  "config": "noita.json",
+  "style": "noita",
+  "body_center": 0.5,
+  "body_height": 0.931,
+  "body_center_x": 0.5,
+  "body_width": 0.8621,
+  "src": [
+   0.58333,
+   0.02985,
+   0.85185,
+   0.89552
+  ],
+  "form": "lower"
  },
  "t/nuclear_throne.png": {
   "game": "nuclear_throne",
