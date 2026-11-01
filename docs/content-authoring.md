@@ -179,6 +179,19 @@ docstring has the detail. To add a logo:
    which shows any stray pixel. Commit the config, the source, the PNGs and
    `images2.0/custom/title/index.json`.
 
+**Each game's page shows its logo filling in** (`scripts/ui/LogoProgress.gd`,
+tests `test_logo_progress.gd`), under the cover on the run map's game card and
+the Collection's game page: the whole logo greyed (`shaders/locked_grey.gdshader`,
+squeezed into mid grey and partly see-through, since only dimming left a black
+logo black), each earned piece laid on where it was cut from, the original in
+colour once every piece is earned, a count ("5 / 14"), and a glow the first time
+a new piece is shown (`TitleUnlocks.mark_seen`). `tools/logo_letters.py` writes
+what it needs: the logo itself as `images2.0/custom/title/logos/<game>.png`
+(trimmed to what it draws, at most 1200px; for a `pixel_grid` logo its rebuilt
+pixels rather than the screenshot), and each piece's `src` in the index, its
+cut box as fractions of that logo. Every config of one game must cut the same
+source, and the script refuses two.
+
 **The index is what centres the title.** A cut letter is a PNG with whatever the
 logo drew round it (a glow on every side, a shadow pushed one way, an eye stalk,
 a knife), so the picture's middle is not the letter's. The script records each

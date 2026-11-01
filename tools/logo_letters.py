@@ -483,6 +483,40 @@ def _upscale(A, out, box, band_masks, s, hard=False, face=None, silhouette=False
     return Image.fromarray(np.dstack([rgb.clip(0, 255), alpha * 255]).astype(np.uint8))
 
 
+LOGO_DIR = OUT_DIR / "logos"
+# A logo is shown a few hundred pixels wide on a game's page; past this it is
+# only bytes in the download.
+LOGO_MAX = 1200
+
+
+def _write_logo(cfg: dict, A: np.ndarray) -> tuple:
+    """Write logos/<game>.png: the source trimmed to what it draws, no longer
+    than LOGO_MAX on its long side. Returns (tx, ty, w, h): the trim, in the
+    source's (or the rebuilt grid's) pixels, that `src` is measured against.
+    Every config of one game writes the same file from the same source."""
+    a = A[..., 3]
+    ys, xs = np.where(a > 8)
+    tx, ty = int(xs.min()), int(ys.min())
+    w, h = int(xs.max()) + 1 - tx, int(ys.max()) + 1 - ty
+    img = Image.fromarray(A[ty:ty + h, tx:tx + w].clip(0, 255).astype(np.uint8))
+    if cfg.get("pixel_grid"):
+        # one logo pixel per grid cell: blown up as sharp blocks
+        k = max(1, LOGO_MAX // max(w, h))
+        img = img.resize((w * k, h * k), Image.NEAREST)
+    elif max(w, h) > LOGO_MAX:
+        f = LOGO_MAX / max(w, h)
+        img = img.resize((round(w * f), round(h * f)), Image.LANCZOS)
+    LOGO_DIR.mkdir(parents=True, exist_ok=True)
+    img.save(LOGO_DIR / f"{cfg['game']}.png", optimize=True)
+    return tx, ty, w, h
+
+
+def _src_fraction(box: tuple, logo_box: tuple) -> list:
+    tx, ty, w, h = logo_box
+    x0, y0, x1, y1 = box
+    return [round((x0 - tx) / w, 5), round((y0 - ty) / h, 5), round((x1 - tx) / w, 5), round((y1 - ty) / h, 5)]
+
+
 def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
     cfg = json.loads(cfg_path.read_text())
     src = cfg_path.parent / cfg["source"]
@@ -521,6 +555,10 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
                     small[r_, c_, 3] = 255
         A = small
     H, W = A.shape[:2]
+    # The logo as the game shows it on a game's page (LogoProgress): trimmed to
+    # what it draws, and where each piece came from in it (`src` in the index).
+    # A pixel_grid logo is its rebuilt pixels, not the screenshot they came from.
+    logo_box = _write_logo(cfg, A)
     a = A[..., 3]
     fill = _fill_mask(A, cfg)
     solid = a >= 254
@@ -630,6 +668,7 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
     body_xs = {}
     body_widths = {}
     line_centers = {}
+    src_boxes = {}
     out_dir_game = cfg["game"]
     for i, n in enumerate(names):
         mine = owner == i
@@ -1083,6 +1122,7 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
         ys, xs = np.where(out[..., 3] > 1)
         x0, x1 = max(xs.min() - 2, 0), min(xs.max() + 3, W)
         y0, y1 = max(ys.min() - 2, 0), min(ys.max() + 3, H)
+        src_boxes[n] = (x0, y0, x1, y1)
         # where the letter itself sits in the piece, from 0 (top) to 1: a
         # piece with something attached above or below (an eye stalk, a
         # knife, slime) is centred on the line by its letter, not its whole
@@ -1194,6 +1234,9 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
             "body_height": round(body_heights[n_], 4),
             "body_center_x": round(body_xs[n_], 4),
             "body_width": round(body_widths[n_], 4),
+            # where the piece was cut from, as fractions of the game's logo
+            # (logos/<game>.png): x0, y0, x1, y1
+            "src": _src_fraction(src_boxes[n_], logo_box),
         }
         # `size` and `pad` are the owner's eye on a piece, by name or "*" for
         # the whole config: drawn this many times as big (on the baseline), and
@@ -1246,6 +1289,15 @@ def main() -> int:
                       f"and {c.name} ({piece})", file=sys.stderr)
                 return 1
             owners[path] = (c.name, piece)
+    # One logo per game (logos/<game>.png): every config of a game cuts the same
+    # source, or the game's page would show one logo and lay another's letters on it.
+    sources = {}
+    for c in sorted(Path(__file__).resolve().parent.joinpath("logo_letters").glob("*.json")):
+        cfg = json.loads(c.read_text())
+        if sources.setdefault(cfg["game"], cfg["source"]) != cfg["source"]:
+            print(f"error: {cfg['game']} has two sources, {sources[cfg['game']]} and {cfg['source']}",
+                  file=sys.stderr)
+            return 1
     for c in args.configs:
         print(c)
         cut(c, args.preview)

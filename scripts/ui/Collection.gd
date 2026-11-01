@@ -74,6 +74,8 @@ const DETAIL_ITEM_SIZE := 132
 # are 132-176px square, they were never what pushed a page down, and an item you
 # opened the pane to look at is the one thing that should not shrink.
 const GAME_DETAIL_COVER := 120
+# The most room the game's logo (LogoProgress) takes under the cover.
+const GAME_DETAIL_LOGO := Vector2(300, 80)
 # The name beside that cover. Down from 18 because the column it sits in is now
 # about 120px wide, and 18px of a long title in 120px is five wrapped lines.
 const GAME_DETAIL_NAME_FONT := UITheme.FONT_SUB
@@ -1593,6 +1595,11 @@ func _show_game_detail(g: GameData) -> void:
 	ident.add_child(TagEditor.make(g))
 	head.add_child(ident)
 	_detail_box.add_child(head)
+	# The game's logo, filled in as its title letters are earned (LogoProgress),
+	# under the cover: only for a game with letters cut from its logo.
+	var logo := LogoProgress.make(g.id, GAME_DETAIL_LOGO)
+	if logo != null:
+		_detail_box.add_child(logo)
 
 	_detail_box.add_child(HSeparator.new())
 	_detail_box.add_child(_owned_toggle(g))

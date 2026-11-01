@@ -11,6 +11,18 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **A game's logo fills in on its page as its letters are earned.** Every game
+  with letters cut from its logo shows the logo under its cover on the run
+  map's game card and the Collection's game page: greyed until earned, each
+  earned piece laid on in the very picture the title draws, at the place it
+  was cut from, and the original in full colour once complete, with "5 / 14"
+  under it. A piece earned since a game's page last showed it glows once
+  (`TitleUnlocks` now keeps `seen` beside its draws). `LogoProgress`;
+  `tools/logo_letters.py` now writes each logo to `title/logos/` and each
+  piece's `src`. The grey was first just dimmed, which left Darkest Dungeon's
+  black ink black, so its earned letters looked locked; it is now a see-through
+  mid grey.
+
 - **Vampire Survivors' letters, all sixteen, and the crab's legs move to the
   subtitle.** Only the gold faces are cut from the logo; the 3D side is
   rebuilt per letter by sweeping the face (`extrude`), which can now shade

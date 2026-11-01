@@ -65,6 +65,8 @@ const VIEW_MARGIN := Vector2(48, 56)
 # wrapping every second word comes out of the half that is already the least
 # informative.
 const COVER := Vector2(112, 150)
+# The most room the game's logo (LogoProgress) takes under the cover row.
+const LOGO_SIZE := Vector2(340, 84)
 # The column beside the cover. Not a hard width — the source block expands into
 # whatever the row has — but the floor the game column is sized to hold, so the
 # pair never has to wrap at the modal's narrowest.
@@ -524,6 +526,11 @@ func _build_game_column(game: GameData, accent: Color) -> Control:
 		col.add_child(cover_row)
 	else:
 		col.add_child(facts)
+	# The game's logo, filled in as its title letters are earned (LogoProgress),
+	# under the cover: only for a game with letters cut from its logo.
+	var logo := LogoProgress.make(game.id, LOGO_SIZE)
+	if logo != null:
+		col.add_child(logo)
 
 	# The evidence for the connection you would be walking, under the pair.
 	var source_block: Control = _build_source_block()
