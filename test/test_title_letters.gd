@@ -227,7 +227,11 @@ func test_every_logo_piece_is_a_unit_and_rogue_is_none() -> void:
 	assert_gt(units.size(), 150, "the cut letters")
 	for k in units:
 		assert_false(String(k).get_file().begins_with("rogue"), "%s is not Rogue's" % k)
-		assert_false(String(k).begins_with("decor_right"), "a pair is filed under its left half")
+		if String(k).begins_with("decor_right"):
+			var stem := String(k).get_file().get_basename()
+			assert_eq((TitleLetters.pool()["decor_left"] as Array).filter(
+				func(e): return e["stem"] == stem).size(), 0,
+				"a pair is filed under its left half; %s is a right one standing alone" % k)
 	assert_gt(TitleLetters.units_of(&"hades").size(), 3, "Hades' own letters")
 	assert_eq(TitleLetters.units_of(&"rogue").size(), 0)
 
@@ -334,6 +338,10 @@ func test_decorations_come_in_matching_pairs() -> void:
 	var stems := {}
 	for s in range(60):
 		var d := TitleLetters.pick_decor(_rng(s))
+		if (d[0] as Dictionary).is_empty():
+			assert_eq(d[1]["folder"], "decor_right", "a right one alone")
+			stems[d[1]["stem"]] = "right alone"
+			continue
 		assert_eq(d[0]["folder"], "decor_left")
 		if d.size() == 1:
 			stems[d[0]["stem"]] = "alone"
@@ -346,6 +354,21 @@ func test_decorations_come_in_matching_pairs() -> void:
 	assert_eq(stems.get("everything_is_crab"), "pair", "the crab's claws are a pair")
 	assert_false(stems.has("everything_is_crab__legs"), "the crab's legs are not the title's")
 	assert_eq(stems.get("darkest_dungeon"), "alone", "Darkest Dungeon's torch has no right half")
+	assert_eq(stems.get("demonic_mahjong"), "right alone", "Demonic Mahjong's seal has no left half")
+
+# A LONE RIGHT DECORATION takes the right end and leaves the left to the word, and
+# is earned as a unit of its own (Demonic Mahjong's seal).
+func test_a_lone_right_decoration_stands_at_the_right_only() -> void:
+	var seal: Dictionary = (TitleLetters.pool()["decor_right"] as Array).filter(
+		func(e): return e["stem"] == "demonic_mahjong")[0]
+	assert_eq(TitleLetters.unit_key(seal), String(seal["key"]), "earned as itself")
+	assert_true(TitleLetters.units_of(&"demonic_mahjong").has(String(seal["key"])), "one of the game's units")
+	var row := TitleLetters.new()
+	add_child_autofree(row)
+	row._lay_out(TitleLetters.pick("AB", _rng(1)), [{}, seal], 84.0)
+	assert_eq(row.placed.size(), 3, "two letters and the seal")
+	assert_eq(row.placed[0].entry["folder"], "a", "the word starts the row")
+	assert_eq(row.placed[2].entry["folder"], "decor_right", "the seal ends it")
 
 # A LONE LEFT DECORATION takes the left end and leaves the right end to the word.
 func test_a_lone_decoration_stands_at_the_left_only() -> void:

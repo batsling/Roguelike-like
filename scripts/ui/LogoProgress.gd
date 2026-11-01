@@ -57,10 +57,8 @@ static func make(game: StringName, min_size: Vector2) -> LogoProgress:
 	return v
 
 static func _unit_key(e: Dictionary) -> String:
-	# a right decoration is earned with its left
-	if String(e["folder"]) == "decor_right":
-		return "decor_left/" + String(e["key"]).get_file()
-	return String(e["key"])
+	# a right decoration is earned with its left, unless it stands alone
+	return TitleLetters.unit_key(e)
 
 static func _is_unlocked(key: String) -> bool:
 	var tu: Node = Engine.get_main_loop().root.get_node_or_null(^"TitleUnlocks") \

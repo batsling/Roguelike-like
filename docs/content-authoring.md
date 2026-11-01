@@ -117,7 +117,9 @@ the leg pairs (`__legs`), shown at the far left and right of the title at random
 (half the launches). Decorations are always a matching PAIR, by file stem: the
 two claws, the two leg pairs, or Uma Musume's girl (`uma_musume_pretty_derby_girl.json`)
 and her dash (`uma_musume_pretty_derby_decor.json`) — so a pair needs both sides
-under one name. Decorations belong to one row: the crab's legs are the
+under one name, or one side alone: a left one with no right half (the torch)
+stands at the left, a right one with no left (Demonic Mahjong's seal) at the
+right. Decorations belong to one row: the crab's legs are the
 subtitle's (`"subtitle": [both halves]` in the config, `subtitle` in the index),
 every other one the title's, and each row flips its own coin for a pair. A
 `decor_left/` piece with no `decor_right/` of its own stands at
@@ -132,51 +134,17 @@ by sweeping each face 17 right and 8 down (`extrude`), see-through grey-brown
 shading from the face out and fading (`colour_far`, `alpha`, `alpha_far`,
 measured along the logo's own side), with its edge softened (`soft_edge`). So
 the joined faces only needed parting: AMP, RE, UR and VIV by vertical `splits`
-at the serifs where they touch, the sides never mattering. Tiny Rogues
-gives t n y, R o g u e S, the sword as its i (sized by the blade, the hilt over
-the line, `body`) and the crystal staff and bow as a decoration pair. Its source
-is the main title only, cropped out of the full "between Heaven & Hell" logo.
-Every letter is cut AS DRAWN, shading and all (`cut.drawn`): its face and
-every bit of the logo's 3D shading touching it, on either side and below, the
-logo's own pixels. The logo is a PERSPECTIVE extrusion, so letters left of its
-middle show walls on their right and letters right of it on their left (the n,
-y, u and e); a rebuild that swept every face the same way blacked out the left
-walls, which is what the owner caught. Each letter keeps ONLY the shading it
-casts (`cast`): its face slid along its own direction, fitted per letter to the
-logo (t +40/56, R +36/68, O +32/52, G +28/44 down-right; n -20/56, y -28/56,
-u -16/52, e -28/48 down-left; the S, -48/68, is why its left strip is its own),
-with 4px of slack for blended edges. Taking all the shading that touched a
-letter put its neighbours' walls on it too. It also stops at another letter's
-face, at the sword, staff and bow (`barrier`), 90px from the face, and 22 rows
-above it. Each letter is the logo's own pixels with
-the black taken off, then given an outline measured to match the logo's
-(`pixel_outline` with `"miter": true`, round everything kept): 44px out from
-every edge, square where straight edges meet, and 44px ACROSS a 45-degree edge,
-which a square measure makes 1.4 times as thick. Each edge pixel is classed by
-its slope (a smoothed gradient): straight ones grow square, diagonal ones by
-perpendicular distance. The logo's right-angle steps stay. The earlier rebuild's options
-(`extrude`'s `colour_down`, `outline`, `wall_gradient`, `square_corners`,
-`close_face`) stay in the script, unused here.
-The sword, staff and bow touch the letters' sides, so they are told apart by
-colour (`rgb_ranges`, each colour only in its own box: the browns with red
-under 215 are never a face, which is always red 255); the bow's string and limb
-cross E and S, so the string's colours are left out of the faces
-(`exclude_rgb_ranges`). The S is the exception, cut AS DRAWN by a config of
-its own (`tiny_rogues_s.json`; the letters config `hold`s it so the E still stops
-where it starts): every pixel of the original S, its own sides, the red wedges on
-its stepped top-left and the dark red strip down its left (the E's wall, which
-the owner wants on the S), measured by its face alone (`box_fill`) and given the
-other letters' 44px mitred outline. Under the bow it is rebuilt pixel by pixel on
-the source before cutting (`repaint`): the hidden top-right corner drawn outright
-as three steps (24px across, 23px down, each a 9-row white top over yellow, read
-off the step tops the bow leaves showing and the S's own steps elsewhere), the
-outline under the bow black, the top bar's rows run on from the S's clean pixels
-(its pure yellow, white top line and cream edge only), and the strip's diagonal
-outline edge and red drawn row by row. The string also cut the S's top-left off
-from the rest of its face, so the S takes a second anchor point there. The bow keeps its
-string and the ties round its lower limb (the string's colour allowed along its
-path), and the staff and bow are cut with `reach` 0: any reach pulled in the
-white highlight along the R's and S's top edges where they touch. Spelunky Classic gives S P E L U N K Y (the first K): its
+at the serifs where they touch, the sides never mattering. Tiny Rogues was cut and then dropped (the owner, 1 Nov 2026), its 3D
+letters' perspective sides and the bow across them more trouble than the
+letters were worth; the options built for it stay in the script and its
+docstring (`cut.drawn` with `cast`, `pixel_outline`'s `miter`, `repaint`,
+`rgb_ranges`, `hold`, `box_fill`, `extrude`'s `colour_down` and `outline`).
+Demonic Mahjong gives D E M O N I C, M A H J O N G (the second M, O and N as
+`__2`), gold brushwork with no outline and every letter a shape of its own, cut
+as drawn at 2x (`smooth_scale`, the source being 640px wide); the spiked N and
+the dripping M, A and H are sized by their bodies (`body` rows). Its red seal
+is a `decor_right/` with NO left half: a right decoration standing alone at the
+title's right end, earned as a unit of its own (`TitleLetters.unit_key`). Spelunky Classic gives S P E L U N K Y (the first K): its
 source is a blurry 1920x1080 screenshot of pixel art, so `pixel_grid` rebuilds
 the logo pixel by pixel on the measured grid (11.707px a pixel), each snapped to
 the logo's three-colour palette, and the letters come out as sharp 12x blocks. Haste gives H A S T E, solid black

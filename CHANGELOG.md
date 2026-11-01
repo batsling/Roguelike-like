@@ -11,6 +11,14 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Tiny Rogues dropped; Demonic Mahjong instead.** Tiny Rogues' letters,
+  sword, staff, bow and logo are gone (the owner, after a long round of fixes
+  to its perspective 3D sides). The cutter options built for it stay. Demonic
+  Mahjong gives D E M O N I C, M A H J O N G, cut as drawn at 2x, and its red
+  seal is the first decoration that stands alone on the RIGHT: `pick_decor`
+  can now return `[{}, right]`, and a right piece with no left half is a unit
+  of its own (`TitleLetters.unit_key`).
+
 - **Tiny Rogues' letters, its sword i, and its staff and bow.** Cut from the
   main title alone (the "between Heaven & Hell" lines cropped off): t n y,
   R o g u e S with each face kept and its 3D side rebuilt, the sword as the i,

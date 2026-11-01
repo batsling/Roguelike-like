@@ -18,7 +18,9 @@ extends Control
 # Whatever hangs off a letter overflows the line rather than growing it, so a
 # title with Repentance's knife I is no taller than one without.
 #
-# Decorations (decor_left/, decor_right/) stand at either end as a PAIR from one
+# Decorations (decor_left/, decor_right/) stand at either end, one or both sides: a
+# right one with no left (Demonic Mahjong's seal) stands at the right alone. A
+# PAIR comes from one
 # file stem — a crab's two claws, its two leg pairs, Uma Musume's runner and her
 # trailing dash — never a claw facing legs. A left one with no right half of its
 # own (Darkest Dungeon's torch) stands at the left alone.
@@ -123,6 +125,17 @@ static func _folder_for(ch: String) -> String:
 static func is_starter(e: Dictionary) -> bool:
 	return String(e.get("game", "")) == STARTER_GAME
 
+# The key a piece is EARNED under: its own, except a right decoration with a left
+# half of the same stem, which comes with that left (a pair is earned as one). A
+# right decoration standing alone (Demonic Mahjong's seal) is a unit of its own.
+static func unit_key(e: Dictionary) -> String:
+	if String(e.get("folder", "")) == "decor_right":
+		var stem := String(e["stem"])
+		for l in pool().get("decor_left", []):
+			if String(l["stem"]) == stem:
+				return String(l["key"])
+	return String(e["key"])
+
 # Every piece a rank can pay, by its index key ("h/hades.png"): every cut letter,
 # and each decoration PAIR as its left half (the right comes with it). Sorted, so a
 # draw over it is repeatable.
@@ -130,10 +143,8 @@ static func units() -> Array:
 	var out: Array = []
 	var p := pool()
 	for folder in p:
-		if folder == "decor_right":
-			continue
 		for e in p[folder]:
-			if not is_starter(e):
+			if not is_starter(e) and unit_key(e) == String(e["key"]):
 				out.append(String(e["key"]))
 	out.sort()
 	return out
@@ -143,10 +154,9 @@ static func units_of(game: StringName) -> Array:
 	var out: Array = []
 	var p := pool()
 	for folder in p:
-		if folder == "decor_right":
-			continue
 		for e in p[folder]:
-			if String(e.get("game", "")) == String(game) and not is_starter(e):
+			if String(e.get("game", "")) == String(game) and not is_starter(e) \
+					and unit_key(e) == String(e["key"]):
 				out.append(String(e["key"]))
 	out.sort()
 	return out
@@ -161,9 +171,7 @@ static func available() -> Dictionary:
 	for folder in p:
 		var keep: Array = []
 		for e in p[folder]:
-			var key: String = String(e["key"])
-			if folder == "decor_right":
-				key = "decor_left/" + String(e["key"]).get_file()
+			var key: String = unit_key(e)
 			if is_starter(e) or (tu != null and tu.is_unlocked(key)):
 				keep.append(e)
 		if not keep.is_empty():
@@ -202,21 +210,29 @@ static func pick(text: String, rng: RandomNumberGenerator, from: Dictionary = {}
 		out.append(e)
 	return out
 
-# A matching left and right decoration, or a left one alone when it has no right
-# half (Darkest Dungeon's torch), or [] for none. Each decoration belongs to one
-# row: the title's, or the subtitle's when the index marks it `subtitle` (the
-# crab's legs, the owner, 1 Nov 2026), so `subtitle` picks from those alone.
+# A matching left and right decoration, a left one alone when it has no right half
+# (Darkest Dungeon's torch), a right one alone when it has no left (Demonic
+# Mahjong's seal: then the left is {}), or [] for none. Each decoration belongs
+# to one row: the title's, or the subtitle's when the index marks it `subtitle`
+# (the crab's legs, the owner, 1 Nov 2026), so `subtitle` picks from those alone.
 static func pick_decor(rng: RandomNumberGenerator, from: Dictionary = {}, subtitle: bool = false) -> Array:
 	var p := from if not from.is_empty() else pool()
+	var row := func(e): return bool(e.get("subtitle", false)) == subtitle
 	var right := {}
 	for e in p.get("decor_right", []):
 		right[e["stem"]] = e
-	var lefts: Array = (p.get("decor_left", []) as Array).filter(
-		func(e): return bool(e.get("subtitle", false)) == subtitle)
-	if lefts.is_empty():
+	# one choice per decoration: each left (with its right, if it has one), and
+	# each right that has no left at all
+	var choices: Array = (p.get("decor_left", []) as Array).filter(row)
+	for e in (p.get("decor_right", []) as Array).filter(row):
+		if unit_key(e) == String(e["key"]):
+			choices.append(e)
+	if choices.is_empty():
 		return []
-	var left: Dictionary = lefts[rng.randi() % lefts.size()]
-	return [left, right[left["stem"]]] if right.has(left["stem"]) else [left]
+	var pick_: Dictionary = choices[rng.randi() % choices.size()]
+	if String(pick_["folder"]) == "decor_right":
+		return [{}, pick_]
+	return [pick_, right[pick_["stem"]]] if right.has(pick_["stem"]) else [pick_]
 
 static func texture(path: String) -> Texture2D:
 	if ResourceLoader.exists(path):
@@ -281,11 +297,11 @@ func _lay_out(pieces: Array, decor: Array, height: float, text: String = "") -> 
 	line_height = height
 	var x := 0.0
 	var seq: Array = []
-	if not decor.is_empty():
+	if not decor.is_empty() and not (decor[0] as Dictionary).is_empty():
 		seq.append([decor[0], true, ""])
 	for j in pieces.size():
 		seq.append([pieces[j], false, text[j] if j < text.length() else ""])
-	if decor.size() > 1:
+	if decor.size() > 1 and not (decor[1] as Dictionary).is_empty():
 		seq.append([decor[1], true, ""])
 	for i in seq.size():
 		var e: Dictionary = seq[i][0]

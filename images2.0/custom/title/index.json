@@ -258,6 +258,21 @@
   ],
   "size": 1.12
  },
+ "a/demonic_mahjong.png": {
+  "game": "demonic_mahjong",
+  "config": "demonic_mahjong.json",
+  "style": "demonic_mahjong",
+  "body_center": 0.4306,
+  "body_height": 0.8056,
+  "body_center_x": 0.5,
+  "body_width": 0.8507,
+  "src": [
+   0.23438,
+   0.51603,
+   0.33906,
+   0.86218
+  ]
+ },
  "a/everything_is_crab.png": {
   "game": "everything_is_crab",
   "config": "everything_is_crab.json",
@@ -748,6 +763,21 @@
   ],
   "size": 1.12
  },
+ "c/demonic_mahjong.png": {
+  "game": "demonic_mahjong",
+  "config": "demonic_mahjong.json",
+  "style": "demonic_mahjong",
+  "body_center": 0.5,
+  "body_height": 0.914,
+  "body_center_x": 0.5054,
+  "body_width": 0.9247,
+  "src": [
+   0.72656,
+   0.11859,
+   0.87188,
+   0.41667
+  ]
+ },
  "c/everything_is_crab.png": {
   "game": "everything_is_crab",
   "config": "everything_is_crab.json",
@@ -977,6 +1007,21 @@
   ],
   "size": 1.12
  },
+ "d/demonic_mahjong.png": {
+  "game": "demonic_mahjong",
+  "config": "demonic_mahjong.json",
+  "style": "demonic_mahjong",
+  "body_center": 0.5039,
+  "body_height": 0.9457,
+  "body_center_x": 0.4871,
+  "body_width": 0.9741,
+  "src": [
+   0.0,
+   0.05769,
+   0.18125,
+   0.47115
+  ]
+ },
  "d/hades.png": {
   "game": "hades",
   "config": "hades.json",
@@ -1153,21 +1198,6 @@
   ],
   "subtitle": true
  },
- "decor_left/tiny_rogues.png": {
-  "game": "tiny_rogues",
-  "config": "tiny_rogues_decor.json",
-  "style": "tiny_rogues_decor",
-  "body_center": 0.5,
-  "body_height": 0.9225,
-  "body_center_x": 0.5,
-  "body_width": 0.9046,
-  "src": [
-   0.04275,
-   0.0307,
-   0.27117,
-   0.4884
-  ]
- },
  "decor_left/uma_musume_pretty_derby.png": {
   "game": "uma_musume_pretty_derby",
   "config": "uma_musume_pretty_derby_girl.json",
@@ -1181,6 +1211,21 @@
    0.47895,
    0.16343,
    1.00526
+  ]
+ },
+ "decor_right/demonic_mahjong.png": {
+  "game": "demonic_mahjong",
+  "config": "demonic_mahjong.json",
+  "style": "demonic_mahjong",
+  "body_center": 0.493,
+  "body_height": 0.9014,
+  "body_center_x": 0.5111,
+  "body_width": 0.8444,
+  "src": [
+   0.87656,
+   0.00641,
+   0.94688,
+   0.23397
   ]
  },
  "decor_right/everything_is_crab.png": {
@@ -1213,21 +1258,6 @@
    0.97203
   ],
   "subtitle": true
- },
- "decor_right/tiny_rogues.png": {
-  "game": "tiny_rogues",
-  "config": "tiny_rogues_decor.json",
-  "style": "tiny_rogues_decor",
-  "body_center": 0.5,
-  "body_height": 0.9136,
-  "body_center_x": 0.5,
-  "body_width": 0.9125,
-  "src": [
-   0.74602,
-   0.09277,
-   0.99497,
-   0.50341
-  ]
  },
  "decor_right/uma_musume_pretty_derby.png": {
   "game": "uma_musume_pretty_derby",
@@ -1350,6 +1380,21 @@
    0.97485
   ],
   "size": 1.12
+ },
+ "e/demonic_mahjong.png": {
+  "game": "demonic_mahjong",
+  "config": "demonic_mahjong.json",
+  "style": "demonic_mahjong",
+  "body_center": 0.5,
+  "body_height": 0.8933,
+  "body_center_x": 0.494,
+  "body_width": 0.9167,
+  "src": [
+   0.16406,
+   0.1891,
+   0.29531,
+   0.42949
+  ]
  },
  "e/enter_the_gungeon.png": {
   "game": "enter_the_gungeon",
@@ -1651,22 +1696,6 @@
    0.13412
   ]
  },
- "e/tiny_rogues.png": {
-  "game": "tiny_rogues",
-  "config": "tiny_rogues.json",
-  "style": "tiny_rogues",
-  "body_center": 0.4728,
-  "body_height": 0.7753,
-  "body_center_x": 0.522,
-  "body_width": 0.7004,
-  "src": [
-   0.62448,
-   0.41951,
-   0.81475,
-   0.88404
-  ],
-  "form": "lower"
- },
  "e/uma_musume_pretty_derby.png": {
   "game": "uma_musume_pretty_derby",
   "config": "uma_musume_pretty_derby.json",
@@ -1838,6 +1867,21 @@
   ],
   "form": "lower"
  },
+ "g/demonic_mahjong.png": {
+  "game": "demonic_mahjong",
+  "config": "demonic_mahjong.json",
+  "style": "demonic_mahjong",
+  "body_center": 0.5,
+  "body_height": 0.935,
+  "body_center_x": 0.5163,
+  "body_width": 0.9674,
+  "src": [
+   0.85625,
+   0.44231,
+   1.0,
+   0.83654
+  ]
+ },
  "g/enter_the_gungeon.png": {
   "game": "enter_the_gungeon",
   "config": "enter_the_gungeon.json",
@@ -1940,22 +1984,6 @@
    0.13412
   ]
  },
- "g/tiny_rogues.png": {
-  "game": "tiny_rogues",
-  "config": "tiny_rogues.json",
-  "style": "tiny_rogues",
-  "body_center": 0.4818,
-  "body_height": 0.8273,
-  "body_center_x": 0.5122,
-  "body_width": 0.7661,
-  "src": [
-   0.33236,
-   0.41951,
-   0.52054,
-   1.0
-  ],
-  "form": "lower"
- },
  "greater/rogue.png": {
   "game": "rogue",
   "config": "rogue_letters.py",
@@ -1967,6 +1995,21 @@
   "pixel": true,
   "size": 0.94,
   "pad": 0.03
+ },
+ "h/demonic_mahjong.png": {
+  "game": "demonic_mahjong",
+  "config": "demonic_mahjong.json",
+  "style": "demonic_mahjong",
+  "body_center": 0.3464,
+  "body_height": 0.6405,
+  "body_center_x": 0.4892,
+  "body_width": 0.9355,
+  "src": [
+   0.33906,
+   0.47756,
+   0.48438,
+   0.96795
+  ]
  },
  "h/enter_the_gungeon__pink.png": {
   "game": "enter_the_gungeon",
@@ -2189,6 +2232,21 @@
    1.0
   ]
  },
+ "i/demonic_mahjong.png": {
+  "game": "demonic_mahjong",
+  "config": "demonic_mahjong.json",
+  "style": "demonic_mahjong",
+  "body_center": 0.5,
+  "body_height": 0.8857,
+  "body_center_x": 0.4884,
+  "body_width": 0.8372,
+  "src": [
+   0.65938,
+   0.16026,
+   0.72656,
+   0.38462
+  ]
+ },
  "i/everything_is_crab.png": {
   "game": "everything_is_crab",
   "config": "everything_is_crab.json",
@@ -2368,21 +2426,6 @@
    1.0
   ]
  },
- "i/tiny_rogues.png": {
-  "game": "tiny_rogues",
-  "config": "tiny_rogues_sword.json",
-  "style": "tiny_rogues_sword",
-  "body_center": 0.6509,
-  "body_height": 0.6555,
-  "body_center_x": 0.5344,
-  "body_width": 0.7138,
-  "src": [
-   0.36588,
-   0.01228,
-   0.48156,
-   0.45975
-  ]
- },
  "i/vampire_survivors.png": {
   "game": "vampire_survivors",
   "config": "vampire_survivors.json",
@@ -2411,6 +2454,21 @@
    0.57366,
    0.5261,
    0.95089
+  ]
+ },
+ "j/demonic_mahjong.png": {
+  "game": "demonic_mahjong",
+  "config": "demonic_mahjong.json",
+  "style": "demonic_mahjong",
+  "body_center": 0.5,
+  "body_height": 0.9048,
+  "body_center_x": 0.5,
+  "body_width": 0.9403,
+  "src": [
+   0.48281,
+   0.54167,
+   0.5875,
+   0.8109
   ]
  },
  "j/rogue.png": {
@@ -2704,6 +2762,36 @@
    0.65517
   ]
  },
+ "m/demonic_mahjong.png": {
+  "game": "demonic_mahjong",
+  "config": "demonic_mahjong.json",
+  "style": "demonic_mahjong",
+  "body_center": 0.5041,
+  "body_height": 0.9431,
+  "body_center_x": 0.5,
+  "body_width": 0.9579,
+  "src": [
+   0.2875,
+   0.12821,
+   0.43594,
+   0.52244
+  ]
+ },
+ "m/demonic_mahjong__2.png": {
+  "game": "demonic_mahjong",
+  "config": "demonic_mahjong.json",
+  "style": "demonic_mahjong",
+  "body_center": 0.3116,
+  "body_height": 0.5685,
+  "body_center_x": 0.489,
+  "body_width": 0.9341,
+  "src": [
+   0.09531,
+   0.52564,
+   0.2375,
+   0.99359
+  ]
+ },
  "m/mewgenics.png": {
   "game": "mewgenics",
   "config": "mewgenics.json",
@@ -2851,6 +2939,36 @@
    0.90872
   ],
   "form": "lower"
+ },
+ "n/demonic_mahjong.png": {
+  "game": "demonic_mahjong",
+  "config": "demonic_mahjong.json",
+  "style": "demonic_mahjong",
+  "body_center": 0.6316,
+  "body_height": 0.6917,
+  "body_center_x": 0.4932,
+  "body_width": 0.9041,
+  "src": [
+   0.54531,
+   -0.00641,
+   0.65938,
+   0.41987
+  ]
+ },
+ "n/demonic_mahjong__2.png": {
+  "game": "demonic_mahjong",
+  "config": "demonic_mahjong.json",
+  "style": "demonic_mahjong",
+  "body_center": 0.55,
+  "body_height": 0.8273,
+  "body_center_x": 0.5,
+  "body_width": 0.9101,
+  "src": [
+   0.71875,
+   0.43269,
+   0.85781,
+   0.78526
+  ]
  },
  "n/enter_the_gungeon.png": {
   "game": "enter_the_gungeon",
@@ -3044,22 +3162,6 @@
    0.13412
   ]
  },
- "n/tiny_rogues.png": {
-  "game": "tiny_rogues",
-  "config": "tiny_rogues.json",
-  "style": "tiny_rogues",
-  "body_center": 0.4559,
-  "body_height": 0.7765,
-  "body_center_x": 0.4955,
-  "body_width": 0.7483,
-  "src": [
-   0.44929,
-   0.02933,
-   0.63579,
-   0.49318
-  ],
-  "form": "lower"
- },
  "o/balatro.png": {
   "game": "balatro",
   "config": "balatro.json",
@@ -3106,6 +3208,36 @@
    0.88308
   ],
   "form": "lower"
+ },
+ "o/demonic_mahjong.png": {
+  "game": "demonic_mahjong",
+  "config": "demonic_mahjong.json",
+  "style": "demonic_mahjong",
+  "body_center": 0.4932,
+  "body_height": 0.9041,
+  "body_center_x": 0.4932,
+  "body_width": 0.9041,
+  "src": [
+   0.43125,
+   0.1859,
+   0.54531,
+   0.41987
+  ]
+ },
+ "o/demonic_mahjong__2.png": {
+  "game": "demonic_mahjong",
+  "config": "demonic_mahjong.json",
+  "style": "demonic_mahjong",
+  "body_center": 0.5056,
+  "body_height": 0.9213,
+  "body_center_x": 0.5,
+  "body_width": 0.9294,
+  "src": [
+   0.59219,
+   0.52564,
+   0.725,
+   0.8109
+  ]
  },
  "o/enter_the_gungeon.png": {
   "game": "enter_the_gungeon",
@@ -3252,22 +3384,6 @@
    0.50227,
    0.13412
   ]
- },
- "o/tiny_rogues.png": {
-  "game": "tiny_rogues",
-  "config": "tiny_rogues.json",
-  "style": "tiny_rogues",
-  "body_center": 0.4707,
-  "body_height": 0.7745,
-  "body_center_x": 0.4738,
-  "body_width": 0.6943,
-  "src": [
-   0.1865,
-   0.41951,
-   0.37846,
-   0.8854
-  ],
-  "form": "lower"
  },
  "o/vampire_survivors.png": {
   "game": "vampire_survivors",
@@ -3752,21 +3868,6 @@
    0.99689
   ]
  },
- "r/tiny_rogues.png": {
-  "game": "tiny_rogues",
-  "config": "tiny_rogues.json",
-  "style": "tiny_rogues",
-  "body_center": 0.4593,
-  "body_height": 0.8131,
-  "body_center_x": 0.4632,
-  "body_width": 0.7648,
-  "src": [
-   0.0,
-   0.36562,
-   0.23345,
-   0.96044
-  ]
- },
  "r/uma_musume_pretty_derby.png": {
   "game": "uma_musume_pretty_derby",
   "config": "uma_musume_pretty_derby_line2.json",
@@ -4126,21 +4227,6 @@
    0.66795
   ]
  },
- "s/tiny_rogues.png": {
-  "game": "tiny_rogues",
-  "config": "tiny_rogues_s.json",
-  "style": "tiny_rogues_s",
-  "body_center": 0.4599,
-  "body_height": 0.8119,
-  "body_center_x": 0.5239,
-  "body_width": 0.7835,
-  "src": [
-   0.77117,
-   0.36562,
-   0.99958,
-   0.96044
-  ]
- },
  "s/uma_musume_pretty_derby.png": {
   "game": "uma_musume_pretty_derby",
   "config": "uma_musume_pretty_derby.json",
@@ -4406,22 +4492,6 @@
    0.13412
   ]
  },
- "t/tiny_rogues.png": {
-  "game": "tiny_rogues",
-  "config": "tiny_rogues.json",
-  "style": "tiny_rogues",
-  "body_center": 0.4566,
-  "body_height": 0.7779,
-  "body_center_x": 0.4622,
-  "body_width": 0.7362,
-  "src": [
-   0.20285,
-   0.02933,
-   0.4078,
-   0.49318
-  ],
-  "form": "lower"
- },
  "t/uma_musume_pretty_derby.png": {
   "game": "uma_musume_pretty_derby",
   "config": "uma_musume_pretty_derby_line2.json",
@@ -4580,22 +4650,6 @@
    0.63281,
    1.0625
   ]
- },
- "u/tiny_rogues.png": {
-  "game": "tiny_rogues",
-  "config": "tiny_rogues.json",
-  "style": "tiny_rogues",
-  "body_center": 0.4708,
-  "body_height": 0.7719,
-  "body_center_x": 0.4909,
-  "body_width": 0.754,
-  "src": [
-   0.48575,
-   0.41951,
-   0.66974,
-   0.88608
-  ],
-  "form": "lower"
  },
  "u/uma_musume_pretty_derby.png": {
   "game": "uma_musume_pretty_derby",
@@ -4926,22 +4980,6 @@
    1.00781,
    1.0625
   ]
- },
- "y/tiny_rogues.png": {
-  "game": "tiny_rogues",
-  "config": "tiny_rogues.json",
-  "style": "tiny_rogues",
-  "body_center": 0.4566,
-  "body_height": 0.7779,
-  "body_center_x": 0.5066,
-  "body_width": 0.7788,
-  "src": [
-   0.58592,
-   0.02933,
-   0.77536,
-   0.49318
-  ],
-  "form": "lower"
  },
  "y/uma_musume_pretty_derby.png": {
   "game": "uma_musume_pretty_derby",
