@@ -144,7 +144,11 @@ Demonic Mahjong gives D E M O N I C, M A H J O N G (the second M, O and N as
 as drawn at 2x (`smooth_scale`, the source being 640px wide); the spiked N and
 the dripping M, A and H are sized by their bodies (`body` rows). Its red seal
 is a `decor_right/` with NO left half: a right decoration standing alone at the
-title's right end, earned as a unit of its own (`TitleLetters.unit_key`). Spelunky Classic gives S P E L U N K Y (the first K): its
+title's right end, earned as a unit of its own (`TitleLetters.unit_key`),
+small and high as the logo has it: a decoration honours `size` and `drop`
+(`TitleLetters._decor_size`), the seal 0.65 of a decoration's usual size and
+lifted 0.36 of the line, measured off the logo (64px against the D's 110, its
+middle a third of the line above the line's). Spelunky Classic gives S P E L U N K Y (the first K): its
 source is a blurry 1920x1080 screenshot of pixel art, so `pixel_grid` rebuilds
 the logo pixel by pixel on the measured grid (11.707px a pixel), each snapped to
 the logo's three-colour palette, and the letters come out as sharp 12x blocks. Haste gives H A S T E, solid black

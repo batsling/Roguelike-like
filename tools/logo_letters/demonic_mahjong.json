@@ -102,5 +102,11 @@
     "reach": 2,
     "scale": 2,
     "smooth_scale": true
+  },
+  "size": {
+    "decor_right": 0.65
+  },
+  "drop": {
+    "decor_right": -0.36
   }
 }

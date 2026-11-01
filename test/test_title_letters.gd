@@ -118,7 +118,14 @@ func test_every_letter_is_centred_on_the_line_and_in_its_slot() -> void:
 					# below: then lifted until it just clears it (the torch)
 					var bottom: float = r.position.y + r.size.y
 					if bottom < h * (1.0 + TitleLetters.PAD) - 0.01:
-						assert_almost_eq(cy, h / 2.0, 0.01, tag + ": middle on the line's middle")
+						# its own place: the line's middle, moved by its `drop`
+						var dsz := TitleLetters._decor_size(p.entry)
+						var box_top: float = r.position.y + (float(p.entry["body_center"]) - float(p.entry["body_height"]) * 0.5) * r.size.y
+						if p.entry.has("line_center"):
+							assert_almost_eq(cy, h / 2.0, 0.01, tag + ": middle on the line's middle")
+						else:
+							assert_almost_eq(box_top, h * dsz.y, 0.01, tag + ": where its size and drop put it")
+						assert_almost_eq(bh, h * dsz.x, 0.01, tag + ": as tall as its size makes it")
 					else:
 						assert_lt(cy, h / 2.0, tag + ": lifted, not dropped")
 				else:
@@ -126,7 +133,7 @@ func test_every_letter_is_centred_on_the_line_and_in_its_slot() -> void:
 					assert_almost_eq(top, p.body.position.y, 0.01, tag + ": its top where its case puts it")
 				assert_almost_eq(cx, p.body.get_center().x, 0.01, tag + ": middle in its slot")
 				assert_almost_eq(bw, p.body.size.x, 0.01, tag + ": its own width is its slot")
-				var want: float = TitleLetters.DECOR_SIZE if is_decor else TitleLetters._size(p.entry, p.ch).x
+				var want: float = TitleLetters._decor_size(p.entry).x if is_decor else TitleLetters._size(p.entry, p.ch).x
 				if not p.entry.has("case") and want < 1.0:
 					logo_lower += 1
 				assert_almost_eq(bh, h * want, 0.01, tag + ": as tall as its case makes it")
@@ -359,6 +366,11 @@ func test_decorations_come_in_matching_pairs() -> void:
 # A LONE RIGHT DECORATION takes the right end and leaves the left to the word, and
 # is earned as a unit of its own (Demonic Mahjong's seal).
 func test_a_lone_right_decoration_stands_at_the_right_only() -> void:
+	# ...small, and up by the top of the line, as its logo has it
+	var sz := TitleLetters._decor_size((TitleLetters.pool()["decor_right"] as Array).filter(
+		func(e): return e["stem"] == "demonic_mahjong")[0])
+	assert_lt(sz.x, TitleLetters.DECOR_SIZE, "smaller than a decoration's usual size")
+	assert_lt(sz.y + sz.x * 0.5, 0.5, "its middle above the line's")
 	var seal: Dictionary = (TitleLetters.pool()["decor_right"] as Array).filter(
 		func(e): return e["stem"] == "demonic_mahjong")[0]
 	assert_eq(TitleLetters.unit_key(seal), String(seal["key"]), "earned as itself")

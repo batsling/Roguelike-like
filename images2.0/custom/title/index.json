@@ -1226,7 +1226,9 @@
    0.00641,
    0.94688,
    0.23397
-  ]
+  ],
+  "size": 0.65,
+  "drop": -0.36
  },
  "decor_right/everything_is_crab.png": {
   "game": "everything_is_crab",

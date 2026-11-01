@@ -272,6 +272,13 @@ static func _case_size(e: Dictionary, ch: String) -> Vector2:
 		return Vector2(X_HEIGHT + DESCENDER, 1.0 - X_HEIGHT)
 	return Vector2(X_HEIGHT, 1.0 - X_HEIGHT)
 
+# A decoration's height and top, of the line: DECOR_SIZE centred on the line,
+# scaled by its `size` and moved by its `drop` (both from its config), so one can
+# sit where its logo put it (Demonic Mahjong's seal: small, up by the line's top).
+static func _decor_size(e: Dictionary) -> Vector2:
+	var h := DECOR_SIZE * float(e.get("size", 1.0))
+	return Vector2(h, 0.5 - h * 0.5 + float(e.get("drop", 0.0)))
+
 # A word laid out at `height` px a letter, no wider than `max_width`.
 static func make(text: String, height: float, rng: RandomNumberGenerator,
 		decorated: bool = false, max_width: float = 0.0, word_gap: float = SPACE,
@@ -320,8 +327,7 @@ func _lay_out(pieces: Array, decor: Array, height: float, text: String = "") -> 
 		var bh := float(e.get("body_height", 1.0))
 		var bw := float(e.get("body_width", 1.0))
 		# a decoration is centred at DECOR_SIZE; a letter is sized by its case
-		var size_top := Vector2(DECOR_SIZE, 0.5 - DECOR_SIZE * 0.5) if is_decor \
-			else _size(e, String(seq[i][2]))
+		var size_top := _decor_size(e) if is_decor else _size(e, String(seq[i][2]))
 		var target := height * size_top.x
 		# room kept clear either side of it (Dead Cells' flame), of the line
 		var pad := height * float(e.get("pad", 0.0))
