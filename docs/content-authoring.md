@@ -211,7 +211,13 @@ Qud gives C A V E S, O F, Q U D (the V and E touch and are split between them;
 the red bars round OF are left out), 2x as `silhouette`s. The Royal Writ
 gives t h e, R o y a l, W r i t (the lowercase r and the second t as `__2`),
 red brushwork cut as drawn (`reach` 2) with its black outline and cyan 3D side,
-the W's burn holes see-through; every letter stands apart, so no `splits`. A logo can
+the W's burn holes see-through; every letter stands apart, so no `splits`. Luck be a Landlord gives L u c k
+b e a n d o r and a lowercase l (`l__2`): pixel art at 10.86px a pixel, rebuilt
+with `pixel_grid` (which counts a see-through block as background, since this
+logo's transparent pixels are black RGB) and cut sharp at 12x. Letters side by
+side share one outline in the logo, so each is cut by its white face alone and
+given its own whole one-pixel black ring (`pixel_outline`); the second L, a and
+d are exact repeats and left out. A logo can
 take more than one config when its parts are built differently: Uma Musume has
 four, one per line, one for the girl and one for her dash.
 `mewgenics.json` is the simple case: black letters that do not touch, cut as

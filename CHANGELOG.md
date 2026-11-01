@@ -11,6 +11,15 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Luck be a Landlord's letters.** L u c k b e a n d o r and a lowercase l,
+  pixel art rebuilt on the logo's grid (10.86px a pixel) and cut sharp at 12x.
+  In the logo, letters next to each other share one black outline; each
+  letter now gets its own complete one-pixel ring (`pixel_outline`). The
+  second L, a and d repeat the first exactly and are left out. `pixel_grid`
+  now treats a see-through block as background (this logo's transparent
+  pixels are black RGB); Noita and Spelunky cut byte-identical. A title test
+  that only asserted when a word repeated a game now always asserts.
+
 - **The Royal Writ's letters.** t h e, R o y a l, W r i t (the lowercase r
   and the second t as `__2`), red brushwork cut as drawn with its black
   outline and cyan 3D side, the W's burn holes left see-through. Every

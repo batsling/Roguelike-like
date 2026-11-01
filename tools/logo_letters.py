@@ -728,7 +728,10 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
                 blk = A[int(cy - 3):int(cy + 4), int(cx - 3):int(cx + 4), :3].reshape(-1, 3)
                 col = np.median(blk, 0)
                 d_ = np.abs(pal - col).max(-1)
-                if d_.min() <= pg.get("tolerance", 24):
+                # a see-through block is background whatever its colour
+                # (Luck be a Landlord's transparent pixels are black RGB)
+                see_through = np.median(A[int(cy - 3):int(cy + 4), int(cx - 3):int(cx + 4), 3]) < 128
+                if d_.min() <= pg.get("tolerance", 24) and not see_through:
                     small[r_, c_, :3] = pal[d_.argmin()]
                     small[r_, c_, 3] = 255
                 samp[r_, c_] = col

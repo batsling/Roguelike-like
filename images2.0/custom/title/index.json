@@ -379,6 +379,22 @@
    0.97115
   ]
  },
+ "a/luck_be_a_landlord.png": {
+  "game": "luck_be_a_landlord",
+  "config": "luck_be_a_landlord.json",
+  "style": "luck_be_a_landlord",
+  "body_center": 0.5,
+  "body_height": 0.4545,
+  "body_center_x": 0.6,
+  "body_width": 0.6,
+  "src": [
+   0.83051,
+   -0.05263,
+   1.0,
+   0.52632
+  ],
+  "form": "lower"
+ },
  "a/noita.png": {
   "game": "noita",
   "config": "noita.json",
@@ -714,6 +730,22 @@
    1.0
   ]
  },
+ "b/luck_be_a_landlord.png": {
+  "game": "luck_be_a_landlord",
+  "config": "luck_be_a_landlord.json",
+  "style": "luck_be_a_landlord",
+  "body_center": 0.5,
+  "body_height": 0.5,
+  "body_center_x": 0.5,
+  "body_width": 0.5,
+  "src": [
+   0.50847,
+   -0.10526,
+   0.71186,
+   0.52632
+  ],
+  "form": "lower"
+ },
  "b/rogue.png": {
   "game": "rogue",
   "config": "rogue_letters.py",
@@ -929,6 +961,22 @@
    0.84768,
    0.97115
   ]
+ },
+ "c/luck_be_a_landlord.png": {
+  "game": "luck_be_a_landlord",
+  "config": "luck_be_a_landlord.json",
+  "style": "luck_be_a_landlord",
+  "body_center": 0.5,
+  "body_height": 0.4545,
+  "body_center_x": 0.5,
+  "body_width": 0.4545,
+  "src": [
+   0.18644,
+   -0.05263,
+   0.37288,
+   0.52632
+  ],
+  "form": "lower"
  },
  "c/mewgenics.png": {
   "game": "mewgenics",
@@ -1218,6 +1266,22 @@
    0.66,
    0.69819
   ]
+ },
+ "d/luck_be_a_landlord.png": {
+  "game": "luck_be_a_landlord",
+  "config": "luck_be_a_landlord.json",
+  "style": "luck_be_a_landlord",
+  "body_center": 0.5,
+  "body_height": 0.5,
+  "body_center_x": 0.5,
+  "body_width": 0.5,
+  "src": [
+   0.35593,
+   0.47368,
+   0.55932,
+   1.10526
+  ],
+  "form": "lower"
  },
  "d/rogue.png": {
   "game": "rogue",
@@ -1777,6 +1841,22 @@
    0.50785,
    0.73298
   ]
+ },
+ "e/luck_be_a_landlord.png": {
+  "game": "luck_be_a_landlord",
+  "config": "luck_be_a_landlord.json",
+  "style": "luck_be_a_landlord",
+  "body_center": 0.5,
+  "body_height": 0.4545,
+  "body_center_x": 0.5,
+  "body_width": 0.4545,
+  "src": [
+   0.62712,
+   -0.05263,
+   0.81356,
+   0.52632
+  ],
+  "form": "lower"
  },
  "e/mewgenics.png": {
   "game": "mewgenics",
@@ -3018,6 +3098,22 @@
    1.00372
   ]
  },
+ "k/luck_be_a_landlord.png": {
+  "game": "luck_be_a_landlord",
+  "config": "luck_be_a_landlord.json",
+  "style": "luck_be_a_landlord",
+  "body_center": 0.5,
+  "body_height": 0.5,
+  "body_center_x": 0.5,
+  "body_width": 0.5,
+  "src": [
+   0.28814,
+   -0.10526,
+   0.49153,
+   0.52632
+  ],
+  "form": "lower"
+ },
  "k/risk_of_rain_2.png": {
   "game": "risk_of_rain_2",
   "config": "risk_of_rain_2.json",
@@ -3166,6 +3262,37 @@
    0.34555,
    0.50785
   ]
+ },
+ "l/luck_be_a_landlord.png": {
+  "game": "luck_be_a_landlord",
+  "config": "luck_be_a_landlord.json",
+  "style": "luck_be_a_landlord",
+  "body_center": 0.5,
+  "body_height": 0.5,
+  "body_center_x": 0.3889,
+  "body_width": 0.5556,
+  "src": [
+   0.0,
+   -0.10526,
+   0.15254,
+   0.52632
+  ]
+ },
+ "l/luck_be_a_landlord__2.png": {
+  "game": "luck_be_a_landlord",
+  "config": "luck_be_a_landlord.json",
+  "style": "luck_be_a_landlord",
+  "body_center": 0.5,
+  "body_height": 0.5,
+  "body_center_x": 0.5,
+  "body_width": 0.4,
+  "src": [
+   0.47458,
+   0.47368,
+   0.64407,
+   1.10526
+  ],
+  "form": "lower"
  },
  "l/nuclear_throne.png": {
   "game": "nuclear_throne",
@@ -3627,6 +3754,22 @@
    0.38462
   ]
  },
+ "n/luck_be_a_landlord.png": {
+  "game": "luck_be_a_landlord",
+  "config": "luck_be_a_landlord.json",
+  "style": "luck_be_a_landlord",
+  "body_center": 0.5,
+  "body_height": 0.4545,
+  "body_center_x": 0.5,
+  "body_width": 0.5,
+  "src": [
+   0.23729,
+   0.52632,
+   0.44068,
+   1.10526
+  ],
+  "form": "lower"
+ },
  "n/mewgenics.png": {
   "game": "mewgenics",
   "config": "mewgenics.json",
@@ -3954,6 +4097,22 @@
    0.86911,
    0.83246
   ]
+ },
+ "o/luck_be_a_landlord.png": {
+  "game": "luck_be_a_landlord",
+  "config": "luck_be_a_landlord.json",
+  "style": "luck_be_a_landlord",
+  "body_center": 0.5,
+  "body_height": 0.4545,
+  "body_center_x": 0.5,
+  "body_width": 0.5,
+  "src": [
+   0.55932,
+   0.52632,
+   0.76271,
+   1.10526
+  ],
+  "form": "lower"
  },
  "o/noita.png": {
   "game": "noita",
@@ -4513,6 +4672,22 @@
    0.67016,
    0.73298
   ]
+ },
+ "r/luck_be_a_landlord.png": {
+  "game": "luck_be_a_landlord",
+  "config": "luck_be_a_landlord.json",
+  "style": "luck_be_a_landlord",
+  "body_center": 0.5,
+  "body_height": 0.4545,
+  "body_center_x": 0.5,
+  "body_width": 0.4545,
+  "src": [
+   0.67797,
+   0.52632,
+   0.86441,
+   1.10526
+  ],
+  "form": "lower"
  },
  "r/nuclear_throne.png": {
   "game": "nuclear_throne",
@@ -5586,6 +5761,22 @@
    0.29205,
    0.97358
   ]
+ },
+ "u/luck_be_a_landlord.png": {
+  "game": "luck_be_a_landlord",
+  "config": "luck_be_a_landlord.json",
+  "style": "luck_be_a_landlord",
+  "body_center": 0.5,
+  "body_height": 0.4545,
+  "body_center_x": 0.5,
+  "body_width": 0.5,
+  "src": [
+   0.0678,
+   -0.05263,
+   0.27119,
+   0.52632
+  ],
+  "form": "lower"
  },
  "u/nuclear_throne.png": {
   "game": "nuclear_throne",
