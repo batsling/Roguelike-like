@@ -11,6 +11,11 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Diablo's letters.** D I A B L O, each in its own flame with its soft
+  glow. Two new cutter options: `glow_share` fades a glow two letters share
+  out into the neighbour's instead of cutting it on a seam, and `inpaint`
+  rebuilds the ® as the glow it sits in.
+
 - **Into the Breach's letters.** I N T O, T H E, B R E A C H, pixel art cut
   at 8x from the owner's sharper logo, each letter's haze and drop shadow
   drawn to the logo's own recipe, measured pixel by pixel (a new

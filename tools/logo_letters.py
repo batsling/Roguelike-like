@@ -92,6 +92,8 @@ so Godot never imports the source), is JSON:
     styles        [variant, ...] — piece variants (the part after the dot) drawn
                   at another size than the rest of the logo; each is sized as a
                   line of its own in images2.0/custom/title/index.json
+    inpaint       [[[x, y], ...]] — polygons rebuilt as the glow round them
+                  (its alpha by distance from the solid flame) (a mark in a glow: Diablo's ®), before cutting;
     pixel_grid    {"x0", "y0", "x1", "y1", "pitch", "palette", "tolerance"} —
                   rebuild pixel art from a blurry screenshot: one palette colour
                   per logo pixel on the measured grid, the rest see-through
@@ -211,6 +213,8 @@ so Godot never imports the source), is JSON:
                   "shadow_after": {"dx", "dy", "colour_max"} drops shadow pixels
                   with none of the letter before them on their row or above
                   them in their column (a neighbour's shadow tip);
+                  "glow_share": {"falloff": px} lets a soft glow two letters
+                  share fade from one into the other, not stop at a seam;
                   "smooth_scale": true scales the cut as it is, smoothly
                   (a painted logo kept with its soft shadow);
                   "pixel_outline": {"colour", "width"} draws an even ring of
@@ -690,6 +694,23 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
     cfg = json.loads(cfg_path.read_text())
     src = cfg_path.parent / cfg["source"]
     A = np.array(Image.open(src).convert("RGBA")).astype(float)
+    for poly in cfg.get("inpaint", []):
+        # A mark that is no letter's, sitting in a soft glow (Diablo's ®): the
+        # polygon rebuilt as the glow round it, which fades with distance from
+        # the solid flame. Each pixel takes the average of the glow outside the
+        # polygon (within 40px of it) at the same distance from the nearest
+        # solid pixel: no hole, and no blob where the mark was.
+        m_ = _polygon_mask(A.shape[:2], poly)
+        d_ = nd.distance_transform_edt(~((A[..., 3] >= 250) & ~m_))
+        ref = (nd.distance_transform_edt(~m_) <= 40) & ~m_
+        P_ = np.concatenate([A[..., :3] * A[..., 3:] / 255, A[..., 3:]], -1)
+        bins = np.round(d_).astype(int)
+        for k in np.unique(bins[m_]):
+            src_ = ref & (np.abs(d_ - k) <= 1.0)
+            val = P_[src_].mean(0) if src_.any() else np.zeros(4)
+            P_[m_ & (bins == k)] = val
+        A[m_, 3] = P_[m_, 3]
+        A[m_, :3] = P_[m_, :3] / np.maximum(P_[m_, 3:], 1e-6) * 255
     pg = cfg.get("pixel_grid")
     if pg:
         # A blurry screenshot of pixel art (Spelunky Classic): one colour per
@@ -896,6 +917,17 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
                 d_other = np.min([D[o_] for o_ in names if o_ != n], 0) if len(names) > 1 else np.full((H, W), 1e9)
                 keep = f | ((a > 0) & ~background & (ds <= reach) & mine
                             & (d_other > cut["own_by_shadow"].get("outline", 6)) & ~fill)
+            gs_ = cut.get("glow_share")
+            if gs_:
+                # A GLOW TWO LETTERS SHARE, SHARED (Diablo): past its fill a
+                # letter keeps the glow round it up to `reach`, across the
+                # midline too, at the part of it that is its own, weighed by how
+                # much nearer it is than the nearest other letter (a logistic
+                # over `falloff` px). Its half fades out into the neighbour's
+                # instead of stopping on a hard edge.
+                d_other = np.min([D[o_] for o_ in names if o_ != n], 0) if len(names) > 1 else np.full((H, W), 1e9)
+                keep = f | ((a > 0) & ~background & (ds <= reach) & ~(fill & ~f))
+                share = np.where(f, 1.0, 1.0 / (1.0 + np.exp((ds - d_other) / gs_.get("falloff", 6.0))))
             if cut.get("drawn"):
                 # AS DRAWN, SHADING AND ALL (Tiny Rogues): the letter is its
                 # face and every bit of the logo's 3D shading that touches it,
@@ -1056,6 +1088,8 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
             if not ss_:
                 rgb[keep] = A[keep][:, :3]
                 al[keep] = a[keep] / 255
+                if gs_:
+                    al *= share
             rc = cut.get("recast_shadow")
             if rc:
                 # The logo's shadow re-cast from this letter's own shape (Slay

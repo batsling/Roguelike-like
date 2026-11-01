@@ -273,6 +273,21 @@
    0.86218
   ]
  },
+ "a/diablo.png": {
+  "game": "diablo",
+  "config": "diablo.json",
+  "style": "diablo",
+  "body_center": 0.545,
+  "body_height": 0.2554,
+  "body_center_x": 0.5,
+  "body_width": 0.6271,
+  "src": [
+   0.32923,
+   0.10164,
+   0.51077,
+   1.01311
+  ]
+ },
  "a/dwarf_fortress.png": {
   "game": "dwarf_fortress",
   "config": "dwarf_fortress.json",
@@ -605,6 +620,21 @@
    0.93971
   ],
   "size": 1.05
+ },
+ "b/diablo.png": {
+  "game": "diablo",
+  "config": "diablo.json",
+  "style": "diablo",
+  "body_center": 0.6326,
+  "body_height": 0.3442,
+  "body_center_x": 0.4912,
+  "body_width": 0.5731,
+  "src": [
+   0.47795,
+   0.14754,
+   0.65333,
+   0.85246
+  ]
  },
  "b/ember_knights.png": {
   "game": "ember_knights",
@@ -1095,6 +1125,21 @@
    0.05769,
    0.18125,
    0.47115
+  ]
+ },
+ "d/diablo.png": {
+  "game": "diablo",
+  "config": "diablo.json",
+  "style": "diablo",
+  "body_center": 0.5752,
+  "body_height": 0.4922,
+  "body_center_x": 0.4956,
+  "body_width": 0.693,
+  "src": [
+   -0.00821,
+   -0.01967,
+   0.22564,
+   1.02623
   ]
  },
  "d/dwarf_fortress.png": {
@@ -2534,6 +2579,21 @@
    0.38462
   ]
  },
+ "i/diablo.png": {
+  "game": "diablo",
+  "config": "diablo.json",
+  "style": "diablo",
+  "body_center": 0.5655,
+  "body_height": 0.4029,
+  "body_center_x": 0.5035,
+  "body_width": 0.5106,
+  "src": [
+   0.2,
+   0.19672,
+   0.34462,
+   0.87213
+  ]
+ },
  "i/ember_knights.png": {
   "game": "ember_knights",
   "config": "ember_knights_2.json",
@@ -2978,6 +3038,21 @@
    0.97485
   ],
   "size": 1.12
+ },
+ "l/diablo.png": {
+  "game": "diablo",
+  "config": "diablo.json",
+  "style": "diablo",
+  "body_center": 0.5964,
+  "body_height": 0.3503,
+  "body_center_x": 0.5031,
+  "body_width": 0.5714,
+  "src": [
+   0.63487,
+   0.21967,
+   0.8,
+   0.86557
+  ]
  },
  "l/loop_hero.png": {
   "game": "loop_hero",
@@ -3644,6 +3719,21 @@
    0.52564,
    0.725,
    0.8109
+  ]
+ },
+ "o/diablo.png": {
+  "game": "diablo",
+  "config": "diablo.json",
+  "style": "diablo",
+  "body_center": 0.6022,
+  "body_height": 0.5144,
+  "body_center_x": 0.5022,
+  "body_width": 0.71,
+  "src": [
+   0.77128,
+   -0.03279,
+   1.00821,
+   0.99344
   ]
  },
  "o/dwarf_fortress.png": {

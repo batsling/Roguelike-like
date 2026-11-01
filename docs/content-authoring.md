@@ -182,7 +182,15 @@ in an inside corner — 701 of the logo's 702 haze pixels to the unit), over a
 drop shadow that is the body moved 3px right and down. Drawn whole for every
 letter, a neighbour that covered part of a shadow in the logo costs nothing;
 laid back in place, the 13 letters rebuild the logo to within 3 levels on all
-but a handful of pixels (where two letters' haze overlaps). Spelunky Classic gives S P E L U N K Y (the first K): its
+but a handful of pixels (where two letters' haze overlaps). Diablo gives
+D I A B L O, each letter in its own flame, cut as drawn from a logo that is
+already see-through. The flames' soft glows run into each other, so each letter
+keeps the glow round it past the midline and fades out into its neighbour's
+(`glow_share`, a logistic over 6px of how much nearer it is) rather than
+stopping on a seam; the ® beside the O is rebuilt as the O's glow (`inpaint`:
+each pixel the average of the glow at the same distance from the flame).
+I A B L are small capitals (body to the shared baseline, the A's leg hanging
+below it). Spelunky Classic gives S P E L U N K Y (the first K): its
 source is a blurry 1920x1080 screenshot of pixel art, so `pixel_grid` rebuilds
 the logo pixel by pixel on the measured grid (11.707px a pixel), each snapped to
 the logo's three-colour palette, and the letters come out as sharp 12x blocks. Haste gives H A S T E, solid black
