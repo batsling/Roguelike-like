@@ -11,6 +11,9 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Wildfrost's letters.** W I L D F R O S T, the O the gem, each with the
+  logo's soft shadow drawn again under it.
+
 - **Ember Knights' letters.** E M B E R with each letter's glow drawn again
   round its own shape (the logo's runs from letter to letter) and its flames
   hanging over the line, and K N I G H T S cut plain.

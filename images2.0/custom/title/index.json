@@ -1168,6 +1168,21 @@
    0.95
   ]
  },
+ "d/wildfrost.png": {
+  "game": "wildfrost",
+  "config": "wildfrost.json",
+  "style": "wildfrost",
+  "body_center": 0.473,
+  "body_height": 0.6703,
+  "body_center_x": 0.5,
+  "body_width": 0.5749,
+  "src": [
+   0.29612,
+   -0.04734,
+   0.45092,
+   1.04734
+  ]
+ },
  "dash/dead_cells.png": {
   "game": "dead_cells",
   "config": "dead_cells.json",
@@ -1973,6 +1988,21 @@
    0.13412
   ]
  },
+ "f/wildfrost.png": {
+  "game": "wildfrost",
+  "config": "wildfrost.json",
+  "style": "wildfrost",
+  "body_center": 0.481,
+  "body_height": 0.6848,
+  "body_center_x": 0.5038,
+  "body_width": 0.5472,
+  "src": [
+   0.40345,
+   -0.04734,
+   0.54639,
+   1.04142
+  ]
+ },
  "g/darkest_dungeon.png": {
   "game": "darkest_dungeon",
   "config": "darkest_dungeon.json",
@@ -2623,6 +2653,21 @@
    0.95089
   ]
  },
+ "i/wildfrost.png": {
+  "game": "wildfrost",
+  "config": "wildfrost.json",
+  "style": "wildfrost",
+  "body_center": 0.4727,
+  "body_height": 0.6776,
+  "body_center_x": 0.5,
+  "body_width": 0.3545,
+  "src": [
+   0.14401,
+   -0.04142,
+   0.24595,
+   1.04142
+  ]
+ },
  "j/demonic_mahjong.png": {
   "game": "demonic_mahjong",
   "config": "demonic_mahjong.json",
@@ -2915,6 +2960,21 @@
    -0.125,
    0.50781,
    1.0625
+  ]
+ },
+ "l/wildfrost.png": {
+  "game": "wildfrost",
+  "config": "wildfrost.json",
+  "style": "wildfrost",
+  "body_center": 0.4701,
+  "body_height": 0.6739,
+  "body_center_x": 0.5037,
+  "body_width": 0.5506,
+  "src": [
+   0.19849,
+   -0.04142,
+   0.3425,
+   1.04734
   ]
  },
  "less/rogue.png": {
@@ -3627,6 +3687,21 @@
    0.95759
   ]
  },
+ "o/wildfrost.png": {
+  "game": "wildfrost",
+  "config": "wildfrost.json",
+  "style": "wildfrost",
+  "body_center": 0.4724,
+  "body_height": 0.6961,
+  "body_center_x": 0.5,
+  "body_width": 0.7008,
+  "src": [
+   0.60356,
+   -0.02959,
+   0.79827,
+   1.04142
+  ]
+ },
  "p/loop_hero.png": {
   "game": "loop_hero",
   "config": "loop_hero.json",
@@ -4215,6 +4290,21 @@
    0.95312
   ]
  },
+ "r/wildfrost.png": {
+  "game": "wildfrost",
+  "config": "wildfrost.json",
+  "style": "wildfrost",
+  "body_center": 0.4755,
+  "body_height": 0.6739,
+  "body_center_x": 0.505,
+  "body_width": 0.602,
+  "src": [
+   0.5,
+   -0.04734,
+   0.66127,
+   1.04142
+  ]
+ },
  "s/20_minutes_till_dawn.png": {
   "game": "20_minutes_till_dawn",
   "config": "20_minutes_till_dawn.json",
@@ -4604,6 +4694,21 @@
    0.95759
   ]
  },
+ "s/wildfrost.png": {
+  "game": "wildfrost",
+  "config": "wildfrost.json",
+  "style": "wildfrost",
+  "body_center": 0.4728,
+  "body_height": 0.6739,
+  "body_center_x": 0.4906,
+  "body_width": 0.5693,
+  "src": [
+   0.74919,
+   -0.04438,
+   0.8932,
+   1.04438
+  ]
+ },
  "semicolon/rogue.png": {
   "game": "rogue",
   "config": "rogue_letters.py",
@@ -4867,6 +4972,21 @@
    0.69211,
    0.43955,
    0.95
+  ]
+ },
+ "t/wildfrost.png": {
+  "game": "wildfrost",
+  "config": "wildfrost.json",
+  "style": "wildfrost",
+  "body_center": 0.4755,
+  "body_height": 0.6739,
+  "body_center_x": 0.5,
+  "body_width": 0.608,
+  "src": [
+   0.84736,
+   -0.04734,
+   1.00971,
+   1.04142
   ]
  },
  "tilde/rogue.png": {
@@ -5242,6 +5362,21 @@
   "size": 0.94,
   "pad": 0.03,
   "case": "lower"
+ },
+ "w/wildfrost.png": {
+  "game": "wildfrost",
+  "config": "wildfrost.json",
+  "style": "wildfrost",
+  "body_center": 0.4849,
+  "body_height": 0.6951,
+  "body_center_x": 0.5,
+  "body_width": 0.6764,
+  "src": [
+   -0.00863,
+   -0.04438,
+   0.19471,
+   1.03254
+  ]
  },
  "x/rogue.png": {
   "game": "rogue",

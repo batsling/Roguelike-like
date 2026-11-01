@@ -167,7 +167,11 @@ eased into it over about a pixel (`soft_face` 1.3, `soft_face_slope` 1.6) where 
 hard cut at the logo's soft edge left every edge stair-stepped; its flames
 reach far above the letters, so each is sized by its body (`body` rows 86-183)
 and the flame hangs over the line. KNIGHTS is cut plain; the warm gold on its
-edges is its own rim, not EMBER's glow. Spelunky Classic gives S P E L U N K Y (the first K): its
+edges is its own rim, not EMBER's glow. Wildfrost gives W I L D F R O S T,
+the O the gem: nine separate shapes cut solid, and the soft purple-grey shadow
+the logo spreads under the whole word drawn again under each (`recast_shadow`:
+spread 4, blur 26, 10px down, alpha 120, (45, 30, 43), fitted to the I's shadow
+above and below it), the face eased into it (`soft_face` 0.8). Spelunky Classic gives S P E L U N K Y (the first K): its
 source is a blurry 1920x1080 screenshot of pixel art, so `pixel_grid` rebuilds
 the logo pixel by pixel on the measured grid (11.707px a pixel), each snapped to
 the logo's three-colour palette, and the letters come out as sharp 12x blocks. Haste gives H A S T E, solid black
