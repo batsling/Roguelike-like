@@ -170,8 +170,8 @@ so Godot never imports the source), is JSON:
                   out and let it fade (Vampire Survivors); "colour_down"
                   (and "colour_down_far") colours the walls swept from the
                   face's bottom edges apart from its side walls, and
-                  "outline": {"width", "colour"} rings face and side
-                  together (Tiny Rogues);
+                  "outline": {"width", "colour", "square"} rings face and
+                  side together, square-cornered with "square" (Tiny Rogues);
                   "outline_max": n keeps only dark pixels past the face (not
                   a glow), "side": {"dy", "dx"} adds the dark 3D side the face
                   sweeps over, "close_dark": n brings in dark counters;
@@ -1058,7 +1058,13 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
                 if ol:
                     # an even outline of the logo's own width round the face and
                     # its side together (Tiny Rogues' black), counters included
-                    ring = (nd.distance_transform_edt(~side) <= ol["width"]) & ~side
+                    if ol.get("square"):
+                        # square-cornered, the way pixel art is outlined: steps
+                        # stay steps, corners stay sharp, and only a diagonal
+                        # side gets a diagonal outline (Tiny Rogues)
+                        ring = (nd.distance_transform_cdt(~side, metric="chessboard") <= ol["width"]) & ~side
+                    else:
+                        ring = (nd.distance_transform_edt(~side) <= ol["width"]) & ~side
                     rgb[ring] = ol.get("colour", [0, 0, 0])
                     al[ring] = 1
                 rgb[side] = side_rgb[side]

@@ -128,7 +128,8 @@
           0,
           0,
           0
-        ]
+        ],
+        "square": true
       }
     },
     "fill_colour": [

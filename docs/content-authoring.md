@@ -140,6 +140,10 @@ The faces are cut and the 3D side rebuilt, now shaded by DIRECTION: walls swept
 from the side edges in maroon, floors from the bottom edges in navy
 (`colour_down`), and the whole letter ringed by its own black outline
 (`extrude`'s `outline`), since the logo's black was one shape round the block.
+That outline is SQUARE-cornered (`"square": true`, a chessboard distance): the
+owner wanted the original's pointy corners and stepped ridges, and a round
+outline smoothed every corner off. Square, the face's steps stay steps in the
+outline and only a diagonal side gets a diagonal edge, as the logo draws it.
 The sword, staff and bow touch the letters' sides, so they are told apart by
 colour (`rgb_ranges`, each colour only in its own box: the browns with red
 under 215 are never a face, which is always red 255); the bow's string and limb
@@ -149,7 +153,7 @@ its own (`tiny_rogues_s.json`; the letters config `hold`s it so the E still stop
 where it starts): every pixel of the original S, its own sides, the red wedges on
 its stepped top-left and the dark red strip down its left (the E's wall, which
 the owner wants on the S), measured by its face alone (`box_fill`) and given the
-other letters' round 40px outline. Under the bow it is rebuilt pixel by pixel on
+other letters' square 40px outline. Under the bow it is rebuilt pixel by pixel on
 the source before cutting (`repaint`): the hidden top-right corner drawn outright
 as three steps (24px across, 23px down, each a 9-row white top over yellow, read
 off the step tops the bow leaves showing and the S's own steps elsewhere), the
