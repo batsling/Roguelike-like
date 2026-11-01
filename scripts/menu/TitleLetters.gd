@@ -329,9 +329,12 @@ func _lay_out(pieces: Array, decor: Array, height: float, text: String = "") -> 
 		# a decoration is centred at DECOR_SIZE; a letter is sized by its case
 		var size_top := _decor_size(e) if is_decor else _size(e, String(seq[i][2]))
 		var target := height * size_top.x
-		# room kept clear either side of it (Dead Cells' flame), of the line
+		# room kept clear either side of it (Dead Cells' flame), of the line:
+		# between it and a neighbour only, never past either end of the row,
+		# where it would push the row off-centre (Rogue's R opening a title)
 		var pad := height * float(e.get("pad", 0.0))
-		x += pad
+		if not placed.is_empty():
+			x += pad
 		var s := target / (th * bh)          # one scale: the letter's own height to the line's
 		var slot := tw * s * bw              # the letter's own width
 		var rect := TextureRect.new()
@@ -347,7 +350,9 @@ func _lay_out(pieces: Array, decor: Array, height: float, text: String = "") -> 
 		var bc := float(e.get("body_center", 0.5))
 		var top := height * size_top.y - (bc - bh * 0.5) * th * s
 		if is_decor and e.has("line_center"):
-			top = height * 0.5 - float(e["line_center"]) * th * s
+			# ...moved by its `drop` like any decoration (Uma Musume's dash, lowered
+			# onto the line its runner trails)
+			top = height * (0.5 + float(e.get("drop", 0.0))) - float(e["line_center"]) * th * s
 		if is_decor:
 			# never down into the row below: Darkest Dungeon's torch hangs its
 			# handle far under the line, and covered the subtitle's first letters
@@ -360,8 +365,9 @@ func _lay_out(pieces: Array, decor: Array, height: float, text: String = "") -> 
 		p.body = Rect2(x, height * size_top.y, slot, target)
 		p.ch = String(seq[i][2])
 		placed.append(p)
-		x += pad
 		x += slot
+		if i < seq.size() - 1:
+			x += pad
 	ink_width = x
 	ink.size = Vector2(x, height)
 	custom_minimum_size = Vector2(0.0, height * (1.0 + 2.0 * PAD))

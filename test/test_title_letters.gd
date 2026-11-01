@@ -122,7 +122,8 @@ func test_every_letter_is_centred_on_the_line_and_in_its_slot() -> void:
 						var dsz := TitleLetters._decor_size(p.entry)
 						var box_top: float = r.position.y + (float(p.entry["body_center"]) - float(p.entry["body_height"]) * 0.5) * r.size.y
 						if p.entry.has("line_center"):
-							assert_almost_eq(cy, h / 2.0, 0.01, tag + ": middle on the line's middle")
+							assert_almost_eq(cy, h * (0.5 + float(p.entry.get("drop", 0.0))), 0.01,
+								tag + ": middle on the line's middle, moved by its drop")
 						else:
 							assert_almost_eq(box_top, h * dsz.y, 0.01, tag + ": where its size and drop put it")
 						assert_almost_eq(bh, h * dsz.x, 0.01, tag + ": as tall as its size makes it")
@@ -302,6 +303,11 @@ func test_size_scales_on_the_baseline_and_pad_keeps_room() -> void:
 		100.0 * TitleLetters.GAP + pad, 0.01, "before it")
 	assert_almost_eq(row.placed[2].body.position.x - row.placed[1].body.end.x,
 		100.0 * TitleLetters.GAP + pad, 0.01, "and after it")
+	# ...but only between pieces: at either END of a row it pushed the row off
+	# centre by half of it (CI, 1 Nov 2026: Rogue's padded R opening the title)
+	row._lay_out([flame, a_, flame], [], 100.0, "-A-")
+	assert_almost_eq(row.placed[0].body.position.x, 0.0, 0.01, "no room before the first piece")
+	assert_almost_eq(row.placed[-1].body.end.x, row.ink_width, 0.01, "nor after the last")
 
 # A CAPITAL PLACE TAKES A CAPITAL SHAPE when one is there: Darkest Dungeon's r
 # as the title's R read as a T. A lowercase shape only when nothing else can.

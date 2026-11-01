@@ -11,6 +11,14 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The title is centred whatever opens it.** A piece's `pad` (room either
+  side, given to Rogue's letters) now only goes between pieces: at the start
+  of a row it pushed the whole row 1.26px right whenever Rogue's R opened the
+  title, which CI caught one draw in about twenty-five.
+- **Uma Musume's decoration:** the right half is smaller, and its bar lowered
+  onto the line the runner trails (a `line_center` decoration now takes its
+  `drop` too; it used to ignore it).
+
 - **Noita's letters.** N o i t a, pixel art rebuilt on the logo's own pixel
   grid and cut sharp, the i with its dot; pixel for pixel the logo's own.
 
