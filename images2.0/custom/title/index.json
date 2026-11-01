@@ -288,6 +288,22 @@
    1.01311
   ]
  },
+ "a/don_t_starve.png": {
+  "game": "don_t_starve",
+  "config": "don_t_starve.json",
+  "style": "don_t_starve",
+  "body_center": 0.4864,
+  "body_height": 0.9402,
+  "body_center_x": 0.475,
+  "body_width": 0.8167,
+  "src": [
+   0.64815,
+   0.26861,
+   0.74916,
+   0.86408
+  ],
+  "form": "lower"
+ },
  "a/dwarf_fortress.png": {
   "game": "dwarf_fortress",
   "config": "dwarf_fortress.json",
@@ -616,6 +632,21 @@
   "pixel": true,
   "size": 0.94,
   "pad": 0.03
+ },
+ "apostrophe/don_t_starve.png": {
+  "game": "don_t_starve",
+  "config": "don_t_starve.json",
+  "style": "don_t_starve",
+  "body_center": 0.4457,
+  "body_height": 0.7609,
+  "body_center_x": 0.4423,
+  "body_width": 0.5769,
+  "src": [
+   0.34512,
+   0.08738,
+   0.38889,
+   0.23625
+  ]
  },
  "apostrophe/rogue.png": {
   "game": "rogue",
@@ -1222,6 +1253,21 @@
    1.02623
   ]
  },
+ "d/don_t_starve.png": {
+  "game": "don_t_starve",
+  "config": "don_t_starve.json",
+  "style": "don_t_starve",
+  "body_center": 0.4907,
+  "body_height": 0.959,
+  "body_center_x": 0.4722,
+  "body_width": 0.9259,
+  "src": [
+   0.0,
+   0.07767,
+   0.18182,
+   0.94498
+  ]
+ },
  "d/dwarf_fortress.png": {
   "game": "dwarf_fortress",
   "config": "dwarf_fortress.json",
@@ -1645,6 +1691,22 @@
    0.29531,
    0.42949
   ]
+ },
+ "e/don_t_starve.png": {
+  "game": "don_t_starve",
+  "config": "don_t_starve.json",
+  "style": "don_t_starve",
+  "body_center": 0.4944,
+  "body_height": 0.9665,
+  "body_center_x": 0.4868,
+  "body_width": 0.8947,
+  "src": [
+   0.87205,
+   0.12945,
+   1.0,
+   1.0
+  ],
+  "form": "lower"
  },
  "e/dwarf_fortress.png": {
   "game": "dwarf_fortress",
@@ -3663,6 +3725,22 @@
    0.78526
   ]
  },
+ "n/don_t_starve.png": {
+  "game": "don_t_starve",
+  "config": "don_t_starve.json",
+  "style": "don_t_starve",
+  "body_center": 0.4843,
+  "body_height": 0.9308,
+  "body_center_x": 0.4819,
+  "body_width": 0.8675,
+  "src": [
+   0.26094,
+   0.33981,
+   0.40067,
+   0.85437
+  ],
+  "form": "lower"
+ },
  "n/ember_knights.png": {
   "game": "ember_knights",
   "config": "ember_knights_2.json",
@@ -4007,6 +4085,22 @@
    1.00821,
    0.99344
   ]
+ },
+ "o/don_t_starve.png": {
+  "game": "don_t_starve",
+  "config": "don_t_starve.json",
+  "style": "don_t_starve",
+  "body_center": 0.482,
+  "body_height": 0.9209,
+  "body_center_x": 0.4853,
+  "body_width": 0.8235,
+  "src": [
+   0.17003,
+   0.33657,
+   0.28451,
+   0.78641
+  ],
+  "form": "lower"
  },
  "o/dwarf_fortress.png": {
   "game": "dwarf_fortress",
@@ -4536,6 +4630,22 @@
   ],
   "form": "lower"
  },
+ "r/don_t_starve.png": {
+  "game": "don_t_starve",
+  "config": "don_t_starve.json",
+  "style": "don_t_starve",
+  "body_center": 0.4859,
+  "body_height": 0.9379,
+  "body_center_x": 0.4904,
+  "body_width": 0.8269,
+  "src": [
+   0.71212,
+   0.26214,
+   0.79966,
+   0.83495
+  ],
+  "form": "lower"
+ },
  "r/dwarf_fortress.png": {
   "game": "dwarf_fortress",
   "config": "dwarf_fortress.json",
@@ -4989,6 +5099,21 @@
   ],
   "size": 1.12
  },
+ "s/don_t_starve.png": {
+  "game": "don_t_starve",
+  "config": "don_t_starve.json",
+  "style": "don_t_starve",
+  "body_center": 0.4908,
+  "body_height": 0.9596,
+  "body_center_x": 0.4795,
+  "body_width": 0.8493,
+  "src": [
+   0.4899,
+   0.06796,
+   0.61279,
+   0.94822
+  ]
+ },
  "s/dwarf_fortress.png": {
   "game": "dwarf_fortress",
   "config": "dwarf_fortress_2.json",
@@ -5414,6 +5539,38 @@
    0.34974,
    1.00196,
    0.63487
+  ],
+  "form": "lower"
+ },
+ "t/don_t_starve.png": {
+  "game": "don_t_starve",
+  "config": "don_t_starve.json",
+  "style": "don_t_starve",
+  "body_center": 0.4892,
+  "body_height": 0.9526,
+  "body_center_x": 0.4922,
+  "body_width": 0.8281,
+  "src": [
+   0.36364,
+   0.10032,
+   0.47138,
+   0.85113
+  ],
+  "form": "lower"
+ },
+ "t/don_t_starve__2.png": {
+  "game": "don_t_starve",
+  "config": "don_t_starve.json",
+  "style": "don_t_starve",
+  "body_center": 0.4864,
+  "body_height": 0.9457,
+  "body_center_x": 0.4688,
+  "body_width": 0.8125,
+  "src": [
+   0.55892,
+   0.11003,
+   0.66667,
+   0.82524
   ],
   "form": "lower"
  },
@@ -5920,6 +6077,22 @@
    0.32213,
    0.94907
   ]
+ },
+ "v/don_t_starve.png": {
+  "game": "don_t_starve",
+  "config": "don_t_starve.json",
+  "style": "don_t_starve",
+  "body_center": 0.6441,
+  "body_height": 0.6632,
+  "body_center_x": 0.4688,
+  "body_width": 0.7708,
+  "src": [
+   0.78788,
+   0.0,
+   0.86869,
+   0.93204
+  ],
+  "form": "lower"
  },
  "v/everything_is_crab.png": {
   "game": "everything_is_crab",

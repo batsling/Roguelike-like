@@ -217,7 +217,12 @@ with `pixel_grid` (which counts a see-through block as background, since this
 logo's transparent pixels are black RGB) and cut sharp at 12x. Letters side by
 side share one outline in the logo, so each is cut by its white face alone and
 given its own whole one-pixel black ring (`pixel_outline`); the second L, a and
-d are exact repeats and left out. A logo can
+d are exact repeats and left out. Don't Starve gives D o n ' t S t a r v e
+(the second t as `__2`, the apostrophe as `apostrophe/`): scratchy white strokes
+that run into each other through their black edges and grey shadow, so each
+letter is found by its white (`min_brightness` 200) and cut as drawn with what
+lies within 8px (`reach`), 2x `smooth_scale` from a 594px source; the v's right
+stroke rises far above the line, so the v is sized by its body. A logo can
 take more than one config when its parts are built differently: Uma Musume has
 four, one per line, one for the girl and one for her dash.
 `mewgenics.json` is the simple case: black letters that do not touch, cut as

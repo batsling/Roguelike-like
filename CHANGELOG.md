@@ -11,6 +11,13 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Don't Starve's letters.** D o n ' t S t a r v e (the second t as `__2`, the
+  apostrophe in `apostrophe/`), scratchy white strokes cut as drawn at 2x with
+  their black edge and grey drop shadow. The letters run into each other
+  through their outlines and shadows, so each is found by its white strokes and
+  keeps what lies nearest them. The v's right stroke rises far above the
+  line, so the v is sized by its body.
+
 - **Luck be a Landlord's letters.** L u c k b e a n d o r and a lowercase l,
   pixel art rebuilt on the logo's grid (10.86px a pixel) and cut sharp at 12x.
   In the logo, letters next to each other share one black outline; each
