@@ -12,8 +12,11 @@ For how the project is laid out and how its systems fit together, see
 ---
 
 - **Into the Breach's letters.** I N T O, T H E, B R E A C H, pixel art cut
-  at 8x, each letter with only its own outline and drop shadow (a new
-  `shadow_after` option drops a neighbour's shadow tip).
+  at 8x from the owner's sharper logo, each letter's haze and drop shadow
+  drawn to the logo's own recipe, measured pixel by pixel (a new
+  `synth_shadow` option): the dark-pink haze right outside the white outline
+  is 14 alpha per unit of a 1-2-1 kernel over the body, the shadow the body
+  moved 3px down-right. Laid back in place, the letters rebuild the logo.
 
 - **Wildfrost's letters.** W I L D F R O S T, the O the gem, each with the
   logo's soft shadow drawn again under it.

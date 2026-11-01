@@ -204,6 +204,10 @@ so Godot never imports the source), is JSON:
                   eases the face into it instead of a hard step;
                   "own_by_shadow": {"dx", "dy", "grow"} gives a drop shadow to
                   the letter casting it, not the nearest one;
+                  "synth_shadow": {"dx", "dy", "haze" (RGB + alpha per unit),
+                  "shadow" (RGBA)} draws a pixel-art letter's 1-2-1 haze and
+                  drop shadow to the logo's recipe round its solid body, layered
+                  as the logo was (Into the Breach);
                   "shadow_after": {"dx", "dy", "colour_max"} drops shadow pixels
                   with none of the letter before them on their row or above
                   them in their column (a neighbour's shadow tip);
@@ -1007,6 +1011,35 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
                 if st_.get("piece", n) == n:
                     keep &= ~(_polygon_mask((H, W), st_["polygon"])
                               & (A[..., :3].max(-1) <= st_.get("max_brightness", 20)))
+            ss_ = cut.get("synth_shadow")
+            if ss_:
+                # A LETTER DRAWN TO ITS LOGO'S RECIPE, pixel for pixel (Into the
+                # Breach): its solid body (face and white outline, the logo's own
+                # pixels); a haze round it, the `haze` colour at an alpha of its
+                # last value times the body under a 1-2-1 kernel (4 beside a
+                # straight edge, 1 off a lone corner, 7 in an inside corner:
+                # 701 of the logo's 702 haze pixels to the unit); and the
+                # shadow, the body moved (`dx`, `dy`), in `shadow` colour under
+                # the haze. Drawn whole for every letter, so a neighbour that
+                # covered part of a letter's shadow in the logo costs it nothing.
+                lab_b, _ = nd.label(a >= 250, structure=np.ones((3, 3)))
+                body = np.isin(lab_b, np.unique(lab_b[f & (lab_b > 0)]))
+                kern = np.array([[1, 2, 1], [2, 4, 2], [1, 2, 1]], float)
+                hz_n = nd.convolve(body.astype(float), kern, mode="constant") * ~body
+                cast_ = nd.shift(body, (ss_["dy"], ss_["dx"]), order=0, cval=False) & ~body
+                keep = body | (hz_n > 0) | cast_
+                # layers, bottom up, composited as the logo was: the shadow, then
+                # the haze, then the body
+                sh_c = np.array(ss_["shadow"][:3], float)
+                sh_a = np.where(cast_, ss_["shadow"][3] / 255, 0.0)
+                hz_c = np.array(ss_["haze"][:3], float)
+                hz_a = np.minimum(hz_n * ss_["haze"][3], 255) / 255
+                out_a = hz_a + sh_a * (1 - hz_a)
+                rgb = (hz_c * hz_a[..., None] + sh_c * (sh_a * (1 - hz_a))[..., None]) / np.maximum(out_a, 1e-6)[..., None]
+                al = out_a
+                rgb[body] = A[body][:, :3]
+                al[body] = a[body] / 255
+                face = body
             sa = cut.get("shadow_after")
             if sa:
                 # A letter's own drop shadow falls after it (right and down for
@@ -1020,8 +1053,9 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
                 up = np.maximum.accumulate(body_k, axis=0) if sa.get("dy", 1) > 0 \
                     else np.maximum.accumulate(body_k[::-1], axis=0)[::-1]
                 keep &= ~(dk & ~left & ~up)
-            rgb[keep] = A[keep][:, :3]
-            al[keep] = a[keep] / 255
+            if not ss_:
+                rgb[keep] = A[keep][:, :3]
+                al[keep] = a[keep] / 255
             rc = cut.get("recast_shadow")
             if rc:
                 # The logo's shadow re-cast from this letter's own shape (Slay
@@ -1113,7 +1147,7 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
                     ring = (nd.distance_transform_cdt(~body_, metric="chessboard") <= po.get("width", 1)) & ~body_
                 rgb[ring] = po["colour"]
                 al[ring] = 1
-            if n in cut.get("hard_edge", []):
+            if n in cut.get("hard_edge", []) and not cut.get("synth_shadow"):
                 # pixel-font letters: each pixel fully on or off, no soft fringe
                 on = al >= 0.5
                 al[:] = on

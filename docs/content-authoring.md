@@ -173,13 +173,16 @@ the logo spreads under the whole word drawn again under each (`recast_shadow`:
 spread 4, blur 26, 10px down, alpha 120, (45, 30, 43), fitted to the I's shadow
 above and below it), the face eased into it (`soft_face` 0.8). Into the
 Breach gives I N T O, T H E, B R E A C H (the second T, H and E as `__2`): pixel
-art at one pixel a pixel (151x104), cut at 8x as sharp pixels (`hard_edge`),
-without the faint pink haze (`keep_min_alpha` 150). Each letter is found by its
-purple face and takes the white outline and drop shadow round it; the shadow
-falls down-right onto the next letter, so it goes to the letter that casts it
-(`own_by_shadow`, 2px right and down), and a shadow pixel with nothing of the
-letter before it on its row or above it in its column is dropped
-(`shadow_after`): the tip of a neighbour's shadow touching at a corner. Spelunky Classic gives S P E L U N K Y (the first K): its
+art at one pixel a pixel (151x104), cut at 8x as sharp pixels. Each letter
+is found by its purple face and keeps its own body (face and white outline,
+the logo's pixels); the rest is DRAWN to the logo's recipe (`synth_shadow`),
+measured pixel by pixel: a faint pink haze whose alpha is 14 times the body
+under a 1-2-1 kernel (4 beside a straight edge, 1 off a lone corner, up to 8
+in an inside corner — 701 of the logo's 702 haze pixels to the unit), over a
+drop shadow that is the body moved 3px right and down. Drawn whole for every
+letter, a neighbour that covered part of a shadow in the logo costs nothing;
+laid back in place, the 13 letters rebuild the logo to within 3 levels on all
+but a handful of pixels (where two letters' haze overlaps). Spelunky Classic gives S P E L U N K Y (the first K): its
 source is a blurry 1920x1080 screenshot of pixel art, so `pixel_grid` rebuilds
 the logo pixel by pixel on the measured grid (11.707px a pixel), each snapped to
 the logo's three-colour palette, and the letters come out as sharp 12x blocks. Haste gives H A S T E, solid black

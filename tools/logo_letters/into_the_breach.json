@@ -72,8 +72,7 @@
   "smooth": false,
   "shadow": false,
   "cut": {
-    "reach": 5,
-    "keep_min_alpha": 150,
+    "reach": 0,
     "hard_edge": [
       "i",
       "n",
@@ -90,17 +89,21 @@
       "h.2"
     ],
     "scale": 8,
-    "own_by_shadow": {
-      "dx": 2,
-      "dy": 2,
-      "grow": 3,
-      "outline": 1
-    },
-    "min_part": 10,
-    "shadow_after": {
-      "dx": 1,
-      "dy": 1,
-      "colour_max": 60
+    "synth_shadow": {
+      "dx": 3,
+      "dy": 3,
+      "haze": [
+        155,
+        96,
+        114,
+        14
+      ],
+      "shadow": [
+        14,
+        13,
+        20,
+        176
+      ]
     }
   }
 }
