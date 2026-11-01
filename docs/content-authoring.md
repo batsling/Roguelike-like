@@ -148,7 +148,16 @@ title's right end, earned as a unit of its own (`TitleLetters.unit_key`),
 small and high as the logo has it: a decoration honours `size` and `drop`
 (`TitleLetters._decor_size`), the seal 0.65 of a decoration's usual size and
 lifted 0.36 of the line, measured off the logo (64px against the D's 110, its
-middle a third of the line above the line's). Spelunky Classic gives S P E L U N K Y (the first K): its
+middle a third of the line above the line's). Dwarf Fortress gives D W A R F
+in green and F O R T R E S S in red (the O the dwarf's head; FORTRESS's F and R's
+as `__2`, `__3`), two configs on one source, told apart by colour since the two
+rows touch: `dwarf_fortress.json` (DWARF) and `dwarf_fortress_2.json` (FORTRESS,
+R|T and S|S split where they meet). The red row's tops are drawn over the foot
+of every DWARF letter's dark band, so each band is finished on the source first
+(`repaint` rects): a column the red cut off runs on down to the bottom line of
+the clean columns beside it, and the band's ends round off on a 12px corner,
+so every DWARF bottom is a curve then a straight line. DWARF is cut with `reach`
+0, or the red row's top edge rides along in a one-pixel line. Spelunky Classic gives S P E L U N K Y (the first K): its
 source is a blurry 1920x1080 screenshot of pixel art, so `pixel_grid` rebuilds
 the logo pixel by pixel on the measured grid (11.707px a pixel), each snapped to
 the logo's three-colour palette, and the letters come out as sharp 12x blocks. Haste gives H A S T E, solid black

@@ -168,8 +168,19 @@ func test_a_word_does_not_repeat_a_game_while_another_is_left() -> void:
 			var e: Dictionary = picks[i]
 			var before := picks.slice(0, i).map(func(x): return x["game"])
 			if e["game"] in before:
-				var ch := _folder_for_test(TITLE.replace(" ", "")[i])
-				var unused := (TitleLetters.pool()[ch] as Array).filter(func(o): return not o["game"] in before)
+				var raw: String = TITLE.replace(" ", "")[i]
+				var ch := _folder_for_test(raw)
+				# only what `pick` could have chosen there: the place's case, and
+				# a capital SHAPE in a capital place when there is one
+				var want: String = "" if raw.to_upper() == raw.to_lower() \
+					else ("upper" if raw == raw.to_upper() else "lower")
+				var opts: Array = (TitleLetters.pool()[ch] as Array).filter(
+					func(o): return not o.has("case") or String(o["case"]) == want)
+				if want == "upper":
+					var caps := opts.filter(func(o): return String(o.get("form", "")) != "lower")
+					if not caps.is_empty():
+						opts = caps
+				var unused := opts.filter(func(o): return not o["game"] in before)
 				assert_true(unused.is_empty(), "seed %d: %s repeats %s with %s unused" % [s, ch, e["game"], unused.size()])
 
 func _folder_for_test(ch: String) -> String:

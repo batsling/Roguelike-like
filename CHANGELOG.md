@@ -11,6 +11,11 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Dwarf Fortress's letters.** D W A R F and F O R T R E S S, the O the
+  dwarf's head. Each DWARF letter's dark bottom band, cut short where the red
+  row is drawn over it, is finished as a curve and a straight line at the
+  height of its own clean columns.
+
 - **Tiny Rogues dropped; Demonic Mahjong instead.** Tiny Rogues' letters,
   sword, staff, bow and logo are gone (the owner, after a long round of fixes
   to its perspective 3D sides). The cutter options built for it stay. Demonic

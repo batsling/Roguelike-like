@@ -273,6 +273,21 @@
    0.86218
   ]
  },
+ "a/dwarf_fortress.png": {
+  "game": "dwarf_fortress",
+  "config": "dwarf_fortress.json",
+  "style": "dwarf_fortress",
+  "body_center": 0.4978,
+  "body_height": 0.9955,
+  "body_center_x": 0.5,
+  "body_width": 0.9894,
+  "src": [
+   0.434,
+   0.0,
+   0.6225,
+   0.5589
+  ]
+ },
  "a/everything_is_crab.png": {
   "game": "everything_is_crab",
   "config": "everything_is_crab.json",
@@ -1022,6 +1037,21 @@
    0.47115
   ]
  },
+ "d/dwarf_fortress.png": {
+  "game": "dwarf_fortress",
+  "config": "dwarf_fortress.json",
+  "style": "dwarf_fortress",
+  "body_center": 0.4978,
+  "body_height": 0.9955,
+  "body_center_x": 0.4972,
+  "body_width": 0.9945,
+  "src": [
+   0.0,
+   0.0,
+   0.1805,
+   0.55764
+  ]
+ },
  "d/hades.png": {
   "game": "hades",
   "config": "hades.json",
@@ -1396,6 +1426,21 @@
    0.1891,
    0.29531,
    0.42949
+  ]
+ },
+ "e/dwarf_fortress.png": {
+  "game": "dwarf_fortress",
+  "config": "dwarf_fortress_2.json",
+  "style": "dwarf_fortress_2",
+  "body_center": 0.5,
+  "body_height": 0.9798,
+  "body_center_x": 0.5,
+  "body_width": 0.9726,
+  "src": [
+   0.647,
+   0.54386,
+   0.7565,
+   0.91604
   ]
  },
  "e/enter_the_gungeon.png": {
@@ -1795,6 +1840,36 @@
    0.24074,
    0.62897,
    0.71759
+  ]
+ },
+ "f/dwarf_fortress.png": {
+  "game": "dwarf_fortress",
+  "config": "dwarf_fortress.json",
+  "style": "dwarf_fortress",
+  "body_center": 0.4978,
+  "body_height": 0.9955,
+  "body_center_x": 0.5033,
+  "body_width": 0.9934,
+  "src": [
+   0.8485,
+   0.0,
+   1.0,
+   0.5589
+  ]
+ },
+ "f/dwarf_fortress__2.png": {
+  "game": "dwarf_fortress",
+  "config": "dwarf_fortress_2.json",
+  "style": "dwarf_fortress_2",
+  "body_center": 0.5,
+  "body_height": 0.9798,
+  "body_center_x": 0.5024,
+  "body_width": 0.976,
+  "src": [
+   0.002,
+   0.54386,
+   0.106,
+   0.91604
   ]
  },
  "f/risk_of_rain_2.png": {
@@ -3241,6 +3316,21 @@
    0.8109
   ]
  },
+ "o/dwarf_fortress.png": {
+  "game": "dwarf_fortress",
+  "config": "dwarf_fortress_2.json",
+  "style": "dwarf_fortress_2",
+  "body_center": 0.5042,
+  "body_height": 0.9916,
+  "body_center_x": 0.498,
+  "body_width": 0.9795,
+  "src": [
+   0.1165,
+   0.55138,
+   0.2385,
+   1.0
+  ]
+ },
  "o/enter_the_gungeon.png": {
   "game": "enter_the_gungeon",
   "config": "enter_the_gungeon.json",
@@ -3676,6 +3766,51 @@
   ],
   "form": "lower"
  },
+ "r/dwarf_fortress.png": {
+  "game": "dwarf_fortress",
+  "config": "dwarf_fortress.json",
+  "style": "dwarf_fortress",
+  "body_center": 0.4978,
+  "body_height": 0.9955,
+  "body_center_x": 0.5,
+  "body_width": 0.9895,
+  "src": [
+   0.6415,
+   0.0,
+   0.8325,
+   0.5589
+  ]
+ },
+ "r/dwarf_fortress__2.png": {
+  "game": "dwarf_fortress",
+  "config": "dwarf_fortress_2.json",
+  "style": "dwarf_fortress_2",
+  "body_center": 0.5,
+  "body_height": 0.9798,
+  "body_center_x": 0.5,
+  "body_width": 0.9773,
+  "src": [
+   0.253,
+   0.54386,
+   0.385,
+   0.91604
+  ]
+ },
+ "r/dwarf_fortress__3.png": {
+  "game": "dwarf_fortress",
+  "config": "dwarf_fortress_2.json",
+  "style": "dwarf_fortress_2",
+  "body_center": 0.5,
+  "body_height": 0.9798,
+  "body_center_x": 0.5,
+  "body_width": 0.9773,
+  "src": [
+   0.509,
+   0.54386,
+   0.641,
+   0.91604
+  ]
+ },
  "r/enter_the_gungeon__pink.png": {
   "game": "enter_the_gungeon",
   "config": "enter_the_gungeon.json",
@@ -3991,6 +4126,36 @@
    0.97485
   ],
   "size": 1.12
+ },
+ "s/dwarf_fortress.png": {
+  "game": "dwarf_fortress",
+  "config": "dwarf_fortress_2.json",
+  "style": "dwarf_fortress_2",
+  "body_center": 0.5,
+  "body_height": 0.9798,
+  "body_center_x": 0.5,
+  "body_width": 0.9721,
+  "src": [
+   0.7715,
+   0.54386,
+   0.879,
+   0.91604
+  ]
+ },
+ "s/dwarf_fortress__2.png": {
+  "game": "dwarf_fortress",
+  "config": "dwarf_fortress_2.json",
+  "style": "dwarf_fortress_2",
+  "body_center": 0.5,
+  "body_height": 0.9797,
+  "body_center_x": 0.5,
+  "body_width": 0.9722,
+  "src": [
+   0.8915,
+   0.54511,
+   0.9995,
+   0.91604
+  ]
  },
  "s/everything_is_crab.png": {
   "game": "everything_is_crab",
@@ -4359,6 +4524,21 @@
    0.63487
   ],
   "form": "lower"
+ },
+ "t/dwarf_fortress.png": {
+  "game": "dwarf_fortress",
+  "config": "dwarf_fortress_2.json",
+  "style": "dwarf_fortress_2",
+  "body_center": 0.5,
+  "body_height": 0.9798,
+  "body_center_x": 0.5,
+  "body_width": 0.9741,
+  "src": [
+   0.3835,
+   0.54386,
+   0.4995,
+   0.91604
+  ]
  },
  "t/enter_the_gungeon__pink.png": {
   "game": "enter_the_gungeon",
@@ -4825,6 +5005,21 @@
    0.6954,
    0.87891,
    1.0
+  ]
+ },
+ "w/dwarf_fortress.png": {
+  "game": "dwarf_fortress",
+  "config": "dwarf_fortress.json",
+  "style": "dwarf_fortress",
+  "body_center": 0.4978,
+  "body_height": 0.9955,
+  "body_center_x": 0.5,
+  "body_width": 0.9902,
+  "src": [
+   0.206,
+   0.0,
+   0.411,
+   0.56015
   ]
  },
  "w/mewgenics.png": {
