@@ -188,10 +188,12 @@ func _reroll(title: bool) -> void:
 	else:
 		subtitle_row = row
 
+# `decorated` is true for the title. Both rows take decorations, each from its
+# own (TitleLetters.pick_decor): the crab's legs are the subtitle's.
 func _title_row(label: Label, height: float, rng: RandomNumberGenerator, decorated: bool) -> TitleLetters:
-	var row := TitleLetters.make(label.text, height, rng, decorated, TITLE_MAX_WIDTH,
+	var row := TitleLetters.make(label.text, height, rng, true, TITLE_MAX_WIDTH,
 			TitleLetters.SPACE if decorated else SUBTITLE_SPACE,
-			TitleLetters.GAP if decorated else SUBTITLE_GAP)
+			TitleLetters.GAP if decorated else SUBTITLE_GAP, not decorated)
 	if row.placed.is_empty():
 		row.free()
 		return null

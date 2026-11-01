@@ -318,6 +318,18 @@ func test_make_takes_its_gap_between_letters() -> void:
 		var pads: float = 30.0 * (float(a.placed[i].entry.get("pad", 0.0)) + float(a.placed[i - 1].entry.get("pad", 0.0)))
 		assert_almost_eq(gap - pads, 30.0 * 0.2, 0.01, "the gap asked for")
 
+# THE CRAB'S LEGS ARE THE SUBTITLE'S (the owner, 1 Nov 2026): the subtitle's
+# decorations come from those marked `subtitle`, the title's from the rest.
+func test_the_subtitle_has_decorations_of_its_own() -> void:
+	var seen := {}
+	for sd in range(30):
+		var d := TitleLetters.pick_decor(_rng(sd), {}, true)
+		assert_eq(d.size(), 2, "a pair")
+		assert_true(bool(d[0].get("subtitle", false)), "%s is a subtitle decoration" % d[0]["path"])
+		assert_eq(d[0]["stem"], d[1]["stem"], "from one pair")
+		seen[d[0]["stem"]] = true
+	assert_true(seen.has("everything_is_crab__legs"), "the crab's legs")
+
 func test_decorations_come_in_matching_pairs() -> void:
 	var stems := {}
 	for s in range(60):
@@ -332,7 +344,7 @@ func test_decorations_come_in_matching_pairs() -> void:
 		stems[d[0]["stem"]] = "pair"
 	assert_eq(stems.get("uma_musume_pretty_derby"), "pair", "Uma Musume's runner and dash are a pair")
 	assert_eq(stems.get("everything_is_crab"), "pair", "the crab's claws are a pair")
-	assert_eq(stems.get("everything_is_crab__legs"), "pair", "the crab's legs are a pair")
+	assert_false(stems.has("everything_is_crab__legs"), "the crab's legs are not the title's")
 	assert_eq(stems.get("darkest_dungeon"), "alone", "Darkest Dungeon's torch has no right half")
 
 # A LONE LEFT DECORATION takes the left end and leaves the right end to the word.

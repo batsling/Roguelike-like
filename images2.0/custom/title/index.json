@@ -847,7 +847,8 @@
   "body_center": 0.5033,
   "body_height": 0.8333,
   "body_center_x": 0.4918,
-  "body_width": 0.7869
+  "body_width": 0.7869,
+  "subtitle": true
  },
  "decor_left/uma_musume_pretty_derby.png": {
   "game": "uma_musume_pretty_derby",
@@ -874,7 +875,8 @@
   "body_center": 0.5,
   "body_height": 0.84,
   "body_center_x": 0.5041,
-  "body_width": 0.7934
+  "body_width": 0.7934,
+  "subtitle": true
  },
  "decor_right/uma_musume_pretty_derby.png": {
   "game": "uma_musume_pretty_derby",
@@ -1614,6 +1616,15 @@
   "body_center_x": 0.5153,
   "body_width": 0.7424
  },
+ "i/vampire_survivors.png": {
+  "game": "vampire_survivors",
+  "config": "vampire_survivors.json",
+  "style": "vampire_survivors",
+  "body_center": 0.4694,
+  "body_height": 0.7959,
+  "body_center_x": 0.4583,
+  "body_width": 0.7292
+ },
  "j/rogue.png": {
   "game": "rogue",
   "config": "rogue_letters.py",
@@ -2171,6 +2182,15 @@
   "body_center_x": 0.4933,
   "body_width": 0.9333
  },
+ "o/vampire_survivors.png": {
+  "game": "vampire_survivors",
+  "config": "vampire_survivors.json",
+  "style": "vampire_survivors",
+  "body_center": 0.4725,
+  "body_height": 0.805,
+  "body_center_x": 0.4854,
+  "body_width": 0.8058
+ },
  "p/loop_hero.png": {
   "game": "loop_hero",
   "config": "loop_hero.json",
@@ -2519,6 +2539,15 @@
   "body_center_x": 0.5,
   "body_width": 0.8049
  },
+ "r/vampire_survivors.png": {
+  "game": "vampire_survivors",
+  "config": "vampire_survivors.json",
+  "style": "vampire_survivors",
+  "body_center": 0.4772,
+  "body_height": 0.802,
+  "body_center_x": 0.5,
+  "body_width": 0.8039
+ },
  "s/20_minutes_till_dawn.png": {
   "game": "20_minutes_till_dawn",
   "config": "20_minutes_till_dawn.json",
@@ -2718,6 +2747,24 @@
   "body_height": 0.7803,
   "body_center_x": 0.497,
   "body_width": 0.7692
+ },
+ "s/vampire_survivors.png": {
+  "game": "vampire_survivors",
+  "config": "vampire_survivors.json",
+  "style": "vampire_survivors",
+  "body_center": 0.4776,
+  "body_height": 0.796,
+  "body_center_x": 0.4559,
+  "body_width": 0.6912
+ },
+ "s/vampire_survivors__2.png": {
+  "game": "vampire_survivors",
+  "config": "vampire_survivors.json",
+  "style": "vampire_survivors",
+  "body_center": 0.475,
+  "body_height": 0.8,
+  "body_center_x": 0.479,
+  "body_width": 0.6643
  },
  "semicolon/rogue.png": {
   "game": "rogue",
@@ -3058,6 +3105,15 @@
   "size": 0.94,
   "pad": 0.03,
   "case": "lower"
+ },
+ "v/vampire_survivors.png": {
+  "game": "vampire_survivors",
+  "config": "vampire_survivors.json",
+  "style": "vampire_survivors",
+  "body_center": 0.4721,
+  "body_height": 0.7919,
+  "body_center_x": 0.4507,
+  "body_width": 0.8128
  },
  "w/20_minutes_till_dawn.png": {
   "game": "20_minutes_till_dawn",

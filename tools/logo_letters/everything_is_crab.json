@@ -170,5 +170,9 @@
     "r.2",
     "a",
     "b"
+  ],
+  "subtitle": [
+    "decor_left.legs",
+    "decor_right.legs"
   ]
 }

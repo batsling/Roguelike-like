@@ -1,0 +1,68 @@
+{
+  "game": "vampire_survivors",
+  "source": "vampire_survivors.png",
+  "pieces": {
+    "v": [
+      214,
+      114
+    ],
+    "i": [
+      801,
+      130
+    ],
+    "s": [
+      113,
+      368
+    ],
+    "o": [
+      974,
+      365
+    ],
+    "r": [
+      1073,
+      369
+    ],
+    "s.2": [
+      1224,
+      368
+    ],
+    "hold_amp": [
+      537,
+      127
+    ],
+    "hold_re": [
+      1037,
+      127
+    ],
+    "hold_ur": [
+      392,
+      367
+    ],
+    "hold_viv": [
+      713,
+      355
+    ]
+  },
+  "hold": [
+    "hold_amp",
+    "hold_re",
+    "hold_ur",
+    "hold_viv"
+  ],
+  "fill": {
+    "min_alpha": 200,
+    "min_brightness": 170
+  },
+  "smooth": false,
+  "shadow": false,
+  "cut": {
+    "reach": 40,
+    "own_by_shadow": {
+      "dx": 13,
+      "dy": 6,
+      "grow": 2,
+      "outline": 4
+    },
+    "keep_min_alpha": 24
+  }
+}

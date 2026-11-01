@@ -117,12 +117,22 @@ the leg pairs (`__legs`), shown at the far left and right of the title at random
 (half the launches). Decorations are always a matching PAIR, by file stem: the
 two claws, the two leg pairs, or Uma Musume's girl (`uma_musume_pretty_derby_girl.json`)
 and her dash (`uma_musume_pretty_derby_decor.json`) — so a pair needs both sides
-under one name. A `decor_left/` piece with no `decor_right/` of its own stands at
+under one name. Decorations belong to one row: the crab's legs are the
+subtitle's (`"subtitle": [both halves]` in the config, `subtitle` in the index),
+every other one the title's, and each row flips its own coin for a pair. A
+`decor_left/` piece with no `decor_right/` of its own stands at
 the left alone: Darkest Dungeon's torch (`darkest_dungeon_torch.json`, cut whole
 in its own colours, the flame's open core left as the logo draws it). Darkest
 Dungeon also gives D a r k e s t, D u n g e o n (second D, e and n as `__2`),
 black ink cut like Mewgenics', with the joined `ar` and `ung` parted by vertical
-`splits` and the a's foot moved back off the r with `assign`. Spelunky Classic gives S P E L U N K Y (the first K): its
+`splits` and the a's foot moved back off the r with `assign`. Vampire Survivors
+gives, so far, the six letters whose gold faces touch no other: V and I from
+VAMPIRE, S O R S from SURVIVORS (the last S as `__2`). They are cut as drawn,
+each keeping its dark 3D side and grey shadow (`own_by_shadow`, pushed 13 right
+and 6 down, measured off the logo), less the faint glow round the whole logo
+(`keep_min_alpha`), whose cut edge showed as a box. The joined faces (AMP, RE,
+UR, VIV) are `hold` pieces: found, so their neighbours stop where they start,
+and not written until lines are drawn to part them. Spelunky Classic gives S P E L U N K Y (the first K): its
 source is a blurry 1920x1080 screenshot of pixel art, so `pixel_grid` rebuilds
 the logo pixel by pixel on the measured grid (11.707px a pixel), each snapped to
 the logo's three-colour palette, and the letters come out as sharp 12x blocks. Haste gives H A S T E, solid black

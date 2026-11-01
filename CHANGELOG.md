@@ -11,6 +11,15 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Vampire Survivors' easy letters, and the crab's legs move to the
+  subtitle.** V I and S O R S, the six whose gold faces touch no neighbour,
+  cut as drawn with their 3D sides and shadows (`tools/logo_letters/vampire_survivors.json`).
+  The rest (AMP, RE, UR, VIV) share face pixels and need parting lines; they
+  are `hold` pieces for now, a new config setting for a piece that is found
+  (so its neighbours stop at it) but not written. Decorations now belong to a
+  row: `subtitle` in a config marks the crab's legs as the subtitle's, which
+  now flips its own coin for a pair; the title draws the rest.
+
 - **The owner's notes on the title.** The menu's title is now "Roguelike-Like"
   (a capital L, so the second word gets a capital-height letter too). The
   crab's h sat too high and too big: its hand-set `body` rows started 47

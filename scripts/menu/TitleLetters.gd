@@ -203,13 +203,16 @@ static func pick(text: String, rng: RandomNumberGenerator, from: Dictionary = {}
 	return out
 
 # A matching left and right decoration, or a left one alone when it has no right
-# half (Darkest Dungeon's torch), or [] for none.
-static func pick_decor(rng: RandomNumberGenerator, from: Dictionary = {}) -> Array:
+# half (Darkest Dungeon's torch), or [] for none. Each decoration belongs to one
+# row: the title's, or the subtitle's when the index marks it `subtitle` (the
+# crab's legs, the owner, 1 Nov 2026), so `subtitle` picks from those alone.
+static func pick_decor(rng: RandomNumberGenerator, from: Dictionary = {}, subtitle: bool = false) -> Array:
 	var p := from if not from.is_empty() else pool()
 	var right := {}
 	for e in p.get("decor_right", []):
 		right[e["stem"]] = e
-	var lefts: Array = p.get("decor_left", [])
+	var lefts: Array = (p.get("decor_left", []) as Array).filter(
+		func(e): return bool(e.get("subtitle", false)) == subtitle)
 	if lefts.is_empty():
 		return []
 	var left: Dictionary = lefts[rng.randi() % lefts.size()]
@@ -256,14 +259,14 @@ static func _case_size(e: Dictionary, ch: String) -> Vector2:
 # A word laid out at `height` px a letter, no wider than `max_width`.
 static func make(text: String, height: float, rng: RandomNumberGenerator,
 		decorated: bool = false, max_width: float = 0.0, word_gap: float = SPACE,
-		letter_gap: float = GAP) -> TitleLetters:
+		letter_gap: float = GAP, subtitle: bool = false) -> TitleLetters:
 	var w := TitleLetters.new()
 	w.space = word_gap
 	w.gap = letter_gap
 	w.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var from := available()
 	var pieces := pick(text, rng, from)
-	var decor := pick_decor(rng, from) if decorated and rng.randf() < DECOR_CHANCE else []
+	var decor := pick_decor(rng, from, subtitle) if decorated and rng.randf() < DECOR_CHANCE else []
 	w._lay_out(pieces, decor, height, text)
 	if max_width > 0.0 and w.ink_width > max_width:
 		w._lay_out(pieces, decor, height * max_width / w.ink_width, text)

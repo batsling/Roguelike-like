@@ -70,6 +70,12 @@ so Godot never imports the source), is JSON:
                   clear on each side of the piece (Dead Cells' flame)
     drop          {piece or "*": fraction} — moved down by that much of the line
                   height (Balatro's A sat high)
+    subtitle      [piece, ...] — decorations drawn round the subtitle, never the
+                  title (the crab's legs); list both halves
+    hold          [piece, ...] — pieces found and given their own pixels, so
+                  their neighbours stop where they start, but not written: a
+                  logo's joined letters not cut apart yet (Vampire Survivors'
+                  AMP, RE, UR, VIV), named anything
     styles        [variant, ...] — piece variants (the part after the dot) drawn
                   at another size than the rest of the logo; each is sized as a
                   line of its own in images2.0/custom/title/index.json
@@ -627,7 +633,10 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
     body_widths = {}
     line_centers = {}
     out_dir_game = cfg["game"]
+    written_names = []
     for i, n in enumerate(names):
+        if n in cfg.get("hold", []):
+            continue  # cut for its neighbours' sake only: not written (yet)
         mine = owner == i
         f = pieces[n]
         rgb = np.zeros((H, W, 3))
@@ -1137,6 +1146,7 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
                 img = Image.fromarray(px)
         img.save(dest, optimize=True)
         written.append(dest)
+        written_names.append(n)
         print(f"  {dest.relative_to(ROOT)}  {img.width}x{img.height}")
 
     # The index: which config, game and style made each piece, so the title can
@@ -1145,7 +1155,7 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
     index_path = OUT_DIR / "index.json"
     index = json.loads(index_path.read_text()) if index_path.exists() else {}
     index = {k: v for k, v in index.items() if v.get("config") != cfg_path.name}
-    for n_, dest_ in zip(names, written):
+    for n_, dest_ in zip(written_names, written):
         _, _, variant_ = n_.partition(".")
         index[str(dest_.relative_to(OUT_DIR))] = {
             "game": cfg["game"],
@@ -1167,6 +1177,9 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
             val = cfg.get(key, {}).get(n_, cfg.get(key, {}).get("*"))
             if val is not None:
                 index[str(dest_.relative_to(OUT_DIR))][key] = val
+        if n_ in cfg.get("subtitle", []):
+            # a decoration for the subtitle's row, not the title's
+            index[str(dest_.relative_to(OUT_DIR))]["subtitle"] = True
         if n_ in cfg.get("lowercase", []):
             # a lowercase SHAPE (Darkest Dungeon's a, Slay the Spire's e): the
             # title draws it at the x-height in a lowercase place, and lets a
@@ -1201,6 +1214,8 @@ def main() -> int:
     for c in sorted(Path(__file__).resolve().parent.joinpath("logo_letters").glob("*.json")):
         cfg = json.loads(c.read_text())
         for piece in cfg["pieces"]:
+            if piece in cfg.get("hold", []):
+                continue
             letter, _, variant = piece.partition(".")
             path = f"{letter}/{cfg['game']}" + (f"__{variant}" if variant else "") + ".png"
             if path in owners and owners[path] != (c.name, piece):
