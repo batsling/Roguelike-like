@@ -113,14 +113,14 @@
         52
       ],
       "colour_down": [
-        8,
-        24,
-        84
+        0,
+        10,
+        43
       ],
       "colour_down_far": [
         0,
-        11,
-        42
+        10,
+        43
       ],
       "outline": {
         "width": 40,
@@ -130,7 +130,22 @@
           0
         ],
         "square": true
-      }
+      },
+      "wall_gradient": {
+        "top": [
+          195,
+          49,
+          57
+        ],
+        "bottom": [
+          8,
+          24,
+          84
+        ]
+      },
+      "square_corners": 80,
+      "fill_face_holes": 400,
+      "close_face": 2
     },
     "fill_colour": [
       255,

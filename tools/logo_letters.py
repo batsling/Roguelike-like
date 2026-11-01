@@ -172,6 +172,10 @@ so Godot never imports the source), is JSON:
                   face's bottom edges apart from its side walls, and
                   "outline": {"width", "colour", "square"} rings face and
                   side together, square-cornered with "square" (Tiny Rogues);
+                  "wall_gradient": {"top", "bottom"} shades the walls down
+                  the letter; "square_corners": px extrudes a stepped corner
+                  as square; "fill_face_holes": px fills specks in the face;
+                  "close_face": n closes n-pixel notches along its edge;
                   "outline_max": n keeps only dark pixels past the face (not
                   a glow), "side": {"dy", "dx"} adds the dark 3D side the face
                   sweeps over, "close_dark": n brings in dark counters;
@@ -1016,7 +1020,46 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
                 # sweeping the face along the logo's depth, so a side the next
                 # letter hid is whole again; in the side's own colour.
                 face_m = f.copy()
-                side = face_m.copy()
+                if ex_cfg.get("fill_face_holes"):
+                    # specks the fill missed inside a face (a colour band's
+                    # edge row) are face: swept, each one drew a hairline
+                    hl = nd.binary_fill_holes(face_m) & ~face_m
+                    lab_h, nh = nd.label(hl)
+                    if nh:
+                        sz = nd.sum(hl, lab_h, range(1, nh + 1))
+                        face_m |= np.isin(lab_h, 1 + np.flatnonzero(sz <= ex_cfg["fill_face_holes"]))
+                if ex_cfg.get("close_face"):
+                    # one-pixel notches along a face's edge (a blended edge
+                    # pixel the fill turned down) closed: each was a floor
+                    # edge, swept into a hairline across the wall
+                    face_m = face_m | nd.binary_closing(face_m, np.ones((3, 3)),
+                                                         iterations=ex_cfg["close_face"], border_value=0)
+                sweep_m = face_m
+                sq = ex_cfg.get("square_corners")
+                if sq:
+                    # A stepped corner on the side the face is swept toward is
+                    # extruded as if square (Tiny Rogues): the side's outer
+                    # edge, and the outline round it, run straight into a square
+                    # corner, the face's steps showing as facets inside it. A
+                    # pixel is filled when the face lies within `sq` of it
+                    # behind it both ways (left and up, for a sweep right and
+                    # down) and nowhere within `sq` ahead of it either way, so a
+                    # counter or a notch between two strokes is left alone.
+                    L = int(sq)
+                    sx_ = 1 if ex_cfg["dx"] >= 0 else -1
+                    sy_ = 1 if ex_cfg["dy"] >= 0 else -1
+                    def within(m, axis, sign):
+                        # face within L pixels in that direction (not counting p)
+                        acc = np.zeros_like(m)
+                        for k in range(1, L + 1):
+                            acc |= nd.shift(m, (sign * k, 0) if axis == 0 else (0, sign * k), order=0, cval=False)
+                        return acc
+                    behind_x = within(face_m, 1, sx_)    # face to the left (sweep right)
+                    behind_y = within(face_m, 0, sy_)    # face above (sweep down)
+                    ahead_x = within(face_m, 1, -sx_)
+                    ahead_y = within(face_m, 0, -sy_)
+                    sweep_m = face_m | (behind_x & behind_y & ~ahead_x & ~ahead_y)
+                side = sweep_m.copy()
                 steps = max(abs(ex_cfg["dx"]), abs(ex_cfg["dy"]))
                 # "colour_far": the side shades from "colour" next to the face
                 # to this at its far edge (Vampire Survivors' maroon going dark)
@@ -1040,18 +1083,65 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
                     sy_ = int(np.sign(ex_cfg["dy"]))
                     # the edges the face sweeps out of: where the next pixel
                     # the way it moves is not face
-                    edge_b = face_m & ~nd.shift(face_m, (-sy_, 0), order=0, cval=False) if sy_ else np.zeros_like(face_m)
+                    edge_b = sweep_m & ~nd.shift(sweep_m, (-sy_, 0), order=0, cval=False) if sy_ else np.zeros_like(sweep_m)
+                    # a floor is a run along the bottom, not a pixel: a one-
+                    # pixel bump on a side edge swept into a hairline
+                    edge_b = nd.binary_opening(edge_b, structure=np.ones((1, 5)))
+                floor_all = np.zeros((H, W), bool)
+                reached = sweep_m.copy()
                 for k in range(1, steps + 1):
                     # a shift that falls off the edge, never wraps round to the other side
                     off = (round(ex_cfg["dy"] * k / steps), round(ex_cfg["dx"] * k / steps))
-                    step = nd.shift(face_m, off, order=0, cval=False)
+                    step = nd.shift(sweep_m, off, order=0, cval=False)
                     new = step & ~side
                     side_rgb[new] = near_c + (far_c - near_c) * (k / steps)
                     if down:
                         floor = new & nd.shift(edge_b, off, order=0, cval=False)
                         side_rgb[floor] = d_near + (d_far - d_near) * (k / steps)
+                        floor_all |= floor
                     side_a[new] = near_a + (far_a - near_a) * (k / steps)
                     side |= step
+                    reached |= step
+                # the squared corners themselves are side, never face
+                side |= sweep_m
+                if sq and down:
+                    # ...but inside them the face's own steps still cast their
+                    # facets: what sweeping the stepped face alone gives there
+                    # (a lighter wall per step, as the logo draws them) wins
+                    edge_bf = face_m & ~nd.shift(face_m, (-sy_, 0), order=0, cval=False)
+                    edge_bf = nd.binary_opening(edge_bf, structure=np.ones((1, 5)))
+                    seen_f = face_m.copy()
+                    for k in range(1, steps + 1):
+                        off = (round(ex_cfg["dy"] * k / steps), round(ex_cfg["dx"] * k / steps))
+                        step = nd.shift(face_m, off, order=0, cval=False)
+                        new = step & ~seen_f & side
+                        fl = new & nd.shift(edge_bf, off, order=0, cval=False)
+                        floor_all[new] = False
+                        floor_all[fl] = True
+                        side_rgb[fl] = d_near + (d_far - d_near) * (k / steps)
+                        seen_f |= step
+                    # what the stepped sweep never reaches inside a squared
+                    # corner is floor (the corner's own bottom), as drawn
+                    corner = sweep_m & ~face_m & ~seen_f
+                    floor_all[corner] = True
+                    side_rgb[corner] = d_far
+                    reached |= corner
+                wg = ex_cfg.get("wall_gradient")
+                if wg:
+                    # walls shaded top to bottom down the letter, not by depth
+                    # (Tiny Rogues: maroon at the face's top edge, navy at its
+                    # foot); floors keep "colour_down"
+                    fy_ = np.nonzero(face_m.any(1))[0]
+                    t_ = np.clip((np.arange(H) - fy_.min()) / max(fy_.max() - fy_.min(), 1), 0, 1)
+                    grad = np.array(wg["top"], float)[None, :] + (np.array(wg["bottom"], float) - np.array(wg["top"], float))[None, :] * t_[:, None]
+                    walls = side & ~face_m & ~floor_all if down else side & ~face_m
+                    side_rgb[walls] = grad[np.nonzero(walls)[0]]
+                # squared-corner pixels the sweep never reached take the
+                # nearest side colour
+                gap = side & ~face_m & ~reached
+                if gap.any() and (reached & ~face_m).any():
+                    _, (gy, gx) = nd.distance_transform_edt(~(reached & ~face_m), return_indices=True)
+                    side_rgb[gap] = side_rgb[gy[gap], gx[gap]]
                 rgb[:] = 0
                 al[:] = 0
                 ol = ex_cfg.get("outline")

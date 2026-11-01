@@ -144,6 +144,16 @@ That outline is SQUARE-cornered (`"square": true`, a chessboard distance): the
 owner wanted the original's pointy corners and stepped ridges, and a round
 outline smoothed every corner off. Square, the face's steps stay steps in the
 outline and only a diagonal side gets a diagonal edge, as the logo draws it.
+And the sides are drawn the logo's way, measured off it: walls shade top to
+bottom down the letter, maroon at the face's top edge to navy at its foot
+(`wall_gradient`), floors one flat navy; a stepped corner on the side the face
+is swept toward is extruded as if square (`square_corners`: filled where the
+face lies within 80px behind it both ways and nowhere ahead), so the side and
+the outline run straight into a square corner, with the face's steps still
+casting their own facets inside it (a second sweep of the stepped face); and a
+floor counts only where it runs 5px or more along the bottom, plus the face's
+one-pixel edge notches closed (`close_face`): a stray edge pixel was swept into
+a hairline across a wall.
 The sword, staff and bow touch the letters' sides, so they are told apart by
 colour (`rgb_ranges`, each colour only in its own box: the browns with red
 under 215 are never a face, which is always red 255); the bow's string and limb
