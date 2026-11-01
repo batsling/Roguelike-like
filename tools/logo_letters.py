@@ -199,8 +199,9 @@ so Godot never imports the source), is JSON:
                   "silhouette": true scales letters with a clean edge;
                   "keep_small_holes": px keeps dark marks inside a letter;
                   "recast_shadow": {"spread", "dx", "dy", "blur", "alpha",
-                  "colour"} draws the logo's shadow again from each letter's
-                  own shape (measured off the logo);
+                  "colour", "soft_face"} draws the logo's shadow again from each
+                  letter's own shape (measured off the logo); "soft_face": sigma
+                  eases the face into it instead of a hard step;
                   "own_by_shadow": {"dx", "dy", "grow"} gives a drop shadow to
                   the letter casting it, not the nearest one;
                   "smooth_scale": true scales the cut as it is, smoothly
@@ -1013,7 +1014,17 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
                 m_ = nd.distance_transform_edt(~keep) <= rc["spread"]
                 sh_ = nd.gaussian_filter(nd.shift(m_.astype(float), (rc["dy"], rc["dx"]), order=0),
                                          rc.get("blur", 2)) * rc.get("alpha", 160) / 255
-                sh_ = np.where(keep, 0, sh_)
+                if rc.get("soft_face"):
+                    # The face's edge eased into its glow over about a pixel
+                    # (Ember Knights), as the logo draws it, rather than cut
+                    # off on a hard step: the face's colours run out past its
+                    # edge, and its own alpha is the blurred shape of it.
+                    _, (fy_, fx_) = nd.distance_transform_edt(~keep, return_indices=True)
+                    rgb = A[fy_, fx_, :3].astype(float)
+                    al = np.clip((nd.gaussian_filter(keep.astype(float), rc["soft_face"]) - 0.5)
+                                 * rc.get("soft_face_slope", 2.0) + 0.5, 0, 1)
+                else:
+                    sh_ = np.where(keep, 0, sh_)
                 out_a_ = al + sh_ * (1 - al)
                 rgb = (rgb * al[..., None] + np.array(rc.get("colour", [0, 0, 0]), float) * (sh_ * (1 - al))[..., None]) \
                     / np.maximum(out_a_, 1e-6)[..., None]

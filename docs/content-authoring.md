@@ -162,7 +162,9 @@ gives E M B E R (the second E as `__2`) and K N I G H T S, two configs at 2x
 (`smooth_scale`, the source 500px wide). EMBER's orange glow runs from letter
 to letter and down onto KNIGHTS, so each letter is cut solid and its glow drawn
 again round its own shape (`recast_shadow`: spread 3, blur 7, (243, 45, 19),
-fitted to the logo's glow falling from about 200 to 10 over 14px); its flames
+fitted to the logo's glow falling from about 200 to 10 over 14px), the face
+eased into it over about a pixel (`soft_face` 1.3, `soft_face_slope` 1.6) where a
+hard cut at the logo's soft edge left every edge stair-stepped; its flames
 reach far above the letters, so each is sized by its body (`body` rows 86-183)
 and the flame hangs over the line. KNIGHTS is cut plain; the warm gold on its
 edges is its own rim, not EMBER's glow. Spelunky Classic gives S P E L U N K Y (the first K): its
