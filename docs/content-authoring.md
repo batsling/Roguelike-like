@@ -171,7 +171,15 @@ edges is its own rim, not EMBER's glow. Wildfrost gives W I L D F R O S T,
 the O the gem: nine separate shapes cut solid, and the soft purple-grey shadow
 the logo spreads under the whole word drawn again under each (`recast_shadow`:
 spread 4, blur 26, 10px down, alpha 120, (45, 30, 43), fitted to the I's shadow
-above and below it), the face eased into it (`soft_face` 0.8). Spelunky Classic gives S P E L U N K Y (the first K): its
+above and below it), the face eased into it (`soft_face` 0.8). Into the
+Breach gives I N T O, T H E, B R E A C H (the second T, H and E as `__2`): pixel
+art at one pixel a pixel (151x104), cut at 8x as sharp pixels (`hard_edge`),
+without the faint pink haze (`keep_min_alpha` 150). Each letter is found by its
+purple face and takes the white outline and drop shadow round it; the shadow
+falls down-right onto the next letter, so it goes to the letter that casts it
+(`own_by_shadow`, 2px right and down), and a shadow pixel with nothing of the
+letter before it on its row or above it in its column is dropped
+(`shadow_after`): the tip of a neighbour's shadow touching at a corner. Spelunky Classic gives S P E L U N K Y (the first K): its
 source is a blurry 1920x1080 screenshot of pixel art, so `pixel_grid` rebuilds
 the logo pixel by pixel on the measured grid (11.707px a pixel), each snapped to
 the logo's three-colour palette, and the letters come out as sharp 12x blocks. Haste gives H A S T E, solid black

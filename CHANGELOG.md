@@ -11,6 +11,10 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Into the Breach's letters.** I N T O, T H E, B R E A C H, pixel art cut
+  at 8x, each letter with only its own outline and drop shadow (a new
+  `shadow_after` option drops a neighbour's shadow tip).
+
 - **Wildfrost's letters.** W I L D F R O S T, the O the gem, each with the
   logo's soft shadow drawn again under it.
 

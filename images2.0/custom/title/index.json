@@ -349,6 +349,21 @@
    1.00784
   ]
  },
+ "a/into_the_breach.png": {
+  "game": "into_the_breach",
+  "config": "into_the_breach.json",
+  "style": "into_the_breach",
+  "body_center": 0.4571,
+  "body_height": 0.6857,
+  "body_center_x": 0.4444,
+  "body_width": 0.5926,
+  "src": [
+   0.50993,
+   0.63462,
+   0.68874,
+   0.97115
+  ]
+ },
  "a/nuclear_throne.png": {
   "game": "nuclear_throne",
   "config": "nuclear_throne.json",
@@ -622,6 +637,21 @@
   ],
   "form": "lower"
  },
+ "b/into_the_breach.png": {
+  "game": "into_the_breach",
+  "config": "into_the_breach.json",
+  "style": "into_the_breach",
+  "body_center": 0.4886,
+  "body_height": 0.7955,
+  "body_center_x": 0.4412,
+  "body_width": 0.7059,
+  "src": [
+   0.0,
+   0.57692,
+   0.22517,
+   1.0
+  ]
+ },
  "b/rogue.png": {
   "game": "rogue",
   "config": "rogue_letters.py",
@@ -821,6 +851,21 @@
    0.62517,
    0.36471,
    0.91189
+  ]
+ },
+ "c/into_the_breach.png": {
+  "game": "into_the_breach",
+  "config": "into_the_breach.json",
+  "style": "into_the_breach",
+  "body_center": 0.4571,
+  "body_height": 0.6857,
+  "body_center_x": 0.4464,
+  "body_width": 0.6071,
+  "src": [
+   0.66225,
+   0.63462,
+   0.84768,
+   0.97115
   ]
  },
  "c/mewgenics.png": {
@@ -1609,6 +1654,36 @@
    1.00784
   ]
  },
+ "e/into_the_breach.png": {
+  "game": "into_the_breach",
+  "config": "into_the_breach.json",
+  "style": "into_the_breach",
+  "body_center": 0.4423,
+  "body_height": 0.5769,
+  "body_center_x": 0.4318,
+  "body_width": 0.5,
+  "src": [
+   0.54305,
+   0.38462,
+   0.68874,
+   0.63462
+  ]
+ },
+ "e/into_the_breach__2.png": {
+  "game": "into_the_breach",
+  "config": "into_the_breach.json",
+  "style": "into_the_breach",
+  "body_center": 0.4571,
+  "body_height": 0.6857,
+  "body_center_x": 0.4423,
+  "body_width": 0.5769,
+  "src": [
+   0.36424,
+   0.63462,
+   0.53642,
+   0.97115
+  ]
+ },
  "e/loop_hero.png": {
   "game": "loop_hero",
   "config": "loop_hero.json",
@@ -2269,6 +2344,36 @@
    1.00784
   ]
  },
+ "h/into_the_breach.png": {
+  "game": "into_the_breach",
+  "config": "into_the_breach.json",
+  "style": "into_the_breach",
+  "body_center": 0.4423,
+  "body_height": 0.5769,
+  "body_center_x": 0.4545,
+  "body_width": 0.5455,
+  "src": [
+   0.43046,
+   0.38462,
+   0.57616,
+   0.63462
+  ]
+ },
+ "h/into_the_breach__2.png": {
+  "game": "into_the_breach",
+  "config": "into_the_breach.json",
+  "style": "into_the_breach",
+  "body_center": 0.4571,
+  "body_height": 0.6857,
+  "body_center_x": 0.4815,
+  "body_width": 0.6667,
+  "src": [
+   0.82119,
+   0.63462,
+   1.0,
+   0.97115
+  ]
+ },
  "h/loop_hero.png": {
   "game": "loop_hero",
   "config": "loop_hero.json",
@@ -2475,6 +2580,21 @@
    0.69091
   ],
   "form": "lower"
+ },
+ "i/into_the_breach.png": {
+  "game": "into_the_breach",
+  "config": "into_the_breach.json",
+  "style": "into_the_breach",
+  "body_center": 0.4545,
+  "body_height": 0.7727,
+  "body_center_x": 0.4118,
+  "body_width": 0.3529,
+  "src": [
+   0.2053,
+   0.0,
+   0.31788,
+   0.42308
+  ]
  },
  "i/mewgenics.png": {
   "game": "mewgenics",
@@ -3303,6 +3423,21 @@
   ],
   "form": "lower"
  },
+ "n/into_the_breach.png": {
+  "game": "into_the_breach",
+  "config": "into_the_breach.json",
+  "style": "into_the_breach",
+  "body_center": 0.4571,
+  "body_height": 0.6857,
+  "body_center_x": 0.4483,
+  "body_width": 0.6207,
+  "src": [
+   0.29139,
+   0.04808,
+   0.48344,
+   0.38462
+  ]
+ },
  "n/mewgenics.png": {
   "game": "mewgenics",
   "config": "mewgenics.json",
@@ -3539,6 +3674,21 @@
    0.22642,
    0.85,
    0.97358
+  ]
+ },
+ "o/into_the_breach.png": {
+  "game": "into_the_breach",
+  "config": "into_the_breach.json",
+  "style": "into_the_breach",
+  "body_center": 0.4571,
+  "body_height": 0.6857,
+  "body_center_x": 0.4483,
+  "body_width": 0.6207,
+  "src": [
+   0.61589,
+   0.04808,
+   0.80795,
+   0.38462
   ]
  },
  "o/loop_hero.png": {
@@ -4082,6 +4232,21 @@
    0.8951
   ],
   "form": "lower"
+ },
+ "r/into_the_breach.png": {
+  "game": "into_the_breach",
+  "config": "into_the_breach.json",
+  "style": "into_the_breach",
+  "body_center": 0.4571,
+  "body_height": 0.6857,
+  "body_center_x": 0.4483,
+  "body_width": 0.6207,
+  "src": [
+   0.19868,
+   0.63462,
+   0.39073,
+   0.97115
+  ]
  },
  "r/loop_hero.png": {
   "game": "loop_hero",
@@ -4869,6 +5034,36 @@
    -0.00784,
    0.81105,
    1.00784
+  ]
+ },
+ "t/into_the_breach.png": {
+  "game": "into_the_breach",
+  "config": "into_the_breach.json",
+  "style": "into_the_breach",
+  "body_center": 0.4571,
+  "body_height": 0.6857,
+  "body_center_x": 0.4464,
+  "body_width": 0.6071,
+  "src": [
+   0.45695,
+   0.04808,
+   0.64238,
+   0.38462
+  ]
+ },
+ "t/into_the_breach__2.png": {
+  "game": "into_the_breach",
+  "config": "into_the_breach.json",
+  "style": "into_the_breach",
+  "body_center": 0.4423,
+  "body_height": 0.5769,
+  "body_center_x": 0.4545,
+  "body_width": 0.5455,
+  "src": [
+   0.31788,
+   0.38462,
+   0.46358,
+   0.63462
   ]
  },
  "t/nuclear_throne.png": {

@@ -204,6 +204,9 @@ so Godot never imports the source), is JSON:
                   eases the face into it instead of a hard step;
                   "own_by_shadow": {"dx", "dy", "grow"} gives a drop shadow to
                   the letter casting it, not the nearest one;
+                  "shadow_after": {"dx", "dy", "colour_max"} drops shadow pixels
+                  with none of the letter before them on their row or above
+                  them in their column (a neighbour's shadow tip);
                   "smooth_scale": true scales the cut as it is, smoothly
                   (a painted logo kept with its soft shadow);
                   "pixel_outline": {"colour", "width"} draws an even ring of
@@ -1004,6 +1007,19 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
                 if st_.get("piece", n) == n:
                     keep &= ~(_polygon_mask((H, W), st_["polygon"])
                               & (A[..., :3].max(-1) <= st_.get("max_brightness", 20)))
+            sa = cut.get("shadow_after")
+            if sa:
+                # A letter's own drop shadow falls after it (right and down for
+                # Into the Breach): a shadow pixel with nothing of the letter
+                # before it on its row AND nothing above it in its column is a
+                # neighbour's shadow tip touching this letter at a corner.
+                dk = keep & (A[..., :3].max(-1) <= sa.get("colour_max", 60))
+                body_k = keep & ~dk
+                left = np.maximum.accumulate(body_k, axis=1) if sa.get("dx", 1) > 0 \
+                    else np.maximum.accumulate(body_k[:, ::-1], axis=1)[:, ::-1]
+                up = np.maximum.accumulate(body_k, axis=0) if sa.get("dy", 1) > 0 \
+                    else np.maximum.accumulate(body_k[::-1], axis=0)[::-1]
+                keep &= ~(dk & ~left & ~up)
             rgb[keep] = A[keep][:, :3]
             al[keep] = a[keep] / 255
             rc = cut.get("recast_shadow")
