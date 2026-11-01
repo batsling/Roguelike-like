@@ -666,6 +666,21 @@
    0.42411
   ]
  },
+ "a/wizard_of_legend.png": {
+  "game": "wizard_of_legend",
+  "config": "wizard_of_legend.json",
+  "style": "wizard_of_legend",
+  "body_center": 0.5,
+  "body_height": 0.8356,
+  "body_center_x": 0.5,
+  "body_width": 0.8333,
+  "src": [
+   0.22875,
+   0.31544,
+   0.31875,
+   0.80537
+  ]
+ },
  "ampersand/rogue.png": {
   "game": "rogue",
   "config": "rogue_letters.py",
@@ -1475,6 +1490,36 @@
    1.04734
   ]
  },
+ "d/wizard_of_legend.png": {
+  "game": "wizard_of_legend",
+  "config": "wizard_of_legend.json",
+  "style": "wizard_of_legend",
+  "body_center": 0.5,
+  "body_height": 0.8611,
+  "body_center_x": 0.5,
+  "body_width": 0.8529,
+  "src": [
+   0.39125,
+   0.32215,
+   0.47625,
+   0.80537
+  ]
+ },
+ "d/wizard_of_legend__2.png": {
+  "game": "wizard_of_legend",
+  "config": "wizard_of_legend.json",
+  "style": "wizard_of_legend",
+  "body_center": 0.694,
+  "body_height": 0.5431,
+  "body_center_x": 0.5122,
+  "body_width": 0.7073,
+  "src": [
+   0.8975,
+   0.02685,
+   1.0,
+   0.80537
+  ]
+ },
  "dash/dead_cells.png": {
   "game": "dead_cells",
   "config": "dead_cells.json",
@@ -2250,6 +2295,36 @@
    0.42411
   ]
  },
+ "e/wizard_of_legend.png": {
+  "game": "wizard_of_legend",
+  "config": "wizard_of_legend.json",
+  "style": "wizard_of_legend",
+  "body_center": 0.6619,
+  "body_height": 0.6,
+  "body_center_x": 0.5,
+  "body_width": 0.8795,
+  "src": [
+   0.58375,
+   0.10067,
+   0.6875,
+   0.80537
+  ]
+ },
+ "e/wizard_of_legend__2.png": {
+  "game": "wizard_of_legend",
+  "config": "wizard_of_legend.json",
+  "style": "wizard_of_legend",
+  "body_center": 0.65,
+  "body_height": 0.4846,
+  "body_center_x": 0.5,
+  "body_width": 0.8592,
+  "src": [
+   0.735,
+   0.0,
+   0.82375,
+   0.87248
+  ]
+ },
  "equals/rogue.png": {
   "game": "rogue",
   "config": "rogue_letters.py",
@@ -2435,6 +2510,22 @@
    1.04142
   ]
  },
+ "f/wizard_of_legend.png": {
+  "game": "wizard_of_legend",
+  "config": "wizard_of_legend.json",
+  "style": "wizard_of_legend",
+  "body_center": 0.49,
+  "body_height": 0.78,
+  "body_center_x": 0.5238,
+  "body_width": 0.4762,
+  "src": [
+   0.49875,
+   0.39597,
+   0.525,
+   0.73154
+  ],
+  "form": "lower"
+ },
  "g/darkest_dungeon.png": {
   "game": "darkest_dungeon",
   "config": "darkest_dungeon.json",
@@ -2581,6 +2672,21 @@
    -0.00197,
    0.44018,
    0.13412
+  ]
+ },
+ "g/wizard_of_legend.png": {
+  "game": "wizard_of_legend",
+  "config": "wizard_of_legend.json",
+  "style": "wizard_of_legend",
+  "body_center": 0.5068,
+  "body_height": 0.8493,
+  "body_center_x": 0.5,
+  "body_width": 0.8154,
+  "src": [
+   0.66375,
+   0.31544,
+   0.745,
+   0.80537
   ]
  },
  "greater/rogue.png": {
@@ -3223,6 +3329,21 @@
    1.04142
   ]
  },
+ "i/wizard_of_legend.png": {
+  "game": "wizard_of_legend",
+  "config": "wizard_of_legend.json",
+  "style": "wizard_of_legend",
+  "body_center": 0.5,
+  "body_height": 0.8592,
+  "body_center_x": 0.5,
+  "body_width": 0.6757,
+  "src": [
+   0.12,
+   0.32215,
+   0.16625,
+   0.79866
+  ]
+ },
  "j/demonic_mahjong.png": {
   "game": "demonic_mahjong",
   "config": "demonic_mahjong.json",
@@ -3623,6 +3744,21 @@
    -0.04142,
    0.3425,
    1.04734
+  ]
+ },
+ "l/wizard_of_legend.png": {
+  "game": "wizard_of_legend",
+  "config": "wizard_of_legend.json",
+  "style": "wizard_of_legend",
+  "body_center": 0.4931,
+  "body_height": 0.8472,
+  "body_center_x": 0.4909,
+  "body_width": 0.8,
+  "src": [
+   0.52875,
+   0.32215,
+   0.5975,
+   0.80537
   ]
  },
  "less/rogue.png": {
@@ -4174,6 +4310,21 @@
    0.13412
   ]
  },
+ "n/wizard_of_legend.png": {
+  "game": "wizard_of_legend",
+  "config": "wizard_of_legend.json",
+  "style": "wizard_of_legend",
+  "body_center": 0.4932,
+  "body_height": 0.8514,
+  "body_center_x": 0.4932,
+  "body_width": 0.8514,
+  "src": [
+   0.8175,
+   0.32215,
+   0.91,
+   0.81879
+  ]
+ },
  "o/balatro.png": {
   "game": "balatro",
   "config": "balatro.json",
@@ -4550,6 +4701,22 @@
    0.79827,
    1.04142
   ]
+ },
+ "o/wizard_of_legend.png": {
+  "game": "wizard_of_legend",
+  "config": "wizard_of_legend.json",
+  "style": "wizard_of_legend",
+  "body_center": 0.4848,
+  "body_height": 0.6667,
+  "body_center_x": 0.4773,
+  "body_width": 0.5,
+  "src": [
+   0.47875,
+   0.45638,
+   0.50625,
+   0.67785
+  ],
+  "form": "lower"
  },
  "p/loop_hero.png": {
   "game": "loop_hero",
@@ -5260,6 +5427,21 @@
    -0.04734,
    0.66127,
    1.04142
+  ]
+ },
+ "r/wizard_of_legend.png": {
+  "game": "wizard_of_legend",
+  "config": "wizard_of_legend.json",
+  "style": "wizard_of_legend",
+  "body_center": 0.6456,
+  "body_height": 0.6117,
+  "body_center_x": 0.5286,
+  "body_width": 0.8,
+  "src": [
+   0.3075,
+   0.12081,
+   0.395,
+   0.81208
   ]
  },
  "s/20_minutes_till_dawn.png": {
@@ -6552,6 +6734,21 @@
    1.03254
   ]
  },
+ "w/wizard_of_legend.png": {
+  "game": "wizard_of_legend",
+  "config": "wizard_of_legend.json",
+  "style": "wizard_of_legend",
+  "body_center": 0.7042,
+  "body_height": 0.525,
+  "body_center_x": 0.49,
+  "body_width": 0.92,
+  "src": [
+   0.0,
+   0.0,
+   0.125,
+   0.80537
+  ]
+ },
  "x/rogue.png": {
   "game": "rogue",
   "config": "rogue_letters.py",
@@ -6723,5 +6920,20 @@
   "size": 0.94,
   "pad": 0.03,
   "case": "lower"
+ },
+ "z/wizard_of_legend.png": {
+  "game": "wizard_of_legend",
+  "config": "wizard_of_legend.json",
+  "style": "wizard_of_legend",
+  "body_center": 0.5069,
+  "body_height": 0.8472,
+  "body_center_x": 0.5,
+  "body_width": 0.8033,
+  "src": [
+   0.1625,
+   0.31544,
+   0.23875,
+   0.79866
+  ]
  }
 }

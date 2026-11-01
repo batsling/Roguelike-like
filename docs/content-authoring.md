@@ -231,7 +231,14 @@ band; `body`'s column bounds (`[y0, y1, x0, x1]`), built for its stray specks,
 stay in the script. Hand of Fate gives H A N D, O F, F A T E (FATE's F and A
 as `__2`): carved gold letters cut solid (`min_alpha` 250) at 2x `smooth_scale`,
 the soft dark shadow round them shared out within 45px (`glow_share`); the D
-and FATE's F keep their sparkles. A logo can
+and FATE's F keep their sparkles. Wizard of Legend gives W I Z A R D, o f,
+L E G E N D (the second E and D as `__2`): white faces (`min_brightness` 200) in
+a thin dark outline that neighbours share (`shared_outline`), 2x `smooth_scale`.
+Each element is part of its letter, listed as extra points: the W's flames,
+the R's crystals, the first E's wind swirl, the second E's lightning (its
+sparks between E and N too) and the last D's plant; those five are sized by
+their letter rows (`body` 53-116) so the element rises above the line. The
+underline is left out. A logo can
 take more than one config when its parts are built differently: Uma Musume has
 four, one per line, one for the girl and one for her dash.
 `mewgenics.json` is the simple case: black letters that do not touch, cut as

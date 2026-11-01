@@ -11,6 +11,13 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Wizard of Legend's letters.** W I Z A R D, o f, L E G E N D (the second E
+  and D as `__2`), white faces in their thin dark outline, each with its own
+  element: the W's flames, the R's crystals, the first E's wind swirl, the
+  second E's lightning (sparks and tip included) and the last D's plant.
+  Those five are sized by their letter rows, so the effect rises above the line.
+  The underline is left out.
+
 - **Hand of Fate's letters.** H A N D, O F, F A T E (FATE's F and A as `__2`),
   carved gold cut solid at 2x, each with the soft shadow round it shared with
   its neighbours (`glow_share`) and its own sparkle: the D's top corner and
