@@ -208,7 +208,10 @@ draws it), 2x as `silhouette`s. Risk of Rain 2 gives R I S K, O F, R A I N (seco
 R and I as `__2`) and its cream 2 into `2/`; only the text, the planets and
 streaks behind it left out, each letter with an even dark slate outline. Caves of
 Qud gives C A V E S, O F, Q U D (the V and E touch and are split between them;
-the red bars round OF are left out), 2x as `silhouette`s. A logo can
+the red bars round OF are left out), 2x as `silhouette`s. The Royal Writ
+gives t h e, R o y a l, W r i t (the lowercase r and the second t as `__2`),
+red brushwork cut as drawn (`reach` 2) with its black outline and cyan 3D side,
+the W's burn holes see-through; every letter stands apart, so no `splits`. A logo can
 take more than one config when its parts are built differently: Uma Musume has
 four, one per line, one for the girl and one for her dash.
 `mewgenics.json` is the simple case: black letters that do not touch, cut as

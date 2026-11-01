@@ -11,6 +11,11 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The Royal Writ's letters.** t h e, R o y a l, W r i t (the lowercase r
+  and the second t as `__2`), red brushwork cut as drawn with its black
+  outline and cyan 3D side, the W's burn holes left see-through. Every
+  letter stands apart in the logo, so nothing needed splitting.
+
 - **The title is centred whatever opens it.** A piece's `pad` (room either
   side, given to Rogue's letters) now only goes between pieces: at the start
   of a row it pushed the whole row 1.26px right whenever Rogue's R opened the

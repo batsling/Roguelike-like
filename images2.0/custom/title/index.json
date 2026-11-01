@@ -543,6 +543,22 @@
    0.66603
   ]
  },
+ "a/the_royal_writ.png": {
+  "game": "the_royal_writ",
+  "config": "the_royal_writ.json",
+  "style": "the_royal_writ",
+  "body_center": 0.5,
+  "body_height": 0.9827,
+  "body_center_x": 0.498,
+  "body_width": 0.9719,
+  "src": [
+   0.80531,
+   0.10152,
+   0.92993,
+   0.47082
+  ],
+  "form": "lower"
+ },
  "a/uma_musume_pretty_derby.png": {
   "game": "uma_musume_pretty_derby",
   "config": "uma_musume_pretty_derby.json",
@@ -1941,6 +1957,22 @@
    0.13412
   ]
  },
+ "e/the_royal_writ.png": {
+  "game": "the_royal_writ",
+  "config": "the_royal_writ.json",
+  "style": "the_royal_writ",
+  "body_center": 0.4981,
+  "body_height": 0.9737,
+  "body_center_x": 0.5036,
+  "body_width": 0.9493,
+  "src": [
+   0.15566,
+   0.27738,
+   0.22472,
+   0.49001
+  ],
+  "form": "lower"
+ },
  "e/uma_musume_pretty_derby.png": {
   "game": "uma_musume_pretty_derby",
   "config": "uma_musume_pretty_derby.json",
@@ -2540,6 +2572,22 @@
    0.13412
   ]
  },
+ "h/the_royal_writ.png": {
+  "game": "the_royal_writ",
+  "config": "the_royal_writ.json",
+  "style": "the_royal_writ",
+  "body_center": 0.5,
+  "body_height": 0.9782,
+  "body_center_x": 0.5,
+  "body_width": 0.9494,
+  "src": [
+   0.07007,
+   0.20464,
+   0.14915,
+   0.498
+  ],
+  "form": "lower"
+ },
  "hash/rogue.png": {
   "game": "rogue",
   "config": "rogue_letters.py",
@@ -2836,6 +2884,22 @@
    0.24675,
    1.0
   ]
+ },
+ "i/the_royal_writ.png": {
+  "game": "the_royal_writ",
+  "config": "the_royal_writ.json",
+  "style": "the_royal_writ",
+  "body_center": 0.5,
+  "body_height": 0.9852,
+  "body_center_x": 0.5,
+  "body_width": 0.9556,
+  "src": [
+   0.43744,
+   0.51719,
+   0.50501,
+   0.95044
+  ],
+  "form": "lower"
  },
  "i/vampire_survivors.png": {
   "game": "vampire_survivors",
@@ -3190,6 +3254,22 @@
    0.50781,
    1.0625
   ]
+ },
+ "l/the_royal_writ.png": {
+  "game": "the_royal_writ",
+  "config": "the_royal_writ.json",
+  "style": "the_royal_writ",
+  "body_center": 0.4983,
+  "body_height": 0.9896,
+  "body_center_x": 0.5142,
+  "body_width": 0.9528,
+  "src": [
+   0.94695,
+   0.0,
+   1.0,
+   0.46043
+  ],
+  "form": "lower"
  },
  "l/wildfrost.png": {
   "game": "wildfrost",
@@ -3977,6 +4057,22 @@
    0.13412
   ]
  },
+ "o/the_royal_writ.png": {
+  "game": "the_royal_writ",
+  "config": "the_royal_writ.json",
+  "style": "the_royal_writ",
+  "body_center": 0.5011,
+  "body_height": 0.9848,
+  "body_center_x": 0.5,
+  "body_width": 0.9767,
+  "src": [
+   0.5,
+   0.11591,
+   0.62863,
+   0.48521
+  ],
+  "form": "lower"
+ },
  "o/vampire_survivors.png": {
   "game": "vampire_survivors",
   "config": "vampire_survivors.json",
@@ -4549,6 +4645,37 @@
    0.66354,
    0.99689
   ]
+ },
+ "r/the_royal_writ.png": {
+  "game": "the_royal_writ",
+  "config": "the_royal_writ.json",
+  "style": "the_royal_writ",
+  "body_center": 0.5,
+  "body_height": 0.99,
+  "body_center_x": 0.5,
+  "body_width": 0.9841,
+  "src": [
+   0.25375,
+   0.01199,
+   0.50551,
+   0.49001
+  ]
+ },
+ "r/the_royal_writ__2.png": {
+  "game": "the_royal_writ",
+  "config": "the_royal_writ.json",
+  "style": "the_royal_writ",
+  "body_center": 0.5,
+  "body_height": 0.9825,
+  "body_center_x": 0.5023,
+  "body_width": 0.9677,
+  "src": [
+   0.31481,
+   0.57554,
+   0.42342,
+   0.94005
+  ],
+  "form": "lower"
  },
  "r/uma_musume_pretty_derby.png": {
   "game": "uma_musume_pretty_derby",
@@ -5325,6 +5452,38 @@
    0.13412
   ]
  },
+ "t/the_royal_writ.png": {
+  "game": "the_royal_writ",
+  "config": "the_royal_writ.json",
+  "style": "the_royal_writ",
+  "body_center": 0.4985,
+  "body_height": 0.9783,
+  "body_center_x": 0.51,
+  "body_width": 0.94,
+  "src": [
+   0.00801,
+   0.22542,
+   0.05806,
+   0.48361
+  ],
+  "form": "lower"
+ },
+ "t/the_royal_writ__2.png": {
+  "game": "the_royal_writ",
+  "config": "the_royal_writ.json",
+  "style": "the_royal_writ",
+  "body_center": 0.5,
+  "body_height": 0.9858,
+  "body_center_x": 0.503,
+  "body_width": 0.9578,
+  "src": [
+   0.53403,
+   0.52118,
+   0.61712,
+   0.97042
+  ],
+  "form": "lower"
+ },
  "t/uma_musume_pretty_derby.png": {
   "game": "uma_musume_pretty_derby",
   "config": "uma_musume_pretty_derby_line2.json",
@@ -5729,6 +5888,21 @@
   "pad": 0.03,
   "case": "lower"
  },
+ "w/the_royal_writ.png": {
+  "game": "the_royal_writ",
+  "config": "the_royal_writ.json",
+  "style": "the_royal_writ",
+  "body_center": 0.5017,
+  "body_height": 0.9898,
+  "body_center_x": 0.4983,
+  "body_width": 0.9898,
+  "src": [
+   -0.001,
+   0.52758,
+   0.29479,
+   1.0
+  ]
+ },
  "w/wildfrost.png": {
   "game": "wildfrost",
   "config": "wildfrost.json",
@@ -5858,6 +6032,22 @@
    1.00781,
    1.0625
   ]
+ },
+ "y/the_royal_writ.png": {
+  "game": "the_royal_writ",
+  "config": "the_royal_writ.json",
+  "style": "the_royal_writ",
+  "body_center": 0.5,
+  "body_height": 0.9866,
+  "body_center_x": 0.5,
+  "body_width": 0.9707,
+  "src": [
+   0.65215,
+   0.1231,
+   0.78879,
+   0.60192
+  ],
+  "form": "lower"
  },
  "y/uma_musume_pretty_derby.png": {
   "game": "uma_musume_pretty_derby",
