@@ -1533,7 +1533,9 @@
    0.47887,
    0.48745,
    0.64085
-  ]
+  ],
+  "size": 0.142,
+  "drop": -0.358
  },
  "dash/dead_cells.png": {
   "game": "dead_cells",

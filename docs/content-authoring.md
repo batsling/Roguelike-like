@@ -231,7 +231,9 @@ pixel letters cut as they are, 3x `smooth_scale`. The glitch breaks each letter
 into fragments and scatters specks round it, so every piece lists a point in
 each of its fragments and specks, by position; the specks would stretch the
 letter's box, so `body` holds it to the letter's rows, and for the specks
-beside the first 8 and the B its columns too (`[y0, y1, x0, x1]`). A logo can
+beside the first 8 and the B its columns too (`[y0, y1, x0, x1]`). Its dash is
+only the bar, so it would fill the line: `size` 0.142 and `drop` -0.358 put it
+back where the logo has it (rows 81-98 of the letters' 21-141). A logo can
 take more than one config when its parts are built differently: Uma Musume has
 four, one per line, one for the girl and one for her dash.
 `mewgenics.json` is the simple case: black letters that do not touch, cut as

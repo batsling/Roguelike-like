@@ -18,6 +18,8 @@ For how the project is laid out and how its systems fit together, see
   or beside a letter would have stretched the box it is sized and centred by, so
   those letters carry `body` rows, and `body` can now bound columns too
   (`[y0, y1, x0, x1]`) for the specks beside the first 8 and the B.
+  Its hyphen is just the bar, so it is drawn at 0.142 of the line and lifted
+  to the letters' middle (`size`, `drop`) rather than filling the line.
 
 - **Returnal's letters.** R E T U R N A L (the second R as `__2`), each yellow
   face with the white smoke and yellow haze round it. The smoke runs from
