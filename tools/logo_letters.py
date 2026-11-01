@@ -80,7 +80,8 @@ so Godot never imports the source), is JSON:
                   letter (a bow, its string, a shadow), rebuilt from the
                   letter's own clean pixels along their row or column
     cut.drawn     {"reach", "own_grow", "min_bright", "above", "barrier": [ranges],
-                  "clip": {piece: [x0, y0, x1, y1]}} — a
+                  "clip": {piece: [x0, y0, x1, y1]}, "cast": {piece: [dx, dy]},
+                  "cast_slack": px} — a
                   letter as drawn with all the shading touching its face (Tiny
                   Rogues), stopping at other faces and the barrier colours
     hold          [piece, ...] — found (so a neighbour split from it stops where
@@ -914,6 +915,21 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
                 rows_ = np.nonzero(f.any(1))[0]
                 if rows_.size:
                     allowed[:max(rows_.min() - dr.get("above", 0), 0)] = False
+                cast = dr.get("cast", {}).get(n)
+                if cast:
+                    # ONLY THE SHADING THIS LETTER CASTS (Tiny Rogues): the logo
+                    # is a perspective extrusion, each letter swept its own way
+                    # (fitted per letter: the left half down-right, the right
+                    # half down-left), so a neighbour's wall beside it is not
+                    # its own. The face slid along its own direction, with a few
+                    # pixels' slack for the logo's blended edges.
+                    cdx, cdy = cast
+                    st_ = max(abs(cdx), abs(cdy), 1)
+                    cast_m = np.zeros((H, W), bool)
+                    for k in range(1, st_ + 1):
+                        cast_m |= nd.shift(f, (round(cdy * k / st_), round(cdx * k / st_)), order=0, cval=False)
+                    cast_m = nd.binary_dilation(cast_m, iterations=dr.get("cast_slack", 4))
+                    allowed &= cast_m | own
                 clip = dr.get("clip", {}).get(n)
                 if clip:
                     # this letter's shading ends where its neighbour's own edge

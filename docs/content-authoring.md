@@ -141,17 +141,20 @@ every bit of the logo's 3D shading touching it, on either side and below, the
 logo's own pixels. The logo is a PERSPECTIVE extrusion, so letters left of its
 middle show walls on their right and letters right of it on their left (the n,
 y, u and e); a rebuild that swept every face the same way blacked out the left
-walls, which is what the owner caught. The shading between two letters belongs
-to both, as the S's left strip does. It stops at another letter's face, at the
-sword, staff and bow (`barrier`), 90px from the face, and 22 rows above it; the
-E is clipped at the S's cream edge. Each letter is the logo's own pixels with
+walls, which is what the owner caught. Each letter keeps ONLY the shading it
+casts (`cast`): its face slid along its own direction, fitted per letter to the
+logo (t +40/56, R +36/68, O +32/52, G +28/44 down-right; n -20/56, y -28/56,
+u -16/52, e -28/48 down-left; the S, -48/68, is why its left strip is its own),
+with 4px of slack for blended edges. Taking all the shading that touched a
+letter put its neighbours' walls on it too. It also stops at another letter's
+face, at the sword, staff and bow (`barrier`), 90px from the face, and 22 rows
+above it. Each letter is the logo's own pixels with
 the black taken off, then given an outline measured to match the logo's
 (`pixel_outline` with `"miter": true`, round everything kept): 44px out from
 every edge, square where straight edges meet, and 44px ACROSS a 45-degree edge,
 which a square measure makes 1.4 times as thick. Each edge pixel is classed by
 its slope (a smoothed gradient): straight ones grow square, diagonal ones by
-perpendicular distance. The logo's right-angle steps stay. Where the bow string crossed the E's wall its 45-degree top edge is
-drawn back row by row (`repaint` rects). The earlier rebuild's options
+perpendicular distance. The logo's right-angle steps stay. The earlier rebuild's options
 (`extrude`'s `colour_down`, `outline`, `wall_gradient`, `square_corners`,
 `close_face`) stay in the script, unused here.
 The sword, staff and bow touch the letters' sides, so they are told apart by
