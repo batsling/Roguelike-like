@@ -144,9 +144,17 @@ The sword, staff and bow touch the letters' sides, so they are told apart by
 colour (`rgb_ranges`, each colour only in its own box: the browns with red
 under 215 are never a face, which is always red 255); the bow's string and limb
 cross E and S, so the string's colours are left out of the faces
-(`exclude_rgb_ranges`) and the face they hid is painted back (`restore`). The
-string crossing the S's top also cut the S's stepped top-left off from the rest
-of its face, so the S takes a second anchor point there. The bow keeps its
+(`exclude_rgb_ranges`). The S under the bow is REBUILT, not painted flat
+(`repaint`, run on the source before cutting): inside a polygon, every pixel
+that is not one of the S's own colours (its yellow, the white top edge, the
+cream side edge, listed as `clean`) takes its colour from the S's clean pixels
+along its row, so the white edge runs on under the limb and the colour stays in
+its bands; two strips whose colour is plain (the cream edge, the yellow beside
+it, where the string crosses the lowest step) are given it outright, and so is
+the white edge of the step the limb hid entirely. A flat yellow patch lost the
+white top line, which is what the owner noticed. The string crossing the S's
+top also cut the S's stepped top-left off from the rest of its face, so the S
+takes a second anchor point there. The bow keeps its
 string and the ties round its lower limb (the string's colour allowed along its
 path), and the staff and bow are cut with `reach` 0: any reach pulled in the
 white highlight along the R's and S's top edges where they touch. Spelunky Classic gives S P E L U N K Y (the first K): its

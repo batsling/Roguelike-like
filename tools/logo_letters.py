@@ -72,6 +72,12 @@ so Godot never imports the source), is JSON:
                   height (Balatro's A sat high)
     subtitle      [piece, ...] — decorations drawn round the subtitle, never the
                   title (the crab's legs); list both halves
+    repaint       [{"polygon": [[x, y], ...], "dirty": [ranges] or "clean":
+                  [ranges] (the letter's own colours, all else dirty), "agree": n,
+                  "prefer": "row"/"column", "colour": [r, g, b]}] —
+                  pixels of those colours inside the polygon, drawn OVER a
+                  letter (a bow, its string, a shadow), rebuilt from the
+                  letter's own clean pixels along their row or column
     styles        [variant, ...] — piece variants (the part after the dot) drawn
                   at another size than the rest of the logo; each is sized as a
                   line of its own in images2.0/custom/title/index.json
@@ -241,6 +247,103 @@ FILL_SMOOTH_SIGMA = 2.5
 OPEN_ITER, CLOSE_ITER = 3, 4
 # The shadow's corners are rounded by this much, so its edge curves.
 SHADOW_ROUND_SIGMA = 7.0
+
+
+def _repaint(A: np.ndarray, cfg: dict) -> np.ndarray:
+    """Rebuild what something drew OVER a letter, from the letter itself (Tiny
+    Rogues' bow, its string and their shadows, over the S): inside each
+    `repaint` polygon, a pixel matching one of its `dirty` colour ranges (same
+    form as the fill's `rgb_ranges`) takes its colour from the clean pixels
+    nearest it on its own column or row. Pixel art runs in straight lines, so
+    where the clean pixels either side agree (above and below, or left and
+    right) the shorter gap wins; failing that, the nearest clean pixel. So the
+    face's white top edge runs on under the limb, its pale side edge runs down
+    past the string, and its colour bands stay in their rows."""
+    A = A.copy()
+    H, W = A.shape[:2]
+    for rp in cfg.get("repaint", []):
+        poly = _polygon_mask((H, W), rp["polygon"])
+        dirty = np.zeros((H, W), bool)
+        for rg in rp["dirty"]:
+            hit = ((A[..., 0] >= rg[0]) & (A[..., 0] <= rg[1]) & (A[..., 1] >= rg[2])
+                   & (A[..., 1] <= rg[3]) & (A[..., 2] >= rg[4]) & (A[..., 2] <= rg[5]))
+            if len(rg) == 10:
+                box = np.zeros((H, W), bool)
+                box[rg[7]:rg[9], rg[6]:rg[8]] = True
+                hit &= box
+            dirty |= hit
+        if "clean" in rp:
+            # or the other way round: the letter's OWN colours are listed, and
+            # anything else in the polygon was drawn over it (a soft edge or a
+            # shadow comes in more shades than a list of them can catch)
+            ok = np.zeros((H, W), bool)
+            for rg in rp["clean"]:
+                hit = ((A[..., 0] >= rg[0]) & (A[..., 0] <= rg[1]) & (A[..., 1] >= rg[2])
+                       & (A[..., 1] <= rg[3]) & (A[..., 2] >= rg[4]) & (A[..., 2] <= rg[5]))
+                if len(rg) == 10:
+                    box = np.zeros((H, W), bool)
+                    box[rg[7]:rg[9], rg[6]:rg[8]] = True
+                    hit &= box
+                ok |= hit
+            dirty |= ~ok
+        dirty &= poly
+        clean = poly & ~dirty & (A[..., 3] > 200)
+        tol = rp.get("agree", 60)
+        src = A.copy()
+        _, (ny, nx) = nd.distance_transform_edt(~clean, return_indices=True)
+        if "colour" in rp:
+            # a strip whose colour is known (a white edge the bow hid)
+            A[dirty, :3] = rp["colour"]
+            A[dirty, 3] = 255
+            continue
+        prefer = {"column": 0, "row": 1}.get(rp.get("prefer", ""))
+        for y, x in zip(*np.nonzero(dirty)):
+            if prefer is not None:
+                # along this axis first, the nearer clean pixel either way;
+                # then the other axis; then the nearest at all
+                got = None
+                for axis in (prefer, 1 - prefer):
+                    for dist in range(1, max(H, W)):
+                        for step in (-dist, dist):
+                            yy, xx = (y + step, x) if axis == 0 else (y, x + step)
+                            if 0 <= yy < H and 0 <= xx < W and poly[yy, xx] and clean[yy, xx]:
+                                got = src[yy, xx]
+                                break
+                        if got is not None:
+                            break
+                        # stop at the polygon's edge both ways
+                        a_ = (y - dist, x) if axis == 0 else (y, x - dist)
+                        b_ = (y + dist, x) if axis == 0 else (y, x + dist)
+                        if not any(0 <= p_[0] < H and 0 <= p_[1] < W and poly[p_] for p_ in (a_, b_)):
+                            break
+                    if got is not None:
+                        break
+                A[y, x] = got if got is not None else src[ny[y, x], nx[y, x]]
+                A[y, x, 3] = 255
+                continue
+            best = None
+            for axis in (0, 1):
+                pair = []
+                for step in (-1, 1):
+                    yy, xx = y, x
+                    while True:
+                        if axis == 0:
+                            yy += step
+                        else:
+                            xx += step
+                        if not (0 <= yy < H and 0 <= xx < W) or not poly[yy, xx]:
+                            break
+                        if clean[yy, xx]:
+                            pair.append(((abs(yy - y) + abs(xx - x)), src[yy, xx]))
+                            break
+                if len(pair) == 2 and np.abs(pair[0][1][:3] - pair[1][1][:3]).max() <= tol:
+                    span = pair[0][0] + pair[1][0]
+                    near = pair[0][1] if pair[0][0] <= pair[1][0] else pair[1][1]
+                    if best is None or span < best[0]:
+                        best = (span, near)
+            A[y, x] = best[1] if best is not None else src[ny[y, x], nx[y, x]]
+            A[y, x, 3] = 255
+    return A
 
 
 def _fill_mask(A: np.ndarray, cfg: dict) -> np.ndarray:
@@ -594,7 +697,10 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
     # The logo as the game shows it on a game's page (LogoProgress): trimmed to
     # what it draws, and where each piece came from in it (`src` in the index).
     # A pixel_grid logo is its rebuilt pixels, not the screenshot they came from.
+    # Written before `repaint`: the page shows the logo as drawn.
     logo_box = _write_logo(cfg, A)
+    # whatever was drawn over a letter, rebuilt from the letter (`repaint`)
+    A = _repaint(A, cfg)
     a = A[..., 3]
     fill = _fill_mask(A, cfg)
     solid = a >= 254
