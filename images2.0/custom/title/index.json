@@ -591,6 +591,21 @@
   ],
   "size": 1.05
  },
+ "b/ember_knights.png": {
+  "game": "ember_knights",
+  "config": "ember_knights.json",
+  "style": "ember_knights",
+  "body_center": 0.6399,
+  "body_height": 0.5026,
+  "body_center_x": 0.5878,
+  "body_width": 0.5038,
+  "src": [
+   0.38542,
+   0.03346,
+   0.65833,
+   0.75093
+  ]
+ },
  "b/everything_is_crab.png": {
   "game": "everything_is_crab",
   "config": "everything_is_crab.json",
@@ -1443,6 +1458,36 @@
    0.91604
   ]
  },
+ "e/ember_knights.png": {
+  "game": "ember_knights",
+  "config": "ember_knights.json",
+  "style": "ember_knights",
+  "body_center": 0.5963,
+  "body_height": 0.5187,
+  "body_center_x": 0.5074,
+  "body_width": 0.6889,
+  "src": [
+   -0.01667,
+   0.07807,
+   0.26458,
+   0.77323
+  ]
+ },
+ "e/ember_knights__2.png": {
+  "game": "ember_knights",
+  "config": "ember_knights.json",
+  "style": "ember_knights",
+  "body_center": 0.5036,
+  "body_height": 0.6929,
+  "body_center_x": 0.5125,
+  "body_width": 0.6583,
+  "src": [
+   0.57917,
+   0.23048,
+   0.82917,
+   0.75093
+  ]
+ },
  "e/enter_the_gungeon.png": {
   "game": "enter_the_gungeon",
   "config": "enter_the_gungeon.json",
@@ -1959,6 +2004,21 @@
    0.83654
   ]
  },
+ "g/ember_knights.png": {
+  "game": "ember_knights",
+  "config": "ember_knights_2.json",
+  "style": "ember_knights_2",
+  "body_center": 0.4928,
+  "body_height": 0.8986,
+  "body_center_x": 0.5085,
+  "body_width": 0.8814,
+  "src": [
+   0.43333,
+   0.73234,
+   0.55625,
+   0.98885
+  ]
+ },
  "g/enter_the_gungeon.png": {
   "game": "enter_the_gungeon",
   "config": "enter_the_gungeon.json",
@@ -2086,6 +2146,21 @@
    0.47756,
    0.48438,
    0.96795
+  ]
+ },
+ "h/ember_knights.png": {
+  "game": "ember_knights",
+  "config": "ember_knights_2.json",
+  "style": "ember_knights_2",
+  "body_center": 0.5076,
+  "body_height": 0.8939,
+  "body_center_x": 0.5,
+  "body_width": 0.875,
+  "src": [
+   0.56042,
+   0.73606,
+   0.69375,
+   0.98141
   ]
  },
  "h/enter_the_gungeon__pink.png": {
@@ -2322,6 +2397,21 @@
    0.16026,
    0.72656,
    0.38462
+  ]
+ },
+ "i/ember_knights.png": {
+  "game": "ember_knights",
+  "config": "ember_knights_2.json",
+  "style": "ember_knights_2",
+  "body_center": 0.5076,
+  "body_height": 0.8939,
+  "body_center_x": 0.5,
+  "body_width": 0.7419,
+  "src": [
+   0.37083,
+   0.73606,
+   0.43542,
+   0.98141
   ]
  },
  "i/everything_is_crab.png": {
@@ -2589,6 +2679,21 @@
    0.66359
   ],
   "form": "lower"
+ },
+ "k/ember_knights.png": {
+  "game": "ember_knights",
+  "config": "ember_knights_2.json",
+  "style": "ember_knights_2",
+  "body_center": 0.5,
+  "body_height": 0.9167,
+  "body_center_x": 0.5,
+  "body_width": 0.8788,
+  "src": [
+   0.10417,
+   0.73606,
+   0.24167,
+   1.00372
+  ]
  },
  "k/risk_of_rain_2.png": {
   "game": "risk_of_rain_2",
@@ -2869,6 +2974,21 @@
    0.99359
   ]
  },
+ "m/ember_knights.png": {
+  "game": "ember_knights",
+  "config": "ember_knights.json",
+  "style": "ember_knights",
+  "body_center": 0.5,
+  "body_height": 0.6978,
+  "body_center_x": 0.4967,
+  "body_width": 0.7285,
+  "src": [
+   0.1875,
+   0.2342,
+   0.50208,
+   0.75093
+  ]
+ },
  "m/mewgenics.png": {
   "game": "mewgenics",
   "config": "mewgenics.json",
@@ -3045,6 +3165,21 @@
    0.43269,
    0.85781,
    0.78526
+  ]
+ },
+ "n/ember_knights.png": {
+  "game": "ember_knights",
+  "config": "ember_knights_2.json",
+  "style": "ember_knights_2",
+  "body_center": 0.5076,
+  "body_height": 0.8939,
+  "body_center_x": 0.5078,
+  "body_width": 0.8906,
+  "src": [
+   0.23542,
+   0.73606,
+   0.36875,
+   0.98141
   ]
  },
  "n/enter_the_gungeon.png": {
@@ -3811,6 +3946,21 @@
    0.91604
   ]
  },
+ "r/ember_knights.png": {
+  "game": "ember_knights",
+  "config": "ember_knights.json",
+  "style": "ember_knights",
+  "body_center": 0.5446,
+  "body_height": 0.5774,
+  "body_center_x": 0.5119,
+  "body_width": 0.6746,
+  "src": [
+   0.75625,
+   0.15242,
+   1.01875,
+   0.77695
+  ]
+ },
  "r/enter_the_gungeon__pink.png": {
   "game": "enter_the_gungeon",
   "config": "enter_the_gungeon.json",
@@ -4155,6 +4305,21 @@
    0.54511,
    0.9995,
    0.91604
+  ]
+ },
+ "s/ember_knights.png": {
+  "game": "ember_knights",
+  "config": "ember_knights_2.json",
+  "style": "ember_knights_2",
+  "body_center": 0.5067,
+  "body_height": 0.9067,
+  "body_center_x": 0.4902,
+  "body_width": 0.8627,
+  "src": [
+   0.81042,
+   0.72862,
+   0.91667,
+   1.00743
   ]
  },
  "s/everything_is_crab.png": {
@@ -4538,6 +4703,21 @@
    0.54386,
    0.4995,
    0.91604
+  ]
+ },
+ "t/ember_knights.png": {
+  "game": "ember_knights",
+  "config": "ember_knights_2.json",
+  "style": "ember_knights_2",
+  "body_center": 0.5075,
+  "body_height": 0.8955,
+  "body_center_x": 0.4914,
+  "body_width": 0.8793,
+  "src": [
+   0.69167,
+   0.73234,
+   0.8125,
+   0.98141
   ]
  },
  "t/enter_the_gungeon__pink.png": {

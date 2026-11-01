@@ -1,0 +1,46 @@
+{
+  "game": "ember_knights",
+  "source": "ember_knights.webp",
+  "fill": {
+    "min_alpha": 250,
+    "min_brightness": -1
+  },
+  "adopt_strays": false,
+  "smooth": false,
+  "shadow": false,
+  "pieces": {
+    "k": [
+      73,
+      237
+    ],
+    "n": [
+      154,
+      233
+    ],
+    "i": [
+      207,
+      233
+    ],
+    "g": [
+      227,
+      236
+    ],
+    "h": [
+      299,
+      233
+    ],
+    "t": [
+      366,
+      221
+    ],
+    "s": [
+      427,
+      236
+    ]
+  },
+  "cut": {
+    "reach": 2,
+    "smooth_scale": true,
+    "scale": 2
+  }
+}

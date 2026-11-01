@@ -11,6 +11,10 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Ember Knights' letters.** E M B E R with each letter's glow drawn again
+  round its own shape (the logo's runs from letter to letter) and its flames
+  hanging over the line, and K N I G H T S cut plain.
+
 - **Dwarf Fortress's letters.** D W A R F and F O R T R E S S, the O the
   dwarf's head. Each DWARF letter's dark bottom band, cut short where the red
   row is drawn over it, is finished as a curve and a straight line at the

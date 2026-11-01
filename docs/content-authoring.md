@@ -157,7 +157,15 @@ of every DWARF letter's dark band, so each band is finished on the source first
 (`repaint` rects): a column the red cut off runs on down to the bottom line of
 the clean columns beside it, and the band's ends round off on a 12px corner,
 so every DWARF bottom is a curve then a straight line. DWARF is cut with `reach`
-0, or the red row's top edge rides along in a one-pixel line. Spelunky Classic gives S P E L U N K Y (the first K): its
+0, or the red row's top edge rides along in a one-pixel line. Ember Knights
+gives E M B E R (the second E as `__2`) and K N I G H T S, two configs at 2x
+(`smooth_scale`, the source 500px wide). EMBER's orange glow runs from letter
+to letter and down onto KNIGHTS, so each letter is cut solid and its glow drawn
+again round its own shape (`recast_shadow`: spread 3, blur 7, (243, 45, 19),
+fitted to the logo's glow falling from about 200 to 10 over 14px); its flames
+reach far above the letters, so each is sized by its body (`body` rows 86-183)
+and the flame hangs over the line. KNIGHTS is cut plain; the warm gold on its
+edges is its own rim, not EMBER's glow. Spelunky Classic gives S P E L U N K Y (the first K): its
 source is a blurry 1920x1080 screenshot of pixel art, so `pixel_grid` rebuilds
 the logo pixel by pixel on the measured grid (11.707px a pixel), each snapped to
 the logo's three-colour palette, and the letters come out as sharp 12x blocks. Haste gives H A S T E, solid black
