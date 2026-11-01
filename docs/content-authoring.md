@@ -238,7 +238,11 @@ Each element is part of its letter, listed as extra points: the W's flames,
 the R's crystals, the first E's wind swirl, the second E's lightning (its
 sparks between E and N too) and the last D's plant; those five are sized by
 their letter rows (`body` 53-116) so the element rises above the line. The
-underline is left out. A logo can
+underline is left out. BALL x PIT gives B A L L P I T (the second L as `__2`)
+and its X: white letters cut as they are, each part a crack split off listed
+as another point of its letter (the B's chip, the P's lower-left, the I's chip);
+the orange X takes its paint flecks and is sized by the white letters' rows
+(`body` 558-1086), so it overflows the line as the logo has it. A logo can
 take more than one config when its parts are built differently: Uma Musume has
 four, one per line, one for the girl and one for her dash.
 `mewgenics.json` is the simple case: black letters that do not touch, cut as

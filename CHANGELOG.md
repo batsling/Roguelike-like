@@ -11,6 +11,11 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **BALL x PIT's letters.** B A L L P I T (the second L as `__2`), white with
+  their cracks, each part a crack split off kept with its letter (a chip of the
+  B, the P's lower-left, a chip in the I); and the orange X with its paint
+  flecks, sized by the letters' rows so it overflows the line as in the logo.
+
 - **Wizard of Legend's letters.** W I Z A R D, o f, L E G E N D (the second E
   and D as `__2`), white faces in their thin dark outline, each with its own
   element: the W's flames, the R's crystals, the first E's wind swirl, the

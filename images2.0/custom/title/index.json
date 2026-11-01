@@ -211,6 +211,21 @@
   "size": 1.05,
   "drop": 0.05
  },
+ "a/ball_x_pit.png": {
+  "game": "ball_x_pit",
+  "config": "ball_x_pit.json",
+  "style": "ball_x_pit",
+  "body_center": 0.501,
+  "body_height": 0.9899,
+  "body_center_x": 0.5,
+  "body_width": 0.976,
+  "src": [
+   0.16798,
+   0.22651,
+   0.28399,
+   0.861
+  ]
+ },
  "a/caves_of_qud.png": {
   "game": "caves_of_qud",
   "config": "caves_of_qud.json",
@@ -759,6 +774,21 @@
    0.93971
   ],
   "size": 1.05
+ },
+ "b/ball_x_pit.png": {
+  "game": "ball_x_pit",
+  "config": "ball_x_pit.json",
+  "style": "ball_x_pit",
+  "body_center": 0.501,
+  "body_height": 0.9899,
+  "body_center_x": 0.4985,
+  "body_width": 0.9789,
+  "src": [
+   -0.00093,
+   0.22651,
+   0.15267,
+   0.861
+  ]
  },
  "b/diablo.png": {
   "game": "diablo",
@@ -3013,6 +3043,21 @@
    1.0
   ]
  },
+ "i/ball_x_pit.png": {
+  "game": "ball_x_pit",
+  "config": "ball_x_pit.json",
+  "style": "ball_x_pit",
+  "body_center": 0.501,
+  "body_height": 0.9899,
+  "body_center_x": 0.5,
+  "body_width": 0.931,
+  "src": [
+   0.79722,
+   0.22651,
+   0.83759,
+   0.861
+  ]
+ },
  "i/demonic_mahjong.png": {
   "game": "demonic_mahjong",
   "config": "demonic_mahjong.json",
@@ -3518,6 +3563,36 @@
    0.93088
   ],
   "size": 1.05
+ },
+ "l/ball_x_pit.png": {
+  "game": "ball_x_pit",
+  "config": "ball_x_pit.json",
+  "style": "ball_x_pit",
+  "body_center": 0.5,
+  "body_height": 0.9888,
+  "body_center_x": 0.5,
+  "body_width": 0.9583,
+  "src": [
+   0.29977,
+   0.22651,
+   0.36659,
+   0.91377
+  ]
+ },
+ "l/ball_x_pit__2.png": {
+  "game": "ball_x_pit",
+  "config": "ball_x_pit.json",
+  "style": "ball_x_pit",
+  "body_center": 0.5009,
+  "body_height": 0.9906,
+  "body_center_x": 0.5034,
+  "body_width": 0.9517,
+  "src": [
+   0.36334,
+   0.22651,
+   0.43063,
+   0.91248
+  ]
  },
  "l/dead_cells.png": {
   "game": "dead_cells",
@@ -4717,6 +4792,21 @@
    0.67785
   ],
   "form": "lower"
+ },
+ "p/ball_x_pit.png": {
+  "game": "ball_x_pit",
+  "config": "ball_x_pit.json",
+  "style": "ball_x_pit",
+  "body_center": 0.5,
+  "body_height": 0.9888,
+  "body_center_x": 0.502,
+  "body_width": 0.98,
+  "src": [
+   0.66497,
+   0.22651,
+   0.78097,
+   0.91377
+  ]
  },
  "p/loop_hero.png": {
   "game": "loop_hero",
@@ -5933,6 +6023,21 @@
   ],
   "size": 1.05
  },
+ "t/ball_x_pit.png": {
+  "game": "ball_x_pit",
+  "config": "ball_x_pit.json",
+  "style": "ball_x_pit",
+  "body_center": 0.501,
+  "body_height": 0.9899,
+  "body_center_x": 0.5015,
+  "body_width": 0.9786,
+  "src": [
+   0.84919,
+   0.22651,
+   1.00093,
+   0.861
+  ]
+ },
  "t/darkest_dungeon.png": {
   "game": "darkest_dungeon",
   "config": "darkest_dungeon.json",
@@ -6747,6 +6852,21 @@
    0.0,
    0.125,
    0.80537
+  ]
+ },
+ "x/ball_x_pit.png": {
+  "game": "ball_x_pit",
+  "config": "ball_x_pit.json",
+  "style": "ball_x_pit",
+  "body_center": 0.5698,
+  "body_height": 0.6761,
+  "body_center_x": 0.4615,
+  "body_width": 0.743,
+  "src": [
+   0.44037,
+   -0.00257,
+   0.65708,
+   1.00257
   ]
  },
  "x/rogue.png": {
