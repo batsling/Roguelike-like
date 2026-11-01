@@ -1354,3 +1354,48 @@ func test_the_screen_has_a_red_cross_on_each_unlocked_song() -> void:
 	assert_eq(crosses.size(), 1, "only the unlocked song has one")
 	(crosses[0] as Button).pressed.emit()
 	assert_true(Radio.is_blocked(Data.get_song(&"a")))
+
+# --- one game's songs (the Collection's ♪, the owner, 1 Nov 2026) ----------------
+
+func test_the_radio_opened_on_a_game_shows_only_its_songs() -> void:
+	_song("h1")
+	_locked("h2")
+	_song("b1", [], true, false, OTHER)
+	_locked("b2", OTHER)
+	var screen := RadioScreen.open(self, GAME)
+	await get_tree().process_frame
+	assert_string_contains(screen._summary.text, "1 of 2", "Hades' two songs, one unlocked")
+	assert_true(screen._filter_chip.visible, "the chip says what is shown")
+	assert_string_contains(screen._filter_chip.text, "Hades")
+	var text := ""
+	for l in screen._list.find_children("*", "Label", true, false):
+		text += (l as Label).text + "\n"
+	assert_false(text.contains("B1"), "no other game's song")
+	screen._filter_chip.pressed.emit()
+	await get_tree().process_frame
+	assert_eq(screen.game_filter, &"", "the chip clears it")
+	assert_string_contains(screen._summary.text, "2 of 4", "every song again")
+	assert_false(screen._filter_chip.visible)
+	screen.close()
+	await get_tree().process_frame
+
+func test_a_games_collection_page_counts_its_songs_and_opens_the_radio_on_them() -> void:
+	_song("h1")
+	_locked("h2")
+	_locked("h3")
+	var col := Collection.new()
+	add_child_autofree(col)
+	col._show_game_detail(Data.get_game(GAME))
+	var b: Button = col.find_child("SongsButton", true, false)
+	assert_not_null(b, "a game with songs has the note")
+	assert_eq(b.text, "♪ 1 / 3")
+	b.pressed.emit()
+	var screen: RadioScreen = col.find_children("*", "RadioScreen", true, false)[0] if \
+		not col.find_children("*", "RadioScreen", true, false).is_empty() else null
+	assert_not_null(screen, "pressing it opens the radio")
+	if screen != null:
+		assert_eq(screen.game_filter, GAME, "on this game's songs")
+		screen.close()
+	col._show_game_detail(Data.get_game(OTHER))
+	assert_null(col.find_child("SongsButton", true, false), "a game with no songs has none")
+	await get_tree().process_frame

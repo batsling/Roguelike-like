@@ -1,10 +1,12 @@
 class_name LogoProgress
-extends VBoxContainer
+extends Control
 
 # A GAME'S LOGO, FILLED IN AS ITS LETTERS ARE EARNED (the owner, 1 Nov 2026).
-# Under the cover on the run map's game card (GameChoiceModal) and the
+# Beside the cover on the run map's game card (GameChoiceModal) and the
 # Collection's game page, for every game with letters cut from its logo
-# (TitleLetters, docs/content-authoring.md "Title letters").
+# (TitleLetters, docs/content-authoring.md "Title letters"). It FITS ITSELF to
+# the room it is given (the owner, 1 Nov 2026: "as big as possible"): the logo
+# as large as goes in, its shape kept, with the count under it.
 #
 #   * The whole logo, greyed and dimmed (shaders/locked_grey.gdshader), so the
 #     full title can be read before anything is earned.
@@ -32,13 +34,16 @@ var area := Control.new()      # the logo and what is laid on it
 var count_label: Label
 var glowing: Array[TextureRect] = []   # the pieces this view lit up as new
 var _fresh: Array = []         # keys to mark seen once shown
+var _aspect := 1.0
+var _placed: Array = []        # [TextureRect, src] for each piece laid on
 
 static func logo_path(game: StringName) -> String:
 	return LOGO_DIR + String(game) + ".png"
 
-# The view for `game`, fitted inside `max_size`, or null when the game has no
-# letters cut (or no logo to show them on).
-static func make(game: StringName, max_size: Vector2) -> LogoProgress:
+# The view for `game`, or null when the game has no letters cut (or no logo to
+# show them on). `min_size` is the least room it asks for; it takes what its
+# container gives it beyond that.
+static func make(game: StringName, min_size: Vector2) -> LogoProgress:
 	var units := TitleLetters.units_of(game)
 	if units.is_empty():
 		return null
@@ -48,7 +53,7 @@ static func make(game: StringName, max_size: Vector2) -> LogoProgress:
 	var v := LogoProgress.new()
 	v.game_id = game
 	v.units = units
-	v._build(tex, max_size)
+	v._build(tex, min_size)
 	return v
 
 static func _unit_key(e: Dictionary) -> String:
@@ -67,19 +72,14 @@ static func _is_seen(key: String) -> bool:
 		if Engine.get_main_loop() is SceneTree else null
 	return tu != null and tu.is_seen(key)
 
-func _build(tex: Texture2D, max_size: Vector2) -> void:
-	add_theme_constant_override("separation", UITheme.GAP_TIGHT)
+func _build(tex: Texture2D, min_size: Vector2) -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	custom_minimum_size = min_size
+	size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	size_flags_vertical = Control.SIZE_EXPAND_FILL
 	earned = units.filter(func(k): return _is_unlocked(String(k)))
 	complete = earned.size() == units.size()
-
-	# the logo, as big as fits, its own shape kept
-	var aspect := float(tex.get_width()) / float(tex.get_height())
-	var sz := Vector2(max_size.x, max_size.x / aspect)
-	if sz.y > max_size.y:
-		sz = Vector2(max_size.y * aspect, max_size.y)
-	area.custom_minimum_size = sz
-	area.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	_aspect = float(tex.get_width()) / float(tex.get_height())
 	area.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(area)
 	var base := TextureRect.new()
@@ -113,10 +113,8 @@ func _build(tex: Texture2D, max_size: Vector2) -> void:
 			piece.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 			piece.stretch_mode = TextureRect.STRETCH_SCALE
 			piece.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			var src: Array = e["src"]
-			piece.position = Vector2(float(src[0]) * sz.x, float(src[1]) * sz.y)
-			piece.size = Vector2((float(src[2]) - float(src[0])) * sz.x, (float(src[3]) - float(src[1])) * sz.y)
 			area.add_child(piece)
+			_placed.append([piece, e["src"]])
 			if fresh:
 				glowing.append(piece)
 
@@ -126,6 +124,27 @@ func _build(tex: Texture2D, max_size: Vector2) -> void:
 	count_label.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 	count_label.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 	add_child(count_label)
+	resized.connect(_fit)
+	_fit()
+
+# The logo as big as goes in what this control was given, centred, the count
+# under it; every piece laid on scaled with it.
+func _fit() -> void:
+	var label_h := count_label.get_minimum_size().y
+	var room := Vector2(size.x, maxf(size.y - label_h - UITheme.GAP_TIGHT, 1.0))
+	var sz := Vector2(room.x, room.x / _aspect)
+	if sz.y > room.y:
+		sz = Vector2(room.y * _aspect, room.y)
+	var top := (room.y - sz.y) * 0.5
+	area.position = Vector2((size.x - sz.x) * 0.5, top)
+	area.size = sz
+	for p in _placed:
+		var r: TextureRect = p[0]
+		var src: Array = p[1]
+		r.position = Vector2(float(src[0]) * sz.x, float(src[1]) * sz.y)
+		r.size = Vector2((float(src[2]) - float(src[0])) * sz.x, (float(src[3]) - float(src[1])) * sz.y)
+	count_label.position = Vector2(0.0, top + sz.y + UITheme.GAP_TIGHT)
+	count_label.size = Vector2(size.x, label_h)
 
 func _ready() -> void:
 	# Shown: the new ones glow, and will not again.

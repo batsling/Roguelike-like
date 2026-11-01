@@ -180,8 +180,9 @@ docstring has the detail. To add a logo:
    `images2.0/custom/title/index.json`.
 
 **Each game's page shows its logo filling in** (`scripts/ui/LogoProgress.gd`,
-tests `test_logo_progress.gd`), under the cover on the run map's game card and
-the Collection's game page: the whole logo greyed (`shaders/locked_grey.gdshader`,
+tests `test_logo_progress.gd`), beside the cover on the run map's game card and
+the Collection's game page, as large as fits the room left of the cover column
+(the game's year, type and connections stand under the cover): the whole logo greyed (`shaders/locked_grey.gdshader`,
 squeezed into mid grey and partly see-through, since only dimming left a black
 logo black), each earned piece laid on where it was cut from, the original in
 colour once every piece is earned, a count ("5 / 14"), and a glow the first time

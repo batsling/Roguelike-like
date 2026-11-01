@@ -11,6 +11,18 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The game card and the Collection page put the logo beside the cover, and
+  the Collection counts a game's songs.** The year, type and connections now
+  stand under the cover, and the logo takes the room beside it as large as it
+  fits (`LogoProgress` fits itself to whatever it is given). On the map card
+  the rest of the facts (shop, shields, pace, rift) run under the pair at
+  full width, or stand beside the cover when there is no logo. On the
+  Collection page the name is the heading above a game with a logo; a game
+  without one keeps the same shape with its name large beside the cover.
+  Beside the record, "♪ 12 / 71" counts the game's songs on Roguelike Radio
+  (hidden when it has none), and opens the radio filtered to that game, with
+  a chip to clear it.
+
 - **A game's logo fills in on its page as its letters are earned.** Every game
   with letters cut from its logo shows the logo under its cover on the run
   map's game card and the Collection's game page: greyed until earned, each

@@ -652,3 +652,21 @@ func test_a_previewed_rung_offers_nothing_only_a_map_could_do() -> void:
 		"and it no longer says a rung is on the road it was clicked on")
 	modal.close_node_card()
 	assert_null(modal._node_card, "and closing it closes only it")
+
+# THE GAME'S STATS UNDER THE COVER, ITS LOGO BESIDE (the owner, 1 Nov 2026).
+func test_the_card_puts_the_stats_under_the_cover_and_the_logo_beside() -> void:
+	var modal := GameChoiceModal.open(_ui, 0, {"game": Data.get_game(&"hades"), "slot": &"hades"})
+	var under: Control = modal.find_child("UnderCover", true, false)
+	assert_not_null(under)
+	var text := ""
+	for l in under.find_children("*", "Label", true, false):
+		text += (l as Label).text + "\n"
+	assert_string_contains(text, "2018" if Data.get_game(&"hades").year == 2018 else str(Data.get_game(&"hades").year),
+		"the year under the cover")
+	assert_string_contains(text, "connection", "and its connections")
+	var logos := under.get_parent().get_children().filter(func(c): return c is LogoProgress)
+	assert_eq(logos.size(), 1, "the logo beside it")
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var logo: LogoProgress = logos[0]
+	assert_gt(logo.size.x, float(GameChoiceModal.COVER.x), "and given the rest of the row")
