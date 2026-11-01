@@ -126,13 +126,13 @@ in its own colours, the flame's open core left as the logo draws it). Darkest
 Dungeon also gives D a r k e s t, D u n g e o n (second D, e and n as `__2`),
 black ink cut like Mewgenics', with the joined `ar` and `ung` parted by vertical
 `splits` and the a's foot moved back off the r with `assign`. Vampire Survivors
-gives, so far, the six letters whose gold faces touch no other: V and I from
-VAMPIRE, S O R S from SURVIVORS (the last S as `__2`). They are cut as drawn,
-each keeping its dark 3D side and grey shadow (`own_by_shadow`, pushed 13 right
-and 6 down, measured off the logo), less the faint glow round the whole logo
-(`keep_min_alpha`), whose cut edge showed as a box. The joined faces (AMP, RE,
-UR, VIV) are `hold` pieces: found, so their neighbours stop where they start,
-and not written until lines are drawn to part them. Spelunky Classic gives S P E L U N K Y (the first K): its
+gives V A M P I R E, S U R V I V O R S (second and third R and V, second I
+and S as `__2`, `__3`). Only the gold faces are cut; the 3D side is REBUILT
+by sweeping each face 17 right and 8 down (`extrude`), see-through grey-brown
+shading from the face out and fading (`colour_far`, `alpha`, `alpha_far`,
+measured along the logo's own side), with its edge softened (`soft_edge`). So
+the joined faces only needed parting: AMP, RE, UR and VIV by vertical `splits`
+at the serifs where they touch, the sides never mattering. Spelunky Classic gives S P E L U N K Y (the first K): its
 source is a blurry 1920x1080 screenshot of pixel art, so `pixel_grid` rebuilds
 the logo pixel by pixel on the measured grid (11.707px a pixel), each snapped to
 the logo's three-colour palette, and the letters come out as sharp 12x blocks. Haste gives H A S T E, solid black

@@ -72,10 +72,6 @@ so Godot never imports the source), is JSON:
                   height (Balatro's A sat high)
     subtitle      [piece, ...] — decorations drawn round the subtitle, never the
                   title (the crab's legs); list both halves
-    hold          [piece, ...] — pieces found and given their own pixels, so
-                  their neighbours stop where they start, but not written: a
-                  logo's joined letters not cut apart yet (Vampire Survivors'
-                  AMP, RE, UR, VIV), named anything
     styles        [variant, ...] — piece variants (the part after the dot) drawn
                   at another size than the rest of the logo; each is sized as a
                   line of its own in images2.0/custom/title/index.json
@@ -155,6 +151,8 @@ so Godot never imports the source), is JSON:
                   band grown round the rest of the letter;
                   "extrude": {"dx", "dy", "colour", "skip"} (in cut) gives a
                   block letter its 3D side by sweeping its face (Isaac);
+                  "colour_far", "alpha", "alpha_far" shade it from the face
+                  out and let it fade (Vampire Survivors);
                   "outline_max": n keeps only dark pixels past the face (not
                   a glow), "side": {"dy", "dx"} adds the dark 3D side the face
                   sweeps over, "close_dark": n brings in dark counters;
@@ -633,10 +631,7 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
     body_widths = {}
     line_centers = {}
     out_dir_game = cfg["game"]
-    written_names = []
     for i, n in enumerate(names):
-        if n in cfg.get("hold", []):
-            continue  # cut for its neighbours' sake only: not written (yet)
         mine = owner == i
         f = pieces[n]
         rgb = np.zeros((H, W, 3))
@@ -822,16 +817,47 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
                 face_m = f.copy()
                 side = face_m.copy()
                 steps = max(abs(ex_cfg["dx"]), abs(ex_cfg["dy"]))
+                # "colour_far": the side shades from "colour" next to the face
+                # to this at its far edge (Vampire Survivors' maroon going dark)
+                near_c = np.array(ex_cfg["colour"], float)
+                far_c = np.array(ex_cfg.get("colour_far", ex_cfg["colour"]), float)
+                side_rgb = np.zeros((H, W, 3))
+                # "alpha" / "alpha_far": a see-through side, fading out as it
+                # goes (Vampire Survivors'); 1 (solid) unless given
+                near_a = float(ex_cfg.get("alpha", 1.0))
+                far_a = float(ex_cfg.get("alpha_far", near_a))
+                side_a = np.zeros((H, W))
                 for k in range(1, steps + 1):
                     # a shift that falls off the edge, never wraps round to the other side
-                    side |= nd.shift(face_m, (round(ex_cfg["dy"] * k / steps),
-                                              round(ex_cfg["dx"] * k / steps)), order=0, cval=False)
+                    step = nd.shift(face_m, (round(ex_cfg["dy"] * k / steps),
+                                             round(ex_cfg["dx"] * k / steps)), order=0, cval=False)
+                    side_rgb[step & ~side] = near_c + (far_c - near_c) * (k / steps)
+                    side_a[step & ~side] = near_a + (far_a - near_a) * (k / steps)
+                    side |= step
                 rgb[:] = 0
                 al[:] = 0
-                rgb[side] = ex_cfg["colour"]
+                rgb[side] = side_rgb[side]
                 rgb[face_m] = A[face_m][:, :3]
-                al[side] = 1
-                band_masks = (face_m, side, np.array(ex_cfg["colour"], float), 0)
+                al[side] = side_a[side] if "alpha" in ex_cfg else 1
+                al[face_m] = 1
+                if ex_cfg.get("soft_edge"):
+                    # drawn at the logo's own size (no `scale` to redraw it), so
+                    # the side's outer edge is softened here instead of stepping
+                    cov = nd.gaussian_filter(side.astype(float), ex_cfg["soft_edge"])
+                    al[side] *= np.clip(cov[side] * 2.0, 0, 1)
+                    ring = nd.binary_dilation(side) & ~side
+                    _, (ry, rx) = nd.distance_transform_edt(~side, return_indices=True)
+                    rgb[ring] = rgb[ry[ring], rx[ring]]
+                    al[ring] = np.clip(cov[ring] * 2.0 - 0.2, 0, 1) * (side_a[ry[ring], rx[ring]] if "alpha" in ex_cfg else 1)
+                plate = side_rgb if "colour_far" in ex_cfg else near_c
+                if "colour_far" in ex_cfg:
+                    # under the face (never seen) and past the side's edge, the
+                    # nearest side colour, so the redrawn edge has no seam
+                    sm = side & ~face_m
+                    if sm.any():
+                        _, (sy, sx) = nd.distance_transform_edt(~sm, return_indices=True)
+                        plate = side_rgb[sy, sx]
+                band_masks = (face_m, side, plate, 0)
             band_cfg = cut.get("band")
             if band_cfg and n not in band_cfg.get("skip", []):
                 # A plate logo (Gungeon): the letter's edge is the plate showing
@@ -1146,7 +1172,6 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
                 img = Image.fromarray(px)
         img.save(dest, optimize=True)
         written.append(dest)
-        written_names.append(n)
         print(f"  {dest.relative_to(ROOT)}  {img.width}x{img.height}")
 
     # The index: which config, game and style made each piece, so the title can
@@ -1155,7 +1180,7 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
     index_path = OUT_DIR / "index.json"
     index = json.loads(index_path.read_text()) if index_path.exists() else {}
     index = {k: v for k, v in index.items() if v.get("config") != cfg_path.name}
-    for n_, dest_ in zip(written_names, written):
+    for n_, dest_ in zip(names, written):
         _, _, variant_ = n_.partition(".")
         index[str(dest_.relative_to(OUT_DIR))] = {
             "game": cfg["game"],
@@ -1214,8 +1239,6 @@ def main() -> int:
     for c in sorted(Path(__file__).resolve().parent.joinpath("logo_letters").glob("*.json")):
         cfg = json.loads(c.read_text())
         for piece in cfg["pieces"]:
-            if piece in cfg.get("hold", []):
-                continue
             letter, _, variant = piece.partition(".")
             path = f"{letter}/{cfg['game']}" + (f"__{variant}" if variant else "") + ".png"
             if path in owners and owners[path] != (c.name, piece):
