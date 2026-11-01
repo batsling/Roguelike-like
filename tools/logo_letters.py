@@ -79,6 +79,10 @@ so Godot never imports the source), is JSON:
                   pixels of those colours inside the polygon, drawn OVER a
                   letter (a bow, its string, a shadow), rebuilt from the
                   letter's own clean pixels along their row or column
+    cut.drawn     {"reach", "own_grow", "min_bright", "above", "barrier": [ranges],
+                  "clip": {piece: [x0, y0, x1, y1]}} — a
+                  letter as drawn with all the shading touching its face (Tiny
+                  Rogues), stopping at other faces and the barrier colours
     hold          [piece, ...] — found (so a neighbour split from it stops where
                   it starts) but not written: another config cuts it
     box_fill      a fill spec measuring each piece's box (`body_*` in the
@@ -883,6 +887,42 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
                 d_other = np.min([D[o_] for o_ in names if o_ != n], 0) if len(names) > 1 else np.full((H, W), 1e9)
                 keep = f | ((a > 0) & ~background & (ds <= reach) & mine
                             & (d_other > cut["own_by_shadow"].get("outline", 6)) & ~fill)
+            if cut.get("drawn"):
+                # AS DRAWN, SHADING AND ALL (Tiny Rogues): the letter is its
+                # face and every bit of the logo's 3D shading that touches it,
+                # on either side and below, as the logo drew it. A perspective
+                # extrusion casts walls left on some letters and right on
+                # others, so no one sweep rebuilds them; and the shading between
+                # two letters belongs to both, the way the owner reads it.
+                # It stops at another letter's face (its yellow, orange, white
+                # or cream), at anything in `barrier` (the sword, staff, bow),
+                # at `reach` px from the face, and never rises above the face.
+                dr = cut["drawn"]
+                own = nd.binary_dilation(f, iterations=dr.get("own_grow", 12)) & (a > 200)
+                cand = (a > 200) & (A[..., :3].max(-1) >= dr.get("min_bright", 25))
+                bar = np.zeros((H, W), bool)
+                for rg in dr.get("barrier", []):
+                    hit = ((A[..., 0] >= rg[0]) & (A[..., 0] <= rg[1]) & (A[..., 1] >= rg[2])
+                           & (A[..., 1] <= rg[3]) & (A[..., 2] >= rg[4]) & (A[..., 2] <= rg[5]))
+                    if len(rg) == 10:
+                        bx = np.zeros((H, W), bool)
+                        bx[rg[7]:rg[9], rg[6]:rg[8]] = True
+                        hit &= bx
+                    bar |= hit
+                facelike = (A[..., 0] > 200) & (A[..., 1] > 60)
+                allowed = cand & ~bar & (~facelike | own) & (ds <= dr.get("reach", 75))
+                rows_ = np.nonzero(f.any(1))[0]
+                if rows_.size:
+                    allowed[:max(rows_.min() - dr.get("above", 0), 0)] = False
+                clip = dr.get("clip", {}).get(n)
+                if clip:
+                    # this letter's shading ends where its neighbour's own edge
+                    # begins (Tiny Rogues' E, at the S's cream edge)
+                    bx = np.zeros((H, W), bool)
+                    bx[clip[1]:clip[3], clip[0]:clip[2]] = True
+                    allowed &= bx
+                lab_d, _ = nd.label(allowed, structure=np.ones((3, 3)))
+                keep = np.isin(lab_d, np.unique(lab_d[f & allowed & (lab_d > 0)])) | f
             if shared:
                 # ...but never past it into the next letter's face (counters a
                 # letter encloses come back with whole_letter's hole filling)
@@ -1002,11 +1042,13 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
                 # pixel art: one even ring of the edge colour round the face,
                 # holes included (Loop Hero's black edge is broken by the disc)
                 po = cut["pixel_outline"]
+                # round the face, or round everything kept (a letter as drawn)
+                body_ = (keep | painted) if cut.get("drawn") else f
                 if po.get("round"):
                     # an even, round-cornered ring, as `extrude`'s outline
-                    ring = (nd.distance_transform_edt(~f) <= po.get("width", 1)) & ~f
+                    ring = (nd.distance_transform_edt(~body_) <= po.get("width", 1)) & ~body_
                 else:
-                    ring = nd.binary_dilation(f, structure=np.ones((3, 3)), iterations=po.get("width", 1)) & ~f
+                    ring = (nd.distance_transform_cdt(~body_, metric="chessboard") <= po.get("width", 1)) & ~body_
                 rgb[ring] = po["colour"]
                 al[ring] = 1
             if n in cut.get("hard_edge", []):

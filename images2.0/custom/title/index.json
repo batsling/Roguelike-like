@@ -1655,15 +1655,15 @@
   "game": "tiny_rogues",
   "config": "tiny_rogues.json",
   "style": "tiny_rogues",
-  "body_center": 0.4588,
-  "body_height": 0.7916,
-  "body_center_x": 0.4621,
-  "body_width": 0.731,
+  "body_center": 0.4549,
+  "body_height": 0.7323,
+  "body_center_x": 0.554,
+  "body_width": 0.6248,
   "src": [
-   0.63956,
-   0.43042,
-   0.82188,
-   0.8854
+   0.60562,
+   0.41542,
+   0.81894,
+   0.90723
   ],
   "form": "lower"
  },
@@ -1944,15 +1944,15 @@
   "game": "tiny_rogues",
   "config": "tiny_rogues.json",
   "style": "tiny_rogues",
-  "body_center": 0.4719,
-  "body_height": 0.8431,
-  "body_center_x": 0.4642,
-  "body_width": 0.7462,
+  "body_center": 0.4871,
+  "body_height": 0.8244,
+  "body_center_x": 0.5092,
+  "body_width": 0.5782,
   "src": [
-   0.33906,
-   0.43042,
-   0.53227,
-   1.0
+   0.30176,
+   0.41542,
+   0.55113,
+   0.99795
   ],
   "form": "lower"
  },
@@ -3048,15 +3048,15 @@
   "game": "tiny_rogues",
   "config": "tiny_rogues.json",
   "style": "tiny_rogues",
-  "body_center": 0.4588,
-  "body_height": 0.7916,
-  "body_center_x": 0.4633,
-  "body_width": 0.74,
+  "body_center": 0.4359,
+  "body_height": 0.7521,
+  "body_center_x": 0.4679,
+  "body_width": 0.5936,
   "src": [
-   0.45432,
+   0.43168,
    0.03206,
-   0.64292,
-   0.48704
+   0.66681,
+   0.51091
   ],
   "form": "lower"
  },
@@ -3257,15 +3257,15 @@
   "game": "tiny_rogues",
   "config": "tiny_rogues.json",
   "style": "tiny_rogues",
-  "body_center": 0.4588,
-  "body_height": 0.7919,
-  "body_center_x": 0.4621,
-  "body_width": 0.731,
+  "body_center": 0.455,
+  "body_height": 0.7327,
+  "body_center_x": 0.4982,
+  "body_width": 0.5638,
   "src": [
-   0.19321,
-   0.42974,
-   0.37552,
-   0.8854
+   0.15968,
+   0.41473,
+   0.39606,
+   0.90723
   ],
   "form": "lower"
  },
@@ -3756,15 +3756,15 @@
   "game": "tiny_rogues",
   "config": "tiny_rogues.json",
   "style": "tiny_rogues",
-  "body_center": 0.4676,
-  "body_height": 0.8361,
-  "body_center_x": 0.4696,
-  "body_width": 0.7845,
+  "body_center": 0.4589,
+  "body_height": 0.8206,
+  "body_center_x": 0.4267,
+  "body_width": 0.71,
   "src": [
-   0.00126,
+   0.00084,
    0.36835,
-   0.22883,
-   0.94679
+   0.25231,
+   0.95771
   ]
  },
  "r/uma_musume_pretty_derby.png": {
@@ -4410,15 +4410,15 @@
   "game": "tiny_rogues",
   "config": "tiny_rogues.json",
   "style": "tiny_rogues",
-  "body_center": 0.4588,
-  "body_height": 0.7919,
-  "body_center_x": 0.4654,
-  "body_width": 0.7547,
+  "body_center": 0.4474,
+  "body_height": 0.7723,
+  "body_center_x": 0.4414,
+  "body_width": 0.7157,
   "src": [
    0.20453,
    0.03206,
-   0.40444,
-   0.48772
+   0.41534,
+   0.49932
   ],
   "form": "lower"
  },
@@ -4585,15 +4585,15 @@
   "game": "tiny_rogues",
   "config": "tiny_rogues.json",
   "style": "tiny_rogues",
-  "body_center": 0.4588,
-  "body_height": 0.7916,
-  "body_center_x": 0.4632,
-  "body_width": 0.7388,
+  "body_center": 0.4781,
+  "body_height": 0.7697,
+  "body_center_x": 0.4932,
+  "body_width": 0.5658,
   "src": [
-   0.4891,
-   0.43042,
-   0.67687,
-   0.8854
+   0.45516,
+   0.41542,
+   0.70034,
+   0.88336
   ],
   "form": "lower"
  },
@@ -4931,15 +4931,15 @@
   "game": "tiny_rogues",
   "config": "tiny_rogues.json",
   "style": "tiny_rogues",
-  "body_center": 0.4588,
-  "body_height": 0.7919,
-  "body_center_x": 0.4648,
-  "body_width": 0.7505,
+  "body_center": 0.4474,
+  "body_height": 0.7723,
+  "body_center_x": 0.5365,
+  "body_width": 0.6943,
   "src": [
-   0.59053,
+   0.5679,
    0.03206,
-   0.78709,
-   0.48772
+   0.78039,
+   0.49932
   ],
   "form": "lower"
  },

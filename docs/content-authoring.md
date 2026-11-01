@@ -136,23 +136,20 @@ at the serifs where they touch, the sides never mattering. Tiny Rogues
 gives t n y, R o g u e S, the sword as its i (sized by the blade, the hilt over
 the line, `body`) and the crystal staff and bow as a decoration pair. Its source
 is the main title only, cropped out of the full "between Heaven & Hell" logo.
-The faces are cut and the 3D side rebuilt, now shaded by DIRECTION: walls swept
-from the side edges in maroon, floors from the bottom edges in navy
-(`colour_down`), and the whole letter ringed by its own black outline
-(`extrude`'s `outline`), since the logo's black was one shape round the block.
-That outline is SQUARE-cornered (`"square": true`, a chessboard distance): the
-owner wanted the original's pointy corners and stepped ridges, and a round
-outline smoothed every corner off. Square, the face's steps stay steps in the
-outline and only a diagonal side gets a diagonal edge, as the logo draws it.
-And the sides are drawn the logo's way, measured off it: walls shade top to
-bottom down the letter, maroon at the face's top edge to navy at its foot
-(`wall_gradient`), floors one flat navy. The stepped corners stay stepped,
-side and outline both: the owner wants the right-angle bumps
-(`square_corners`, which extrudes a stepped corner as if square, is in the
-script and deliberately not used here). A floor counts only where it runs 5px
-or more along the bottom, plus the face's
-one-pixel edge notches closed (`close_face`): a stray edge pixel was swept into
-a hairline across a wall.
+Every letter is cut AS DRAWN, shading and all (`cut.drawn`): its face and
+every bit of the logo's 3D shading touching it, on either side and below, the
+logo's own pixels. The logo is a PERSPECTIVE extrusion, so letters left of its
+middle show walls on their right and letters right of it on their left (the n,
+y, u and e); a rebuild that swept every face the same way blacked out the left
+walls, which is what the owner caught. The shading between two letters belongs
+to both, as the S's left strip does. It stops at another letter's face, at the
+sword, staff and bow (`barrier`), 90px from the face, and 22 rows above it; the
+E is clipped at the S's cream edge. Each letter is ringed by a square-cornered
+40px outline (`pixel_outline` round everything kept), so the logo's right-angle
+steps stay. Where the bow string crossed the E's wall its 45-degree top edge is
+drawn back row by row (`repaint` rects). The earlier rebuild's options
+(`extrude`'s `colour_down`, `outline`, `wall_gradient`, `square_corners`,
+`close_face`) stay in the script, unused here.
 The sword, staff and bow touch the letters' sides, so they are told apart by
 colour (`rgb_ranges`, each colour only in its own box: the browns with red
 under 215 are never a face, which is always red 255); the bow's string and limb
