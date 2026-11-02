@@ -1761,6 +1761,18 @@ func test_the_checklist_does_not_rebuild_when_the_board_only_moves() -> void:
 	# this test fails having watched the feature work. It failed on roughly one run
 	# in five on any tree for exactly that reason, since §7.6 shipped abilities.
 	_disarm_board()
+	# …AND NO STATUS ON A BODY, AND NO GROUND UNDER ONE. A status rides its row
+	# (alternatives_for / bonus_objectives_for are in the signature), and the lost
+	# turn can change one: Bleed wears a stack off when its body swings, and a body
+	# standing on a fire tile takes Burn at the start of the turn. log_attempt calls
+	# _refresh ITSELF, so the panel was rebuilt inside the lost run, the signature
+	# came back current and the boxes were new: the guard working, read as a
+	# failure, on the rare run whose board had either.
+	for entry in GameLoop2.stack:
+		entry["statuses"] = {}
+		entry["timed_statuses"] = []
+	GameLoop2.tiles.clear()
+	_ui._populate_play_panel()
 	# …AND NOTHING IS OWED FOR THE LOST RUN BELOW (§19.5). A failure at a game
 	# where nothing has gone down stands new bodies on the board, and a new body
 	# is a new ROW — correctly, and not what this test is about. The premise is a
@@ -1771,9 +1783,15 @@ func test_the_checklist_does_not_rebuild_when_the_board_only_moves() -> void:
 	var boxes: Array = []
 	for f in _ui._fulfil_checks:
 		boxes.append(f["check"])
+	var sig_before: String = _ui._checklist._play_panel_sig()
 	_ui.log_attempt()                     # a lost run: the board advances
-	assert_false(_ui._checklist.play_panel_stale(),
+	# Asked of the SIGNATURE, not play_panel_stale: log_attempt refreshes the page
+	# itself, so a change during the turn has already been rebuilt over and the
+	# stale flag is clean again by now. This names what changed if one ever does.
+	assert_eq(_ui._checklist._play_panel_sig(), sig_before,
 		"a body walking a column nearer says nothing new about the goals")
+	assert_false(_ui._checklist.play_panel_stale(),
+		"and the panel is current")
 	_ui._refresh()
 	var same := true
 	for i in range(mini(boxes.size(), _ui._fulfil_checks.size())):
@@ -9663,6 +9681,11 @@ func test_a_body_that_fell_off_the_board_sends_its_loot_to_the_haul_screen() -> 
 func test_beating_a_game_pays_a_chest_scaled_by_what_you_killed() -> void:
 	_pick_solo(0)
 	_ui._drop_queue.clear()
+	# ON A PLAIN GAME. Path rifts are dealt onto the start routes, and a rift game
+	# doubles the win's own point (claim_chests): 2 + 2 is a Huge chest of 5, the
+	# rule working, on the one run in a few whose first game was a rift.
+	if RunGraph.is_rift_game(GameState.current_game_id):
+		GameState.current_game_id = &""
 	GameLoop2.chest_points = 2      # one Medium body's worth
 	GameLoop2.boss_chests.clear()
 	_ui._queue_report_chests(true)

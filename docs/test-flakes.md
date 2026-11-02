@@ -19,6 +19,24 @@ failure; diffing a passing and failing run's Control tree) are the reusable part
 - **The varying failures that used to live here are FIXED.** All were
   assertions that were only *usually* true, and they are worth reading before
   blaming a seed for a new one.
+  - `test_overworld2.gd::test_beating_a_game_pays_a_chest_scaled_by_what_you_killed`
+    (2 Nov 2026) got a Huge chest of 5 instead of a Large of 3, on CI's push run
+    of a commit whose pull-request run passed. Path rifts are dealt onto the
+    start routes (docs/rifts-design.md), and a rift game doubles the win's own
+    point in `GameLoop2.claim_chests`, so `_pick_solo(0)` on a rift made 2 + 2.
+    Forcing `current_game_id` onto one of `RunGraph._rift_games` reproduced the
+    5 every time. The test now stands on a plain game.
+  - `test_overworld2.gd::test_the_checklist_does_not_rebuild_when_the_board_only_moves`
+    (same run) saw new boxes after a lost run, with the panel's stale flag clean.
+    `log_attempt` calls `_refresh` itself, so anything the turn changed in the
+    play panel's signature was rebuilt inside the turn and the flag was current
+    again by the time the test asked. The test already disarmed abilities; the
+    two left were statuses on a row (`alternatives_for`, `bonus_objectives_for`):
+    Bleed wears a stack when its body swings, and a body on a fire tile takes
+    Burn at the start of every turn. A fire tile under each body reproduced the
+    CI failure exactly. The test now clears body statuses and tiles, and
+    compares the signature before and after, so a new cause names itself
+    (`/burn:1` was what the probe printed).
   - `test_title_letters.gd`'s portal and vortex tests (31 Oct 2026) passed or
     failed with the machine's speed. They waited `wait_frames(3)`, which GUT
     counts in `_physics_process`, but the portal only fits itself in `_process`
