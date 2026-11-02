@@ -26,6 +26,15 @@ failure; diffing a passing and failing run's Control tree) are the reusable part
     point in `GameLoop2.claim_chests`, so `_pick_solo(0)` on a rift made 2 + 2.
     Forcing `current_game_id` onto one of `RunGraph._rift_games` reproduced the
     5 every time. The test now stands on a plain game.
+  - `test_overworld2.gd::test_report_goal_met_defeats_and_drops` (2 Nov 2026)
+    counted 3 bodies where the escort plus the road's `end_spawns` made 2. The
+    road's end-of-game spawn is a spawn event, and on a multiple of the tier it
+    is the CAPSTONE: a boss on top, not counted in `end_spawns`. Setting
+    `spawn_events` one short of the band reproduced it whenever the road stood
+    anything up. The curse tests had already met this (`_arrange_a_plain_curse_game`
+    restarts the band); this test, `test_beating_the_game_clears_nothing_by_itself`
+    and `test_the_report_does_not_hit_a_body_twice_for_one_goal` subtracted
+    `end_spawns` without it, and all three now restart the band too.
   - `test_overworld2.gd::test_the_checklist_does_not_rebuild_when_the_board_only_moves`
     (same run) saw new boxes after a lost run, with the panel's stale flag clean.
     `log_attempt` calls `_refresh` itself, so anything the turn changed in the

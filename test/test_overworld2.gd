@@ -379,6 +379,11 @@ func test_report_goal_met_defeats_and_drops() -> void:
 	_disarm_board()
 	# A BOSS pays a chest of its own on top of the win's (GameLoop2.claim_chests),
 	# and the random offering sometimes stands one: read which it is up front.
+	# THE BAND RESTARTS, so the end-of-game spawn cannot be the every-third
+	# CAPSTONE (§19.6): that boss lands on top of the road's bodies and is not
+	# counted in `end_spawns`, so it read as one body too many (as in
+	# _arrange_a_plain_curse_game, below).
+	GameState.spawn_events = 0
 	var landed: Dictionary = GameLoop2.arrival()
 	var boss: bool = not landed.is_empty() and (landed["enemy"] as GoalEnemyData).is_boss()
 	Page.report_beat(_ui)              # met -> defeat + a drop to be asked about
@@ -1914,6 +1919,11 @@ func test_beating_the_game_clears_nothing_by_itself() -> void:
 	# Disarmed for the reason above: a spawner adds a body during the report, and
 	# "none of them was ticked" is a claim about ticking, not about spawning.
 	_disarm_board()
+	# THE BAND RESTARTS, so the end-of-game spawn cannot be the every-third
+	# CAPSTONE (§19.6): that boss lands on top of the road's bodies and is not
+	# counted in `end_spawns`, so it read as one body too many (as in
+	# _arrange_a_plain_curse_game, below).
+	GameState.spawn_events = 0
 	var before: int = GameLoop2.stack.size()
 	assert_gt(before, 0, "something walked on")
 	Fixtures.shut_failure_tap()
@@ -9811,6 +9821,11 @@ func test_a_curse_row_arms_rather_than_confirming() -> void:
 
 func test_the_report_does_not_hit_a_body_twice_for_one_goal() -> void:
 	_pick_solo(0)
+	# THE BAND RESTARTS, so the end-of-game spawn cannot be the every-third
+	# CAPSTONE (§19.6): that boss lands on top of the road's bodies and is not
+	# counted in `end_spawns`, so it read as one body too many (as in
+	# _arrange_a_plain_curse_game, below).
+	GameState.spawn_events = 0
 	if _ui._fulfil_checks.is_empty():
 		pending("the offering rolled a game with no goal rows on it")
 		return
