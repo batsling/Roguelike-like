@@ -217,7 +217,9 @@ with `pixel_grid` (which counts a see-through block as background, since this
 logo's transparent pixels are black RGB) and cut sharp at 12x. Letters side by
 side share one outline in the logo, so each is cut by its white face alone and
 given its own whole one-pixel black ring (`pixel_outline`); the second L, a and
-d are exact repeats and left out. Don't Starve gives D o n ' t S t a r v e
+d are exact repeats and left out. Its letters are measured with that ring
+(`box_whole`): measured by the face alone, the ring sat outside the box, a
+third of a six-pixel letter, and every one came out a third too big. Don't Starve gives D o n ' t S t a r v e
 (the second t as `__2`, the apostrophe as `apostrophe/`): scratchy white strokes
 that run into each other through their black edges and grey shadow, so each
 letter is found by its white (`min_brightness` 200) and cut as drawn with what

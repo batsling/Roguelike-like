@@ -13,6 +13,7 @@
   },
   "lowercase": ["u", "c", "k", "b", "e", "a", "n", "d", "l.2", "o", "r"],
   "fill": {"colours": [[255, 255, 255]], "tolerance": 6},
+  "box_whole": true,
   "adopt_strays": false,
   "smooth": false,
   "shadow": false,

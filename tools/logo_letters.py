@@ -87,6 +87,8 @@ so Godot never imports the source), is JSON:
                   Rogues), stopping at other faces and the barrier colours
     hold          [piece, ...] — found (so a neighbour split from it stops where
                   it starts) but not written: another config cuts it
+    box_whole     true: each piece's box is everything it draws (its face and
+                  its own outline), not the face alone (Luck be a Landlord)
     box_fill      a fill spec measuring each piece's box (`body_*` in the
                   index) instead of the fill itself, for a piece cut with more
                   than its face (Tiny Rogues' S, sides and all)
@@ -1592,6 +1594,12 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
         # changes its size; `body` rows in the config override the height for
         # a piece with something attached (an eye stalk, a knife, slime).
         face_only = pieces[n] & (out[..., 3] > 0)
+        if cfg.get("box_whole"):
+            # the letter IS its face and its own drawn outline (Luck be a
+            # Landlord's one-pixel ring, a third of a six-pixel letter):
+            # measured by the face alone, the ring sat outside the box, so
+            # every letter came out a third too tall and overran its slot
+            face_only = out[..., 3] > 127
         if "box_fill" in cfg:
             # a piece cut with more than its face (Tiny Rogues' S, as drawn,
             # sides and all) is still measured by its face

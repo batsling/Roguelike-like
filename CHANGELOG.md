@@ -11,6 +11,12 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Luck be a Landlord's letters the right size.** Each was measured by its
+  white face alone, so the one-pixel outline round it, a third of a six-pixel
+  letter, sat outside its box: every letter came out a third too tall and
+  overran its slot. A new config option, `box_whole`, measures a piece by
+  everything it draws, outline included.
+
 - **Rogue's letters smaller and further apart.** Drawn 0.86 of the line (was
   0.94; the lowercase k 0.79, was 0.86) and padded 0.09 either side (was
   0.03). Their black edge sits outside the box a letter is spaced by, 0.1 of
