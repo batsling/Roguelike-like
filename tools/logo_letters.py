@@ -49,7 +49,8 @@ so Godot never imports the source), is JSON:
                   for a piece with something attached (an eye stalk, a knife,
                   slime); its width is then measured over those rows only, so
                   a stalk off to one side cannot pull the letter's middle with
-                  it. Otherwise the letter's box is measured from its face
+                  it. [y_top, y_bottom, x_left, x_right] bounds the columns
+                  too (a loose speck beside the letter, 868-BACK). Otherwise the letter's box is measured from its face
                   (fill), so glow, shadow and outline never shift it. The index
                   records it as body_center / body_height (vertical) and
                   body_center_x / body_width (horizontal), fractions of the PNG
@@ -86,6 +87,8 @@ so Godot never imports the source), is JSON:
                   Rogues), stopping at other faces and the barrier colours
     hold          [piece, ...] — found (so a neighbour split from it stops where
                   it starts) but not written: another config cuts it
+    box_whole     true: each piece's box is everything it draws (its face and
+                  its own outline), not the face alone (Luck be a Landlord)
     box_fill      a fill spec measuring each piece's box (`body_*` in the
                   index) instead of the fill itself, for a piece cut with more
                   than its face (Tiny Rogues' S, sides and all)
@@ -728,7 +731,10 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
                 blk = A[int(cy - 3):int(cy + 4), int(cx - 3):int(cx + 4), :3].reshape(-1, 3)
                 col = np.median(blk, 0)
                 d_ = np.abs(pal - col).max(-1)
-                if d_.min() <= pg.get("tolerance", 24):
+                # a see-through block is background whatever its colour
+                # (Luck be a Landlord's transparent pixels are black RGB)
+                see_through = np.median(A[int(cy - 3):int(cy + 4), int(cx - 3):int(cx + 4), 3]) < 128
+                if d_.min() <= pg.get("tolerance", 24) and not see_through:
                     small[r_, c_, :3] = pal[d_.argmin()]
                     small[r_, c_, 3] = 255
                 samp[r_, c_] = col
@@ -1588,6 +1594,12 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
         # changes its size; `body` rows in the config override the height for
         # a piece with something attached (an eye stalk, a knife, slime).
         face_only = pieces[n] & (out[..., 3] > 0)
+        if cfg.get("box_whole"):
+            # the letter IS its face and its own drawn outline (Luck be a
+            # Landlord's one-pixel ring, a third of a six-pixel letter):
+            # measured by the face alone, the ring sat outside the box, so
+            # every letter came out a third too tall and overran its slot
+            face_only = out[..., 3] > 127
         if "box_fill" in cfg:
             # a piece cut with more than its face (Tiny Rogues' S, as drawn,
             # sides and all) is still measured by its face
@@ -1600,8 +1612,12 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
         if bd:
             # and its width from those rows only, so a stalk or a drip off
             # to one side cannot pull the letter's middle with it
-            by0, by1 = bd
+            by0, by1 = bd[:2]
             rows = (fy >= by0) & (fy < by1)
+            if len(bd) == 4:
+                # [y0, y1, x0, x1]: its columns too, so a glitch speck
+                # beside the letter (868-BACK) is not its edge
+                rows &= (fx >= bd[2]) & (fx < bd[3])
             if rows.any():
                 fx = fx[rows]
         bx0, bx1 = fx.min(), fx.max() + 1

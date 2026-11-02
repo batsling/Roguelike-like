@@ -23,8 +23,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
-  "size": 0.94,
-  "pad": 0.03
+  "size": 0.86,
+  "pad": 0.09
  },
  "1/rogue.png": {
   "game": "rogue",
@@ -35,8 +35,8 @@
   "body_center_x": 0.5,
   "body_width": 0.6,
   "pixel": true,
-  "size": 0.94,
-  "pad": 0.03
+  "size": 0.86,
+  "pad": 0.09
  },
  "2/20_minutes_till_dawn.png": {
   "game": "20_minutes_till_dawn",
@@ -77,8 +77,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
-  "size": 0.94,
-  "pad": 0.03
+  "size": 0.86,
+  "pad": 0.09
  },
  "2/slay_the_spire_2.png": {
   "game": "slay_the_spire_2",
@@ -104,8 +104,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
-  "size": 0.94,
-  "pad": 0.03
+  "size": 0.86,
+  "pad": 0.09
  },
  "4/rogue.png": {
   "game": "rogue",
@@ -116,8 +116,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
-  "size": 0.94,
-  "pad": 0.03
+  "size": 0.86,
+  "pad": 0.09
  },
  "5/rogue.png": {
   "game": "rogue",
@@ -128,8 +128,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
-  "size": 0.94,
-  "pad": 0.03
+  "size": 0.86,
+  "pad": 0.09
  },
  "6/rogue.png": {
   "game": "rogue",
@@ -140,8 +140,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
-  "size": 0.94,
-  "pad": 0.03
+  "size": 0.86,
+  "pad": 0.09
  },
  "7/rogue.png": {
   "game": "rogue",
@@ -152,8 +152,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
-  "size": 0.94,
-  "pad": 0.03
+  "size": 0.86,
+  "pad": 0.09
  },
  "8/rogue.png": {
   "game": "rogue",
@@ -164,8 +164,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
-  "size": 0.94,
-  "pad": 0.03
+  "size": 0.86,
+  "pad": 0.09
  },
  "9/rogue.png": {
   "game": "rogue",
@@ -176,8 +176,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
-  "size": 0.94,
-  "pad": 0.03
+  "size": 0.86,
+  "pad": 0.09
  },
  "a/20_minutes_till_dawn.png": {
   "game": "20_minutes_till_dawn",
@@ -210,6 +210,21 @@
   ],
   "size": 1.05,
   "drop": 0.05
+ },
+ "a/ball_x_pit.png": {
+  "game": "ball_x_pit",
+  "config": "ball_x_pit.json",
+  "style": "ball_x_pit",
+  "body_center": 0.501,
+  "body_height": 0.9899,
+  "body_center_x": 0.5,
+  "body_width": 0.976,
+  "src": [
+   0.16798,
+   0.22651,
+   0.28399,
+   0.861
+  ]
  },
  "a/caves_of_qud.png": {
   "game": "caves_of_qud",
@@ -288,6 +303,38 @@
    1.01311
   ]
  },
+ "a/don_t_starve.png": {
+  "game": "don_t_starve",
+  "config": "don_t_starve.json",
+  "style": "don_t_starve",
+  "body_center": 0.4864,
+  "body_height": 0.9402,
+  "body_center_x": 0.475,
+  "body_width": 0.8167,
+  "src": [
+   0.64815,
+   0.26861,
+   0.74916,
+   0.86408
+  ],
+  "form": "lower"
+ },
+ "a/dungeon_crawl_stone_soup.png": {
+  "game": "dungeon_crawl_stone_soup",
+  "config": "dungeon_crawl_stone_soup.json",
+  "style": "dungeon_crawl_stone_soup",
+  "body_center": 0.4857,
+  "body_height": 0.6857,
+  "body_center_x": 0.5152,
+  "body_width": 0.6667,
+  "src": [
+   0.77919,
+   0.13158,
+   0.86294,
+   0.59211
+  ],
+  "form": "lower"
+ },
  "a/dwarf_fortress.png": {
   "game": "dwarf_fortress",
   "config": "dwarf_fortress.json",
@@ -349,6 +396,36 @@
    0.77565
   ]
  },
+ "a/hand_of_fate.png": {
+  "game": "hand_of_fate",
+  "config": "hand_of_fate.json",
+  "style": "hand_of_fate",
+  "body_center": 0.5055,
+  "body_height": 0.5912,
+  "body_center_x": 0.4731,
+  "body_width": 0.5769,
+  "src": [
+   0.23294,
+   -0.02278,
+   0.53882,
+   0.43544
+  ]
+ },
+ "a/hand_of_fate__2.png": {
+  "game": "hand_of_fate",
+  "config": "hand_of_fate.json",
+  "style": "hand_of_fate",
+  "body_center": 0.5234,
+  "body_height": 0.6257,
+  "body_center_x": 0.5035,
+  "body_width": 0.5208,
+  "src": [
+   0.22353,
+   0.58734,
+   0.56235,
+   1.02025
+  ]
+ },
  "a/haste.png": {
   "game": "haste",
   "config": "haste.json",
@@ -378,6 +455,22 @@
    0.68874,
    0.97115
   ]
+ },
+ "a/luck_be_a_landlord.png": {
+  "game": "luck_be_a_landlord",
+  "config": "luck_be_a_landlord.json",
+  "style": "luck_be_a_landlord",
+  "body_center": 0.5,
+  "body_height": 0.6364,
+  "body_center_x": 0.6,
+  "body_width": 0.8,
+  "src": [
+   0.83051,
+   -0.05263,
+   1.0,
+   0.52632
+  ],
+  "form": "lower"
  },
  "a/noita.png": {
   "game": "noita",
@@ -410,6 +503,21 @@
    0.51176
   ]
  },
+ "a/returnal.png": {
+  "game": "returnal",
+  "config": "returnal.json",
+  "style": "returnal",
+  "body_center": 0.5047,
+  "body_height": 0.3323,
+  "body_center_x": 0.5247,
+  "body_width": 0.6726,
+  "src": [
+   0.69506,
+   0.06345,
+   0.85469,
+   0.8731
+  ]
+ },
  "a/risk_of_rain_2.png": {
   "game": "risk_of_rain_2",
   "config": "risk_of_rain_2.json",
@@ -434,8 +542,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
-  "size": 0.94,
-  "pad": 0.03,
+  "size": 0.86,
+  "pad": 0.09,
   "case": "upper"
  },
  "a/rogue__lower.png": {
@@ -447,8 +555,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
-  "size": 0.94,
-  "pad": 0.03,
+  "size": 0.86,
+  "pad": 0.09,
   "case": "lower"
  },
  "a/slay_the_spire.png": {
@@ -543,6 +651,22 @@
    0.66603
   ]
  },
+ "a/the_royal_writ.png": {
+  "game": "the_royal_writ",
+  "config": "the_royal_writ.json",
+  "style": "the_royal_writ",
+  "body_center": 0.5,
+  "body_height": 0.9827,
+  "body_center_x": 0.498,
+  "body_width": 0.9719,
+  "src": [
+   0.80531,
+   0.10152,
+   0.92993,
+   0.47082
+  ],
+  "form": "lower"
+ },
  "a/uma_musume_pretty_derby.png": {
   "game": "uma_musume_pretty_derby",
   "config": "uma_musume_pretty_derby.json",
@@ -573,6 +697,21 @@
    0.42411
   ]
  },
+ "a/wizard_of_legend.png": {
+  "game": "wizard_of_legend",
+  "config": "wizard_of_legend.json",
+  "style": "wizard_of_legend",
+  "body_center": 0.5,
+  "body_height": 0.8356,
+  "body_center_x": 0.5,
+  "body_width": 0.8333,
+  "src": [
+   0.22875,
+   0.31544,
+   0.31875,
+   0.80537
+  ]
+ },
  "ampersand/rogue.png": {
   "game": "rogue",
   "config": "rogue_letters.py",
@@ -582,8 +721,23 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
-  "size": 0.94,
-  "pad": 0.03
+  "size": 0.86,
+  "pad": 0.09
+ },
+ "apostrophe/don_t_starve.png": {
+  "game": "don_t_starve",
+  "config": "don_t_starve.json",
+  "style": "don_t_starve",
+  "body_center": 0.4457,
+  "body_height": 0.7609,
+  "body_center_x": 0.4423,
+  "body_width": 0.5769,
+  "src": [
+   0.34512,
+   0.08738,
+   0.38889,
+   0.23625
+  ]
  },
  "apostrophe/rogue.png": {
   "game": "rogue",
@@ -594,8 +748,8 @@
   "body_center_x": 0.35,
   "body_width": 0.3,
   "pixel": true,
-  "size": 0.94,
-  "pad": 0.03
+  "size": 0.86,
+  "pad": 0.09
  },
  "asterisk/rogue.png": {
   "game": "rogue",
@@ -606,8 +760,8 @@
   "body_center_x": 0.5,
   "body_width": 0.8,
   "pixel": true,
-  "size": 0.94,
-  "pad": 0.03
+  "size": 0.86,
+  "pad": 0.09
  },
  "at/rogue.png": {
   "game": "rogue",
@@ -618,8 +772,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
-  "size": 0.94,
-  "pad": 0.03
+  "size": 0.86,
+  "pad": 0.09
  },
  "b/balatro.png": {
   "game": "balatro",
@@ -636,6 +790,21 @@
    0.93971
   ],
   "size": 1.05
+ },
+ "b/ball_x_pit.png": {
+  "game": "ball_x_pit",
+  "config": "ball_x_pit.json",
+  "style": "ball_x_pit",
+  "body_center": 0.501,
+  "body_height": 0.9899,
+  "body_center_x": 0.4985,
+  "body_width": 0.9789,
+  "src": [
+   -0.00093,
+   0.22651,
+   0.15267,
+   0.861
+  ]
  },
  "b/diablo.png": {
   "game": "diablo",
@@ -698,6 +867,22 @@
    1.0
   ]
  },
+ "b/luck_be_a_landlord.png": {
+  "game": "luck_be_a_landlord",
+  "config": "luck_be_a_landlord.json",
+  "style": "luck_be_a_landlord",
+  "body_center": 0.5,
+  "body_height": 0.6667,
+  "body_center_x": 0.5,
+  "body_width": 0.6667,
+  "src": [
+   0.50847,
+   -0.10526,
+   0.71186,
+   0.52632
+  ],
+  "form": "lower"
+ },
  "b/rogue.png": {
   "game": "rogue",
   "config": "rogue_letters.py",
@@ -707,8 +892,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
-  "size": 0.94,
-  "pad": 0.03,
+  "size": 0.86,
+  "pad": 0.09,
   "case": "upper"
  },
  "b/rogue__lower.png": {
@@ -720,8 +905,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
-  "size": 0.94,
-  "pad": 0.03,
+  "size": 0.86,
+  "pad": 0.09,
   "case": "lower"
  },
  "b/the_binding_of_isaac.png": {
@@ -763,8 +948,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
-  "size": 0.94,
-  "pad": 0.03
+  "size": 0.86,
+  "pad": 0.09
  },
  "backtick/rogue.png": {
   "game": "rogue",
@@ -775,8 +960,8 @@
   "body_center_x": 0.45,
   "body_width": 0.3,
   "pixel": true,
-  "size": 0.94,
-  "pad": 0.03
+  "size": 0.86,
+  "pad": 0.09
  },
  "bar/rogue.png": {
   "game": "rogue",
@@ -787,8 +972,8 @@
   "body_center_x": 0.5,
   "body_width": 0.2,
   "pixel": true,
-  "size": 0.94,
-  "pad": 0.03
+  "size": 0.86,
+  "pad": 0.09
  },
  "brace_left/rogue.png": {
   "game": "rogue",
@@ -799,8 +984,8 @@
   "body_center_x": 0.5,
   "body_width": 0.6,
   "pixel": true,
-  "size": 0.94,
-  "pad": 0.03
+  "size": 0.86,
+  "pad": 0.09
  },
  "brace_right/rogue.png": {
   "game": "rogue",
@@ -811,8 +996,8 @@
   "body_center_x": 0.5,
   "body_width": 0.6,
   "pixel": true,
-  "size": 0.94,
-  "pad": 0.03
+  "size": 0.86,
+  "pad": 0.09
  },
  "bracket_left/rogue.png": {
   "game": "rogue",
@@ -823,8 +1008,8 @@
   "body_center_x": 0.5,
   "body_width": 0.4,
   "pixel": true,
-  "size": 0.94,
-  "pad": 0.03
+  "size": 0.86,
+  "pad": 0.09
  },
  "bracket_right/rogue.png": {
   "game": "rogue",
@@ -835,8 +1020,8 @@
   "body_center_x": 0.5,
   "body_width": 0.4,
   "pixel": true,
-  "size": 0.94,
-  "pad": 0.03
+  "size": 0.86,
+  "pad": 0.09
  },
  "c/caves_of_qud.png": {
   "game": "caves_of_qud",
@@ -884,6 +1069,21 @@
    0.41667
   ]
  },
+ "c/dungeon_crawl_stone_soup.png": {
+  "game": "dungeon_crawl_stone_soup",
+  "config": "dungeon_crawl_stone_soup.json",
+  "style": "dungeon_crawl_stone_soup",
+  "body_center": 0.5,
+  "body_height": 0.7778,
+  "body_center_x": 0.5,
+  "body_width": 0.7273,
+  "src": [
+   0.63959,
+   -0.01316,
+   0.75127,
+   0.57895
+  ]
+ },
  "c/everything_is_crab.png": {
   "game": "everything_is_crab",
   "config": "everything_is_crab.json",
@@ -913,6 +1113,22 @@
    0.84768,
    0.97115
   ]
+ },
+ "c/luck_be_a_landlord.png": {
+  "game": "luck_be_a_landlord",
+  "config": "luck_be_a_landlord.json",
+  "style": "luck_be_a_landlord",
+  "body_center": 0.5,
+  "body_height": 0.6364,
+  "body_center_x": 0.5,
+  "body_width": 0.6364,
+  "src": [
+   0.18644,
+   -0.05263,
+   0.37288,
+   0.52632
+  ],
+  "form": "lower"
  },
  "c/mewgenics.png": {
   "game": "mewgenics",
@@ -953,8 +1169,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
-  "size": 0.94,
-  "pad": 0.03,
+  "size": 0.86,
+  "pad": 0.09,
   "case": "upper"
  },
  "c/rogue__lower.png": {
@@ -966,8 +1182,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
-  "size": 0.94,
-  "pad": 0.03,
+  "size": 0.86,
+  "pad": 0.09,
   "case": "lower"
  },
  "c/the_binding_of_isaac.png": {
@@ -1009,8 +1225,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
-  "size": 0.94,
-  "pad": 0.03
+  "size": 0.86,
+  "pad": 0.09
  },
  "colon/rogue.png": {
   "game": "rogue",
@@ -1021,8 +1237,8 @@
   "body_center_x": 0.5,
   "body_width": 0.2,
   "pixel": true,
-  "size": 0.94,
-  "pad": 0.03
+  "size": 0.86,
+  "pad": 0.09
  },
  "comma/rogue.png": {
   "game": "rogue",
@@ -1033,8 +1249,8 @@
   "body_center_x": 0.45,
   "body_width": 0.3,
   "pixel": true,
-  "size": 0.94,
-  "pad": 0.03
+  "size": 0.86,
+  "pad": 0.09
  },
  "d/20_minutes_till_dawn.png": {
   "game": "20_minutes_till_dawn",
@@ -1158,6 +1374,36 @@
    1.02623
   ]
  },
+ "d/don_t_starve.png": {
+  "game": "don_t_starve",
+  "config": "don_t_starve.json",
+  "style": "don_t_starve",
+  "body_center": 0.4907,
+  "body_height": 0.959,
+  "body_center_x": 0.4722,
+  "body_width": 0.9259,
+  "src": [
+   0.0,
+   0.07767,
+   0.18182,
+   0.94498
+  ]
+ },
+ "d/dungeon_crawl_stone_soup.png": {
+  "game": "dungeon_crawl_stone_soup",
+  "config": "dungeon_crawl_stone_soup.json",
+  "style": "dungeon_crawl_stone_soup",
+  "body_center": 0.5,
+  "body_height": 0.7674,
+  "body_center_x": 0.4896,
+  "body_width": 0.7708,
+  "src": [
+   -0.00254,
+   -0.01316,
+   0.11929,
+   0.55263
+  ]
+ },
  "d/dwarf_fortress.png": {
   "game": "dwarf_fortress",
   "config": "dwarf_fortress.json",
@@ -1203,6 +1449,37 @@
    0.69819
   ]
  },
+ "d/hand_of_fate.png": {
+  "game": "hand_of_fate",
+  "config": "hand_of_fate.json",
+  "style": "hand_of_fate",
+  "body_center": 0.4752,
+  "body_height": 0.6441,
+  "body_center_x": 0.453,
+  "body_width": 0.5746,
+  "src": [
+   0.61882,
+   -0.02785,
+   1.04471,
+   0.53418
+  ]
+ },
+ "d/luck_be_a_landlord.png": {
+  "game": "luck_be_a_landlord",
+  "config": "luck_be_a_landlord.json",
+  "style": "luck_be_a_landlord",
+  "body_center": 0.5,
+  "body_height": 0.6667,
+  "body_center_x": 0.5,
+  "body_width": 0.6667,
+  "src": [
+   0.35593,
+   0.47368,
+   0.55932,
+   1.10526
+  ],
+  "form": "lower"
+ },
  "d/rogue.png": {
   "game": "rogue",
   "config": "rogue_letters.py",
@@ -1212,8 +1489,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
-  "size": 0.94,
-  "pad": 0.03,
+  "size": 0.86,
+  "pad": 0.09,
   "case": "upper"
  },
  "d/rogue__lower.png": {
@@ -1225,8 +1502,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
-  "size": 0.94,
-  "pad": 0.03,
+  "size": 0.86,
+  "pad": 0.09,
   "case": "lower"
  },
  "d/rounds.png": {
@@ -1289,6 +1566,36 @@
    1.04734
   ]
  },
+ "d/wizard_of_legend.png": {
+  "game": "wizard_of_legend",
+  "config": "wizard_of_legend.json",
+  "style": "wizard_of_legend",
+  "body_center": 0.5,
+  "body_height": 0.8611,
+  "body_center_x": 0.5,
+  "body_width": 0.8529,
+  "src": [
+   0.39125,
+   0.32215,
+   0.47625,
+   0.80537
+  ]
+ },
+ "d/wizard_of_legend__2.png": {
+  "game": "wizard_of_legend",
+  "config": "wizard_of_legend.json",
+  "style": "wizard_of_legend",
+  "body_center": 0.694,
+  "body_height": 0.5431,
+  "body_center_x": 0.5122,
+  "body_width": 0.7073,
+  "src": [
+   0.8975,
+   0.02685,
+   1.0,
+   0.80537
+  ]
+ },
  "dash/dead_cells.png": {
   "game": "dead_cells",
   "config": "dead_cells.json",
@@ -1306,6 +1613,21 @@
   "size": 1.0,
   "pad": 0.08
  },
+ "dash/dungeon_crawl_stone_soup.png": {
+  "game": "dungeon_crawl_stone_soup",
+  "config": "dungeon_crawl_stone_soup_3.json",
+  "style": "dungeon_crawl_stone_soup_3",
+  "body_center": 0.5,
+  "body_height": 0.907,
+  "body_center_x": 0.5,
+  "body_width": 0.913,
+  "src": [
+   0.53299,
+   0.0,
+   0.64975,
+   0.56579
+  ]
+ },
  "dash/rogue.png": {
   "game": "rogue",
   "config": "rogue_letters.py",
@@ -1315,8 +1637,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
-  "size": 0.94,
-  "pad": 0.03
+  "size": 0.86,
+  "pad": 0.09
  },
  "decor_left/darkest_dungeon.png": {
   "game": "darkest_dungeon",
@@ -1454,8 +1776,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
-  "size": 0.94,
-  "pad": 0.03
+  "size": 0.86,
+  "pad": 0.09
  },
  "e/20_minutes_till_dawn.png": {
   "game": "20_minutes_till_dawn",
@@ -1565,6 +1887,54 @@
    0.29531,
    0.42949
   ]
+ },
+ "e/don_t_starve.png": {
+  "game": "don_t_starve",
+  "config": "don_t_starve.json",
+  "style": "don_t_starve",
+  "body_center": 0.4944,
+  "body_height": 0.9665,
+  "body_center_x": 0.4868,
+  "body_width": 0.8947,
+  "src": [
+   0.87205,
+   0.12945,
+   1.0,
+   1.0
+  ],
+  "form": "lower"
+ },
+ "e/dungeon_crawl_stone_soup.png": {
+  "game": "dungeon_crawl_stone_soup",
+  "config": "dungeon_crawl_stone_soup.json",
+  "style": "dungeon_crawl_stone_soup",
+  "body_center": 0.5143,
+  "body_height": 0.6857,
+  "body_center_x": 0.4844,
+  "body_width": 0.6562,
+  "src": [
+   0.32234,
+   0.10526,
+   0.40355,
+   0.56579
+  ],
+  "form": "lower"
+ },
+ "e/dungeon_crawl_stone_soup__2.png": {
+  "game": "dungeon_crawl_stone_soup",
+  "config": "dungeon_crawl_stone_soup_2.json",
+  "style": "dungeon_crawl_stone_soup_2",
+  "body_center": 0.5,
+  "body_height": 0.7143,
+  "body_center_x": 0.5,
+  "body_width": 0.6842,
+  "src": [
+   0.68274,
+   0.64474,
+   0.73096,
+   0.92105
+  ],
+  "form": "lower"
  },
  "e/dwarf_fortress.png": {
   "game": "dwarf_fortress",
@@ -1702,6 +2072,21 @@
    0.71127
   ]
  },
+ "e/hand_of_fate.png": {
+  "game": "hand_of_fate",
+  "config": "hand_of_fate.json",
+  "style": "hand_of_fate",
+  "body_center": 0.537,
+  "body_height": 0.6667,
+  "body_center_x": 0.4937,
+  "body_width": 0.5443,
+  "src": [
+   0.63765,
+   0.47595,
+   1.00941,
+   1.02278
+  ]
+ },
  "e/haste.png": {
   "game": "haste",
   "config": "haste.json",
@@ -1761,6 +2146,22 @@
    0.50785,
    0.73298
   ]
+ },
+ "e/luck_be_a_landlord.png": {
+  "game": "luck_be_a_landlord",
+  "config": "luck_be_a_landlord.json",
+  "style": "luck_be_a_landlord",
+  "body_center": 0.5,
+  "body_height": 0.6364,
+  "body_center_x": 0.5,
+  "body_width": 0.6364,
+  "src": [
+   0.62712,
+   -0.05263,
+   0.81356,
+   0.52632
+  ],
+  "form": "lower"
  },
  "e/mewgenics.png": {
   "game": "mewgenics",
@@ -1822,6 +2223,21 @@
    0.92059
   ]
  },
+ "e/returnal.png": {
+  "game": "returnal",
+  "config": "returnal.json",
+  "style": "returnal",
+  "body_center": 0.4595,
+  "body_height": 0.3649,
+  "body_center_x": 0.482,
+  "body_width": 0.5856,
+  "src": [
+   0.16178,
+   0.1269,
+   0.32069,
+   0.87817
+  ]
+ },
  "e/rogue.png": {
   "game": "rogue",
   "config": "rogue_letters.py",
@@ -1831,8 +2247,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
-  "size": 0.94,
-  "pad": 0.03,
+  "size": 0.86,
+  "pad": 0.09,
   "case": "upper"
  },
  "e/rogue__lower.png": {
@@ -1844,8 +2260,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
-  "size": 0.94,
-  "pad": 0.03,
+  "size": 0.86,
+  "pad": 0.09,
   "case": "lower"
  },
  "e/slay_the_spire.png": {
@@ -1941,6 +2357,22 @@
    0.13412
   ]
  },
+ "e/the_royal_writ.png": {
+  "game": "the_royal_writ",
+  "config": "the_royal_writ.json",
+  "style": "the_royal_writ",
+  "body_center": 0.4981,
+  "body_height": 0.9737,
+  "body_center_x": 0.5036,
+  "body_width": 0.9493,
+  "src": [
+   0.15566,
+   0.27738,
+   0.22472,
+   0.49001
+  ],
+  "form": "lower"
+ },
  "e/uma_musume_pretty_derby.png": {
   "game": "uma_musume_pretty_derby",
   "config": "uma_musume_pretty_derby.json",
@@ -1986,6 +2418,36 @@
    0.42411
   ]
  },
+ "e/wizard_of_legend.png": {
+  "game": "wizard_of_legend",
+  "config": "wizard_of_legend.json",
+  "style": "wizard_of_legend",
+  "body_center": 0.6619,
+  "body_height": 0.6,
+  "body_center_x": 0.5,
+  "body_width": 0.8795,
+  "src": [
+   0.58375,
+   0.10067,
+   0.6875,
+   0.80537
+  ]
+ },
+ "e/wizard_of_legend__2.png": {
+  "game": "wizard_of_legend",
+  "config": "wizard_of_legend.json",
+  "style": "wizard_of_legend",
+  "body_center": 0.65,
+  "body_height": 0.4846,
+  "body_center_x": 0.5,
+  "body_width": 0.8592,
+  "src": [
+   0.735,
+   0.0,
+   0.82375,
+   0.87248
+  ]
+ },
  "equals/rogue.png": {
   "game": "rogue",
   "config": "rogue_letters.py",
@@ -1995,8 +2457,8 @@
   "body_center_x": 0.5,
   "body_width": 0.6,
   "pixel": true,
-  "size": 0.94,
-  "pad": 0.03
+  "size": 0.86,
+  "pad": 0.09
  },
  "exclaim/mewgenics.png": {
   "game": "mewgenics",
@@ -2022,8 +2484,8 @@
   "body_center_x": 0.5,
   "body_width": 0.4,
   "pixel": true,
-  "size": 0.94,
-  "pad": 0.03
+  "size": 0.86,
+  "pad": 0.09
  },
  "f/caves_of_qud.png": {
   "game": "caves_of_qud",
@@ -2070,6 +2532,36 @@
    0.91604
   ]
  },
+ "f/hand_of_fate.png": {
+  "game": "hand_of_fate",
+  "config": "hand_of_fate.json",
+  "style": "hand_of_fate",
+  "body_center": 0.5222,
+  "body_height": 0.5259,
+  "body_center_x": 0.4609,
+  "body_width": 0.4,
+  "src": [
+   0.43765,
+   0.33418,
+   0.70824,
+   0.67595
+  ]
+ },
+ "f/hand_of_fate__2.png": {
+  "game": "hand_of_fate",
+  "config": "hand_of_fate.json",
+  "style": "hand_of_fate",
+  "body_center": 0.531,
+  "body_height": 0.681,
+  "body_center_x": 0.5162,
+  "body_width": 0.5784,
+  "src": [
+   -0.04,
+   0.48354,
+   0.39529,
+   1.01519
+  ]
+ },
  "f/risk_of_rain_2.png": {
   "game": "risk_of_rain_2",
   "config": "risk_of_rain_2.json",
@@ -2094,8 +2586,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
-  "size": 0.94,
-  "pad": 0.03,
+  "size": 0.86,
+  "pad": 0.09,
   "case": "upper"
  },
  "f/rogue__lower.png": {
@@ -2107,8 +2599,8 @@
   "body_center_x": 0.4,
   "body_width": 0.6,
   "pixel": true,
-  "size": 0.94,
-  "pad": 0.03,
+  "size": 0.86,
+  "pad": 0.09,
   "case": "lower"
  },
  "f/the_binding_of_isaac.png": {
@@ -2141,6 +2633,22 @@
    1.04142
   ]
  },
+ "f/wizard_of_legend.png": {
+  "game": "wizard_of_legend",
+  "config": "wizard_of_legend.json",
+  "style": "wizard_of_legend",
+  "body_center": 0.49,
+  "body_height": 0.78,
+  "body_center_x": 0.5238,
+  "body_width": 0.4762,
+  "src": [
+   0.49875,
+   0.39597,
+   0.525,
+   0.73154
+  ],
+  "form": "lower"
+ },
  "g/darkest_dungeon.png": {
   "game": "darkest_dungeon",
   "config": "darkest_dungeon.json",
@@ -2171,6 +2679,22 @@
    1.0,
    0.83654
   ]
+ },
+ "g/dungeon_crawl_stone_soup.png": {
+  "game": "dungeon_crawl_stone_soup",
+  "config": "dungeon_crawl_stone_soup.json",
+  "style": "dungeon_crawl_stone_soup",
+  "body_center": 0.5,
+  "body_height": 0.7826,
+  "body_center_x": 0.5,
+  "body_width": 0.7297,
+  "src": [
+   0.25127,
+   0.11842,
+   0.34518,
+   0.72368
+  ],
+  "form": "lower"
  },
  "g/ember_knights.png": {
   "game": "ember_knights",
@@ -2257,8 +2781,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
-  "size": 0.94,
-  "pad": 0.03,
+  "size": 0.86,
+  "pad": 0.09,
   "case": "upper"
  },
  "g/rogue__lower.png": {
@@ -2270,8 +2794,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
-  "size": 0.94,
-  "pad": 0.03,
+  "size": 0.86,
+  "pad": 0.09,
   "case": "lower"
  },
  "g/the_binding_of_isaac.png": {
@@ -2289,6 +2813,21 @@
    0.13412
   ]
  },
+ "g/wizard_of_legend.png": {
+  "game": "wizard_of_legend",
+  "config": "wizard_of_legend.json",
+  "style": "wizard_of_legend",
+  "body_center": 0.5068,
+  "body_height": 0.8493,
+  "body_center_x": 0.5,
+  "body_width": 0.8154,
+  "src": [
+   0.66375,
+   0.31544,
+   0.745,
+   0.80537
+  ]
+ },
  "greater/rogue.png": {
   "game": "rogue",
   "config": "rogue_letters.py",
@@ -2298,8 +2837,8 @@
   "body_center_x": 0.5,
   "body_width": 0.6,
   "pixel": true,
-  "size": 0.94,
-  "pad": 0.03
+  "size": 0.86,
+  "pad": 0.09
  },
  "h/demonic_mahjong.png": {
   "game": "demonic_mahjong",
@@ -2392,6 +2931,21 @@
    0.71026
   ]
  },
+ "h/hand_of_fate.png": {
+  "game": "hand_of_fate",
+  "config": "hand_of_fate.json",
+  "style": "hand_of_fate",
+  "body_center": 0.4979,
+  "body_height": 0.7448,
+  "body_center_x": 0.5327,
+  "body_width": 0.506,
+  "src": [
+   -0.04235,
+   -0.02278,
+   0.35294,
+   0.58228
+  ]
+ },
  "h/haste.png": {
   "game": "haste",
   "config": "haste.json",
@@ -2476,8 +3030,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
-  "size": 0.94,
-  "pad": 0.03,
+  "size": 0.86,
+  "pad": 0.09,
   "case": "upper"
  },
  "h/rogue__lower.png": {
@@ -2489,8 +3043,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
-  "size": 0.94,
-  "pad": 0.03,
+  "size": 0.86,
+  "pad": 0.09,
   "case": "lower"
  },
  "h/slay_the_spire.png": {
@@ -2540,6 +3094,22 @@
    0.13412
   ]
  },
+ "h/the_royal_writ.png": {
+  "game": "the_royal_writ",
+  "config": "the_royal_writ.json",
+  "style": "the_royal_writ",
+  "body_center": 0.5,
+  "body_height": 0.9782,
+  "body_center_x": 0.5,
+  "body_width": 0.9494,
+  "src": [
+   0.07007,
+   0.20464,
+   0.14915,
+   0.498
+  ],
+  "form": "lower"
+ },
  "hash/rogue.png": {
   "game": "rogue",
   "config": "rogue_letters.py",
@@ -2549,8 +3119,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
-  "size": 0.94,
-  "pad": 0.03
+  "size": 0.86,
+  "pad": 0.09
  },
  "i/20_minutes_till_dawn.png": {
   "game": "20_minutes_till_dawn",
@@ -2580,6 +3150,21 @@
    0.6954,
    0.16016,
    1.0
+  ]
+ },
+ "i/ball_x_pit.png": {
+  "game": "ball_x_pit",
+  "config": "ball_x_pit.json",
+  "style": "ball_x_pit",
+  "body_center": 0.501,
+  "body_height": 0.9899,
+  "body_center_x": 0.5,
+  "body_width": 0.931,
+  "src": [
+   0.79722,
+   0.22651,
+   0.83759,
+   0.861
   ]
  },
  "i/demonic_mahjong.png": {
@@ -2744,8 +3329,8 @@
   "body_center_x": 0.5,
   "body_width": 0.4,
   "pixel": true,
-  "size": 0.94,
-  "pad": 0.03,
+  "size": 0.86,
+  "pad": 0.09,
   "case": "upper"
  },
  "i/rogue__lower.png": {
@@ -2757,8 +3342,8 @@
   "body_center_x": 0.5,
   "body_width": 0.4,
   "pixel": true,
-  "size": 0.94,
-  "pad": 0.03,
+  "size": 0.86,
+  "pad": 0.09,
   "case": "lower"
  },
  "i/slay_the_spire.png": {
@@ -2837,6 +3422,22 @@
    1.0
   ]
  },
+ "i/the_royal_writ.png": {
+  "game": "the_royal_writ",
+  "config": "the_royal_writ.json",
+  "style": "the_royal_writ",
+  "body_center": 0.5,
+  "body_height": 0.9852,
+  "body_center_x": 0.5,
+  "body_width": 0.9556,
+  "src": [
+   0.43744,
+   0.51719,
+   0.50501,
+   0.95044
+  ],
+  "form": "lower"
+ },
  "i/vampire_survivors.png": {
   "game": "vampire_survivors",
   "config": "vampire_survivors.json",
@@ -2882,6 +3483,21 @@
    1.04142
   ]
  },
+ "i/wizard_of_legend.png": {
+  "game": "wizard_of_legend",
+  "config": "wizard_of_legend.json",
+  "style": "wizard_of_legend",
+  "body_center": 0.5,
+  "body_height": 0.8592,
+  "body_center_x": 0.5,
+  "body_width": 0.6757,
+  "src": [
+   0.12,
+   0.32215,
+   0.16625,
+   0.79866
+  ]
+ },
  "j/demonic_mahjong.png": {
   "game": "demonic_mahjong",
   "config": "demonic_mahjong.json",
@@ -2906,8 +3522,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
-  "size": 0.94,
-  "pad": 0.03,
+  "size": 0.86,
+  "pad": 0.09,
   "case": "upper"
  },
  "j/rogue__lower.png": {
@@ -2919,8 +3535,8 @@
   "body_center_x": 0.5,
   "body_width": 0.6,
   "pixel": true,
-  "size": 0.94,
-  "pad": 0.03,
+  "size": 0.86,
+  "pad": 0.09,
   "case": "lower"
  },
  "k/darkest_dungeon.png": {
@@ -2954,6 +3570,22 @@
    1.00372
   ]
  },
+ "k/luck_be_a_landlord.png": {
+  "game": "luck_be_a_landlord",
+  "config": "luck_be_a_landlord.json",
+  "style": "luck_be_a_landlord",
+  "body_center": 0.5,
+  "body_height": 0.6667,
+  "body_center_x": 0.5,
+  "body_width": 0.6667,
+  "src": [
+   0.28814,
+   -0.10526,
+   0.49153,
+   0.52632
+  ],
+  "form": "lower"
+ },
  "k/risk_of_rain_2.png": {
   "game": "risk_of_rain_2",
   "config": "risk_of_rain_2.json",
@@ -2978,8 +3610,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
-  "size": 0.94,
-  "pad": 0.03,
+  "size": 0.86,
+  "pad": 0.09,
   "case": "upper"
  },
  "k/rogue__lower.png": {
@@ -2991,8 +3623,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
-  "size": 0.86,
-  "pad": 0.03,
+  "size": 0.79,
+  "pad": 0.09,
   "case": "lower"
  },
  "k/spelunky_classic.png": {
@@ -3041,6 +3673,36 @@
   ],
   "size": 1.05
  },
+ "l/ball_x_pit.png": {
+  "game": "ball_x_pit",
+  "config": "ball_x_pit.json",
+  "style": "ball_x_pit",
+  "body_center": 0.5,
+  "body_height": 0.9888,
+  "body_center_x": 0.5,
+  "body_width": 0.9583,
+  "src": [
+   0.29977,
+   0.22651,
+   0.36659,
+   0.91377
+  ]
+ },
+ "l/ball_x_pit__2.png": {
+  "game": "ball_x_pit",
+  "config": "ball_x_pit.json",
+  "style": "ball_x_pit",
+  "body_center": 0.5009,
+  "body_height": 0.9906,
+  "body_center_x": 0.5034,
+  "body_width": 0.9517,
+  "src": [
+   0.36334,
+   0.22651,
+   0.43063,
+   0.91248
+  ]
+ },
  "l/dead_cells.png": {
   "game": "dead_cells",
   "config": "dead_cells.json",
@@ -3088,6 +3750,22 @@
    0.86557
   ]
  },
+ "l/dungeon_crawl_stone_soup.png": {
+  "game": "dungeon_crawl_stone_soup",
+  "config": "dungeon_crawl_stone_soup.json",
+  "style": "dungeon_crawl_stone_soup",
+  "body_center": 0.4891,
+  "body_height": 0.7609,
+  "body_center_x": 0.4792,
+  "body_width": 0.625,
+  "src": [
+   0.94416,
+   -0.02632,
+   1.00508,
+   0.57895
+  ],
+  "form": "lower"
+ },
  "l/loop_hero.png": {
   "game": "loop_hero",
   "config": "loop_hero.json",
@@ -3102,6 +3780,37 @@
    0.34555,
    0.50785
   ]
+ },
+ "l/luck_be_a_landlord.png": {
+  "game": "luck_be_a_landlord",
+  "config": "luck_be_a_landlord.json",
+  "style": "luck_be_a_landlord",
+  "body_center": 0.5,
+  "body_height": 0.6667,
+  "body_center_x": 0.3889,
+  "body_width": 0.7778,
+  "src": [
+   0.0,
+   -0.10526,
+   0.15254,
+   0.52632
+  ]
+ },
+ "l/luck_be_a_landlord__2.png": {
+  "game": "luck_be_a_landlord",
+  "config": "luck_be_a_landlord.json",
+  "style": "luck_be_a_landlord",
+  "body_center": 0.5,
+  "body_height": 0.6667,
+  "body_center_x": 0.5,
+  "body_width": 0.6,
+  "src": [
+   0.47458,
+   0.47368,
+   0.64407,
+   1.10526
+  ],
+  "form": "lower"
  },
  "l/nuclear_throne.png": {
   "game": "nuclear_throne",
@@ -3118,6 +3827,21 @@
    0.50882
   ]
  },
+ "l/returnal.png": {
+  "game": "returnal",
+  "config": "returnal.json",
+  "style": "returnal",
+  "body_center": 0.4984,
+  "body_height": 0.3386,
+  "body_center_x": 0.4026,
+  "body_width": 0.4382,
+  "src": [
+   0.8053,
+   0.06853,
+   0.99642,
+   0.87817
+  ]
+ },
  "l/rogue.png": {
   "game": "rogue",
   "config": "rogue_letters.py",
@@ -3127,8 +3851,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
-  "size": 0.94,
-  "pad": 0.03,
+  "size": 0.86,
+  "pad": 0.09,
   "case": "upper"
  },
  "l/rogue__lower.png": {
@@ -3140,8 +3864,8 @@
   "body_center_x": 0.5,
   "body_width": 0.4,
   "pixel": true,
-  "size": 0.94,
-  "pad": 0.03,
+  "size": 0.86,
+  "pad": 0.09,
   "case": "lower"
  },
  "l/slay_the_spire.png": {
@@ -3191,6 +3915,22 @@
    1.0625
   ]
  },
+ "l/the_royal_writ.png": {
+  "game": "the_royal_writ",
+  "config": "the_royal_writ.json",
+  "style": "the_royal_writ",
+  "body_center": 0.4983,
+  "body_height": 0.9896,
+  "body_center_x": 0.5142,
+  "body_width": 0.9528,
+  "src": [
+   0.94695,
+   0.0,
+   1.0,
+   0.46043
+  ],
+  "form": "lower"
+ },
  "l/wildfrost.png": {
   "game": "wildfrost",
   "config": "wildfrost.json",
@@ -3206,6 +3946,21 @@
    1.04734
   ]
  },
+ "l/wizard_of_legend.png": {
+  "game": "wizard_of_legend",
+  "config": "wizard_of_legend.json",
+  "style": "wizard_of_legend",
+  "body_center": 0.4931,
+  "body_height": 0.8472,
+  "body_center_x": 0.4909,
+  "body_width": 0.8,
+  "src": [
+   0.52875,
+   0.32215,
+   0.5975,
+   0.80537
+  ]
+ },
  "less/rogue.png": {
   "game": "rogue",
   "config": "rogue_letters.py",
@@ -3215,8 +3970,8 @@
   "body_center_x": 0.5,
   "body_width": 0.6,
   "pixel": true,
-  "size": 0.94,
-  "pad": 0.03
+  "size": 0.86,
+  "pad": 0.09
  },
  "m/20_minutes_till_dawn.png": {
   "game": "20_minutes_till_dawn",
@@ -3302,8 +4057,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
-  "size": 0.94,
-  "pad": 0.03,
+  "size": 0.86,
+  "pad": 0.09,
   "case": "upper"
  },
  "m/rogue__lower.png": {
@@ -3315,8 +4070,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
-  "size": 0.94,
-  "pad": 0.03,
+  "size": 0.86,
+  "pad": 0.09,
   "case": "lower"
  },
  "m/uma_musume_pretty_derby.png": {
@@ -3456,6 +4211,70 @@
    0.78526
   ]
  },
+ "n/don_t_starve.png": {
+  "game": "don_t_starve",
+  "config": "don_t_starve.json",
+  "style": "don_t_starve",
+  "body_center": 0.4843,
+  "body_height": 0.9308,
+  "body_center_x": 0.4819,
+  "body_width": 0.8675,
+  "src": [
+   0.26094,
+   0.33981,
+   0.40067,
+   0.85437
+  ],
+  "form": "lower"
+ },
+ "n/dungeon_crawl_stone_soup.png": {
+  "game": "dungeon_crawl_stone_soup",
+  "config": "dungeon_crawl_stone_soup.json",
+  "style": "dungeon_crawl_stone_soup",
+  "body_center": 0.5147,
+  "body_height": 0.6765,
+  "body_center_x": 0.5,
+  "body_width": 0.6923,
+  "src": [
+   0.17513,
+   0.10526,
+   0.27411,
+   0.55263
+  ],
+  "form": "lower"
+ },
+ "n/dungeon_crawl_stone_soup__2.png": {
+  "game": "dungeon_crawl_stone_soup",
+  "config": "dungeon_crawl_stone_soup.json",
+  "style": "dungeon_crawl_stone_soup",
+  "body_center": 0.5147,
+  "body_height": 0.6765,
+  "body_center_x": 0.5132,
+  "body_width": 0.7105,
+  "src": [
+   0.44924,
+   0.10526,
+   0.54569,
+   0.55263
+  ],
+  "form": "lower"
+ },
+ "n/dungeon_crawl_stone_soup__3.png": {
+  "game": "dungeon_crawl_stone_soup",
+  "config": "dungeon_crawl_stone_soup_2.json",
+  "style": "dungeon_crawl_stone_soup_2",
+  "body_center": 0.5,
+  "body_height": 0.7143,
+  "body_center_x": 0.5,
+  "body_width": 0.7273,
+  "src": [
+   0.62437,
+   0.64474,
+   0.6802,
+   0.92105
+  ],
+  "form": "lower"
+ },
  "n/ember_knights.png": {
   "game": "ember_knights",
   "config": "ember_knights_2.json",
@@ -3532,6 +4351,21 @@
   ],
   "form": "lower"
  },
+ "n/hand_of_fate.png": {
+  "game": "hand_of_fate",
+  "config": "hand_of_fate.json",
+  "style": "hand_of_fate",
+  "body_center": 0.5257,
+  "body_height": 0.6057,
+  "body_center_x": 0.4964,
+  "body_width": 0.558,
+  "src": [
+   0.41647,
+   -0.02278,
+   0.74118,
+   0.42025
+  ]
+ },
  "n/into_the_breach.png": {
   "game": "into_the_breach",
   "config": "into_the_breach.json",
@@ -3546,6 +4380,22 @@
    0.48344,
    0.38462
   ]
+ },
+ "n/luck_be_a_landlord.png": {
+  "game": "luck_be_a_landlord",
+  "config": "luck_be_a_landlord.json",
+  "style": "luck_be_a_landlord",
+  "body_center": 0.5,
+  "body_height": 0.6364,
+  "body_center_x": 0.5,
+  "body_width": 0.6667,
+  "src": [
+   0.23729,
+   0.52632,
+   0.44068,
+   1.10526
+  ],
+  "form": "lower"
  },
  "n/mewgenics.png": {
   "game": "mewgenics",
@@ -3607,6 +4457,21 @@
    0.92059
   ]
  },
+ "n/returnal.png": {
+  "game": "returnal",
+  "config": "returnal.json",
+  "style": "returnal",
+  "body_center": 0.5,
+  "body_height": 0.363,
+  "body_center_x": 0.5023,
+  "body_width": 0.5991,
+  "src": [
+   0.58626,
+   0.09898,
+   0.74517,
+   0.8401
+  ]
+ },
  "n/risk_of_rain_2.png": {
   "game": "risk_of_rain_2",
   "config": "risk_of_rain_2.json",
@@ -3631,8 +4496,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
-  "size": 0.94,
-  "pad": 0.03,
+  "size": 0.86,
+  "pad": 0.09,
   "case": "upper"
  },
  "n/rogue__lower.png": {
@@ -3644,8 +4509,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
-  "size": 0.94,
-  "pad": 0.03,
+  "size": 0.86,
+  "pad": 0.09,
   "case": "lower"
  },
  "n/rounds.png": {
@@ -3691,6 +4556,21 @@
    -0.00197,
    0.28672,
    0.13412
+  ]
+ },
+ "n/wizard_of_legend.png": {
+  "game": "wizard_of_legend",
+  "config": "wizard_of_legend.json",
+  "style": "wizard_of_legend",
+  "body_center": 0.4932,
+  "body_height": 0.8514,
+  "body_center_x": 0.4932,
+  "body_width": 0.8514,
+  "src": [
+   0.8175,
+   0.32215,
+   0.91,
+   0.81879
   ]
  },
  "o/balatro.png": {
@@ -3785,6 +4665,70 @@
    0.99344
   ]
  },
+ "o/don_t_starve.png": {
+  "game": "don_t_starve",
+  "config": "don_t_starve.json",
+  "style": "don_t_starve",
+  "body_center": 0.482,
+  "body_height": 0.9209,
+  "body_center_x": 0.4853,
+  "body_width": 0.8235,
+  "src": [
+   0.17003,
+   0.33657,
+   0.28451,
+   0.78641
+  ],
+  "form": "lower"
+ },
+ "o/dungeon_crawl_stone_soup.png": {
+  "game": "dungeon_crawl_stone_soup",
+  "config": "dungeon_crawl_stone_soup.json",
+  "style": "dungeon_crawl_stone_soup",
+  "body_center": 0.5,
+  "body_height": 0.7059,
+  "body_center_x": 0.5143,
+  "body_width": 0.6857,
+  "src": [
+   0.38071,
+   0.11842,
+   0.46954,
+   0.56579
+  ],
+  "form": "lower"
+ },
+ "o/dungeon_crawl_stone_soup__2.png": {
+  "game": "dungeon_crawl_stone_soup",
+  "config": "dungeon_crawl_stone_soup_2.json",
+  "style": "dungeon_crawl_stone_soup_2",
+  "body_center": 0.5,
+  "body_height": 0.7143,
+  "body_center_x": 0.5,
+  "body_width": 0.7143,
+  "src": [
+   0.56853,
+   0.64474,
+   0.62183,
+   0.92105
+  ],
+  "form": "lower"
+ },
+ "o/dungeon_crawl_stone_soup__3.png": {
+  "game": "dungeon_crawl_stone_soup",
+  "config": "dungeon_crawl_stone_soup_2.json",
+  "style": "dungeon_crawl_stone_soup_2",
+  "body_center": 0.5,
+  "body_height": 0.7143,
+  "body_center_x": 0.5,
+  "body_width": 0.7143,
+  "src": [
+   0.82234,
+   0.64474,
+   0.87563,
+   0.92105
+  ],
+  "form": "lower"
+ },
  "o/dwarf_fortress.png": {
   "game": "dwarf_fortress",
   "config": "dwarf_fortress_2.json",
@@ -3813,6 +4757,21 @@
    0.22642,
    0.85,
    0.97358
+  ]
+ },
+ "o/hand_of_fate.png": {
+  "game": "hand_of_fate",
+  "config": "hand_of_fate.json",
+  "style": "hand_of_fate",
+  "body_center": 0.5221,
+  "body_height": 0.5294,
+  "body_center_x": 0.541,
+  "body_width": 0.3934,
+  "src": [
+   0.28471,
+   0.33418,
+   0.57176,
+   0.67848
   ]
  },
  "o/into_the_breach.png": {
@@ -3875,6 +4834,22 @@
    0.83246
   ]
  },
+ "o/luck_be_a_landlord.png": {
+  "game": "luck_be_a_landlord",
+  "config": "luck_be_a_landlord.json",
+  "style": "luck_be_a_landlord",
+  "body_center": 0.5,
+  "body_height": 0.6364,
+  "body_center_x": 0.5,
+  "body_width": 0.6667,
+  "src": [
+   0.55932,
+   0.52632,
+   0.76271,
+   1.10526
+  ],
+  "form": "lower"
+ },
  "o/noita.png": {
   "game": "noita",
   "config": "noita.json",
@@ -3930,8 +4905,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
-  "size": 0.94,
-  "pad": 0.03,
+  "size": 0.86,
+  "pad": 0.09,
   "case": "upper"
  },
  "o/rogue__lower.png": {
@@ -3943,8 +4918,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
-  "size": 0.94,
-  "pad": 0.03,
+  "size": 0.86,
+  "pad": 0.09,
   "case": "lower"
  },
  "o/rounds.png": {
@@ -3977,6 +4952,22 @@
    0.13412
   ]
  },
+ "o/the_royal_writ.png": {
+  "game": "the_royal_writ",
+  "config": "the_royal_writ.json",
+  "style": "the_royal_writ",
+  "body_center": 0.5011,
+  "body_height": 0.9848,
+  "body_center_x": 0.5,
+  "body_width": 0.9767,
+  "src": [
+   0.5,
+   0.11591,
+   0.62863,
+   0.48521
+  ],
+  "form": "lower"
+ },
  "o/vampire_survivors.png": {
   "game": "vampire_survivors",
   "config": "vampire_survivors.json",
@@ -4007,6 +4998,53 @@
    1.04142
   ]
  },
+ "o/wizard_of_legend.png": {
+  "game": "wizard_of_legend",
+  "config": "wizard_of_legend.json",
+  "style": "wizard_of_legend",
+  "body_center": 0.4848,
+  "body_height": 0.6667,
+  "body_center_x": 0.4773,
+  "body_width": 0.5,
+  "src": [
+   0.47875,
+   0.45638,
+   0.50625,
+   0.67785
+  ],
+  "form": "lower"
+ },
+ "p/ball_x_pit.png": {
+  "game": "ball_x_pit",
+  "config": "ball_x_pit.json",
+  "style": "ball_x_pit",
+  "body_center": 0.5,
+  "body_height": 0.9888,
+  "body_center_x": 0.502,
+  "body_width": 0.98,
+  "src": [
+   0.66497,
+   0.22651,
+   0.78097,
+   0.91377
+  ]
+ },
+ "p/dungeon_crawl_stone_soup.png": {
+  "game": "dungeon_crawl_stone_soup",
+  "config": "dungeon_crawl_stone_soup_2.json",
+  "style": "dungeon_crawl_stone_soup_2",
+  "body_center": 0.5,
+  "body_height": 0.7931,
+  "body_center_x": 0.5,
+  "body_width": 0.7273,
+  "src": [
+   0.93401,
+   0.64474,
+   0.98985,
+   1.02632
+  ],
+  "form": "lower"
+ },
  "p/loop_hero.png": {
   "game": "loop_hero",
   "config": "loop_hero.json",
@@ -4031,8 +5069,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
-  "size": 0.94,
-  "pad": 0.03,
+  "size": 0.86,
+  "pad": 0.09,
   "case": "upper"
  },
  "p/rogue__lower.png": {
@@ -4044,8 +5082,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
-  "size": 0.94,
-  "pad": 0.03,
+  "size": 0.86,
+  "pad": 0.09,
   "case": "lower"
  },
  "p/slay_the_spire.png": {
@@ -4133,8 +5171,8 @@
   "body_center_x": 0.5,
   "body_width": 0.4,
   "pixel": true,
-  "size": 0.94,
-  "pad": 0.03
+  "size": 0.86,
+  "pad": 0.09
  },
  "paren_right/rogue.png": {
   "game": "rogue",
@@ -4145,8 +5183,8 @@
   "body_center_x": 0.5,
   "body_width": 0.4,
   "pixel": true,
-  "size": 0.94,
-  "pad": 0.03
+  "size": 0.86,
+  "pad": 0.09
  },
  "percent/rogue.png": {
   "game": "rogue",
@@ -4157,8 +5195,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
-  "size": 0.94,
-  "pad": 0.03
+  "size": 0.86,
+  "pad": 0.09
  },
  "period/rogue.png": {
   "game": "rogue",
@@ -4169,8 +5207,8 @@
   "body_center_x": 0.5,
   "body_width": 0.2,
   "pixel": true,
-  "size": 0.94,
-  "pad": 0.03
+  "size": 0.86,
+  "pad": 0.09
  },
  "plus/rogue.png": {
   "game": "rogue",
@@ -4181,8 +5219,8 @@
   "body_center_x": 0.5,
   "body_width": 0.6,
   "pixel": true,
-  "size": 0.94,
-  "pad": 0.03
+  "size": 0.86,
+  "pad": 0.09
  },
  "q/caves_of_qud.png": {
   "game": "caves_of_qud",
@@ -4208,8 +5246,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
-  "size": 0.94,
-  "pad": 0.03,
+  "size": 0.86,
+  "pad": 0.09,
   "case": "upper"
  },
  "q/rogue__lower.png": {
@@ -4221,8 +5259,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
-  "size": 0.94,
-  "pad": 0.03,
+  "size": 0.86,
+  "pad": 0.09,
   "case": "lower"
  },
  "question/rogue.png": {
@@ -4234,8 +5272,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
-  "size": 0.94,
-  "pad": 0.03
+  "size": 0.86,
+  "pad": 0.09
  },
  "quote/rogue.png": {
   "game": "rogue",
@@ -4246,8 +5284,8 @@
   "body_center_x": 0.5,
   "body_width": 0.6,
   "pixel": true,
-  "size": 0.94,
-  "pad": 0.03
+  "size": 0.86,
+  "pad": 0.09
  },
  "r/balatro.png": {
   "game": "balatro",
@@ -4278,6 +5316,38 @@
    0.42462,
    0.68562,
    0.63692
+  ],
+  "form": "lower"
+ },
+ "r/don_t_starve.png": {
+  "game": "don_t_starve",
+  "config": "don_t_starve.json",
+  "style": "don_t_starve",
+  "body_center": 0.4859,
+  "body_height": 0.9379,
+  "body_center_x": 0.4904,
+  "body_width": 0.8269,
+  "src": [
+   0.71212,
+   0.26214,
+   0.79966,
+   0.83495
+  ],
+  "form": "lower"
+ },
+ "r/dungeon_crawl_stone_soup.png": {
+  "game": "dungeon_crawl_stone_soup",
+  "config": "dungeon_crawl_stone_soup.json",
+  "style": "dungeon_crawl_stone_soup",
+  "body_center": 0.5,
+  "body_height": 0.697,
+  "body_center_x": 0.4828,
+  "body_width": 0.6207,
+  "src": [
+   0.73096,
+   0.13158,
+   0.80457,
+   0.56579
   ],
   "form": "lower"
  },
@@ -4418,6 +5488,22 @@
    0.73298
   ]
  },
+ "r/luck_be_a_landlord.png": {
+  "game": "luck_be_a_landlord",
+  "config": "luck_be_a_landlord.json",
+  "style": "luck_be_a_landlord",
+  "body_center": 0.5,
+  "body_height": 0.6364,
+  "body_center_x": 0.5,
+  "body_width": 0.6364,
+  "src": [
+   0.67797,
+   0.52632,
+   0.86441,
+   1.10526
+  ],
+  "form": "lower"
+ },
  "r/nuclear_throne.png": {
   "game": "nuclear_throne",
   "config": "nuclear_throne.json",
@@ -4446,6 +5532,36 @@
    0.52206,
    0.51615,
    0.92206
+  ]
+ },
+ "r/returnal.png": {
+  "game": "returnal",
+  "config": "returnal.json",
+  "style": "returnal",
+  "body_center": 0.4415,
+  "body_height": 0.3679,
+  "body_center_x": 0.5743,
+  "body_width": 0.5181,
+  "src": [
+   0.01646,
+   0.13198,
+   0.21403,
+   0.89086
+  ]
+ },
+ "r/returnal__2.png": {
+  "game": "returnal",
+  "config": "returnal.json",
+  "style": "returnal",
+  "body_center": 0.4649,
+  "body_height": 0.3684,
+  "body_center_x": 0.5,
+  "body_width": 0.6182,
+  "src": [
+   0.47459,
+   0.13198,
+   0.63207,
+   0.85533
   ]
  },
  "r/risk_of_rain_2.png": {
@@ -4487,8 +5603,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
-  "size": 0.94,
-  "pad": 0.03,
+  "size": 0.86,
+  "pad": 0.09,
   "case": "upper"
  },
  "r/rogue__lower.png": {
@@ -4500,8 +5616,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
-  "size": 0.94,
-  "pad": 0.03,
+  "size": 0.86,
+  "pad": 0.09,
   "case": "lower"
  },
  "r/rounds.png": {
@@ -4549,6 +5665,37 @@
    0.66354,
    0.99689
   ]
+ },
+ "r/the_royal_writ.png": {
+  "game": "the_royal_writ",
+  "config": "the_royal_writ.json",
+  "style": "the_royal_writ",
+  "body_center": 0.5,
+  "body_height": 0.99,
+  "body_center_x": 0.5,
+  "body_width": 0.9841,
+  "src": [
+   0.25375,
+   0.01199,
+   0.50551,
+   0.49001
+  ]
+ },
+ "r/the_royal_writ__2.png": {
+  "game": "the_royal_writ",
+  "config": "the_royal_writ.json",
+  "style": "the_royal_writ",
+  "body_center": 0.5,
+  "body_height": 0.9825,
+  "body_center_x": 0.5023,
+  "body_width": 0.9677,
+  "src": [
+   0.31481,
+   0.57554,
+   0.42342,
+   0.94005
+  ],
+  "form": "lower"
  },
  "r/uma_musume_pretty_derby.png": {
   "game": "uma_musume_pretty_derby",
@@ -4625,6 +5772,21 @@
    1.04142
   ]
  },
+ "r/wizard_of_legend.png": {
+  "game": "wizard_of_legend",
+  "config": "wizard_of_legend.json",
+  "style": "wizard_of_legend",
+  "body_center": 0.6456,
+  "body_height": 0.6117,
+  "body_center_x": 0.5286,
+  "body_width": 0.8,
+  "src": [
+   0.3075,
+   0.12081,
+   0.395,
+   0.81208
+  ]
+ },
  "s/20_minutes_till_dawn.png": {
   "game": "20_minutes_till_dawn",
   "config": "20_minutes_till_dawn.json",
@@ -4686,6 +5848,51 @@
    0.97485
   ],
   "size": 1.12
+ },
+ "s/don_t_starve.png": {
+  "game": "don_t_starve",
+  "config": "don_t_starve.json",
+  "style": "don_t_starve",
+  "body_center": 0.4908,
+  "body_height": 0.9596,
+  "body_center_x": 0.4795,
+  "body_width": 0.8493,
+  "src": [
+   0.4899,
+   0.06796,
+   0.61279,
+   0.94822
+  ]
+ },
+ "s/dungeon_crawl_stone_soup.png": {
+  "game": "dungeon_crawl_stone_soup",
+  "config": "dungeon_crawl_stone_soup_2.json",
+  "style": "dungeon_crawl_stone_soup_2",
+  "body_center": 0.5,
+  "body_height": 0.7857,
+  "body_center_x": 0.5,
+  "body_width": 0.7143,
+  "src": [
+   0.47462,
+   0.55263,
+   0.52792,
+   0.92105
+  ]
+ },
+ "s/dungeon_crawl_stone_soup__2.png": {
+  "game": "dungeon_crawl_stone_soup",
+  "config": "dungeon_crawl_stone_soup_2.json",
+  "style": "dungeon_crawl_stone_soup_2",
+  "body_center": 0.5172,
+  "body_height": 0.7586,
+  "body_center_x": 0.5,
+  "body_width": 0.7143,
+  "src": [
+   0.76142,
+   0.53947,
+   0.81472,
+   0.92105
+  ]
  },
  "s/dwarf_fortress.png": {
   "game": "dwarf_fortress",
@@ -4832,8 +6039,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
-  "size": 0.94,
-  "pad": 0.03,
+  "size": 0.86,
+  "pad": 0.09,
   "case": "upper"
  },
  "s/rogue__lower.png": {
@@ -4845,8 +6052,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
-  "size": 0.94,
-  "pad": 0.03,
+  "size": 0.86,
+  "pad": 0.09,
   "case": "lower"
  },
  "s/rounds.png": {
@@ -5038,8 +6245,8 @@
   "body_center_x": 0.45,
   "body_width": 0.3,
   "pixel": true,
-  "size": 0.94,
-  "pad": 0.03
+  "size": 0.86,
+  "pad": 0.09
  },
  "slash/rogue.png": {
   "game": "rogue",
@@ -5050,8 +6257,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
-  "size": 0.94,
-  "pad": 0.03
+  "size": 0.86,
+  "pad": 0.09
  },
  "t/20_minutes_till_dawn.png": {
   "game": "20_minutes_till_dawn",
@@ -5099,6 +6306,21 @@
   ],
   "size": 1.05
  },
+ "t/ball_x_pit.png": {
+  "game": "ball_x_pit",
+  "config": "ball_x_pit.json",
+  "style": "ball_x_pit",
+  "body_center": 0.501,
+  "body_height": 0.9899,
+  "body_center_x": 0.5015,
+  "body_width": 0.9786,
+  "src": [
+   0.84919,
+   0.22651,
+   1.00093,
+   0.861
+  ]
+ },
  "t/darkest_dungeon.png": {
   "game": "darkest_dungeon",
   "config": "darkest_dungeon.json",
@@ -5112,6 +6334,54 @@
    0.34974,
    1.00196,
    0.63487
+  ],
+  "form": "lower"
+ },
+ "t/don_t_starve.png": {
+  "game": "don_t_starve",
+  "config": "don_t_starve.json",
+  "style": "don_t_starve",
+  "body_center": 0.4892,
+  "body_height": 0.9526,
+  "body_center_x": 0.4922,
+  "body_width": 0.8281,
+  "src": [
+   0.36364,
+   0.10032,
+   0.47138,
+   0.85113
+  ],
+  "form": "lower"
+ },
+ "t/don_t_starve__2.png": {
+  "game": "don_t_starve",
+  "config": "don_t_starve.json",
+  "style": "don_t_starve",
+  "body_center": 0.4864,
+  "body_height": 0.9457,
+  "body_center_x": 0.4688,
+  "body_width": 0.8125,
+  "src": [
+   0.55892,
+   0.11003,
+   0.66667,
+   0.82524
+  ],
+  "form": "lower"
+ },
+ "t/dungeon_crawl_stone_soup.png": {
+  "game": "dungeon_crawl_stone_soup",
+  "config": "dungeon_crawl_stone_soup_2.json",
+  "style": "dungeon_crawl_stone_soup_2",
+  "body_center": 0.5,
+  "body_height": 0.7692,
+  "body_center_x": 0.5,
+  "body_width": 0.6,
+  "src": [
+   0.53046,
+   0.57895,
+   0.56853,
+   0.92105
   ],
   "form": "lower"
  },
@@ -5175,6 +6445,21 @@
    0.51888
   ],
   "form": "lower"
+ },
+ "t/hand_of_fate.png": {
+  "game": "hand_of_fate",
+  "config": "hand_of_fate.json",
+  "style": "hand_of_fate",
+  "body_center": 0.5534,
+  "body_height": 0.6011,
+  "body_center_x": 0.515,
+  "body_width": 0.594,
+  "src": [
+   0.43529,
+   0.56709,
+   0.74824,
+   1.01772
+  ]
  },
  "t/haste.png": {
   "game": "haste",
@@ -5252,6 +6537,21 @@
    0.92059
   ]
  },
+ "t/returnal.png": {
+  "game": "returnal",
+  "config": "returnal.json",
+  "style": "returnal",
+  "body_center": 0.4691,
+  "body_height": 0.3677,
+  "body_center_x": 0.5025,
+  "body_width": 0.6386,
+  "src": [
+   0.2713,
+   0.12437,
+   0.41589,
+   0.86294
+  ]
+ },
  "t/rogue.png": {
   "game": "rogue",
   "config": "rogue_letters.py",
@@ -5261,8 +6561,8 @@
   "body_center_x": 0.5,
   "body_width": 0.6,
   "pixel": true,
-  "size": 0.94,
-  "pad": 0.03,
+  "size": 0.86,
+  "pad": 0.09,
   "case": "upper"
  },
  "t/rogue__lower.png": {
@@ -5274,8 +6574,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
-  "size": 0.94,
-  "pad": 0.03,
+  "size": 0.86,
+  "pad": 0.09,
   "case": "lower"
  },
  "t/slay_the_spire.png": {
@@ -5325,6 +6625,38 @@
    0.13412
   ]
  },
+ "t/the_royal_writ.png": {
+  "game": "the_royal_writ",
+  "config": "the_royal_writ.json",
+  "style": "the_royal_writ",
+  "body_center": 0.4985,
+  "body_height": 0.9783,
+  "body_center_x": 0.51,
+  "body_width": 0.94,
+  "src": [
+   0.00801,
+   0.22542,
+   0.05806,
+   0.48361
+  ],
+  "form": "lower"
+ },
+ "t/the_royal_writ__2.png": {
+  "game": "the_royal_writ",
+  "config": "the_royal_writ.json",
+  "style": "the_royal_writ",
+  "body_center": 0.5,
+  "body_height": 0.9858,
+  "body_center_x": 0.503,
+  "body_width": 0.9578,
+  "src": [
+   0.53403,
+   0.52118,
+   0.61712,
+   0.97042
+  ],
+  "form": "lower"
+ },
  "t/uma_musume_pretty_derby.png": {
   "game": "uma_musume_pretty_derby",
   "config": "uma_musume_pretty_derby_line2.json",
@@ -5364,8 +6696,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
-  "size": 0.94,
-  "pad": 0.03
+  "size": 0.86,
+  "pad": 0.09
  },
  "u/20_minutes_till_dawn.png": {
   "game": "20_minutes_till_dawn",
@@ -5413,6 +6745,38 @@
   ],
   "form": "lower"
  },
+ "u/dungeon_crawl_stone_soup.png": {
+  "game": "dungeon_crawl_stone_soup",
+  "config": "dungeon_crawl_stone_soup.json",
+  "style": "dungeon_crawl_stone_soup",
+  "body_center": 0.5,
+  "body_height": 0.6667,
+  "body_center_x": 0.5128,
+  "body_width": 0.7179,
+  "src": [
+   0.09898,
+   0.10526,
+   0.19797,
+   0.57895
+  ],
+  "form": "lower"
+ },
+ "u/dungeon_crawl_stone_soup__2.png": {
+  "game": "dungeon_crawl_stone_soup",
+  "config": "dungeon_crawl_stone_soup_2.json",
+  "style": "dungeon_crawl_stone_soup_2",
+  "body_center": 0.5227,
+  "body_height": 0.6818,
+  "body_center_x": 0.5,
+  "body_width": 0.7273,
+  "src": [
+   0.88071,
+   0.63158,
+   0.93655,
+   0.92105
+  ],
+  "form": "lower"
+ },
  "u/enter_the_gungeon.png": {
   "game": "enter_the_gungeon",
   "config": "enter_the_gungeon.json",
@@ -5427,6 +6791,22 @@
    0.29205,
    0.97358
   ]
+ },
+ "u/luck_be_a_landlord.png": {
+  "game": "luck_be_a_landlord",
+  "config": "luck_be_a_landlord.json",
+  "style": "luck_be_a_landlord",
+  "body_center": 0.5,
+  "body_height": 0.6364,
+  "body_center_x": 0.5,
+  "body_width": 0.6667,
+  "src": [
+   0.0678,
+   -0.05263,
+   0.27119,
+   0.52632
+  ],
+  "form": "lower"
  },
  "u/nuclear_throne.png": {
   "game": "nuclear_throne",
@@ -5443,6 +6823,21 @@
    0.51324
   ]
  },
+ "u/returnal.png": {
+  "game": "returnal",
+  "config": "returnal.json",
+  "style": "returnal",
+  "body_center": 0.436,
+  "body_height": 0.3737,
+  "body_center_x": 0.5048,
+  "body_width": 0.6,
+  "src": [
+   0.37079,
+   0.15228,
+   0.52112,
+   0.88579
+  ]
+ },
  "u/rogue.png": {
   "game": "rogue",
   "config": "rogue_letters.py",
@@ -5452,8 +6847,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
-  "size": 0.94,
-  "pad": 0.03,
+  "size": 0.86,
+  "pad": 0.09,
   "case": "upper"
  },
  "u/rogue__lower.png": {
@@ -5465,8 +6860,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
-  "size": 0.94,
-  "pad": 0.03,
+  "size": 0.86,
+  "pad": 0.09,
   "case": "lower"
  },
  "u/rounds.png": {
@@ -5553,8 +6948,8 @@
   "body_center_x": 0.5,
   "body_width": 0.8,
   "pixel": true,
-  "size": 0.94,
-  "pad": 0.03
+  "size": 0.86,
+  "pad": 0.09
  },
  "v/caves_of_qud.png": {
   "game": "caves_of_qud",
@@ -5570,6 +6965,22 @@
    0.32213,
    0.94907
   ]
+ },
+ "v/don_t_starve.png": {
+  "game": "don_t_starve",
+  "config": "don_t_starve.json",
+  "style": "don_t_starve",
+  "body_center": 0.6441,
+  "body_height": 0.6632,
+  "body_center_x": 0.4688,
+  "body_width": 0.7708,
+  "src": [
+   0.78788,
+   0.0,
+   0.86869,
+   0.93204
+  ],
+  "form": "lower"
  },
  "v/everything_is_crab.png": {
   "game": "everything_is_crab",
@@ -5596,8 +7007,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
-  "size": 0.94,
-  "pad": 0.03,
+  "size": 0.86,
+  "pad": 0.09,
   "case": "upper"
  },
  "v/rogue__lower.png": {
@@ -5609,8 +7020,8 @@
   "body_center_x": 0.5,
   "body_width": 0.6,
   "pixel": true,
-  "size": 0.94,
-  "pad": 0.03,
+  "size": 0.86,
+  "pad": 0.09,
   "case": "lower"
  },
  "v/vampire_survivors.png": {
@@ -5673,6 +7084,22 @@
    1.0
   ]
  },
+ "w/dungeon_crawl_stone_soup.png": {
+  "game": "dungeon_crawl_stone_soup",
+  "config": "dungeon_crawl_stone_soup.json",
+  "style": "dungeon_crawl_stone_soup",
+  "body_center": 0.5,
+  "body_height": 0.6571,
+  "body_center_x": 0.5,
+  "body_width": 0.7647,
+  "src": [
+   0.83756,
+   0.11842,
+   0.96701,
+   0.57895
+  ],
+  "form": "lower"
+ },
  "w/dwarf_fortress.png": {
   "game": "dwarf_fortress",
   "config": "dwarf_fortress.json",
@@ -5712,8 +7139,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
-  "size": 0.94,
-  "pad": 0.03,
+  "size": 0.86,
+  "pad": 0.09,
   "case": "upper"
  },
  "w/rogue__lower.png": {
@@ -5725,9 +7152,24 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
-  "size": 0.94,
-  "pad": 0.03,
+  "size": 0.86,
+  "pad": 0.09,
   "case": "lower"
+ },
+ "w/the_royal_writ.png": {
+  "game": "the_royal_writ",
+  "config": "the_royal_writ.json",
+  "style": "the_royal_writ",
+  "body_center": 0.5017,
+  "body_height": 0.9898,
+  "body_center_x": 0.4983,
+  "body_width": 0.9898,
+  "src": [
+   -0.001,
+   0.52758,
+   0.29479,
+   1.0
+  ]
  },
  "w/wildfrost.png": {
   "game": "wildfrost",
@@ -5744,6 +7186,36 @@
    1.03254
   ]
  },
+ "w/wizard_of_legend.png": {
+  "game": "wizard_of_legend",
+  "config": "wizard_of_legend.json",
+  "style": "wizard_of_legend",
+  "body_center": 0.7042,
+  "body_height": 0.525,
+  "body_center_x": 0.49,
+  "body_width": 0.92,
+  "src": [
+   0.0,
+   0.0,
+   0.125,
+   0.80537
+  ]
+ },
+ "x/ball_x_pit.png": {
+  "game": "ball_x_pit",
+  "config": "ball_x_pit.json",
+  "style": "ball_x_pit",
+  "body_center": 0.5698,
+  "body_height": 0.6761,
+  "body_center_x": 0.4615,
+  "body_width": 0.743,
+  "src": [
+   0.44037,
+   -0.00257,
+   0.65708,
+   1.00257
+  ]
+ },
  "x/rogue.png": {
   "game": "rogue",
   "config": "rogue_letters.py",
@@ -5753,8 +7225,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
-  "size": 0.94,
-  "pad": 0.03,
+  "size": 0.86,
+  "pad": 0.09,
   "case": "upper"
  },
  "x/rogue__lower.png": {
@@ -5766,8 +7238,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
-  "size": 0.94,
-  "pad": 0.03,
+  "size": 0.86,
+  "pad": 0.09,
   "case": "lower"
  },
  "y/everything_is_crab.png": {
@@ -5795,8 +7267,8 @@
   "body_center_x": 0.5,
   "body_width": 0.6,
   "pixel": true,
-  "size": 0.94,
-  "pad": 0.03,
+  "size": 0.86,
+  "pad": 0.09,
   "case": "upper"
  },
  "y/rogue__lower.png": {
@@ -5808,8 +7280,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
-  "size": 0.94,
-  "pad": 0.03,
+  "size": 0.86,
+  "pad": 0.09,
   "case": "lower"
  },
  "y/slay_the_spire.png": {
@@ -5859,6 +7331,22 @@
    1.0625
   ]
  },
+ "y/the_royal_writ.png": {
+  "game": "the_royal_writ",
+  "config": "the_royal_writ.json",
+  "style": "the_royal_writ",
+  "body_center": 0.5,
+  "body_height": 0.9866,
+  "body_center_x": 0.5,
+  "body_width": 0.9707,
+  "src": [
+   0.65215,
+   0.1231,
+   0.78879,
+   0.60192
+  ],
+  "form": "lower"
+ },
  "y/uma_musume_pretty_derby.png": {
   "game": "uma_musume_pretty_derby",
   "config": "uma_musume_pretty_derby_line2.json",
@@ -5883,8 +7371,8 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
-  "size": 0.94,
-  "pad": 0.03,
+  "size": 0.86,
+  "pad": 0.09,
   "case": "upper"
  },
  "z/rogue__lower.png": {
@@ -5896,8 +7384,23 @@
   "body_center_x": 0.45,
   "body_width": 0.7,
   "pixel": true,
-  "size": 0.94,
-  "pad": 0.03,
+  "size": 0.86,
+  "pad": 0.09,
   "case": "lower"
+ },
+ "z/wizard_of_legend.png": {
+  "game": "wizard_of_legend",
+  "config": "wizard_of_legend.json",
+  "style": "wizard_of_legend",
+  "body_center": 0.5069,
+  "body_height": 0.8472,
+  "body_center_x": 0.5,
+  "body_width": 0.8033,
+  "src": [
+   0.1625,
+   0.31544,
+   0.23875,
+   0.79866
+  ]
  }
 }

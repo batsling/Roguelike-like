@@ -208,7 +208,50 @@ draws it), 2x as `silhouette`s. Risk of Rain 2 gives R I S K, O F, R A I N (seco
 R and I as `__2`) and its cream 2 into `2/`; only the text, the planets and
 streaks behind it left out, each letter with an even dark slate outline. Caves of
 Qud gives C A V E S, O F, Q U D (the V and E touch and are split between them;
-the red bars round OF are left out), 2x as `silhouette`s. A logo can
+the red bars round OF are left out), 2x as `silhouette`s. The Royal Writ
+gives t h e, R o y a l, W r i t (the lowercase r and the second t as `__2`),
+red brushwork cut as drawn (`reach` 2) with its black outline and cyan 3D side,
+the W's burn holes see-through; every letter stands apart, so no `splits`. Luck be a Landlord gives L u c k
+b e a n d o r and a lowercase l (`l__2`): pixel art at 10.86px a pixel, rebuilt
+with `pixel_grid` (which counts a see-through block as background, since this
+logo's transparent pixels are black RGB) and cut sharp at 12x. Letters side by
+side share one outline in the logo, so each is cut by its white face alone and
+given its own whole one-pixel black ring (`pixel_outline`); the second L, a and
+d are exact repeats and left out. Its letters are measured with that ring
+(`box_whole`): measured by the face alone, the ring sat outside the box, a
+third of a six-pixel letter, and every one came out a third too big. Don't Starve gives D o n ' t S t a r v e
+(the second t as `__2`, the apostrophe as `apostrophe/`): scratchy white strokes
+that run into each other through their black edges and grey shadow, so each
+letter is found by its white (`min_brightness` 200) and cut as drawn with what
+lies within 8px (`reach`), 2x `smooth_scale` from a 594px source; the v's right
+stroke rises far above the line, so the v is sized by its body. Returnal gives
+R E T U R N A L (the second R as `__2`): yellow faces (`rgb_ranges`) in a soft
+white smoke that runs from letter to letter, so each keeps the smoke within
+110px and fades it out into its neighbour's (`glow_share`, as Diablo). 868-BACK was cut and then dropped
+(the owner, 1 Nov 2026), its pale glitch letters hard to read on the title's
+band; `body`'s column bounds (`[y0, y1, x0, x1]`), built for its stray specks,
+stay in the script. Hand of Fate gives H A N D, O F, F A T E (FATE's F and A
+as `__2`): carved gold letters cut solid (`min_alpha` 250) at 2x `smooth_scale`,
+the soft dark shadow round them shared out within 45px (`glow_share`); the D
+and FATE's F keep their sparkles. Wizard of Legend gives W I Z A R D, o f,
+L E G E N D (the second E and D as `__2`): white faces (`min_brightness` 200) in
+a thin dark outline that neighbours share (`shared_outline`), 2x `smooth_scale`.
+Each element is part of its letter, listed as extra points: the W's flames,
+the R's crystals, the first E's wind swirl, the second E's lightning (its
+sparks between E and N too) and the last D's plant; those five are sized by
+their letter rows (`body` 53-116) so the element rises above the line. The
+underline is left out. BALL x PIT gives B A L L P I T (the second L as `__2`)
+and its X: white letters cut as they are, each part a crack split off listed
+as another point of its letter (the B's chip, the P's lower-left, the I's chip);
+the orange X takes its paint flecks and is sized by the white letters' rows
+(`body` 558-1086), so it overflows the line as the logo has it. Dungeon Crawl
+Stone Soup takes three configs on one 416px source, all 3x `smooth_scale`: the
+red D u n g e o n, C r a w l (`rgb_ranges` red, kept above row 53 so the grey
+never counts), each with its cream line and the black ring neighbours share
+(`shared_outline`); the grey S t o n e, S o u p (`_2`, its `region` the lower
+right); and the cauldron between the words as the `dash` (`_3`, everything
+opaque in its box). The second n, the o's, the e, u and S's are `__2`, `__3`.
+A logo can
 take more than one config when its parts are built differently: Uma Musume has
 four, one per line, one for the girl and one for her dash.
 `mewgenics.json` is the simple case: black letters that do not touch, cut as
@@ -279,7 +322,9 @@ baseline (Dead Cells' thin letters 1.12, every Balatro letter 1.05), `"pad"` kee
 much of the line clear either side (Dead Cells' flame, 0.08), and `"drop"` moves
 it down by that much of the line (Balatro's A, 0.05). Rogue's letters carry the
 same keys from `tools/rogue_letters.py`'s `SIZE`, `PAD` and `SIZE_OF`: every one
-0.94 and padded 0.03, the lowercase k 0.86. A capital place prefers a capital
+0.86 and padded 0.09, the lowercase k 0.79. The pad is that big because a
+Rogue letter's black edge sits OUTSIDE the box it is spaced by (0.1 of the
+line at full size); at 0.03 it ran into its neighbours. A capital place prefers a capital
 SHAPE: a lowercase-shaped letter (Darkest Dungeon's r, which read as a T) is
 picked for one only when no capital can be. A decoration is never drawn down
 into the row below its own (the torch's long handle covered the subtitle): it

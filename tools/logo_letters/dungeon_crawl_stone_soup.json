@@ -1,0 +1,15 @@
+{
+  "game": "dungeon_crawl_stone_soup",
+  "source": "dungeon_crawl_stone_soup.png",
+  "pieces": {
+    "d": [30, 20], "u": [62, 30], "n": [95, 30], "g": [125, 25], "e": [150, 30],
+    "o": [172, 30], "n.2": [200, 30],
+    "c": [[275, 25], [291, 10]], "r": [308, 30], "a": [335, 33], "w": [360, 30], "l": [394, 25]
+  },
+  "fill": {"min_alpha": 200, "min_brightness": -1, "rgb_ranges": [[70, 255, 0, 140, 0, 140]], "rows": [0, 53]},
+  "lowercase": ["u", "n", "g", "e", "o", "n.2", "r", "a", "w", "l"],
+  "adopt_strays": false,
+  "smooth": false,
+  "shadow": false,
+  "cut": {"reach": 4, "shared_outline": true, "scale": 3, "smooth_scale": true}
+}

@@ -11,6 +11,70 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Luck be a Landlord's letters the right size.** Each was measured by its
+  white face alone, so the one-pixel outline round it, a third of a six-pixel
+  letter, sat outside its box: every letter came out a third too tall and
+  overran its slot. A new config option, `box_whole`, measures a piece by
+  everything it draws, outline included.
+
+- **Rogue's letters smaller and further apart.** Drawn 0.86 of the line (was
+  0.94; the lowercase k 0.79, was 0.86) and padded 0.09 either side (was
+  0.03). Their black edge sits outside the box a letter is spaced by, 0.1 of
+  the line, so it ate the whole gap and ran into the next letter; the pad now
+  covers it.
+
+- **Dungeon Crawl Stone Soup's letters.** D u n g e o n, C r a w l in red with
+  their cream line and black ring (rings two letters share given to both), and
+  S t o n e, S o u p in grey; repeats as `__2`, `__3`. The cauldron between
+  DUNGEON and CRAWL is the dash, handles, feet and glow included.
+
+- **BALL x PIT's letters.** B A L L P I T (the second L as `__2`), white with
+  their cracks, each part a crack split off kept with its letter (a chip of the
+  B, the P's lower-left, a chip in the I); and the orange X with its paint
+  flecks, sized by the letters' rows so it overflows the line as in the logo.
+
+- **Wizard of Legend's letters.** W I Z A R D, o f, L E G E N D (the second E
+  and D as `__2`), white faces in their thin dark outline, each with its own
+  element: the W's flames, the R's crystals, the first E's wind swirl, the
+  second E's lightning (sparks and tip included) and the last D's plant.
+  Those five are sized by their letter rows, so the effect rises above the line.
+  The underline is left out.
+
+- **Hand of Fate's letters.** H A N D, O F, F A T E (FATE's F and A as `__2`),
+  carved gold cut solid at 2x, each with the soft shadow round it shared with
+  its neighbours (`glow_share`) and its own sparkle: the D's top corner and
+  FATE's F.
+
+- **868-BACK's letters, cut and dropped.** Its pale glitch letters were hard
+  to read on the title's band. `body` keeps the column bounds
+  (`[y0, y1, x0, x1]`) added for them.
+
+- **Returnal's letters.** R E T U R N A L (the second R as `__2`), each yellow
+  face with the white smoke and yellow haze round it. The smoke runs from
+  letter to letter, so each keeps the part nearest it and fades out into its
+  neighbour's (`glow_share`, as Diablo's flames) instead of stopping on a seam.
+
+- **Don't Starve's letters.** D o n ' t S t a r v e (the second t as `__2`, the
+  apostrophe in `apostrophe/`), scratchy white strokes cut as drawn at 2x with
+  their black edge and grey drop shadow. The letters run into each other
+  through their outlines and shadows, so each is found by its white strokes and
+  keeps what lies nearest them. The v's right stroke rises far above the
+  line, so the v is sized by its body.
+
+- **Luck be a Landlord's letters.** L u c k b e a n d o r and a lowercase l,
+  pixel art rebuilt on the logo's grid (10.86px a pixel) and cut sharp at 12x.
+  In the logo, letters next to each other share one black outline; each
+  letter now gets its own complete one-pixel ring (`pixel_outline`). The
+  second L, a and d repeat the first exactly and are left out. `pixel_grid`
+  now treats a see-through block as background (this logo's transparent
+  pixels are black RGB); Noita and Spelunky cut byte-identical. A title test
+  that only asserted when a word repeated a game now always asserts.
+
+- **The Royal Writ's letters.** t h e, R o y a l, W r i t (the lowercase r
+  and the second t as `__2`), red brushwork cut as drawn with its black
+  outline and cyan 3D side, the W's burn holes left see-through. Every
+  letter stands apart in the logo, so nothing needed splitting.
+
 - **The title is centred whatever opens it.** A piece's `pad` (room either
   side, given to Rogue's letters) now only goes between pieces: at the start
   of a row it pushed the whole row 1.26px right whenever Rogue's R opened the

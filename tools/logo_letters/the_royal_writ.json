@@ -1,0 +1,29 @@
+{
+  "game": "the_royal_writ",
+  "source": "the_royal_writ.webp",
+  "pieces": {
+    "t": [70, 450],
+    "h": [180, 450],
+    "e": [400, 520],
+    "r": [600, 300],
+    "o": [1060, 500],
+    "y": [1400, 300],
+    "a": [1780, 400],
+    "l": [1940, 300],
+    "w": [500, 900],
+    "r.2": [740, 950],
+    "i": [950, 950],
+    "t.2": [1150, 950]
+  },
+  "fill": {
+    "min_alpha": 127,
+    "min_brightness": -1
+  },
+  "adopt_strays": false,
+  "smooth": false,
+  "shadow": false,
+  "cut": {
+    "reach": 2
+  },
+  "lowercase": ["t", "h", "e", "o", "y", "a", "l", "r.2", "i", "t.2"]
+}
