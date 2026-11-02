@@ -320,7 +320,9 @@ baseline (Dead Cells' thin letters 1.12, every Balatro letter 1.05), `"pad"` kee
 much of the line clear either side (Dead Cells' flame, 0.08), and `"drop"` moves
 it down by that much of the line (Balatro's A, 0.05). Rogue's letters carry the
 same keys from `tools/rogue_letters.py`'s `SIZE`, `PAD` and `SIZE_OF`: every one
-0.94 and padded 0.03, the lowercase k 0.86. A capital place prefers a capital
+0.86 and padded 0.09, the lowercase k 0.79. The pad is that big because a
+Rogue letter's black edge sits OUTSIDE the box it is spaced by (0.1 of the
+line at full size); at 0.03 it ran into its neighbours. A capital place prefers a capital
 SHAPE: a lowercase-shaped letter (Darkest Dungeon's r, which read as a T) is
 picked for one only when no capital can be. A decoration is never drawn down
 into the row below its own (the torch's long handle covered the subtitle): it

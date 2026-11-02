@@ -51,10 +51,12 @@ EDGE = (0, 0, 0, 255)
 # The owner's eye (TitleLetters reads these as it does a logo config's): every
 # Rogue character drawn this much smaller, on the baseline, and this much of the
 # line kept clear either side; a character listed here drawn at its own size
-# instead (the lowercase k stood out large).
-SIZE = 0.94
-PAD = 0.03
-SIZE_OF = {"k": 0.86}
+# instead (the lowercase k stood out large). PAD covers the black edge, which
+# sits OUTSIDE the box a letter is spaced by (0.1 of the line at full size, so
+# 0.086 at 0.86): with less, Rogue's letters ran into their neighbours.
+SIZE = 0.86
+PAD = 0.09
+SIZE_OF = {"k": 0.79}
 
 # Keep in step with TitleLetters.PUNCT (test_title_letters.gd checks every
 # entry this writes is a folder some character reaches).

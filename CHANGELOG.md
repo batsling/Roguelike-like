@@ -11,6 +11,12 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Rogue's letters smaller and further apart.** Drawn 0.86 of the line (was
+  0.94; the lowercase k 0.79, was 0.86) and padded 0.09 either side (was
+  0.03). Their black edge sits outside the box a letter is spaced by, 0.1 of
+  the line, so it ate the whole gap and ran into the next letter; the pad now
+  covers it.
+
 - **Dungeon Crawl Stone Soup's letters.** D u n g e o n, C r a w l in red with
   their cream line and black ring (rings two letters share given to both), and
   S t o n e, S o u p in grey; repeats as `__2`, `__3`. The cauldron between
