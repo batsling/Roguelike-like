@@ -1,0 +1,27 @@
+{
+  "game": "returnal",
+  "source": "returnal.webp",
+  "pieces": {
+    "r": [175, 260],
+    "e": [330, 250],
+    "t": [530, 245],
+    "u": [625, 300],
+    "r.2": [770, 260],
+    "n": [925, 300],
+    "a": [1140, 315],
+    "l": [1237, 300]
+  },
+  "fill": {
+    "min_alpha": 150,
+    "min_brightness": -1,
+    "rgb_ranges": [[180, 255, 150, 255, 0, 130]]
+  },
+  "adopt_strays": false,
+  "smooth": false,
+  "shadow": false,
+  "cut": {
+    "reach": 110,
+    "glow_share": {"falloff": 6},
+    "min_part": 30
+  }
+}

@@ -1,0 +1,78 @@
+{
+  "game": "don_t_starve",
+  "source": "don_t_starve.webp",
+  "pieces": {
+    "d": [
+      50,
+      150
+    ],
+    "o": [
+      134,
+      170
+    ],
+    "n": [
+      195,
+      170
+    ],
+    "apostrophe": [
+      216,
+      47
+    ],
+    "t": [
+      248,
+      150
+    ],
+    "s": [
+      326,
+      150
+    ],
+    "t.2": [
+      362,
+      140
+    ],
+    "a": [
+      413,
+      170
+    ],
+    "r": [
+      448,
+      170
+    ],
+    "v": [
+      490,
+      150
+    ],
+    "e": [
+      555,
+      170
+    ]
+  },
+  "fill": {
+    "min_alpha": 200,
+    "min_brightness": 200
+  },
+  "adopt_strays": true,
+  "smooth": false,
+  "shadow": false,
+  "cut": {
+    "reach": 8,
+    "scale": 2,
+    "smooth_scale": true
+  },
+  "lowercase": [
+    "o",
+    "n",
+    "t",
+    "t.2",
+    "a",
+    "r",
+    "v",
+    "e"
+  ],
+  "body": {
+    "v": [
+      90,
+      281
+    ]
+  }
+}

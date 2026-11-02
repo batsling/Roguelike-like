@@ -1,0 +1,26 @@
+{
+  "game": "luck_be_a_landlord",
+  "source": "luck_be_a_landlord.png",
+  "pixel_grid": {
+    "x0": -0.86, "y0": 0.12, "x1": 640, "y1": 360, "pitch": 10.86,
+    "palette": [[0, 0, 0], [255, 255, 255]],
+    "tolerance": 30
+  },
+  "pieces": {
+    "l": [1, 10], "u": [7, 10], "c": [14, 10], "k": [20, 10],
+    "b": [33, 10], "e": [41, 10], "a": [53, 11],
+    "n": [17, 21], "d": [28, 21], "l.2": [31, 21], "o": [36, 21], "r": [43, 21]
+  },
+  "lowercase": ["u", "c", "k", "b", "e", "a", "n", "d", "l.2", "o", "r"],
+  "fill": {"colours": [[255, 255, 255]], "tolerance": 6},
+  "box_whole": true,
+  "adopt_strays": false,
+  "smooth": false,
+  "shadow": false,
+  "cut": {
+    "reach": 0,
+    "pixel_outline": {"colour": [0, 0, 0], "width": 1},
+    "hard_edge": ["l", "u", "c", "k", "b", "e", "a", "n", "d", "l.2", "o", "r"],
+    "scale": 12
+  }
+}

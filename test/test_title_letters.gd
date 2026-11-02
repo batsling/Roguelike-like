@@ -183,6 +183,10 @@ func test_a_word_does_not_repeat_a_game_while_another_is_left() -> void:
 						opts = caps
 				var unused := opts.filter(func(o): return not o["game"] in before)
 				assert_true(unused.is_empty(), "seed %d: %s repeats %s with %s unused" % [s, ch, e["game"], unused.size()])
+		# every place got a letter, so the loop above saw the whole word; asserted
+		# always, since a pool big enough that no seed repeats a game would
+		# otherwise leave this test asserting nothing
+		assert_eq(picks.size(), TITLE.replace(" ", "").length(), "seed %d: a letter in every place" % s)
 
 func _folder_for_test(ch: String) -> String:
 	return TitleLetters._folder_for(ch)
