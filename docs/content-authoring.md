@@ -242,7 +242,14 @@ underline is left out. BALL x PIT gives B A L L P I T (the second L as `__2`)
 and its X: white letters cut as they are, each part a crack split off listed
 as another point of its letter (the B's chip, the P's lower-left, the I's chip);
 the orange X takes its paint flecks and is sized by the white letters' rows
-(`body` 558-1086), so it overflows the line as the logo has it. A logo can
+(`body` 558-1086), so it overflows the line as the logo has it. Dungeon Crawl
+Stone Soup takes three configs on one 416px source, all 3x `smooth_scale`: the
+red D u n g e o n, C r a w l (`rgb_ranges` red, kept above row 53 so the grey
+never counts), each with its cream line and the black ring neighbours share
+(`shared_outline`); the grey S t o n e, S o u p (`_2`, its `region` the lower
+right); and the cauldron between the words as the `dash` (`_3`, everything
+opaque in its box). The second n, the o's, the e, u and S's are `__2`, `__3`.
+A logo can
 take more than one config when its parts are built differently: Uma Musume has
 four, one per line, one for the girl and one for her dash.
 `mewgenics.json` is the simple case: black letters that do not touch, cut as
