@@ -503,6 +503,53 @@
    0.51176
   ]
  },
+ "a/path_of_achra.png": {
+  "game": "path_of_achra",
+  "config": "path_of_achra.json",
+  "style": "path_of_achra",
+  "body_center": 0.5,
+  "body_height": 0.8824,
+  "body_center_x": 0.5,
+  "body_width": 0.8857,
+  "src": [
+   0.10227,
+   0.20423,
+   0.23485,
+   0.44366
+  ],
+  "form": "lower"
+ },
+ "a/path_of_achra__2.png": {
+  "game": "path_of_achra",
+  "config": "path_of_achra.json",
+  "style": "path_of_achra",
+  "body_center": 0.5,
+  "body_height": 0.9444,
+  "body_center_x": 0.5,
+  "body_width": 0.9459,
+  "src": [
+   0.24242,
+   0.50704,
+   0.52273,
+   1.01408
+  ]
+ },
+ "a/path_of_achra__3.png": {
+  "game": "path_of_achra",
+  "config": "path_of_achra.json",
+  "style": "path_of_achra",
+  "body_center": 0.5,
+  "body_height": 0.8824,
+  "body_center_x": 0.5,
+  "body_width": 0.8824,
+  "src": [
+   0.87879,
+   0.70423,
+   1.00758,
+   0.94366
+  ],
+  "form": "lower"
+ },
  "a/returnal.png": {
   "game": "returnal",
   "config": "returnal.json",
@@ -1189,6 +1236,22 @@
    0.44583,
    0.51029
   ]
+ },
+ "c/path_of_achra.png": {
+  "game": "path_of_achra",
+  "config": "path_of_achra.json",
+  "style": "path_of_achra",
+  "body_center": 0.5,
+  "body_height": 0.8824,
+  "body_center_x": 0.5,
+  "body_width": 0.8857,
+  "src": [
+   0.51136,
+   0.70423,
+   0.64394,
+   0.94366
+  ],
+  "form": "lower"
  },
  "c/rogue.png": {
   "game": "rogue",
@@ -2637,6 +2700,22 @@
    1.01519
   ]
  },
+ "f/path_of_achra.png": {
+  "game": "path_of_achra",
+  "config": "path_of_achra.json",
+  "style": "path_of_achra",
+  "body_center": 0.5,
+  "body_height": 0.9,
+  "body_center_x": 0.5,
+  "body_width": 0.8182,
+  "src": [
+   0.18182,
+   0.5,
+   0.26515,
+   0.78169
+  ],
+  "form": "lower"
+ },
  "f/rift_wizard.png": {
   "game": "rift_wizard",
   "config": "rift_wizard.json",
@@ -3110,6 +3189,38 @@
    0.3974,
    0.91912
   ]
+ },
+ "h/path_of_achra.png": {
+  "game": "path_of_achra",
+  "config": "path_of_achra.json",
+  "style": "path_of_achra",
+  "body_center": 0.5,
+  "body_height": 0.9394,
+  "body_center_x": 0.5,
+  "body_width": 0.8889,
+  "src": [
+   0.34091,
+   -0.00704,
+   0.47727,
+   0.45775
+  ],
+  "form": "lower"
+ },
+ "h/path_of_achra__2.png": {
+  "game": "path_of_achra",
+  "config": "path_of_achra.json",
+  "style": "path_of_achra",
+  "body_center": 0.5,
+  "body_height": 0.9385,
+  "body_center_x": 0.5,
+  "body_width": 0.8857,
+  "src": [
+   0.64015,
+   0.49296,
+   0.77273,
+   0.9507
+  ],
+  "form": "lower"
  },
  "h/rogue.png": {
   "game": "rogue",
@@ -5001,6 +5112,22 @@
    0.925
   ]
  },
+ "o/path_of_achra.png": {
+  "game": "path_of_achra",
+  "config": "path_of_achra.json",
+  "style": "path_of_achra",
+  "body_center": 0.5,
+  "body_height": 0.8182,
+  "body_center_x": 0.5,
+  "body_width": 0.8462,
+  "src": [
+   0.0947,
+   0.62676,
+   0.19318,
+   0.78169
+  ],
+  "form": "lower"
+ },
  "o/risk_of_rain_2.png": {
   "game": "risk_of_rain_2",
   "config": "risk_of_rain_2.json",
@@ -5208,6 +5335,21 @@
    0.1623,
    0.87958,
    0.50785
+  ]
+ },
+ "p/path_of_achra.png": {
+  "game": "path_of_achra",
+  "config": "path_of_achra.json",
+  "style": "path_of_achra",
+  "body_center": 0.5,
+  "body_height": 0.9474,
+  "body_center_x": 0.5,
+  "body_width": 0.9149,
+  "src": [
+   -0.00758,
+   -0.01408,
+   0.17045,
+   0.52113
   ]
  },
  "p/rogue.png": {
@@ -5698,6 +5840,22 @@
    0.51615,
    0.92206
   ]
+ },
+ "r/path_of_achra.png": {
+  "game": "path_of_achra",
+  "config": "path_of_achra.json",
+  "style": "path_of_achra",
+  "body_center": 0.5,
+  "body_height": 0.8824,
+  "body_center_x": 0.5,
+  "body_width": 0.8621,
+  "src": [
+   0.78409,
+   0.69718,
+   0.89394,
+   0.93662
+  ],
+  "form": "lower"
  },
  "r/returnal.png": {
   "game": "returnal",
@@ -6761,6 +6919,22 @@
    0.3,
    0.92059
   ]
+ },
+ "t/path_of_achra.png": {
+  "game": "path_of_achra",
+  "config": "path_of_achra.json",
+  "style": "path_of_achra",
+  "body_center": 0.5,
+  "body_height": 0.9111,
+  "body_center_x": 0.5,
+  "body_width": 0.8621,
+  "src": [
+   0.23864,
+   0.11972,
+   0.34848,
+   0.43662
+  ],
+  "form": "lower"
  },
  "t/returnal.png": {
   "game": "returnal",

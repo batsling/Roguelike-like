@@ -266,6 +266,12 @@ crosses the W, and the black backing they share faded out between neighbours
 within 30px (`glow_share`), 2x `smooth_scale`. The purple diamond between the
 words is the `dash` (`rift_wizard_dash.json`, everything opaque in its box, cut
 whole), held by the letters' config (`hold`) so the T stops where it starts.
+Path of Achra gives P a t h, o f, A c h r a (the capital A as `a/…__2`, the
+last a as `__3`, the second h as `__2`), every letter but P and A cut as a
+lowercase shape. The owner's 296px upload, not Steam's library logo, which is
+another design (pixel art over a dark glyph). Red in three hard bands with no
+anti-aliasing, so each letter is cut as it is and scaled 4x as a `silhouette`;
+only the r and the last a touch, at one diagonal pixel, split at x 250.
 A logo can
 take more than one config when its parts are built differently: Uma Musume has
 four, one per line, one for the girl and one for her dash.
