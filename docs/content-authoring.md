@@ -257,6 +257,15 @@ solid black 3D side REBUILT by sweeping it 34 right and 17 down (`extrude`) insi
 an 8px black outline, both fitted to the logo (1,600 pixels off over the whole
 thing), so ROBO's side never lands on QUEST's top. A shadow measured the usual
 way finds nothing here: the side is opaque, not a soft drop shadow.
+Rift Wizard gives R I F T, W I Z A R D (the second I and R as `__2`), cut from
+Rift Wizard 3's logo by the owner's choice (3 Nov 2026), with the purple 3
+erased from the source so the game page's logo is the first game's name alone.
+Each letter is found by its pale chalk stroke (`rgb_ranges`; the swirls a stroke
+leaves loose are extra points), the W and I parted at x 682 where the I's hook
+crosses the W, and the black backing they share faded out between neighbours
+within 30px (`glow_share`), 2x `smooth_scale`. The purple diamond between the
+words is the `dash` (`rift_wizard_dash.json`, everything opaque in its box, cut
+whole), held by the letters' config (`hold`) so the T stops where it starts.
 A logo can
 take more than one config when its parts are built differently: Uma Musume has
 four, one per line, one for the girl and one for her dash.
