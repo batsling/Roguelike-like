@@ -272,6 +272,17 @@ lowercase shape. The owner's 296px upload, not Steam's library logo, which is
 another design (pixel art over a dark glyph). Red in three hard bands with no
 anti-aliasing, so each letter is cut as it is and scaled 4x as a `silhouette`;
 only the r and the last a touch, at one diagonal pixel, split at x 250.
+StarVaders gives S T A R, V A D E R S (the second A, R and S as `__2`) and its
+orange star as the `dash`, from a 2048px copy of the older, grimier logo. The
+faces come apart on their own and share one dark plate, so each gets the plate
+rebuilt round it as an outline (the default paint mode, `match_tolerance` 30).
+The star's right tip and the shadow it casts lie over the V's left side, so the
+star is cut by a config of its own (`starvaders_dash.json`, from the untouched
+logo, the R and V `hold`), and the letters' config leaves it out of the fill
+(`exclude_rgb_ranges`, boxed to the star) and paints the V back over it:
+`repaint` rebuilds every pixel of that strip that is not clean face from the
+face above and below it, and a `rects` strip lays the plate's own colour back
+over the star's edge in the V's outline.
 A logo can
 take more than one config when its parts are built differently: Uma Musume has
 four, one per line, one for the girl and one for her dash.
