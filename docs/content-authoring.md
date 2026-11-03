@@ -251,6 +251,12 @@ never counts), each with its cream line and the black ring neighbours share
 (`shared_outline`); the grey S t o n e, S o u p (`_2`, its `region` the lower
 right); and the cauldron between the words as the `dash` (`_3`, everything
 opaque in its box). The second n, the o's, the e, u and S's are `__2`, `__3`.
+Roboquest gives R O B O (the second O as `__2`) in blue and Q U E S T in gold,
+from Steam's 1280px library logo: each face cut with its thin white rim, and the
+solid black 3D side REBUILT by sweeping it 34 right and 17 down (`extrude`) inside
+an 8px black outline, both fitted to the logo (1,600 pixels off over the whole
+thing), so ROBO's side never lands on QUEST's top. A shadow measured the usual
+way finds nothing here: the side is opaque, not a soft drop shadow.
 A logo can
 take more than one config when its parts are built differently: Uma Musume has
 four, one per line, one for the girl and one for her dash.

@@ -883,6 +883,21 @@
   ],
   "form": "lower"
  },
+ "b/roboquest.png": {
+  "game": "roboquest",
+  "config": "roboquest.json",
+  "style": "roboquest",
+  "body_center": 0.4533,
+  "body_height": 0.7967,
+  "body_center_x": 0.4401,
+  "body_width": 0.8099,
+  "src": [
+   0.49677,
+   -0.00276,
+   0.72617,
+   0.5
+  ]
+ },
  "b/rogue.png": {
   "game": "rogue",
   "config": "rogue_letters.py",
@@ -2236,6 +2251,21 @@
    0.1269,
    0.32069,
    0.87817
+  ]
+ },
+ "e/roboquest.png": {
+  "game": "roboquest",
+  "config": "roboquest.json",
+  "style": "roboquest",
+  "body_center": 0.4536,
+  "body_height": 0.7978,
+  "body_center_x": 0.4401,
+  "body_width": 0.8099,
+  "src": [
+   0.38611,
+   0.43923,
+   0.61551,
+   0.94475
   ]
  },
  "e/rogue.png": {
@@ -4896,6 +4926,36 @@
    0.5971
   ]
  },
+ "o/roboquest.png": {
+  "game": "roboquest",
+  "config": "roboquest.json",
+  "style": "roboquest",
+  "body_center": 0.4533,
+  "body_height": 0.7967,
+  "body_center_x": 0.4391,
+  "body_width": 0.8065,
+  "src": [
+   0.30695,
+   -0.00276,
+   0.53231,
+   0.5
+  ]
+ },
+ "o/roboquest__2.png": {
+  "game": "roboquest",
+  "config": "roboquest.json",
+  "style": "roboquest",
+  "body_center": 0.4533,
+  "body_height": 0.7967,
+  "body_center_x": 0.4391,
+  "body_width": 0.8065,
+  "src": [
+   0.69467,
+   -0.00276,
+   0.92003,
+   0.5
+  ]
+ },
  "o/rogue.png": {
   "game": "rogue",
   "config": "rogue_letters.py",
@@ -5235,6 +5295,21 @@
    -0.00463,
    0.7879,
    1.00463
+  ]
+ },
+ "q/roboquest.png": {
+  "game": "roboquest",
+  "config": "roboquest.json",
+  "style": "roboquest",
+  "body_center": 0.4585,
+  "body_height": 0.8195,
+  "body_center_x": 0.4391,
+  "body_width": 0.8065,
+  "src": [
+   -0.00162,
+   0.43923,
+   0.22375,
+   1.00552
   ]
  },
  "q/rogue.png": {
@@ -5592,6 +5667,21 @@
    0.43188,
    0.48971,
    0.74783
+  ]
+ },
+ "r/roboquest.png": {
+  "game": "roboquest",
+  "config": "roboquest.json",
+  "style": "roboquest",
+  "body_center": 0.4533,
+  "body_height": 0.7967,
+  "body_center_x": 0.4399,
+  "body_width": 0.8092,
+  "src": [
+   0.10905,
+   -0.00276,
+   0.33764,
+   0.5
   ]
  },
  "r/rogue.png": {
@@ -6028,6 +6118,21 @@
    0.11014,
    0.48754,
    0.42899
+  ]
+ },
+ "s/roboquest.png": {
+  "game": "roboquest",
+  "config": "roboquest.json",
+  "style": "roboquest",
+  "body_center": 0.4536,
+  "body_height": 0.7978,
+  "body_center_x": 0.4412,
+  "body_width": 0.8131,
+  "src": [
+   0.57593,
+   0.43923,
+   0.80937,
+   0.94475
   ]
  },
  "s/rogue.png": {
@@ -6552,6 +6657,21 @@
    0.86294
   ]
  },
+ "t/roboquest.png": {
+  "game": "roboquest",
+  "config": "roboquest.json",
+  "style": "roboquest",
+  "body_center": 0.4536,
+  "body_height": 0.7978,
+  "body_center_x": 0.4375,
+  "body_width": 0.8015,
+  "src": [
+   0.78191,
+   0.43923,
+   1.00162,
+   0.94475
+  ]
+ },
  "t/rogue.png": {
   "game": "rogue",
   "config": "rogue_letters.py",
@@ -6836,6 +6956,21 @@
    0.15228,
    0.52112,
    0.88579
+  ]
+ },
+ "u/roboquest.png": {
+  "game": "roboquest",
+  "config": "roboquest.json",
+  "style": "roboquest",
+  "body_center": 0.4536,
+  "body_height": 0.7978,
+  "body_center_x": 0.4401,
+  "body_width": 0.8099,
+  "src": [
+   0.19225,
+   0.43923,
+   0.42165,
+   0.94475
   ]
  },
  "u/rogue.png": {
