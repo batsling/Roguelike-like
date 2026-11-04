@@ -1,0 +1,69 @@
+{
+  "game": "roboquest",
+  "source": "roboquest.png",
+  "pieces": {
+    "r": [
+      369,
+      255
+    ],
+    "o": [
+      458,
+      265
+    ],
+    "b": [
+      753,
+      265
+    ],
+    "o.2": [
+      937,
+      265
+    ],
+    "q": [
+      34,
+      425
+    ],
+    "u": [
+      302,
+      440
+    ],
+    "e": [
+      712,
+      425
+    ],
+    "s": [
+      960,
+      425
+    ],
+    "t": [
+      1137,
+      385
+    ]
+  },
+  "adopt_strays": false,
+  "smooth": false,
+  "shadow": false,
+  "fill": {
+    "min_alpha": 200,
+    "min_brightness": 140
+  },
+  "cut": {
+    "reach": 1,
+    "extrude": {
+      "dx": 34,
+      "dy": 17,
+      "colour": [
+        0,
+        0,
+        0
+      ],
+      "outline": {
+        "width": 8,
+        "colour": [
+          0,
+          0,
+          0
+        ]
+      }
+    }
+  }
+}

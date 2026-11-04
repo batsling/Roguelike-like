@@ -1,0 +1,27 @@
+{
+  "game": "starvaders",
+  "source": "starvaders.webp",
+  "pieces": {
+    "dash": [
+      866,
+      314
+    ],
+    "r": [
+      660,
+      303
+    ],
+    "v": [
+      1040,
+      298
+    ]
+  },
+  "hold": [
+    "r",
+    "v"
+  ],
+  "fill": {
+    "min_alpha": 200,
+    "min_brightness": 120
+  },
+  "shadow": false
+}

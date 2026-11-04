@@ -251,6 +251,38 @@ never counts), each with its cream line and the black ring neighbours share
 (`shared_outline`); the grey S t o n e, S o u p (`_2`, its `region` the lower
 right); and the cauldron between the words as the `dash` (`_3`, everything
 opaque in its box). The second n, the o's, the e, u and S's are `__2`, `__3`.
+Roboquest gives R O B O (the second O as `__2`) in blue and Q U E S T in gold,
+from Steam's 1280px library logo: each face cut with its thin white rim, and the
+solid black 3D side REBUILT by sweeping it 34 right and 17 down (`extrude`) inside
+an 8px black outline, both fitted to the logo (1,600 pixels off over the whole
+thing), so ROBO's side never lands on QUEST's top. A shadow measured the usual
+way finds nothing here: the side is opaque, not a soft drop shadow.
+Rift Wizard gives R I F T, W I Z A R D (the second I and R as `__2`), cut from
+Rift Wizard 3's logo by the owner's choice (3 Nov 2026), with the purple 3
+erased from the source so the game page's logo is the first game's name alone.
+Each letter is found by its pale chalk stroke (`rgb_ranges`; the swirls a stroke
+leaves loose are extra points), the W and I parted at x 682 where the I's hook
+crosses the W, and the black backing they share faded out between neighbours
+within 30px (`glow_share`), 2x `smooth_scale`. The purple diamond between the
+words is the `dash` (`rift_wizard_dash.json`, everything opaque in its box, cut
+whole), held by the letters' config (`hold`) so the T stops where it starts.
+Path of Achra gives P a t h, o f, A c h r a (the capital A as `a/…__2`, the
+last a as `__3`, the second h as `__2`), every letter but P and A cut as a
+lowercase shape. The owner's 296px upload, not Steam's library logo, which is
+another design (pixel art over a dark glyph). Red in three hard bands with no
+anti-aliasing, so each letter is cut as it is and scaled 4x as a `silhouette`;
+only the r and the last a touch, at one diagonal pixel, split at x 250.
+StarVaders gives S T A R, V A D E R S (the second A, R and S as `__2`) and its
+orange star as the `dash`, from a 2048px copy of the older, grimier logo. The
+faces come apart on their own and share one dark plate, so each gets the plate
+rebuilt round it as an outline (the default paint mode, `match_tolerance` 30).
+The star's right tip and the shadow it casts lie over the V's left side, so the
+star is cut by a config of its own (`starvaders_dash.json`, from the untouched
+logo, the R and V `hold`), and the letters' config leaves it out of the fill
+(`exclude_rgb_ranges`, boxed to the star) and paints the V back over it:
+`repaint` rebuilds every pixel of that strip that is not clean face from the
+face above and below it, and a `rects` strip lays the plate's own colour back
+over the star's edge in the V's outline.
 A logo can
 take more than one config when its parts are built differently: Uma Musume has
 four, one per line, one for the girl and one for her dash.
