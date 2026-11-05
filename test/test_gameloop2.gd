@@ -2181,6 +2181,42 @@ func test_two_pieces_of_loot_never_share_a_square() -> void:
 	assert_ne(second, GameLoop2.OFF_FIELD, "an empty board has plenty")
 	assert_eq(GameLoop2.drop_cells().size(), 2, "two pieces, two squares")
 
+# Loot can be dragged from one square of the board to another (owner, 5 Nov 2026)
+# — onto bare ground only.
+func test_floor_loot_moves_to_another_bare_square() -> void:
+	var at := Vector2i(2, 1)
+	GameLoop2.place_drop(at, _floor_loot(&"one"))
+	assert_true(GameLoop2.move_drop(at, Vector2i(3, 0)), "a bare square takes it")
+	assert_false(GameLoop2.has_drop(at), "it left the first square")
+	assert_eq(String((GameLoop2.drop_at(Vector2i(3, 0)).get("loot", {}) as Dictionary).get("id", "")),
+		"one", "and the same piece lies on the second")
+
+func test_floor_loot_cannot_move_onto_another_piece_or_off_the_board() -> void:
+	GameLoop2.place_drop(Vector2i(2, 1), _floor_loot(&"one"))
+	var other: Vector2i = GameLoop2.place_drop(Vector2i(3, 1), _floor_loot(&"two"))
+	assert_false(GameLoop2.move_drop(Vector2i(2, 1), other), "not onto another piece")
+	assert_false(GameLoop2.move_drop(Vector2i(2, 1), Vector2i(99, 0)), "nor off the board")
+	assert_false(GameLoop2.move_drop(Vector2i(2, 1), Vector2i(2, 1)), "nor onto itself")
+	assert_true(GameLoop2.has_drop(Vector2i(2, 1)), "and a refused move leaves it where it was")
+
+# Only a curse the sheet tags `random` is ever dealt at random — the Hexer's
+# spread as well as an event's `add_curse random`.
+func test_a_random_curse_deal_only_draws_curses_tagged_random() -> void:
+	var allowed: Array = []
+	for c in Data.all_curses2():
+		if (c as CurseData2).is_random():
+			allowed.append((c as CurseData2).id)
+	assert_false(allowed.has(&"curse_of_the_bell"), "the Bell is not tagged random")
+	assert_gt(allowed.size(), 0, "and some curses are")
+	for _i in range(10):
+		GameState.curse_goals.clear()
+		GameLoop2._deal_curses(5)
+		for g in GameState.curse_goals:
+			assert_true(allowed.has(StringName(g.get("curse", ""))),
+				"%s was dealt at random" % str(g))
+		assert_true(allowed.has(EventSystem.roll_random_curse()),
+			"an event's random curse comes from the same list")
+
 func test_an_empty_entry_never_reaches_the_floor() -> void:
 	assert_eq(GameLoop2.place_drop(Vector2i(2, 1), {}), GameLoop2.OFF_FIELD,
 		"a roll that came back with nothing is not a drop")

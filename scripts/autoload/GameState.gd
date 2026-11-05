@@ -584,6 +584,14 @@ var shop_bar: int = 0
 # rifts off and for any save written before rifts existed.
 var rifts: Array = []
 
+# THE GAMES RIFT KEY CARDS HAVE ALREADY BEEN DEALT THIS RUN: game id (String) ->
+# the offering seed that dealt it. A key card's game is never dealt again at
+# ANOTHER table this run (the owner, 5 Nov 2026: "i kept getting abyss odyssey"
+# — the rift rotation puts the least-used game first, so the same one led every
+# table). The seed is kept so a redraw of the SAME table deals the same cards.
+# Run-scope, saved.
+var key_rift_dealt: Dictionary = {}
+
 # === Phase ===
 enum Phase { MENU, OVERWORLD, EVENT, COMBAT, DEAD, ESCAPE, WIN }
 var phase: Phase = Phase.MENU
@@ -1380,6 +1388,7 @@ func reset_run() -> void:
 	# The rifts go with the run that was dealt them — the graph goes back to the
 	# bare influence map for the next one.
 	set_rifts([])
+	key_rift_dealt.clear()
 	pending_chests = 0
 	pending_chest_choices.clear()
 	pending_chest_pools.clear()
@@ -4132,6 +4141,23 @@ func take_loot_entry(entry: Dictionary) -> bool:
 # run, PlaySession2, the tests — it falls back to the direct grant, which keeps
 # this a pure state change everywhere there is no UI to ask on.
 signal loot_offered(entries: Array)
+
+# The same, for RELICS: a payout that hands over a named item (the Blood Donation
+# Machine's Blood Bag or IV Bag) is OFFERED on the page's item modal rather than
+# slipped into the inventory while the machine that paid it vanishes — the owner,
+# 5 Nov 2026: "have it give a popup where the player can get the blood bag
+# instead of immediately exiting". No listener (headless, tests) grants it outright.
+signal items_offered(items: Array)
+
+func offer_items(items: Array) -> void:
+	if items.is_empty():
+		return
+	if has_connections("items_offered"):
+		items_offered.emit(items)
+		return
+	for it in items:
+		if it is ItemData:
+			add_item(it)
 
 func offer_loot(kind: String, n: int) -> void:
 	if n <= 0:

@@ -11,6 +11,32 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **5 Nov list (owner's ten).** *Curses*: the `curses` sheet has a `Tag`
+  column; only a curse tagged `random` (Injury, Poor Sleep) is dealt at random —
+  an event's `add_curse random` and the Hexer's spread both ask
+  `CurseData2.is_random` (the Hexer used to deal Curse of the Bell). *Rift Keys
+  kept dealing Abyss Odyssey*: the rift rotation sorts the least-used game first,
+  so it led every keyed table; a game a key card has dealt is now not dealt at
+  another table this run (`GameState.key_rift_dealt`, saved), and a redraw of the
+  same table keeps its cards. *Key rifts on the route*: the game choice window's
+  optimal path draws a dashed gold road (and a 🗝 on the game) wherever a key
+  would deal a rift card, to the games two steps on it would lead to. *Cover →
+  route*: clicking the cover beside "▶ Play X" opens the optimal path from it.
+  *Event loot fits*: a table on an event that runs out of height shrinks the
+  pack's cells (`LootGrid.max_fit`) instead of scrolling the 3x3. *Blood
+  Donation*: the bag it pays comes up on the item modal (`GameState.offer_items`
+  → `items_offered`) rather than vanishing into the inventory with the machine.
+  *Ray*: the line draws itself out, holds and fades; its squares are no longer
+  held lit afterwards. *Hits and shields*: a blow's shield breaks or its Health
+  comes off when the number lands, and a blocked blow is thrown as a blue
+  "◆ -N"; a crash's replay winds back the shield pool the hit really came out
+  of. *Turn lag*: a crowded turn repainted the whole page once per
+  `loop_changed` inside the turn (~40 ms each, before the first frame); the page
+  now holds those while a turn resolves and repaints once — 278 ms → ~45 ms
+  with 15 bodies. *Push*: the Push verb slides the body (and the crash jolt is a
+  little longer) instead of repainting it in place. *Floor loot* can be dragged
+  from one bare square of the board to another (`GameLoop2.move_drop`).
+
 - **5 Nov fixes.** *Prepared / the bin crashed on a big piece*:
   `LootGrid._place` sorted a slot whose big piece had just been destroyed and
   asked for the first of zero cells; it now skips the stale slot until the

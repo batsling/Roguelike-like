@@ -136,6 +136,12 @@ const EMBED_BODY_MIN_H := 200.0
 # table can hand over enough room for the 3x3 to stand up in one piece, and a
 # pack cut off at two rows is a pack the player cannot drop a bottle into.
 var _body_min_h: float = EMBED_BODY_MIN_H
+# THE PACK'S HEIGHT CAP when a host has shrunk this table (shrink_body), or 0 for
+# none. The pack gives way by drawing its cells SMALLER, not by scrolling: an
+# event's 3x3 cut off below the second row was a table you had to scroll to drop
+# a bottle into (owner, 5 Nov 2026: "i don't want to have to scroll"). Kept across
+# rebuilds — every take and every rearrange builds a new grid.
+var _pack_fit_h: float = 0.0
 # The widest this section may grow when embedded (0: no more than it needs). The
 # pack takes whatever the offer does not, so a pack with bags on it is drawn as
 # big as the host can afford rather than squeezed into the 3x3's box.
@@ -312,6 +318,7 @@ func _build() -> void:
 		# The section's own chrome: the panel's border and the margins either side,
 		# then the offer column and the gutter. What is left is the pack's.
 		_grid.fit_width = _width_budget - float(offer_w + ROW_GAP + MARGIN * 2) - 4.0
+	_apply_pack_fit()
 	_grid.rebuild()
 
 	# The offer on the left, the pack on the right, and the drag goes between them
@@ -828,7 +835,26 @@ func shrink_body(by: float) -> bool:
 		return false
 	_body_min_h = want
 	_body_scroll.custom_minimum_size.y = want
+	# …and the pack shrinks into it, so what was cut off under the scroll is drawn
+	# smaller instead. How far: everything the body holds over what it now shows.
+	var content: Control = _body_scroll.get_child(0) as Control \
+		if _body_scroll.get_child_count() > 0 else null
+	if content != null and _grid != null and is_instance_valid(_grid):
+		var over: float = content.get_combined_minimum_size().y - want
+		if over > 0.0:
+			_pack_fit_h = maxf(1.0, _grid.get_combined_minimum_size().y - over)
+			_apply_pack_fit()
 	return true
+
+# Hand the pack its height cap (see _pack_fit_h). The width stays the grid's own
+# default box, so only the height decides how far it shrinks.
+func _apply_pack_fit() -> void:
+	if _grid == null or _pack_fit_h <= 0.0:
+		return
+	_grid.max_fit = Vector2.ZERO
+	var box_w: float = _grid._fit_box().x
+	_grid.max_fit = Vector2(box_w, _pack_fit_h)
+	_grid._relayout()
 
 
 # Redraw against a pack that changed under this panel — a relic taken from a chest

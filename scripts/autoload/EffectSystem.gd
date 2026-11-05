@@ -900,7 +900,9 @@ func _h_gain_item_of(effect: Dictionary, ctx: Dictionary) -> void:
 	if template == null:
 		push_warning("EffectSystem.gain_item_of: no items2.0 item '%s'" % pick)
 		return
-	GameState.add_item(template)
+	# Offered, not slipped in: the page raises the item modal (Take / Leave) once the
+	# machine's card has gone, and a run with no page grants it directly.
+	GameState.offer_items([template])
 	ctx["granted_item"] = pick
 	ctx["granted_item_name"] = template.display_name
 

@@ -157,6 +157,10 @@ var _highlighted: Dictionary = {}
 var _offgrid_box: Control            # overflow queue just off the grid's right edge, lane by lane
 var _offgrid_label: Label = null     # "off field", over the column while anything waits
 const OFFGRID_TOKEN := 44
+# A ray going off (_draw_last_strike): the line draws out, holds, and fades.
+const RAY_DRAW_SEC := 0.35
+const RAY_HOLD_SEC := 0.5
+const RAY_FADE_SEC := 0.4
 var _fx_layer: Control               # overlay for damage numbers + sliding ghosts
 # Bodies (and their badges) currently hidden behind a travelling ghost. Held for
 # the whole multi-turn playback rather than per slide — an enemy that walks on
@@ -510,15 +514,41 @@ class FootprintFrame extends Control:
 class RayLine extends Control:
 	var points: PackedVector2Array = PackedVector2Array()
 	var color: Color = Color.WHITE
+	# How much of the path is drawn, 0..1 along its length — tweened by a ray going
+	# off so the line is seen being made rather than appearing whole. 1 for the aim
+	# preview, which is a plan rather than an event.
+	var grow: float = 1.0:
+		set(v):
+			grow = v
+			queue_redraw()
+
+	# The path cut to `grow` of its length, plus how many bounces it has passed.
+	func _drawn() -> PackedVector2Array:
+		if grow >= 1.0:
+			return points
+		var total: float = 0.0
+		for i in range(1, points.size()):
+			total += points[i - 1].distance_to(points[i])
+		var left: float = total * clampf(grow, 0.0, 1.0)
+		var out := PackedVector2Array([points[0]])
+		for i in range(1, points.size()):
+			var seg: float = points[i - 1].distance_to(points[i])
+			if seg >= left:
+				out.append(points[i - 1].lerp(points[i], left / maxf(seg, 0.001)))
+				return out
+			left -= seg
+			out.append(points[i])
+		return out
 
 	func _draw() -> void:
-		if points.size() < 2:
+		var drawn: PackedVector2Array = _drawn()
+		if drawn.size() < 2:
 			return
-		draw_polyline(points, Color(0, 0, 0, 0.45), 6.0, true)
-		draw_polyline(points, color, 3.0, true)
-		for i in range(1, points.size() - 1):
-			draw_arc(points[i], 6.0, 0.0, TAU, 20, color, 2.0, true)
-		draw_circle(points[points.size() - 1], 5.0, color)
+		draw_polyline(drawn, Color(0, 0, 0, 0.45), 6.0, true)
+		draw_polyline(drawn, color, 3.0, true)
+		for i in range(1, drawn.size() - 1):
+			draw_arc(drawn[i], 6.0, 0.0, TAU, 20, color, 2.0, true)
+		draw_circle(drawn[drawn.size() - 1], 5.0, color)
 
 # A ray's points (board units, RayAim) as pixels on the field: column c's left
 # edge is x = c, so the hero's column sits left of the field at negative x.
@@ -2288,6 +2318,23 @@ func _draw_last_strike() -> void:
 	var nodes: Array = []
 	for i in range(strikes.size()):
 		var cells: Array = (strikes[i] as Dictionary).get("cells", [])
+		# A RAY IS SHOWN BY ITS LINE, not by the squares it lit (owner, 5 Nov
+		# 2026): the line draws itself from the hero outward when the ray goes off,
+		# holds a moment and fades. Its squares are not painted and held after —
+		# the line already said where it went, and a board left lit under the
+		# bodies it hit read as those bodies still being marked for something.
+		var ray: Array = (strikes[i] as Dictionary).get("ray", [])
+		if ray.size() >= 2:
+			if fresh and is_inside_tree():
+				var line := _ray_line(ray, WeaponSystem.WEAPON_COLOR.lightened(0.25))
+				_strike_layer.add_child(line)
+				line.grow = 0.0
+				var t: Tween = line.create_tween()
+				t.tween_property(line, "grow", 1.0, RAY_DRAW_SEC).set_trans(Tween.TRANS_SINE)
+				t.tween_interval(RAY_HOLD_SEC)
+				t.tween_property(line, "modulate:a", 0.0, RAY_FADE_SEC)
+				t.tween_callback(line.queue_free)
+			continue
 		for cell in cells:
 			if not GameLoop2._on_board(cell.x, cell.y):
 				continue
@@ -2303,12 +2350,6 @@ func _draw_last_strike() -> void:
 				r.tooltip_text = "Hit by %s." % String(rec.get("label", "the last swing"))
 				_strike_layer.add_child(r)
 				nodes.append(r)
-		# A ray's line, over the squares it lit.
-		var ray: Array = (strikes[i] as Dictionary).get("ray", [])
-		if ray.size() >= 2:
-			var line := _ray_line(ray, WeaponSystem.WEAPON_COLOR.lightened(0.25))
-			_strike_layer.add_child(line)
-			nodes.append(line)
 		if numbered and not cells.is_empty():
 			var first: Vector2i = cells[0]
 			if GameLoop2._on_board(first.x, first.y):
@@ -2411,15 +2452,28 @@ static func is_free_floor(cell: Vector2i) -> bool:
 # A PIECE OUT OF THE PACK, and only that: `loot_move` is the pack's own payload.
 # A piece off the floor is already on the floor, an offer from a table was never
 # yours to put down, and a bag is the pack's shape rather than something in it.
+#
+# …OR A PIECE ALREADY ON THE FLOOR, moved to another bare square (owner, 5 Nov
+# 2026: "the player should be able to move loot from grid space to grid space").
+# That is FloorLoot's own payload — a `loot_take` carrying the `floor` square it
+# was lifted from — and it lands through GameLoop2.move_drop.
 func _can_put_down(at: Vector2, data: Variant) -> bool:
-	if not (data is Dictionary) or String(data.get("kind", "")) != "loot_move":
+	if not (data is Dictionary) or is_aiming():
 		return false
-	if int(data.get("index", -1)) < 0 or is_aiming():
+	var kind: String = String(data.get("kind", ""))
+	if kind == "loot_take" and data.get("floor") is Vector2i:
+		var to: Vector2i = cell_at(at)
+		return to != data["floor"] and is_free_floor(to)
+	if kind != "loot_move" or int(data.get("index", -1)) < 0:
 		return false
 	return is_free_floor(cell_at(at))
 
 func _put_down(at: Vector2, data: Variant) -> void:
 	if not _can_put_down(at, data):
+		return
+	if String(data.get("kind", "")) == "loot_take":
+		if GameLoop2.move_drop(data["floor"], cell_at(at)):
+			refresh()
 		return
 	loot_put_down.emit(int(data.get("index", -1)), cell_at(at))
 
@@ -3514,6 +3568,10 @@ func queue_target_shown() -> int:
 
 const FX_ATTACK_TIME: float = 0.55   # how long the front-line strike phase runs
 const FX_SLIDE_TIME: float = 0.34    # how long the advance slide takes
+# When a thrown damage number reaches the hero (its flight eases out over
+# FX_ATTACK_TIME * 0.85, so it is most of the way there by this point): the moment
+# a blow's shield breaks or its Health comes off.
+const FX_IMPACT_TIME: float = FX_ATTACK_TIME * 0.45
 # THE TAIL: the beat the playback is held open for after its last move lands.
 #
 # `animate_resolve` used to hand back the moment the last tween was scheduled to
@@ -3918,12 +3976,21 @@ func _play_turn_strikes(turn: int, frame: Dictionary, res: Dictionary,
 		var gen: int = _fx_gen
 		_after(delay, func():
 			_spawn_strike_flash(from)
-			_spawn_damage_number(int(a["damage"]), from, hero_rect)
+			# A BLOCKED BLOW IS THROWN AS A SHIELD HIT, not as Health: blue, and
+			# saying so. A red "-3" flying in while the Health line held still read as
+			# the number lying (owner, 5 Nov 2026: damage has to "flow properly with
+			# the shields being lost").
+			_spawn_damage_number(int(a["damage"]), from, hero_rect, blocked))
+		# …and what it COSTS lands when the number does, not when it was thrown:
+		# the shield breaks or the Health drops on impact, one blow at a time, so the
+		# row and the number go down in the same order the blows arrive.
+		_after(delay + FX_IMPACT_TIME, func():
 			if gen != _fx_gen:
 				return
-			_drop_shown_hp(to_health)
 			if blocked:
 				_break_one_shield()
+			else:
+				_drop_shown_hp(to_health)
 			_punch_hero())
 	if not struck:
 		return -1.0
@@ -4050,11 +4117,12 @@ func _spawn_strike_flash(rect: Rect2) -> void:
 	t.tween_callback(flash.queue_free)
 
 # A damage number thrown from the attacker toward the hero.
-func _spawn_damage_number(amount: int, from: Rect2, hero: Rect2) -> void:
+func _spawn_damage_number(amount: int, from: Rect2, hero: Rect2,
+		blocked: bool = false) -> void:
 	var lbl := Label.new()
-	lbl.text = "-%d" % amount
+	lbl.text = ("◆ -%d" if blocked else "-%d") % amount
 	lbl.add_theme_font_size_override("font_size", UITheme.FONT_DISPLAY)
-	lbl.add_theme_color_override("font_color", Color(1.0, 0.42, 0.38))
+	lbl.add_theme_color_override("font_color", SHIELD_BLUE if blocked else Color(1.0, 0.42, 0.38))
 	lbl.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.95))
 	lbl.add_theme_constant_override("outline_size", 6)
 	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -4097,7 +4165,7 @@ func _punch_hero() -> void:
 # `crashes` is GameLoop2.take_crashes(); `rects` the board's positions
 # (capture_positions). Starts at `delay`; returns when the last hit has landed
 # (`delay` itself when there was nothing to play).
-const FX_CRASH_JOLT: float = 0.16     # one body's lurch forward (and as long back)
+const FX_CRASH_JOLT: float = 0.22     # one body's lurch forward (and as long back)
 const FX_CRASH_WAVE: float = 0.08     # the push reaching the next body down the lane
 
 func play_crashes(crashes: Array, rects: Dictionary = {}, delay: float = 0.0) -> float:
@@ -4138,15 +4206,18 @@ func play_crashes(crashes: Array, rects: Dictionary = {}, delay: float = 0.0) ->
 			_after(land + step * i, func():
 				_spawn_strike_flash(from)
 				if dmg > 0:
-					_spawn_damage_number(dmg, from, hero_rect)
+					_spawn_damage_number(dmg, from, hero_rect, blocked))
+			# The cost lands with the number, as a turn's blows do (_play_turn_strikes).
+			_after(land + step * i + FX_IMPACT_TIME, func():
 				if gen != _fx_gen:
 					return
-				_drop_shown_hp(to_health)
 				if blocked:
 					_break_one_shield()
+				else:
+					_drop_shown_hp(to_health)
 				if dmg > 0:
 					_punch_hero())
-		at = land + step * maxi(hits.size() - 1, 0) + FX_CRASH_JOLT
+		at = land + step * maxi(hits.size() - 1, 0) + maxf(FX_CRASH_JOLT, FX_IMPACT_TIME)
 	return at
 
 # One body lurching a third of its width toward the hero and back, drawn by a
@@ -4193,15 +4264,22 @@ func _play_loose_crashes() -> void:
 		return
 	var crashes: Array = GameLoop2.take_crashes()
 	var lost: int = 0
-	var broke: int = 0
+	var broke_temp: int = 0
+	var broke_bonus: int = 0
 	for crash in crashes:
 		for h in (crash as Dictionary).get("hits", []):
 			lost += maxi(0, int(h.get("damage", 0)) - int(h.get("blocked", 0)))
 			if int(h.get("blocked", 0)) > 0:
-				broke += 1
+				# Wound back into the pool it actually came out of — the temporary row
+				# first (§4.3), and a Shield that stays only once those were gone.
+				if String(h.get("pool", "temp")) == "bonus":
+					broke_bonus += 1
+				else:
+					broke_temp += 1
 	_fx_gen += 1
 	_hp_shown = GameState.hp + lost
-	_shields_shown = Vector2i(GameState.shields + broke, GameState.bonus_shields)
+	_shields_shown = Vector2i(GameState.shields + broke_temp,
+		GameState.bonus_shields + broke_bonus)
 	_paint_hp()
 	_fill_shields()
 	var end: float = play_crashes(crashes)
@@ -4336,8 +4414,40 @@ func _spawn_arrival_flash(rect: Rect2) -> void:
 # when the player was watching them move. Now the ghost stands in the body's old
 # square from frame one, each turn's slide is queued onto that same ghost, and it
 # holds wherever it landed until the playback hands the board back.
+# A PUSH, PLAYED (owner, 5 Nov 2026: "make sure there's time for the push
+# animation"). The Push verb used to repaint the shoved body in its new square
+# with nothing in between, so a body jumped. Now everything that moved between
+# `before` (capture_positions, taken before the shove) and the board as it stands
+# slides there, a little slower than a turn's advance because it is one deliberate
+# move rather than the whole field closing up. Returns how long it runs.
+const FX_PUSH_TIME: float = 0.42
+
+func animate_push(before: Dictionary) -> float:
+	if _fx_layer == null or not is_inside_tree() or before.is_empty():
+		return 0.0
+	clear_fx()
+	_fx_gen += 1
+	var after: Dictionary = capture_positions()
+	var moved: bool = false
+	for inst in after.keys():
+		if not before.has(inst):
+			continue
+		var from_rect: Rect2 = before[inst]
+		var to_rect: Rect2 = after[inst]
+		if from_rect.position.distance_to(to_rect.position) < 2.0:
+			continue
+		moved = true
+		_spawn_slide_ghost(int(inst), from_rect, to_rect, 0.0, FX_PUSH_TIME)
+	if not moved:
+		return 0.0
+	var gen: int = _fx_gen
+	_after(FX_PUSH_TIME + 0.05, func():
+		if gen == _fx_gen:
+			_reveal_hidden())
+	return FX_PUSH_TIME
+
 func _spawn_slide_ghost(instance: int, from_rect: Rect2, to_rect: Rect2,
-		delay: float = 0.0) -> void:
+		delay: float = 0.0, time: float = FX_SLIDE_TIME) -> void:
 	var ghost: TextureRect = _slide_ghosts.get(instance)
 	if ghost == null or not is_instance_valid(ghost):
 		var entry: Dictionary = _stack_entry(instance)
@@ -4372,8 +4482,8 @@ func _spawn_slide_ghost(instance: int, from_rect: Rect2, to_rect: Rect2,
 	var t := ghost.create_tween()
 	t.tween_interval(maxf(delay, 0.0))
 	t.set_parallel(true)
-	t.tween_property(ghost, "position", to_rect.position, FX_SLIDE_TIME).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
-	t.tween_property(ghost, "size", to_rect.size, FX_SLIDE_TIME).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
+	t.tween_property(ghost, "position", to_rect.position, time).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
+	t.tween_property(ghost, "size", to_rect.size, time).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
 
 # Free every slide ghost — on the same frame the real bodies are revealed, so
 # there is no frame with neither on screen.

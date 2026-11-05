@@ -98,6 +98,8 @@ static func node_name(id: StringName) -> String:
 #   zoom         float       1.0 = natural size (or the room's size, given a room)
 #   preview      bool        the route from a game only being considered
 #   on_node      Callable    (id: StringName, depth: int) -> void; unset = inert boxes
+#   key_rifts    Dictionary  optional: {game id: [dest ids]} — where a Rift Key
+#                            could open a road two steps on (dashed gold, 🗝)
 #   room         Vector2     optional: the view's size. Given one, the map is
 #                            SIZED TO IT — boxes, gaps and spread — and zoom
 #                            scales from there; without one it is drawn at its
@@ -187,6 +189,30 @@ static func build(cfg: Dictionary) -> Control:
 				Vector2(rb.position.x, rb.get_center().y),
 				RunGraph.is_rift_game(StringName(e.get("from", ""))) or RunGraph.is_rift_game(to_id),
 			])
+	# POSSIBLE RIFT KEY ROADS (`key_rifts`, owner 5 Nov 2026): from a game on the
+	# route where a key would deal a rift card, a dashed gold line to each game two
+	# steps on that rift would lead to. The rift game itself is not drawn — which
+	# one a key deals is rolled when the offering is, so the map can promise the
+	# road but not the game on it.
+	var key_rifts: Dictionary = cfg.get("key_rifts", {})
+	for from_id in key_rifts:
+		var at: int = -1
+		for i in range(layers.size()):
+			if (layers[i] as Array).has(from_id):
+				at = i
+				break
+		if at < 0:
+			continue
+		var ra_key: String = node_key(at, StringName(from_id))
+		for dest in key_rifts[from_id]:
+			var rb_key: String = node_key(at + 2, StringName(dest))
+			if rects.has(ra_key) and rects.has(rb_key):
+				var ra: Rect2 = rects[ra_key]
+				var rb: Rect2 = rects[rb_key]
+				segments.append([
+					Vector2(ra.end.x, ra.get_center().y + ra.size.y * 0.25),
+					Vector2(rb.position.x, rb.get_center().y + rb.size.y * 0.25),
+					false, "key"])
 	canvas.segments = segments
 	canvas.arrow_size = 9.0 * clampf(box.y / BOX.y, 0.6, 1.0)
 	canvas.custom_minimum_size = stage + Vector2(pad, pad) * 2.0
@@ -219,6 +245,8 @@ static func build(cfg: Dictionary) -> Control:
 			var marker: Control = shop_marker(sid, rect)
 			if marker != null:
 				markers.append(marker)
+			if not revisit and key_rifts.has(sid):
+				markers.append(key_marker(sid, key_rifts[sid], rect))
 	for m in markers:
 		canvas.add_child(m)
 	return canvas
@@ -279,6 +307,34 @@ static func jitter(key: String, salt: int) -> float:
 const MARKER_H := 16.0
 const MARKER_INSET := 3.0      # in from the box's right edge
 const SHOP_MARK := "🛒"
+
+const KEY_MARK := "🗝"
+
+# The 🗝 on a box's top-LEFT corner (the shop's is the right): a Rift Key spent
+# here would deal a rift card to each of `dests`.
+static func key_marker(id: StringName, dests: Array, rect: Rect2) -> Control:
+	var w: float = MARKER_H + 6.0
+	var pill := Panel.new()
+	pill.name = "KeyMarker"
+	pill.add_theme_stylebox_override("panel", UITheme.flat(Color(UITheme.WELL, 0.95),
+		int(MARKER_H * 0.5), 0, 1, UITheme.GOLD))
+	pill.size = Vector2(w, MARKER_H)
+	pill.position = Vector2(rect.position.x + MARKER_INSET, rect.position.y - MARKER_H * 0.5)
+	var names: Array = []
+	for d in dests:
+		names.append(node_name(StringName(d)))
+	pill.tooltip_text = "With a Rift Key: a rift from %s leads on to %s." % [
+		node_name(id), " or ".join(PackedStringArray(names))]
+	pill.mouse_filter = Control.MOUSE_FILTER_PASS
+	var mark := Label.new()
+	mark.text = KEY_MARK
+	mark.set_anchors_preset(Control.PRESET_FULL_RECT)
+	mark.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	mark.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	mark.add_theme_font_size_override("font_size", int(MARKER_H * 0.7))
+	mark.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	pill.add_child(mark)
+	return pill
 
 # The marker for `id`, or null when no shop stands there.
 static func shop_marker(id: StringName, rect: Rect2) -> Control:
@@ -908,9 +964,10 @@ class GraphCanvas extends Control:
 			dir = dir.normalized()
 			var tip: Vector2 = b - dir * 2.0
 			var rift: bool = seg.size() > 2 and bool(seg[2])
-			var col: Color = UITheme.RIFT if rift else COL_ARROW
+			var key: bool = seg.size() > 3 and String(seg[3]) == "key"
+			var col: Color = UITheme.GOLD if key else (UITheme.RIFT if rift else COL_ARROW)
 			var w: float = 2.5 * (arrow_size / 9.0)
-			if rift:
+			if rift or key:
 				# Dashed, in the rift colour: a road, but not an influence.
 				draw_dashed_line(a, tip - dir * arrow_size, col, w, arrow_size * 0.7, true)
 			else:

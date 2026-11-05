@@ -442,7 +442,8 @@ overrides it. Unrest Site (§9) is where it comes from.
 `add_curse random` is the one id that names no row (§15): the curse is drawn when
 the choice is taken, and **never a permanent one** — a random draw that could hand
 out Curse of the Bell would make an idle button a coin flip on the rest of the
-run, so a curse with `Timer: 0` is opted out of every random draw by saying so.
+run, so only a curse the `curses` sheet tags `random` (its `Tag` column) is in
+any random draw — an event's or the Hexer's.
 
 `play_game` is the odd one out: it hands over neither a reward nor a goal but
 **sends the player somewhere**. `play_game tag=mecha` drops them into a random
@@ -1258,9 +1259,10 @@ random Curse"**. Naming one there would be the button lying about which.
 than the monkey's exception. A permanent curse is a price something *specific*
 charges for something specific — Curse of the Bell is what the Calling Bell hangs
 on you — and a random draw that could land one turns an idle button into a coin
-flip on the rest of the run. So "a random curse" means a curse with a clock on
-it, and a curse authored with `Timer: 0` opts itself out of every random draw by
-saying so. `EventSystem.roll_random_curse` is the one place that holds.
+flip on the rest of the run. So "a random curse" means a curse the `curses`
+sheet's `Tag` column marks `random` — the owner's call per curse, as of 5 Nov
+2026, rather than inferred from its timer. `CurseData2.is_random` is the test, and
+`EventSystem.roll_random_curse` and the Hexer's `GameLoop2._deal_curses` both ask it.
 
 The result prose is blank on both choices, on purpose: what the player needs to
 read is what they caught, and that line is composed from the curse itself

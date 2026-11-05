@@ -692,6 +692,28 @@ func test_a_scramble_redeals_the_rift_cards() -> void:
 	GameStats.last_rifts = saved_last
 	assert_gt(seen.size(), 1, "six tables did not all deal the same rift game")
 
+# A RIFT GAME A KEY CARD HAS LED TO IS NOT DEALT AT ANOTHER TABLE THIS RUN (owner,
+# 5 Nov 2026: "i kept getting abyss odyssey"). The same table, redrawn, keeps its
+# cards; a different table — a Scramble — deals games it has not seen.
+func test_a_key_cards_game_is_not_dealt_again_at_another_table() -> void:
+	var got: Dictionary = _at_a_quiet_game(1)
+	if got.is_empty():
+		pending("no game on this map has an empty slot")
+		return
+	var ui = got["ui"]
+	var first: Array = _key_cards(ui).map(func(c): return String(c["slot"]))
+	if first.is_empty():
+		pending("the pool dealt nothing")
+		return
+	ui._build_choices()
+	assert_eq(_key_cards(ui).map(func(c): return String(c["slot"])), first,
+		"the same table redrawn keeps the same rift games")
+	GameState.scramble = 1
+	ui.scramble()
+	for c in _key_cards(ui):
+		assert_false(first.has(String(c["slot"])),
+			"%s was already dealt at the last table" % c["slot"])
+
 # Picking a rift card spends the key and opens a ONE-WAY rift: the rift game hangs
 # off its destination and nothing else, and the run stands in it facing rift bodies.
 func test_opening_a_rift_card_spends_a_key_and_lays_a_one_way_rift() -> void:

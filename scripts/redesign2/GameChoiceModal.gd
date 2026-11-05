@@ -1475,6 +1475,7 @@ func _ladder_cfg() -> Dictionary:
 		data = _key_route(slot, _key_dest(), amulet)
 	return {
 		"data": data,
+		"key_rifts": _key_rifts_on(data),
 		"current": slot,
 		"amulet": amulet,
 		"choice_ids": {},
@@ -1486,6 +1487,39 @@ func _ladder_cfg() -> Dictionary:
 			if _ladder_room != null and is_instance_valid(_ladder_room) else Vector2.ZERO,
 	}
 
+
+# WHERE A RIFT KEY COULD BE SPENT ON THIS ROUTE (owner, 5 Nov 2026: "show possible
+# key based rifts on the optimal path"): {game id: [dest ids]} for every game on
+# the route whose offering would deal rift key cards — fewer connections than the
+# offering has slots, the only time a key card is dealt (Overworld2.
+# _add_rift_key_cards) — each led to a game two layers further on, which is the
+# same rule `rift_key_dests` holds the real cards to: two hops away AND two hops
+# nearer the Amulet. Shown whether or not a key is held, since knowing where one
+# would pay is half the reason to keep one. Not on a key card's own route.
+func _key_rifts_on(data: Dictionary) -> Dictionary:
+	var out: Dictionary = {}
+	if not Settings.rifts_enabled or _key_dest() != &"":
+		return out
+	var host: Node = _layer.get_parent() if _layer != null else null
+	var slots: int = int(host.call("offer_count")) \
+		if host != null and host.has_method("offer_count") else 3
+	var layers: Array = data.get("layers", [])
+	for d in range(layers.size() - 2):
+		var later: Dictionary = {}
+		for id in layers[d + 2]:
+			later[StringName(id)] = true
+		for id in layers[d]:
+			var gid := StringName(id)
+			if RunGraph.is_rift_game(gid) or RunGraph.degree(gid) >= slots:
+				continue
+			var dests: Array = []
+			for dest in RunGraph.rift_key_destinations(gid):
+				var did := StringName(dest)
+				if later.has(did) and not GameLoop2.is_bashed(did):
+					dests.append(did)
+			if not dests.is_empty():
+				out[gid] = dests
+	return out
 
 # The route a Rift Key card would walk: its rift game, then the destination's own
 # shortest route on. The rift is not laid yet, so the graph cannot answer it; the

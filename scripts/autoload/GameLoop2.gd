@@ -3543,6 +3543,20 @@ func place_drop(cell: Vector2i, loot: Dictionary, from_boss: bool = false) -> Ve
 	loop_changed.emit()
 	return at
 
+# Move what is lying on `from` to the bare square `to` — the player dragged it
+# across the board (owner, 5 Nov 2026: loot can move "from grid space to grid
+# space"). Only onto a square with nothing on it: no body, no unit, no other
+# piece. Same piece, same boss weight; true when it moved.
+func move_drop(from: Vector2i, to: Vector2i) -> bool:
+	if from == to or not drops.has(from) or drops.has(to) or not _on_board(to.x, to.y):
+		return false
+	if occupancy().has(to) or units.has(to):
+		return false
+	drops[to] = drops[from]
+	drops.erase(from)
+	loop_changed.emit()
+	return true
+
 # Take what is on `cell` — the player picked it up. Returns the payload, or {}.
 func take_drop(cell: Vector2i) -> Dictionary:
 	if not drops.has(cell):
@@ -5555,13 +5569,17 @@ func _take_hit(damage: int, res: Dictionary,
 	#
 	# ONE shield, whichever pool it comes out of, and the instance is gone.
 	var absorbed: int = 0
+	# Which pool the shield came out of, so a replay can wind the right row back.
+	var pool: String = ""
 	if not bool(totals["pierce_shields"]):
 		if GameState.shields > 0:
 			GameState.shields -= 1
 			absorbed = damage
+			pool = "temp"
 		elif GameState.bonus_shields > 0:
 			GameState.bonus_shields -= 1
 			absorbed = damage
+			pool = "bonus"
 	var overflow: int = damage - absorbed
 	if overflow > 0:
 		# Tagged as what threw it: this is the ONLY path damage reaches Health by on
@@ -5578,7 +5596,7 @@ func _take_hit(damage: int, res: Dictionary,
 	res["damage_taken"] = int(res.get("damage_taken", 0)) + overflow
 	if GameState.hp <= 0 and not run_over:
 		_finish_run(false)
-	return {"damage": damage, "blocked": absorbed}
+	return {"damage": damage, "blocked": absorbed, "pool": pool}
 
 # Damage the player from something that is NOT an enemy's swing — a status's
 # penalty (Burn's 3, §13), a `take_damage` effect from anywhere. Goes through the
@@ -7224,6 +7242,7 @@ func _crash_into_player(entry: Dictionary, col: int) -> int:
 			var hit: Dictionary = _take_hit(enemy_damage(e), scratch)
 			row_hit["damage"] = int(hit["damage"])
 			row_hit["blocked"] = int(hit["blocked"])
+			row_hit["pool"] = String(hit.get("pool", ""))
 			total += int(hit["damage"]) - int(hit["blocked"])
 			if int(hit["damage"]) > 0:
 				player_hit.emit(int(hit["damage"]), int(hit["blocked"]))
@@ -8302,7 +8321,8 @@ func _deal_curses(count: int) -> int:
 	var all: Array = []
 	for c in Data.all_curses2():
 		var cd: CurseData2 = c
-		if cd == null:
+		# Only the curses the sheet tags `random` are in a random deal (Tag column).
+		if cd == null or not cd.is_random():
 			continue
 		all.append(cd.id)
 		if not GameState.has_curse_goal(cd.id):

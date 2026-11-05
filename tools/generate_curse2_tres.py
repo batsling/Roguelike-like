@@ -8,7 +8,7 @@ post-game checklist and the only one you are trying NOT to complete. It is
 authored once here and referenced by id from any event that hands it out
 (`add_curse poor_sleep`), exactly as an item references a status.
 
-  curses2.0: Curse | Game | Condition | Penalty | Timer | Image
+  curses2.0: Curse | Game | Condition | Penalty | Timer | Tag | Image
 
 `Penalty` speaks the shared reward-token DSL, pointed the other way — the parser
 lives in generate_status_tres.py so there is one implementation of it. The
@@ -59,6 +59,13 @@ def _timer(raw) -> int:
                          % (raw, ", ".join(PERMANENT_WORDS)))
 
 
+# The Tag column: comma-separated, lower-cased. `random` puts a curse in the
+# random draws (CurseData2.is_random); a blank cell keeps it out of them.
+def _tags(raw) -> list:
+    text = dsl._clean(raw)
+    return [t.strip().lower() for t in text.split(",") if t.strip()] if text else []
+
+
 def curse_tres(row) -> tuple:
     name = str(row["Curse"]).strip()
     cid = dsl.slugify(name)
@@ -86,6 +93,7 @@ def curse_tres(row) -> tuple:
         "penalty = %s" % dsl.gd_value(penalty),
         'penalty_text = "%s"' % dsl.gd_str(penalty_text),
         "timer = %d" % _timer(row.get("Timer")),
+        "tags = %s" % dsl.gd_value(_tags(row.get("Tag"))),
         'file = "%s"' % dsl.gd_str(file),
     ]
     return cid, "\n".join(lines) + "\n"

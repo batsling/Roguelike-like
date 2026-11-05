@@ -10528,6 +10528,22 @@ func _buy_from_the_woman(index: int):
 	await get_tree().process_frame
 	return modal
 
+# A RELIC A PAYOUT HANDS OVER IS OFFERED, not slipped in: the Blood Donation
+# Machine's bag comes up on the item modal (owner, 5 Nov 2026), and is the
+# player's once they take it.
+func test_a_payouts_relic_asks_on_the_item_modal() -> void:
+	Page.open_at_first_offering(_ui)
+	var bag: ItemData = Data.get_item2(&"blood_bag")
+	assert_not_null(bag)
+	GameState.offer_items([bag])
+	await wait_frames(3)
+	assert_not_null(_ui._drop_modal, "the bag is asked about")
+	assert_false(GameState.has_item(&"blood_bag"), "and is not carried until it is taken")
+	if _ui._drop_modal != null:
+		_ui._drop_modal.take()
+	await wait_frames(2)
+	assert_true(GameState.has_item(&"blood_bag"), "taking it carries it")
+
 func test_potions_bought_in_an_event_land_on_the_event() -> void:
 	var modal = await _buy_from_the_woman(2)          # Buy 3 Potions
 	assert_not_null(modal._loot_section, "the bottles are on her counter, inside the event")

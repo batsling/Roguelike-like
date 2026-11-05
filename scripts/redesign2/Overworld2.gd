@@ -588,8 +588,8 @@ func _ready() -> void:
 	_build_ui()
 	# The board-peek's per-frame check (see "the board off the board").
 	get_tree().process_frame.connect(_tick_board_peek)
-	if not GameLoop2.loop_changed.is_connected(_refresh):
-		GameLoop2.loop_changed.connect(_refresh)
+	if not GameLoop2.loop_changed.is_connected(_on_loop_changed):
+		GameLoop2.loop_changed.connect(_on_loop_changed)
 	if not GameLoop2.run_lost.is_connected(_on_run_lost):
 		GameLoop2.run_lost.connect(_on_run_lost)
 	if not GameLoop2.run_won.is_connected(_on_run_won):
@@ -620,6 +620,10 @@ func _ready() -> void:
 	# working unchanged.
 	if not GameState.loot_offered.is_connected(_on_loot_offered):
 		GameState.loot_offered.connect(_on_loot_offered)
+	# …and a RELIC a payout hands over (the Blood Donation Machine's bag) asks on
+	# the item modal, the same Take / Leave a chest gets.
+	if not GameState.items_offered.is_connected(_on_items_offered):
+		GameState.items_offered.connect(_on_items_offered)
 	# Machines appearing or leaving. Off the signal rather than at the spawn
 	# sites, so anything that spawns one — an event, the dev panel, whatever comes
 	# next — puts it on the page without knowing the panel exists.
@@ -1695,7 +1699,9 @@ func log_attempt() -> String:
 	var shields_before := Vector2i(GameState.shields, GameState.bonus_shields)
 	_resolving = true
 	_attempt_resolve = true
+	_hold_loop_refresh = true
 	var cost: String = GameLoop2.log_attempt()
+	_release_loop_refresh()
 	if cost == "":
 		_resolving = false
 		_attempt_resolve = false
@@ -2513,8 +2519,10 @@ func report(beaten: bool, fulfilled: Variant = null, escaped: bool = false,
 	# `clear_advertised` is false and always will be from here: the overworld's
 	# checklist lists the bodies that walked on this game among all the others, so
 	# they are already in `fulfilled_instances` if the player ticked them.
+	_hold_loop_refresh = true
 	var res: Dictionary = GameLoop2.beat_game(false, fulfilled_instances, claims,
 		not free_exit, escaped, beaten)
+	_release_loop_refresh()
 	# THE FLOOR IS NOT SWEPT AT THE REPORT ANY MORE (§8.2). It used to be, onto the
 	# haul screen; now loot lying on the board stays there through the screens
 	# after the game — the reward screen's ⚔ Combat button opens the board, and a
@@ -5151,8 +5159,13 @@ func transmute_choice(index: int) -> bool:
 # `dir` defaults to BACK for the callers that predate the four directions — the
 # enemy info card's single button and the headless harness.
 func push_follower(instance: int, dir: Vector2i = GameLoop2.PUSH_BACK) -> void:
+	# Where everyone stood BEFORE the shove, so the board can slide them to where
+	# it left them rather than repainting them there (BattlefieldView.animate_push).
+	var before: Dictionary = _board.capture_positions() if _board != null else {}
 	if GameLoop2.push(instance, dir):
 		_refresh()
+		if _board != null:
+			_board.animate_push(before)
 
 # Bomb a following enemy (§4): spend a Bomb charge to deal it 1 damage (no drop
 # when that kills it). A boss can be bombed but takes none of the damage, so the
@@ -5508,7 +5521,21 @@ func _add_rift_key_cards(tier: int) -> void:
 	for c in _choices:
 		exclude[StringName(c["slot"])] = true
 		exclude[(c["game"] as GameData).id] = true
-	var games: Array = RunGraph.rift_key_games(rng, exclude)
+	# A GAME A KEY CARD HAS ALREADY LED TO AT ANOTHER TABLE IS NOT DEALT AGAIN this
+	# run (GameState.key_rift_dealt). The rotation sorts the least-used rift game
+	# first, so without this the same game headed every keyed table. When the pool
+	# runs dry the repeats come back rather than leaving the slots empty.
+	var seen_elsewhere: Dictionary = {}
+	for gid in GameState.key_rift_dealt:
+		if String(GameState.key_rift_dealt[gid]) != seed_key:
+			seen_elsewhere[StringName(gid)] = true
+	var with_seen: Dictionary = exclude.duplicate()
+	with_seen.merge(seen_elsewhere)
+	var games: Array = RunGraph.rift_key_games(rng, with_seen)
+	if games.size() < empty:
+		for gid in RunGraph.rift_key_games(rng, exclude):
+			if not games.has(gid):
+				games.append(gid)
 	for i in range(mini(empty, games.size())):
 		var gid := StringName(games[i])
 		var game: GameData = Data.get_game(gid)
@@ -5521,6 +5548,8 @@ func _add_rift_key_cards(tier: int) -> void:
 			enemy = GameLoop2.roll_enemy(GameLoop2.game_type_key(game), tier)
 			_slot_enemies[slot_key] = enemy
 		_key_cards[gid] = dest
+		if not GameState.key_rift_dealt.has(String(gid)):
+			GameState.key_rift_dealt[String(gid)] = seed_key
 		_choices.append({
 			"game": game, "enemy": enemy, "slot": gid,
 			"boss": false, "amulet": false,
@@ -5699,7 +5728,35 @@ func _on_inventory_changed() -> void:
 		return
 	_board.refresh()
 
+# ONE REPAINT PER TURN, NOT ONE PER STEP OF IT. GameLoop2 emits `loop_changed` at
+# several points inside a single enemy turn (each body that moves, crashes, an
+# admission from the queue), and each one used to repaint the whole page — about
+# 40 ms apiece on a crowded board, all of it spent before the first frame of the
+# turn's animation, which is the stall the owner saw when "there's a lot of
+# enemies on the screen and they take their turn" (5 Nov 2026). While a turn is
+# resolving the signal is noted rather than answered (_hold_loop_refresh), and the
+# caller's own `_refresh()` afterwards is the one repaint; a turn whose caller
+# does not repaint is caught by the deferred flush.
+var _hold_loop_refresh: bool = false
+var _loop_refresh_owed: bool = false
+
+func _on_loop_changed() -> void:
+	if _hold_loop_refresh:
+		_loop_refresh_owed = true
+		return
+	_refresh()
+
+func _release_loop_refresh() -> void:
+	_hold_loop_refresh = false
+	if _loop_refresh_owed:
+		_flush_loop_refresh.call_deferred()
+
+func _flush_loop_refresh() -> void:
+	if _loop_refresh_owed and is_inside_tree():
+		_refresh()
+
 func _refresh(_a = null) -> void:
+	_loop_refresh_owed = false
 	if _board == null:
 		return
 	_refresh_stats()
@@ -7122,6 +7179,10 @@ func _on_enemy_defeated(enemy: GoalEnemyData, cell: Vector2i) -> void:
 func _on_loot_offered(entries: Array) -> void:
 	_drops.on_loot_offered(entries)
 
+func _on_items_offered(items: Array) -> void:
+	_drops.queue.append({"items": items.duplicate()})
+	_drops.pump()
+
 # The two floor gestures. Public because `FloorLoot` and `DragPackPanel` call them.
 func take_floor_loot(entry: Dictionary, slot: int, cell: Vector2i) -> void:
 	_drops.take_floor_loot(entry, slot, cell)
@@ -7864,6 +7925,18 @@ func _build_ui() -> void:
 	cover_frame.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	cover_frame.add_child(_now_playing_cover)
 	head_row.add_child(cover_frame)
+	# THE COVER IS A DOOR TO THE ROUTE (owner, 5 Nov 2026): clicking the game you
+	# are playing opens the optimal path from it — the same window the offering's
+	# `→ Optimal Path` opens — so "where does this lead" is one click mid-game too.
+	cover_frame.mouse_filter = Control.MOUSE_FILTER_STOP
+	_now_playing_cover.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	cover_frame.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	cover_frame.tooltip_text = "Click for the optimal path from here to the Amulet"
+	cover_frame.gui_input.connect(func(ev: InputEvent):
+		if ev is InputEventMouseButton and ev.pressed \
+				and (ev as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT:
+			cover_frame.accept_event()
+			open_optimal_path())
 
 	# What you are doing with the game, and the two things you press while you do
 	# it: OPEN it, and — every time it beats you — say so.
