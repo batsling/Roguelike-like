@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="GameData" load_steps=2 format=3 uid="uid://game_three_kingdoms_the_blood_moon"]
+
+[ext_resource type="Script" path="res://scripts/resources/GameData.gd" id="1_game"]
+
+[resource]
+script = ExtResource("1_game")
+id = &"three_kingdoms_the_blood_moon"
+display_name = "Three Kingdoms: The Blood Moon"
+year = 2024
+type = 2
+games_influenced = Array[StringName]([])
+influence_sources = PackedStringArray()
+influence_relations = PackedStringArray()
+tags = PackedStringArray()
+enemy_pool = Array[StringName]([])
+item_pool = Array[StringName]([])
+special_effects = PackedStringArray()
+cover_path = "res://images2.0/games/three-kingdoms-the-blood-moon.png"
+owned = true
+file_location = "C:\\Users\\Owner\\Documents\\Roguelike Roguelike\\Roguelikes\\Three Kingdoms The Blood Moon.url"
+steam_page = "https://store.steampowered.com/app/2746910/Three_Kingdoms_The_Blood_Moon/"
