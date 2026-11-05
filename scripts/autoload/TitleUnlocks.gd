@@ -40,9 +40,12 @@ func _ready() -> void:
 	GameStats.changed.connect(func() -> void: refresh_unlocks(true))
 	Profiles.profile_switched.connect(_on_profile_changed)
 	Profiles.profile_wiped.connect(_on_profile_changed)
+	Settings.unlock_everything_changed.connect(func(_on: bool) -> void: changed.emit())
 
+# Every letter on a test profile (Settings.unlock_everything); nothing is drawn
+# for it, so drawn_for and unlocked_keys still count only what ranks earned.
 func is_unlocked(key: String) -> bool:
-	return _unlocked.has(key)
+	return Settings.unlock_everything or _unlocked.has(key)
 
 func is_seen(key: String) -> bool:
 	return _seen.has(key)

@@ -11,6 +11,43 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **4 Nov upload.** Sushiamo, Three Kingdoms: The Blood Moon, Tower of Babel:
+  Survivors of Chaos and Worship, with their 7 connections; Abyss Odyssey,
+  Clutchtime and Space Gladiators owned; the owner's `sports`, `hell` and
+  `cats` tags; Milk Elemental (Vampire Survivors) and Dr. Mangler
+  (Mewgenics). Both goals had been typed only into the owner sheets, so they
+  were carried up into `goals` (`oneshots/_goals_milk_elemental_dr_mangler.py`,
+  "it's creator" → "its creator").
+
+- **Map Analysis follows the owner's layout.** The owner rearranged the
+  dashboard in Excel: every table east of the measures moved (hubs you own
+  under all hubs, the year table to R, buy table to W, map hubs to AC,
+  influence to AG with α in AI2, edge spans under the degree table), and the
+  influence chart now sits under the hub tables. `map_calc.py` wrote fixed
+  cells, so a rerun would have written the old layout over it; table positions
+  are now its `T_*` constants, and `--check` compares every formula it owns on
+  the dashboard with them, so a table moved again fails the check before a
+  rerun can clobber it. The influence chart is found by name: at its new place
+  it would have counted as part of the chart block and pushed all eight charts
+  down 14 rows.
+
+- **Games to buy is two tables.** `Adds to the map` was a fifth column of the
+  buy table, which ranks by owned games joined, so the games that add the most
+  were scattered or missing. It is now its own top 20 under it (W27), ranked by
+  map gain (a new `Map gain rank key` in Map Calc), with the map games each one
+  would hang off.
+
+- **Settings → Profile → Unlock everything.** A per-profile switch for a test
+  profile: every Fracture level for every character, every radio song, every
+  title letter and the Donation Machine's top shelf, while it is on. Asked at
+  the four gates rather than written into the stores, so content added later is
+  open too, and off gives back exactly what the profile earned; ranks stay
+  real. The suite forces it off.
+
+- **Verb chips only when you have them.** Bash, Dash, Transmute and Scramble
+  are not drawn at 0 (an armed one stays), and Luck hides at exactly 0 but
+  shows when negative. Keys still show at 0, by the owner's choice.
+
 - **Luck be a Landlord's letters the right size.** Each was measured by its
   white face alone, so the one-pixel outline round it, a third of a six-pixel
   letter, sat outside its box: every letter came out a third too tall and

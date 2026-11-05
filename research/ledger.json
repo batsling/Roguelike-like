@@ -7505,6 +7505,15 @@
   "loot": "2026-10-12: nothing usable: no wiki (Fandom and wiki.gg tried), and nothing beyond store blurbs",
   "statuses": "2026-10-12: nothing usable: no wiki (Fandom and wiki.gg tried), and nothing beyond store blurbs"
  },
+ "Sushiamo": {
+  "characters": "2026-11-05: nothing usable: no wiki, and the Steam page names no specific hero",
+  "connections": "2026-11-05",
+  "events": "2026-11-05: nothing usable: no wiki, and the Steam page names no specific event",
+  "goals": "2026-11-05: nothing usable: no wiki, and the Steam page names no specific enemy or boss",
+  "locations": "2026-11-05: nothing usable: no wiki, and the Steam page names no specific place",
+  "loot": "2026-11-05: nothing usable: no wiki, and the Steam page names no specific piece (no weapons or evolutions named either)",
+  "statuses": "2026-11-05: nothing usable: no wiki, and the Steam page names no specific status"
+ },
  "Swapmeat": {
   "characters": "2026-10-12: nothing usable: no wiki under its name on Fandom or wiki.gg, or one with no item or enemy pages",
   "connections": "before 2026-10-07",
@@ -8027,6 +8036,15 @@
   "loot": "2026-10-12: nothing usable: no wiki under its name on Fandom or wiki.gg, or one with no item or enemy pages",
   "statuses": "2026-10-12: nothing usable: no wiki under its name on Fandom or wiki.gg, or one with no item or enemy pages"
  },
+ "Three Kingdoms: The Blood Moon": {
+  "characters": "2026-11-05: nothing usable: no wiki, and the Steam page names no specific hero",
+  "connections": "2026-11-05",
+  "events": "2026-11-05: nothing usable: no wiki, and the Steam page names no specific event",
+  "goals": "2026-11-05: nothing usable: no wiki, and the Steam page names no specific enemy or boss",
+  "locations": "2026-11-05: nothing usable: no wiki, and the Steam page names no specific place",
+  "loot": "2026-11-05: nothing usable: no wiki, and the Steam page names no specific piece (no weapons or evolutions named either)",
+  "statuses": "2026-11-05: nothing usable: no wiki, and the Steam page names no specific status"
+ },
  "Thysiastery": {
   "characters": "2026-10-22: nothing usable: party members are randomly generated recruits; the wiki has no hero pages, only progression",
   "connections": "2026-10-22",
@@ -8260,6 +8278,15 @@
   "locations": "2026-10-12: nothing usable: tile types are a tower-defence grid",
   "loot": "2026-10-12: nothing usable: its cards are towers; offerings are meta upgrades; no evolutions",
   "statuses": "2026-10-12: nothing usable: none"
+ },
+ "Tower of Babel: Survivors of Chaos": {
+  "characters": "2026-11-05: nothing usable: no wiki, and the Steam page names no specific hero",
+  "connections": "2026-11-05",
+  "events": "2026-11-05: nothing usable: no wiki, and the Steam page names no specific event",
+  "goals": "2026-11-05: nothing usable: no wiki, and the Steam page names no specific enemy or boss",
+  "locations": "2026-11-05: nothing usable: no wiki, and the Steam page names no specific place",
+  "loot": "2026-11-05: nothing usable: no wiki, and the Steam page names no specific piece (no weapons or evolutions named either)",
+  "statuses": "2026-11-05: nothing usable: no wiki, and the Steam page names no specific status"
  },
  "Tower of Guns": {
   "characters": "2026-10-12: nothing usable: one player",
@@ -8863,6 +8890,15 @@
   "locations": "2026-10-12: nothing usable: no wiki under its name on Fandom or wiki.gg, or a stub with no item or enemy pages",
   "loot": "2026-10-12: nothing usable: no wiki under its name on Fandom or wiki.gg, or a stub with no item or enemy pages",
   "statuses": "2026-10-12: nothing usable: no wiki under its name on Fandom or wiki.gg, or a stub with no item or enemy pages"
+ },
+ "Worship": {
+  "characters": "2026-11-05: nothing new: the Cultist is a cult leader like The Lamb, so it went into The Lamb's Clones",
+  "connections": "2026-11-05",
+  "events": "2026-11-05: 1 row (Hungry Tree, from the Encounters table, check); the Events list page is template-built and reads empty",
+  "goals": "2026-11-05: 5 rows (Huntress, Inquisitor, Spawn of Hubryus, Scarlet Behemoth, boss Eleanor); Goopacabra's egg and Molewurm's burrow goals are already candidates",
+  "locations": "2026-11-05: nothing usable: its areas are faction territories whose identity is their factions, with no tag or board hazard to lean on",
+  "loot": "2026-11-05: 3 rows (Unholy Retribution, Paralyzing Blows, Stone Skin) from its run upgrades; the rest are follower-only or repeat live pieces (Drink The Living ~ Charm of the Vampire). No weapons or evolutions",
+  "statuses": "2026-11-05: nothing usable: poison (Rot Knuckles, Toxic Boomfrog) is already a candidate (Blight); Taint is lore"
  },
  "Wretch: Divine Ascent": {
   "characters": "2026-10-29: nothing new: Executioner is a Clone on Dice & Fold's Executioner; Plague Doctor is Darkest Dungeon's candidate; Murmillo, Ronin, Wujiang and Pirate have no detail",

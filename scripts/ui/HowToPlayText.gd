@@ -1093,8 +1093,11 @@ static func _ch_screen() -> Dictionary:
 			_kv("Push and Bomb charges", "On their own buttons, on the board's "
 				+ "toolbar."),
 			_kv("Bash, Dash, Transmute, Scramble", "Chips on the row under the "
-				+ "offering. Dash and Scramble act at once; Bash and Transmute ARM, "
-				+ "and the next card you click is the one they hit."),
+				+ "offering, once you have a charge — a verb at 0 is not shown. Dash "
+				+ "and Scramble act at once; Bash and Transmute ARM, and the next card "
+				+ "you click is the one they hit."),
+			_kv("Luck and Rift Keys", "On the same row. Luck shows whenever it is "
+				+ "not 0 (bad Luck too); Keys always show."),
 			_kv("Shields a game would grant", "On the offering's hover line, and in "
 				+ "full on the card."),
 			_kv("What is waiting at a game", "Hover its cover: the enemy's picture "

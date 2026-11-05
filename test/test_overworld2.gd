@@ -2393,6 +2393,30 @@ func test_a_spendable_charge_is_a_button_and_an_empty_one_is_not() -> void:
 	assert_true("\n".join(labels).contains("Scramble 1"),
 		"a charge that can be fired from here is a button: %s" % str(labels))
 
+func test_a_verb_or_luck_at_zero_is_not_drawn_and_keys_always_are() -> void:
+	# The owner, 5 Nov 2026: "only show stats like bash when the player has them" —
+	# Bash, Dash, Transmute, Scramble and Luck; Keys kept drawn at zero.
+	GameState.scramble = 0
+	GameState.dash_charges = 0
+	GameState.bash = 0
+	GameState.transmute = 0
+	GameState.keys = 0
+	_ui._refresh_stats()
+	var text: String = Page.text_of(_ui._select_stats)
+	for gone in ["Bash", "Dash", "Transmute", "Scramble"]:
+		assert_false(text.contains(gone), "%s at 0 is not drawn: %s" % [gone, text])
+	assert_true(text.contains("Keys 0"), "Keys still show at 0: %s" % text)
+	if Stats.get_value(&"luck") != 0:
+		pending("the run arrived with Luck already moved")
+		return
+	assert_false(text.contains("Luck"), "Luck at 0 is not drawn: %s" % text)
+	GameState.bash = 1
+	GameState.add_item(Data.get_item2(&"clover"))     # +1 Luck
+	_ui._refresh_stats()
+	text = Page.text_of(_ui._select_stats)
+	assert_true(text.contains("Bash 1"), "a charge brings its chip back: %s" % text)
+	assert_true(text.contains("Luck %d" % Stats.get_value(&"luck")), "and Luck shows once moved: %s" % text)
+
 func test_loot_lives_in_its_own_window_beside_the_pack() -> void:
 	# Scrolls used to be tokens on the pack strip. Pills doubled the kinds and the
 	# per-game drop made carrying nine ordinary (§4.3), so loot moved into a window

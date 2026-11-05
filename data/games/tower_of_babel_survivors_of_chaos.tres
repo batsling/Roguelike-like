@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="GameData" load_steps=2 format=3 uid="uid://game_tower_of_babel_survivors_of_chaos"]
+
+[ext_resource type="Script" path="res://scripts/resources/GameData.gd" id="1_game"]
+
+[resource]
+script = ExtResource("1_game")
+id = &"tower_of_babel_survivors_of_chaos"
+display_name = "Tower of Babel: Survivors of Chaos"
+year = 2025
+type = 0
+games_influenced = Array[StringName]([])
+influence_sources = PackedStringArray()
+influence_relations = PackedStringArray()
+tags = PackedStringArray()
+enemy_pool = Array[StringName]([])
+item_pool = Array[StringName]([])
+special_effects = PackedStringArray()
+cover_path = "res://images2.0/games/tower-of-babel-survivors-of-chaos.png"
+owned = false
+file_location = ""
+steam_page = "https://store.steampowered.com/app/2665680/Tower_of_Babel_Survivors_of_Chaos/"

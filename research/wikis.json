@@ -21034,6 +21034,10 @@
   "checked": "2026-10-11",
   "wiki": null
  },
+ "Sushiamo": {
+  "checked": "2026-11-05",
+  "wiki": null
+ },
  "Swapmeat": {
   "api": "https://swapmeat.fandom.com/api.php",
   "articles": 408,
@@ -22741,6 +22745,10 @@
   "checked": "2026-10-11",
   "wiki": null
  },
+ "Three Kingdoms: The Blood Moon": {
+  "checked": "2026-11-05",
+  "wiki": null
+ },
  "Thysiastery": {
   "api": "https://thysiastery.fandom.com/api.php",
   "articles": 936,
@@ -23298,6 +23306,10 @@
   "signal": "rogue",
   "sitename": "Tower Tactics: Liberation Wiki",
   "wiki": "https://towertacticsliberation.fandom.com"
+ },
+ "Tower of Babel: Survivors of Chaos": {
+  "checked": "2026-11-05",
+  "wiki": null
  },
  "Tower of Guns": {
   "api": "https://tower-of-guns.fandom.com/api.php",
@@ -25142,6 +25154,62 @@
  "Worlds Upon The Wind": {
   "checked": "2026-10-11",
   "wiki": null
+ },
+ "Worship": {
+  "also": [
+   "https://worship.fandom.com/api.php"
+  ],
+  "api": "https://worship.wiki.gg/api.php",
+  "articles": 142,
+  "blurb": "## Welcome to the Worship Wiki, ## a fan-maintained guide to the eldritch world of Worship! active editors are currently maintaining articles ( total pages) and files. ## Kickstarter • Discord • YouTube Channel Important articles File:World",
+  "categories": {
+   "characters": [
+    "Characters",
+    "Playable Characters"
+   ],
+   "goals": [
+    "Creatures",
+    "Enemies",
+    "Bosses"
+   ],
+   "locations": [
+    "World",
+    "Locations"
+   ],
+   "loot": [
+    "Upgrades",
+    "Items"
+   ]
+  },
+  "checked": "2026-11-05",
+  "counts": {
+   "characters": 31,
+   "events": 0,
+   "goals": 52,
+   "locations": 31,
+   "loot": 36,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "events": [
+    "Events",
+    "Encounters"
+   ],
+   "goals": [
+    "Creatures"
+   ],
+   "locations": [
+    "Locations"
+   ],
+   "loot": [
+    "Items",
+    "Relics"
+   ]
+  },
+  "signal": "",
+  "sitename": "Worship Wiki",
+  "wiki": "https://worship.wiki.gg/"
  },
  "Wretch: Divine Ascent": {
   "checked": "2026-10-29",
