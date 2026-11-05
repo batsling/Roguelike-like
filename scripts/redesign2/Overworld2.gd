@@ -6769,38 +6769,53 @@ func _refresh_select_stats() -> void:
 	# the surface that could was a popup about travelling somewhere. They arm here
 	# and aim at a card, like the Dash beside them, so a charge and the way to use it
 	# are finally the same object.
-	_select_stats.add_child(_stat_chip("⛏ Bash %d" % GameState.bash, GameState.bash,
-		BASH_ORANGE,
-		"Destroy an offered game outright — it leaves the pool for good and another connected game takes the slot.\nNot the Amulet: it is the way home.\nClick, then click the game you want gone.",
-		arm_bash, _armed_verb == &"bash"))
-	_select_stats.add_child(_stat_chip("⚡ Dash %d" % GameState.dash_charges,
-		GameState.dash_charges, DASH_BLUE,
-		"Ignore the offering and travel to ANY connected game.\nClick to pick your destination.",
-		dash if not _dash_mode else Callable()))
-	_select_stats.add_child(_stat_chip("⚗ Transmute %d" % GameState.transmute, GameState.transmute,
-		UITheme.ACCENT,
-		"Swap an offered game for a random off-graph game of the same type.\nClick, then click the game you want swapped.",
-		arm_transmute, _armed_verb == &"transmute"))
-	_select_stats.add_child(_stat_chip("🎲 Scramble %d" % GameState.scramble, GameState.scramble,
-		UITheme.GOLD,
-		"Redraw the whole offering — new games in the slots, each with a fresh goal-enemy.",
-		scramble))
+	#
+	# ONLY WHAT THE PLAYER HAS (the owner, 5 Nov 2026: "only show stats like bash
+	# when the player has them"). A verb at 0 is not drawn at all: four greyed
+	# "0" chips were a row of things you could not do, under the one row you are
+	# deciding on. A chip comes back the moment a charge does — the signature above
+	# already rebuilds on every count. An ARMED verb is drawn whatever its count,
+	# so the chip the player pressed never vanishes mid-aim (none spend before the
+	# click on a card, but the armed state must not depend on that).
+	if GameState.bash > 0 or _armed_verb == &"bash":
+		_select_stats.add_child(_stat_chip("⛏ Bash %d" % GameState.bash, GameState.bash,
+			BASH_ORANGE,
+			"Destroy an offered game outright — it leaves the pool for good and another connected game takes the slot.\nNot the Amulet: it is the way home.\nClick, then click the game you want gone.",
+			arm_bash, _armed_verb == &"bash"))
+	if GameState.dash_charges > 0 or _dash_mode:
+		_select_stats.add_child(_stat_chip("⚡ Dash %d" % GameState.dash_charges,
+			GameState.dash_charges, DASH_BLUE,
+			"Ignore the offering and travel to ANY connected game.\nClick to pick your destination.",
+			dash if not _dash_mode else Callable()))
+	if GameState.transmute > 0 or _armed_verb == &"transmute":
+		_select_stats.add_child(_stat_chip("⚗ Transmute %d" % GameState.transmute, GameState.transmute,
+			UITheme.ACCENT,
+			"Swap an offered game for a random off-graph game of the same type.\nClick, then click the game you want swapped.",
+			arm_transmute, _armed_verb == &"transmute"))
+	if GameState.scramble > 0:
+		_select_stats.add_child(_stat_chip("🎲 Scramble %d" % GameState.scramble, GameState.scramble,
+			UITheme.GOLD,
+			"Redraw the whole offering — new games in the slots, each with a fresh goal-enemy.",
+			scramble))
 	# Luck rides with the verbs rather than in the header beside Health and Gold,
 	# because it is not a resource you spend — it is a thing that is true about
 	# every roll the run makes, and the verbs are where the player is already
-	# reading what they can do to the offering. Drawn even at zero, so the stat is
-	# discoverable before a Clover ever turns up.
-	_select_stats.add_child(_stat_chip("🍀 Luck %d" % luck, luck, LUCK_GREEN,
-		"Every roll in the run gets %d coin flip%s — each heads is one more roll — "
-		% [absi(luck), "" if absi(luck) == 1 else "s"]
-		+ "and the %s result is kept.\n" % ("better" if luck >= 0 else "worse")
-		+ "Rarity ladders, event gambles, machine odds, a lost run's spawn — "
-		+ "anything with a better side to land on.\nA 25%% chance is really %s%% at this much Luck."
-		% EventSystem.percent_text(Stats.effective_chance(25.0, Stats.Favour.HIGH))))
+	# reading what they can do to the offering. Hidden at exactly zero with the
+	# verbs (5 Nov 2026), but drawn when NEGATIVE: bad Luck is a thing true about
+	# every roll too, and the one the player most needs told.
+	if luck != 0:
+		_select_stats.add_child(_stat_chip("🍀 Luck %d" % luck, luck, LUCK_GREEN,
+			"Every roll in the run gets %d coin flip%s — each heads is one more roll — "
+			% [absi(luck), "" if absi(luck) == 1 else "s"]
+			+ "and the %s result is kept.\n" % ("better" if luck >= 0 else "worse")
+			+ "Rarity ladders, event gambles, machine odds, a lost run's spawn — "
+			+ "anything with a better side to land on.\nA 25%% chance is really %s%% at this much Luck."
+			% EventSystem.percent_text(Stats.effective_chance(25.0, Stats.Favour.HIGH))))
 	# RIFT KEYS (docs/rifts-design.md §8), a readout rather than a button: a key is
 	# spent by TAKING a rift card, which the offering deals into its empty slots
-	# while one is held. Drawn at zero too, like Luck, so the stat can be found
-	# before the first key turns up.
+	# while one is held. Still drawn at zero, so the stat can be found before the
+	# first key turns up: when the verbs and Luck went to "only what you have"
+	# (5 Nov 2026) the owner kept Keys out of it.
 	_select_stats.add_child(_stat_chip("🗝 Keys %d" % GameState.keys, GameState.keys,
 		UITheme.RIFT,
 		"Rift Keys. While you hold one, every slot the offering leaves empty is dealt a rift card: a game from beyond the map, and the game two hops away its rift leads to.

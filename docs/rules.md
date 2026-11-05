@@ -581,7 +581,8 @@ There is no HUD strip. Every number is drawn once, by whatever owns it, which ta
 - **Amulet pressure** — The second line of the DIFFICULTY strip: how many spawns until the next difficulty up, how far the Amulet is and the pressure that puts on you (its two pips, in the band's colour — empty out in the wilds), and on the right what ending THIS game will stand up (☠ +N when this game ends). The strip takes the band's colour.
 - **Where your shops are** — A 🛒 on the game's card, on the 🗺 map and on the route ladder. The bar beside your gold says how close the next one is.
 - **Push and Bomb charges** — On their own buttons, on the board's toolbar.
-- **Bash, Dash, Transmute, Scramble** — Chips on the row under the offering. Dash and Scramble act at once; Bash and Transmute ARM, and the next card you click is the one they hit.
+- **Bash, Dash, Transmute, Scramble** — Chips on the row under the offering, once you have a charge — a verb at 0 is not shown. Dash and Scramble act at once; Bash and Transmute ARM, and the next card you click is the one they hit.
+- **Luck and Rift Keys** — On the same row. Luck shows whenever it is not 0 (bad Luck too); Keys always show.
 - **Shields a game would grant** — On the offering's hover line, and in full on the card.
 - **What is waiting at a game** — Hover its cover: the enemy's picture and its goal, on one line under the offering.
 - **Anything else on the page** — Hover it. An enemy, a status, a relic and the enemy-turns readout each show a small card — the short version of what clicking them opens.
