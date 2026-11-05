@@ -578,6 +578,54 @@ runs one file or one test in seconds, which is what to use while working.
 
 ---
 
+## 8. Load times (5 Nov 2026) — what was slow, and what now guards it
+
+The owner: "things are a lot slower now in general" — at boot, on the main
+menu, on the run map, opening screens and reporting a game. Nothing slow had
+been WRITTEN; content had grown past what the code assumed. Measured with
+temporary timers (the recipe below), headless for script work and under
+`xvfb-run` for frames. Frame numbers are software rendering, so read them as
+before/after on one machine, not as what a player sees.
+
+| what | before | after | the fix |
+|---|---|---|---|
+| a `GameStats.changed` (a report fires **5**) | ~320 ms | ~19 ms | `RankRewards.batch`: one pass over songs and logo pieces per refresh, not one per game |
+| boot to first frame | ~2.95 s | ~2.3 s | enemy/boss art by path (`GoalEnemyData.image`), songs in one `data/songs.tres` |
+| main menu → run page | ~1.8 s | ~0.7 s | `MainMenu._warm_run_page` loads the page on a worker thread |
+| first open of a run screen | +1.7 s of compile across them | ~0 | `Overworld2._warm_screens` compiles them on worker threads once the page is up |
+| building headings and buttons | +65 ms / 900 controls | +25 ms | Rogue's font applied as a control enters, settled at the end of the frame |
+| the radio: open / ★ (all 3,112 songs unlocked) | 19 s / 10 s | 0.4 s / 50 ms | rows a screenful at a time; a ★ rebuilds its own row |
+
+**Boot, broken down** (headless, after the fixes): ~160 ms is the engine;
+~770 ms compiling the 30 autoload scripts and what they preload; Data ~400 ms,
+of which games (1,004 files) ~150–220 ms and songs (one file) ~200 ms. A built
+copy exported with GDScript as binary tokens compiles faster than the editor
+does; not measured here.
+
+**The guard is a count, not a timer.** `tools/check_boot_load.py` (CI) counts
+what `Data._ready` loads — files, KB of .tres, and pictures named as an
+ExtResource, per source — against `tools/boot_budget.json` (recorded with a
+quarter's headroom on files, a tenth on art, so ordinary uploads do not trip
+it), and fails any content folder that newly embeds its art. Timings were too
+noisy to fail a build on; every regression above was visible in these counts.
+`--report` prints them; `--update` re-records the budget, in the same commit as
+whatever moved it, with the reason in the message.
+
+**Still open, measured:**
+- `items2.0` (77 sprites, ~1.3 MB) and `characters2.0` (~1.7 MB) still embed
+  their art and decode it at boot (~35–75 and ~10–40 ms). The fix is the one
+  enemies had: a path in the generator, a lazy getter on the resource.
+- The `games` catalog grows with every upload (~0.2 ms a file). One combined
+  file would halve it, at the cost of the per-file `grep` the tools and docs
+  rely on; the budget will say when it starts to matter.
+- A report's five `GameStats.changed` each still refresh Radio and
+  TitleUnlocks (~19 ms each). Coalescing to once a frame would save ~80 ms a
+  report, but several tests read the unlocks on the line after the signal.
+- The first open of the map and the Collection still builds ~300–500 ms of
+  content (865 stars, covers) — content, not loading.
+
+---
+
 ## The dead-code scan
 
 Three functions were found unreferenced and deleted (`GameLoop2._pull_from_stack`,
