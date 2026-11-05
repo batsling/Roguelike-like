@@ -32,6 +32,23 @@ var exclude_beaten_amulets: bool = false
 # per run, never shortening a path. On by default; off is a pure-influence map.
 var rifts_enabled: bool = true
 
+# UNLOCK EVERYTHING (Settings -> Profile): a TEST profile. While it is on, every
+# lock a profile has reads as open — every Fracture level for every character,
+# every Roguelike Radio song, every title letter, the Donation Machine's full
+# shelf — including anything added to the game later, because it is asked at the
+# gate rather than written into the stores. Nothing is drawn or recorded, so
+# turning it off gives back exactly what the profile has really earned. Ranks
+# and XP stay real: they are a record of play, not a lock.
+#
+# PER PROFILE (prefs.cfg), unlike Radio's "Unlock all songs", which is the PC's:
+# the owner asked for one profile to be the test profile and the rest to play
+# for real. The gates: GameStats.fracture_unlocked, Radio.is_unlocked,
+# TitleUnlocks.is_unlocked, and the donation shelf in GameLoop2's run start.
+var unlock_everything: bool = false
+# Emitted on its own, as menu_falling_art_changed is, so the stores whose locks it
+# opens can tell their screens to redraw.
+signal unlock_everything_changed(on: bool)
+
 # How the game's window is presented.
 #
 #   WINDOWED_FULLSCREEN — a borderless window the size of the screen.
@@ -389,6 +406,13 @@ func set_exclude_beaten_amulets(value: bool) -> void:
 	# pick time, not the adjacency graph.
 	save_settings()
 
+func set_unlock_everything(value: bool) -> void:
+	if value == unlock_everything:
+		return
+	unlock_everything = value
+	save_settings()
+	unlock_everything_changed.emit(value)
+
 func load_settings() -> void:
 	var cfg := ConfigFile.new()
 	var has_global: bool = cfg.load(CONFIG_PATH) == OK
@@ -403,6 +427,7 @@ func load_settings() -> void:
 		0, GameFilter.DOWNLOADED)
 	exclude_beaten_amulets = bool(prefs.get_value("path", "exclude_beaten_amulets", false))
 	rifts_enabled = bool(prefs.get_value("path", "rifts_enabled", true))
+	unlock_everything = bool(prefs.get_value("profile", "unlock_everything", false))
 
 	if not has_global:
 		RunGraph.invalidate_cache()
@@ -424,6 +449,7 @@ func save_settings() -> void:
 	prefs.set_value("path", "game_filter", game_filter)
 	prefs.set_value("path", "exclude_beaten_amulets", exclude_beaten_amulets)
 	prefs.set_value("path", "rifts_enabled", rifts_enabled)
+	prefs.set_value("profile", "unlock_everything", unlock_everything)
 	prefs.save(prefs_path())
 
 	var cfg := ConfigFile.new()

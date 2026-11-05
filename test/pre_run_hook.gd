@@ -20,6 +20,10 @@ extends GutHookScript
 # real roster is kept on Data's meta `all_locations` for `test_locations.gd`.
 func run() -> void:
 	GameState.start_gear_enabled = false
+	# A TEST PROFILE'S "Unlock everything" is the owner's per-profile switch, and
+	# the suite shares user:// with the real game: off, or every Fracture gate and
+	# song lock reads open. In memory only, so the profile's own setting stays.
+	Settings.unlock_everything = false
 	Data.set_meta("all_shopkeepers", Data._shopkeepers.duplicate())
 	Data._shopkeepers.clear()
 	Data.set_meta("all_locations", Data._locations.duplicate())

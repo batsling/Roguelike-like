@@ -29,6 +29,10 @@ func _ready() -> void:
 	_mount_falling_art()
 	_build_title()
 	_mount_portal()
+	# A test profile's letters are all there (Settings -> Profile -> Unlock
+	# everything): flipping it with the menu behind the Settings panel draws the
+	# title again, so the change shows.
+	Settings.unlock_everything_changed.connect(_on_unlock_everything_changed)
 
 	%StartRunBtn.pressed.connect(_on_start_run)
 	%CustomRunBtn.pressed.connect(_on_custom_run)
@@ -171,6 +175,10 @@ func _build_title(rng: RandomNumberGenerator = null) -> void:
 		rng = RandomNumberGenerator.new()
 		rng.randomize()
 	_title_rng = rng
+	_reroll(true)
+	_reroll(false)
+
+func _on_unlock_everything_changed(_on: bool) -> void:
 	_reroll(true)
 	_reroll(false)
 

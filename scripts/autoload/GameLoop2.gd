@@ -991,6 +991,9 @@ func start_run(character: CharacterData) -> void:
 	# What a Donation Machine has unlocked, as of now (§14.6): this run's gold
 	# counts from the next one.
 	GameState.donation_best = GameStats.donation_best()
+	# A test profile's machine has paid out its top tier (Settings.unlock_everything).
+	if Settings.unlock_everything:
+		GameState.donation_best = maxi(GameState.donation_best, int(ShopSystem.DONATION_TIERS[0][0]))
 	# The speedrun clock back to zero. Here rather than in the overworld because
 	# this is the one door into a fresh run, and a clock that kept the last run's
 	# splits would be wrong from its first frame.

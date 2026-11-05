@@ -123,6 +123,8 @@ func _ready() -> void:
 	GameStats.changed.connect(func() -> void: refresh_unlocks(true))
 	Profiles.profile_switched.connect(_on_profile_changed)
 	Profiles.profile_wiped.connect(_on_profile_changed)
+	# A test profile's toggle opens or closes every song, as Unlock all does.
+	Settings.unlock_everything_changed.connect(func(_on: bool) -> void: _unlocks_moved())
 	if not paused and autoplay:
 		_advance()
 
@@ -180,9 +182,9 @@ func game_songs(game: StringName) -> Array:
 	return out
 
 # Whether `song` plays as unlocked: drawn by its game's ranks, or every song
-# while UNLOCK ALL is on.
+# while UNLOCK ALL is on, or on a test profile (Settings.unlock_everything).
 func is_unlocked(song: SongData) -> bool:
-	return song != null and (unlock_all or is_drawn(song))
+	return song != null and (unlock_all or Settings.unlock_everything or is_drawn(song))
 
 # Whether `song` has actually been DRAWN — earned by its game's ranks. What the
 # draw counts; Unlock all never changes it, so turning that off gives back
@@ -217,6 +219,12 @@ func set_unlock_all(value: bool) -> void:
 		return
 	unlock_all = value
 	save_config()
+	_unlocks_moved()
+
+# Which songs count as unlocked changed all at once (Unlock all, or a test
+# profile): the queue was built from the old set, the song playing may be locked
+# now, and with nothing playing autoplay may have something to start.
+func _unlocks_moved() -> void:
 	_queue.clear()
 	var song: SongData = current_song()
 	if song != null and not is_playable(song):

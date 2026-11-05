@@ -508,6 +508,14 @@ func _build_wipe_section(col: VBoxContainer) -> void:
 	var label := _row(grid, Profiles.active_name(), holder,
 		"Erase this profile's runs, stats, tier list, owned games and run settings. The profile stays.")
 
+	# THE TEST PROFILE (Settings.unlock_everything). Above the in-run return:
+	# nothing about a run in progress is pulled out from under it, so it can be
+	# flipped at any time.
+	var test := _toggle(grid, "Unlock everything", Settings.unlock_everything,
+		func(on: bool) -> void: Settings.set_unlock_everything(on),
+		"Make this a test profile: every Fracture level for every character, every radio song, every title letter and the Donation Machine's full shelf, while it is on. Nothing is recorded, so turning it off goes back to what this profile really earned. Only this profile.")
+	test.name = "UnlockEverythingChk"
+
 	# A run is exactly what a wipe would pull the floor out from under — so the
 	# button is only live when there is no run in progress.
 	var in_run: bool = GameState.phase != GameState.Phase.MENU

@@ -784,8 +784,11 @@ func fracture_best(character_id) -> int:
 	return 0 if character_amulet_wins(character_id) > 0 else -1
 
 # The highest level `character_id` may start a run at: one past their best win,
-# or 0 before their first. Fracture 1 needs a win first (§1).
+# or 0 before their first. Fracture 1 needs a win first (§1). A test profile
+# (Settings.unlock_everything) has every level, without a win on record.
 func fracture_unlocked(character_id) -> int:
+	if Settings.unlock_everything:
+		return Fracture.MAX
 	return mini(fracture_best(character_id) + 1, Fracture.MAX)
 
 # The level the next run as `character_id` starts at: the last one picked, held
