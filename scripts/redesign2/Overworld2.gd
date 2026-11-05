@@ -4787,6 +4787,12 @@ var _owned_pick: Node = null
 func begin_owned_pick(cfg: Dictionary, on_done: Callable) -> bool:
 	if _drop_modal != null and is_instance_valid(_drop_modal):
 		return false
+	# Nor under the post-game screen: it covers the page, so a pick in the page's
+	# pack was invisible there — a Scroll of Identify read on the rewards screen
+	# showed nothing until the player was back on the run (owner, 5 Nov 2026). The
+	# use modal asks with its own picker instead.
+	if _post_screen != null and is_instance_valid(_post_screen):
+		return false
 	var candidates: Array = cfg.get("candidates", [])
 	if candidates.is_empty():
 		return false

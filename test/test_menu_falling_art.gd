@@ -38,19 +38,30 @@ func test_the_pool_holds_both_kinds() -> void:
 	assert_gt(_art._pool[MenuFallingArt.Kind.SMALL].size(), 0, "small art loaded")
 	assert_gt(_art._pool[MenuFallingArt.Kind.COVER].size(), 0, "game covers loaded")
 
-# THE BUG THIS IS ABOUT: the pieces used to fill up while the pool was still
-# loading, so all 52 came from whatever had decoded first and the cover share
-# only arrived as pieces recycled — measured at 0 covers of 52 on screen, on a
-# menu most people leave in seconds.
-func test_nothing_falls_until_the_whole_pool_is_loaded() -> void:
+# IT STARTS AT ONCE (owner, 5 Nov 2026: "start coming on to the screen
+# immediately"), but only AS MUCH as has loaded. Filling the whole screen from a
+# half-loaded pool drew every piece from whatever had decoded first — measured at
+# 0 covers of 52 on screen — so the pieces dealt follow the share baked.
+func test_it_starts_falling_while_the_pool_loads_but_only_its_share() -> void:
 	var fresh := MenuFallingArt.new()
 	add_child_autofree(fresh)
 	fresh._process(0.016)
 	if fresh._queue.is_empty():
 		pending("the pool baked inside one frame, so there is no partial state to check")
 		return
-	assert_eq(fresh._pieces.size(), 0,
-		"a piece spawned before the pool was whole would be drawn from a biased pool")
+	assert_gt(fresh._pieces.size(), 0, "something is falling on the first frame")
+	assert_lt(fresh._pieces.size(), fresh.piece_count(),
+		"but not the whole screen's worth from a part-loaded pool")
+	assert_eq(fresh._pieces.size(), fresh._allowed_pieces(), "exactly the loaded share")
+
+func test_the_first_pieces_are_in_view_within_a_second() -> void:
+	_seed()
+	_run_for(1.0)
+	var in_view := 0
+	for piece in _art._pieces:
+		if (piece["pos"] as Vector2).y + (piece["box"] as Vector2).y * 0.5 > 0.0:
+			in_view += 1
+	assert_gt(in_view, 5, "the menu is not left empty while the art is still far above it")
 
 func test_both_kinds_are_actually_falling_once_it_is_seeded() -> void:
 	_seed()

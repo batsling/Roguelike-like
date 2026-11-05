@@ -140,9 +140,29 @@ func file_path(song: SongData) -> String:
 		return ""
 	return "%s/%s" % [folder, song.file]
 
+# REMEMBERED FOR A FEW SECONDS. There are 3,112 songs, and `playable_songs`, a
+# draw, the song list and a report's unlocks each ask about every one of them —
+# a disk check per song per question, which on a Windows drive is the slow part
+# of all of them. Kept briefly rather than until a rescan, so a file dropped into
+# the folder still turns up on its own, as it always has.
+const FILE_CACHE_MSEC := 5000
+var _file_cache: Dictionary = {}   # path -> bool
+var _file_cache_at: int = -FILE_CACHE_MSEC
+
 func has_file(song: SongData) -> bool:
 	var p: String = file_path(song)
-	return p != "" and FileAccess.file_exists(p)
+	if p == "":
+		return false
+	var now: int = Time.get_ticks_msec()
+	if now - _file_cache_at >= FILE_CACHE_MSEC:
+		_file_cache.clear()
+		_file_cache_at = now
+	if not _file_cache.has(p):
+		_file_cache[p] = FileAccess.file_exists(p)
+	return bool(_file_cache[p])
+
+func _forget_files() -> void:
+	_file_cache.clear()
 
 # --- what a game has earned ------------------------------------------------
 #
@@ -632,6 +652,7 @@ func set_output(value: int) -> void:
 var library_generation: int = 0
 
 func rescan() -> void:
+	_forget_files()
 	library_generation += 1
 	_queue.clear()
 	if current == &"" and not paused and autoplay:

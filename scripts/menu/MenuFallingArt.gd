@@ -184,6 +184,7 @@ var _rng := RandomNumberGenerator.new()
 var _pieces: Array[Dictionary] = []
 # [path, kind] still to decode, and the textures already decoded, by kind.
 var _queue: Array = []
+var _queue_total: int = 0          # the queue's length when it was dealt
 var _pool := {Kind.SMALL: [], Kind.COVER: []}
 # Which pool entries are NOT currently falling. A piece takes an index from here
 # when it spawns and gives it back when it recycles, so the same picture can never
@@ -317,6 +318,7 @@ func _fill_queue() -> void:
 	_queue.append_array(covers.slice(0, cover_pool()))
 	# Interleaved, so the first seconds are not all one kind.
 	_queue.shuffle()
+	_queue_total = _queue.size()
 
 # The loot art as one list of jobs per folder, so `_fill_queue` can seat some of
 # each kind before the random draw.
@@ -467,6 +469,14 @@ func _shrink_to(img: Image, w: int, h: int) -> void:
 	if img.get_width() != w or img.get_height() != h:
 		img.resize(w, h, Image.INTERPOLATE_LANCZOS)
 
+# How many pieces may be on screen while the pool is still loading: the share of
+# the queue baked so far, of the full amount.
+func _allowed_pieces() -> int:
+	if _queue.is_empty() or _queue_total <= 0:
+		return piece_count()
+	var baked: float = float(_queue_total - _queue.size()) / float(_queue_total)
+	return int(ceil(piece_count() * baked))
+
 # Bake whatever fits in this frame's budget, and return how many jobs that was.
 # At least one runs whenever there is one to run, so the pool always advances.
 func _pump_queue() -> int:
@@ -545,10 +555,13 @@ func _spawn() -> Dictionary:
 	# down the screen, which with nothing fading in any more is a piece appearing
 	# out of thin air in the top corner.
 	#
-	# Spread over a whole screen-height above it, so the column arriving has the
-	# same density as the column on screen and the picture fills in evenly rather
-	# than as a front of art with a gap behind it.
-	var top: float = _rng.randf_range(-size.y, -box.y)
+	# JUST ABOVE IT, staggered by up to `REENTRY_STAGGER` of a screen like a
+	# recycled piece. It was spread over a whole screen-height, which at 38-84px/s
+	# kept the average piece out of sight for six seconds after the menu opened;
+	# now the first are in view at once. The spawns are spread over the pool's
+	# loading second too (`_allowed_pieces`), so they still arrive as a stream
+	# rather than one front.
+	var top: float = _reentry_y(size, box)
 	var pos := Vector2(_column_x(size, box.x), top)
 	if _sinking():
 		pos = _edge_start(size, box, 1.0)
@@ -640,19 +653,18 @@ func _process(delta: float) -> void:
 	# A long frame must not become a long STEP (see `MAX_STEP`).
 	delta = minf(delta, MAX_STEP)
 	_pump_queue()
-	# NOTHING SPAWNS UNTIL THE POOL IS WHOLE. Filling as the textures arrived was
-	# the obvious thing and it was wrong: the pieces reach PIECE_COUNT inside the
-	# first second, so every one of them was drawn from whatever had loaded first,
-	# and the cover share only crept in as pieces recycled — about thirty seconds,
-	# on a screen most people leave in five. Measured at 0 covers of 52 on screen.
-	# Waiting the ~1s for the pool costs a second of empty background and buys the
-	# mix being right from the first frame anyone sees.
-	if not _queue.is_empty():
-		return
+	# THE SCREEN FILLS AS THE POOL DOES. It used to wait for the whole pool, because
+	# filling as the textures arrived dealt every piece from whatever had decoded
+	# first (0 covers of 52 on screen). That cost a second of empty background, and
+	# then the opening pieces needed seconds more to fall into view — the owner, 5
+	# Nov 2026: the images should "start coming on to the screen immediately after
+	# opening the menu". So the pieces dealt are capped at the share of the queue
+	# already baked (`_allowed_pieces`): the queue is shuffled, so each slice of it
+	# carries the mix, and so does each slice of the screen.
 	if _pool[Kind.SMALL].is_empty() and _pool[Kind.COVER].is_empty():
 		return
 	var size: Vector2 = get_viewport_rect().size
-	while _pieces.size() < piece_count():
+	while _pieces.size() < _allowed_pieces():
 		# EVERY PIECE ENTERS FROM ABOVE, the opening fill included. It used to
 		# scatter that first fill across the visible height so the screen started
 		# busy, and the cost of that was the two things it started wrong: art was

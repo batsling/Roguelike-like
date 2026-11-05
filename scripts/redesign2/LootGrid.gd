@@ -372,6 +372,12 @@ func _place() -> void:
 				var cells: Array = []
 				for s in GameState.loot_slots_of(slot.loot_index):
 					cells.append(GameState.pack_cell_of(int(s)))
+				# A slot can outlive its piece by a frame: Prepared (or the bin)
+				# destroys a big piece, the sort lands before the grid is rebuilt,
+				# and the stale slot's loot_index now covers no cell at all. It
+				# keeps the one-cell place above; the rebuild is already queued.
+				if cells.is_empty():
+					continue
 				var lo: Vector2i = cells[0]
 				var hi: Vector2i = cells[0]
 				for cc in cells:

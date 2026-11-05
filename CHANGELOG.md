@@ -11,6 +11,24 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **5 Nov fixes.** *Prepared / the bin crashed on a big piece*:
+  `LootGrid._place` sorted a slot whose big piece had just been destroyed and
+  asked for the first of zero cells; it now skips the stale slot until the
+  rebuild. *A Scroll of Identify on the rewards screen showed nothing*: its
+  pick went to the run page's pack, which the post-game screen covers; under
+  that screen `begin_owned_pick` declines and the use modal asks in its own
+  grid, as it already did under a drop modal. *The radio froze on open, ★ and
+  ✕*: a star was in the list's rebuild key, so it rebuilt every row (10 s with
+  all 3,112 songs unlocked); now only the rows whose playing/star/blacklist
+  state moved are rebuilt (50 ms), and a rebuild shows the first 12 rows at
+  once and adds the rest a few per frame (19 s → 0.4 s open). The playing
+  song's cover stands left of its title. `Radio.has_file` remembers a lookup
+  for 5 s, since every song question was a disk check per song. *The menu art
+  starts at once*: it waited for the whole pool (~1 s) and dealt the opening
+  pieces up to a screen above the top (~6 s to fall into view); now it deals
+  as the pool bakes, capped at the share baked so the cover mix still holds,
+  and the opening pieces enter a third of a screen above the edge.
+
 - **4 Nov upload.** Sushiamo, Three Kingdoms: The Blood Moon, Tower of Babel:
   Survivors of Chaos and Worship, with their 7 connections; Abyss Odyssey,
   Clutchtime and Space Gladiators owned; the owner's `sports`, `hell` and

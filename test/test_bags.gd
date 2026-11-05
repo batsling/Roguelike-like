@@ -309,6 +309,19 @@ func test_the_three_by_three_alone_is_drawn_at_full_size() -> void:
 	var grid: LootGrid = _grid()
 	assert_eq(grid.fit_scale(), 1.0, "every surface was fitted to the 3x3 at full size")
 
+# THE CRASH (owner, 5 Nov 2026: "trying to use prepared and trying to destroy a
+# trinket/loot crashed the game" — LootGrid._place, out of bounds index 0). A big
+# piece destroyed while its grid is still on screen leaves a slot holding the old
+# entry until the rebuild; a sort that lands first asked for the cells of an
+# index that covers none.
+func test_a_grid_that_sorts_after_its_big_piece_is_destroyed_does_not_crash() -> void:
+	var placed: Dictionary = _put({"type": "trinket", "id": &"cheese", "rarity": "Common"}, 0)
+	assert_false(placed.is_empty(), "the big trinket went in")
+	var grid: LootGrid = _grid()
+	GameState.destroy_loot_at(GameState.loot_index_at_slot(0))
+	grid.notification(Container.NOTIFICATION_SORT_CHILDREN)
+	assert_eq(GameState.loot_index_at_slot(0), -1, "the piece is gone and the sort survived it")
+
 func test_a_big_pack_shrinks_to_fit_rather_than_growing_without_end() -> void:
 	var grid: LootGrid = _grid()
 	var small: Vector2 = grid.get_combined_minimum_size()

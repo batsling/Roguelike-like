@@ -3232,6 +3232,26 @@ func test_under_the_drop_screen_the_pick_stays_in_the_use_screen() -> void:
 	drop.queue_free()
 	await wait_frames(2)
 
+# THE REWARDS SCREEN TOO (owner, 5 Nov 2026): a Scroll of Identify read there
+# "doesn't show anything until you get back to the combat grid" — the pick went to
+# the page's pack, which the post-game screen covers.
+func test_under_the_rewards_screen_identify_asks_in_the_use_screen() -> void:
+	PillSystem.unidentify(&"luck_up")
+	GameState.loot_items.clear()
+	GameState.add_pill_loot(&"luck_up")
+	var screen := PostCombatScreen.open(_ui,
+		{"game": _ui._choices[0]["game"], "beaten": true, "escaped": false,
+			"amulet": false, "res": {}}, [], false)
+	_ui._post_screen = screen
+	var modal: Node = await _use_modal_asking({"kind": "identify_loot", "count": 1,
+		"candidates": [GameState.loot_items[0]]})
+	assert_null(_ui.owned_pick(), "the hidden pack is not asked")
+	assert_true(modal.visible, "the use screen asks in its own grid, on top")
+	modal._finish()
+	screen.dismiss()
+	_ui._post_screen = null
+	await wait_frames(2)
+
 func _find_use_modal() -> Node:
 	for c in _ui.get_children():
 		if c is CanvasLayer and c.layer == LootDropModal.USE_LAYER:
