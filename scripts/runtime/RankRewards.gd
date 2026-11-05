@@ -60,10 +60,64 @@ static func character_key(character: StringName) -> String:
 
 # A game's share of its ranks.
 static func for_game(game: StringName) -> Dictionary:
-	return split(game_key(game), GameRanks.rank(game), Radio.game_songs(game).size(),
-		TitleLetters.units_of(game).size())
+	return split(game_key(game), GameRanks.rank(game), _game_song_count(game),
+		_letter_count(game))
 
 # A character's share of its ranks.
 static func for_character(character: StringName) -> Dictionary:
+	var songs: int = 0
+	var ch: CharacterData = Data.get_character2(character)
+	if ch != null:
+		for g in ch.music_games:
+			songs += _game_song_count(g)
 	return split(character_key(character), GameRanks.character_rank(character),
-		Radio.character_songs(character).size(), TitleLetters.units().size())
+		songs, _letter_count(&"", true))
+
+# --- one refresh's counts -----------------------------------------------------
+#
+# A REFRESH ASKS ABOUT EVERY GAME, and each question used to scan all 3,112 songs
+# and every logo piece: Radio's and TitleUnlocks' refreshes cost ~300 ms between
+# them, on every GameStats.changed — a report fires several (owner, 5 Nov 2026:
+# "things are a lot slower now in general"). Inside `batch` the counts are taken
+# in one pass and remembered; outside it nothing is kept, so a song or a piece
+# added at any moment (the tests write Data._songs directly) is always seen.
+static var _memo: Dictionary = {}
+static var _batching: int = 0
+
+static func batch(work: Callable) -> void:
+	if _batching == 0:
+		_memo = {}
+	_batching += 1
+	work.call()
+	_batching -= 1
+	if _batching == 0:
+		_memo = {}
+
+static func _game_song_count(game: StringName) -> int:
+	if _batching == 0:
+		return Radio.game_songs(game).size()
+	if not _memo.has("songs"):
+		var by_game: Dictionary = {}
+		for s in Radio.songs():
+			var g: StringName = (s as SongData).game_id
+			by_game[g] = int(by_game.get(g, 0)) + 1
+		_memo["songs"] = by_game
+	return int((_memo["songs"] as Dictionary).get(game, 0)) if game != &"" else 0
+
+# A game's logo pieces, or (`all`) every piece.
+static func _letter_count(game: StringName, all: bool = false) -> int:
+	if _batching == 0:
+		return TitleLetters.units().size() if all else TitleLetters.units_of(game).size()
+	if not _memo.has("letters"):
+		var by_game: Dictionary = {}
+		var total: int = 0
+		var p := TitleLetters.pool()
+		for folder in p:
+			for e in p[folder]:
+				if not TitleLetters.is_starter(e) and TitleLetters.unit_key(e) == String(e["key"]):
+					total += 1
+					var g := String(e.get("game", ""))
+					by_game[g] = int(by_game.get(g, 0)) + 1
+		_memo["letters"] = by_game
+		_memo["letters_all"] = total
+	return int(_memo["letters_all"]) if all else int((_memo["letters"] as Dictionary).get(String(game), 0))

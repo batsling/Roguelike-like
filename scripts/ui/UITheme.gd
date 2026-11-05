@@ -1235,26 +1235,39 @@ static func wants_rogue(c: Control) -> bool:
 		return c.get_theme_font_size("font_size") >= FONT_BODY
 	return false
 
-# Set `c` in Rogue's font, at its snapped size. Safe to call twice.
+# Set `c` in Rogue's font, at its snapped size. Safe to call twice, and a second
+# call that would change nothing touches nothing (an override set again makes the
+# control shape its text again).
 static func use_rogue(c: Control) -> void:
 	var f: Font = rogue_font()
 	if f == null or c == null:
 		return
-	c.add_theme_font_override("font", f)
-	c.add_theme_font_size_override("font_size", rogue_size(c.get_theme_font_size("font_size")))
+	var px: int = rogue_size(c.get_theme_font_size("font_size"))
+	if not c.has_meta(ROGUE_META):
+		c.set_meta(ROGUE_META, c.get_theme_font_size("font_size"))
+	if not (c.has_theme_font_override("font") and c.get_theme_font("font") == f):
+		c.add_theme_font_override("font", f)
+	if c.get_theme_font_size("font_size") != px:
+		c.add_theme_font_size_override("font_size", px)
 
+# Marks a control the rule set in Rogue's font, holding the size it had before.
+const ROGUE_META := &"rogue_auto_size"
+
+# NOW, AND CHECKED AGAIN AT THE END OF THE FRAME. Waiting a frame for every
+# control meant every heading and button was laid out in the ordinary font, then
+# again in Rogue's: building a screen took about half as long again with the rule
+# on as with it off (owner, 5 Nov 2026: "things are a lot slower now"). Most code
+# sets a control's size before adding it, so the rule is applied as it enters
+# the tree, and the end-of-frame check (`_settle_rogue_rule`) catches the code
+# that set its size, its wrap or its own font AFTER adding it, both ways.
 static func _on_node_added(node: Node) -> void:
 	if not rogue_headings or not (node is Label or node is Button):
 		return
+	_apply_rogue_rule(node)
 	# A control INSTANCED FROM A SCENE FILE (it has an owner) arrives with its
-	# sizes already set, so it is done now, before the first layout pass: done a
-	# frame later, the main menu's buttons grew under a laid-out screen and the
-	# portal round the title stood a frame behind them. A control built in code
-	# has its sizes set around add_child, so it waits for the frame to end.
-	if node.owner != null:
-		_apply_rogue_rule(node)
-	else:
-		_apply_rogue_rule.call_deferred(node)
+	# sizes already set, so there is nothing to settle later.
+	if node.owner == null:
+		_settle_rogue_rule.call_deferred(node)
 
 # Untyped on purpose: a control can be freed in the frame between being added and
 # this running (a screen built and torn down at once), and a freed object cannot
@@ -1270,6 +1283,43 @@ static func _apply_rogue_rule(node) -> void:
 		return
 	if wants_rogue(c):
 		use_rogue(c)
+
+# The end-of-frame half: put right what was set after the control entered.
+static func _settle_rogue_rule(node) -> void:
+	if not is_instance_valid(node) or not (node as Node).is_inside_tree():
+		return
+	var c := node as Control
+	if not c.has_meta(ROGUE_META):
+		_apply_rogue_rule(c)   # its size reached a heading's only after it entered
+		return
+	var f: Font = rogue_font()
+	if c.get_theme_font("font") != f:
+		c.remove_meta(ROGUE_META)   # it chose a font of its own since: it keeps it
+		return
+	# Still a heading? Measured at the size its code asked for, which is the
+	# snapped one unless the code set another since.
+	var asked: int = c.get_theme_font_size("font_size")
+	var snapped: bool = asked == ROGUE_PX or asked == ROGUE_PX * 2
+	if snapped:
+		asked = int(c.get_meta(ROGUE_META))
+	if _wants_at(c, asked):
+		use_rogue(c)
+		return
+	# Not one after all (set small, or set to wrap, after it entered): back to the
+	# ordinary font at the size its code asked for.
+	c.remove_theme_font_override("font")
+	c.add_theme_font_size_override("font_size", asked)
+	c.remove_meta(ROGUE_META)
+
+static func _wants_at(c: Control, size: int) -> bool:
+	if c is Label:
+		return size >= FONT_SUB
+	if c is Button:
+		var b := c as Button
+		if b.autowrap_mode != TextServer.AUTOWRAP_OFF or b.text.contains("\n"):
+			return false
+		return size >= FONT_BODY
+	return false
 
 static func make_theme() -> Theme:
 	var t := Theme.new()

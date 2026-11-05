@@ -312,6 +312,23 @@ python3 tools/outline.py scripts/redesign2/Overworld2.gd --grep stun   # a file'
   back into an `@export var ... : Texture2D` — `Data` loads all 1,000 games at
   startup and an ExtResource resolves eagerly, which meant decoding ~206 MB of
   PNG on every boot and every headless test run (~5.2s of a ~5.7s startup).
+- **Boot loads every content file, so content shapes the load time.** Four
+  rules, each from a regression that grew in with the content
+  (`docs/performance-backlog.md` §8):
+  - a content `.tres` names its picture by **PATH** and loads it on first read
+    (`GameData.cover_image`, `GoalEnemyData.image`, `LocationData.image`) —
+    never an ExtResource Texture2D, which decodes at boot whether a run shows it
+    or not;
+  - a catalog of thousands of rows is **one file**, not a file per row
+    (`data/songs.tres`, a `SongLibrary`);
+  - a screen the run page only opens on demand is reached **by path**, not
+    `preload` or a class name (`test_page_load.gd` holds it);
+  - anything connected to **`GameStats.changed`** has to be cheap: a report
+    fires it five times. A loop over every game that scans every song is
+    songs × games — `RankRewards.batch` is how the unlock refreshes avoid it.
+  `python3 tools/check_boot_load.py` (CI) counts what boot loads against
+  `tools/boot_budget.json` and fails a folder that newly embeds its art;
+  `--report` prints the numbers, `--update` accepts a deliberate rise.
 - **`data/games/` has 1,000 files.** Never glob or read it wholesale to answer a
   question; query it with `grep` for the field you care about.
 - **The repo tracks source only.** `.godot/`, `*.import`, `*.uid` and

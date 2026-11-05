@@ -116,6 +116,12 @@ jobs:
       - name: data/ is what the sheet says
         run: python3 tools/check_data_sync.py
 
+      - name: What boot loads is inside its budget
+        # Counted, not timed (docs/performance-backlog.md §8): the files Data
+        # opens and the art they decode at boot, against tools/boot_budget.json,
+        # and no content folder newly embedding its pictures.
+        run: python3 tools/check_boot_load.py
+
       - name: Every proof clip has been converted
         # The owner uploads proofs as .mp4, which Godot cannot play;
         # tools/convert_proof_videos.py turns each into the .ogv and poster the

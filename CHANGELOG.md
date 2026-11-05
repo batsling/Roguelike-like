@@ -11,6 +11,42 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **5 Nov fixes.** *Prepared / the bin crashed on a big piece*:
+  `LootGrid._place` sorted a slot whose big piece had just been destroyed and
+  asked for the first of zero cells; it now skips the stale slot until the
+  rebuild. *A Scroll of Identify on the rewards screen showed nothing*: its
+  pick went to the run page's pack, which the post-game screen covers; under
+  that screen `begin_owned_pick` declines and the use modal asks in its own
+  grid, as it already did under a drop modal. *The radio froze on open, ★ and
+  ✕*: a star was in the list's rebuild key, so it rebuilt every row (10 s with
+  all 3,112 songs unlocked); now only the rows whose playing/star/blacklist
+  state moved are rebuilt (50 ms), and a rebuild shows the first 12 rows at
+  once and adds the rest a few per frame (19 s → 0.4 s open). The playing
+  song's cover stands left of its title. `Radio.has_file` remembers a lookup
+  for 5 s, since every song question was a disk check per song. *The menu art
+  starts at once*: it waited for the whole pool (~1 s) and dealt the opening
+  pieces up to a screen above the top (~6 s to fall into view); now it deals
+  as the pool bakes, capped at the share baked so the cover mix still holds,
+  and the opening pieces enter a third of a screen above the edge.
+  *Every stat change cost ~300 ms*: Radio and TitleUnlocks both redraw their
+  unlocks on `GameStats.changed`, and `RankRewards.for_game` scanned all 3,112
+  songs and every logo piece once per game. A refresh now runs inside
+  `RankRewards.batch`, which counts both in one pass for that refresh only, and
+  TitleUnlocks groups the pieces once rather than per game and per character:
+  ~19 ms. A report fires that signal several times, so this was felt on
+  reporting, on boot and wherever stats move.
+
+- **5 Nov speed pass.** Boot ~2.95 s → ~2.3 s: enemy and boss art (22 MB of
+  PNG) was decoded at boot because each `.tres` named its texture; it is now
+  `image_path`, loaded on first read like the game covers, and the songs are
+  one `data/songs.tres` (`SongLibrary`) instead of 3,112 files. Menu → run
+  page ~1.8 s → ~0.7 s: the page is loaded on a worker thread while the menu
+  is up. The run page's on-demand screens (map, Collection, shop, …; 1.7 s of
+  compile between them) are compiled on worker threads once it is up, so a
+  first open no longer pays it. Rogue's font is applied as a control enters
+  the tree, with an end-of-frame check for code that sizes it later, rather
+  than a frame late for every control — that laid every heading out twice.
+
 - **4 Nov upload.** Sushiamo, Three Kingdoms: The Blood Moon, Tower of Babel:
   Survivors of Chaos and Worship, with their 7 connections; Abyss Odyssey,
   Clutchtime and Space Gladiators owned; the owner's `sports`, `hell` and

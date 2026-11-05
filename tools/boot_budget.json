@@ -1,0 +1,122 @@
+{
+ "data/abilities2.0/": {
+  "eager_art_kb": 0,
+  "files": 39,
+  "kb": 23
+ },
+ "data/bags2.0/": {
+  "eager_art_kb": 0,
+  "files": 7,
+  "kb": 3
+ },
+ "data/bosses2.0/": {
+  "eager_art_kb": 0,
+  "files": 64,
+  "kb": 40
+ },
+ "data/cards2.0/": {
+  "eager_art_kb": 0,
+  "files": 47,
+  "kb": 28
+ },
+ "data/characters2.0/": {
+  "eager_art_kb": 1869,
+  "files": 15,
+  "kb": 18
+ },
+ "data/curses2.0/": {
+  "eager_art_kb": 0,
+  "files": 4,
+  "kb": 2
+ },
+ "data/enemies2.0/": {
+  "eager_art_kb": 0,
+  "files": 89,
+  "kb": 57
+ },
+ "data/events2.0/": {
+  "eager_art_kb": 0,
+  "files": 20,
+  "kb": 38
+ },
+ "data/evolutions2.0/": {
+  "eager_art_kb": 0,
+  "files": 8,
+  "kb": 3
+ },
+ "data/games/": {
+  "eager_art_kb": 0,
+  "files": 1255,
+  "kb": 1122
+ },
+ "data/items2.0/": {
+  "eager_art_kb": 1388,
+  "files": 97,
+  "kb": 65
+ },
+ "data/locations/": {
+  "eager_art_kb": 0,
+  "files": 10,
+  "kb": 7
+ },
+ "data/objects2.0/": {
+  "eager_art_kb": 0,
+  "files": 3,
+  "kb": 3
+ },
+ "data/pills2.0/": {
+  "eager_art_kb": 0,
+  "files": 13,
+  "kb": 7
+ },
+ "data/potions2.0/": {
+  "eager_art_kb": 0,
+  "files": 19,
+  "kb": 12
+ },
+ "data/scrolls2.0/": {
+  "eager_art_kb": 0,
+  "files": 12,
+  "kb": 7
+ },
+ "data/shopkeepers/": {
+  "eager_art_kb": 0,
+  "files": 5,
+  "kb": 3
+ },
+ "data/songs.tres": {
+  "eager_art_kb": 0,
+  "files": 2,
+  "kb": 1550
+ },
+ "data/statuses2.0/": {
+  "eager_art_kb": 112,
+  "files": 9,
+  "kb": 9
+ },
+ "data/tiles2.0/": {
+  "eager_art_kb": 57,
+  "files": 3,
+  "kb": 2
+ },
+ "data/trinkets2.0/": {
+  "eager_art_kb": 0,
+  "files": 28,
+  "kb": 18
+ },
+ "data/units2.0/": {
+  "eager_art_kb": 10,
+  "files": 5,
+  "kb": 4
+ },
+ "data/wands2.0/": {
+  "eager_art_kb": 0,
+  "files": 15,
+  "kb": 8
+ },
+ "data/weapons2.0/": {
+  "eager_art_kb": 0,
+  "files": 14,
+  "kb": 10
+ }
+}

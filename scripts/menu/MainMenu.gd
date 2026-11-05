@@ -52,6 +52,7 @@ func _ready() -> void:
 	Profiles.profile_switched.connect(_on_profile_switched)
 	Profiles.profile_wiped.connect(_on_profile_switched)
 	_move_quit_to_corner()
+	_warm_run_page.call_deferred()
 	_refresh_continue_button()
 	_rearrange_on_visibility()
 	_build_radio_corner()
@@ -427,6 +428,17 @@ func _open_character_picker() -> void:
 		c.queue_free()
 	var picker := CharacterPicker.open(_modal_layer)
 	picker.chosen.connect(_begin_run)
+
+# THE RUN PAGE LOADS WHILE THE MENU IS UP. Overworld2 is the game's biggest
+# script and loading it (compiling it, mostly) took about a second at the click
+# on Start or Continue (owner, 5 Nov 2026: "booting / main menu" slow). Requested
+# on a worker thread here, it is usually done before a character is picked;
+# `change_scene_to_file` waits for it if not. Not in a headless run (tests),
+# which never leaves for the run page from here.
+func _warm_run_page() -> void:
+	if DisplayServer.get_name() == "headless" or ResourceLoader.has_cached(OVERWORLD2_SCENE):
+		return
+	ResourceLoader.load_threaded_request(OVERWORLD2_SCENE, "", true)
 
 func _begin_run(character_id: StringName) -> void:
 	# Overworld2 boots the run itself (rolls the graph, applies the 2.0 loadout);

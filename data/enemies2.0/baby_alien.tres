@@ -1,7 +1,6 @@
-[gd_resource type="Resource" script_class="GoalEnemyData" load_steps=3 format=3 uid="uid://goalenemy_baby_alien"]
+[gd_resource type="Resource" script_class="GoalEnemyData" load_steps=2 format=3 uid="uid://goalenemy_baby_alien"]
 
 [ext_resource type="Script" path="res://scripts/resources/GoalEnemyData.gd" id="1_enemy"]
-[ext_resource type="Texture2D" path="res://images2.0/enemies/BabyAlien.png" id="2_img"]
 
 [resource]
 script = ExtResource("1_enemy")
@@ -20,4 +19,4 @@ shape_rows = 1
 shape_cols = 1
 shape_mask = PackedInt32Array(1)
 file = "BabyAlien"
-image = ExtResource("2_img")
+image_path = "res://images2.0/enemies/BabyAlien.png"

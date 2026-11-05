@@ -76,23 +76,34 @@ func drawn_for(owner: String) -> int:
 # Draw every letter owed. Games first (each from its own logo, in id order), then
 # characters (from any logo, in id order).
 func refresh_unlocks(announce: bool = true) -> void:
+	RankRewards.batch(func() -> void: _refresh_unlocks(announce))
+
+func _refresh_unlocks(announce: bool) -> void:
 	var fresh: Array = []
-	var games: Dictionary = {}
-	for key in TitleLetters.units():
-		var e: Dictionary = _entry(key)
-		games[String(e.get("game", ""))] = true
-	var ids: Array = games.keys()
+	# Every piece and each game's pieces, in one pass over the pool rather than a
+	# pass per game and per character (see RankRewards.batch). Sorted by key, as
+	# TitleLetters.units and units_of hand them over, so the draws are unchanged.
+	var all_units: Array = TitleLetters.units()
+	var by_game: Dictionary = {}   # game id -> its pieces' keys
+	var p := TitleLetters.pool()
+	for folder in p:
+		for e in p[folder]:
+			if not TitleLetters.is_starter(e) and TitleLetters.unit_key(e) == String(e["key"]):
+				(by_game.get_or_add(String(e.get("game", "")), []) as Array).append(String(e["key"]))
+	var ids: Array = by_game.keys()
 	ids.sort()
 	for g in ids:
 		var owner: String = RankRewards.game_key(StringName(g))
 		var owed: int = int(RankRewards.for_game(StringName(g))["letters"]) - drawn_for(owner)
-		_draw(TitleLetters.units_of(StringName(g)), owed, owner, fresh)
+		var pool: Array = by_game[g]
+		pool.sort()
+		_draw(pool, owed, owner, fresh)
 	var roster: Array = Data.all_characters2()
 	roster.sort_custom(func(a, b): return String(a.id) < String(b.id))
 	for ch in roster:
 		var owner: String = RankRewards.character_key(ch.id)
 		var owed: int = int(RankRewards.for_character(ch.id)["letters"]) - drawn_for(owner)
-		_draw(TitleLetters.units(), owed, owner, fresh)
+		_draw(all_units, owed, owner, fresh)
 	if fresh.is_empty():
 		return
 	_save()

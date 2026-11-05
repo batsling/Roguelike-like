@@ -15,13 +15,17 @@ extends Control
 #   * LOCKED SONGS COLLAPSE TO ONE ROW PER GAME. Which song a game gives next is
 #     luck, so what is worth reading is how close the GAME is, said once.
 #   * THE LIST IS REBUILT ONLY WHEN WHAT IT SHOWS MOVED (`_list_state`). A new
-#     track only moves the "playing" highlight, so only the two rows involved
-#     are rebuilt (`_restyle_current`).
+#     track, a ★ or a ✕ only changes the rows of the songs involved, so only
+#     those are rebuilt (`_restyle_changed`).
+#   * A REBUILD ARRIVES A SCREENFUL AT A TIME (`_build_pending`): the first rows
+#     at once, the rest a few per frame, so opening never freezes the game.
 
 const PANEL_WIDTH := 640
 const ROW_ART := 40
+const NOW_ART := 64
 
 var _now_title: Label
+var _now_art: TextureRect
 var _now_star: Button
 var _now_cross: Button
 var _now_meta: Label
@@ -41,6 +45,7 @@ var _folder_default_btn: Button
 var _folder_shown: String = ""
 var _list_key: String = "-"       # `_list_state` the list was last built for
 var _rows: Dictionary = {}        # unlocked song id -> its row
+var _marks: Dictionary = {}       # unlocked song id -> `_mark` its row was built with
 var _shown_current: StringName = &""
 # ONE GAME'S SONGS ONLY, when opened from a game's page (Collection's ♪, the
 # owner, 1 Nov 2026): its unlocked songs, then its locked row, and a chip at the
@@ -86,6 +91,8 @@ func close() -> void:
 func _process(_delta: float) -> void:
 	if _now_time != null:
 		_now_time.text = _time_text()
+	if not _pending.is_empty():
+		_build_pending()
 
 # ---------------------------------------------------------------------------
 # The shell
@@ -187,9 +194,23 @@ func _build_ui() -> void:
 	_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.add_child(_list)
 
+# The playing song's cover on the LEFT of its title (owner, 5 Nov 2026), the way
+# every row in the list below carries its game's cover.
 func _build_now_playing() -> Control:
+	var outer := HBoxContainer.new()
+	outer.add_theme_constant_override("separation", UITheme.GAP_LOOSE)
+	_now_art = TextureRect.new()
+	_now_art.name = "NowArt"
+	_now_art.custom_minimum_size = Vector2(NOW_ART, NOW_ART)
+	_now_art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_now_art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	_now_art.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	outer.add_child(_now_art)
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", UITheme.GAP_HAIR)
+	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	box.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	outer.add_child(box)
 	var head := HBoxContainer.new()
 	head.add_theme_constant_override("separation", UITheme.GAP)
 	box.add_child(head)
@@ -219,7 +240,7 @@ func _build_now_playing() -> Control:
 	_now_time.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	_now_time.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 	box.add_child(_now_time)
-	return box
+	return outer
 
 func _build_controls() -> Control:
 	var row := HBoxContainer.new()
@@ -455,6 +476,8 @@ func _refresh() -> void:
 	var song: SongData = Radio.current_song()
 	if song != null:
 		_now_title.text = song.title + ("" if song.artist == "" else "  —  " + song.artist)
+		_now_art.texture = _art(song)
+		_now_art.visible = _now_art.texture != null
 		_now_meta.text = _meta_line(song)
 		_now_star.visible = true
 		_show_star(_now_star, song)
@@ -463,6 +486,7 @@ func _refresh() -> void:
 	else:
 		_now_star.visible = false
 		_now_cross.visible = false
+		_now_art.visible = false
 		_now_title.text = "Nothing playing"
 		_now_meta.text = _silence_reason()
 	_now_time.text = _time_text()
@@ -539,14 +563,41 @@ static func _clock(seconds: float) -> String:
 func _fill_list() -> void:
 	var key: String = _list_state()
 	if key == _list_key:
-		if Radio.current != _shown_current:
-			_restyle_current()
+		_restyle_changed()
 		return
 	_list_key = key
 	_rows.clear()
+	_marks.clear()
 	_shown_current = Radio.current
 	for c in _list.get_children():
+		_list.remove_child(c)
 		c.queue_free()
+	_pending.clear()
+	_fill_rows()
+	_build_pending(FIRST_ROWS)
+
+# ROWS ARRIVE A FEW AT A TIME. A row costs ~2 ms to enter the scene (its labels
+# shaping their text, its theme resolving), so a list built in one go froze the
+# game for a second with a few hundred songs unlocked, and for 19 s with all
+# 3,112 (owner, 5 Nov 2026: opening the radio "freezes the game for a second").
+# The first screenful is built at once; the rest is built in `_process` inside a
+# frame budget, below the fold, while the screen is already usable.
+const FIRST_ROWS := 12
+const ROW_BUDGET_USEC := 6000
+var _pending: Array = []   # Callables, each building and adding one row
+
+func _build_pending(limit: int = -1) -> void:
+	var started: int = Time.get_ticks_usec()
+	var built: int = 0
+	while not _pending.is_empty():
+		if limit >= 0 and built >= limit:
+			break
+		if limit < 0 and Time.get_ticks_usec() - started >= ROW_BUDGET_USEC:
+			break
+		(_pending.pop_front() as Callable).call()
+		built += 1
+
+func _fill_rows() -> void:
 	var unlocked: Array = []
 	var locked_by_game: Dictionary = {}   # game id -> its locked songs
 	var all: Array = Radio.songs()
@@ -570,9 +621,11 @@ func _fill_list() -> void:
 	# games by the same rule: whoever is nearest a song first.
 	unlocked.sort_custom(func(a, b) -> bool: return a.title.naturalnocasecmp_to(b.title) < 0)
 	for s in unlocked:
-		var row: Control = _song_row(s)
-		_rows[s.id] = row
-		_list.add_child(row)
+		_pending.append(func() -> void:
+			var row: Control = _song_row(s)
+			_rows[s.id] = row
+			_marks[s.id] = _mark(s)
+			_list.add_child(row))
 	var waiting: Array = []   # [{"key": [needed, name], "game" or "character": id}]
 	for g in locked_by_game.keys():
 		waiting.append({"key": _game_key(g), "game": g})
@@ -584,18 +637,20 @@ func _fill_list() -> void:
 		return ka[0] < kb[0] or (ka[0] == kb[0] and ka[1] < kb[1]))
 	for w in waiting:
 		if w.has("character"):
-			_list.add_child(_character_row(w["character"]))
+			_pending.append(func() -> void: _list.add_child(_character_row(w["character"])))
 		else:
-			_list.add_child(_game_row(w["game"], locked_by_game[w["game"]]))
+			_pending.append(func() -> void:
+				_list.add_child(_game_row(w["game"], locked_by_game[w["game"]])))
 
-# Everything the list shows apart from which song is playing. Cheap next to a
-# rebuild: a dictionary lookup per song and two counts per game.
+# Everything the list shows apart from what one unlocked song's own row says
+# (playing, starred, blacklisted — see `_mark`). Cheap next to a rebuild: a
+# dictionary lookup per song and two counts per game.
 func _list_state() -> String:
 	var parts: PackedStringArray = []
 	var games: Dictionary = {}
 	for s in Radio.songs():
 		if Radio.is_unlocked(s):
-			parts.append(String(s.id) + ("*" if Radio.is_favorite(s) else ""))
+			parts.append(String(s.id))
 		elif not games.has(s.game_id):
 			games[s.game_id] = s
 	# Per game, exactly what its row says: the counts left and the goals done.
@@ -611,19 +666,32 @@ func _list_state() -> String:
 	parts.append("gen=%d" % Radio.library_generation)
 	return "|".join(parts)
 
-# A new track: rebuild only the row it left and the row it went to.
-func _restyle_current() -> void:
-	for id in [_shown_current, Radio.current]:
-		var old: Control = _rows.get(id)
+# What one song's row shows that can change without the list changing: whether
+# it is playing, starred or blacklisted. A row whose mark moved is rebuilt where
+# it stands, and nothing else is — a ★ or a ✕ used to rebuild every row.
+func _mark(song: SongData) -> String:
+	return "%d%d%d" % [int(song.id == Radio.current), int(Radio.is_favorite(song)),
+		int(Radio.is_blocked(song))]
+
+func _restyle_changed() -> void:
+	for id in _rows.keys():
+		var song: SongData = Data.get_song(id)
+		if song == null:
+			continue
+		var mark: String = _mark(song)
+		if _marks.get(id, "") == mark:
+			continue
+		var old: Control = _rows[id]
 		if old == null or not is_instance_valid(old):
 			continue
-		var fresh: Control = _song_row(Data.get_song(id))
+		var fresh: Control = _song_row(song)
 		var at: int = old.get_index()
 		_list.remove_child(old)
 		old.queue_free()
 		_list.add_child(fresh)
 		_list.move_child(fresh, at)
 		_rows[id] = fresh
+		_marks[id] = mark
 	_shown_current = Radio.current
 
 func _game_key(game: StringName) -> Array:
