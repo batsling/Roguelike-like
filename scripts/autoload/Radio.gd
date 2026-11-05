@@ -419,6 +419,9 @@ func current_song() -> SongData:
 # draw first, then characters in id order. A pool with nothing left to draw
 # draws nothing; the rank still stands.
 func refresh_unlocks(announce: bool = true) -> void:
+	RankRewards.batch(func() -> void: _refresh_unlocks(announce))
+
+func _refresh_unlocks(announce: bool) -> void:
 	var fresh: Array = []
 	var by_game: Dictionary = {}
 	for s in songs():

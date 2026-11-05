@@ -28,6 +28,13 @@ For how the project is laid out and how its systems fit together, see
   pieces up to a screen above the top (~6 s to fall into view); now it deals
   as the pool bakes, capped at the share baked so the cover mix still holds,
   and the opening pieces enter a third of a screen above the edge.
+  *Every stat change cost ~300 ms*: Radio and TitleUnlocks both redraw their
+  unlocks on `GameStats.changed`, and `RankRewards.for_game` scanned all 3,112
+  songs and every logo piece once per game. A refresh now runs inside
+  `RankRewards.batch`, which counts both in one pass for that refresh only, and
+  TitleUnlocks groups the pieces once rather than per game and per character:
+  ~19 ms. A report fires that signal several times, so this was felt on
+  reporting, on boot and wherever stats move.
 
 - **4 Nov upload.** Sushiamo, Three Kingdoms: The Blood Moon, Tower of Babel:
   Survivors of Chaos and Worship, with their 7 connections; Abyss Odyssey,
