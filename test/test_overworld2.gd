@@ -6426,7 +6426,10 @@ func test_each_strike_takes_its_own_bite_out_of_the_shown_health() -> void:
 		"attacks": [
 			{"instance": inst, "turn": 0, "damage": 2},
 			{"instance": inst, "turn": 1, "damage": 2}]}, hp_before)
-	# The first turn's strike fires immediately; the second waits for its turn.
+	# The first turn's strike is thrown immediately and its cost lands with the
+	# number (FX_IMPACT_TIME); the second waits for its turn.
+	assert_eq(_ui._board.shown_hp(), hp_before, "nothing is charged before the number lands")
+	await wait_seconds(BattlefieldView.FX_IMPACT_TIME + 0.05)
 	assert_eq(_ui._board.shown_hp(), hp_before - 2,
 		"one blow landed, one blow's worth of Health gone")
 	assert_true(_ui._board._hero_hp.text.contains("%d/%d" % [hp_before - 2, GameState.max_hp]),
@@ -6462,7 +6465,10 @@ func test_the_shield_row_opens_on_the_armour_that_was_standing() -> void:
 	GameState.shields = 0                    # as the resolve already would have
 	_ui._board.animate_resolve(before, {"attacks": [
 		{"instance": inst, "turn": 0, "damage": 3, "blocked": 3}]}, GameState.hp, held)
-	# One blocked blow fires immediately, so one of the two is gone and one is left.
+	assert_eq(_ui._board.standing_shields().size(), 2,
+		"both stand until the blow's number reaches the hero")
+	# One blocked blow lands at the impact beat, so one of the two is gone.
+	await wait_seconds(BattlefieldView.FX_IMPACT_TIME + 0.05)
 	assert_eq(_ui._board.standing_shields().size(), 1,
 		"the playback opens on the two that were standing and breaks one on the blow")
 
@@ -6488,6 +6494,7 @@ func test_the_temporary_shields_break_before_the_ones_that_stay() -> void:
 	var held := Vector2i(GameState.shields, GameState.bonus_shields)
 	_ui._board.animate_resolve(before, {"attacks": [
 		{"instance": inst, "turn": 0, "damage": 2, "blocked": 2}]}, GameState.hp, held)
+	await wait_seconds(BattlefieldView.FX_IMPACT_TIME + 0.05)
 	var left: Array = _ui._board.standing_shields()
 	assert_eq(left.size(), 1, "one of the two is gone")
 	if left.is_empty():
