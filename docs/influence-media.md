@@ -6,10 +6,10 @@ Videos and podcast episodes where a developer may say what inspired their game, 
 
 | | games | results |
 |---|---|---|
-| 1. Confirm a suspected connection | 110 | 310 |
+| 1. Confirm a suspected connection | 112 | 313 |
 | 2. Games with few connections | 184 | 598 |
 
-Searched 562 of the 562 games that qualify; 268 had nothing that looked like the developer talking.
+Searched 564 of the 564 games that qualify; 268 had nothing that looked like the developer talking.
 
 ---
 
@@ -542,6 +542,13 @@ Listen for: **Vampire Survivors** (sheet says "look at it")
 - [ ] podcast [Lisa Zetah, Director of Marketing and Opera Neophyte](https://podcasts.apple.com/us/podcast/lisa-zetah-director-of-marketing-and-opera-neophyte/id1130983944?i=1000390785405) — Central City Opera Podcast · 35 min · 2017-08-08 — director
 - [ ] podcast [Episode 243: feat Neophyte!](https://podcasts.apple.com/us/podcast/episode-243-feat-neophyte/id517676879?i=1000378213158) — Keeping The Rave Alive! · 60 min · 2016-11-24 — cue in the description
 
+### Night Swarm (2025) — 1 connection
+
+Listen for: **Vampire Survivors** (sheet says "look at it")
+
+- [ ] podcast [DLC: Night Swarm](https://podcasts.apple.com/us/podcast/dlc-night-swarm/id1566658659?i=1000712012237) — The Game Club Podcast · 7 min · 2025-06-08 — names the developer
+- [ ] podcast [DLC: Night Swarm](https://podcasts.apple.com/us/podcast/dlc-night-swarm/id1817152257?i=1000712012389) — The Game Club Podcast · 7 min · 2025-06-08 — names the developer
+
 ### Nimrods (2024) — 2 connections
 
 Listen for: **Vampire Survivors** (sheet says "check folder")
@@ -776,6 +783,12 @@ Listen for: **Enter the Gungeon** (sheet says "devs mentioned gungeon and hades 
 
 - [ ] podcast [Sergey Buglak (The Unliving) Developer Interview](https://podcasts.apple.com/us/podcast/sergey-buglak-the-unliving-developer-interview/id1459327958?i=1000478313606) — Indie Pod: An Indie Games Podcast · 28 min · 2020-06-17 — developer, interview
 - [ ] podcast [Object Spiritualist Shares the Unliving’s Secrets](https://podcasts.apple.com/us/podcast/object-spiritualist-shares-the-unlivings-secrets/id1862905477?i=1000792046207) — 87.9 KWHO: 100% improvised talk radio. 0% fact-checked. · 22 min · 2026-09-28 — cue in the description
+
+### Three Kingdoms: The Blood Moon (2024) — 1 connection
+
+Listen for: **Slay the Spire** (sheet says "look at it")
+
+- [ ] podcast [Romance of the Three Kingdoms, with Moss Roberts](https://podcasts.apple.com/us/podcast/romance-of-the-three-kingdoms-with-moss-roberts/id1875274555?i=1000784493142) — Society for Anglo-Chinese Understanding Podcast · 62 min · 2026-08-20 — cue in the description
 
 ### Tic Tactic (2025) — 3 connections
 
