@@ -54,14 +54,20 @@ func test_it_starts_falling_while_the_pool_loads_but_only_its_share() -> void:
 		"but not the whole screen's worth from a part-loaded pool")
 	assert_eq(fresh._pieces.size(), fresh._allowed_pieces(), "exactly the loaded share")
 
-func test_the_first_pieces_are_in_view_within_a_second() -> void:
+# The opening pieces start JUST above the edge — within REENTRY_STAGGER of a
+# screen — rather than anywhere up to a whole screen above it, which kept the
+# average piece out of sight for six seconds. Checked on where they are dealt,
+# not on a count after a second of random fall speeds, which is only usually true.
+func test_the_opening_pieces_start_just_above_the_edge() -> void:
 	_seed()
-	_run_for(1.0)
-	var in_view := 0
+	var height: float = _art.get_viewport_rect().size.y
+	var far: Array = []
 	for piece in _art._pieces:
-		if (piece["pos"] as Vector2).y + (piece["box"] as Vector2).y * 0.5 > 0.0:
-			in_view += 1
-	assert_gt(in_view, 5, "the menu is not left empty while the art is still far above it")
+		var y: float = (piece["pos"] as Vector2).y
+		var box: Vector2 = piece["box"]
+		if y < -box.y - height * MenuFallingArt.REENTRY_STAGGER - 0.5:
+			far.append("%.0f" % y)
+	assert_eq(far, [], "every opening piece is within a third of a screen of the edge")
 
 func test_both_kinds_are_actually_falling_once_it_is_seeded() -> void:
 	_seed()
