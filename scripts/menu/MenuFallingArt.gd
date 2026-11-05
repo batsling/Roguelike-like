@@ -337,18 +337,18 @@ func _loot_groups() -> Array:
 	return out
 
 # Enemies and bosses straight off their resources, each carrying the footprint it
-# stands on. `image` is an ordinary eager export on `GoalEnemyData` — there are 94
-# of them, not 865 games — so the texture is already in memory and the job holds
-# it rather than a path.
+# stands on. The job holds the art's PATH, like every other job, and is baked
+# inside the frame budget: `GoalEnemyData.image` loads on first read, so asking
+# each enemy for it here would decode all 122 pictures in the menu's first frame.
 func _enemy_jobs() -> Array:
 	var out: Array = []
 	var rosters: Array = [Data.all_goal_enemies(), Data.all_bosses()]
 	for roster in rosters:
 		for e in roster:
-			if not (e is GoalEnemyData) or e.image == null:
+			if not (e is GoalEnemyData) or e.image_path == "":
 				continue
 			out.append({
-				"tex": e.image,
+				"path": e.image_path,
 				"kind": Kind.SMALL,
 				# The BOUNDING BOX's longest side, so a 2x2 draws twice the edge of
 				# a 1x1 and covers four times its area — the same relationship the

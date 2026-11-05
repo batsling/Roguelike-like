@@ -658,6 +658,7 @@ func _ready() -> void:
 	# next quiet moment (_show_location_if_unseen).
 	if not GameLoop2.location_changed.is_connected(_on_location_changed):
 		GameLoop2.location_changed.connect(_on_location_changed)
+	_warm_screens.call_deferred()
 	# A save being resumed takes precedence over booting a fresh run: the state is
 	# already on GameState / GameLoop2, and this restores the screen over it.
 	if SaveSystem.has_pending_resume():
@@ -668,6 +669,30 @@ func _ready() -> void:
 	if pending != &"":
 		GameState.remove_meta("pending_character2")
 	start_run(pending)
+
+# THE ON-DEMAND SCREENS ARE COMPILED IN THE BACKGROUND once the page is up. They
+# are reached by path so the page does not pay for them on the way in (see the
+# note above ROUTE_ARROW), and that moved their compile to the first click:
+# 1.7 s between them, a quarter of a second for the map and a third for the
+# Collection, every session (owner, 5 Nov 2026: screens "take a beat to open").
+# Loaded on worker threads instead, they are ready before anyone reaches for
+# them; a `load()` of one still on its way simply waits for it. Once a process,
+# and not in a headless run, where no one is waiting on a screen and a test suite
+# builds this page hundreds of times.
+const WARM_SCREENS := [RUN_MAP_MODAL_SCRIPT, COLLECTION_SCRIPT, SHOP_MODAL_SCRIPT,
+	RUN_OVER_SCREEN_SCRIPT, HOW_TO_PLAY_SCREEN_SCRIPT, GRAVEYARD_PANEL_SCRIPT,
+	SETTINGS_MODAL_SCRIPT, TIER_LIST_SCREEN_SCRIPT, REWARD_SCREEN_SCRIPT,
+	CAMP_SCREEN_SCRIPT, EVENT_MODAL2_SCRIPT, DEATH_CARD_SCRIPT, RUN_LOG_SCREEN_SCRIPT,
+	OWNED_PICK_SCRIPT]
+static var _screens_warmed: bool = false
+
+func _warm_screens() -> void:
+	if _screens_warmed or DisplayServer.get_name() == "headless":
+		return
+	_screens_warmed = true
+	for path in WARM_SCREENS:
+		if not ResourceLoader.has_cached(path):
+			ResourceLoader.load_threaded_request(path, "", true)
 
 # --- public actions (buttons + tests call these) --------------------------
 

@@ -1,7 +1,6 @@
-[gd_resource type="Resource" script_class="GoalEnemyData" load_steps=3 format=3 uid="uid://goalenemy_skeletal_bastion"]
+[gd_resource type="Resource" script_class="GoalEnemyData" load_steps=2 format=3 uid="uid://goalenemy_skeletal_bastion"]
 
 [ext_resource type="Script" path="res://scripts/resources/GoalEnemyData.gd" id="1_enemy"]
-[ext_resource type="Texture2D" path="res://images2.0/enemies/SkeletalBastion.png" id="2_img"]
 
 [resource]
 script = ExtResource("1_enemy")
@@ -21,4 +20,4 @@ shape_rows = 2
 shape_cols = 3
 shape_mask = PackedInt32Array(4, 7)
 file = "SkeletalBastion"
-image = ExtResource("2_img")
+image_path = "res://images2.0/enemies/SkeletalBastion.png"

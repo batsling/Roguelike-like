@@ -273,11 +273,9 @@ def enemy_tres(row) -> tuple:
 
     ext = ['[ext_resource type="Script" '
            'path="res://scripts/resources/GoalEnemyData.gd" id="1_enemy"]']
-    art_ids = []
-    for art in arts:
-        # One ExtResource per DISTINCT picture: a boss that reuses its first art
-        # for a later phase must not declare the same texture twice.
-        art_ids.append(None if art is None else _ext_for(ext, art))
+    # The art is written as PATHS, not ExtResources: an ExtResource texture is
+    # decoded the moment the .tres loads, which put every enemy's and boss's
+    # picture on the boot (GoalEnemyData.image loads it on first read instead).
 
     lines = []
     lines.append(
@@ -331,8 +329,8 @@ def enemy_tres(row) -> tuple:
     lines.append("shape_cols = %d" % shape_cols)
     lines.append("shape_mask = PackedInt32Array(%s)" % ", ".join(str(m) for m in mask))
     lines.append('file = "%s"' % gd_str(file))
-    if art_ids[0] is not None:
-        lines.append('image = ExtResource("%s")' % art_ids[0])
+    if arts[0] is not None:
+        lines.append('image_path = "%s"' % gd_str(arts[0]))
     if phases > 1:
         lines.append("phases = %d" % phases)
         lines.append("phase_goal_types = PackedStringArray(%s)"
@@ -341,29 +339,9 @@ def enemy_tres(row) -> tuple:
                      % ", ".join('"%s"' % gd_str(g) for g in goals))
         lines.append("phase_files = PackedStringArray(%s)"
                      % ", ".join('"%s"' % gd_str(f) for f in files))
-        lines.append("phase_images = [%s]" % ", ".join(
-            "null" if i is None else 'ExtResource("%s")' % i for i in art_ids))
+        lines.append("phase_image_paths = PackedStringArray(%s)" % ", ".join(
+            '"%s"' % ("" if a is None else gd_str(a)) for a in arts))
     return eid, "\n".join(lines) + "\n"
-
-
-def art_ids_seen(ext: list) -> list:
-    """[(res path, ext id)] already declared in `ext`, oldest first."""
-    out = []
-    for line in ext:
-        m = re.search(r'type="Texture2D" path="([^"]+)" id="([^"]+)"', line)
-        if m:
-            out.append((m.group(1), m.group(2)))
-    return out
-
-
-def _ext_for(ext: list, path: str) -> str:
-    """The ExtResource id for `path`, declaring it in `ext` if it's new."""
-    for existing, eid in art_ids_seen(ext):
-        if existing == path:
-            return eid
-    eid = "%d_img" % (len(art_ids_seen(ext)) + 2)
-    ext.append('[ext_resource type="Texture2D" path="%s" id="%s"]' % (path, eid))
-    return eid
 
 
 def _abilities() -> dict:

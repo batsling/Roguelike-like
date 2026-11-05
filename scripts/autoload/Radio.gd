@@ -6,7 +6,7 @@ extends Node
 # THE SHAPE OF IT.
 #
 #   * The SONGS are content like everything else: rows of the `radio` sheet,
-#     generated into data/songs/ (SongData). A row says which game the song
+#     generated into data/songs.tres (SongData). A row says which game the song
 #     belongs to, and nothing about how it unlocks.
 #   * The AUDIO is the player's own and never in the repo. It sits in FOLDER on
 #     their machine and a row only names the file.

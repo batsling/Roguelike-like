@@ -176,7 +176,21 @@ func ability_ids() -> Array:
 @export var phase_goal_types: PackedStringArray = PackedStringArray()
 @export var phase_goals: PackedStringArray = PackedStringArray()
 @export var phase_files: PackedStringArray = PackedStringArray()
-@export var phase_images: Array = []
+# Each phase's picture by PATH, loaded on first read (`phase_images`) — see `image`.
+@export var phase_image_paths: PackedStringArray = PackedStringArray()
+var _phase_images: Array = []
+var _phase_images_loaded: bool = false
+var phase_images: Array:
+	get:
+		if not _phase_images_loaded:
+			_phase_images_loaded = true
+			_phase_images = []
+			for p in phase_image_paths:
+				_phase_images.append(_load_art(p))
+		return _phase_images
+	set(value):
+		_phase_images = value
+		_phase_images_loaded = true
 
 func phase_count() -> int:
 	return maxi(1, phases)
@@ -254,7 +268,29 @@ func tag_list() -> PackedStringArray:
 # Art base name under res://images2.0/enemies/ (the sheet's File column). Resolves
 # to images2.0/enemies/<file>.png; falls back to a placeholder when missing (§10.1).
 @export var file: String = ""
-@export var image: Texture2D
+# THE PICTURE LOADS ON FIRST READ, from `image_path`. It used to be an exported
+# Texture2D, which Godot resolves the moment the .tres loads: every enemy's and
+# every boss's art (22 MB of PNG, bosses at up to 520x720) was decoded at boot
+# whether a run ever showed it or not — the biggest single cost in Data's start
+# after the songs. The same fix the game covers had (GameData.cover_image).
+# Assigning `image` still works, for tests and for code that builds an enemy.
+@export var image_path: String = ""
+var _image: Texture2D = null
+var _image_loaded: bool = false
+var image: Texture2D:
+	get:
+		if not _image_loaded:
+			_image_loaded = true
+			_image = _load_art(image_path)
+		return _image
+	set(value):
+		_image = value
+		_image_loaded = true
+
+static func _load_art(path: String) -> Texture2D:
+	if path == "" or not ResourceLoader.exists(path):
+		return null
+	return load(path) as Texture2D
 
 # Shared 0-3 tier ordering (Low/Medium/High/Insane), matching RunDifficulty.Tier
 # so a game's tier and an enemy's tier compare directly.

@@ -81,3 +81,45 @@ func test_a_control_freed_before_the_rule_runs_is_passed_over() -> void:
 	await get_tree().process_frame
 	UITheme._apply_rogue_rule(l)
 	assert_true(true, "no crash on a freed control")
+
+# APPLIED AS IT ENTERS, settled at the end of the frame (UITheme._on_node_added):
+# applying it a frame late laid every heading out twice. These are the cases the
+# end-of-frame check is for — code that sizes or wraps a control AFTER adding it.
+func test_a_heading_is_in_the_font_the_moment_it_enters() -> void:
+	var l := Label.new()
+	l.text = "Heading"
+	l.add_theme_font_size_override("font_size", UITheme.FONT_HEAD)
+	add_child_autofree(l)
+	assert_true(_rogue(l), "no frame laid out in the ordinary font first")
+
+func test_a_label_made_small_after_it_entered_goes_back_to_the_ordinary_font() -> void:
+	var l := Label.new()
+	l.text = "was a heading"
+	l.add_theme_font_size_override("font_size", UITheme.FONT_HEAD)
+	add_child_autofree(l)
+	l.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	assert_false(_rogue(l), "body-sized text is never Rogue's")
+	assert_eq(l.get_theme_font_size("font_size"), UITheme.FONT_BODY, "at the size it was set to")
+
+func test_a_label_made_a_heading_after_it_entered_takes_the_font() -> void:
+	var l := Label.new()
+	l.text = "became a heading"
+	add_child_autofree(l)
+	l.add_theme_font_size_override("font_size", UITheme.FONT_HEAD)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	assert_true(_rogue(l))
+	assert_eq(l.get_theme_font_size("font_size"), UITheme.ROGUE_PX)
+
+func test_a_button_set_to_wrap_after_it_entered_goes_back_to_the_ordinary_font() -> void:
+	var b := Button.new()
+	b.text = "a sentence you click"
+	b.add_theme_font_size_override("font_size", UITheme.FONT_LABEL)
+	add_child_autofree(b)
+	b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	await get_tree().process_frame
+	await get_tree().process_frame
+	assert_false(_rogue(b), "a wrapping button is a sentence")
+	assert_eq(b.get_theme_font_size("font_size"), UITheme.FONT_LABEL, "at its own size")

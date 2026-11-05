@@ -36,6 +36,17 @@ For how the project is laid out and how its systems fit together, see
   ~19 ms. A report fires that signal several times, so this was felt on
   reporting, on boot and wherever stats move.
 
+- **5 Nov speed pass.** Boot ~2.95 s → ~2.3 s: enemy and boss art (22 MB of
+  PNG) was decoded at boot because each `.tres` named its texture; it is now
+  `image_path`, loaded on first read like the game covers, and the songs are
+  one `data/songs.tres` (`SongLibrary`) instead of 3,112 files. Menu → run
+  page ~1.8 s → ~0.7 s: the page is loaded on a worker thread while the menu
+  is up. The run page's on-demand screens (map, Collection, shop, …; 1.7 s of
+  compile between them) are compiled on worker threads once it is up, so a
+  first open no longer pays it. Rogue's font is applied as a control enters
+  the tree, with an end-of-frame check for code that sizes it later, rather
+  than a frame late for every control — that laid every heading out twice.
+
 - **4 Nov upload.** Sushiamo, Three Kingdoms: The Blood Moon, Tower of Babel:
   Survivors of Chaos and Worship, with their 7 connections; Abyss Odyssey,
   Clutchtime and Space Gladiators owned; the owner's `sports`, `hell` and

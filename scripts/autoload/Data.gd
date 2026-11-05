@@ -71,7 +71,7 @@ func _ready() -> void:
 	_load_dir("res://data/events2.0/", _events2)
 	_load_dir("res://data/objects2.0/", _objects2)
 	_load_dir("res://data/curses2.0/", _curses2)
-	_load_dir("res://data/songs/", _songs)
+	_load_songs(SONGS_PATH)
 	_load_dir("res://data/shopkeepers/", _shopkeepers)
 	_load_dir("res://data/locations/", _locations)
 	print("[Data] Loaded %d games" % _games.size())
@@ -151,6 +151,24 @@ func _load_dir(path: String, target: Dictionary) -> void:
 				id, path, from_file[id], fn])
 		from_file[id] = fn
 		target[id] = res
+
+# THE SONGS ARE ONE FILE (SongLibrary, tools/generate_song_tres.py), not a
+# folder: 3,112 separate .tres were the biggest single cost of the boot. The same
+# checks as `_load_dir`, so a slip in the sheet is as loud as it was.
+const SONGS_PATH := "res://data/songs.tres"
+
+func _load_songs(path: String) -> void:
+	var lib: Resource = load(path) if ResourceLoader.exists(path) else null
+	if lib == null or lib.get("songs") == null:
+		push_error("[Data] '%s' would not load as a SongLibrary — the radio will have no songs" % path)
+		return
+	for res in lib.songs:
+		if not (res is SongData) or (res as SongData).id == &"":
+			push_error("[Data] '%s' holds a song with no id" % path)
+			continue
+		if _songs.has(res.id):
+			push_error("[Data] duplicate song id '%s' in %s" % [res.id, path])
+		_songs[res.id] = res
 
 # --- Scrolls (2.0) ---------------------------------------------------------
 func get_scroll(id: StringName) -> ScrollData:
