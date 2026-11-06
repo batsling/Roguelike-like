@@ -8015,6 +8015,7 @@ func _build_ui() -> void:
 	# ones this button is the last chance to answer.
 	done.pressed.connect(confirm_completed_game)
 	_play_panel.add_child(done)
+	_wire_push_hover(done, func() -> int: return -1)
 
 	# The way out, directly under the way through — they resolve the same step, so
 	# they belong together. Deliberately quieter than Completed Game: this is the
@@ -8179,6 +8180,8 @@ func _build_attempt_strip() -> Control:
 	_attempt_btn.add_theme_stylebox_override("hover", UITheme.flat(UITheme.DANGER.lerp(UITheme.BG, 0.45), 6, 8, 1, UITheme.DANGER))
 	_attempt_btn.pressed.connect(log_attempt)
 	row.add_child(_attempt_btn)
+	_wire_push_hover(_attempt_btn,
+		func() -> int: return 1 if GameLoop2.lost_run_spawn_chance() > 0.0 else 0)
 
 	_attempt_count = Label.new()
 	_attempt_count.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
@@ -8199,6 +8202,45 @@ func _build_attempt_strip() -> Control:
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(spacer)
 	return wrap
+
+# WHO A PRESS WOULD PUSH INTO YOU, shown only while the button is hovered (owner,
+# 6 Nov 2026): the board outlines those bodies in red (BattlefieldView.
+# show_push_preview) and a small line over the button says how many. `owed` is
+# how many bodies the press stands up — -1 for the end-of-game bill, 1 for a lost
+# run's spawn — answered at hover time, since the bill moves as the game goes.
+func _wire_push_hover(btn: Control, owed: Callable) -> void:
+	var note := Label.new()
+	note.name = "PushNote"
+	note.visible = false
+	note.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	note.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	note.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
+	note.add_theme_color_override("font_color", Color.WHITE)
+	note.add_theme_stylebox_override("normal",
+		UITheme.flat(UITheme.DANGER.lerp(UITheme.BG, 0.25), 6, 4, 1, UITheme.DANGER))
+	note.z_index = 10
+	btn.add_child(note)
+	btn.mouse_entered.connect(func():
+		var n: int = int(owed.call())
+		var due: int = GameLoop2.pushes_due(n) if GameLoop2.game_in_play and n != 0 else 0
+		if due <= 0 or _board == null:
+			return
+		_board.show_push_preview(GameLoop2.push_targets(n))
+		note.text = push_note_text(due, n == 1)
+		note.size = Vector2(btn.size.x, 22)
+		note.position = Vector2(0, -24)
+		note.visible = true)
+	btn.mouse_exited.connect(func():
+		note.visible = false
+		if _board != null:
+			_board.show_push_preview([]))
+
+# The line over the button. A lost run only MAY spawn, so it quotes the chance.
+func push_note_text(due: int, lost_run: bool) -> String:
+	if lost_run:
+		return "⚠ %d%%: an enemy pushed into you" % roundi(GameLoop2.lost_run_spawn_chance() * 100.0)
+	return "⚠ %d %s pushed into you" % [due, "enemy" if due == 1 else "enemies"]
 
 # The tracker button's two lines: the verb, then what the press costs — a turn,
 # and the chance of a body walking on (GameLoop2.lost_run_spawn_chance).

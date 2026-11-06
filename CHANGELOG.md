@@ -17,9 +17,11 @@ For how the project is laid out and how its systems fit together, see
   and a report expired the leftover ones before the end-of-game bodies walked
   on. Shields now come first on a pick, and a game's leftovers expire after its
   end-of-game pushes (`docs/turn-order.md` §1 and §3). *Who gets pushed*: when the
-  board has no room for the end-of-game bodies, every body a push could drive
-  into you wears a red outline, and its info card says it will (or may, when
-  lanes tie) be pushed into you and attack (`GameLoop2.push_targets`, planned
+  board has no room for the end-of-game bodies, hovering Completed Game or Lost a
+  run outlines in red every body that press could push into you and puts a small
+  "⚠ N enemies pushed into you" over the button (a lost run quotes its spawn
+  chance); the body's info card says it will (or may, when lanes tie) be pushed
+  into you and attack (`GameLoop2.push_targets`, planned
   for a one-cell newcomer; `pushes_due` counts the bodies with no room). *Key roads*
   only show while a Rift Key is held, and each offering card carries a small
   `🗝N` — how many places on its optimal route a key would open a road

@@ -1669,11 +1669,7 @@ func refresh() -> void:
 	_armed = {}
 	for inst in armed_targets():
 		_armed[int(inst)] = true
-	# …and who the end of this game would push into the player (red outline).
-	_pushing = {}
-	if GameLoop2.game_in_play:
-		for inst in GameLoop2.push_targets():
-			_pushing[int(inst)] = true
+
 	# Detaching the body the mouse is over fires its own mouse_exited, and that
 	# handler reorders the layer being torn down. See _repainting.
 	_repainting = true
@@ -2269,8 +2265,24 @@ func _refresh_aim_cells() -> void:
 # over the picker and under nothing, ignoring the mouse so the click still lands on
 # the button beneath.
 var _swing_preview: Array = []
-# Bodies the end of this game would push into the player — refreshed with the board.
+# Bodies a press would push into the player, outlined in red — ONLY while the
+# Completed Game or Lost a run button is hovered (show_push_preview).
 var _pushing: Dictionary = {}
+
+# Outline `instances` in red (empty clears it). Called by the page as the mouse
+# enters and leaves the two buttons whose press can push a body into you.
+func show_push_preview(instances: Array) -> void:
+	var was: Dictionary = _pushing
+	_pushing = {}
+	for inst in instances:
+		_pushing[int(inst)] = true
+	for inst in was.keys() + _pushing.keys():
+		var fn = _repaint_fns.get(int(inst))
+		if fn is Callable and (fn as Callable).is_valid():
+			(fn as Callable).call()
+
+func push_preview() -> Array:
+	return _pushing.keys()
 
 func _show_swing_preview(cell: Vector2i) -> void:
 	_clear_swing_preview()

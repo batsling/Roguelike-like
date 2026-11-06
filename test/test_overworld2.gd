@@ -10563,6 +10563,50 @@ func test_a_crash_on_arrival_meets_the_new_games_shields() -> void:
 	assert_gt(int(hits[0][1]), 0, "the first crash hit landed on a shield: %s" % str(hits))
 	_ui._board.clear_fx()
 
+# WHO A PRESS WOULD PUSH INTO YOU shows only while its button is hovered (owner,
+# 6 Nov 2026): red outlines on the board and a line over the button.
+func _playing_on_a_packed_board() -> void:
+	Page.open_at_first_offering(_ui)
+	_ui.pick(0)
+	var dummy := GoalEnemyData.new()
+	dummy.id = &"packing_dummy"
+	dummy.damage = 1
+	for row in range(GameLoop2.grid_rows()):
+		for c in range(1, GameLoop2.grid_cols() + 1):
+			if not GameLoop2.occupancy().has(Vector2i(c, row)):
+				GameLoop2.summon(dummy, Vector2i(c, row))
+	GameLoop2.take_crashes()
+	_ui._refresh()
+	_ui._board.clear_fx()
+
+func test_the_push_preview_shows_only_while_completed_game_is_hovered() -> void:
+	_playing_on_a_packed_board()
+	if GameLoop2.pushes_due() <= 0:
+		pending("this game ends with nobody to stand up")
+		return
+	assert_true(_ui._board.push_preview().is_empty(), "nothing is outlined until asked")
+	_ui._done_btn.mouse_entered.emit()
+	assert_eq(_ui._board.push_preview().size(), GameLoop2.push_targets().size(),
+		"hovering outlines who the end of the game would push into you")
+	var note: Label = _ui._done_btn.get_node("PushNote")
+	assert_true(note.visible, "and says so over the button")
+	assert_string_contains(note.text, "pushed into you")
+	_ui._done_btn.mouse_exited.emit()
+	assert_true(_ui._board.push_preview().is_empty(), "and it all goes when the mouse does")
+	assert_false(note.visible)
+
+func test_the_lost_run_button_previews_its_spawns_push() -> void:
+	_playing_on_a_packed_board()
+	var ladder: Array = GameLoop2.lost_run_spawn_ladder.duplicate()
+	GameLoop2.lost_run_spawn_ladder = [0.25]       # the suite turns the spawn off
+	_ui._attempt_btn.mouse_entered.emit()
+	assert_false(_ui._board.push_preview().is_empty(), "a packed board: its spawn would push")
+	var note: Label = _ui._attempt_btn.get_node("PushNote")
+	assert_string_contains(note.text, "%", "a lost run only may spawn, so it quotes the chance")
+	_ui._attempt_btn.mouse_exited.emit()
+	assert_true(_ui._board.push_preview().is_empty())
+	GameLoop2.lost_run_spawn_ladder = ladder
+
 # A RELIC A PAYOUT HANDS OVER IS OFFERED, not slipped in: the Blood Donation
 # Machine's bag comes up on the item modal (owner, 5 Nov 2026), and is the
 # player's once they take it.

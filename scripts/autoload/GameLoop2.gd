@@ -2038,8 +2038,13 @@ func end_of_game_price(escaped: bool = false) -> Dictionary:
 # have taken theirs. An ESTIMATE, and a fair one: the bodies are rolled when they
 # land, so a 2x2 among them needs more room than this counts, and a board that
 # grows at the spawn has more.
-func pushes_due() -> int:
-	var owed: int = int(end_of_game_price(false).get("bodies", 0))
+#
+# `owed` overrides the bill: a LOST RUN stands up one body (on its chance, see
+# lost_run_spawn_chance), and the board's packing survives the turn before it —
+# a full board's bodies have nowhere to step — so the same count answers it.
+func pushes_due(owed: int = -1) -> int:
+	if owed < 0:
+		owed = int(end_of_game_price(false).get("bodies", 0))
 	if owed <= 0:
 		return 0
 	var free: int = grid_cols() * grid_rows() - occupancy().size()
@@ -2054,8 +2059,8 @@ func pushes_due() -> int:
 # random — planned for a one-cell newcomer, because the real ones are not rolled
 # until the game ends. A stunned body sits the push out and is left off. Empty
 # when nothing is due to push. `_crash_chain` only reads the board.
-func push_targets() -> Array:
-	if pushes_due() <= 0:
+func push_targets(owed: int = -1) -> Array:
+	if pushes_due(owed) <= 0:
 		return []
 	var probe := GoalEnemyData.new()
 	var col: int = spawn_col_for(probe)
