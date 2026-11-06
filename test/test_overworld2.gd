@@ -11578,12 +11578,21 @@ func test_the_board_warns_when_a_lost_run_could_bring_the_boss() -> void:
 func _stand_identical(n: int) -> Array:
 	_pick_solo(0)
 	_clear_board()
+	# NOTHING THAT SPLITS A GROUP. A body carrying a status, or a clause the
+	# player's own statuses hang on every goal, is never folded into a group
+	# (ReportChecklist.groupable) — and the opening game's event is random, so the
+	# one run in many that handed the player a clause status left these bodies a
+	# row each (CI, 6 Nov 2026). Arranged rather than hoped for.
+	GameState.player_statuses.clear()
+	GameState.timed_statuses.clear()
 	var monkey: GoalEnemyData = Data.get_goal_enemy_any(&"monkey")
 	var out: Array = []
 	for i in range(n):
 		var inst: int = GameLoop2.spawn_to_stack(monkey)
 		if inst > 0:
 			out.append(inst)
+	for entry in GameLoop2.stack:
+		entry["statuses"] = {}
 	_disarm_board()
 	_ui._populate_play_panel()
 	return out
