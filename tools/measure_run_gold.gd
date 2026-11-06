@@ -55,6 +55,7 @@ func _main() -> void:
 	var ticks: Array = []
 	for t in _arg("tick", "1.0,0.75,0.5").split(","):
 		ticks.append(float(t))
+	var fixed: bool = _arg("mode", "reroll") == "fixed"
 	var rng := RandomNumberGenerator.new()
 	rng.seed = int(_arg("seed", "1"))
 	TriggerBus.gold_gained.connect(func(p: Dictionary) -> void:
@@ -68,7 +69,7 @@ func _main() -> void:
 	for tick in ticks:
 		var rows: Array = []
 		for i in range(runs):
-			var r: Dictionary = await _one_run(rng, tick)
+			var r: Dictionary = await _one_run(rng, tick, fixed)
 			if not r.is_empty():
 				rows.append(r)
 				print("RUN\t%.2f\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d" % [tick, r.games, r.start,
@@ -78,7 +79,7 @@ func _main() -> void:
 	quit()
 
 
-func _one_run(rng: RandomNumberGenerator, tick: float) -> Dictionary:
+func _one_run(rng: RandomNumberGenerator, tick: float, fixed: bool) -> Dictionary:
 	var ui = SCENE.instantiate()
 	root.add_child(ui)
 	await process_frame
@@ -100,14 +101,24 @@ func _one_run(rng: RandomNumberGenerator, tick: float) -> Dictionary:
 		if enemy != null and enemy.has_method("is_boss") and enemy.is_boss():
 			kill_counter.b += 1
 	GameLoop2.enemy_defeated.connect(on_kill)
+	var judged := {}
 	var guard: int = 0
 	while guard < 60:   # 30 games: a run still walking then is reported as capped
 		guard += 1
 		if ui._phase == ui.Phase.PLAYING:
 			var ticked: Array = []
 			for entry in GameLoop2.stack:
-				if rng.randf() < tick:
-					ticked.append(int(entry.get("instance", 0)))
+				var inst: int = int(entry.get("instance", 0))
+				if fixed:
+					# Each body is judged once, on sight: a goal the player can do
+					# or one they never will. The second kind stands on the board
+					# for the rest of the run.
+					if not judged.has(inst):
+						judged[inst] = rng.randf() < tick
+					if judged[inst]:
+						ticked.append(inst)
+				elif rng.randf() < tick:
+					ticked.append(inst)
 			var before: int = _gold_this_run
 			ui.report(true, ticked)
 			var res: Dictionary = GameLoop2.last_result if GameLoop2.last_result is Dictionary else {}
