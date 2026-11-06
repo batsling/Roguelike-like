@@ -11,6 +11,15 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Event gold up by half.** No new gold buttons (the owner's call): every gold
+  number on the events that already use gold goes up about 1.5×, to follow the
+  measured purse and the 4/6/9/13 shelf. Arcade Room 2 → 3; Jungle Maze +6 / +2
+  → +9 / +3; Morphic Grove needs 9 (was 6); Ranwid and We Meet Again ask 6 for a
+  relic (was 4); the Woman in Blue 3 / 6 / 9 for 1 / 2 / 3 potions (was 2 / 4 /
+  6, needs 9); Whispering Hollow 6 for two pieces of loot (was 4). One one-shot,
+  `tools/oneshots/_events_gold_times_one_and_a_half.py`; the event doc's §1.2
+  table and worked examples follow.
+
 - **Shop prices widen with rarity: 4 / 6 / 9 / 13.** The measured run (~47 gold
   answering every goal) could buy ~13 items at 3/5/7/9, nearly every one it was
   shown. The owner's answer: each rarity step a gold wider than the last (+2,
