@@ -173,7 +173,7 @@ func test_a_fractures_surcharge_and_a_sale_both_land() -> void:
 	var node: StringName = _shops(1)[0]
 	for entry in ShopSystem.shop_for(node)["stock"]:
 		var item: ItemData = Data.get_item2(StringName(entry["item"]))
-		var ladder: int = ShopSystem.BASE_PRICE + ShopSystem.PRICE_PER_RUNG * int(item.rarity)
+		var ladder: int = ShopSystem.ladder_price(int(item.rarity))
 		assert_eq(ShopSystem.price_of(entry), ladder + 1 - 1, "+1 for the Fracture, -1 for the sale")
 
 func test_a_keeper_who_takes_health_takes_health_and_not_gold() -> void:

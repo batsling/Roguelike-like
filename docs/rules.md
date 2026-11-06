@@ -355,7 +355,7 @@ Everything else the run pays you is a thing arriving — loot off a corpse, a ch
 | --- | --- |
 | Enemy defeated | +1 gold |
 | Boss defeated | +3 gold |
-| Item price | 3, and 2 more a rarity — Common 3, Uncommon 5, Rare 7, Legendary 9 |
+| Item price | Common 4, Uncommon 6, Rare 9, Legendary 13 — each step bigger than the last, so rarity costs more the rarer it gets |
 | Loot price | 2 less than an item of its rarity, never under 2 |
 | Carries between runs | None of it. A run opens on your character and nothing else. |
 

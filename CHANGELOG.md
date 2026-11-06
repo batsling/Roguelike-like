@@ -11,6 +11,19 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Shop prices widen with rarity: 4 / 6 / 9 / 13.** The measured run (~47 gold
+  answering every goal) could buy ~13 items at 3/5/7/9, nearly every one it was
+  shown. The owner's answer: each rarity step a gold wider than the last (+2,
+  +3, +4), so rarity costs more the rarer it gets. Loot stays two under (2 / 4 /
+  7 / 11) and every character's starting Gold goes 3 → 4 so the opening purse
+  still buys one Common (`tools/oneshots/_characters_start_gold_four.py`).
+  Common had to move too — three shelf items in four are Common, so widening
+  only the top (3/5/8/12) still bought ~13 — and at 4/6/9/13 a full-clear run
+  buys ~10 items, a half-clear one ~6. `ShopSystem.ITEM_PRICES` is the ladder.
+  A per-shop markup (each shop 25% dearer than the last) was built first and
+  reverted the same day: the owner wanted rarity, not the run's progress, to
+  set the price.
+
 - **What a run earns, measured; Punch Off's game limit gone.**
   `tools/measure_run_gold.gd` plays whole runs headless through the real page
   (random start card, shortest road to the Amulet, a Dash or Scramble when the

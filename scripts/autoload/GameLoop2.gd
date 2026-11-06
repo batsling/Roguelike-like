@@ -143,7 +143,7 @@ const BASE_GRID_ROWS: int = 4     # rows -> up to grid_rows() enemies abreast
 # GOLD (§14) — what a defeated enemy is worth. A normal enemy pays 1 and a boss
 # 3, which sets the whole economy's scale. Measured (tools/measure_run_gold.gd,
 # spec §14.1): a run that answers every goal earns about 47 gold, 4.6 a game
-# played; half of them, about 27 — against shop prices of 3 to 9.
+# played; half of them, about 27 — against shop prices of 4 to 13.
 const GOLD_PER_ENEMY: int = 1
 const GOLD_PER_BOSS: int = 3
 

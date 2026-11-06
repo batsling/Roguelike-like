@@ -96,11 +96,12 @@ func test_a_character_opens_the_run_with_their_authored_gold() -> void:
 		"which is exactly one Common item")
 
 func test_gold_does_not_carry_between_runs() -> void:
+	var start: int = Data.get_character2(&"isaac").start_gold
 	GameLoop2.start_run(Data.get_character2(&"isaac"))
 	GameState.change_gold(20)
-	assert_eq(GameState.gold, 23, "earned during the run")
+	assert_eq(GameState.gold, start + 20, "earned during the run")
 	GameLoop2.start_run(Data.get_character2(&"isaac"))
-	assert_eq(GameState.gold, 3, "the next run opens on the character again")
+	assert_eq(GameState.gold, start, "the next run opens on the character again")
 
 func test_defeating_an_enemy_pays_one_gold_and_a_boss_pays_three() -> void:
 	GameState.gold = 0
@@ -141,19 +142,25 @@ func test_bombing_an_enemy_pays_no_gold() -> void:
 
 # --- prices ----------------------------------------------------------------
 
-func test_the_price_ladder_is_three_and_two_per_rung() -> void:
+func test_the_price_ladder_widens_with_rarity() -> void:
+	# 4 / 6 / 9 / 13: each step a gold bigger than the last (the owner, 6 Nov 2026).
 	GameState.fracture = 0
-	assert_eq(ShopSystem.price_for(ItemData.Rarity.COMMON), 3)
-	assert_eq(ShopSystem.price_for(ItemData.Rarity.UNCOMMON), 5)
-	assert_eq(ShopSystem.price_for(ItemData.Rarity.RARE), 7)
-	assert_eq(ShopSystem.price_for(ItemData.Rarity.LEGENDARY), 9)
+	assert_eq(ShopSystem.price_for(ItemData.Rarity.COMMON), 4)
+	assert_eq(ShopSystem.price_for(ItemData.Rarity.UNCOMMON), 6)
+	assert_eq(ShopSystem.price_for(ItemData.Rarity.RARE), 9)
+	assert_eq(ShopSystem.price_for(ItemData.Rarity.LEGENDARY), 13)
+	var last_step: int = 0
+	for rung in range(1, ShopSystem.ITEM_PRICES.size()):
+		var step: int = ShopSystem.ITEM_PRICES[rung] - ShopSystem.ITEM_PRICES[rung - 1]
+		assert_gt(step, last_step, "the step into rung %d is wider than the one before" % rung)
+		last_step = step
 
 func test_loot_costs_two_under_an_item_of_its_rarity() -> void:
 	GameState.fracture = 0
-	assert_eq(ShopSystem.loot_price_for("Common"), 2, "the floor, not 3 - 2")
-	assert_eq(ShopSystem.loot_price_for("Uncommon"), 3)
-	assert_eq(ShopSystem.loot_price_for("Rare"), 5)
-	assert_eq(ShopSystem.loot_price_for("Legendary"), 7)
+	assert_eq(ShopSystem.loot_price_for("Common"), 2)
+	assert_eq(ShopSystem.loot_price_for("Uncommon"), 4)
+	assert_eq(ShopSystem.loot_price_for("Rare"), 7)
+	assert_eq(ShopSystem.loot_price_for("Legendary"), 11)
 
 func test_the_rarity_ladder_has_no_holes_in_it() -> void:
 	# Epic is gone, which is what lets the price be "base plus the rung". If the

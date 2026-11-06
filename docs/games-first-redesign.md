@@ -3788,8 +3788,8 @@ banks that decision instead, and the shops are where it is spent.
 | Enemy defeated | **+1 gold** |
 | Boss defeated | **+3 gold** |
 | …while the **Golden Idol** is held | **+1 more** off every body, boss or not (§8) |
-| Starting purse | the character's **`Gold`** column (**3** across the roster) |
-| Item price | **3 + 2 a rarity rung** — Common 3, Uncommon 5, Rare 7, Legendary 9 (`ShopSystem.PRICE_PER_RUNG`; +1 a rung until 17 October 2026, when the owner widened it because Enemies nodes and Fractures stand more bodies, and so pay more gold, than the ladder was set against) |
+| Starting purse | the character's **`Gold`** column (**4** across the roster — 3 until the ladder moved, 6 Nov 2026) |
+| Item price | **Common 4, Uncommon 6, Rare 9, Legendary 13** — each step a gold wider than the last (+2, +3, +4), so rarity costs more the rarer it gets (`ShopSystem.ITEM_PRICES`, 6 Nov 2026). It was 3 + 1 a rung, then 3 + 2 a rung from 17 October 2026; see below for why Common moved too |
 | …from **Fracture 2** | **+1** on every price, items and loot (`Fracture.shop_surcharge`, `docs/fracture-design.md` §3) |
 | Carries between runs | **No.** A run opens on the character and nothing else. |
 
@@ -3822,7 +3822,22 @@ of its goals can buy **eight or more** things, and its kills fill the shop bar
 what the player does with the run — no lost runs, no event pressed (Jungle Maze
 is the only one that pays gold), no relic taken (Old Coin and the gold
 trinkets), nothing spent — so it is the purse the bodies fill, not a ceiling.
-The prices are the owner's call and have not moved for it.
+**The ladder moved for it (the owner, 6 Nov 2026): the steps WIDEN with
+rarity.** 3/5/7/9 became **4/6/9/13** (+2, +3, +4), loot two under (2/4/7/11),
+and the opening purse 3 → 4. Common had to move as well as the rare end, because
+three shelf items in four are Common: a ladder that only widened at the top
+(3/5/8/12) still bought ~13 items in a full-clear run. Spread over the purse
+that the measurement found, at the shelf's 75/20/4/1 rarity weights:
+
+| Goals answered | Gold | Items at 3/5/7/9 (avg 3.6) | Items at 4/6/9/13 (avg 4.7) |
+|---|--:|--:|--:|
+| all | ~47 | ~13 | **~10** |
+| three in four | ~36 | ~10 | **~8** |
+| half | ~27 | ~7.5 | **~6** |
+
+A good chunk of the shelf, then, but no longer all of it. (A per-shop markup —
+each shop dearer than the last — was built and taken back the same day: the
+owner wanted rarity, not the run's progress, to set the price.)
 
 The scale was set for that older line: at combat-era numbers (gold started at **99**, the Challenge
 Rift paid **50**) a price is a rounding error, and every purchase is automatic.
@@ -3830,7 +3845,7 @@ At these numbers each one costs something. It was also meant to keep every
 figure on the HUD to a single digit for §9's OBS companion window; the measured
 purse runs to two digits by mid-run, so that part no longer holds.
 
-**Three gold to start** is exactly one Common item, so the first shop a run
+**Four gold to start** is exactly one Common item, so the first shop a run
 reaches is always worth walking into.
 
 **Gold rides the DROP, not the corpse** — it is paid inside the branch of
@@ -3920,8 +3935,8 @@ row under the relics. Each is rolled exactly as a drop is
 tenth), so every loot kind can turn up, and an **unidentified piece stays
 unidentified on the shelf**: the row, its hover, its card and the offering's
 stock lines all draw it through `LootSystem`, which shows the mask. A piece costs
-**two gold less** than a relic of its rarity, never under 2 (Common 2, Uncommon 3,
-Rare 5, Legendary 7 — `LOOT_DISCOUNT`, `LOOT_MIN_PRICE`). Buying needs room in the pack; a piece that does not fit is not
+**two gold less** than a relic of its rarity, never under 2 (Common 2, Uncommon 4,
+Rare 7, Legendary 11 — `LOOT_DISCOUNT`, `LOOT_MIN_PRICE`). Buying needs room in the pack; a piece that does not fit is not
 charged for and stays. **A reroll redraws both rows.** Lord's Parasol sweeps the
 loot row too, as far as the pack has room. A shelf saved before loot was sold
 gets its loot row the first time it is asked for.

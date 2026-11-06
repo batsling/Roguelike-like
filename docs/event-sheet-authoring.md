@@ -108,8 +108,9 @@ priced for the old rate.
 ### 1.2 What a Gold is worth in an event
 
 The owner's 24 Oct 2026 upload **doubled every gold number in the pool**, to
-follow the shop ladder widening a week earlier (spec §14.1: items Common 3,
-Uncommon 5, Rare 7, Legendary 9; loot two under, never below 2). The Arcade
+follow the shop ladder widening a week earlier (spec §14.1: items then Common 3,
+Uncommon 5, Rare 7, Legendary 9; loot two under, never below 2 — since 6 Nov
+4/6/9/13 and 2/4/7/11). The Arcade
 Room's door went 1 → 2, the Woman in Blue's bottles 1 → 2 apiece, both Ranwids'
 ask 2 → 4, Morphic Grove's floor 3 → 6 and Jungle Maze Adventure 3 / 1 → 6 / 2.
 Whispering Hollow was missed and followed on 6 Nov
@@ -119,8 +120,8 @@ rather than off a worked example below, which may predate it.
 
 | Gold buys | Event price | Against |
 |---|---|---|
-| a random relic | **4** (Ranwid, We Meet Again) | the shelf's rarity-weighted average, 3.6 at 75/20/4/1 |
-| a piece of loot or a potion | **2** a piece (Woman in Blue, Whispering Hollow) | the shelf's loot floor, `ShopSystem.LOOT_MIN_PRICE`; average 2.4 |
+| a random relic | **4** (Ranwid, We Meet Again) | the shelf's rarity-weighted average, 4.7 at 75/20/4/1 — an event relic is a touch cheaper than the shop's |
+| a piece of loot or a potion | **2** a piece (Woman in Blue, Whispering Hollow) | the shelf's loot floor, `ShopSystem.LOOT_MIN_PRICE`; average 2.7 |
 | entry to something that spends more gold | **2** (Arcade Room) | — |
 | a gift, no strings | **2** (Jungle Maze, Join Forces) | about half a game: a run earns 2.7–4.6 a game played (spec §14.1, measured) |
 | a gift for a price | **6** for 2 Health (Jungle Maze, Solo Quest) | the Old Coin, a Rare relic, is +6 |
