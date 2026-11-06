@@ -682,10 +682,10 @@ static func _ch_gold() -> Dictionary:
 				% [ShopSystem.LOOT_DISCOUNT, ShopSystem.LOOT_MIN_PRICE]]),
 			_row(["Carries between runs", "None of it. A run opens on your "
 				+ "character and nothing else."]),
-			_p("A run is six to twelve games, so clearing most of your goals earns "
-				+ "you somewhere around eight to fifteen gold — two to four "
-				+ "purchases in a whole run. That is the point of the scale. Every "
-				+ "purchase is supposed to cost you something."),
+			_p("Every game stands two enemies and a boss walks on about every "
+				+ "other game, so a run that clears most of its goals earns about "
+				+ "four gold a game — somewhere around thirty to fifty in a whole "
+				+ "run. Every purchase is still supposed to cost you something."),
 			_p("Gold rides the DROP, not the corpse. Beating an enemy on time pays; "
 				+ "clearing an old goal games later pays exactly the same, because "
 				+ "the goal was the price either way. Bombing pays nothing at all."),

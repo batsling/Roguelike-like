@@ -122,7 +122,7 @@ rather than off a worked example below, which may predate it.
 | a random relic | **4** (Ranwid, We Meet Again) | the shelf's rarity-weighted average, 3.6 at 75/20/4/1 |
 | a piece of loot or a potion | **2** a piece (Woman in Blue, Whispering Hollow) | the shelf's loot floor, `ShopSystem.LOOT_MIN_PRICE`; average 2.4 |
 | entry to something that spends more gold | **2** (Arcade Room) | — |
-| a gift, no strings | **2** (Jungle Maze, Join Forces) | about one game's worth of bodies |
+| a gift, no strings | **2** (Jungle Maze, Join Forces) | about half a game: a run earns 2.7–4.6 a game played (spec §14.1, measured) |
 | a gift for a price | **6** for 2 Health (Jungle Maze, Solo Quest) | the Old Coin, a Rare relic, is +6 |
 
 Health trades at **about one Gold a point** everywhere it meets gold — the Blood

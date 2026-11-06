@@ -3793,12 +3793,42 @@ banks that decision instead, and the shops are where it is spent.
 | …from **Fracture 2** | **+1** on every price, items and loot (`Fracture.shop_surcharge`, `docs/fracture-design.md` §3) |
 | Carries between runs | **No.** A run opens on the character and nothing else. |
 
-A run is 6–12 games, so a player clearing most of their goals earns roughly
-**8–15 gold** and can make **two to four purchases in a whole run**. That is the
-point of the scale: at combat-era numbers (gold started at **99**, the Challenge
+**What a run actually earns, measured (6 Nov 2026).** `tools/measure_run_gold.gd`
+plays whole runs headless through the real page: a random card off the start
+panel, the shortest road to the Amulet (a Dash or Scramble when no card in the
+hand gets closer), every game beaten first try, starting gear, shopkeepers and
+locations on. Each body is judged once, on sight, as a goal the player answers or
+one they never will:
+
+| Goals answered | Runs | Gold earned in the run (opening 3 included) | Per game played | Kills | Bosses |
+|---|--:|---|--:|--:|--:|
+| **all** | 60 | mean **47**, median 46 (p10 30, p90 67) | **4.6** | 34 | 4.8 |
+| **three in four** | 40 | mean **36**, median 32 (p10 25, p90 56) | **3.5** | 25 | 3.9 |
+| **half** | 40 | mean **27**, median 24 (p10 16, p90 41) | **2.7** | 17 | 2.3 |
+
+Three things put it this high, and none is a price. **Every game stands two
+bodies** (§19.10), and the road stands up to two more at the end of each game
+near the Amulet (§7.4). **Every third spawn event lands a boss on top**
+(§19.6), and picking a game and ending one are both spawn events, so a boss
+(**3** gold) walks on about every other game. And **a run plays more games than
+its panel card says**: the hand is two or three of the current game's neighbours
+with no promise that one is closer, so a 4-hop card ran a median **7** games and
+a 5-hop card **9–10**, not 5 and 6.
+
+So the line this section was written around — *8–15 gold, two to four purchases
+in a whole run* — no longer holds: at the shelf's prices a run that answers most
+of its goals can buy **eight or more** things, and its kills fill the shop bar
+(§19.10: 4, then 5, 6, 7, 8) about **five** times. The measurement leaves out
+what the player does with the run — no lost runs, no event pressed (Jungle Maze
+is the only one that pays gold), no relic taken (Old Coin and the gold
+trinkets), nothing spent — so it is the purse the bodies fill, not a ceiling.
+The prices are the owner's call and have not moved for it.
+
+The scale was set for that older line: at combat-era numbers (gold started at **99**, the Challenge
 Rift paid **50**) a price is a rounding error, and every purchase is automatic.
-At these numbers each one costs something. It also keeps every figure on the HUD
-to a single digit, which §9's OBS companion window needs.
+At these numbers each one costs something. It was also meant to keep every
+figure on the HUD to a single digit for §9's OBS companion window; the measured
+purse runs to two digits by mid-run, so that part no longer holds.
 
 **Three gold to start** is exactly one Common item, so the first shop a run
 reaches is always worth walking into.
@@ -4700,10 +4730,10 @@ on a cleared goal (§14.1) and **a piece of loot on the square they fell in**
 (§8.2), plus their difficulty banked toward the report's chest. An Enemies node
 is therefore *already* the node that pays most, in proportion to how much of it
 you actually answered, which is a better shape than a flat fee for arriving.
-The flat fee was also a real economy change nobody asked for: a run earns
-**8–15 gold** in total (§14.1) and two gold across 60% of a 6–12 game run is
-another 7–14, roughly doubling it and undoing the "two to four purchases in a
-whole run" the whole price list is built around.
+The flat fee was also a real economy change nobody asked for: a run earned an
+estimated **8–15 gold** in total then, and two gold across 60% of a 6–12 game
+run was another 7–14, roughly doubling it. (Measured since, a run earns 27–47 —
+§14.1 — but the argument against paying twice for the same bodies stands.)
 
 So the four kinds differ in **what happens**, not in what you are handed. An
 Enemies node's reward is the two bodies standing on it.

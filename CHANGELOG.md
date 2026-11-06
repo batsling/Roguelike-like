@@ -11,6 +11,19 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **What a run earns, measured; Punch Off's game limit gone.**
+  `tools/measure_run_gold.gd` plays whole runs headless through the real page
+  (random start card, shortest road to the Amulet, a Dash or Scramble when the
+  hand doesn't get closer, starting gear on) and counts every gold gained. A run
+  that answers every goal earns about **47** gold (4.6 a game played), three in
+  four about **36**, half about **27** — not the 8–15 the spec, the manual and
+  two code comments quoted. Two bodies a game, a boss on every third spawn
+  event, and runs that play more games than the panel card says (a 4-hop card
+  ran a median 7) are why. Spec §14.1 carries the table and says the "two to
+  four purchases" line no longer holds; the prices have not moved, that is the
+  owner's call. **Punch Off** loses its `games >= 6` Requirement, which in 5–9
+  game runs let it appear only in runs of seven games or more.
+
 - **Event gold checked against the economy.** Every number in the sixteen
   events was priced against the shop (items 3/5/7/9, loot two under, never below
   2) and against each other. The owner's 24 Oct upload had already doubled the

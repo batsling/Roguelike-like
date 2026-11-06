@@ -29,9 +29,9 @@ extends Node
 #     you don't want is the same kind of problem as an offering of three games
 #     you don't want, and it takes the same answer. Pricing it in gold instead
 #     would have let a rich player grind the whole 21-item catalog at one shop.
-#   * GOLD is scarce and small. A run earns 8-15 (GameLoop2.GOLD_PER_ENEMY /
-#     GOLD_PER_BOSS) against prices of 3-9, so a shop is two-to-four purchases a
-#     run in total, not per visit.
+#   * GOLD is small. A run earns about 27-47 (GameLoop2.GOLD_PER_ENEMY /
+#     GOLD_PER_BOSS; measured by tools/measure_run_gold.gd, spec §14.1) against
+#     prices of 3-9, so a purchase is still a decision, not an automatic.
 #
 # THE SPLIT: this autoload is the LOGIC. The state — each shop's shelf — lives on
 # GameState (`shops`, keyed by node, and `shop_bar`; run-scope, saved, reset), the
