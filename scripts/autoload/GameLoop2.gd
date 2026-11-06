@@ -2031,6 +2031,23 @@ func end_of_game_price(escaped: bool = false) -> Dictionary:
 	return {"bodies": bodies,
 		"why": "" if bodies > 0 else "a body went down to its goal here, out in the wilds"}
 
+# HOW MANY OF THE END-OF-GAME BODIES WOULD PUSH INTO YOU if the game were
+# completed now (owner, 6 Nov 2026: a small "X enemies pushing" by the Completed
+# Game button). The bill (`end_of_game_price`) less the room the board has for
+# them — every bare square, after the bodies already queued beside the board
+# have taken theirs. An ESTIMATE, and a fair one: the bodies are rolled when they
+# land, so a 2x2 among them needs more room than this counts, and a board that
+# grows at the spawn has more.
+func pushes_due() -> int:
+	var owed: int = int(end_of_game_price(false).get("bodies", 0))
+	if owed <= 0:
+		return 0
+	var free: int = grid_cols() * grid_rows() - occupancy().size()
+	for entry in stack:
+		if int(entry.get("col", 0)) > grid_cols():
+			free -= 1
+	return maxi(0, owed - maxi(0, free))
+
 # Stand `want` end-of-game bodies on the board, already priced. Returns how many
 # actually landed.
 #
@@ -2833,37 +2850,6 @@ func beat_game(clear_advertised: bool = false, fulfilled_instances: Array = [],
 	#     outright before it reaches Health.
 	_resolve_status_demands(claims, res)
 
-	# The enemies have struck and moved, so this game is over — and with it go the
-	# shields it granted (§3). They are TEMPORARY SHIELDS (GameState): the armour of
-	# ONE game, so what the front line didn't get through expires here rather than
-	# banking into the next, which is what stops a quiet game from arming you for a
-	# loud one.
-	#
-	# What was still standing as the game ended, before any of it expires or banks:
-	# the Temporary Shields the swings left plus the Shields. Knight Cap's
-	# `if_shields` reads it off game_beaten's context.
-	res["shields_left"] = GameState.shields + GameState.bonus_shields
-	# Barricade (§4.3) BANKS them instead: the survivors become ordinary Shields —
-	# the pool that stays. Not "they stop expiring", which quietly made the
-	# temporary pool a second permanent one with its own spend order; there is one
-	# permanent pool, and banked shields join it and are therefore used LAST from
-	# here on. A small buff and the right one: the relic is about the cover you
-	# didn't need.
-	if GameState.shields > 0:
-		if GameState.banks_shields():
-			res["shields_banked"] = GameState.shields
-			# The picture of the rule working (docs/loot-passives.md §5): the
-			# Barricade that did it, saying how many it kept.
-			var keeper: Array = LootPassives.holders("bank_shields")
-			if not keeper.is_empty():
-				LootPassives.announce(keeper[0], "kept %s as %s" % [
-					Plural.count(GameState.shields, GameState.TEMP_SHIELD_NAME),
-					Plural.word(GameState.shields, GameState.SHIELD_NAME)])
-			GameState.bonus_shields += GameState.shields
-			GameState.shields = 0
-		else:
-			res["shields_expired"] = GameState.shields
-			GameState.shields = 0
 	# A NEW GAME GETS A NEW FIRST PIECE (docs/loot-passives.md §8). Echo Form copies
 	# the first loot used in each game, so the count of pieces this game spent goes
 	# back to zero on the beat the game ends — however it ended.
@@ -2930,6 +2916,44 @@ func beat_game(clear_advertised: bool = false, fulfilled_instances: Array = [],
 	#    `spawns_owed`).
 	res["end_spawns"] = (_land_end_of_game_bodies(spawns_owed, escaped)
 		if not run_over else 0)
+
+	# THE LEFTOVER SHIELDS GO LAST (owner, 6 Nov 2026), after the end-of-game
+	# bodies have walked on. A body that lands on a packed board shoves its lane
+	# into you (§7.3a), and that crash used to come after the shields had already
+	# expired — so the armour the player could still see standing never stopped
+	# it. Now what this game left of its shields blocks those pushes, and only
+	# then expires (or banks, under Barricade).
+	# The enemies have struck and moved, so this game is over — and with it go the
+	# shields it granted (§3). They are TEMPORARY SHIELDS (GameState): the armour of
+	# ONE game, so what the front line didn't get through expires here rather than
+	# banking into the next, which is what stops a quiet game from arming you for a
+	# loud one.
+	#
+	# What was still standing as the game ended, before any of it expires or banks:
+	# the Temporary Shields the swings left plus the Shields. Knight Cap's
+	# `if_shields` reads it off game_beaten's context.
+	res["shields_left"] = GameState.shields + GameState.bonus_shields
+	# Barricade (§4.3) BANKS them instead: the survivors become ordinary Shields —
+	# the pool that stays. Not "they stop expiring", which quietly made the
+	# temporary pool a second permanent one with its own spend order; there is one
+	# permanent pool, and banked shields join it and are therefore used LAST from
+	# here on. A small buff and the right one: the relic is about the cover you
+	# didn't need.
+	if GameState.shields > 0:
+		if GameState.banks_shields():
+			res["shields_banked"] = GameState.shields
+			# The picture of the rule working (docs/loot-passives.md §5): the
+			# Barricade that did it, saying how many it kept.
+			var keeper: Array = LootPassives.holders("bank_shields")
+			if not keeper.is_empty():
+				LootPassives.announce(keeper[0], "kept %s as %s" % [
+					Plural.count(GameState.shields, GameState.TEMP_SHIELD_NAME),
+					Plural.word(GameState.shields, GameState.SHIELD_NAME)])
+			GameState.bonus_shields += GameState.shields
+			GameState.shields = 0
+		else:
+			res["shields_expired"] = GameState.shields
+			GameState.shields = 0
 
 	# Last of all, and after step 3 has read it: the game is over, so what its
 	# checklist answered stops being true of anything (§2.1).

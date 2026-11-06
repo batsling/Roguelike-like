@@ -206,6 +206,7 @@ When a game ends — handed in or escaped — fresh bodies walk on at the back, 
 - Escaping with nothing down adds that 1 too and never costs fewer than 2; escaping after a goal you beat costs the same as handing the game in.
 - Nothing walks on at the Amulet, and nothing when a teleport pulls you out.
 - A lane packed at the back gets SHOVED forward to make room — the whole line steps a column closer, and nobody takes a turn. The newcomer picks the lane that needs the least shoving. When no lane can go forward, the body in its way steps one lane up or down instead, if there is a free cell. A spawner that never attacks is never shoved forward, only aside.
+- When nothing can move at all, the newcomer shoves its lane INTO YOU and the front body hits. Shields stop those hits — a game's own Temporary Shields still stand for the pushes its end brings, and expire after. "⚠ N enemies pushing" under Completed Game says how many to expect.
 - The strip on top of the board says the price before you pay it: +N when this game ends, or none, and why.
 
 ### Difficulty up

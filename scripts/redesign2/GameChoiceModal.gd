@@ -1498,12 +1498,19 @@ func _ladder_cfg() -> Dictionary:
 # there is no road, and drawing it would be drawing a promise. Not on a key card's
 # own route.
 func _key_rifts_on(data: Dictionary) -> Dictionary:
-	var out: Dictionary = {}
-	if not Settings.rifts_enabled or _key_dest() != &"" or GameState.keys <= 0:
-		return out
+	if _key_dest() != &"":
+		return {}
 	var host: Node = _layer.get_parent() if _layer != null else null
 	var slots: int = int(host.call("offer_count")) \
 		if host != null and host.has_method("offer_count") else 3
+	return key_roads(data, slots)
+
+# The rule itself, shared with the offering card's 🗝 count (OfferingCards):
+# `data` is a shortest_path_dag, `slots` how many cards an offering deals.
+static func key_roads(data: Dictionary, slots: int) -> Dictionary:
+	var out: Dictionary = {}
+	if not Settings.rifts_enabled or GameState.keys <= 0:
+		return out
 	var layers: Array = data.get("layers", [])
 	for d in range(layers.size() - 2):
 		var later: Dictionary = {}

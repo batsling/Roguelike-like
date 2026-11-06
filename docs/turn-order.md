@@ -267,8 +267,7 @@ The report button — beaten, missed and escaped all come through here.
 - **2a′.** board: **Fracture 8+** — the whole board takes one extra turn after a
   game won or escaped. ☠
 - **2b.** **Status bills** (Burn's 3 damage), while shields still stand → hit chain.
-- Leftover Temporary Shields **expire**, or **Barricade** banks them as Shields.
-  Per-game loot counters and the lost-run tracker reset.
+- Per-game loot counters and the lost-run tracker reset.
 - **3.** Your status **clauses** tick, if any goal was completed this game.
 - **3b.** Your **game-measured statuses** wear off (Bleed, Stun on you).
 - **4.** board: **tiles** burn down a game.
@@ -276,7 +275,10 @@ The report button — beaten, missed and escaped all come through here.
   **Restless Remains** corpses rise.
 - **5.** **Potion statuses** run out.
 - **5′.** board: the **end-of-game bodies** walk on (not for a teleport out). They
-  act from your next lost run.
+  act from your next lost run. One that finds the board packed shoves its lane
+  into you, and the game's leftover shields still stop those hits.
+- Leftover Temporary Shields **expire**, or **Barricade** banks them as Shields
+  (what stood at this point is `shields_left`, Knight Cap's gate).
 - The game's checklist record is cleared.
 
 Then, back in `Overworld2.report`:
@@ -309,7 +311,6 @@ game_in_play = false
 _predators(claims)
 Fracture.extra_turn()
 _resolve_status_demands(claims, res)
-GameState.banks_shields()
 _clear_attempts()
 _tick_player_clauses(goals_completed)
 _wear_player_statuses()
@@ -318,6 +319,7 @@ _tick_fading()
 _raise_corpses()
 _expire_timed_statuses()
 _land_end_of_game_bodies(spawns_owed, escaped)
+GameState.banks_shields()
 _clear_game_record()
 ```
 
