@@ -295,6 +295,7 @@ func _build_payload() -> Dictionary:
 		# The run's rifts, dealt at run start and frozen. Absent from a
 		# save written before rifts, which loads as a run without any.
 		"rifts": GameState.rifts.duplicate(true),
+		"key_rift_dealt": GameState.key_rift_dealt.duplicate(),
 		"run_seed": GameState.run_seed,
 		"pending_chests": GameState.pending_chests,
 		"pending_chest_choices": Array(GameState.pending_chest_choices),
@@ -498,6 +499,9 @@ func _apply_save_data(data: Dictionary) -> void:
 	GameState.restore_shops(data.get("shops", {}))
 	var saved_rifts = data.get("rifts", [])
 	GameState.set_rifts(saved_rifts if saved_rifts is Array else [])
+	var saved_key_dealt = data.get("key_rift_dealt", {})
+	GameState.key_rift_dealt = (saved_key_dealt as Dictionary).duplicate() \
+			if saved_key_dealt is Dictionary else {}
 	GameState.run_seed = int(data.get("run_seed", 0))
 	# AND PUT THE GLOBAL STREAM BACK WHERE THE SAVE LEFT IT — deterministically,
 	# which is the only sense in which it can be "put back" at all.

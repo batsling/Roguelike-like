@@ -11,4 +11,5 @@ condition = "you don't ring a bell"
 penalty = [{"type": "spawn_enemy", "value": 1}]
 penalty_text = "Spawn a random enemy"
 timer = 0
+tags = []
 file = "CurseOfTheBell"

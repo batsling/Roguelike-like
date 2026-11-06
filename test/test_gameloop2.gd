@@ -2181,6 +2181,42 @@ func test_two_pieces_of_loot_never_share_a_square() -> void:
 	assert_ne(second, GameLoop2.OFF_FIELD, "an empty board has plenty")
 	assert_eq(GameLoop2.drop_cells().size(), 2, "two pieces, two squares")
 
+# Loot can be dragged from one square of the board to another (owner, 5 Nov 2026)
+# — onto bare ground only.
+func test_floor_loot_moves_to_another_bare_square() -> void:
+	var at := Vector2i(2, 1)
+	GameLoop2.place_drop(at, _floor_loot(&"one"))
+	assert_true(GameLoop2.move_drop(at, Vector2i(3, 0)), "a bare square takes it")
+	assert_false(GameLoop2.has_drop(at), "it left the first square")
+	assert_eq(String((GameLoop2.drop_at(Vector2i(3, 0)).get("loot", {}) as Dictionary).get("id", "")),
+		"one", "and the same piece lies on the second")
+
+func test_floor_loot_cannot_move_onto_another_piece_or_off_the_board() -> void:
+	GameLoop2.place_drop(Vector2i(2, 1), _floor_loot(&"one"))
+	var other: Vector2i = GameLoop2.place_drop(Vector2i(3, 1), _floor_loot(&"two"))
+	assert_false(GameLoop2.move_drop(Vector2i(2, 1), other), "not onto another piece")
+	assert_false(GameLoop2.move_drop(Vector2i(2, 1), Vector2i(99, 0)), "nor off the board")
+	assert_false(GameLoop2.move_drop(Vector2i(2, 1), Vector2i(2, 1)), "nor onto itself")
+	assert_true(GameLoop2.has_drop(Vector2i(2, 1)), "and a refused move leaves it where it was")
+
+# Only a curse the sheet tags `random` is ever dealt at random — the Hexer's
+# spread as well as an event's `add_curse random`.
+func test_a_random_curse_deal_only_draws_curses_tagged_random() -> void:
+	var allowed: Array = []
+	for c in Data.all_curses2():
+		if (c as CurseData2).is_random():
+			allowed.append((c as CurseData2).id)
+	assert_false(allowed.has(&"curse_of_the_bell"), "the Bell is not tagged random")
+	assert_gt(allowed.size(), 0, "and some curses are")
+	for _i in range(10):
+		GameState.curse_goals.clear()
+		GameLoop2._deal_curses(5)
+		for g in GameState.curse_goals:
+			assert_true(allowed.has(StringName(g.get("curse", ""))),
+				"%s was dealt at random" % str(g))
+		assert_true(allowed.has(EventSystem.roll_random_curse()),
+			"an event's random curse comes from the same list")
+
 func test_an_empty_entry_never_reaches_the_floor() -> void:
 	assert_eq(GameLoop2.place_drop(Vector2i(2, 1), {}), GameLoop2.OFF_FIELD,
 		"a roll that came back with nothing is not a drop")
@@ -2804,6 +2840,65 @@ func test_a_body_that_sat_the_turn_out_stunned_does_not_swing_when_shoved() -> v
 	var hits: Array = GameLoop2.take_crashes()[0]["hits"]
 	assert_true(bool(hits[0].get("stunned", false)))
 	GameLoop2._sat_out_stunned.clear()
+
+# THE GAME'S LEFTOVER SHIELDS STOP THE END-OF-GAME PUSHES (owner, 6 Nov 2026).
+# The bodies a report stands up land on a packed board and shove their lanes into
+# you; the shields this game left used to have expired already, so those hits
+# went straight to Health. They expire after the push now.
+func _game_on_a_packed_board() -> void:
+	GameState.current_game_id = &""
+	for g in Data.all_games():
+		if (g as GameData).id != GameState.amulet_game_id:
+			GameState.current_game_id = (g as GameData).id
+			break
+	Fixtures.choose_solo(_enemy(0))
+	for row in range(GameLoop2.grid_rows()):
+		for c in range(1, GameLoop2.grid_cols() + 1):
+			if not GameLoop2.occupancy().has(Vector2i(c, row)):
+				GameLoop2.summon(_enemy(1), Vector2i(c, row))
+	GameLoop2.take_crashes()
+	GameState.bonus_shields = 0
+	GameState.max_hp = 100
+	GameState.hp = 100
+
+func test_leftover_shields_stop_the_end_of_game_push() -> void:
+	_game_on_a_packed_board()
+	assert_gt(GameLoop2.pushes_due(), 0, "a packed board says the end of the game will push")
+	GameState.shields = 3
+	var res: Dictionary = GameLoop2.beat_game(false)
+	var crashes: Array = GameLoop2.take_crashes()
+	if crashes.is_empty():
+		pending("the end of this game stood nobody up")
+		return
+	var blocked := 0
+	for c in crashes:
+		for h in c["hits"]:
+			blocked += int(h.get("blocked", 0))
+	assert_gt(blocked, 0, "the push landed on a shield the game left")
+	assert_eq(GameState.shields, 0, "and what was left expired after it")
+	assert_true(res.has("shields_expired"))
+
+# The bodies a push would drive into you are the FRONT of the shortest lanes —
+# what the board outlines in red and the info card warns about.
+func test_push_targets_are_the_front_line_a_push_would_reach() -> void:
+	_game_on_a_packed_board()
+	var targets: Array = GameLoop2.push_targets()
+	assert_gt(targets.size(), 0, "a packed board has someone to push into you")
+	for inst in targets:
+		assert_eq(Fixtures.col_of(int(inst)), 1, "each one stands on the front line")
+	GameLoop2.stun(int(targets[0]), 1)
+	assert_false(GameLoop2.push_targets().has(int(targets[0])),
+		"a stunned body sits the push out, so it is not marked")
+
+func test_pushes_due_is_zero_on_a_board_with_room() -> void:
+	GameState.current_game_id = &""
+	for g in Data.all_games():
+		if (g as GameData).id != GameState.amulet_game_id:
+			GameState.current_game_id = (g as GameData).id
+			break
+	Fixtures.choose_solo(_enemy(0))
+	assert_eq(GameLoop2.pushes_due(), 0, "an emptyish board has room for the end-of-game bodies")
+	assert_true(GameLoop2.push_targets().is_empty(), "so nobody is marked")
 
 func test_shields_stop_a_crash_hit_like_any_other() -> void:
 	_pack_to_the_front(4)

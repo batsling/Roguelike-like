@@ -6426,7 +6426,10 @@ func test_each_strike_takes_its_own_bite_out_of_the_shown_health() -> void:
 		"attacks": [
 			{"instance": inst, "turn": 0, "damage": 2},
 			{"instance": inst, "turn": 1, "damage": 2}]}, hp_before)
-	# The first turn's strike fires immediately; the second waits for its turn.
+	# The first turn's strike is thrown immediately and its cost lands with the
+	# number (FX_IMPACT_TIME); the second waits for its turn.
+	assert_eq(_ui._board.shown_hp(), hp_before, "nothing is charged before the number lands")
+	await wait_seconds(BattlefieldView.FX_IMPACT_TIME + 0.05)
 	assert_eq(_ui._board.shown_hp(), hp_before - 2,
 		"one blow landed, one blow's worth of Health gone")
 	assert_true(_ui._board._hero_hp.text.contains("%d/%d" % [hp_before - 2, GameState.max_hp]),
@@ -6462,7 +6465,10 @@ func test_the_shield_row_opens_on_the_armour_that_was_standing() -> void:
 	GameState.shields = 0                    # as the resolve already would have
 	_ui._board.animate_resolve(before, {"attacks": [
 		{"instance": inst, "turn": 0, "damage": 3, "blocked": 3}]}, GameState.hp, held)
-	# One blocked blow fires immediately, so one of the two is gone and one is left.
+	assert_eq(_ui._board.standing_shields().size(), 2,
+		"both stand until the blow's number reaches the hero")
+	# One blocked blow lands at the impact beat, so one of the two is gone.
+	await wait_seconds(BattlefieldView.FX_IMPACT_TIME + 0.05)
 	assert_eq(_ui._board.standing_shields().size(), 1,
 		"the playback opens on the two that were standing and breaks one on the blow")
 
@@ -6488,6 +6494,7 @@ func test_the_temporary_shields_break_before_the_ones_that_stay() -> void:
 	var held := Vector2i(GameState.shields, GameState.bonus_shields)
 	_ui._board.animate_resolve(before, {"attacks": [
 		{"instance": inst, "turn": 0, "damage": 2, "blocked": 2}]}, GameState.hp, held)
+	await wait_seconds(BattlefieldView.FX_IMPACT_TIME + 0.05)
 	var left: Array = _ui._board.standing_shields()
 	assert_eq(left.size(), 1, "one of the two is gone")
 	if left.is_empty():
@@ -10528,6 +10535,94 @@ func _buy_from_the_woman(index: int):
 	await get_tree().process_frame
 	return modal
 
+# A GAME'S SHIELDS ARE UP BEFORE ITS BODIES WALK ON (owner, 6 Nov 2026: bodies
+# "pushed into the player" were "ignoring the shields"). On a packed board an
+# arriving body crashes its lane into you (§7.3a); that crash used to land before
+# the game had handed over its shields, so it went straight to Health.
+func test_a_crash_on_arrival_meets_the_new_games_shields() -> void:
+	Page.open_at_first_offering(_ui)
+	var dummy := GoalEnemyData.new()
+	dummy.id = &"packing_dummy"
+	dummy.damage = 1
+	for row in range(GameLoop2.grid_rows()):
+		for c in range(1, GameLoop2.grid_cols() + 1):
+			GameLoop2.summon(dummy, Vector2i(c, row))
+	GameLoop2.take_crashes()
+	GameState.shields = 0
+	GameState.bonus_shields = 0
+	GameState.max_hp = 100
+	GameState.hp = 100
+	var hits: Array = []
+	var note := func(dmg: int, blocked: int): hits.append([dmg, blocked])
+	GameLoop2.player_hit.connect(note)
+	_ui.pick(0)
+	GameLoop2.player_hit.disconnect(note)
+	if hits.is_empty():
+		pending("nothing crashed on this arrival")
+		return
+	assert_gt(int(hits[0][1]), 0, "the first crash hit landed on a shield: %s" % str(hits))
+	_ui._board.clear_fx()
+
+# WHO A PRESS WOULD PUSH INTO YOU shows only while its button is hovered (owner,
+# 6 Nov 2026): red outlines on the board and a line over the button.
+func _playing_on_a_packed_board() -> void:
+	Page.open_at_first_offering(_ui)
+	_ui.pick(0)
+	var dummy := GoalEnemyData.new()
+	dummy.id = &"packing_dummy"
+	dummy.damage = 1
+	for row in range(GameLoop2.grid_rows()):
+		for c in range(1, GameLoop2.grid_cols() + 1):
+			if not GameLoop2.occupancy().has(Vector2i(c, row)):
+				GameLoop2.summon(dummy, Vector2i(c, row))
+	GameLoop2.take_crashes()
+	_ui._refresh()
+	_ui._board.clear_fx()
+
+func test_the_push_preview_shows_only_while_completed_game_is_hovered() -> void:
+	_playing_on_a_packed_board()
+	if GameLoop2.pushes_due() <= 0:
+		pending("this game ends with nobody to stand up")
+		return
+	assert_true(_ui._board.push_preview().is_empty(), "nothing is outlined until asked")
+	_ui._done_btn.mouse_entered.emit()
+	assert_eq(_ui._board.push_preview().size(), GameLoop2.push_targets().size(),
+		"hovering outlines who the end of the game would push into you")
+	var note: Label = _ui._done_btn.get_node("PushNote")
+	assert_true(note.visible, "and says so over the button")
+	assert_string_contains(note.text, "pushed into you")
+	_ui._done_btn.mouse_exited.emit()
+	assert_true(_ui._board.push_preview().is_empty(), "and it all goes when the mouse does")
+	assert_false(note.visible)
+
+func test_the_lost_run_button_previews_its_spawns_push() -> void:
+	_playing_on_a_packed_board()
+	var ladder: Array = GameLoop2.lost_run_spawn_ladder.duplicate()
+	GameLoop2.lost_run_spawn_ladder = [0.25]       # the suite turns the spawn off
+	_ui._attempt_btn.mouse_entered.emit()
+	assert_false(_ui._board.push_preview().is_empty(), "a packed board: its spawn would push")
+	var note: Label = _ui._attempt_btn.get_node("PushNote")
+	assert_string_contains(note.text, "%", "a lost run only may spawn, so it quotes the chance")
+	_ui._attempt_btn.mouse_exited.emit()
+	assert_true(_ui._board.push_preview().is_empty())
+	GameLoop2.lost_run_spawn_ladder = ladder
+
+# A RELIC A PAYOUT HANDS OVER IS OFFERED, not slipped in: the Blood Donation
+# Machine's bag comes up on the item modal (owner, 5 Nov 2026), and is the
+# player's once they take it.
+func test_a_payouts_relic_asks_on_the_item_modal() -> void:
+	Page.open_at_first_offering(_ui)
+	var bag: ItemData = Data.get_item2(&"blood_bag")
+	assert_not_null(bag)
+	GameState.offer_items([bag])
+	await wait_frames(3)
+	assert_not_null(_ui._drop_modal, "the bag is asked about")
+	assert_false(GameState.has_item(&"blood_bag"), "and is not carried until it is taken")
+	if _ui._drop_modal != null:
+		_ui._drop_modal.take()
+	await wait_frames(2)
+	assert_true(GameState.has_item(&"blood_bag"), "taking it carries it")
+
 func test_potions_bought_in_an_event_land_on_the_event() -> void:
 	var modal = await _buy_from_the_woman(2)          # Buy 3 Potions
 	assert_not_null(modal._loot_section, "the bottles are on her counter, inside the event")
@@ -11483,12 +11578,21 @@ func test_the_board_warns_when_a_lost_run_could_bring_the_boss() -> void:
 func _stand_identical(n: int) -> Array:
 	_pick_solo(0)
 	_clear_board()
+	# NOTHING THAT SPLITS A GROUP. A body carrying a status, or a clause the
+	# player's own statuses hang on every goal, is never folded into a group
+	# (ReportChecklist.groupable) — and the opening game's event is random, so the
+	# one run in many that handed the player a clause status left these bodies a
+	# row each (CI, 6 Nov 2026). Arranged rather than hoped for.
+	GameState.player_statuses.clear()
+	GameState.timed_statuses.clear()
 	var monkey: GoalEnemyData = Data.get_goal_enemy_any(&"monkey")
 	var out: Array = []
 	for i in range(n):
 		var inst: int = GameLoop2.spawn_to_stack(monkey)
 		if inst > 0:
 			out.append(inst)
+	for entry in GameLoop2.stack:
+		entry["statuses"] = {}
 	_disarm_board()
 	_ui._populate_play_panel()
 	return out

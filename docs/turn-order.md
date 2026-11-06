@@ -72,7 +72,12 @@ _run_trigger(item, trig, ctx_extras, loot)
    bodies walk on (`DropQueue.clear_floor`).
 1. The game's and the character's **rank bars** are noted, for the end screen.
 2. **Starting gear**, first game of the run only.
-3. **The board is set up** (`GameLoop2.choose_game`):
+3. **Shields**: 3 Temporary Shields, 5 for a Traditional roguelike, fewer on some
+   Fractures. *Then* signal `game_selected` → items (Anchor's +1 lands on top), the
+   speedrun clock starts, the overlay updates. Before the board, so a body that
+   walks on into a full board and crashes into you (§7.3a) meets this game's
+   shields rather than going straight to Health.
+4. **The board is set up** (`GameLoop2.choose_game`):
    - the last game's lost runs, ticks and records are wiped;
    - a **spawn event** is counted — the board can grow and the tier can step here;
    - board: **Undying** bodies from last game stand back up, first;
@@ -90,19 +95,16 @@ _run_trigger(item, trig, ctx_extras, loot)
      first, dealt by `start_run` before the start was picked. A Scramble does
      not enter it. The popup
      waits for the page's next quiet moment.
-4. The **difficulty step** is announced, if step 3 crossed one.
-5. **Shields**: 3 Temporary Shields, 5 for a Traditional roguelike, fewer on some
-   Fractures. *Then* signal `game_selected` → items (Anchor's +1 lands on top), the
-   speedrun clock starts, the overlay updates.
+5. The **difficulty step** is announced, if step 4 crossed one.
 
 ```order
 scripts/redesign2/Overworld2.gd :: _begin_game
 _drops.clear_floor()
 GameLoop2.rank_start =
 _grant_start_gear_once(game)
+GameLoop2.grant_selection_shields(game)
 _commit_board(game, enemy, tier)
 _announce_difficulty_step(tier_before, board_before)
-GameLoop2.grant_selection_shields(game)
 ```
 
 ```order
@@ -265,8 +267,7 @@ The report button — beaten, missed and escaped all come through here.
 - **2a′.** board: **Fracture 8+** — the whole board takes one extra turn after a
   game won or escaped. ☠
 - **2b.** **Status bills** (Burn's 3 damage), while shields still stand → hit chain.
-- Leftover Temporary Shields **expire**, or **Barricade** banks them as Shields.
-  Per-game loot counters and the lost-run tracker reset.
+- Per-game loot counters and the lost-run tracker reset.
 - **3.** Your status **clauses** tick, if any goal was completed this game.
 - **3b.** Your **game-measured statuses** wear off (Bleed, Stun on you).
 - **4.** board: **tiles** burn down a game.
@@ -274,7 +275,10 @@ The report button — beaten, missed and escaped all come through here.
   **Restless Remains** corpses rise.
 - **5.** **Potion statuses** run out.
 - **5′.** board: the **end-of-game bodies** walk on (not for a teleport out). They
-  act from your next lost run.
+  act from your next lost run. One that finds the board packed shoves its lane
+  into you, and the game's leftover shields still stop those hits.
+- Leftover Temporary Shields **expire**, or **Barricade** banks them as Shields
+  (what stood at this point is `shields_left`, Knight Cap's gate).
 - The game's checklist record is cleared.
 
 Then, back in `Overworld2.report`:
@@ -307,7 +311,6 @@ game_in_play = false
 _predators(claims)
 Fracture.extra_turn()
 _resolve_status_demands(claims, res)
-GameState.banks_shields()
 _clear_attempts()
 _tick_player_clauses(goals_completed)
 _wear_player_statuses()
@@ -316,6 +319,7 @@ _tick_fading()
 _raise_corpses()
 _expire_timed_statuses()
 _land_end_of_game_bodies(spawns_owed, escaped)
+GameState.banks_shields()
 _clear_game_record()
 ```
 

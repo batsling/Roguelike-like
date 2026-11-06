@@ -696,9 +696,11 @@ chance <p>% -> <reward>
 - **`add_goal`** bolts an objective onto the next *n* games, in the same
   honour-system voice enemy goals use. Pays if met, costs nothing if not.
 - **`add_curse random`** draws the curse when the button is pressed instead of
-  naming one, and **never draws a permanent one** — a random roll that could hand
-  out Curse of the Bell would make an idle button a coin flip on the rest of the
-  run. The Golden Monkey is what it is for.
+  naming one, and **only from curses the `curses` sheet tags `random`** (its `Tag`
+  column, read by `CurseData2.is_random`) — the Hexer's random spread reads the
+  same tag. Curse of the Bell is untagged: a random roll that could hand it out
+  would make an idle button a coin flip on the rest of the run. The Golden Monkey
+  is what it is for.
 - **`add_curse`** is that inverted — an objective you want to *not* meet, which
   bills you every time you do. It takes an id from the **`curses2.0` tab**, so
   the curse is authored once and any event can hand out the same one. On the

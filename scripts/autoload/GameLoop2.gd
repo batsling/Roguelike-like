@@ -2031,6 +2031,57 @@ func end_of_game_price(escaped: bool = false) -> Dictionary:
 	return {"bodies": bodies,
 		"why": "" if bodies > 0 else "a body went down to its goal here, out in the wilds"}
 
+# HOW MANY OF THE END-OF-GAME BODIES WOULD PUSH INTO YOU if the game were
+# completed now (owner, 6 Nov 2026: a small "X enemies pushing" by the Completed
+# Game button). The bill (`end_of_game_price`) less the room the board has for
+# them — every bare square, after the bodies already queued beside the board
+# have taken theirs. An ESTIMATE, and a fair one: the bodies are rolled when they
+# land, so a 2x2 among them needs more room than this counts, and a board that
+# grows at the spawn has more.
+#
+# `owed` overrides the bill: a LOST RUN stands up one body (on its chance, see
+# lost_run_spawn_chance), and the board's packing survives the turn before it —
+# a full board's bodies have nowhere to step — so the same count answers it.
+func pushes_due(owed: int = -1) -> int:
+	if owed < 0:
+		owed = int(end_of_game_price(false).get("bodies", 0))
+	if owed <= 0:
+		return 0
+	var free: int = grid_cols() * grid_rows() - occupancy().size()
+	for entry in stack:
+		if int(entry.get("col", 0)) > grid_cols():
+			free -= 1
+	return maxi(0, owed - maxi(0, free))
+
+# WHICH BODIES THOSE PUSHES WOULD DRIVE INTO YOU (owner, 6 Nov 2026: "have the
+# enemy get a red outline"): the front-line body of every lane `_crash_into_player`
+# could pick — the shortest chain, ties all counted, since it picks among them at
+# random — planned for a one-cell newcomer, because the real ones are not rolled
+# until the game ends. A stunned body sits the push out and is left off. Empty
+# when nothing is due to push. `_crash_chain` only reads the board.
+func push_targets(owed: int = -1) -> Array:
+	if pushes_due(owed) <= 0:
+		return []
+	var probe := GoalEnemyData.new()
+	var col: int = spawn_col_for(probe)
+	var best_n: int = 1 << 30
+	var fronts: Array = []
+	for row in range(grid_rows()):
+		var plan: Dictionary = _crash_chain(probe, row, col, 0)
+		if plan.is_empty():
+			continue
+		var n: int = (plan["chain"] as Array).size()
+		if n < best_n:
+			best_n = n
+			fronts = []
+		if n == best_n:
+			for inst in plan["front"]:
+				if not fronts.has(int(inst)):
+					fronts.append(int(inst))
+	return fronts.filter(func(inst):
+		var e: Dictionary = entry_for(int(inst))
+		return not e.is_empty() and not is_stunned(e))
+
 # Stand `want` end-of-game bodies on the board, already priced. Returns how many
 # actually landed.
 #
@@ -2833,37 +2884,6 @@ func beat_game(clear_advertised: bool = false, fulfilled_instances: Array = [],
 	#     outright before it reaches Health.
 	_resolve_status_demands(claims, res)
 
-	# The enemies have struck and moved, so this game is over — and with it go the
-	# shields it granted (§3). They are TEMPORARY SHIELDS (GameState): the armour of
-	# ONE game, so what the front line didn't get through expires here rather than
-	# banking into the next, which is what stops a quiet game from arming you for a
-	# loud one.
-	#
-	# What was still standing as the game ended, before any of it expires or banks:
-	# the Temporary Shields the swings left plus the Shields. Knight Cap's
-	# `if_shields` reads it off game_beaten's context.
-	res["shields_left"] = GameState.shields + GameState.bonus_shields
-	# Barricade (§4.3) BANKS them instead: the survivors become ordinary Shields —
-	# the pool that stays. Not "they stop expiring", which quietly made the
-	# temporary pool a second permanent one with its own spend order; there is one
-	# permanent pool, and banked shields join it and are therefore used LAST from
-	# here on. A small buff and the right one: the relic is about the cover you
-	# didn't need.
-	if GameState.shields > 0:
-		if GameState.banks_shields():
-			res["shields_banked"] = GameState.shields
-			# The picture of the rule working (docs/loot-passives.md §5): the
-			# Barricade that did it, saying how many it kept.
-			var keeper: Array = LootPassives.holders("bank_shields")
-			if not keeper.is_empty():
-				LootPassives.announce(keeper[0], "kept %s as %s" % [
-					Plural.count(GameState.shields, GameState.TEMP_SHIELD_NAME),
-					Plural.word(GameState.shields, GameState.SHIELD_NAME)])
-			GameState.bonus_shields += GameState.shields
-			GameState.shields = 0
-		else:
-			res["shields_expired"] = GameState.shields
-			GameState.shields = 0
 	# A NEW GAME GETS A NEW FIRST PIECE (docs/loot-passives.md §8). Echo Form copies
 	# the first loot used in each game, so the count of pieces this game spent goes
 	# back to zero on the beat the game ends — however it ended.
@@ -2930,6 +2950,44 @@ func beat_game(clear_advertised: bool = false, fulfilled_instances: Array = [],
 	#    `spawns_owed`).
 	res["end_spawns"] = (_land_end_of_game_bodies(spawns_owed, escaped)
 		if not run_over else 0)
+
+	# THE LEFTOVER SHIELDS GO LAST (owner, 6 Nov 2026), after the end-of-game
+	# bodies have walked on. A body that lands on a packed board shoves its lane
+	# into you (§7.3a), and that crash used to come after the shields had already
+	# expired — so the armour the player could still see standing never stopped
+	# it. Now what this game left of its shields blocks those pushes, and only
+	# then expires (or banks, under Barricade).
+	# The enemies have struck and moved, so this game is over — and with it go the
+	# shields it granted (§3). They are TEMPORARY SHIELDS (GameState): the armour of
+	# ONE game, so what the front line didn't get through expires here rather than
+	# banking into the next, which is what stops a quiet game from arming you for a
+	# loud one.
+	#
+	# What was still standing as the game ended, before any of it expires or banks:
+	# the Temporary Shields the swings left plus the Shields. Knight Cap's
+	# `if_shields` reads it off game_beaten's context.
+	res["shields_left"] = GameState.shields + GameState.bonus_shields
+	# Barricade (§4.3) BANKS them instead: the survivors become ordinary Shields —
+	# the pool that stays. Not "they stop expiring", which quietly made the
+	# temporary pool a second permanent one with its own spend order; there is one
+	# permanent pool, and banked shields join it and are therefore used LAST from
+	# here on. A small buff and the right one: the relic is about the cover you
+	# didn't need.
+	if GameState.shields > 0:
+		if GameState.banks_shields():
+			res["shields_banked"] = GameState.shields
+			# The picture of the rule working (docs/loot-passives.md §5): the
+			# Barricade that did it, saying how many it kept.
+			var keeper: Array = LootPassives.holders("bank_shields")
+			if not keeper.is_empty():
+				LootPassives.announce(keeper[0], "kept %s as %s" % [
+					Plural.count(GameState.shields, GameState.TEMP_SHIELD_NAME),
+					Plural.word(GameState.shields, GameState.SHIELD_NAME)])
+			GameState.bonus_shields += GameState.shields
+			GameState.shields = 0
+		else:
+			res["shields_expired"] = GameState.shields
+			GameState.shields = 0
 
 	# Last of all, and after step 3 has read it: the game is over, so what its
 	# checklist answered stops being true of anything (§2.1).
@@ -3542,6 +3600,20 @@ func place_drop(cell: Vector2i, loot: Dictionary, from_boss: bool = false) -> Ve
 	drops[at] = {"loot": loot.duplicate(true), "boss": from_boss}
 	loop_changed.emit()
 	return at
+
+# Move what is lying on `from` to the bare square `to` — the player dragged it
+# across the board (owner, 5 Nov 2026: loot can move "from grid space to grid
+# space"). Only onto a square with nothing on it: no body, no unit, no other
+# piece. Same piece, same boss weight; true when it moved.
+func move_drop(from: Vector2i, to: Vector2i) -> bool:
+	if from == to or not drops.has(from) or drops.has(to) or not _on_board(to.x, to.y):
+		return false
+	if occupancy().has(to) or units.has(to):
+		return false
+	drops[to] = drops[from]
+	drops.erase(from)
+	loop_changed.emit()
+	return true
 
 # Take what is on `cell` — the player picked it up. Returns the payload, or {}.
 func take_drop(cell: Vector2i) -> Dictionary:
@@ -5555,13 +5627,17 @@ func _take_hit(damage: int, res: Dictionary,
 	#
 	# ONE shield, whichever pool it comes out of, and the instance is gone.
 	var absorbed: int = 0
+	# Which pool the shield came out of, so a replay can wind the right row back.
+	var pool: String = ""
 	if not bool(totals["pierce_shields"]):
 		if GameState.shields > 0:
 			GameState.shields -= 1
 			absorbed = damage
+			pool = "temp"
 		elif GameState.bonus_shields > 0:
 			GameState.bonus_shields -= 1
 			absorbed = damage
+			pool = "bonus"
 	var overflow: int = damage - absorbed
 	if overflow > 0:
 		# Tagged as what threw it: this is the ONLY path damage reaches Health by on
@@ -5578,7 +5654,7 @@ func _take_hit(damage: int, res: Dictionary,
 	res["damage_taken"] = int(res.get("damage_taken", 0)) + overflow
 	if GameState.hp <= 0 and not run_over:
 		_finish_run(false)
-	return {"damage": damage, "blocked": absorbed}
+	return {"damage": damage, "blocked": absorbed, "pool": pool}
 
 # Damage the player from something that is NOT an enemy's swing — a status's
 # penalty (Burn's 3, §13), a `take_damage` effect from anywhere. Goes through the
@@ -7224,6 +7300,7 @@ func _crash_into_player(entry: Dictionary, col: int) -> int:
 			var hit: Dictionary = _take_hit(enemy_damage(e), scratch)
 			row_hit["damage"] = int(hit["damage"])
 			row_hit["blocked"] = int(hit["blocked"])
+			row_hit["pool"] = String(hit.get("pool", ""))
 			total += int(hit["damage"]) - int(hit["blocked"])
 			if int(hit["damage"]) > 0:
 				player_hit.emit(int(hit["damage"]), int(hit["blocked"]))
@@ -8302,7 +8379,8 @@ func _deal_curses(count: int) -> int:
 	var all: Array = []
 	for c in Data.all_curses2():
 		var cd: CurseData2 = c
-		if cd == null:
+		# Only the curses the sheet tags `random` are in a random deal (Tag column).
+		if cd == null or not cd.is_random():
 			continue
 		all.append(cd.id)
 		if not GameState.has_curse_goal(cd.id):

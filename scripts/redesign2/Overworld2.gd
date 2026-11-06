@@ -588,8 +588,8 @@ func _ready() -> void:
 	_build_ui()
 	# The board-peek's per-frame check (see "the board off the board").
 	get_tree().process_frame.connect(_tick_board_peek)
-	if not GameLoop2.loop_changed.is_connected(_refresh):
-		GameLoop2.loop_changed.connect(_refresh)
+	if not GameLoop2.loop_changed.is_connected(_on_loop_changed):
+		GameLoop2.loop_changed.connect(_on_loop_changed)
 	if not GameLoop2.run_lost.is_connected(_on_run_lost):
 		GameLoop2.run_lost.connect(_on_run_lost)
 	if not GameLoop2.run_won.is_connected(_on_run_won):
@@ -620,6 +620,10 @@ func _ready() -> void:
 	# working unchanged.
 	if not GameState.loot_offered.is_connected(_on_loot_offered):
 		GameState.loot_offered.connect(_on_loot_offered)
+	# …and a RELIC a payout hands over (the Blood Donation Machine's bag) asks on
+	# the item modal, the same Take / Leave a chest gets.
+	if not GameState.items_offered.is_connected(_on_items_offered):
+		GameState.items_offered.connect(_on_items_offered)
 	# Machines appearing or leaving. Off the signal rather than at the spawn
 	# sites, so anything that spawns one — an event, the dev panel, whatever comes
 	# next — puts it on the page without knowing the panel exists.
@@ -1533,6 +1537,16 @@ func _begin_game(game: GameData, enemy: GoalEnemyData, tier: int,
 	# The run's FIRST game hands over its genre's kit (GameState.START_GEAR) —
 	# from the panel or, on a custom run with none, from whatever card opened it.
 	_grant_start_gear_once(game)
+	# Selecting the game hands over your ARMOUR for it (§3): 3 shields, 5 for a
+	# Traditional roguelike, plus whatever "when a game is selected" items add.
+	# BEFORE THE BOARD IS SET UP, not after (owner, 6 Nov 2026: bodies "pushed into
+	# the player" were "ignoring the shields"): a body that walks on with no room
+	# shoves its lane into you (§7.3a), and that crash used to land before this
+	# game's shields existed, so it went straight to Health.
+	var granted: int = GameLoop2.grant_selection_shields(game)
+	if log_shields:
+		GameLog.add("%s — %s, one hit stopped each." % [
+			game.display_name, GameState.temp_shields_text(granted)], SHIELD_BLUE)
 	var tier_before: int = _current_tier()
 	var board_before := Vector2i(GameLoop2.grid_cols(), GameLoop2.grid_rows())
 	_commit_board(game, enemy, tier)
@@ -1540,12 +1554,6 @@ func _begin_game(game: GameData, enemy: GoalEnemyData, tier: int,
 		_announce_difficulty_step(tier_before, board_before)
 	_log_second_body()
 	_remind_twitch_category(game)
-	# Selecting the game hands over your ARMOUR for it (§3): 3 shields, 5 for a
-	# Traditional roguelike, plus whatever "when a game is selected" items add.
-	var granted: int = GameLoop2.grant_selection_shields(game)
-	if log_shields:
-		GameLog.add("%s — %s, one hit stopped each." % [
-			game.display_name, GameState.temp_shields_text(granted)], SHIELD_BLUE)
 
 # STARTING GEAR (GameState.START_GEAR), once per run. The loot goes straight into
 # the pack; whatever does not fit is asked about on the drop screen rather than
@@ -1695,7 +1703,9 @@ func log_attempt() -> String:
 	var shields_before := Vector2i(GameState.shields, GameState.bonus_shields)
 	_resolving = true
 	_attempt_resolve = true
+	_hold_loop_refresh = true
 	var cost: String = GameLoop2.log_attempt()
+	_release_loop_refresh()
 	if cost == "":
 		_resolving = false
 		_attempt_resolve = false
@@ -2513,8 +2523,10 @@ func report(beaten: bool, fulfilled: Variant = null, escaped: bool = false,
 	# `clear_advertised` is false and always will be from here: the overworld's
 	# checklist lists the bodies that walked on this game among all the others, so
 	# they are already in `fulfilled_instances` if the player ticked them.
+	_hold_loop_refresh = true
 	var res: Dictionary = GameLoop2.beat_game(false, fulfilled_instances, claims,
 		not free_exit, escaped, beaten)
+	_release_loop_refresh()
 	# THE FLOOR IS NOT SWEPT AT THE REPORT ANY MORE (§8.2). It used to be, onto the
 	# haul screen; now loot lying on the board stays there through the screens
 	# after the game — the reward screen's ⚔ Combat button opens the board, and a
@@ -5151,8 +5163,13 @@ func transmute_choice(index: int) -> bool:
 # `dir` defaults to BACK for the callers that predate the four directions — the
 # enemy info card's single button and the headless harness.
 func push_follower(instance: int, dir: Vector2i = GameLoop2.PUSH_BACK) -> void:
+	# Where everyone stood BEFORE the shove, so the board can slide them to where
+	# it left them rather than repainting them there (BattlefieldView.animate_push).
+	var before: Dictionary = _board.capture_positions() if _board != null else {}
 	if GameLoop2.push(instance, dir):
 		_refresh()
+		if _board != null:
+			_board.animate_push(before)
 
 # Bomb a following enemy (§4): spend a Bomb charge to deal it 1 damage (no drop
 # when that kills it). A boss can be bombed but takes none of the damage, so the
@@ -5508,7 +5525,21 @@ func _add_rift_key_cards(tier: int) -> void:
 	for c in _choices:
 		exclude[StringName(c["slot"])] = true
 		exclude[(c["game"] as GameData).id] = true
-	var games: Array = RunGraph.rift_key_games(rng, exclude)
+	# A GAME A KEY CARD HAS ALREADY LED TO AT ANOTHER TABLE IS NOT DEALT AGAIN this
+	# run (GameState.key_rift_dealt). The rotation sorts the least-used rift game
+	# first, so without this the same game headed every keyed table. When the pool
+	# runs dry the repeats come back rather than leaving the slots empty.
+	var seen_elsewhere: Dictionary = {}
+	for gid in GameState.key_rift_dealt:
+		if String(GameState.key_rift_dealt[gid]) != seed_key:
+			seen_elsewhere[StringName(gid)] = true
+	var with_seen: Dictionary = exclude.duplicate()
+	with_seen.merge(seen_elsewhere)
+	var games: Array = RunGraph.rift_key_games(rng, with_seen)
+	if games.size() < empty:
+		for gid in RunGraph.rift_key_games(rng, exclude):
+			if not games.has(gid):
+				games.append(gid)
 	for i in range(mini(empty, games.size())):
 		var gid := StringName(games[i])
 		var game: GameData = Data.get_game(gid)
@@ -5521,6 +5552,8 @@ func _add_rift_key_cards(tier: int) -> void:
 			enemy = GameLoop2.roll_enemy(GameLoop2.game_type_key(game), tier)
 			_slot_enemies[slot_key] = enemy
 		_key_cards[gid] = dest
+		if not GameState.key_rift_dealt.has(String(gid)):
+			GameState.key_rift_dealt[String(gid)] = seed_key
 		_choices.append({
 			"game": game, "enemy": enemy, "slot": gid,
 			"boss": false, "amulet": false,
@@ -5699,7 +5732,35 @@ func _on_inventory_changed() -> void:
 		return
 	_board.refresh()
 
+# ONE REPAINT PER TURN, NOT ONE PER STEP OF IT. GameLoop2 emits `loop_changed` at
+# several points inside a single enemy turn (each body that moves, crashes, an
+# admission from the queue), and each one used to repaint the whole page — about
+# 40 ms apiece on a crowded board, all of it spent before the first frame of the
+# turn's animation, which is the stall the owner saw when "there's a lot of
+# enemies on the screen and they take their turn" (5 Nov 2026). While a turn is
+# resolving the signal is noted rather than answered (_hold_loop_refresh), and the
+# caller's own `_refresh()` afterwards is the one repaint; a turn whose caller
+# does not repaint is caught by the deferred flush.
+var _hold_loop_refresh: bool = false
+var _loop_refresh_owed: bool = false
+
+func _on_loop_changed() -> void:
+	if _hold_loop_refresh:
+		_loop_refresh_owed = true
+		return
+	_refresh()
+
+func _release_loop_refresh() -> void:
+	_hold_loop_refresh = false
+	if _loop_refresh_owed:
+		_flush_loop_refresh.call_deferred()
+
+func _flush_loop_refresh() -> void:
+	if _loop_refresh_owed and is_inside_tree():
+		_refresh()
+
 func _refresh(_a = null) -> void:
+	_loop_refresh_owed = false
 	if _board == null:
 		return
 	_refresh_stats()
@@ -7122,6 +7183,10 @@ func _on_enemy_defeated(enemy: GoalEnemyData, cell: Vector2i) -> void:
 func _on_loot_offered(entries: Array) -> void:
 	_drops.on_loot_offered(entries)
 
+func _on_items_offered(items: Array) -> void:
+	_drops.queue.append({"items": items.duplicate()})
+	_drops.pump()
+
 # The two floor gestures. Public because `FloorLoot` and `DragPackPanel` call them.
 func take_floor_loot(entry: Dictionary, slot: int, cell: Vector2i) -> void:
 	_drops.take_floor_loot(entry, slot, cell)
@@ -7864,6 +7929,18 @@ func _build_ui() -> void:
 	cover_frame.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	cover_frame.add_child(_now_playing_cover)
 	head_row.add_child(cover_frame)
+	# THE COVER IS A DOOR TO THE ROUTE (owner, 5 Nov 2026): clicking the game you
+	# are playing opens the optimal path from it — the same window the offering's
+	# `→ Optimal Path` opens — so "where does this lead" is one click mid-game too.
+	cover_frame.mouse_filter = Control.MOUSE_FILTER_STOP
+	_now_playing_cover.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	cover_frame.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	cover_frame.tooltip_text = "Click for the optimal path from here to the Amulet"
+	cover_frame.gui_input.connect(func(ev: InputEvent):
+		if ev is InputEventMouseButton and ev.pressed \
+				and (ev as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT:
+			cover_frame.accept_event()
+			open_optimal_path())
 
 	# What you are doing with the game, and the two things you press while you do
 	# it: OPEN it, and — every time it beats you — say so.
@@ -7938,6 +8015,7 @@ func _build_ui() -> void:
 	# ones this button is the last chance to answer.
 	done.pressed.connect(confirm_completed_game)
 	_play_panel.add_child(done)
+	_wire_push_hover(done, func() -> int: return -1)
 
 	# The way out, directly under the way through — they resolve the same step, so
 	# they belong together. Deliberately quieter than Completed Game: this is the
@@ -8102,6 +8180,8 @@ func _build_attempt_strip() -> Control:
 	_attempt_btn.add_theme_stylebox_override("hover", UITheme.flat(UITheme.DANGER.lerp(UITheme.BG, 0.45), 6, 8, 1, UITheme.DANGER))
 	_attempt_btn.pressed.connect(log_attempt)
 	row.add_child(_attempt_btn)
+	_wire_push_hover(_attempt_btn,
+		func() -> int: return 1 if GameLoop2.lost_run_spawn_chance() > 0.0 else 0)
 
 	_attempt_count = Label.new()
 	_attempt_count.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
@@ -8122,6 +8202,45 @@ func _build_attempt_strip() -> Control:
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(spacer)
 	return wrap
+
+# WHO A PRESS WOULD PUSH INTO YOU, shown only while the button is hovered (owner,
+# 6 Nov 2026): the board outlines those bodies in red (BattlefieldView.
+# show_push_preview) and a small line over the button says how many. `owed` is
+# how many bodies the press stands up — -1 for the end-of-game bill, 1 for a lost
+# run's spawn — answered at hover time, since the bill moves as the game goes.
+func _wire_push_hover(btn: Control, owed: Callable) -> void:
+	var note := Label.new()
+	note.name = "PushNote"
+	note.visible = false
+	note.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	note.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	note.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
+	note.add_theme_color_override("font_color", Color.WHITE)
+	note.add_theme_stylebox_override("normal",
+		UITheme.flat(UITheme.DANGER.lerp(UITheme.BG, 0.25), 6, 4, 1, UITheme.DANGER))
+	note.z_index = 10
+	btn.add_child(note)
+	btn.mouse_entered.connect(func():
+		var n: int = int(owed.call())
+		var due: int = GameLoop2.pushes_due(n) if GameLoop2.game_in_play and n != 0 else 0
+		if due <= 0 or _board == null:
+			return
+		_board.show_push_preview(GameLoop2.push_targets(n))
+		note.text = push_note_text(due, n == 1)
+		note.size = Vector2(btn.size.x, 22)
+		note.position = Vector2(0, -24)
+		note.visible = true)
+	btn.mouse_exited.connect(func():
+		note.visible = false
+		if _board != null:
+			_board.show_push_preview([]))
+
+# The line over the button. A lost run only MAY spawn, so it quotes the chance.
+func push_note_text(due: int, lost_run: bool) -> String:
+	if lost_run:
+		return "⚠ %d%%: an enemy pushed into you" % roundi(GameLoop2.lost_run_spawn_chance() * 100.0)
+	return "⚠ %d %s pushed into you" % [due, "enemy" if due == 1 else "enemies"]
 
 # The tracker button's two lines: the verb, then what the press costs — a turn,
 # and the chance of a body walking on (GameLoop2.lost_run_spawn_chance).

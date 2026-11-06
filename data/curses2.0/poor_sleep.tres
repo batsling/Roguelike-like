@@ -11,4 +11,5 @@ condition = "you use a rest site to replenish health"
 penalty = [{"type": "spawn_enemy", "value": 1}]
 penalty_text = "Spawn a random enemy"
 timer = 3
+tags = ["random"]
 file = "PoorSleep"

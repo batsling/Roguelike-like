@@ -283,6 +283,22 @@ func _make_choice_card(index: int, choice: Dictionary) -> Control:
 	dash_flag.add_theme_color_override("font_color", _page.DASH_BLUE)
 	badge_row.add_child(dash_flag)
 
+	# 🗝N — HOW MANY PLACES ON THIS CARD'S OPTIMAL ROUTE A RIFT KEY WOULD OPEN A
+	# ROAD (owner, 6 Nov 2026: "make sure it's simple"). Only while a key is held,
+	# and never on a key card itself; the roads are drawn in the card's popup.
+	var key_n: int = 0 if keyed or amulet else key_road_count(slot_of(choice))
+	if key_n > 0:
+		var key_flag := Label.new()
+		key_flag.text = "🗝%d" % key_n
+		key_flag.tooltip_text = ("A Rift Key would open a road at %d place%s on this game's route to the Amulet — open the card to see where."
+			% [key_n, "" if key_n == 1 else "s"])
+		key_flag.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		key_flag.custom_minimum_size = Vector2(0, BADGE_LINE)
+		key_flag.add_theme_font_size_override("font_size", BADGE_FONT)
+		key_flag.add_theme_color_override("font_color", UITheme.GOLD)
+		key_flag.mouse_filter = Control.MOUSE_FILTER_PASS
+		badge_row.add_child(key_flag)
+
 	# HOW FAR THAT GAME IS FROM THE AMULET — under the badges, over the art.
 	#
 	# The start cards have always carried the distance; the cards after them
@@ -611,3 +627,15 @@ func _preview_entry(choice: Dictionary) -> Dictionary:
 	if not landed.is_empty() and landed.get("enemy") == choice.get("enemy"):
 		return landed
 	return {"enemy": choice.get("enemy"), "statuses": {}}
+
+
+# How many games on `slot`'s optimal route would deal a Rift Key card
+# (GameChoiceModal.key_roads), for the card's 🗝 count. 0 without a key.
+func key_road_count(slot: StringName) -> int:
+	if GameState.keys <= 0 or slot == &"":
+		return 0
+	var amulet: StringName = GameState.goal_game_id()
+	if amulet == &"":
+		return 0
+	var data: Dictionary = RunGraph.shortest_path_dag(slot, amulet)
+	return GameChoiceModal.key_roads(data, int(_page.offer_count())).size()

@@ -462,15 +462,16 @@ func opening_loot() -> Array:
 # curse is a price something specific charges for something specific — Curse of
 # the Bell is what the Calling Bell hangs on you — and a random roll that can land
 # one turns every idle button in the game into a coin flip on the rest of the run.
-# So "a random curse" means a curse with a clock on it, and a curse authored with
-# `timer: 0` is opted out of every random draw by saying so.
+# So "a random curse" means a curse the sheet's `Tag` column marks `random`
+# (CurseData2.is_random) — the owner's call per curse, not inferred from its
+# timer. The Hexer's spread (GameLoop2._deal_curses) reads the same tag.
 #
 # &"" when nothing qualifies, which the caller treats as "no curse" rather than
 # reaching for a permanent one to fill the gap.
 func roll_random_curse() -> StringName:
 	var pool: Array = []
 	for cd in Data.all_curses2():
-		if cd is CurseData2 and cd.timer > 0:
+		if cd is CurseData2 and (cd as CurseData2).is_random():
 			pool.append(cd.id)
 	if pool.is_empty():
 		return &""

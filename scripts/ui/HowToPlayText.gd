@@ -415,6 +415,11 @@ static func _ch_enemies() -> Dictionary:
 				+ "can go forward, the body in its way steps one lane up or down "
 				+ "instead, if there is a free cell. A spawner that never attacks is "
 				+ "never shoved forward, only aside."),
+			_b("When nothing can move at all, the newcomer shoves its lane INTO "
+				+ "YOU and the front body hits. Shields stop those hits — a game's "
+				+ "own Temporary Shields still stand for the pushes its end brings, "
+				+ "and expire after. Hover Completed Game or Lost a run to see who "
+				+ "that press would push into you: they are outlined in RED."),
 			_b("The strip on top of the board says the price before you pay it: "
 				+ "+N when this game ends, or none, and why."),
 			_h("Difficulty up"),

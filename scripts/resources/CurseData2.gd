@@ -54,6 +54,15 @@ static func window_text(games_left: int) -> String:
 		return "permanent"
 	return "%d %s left" % [games_left, "game" if games_left == 1 else "games"]
 
+# The sheet's `Tag` column, lower-cased. `random` is the one that means anything
+# today: ONLY a curse tagged `random` can be dealt at random — an event's
+# `add_curse random` and the Hexer's spread both draw from `is_random()`. A curse
+# without it (Curse of the Bell) arrives only when something names it.
+@export var tags: Array = []
+
+func is_random() -> bool:
+	return tags.has("random")
+
 # Art base name under res://images2.0/curses/.
 @export var file: String = ""
 

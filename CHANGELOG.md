@@ -11,6 +11,48 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **6 Nov follow-ups.** *Shields and pushes*: a body that lands on a packed
+  board shoves its lane into you, and two of those pushes skipped the shields —
+  picking a game stood its bodies up before handing over its Temporary Shields,
+  and a report expired the leftover ones before the end-of-game bodies walked
+  on. Shields now come first on a pick, and a game's leftovers expire after its
+  end-of-game pushes (`docs/turn-order.md` §1 and §3). *Who gets pushed*: when the
+  board has no room for the end-of-game bodies, hovering Completed Game or Lost a
+  run outlines in red every body that press could push into you and puts a small
+  "⚠ N enemies pushed into you" over the button (a lost run quotes its spawn
+  chance); the body's info card says it will (or may, when lanes tie) be pushed
+  into you and attack (`GameLoop2.push_targets`, planned
+  for a one-cell newcomer; `pushes_due` counts the bodies with no room). *Key roads*
+  only show while a Rift Key is held, and each offering card carries a small
+  `🗝N` — how many places on its optimal route a key would open a road
+  (`GameChoiceModal.key_roads`, shared with the popup's map).
+
+- **5 Nov list (owner's ten).** *Curses*: the `curses` sheet has a `Tag`
+  column; only a curse tagged `random` (Injury, Poor Sleep) is dealt at random —
+  an event's `add_curse random` and the Hexer's spread both ask
+  `CurseData2.is_random` (the Hexer used to deal Curse of the Bell). *Rift Keys
+  kept dealing Abyss Odyssey*: the rift rotation sorts the least-used game first,
+  so it led every keyed table; a game a key card has dealt is now not dealt at
+  another table this run (`GameState.key_rift_dealt`, saved), and a redraw of the
+  same table keeps its cards. *Key rifts on the route*: the game choice window's
+  optimal path draws a dashed gold road (and a 🗝 on the game) wherever a key
+  would deal a rift card, to the games two steps on it would lead to. *Cover →
+  route*: clicking the cover beside "▶ Play X" opens the optimal path from it.
+  *Event loot fits*: a table on an event that runs out of height shrinks the
+  pack's cells (`LootGrid.max_fit`) instead of scrolling the 3x3. *Blood
+  Donation*: the bag it pays comes up on the item modal (`GameState.offer_items`
+  → `items_offered`) rather than vanishing into the inventory with the machine.
+  *Ray*: the line draws itself out, holds and fades; its squares are no longer
+  held lit afterwards. *Hits and shields*: a blow's shield breaks or its Health
+  comes off when the number lands, and a blocked blow is thrown as a blue
+  "◆ -N"; a crash's replay winds back the shield pool the hit really came out
+  of. *Turn lag*: a crowded turn repainted the whole page once per
+  `loop_changed` inside the turn (~40 ms each, before the first frame); the page
+  now holds those while a turn resolves and repaints once — 278 ms → ~45 ms
+  with 15 bodies. *Push*: the Push verb slides the body (and the crash jolt is a
+  little longer) instead of repainting it in place. *Floor loot* can be dragged
+  from one bare square of the board to another (`GameLoop2.move_drop`).
+
 - **5 Nov fixes.** *Prepared / the bin crashed on a big piece*:
   `LootGrid._place` sorted a slot whose big piece had just been destroyed and
   asked for the first of zero cells; it now skips the stale slot until the
