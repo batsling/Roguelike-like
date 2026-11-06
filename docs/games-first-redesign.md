@@ -3791,6 +3791,7 @@ banks that decision instead, and the shops are where it is spent.
 | Starting purse | the character's **`Gold`** column (**3** across the roster) |
 | Item price | **3 + 2 a rarity rung** — Common 3, Uncommon 5, Rare 7, Legendary 9 (`ShopSystem.PRICE_PER_RUNG`; +1 a rung until 17 October 2026, when the owner widened it because Enemies nodes and Fractures stand more bodies, and so pay more gold, than the ladder was set against) |
 | …from **Fracture 2** | **+1** on every price, items and loot (`Fracture.shop_surcharge`, `docs/fracture-design.md` §3) |
+| …at **each shop after the first** | **+25%** on everything the shelf sells, compounding per shop opened and rounded to the nearest gold (`ShopSystem.MARKUP_PCT`, 6 Nov 2026 — see below) |
 | Carries between runs | **No.** A run opens on the character and nothing else. |
 
 **What a run actually earns, measured (6 Nov 2026).** `tools/measure_run_gold.gd`
@@ -3822,7 +3823,36 @@ of its goals can buy **eight or more** things, and its kills fill the shop bar
 what the player does with the run — no lost runs, no event pressed (Jungle Maze
 is the only one that pays gold), no relic taken (Old Coin and the gold
 trinkets), nothing spent — so it is the purse the bodies fill, not a ceiling.
-The prices are the owner's call and have not moved for it.
+The owner's answer (6 Nov 2026) was to keep the income and **mark each shop
+up on the one before**, by a percentage so the dearer a piece is the more it
+climbs. The 1st shop sells at the going rate, the 2nd at +25%, the 3rd at +50%,
+rounded to the nearest gold:
+
+| | 1st | 2nd | 3rd | 4th | 5th |
+|---|--:|--:|--:|--:|--:|
+| Common item | 3 | 4 | 5 | 5 | 6 |
+| Uncommon item | 5 | 6 | 8 | 9 | 10 |
+| Rare item | 7 | 9 | 11 | 12 | 14 |
+| Legendary item | 9 | 11 | 14 | 16 | 18 |
+| Common loot | 2 | 3 | 3 | 4 | 4 |
+| Uncommon loot | 3 | 4 | 5 | 5 | 6 |
+| Rare loot | 5 | 6 | 8 | 9 | 10 |
+| Legendary loot | 7 | 9 | 11 | 12 | 14 |
+| Card pack | 4 | 5 | 6 | 7 | 8 |
+
+Spread over the shops each run opens, that puts the rarity-weighted average item
+at about 5.5 for a run answering every goal (≈8–9 items for its 47 gold, down
+from ≈13 at the flat ladder) and about 4.7 for one answering half (≈6 items for
+its 27). A run that kills less opens fewer shops and keeps the low prices, which
+is why the step is the shop's place in the run rather than a flat raise.
+
+**How it is applied.** Once, when a shelf is rolled (`ShopSystem._priced`), keyed
+on that shop's place in the order shops were opened (`shop_ordinal`) — so a
+reroll at the first shop late in the run still prices it as the first. The
+Fracture surcharge is part of the going rate and is marked up with it; a
+keeper's sale and the run's cuts take their percentage off the marked-up price.
+A keeper who takes **Health** is not marked up. The shop's title says which shop
+it is: *"3rd shop this run · prices +50%"*.
 
 The scale was set for that older line: at combat-era numbers (gold started at **99**, the Challenge
 Rift paid **50**) a price is a rounding error, and every purchase is automatic.

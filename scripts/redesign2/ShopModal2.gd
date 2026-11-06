@@ -93,6 +93,9 @@ func _build() -> void:
 
 	var keeper: ShopkeeperData = ShopSystem.keeper_for(_node_id)
 	root.add_child(_header())
+	var markup: Control = _markup_line()
+	if markup != null:
+		root.add_child(markup)
 
 	# TWO SIDES: the keeper and everything you can DO here on the left (the
 	# portrait, then their options: Steal, Bomb, the reroll, a machine in the room),
@@ -166,6 +169,34 @@ func _header() -> Control:
 	title.add_theme_font_size_override("font_size", UITheme.FONT_DISPLAY)
 	title.add_theme_color_override("font_color", UITheme.SHOP_GREEN)
 	return title
+
+
+# Under the title, which shop of the run this is and what that does to its
+# prices (ShopSystem.MARKUP_PCT): "3rd shop this run · prices +50%". The first
+# shop says it is at the going rate, so the line is there to be read before a
+# second shop ever surprises anyone. A keeper who takes Health is not marked up,
+# and says nothing.
+func _markup_line() -> Control:
+	var n: int = ShopSystem.shop_ordinal(_node_id)
+	if n < 0:
+		return null
+	var keeper: ShopkeeperData = ShopSystem.keeper_at(_node_id)
+	if keeper != null and keeper.pays_in_health():
+		return null
+	var lbl := Label.new()
+	lbl.name = "Markup"
+	lbl.text = "%s shop this run · %s" % [_ordinal_word(n + 1),
+		"going rate" if n == 0 else "prices +%d%%" % (ShopSystem.MARKUP_PCT * n)]
+	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lbl.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
+	lbl.add_theme_color_override("font_color", UITheme.TEXT_DIM)
+	return lbl
+
+static func _ordinal_word(n: int) -> String:
+	var suffix: String = "th"
+	if n % 100 < 11 or n % 100 > 13:
+		suffix = {1: "st", 2: "nd", 3: "rd"}.get(n % 10, "th")
+	return "%d%s" % [n, suffix]
 
 
 # The keeper under their portrait: name, the game they come from, their line.

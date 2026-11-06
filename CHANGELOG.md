@@ -11,6 +11,20 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Each shop costs 25% more than the one before.** The owner kept the measured
+  income (a run answering every goal earns ~47 gold and opens ~5 shops, enough
+  at the flat ladder to buy nearly every item it is shown) and asked for the
+  prices to climb instead, by a percentage so a dearer piece climbs more. The
+  1st shop sells at the going rate, the 2nd +25%, the 3rd +50%, rounded: a
+  Common goes 3, 4, 5, 5, 6 across five shops, a Legendary 9, 11, 14, 16, 18,
+  Common loot 2, 3, 3, 4, 4. That is roughly 8–9 items for a full-clear run and
+  6 for a half-clear one, which opens fewer shops and keeps the low prices.
+  `ShopSystem.MARKUP_PCT`, applied once when a shelf is rolled and keyed on that
+  shop's place in the run (`shop_ordinal`), so rerolling the first shop late
+  still prices it as the first; a Health-taking keeper is not marked up. The
+  shop's title says *"2nd shop this run · prices +25%"*, the manual has the row,
+  and spec §14.1 has the full table.
+
 - **What a run earns, measured; Punch Off's game limit gone.**
   `tools/measure_run_gold.gd` plays whole runs headless through the real page
   (random start card, shortest road to the Amulet, a Dash or Scramble when the
