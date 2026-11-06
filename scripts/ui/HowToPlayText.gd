@@ -680,13 +680,6 @@ static func _ch_gold() -> Dictionary:
 				+ "Rare %d, Legendary %d" % [_item_price(2), _item_price(3)]]),
 			_row(["Loot price", "%d less than an item of its rarity, never under %d"
 				% [ShopSystem.LOOT_DISCOUNT, ShopSystem.LOOT_MIN_PRICE]]),
-			_row(["Each shop after the first", "+%d%% on everything it sells, "
-				% ShopSystem.MARKUP_PCT + "rounded — so a Common goes %d, %d, %d "
-				% [_item_price(0), ShopSystem.marked_up(_item_price(0), 1),
-					ShopSystem.marked_up(_item_price(0), 2)]
-				+ "and a Legendary %d, %d, %d across three shops"
-				% [_item_price(3), ShopSystem.marked_up(_item_price(3), 1),
-					ShopSystem.marked_up(_item_price(3), 2)]]),
 			_row(["Carries between runs", "None of it. A run opens on your "
 				+ "character and nothing else."]),
 			_p("Every game stands two enemies and a boss walks on about every "

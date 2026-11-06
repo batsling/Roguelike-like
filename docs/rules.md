@@ -357,7 +357,6 @@ Everything else the run pays you is a thing arriving — loot off a corpse, a ch
 | Boss defeated | +3 gold |
 | Item price | 3, and 2 more a rarity — Common 3, Uncommon 5, Rare 7, Legendary 9 |
 | Loot price | 2 less than an item of its rarity, never under 2 |
-| Each shop after the first | +25% on everything it sells, rounded — so a Common goes 3, 4, 5 and a Legendary 9, 11, 14 across three shops |
 | Carries between runs | None of it. A run opens on your character and nothing else. |
 
 Every game stands two enemies and a boss walks on about every other game, so a run that clears most of its goals earns about four gold a game — somewhere around thirty to fifty in a whole run. Every purchase is still supposed to cost you something.

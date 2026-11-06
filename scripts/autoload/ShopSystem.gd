@@ -241,44 +241,7 @@ func discounted(price: int) -> int:
 	@warning_ignore("integer_division")
 	return (num + den - 1) / den
 
-# THE MARKUP (the owner, 6 Nov 2026): each shop's shelf costs MARKUP_PCT percent
-# more than the one before — the 1st at the going rate, the 2nd +25%, the 3rd
-# +50% — rounded to the nearest gold. A percentage rather than a flat step so the
-# dearer a piece is, the more it climbs: a Common goes 3, 4, 5, 5, 6 across five
-# shops and a Legendary 9, 11, 14, 16, 18. Measured, a run that answers every
-# goal earns ~47 gold and opens ~5 shops (spec §14.1); at the flat ladder it
-# could buy nearly every item it was shown, and the purchase stopped being a
-# decision. A run that kills less opens fewer shops and so keeps seeing the low
-# prices, which is why this is keyed on the shop's place in the run rather than
-# on a flat raise.
-#
-# Applied once, when the shelf is ROLLED (_priced), keyed on THIS shop's place in
-# the order shops were opened (shop_ordinal) — so a reroll at the first shop late
-# in the run still prices it as the first shop. It sits under a keeper's sale and
-# the run's cuts, which take their percentage off the marked-up price, and over
-# the Fracture surcharge, which is part of the going rate. A keeper who takes
-# HEALTH is not marked up: a Health price is a different economy.
-const MARKUP_PCT := 25
-
-# This shop's place in the run: 0 for the first opened, 1 for the second… -1 for
-# a node with no shop. GameState.shops keeps insertion order, and _create_shelf
-# inserts the node before rolling its shelf.
-func shop_ordinal(game_id: StringName) -> int:
-	var i: int = 0
-	for gid in GameState.shops.keys():
-		if StringName(gid) == game_id:
-			return i
-		i += 1
-	return -1
-
-# `base` marked up for a shelf at `ordinal`, to the nearest gold (half up).
-static func marked_up(base: int, ordinal: int) -> int:
-	if ordinal <= 0:
-		return base
-	@warning_ignore("integer_division")
-	return (base * (100 + MARKUP_PCT * ordinal) + 50) / 100
-
-# What a card pack costs, before the markup, a keeper's sale and the run's cuts.
+# What a card pack costs, before a keeper's sale and the run's cuts.
 const PACK_PRICE := 4
 # How many cards a pack opens to; the player keeps one.
 const PACK_CARDS := 3
@@ -777,7 +740,7 @@ func _roll_stock(game_id: StringName, reroll_index: int, slots: int) -> Array:
 			continue
 		taken[item.id] = true
 		out.append(_priced(keeper, {"item": String(item.id), "sold": false},
-			price_for(int(item.rarity)), _item_marks(item), reroll_index == 0, game_id))
+			price_for(int(item.rarity)), _item_marks(item), reroll_index == 0))
 	return out
 
 
@@ -804,7 +767,7 @@ func _roll_loot(game_id: StringName, slots: int, first: bool) -> Array:
 		var rarity: String = String(entry.get("rarity", "Common"))
 		out.append(_priced(keeper, {"entry": entry, "sold": false},
 			loot_price_for(rarity),
-			["loot", rarity.to_lower(), String(entry.get("type", ""))], first, game_id))
+			["loot", rarity.to_lower(), String(entry.get("type", ""))], first))
 	return out
 
 # `slots` card packs: PACK_PRICE each, art Pack1-4 at random. The cards inside are
@@ -814,7 +777,7 @@ func _roll_packs(game_id: StringName, slots: int, first: bool) -> Array:
 	var out: Array = []
 	for _i in range(slots):
 		out.append(_priced(keeper, {"pack": 1 + randi() % 4, "sold": false},
-			PACK_PRICE + Fracture.shop_surcharge(), ["packs"], first, game_id))
+			PACK_PRICE + Fracture.shop_surcharge(), ["packs"], first))
 	return out
 
 # One of a keeper's loot kinds, weighted the way the drop roll weights them
@@ -841,13 +804,10 @@ func _item_marks(item: ItemData) -> Array:
 		marks.append(String(t).to_lower())
 	return marks
 
-# `row` with its price and currency set: the going rate `base`, marked up for
-# the shop's place in the run (MARKUP_PCT), then each of the keeper's sale
-# clauses whose target is `all` or one of `marks`, in order.
+# `row` with its price and currency set: the going rate `base`, then each of the
+# keeper's sale clauses whose target is `all` or one of `marks`, in order.
 func _priced(keeper: ShopkeeperData, row: Dictionary, base: int, marks: Array,
-		first: bool = true, game_id: StringName = &"") -> Dictionary:
-	if not (keeper != null and keeper.pays_in_health()):
-		base = marked_up(base, shop_ordinal(game_id))
+		first: bool = true) -> Dictionary:
 	row["price"] = sale_price(keeper, base, marks, first)
 	if row["price"] < base:
 		row["on_sale"] = true
