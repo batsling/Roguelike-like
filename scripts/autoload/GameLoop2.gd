@@ -143,7 +143,7 @@ const BASE_GRID_ROWS: int = 4     # rows -> up to grid_rows() enemies abreast
 # GOLD (§14) — what a defeated enemy is worth. A normal enemy pays 1 and a boss
 # 3, which sets the whole economy's scale: a run is 6 to 12 games, so a player
 # clearing most of their goals earns somewhere around 8 to 15 gold, against shop
-# prices of 3 to 6. That is two to four purchases a run — few enough that each is
+# prices of 3 to 9. That is two to four purchases a run — few enough that each is
 # a decision, and small enough that every number on the HUD stays one digit.
 const GOLD_PER_ENEMY: int = 1
 const GOLD_PER_BOSS: int = 3

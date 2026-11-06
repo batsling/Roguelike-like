@@ -11,6 +11,20 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Event gold checked against the economy.** Every number in the sixteen
+  events was priced against the shop (items 3/5/7/9, loot two under, never below
+  2) and against each other. The owner's 24 Oct upload had already doubled the
+  pool's gold to follow the 17 Oct ladder — Arcade Room, Woman in Blue, both
+  Ranwids, Morphic Grove, Jungle Maze — and **Whispering Hollow** was the one it
+  missed: 2 Gold still bought two pieces of loot, half the shop's floor and half
+  the Woman in Blue's bottle. It is 4 now (`gold >=4`, and the button carries
+  `needs gold 4` like the pool's other gold buttons). The rest already agree: 4
+  Gold a random relic, 2 a piece of loot or a potion, about one Gold a point of
+  Health wherever the two meet, 2 Max Health or a Key for a Small Chest.
+  `docs/event-sheet-authoring.md` §1.2 is that table, and the worked examples
+  that still quoted the pre-doubling prices (§14, §16, §17) say what the sheet
+  says.
+
 - **6 Nov follow-ups.** *Shields and pushes*: a body that lands on a packed
   board shoves its lane into you, and two of those pushes skipped the shields —
   picking a game stood its bodies up before handing over its Temporary Shields,
