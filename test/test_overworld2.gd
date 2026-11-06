@@ -10535,6 +10535,34 @@ func _buy_from_the_woman(index: int):
 	await get_tree().process_frame
 	return modal
 
+# A GAME'S SHIELDS ARE UP BEFORE ITS BODIES WALK ON (owner, 6 Nov 2026: bodies
+# "pushed into the player" were "ignoring the shields"). On a packed board an
+# arriving body crashes its lane into you (§7.3a); that crash used to land before
+# the game had handed over its shields, so it went straight to Health.
+func test_a_crash_on_arrival_meets_the_new_games_shields() -> void:
+	Page.open_at_first_offering(_ui)
+	var dummy := GoalEnemyData.new()
+	dummy.id = &"packing_dummy"
+	dummy.damage = 1
+	for row in range(GameLoop2.grid_rows()):
+		for c in range(1, GameLoop2.grid_cols() + 1):
+			GameLoop2.summon(dummy, Vector2i(c, row))
+	GameLoop2.take_crashes()
+	GameState.shields = 0
+	GameState.bonus_shields = 0
+	GameState.max_hp = 100
+	GameState.hp = 100
+	var hits: Array = []
+	var note := func(dmg: int, blocked: int): hits.append([dmg, blocked])
+	GameLoop2.player_hit.connect(note)
+	_ui.pick(0)
+	GameLoop2.player_hit.disconnect(note)
+	if hits.is_empty():
+		pending("nothing crashed on this arrival")
+		return
+	assert_gt(int(hits[0][1]), 0, "the first crash hit landed on a shield: %s" % str(hits))
+	_ui._board.clear_fx()
+
 # A RELIC A PAYOUT HANDS OVER IS OFFERED, not slipped in: the Blood Donation
 # Machine's bag comes up on the item modal (owner, 5 Nov 2026), and is the
 # player's once they take it.

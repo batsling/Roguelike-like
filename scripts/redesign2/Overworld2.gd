@@ -1537,6 +1537,16 @@ func _begin_game(game: GameData, enemy: GoalEnemyData, tier: int,
 	# The run's FIRST game hands over its genre's kit (GameState.START_GEAR) —
 	# from the panel or, on a custom run with none, from whatever card opened it.
 	_grant_start_gear_once(game)
+	# Selecting the game hands over your ARMOUR for it (§3): 3 shields, 5 for a
+	# Traditional roguelike, plus whatever "when a game is selected" items add.
+	# BEFORE THE BOARD IS SET UP, not after (owner, 6 Nov 2026: bodies "pushed into
+	# the player" were "ignoring the shields"): a body that walks on with no room
+	# shoves its lane into you (§7.3a), and that crash used to land before this
+	# game's shields existed, so it went straight to Health.
+	var granted: int = GameLoop2.grant_selection_shields(game)
+	if log_shields:
+		GameLog.add("%s — %s, one hit stopped each." % [
+			game.display_name, GameState.temp_shields_text(granted)], SHIELD_BLUE)
 	var tier_before: int = _current_tier()
 	var board_before := Vector2i(GameLoop2.grid_cols(), GameLoop2.grid_rows())
 	_commit_board(game, enemy, tier)
@@ -1544,12 +1554,6 @@ func _begin_game(game: GameData, enemy: GoalEnemyData, tier: int,
 		_announce_difficulty_step(tier_before, board_before)
 	_log_second_body()
 	_remind_twitch_category(game)
-	# Selecting the game hands over your ARMOUR for it (§3): 3 shields, 5 for a
-	# Traditional roguelike, plus whatever "when a game is selected" items add.
-	var granted: int = GameLoop2.grant_selection_shields(game)
-	if log_shields:
-		GameLog.add("%s — %s, one hit stopped each." % [
-			game.display_name, GameState.temp_shields_text(granted)], SHIELD_BLUE)
 
 # STARTING GEAR (GameState.START_GEAR), once per run. The loot goes straight into
 # the pack; whatever does not fit is asked about on the drop screen rather than

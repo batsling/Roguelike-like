@@ -1494,11 +1494,12 @@ func _ladder_cfg() -> Dictionary:
 # offering has slots, the only time a key card is dealt (Overworld2.
 # _add_rift_key_cards) — each led to a game two layers further on, which is the
 # same rule `rift_key_dests` holds the real cards to: two hops away AND two hops
-# nearer the Amulet. Shown whether or not a key is held, since knowing where one
-# would pay is half the reason to keep one. Not on a key card's own route.
+# nearer the Amulet. ONLY WHILE A KEY IS HELD (owner, 6 Nov 2026) — without one
+# there is no road, and drawing it would be drawing a promise. Not on a key card's
+# own route.
 func _key_rifts_on(data: Dictionary) -> Dictionary:
 	var out: Dictionary = {}
-	if not Settings.rifts_enabled or _key_dest() != &"":
+	if not Settings.rifts_enabled or _key_dest() != &"" or GameState.keys <= 0:
 		return out
 	var host: Node = _layer.get_parent() if _layer != null else null
 	var slots: int = int(host.call("offer_count")) \

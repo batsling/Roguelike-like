@@ -670,3 +670,33 @@ func test_the_card_puts_the_stats_under_the_cover_and_the_logo_beside() -> void:
 	await get_tree().process_frame
 	var logo: LogoProgress = logos[0]
 	assert_gt(logo.size.x, float(GameChoiceModal.COVER.x), "and given the rest of the row")
+
+
+# --- possible Rift Key roads on the route (owner, 5–6 Nov 2026) ------------
+
+# Only while a key is held: without one there is no road to draw.
+func test_key_roads_are_drawn_only_while_a_key_is_held() -> void:
+	GameState.keys = 0
+	for i in range(_ui._choices.size()):
+		var modal = _ui.open_choice(i)
+		assert_true((modal._ladder_cfg()["key_rifts"] as Dictionary).is_empty(),
+			"no key, no key roads on card %d" % i)
+		modal._close()
+		await wait_frames(2)
+	GameState.keys = 1
+	var found := false
+	for i in range(_ui._choices.size()):
+		var modal = _ui.open_choice(i)
+		var roads: Dictionary = modal._ladder_cfg()["key_rifts"]
+		for from_id in roads:
+			found = true
+			for dest in roads[from_id]:
+				assert_true(RunGraph.rift_key_destinations(from_id).has(dest),
+					"%s is two hops from %s" % [dest, from_id])
+		modal._close()
+		await wait_frames(2)
+	GameState.keys = 0
+	if not found:
+		pending("no route from this offering passes a game with an empty slot")
+		return
+	assert_true(found)

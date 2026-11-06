@@ -72,7 +72,12 @@ _run_trigger(item, trig, ctx_extras, loot)
    bodies walk on (`DropQueue.clear_floor`).
 1. The game's and the character's **rank bars** are noted, for the end screen.
 2. **Starting gear**, first game of the run only.
-3. **The board is set up** (`GameLoop2.choose_game`):
+3. **Shields**: 3 Temporary Shields, 5 for a Traditional roguelike, fewer on some
+   Fractures. *Then* signal `game_selected` → items (Anchor's +1 lands on top), the
+   speedrun clock starts, the overlay updates. Before the board, so a body that
+   walks on into a full board and crashes into you (§7.3a) meets this game's
+   shields rather than going straight to Health.
+4. **The board is set up** (`GameLoop2.choose_game`):
    - the last game's lost runs, ticks and records are wiped;
    - a **spawn event** is counted — the board can grow and the tier can step here;
    - board: **Undying** bodies from last game stand back up, first;
@@ -90,19 +95,16 @@ _run_trigger(item, trig, ctx_extras, loot)
      first, dealt by `start_run` before the start was picked. A Scramble does
      not enter it. The popup
      waits for the page's next quiet moment.
-4. The **difficulty step** is announced, if step 3 crossed one.
-5. **Shields**: 3 Temporary Shields, 5 for a Traditional roguelike, fewer on some
-   Fractures. *Then* signal `game_selected` → items (Anchor's +1 lands on top), the
-   speedrun clock starts, the overlay updates.
+5. The **difficulty step** is announced, if step 4 crossed one.
 
 ```order
 scripts/redesign2/Overworld2.gd :: _begin_game
 _drops.clear_floor()
 GameLoop2.rank_start =
 _grant_start_gear_once(game)
+GameLoop2.grant_selection_shields(game)
 _commit_board(game, enemy, tier)
 _announce_difficulty_step(tier_before, board_before)
-GameLoop2.grant_selection_shields(game)
 ```
 
 ```order
