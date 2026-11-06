@@ -1669,6 +1669,11 @@ func refresh() -> void:
 	_armed = {}
 	for inst in armed_targets():
 		_armed[int(inst)] = true
+	# …and who the end of this game would push into the player (red outline).
+	_pushing = {}
+	if GameLoop2.game_in_play:
+		for inst in GameLoop2.push_targets():
+			_pushing[int(inst)] = true
 	# Detaching the body the mouse is over fires its own mouse_exited, and that
 	# handler reorders the layer being torn down. See _repainting.
 	_repainting = true
@@ -2065,10 +2070,16 @@ const LIT_RING := Color(1.0, 1.0, 1.0, 0.95)
 # ring and the hover cue all still read off the fill and the parts of the frame
 # the art doesn't cover.
 func _style_enemy_cell(frames: Array, accent: Color, selected: bool,
-		hovered: bool, aimable: bool = false) -> void:
+		hovered: bool, aimable: bool = false, pushing: bool = false) -> void:
 	var border: Color = accent
 	var width: int = 2
 	var fill: Color = UITheme.PANEL
+	# PUSHED INTO YOU WHEN THIS GAME ENDS (GameLoop2.push_targets): the board has
+	# no room for the end-of-game bodies, so a newcomer shoves this one's lane
+	# forward and it hits. A red outline, under any aim or selection drawn below.
+	if pushing:
+		border = UITheme.DANGER
+		width = 3
 	# ARMED. A verb is waiting to be pointed at something, and this body is one of
 	# the things it could be pointed at — so the board says so, instead of a line of
 	# toolbar text saying "click an enemy". The bodies that are NOT targets (the
@@ -2258,6 +2269,8 @@ func _refresh_aim_cells() -> void:
 # over the picker and under nothing, ignoring the mouse so the click still lands on
 # the button beneath.
 var _swing_preview: Array = []
+# Bodies the end of this game would push into the player — refreshed with the board.
+var _pushing: Dictionary = {}
 
 func _show_swing_preview(cell: Vector2i) -> void:
 	_clear_swing_preview()
@@ -2704,7 +2717,7 @@ func _add_enemy_node(entry: Dictionary) -> Control:
 	var repaint := func() -> void:
 		_style_enemy_cell(frames, accent,
 			inst == push_target or (body_pick != null and body_pick.is_selected(inst)),
-			_is_lit(inst), _armed.has(inst))
+			_is_lit(inst), _armed.has(inst), _pushing.has(inst))
 		for r in rings:
 			if is_instance_valid(r):
 				r.visible = _is_lit(inst)

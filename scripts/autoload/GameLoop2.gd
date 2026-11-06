@@ -2048,6 +2048,35 @@ func pushes_due() -> int:
 			free -= 1
 	return maxi(0, owed - maxi(0, free))
 
+# WHICH BODIES THOSE PUSHES WOULD DRIVE INTO YOU (owner, 6 Nov 2026: "have the
+# enemy get a red outline"): the front-line body of every lane `_crash_into_player`
+# could pick — the shortest chain, ties all counted, since it picks among them at
+# random — planned for a one-cell newcomer, because the real ones are not rolled
+# until the game ends. A stunned body sits the push out and is left off. Empty
+# when nothing is due to push. `_crash_chain` only reads the board.
+func push_targets() -> Array:
+	if pushes_due() <= 0:
+		return []
+	var probe := GoalEnemyData.new()
+	var col: int = spawn_col_for(probe)
+	var best_n: int = 1 << 30
+	var fronts: Array = []
+	for row in range(grid_rows()):
+		var plan: Dictionary = _crash_chain(probe, row, col, 0)
+		if plan.is_empty():
+			continue
+		var n: int = (plan["chain"] as Array).size()
+		if n < best_n:
+			best_n = n
+			fronts = []
+		if n == best_n:
+			for inst in plan["front"]:
+				if not fronts.has(int(inst)):
+					fronts.append(int(inst))
+	return fronts.filter(func(inst):
+		var e: Dictionary = entry_for(int(inst))
+		return not e.is_empty() and not is_stunned(e))
+
 # Stand `want` end-of-game bodies on the board, already priced. Returns how many
 # actually landed.
 #

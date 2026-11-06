@@ -146,6 +146,16 @@ func setup(entry: Dictionary, col: int, position_note: String = "") -> void:
 			"absorbs the next %d damage" % shield, Color(0.62, 0.78, 0.95)))
 	stat_col.add_child(_stat_row("◎", "Position",
 		position_note if position_note != "" else _position_text(entry, col), accent))
+	# PUSHED INTO YOU WHEN THIS GAME ENDS (GameLoop2.push_targets) — the reason its
+	# outline on the board is red. "May" when the push could land on another lane
+	# just as short, since the game picks among those at random.
+	var pushed: Array = GameLoop2.push_targets() if GameLoop2.game_in_play else []
+	if pushed.has(int(entry.get("instance", 0))):
+		var sure: bool = pushed.size() == 1
+		stat_col.add_child(_stat_row("⚠", "Pushed",
+			"%s pushed into you when this game ends, and attacks for %d" % [
+				"will be" if sure else "may be", GameLoop2.enemy_damage(entry)],
+			UITheme.DANGER))
 	if e.footprint_rows() > 1 or e.footprint_cols() > 1:
 		stat_col.add_child(_stat_row("▦", "Size", _size_text(e), UITheme.TEXT_DIM))
 	# WHICH BODY OF ITSELF THIS IS (§7.6). Only for a boss authored with phases —

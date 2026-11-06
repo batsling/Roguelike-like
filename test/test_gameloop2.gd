@@ -2878,6 +2878,18 @@ func test_leftover_shields_stop_the_end_of_game_push() -> void:
 	assert_eq(GameState.shields, 0, "and what was left expired after it")
 	assert_true(res.has("shields_expired"))
 
+# The bodies a push would drive into you are the FRONT of the shortest lanes —
+# what the board outlines in red and the info card warns about.
+func test_push_targets_are_the_front_line_a_push_would_reach() -> void:
+	_game_on_a_packed_board()
+	var targets: Array = GameLoop2.push_targets()
+	assert_gt(targets.size(), 0, "a packed board has someone to push into you")
+	for inst in targets:
+		assert_eq(Fixtures.col_of(int(inst)), 1, "each one stands on the front line")
+	GameLoop2.stun(int(targets[0]), 1)
+	assert_false(GameLoop2.push_targets().has(int(targets[0])),
+		"a stunned body sits the push out, so it is not marked")
+
 func test_pushes_due_is_zero_on_a_board_with_room() -> void:
 	GameState.current_game_id = &""
 	for g in Data.all_games():
@@ -2886,6 +2898,7 @@ func test_pushes_due_is_zero_on_a_board_with_room() -> void:
 			break
 	Fixtures.choose_solo(_enemy(0))
 	assert_eq(GameLoop2.pushes_due(), 0, "an emptyish board has room for the end-of-game bodies")
+	assert_true(GameLoop2.push_targets().is_empty(), "so nobody is marked")
 
 func test_shields_stop_a_crash_hit_like_any_other() -> void:
 	_pack_to_the_front(4)

@@ -493,7 +493,6 @@ var _escape_hint: Label           # the small line under it: what would open it
 var _np_box: VBoxContainer
 var _attempt_wrap: Control
 var _done_btn: Button
-var _push_warn: Label             # "X enemies pushing", under Completed Game
 # The board itself (§grid): the player on the left, a grid_cols() x grid_rows() grid on
 # the right where enemies close in one column per game beaten (MMBN-style). It's a
 # BattlefieldView — a view over GameLoop2 that reports Push / Bomb / inspect back
@@ -6071,10 +6070,6 @@ func _refresh_stage() -> void:
 	_np_box.visible = playing
 	_attempt_wrap.visible = playing
 	_done_btn.visible = playing
-	var pushing: int = GameLoop2.pushes_due() if playing else 0
-	_push_warn.visible = pushing > 0
-	if pushing > 0:
-		_push_warn.text = "⚠ %d %s pushing" % [pushing, "enemy" if pushing == 1 else "enemies"]
 
 # The row above the offering. Dash and Scramble used to keep their buttons here
 # AND their counts on the HUD; they are one chip apiece on the stat row under the
@@ -8020,17 +8015,6 @@ func _build_ui() -> void:
 	# ones this button is the last chance to answer.
 	done.pressed.connect(confirm_completed_game)
 	_play_panel.add_child(done)
-	# "X ENEMIES PUSHING" (owner, 6 Nov 2026): the end-of-game bodies that will
-	# find no room and shove their lanes into you when this is pressed
-	# (GameLoop2.pushes_due). Small, under the button it is about; hidden at 0.
-	_push_warn = Label.new()
-	_push_warn.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_push_warn.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
-	_push_warn.add_theme_color_override("font_color", UITheme.DANGER)
-	_push_warn.tooltip_text = "Completing this game stands its end-of-game enemies up. The board has no room for these, so each shoves its lane into you and the front body hits."
-	_push_warn.mouse_filter = Control.MOUSE_FILTER_PASS
-	_push_warn.visible = false
-	_play_panel.add_child(_push_warn)
 
 	# The way out, directly under the way through — they resolve the same step, so
 	# they belong together. Deliberately quieter than Completed Game: this is the

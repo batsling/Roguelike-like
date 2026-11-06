@@ -418,8 +418,8 @@ static func _ch_enemies() -> Dictionary:
 			_b("When nothing can move at all, the newcomer shoves its lane INTO "
 				+ "YOU and the front body hits. Shields stop those hits — a game's "
 				+ "own Temporary Shields still stand for the pushes its end brings, "
-				+ "and expire after. \"⚠ N enemies pushing\" under Completed Game "
-				+ "says how many to expect."),
+				+ "and expire after. A body with a RED OUTLINE is one the end of "
+				+ "this game would push into you; its card says so."),
 			_b("The strip on top of the board says the price before you pay it: "
 				+ "+N when this game ends, or none, and why."),
 			_h("Difficulty up"),
