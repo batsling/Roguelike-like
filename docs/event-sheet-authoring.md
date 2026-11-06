@@ -909,8 +909,13 @@ category rather than as `gain_scroll` — a "standard combat reward" is whatever
 loot happens to be, so the cell rolls across all four kinds and widened on
 its own as each arrived — potions, then cards — without any event row being touched.
 
-`Requirement: games >= 6` carries the original's "Floor 6 or later" — depth,
-which this run measures in games played rather than floors.
+**No Requirement.** It was authored `games >= 6`, carrying the original's
+"Floor 6 or later" as games played. That was set when a run was 6–12 games; at
+5–9, with no event after the Amulet, it let Punch Off appear only in runs of
+seven games or more and only for their last few events, so the owner took it off
+(6 Nov 2026, `tools/oneshots/_events_punch_off_no_games_gate.py`). The `mecha`
+gate below still stands — it comes from the event's own `play_game`, not from
+this column.
 
 ### What it needed from the format: nothing
 

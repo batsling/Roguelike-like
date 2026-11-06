@@ -588,8 +588,8 @@ func test_an_event_is_not_staged_when_its_tag_has_no_games() -> void:
 	if node == &"":
 		pending("the run did not reach this case (node == &'')")
 		return
-	# Punch Off also carries `games >= 6`; satisfy it, or this passes for the
-	# wrong reason and would keep passing if the tag gate were deleted.
+	# Punch Off carried a `games >= 6` Requirement until 6 Nov 2026. It has none
+	# now; this stays so the test can't pass for the wrong reason if one returns.
 	GameState.games_played = 10
 	var ev: EventData2 = _event(PUNCH)
 	var fight: Dictionary = _choice(ev, "i_can_take_them")
