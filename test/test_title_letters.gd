@@ -563,3 +563,27 @@ func test_the_bats_are_drawn_in_from_just_outside_the_blue() -> void:
 	swarm.step(0.1)
 	assert_ne(swarm.list[0], fresh, "then dealt again outside")
 	assert_gt(swarm.list[0]["k"], 1.0, "outside")
+
+# A PIXEL-ART LOGO IS DRAWN WITH SHARP PIXELS (the owner, 8 Nov 2026: Dungeon Crawl
+# Stone Soup's letters were smeared). tools/logo_letters.py's "pixel" option cuts
+# each logo pixel as an exact block and marks the piece `pixel`; the title draws
+# a `pixel` piece with nearest filtering.
+func test_dungeon_crawl_stone_soups_letters_are_pixel_art() -> void:
+	var p := TitleLetters.pool()
+	var only := {}
+	var n := 0
+	for f in p:
+		var keep: Array = (p[f] as Array).filter(func(e): return e["game"] == "dungeon_crawl_stone_soup")
+		for e in keep:
+			n += 1
+			assert_true(bool(e.get("pixel", false)), "%s is marked pixel" % e["key"])
+		if not keep.is_empty():
+			only[f] = keep
+	assert_gt(n, 0, "the logo has letters cut")
+	assert_true(TitleLetters.is_pixel_game(&"dungeon_crawl_stone_soup"))
+	assert_false(TitleLetters.is_pixel_game(&"hades"), "a painted logo is not")
+	var w := TitleLetters.new()
+	w._lay_out(TitleLetters.pick("Dungeon", RandomNumberGenerator.new(), only), [], 84.0, "Dungeon")
+	for pl in w.placed:
+		assert_eq(pl.rect.texture_filter, CanvasItem.TEXTURE_FILTER_NEAREST, "drawn with sharp pixels")
+	w.free()

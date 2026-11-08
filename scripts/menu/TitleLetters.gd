@@ -252,6 +252,16 @@ static func pick_decor(rng: RandomNumberGenerator, from: Dictionary = {}, subtit
 		return [{}, pick_]
 	return [pick_, right[pick_["stem"]]] if right.has(pick_["stem"]) else [pick_]
 
+# Whether `game`'s letters are pixel art (the index's `pixel`, set by
+# tools/logo_letters.py's "pixel" option and by rogue_letters.py): its pieces and
+# its logo are drawn with sharp pixels wherever they are shown.
+static func is_pixel_game(game: StringName) -> bool:
+	for folder in pool():
+		for e in pool()[folder]:
+			if String(e.get("game", "")) == String(game) and bool(e.get("pixel", false)):
+				return true
+	return false
+
 static func texture(path: String) -> Texture2D:
 	if ResourceLoader.exists(path):
 		return load(path)

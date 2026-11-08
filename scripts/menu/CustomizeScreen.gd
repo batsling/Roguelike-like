@@ -253,7 +253,7 @@ func _build_letters() -> void:
 				func() -> void:
 					if not Cosmetics.set_letter(key, not on):
 						_refused(_piece_name(e))
-					_refresh_keep_scroll(), LETTER_TILE)
+					_refresh_keep_scroll(), LETTER_TILE, bool(e.get("pixel", false)))
 			if not (on and game_on):
 				t.modulate = Color(1, 1, 1, 0.35)
 			row.add_child(t)
@@ -314,8 +314,10 @@ func _look_tip(e: Dictionary, locked: bool) -> String:
 		return "%s — locked\nA rank-up reward from %s, or a character from it." % [name, game]
 	return "%s — from %s" % [name, game]
 
+# `pixel` draws the picture with sharp pixels however it is scaled (a title letter
+# the index marks `pixel`: Rogue's, Dungeon Crawl Stone Soup's).
 func _tile(tex: Texture2D, glyph: String, selected: bool, locked: bool, tip: String,
-		on_press: Callable, side: int = TILE) -> Button:
+		on_press: Callable, side: int = TILE, pixel: bool = false) -> Button:
 	var b := Button.new()
 	b.custom_minimum_size = Vector2(side, side)
 	b.tooltip_text = tip
@@ -330,7 +332,7 @@ func _tile(tex: Texture2D, glyph: String, selected: bool, locked: bool, tip: Str
 		b.add_theme_font_size_override("font_size", UITheme.FONT_TITLE)
 		return b
 	if tex != null:
-		var tr := UITheme.crisp_tex(tex, side - 8)
+		var tr := UITheme.crisp_tex(tex, side - 8, pixel)
 		tr.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		tr.offset_left = 4
 		tr.offset_top = 4

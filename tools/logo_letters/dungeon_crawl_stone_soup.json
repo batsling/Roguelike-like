@@ -11,5 +11,5 @@
   "adopt_strays": false,
   "smooth": false,
   "shadow": false,
-  "cut": {"reach": 4, "shared_outline": true, "scale": 3, "smooth_scale": true}
+  "cut": {"reach": 4, "shared_outline": true, "scale": 3, "pixel": true}
 }

@@ -220,6 +220,10 @@ so Godot never imports the source), is JSON:
                   share fade from one into the other, not stop at a seam;
                   "smooth_scale": true scales the cut as it is, smoothly
                   (a painted logo kept with its soft shadow);
+                  "pixel": true — a PIXEL-ART logo (Dungeon Crawl Stone
+                  Soup): the cut is scaled as it is, every logo pixel an
+                  exact n x n block, and the index marks the piece `pixel`
+                  so the game draws it with sharp pixels (TitleLetters);
                   "pixel_outline": {"colour", "width"} draws an even ring of
                   whole pixels round the face;
                   "outline_colours": [[r, g, b], ...] keeps only those colours
@@ -1638,7 +1642,11 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
         dest.parent.mkdir(parents=True, exist_ok=True)
         img = Image.fromarray(out[y0:y1, x0:x1])
         scale = int((cut or {}).get("scale", 1))
-        if scale > 1 and (cut or {}).get("smooth_scale"):
+        if scale > 1 and (cut or {}).get("pixel"):
+            # pixel art: each logo pixel becomes an exact block, nothing blended
+            img = Image.fromarray(out[y0:y1, x0:x1].clip(0, 255).astype(np.uint8)).resize(
+                ((x1 - x0) * scale, (y1 - y0) * scale), Image.NEAREST)
+        elif scale > 1 and (cut or {}).get("smooth_scale"):
             # a painted logo with a soft shadow (Slay the Spire 2): scaled as
             # it is, smoothly, colour weighted by alpha so edges stay clean
             crop = out[y0:y1, x0:x1].astype(float)
@@ -1679,7 +1687,7 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
             base_img = img.convert("RGBA")
             base_img.alpha_composite(Image.fromarray(top))
             img = base_img
-        if scale > 1:
+        if scale > 1 and not (cut or {}).get("pixel"):
             # the redraw can leave a pixel or two of anti-aliasing alone at a
             # corner: anything that small and apart from the letter goes
             px = np.array(img)
@@ -1732,6 +1740,9 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
             # title draws it at the x-height in a lowercase place, and lets a
             # g or y hang below the line (TitleLetters._size)
             index[str(dest_.relative_to(OUT_DIR))]["form"] = "lower"
+        if (cfg.get("cut") or {}).get("pixel"):
+            # drawn with sharp pixels, as Rogue's own letters are
+            index[str(dest_.relative_to(OUT_DIR))]["pixel"] = True
         if n_ in line_centers:
             # what sits on the line's middle, when it is not the box's middle
             index[str(dest_.relative_to(OUT_DIR))]["line_center"] = round(line_centers[n_], 4)
