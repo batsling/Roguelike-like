@@ -237,16 +237,22 @@ func _layout() -> void:
 			UITheme.FONT_DISPLAY if cup >= 30.0 else (
 			UITheme.FONT_TITLE if cup >= 24.0 else UITheme.FONT_HEAD))
 		_trophy.add_theme_font_size_override("font_size", cup_font)
-		_trophy.position = trophy_center() - Vector2(cup, cup) * 0.5
+		# Sized FIRST and centred on what it really took: a glyph taller than the
+		# box grows the label downward, and centring on the asked-for box left the
+		# cup low and the number on its rim.
 		_trophy.size = Vector2(cup, cup)
+		_trophy.position = trophy_center() - _trophy.size * 0.5
 		if _trophy_level != null:
 			# On the bowl: the cup's own box, nudged up off the stem.
 			_trophy_level.add_theme_font_size_override("font_size",
 				UITheme.FONT_BODY if cup >= 30.0 else UITheme.FONT_TINY)
 			_trophy_level.add_theme_constant_override("outline_size", 4)
 			_trophy_level.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-			_trophy_level.position = _trophy.position - Vector2(0, cup * 0.12)
-			_trophy_level.size = Vector2(cup, cup)
+			# Lifted off the stem by a share of the GLYPH, not the box: the cup is
+			# drawn smaller than its box on the grids, and a box-sized nudge put the
+			# number on the rim there instead of in the bowl.
+			_trophy_level.size = _trophy.size
+			_trophy_level.position = _trophy.position - Vector2(0, cup_font * 0.18)
 	queue_redraw()
 
 func _draw() -> void:
