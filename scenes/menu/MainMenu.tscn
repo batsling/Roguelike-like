@@ -66,6 +66,12 @@ layout_mode = 2
 text = "📖 How to Play"
 custom_minimum_size = Vector2(225, 48)
 
+[node name="CustomizeBtn" type="Button" parent="TopControls"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "✦ Customization"
+custom_minimum_size = Vector2(225, 48)
+
 [node name="Below" type="VBoxContainer" parent="."]
 layout_mode = 1
 anchors_preset = -1

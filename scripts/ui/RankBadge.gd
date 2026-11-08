@@ -136,15 +136,24 @@ func _ready() -> void:
 		if GameStats.amulet_wins(game_id) > 0:
 			_trophy = _make_label("🏆", UITheme.GOLD)
 			_trophy.tooltip_text = "Beaten as the Amulet"
+			_wear_trophy(GameStats.amulet_best(game_id))
 			_add_trophy_level(GameStats.amulet_best(game_id), "Beaten as the Amulet")
 	elif awards and character_id != &"" and GameStats.fracture_best(character_id) >= 0:
 		# A CHARACTER'S 🏆 (docs/fracture-design.md §5): a run won as them, with
 		# the highest Fracture it was won at.
 		_trophy = _make_label("🏆", UITheme.GOLD)
 		_trophy.tooltip_text = "Won a run as this character"
+		_wear_trophy(GameStats.fracture_best(character_id))
 		_add_trophy_level(GameStats.fracture_best(character_id), "Won a run")
 	resized.connect(_layout)
 	_layout()
+
+# A WORN DIFFICULTY ICON stands in for the cup (Cosmetics.apply_glyph, run by the
+# tree watch): its picture is picked by the trophy's own level, and the number is
+# this badge's own `_trophy_level`, drawn over it.
+func _wear_trophy(level: int) -> void:
+	_trophy.set_meta("glyph_level", maxi(level, 0))
+	_trophy.set_meta("glyph_number", false)
 
 # THE NUMBER ON A TROPHY: the highest Fracture it was earned at, in the
 # Fracture's own colour, written ON the cup, and the cup on the art's top-right

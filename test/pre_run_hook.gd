@@ -36,3 +36,6 @@ func run() -> void:
 	# shares user:// with the real game: draw into a scratch file, from nothing.
 	TitleUnlocks.path_override = "user://test_title_letters.json"
 	TitleUnlocks.reset_for_tests()
+	# Costumes and icons (Customization) are drawn the same way, into a scratch file.
+	Cosmetics.path_override = "user://test_customization.json"
+	Cosmetics.reset_for_tests()

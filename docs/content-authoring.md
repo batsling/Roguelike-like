@@ -57,6 +57,14 @@ To add or replace art:
 > (`images/items/`, `images/characters/`) went with its data on 25 Oct 2026, and
 > the old HTML build with it.
 
+### Costumes and icons
+
+Costumes go in `images2.0/characters/Costumes Icon|Full|Both/` as
+`<Character>_<Costume>.png`, and key, bomb and difficulty icons go in
+`images2.0/icons/Keys|Bombs|Difficulties/` as `<Name>_<Game>.png`. Then run
+`python3 tools/build_cosmetics_index.py`. Each one is a rank-up reward from its
+game; `docs/customization.md` §2 has the naming rules and the overrides.
+
 ### Title letters (cut from real logos)
 
 **Rogue's letters are the ones you start with; every logo letter is earned.**
@@ -64,10 +72,15 @@ To add or replace art:
 Rogue was played in (Px437 IBM VGA 8x16, CC BY-SA 4.0, kept with its licence in
 `fonts/`, where the UI's headings and buttons use it too) into `<piece>/rogue.png` (`rogue__lower.png` for a letter's
 lower case). Their index entries carry `case` (the title matches the text's) and
-`pixel` (drawn NEAREST), and their box, down, is the font's cap band. A piece
+`pixel` (drawn NEAREST), and their box, down, is the font's cap band. A logo
+that is pixel art gets the same flag from `tools/logo_letters.py`: put
+`"pixel": true` in its config's `cut`, next to `scale`. Each logo pixel is then
+cut as an exact block (no smoothing), and the title, the game page's logo and the
+Customization tiles draw it with sharp pixels. Dungeon Crawl Stone Soup is the
+first; its letters were cut with `smooth_scale` and came out smeared. A piece
 that is not a letter or digit is filed under its name in `TitleLetters.PUNCT`
 (the script carries the same map). A cut letter joins the title once a rank pays
-it: each game or character rank is a radio song or a title letter, 50/50
+it: each game or character rank is a radio song, a title letter or a look (`docs/customization.md`)
 (`scripts/runtime/RankRewards.gd`); a game's ranks draw its own logo's letters, a
 character's any logo's, and the draws are kept per profile by the `TitleUnlocks`
 autoload (tests `test_title_unlocks.gd`). A decoration pair is earned as one,

@@ -280,7 +280,7 @@ func _hero_texture() -> Texture2D:
 		var ch: CharacterData = Data.get_character2(id)
 		_hero_tex = null
 		if ch != null:
-			_hero_tex = ch.portrait if ch.portrait != null else ch.icon
+			_hero_tex = ch.shown_portrait()
 	return _hero_tex
 
 # The grid cell edge, in px. It is NOT a constant, because the board is not a
@@ -1451,6 +1451,7 @@ func refresh_toolbar() -> void:
 	# more: the promise is the general one, and the per-body reading is on the body
 	# (EnemyInfoCard), where the player is looking when they aim.
 	bomb_btn.text = ("✕  Cancel" if bomb_mode else "✸  Bomb (%d)" % GameState.bombs)
+	Cosmetics.apply_glyph(bomb_btn)   # a worn bomb icon in place of the ✸
 	bomb_btn.disabled = not bomb_mode and GameState.bombs <= 0
 	if bomb_mode:
 		bomb_btn.tooltip_text = "Put the Bomb away — nothing has been spent yet."

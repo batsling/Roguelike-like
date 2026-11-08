@@ -139,7 +139,7 @@ static func goal_tile(host: Node, g: GameData, kind: String, row: Dictionary,
 		"character":
 			var ch: CharacterData = Data.get_character2(StringName(key))
 			if ch != null:
-				tex = ch.icon if ch.icon != null else ch.portrait
+				tex = ch.shown_icon()
 				goal = ch.level_up_condition
 				if g != null:
 					edit = func(): EnemyNoteModal.open_level_up(host, g, ch, redraw)

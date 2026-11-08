@@ -10,5 +10,5 @@
   "adopt_strays": false,
   "smooth": false,
   "shadow": false,
-  "cut": {"reach": 2, "scale": 3, "smooth_scale": true}
+  "cut": {"reach": 2, "scale": 3, "pixel": true}
 }

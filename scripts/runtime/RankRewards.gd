@@ -1,7 +1,8 @@
 class_name RankRewards
 extends RefCounted
 
-# WHAT A RANK PAYS: A SONG OR A TITLE LETTER, 50/50 (the owner, 31 Oct 2026: "letters
+# WHAT A RANK PAYS: A SONG, A TITLE LETTER OR A LOOK (a costume or an icon,
+# Cosmetics — see `split`). Before looks it was a song or a letter, 50/50 (the owner, 31 Oct 2026: "letters
 # can be unlocked when ranking up a character or game similar to music, should be
 # 50/50").
 #
@@ -30,27 +31,51 @@ extends RefCounted
 # a logo cut.
 static var songs_only: bool = false
 
-# Of `rank` ranks, how many pay a song and how many a letter, for an owner with
-# `songs` songs and `letters` letters to earn in all.
-static func split(key: String, rank: int, songs: int, letters: int) -> Dictionary:
+# Of `rank` ranks, how many pay a song, how many a letter and how many a LOOK (a
+# costume or an icon, Cosmetics), for an owner with `songs` songs, `letters`
+# letters and `looks` looks to earn in all.
+#
+# ONE ROLL PER RANK, AMONG THE KINDS THAT HAVE SOMETHING LEFT (the owner, 8 Nov
+# 2026: costumes and icons are "a random rank up reward for characters or games",
+# beside the songs and letters). The kinds are tried in a fixed order — letter,
+# song, look — and the rank's roll picks one of those still open, evenly, so with
+# no looks to earn (nearly every game) the roll is the old 50/50 coin exactly:
+# `coin` is `roll < 0.5`, which is the first of two. With nothing left anywhere the
+# rank counts as a song, which draws nothing.
+static func split(key: String, rank: int, songs: int, letters: int, looks: int = 0) -> Dictionary:
 	if songs_only:
 		letters = 0
+		looks = 0
 	var s: int = 0
 	var l: int = 0
+	var c: int = 0
 	for k in range(1, rank + 1):
-		if l < letters and (coin(key, k) or s >= songs):
-			l += 1
-		else:
-			s += 1
-	return {"songs": s, "letters": l}
+		var open: Array = []
+		if l < letters:
+			open.append("letter")
+		if s < songs:
+			open.append("song")
+		if c < looks:
+			open.append("look")
+		var kind: String = "song" if open.is_empty() \
+			else String(open[mini(int(roll(key, k) * open.size()), open.size() - 1)])
+		match kind:
+			"letter": l += 1
+			"look": c += 1
+			_: s += 1
+	return {"songs": s, "letters": l, "looks": c}
 
-# Whether rank `k` of `key` flips to a LETTER. Seeded through an RNG rather than
-# read off the key's hash: a string hash's low bit follows the last character's,
-# so "hades#1", "hades#2"… would simply alternate.
-static func coin(key: String, k: int) -> bool:
+# Rank `k` of `key`'s roll, in [0, 1). Seeded through an RNG rather than read off
+# the key's hash: a string hash's low bit follows the last character's, so
+# "hades#1", "hades#2"… would simply alternate.
+static func roll(key: String, k: int) -> float:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = ("%s#%d" % [key, k]).hash()
-	return rng.randf() < 0.5
+	return rng.randf()
+
+# Whether rank `k` of `key` flips to a LETTER, between a letter and a song.
+static func coin(key: String, k: int) -> bool:
+	return roll(key, k) < 0.5
 
 static func game_key(game: StringName) -> String:
 	return "game:%s" % game
@@ -61,7 +86,7 @@ static func character_key(character: StringName) -> String:
 # A game's share of its ranks.
 static func for_game(game: StringName) -> Dictionary:
 	return split(game_key(game), GameRanks.rank(game), _game_song_count(game),
-		_letter_count(game))
+		_letter_count(game), CosmeticCatalog.units_of_game(game).size())
 
 # A character's share of its ranks.
 static func for_character(character: StringName) -> Dictionary:
@@ -71,7 +96,7 @@ static func for_character(character: StringName) -> Dictionary:
 		for g in ch.music_games:
 			songs += _game_song_count(g)
 	return split(character_key(character), GameRanks.character_rank(character),
-		songs, _letter_count(&"", true))
+		songs, _letter_count(&"", true), CosmeticCatalog.units_of_character(character).size())
 
 # --- one refresh's counts -----------------------------------------------------
 #

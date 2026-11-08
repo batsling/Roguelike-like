@@ -131,6 +131,25 @@ extends Resource
 @export var icon: Texture2D
 @export var portrait_color: Color = Color.WHITE
 
+# THE ART AS WORN (Customization, docs/customization.md): the costume the player
+# has chosen for this character's full portrait / icon, else its own. Every screen
+# that draws a character reads these, not `portrait` and `icon`; `icon` already
+# falls back to the portrait here, so `ch.icon if ch.icon != null else ch.portrait`
+# is `shown_icon()`.
+func shown_portrait() -> Texture2D:
+	var cos: Node = _cosmetics()
+	return cos.portrait_of(self) if cos != null else portrait
+
+func shown_icon() -> Texture2D:
+	var cos: Node = _cosmetics()
+	if cos != null:
+		return cos.icon_of(self)
+	return icon if icon != null else portrait
+
+func _cosmetics() -> Node:
+	var tree := Engine.get_main_loop()
+	return (tree as SceneTree).root.get_node_or_null(^"Cosmetics") if tree is SceneTree else null
+
 # Art base name, falling back to the de-spaced display name when `file` is unset
 # (mirrors GoalEnemyData.art_file()).
 func art_file() -> String:

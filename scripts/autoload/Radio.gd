@@ -345,6 +345,8 @@ func rule_text(song: SongData) -> String:
 	var left: Dictionary = to_next(song.game_id)
 	var reward: String = "song or title letter" if not RankRewards.songs_only \
 		and not TitleLetters.units_of(song.game_id).is_empty() else "song"
+	if not RankRewards.songs_only and not CosmeticCatalog.units_of_game(song.game_id).is_empty():
+		reward += " or look"
 	return "Next %s %s: %d XP more (rank %d)" % [name, reward, int(left["needed"]),
 		int(left["rank"])]
 
@@ -549,7 +551,8 @@ func character_rank_line(character: StringName) -> String:
 		return "Rank %d · no %s songs on the radio yet" % [int(p["rank"]), from]
 	return "Rank %d · %d XP to the next %s song%s" % [int(p["rank"]),
 		int(p["needed"]), " / ".join(names),
-		"" if RankRewards.songs_only else " or title letter"]
+		"" if RankRewards.songs_only else (" or title letter" if
+			CosmeticCatalog.units_of_character(character).is_empty() else ", title letter or look")]
 
 # Which character a song was drawn for, or &"" when its game drew it (or it is
 # still locked).

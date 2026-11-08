@@ -30,6 +30,8 @@ extends GutTest
 # migration's own record of itself: a file here cannot drift back to a literal.
 const MIGRATED_FONTS := [
 	"res://scripts/ui/TagEditor.gd",
+	"res://scripts/autoload/Cosmetics.gd",
+	"res://scripts/menu/CustomizeScreen.gd",
 	"res://scripts/autoload/DevTools.gd",
 	"res://scripts/menu/CharacterPicker.gd",
 	"res://scripts/menu/CustomRunScreen.gd",
@@ -105,6 +107,7 @@ const MIGRATED_FONTS := [
 # nothing (each changed line was read back with the step swapped for its number
 # and matched the original byte for byte).
 const MIGRATED_GAPS := [
+	"res://scripts/menu/CustomizeScreen.gd",
 	"res://scripts/ui/TagEditor.gd",
 	"res://scripts/autoload/DevTools.gd",
 	"res://scripts/menu/CharacterPicker.gd",

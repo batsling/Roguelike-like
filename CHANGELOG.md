@@ -11,6 +11,20 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Customization: costumes, icons and the title's letters** (`docs/customization.md`).
+  A new main-menu screen with three tabs: each character's icon and full portrait
+  chosen separately from their costumes; the pictures drawn in place of 🗝, ✸ and
+  🏆 (the difficulty icon takes the trophy's place everywhere it is drawn, with
+  the Fracture number on it, and Risk of Rain 2's changes image with the level);
+  and which earned title letters the menu spells from, a game or a letter at a
+  time, never leaving the title unspellable. Costumes and icons are a third kind
+  of rank-up reward beside songs and letters, earned from their game or a
+  character from it. The art the owner uploaded is the first set (20 costumes, 16
+  icon sets), catalogued from the file names by `tools/build_cosmetics_index.py`;
+  Isaac's and Ironclad's defaults are now their first games' art, with the
+  sequels' art as costumes. The menu's falling art now drops only what the
+  player has seen in a run, plus every look they have earned.
+
 - **Collection: the character header, and a trophy you can read.** The header's
   portrait, name and game are bigger, and the character's line sits under them in
   quotation marks (the "About" card is gone). The rank is a gold bar with "Rank N"

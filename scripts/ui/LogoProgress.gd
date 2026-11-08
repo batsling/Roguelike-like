@@ -86,6 +86,9 @@ func _build(tex: Texture2D, min_size: Vector2) -> void:
 	base.stretch_mode = TextureRect.STRETCH_SCALE
 	base.set_anchors_preset(Control.PRESET_FULL_RECT)
 	base.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# a pixel-art logo (Dungeon Crawl Stone Soup) keeps its pixels sharp
+	if TitleLetters.is_pixel_game(game_id):
+		base.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	if not complete:
 		var mat := ShaderMaterial.new()
 		mat.shader = GREY
@@ -111,6 +114,8 @@ func _build(tex: Texture2D, min_size: Vector2) -> void:
 			piece.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 			piece.stretch_mode = TextureRect.STRETCH_SCALE
 			piece.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			if bool(e.get("pixel", false)):
+				piece.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 			area.add_child(piece)
 			_placed.append([piece, e["src"]])
 			if fresh:

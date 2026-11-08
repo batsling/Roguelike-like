@@ -40,7 +40,7 @@ static func open_level_up(host: Node, game: GameData, character: CharacterData,
 		return
 	var condition: String = character.level_up_condition.strip_edges()
 	_open(host, {
-		"art": character.icon if character.icon != null else character.portrait,
+		"art": character.shown_icon(),
 		"title": "%s — Level Up" % character.display_name,
 		"where": "at %s%s" % [game.display_name,
 			("   ·   " + condition) if condition != "" else ""],

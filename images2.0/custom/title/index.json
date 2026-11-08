@@ -333,7 +333,8 @@
    0.86294,
    0.59211
   ],
-  "form": "lower"
+  "form": "lower",
+  "pixel": true
  },
  "a/dwarf_fortress.png": {
   "game": "dwarf_fortress",
@@ -1189,7 +1190,8 @@
    -0.01316,
    0.75127,
    0.57895
-  ]
+  ],
+  "pixel": true
  },
  "c/everything_is_crab.png": {
   "game": "everything_is_crab",
@@ -1525,7 +1527,8 @@
    -0.01316,
    0.11929,
    0.55263
-  ]
+  ],
+  "pixel": true
  },
  "d/dwarf_fortress.png": {
   "game": "dwarf_fortress",
@@ -1779,7 +1782,8 @@
    0.0,
    0.64975,
    0.56579
-  ]
+  ],
+  "pixel": true
  },
  "dash/rift_wizard.png": {
   "game": "rift_wizard",
@@ -2101,7 +2105,8 @@
    0.40355,
    0.56579
   ],
-  "form": "lower"
+  "form": "lower",
+  "pixel": true
  },
  "e/dungeon_crawl_stone_soup__2.png": {
   "game": "dungeon_crawl_stone_soup",
@@ -2117,7 +2122,8 @@
    0.73096,
    0.92105
   ],
-  "form": "lower"
+  "form": "lower",
+  "pixel": true
  },
  "e/dwarf_fortress.png": {
   "game": "dwarf_fortress",
@@ -2938,7 +2944,8 @@
    0.34518,
    0.72368
   ],
-  "form": "lower"
+  "form": "lower",
+  "pixel": true
  },
  "g/ember_knights.png": {
   "game": "ember_knights",
@@ -4070,7 +4077,8 @@
    1.00508,
    0.57895
   ],
-  "form": "lower"
+  "form": "lower",
+  "pixel": true
  },
  "l/loop_hero.png": {
   "game": "loop_hero",
@@ -4547,7 +4555,8 @@
    0.27411,
    0.55263
   ],
-  "form": "lower"
+  "form": "lower",
+  "pixel": true
  },
  "n/dungeon_crawl_stone_soup__2.png": {
   "game": "dungeon_crawl_stone_soup",
@@ -4563,7 +4572,8 @@
    0.54569,
    0.55263
   ],
-  "form": "lower"
+  "form": "lower",
+  "pixel": true
  },
  "n/dungeon_crawl_stone_soup__3.png": {
   "game": "dungeon_crawl_stone_soup",
@@ -4579,7 +4589,8 @@
    0.6802,
    0.92105
   ],
-  "form": "lower"
+  "form": "lower",
+  "pixel": true
  },
  "n/ember_knights.png": {
   "game": "ember_knights",
@@ -5001,7 +5012,8 @@
    0.46954,
    0.56579
   ],
-  "form": "lower"
+  "form": "lower",
+  "pixel": true
  },
  "o/dungeon_crawl_stone_soup__2.png": {
   "game": "dungeon_crawl_stone_soup",
@@ -5017,7 +5029,8 @@
    0.62183,
    0.92105
   ],
-  "form": "lower"
+  "form": "lower",
+  "pixel": true
  },
  "o/dungeon_crawl_stone_soup__3.png": {
   "game": "dungeon_crawl_stone_soup",
@@ -5033,7 +5046,8 @@
    0.87563,
    0.92105
   ],
-  "form": "lower"
+  "form": "lower",
+  "pixel": true
  },
  "o/dwarf_fortress.png": {
   "game": "dwarf_fortress",
@@ -5395,7 +5409,8 @@
    0.98985,
    1.02632
   ],
-  "form": "lower"
+  "form": "lower",
+  "pixel": true
  },
  "p/loop_hero.png": {
   "game": "loop_hero",
@@ -5731,7 +5746,8 @@
    0.80457,
    0.56579
   ],
-  "form": "lower"
+  "form": "lower",
+  "pixel": true
  },
  "r/dwarf_fortress.png": {
   "game": "dwarf_fortress",
@@ -6350,7 +6366,8 @@
    0.55263,
    0.52792,
    0.92105
-  ]
+  ],
+  "pixel": true
  },
  "s/dungeon_crawl_stone_soup__2.png": {
   "game": "dungeon_crawl_stone_soup",
@@ -6365,7 +6382,8 @@
    0.53947,
    0.81472,
    0.92105
-  ]
+  ],
+  "pixel": true
  },
  "s/dwarf_fortress.png": {
   "game": "dwarf_fortress",
@@ -6901,7 +6919,8 @@
    0.56853,
    0.92105
   ],
-  "form": "lower"
+  "form": "lower",
+  "pixel": true
  },
  "t/dwarf_fortress.png": {
   "game": "dwarf_fortress",
@@ -7338,7 +7357,8 @@
    0.19797,
    0.57895
   ],
-  "form": "lower"
+  "form": "lower",
+  "pixel": true
  },
  "u/dungeon_crawl_stone_soup__2.png": {
   "game": "dungeon_crawl_stone_soup",
@@ -7354,7 +7374,8 @@
    0.93655,
    0.92105
   ],
-  "form": "lower"
+  "form": "lower",
+  "pixel": true
  },
  "u/enter_the_gungeon.png": {
   "game": "enter_the_gungeon",
@@ -7707,7 +7728,8 @@
    0.96701,
    0.57895
   ],
-  "form": "lower"
+  "form": "lower",
+  "pixel": true
  },
  "w/dwarf_fortress.png": {
   "game": "dwarf_fortress",

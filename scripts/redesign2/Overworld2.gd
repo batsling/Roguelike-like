@@ -6549,7 +6549,7 @@ func _paint_character_chip() -> void:
 	# size, and a full figure shrunk into one is a smudge.
 	var tex: Texture2D = null
 	if ch != null:
-		tex = ch.icon if ch.icon != null else ch.portrait
+		tex = ch.shown_icon()
 	_character_chip.texture = tex
 	UITheme.apply_crisp(_character_chip, tex)
 	if _fracture_chip != null and is_instance_valid(_fracture_chip):
@@ -7484,6 +7484,7 @@ func _dismiss_route_map() -> void:
 
 func _show_banner(text: String, color: Color) -> void:
 	_banner.text = text
+	Cosmetics.apply_glyph(_banner)   # a worn difficulty icon in place of the 🏆
 	_banner.add_theme_color_override("font_color", color)
 	_banner.show()
 	# The run is over: the offering and the report step are done with, and the board

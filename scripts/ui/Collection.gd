@@ -2154,8 +2154,8 @@ func _character_cell(ch: CharacterData) -> Control:
 	cell.panel.custom_minimum_size = Vector2(GRID_PORTRAIT_SIZE + CELL_PAD + CELL_TEXT_SLACK, 0)
 	var vb: VBoxContainer = cell.vbox
 	vb.alignment = BoxContainer.ALIGNMENT_CENTER
-	if ch.portrait != null:
-		var tr := UITheme.crisp_tex(ch.portrait, GRID_PORTRAIT_SIZE)
+	if ch.shown_portrait() != null:
+		var tr := UITheme.crisp_tex(ch.shown_portrait(), GRID_PORTRAIT_SIZE)
 		tr.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		# The character's rank, the same badge a game's cover wears (§20.9).
 		vb.add_child(RankBadge.wrap_character(tr, ch.id, true))
@@ -2186,7 +2186,7 @@ const CHAR_HEADER_PORTRAIT := 136
 func _show_character_detail(ch: CharacterData) -> void:
 	# Opened from a link as well as from its cell, so it checks for itself.
 	if not GameStats.is_seen("character", ch.id):
-		_show_unseen_detail("character", ch.portrait)
+		_show_unseen_detail("character", ch.shown_portrait())
 		return
 	_set_detail_open(true)
 	_clear_children(_detail_box)
@@ -2234,8 +2234,8 @@ func _show_character_detail(ch: CharacterData) -> void:
 func _character_header(ch: CharacterData) -> Control:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", UITheme.GAP_LOOSE)
-	if ch.portrait != null:
-		var tr := UITheme.crisp_tex(ch.portrait, CHAR_HEADER_PORTRAIT)
+	if ch.shown_portrait() != null:
+		var tr := UITheme.crisp_tex(ch.shown_portrait(), CHAR_HEADER_PORTRAIT)
 		tr.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		var art: Control = _trophy_room(RankBadge.wrap_character(tr, ch.id, true),
 			GameStats.fracture_best(ch.id) >= 0)

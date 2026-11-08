@@ -27,6 +27,7 @@ the honour system.
 | which games should carry which tags | `tools/tag_research.py` writes **suggestions** into `tools/Research.xlsx` (its own workbook, not `Roguelikes.xlsx`) from each game's Steam tags, store text and title, with the evidence beside each one. **Never type a tag into the `games` sheet yourself**: the owner reads the sheet and does that. Its `Owner` column (yes/no) survives a rerun. The owner can also tag games **in game** (the Collection's game page and the run map's game card, `GameTags` + `TagEditor`); those edits count at once and reach the sheet only through Settings → Game tags → *Export tags for all games* → `tools/tag_edits.json` → `python3 tools/apply_tag_edits.py` (see the porting steps below) |
 | rifts (all four build steps done; key sources in items and loot are the owner's) | `docs/rifts-design.md` — per-run rift games that pull off-map games into the map without ever shortening a path; path rifts on the start routes, world rifts on weak spots, Rift Keys that fill empty offering slots with rift cards, and the measured effect on the Amulet pool |
 | Fractures — the ten difficulty levels above a normal run, unlocked per character (designed, not yet built) | `docs/fracture-design.md` — the ladder, what each level touches, the XP and trophy rules, and Fracture 10's Collapse: carry the Amulet back to the start over a map whose played games have all been transmuted |
+| Customization — costumes, key / bomb / difficulty icons, which title letters to spell with | `docs/customization.md`: a rank pays a song, a letter or a LOOK; `data/cosmetics.json` is written from the art folders' file names by `tools/build_cosmetics_index.py` (CI `--check`); draw characters with `shown_portrait()` / `shown_icon()`, never `portrait` / `icon`; a worn icon replaces every 🗝 ✸ 🏆 in a Label or Button by itself (`Cosmetics.apply_glyph`), and a site that rewrites such text after creation calls it again |
 | Roguelike Radio — the player's own music, unlocked per game, played into OBS | `docs/roguelike-radio.md`: the `radio` sheet, the unlock rules, why the game keeps the clock, the one-speaker rule, `radio.html` |
 | combat-era designs | `docs/archive/` — **describes systems that no longer exist**; see its README before trusting a path or class name |
 
@@ -46,8 +47,8 @@ the honour system.
 - **Two scenes only.** `scenes/menu/MainMenu.tscn` boots, `scenes/redesign2/Overworld2.tscn`
   *is* the game — and **`Overworld2.tscn` is one node and a script**, so don't go
   looking for the game's UI in it; every screen past the menu is built in code.
-  `MainMenu.tscn` is the exception and always was: it lays out its 20 nodes (the
-  title, the eight buttons, the save list) in the editor like an ordinary scene.
+  `MainMenu.tscn` is the exception and always was: it lays out its 21 nodes (the
+  title, the nine buttons, the save list) in the editor like an ordinary scene.
 - **30 autoloads** in `scripts/autoload/`, registered in `project.godot`. The ones
   that matter most: `GameState` (run-persistent state), `Data` (loads every
   `.tres` and serves it by id), `GameLoop2` (the run loop — `Overworld2` is a view

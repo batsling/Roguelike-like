@@ -39,6 +39,7 @@ func _ready() -> void:
 	%ContinueBtn.pressed.connect(_on_continue_toggle)
 	%RunHistoryBtn.pressed.connect(_on_run_history)
 	%CollectionBtn.pressed.connect(_on_collection)
+	%CustomizeBtn.pressed.connect(_on_customize)
 	%TierListBtn.pressed.connect(_on_tier_list)
 	%SettingsBtn.pressed.connect(_on_settings)
 	%HowToPlayBtn.pressed.connect(_on_how_to_play)
@@ -91,7 +92,7 @@ func _style_menu() -> void:
 	# 14px on a 1280 canvas it read as a small island in a lot of dark. The scene
 	# carries the 1.25x sizes; the fonts go up a step here (14 -> 18), since a
 	# button's text size is the theme's until something overrides it.
-	for btn in [%HowToPlayBtn, %CustomRunBtn, %ContinueBtn, %RunHistoryBtn,
+	for btn in [%HowToPlayBtn, %CustomizeBtn, %CustomRunBtn, %ContinueBtn, %RunHistoryBtn,
 			%CollectionBtn, %TierListBtn, %SettingsBtn, %QuitBtn]:
 		(btn as Button).add_theme_font_size_override("font_size", MENU_FONT)
 	# Make the primary action stand out — a stylebox, which a scene cannot share
@@ -251,6 +252,10 @@ func _build_profile_row() -> void:
 	how.custom_minimum_size = Vector2(0, 38)
 	how.add_theme_font_size_override("font_size", UITheme.FONT_SUB)
 	row.move_child(how, -1)
+	var cust: Button = %CustomizeBtn
+	cust.custom_minimum_size = Vector2(0, 38)
+	cust.add_theme_font_size_override("font_size", UITheme.FONT_SUB)
+	row.move_child(cust, -1)
 	_refresh_profile_row()
 
 # THE BUTTONS UNDER THE TITLE: Start Run across the top, the rest two to a row
@@ -682,6 +687,18 @@ func _on_collection() -> void:
 # Run History, which lays its routes over the sky (_on_run_history above). A third
 # door onto the same screen, sitting in the menu column beside the Collection that
 # already contains it, was one more row of buttons for no more game.
+
+# Costumes, icons and which title letters to spell with (docs/customization.md).
+# In the top-left row beside How to Play, not in the button grid: a seventh grid
+# button put Continue's menu a row taller than the 720p canvas (test_screens_fit).
+# Switching letters off draws the title again when the screen closes, so the
+# change shows.
+func _on_customize() -> void:
+	var s := CustomizeScreen.open(_modal_layer)
+	s.tree_exited.connect(func() -> void:
+		if is_inside_tree():
+			_reroll(true)
+			_reroll(false))
 
 func _on_tier_list() -> void:
 	TierListScreen.open(_modal_layer)
