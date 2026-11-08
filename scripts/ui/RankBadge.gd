@@ -39,6 +39,9 @@ const BAR_SHARE := 0.62
 const BAR_MAX_SHARE := 1.8
 const BAR_GAP := 2.0   # between the circle and the bar under it
 const FOOT := 2.0      # below the bar, so it never touches what comes next
+# The trophy's box against the circle: a little bigger, so the Fracture level
+# written on it has a cup to sit in.
+const TROPHY_SHARE := 1.7
 
 var game_id: StringName = &""
 # Set instead of game_id for a character's badge.
@@ -141,12 +144,16 @@ func _ready() -> void:
 	_layout()
 
 # THE NUMBER ON A TROPHY: the highest Fracture it was earned at, in the
-# Fracture's own colour beside the cup. Nothing at Fracture 0 — a plain cup is a
-# win at the ordinary game, which is what every trophy before Fractures was.
+# Fracture's own colour, written ON the cup (the owner, 8 Nov 2026 — it was beside
+# it, and the trophy was the size of the star). Nothing at Fracture 0 — a plain
+# cup is a win at the ordinary game, which is what every trophy before Fractures
+# was. On a character it is the whole Fracture record now: the panel's own
+# Fractures section went, since this says the same thing.
 func _add_trophy_level(level: int, what: String) -> void:
 	if level <= 0 or _trophy == null:
 		return
 	_trophy_level = _make_label(str(level), Fracture.COLOR)
+	_trophy_level.name = "TrophyLevel"
 	_trophy.tooltip_text = "%s — at Fracture %d" % [what, level]
 	_trophy_level.tooltip_text = _trophy.tooltip_text
 
@@ -207,13 +214,20 @@ func _layout() -> void:
 		_star.position = c - Vector2(d * 1.5 + UITheme.GAP_HAIR, d * 0.5)
 		_star.size = side
 	if _trophy != null:
-		_trophy.add_theme_font_size_override("font_size", glyph)
-		_trophy.position = c + Vector2(d * 0.5 + UITheme.GAP_HAIR, -d * 0.5)
-		_trophy.size = side
-	if _trophy_level != null:
-		_trophy_level.add_theme_font_size_override("font_size", UITheme.FONT_MICRO)
-		_trophy_level.position = c + Vector2(d * 1.25 + UITheme.GAP_HAIR, -d * 0.15)
-		_trophy_level.size = side
+		# A STEP BIGGER THAN THE STAR, and a box TROPHY_SHARE circles across, so
+		# the level has a cup to sit in.
+		var cup: Vector2 = side * TROPHY_SHARE
+		_trophy.add_theme_font_size_override("font_size",
+			UITheme.FONT_DISPLAY if d >= 24.0 else UITheme.FONT_TITLE)
+		_trophy.position = c + Vector2(d * 0.5 + UITheme.GAP_HAIR, -cup.y * 0.5)
+		_trophy.size = cup
+		if _trophy_level != null:
+			# On the bowl: the cup's own box, nudged up off the stem.
+			_trophy_level.add_theme_font_size_override("font_size",
+				UITheme.FONT_BODY if d >= 24.0 else UITheme.FONT_TINY)
+			_trophy_level.add_theme_constant_override("outline_size", 4)
+			_trophy_level.position = _trophy.position - Vector2(0, cup.y * 0.12)
+			_trophy_level.size = cup
 	queue_redraw()
 
 func _draw() -> void:

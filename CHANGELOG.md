@@ -11,6 +11,15 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Collection: the character header, and a trophy you can read.** The header's
+  portrait, name and game are bigger, and the character's line sits under them in
+  quotation marks (the "About" card is gone). The rank is a gold bar with "Rank N"
+  beside it and "X/250 xp" under it; what the next rank unlocks moved to the
+  bar's hover. The Fractures card is gone: the 🏆 carries that record, and it is
+  bigger everywhere it appears (characters and game covers), with the highest
+  Fracture won written on the cup. On the Progress page each goal beaten says the
+  XP it gave ("+20 xp"); the ones not yet beaten don't.
+
 - **Collection: Hide unseen, and Rank sorts.** Every tab's row has a *Hide
   unseen* switch (one for the whole Collection, kept across tabs; not offered
   under Unlock everything, where nothing is hidden). Games and Characters sort by

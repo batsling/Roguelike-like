@@ -2164,7 +2164,7 @@ func _character_cell(ch: CharacterData) -> Control:
 # a tile still finds every one of them.
 const CHAR_PAGES := [["overview", "Overview"], ["progress", "Progress"], ["games", "Games"]]
 const CHAR_GREEN := Color(0.45, 0.82, 0.45)
-const CHAR_HEADER_PORTRAIT := 96
+const CHAR_HEADER_PORTRAIT := 136
 
 func _show_character_detail(ch: CharacterData) -> void:
 	# Opened from a link as well as from its cell, so it checks for itself.
@@ -2210,8 +2210,10 @@ func _show_character_detail(ch: CharacterData) -> void:
 			_fit_detail_height())
 	show.call(_char_page if pages.has(_char_page) else "overview")
 
-# The part that never scrolls away between pages: portrait beside the name, the
-# game and the rank, rather than stacked over them.
+# THE HEADER (the owner, 8 Nov 2026): a bigger portrait beside a bigger name and
+# game, the character's own line under them in quotes (it was an "About" card),
+# and the rank as a BAR — "Rank N" beside it and "X/Y xp" under it — rather than
+# a sentence about songs. What the next rank unlocks is the bar's hover.
 func _character_header(ch: CharacterData) -> Control:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", UITheme.GAP_LOOSE)
@@ -2220,17 +2222,59 @@ func _character_header(ch: CharacterData) -> Control:
 		tr.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		row.add_child(RankBadge.wrap_character(tr, ch.id, true))
 	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", UITheme.GAP_HAIR)
+	col.add_theme_constant_override("separation", UITheme.GAP_TIGHT)
 	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	col.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	col.add_child(_label(ch.display_name, CHAR_GREEN, UITheme.FONT_HEAD, false, true))
+	col.add_child(_label(ch.display_name, CHAR_GREEN, UITheme.FONT_TITLE_LG, false, true))
 	if ch.source_game != "":
-		col.add_child(_label(ch.source_game, UITheme.TEXT_DIM, UITheme.FONT_SMALL, false, true))
-	# Its rank, and which soundtrack each rank draws a song from (§20.9).
-	col.add_child(_label(Radio.character_rank_line(ch.id), UITheme.GOLD, UITheme.FONT_SMALL,
-		false, true))
+		col.add_child(_label(ch.source_game, UITheme.TEXT_DIM, UITheme.FONT_LEAD, false, true))
+	if ch.description != "":
+		var quote := _prose("\u201c%s\u201d" % ch.description.strip_edges())
+		quote.name = "Quote"
+		col.add_child(quote)
+	col.add_child(_character_rank_bar(ch))
 	row.add_child(col)
 	return row
+
+const CHAR_RANK_BAR_H := 8
+
+func _character_rank_bar(ch: CharacterData) -> Control:
+	var p: Dictionary = GameRanks.character_progress(ch.id)
+	var box := VBoxContainer.new()
+	box.name = "RankBar"
+	box.add_theme_constant_override("separation", UITheme.GAP_HAIR)
+	var line := HBoxContainer.new()
+	line.add_theme_constant_override("separation", UITheme.GAP)
+	var rank := _label("Rank %d" % int(p["rank"]), UITheme.GOLD, UITheme.FONT_LABEL)
+	rank.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	line.add_child(rank)
+	var bar := ProgressBar.new()
+	bar.min_value = 0
+	bar.max_value = GameRanks.XP_PER_RANK
+	bar.value = int(p["into"])
+	bar.show_percentage = false
+	bar.custom_minimum_size = Vector2(0, CHAR_RANK_BAR_H)
+	bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	# The badge's own colours: a black well and a gold fill.
+	var back := StyleBoxFlat.new()
+	back.bg_color = RankBadge.BAR_BACK
+	back.set_corner_radius_all(4)
+	var fill := StyleBoxFlat.new()
+	fill.bg_color = UITheme.GOLD
+	fill.set_corner_radius_all(4)
+	bar.add_theme_stylebox_override("background", back)
+	bar.add_theme_stylebox_override("fill", fill)
+	# What the next rank brings, said on the hover rather than on the panel.
+	var said: String = Radio.character_rank_line(ch.id)
+	bar.tooltip_text = said.get_slice(" · ", 1) if said.contains(" · ") else said
+	line.add_child(bar)
+	box.add_child(line)
+	var xp := _label("%d/%d xp" % [int(p["into"]), GameRanks.XP_PER_RANK], UITheme.TEXT_DIM,
+		UITheme.FONT_SMALL)
+	xp.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	box.add_child(xp)
+	return box
 
 func _character_page() -> VBoxContainer:
 	var page := VBoxContainer.new()
@@ -2240,11 +2284,6 @@ func _character_page() -> VBoxContainer:
 
 func _character_overview(ch: CharacterData) -> Control:
 	var page := _character_page()
-	if ch.description != "":
-		var about := _section_card("About", CHAR_GREEN)
-		about.add_child(_prose(ch.description))
-		page.add_child(about.get_meta(&"card"))
-
 	# THE STATS AS A GRID OF TILES, not a list of key/value rows: Health and each
 	# verb are a big number over a small name, so the loadout reads at a glance.
 	# The loadout off the character itself, so this tab and the character picker
@@ -2288,27 +2327,14 @@ func _character_overview(ch: CharacterData) -> Control:
 
 func _character_progress(ch: CharacterData) -> Control:
 	var page := _character_page()
-	# FRACTURES (docs/fracture-design.md §6): how far up the ladder this character
-	# has climbed, and the runs won at each level.
-	var fr := _section_card("%s Fractures" % Fracture.GLYPH, CHAR_GREEN)
-	fr.add_child(_kv("Unlocked", "up to Fracture %d" % GameStats.fracture_unlocked(ch.id)
-		if GameStats.fracture_unlocked(ch.id) > 0 else "none yet"))
-	if GameStats.fracture_unlocked(ch.id) <= 0:
-		fr.add_child(_prose("Win a run to open Fracture 1.", UITheme.TEXT_DIM))
-	var by_level: Dictionary = GameStats.fracture_wins(ch.id)
-	var levels: Array = by_level.keys()
-	levels.sort()
-	for lv in levels:
-		fr.add_child(_kv("Won at Fracture %d" % int(lv),
-			"%d run%s" % [int(by_level[lv]), "" if int(by_level[lv]) == 1 else "s"]))
-	page.add_child(fr.get_meta(&"card"))
-
+	# No Fractures card: the 🏆 on the portrait carries the highest Fracture won
+	# at, written on the cup (RankBadge), and that is the record the owner wanted.
 	# The character's own record, drawn the way a game's is (GoalsBeatenView):
 	# every goal beaten as this character, as pictures by kind with the card on
 	# the hover — and the whole enemy and boss roster, the ones not yet beaten
 	# dimmed.
 	var goals := _section_card("Goals beaten as %s" % ch.display_name, CHAR_GREEN)
-	GoalsBeatenView.add_character_kinds(goals, ch)
+	GoalsBeatenView.add_character_kinds(goals, ch, true)
 	page.add_child(goals.get_meta(&"card"))
 	return page
 

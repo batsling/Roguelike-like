@@ -1506,3 +1506,61 @@ func test_location_favours_only_lists_things_with_its_tags() -> void:
 		if named:
 			assert_true(Locations.tags_of(e).has("fire"), "%s carries fire" % e.display_name)
 	_without_locations()
+
+# --- the character header (the owner, 8 Nov 2026) ----------------------------
+
+func _all_text(node: Node) -> String:
+	var out: String = ""
+	for l in node.find_children("*", "Label", true, false):
+		out += (l as Label).text + "\n"
+	return out
+
+func test_character_header_quotes_the_description_and_has_no_about_card() -> void:
+	var ch: CharacterData = null
+	for c in Data.all_characters2():
+		if c.description != "":
+			ch = c
+			break
+	if ch == null:
+		pending("no character has a description")
+		return
+	var col := _new_collection()
+	col._set_tab(Collection.Tab.CHARACTERS)
+	col._show_character_detail(ch)
+	var quote: Label = col._detail_box.find_child("Quote", true, false)
+	assert_not_null(quote)
+	assert_eq(quote.text, "“%s”" % ch.description.strip_edges(), "in quotation marks")
+	var text: String = _all_text(col._detail_box)
+	assert_false(text.contains("About\n"), "no About heading")
+	assert_false(text.contains("Fractures"), "no Fractures card: the trophy carries it")
+
+func test_character_header_has_a_rank_bar_with_xp_under_it() -> void:
+	var ch: CharacterData = Data.all_characters2()[0]
+	var col := _new_collection()
+	col._set_tab(Collection.Tab.CHARACTERS)
+	col._show_character_detail(ch)
+	var p: Dictionary = GameRanks.character_progress(ch.id)
+	var box: Node = col._detail_box.find_child("RankBar", true, false)
+	assert_not_null(box)
+	var bars: Array = box.find_children("*", "ProgressBar", true, false)
+	assert_eq(bars.size(), 1)
+	assert_eq(int((bars[0] as ProgressBar).value), int(p["into"]))
+	var text: String = _all_text(box)
+	assert_string_contains(text, "Rank %d" % int(p["rank"]))
+	assert_string_contains(text, "%d/%d xp" % [int(p["into"]), GameRanks.XP_PER_RANK])
+	assert_false(text.contains("song"), "the reward is the hover, not the panel")
+	assert_ne((bars[0] as ProgressBar).tooltip_text, "")
+
+func test_beaten_goals_say_the_xp_they_gave() -> void:
+	var trophies: Dictionary = GameStats.character_goal_log.duplicate(true)
+	var ch: CharacterData = Data.all_characters2()[0]
+	var enemy: GoalEnemyData = Data.all_goal_enemies()[0]
+	GameStats.record_character_enemy(ch.id, enemy.id)
+	var col := _new_collection()
+	col._set_tab(Collection.Tab.CHARACTERS)
+	col._show_character_detail(ch)
+	var lines: Array = col._detail_box.find_children("GoalXp", "Label", true, false)
+	var said: Array = lines.map(func(l): return (l as Label).text)
+	assert_has(said, "+%d xp" % GameRanks.goal_xp("enemy", String(enemy.id)))
+	assert_has(said, " ", "an unbeaten goal keeps a blank line, not an xp figure")
+	GameStats.character_goal_log = trophies
