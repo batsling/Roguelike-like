@@ -9,7 +9,7 @@ display_name = "Punch Off"
 source_game = "Slay the Spire 2"
 tier_tags = PackedStringArray()
 where = ""
-requirement = {"stat": "games", "op": ">=", "value": 6, "percent": false}
+requirement = {}
 trigger = "after"
 rarity = "Common"
 file = "PunchOff"

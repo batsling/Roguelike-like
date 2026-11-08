@@ -662,7 +662,7 @@ static func _ch_verbs() -> Dictionary:
 # An item's price at Fracture 0 — the manual quotes the ladder, not this run's
 # surcharge (which the Fracture's own line says).
 static func _item_price(rung: int) -> int:
-	return ShopSystem.BASE_PRICE + ShopSystem.PRICE_PER_RUNG * rung
+	return ShopSystem.ladder_price(rung)
 
 static func _ch_gold() -> Dictionary:
 	return {
@@ -675,17 +675,17 @@ static func _ch_gold() -> Dictionary:
 			_row(["Where gold comes from", "How much"], true),
 			_row(["Enemy defeated", "+%d gold" % GameLoop2.GOLD_PER_ENEMY]),
 			_row(["Boss defeated", "+%d gold" % GameLoop2.GOLD_PER_BOSS]),
-			_row(["Item price", "%d, and %d more a rarity — Common %d, Uncommon %d, "
-				% [ShopSystem.BASE_PRICE, ShopSystem.PRICE_PER_RUNG, _item_price(0), _item_price(1)]
-				+ "Rare %d, Legendary %d" % [_item_price(2), _item_price(3)]]),
+			_row(["Item price", "Common %d, Uncommon %d, Rare %d, Legendary %d — "
+				% [_item_price(0), _item_price(1), _item_price(2), _item_price(3)]
+				+ "each step bigger than the last, so rarity costs more the rarer it gets"]),
 			_row(["Loot price", "%d less than an item of its rarity, never under %d"
 				% [ShopSystem.LOOT_DISCOUNT, ShopSystem.LOOT_MIN_PRICE]]),
 			_row(["Carries between runs", "None of it. A run opens on your "
 				+ "character and nothing else."]),
-			_p("A run is six to twelve games, so clearing most of your goals earns "
-				+ "you somewhere around eight to fifteen gold — two to four "
-				+ "purchases in a whole run. That is the point of the scale. Every "
-				+ "purchase is supposed to cost you something."),
+			_p("Every game stands two enemies and a boss walks on about every "
+				+ "other game, so a run that clears most of its goals earns about "
+				+ "four gold a game — somewhere around thirty to fifty in a whole "
+				+ "run. Every purchase is still supposed to cost you something."),
 			_p("Gold rides the DROP, not the corpse. Beating an enemy on time pays; "
 				+ "clearing an old goal games later pays exactly the same, because "
 				+ "the goal was the price either way. Bombing pays nothing at all."),

@@ -105,6 +105,44 @@ longer a detour's compensation, it is the run's main income — so author **well
 under** a game's reward. The events in this sheet predate the change and are
 priced for the old rate.
 
+### 1.2 What a Gold is worth in an event
+
+The owner's 24 Oct 2026 upload **doubled every gold number in the pool**, to
+follow the shop ladder widening a week earlier (spec §14.1: items then Common 3,
+Uncommon 5, Rare 7, Legendary 9; loot two under, never below 2 — since 6 Nov
+4/6/9/13 and 2/4/7/11). The Arcade
+Room's door went 1 → 2, the Woman in Blue's bottles 1 → 2 apiece, both Ranwids'
+ask 2 → 4, Morphic Grove's floor 3 → 6 and Jungle Maze Adventure 3 / 1 → 6 / 2.
+Whispering Hollow was missed and followed on 6 Nov
+(`tools/oneshots/_events_whispering_hollow_gold.py`).
+
+**Then every one of them went up by half (6 Nov 2026,
+`tools/oneshots/_events_gold_times_one_and_a_half.py`).** A run was measured at
+~47 gold answering every goal (spec §14.1) and the shop ladder moved to 4/6/9/13
+the same day; the owner wanted no new gold buttons, just more gold on the ones
+there were. Arcade Room 2 → 3, Jungle Maze 6 / 2 → 9 / 3, Morphic Grove's floor
+6 → 9, both Ranwids 4 → 6, the Woman in Blue 2 / 4 / 6 → 3 / 6 / 9 (needs 9),
+Whispering Hollow 4 → 6. These are the rates the pool now prices at; a new event that wants gold should read off this table
+rather than off a worked example below, which may predate it.
+
+| Gold buys | Event price | Against |
+|---|---|---|
+| a random relic | **6** (Ranwid, We Meet Again) | an Uncommon on the shelf; the rarity-weighted average is 4.7 at 75/20/4/1, and the event's relic is handed over on the spot |
+| a piece of loot or a potion | **3** a piece (Woman in Blue, Whispering Hollow) | the shelf's loot average, 2.7; potions alone (9 Common, 3 Uncommon, 3 Rare) about 3.4 |
+| entry to something that spends more gold | **3** (Arcade Room) | — |
+| a gift, no strings | **3** (Jungle Maze, Join Forces) | under a game's gold: a run earns 2.7–4.6 a game played (spec §14.1, measured) |
+| a gift for a price | **9** for 2 Health (Jungle Maze, Solo Quest) | a Rare relic on the shelf is 9 |
+
+Health trades at **about one Gold a point** everywhere it meets gold — the Blood
+Donation Machine, the IV Bag, Piggy Bank, Swallowed Penny — and Scrap Ooze's
+1 Health for a 25% Small Chest lands at the same rate. A **Small Chest** is one
+relic with no choice, and the pool prices it at **2 Max Health** (Unrest Site,
+the Dark Room location) or a Key (The Chest location).
+
+A requirement that gates on gold names the **cheapest gold button's price**
+(the Woman in Blue names her dearest, so a purse that meets her can clear her
+out), and the button itself carries `needs gold N`.
+
 ---
 
 ## 2. The shape of the sheet: one row per EVENT
@@ -879,8 +917,13 @@ category rather than as `gain_scroll` — a "standard combat reward" is whatever
 loot happens to be, so the cell rolls across all four kinds and widened on
 its own as each arrived — potions, then cards — without any event row being touched.
 
-`Requirement: games >= 6` carries the original's "Floor 6 or later" — depth,
-which this run measures in games played rather than floors.
+**No Requirement.** It was authored `games >= 6`, carrying the original's
+"Floor 6 or later" as games played. That was set when a run was 6–12 games; at
+5–9, with no event after the Amulet, it let Punch Off appear only in runs of
+seven games or more and only for their last few events, so the owner took it off
+(6 Nov 2026, `tools/oneshots/_events_punch_off_no_games_gate.py`). The `mecha`
+gate below still stands — it comes from the event's own `play_game`, not from
+this column.
 
 ### What it needed from the format: nothing
 
@@ -1136,16 +1179,16 @@ are things rather than numbers**.
 
 | | |
 |---|---|
-| `Requirement` | `gold>=4 and potions>=1 and relics>=1` |
+| `Requirement` | `gold>=6 and potions>=1 and relics>=1` |
 | `Prompt` | *"You are approached by the oldest person you have ever seen. 'We meet once more... it's me, Ranwid!' You do not know this man."* |
 
 | Choice | Effect | Result |
 |---|---|---|
-| **Give 4 Gold** | `needs gold 4; lose_gold 4; gain_random_item 1` | *"Mag.. nificent..." Ranwid mumbles while chewing the gold.* |
+| **Give 6 Gold** | `needs gold 6; lose_gold 6; gain_random_item 1` | *"Mag.. nificent..." Ranwid mumbles while chewing the gold.* |
 | **Give `<potion>`** | `lose_potion; gain_random_item 1` | *"Exquisite..." Glup glup glup. He downs the `<potion>` in one go.* |
 | **Give `<relic>`** | `lose_relic; gain_random_item 2` | *"Exemplary..." Ranwid observes the relic studiously for several minutes... Then eats the `<relic>`.* |
 
-**The shape is: what it costs you to give is what he pays for.** Two Gold is the
+**The shape is: what it costs you to give is what he pays for.** Six Gold is the
 cheap door and pays one relic; a relic — the thing you would actually miss — pays
 two. There is no decline button and none is needed, because every row is a gain:
 the decision is *which* of the three things you are carrying you can most afford
@@ -1278,13 +1321,13 @@ both in the bag on purpose, and what tells them apart is what he asks for.
 
 | | |
 |---|---|
-| `Requirement` | `gold>=2` |
+| `Requirement` | `gold>=6` |
 | `Prompt` | *"We meet again!" A cheery disheveled fellow approaches you gleefully. You do not know this man. "It's me, Ranwid! Have any goods for me today? The usual?…"* |
 
 | Choice | Effect |
 |---|---|
 | **Give `<potion>`** | `lose_potion; gain_random_item 1` |
-| **Give 4 Gold** | `needs gold 4; lose_gold 4; gain_random_item 1` |
+| **Give 6 Gold** | `needs gold 6; lose_gold 6; gain_random_item 1` |
 | **Give `<card>`** | `lose_card uncommon+; gain_random_item 1` |
 | **Attack** | `nothing` |
 
@@ -1297,14 +1340,14 @@ costs the run settles are rolled in `begin_event` and land on the buttons throug
 `<potion>` and `<card>` (§5.2), and the payout is `gain_random_item 1`, which
 names nothing until it is in your hand.
 
-**The gold is a flat two.** Slay the Spire asks a varying 50–150 of a purse that
+**The gold is a flat six** (two, then four, then six — §1.2). Slay the Spire asks a varying 50–150 of a purse that
 runs to hundreds; this economy is priced in single digits, where "2 to 6" is the
 difference between a small ask and most of what you have, and a price that swings
-that far is one nobody can plan around. Two Gold, said on the button, every time.
+that far is one nobody can plan around. Six Gold, said on the button, every time.
 (A `lose_gold <lo>-<hi>` form existed briefly for the varying ask and went with
 it: a DSL token with no author is a token nobody maintains.)
 
-### Why he turns up for two Gold and nothing else
+### Why he turns up for six Gold and nothing else
 
 Ranwid the Elder gates on all three of his prices, because every one of his
 buttons spends one and a run short of any would open him on a shelf he cannot
@@ -1326,19 +1369,19 @@ in your browsing.
 
 | | |
 |---|---|
-| `Requirement` | `gold>=3` |
+| `Requirement` | `gold>=9` |
 | `Prompt` | *From the darkness, an arm pulls you into a small shop… "Buy a potion. Now!"* |
 
 | Choice | Effect |
 |---|---|
-| **Buy 1 Potion** | `needs gold 1; lose_gold 1; gain_potion 1` |
-| **Buy 2 Potions** | `needs gold 2; lose_gold 2; gain_potion 2` |
-| **Buy 3 Potions** | `needs gold 3; lose_gold 3; gain_potion 3` |
+| **Buy 1 Potion** | `needs gold 3; lose_gold 3; gain_potion 1` |
+| **Buy 2 Potions** | `needs gold 6; lose_gold 6; gain_potion 2` |
+| **Buy 3 Potions** | `needs gold 9; lose_gold 9; gain_potion 3` |
 | **Leave** | `nothing` |
 
 **It needed nothing from the format**, which is the point of it being here: three
 prices for the same thing and a way out, authored out of tokens that were already
-in the sheet. A Gold a bottle, and the shelf is priced so the Requirement — the
+in the sheet. Three Gold a bottle (one, then two, then three — §1.2), and the shelf is priced so the Requirement — the
 whole wall — is a purse that can actually clear her out.
 
 ### The potions land on the event, not on a screen over it
@@ -1379,7 +1422,7 @@ falls back to its own drop screen: a table nobody can see is worse than a window
 
 `Leave` is authored as `nothing`, and the WHAM is the `Result` cell. Slay the
 Spire charges Health for walking out; here she swings and misses, because an
-event that opens on a Requirement of three Gold and then bills you for declining
+event that opens on a Requirement of nine Gold and then bills you for declining
 is a mugging rather than a shop. The line still lands — it is the best line in
 the event — and it costs nothing, which is what `nothing` is for (§3).
 

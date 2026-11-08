@@ -11,6 +11,55 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Event gold up by half.** No new gold buttons (the owner's call): every gold
+  number on the events that already use gold goes up about 1.5×, to follow the
+  measured purse and the 4/6/9/13 shelf. Arcade Room 2 → 3; Jungle Maze +6 / +2
+  → +9 / +3; Morphic Grove needs 9 (was 6); Ranwid and We Meet Again ask 6 for a
+  relic (was 4); the Woman in Blue 3 / 6 / 9 for 1 / 2 / 3 potions (was 2 / 4 /
+  6, needs 9); Whispering Hollow 6 for two pieces of loot (was 4). One one-shot,
+  `tools/oneshots/_events_gold_times_one_and_a_half.py`; the event doc's §1.2
+  table and worked examples follow.
+
+- **Shop prices widen with rarity: 4 / 6 / 9 / 13.** The measured run (~47 gold
+  answering every goal) could buy ~13 items at 3/5/7/9, nearly every one it was
+  shown. The owner's answer: each rarity step a gold wider than the last (+2,
+  +3, +4), so rarity costs more the rarer it gets. Loot stays two under (2 / 4 /
+  7 / 11) and every character's starting Gold goes 3 → 4 so the opening purse
+  still buys one Common (`tools/oneshots/_characters_start_gold_four.py`).
+  Common had to move too — three shelf items in four are Common, so widening
+  only the top (3/5/8/12) still bought ~13 — and at 4/6/9/13 a full-clear run
+  buys ~10 items, a half-clear one ~6. `ShopSystem.ITEM_PRICES` is the ladder.
+  A per-shop markup (each shop 25% dearer than the last) was built first and
+  reverted the same day: the owner wanted rarity, not the run's progress, to
+  set the price.
+
+- **What a run earns, measured; Punch Off's game limit gone.**
+  `tools/measure_run_gold.gd` plays whole runs headless through the real page
+  (random start card, shortest road to the Amulet, a Dash or Scramble when the
+  hand doesn't get closer, starting gear on) and counts every gold gained. A run
+  that answers every goal earns about **47** gold (4.6 a game played), three in
+  four about **36**, half about **27** — not the 8–15 the spec, the manual and
+  two code comments quoted. Two bodies a game, a boss on every third spawn
+  event, and runs that play more games than the panel card says (a 4-hop card
+  ran a median 7) are why. Spec §14.1 carries the table and says the "two to
+  four purchases" line no longer holds; the prices have not moved, that is the
+  owner's call. **Punch Off** loses its `games >= 6` Requirement, which in 5–9
+  game runs let it appear only in runs of seven games or more.
+
+- **Event gold checked against the economy.** Every number in the sixteen
+  events was priced against the shop (items 3/5/7/9, loot two under, never below
+  2) and against each other. The owner's 24 Oct upload had already doubled the
+  pool's gold to follow the 17 Oct ladder — Arcade Room, Woman in Blue, both
+  Ranwids, Morphic Grove, Jungle Maze — and **Whispering Hollow** was the one it
+  missed: 2 Gold still bought two pieces of loot, half the shop's floor and half
+  the Woman in Blue's bottle. It is 4 now (`gold >=4`, and the button carries
+  `needs gold 4` like the pool's other gold buttons). The rest already agree: 4
+  Gold a random relic, 2 a piece of loot or a potion, about one Gold a point of
+  Health wherever the two meet, 2 Max Health or a Key for a Small Chest.
+  `docs/event-sheet-authoring.md` §1.2 is that table, and the worked examples
+  that still quoted the pre-doubling prices (§14, §16, §17) say what the sheet
+  says.
+
 - **6 Nov follow-ups.** *Shields and pushes*: a body that lands on a packed
   board shoves its lane into you, and two of those pushes skipped the shields —
   picking a game stood its bodies up before handing over its Temporary Shields,

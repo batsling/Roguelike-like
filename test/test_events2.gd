@@ -588,8 +588,8 @@ func test_an_event_is_not_staged_when_its_tag_has_no_games() -> void:
 	if node == &"":
 		pending("the run did not reach this case (node == &'')")
 		return
-	# Punch Off also carries `games >= 6`; satisfy it, or this passes for the
-	# wrong reason and would keep passing if the tag gate were deleted.
+	# Punch Off carried a `games >= 6` Requirement until 6 Nov 2026. It has none
+	# now; this stays so the test can't pass for the wrong reason if one returns.
 	GameState.games_played = 10
 	var ev: EventData2 = _event(PUNCH)
 	var fight: Dictionary = _choice(ev, "i_can_take_them")
@@ -1516,8 +1516,13 @@ func _holds_bottle(bottle: Dictionary) -> bool:
 	return false
 
 
+# What Ranwid asks, off the sheet's "Give N Gold" (6 since 6 Nov 2026; 4 before,
+# 2 before that). The tests below read it rather than repeat it.
+const RANWID_ASK := 6
+const RANWID_GOLD_CHOICE := "give_%d_gold" % RANWID_ASK
+
 func _stock_ranwid() -> void:
-	GameState.gold = 5
+	GameState.gold = RANWID_ASK + 1
 	GameState.inventory.clear()
 	GameState.loot_items.clear()
 	GameState.add_item(_tradeable()[0])
@@ -1530,11 +1535,11 @@ func _stock_ranwid() -> void:
 func test_ranwid_wants_gold_a_potion_and_a_relic_all_at_once() -> void:
 	var ev: EventData2 = _event(RANWID)
 	_stock_ranwid()
-	assert_true(EventSystem.requirement_met(ev), "four Gold, a bottle and a relic")
+	assert_true(EventSystem.requirement_met(ev), "his Gold, a bottle and a relic")
 
-	GameState.gold = 3
-	assert_false(EventSystem.requirement_met(ev), "three Gold is not four")
-	GameState.gold = 5
+	GameState.gold = RANWID_ASK - 1
+	assert_false(EventSystem.requirement_met(ev), "a Gold short is short")
+	GameState.gold = RANWID_ASK + 1
 	GameState.loot_items.clear()
 	assert_false(EventSystem.requirement_met(ev), "and nothing to drink is a missing price")
 	GameState.add_potion_loot(Data.all_potions()[0].id)
@@ -1544,7 +1549,7 @@ func test_ranwid_wants_gold_a_potion_and_a_relic_all_at_once() -> void:
 
 func test_a_multi_clause_requirement_reads_as_one_sentence() -> void:
 	assert_eq(EventSystem.requirement_text(_event(RANWID).requirement),
-		"Gold >= 4 and Potions >= 1 and Tradeable Relics >= 1",
+		"Gold >= %d and Potions >= 1 and Tradeable Relics >= 1" % RANWID_ASK,
 		"the phrase the player reads is the phrase in the cell")
 	# And a single clause still reads exactly as it did — eleven authored rows
 	# depend on it.
@@ -1598,18 +1603,18 @@ func test_ranwid_names_the_potion_and_the_relic_he_is_asking_for() -> void:
 		"no hole survives to the screen")
 
 
-func test_the_gold_price_costs_four_and_pays_one_relic() -> void:
+func test_the_gold_price_costs_what_it_says_and_pays_one_relic() -> void:
 	var ev: EventData2 = _event(RANWID)
 	_stock_ranwid()
 	EventSystem.begin_event(ev)
-	var choice: Dictionary = _choice(ev, "give_4_gold")
+	var choice: Dictionary = _choice(ev, RANWID_GOLD_CHOICE)
 	# The price, off the cell and charged on its own (see _effect_of).
-	assert_eq(_effect_of(choice, "lose_gold"), {"type": "lose_gold", "value": 4})
-	GameState.gold = 5
+	assert_eq(_effect_of(choice, "lose_gold"), {"type": "lose_gold", "value": RANWID_ASK})
+	GameState.gold = RANWID_ASK + 1
 	EffectSystem.apply(_effect_of(choice, "lose_gold"), {})
-	assert_eq(GameState.gold, 1, "he chews four of the five")
+	assert_eq(GameState.gold, 1, "he chews all but one")
 	# …and the press pays a relic for them.
-	GameState.gold = 5
+	GameState.gold = RANWID_ASK + 1
 	var held: int = GameState.inventory.size()
 	EventSystem.resolve_choice(ev, choice, 0)
 	assert_eq(GameState.inventory.size(), held + 1, "and one relic comes back")
@@ -1620,8 +1625,8 @@ func test_the_gold_price_costs_four_and_pays_one_relic() -> void:
 	# came off, so it says that: five, minus the price, plus whatever the relic
 	# that actually arrived pays for itself.
 	var paid: ItemData = GameState.inventory[GameState.inventory.size() - 1]
-	assert_eq(GameState.gold, 5 - 4 + _gold_on_pickup(paid),
-		"the four are spent, whatever %s pays back" % paid.id)
+	assert_eq(GameState.gold, 1 + _gold_on_pickup(paid),
+		"the price is spent, whatever %s pays back" % paid.id)
 
 
 # What a relic hands the purse the moment it is picked up, or 0 for the ones that
@@ -1703,7 +1708,7 @@ func test_the_relic_arrives_in_the_pack_not_in_a_chest() -> void:
 	var chests: int = GameState.pending_chests
 	EventSystem.begin_event(ev)
 	var held: int = GameState.inventory.size()
-	EventSystem.resolve_choice(ev, _choice(ev, "give_4_gold"), 0)
+	EventSystem.resolve_choice(ev, _choice(ev, RANWID_GOLD_CHOICE), 0)
 	assert_eq(GameState.pending_chests, chests, "nothing was banked")
 	assert_eq(GameState.inventory.size(), held + 1, "it is already in the pack")
 
@@ -1839,8 +1844,12 @@ func test_the_curse_the_monkey_rolls_is_the_curse_it_hands_over() -> void:
 const AGAIN := &"we_meet_again"
 
 
+# What he asks, off the sheet (6 since 6 Nov 2026; 4, and 2, before).
+const AGAIN_ASK := 6
+const AGAIN_GOLD_CHOICE := "give_%d_gold" % AGAIN_ASK
+
 func _stock_again() -> void:
-	GameState.gold = 5
+	GameState.gold = AGAIN_ASK + 1
 	GameState.loot_items.clear()
 	GameState.add_potion_loot(Data.all_potions()[0].id)
 	for cd in Data.all_cards():
@@ -1849,46 +1858,46 @@ func _stock_again() -> void:
 			break
 
 
-func test_he_asks_for_four_gold_before_he_turns_up_at_all() -> void:
+func test_he_asks_for_his_gold_before_he_turns_up_at_all() -> void:
 	var ev: EventData2 = _event(AGAIN)
 	_stock_again()
-	assert_true(EventSystem.requirement_met(ev), "five Gold is more than four")
-	GameState.gold = 3
-	assert_false(EventSystem.requirement_met(ev), "three is not")
-	assert_eq(EventSystem.requirement_text(ev.requirement), "Gold >= 4")
+	assert_true(EventSystem.requirement_met(ev), "more than his price")
+	GameState.gold = AGAIN_ASK - 1
+	assert_false(EventSystem.requirement_met(ev), "a Gold short is not")
+	assert_eq(EventSystem.requirement_text(ev.requirement), "Gold >= %d" % AGAIN_ASK)
 
 
 # The prices are DISPLAYED, which is the original's own rule. The two that the run
 # picks are rolled when the event opens and land in the button through their
-# holes; the gold is a flat two and simply says so.
+# holes; the gold is a flat price and simply says so.
 func test_every_price_is_named_on_its_button() -> void:
 	var ev: EventData2 = _event(AGAIN)
 	_stock_again()
 	EventSystem.begin_event(ev)
 	var potion: Dictionary = _choice(ev, "give_potion")
-	var gold: Dictionary = _choice(ev, "give_4_gold")
+	var gold: Dictionary = _choice(ev, AGAIN_GOLD_CHOICE)
 	var card: Dictionary = _choice(ev, "give_card")
 	assert_eq(EventSystem.fill_name_holes(String(potion["text"]), potion),
 		"Give %s" % EventSystem.offered_potion_name())
 	assert_eq(EventSystem.fill_name_holes(String(card["text"]), card),
 		"Give %s" % EventSystem.offered_card_name())
-	assert_eq(String(gold["text"]), "Give 4 Gold", "the number is on the button")
+	assert_eq(String(gold["text"]), "Give %d Gold" % AGAIN_ASK, "the number is on the button")
 	for line in [String(potion["text"]), String(card["text"])]:
 		assert_true(line.contains("<"), "the .tres carries the holes: %s" % line)
 
 
-# Four Gold, every time (two until the 23 Oct doubling). The ask was authored as a rolled 2-6 for a while, on the
+# A flat price, every time (two, then four from 23 Oct, six from 6 Nov). The ask was authored as a rolled 2-6 for a while, on the
 # original's "varying amount"; it is a flat price now, and the button and the
 # press have to agree on it.
-func test_he_asks_for_four_gold_and_charges_four() -> void:
+func test_he_charges_exactly_what_the_button_says() -> void:
 	var ev: EventData2 = _event(AGAIN)
 	_stock_again()
-	var choice: Dictionary = _choice(ev, "give_4_gold")
-	assert_eq(_effect_of(choice, "lose_gold"), {"type": "lose_gold", "value": 4},
-		"exactly the four the button said")
+	var choice: Dictionary = _choice(ev, AGAIN_GOLD_CHOICE)
+	assert_eq(_effect_of(choice, "lose_gold"), {"type": "lose_gold", "value": AGAIN_ASK},
+		"exactly what the button said")
 	GameState.gold = 9
 	EffectSystem.apply(_effect_of(choice, "lose_gold"), {})
-	assert_eq(GameState.gold, 5)
+	assert_eq(GameState.gold, 9 - AGAIN_ASK)
 	# The press pays a relic for them, and THE PURSE AFTERWARDS CANNOT SAY WHAT HE
 	# TOOK. The old assertion here was `gold <= 7` under a comment admitting the
 	# relic "may carry gold of its own" — which is exactly the case that breaks an
@@ -1913,7 +1922,7 @@ func test_he_asks_for_four_gold_and_charges_four() -> void:
 	EventSystem.resolve_choice(ev, choice, 0)
 	GameState.gold_changed.disconnect(watch)
 	assert_eq(GameState.inventory.size(), held + 1, "and a relic for it")
-	assert_eq(purse.min(), 5, "the four are spent, whatever the relic pays back after")
+	assert_eq(purse.min(), 9 - AGAIN_ASK, "his price is spent, whatever the relic pays back after")
 
 
 # The card he takes is one worth studying: Uncommon or better, which is what the
@@ -1994,33 +2003,36 @@ func _has_effect_type(ev: EventData2, type: String) -> bool:
 
 # --- The Woman in Blue: a shop with one item and no browsing ----------------
 #
-# Slay the Spire's pale woman. Three prices for the same thing, a Gold a bottle,
+# Slay the Spire's pale woman. Three prices for the same thing, BOTTLE a bottle,
 # and a fourth button that is her fist. The potions arrive the way every other
 # payout does — offered on the drop screen, dragged into the pack — because a
 # potion bought is a potion found as far as the nine slots are concerned.
 
 const BLUE := &"the_woman_in_blue"
+# Gold a bottle, off the sheet (3 since 6 Nov 2026; 2, and 1, before). Her
+# Requirement is the whole shelf: three bottles.
+const BOTTLE := 3
 
 
 func test_she_pulls_you_in_for_the_price_of_the_whole_shelf() -> void:
 	var ev: EventData2 = _event(BLUE)
-	GameState.gold = 6
-	assert_true(EventSystem.requirement_met(ev), "six Gold is the whole wall")
-	GameState.gold = 5
+	GameState.gold = 3 * BOTTLE
+	assert_true(EventSystem.requirement_met(ev), "the whole shelf's price is the whole wall")
+	GameState.gold = 3 * BOTTLE - 1
 	assert_false(EventSystem.requirement_met(ev),
 		"a purse that cannot clear her out is not shown the shop")
-	assert_eq(EventSystem.requirement_text(ev.requirement), "Gold >= 6")
+	assert_eq(EventSystem.requirement_text(ev.requirement), "Gold >= %d" % (3 * BOTTLE))
 
 
-func test_each_shelf_costs_two_gold_a_bottle() -> void:
+func test_each_shelf_costs_the_same_a_bottle() -> void:
 	var ev: EventData2 = _event(BLUE)
 	for n in [1, 2, 3]:
-		GameState.gold = 6
+		GameState.gold = 3 * BOTTLE
 		GameState.loot_items.clear()
 		var choice: Dictionary = _choice(ev, "buy_%d_potion%s" % [n, "" if n == 1 else "s"])
-		assert_string_contains(EventSystem.describe_choice(choice, 0), "-%d Gold" % (2 * n))
+		assert_string_contains(EventSystem.describe_choice(choice, 0), "-%d Gold" % (BOTTLE * n))
 		EventSystem.resolve_choice(ev, choice, 0)
-		assert_eq(GameState.gold, 6 - 2 * n, "two Gold a bottle")
+		assert_eq(GameState.gold, 3 * BOTTLE - BOTTLE * n, "the same Gold a bottle")
 		assert_eq(GameState.loot_potions().size(), n, "and that many bottles")
 
 
@@ -2029,7 +2041,7 @@ func test_each_shelf_costs_two_gold_a_bottle() -> void:
 # the modal is up.
 func test_a_shelf_you_cannot_afford_is_not_offered() -> void:
 	var ev: EventData2 = _event(BLUE)
-	GameState.gold = 2
+	GameState.gold = BOTTLE
 	assert_true(EventSystem.choice_available(_choice(ev, "buy_1_potion"), {}))
 	assert_false(EventSystem.choice_available(_choice(ev, "buy_2_potions"), {}))
 	assert_false(EventSystem.choice_available(_choice(ev, "buy_3_potions"), {}))

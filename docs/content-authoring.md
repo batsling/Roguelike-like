@@ -632,7 +632,7 @@ names the row and the cell.
 | `Game` | The real game it's lifted from. Shows as "From: *game*" in the modal. |
 | `Tier` | `All`, or a comma list of `Low` / `Medium` / `High` / `Insane`. |
 | `Where` | **Leave blank.** An event fires after every game, so this answers nothing today. It stays wired (`Dead End` / `Any` / `Game`) for the per-location work. |
-| `Requirement` | A gate on the run: `<stat> <op> <value>`, `%` reads against the max. `hp <= 70%`, `games >= 6`. Several clauses joined by **`and`** when an event needs more than one thing at once (`gold>=4 and potions>=1 and relics>=1` — Ranwid, whose every button spends a different kind of thing). Blank = always eligible. A gated event is skipped and stays in the bag. |
+| `Requirement` | A gate on the run: `<stat> <op> <value>`, `%` reads against the max. `hp <= 70%`, `relics >= 5`. Several clauses joined by **`and`** when an event needs more than one thing at once (`gold>=4 and potions>=1 and relics>=1` — Ranwid, whose every button spends a different kind of thing). Blank = always eligible. A gated event is skipped and stays in the bag. |
 | `Trigger` | `After` (fires once the game at the node is played). ⚠ `Before` parses and is stored, but **nothing reads it yet**. Leave it `After` until that is wired up. |
 | `Rarity` | `Common` / `Uncommon` / `Rare` — which bag it is dealt from. |
 | `Image` | Art base name → `images2.0/events/<Image>.png`. Blank falls back to the de-spaced `Event`. |

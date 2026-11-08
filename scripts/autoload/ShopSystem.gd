@@ -29,9 +29,9 @@ extends Node
 #     you don't want is the same kind of problem as an offering of three games
 #     you don't want, and it takes the same answer. Pricing it in gold instead
 #     would have let a rich player grind the whole 21-item catalog at one shop.
-#   * GOLD is scarce and small. A run earns 8-15 (GameLoop2.GOLD_PER_ENEMY /
-#     GOLD_PER_BOSS) against prices of 3-9, so a shop is two-to-four purchases a
-#     run in total, not per visit.
+#   * GOLD is small. A run earns about 27-47 (GameLoop2.GOLD_PER_ENEMY /
+#     GOLD_PER_BOSS; measured by tools/measure_run_gold.gd, spec §14.1) against
+#     prices of 4-13, so a run buys a good chunk of its shelves, not all of them.
 #
 # THE SPLIT: this autoload is the LOGIC. The state — each shop's shelf — lives on
 # GameState (`shops`, keyed by node, and `shop_bar`; run-scope, saved, reset), the
@@ -51,21 +51,30 @@ const STOCK_SLOTS := 3
 # draws it through LootSystem, which masks it.
 const LOOT_SLOTS := 3
 
-# A PIECE OF LOOT COSTS TWO LESS than a relic of its rarity: Common 1, Uncommon 3,
-# Rare 5, Legendary 7. Loot is spent or kept in a slot, a relic is kept for free —
+# A PIECE OF LOOT COSTS TWO LESS than a relic of its rarity, never under
+# LOOT_MIN_PRICE: Common 2, Uncommon 4, Rare 7, Legendary 11. Loot is spent or kept in a slot, a relic is kept for free —
 # so the same rarity is worth less as loot.
 const LOOT_DISCOUNT := 2
 
-# Price = BASE_PRICE + PRICE_PER_RUNG x the rarity's rung on ItemData.Rarity, so
-# Common 3, Uncommon 5, Rare 7, Legendary 9. The ladder was +1 a rung (3-6) while
-# a run earned about a dozen gold; every game stands two bodies and Fractures
-# stand more, so a run earns more than the ladder was set against, and the owner
-# widened the steps to two (17 October 2026). Common stays at 3, so the 3-gold
-# starting purse still buys one Common item at Fracture 0. This is also the third
-# thing that wanted the EPIC rung gone from ItemData.Rarity (see the enum): a hole
-# in the ladder would have put a hole in the prices.
-const BASE_PRICE := 3
-const PRICE_PER_RUNG := 2
+# THE PRICE LADDER, by the rarity's rung on ItemData.Rarity: Common 4, Uncommon 6,
+# Rare 9, Legendary 13 — each step a gold wider than the last (+2, +3, +4), so the
+# rarer a thing is, the more its rarity adds to the price (the owner, 6 Nov 2026).
+#
+# History: +1 a rung (3-6) while a run earned an estimated dozen gold; +2 a rung
+# (3/5/7/9) from 17 October 2026. Then a run was MEASURED (tools/
+# measure_run_gold.gd, spec §14.1) at ~47 gold for one answering every goal — at
+# 3/5/7/9 enough to buy ~13 items, nearly every one it was shown. Common had to
+# move too, not just the rare end: three shelf items in four are Common, so a
+# ladder that only widened at the top (3/5/8/12) still bought ~13. At 4/6/9/13 a
+# full-clear run buys ~10, a half-clear one ~6. Starting gold went 3 -> 4 with it
+# (the characters sheet), so the opening purse still buys one Common.
+#
+# An explicit list rather than base + step, because the steps are not equal.
+# This is also the third thing that wanted the EPIC rung gone from
+# ItemData.Rarity (see the enum): a hole in the ladder would be a hole here.
+const ITEM_PRICES: Array[int] = [4, 6, 9, 13]
+# The cheapest rung — what an entry with no price of its own is read as.
+const BASE_PRICE: int = 4
 
 # Rerolling the shelf, in Scramble charges.
 const REROLL_COST := 1
@@ -219,8 +228,11 @@ const _KEEPER_SALT := "shop-keeper"
 # Fracture's surcharge (docs/fracture-design.md §3). A shopkeeper's sale is applied
 # on top of this by the shelf, not here, so this stays "the going rate".
 func price_for(rarity: int) -> int:
-	return BASE_PRICE + PRICE_PER_RUNG * clampi(rarity, 0, ItemData.Rarity.LEGENDARY) \
-		+ Fracture.shop_surcharge()
+	return ladder_price(rarity) + Fracture.shop_surcharge()
+
+# The ladder alone, before a Fracture: ITEM_PRICES at `rarity`'s rung.
+static func ladder_price(rarity: int) -> int:
+	return ITEM_PRICES[clampi(rarity, 0, ITEM_PRICES.size() - 1)]
 
 
 # What `entry` costs NOW: the price it was rolled at, times every run-wide cut
@@ -250,7 +262,7 @@ const PACK_CARDS := 3
 # Two under the item ladder, never below LOOT_MIN_PRICE, and then a Fracture's
 # surcharge on top — so a Common piece is 2, and 3 from Fracture 2.
 func loot_price_for(rarity: String) -> int:
-	var ladder: int = BASE_PRICE + PRICE_PER_RUNG * rarity_rung(rarity) - LOOT_DISCOUNT
+	var ladder: int = ladder_price(rarity_rung(rarity)) - LOOT_DISCOUNT
 	return maxi(LOOT_MIN_PRICE, ladder) + Fracture.shop_surcharge()
 
 # The cheapest a piece of loot is, before a Fracture or a sale (the owner, 17 Oct

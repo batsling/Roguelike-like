@@ -3788,19 +3788,64 @@ banks that decision instead, and the shops are where it is spent.
 | Enemy defeated | **+1 gold** |
 | Boss defeated | **+3 gold** |
 | …while the **Golden Idol** is held | **+1 more** off every body, boss or not (§8) |
-| Starting purse | the character's **`Gold`** column (**3** across the roster) |
-| Item price | **3 + 2 a rarity rung** — Common 3, Uncommon 5, Rare 7, Legendary 9 (`ShopSystem.PRICE_PER_RUNG`; +1 a rung until 17 October 2026, when the owner widened it because Enemies nodes and Fractures stand more bodies, and so pay more gold, than the ladder was set against) |
+| Starting purse | the character's **`Gold`** column (**4** across the roster — 3 until the ladder moved, 6 Nov 2026) |
+| Item price | **Common 4, Uncommon 6, Rare 9, Legendary 13** — each step a gold wider than the last (+2, +3, +4), so rarity costs more the rarer it gets (`ShopSystem.ITEM_PRICES`, 6 Nov 2026). It was 3 + 1 a rung, then 3 + 2 a rung from 17 October 2026; see below for why Common moved too |
 | …from **Fracture 2** | **+1** on every price, items and loot (`Fracture.shop_surcharge`, `docs/fracture-design.md` §3) |
 | Carries between runs | **No.** A run opens on the character and nothing else. |
 
-A run is 6–12 games, so a player clearing most of their goals earns roughly
-**8–15 gold** and can make **two to four purchases in a whole run**. That is the
-point of the scale: at combat-era numbers (gold started at **99**, the Challenge
-Rift paid **50**) a price is a rounding error, and every purchase is automatic.
-At these numbers each one costs something. It also keeps every figure on the HUD
-to a single digit, which §9's OBS companion window needs.
+**What a run actually earns, measured (6 Nov 2026).** `tools/measure_run_gold.gd`
+plays whole runs headless through the real page: a random card off the start
+panel, the shortest road to the Amulet (a Dash or Scramble when no card in the
+hand gets closer), every game beaten first try, starting gear, shopkeepers and
+locations on. Each body is judged once, on sight, as a goal the player answers or
+one they never will:
 
-**Three gold to start** is exactly one Common item, so the first shop a run
+| Goals answered | Runs | Gold earned in the run (opening 3 included) | Per game played | Kills | Bosses |
+|---|--:|---|--:|--:|--:|
+| **all** | 60 | mean **47**, median 46 (p10 30, p90 67) | **4.6** | 34 | 4.8 |
+| **three in four** | 40 | mean **36**, median 32 (p10 25, p90 56) | **3.5** | 25 | 3.9 |
+| **half** | 40 | mean **27**, median 24 (p10 16, p90 41) | **2.7** | 17 | 2.3 |
+
+Three things put it this high, and none is a price. **Every game stands two
+bodies** (§19.10), and the road stands up to two more at the end of each game
+near the Amulet (§7.4). **Every third spawn event lands a boss on top**
+(§19.6), and picking a game and ending one are both spawn events, so a boss
+(**3** gold) walks on about every other game. And **a run plays more games than
+its panel card says**: the hand is two or three of the current game's neighbours
+with no promise that one is closer, so a 4-hop card ran a median **7** games and
+a 5-hop card **9–10**, not 5 and 6.
+
+So the line this section was written around — *8–15 gold, two to four purchases
+in a whole run* — no longer holds: at the shelf's prices a run that answers most
+of its goals can buy **eight or more** things, and its kills fill the shop bar
+(§19.10: 4, then 5, 6, 7, 8) about **five** times. The measurement leaves out
+what the player does with the run — no lost runs, no event pressed (Jungle Maze
+is the only one that pays gold), no relic taken (Old Coin and the gold
+trinkets), nothing spent — so it is the purse the bodies fill, not a ceiling.
+**The ladder moved for it (the owner, 6 Nov 2026): the steps WIDEN with
+rarity.** 3/5/7/9 became **4/6/9/13** (+2, +3, +4), loot two under (2/4/7/11),
+and the opening purse 3 → 4. Common had to move as well as the rare end, because
+three shelf items in four are Common: a ladder that only widened at the top
+(3/5/8/12) still bought ~13 items in a full-clear run. Spread over the purse
+that the measurement found, at the shelf's 75/20/4/1 rarity weights:
+
+| Goals answered | Gold | Items at 3/5/7/9 (avg 3.6) | Items at 4/6/9/13 (avg 4.7) |
+|---|--:|--:|--:|
+| all | ~47 | ~13 | **~10** |
+| three in four | ~36 | ~10 | **~8** |
+| half | ~27 | ~7.5 | **~6** |
+
+A good chunk of the shelf, then, but no longer all of it. (A per-shop markup —
+each shop dearer than the last — was built and taken back the same day: the
+owner wanted rarity, not the run's progress, to set the price.)
+
+The scale was set for that older line: at combat-era numbers (gold started at **99**, the Challenge
+Rift paid **50**) a price is a rounding error, and every purchase is automatic.
+At these numbers each one costs something. It was also meant to keep every
+figure on the HUD to a single digit for §9's OBS companion window; the measured
+purse runs to two digits by mid-run, so that part no longer holds.
+
+**Four gold to start** is exactly one Common item, so the first shop a run
 reaches is always worth walking into.
 
 **Gold rides the DROP, not the corpse** — it is paid inside the branch of
@@ -3890,8 +3935,8 @@ row under the relics. Each is rolled exactly as a drop is
 tenth), so every loot kind can turn up, and an **unidentified piece stays
 unidentified on the shelf**: the row, its hover, its card and the offering's
 stock lines all draw it through `LootSystem`, which shows the mask. A piece costs
-**two gold less** than a relic of its rarity, never under 2 (Common 2, Uncommon 3,
-Rare 5, Legendary 7 — `LOOT_DISCOUNT`, `LOOT_MIN_PRICE`). Buying needs room in the pack; a piece that does not fit is not
+**two gold less** than a relic of its rarity, never under 2 (Common 2, Uncommon 4,
+Rare 7, Legendary 11 — `LOOT_DISCOUNT`, `LOOT_MIN_PRICE`). Buying needs room in the pack; a piece that does not fit is not
 charged for and stays. **A reroll redraws both rows.** Lord's Parasol sweeps the
 loot row too, as far as the pack has room. A shelf saved before loot was sold
 gets its loot row the first time it is asked for.
@@ -4700,10 +4745,10 @@ on a cleared goal (§14.1) and **a piece of loot on the square they fell in**
 (§8.2), plus their difficulty banked toward the report's chest. An Enemies node
 is therefore *already* the node that pays most, in proportion to how much of it
 you actually answered, which is a better shape than a flat fee for arriving.
-The flat fee was also a real economy change nobody asked for: a run earns
-**8–15 gold** in total (§14.1) and two gold across 60% of a 6–12 game run is
-another 7–14, roughly doubling it and undoing the "two to four purchases in a
-whole run" the whole price list is built around.
+The flat fee was also a real economy change nobody asked for: a run earned an
+estimated **8–15 gold** in total then, and two gold across 60% of a 6–12 game
+run was another 7–14, roughly doubling it. (Measured since, a run earns 27–47 —
+§14.1 — but the argument against paying twice for the same bodies stands.)
 
 So the four kinds differ in **what happens**, not in what you are handed. An
 Enemies node's reward is the two bodies standing on it.
