@@ -19,6 +19,8 @@ func before_each() -> void:
 	Cosmetics._worn = {}
 	Cosmetics._letters_off = {}
 	Cosmetics._games_off = {}
+	Cosmetics._rolled = {}
+	Cosmetics._seen = {}
 	Notifications.clear()
 
 func after_each() -> void:
@@ -203,3 +205,94 @@ func test_the_customize_screen_opens_on_every_tab() -> void:
 		s._refresh()
 		assert_gt(s._body.get_child_count(), 0, "tab %d has something on it" % t)
 	s.queue_free()
+
+# --- random ------------------------------------------------------------------------
+
+func test_random_rolls_among_the_default_and_what_is_unlocked() -> void:
+	var slot := Cosmetics.costume_slot(&"zoe", "icon")
+	Cosmetics._unlocked["costume:icon:zoe/clown"] = "game:haste"
+	Cosmetics._unlocked["costume:icon:zoe/pixel"] = "game:haste"
+	assert_eq(Cosmetics.options(slot), ["", "costume:icon:zoe/clown", "costume:icon:zoe/pixel"],
+		"the default and the two unlocked, never a locked one")
+	Cosmetics.set_costume(&"zoe", "icon", Cosmetics.RANDOM)
+	assert_eq(Cosmetics.choice(slot), Cosmetics.RANDOM, "the choice is Random")
+	var seen := {}
+	for i in 60:
+		Cosmetics.roll_random()
+		var e := Cosmetics.costume(&"zoe", "icon")
+		seen[String(e.get("key", ""))] = true
+	assert_eq(seen.size(), 3, "over many runs every option comes up")
+
+func test_a_run_start_rolls_random_again() -> void:
+	Cosmetics._unlocked["difficulty/heat_hades"] = "game:hades"
+	Cosmetics.set_icon("difficulty", Cosmetics.RANDOM)
+	var slot := Cosmetics.icon_slot("difficulty")
+	Cosmetics._rolled[slot] = "sentinel"
+	GameLoop2.start_run(Data.get_character2(&"isaac"))
+	assert_ne(String(Cosmetics._rolled.get(slot)), "sentinel", "start_run rolled it")
+	assert_true(["", "difficulty/heat_hades"].has(String(Cosmetics._rolled.get(slot))))
+
+# --- new looks glow ------------------------------------------------------------------
+
+func test_a_new_look_glows_once_and_is_then_seen() -> void:
+	var key := "costume:icon:zoe/clown"
+	Cosmetics._unlocked[key] = "game:haste"
+	assert_true(Cosmetics.is_new(key), "drawn and never shown")
+	var tiles := CustomizeScreen.costume_tiles(Data.get_character2(&"zoe"), "icon", 40, func(): pass)
+	var tile: Control = null
+	for t in tiles:
+		if String((t as Node).get_meta("look", "")) == key:
+			tile = t
+		else:
+			(t as Node).free()
+	assert_not_null(tile)
+	add_child_autofree(tile)
+	assert_false(Cosmetics.is_new(key), "shown: seen, and will not glow again")
+	assert_false(Cosmetics.is_new("costume:icon:zoe/pixel"), "a locked look is never new")
+
+func test_a_locked_look_is_its_silhouette() -> void:
+	var tiles := CustomizeScreen.costume_tiles(Data.get_character2(&"zoe"), "icon", 40, func(): pass)
+	var locked: Button = null
+	for t in tiles:
+		if String((t as Node).get_meta("look", "")) == "costume:icon:zoe/blue":
+			locked = t
+	assert_not_null(locked)
+	assert_true(locked.disabled, "cannot be worn")
+	var art: TextureRect = locked.get_child(0)
+	assert_not_null(art.texture, "its own picture…")
+	assert_eq(art.modulate, Color(0, 0, 0, 1), "…blacked out")
+	for t in tiles:
+		(t as Node).free()
+
+# --- the character picker --------------------------------------------------------------
+
+func test_the_picker_dresses_a_hero_with_costumes() -> void:
+	var p := CharacterPicker.open(self)
+	await get_tree().process_frame
+	p._select.call(Data.get_character2(&"zoe"))
+	var looks: Node = p.find_child("Costumes", true, false)
+	assert_not_null(looks, "Zoe has costumes to choose")
+	assert_not_null(looks.find_child("Slot_icon", true, false), "an icon strip")
+	assert_null(looks.find_child("Slot_full", true, false), "and no full one: hers are icons only")
+	p._select.call(Data.get_character2(&"manager"))
+	await get_tree().process_frame
+	assert_null(p.find_child("Costumes", true, false), "a hero with none shows none")
+	p.queue_free()
+
+func test_choosing_in_the_picker_changes_the_portrait() -> void:
+	var key := "costume:full:isaac/rebirth"
+	Cosmetics._unlocked[key] = "game:the_binding_of_isaac_rebirth"
+	var p := CharacterPicker.open(self)
+	await get_tree().process_frame
+	var isaac: CharacterData = Data.get_character2(&"isaac")
+	p._select.call(isaac)
+	var strip: Node = p.find_child("Slot_full", true, false)
+	var pressed := false
+	for t in strip.find_children("*", "Button", true, false):
+		if String(t.get_meta("look", "")) == key:
+			(t as Button).pressed.emit()
+			pressed = true
+	assert_true(pressed)
+	await get_tree().process_frame
+	assert_string_contains(isaac.shown_portrait().resource_path, "Isaac_Rebirth")
+	p.queue_free()

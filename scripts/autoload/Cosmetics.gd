@@ -32,6 +32,15 @@ var _unlocked: Dictionary = {}     # unit key -> owner key ("game:hades")
 var _worn: Dictionary = {}         # "costume:<character>:<slot>" / "icon:<kind>" -> unit key
 var _letters_off: Dictionary = {}  # index key -> true
 var _games_off: Dictionary = {}    # game id -> true
+# RANDOM (the owner, 8 Nov 2026): a slot worn as RANDOM shows `_rolled[slot]`, rolled
+# afresh at the start of every run (GameLoop2.start_run -> roll_random) among the
+# default and every unlocked look that fits it. "" in `_rolled` is the default.
+const RANDOM := "random"
+var _rolled: Dictionary = {}       # slot key -> unit key or ""
+# NEW LOOKS GLOW (the owner, 8 Nov 2026: "similar to how new letters do"): a look
+# drawn but not yet shown on a screen that lets you wear it. Per profile, like
+# TitleUnlocks' seen letters; `mark_seen` once shown.
+var _seen: Dictionary = {}         # unit key -> true
 var path_override: String = ""
 var _rng := RandomNumberGenerator.new()
 
@@ -113,36 +122,115 @@ func _draw(pool: Array, owed: int, owner: String, fresh: Array) -> void:
 
 # --- worn -----------------------------------------------------------------------
 
+static func costume_slot(character: StringName, slot: String) -> String:
+	return "costume:%s:%s" % [character, slot]
+
+static func icon_slot(kind: String) -> String:
+	return "icon:%s" % kind
+
+# What the player CHOSE for a slot: "" (the default), RANDOM, or a unit key.
+func choice(slot_key: String) -> String:
+	return String(_worn.get(slot_key, ""))
+
+# The unit a slot shows now — a RANDOM slot's roll — or "" for the default.
+func _shown_key(slot_key: String) -> String:
+	var key := choice(slot_key)
+	if key == RANDOM:
+		if not _rolled.has(slot_key):
+			_roll(slot_key)
+		key = String(_rolled.get(slot_key, ""))
+	return key if key != "" and is_unlocked(key) else ""
+
 # The costume `character` wears in `slot` (icon or full), or {} for the default.
 func costume(character: StringName, slot: String) -> Dictionary:
-	var key := String(_worn.get("costume:%s:%s" % [character, slot], ""))
-	if key == "" or not is_unlocked(key):
-		return {}
-	return CosmeticCatalog.entry(key)
+	var key := _shown_key(costume_slot(character, slot))
+	return CosmeticCatalog.entry(key) if key != "" else {}
 
+# `key` is "" (the default), RANDOM, or a costume's unit key.
 func set_costume(character: StringName, slot: String, key: String) -> void:
-	var k := "costume:%s:%s" % [character, slot]
-	if key == "":
-		_worn.erase(k)
-	else:
-		_worn[k] = key
-	_save()
-	changed.emit()
+	_choose(costume_slot(character, slot), key)
 
 # The icon set worn for `kind` (key, bomb, difficulty), or {} for the default glyph.
 func icon(kind: String) -> Dictionary:
-	var key := String(_worn.get("icon:%s" % kind, ""))
-	if key == "" or not is_unlocked(key):
-		return {}
-	return CosmeticCatalog.entry(key)
+	var key := _shown_key(icon_slot(kind))
+	return CosmeticCatalog.entry(key) if key != "" else {}
 
 func set_icon(kind: String, key: String) -> void:
+	_choose(icon_slot(kind), key)
+
+# What a slot shows now, a costume's or an icon set's entry ({} for the default).
+func costume_or_icon(slot_key: String) -> Dictionary:
+	var key := _shown_key(slot_key)
+	return CosmeticCatalog.entry(key) if key != "" else {}
+
+func choose(slot_key: String, key: String) -> void:
+	_choose(slot_key, key)
+
+func _choose(slot_key: String, key: String) -> void:
 	if key == "":
-		_worn.erase("icon:%s" % kind)
+		_worn.erase(slot_key)
 	else:
-		_worn["icon:%s" % kind] = key
+		_worn[slot_key] = key
+	_rolled.erase(slot_key)
+	if key == RANDOM:
+		_roll(slot_key)   # a pick to show before the first run rolls one
 	_save()
 	changed.emit()
+
+# The looks a slot can roll: the default ("") and every unlocked look that fits.
+func options(slot_key: String) -> Array:
+	var parts := slot_key.split(":")
+	var pool: Array = []
+	if parts[0] == "costume":
+		pool = CosmeticCatalog.costumes_of(StringName(parts[1]), parts[2])
+	else:
+		pool = CosmeticCatalog.icons_of(parts[1])
+	var out: Array = [""]
+	for e in pool:
+		if is_unlocked(String(e["key"])):
+			out.append(String(e["key"]))
+	return out
+
+func _roll(slot_key: String) -> void:
+	var opts := options(slot_key)
+	_rolled[slot_key] = String(opts[_rng.randi_range(0, opts.size() - 1)])
+
+# Every RANDOM slot rolls again. GameLoop2.start_run calls it, so each run is
+# dressed afresh; the roll is saved, so the menu and the run agree on it.
+func roll_random() -> void:
+	var any := false
+	for slot_key in _worn:
+		if String(_worn[slot_key]) == RANDOM:
+			_roll(String(slot_key))
+			any = true
+	if any:
+		_save()
+		changed.emit()
+
+# --- new looks ------------------------------------------------------------------
+
+# Drawn by a rank and not yet shown where it can be worn: it glows.
+func is_new(key: String) -> bool:
+	return _unlocked.has(key) and not _seen.has(key)
+
+func mark_seen(keys: Array) -> void:
+	var moved := false
+	for k in keys:
+		if _unlocked.has(String(k)) and not _seen.has(String(k)):
+			_seen[String(k)] = true
+			moved = true
+	if moved:
+		_save()
+
+# The glow itself, shared by every screen that shows a look: LogoProgress's pulse.
+const GLOW := Color(2.4, 2.1, 1.5)
+const GLOW_PULSES := 3
+const GLOW_PULSE_SECS := 0.45
+
+static func glow(node: CanvasItem) -> void:
+	var tw := node.create_tween().set_loops(GLOW_PULSES)
+	tw.tween_property(node, "modulate", GLOW, GLOW_PULSE_SECS * 0.4)
+	tw.tween_property(node, "modulate", Color.WHITE, GLOW_PULSE_SECS * 0.6)
 
 # A character's portrait and icon as worn: the costume's picture, else its own.
 func portrait_of(ch: CharacterData) -> Texture2D:
@@ -423,6 +511,8 @@ func _load() -> void:
 	_worn = {}
 	_letters_off = {}
 	_games_off = {}
+	_rolled = {}
+	_seen = {}
 	var f := FileAccess.open(_path(), FileAccess.READ)
 	if f == null:
 		return
@@ -438,6 +528,10 @@ func _load() -> void:
 		_letters_off[String(k)] = true
 	for k in d.get("games_off", []):
 		_games_off[String(k)] = true
+	for k in d.get("rolled", {}):
+		_rolled[String(k)] = String(d["rolled"][k])
+	for k in d.get("seen", []):
+		_seen[String(k)] = true
 
 func _save() -> void:
 	var f := FileAccess.open(_path(), FileAccess.WRITE)
@@ -447,13 +541,17 @@ func _save() -> void:
 	off.sort()
 	var goff: Array = _games_off.keys()
 	goff.sort()
+	var seen: Array = _seen.keys()
+	seen.sort()
 	f.store_string(JSON.stringify({"unlocked": _unlocked, "worn": _worn,
-		"letters_off": off, "games_off": goff}, "  ", true))
+		"letters_off": off, "games_off": goff, "rolled": _rolled, "seen": seen}, "  ", true))
 
 func reset_for_tests() -> void:
 	_unlocked = {}
 	_worn = {}
 	_letters_off = {}
 	_games_off = {}
+	_rolled = {}
+	_seen = {}
 	_save()
 	changed.emit()

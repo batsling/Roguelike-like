@@ -42,6 +42,7 @@ var _roster: Array[CharacterData] = []
 var _select: Callable = Callable()
 var _state: Dictionary = {}
 var _fracture_row: HBoxContainer = null
+var _looks_box: VBoxContainer = null
 
 static func open(parent: Node) -> CharacterPicker:
 	var picker := CharacterPicker.new()
@@ -126,11 +127,18 @@ func _build() -> void:
 	body.add_child(detail_wrap)
 	# NO ScrollContainer: the hero has to be readable in one look. The two columns
 	# inside are filled by _fill_char_detail — portrait left, facts right.
+	var detail_col := VBoxContainer.new()
+	detail_col.add_theme_constant_override("separation", UITheme.GAP_SNUG)
+	detail_wrap.add_child(detail_col)
 	var detail_box := HBoxContainer.new()
 	detail_box.add_theme_constant_override("separation", UITheme.GAP_LOOSE)
 	detail_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	detail_box.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	detail_wrap.add_child(detail_box)
+	detail_col.add_child(detail_box)
+	# The hero's costumes, a band across the foot of the panel (_costume_rows).
+	_looks_box = VBoxContainer.new()
+	_looks_box.name = "Looks"
+	detail_col.add_child(_looks_box)
 
 	# THE FRACTURE ROW (docs/fracture-design.md §4), under the hero it belongs to:
 	# 0..10, the levels this hero has unlocked clickable and the rest greyed out.
@@ -330,6 +338,8 @@ func _character_tile(ch: CharacterData, state: Dictionary, select: Callable) -> 
 		# game cover's.
 		var icon := UITheme.crisp_tex(tex, 76)
 		icon.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		# kept so a costume changed in the detail panel shows on the token at once
+		(state.get_or_add("icons", {}) as Dictionary)[ch.id] = icon
 		vb.add_child(RankBadge.wrap_character(icon, ch.id))
 	var name_lbl := Label.new()
 	name_lbl.text = ch.display_name
@@ -416,6 +426,15 @@ func _fill_char_detail(box: HBoxContainer, ch: CharacterData) -> void:
 	hp.add_theme_color_override("font_color", UITheme.DANGER.lerp(UITheme.TEXT, 0.35))
 	left.add_child(hp)
 
+	if _looks_box != null:
+		for c in _looks_box.get_children():
+			_looks_box.remove_child(c)
+			c.queue_free()
+		var looks := _costume_rows(box, ch)
+		if looks != null:
+			_looks_box.add_child(HSeparator.new())
+			_looks_box.add_child(looks)
+
 	# RIGHT: what they play like.
 	var right := VBoxContainer.new()
 	right.add_theme_constant_override("separation", UITheme.GAP_SNUG)
@@ -466,6 +485,56 @@ func _fill_char_detail(box: HBoxContainer, ch: CharacterData) -> void:
 			reward.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 			reward.add_theme_color_override("font_color", UITheme.GOLD.lerp(UITheme.TEXT, 0.35))
 			right.add_child(reward)
+
+# THE COSTUMES, under the hero they dress (docs/customization.md; the owner, 8 Nov
+# 2026: "change costume/icon in character picker … shows silhouettes of locked
+# costumes"). A band across the foot of the detail panel, full width so a hero's
+# every costume is in view (under the portrait, four were). One strip for the
+# icon and one for the full portrait, each the same
+# choices as the Customization screen (CustomizeScreen.slot_tiles): the default,
+# 🎲 Random, then every costume, a locked one as its silhouette. A strip SCROLLS
+# sideways rather than wrapping: Zoe's nine icons would otherwise stack three rows
+# into a panel that never scrolls. Null for a hero with no costumes at all.
+const LOOK_TILE := 40
+
+func _costume_rows(box: HBoxContainer, ch: CharacterData) -> Control:
+	var slots: Array = CosmeticCatalog.SLOTS.filter(func(slot):
+		return not CosmeticCatalog.costumes_of(ch.id, slot).is_empty())
+	if slots.is_empty():
+		return null
+	var col := VBoxContainer.new()
+	col.name = "Costumes"
+	col.add_theme_constant_override("separation", UITheme.GAP_TIGHT)
+	var on_change := func() -> void:
+		(func() -> void:
+			var icons: Dictionary = _state.get("icons", {})
+			if icons.has(ch.id) and is_instance_valid(icons[ch.id]):
+				(icons[ch.id] as TextureRect).texture = ch.shown_icon()
+				UITheme.apply_crisp(icons[ch.id], ch.shown_icon())
+			_fill_char_detail(box, ch)).call_deferred()
+	for slot in slots:
+		var row := HBoxContainer.new()
+		row.name = "Slot_%s" % slot
+		row.add_theme_constant_override("separation", UITheme.GAP_SNUG)
+		col.add_child(row)
+		var lbl := Label.new()
+		lbl.text = "Icon" if slot == "icon" else "Full"
+		lbl.custom_minimum_size = Vector2(34, 0)
+		lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		lbl.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
+		lbl.add_theme_color_override("font_color", UITheme.TEXT_DIM)
+		row.add_child(lbl)
+		var scroll := ScrollContainer.new()
+		scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+		scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		scroll.custom_minimum_size = Vector2(0, LOOK_TILE + UITheme.GAP_WIDE)
+		row.add_child(scroll)
+		var strip := HBoxContainer.new()
+		strip.add_theme_constant_override("separation", UITheme.GAP_TIGHT)
+		scroll.add_child(strip)
+		for t in CustomizeScreen.costume_tiles(ch, slot, LOOK_TILE, on_change):
+			strip.add_child(t)
+	return col
 
 func _detail_head(text: String) -> Label:
 	var l := Label.new()

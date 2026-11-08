@@ -75,6 +75,32 @@ costume that is not unlocked (after a profile switch, or with "Unlock everything
 turned off) reads as the default and is not cleared, so it comes back when it
 is unlocked again.
 
+### Choosing in the character picker
+
+The picker (`CharacterPicker._costume_rows`) has a band across the foot of the
+detail panel for every hero with costumes: an **Icon** strip and a **Full** strip.
+They hold the same choices as the Customization screen, because both use
+`CustomizeScreen.slot_tiles`. A strip scrolls sideways rather than wrapping, and
+the panel never scrolls. A change redraws the portrait and the hero's grid token
+at once.
+
+### Every slot's choices
+
+Each slot (a character's icon or full portrait, or the key, bomb or difficulty
+icon) offers:
+
+- **Default:** the character's own art, or the glyph.
+- **🎲 Random:** a different look every run, rolled at `GameLoop2.start_run`
+  (`Cosmetics.roll_random`) from the default and every unlocked look that fits.
+  The roll is saved, so the menu shows what this run wears; its tooltip names it.
+- **Every look** that fits. A **locked** one is its own picture as a black
+  silhouette, like the Collection's unseen entries, with where it comes from on
+  the hover.
+- **New looks glow.** A look drawn since it was last shown pulses three times,
+  using `LogoProgress`'s glow for new title letters, and is then marked seen
+  (`Cosmetics.is_new` / `mark_seen`, per profile). This happens wherever its tile
+  is first shown: the Customization screen or the picker.
+
 ## 4. Wearing an icon: every 🗝 ✸ 🏆, everywhere
 
 The owner's words: "everywhere means everywhere, and with the number on top of

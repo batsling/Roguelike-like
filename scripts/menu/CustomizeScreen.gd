@@ -154,20 +154,8 @@ func _build_characters() -> void:
 			lbl.custom_minimum_size = Vector2(48, TILE)
 			lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 			row.add_child(lbl)
-			var worn := Cosmetics.costume(ch.id, slot)
-			var own: Texture2D = (ch.icon if ch.icon != null else ch.portrait) if slot == "icon" else ch.portrait
-			row.add_child(_tile(own, "", worn.is_empty(), false, "%s — default" % ch.display_name,
-				func() -> void: _wear_costume(ch.id, slot, "")))
-			for e in CosmeticCatalog.costumes_of(ch.id, slot):
-				var key := String(e["key"])
-				var locked := not Cosmetics.is_unlocked(key)
-				row.add_child(_tile(CosmeticCatalog.texture(String(e["path"])), "",
-					String(worn.get("key", "")) == key, locked,
-					_look_tip(e, locked), func() -> void: _wear_costume(ch.id, slot, key)))
-
-func _wear_costume(character: StringName, slot: String, key: String) -> void:
-	Cosmetics.set_costume(character, slot, key)
-	_refresh()
+			for t in costume_tiles(ch, slot, TILE, _refresh):
+				row.add_child(t)
 
 # --- icons --------------------------------------------------------------------------
 
@@ -183,24 +171,56 @@ func _build_icons() -> void:
 		row.add_theme_constant_override("h_separation", UITheme.GAP)
 		row.add_theme_constant_override("v_separation", UITheme.GAP)
 		block.add_child(row)
-		var worn := Cosmetics.icon(kind)
 		var glyph: String = KIND_GLYPHS[kind]
-		row.add_child(_tile(null, glyph, worn.is_empty(), false, "Default — %s" % glyph,
-			func() -> void: _wear_icon(kind, "")))
-		for e in CosmeticCatalog.icons_of(kind):
-			var key := String(e["key"])
-			var locked := not Cosmetics.is_unlocked(key)
-			var images: Array = e.get("images", [])
-			var tip := _look_tip(e, locked)
-			if images.size() > 1:
-				tip += "\n" + "\n".join(images.map(func(i): return "%s — Fracture %d–%d" % [i["name"], i["min"], i["max"]]))
-			row.add_child(_tile(CosmeticCatalog.texture(CosmeticCatalog.image_for(e, 0)), "",
-				String(worn.get("key", "")) == key, locked, tip,
-				func() -> void: _wear_icon(kind, key)))
+		for t in slot_tiles(Cosmetics.icon_slot(kind), null, glyph, "Default — %s" % glyph,
+				CosmeticCatalog.icons_of(kind), TILE, _refresh):
+			row.add_child(t)
 
-func _wear_icon(kind: String, key: String) -> void:
-	Cosmetics.set_icon(kind, key)
-	_refresh()
+# --- a slot's choices, shared with the character picker ---------------------------
+#
+# One tile per choice for a slot: the DEFAULT, RANDOM (🎲 — rolled again at the
+# start of every run, Cosmetics.roll_random), then every look that fits it. A
+# LOCKED look is its own picture as a black silhouette, like the Collection's
+# unseen entries, with where it comes from on the hover; a look drawn since it was
+# last shown GLOWS once, the way a new title letter does, and is then seen.
+
+# A character's tiles for `slot` (icon or full).
+static func costume_tiles(ch: CharacterData, slot: String, side: int, on_change: Callable) -> Array:
+	var own: Texture2D = (ch.icon if ch.icon != null else ch.portrait) if slot == "icon" else ch.portrait
+	return slot_tiles(Cosmetics.costume_slot(ch.id, slot), own, "", "%s — default" % ch.display_name,
+		CosmeticCatalog.costumes_of(ch.id, slot), side, on_change)
+
+static func slot_tiles(slot_key: String, default_tex: Texture2D, default_glyph: String,
+		default_tip: String, looks: Array, side: int, on_change: Callable) -> Array:
+	var chosen := Cosmetics.choice(slot_key)
+	var pick := func(key: String) -> Callable:
+		return func() -> void:
+			Cosmetics.choose(slot_key, key)
+			on_change.call()
+	var out: Array = []
+	out.append(tile(default_tex, default_glyph, chosen == "", false, false, default_tip,
+		pick.call(""), side))
+	var rolled: Dictionary = Cosmetics.costume_or_icon(slot_key) if chosen == Cosmetics.RANDOM else {}
+	var random_tip := "Random — a different one every run, from the default and every look unlocked here."
+	if chosen == Cosmetics.RANDOM:
+		random_tip += "\nThis run: %s" % (String(rolled["name"]) if not rolled.is_empty() else "the default")
+	var r := tile(null, "🎲", chosen == Cosmetics.RANDOM, false, false, random_tip,
+		pick.call(Cosmetics.RANDOM), side)
+	r.name = "Random"
+	out.append(r)
+	for e in looks:
+		var key := String(e["key"])
+		var locked := not Cosmetics.is_unlocked(key)
+		var tip := _look_tip(e, locked)
+		var images: Array = e.get("images", [])
+		if images.size() > 1:
+			tip += "\n" + "\n".join(images.map(func(i): return "%s — Fracture %d–%d" % [i["name"], i["min"], i["max"]]))
+		var path := String(e.get("path", "")) if e.has("path") else CosmeticCatalog.image_for(e, 0)
+		var t := tile(CosmeticCatalog.texture(path), "", chosen == key, locked,
+			Cosmetics.is_new(key), tip, pick.call(key), side)
+		t.set_meta("look", key)
+		out.append(t)
+	return out
 
 # --- title letters ----------------------------------------------------------------
 
@@ -306,18 +326,22 @@ func _dim(text: String) -> Label:
 	return l
 
 # Where a look comes from, and whether it is still to earn.
-func _look_tip(e: Dictionary, locked: bool) -> String:
+static func _look_tip(e: Dictionary, locked: bool) -> String:
 	var g: GameData = Data.get_game(StringName(String(e["game"])))
 	var game := g.display_name if g != null else String(e["game"])
 	var name := String(e["name"])
 	if locked:
-		return "%s — locked\nA rank-up reward from %s, or a character from it." % [name, game]
+		return "Locked — %s\nA rank-up reward from %s, or a character from it." % [name, game]
 	return "%s — from %s" % [name, game]
+
+func _tile(tex: Texture2D, glyph: String, selected: bool, locked: bool, tip: String,
+		on_press: Callable, side: int = TILE, pixel: bool = false) -> Button:
+	return tile(tex, glyph, selected, locked, false, tip, on_press, side, pixel)
 
 # `pixel` draws the picture with sharp pixels however it is scaled (a title letter
 # the index marks `pixel`: Rogue's, Dungeon Crawl Stone Soup's).
-func _tile(tex: Texture2D, glyph: String, selected: bool, locked: bool, tip: String,
-		on_press: Callable, side: int = TILE, pixel: bool = false) -> Button:
+static func tile(tex: Texture2D, glyph: String, selected: bool, locked: bool, new: bool,
+		tip: String, on_press: Callable, side: int = TILE, pixel: bool = false) -> Button:
 	var b := Button.new()
 	b.custom_minimum_size = Vector2(side, side)
 	b.tooltip_text = tip
@@ -326,23 +350,31 @@ func _tile(tex: Texture2D, glyph: String, selected: bool, locked: bool, tip: Str
 		6, 4, 2 if selected else 1)
 	for st in ["normal", "hover", "pressed", "disabled"]:
 		b.add_theme_stylebox_override(st, box)
-	if locked:
-		b.disabled = true
-		b.text = "?"
-		b.add_theme_font_size_override("font_size", UITheme.FONT_TITLE)
-		return b
 	if tex != null:
-		var tr := UITheme.crisp_tex(tex, side - 8, pixel)
+		var inset := maxi(2, side / 16)
+		var tr := UITheme.crisp_tex(tex, side - inset * 2, pixel)
 		tr.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-		tr.offset_left = 4
-		tr.offset_top = 4
-		tr.offset_right = -4
-		tr.offset_bottom = -4
+		tr.offset_left = inset
+		tr.offset_top = inset
+		tr.offset_right = -inset
+		tr.offset_bottom = -inset
+		if locked:
+			tr.modulate = Color(0, 0, 0, 1)   # the silhouette
 		b.add_child(tr)
 	else:
-		b.text = glyph
+		b.text = glyph if not locked else "?"
 		b.set_meta("glyph_level", 0)
-		b.set_meta("glyph_art_text", glyph)   # the default tile keeps its glyph
-		b.add_theme_font_size_override("font_size", UITheme.FONT_TITLE)
+		b.set_meta("glyph_art_text", glyph)   # a default tile keeps its glyph
+		b.add_theme_font_size_override("font_size",
+			UITheme.FONT_TITLE if side >= 48 else UITheme.FONT_SUB)
+	if locked:
+		b.disabled = true
+		b.mouse_filter = Control.MOUSE_FILTER_PASS   # the hover still says where it comes from
+		return b
+	if new:
+		# Glows once it is on screen, then it has been seen.
+		b.tree_entered.connect(func() -> void:
+			Cosmetics.glow(b)
+			Cosmetics.mark_seen([String(b.get_meta("look", ""))]), CONNECT_ONE_SHOT)
 	b.pressed.connect(on_press)
 	return b

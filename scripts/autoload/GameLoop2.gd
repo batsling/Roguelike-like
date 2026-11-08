@@ -997,6 +997,8 @@ func start_run(character: CharacterData) -> void:
 	# this is the one door into a fresh run, and a clock that kept the last run's
 	# splits would be wrong from its first frame.
 	RunTimer.begin_run()
+	# A look worn as Random is rolled again for every run (docs/customization.md).
+	Cosmetics.roll_random()
 	reset()
 	# THE RUN'S FIRST FLOOR (docs/locations-design.md §2): a Low location, dealt
 	# here so the board the opening game walks onto is already the location's.
