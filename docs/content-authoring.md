@@ -314,6 +314,16 @@ the claw with its chain kept whole (the owner, 8 Nov 2026), sized by the
 claw's ring (`body` with columns) so the chain stands above the line. The
 source was given an 80px transparent margin: the logo ran to its edges and
 the R's, W's and chain's band was cut off flat there.
+Slice & Dice gives S L I C E, D I C E (the second I, C and E as `__2`; they
+are sliced differently from the first, so none is a repeat) and its die with
+the & inside as `ampersand/`, there only for a title that spells "&" (the
+owner, 8 Nov 2026). The source is Steam's 1280px logo, pixel art at exactly
+9px a pixel with five colours and no blended block, rebuilt on that grid
+(`pixel_grid` from 50, 176) to 131x41 and cut at 12x with sharp pixels
+(`pixel`). Its letters are SLICED on purpose, each two to four separate
+slivers, so every piece lists a point per sliver. The I's are daggers, sized
+by the letters' rows (`body` 14-27) so the blade runs past the line as drawn,
+down for SLICE's and up for DICE's.
 A logo can
 take more than one config when its parts are built differently: Uma Musume has
 four, one per line, one for the girl and one for her dash.

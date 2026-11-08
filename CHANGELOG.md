@@ -11,6 +11,11 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Title letters: Slice & Dice.** S L I C E, D I C E in sharp pixels, sliced
+  as the logo slices them, with dagger I's that run past the line; the die with
+  the & in it is filed as `ampersand/`. Rebuilt pixel for pixel from Steam's
+  logo (`docs/content-authoring.md`, "Title letters").
+
 - **Title letters: Dungeon Clawler, stood upright off its arc.** D U N G E O N,
   C L A W L E R, with the claw (chain and all) as the C. The logo's two words
   curve, every letter leaning its own way, so the cutter gained `rotate`: each

@@ -833,6 +833,22 @@
   "size": 0.86,
   "pad": 0.09
  },
+ "ampersand/slice_dice.png": {
+  "game": "slice_dice",
+  "config": "slice_dice.json",
+  "style": "slice_dice",
+  "body_center": 0.5,
+  "body_height": 1.0,
+  "body_center_x": 0.5,
+  "body_width": 0.8974,
+  "src": [
+   0.35115,
+   0.0,
+   0.64885,
+   1.0
+  ],
+  "pixel": true
+ },
  "apostrophe/don_t_starve.png": {
   "game": "don_t_starve",
   "config": "don_t_starve.json",
@@ -1342,6 +1358,38 @@
   "pad": 0.09,
   "case": "lower"
  },
+ "c/slice_dice.png": {
+  "game": "slice_dice",
+  "config": "slice_dice.json",
+  "style": "slice_dice",
+  "body_center": 0.5,
+  "body_height": 0.7647,
+  "body_center_x": 0.5,
+  "body_width": 0.7143,
+  "src": [
+   0.19084,
+   0.29268,
+   0.29771,
+   0.70732
+  ],
+  "pixel": true
+ },
+ "c/slice_dice__2.png": {
+  "game": "slice_dice",
+  "config": "slice_dice.json",
+  "style": "slice_dice",
+  "body_center": 0.5,
+  "body_height": 0.7647,
+  "body_center_x": 0.5,
+  "body_width": 0.7143,
+  "src": [
+   0.81679,
+   0.29268,
+   0.92366,
+   0.70732
+  ],
+  "pixel": true
+ },
  "c/the_binding_of_isaac.png": {
   "game": "the_binding_of_isaac",
   "config": "the_binding_of_isaac.json",
@@ -1708,6 +1756,22 @@
    0.8485,
    1.0
   ]
+ },
+ "d/slice_dice.png": {
+  "game": "slice_dice",
+  "config": "slice_dice.json",
+  "style": "slice_dice",
+  "body_center": 0.5,
+  "body_height": 0.7647,
+  "body_center_x": 0.5,
+  "body_width": 0.7333,
+  "src": [
+   0.64122,
+   0.29268,
+   0.75573,
+   0.70732
+  ],
+  "pixel": true
  },
  "d/starvaders.png": {
   "game": "starvaders",
@@ -2610,6 +2674,38 @@
    0.8238
   ],
   "form": "lower"
+ },
+ "e/slice_dice.png": {
+  "game": "slice_dice",
+  "config": "slice_dice.json",
+  "style": "slice_dice",
+  "body_center": 0.5,
+  "body_height": 0.7647,
+  "body_center_x": 0.5,
+  "body_width": 0.6667,
+  "src": [
+   0.28244,
+   0.29268,
+   0.37405,
+   0.70732
+  ],
+  "pixel": true
+ },
+ "e/slice_dice__2.png": {
+  "game": "slice_dice",
+  "config": "slice_dice.json",
+  "style": "slice_dice",
+  "body_center": 0.5,
+  "body_height": 0.7647,
+  "body_center_x": 0.5909,
+  "body_width": 0.8182,
+  "src": [
+   0.91603,
+   0.29268,
+   1.0,
+   0.70732
+  ],
+  "pixel": true
  },
  "e/spelunky_classic.png": {
   "game": "spelunky_classic",
@@ -3786,6 +3882,38 @@
    0.90358
   ]
  },
+ "i/slice_dice.png": {
+  "game": "slice_dice",
+  "config": "slice_dice.json",
+  "style": "slice_dice",
+  "body_center": 0.4375,
+  "body_height": 0.5417,
+  "body_center_x": 0.5,
+  "body_width": 0.6667,
+  "src": [
+   0.12214,
+   0.2439,
+   0.21374,
+   0.82927
+  ],
+  "pixel": true
+ },
+ "i/slice_dice__2.png": {
+  "game": "slice_dice",
+  "config": "slice_dice.json",
+  "style": "slice_dice",
+  "body_center": 0.5625,
+  "body_height": 0.5417,
+  "body_center_x": 0.5,
+  "body_width": 0.6667,
+  "src": [
+   0.74046,
+   0.17073,
+   0.83206,
+   0.7561
+  ],
+  "pixel": true
+ },
  "i/the_binding_of_isaac.png": {
   "game": "the_binding_of_isaac",
   "config": "the_binding_of_isaac.json",
@@ -4341,6 +4469,22 @@
    0.42768
   ],
   "form": "lower"
+ },
+ "l/slice_dice.png": {
+  "game": "slice_dice",
+  "config": "slice_dice.json",
+  "style": "slice_dice",
+  "body_center": 0.5,
+  "body_height": 0.7647,
+  "body_center_x": 0.5,
+  "body_width": 0.6,
+  "src": [
+   0.0687,
+   0.29268,
+   0.14504,
+   0.70732
+  ],
+  "pixel": true
  },
  "l/spelunky_classic.png": {
   "game": "spelunky_classic",
@@ -6827,6 +6971,22 @@
    0.3996,
    0.82151
   ]
+ },
+ "s/slice_dice.png": {
+  "game": "slice_dice",
+  "config": "slice_dice.json",
+  "style": "slice_dice",
+  "body_center": 0.5,
+  "body_height": 0.7895,
+  "body_center_x": 0.4091,
+  "body_width": 0.8182,
+  "src": [
+   0.0,
+   0.26829,
+   0.08397,
+   0.73171
+  ],
+  "pixel": true
  },
  "s/spelunky_classic.png": {
   "game": "spelunky_classic",
