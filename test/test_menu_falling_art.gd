@@ -763,3 +763,68 @@ func test_a_piece_drawn_into_the_portal_starts_whole_and_fades_only_near_it() ->
 	assert_lt(inside["s"], 0.7, "and shrinking fast")
 	var gone: Dictionary = at.call(MenuFallingArt.SINK_GONE)
 	assert_almost_eq(gone["a"], 0.0, 0.001, "gone by the time it is recycled")
+
+# --- only what has been seen falls (docs/customization.md §6) -------------------
+
+# Mark everything seen THE WAY A RUN DOES (kind + id), not through the suite's
+# bypass, so the matching itself is what is tested.
+func _see_everything() -> Dictionary:
+	var saved := GameStats.seen.duplicate(true)
+	GameStats.seen_bypass = false
+	for kind in MenuFallingArt.SEEN_KINDS:
+		for r in Data.call(String(MenuFallingArt.SEEN_KINDS[kind])):
+			GameStats.seen.get_or_add(kind, {})[String(r.get("id"))] = true
+	for g in Data.all_games():
+		GameStats.seen.get_or_add("game", {})[String(g.id)] = true
+	return saved
+
+func _restore(saved: Dictionary) -> void:
+	GameStats.seen = saved
+	GameStats.seen_bypass = true
+
+func test_every_loot_picture_belongs_to_something_that_can_be_seen() -> void:
+	var saved := _see_everything()
+	var seen := _art._seen_names()
+	assert_false(seen.has(MenuFallingArt.ANY), "matched by name, not by the bypass")
+	var unmatched: Array = []
+	for dir in MenuFallingArt.SMALL_DIRS + [MenuFallingArt.CARD_DIR]:
+		for path in _art._pngs_in(dir):
+			if MenuFallingArt.CARD_SKIP.has(String(path).get_file()):
+				continue
+			if not _art._was_seen(seen, path):
+				unmatched.append(path)
+	_restore(saved)
+	assert_eq(unmatched, [], "every picture falls once what it shows has been seen")
+
+func test_misfiled_and_differently_named_pictures_are_matched() -> void:
+	var saved := _see_everything()
+	var seen := _art._seen_names()
+	for path in ["res://images2.0/items/RideTheBus.png", "res://images2.0/items/Barricade.png",
+			"res://images2.0/scrolls/Identify.png", "res://images2.0/scrolls/Teleportation.png",
+			"res://images2.0/scrolls/EnchantWeapon.png", "res://images2.0/scrolls/Amnesia.png",
+			"res://images2.0/scrolls/Unidentified.png"]:
+		assert_true(_art._was_seen(seen, path), "%s falls" % path.get_file())
+	_restore(saved)
+
+func test_every_cover_belongs_to_a_game() -> void:
+	var saved := _see_everything()
+	var covers := _art._seen_covers()
+	var unmatched: Array = []
+	for path in _art._pngs_in(MenuFallingArt.COVER_DIR):
+		if not covers.has(path):
+			unmatched.append(path)
+	_restore(saved)
+	assert_eq(unmatched, [], "every cover falls once its game has been seen")
+
+func test_nothing_unseen_falls() -> void:
+	var saved := GameStats.seen.duplicate(true)
+	GameStats.seen = {}
+	GameStats.seen_bypass = false
+	var seen := _art._seen_names()
+	var covers := _art._seen_covers()
+	var groups := _art._loot_groups()
+	_restore(saved)
+	assert_true(seen.is_empty(), "no names")
+	assert_true(covers.is_empty(), "no covers")
+	for g in groups:
+		assert_eq((g as Array).size(), 0, "no loot")

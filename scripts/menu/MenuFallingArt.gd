@@ -327,17 +327,16 @@ func _fill_queue() -> void:
 # each kind before the random draw.
 func _loot_groups() -> Array:
 	var out: Array = []
+	var seen := _seen_names()
 	for dir in SMALL_DIRS:
 		var group: Array = []
-		var seen := _seen_stems(dir)
 		for path in _pngs_in(dir):
 			if _was_seen(seen, path):
 				group.append({"path": path, "kind": Kind.SMALL, "foot": 1})
 		out.append(group)
 	var cards: Array = []
-	var seen_cards := _seen_stems(CARD_DIR)
 	for path in _pngs_in(CARD_DIR):
-		if not CARD_SKIP.has(String(path).get_file()) and _was_seen(seen_cards, path):
+		if not CARD_SKIP.has(String(path).get_file()) and _was_seen(seen, path):
 			cards.append({"path": path, "kind": Kind.SMALL, "foot": 1, "whole": true})
 	out.append(cards)
 	return out
@@ -391,38 +390,53 @@ func _character_jobs() -> Array:
 # a run (GameStats.seen, the Collection's own "???" rule), so the menu does not
 # show what the Collection would still hide. "Unlock everything" reads all as seen.
 #
-# The loot folders are matched to content by NAME, the project's convention
-# (PascalCase art, snake_case id): `_seen_stems` is the seen ids of a folder's kind
-# with everything but letters and digits dropped, the way `_stem_key` drops it from
-# a file name. Pills are the exception: the capsules are a run's colours, not
-# pills, so they fall once any pill has been seen.
-const SEEN_KIND_BY_DIR := {
-	"res://images2.0/items/": ["item", "all_items2"],
-	"res://images2.0/scrolls/": ["scroll", "all_scrolls2"],
-	"res://images2.0/pills/": ["pill", ""],
-	"res://images2.0/potions_identified/": ["potion", "all_potions"],
-	"res://images2.0/trinkets/": ["trinket", "all_trinkets"],
-	"res://images2.0/weapons/": ["weapon", "all_weapons"],
-	"res://images2.0/bags/": ["bag", "all_bags"],
-	"res://images2.0/cards/": ["card", "all_cards"],
+# The loot art is matched to content by NAME, the project's convention (PascalCase
+# art, snake_case id), across EVERY kind at once rather than a folder's own kind:
+# art is not always filed by kind (Ride the Bus and Barricade are cards whose
+# pictures sit in items/). `_seen_names` is every seen piece's id and art name
+# (`art_file()`, where a resource has one — a scroll's is "Identify", not its id)
+# with everything but letters and digits dropped, the way `_stem_key` drops it
+# from a file name. Two pictures stand for a kind rather than a piece, and fall
+# once any of that kind has been seen: the pill capsules (a run's colours, not
+# pills) and the scrolls' Unidentified back. test_menu_falling_art.gd holds that
+# every picture in these folders can be matched.
+const SEEN_KINDS := {
+	"item": "all_items2", "scroll": "all_scrolls2", "potion": "all_potions",
+	"trinket": "all_trinkets", "weapon": "all_weapons", "bag": "all_bags",
+	"card": "all_cards", "evolution": "all_evolutions", "pill": "all_pills",
+}
+# A picture that stands for a whole kind: folder (or file) -> the kind.
+const KIND_ART := {
+	"res://images2.0/pills/": "pill",
+	"res://images2.0/scrolls/Unidentified.png": "scroll",
 }
 const ANY := "*"
 
-func _seen_stems(dir: String) -> Dictionary:
-	var spec: Array = SEEN_KIND_BY_DIR.get(dir, [])
-	if spec.is_empty():
-		return {ANY: true}
-	var kind: String = spec[0]
+# Every seen piece's names, plus "kind:*" for each kind seen at all.
+func _seen_names() -> Dictionary:
+	var everything := GameStats.seen_bypass or Settings.unlock_everything
 	var out := {}
-	if String(spec[1]) == "":
-		if GameStats.seen_count(kind) > 0 or GameStats.seen_bypass or Settings.unlock_everything:
-			out[ANY] = true
-		return out
-	for r in Data.call(String(spec[1])):
-		var id := String(r.get("id"))
-		if GameStats.is_seen(kind, id):
-			out[_stem_key(id)] = true
-			out[_stem_key(id.trim_prefix("scroll_of_"))] = true
+	for kind in SEEN_KINDS:
+		for r in Data.call(String(SEEN_KINDS[kind])):
+			var id := String(r.get("id"))
+			if not (everything or GameStats.is_seen(kind, id)):
+				continue
+			out["%s:%s" % [kind, ANY]] = true
+			for name in name_keys(r):
+				out[name] = true
+	if everything:
+		out[ANY] = true
+	return out
+
+# The names a piece's picture may be filed under.
+static func name_keys(r: Resource) -> Array:
+	var id := String(r.get("id"))
+	var out := [_stem_key(id)]
+	for prefix in ["scroll_of_", "potion_of_", "wand_of_"]:
+		if id.begins_with(prefix):
+			out.append(_stem_key(id.trim_prefix(prefix)))
+	if r.has_method("art_file"):
+		out.append(_stem_key(String(r.call("art_file"))))
 	return out
 
 static func _stem_key(s: String) -> String:
@@ -433,7 +447,12 @@ static func _stem_key(s: String) -> String:
 	return out
 
 func _was_seen(seen: Dictionary, path: String) -> bool:
-	return seen.has(ANY) or seen.has(_stem_key(path.get_file().get_basename()))
+	if seen.has(ANY):
+		return true
+	var kind: String = KIND_ART.get(path, KIND_ART.get(path.get_base_dir() + "/", ""))
+	if kind != "":
+		return seen.has("%s:%s" % [kind, ANY])
+	return seen.has(_stem_key(path.get_file().get_basename()))
 
 # Each seen game's cover, by its own path.
 func _seen_covers() -> Dictionary:

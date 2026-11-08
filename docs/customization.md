@@ -110,7 +110,13 @@ screen closes.
 
 `MenuFallingArt` drops only what the player has seen in a run (`GameStats.seen`,
 the same rule as the Collection's "???"): games, enemies, bosses, items, loot and
-characters. Loot art is matched to its content by name, and pill capsules fall
-once any pill has been seen. Every unlocked costume and icon falls too, taken
+characters. Loot art is matched by name against every kind at once, using each
+piece's id and its `art_file()`. That is how Ride the Bus and Barricade, which are
+cards whose pictures sit in `items/`, and the scrolls (art "Identify", id
+`scroll_of_identify`) are found. The pill capsules and the scrolls' Unidentified
+back fall once any of their kind has been seen. Covers are matched by each game's
+own `cover_path`. `test_menu_falling_art.gd` marks everything seen and requires
+every picture in those folders to match, so a new picture whose name matches
+nothing fails CI. Every unlocked costume and icon falls too, taken
 whole like the characters, and a character falls in the costume it wears. On a
 brand-new profile nothing falls until something has been seen.
