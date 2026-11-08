@@ -42,8 +42,8 @@ const FOOT := 2.0      # below the bar, so it never touches what comes next
 # The trophy's box on the art's top-right corner: a share of the art's width,
 # held between a floor that keeps the level on it legible and a ceiling that
 # keeps it from covering a big portrait.
-const TROPHY_SHARE := 0.3
-const TROPHY_MIN := 22.0
+const TROPHY_SHARE := 0.4
+const TROPHY_MIN := 26.0
 const TROPHY_MAX := 44.0
 
 var game_id: StringName = &""

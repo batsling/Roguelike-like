@@ -1564,3 +1564,63 @@ func test_beaten_goals_say_the_xp_they_gave() -> void:
 	assert_has(said, "+%d xp" % GameRanks.goal_xp("enemy", String(enemy.id)))
 	assert_has(said, " ", "an unbeaten goal keeps a blank line, not an xp figure")
 	GameStats.character_goal_log = trophies
+
+# --- the overview's order and its loadout (the owner, 8 Nov 2026) -------------
+
+func _char_with_loadout() -> CharacterData:
+	for c in Data.all_characters2():
+		if not c.starting_items.is_empty() or c.starting_loot.any(func(s): return s is Dictionary and s.has("id")):
+			return c
+	return null
+
+func test_overview_puts_level_up_first_and_loadout_beside_stats() -> void:
+	var ch: CharacterData = _char_with_loadout()
+	if ch == null or ch.level_up_condition == "":
+		pending("no character with both a loadout and a level-up")
+		return
+	var col := _new_collection()
+	col._set_tab(Collection.Tab.CHARACTERS)
+	col._char_page = "overview"
+	col._show_character_detail(ch)
+	var page: Node = null
+	for c in col._detail_box.get_children():
+		if String(c.get_meta(&"char_page", "")) == "overview":
+			page = c
+	var first: String = _all_text(page.get_child(0))
+	assert_string_contains(first, "Level Up", "the level-up goal is the first card")
+	var row: Node = page.find_child("StatsAndLoadout", true, false)
+	assert_not_null(row, "stats and loadout share a row")
+	var row_text: String = _all_text(row)
+	assert_string_contains(row_text, "Base Stats")
+	assert_string_contains(row_text, "Starting Loadout")
+
+func test_loadout_tiles_have_a_card_and_open_their_page() -> void:
+	var ch: CharacterData = _char_with_loadout()
+	if ch == null:
+		pending("no character starts with a named piece")
+		return
+	var col := _new_collection()
+	col._set_tab(Collection.Tab.CHARACTERS)
+	col._char_page = "overview"
+	col._show_character_detail(ch)
+	var tiles: Array = col._detail_box.find_children("Loadout_*", "", true, false) \
+		.filter(func(t): return not String(t.get_meta(&"loadout", "")).ends_with(":"))
+	assert_gt(tiles.size(), 0, "a picture per named piece")
+	var tile: Control = tiles[0]
+	var card: Control = HoverCard.of(tile)
+	assert_not_null(card, "its hover is a card")
+	if card != null:
+		card.free()
+	var key: String = String(tile.get_meta(&"loadout"))
+	var kind: String = key.get_slice(":", 0)
+	var id: String = key.get_slice(":", 1)
+	col._open_entry(kind, StringName(id))
+	assert_ne(col._nav_index, -1, "a cell was selected")
+	var panel: Control = col._nav[col._nav_index]["panel"]
+	assert_eq(String(panel.get_meta(&"entry")), key, "and it is that piece's own cell")
+	if kind == "item":
+		assert_eq(col._tab, Collection.Tab.ITEMS)
+	else:
+		assert_eq(col._tab, Collection.Tab.LOOT)
+		assert_eq(col._loot_sub, Collection.LOOT_SUB_OF[kind])
+	col._loot_sub = Collection.LOOT_SCROLLS

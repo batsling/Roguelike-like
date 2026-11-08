@@ -2302,15 +2302,29 @@ func _character_page() -> VBoxContainer:
 	page.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	return page
 
+# OVERVIEW (the owner, 8 Nov 2026): the Level Up goal first, then the stats with
+# the starting loadout BESIDE them — the loadout as pictures, each with its card
+# on the hover and its own Collection page on a click.
 func _character_overview(ch: CharacterData) -> Control:
 	var page := _character_page()
-	# THE STATS AS A GRID OF TILES, not a list of key/value rows: Health and each
-	# verb are a big number over a small name, so the loadout reads at a glance.
-	# The loadout off the character itself, so this tab and the character picker
-	# cannot come to list different verbs (CharacterData.verb_loadout).
+	if ch.level_up_condition != "":
+		var lv := _section_card("Level Up", CHAR_GREEN)
+		lv.add_child(_label("Goal", UITheme.GOLD, UITheme.FONT_SMALL))
+		lv.add_child(_prose(ch.level_up_condition))
+		if ch.level_up_reward != "" and ch.level_up_reward.to_upper() != "N/A":
+			lv.add_child(_label("Reward", UITheme.GOLD, UITheme.FONT_SMALL))
+			lv.add_child(_prose(ch.level_up_reward))
+		page.add_child(lv.get_meta(&"card"))
+
+	var row := HBoxContainer.new()
+	row.name = "StatsAndLoadout"
+	row.add_theme_constant_override("separation", UITheme.GAP)
+	# THE STATS AS A GRID OF TILES: Health and each verb a big number over a small
+	# name. The loadout off the character itself, so this tab and the character
+	# picker cannot come to list different verbs (CharacterData.verb_loadout).
 	var stats := _section_card("Base Stats", CHAR_GREEN)
 	var grid := GridContainer.new()
-	grid.columns = 4
+	grid.columns = 3
 	grid.add_theme_constant_override("h_separation", UITheme.GAP_TIGHT)
 	grid.add_theme_constant_override("v_separation", UITheme.GAP_TIGHT)
 	grid.add_child(_stat_tile("Health", str(ch.base_max_hp), Color(0.95, 0.45, 0.45)))
@@ -2322,28 +2336,123 @@ func _character_overview(ch: CharacterData) -> Control:
 	if ch.start_random > 0:
 		stats.add_child(_prose("+%d random point%s, rolled across the verbs at run start."
 			% [ch.start_random, "" if ch.start_random == 1 else "s"], UITheme.TEXT_DIM))
-	page.add_child(stats.get_meta(&"card"))
+	var stats_card: Control = stats.get_meta(&"card")
+	stats_card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	stats_card.size_flags_stretch_ratio = 3.0
+	row.add_child(stats_card)
 
-	var loadout: Array = Data.loadout_names(ch)
-	if not loadout.is_empty():
+	var pieces: Array = _loadout_pieces(ch)
+	if not pieces.is_empty():
 		var kit := _section_card("Starting Loadout", CHAR_GREEN)
 		var flow := HFlowContainer.new()
 		flow.add_theme_constant_override("h_separation", UITheme.GAP_TIGHT)
 		flow.add_theme_constant_override("v_separation", UITheme.GAP_TIGHT)
-		for n in loadout:
-			flow.add_child(_chip(String(n), Color(0.75, 0.85, 1.0)))
+		for piece in pieces:
+			flow.add_child(_loadout_tile(piece))
 		kit.add_child(flow)
-		page.add_child(kit.get_meta(&"card"))
-
-	if ch.level_up_condition != "":
-		var lv := _section_card("Level Up", CHAR_GREEN)
-		lv.add_child(_label("Goal", UITheme.GOLD, UITheme.FONT_SMALL))
-		lv.add_child(_prose(ch.level_up_condition))
-		if ch.level_up_reward != "" and ch.level_up_reward.to_upper() != "N/A":
-			lv.add_child(_label("Reward", UITheme.GOLD, UITheme.FONT_SMALL))
-			lv.add_child(_prose(ch.level_up_reward))
-		page.add_child(lv.get_meta(&"card"))
+		var kit_card: Control = kit.get_meta(&"card")
+		kit_card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		kit_card.size_flags_stretch_ratio = 2.0
+		row.add_child(kit_card)
+	page.add_child(row)
 	return page
+
+const LOADOUT_TILE := 48
+
+# What a character starts with, as [{kind, id, name, tex, text}]: the relics,
+# then the loot. A random piece ("2 random fire trinkets") has no id and no page.
+func _loadout_pieces(ch: CharacterData) -> Array:
+	var out: Array = []
+	for id in ch.starting_items:
+		var it: ItemData = Data.get_item2(StringName(id))
+		if it != null:
+			out.append({"kind": "item", "id": it.id, "name": it.display_name,
+				"tex": it.image, "text": it.description})
+	for spec in ch.starting_loot:
+		if not (spec is Dictionary):
+			continue
+		var kind: String = String(spec.get("type", ""))
+		if spec.has("id"):
+			var entry := {"type": kind, "id": StringName(spec["id"])}
+			out.append({"kind": kind, "id": StringName(spec["id"]),
+				"name": LootSystem.display_name(entry), "tex": LootSystem.art_texture(entry),
+				"text": LootSystem.description(entry)})
+		else:
+			var n: int = int(spec.get("count", 1))
+			var tag: String = String(spec.get("tag", "")).replace("_", " ")
+			out.append({"kind": kind, "id": &"", "tex": null, "text": "",
+				"name": "%d random %s%s%s" % [n, (tag + " ") if tag != "" else "", kind,
+					"" if n == 1 else "s"]})
+	return out
+
+# One piece of the loadout: its picture, its card on the hover, its page on a
+# click. Unseen, it is the silhouette and "???" the rest of the Collection shows.
+func _loadout_tile(piece: Dictionary) -> Control:
+	var kind: String = piece["kind"]
+	var id: StringName = piece["id"]
+	var seen: bool = id == &"" or GameStats.is_seen(kind, id)
+	var name: String = String(piece["name"]) if seen else UNSEEN_NAME
+	var card := {"title": name, "accent": UITheme.GOLD if seen else UNSEEN_TEXT,
+		"art": piece["tex"],
+		"subtitle": String(SEEN_KIND_NAMES.get(kind, kind.capitalize())),
+		"lines": [String(piece["text"])] if seen and String(piece["text"]) != "" \
+			else ([] if seen else ["Not seen yet."])}
+	if id != &"":
+		card["note"] = "Click to open its page."
+	var tile: Control = GoalsBeatenView.picture_tile(piece["tex"],
+		Vector2(LOADOUT_TILE, LOADOUT_TILE), name, 0, UITheme.BORDER, true,
+		"?" if id == &"" else name, card)
+	tile.name = "Loadout_%s_%s" % [kind, String(id)]
+	tile.set_meta(&"loadout", "%s:%s" % [kind, String(id)])
+	if not seen:
+		_silhouette(tile)
+	if id != &"":
+		tile.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		tile.gui_input.connect(func(ev: InputEvent) -> void:
+			if ev is InputEventMouseButton and ev.pressed \
+					and ev.button_index == MOUSE_BUTTON_LEFT:
+				tile.accept_event()
+				_open_entry.call_deferred(kind, id))
+	return tile
+
+const LOOT_SUB_OF := {"scroll": LOOT_SCROLLS, "pill": LOOT_PILLS, "potion": LOOT_POTIONS,
+	"card": LOOT_CARDS, "wand": LOOT_WANDS, "trinket": LOOT_TRINKETS, "bag": LOOT_BAGS,
+	"weapon": LOOT_WEAPONS, "evolution": LOOT_EVOLUTIONS}
+
+# OPEN ANOTHER ENTRY'S PAGE from a link: switch to its tab (and Loot sub-tab),
+# clear that tab's search so the entry is in the grid, and select its cell, so
+# ◀ ▶ carry on from there. Every cell is tagged with its entry (`_veil`). An
+# entry the grid leaves out (Hide unseen) opens as the "???" page.
+func _open_entry(kind: String, id) -> void:
+	var tab: int = -1
+	var search_key: String = ""
+	match kind:
+		"game": tab = Tab.GAMES; search_key = "games"
+		"item": tab = Tab.ITEMS; search_key = "items"
+		"character": tab = Tab.CHARACTERS; search_key = "characters"
+		"enemy": tab = Tab.ENEMIES; search_key = "enemies"
+		"boss": tab = Tab.BOSSES; search_key = "enemies"
+		"event": tab = Tab.EVENTS; search_key = "events"
+		"object": tab = Tab.OBJECTS; search_key = "objects"
+		"shopkeeper": tab = Tab.SHOPKEEPERS; search_key = "shopkeepers"
+		"location": tab = Tab.LOCATIONS; search_key = "locations"
+		_:
+			if LOOT_SUB_OF.has(kind):
+				tab = Tab.LOOT
+				_loot_sub = LOOT_SUB_OF[kind]
+				search_key = _loot_sub
+	if tab < 0:
+		return
+	if search_key != "":
+		_search[search_key] = ""
+	_set_tab(tab)
+	var want: String = "%s:%s" % [kind, String(id)]
+	for i in _nav.size():
+		var panel = _nav[i]["panel"]
+		if is_instance_valid(panel) and String(panel.get_meta(&"entry", "")) == want:
+			_select(i)
+			return
+	_show_unseen_detail(kind, null)
 
 func _character_progress(ch: CharacterData) -> Control:
 	var page := _character_page()
@@ -3362,6 +3471,8 @@ func _enemy_kind() -> String:
 	return "boss" if _tab == Tab.BOSSES else "enemy"
 
 func _veil(panel: Control, kind: String, id) -> Control:
+	# Every cell says which entry it is, so a link can find it (`_open_entry`).
+	panel.set_meta(&"entry", "%s:%s" % [kind, String(id)])
 	if GameStats.is_seen(kind, id):
 		return panel
 	panel.set_meta(&"unseen", true)

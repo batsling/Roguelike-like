@@ -18,7 +18,11 @@ For how the project is laid out and how its systems fit together, see
   bar's hover. The Fractures card is gone: the 🏆 carries that record, and it is
   bigger everywhere it appears (characters and game covers), with the highest
   Fracture won written on the cup, and it sits centred on the top-right corner of the art (below the tier badge where a game has one). On the Progress page each goal beaten says the
-  XP it gave ("+20 xp"); the ones not yet beaten don't.
+  XP it gave ("+20 xp"); the ones not yet beaten don't. The Overview opens with the Level
+  Up goal, then Base Stats with the Starting Loadout beside them, as pictures:
+  each has its card on the hover and opens its own Collection page on a click
+  (`_open_entry`, which every cell can be found by). The trophy is bigger on the
+  grids (40% of the art's width).
 
 - **Collection: Hide unseen, and Rank sorts.** Every tab's row has a *Hide
   unseen* switch (one for the whole Collection, kept across tabs; not offered
