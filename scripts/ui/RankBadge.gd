@@ -144,8 +144,8 @@ func _ready() -> void:
 	_layout()
 
 # THE NUMBER ON A TROPHY: the highest Fracture it was earned at, in the
-# Fracture's own colour, written ON the cup (the owner, 8 Nov 2026 — it was beside
-# it, and the trophy was the size of the star). Nothing at Fracture 0 — a plain
+# Fracture's own colour, just to the right of the cup (the owner, 8 Nov 2026,
+# after trying it written on the cup), and the cup a size bigger than the star. Nothing at Fracture 0 — a plain
 # cup is a win at the ordinary game, which is what every trophy before Fractures
 # was. On a character it is the whole Fracture record now: the panel's own
 # Fractures section went, since this says the same thing.
@@ -222,11 +222,13 @@ func _layout() -> void:
 		_trophy.position = c + Vector2(d * 0.5 + UITheme.GAP_HAIR, -cup.y * 0.5)
 		_trophy.size = cup
 		if _trophy_level != null:
-			# On the bowl: the cup's own box, nudged up off the stem.
+			# To the RIGHT of the cup, level with its middle (the owner, 8 Nov 2026:
+			# written on the cup it was hard to read).
 			_trophy_level.add_theme_font_size_override("font_size",
 				UITheme.FONT_BODY if d >= 24.0 else UITheme.FONT_TINY)
 			_trophy_level.add_theme_constant_override("outline_size", 4)
-			_trophy_level.position = _trophy.position - Vector2(0, cup.y * 0.12)
+			_trophy_level.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+			_trophy_level.position = _trophy.position + Vector2(cup.x * 0.85, 0)
 			_trophy_level.size = cup
 	queue_redraw()
 
