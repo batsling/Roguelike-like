@@ -434,7 +434,10 @@ func _search_box(key: String) -> LineEdit:
 	le.placeholder_text = "Search…"
 	le.text = _search[key]
 	le.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	le.custom_minimum_size = Vector2(180, 0)
+	# 120, not 180: it EXPANDS into whatever the row leaves, so the minimum only
+	# matters on the Games row, which has to fit four sorts, two filters, the
+	# star chart, Hide unseen and the count inside the 1280 canvas.
+	le.custom_minimum_size = Vector2(120, 0)
 	le.text_changed.connect(func(t):
 		_search[key] = t
 		_populate_soon())
@@ -1306,7 +1309,9 @@ func _add_count_label(row: HBoxContainer) -> void:
 		hide.name = "HideUnseen"
 		hide.tooltip_text = "Leave out everything you have not seen in a run yet."
 		row.add_child(hide)
-	_count_lbl = _label("", Color(0.6, 0.6, 0.65), 11)
+	# WRAPS, so its minimum is a word and not the whole "1004 / 1004 · 6 seen":
+	# the Games row is the one that has to fit the 1280 canvas (test_screens_fit).
+	_count_lbl = _label("", Color(0.6, 0.6, 0.65), 11, false, true)
 	_count_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_count_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	row.add_child(_count_lbl)
