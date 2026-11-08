@@ -324,7 +324,7 @@ func _character_tile(ch: CharacterData, state: Dictionary, select: Callable) -> 
 	vb.add_theme_constant_override("separation", UITheme.GAP_TIGHT)
 	vb.alignment = BoxContainer.ALIGNMENT_CENTER
 	tile.add_child(vb)
-	var tex: Texture2D = ch.icon if ch.icon != null else ch.portrait
+	var tex: Texture2D = ch.shown_icon()
 	if tex != null:
 		# The character's rank on its token (§20.9), hung half below it like a
 		# game cover's.
@@ -385,8 +385,8 @@ func _fill_char_detail(box: HBoxContainer, ch: CharacterData) -> void:
 	# hero was measured first: the tallest (Manager, 318px) still leaves 124px.
 	left.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	box.add_child(left)
-	if ch.portrait != null:
-		var portrait := UITheme.crisp_tex(ch.portrait, CHAR_PORTRAIT_SIZE)
+	if ch.shown_portrait() != null:
+		var portrait := UITheme.crisp_tex(ch.shown_portrait(), CHAR_PORTRAIT_SIZE)
 		portrait.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		left.add_child(portrait)
 

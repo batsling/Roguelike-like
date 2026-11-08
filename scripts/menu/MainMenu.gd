@@ -39,6 +39,7 @@ func _ready() -> void:
 	%ContinueBtn.pressed.connect(_on_continue_toggle)
 	%RunHistoryBtn.pressed.connect(_on_run_history)
 	%CollectionBtn.pressed.connect(_on_collection)
+	%CustomizeBtn.pressed.connect(_on_customize)
 	%TierListBtn.pressed.connect(_on_tier_list)
 	%SettingsBtn.pressed.connect(_on_settings)
 	%HowToPlayBtn.pressed.connect(_on_how_to_play)
@@ -682,6 +683,16 @@ func _on_collection() -> void:
 # Run History, which lays its routes over the sky (_on_run_history above). A third
 # door onto the same screen, sitting in the menu column beside the Collection that
 # already contains it, was one more row of buttons for no more game.
+
+# Costumes, icons and which title letters to spell with (docs/customization.md).
+# Switching letters off draws the title again when the screen closes, so the
+# change shows.
+func _on_customize() -> void:
+	var s := CustomizeScreen.open(_modal_layer)
+	s.tree_exited.connect(func() -> void:
+		if is_inside_tree():
+			_reroll(true)
+			_reroll(false))
 
 func _on_tier_list() -> void:
 	TierListScreen.open(_modal_layer)

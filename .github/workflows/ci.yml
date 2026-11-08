@@ -122,6 +122,12 @@ jobs:
         # and no content folder newly embedding its pictures.
         run: python3 tools/check_boot_load.py
 
+      - name: The costume and icon catalog matches its folders
+        # data/cosmetics.json is written from the art folders' file names
+        # (docs/customization.md); a picture added without rerunning the tool
+        # is a costume no rank can ever pay.
+        run: python3 tools/build_cosmetics_index.py --check
+
       - name: Every proof clip has been converted
         # The owner uploads proofs as .mp4, which Godot cannot play;
         # tools/convert_proof_videos.py turns each into the .ogv and poster the

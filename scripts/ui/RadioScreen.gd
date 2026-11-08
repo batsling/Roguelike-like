@@ -729,7 +729,7 @@ func _character_row(ch: CharacterData) -> Control:
 	art.custom_minimum_size = Vector2(ROW_ART, ROW_ART)
 	art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	art.texture = ch.icon if ch.icon != null else ch.portrait
+	art.texture = ch.shown_icon()
 	art.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	art.modulate = Color(1, 1, 1, 0.5)
 	h.add_child(RankBadge.wrap_character(art, ch.id))

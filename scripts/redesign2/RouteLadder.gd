@@ -574,7 +574,7 @@ static func _player_mark(box: Vector2) -> Control:
 	var ch: CharacterData = Data.get_character2(GameState.character_id)
 	var tex: Texture2D = null
 	if ch != null:
-		tex = ch.icon if ch.icon != null else ch.portrait
+		tex = ch.shown_icon()
 	if tex != null:
 		var token: TextureRect = UITheme.crisp_tex(tex, int(side))
 		token.mouse_filter = Control.MOUSE_FILTER_IGNORE

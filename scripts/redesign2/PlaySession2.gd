@@ -166,6 +166,7 @@ func _on_run_won() -> void:
 
 func _show_banner(text: String, color: Color) -> void:
 	_banner.text = text
+	Cosmetics.apply_glyph(_banner)   # a worn difficulty icon in place of the 🏆
 	_banner.add_theme_color_override("font_color", color)
 	_banner.show()
 	_set_pick_enabled(false)

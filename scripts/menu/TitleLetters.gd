@@ -163,16 +163,34 @@ static func units_of(game: StringName) -> Array:
 
 # The pool the menu spells from: Rogue's letters, and every piece that has been
 # earned (TitleUnlocks). A decoration's right half is earned with its left.
+#
+# WHAT THE PLAYER HAS SWITCHED OFF IS LEFT OUT (Customization, Cosmetics.piece_on):
+# a whole game's letters or one letter. Cosmetics refuses a switch that leaves the
+# title unspellable, but an earned letter can still go away under it (a test
+# profile's "Unlock everything" turned off), so a pool that cannot spell both
+# lines any more ignores the switches rather than leaving holes in the title.
 static func available() -> Dictionary:
-	var p := pool()
-	var tu: Node = Engine.get_main_loop().root.get_node_or_null(^"TitleUnlocks") \
+	var cos: Node = _autoload(^"Cosmetics")
+	var out := available_with(true)
+	if cos != null and not cos.spells(out):
+		return available_with(false)
+	return out
+
+static func _autoload(path: NodePath) -> Node:
+	return Engine.get_main_loop().root.get_node_or_null(path) \
 		if Engine.get_main_loop() is SceneTree else null
+
+static func available_with(switches: bool) -> Dictionary:
+	var p := pool()
+	var tu: Node = _autoload(^"TitleUnlocks")
+	var cos: Node = _autoload(^"Cosmetics") if switches else null
 	var out := {}
 	for folder in p:
 		var keep: Array = []
 		for e in p[folder]:
 			var key: String = unit_key(e)
-			if is_starter(e) or (tu != null and tu.is_unlocked(key)):
+			if (is_starter(e) or (tu != null and tu.is_unlocked(key))) \
+					and (cos == null or cos.piece_on(e)):
 				keep.append(e)
 		if not keep.is_empty():
 			out[folder] = keep

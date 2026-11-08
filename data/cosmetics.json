@@ -1,0 +1,402 @@
+{
+	"costumes": [
+		{
+			"id": "antonio_belpaese/legacy",
+			"character": "antonio_belpaese",
+			"name": "Legacy",
+			"slot": "both",
+			"game": "vampire_survivors",
+			"path": "res://images2.0/characters/Costumes Both/Antonio_Belpaese_Legacy.png"
+		},
+		{
+			"id": "ironclad/rest",
+			"character": "ironclad",
+			"name": "Rest",
+			"slot": "full",
+			"game": "slay_the_spire",
+			"path": "res://images2.0/characters/Costumes Full/Ironclad_Rest.png"
+		},
+		{
+			"id": "ironclad/slay_the_spire_2",
+			"character": "ironclad",
+			"name": "Slay the Spire 2",
+			"slot": "full",
+			"game": "slay_the_spire_2",
+			"path": "res://images2.0/characters/Costumes Full/Ironclad_Slay_the_Spire_2.png"
+		},
+		{
+			"id": "isaac/descent",
+			"character": "isaac",
+			"name": "Descent",
+			"slot": "full",
+			"game": "the_binding_of_isaac",
+			"path": "res://images2.0/characters/Costumes Full/Isaac_Descent.png"
+		},
+		{
+			"id": "isaac/rebirth_descent",
+			"character": "isaac",
+			"name": "Rebirth Descent",
+			"slot": "full",
+			"game": "the_binding_of_isaac_rebirth",
+			"path": "res://images2.0/characters/Costumes Full/Isaac_Rebirth_Descent.png"
+		},
+		{
+			"id": "isaac/rebirth",
+			"character": "isaac",
+			"name": "Rebirth",
+			"slot": "full",
+			"game": "the_binding_of_isaac_rebirth",
+			"path": "res://images2.0/characters/Costumes Full/Isaac_Rebirth.png"
+		},
+		{
+			"id": "isaac/stray",
+			"character": "isaac",
+			"name": "Stray",
+			"slot": "full",
+			"game": "mewgenics",
+			"path": "res://images2.0/characters/Costumes Full/Isaac_Stray.png"
+		},
+		{
+			"id": "poe_ratcho/legacy",
+			"character": "poe_ratcho",
+			"name": "Legacy",
+			"slot": "both",
+			"game": "vampire_survivors",
+			"path": "res://images2.0/characters/Costumes Both/Poe_Ratcho_Legacy.png"
+		},
+		{
+			"id": "poe_ratcho/retired",
+			"character": "poe_ratcho",
+			"name": "Retired",
+			"slot": "both",
+			"game": "vampire_survivors",
+			"path": "res://images2.0/characters/Costumes Both/Poe_Ratcho_Retired.png"
+		},
+		{
+			"id": "regent/rest",
+			"character": "regent",
+			"name": "Rest",
+			"slot": "full",
+			"game": "slay_the_spire_2",
+			"path": "res://images2.0/characters/Costumes Full/Regent_Rest.png"
+		},
+		{
+			"id": "zagreus/hades_2",
+			"character": "zagreus",
+			"name": "Hades 2",
+			"slot": "full",
+			"game": "hades_ii",
+			"path": "res://images2.0/characters/Costumes Full/Zagreus_Hades_2.png"
+		},
+		{
+			"id": "zoe/blue",
+			"character": "zoe",
+			"name": "Blue",
+			"slot": "icon",
+			"game": "haste",
+			"path": "res://images2.0/characters/Costumes Icon/Zoe_Blue.png"
+		},
+		{
+			"id": "zoe/clown_b_w",
+			"character": "zoe",
+			"name": "Clown B&W",
+			"slot": "icon",
+			"game": "haste",
+			"path": "res://images2.0/characters/Costumes Icon/Zoe_Clown_B&W.png"
+		},
+		{
+			"id": "zoe/clown",
+			"character": "zoe",
+			"name": "Clown",
+			"slot": "icon",
+			"game": "haste",
+			"path": "res://images2.0/characters/Costumes Icon/Zoe_Clown.png"
+		},
+		{
+			"id": "zoe/crispy",
+			"character": "zoe",
+			"name": "Crispy",
+			"slot": "icon",
+			"game": "haste",
+			"path": "res://images2.0/characters/Costumes Icon/Zoe_Crispy.png"
+		},
+		{
+			"id": "zoe/green",
+			"character": "zoe",
+			"name": "Green",
+			"slot": "icon",
+			"game": "haste",
+			"path": "res://images2.0/characters/Costumes Icon/Zoe_Green.png"
+		},
+		{
+			"id": "zoe/pixel",
+			"character": "zoe",
+			"name": "Pixel",
+			"slot": "icon",
+			"game": "haste",
+			"path": "res://images2.0/characters/Costumes Icon/Zoe_Pixel.png"
+		},
+		{
+			"id": "zoe/shadow",
+			"character": "zoe",
+			"name": "Shadow",
+			"slot": "icon",
+			"game": "haste",
+			"path": "res://images2.0/characters/Costumes Icon/Zoe_Shadow.png"
+		},
+		{
+			"id": "zoe/weeboh",
+			"character": "zoe",
+			"name": "Weeboh",
+			"slot": "icon",
+			"game": "haste",
+			"path": "res://images2.0/characters/Costumes Icon/Zoe_Weeboh.png"
+		},
+		{
+			"id": "zoe/woobler",
+			"character": "zoe",
+			"name": "Woobler",
+			"slot": "icon",
+			"game": "haste",
+			"path": "res://images2.0/characters/Costumes Icon/Zoe_Woobler.png"
+		}
+	],
+	"icons": [
+		{
+			"id": "key/chthonic_key_hades",
+			"kind": "key",
+			"name": "Chthonic Key",
+			"game": "hades",
+			"images": [
+				{
+					"name": "Chthonic Key",
+					"path": "res://images2.0/icons/Keys/Chthonic_Key_Hades.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "key/crystal_key_noita",
+			"kind": "key",
+			"name": "Crystal Key",
+			"game": "noita",
+			"images": [
+				{
+					"name": "Crystal Key",
+					"path": "res://images2.0/icons/Keys/Crystal_Key_Noita.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "key/key_enter_the_gungeon",
+			"kind": "key",
+			"name": "Key",
+			"game": "enter_the_gungeon",
+			"images": [
+				{
+					"name": "Key",
+					"path": "res://images2.0/icons/Keys/Key_Enter_The_Gungeon.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "key/key_the_binding_of_isaac",
+			"kind": "key",
+			"name": "Key",
+			"game": "the_binding_of_isaac",
+			"images": [
+				{
+					"name": "Key",
+					"path": "res://images2.0/icons/Keys/Key_The_Binding_of_Isaac.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "key/key_the_binding_of_isaac_rebirth",
+			"kind": "key",
+			"name": "Key",
+			"game": "the_binding_of_isaac_rebirth",
+			"images": [
+				{
+					"name": "Key",
+					"path": "res://images2.0/icons/Keys/Key_The_Binding_of_Isaac_Rebirth.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "bomb/bomb_crypt_of_the_necrodancer",
+			"kind": "bomb",
+			"name": "Bomb",
+			"game": "crypt_of_the_necrodancer",
+			"images": [
+				{
+					"name": "Bomb",
+					"path": "res://images2.0/icons/Bombs/Bomb_Crypt_of_the_NecroDancer.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "bomb/bomb_spelunky_2",
+			"kind": "bomb",
+			"name": "Bomb",
+			"game": "spelunky_2",
+			"images": [
+				{
+					"name": "Bomb",
+					"path": "res://images2.0/icons/Bombs/Bomb_Spelunky_2.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "bomb/bomb_spelunky_classic",
+			"kind": "bomb",
+			"name": "Bomb",
+			"game": "spelunky_classic",
+			"images": [
+				{
+					"name": "Bomb",
+					"path": "res://images2.0/icons/Bombs/Bomb_Spelunky_Classic.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "bomb/bomb_the_binding_of_isaac",
+			"kind": "bomb",
+			"name": "Bomb",
+			"game": "the_binding_of_isaac",
+			"images": [
+				{
+					"name": "Bomb",
+					"path": "res://images2.0/icons/Bombs/Bomb_The_Binding_of_Isaac.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "bomb/bomb_the_binding_of_isaac_rebirth",
+			"kind": "bomb",
+			"name": "Bomb",
+			"game": "the_binding_of_isaac_rebirth",
+			"images": [
+				{
+					"name": "Bomb",
+					"path": "res://images2.0/icons/Bombs/Bomb_The_Binding_of_Isaac_Rebirth.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "difficulty/ascension_slay_the_spire",
+			"kind": "difficulty",
+			"name": "Ascension",
+			"game": "slay_the_spire",
+			"images": [
+				{
+					"name": "Ascension",
+					"path": "res://images2.0/icons/Difficulties/Ascension_Slay_the_Spire.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "difficulty/ascension_slay_the_spire_2",
+			"kind": "difficulty",
+			"name": "Ascension",
+			"game": "slay_the_spire_2",
+			"images": [
+				{
+					"name": "Ascension",
+					"path": "res://images2.0/icons/Difficulties/Ascension_Slay_the_Spire_2.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "difficulty/hard_the_binding_of_isaac_rebirth",
+			"kind": "difficulty",
+			"name": "Hard",
+			"game": "the_binding_of_isaac_rebirth",
+			"images": [
+				{
+					"name": "Hard",
+					"path": "res://images2.0/icons/Difficulties/Hard_The_Binding_of_Isaac_Rebirth.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "difficulty/heat_hades",
+			"kind": "difficulty",
+			"name": "Heat",
+			"game": "hades",
+			"images": [
+				{
+					"name": "Heat",
+					"path": "res://images2.0/icons/Difficulties/Heat_Hades.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "difficulty/risk_of_rain_2",
+			"kind": "difficulty",
+			"name": "Drizzle / Rainstorm / Monsoon",
+			"game": "risk_of_rain_2",
+			"images": [
+				{
+					"name": "Drizzle",
+					"path": "res://images2.0/icons/Difficulties/Drizzle_Risk_of_Rain_2_0-3.png",
+					"min": 0,
+					"max": 3
+				},
+				{
+					"name": "Rainstorm",
+					"path": "res://images2.0/icons/Difficulties/Rainstorm_Risk_of_Rain_2_4-7.png",
+					"min": 4,
+					"max": 7
+				},
+				{
+					"name": "Monsoon",
+					"path": "res://images2.0/icons/Difficulties/Monsoon_Risk_of_Rain_2_8-10.png",
+					"min": 8,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "difficulty/stem_cell_dead_cells",
+			"kind": "difficulty",
+			"name": "Stem Cell",
+			"game": "dead_cells",
+			"images": [
+				{
+					"name": "Stem Cell",
+					"path": "res://images2.0/icons/Difficulties/Stem_Cell_Dead_Cells.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		}
+	]
+}

@@ -2447,7 +2447,7 @@ func _curse_icon_rect(curse: CurseData2) -> Control:
 func _character_icon_rect(character: CharacterData, tint: Color = UITheme.GOLD) -> Control:
 	if character == null:
 		return null
-	var tex: Texture2D = character.icon if character.icon != null else character.portrait
+	var tex: Texture2D = character.shown_icon()
 	if tex == null:
 		return null
 	var frame := PanelContainer.new()

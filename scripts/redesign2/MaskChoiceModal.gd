@@ -103,7 +103,7 @@ func _card(ch: CharacterData) -> Control:
 	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	btn.add_child(col)
 
-	var tex: Texture2D = ch.icon if ch.icon != null else ch.portrait
+	var tex: Texture2D = ch.shown_icon()
 	if tex != null:
 		var art: TextureRect = UITheme.crisp_tex(tex, ART_PX)
 		art.size_flags_horizontal = Control.SIZE_SHRINK_CENTER

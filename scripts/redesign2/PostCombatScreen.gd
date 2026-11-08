@@ -517,7 +517,7 @@ func _header() -> Control:
 	hero.add_child(slot)
 	var ch: CharacterData = Data.get_character2(StringName(_snap.get("character_id", "")))
 	if ch != null and (ch.icon != null or ch.portrait != null):
-		slot.add_child(UITheme.crisp_tex(ch.icon if ch.icon != null else ch.portrait,
+		slot.add_child(UITheme.crisp_tex(ch.shown_icon(),
 			int(RankFill.CIRCLE_COMPACT)))
 	hero.add_child(RankFill.make(int(_snap.get("character_rank_from", 0)),
 		int(_snap["character_rank_to"]), String(_snap.get("character_name", "")), true, true))

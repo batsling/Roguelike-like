@@ -412,7 +412,7 @@ func _hero() -> Dictionary:
 		return {"name": "", "icon": "", "level": GameState.player_level}
 	return {
 		"name": cd.display_name,
-		"icon": _texture_url(cd.icon if cd.icon != null else cd.portrait),
+		"icon": _texture_url(cd.shown_icon()),
 		"level": GameState.player_level,
 		"levelup": cd.level_up_condition,
 	}
@@ -563,7 +563,7 @@ func _goals(threat: Dictionary) -> Array:
 			# it is not nothing either, and on its own row beside its own goal it
 			# is the right size.
 			"who": "%s · Level %d" % [ch.display_name, GameState.player_level],
-			"icon": _texture_url(ch.icon if ch.icon != null else ch.portrait),
+			"icon": _texture_url(ch.shown_icon()),
 			"boss": false,
 			"front": false,
 			"done": GameLoop2.row_answered(ReportChecklist.LEVELUP_KEY),

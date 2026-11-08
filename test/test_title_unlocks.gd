@@ -49,9 +49,9 @@ func test_the_same_rank_always_flips_the_same_way() -> void:
 	assert_eq(RankRewards.split("game:hades", 12, 9, 9), RankRewards.split("game:hades", 12, 9, 9))
 
 func test_a_side_that_has_run_out_pays_the_other() -> void:
-	assert_eq(RankRewards.split("game:x", 6, 10, 0), {"songs": 6, "letters": 0},
+	assert_eq(RankRewards.split("game:x", 6, 10, 0), {"songs": 6, "letters": 0, "looks": 0},
 		"no logo cut: a song every rank, as before letters")
-	assert_eq(RankRewards.split("game:x", 6, 0, 10), {"songs": 0, "letters": 6},
+	assert_eq(RankRewards.split("game:x", 6, 0, 10), {"songs": 0, "letters": 6, "looks": 0},
 		"no songs on the radio: a letter every rank")
 	var s := RankRewards.split("game:x", 20, 3, 4)
 	assert_eq(int(s["letters"]), 4, "every letter, once enough ranks are in")

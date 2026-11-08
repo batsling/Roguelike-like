@@ -301,8 +301,10 @@ func _fill_queue() -> void:
 		small.append_array(group.slice(LOOT_FLOOR))
 	small.shuffle()
 	var covers: Array = []
+	var seen_covers := _seen_covers()
 	for path in _pngs_in(COVER_DIR):
-		covers.append({"path": path, "kind": Kind.COVER, "foot": 1})
+		if seen_covers.has(path):
+			covers.append({"path": path, "kind": Kind.COVER, "foot": 1})
 	covers.shuffle()
 	# THE CHARACTERS ARE TAKEN WHOLE, ahead of the shuffle rather than through it.
 	# There are eleven of them against some 300 other small pieces, so a pool of 112
@@ -311,6 +313,7 @@ func _fill_queue() -> void:
 	# rather than about what the player is up against, and a menu that shows the
 	# roster some nights and not others is just a bug nobody can reproduce.
 	var chars: Array = _character_jobs()
+	chars.append_array(_cosmetic_jobs())
 	_queue.clear()
 	_queue.append_array(chars)
 	_queue.append_array(seated)
@@ -326,12 +329,15 @@ func _loot_groups() -> Array:
 	var out: Array = []
 	for dir in SMALL_DIRS:
 		var group: Array = []
+		var seen := _seen_stems(dir)
 		for path in _pngs_in(dir):
-			group.append({"path": path, "kind": Kind.SMALL, "foot": 1})
+			if _was_seen(seen, path):
+				group.append({"path": path, "kind": Kind.SMALL, "foot": 1})
 		out.append(group)
 	var cards: Array = []
+	var seen_cards := _seen_stems(CARD_DIR)
 	for path in _pngs_in(CARD_DIR):
-		if not CARD_SKIP.has(String(path).get_file()):
+		if not CARD_SKIP.has(String(path).get_file()) and _was_seen(seen_cards, path):
 			cards.append({"path": path, "kind": Kind.SMALL, "foot": 1, "whole": true})
 	out.append(cards)
 	return out
@@ -343,9 +349,11 @@ func _loot_groups() -> Array:
 func _enemy_jobs() -> Array:
 	var out: Array = []
 	var rosters: Array = [Data.all_goal_enemies(), Data.all_bosses()]
-	for roster in rosters:
-		for e in roster:
+	for r in rosters.size():
+		for e in rosters[r]:
 			if not (e is GoalEnemyData) or e.image_path == "":
+				continue
+			if not GameStats.is_seen("boss" if r == 1 else "enemy", e.id):
 				continue
 			out.append({
 				"path": e.image_path,
@@ -373,9 +381,78 @@ const CHARACTER_FOOT := 2
 func _character_jobs() -> Array:
 	var out: Array = []
 	for c in Data.all_characters2():
-		if not (c is CharacterData) or c.portrait == null:
+		if not (c is CharacterData) or c.portrait == null or not GameStats.is_seen("character", c.id):
 			continue
-		out.append({"tex": c.portrait, "kind": Kind.SMALL, "foot": CHARACTER_FOOT})
+		out.append({"tex": c.shown_portrait(), "kind": Kind.SMALL, "foot": CHARACTER_FOOT})
+	return out
+
+# ONLY WHAT THE PLAYER HAS SEEN FALLS (the owner, 8 Nov 2026): a game, an enemy,
+# an item, a piece of loot or a character is on the menu once it has been seen in
+# a run (GameStats.seen, the Collection's own "???" rule), so the menu does not
+# show what the Collection would still hide. "Unlock everything" reads all as seen.
+#
+# The loot folders are matched to content by NAME, the project's convention
+# (PascalCase art, snake_case id): `_seen_stems` is the seen ids of a folder's kind
+# with everything but letters and digits dropped, the way `_stem_key` drops it from
+# a file name. Pills are the exception: the capsules are a run's colours, not
+# pills, so they fall once any pill has been seen.
+const SEEN_KIND_BY_DIR := {
+	"res://images2.0/items/": ["item", "all_items2"],
+	"res://images2.0/scrolls/": ["scroll", "all_scrolls2"],
+	"res://images2.0/pills/": ["pill", ""],
+	"res://images2.0/potions_identified/": ["potion", "all_potions"],
+	"res://images2.0/trinkets/": ["trinket", "all_trinkets"],
+	"res://images2.0/weapons/": ["weapon", "all_weapons"],
+	"res://images2.0/bags/": ["bag", "all_bags"],
+	"res://images2.0/cards/": ["card", "all_cards"],
+}
+const ANY := "*"
+
+func _seen_stems(dir: String) -> Dictionary:
+	var spec: Array = SEEN_KIND_BY_DIR.get(dir, [])
+	if spec.is_empty():
+		return {ANY: true}
+	var kind: String = spec[0]
+	var out := {}
+	if String(spec[1]) == "":
+		if GameStats.seen_count(kind) > 0 or GameStats.seen_bypass or Settings.unlock_everything:
+			out[ANY] = true
+		return out
+	for r in Data.call(String(spec[1])):
+		var id := String(r.get("id"))
+		if GameStats.is_seen(kind, id):
+			out[_stem_key(id)] = true
+			out[_stem_key(id.trim_prefix("scroll_of_"))] = true
+	return out
+
+static func _stem_key(s: String) -> String:
+	var out := ""
+	for ch in s.to_lower():
+		if (ch >= "a" and ch <= "z") or (ch >= "0" and ch <= "9"):
+			out += ch
+	return out
+
+func _was_seen(seen: Dictionary, path: String) -> bool:
+	return seen.has(ANY) or seen.has(_stem_key(path.get_file().get_basename()))
+
+# Each seen game's cover, by its own path.
+func _seen_covers() -> Dictionary:
+	var out := {}
+	for g in Data.all_games():
+		if g is GameData and g.cover_path != "" and GameStats.is_seen("game", g.id):
+			out[g.cover_path] = true
+	return out
+
+# THE LOOKS THE PLAYER HAS EARNED fall too (Customization): every unlocked
+# costume and icon, taken whole like the characters — they are about the player.
+func _cosmetic_jobs() -> Array:
+	var out: Array = []
+	for e in CosmeticCatalog.all_units():
+		if not Cosmetics.is_unlocked(String(e["key"])):
+			continue
+		for path in CosmeticCatalog.paths(e):
+			out.append({"path": path, "kind": Kind.SMALL,
+				"foot": CHARACTER_FOOT if String(e["unit"]) == "costume" else 1})
 	return out
 
 # Every distinct PNG in a folder.

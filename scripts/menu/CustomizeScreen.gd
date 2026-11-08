@@ -1,0 +1,346 @@
+class_name CustomizeScreen
+extends Control
+
+# CUSTOMIZATION (docs/customization.md; the owner, 8 Nov 2026), off the main menu:
+# what the player has earned to look different, and the choice of what to wear.
+#
+#   Characters     each character's costumes, the ICON and the FULL portrait
+#                  chosen separately (a Vampire Survivors costume is both, from
+#                  one picture, and shows in both rows);
+#   Icons          what stands in for 🗝, ✸ and 🏆 everywhere they are drawn;
+#   Title Letters  which earned letters the main menu may spell with, a game at a
+#                  time or a letter at a time — refused when what is left could
+#                  not spell the title and the subtitle.
+#
+# Everything here is Cosmetics' state; the screen only shows it and asks it to
+# change. A locked look is shown as a "?" with where it comes from, so the screen
+# also says what is still to earn.
+
+const TILE := 64
+const LETTER_TILE := 40
+const TABS := ["Characters", "Icons", "Title Letters"]
+const KIND_NAMES := {"key": "Keys", "bomb": "Bombs", "difficulty": "Difficulty (the trophy)"}
+const KIND_GLYPHS := {"key": "🗝", "bomb": "✸", "difficulty": "🏆"}
+
+var _tab := 0
+var _tab_buttons: Array[Button] = []
+var _body: VBoxContainer
+var _status: Label
+
+static func open(parent: Node, tab: int = 0) -> CustomizeScreen:
+	var s := CustomizeScreen.new()
+	s._tab = tab
+	parent.add_child(s)
+	return s
+
+func _ready() -> void:
+	process_mode = Node.PROCESS_MODE_ALWAYS
+	top_level = true
+	mouse_filter = Control.MOUSE_FILTER_STOP
+	theme = UITheme.shared()
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_build_shell()
+	_refresh()
+
+func _input(event: InputEvent) -> void:
+	if event.is_action_pressed("ui_cancel"):
+		get_viewport().set_input_as_handled()
+		close()
+
+func close() -> void:
+	queue_free()
+
+func _build_shell() -> void:
+	var dim := ColorRect.new()
+	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	dim.color = Color(0, 0, 0, 0.72)
+	dim.mouse_filter = Control.MOUSE_FILTER_STOP
+	add_child(dim)
+	var panel := PanelContainer.new()
+	panel.set_anchors_preset(Control.PRESET_FULL_RECT)
+	panel.offset_left = 36
+	panel.offset_top = 32
+	panel.offset_right = -36
+	panel.offset_bottom = -32
+	panel.add_theme_stylebox_override("panel",
+		UITheme.panel_box(UITheme.BG_DEEP, UITheme.BORDER, 10, 18, 1))
+	add_child(panel)
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", UITheme.GAP_LOOSE)
+	panel.add_child(vbox)
+
+	var header := HBoxContainer.new()
+	header.add_theme_constant_override("separation", UITheme.GAP_LOOSE)
+	vbox.add_child(header)
+	var title := Label.new()
+	title.text = "Customization"
+	title.add_theme_font_size_override("font_size", UITheme.FONT_HERO)
+	title.add_theme_color_override("font_color", UITheme.GOLD)
+	header.add_child(title)
+	for i in TABS.size():
+		var b := Button.new()
+		b.name = "Tab%d" % i
+		b.text = TABS[i]
+		b.toggle_mode = true
+		b.custom_minimum_size = Vector2(0, 36)
+		b.pressed.connect(func() -> void:
+			_tab = i
+			_refresh())
+		header.add_child(b)
+		_tab_buttons.append(b)
+	var spacer := Control.new()
+	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	header.add_child(spacer)
+	var close_btn := Button.new()
+	close_btn.name = "CloseBtn"
+	close_btn.text = "✕  Close"
+	close_btn.custom_minimum_size = Vector2(0, 36)
+	close_btn.pressed.connect(close)
+	header.add_child(close_btn)
+
+	_status = Label.new()
+	_status.name = "Status"
+	_status.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
+	_status.add_theme_color_override("font_color", UITheme.TEXT_DIM)
+	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	vbox.add_child(_status)
+
+	var scroll := ScrollContainer.new()
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	vbox.add_child(scroll)
+	_body = VBoxContainer.new()
+	_body.name = "Body"
+	_body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_body.add_theme_constant_override("separation", UITheme.GAP_SECTION)
+	scroll.add_child(_body)
+
+func _refresh() -> void:
+	for i in _tab_buttons.size():
+		_tab_buttons[i].set_pressed_no_signal(i == _tab)
+	for c in _body.get_children():
+		_body.remove_child(c)
+		c.queue_free()
+	match _tab:
+		0: _build_characters()
+		1: _build_icons()
+		_: _build_letters()
+
+func _say(text: String) -> void:
+	_status.text = text
+	Cosmetics.apply_glyph(_status)
+
+# --- characters -------------------------------------------------------------------
+
+func _build_characters() -> void:
+	_say("Costumes are earned as rank-up rewards from the games they come from and the characters from those games. The icon and the full portrait are chosen separately.")
+	var roster: Array = Data.all_characters2().filter(func(ch) -> bool:
+		return not CosmeticCatalog.costumes_of(ch.id, "icon").is_empty() \
+			or not CosmeticCatalog.costumes_of(ch.id, "full").is_empty())
+	roster.sort_custom(func(a, b): return a.display_name < b.display_name)
+	for ch in roster:
+		var block := VBoxContainer.new()
+		block.name = "Character_%s" % ch.id
+		block.add_theme_constant_override("separation", UITheme.GAP_TIGHT)
+		_body.add_child(block)
+		block.add_child(_heading(ch.display_name))
+		for slot in CosmeticCatalog.SLOTS:
+			var row := HFlowContainer.new()
+			row.name = "Slot_%s" % slot
+			row.add_theme_constant_override("h_separation", UITheme.GAP)
+			row.add_theme_constant_override("v_separation", UITheme.GAP)
+			block.add_child(row)
+			var lbl := _dim("Icon" if slot == "icon" else "Full")
+			lbl.custom_minimum_size = Vector2(48, TILE)
+			lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+			row.add_child(lbl)
+			var worn := Cosmetics.costume(ch.id, slot)
+			var own: Texture2D = (ch.icon if ch.icon != null else ch.portrait) if slot == "icon" else ch.portrait
+			row.add_child(_tile(own, "", worn.is_empty(), false, "%s — default" % ch.display_name,
+				func() -> void: _wear_costume(ch.id, slot, "")))
+			for e in CosmeticCatalog.costumes_of(ch.id, slot):
+				var key := String(e["key"])
+				var locked := not Cosmetics.is_unlocked(key)
+				row.add_child(_tile(CosmeticCatalog.texture(String(e["path"])), "",
+					String(worn.get("key", "")) == key, locked,
+					_look_tip(e, locked), func() -> void: _wear_costume(ch.id, slot, key)))
+
+func _wear_costume(character: StringName, slot: String, key: String) -> void:
+	Cosmetics.set_costume(character, slot, key)
+	_refresh()
+
+# --- icons --------------------------------------------------------------------------
+
+func _build_icons() -> void:
+	_say("Each stands in for its symbol everywhere it is drawn. A difficulty icon replaces the 🏆 and carries the Fracture number; Risk of Rain 2's changes with the level.")
+	for kind in CosmeticCatalog.KINDS:
+		var block := VBoxContainer.new()
+		block.name = "Kind_%s" % kind
+		block.add_theme_constant_override("separation", UITheme.GAP_TIGHT)
+		_body.add_child(block)
+		block.add_child(_heading(KIND_NAMES[kind]))
+		var row := HFlowContainer.new()
+		row.add_theme_constant_override("h_separation", UITheme.GAP)
+		row.add_theme_constant_override("v_separation", UITheme.GAP)
+		block.add_child(row)
+		var worn := Cosmetics.icon(kind)
+		var glyph: String = KIND_GLYPHS[kind]
+		row.add_child(_tile(null, glyph, worn.is_empty(), false, "Default — %s" % glyph,
+			func() -> void: _wear_icon(kind, "")))
+		for e in CosmeticCatalog.icons_of(kind):
+			var key := String(e["key"])
+			var locked := not Cosmetics.is_unlocked(key)
+			var images: Array = e.get("images", [])
+			var tip := _look_tip(e, locked)
+			if images.size() > 1:
+				tip += "\n" + "\n".join(images.map(func(i): return "%s — Fracture %d–%d" % [i["name"], i["min"], i["max"]]))
+			row.add_child(_tile(CosmeticCatalog.texture(CosmeticCatalog.image_for(e, 0)), "",
+				String(worn.get("key", "")) == key, locked, tip,
+				func() -> void: _wear_icon(kind, key)))
+
+func _wear_icon(kind: String, key: String) -> void:
+	Cosmetics.set_icon(kind, key)
+	_refresh()
+
+# --- title letters ----------------------------------------------------------------
+
+func _build_letters() -> void:
+	_say("Switch a game's letters, or single letters, off to keep them out of the main menu's title. Whatever is left has to be able to spell the title and the subtitle.")
+	var by_game := {}
+	var p := TitleLetters.pool()
+	for folder in p:
+		for e in p[folder]:
+			if TitleLetters.unit_key(e) != String(e["key"]):
+				continue
+			if not (TitleLetters.is_starter(e) or TitleUnlocks.is_unlocked(String(e["key"]))):
+				continue
+			(by_game.get_or_add(String(e.get("game", "")), []) as Array).append(e)
+	var ids: Array = by_game.keys()
+	ids.sort_custom(func(a, b) -> bool:
+		if a == TitleLetters.STARTER_GAME or b == TitleLetters.STARTER_GAME:
+			return a == TitleLetters.STARTER_GAME
+		return _game_name(a) < _game_name(b))
+	for g in ids:
+		var block := VBoxContainer.new()
+		block.name = "Game_%s" % g
+		block.add_theme_constant_override("separation", UITheme.GAP_TIGHT)
+		_body.add_child(block)
+		var head := HBoxContainer.new()
+		head.add_theme_constant_override("separation", UITheme.GAP)
+		block.add_child(head)
+		var check := CheckBox.new()
+		check.name = "GameToggle"
+		check.text = _game_name(g)
+		check.button_pressed = Cosmetics.letters_game_on(g)
+		check.add_theme_font_size_override("font_size", UITheme.FONT_SUB)
+		check.toggled.connect(func(on: bool) -> void:
+			if not Cosmetics.set_letters_game(g, on):
+				_refused(_game_name(g) + "'s letters")
+			_refresh_keep_scroll())
+		head.add_child(check)
+		var row := HFlowContainer.new()
+		row.add_theme_constant_override("h_separation", UITheme.GAP_TIGHT)
+		row.add_theme_constant_override("v_separation", UITheme.GAP_TIGHT)
+		block.add_child(row)
+		var game_on := Cosmetics.letters_game_on(g)
+		var pieces: Array = by_game[g]
+		pieces.sort_custom(func(a, b): return _piece_order(a) < _piece_order(b))
+		for e in pieces:
+			var key := String(e["key"])
+			var on := Cosmetics.letter_on(key)
+			var t := _tile(TitleLetters.texture(String(e["path"])), "", on and game_on, false,
+				_piece_name(e) + ("" if on else " — switched off"),
+				func() -> void:
+					if not Cosmetics.set_letter(key, not on):
+						_refused(_piece_name(e))
+					_refresh_keep_scroll(), LETTER_TILE)
+			if not (on and game_on):
+				t.modulate = Color(1, 1, 1, 0.35)
+			row.add_child(t)
+
+func _refused(what: String) -> void:
+	_say.call_deferred("Can't switch off %s: without it the title or the subtitle would have a letter nothing else can spell." % what)
+
+func _refresh_keep_scroll() -> void:
+	var scroll: ScrollContainer = _body.get_parent()
+	var v := scroll.scroll_vertical
+	var msg := _status.text
+	_refresh()
+	_status.text = msg
+	(func() -> void: scroll.scroll_vertical = v).call_deferred()
+
+# Letters A to Z (a capital before its small letter), then digits, then the rest.
+func _piece_order(e: Dictionary) -> String:
+	var folder := String(e.get("folder", ""))
+	var group := "0" if folder.length() == 1 and folder >= "a" and folder <= "z" \
+		else ("1" if folder.length() == 1 else ("3" if folder.begins_with("decor") else "2"))
+	return "%s%s%s%s" % [group, folder, "1" if String(e.get("case", "")) == "lower" else "0", e["key"]]
+
+func _piece_name(e: Dictionary) -> String:
+	var folder := String(e.get("folder", ""))
+	if folder.begins_with("decor"):
+		return "decoration"
+	if folder.length() == 1:
+		var c := String(e.get("case", ""))
+		return folder.to_lower() if c == "lower" else folder.to_upper()
+	return folder.replace("_", " ")
+
+func _game_name(g: String) -> String:
+	var game: GameData = Data.get_game(StringName(g))
+	return game.display_name if game != null else g.capitalize()
+
+# --- pieces -------------------------------------------------------------------------
+
+func _heading(text: String) -> Label:
+	var l := Label.new()
+	l.text = text
+	l.add_theme_font_size_override("font_size", UITheme.FONT_SUB)
+	l.add_theme_color_override("font_color", UITheme.GOLD)
+	return l
+
+func _dim(text: String) -> Label:
+	var l := Label.new()
+	l.text = text
+	l.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
+	l.add_theme_color_override("font_color", UITheme.TEXT_DIM)
+	return l
+
+# Where a look comes from, and whether it is still to earn.
+func _look_tip(e: Dictionary, locked: bool) -> String:
+	var g: GameData = Data.get_game(StringName(String(e["game"])))
+	var game := g.display_name if g != null else String(e["game"])
+	var name := String(e["name"])
+	if locked:
+		return "%s — locked\nA rank-up reward from %s, or a character from it." % [name, game]
+	return "%s — from %s" % [name, game]
+
+func _tile(tex: Texture2D, glyph: String, selected: bool, locked: bool, tip: String,
+		on_press: Callable, side: int = TILE) -> Button:
+	var b := Button.new()
+	b.custom_minimum_size = Vector2(side, side)
+	b.tooltip_text = tip
+	b.focus_mode = Control.FOCUS_NONE
+	var box := UITheme.panel_box(UITheme.PANEL, UITheme.GOLD if selected else UITheme.BORDER,
+		6, 4, 2 if selected else 1)
+	for st in ["normal", "hover", "pressed", "disabled"]:
+		b.add_theme_stylebox_override(st, box)
+	if locked:
+		b.disabled = true
+		b.text = "?"
+		b.add_theme_font_size_override("font_size", UITheme.FONT_TITLE)
+		return b
+	if tex != null:
+		var tr := UITheme.crisp_tex(tex, side - 8)
+		tr.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		tr.offset_left = 4
+		tr.offset_top = 4
+		tr.offset_right = -4
+		tr.offset_bottom = -4
+		b.add_child(tr)
+	else:
+		b.text = glyph
+		b.set_meta("glyph_level", 0)
+		b.set_meta("glyph_art_text", glyph)   # the default tile keeps its glyph
+		b.add_theme_font_size_override("font_size", UITheme.FONT_TITLE)
+	b.pressed.connect(on_press)
+	return b
