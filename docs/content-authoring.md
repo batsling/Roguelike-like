@@ -324,6 +324,14 @@ owner, 8 Nov 2026). The source is Steam's 1280px logo, pixel art at exactly
 slivers, so every piece lists a point per sliver. The I's are daggers, sized
 by the letters' rows (`body` 14-27) so the blade runs past the line as drawn,
 down for SLICE's and up for DICE's.
+Downwell gives D O W N E L, from SteamGridDB's 6421px logo: white block
+letters, each with a red band on top and two thinner red stripes floating
+above it, every part apart from the next, so each piece lists a point per
+part (the W's stripes are three columns, one over each prong) and is cut as
+it is (`reach` 3 for the soft edge). Its second W and L are exact repeats of
+the first (only a one-pixel shift along their edges, from the vector art's
+sub-pixel placing), so they are left out. The stripes count as the letter's
+top: each is sized by its whole height, stripes and all.
 A logo can
 take more than one config when its parts are built differently: Uma Musume has
 four, one per line, one for the girl and one for her dash.

@@ -1593,6 +1593,21 @@
    0.94498
   ]
  },
+ "d/downwell.png": {
+  "game": "downwell",
+  "config": "downwell.json",
+  "style": "downwell",
+  "body_center": 0.5,
+  "body_height": 1.0,
+  "body_center_x": 0.4985,
+  "body_width": 0.9969,
+  "src": [
+   0.0,
+   0.0,
+   0.10154,
+   1.0
+  ]
+ },
  "d/dungeon_clawler.png": {
   "game": "dungeon_clawler",
   "config": "dungeon_clawler.json",
@@ -2201,6 +2216,21 @@
    1.0
   ],
   "form": "lower"
+ },
+ "e/downwell.png": {
+  "game": "downwell",
+  "config": "downwell.json",
+  "style": "downwell",
+  "body_center": 0.5,
+  "body_height": 1.0,
+  "body_center_x": 0.5008,
+  "body_width": 0.9924,
+  "src": [
+   0.66781,
+   0.0,
+   0.76997,
+   1.0
+  ]
  },
  "e/dungeon_clawler.png": {
   "game": "dungeon_clawler",
@@ -4287,6 +4317,21 @@
    0.86557
   ]
  },
+ "l/downwell.png": {
+  "game": "downwell",
+  "config": "downwell.json",
+  "style": "downwell",
+  "body_center": 0.5,
+  "body_height": 1.0,
+  "body_center_x": 0.5,
+  "body_width": 0.9939,
+  "src": [
+   0.78399,
+   0.0,
+   0.886,
+   1.0
+  ]
+ },
  "l/dungeon_clawler.png": {
   "game": "dungeon_clawler",
   "config": "dungeon_clawler.json",
@@ -4813,6 +4858,21 @@
   ],
   "form": "lower"
  },
+ "n/downwell.png": {
+  "game": "downwell",
+  "config": "downwell.json",
+  "style": "downwell",
+  "body_center": 0.5,
+  "body_height": 1.0,
+  "body_center_x": 0.4992,
+  "body_width": 0.9924,
+  "src": [
+   0.39168,
+   0.0,
+   0.49385,
+   1.0
+  ]
+ },
  "n/dungeon_clawler.png": {
   "game": "dungeon_clawler",
   "config": "dungeon_clawler.json",
@@ -5301,6 +5361,21 @@
    0.78641
   ],
   "form": "lower"
+ },
+ "o/downwell.png": {
+  "game": "downwell",
+  "config": "downwell.json",
+  "style": "downwell",
+  "body_center": 0.5,
+  "body_height": 1.0,
+  "body_center_x": 0.5,
+  "body_width": 0.9939,
+  "src": [
+   0.11556,
+   0.0,
+   0.21757,
+   1.0
+  ]
  },
  "o/dungeon_clawler.png": {
   "game": "dungeon_clawler",
@@ -8078,6 +8153,21 @@
    0.77734,
    0.6954,
    0.87891,
+   1.0
+  ]
+ },
+ "w/downwell.png": {
+  "game": "downwell",
+  "config": "downwell.json",
+  "style": "downwell",
+  "body_center": 0.5,
+  "body_height": 1.0,
+  "body_center_x": 0.5,
+  "body_width": 0.9957,
+  "src": [
+   0.23158,
+   0.0,
+   0.37767,
    1.0
   ]
  },

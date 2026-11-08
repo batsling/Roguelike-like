@@ -11,6 +11,10 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Title letters: Downwell.** D O W N E L, white blocks under the logo's red
+  stripes; the second W and L are repeats and left out
+  (`docs/content-authoring.md`, "Title letters").
+
 - **Title letters: Slice & Dice.** S L I C E, D I C E in sharp pixels, sliced
   as the logo slices them, with dagger I's that run past the line; the die with
   the & in it is filed as `ampersand/`. Rebuilt pixel for pixel from Steam's
