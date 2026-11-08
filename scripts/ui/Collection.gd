@@ -573,6 +573,23 @@ func _game_cover_plate(g: GameData) -> Control:
 		get_tree().process_frame.connect(_poll_event_art)
 	return plate
 
+# ROOM FOR A TROPHY ON THE CORNER. The 🏆 is centred on the art's top-right
+# corner (RankBadge), so half of it stands above and to the right of the art. In a
+# grid cell the cell's padding holds that half; at the top of a detail page the
+# scroll area would cut it off, so the page's art gets the room itself.
+func _trophy_room(art: Control, has_trophy: bool) -> Control:
+	if not has_trophy:
+		return art
+	var half: int = ceili(RankBadge.TROPHY_MAX * 0.5)
+	var room := MarginContainer.new()
+	room.name = "TrophyRoom"
+	room.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	room.size_flags_horizontal = art.size_flags_horizontal
+	room.add_theme_constant_override("margin_top", half)
+	room.add_theme_constant_override("margin_right", half)
+	room.add_child(art)
+	return room
+
 func _cover_rect(tex: Texture2D, w: int, game_id = &"") -> Control:
 	var tr := TextureRect.new()
 	tr.texture = tex
@@ -1721,7 +1738,7 @@ func _show_game_detail(g: GameData) -> void:
 	if g.cover_image != null:
 		var tr := _cover_rect(g.cover_image, GAME_DETAIL_COVER, g.id)
 		tr.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-		ident.add_child(tr)
+		ident.add_child(_trophy_room(tr, GameStats.amulet_wins(g.id) > 0))
 	# LEFT-ALIGNED, all of it: a column of short lines read down its left edge.
 	var meta_parts: Array = []
 	if g.year > 0:
@@ -2220,7 +2237,10 @@ func _character_header(ch: CharacterData) -> Control:
 	if ch.portrait != null:
 		var tr := UITheme.crisp_tex(ch.portrait, CHAR_HEADER_PORTRAIT)
 		tr.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		row.add_child(RankBadge.wrap_character(tr, ch.id, true))
+		var art: Control = _trophy_room(RankBadge.wrap_character(tr, ch.id, true),
+			GameStats.fracture_best(ch.id) >= 0)
+		art.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		row.add_child(art)
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", UITheme.GAP_TIGHT)
 	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL

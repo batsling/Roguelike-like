@@ -165,11 +165,17 @@ func test_the_badge_hangs_half_below_the_cover_with_the_bar_under_it() -> void:
 	var art: Control = _holder.get_child(0)
 	assert_eq(art.size, Vector2(120, 160), "the cover keeps its own size, at the top")
 
-func test_the_star_and_trophy_sit_on_the_edge_too() -> void:
+func test_the_star_sits_on_the_edge_and_the_trophy_on_the_top_right_corner() -> void:
 	GameStats.record_amulet_win(GAME)
 	var b := _badge(true)
-	for l in [b._star, b._trophy]:
-		assert_almost_eq(l.position.y + l.size.y * 0.5, 160.0, 0.5, "%s centred on the edge" % l.text)
+	assert_almost_eq(b._star.position.y + b._star.size.y * 0.5, 160.0, 0.5,
+		"the star is centred on the bottom edge, beside the circle")
+	# The owner, 8 Nov 2026: the trophy is centred ON the art's top-right corner.
+	var centre: Vector2 = b._trophy.position + b._trophy.size * 0.5
+	assert_almost_eq(centre.x, 120.0, 0.5, "on the right edge")
+	if TierList.tier_of(GAME) < 0:
+		assert_almost_eq(centre.y, 0.0, 0.5, "on the top edge")
+	assert_eq(centre, b.trophy_center())
 
 func test_a_holder_makes_room_for_the_overhang() -> void:
 	var art := Control.new()

@@ -17,7 +17,7 @@ For how the project is laid out and how its systems fit together, see
   beside it and "X/250 xp" under it; what the next rank unlocks moved to the
   bar's hover. The Fractures card is gone: the 🏆 carries that record, and it is
   bigger everywhere it appears (characters and game covers), with the highest
-  Fracture won just to the right of the cup. On the Progress page each goal beaten says the
+  Fracture won written on the cup, and it sits centred on the top-right corner of the art (below the tier badge where a game has one). On the Progress page each goal beaten says the
   XP it gave ("+20 xp"); the ones not yet beaten don't.
 
 - **Collection: Hide unseen, and Rank sorts.** Every tab's row has a *Hide
