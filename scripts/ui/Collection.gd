@@ -1302,7 +1302,6 @@ func _add_count_label(row: HBoxContainer) -> void:
 	# Every tab's row ends here, so the Hide unseen switch rides with the count.
 	# Not offered while Unlock everything is on: nothing is hidden to leave out.
 	if not Settings.unlock_everything:
-		row.add_child(VSeparator.new())
 		var hide := _sort_button("Hide unseen", _hide_unseen, func():
 			_hide_unseen = not _hide_unseen
 			_refresh())
@@ -1312,18 +1311,22 @@ func _add_count_label(row: HBoxContainer) -> void:
 	# WRAPS, so its minimum is a word and not the whole "1004 / 1004 · 6 seen":
 	# the Games row is the one that has to fit the 1280 canvas (test_screens_fit).
 	_count_lbl = _label("", Color(0.6, 0.6, 0.65), 11, false, true)
+	# Wide enough for "1004/1004" whole, so the wrap only ever breaks before "seen".
+	_count_lbl.custom_minimum_size = Vector2(60, 0)
 	_count_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_count_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	row.add_child(_count_lbl)
 
 func _set_count(shown: int, total: int) -> void:
 	if _count_lbl != null:
-		_count_lbl.text = "%d / %d" % [shown, total]
+		_count_lbl.text = "%d/%d" % [shown, total]
 		var roster: Array = _tab_roster()
 		if not roster.is_empty():
 			var note: String = _seen_note(roster[0], roster[1])
 			if note != "":
-				_count_lbl.text += "  ·  " + note
+				# Its own line, so the counter wraps as two tidy lines rather than
+				# wherever the row's width happens to break it.
+				_count_lbl.text += "\n" + note
 
 # The kind the open tab lists, and all of it: [kind, Array], or [] (Games is
 # counted too, but over a thousand rows it is still one dictionary lookup each).
@@ -3343,10 +3346,25 @@ func _veil_box(vb: Node) -> void:
 				(c as Control).visible = false
 		elif c is Control:
 			if not drawn and not named:
-				(c as Control).modulate = UNSEEN_ART
+				_silhouette(c as Control)
 				drawn = true
 			else:
 				(c as Control).visible = false
+
+# A SILHOUETTE, not a black box: where the art is a picture in a frame (an enemy,
+# an item), only the picture goes black and the frame stays, so the shape reads.
+# Art that has no picture yet (a scene still loading, a hidden game's cover)
+# blacks out whole.
+func _silhouette(art: Control) -> void:
+	var pics: Array = art.find_children("*", "TextureRect", true, false).filter(
+		func(t): return (t as TextureRect).texture != null)
+	if art is TextureRect and (art as TextureRect).texture != null:
+		pics = [art]
+	if pics.is_empty():
+		art.modulate = UNSEEN_ART
+		return
+	for t in pics:
+		(t as Control).modulate = UNSEEN_ART
 
 func _first_texture(node: Node) -> Texture2D:
 	if node is TextureRect and (node as TextureRect).texture != null:
@@ -4250,11 +4268,11 @@ static func location_favours(loc: LocationData) -> Array:
 	if loc == null or loc.tag_types.is_empty():
 		return out
 	var kinds: Array = [
-		["Enemies", Data.all_goal_enemies()], ["Bosses", Data.all_bosses()],
-		["Items", Data.all_items2()], ["Scrolls", Data.all_scrolls()],
-		["Potions", Data.all_potions()], ["Cards", Data.all_cards()],
-		["Wands", Data.all_wands()], ["Trinkets", Data.all_trinkets()],
-		["Weapons", Data.all_weapons()], ["Units", Data.all_units()],
+		["Enemies", Data.all_goal_enemies(), "enemy"], ["Bosses", Data.all_bosses(), "boss"],
+		["Items", Data.all_items2(), "item"], ["Scrolls", Data.all_scrolls(), "scroll"],
+		["Potions", Data.all_potions(), "potion"], ["Cards", Data.all_cards(), "card"],
+		["Wands", Data.all_wands(), "wand"], ["Trinkets", Data.all_trinkets(), "trinket"],
+		["Weapons", Data.all_weapons(), "weapon"], ["Units", Data.all_units(), ""],
 	]
 	for k in kinds:
 		var names: Array = []
@@ -4263,12 +4281,21 @@ static func location_favours(loc: LocationData) -> Array:
 				continue
 			for t in Locations.tags_of(thing):
 				if loc.tag_types.has(t):
+					# Named only once seen, like its own cell (GameStats.seen). Units
+					# have no Collection tab, so nothing of theirs is hidden.
+					if k[2] != "" and not GameStats.is_seen(k[2], thing.get("id")):
+						names.append(UNSEEN_NAME)
+						break
 					var n = thing.get("display_name") if "display_name" in thing else null
 					names.append(String(n) if n != null and String(n) != "" else String(thing.get("id")))
 					break
 		if names.is_empty():
 			continue
-		names.sort_custom(func(a, b): return a.naturalnocasecmp_to(b) < 0)
+		# The ones seen first, A-Z; the ??? after them.
+		names.sort_custom(func(a, b):
+			if (a == UNSEEN_NAME) != (b == UNSEEN_NAME):
+				return b == UNSEEN_NAME
+			return a.naturalnocasecmp_to(b) < 0)
 		out.append({"kind": k[0], "names": names})
 	return out
 

@@ -235,3 +235,25 @@ func test_games_sort_by_rank_highest_first() -> void:
 	sorted.reverse()
 	assert_eq(xps, sorted)
 	col._games_sort = "name"
+
+func test_favoured_here_names_only_what_was_seen() -> void:
+	var all: Dictionary = Data.get_meta("all_locations", {})
+	var loc: LocationData = all.get(&"burning_basement")
+	if loc == null:
+		pending("no Burning Basement in the roster")
+		return
+	var groups: Array = Collection.location_favours(loc)
+	var enemies: Array = groups.filter(func(g): return g["kind"] == "Enemies")
+	if enemies.is_empty():
+		pending("nothing fire-tagged")
+		return
+	assert_true((enemies[0]["names"] as Array).all(func(n): return n == Collection.UNSEEN_NAME),
+		"none seen, so every name is ???")
+	var e: GoalEnemyData = null
+	for x in Data.all_goal_enemies():
+		if Locations.tags_of(x).has("fire"):
+			e = x
+			break
+	GameStats.mark_seen("enemy", e.id)
+	var again: Array = Collection.location_favours(loc).filter(func(g): return g["kind"] == "Enemies")
+	assert_eq(again[0]["names"][0], e.display_name, "the seen one named, and first")
