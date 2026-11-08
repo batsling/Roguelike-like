@@ -296,6 +296,24 @@ logo, the R and V `hold`), and the letters' config leaves it out of the fill
 `repaint` rebuilds every pixel of that strip that is not clean face from the
 face above and below it, and a `rects` strip lays the plate's own colour back
 over the star's edge in the V's outline.
+Dungeon Clawler gives D U N G E O N, C L A W L E R (the second N and L and
+the e as `__2`; the small L is a capital, the e cut as a lowercase shape) from
+the wiki's 3116px logo: white letters on one navy plate, each face apart from
+the next, so it is the default paint mode with the plate rebuilt round each
+as a 52px band (`match_tolerance` 30). Two things were new. The plate fills
+the notches between a letter's own strokes (under the A's crossbar, the W's
+V), which an even band leaves as see-through wedges, so the band runs round
+the fill closed by a 90px disc (`outline.close`). And the words are set on an
+ARC, every letter leaning its own way along it, so each is turned upright
+(`rotate`, degrees clockwise, from -7 for the U to +7 for the second N, each
+measured off the letter's near-vertical and near-horizontal edges and judged
+by eye where an italic stroke and a turned base disagree); the index keeps
+`src` where the piece lies in the logo and adds `src_turn`, and the game page
+turns the piece back by it, so the logo still fills in as drawn. The C is
+the claw with its chain kept whole (the owner, 8 Nov 2026), sized by the
+claw's ring (`body` with columns) so the chain stands above the line. The
+source was given an 80px transparent margin: the logo ran to its edges and
+the R's, W's and chain's band was cut off flat there.
 A logo can
 take more than one config when its parts are built differently: Uma Musume has
 four, one per line, one for the girl and one for her dash.

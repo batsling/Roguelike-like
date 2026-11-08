@@ -96,6 +96,30 @@ func test_the_logo_is_as_big_as_its_room_allows() -> void:
 			var r: TextureRect = p[0]
 			assert_almost_eq(r.size.x, (float(p[1][2]) - float(p[1][0])) * a.x, 0.01, "pieces scale with it")
 
+# A LETTER STOOD UPRIGHT OFF A CURVE (Dungeon Clawler's arc) is turned back on
+# the logo by its `src_turn`, about its own middle, so the logo fills in as drawn.
+func test_a_turned_letter_is_turned_back_where_it_was_cut() -> void:
+	var turned: Dictionary = {}
+	var plain: Dictionary = {}
+	for x in TitleLetters.pool().get("d", []) + TitleLetters.pool().get("c", []):
+		if String(x.get("game", "")) != "dungeon_clawler":
+			continue
+		if x.has("src_turn"):
+			turned = x
+		else:
+			plain = x
+	assert_false(turned.is_empty(), "Dungeon Clawler's D was stood upright")
+	assert_false(plain.is_empty(), "its C (the claw) was not")
+	_earn([turned["key"], plain["key"]])
+	var v := _view(&"dungeon_clawler")
+	assert_eq(v._placed.size(), 2)
+	for p in v._placed:
+		var r: TextureRect = p[0]
+		var e := turned if p[1] == turned["src"] else plain
+		assert_almost_eq(r.rotation_degrees, float(e.get("src_turn", 0.0)), 0.001,
+			"%s turned back by its src_turn" % e["key"])
+		assert_almost_eq(r.pivot_offset, r.size * 0.5, Vector2(0.01, 0.01), "about its middle")
+
 func test_a_decoration_pair_is_laid_on_whole() -> void:
 	_earn(["decor_left/everything_is_crab.png"])
 	var v := _view(&"everything_is_crab")

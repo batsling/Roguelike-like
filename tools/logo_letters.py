@@ -54,6 +54,13 @@ so Godot never imports the source), is JSON:
                   (fill), so glow, shadow and outline never shift it. The index
                   records it as body_center / body_height (vertical) and
                   body_center_x / body_width (horizontal), fractions of the PNG
+    rotate        {piece: degrees} — a letter set on a curve (Dungeon Clawler's
+                  arc) turned that many degrees clockwise (negative: counter-
+                  clockwise) about its face's middle so it stands upright.
+                  The index keeps `src` where the piece lies in the logo and
+                  adds `src_turn`, the turn that lays it back there (the game
+                  page's LogoProgress). Not with `body`, `centre`, `box_fill`,
+                  `as_drawn` or a redrawn `scale`, which read the logo's rows
     centre        {piece: [y_top, y_bottom]} — source rows to sit on the line's
                   middle, for a decoration whose own middle is not the part
                   that should line up (Uma Musume's dash: its bar, not the
@@ -248,6 +255,10 @@ so Godot never imports the source), is JSON:
                   within n of the outline's colour at that distance (so a
                   background shape touching the letter is painted over); and
                   how far past the width hand-inked outline is still kept.
+                  "close": px — a plate the letters sit in fills the notches
+                  between a letter's own strokes (Dungeon Clawler's A legs, W):
+                  the band runs round the fill closed by a disc of that radius,
+                  not round the fill, so no see-through wedge is left in it
                   For a spiky inked logo: "follow_original": true paints the
                   outline only where the logo drew something else (never into
                   the gaps between spikes), "keep_within": px keeps everything
@@ -691,6 +702,32 @@ def _write_logo(cfg: dict, A: np.ndarray) -> tuple:
     return tx, ty, w, h
 
 
+# Room round a piece turned upright (`rotate`), so no corner turns off the canvas.
+TURN_MARGIN = 200
+
+
+def _turn_piece(out: np.ndarray, face: np.ndarray, turn: float) -> tuple:
+    """A finished piece (H x W RGBA, the logo's frame) and its face, turned
+    `turn` degrees clockwise about the face's middle. Returns the turned piece
+    and face on a canvas TURN_MARGIN bigger on every side, the middle turned
+    about (in that canvas's pixels) and the margin."""
+    H, W = face.shape
+    G = TURN_MARGIN
+    big = np.zeros((H + 2 * G, W + 2 * G, 4), np.uint8)
+    big[G:G + H, G:G + W] = out
+    fy, fx = np.nonzero(face)
+    P = (float(fx.mean()) + G, float(fy.mean()) + G)
+    # PIL turns counter-clockwise; premultiplied ("RGBa") so the see-through
+    # pixels' black never bleeds into the turned edge. Bilinear, not bicubic:
+    # bicubic overshoots past the edge into faint loose specks and pinholes
+    # (20-50 parts a letter where there should be one)
+    turned = Image.fromarray(big).convert("RGBa").rotate(-turn, Image.BILINEAR, center=P).convert("RGBA")
+    fm = np.zeros((H + 2 * G, W + 2 * G), np.uint8)
+    fm[G:G + H, G:G + W] = face.astype(np.uint8) * 255
+    face_t = np.asarray(Image.fromarray(fm).rotate(-turn, Image.BILINEAR, center=P)) > 127
+    return np.array(turned), face_t, P, G
+
+
 def _src_fraction(box: tuple, logo_box: tuple) -> list:
     tx, ty, w, h = logo_box
     x0, y0, x1, y1 = box
@@ -700,6 +737,16 @@ def _src_fraction(box: tuple, logo_box: tuple) -> list:
 def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
     cfg = json.loads(cfg_path.read_text())
     src = cfg_path.parent / cfg["source"]
+    for n_ in cfg.get("rotate", {}):
+        # a turned piece is measured on the turned picture; these read the
+        # logo's own rows and pixels, which no longer line up with it
+        c_ = cfg.get("cut") or {}
+        clash = ([k for k in ("body", "centre") if n_ in cfg.get(k, {})]
+                 + (["box_fill"] if "box_fill" in cfg else [])
+                 + (["as_drawn"] if any(d["piece"] == n_ for d in c_.get("as_drawn", [])) else [])
+                 + (["scale"] if int(c_.get("scale", 1)) > 1 and not (c_.get("pixel") or c_.get("smooth_scale")) else []))
+        if clash:
+            raise SystemExit(f"error: {n_} is in `rotate` and also uses {', '.join(clash)}, which a turned piece cannot")
     A = np.array(Image.open(src).convert("RGBA")).astype(float)
     for poly in cfg.get("inpaint", []):
         # A mark that is no letter's, sitting in a soft glow (Diablo's ®): the
@@ -872,6 +919,7 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
     body_widths = {}
     line_centers = {}
     src_boxes = {}
+    src_turns = {}
     out_dir_game = cfg["game"]
     written_names = []
     for i, n in enumerate(names):
@@ -1522,8 +1570,22 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
         else:
             fs = nd.gaussian_filter(f.astype(float), FILL_SMOOTH_SIGMA) > 0.5 if smooth else f
             ds = nd.distance_transform_edt(~fs)
+            # the outline's colour goes by distance from the fill itself
             idx = np.clip(np.round(ds).astype(int), 0, len(lut) - 1)
-            band = (ds > 0) & (ds <= T + 0.5) & ~f
+            if oc.get("close"):
+                # A plate the letters sit in (Dungeon Clawler's navy) fills the
+                # notches between a letter's own strokes, the A's legs and the
+                # W's V, however far they are from the fill. The fill closed by
+                # a disc of `close` px takes those notches in, so the band runs
+                # round the letter's hull instead of leaving a see-through wedge
+                # in it. The logo's own plate pixels are kept there as drawn.
+                hull = nd.distance_transform_edt(nd.distance_transform_edt(~fs) <= oc["close"]) > oc["close"]
+                ds = nd.distance_transform_edt(~(fs | hull))
+            # `~f`, never `ds > 0`: where the smoothed fill runs past the fill
+            # (ds 0, not fill) the edge is the outline's too, or it is left as
+            # see-through pinholes round the face (Dungeon Clawler's letters
+            # had 7-47 each, under `match_tolerance`)
+            band = (ds <= T + 0.5) & ~f
             if oc.get("follow_original"):
                 # Paint the outline only where the logo drew SOMETHING: over
                 # what is not this letter's (Hades' II), never into the gaps
@@ -1586,10 +1648,31 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
         out_a = al + sh * (1 - al)
         out_rgb = (rgb * al[..., None]) / np.maximum(out_a, 1e-6)[..., None]
         out = np.dstack([out_rgb, out_a * 255]).clip(0, 255).astype(np.uint8)
+        face_m = pieces[n]
+        turn = float(cfg.get("rotate", {}).get(n, 0.0))
+        if turn:
+            # A LETTER SET ON A CURVE, STOOD UPRIGHT (Dungeon Clawler's arc):
+            # the finished piece turned `turn` degrees clockwise about its
+            # face's middle, on a canvas grown so no corner falls off, with
+            # colour premultiplied so the turned edge takes no dark fringe.
+            # Everything after is measured on the turned piece; `src` stays
+            # where it lies in the logo and `src_turn` turns it back there.
+            out, face_m, P, G = _turn_piece(out, face_m, turn)
         ys, xs = np.where(out[..., 3] > 1)
-        x0, x1 = max(xs.min() - 2, 0), min(xs.max() + 3, W)
-        y0, y1 = max(ys.min() - 2, 0), min(ys.max() + 3, H)
+        x0, x1 = max(xs.min() - 2, 0), min(xs.max() + 3, out.shape[1])
+        y0, y1 = max(ys.min() - 2, 0), min(ys.max() + 3, out.shape[0])
         src_boxes[n] = (x0, y0, x1, y1)
+        if turn:
+            # the turned piece, laid back on the logo: its middle is where
+            # turning the crop's middle back about the face's middle puts it,
+            # and the game page turns the piece back by -turn about that
+            t_ = np.radians(-turn)
+            vx, vy = (x0 + x1) / 2 - P[0], (y0 + y1) / 2 - P[1]
+            cx_ = P[0] + vx * np.cos(t_) - vy * np.sin(t_) - G
+            cy_ = P[1] + vx * np.sin(t_) + vy * np.cos(t_) - G
+            hw, hh = (x1 - x0) / 2, (y1 - y0) / 2
+            src_boxes[n] = (cx_ - hw, cy_ - hh, cx_ + hw, cy_ + hh)
+            src_turns[n] = -turn
         # where the letter itself sits in the piece, from 0 (top) to 1: a
         # piece with something attached above or below (an eye stalk, a
         # knife, slime) is centred on the line by its letter, not its whole
@@ -1597,7 +1680,7 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
         # a shadow pushed to one side or an outline never moves its centre or
         # changes its size; `body` rows in the config override the height for
         # a piece with something attached (an eye stalk, a knife, slime).
-        face_only = pieces[n] & (out[..., 3] > 0)
+        face_only = face_m & (out[..., 3] > 0)
         if cfg.get("box_whole"):
             # the letter IS its face and its own drawn outline (Luck be a
             # Landlord's one-pixel ring, a third of a six-pixel letter):
@@ -1725,6 +1808,10 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
             # (logos/<game>.png): x0, y0, x1, y1
             "src": _src_fraction(src_boxes[n_], logo_box),
         }
+        if n_ in src_turns:
+            # stood upright off a curve: turned this many degrees clockwise
+            # about its middle, it lies on the logo as drawn (LogoProgress)
+            index[str(dest_.relative_to(OUT_DIR))]["src_turn"] = round(src_turns[n_], 2)
         # `size` and `pad` are the owner's eye on a piece, by name or "*" for
         # the whole config: drawn this many times as big (on the baseline), and
         # this much of the line kept clear either side (TitleLetters)

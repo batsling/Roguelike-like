@@ -11,6 +11,18 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Title letters: Dungeon Clawler, stood upright off its arc.** D U N G E O N,
+  C L A W L E R, with the claw (chain and all) as the C. The logo's two words
+  curve, every letter leaning its own way, so the cutter gained `rotate`: each
+  letter is turned upright for the title, and the game page's logo turns it
+  back (`src_turn` in the index, `LogoProgress`) so it still fills in as drawn.
+  The cutter also gained `outline.close`, which fills the navy plate into a
+  letter's own notches (the A's legs, the W's V) instead of leaving see-through
+  wedges, and lost a bug that left see-through pinholes round any smoothed face
+  cut with `match_tolerance`. StarVaders had 13-42 in every letter; it is re-cut,
+  and the pinholes are the only pixels that changed (`docs/content-authoring.md`,
+  "Title letters").
+
 - **Customization: costumes, icons and the title's letters** (`docs/customization.md`).
   A new main-menu screen with three tabs: each character's icon and full portrait
   chosen separately from their costumes; the pictures drawn in place of 🗝, ✸ and

@@ -12,8 +12,9 @@ extends Control
 #     full title can be read before anything is earned.
 #   * Each earned piece LAID ON where it was cut from: the very picture the
 #     main menu's title draws, placed by its `src` (fractions of the logo,
-#     recorded by tools/logo_letters.py). A decoration pair is earned as one,
-#     so its right half is laid on with its left.
+#     recorded by tools/logo_letters.py), and turned back by its `src_turn`
+#     when it was stood upright off a curve. A decoration pair is earned as
+#     one, so its right half is laid on with its left.
 #   * Every piece earned: the original logo, in full colour, instead.
 #   * "5 / 14" under it: units earned of the game's own (TitleLetters.units_of).
 #   * A piece earned since a game's page last showed it GLOWS once, then is
@@ -35,7 +36,7 @@ var count_label: Label
 var glowing: Array[TextureRect] = []   # the pieces this view lit up as new
 var _fresh: Array = []         # keys to mark seen once shown
 var _aspect := 1.0
-var _placed: Array = []        # [TextureRect, src] for each piece laid on
+var _placed: Array = []        # [TextureRect, src, turn] for each piece laid on
 
 static func logo_path(game: StringName) -> String:
 	return LOGO_DIR + String(game) + ".png"
@@ -117,7 +118,10 @@ func _build(tex: Texture2D, min_size: Vector2) -> void:
 			if bool(e.get("pixel", false)):
 				piece.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 			area.add_child(piece)
-			_placed.append([piece, e["src"]])
+			# a letter cut off a curve and stood upright (Dungeon Clawler) is
+			# turned back to lie as the logo draws it: `src_turn` degrees
+			# clockwise about its middle, `src` being its box before the turn
+			_placed.append([piece, e["src"], float(e.get("src_turn", 0.0))])
 			if fresh:
 				glowing.append(piece)
 
@@ -146,6 +150,8 @@ func _fit() -> void:
 		var src: Array = p[1]
 		r.position = Vector2(float(src[0]) * sz.x, float(src[1]) * sz.y)
 		r.size = Vector2((float(src[2]) - float(src[0])) * sz.x, (float(src[3]) - float(src[1])) * sz.y)
+		r.pivot_offset = r.size * 0.5
+		r.rotation_degrees = p[2]
 	count_label.position = Vector2(0.0, top + sz.y + UITheme.GAP_TIGHT)
 	count_label.size = Vector2(size.x, label_h)
 

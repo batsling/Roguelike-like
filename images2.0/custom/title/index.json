@@ -319,6 +319,22 @@
   ],
   "form": "lower"
  },
+ "a/dungeon_clawler.png": {
+  "game": "dungeon_clawler",
+  "config": "dungeon_clawler.json",
+  "style": "dungeon_clawler",
+  "body_center": 0.4992,
+  "body_height": 0.8358,
+  "body_center_x": 0.5008,
+  "body_width": 0.8256,
+  "src": [
+   0.34653,
+   0.46102,
+   0.54711,
+   0.95396
+  ],
+  "src_turn": 1.0
+ },
  "a/dungeon_crawl_stone_soup.png": {
   "game": "dungeon_crawl_stone_soup",
   "config": "dungeon_crawl_stone_soup.json",
@@ -1177,6 +1193,21 @@
    0.41667
   ]
  },
+ "c/dungeon_clawler.png": {
+  "game": "dungeon_clawler",
+  "config": "dungeon_clawler.json",
+  "style": "dungeon_clawler",
+  "body_center": 0.6689,
+  "body_height": 0.57,
+  "body_center_x": 0.6007,
+  "body_width": 0.6825,
+  "src": [
+   0.00128,
+   0.00594,
+   0.30552,
+   0.89161
+  ]
+ },
  "c/dungeon_crawl_stone_soup.png": {
   "game": "dungeon_crawl_stone_soup",
   "config": "dungeon_crawl_stone_soup.json",
@@ -1513,6 +1544,22 @@
    0.18182,
    0.94498
   ]
+ },
+ "d/dungeon_clawler.png": {
+  "game": "dungeon_clawler",
+  "config": "dungeon_clawler.json",
+  "style": "dungeon_clawler",
+  "body_center": 0.5,
+  "body_height": 0.7852,
+  "body_center_x": 0.5,
+  "body_width": 0.7917,
+  "src": [
+   0.23462,
+   0.06326,
+   0.40407,
+   0.44337
+  ],
+  "src_turn": 6.5
  },
  "d/dungeon_crawl_stone_soup.png": {
   "game": "dungeon_crawl_stone_soup",
@@ -2089,6 +2136,39 @@
    1.0,
    1.0
   ],
+  "form": "lower"
+ },
+ "e/dungeon_clawler.png": {
+  "game": "dungeon_clawler",
+  "config": "dungeon_clawler.json",
+  "style": "dungeon_clawler",
+  "body_center": 0.5,
+  "body_height": 0.715,
+  "body_center_x": 0.4985,
+  "body_width": 0.6746,
+  "src": [
+   0.60824,
+   0.19806,
+   0.71575,
+   0.48462
+  ],
+  "src_turn": -5.0
+ },
+ "e/dungeon_clawler__2.png": {
+  "game": "dungeon_clawler",
+  "config": "dungeon_clawler.json",
+  "style": "dungeon_clawler",
+  "body_center": 0.5,
+  "body_height": 0.7593,
+  "body_center_x": 0.5,
+  "body_width": 0.7179,
+  "src": [
+   0.7472,
+   0.48735,
+   0.87236,
+   0.82662
+  ],
+  "src_turn": -5.0,
   "form": "lower"
  },
  "e/dungeon_crawl_stone_soup.png": {
@@ -2929,6 +3009,22 @@
    1.0,
    0.83654
   ]
+ },
+ "g/dungeon_clawler.png": {
+  "game": "dungeon_clawler",
+  "config": "dungeon_clawler.json",
+  "style": "dungeon_clawler",
+  "body_center": 0.4988,
+  "body_height": 0.7405,
+  "body_center_x": 0.5,
+  "body_width": 0.6677,
+  "src": [
+   0.53662,
+   0.17798,
+   0.64284,
+   0.48978
+  ],
+  "src_turn": -2.0
  },
  "g/dungeon_crawl_stone_soup.png": {
   "game": "dungeon_crawl_stone_soup",
@@ -4063,6 +4159,38 @@
    0.86557
   ]
  },
+ "l/dungeon_clawler.png": {
+  "game": "dungeon_clawler",
+  "config": "dungeon_clawler.json",
+  "style": "dungeon_clawler",
+  "body_center": 0.4993,
+  "body_height": 0.838,
+  "body_center_x": 0.5,
+  "body_width": 0.755,
+  "src": [
+   0.26039,
+   0.3888,
+   0.40448,
+   0.88843
+  ],
+  "src_turn": 5.0
+ },
+ "l/dungeon_clawler__2.png": {
+  "game": "dungeon_clawler",
+  "config": "dungeon_clawler.json",
+  "style": "dungeon_clawler",
+  "body_center": 0.5,
+  "body_height": 0.8014,
+  "body_center_x": 0.4987,
+  "body_width": 0.7226,
+  "src": [
+   0.66715,
+   0.49118,
+   0.79327,
+   0.90246
+  ],
+  "src_turn": 2.0
+ },
  "l/dungeon_crawl_stone_soup.png": {
   "game": "dungeon_crawl_stone_soup",
   "config": "dungeon_crawl_stone_soup.json",
@@ -4541,6 +4669,38 @@
   ],
   "form": "lower"
  },
+ "n/dungeon_clawler.png": {
+  "game": "dungeon_clawler",
+  "config": "dungeon_clawler.json",
+  "style": "dungeon_clawler",
+  "body_center": 0.5013,
+  "body_height": 0.7241,
+  "body_center_x": 0.5013,
+  "body_width": 0.7261,
+  "src": [
+   0.44238,
+   0.19224,
+   0.57011,
+   0.48548
+  ],
+  "src_turn": 2.0
+ },
+ "n/dungeon_clawler__2.png": {
+  "game": "dungeon_clawler",
+  "config": "dungeon_clawler.json",
+  "style": "dungeon_clawler",
+  "body_center": 0.5012,
+  "body_height": 0.7373,
+  "body_center_x": 0.5,
+  "body_width": 0.6936,
+  "src": [
+   0.73601,
+   0.09969,
+   0.85122,
+   0.40778
+  ],
+  "src_turn": -7.0
+ },
  "n/dungeon_crawl_stone_soup.png": {
   "game": "dungeon_crawl_stone_soup",
   "config": "dungeon_crawl_stone_soup.json",
@@ -4997,6 +5157,21 @@
    0.78641
   ],
   "form": "lower"
+ },
+ "o/dungeon_clawler.png": {
+  "game": "dungeon_clawler",
+  "config": "dungeon_clawler.json",
+  "style": "dungeon_clawler",
+  "body_center": 0.5,
+  "body_height": 0.6983,
+  "body_center_x": 0.5,
+  "body_width": 0.6656,
+  "src": [
+   0.6733,
+   0.17595,
+   0.77696,
+   0.44172
+  ]
  },
  "o/dungeon_crawl_stone_soup.png": {
   "game": "dungeon_crawl_stone_soup",
@@ -5731,6 +5906,22 @@
    0.83495
   ],
   "form": "lower"
+ },
+ "r/dungeon_clawler.png": {
+  "game": "dungeon_clawler",
+  "config": "dungeon_clawler.json",
+  "style": "dungeon_clawler",
+  "body_center": 0.5,
+  "body_height": 0.8046,
+  "body_center_x": 0.5,
+  "body_width": 0.8336,
+  "src": [
+   0.78606,
+   0.30486,
+   0.99819,
+   0.72283
+  ],
+  "src_turn": -4.0
  },
  "r/dungeon_crawl_stone_soup.png": {
   "game": "dungeon_crawl_stone_soup",
@@ -7343,6 +7534,22 @@
   ],
   "form": "lower"
  },
+ "u/dungeon_clawler.png": {
+  "game": "dungeon_clawler",
+  "config": "dungeon_clawler.json",
+  "style": "dungeon_clawler",
+  "body_center": 0.5,
+  "body_height": 0.7113,
+  "body_center_x": 0.5015,
+  "body_width": 0.6746,
+  "src": [
+   0.37215,
+   0.20029,
+   0.47966,
+   0.48314
+  ],
+  "src_turn": 7.0
+ },
  "u/dungeon_crawl_stone_soup.png": {
   "game": "dungeon_crawl_stone_soup",
   "config": "dungeon_crawl_stone_soup.json",
@@ -7713,6 +7920,22 @@
    0.87891,
    1.0
   ]
+ },
+ "w/dungeon_clawler.png": {
+  "game": "dungeon_clawler",
+  "config": "dungeon_clawler.json",
+  "style": "dungeon_clawler",
+  "body_center": 0.5,
+  "body_height": 0.8655,
+  "body_center_x": 0.5,
+  "body_width": 0.8813,
+  "src": [
+   0.44603,
+   0.39704,
+   0.73807,
+   1.00431
+  ],
+  "src_turn": 2.0
  },
  "w/dungeon_crawl_stone_soup.png": {
   "game": "dungeon_crawl_stone_soup",
