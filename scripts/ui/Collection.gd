@@ -22,8 +22,16 @@ extends Control
 #                and what each of their buttons costs.
 #   Events     — every 2.0 event (data/events2.0), grid + detail: what it asks,
 #                what each answer does, and where on the map it can appear.
+#   Locations  — every location (data/locations), all shown — a location is dealt,
+#                not found, so there is nothing to discover: art, what it does on
+#                arrival / while there / on its card, its tag lean, and the
+#                enemies and loot that lean favours.
+#
+# A character's detail is a fixed header (portrait, name, game, rank) over three
+# sub-pages — Overview, Progress, Games — each section in its own card.
 
-enum Tab { GAMES, ITEMS, CHARACTERS, ENEMIES, BOSSES, LOOT, EVENTS, OBJECTS, SHOPKEEPERS }
+# LOCATIONS is last in the enum (an index nothing else moves for), not in the bar.
+enum Tab { GAMES, ITEMS, CHARACTERS, ENEMIES, BOSSES, LOOT, EVENTS, OBJECTS, SHOPKEEPERS, LOCATIONS }
 
 # Which half of the Loot tab is showing. A sub-tab rather than a filter chip
 # because the two sets share nothing but the pack they end up in: a scroll has a
@@ -126,7 +134,8 @@ var _tab: int = Tab.GAMES
 
 var _search := {"items": "", "characters": "", "enemies": "", "scrolls": "", "pills": "",
 	"potions": "", "cards": "", "wands": "", "trinkets": "", "bags": "", "weapons": "",
-	"evolutions": "", "games": "", "events": "", "objects": "", "shopkeepers": ""}
+	"evolutions": "", "games": "", "events": "", "objects": "", "shopkeepers": "",
+	"locations": ""}
 # Which sub-tab the Loot tab is on: one of the LOOT_* constants.
 var _loot_sub: String = LOOT_SCROLLS
 var _games_sort: String = "name"
@@ -139,6 +148,10 @@ var _enemies_sort: String = "name"
 var _enemies_type: String = "all"
 var _events_sort: String = "name"
 var _objects_sort: String = "name"
+var _locations_sort: String = "tier"
+# Which page of a character's detail is showing (CHAR_PAGES). Kept across
+# characters, so stepping ◀ ▶ through the roster compares like with like.
+var _char_page: String = "overview"
 
 var _content: VBoxContainer
 var _grid: Container = null
@@ -291,6 +304,7 @@ func _build_shell() -> void:
 	_add_tab_button(tabs, Tab.BOSSES, "Bosses (%d)" % Data.all_bosses().size())
 	_add_tab_button(tabs, Tab.LOOT, "Loot (%d)" % loot_total())
 	_add_tab_button(tabs, Tab.EVENTS, "Events (%d)" % Data.all_events2().size())
+	_add_tab_button(tabs, Tab.LOCATIONS, "Locations (%d)" % Data.all_locations().size())
 	_add_tab_button(tabs, Tab.OBJECTS, "Objects (%d)" % Data.all_objects2().size())
 	_add_tab_button(tabs, Tab.SHOPKEEPERS, "Shopkeepers (%d)" % Data.all_shopkeepers().size())
 	var close_btn := HoverButton.new()
@@ -368,6 +382,8 @@ func _refresh() -> void:
 			_build_objects()
 		Tab.SHOPKEEPERS:
 			_build_shopkeepers()
+		Tab.LOCATIONS:
+			_build_locations()
 
 # ------------------------------------------------------------------
 # Shared building blocks
@@ -1289,6 +1305,10 @@ func _populate() -> void:
 			_populate_events()
 		Tab.OBJECTS:
 			_populate_objects()
+		Tab.SHOPKEEPERS:
+			_populate_shopkeepers()
+		Tab.LOCATIONS:
+			_populate_locations()
 
 # ------------------------------------------------------------------
 # Games tab
@@ -2009,82 +2029,199 @@ func _character_cell(ch: CharacterData) -> Control:
 	vb.add_child(_label(ch.display_name, green, GRID_NAME_FONT, true, true))
 	return cell.panel
 
+# THE CHARACTER PAGE IS A HEADER AND THREE PAGES (the owner, 8 Nov 2026: "the
+# text kinda jumbles together and is hard to read"). It used to be one column of
+# fourteen kinds of thing — description, stats, loadout, level up, fractures, the
+# whole goal roster and two cover walls — each a gold line over 11px text, all at
+# the same 6px gap, so nothing said where one part stopped and the next began.
+#
+# Now the face, the name, the game and the rank stay put at the top, and the rest
+# is split by the question it answers: OVERVIEW (who they are and what they start
+# with), PROGRESS (fractures and goals beaten as them) and GAMES (where they won
+# and levelled). Each section on a page is its own card. All three pages are
+# BUILT and only one is shown, so a hover card or a test that walks the panel for
+# a tile still finds every one of them.
+const CHAR_PAGES := [["overview", "Overview"], ["progress", "Progress"], ["games", "Games"]]
+const CHAR_GREEN := Color(0.45, 0.82, 0.45)
+const CHAR_HEADER_PORTRAIT := 96
+
 func _show_character_detail(ch: CharacterData) -> void:
 	_set_detail_open(true)
 	_clear_children(_detail_box)
 	_detail_game = null
-	var green := Color(0.45, 0.82, 0.45)
+	_detail_box.add_child(_character_header(ch))
+
+	var pages: Dictionary = {
+		"overview": _character_overview(ch),
+		"progress": _character_progress(ch),
+		"games": _character_games(ch),
+	}
+	var bar := HBoxContainer.new()
+	bar.add_theme_constant_override("separation", UITheme.GAP_TIGHT)
+	bar.alignment = BoxContainer.ALIGNMENT_CENTER
+	var buttons: Dictionary = {}
+	for pair in CHAR_PAGES:
+		var key: String = pair[0]
+		var b := HoverButton.new()
+		b.text = pair[1]
+		b.toggle_mode = true
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		_compact(b)
+		buttons[key] = b
+		bar.add_child(b)
+	_detail_box.add_child(bar)
+	for key in pages:
+		var page: Control = pages[key]
+		page.set_meta(&"char_page", key)
+		_detail_box.add_child(page)
+	var show := func(key: String) -> void:
+		_char_page = key
+		for k in pages:
+			(pages[k] as Control).visible = k == key
+			(buttons[k] as Button).set_pressed_no_signal(k == key)
+	for key in buttons:
+		(buttons[key] as Button).pressed.connect(func():
+			show.call(key)
+			_fit_detail_height())
+	show.call(_char_page if pages.has(_char_page) else "overview")
+
+# The part that never scrolls away between pages: portrait beside the name, the
+# game and the rank, rather than stacked over them.
+func _character_header(ch: CharacterData) -> Control:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", UITheme.GAP_LOOSE)
 	if ch.portrait != null:
-		var tr := UITheme.crisp_tex(ch.portrait, DETAIL_PORTRAIT_SIZE)
-		tr.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-		_detail_box.add_child(RankBadge.wrap_character(tr, ch.id, true))
-	_detail_box.add_child(_label(ch.display_name, green, 18, true))
+		var tr := UITheme.crisp_tex(ch.portrait, CHAR_HEADER_PORTRAIT)
+		tr.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		row.add_child(RankBadge.wrap_character(tr, ch.id, true))
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", UITheme.GAP_HAIR)
+	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	col.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	col.add_child(_label(ch.display_name, CHAR_GREEN, UITheme.FONT_HEAD, false, true))
 	if ch.source_game != "":
-		_detail_box.add_child(_label("From: %s" % ch.source_game, Color(0.6, 0.6, 0.66), 11, false))
+		col.add_child(_label(ch.source_game, UITheme.TEXT_DIM, UITheme.FONT_SMALL, false, true))
 	# Its rank, and which soundtrack each rank draws a song from (§20.9).
-	_detail_box.add_child(_label(Radio.character_rank_line(ch.id), UITheme.GOLD, 11, false, true))
+	col.add_child(_label(Radio.character_rank_line(ch.id), UITheme.GOLD, UITheme.FONT_SMALL,
+		false, true))
+	row.add_child(col)
+	return row
+
+func _character_page() -> VBoxContainer:
+	var page := VBoxContainer.new()
+	page.add_theme_constant_override("separation", UITheme.GAP)
+	page.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	return page
+
+func _character_overview(ch: CharacterData) -> Control:
+	var page := _character_page()
 	if ch.description != "":
-		_detail_box.add_child(_label(ch.description, Color(0.82, 0.82, 0.85), 12, false, true))
-	_detail_box.add_child(_detail_section("Base Stats"))
-	_detail_box.add_child(_kv("Health", str(ch.base_max_hp)))
+		var about := _section_card("About", CHAR_GREEN)
+		about.add_child(_prose(ch.description))
+		page.add_child(about.get_meta(&"card"))
+
+	# THE STATS AS A GRID OF TILES, not a list of key/value rows: Health and each
+	# verb are a big number over a small name, so the loadout reads at a glance.
 	# The loadout off the character itself, so this tab and the character picker
 	# cannot come to list different verbs (CharacterData.verb_loadout).
+	var stats := _section_card("Base Stats", CHAR_GREEN)
+	var grid := GridContainer.new()
+	grid.columns = 3
+	grid.add_theme_constant_override("h_separation", UITheme.GAP_TIGHT)
+	grid.add_theme_constant_override("v_separation", UITheme.GAP_TIGHT)
+	grid.add_child(_stat_tile("Health", str(ch.base_max_hp), Color(0.95, 0.45, 0.45)))
 	for v in ch.verb_loadout():
-		_detail_box.add_child(_kv(String(v[0]), str(int(v[1]))))
+		grid.add_child(_stat_tile(String(v[0]), str(int(v[1])), Color(0.75, 0.85, 1.0)))
+	stats.add_child(grid)
 	# The unrolled points, said as what they are rather than as a verb count:
 	# which verbs they land on isn't known until the run starts.
 	if ch.start_random > 0:
-		_detail_box.add_child(_kv("Random",
-			"%d, rolled across the verbs at run start" % ch.start_random))
-	if not Data.loadout_names(ch).is_empty():
-		_detail_box.add_child(_detail_section("Starting Loadout"))
-		_detail_box.add_child(_label(", ".join(Data.loadout_names(ch)),
-			Color(0.8, 0.85, 0.95), 11, false, true))
-	if ch.level_up_condition != "":
-		_detail_box.add_child(_detail_section("Level Up"))
-		_detail_box.add_child(_label(ch.level_up_condition, Color(0.8, 0.85, 0.95), 11, false, true))
-		if ch.level_up_reward != "" and ch.level_up_reward.to_upper() != "N/A":
-			_detail_box.add_child(_kv("Reward", ch.level_up_reward))
+		stats.add_child(_prose("+%d random point%s, rolled across the verbs at run start."
+			% [ch.start_random, "" if ch.start_random == 1 else "s"], UITheme.TEXT_DIM))
+	page.add_child(stats.get_meta(&"card"))
 
+	var loadout: Array = Data.loadout_names(ch)
+	if not loadout.is_empty():
+		var kit := _section_card("Starting Loadout", CHAR_GREEN)
+		var flow := HFlowContainer.new()
+		flow.add_theme_constant_override("h_separation", UITheme.GAP_TIGHT)
+		flow.add_theme_constant_override("v_separation", UITheme.GAP_TIGHT)
+		for n in loadout:
+			flow.add_child(_chip(String(n), Color(0.75, 0.85, 1.0)))
+		kit.add_child(flow)
+		page.add_child(kit.get_meta(&"card"))
+
+	if ch.level_up_condition != "":
+		var lv := _section_card("Level Up", CHAR_GREEN)
+		lv.add_child(_label("Goal", UITheme.GOLD, UITheme.FONT_SMALL))
+		lv.add_child(_prose(ch.level_up_condition))
+		if ch.level_up_reward != "" and ch.level_up_reward.to_upper() != "N/A":
+			lv.add_child(_label("Reward", UITheme.GOLD, UITheme.FONT_SMALL))
+			lv.add_child(_prose(ch.level_up_reward))
+		page.add_child(lv.get_meta(&"card"))
+	return page
+
+func _character_progress(ch: CharacterData) -> Control:
+	var page := _character_page()
 	# FRACTURES (docs/fracture-design.md §6): how far up the ladder this character
 	# has climbed, and the runs won at each level.
-	_detail_box.add_child(_detail_section("%s Fractures" % Fracture.GLYPH))
-	_detail_box.add_child(_kv("Unlocked", "up to Fracture %d" % GameStats.fracture_unlocked(ch.id)
-		if GameStats.fracture_unlocked(ch.id) > 0 else "none yet — win a run to open Fracture 1"))
+	var fr := _section_card("%s Fractures" % Fracture.GLYPH, CHAR_GREEN)
+	fr.add_child(_kv("Unlocked", "up to Fracture %d" % GameStats.fracture_unlocked(ch.id)
+		if GameStats.fracture_unlocked(ch.id) > 0 else "none yet"))
+	if GameStats.fracture_unlocked(ch.id) <= 0:
+		fr.add_child(_prose("Win a run to open Fracture 1.", UITheme.TEXT_DIM))
 	var by_level: Dictionary = GameStats.fracture_wins(ch.id)
 	var levels: Array = by_level.keys()
 	levels.sort()
 	for lv in levels:
-		_detail_box.add_child(_kv("Won at Fracture %d" % int(lv),
+		fr.add_child(_kv("Won at Fracture %d" % int(lv),
 			"%d run%s" % [int(by_level[lv]), "" if int(by_level[lv]) == 1 else "s"]))
+	page.add_child(fr.get_meta(&"card"))
 
 	# The character's own record, drawn the way a game's is (GoalsBeatenView):
 	# every goal beaten as this character, as pictures by kind with the card on
 	# the hover — and the whole enemy and boss roster, the ones not yet beaten
 	# dimmed.
-	_detail_box.add_child(HSeparator.new())
-	_detail_box.add_child(_detail_section("Goals beaten as %s" % ch.display_name))
-	GoalsBeatenView.add_character_kinds(_detail_box, ch)
+	var goals := _section_card("Goals beaten as %s" % ch.display_name, CHAR_GREEN)
+	GoalsBeatenView.add_character_kinds(goals, ch)
+	page.add_child(goals.get_meta(&"card"))
+	return page
 
-	# THE GAMES, AS COVERS — the same tiles an influence list draws: the name on
-	# the hover, the game's page on a click, how many times in the corner. Both
-	# lists are about games played AS this character: a level-up taken through a
-	# Mysterious Mask is on the game's page, not here (GameStats.games_for_character).
-	# The level-up notes live on the game's page too, under its character goals.
+# THE GAMES, AS COVERS — the same tiles an influence list draws: the name on the
+# hover, the game's page on a click, how many times in the corner. Both lists are
+# about games played AS this character: a level-up taken through a Mysterious Mask
+# is on the game's page, not here (GameStats.games_for_character). The level-up
+# notes live on the game's page too, under its character goals.
+func _character_games(ch: CharacterData) -> Control:
+	var page := _character_page()
 	var beaten: Array = GameStats.games_beaten_by(ch.id)
-	_detail_box.add_child(HSeparator.new())
-	_detail_box.add_child(_detail_section("Games beaten (%d)" % beaten.size()))
+	var won := _section_card("Games beaten (%d)" % beaten.size(), CHAR_GREEN)
 	if beaten.is_empty():
-		_detail_box.add_child(_label("%s has not beaten a game yet." % ch.display_name,
-			Color(0.55, 0.55, 0.6), 12, false, true))
+		won.add_child(_prose("%s has not beaten a game yet." % ch.display_name, UITheme.TEXT_DIM))
 	else:
-		_detail_box.add_child(_game_cover_flow(_log_ids(beaten), _log_counts(beaten, "beaten")))
+		won.add_child(_game_cover_flow(_log_ids(beaten), _log_counts(beaten, "beaten")))
+	page.add_child(won.get_meta(&"card"))
 
 	var levelled_at: Array = GameStats.games_for_character(ch.id)
-	if not levelled_at.is_empty():
-		_detail_box.add_child(HSeparator.new())
-		_detail_box.add_child(_detail_section("Levelled up at (%d)" % levelled_at.size()))
-		_detail_box.add_child(_game_cover_flow(_log_ids(levelled_at), _log_counts(levelled_at, "levels")))
+	var lv := _section_card("Levelled up at (%d)" % levelled_at.size(), CHAR_GREEN)
+	if levelled_at.is_empty():
+		lv.add_child(_prose("No level-ups yet.", UITheme.TEXT_DIM))
+	else:
+		lv.add_child(_game_cover_flow(_log_ids(levelled_at), _log_counts(levelled_at, "levels")))
+	page.add_child(lv.get_meta(&"card"))
+	return page
+
+# One stat as a tile: the number big, its name small under it.
+func _stat_tile(name: String, value: String, color: Color) -> Control:
+	var tile := PanelContainer.new()
+	tile.add_theme_stylebox_override("panel", _tight_box(Color(color.r, color.g, color.b, 0.35)))
+	tile.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var vb := VBoxContainer.new()
+	vb.add_theme_constant_override("separation", UITheme.GAP_NONE)
+	vb.add_child(_label(value, color, UITheme.FONT_SUB, true))
+	vb.add_child(_label(name, UITheme.TEXT_DIM, UITheme.FONT_TINY, true))
+	tile.add_child(vb)
+	return tile
 
 # The ids, and {id: count}, out of a GameStats log list.
 func _log_ids(rows: Array) -> Array:
@@ -2947,6 +3084,62 @@ func _kv(key: String, value: String) -> Control:
 	row.add_child(v)
 	return row
 
+# A SECTION AS ITS OWN CARD: a framed box with its heading inside it, so one
+# part of a detail page reads as finished before the next begins. Returns the
+# card's BODY to add to; the card itself is its meta `card`, which is what goes
+# into the page.
+func _section_card(title: String, accent: Color) -> VBoxContainer:
+	var card := PanelContainer.new()
+	card.add_theme_stylebox_override("panel", _flat(CELL_BG,
+		Color(accent.r, accent.g, accent.b, 0.35), 1))
+	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var body := VBoxContainer.new()
+	body.add_theme_constant_override("separation", UITheme.GAP_SNUG)
+	body.add_child(_label(title, Color(1.0, 0.85, 0.5), UITheme.FONT_LABEL))
+	card.add_child(body)
+	body.set_meta(&"card", card)
+	return body
+
+# Prose meant to be READ: the reading size, wrapped, a little line spacing.
+func _prose(text: String, color: Color = Color(0.86, 0.86, 0.89)) -> Label:
+	var l := _label(text, color, UITheme.FONT_BODY, false, true)
+	l.add_theme_constant_override("line_spacing", UITheme.GAP_HAIR)
+	return l
+
+func _bullet(text: String) -> Control:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", UITheme.GAP_SNUG)
+	var dot := _label("•", UITheme.TEXT_DIM, UITheme.FONT_BODY)
+	dot.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	row.add_child(dot)
+	var t := _prose(text)
+	t.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(t)
+	return row
+
+# A short name in a small framed pill.
+func _chip(text: String, color: Color) -> Control:
+	var chip := PanelContainer.new()
+	chip.add_theme_stylebox_override("panel", _tight_box(Color(color.r, color.g, color.b, 0.45)))
+	chip.add_child(_label(text, Color(0.88, 0.88, 0.9), UITheme.FONT_SMALL))
+	return chip
+
+# `_flat`'s look with the margins of something small (a chip, a stat tile).
+var _tight_cache: Dictionary = {}
+
+func _tight_box(border: Color) -> StyleBoxFlat:
+	var key: String = str(border)
+	if _tight_cache.has(key):
+		return _tight_cache[key]
+	var sb: StyleBoxFlat = _flat(CELL_BG, border, 1).duplicate()
+	sb.set_corner_radius_all(6)
+	sb.content_margin_left = UITheme.GAP_SNUG
+	sb.content_margin_right = UITheme.GAP_SNUG
+	sb.content_margin_top = UITheme.GAP_HAIR
+	sb.content_margin_bottom = UITheme.GAP_HAIR
+	_tight_cache[key] = sb
+	return sb
+
 func _select_option(opt: OptionButton, id: int) -> void:
 	for i in opt.item_count:
 		if opt.get_item_id(i) == id:
@@ -3025,13 +3218,19 @@ func _has_event_art(ev: EventData2) -> bool:
 # Fill `rect` with the event's art — now if it is cached, else when the thread
 # delivers it.
 func _event_art_into(rect: TextureRect, ev: EventData2) -> void:
-	var path: String = _event_art_path(ev)
+	_art_into(rect, _event_art_path(ev))
+
+# The same, for any picture by path: shrunk to `longest` on its first load. The
+# Locations tab rides this too — its art is 1920x1200, eight of it.
+func _art_into(rect: TextureRect, path: String, longest: int = EVENT_ART_MAX) -> void:
 	if _event_art_cache.has(path):
 		_set_event_art(rect, _event_art_cache[path])
 		return
+	if not ResourceLoader.exists(path):
+		return
 	if ResourceLoader.load_threaded_get_status(path) == ResourceLoader.THREAD_LOAD_INVALID_RESOURCE:
 		ResourceLoader.load_threaded_request(path)
-	_event_art_waiting.append({"path": path, "rect": rect})
+	_event_art_waiting.append({"path": path, "rect": rect, "max": longest})
 	if not get_tree().process_frame.is_connected(_poll_event_art):
 		get_tree().process_frame.connect(_poll_event_art)
 
@@ -3050,7 +3249,8 @@ func _poll_event_art() -> void:
 			if status != ResourceLoader.THREAD_LOAD_LOADED:
 				continue                   # failed: the frame simply stays empty
 			_event_art_cache[path] = _shrink_event_art(
-				ResourceLoader.load_threaded_get(path) as Texture2D)
+				ResourceLoader.load_threaded_get(path) as Texture2D,
+				int(w.get("max", EVENT_ART_MAX)))
 		_set_event_art(rect, _event_art_cache[path])
 	_event_art_waiting = still
 	if still.is_empty() and get_tree().process_frame.is_connected(_poll_event_art):
@@ -3060,11 +3260,11 @@ func _exit_tree() -> void:
 	if get_tree() != null and get_tree().process_frame.is_connected(_poll_event_art):
 		get_tree().process_frame.disconnect(_poll_event_art)
 
-static func _shrink_event_art(tex: Texture2D) -> Texture2D:
+static func _shrink_event_art(tex: Texture2D, cap: int = EVENT_ART_MAX) -> Texture2D:
 	if tex == null:
 		return null
 	var longest: int = maxi(tex.get_width(), tex.get_height())
-	if longest <= EVENT_ART_MAX:
+	if longest <= cap:
 		return tex
 	var img: Image = tex.get_image()
 	if img == null:
@@ -3076,9 +3276,9 @@ static func _shrink_event_art(tex: Texture2D) -> Texture2D:
 	# frozen frame the moment the thread delivered; halving (a box filter, which
 	# is what makes a clean downscale) until within 2x and a bilinear finish is
 	# 51 ms for all of them and reads the same at 80 and 132px.
-	while maxi(img.get_width(), img.get_height()) >= EVENT_ART_MAX * 2:
+	while maxi(img.get_width(), img.get_height()) >= cap * 2:
 		img.shrink_x2()
-	var k: float = float(EVENT_ART_MAX) / float(maxi(img.get_width(), img.get_height()))
+	var k: float = float(cap) / float(maxi(img.get_width(), img.get_height()))
 	if k < 1.0:
 		img.resize(maxi(1, int(img.get_width() * k)), maxi(1, int(img.get_height() * k)),
 			Image.INTERPOLATE_BILINEAR)
@@ -3588,3 +3788,236 @@ func _show_object_detail(obj: ObjectData) -> void:
 		if obj.chance_lost != "":
 			_detail_box.add_child(_label("Lost: %s" % obj.chance_lost,
 				Color(0.9, 0.6, 0.55), 11, false, true))
+
+# ------------------------------------------------------------------
+# Locations tab (docs/locations-design.md)
+# ------------------------------------------------------------------
+#
+# Every location in the roster, all of them shown: a location is dealt rather than
+# found, so there is nothing to discover and no tally to keep. A tile is its art
+# (16:10, the shape it ships in) with its name and tier; the detail is the art at
+# the panel's width, the owner's description, what it does sorted into WHEN it
+# does it, its tag lean, and the actual enemies and loot that lean favours.
+
+const GRID_LOCATION_W := 150
+const GRID_LOCATION_H := 94          # 150 at 16:10
+# Twice the detail pane's width, so the 1920x1200 originals are decoded once and
+# kept at a size that is still sharp on a 2x canvas.
+const LOCATION_ART_MAX := 640
+# By tier, Low to Insane: the same climb the difficulty strip reads as.
+const LOCATION_TIER_COLORS := [
+	Color(0.50, 0.80, 0.50),
+	Color(0.95, 0.80, 0.40),
+	Color(0.95, 0.55, 0.30),
+	Color(0.90, 0.35, 0.40),
+]
+
+func _location_accent(loc: LocationData) -> Color:
+	return LOCATION_TIER_COLORS[clampi(loc.tier, 0, LOCATION_TIER_COLORS.size() - 1)]
+
+func _build_locations() -> void:
+	var row := _controls_row()
+	row.add_child(_search_box("locations"))
+	row.add_child(VSeparator.new())
+	row.add_child(_label("Sort:", Color(0.7, 0.7, 0.75), UITheme.FONT_BODY))
+	row.add_child(_sort_button("Tier", _locations_sort == "tier",
+		func(): _locations_sort = "tier"; _refresh()))
+	row.add_child(_sort_button("A-Z", _locations_sort == "name",
+		func(): _locations_sort = "name"; _refresh()))
+	row.add_child(_sort_button("Game", _locations_sort == "game",
+		func(): _locations_sort = "game"; _refresh()))
+	_add_count_label(row)
+	_grid_and_detail()
+	_populate_locations()
+
+func _populate_locations() -> void:
+	_clear_children(_grid)
+	var term: String = _search["locations"].to_lower()
+	var all: Array = Data.all_locations()
+	var list: Array = []
+	for loc in all:
+		if not (loc is LocationData):
+			continue
+		# A tag is a fair thing to search by: "fire" finds the floor that leans fire.
+		if term != "" and not (term in loc.display_name.to_lower()
+				or term in loc.game.to_lower()
+				or term in loc.description.to_lower()
+				or term in " ".join(loc.tag_types).to_lower()
+				or term in Locations.tier_name(loc).to_lower()):
+			continue
+		list.append(loc)
+	var by_name := func(a, b): return a.display_name.naturalnocasecmp_to(b.display_name) < 0
+	match _locations_sort:
+		"name":
+			list.sort_custom(by_name)
+		"game":
+			list.sort_custom(func(a, b):
+				return a.game.naturalnocasecmp_to(b.game) < 0 if a.game != b.game \
+					else by_name.call(a, b))
+		_:
+			list.sort_custom(func(a, b):
+				return a.tier < b.tier if a.tier != b.tier else by_name.call(a, b))
+	for loc in list:
+		_grid.add_child(_location_cell(loc))
+	if list.is_empty():
+		_grid.add_child(_label("No locations match." if not all.is_empty() else "No locations yet.",
+			Color(0.55, 0.55, 0.6), UITheme.FONT_TEXT))
+	_set_count(list.size(), all.size())
+
+# The art in a fixed 16:10 frame, cropped to fill it — a location is a scene,
+# not an icon, and letterboxing a landscape would waste the frame on nothing.
+func _location_art(loc: LocationData, size: Vector2) -> TextureRect:
+	var art := TextureRect.new()
+	art.custom_minimum_size = size
+	art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	art.clip_contents = true
+	art.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if loc.image_path != "":
+		_art_into(art, loc.image_path, LOCATION_ART_MAX)
+	return art
+
+func _location_cell(loc: LocationData) -> Control:
+	var ac := _location_accent(loc)
+	var cell := _cell(ac, func(): _show_location_detail(loc))
+	cell.panel.custom_minimum_size = Vector2(GRID_LOCATION_W + CELL_PAD, 0)
+	cell.panel.set_meta(&"location_id", loc.id)
+	var vb: VBoxContainer = cell.vbox
+	vb.alignment = BoxContainer.ALIGNMENT_CENTER
+	vb.add_child(_location_art(loc, Vector2(GRID_LOCATION_W, GRID_LOCATION_H)))
+	var nm := _label(loc.display_name, ac, GRID_NAME_FONT, true, true)
+	nm.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	vb.add_child(nm)
+	vb.add_child(_label(Locations.tier_name(loc).to_upper(), ac, GRID_META_FONT, true))
+	return cell.panel
+
+func _show_location_detail(loc: LocationData) -> void:
+	_set_detail_open(true)
+	_clear_children(_detail_box)
+	_detail_game = null
+	var ac := _location_accent(loc)
+	var w: float = DETAIL_PANEL_W - 52
+	_detail_box.add_child(_location_art(loc, Vector2(w, roundf(w * 0.625))))
+	_detail_box.add_child(_label(loc.display_name, ac, UITheme.FONT_HEAD, true, true))
+	_detail_box.add_child(_detail_meta("%s tier" % Locations.tier_name(loc), ac))
+	if loc.game != "":
+		_detail_box.add_child(_label("From: %s" % loc.game, UITheme.TEXT_DIM,
+			UITheme.FONT_SMALL, true, true))
+
+	if loc.description != "":
+		var about := _section_card("About", ac)
+		about.add_child(_prose(loc.description))
+		_detail_box.add_child(about.get_meta(&"card"))
+
+	var effects := _section_card("What it does", ac)
+	var said: bool = false
+	for pair in [["When you arrive", loc.arrive.map(_arrive_words)],
+			["While you are here", loc.standing.map(_standing_words)],
+			["On its card", loc.actions.map(_action_words)]]:
+		var lines: Array = pair[1].filter(func(t): return String(t) != "")
+		if lines.is_empty():
+			continue
+		said = true
+		effects.add_child(_label(String(pair[0]), UITheme.GOLD, UITheme.FONT_SMALL))
+		for t in lines:
+			effects.add_child(_bullet(String(t)))
+	if not said:
+		effects.add_child(_prose("Nothing beyond its lean.", UITheme.TEXT_DIM))
+	_detail_box.add_child(effects.get_meta(&"card"))
+
+	var lean: String = Locations.lean_text(loc)
+	if lean != "":
+		var tags := _section_card("Tag lean", ac)
+		tags.add_child(_prose(lean))
+		tags.add_child(_prose("While you are here, anything carrying one of these tags is "
+			+ "%d%% more likely in every roll it is part of." % roundi(loc.tag_up * 100.0),
+			UITheme.TEXT_DIM))
+		_detail_box.add_child(tags.get_meta(&"card"))
+		var favoured: Array = location_favours(loc)
+		var fav := _section_card("Favoured here", ac)
+		if favoured.is_empty():
+			fav.add_child(_prose("Nothing in the roster carries these tags yet.", UITheme.TEXT_DIM))
+		for group in favoured:
+			fav.add_child(_label("%s (%d)" % [group["kind"], group["names"].size()],
+				UITheme.GOLD, UITheme.FONT_SMALL))
+			var flow := HFlowContainer.new()
+			flow.add_theme_constant_override("h_separation", UITheme.GAP_TIGHT)
+			flow.add_theme_constant_override("v_separation", UITheme.GAP_TIGHT)
+			for n in group["names"]:
+				flow.add_child(_chip(String(n), ac))
+			fav.add_child(flow)
+		_detail_box.add_child(fav.get_meta(&"card"))
+
+# What a location's tags favour, grouped by kind: [{kind, names}], each list
+# sorted, kinds with nothing left out. Public so a test can hold the panel to it.
+static func location_favours(loc: LocationData) -> Array:
+	var out: Array = []
+	if loc == null or loc.tag_types.is_empty():
+		return out
+	var kinds: Array = [
+		["Enemies", Data.all_goal_enemies()], ["Bosses", Data.all_bosses()],
+		["Items", Data.all_items2()], ["Scrolls", Data.all_scrolls()],
+		["Potions", Data.all_potions()], ["Cards", Data.all_cards()],
+		["Wands", Data.all_wands()], ["Trinkets", Data.all_trinkets()],
+		["Weapons", Data.all_weapons()], ["Units", Data.all_units()],
+	]
+	for k in kinds:
+		var names: Array = []
+		for thing in k[1]:
+			if thing == null:
+				continue
+			for t in Locations.tags_of(thing):
+				if loc.tag_types.has(t):
+					var n = thing.get("display_name") if "display_name" in thing else null
+					names.append(String(n) if n != null and String(n) != "" else String(thing.get("id")))
+					break
+		if names.is_empty():
+			continue
+		names.sort_custom(func(a, b): return a.naturalnocasecmp_to(b) < 0)
+		out.append({"kind": k[0], "names": names})
+	return out
+
+func _arrive_words(rule) -> String:
+	if not (rule is Dictionary):
+		return ""
+	var n: int = int(rule.get("count", 1))
+	match String(rule.get("op", "")):
+		"spawn_enemy":
+			return "%d random %s-tagged %s walk%s on" % [n, String(rule.get("tag", "")),
+				"enemy" if n == 1 else "enemies", "s" if n == 1 else ""]
+		"place_tile":
+			return "%d %s tile%s on random squares" % [n, String(rule.get("tile", "")),
+				"" if n == 1 else "s"]
+		"place_unit":
+			var s: String = "%d random %s-tagged object%s on random squares" % [n,
+				String(rule.get("tag", "")), "" if n == 1 else "s"]
+			if String(rule.get("favour", "")) != "":
+				s += " (%d%% chance each is %s)" % [int(rule.get("favour_pct", 0)),
+					String(rule.get("favour", "")).capitalize()]
+			return s
+	return String(rule.get("op", "")).capitalize()
+
+func _standing_words(rule) -> String:
+	if not (rule is Dictionary):
+		return ""
+	var v: float = float(rule.get("value", 0))
+	match String(rule.get("op", "")):
+		"damage_taken_mult":
+			return "Damage you take is ×%s" % String.num(v, 2).trim_suffix(".0")
+		"offering_rift":
+			return "%d game in every offering is a free rift" % int(v)
+		"push_mult":
+			return "Every push goes %d× as far" % int(v)
+	return "%s: %s" % [String(rule.get("op", "")).capitalize(), str(v)]
+
+func _action_words(action) -> String:
+	if not (action is Dictionary):
+		return ""
+	# The button's own words, with "(4 left)" said as the limit it is.
+	var t: String = Locations.action_text(action, 0)
+	var cut: int = t.rfind(" (")
+	if cut > 0:
+		t = t.substr(0, cut)
+	return "%s — up to %d time%s" % [t, int(action.get("limit", 1)),
+		"" if int(action.get("limit", 1)) == 1 else "s"]

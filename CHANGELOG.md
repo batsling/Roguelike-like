@@ -11,6 +11,20 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Collection: a Locations tab, and the character page in sub-pages.** Every
+  location is listed, nothing hidden (a location is dealt, never found), sorted by
+  tier, A-Z or game and searchable by tag. Its entry shows the art, the owner's
+  description, what it does sorted into *when you arrive / while you are here /
+  on its card*, its lean, and every enemy, boss, item, piece of loot and unit
+  carrying a leaned tag (`Collection.location_favours`). The character entry "kinda
+  jumbled together" (the owner): fourteen kinds of thing in one column at one gap.
+  It is now a fixed header (portrait beside name, game and rank) over three
+  sub-pages: **Overview** (about, stats as tiles, loadout as chips, level-up goal
+  and reward), **Progress** (Fractures, goals beaten) and **Games** (beaten,
+  levelled up at), each section in its own card. The page picked stays picked as
+  ◀ ▶ steps through the roster. Also: search on the Shopkeepers tab now refilters
+  (its debounced rebuild had no case for that tab).
+
 - **Event gold up by half.** No new gold buttons (the owner's call): every gold
   number on the events that already use gold goes up about 1.5×, to follow the
   measured purse and the 4/6/9/13 shelf. Arcade Room 2 → 3; Jungle Maze +6 / +2
