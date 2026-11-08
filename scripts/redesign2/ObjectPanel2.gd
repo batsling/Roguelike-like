@@ -155,6 +155,8 @@ func _refresh() -> void:
 # button, cost line and warning is one click away and none of it was cut.
 func _machine_row(inst: Dictionary) -> Control:
 	var data: ObjectData = ObjectSystem.data_for(inst)
+	if data != null:
+		GameStats.mark_seen("object", data.id)
 	var btn := Button.new()
 	btn.custom_minimum_size = Vector2(0.0 if _narrow else ROW_WIDTH, ROW_HEIGHT)
 	btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL if _narrow else Control.SIZE_SHRINK_BEGIN

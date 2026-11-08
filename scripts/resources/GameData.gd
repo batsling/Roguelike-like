@@ -116,6 +116,22 @@ var cover_image: Texture2D:
 		_touch_cover()
 		return _cover
 
+# The cover if it is already decoded, or null — without decoding it. What a screen
+# asks before deciding to load it on a thread instead (Collection's Games tab).
+func cached_cover() -> Texture2D:
+	if _cover != null:
+		_touch_cover()
+	return _cover
+
+# A cover decoded somewhere else (a threaded load), handed to the cache as if
+# `cover_image` had read it.
+func adopt_cover(tex: Texture2D) -> void:
+	if tex == null:
+		_cover_missing = true
+		return
+	_cover = tex
+	_touch_cover()
+
 # Move this game to the hot end of the cache, and let the coldest ones go if that
 # puts it over budget. Never evicts `self`: the caller is about to use what it
 # just asked for.

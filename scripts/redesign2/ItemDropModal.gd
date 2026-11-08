@@ -95,6 +95,7 @@ func _start(host: Node, offer) -> void:
 	for entry in (offer if offer is Array else [offer]):
 		if entry is ItemData:
 			_items.append(entry)
+			GameStats.mark_seen("item", entry.id)
 	_layer = CanvasLayer.new()
 	_layer.layer = UITheme.Layer.DROP
 	_layer.process_mode = Node.PROCESS_MODE_ALWAYS

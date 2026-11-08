@@ -221,6 +221,8 @@ func _roads_row() -> Control:
 # — the offering's cards hide it because there are three of them in a 150px strip.
 func _road_card(index: int, opt: Dictionary) -> Control:
 	var game: GameData = opt["game"]
+	if game != null:
+		GameStats.mark_seen("game", game.id)
 	var accent: Color = RunGraph.type_color(int(opt["type"]))
 
 	var wrap := PanelContainer.new()

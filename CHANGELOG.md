@@ -11,6 +11,21 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Collection: nothing shown until it is seen; wider pages; a loading tile.**
+  Every entry in every tab is a black silhouette named "???" until the player has
+  seen it on screen in a run (`GameStats.seen`, a new per-profile record that
+  starts empty — the owner chose not to backfill it from older records). What
+  counts: a game offered or on the start picker, an enemy or boss on the board, an
+  item shown or owned, loot in the pack, on the floor or offered (a pill, scroll,
+  potion or wand only once identified), an event or machine met, a keeper behind
+  the counter, a location entered, a character in the picker. A hidden cell opens
+  a "???" panel, search won't find it by name, and the counter reads "· N seen".
+  Settings → Unlock everything shows the lot. Every info popup is now 520px, the
+  Games page's width (the character stats are four across). And the Games tab's
+  scroll stutter: each cover was decoded on the main thread as it came into view;
+  covers now load on a thread, with a `LoadingTile` (gray, the bat, a white swirl)
+  in the frame until they land — event and location art too.
+
 - **Collection: a Locations tab, and the character page in sub-pages.** Every
   location is listed, nothing hidden (a location is dealt, never found), sorted by
   tier, A-Z or game and searchable by tag. Its entry shows the art, the owner's

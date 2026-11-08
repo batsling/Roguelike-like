@@ -30,6 +30,7 @@ func setup(item: ItemData, usable: bool) -> void:
 	if item == null:
 		queue_free()
 		return
+	GameStats.mark_seen("item", item.id)
 	var tint: Color = UITheme.item_color(item)
 
 	# Full-screen dimmer; clicking outside the card closes it. The OFFSETS have to

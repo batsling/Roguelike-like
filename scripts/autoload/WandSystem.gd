@@ -176,6 +176,8 @@ func identify(id: StringName, announce: bool = true) -> bool:
 # The toast on its own, so a spend path can record the type now and say so
 # later — see the `announce` argument above.
 func announce_identified(id: StringName) -> void:
+	# Named on screen now, so the Collection may show it (GameStats.seen).
+	GameStats.mark_seen("wand", id)
 	var w: WandData = Data.get_wand(id)
 	var nm: String = w.display_name if w != null else String(id)
 	Notifications.notify("Identified: %s!" % nm, WAND_COLOR)

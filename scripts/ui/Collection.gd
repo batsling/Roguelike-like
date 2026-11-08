@@ -517,6 +517,7 @@ func _cover_plate(tex: Texture2D, game_id = &"") -> Control:
 	# So a square cover's corners cannot poke past the plate's rounded ones.
 	plate.clip_contents = true
 	var tr := TextureRect.new()
+	tr.name = "Cover"
 	tr.texture = tex
 	tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
@@ -543,6 +544,27 @@ func _cover_plate(tex: Texture2D, game_id = &"") -> Control:
 	wrap.add_child(plate)
 	UITheme.attach_tier_badge(wrap, game_id)
 	return RankBadge.wrap(wrap, game_id, true)
+
+# A GRID COVER, LOADED OFF THE MAIN THREAD. Reading `cover_image` decodes the PNG
+# right there, and scrolling the Games tab brought a row of them into view at
+# once: that was the stutter. A cover already decoded goes straight in; any other
+# is asked of a thread, with a LoadingTile in its frame until it lands
+# (`_poll_event_art` delivers it, and hands it to the game's own cover cache).
+func _game_cover_plate(g: GameData) -> Control:
+	var have: Texture2D = g.cached_cover()
+	if have != null:
+		return _cover_plate(have, g.id)
+	var plate: Control = _cover_plate(null, g.id)
+	var rect: TextureRect = plate.find_child("Cover", true, false) as TextureRect
+	if rect == null or not ResourceLoader.exists(g.cover_path):
+		return plate
+	LoadingTile.cover(rect)
+	if ResourceLoader.load_threaded_get_status(g.cover_path) == ResourceLoader.THREAD_LOAD_INVALID_RESOURCE:
+		ResourceLoader.load_threaded_request(g.cover_path)
+	_event_art_waiting.append({"path": g.cover_path, "rect": rect, "game": g})
+	if not get_tree().process_frame.is_connected(_poll_event_art):
+		get_tree().process_frame.connect(_poll_event_art)
+	return plate
 
 func _cover_rect(tex: Texture2D, w: int, game_id = &"") -> Control:
 	var tr := TextureRect.new()
@@ -820,8 +842,12 @@ func _fill_cell(index: int) -> void:
 	var box: VBoxContainer = slot["box"]
 	var g: GameData = slot["game"]
 	var tc := _game_type_color(int(g.type))
-	if g.cover_path != "":
-		box.add_child(_cover_plate(g.cover_image, g.id))
+	var unseen: bool = not GameStats.is_seen("game", g.id)
+	if unseen:
+		# A silhouette needs no picture: the plate alone, blacked out below.
+		box.add_child(_cover_plate(null, g.id))
+	elif g.cover_path != "":
+		box.add_child(_game_cover_plate(g))
 	else:
 		# No art authored: a spacer of the cover's exact size, so a game with no
 		# picture doesn't leave a short hole in the row.
@@ -854,6 +880,8 @@ func _fill_cell(index: int) -> void:
 	stat_row.add_child(_label(stat_line,
 		Color(0.95, 0.8, 0.4) if played else Color(0.5, 0.5, 0.55), GRID_META_FONT, false))
 	box.add_child(stat_row)
+	if unseen:
+		_veil_box(box)
 	slot["filled"] = true
 
 func _empty_cell(index: int) -> void:
@@ -917,7 +945,9 @@ func _name_block_height() -> float:
 # The card is as narrow as its widest picture plus a little: the enemy portrait
 # (DETAIL_ENEMY_SIZE) is the biggest thing in it, and a longer measure than this
 # makes the one-sentence facts in it read worse rather than better.
-const DETAIL_PANEL_W := 360
+# Every entry is as wide as a game's page now (the owner, 8 Nov 2026: "widen all
+# of the information screens ... so it can fit more things").
+const DETAIL_PANEL_W := 520
 # What the detail's scrollbar is given on the right of the content it scrolls.
 const DETAIL_SCROLLBAR_ROOM := 14
 # A GAME's page is wider than the rest. It is the one entry whose content is
@@ -964,6 +994,8 @@ var _nav: Array = []
 var _nav_index: int = -1
 
 func _set_detail_open(on: bool) -> void:
+	if _detail_box != null and is_instance_valid(_detail_box) and _detail_box.has_meta(&"unseen"):
+		_detail_box.remove_meta(&"unseen")
 	# Every entry opens at the narrow width; a game's page widens itself after.
 	_set_detail_width(DETAIL_PANEL_W)
 	if _detail_panel != null and is_instance_valid(_detail_panel):
@@ -1268,6 +1300,37 @@ func _add_count_label(row: HBoxContainer) -> void:
 func _set_count(shown: int, total: int) -> void:
 	if _count_lbl != null:
 		_count_lbl.text = "%d / %d" % [shown, total]
+		var roster: Array = _tab_roster()
+		if not roster.is_empty():
+			var note: String = _seen_note(roster[0], roster[1])
+			if note != "":
+				_count_lbl.text += "  ·  " + note
+
+# The kind the open tab lists, and all of it: [kind, Array], or [] (Games is
+# counted too, but over a thousand rows it is still one dictionary lookup each).
+func _tab_roster() -> Array:
+	match _tab:
+		Tab.GAMES: return ["game", Data.all_games()]
+		Tab.ITEMS: return ["item", Data.all_items2()]
+		Tab.CHARACTERS: return ["character", Data.all_characters2()]
+		Tab.ENEMIES: return ["enemy", Data.all_goal_enemies()]
+		Tab.BOSSES: return ["boss", Data.all_bosses()]
+		Tab.EVENTS: return ["event", Data.all_events2()]
+		Tab.OBJECTS: return ["object", Data.all_objects2()]
+		Tab.SHOPKEEPERS: return ["shopkeeper", Data.all_shopkeepers()]
+		Tab.LOCATIONS: return ["location", Data.all_locations()]
+		Tab.LOOT:
+			match _loot_sub:
+				LOOT_SCROLLS: return ["scroll", Data.all_scrolls()]
+				LOOT_PILLS: return ["pill", Data.all_pills()]
+				LOOT_POTIONS: return ["potion", Data.all_potions()]
+				LOOT_CARDS: return ["card", Data.all_cards()]
+				LOOT_WANDS: return ["wand", Data.all_wands()]
+				LOOT_TRINKETS: return ["trinket", Data.all_trinkets()]
+				LOOT_BAGS: return ["bag", Data.all_bags()]
+				LOOT_WEAPONS: return ["weapon", Data.all_weapons()]
+				LOOT_EVOLUTIONS: return ["evolution", Data.all_evolutions()]
+	return []
 
 func _clear_children(node: Node) -> void:
 	# Emptying the grid retires the window with it: the slots point at cells that
@@ -1385,6 +1448,9 @@ func _populate_games() -> void:
 			"amulet":
 				if GameStats.amulet_wins(g.id) <= 0:
 					continue
+		# A hidden entry is not found by what it hides (GameStats.seen).
+		if term != "" and not GameStats.is_seen("game", g.id):
+			continue
 		if term != "" and not term in g.display_name.to_lower():
 			continue
 		list.append(g)
@@ -1449,7 +1515,7 @@ func _game_cell(g: GameData) -> Control:
 	var vb: VBoxContainer = cell.vbox
 	vb.alignment = BoxContainer.ALIGNMENT_CENTER
 	_cell_slots.append({"cell": panel, "box": vb, "game": g, "filled": false})
-	return panel
+	return _veil(panel, "game", g.id)
 
 # The height every game cell is pinned to: the cover, the clamped name, the two
 # stat lines, the separations between them and the panel's own padding.
@@ -1592,6 +1658,10 @@ func _badge_tooltip(owns: bool) -> String:
 # `_owned_toggle_of` looks for it among the box's own children and does not
 # recurse, so tucking it into a row here would quietly lose it.
 func _show_game_detail(g: GameData) -> void:
+	# Opened from a link as well as from its cell, so it checks for itself.
+	if not GameStats.is_seen("game", g.id):
+		_show_unseen_detail("game", g.cover_image)
+		return
 	_set_detail_open(true)
 	_set_detail_width(GAME_DETAIL_PANEL_W)
 	_clear_children(_detail_box)
@@ -1896,6 +1966,9 @@ func _populate_items() -> void:
 			continue
 		if _items_type >= 0 and int(it.kind) != _items_type:
 			continue
+		# A hidden entry is not found by what it hides (GameStats.seen).
+		if term != "" and not GameStats.is_seen("item", it.id):
+			continue
 		if term != "" and not (term in it.display_name.to_lower() \
 				or term in it.description.to_lower() \
 				or term in it.source_game.to_lower()):
@@ -1938,9 +2011,13 @@ func _item_cell(it: ItemData) -> Control:
 	nm.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	vb.add_child(nm)
 	vb.add_child(_label(_item_rarity_label(it).to_upper(), rc, GRID_META_FONT, true))
-	return cell.panel
+	return _veil(cell.panel, "item", it.id)
 
 func _show_item_detail(it: ItemData) -> void:
+	# Opened from a link as well as from its cell, so it checks for itself.
+	if not GameStats.is_seen("item", it.id):
+		_show_unseen_detail("item", it.image)
+		return
 	_set_detail_open(true)
 	_clear_children(_detail_box)
 	_detail_game = null
@@ -2000,6 +2077,9 @@ func _populate_characters() -> void:
 	for ch in Data.all_characters2():
 		if ch == null:
 			continue
+		# A hidden entry is not found by what it hides (GameStats.seen).
+		if term != "" and not GameStats.is_seen("character", ch.id):
+			continue
 		if term != "" and not term in ch.display_name.to_lower():
 			continue
 		list.append(ch)
@@ -2027,7 +2107,7 @@ func _character_cell(ch: CharacterData) -> Control:
 	# tab whose art is a person's face. It is still the first row of the detail
 	# panel's Base Stats, which is where a number is worth reading.
 	vb.add_child(_label(ch.display_name, green, GRID_NAME_FONT, true, true))
-	return cell.panel
+	return _veil(cell.panel, "character", ch.id)
 
 # THE CHARACTER PAGE IS A HEADER AND THREE PAGES (the owner, 8 Nov 2026: "the
 # text kinda jumbles together and is hard to read"). It used to be one column of
@@ -2046,6 +2126,10 @@ const CHAR_GREEN := Color(0.45, 0.82, 0.45)
 const CHAR_HEADER_PORTRAIT := 96
 
 func _show_character_detail(ch: CharacterData) -> void:
+	# Opened from a link as well as from its cell, so it checks for itself.
+	if not GameStats.is_seen("character", ch.id):
+		_show_unseen_detail("character", ch.portrait)
+		return
 	_set_detail_open(true)
 	_clear_children(_detail_box)
 	_detail_game = null
@@ -2126,7 +2210,7 @@ func _character_overview(ch: CharacterData) -> Control:
 	# cannot come to list different verbs (CharacterData.verb_loadout).
 	var stats := _section_card("Base Stats", CHAR_GREEN)
 	var grid := GridContainer.new()
-	grid.columns = 3
+	grid.columns = 4
 	grid.add_theme_constant_override("h_separation", UITheme.GAP_TIGHT)
 	grid.add_theme_constant_override("v_separation", UITheme.GAP_TIGHT)
 	grid.add_child(_stat_tile("Health", str(ch.base_max_hp), Color(0.95, 0.45, 0.45)))
@@ -2289,6 +2373,9 @@ func _populate_enemies() -> void:
 			continue
 		if _enemies_type != "all" and String(e.game_type).to_lower() != _enemies_type:
 			continue
+		# A hidden entry is not found by what it hides (GameStats.seen).
+		if term != "" and not GameStats.is_seen(_enemy_kind(), e.id):
+			continue
 		if term != "" and not (term in e.display_name.to_lower() \
 				or term in e.goal.to_lower() \
 				or term in e.source_game.to_lower()):
@@ -2347,7 +2434,7 @@ func _enemy_cell(e: GoalEnemyData) -> Control:
 	var tier: String = ENEMY_TIER_NAMES[clampi(e.tier_index(), 0, 3)]
 	var kind: String = "BOSS" if e.is_boss() else String(e.game_type).capitalize()
 	vb.add_child(_label("%s  •  %s" % [kind, tier], Color(0.7, 0.7, 0.75), GRID_META_FONT, true))
-	return cell.panel
+	return _veil(cell.panel, _enemy_kind(), e.id)
 
 # One game this enemy has been beaten at: its cover, how many times it fell
 # there, and the note — matching the Atlas's beaten-enemies rows, since it is the
@@ -2408,6 +2495,10 @@ func _enemy_game_row(enemy: GoalEnemyData, entry: Dictionary) -> Control:
 	return panel
 
 func _show_enemy_detail(e: GoalEnemyData) -> void:
+	# Opened from a link as well as from its cell, so it checks for itself.
+	if not GameStats.is_seen(("boss" if e.is_boss() else "enemy"), e.id):
+		_show_unseen_detail(("boss" if e.is_boss() else "enemy"), e.image)
+		return
 	_set_detail_open(true)
 	_set_detail_width(GAME_DETAIL_PANEL_W)
 	_clear_children(_detail_box)
@@ -2726,6 +2817,9 @@ func _populate_scrolls() -> void:
 	for s in scrolls:
 		if not (s is ScrollData):
 			continue
+		# A hidden entry is not found by what it hides (GameStats.seen).
+		if term != "" and not GameStats.is_seen("scroll", s.id):
+			continue
 		if term != "" and not (term in s.display_name.to_lower()):
 			continue
 		_grid.add_child(_scroll_cell(s))
@@ -2740,10 +2834,10 @@ func _scroll_cell(s: ScrollData) -> Control:
 	var art: Array = _textures("scrolls", [s.art_file()]) if s.art_file() != "" else []
 	if art.is_empty():
 		art = _textures("scrolls", ["Unidentified"])
-	return _loot_cell(art, s.display_name, pcol, s.preference,
+	return _veil(_loot_cell(art, s.display_name, pcol, s.preference,
 		"%s Preference" % s.preference, func(vb: VBoxContainer):
 			_body_text(vb, _scroll_effect_text(s))
-			_source_line(vb, s.reference))
+			_source_line(vb, s.reference)), "scroll", s.id)
 
 func _preference_color(pref: String) -> Color:
 	match pref.to_lower():
@@ -2768,6 +2862,9 @@ func _populate_pills() -> void:
 	for p in pills:
 		if not (p is PillData):
 			continue
+		# A hidden entry is not found by what it hides (GameStats.seen).
+		if term != "" and not GameStats.is_seen("pill", p.id):
+			continue
 		if term != "" and not (term in p.display_name.to_lower()):
 			continue
 		_grid.add_child(_pill_cell(p, capsules))
@@ -2780,10 +2877,10 @@ func _populate_pills() -> void:
 # half of what taking one can do (§4.3).
 func _pill_cell(p: PillData, capsules: Array) -> Control:
 	var pcol := _preference_color(p.preference)
-	return _loot_cell(capsules, p.display_name, pcol, p.preference,
+	return _veil(_loot_cell(capsules, p.display_name, pcol, p.preference,
 		"%s Preference" % p.preference, func(vb: VBoxContainer):
 			vb.add_child(_pill_dose("Normal dose", p.line(false), Color(0.85, 0.85, 0.88)))
-			vb.add_child(_pill_dose("Horse dose (5%)", p.line(true), Color(0.95, 0.82, 0.55))))
+			vb.add_child(_pill_dose("Horse dose (5%)", p.line(true), Color(0.95, 0.82, 0.55)))), "pill", p.id)
 
 func _populate_potions() -> void:
 	_clear_children(_grid)
@@ -2794,6 +2891,9 @@ func _populate_potions() -> void:
 	var vials: Array = _textures("potions_unidentified", PotionSystem.COLORS)
 	for p in potions:
 		if not (p is PotionData):
+			continue
+		# A hidden entry is not found by what it hides (GameStats.seen).
+		if term != "" and not GameStats.is_seen("potion", p.id):
 			continue
 		if term != "" and not (term in p.display_name.to_lower()):
 			continue
@@ -2811,12 +2911,12 @@ func _potion_cell(p: PotionData, vials: Array) -> Control:
 		if p.art_file() != "" else []
 	if art.is_empty():
 		art = vials
-	return _loot_cell(art, p.display_name, pcol, p.rarity,
+	return _veil(_loot_cell(art, p.display_name, pcol, p.rarity,
 		"%s  ·  %s Preference" % [p.rarity, p.preference], func(vb: VBoxContainer):
 			vb.add_child(_pill_dose("Quaff", p.quaff_text, Color(0.85, 0.85, 0.88)))
 			vb.add_child(_pill_dose("Throw", p.throw_text if p.has_throw()
 				else "Nothing — this one cannot be thrown.", Color(0.78, 0.72, 0.95)))
-			_source_line(vb, p.reference))
+			_source_line(vb, p.reference)), "potion", p.id)
 
 func _populate_cards() -> void:
 	_clear_children(_grid)
@@ -2826,6 +2926,9 @@ func _populate_cards() -> void:
 	var shown: int = 0
 	for c in cards:
 		if not (c is CardData):
+			continue
+		# A hidden entry is not found by what it hides (GameStats.seen).
+		if term != "" and not GameStats.is_seen("card", c.id):
 			continue
 		if term != "" and not (term in c.display_name.to_lower()):
 			continue
@@ -2845,7 +2948,7 @@ func _card_cell(c: CardData) -> Control:
 	var back: Texture2D = _card_art("cards_icons", c.icon_file())
 	var art: Array = [face] if face != null else ([back] if back != null else [])
 	var deck: String = c.set_name if c.set_name != "" else "Card"
-	return _loot_cell(art, c.display_name, ccol, c.rarity, "%s  ·  %s" % [c.rarity, deck],
+	return _veil(_loot_cell(art, c.display_name, ccol, c.rarity, "%s  ·  %s" % [c.rarity, deck],
 		func(vb: VBoxContainer):
 			if back != null:
 				var row := HBoxContainer.new()
@@ -2860,7 +2963,7 @@ func _card_cell(c: CardData) -> Control:
 				row.add_child(said)
 				vb.add_child(row)
 			_body_text(vb, c.description)
-			_source_line(vb, c.source_game))
+			_source_line(vb, c.source_game)), "card", c.id)
 
 func _populate_wands() -> void:
 	_clear_children(_grid)
@@ -2871,6 +2974,9 @@ func _populate_wands() -> void:
 	var sticks: Array = _textures("wands_unidentified", WandSystem.MATERIALS)
 	for w in wands:
 		if not (w is WandData):
+			continue
+		# A hidden entry is not found by what it hides (GameStats.seen).
+		if term != "" and not GameStats.is_seen("wand", w.id):
 			continue
 		if term != "" and not (term in w.display_name.to_lower()):
 			continue
@@ -2883,13 +2989,13 @@ func _populate_wands() -> void:
 # (docs/wands-design.md §6.3), so every one loops the run's sticks.
 func _wand_cell(w: WandData, sticks: Array) -> Control:
 	var wcol := _preference_color(w.preference)
-	return _loot_cell(sticks, w.display_name, wcol, w.rarity,
+	return _veil(_loot_cell(sticks, w.display_name, wcol, w.rarity,
 		"%s  ·  %s Preference" % [w.rarity, w.preference], func(vb: VBoxContainer):
 			vb.add_child(_label("%s  ·  %s" % [
 				Plural.count(w.starting_charges(), "charge"), _wand_aim_words(w)],
 				Color(0.55, 0.74, 0.86), 12, false, true))
 			_body_text(vb, w.description)
-			_source_line(vb, w.reference))
+			_source_line(vb, w.reference)), "wand", w.id)
 
 # The Aim column in the words a player meets rather than the sheet's — the
 # weapons' words, since a wand is aimed in them (WeaponSystem.aim_phrase).
@@ -2907,9 +3013,11 @@ func _wand_aim_words(w: WandData) -> String:
 
 # Search matches the name, the description and the source game — the three things
 # a piece is remembered by.
-func _loot_piece_matches(term: String, piece) -> bool:
+func _loot_piece_matches(term: String, piece, kind: String) -> bool:
 	if term == "":
 		return true
+	if not GameStats.is_seen(kind, piece.id):
+		return false
 	var hay: String = ("%s %s %s" % [piece.display_name, piece.description,
 		piece.source_game]).to_lower()
 	return term in hay
@@ -2924,7 +3032,7 @@ func _populate_trinkets() -> void:
 	var term: String = _search["trinkets"].to_lower()
 	var shown: int = 0
 	for t in _sorted_by_name(Data.all_trinkets()):
-		if t is TrinketData and _loot_piece_matches(term, t):
+		if t is TrinketData and _loot_piece_matches(term, t, "trinket"):
 			_grid.add_child(_trinket_cell(t))
 			shown += 1
 	_set_count(shown, Data.all_trinkets().size())
@@ -2934,7 +3042,7 @@ func _populate_bags() -> void:
 	var term: String = _search["bags"].to_lower()
 	var shown: int = 0
 	for b in _sorted_by_name(Data.all_bags()):
-		if b is BagData and _loot_piece_matches(term, b):
+		if b is BagData and _loot_piece_matches(term, b, "bag"):
 			_grid.add_child(_bag_cell(b))
 			shown += 1
 	_set_count(shown, Data.all_bags().size())
@@ -2944,7 +3052,7 @@ func _populate_weapons() -> void:
 	var term: String = _search["weapons"].to_lower()
 	var shown: int = 0
 	for w in _sorted_by_name(Data.all_weapons()):
-		if w is WeaponData and _loot_piece_matches(term, w):
+		if w is WeaponData and _loot_piece_matches(term, w, "weapon"):
 			_grid.add_child(_weapon_cell(w))
 			shown += 1
 	_set_count(shown, Data.all_weapons().size())
@@ -2963,6 +3071,9 @@ func _populate_evolutions() -> void:
 	for evo in evos:
 		var hay: String = "%s %s %s" % [_weapon_name(evo.base), _weapon_name(evo.result),
 			WeaponSystem.need_words(evo)]
+		# A hidden entry is not found by what it hides (GameStats.seen).
+		if term != "" and not GameStats.is_seen("evolution", evo.id):
+			continue
 		if term != "" and not (term in hay.to_lower()):
 			continue
 		_grid.add_child(_evolution_cell(evo))
@@ -2989,25 +3100,25 @@ func _facts(parts: Array) -> String:
 # shape, and its line.
 func _trinket_cell(t: TrinketData) -> Control:
 	var col: Color = RarityStyle.color(t.rarity_index())
-	return _loot_cell(_one(LootPassives.load_trinket_art(t)), t.display_name, col, t.rarity,
+	return _veil(_loot_cell(_one(LootPassives.load_trinket_art(t)), t.display_name, col, t.rarity,
 		_facts([t.rarity, t.loot_type, _footprint_words(t.size),
 			"food" if t.is_food() else ""]), func(vb: VBoxContainer):
 			_body_text(vb, t.description)
-			_source_line(vb, t.source_game))
+			_source_line(vb, t.source_game)), "trinket", t.id)
 
 # A bag: the room it adds, then its own rule — the line the pack prints.
 func _bag_cell(b: BagData) -> Control:
 	var col: Color = RarityStyle.color(b.rarity_index())
-	return _loot_cell(_one(LootPassives.load_bag_art(b)), b.display_name, col, b.rarity,
+	return _veil(_loot_cell(_one(LootPassives.load_bag_art(b)), b.display_name, col, b.rarity,
 		_facts([b.rarity, _footprint_words(b.size)]), func(vb: VBoxContainer):
 			_body_text(vb, LootSystem.bag_description(b))
-			_source_line(vb, b.source_game))
+			_source_line(vb, b.source_game)), "bag", b.id)
 
 # A weapon: the swing, what charges it and its passive — the pack's own words —
 # then where it sits in the evolution chart, both ways.
 func _weapon_cell(w: WeaponData) -> Control:
 	var col: Color = RarityStyle.color(w.rarity_index())
-	return _loot_cell(_one(LootPassives.load_weapon_art(w)), w.display_name, col, w.rarity,
+	return _veil(_loot_cell(_one(LootPassives.load_weapon_art(w)), w.display_name, col, w.rarity,
 		_facts([w.rarity, w.weapon_type.capitalize(), _footprint_words(w.size),
 			Plural.count(w.max_charges, "charge") + " to swing"]), func(vb: VBoxContainer):
 			# A bare entry rather than WeaponSystem.new_entry: that one rolls a uid
@@ -3021,7 +3132,7 @@ func _weapon_cell(w: WeaponData) -> Control:
 			for evo in Data.evolutions_from(w.id):
 				vb.add_child(_label("⟳ Evolves into %s" % _weapon_name(evo.result),
 					Color(0.95, 0.82, 0.55), 12, false, true))
-			_source_line(vb, w.source_game))
+			_source_line(vb, w.source_game)), "weapon", w.id)
 
 # An evolution: what it makes in the grid; the weapon it starts from, the one it
 # makes and what it asks for in the popup.
@@ -3030,7 +3141,7 @@ func _evolution_cell(evo: EvolutionData) -> Control:
 	var from: WeaponData = Data.get_weapon(evo.base)
 	var col: Color = RarityStyle.color(into.rarity_index() if into != null else 0)
 	var title := "%s  →  %s" % [_weapon_name(evo.base), _weapon_name(evo.result)]
-	return _loot_cell(_one(LootPassives.load_weapon_art(into)), title, col, "",
+	return _veil(_loot_cell(_one(LootPassives.load_weapon_art(into)), title, col, "",
 		"Evolution", func(vb: VBoxContainer):
 			var pics := HBoxContainer.new()
 			pics.add_theme_constant_override("separation", UITheme.GAP)
@@ -3048,7 +3159,7 @@ func _evolution_cell(evo: EvolutionData) -> Control:
 			vb.add_child(_pill_dose("Needs", WeaponSystem.need_words(evo),
 				Color(0.85, 0.85, 0.88)))
 			vb.add_child(_label("Uses them up." if evo.consumes else "Keeps them.",
-				Color(0.7, 0.7, 0.75), 11)))
+				Color(0.7, 0.7, 0.75), 11))), "evolution", evo.id)
 
 func _card_art(folder: String, base: String) -> Texture2D:
 	if base == "":
@@ -3140,6 +3251,104 @@ func _tight_box(border: Color) -> StyleBoxFlat:
 	_tight_cache[key] = sb
 	return sb
 
+# ------------------------------------------------------------------
+# Not seen yet (GameStats.seen; the owner, 8 Nov 2026)
+# ------------------------------------------------------------------
+#
+# Everything in the Collection is a dark silhouette named "???" until the player
+# has seen it in a run, and Settings -> Unlock everything shows the lot. A cell is
+# built as normal and then VEILED, rather than every builder knowing two looks:
+# the first picture goes black, the first line reads "???", the rest is hidden,
+# the hover goes, and a click opens the "???" panel instead of the entry.
+
+const UNSEEN_NAME := "???"
+const UNSEEN_ART := Color(0, 0, 0, 1)
+const UNSEEN_TEXT := Color(0.55, 0.55, 0.6)
+const SEEN_KIND_NAMES := {"game": "Game", "item": "Item", "character": "Character",
+	"enemy": "Enemy", "boss": "Boss", "scroll": "Scroll", "pill": "Pill",
+	"potion": "Potion", "card": "Card", "wand": "Wand", "trinket": "Trinket",
+	"bag": "Bag", "weapon": "Weapon", "evolution": "Evolution", "event": "Event",
+	"object": "Object", "shopkeeper": "Shopkeeper", "location": "Location"}
+
+# Which kind the Enemies / Bosses tab is listing.
+func _enemy_kind() -> String:
+	return "boss" if _tab == Tab.BOSSES else "enemy"
+
+func _veil(panel: Control, kind: String, id) -> Control:
+	if GameStats.is_seen(kind, id):
+		return panel
+	panel.set_meta(&"unseen", true)
+	panel.tooltip_text = ""
+	if panel.has_meta(HoverCard.META):
+		panel.remove_meta(HoverCard.META)
+	var vb: Node = panel.get_child(0) if panel.get_child_count() > 0 else null
+	if vb != null:
+		_veil_box(vb)
+	var art: Texture2D = _first_texture(panel)
+	for entry in _nav:
+		if entry["panel"] == panel:
+			entry["open"] = func(): _show_unseen_detail(kind, art)
+	return panel
+
+# The first picture black, the first line "???", everything else hidden. Also
+# what a streamed game cell does to itself once it is filled (`_fill_cell`).
+func _veil_box(vb: Node) -> void:
+	var named: bool = false
+	var drawn: bool = false
+	for c in vb.get_children():
+		if c is Label:
+			if not named:
+				(c as Label).text = UNSEEN_NAME
+				(c as Label).add_theme_color_override("font_color", UNSEEN_TEXT)
+				named = true
+			else:
+				(c as Control).visible = false
+		elif c is Control:
+			if not drawn and not named:
+				(c as Control).modulate = UNSEEN_ART
+				drawn = true
+			else:
+				(c as Control).visible = false
+
+func _first_texture(node: Node) -> Texture2D:
+	if node is TextureRect and (node as TextureRect).texture != null:
+		return (node as TextureRect).texture
+	for c in node.get_children():
+		var t: Texture2D = _first_texture(c)
+		if t != null:
+			return t
+	return null
+
+func _show_unseen_detail(kind: String, art: Texture2D = null) -> void:
+	_set_detail_open(true)
+	_clear_children(_detail_box)
+	_detail_game = null
+	if art != null:
+		var tr := TextureRect.new()
+		tr.texture = art
+		tr.custom_minimum_size = Vector2(DETAIL_ITEM_SIZE, DETAIL_ITEM_SIZE)
+		tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		tr.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		tr.modulate = UNSEEN_ART
+		UITheme.apply_crisp(tr, art)
+		_detail_box.add_child(tr)
+	_detail_box.add_child(_label(UNSEEN_NAME, UNSEEN_TEXT, UITheme.FONT_HEAD, true))
+	_detail_box.add_child(_detail_meta(String(SEEN_KIND_NAMES.get(kind, kind.capitalize())),
+		UNSEEN_TEXT))
+	var card := _section_card("Not seen yet", UNSEEN_TEXT)
+	card.add_child(_prose("It shows here once you meet it in a run.", UITheme.TEXT_DIM))
+	_detail_box.add_child(card.get_meta(&"card"))
+	_detail_box.set_meta(&"unseen", true)
+
+# "3 of 8 seen", for the count label, or "" when everything is.
+func _seen_note(kind: String, all: Array) -> String:
+	var n: int = 0
+	for x in all:
+		if x != null and GameStats.is_seen(kind, x.id):
+			n += 1
+	return "" if n == all.size() else "%d seen" % n
+
 func _select_option(opt: OptionButton, id: int) -> void:
 	for i in opt.item_count:
 		if opt.get_item_id(i) == id:
@@ -3228,6 +3437,7 @@ func _art_into(rect: TextureRect, path: String, longest: int = EVENT_ART_MAX) ->
 		return
 	if not ResourceLoader.exists(path):
 		return
+	LoadingTile.cover(rect)
 	if ResourceLoader.load_threaded_get_status(path) == ResourceLoader.THREAD_LOAD_INVALID_RESOURCE:
 		ResourceLoader.load_threaded_request(path)
 	_event_art_waiting.append({"path": path, "rect": rect, "max": longest})
@@ -3241,6 +3451,23 @@ func _poll_event_art() -> void:
 		var rect = w["rect"]
 		if not is_instance_valid(rect):
 			continue                       # its cell was rebuilt before it arrived
+		if w.has("game"):
+			# A cover: it goes to the game's own cache, not the shrunk-art one.
+			var g: GameData = w["game"]
+			var have: Texture2D = g.cached_cover()
+			if have == null:
+				var st: int = ResourceLoader.load_threaded_get_status(path)
+				if st == ResourceLoader.THREAD_LOAD_IN_PROGRESS:
+					still.append(w)
+					continue
+				if st == ResourceLoader.THREAD_LOAD_LOADED:
+					have = ResourceLoader.load_threaded_get(path) as Texture2D
+					g.adopt_cover(have)
+				else:
+					have = g.cover_image          # the thread lost it: read it here
+			(rect as TextureRect).texture = have
+			LoadingTile.clear_from(rect)
+			continue
 		if not _event_art_cache.has(path):
 			var status: int = ResourceLoader.load_threaded_get_status(path)
 			if status == ResourceLoader.THREAD_LOAD_IN_PROGRESS:
@@ -3288,6 +3515,7 @@ static func _shrink_event_art(tex: Texture2D, cap: int = EVENT_ART_MAX) -> Textu
 # would have made at build time is made here, against the real texture.
 func _set_event_art(rect: TextureRect, tex: Texture2D) -> void:
 	rect.texture = tex
+	LoadingTile.clear_from(rect)
 	UITheme.apply_crisp(rect, tex)
 
 func _build_events() -> void:
@@ -3315,6 +3543,9 @@ func _populate_events() -> void:
 			continue
 		# Searching an event means searching what it SAYS as well as its name —
 		# the prompt and the option labels are how anyone actually remembers one.
+		# A hidden entry is not found by what it hides (GameStats.seen).
+		if term != "" and not GameStats.is_seen("event", ev.id):
+			continue
 		if term != "" and not (term in ev.display_name.to_lower()
 				or term in ev.prompt.to_lower()
 				or term in ev.source_game.to_lower()
@@ -3367,9 +3598,13 @@ func _event_cell(ev: EventData2) -> Control:
 	# from the outside — every event has two or three, so it separated nothing and
 	# cost the tile a line. The choices themselves are in the detail panel, in full.
 	vb.add_child(_label(ev.rarity.to_upper(), ac, GRID_META_FONT, true))
-	return cell.panel
+	return _veil(cell.panel, "event", ev.id)
 
 func _show_event_detail(ev: EventData2) -> void:
+	# Opened from a link as well as from its cell, so it checks for itself.
+	if not GameStats.is_seen("event", ev.id):
+		_show_unseen_detail("event", _event_art(ev))
+		return
 	_set_detail_open(true)
 	_set_detail_width(GAME_DETAIL_PANEL_W)
 	_clear_children(_detail_box)
@@ -3545,6 +3780,9 @@ func _populate_objects() -> void:
 		# Searching a machine means searching its TAGS too — "arcade" is how you
 		# find the things an Arcade Room can contain, and it is the only name the
 		# spawn that puts them there knows them by.
+		# A hidden entry is not found by what it hides (GameStats.seen).
+		if term != "" and not GameStats.is_seen("object", obj.id):
+			continue
 		if term != "" and not (term in obj.display_name.to_lower()
 				or term in obj.prompt.to_lower()
 				or term in obj.source_game.to_lower()
@@ -3597,6 +3835,9 @@ func _populate_shopkeepers() -> void:
 	for k in all:
 		if not (k is ShopkeeperData):
 			continue
+		# A hidden entry is not found by what it hides (GameStats.seen).
+		if term != "" and not GameStats.is_seen("shopkeeper", k.id):
+			continue
 		if term != "" and not (term in k.display_name.to_lower()
 				or term in _shopkeeper_game(k).to_lower()
 				or term in " ".join(shopkeeper_rules(k)).to_lower()):
@@ -3628,9 +3869,13 @@ func _shopkeeper_cell(k: ShopkeeperData) -> Control:
 	var game: String = _shopkeeper_game(k)
 	if game != "":
 		vb.add_child(_label(game, Color(0.65, 0.7, 0.8), GRID_META_FONT, true, true))
-	return cell.panel
+	return _veil(cell.panel, "shopkeeper", k.id)
 
 func _show_shopkeeper_detail(k: ShopkeeperData) -> void:
+	# Opened from a link as well as from its cell, so it checks for itself.
+	if not GameStats.is_seen("shopkeeper", k.id):
+		_show_unseen_detail("shopkeeper", k.portrait())
+		return
 	_set_detail_open(true)
 	_clear_children(_detail_box)
 	var ac := _rarity_color_by_name(k.rarity)
@@ -3739,9 +3984,13 @@ func _object_cell(obj: ObjectData) -> Control:
 	# comma-joined string of unbounded length under a picture, so a machine with
 	# three tags wrapped to two more lines than one with one.
 	vb.add_child(_label(obj.rarity.to_upper(), ac, GRID_META_FONT, true))
-	return cell.panel
+	return _veil(cell.panel, "object", obj.id)
 
 func _show_object_detail(obj: ObjectData) -> void:
+	# Opened from a link as well as from its cell, so it checks for itself.
+	if not GameStats.is_seen("object", obj.id):
+		_show_unseen_detail("object", _object_art(obj))
+		return
 	_set_detail_open(true)
 	_clear_children(_detail_box)
 	var ac := _object_accent(obj)
@@ -3839,6 +4088,9 @@ func _populate_locations() -> void:
 		if not (loc is LocationData):
 			continue
 		# A tag is a fair thing to search by: "fire" finds the floor that leans fire.
+		# A hidden entry is not found by what it hides (GameStats.seen).
+		if term != "" and not GameStats.is_seen("location", loc.id):
+			continue
 		if term != "" and not (term in loc.display_name.to_lower()
 				or term in loc.game.to_lower()
 				or term in loc.description.to_lower()
@@ -3890,9 +4142,13 @@ func _location_cell(loc: LocationData) -> Control:
 	nm.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	vb.add_child(nm)
 	vb.add_child(_label(Locations.tier_name(loc).to_upper(), ac, GRID_META_FONT, true))
-	return cell.panel
+	return _veil(cell.panel, "location", loc.id)
 
 func _show_location_detail(loc: LocationData) -> void:
+	# Opened from a link as well as from its cell, so it checks for itself.
+	if not GameStats.is_seen("location", loc.id):
+		_show_unseen_detail("location", null)
+		return
 	_set_detail_open(true)
 	_clear_children(_detail_box)
 	_detail_game = null

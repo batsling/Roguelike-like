@@ -298,6 +298,7 @@ const OWN_DARK_COLOURS := {
 	"res://scripts/menu/MainMenu.gd": ["Color(0.06, 0.02, 0.02)"],      # the vortex's own red, not the theme's
 	"res://scripts/ui/AtlasView.gd": ["Color(0.32, 0.30, 0.28)"],       # a modulate that darkens art
 	"res://scripts/ui/Collection.gd": ["Color(0.10, 0.16, 0.26, 0.9)"], # Steam's own blue on its button
+	"res://scripts/ui/LoadingTile.gd": ["Color(0.32, 0.32, 0.34)"],    # the owner's neutral GRAY placeholder, not a themed surface
 }
 
 func _dark_surface_literals(text: String) -> Array:

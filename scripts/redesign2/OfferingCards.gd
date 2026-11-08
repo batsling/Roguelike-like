@@ -174,6 +174,9 @@ func _shop_card_tooltip(node_id: StringName) -> String:
 
 func _make_choice_card(index: int, choice: Dictionary) -> Control:
 	var game: GameData = choice["game"]
+	# Offered is seen, for the Collection (GameStats.seen).
+	if game != null:
+		GameStats.mark_seen("game", game.id)
 	var card := VBoxContainer.new()
 	card.add_theme_constant_override("separation", UITheme.GAP_TIGHT)
 	card.custom_minimum_size = Vector2(COVER_SIZE.x + 10, 0)

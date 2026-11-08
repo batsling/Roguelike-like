@@ -4453,6 +4453,7 @@ func _location_if_due() -> void:
 func enter_location(loc: LocationData) -> void:
 	if loc == null:
 		return
+	GameStats.mark_seen("location", loc.id)
 	location_id = loc.id
 	location_unseen = true
 	location_arrival_due = not loc.arrive.is_empty()
@@ -6894,6 +6895,8 @@ func _count_in_col(col: int) -> int:
 # (summon's `at`) is only passing through here on its way to that cell.
 func _add_to_grid(instance: int, enemy: GoalEnemyData, health: int,
 		statuses: Dictionary = {}, fresh: bool = true, shove: bool = true) -> void:
+	# Stood on the board is seen, for the Collection (GameStats.seen).
+	GameStats.see_enemy(enemy)
 	# Statuses ride the BODY, not the board slot: a status hung on the current
 	# game's enemy has to still be on it when it walks on as a follower, or every
 	# enemy-side status would evaporate the moment it mattered.

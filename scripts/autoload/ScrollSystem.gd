@@ -201,6 +201,8 @@ func identify(id: StringName, announce: bool = true) -> bool:
 var _deferred_masks: Dictionary = {}
 
 func announce_identified(id: StringName) -> void:
+	# Named on screen now, so the Collection may show it (GameStats.seen).
+	GameStats.mark_seen("scroll", id)
 	_say_identified(id, String(_deferred_masks.get(id, "")))
 	_deferred_masks.erase(id)
 
