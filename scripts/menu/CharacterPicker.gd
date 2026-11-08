@@ -203,6 +203,8 @@ func _build() -> void:
 	for ch in roster:
 		if ch is CharacterData:
 			_roster.append(ch)
+			# On screen in the picker is seen, for the Collection.
+			GameStats.mark_seen("character", ch.id)
 	for ch in _roster:
 		grid.add_child(_character_tile(ch, state, select))
 	# A wrapped name makes its own tile taller, and a GridContainer row is as tall

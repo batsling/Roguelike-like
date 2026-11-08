@@ -40,6 +40,8 @@ static func make(inst: Dictionary) -> ObjectCard:
 	var card := ObjectCard.new()
 	card._inst = inst
 	card._data = ObjectSystem.data_for(inst)
+	if card._data != null:
+		GameStats.mark_seen("object", card._data.id)
 	return card
 
 

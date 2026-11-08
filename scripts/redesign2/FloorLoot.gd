@@ -27,7 +27,12 @@ extends PanelContainer
 # already holds them.
 
 # The piece. Empty is never drawn — BattlefieldView draws the ✦ fallback instead.
-var entry: Dictionary = {}
+# Every piece put on screen in a run is a piece seen, for the Collection
+# (GameStats.see_loot holds an unidentified pill, scroll, potion or wand back).
+var entry: Dictionary = {}:
+	set(v):
+		entry = v
+		GameStats.see_loot(v)
 # The square it is lying on, and the payload's `floor`.
 var cell: Vector2i = Vector2i.ZERO
 # Ring weight and colour, handed in by the board so a boss's drop stays the

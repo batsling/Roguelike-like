@@ -172,6 +172,7 @@ func _start(host: Node, offer) -> void:
 	for entry in (offer if offer is Array else [offer]):
 		if entry is Dictionary and not (entry as Dictionary).is_empty():
 			_offers.append((entry as Dictionary).duplicate(true))
+			GameStats.see_loot(entry)
 	_layer = CanvasLayer.new()
 	_layer.layer = LAYER
 	_layer.process_mode = Node.PROCESS_MODE_ALWAYS
@@ -819,6 +820,7 @@ func add_offers(entries: Array) -> void:
 	for entry in entries:
 		if entry is Dictionary and not (entry as Dictionary).is_empty():
 			_offers.append((entry as Dictionary).duplicate(true))
+			GameStats.see_loot(entry)
 			added = true
 	if added:
 		_rebuild()

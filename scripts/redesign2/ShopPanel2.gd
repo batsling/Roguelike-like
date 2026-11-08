@@ -569,6 +569,8 @@ func open_loot_card(slot: int) -> Node:
 # rather than left to the theme: a Button's `normal` is what carries the outline.
 func _shelf_row(slot: int, entry: Dictionary) -> Control:
 	var item: ItemData = Data.get_item2(StringName(entry.get("item", &"")))
+	if item != null:
+		GameStats.mark_seen("item", item.id)
 	if item == null:
 		var empty := Button.new()
 		empty.custom_minimum_size = Vector2(_row_w(), _row_h())

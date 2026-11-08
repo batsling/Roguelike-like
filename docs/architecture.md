@@ -84,8 +84,24 @@ ordinary scene.
     `%ModalLayer` rather than a `CanvasLayer` of its own so the Exit Game corner
     stays underneath it.
   - **`Collection.gd`** — the compendium: Games, Items, Characters, Enemies,
-    Bosses, **Loot**, Events, Objects, Shopkeepers (each keeper's sheet columns put
-    into words by `Collection.shopkeeper_rules`). The tabs share the title's row,
+    Bosses, **Loot**, Events, Locations, Objects, Shopkeepers (each keeper's sheet
+    columns put into words by `Collection.shopkeeper_rules`; each location's
+    favoured enemies and loot by `Collection.location_favours`). A character's
+    entry is a fixed header over three sub-pages (Overview / Progress / Games),
+    every section in its own card (`_section_card`). Every entry's popup is
+    520px (`DETAIL_PANEL_W`, the Games page's width). **Nothing is shown until it
+    has been seen in a run** (`GameStats.seen`): an unseen cell is veiled
+    (`_veil`: black silhouette, "???", no hover) and opens a "???" panel, search
+    skips it, and the counter says how many are seen. Settings → *Unlock
+    everything* shows the lot. Sightings are recorded where a thing reaches the
+    screen: `OfferingCards` and `StartPicker` (games), `_add_to_grid` (enemies,
+    bosses), `ItemInfoCard`, `ShopPanel2`, `ItemDropModal`, `GameState.add_item`
+    (items), `LootSlot.entry` / `FloorLoot.entry` / `LootDropModal` (loot — a pill,
+    scroll, potion or wand only once identified, via each system's
+    `announce_identified`), `EventModal2`, `ObjectCard` / `ObjectPanel2`,
+    `ShopModal2` (keepers), `enter_location`, `CharacterPicker`. The suite runs with
+    `GameStats.seen_bypass` on (`test/pre_run_hook.gd`). Covers and scene art load
+    on a thread behind a `LoadingTile` (gray, the bat, a white swirl). The tabs share the title's row,
     compact (`_compact`), and so do the Loot sub-tabs. **An entry opens in a popup over the
     grid** (`_new_detail_panel` / `_select`), not a pane beside it: the grid
     never gives up a column, the picked cell stays lit underneath, and ◀ ▶ (or the

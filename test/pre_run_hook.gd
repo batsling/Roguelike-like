@@ -24,6 +24,10 @@ func run() -> void:
 	# the suite shares user:// with the real game: off, or every Fracture gate and
 	# song lock reads open. In memory only, so the profile's own setting stays.
 	Settings.unlock_everything = false
+	# THE COLLECTION'S "???" (GameStats.seen): everything reads as seen and nothing
+	# is written, or every Collection test would open a silhouette and the suite
+	# would fill the real profile's record. `test_collection_seen.gd` turns it off.
+	GameStats.seen_bypass = true
 	Data.set_meta("all_shopkeepers", Data._shopkeepers.duplicate())
 	Data._shopkeepers.clear()
 	Data.set_meta("all_locations", Data._locations.duplicate())

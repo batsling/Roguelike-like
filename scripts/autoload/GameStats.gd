@@ -764,6 +764,93 @@ func character_custom_amulet_wins(character_id) -> int:
 # MAX_RUNS, and an unlock must not be forgotten when its run scrolls off.
 var fracture_log: Dictionary = {}
 
+# ---------------------------------------------------------------------------
+# SEEN — what the Collection may show (the owner, 8 Nov 2026)
+# ---------------------------------------------------------------------------
+#
+# Everything in the Collection is a dark silhouette called "???" until the player
+# has seen it on screen in a run: a game offered, an enemy or boss on the board,
+# an item or a piece of loot shown to them (a pill, scroll, potion or wand only
+# once IDENTIFIED — its capsule or vial is not what it is), an event or machine
+# met, a keeper behind a counter, a location entered, a character in the picker.
+# `Settings.unlock_everything` reads every one as seen without writing any.
+#
+# kind -> {id: true}. The kinds are SEEN_KINDS. Started from nothing on purpose
+# (the owner's call): older records do not backfill it.
+const SEEN_KINDS := ["game", "item", "character", "enemy", "boss", "scroll", "pill",
+	"potion", "card", "wand", "trinket", "bag", "weapon", "evolution", "event",
+	"object", "shopkeeper", "location"]
+var seen: Dictionary = {}
+# THE SUITE'S SWITCH (test/pre_run_hook.gd): everything reads as seen and nothing
+# is recorded, because the suite shares user:// with the real game and two
+# thousand tests opening Collection panels must not find them blank.
+var seen_bypass: bool = false
+var _seen_save_due: bool = false
+
+func is_seen(kind: String, id) -> bool:
+	if seen_bypass or Settings.unlock_everything:
+		return true
+	var ids = seen.get(kind)
+	return ids is Dictionary and (ids as Dictionary).has(String(id))
+
+# Record a sighting. Cheap when it is not new, and a new one is written on the
+# next frame rather than at once, so a board standing ten bodies up is one write.
+func mark_seen(kind: String, id) -> void:
+	var key: String = String(id)
+	if seen_bypass or key == "" or not SEEN_KINDS.has(kind):
+		return
+	if not seen.has(kind):
+		seen[kind] = {}
+	if (seen[kind] as Dictionary).has(key):
+		return
+	seen[kind][key] = true
+	if not _seen_save_due:
+		_seen_save_due = true
+		_flush_seen.call_deferred()
+
+func _flush_seen() -> void:
+	if not _seen_save_due:
+		return
+	_seen_save_due = false
+	save_data()
+
+func seen_count(kind: String) -> int:
+	var ids = seen.get(kind)
+	return (ids as Dictionary).size() if ids is Dictionary else 0
+
+# A piece of loot as the pack holds it ({type, id, ...}). A pill, scroll, potion
+# or wand counts only once the run has identified it.
+func see_loot(entry) -> void:
+	if not (entry is Dictionary):
+		return
+	var t: String = String(entry.get("type", ""))
+	var id: StringName = StringName(String(entry.get("id", "")))
+	match t:
+		"pill":
+			if not PillSystem.is_identified(id):
+				return
+		"scroll":
+			if not ScrollSystem.is_identified(id):
+				return
+		"potion":
+			if not PotionSystem.is_identified(id):
+				return
+		"wand":
+			if not WandSystem.is_identified(id):
+				return
+		"weapon":
+			# An evolved weapon is a weapon too, but it is the evolution that the
+			# Collection lists it under.
+			for evo in Data.all_evolutions():
+				if evo != null and evo.result == id:
+					mark_seen("evolution", evo.id)
+	mark_seen(t, id)
+
+# An enemy body's GoalEnemyData: a boss is filed under bosses.
+func see_enemy(e) -> void:
+	if e is GoalEnemyData:
+		mark_seen("boss" if (e as GoalEnemyData).is_boss() else "enemy", e.id)
+
 # The run that just ended unlocked this level for its character, or -1. Set by
 # record_run for the winning screen to announce (§5), and cleared by the next.
 var last_run_unlocked: int = -1
@@ -917,7 +1004,7 @@ func save_data() -> bool:
 		 "character_goal_log": character_goal_log,
 		 "donation_bank": donation_bank_total, "donation_best": donation_best_total,
 		 "last_rifts": last_rifts,
-		 "last_starts": last_starts, "fracture_log": fracture_log}, "  "))
+		 "last_starts": last_starts, "fracture_log": fracture_log, "seen": seen}, "  "))
 	return true
 
 # --- the Donation Machine's bank -------------------------------------------
@@ -971,6 +1058,7 @@ func load_data() -> void:
 	last_rifts = []
 	last_starts = []
 	fracture_log = {}
+	seen = {}
 	if not FileAccess.file_exists(save_path()):
 		return
 	var f := FileAccess.open(save_path(), FileAccess.READ)
@@ -1011,6 +1099,15 @@ func load_data() -> void:
 			for key in rec.keys():
 				clean[String(key)] = int(rec[key])
 			fracture_log[String(ck)] = clean
+	if typeof(json.data.get("seen")) == TYPE_DICTIONARY:
+		for kind in json.data["seen"].keys():
+			var ids = json.data["seen"][kind]
+			if typeof(ids) != TYPE_DICTIONARY or not SEEN_KINDS.has(String(kind)):
+				continue
+			var clean: Dictionary = {}
+			for id in ids.keys():
+				clean[String(id)] = true
+			seen[String(kind)] = clean
 	if typeof(json.data.get("last_rifts")) == TYPE_ARRAY:
 		for id in json.data["last_rifts"]:
 			last_rifts.append(String(id))

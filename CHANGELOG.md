@@ -11,6 +11,53 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Collection: the character header, and a trophy you can read.** The header's
+  portrait, name and game are bigger, and the character's line sits under them in
+  quotation marks (the "About" card is gone). The rank is a gold bar with "Rank N"
+  beside it and "X/250 xp" under it; what the next rank unlocks moved to the
+  bar's hover. The Fractures card is gone: the 🏆 carries that record, and it is
+  bigger everywhere it appears (characters and game covers), with the highest
+  Fracture won written on the cup, and it sits centred on the top-right corner of the art (below the tier badge where a game has one). On the Progress page each goal beaten says the
+  XP it gave ("+20 xp"); the ones not yet beaten don't. The Overview opens with the Level
+  Up goal, then Base Stats with the Starting Loadout beside them, as pictures:
+  each has its card on the hover and opens its own Collection page on a click
+  (`_open_entry`, which every cell can be found by). The trophy is bigger on the
+  grids (40% of the art's width).
+
+- **Collection: Hide unseen, and Rank sorts.** Every tab's row has a *Hide
+  unseen* switch (one for the whole Collection, kept across tabs; not offered
+  under Unlock everything, where nothing is hidden). Games and Characters sort by
+  **Rank** — most XP first. The loading tile now carries the background's bat.
+
+- **Collection: nothing shown until it is seen; wider pages; a loading tile.**
+  Every entry in every tab is a black silhouette named "???" until the player has
+  seen it on screen in a run (`GameStats.seen`, a new per-profile record that
+  starts empty — the owner chose not to backfill it from older records). What
+  counts: a game offered or on the start picker, an enemy or boss on the board, an
+  item shown or owned, loot in the pack, on the floor or offered (a pill, scroll,
+  potion or wand only once identified), an event or machine met, a keeper behind
+  the counter, a location entered, a character in the picker. A hidden cell opens
+  a "???" panel, search won't find it by name, and the counter reads "· N seen".
+  Settings → Unlock everything shows the lot. Every info popup is now 520px, the
+  Games page's width (the character stats are four across). And the Games tab's
+  scroll stutter: each cover was decoded on the main thread as it came into view;
+  covers now load on a thread, with a `LoadingTile` (gray, the bat, a white swirl)
+  in the frame until they land — event and location art too.
+
+- **Collection: a Locations tab, and the character page in sub-pages.** Every
+  location is listed, nothing hidden (a location is dealt, never found), sorted by
+  tier, A-Z or game and searchable by tag. Its entry shows the art, the owner's
+  description, what it does sorted into *when you arrive / while you are here /
+  on its card*, its lean, and every enemy, boss, item, piece of loot and unit
+  carrying a leaned tag (`Collection.location_favours`). The character entry "kinda
+  jumbled together" (the owner): fourteen kinds of thing in one column at one gap.
+  It is now a fixed header (portrait beside name, game and rank) over three
+  sub-pages: **Overview** (about, stats as tiles, loadout as chips, level-up goal
+  and reward), **Progress** (Fractures, goals beaten) and **Games** (beaten,
+  levelled up at), each section in its own card. The page picked stays picked as
+  ◀ ▶ steps through the roster. Also: search on the Shopkeepers tab now refilters
+  (its debounced rebuild had no case for that tab).
+
 - **Event gold up by half.** No new gold buttons (the owner's call): every gold
   number on the events that already use gold goes up about 1.5×, to follow the
   measured purse and the 4/6/9/13 shelf. Arcade Room 2 → 3; Jungle Maze +6 / +2

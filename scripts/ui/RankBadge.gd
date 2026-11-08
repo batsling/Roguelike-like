@@ -7,7 +7,7 @@ extends Control
 #
 # With `awards` (the Collection only), the circle is flanked by what the game's
 # record has won: on the LEFT a star — silver for beaten, gold instead once it
-# has been perfected — and on the RIGHT a trophy for an Amulet win.
+# has been perfected — and a trophy for an Amulet win on the art's TOP-RIGHT corner.
 #
 # HALF OUTSIDE THE ART (the owner's call): the circle, the star and the trophy are
 # centred ON the cover's bottom edge, and the bar hangs below the circle, so the
@@ -39,6 +39,12 @@ const BAR_SHARE := 0.62
 const BAR_MAX_SHARE := 1.8
 const BAR_GAP := 2.0   # between the circle and the bar under it
 const FOOT := 2.0      # below the bar, so it never touches what comes next
+# The trophy's box on the art's top-right corner: a share of the art's width,
+# held between a floor that keeps the level on it legible and a ceiling that
+# keeps it from covering a big portrait.
+const TROPHY_SHARE := 0.4
+const TROPHY_MIN := 26.0
+const TROPHY_MAX := 44.0
 
 var game_id: StringName = &""
 # Set instead of game_id for a character's badge.
@@ -141,12 +147,16 @@ func _ready() -> void:
 	_layout()
 
 # THE NUMBER ON A TROPHY: the highest Fracture it was earned at, in the
-# Fracture's own colour beside the cup. Nothing at Fracture 0 — a plain cup is a
-# win at the ordinary game, which is what every trophy before Fractures was.
+# Fracture's own colour, written ON the cup, and the cup on the art's top-right
+# corner, bigger than the star (the owner, 8 Nov 2026). Nothing at Fracture 0 — a plain
+# cup is a win at the ordinary game, which is what every trophy before Fractures
+# was. On a character it is the whole Fracture record now: the panel's own
+# Fractures section went, since this says the same thing.
 func _add_trophy_level(level: int, what: String) -> void:
 	if level <= 0 or _trophy == null:
 		return
 	_trophy_level = _make_label(str(level), Fracture.COLOR)
+	_trophy_level.name = "TrophyLevel"
 	_trophy.tooltip_text = "%s — at Fracture %d" % [what, level]
 	_trophy_level.tooltip_text = _trophy.tooltip_text
 
@@ -182,6 +192,15 @@ func bar_rect() -> Rect2:
 	var w: float = clampf(size.x * BAR_SHARE, d, d * BAR_MAX_SHARE)
 	return Rect2(Vector2((size.x - w) * 0.5, edge_y + d * 0.5 + BAR_GAP), Vector2(w, BAR_H))
 
+# Where the trophy's centre sits: the art's top-right corner, or the right edge
+# just under a tier badge on that corner.
+func trophy_center() -> Vector2:
+	var cup: float = clampf(size.x * TROPHY_SHARE, TROPHY_MIN, TROPHY_MAX)
+	var y: float = 0.0
+	if game_id != &"" and TierList.tier_of(game_id) >= 0:
+		y = float(UITheme.tier_badge_overhang()) * 2.0 + UITheme.GAP_TIGHT + cup * 0.5
+	return Vector2(size.x, y)
+
 func _layout() -> void:
 	if _number == null:
 		return
@@ -207,13 +226,33 @@ func _layout() -> void:
 		_star.position = c - Vector2(d * 1.5 + UITheme.GAP_HAIR, d * 0.5)
 		_star.size = side
 	if _trophy != null:
-		_trophy.add_theme_font_size_override("font_size", glyph)
-		_trophy.position = c + Vector2(d * 0.5 + UITheme.GAP_HAIR, -d * 0.5)
-		_trophy.size = side
-	if _trophy_level != null:
-		_trophy_level.add_theme_font_size_override("font_size", UITheme.FONT_MICRO)
-		_trophy_level.position = c + Vector2(d * 1.25 + UITheme.GAP_HAIR, -d * 0.15)
-		_trophy_level.size = side
+		# THE TROPHY IS CENTRED ON THE ART'S TOP-RIGHT CORNER (the owner, 8 Nov
+		# 2026): half on the picture and half off it, the way the rank circle sits
+		# on the bottom edge. Sized off the art rather than the circle, with the
+		# Fracture level written on the cup. A tier-listed game already wears its
+		# tier badge centred on that corner, so its trophy is centred on the right
+		# edge just under it instead.
+		var cup: float = clampf(size.x * TROPHY_SHARE, TROPHY_MIN, TROPHY_MAX)
+		var cup_font: int = UITheme.FONT_HERO if cup >= 38.0 else (
+			UITheme.FONT_DISPLAY if cup >= 30.0 else (
+			UITheme.FONT_TITLE if cup >= 24.0 else UITheme.FONT_HEAD))
+		_trophy.add_theme_font_size_override("font_size", cup_font)
+		# Sized FIRST and centred on what it really took: a glyph taller than the
+		# box grows the label downward, and centring on the asked-for box left the
+		# cup low and the number on its rim.
+		_trophy.size = Vector2(cup, cup)
+		_trophy.position = trophy_center() - _trophy.size * 0.5
+		if _trophy_level != null:
+			# On the bowl: the cup's own box, nudged up off the stem.
+			_trophy_level.add_theme_font_size_override("font_size",
+				UITheme.FONT_BODY if cup >= 30.0 else UITheme.FONT_TINY)
+			_trophy_level.add_theme_constant_override("outline_size", 4)
+			_trophy_level.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			# Lifted off the stem by a share of the GLYPH, not the box: the cup is
+			# drawn smaller than its box on the grids, and a box-sized nudge put the
+			# number on the rim there instead of in the bowl.
+			_trophy_level.size = _trophy.size
+			_trophy_level.position = _trophy.position - Vector2(0, cup_font * 0.18)
 	queue_redraw()
 
 func _draw() -> void:

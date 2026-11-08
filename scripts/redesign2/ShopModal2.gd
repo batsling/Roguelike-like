@@ -92,6 +92,8 @@ func _build() -> void:
 	margin.add_child(root)
 
 	var keeper: ShopkeeperData = ShopSystem.keeper_for(_node_id)
+	if keeper != null:
+		GameStats.mark_seen("shopkeeper", keeper.id)
 	root.add_child(_header())
 
 	# TWO SIDES: the keeper and everything you can DO here on the left (the

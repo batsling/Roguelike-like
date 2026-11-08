@@ -57,7 +57,12 @@ var loot_index: int = -1
 # which of them the player just dragged.
 var offer_index: int = -1
 # What is in it. Empty for a free slot.
-var entry: Dictionary = {}
+# Every piece put on screen in a run is a piece seen, for the Collection
+# (GameStats.see_loot holds an unidentified pill, scroll, potion or wand back).
+var entry: Dictionary = {}:
+	set(v):
+		entry = v
+		GameStats.see_loot(v)
 
 # Art edge for a filled cell, against the 34 loot used to be drawn at. The old size
 # came from the pack strip's relic token on the reasoning that a pill and a relic

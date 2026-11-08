@@ -117,6 +117,8 @@ func identify(id: StringName, announce: bool = true) -> bool:
 # The toast on its own, so a spend path can record the type now and say so
 # later — see the `announce` argument above.
 func announce_identified(id: StringName) -> void:
+	# Named on screen now, so the Collection may show it (GameStats.seen).
+	GameStats.mark_seen("pill", id)
 	var p: PillData = Data.get_pill(id)
 	var nm: String = p.display_name if p != null else String(id)
 	Notifications.notify("Identified: %s!" % nm, PILL_COLOR)

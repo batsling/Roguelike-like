@@ -135,6 +135,8 @@ func _init() -> void:
 # standing on.
 static func open(host: Node, event: EventData2, game_id: StringName = &"") -> EventModal2:
 	var modal := EventModal2.new()
+	if event != null:
+		GameStats.mark_seen("event", event.id)
 	modal._start(host, event, game_id)
 	return modal
 

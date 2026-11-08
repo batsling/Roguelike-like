@@ -49,6 +49,11 @@ nearest tier that has one, the way an enemy roll widens. An empty roster deals
 nothing and the run carries on without a location. That is the suite's case:
 `test/pre_run_hook.gd` empties the roster, as it does the shopkeepers.
 
+The Collection has a **Locations** tab listing the whole roster, nothing hidden
+(a location is dealt, never found, so there is nothing to discover): each one's
+art, its effects sorted into *when you arrive / while you are here / on its card*,
+its lean, and every enemy, item and piece of loot carrying a leaned tag.
+
 A save from before locations comes back with `location_tier` -2. It adopts the
 tier it is at, and the next step is the first that deals.
 

@@ -3323,6 +3323,8 @@ func add_item(template: ItemData) -> ItemData:
 	# deeply so triggers/tags/stat_bonuses can never alias between slots.
 	# Weapon items also append their linked CardInstance to the deck
 	# with source_weapon_id set, sealing the bidirectional pair.
+	if template != null:
+		GameStats.mark_seen("item", template.id)   # in the pack is seen (Collection)
 	if template == null:
 		return null
 	var inst: ItemData = _append_item_internal(template, 0)

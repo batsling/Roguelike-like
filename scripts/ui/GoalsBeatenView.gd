@@ -48,7 +48,10 @@ static func add_kinds(box: Container, host: Node, g: GameData, redraw: Callable)
 # enemies and bosses show the WHOLE roster, beaten first and the rest dimmed, so
 # the page says what is left as well as what is done. No notes: a note belongs to
 # a (game, goal) pair and is edited on the game's page.
-static func add_character_kinds(box: Container, ch: CharacterData) -> int:
+# `with_xp`: each goal beaten carries the XP it gave the character under it
+# ("+60 xp" — GameRanks.goal_xp, counted once per character), and the ones not yet
+# done carry an empty line of the same height so the rows stay level.
+static func add_character_kinds(box: Container, ch: CharacterData, with_xp: bool = false) -> int:
 	var all: Dictionary = GameStats.character_goals(ch.id)
 	var shown: int = 0
 	for kind in GameStats.GOAL_KINDS:
@@ -69,13 +72,16 @@ static func add_character_kinds(box: Container, ch: CharacterData) -> int:
 		var done: Dictionary = {}
 		for row in rows:
 			done[String(row["key"])] = true
-			flow.add_child(goal_tile(box, null, String(kind), row, Callable()))
+			var t: Control = goal_tile(box, null, String(kind), row, Callable())
+			flow.add_child(_xp_under(t, GameRanks.goal_xp(String(kind), String(row["key"])))
+				if with_xp else t)
 		var rest: Array = roster.filter(func(e): return not done.has(String(e.id)))
 		rest.sort_custom(func(a, b): return a.display_name < b.display_name)
 		for e in rest:
-			flow.add_child(goal_tile(box, null, String(kind),
+			var m: Control = goal_tile(box, null, String(kind),
 				{"key": String(e.id), "label": e.display_name, "done": 0, "missing": true,
-					"missing_text": "not beaten yet as %s" % ch.display_name}, Callable()))
+					"missing_text": "not beaten yet as %s" % ch.display_name}, Callable())
+			flow.add_child(_xp_under(m, -1) if with_xp else m)
 		box.add_child(flow)
 		shown += 1
 	return shown
@@ -87,6 +93,21 @@ static func kind_header(text: String) -> Label:
 	l.add_theme_color_override("font_color", UITheme.GOLD)
 	l.set_meta(&"goal_kind_header", true)
 	return l
+
+# A tile with "+X xp" under it, or (xp < 0) a blank line of the same height.
+static func _xp_under(tile: Control, xp: int) -> Control:
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", UITheme.GAP_NONE)
+	col.add_child(tile)
+	var l := Label.new()
+	l.text = "+%d xp" % xp if xp >= 0 else " "
+	l.name = "GoalXp"
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	l.add_theme_font_size_override("font_size", UITheme.FONT_TINY)
+	l.add_theme_color_override("font_color", UITheme.GOLD)
+	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	col.add_child(l)
+	return col
 
 static func tile_flow() -> HFlowContainer:
 	var flow := HFlowContainer.new()

@@ -22,8 +22,16 @@ extends Control
 #                and what each of their buttons costs.
 #   Events     — every 2.0 event (data/events2.0), grid + detail: what it asks,
 #                what each answer does, and where on the map it can appear.
+#   Locations  — every location (data/locations), all shown — a location is dealt,
+#                not found, so there is nothing to discover: art, what it does on
+#                arrival / while there / on its card, its tag lean, and the
+#                enemies and loot that lean favours.
+#
+# A character's detail is a fixed header (portrait, name, game, rank) over three
+# sub-pages — Overview, Progress, Games — each section in its own card.
 
-enum Tab { GAMES, ITEMS, CHARACTERS, ENEMIES, BOSSES, LOOT, EVENTS, OBJECTS, SHOPKEEPERS }
+# LOCATIONS is last in the enum (an index nothing else moves for), not in the bar.
+enum Tab { GAMES, ITEMS, CHARACTERS, ENEMIES, BOSSES, LOOT, EVENTS, OBJECTS, SHOPKEEPERS, LOCATIONS }
 
 # Which half of the Loot tab is showing. A sub-tab rather than a filter chip
 # because the two sets share nothing but the pack they end up in: a scroll has a
@@ -126,7 +134,8 @@ var _tab: int = Tab.GAMES
 
 var _search := {"items": "", "characters": "", "enemies": "", "scrolls": "", "pills": "",
 	"potions": "", "cards": "", "wands": "", "trinkets": "", "bags": "", "weapons": "",
-	"evolutions": "", "games": "", "events": "", "objects": "", "shopkeepers": ""}
+	"evolutions": "", "games": "", "events": "", "objects": "", "shopkeepers": "",
+	"locations": ""}
 # Which sub-tab the Loot tab is on: one of the LOOT_* constants.
 var _loot_sub: String = LOOT_SCROLLS
 var _games_sort: String = "name"
@@ -139,6 +148,14 @@ var _enemies_sort: String = "name"
 var _enemies_type: String = "all"
 var _events_sort: String = "name"
 var _objects_sort: String = "name"
+var _locations_sort: String = "tier"
+# HIDE UNSEEN: every tab's grid leaves out what has not been seen yet. One switch
+# for the whole Collection, kept across tabs, since it is a way of looking at all
+# of it ("what have I actually found?").
+var _hide_unseen: bool = false
+# Which page of a character's detail is showing (CHAR_PAGES). Kept across
+# characters, so stepping ◀ ▶ through the roster compares like with like.
+var _char_page: String = "overview"
 
 var _content: VBoxContainer
 var _grid: Container = null
@@ -291,6 +308,7 @@ func _build_shell() -> void:
 	_add_tab_button(tabs, Tab.BOSSES, "Bosses (%d)" % Data.all_bosses().size())
 	_add_tab_button(tabs, Tab.LOOT, "Loot (%d)" % loot_total())
 	_add_tab_button(tabs, Tab.EVENTS, "Events (%d)" % Data.all_events2().size())
+	_add_tab_button(tabs, Tab.LOCATIONS, "Locations (%d)" % Data.all_locations().size())
 	_add_tab_button(tabs, Tab.OBJECTS, "Objects (%d)" % Data.all_objects2().size())
 	_add_tab_button(tabs, Tab.SHOPKEEPERS, "Shopkeepers (%d)" % Data.all_shopkeepers().size())
 	var close_btn := HoverButton.new()
@@ -368,6 +386,8 @@ func _refresh() -> void:
 			_build_objects()
 		Tab.SHOPKEEPERS:
 			_build_shopkeepers()
+		Tab.LOCATIONS:
+			_build_locations()
 
 # ------------------------------------------------------------------
 # Shared building blocks
@@ -414,7 +434,10 @@ func _search_box(key: String) -> LineEdit:
 	le.placeholder_text = "Search…"
 	le.text = _search[key]
 	le.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	le.custom_minimum_size = Vector2(180, 0)
+	# 120, not 180: it EXPANDS into whatever the row leaves, so the minimum only
+	# matters on the Games row, which has to fit four sorts, two filters, the
+	# star chart, Hide unseen and the count inside the 1280 canvas.
+	le.custom_minimum_size = Vector2(120, 0)
 	le.text_changed.connect(func(t):
 		_search[key] = t
 		_populate_soon())
@@ -501,6 +524,7 @@ func _cover_plate(tex: Texture2D, game_id = &"") -> Control:
 	# So a square cover's corners cannot poke past the plate's rounded ones.
 	plate.clip_contents = true
 	var tr := TextureRect.new()
+	tr.name = "Cover"
 	tr.texture = tex
 	tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
@@ -527,6 +551,44 @@ func _cover_plate(tex: Texture2D, game_id = &"") -> Control:
 	wrap.add_child(plate)
 	UITheme.attach_tier_badge(wrap, game_id)
 	return RankBadge.wrap(wrap, game_id, true)
+
+# A GRID COVER, LOADED OFF THE MAIN THREAD. Reading `cover_image` decodes the PNG
+# right there, and scrolling the Games tab brought a row of them into view at
+# once: that was the stutter. A cover already decoded goes straight in; any other
+# is asked of a thread, with a LoadingTile in its frame until it lands
+# (`_poll_event_art` delivers it, and hands it to the game's own cover cache).
+func _game_cover_plate(g: GameData) -> Control:
+	var have: Texture2D = g.cached_cover()
+	if have != null:
+		return _cover_plate(have, g.id)
+	var plate: Control = _cover_plate(null, g.id)
+	var rect: TextureRect = plate.find_child("Cover", true, false) as TextureRect
+	if rect == null or not ResourceLoader.exists(g.cover_path):
+		return plate
+	LoadingTile.cover(rect)
+	if ResourceLoader.load_threaded_get_status(g.cover_path) == ResourceLoader.THREAD_LOAD_INVALID_RESOURCE:
+		ResourceLoader.load_threaded_request(g.cover_path)
+	_event_art_waiting.append({"path": g.cover_path, "rect": rect, "game": g})
+	if not get_tree().process_frame.is_connected(_poll_event_art):
+		get_tree().process_frame.connect(_poll_event_art)
+	return plate
+
+# ROOM FOR A TROPHY ON THE CORNER. The 🏆 is centred on the art's top-right
+# corner (RankBadge), so half of it stands above and to the right of the art. In a
+# grid cell the cell's padding holds that half; at the top of a detail page the
+# scroll area would cut it off, so the page's art gets the room itself.
+func _trophy_room(art: Control, has_trophy: bool) -> Control:
+	if not has_trophy:
+		return art
+	var half: int = ceili(RankBadge.TROPHY_MAX * 0.5)
+	var room := MarginContainer.new()
+	room.name = "TrophyRoom"
+	room.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	room.size_flags_horizontal = art.size_flags_horizontal
+	room.add_theme_constant_override("margin_top", half)
+	room.add_theme_constant_override("margin_right", half)
+	room.add_child(art)
+	return room
 
 func _cover_rect(tex: Texture2D, w: int, game_id = &"") -> Control:
 	var tr := TextureRect.new()
@@ -804,8 +866,12 @@ func _fill_cell(index: int) -> void:
 	var box: VBoxContainer = slot["box"]
 	var g: GameData = slot["game"]
 	var tc := _game_type_color(int(g.type))
-	if g.cover_path != "":
-		box.add_child(_cover_plate(g.cover_image, g.id))
+	var unseen: bool = not GameStats.is_seen("game", g.id)
+	if unseen:
+		# A silhouette needs no picture: the plate alone, blacked out below.
+		box.add_child(_cover_plate(null, g.id))
+	elif g.cover_path != "":
+		box.add_child(_game_cover_plate(g))
 	else:
 		# No art authored: a spacer of the cover's exact size, so a game with no
 		# picture doesn't leave a short hole in the row.
@@ -838,6 +904,8 @@ func _fill_cell(index: int) -> void:
 	stat_row.add_child(_label(stat_line,
 		Color(0.95, 0.8, 0.4) if played else Color(0.5, 0.5, 0.55), GRID_META_FONT, false))
 	box.add_child(stat_row)
+	if unseen:
+		_veil_box(box)
 	slot["filled"] = true
 
 func _empty_cell(index: int) -> void:
@@ -901,7 +969,9 @@ func _name_block_height() -> float:
 # The card is as narrow as its widest picture plus a little: the enemy portrait
 # (DETAIL_ENEMY_SIZE) is the biggest thing in it, and a longer measure than this
 # makes the one-sentence facts in it read worse rather than better.
-const DETAIL_PANEL_W := 360
+# Every entry is as wide as a game's page now (the owner, 8 Nov 2026: "widen all
+# of the information screens ... so it can fit more things").
+const DETAIL_PANEL_W := 520
 # What the detail's scrollbar is given on the right of the content it scrolls.
 const DETAIL_SCROLLBAR_ROOM := 14
 # A GAME's page is wider than the rest. It is the one entry whose content is
@@ -948,6 +1018,8 @@ var _nav: Array = []
 var _nav_index: int = -1
 
 func _set_detail_open(on: bool) -> void:
+	if _detail_box != null and is_instance_valid(_detail_box) and _detail_box.has_meta(&"unseen"):
+		_detail_box.remove_meta(&"unseen")
 	# Every entry opens at the narrow width; a game's page widens itself after.
 	_set_detail_width(DETAIL_PANEL_W)
 	if _detail_panel != null and is_instance_valid(_detail_panel):
@@ -1244,14 +1316,60 @@ func _grid_and_detail() -> void:
 	body.add_child(_new_detail_panel())
 
 func _add_count_label(row: HBoxContainer) -> void:
-	_count_lbl = _label("", Color(0.6, 0.6, 0.65), 11)
+	# Every tab's row ends here, so the Hide unseen switch rides with the count.
+	# Not offered while Unlock everything is on: nothing is hidden to leave out.
+	if not Settings.unlock_everything:
+		var hide := _sort_button("Hide unseen", _hide_unseen, func():
+			_hide_unseen = not _hide_unseen
+			_refresh())
+		hide.name = "HideUnseen"
+		hide.tooltip_text = "Leave out everything you have not seen in a run yet."
+		row.add_child(hide)
+	# WRAPS, so its minimum is a word and not the whole "1004 / 1004 · 6 seen":
+	# the Games row is the one that has to fit the 1280 canvas (test_screens_fit).
+	_count_lbl = _label("", Color(0.6, 0.6, 0.65), 11, false, true)
+	# Wide enough for "1004/1004" whole, so the wrap only ever breaks before "seen".
+	_count_lbl.custom_minimum_size = Vector2(60, 0)
 	_count_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_count_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	row.add_child(_count_lbl)
 
 func _set_count(shown: int, total: int) -> void:
 	if _count_lbl != null:
-		_count_lbl.text = "%d / %d" % [shown, total]
+		_count_lbl.text = "%d/%d" % [shown, total]
+		var roster: Array = _tab_roster()
+		if not roster.is_empty():
+			var note: String = _seen_note(roster[0], roster[1])
+			if note != "":
+				# Its own line, so the counter wraps as two tidy lines rather than
+				# wherever the row's width happens to break it.
+				_count_lbl.text += "\n" + note
+
+# The kind the open tab lists, and all of it: [kind, Array], or [] (Games is
+# counted too, but over a thousand rows it is still one dictionary lookup each).
+func _tab_roster() -> Array:
+	match _tab:
+		Tab.GAMES: return ["game", Data.all_games()]
+		Tab.ITEMS: return ["item", Data.all_items2()]
+		Tab.CHARACTERS: return ["character", Data.all_characters2()]
+		Tab.ENEMIES: return ["enemy", Data.all_goal_enemies()]
+		Tab.BOSSES: return ["boss", Data.all_bosses()]
+		Tab.EVENTS: return ["event", Data.all_events2()]
+		Tab.OBJECTS: return ["object", Data.all_objects2()]
+		Tab.SHOPKEEPERS: return ["shopkeeper", Data.all_shopkeepers()]
+		Tab.LOCATIONS: return ["location", Data.all_locations()]
+		Tab.LOOT:
+			match _loot_sub:
+				LOOT_SCROLLS: return ["scroll", Data.all_scrolls()]
+				LOOT_PILLS: return ["pill", Data.all_pills()]
+				LOOT_POTIONS: return ["potion", Data.all_potions()]
+				LOOT_CARDS: return ["card", Data.all_cards()]
+				LOOT_WANDS: return ["wand", Data.all_wands()]
+				LOOT_TRINKETS: return ["trinket", Data.all_trinkets()]
+				LOOT_BAGS: return ["bag", Data.all_bags()]
+				LOOT_WEAPONS: return ["weapon", Data.all_weapons()]
+				LOOT_EVOLUTIONS: return ["evolution", Data.all_evolutions()]
+	return []
 
 func _clear_children(node: Node) -> void:
 	# Emptying the grid retires the window with it: the slots point at cells that
@@ -1289,6 +1407,10 @@ func _populate() -> void:
 			_populate_events()
 		Tab.OBJECTS:
 			_populate_objects()
+		Tab.SHOPKEEPERS:
+			_populate_shopkeepers()
+		Tab.LOCATIONS:
+			_populate_locations()
 
 # ------------------------------------------------------------------
 # Games tab
@@ -1302,6 +1424,7 @@ func _build_games() -> void:
 	row.add_child(_sort_button("A-Z", _games_sort == "name", func(): _games_sort = "name"; _refresh()))
 	row.add_child(_sort_button("Year", _games_sort == "year", func(): _games_sort = "year"; _refresh()))
 	row.add_child(_sort_button("Beaten", _games_sort == "beaten", func(): _games_sort = "beaten"; _refresh()))
+	row.add_child(_sort_button("Rank", _games_sort == "rank", func(): _games_sort = "rank"; _refresh()))
 	row.add_child(VSeparator.new())
 	var type_opt := OptionButton.new()
 	type_opt.add_item("All Types", -1)
@@ -1365,6 +1488,9 @@ func _populate_games() -> void:
 			"amulet":
 				if GameStats.amulet_wins(g.id) <= 0:
 					continue
+		# A hidden entry is not found by what it hides, nor listed under Hide unseen.
+		if (term != "" or _hide_unseen) and not GameStats.is_seen("game", g.id):
+			continue
 		if term != "" and not term in g.display_name.to_lower():
 			continue
 		list.append(g)
@@ -1376,6 +1502,15 @@ func _populate_games() -> void:
 				var ab: int = GameStats.beaten_count(a.id)
 				var bb: int = GameStats.beaten_count(b.id)
 				return ab > bb if ab != bb else a.display_name.naturalnocasecmp_to(b.display_name) < 0)
+		"rank":
+			# Highest rank first, then the most XP inside it: the XP is read once a
+			# game, not once a comparison, over a thousand rows.
+			var xp: Dictionary = {}
+			for g in list:
+				xp[g.id] = GameRanks.xp(g.id)
+			list.sort_custom(func(a, b):
+				return xp[a.id] > xp[b.id] if xp[a.id] != xp[b.id] \
+					else a.display_name.naturalnocasecmp_to(b.display_name) < 0)
 		_:
 			list.sort_custom(func(a, b): return a.display_name.naturalnocasecmp_to(b.display_name) < 0)
 	for g in list:
@@ -1429,7 +1564,7 @@ func _game_cell(g: GameData) -> Control:
 	var vb: VBoxContainer = cell.vbox
 	vb.alignment = BoxContainer.ALIGNMENT_CENTER
 	_cell_slots.append({"cell": panel, "box": vb, "game": g, "filled": false})
-	return panel
+	return _veil(panel, "game", g.id)
 
 # The height every game cell is pinned to: the cover, the clamped name, the two
 # stat lines, the separations between them and the panel's own padding.
@@ -1572,6 +1707,10 @@ func _badge_tooltip(owns: bool) -> String:
 # `_owned_toggle_of` looks for it among the box's own children and does not
 # recurse, so tucking it into a row here would quietly lose it.
 func _show_game_detail(g: GameData) -> void:
+	# Opened from a link as well as from its cell, so it checks for itself.
+	if not GameStats.is_seen("game", g.id):
+		_show_unseen_detail("game", g.cover_image)
+		return
 	_set_detail_open(true)
 	_set_detail_width(GAME_DETAIL_PANEL_W)
 	_clear_children(_detail_box)
@@ -1599,7 +1738,7 @@ func _show_game_detail(g: GameData) -> void:
 	if g.cover_image != null:
 		var tr := _cover_rect(g.cover_image, GAME_DETAIL_COVER, g.id)
 		tr.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-		ident.add_child(tr)
+		ident.add_child(_trophy_room(tr, GameStats.amulet_wins(g.id) > 0))
 	# LEFT-ALIGNED, all of it: a column of short lines read down its left edge.
 	var meta_parts: Array = []
 	if g.year > 0:
@@ -1876,6 +2015,9 @@ func _populate_items() -> void:
 			continue
 		if _items_type >= 0 and int(it.kind) != _items_type:
 			continue
+		# A hidden entry is not found by what it hides, nor listed under Hide unseen.
+		if (term != "" or _hide_unseen) and not GameStats.is_seen("item", it.id):
+			continue
 		if term != "" and not (term in it.display_name.to_lower() \
 				or term in it.description.to_lower() \
 				or term in it.source_game.to_lower()):
@@ -1918,9 +2060,13 @@ func _item_cell(it: ItemData) -> Control:
 	nm.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	vb.add_child(nm)
 	vb.add_child(_label(_item_rarity_label(it).to_upper(), rc, GRID_META_FONT, true))
-	return cell.panel
+	return _veil(cell.panel, "item", it.id)
 
 func _show_item_detail(it: ItemData) -> void:
+	# Opened from a link as well as from its cell, so it checks for itself.
+	if not GameStats.is_seen("item", it.id):
+		_show_unseen_detail("item", it.image)
+		return
 	_set_detail_open(true)
 	_clear_children(_detail_box)
 	_detail_game = null
@@ -1969,6 +2115,7 @@ func _build_characters() -> void:
 	row.add_child(VSeparator.new())
 	row.add_child(_label("Sort:", Color(0.7, 0.7, 0.75), 12))
 	row.add_child(_sort_button("A-Z", _char_sort == "name", func(): _char_sort = "name"; _refresh()))
+	row.add_child(_sort_button("Rank", _char_sort == "rank", func(): _char_sort = "rank"; _refresh()))
 	_add_count_label(row)
 	_grid_and_detail()
 	_populate_characters()
@@ -1980,10 +2127,21 @@ func _populate_characters() -> void:
 	for ch in Data.all_characters2():
 		if ch == null:
 			continue
+		# A hidden entry is not found by what it hides, nor listed under Hide unseen.
+		if (term != "" or _hide_unseen) and not GameStats.is_seen("character", ch.id):
+			continue
 		if term != "" and not term in ch.display_name.to_lower():
 			continue
 		list.append(ch)
-	list.sort_custom(func(a, b): return a.display_name.naturalnocasecmp_to(b.display_name) < 0)
+	if _char_sort == "rank":
+		var xp: Dictionary = {}
+		for ch in list:
+			xp[ch.id] = GameRanks.character_xp(ch.id)
+		list.sort_custom(func(a, b):
+			return xp[a.id] > xp[b.id] if xp[a.id] != xp[b.id] \
+				else a.display_name.naturalnocasecmp_to(b.display_name) < 0)
+	else:
+		list.sort_custom(func(a, b): return a.display_name.naturalnocasecmp_to(b.display_name) < 0)
 	for ch in list:
 		_grid.add_child(_character_cell(ch))
 	if list.is_empty():
@@ -2007,84 +2165,343 @@ func _character_cell(ch: CharacterData) -> Control:
 	# tab whose art is a person's face. It is still the first row of the detail
 	# panel's Base Stats, which is where a number is worth reading.
 	vb.add_child(_label(ch.display_name, green, GRID_NAME_FONT, true, true))
-	return cell.panel
+	return _veil(cell.panel, "character", ch.id)
+
+# THE CHARACTER PAGE IS A HEADER AND THREE PAGES (the owner, 8 Nov 2026: "the
+# text kinda jumbles together and is hard to read"). It used to be one column of
+# fourteen kinds of thing — description, stats, loadout, level up, fractures, the
+# whole goal roster and two cover walls — each a gold line over 11px text, all at
+# the same 6px gap, so nothing said where one part stopped and the next began.
+#
+# Now the face, the name, the game and the rank stay put at the top, and the rest
+# is split by the question it answers: OVERVIEW (who they are and what they start
+# with), PROGRESS (fractures and goals beaten as them) and GAMES (where they won
+# and levelled). Each section on a page is its own card. All three pages are
+# BUILT and only one is shown, so a hover card or a test that walks the panel for
+# a tile still finds every one of them.
+const CHAR_PAGES := [["overview", "Overview"], ["progress", "Progress"], ["games", "Games"]]
+const CHAR_GREEN := Color(0.45, 0.82, 0.45)
+const CHAR_HEADER_PORTRAIT := 136
 
 func _show_character_detail(ch: CharacterData) -> void:
+	# Opened from a link as well as from its cell, so it checks for itself.
+	if not GameStats.is_seen("character", ch.id):
+		_show_unseen_detail("character", ch.portrait)
+		return
 	_set_detail_open(true)
 	_clear_children(_detail_box)
 	_detail_game = null
-	var green := Color(0.45, 0.82, 0.45)
+	_detail_box.add_child(_character_header(ch))
+
+	var pages: Dictionary = {
+		"overview": _character_overview(ch),
+		"progress": _character_progress(ch),
+		"games": _character_games(ch),
+	}
+	var bar := HBoxContainer.new()
+	bar.add_theme_constant_override("separation", UITheme.GAP_TIGHT)
+	bar.alignment = BoxContainer.ALIGNMENT_CENTER
+	var buttons: Dictionary = {}
+	for pair in CHAR_PAGES:
+		var key: String = pair[0]
+		var b := HoverButton.new()
+		b.text = pair[1]
+		b.toggle_mode = true
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		_compact(b)
+		buttons[key] = b
+		bar.add_child(b)
+	_detail_box.add_child(bar)
+	for key in pages:
+		var page: Control = pages[key]
+		page.set_meta(&"char_page", key)
+		_detail_box.add_child(page)
+	var show := func(key: String) -> void:
+		_char_page = key
+		for k in pages:
+			(pages[k] as Control).visible = k == key
+			(buttons[k] as Button).set_pressed_no_signal(k == key)
+	for key in buttons:
+		(buttons[key] as Button).pressed.connect(func():
+			show.call(key)
+			_fit_detail_height())
+	show.call(_char_page if pages.has(_char_page) else "overview")
+
+# THE HEADER (the owner, 8 Nov 2026): a bigger portrait beside a bigger name and
+# game, the character's own line under them in quotes (it was an "About" card),
+# and the rank as a BAR — "Rank N" beside it and "X/Y xp" under it — rather than
+# a sentence about songs. What the next rank unlocks is the bar's hover.
+func _character_header(ch: CharacterData) -> Control:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", UITheme.GAP_LOOSE)
 	if ch.portrait != null:
-		var tr := UITheme.crisp_tex(ch.portrait, DETAIL_PORTRAIT_SIZE)
-		tr.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-		_detail_box.add_child(RankBadge.wrap_character(tr, ch.id, true))
-	_detail_box.add_child(_label(ch.display_name, green, 18, true))
+		var tr := UITheme.crisp_tex(ch.portrait, CHAR_HEADER_PORTRAIT)
+		tr.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		var art: Control = _trophy_room(RankBadge.wrap_character(tr, ch.id, true),
+			GameStats.fracture_best(ch.id) >= 0)
+		art.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		row.add_child(art)
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", UITheme.GAP_TIGHT)
+	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	col.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	col.add_child(_label(ch.display_name, CHAR_GREEN, UITheme.FONT_TITLE_LG, false, true))
 	if ch.source_game != "":
-		_detail_box.add_child(_label("From: %s" % ch.source_game, Color(0.6, 0.6, 0.66), 11, false))
-	# Its rank, and which soundtrack each rank draws a song from (§20.9).
-	_detail_box.add_child(_label(Radio.character_rank_line(ch.id), UITheme.GOLD, 11, false, true))
+		col.add_child(_label(ch.source_game, UITheme.TEXT_DIM, UITheme.FONT_LEAD, false, true))
 	if ch.description != "":
-		_detail_box.add_child(_label(ch.description, Color(0.82, 0.82, 0.85), 12, false, true))
-	_detail_box.add_child(_detail_section("Base Stats"))
-	_detail_box.add_child(_kv("Health", str(ch.base_max_hp)))
-	# The loadout off the character itself, so this tab and the character picker
-	# cannot come to list different verbs (CharacterData.verb_loadout).
+		var quote := _prose("\u201c%s\u201d" % ch.description.strip_edges())
+		quote.name = "Quote"
+		col.add_child(quote)
+	col.add_child(_character_rank_bar(ch))
+	row.add_child(col)
+	return row
+
+const CHAR_RANK_BAR_H := 8
+
+func _character_rank_bar(ch: CharacterData) -> Control:
+	var p: Dictionary = GameRanks.character_progress(ch.id)
+	var box := VBoxContainer.new()
+	box.name = "RankBar"
+	box.add_theme_constant_override("separation", UITheme.GAP_HAIR)
+	var line := HBoxContainer.new()
+	line.add_theme_constant_override("separation", UITheme.GAP)
+	var rank := _label("Rank %d" % int(p["rank"]), UITheme.GOLD, UITheme.FONT_LABEL)
+	rank.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	line.add_child(rank)
+	var bar := ProgressBar.new()
+	bar.min_value = 0
+	bar.max_value = GameRanks.XP_PER_RANK
+	bar.value = int(p["into"])
+	bar.show_percentage = false
+	bar.custom_minimum_size = Vector2(0, CHAR_RANK_BAR_H)
+	bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	# The badge's own colours: a black well and a gold fill.
+	var back := StyleBoxFlat.new()
+	back.bg_color = RankBadge.BAR_BACK
+	back.set_corner_radius_all(4)
+	var fill := StyleBoxFlat.new()
+	fill.bg_color = UITheme.GOLD
+	fill.set_corner_radius_all(4)
+	bar.add_theme_stylebox_override("background", back)
+	bar.add_theme_stylebox_override("fill", fill)
+	# What the next rank brings, said on the hover rather than on the panel.
+	var said: String = Radio.character_rank_line(ch.id)
+	bar.tooltip_text = said.get_slice(" · ", 1) if said.contains(" · ") else said
+	line.add_child(bar)
+	box.add_child(line)
+	var xp := _label("%d/%d xp" % [int(p["into"]), GameRanks.XP_PER_RANK], UITheme.TEXT_DIM,
+		UITheme.FONT_SMALL)
+	xp.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	box.add_child(xp)
+	return box
+
+func _character_page() -> VBoxContainer:
+	var page := VBoxContainer.new()
+	page.add_theme_constant_override("separation", UITheme.GAP)
+	page.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	return page
+
+# OVERVIEW (the owner, 8 Nov 2026): the Level Up goal first, then the stats with
+# the starting loadout BESIDE them — the loadout as pictures, each with its card
+# on the hover and its own Collection page on a click.
+func _character_overview(ch: CharacterData) -> Control:
+	var page := _character_page()
+	if ch.level_up_condition != "":
+		var lv := _section_card("Level Up", CHAR_GREEN)
+		lv.add_child(_label("Goal", UITheme.GOLD, UITheme.FONT_SMALL))
+		lv.add_child(_prose(ch.level_up_condition))
+		if ch.level_up_reward != "" and ch.level_up_reward.to_upper() != "N/A":
+			lv.add_child(_label("Reward", UITheme.GOLD, UITheme.FONT_SMALL))
+			lv.add_child(_prose(ch.level_up_reward))
+		page.add_child(lv.get_meta(&"card"))
+
+	var row := HBoxContainer.new()
+	row.name = "StatsAndLoadout"
+	row.add_theme_constant_override("separation", UITheme.GAP)
+	# THE STATS AS A GRID OF TILES: Health and each verb a big number over a small
+	# name. The loadout off the character itself, so this tab and the character
+	# picker cannot come to list different verbs (CharacterData.verb_loadout).
+	var stats := _section_card("Base Stats", CHAR_GREEN)
+	var grid := GridContainer.new()
+	grid.columns = 3
+	grid.add_theme_constant_override("h_separation", UITheme.GAP_TIGHT)
+	grid.add_theme_constant_override("v_separation", UITheme.GAP_TIGHT)
+	grid.add_child(_stat_tile("Health", str(ch.base_max_hp), Color(0.95, 0.45, 0.45)))
 	for v in ch.verb_loadout():
-		_detail_box.add_child(_kv(String(v[0]), str(int(v[1]))))
+		grid.add_child(_stat_tile(String(v[0]), str(int(v[1])), Color(0.75, 0.85, 1.0)))
+	stats.add_child(grid)
 	# The unrolled points, said as what they are rather than as a verb count:
 	# which verbs they land on isn't known until the run starts.
 	if ch.start_random > 0:
-		_detail_box.add_child(_kv("Random",
-			"%d, rolled across the verbs at run start" % ch.start_random))
-	if not Data.loadout_names(ch).is_empty():
-		_detail_box.add_child(_detail_section("Starting Loadout"))
-		_detail_box.add_child(_label(", ".join(Data.loadout_names(ch)),
-			Color(0.8, 0.85, 0.95), 11, false, true))
-	if ch.level_up_condition != "":
-		_detail_box.add_child(_detail_section("Level Up"))
-		_detail_box.add_child(_label(ch.level_up_condition, Color(0.8, 0.85, 0.95), 11, false, true))
-		if ch.level_up_reward != "" and ch.level_up_reward.to_upper() != "N/A":
-			_detail_box.add_child(_kv("Reward", ch.level_up_reward))
+		stats.add_child(_prose("+%d random point%s, rolled across the verbs at run start."
+			% [ch.start_random, "" if ch.start_random == 1 else "s"], UITheme.TEXT_DIM))
+	var stats_card: Control = stats.get_meta(&"card")
+	stats_card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	stats_card.size_flags_stretch_ratio = 3.0
+	row.add_child(stats_card)
 
-	# FRACTURES (docs/fracture-design.md §6): how far up the ladder this character
-	# has climbed, and the runs won at each level.
-	_detail_box.add_child(_detail_section("%s Fractures" % Fracture.GLYPH))
-	_detail_box.add_child(_kv("Unlocked", "up to Fracture %d" % GameStats.fracture_unlocked(ch.id)
-		if GameStats.fracture_unlocked(ch.id) > 0 else "none yet — win a run to open Fracture 1"))
-	var by_level: Dictionary = GameStats.fracture_wins(ch.id)
-	var levels: Array = by_level.keys()
-	levels.sort()
-	for lv in levels:
-		_detail_box.add_child(_kv("Won at Fracture %d" % int(lv),
-			"%d run%s" % [int(by_level[lv]), "" if int(by_level[lv]) == 1 else "s"]))
+	var pieces: Array = _loadout_pieces(ch)
+	if not pieces.is_empty():
+		var kit := _section_card("Starting Loadout", CHAR_GREEN)
+		var flow := HFlowContainer.new()
+		flow.add_theme_constant_override("h_separation", UITheme.GAP_TIGHT)
+		flow.add_theme_constant_override("v_separation", UITheme.GAP_TIGHT)
+		for piece in pieces:
+			flow.add_child(_loadout_tile(piece))
+		kit.add_child(flow)
+		var kit_card: Control = kit.get_meta(&"card")
+		kit_card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		kit_card.size_flags_stretch_ratio = 2.0
+		row.add_child(kit_card)
+	page.add_child(row)
+	return page
 
+const LOADOUT_TILE := 48
+
+# What a character starts with, as [{kind, id, name, tex, text}]: the relics,
+# then the loot. A random piece ("2 random fire trinkets") has no id and no page.
+func _loadout_pieces(ch: CharacterData) -> Array:
+	var out: Array = []
+	for id in ch.starting_items:
+		var it: ItemData = Data.get_item2(StringName(id))
+		if it != null:
+			out.append({"kind": "item", "id": it.id, "name": it.display_name,
+				"tex": it.image, "text": it.description})
+	for spec in ch.starting_loot:
+		if not (spec is Dictionary):
+			continue
+		var kind: String = String(spec.get("type", ""))
+		if spec.has("id"):
+			var entry := {"type": kind, "id": StringName(spec["id"])}
+			out.append({"kind": kind, "id": StringName(spec["id"]),
+				"name": LootSystem.display_name(entry), "tex": LootSystem.art_texture(entry),
+				"text": LootSystem.description(entry)})
+		else:
+			var n: int = int(spec.get("count", 1))
+			var tag: String = String(spec.get("tag", "")).replace("_", " ")
+			out.append({"kind": kind, "id": &"", "tex": null, "text": "",
+				"name": "%d random %s%s%s" % [n, (tag + " ") if tag != "" else "", kind,
+					"" if n == 1 else "s"]})
+	return out
+
+# One piece of the loadout: its picture, its card on the hover, its page on a
+# click. Unseen, it is the silhouette and "???" the rest of the Collection shows.
+func _loadout_tile(piece: Dictionary) -> Control:
+	var kind: String = piece["kind"]
+	var id: StringName = piece["id"]
+	var seen: bool = id == &"" or GameStats.is_seen(kind, id)
+	var name: String = String(piece["name"]) if seen else UNSEEN_NAME
+	var card := {"title": name, "accent": UITheme.GOLD if seen else UNSEEN_TEXT,
+		"art": piece["tex"],
+		"subtitle": String(SEEN_KIND_NAMES.get(kind, kind.capitalize())),
+		"lines": [String(piece["text"])] if seen and String(piece["text"]) != "" \
+			else ([] if seen else ["Not seen yet."])}
+	if id != &"":
+		card["note"] = "Click to open its page."
+	var tile: Control = GoalsBeatenView.picture_tile(piece["tex"],
+		Vector2(LOADOUT_TILE, LOADOUT_TILE), name, 0, UITheme.BORDER, true,
+		"?" if id == &"" else name, card)
+	tile.name = "Loadout_%s_%s" % [kind, String(id)]
+	tile.set_meta(&"loadout", "%s:%s" % [kind, String(id)])
+	if not seen:
+		_silhouette(tile)
+	if id != &"":
+		tile.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		tile.gui_input.connect(func(ev: InputEvent) -> void:
+			if ev is InputEventMouseButton and ev.pressed \
+					and ev.button_index == MOUSE_BUTTON_LEFT:
+				tile.accept_event()
+				_open_entry.call_deferred(kind, id))
+	return tile
+
+const LOOT_SUB_OF := {"scroll": LOOT_SCROLLS, "pill": LOOT_PILLS, "potion": LOOT_POTIONS,
+	"card": LOOT_CARDS, "wand": LOOT_WANDS, "trinket": LOOT_TRINKETS, "bag": LOOT_BAGS,
+	"weapon": LOOT_WEAPONS, "evolution": LOOT_EVOLUTIONS}
+
+# OPEN ANOTHER ENTRY'S PAGE from a link: switch to its tab (and Loot sub-tab),
+# clear that tab's search so the entry is in the grid, and select its cell, so
+# ◀ ▶ carry on from there. Every cell is tagged with its entry (`_veil`). An
+# entry the grid leaves out (Hide unseen) opens as the "???" page.
+func _open_entry(kind: String, id) -> void:
+	var tab: int = -1
+	var search_key: String = ""
+	match kind:
+		"game": tab = Tab.GAMES; search_key = "games"
+		"item": tab = Tab.ITEMS; search_key = "items"
+		"character": tab = Tab.CHARACTERS; search_key = "characters"
+		"enemy": tab = Tab.ENEMIES; search_key = "enemies"
+		"boss": tab = Tab.BOSSES; search_key = "enemies"
+		"event": tab = Tab.EVENTS; search_key = "events"
+		"object": tab = Tab.OBJECTS; search_key = "objects"
+		"shopkeeper": tab = Tab.SHOPKEEPERS; search_key = "shopkeepers"
+		"location": tab = Tab.LOCATIONS; search_key = "locations"
+		_:
+			if LOOT_SUB_OF.has(kind):
+				tab = Tab.LOOT
+				_loot_sub = LOOT_SUB_OF[kind]
+				search_key = _loot_sub
+	if tab < 0:
+		return
+	if search_key != "":
+		_search[search_key] = ""
+	_set_tab(tab)
+	var want: String = "%s:%s" % [kind, String(id)]
+	for i in _nav.size():
+		var panel = _nav[i]["panel"]
+		if is_instance_valid(panel) and String(panel.get_meta(&"entry", "")) == want:
+			_select(i)
+			return
+	_show_unseen_detail(kind, null)
+
+func _character_progress(ch: CharacterData) -> Control:
+	var page := _character_page()
+	# No Fractures card: the 🏆 on the portrait carries the highest Fracture won
+	# at, written on the cup (RankBadge), and that is the record the owner wanted.
 	# The character's own record, drawn the way a game's is (GoalsBeatenView):
 	# every goal beaten as this character, as pictures by kind with the card on
 	# the hover — and the whole enemy and boss roster, the ones not yet beaten
 	# dimmed.
-	_detail_box.add_child(HSeparator.new())
-	_detail_box.add_child(_detail_section("Goals beaten as %s" % ch.display_name))
-	GoalsBeatenView.add_character_kinds(_detail_box, ch)
+	var goals := _section_card("Goals beaten as %s" % ch.display_name, CHAR_GREEN)
+	GoalsBeatenView.add_character_kinds(goals, ch, true)
+	page.add_child(goals.get_meta(&"card"))
+	return page
 
-	# THE GAMES, AS COVERS — the same tiles an influence list draws: the name on
-	# the hover, the game's page on a click, how many times in the corner. Both
-	# lists are about games played AS this character: a level-up taken through a
-	# Mysterious Mask is on the game's page, not here (GameStats.games_for_character).
-	# The level-up notes live on the game's page too, under its character goals.
+# THE GAMES, AS COVERS — the same tiles an influence list draws: the name on the
+# hover, the game's page on a click, how many times in the corner. Both lists are
+# about games played AS this character: a level-up taken through a Mysterious Mask
+# is on the game's page, not here (GameStats.games_for_character). The level-up
+# notes live on the game's page too, under its character goals.
+func _character_games(ch: CharacterData) -> Control:
+	var page := _character_page()
 	var beaten: Array = GameStats.games_beaten_by(ch.id)
-	_detail_box.add_child(HSeparator.new())
-	_detail_box.add_child(_detail_section("Games beaten (%d)" % beaten.size()))
+	var won := _section_card("Games beaten (%d)" % beaten.size(), CHAR_GREEN)
 	if beaten.is_empty():
-		_detail_box.add_child(_label("%s has not beaten a game yet." % ch.display_name,
-			Color(0.55, 0.55, 0.6), 12, false, true))
+		won.add_child(_prose("%s has not beaten a game yet." % ch.display_name, UITheme.TEXT_DIM))
 	else:
-		_detail_box.add_child(_game_cover_flow(_log_ids(beaten), _log_counts(beaten, "beaten")))
+		won.add_child(_game_cover_flow(_log_ids(beaten), _log_counts(beaten, "beaten")))
+	page.add_child(won.get_meta(&"card"))
 
 	var levelled_at: Array = GameStats.games_for_character(ch.id)
-	if not levelled_at.is_empty():
-		_detail_box.add_child(HSeparator.new())
-		_detail_box.add_child(_detail_section("Levelled up at (%d)" % levelled_at.size()))
-		_detail_box.add_child(_game_cover_flow(_log_ids(levelled_at), _log_counts(levelled_at, "levels")))
+	var lv := _section_card("Levelled up at (%d)" % levelled_at.size(), CHAR_GREEN)
+	if levelled_at.is_empty():
+		lv.add_child(_prose("No level-ups yet.", UITheme.TEXT_DIM))
+	else:
+		lv.add_child(_game_cover_flow(_log_ids(levelled_at), _log_counts(levelled_at, "levels")))
+	page.add_child(lv.get_meta(&"card"))
+	return page
+
+# One stat as a tile: the number big, its name small under it.
+func _stat_tile(name: String, value: String, color: Color) -> Control:
+	var tile := PanelContainer.new()
+	tile.add_theme_stylebox_override("panel", _tight_box(Color(color.r, color.g, color.b, 0.35)))
+	tile.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var vb := VBoxContainer.new()
+	vb.add_theme_constant_override("separation", UITheme.GAP_NONE)
+	vb.add_child(_label(value, color, UITheme.FONT_SUB, true))
+	vb.add_child(_label(name, UITheme.TEXT_DIM, UITheme.FONT_TINY, true))
+	tile.add_child(vb)
+	return tile
 
 # The ids, and {id: count}, out of a GameStats log list.
 func _log_ids(rows: Array) -> Array:
@@ -2152,6 +2569,9 @@ func _populate_enemies() -> void:
 			continue
 		if _enemies_type != "all" and String(e.game_type).to_lower() != _enemies_type:
 			continue
+		# A hidden entry is not found by what it hides, nor listed under Hide unseen.
+		if (term != "" or _hide_unseen) and not GameStats.is_seen(_enemy_kind(), e.id):
+			continue
 		if term != "" and not (term in e.display_name.to_lower() \
 				or term in e.goal.to_lower() \
 				or term in e.source_game.to_lower()):
@@ -2210,7 +2630,7 @@ func _enemy_cell(e: GoalEnemyData) -> Control:
 	var tier: String = ENEMY_TIER_NAMES[clampi(e.tier_index(), 0, 3)]
 	var kind: String = "BOSS" if e.is_boss() else String(e.game_type).capitalize()
 	vb.add_child(_label("%s  •  %s" % [kind, tier], Color(0.7, 0.7, 0.75), GRID_META_FONT, true))
-	return cell.panel
+	return _veil(cell.panel, _enemy_kind(), e.id)
 
 # One game this enemy has been beaten at: its cover, how many times it fell
 # there, and the note — matching the Atlas's beaten-enemies rows, since it is the
@@ -2271,6 +2691,10 @@ func _enemy_game_row(enemy: GoalEnemyData, entry: Dictionary) -> Control:
 	return panel
 
 func _show_enemy_detail(e: GoalEnemyData) -> void:
+	# Opened from a link as well as from its cell, so it checks for itself.
+	if not GameStats.is_seen(("boss" if e.is_boss() else "enemy"), e.id):
+		_show_unseen_detail(("boss" if e.is_boss() else "enemy"), e.image)
+		return
 	_set_detail_open(true)
 	_set_detail_width(GAME_DETAIL_PANEL_W)
 	_clear_children(_detail_box)
@@ -2589,6 +3013,9 @@ func _populate_scrolls() -> void:
 	for s in scrolls:
 		if not (s is ScrollData):
 			continue
+		# A hidden entry is not found by what it hides, nor listed under Hide unseen.
+		if (term != "" or _hide_unseen) and not GameStats.is_seen("scroll", s.id):
+			continue
 		if term != "" and not (term in s.display_name.to_lower()):
 			continue
 		_grid.add_child(_scroll_cell(s))
@@ -2603,10 +3030,10 @@ func _scroll_cell(s: ScrollData) -> Control:
 	var art: Array = _textures("scrolls", [s.art_file()]) if s.art_file() != "" else []
 	if art.is_empty():
 		art = _textures("scrolls", ["Unidentified"])
-	return _loot_cell(art, s.display_name, pcol, s.preference,
+	return _veil(_loot_cell(art, s.display_name, pcol, s.preference,
 		"%s Preference" % s.preference, func(vb: VBoxContainer):
 			_body_text(vb, _scroll_effect_text(s))
-			_source_line(vb, s.reference))
+			_source_line(vb, s.reference)), "scroll", s.id)
 
 func _preference_color(pref: String) -> Color:
 	match pref.to_lower():
@@ -2631,6 +3058,9 @@ func _populate_pills() -> void:
 	for p in pills:
 		if not (p is PillData):
 			continue
+		# A hidden entry is not found by what it hides, nor listed under Hide unseen.
+		if (term != "" or _hide_unseen) and not GameStats.is_seen("pill", p.id):
+			continue
 		if term != "" and not (term in p.display_name.to_lower()):
 			continue
 		_grid.add_child(_pill_cell(p, capsules))
@@ -2643,10 +3073,10 @@ func _populate_pills() -> void:
 # half of what taking one can do (§4.3).
 func _pill_cell(p: PillData, capsules: Array) -> Control:
 	var pcol := _preference_color(p.preference)
-	return _loot_cell(capsules, p.display_name, pcol, p.preference,
+	return _veil(_loot_cell(capsules, p.display_name, pcol, p.preference,
 		"%s Preference" % p.preference, func(vb: VBoxContainer):
 			vb.add_child(_pill_dose("Normal dose", p.line(false), Color(0.85, 0.85, 0.88)))
-			vb.add_child(_pill_dose("Horse dose (5%)", p.line(true), Color(0.95, 0.82, 0.55))))
+			vb.add_child(_pill_dose("Horse dose (5%)", p.line(true), Color(0.95, 0.82, 0.55)))), "pill", p.id)
 
 func _populate_potions() -> void:
 	_clear_children(_grid)
@@ -2657,6 +3087,9 @@ func _populate_potions() -> void:
 	var vials: Array = _textures("potions_unidentified", PotionSystem.COLORS)
 	for p in potions:
 		if not (p is PotionData):
+			continue
+		# A hidden entry is not found by what it hides, nor listed under Hide unseen.
+		if (term != "" or _hide_unseen) and not GameStats.is_seen("potion", p.id):
 			continue
 		if term != "" and not (term in p.display_name.to_lower()):
 			continue
@@ -2674,12 +3107,12 @@ func _potion_cell(p: PotionData, vials: Array) -> Control:
 		if p.art_file() != "" else []
 	if art.is_empty():
 		art = vials
-	return _loot_cell(art, p.display_name, pcol, p.rarity,
+	return _veil(_loot_cell(art, p.display_name, pcol, p.rarity,
 		"%s  ·  %s Preference" % [p.rarity, p.preference], func(vb: VBoxContainer):
 			vb.add_child(_pill_dose("Quaff", p.quaff_text, Color(0.85, 0.85, 0.88)))
 			vb.add_child(_pill_dose("Throw", p.throw_text if p.has_throw()
 				else "Nothing — this one cannot be thrown.", Color(0.78, 0.72, 0.95)))
-			_source_line(vb, p.reference))
+			_source_line(vb, p.reference)), "potion", p.id)
 
 func _populate_cards() -> void:
 	_clear_children(_grid)
@@ -2689,6 +3122,9 @@ func _populate_cards() -> void:
 	var shown: int = 0
 	for c in cards:
 		if not (c is CardData):
+			continue
+		# A hidden entry is not found by what it hides, nor listed under Hide unseen.
+		if (term != "" or _hide_unseen) and not GameStats.is_seen("card", c.id):
 			continue
 		if term != "" and not (term in c.display_name.to_lower()):
 			continue
@@ -2708,7 +3144,7 @@ func _card_cell(c: CardData) -> Control:
 	var back: Texture2D = _card_art("cards_icons", c.icon_file())
 	var art: Array = [face] if face != null else ([back] if back != null else [])
 	var deck: String = c.set_name if c.set_name != "" else "Card"
-	return _loot_cell(art, c.display_name, ccol, c.rarity, "%s  ·  %s" % [c.rarity, deck],
+	return _veil(_loot_cell(art, c.display_name, ccol, c.rarity, "%s  ·  %s" % [c.rarity, deck],
 		func(vb: VBoxContainer):
 			if back != null:
 				var row := HBoxContainer.new()
@@ -2723,7 +3159,7 @@ func _card_cell(c: CardData) -> Control:
 				row.add_child(said)
 				vb.add_child(row)
 			_body_text(vb, c.description)
-			_source_line(vb, c.source_game))
+			_source_line(vb, c.source_game)), "card", c.id)
 
 func _populate_wands() -> void:
 	_clear_children(_grid)
@@ -2734,6 +3170,9 @@ func _populate_wands() -> void:
 	var sticks: Array = _textures("wands_unidentified", WandSystem.MATERIALS)
 	for w in wands:
 		if not (w is WandData):
+			continue
+		# A hidden entry is not found by what it hides, nor listed under Hide unseen.
+		if (term != "" or _hide_unseen) and not GameStats.is_seen("wand", w.id):
 			continue
 		if term != "" and not (term in w.display_name.to_lower()):
 			continue
@@ -2746,13 +3185,13 @@ func _populate_wands() -> void:
 # (docs/wands-design.md §6.3), so every one loops the run's sticks.
 func _wand_cell(w: WandData, sticks: Array) -> Control:
 	var wcol := _preference_color(w.preference)
-	return _loot_cell(sticks, w.display_name, wcol, w.rarity,
+	return _veil(_loot_cell(sticks, w.display_name, wcol, w.rarity,
 		"%s  ·  %s Preference" % [w.rarity, w.preference], func(vb: VBoxContainer):
 			vb.add_child(_label("%s  ·  %s" % [
 				Plural.count(w.starting_charges(), "charge"), _wand_aim_words(w)],
 				Color(0.55, 0.74, 0.86), 12, false, true))
 			_body_text(vb, w.description)
-			_source_line(vb, w.reference))
+			_source_line(vb, w.reference)), "wand", w.id)
 
 # The Aim column in the words a player meets rather than the sheet's — the
 # weapons' words, since a wand is aimed in them (WeaponSystem.aim_phrase).
@@ -2770,7 +3209,9 @@ func _wand_aim_words(w: WandData) -> String:
 
 # Search matches the name, the description and the source game — the three things
 # a piece is remembered by.
-func _loot_piece_matches(term: String, piece) -> bool:
+func _loot_piece_matches(term: String, piece, kind: String) -> bool:
+	if (term != "" or _hide_unseen) and not GameStats.is_seen(kind, piece.id):
+		return false
 	if term == "":
 		return true
 	var hay: String = ("%s %s %s" % [piece.display_name, piece.description,
@@ -2787,7 +3228,7 @@ func _populate_trinkets() -> void:
 	var term: String = _search["trinkets"].to_lower()
 	var shown: int = 0
 	for t in _sorted_by_name(Data.all_trinkets()):
-		if t is TrinketData and _loot_piece_matches(term, t):
+		if t is TrinketData and _loot_piece_matches(term, t, "trinket"):
 			_grid.add_child(_trinket_cell(t))
 			shown += 1
 	_set_count(shown, Data.all_trinkets().size())
@@ -2797,7 +3238,7 @@ func _populate_bags() -> void:
 	var term: String = _search["bags"].to_lower()
 	var shown: int = 0
 	for b in _sorted_by_name(Data.all_bags()):
-		if b is BagData and _loot_piece_matches(term, b):
+		if b is BagData and _loot_piece_matches(term, b, "bag"):
 			_grid.add_child(_bag_cell(b))
 			shown += 1
 	_set_count(shown, Data.all_bags().size())
@@ -2807,7 +3248,7 @@ func _populate_weapons() -> void:
 	var term: String = _search["weapons"].to_lower()
 	var shown: int = 0
 	for w in _sorted_by_name(Data.all_weapons()):
-		if w is WeaponData and _loot_piece_matches(term, w):
+		if w is WeaponData and _loot_piece_matches(term, w, "weapon"):
 			_grid.add_child(_weapon_cell(w))
 			shown += 1
 	_set_count(shown, Data.all_weapons().size())
@@ -2826,6 +3267,9 @@ func _populate_evolutions() -> void:
 	for evo in evos:
 		var hay: String = "%s %s %s" % [_weapon_name(evo.base), _weapon_name(evo.result),
 			WeaponSystem.need_words(evo)]
+		# A hidden entry is not found by what it hides, nor listed under Hide unseen.
+		if (term != "" or _hide_unseen) and not GameStats.is_seen("evolution", evo.id):
+			continue
 		if term != "" and not (term in hay.to_lower()):
 			continue
 		_grid.add_child(_evolution_cell(evo))
@@ -2852,25 +3296,25 @@ func _facts(parts: Array) -> String:
 # shape, and its line.
 func _trinket_cell(t: TrinketData) -> Control:
 	var col: Color = RarityStyle.color(t.rarity_index())
-	return _loot_cell(_one(LootPassives.load_trinket_art(t)), t.display_name, col, t.rarity,
+	return _veil(_loot_cell(_one(LootPassives.load_trinket_art(t)), t.display_name, col, t.rarity,
 		_facts([t.rarity, t.loot_type, _footprint_words(t.size),
 			"food" if t.is_food() else ""]), func(vb: VBoxContainer):
 			_body_text(vb, t.description)
-			_source_line(vb, t.source_game))
+			_source_line(vb, t.source_game)), "trinket", t.id)
 
 # A bag: the room it adds, then its own rule — the line the pack prints.
 func _bag_cell(b: BagData) -> Control:
 	var col: Color = RarityStyle.color(b.rarity_index())
-	return _loot_cell(_one(LootPassives.load_bag_art(b)), b.display_name, col, b.rarity,
+	return _veil(_loot_cell(_one(LootPassives.load_bag_art(b)), b.display_name, col, b.rarity,
 		_facts([b.rarity, _footprint_words(b.size)]), func(vb: VBoxContainer):
 			_body_text(vb, LootSystem.bag_description(b))
-			_source_line(vb, b.source_game))
+			_source_line(vb, b.source_game)), "bag", b.id)
 
 # A weapon: the swing, what charges it and its passive — the pack's own words —
 # then where it sits in the evolution chart, both ways.
 func _weapon_cell(w: WeaponData) -> Control:
 	var col: Color = RarityStyle.color(w.rarity_index())
-	return _loot_cell(_one(LootPassives.load_weapon_art(w)), w.display_name, col, w.rarity,
+	return _veil(_loot_cell(_one(LootPassives.load_weapon_art(w)), w.display_name, col, w.rarity,
 		_facts([w.rarity, w.weapon_type.capitalize(), _footprint_words(w.size),
 			Plural.count(w.max_charges, "charge") + " to swing"]), func(vb: VBoxContainer):
 			# A bare entry rather than WeaponSystem.new_entry: that one rolls a uid
@@ -2884,7 +3328,7 @@ func _weapon_cell(w: WeaponData) -> Control:
 			for evo in Data.evolutions_from(w.id):
 				vb.add_child(_label("⟳ Evolves into %s" % _weapon_name(evo.result),
 					Color(0.95, 0.82, 0.55), 12, false, true))
-			_source_line(vb, w.source_game))
+			_source_line(vb, w.source_game)), "weapon", w.id)
 
 # An evolution: what it makes in the grid; the weapon it starts from, the one it
 # makes and what it asks for in the popup.
@@ -2893,7 +3337,7 @@ func _evolution_cell(evo: EvolutionData) -> Control:
 	var from: WeaponData = Data.get_weapon(evo.base)
 	var col: Color = RarityStyle.color(into.rarity_index() if into != null else 0)
 	var title := "%s  →  %s" % [_weapon_name(evo.base), _weapon_name(evo.result)]
-	return _loot_cell(_one(LootPassives.load_weapon_art(into)), title, col, "",
+	return _veil(_loot_cell(_one(LootPassives.load_weapon_art(into)), title, col, "",
 		"Evolution", func(vb: VBoxContainer):
 			var pics := HBoxContainer.new()
 			pics.add_theme_constant_override("separation", UITheme.GAP)
@@ -2911,7 +3355,7 @@ func _evolution_cell(evo: EvolutionData) -> Control:
 			vb.add_child(_pill_dose("Needs", WeaponSystem.need_words(evo),
 				Color(0.85, 0.85, 0.88)))
 			vb.add_child(_label("Uses them up." if evo.consumes else "Keeps them.",
-				Color(0.7, 0.7, 0.75), 11)))
+				Color(0.7, 0.7, 0.75), 11))), "evolution", evo.id)
 
 func _card_art(folder: String, base: String) -> Texture2D:
 	if base == "":
@@ -2946,6 +3390,177 @@ func _kv(key: String, value: String) -> Control:
 	v.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	row.add_child(v)
 	return row
+
+# A SECTION AS ITS OWN CARD: a framed box with its heading inside it, so one
+# part of a detail page reads as finished before the next begins. Returns the
+# card's BODY to add to; the card itself is its meta `card`, which is what goes
+# into the page.
+func _section_card(title: String, accent: Color) -> VBoxContainer:
+	var card := PanelContainer.new()
+	card.add_theme_stylebox_override("panel", _flat(CELL_BG,
+		Color(accent.r, accent.g, accent.b, 0.35), 1))
+	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var body := VBoxContainer.new()
+	body.add_theme_constant_override("separation", UITheme.GAP_SNUG)
+	body.add_child(_label(title, Color(1.0, 0.85, 0.5), UITheme.FONT_LABEL))
+	card.add_child(body)
+	body.set_meta(&"card", card)
+	return body
+
+# Prose meant to be READ: the reading size, wrapped, a little line spacing.
+func _prose(text: String, color: Color = Color(0.86, 0.86, 0.89)) -> Label:
+	var l := _label(text, color, UITheme.FONT_BODY, false, true)
+	l.add_theme_constant_override("line_spacing", UITheme.GAP_HAIR)
+	return l
+
+func _bullet(text: String) -> Control:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", UITheme.GAP_SNUG)
+	var dot := _label("•", UITheme.TEXT_DIM, UITheme.FONT_BODY)
+	dot.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	row.add_child(dot)
+	var t := _prose(text)
+	t.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(t)
+	return row
+
+# A short name in a small framed pill.
+func _chip(text: String, color: Color) -> Control:
+	var chip := PanelContainer.new()
+	chip.add_theme_stylebox_override("panel", _tight_box(Color(color.r, color.g, color.b, 0.45)))
+	chip.add_child(_label(text, Color(0.88, 0.88, 0.9), UITheme.FONT_SMALL))
+	return chip
+
+# `_flat`'s look with the margins of something small (a chip, a stat tile).
+var _tight_cache: Dictionary = {}
+
+func _tight_box(border: Color) -> StyleBoxFlat:
+	var key: String = str(border)
+	if _tight_cache.has(key):
+		return _tight_cache[key]
+	var sb: StyleBoxFlat = _flat(CELL_BG, border, 1).duplicate()
+	sb.set_corner_radius_all(6)
+	sb.content_margin_left = UITheme.GAP_SNUG
+	sb.content_margin_right = UITheme.GAP_SNUG
+	sb.content_margin_top = UITheme.GAP_HAIR
+	sb.content_margin_bottom = UITheme.GAP_HAIR
+	_tight_cache[key] = sb
+	return sb
+
+# ------------------------------------------------------------------
+# Not seen yet (GameStats.seen; the owner, 8 Nov 2026)
+# ------------------------------------------------------------------
+#
+# Everything in the Collection is a dark silhouette named "???" until the player
+# has seen it in a run, and Settings -> Unlock everything shows the lot. A cell is
+# built as normal and then VEILED, rather than every builder knowing two looks:
+# the first picture goes black, the first line reads "???", the rest is hidden,
+# the hover goes, and a click opens the "???" panel instead of the entry.
+
+const UNSEEN_NAME := "???"
+const UNSEEN_ART := Color(0, 0, 0, 1)
+const UNSEEN_TEXT := Color(0.55, 0.55, 0.6)
+const SEEN_KIND_NAMES := {"game": "Game", "item": "Item", "character": "Character",
+	"enemy": "Enemy", "boss": "Boss", "scroll": "Scroll", "pill": "Pill",
+	"potion": "Potion", "card": "Card", "wand": "Wand", "trinket": "Trinket",
+	"bag": "Bag", "weapon": "Weapon", "evolution": "Evolution", "event": "Event",
+	"object": "Object", "shopkeeper": "Shopkeeper", "location": "Location"}
+
+# Which kind the Enemies / Bosses tab is listing.
+func _enemy_kind() -> String:
+	return "boss" if _tab == Tab.BOSSES else "enemy"
+
+func _veil(panel: Control, kind: String, id) -> Control:
+	# Every cell says which entry it is, so a link can find it (`_open_entry`).
+	panel.set_meta(&"entry", "%s:%s" % [kind, String(id)])
+	if GameStats.is_seen(kind, id):
+		return panel
+	panel.set_meta(&"unseen", true)
+	panel.tooltip_text = ""
+	if panel.has_meta(HoverCard.META):
+		panel.remove_meta(HoverCard.META)
+	var vb: Node = panel.get_child(0) if panel.get_child_count() > 0 else null
+	if vb != null:
+		_veil_box(vb)
+	var art: Texture2D = _first_texture(panel)
+	for entry in _nav:
+		if entry["panel"] == panel:
+			entry["open"] = func(): _show_unseen_detail(kind, art)
+	return panel
+
+# The first picture black, the first line "???", everything else hidden. Also
+# what a streamed game cell does to itself once it is filled (`_fill_cell`).
+func _veil_box(vb: Node) -> void:
+	var named: bool = false
+	var drawn: bool = false
+	for c in vb.get_children():
+		if c is Label:
+			if not named:
+				(c as Label).text = UNSEEN_NAME
+				(c as Label).add_theme_color_override("font_color", UNSEEN_TEXT)
+				named = true
+			else:
+				(c as Control).visible = false
+		elif c is Control:
+			if not drawn and not named:
+				_silhouette(c as Control)
+				drawn = true
+			else:
+				(c as Control).visible = false
+
+# A SILHOUETTE, not a black box: where the art is a picture in a frame (an enemy,
+# an item), only the picture goes black and the frame stays, so the shape reads.
+# Art that has no picture yet (a scene still loading, a hidden game's cover)
+# blacks out whole.
+func _silhouette(art: Control) -> void:
+	var pics: Array = art.find_children("*", "TextureRect", true, false).filter(
+		func(t): return (t as TextureRect).texture != null)
+	if art is TextureRect and (art as TextureRect).texture != null:
+		pics = [art]
+	if pics.is_empty():
+		art.modulate = UNSEEN_ART
+		return
+	for t in pics:
+		(t as Control).modulate = UNSEEN_ART
+
+func _first_texture(node: Node) -> Texture2D:
+	if node is TextureRect and (node as TextureRect).texture != null:
+		return (node as TextureRect).texture
+	for c in node.get_children():
+		var t: Texture2D = _first_texture(c)
+		if t != null:
+			return t
+	return null
+
+func _show_unseen_detail(kind: String, art: Texture2D = null) -> void:
+	_set_detail_open(true)
+	_clear_children(_detail_box)
+	_detail_game = null
+	if art != null:
+		var tr := TextureRect.new()
+		tr.texture = art
+		tr.custom_minimum_size = Vector2(DETAIL_ITEM_SIZE, DETAIL_ITEM_SIZE)
+		tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		tr.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		tr.modulate = UNSEEN_ART
+		UITheme.apply_crisp(tr, art)
+		_detail_box.add_child(tr)
+	_detail_box.add_child(_label(UNSEEN_NAME, UNSEEN_TEXT, UITheme.FONT_HEAD, true))
+	_detail_box.add_child(_detail_meta(String(SEEN_KIND_NAMES.get(kind, kind.capitalize())),
+		UNSEEN_TEXT))
+	var card := _section_card("Not seen yet", UNSEEN_TEXT)
+	card.add_child(_prose("It shows here once you meet it in a run.", UITheme.TEXT_DIM))
+	_detail_box.add_child(card.get_meta(&"card"))
+	_detail_box.set_meta(&"unseen", true)
+
+# "3 of 8 seen", for the count label, or "" when everything is.
+func _seen_note(kind: String, all: Array) -> String:
+	var n: int = 0
+	for x in all:
+		if x != null and GameStats.is_seen(kind, x.id):
+			n += 1
+	return "" if n == all.size() else "%d seen" % n
 
 func _select_option(opt: OptionButton, id: int) -> void:
 	for i in opt.item_count:
@@ -3025,13 +3640,20 @@ func _has_event_art(ev: EventData2) -> bool:
 # Fill `rect` with the event's art — now if it is cached, else when the thread
 # delivers it.
 func _event_art_into(rect: TextureRect, ev: EventData2) -> void:
-	var path: String = _event_art_path(ev)
+	_art_into(rect, _event_art_path(ev))
+
+# The same, for any picture by path: shrunk to `longest` on its first load. The
+# Locations tab rides this too — its art is 1920x1200, eight of it.
+func _art_into(rect: TextureRect, path: String, longest: int = EVENT_ART_MAX) -> void:
 	if _event_art_cache.has(path):
 		_set_event_art(rect, _event_art_cache[path])
 		return
+	if not ResourceLoader.exists(path):
+		return
+	LoadingTile.cover(rect)
 	if ResourceLoader.load_threaded_get_status(path) == ResourceLoader.THREAD_LOAD_INVALID_RESOURCE:
 		ResourceLoader.load_threaded_request(path)
-	_event_art_waiting.append({"path": path, "rect": rect})
+	_event_art_waiting.append({"path": path, "rect": rect, "max": longest})
 	if not get_tree().process_frame.is_connected(_poll_event_art):
 		get_tree().process_frame.connect(_poll_event_art)
 
@@ -3042,6 +3664,23 @@ func _poll_event_art() -> void:
 		var rect = w["rect"]
 		if not is_instance_valid(rect):
 			continue                       # its cell was rebuilt before it arrived
+		if w.has("game"):
+			# A cover: it goes to the game's own cache, not the shrunk-art one.
+			var g: GameData = w["game"]
+			var have: Texture2D = g.cached_cover()
+			if have == null:
+				var st: int = ResourceLoader.load_threaded_get_status(path)
+				if st == ResourceLoader.THREAD_LOAD_IN_PROGRESS:
+					still.append(w)
+					continue
+				if st == ResourceLoader.THREAD_LOAD_LOADED:
+					have = ResourceLoader.load_threaded_get(path) as Texture2D
+					g.adopt_cover(have)
+				else:
+					have = g.cover_image          # the thread lost it: read it here
+			(rect as TextureRect).texture = have
+			LoadingTile.clear_from(rect)
+			continue
 		if not _event_art_cache.has(path):
 			var status: int = ResourceLoader.load_threaded_get_status(path)
 			if status == ResourceLoader.THREAD_LOAD_IN_PROGRESS:
@@ -3050,7 +3689,8 @@ func _poll_event_art() -> void:
 			if status != ResourceLoader.THREAD_LOAD_LOADED:
 				continue                   # failed: the frame simply stays empty
 			_event_art_cache[path] = _shrink_event_art(
-				ResourceLoader.load_threaded_get(path) as Texture2D)
+				ResourceLoader.load_threaded_get(path) as Texture2D,
+				int(w.get("max", EVENT_ART_MAX)))
 		_set_event_art(rect, _event_art_cache[path])
 	_event_art_waiting = still
 	if still.is_empty() and get_tree().process_frame.is_connected(_poll_event_art):
@@ -3060,11 +3700,11 @@ func _exit_tree() -> void:
 	if get_tree() != null and get_tree().process_frame.is_connected(_poll_event_art):
 		get_tree().process_frame.disconnect(_poll_event_art)
 
-static func _shrink_event_art(tex: Texture2D) -> Texture2D:
+static func _shrink_event_art(tex: Texture2D, cap: int = EVENT_ART_MAX) -> Texture2D:
 	if tex == null:
 		return null
 	var longest: int = maxi(tex.get_width(), tex.get_height())
-	if longest <= EVENT_ART_MAX:
+	if longest <= cap:
 		return tex
 	var img: Image = tex.get_image()
 	if img == null:
@@ -3076,9 +3716,9 @@ static func _shrink_event_art(tex: Texture2D) -> Texture2D:
 	# frozen frame the moment the thread delivered; halving (a box filter, which
 	# is what makes a clean downscale) until within 2x and a bilinear finish is
 	# 51 ms for all of them and reads the same at 80 and 132px.
-	while maxi(img.get_width(), img.get_height()) >= EVENT_ART_MAX * 2:
+	while maxi(img.get_width(), img.get_height()) >= cap * 2:
 		img.shrink_x2()
-	var k: float = float(EVENT_ART_MAX) / float(maxi(img.get_width(), img.get_height()))
+	var k: float = float(cap) / float(maxi(img.get_width(), img.get_height()))
 	if k < 1.0:
 		img.resize(maxi(1, int(img.get_width() * k)), maxi(1, int(img.get_height() * k)),
 			Image.INTERPOLATE_BILINEAR)
@@ -3088,6 +3728,7 @@ static func _shrink_event_art(tex: Texture2D) -> Texture2D:
 # would have made at build time is made here, against the real texture.
 func _set_event_art(rect: TextureRect, tex: Texture2D) -> void:
 	rect.texture = tex
+	LoadingTile.clear_from(rect)
 	UITheme.apply_crisp(rect, tex)
 
 func _build_events() -> void:
@@ -3115,6 +3756,9 @@ func _populate_events() -> void:
 			continue
 		# Searching an event means searching what it SAYS as well as its name —
 		# the prompt and the option labels are how anyone actually remembers one.
+		# A hidden entry is not found by what it hides, nor listed under Hide unseen.
+		if (term != "" or _hide_unseen) and not GameStats.is_seen("event", ev.id):
+			continue
 		if term != "" and not (term in ev.display_name.to_lower()
 				or term in ev.prompt.to_lower()
 				or term in ev.source_game.to_lower()
@@ -3167,9 +3811,13 @@ func _event_cell(ev: EventData2) -> Control:
 	# from the outside — every event has two or three, so it separated nothing and
 	# cost the tile a line. The choices themselves are in the detail panel, in full.
 	vb.add_child(_label(ev.rarity.to_upper(), ac, GRID_META_FONT, true))
-	return cell.panel
+	return _veil(cell.panel, "event", ev.id)
 
 func _show_event_detail(ev: EventData2) -> void:
+	# Opened from a link as well as from its cell, so it checks for itself.
+	if not GameStats.is_seen("event", ev.id):
+		_show_unseen_detail("event", _event_art(ev))
+		return
 	_set_detail_open(true)
 	_set_detail_width(GAME_DETAIL_PANEL_W)
 	_clear_children(_detail_box)
@@ -3345,6 +3993,9 @@ func _populate_objects() -> void:
 		# Searching a machine means searching its TAGS too — "arcade" is how you
 		# find the things an Arcade Room can contain, and it is the only name the
 		# spawn that puts them there knows them by.
+		# A hidden entry is not found by what it hides, nor listed under Hide unseen.
+		if (term != "" or _hide_unseen) and not GameStats.is_seen("object", obj.id):
+			continue
 		if term != "" and not (term in obj.display_name.to_lower()
 				or term in obj.prompt.to_lower()
 				or term in obj.source_game.to_lower()
@@ -3397,6 +4048,9 @@ func _populate_shopkeepers() -> void:
 	for k in all:
 		if not (k is ShopkeeperData):
 			continue
+		# A hidden entry is not found by what it hides, nor listed under Hide unseen.
+		if (term != "" or _hide_unseen) and not GameStats.is_seen("shopkeeper", k.id):
+			continue
 		if term != "" and not (term in k.display_name.to_lower()
 				or term in _shopkeeper_game(k).to_lower()
 				or term in " ".join(shopkeeper_rules(k)).to_lower()):
@@ -3428,9 +4082,13 @@ func _shopkeeper_cell(k: ShopkeeperData) -> Control:
 	var game: String = _shopkeeper_game(k)
 	if game != "":
 		vb.add_child(_label(game, Color(0.65, 0.7, 0.8), GRID_META_FONT, true, true))
-	return cell.panel
+	return _veil(cell.panel, "shopkeeper", k.id)
 
 func _show_shopkeeper_detail(k: ShopkeeperData) -> void:
+	# Opened from a link as well as from its cell, so it checks for itself.
+	if not GameStats.is_seen("shopkeeper", k.id):
+		_show_unseen_detail("shopkeeper", k.portrait())
+		return
 	_set_detail_open(true)
 	_clear_children(_detail_box)
 	var ac := _rarity_color_by_name(k.rarity)
@@ -3539,9 +4197,13 @@ func _object_cell(obj: ObjectData) -> Control:
 	# comma-joined string of unbounded length under a picture, so a machine with
 	# three tags wrapped to two more lines than one with one.
 	vb.add_child(_label(obj.rarity.to_upper(), ac, GRID_META_FONT, true))
-	return cell.panel
+	return _veil(cell.panel, "object", obj.id)
 
 func _show_object_detail(obj: ObjectData) -> void:
+	# Opened from a link as well as from its cell, so it checks for itself.
+	if not GameStats.is_seen("object", obj.id):
+		_show_unseen_detail("object", _object_art(obj))
+		return
 	_set_detail_open(true)
 	_clear_children(_detail_box)
 	var ac := _object_accent(obj)
@@ -3588,3 +4250,252 @@ func _show_object_detail(obj: ObjectData) -> void:
 		if obj.chance_lost != "":
 			_detail_box.add_child(_label("Lost: %s" % obj.chance_lost,
 				Color(0.9, 0.6, 0.55), 11, false, true))
+
+# ------------------------------------------------------------------
+# Locations tab (docs/locations-design.md)
+# ------------------------------------------------------------------
+#
+# Every location in the roster, all of them shown: a location is dealt rather than
+# found, so there is nothing to discover and no tally to keep. A tile is its art
+# (16:10, the shape it ships in) with its name and tier; the detail is the art at
+# the panel's width, the owner's description, what it does sorted into WHEN it
+# does it, its tag lean, and the actual enemies and loot that lean favours.
+
+const GRID_LOCATION_W := 150
+const GRID_LOCATION_H := 94          # 150 at 16:10
+# Twice the detail pane's width, so the 1920x1200 originals are decoded once and
+# kept at a size that is still sharp on a 2x canvas.
+const LOCATION_ART_MAX := 640
+# By tier, Low to Insane: the same climb the difficulty strip reads as.
+const LOCATION_TIER_COLORS := [
+	Color(0.50, 0.80, 0.50),
+	Color(0.95, 0.80, 0.40),
+	Color(0.95, 0.55, 0.30),
+	Color(0.90, 0.35, 0.40),
+]
+
+func _location_accent(loc: LocationData) -> Color:
+	return LOCATION_TIER_COLORS[clampi(loc.tier, 0, LOCATION_TIER_COLORS.size() - 1)]
+
+func _build_locations() -> void:
+	var row := _controls_row()
+	row.add_child(_search_box("locations"))
+	row.add_child(VSeparator.new())
+	row.add_child(_label("Sort:", Color(0.7, 0.7, 0.75), UITheme.FONT_BODY))
+	row.add_child(_sort_button("Tier", _locations_sort == "tier",
+		func(): _locations_sort = "tier"; _refresh()))
+	row.add_child(_sort_button("A-Z", _locations_sort == "name",
+		func(): _locations_sort = "name"; _refresh()))
+	row.add_child(_sort_button("Game", _locations_sort == "game",
+		func(): _locations_sort = "game"; _refresh()))
+	_add_count_label(row)
+	_grid_and_detail()
+	_populate_locations()
+
+func _populate_locations() -> void:
+	_clear_children(_grid)
+	var term: String = _search["locations"].to_lower()
+	var all: Array = Data.all_locations()
+	var list: Array = []
+	for loc in all:
+		if not (loc is LocationData):
+			continue
+		# A tag is a fair thing to search by: "fire" finds the floor that leans fire.
+		# A hidden entry is not found by what it hides, nor listed under Hide unseen.
+		if (term != "" or _hide_unseen) and not GameStats.is_seen("location", loc.id):
+			continue
+		if term != "" and not (term in loc.display_name.to_lower()
+				or term in loc.game.to_lower()
+				or term in loc.description.to_lower()
+				or term in " ".join(loc.tag_types).to_lower()
+				or term in Locations.tier_name(loc).to_lower()):
+			continue
+		list.append(loc)
+	var by_name := func(a, b): return a.display_name.naturalnocasecmp_to(b.display_name) < 0
+	match _locations_sort:
+		"name":
+			list.sort_custom(by_name)
+		"game":
+			list.sort_custom(func(a, b):
+				return a.game.naturalnocasecmp_to(b.game) < 0 if a.game != b.game \
+					else by_name.call(a, b))
+		_:
+			list.sort_custom(func(a, b):
+				return a.tier < b.tier if a.tier != b.tier else by_name.call(a, b))
+	for loc in list:
+		_grid.add_child(_location_cell(loc))
+	if list.is_empty():
+		_grid.add_child(_label("No locations match." if not all.is_empty() else "No locations yet.",
+			Color(0.55, 0.55, 0.6), UITheme.FONT_TEXT))
+	_set_count(list.size(), all.size())
+
+# The art in a fixed 16:10 frame, cropped to fill it — a location is a scene,
+# not an icon, and letterboxing a landscape would waste the frame on nothing.
+func _location_art(loc: LocationData, size: Vector2) -> TextureRect:
+	var art := TextureRect.new()
+	art.custom_minimum_size = size
+	art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	art.clip_contents = true
+	art.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if loc.image_path != "":
+		_art_into(art, loc.image_path, LOCATION_ART_MAX)
+	return art
+
+func _location_cell(loc: LocationData) -> Control:
+	var ac := _location_accent(loc)
+	var cell := _cell(ac, func(): _show_location_detail(loc))
+	cell.panel.custom_minimum_size = Vector2(GRID_LOCATION_W + CELL_PAD, 0)
+	cell.panel.set_meta(&"location_id", loc.id)
+	var vb: VBoxContainer = cell.vbox
+	vb.alignment = BoxContainer.ALIGNMENT_CENTER
+	vb.add_child(_location_art(loc, Vector2(GRID_LOCATION_W, GRID_LOCATION_H)))
+	var nm := _label(loc.display_name, ac, GRID_NAME_FONT, true, true)
+	nm.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	vb.add_child(nm)
+	vb.add_child(_label(Locations.tier_name(loc).to_upper(), ac, GRID_META_FONT, true))
+	return _veil(cell.panel, "location", loc.id)
+
+func _show_location_detail(loc: LocationData) -> void:
+	# Opened from a link as well as from its cell, so it checks for itself.
+	if not GameStats.is_seen("location", loc.id):
+		_show_unseen_detail("location", null)
+		return
+	_set_detail_open(true)
+	_clear_children(_detail_box)
+	_detail_game = null
+	var ac := _location_accent(loc)
+	var w: float = DETAIL_PANEL_W - 52
+	_detail_box.add_child(_location_art(loc, Vector2(w, roundf(w * 0.625))))
+	_detail_box.add_child(_label(loc.display_name, ac, UITheme.FONT_HEAD, true, true))
+	_detail_box.add_child(_detail_meta("%s tier" % Locations.tier_name(loc), ac))
+	if loc.game != "":
+		_detail_box.add_child(_label("From: %s" % loc.game, UITheme.TEXT_DIM,
+			UITheme.FONT_SMALL, true, true))
+
+	if loc.description != "":
+		var about := _section_card("About", ac)
+		about.add_child(_prose(loc.description))
+		_detail_box.add_child(about.get_meta(&"card"))
+
+	var effects := _section_card("What it does", ac)
+	var said: bool = false
+	for pair in [["When you arrive", loc.arrive.map(_arrive_words)],
+			["While you are here", loc.standing.map(_standing_words)],
+			["On its card", loc.actions.map(_action_words)]]:
+		var lines: Array = pair[1].filter(func(t): return String(t) != "")
+		if lines.is_empty():
+			continue
+		said = true
+		effects.add_child(_label(String(pair[0]), UITheme.GOLD, UITheme.FONT_SMALL))
+		for t in lines:
+			effects.add_child(_bullet(String(t)))
+	if not said:
+		effects.add_child(_prose("Nothing beyond its lean.", UITheme.TEXT_DIM))
+	_detail_box.add_child(effects.get_meta(&"card"))
+
+	var lean: String = Locations.lean_text(loc)
+	if lean != "":
+		var tags := _section_card("Tag lean", ac)
+		tags.add_child(_prose(lean))
+		tags.add_child(_prose("While you are here, anything carrying one of these tags is "
+			+ "%d%% more likely in every roll it is part of." % roundi(loc.tag_up * 100.0),
+			UITheme.TEXT_DIM))
+		_detail_box.add_child(tags.get_meta(&"card"))
+		var favoured: Array = location_favours(loc)
+		var fav := _section_card("Favoured here", ac)
+		if favoured.is_empty():
+			fav.add_child(_prose("Nothing in the roster carries these tags yet.", UITheme.TEXT_DIM))
+		for group in favoured:
+			fav.add_child(_label("%s (%d)" % [group["kind"], group["names"].size()],
+				UITheme.GOLD, UITheme.FONT_SMALL))
+			var flow := HFlowContainer.new()
+			flow.add_theme_constant_override("h_separation", UITheme.GAP_TIGHT)
+			flow.add_theme_constant_override("v_separation", UITheme.GAP_TIGHT)
+			for n in group["names"]:
+				flow.add_child(_chip(String(n), ac))
+			fav.add_child(flow)
+		_detail_box.add_child(fav.get_meta(&"card"))
+
+# What a location's tags favour, grouped by kind: [{kind, names}], each list
+# sorted, kinds with nothing left out. Public so a test can hold the panel to it.
+static func location_favours(loc: LocationData) -> Array:
+	var out: Array = []
+	if loc == null or loc.tag_types.is_empty():
+		return out
+	var kinds: Array = [
+		["Enemies", Data.all_goal_enemies(), "enemy"], ["Bosses", Data.all_bosses(), "boss"],
+		["Items", Data.all_items2(), "item"], ["Scrolls", Data.all_scrolls(), "scroll"],
+		["Potions", Data.all_potions(), "potion"], ["Cards", Data.all_cards(), "card"],
+		["Wands", Data.all_wands(), "wand"], ["Trinkets", Data.all_trinkets(), "trinket"],
+		["Weapons", Data.all_weapons(), "weapon"], ["Units", Data.all_units(), ""],
+	]
+	for k in kinds:
+		var names: Array = []
+		for thing in k[1]:
+			if thing == null:
+				continue
+			for t in Locations.tags_of(thing):
+				if loc.tag_types.has(t):
+					# Named only once seen, like its own cell (GameStats.seen). Units
+					# have no Collection tab, so nothing of theirs is hidden.
+					if k[2] != "" and not GameStats.is_seen(k[2], thing.get("id")):
+						names.append(UNSEEN_NAME)
+						break
+					var n = thing.get("display_name") if "display_name" in thing else null
+					names.append(String(n) if n != null and String(n) != "" else String(thing.get("id")))
+					break
+		if names.is_empty():
+			continue
+		# The ones seen first, A-Z; the ??? after them.
+		names.sort_custom(func(a, b):
+			if (a == UNSEEN_NAME) != (b == UNSEEN_NAME):
+				return b == UNSEEN_NAME
+			return a.naturalnocasecmp_to(b) < 0)
+		out.append({"kind": k[0], "names": names})
+	return out
+
+func _arrive_words(rule) -> String:
+	if not (rule is Dictionary):
+		return ""
+	var n: int = int(rule.get("count", 1))
+	match String(rule.get("op", "")):
+		"spawn_enemy":
+			return "%d random %s-tagged %s walk%s on" % [n, String(rule.get("tag", "")),
+				"enemy" if n == 1 else "enemies", "s" if n == 1 else ""]
+		"place_tile":
+			return "%d %s tile%s on random squares" % [n, String(rule.get("tile", "")),
+				"" if n == 1 else "s"]
+		"place_unit":
+			var s: String = "%d random %s-tagged object%s on random squares" % [n,
+				String(rule.get("tag", "")), "" if n == 1 else "s"]
+			if String(rule.get("favour", "")) != "":
+				s += " (%d%% chance each is %s)" % [int(rule.get("favour_pct", 0)),
+					String(rule.get("favour", "")).capitalize()]
+			return s
+	return String(rule.get("op", "")).capitalize()
+
+func _standing_words(rule) -> String:
+	if not (rule is Dictionary):
+		return ""
+	var v: float = float(rule.get("value", 0))
+	match String(rule.get("op", "")):
+		"damage_taken_mult":
+			return "Damage you take is ×%s" % String.num(v, 2).trim_suffix(".0")
+		"offering_rift":
+			return "%d game in every offering is a free rift" % int(v)
+		"push_mult":
+			return "Every push goes %d× as far" % int(v)
+	return "%s: %s" % [String(rule.get("op", "")).capitalize(), str(v)]
+
+func _action_words(action) -> String:
+	if not (action is Dictionary):
+		return ""
+	# The button's own words, with "(4 left)" said as the limit it is.
+	var t: String = Locations.action_text(action, 0)
+	var cut: int = t.rfind(" (")
+	if cut > 0:
+		t = t.substr(0, cut)
+	return "%s — up to %d time%s" % [t, int(action.get("limit", 1)),
+		"" if int(action.get("limit", 1)) == 1 else "s"]
