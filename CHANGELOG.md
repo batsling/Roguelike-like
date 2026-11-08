@@ -11,6 +11,11 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Collection: Hide unseen, and Rank sorts.** Every tab's row has a *Hide
+  unseen* switch (one for the whole Collection, kept across tabs; not offered
+  under Unlock everything, where nothing is hidden). Games and Characters sort by
+  **Rank** — most XP first. The loading tile now carries the background's bat.
+
 - **Collection: nothing shown until it is seen; wider pages; a loading tile.**
   Every entry in every tab is a black silhouette named "???" until the player has
   seen it on screen in a run (`GameStats.seen`, a new per-profile record that

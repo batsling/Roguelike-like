@@ -1,7 +1,8 @@
 class_name LoadingTile
 extends Control
 
-# A PICTURE THAT IS ON ITS WAY (the owner, 8 Nov 2026): a gray tile with the bat in
+# A PICTURE THAT IS ON ITS WAY (the owner, 8 Nov 2026): a gray tile with the bat (the
+# one the background is patterned with) in
 # the middle and a white arc swirling round it, standing in the frame a picture
 # will land in. The Collection's covers and scene art are decoded on a thread
 # now, so a cell goes up at once and fills a moment later — and without this the
@@ -16,9 +17,9 @@ extends Control
 
 const BG := Color(0.32, 0.32, 0.34)
 const ARC := Color(1, 1, 1, 0.9)
-# The bat is decoded once and shrunk, since it is drawn at a few dozen pixels and
-# ships at 680.
-const BAT_PATH := "res://images2.0/custom/IsaacBat.png"
+# THE BAT FROM THE BACKGROUND (UITheme.bat_backdrop's), white on the gray — the
+# owner's pick. Decoded once and shrunk, since it is drawn at a few dozen pixels.
+const BAT_PATH := "res://images2.0/custom/menu_bat.png"
 const BAT_MAX := 96
 # One turn of the swirl, in seconds.
 const TURN := 0.9

@@ -171,3 +171,67 @@ func test_loading_tile_stands_in_and_leaves() -> void:
 
 func test_every_info_panel_is_as_wide_as_a_games() -> void:
 	assert_eq(Collection.DETAIL_PANEL_W, Collection.GAME_DETAIL_PANEL_W)
+
+# --- Hide unseen, and Rank ---------------------------------------------------
+
+func test_hide_unseen_leaves_only_what_was_seen_on_every_tab() -> void:
+	var ch: CharacterData = Data.all_characters2()[0]
+	GameStats.mark_seen("character", ch.id)
+	var col := _new_collection()
+	col._hide_unseen = true
+	col._set_tab(Collection.Tab.CHARACTERS)
+	var cells: Array = _cells(col)
+	assert_eq(cells.size(), 1, "only the one seen")
+	assert_eq(_first_label(cells[0]), ch.display_name)
+	for tab in [Collection.Tab.GAMES, Collection.Tab.ITEMS, Collection.Tab.ENEMIES,
+			Collection.Tab.BOSSES, Collection.Tab.LOOT, Collection.Tab.EVENTS,
+			Collection.Tab.OBJECTS, Collection.Tab.SHOPKEEPERS, Collection.Tab.LOCATIONS]:
+		col._set_tab(tab)
+		assert_eq(_cells(col).size(), 0, "tab %d hides all of its unseen" % tab)
+	col._loot_sub = Collection.LOOT_TRINKETS
+	col._set_tab(Collection.Tab.LOOT)
+	assert_eq(_cells(col).size(), 0, "the loot pieces too")
+	col._loot_sub = Collection.LOOT_SCROLLS
+
+func test_the_hide_unseen_button_flips_it_and_is_gone_under_unlock_everything() -> void:
+	var col := _new_collection()
+	col._set_tab(Collection.Tab.CHARACTERS)
+	var btn: Button = col._content.find_child("HideUnseen", true, false)
+	assert_not_null(btn)
+	btn.pressed.emit()
+	assert_true(col._hide_unseen)
+	assert_eq(_cells(col).size(), 0)
+	Settings.unlock_everything = true
+	col._set_tab(Collection.Tab.CHARACTERS)
+	assert_null(col._content.find_child("HideUnseen", true, false), "nothing to hide")
+
+func test_characters_sort_by_rank_highest_first() -> void:
+	Settings.unlock_everything = true
+	var col := _new_collection()
+	col._char_sort = "rank"
+	col._set_tab(Collection.Tab.CHARACTERS)
+	var xps: Array = []
+	for c in _cells(col):
+		var name: String = _first_label(c)
+		for ch in Data.all_characters2():
+			if ch.display_name == name:
+				xps.append(GameRanks.character_xp(ch.id))
+	var sorted: Array = xps.duplicate()
+	sorted.sort()
+	sorted.reverse()
+	assert_eq(xps, sorted)
+	col._char_sort = "name"
+
+func test_games_sort_by_rank_highest_first() -> void:
+	Settings.unlock_everything = true
+	var col := _new_collection()
+	col._games_sort = "rank"
+	col._set_tab(Collection.Tab.GAMES)
+	var xps: Array = []
+	for slot in col._cell_slots:
+		xps.append(GameRanks.xp((slot["game"] as GameData).id))
+	var sorted: Array = xps.duplicate()
+	sorted.sort()
+	sorted.reverse()
+	assert_eq(xps, sorted)
+	col._games_sort = "name"

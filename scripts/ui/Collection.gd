@@ -149,6 +149,10 @@ var _enemies_type: String = "all"
 var _events_sort: String = "name"
 var _objects_sort: String = "name"
 var _locations_sort: String = "tier"
+# HIDE UNSEEN: every tab's grid leaves out what has not been seen yet. One switch
+# for the whole Collection, kept across tabs, since it is a way of looking at all
+# of it ("what have I actually found?").
+var _hide_unseen: bool = false
 # Which page of a character's detail is showing (CHAR_PAGES). Kept across
 # characters, so stepping ◀ ▶ through the roster compares like with like.
 var _char_page: String = "overview"
@@ -1292,6 +1296,16 @@ func _grid_and_detail() -> void:
 	body.add_child(_new_detail_panel())
 
 func _add_count_label(row: HBoxContainer) -> void:
+	# Every tab's row ends here, so the Hide unseen switch rides with the count.
+	# Not offered while Unlock everything is on: nothing is hidden to leave out.
+	if not Settings.unlock_everything:
+		row.add_child(VSeparator.new())
+		var hide := _sort_button("Hide unseen", _hide_unseen, func():
+			_hide_unseen = not _hide_unseen
+			_refresh())
+		hide.name = "HideUnseen"
+		hide.tooltip_text = "Leave out everything you have not seen in a run yet."
+		row.add_child(hide)
 	_count_lbl = _label("", Color(0.6, 0.6, 0.65), 11)
 	_count_lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_count_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
@@ -1385,6 +1399,7 @@ func _build_games() -> void:
 	row.add_child(_sort_button("A-Z", _games_sort == "name", func(): _games_sort = "name"; _refresh()))
 	row.add_child(_sort_button("Year", _games_sort == "year", func(): _games_sort = "year"; _refresh()))
 	row.add_child(_sort_button("Beaten", _games_sort == "beaten", func(): _games_sort = "beaten"; _refresh()))
+	row.add_child(_sort_button("Rank", _games_sort == "rank", func(): _games_sort = "rank"; _refresh()))
 	row.add_child(VSeparator.new())
 	var type_opt := OptionButton.new()
 	type_opt.add_item("All Types", -1)
@@ -1448,8 +1463,8 @@ func _populate_games() -> void:
 			"amulet":
 				if GameStats.amulet_wins(g.id) <= 0:
 					continue
-		# A hidden entry is not found by what it hides (GameStats.seen).
-		if term != "" and not GameStats.is_seen("game", g.id):
+		# A hidden entry is not found by what it hides, nor listed under Hide unseen.
+		if (term != "" or _hide_unseen) and not GameStats.is_seen("game", g.id):
 			continue
 		if term != "" and not term in g.display_name.to_lower():
 			continue
@@ -1462,6 +1477,15 @@ func _populate_games() -> void:
 				var ab: int = GameStats.beaten_count(a.id)
 				var bb: int = GameStats.beaten_count(b.id)
 				return ab > bb if ab != bb else a.display_name.naturalnocasecmp_to(b.display_name) < 0)
+		"rank":
+			# Highest rank first, then the most XP inside it: the XP is read once a
+			# game, not once a comparison, over a thousand rows.
+			var xp: Dictionary = {}
+			for g in list:
+				xp[g.id] = GameRanks.xp(g.id)
+			list.sort_custom(func(a, b):
+				return xp[a.id] > xp[b.id] if xp[a.id] != xp[b.id] \
+					else a.display_name.naturalnocasecmp_to(b.display_name) < 0)
 		_:
 			list.sort_custom(func(a, b): return a.display_name.naturalnocasecmp_to(b.display_name) < 0)
 	for g in list:
@@ -1966,8 +1990,8 @@ func _populate_items() -> void:
 			continue
 		if _items_type >= 0 and int(it.kind) != _items_type:
 			continue
-		# A hidden entry is not found by what it hides (GameStats.seen).
-		if term != "" and not GameStats.is_seen("item", it.id):
+		# A hidden entry is not found by what it hides, nor listed under Hide unseen.
+		if (term != "" or _hide_unseen) and not GameStats.is_seen("item", it.id):
 			continue
 		if term != "" and not (term in it.display_name.to_lower() \
 				or term in it.description.to_lower() \
@@ -2066,6 +2090,7 @@ func _build_characters() -> void:
 	row.add_child(VSeparator.new())
 	row.add_child(_label("Sort:", Color(0.7, 0.7, 0.75), 12))
 	row.add_child(_sort_button("A-Z", _char_sort == "name", func(): _char_sort = "name"; _refresh()))
+	row.add_child(_sort_button("Rank", _char_sort == "rank", func(): _char_sort = "rank"; _refresh()))
 	_add_count_label(row)
 	_grid_and_detail()
 	_populate_characters()
@@ -2077,13 +2102,21 @@ func _populate_characters() -> void:
 	for ch in Data.all_characters2():
 		if ch == null:
 			continue
-		# A hidden entry is not found by what it hides (GameStats.seen).
-		if term != "" and not GameStats.is_seen("character", ch.id):
+		# A hidden entry is not found by what it hides, nor listed under Hide unseen.
+		if (term != "" or _hide_unseen) and not GameStats.is_seen("character", ch.id):
 			continue
 		if term != "" and not term in ch.display_name.to_lower():
 			continue
 		list.append(ch)
-	list.sort_custom(func(a, b): return a.display_name.naturalnocasecmp_to(b.display_name) < 0)
+	if _char_sort == "rank":
+		var xp: Dictionary = {}
+		for ch in list:
+			xp[ch.id] = GameRanks.character_xp(ch.id)
+		list.sort_custom(func(a, b):
+			return xp[a.id] > xp[b.id] if xp[a.id] != xp[b.id] \
+				else a.display_name.naturalnocasecmp_to(b.display_name) < 0)
+	else:
+		list.sort_custom(func(a, b): return a.display_name.naturalnocasecmp_to(b.display_name) < 0)
 	for ch in list:
 		_grid.add_child(_character_cell(ch))
 	if list.is_empty():
@@ -2373,8 +2406,8 @@ func _populate_enemies() -> void:
 			continue
 		if _enemies_type != "all" and String(e.game_type).to_lower() != _enemies_type:
 			continue
-		# A hidden entry is not found by what it hides (GameStats.seen).
-		if term != "" and not GameStats.is_seen(_enemy_kind(), e.id):
+		# A hidden entry is not found by what it hides, nor listed under Hide unseen.
+		if (term != "" or _hide_unseen) and not GameStats.is_seen(_enemy_kind(), e.id):
 			continue
 		if term != "" and not (term in e.display_name.to_lower() \
 				or term in e.goal.to_lower() \
@@ -2817,8 +2850,8 @@ func _populate_scrolls() -> void:
 	for s in scrolls:
 		if not (s is ScrollData):
 			continue
-		# A hidden entry is not found by what it hides (GameStats.seen).
-		if term != "" and not GameStats.is_seen("scroll", s.id):
+		# A hidden entry is not found by what it hides, nor listed under Hide unseen.
+		if (term != "" or _hide_unseen) and not GameStats.is_seen("scroll", s.id):
 			continue
 		if term != "" and not (term in s.display_name.to_lower()):
 			continue
@@ -2862,8 +2895,8 @@ func _populate_pills() -> void:
 	for p in pills:
 		if not (p is PillData):
 			continue
-		# A hidden entry is not found by what it hides (GameStats.seen).
-		if term != "" and not GameStats.is_seen("pill", p.id):
+		# A hidden entry is not found by what it hides, nor listed under Hide unseen.
+		if (term != "" or _hide_unseen) and not GameStats.is_seen("pill", p.id):
 			continue
 		if term != "" and not (term in p.display_name.to_lower()):
 			continue
@@ -2892,8 +2925,8 @@ func _populate_potions() -> void:
 	for p in potions:
 		if not (p is PotionData):
 			continue
-		# A hidden entry is not found by what it hides (GameStats.seen).
-		if term != "" and not GameStats.is_seen("potion", p.id):
+		# A hidden entry is not found by what it hides, nor listed under Hide unseen.
+		if (term != "" or _hide_unseen) and not GameStats.is_seen("potion", p.id):
 			continue
 		if term != "" and not (term in p.display_name.to_lower()):
 			continue
@@ -2927,8 +2960,8 @@ func _populate_cards() -> void:
 	for c in cards:
 		if not (c is CardData):
 			continue
-		# A hidden entry is not found by what it hides (GameStats.seen).
-		if term != "" and not GameStats.is_seen("card", c.id):
+		# A hidden entry is not found by what it hides, nor listed under Hide unseen.
+		if (term != "" or _hide_unseen) and not GameStats.is_seen("card", c.id):
 			continue
 		if term != "" and not (term in c.display_name.to_lower()):
 			continue
@@ -2975,8 +3008,8 @@ func _populate_wands() -> void:
 	for w in wands:
 		if not (w is WandData):
 			continue
-		# A hidden entry is not found by what it hides (GameStats.seen).
-		if term != "" and not GameStats.is_seen("wand", w.id):
+		# A hidden entry is not found by what it hides, nor listed under Hide unseen.
+		if (term != "" or _hide_unseen) and not GameStats.is_seen("wand", w.id):
 			continue
 		if term != "" and not (term in w.display_name.to_lower()):
 			continue
@@ -3014,10 +3047,10 @@ func _wand_aim_words(w: WandData) -> String:
 # Search matches the name, the description and the source game — the three things
 # a piece is remembered by.
 func _loot_piece_matches(term: String, piece, kind: String) -> bool:
+	if (term != "" or _hide_unseen) and not GameStats.is_seen(kind, piece.id):
+		return false
 	if term == "":
 		return true
-	if not GameStats.is_seen(kind, piece.id):
-		return false
 	var hay: String = ("%s %s %s" % [piece.display_name, piece.description,
 		piece.source_game]).to_lower()
 	return term in hay
@@ -3071,8 +3104,8 @@ func _populate_evolutions() -> void:
 	for evo in evos:
 		var hay: String = "%s %s %s" % [_weapon_name(evo.base), _weapon_name(evo.result),
 			WeaponSystem.need_words(evo)]
-		# A hidden entry is not found by what it hides (GameStats.seen).
-		if term != "" and not GameStats.is_seen("evolution", evo.id):
+		# A hidden entry is not found by what it hides, nor listed under Hide unseen.
+		if (term != "" or _hide_unseen) and not GameStats.is_seen("evolution", evo.id):
 			continue
 		if term != "" and not (term in hay.to_lower()):
 			continue
@@ -3543,8 +3576,8 @@ func _populate_events() -> void:
 			continue
 		# Searching an event means searching what it SAYS as well as its name —
 		# the prompt and the option labels are how anyone actually remembers one.
-		# A hidden entry is not found by what it hides (GameStats.seen).
-		if term != "" and not GameStats.is_seen("event", ev.id):
+		# A hidden entry is not found by what it hides, nor listed under Hide unseen.
+		if (term != "" or _hide_unseen) and not GameStats.is_seen("event", ev.id):
 			continue
 		if term != "" and not (term in ev.display_name.to_lower()
 				or term in ev.prompt.to_lower()
@@ -3780,8 +3813,8 @@ func _populate_objects() -> void:
 		# Searching a machine means searching its TAGS too — "arcade" is how you
 		# find the things an Arcade Room can contain, and it is the only name the
 		# spawn that puts them there knows them by.
-		# A hidden entry is not found by what it hides (GameStats.seen).
-		if term != "" and not GameStats.is_seen("object", obj.id):
+		# A hidden entry is not found by what it hides, nor listed under Hide unseen.
+		if (term != "" or _hide_unseen) and not GameStats.is_seen("object", obj.id):
 			continue
 		if term != "" and not (term in obj.display_name.to_lower()
 				or term in obj.prompt.to_lower()
@@ -3835,8 +3868,8 @@ func _populate_shopkeepers() -> void:
 	for k in all:
 		if not (k is ShopkeeperData):
 			continue
-		# A hidden entry is not found by what it hides (GameStats.seen).
-		if term != "" and not GameStats.is_seen("shopkeeper", k.id):
+		# A hidden entry is not found by what it hides, nor listed under Hide unseen.
+		if (term != "" or _hide_unseen) and not GameStats.is_seen("shopkeeper", k.id):
 			continue
 		if term != "" and not (term in k.display_name.to_lower()
 				or term in _shopkeeper_game(k).to_lower()
@@ -4088,8 +4121,8 @@ func _populate_locations() -> void:
 		if not (loc is LocationData):
 			continue
 		# A tag is a fair thing to search by: "fire" finds the floor that leans fire.
-		# A hidden entry is not found by what it hides (GameStats.seen).
-		if term != "" and not GameStats.is_seen("location", loc.id):
+		# A hidden entry is not found by what it hides, nor listed under Hide unseen.
+		if (term != "" or _hide_unseen) and not GameStats.is_seen("location", loc.id):
 			continue
 		if term != "" and not (term in loc.display_name.to_lower()
 				or term in loc.game.to_lower()
