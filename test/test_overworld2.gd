@@ -10525,9 +10525,13 @@ func test_leaving_the_lab_leaves_the_bottles_behind() -> void:
 # the same embedded drop screen the Potion Lab opens with.
 
 func _buy_from_the_woman(index: int):
-	GameState.gold = 6
+	# Her Requirement is the whole shelf's price, so a purse that meets it can
+	# press any of her buttons. Read off the event, not repeated here: this said
+	# `6` and broke when a bottle went from 2 Gold to 3 (6 Nov 2026).
+	var ev: EventData2 = Data.get_event2(&"the_woman_in_blue")
+	GameState.gold = int(ev.requirement.get("value", 0))
 	GameState.loot_items.clear()
-	assert_true(_ui.open_event(Data.get_event2(&"the_woman_in_blue")))
+	assert_true(_ui.open_event(ev))
 	var modal = _ui._event_modal
 	await get_tree().process_frame
 	assert_null(modal._loot_section, "she opens with no table — you have not bought yet")
