@@ -102,6 +102,11 @@ so Godot never imports the source), is JSON:
     styles        [variant, ...] — piece variants (the part after the dot) drawn
                   at another size than the rest of the logo; each is sized as a
                   line of its own in images2.0/custom/title/index.json
+    recolour      [{"rgb": [r, g, b], "tolerance": n, "to": [r, g, b, a]}] —
+                  every pixel of that colour becomes `to`, before anything
+                  else (the logo page's copy included): a drop shadow painted
+                  solid made a see-through shadow, a background colour made
+                  see-through (SNKRX)
     inpaint       [[[x, y], ...]] — polygons rebuilt as the glow round them
                   (its alpha by distance from the solid flame) (a mark in a glow: Diablo's ®), before cutting;
     pixel_grid    {"x0", "y0", "x1", "y1", "pitch", "palette", "tolerance"} —
@@ -525,7 +530,10 @@ def _polygon_mask(shape, pts) -> np.ndarray:
 
 def _extrude(m: np.ndarray, r: int, dx: int, dy: int) -> np.ndarray:
     """`m` grown by `r`, then dragged (dx, dy): the union of every step."""
-    m = nd.binary_dilation(m, iterations=r)
+    if r > 0:
+        # never iterations=0: to scipy that means "grow until nothing changes",
+        # the whole canvas, and every shadow went to the first letter (SNKRX)
+        m = nd.binary_dilation(m, iterations=r)
     out = m.copy()
     steps = max(abs(dx), abs(dy), 1)
     for s in range(1, steps + 1):
@@ -748,6 +756,14 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
         if clash:
             raise SystemExit(f"error: {n_} is in `rotate` and also uses {', '.join(clash)}, which a turned piece cannot")
     A = np.array(Image.open(src).convert("RGBA")).astype(float)
+    for rc in cfg.get("recolour", []):
+        # A colour the logo painted solid that is really something else
+        # (SNKRX): its drop shadow drawn as opaque dark grey becomes a
+        # see-through black that darkens whatever is behind it, and the game's
+        # own background showing in a counter becomes nothing. Applied to the
+        # source, so the game page's logo shows it the same way.
+        hit = (A[..., 3] > 0) & (np.abs(A[..., :3] - np.array(rc["rgb"], float)).max(-1) <= rc.get("tolerance", 0))
+        A[hit] = rc["to"]
     for poly in cfg.get("inpaint", []):
         # A mark that is no letter's, sitting in a soft glow (Diablo's ®): the
         # polygon rebuilt as the glow round it, which fades with distance from

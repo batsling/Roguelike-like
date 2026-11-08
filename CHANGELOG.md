@@ -11,6 +11,12 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Title letters: SNKRX.** S N K R X in sharp pixels, with the logo's solid
+  dark-grey drop shadow turned into a real see-through shadow (the cutter's new
+  `recolour`), each letter keeping exactly the shadow it casts. Also fixed in
+  the cutter: `own_by_shadow` with `grow` 0 gave every shadow to the first
+  letter (`docs/content-authoring.md`, "Title letters").
+
 - **Title letters: Downwell.** D O W N E L, white blocks under the logo's red
   stripes; the second W and L are repeats and left out
   (`docs/content-authoring.md`, "Title letters").

@@ -4194,6 +4194,22 @@
   "pad": 0.09,
   "case": "lower"
  },
+ "k/snkrx.png": {
+  "game": "snkrx",
+  "config": "snkrx.json",
+  "style": "snkrx",
+  "body_center": 0.4667,
+  "body_height": 0.8889,
+  "body_center_x": 0.4595,
+  "body_width": 0.8649,
+  "src": [
+   0.3758,
+   -0.02222,
+   0.61146,
+   0.97778
+  ],
+  "pixel": true
+ },
  "k/spelunky_classic.png": {
   "game": "spelunky_classic",
   "config": "spelunky_classic.json",
@@ -5208,6 +5224,22 @@
    0.669,
    1.0
   ]
+ },
+ "n/snkrx.png": {
+  "game": "snkrx",
+  "config": "snkrx.json",
+  "style": "snkrx",
+  "body_center": 0.4634,
+  "body_height": 0.878,
+  "body_center_x": 0.4545,
+  "body_width": 0.8485,
+  "src": [
+   0.19745,
+   0.11111,
+   0.40764,
+   1.02222
+  ],
+  "pixel": true
  },
  "n/spelunky_classic.png": {
   "game": "spelunky_classic",
@@ -6535,6 +6567,22 @@
    0.99689
   ]
  },
+ "r/snkrx.png": {
+  "game": "snkrx",
+  "config": "snkrx.json",
+  "style": "snkrx",
+  "body_center": 0.4651,
+  "body_height": 0.8837,
+  "body_center_x": 0.4516,
+  "body_width": 0.8387,
+  "src": [
+   0.6051,
+   -0.02222,
+   0.80255,
+   0.93333
+  ],
+  "pixel": true
+ },
  "r/starvaders.png": {
   "game": "starvaders",
   "config": "starvaders.json",
@@ -7060,6 +7108,22 @@
    0.26829,
    0.08397,
    0.73171
+  ],
+  "pixel": true
+ },
+ "s/snkrx.png": {
+  "game": "snkrx",
+  "config": "snkrx.json",
+  "style": "snkrx",
+  "body_center": 0.4651,
+  "body_height": 0.8837,
+  "body_center_x": 0.4516,
+  "body_width": 0.8387,
+  "src": [
+   -0.00637,
+   0.06667,
+   0.19108,
+   1.02222
   ],
   "pixel": true
  },
@@ -8360,6 +8424,22 @@
   "size": 0.86,
   "pad": 0.09,
   "case": "lower"
+ },
+ "x/snkrx.png": {
+  "game": "snkrx",
+  "config": "snkrx.json",
+  "style": "snkrx",
+  "body_center": 0.4615,
+  "body_height": 0.8718,
+  "body_center_x": 0.4571,
+  "body_width": 0.8571,
+  "src": [
+   0.78344,
+   0.06667,
+   1.00637,
+   0.93333
+  ],
+  "pixel": true
  },
  "y/everything_is_crab.png": {
   "game": "everything_is_crab",

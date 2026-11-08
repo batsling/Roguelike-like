@@ -332,6 +332,22 @@ it is (`reach` 3 for the soft edge). Its second W and L are exact repeats of
 the first (only a one-pixel shift along their edges, from the vector art's
 sub-pixel placing), so they are left out. The stripes count as the letter's
 top: each is sized by its whole height, stripes and all.
+SNKRX gives S N K R X from Steam's 640px logo: pixel art at 2px a pixel,
+cut as it is at 6x with sharp pixels (`pixel`). The logo paints its drop
+shadow as solid dark grey (36), which on the menu read as black blocks, so
+the owner asked for "shadows, not pure black" (8 Nov 2026): `recolour` makes
+it a half see-through black (alpha 128) that darkens whatever is behind it,
+and the grey 48 showing in the R's counter, the game's own background, see-
+through. It is applied to the source, so the game page's logo matches. The
+shadow falls 6px right and down; each shadow pixel goes to the letter that
+casts it (`own_by_shadow` 6, 6), not the nearest, since the N's lands in the
+gap by the K's stem, and `reach` is 10 so the diagonal corners (8.5px off)
+are kept: all 3,864 shadow pixels end up in exactly one letter. The N's top
+runs into the K's top-left serif and is split at x 157, on the logo's 2px
+grid (a split at an even x left half a block of the K on the N).
+`own_by_shadow`'s `grow` of 0 used to grow the cast over the whole canvas
+(scipy reads `iterations=0` as "until nothing changes") and gave every
+shadow to the first letter; 0 now means no growth.
 A logo can
 take more than one config when its parts are built differently: Uma Musume has
 four, one per line, one for the girl and one for her dash.

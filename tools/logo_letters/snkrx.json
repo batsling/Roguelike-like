@@ -1,0 +1,23 @@
+{
+  "game": "snkrx",
+  "source": "snkrx.png",
+  "recolour": [
+    {"rgb": [36, 36, 36], "to": [0, 0, 0, 128]},
+    {"rgb": [48, 48, 48], "to": [0, 0, 0, 0]}
+  ],
+  "pieces": {
+    "s": [65, 278],
+    "n": [120, 276],
+    "k": [190, 276],
+    "r": [265, 268],
+    "x": [301, 274]
+  },
+  "splits": [
+    {"pieces": ["n", "k"], "lower": "k", "x_min": 157, "line": [[0, -1], [2000, -1]]}
+  ],
+  "fill": {"min_alpha": 250, "min_brightness": 140},
+  "adopt_strays": false,
+  "smooth": false,
+  "shadow": false,
+  "cut": {"reach": 10, "own_by_shadow": {"dx": 6, "dy": 6, "grow": 0, "outline": 0}, "scale": 6, "pixel": true}
+}
