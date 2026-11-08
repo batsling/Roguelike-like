@@ -1,6 +1,6 @@
 # Customization
 
-The main menu's **✦ Customization** button (`scripts/menu/CustomizeScreen.gd`)
+The **✦ Customization** button in the main menu's top-left row, beside How to Play, (`scripts/menu/CustomizeScreen.gd`)
 opens one screen with three tabs. Everything on it is earned by ranking up games
 and characters, and every choice is saved per profile
 (`user://profiles/<n>/customization.json`, the `Cosmetics` autoload).
