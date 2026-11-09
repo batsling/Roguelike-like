@@ -23,18 +23,6 @@
   ]
  },
  "cut": {
-  "reach": 3,
-  "recast_shadow": {
-   "spread": 10.5,
-   "dx": 0,
-   "dy": 0,
-   "blur": 17.8,
-   "alpha": 147,
-   "colour": [
-    255,
-    254,
-    238
-   ]
-  }
+  "reach": 3
  }
 }

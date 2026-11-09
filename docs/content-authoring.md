@@ -364,20 +364,12 @@ its vines; the few vine pixels nearer the a are erased from it (`erase` by
 colour). The second e is an exact repeat of the first (4 pixels differ, where
 neighbours touch) and is `hold`, not `ignore`: found, so its shading stays its
 own instead of landing on the next e.
-FTL gives the big F T L and, from the FASTER THAN LIGHT line under it, F A S T
-E R H N L I G (the small F, T and L as `__2`; the line's second A, H and the
-other two T's are repeats and left out), from SteamGridDB's 3841px white logo
-(id 132636), two configs on one source: `ftl.json` the big letters and
-`ftl_2.json` the line. The source is flat white with no glow, so the owner had
-the official logo's soft glow drawn back (8 Nov 2026) with `recast_shadow`:
-warm white (255, 254, 238), its falloff fitted to Steam's official logo (spread
-3.2, blur 5.3, alpha 147 on 483px letters) and scaled to each config's letter
-height, so a big letter and a small one glow alike once the title draws them
-the same size. Fitted to the original 560px logo instead, where the small line
-glows far more for its size, the small letters came out as bloated white blobs.
-A white glow adds nothing on the menu's light cyan portal; the source was
-given a 150px transparent margin, as its letters ran to its edges and the glow
-was cut off flat there.
+FTL gives F T L, flat white with no glow and nothing else (the owner, 9 Nov
+2026), from SteamGridDB's 3841px white logo (id 132636) with its FASTER THAN
+LIGHT line cropped off, so the game page's logo is the FTL alone. A soft glow
+fitted to the official logo was tried and dropped: white on white adds nothing
+on the menu's light cyan portal. The 150px transparent margin round the source
+is left from it and harmless (the page's copy is trimmed).
 A logo can
 take more than one config when its parts are built differently: Uma Musume has
 four, one per line, one for the girl and one for her dash.

@@ -11,9 +11,8 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
-- **Title letters: FTL.** The big F T L and the small pixel letters of FASTER
-  THAN LIGHT, with the official logo's soft glow drawn back round each
-  (`docs/content-authoring.md`, "Title letters").
+- **Title letters: FTL.** F T L, flat white, from the logo without its FASTER
+  THAN LIGHT line (`docs/content-authoring.md`, "Title letters").
 
 - **Title letters: Tangledeep.** T a n g l e d e p in sharp pixels, wood with
   its dark shading and outline, the T with its vines; the second e is a repeat
