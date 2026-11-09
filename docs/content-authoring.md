@@ -400,6 +400,27 @@ crab's i); its PNGs are unchanged, only the index gained the overhang. Ball x
 Pit's tall, condensed letters are drawn a little bigger and given room either
 side (`"size": {"*": 1.12}`, `"pad": {"*": 0.06}`; the owner, 9 Nov 2026), so
 its two L's no longer touch and a lone one holds its own beside other logos'.
+Brotato gives B R O, T A T O (the second O as `__2`; the second T is a repeat
+of the first, 3% of pixels apart, and held) and its two GUNS as a decoration
+pair (`decor_left` / `decor_right`; the owner, 9 Nov 2026: "I think they are
+guns"), from SteamGridDB's 3172px logo (id 66877, the same design as the
+owner's Fangamer link at three times the size). Three configs on one source:
+`brotato.json` (white B R O) and `brotato_2.json` (red T A T O) each sweep
+their faces 40 right and 24 down into their 3D side (`extrude`: dark grey
+under the white letters, dark red under the red) inside a rebuilt 52px black
+outline; `brotato_guns.json` cuts the guns as drawn, holding the B and the
+last O so each gun's black body ends halfway to its letter (a sliver of the
+O's outline above the right gun erased). The O is the potato: its face is
+white body, cap, eye whites and the red headband and tail (two shapes, apart
+from the T), sized by the O itself (`body` rows 150-742) so the knot rises
+above the line, and everything inside its outline is kept AS DRAWN (`as_drawn`:
+a polygon traced round the face, and one round the band and tail, both with
+`inside` so only within the rebuilt silhouette, the band's with
+`skip_colours` so the R's grey side beside it stays out): swept as a block,
+its pupils, stitches and the band's own lines came out side-grey. Its letters
+are spaced by their drawn edge (`space_by_ink`) and drawn together (`"pad":
+{"*": -0.06}`) so their outlines meet, as in the logo, but only beside each
+other.
 A logo can
 take more than one config when its parts are built differently: Uma Musume has
 four, one per line, one for the girl and one for her dash.

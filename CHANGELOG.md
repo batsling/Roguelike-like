@@ -11,6 +11,11 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Title letters: Brotato.** B R O T A T O with their 3D sides, the O the
+  potato with its headband, and its two guns as a decoration pair at the ends
+  of the title. The cutter's `as_drawn` gained `inside` and `skip_colours`
+  (`docs/content-authoring.md`, "Title letters").
+
 - **Title letters: Super Auto Pets smaller and closer.** Its letters are drawn
   0.9 times as big and pulled together until their white edges just meet, as
   in the logo; a negative `pad` now only ever counts between two letters of the

@@ -228,6 +228,24 @@
   "size": 1.12,
   "pad": 0.06
  },
+ "a/brotato.png": {
+  "game": "brotato",
+  "config": "brotato_2.json",
+  "style": "brotato_2",
+  "body_center": 0.4831,
+  "body_height": 0.8138,
+  "body_center_x": 0.4627,
+  "body_width": 0.7239,
+  "src": [
+   0.53909,
+   0.11772,
+   0.70807,
+   0.97816
+  ],
+  "ink_left": 0.097,
+  "ink_right": 0.1716,
+  "pad": -0.06
+ },
  "a/caves_of_qud.png": {
   "game": "caves_of_qud",
   "config": "caves_of_qud.json",
@@ -973,6 +991,24 @@
   ],
   "size": 1.12,
   "pad": 0.06
+ },
+ "b/brotato.png": {
+  "game": "brotato",
+  "config": "brotato.json",
+  "style": "brotato",
+  "body_center": 0.4832,
+  "body_height": 0.8151,
+  "body_center_x": 0.4586,
+  "body_width": 0.6936,
+  "src": [
+   0.07945,
+   0.10922,
+   0.23172,
+   0.97573
+  ],
+  "ink_left": 0.1077,
+  "ink_right": 0.1905,
+  "pad": -0.06
  },
  "b/diablo.png": {
   "game": "diablo",
@@ -2017,6 +2053,21 @@
    0.79506
   ]
  },
+ "decor_left/brotato.png": {
+  "game": "brotato",
+  "config": "brotato_guns.json",
+  "style": "brotato_guns",
+  "body_center": 0.4906,
+  "body_height": 0.7651,
+  "body_center_x": 0.526,
+  "body_width": 0.7604,
+  "src": [
+   0.0,
+   0.27184,
+   0.09079,
+   0.85558
+  ]
+ },
  "decor_left/darkest_dungeon.png": {
   "game": "darkest_dungeon",
   "config": "darkest_dungeon_torch.json",
@@ -2080,6 +2131,21 @@
    0.47895,
    0.16343,
    1.00526
+  ]
+ },
+ "decor_right/brotato.png": {
+  "game": "brotato",
+  "config": "brotato_guns.json",
+  "style": "brotato_guns",
+  "body_center": 0.4866,
+  "body_height": 0.7588,
+  "body_center_x": 0.5111,
+  "body_width": 0.7102,
+  "src": [
+   0.90101,
+   0.27184,
+   1.0,
+   0.86044
   ]
  },
  "decor_right/demonic_mahjong.png": {
@@ -5530,6 +5596,42 @@
   ],
   "size": 1.05
  },
+ "o/brotato.png": {
+  "game": "brotato",
+  "config": "brotato.json",
+  "style": "brotato",
+  "body_center": 0.5302,
+  "body_height": 0.7437,
+  "body_center_x": 0.3624,
+  "body_width": 0.5624,
+  "src": [
+   0.31967,
+   0.02913,
+   0.52932,
+   0.99515
+  ],
+  "ink_left": 0.0782,
+  "ink_right": 0.3188,
+  "pad": -0.06
+ },
+ "o/brotato__2.png": {
+  "game": "brotato",
+  "config": "brotato_2.json",
+  "style": "brotato_2",
+  "body_center": 0.4835,
+  "body_height": 0.8182,
+  "body_center_x": 0.4618,
+  "body_width": 0.717,
+  "src": [
+   0.76356,
+   0.11529,
+   0.92844,
+   0.99636
+  ],
+  "ink_left": 0.0994,
+  "ink_right": 0.1759,
+  "pad": -0.06
+ },
  "o/caves_of_qud.png": {
   "game": "caves_of_qud",
   "config": "caves_of_qud.json",
@@ -6433,6 +6535,24 @@
    1.0
   ],
   "size": 1.05
+ },
+ "r/brotato.png": {
+  "game": "brotato",
+  "config": "brotato.json",
+  "style": "brotato",
+  "body_center": 0.4858,
+  "body_height": 0.8254,
+  "body_center_x": 0.4613,
+  "body_width": 0.7137,
+  "src": [
+   0.19641,
+   0.10316,
+   0.35939,
+   1.0
+  ],
+  "ink_left": 0.1006,
+  "ink_right": 0.1779,
+  "pad": -0.06
  },
  "r/darkest_dungeon.png": {
   "game": "darkest_dungeon",
@@ -7723,6 +7843,24 @@
   ],
   "size": 1.12,
   "pad": 0.06
+ },
+ "t/brotato.png": {
+  "game": "brotato",
+  "config": "brotato_2.json",
+  "style": "brotato_2",
+  "body_center": 0.4835,
+  "body_height": 0.8189,
+  "body_center_x": 0.4625,
+  "body_width": 0.7228,
+  "src": [
+   0.43317,
+   0.10922,
+   0.60151,
+   0.99393
+  ],
+  "ink_left": 0.0974,
+  "ink_right": 0.1723,
+  "pad": -0.06
  },
  "t/darkest_dungeon.png": {
   "game": "darkest_dungeon",

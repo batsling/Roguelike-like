@@ -190,7 +190,10 @@ so Godot never imports the source), is JSON:
                   "hole_colour" paints another face showing in a hole;
                   "as_drawn": [{"piece", "polygon"}] (in cut) — inside the
                   polygon, the logo's own pixels exactly (no redraw), over a
-                  band grown round the rest of the letter;
+                  band grown round the rest of the letter; "inside": true only
+                  within the letter's own rebuilt silhouette, "skip_colours":
+                  [[r, g, b], ...] (with "skip_tolerance") never a neighbour's
+                  colour (Brotato's potato O, its face as drawn);
                   "extrude": {"dx", "dy", "colour", "skip"} (in cut) gives a
                   block letter its 3D side by sweeping its face (Isaac);
                   "colour_far", "alpha", "alpha_far" shade it from the face
@@ -1845,11 +1848,21 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
             # Inside this polygon the logo's own pixels, untouched: no band, no
             # redraw (Repentance's blood, which a glow round every drop ruins).
             # where the logo drew nothing, the letter's own outline stays
-            poly = (_polygon_mask((H, W), ad["polygon"]) & (a > 0))[y0:y1, x0:x1]
+            poly = _polygon_mask((H, W), ad["polygon"]) & (a > 0)
+            for col_ in ad.get("skip_colours", []):
+                # a neighbour's colour inside the polygon (Brotato's R's grey
+                # side beside the O's headband) is left to the letter's own
+                # rebuilt edge under it
+                poly &= np.abs(A[..., :3] - np.array(col_, float)).max(-1) > ad.get("skip_tolerance", 20)
+            poly = poly[y0:y1, x0:x1]
             src = A[y0:y1, x0:x1].clip(0, 255).astype(np.uint8)
             if img.size != (x1 - x0, y1 - y0):
                 src = np.asarray(Image.fromarray(src).resize(img.size, Image.LANCZOS))
                 poly = np.asarray(Image.fromarray((poly * 255).astype(np.uint8)).resize(img.size, Image.NEAREST)) > 127
+            if ad.get("inside"):
+                # only within the letter's own rebuilt silhouette, so a straight
+                # polygon edge never sticks out of its round outline
+                poly = poly & (np.asarray(img.convert("RGBA"))[..., 3] > 0)
             # laid OVER the letter, not swapped in: the drawn part's soft edge
             # would otherwise punch see-through gaps in the outline under it
             top = np.zeros_like(src)
