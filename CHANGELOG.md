@@ -11,6 +11,20 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Chests are drawn one way.** A chest used to look like three different
+  things: the pop-up's cards (`ItemDropModal`), the banked-chest screen's own
+  bracketed tiles under a green "Choose a Reward" (`RewardScreen`), and
+  picture-only tiles on the haul. Every chest is an `ItemDropModal` now: the
+  banked screen mounts one section per chest (`ItemDropModal.embed`) and adds
+  only Reroll and Leave to the chest's own row of answers; the haul's compact
+  card shows the name in its rarity's colour, the kind and two lines of what it
+  does, with the rest on hover. Each wears the same heading, the gift (🎁) and
+  its size in gold ("Large Chest — take 1 of 3", `ItemDropModal.chest_heading`,
+  off `Data.CHEST_SIZE_NAMES`), the same gold frame, and the same opening: the
+  gift lands and the cards are dealt, about half a second, finished by a click.
+  The banked screen's backdrop was also 0x0 (`set_anchors_preset` without
+  offsets), so the page behind it was neither dimmed nor blocked; it is both.
+
 - **Title letters: Brotato.** B R O T A T O with their 3D sides, the O the
   potato with its headband drawn as the logo draws it (no side under the
   band, just its black edge: `extrude`'s new `colour_by`), and its two guns as

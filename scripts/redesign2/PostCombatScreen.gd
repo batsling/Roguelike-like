@@ -1007,7 +1007,7 @@ func _chest_sum_row() -> Control:
 	# The answer sits on the FACES' line, like the operators — centring it against a
 	# term that is now two rows tall would float it between the pictures and their
 	# values, which is the one place it does not belong.
-	var result := _line(chest_result_text(), UITheme.GOLD, 13)
+	var result := _line("%s %s" % [ItemDropModal.CHEST_GLYPH, chest_result_text()], UITheme.GOLD, 13)
 	result.custom_minimum_size = Vector2(0, REASON_FACE)
 	result.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	result.size_flags_vertical = Control.SIZE_SHRINK_BEGIN

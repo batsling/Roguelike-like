@@ -1028,9 +1028,66 @@ func test_a_chest_is_still_a_chest() -> void:
 	var chest := RewardScreen.new()
 	add_child_autofree(chest)
 	chest.setup_chest(2)
-	assert_eq(chest._panel.custom_minimum_size, RewardScreen.PANEL_SIZE)
+	assert_lt(chest._panel.custom_minimum_size.x, RewardScreen.PANEL_SIZE.x,
+		"a chest's panel is the pop-up's width, not the catalog's")
 	assert_false(chest._search.visible, "no search over two rolled cards")
-	assert_eq(chest._choices_box.get_child_count(), 2, "two choices, as asked for")
+	assert_eq(chest._sections.size(), 1, "one chest on the screen")
+	assert_eq(chest._sections[0]._cards.size(), 2, "two choices, as asked for")
+
+# --- one chest, drawn one way -------------------------------------------------
+#
+# A chest used to be drawn three ways: the pop-up's cards, this screen's own
+# bracketed tiles under "Choose a Reward", and picture-only tiles on the haul.
+# They are all `ItemDropModal` now, under one heading.
+
+func test_every_chest_is_named_by_its_size_under_the_gift() -> void:
+	assert_eq(ItemDropModal.chest_heading(1), "🎁  Small Chest")
+	assert_eq(ItemDropModal.chest_heading(2), "🎁  Medium Chest — take 1 of 2")
+	assert_eq(ItemDropModal.chest_heading(3), "🎁  Large Chest — take 1 of 3")
+	assert_eq(ItemDropModal.chest_heading(5), "🎁  Huge Chest — take 1 of 5")
+	assert_eq(ItemDropModal.chest_heading(4), "🎁  Chest of 4 — take 1 of 4",
+		"a count that is no rung of the ladder says the count")
+	assert_eq(ItemDropModal.chest_heading(1, "devilish"), "🎁  Devilish Small Chest")
+
+func test_the_banked_chest_screen_draws_the_pop_ups_chest() -> void:
+	var chest := RewardScreen.new()
+	add_child_autofree(chest)
+	chest.setup_chests([1, 3])
+	assert_eq(chest._sections.size(), 2, "a section per chest")
+	for section in chest._sections:
+		assert_true(section is ItemDropModal, "each one is the pop-up's own chest")
+	assert_eq(chest._sections[0]._cards.size(), 1)
+	assert_eq(chest._sections[1]._cards.size(), 3)
+	assert_eq(chest._sections[1]._heading(), ItemDropModal.chest_heading(3))
+
+func test_taking_from_one_banked_chest_leaves_the_others_open() -> void:
+	var chest := RewardScreen.new()
+	add_child_autofree(chest)
+	chest.setup_chests([1, 2])
+	var closed := [false]
+	chest.closed.connect(func(): closed[0] = true)
+	var before: int = GameState.inventory.size()
+	var second = chest._sections[1]
+	chest._sections[0].take()
+	assert_eq(GameState.inventory.size(), before + 1, "the relic landed")
+	assert_false(closed[0], "one chest is still unanswered")
+	assert_false(second.answered_already(), "and it is the same chest it was")
+	second.take()
+	assert_eq(GameState.inventory.size(), before + 2)
+	assert_true(closed[0], "the last answer closes the screen")
+
+func test_a_reroll_replaces_only_the_chests_still_open() -> void:
+	var chest := RewardScreen.new()
+	add_child_autofree(chest)
+	chest.setup_chests([1, 1])
+	chest._sections[0].take()
+	var charges: int = GameState.reroll_charges
+	GameState.reroll_charges = 1
+	chest._on_reroll()
+	assert_null(chest._sections[0], "the answered chest stays answered")
+	assert_not_null(chest._sections[1], "the open one is dealt again")
+	assert_eq(chest._sections[1]._cards.size(), 1)
+	GameState.reroll_charges = charges
 
 # --- Dragon Fruit / Lucky Fysh: the purse and the pack --------------------
 #
