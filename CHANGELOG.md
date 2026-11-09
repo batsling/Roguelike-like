@@ -11,6 +11,66 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Title letters: Brotato.** B R O T A T O with their 3D sides, the O the
+  potato with its headband drawn as the logo draws it (no side under the
+  band, just its black edge: `extrude`'s new `colour_by`), and its two guns as
+  a decoration pair at the ends of the title. The cutter's `as_drawn` gained `inside` and `skip_colours`
+  (`docs/content-authoring.md`, "Title letters").
+
+- **Title letters: Super Auto Pets smaller and closer.** Its letters are drawn
+  0.9 times as big and pulled together until their white edges just meet, as
+  in the logo; a negative `pad` now only ever counts between two letters of the
+  same logo, so another logo's letter beside them keeps its gap.
+
+- **Title letters: Ball x Pit bigger and roomier, Everything is Crab spaced
+  by its outline.** Every Ball x Pit letter is drawn 1.12 times as big with
+  0.06 of the line kept clear either side; Everything is Crab is spaced by
+  what it draws (`space_by_ink`), so its outlined i no longer covers the
+  letter beside it (`docs/content-authoring.md`, "Title letters").
+
+- **Title letters: Super Auto Pets.** S u p e r A t o P t s, stood upright,
+  each with the logo's black and white sticker edge (the cutter's new
+  `outline.bands`), spaced by what each letter draws rather than its box, so
+  a letter drawn wider gets more room and the edges never run into each other
+  (`space_by_ink`, `ink_left` / `ink_right` in the index)
+  (`docs/content-authoring.md`, "Title letters").
+
+- **Title letters: FTL.** F T L, flat white, from the logo without its FASTER
+  THAN LIGHT line (`docs/content-authoring.md`, "Title letters").
+
+- **Title letters: Tangledeep.** T a n g l e d e p in sharp pixels, wood with
+  its dark shading and outline, the T with its vines; the second e is a repeat
+  and left out. The cutter's `pixel_outline` gained `around`, for an outline
+  that rings a letter's 3D shading with its face where neighbours share it
+  (`docs/content-authoring.md`, "Title letters").
+
+- **Title letters: SNKRX.** S N K R X in sharp pixels, with the logo's solid
+  dark-grey drop shadow turned into a real see-through shadow (the cutter's new
+  `recolour`), each letter keeping exactly the shadow it casts. Also fixed in
+  the cutter: `own_by_shadow` with `grow` 0 gave every shadow to the first
+  letter (`docs/content-authoring.md`, "Title letters").
+
+- **Title letters: Downwell.** D O W N E L, white blocks under the logo's red
+  stripes; the second W and L are repeats and left out
+  (`docs/content-authoring.md`, "Title letters").
+
+- **Title letters: Slice & Dice.** S L I C E, D I C E in sharp pixels, sliced
+  as the logo slices them, with dagger I's that run past the line; the die with
+  the & in it is filed as `ampersand/`. Rebuilt pixel for pixel from Steam's
+  logo (`docs/content-authoring.md`, "Title letters").
+
+- **Title letters: Dungeon Clawler, stood upright off its arc.** D U N G E O N,
+  C L A W L E R, with the claw (chain and all) as the C. The logo's two words
+  curve, every letter leaning its own way, so the cutter gained `rotate`: each
+  letter is turned upright for the title, and the game page's logo turns it
+  back (`src_turn` in the index, `LogoProgress`) so it still fills in as drawn.
+  The cutter also gained `outline.close`, which fills the navy plate into a
+  letter's own notches (the A's legs, the W's V) instead of leaving see-through
+  wedges, and lost a bug that left see-through pinholes round any smoothed face
+  cut with `match_tolerance`. StarVaders had 13-42 in every letter; it is re-cut,
+  and the pinholes are the only pixels that changed (`docs/content-authoring.md`,
+  "Title letters").
+
 - **Customization: costumes, icons and the title's letters** (`docs/customization.md`).
   A new main-menu screen with three tabs: each character's icon and full portrait
   chosen separately from their costumes; the pictures drawn in place of 🗝, ✸ and

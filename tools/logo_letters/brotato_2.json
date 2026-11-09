@@ -1,0 +1,66 @@
+{
+ "game": "brotato",
+ "source": "brotato.png",
+ "pieces": {
+  "t": [
+   1604,
+   315
+  ],
+  "a": [
+   1865,
+   466
+  ],
+  "t.2": [
+   2288,
+   314
+  ],
+  "o.2": [
+   2799,
+   444
+  ]
+ },
+ "fill": {
+  "rgb_ranges": [
+   [
+    100,
+    255,
+    0,
+    100,
+    0,
+    90
+   ]
+  ],
+  "min_alpha": 200
+ },
+ "adopt_strays": false,
+ "smooth": false,
+ "shadow": false,
+ "cut": {
+  "reach": 1,
+  "extrude": {
+   "dx": 40,
+   "dy": 24,
+   "colour": [
+    82,
+    21,
+    16
+   ],
+   "outline": {
+    "width": 52,
+    "colour": [
+     0,
+     0,
+     0
+    ]
+   },
+   "fill_face_holes": 20000
+  }
+ },
+ "hold": [
+  "t.2"
+ ],
+ "space_by_ink": true,
+ "pad": {
+  "*": -0.06
+ }
+}

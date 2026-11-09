@@ -296,6 +296,139 @@ logo, the R and V `hold`), and the letters' config leaves it out of the fill
 `repaint` rebuilds every pixel of that strip that is not clean face from the
 face above and below it, and a `rects` strip lays the plate's own colour back
 over the star's edge in the V's outline.
+Dungeon Clawler gives D U N G E O N, C L A W L E R (the second N and L and
+the e as `__2`; the small L is a capital, the e cut as a lowercase shape) from
+the wiki's 3116px logo: white letters on one navy plate, each face apart from
+the next, so it is the default paint mode with the plate rebuilt round each
+as a 52px band (`match_tolerance` 30). Two things were new. The plate fills
+the notches between a letter's own strokes (under the A's crossbar, the W's
+V), which an even band leaves as see-through wedges, so the band runs round
+the fill closed by a 90px disc (`outline.close`). And the words are set on an
+ARC, every letter leaning its own way along it, so each is turned upright
+(`rotate`, degrees clockwise, from -7 for the U to +7 for the second N, each
+measured off the letter's near-vertical and near-horizontal edges and judged
+by eye where an italic stroke and a turned base disagree); the index keeps
+`src` where the piece lies in the logo and adds `src_turn`, and the game page
+turns the piece back by it, so the logo still fills in as drawn. The C is
+the claw with its chain kept whole (the owner, 8 Nov 2026), sized by the
+claw's ring (`body` with columns) so the chain stands above the line. The
+source was given an 80px transparent margin: the logo ran to its edges and
+the R's, W's and chain's band was cut off flat there.
+Slice & Dice gives S L I C E, D I C E (the second I, C and E as `__2`; they
+are sliced differently from the first, so none is a repeat) and its die with
+the & inside as `ampersand/`, there only for a title that spells "&" (the
+owner, 8 Nov 2026). The source is Steam's 1280px logo, pixel art at exactly
+9px a pixel with five colours and no blended block, rebuilt on that grid
+(`pixel_grid` from 50, 176) to 131x41 and cut at 12x with sharp pixels
+(`pixel`). Its letters are SLICED on purpose, each two to four separate
+slivers, so every piece lists a point per sliver. The I's are daggers, sized
+by the letters' rows (`body` 14-27) so the blade runs past the line as drawn,
+down for SLICE's and up for DICE's.
+Downwell gives D O W N E L, from SteamGridDB's 6421px logo: white block
+letters, each with a red band on top and two thinner red stripes floating
+above it, every part apart from the next, so each piece lists a point per
+part (the W's stripes are three columns, one over each prong) and is cut as
+it is (`reach` 3 for the soft edge). Its second W and L are exact repeats of
+the first (only a one-pixel shift along their edges, from the vector art's
+sub-pixel placing), so they are left out. The stripes count as the letter's
+top: each is sized by its whole height, stripes and all.
+SNKRX gives S N K R X from Steam's 640px logo: pixel art at 2px a pixel,
+cut as it is at 6x with sharp pixels (`pixel`). The logo paints its drop
+shadow as solid dark grey (36), which on the menu read as black blocks, so
+the owner asked for "shadows, not pure black" (8 Nov 2026): `recolour` makes
+it a half see-through black (alpha 128) that darkens whatever is behind it,
+and the grey 48 showing in the R's counter, the game's own background, see-
+through. It is applied to the source, so the game page's logo matches. The
+shadow falls 6px right and down; each shadow pixel goes to the letter that
+casts it (`own_by_shadow` 6, 6), not the nearest, since the N's lands in the
+gap by the K's stem, and `reach` is 10 so the diagonal corners (8.5px off)
+are kept: all 3,864 shadow pixels end up in exactly one letter. The N's top
+runs into the K's top-left serif and is split at x 157, on the logo's 2px
+grid (a split at an even x left half a block of the K on the N).
+`own_by_shadow`'s `grow` of 0 used to grow the cast over the whole canvas
+(scipy reads `iterations=0` as "until nothing changes") and gave every
+shadow to the first letter; 0 now means no growth.
+Tangledeep gives T a n g l e d e p (all but the T lowercase shapes; the third
+e as `__2`) from PlayStation's 1700px logo, pixel art at exactly 4px a pixel,
+cut at 3x with sharp pixels. Each letter is a wood face (every brown, crack
+shades included, listed exactly as `rgb_ranges`), a two-tone dark 3D shading
+inside its right and lower edges, and a 3px dark outline that NEIGHBOURS SHARE,
+so the face and its shading are cut (`outline_colours`) and a whole outline
+ring of the logo's width is drawn round both (`pixel_outline` with `around`,
+the shading colours). With `around` the ring never paints over what the letter
+keeps (the T's vines), shading that does not touch the letter's own face is a
+neighbour's tip and goes, and outline pixels left past the ring by the
+nearest-letter split go too, unless they are inside a counter or border
+something of the letter's (the vine hanging into the gap by the a). The T keeps
+its vines; the few vine pixels nearer the a are erased from it (`erase` by
+colour). The second e is an exact repeat of the first (4 pixels differ, where
+neighbours touch) and is `hold`, not `ignore`: found, so its shading stays its
+own instead of landing on the next e.
+FTL gives F T L, flat white with no glow and nothing else (the owner, 9 Nov
+2026), from SteamGridDB's 3841px white logo (id 132636) with its FASTER THAN
+LIGHT line cropped off, so the game page's logo is the FTL alone. A soft glow
+fitted to the official logo was tried and dropped: white on white adds nothing
+on the menu's light cyan portal. The 150px transparent margin round the source
+is left from it and harmless (the page's copy is trimmed).
+Super Auto Pets gives S u p e r A t o P t s (every letter but S, A and P a
+lowercase shape; the P, s and second t as `__2`) from Steam's 1280px logo:
+yellow faces on one black plate inside a white sticker edge, every letter
+tilted its own way, so each is turned upright (`rotate`, as Dungeon Clawler;
+the owner, 9 Nov 2026) and given an even sticker edge of its own, 19px of black
+then 17px of white as the letters' tops have it (`outline.bands`; learned, the
+plate's thicker black under the letters won and the white came out a thin
+line), with the plate filled into each letter's notches (`outline.close` 20).
+"Pets" is drawn bigger than "Super Auto"; its e and Auto's u are the same
+glyphs as Super's at another size and tilt, so they are held as repeats. The
+two t's and the capital P and S against the lowercase p and s differ.
+Its sticker edge hangs a sixth of each letter's width past its box on either
+side, and the title spaces letters by their boxes, so they ran into each
+other; the owner asked for more room for wider letters (9 Nov 2026). With
+`space_by_ink` the cutter records how far each piece's solid ink reaches past
+its box, level with the box only (an eye stalk above never meets a
+neighbour), as `ink_left` / `ink_right`, and `TitleLetters._lay_out` keeps that
+much more room between it and its neighbours, as it does `pad`: the gap is
+then between what the letters draw. Spread a whole gap apart its words looked
+bizarre (the owner, 9 Nov 2026), so its letters are drawn smaller (`"size":
+{"*": 0.9}`) and drawn together (`"pad": {"*": -0.09}`) until their white edges
+just meet, as in the logo. A NEGATIVE pad counts only between two letters of
+the same logo (`TitleLetters._lay_out`): beside another logo's it pulled that
+letter in under the white edge (Ball x Pit's l, half swallowed by an e).
+Everything is Crab is spaced the same way
+(its letters' black outlines hid a narrow neighbour: Ball x Pit's l behind the
+crab's i); its PNGs are unchanged, only the index gained the overhang. Ball x
+Pit's tall, condensed letters are drawn a little bigger and given room either
+side (`"size": {"*": 1.12}`, `"pad": {"*": 0.06}`; the owner, 9 Nov 2026), so
+its two L's no longer touch and a lone one holds its own beside other logos'.
+Brotato gives B R O, T A T O (the second O as `__2`; the second T is a repeat
+of the first, 3% of pixels apart, and held) and its two GUNS as a decoration
+pair (`decor_left` / `decor_right`; the owner, 9 Nov 2026: "I think they are
+guns"), from SteamGridDB's 3172px logo (id 66877, the same design as the
+owner's Fangamer link at three times the size). Three configs on one source:
+`brotato.json` (white B R O) and `brotato_2.json` (red T A T O) each sweep
+their faces 40 right and 24 down into their 3D side (`extrude`: dark grey
+under the white letters, dark red under the red) inside a rebuilt 52px black
+outline; `brotato_guns.json` cuts the guns as drawn, holding the B and the
+last O so each gun's black body ends halfway to its letter (a sliver of the
+O's outline above the right gun erased). The O is the potato: its face is
+white body, cap, eye whites and the red headband and tail (two shapes, apart
+from the T), sized by the O itself (`body` rows 150-742) so the knot rises
+above the line, and everything inside its outline is kept AS DRAWN (`as_drawn`:
+a polygon traced round the face, and one round the band and tail, both with
+`inside` so only within the rebuilt silhouette, the band's with
+`skip_colours` so the R's grey side beside it stays out): swept as a block,
+its pupils, stitches and the band's own lines came out side-grey. The band casts
+no 3D side at all, as the logo draws it: its tail is a red strip ringed in
+black, and its knot ends in its black edge. `extrude`'s `colour_by` with
+`"colour": null` drops the side that only the band's red pixels reach, so the
+outline closes in there, and the potato keeps its grey side (the owner, 9 Nov
+2026: swept, the band's side was first the potato's grey, then a flat dark-red
+slab that matched nothing in the logo). The potato's traced polygon leaves the
+tail out: traced outward from its middle round the tail too, it bridged the
+gap under the tail and drew a wedge of the T's red into the O. Its letters
+are spaced by their drawn edge (`space_by_ink`) and drawn together (`"pad":
+{"*": -0.06}`) so their outlines meet, as in the logo, but only beside each
+other.
 A logo can
 take more than one config when its parts are built differently: Uma Musume has
 four, one per line, one for the girl and one for her dash.

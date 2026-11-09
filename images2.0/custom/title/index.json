@@ -224,7 +224,27 @@
    0.22651,
    0.28399,
    0.861
-  ]
+  ],
+  "size": 1.12,
+  "pad": 0.06
+ },
+ "a/brotato.png": {
+  "game": "brotato",
+  "config": "brotato_2.json",
+  "style": "brotato_2",
+  "body_center": 0.4831,
+  "body_height": 0.8138,
+  "body_center_x": 0.4627,
+  "body_width": 0.7239,
+  "src": [
+   0.53909,
+   0.11772,
+   0.70807,
+   0.97816
+  ],
+  "ink_left": 0.097,
+  "ink_right": 0.1716,
+  "pad": -0.06
  },
  "a/caves_of_qud.png": {
   "game": "caves_of_qud",
@@ -319,6 +339,22 @@
   ],
   "form": "lower"
  },
+ "a/dungeon_clawler.png": {
+  "game": "dungeon_clawler",
+  "config": "dungeon_clawler.json",
+  "style": "dungeon_clawler",
+  "body_center": 0.4992,
+  "body_height": 0.8358,
+  "body_center_x": 0.5008,
+  "body_width": 0.8256,
+  "src": [
+   0.34653,
+   0.46102,
+   0.54711,
+   0.95396
+  ],
+  "src_turn": 1.0
+ },
  "a/dungeon_crawl_stone_soup.png": {
   "game": "dungeon_crawl_stone_soup",
   "config": "dungeon_crawl_stone_soup.json",
@@ -365,6 +401,8 @@
    0.61275,
    0.9007
   ],
+  "ink_left": 0.0621,
+  "ink_right": 0.0734,
   "form": "lower"
  },
  "a/hades.png": {
@@ -684,6 +722,43 @@
    0.86173
   ]
  },
+ "a/super_auto_pets.png": {
+  "game": "super_auto_pets",
+  "config": "super_auto_pets.json",
+  "style": "super_auto_pets",
+  "body_center": 0.5,
+  "body_height": 0.696,
+  "body_center_x": 0.4957,
+  "body_width": 0.671,
+  "src": [
+   0.54918,
+   -0.00633,
+   0.73022,
+   0.43851
+  ],
+  "ink_left": 0.1472,
+  "ink_right": 0.1515,
+  "src_turn": -3.0,
+  "size": 0.9,
+  "pad": -0.09
+ },
+ "a/tangledeep.png": {
+  "game": "tangledeep",
+  "config": "tangledeep.json",
+  "style": "tangledeep",
+  "body_center": 0.4754,
+  "body_height": 0.8361,
+  "body_center_x": 0.4615,
+  "body_width": 0.7795,
+  "src": [
+   0.12685,
+   0.22381,
+   0.24692,
+   0.80476
+  ],
+  "form": "lower",
+  "pixel": true
+ },
  "a/the_binding_of_isaac.png": {
   "game": "the_binding_of_isaac",
   "config": "the_binding_of_isaac.json",
@@ -817,6 +892,22 @@
   "size": 0.86,
   "pad": 0.09
  },
+ "ampersand/slice_dice.png": {
+  "game": "slice_dice",
+  "config": "slice_dice.json",
+  "style": "slice_dice",
+  "body_center": 0.5,
+  "body_height": 1.0,
+  "body_center_x": 0.5,
+  "body_width": 0.8974,
+  "src": [
+   0.35115,
+   0.0,
+   0.64885,
+   1.0
+  ],
+  "pixel": true
+ },
  "apostrophe/don_t_starve.png": {
   "game": "don_t_starve",
   "config": "don_t_starve.json",
@@ -897,7 +988,27 @@
    0.22651,
    0.15267,
    0.861
-  ]
+  ],
+  "size": 1.12,
+  "pad": 0.06
+ },
+ "b/brotato.png": {
+  "game": "brotato",
+  "config": "brotato.json",
+  "style": "brotato",
+  "body_center": 0.4832,
+  "body_height": 0.8151,
+  "body_center_x": 0.4586,
+  "body_width": 0.6936,
+  "src": [
+   0.07945,
+   0.10922,
+   0.23172,
+   0.97573
+  ],
+  "ink_left": 0.1077,
+  "ink_right": 0.1905,
+  "pad": -0.06
  },
  "b/diablo.png": {
   "game": "diablo",
@@ -943,6 +1054,8 @@
    0.76961,
    0.92308
   ],
+  "ink_left": 0.0696,
+  "ink_right": 0.0823,
   "form": "lower"
  },
  "b/into_the_breach.png": {
@@ -1177,6 +1290,21 @@
    0.41667
   ]
  },
+ "c/dungeon_clawler.png": {
+  "game": "dungeon_clawler",
+  "config": "dungeon_clawler.json",
+  "style": "dungeon_clawler",
+  "body_center": 0.6689,
+  "body_height": 0.57,
+  "body_center_x": 0.6007,
+  "body_width": 0.6825,
+  "src": [
+   0.00128,
+   0.00594,
+   0.30552,
+   0.89161
+  ]
+ },
  "c/dungeon_crawl_stone_soup.png": {
   "game": "dungeon_crawl_stone_soup",
   "config": "dungeon_crawl_stone_soup.json",
@@ -1206,7 +1334,9 @@
    0.62517,
    0.36471,
    0.91189
-  ]
+  ],
+  "ink_left": 0.0729,
+  "ink_right": 0.0573
  },
  "c/into_the_breach.png": {
   "game": "into_the_breach",
@@ -1310,6 +1440,38 @@
   "size": 0.86,
   "pad": 0.09,
   "case": "lower"
+ },
+ "c/slice_dice.png": {
+  "game": "slice_dice",
+  "config": "slice_dice.json",
+  "style": "slice_dice",
+  "body_center": 0.5,
+  "body_height": 0.7647,
+  "body_center_x": 0.5,
+  "body_width": 0.7143,
+  "src": [
+   0.19084,
+   0.29268,
+   0.29771,
+   0.70732
+  ],
+  "pixel": true
+ },
+ "c/slice_dice__2.png": {
+  "game": "slice_dice",
+  "config": "slice_dice.json",
+  "style": "slice_dice",
+  "body_center": 0.5,
+  "body_height": 0.7647,
+  "body_center_x": 0.5,
+  "body_width": 0.7143,
+  "src": [
+   0.81679,
+   0.29268,
+   0.92366,
+   0.70732
+  ],
+  "pixel": true
  },
  "c/the_binding_of_isaac.png": {
   "game": "the_binding_of_isaac",
@@ -1514,6 +1676,37 @@
    0.94498
   ]
  },
+ "d/downwell.png": {
+  "game": "downwell",
+  "config": "downwell.json",
+  "style": "downwell",
+  "body_center": 0.5,
+  "body_height": 1.0,
+  "body_center_x": 0.4985,
+  "body_width": 0.9969,
+  "src": [
+   0.0,
+   0.0,
+   0.10154,
+   1.0
+  ]
+ },
+ "d/dungeon_clawler.png": {
+  "game": "dungeon_clawler",
+  "config": "dungeon_clawler.json",
+  "style": "dungeon_clawler",
+  "body_center": 0.5,
+  "body_height": 0.7852,
+  "body_center_x": 0.5,
+  "body_width": 0.7917,
+  "src": [
+   0.23462,
+   0.06326,
+   0.40407,
+   0.44337
+  ],
+  "src_turn": 6.5
+ },
  "d/dungeon_crawl_stone_soup.png": {
   "game": "dungeon_crawl_stone_soup",
   "config": "dungeon_crawl_stone_soup.json",
@@ -1662,6 +1855,22 @@
    1.0
   ]
  },
+ "d/slice_dice.png": {
+  "game": "slice_dice",
+  "config": "slice_dice.json",
+  "style": "slice_dice",
+  "body_center": 0.5,
+  "body_height": 0.7647,
+  "body_center_x": 0.5,
+  "body_width": 0.7333,
+  "src": [
+   0.64122,
+   0.29268,
+   0.75573,
+   0.70732
+  ],
+  "pixel": true
+ },
  "d/starvaders.png": {
   "game": "starvaders",
   "config": "starvaders.json",
@@ -1676,6 +1885,23 @@
    0.73191,
    0.8642
   ]
+ },
+ "d/tangledeep.png": {
+  "game": "tangledeep",
+  "config": "tangledeep.json",
+  "style": "tangledeep",
+  "body_center": 0.4812,
+  "body_height": 0.875,
+  "body_center_x": 0.4694,
+  "body_width": 0.7959,
+  "src": [
+   0.59975,
+   0.04286,
+   0.72044,
+   0.80476
+  ],
+  "form": "lower",
+  "pixel": true
  },
  "d/the_binding_of_isaac.png": {
   "game": "the_binding_of_isaac",
@@ -1827,6 +2053,21 @@
    0.79506
   ]
  },
+ "decor_left/brotato.png": {
+  "game": "brotato",
+  "config": "brotato_guns.json",
+  "style": "brotato_guns",
+  "body_center": 0.4906,
+  "body_height": 0.7651,
+  "body_center_x": 0.526,
+  "body_width": 0.7604,
+  "src": [
+   0.0,
+   0.27184,
+   0.09079,
+   0.85558
+  ]
+ },
  "decor_left/darkest_dungeon.png": {
   "game": "darkest_dungeon",
   "config": "darkest_dungeon_torch.json",
@@ -1855,7 +2096,9 @@
    0.4028,
    0.18039,
    0.56783
-  ]
+  ],
+  "ink_left": 0.0859,
+  "ink_right": 0.0675
  },
  "decor_left/everything_is_crab__legs.png": {
   "game": "everything_is_crab",
@@ -1871,6 +2114,8 @@
    0.21569,
    0.97762
   ],
+  "ink_left": 0.082,
+  "ink_right": 0.0984,
   "subtitle": true
  },
  "decor_left/uma_musume_pretty_derby.png": {
@@ -1886,6 +2131,21 @@
    0.47895,
    0.16343,
    1.00526
+  ]
+ },
+ "decor_right/brotato.png": {
+  "game": "brotato",
+  "config": "brotato_guns.json",
+  "style": "brotato_guns",
+  "body_center": 0.4866,
+  "body_height": 0.7588,
+  "body_center_x": 0.5111,
+  "body_width": 0.7102,
+  "src": [
+   0.90101,
+   0.27184,
+   1.0,
+   0.86044
   ]
  },
  "decor_right/demonic_mahjong.png": {
@@ -1918,7 +2178,9 @@
    0.38322,
    0.97941,
    0.54825
-  ]
+  ],
+  "ink_left": 0.0613,
+  "ink_right": 0.0859
  },
  "decor_right/everything_is_crab__legs.png": {
   "game": "everything_is_crab",
@@ -1934,6 +2196,8 @@
    0.86471,
    0.97203
   ],
+  "ink_left": 0.0909,
+  "ink_right": 0.0826,
   "subtitle": true
  },
  "decor_right/uma_musume_pretty_derby.png": {
@@ -2091,6 +2355,54 @@
   ],
   "form": "lower"
  },
+ "e/downwell.png": {
+  "game": "downwell",
+  "config": "downwell.json",
+  "style": "downwell",
+  "body_center": 0.5,
+  "body_height": 1.0,
+  "body_center_x": 0.5008,
+  "body_width": 0.9924,
+  "src": [
+   0.66781,
+   0.0,
+   0.76997,
+   1.0
+  ]
+ },
+ "e/dungeon_clawler.png": {
+  "game": "dungeon_clawler",
+  "config": "dungeon_clawler.json",
+  "style": "dungeon_clawler",
+  "body_center": 0.5,
+  "body_height": 0.715,
+  "body_center_x": 0.4985,
+  "body_width": 0.6746,
+  "src": [
+   0.60824,
+   0.19806,
+   0.71575,
+   0.48462
+  ],
+  "src_turn": -5.0
+ },
+ "e/dungeon_clawler__2.png": {
+  "game": "dungeon_clawler",
+  "config": "dungeon_clawler.json",
+  "style": "dungeon_clawler",
+  "body_center": 0.5,
+  "body_height": 0.7593,
+  "body_center_x": 0.5,
+  "body_width": 0.7179,
+  "src": [
+   0.7472,
+   0.48735,
+   0.87236,
+   0.82662
+  ],
+  "src_turn": -5.0,
+  "form": "lower"
+ },
  "e/dungeon_crawl_stone_soup.png": {
   "game": "dungeon_crawl_stone_soup",
   "config": "dungeon_crawl_stone_soup.json",
@@ -2213,7 +2525,9 @@
    0.24615,
    0.24902,
    0.54406
-  ]
+  ],
+  "ink_left": 0.1121,
+  "ink_right": 0.1121
  },
  "e/everything_is_crab__2.png": {
   "game": "everything_is_crab",
@@ -2229,6 +2543,8 @@
    0.36471,
    0.53007
   ],
+  "ink_left": 0.1538,
+  "ink_right": 0.1538,
   "form": "lower"
  },
  "e/hades.png": {
@@ -2531,6 +2847,38 @@
   ],
   "form": "lower"
  },
+ "e/slice_dice.png": {
+  "game": "slice_dice",
+  "config": "slice_dice.json",
+  "style": "slice_dice",
+  "body_center": 0.5,
+  "body_height": 0.7647,
+  "body_center_x": 0.5,
+  "body_width": 0.6667,
+  "src": [
+   0.28244,
+   0.29268,
+   0.37405,
+   0.70732
+  ],
+  "pixel": true
+ },
+ "e/slice_dice__2.png": {
+  "game": "slice_dice",
+  "config": "slice_dice.json",
+  "style": "slice_dice",
+  "body_center": 0.5,
+  "body_height": 0.7647,
+  "body_center_x": 0.5909,
+  "body_width": 0.8182,
+  "src": [
+   0.91603,
+   0.29268,
+   1.0,
+   0.70732
+  ],
+  "pixel": true
+ },
  "e/spelunky_classic.png": {
   "game": "spelunky_classic",
   "config": "spelunky_classic.json",
@@ -2560,6 +2908,61 @@
    0.81364,
    0.86667
   ]
+ },
+ "e/super_auto_pets.png": {
+  "game": "super_auto_pets",
+  "config": "super_auto_pets.json",
+  "style": "super_auto_pets",
+  "body_center": 0.5,
+  "body_height": 0.6139,
+  "body_center_x": 0.5,
+  "body_width": 0.6142,
+  "src": [
+   0.3268,
+   0.06736,
+   0.48119,
+   0.42679
+  ],
+  "ink_left": 0.1777,
+  "ink_right": 0.1777,
+  "src_turn": -4.0,
+  "size": 0.9,
+  "pad": -0.09,
+  "form": "lower"
+ },
+ "e/tangledeep.png": {
+  "game": "tangledeep",
+  "config": "tangledeep.json",
+  "style": "tangledeep",
+  "body_center": 0.4754,
+  "body_height": 0.8361,
+  "body_center_x": 0.4773,
+  "body_width": 0.7955,
+  "src": [
+   0.50616,
+   0.22381,
+   0.61453,
+   0.80476
+  ],
+  "form": "lower",
+  "pixel": true
+ },
+ "e/tangledeep__2.png": {
+  "game": "tangledeep",
+  "config": "tangledeep.json",
+  "style": "tangledeep",
+  "body_center": 0.4754,
+  "body_height": 0.8361,
+  "body_center_x": 0.5,
+  "body_width": 0.8372,
+  "src": [
+   0.7968,
+   0.22381,
+   0.90271,
+   0.80476
+  ],
+  "form": "lower",
+  "pixel": true
  },
  "e/the_binding_of_isaac__small.png": {
   "game": "the_binding_of_isaac",
@@ -2751,6 +3154,21 @@
    0.91604
   ]
  },
+ "f/ftl.png": {
+  "game": "ftl",
+  "config": "ftl.json",
+  "style": "ftl",
+  "body_center": 0.5,
+  "body_height": 0.9963,
+  "body_center_x": 0.5004,
+  "body_width": 0.9956,
+  "src": [
+   -0.00052,
+   -0.00124,
+   0.29602,
+   1.00124
+  ]
+ },
  "f/hand_of_fate.png": {
   "game": "hand_of_fate",
   "config": "hand_of_fate.json",
@@ -2930,6 +3348,22 @@
    0.83654
   ]
  },
+ "g/dungeon_clawler.png": {
+  "game": "dungeon_clawler",
+  "config": "dungeon_clawler.json",
+  "style": "dungeon_clawler",
+  "body_center": 0.4988,
+  "body_height": 0.7405,
+  "body_center_x": 0.5,
+  "body_width": 0.6677,
+  "src": [
+   0.53662,
+   0.17798,
+   0.64284,
+   0.48978
+  ],
+  "src_turn": -2.0
+ },
  "g/dungeon_crawl_stone_soup.png": {
   "game": "dungeon_crawl_stone_soup",
   "config": "dungeon_crawl_stone_soup.json",
@@ -3006,6 +3440,8 @@
    0.83627,
    0.63636
   ],
+  "ink_left": 0.1089,
+  "ink_right": 0.1089,
   "form": "lower"
  },
  "g/mewgenics.png": {
@@ -3048,6 +3484,23 @@
   "size": 0.86,
   "pad": 0.09,
   "case": "lower"
+ },
+ "g/tangledeep.png": {
+  "game": "tangledeep",
+  "config": "tangledeep.json",
+  "style": "tangledeep",
+  "body_center": 0.4817,
+  "body_height": 0.878,
+  "body_center_x": 0.4659,
+  "body_width": 0.7727,
+  "src": [
+   0.34606,
+   0.22381,
+   0.45443,
+   1.00476
+  ],
+  "form": "lower",
+  "pixel": true
  },
  "g/the_binding_of_isaac.png": {
   "game": "the_binding_of_isaac",
@@ -3150,6 +3603,8 @@
    0.61863,
    0.51608
   ],
+  "ink_left": 0.1143,
+  "ink_right": 0.1048,
   "form": "lower"
  },
  "h/hades.png": {
@@ -3448,7 +3903,9 @@
    0.22651,
    0.83759,
    0.861
-  ]
+  ],
+  "size": 1.12,
+  "pad": 0.06
  },
  "i/demonic_mahjong.png": {
   "game": "demonic_mahjong",
@@ -3509,6 +3966,8 @@
    0.67549,
    0.52308
   ],
+  "ink_left": 0.1774,
+  "ink_right": 0.1774,
   "form": "lower"
  },
  "i/everything_is_crab__2.png": {
@@ -3525,6 +3984,8 @@
    0.48137,
    0.69091
   ],
+  "ink_left": 0.1864,
+  "ink_right": 0.1864,
   "form": "lower"
  },
  "i/into_the_breach.png": {
@@ -3689,6 +4150,38 @@
    0.48357,
    0.90358
   ]
+ },
+ "i/slice_dice.png": {
+  "game": "slice_dice",
+  "config": "slice_dice.json",
+  "style": "slice_dice",
+  "body_center": 0.4375,
+  "body_height": 0.5417,
+  "body_center_x": 0.5,
+  "body_width": 0.6667,
+  "src": [
+   0.12214,
+   0.2439,
+   0.21374,
+   0.82927
+  ],
+  "pixel": true
+ },
+ "i/slice_dice__2.png": {
+  "game": "slice_dice",
+  "config": "slice_dice.json",
+  "style": "slice_dice",
+  "body_center": 0.5625,
+  "body_height": 0.5417,
+  "body_center_x": 0.5,
+  "body_width": 0.6667,
+  "src": [
+   0.74046,
+   0.17073,
+   0.83206,
+   0.7561
+  ],
+  "pixel": true
  },
  "i/the_binding_of_isaac.png": {
   "game": "the_binding_of_isaac",
@@ -3940,6 +4433,22 @@
   "pad": 0.09,
   "case": "lower"
  },
+ "k/snkrx.png": {
+  "game": "snkrx",
+  "config": "snkrx.json",
+  "style": "snkrx",
+  "body_center": 0.4667,
+  "body_height": 0.8889,
+  "body_center_x": 0.4595,
+  "body_width": 0.8649,
+  "src": [
+   0.3758,
+   -0.02222,
+   0.61146,
+   0.97778
+  ],
+  "pixel": true
+ },
  "k/spelunky_classic.png": {
   "game": "spelunky_classic",
   "config": "spelunky_classic.json",
@@ -3999,7 +4508,9 @@
    0.22651,
    0.36659,
    0.91377
-  ]
+  ],
+  "size": 1.12,
+  "pad": 0.06
  },
  "l/ball_x_pit__2.png": {
   "game": "ball_x_pit",
@@ -4014,7 +4525,9 @@
    0.22651,
    0.43063,
    0.91248
-  ]
+  ],
+  "size": 1.12,
+  "pad": 0.06
  },
  "l/dead_cells.png": {
   "game": "dead_cells",
@@ -4063,6 +4576,53 @@
    0.86557
   ]
  },
+ "l/downwell.png": {
+  "game": "downwell",
+  "config": "downwell.json",
+  "style": "downwell",
+  "body_center": 0.5,
+  "body_height": 1.0,
+  "body_center_x": 0.5,
+  "body_width": 0.9939,
+  "src": [
+   0.78399,
+   0.0,
+   0.886,
+   1.0
+  ]
+ },
+ "l/dungeon_clawler.png": {
+  "game": "dungeon_clawler",
+  "config": "dungeon_clawler.json",
+  "style": "dungeon_clawler",
+  "body_center": 0.4993,
+  "body_height": 0.838,
+  "body_center_x": 0.5,
+  "body_width": 0.755,
+  "src": [
+   0.26039,
+   0.3888,
+   0.40448,
+   0.88843
+  ],
+  "src_turn": 5.0
+ },
+ "l/dungeon_clawler__2.png": {
+  "game": "dungeon_clawler",
+  "config": "dungeon_clawler.json",
+  "style": "dungeon_clawler",
+  "body_center": 0.5,
+  "body_height": 0.8014,
+  "body_center_x": 0.4987,
+  "body_width": 0.7226,
+  "src": [
+   0.66715,
+   0.49118,
+   0.79327,
+   0.90246
+  ],
+  "src_turn": 2.0
+ },
  "l/dungeon_crawl_stone_soup.png": {
   "game": "dungeon_crawl_stone_soup",
   "config": "dungeon_crawl_stone_soup.json",
@@ -4079,6 +4639,21 @@
   ],
   "form": "lower",
   "pixel": true
+ },
+ "l/ftl.png": {
+  "game": "ftl",
+  "config": "ftl.json",
+  "style": "ftl",
+  "body_center": 0.5,
+  "body_height": 0.9963,
+  "body_center_x": 0.5005,
+  "body_width": 0.9946,
+  "src": [
+   0.76048,
+   -0.00124,
+   1.00052,
+   1.00124
+  ]
  },
  "l/loop_hero.png": {
   "game": "loop_hero",
@@ -4214,6 +4789,22 @@
   ],
   "form": "lower"
  },
+ "l/slice_dice.png": {
+  "game": "slice_dice",
+  "config": "slice_dice.json",
+  "style": "slice_dice",
+  "body_center": 0.5,
+  "body_height": 0.7647,
+  "body_center_x": 0.5,
+  "body_width": 0.6,
+  "src": [
+   0.0687,
+   0.29268,
+   0.14504,
+   0.70732
+  ],
+  "pixel": true
+ },
  "l/spelunky_classic.png": {
   "game": "spelunky_classic",
   "config": "spelunky_classic.json",
@@ -4228,6 +4819,23 @@
    0.50781,
    1.0625
   ]
+ },
+ "l/tangledeep.png": {
+  "game": "tangledeep",
+  "config": "tangledeep.json",
+  "style": "tangledeep",
+  "body_center": 0.4812,
+  "body_height": 0.875,
+  "body_center_x": 0.4531,
+  "body_width": 0.6875,
+  "src": [
+   0.44212,
+   0.04286,
+   0.52094,
+   0.80476
+  ],
+  "form": "lower",
+  "pixel": true
  },
  "l/the_royal_writ.png": {
   "game": "the_royal_writ",
@@ -4541,6 +5149,53 @@
   ],
   "form": "lower"
  },
+ "n/downwell.png": {
+  "game": "downwell",
+  "config": "downwell.json",
+  "style": "downwell",
+  "body_center": 0.5,
+  "body_height": 1.0,
+  "body_center_x": 0.4992,
+  "body_width": 0.9924,
+  "src": [
+   0.39168,
+   0.0,
+   0.49385,
+   1.0
+  ]
+ },
+ "n/dungeon_clawler.png": {
+  "game": "dungeon_clawler",
+  "config": "dungeon_clawler.json",
+  "style": "dungeon_clawler",
+  "body_center": 0.5013,
+  "body_height": 0.7241,
+  "body_center_x": 0.5013,
+  "body_width": 0.7261,
+  "src": [
+   0.44238,
+   0.19224,
+   0.57011,
+   0.48548
+  ],
+  "src_turn": 2.0
+ },
+ "n/dungeon_clawler__2.png": {
+  "game": "dungeon_clawler",
+  "config": "dungeon_clawler.json",
+  "style": "dungeon_clawler",
+  "body_center": 0.5012,
+  "body_height": 0.7373,
+  "body_center_x": 0.5,
+  "body_width": 0.6936,
+  "src": [
+   0.73601,
+   0.09969,
+   0.85122,
+   0.40778
+  ],
+  "src_turn": -7.0
+ },
  "n/dungeon_crawl_stone_soup.png": {
   "game": "dungeon_crawl_stone_soup",
   "config": "dungeon_crawl_stone_soup.json",
@@ -4666,6 +5321,8 @@
    0.74902,
    0.53706
   ],
+  "ink_left": 0.1209,
+  "ink_right": 0.1209,
   "form": "lower"
  },
  "n/hand_of_fate.png": {
@@ -4845,6 +5502,22 @@
    1.0
   ]
  },
+ "n/snkrx.png": {
+  "game": "snkrx",
+  "config": "snkrx.json",
+  "style": "snkrx",
+  "body_center": 0.4634,
+  "body_height": 0.878,
+  "body_center_x": 0.4545,
+  "body_width": 0.8485,
+  "src": [
+   0.19745,
+   0.11111,
+   0.40764,
+   1.02222
+  ],
+  "pixel": true
+ },
  "n/spelunky_classic.png": {
   "game": "spelunky_classic",
   "config": "spelunky_classic.json",
@@ -4859,6 +5532,23 @@
    0.75781,
    1.0625
   ]
+ },
+ "n/tangledeep.png": {
+  "game": "tangledeep",
+  "config": "tangledeep.json",
+  "style": "tangledeep",
+  "body_center": 0.4754,
+  "body_height": 0.8361,
+  "body_center_x": 0.4762,
+  "body_width": 0.819,
+  "src": [
+   0.22783,
+   0.22381,
+   0.35714,
+   0.80476
+  ],
+  "form": "lower",
+  "pixel": true
  },
  "n/the_binding_of_isaac.png": {
   "game": "the_binding_of_isaac",
@@ -4905,6 +5595,42 @@
    0.89265
   ],
   "size": 1.05
+ },
+ "o/brotato.png": {
+  "game": "brotato",
+  "config": "brotato.json",
+  "style": "brotato",
+  "body_center": 0.5302,
+  "body_height": 0.7437,
+  "body_center_x": 0.3856,
+  "body_width": 0.5984,
+  "src": [
+   0.31967,
+   0.02913,
+   0.51671,
+   0.99515
+  ],
+  "ink_left": 0.0832,
+  "ink_right": 0.2432,
+  "pad": -0.06
+ },
+ "o/brotato__2.png": {
+  "game": "brotato",
+  "config": "brotato_2.json",
+  "style": "brotato_2",
+  "body_center": 0.4835,
+  "body_height": 0.8182,
+  "body_center_x": 0.4618,
+  "body_width": 0.717,
+  "src": [
+   0.76356,
+   0.11529,
+   0.92844,
+   0.99636
+  ],
+  "ink_left": 0.0994,
+  "ink_right": 0.1759,
+  "pad": -0.06
  },
  "o/caves_of_qud.png": {
   "game": "caves_of_qud",
@@ -4997,6 +5723,36 @@
    0.78641
   ],
   "form": "lower"
+ },
+ "o/downwell.png": {
+  "game": "downwell",
+  "config": "downwell.json",
+  "style": "downwell",
+  "body_center": 0.5,
+  "body_height": 1.0,
+  "body_center_x": 0.5,
+  "body_width": 0.9939,
+  "src": [
+   0.11556,
+   0.0,
+   0.21757,
+   1.0
+  ]
+ },
+ "o/dungeon_clawler.png": {
+  "game": "dungeon_clawler",
+  "config": "dungeon_clawler.json",
+  "style": "dungeon_clawler",
+  "body_center": 0.5,
+  "body_height": 0.6983,
+  "body_center_x": 0.5,
+  "body_width": 0.6656,
+  "src": [
+   0.6733,
+   0.17595,
+   0.77696,
+   0.44172
+  ]
  },
  "o/dungeon_crawl_stone_soup.png": {
   "game": "dungeon_crawl_stone_soup",
@@ -5303,6 +6059,26 @@
    1.00283
   ]
  },
+ "o/super_auto_pets.png": {
+  "game": "super_auto_pets",
+  "config": "super_auto_pets.json",
+  "style": "super_auto_pets",
+  "body_center": 0.5,
+  "body_height": 0.5979,
+  "body_center_x": 0.5,
+  "body_width": 0.6346,
+  "src": [
+   0.82524,
+   0.2847,
+   0.98824,
+   0.621
+  ],
+  "ink_left": 0.1683,
+  "ink_right": 0.1683,
+  "size": 0.9,
+  "pad": -0.09,
+  "form": "lower"
+ },
  "o/the_binding_of_isaac.png": {
   "game": "the_binding_of_isaac",
   "config": "the_binding_of_isaac_small.json",
@@ -5393,7 +6169,9 @@
    0.22651,
    0.78097,
    0.91377
-  ]
+  ],
+  "size": 1.12,
+  "pad": 0.06
  },
  "p/dungeon_crawl_stone_soup.png": {
   "game": "dungeon_crawl_stone_soup",
@@ -5513,6 +6291,64 @@
    0.25781,
    1.0625
   ]
+ },
+ "p/super_auto_pets.png": {
+  "game": "super_auto_pets",
+  "config": "super_auto_pets.json",
+  "style": "super_auto_pets",
+  "body_center": 0.5,
+  "body_height": 0.6855,
+  "body_center_x": 0.5,
+  "body_width": 0.6219,
+  "src": [
+   0.22829,
+   0.09433,
+   0.38582,
+   0.53561
+  ],
+  "ink_left": 0.1741,
+  "ink_right": 0.1741,
+  "src_turn": -6.0,
+  "size": 0.9,
+  "pad": -0.09,
+  "form": "lower"
+ },
+ "p/super_auto_pets__2.png": {
+  "game": "super_auto_pets",
+  "config": "super_auto_pets.json",
+  "style": "super_auto_pets",
+  "body_center": 0.5018,
+  "body_height": 0.719,
+  "body_center_x": 0.498,
+  "body_width": 0.6932,
+  "src": [
+   0.26494,
+   0.43736,
+   0.46165,
+   0.92491
+  ],
+  "ink_left": 0.1394,
+  "ink_right": 0.1434,
+  "src_turn": -12.0,
+  "size": 0.9,
+  "pad": -0.09
+ },
+ "p/tangledeep.png": {
+  "game": "tangledeep",
+  "config": "tangledeep.json",
+  "style": "tangledeep",
+  "body_center": 0.4753,
+  "body_height": 0.8642,
+  "body_center_x": 0.4681,
+  "body_width": 0.7872,
+  "src": [
+   0.88547,
+   0.22381,
+   1.00123,
+   0.99524
+  ],
+  "form": "lower",
+  "pixel": true
  },
  "p/uma_musume_pretty_derby.png": {
   "game": "uma_musume_pretty_derby",
@@ -5700,6 +6536,24 @@
   ],
   "size": 1.05
  },
+ "r/brotato.png": {
+  "game": "brotato",
+  "config": "brotato.json",
+  "style": "brotato",
+  "body_center": 0.4858,
+  "body_height": 0.8254,
+  "body_center_x": 0.4613,
+  "body_width": 0.7137,
+  "src": [
+   0.19641,
+   0.10316,
+   0.35939,
+   1.0
+  ],
+  "ink_left": 0.1006,
+  "ink_right": 0.1779,
+  "pad": -0.06
+ },
  "r/darkest_dungeon.png": {
   "game": "darkest_dungeon",
   "config": "darkest_dungeon.json",
@@ -5731,6 +6585,22 @@
    0.83495
   ],
   "form": "lower"
+ },
+ "r/dungeon_clawler.png": {
+  "game": "dungeon_clawler",
+  "config": "dungeon_clawler.json",
+  "style": "dungeon_clawler",
+  "body_center": 0.5,
+  "body_height": 0.8046,
+  "body_center_x": 0.5,
+  "body_width": 0.8336,
+  "src": [
+   0.78606,
+   0.30486,
+   0.99819,
+   0.72283
+  ],
+  "src_turn": -4.0
  },
  "r/dungeon_crawl_stone_soup.png": {
   "game": "dungeon_crawl_stone_soup",
@@ -5838,6 +6708,8 @@
    0.41667,
    0.52308
   ],
+  "ink_left": 0.0909,
+  "ink_right": 0.0909,
   "form": "lower"
  },
  "r/everything_is_crab__2.png": {
@@ -5854,6 +6726,8 @@
    0.44706,
    0.8951
   ],
+  "ink_left": 0.1089,
+  "ink_right": 0.1089,
   "form": "lower"
  },
  "r/into_the_breach.png": {
@@ -6125,6 +6999,22 @@
    0.99689
   ]
  },
+ "r/snkrx.png": {
+  "game": "snkrx",
+  "config": "snkrx.json",
+  "style": "snkrx",
+  "body_center": 0.4651,
+  "body_height": 0.8837,
+  "body_center_x": 0.4516,
+  "body_width": 0.8387,
+  "src": [
+   0.6051,
+   -0.02222,
+   0.80255,
+   0.93333
+  ],
+  "pixel": true
+ },
  "r/starvaders.png": {
   "game": "starvaders",
   "config": "starvaders.json",
@@ -6154,6 +7044,27 @@
    0.89745,
    0.86667
   ]
+ },
+ "r/super_auto_pets.png": {
+  "game": "super_auto_pets",
+  "config": "super_auto_pets.json",
+  "style": "super_auto_pets",
+  "body_center": 0.4975,
+  "body_height": 0.6131,
+  "body_center_x": 0.5027,
+  "body_width": 0.5769,
+  "src": [
+   0.42182,
+   0.05929,
+   0.56445,
+   0.41338
+  ],
+  "ink_left": 0.1978,
+  "ink_right": 0.1868,
+  "src_turn": -3.0,
+  "size": 0.9,
+  "pad": -0.09,
+  "form": "lower"
  },
  "r/the_royal_writ.png": {
   "game": "the_royal_writ",
@@ -6444,6 +7355,8 @@
    0.5451,
    0.68951
   ],
+  "ink_left": 0.1325,
+  "ink_right": 0.1446,
   "form": "lower"
  },
  "s/hades.png": {
@@ -6637,6 +7550,38 @@
    0.82151
   ]
  },
+ "s/slice_dice.png": {
+  "game": "slice_dice",
+  "config": "slice_dice.json",
+  "style": "slice_dice",
+  "body_center": 0.5,
+  "body_height": 0.7895,
+  "body_center_x": 0.4091,
+  "body_width": 0.8182,
+  "src": [
+   0.0,
+   0.26829,
+   0.08397,
+   0.73171
+  ],
+  "pixel": true
+ },
+ "s/snkrx.png": {
+  "game": "snkrx",
+  "config": "snkrx.json",
+  "style": "snkrx",
+  "body_center": 0.4651,
+  "body_height": 0.8837,
+  "body_center_x": 0.4516,
+  "body_width": 0.8387,
+  "src": [
+   -0.00637,
+   0.06667,
+   0.19108,
+   1.02222
+  ],
+  "pixel": true
+ },
  "s/spelunky_classic.png": {
   "game": "spelunky_classic",
   "config": "spelunky_classic.json",
@@ -6681,6 +7626,46 @@
    0.98542,
    0.8642
   ]
+ },
+ "s/super_auto_pets.png": {
+  "game": "super_auto_pets",
+  "config": "super_auto_pets.json",
+  "style": "super_auto_pets",
+  "body_center": 0.498,
+  "body_height": 0.6908,
+  "body_center_x": 0.5021,
+  "body_width": 0.6818,
+  "src": [
+   0.0118,
+   0.1528,
+   0.20146,
+   0.59586
+  ],
+  "ink_left": 0.1446,
+  "ink_right": 0.1446,
+  "src_turn": -5.0,
+  "size": 0.9,
+  "pad": -0.09
+ },
+ "s/super_auto_pets__2.png": {
+  "game": "super_auto_pets",
+  "config": "super_auto_pets.json",
+  "style": "super_auto_pets",
+  "body_center": 0.5,
+  "body_height": 0.6592,
+  "body_center_x": 0.5,
+  "body_width": 0.6505,
+  "src": [
+   0.60031,
+   0.54093,
+   0.76176,
+   0.93772
+  ],
+  "ink_left": 0.1602,
+  "ink_right": 0.1602,
+  "size": 0.9,
+  "pad": -0.09,
+  "form": "lower"
  },
  "s/the_binding_of_isaac.png": {
   "game": "the_binding_of_isaac",
@@ -6855,7 +7840,27 @@
    0.22651,
    1.00093,
    0.861
-  ]
+  ],
+  "size": 1.12,
+  "pad": 0.06
+ },
+ "t/brotato.png": {
+  "game": "brotato",
+  "config": "brotato_2.json",
+  "style": "brotato_2",
+  "body_center": 0.4835,
+  "body_height": 0.8189,
+  "body_center_x": 0.4625,
+  "body_width": 0.7228,
+  "src": [
+   0.43317,
+   0.10922,
+   0.60151,
+   0.99393
+  ],
+  "ink_left": 0.0974,
+  "ink_right": 0.1723,
+  "pad": -0.06
  },
  "t/darkest_dungeon.png": {
   "game": "darkest_dungeon",
@@ -6981,7 +7986,24 @@
    0.53725,
    0.51888
   ],
+  "ink_left": 0.1667,
+  "ink_right": 0.141,
   "form": "lower"
+ },
+ "t/ftl.png": {
+  "game": "ftl",
+  "config": "ftl.json",
+  "style": "ftl",
+  "body_center": 0.5,
+  "body_height": 0.9963,
+  "body_center_x": 0.5004,
+  "body_width": 0.9963,
+  "src": [
+   0.34652,
+   -0.00124,
+   0.69383,
+   1.00124
+  ]
  },
  "t/hand_of_fate.png": {
   "game": "hand_of_fate",
@@ -7208,6 +8230,64 @@
    0.85432
   ]
  },
+ "t/super_auto_pets.png": {
+  "game": "super_auto_pets",
+  "config": "super_auto_pets.json",
+  "style": "super_auto_pets",
+  "body_center": 0.5,
+  "body_height": 0.6911,
+  "body_center_x": 0.503,
+  "body_width": 0.5389,
+  "src": [
+   0.76781,
+   0.10051,
+   0.89869,
+   0.53823
+  ],
+  "ink_left": 0.2156,
+  "ink_right": 0.2096,
+  "src_turn": 8.0,
+  "size": 0.9,
+  "pad": -0.09,
+  "form": "lower"
+ },
+ "t/super_auto_pets__2.png": {
+  "game": "super_auto_pets",
+  "config": "super_auto_pets.json",
+  "style": "super_auto_pets",
+  "body_center": 0.5,
+  "body_height": 0.7266,
+  "body_center_x": 0.5053,
+  "body_width": 0.5936,
+  "src": [
+   0.52202,
+   0.41113,
+   0.66857,
+   0.90579
+  ],
+  "ink_left": 0.1872,
+  "ink_right": 0.1818,
+  "src_turn": 6.0,
+  "size": 0.9,
+  "pad": -0.09,
+  "form": "lower"
+ },
+ "t/tangledeep.png": {
+  "game": "tangledeep",
+  "config": "tangledeep.json",
+  "style": "tangledeep",
+  "body_center": 0.4915,
+  "body_height": 0.904,
+  "body_center_x": 0.4795,
+  "body_width": 0.863,
+  "src": [
+   -0.00123,
+   -0.00476,
+   0.17857,
+   0.8381
+  ],
+  "pixel": true
+ },
  "t/the_binding_of_isaac.png": {
   "game": "the_binding_of_isaac",
   "config": "the_binding_of_isaac_small.json",
@@ -7342,6 +8422,22 @@
    0.88308
   ],
   "form": "lower"
+ },
+ "u/dungeon_clawler.png": {
+  "game": "dungeon_clawler",
+  "config": "dungeon_clawler.json",
+  "style": "dungeon_clawler",
+  "body_center": 0.5,
+  "body_height": 0.7113,
+  "body_center_x": 0.5015,
+  "body_width": 0.6746,
+  "src": [
+   0.37215,
+   0.20029,
+   0.47966,
+   0.48314
+  ],
+  "src_turn": 7.0
  },
  "u/dungeon_crawl_stone_soup.png": {
   "game": "dungeon_crawl_stone_soup",
@@ -7509,6 +8605,27 @@
    1.0625
   ]
  },
+ "u/super_auto_pets.png": {
+  "game": "super_auto_pets",
+  "config": "super_auto_pets.json",
+  "style": "super_auto_pets",
+  "body_center": 0.4975,
+  "body_height": 0.6131,
+  "body_center_x": 0.5,
+  "body_width": 0.5851,
+  "src": [
+   0.13495,
+   0.14629,
+   0.28229,
+   0.50038
+  ],
+  "ink_left": 0.1862,
+  "ink_right": 0.1915,
+  "src_turn": -10.0,
+  "size": 0.9,
+  "pad": -0.09,
+  "form": "lower"
+ },
  "u/uma_musume_pretty_derby.png": {
   "game": "uma_musume_pretty_derby",
   "config": "uma_musume_pretty_derby.json",
@@ -7611,6 +8728,8 @@
    0.31176,
    0.53706
   ],
+  "ink_left": 0.1149,
+  "ink_right": 0.1264,
   "form": "lower"
  },
  "v/rogue.png": {
@@ -7713,6 +8832,37 @@
    0.87891,
    1.0
   ]
+ },
+ "w/downwell.png": {
+  "game": "downwell",
+  "config": "downwell.json",
+  "style": "downwell",
+  "body_center": 0.5,
+  "body_height": 1.0,
+  "body_center_x": 0.5,
+  "body_width": 0.9957,
+  "src": [
+   0.23158,
+   0.0,
+   0.37767,
+   1.0
+  ]
+ },
+ "w/dungeon_clawler.png": {
+  "game": "dungeon_clawler",
+  "config": "dungeon_clawler.json",
+  "style": "dungeon_clawler",
+  "body_center": 0.5,
+  "body_height": 0.8655,
+  "body_center_x": 0.5,
+  "body_width": 0.8813,
+  "src": [
+   0.44603,
+   0.39704,
+   0.73807,
+   1.00431
+  ],
+  "src_turn": 2.0
  },
  "w/dungeon_crawl_stone_soup.png": {
   "game": "dungeon_crawl_stone_soup",
@@ -7860,7 +9010,9 @@
    -0.00257,
    0.65708,
    1.00257
-  ]
+  ],
+  "size": 1.12,
+  "pad": 0.06
  },
  "x/rogue.png": {
   "game": "rogue",
@@ -7888,6 +9040,22 @@
   "pad": 0.09,
   "case": "lower"
  },
+ "x/snkrx.png": {
+  "game": "snkrx",
+  "config": "snkrx.json",
+  "style": "snkrx",
+  "body_center": 0.4615,
+  "body_height": 0.8718,
+  "body_center_x": 0.4571,
+  "body_width": 0.8571,
+  "src": [
+   0.78344,
+   0.06667,
+   1.00637,
+   0.93333
+  ],
+  "pixel": true
+ },
  "y/everything_is_crab.png": {
   "game": "everything_is_crab",
   "config": "everything_is_crab.json",
@@ -7902,6 +9070,8 @@
    0.48039,
    0.51748
   ],
+  "ink_left": 0.1358,
+  "ink_right": 0.1358,
   "form": "lower"
  },
  "y/rogue.png": {

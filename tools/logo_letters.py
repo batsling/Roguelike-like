@@ -54,6 +54,18 @@ so Godot never imports the source), is JSON:
                   (fill), so glow, shadow and outline never shift it. The index
                   records it as body_center / body_height (vertical) and
                   body_center_x / body_width (horizontal), fractions of the PNG
+    space_by_ink  true: each piece's index records how far its solid ink
+                  reaches past its box on either side (`ink_left`,
+                  `ink_right`, level with the box only), and the title keeps that much more room
+                  between it and its neighbours, so a letter drawn wider than
+                  its box (Super Auto Pets' sticker edge) never runs into them
+    rotate        {piece: degrees} — a letter set on a curve (Dungeon Clawler's
+                  arc) turned that many degrees clockwise (negative: counter-
+                  clockwise) about its face's middle so it stands upright.
+                  The index keeps `src` where the piece lies in the logo and
+                  adds `src_turn`, the turn that lays it back there (the game
+                  page's LogoProgress). Not with `body`, `centre`, `box_fill`,
+                  `as_drawn` or a redrawn `scale`, which read the logo's rows
     centre        {piece: [y_top, y_bottom]} — source rows to sit on the line's
                   middle, for a decoration whose own middle is not the part
                   that should line up (Uma Musume's dash: its bar, not the
@@ -95,6 +107,11 @@ so Godot never imports the source), is JSON:
     styles        [variant, ...] — piece variants (the part after the dot) drawn
                   at another size than the rest of the logo; each is sized as a
                   line of its own in images2.0/custom/title/index.json
+    recolour      [{"rgb": [r, g, b], "tolerance": n, "to": [r, g, b, a]}] —
+                  every pixel of that colour becomes `to`, before anything
+                  else (the logo page's copy included): a drop shadow painted
+                  solid made a see-through shadow, a background colour made
+                  see-through (SNKRX)
     inpaint       [[[x, y], ...]] — polygons rebuilt as the glow round them
                   (its alpha by distance from the solid flame) (a mark in a glow: Diablo's ®), before cutting;
     pixel_grid    {"x0", "y0", "x1", "y1", "pitch", "palette", "tolerance"} —
@@ -173,9 +190,16 @@ so Godot never imports the source), is JSON:
                   "hole_colour" paints another face showing in a hole;
                   "as_drawn": [{"piece", "polygon"}] (in cut) — inside the
                   polygon, the logo's own pixels exactly (no redraw), over a
-                  band grown round the rest of the letter;
+                  band grown round the rest of the letter; "inside": true only
+                  within the letter's own rebuilt silhouette, "skip_colours":
+                  [[r, g, b], ...] (with "skip_tolerance") never a neighbour's
+                  colour (Brotato's potato O, its face as drawn);
                   "extrude": {"dx", "dy", "colour", "skip"} (in cut) gives a
                   block letter its 3D side by sweeping its face (Isaac);
+                  "colour_by": [{"rgb_ranges", "colour"}] gives the side swept
+                  from face pixels of those colours alone a colour of its own,
+                  or none with "colour": null (Brotato's bandana casts no side,
+                  on a potato with a grey one);
                   "colour_far", "alpha", "alpha_far" shade it from the face
                   out and let it fade (Vampire Survivors); "colour_down"
                   (and "colour_down_far") colours the walls swept from the
@@ -225,7 +249,8 @@ so Godot never imports the source), is JSON:
                   exact n x n block, and the index marks the piece `pixel`
                   so the game draws it with sharp pixels (TitleLetters);
                   "pixel_outline": {"colour", "width"} draws an even ring of
-                  whole pixels round the face;
+                  whole pixels round the face; "around": [[r, g, b], ...]
+                  rings the kept pixels of those colours with it (a 3D side);
                   "outline_colours": [[r, g, b], ...] keeps only those colours
                   past the face (a pixel-art letter's edge);
                   "keep_min_alpha": n keeps only pixels that solid past the face
@@ -248,6 +273,13 @@ so Godot never imports the source), is JSON:
                   within n of the outline's colour at that distance (so a
                   background shape touching the letter is painted over); and
                   how far past the width hand-inked outline is still kept.
+                  "close": px — a plate the letters sit in fills the notches
+                  between a letter's own strokes (Dungeon Clawler's A legs, W):
+                  the band runs round the fill closed by a disc of that radius,
+                  not round the fill, so no see-through wedge is left in it
+                  "bands": [[[r, g, b], px], ...] sets the outline's colours
+                  from the fill out instead of learning them (Super Auto Pets'
+                  black then white sticker edge).
                   For a spiky inked logo: "follow_original": true paints the
                   outline only where the logo drew something else (never into
                   the gaps between spikes), "keep_within": px keeps everything
@@ -514,7 +546,10 @@ def _polygon_mask(shape, pts) -> np.ndarray:
 
 def _extrude(m: np.ndarray, r: int, dx: int, dy: int) -> np.ndarray:
     """`m` grown by `r`, then dragged (dx, dy): the union of every step."""
-    m = nd.binary_dilation(m, iterations=r)
+    if r > 0:
+        # never iterations=0: to scipy that means "grow until nothing changes",
+        # the whole canvas, and every shadow went to the first letter (SNKRX)
+        m = nd.binary_dilation(m, iterations=r)
     out = m.copy()
     steps = max(abs(dx), abs(dy), 1)
     for s in range(1, steps + 1):
@@ -691,6 +726,32 @@ def _write_logo(cfg: dict, A: np.ndarray) -> tuple:
     return tx, ty, w, h
 
 
+# Room round a piece turned upright (`rotate`), so no corner turns off the canvas.
+TURN_MARGIN = 200
+
+
+def _turn_piece(out: np.ndarray, face: np.ndarray, turn: float) -> tuple:
+    """A finished piece (H x W RGBA, the logo's frame) and its face, turned
+    `turn` degrees clockwise about the face's middle. Returns the turned piece
+    and face on a canvas TURN_MARGIN bigger on every side, the middle turned
+    about (in that canvas's pixels) and the margin."""
+    H, W = face.shape
+    G = TURN_MARGIN
+    big = np.zeros((H + 2 * G, W + 2 * G, 4), np.uint8)
+    big[G:G + H, G:G + W] = out
+    fy, fx = np.nonzero(face)
+    P = (float(fx.mean()) + G, float(fy.mean()) + G)
+    # PIL turns counter-clockwise; premultiplied ("RGBa") so the see-through
+    # pixels' black never bleeds into the turned edge. Bilinear, not bicubic:
+    # bicubic overshoots past the edge into faint loose specks and pinholes
+    # (20-50 parts a letter where there should be one)
+    turned = Image.fromarray(big).convert("RGBa").rotate(-turn, Image.BILINEAR, center=P).convert("RGBA")
+    fm = np.zeros((H + 2 * G, W + 2 * G), np.uint8)
+    fm[G:G + H, G:G + W] = face.astype(np.uint8) * 255
+    face_t = np.asarray(Image.fromarray(fm).rotate(-turn, Image.BILINEAR, center=P)) > 127
+    return np.array(turned), face_t, P, G
+
+
 def _src_fraction(box: tuple, logo_box: tuple) -> list:
     tx, ty, w, h = logo_box
     x0, y0, x1, y1 = box
@@ -700,7 +761,25 @@ def _src_fraction(box: tuple, logo_box: tuple) -> list:
 def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
     cfg = json.loads(cfg_path.read_text())
     src = cfg_path.parent / cfg["source"]
+    for n_ in cfg.get("rotate", {}):
+        # a turned piece is measured on the turned picture; these read the
+        # logo's own rows and pixels, which no longer line up with it
+        c_ = cfg.get("cut") or {}
+        clash = ([k for k in ("body", "centre") if n_ in cfg.get(k, {})]
+                 + (["box_fill"] if "box_fill" in cfg else [])
+                 + (["as_drawn"] if any(d["piece"] == n_ for d in c_.get("as_drawn", [])) else [])
+                 + (["scale"] if int(c_.get("scale", 1)) > 1 and not (c_.get("pixel") or c_.get("smooth_scale")) else []))
+        if clash:
+            raise SystemExit(f"error: {n_} is in `rotate` and also uses {', '.join(clash)}, which a turned piece cannot")
     A = np.array(Image.open(src).convert("RGBA")).astype(float)
+    for rc in cfg.get("recolour", []):
+        # A colour the logo painted solid that is really something else
+        # (SNKRX): its drop shadow drawn as opaque dark grey becomes a
+        # see-through black that darkens whatever is behind it, and the game's
+        # own background showing in a counter becomes nothing. Applied to the
+        # source, so the game page's logo shows it the same way.
+        hit = (A[..., 3] > 0) & (np.abs(A[..., :3] - np.array(rc["rgb"], float)).max(-1) <= rc.get("tolerance", 0))
+        A[hit] = rc["to"]
     for poly in cfg.get("inpaint", []):
         # A mark that is no letter's, sitting in a soft glow (Diablo's ®): the
         # polygon rebuilt as the glow round it, which fades with distance from
@@ -783,6 +862,18 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
     for k in range(len(lut)):
         m = clean & (d1 > k - 0.5) & (d1 <= k + 0.5)
         lut[k] = np.median(A[m][:, :3], 0) if m.sum() > 50 else lut[max(k - 1, 0)]
+    if oc.get("bands"):
+        # the outline's colours given outright, from the fill out, instead of
+        # learned (Super Auto Pets: 19px of black then 17px of white, measured
+        # off the letters' tops; learned, the plate's thicker black under the
+        # letters won and the white came out a thin line)
+        T = float(sum(w_ for _, w_ in oc["bands"]))
+        lut = np.zeros((int(T) + 3, 3))
+        k0 = 0
+        for col_, w_ in oc["bands"]:
+            lut[k0:k0 + w_] = col_
+            k0 += w_
+        lut[k0:] = oc["bands"][-1][0]
     print(f"  outline {T:.0f}px wide")
 
     # Parts one piece hid of another, painted back from the piece's own column.
@@ -872,6 +963,8 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
     body_widths = {}
     line_centers = {}
     src_boxes = {}
+    src_turns = {}
+    ink_sides = {}
     out_dir_game = cfg["game"]
     written_names = []
     for i, n in enumerate(names):
@@ -1165,6 +1258,23 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
                 po = cut["pixel_outline"]
                 # round the face, or round everything kept (a letter as drawn)
                 body_ = (keep | painted) if cut.get("drawn") else f
+                if po.get("around"):
+                    # ...or round the face AND the kept pixels of these colours
+                    # (Tangledeep: its dark 3D shading, which the outline rings
+                    # as one with the face; not its vines, which have their own)
+                    shade_ = np.zeros_like(f)
+                    for col_ in po["around"]:
+                        shade_ |= keep & (np.abs(A[..., :3] - np.array(col_, float)).max(-1) <= 2)
+                    # only shading that touches this letter's face is its own: a
+                    # neighbour's shading tip that lies nearer this face is not,
+                    # and ringed it made a nub on the outline (Tangledeep's p)
+                    lab_s, _ = nd.label(f | shade_)
+                    own_s = shade_ & np.isin(lab_s, np.unique(lab_s[f & (lab_s > 0)]))
+                    stray_s = shade_ & ~own_s
+                    keep &= ~stray_s
+                    rgb[stray_s] = 0
+                    al[stray_s] = 0
+                    body_ = body_ | own_s
                 if po.get("miter"):
                     # A pen-stroke outline, measured off the logo (Tiny Rogues):
                     # `width` out from every edge, square where straight edges
@@ -1189,6 +1299,27 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
                     ring = (nd.distance_transform_edt(~body_) <= po.get("width", 1)) & ~body_
                 else:
                     ring = (nd.distance_transform_cdt(~body_, metric="chessboard") <= po.get("width", 1)) & ~body_
+                if po.get("around"):
+                    # never over what the letter keeps of its own (Tangledeep's
+                    # vines on the T): the ring only fills where it has nothing
+                    ring &= ~keep
+                    # and the outline colour kept PAST the ring is a wider
+                    # stretch of the outline two letters share, split off by
+                    # nearness into a loose column beside the ring: dropped,
+                    # unless it is inside the letter (a counter the outline fills)
+                    oc_ = keep & (np.abs(A[..., :3] - np.array(po["colour"], float)).max(-1) <= 2)
+                    near_ = nd.distance_transform_cdt(~body_, metric="chessboard") <= po.get("width", 1)
+                    ink_ = keep & ~oc_          # the letter's own: face, shading, vines
+                    inside_ = nd.binary_fill_holes(body_ | ring | (keep & near_) | ink_)
+                    # ...and the outline the logo draws round something of the
+                    # letter's past its ring (a vine hanging into the gap) stays,
+                    # or the vine floats loose
+                    by_ink_ = (nd.distance_transform_cdt(~(ink_ & ~body_), metric="chessboard") <= 2) \
+                        if (ink_ & ~body_).any() else np.zeros_like(oc_)
+                    loose_ = oc_ & ~near_ & ~inside_ & ~by_ink_
+                    keep &= ~loose_
+                    rgb[loose_] = 0
+                    al[loose_] = 0
                 rgb[ring] = po["colour"]
                 al[ring] = 1
             if n in cut.get("hard_edge", []) and not cut.get("synth_shadow"):
@@ -1324,6 +1455,29 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
                 if gap.any() and (reached & ~face_m).any():
                     _, (gy, gx) = nd.distance_transform_edt(~(reached & ~face_m), return_indices=True)
                     side_rgb[gap] = side_rgb[gy[gap], gx[gap]]
+                for cb in ex_cfg.get("colour_by", []):
+                    # Side swept from part of the face ONLY (no other part of
+                    # the face reaches it) takes a colour of its own, or with
+                    # "colour": null is no side at all and the outline closes in
+                    # (Brotato's bandana: the logo draws no side under it, just
+                    # its black edge; the potato beside it keeps its grey side)
+                    sub = np.zeros((H, W), bool)
+                    for rg in cb["rgb_ranges"]:
+                        sub |= ((A[..., 0] >= rg[0]) & (A[..., 0] <= rg[1]) & (A[..., 1] >= rg[2])
+                                & (A[..., 1] <= rg[3]) & (A[..., 2] >= rg[4]) & (A[..., 2] <= rg[5]))
+                    sub &= sweep_m
+                    rest = sweep_m & ~sub
+                    swept, swept_rest = sub.copy(), rest.copy()
+                    for k in range(1, steps + 1):
+                        off = (round(ex_cfg["dy"] * k / steps), round(ex_cfg["dx"] * k / steps))
+                        swept |= nd.shift(sub, off, order=0, cval=False)
+                        swept_rest |= nd.shift(rest, off, order=0, cval=False)
+                    only = swept & ~swept_rest & side & ~face_m
+                    if cb.get("colour") is None:
+                        side &= ~only
+                        reached &= ~only
+                    else:
+                        side_rgb[only] = cb["colour"]
                 rgb[:] = 0
                 al[:] = 0
                 ol = ex_cfg.get("outline")
@@ -1522,8 +1676,22 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
         else:
             fs = nd.gaussian_filter(f.astype(float), FILL_SMOOTH_SIGMA) > 0.5 if smooth else f
             ds = nd.distance_transform_edt(~fs)
+            # the outline's colour goes by distance from the fill itself
             idx = np.clip(np.round(ds).astype(int), 0, len(lut) - 1)
-            band = (ds > 0) & (ds <= T + 0.5) & ~f
+            if oc.get("close"):
+                # A plate the letters sit in (Dungeon Clawler's navy) fills the
+                # notches between a letter's own strokes, the A's legs and the
+                # W's V, however far they are from the fill. The fill closed by
+                # a disc of `close` px takes those notches in, so the band runs
+                # round the letter's hull instead of leaving a see-through wedge
+                # in it. The logo's own plate pixels are kept there as drawn.
+                hull = nd.distance_transform_edt(nd.distance_transform_edt(~fs) <= oc["close"]) > oc["close"]
+                ds = nd.distance_transform_edt(~(fs | hull))
+            # `~f`, never `ds > 0`: where the smoothed fill runs past the fill
+            # (ds 0, not fill) the edge is the outline's too, or it is left as
+            # see-through pinholes round the face (Dungeon Clawler's letters
+            # had 7-47 each, under `match_tolerance`)
+            band = (ds <= T + 0.5) & ~f
             if oc.get("follow_original"):
                 # Paint the outline only where the logo drew SOMETHING: over
                 # what is not this letter's (Hades' II), never into the gaps
@@ -1586,10 +1754,31 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
         out_a = al + sh * (1 - al)
         out_rgb = (rgb * al[..., None]) / np.maximum(out_a, 1e-6)[..., None]
         out = np.dstack([out_rgb, out_a * 255]).clip(0, 255).astype(np.uint8)
+        face_m = pieces[n]
+        turn = float(cfg.get("rotate", {}).get(n, 0.0))
+        if turn:
+            # A LETTER SET ON A CURVE, STOOD UPRIGHT (Dungeon Clawler's arc):
+            # the finished piece turned `turn` degrees clockwise about its
+            # face's middle, on a canvas grown so no corner falls off, with
+            # colour premultiplied so the turned edge takes no dark fringe.
+            # Everything after is measured on the turned piece; `src` stays
+            # where it lies in the logo and `src_turn` turns it back there.
+            out, face_m, P, G = _turn_piece(out, face_m, turn)
         ys, xs = np.where(out[..., 3] > 1)
-        x0, x1 = max(xs.min() - 2, 0), min(xs.max() + 3, W)
-        y0, y1 = max(ys.min() - 2, 0), min(ys.max() + 3, H)
+        x0, x1 = max(xs.min() - 2, 0), min(xs.max() + 3, out.shape[1])
+        y0, y1 = max(ys.min() - 2, 0), min(ys.max() + 3, out.shape[0])
         src_boxes[n] = (x0, y0, x1, y1)
+        if turn:
+            # the turned piece, laid back on the logo: its middle is where
+            # turning the crop's middle back about the face's middle puts it,
+            # and the game page turns the piece back by -turn about that
+            t_ = np.radians(-turn)
+            vx, vy = (x0 + x1) / 2 - P[0], (y0 + y1) / 2 - P[1]
+            cx_ = P[0] + vx * np.cos(t_) - vy * np.sin(t_) - G
+            cy_ = P[1] + vx * np.sin(t_) + vy * np.cos(t_) - G
+            hw, hh = (x1 - x0) / 2, (y1 - y0) / 2
+            src_boxes[n] = (cx_ - hw, cy_ - hh, cx_ + hw, cy_ + hh)
+            src_turns[n] = -turn
         # where the letter itself sits in the piece, from 0 (top) to 1: a
         # piece with something attached above or below (an eye stalk, a
         # knife, slime) is centred on the line by its letter, not its whole
@@ -1597,7 +1786,7 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
         # a shadow pushed to one side or an outline never moves its centre or
         # changes its size; `body` rows in the config override the height for
         # a piece with something attached (an eye stalk, a knife, slime).
-        face_only = pieces[n] & (out[..., 3] > 0)
+        face_only = face_m & (out[..., 3] > 0)
         if cfg.get("box_whole"):
             # the letter IS its face and its own drawn outline (Luck be a
             # Landlord's one-pixel ring, a third of a six-pixel letter):
@@ -1634,6 +1823,17 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
         body_heights[n] = (by1 - by0) / (y1 - y0)
         body_xs[n] = ((bx0 + bx1) / 2 - x0) / (x1 - x0)
         body_widths[n] = (bx1 - bx0) / (x1 - x0)
+        if cfg.get("space_by_ink"):
+            # How far the letter's solid ink (its outline, its sticker edge)
+            # reaches past its box on each side, of the piece's width: the
+            # title spaces by the box, so without this a letter with a thick
+            # edge runs into its neighbours (Super Auto Pets). Only level with
+            # the box, where a neighbour stands: an eye stalk or a flame above
+            # the letter never meets one
+            band_ = out[y0:y1, x0:x1, 3][max(by0 - y0, 0):max(by1 - y0, 1)]
+            iy_, ix_ = np.nonzero(band_ >= 128)
+            ink_sides[n] = (max(0.0, (bx0 - x0) - ix_.min()) / (x1 - x0),
+                            max(0.0, ix_.max() + 1 - (bx1 - x0)) / (x1 - x0))
         # "g.2" is a second G from the same logo: title/g/<game>__2.png. Two
         # underscores, never one: slay_the_spire's second e was once
         # e/slay_the_spire_2.png, the very file slay_the_spire_2's e is.
@@ -1675,11 +1875,21 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
             # Inside this polygon the logo's own pixels, untouched: no band, no
             # redraw (Repentance's blood, which a glow round every drop ruins).
             # where the logo drew nothing, the letter's own outline stays
-            poly = (_polygon_mask((H, W), ad["polygon"]) & (a > 0))[y0:y1, x0:x1]
+            poly = _polygon_mask((H, W), ad["polygon"]) & (a > 0)
+            for col_ in ad.get("skip_colours", []):
+                # a neighbour's colour inside the polygon (Brotato's R's grey
+                # side beside the O's headband) is left to the letter's own
+                # rebuilt edge under it
+                poly &= np.abs(A[..., :3] - np.array(col_, float)).max(-1) > ad.get("skip_tolerance", 20)
+            poly = poly[y0:y1, x0:x1]
             src = A[y0:y1, x0:x1].clip(0, 255).astype(np.uint8)
             if img.size != (x1 - x0, y1 - y0):
                 src = np.asarray(Image.fromarray(src).resize(img.size, Image.LANCZOS))
                 poly = np.asarray(Image.fromarray((poly * 255).astype(np.uint8)).resize(img.size, Image.NEAREST)) > 127
+            if ad.get("inside"):
+                # only within the letter's own rebuilt silhouette, so a straight
+                # polygon edge never sticks out of its round outline
+                poly = poly & (np.asarray(img.convert("RGBA"))[..., 3] > 0)
             # laid OVER the letter, not swapped in: the drawn part's soft edge
             # would otherwise punch see-through gaps in the outline under it
             top = np.zeros_like(src)
@@ -1725,6 +1935,14 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
             # (logos/<game>.png): x0, y0, x1, y1
             "src": _src_fraction(src_boxes[n_], logo_box),
         }
+        if n_ in ink_sides:
+            # spaced by its whole drawn width, not its box (TitleLetters)
+            index[str(dest_.relative_to(OUT_DIR))]["ink_left"] = round(ink_sides[n_][0], 4)
+            index[str(dest_.relative_to(OUT_DIR))]["ink_right"] = round(ink_sides[n_][1], 4)
+        if n_ in src_turns:
+            # stood upright off a curve: turned this many degrees clockwise
+            # about its middle, it lies on the logo as drawn (LogoProgress)
+            index[str(dest_.relative_to(OUT_DIR))]["src_turn"] = round(src_turns[n_], 2)
         # `size` and `pad` are the owner's eye on a piece, by name or "*" for
         # the whole config: drawn this many times as big (on the baseline), and
         # this much of the line kept clear either side (TitleLetters)
