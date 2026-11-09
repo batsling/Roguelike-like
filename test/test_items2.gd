@@ -1049,6 +1049,31 @@ func test_every_chest_is_named_by_its_size_under_the_gift() -> void:
 		"a count that is no rung of the ladder says the count")
 	assert_eq(ItemDropModal.chest_heading(1, "devilish"), "🎁  Devilish Small Chest")
 
+func test_a_chest_wears_a_star_per_rung_of_its_size() -> void:
+	assert_eq(ItemDropModal.chest_rank(1), 0)
+	assert_eq(ItemDropModal.chest_rank(2), 1)
+	assert_eq(ItemDropModal.chest_rank(3), 2)
+	assert_eq(ItemDropModal.chest_rank(4), 2, "between two rungs is the rung below")
+	assert_eq(ItemDropModal.chest_rank(5), 3)
+	var pool: Array = Data.reward_item2_pool()
+	var slot := VBoxContainer.new()
+	add_child_autofree(slot)
+	var small := ItemDropModal.embed(self, slot, [pool[0]])
+	var huge := ItemDropModal.embed(self, slot, pool.slice(0, 5))
+	assert_eq(small._stars.size(), 1, "a Small chest has one star")
+	assert_eq(huge._stars.size(), 4, "a Huge chest has four")
+	small.discard()
+	huge.discard()
+
+func test_a_taken_chest_says_what_was_taken_where_it_stood() -> void:
+	var pool: Array = Data.reward_item2_pool()
+	var slot := VBoxContainer.new()
+	add_child_autofree(slot)
+	var chest := ItemDropModal.embed(self, slot, [pool[0]])
+	chest.take()
+	assert_eq(slot.get_child_count(), 1, "the chest is gone and a line stands in its place")
+	assert_string_contains((slot.get_child(0) as Label).text, pool[0].display_name)
+
 func test_the_banked_chest_screen_draws_the_pop_ups_chest() -> void:
 	var chest := RewardScreen.new()
 	add_child_autofree(chest)

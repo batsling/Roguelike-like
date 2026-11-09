@@ -71,7 +71,8 @@ var _compact: bool = false
 var _pool: String = ""
 # The gift in the heading, the one-item layout's body, and the tween that opens
 # the chest (see _play_open).
-var _gift: Label = null
+var _gift: Control = null
+var _stars: Array = []
 var _single: Control = null
 # The row the answers sit in. A host that has answers of its own for this chest
 # (the banked-chest screen's Reroll and Leave) puts them here, beside Take, so the
@@ -83,7 +84,7 @@ const PANEL_SIZE := Vector2(460, 0)
 # A chest of N is this much wider per extra card, capped so a Huge (5) still fits
 # a small window. The single-item layout keeps PANEL_SIZE exactly.
 const CARD_W := 168
-const MULTI_MAX_W := 900
+const MULTI_MAX_W := 920
 # The compact card the post-combat screen's chests wear: wider than the modal's,
 # because the art moved beside the words and the words now have the whole card to
 # wrap in rather than a column under a picture.
@@ -99,6 +100,22 @@ const COMPACT_DESC_LINES := 2
 # screen and nothing at all on the haul.
 const CHEST_GLYPH := "🎁"
 const CHEST_GOLD := UITheme.GOLD
+# A chest's SIZE, drawn: this many stars arc over the gift, and the gift glows in
+# the colour of the rarity that sits on the same rung of the ladder (the four
+# sizes and the four rarities share one 75/20/4/1 roll, Data.ChestSize).
+const STAR_GLYPH := "★"
+# How far round the gift the stars spread, end to end, at four of them.
+const STAR_ARC_DEG := 110.0
+
+# Which rung a chest of `count` stands on: 0 Small … 3 Huge. A count between two
+# rungs is the rung below it.
+static func chest_rank(count: int) -> int:
+	var rank: int = 0
+	for size in Data.CHEST_SIZE_CHOICES:
+		if count >= int(Data.CHEST_SIZE_CHOICES[size]):
+			rank = maxi(rank, int(size))
+	return rank
+
 # How the chest opens: the gift lands, then the cards are dealt one after another.
 const OPEN_GIFT_SECS := 0.18
 const OPEN_CARD_SECS := 0.16
@@ -269,6 +286,12 @@ func _build() -> void:
 	_take_btn.custom_minimum_size = Vector2(150, 26) if compact else Vector2(190, 42)
 	_take_btn.add_theme_font_size_override("font_size", UITheme.FONT_BODY if compact else UITheme.FONT_SUB)
 	_take_btn.add_theme_stylebox_override("normal", UITheme.flat(UITheme.SUCCESS.lerp(UITheme.BG, 0.5), 8, 8, 2, UITheme.SUCCESS))
+	# FOCUSED IS STILL GREEN. The pop-up gives Take the focus, and the theme's focus
+	# ring is orange — so the one Take button that had it was the one that did not
+	# look like the others.
+	_take_btn.add_theme_stylebox_override("focus", UITheme.flat(Color(0, 0, 0, 0), 8, 8, 2, UITheme.SUCCESS.lerp(Color.WHITE, 0.35)))
+	_take_btn.add_theme_color_override("font_focus_color", UITheme.SUCCESS.lerp(Color.WHITE, 0.45))
+	_take_btn.add_theme_color_override("font_hover_color", UITheme.SUCCESS.lerp(Color.WHITE, 0.6))
 	_take_btn.add_theme_stylebox_override("hover", UITheme.flat(UITheme.SUCCESS.lerp(UITheme.BG, 0.32), 8, 8, 2, UITheme.SUCCESS))
 	_take_btn.add_theme_color_override("font_color", UITheme.SUCCESS.lerp(Color.WHITE, 0.45))
 	_take_btn.pressed.connect(func(): _answer(true))
@@ -280,24 +303,70 @@ func _build() -> void:
 	_refresh_selection()
 	_play_open()
 
-# The heading: the gift and the chest's name in gold, as one centred row. The gift
-# is a Label of its own so the opening can bounce it without moving the words.
+# The heading: the gift under its stars, and the chest's name in gold, as one
+# centred row.
 func _heading_row(compact: bool) -> Control:
 	var row := HBoxContainer.new()
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
 	row.add_theme_constant_override("separation", UITheme.GAP)
 	var words: PackedStringArray = _heading().split("  ", false, 1)
-	_gift = Label.new()
-	_gift.text = words[0]
-	_gift.add_theme_font_size_override("font_size", UITheme.FONT_SUB if compact else UITheme.FONT_TITLE_LG)
-	_gift.add_theme_color_override("font_color", CHEST_GOLD)
+	_gift = _gift_badge(words[0], compact)
 	row.add_child(_gift)
 	var head := Label.new()
 	head.text = words[1] if words.size() > 1 else ""
 	head.add_theme_font_size_override("font_size", UITheme.FONT_BODY if compact else UITheme.FONT_SUB)
 	head.add_theme_color_override("font_color", CHEST_GOLD)
+	# On the gift's line, not the middle of the badge: the stars stand above it.
+	head.size_flags_vertical = Control.SIZE_SHRINK_END
 	row.add_child(head)
 	return row
+
+# The gift, the glow behind it and the stars over it. Built from plain Labels on a
+# fixed-size Control so the whole badge can be bounced as one thing.
+func _gift_badge(glyph: String, compact: bool) -> Control:
+	var rank: int = chest_rank(_items.size())
+	var tint: Color = RarityStyle.color(rank)
+	var font: int = UITheme.FONT_TITLE_LG if compact else UITheme.FONT_HERO
+	var star_font: int = UITheme.FONT_TINY if compact else UITheme.FONT_BODY
+	var side: float = font * 1.5
+	var badge := Control.new()
+	badge.custom_minimum_size = Vector2(side * 1.5, side + star_font)
+	badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var centre := Vector2(side * 0.75, star_font + side * 0.5)
+	# THE GLOW: soft rings of the size's colour, drawn rather than a texture so it
+	# takes any tint and costs no art.
+	badge.draw.connect(func():
+		for i in range(6):
+			badge.draw_circle(centre, side * (0.62 - 0.08 * i), Color(tint.r, tint.g, tint.b, 0.1)))
+	var gift := Label.new()
+	gift.text = glyph
+	gift.add_theme_font_size_override("font_size", font)
+	gift.add_theme_color_override("font_color", CHEST_GOLD.lerp(tint, 0.25))
+	gift.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	gift.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	gift.position = centre - Vector2(side, side) * 0.5
+	gift.size = Vector2(side, side)
+	gift.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	badge.add_child(gift)
+	_stars.clear()
+	var count: int = rank + 1
+	var step: float = STAR_ARC_DEG / 3.0
+	for i in range(count):
+		var deg: float = -90.0 + (i - (count - 1) * 0.5) * step
+		var at: Vector2 = centre + Vector2.from_angle(deg_to_rad(deg)) * side * 0.66
+		var star := Label.new()
+		star.text = STAR_GLYPH
+		star.add_theme_font_size_override("font_size", star_font)
+		star.add_theme_color_override("font_color", tint.lerp(Color.WHITE, 0.25))
+		star.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		star.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		star.size = Vector2(star_font, star_font) * 1.4
+		star.position = at - star.size * 0.5
+		star.pivot_offset = star.size * 0.5
+		star.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		badge.add_child(star)
+		_stars.append(star)
+	return badge
 
 # THE CHEST OPENS. The gift lands with a bounce and the cards are dealt after it,
 # left to right — about half a second for a Large, and the same on every screen a
@@ -318,6 +387,15 @@ func _play_open() -> void:
 		_gift.scale = Vector2(0.3, 0.3)
 		_open_tween.tween_property(_gift, "scale", Vector2.ONE, OPEN_GIFT_SECS) \
 			.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	# …the stars light one after another as it lands…
+	for i in range(_stars.size()):
+		var star: Control = _stars[i]
+		star.modulate.a = 0.0
+		star.scale = Vector2(0.2, 0.2)
+		var at: float = OPEN_GIFT_SECS * 0.5 + 0.05 * i
+		_open_tween.tween_property(star, "modulate:a", 1.0, 0.1).set_delay(at)
+		_open_tween.tween_property(star, "scale", Vector2.ONE, 0.14) \
+			.set_delay(at).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	var dealt: Array = _cards.map(func(c): return c["node"])
 	if dealt.is_empty() and _single != null:
 		dealt = [_single]
@@ -602,6 +680,36 @@ func _kind_line(item: ItemData) -> String:
 				return "%s · charges as you play" % rarity
 			return "%s · passive" % rarity
 
+# WHAT WAS TAKEN, said where the chest was. An answered chest used to vanish in
+# one frame, and on a screen with three of them the only evidence of which was
+# picked was that there were now two. The line stands in the chest's place, then
+# fades and closes up; it owns its own tween, because this controller is freed on
+# the same line that puts it there.
+const TAKEN_HOLD_SECS := 0.55
+const TAKEN_FADE_SECS := 0.35
+
+func _flash_taken(body: Control) -> void:
+	var slot: Node = body.get_parent()
+	if slot == null or not slot.is_inside_tree():
+		return
+	var tint: Color = UITheme.item_color(_selected)
+	var flash := Label.new()
+	flash.text = "✓  Took %s" % _selected.display_name
+	flash.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	flash.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	flash.add_theme_font_size_override("font_size", UITheme.FONT_SUB)
+	flash.add_theme_color_override("font_color", UITheme.SUCCESS.lerp(tint, 0.35))
+	flash.custom_minimum_size = Vector2(0, body.size.y)
+	flash.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	slot.add_child(flash)
+	slot.move_child(flash, body.get_index())
+	var tw := flash.create_tween()
+	tw.set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)
+	tw.tween_interval(TAKEN_HOLD_SECS)
+	tw.tween_property(flash, "modulate:a", 0.0, TAKEN_FADE_SECS)
+	tw.parallel().tween_property(flash, "custom_minimum_size:y", 0.0, TAKEN_FADE_SECS)
+	tw.tween_callback(flash.queue_free)
+
 # Public so a test can answer without a click.
 # Whether this chest has been answered. The post-combat screen keeps every chest
 # it mounted and asks each one, rather than dropping the answered ones from a list
@@ -647,6 +755,8 @@ func _answer(taken: bool) -> void:
 	# `queue_free` alone would stack the two for a frame.
 	if _body != null and is_instance_valid(_body):
 		if _body.get_parent() != null:
+			if taken and _selected != null:
+				_flash_taken(_body)
 			_body.get_parent().remove_child(_body)
 		_body.queue_free()
 		_body = null

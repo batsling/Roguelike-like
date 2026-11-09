@@ -11,6 +11,14 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **A chest shows its size.** The gift in every chest heading is larger and
+  sits under an arc of stars, one per rung (Small 1 … Huge 4), over a glow in
+  the colour of the rarity on the same rung (`ItemDropModal.chest_rank`,
+  `_gift_badge`). The stars light one by one as the chest opens. A focused Take
+  button is green like the others rather than the theme's orange ring, and a
+  chest you take from leaves "✓ Took <name>" where it stood for a moment before
+  closing up (`_flash_taken`), on the haul and on the banked screen alike.
+
 - **Chests are drawn one way.** A chest used to look like three different
   things: the pop-up's cards (`ItemDropModal`), the banked-chest screen's own
   bracketed tiles under a green "Choose a Reward" (`RewardScreen`), and
