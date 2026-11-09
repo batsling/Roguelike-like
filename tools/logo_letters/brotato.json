@@ -79,7 +79,26 @@
      0
     ]
    },
-   "fill_face_holes": 20000
+   "fill_face_holes": 20000,
+   "colour_by": [
+    {
+     "rgb_ranges": [
+      [
+       100,
+       255,
+       0,
+       100,
+       0,
+       90
+      ]
+     ],
+     "colour": [
+      134,
+      33,
+      25
+     ]
+    }
+   ]
   },
   "as_drawn": [
    {

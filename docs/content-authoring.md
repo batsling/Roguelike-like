@@ -417,7 +417,11 @@ above the line, and everything inside its outline is kept AS DRAWN (`as_drawn`:
 a polygon traced round the face, and one round the band and tail, both with
 `inside` so only within the rebuilt silhouette, the band's with
 `skip_colours` so the R's grey side beside it stays out): swept as a block,
-its pupils, stitches and the band's own lines came out side-grey. Its letters
+its pupils, stitches and the band's own lines came out side-grey. The band's
+own 3D side, under its tail and beside its knot, is red, not the potato's
+grey (the owner, 9 Nov 2026): `extrude`'s `colour_by` sweeps the face's red
+pixels on their own and gives what they reach the band's dark red
+(134, 33, 25). Its letters
 are spaced by their drawn edge (`space_by_ink`) and drawn together (`"pad":
 {"*": -0.06}`) so their outlines meet, as in the logo, but only beside each
 other.

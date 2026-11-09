@@ -196,6 +196,9 @@ so Godot never imports the source), is JSON:
                   colour (Brotato's potato O, its face as drawn);
                   "extrude": {"dx", "dy", "colour", "skip"} (in cut) gives a
                   block letter its 3D side by sweeping its face (Isaac);
+                  "colour_by": [{"rgb_ranges", "colour"}] gives the side swept
+                  from face pixels of those colours a colour of its own
+                  (Brotato's red bandana, on a potato with a grey side);
                   "colour_far", "alpha", "alpha_far" shade it from the face
                   out and let it fade (Vampire Survivors); "colour_down"
                   (and "colour_down_far") colours the walls swept from the
@@ -1451,6 +1454,21 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
                 if gap.any() and (reached & ~face_m).any():
                     _, (gy, gx) = nd.distance_transform_edt(~(reached & ~face_m), return_indices=True)
                     side_rgb[gap] = side_rgb[gy[gap], gx[gap]]
+                for cb in ex_cfg.get("colour_by", []):
+                    # Side swept from part of the face takes that part's own
+                    # colour (Brotato's red bandana casts a red side, not the
+                    # potato's grey): the face pixels of those colours swept
+                    # alone, and wherever their sweep is side, that colour
+                    sub = np.zeros((H, W), bool)
+                    for rg in cb["rgb_ranges"]:
+                        sub |= ((A[..., 0] >= rg[0]) & (A[..., 0] <= rg[1]) & (A[..., 1] >= rg[2])
+                                & (A[..., 1] <= rg[3]) & (A[..., 2] >= rg[4]) & (A[..., 2] <= rg[5]))
+                    sub &= face_m
+                    swept = sub.copy()
+                    for k in range(1, steps + 1):
+                        swept |= nd.shift(sub, (round(ex_cfg["dy"] * k / steps), round(ex_cfg["dx"] * k / steps)),
+                                          order=0, cval=False)
+                    side_rgb[swept & side & ~face_m] = cb["colour"]
                 rgb[:] = 0
                 al[:] = 0
                 ol = ex_cfg.get("outline")
