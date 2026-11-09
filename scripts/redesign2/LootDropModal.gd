@@ -586,7 +586,7 @@ func _buttons(multi: bool) -> Control:
 	buttons.add_theme_constant_override("separation", UITheme.GAP_WIDE)
 	buttons.alignment = BoxContainer.ALIGNMENT_CENTER
 	var leave := UITheme.quiet_button(
-		"Leave the rest" if multi else "Leave it", Vector2(160, 38))
+		"Skip the rest" if multi else "Skip", Vector2(160, 38))
 	leave.tooltip_text = "Walk away from what is still on the table."
 	leave.pressed.connect(_close)
 	buttons.add_child(leave)

@@ -260,7 +260,7 @@ func _build() -> void:
 	# there it is the only way out.
 	if not embedded:
 		var leave := Button.new()
-		leave.text = "Leave it" if not multi else "Leave them"
+		leave.text = "Skip"
 		leave.custom_minimum_size = Vector2(150, 42)
 		leave.pressed.connect(func(): _answer(false))
 		row.add_child(leave)

@@ -16,7 +16,7 @@ For how the project is laid out and how its systems fit together, see
   bracketed tiles under a green "Choose a Reward" (`RewardScreen`), and
   picture-only tiles on the haul. Every chest is an `ItemDropModal` now: the
   banked screen mounts one section per chest (`ItemDropModal.embed`) and adds
-  only Reroll and Leave to the chest's own row of answers; the haul's compact
+  only Reroll and Skip to the chest's own row of answers; the haul's compact
   card shows the name in its rarity's colour, the kind and two lines of what it
   does, with the rest on hover. Each wears the same heading, the gift (🎁) and
   its size in gold ("Large Chest — take 1 of 3", `ItemDropModal.chest_heading`,

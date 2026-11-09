@@ -382,7 +382,7 @@ func _dress_as_chest() -> void:
 	_title_line.add_theme_color_override("font_color", ItemDropModal.CHEST_GOLD)
 	_gold_line.add_theme_font_size_override("font_size", UITheme.FONT_LABEL)
 	_gold_line.add_theme_color_override("font_color", ItemDropModal.CHEST_GOLD)
-	_skip_btn.text = "Leave them" if several or _choice_count() > 1 else "Leave it"
+	_skip_btn.text = "Skip"
 	for btn in [_skip_btn, _reroll_btn]:
 		btn.custom_minimum_size = Vector2(150, 42)
 

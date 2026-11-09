@@ -556,7 +556,7 @@ ordinary scene.
   which is a piece of loot rather than a relic now — `docs/wands-design.md` §5.2).
   **A chest on it is an `ItemDropModal`**: one embedded section per banked chest
   (the pop-up's cards, heading and Take button), so the screen draws no chest of
-  its own and adds only Reroll and Leave.
+  its own and adds only Reroll and Skip.
   **The obtain-any screen is its own layout**: reaching into the whole catalogue is a different decision
   from picking one of three cards, so `setup_obtain` takes the viewport (less a
   margin), shrinks the cards to art-name-and-class chips with the description in
