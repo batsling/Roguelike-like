@@ -124,5 +124,11 @@
   "u.2",
   "e.2"
  ],
- "space_by_ink": true
+ "space_by_ink": true,
+ "size": {
+  "*": 0.9
+ },
+ "pad": {
+  "*": -0.09
+ }
 }

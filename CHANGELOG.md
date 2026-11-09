@@ -11,6 +11,11 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Title letters: Super Auto Pets smaller and closer.** Its letters are drawn
+  0.9 times as big and pulled together until their white edges just meet, as
+  in the logo; a negative `pad` now only ever counts between two letters of the
+  same logo, so another logo's letter beside them keeps its gap.
+
 - **Title letters: Ball x Pit bigger and roomier, Everything is Crab spaced
   by its outline.** Every Ball x Pit letter is drawn 1.12 times as big with
   0.06 of the line kept clear either side; Everything is Crab is spaced by

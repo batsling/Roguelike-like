@@ -367,8 +367,17 @@ func _lay_out(pieces: Array, decor: Array, height: float, text: String = "") -> 
 		# that much more room either side, so the gap is between what is drawn
 		var ink_l := float(e.get("ink_left", 0.0)) * tw * s
 		var ink_r := float(e.get("ink_right", 0.0)) * tw * s
+		# a NEGATIVE pad draws a logo's letters together (Super Auto Pets' white
+		# edges meeting, as in its logo), but only beside its own letters: next
+		# to another logo's it would pull that letter in under its edge
+		var pad_l := pad
+		if pad < 0.0 and (placed.is_empty() or placed[-1].entry.get("game", "") != e.get("game", "")):
+			pad_l = 0.0
+		var pad_r := pad
+		if pad < 0.0 and (i >= seq.size() - 1 or (seq[i + 1][0] as Dictionary).get("game", "") != e.get("game", "")):
+			pad_r = 0.0
 		if not placed.is_empty():
-			x += pad + ink_l
+			x += pad_l + ink_l
 		var rect := TextureRect.new()
 		rect.texture = tex
 		rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
@@ -399,7 +408,7 @@ func _lay_out(pieces: Array, decor: Array, height: float, text: String = "") -> 
 		placed.append(p)
 		x += slot
 		if i < seq.size() - 1:
-			x += pad + ink_r
+			x += pad_r + ink_r
 	ink_width = x
 	ink.size = Vector2(x, height)
 	custom_minimum_size = Vector2(0.0, height * (1.0 + 2.0 * PAD))

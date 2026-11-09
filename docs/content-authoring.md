@@ -388,7 +388,13 @@ other; the owner asked for more room for wider letters (9 Nov 2026). With
 its box, level with the box only (an eye stalk above never meets a
 neighbour), as `ink_left` / `ink_right`, and `TitleLetters._lay_out` keeps that
 much more room between it and its neighbours, as it does `pad`: the gap is
-then between what the letters draw. Everything is Crab is spaced the same way
+then between what the letters draw. Spread a whole gap apart its words looked
+bizarre (the owner, 9 Nov 2026), so its letters are drawn smaller (`"size":
+{"*": 0.9}`) and drawn together (`"pad": {"*": -0.09}`) until their white edges
+just meet, as in the logo. A NEGATIVE pad counts only between two letters of
+the same logo (`TitleLetters._lay_out`): beside another logo's it pulled that
+letter in under the white edge (Ball x Pit's l, half swallowed by an e).
+Everything is Crab is spaced the same way
 (its letters' black outlines hid a narrow neighbour: Ball x Pit's l behind the
 crab's i); its PNGs are unchanged, only the index gained the overhang. Ball x
 Pit's tall, condensed letters are drawn a little bigger and given room either

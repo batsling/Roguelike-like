@@ -720,7 +720,9 @@
   ],
   "ink_left": 0.1472,
   "ink_right": 0.1515,
-  "src_turn": -3.0
+  "src_turn": -3.0,
+  "size": 0.9,
+  "pad": -0.09
  },
  "a/tangledeep.png": {
   "game": "tangledeep",
@@ -2858,6 +2860,8 @@
   "ink_left": 0.1777,
   "ink_right": 0.1777,
   "src_turn": -4.0,
+  "size": 0.9,
+  "pad": -0.09,
   "form": "lower"
  },
  "e/tangledeep.png": {
@@ -5969,6 +5973,8 @@
   ],
   "ink_left": 0.1683,
   "ink_right": 0.1683,
+  "size": 0.9,
+  "pad": -0.09,
   "form": "lower"
  },
  "o/the_binding_of_isaac.png": {
@@ -6201,6 +6207,8 @@
   "ink_left": 0.1741,
   "ink_right": 0.1741,
   "src_turn": -6.0,
+  "size": 0.9,
+  "pad": -0.09,
   "form": "lower"
  },
  "p/super_auto_pets__2.png": {
@@ -6219,7 +6227,9 @@
   ],
   "ink_left": 0.1394,
   "ink_right": 0.1434,
-  "src_turn": -12.0
+  "src_turn": -12.0,
+  "size": 0.9,
+  "pad": -0.09
  },
  "p/tangledeep.png": {
   "game": "tangledeep",
@@ -6932,6 +6942,8 @@
   "ink_left": 0.1978,
   "ink_right": 0.1868,
   "src_turn": -3.0,
+  "size": 0.9,
+  "pad": -0.09,
   "form": "lower"
  },
  "r/the_royal_writ.png": {
@@ -7511,7 +7523,9 @@
   ],
   "ink_left": 0.1446,
   "ink_right": 0.1446,
-  "src_turn": -5.0
+  "src_turn": -5.0,
+  "size": 0.9,
+  "pad": -0.09
  },
  "s/super_auto_pets__2.png": {
   "game": "super_auto_pets",
@@ -7529,6 +7543,8 @@
   ],
   "ink_left": 0.1602,
   "ink_right": 0.1602,
+  "size": 0.9,
+  "pad": -0.09,
   "form": "lower"
  },
  "s/the_binding_of_isaac.png": {
@@ -8093,6 +8109,8 @@
   "ink_left": 0.2156,
   "ink_right": 0.2096,
   "src_turn": 8.0,
+  "size": 0.9,
+  "pad": -0.09,
   "form": "lower"
  },
  "t/super_auto_pets__2.png": {
@@ -8112,6 +8130,8 @@
   "ink_left": 0.1872,
   "ink_right": 0.1818,
   "src_turn": 6.0,
+  "size": 0.9,
+  "pad": -0.09,
   "form": "lower"
  },
  "t/tangledeep.png": {
@@ -8464,6 +8484,8 @@
   "ink_left": 0.1862,
   "ink_right": 0.1915,
   "src_turn": -10.0,
+  "size": 0.9,
+  "pad": -0.09,
   "form": "lower"
  },
  "u/uma_musume_pretty_derby.png": {

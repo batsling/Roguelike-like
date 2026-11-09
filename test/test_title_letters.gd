@@ -347,7 +347,13 @@ func test_make_takes_its_gap_between_letters() -> void:
 	add_child_autofree(a)
 	for i in range(1, a.placed.size()):
 		var gap: float = a.placed[i].body.position.x - a.placed[i - 1].body.end.x
-		var pads: float = 30.0 * (float(a.placed[i].entry.get("pad", 0.0)) + float(a.placed[i - 1].entry.get("pad", 0.0)))
+		var pa := float(a.placed[i - 1].entry.get("pad", 0.0))
+		var pb := float(a.placed[i].entry.get("pad", 0.0))
+		# a negative pad counts only beside a letter of the same logo
+		if a.placed[i - 1].entry.get("game", "") != a.placed[i].entry.get("game", ""):
+			pa = maxf(pa, 0.0)
+			pb = maxf(pb, 0.0)
+		var pads: float = 30.0 * (pa + pb)
 		# ...and a letter drawn wider than its box keeps its overhang too
 		pads += float(a.placed[i].entry.get("ink_left", 0.0)) * a.placed[i].rect.size.x \
 			+ float(a.placed[i - 1].entry.get("ink_right", 0.0)) * a.placed[i - 1].rect.size.x
@@ -356,7 +362,9 @@ func test_make_takes_its_gap_between_letters() -> void:
 # A LETTER DRAWN WIDER THAN ITS BOX gets the room it draws (the owner, 9 Nov
 # 2026): Super Auto Pets' black and white sticker edge reaches a sixth of the
 # letter's width past its box each side, and ran into its neighbours. Spaced by
-# its ink, what one letter draws ends a full gap before the next one starts.
+# its ink, what one letter draws ends a gap before the next one starts, less
+# its (negative) pad: spread a whole gap apart the word looked bizarre, so its
+# white edges just meet, as the logo's do.
 func test_a_letter_with_a_wide_edge_never_runs_into_its_neighbour() -> void:
 	var pool := TitleLetters.pool()
 	var sap := func(folder: String) -> Dictionary:
@@ -376,8 +384,27 @@ func test_a_letter_with_a_wide_edge_never_runs_into_its_neighbour() -> void:
 			+ float(a.entry["ink_right"])) * a.rect.size.x
 		var b_ink: float = b.rect.position.x + (float(b.entry["body_center_x"]) - float(b.entry["body_width"]) * 0.5
 			- float(b.entry["ink_left"])) * b.rect.size.x
-		assert_almost_eq(b_ink - a_ink, 100.0 * TitleLetters.GAP, 0.01,
+		# a whole gap between what they draw, give or take the owner's `pad`
+		# (Super Auto Pets' is negative: its white edges just meet, as in the logo)
+		var pads: float = 100.0 * (float(a.entry.get("pad", 0.0)) + float(b.entry.get("pad", 0.0)))
+		assert_almost_eq(b_ink - a_ink, 100.0 * TitleLetters.GAP + pads, 0.01,
 			"%s to %s: a whole gap between what they draw" % [word[i - 1], word[i]])
+		assert_gt(b_ink - a_ink, -100.0 * 0.15, "and never one letter well over the next")
+	# ...but its negative pad is between its OWN letters only: beside another
+	# logo's letter (Ball x Pit's l, swallowed by its e) a whole gap stays
+	var other: Dictionary = (pool["l"] as Array).filter(func(e): return e["game"] == "ball_x_pit")[0]
+	row._lay_out([sap.call("e"), other, sap.call("e")], [], 100.0, "ele")
+	for i in range(1, 3):
+		var a: TitleLetters.Placed = row.placed[i - 1]
+		var b: TitleLetters.Placed = row.placed[i]
+		var a_ink: float = a.rect.position.x + (float(a.entry["body_center_x"]) + float(a.entry["body_width"]) * 0.5
+			+ float(a.entry.get("ink_right", 0.0))) * a.rect.size.x
+		var b_ink: float = b.rect.position.x + (float(b.entry["body_center_x"]) - float(b.entry["body_width"]) * 0.5
+			- float(b.entry.get("ink_left", 0.0))) * b.rect.size.x
+		var own_pad: float = 100.0 * maxf(float(a.entry.get("pad", 0.0)), 0.0) if a.entry["game"] != "super_auto_pets" else 0.0
+		own_pad += 100.0 * maxf(float(b.entry.get("pad", 0.0)), 0.0) if b.entry["game"] != "super_auto_pets" else 0.0
+		assert_almost_eq(b_ink - a_ink, 100.0 * TitleLetters.GAP + own_pad, 0.01,
+			"beside another logo's letter: a whole gap, plus that letter's own pad")
 
 # THE CRAB'S LEGS ARE THE SUBTITLE'S (the owner, 1 Nov 2026): the subtitle's
 # decorations come from those marked `subtitle`, the title's from the rest.
