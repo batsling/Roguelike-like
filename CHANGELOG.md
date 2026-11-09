@@ -12,9 +12,9 @@ For how the project is laid out and how its systems fit together, see
 ---
 
 - **Title letters: Brotato.** B R O T A T O with their 3D sides, the O the
-  potato with its headband (its 3D side red under the band, grey under the
-  potato: `extrude`'s new `colour_by`), and its two guns as a decoration pair
-  at the ends of the title. The cutter's `as_drawn` gained `inside` and `skip_colours`
+  potato with its headband drawn as the logo draws it (no side under the
+  band, just its black edge: `extrude`'s new `colour_by`), and its two guns as
+  a decoration pair at the ends of the title. The cutter's `as_drawn` gained `inside` and `skip_colours`
   (`docs/content-authoring.md`, "Title letters").
 
 - **Title letters: Super Auto Pets smaller and closer.** Its letters are drawn

@@ -5602,16 +5602,16 @@
   "style": "brotato",
   "body_center": 0.5302,
   "body_height": 0.7437,
-  "body_center_x": 0.3624,
-  "body_width": 0.5624,
+  "body_center_x": 0.3856,
+  "body_width": 0.5984,
   "src": [
    0.31967,
    0.02913,
-   0.52932,
+   0.51671,
    0.99515
   ],
-  "ink_left": 0.0782,
-  "ink_right": 0.3188,
+  "ink_left": 0.0832,
+  "ink_right": 0.2432,
   "pad": -0.06
  },
  "o/brotato__2.png": {
