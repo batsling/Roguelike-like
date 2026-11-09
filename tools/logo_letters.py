@@ -237,7 +237,8 @@ so Godot never imports the source), is JSON:
                   exact n x n block, and the index marks the piece `pixel`
                   so the game draws it with sharp pixels (TitleLetters);
                   "pixel_outline": {"colour", "width"} draws an even ring of
-                  whole pixels round the face;
+                  whole pixels round the face; "around": [[r, g, b], ...]
+                  rings the kept pixels of those colours with it (a 3D side);
                   "outline_colours": [[r, g, b], ...] keeps only those colours
                   past the face (a pixel-art letter's edge);
                   "keep_min_alpha": n keeps only pixels that solid past the face
@@ -1229,6 +1230,23 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
                 po = cut["pixel_outline"]
                 # round the face, or round everything kept (a letter as drawn)
                 body_ = (keep | painted) if cut.get("drawn") else f
+                if po.get("around"):
+                    # ...or round the face AND the kept pixels of these colours
+                    # (Tangledeep: its dark 3D shading, which the outline rings
+                    # as one with the face; not its vines, which have their own)
+                    shade_ = np.zeros_like(f)
+                    for col_ in po["around"]:
+                        shade_ |= keep & (np.abs(A[..., :3] - np.array(col_, float)).max(-1) <= 2)
+                    # only shading that touches this letter's face is its own: a
+                    # neighbour's shading tip that lies nearer this face is not,
+                    # and ringed it made a nub on the outline (Tangledeep's p)
+                    lab_s, _ = nd.label(f | shade_)
+                    own_s = shade_ & np.isin(lab_s, np.unique(lab_s[f & (lab_s > 0)]))
+                    stray_s = shade_ & ~own_s
+                    keep &= ~stray_s
+                    rgb[stray_s] = 0
+                    al[stray_s] = 0
+                    body_ = body_ | own_s
                 if po.get("miter"):
                     # A pen-stroke outline, measured off the logo (Tiny Rogues):
                     # `width` out from every edge, square where straight edges
@@ -1253,6 +1271,27 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
                     ring = (nd.distance_transform_edt(~body_) <= po.get("width", 1)) & ~body_
                 else:
                     ring = (nd.distance_transform_cdt(~body_, metric="chessboard") <= po.get("width", 1)) & ~body_
+                if po.get("around"):
+                    # never over what the letter keeps of its own (Tangledeep's
+                    # vines on the T): the ring only fills where it has nothing
+                    ring &= ~keep
+                    # and the outline colour kept PAST the ring is a wider
+                    # stretch of the outline two letters share, split off by
+                    # nearness into a loose column beside the ring: dropped,
+                    # unless it is inside the letter (a counter the outline fills)
+                    oc_ = keep & (np.abs(A[..., :3] - np.array(po["colour"], float)).max(-1) <= 2)
+                    near_ = nd.distance_transform_cdt(~body_, metric="chessboard") <= po.get("width", 1)
+                    ink_ = keep & ~oc_          # the letter's own: face, shading, vines
+                    inside_ = nd.binary_fill_holes(body_ | ring | (keep & near_) | ink_)
+                    # ...and the outline the logo draws round something of the
+                    # letter's past its ring (a vine hanging into the gap) stays,
+                    # or the vine floats loose
+                    by_ink_ = (nd.distance_transform_cdt(~(ink_ & ~body_), metric="chessboard") <= 2) \
+                        if (ink_ & ~body_).any() else np.zeros_like(oc_)
+                    loose_ = oc_ & ~near_ & ~inside_ & ~by_ink_
+                    keep &= ~loose_
+                    rgb[loose_] = 0
+                    al[loose_] = 0
                 rgb[ring] = po["colour"]
                 al[ring] = 1
             if n in cut.get("hard_edge", []) and not cut.get("synth_shadow"):

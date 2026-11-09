@@ -700,6 +700,23 @@
    0.86173
   ]
  },
+ "a/tangledeep.png": {
+  "game": "tangledeep",
+  "config": "tangledeep.json",
+  "style": "tangledeep",
+  "body_center": 0.4754,
+  "body_height": 0.8361,
+  "body_center_x": 0.4615,
+  "body_width": 0.7795,
+  "src": [
+   0.12685,
+   0.22381,
+   0.24692,
+   0.80476
+  ],
+  "form": "lower",
+  "pixel": true
+ },
  "a/the_binding_of_isaac.png": {
   "game": "the_binding_of_isaac",
   "config": "the_binding_of_isaac.json",
@@ -1803,6 +1820,23 @@
    0.8642
   ]
  },
+ "d/tangledeep.png": {
+  "game": "tangledeep",
+  "config": "tangledeep.json",
+  "style": "tangledeep",
+  "body_center": 0.4812,
+  "body_height": 0.875,
+  "body_center_x": 0.4694,
+  "body_width": 0.7959,
+  "src": [
+   0.59975,
+   0.04286,
+   0.72044,
+   0.80476
+  ],
+  "form": "lower",
+  "pixel": true
+ },
  "d/the_binding_of_isaac.png": {
   "game": "the_binding_of_isaac",
   "config": "the_binding_of_isaac_small.json",
@@ -2767,6 +2801,40 @@
    0.86667
   ]
  },
+ "e/tangledeep.png": {
+  "game": "tangledeep",
+  "config": "tangledeep.json",
+  "style": "tangledeep",
+  "body_center": 0.4754,
+  "body_height": 0.8361,
+  "body_center_x": 0.4773,
+  "body_width": 0.7955,
+  "src": [
+   0.50616,
+   0.22381,
+   0.61453,
+   0.80476
+  ],
+  "form": "lower",
+  "pixel": true
+ },
+ "e/tangledeep__2.png": {
+  "game": "tangledeep",
+  "config": "tangledeep.json",
+  "style": "tangledeep",
+  "body_center": 0.4754,
+  "body_height": 0.8361,
+  "body_center_x": 0.5,
+  "body_width": 0.8372,
+  "src": [
+   0.7968,
+   0.22381,
+   0.90271,
+   0.80476
+  ],
+  "form": "lower",
+  "pixel": true
+ },
  "e/the_binding_of_isaac__small.png": {
   "game": "the_binding_of_isaac",
   "config": "the_binding_of_isaac_small.json",
@@ -3270,6 +3338,23 @@
   "size": 0.86,
   "pad": 0.09,
   "case": "lower"
+ },
+ "g/tangledeep.png": {
+  "game": "tangledeep",
+  "config": "tangledeep.json",
+  "style": "tangledeep",
+  "body_center": 0.4817,
+  "body_height": 0.878,
+  "body_center_x": 0.4659,
+  "body_width": 0.7727,
+  "src": [
+   0.34606,
+   0.22381,
+   0.45443,
+   1.00476
+  ],
+  "form": "lower",
+  "pixel": true
  },
  "g/the_binding_of_isaac.png": {
   "game": "the_binding_of_isaac",
@@ -4562,6 +4647,23 @@
    1.0625
   ]
  },
+ "l/tangledeep.png": {
+  "game": "tangledeep",
+  "config": "tangledeep.json",
+  "style": "tangledeep",
+  "body_center": 0.4812,
+  "body_height": 0.875,
+  "body_center_x": 0.4531,
+  "body_width": 0.6875,
+  "src": [
+   0.44212,
+   0.04286,
+   0.52094,
+   0.80476
+  ],
+  "form": "lower",
+  "pixel": true
+ },
  "l/the_royal_writ.png": {
   "game": "the_royal_writ",
   "config": "the_royal_writ.json",
@@ -5256,6 +5358,23 @@
    1.0625
   ]
  },
+ "n/tangledeep.png": {
+  "game": "tangledeep",
+  "config": "tangledeep.json",
+  "style": "tangledeep",
+  "body_center": 0.4754,
+  "body_height": 0.8361,
+  "body_center_x": 0.4762,
+  "body_width": 0.819,
+  "src": [
+   0.22783,
+   0.22381,
+   0.35714,
+   0.80476
+  ],
+  "form": "lower",
+  "pixel": true
+ },
  "n/the_binding_of_isaac.png": {
   "game": "the_binding_of_isaac",
   "config": "the_binding_of_isaac_small.json",
@@ -5939,6 +6058,23 @@
    0.25781,
    1.0625
   ]
+ },
+ "p/tangledeep.png": {
+  "game": "tangledeep",
+  "config": "tangledeep.json",
+  "style": "tangledeep",
+  "body_center": 0.4753,
+  "body_height": 0.8642,
+  "body_center_x": 0.4681,
+  "body_width": 0.7872,
+  "src": [
+   0.88547,
+   0.22381,
+   1.00123,
+   0.99524
+  ],
+  "form": "lower",
+  "pixel": true
  },
  "p/uma_musume_pretty_derby.png": {
   "game": "uma_musume_pretty_derby",
@@ -7697,6 +7833,22 @@
    0.19313,
    0.85432
   ]
+ },
+ "t/tangledeep.png": {
+  "game": "tangledeep",
+  "config": "tangledeep.json",
+  "style": "tangledeep",
+  "body_center": 0.4915,
+  "body_height": 0.904,
+  "body_center_x": 0.4795,
+  "body_width": 0.863,
+  "src": [
+   -0.00123,
+   -0.00476,
+   0.17857,
+   0.8381
+  ],
+  "pixel": true
  },
  "t/the_binding_of_isaac.png": {
   "game": "the_binding_of_isaac",

@@ -11,6 +11,12 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Title letters: Tangledeep.** T a n g l e d e p in sharp pixels, wood with
+  its dark shading and outline, the T with its vines; the second e is a repeat
+  and left out. The cutter's `pixel_outline` gained `around`, for an outline
+  that rings a letter's 3D shading with its face where neighbours share it
+  (`docs/content-authoring.md`, "Title letters").
+
 - **Title letters: SNKRX.** S N K R X in sharp pixels, with the logo's solid
   dark-grey drop shadow turned into a real see-through shadow (the cutter's new
   `recolour`), each letter keeping exactly the shadow it casts. Also fixed in

@@ -348,6 +348,22 @@ grid (a split at an even x left half a block of the K on the N).
 `own_by_shadow`'s `grow` of 0 used to grow the cast over the whole canvas
 (scipy reads `iterations=0` as "until nothing changes") and gave every
 shadow to the first letter; 0 now means no growth.
+Tangledeep gives T a n g l e d e p (all but the T lowercase shapes; the third
+e as `__2`) from PlayStation's 1700px logo, pixel art at exactly 4px a pixel,
+cut at 3x with sharp pixels. Each letter is a wood face (every brown, crack
+shades included, listed exactly as `rgb_ranges`), a two-tone dark 3D shading
+inside its right and lower edges, and a 3px dark outline that NEIGHBOURS SHARE,
+so the face and its shading are cut (`outline_colours`) and a whole outline
+ring of the logo's width is drawn round both (`pixel_outline` with `around`,
+the shading colours). With `around` the ring never paints over what the letter
+keeps (the T's vines), shading that does not touch the letter's own face is a
+neighbour's tip and goes, and outline pixels left past the ring by the
+nearest-letter split go too, unless they are inside a counter or border
+something of the letter's (the vine hanging into the gap by the a). The T keeps
+its vines; the few vine pixels nearer the a are erased from it (`erase` by
+colour). The second e is an exact repeat of the first (4 pixels differ, where
+neighbours touch) and is `hold`, not `ignore`: found, so its shading stays its
+own instead of landing on the next e.
 A logo can
 take more than one config when its parts are built differently: Uma Musume has
 four, one per line, one for the girl and one for her dash.
