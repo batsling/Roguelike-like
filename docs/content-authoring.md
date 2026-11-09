@@ -388,7 +388,12 @@ other; the owner asked for more room for wider letters (9 Nov 2026). With
 its box, level with the box only (an eye stalk above never meets a
 neighbour), as `ink_left` / `ink_right`, and `TitleLetters._lay_out` keeps that
 much more room between it and its neighbours, as it does `pad`: the gap is
-then between what the letters draw.
+then between what the letters draw. Everything is Crab is spaced the same way
+(its letters' black outlines hid a narrow neighbour: Ball x Pit's l behind the
+crab's i); its PNGs are unchanged, only the index gained the overhang. Ball x
+Pit's tall, condensed letters are drawn a little bigger and given room either
+side (`"size": {"*": 1.12}`, `"pad": {"*": 0.06}`; the owner, 9 Nov 2026), so
+its two L's no longer touch and a lone one holds its own beside other logos'.
 A logo can
 take more than one config when its parts are built differently: Uma Musume has
 four, one per line, one for the girl and one for her dash.

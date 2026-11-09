@@ -224,7 +224,9 @@
    0.22651,
    0.28399,
    0.861
-  ]
+  ],
+  "size": 1.12,
+  "pad": 0.06
  },
  "a/caves_of_qud.png": {
   "game": "caves_of_qud",
@@ -381,6 +383,8 @@
    0.61275,
    0.9007
   ],
+  "ink_left": 0.0621,
+  "ink_right": 0.0734,
   "form": "lower"
  },
  "a/hades.png": {
@@ -964,7 +968,9 @@
    0.22651,
    0.15267,
    0.861
-  ]
+  ],
+  "size": 1.12,
+  "pad": 0.06
  },
  "b/diablo.png": {
   "game": "diablo",
@@ -1010,6 +1016,8 @@
    0.76961,
    0.92308
   ],
+  "ink_left": 0.0696,
+  "ink_right": 0.0823,
   "form": "lower"
  },
  "b/into_the_breach.png": {
@@ -1288,7 +1296,9 @@
    0.62517,
    0.36471,
    0.91189
-  ]
+  ],
+  "ink_left": 0.0729,
+  "ink_right": 0.0573
  },
  "c/into_the_breach.png": {
   "game": "into_the_breach",
@@ -2033,7 +2043,9 @@
    0.4028,
    0.18039,
    0.56783
-  ]
+  ],
+  "ink_left": 0.0859,
+  "ink_right": 0.0675
  },
  "decor_left/everything_is_crab__legs.png": {
   "game": "everything_is_crab",
@@ -2049,6 +2061,8 @@
    0.21569,
    0.97762
   ],
+  "ink_left": 0.082,
+  "ink_right": 0.0984,
   "subtitle": true
  },
  "decor_left/uma_musume_pretty_derby.png": {
@@ -2096,7 +2110,9 @@
    0.38322,
    0.97941,
    0.54825
-  ]
+  ],
+  "ink_left": 0.0613,
+  "ink_right": 0.0859
  },
  "decor_right/everything_is_crab__legs.png": {
   "game": "everything_is_crab",
@@ -2112,6 +2128,8 @@
    0.86471,
    0.97203
   ],
+  "ink_left": 0.0909,
+  "ink_right": 0.0826,
   "subtitle": true
  },
  "decor_right/uma_musume_pretty_derby.png": {
@@ -2439,7 +2457,9 @@
    0.24615,
    0.24902,
    0.54406
-  ]
+  ],
+  "ink_left": 0.1121,
+  "ink_right": 0.1121
  },
  "e/everything_is_crab__2.png": {
   "game": "everything_is_crab",
@@ -2455,6 +2475,8 @@
    0.36471,
    0.53007
   ],
+  "ink_left": 0.1538,
+  "ink_right": 0.1538,
   "form": "lower"
  },
  "e/hades.png": {
@@ -3348,6 +3370,8 @@
    0.83627,
    0.63636
   ],
+  "ink_left": 0.1089,
+  "ink_right": 0.1089,
   "form": "lower"
  },
  "g/mewgenics.png": {
@@ -3509,6 +3533,8 @@
    0.61863,
    0.51608
   ],
+  "ink_left": 0.1143,
+  "ink_right": 0.1048,
   "form": "lower"
  },
  "h/hades.png": {
@@ -3807,7 +3833,9 @@
    0.22651,
    0.83759,
    0.861
-  ]
+  ],
+  "size": 1.12,
+  "pad": 0.06
  },
  "i/demonic_mahjong.png": {
   "game": "demonic_mahjong",
@@ -3868,6 +3896,8 @@
    0.67549,
    0.52308
   ],
+  "ink_left": 0.1774,
+  "ink_right": 0.1774,
   "form": "lower"
  },
  "i/everything_is_crab__2.png": {
@@ -3884,6 +3914,8 @@
    0.48137,
    0.69091
   ],
+  "ink_left": 0.1864,
+  "ink_right": 0.1864,
   "form": "lower"
  },
  "i/into_the_breach.png": {
@@ -4406,7 +4438,9 @@
    0.22651,
    0.36659,
    0.91377
-  ]
+  ],
+  "size": 1.12,
+  "pad": 0.06
  },
  "l/ball_x_pit__2.png": {
   "game": "ball_x_pit",
@@ -4421,7 +4455,9 @@
    0.22651,
    0.43063,
    0.91248
-  ]
+  ],
+  "size": 1.12,
+  "pad": 0.06
  },
  "l/dead_cells.png": {
   "game": "dead_cells",
@@ -5215,6 +5251,8 @@
    0.74902,
    0.53706
   ],
+  "ink_left": 0.1209,
+  "ink_right": 0.1209,
   "form": "lower"
  },
  "n/hand_of_fate.png": {
@@ -6023,7 +6061,9 @@
    0.22651,
    0.78097,
    0.91377
-  ]
+  ],
+  "size": 1.12,
+  "pad": 0.06
  },
  "p/dungeon_crawl_stone_soup.png": {
   "game": "dungeon_crawl_stone_soup",
@@ -6538,6 +6578,8 @@
    0.41667,
    0.52308
   ],
+  "ink_left": 0.0909,
+  "ink_right": 0.0909,
   "form": "lower"
  },
  "r/everything_is_crab__2.png": {
@@ -6554,6 +6596,8 @@
    0.44706,
    0.8951
   ],
+  "ink_left": 0.1089,
+  "ink_right": 0.1089,
   "form": "lower"
  },
  "r/into_the_breach.png": {
@@ -7179,6 +7223,8 @@
    0.5451,
    0.68951
   ],
+  "ink_left": 0.1325,
+  "ink_right": 0.1446,
   "form": "lower"
  },
  "s/hades.png": {
@@ -7658,7 +7704,9 @@
    0.22651,
    1.00093,
    0.861
-  ]
+  ],
+  "size": 1.12,
+  "pad": 0.06
  },
  "t/darkest_dungeon.png": {
   "game": "darkest_dungeon",
@@ -7784,6 +7832,8 @@
    0.53725,
    0.51888
   ],
+  "ink_left": 0.1667,
+  "ink_right": 0.141,
   "form": "lower"
  },
  "t/ftl.png": {
@@ -8518,6 +8568,8 @@
    0.31176,
    0.53706
   ],
+  "ink_left": 0.1149,
+  "ink_right": 0.1264,
   "form": "lower"
  },
  "v/rogue.png": {
@@ -8798,7 +8850,9 @@
    -0.00257,
    0.65708,
    1.00257
-  ]
+  ],
+  "size": 1.12,
+  "pad": 0.06
  },
  "x/rogue.png": {
   "game": "rogue",
@@ -8856,6 +8910,8 @@
    0.48039,
    0.51748
   ],
+  "ink_left": 0.1358,
+  "ink_right": 0.1358,
   "form": "lower"
  },
  "y/rogue.png": {

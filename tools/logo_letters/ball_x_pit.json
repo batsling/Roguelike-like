@@ -18,6 +18,8 @@
   "body": {
     "x": [558, 1086]
   },
+  "size": {"*": 1.12},
+  "pad": {"*": 0.06},
   "adopt_strays": true,
   "smooth": false,
   "shadow": false,

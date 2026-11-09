@@ -11,6 +11,12 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Title letters: Ball x Pit bigger and roomier, Everything is Crab spaced
+  by its outline.** Every Ball x Pit letter is drawn 1.12 times as big with
+  0.06 of the line kept clear either side; Everything is Crab is spaced by
+  what it draws (`space_by_ink`), so its outlined i no longer covers the
+  letter beside it (`docs/content-authoring.md`, "Title letters").
+
 - **Title letters: Super Auto Pets.** S u p e r A t o P t s, stood upright,
   each with the logo's black and white sticker edge (the cutter's new
   `outline.bands`), spaced by what each letter draws rather than its box, so
