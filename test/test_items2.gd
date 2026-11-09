@@ -1,5 +1,7 @@
 extends GutTest
 
+const Page := preload("res://test/helpers/run_page.gd")
+
 const Fixtures := preload("res://test/helpers/fixtures.gd")
 
 # Games-first (2.0) item + reward wiring: the items2.0 relics that drop from
@@ -1064,6 +1066,24 @@ func test_a_chest_wears_a_star_per_rung_of_its_size() -> void:
 	assert_eq(huge._stars.size(), 4, "a Huge chest has four")
 	small.discard()
 	huge.discard()
+
+func test_a_chest_that_paid_gold_says_so_beside_its_name() -> void:
+	var before: int = GameState.gold
+	var chest := RewardScreen.new()
+	add_child_autofree(chest)
+	chest.setup_chests([1, 3], [], Data.chest_gold(1) + Data.chest_gold(3))
+	assert_eq(GameState.gold, before + Data.chest_gold(1) + Data.chest_gold(3), "paid once, by the screen")
+	assert_string_contains(Page.text_of(chest._sections[0]._body), ItemDropModal.gold_text(Data.chest_gold(1)))
+	assert_string_contains(Page.text_of(chest._sections[1]._body), ItemDropModal.gold_text(Data.chest_gold(3)))
+	assert_false(chest._gold_line.visible, "and not a second time as a total above them")
+	GameState.gold = before
+
+func test_a_chest_that_paid_no_gold_says_nothing_about_gold() -> void:
+	var slot := VBoxContainer.new()
+	add_child_autofree(slot)
+	var chest := ItemDropModal.embed(self, slot, [Data.reward_item2_pool()[0]])
+	assert_false(Page.text_of(slot).contains("gold"), "no gold was paid, so none is claimed")
+	chest.discard()
 
 func test_a_taken_chest_says_what_was_taken_where_it_stood() -> void:
 	var pool: Array = Data.reward_item2_pool()

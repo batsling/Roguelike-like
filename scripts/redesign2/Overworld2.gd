@@ -3893,7 +3893,7 @@ func _hand_chests_to_post_game() -> void:
 		if offer.is_empty():
 			continue
 		if _post_screen != null and is_instance_valid(_post_screen):
-			_post_screen.add_chest(offer)
+			_post_screen.add_chest(offer, gold)
 		else:
 			# The screen went while we were draining: fall back to the queue the
 			# page's own modal drains, rather than losing the chest.

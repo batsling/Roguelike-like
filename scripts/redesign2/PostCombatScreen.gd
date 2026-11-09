@@ -946,8 +946,20 @@ func _build_chests() -> void:
 		_mount_chest(_chests.pop_front())
 	_refresh_exit()
 
+# What a banked chest paid as it landed here, by the list it is offering — kept
+# beside `_chests` rather than in it, because everything else that walks that
+# list wants the items alone. `gold` is what the page already paid; this screen
+# only says so on the chest's heading.
+var _chest_gold: Array = []
+
+func _gold_of(items: Array) -> int:
+	for entry in _chest_gold:
+		if is_same(entry["items"], items):
+			return int(entry["gold"])
+	return 0
+
 func _mount_chest(items: Array) -> void:
-	var section := ItemDropModal.embed(self, _chest_slot, items)
+	var section := ItemDropModal.embed(self, _chest_slot, items, true, "", _gold_of(items))
 	_chest_sections.append(section)
 	section.answered.connect(func(taken: bool, item: ItemData):
 		if taken and item != null:
@@ -1083,9 +1095,11 @@ func _sum_glyph(text: String) -> Control:
 # a status's payout — put on the screen rather than behind it. Without this it
 # opens a RewardScreen on the page's own layer, underneath this one, and the
 # player sees nothing until they have already left (§8.2).
-func add_chest(items: Array) -> void:
+func add_chest(items: Array, gold: int = 0) -> void:
 	if _done or items.is_empty():
 		return
+	if gold > 0:
+		_chest_gold.append({"items": items, "gold": gold})
 	if _chest_slot == null or not is_instance_valid(_chest_slot):
 		_chests.append(items)
 		return
