@@ -19,6 +19,16 @@ failure; diffing a passing and failing run's Control tree) are the reusable part
 - **The varying failures that used to live here are FIXED.** All were
   assertions that were only *usually* true, and they are worth reading before
   blaming a seed for a new one.
+  - `test_gameloop2.gd::test_reporting_a_game_moves_nobody_out_in_the_wilds`
+    (9 Nov 2026) failed on CI with "[2] expected to equal [4]: so nobody
+    walked", about one run in 200, on a PR that never touched the loop. The
+    first guess (the setup report standing up a random roster body) was wrong;
+    a stress test running the scenario 400 times in one process, printing the
+    board after each step, showed `a` moving 4 -> 2 at the SECOND PICK, not the
+    report: `choose_game` can roll a second body that lands in `a`'s lane and
+    shoves it on before `Fixtures.choose_solo` despawns that body again. The
+    test read `a`'s column before the pick; it now reads it after (0 in 1,500).
+    A `choose_solo` despawns the second body but cannot unshove what it pushed.
   - `test_overworld2.gd::test_beating_a_game_pays_a_chest_scaled_by_what_you_killed`
     (2 Nov 2026) got a Huge chest of 5 instead of a Large of 3, on CI's push run
     of a commit whose pull-request run passed. Path rifts are dealt onto the

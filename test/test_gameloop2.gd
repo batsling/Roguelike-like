@@ -1858,8 +1858,13 @@ func test_the_ladder_is_pure_maths_without_a_graph() -> void:
 func test_reporting_a_game_moves_nobody_out_in_the_wilds() -> void:
 	var a: int = Fixtures.choose_solo(_enemy(2))
 	GameLoop2.beat_game(false)                    # released as a follower
-	var col: int = Fixtures.col_of(a)
 	Fixtures.choose_solo(_enemy(0))
+	# Where `a` stands is read AFTER the pick, not before: the pick can roll a
+	# second body that lands in `a`'s lane and shoves it on before choose_solo
+	# takes that body off again (CI, 9 Nov 2026: `a` "walked" 4 -> 2 at the pick,
+	# about one run in 200, and the report below was blamed for it). The report is
+	# what this test is about.
+	var col: int = Fixtures.col_of(a)
 	# NOTHING OWED AT THE END OF THIS GAME (§19.5). A game where nothing went down
 	# stands +1 body up as it ends, and where that body lands can SHOVE the lane
 	# `a` is standing in — so "nobody walked" was only usually true, failing on the
