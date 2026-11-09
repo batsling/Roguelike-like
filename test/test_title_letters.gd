@@ -348,7 +348,36 @@ func test_make_takes_its_gap_between_letters() -> void:
 	for i in range(1, a.placed.size()):
 		var gap: float = a.placed[i].body.position.x - a.placed[i - 1].body.end.x
 		var pads: float = 30.0 * (float(a.placed[i].entry.get("pad", 0.0)) + float(a.placed[i - 1].entry.get("pad", 0.0)))
+		# ...and a letter drawn wider than its box keeps its overhang too
+		pads += float(a.placed[i].entry.get("ink_left", 0.0)) * a.placed[i].rect.size.x \
+			+ float(a.placed[i - 1].entry.get("ink_right", 0.0)) * a.placed[i - 1].rect.size.x
 		assert_almost_eq(gap - pads, 30.0 * 0.2, 0.01, "the gap asked for")
+
+# A LETTER DRAWN WIDER THAN ITS BOX gets the room it draws (the owner, 9 Nov
+# 2026): Super Auto Pets' black and white sticker edge reaches a sixth of the
+# letter's width past its box each side, and ran into its neighbours. Spaced by
+# its ink, what one letter draws ends a full gap before the next one starts.
+func test_a_letter_with_a_wide_edge_never_runs_into_its_neighbour() -> void:
+	var pool := TitleLetters.pool()
+	var sap := func(folder: String) -> Dictionary:
+		return (pool[folder] as Array).filter(func(e): return e["game"] == "super_auto_pets")[0]
+	var word := "Super"
+	var pieces: Array = []
+	for ch in word:
+		pieces.append(sap.call(ch.to_lower()))
+	assert_gt(float(pieces[0].get("ink_left", 0.0)), 0.1, "its S records how far its edge reaches")
+	var row := TitleLetters.new()
+	add_child_autofree(row)
+	row._lay_out(pieces, [], 100.0, word)
+	for i in range(1, row.placed.size()):
+		var a: TitleLetters.Placed = row.placed[i - 1]
+		var b: TitleLetters.Placed = row.placed[i]
+		var a_ink: float = a.rect.position.x + (float(a.entry["body_center_x"]) + float(a.entry["body_width"]) * 0.5
+			+ float(a.entry["ink_right"])) * a.rect.size.x
+		var b_ink: float = b.rect.position.x + (float(b.entry["body_center_x"]) - float(b.entry["body_width"]) * 0.5
+			- float(b.entry["ink_left"])) * b.rect.size.x
+		assert_almost_eq(b_ink - a_ink, 100.0 * TitleLetters.GAP, 0.01,
+			"%s to %s: a whole gap between what they draw" % [word[i - 1], word[i]])
 
 # THE CRAB'S LEGS ARE THE SUBTITLE'S (the owner, 1 Nov 2026): the subtitle's
 # decorations come from those marked `subtitle`, the title's from the rest.

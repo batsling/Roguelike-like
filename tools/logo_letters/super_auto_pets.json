@@ -123,5 +123,6 @@
  "hold": [
   "u.2",
   "e.2"
- ]
+ ],
+ "space_by_ink": true
 }

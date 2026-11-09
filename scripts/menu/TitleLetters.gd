@@ -361,10 +361,14 @@ func _lay_out(pieces: Array, decor: Array, height: float, text: String = "") -> 
 		# between it and a neighbour only, never past either end of the row,
 		# where it would push the row off-centre (Rogue's R opening a title)
 		var pad := height * float(e.get("pad", 0.0))
-		if not placed.is_empty():
-			x += pad
 		var s := target / (th * bh)          # one scale: the letter's own height to the line's
 		var slot := tw * s * bw              # the letter's own width
+		# a letter drawn wider than its box (Super Auto Pets' sticker edge) keeps
+		# that much more room either side, so the gap is between what is drawn
+		var ink_l := float(e.get("ink_left", 0.0)) * tw * s
+		var ink_r := float(e.get("ink_right", 0.0)) * tw * s
+		if not placed.is_empty():
+			x += pad + ink_l
 		var rect := TextureRect.new()
 		rect.texture = tex
 		rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
@@ -395,7 +399,7 @@ func _lay_out(pieces: Array, decor: Array, height: float, text: String = "") -> 
 		placed.append(p)
 		x += slot
 		if i < seq.size() - 1:
-			x += pad
+			x += pad + ink_r
 	ink_width = x
 	ink.size = Vector2(x, height)
 	custom_minimum_size = Vector2(0.0, height * (1.0 + 2.0 * PAD))

@@ -714,6 +714,8 @@
    0.73022,
    0.43851
   ],
+  "ink_left": 0.1472,
+  "ink_right": 0.1515,
   "src_turn": -3.0
  },
  "a/tangledeep.png": {
@@ -2831,6 +2833,8 @@
    0.48119,
    0.42679
   ],
+  "ink_left": 0.1777,
+  "ink_right": 0.1777,
   "src_turn": -4.0,
   "form": "lower"
  },
@@ -5925,6 +5929,8 @@
    0.98824,
    0.621
   ],
+  "ink_left": 0.1683,
+  "ink_right": 0.1683,
   "form": "lower"
  },
  "o/the_binding_of_isaac.png": {
@@ -6152,6 +6158,8 @@
    0.38582,
    0.53561
   ],
+  "ink_left": 0.1741,
+  "ink_right": 0.1741,
   "src_turn": -6.0,
   "form": "lower"
  },
@@ -6169,6 +6177,8 @@
    0.46165,
    0.92491
   ],
+  "ink_left": 0.1394,
+  "ink_right": 0.1434,
   "src_turn": -12.0
  },
  "p/tangledeep.png": {
@@ -6875,6 +6885,8 @@
    0.56445,
    0.41338
   ],
+  "ink_left": 0.1978,
+  "ink_right": 0.1868,
   "src_turn": -3.0,
   "form": "lower"
  },
@@ -7451,6 +7463,8 @@
    0.20146,
    0.59586
   ],
+  "ink_left": 0.1446,
+  "ink_right": 0.1446,
   "src_turn": -5.0
  },
  "s/super_auto_pets__2.png": {
@@ -7467,6 +7481,8 @@
    0.76176,
    0.93772
   ],
+  "ink_left": 0.1602,
+  "ink_right": 0.1602,
   "form": "lower"
  },
  "s/the_binding_of_isaac.png": {
@@ -8024,6 +8040,8 @@
    0.89869,
    0.53823
   ],
+  "ink_left": 0.2156,
+  "ink_right": 0.2096,
   "src_turn": 8.0,
   "form": "lower"
  },
@@ -8041,6 +8059,8 @@
    0.66857,
    0.90579
   ],
+  "ink_left": 0.1872,
+  "ink_right": 0.1818,
   "src_turn": 6.0,
   "form": "lower"
  },
@@ -8391,6 +8411,8 @@
    0.28229,
    0.50038
   ],
+  "ink_left": 0.1862,
+  "ink_right": 0.1915,
   "src_turn": -10.0,
   "form": "lower"
  },

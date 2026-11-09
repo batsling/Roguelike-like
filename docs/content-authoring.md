@@ -381,6 +381,14 @@ line), with the plate filled into each letter's notches (`outline.close` 20).
 "Pets" is drawn bigger than "Super Auto"; its e and Auto's u are the same
 glyphs as Super's at another size and tilt, so they are held as repeats. The
 two t's and the capital P and S against the lowercase p and s differ.
+Its sticker edge hangs a sixth of each letter's width past its box on either
+side, and the title spaces letters by their boxes, so they ran into each
+other; the owner asked for more room for wider letters (9 Nov 2026). With
+`space_by_ink` the cutter records how far each piece's solid ink reaches past
+its box, level with the box only (an eye stalk above never meets a
+neighbour), as `ink_left` / `ink_right`, and `TitleLetters._lay_out` keeps that
+much more room between it and its neighbours, as it does `pad`: the gap is
+then between what the letters draw.
 A logo can
 take more than one config when its parts are built differently: Uma Musume has
 four, one per line, one for the girl and one for her dash.

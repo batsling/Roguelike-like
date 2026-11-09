@@ -13,7 +13,10 @@ For how the project is laid out and how its systems fit together, see
 
 - **Title letters: Super Auto Pets.** S u p e r A t o P t s, stood upright,
   each with the logo's black and white sticker edge (the cutter's new
-  `outline.bands`) (`docs/content-authoring.md`, "Title letters").
+  `outline.bands`), spaced by what each letter draws rather than its box, so
+  a letter drawn wider gets more room and the edges never run into each other
+  (`space_by_ink`, `ink_left` / `ink_right` in the index)
+  (`docs/content-authoring.md`, "Title letters").
 
 - **Title letters: FTL.** F T L, flat white, from the logo without its FASTER
   THAN LIGHT line (`docs/content-authoring.md`, "Title letters").

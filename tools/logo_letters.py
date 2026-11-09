@@ -54,6 +54,11 @@ so Godot never imports the source), is JSON:
                   (fill), so glow, shadow and outline never shift it. The index
                   records it as body_center / body_height (vertical) and
                   body_center_x / body_width (horizontal), fractions of the PNG
+    space_by_ink  true: each piece's index records how far its solid ink
+                  reaches past its box on either side (`ink_left`,
+                  `ink_right`, level with the box only), and the title keeps that much more room
+                  between it and its neighbours, so a letter drawn wider than
+                  its box (Super Auto Pets' sticker edge) never runs into them
     rotate        {piece: degrees} — a letter set on a curve (Dungeon Clawler's
                   arc) turned that many degrees clockwise (negative: counter-
                   clockwise) about its face's middle so it stands upright.
@@ -952,6 +957,7 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
     line_centers = {}
     src_boxes = {}
     src_turns = {}
+    ink_sides = {}
     out_dir_game = cfg["game"]
     written_names = []
     for i, n in enumerate(names):
@@ -1787,6 +1793,17 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
         body_heights[n] = (by1 - by0) / (y1 - y0)
         body_xs[n] = ((bx0 + bx1) / 2 - x0) / (x1 - x0)
         body_widths[n] = (bx1 - bx0) / (x1 - x0)
+        if cfg.get("space_by_ink"):
+            # How far the letter's solid ink (its outline, its sticker edge)
+            # reaches past its box on each side, of the piece's width: the
+            # title spaces by the box, so without this a letter with a thick
+            # edge runs into its neighbours (Super Auto Pets). Only level with
+            # the box, where a neighbour stands: an eye stalk or a flame above
+            # the letter never meets one
+            band_ = out[y0:y1, x0:x1, 3][max(by0 - y0, 0):max(by1 - y0, 1)]
+            iy_, ix_ = np.nonzero(band_ >= 128)
+            ink_sides[n] = (max(0.0, (bx0 - x0) - ix_.min()) / (x1 - x0),
+                            max(0.0, ix_.max() + 1 - (bx1 - x0)) / (x1 - x0))
         # "g.2" is a second G from the same logo: title/g/<game>__2.png. Two
         # underscores, never one: slay_the_spire's second e was once
         # e/slay_the_spire_2.png, the very file slay_the_spire_2's e is.
@@ -1878,6 +1895,10 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
             # (logos/<game>.png): x0, y0, x1, y1
             "src": _src_fraction(src_boxes[n_], logo_box),
         }
+        if n_ in ink_sides:
+            # spaced by its whole drawn width, not its box (TitleLetters)
+            index[str(dest_.relative_to(OUT_DIR))]["ink_left"] = round(ink_sides[n_][0], 4)
+            index[str(dest_.relative_to(OUT_DIR))]["ink_right"] = round(ink_sides[n_][1], 4)
         if n_ in src_turns:
             # stood upright off a curve: turned this many degrees clockwise
             # about its middle, it lies on the logo as drawn (LogoProgress)
