@@ -383,6 +383,21 @@
   ],
   "form": "lower"
  },
+ "a/ftl.png": {
+  "game": "ftl",
+  "config": "ftl_2.json",
+  "style": "ftl_2",
+  "body_center": 0.5,
+  "body_height": 0.922,
+  "body_center_x": 0.4976,
+  "body_width": 0.9171,
+  "src": [
+   0.06274,
+   0.90076,
+   0.11612,
+   1.00403
+  ]
+ },
  "a/hades.png": {
   "game": "hades",
   "config": "hades.json",
@@ -2439,6 +2454,21 @@
   ],
   "form": "lower"
  },
+ "e/ftl.png": {
+  "game": "ftl",
+  "config": "ftl_2.json",
+  "style": "ftl_2",
+  "body_center": 0.5,
+  "body_height": 0.922,
+  "body_center_x": 0.4975,
+  "body_width": 0.9167,
+  "src": [
+   0.25722,
+   0.90076,
+   0.31034,
+   1.00403
+  ]
+ },
  "e/hades.png": {
   "game": "hades",
   "config": "hades.json",
@@ -3025,6 +3055,36 @@
    0.91604
   ]
  },
+ "f/ftl.png": {
+  "game": "ftl",
+  "config": "ftl.json",
+  "style": "ftl",
+  "body_center": 0.5,
+  "body_height": 0.9392,
+  "body_center_x": 0.5004,
+  "body_width": 0.9167,
+  "src": [
+   -0.01328,
+   -0.02569,
+   0.30877,
+   0.83627
+  ]
+ },
+ "f/ftl__2.png": {
+  "game": "ftl",
+  "config": "ftl_2.json",
+  "style": "ftl_2",
+  "body_center": 0.5,
+  "body_height": 0.922,
+  "body_center_x": 0.5024,
+  "body_width": 0.9171,
+  "src": [
+   -0.00208,
+   0.90076,
+   0.05129,
+   1.00403
+  ]
+ },
  "f/hand_of_fate.png": {
   "game": "hand_of_fate",
   "config": "hand_of_fate.json",
@@ -3298,6 +3358,21 @@
   ],
   "form": "lower"
  },
+ "g/ftl.png": {
+  "game": "ftl",
+  "config": "ftl_2.json",
+  "style": "ftl_2",
+  "body_center": 0.5,
+  "body_height": 0.922,
+  "body_center_x": 0.4976,
+  "body_width": 0.9171,
+  "src": [
+   0.81958,
+   0.90076,
+   0.87295,
+   1.00403
+  ]
+ },
  "g/mewgenics.png": {
   "game": "mewgenics",
   "config": "mewgenics.json",
@@ -3458,6 +3533,21 @@
    0.51608
   ],
   "form": "lower"
+ },
+ "h/ftl.png": {
+  "game": "ftl",
+  "config": "ftl_2.json",
+  "style": "ftl_2",
+  "body_center": 0.5,
+  "body_height": 0.922,
+  "body_center_x": 0.5024,
+  "body_width": 0.9171,
+  "src": [
+   0.4918,
+   0.90076,
+   0.54517,
+   1.00403
+  ]
  },
  "h/hades.png": {
   "game": "hades",
@@ -3833,6 +3923,21 @@
    0.69091
   ],
   "form": "lower"
+ },
+ "i/ftl.png": {
+  "game": "ftl",
+  "config": "ftl_2.json",
+  "style": "ftl_2",
+  "body_center": 0.5,
+  "body_height": 0.922,
+  "body_center_x": 0.4922,
+  "body_width": 0.7344,
+  "src": [
+   0.79146,
+   0.90076,
+   0.80812,
+   1.00403
+  ]
  },
  "i/into_the_breach.png": {
   "game": "into_the_breach",
@@ -4481,6 +4586,36 @@
   ],
   "form": "lower",
   "pixel": true
+ },
+ "l/ftl.png": {
+  "game": "ftl",
+  "config": "ftl.json",
+  "style": "ftl",
+  "body_center": 0.5,
+  "body_height": 0.9392,
+  "body_center_x": 0.5005,
+  "body_width": 0.899,
+  "src": [
+   0.74772,
+   -0.02569,
+   1.01328,
+   0.83627
+  ]
+ },
+ "l/ftl__2.png": {
+  "game": "ftl",
+  "config": "ftl_2.json",
+  "style": "ftl_2",
+  "body_center": 0.5,
+  "body_height": 0.922,
+  "body_center_x": 0.4976,
+  "body_width": 0.9171,
+  "src": [
+   0.72663,
+   0.90076,
+   0.78001,
+   1.00403
+  ]
  },
  "l/loop_hero.png": {
   "game": "loop_hero",
@@ -5149,6 +5284,21 @@
    0.53706
   ],
   "form": "lower"
+ },
+ "n/ftl.png": {
+  "game": "ftl",
+  "config": "ftl_2.json",
+  "style": "ftl_2",
+  "body_center": 0.5,
+  "body_height": 0.922,
+  "body_center_x": 0.5024,
+  "body_width": 0.9171,
+  "src": [
+   0.62145,
+   0.90076,
+   0.67482,
+   1.00403
+  ]
  },
  "n/hand_of_fate.png": {
   "game": "hand_of_fate",
@@ -6434,6 +6584,21 @@
   ],
   "form": "lower"
  },
+ "r/ftl.png": {
+  "game": "ftl",
+  "config": "ftl_2.json",
+  "style": "ftl_2",
+  "body_center": 0.5,
+  "body_height": 0.922,
+  "body_center_x": 0.4976,
+  "body_width": 0.9171,
+  "src": [
+   0.32205,
+   0.90076,
+   0.37542,
+   1.00403
+  ]
+ },
  "r/into_the_breach.png": {
   "game": "into_the_breach",
   "config": "into_the_breach.json",
@@ -7040,6 +7205,21 @@
   ],
   "form": "lower"
  },
+ "s/ftl.png": {
+  "game": "ftl",
+  "config": "ftl_2.json",
+  "style": "ftl_2",
+  "body_center": 0.5,
+  "body_height": 0.922,
+  "body_center_x": 0.4976,
+  "body_width": 0.9171,
+  "src": [
+   0.12757,
+   0.90076,
+   0.18094,
+   1.00403
+  ]
+ },
  "s/hades.png": {
   "game": "hades",
   "config": "hades.json",
@@ -7608,6 +7788,36 @@
    0.51888
   ],
   "form": "lower"
+ },
+ "t/ftl.png": {
+  "game": "ftl",
+  "config": "ftl.json",
+  "style": "ftl",
+  "body_center": 0.5,
+  "body_height": 0.9392,
+  "body_center_x": 0.5003,
+  "body_width": 0.9281,
+  "src": [
+   0.33377,
+   -0.02569,
+   0.70659,
+   0.83627
+  ]
+ },
+ "t/ftl__2.png": {
+  "game": "ftl",
+  "config": "ftl_2.json",
+  "style": "ftl_2",
+  "body_center": 0.5,
+  "body_height": 0.922,
+  "body_center_x": 0.4976,
+  "body_width": 0.9171,
+  "src": [
+   0.1924,
+   0.90076,
+   0.24577,
+   1.00403
+  ]
  },
  "t/hand_of_fate.png": {
   "game": "hand_of_fate",

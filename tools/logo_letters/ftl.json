@@ -1,0 +1,40 @@
+{
+ "game": "ftl",
+ "source": "ftl.png",
+ "fill": {
+  "min_alpha": 128,
+  "min_brightness": 140
+ },
+ "adopt_strays": false,
+ "smooth": false,
+ "shadow": false,
+ "pieces": {
+  "f": [
+   450,
+   950
+  ],
+  "t": [
+   2148,
+   950
+  ],
+  "l": [
+   3250,
+   950
+  ]
+ },
+ "cut": {
+  "reach": 3,
+  "recast_shadow": {
+   "spread": 10.5,
+   "dx": 0,
+   "dy": 0,
+   "blur": 17.8,
+   "alpha": 147,
+   "colour": [
+    255,
+    254,
+    238
+   ]
+  }
+ }
+}
