@@ -700,6 +700,22 @@
    0.86173
   ]
  },
+ "a/super_auto_pets.png": {
+  "game": "super_auto_pets",
+  "config": "super_auto_pets.json",
+  "style": "super_auto_pets",
+  "body_center": 0.5,
+  "body_height": 0.696,
+  "body_center_x": 0.4957,
+  "body_width": 0.671,
+  "src": [
+   0.54918,
+   -0.00633,
+   0.73022,
+   0.43851
+  ],
+  "src_turn": -3.0
+ },
  "a/tangledeep.png": {
   "game": "tangledeep",
   "config": "tangledeep.json",
@@ -2800,6 +2816,23 @@
    0.81364,
    0.86667
   ]
+ },
+ "e/super_auto_pets.png": {
+  "game": "super_auto_pets",
+  "config": "super_auto_pets.json",
+  "style": "super_auto_pets",
+  "body_center": 0.5,
+  "body_height": 0.6139,
+  "body_center_x": 0.5,
+  "body_width": 0.6142,
+  "src": [
+   0.3268,
+   0.06736,
+   0.48119,
+   0.42679
+  ],
+  "src_turn": -4.0,
+  "form": "lower"
  },
  "e/tangledeep.png": {
   "game": "tangledeep",
@@ -5878,6 +5911,22 @@
    1.00283
   ]
  },
+ "o/super_auto_pets.png": {
+  "game": "super_auto_pets",
+  "config": "super_auto_pets.json",
+  "style": "super_auto_pets",
+  "body_center": 0.5,
+  "body_height": 0.5979,
+  "body_center_x": 0.5,
+  "body_width": 0.6346,
+  "src": [
+   0.82524,
+   0.2847,
+   0.98824,
+   0.621
+  ],
+  "form": "lower"
+ },
  "o/the_binding_of_isaac.png": {
   "game": "the_binding_of_isaac",
   "config": "the_binding_of_isaac_small.json",
@@ -6088,6 +6137,39 @@
    0.25781,
    1.0625
   ]
+ },
+ "p/super_auto_pets.png": {
+  "game": "super_auto_pets",
+  "config": "super_auto_pets.json",
+  "style": "super_auto_pets",
+  "body_center": 0.5,
+  "body_height": 0.6855,
+  "body_center_x": 0.5,
+  "body_width": 0.6219,
+  "src": [
+   0.22829,
+   0.09433,
+   0.38582,
+   0.53561
+  ],
+  "src_turn": -6.0,
+  "form": "lower"
+ },
+ "p/super_auto_pets__2.png": {
+  "game": "super_auto_pets",
+  "config": "super_auto_pets.json",
+  "style": "super_auto_pets",
+  "body_center": 0.5018,
+  "body_height": 0.719,
+  "body_center_x": 0.498,
+  "body_width": 0.6932,
+  "src": [
+   0.26494,
+   0.43736,
+   0.46165,
+   0.92491
+  ],
+  "src_turn": -12.0
  },
  "p/tangledeep.png": {
   "game": "tangledeep",
@@ -6779,6 +6861,23 @@
    0.86667
   ]
  },
+ "r/super_auto_pets.png": {
+  "game": "super_auto_pets",
+  "config": "super_auto_pets.json",
+  "style": "super_auto_pets",
+  "body_center": 0.4975,
+  "body_height": 0.6131,
+  "body_center_x": 0.5027,
+  "body_width": 0.5769,
+  "src": [
+   0.42182,
+   0.05929,
+   0.56445,
+   0.41338
+  ],
+  "src_turn": -3.0,
+  "form": "lower"
+ },
  "r/the_royal_writ.png": {
   "game": "the_royal_writ",
   "config": "the_royal_writ.json",
@@ -7338,6 +7437,38 @@
    0.8642
   ]
  },
+ "s/super_auto_pets.png": {
+  "game": "super_auto_pets",
+  "config": "super_auto_pets.json",
+  "style": "super_auto_pets",
+  "body_center": 0.498,
+  "body_height": 0.6908,
+  "body_center_x": 0.5021,
+  "body_width": 0.6818,
+  "src": [
+   0.0118,
+   0.1528,
+   0.20146,
+   0.59586
+  ],
+  "src_turn": -5.0
+ },
+ "s/super_auto_pets__2.png": {
+  "game": "super_auto_pets",
+  "config": "super_auto_pets.json",
+  "style": "super_auto_pets",
+  "body_center": 0.5,
+  "body_height": 0.6592,
+  "body_center_x": 0.5,
+  "body_width": 0.6505,
+  "src": [
+   0.60031,
+   0.54093,
+   0.76176,
+   0.93772
+  ],
+  "form": "lower"
+ },
  "s/the_binding_of_isaac.png": {
   "game": "the_binding_of_isaac",
   "config": "the_binding_of_isaac.json",
@@ -7879,6 +8010,40 @@
    0.85432
   ]
  },
+ "t/super_auto_pets.png": {
+  "game": "super_auto_pets",
+  "config": "super_auto_pets.json",
+  "style": "super_auto_pets",
+  "body_center": 0.5,
+  "body_height": 0.6911,
+  "body_center_x": 0.503,
+  "body_width": 0.5389,
+  "src": [
+   0.76781,
+   0.10051,
+   0.89869,
+   0.53823
+  ],
+  "src_turn": 8.0,
+  "form": "lower"
+ },
+ "t/super_auto_pets__2.png": {
+  "game": "super_auto_pets",
+  "config": "super_auto_pets.json",
+  "style": "super_auto_pets",
+  "body_center": 0.5,
+  "body_height": 0.7266,
+  "body_center_x": 0.5053,
+  "body_width": 0.5936,
+  "src": [
+   0.52202,
+   0.41113,
+   0.66857,
+   0.90579
+  ],
+  "src_turn": 6.0,
+  "form": "lower"
+ },
  "t/tangledeep.png": {
   "game": "tangledeep",
   "config": "tangledeep.json",
@@ -8211,6 +8376,23 @@
    0.63281,
    1.0625
   ]
+ },
+ "u/super_auto_pets.png": {
+  "game": "super_auto_pets",
+  "config": "super_auto_pets.json",
+  "style": "super_auto_pets",
+  "body_center": 0.4975,
+  "body_height": 0.6131,
+  "body_center_x": 0.5,
+  "body_width": 0.5851,
+  "src": [
+   0.13495,
+   0.14629,
+   0.28229,
+   0.50038
+  ],
+  "src_turn": -10.0,
+  "form": "lower"
  },
  "u/uma_musume_pretty_derby.png": {
   "game": "uma_musume_pretty_derby",

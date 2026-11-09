@@ -370,6 +370,17 @@ LIGHT line cropped off, so the game page's logo is the FTL alone. A soft glow
 fitted to the official logo was tried and dropped: white on white adds nothing
 on the menu's light cyan portal. The 150px transparent margin round the source
 is left from it and harmless (the page's copy is trimmed).
+Super Auto Pets gives S u p e r A t o P t s (every letter but S, A and P a
+lowercase shape; the P, s and second t as `__2`) from Steam's 1280px logo:
+yellow faces on one black plate inside a white sticker edge, every letter
+tilted its own way, so each is turned upright (`rotate`, as Dungeon Clawler;
+the owner, 9 Nov 2026) and given an even sticker edge of its own, 19px of black
+then 17px of white as the letters' tops have it (`outline.bands`; learned, the
+plate's thicker black under the letters won and the white came out a thin
+line), with the plate filled into each letter's notches (`outline.close` 20).
+"Pets" is drawn bigger than "Super Auto"; its e and Auto's u are the same
+glyphs as Super's at another size and tilt, so they are held as repeats. The
+two t's and the capital P and S against the lowercase p and s differ.
 A logo can
 take more than one config when its parts are built differently: Uma Musume has
 four, one per line, one for the girl and one for her dash.

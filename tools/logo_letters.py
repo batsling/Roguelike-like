@@ -265,6 +265,9 @@ so Godot never imports the source), is JSON:
                   between a letter's own strokes (Dungeon Clawler's A legs, W):
                   the band runs round the fill closed by a disc of that radius,
                   not round the fill, so no see-through wedge is left in it
+                  "bands": [[[r, g, b], px], ...] sets the outline's colours
+                  from the fill out instead of learning them (Super Auto Pets'
+                  black then white sticker edge).
                   For a spiky inked logo: "follow_original": true paints the
                   outline only where the logo drew something else (never into
                   the gaps between spikes), "keep_within": px keeps everything
@@ -847,6 +850,18 @@ def cut(cfg_path: Path, preview: Path | None = None) -> list[Path]:
     for k in range(len(lut)):
         m = clean & (d1 > k - 0.5) & (d1 <= k + 0.5)
         lut[k] = np.median(A[m][:, :3], 0) if m.sum() > 50 else lut[max(k - 1, 0)]
+    if oc.get("bands"):
+        # the outline's colours given outright, from the fill out, instead of
+        # learned (Super Auto Pets: 19px of black then 17px of white, measured
+        # off the letters' tops; learned, the plate's thicker black under the
+        # letters won and the white came out a thin line)
+        T = float(sum(w_ for _, w_ in oc["bands"]))
+        lut = np.zeros((int(T) + 3, 3))
+        k0 = 0
+        for col_, w_ in oc["bands"]:
+            lut[k0:k0 + w_] = col_
+            k0 += w_
+        lut[k0:] = oc["bands"][-1][0]
     print(f"  outline {T:.0f}px wide")
 
     # Parts one piece hid of another, painted back from the piece's own column.
