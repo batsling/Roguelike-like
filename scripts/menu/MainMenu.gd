@@ -490,11 +490,28 @@ func _wire_extras() -> void:
 
 # Which list is under the title: &"main" (the three), &"play" or &"extras".
 func show_list(which: StringName) -> void:
+	var from: Control = shown_list()
+	var focus: Control = get_viewport().gui_get_focus_owner() if is_inside_tree() else null
+	var had_focus: bool = focus != null and from.is_ancestor_of(focus)
 	%PlayList.visible = which == &"play"
 	%ExtrasList.visible = which == &"extras"
 	_main_buttons.visible = which == &"main"
 	if which != &"play":
 		_show_save_list(false)
+	# A button hidden under the mouse is not told the mouse left, so the one
+	# that was pressed would come back still lit: every row goes back to rest.
+	for b in _button_rows:
+		var r: TitleLetters = _button_rows[b]
+		if is_instance_valid(r):
+			r.modulate = LETTERS_REST
+			(r.get_meta("glow") as LetterGlow).light(GLOW)
+	# ...and the keyboard goes with the list: focus left on a hidden button
+	# is focus nowhere, and the arrow keys stop doing anything.
+	if had_focus:
+		for c in shown_list().get_children():
+			if c is Button and c.visible:
+				c.grab_focus()
+				break
 
 func shown_list() -> Control:
 	return %PlayList if %PlayList.visible else (%ExtrasList if %ExtrasList.visible else _main_buttons)
@@ -562,7 +579,7 @@ func _fit_shade() -> void:
 	_shade.position = get_global_transform().affine_inverse() * r.position
 	_shade.size = r.size
 
-# Exit Game lives in the bottom-right corner rather than at the foot of the
+# Quit Game lives in the bottom-right corner rather than at the foot of the
 # button column. It is the one entry that isn't a way INTO the game, and sitting
 # last in the same stack made it the neighbour of Settings — a column you scan
 # downwards ending in the door out. Anchored, so it stays in the corner at any

@@ -11,6 +11,11 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Exit Game is Quit Game**, and two small faults in the new menu are fixed:
+  keyboard focus now moves into the list Play or Extras opens (it was left on
+  the hidden button, so the arrow keys did nothing), and a button no longer
+  comes back still lit after its list is closed.
+
 - **The menu is three buttons with icons: 🎮 Play, 📖 Extras, ⚙ Settings.**
   Play and Extras each swap the row for a list of their own under the title
   (Play: Start Run, Continue, Custom Run; Extras: the manual, Collection, Run

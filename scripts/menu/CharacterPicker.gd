@@ -17,7 +17,7 @@ extends Control
 # the run.
 #
 # Mounted as an ordinary Control on the menu's `%ModalLayer` rather than on a
-# CanvasLayer of its own, and that matters: the menu's Exit Game corner is drawn
+# CanvasLayer of its own, and that matters: the menu's Quit Game corner is drawn
 # UNDER that layer on purpose, so the door out of the application cannot sit on
 # top of this screen. See MainMenu._move_quit_to_corner.
 
@@ -57,7 +57,7 @@ func _ready() -> void:
 	# stay 0x0 forever. The inline version got away with the bare call because it
 	# ran on a DETACHED Control (no parent, so no offsets to recompute) and only
 	# then mounted it. Symptom when it is wrong: the panel draws in the top-left
-	# corner instead of centred, and the menu's Exit Game corner shows through.
+	# corner instead of centred, and the menu's Quit Game corner shows through.
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	theme = UITheme.shared()

@@ -106,7 +106,7 @@ custom_minimum_size = Vector2(0, 60)
 [node name="QuitBtn" type="Button" parent="Below/Buttons"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "⏻ Exit Game"
+text = "⏻ Quit Game"
 custom_minimum_size = Vector2(0, 48)
 
 [node name="SaveList" type="VBoxContainer" parent="Below/Buttons"]

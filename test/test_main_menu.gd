@@ -50,7 +50,7 @@ func test_the_character_picker_covers_the_quit_button() -> void:
 	# The third one is not pedantry. A picker mounted with `set_anchors_preset`
 	# from inside `_ready` anchors its own 0x0 rect to the full parent and stays
 	# 0x0 — it draws its panel in the top-left corner, covers nothing, and passes
-	# both assertions above while Exit Game sits live on top of it. Whether the
+	# both assertions above while Quit Game sits live on top of it. Whether the
 	# screen COVERS the screen is the thing this test is named for.
 	var quit_btn: Button = menu.get_node("QuitCorner/QuitBtn")
 	assert_true(picker.get_global_rect().encloses(quit_btn.get_global_rect()),
@@ -327,3 +327,17 @@ func test_the_buttons_are_one_row_with_the_background_dimmed_behind_them() -> vo
 		assert_eq(menu._art.dim_node, list, "the dim follows %s" % list.name)
 		assert_true(menu._shade.get_global_rect().encloses(list.get_global_rect()),
 			"and so does the shade")
+
+
+# THE KEYBOARD FOLLOWS THE LIST. Focus left on a hidden button is focus nowhere.
+func test_focus_moves_into_the_list_that_opens_and_back() -> void:
+	var menu = _menu()
+	await wait_frames(2)
+	var play: Button = menu.get_node("%PlayBtn")
+	play.grab_focus()
+	play.pressed.emit()
+	assert_eq(menu.get_viewport().gui_get_focus_owner(), menu.get_node("%StartRunBtn"),
+		"into the Play list's first button")
+	assert_eq(menu._button_rows[play].modulate, menu.LETTERS_REST, "and Play is not left lit")
+	(menu.get_node("%PlayBackBtn") as Button).pressed.emit()
+	assert_eq(menu.get_viewport().gui_get_focus_owner(), play, "and back to the first of the three")
