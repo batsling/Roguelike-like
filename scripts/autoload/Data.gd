@@ -47,6 +47,7 @@ var _curses2: Dictionary = {}           # StringName -> CurseData2 (the checklis
 var _songs: Dictionary = {}             # StringName -> SongData (Roguelike Radio, docs/roguelike-radio.md)
 var _shopkeepers: Dictionary = {}       # StringName -> ShopkeeperData (§14.6)
 var _locations: Dictionary = {}         # StringName -> LocationData (docs/locations-design.md)
+var _achievements: Dictionary = {}      # StringName -> AchievementData (docs/achievements.md)
 
 func _ready() -> void:
 	_load_dir("res://data/games/", _games)
@@ -74,6 +75,7 @@ func _ready() -> void:
 	_load_songs(SONGS_PATH)
 	_load_dir("res://data/shopkeepers/", _shopkeepers)
 	_load_dir("res://data/locations/", _locations)
+	_load_dir("res://data/achievements/", _achievements)
 	print("[Data] Loaded %d games" % _games.size())
 	print("[Data] Loaded 2.0: %d characters, %d items, %d goal-enemies, %d bosses, %d scrolls, %d pills, %d cards, %d wands, %d trinkets, %d bags, %d weapons, %d evolutions, %d statuses, %d tiles, %d units, %d abilities, %d events, %d curses, %d objects" % [
 		_characters2.size(), _items2.size(), _goal_enemies.size(), _bosses.size(),
@@ -763,6 +765,17 @@ func get_unit(id: StringName) -> UnitData:
 
 func all_units() -> Array:
 	return _units.values()
+
+# --- Achievements (docs/achievements.md) -----------------------------------
+func get_achievement(id: StringName) -> AchievementData:
+	return _achievements.get(id)
+
+# Every achievement, in the order the screen lists them.
+func all_achievements() -> Array:
+	var out: Array = _achievements.values()
+	out.sort_custom(func(a, b) -> bool:
+		return a.order < b.order if a.order != b.order else String(a.id) < String(b.id))
+	return out
 
 # --- Locations (docs/locations-design.md) ----------------------------------
 func get_location(id: StringName) -> LocationData:

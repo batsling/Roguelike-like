@@ -40,6 +40,7 @@ func _ready() -> void:
 	%RunHistoryBtn.pressed.connect(_on_run_history)
 	%CollectionBtn.pressed.connect(_on_collection)
 	%CustomizeBtn.pressed.connect(_on_customize)
+	%AchievementsBtn.pressed.connect(_on_achievements)
 	%TierListBtn.pressed.connect(_on_tier_list)
 	%SettingsBtn.pressed.connect(_on_settings)
 	%HowToPlayBtn.pressed.connect(_on_how_to_play)
@@ -92,7 +93,7 @@ func _style_menu() -> void:
 	# 14px on a 1280 canvas it read as a small island in a lot of dark. The scene
 	# carries the 1.25x sizes; the fonts go up a step here (14 -> 18), since a
 	# button's text size is the theme's until something overrides it.
-	for btn in [%HowToPlayBtn, %CustomizeBtn, %CustomRunBtn, %ContinueBtn, %RunHistoryBtn,
+	for btn in [%HowToPlayBtn, %CustomizeBtn, %AchievementsBtn, %CustomRunBtn, %ContinueBtn, %RunHistoryBtn,
 			%CollectionBtn, %TierListBtn, %SettingsBtn, %QuitBtn]:
 		(btn as Button).add_theme_font_size_override("font_size", MENU_FONT)
 	# Make the primary action stand out — a stylebox, which a scene cannot share
@@ -256,6 +257,10 @@ func _build_profile_row() -> void:
 	cust.custom_minimum_size = Vector2(0, 38)
 	cust.add_theme_font_size_override("font_size", UITheme.FONT_SUB)
 	row.move_child(cust, -1)
+	var ach: Button = %AchievementsBtn
+	ach.custom_minimum_size = Vector2(0, 38)
+	ach.add_theme_font_size_override("font_size", UITheme.FONT_SUB)
+	row.move_child(ach, -1)
 	_refresh_profile_row()
 
 # THE BUTTONS UNDER THE TITLE: Start Run across the top, the rest two to a row
@@ -699,6 +704,12 @@ func _on_customize() -> void:
 		if is_inside_tree():
 			_reroll(true)
 			_reroll(false))
+
+# What there is to unlock and how close this profile is (docs/achievements.md).
+# In the top-left row with Customization, for the reason given above it: the
+# button grid has no room for another.
+func _on_achievements() -> void:
+	AchievementsScreen.open(_modal_layer)
 
 func _on_tier_list() -> void:
 	TierListScreen.open(_modal_layer)

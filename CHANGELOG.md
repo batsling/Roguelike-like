@@ -11,6 +11,19 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Achievements, and two locked characters.** A new screen off the main menu
+  (★ Achievements, in the top row beside Customization) lists what there is to
+  unlock, with a tab per kind of unlock: Characters is the only one so far.
+  Manager is locked until a run holds 3 different coin-tagged items or loot at
+  once; Zoe until 10 games have been perfected. The two are counted differently
+  and each row says which: a single-run one shows a socket per step and "Best in
+  one run: 2 of 3", with the best run's pieces in the sockets; a lifetime one
+  shows a bar and "So far: 4 of 10". In the character picker a locked hero is a
+  silhouette that can be looked at but not confirmed or rolled. Each achievement
+  is an `AchievementData` in `data/achievements/`; the rules are
+  `Achievements`, the progress `GameStats.achievements`. See
+  `docs/achievements.md`.
+
 - **One chest roller, and a Reroll on every chest.** There were two rollers:
   `RewardScreen` rolled the banked chests itself (Sacred Orb's re-draw, no boss
   pool) and `DropQueue` rolled every other (boss pool, no Sacred Orb). Every

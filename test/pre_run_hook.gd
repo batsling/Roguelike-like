@@ -28,6 +28,10 @@ func run() -> void:
 	# is written, or every Collection test would open a silhouette and the suite
 	# would fill the real profile's record. `test_collection_seen.gd` turns it off.
 	GameStats.seen_bypass = true
+	# NOBODY IS LOCKED AND NOTHING IS COUNTED (docs/achievements.md): a test that
+	# picks Manager can, and one that hands out three pennies raises no toast.
+	# test_achievements turns it off and back on.
+	Achievements.bypass = true
 	Data.set_meta("all_shopkeepers", Data._shopkeepers.duplicate())
 	Data._shopkeepers.clear()
 	Data.set_meta("all_locations", Data._locations.duplicate())

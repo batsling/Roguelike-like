@@ -32,6 +32,7 @@ const MIGRATED_FONTS := [
 	"res://scripts/ui/TagEditor.gd",
 	"res://scripts/autoload/Cosmetics.gd",
 	"res://scripts/menu/CustomizeScreen.gd",
+	"res://scripts/ui/AchievementsScreen.gd",
 	"res://scripts/autoload/DevTools.gd",
 	"res://scripts/menu/CharacterPicker.gd",
 	"res://scripts/menu/CustomRunScreen.gd",
@@ -108,6 +109,7 @@ const MIGRATED_FONTS := [
 # and matched the original byte for byte).
 const MIGRATED_GAPS := [
 	"res://scripts/menu/CustomizeScreen.gd",
+	"res://scripts/ui/AchievementsScreen.gd",
 	"res://scripts/ui/TagEditor.gd",
 	"res://scripts/autoload/DevTools.gd",
 	"res://scripts/menu/CharacterPicker.gd",

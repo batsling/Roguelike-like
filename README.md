@@ -155,6 +155,7 @@ The repository root **is** the Godot project, so `res://x` is `./x`.
 | Loot: trinkets, bags, weapons, evolutions, the pack's neighbour rules | [`docs/loot-passives.md`](docs/loot-passives.md), [`cards-design.md`](docs/cards-design.md), [`potions-design.md`](docs/potions-design.md), [`wands-design.md`](docs/wands-design.md) |
 | Difficulty above a won run | [`docs/fracture-design.md`](docs/fracture-design.md) |
 | Rifts: off-map games pulled into the map | [`docs/rifts-design.md`](docs/rifts-design.md) |
+| Achievements (what unlocks a character) | [`docs/achievements.md`](docs/achievements.md) |
 | Roguelike Radio | [`docs/roguelike-radio.md`](docs/roguelike-radio.md) |
 | The end-of-session Camp | [`docs/rest-site-design.md`](docs/rest-site-design.md) |
 | Locations: dealt at each difficulty up, what they do, the tag lean, the poops | [`docs/locations-design.md`](docs/locations-design.md) |

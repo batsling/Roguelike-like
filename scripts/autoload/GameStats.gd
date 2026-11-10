@@ -131,6 +131,46 @@ const GOAL_KIND_NAMES := {
 
 func _ready() -> void:
 	load_data()
+	_watch_achievements.call_deferred()
+
+# --- achievements (docs/achievements.md) -------------------------------------
+#
+# What this profile has done toward each achievement:
+#   id -> {"best": int, "done": bool, "held": [keys]}
+# `best` is the most a SINGLE-RUN achievement ever reached in one run and `held`
+# what that run was holding; a lifetime one is read off the stats instead, and
+# only its `done` is kept. Never unset once done.
+signal achievement_unlocked(id: StringName)
+var achievements: Dictionary = {}
+
+func achievement_record(id) -> Dictionary:
+	var r = achievements.get(String(id))
+	return r if r is Dictionary else {}
+
+# Write down where an achievement stands; true when this is what finished it.
+# Saves only when something moved, so it can be asked on every change of the pack.
+func note_achievement(id, value: int, goal: int, held: Array = []) -> bool:
+	var rec: Dictionary = achievement_record(id)
+	if bool(rec.get("done", false)):
+		return false
+	var best: int = int(rec.get("best", 0))
+	var done: bool = value >= goal
+	if value <= best and not done:
+		return false
+	achievements[String(id)] = {"best": maxi(best, value), "done": done,
+		"held": held.duplicate() if value > best else rec.get("held", [])}
+	save_data()
+	if done:
+		achievement_unlocked.emit(StringName(id))
+	return done
+
+# Counted again whenever what the run holds changes, and whenever the stats do
+# (Achievements.check). Deferred from _ready: GameState is up, but a check reads
+# Settings and Notifications, which load after this.
+func _watch_achievements() -> void:
+	Achievements.check(false)
+	GameState.inventory_changed.connect(func() -> void: Achievements.check())
+	changed.connect(func() -> void: Achievements.check())
 
 # ---------------------------------------------------------------------------
 # Reads
@@ -1004,7 +1044,8 @@ func save_data() -> bool:
 		 "character_goal_log": character_goal_log,
 		 "donation_bank": donation_bank_total, "donation_best": donation_best_total,
 		 "last_rifts": last_rifts,
-		 "last_starts": last_starts, "fracture_log": fracture_log, "seen": seen}, "  "))
+		 "last_starts": last_starts, "fracture_log": fracture_log, "seen": seen,
+		 "achievements": achievements}, "  "))
 	return true
 
 # --- the Donation Machine's bank -------------------------------------------
@@ -1059,6 +1100,7 @@ func load_data() -> void:
 	last_starts = []
 	fracture_log = {}
 	seen = {}
+	achievements = {}
 	if not FileAccess.file_exists(save_path()):
 		return
 	var f := FileAccess.open(save_path(), FileAccess.READ)
@@ -1108,6 +1150,17 @@ func load_data() -> void:
 			for id in ids.keys():
 				clean[String(id)] = true
 			seen[String(kind)] = clean
+	if typeof(json.data.get("achievements")) == TYPE_DICTIONARY:
+		for aid in json.data["achievements"].keys():
+			var rec = json.data["achievements"][aid]
+			if typeof(rec) != TYPE_DICTIONARY:
+				continue
+			var held: Array = []
+			if typeof(rec.get("held")) == TYPE_ARRAY:
+				for k in rec["held"]:
+					held.append(String(k))
+			achievements[String(aid)] = {"best": int(rec.get("best", 0)),
+				"done": bool(rec.get("done", false)), "held": held}
 	if typeof(json.data.get("last_rifts")) == TYPE_ARRAY:
 		for id in json.data["last_rifts"]:
 			last_rifts.append(String(id))
@@ -1140,3 +1193,7 @@ func load_data() -> void:
 		for key in ["fracture_sum", "first_fracture", "amulet_best", "custom_amulets"]:
 			if r.has(key):
 				stats[String(k)][key] = int(r[key])
+	# A profile switched to (Profiles calls this) may already have what a lifetime
+	# achievement asks for. Not on the first load, which _ready follows up itself.
+	if is_node_ready():
+		Achievements.check(false)

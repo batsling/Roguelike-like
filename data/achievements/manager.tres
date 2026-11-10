@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="AchievementData" load_steps=2 format=3 uid="uid://ach_manager"]
+
+[ext_resource type="Script" path="res://scripts/resources/AchievementData.gd" id="1_ach"]
+
+[resource]
+script = ExtResource("1_ach")
+id = &"manager"
+tab = "Characters"
+order = 10
+unlocks_character = &"manager"
+description = "Hold 3 different coin-tagged items or loot at the same time."
+scope = "run"
+metric = "tagged_held"
+tag = "coin"
+goal = 3
