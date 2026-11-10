@@ -46,6 +46,9 @@ func _ready() -> void:
 	%SettingsBtn.pressed.connect(_on_settings)
 	%HowToPlayBtn.pressed.connect(_on_how_to_play)
 	%ProfileBtn.pressed.connect(_on_profiles)
+	%ContinueBtn.visibility_changed.connect(func() -> void:
+		if not _button_rows.is_empty():
+			_fit_row())
 	_wire_extras()
 	%QuitBtn.pressed.connect(quit_game)
 
@@ -204,12 +207,45 @@ func _on_unlock_everything_changed(_on: bool) -> void:
 # blue, then the buttons inside the portal itself. The hovered or focused one
 # glows brighter and warmer, with its letters at full strength.
 const BUTTON_LETTERS := 32.0     # a letter's height on an ordinary button
-const START_LETTERS := 42.0      # ...and on Start Run
+const START_LETTERS := 40.0      # ...and on Start Run
 const LETTER_MARGIN := 14.0      # kept clear either side of the word
 const GLOW := Color(0.70, 1.0, 0.97, 0.6)
 const GLOW_LIT := Color(1.0, 0.92, 0.6, 0.8)
 # A letter's halo, across, of the line height.
 const GLOW_REACH := 2.3
+
+# A WHITE EDGE ROUND EVERY LETTER, like a sticker's, so each one has the same
+# contrast whatever its logo's colour. Off: the owner asked to see it first.
+const OUTLINE := false
+const OUTLINE_WIDTH := 2.5
+const OUTLINE_COLOR := Color(1, 1, 1, 1)
+const OUTLINE_SHADER := "shader_type canvas_item;\nvarying vec4 tint;\nvoid vertex() { tint = COLOR; }\nvoid fragment() { COLOR = vec4(tint.rgb, texture(TEXTURE, UV).a * tint.a); }\n"
+
+# The edge: each letter's own picture drawn flat in one colour, a ring of copies
+# a few pixels out, under the letter. Drawn here rather than by a shader on the
+# letter, which could not draw past the edge of a tightly cut PNG.
+class LetterOutline extends Control:
+	var row: TitleLetters
+
+	func _init(r: TitleLetters) -> void:
+		row = r
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var sh := Shader.new()
+		sh.code = OUTLINE_SHADER
+		var mat := ShaderMaterial.new()
+		mat.shader = sh
+		material = mat
+		row.resized.connect(queue_redraw)
+
+	func _draw() -> void:
+		if not is_instance_valid(row):
+			return
+		var at: Vector2 = row.position + row.ink.position
+		for p in row.placed:
+			for i in 16:
+				var off := Vector2.from_angle(TAU * i / 16.0) * OUTLINE_WIDTH
+				draw_texture_rect(p.rect.texture, Rect2(at + p.rect.position + off, p.rect.size),
+					false, OUTLINE_COLOR)
 
 # The light behind a row's letters: one soft disc per letter, so the glow is the
 # shape of the word. Drawn under the row, redrawn when the row moves.
@@ -271,8 +307,26 @@ func _letter_buttons() -> Array:
 
 func _spell_buttons() -> void:
 	_button_rng.randomize()
+	_row_scale = 1.0
 	for b in _letter_buttons():
 		_spell_button(b)
+	_fit_row()
+
+# THE ROW NEVER RUNS OFF THE SCREEN. Each word is as wide as its letters, and
+# with Continue in it five words of wide logos can pass 1280; when they do the
+# row's letters are drawn again a little smaller until it fits.
+var _row_scale := 1.0
+
+func _fit_row() -> void:
+	var room: float = get_viewport_rect().size.x - 2.0 * CORNER_MARGIN
+	for attempt in 4:
+		var wide: float = _main_buttons.get_combined_minimum_size().x
+		if wide <= room:
+			return
+		_row_scale *= room / wide * 0.97
+		for c in _main_buttons.get_children():
+			if c is Button:
+				_spell_button(c)
 
 func _spell_button(btn: Button) -> void:
 	if not btn.has_meta("lettered"):
@@ -292,6 +346,8 @@ func _spell_button(btn: Button) -> void:
 	var old: TitleLetters = _button_rows.get(btn)
 	if old != null and is_instance_valid(old):
 		(old.get_meta("glow") as Node).queue_free()
+		if old.has_meta("outline"):
+			(old.get_meta("outline") as Node).queue_free()
 		old.queue_free()
 	_button_rows.erase(btn)
 	# What the letters spell: the button's text without its glyph (📖 🏆 ⏻ 👤),
@@ -304,7 +360,9 @@ func _spell_button(btn: Button) -> void:
 		word = word.substr(cut).strip_edges()
 	var fixed: float = btn.get_meta("fixed_width", btn.custom_minimum_size.x)
 	btn.set_meta("fixed_width", fixed)
-	var row := TitleLetters.make(word, START_LETTERS if btn.name == &"StartRunBtn" else BUTTON_LETTERS,
+	var in_row: bool = btn.get_parent() == _main_buttons
+	var row := TitleLetters.make(word, (START_LETTERS if btn.name == &"StartRunBtn" else BUTTON_LETTERS)
+		* (_row_scale if in_row else 1.0),
 		_button_rng, false, maxf(fixed - 2.0 * LETTER_MARGIN, 0.0))
 	var spelled := row.placed.size() == word.replace(" ", "").length() and not row.placed.is_empty()
 	for state in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color",
@@ -325,6 +383,11 @@ func _spell_button(btn: Button) -> void:
 	row.set_meta("glow", glow)
 	btn.add_child(glow)
 	glow.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	if OUTLINE:
+		var edge := LetterOutline.new(row)
+		row.set_meta("outline", edge)
+		btn.add_child(edge)
+		edge.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	btn.add_child(row)
 	row.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_button_rows[btn] = row
@@ -379,10 +442,10 @@ func _build_profile_row() -> void:
 # Extras — everything that is not a way to play
 # ---------------------------------------------------------------------------
 
-# THE MENU IS FIVE BUTTONS AND A SECOND LIST. Start Run, Continue, Custom Run
-# and Settings stay on the menu; the six screens you LOOK at rather than play
-# (the manual, the Collection, Run History, the Tier List, Achievements,
-# Customization) are behind Extras. They were spread over a grid of six and a
+# THE MENU IS FOUR BUTTONS AND A SECOND LIST. Start Run, Collection, Extras and
+# Settings are on the menu, with Continue beside Start Run while there is a
+# save; the manual, Custom Run, Run History, the Tier List, Achievements and
+# Customization are behind Extras. They were spread over a grid of six and a
 # row of three in the top-left corner (owner, 10 Nov 2026: "minimal amount of
 # buttons").
 #
@@ -419,20 +482,19 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	get_viewport().set_input_as_handled()
 
-# THE BUTTONS ARE ONE COLUMN UNDER THE TITLE, laid out by the scene: Start Run,
-# Continue (when there is a save), Custom Run, Extras, Settings. They were dealt
-# two to a row while the title stood in the middle of the screen; a row of two
-# left each word about 200px, and logo letters that small did not read (owner,
-# 10 Nov 2026). The title stands in the upper part of the screen now
-# (`Center`'s anchor in the scene), which leaves the column room for letters a
-# third larger, and the Extras list its seven rows.
+# THE BUTTONS ARE ONE ROW UNDER THE TITLE, laid out by the scene: Start Run,
+# Continue (only when there is a save), Collection, Extras, Settings (owner,
+# 10 Nov 2026). Each is as wide as its word. They were dealt two to a row, then
+# stacked in a column with the title moved up; a row keeps the letters large
+# and leaves the title in the middle of the screen. The Extras list is the same
+# thing wrapped: an HFlowContainer, seven words over two rows.
 
 # THE BACKGROUND IS QUIETER BEHIND THE BUTTONS. Two things, both following
 # whichever list is showing: a soft dark shade over the vortex (no edge: the
 # glow's disc, stretched), and the falling art dimmed harder there than its own
 # BAND_DIM (`MenuFallingArt.rect_dim`).
 const SHADE := Color(0, 0, 0, 0.6)
-const SHADE_REACH := Vector2(150.0, 46.0)
+const SHADE_REACH := Vector2(120.0, 60.0)
 const ART_DIM := 0.12
 
 var _shade: TextureRect = null
@@ -459,6 +521,8 @@ func _fit_shade() -> void:
 	_art.dim_node = list
 	var r: Rect2 = list.get_global_rect().grow_individual(
 		SHADE_REACH.x, SHADE_REACH.y, SHADE_REACH.x, SHADE_REACH.y)
+	# ...and never past the screen: the Extras list is nearly as wide as it is.
+	r = r.intersection(get_global_rect())
 	_shade.position = get_global_transform().affine_inverse() * r.position
 	_shade.size = r.size
 

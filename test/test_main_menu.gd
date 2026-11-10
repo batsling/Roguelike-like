@@ -180,9 +180,9 @@ func test_continue_is_hidden_when_there_is_nothing_to_continue() -> void:
 		"and no empty save list under it")
 
 
-# THE MENU IS FIVE BUTTONS. Start Run, Continue, Custom Run, Extras and Settings
-# under the title, and one each in three corners (profile, radio, exit). The six
-# screens you look at rather than play are behind Extras.
+# THE MENU IS FOUR BUTTONS, and Continue while there is a save: Start Run,
+# Collection, Extras and Settings under the title, and one each in three corners
+# (profile, radio, exit). Everything else is behind Extras.
 func test_the_menu_shows_only_the_ways_to_play_and_extras() -> void:
 	var menu = _menu()
 	await wait_frames(3)
@@ -190,7 +190,7 @@ func test_the_menu_shows_only_the_ways_to_play_and_extras() -> void:
 	for c in menu.get_node("Below/Buttons").find_children("*", "Button", true, false):
 		names.append(String(c.name))
 	names.sort()
-	assert_eq(names, ["ContinueBtn", "CustomRunBtn", "ExtrasBtn", "SettingsBtn", "StartRunBtn"],
+	assert_eq(names, ["CollectionBtn", "ContinueBtn", "ExtrasBtn", "SettingsBtn", "StartRunBtn"],
 		"the buttons under the title")
 	var corner: Array = menu.get_node("TopControls").find_children("*", "Button", true, false)
 	assert_eq(corner.size(), 1, "the top-left corner is the profile button alone")
@@ -206,7 +206,8 @@ func test_extras_swaps_the_list_in_place_and_each_entry_opens_its_screen() -> vo
 	(menu.get_node("%ExtrasBtn") as Button).pressed.emit()
 	assert_true(list.visible, "Extras shows its list")
 	assert_false(main.visible, "in place of the main buttons")
-	for btn in ["HowToPlayBtn", "CollectionBtn", "RunHistoryBtn", "TierListBtn",
+	assert_true(list.is_ancestor_of(menu.get_node("%CustomRunBtn")), "Custom Run is in Extras")
+	for btn in ["HowToPlayBtn", "RunHistoryBtn", "TierListBtn",
 			"AchievementsBtn", "CustomizeBtn"]:
 		var b: Button = menu.get_node("%" + btn)
 		assert_true(list.is_ancestor_of(b), "%s is in Extras" % btn)
@@ -229,7 +230,7 @@ func test_the_buttons_glow_and_stand_outside_the_portal() -> void:
 	var oval: Rect2 = menu.portal.oval.get_global_rect()
 	for row in [menu.title_row, menu.subtitle_row]:
 		assert_true(oval.encloses(row.ink.get_global_rect()), "the portal is round the title")
-	for name in ["CustomRunBtn", "ExtrasBtn", "SettingsBtn"]:
+	for name in ["CollectionBtn", "ExtrasBtn", "SettingsBtn"]:
 		var b: Button = menu.get_node("%" + name)
 		assert_gt(b.get_global_rect().position.y, oval.end.y, "%s is below the portal" % name)
 	var b: Button = menu.get_node("%SettingsBtn")
@@ -267,7 +268,10 @@ func test_every_menu_button_is_spelled_in_logo_letters() -> void:
 		for p in row.placed:
 			spelled += p.ch
 		assert_eq(spelled, word, "%s spells its own label" % b.name)
-		assert_lt(row.ink_width, b.size.x, "%s: the word fits inside the button" % b.name)
+		# (its minimum, for a button in the Extras list, which is not laid out
+		# until it is shown)
+		assert_lt(row.ink_width, maxf(b.size.x, b.get_combined_minimum_size().x),
+			"%s: the word fits inside the button" % b.name)
 
 # A name the pool cannot spell keeps the plain text rather than a row with holes.
 func test_a_label_the_letters_cannot_spell_stays_plain_text() -> void:
@@ -280,19 +284,22 @@ func test_a_label_the_letters_cannot_spell_stays_plain_text() -> void:
 	assert_gt(b.get_theme_color("font_color").a, 0.0, "and the text is drawn again")
 
 
-# ONE COLUMN, AND A QUIETER BACKGROUND BEHIND IT. The buttons are stacked one to
-# a row under the title; a soft shade and a harder dim on the falling art follow
-# whichever list is showing.
-func test_the_buttons_are_one_column_with_the_background_dimmed_behind_them() -> void:
+# ONE ROW, AND A QUIETER BACKGROUND BEHIND IT. The buttons stand side by side
+# under the title, each as wide as its word; a soft shade and a harder dim on the
+# falling art follow whichever list is showing.
+func test_the_buttons_are_one_row_with_the_background_dimmed_behind_them() -> void:
 	var menu = _menu()
 	await wait_frames(4)
 	var main: Control = menu.get_node("Below/Buttons")
-	var xs := {}
+	var ys := {}
+	var last := -INF
 	for c in main.get_children():
 		if c is Button and c.visible:
-			assert_eq(c.get_parent(), main, "%s is a row of its own" % c.name)
-			xs[c.get_global_rect().get_center().x] = true
-	assert_eq(xs.size(), 1, "every button on one centre line")
+			ys[c.get_global_rect().get_center().y] = true
+			assert_gt(c.get_global_rect().position.x, last, "%s is to the right of the one before" % c.name)
+			last = c.get_global_rect().end.x
+	assert_eq(ys.size(), 1, "every button on one line")
+	assert_lt(last, menu.get_global_rect().end.x, "and the row is inside the screen")
 	assert_lt(menu._art.rect_dim, MenuFallingArt.BAND_DIM, "the art is dimmer here than its band")
 	assert_eq(menu._art.dim_node, main, "behind the main buttons")
 	assert_true(menu._shade.get_global_rect().encloses(main.get_global_rect()),

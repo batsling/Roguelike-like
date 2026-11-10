@@ -11,6 +11,13 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The menu is one row of four.** Start Run, Collection, Extras, Settings side
+  by side under the title, each as wide as its word, with Continue beside Start
+  Run while there is a save. Custom Run moved into Extras and the Collection
+  out of it; the Extras list is the same row, wrapped. The title is back in the
+  middle of the screen. A white sticker edge round every letter is built
+  (`LetterOutline`) and off (`MainMenu.OUTLINE`) until the owner has seen it.
+
 - **The menu's buttons are one column, a third larger.** Two to a row left
   each word about 200px and the logo letters did not read. The title moved to
   the upper part of the screen and the buttons stack under it (32px letters, 42

@@ -50,13 +50,13 @@ the honour system.
   looking for the game's UI in it; every screen past the menu is built in code.
   `MainMenu.tscn` is the exception and always was: it lays out its 27 nodes (the
   title, the fourteen buttons, the save list, the Extras list) in the editor
-  like an ordinary scene. The menu itself shows five buttons — Start Run,
-  Continue, Custom Run, Extras, Settings — and the six screens you look at
-  rather than play (the manual, Collection, Run History, Tier List,
-  Achievements, Customization) are in the Extras list, which takes their place.
+  like an ordinary scene. The menu itself shows one row of four — Start Run,
+  Collection, Extras, Settings, plus Continue while there is a save — and the
+  rest (the manual, Custom Run, Run History, Tier List, Achievements,
+  Customization) are in the Extras list, which takes the row's place.
   Every button is spelled in logo letters like the title (`_spell_button`),
-  with no box: a glow behind each letter (`LetterGlow`), in one column under
-  the portal, the background shaded and the art dimmed behind it (`_fit_shade`).
+  with no box: a glow behind each letter (`LetterGlow`), the background shaded
+  and the art dimmed behind it (`_fit_shade`).
 - **30 autoloads** in `scripts/autoload/`, registered in `project.godot`. The ones
   that matter most: `GameState` (run-persistent state), `Data` (loads every
   `.tres` and serves it by id), `GameLoop2` (the run loop — `Overworld2` is a view
