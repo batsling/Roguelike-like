@@ -212,6 +212,8 @@ var sink := Rect2()
 # rect every frame (the falling mode's CLEAR_BAND is a column, which is the
 # wrong shape once the buttons are a block under the middle).
 var dim_node: Control = null
+# ...and how much of its alpha a piece keeps there (the menu sets it lower).
+var rect_dim := BAND_DIM
 
 # The art's own fall speed, this much faster: it crosses half a screen, not a
 # whole one, and should arrive while you are still looking.
@@ -706,7 +708,7 @@ func _rect_dim(p: Vector2, box: Vector2, rect: Rect2) -> float:
 	var dx: float = maxf(maxf(rect.position.x - p.x, p.x - rect.end.x), 0.0)
 	var dy: float = maxf(maxf(rect.position.y - p.y, p.y - rect.end.y), 0.0)
 	var d := Vector2(dx, dy).length()
-	return lerpf(BAND_DIM, 1.0, clampf(d / maxf(box.length() * 0.5, 1.0), 0.0, 1.0))
+	return lerpf(rect_dim, 1.0, clampf(d / maxf(box.length() * 0.5, 1.0), 0.0, 1.0))
 
 # Hand a piece's pool entry back, so the picture it was using can fall again.
 func _release(piece: Dictionary) -> void:

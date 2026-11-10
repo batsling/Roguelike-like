@@ -50,7 +50,7 @@ func test_the_character_picker_covers_the_quit_button() -> void:
 	# The third one is not pedantry. A picker mounted with `set_anchors_preset`
 	# from inside `_ready` anchors its own 0x0 rect to the full parent and stays
 	# 0x0 — it draws its panel in the top-left corner, covers nothing, and passes
-	# both assertions above while Exit Game sits live on top of it. Whether the
+	# both assertions above while Quit Game sits live on top of it. Whether the
 	# screen COVERS the screen is the thing this test is named for.
 	var quit_btn: Button = menu.get_node("QuitCorner/QuitBtn")
 	assert_true(picker.get_global_rect().encloses(quit_btn.get_global_rect()),
@@ -178,3 +178,166 @@ func test_continue_is_hidden_when_there_is_nothing_to_continue() -> void:
 		"so there is no Continue row")
 	assert_false((menu.get_node("%SaveList") as Control).visible,
 		"and no empty save list under it")
+
+
+# THE MENU IS THREE BUTTONS: Play, Extras and Settings under the title, each
+# with its icon, and one each in three corners (profile, radio, exit).
+func test_the_menu_shows_play_extras_and_settings_each_with_an_icon() -> void:
+	var menu = _menu()
+	await wait_frames(3)
+	var names: Array = []
+	for c in menu.get_node("Below/Buttons").find_children("*", "Button", true, false):
+		names.append(String(c.name))
+		var icon: Label = c.get_node_or_null("Icon")
+		assert_not_null(icon, "%s has an icon" % c.name)
+		if icon != null:
+			assert_true(c.text.begins_with(icon.text), "the glyph its text leads with")
+			var row: TitleLetters = menu._button_rows[c]
+			assert_lt(icon.get_global_rect().end.x, row.ink.get_global_rect().position.x + 1.0,
+				"to the left of its word")
+	assert_eq(names, ["PlayBtn", "ExtrasBtn", "SettingsBtn"], "the buttons under the title, in order")
+	var corner: Array = menu.get_node("TopControls").find_children("*", "Button", true, false)
+	assert_eq(corner.size(), 1, "the top-left corner is the profile button alone")
+	assert_string_contains((menu.get_node("%ProfileBtn") as Button).text, Profiles.active_name(),
+		"and it carries the player's name")
+
+# PLAY AND EXTRAS EACH SWAP THE ROW FOR THEIR OWN LIST, in place, and Back returns.
+func test_play_and_extras_swap_the_row_for_their_lists() -> void:
+	var menu = _menu()
+	await wait_frames(2)
+	var main: Control = menu.get_node("Below/Buttons")
+	var lists := {
+		"PlayBtn": ["%PlayList", "PlayBackBtn", ["StartRunBtn", "ContinueBtn", "CustomRunBtn"]],
+		"ExtrasBtn": ["%ExtrasList", "ExtrasBackBtn", ["HowToPlayBtn", "CollectionBtn",
+			"RunHistoryBtn", "TierListBtn", "AchievementsBtn", "CustomizeBtn"]],
+	}
+	for opener in lists:
+		var list: Control = menu.get_node(lists[opener][0])
+		assert_false(list.visible, "%s: closed until asked for" % list.name)
+		(menu.get_node("%" + opener) as Button).pressed.emit()
+		assert_true(list.visible, "%s shows its list" % opener)
+		assert_false(main.visible, "in place of the three")
+		for name in lists[opener][2]:
+			assert_true(list.is_ancestor_of(menu.get_node("%" + name)), "%s is in it" % name)
+		(menu.get_node("%" + String(lists[opener][1])) as Button).pressed.emit()
+		assert_false(list.visible, "Back leaves it")
+		assert_true(main.visible, "for the three")
+
+func test_each_extras_entry_opens_its_screen_and_the_list_stays() -> void:
+	var menu = _menu()
+	await wait_frames(2)
+	var list: Control = menu.get_node("%ExtrasList")
+	menu.show_list(&"extras")
+	for btn in ["HowToPlayBtn", "CollectionBtn", "RunHistoryBtn", "TierListBtn",
+			"AchievementsBtn", "CustomizeBtn"]:
+		(menu.get_node("%" + btn) as Button).pressed.emit()
+		await wait_frames(1)
+		assert_gt(menu._modal_layer.get_child_count(), 0, "%s opens a screen" % btn)
+		assert_true(list.visible, "and the list is still there behind it")
+		for c in menu._modal_layer.get_children():
+			c.queue_free()
+		await wait_frames(2)
+
+# THE BUTTONS ARE UNDER THE PORTAL, NOT IN IT: the oval is the title's alone,
+# and each button's letters have a glow behind them in place of a box.
+func test_the_buttons_glow_and_stand_outside_the_portal() -> void:
+	var menu = _menu()
+	await wait_frames(4)
+	var oval: Rect2 = menu.portal.oval.get_global_rect()
+	for row in [menu.title_row, menu.subtitle_row]:
+		assert_true(oval.encloses(row.ink.get_global_rect()), "the portal is round the title")
+	for name in ["PlayBtn", "ExtrasBtn", "SettingsBtn"]:
+		var b: Button = menu.get_node("%" + name)
+		assert_gt(b.get_global_rect().position.y, oval.end.y, "%s is below the portal" % name)
+	var b: Button = menu.get_node("%SettingsBtn")
+	assert_eq((b.get_theme_stylebox("normal") as StyleBoxFlat).bg_color.a, 0.0, "no box")
+	var row: TitleLetters = menu._button_rows[b]
+	var glow = row.get_meta("glow")
+	assert_eq(glow.get_parent(), b, "a glow on the button")
+	assert_lt(glow.get_index(), row.get_index(), "behind its letters")
+	assert_eq(glow.tint, menu.GLOW, "at rest")
+	b.mouse_entered.emit()
+	assert_eq(glow.tint, menu.GLOW_LIT, "brighter under the mouse")
+	b.mouse_exited.emit()
+	assert_eq(glow.tint, menu.GLOW, "and back")
+
+
+# THE BUTTONS ARE SPELLED LIKE THE TITLE: a row of logo letters over each one,
+# its own text kept (for the scene, the tests, a screen reader) but drawn clear.
+func test_every_menu_button_is_spelled_in_logo_letters() -> void:
+	var menu = _menu()
+	await wait_frames(3)
+	for btn in menu._letter_buttons():
+		var b := btn as Button
+		var row: TitleLetters = menu._button_rows.get(b)
+		assert_not_null(row, "%s has a row of letters" % b.name)
+		if row == null:
+			continue
+		assert_eq(row.get_parent(), b, "laid over the button itself")
+		assert_ne(b.text, "", "%s keeps its text" % b.name)
+		assert_eq(b.get_theme_color("font_color").a, 0.0, "drawn clear under the letters")
+		var word := ""
+		for ch in b.text:
+			if ch.unicode_at(0) < 128 and ch != " ":
+				word += ch
+		var spelled := ""
+		for p in row.placed:
+			spelled += p.ch
+		assert_eq(spelled, word, "%s spells its own label" % b.name)
+		# (its minimum, for a button in the Extras list, which is not laid out
+		# until it is shown)
+		assert_lt(row.ink_width, maxf(b.size.x, b.get_combined_minimum_size().x),
+			"%s: the word fits inside the button" % b.name)
+
+# A name the pool cannot spell keeps the plain text rather than a row with holes.
+func test_a_label_the_letters_cannot_spell_stays_plain_text() -> void:
+	var menu = _menu()
+	await wait_frames(2)
+	var b: Button = menu.get_node("%ExtrasBtn")
+	b.text = "Ünïcödé"
+	menu._spell_button(b)
+	assert_false(menu._button_rows.has(b), "no row of letters")
+	assert_gt(b.get_theme_color("font_color").a, 0.0, "and the text is drawn again")
+
+
+# ONE ROW, AND A QUIETER BACKGROUND BEHIND IT. The buttons stand side by side
+# under the title, each as wide as its word; a soft shade and a harder dim on the
+# falling art follow whichever list is showing.
+func test_the_buttons_are_one_row_with_the_background_dimmed_behind_them() -> void:
+	var menu = _menu()
+	await wait_frames(4)
+	var main: Control = menu.get_node("Below/Buttons")
+	var ys := {}
+	var last := -INF
+	for c in main.get_children():
+		if c is Button and c.visible:
+			ys[c.get_global_rect().get_center().y] = true
+			assert_gt(c.get_global_rect().position.x, last, "%s is to the right of the one before" % c.name)
+			last = c.get_global_rect().end.x
+	assert_eq(ys.size(), 1, "every button on one line")
+	assert_lt(last, menu.get_global_rect().end.x, "and the row is inside the screen")
+	assert_lt(menu._art.rect_dim, MenuFallingArt.BAND_DIM, "the art is dimmer here than its band")
+	assert_eq(menu._art.dim_node, main, "behind the main buttons")
+	assert_true(menu._shade.get_global_rect().encloses(main.get_global_rect()),
+		"and the shade is behind them")
+	for which in [[&"play", "%PlayList"], [&"extras", "%ExtrasList"]]:
+		menu.show_list(which[0])
+		await wait_frames(4)
+		var list: Control = menu.get_node(which[1])
+		assert_eq(menu._art.dim_node, list, "the dim follows %s" % list.name)
+		assert_true(menu._shade.get_global_rect().encloses(list.get_global_rect()),
+			"and so does the shade")
+
+
+# THE KEYBOARD FOLLOWS THE LIST. Focus left on a hidden button is focus nowhere.
+func test_focus_moves_into_the_list_that_opens_and_back() -> void:
+	var menu = _menu()
+	await wait_frames(2)
+	var play: Button = menu.get_node("%PlayBtn")
+	play.grab_focus()
+	play.pressed.emit()
+	assert_eq(menu.get_viewport().gui_get_focus_owner(), menu.get_node("%StartRunBtn"),
+		"into the Play list's first button")
+	assert_eq(menu._button_rows[play].modulate, menu.LETTERS_REST, "and Play is not left lit")
+	(menu.get_node("%PlayBackBtn") as Button).pressed.emit()
+	assert_eq(menu.get_viewport().gui_get_focus_owner(), play, "and back to the first of the three")

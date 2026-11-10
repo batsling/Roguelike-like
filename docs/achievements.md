@@ -46,7 +46,7 @@ Once done, an achievement stays done on that profile.
 | The rules | `scripts/runtime/Achievements.gd` — `measure`, `progress`, `is_done`, `character_locked`, `check` |
 | What a profile has done | `GameStats.achievements` (`id -> {best, done, held}`), saved in `game_stats.json` |
 | The Stats tab's numbers | `scripts/runtime/CompletionStats.gd` |
-| The screen | `scripts/ui/AchievementsScreen.gd`, opened by the main menu's ★ Achievements button |
+| The screen | `scripts/ui/AchievementsScreen.gd`, opened by ★ Achievements in the main menu's Extras list |
 | The lock | `scripts/menu/CharacterPicker.gd`: a locked hero is a silhouette, can be looked at (the panel says what unlocks them and how close the profile is), cannot be confirmed, and is never rolled by the dice |
 | Tests | `test/test_achievements.gd` |
 

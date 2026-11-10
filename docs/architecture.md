@@ -63,11 +63,14 @@ nothing but a root node and its script. `MainMenu.tscn` is the exception and
 always was: it lays out its title, buttons and save list in the editor like an
 ordinary scene.
 
-- **`MainMenu.gd`** — new run, character select, the **Continue** list of saved
-  runs, the Collection, the tier list, Settings, and **Exit Game**. Quitting from
+- **`MainMenu.gd`** — three buttons under the title, spelled in logo letters like
+  it: **🎮 Play** (Start Run, the **Continue** list of saved runs, Custom Run),
+  **📖 Extras** (the manual, Collection, Run History, Tier List, Achievements,
+  Customization) and **⚙ Settings**; each of the first two swaps the row for its
+  list (`show_list`). The profile, the radio and **Quit Game** are in corners. Quitting from
   here doesn't confirm: nothing is live on the menu and the saves are already on
   disk, so a prompt between the player and the door only ever gets in the way.
-  **Exit Game is a MAIN MENU button and only works on the main menu.** It is
+  **Quit Game is a MAIN MENU button and only works on the main menu.** It is
   moved to the bottom-right corner in code (`_move_quit_to_corner`), and that
   used to append it *last* — above `%ModalLayer`, where every screen the menu
   raises mounts — so the door out of the application sat on top of the character
@@ -82,7 +85,7 @@ ordinary scene.
     was picked (`chosen`); what that *means* — cancelling a pending resume,
     parking the choice, swapping scene — stays in `MainMenu._begin_run`. It was
     built inline in `MainMenu.gd` until it was 47% of that file, and it mounts on
-    `%ModalLayer` rather than a `CanvasLayer` of its own so the Exit Game corner
+    `%ModalLayer` rather than a `CanvasLayer` of its own so the Quit Game corner
     stays underneath it.
   - **`Collection.gd`** — the compendium: Games, Items, Characters, Enemies,
     Bosses, **Loot**, Events, Locations, Objects, Shopkeepers (each keeper's sheet

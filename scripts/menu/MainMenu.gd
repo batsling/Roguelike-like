@@ -5,9 +5,10 @@ extends Control
 # launches the games-first overworld (Overworld2). The old combat run flow
 # (CharacterSelect -> ChooseYourStart -> Main.tscn) is gone.
 #
-# Collection opens the compendium; Tier List / Settings open their screens. The
-# remaining system-less buttons raise a "Coming Soon" stub. The Continue list is
-# gated off until the 2.0 save shape is finalized.
+# The menu itself is Start Run, Continue (when there is a save), Custom Run,
+# Extras and Settings, with the profile, the radio and Exit in three corners.
+# Extras is a pop-over holding the screens you look at rather than play: the
+# manual, Collection, Run History, Tier List, Achievements, Customization.
 
 const OVERWORLD2_SCENE := "res://scenes/redesign2/Overworld2.tscn"
 
@@ -44,6 +45,8 @@ func _ready() -> void:
 	%TierListBtn.pressed.connect(_on_tier_list)
 	%SettingsBtn.pressed.connect(_on_settings)
 	%HowToPlayBtn.pressed.connect(_on_how_to_play)
+	%ProfileBtn.pressed.connect(_on_profiles)
+	_wire_extras()
 	%QuitBtn.pressed.connect(quit_game)
 
 	_wrap_save_list()
@@ -56,10 +59,11 @@ func _ready() -> void:
 	_move_quit_to_corner()
 	_warm_run_page.call_deferred()
 	_refresh_continue_button()
-	_rearrange_on_visibility()
+	_mount_shade()
 	_build_radio_corner()
 	# The pop-over goes over both corners: nothing on the menu under it is live.
 	move_child(_save_overlay, _modal_layer.get_index() - 1)
+	_spell_buttons()
 
 # ---------------------------------------------------------------------------
 # Menu styling
@@ -93,15 +97,8 @@ func _style_menu() -> void:
 	# 14px on a 1280 canvas it read as a small island in a lot of dark. The scene
 	# carries the 1.25x sizes; the fonts go up a step here (14 -> 18), since a
 	# button's text size is the theme's until something overrides it.
-	for btn in [%HowToPlayBtn, %CustomizeBtn, %AchievementsBtn, %CustomRunBtn, %ContinueBtn, %RunHistoryBtn,
-			%CollectionBtn, %TierListBtn, %SettingsBtn, %QuitBtn]:
+	for btn in _letter_buttons():
 		(btn as Button).add_theme_font_size_override("font_size", MENU_FONT)
-	# Make the primary action stand out — a stylebox, which a scene cannot share
-	# with the theme the way it can a colour.
-	var start := %StartRunBtn as Button
-	start.add_theme_stylebox_override("normal", UITheme.accent_box(UITheme.ACCENT, UITheme.PANEL_HI, 8))
-	start.add_theme_color_override("font_color", UITheme.GOLD)
-	start.add_theme_font_size_override("font_size", UITheme.FONT_DISPLAY)
 
 # The game's own art falling past, down both sides of the button column. Mounted
 # as the FIRST child so it draws under everything else in the scene — the
@@ -118,7 +115,7 @@ func _mount_falling_art() -> void:
 	# Directly above the Background ColorRect, below Center and %ModalLayer.
 	move_child(art, 1)
 	# Dimmed behind the buttons; flying into the portal once it is up (_mount_portal).
-	art.dim_node = %StartRunBtn.get_parent()
+	art.dim_node = %PlayBtn.get_parent()
 	_art = art
 
 # The vortex behind everything: the red rift across the screen and the blue
@@ -184,6 +181,246 @@ func _build_title(rng: RandomNumberGenerator = null) -> void:
 func _on_unlock_everything_changed(_on: bool) -> void:
 	_reroll(true)
 	_reroll(false)
+	_spell_buttons()
+
+# ---------------------------------------------------------------------------
+# The buttons, spelled like the title
+# ---------------------------------------------------------------------------
+
+# EVERY BUTTON ON THE MENU IS SPELLED IN LOGO LETTERS, the way the title is
+# (owner, 10 Nov 2026): the same pool (TitleLetters.available — Rogue's own
+# letters until a rank has paid others), drawn again every launch, and again
+# when the pool changes (Customization closing, Unlock everything).
+#
+# The Button keeps its `text` — the scene previews it, tests and screen readers
+# read it — but draws it transparent, and a TitleLetters row is laid over the
+# button in its place. A label the pool cannot spell in full (a profile name
+# with a character Rogue's font has not got) keeps its plain text instead.
+#
+# THERE IS NO BOX, ONLY A GLOW. The buttons stand under the portal, over the
+# red, and each letter has a soft light behind it in the portal's colour
+# (LetterGlow), which is what lets a black logo letter read on the dark rift.
+# The owner tried the other two first (10 Nov 2026): plates in the portal's
+# blue, then the buttons inside the portal itself. The hovered or focused one
+# glows brighter and warmer, with its letters at full strength.
+const ROW_LETTERS := 50.0        # a letter's height on the three main buttons
+const BUTTON_LETTERS := 40.0     # ...in a list, and in the corners
+const CORNER_LETTERS := 26.0     # the profile's name and Exit, out of the way
+const LETTER_MARGIN := 14.0      # kept clear either side of the word
+const GLOW := Color(0.70, 1.0, 0.97, 0.6)
+const GLOW_LIT := Color(1.0, 0.92, 0.6, 0.8)
+# A letter's halo, across, of the line height.
+const GLOW_REACH := 2.3
+
+# A WHITE EDGE ROUND EVERY LETTER, like a sticker's, so each one has the same
+# contrast whatever its logo's colour. Off: the owner asked to see it first.
+const OUTLINE := false
+const OUTLINE_WIDTH := 2.5
+const OUTLINE_COLOR := Color(1, 1, 1, 1)
+const OUTLINE_SHADER := "shader_type canvas_item;\nvarying vec4 tint;\nvoid vertex() { tint = COLOR; }\nvoid fragment() { COLOR = vec4(tint.rgb, texture(TEXTURE, UV).a * tint.a); }\n"
+
+# The edge: each letter's own picture drawn flat in one colour, a ring of copies
+# a few pixels out, under the letter. Drawn here rather than by a shader on the
+# letter, which could not draw past the edge of a tightly cut PNG.
+class LetterOutline extends Control:
+	var row: TitleLetters
+
+	func _init(r: TitleLetters) -> void:
+		row = r
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var sh := Shader.new()
+		sh.code = OUTLINE_SHADER
+		var mat := ShaderMaterial.new()
+		mat.shader = sh
+		material = mat
+		row.resized.connect(queue_redraw)
+
+	func _draw() -> void:
+		if not is_instance_valid(row):
+			return
+		var at: Vector2 = row.position + row.ink.position
+		for p in row.placed:
+			for i in 16:
+				var off := Vector2.from_angle(TAU * i / 16.0) * OUTLINE_WIDTH
+				draw_texture_rect(p.rect.texture, Rect2(at + p.rect.position + off, p.rect.size),
+					false, OUTLINE_COLOR)
+
+# The light behind a row's letters: one soft disc per letter, so the glow is the
+# shape of the word. Drawn under the row, redrawn when the row moves.
+class LetterGlow extends Control:
+	static var disc: GradientTexture2D = null
+	var row: TitleLetters
+	var tint := Color.WHITE
+
+	# White in the middle, clear at the rim: the glow's disc, and the shade's.
+	static func soft_disc() -> GradientTexture2D:
+		if disc == null:
+			var g := Gradient.new()
+			g.set_color(0, Color(1, 1, 1, 1))
+			g.set_color(1, Color(1, 1, 1, 0))
+			g.add_point(0.45, Color(1, 1, 1, 0.5))
+			disc = GradientTexture2D.new()
+			disc.gradient = g
+			disc.fill = GradientTexture2D.FILL_RADIAL
+			disc.fill_from = Vector2(0.5, 0.5)
+			disc.fill_to = Vector2(1.0, 0.5)
+			disc.width = 64
+			disc.height = 64
+		return disc
+
+	func _init(r: TitleLetters) -> void:
+		row = r
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		soft_disc()
+		row.resized.connect(queue_redraw)
+
+	func light(c: Color) -> void:
+		tint = c
+		queue_redraw()
+
+	func _draw() -> void:
+		if not is_instance_valid(row):
+			return
+		var r: float = row.line_height * GLOW_REACH * 0.5
+		for p in row.placed:
+			var c: Vector2 = row.position + row.ink.position + p.body.get_center()
+			draw_texture_rect(disc, Rect2(c - Vector2(r, r), Vector2(r, r) * 2.0), false, tint)
+
+const ICON_SIZE := 1.2           # the icon's font size, of the letters' height
+const ICON_GAP := 0.25           # ...and the gap between it and the word
+const LETTERS_REST := Color(0.9, 0.9, 0.9)
+
+var _button_rows: Dictionary = {}    # Button -> its TitleLetters row
+var _button_rng := RandomNumberGenerator.new()
+
+# Looked up ONCE, before anything is moved: Exit leaves the scene's tree for its
+# corner (_move_quit_to_corner), and a node taken out of its owner no longer
+# answers to %QuitBtn.
+var _lettered: Array = []
+
+func _letter_buttons() -> Array:
+	if _lettered.is_empty():
+		_lettered = [%PlayBtn, %ExtrasBtn, %SettingsBtn, %QuitBtn, %ProfileBtn,
+			%StartRunBtn, %ContinueBtn, %CustomRunBtn, %PlayBackBtn,
+			%HowToPlayBtn, %CollectionBtn, %RunHistoryBtn, %TierListBtn,
+			%AchievementsBtn, %CustomizeBtn, %ExtrasBackBtn]
+	return _lettered
+
+func _spell_buttons() -> void:
+	_button_rng.randomize()
+	_row_scale = 1.0
+	for b in _letter_buttons():
+		_spell_button(b)
+	_fit_row()
+
+# THE ROW NEVER RUNS OFF THE SCREEN. Each word is as wide as its letters, and
+# with Continue in it five words of wide logos can pass 1280; when they do the
+# row's letters are drawn again a little smaller until it fits.
+var _row_scale := 1.0
+
+func _fit_row() -> void:
+	var room: float = get_viewport_rect().size.x - 2.0 * CORNER_MARGIN
+	for attempt in 4:
+		var wide: float = _main_buttons.get_combined_minimum_size().x
+		if wide <= room:
+			return
+		_row_scale *= room / wide * 0.97
+		for c in _main_buttons.get_children():
+			if c is Button:
+				_spell_button(c)
+
+func _spell_button(btn: Button) -> void:
+	if not btn.has_meta("lettered"):
+		btn.set_meta("lettered", true)
+		var clear := UITheme.flat(Color(0, 0, 0, 0), 8, 6)
+		for state in ["normal", "disabled", "hover", "pressed", "focus", "hover_pressed"]:
+			btn.add_theme_stylebox_override(state, clear)
+		var light := func(on: bool) -> void:
+			var r: TitleLetters = _button_rows.get(btn)
+			if r != null and is_instance_valid(r):
+				r.modulate = Color.WHITE if on else LETTERS_REST
+				(r.get_meta("glow") as LetterGlow).light(GLOW_LIT if on else GLOW)
+		btn.mouse_entered.connect(light.bind(true))
+		btn.mouse_exited.connect(light.bind(false))
+		btn.focus_entered.connect(light.bind(true))
+		btn.focus_exited.connect(light.bind(false))
+	var old: TitleLetters = _button_rows.get(btn)
+	if old != null and is_instance_valid(old):
+		(old.get_meta("glow") as Node).queue_free()
+		if old.has_meta("outline"):
+			(old.get_meta("outline") as Node).queue_free()
+		old.queue_free()
+	_button_rows.erase(btn)
+	# What the letters spell: the button's text without its glyph (📖 🏆 ⏻ 👤),
+	# which no logo has.
+	# Only a leading glyph goes: a name with an accent in it is not spelled with
+	# the accent dropped, it stays plain text (below).
+	var word := btn.text.strip_edges()
+	var glyph := ""
+	var cut := word.find(" ")
+	if cut > 0 and word.unicode_at(0) >= 128:
+		glyph = word.substr(0, cut)
+		word = word.substr(cut).strip_edges()
+	var fixed: float = btn.get_meta("fixed_width", btn.custom_minimum_size.x)
+	btn.set_meta("fixed_width", fixed)
+	var in_row: bool = btn.get_parent() == _main_buttons
+	var tall: float = ROW_LETTERS * _row_scale if in_row else \
+		(CORNER_LETTERS if btn.get_parent() is not Container or btn.name == &"ProfileBtn" else BUTTON_LETTERS)
+	var row := TitleLetters.make(word, tall,
+		_button_rng, false, maxf(fixed - 2.0 * LETTER_MARGIN, 0.0))
+	var spelled := row.placed.size() == word.replace(" ", "").length() and not row.placed.is_empty()
+	for state in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color",
+			"font_hover_pressed_color", "font_disabled_color"]:
+		if spelled:
+			btn.add_theme_color_override(state, Color(0, 0, 0, 0))
+		else:
+			btn.remove_theme_color_override(state)
+	if not spelled:
+		row.free()
+		return
+	# THE ICON: a main button's glyph (🎮 📖 ⚙), drawn in the UI's glyph font at
+	# the letters' height, white with a dark edge, to the left of its word.
+	var icon_w := 0.0
+	var old_icon := btn.get_node_or_null("Icon")
+	if old_icon != null:
+		btn.remove_child(old_icon)
+		old_icon.queue_free()
+	if in_row and glyph != "":
+		var icon := Label.new()
+		icon.name = "Icon"
+		icon.text = glyph
+		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		icon.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		icon.add_theme_font_size_override("font_size", int(tall * ICON_SIZE))
+		icon.add_theme_color_override("font_color", Color.WHITE)
+		icon.add_theme_color_override("font_outline_color", Color.BLACK)
+		icon.add_theme_constant_override("outline_size", 6)
+		btn.add_child(icon)
+		icon.set_anchors_and_offsets_preset(Control.PRESET_LEFT_WIDE)
+		icon.offset_left = LETTER_MARGIN
+		icon_w = icon.get_combined_minimum_size().x + tall * ICON_GAP
+	# A button with no width of its own is as wide as its word (and its icon).
+	if fixed <= 0.0:
+		btn.custom_minimum_size.x = row.ink_width + 2.0 * LETTER_MARGIN + icon_w
+	row.modulate = LETTERS_REST
+	var glow := LetterGlow.new(row)
+	glow.tint = GLOW
+	row.set_meta("glow", glow)
+	btn.add_child(glow)
+	glow.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	if OUTLINE:
+		var edge := LetterOutline.new(row)
+		row.set_meta("outline", edge)
+		btn.add_child(edge)
+		edge.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	btn.add_child(row)
+	row.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	# The word (its glow and edge with it) stands to the right of the icon.
+	for key in ["glow", "outline"]:
+		if row.has_meta(key):
+			(row.get_meta(key) as Control).offset_left = icon_w
+	row.offset_left = icon_w
+	_button_rows[btn] = row
 
 # Draw the title (or the subtitle) again in place of the one showing.
 func _reroll(title: bool) -> void:
@@ -224,111 +461,125 @@ func _title_row(label: Label, height: float, rng: RandomNumberGenerator, decorat
 # Profiles — who is playing
 # ---------------------------------------------------------------------------
 
-# Whose game this is, with the way to change it, in the top-left corner: the
-# scene's TopControls, which already holds How to Play. Out of the middle of the
-# screen since the title moved to its centre — switching player is not a thing
-# you do in the middle of choosing a run.
-var _profile_lbl: Label = null
-
+# Whose game this is, in the top-left corner, and the way to change it: ONE
+# button, the scene's %ProfileBtn, that carries the player's name and opens the
+# profile picker. It was a label and a "Switch" button beside it, in a row with
+# How to Play, Customization and Achievements; those three are in Extras now.
 func _build_profile_row() -> void:
-	var row: HBoxContainer = get_node_or_null("TopControls")
-	if row == null:
-		return
-	row.add_theme_constant_override("separation", UITheme.GAP_LOOSE)
-
-	_profile_lbl = Label.new()
-	_profile_lbl.add_theme_font_size_override("font_size", UITheme.FONT_HEAD)
-	_profile_lbl.add_theme_color_override("font_color", UITheme.TEXT_DIM)
-	row.add_child(_profile_lbl)
-
-	var switch_btn := Button.new()
-	switch_btn.name = "ProfileBtn"
-	switch_btn.text = "Switch"
-	switch_btn.custom_minimum_size = Vector2(120, 38)
-	switch_btn.add_theme_font_size_override("font_size", UITheme.FONT_SUB)
-	switch_btn.pressed.connect(_on_profiles)
-	row.add_child(switch_btn)
-
-	var how: Button = %HowToPlayBtn
-	how.custom_minimum_size = Vector2(0, 38)
-	how.add_theme_font_size_override("font_size", UITheme.FONT_SUB)
-	row.move_child(how, -1)
-	var cust: Button = %CustomizeBtn
-	cust.custom_minimum_size = Vector2(0, 38)
-	cust.add_theme_font_size_override("font_size", UITheme.FONT_SUB)
-	row.move_child(cust, -1)
-	var ach: Button = %AchievementsBtn
-	ach.custom_minimum_size = Vector2(0, 38)
-	ach.add_theme_font_size_override("font_size", UITheme.FONT_SUB)
-	row.move_child(ach, -1)
 	_refresh_profile_row()
 
-# THE BUTTONS UNDER THE TITLE: Start Run across the top, the rest two to a row
-# beneath it. The title stands in the middle of the screen now, which leaves
-# about 270px below it on the 720 canvas, and the old single column of seven
-# needed 400. The scene keeps every button in %Buttons in its old order; this
-# deals the visible ones after Start Run into rows of two (HBoxes named Row0…),
-# and is run again whenever Continue comes or goes, so an odd one out is centred
-# on a row of its own rather than leaving a hole.
-const GRID_W := 196.0
-const GRID_H := 48.0
+# ---------------------------------------------------------------------------
+# Extras — everything that is not a way to play
+# ---------------------------------------------------------------------------
 
-var _arrange_pending := false
-# Set while the rows are being dealt: moving a button between parents can raise
-# its own visibility_changed, which must not ask for another deal.
-var _arranging := false
+# THE MENU IS THREE BUTTONS, EACH WITH ITS ICON: 🎮 Play, 📖 Extras, ⚙ Settings
+# (owner, 10 Nov 2026). Settings opens its screen. Play and Extras each SWAP
+# THE ROW for a list of their own, in the same place under the title: Play's is
+# Start Run, Continue (while there is a save) and Custom Run; Extras' is the
+# screens you look at rather than play. A list stays while one of its screens
+# is open, so closing the Collection lands back on it; Back or Esc returns to
+# the three. (Extras was a pop-over on a dark panel first, which looked like
+# nothing else on the menu.)
+@onready var _main_buttons: Control = %PlayBtn.get_parent()
 
-# Showing or hiding any of the buttons re-deals the rows at the end of the frame,
-# whoever did it — Continue is the one that comes and goes.
-func _rearrange_on_visibility() -> void:
-	for b in _grid_order:
-		b.visibility_changed.connect(func() -> void:
-			if not _arrange_pending and not _arranging:
-				_arrange_pending = true
-				_arrange_buttons.call_deferred())
+func _wire_extras() -> void:
+	%PlayBtn.pressed.connect(show_list.bind(&"play"))
+	%PlayBackBtn.pressed.connect(show_list.bind(&"main"))
+	%ExtrasBtn.pressed.connect(show_list.bind(&"extras"))
+	%ExtrasBackBtn.pressed.connect(show_list.bind(&"main"))
 
-func _arrange_buttons() -> void:
-	_arrange_pending = false
-	_arranging = true
-	_deal_rows()
-	_arranging = false
+# Which list is under the title: &"main" (the three), &"play" or &"extras".
+func show_list(which: StringName) -> void:
+	var from: Control = shown_list()
+	var focus: Control = get_viewport().gui_get_focus_owner() if is_inside_tree() else null
+	var had_focus: bool = focus != null and from.is_ancestor_of(focus)
+	%PlayList.visible = which == &"play"
+	%ExtrasList.visible = which == &"extras"
+	_main_buttons.visible = which == &"main"
+	if which != &"play":
+		_show_save_list(false)
+	# A button hidden under the mouse is not told the mouse left, so the one
+	# that was pressed would come back still lit: every row goes back to rest.
+	for b in _button_rows:
+		var r: TitleLetters = _button_rows[b]
+		if is_instance_valid(r):
+			r.modulate = LETTERS_REST
+			(r.get_meta("glow") as LetterGlow).light(GLOW)
+	# ...and the keyboard goes with the list: focus left on a hidden button
+	# is focus nowhere, and the arrow keys stop doing anything.
+	if had_focus:
+		for c in shown_list().get_children():
+			if c is Button and c.visible:
+				c.grab_focus()
+				break
 
-# The buttons in the scene's order, taken the first time the rows are dealt, so
-# Continue always comes back in its own place rather than at the end.
-var _grid_order: Array[Button] = []
+func shown_list() -> Control:
+	return %PlayList if %PlayList.visible else (%ExtrasList if %ExtrasList.visible else _main_buttons)
 
-func _deal_rows() -> void:
-	var box: VBoxContainer = %StartRunBtn.get_parent()
-	if _grid_order.is_empty():
-		for c in box.get_children():
-			if c is Button and c != %StartRunBtn:
-				_grid_order.append(c)
-	var deal: Array[Button] = _grid_order
-	for b in deal:
-		b.reparent(box, false)
-	for c in box.get_children():
-		if c is HBoxContainer and String(c.name).begins_with("Row"):
-			box.remove_child(c)
-			c.queue_free()
-	var shown := deal.filter(func(b: Button) -> bool: return b.visible)
-	var at := %StartRunBtn.get_index() + 1
-	for i in range(0, shown.size(), 2):
-		var row := HBoxContainer.new()
-		row.name = "Row%d" % (i / 2)
-		row.alignment = BoxContainer.ALIGNMENT_CENTER
-		row.add_theme_constant_override("separation", UITheme.GAP)
-		box.add_child(row)
-		box.move_child(row, at)
-		at += 1
-		for b in shown.slice(i, i + 2):
-			b.reparent(row, false)
-			b.custom_minimum_size = Vector2(GRID_W, GRID_H)
-	# Hidden ones stay in the box, out of the rows, until they are shown.
-	for b in deal:
-		if not b.visible:
-			box.move_child(b, -1)
+func extras_shown() -> bool:
+	return %ExtrasList.visible
 
-# Exit Game lives in the bottom-right corner rather than at the foot of the
+func show_extras(on: bool) -> void:
+	show_list(&"extras" if on else &"main")
+
+# Esc closes the Continue list, or leaves Play or Extras — but only with nothing raised over it: a
+# screen on %ModalLayer answers its own Esc.
+func _unhandled_input(event: InputEvent) -> void:
+	if not event.is_action_pressed("ui_cancel") or _modal_layer.get_child_count() > 0:
+		return
+	if _save_list_container.visible:
+		_show_save_list(false)
+	elif shown_list() != _main_buttons:
+		show_list(&"main")
+	else:
+		return
+	get_viewport().set_input_as_handled()
+
+# THE BUTTONS ARE ONE ROW UNDER THE TITLE, laid out by the scene: Start Run,
+# Continue (only when there is a save), Collection, Extras, Settings (owner,
+# 10 Nov 2026). Each is as wide as its word. They were dealt two to a row, then
+# stacked in a column with the title moved up; a row keeps the letters large
+# and leaves the title in the middle of the screen. The Extras list is the same
+# thing wrapped: an HFlowContainer, seven words over two rows.
+
+# THE BACKGROUND IS QUIETER BEHIND THE BUTTONS. Two things, both following
+# whichever list is showing: a soft dark shade over the vortex (no edge: the
+# glow's disc, stretched), and the falling art dimmed harder there than its own
+# BAND_DIM (`MenuFallingArt.rect_dim`).
+const SHADE := Color(0, 0, 0, 0.6)
+const SHADE_REACH := Vector2(120.0, 60.0)
+const ART_DIM := 0.12
+
+var _shade: TextureRect = null
+
+func _mount_shade() -> void:
+	_shade = TextureRect.new()
+	_shade.name = "ButtonShade"
+	_shade.texture = LetterGlow.soft_disc()
+	_shade.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_shade.stretch_mode = TextureRect.STRETCH_SCALE
+	_shade.modulate = SHADE
+	_shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_shade)
+	# Over the art, under the title and the buttons.
+	move_child(_shade, _art.get_index() + 1)
+	_art.rect_dim = ART_DIM
+	for list in [_main_buttons, %PlayList, %ExtrasList]:
+		(list as Control).item_rect_changed.connect(_fit_shade)
+		(list as Control).visibility_changed.connect(_fit_shade)
+	_fit_shade()
+
+func _fit_shade() -> void:
+	var list: Control = shown_list()
+	_art.dim_node = list
+	var r: Rect2 = list.get_global_rect().grow_individual(
+		SHADE_REACH.x, SHADE_REACH.y, SHADE_REACH.x, SHADE_REACH.y)
+	# ...and never past the screen: the Extras list is nearly as wide as it is.
+	r = r.intersection(get_global_rect())
+	_shade.position = get_global_transform().affine_inverse() * r.position
+	_shade.size = r.size
+
+# Quit Game lives in the bottom-right corner rather than at the foot of the
 # button column. It is the one entry that isn't a way INTO the game, and sitting
 # last in the same stack made it the neighbour of Settings — a column you scan
 # downwards ending in the door out. Anchored, so it stays in the corner at any
@@ -359,7 +610,7 @@ func _move_quit_to_corner() -> void:
 			and _modal_layer.get_parent() == self:
 		move_child(corner, _modal_layer.get_index())
 
-	quit_btn.custom_minimum_size = Vector2(188, 45)
+	quit_btn.custom_minimum_size = Vector2(210, 48)
 	quit_btn.size_flags_horizontal = Control.SIZE_SHRINK_END
 	quit_btn.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
 	quit_btn.grow_horizontal = Control.GROW_DIRECTION_BEGIN
@@ -395,8 +646,9 @@ func _build_radio_corner() -> void:
 var _radio_player: RadioMiniPlayer = null
 
 func _refresh_profile_row() -> void:
-	if _profile_lbl != null:
-		_profile_lbl.text = "👤  %s" % Profiles.active_name()
+	(%ProfileBtn as Button).text = "👤  %s" % Profiles.active_name()
+	if (%ProfileBtn as Button).has_meta("lettered"):
+		_spell_button(%ProfileBtn)
 
 func _on_profiles() -> void:
 	ProfilePicker.open(_modal_layer)
@@ -404,6 +656,7 @@ func _on_profiles() -> void:
 func _on_profile_switched() -> void:
 	_refresh_profile_row()
 	_show_save_list(false)
+	show_list(&"main")
 	_refresh_continue_button()
 
 # ---------------------------------------------------------------------------
@@ -478,7 +731,6 @@ func _refresh_continue_button() -> void:
 	_continue_btn.text = "Continue"
 	if count == 0:
 		_show_save_list(false)
-	_arrange_buttons()
 
 func _on_continue_toggle() -> void:
 	_show_save_list(not _save_list_container.visible)
@@ -694,20 +946,18 @@ func _on_collection() -> void:
 # already contains it, was one more row of buttons for no more game.
 
 # Costumes, icons and which title letters to spell with (docs/customization.md).
-# In the top-left row beside How to Play, not in the button grid: a seventh grid
-# button put Continue's menu a row taller than the 720p canvas (test_screens_fit).
-# Switching letters off draws the title again when the screen closes, so the
+# In Extras. Switching letters off draws the title again when the screen closes, so the
 # change shows.
 func _on_customize() -> void:
 	var s := CustomizeScreen.open(_modal_layer)
 	s.tree_exited.connect(func() -> void:
 		if is_inside_tree():
 			_reroll(true)
-			_reroll(false))
+			_reroll(false)
+			_spell_buttons())
 
 # What there is to unlock and how close this profile is (docs/achievements.md).
-# In the top-left row with Customization, for the reason given above it: the
-# button grid has no room for another.
+# In Extras.
 func _on_achievements() -> void:
 	AchievementsScreen.open(_modal_layer)
 
@@ -721,25 +971,9 @@ func _on_settings() -> void:
 # How to Play — the manual, and its contents panel in the corner
 # ---------------------------------------------------------------------------
 
-# The bottom-left corner of the menu is a BUTTON that opens the manual's table of
-# contents: the chapter titles, each opening the manual AT that chapter.
-#
-# A corner rather than one more entry in the middle column, for two reasons. The
-# middle column is the things you DO — start, continue, quit — and a manual is
-# not one of them. And a contents list is the part of a manual worth putting in
-# front of someone who has not asked for it: a player who does not know they have
-# a question about shops will still read the word "shops" and find out that they
-# do.
-#
-# The list starts CLOSED behind that button. Fourteen chapter titles standing
-# open in the corner of the title screen is a wall of small text beside the one
-# thing the screen is for, and it is a wall the player has read by their second
-# run and never again. Behind a button it costs one line until it is wanted.
-#
-# The list is built from HowToPlayText.chapters(), so it cannot drift out of
-# step with the manual — adding a chapter adds its line here. Chapters are
-# opened BY ID rather than by index, so inserting one in the middle does not
-# quietly repoint every button below it.
+# The manual is the first entry in Extras, and opens at its first chapter.
+# Chapters are opened BY ID rather than by index, so inserting one in the middle
+# does not quietly repoint anything.
 func _on_how_to_play() -> void:
 	_open_manual(&"start")
 

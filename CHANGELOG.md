@@ -11,6 +11,53 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Exit Game is Quit Game**, and two small faults in the new menu are fixed:
+  keyboard focus now moves into the list Play or Extras opens (it was left on
+  the hidden button, so the arrow keys did nothing), and a button no longer
+  comes back still lit after its list is closed.
+
+- **The menu is three buttons with icons: 🎮 Play, 📖 Extras, ⚙ Settings.**
+  Play and Extras each swap the row for a list of their own under the title
+  (Play: Start Run, Continue, Custom Run; Extras: the manual, Collection, Run
+  History, Tier List, Achievements, Customization), and Back or Esc returns.
+  The three are spelled in 50px letters, the lists in 40px. The owner was
+  asked how each list should be organised and kept all of it as built.
+
+- **The menu is one row of four.** Start Run, Collection, Extras, Settings side
+  by side under the title, each as wide as its word, with Continue beside Start
+  Run while there is a save. Custom Run moved into Extras and the Collection
+  out of it; the Extras list is the same row, wrapped. The title is back in the
+  middle of the screen. A white sticker edge round every letter is built
+  (`LetterOutline`) and off (`MainMenu.OUTLINE`) until the owner has seen it.
+
+- **The menu's buttons are one column, a third larger.** Two to a row left
+  each word about 200px and the logo letters did not read. The title moved to
+  the upper part of the screen and the buttons stack under it (32px letters, 42
+  on Start Run); the Extras list is seven rows the same way. Behind whichever
+  list is showing there is a soft dark shade over the vortex, and the falling
+  art is dimmed harder than its band (`MenuFallingArt.rect_dim`).
+
+- **The menu's buttons are spelled in logo letters.** Every button on the main
+  menu (the five under the title, Exit, the profile's name, the Extras list) is
+  drawn the way the title is: a `TitleLetters` row from the same earned pool,
+  rolled again every launch and whenever the pool changes. The buttons have no
+  box: they stand under the portal, over the red, and each letter has a soft
+  glow behind it in the portal's colour (`MainMenu.LetterGlow`), warmer and
+  brighter on the hovered one. Plates in the portal's blue and buttons inside
+  the portal were both tried first. Extras is no longer a pop-over; its list
+  takes the main buttons' place, and Back or Esc returns. A label the pool
+  cannot spell (a profile name with a character Rogue's font lacks) keeps its
+  plain text.
+
+- **The main menu is five buttons.** Start Run, Continue (when there is a
+  save), Custom Run, Extras and Settings under the title; the profile, the radio
+  and Exit in three corners. The manual, Collection, Run History, Tier List,
+  Achievements and Customization moved into **Extras**, a second list that
+  stays up behind whichever screen it opens (Back or Esc leaves it; Esc closes
+  the Continue list too). The top-left corner's label,
+  Switch button and three screen buttons are one button carrying the player's
+  name, which opens the profile picker.
+
 - **A Stats tab, with a completion meter.** The Achievements screen's last tab
   is everything the profile has done, in seven sections: Achievements, Games
   (different games beaten, perfected, won as the Amulet, beaten on Fracture 10,
