@@ -11,6 +11,15 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The main menu is five buttons.** Start Run, Continue (when there is a
+  save), Custom Run, Extras and Settings under the title; the profile, the radio
+  and Exit in three corners. The manual, Collection, Run History, Tier List,
+  Achievements and Customization moved into **Extras**, a pop-over list over the
+  menu that stays up behind whichever screen it opens (click outside, Back or
+  Esc closes it; Esc closes the Continue list too). The top-left corner's label,
+  Switch button and three screen buttons are one button carrying the player's
+  name, which opens the profile picker.
+
 - **A Stats tab, with a completion meter.** The Achievements screen's last tab
   is everything the profile has done, in seven sections: Achievements, Games
   (different games beaten, perfected, won as the Amulet, beaten on Fracture 10,

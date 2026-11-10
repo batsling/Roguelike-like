@@ -5,9 +5,10 @@ extends Control
 # launches the games-first overworld (Overworld2). The old combat run flow
 # (CharacterSelect -> ChooseYourStart -> Main.tscn) is gone.
 #
-# Collection opens the compendium; Tier List / Settings open their screens. The
-# remaining system-less buttons raise a "Coming Soon" stub. The Continue list is
-# gated off until the 2.0 save shape is finalized.
+# The menu itself is Start Run, Continue (when there is a save), Custom Run,
+# Extras and Settings, with the profile, the radio and Exit in three corners.
+# Extras is a pop-over holding the screens you look at rather than play: the
+# manual, Collection, Run History, Tier List, Achievements, Customization.
 
 const OVERWORLD2_SCENE := "res://scenes/redesign2/Overworld2.tscn"
 
@@ -44,6 +45,8 @@ func _ready() -> void:
 	%TierListBtn.pressed.connect(_on_tier_list)
 	%SettingsBtn.pressed.connect(_on_settings)
 	%HowToPlayBtn.pressed.connect(_on_how_to_play)
+	%ProfileBtn.pressed.connect(_on_profiles)
+	_wire_extras()
 	%QuitBtn.pressed.connect(quit_game)
 
 	_wrap_save_list()
@@ -60,6 +63,7 @@ func _ready() -> void:
 	_build_radio_corner()
 	# The pop-over goes over both corners: nothing on the menu under it is live.
 	move_child(_save_overlay, _modal_layer.get_index() - 1)
+	move_child(%ExtrasOverlay, _modal_layer.get_index() - 1)
 
 # ---------------------------------------------------------------------------
 # Menu styling
@@ -93,8 +97,9 @@ func _style_menu() -> void:
 	# 14px on a 1280 canvas it read as a small island in a lot of dark. The scene
 	# carries the 1.25x sizes; the fonts go up a step here (14 -> 18), since a
 	# button's text size is the theme's until something overrides it.
-	for btn in [%HowToPlayBtn, %CustomizeBtn, %AchievementsBtn, %CustomRunBtn, %ContinueBtn, %RunHistoryBtn,
-			%CollectionBtn, %TierListBtn, %SettingsBtn, %QuitBtn]:
+	for btn in [%ProfileBtn, %CustomRunBtn, %ContinueBtn, %ExtrasBtn, %SettingsBtn, %QuitBtn,
+			%HowToPlayBtn, %CollectionBtn, %RunHistoryBtn, %TierListBtn, %AchievementsBtn,
+			%CustomizeBtn, %ExtrasBackBtn]:
 		(btn as Button).add_theme_font_size_override("font_size", MENU_FONT)
 	# Make the primary action stand out — a stylebox, which a scene cannot share
 	# with the theme the way it can a colour.
@@ -224,47 +229,57 @@ func _title_row(label: Label, height: float, rng: RandomNumberGenerator, decorat
 # Profiles — who is playing
 # ---------------------------------------------------------------------------
 
-# Whose game this is, with the way to change it, in the top-left corner: the
-# scene's TopControls, which already holds How to Play. Out of the middle of the
-# screen since the title moved to its centre — switching player is not a thing
-# you do in the middle of choosing a run.
-var _profile_lbl: Label = null
-
+# Whose game this is, in the top-left corner, and the way to change it: ONE
+# button, the scene's %ProfileBtn, that carries the player's name and opens the
+# profile picker. It was a label and a "Switch" button beside it, in a row with
+# How to Play, Customization and Achievements; those three are in Extras now.
 func _build_profile_row() -> void:
-	var row: HBoxContainer = get_node_or_null("TopControls")
-	if row == null:
-		return
-	row.add_theme_constant_override("separation", UITheme.GAP_LOOSE)
-
-	_profile_lbl = Label.new()
-	_profile_lbl.add_theme_font_size_override("font_size", UITheme.FONT_HEAD)
-	_profile_lbl.add_theme_color_override("font_color", UITheme.TEXT_DIM)
-	row.add_child(_profile_lbl)
-
-	var switch_btn := Button.new()
-	switch_btn.name = "ProfileBtn"
-	switch_btn.text = "Switch"
-	switch_btn.custom_minimum_size = Vector2(120, 38)
-	switch_btn.add_theme_font_size_override("font_size", UITheme.FONT_SUB)
-	switch_btn.pressed.connect(_on_profiles)
-	row.add_child(switch_btn)
-
-	var how: Button = %HowToPlayBtn
-	how.custom_minimum_size = Vector2(0, 38)
-	how.add_theme_font_size_override("font_size", UITheme.FONT_SUB)
-	row.move_child(how, -1)
-	var cust: Button = %CustomizeBtn
-	cust.custom_minimum_size = Vector2(0, 38)
-	cust.add_theme_font_size_override("font_size", UITheme.FONT_SUB)
-	row.move_child(cust, -1)
-	var ach: Button = %AchievementsBtn
-	ach.custom_minimum_size = Vector2(0, 38)
-	ach.add_theme_font_size_override("font_size", UITheme.FONT_SUB)
-	row.move_child(ach, -1)
 	_refresh_profile_row()
 
-# THE BUTTONS UNDER THE TITLE: Start Run across the top, the rest two to a row
-# beneath it. The title stands in the middle of the screen now, which leaves
+# ---------------------------------------------------------------------------
+# Extras — everything that is not a way to play
+# ---------------------------------------------------------------------------
+
+# THE MENU IS FIVE BUTTONS AND A POP-OVER. Start Run, Continue, Custom Run and
+# Settings stay on the menu; the six screens you LOOK at rather than play (the
+# manual, the Collection, Run History, the Tier List, Achievements,
+# Customization) are behind Extras, which raises them as a list over the menu
+# the way Continue raises the saves. They were spread over a grid of six and a
+# row of three in the top-left corner (owner, 10 Nov 2026: "minimal amount of
+# buttons").
+#
+# The overlay is laid out in the scene (%ExtrasOverlay). It stays up while one of
+# its screens is open, so closing the Collection lands back on the list it was
+# picked from; a click outside, Back or Esc closes it.
+func _wire_extras() -> void:
+	(%ExtrasPanel as PanelContainer).add_theme_stylebox_override("panel",
+		UITheme.panel_box(UITheme.BG, UITheme.GOLD.lerp(UITheme.BORDER, 0.6), 10, 14, 1))
+	%ExtrasBtn.pressed.connect(show_extras.bind(true))
+	%ExtrasBackBtn.pressed.connect(show_extras.bind(false))
+	(%Dim as ColorRect).gui_input.connect(func(ev: InputEvent) -> void:
+		if ev is InputEventMouseButton and ev.pressed:
+			show_extras(false))
+
+func show_extras(on: bool) -> void:
+	%ExtrasOverlay.visible = on
+	if on:
+		_show_save_list(false)
+
+# Esc closes whichever pop-over is up — but only with nothing raised over it: a
+# screen on %ModalLayer answers its own Esc.
+func _unhandled_input(event: InputEvent) -> void:
+	if not event.is_action_pressed("ui_cancel") or _modal_layer.get_child_count() > 0:
+		return
+	if %ExtrasOverlay.visible:
+		show_extras(false)
+	elif _save_list_container.visible:
+		_show_save_list(false)
+	else:
+		return
+	get_viewport().set_input_as_handled()
+
+# THE BUTTONS UNDER THE TITLE: Start Run across the top, the rest (Continue,
+# Custom Run, Extras, Settings) two to a row beneath it. The title stands in the middle of the screen now, which leaves
 # about 270px below it on the 720 canvas, and the old single column of seven
 # needed 400. The scene keeps every button in %Buttons in its old order; this
 # deals the visible ones after Start Run into rows of two (HBoxes named Row0…),
@@ -395,8 +410,7 @@ func _build_radio_corner() -> void:
 var _radio_player: RadioMiniPlayer = null
 
 func _refresh_profile_row() -> void:
-	if _profile_lbl != null:
-		_profile_lbl.text = "👤  %s" % Profiles.active_name()
+	(%ProfileBtn as Button).text = "👤  %s" % Profiles.active_name()
 
 func _on_profiles() -> void:
 	ProfilePicker.open(_modal_layer)
@@ -404,6 +418,7 @@ func _on_profiles() -> void:
 func _on_profile_switched() -> void:
 	_refresh_profile_row()
 	_show_save_list(false)
+	show_extras(false)
 	_refresh_continue_button()
 
 # ---------------------------------------------------------------------------
@@ -481,6 +496,7 @@ func _refresh_continue_button() -> void:
 	_arrange_buttons()
 
 func _on_continue_toggle() -> void:
+	show_extras(false)
 	_show_save_list(not _save_list_container.visible)
 	if _save_list_container.visible:
 		_populate_save_list()
@@ -694,9 +710,7 @@ func _on_collection() -> void:
 # already contains it, was one more row of buttons for no more game.
 
 # Costumes, icons and which title letters to spell with (docs/customization.md).
-# In the top-left row beside How to Play, not in the button grid: a seventh grid
-# button put Continue's menu a row taller than the 720p canvas (test_screens_fit).
-# Switching letters off draws the title again when the screen closes, so the
+# In Extras. Switching letters off draws the title again when the screen closes, so the
 # change shows.
 func _on_customize() -> void:
 	var s := CustomizeScreen.open(_modal_layer)
@@ -706,8 +720,7 @@ func _on_customize() -> void:
 			_reroll(false))
 
 # What there is to unlock and how close this profile is (docs/achievements.md).
-# In the top-left row with Customization, for the reason given above it: the
-# button grid has no room for another.
+# In Extras.
 func _on_achievements() -> void:
 	AchievementsScreen.open(_modal_layer)
 
@@ -721,25 +734,9 @@ func _on_settings() -> void:
 # How to Play — the manual, and its contents panel in the corner
 # ---------------------------------------------------------------------------
 
-# The bottom-left corner of the menu is a BUTTON that opens the manual's table of
-# contents: the chapter titles, each opening the manual AT that chapter.
-#
-# A corner rather than one more entry in the middle column, for two reasons. The
-# middle column is the things you DO — start, continue, quit — and a manual is
-# not one of them. And a contents list is the part of a manual worth putting in
-# front of someone who has not asked for it: a player who does not know they have
-# a question about shops will still read the word "shops" and find out that they
-# do.
-#
-# The list starts CLOSED behind that button. Fourteen chapter titles standing
-# open in the corner of the title screen is a wall of small text beside the one
-# thing the screen is for, and it is a wall the player has read by their second
-# run and never again. Behind a button it costs one line until it is wanted.
-#
-# The list is built from HowToPlayText.chapters(), so it cannot drift out of
-# step with the manual — adding a chapter adds its line here. Chapters are
-# opened BY ID rather than by index, so inserting one in the middle does not
-# quietly repoint every button below it.
+# The manual is the first entry in Extras, and opens at its first chapter.
+# Chapters are opened BY ID rather than by index, so inserting one in the middle
+# does not quietly repoint anything.
 func _on_how_to_play() -> void:
 	_open_manual(&"start")
 
