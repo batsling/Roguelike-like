@@ -14,6 +14,7 @@ var _saved_achievements: Dictionary
 # looks (TitleUnlocks, Cosmetics) at random. Put back, so this file leaves the
 # files after it the letters they would have had without it.
 var _saved_letters: Dictionary
+var _saved_logs: Dictionary
 var _saved_looks: Dictionary
 
 func before_each() -> void:
@@ -21,8 +22,15 @@ func before_each() -> void:
 	_saved_achievements = GameStats.achievements.duplicate(true)
 	_saved_letters = TitleUnlocks._unlocked.duplicate(true)
 	_saved_looks = Cosmetics._unlocked.duplicate(true)
+	_saved_logs = {"enemy": GameStats.enemy_log.duplicate(true),
+		"seen": GameStats.seen.duplicate(true), "played": GameStats.runs_played,
+		"won": GameStats.runs_won}
 	GameStats.stats = {}
 	GameStats.achievements = {}
+	GameStats.enemy_log = {}
+	GameStats.seen = {}
+	GameStats.runs_played = 0
+	GameStats.runs_won = 0
 	Achievements.bypass = false
 	GameState.reset_run()
 	GameLoop2.reset()
@@ -33,6 +41,10 @@ func after_each() -> void:
 	GameState.reset_run()
 	GameStats.stats = _saved_stats
 	GameStats.achievements = _saved_achievements
+	GameStats.enemy_log = _saved_logs["enemy"]
+	GameStats.seen = _saved_logs["seen"]
+	GameStats.runs_played = _saved_logs["played"]
+	GameStats.runs_won = _saved_logs["won"]
 	GameStats.save_data()
 	TitleUnlocks._unlocked = _saved_letters
 	TitleUnlocks._save()
@@ -232,3 +244,93 @@ func test_the_menu_opens_it() -> void:
 	await wait_frames(1)
 	assert_true(menu.get_node("%ModalLayer").get_children().any(
 		func(c) -> bool: return c is AchievementsScreen), "the Achievements screen is up")
+
+# --- the Stats tab ------------------------------------------------------------------
+
+func _stat(section: Dictionary, label: String) -> Dictionary:
+	for r in section["rows"]:
+		if String(r["label"]) == label:
+			return r
+	return {}
+
+func test_games_are_counted_different_and_in_all_out_of_the_catalog() -> void:
+	GameStats.stats = {
+		"a": {"beaten": 3, "amulets": 2, "perfects": 1, "amulet_best": 10},
+		"b": {"beaten": 1, "amulets": 0, "perfects": 0, "fracture_best": 10},
+		"c": {"beaten": 2, "amulets": 1, "perfects": 2, "amulet_best": 4},
+		"d": {"beaten": 0, "amulets": 0},
+	}
+	var g: Dictionary = CompletionStats.games()
+	var total: int = Data.all_games().size()
+	var beaten: Dictionary = _stat(g, "Different games beaten")
+	assert_eq([beaten["value"], beaten["total"], beaten["note"]], [3, total, "6 wins in all"])
+	assert_eq(_stat(g, "Different games perfected")["value"], 2)
+	assert_eq(_stat(g, "Different games won as the Amulet")["value"], 2)
+	assert_eq(_stat(g, "Different games beaten on Fracture 10")["value"], 2,
+		"one beaten there outright, one whose Amulet was won there")
+	assert_eq(_stat(g, "Different Amulets won on Fracture 10")["value"], 1)
+
+func test_a_win_records_the_highest_fracture_a_game_was_beaten_at() -> void:
+	GameStats.record_beaten("a")
+	assert_eq(GameStats.game_fracture_best("a"), Fracture.level())
+	assert_eq(GameStats.game_fracture_best("never"), -1, "a game never beaten has none")
+
+func test_enemies_and_bosses_are_counted_apart_and_once_each() -> void:
+	var enemy: String = String(Data.all_goal_enemies()[0].id)
+	var boss: String = String(Data.all_bosses()[0].id)
+	GameStats.enemy_log = {"a": {enemy: {"beaten": 2}, boss: {"beaten": 1}},
+		"b": {enemy: {"beaten": 4}}}
+	var e: Dictionary = CompletionStats.enemies()
+	assert_eq(_stat(e, "Different enemies beaten")["value"], 1, "one enemy, on two games")
+	assert_eq(_stat(e, "Different enemies beaten")["total"], Data.all_goal_enemies().size())
+	assert_eq(_stat(e, "Different bosses beaten")["value"], 1)
+	assert_eq(_stat(e, "Enemies and bosses beaten in all")["value"], 7)
+
+func test_the_meter_is_the_average_of_the_sections_that_have_something_to_complete() -> void:
+	# Against where it stood, not against zero: songs, letters and looks drawn by
+	# the files before this one are on the page too.
+	var before: float = CompletionStats.overall()
+	assert_eq(CompletionStats.achievements()["ratio"], 0.0, "nothing unlocked is 0%")
+	assert_eq(CompletionStats.run_records()["ratio"], -1.0, "run records have no totals")
+	GameStats.note_achievement(&"rodney", 1, 1)
+	var after: Array = CompletionStats.sections()
+	var counted: int = after.filter(func(s) -> bool: return float(s["ratio"]) >= 0.0).size()
+	assert_eq(counted, after.size() - 1, "every section but the run records is counted")
+	assert_almost_eq(CompletionStats.achievements()["ratio"], 1.0 / 3.0, 0.0001)
+	assert_almost_eq(CompletionStats.overall(after) - before, (1.0 / 3.0) / counted, 0.0001,
+		"a third of one section, and every section weighs the same")
+
+func test_the_test_switch_completes_nothing_on_the_stats_page() -> void:
+	Settings.unlock_everything = true
+	var done: int = int(CompletionStats.achievements()["rows"][0]["value"])
+	Settings.unlock_everything = false
+	assert_eq(done, 0, "unlocked for testing is not unlocked on the record")
+
+func test_runs_are_counted_past_the_history_s_cap() -> void:
+	GameStats.runs_played = 58
+	GameStats.runs_won = 9
+	GameStats.save_data()
+	GameStats.load_data()
+	assert_eq([GameStats.runs_played, GameStats.runs_won], [58, 9], "kept in the file")
+	var won: Dictionary = _stat(CompletionStats.run_records(), "Runs won")
+	assert_eq([won["value"], won["total"], won["note"]], [9, 0, "16% of runs"])
+
+func test_the_stats_tab_shows_the_meter_and_every_section() -> void:
+	GameStats.note_achievement(&"rodney", 1, 1)
+	var s := AchievementsScreen.open(self, 1)
+	autofree(s)
+	await wait_frames(2)
+	var overall: String = AchievementsScreen._percent(CompletionStats.overall())
+	assert_eq((s.find_child("Tab1", true, false) as Button).text, "Stats  %s" % overall)
+	assert_eq((s.find_child("Overall", true, false) as Label).text, overall)
+	var text: String = _texts(s)
+	for section in CompletionStats.sections():
+		assert_true(text.contains(String(section["title"])), "%s is on the page" % section["title"])
+	assert_true(text.contains("1 / 3"), "achievements unlocked out of how many there are")
+	assert_true(text.contains("0 / %s" % AchievementsScreen._number(Data.all_games().size())))
+	assert_not_null(s.find_child("CharacterTable", true, false), "a line per character")
+
+func test_a_percentage_only_reads_100_when_everything_is_done() -> void:
+	assert_eq(AchievementsScreen._percent(0.9999), "99.9%")
+	assert_eq(AchievementsScreen._percent(1.0), "100.0%")
+	assert_eq(AchievementsScreen._number(1004), "1,004")

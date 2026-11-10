@@ -11,6 +11,17 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **A Stats tab, with a completion meter.** The Achievements screen's last tab
+  is everything the profile has done, in seven sections: Achievements, Games
+  (different games beaten, perfected, won as the Amulet, beaten on Fracture 10,
+  Amulets won on Fracture 10, each out of every game, with the totals beside
+  them), Enemies, Characters (with a line per character), Collection
+  Discovered, Unlocks Earned, and Run Records. A section's meter is the average
+  of its lines and the overall meter the average of the sections, so a small
+  section weighs as much as the thousand games. `GameStats` now keeps the
+  highest Fracture each game has been beaten at and counts runs past the
+  history's cap of 40. Numbers: `CompletionStats`; see `docs/achievements.md`.
+
 - **Zoe counts different perfected games.** `perfect games` is how many
   DIFFERENT games have been perfected, not every perfect: one game perfected ten
   times is one. Her row reads "Perfect 10 different games."

@@ -45,6 +45,7 @@ Once done, an achievement stays done on that profile.
 | One achievement | a row of the `achievements` sheet of `tools/Roguelikes.xlsx`, written out by `tools/generate_achievement_tres.py` as `data/achievements/<id>.tres`, an `AchievementData` (`scripts/resources/AchievementData.gd`). Edit the sheet, not the files |
 | The rules | `scripts/runtime/Achievements.gd` — `measure`, `progress`, `is_done`, `character_locked`, `check` |
 | What a profile has done | `GameStats.achievements` (`id -> {best, done, held}`), saved in `game_stats.json` |
+| The Stats tab's numbers | `scripts/runtime/CompletionStats.gd` |
 | The screen | `scripts/ui/AchievementsScreen.gd`, opened by the main menu's ★ Achievements button |
 | The lock | `scripts/menu/CharacterPicker.gd`: a locked hero is a silhouette, can be looked at (the panel says what unlocks them and how close the profile is), cannot be confirmed, and is never rolled by the dice |
 | Tests | `test/test_achievements.gd` |
@@ -79,6 +80,39 @@ row per achievement, listed on the screen in sheet order.
 
 The folder is rewritten, not added to: a row deleted from the sheet takes its
 achievement with it. `check_data_sync.py` (CI) holds the folder to the sheet.
+
+## The Stats tab
+
+The last tab of the Achievements screen is a completion page (the owner, 10 Nov
+2026): everything the profile has done, in sections, each line out of how many
+there are. `scripts/runtime/CompletionStats.gd` has the numbers; nothing is
+stored for it, every count is read when the page opens.
+
+| Section | Lines |
+|---|---|
+| Achievements | unlocked, per tab |
+| Games | different games beaten, perfected, won as the Amulet, beaten on Fracture 10, Amulets won on Fracture 10, each out of every game in the catalog; totals ("73 wins in all") beside them |
+| Enemies | different enemies beaten, different bosses beaten, and every defeat in all |
+| Characters | characters with an Amulet win, characters who cleared Fracture 10, and a line per character (games, Amulets, perfects, best Fracture) |
+| Collection Discovered | what has been seen of each kind the Collection veils |
+| Unlocks Earned | Radio songs, title letters, costumes and icons |
+| Run Records | runs played and won, different goals completed, level-ups, the Donation Machine's best. No totals, so not part of the meter |
+
+**The meter.** A section's meter is the average of its lines that have a total,
+so each line counts the same whatever it is out of. The overall meter is the
+average of the sections', so Achievements weigh as much as the thousand games.
+A percentage is rounded down: 100% is only shown for everything.
+
+Two things `GameStats` keeps for this page:
+
+- `fracture_best` on a game's row, the highest Fracture it has been beaten at
+  (`game_fracture_best`). It is only recorded from now on; for older wins it is
+  the most the record can prove (the Amulet's best, or the first win's level),
+  so "beaten on Fracture 10" can read low on an old profile.
+- `runs_played` and `runs_won`, because the run history is capped at 40. An
+  older profile starts them at what its history holds.
+
+"Unlock everything" completes nothing here: the page counts what is on record.
 
 ## Things to know
 
