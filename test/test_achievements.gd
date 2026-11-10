@@ -10,10 +10,17 @@ const Fx := preload("res://test/helpers/fixtures.gd")
 
 var _saved_stats: Dictionary
 var _saved_achievements: Dictionary
+# Recording a win here moves the stats, and the stats pay out title letters and
+# looks (TitleUnlocks, Cosmetics) at random. Put back, so this file leaves the
+# files after it the letters they would have had without it.
+var _saved_letters: Dictionary
+var _saved_looks: Dictionary
 
 func before_each() -> void:
 	_saved_stats = GameStats.stats.duplicate(true)
 	_saved_achievements = GameStats.achievements.duplicate(true)
+	_saved_letters = TitleUnlocks._unlocked.duplicate(true)
+	_saved_looks = Cosmetics._unlocked.duplicate(true)
 	GameStats.stats = {}
 	GameStats.achievements = {}
 	Achievements.bypass = false
@@ -27,6 +34,10 @@ func after_each() -> void:
 	GameStats.stats = _saved_stats
 	GameStats.achievements = _saved_achievements
 	GameStats.save_data()
+	TitleUnlocks._unlocked = _saved_letters
+	TitleUnlocks._save()
+	Cosmetics._unlocked = _saved_looks
+	Cosmetics._save()
 
 func _manager() -> AchievementData:
 	return Data.get_achievement(&"manager")
