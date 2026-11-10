@@ -46,9 +46,6 @@ func _ready() -> void:
 	%SettingsBtn.pressed.connect(_on_settings)
 	%HowToPlayBtn.pressed.connect(_on_how_to_play)
 	%ProfileBtn.pressed.connect(_on_profiles)
-	%ContinueBtn.visibility_changed.connect(func() -> void:
-		if not _button_rows.is_empty():
-			_fit_row())
 	_wire_extras()
 	%QuitBtn.pressed.connect(quit_game)
 
@@ -118,7 +115,7 @@ func _mount_falling_art() -> void:
 	# Directly above the Background ColorRect, below Center and %ModalLayer.
 	move_child(art, 1)
 	# Dimmed behind the buttons; flying into the portal once it is up (_mount_portal).
-	art.dim_node = %StartRunBtn.get_parent()
+	art.dim_node = %PlayBtn.get_parent()
 	_art = art
 
 # The vortex behind everything: the red rift across the screen and the blue
@@ -206,8 +203,9 @@ func _on_unlock_everything_changed(_on: bool) -> void:
 # The owner tried the other two first (10 Nov 2026): plates in the portal's
 # blue, then the buttons inside the portal itself. The hovered or focused one
 # glows brighter and warmer, with its letters at full strength.
-const BUTTON_LETTERS := 32.0     # a letter's height on an ordinary button
-const START_LETTERS := 40.0      # ...and on Start Run
+const ROW_LETTERS := 50.0        # a letter's height on the three main buttons
+const BUTTON_LETTERS := 40.0     # ...in a list, and in the corners
+const CORNER_LETTERS := 26.0     # the profile's name and Exit, out of the way
 const LETTER_MARGIN := 14.0      # kept clear either side of the word
 const GLOW := Color(0.70, 1.0, 0.97, 0.6)
 const GLOW_LIT := Color(1.0, 0.92, 0.6, 0.8)
@@ -288,6 +286,8 @@ class LetterGlow extends Control:
 			var c: Vector2 = row.position + row.ink.position + p.body.get_center()
 			draw_texture_rect(disc, Rect2(c - Vector2(r, r), Vector2(r, r) * 2.0), false, tint)
 
+const ICON_SIZE := 1.2           # the icon's font size, of the letters' height
+const ICON_GAP := 0.25           # ...and the gap between it and the word
 const LETTERS_REST := Color(0.9, 0.9, 0.9)
 
 var _button_rows: Dictionary = {}    # Button -> its TitleLetters row
@@ -300,9 +300,10 @@ var _lettered: Array = []
 
 func _letter_buttons() -> Array:
 	if _lettered.is_empty():
-		_lettered = [%StartRunBtn, %ContinueBtn, %CustomRunBtn, %ExtrasBtn, %SettingsBtn,
-			%QuitBtn, %ProfileBtn, %HowToPlayBtn, %CollectionBtn, %RunHistoryBtn,
-			%TierListBtn, %AchievementsBtn, %CustomizeBtn, %ExtrasBackBtn]
+		_lettered = [%PlayBtn, %ExtrasBtn, %SettingsBtn, %QuitBtn, %ProfileBtn,
+			%StartRunBtn, %ContinueBtn, %CustomRunBtn, %PlayBackBtn,
+			%HowToPlayBtn, %CollectionBtn, %RunHistoryBtn, %TierListBtn,
+			%AchievementsBtn, %CustomizeBtn, %ExtrasBackBtn]
 	return _lettered
 
 func _spell_buttons() -> void:
@@ -355,14 +356,17 @@ func _spell_button(btn: Button) -> void:
 	# Only a leading glyph goes: a name with an accent in it is not spelled with
 	# the accent dropped, it stays plain text (below).
 	var word := btn.text.strip_edges()
+	var glyph := ""
 	var cut := word.find(" ")
 	if cut > 0 and word.unicode_at(0) >= 128:
+		glyph = word.substr(0, cut)
 		word = word.substr(cut).strip_edges()
 	var fixed: float = btn.get_meta("fixed_width", btn.custom_minimum_size.x)
 	btn.set_meta("fixed_width", fixed)
 	var in_row: bool = btn.get_parent() == _main_buttons
-	var row := TitleLetters.make(word, (START_LETTERS if btn.name == &"StartRunBtn" else BUTTON_LETTERS)
-		* (_row_scale if in_row else 1.0),
+	var tall: float = ROW_LETTERS * _row_scale if in_row else \
+		(CORNER_LETTERS if btn.get_parent() is not Container or btn.name == &"ProfileBtn" else BUTTON_LETTERS)
+	var row := TitleLetters.make(word, tall,
 		_button_rng, false, maxf(fixed - 2.0 * LETTER_MARGIN, 0.0))
 	var spelled := row.placed.size() == word.replace(" ", "").length() and not row.placed.is_empty()
 	for state in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color",
@@ -374,9 +378,30 @@ func _spell_button(btn: Button) -> void:
 	if not spelled:
 		row.free()
 		return
-	# A button with no width of its own (the profile's) is as wide as its word.
+	# THE ICON: a main button's glyph (🎮 📖 ⚙), drawn in the UI's glyph font at
+	# the letters' height, white with a dark edge, to the left of its word.
+	var icon_w := 0.0
+	var old_icon := btn.get_node_or_null("Icon")
+	if old_icon != null:
+		btn.remove_child(old_icon)
+		old_icon.queue_free()
+	if in_row and glyph != "":
+		var icon := Label.new()
+		icon.name = "Icon"
+		icon.text = glyph
+		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		icon.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		icon.add_theme_font_size_override("font_size", int(tall * ICON_SIZE))
+		icon.add_theme_color_override("font_color", Color.WHITE)
+		icon.add_theme_color_override("font_outline_color", Color.BLACK)
+		icon.add_theme_constant_override("outline_size", 6)
+		btn.add_child(icon)
+		icon.set_anchors_and_offsets_preset(Control.PRESET_LEFT_WIDE)
+		icon.offset_left = LETTER_MARGIN
+		icon_w = icon.get_combined_minimum_size().x + tall * ICON_GAP
+	# A button with no width of its own is as wide as its word (and its icon).
 	if fixed <= 0.0:
-		btn.custom_minimum_size.x = row.ink_width + 2.0 * LETTER_MARGIN
+		btn.custom_minimum_size.x = row.ink_width + 2.0 * LETTER_MARGIN + icon_w
 	row.modulate = LETTERS_REST
 	var glow := LetterGlow.new(row)
 	glow.tint = GLOW
@@ -390,6 +415,11 @@ func _spell_button(btn: Button) -> void:
 		edge.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	btn.add_child(row)
 	row.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	# The word (its glow and edge with it) stands to the right of the icon.
+	for key in ["glow", "outline"]:
+		if row.has_meta(key):
+			(row.get_meta(key) as Control).offset_left = icon_w
+	row.offset_left = icon_w
 	_button_rows[btn] = row
 
 # Draw the title (or the subtitle) again in place of the one showing.
@@ -442,42 +472,48 @@ func _build_profile_row() -> void:
 # Extras — everything that is not a way to play
 # ---------------------------------------------------------------------------
 
-# THE MENU IS FOUR BUTTONS AND A SECOND LIST. Start Run, Collection, Extras and
-# Settings are on the menu, with Continue beside Start Run while there is a
-# save; the manual, Custom Run, Run History, the Tier List, Achievements and
-# Customization are behind Extras. They were spread over a grid of six and a
-# row of three in the top-left corner (owner, 10 Nov 2026: "minimal amount of
-# buttons").
-#
-# Extras SWAPS THE LIST IN PLACE: the main buttons step out and the scene's
-# %ExtrasList stands where they were, under the title. It was a pop-over on a
-# dark panel first, which looked like nothing else on the menu.
-# The list stays while one of its screens is open, so closing the Collection
-# lands back on it; Back or Esc returns to the main buttons.
-@onready var _main_buttons: Control = %StartRunBtn.get_parent()
+# THE MENU IS THREE BUTTONS, EACH WITH ITS ICON: 🎮 Play, 📖 Extras, ⚙ Settings
+# (owner, 10 Nov 2026). Settings opens its screen. Play and Extras each SWAP
+# THE ROW for a list of their own, in the same place under the title: Play's is
+# Start Run, Continue (while there is a save) and Custom Run; Extras' is the
+# screens you look at rather than play. A list stays while one of its screens
+# is open, so closing the Collection lands back on it; Back or Esc returns to
+# the three. (Extras was a pop-over on a dark panel first, which looked like
+# nothing else on the menu.)
+@onready var _main_buttons: Control = %PlayBtn.get_parent()
 
 func _wire_extras() -> void:
-	%ExtrasBtn.pressed.connect(show_extras.bind(true))
-	%ExtrasBackBtn.pressed.connect(show_extras.bind(false))
+	%PlayBtn.pressed.connect(show_list.bind(&"play"))
+	%PlayBackBtn.pressed.connect(show_list.bind(&"main"))
+	%ExtrasBtn.pressed.connect(show_list.bind(&"extras"))
+	%ExtrasBackBtn.pressed.connect(show_list.bind(&"main"))
+
+# Which list is under the title: &"main" (the three), &"play" or &"extras".
+func show_list(which: StringName) -> void:
+	%PlayList.visible = which == &"play"
+	%ExtrasList.visible = which == &"extras"
+	_main_buttons.visible = which == &"main"
+	if which != &"play":
+		_show_save_list(false)
+
+func shown_list() -> Control:
+	return %PlayList if %PlayList.visible else (%ExtrasList if %ExtrasList.visible else _main_buttons)
 
 func extras_shown() -> bool:
 	return %ExtrasList.visible
 
 func show_extras(on: bool) -> void:
-	%ExtrasList.visible = on
-	_main_buttons.visible = not on
-	if on:
-		_show_save_list(false)
+	show_list(&"extras" if on else &"main")
 
-# Esc leaves Extras, or closes the Continue list — but only with nothing raised over it: a
+# Esc closes the Continue list, or leaves Play or Extras — but only with nothing raised over it: a
 # screen on %ModalLayer answers its own Esc.
 func _unhandled_input(event: InputEvent) -> void:
 	if not event.is_action_pressed("ui_cancel") or _modal_layer.get_child_count() > 0:
 		return
-	if extras_shown():
-		show_extras(false)
-	elif _save_list_container.visible:
+	if _save_list_container.visible:
 		_show_save_list(false)
+	elif shown_list() != _main_buttons:
+		show_list(&"main")
 	else:
 		return
 	get_viewport().set_input_as_handled()
@@ -511,13 +547,13 @@ func _mount_shade() -> void:
 	# Over the art, under the title and the buttons.
 	move_child(_shade, _art.get_index() + 1)
 	_art.rect_dim = ART_DIM
-	for list in [_main_buttons, %ExtrasList]:
+	for list in [_main_buttons, %PlayList, %ExtrasList]:
 		(list as Control).item_rect_changed.connect(_fit_shade)
 		(list as Control).visibility_changed.connect(_fit_shade)
 	_fit_shade()
 
 func _fit_shade() -> void:
-	var list: Control = %ExtrasList if extras_shown() else _main_buttons
+	var list: Control = shown_list()
 	_art.dim_node = list
 	var r: Rect2 = list.get_global_rect().grow_individual(
 		SHADE_REACH.x, SHADE_REACH.y, SHADE_REACH.x, SHADE_REACH.y)
@@ -603,7 +639,7 @@ func _on_profiles() -> void:
 func _on_profile_switched() -> void:
 	_refresh_profile_row()
 	_show_save_list(false)
-	show_extras(false)
+	show_list(&"main")
 	_refresh_continue_button()
 
 # ---------------------------------------------------------------------------
@@ -680,7 +716,6 @@ func _refresh_continue_button() -> void:
 		_show_save_list(false)
 
 func _on_continue_toggle() -> void:
-	show_extras(false)
 	_show_save_list(not _save_list_container.visible)
 	if _save_list_container.visible:
 		_populate_save_list()

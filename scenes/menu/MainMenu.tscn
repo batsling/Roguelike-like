@@ -83,48 +83,70 @@ theme_override_constants/separation = 8
 [node name="Buttons" type="HBoxContainer" parent="Below"]
 layout_mode = 2
 size_flags_horizontal = 4
-theme_override_constants/separation = 20
+theme_override_constants/separation = 40
 
-[node name="StartRunBtn" type="Button" parent="Below/Buttons"]
+[node name="PlayBtn" type="Button" parent="Below/Buttons"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "Start Run"
-custom_minimum_size = Vector2(0, 56)
+text = "🎮 Play"
+custom_minimum_size = Vector2(0, 60)
 
-[node name="ContinueBtn" type="Button" parent="Below/Buttons"]
+[node name="ExtrasBtn" type="Button" parent="Below/Buttons"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "Continue"
-custom_minimum_size = Vector2(0, 42)
+text = "📖 Extras"
+custom_minimum_size = Vector2(0, 60)
 
-[node name="CollectionBtn" type="Button" parent="Below/Buttons"]
+[node name="SettingsBtn" type="Button" parent="Below/Buttons"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "Collection"
-custom_minimum_size = Vector2(0, 42)
+text = "⚙ Settings"
+custom_minimum_size = Vector2(0, 60)
+
+[node name="QuitBtn" type="Button" parent="Below/Buttons"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "⏻ Exit Game"
+custom_minimum_size = Vector2(0, 48)
 
 [node name="SaveList" type="VBoxContainer" parent="Below/Buttons"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_constants/separation = 5
 
-[node name="ExtrasBtn" type="Button" parent="Below/Buttons"]
+[node name="PlayList" type="HFlowContainer" parent="Below"]
 unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(1180, 0)
 layout_mode = 2
-text = "Extras"
-custom_minimum_size = Vector2(0, 42)
+size_flags_horizontal = 4
+theme_override_constants/h_separation = 24
+theme_override_constants/v_separation = 4
+alignment = 1
 
-[node name="SettingsBtn" type="Button" parent="Below/Buttons"]
+[node name="StartRunBtn" type="Button" parent="Below/PlayList"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "Settings"
-custom_minimum_size = Vector2(0, 42)
+text = "Start Run"
+custom_minimum_size = Vector2(0, 48)
 
-[node name="QuitBtn" type="Button" parent="Below/Buttons"]
+[node name="ContinueBtn" type="Button" parent="Below/PlayList"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "⏻ Exit Game"
-custom_minimum_size = Vector2(0, 42)
+text = "Continue"
+custom_minimum_size = Vector2(0, 48)
+
+[node name="CustomRunBtn" type="Button" parent="Below/PlayList"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Custom Run"
+custom_minimum_size = Vector2(0, 48)
+
+[node name="PlayBackBtn" type="Button" parent="Below/PlayList"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Back"
+custom_minimum_size = Vector2(0, 48)
 
 [node name="ExtrasList" type="HFlowContainer" parent="Below"]
 unique_name_in_owner = true
@@ -132,51 +154,51 @@ visible = false
 custom_minimum_size = Vector2(1180, 0)
 layout_mode = 2
 size_flags_horizontal = 4
-theme_override_constants/h_separation = 20
+theme_override_constants/h_separation = 24
 theme_override_constants/v_separation = 4
 alignment = 1
 
 [node name="HowToPlayBtn" type="Button" parent="Below/ExtrasList"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "📖 How to Play"
-custom_minimum_size = Vector2(0, 42)
+text = "How to Play"
+custom_minimum_size = Vector2(0, 48)
 
-[node name="CustomRunBtn" type="Button" parent="Below/ExtrasList"]
+[node name="CollectionBtn" type="Button" parent="Below/ExtrasList"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "Custom Run"
-custom_minimum_size = Vector2(0, 42)
+text = "Collection"
+custom_minimum_size = Vector2(0, 48)
 
 [node name="RunHistoryBtn" type="Button" parent="Below/ExtrasList"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "Run History"
-custom_minimum_size = Vector2(0, 42)
+custom_minimum_size = Vector2(0, 48)
 
 [node name="TierListBtn" type="Button" parent="Below/ExtrasList"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "🏆 Tier List"
-custom_minimum_size = Vector2(0, 42)
+text = "Tier List"
+custom_minimum_size = Vector2(0, 48)
 
 [node name="AchievementsBtn" type="Button" parent="Below/ExtrasList"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "★ Achievements"
-custom_minimum_size = Vector2(0, 42)
+text = "Achievements"
+custom_minimum_size = Vector2(0, 48)
 
 [node name="CustomizeBtn" type="Button" parent="Below/ExtrasList"]
 unique_name_in_owner = true
 layout_mode = 2
-text = "✦ Customization"
-custom_minimum_size = Vector2(0, 42)
+text = "Customization"
+custom_minimum_size = Vector2(0, 48)
 
 [node name="ExtrasBackBtn" type="Button" parent="Below/ExtrasList"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "Back"
-custom_minimum_size = Vector2(0, 42)
+custom_minimum_size = Vector2(0, 48)
 
 [node name="ModalLayer" type="Control" parent="."]
 unique_name_in_owner = true

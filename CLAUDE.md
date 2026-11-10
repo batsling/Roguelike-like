@@ -48,12 +48,12 @@ the honour system.
 - **Two scenes only.** `scenes/menu/MainMenu.tscn` boots, `scenes/redesign2/Overworld2.tscn`
   *is* the game — and **`Overworld2.tscn` is one node and a script**, so don't go
   looking for the game's UI in it; every screen past the menu is built in code.
-  `MainMenu.tscn` is the exception and always was: it lays out its 27 nodes (the
-  title, the fourteen buttons, the save list, the Extras list) in the editor
-  like an ordinary scene. The menu itself shows one row of four — Start Run,
-  Collection, Extras, Settings, plus Continue while there is a save — and the
-  rest (the manual, Custom Run, Run History, Tier List, Achievements,
-  Customization) are in the Extras list, which takes the row's place.
+  `MainMenu.tscn` is the exception and always was: it lays out its 30 nodes (the
+  title, the sixteen buttons, the save list, the Play and Extras lists) in the editor
+  like an ordinary scene. The menu itself shows three buttons with icons — 🎮 Play,
+  📖 Extras, ⚙ Settings. Play and Extras each swap the row for their own list
+  (`show_list`): Start Run, Continue and Custom Run; and the manual,
+  Collection, Run History, Tier List, Achievements, Customization.
   Every button is spelled in logo letters like the title (`_spell_button`),
   with no box: a glow behind each letter (`LetterGlow`), the background shaded
   and the art dimmed behind it (`_fit_shade`).

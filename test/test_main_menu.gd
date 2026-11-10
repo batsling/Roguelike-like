@@ -180,47 +180,63 @@ func test_continue_is_hidden_when_there_is_nothing_to_continue() -> void:
 		"and no empty save list under it")
 
 
-# THE MENU IS FOUR BUTTONS, and Continue while there is a save: Start Run,
-# Collection, Extras and Settings under the title, and one each in three corners
-# (profile, radio, exit). Everything else is behind Extras.
-func test_the_menu_shows_only_the_ways_to_play_and_extras() -> void:
+# THE MENU IS THREE BUTTONS: Play, Extras and Settings under the title, each
+# with its icon, and one each in three corners (profile, radio, exit).
+func test_the_menu_shows_play_extras_and_settings_each_with_an_icon() -> void:
 	var menu = _menu()
 	await wait_frames(3)
 	var names: Array = []
 	for c in menu.get_node("Below/Buttons").find_children("*", "Button", true, false):
 		names.append(String(c.name))
-	names.sort()
-	assert_eq(names, ["CollectionBtn", "ContinueBtn", "ExtrasBtn", "SettingsBtn", "StartRunBtn"],
-		"the buttons under the title")
+		var icon: Label = c.get_node_or_null("Icon")
+		assert_not_null(icon, "%s has an icon" % c.name)
+		if icon != null:
+			assert_true(c.text.begins_with(icon.text), "the glyph its text leads with")
+			var row: TitleLetters = menu._button_rows[c]
+			assert_lt(icon.get_global_rect().end.x, row.ink.get_global_rect().position.x + 1.0,
+				"to the left of its word")
+	assert_eq(names, ["PlayBtn", "ExtrasBtn", "SettingsBtn"], "the buttons under the title, in order")
 	var corner: Array = menu.get_node("TopControls").find_children("*", "Button", true, false)
 	assert_eq(corner.size(), 1, "the top-left corner is the profile button alone")
 	assert_string_contains((menu.get_node("%ProfileBtn") as Button).text, Profiles.active_name(),
 		"and it carries the player's name")
 
-func test_extras_swaps_the_list_in_place_and_each_entry_opens_its_screen() -> void:
+# PLAY AND EXTRAS EACH SWAP THE ROW FOR THEIR OWN LIST, in place, and Back returns.
+func test_play_and_extras_swap_the_row_for_their_lists() -> void:
+	var menu = _menu()
+	await wait_frames(2)
+	var main: Control = menu.get_node("Below/Buttons")
+	var lists := {
+		"PlayBtn": ["%PlayList", "PlayBackBtn", ["StartRunBtn", "ContinueBtn", "CustomRunBtn"]],
+		"ExtrasBtn": ["%ExtrasList", "ExtrasBackBtn", ["HowToPlayBtn", "CollectionBtn",
+			"RunHistoryBtn", "TierListBtn", "AchievementsBtn", "CustomizeBtn"]],
+	}
+	for opener in lists:
+		var list: Control = menu.get_node(lists[opener][0])
+		assert_false(list.visible, "%s: closed until asked for" % list.name)
+		(menu.get_node("%" + opener) as Button).pressed.emit()
+		assert_true(list.visible, "%s shows its list" % opener)
+		assert_false(main.visible, "in place of the three")
+		for name in lists[opener][2]:
+			assert_true(list.is_ancestor_of(menu.get_node("%" + name)), "%s is in it" % name)
+		(menu.get_node("%" + String(lists[opener][1])) as Button).pressed.emit()
+		assert_false(list.visible, "Back leaves it")
+		assert_true(main.visible, "for the three")
+
+func test_each_extras_entry_opens_its_screen_and_the_list_stays() -> void:
 	var menu = _menu()
 	await wait_frames(2)
 	var list: Control = menu.get_node("%ExtrasList")
-	var main: Control = menu.get_node("Below/Buttons")
-	assert_false(list.visible, "closed until asked for")
-	(menu.get_node("%ExtrasBtn") as Button).pressed.emit()
-	assert_true(list.visible, "Extras shows its list")
-	assert_false(main.visible, "in place of the main buttons")
-	assert_true(list.is_ancestor_of(menu.get_node("%CustomRunBtn")), "Custom Run is in Extras")
-	for btn in ["HowToPlayBtn", "RunHistoryBtn", "TierListBtn",
+	menu.show_list(&"extras")
+	for btn in ["HowToPlayBtn", "CollectionBtn", "RunHistoryBtn", "TierListBtn",
 			"AchievementsBtn", "CustomizeBtn"]:
-		var b: Button = menu.get_node("%" + btn)
-		assert_true(list.is_ancestor_of(b), "%s is in Extras" % btn)
-		b.pressed.emit()
+		(menu.get_node("%" + btn) as Button).pressed.emit()
 		await wait_frames(1)
 		assert_gt(menu._modal_layer.get_child_count(), 0, "%s opens a screen" % btn)
 		assert_true(list.visible, "and the list is still there behind it")
 		for c in menu._modal_layer.get_children():
 			c.queue_free()
 		await wait_frames(2)
-	(menu.get_node("%ExtrasBackBtn") as Button).pressed.emit()
-	assert_false(list.visible, "Back leaves it")
-	assert_true(main.visible, "for the main buttons")
 
 # THE BUTTONS ARE UNDER THE PORTAL, NOT IN IT: the oval is the title's alone,
 # and each button's letters have a glow behind them in place of a box.
@@ -230,7 +246,7 @@ func test_the_buttons_glow_and_stand_outside_the_portal() -> void:
 	var oval: Rect2 = menu.portal.oval.get_global_rect()
 	for row in [menu.title_row, menu.subtitle_row]:
 		assert_true(oval.encloses(row.ink.get_global_rect()), "the portal is round the title")
-	for name in ["CollectionBtn", "ExtrasBtn", "SettingsBtn"]:
+	for name in ["PlayBtn", "ExtrasBtn", "SettingsBtn"]:
 		var b: Button = menu.get_node("%" + name)
 		assert_gt(b.get_global_rect().position.y, oval.end.y, "%s is below the portal" % name)
 	var b: Button = menu.get_node("%SettingsBtn")
@@ -304,9 +320,10 @@ func test_the_buttons_are_one_row_with_the_background_dimmed_behind_them() -> vo
 	assert_eq(menu._art.dim_node, main, "behind the main buttons")
 	assert_true(menu._shade.get_global_rect().encloses(main.get_global_rect()),
 		"and the shade is behind them")
-	menu.show_extras(true)
-	await wait_frames(4)
-	var extras: Control = menu.get_node("%ExtrasList")
-	assert_eq(menu._art.dim_node, extras, "the dim follows the Extras list")
-	assert_true(menu._shade.get_global_rect().encloses(extras.get_global_rect()),
-		"and so does the shade")
+	for which in [[&"play", "%PlayList"], [&"extras", "%ExtrasList"]]:
+		menu.show_list(which[0])
+		await wait_frames(4)
+		var list: Control = menu.get_node(which[1])
+		assert_eq(menu._art.dim_node, list, "the dim follows %s" % list.name)
+		assert_true(menu._shade.get_global_rect().encloses(list.get_global_rect()),
+			"and so does the shade")
