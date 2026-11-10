@@ -15,8 +15,8 @@ For how the project is laid out and how its systems fit together, see
   Play and Extras each swap the row for a list of their own under the title
   (Play: Start Run, Continue, Custom Run; Extras: the manual, Collection, Run
   History, Tier List, Achievements, Customization), and Back or Esc returns.
-  The three are spelled in 50px letters, the lists in 40px. How each list is
-  organised is the owner's call and still open.
+  The three are spelled in 50px letters, the lists in 40px. The owner was
+  asked how each list should be organised and kept all of it as built.
 
 - **The menu is one row of four.** Start Run, Collection, Extras, Settings side
   by side under the title, each as wide as its word, with Continue beside Start
