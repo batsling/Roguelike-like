@@ -419,8 +419,7 @@ func _refresh() -> void:
 	# returns — leaving it to the tail meant a multi-chest screen showed it as an
 	# unlabelled sliver next to Skip.
 	if _reroll_btn != null:
-		_reroll_btn.text = "Reroll (%d)" % GameState.reroll_charges
-		_reroll_btn.disabled = GameState.reroll_charges <= 0
+		ItemDropModal.dress_reroll(_reroll_btn)
 	if not _explicit_pool.is_empty():
 		if _reroll_btn != null:
 			_reroll_btn.custom_minimum_size = Vector2(140, 40)
@@ -530,6 +529,8 @@ func _refresh_chests() -> void:
 		if btn.get_parent() != _btn_row:
 			btn.get_parent().remove_child(btn)
 			_btn_row.add_child(btn)
+	# Skip, Reroll, Take — the order the pop-up's row is in.
+	_btn_row.move_child(_skip_btn, 0)
 	_btn_row.visible = true
 	for section in _sections:
 		if section != null and is_instance_valid(section):
@@ -553,7 +554,7 @@ func _refresh_chests() -> void:
 	if not several and not _sections.is_empty() and _sections[0] != null:
 		var row: BoxContainer = _sections[0].answer_row()
 		if row != null:
-			for btn in [_skip_btn, _reroll_btn]:
+			for btn in [_reroll_btn, _skip_btn]:
 				_btn_row.remove_child(btn)
 				row.add_child(btn)
 				row.move_child(btn, 0)
@@ -581,58 +582,12 @@ func _roll_choices() -> void:
 	if not _explicit_pool.is_empty():
 		_choices = _explicit_pool.duplicate()
 		return
-	# A TAGGED chest (the Dark Room's devilish one, docs/locations-design.md §3)
-	# draws only from what carries the tag, leaned and without a rarity roll — a
-	# pool that small has no ladder to climb. A tag nothing rollable carries falls
-	# through to the ordinary chest below.
-	var tagged: Array = Data.reward_item2_pool_tagged(_pool_tag) if _pool_tag != "" else []
-	if not tagged.is_empty():
-		var want: int = _choice_count_override if _choice_count_override >= 0 \
-			else BASE_ITEM_CHOICES + maxi(0, Stats.get_value(&"discovery"))
-		want = maxi(1, mini(want, tagged.size()))
-		var guard: int = 0
-		while _choices.size() < want and guard < 100:
-			guard += 1
-			var got: ItemData = Locations.pick(tagged, _rng)
-			if not _choices.has(got):
-				_choices.append(got)
-		return
-	# Enemy-drop relics come from the games-first items2.0 table (§8).
-	var pool: Array = Data.reward_item2_pool()
-	if pool.is_empty():
-		return
-	var discovery: int = Stats.get_value(&"discovery")
-	var n: int = _choice_count_override if _choice_count_override >= 0 else BASE_ITEM_CHOICES + maxi(0, discovery)
-	n = maxi(1, mini(n, pool.size()))
-	var orb: bool = GameState.has_low_rarity_reroll()
-	var attempts: int = 0
-	while _choices.size() < n and attempts < 100:
-		attempts += 1
-		var bucket: Array = Data.reward_item2_pool_of(_roll_rarity())
-		var pick: ItemData = Locations.pick(bucket, _rng)
-		# Sacred Orb: reroll low-rarity picks — Commons always, Uncommons 25%.
-		# Re-loops (re-rolling rarity) until the pick survives, biasing the
-		# offered choices toward higher rarities.
-		if orb:
-			if int(pick.rarity) == ItemData.Rarity.COMMON:
-				continue
-			if int(pick.rarity) == ItemData.Rarity.UNCOMMON and _rng.randf() < 0.25:
-				continue
-		var dup: bool = false
-		for c in _choices:
-			if c.id == pick.id:
-				dup = true
-				break
-		if not dup:
-			_choices.append(pick)
-
-# The shared 75/20/4/1 ladder. This screen used to carry its OWN luck weighting —
-# a port of the HTML build's rollWithLuckAdvantage, which took the better of two
-# [0,1) draws on a luck*10% chance. Luck is a guaranteed reroll per point now and
-# it lives on the ladder itself (Data.roll_item_rarity), so a second
-# implementation here would have applied it twice on this one screen.
-func _roll_rarity() -> int:
-	return Data.roll_item_rarity(_rng)
+	# Every chest in the game is rolled by the one roller (Data.roll_chest): the
+	# tagged pool, the rarity ladder with Luck on it, the Sacred Orb's re-draw.
+	# This screen only decides how MANY — the chest's own size, or the default.
+	var n: int = _choice_count_override if _choice_count_override >= 0 \
+		else BASE_ITEM_CHOICES + maxi(0, Stats.get_value(&"discovery"))
+	_choices = Data.roll_chest(_rng, n, _pool_tag)
 
 # ------------------------------------------------------------------
 # Actions
@@ -688,9 +643,8 @@ func _on_play_real() -> void:
 			_play_btn.disabled = true
 
 func _on_reroll() -> void:
-	if _resolved or GameState.reroll_charges <= 0:
+	if _resolved or not ItemDropModal.spend_reroll():
 		return
-	GameState.reroll_charges -= 1
 	if _chest_sizes.is_empty():
 		_roll_choices()
 		if _explicit_pool.is_empty():

@@ -808,6 +808,66 @@ var _reward_bucket_cache: Dictionary = {}  # "items2:2" -> Array[ItemData]
 func reward_item2_pool() -> Array:
 	return _reward_pool("items2", _items2)
 
+# THE ONE CHEST ROLLER. `count` distinct items for one chest, off `rng`.
+#
+# There were two. The banked-chest screen rolled its own (RewardScreen), with the
+# Sacred Orb's re-draw of low rarities and no boss pool; every other chest came
+# from DropQueue, with the boss pool and no Sacred Orb. So one relic worked on
+# some chests and not others, and nothing said which. Every chest in the game is
+# rolled here now, and re-rolled here (a Reroll charge asks this same question
+# again), so a rule about what a chest offers is written once.
+#
+#   from_boss  the boss pool, drawn flat: nothing rolls INTO it, so there is no
+#              rarity ladder to climb and nothing for the Sacred Orb to re-draw.
+#   pool       a TAGGED chest (docs/locations-design.md §3): only what carries the
+#              word as a tag or a pool, drawn by the location's lean. A word
+#              nothing rollable carries rolls the ordinary chest instead.
+#   otherwise  a rarity off the 75/20/4/1 ladder (Luck included), then a leaned
+#              pick from that rarity; the Sacred Orb re-draws every Common and one
+#              Uncommon in four.
+#
+# Distinct is a preference and not a rule: two of the same relic side by side is
+# not a choice, but a thin pool still owes a chest, so the draw gives up after a
+# bounded number of tries rather than looping. Fewer than `count` only when the
+# pool cannot fill it.
+const CHEST_ROLL_TRIES := 100
+
+func roll_chest(rng: RandomNumberGenerator, count: int, pool: String = "",
+		from_boss: bool = false) -> Array:
+	var out: Array = []
+	var want: int = maxi(1, count)
+	var boss_pool: Array = boss_item2_pool() if from_boss else []
+	var tagged: Array = reward_item2_pool_tagged(pool) if pool != "" and boss_pool.is_empty() else []
+	var plain: bool = boss_pool.is_empty() and tagged.is_empty()
+	if plain and reward_item2_pool().is_empty():
+		return out
+	var orb: bool = plain and GameState.has_low_rarity_reroll()
+	var tries: int = 0
+	while out.size() < want and tries < CHEST_ROLL_TRIES:
+		tries += 1
+		var item: ItemData = null
+		if not boss_pool.is_empty():
+			item = Locations.pick(boss_pool, rng)
+		elif not tagged.is_empty():
+			item = Locations.pick(tagged, rng)
+		else:
+			item = Locations.pick(reward_item2_pool_of(roll_item_rarity(rng)), rng)
+			if orb and item != null:
+				if int(item.rarity) == ItemData.Rarity.COMMON:
+					continue
+				if int(item.rarity) == ItemData.Rarity.UNCOMMON and rng.randf() < 0.25:
+					continue
+		if item == null:
+			break
+		var dup: bool = false
+		for had in out:
+			if (had as ItemData).id == item.id:
+				dup = true
+				break
+		if not dup:
+			out.append(item)
+	return out
+
 # The BOSS relics — what beating a boss pays instead of a normal drop (§7.1).
 # A separate pool rather than a rarity bucket for the same reason `boss` is a flag
 # rather than a rung: nothing rolls into it, one thing rolls out of it.

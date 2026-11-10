@@ -78,6 +78,12 @@ var _single: Control = null
 # (the banked-chest screen's Reroll and Leave) puts them here, beside Take, so the
 # buttons under a chest are one row wherever the chest is.
 var _row: BoxContainer = null
+# How to roll this chest again, or an invalid Callable for a chest that cannot be
+# (one offering named items, or one whose host re-rolls it itself). Returns the
+# new offer. Only the pop-up draws a Reroll button off it; an embedded chest is
+# re-rolled by its host, which has one button for every chest on the screen.
+var _reroll: Callable = Callable()
+var _reroll_btn: Button = null
 var _open_tween: Tween = null
 
 const PANEL_SIZE := Vector2(460, 0)
@@ -150,10 +156,77 @@ func _init() -> void:
 # Entry point: mount over `host` and ask about a chest. `offer` is either the one
 # item a body left or the list a bigger chest is offering — a bare ItemData is
 # accepted so the single-drop call site reads the way it always has.
-static func open(host: Node, offer) -> ItemDropModal:
+#
+# `reroll` makes the chest re-rollable: called when a Reroll charge is spent, it
+# returns what the chest offers now.
+static func open(host: Node, offer, reroll: Callable = Callable()) -> ItemDropModal:
 	var modal := ItemDropModal.new()
+	modal._reroll = reroll
 	modal._start(host, offer)
 	return modal
+
+# ONE REROLL, EVERYWHERE. A charge re-rolls every chest still open on the screen
+# it is spent on — the one chest of a pop-up, all of them on the banked screen and
+# on the haul. These two are the whole of the rule, so the three screens cannot
+# disagree about what the button says or what it costs.
+static func dress_reroll(btn: Button) -> void:
+	btn.text = "Reroll (%d)" % GameState.reroll_charges
+	btn.disabled = GameState.reroll_charges <= 0
+	btn.tooltip_text = "Spend a Reroll to roll every chest here again." \
+		if GameState.reroll_charges > 0 else "No Rerolls left."
+
+static func spend_reroll() -> bool:
+	if GameState.reroll_charges <= 0:
+		return false
+	GameState.reroll_charges -= 1
+	return true
+
+# What this chest is offering right now.
+func offer() -> Array:
+	return _items.duplicate()
+
+# OFFER SOMETHING ELSE, in place: the same chest, where it stood, opened again.
+# What a re-roll does to a chest — the host rolls, this redraws. An offer of a
+# different size is refused, since a chest's size is not what a Reroll re-rolls.
+func reoffer(items: Array) -> void:
+	if _answered or items.is_empty():
+		return
+	var fresh: Array = items.filter(func(it): return it is ItemData)
+	if fresh.is_empty():
+		return
+	_items = fresh
+	_selected = _items[0]
+	for it in _items:
+		GameStats.mark_seen("item", (it as ItemData).id)
+	if _open_tween != null and _open_tween.is_valid():
+		_open_tween.kill()
+	var at: int = -1
+	if _body != null and is_instance_valid(_body):
+		at = _body.get_index()
+		_body.get_parent().remove_child(_body)
+		_body.queue_free()
+		_body = null
+	else:
+		# The pop-up: everything under this node is the chest's own.
+		for child in get_children():
+			remove_child(child)
+			child.queue_free()
+	_cards.clear()
+	_stars.clear()
+	_single = null
+	_gift = null
+	_row = null
+	_reroll_btn = null
+	_build()
+	if at >= 0 and _body != null:
+		_slot.move_child(_body, at)
+
+func _on_reroll() -> void:
+	if _answered or not _reroll.is_valid() or not spend_reroll():
+		return
+	var fresh = _reroll.call()
+	if fresh is Array:
+		reoffer(fresh)
 
 func _start(host: Node, offer) -> void:
 	_items = []
@@ -281,6 +354,12 @@ func _build() -> void:
 		leave.custom_minimum_size = Vector2(150, 42)
 		leave.pressed.connect(func(): _answer(false))
 		row.add_child(leave)
+		if _reroll.is_valid():
+			_reroll_btn = Button.new()
+			_reroll_btn.custom_minimum_size = Vector2(150, 42)
+			_reroll_btn.pressed.connect(_on_reroll)
+			dress_reroll(_reroll_btn)
+			row.add_child(_reroll_btn)
 
 	_take_btn = Button.new()
 	_take_btn.custom_minimum_size = Vector2(150, 26) if compact else Vector2(190, 42)

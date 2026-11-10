@@ -324,7 +324,7 @@ func queue_report_chests(beaten: bool) -> void:
 			var offer: Array = roll_chest(from_boss, int(Data.CHEST_SIZE_CHOICES[size]))
 			if offer.is_empty():
 				continue
-			queue.append({"items": offer})
+			queue.append(rolled_drop(offer, from_boss))
 			granted.append(size)
 	if granted.is_empty():
 		return
@@ -434,7 +434,10 @@ func open_next() -> void:
 			note_taken(taken)
 			pump())
 		return
-	var item_modal = ItemDropModal.open(_page, drop_items(drop))
+	# A rolled chest can be asked again for a Reroll charge, the same as on every
+	# other screen a chest is drawn on.
+	var again: Callable = (func(): return reroll_drop(drop)) if can_reroll(drop) else Callable()
+	var item_modal = ItemDropModal.open(_page, drop_items(drop), again)
 	modal = item_modal
 	item_modal.answered.connect(func(taken: bool, chosen: ItemData):
 		modal = null
@@ -468,41 +471,37 @@ func _may_open() -> bool:
 # the ordinary roll if no boss relics are authored, because a boss that drops
 # nothing would read as a bug rather than as a thin catalogue.
 func roll_drop(from_boss: bool = false) -> ItemData:
-	var rng: RandomNumberGenerator = _page.drop_rng()
-	if from_boss:
-		var boss_pool: Array = Data.boss_item2_pool()
-		if not boss_pool.is_empty():
-			return Locations.pick(boss_pool, rng)
-	var bucket: Array = Data.reward_item2_pool_of(Data.roll_item_rarity(rng))
-	if bucket.is_empty():
-		return null
-	# Leaned by the location (docs/locations-design.md §4) — and, with no lean,
-	# exactly the uniform draw this always was.
-	return Locations.pick(bucket, rng)
+	var got: Array = roll_chest(from_boss, 1)
+	return got[0] if not got.is_empty() else null
 
-# `count` DISTINCT items for one chest, each rolled by roll_drop. Distinct is a
-# preference and not a rule, the same way the shop shelf treats it: two of the
-# same relic side by side is not a choice, but a thin pool still owes a full
-# chest, so the draw gives up after a few tries rather than shrinking the offer.
-# Fewer than `count` only when the pool itself is empty.
-#
-# `pool` is a TAGGED chest (docs/locations-design.md §3): its items come only from
-# what carries that tag or pool (Data.reward_item2_pool_tagged), drawn by the
-# location's lean rather than by rarity, since a pool that small has no ladder to
-# climb. A word nothing carries rolls the ordinary chest instead.
+# `count` distinct items for one chest, off the run's stream. The rules are
+# Data.roll_chest's — the one roller every chest in the game comes from.
 func roll_chest(from_boss: bool, count: int, pool: String = "") -> Array:
-	var out: Array = []
-	var tries: int = 0
-	var tagged: Array = Data.reward_item2_pool_tagged(pool) if pool != "" else []
-	while out.size() < maxi(1, count) and tries < 40:
-		tries += 1
-		var item: ItemData = Locations.pick(tagged, _page.drop_rng()) if not tagged.is_empty() \
-			else roll_drop(from_boss)
-		if item == null:
-			break
-		if not out.has(item):
-			out.append(item)
-	return out
+	return Data.roll_chest(_page.drop_rng(), count, pool, from_boss)
+
+# A ROLLED chest, as a queue entry. `roll` is how it was rolled, which is what a
+# Reroll charge needs to ask the same question again (reroll_drop); a chest
+# offering particular items (a relic or an event handing over named ones) carries
+# no `roll` and cannot be re-rolled, because there was never a roll to repeat.
+func rolled_drop(items: Array, from_boss: bool = false, pool: String = "") -> Dictionary:
+	return {"items": items, "roll": {"boss": from_boss, "pool": pool}}
+
+# Whether `drop` can be asked again.
+func can_reroll(drop: Dictionary) -> bool:
+	return drop.get("roll") is Dictionary
+
+# Roll `drop` again, the way it was rolled, and return what it offers now. The
+# entry itself is updated: it is what a save writes and what an answer is checked
+# against. The charge is the caller's to spend (see spend_reroll).
+func reroll_drop(drop: Dictionary) -> Array:
+	if not can_reroll(drop):
+		return drop_items(drop)
+	var how: Dictionary = drop["roll"]
+	var fresh: Array = roll_chest(bool(how.get("boss", false)),
+		drop_items(drop).size(), String(how.get("pool", "")))
+	if not fresh.is_empty():
+		drop["items"] = fresh
+	return drop_items(drop)
 
 # The items one queued chest is offering. `items` is the canonical shape; the
 # single-item `{item: …}` shorthand is still read so a save written before chests

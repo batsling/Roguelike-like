@@ -11,6 +11,19 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **One chest roller, and a Reroll on every chest.** There were two rollers:
+  `RewardScreen` rolled the banked chests itself (Sacred Orb's re-draw, no boss
+  pool) and `DropQueue` rolled every other (boss pool, no Sacred Orb). Every
+  chest is rolled by `Data.roll_chest(rng, count, pool, from_boss)` now, so a
+  rule about what a chest offers is written once — and `reroll_low_rarity`
+  reaches every chest rather than the banked ones alone. A Reroll charge was
+  spendable on the banked screen only; it works on the pop-up chest
+  (`ItemDropModal.open(host, offer, reroll)`) and on the haul
+  (`PostCombatScreen.reroll_chests`) too, by one rule: a charge re-rolls every
+  rolled chest still open on the screen it is spent on, each the way it was
+  rolled (`DropQueue.rolled_drop` carries `roll: {boss, pool}`, saved with the
+  queue). A chest offering named items has no roll to repeat and no button.
+
 - **A screen of chests says the gold it paid, once.** A banked chest pays gold
   as it opens, taken or skipped (`Data.chest_gold`). The total is one line over
   the chests ("+6 gold from 3 chests", `ItemDropModal.gold_text`): on the banked

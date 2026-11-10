@@ -1051,6 +1051,67 @@ func test_every_chest_is_named_by_its_size_under_the_gift() -> void:
 		"a count that is no rung of the ladder says the count")
 	assert_eq(ItemDropModal.chest_heading(1, "devilish"), "🎁  Devilish Small Chest")
 
+# --- one roller, and a reroll on every chest ------------------------------------
+
+func test_the_one_roller_fills_a_chest_with_distinct_items() -> void:
+	var got: Array = Data.roll_chest(Fixtures.rng(3), 5)
+	assert_eq(got.size(), 5)
+	var ids: Dictionary = {}
+	for it in got:
+		ids[(it as ItemData).id] = true
+	assert_eq(ids.size(), 5, "no relic twice in one chest")
+
+func test_a_boss_chest_rolls_only_boss_relics() -> void:
+	if Data.boss_item2_pool().is_empty():
+		pending("no boss relics authored")
+		return
+	for it in Data.roll_chest(Fixtures.rng(5), 2, "", true):
+		assert_true((it as ItemData).boss, "%s came out of the boss pool" % it.display_name)
+
+func test_the_sacred_orb_reaches_every_chest_through_the_one_roller() -> void:
+	# It used to apply on the banked-chest screen alone, which rolled its own.
+	# No relic in the catalogue carries the flag today, so one is made for the test.
+	var orb := ItemData.new()
+	orb.id = &"__orb__"
+	orb.reroll_low_rarity = true
+	GameState.inventory.append(orb)
+	var rng := Fixtures.rng(11)
+	for i in range(20):
+		for it in Data.roll_chest(rng, 2):
+			assert_ne(int((it as ItemData).rarity), ItemData.Rarity.COMMON,
+				"a Common is re-drawn, whichever chest asked")
+	GameState.inventory.erase(orb)
+
+func test_a_pop_up_chest_spends_a_reroll_and_opens_again_in_place() -> void:
+	var kept: int = GameState.reroll_charges
+	GameState.reroll_charges = 1
+	var pool: Array = Data.reward_item2_pool()
+	var asked := [0]
+	var host := Control.new()
+	add_child_autofree(host)
+	var chest := ItemDropModal.open(host, [pool[0], pool[1]], func():
+		asked[0] += 1
+		return [pool[2], pool[3]])
+	assert_not_null(chest._reroll_btn, "a rolled chest has a Reroll button")
+	assert_false(chest._reroll_btn.disabled)
+	chest._on_reroll()
+	assert_eq(asked[0], 1)
+	assert_eq(GameState.reroll_charges, 0, "the charge is spent")
+	assert_eq(chest.offer(), [pool[2], pool[3]], "and the chest offers what was rolled")
+	assert_eq(chest._cards.size(), 2)
+	assert_true(chest._reroll_btn.disabled, "nothing left to spend")
+	chest._on_reroll()
+	assert_eq(asked[0], 1, "no charge, no roll")
+	chest.leave()
+	GameState.reroll_charges = kept
+
+func test_a_chest_of_named_items_has_no_reroll() -> void:
+	var host := Control.new()
+	add_child_autofree(host)
+	var chest := ItemDropModal.open(host, [Data.reward_item2_pool()[0]])
+	assert_null(chest._reroll_btn, "there was no roll to repeat")
+	chest.leave()
+
 func test_a_chest_wears_a_star_per_rung_of_its_size() -> void:
 	assert_eq(ItemDropModal.chest_rank(1), 0)
 	assert_eq(ItemDropModal.chest_rank(2), 1)
