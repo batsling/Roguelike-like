@@ -307,6 +307,10 @@ func test_the_test_switch_completes_nothing_on_the_stats_page() -> void:
 	assert_eq(done, 0, "unlocked for testing is not unlocked on the record")
 
 func test_runs_are_counted_past_the_history_s_cap() -> void:
+	# No history: a profile's own won runs are a floor under the count (load_data),
+	# and this is about the number that is kept.
+	var history: Array = GameStats.runs
+	GameStats.runs = []
 	GameStats.runs_played = 58
 	GameStats.runs_won = 9
 	GameStats.save_data()
@@ -314,6 +318,7 @@ func test_runs_are_counted_past_the_history_s_cap() -> void:
 	assert_eq([GameStats.runs_played, GameStats.runs_won], [58, 9], "kept in the file")
 	var won: Dictionary = _stat(CompletionStats.run_records(), "Runs won")
 	assert_eq([won["value"], won["total"], won["note"]], [9, 0, "16% of runs"])
+	GameStats.runs = history
 
 func test_the_stats_tab_shows_the_meter_and_every_section() -> void:
 	GameStats.note_achievement(&"rodney", 1, 1)
