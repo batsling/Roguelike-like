@@ -59,7 +59,7 @@ func _ready() -> void:
 	_move_quit_to_corner()
 	_warm_run_page.call_deferred()
 	_refresh_continue_button()
-	_rearrange_on_visibility()
+	_mount_shade()
 	_build_radio_corner()
 	# The pop-over goes over both corners: nothing on the menu under it is live.
 	move_child(_save_overlay, _modal_layer.get_index() - 1)
@@ -203,8 +203,8 @@ func _on_unlock_everything_changed(_on: bool) -> void:
 # The owner tried the other two first (10 Nov 2026): plates in the portal's
 # blue, then the buttons inside the portal itself. The hovered or focused one
 # glows brighter and warmer, with its letters at full strength.
-const BUTTON_LETTERS := 24.0     # a letter's height on an ordinary button
-const START_LETTERS := 36.0      # ...and on Start Run
+const BUTTON_LETTERS := 32.0     # a letter's height on an ordinary button
+const START_LETTERS := 42.0      # ...and on Start Run
 const LETTER_MARGIN := 14.0      # kept clear either side of the word
 const GLOW := Color(0.70, 1.0, 0.97, 0.6)
 const GLOW_LIT := Color(1.0, 0.92, 0.6, 0.8)
@@ -218,9 +218,8 @@ class LetterGlow extends Control:
 	var row: TitleLetters
 	var tint := Color.WHITE
 
-	func _init(r: TitleLetters) -> void:
-		row = r
-		mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# White in the middle, clear at the rim: the glow's disc, and the shade's.
+	static func soft_disc() -> GradientTexture2D:
 		if disc == null:
 			var g := Gradient.new()
 			g.set_color(0, Color(1, 1, 1, 1))
@@ -233,6 +232,12 @@ class LetterGlow extends Control:
 			disc.fill_to = Vector2(1.0, 0.5)
 			disc.width = 64
 			disc.height = 64
+		return disc
+
+	func _init(r: TitleLetters) -> void:
+		row = r
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		soft_disc()
 		row.resized.connect(queue_redraw)
 
 	func light(c: Color) -> void:
@@ -414,70 +419,48 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	get_viewport().set_input_as_handled()
 
-# THE BUTTONS UNDER THE TITLE: Start Run across the top, the rest (Continue,
-# Custom Run, Extras, Settings) two to a row beneath it. The title stands in the middle of the screen now, which leaves
-# about 270px below it on the 720 canvas, and the old single column of seven
-# needed 400. The scene keeps every button in %Buttons in its old order; this
-# deals the visible ones after Start Run into rows of two (HBoxes named Row0…),
-# and is run again whenever Continue comes or goes, so an odd one out is centred
-# on a row of its own rather than leaving a hole.
-const GRID_W := 236.0
-const GRID_H := 52.0
+# THE BUTTONS ARE ONE COLUMN UNDER THE TITLE, laid out by the scene: Start Run,
+# Continue (when there is a save), Custom Run, Extras, Settings. They were dealt
+# two to a row while the title stood in the middle of the screen; a row of two
+# left each word about 200px, and logo letters that small did not read (owner,
+# 10 Nov 2026). The title stands in the upper part of the screen now
+# (`Center`'s anchor in the scene), which leaves the column room for letters a
+# third larger, and the Extras list its seven rows.
 
-var _arrange_pending := false
-# Set while the rows are being dealt: moving a button between parents can raise
-# its own visibility_changed, which must not ask for another deal.
-var _arranging := false
+# THE BACKGROUND IS QUIETER BEHIND THE BUTTONS. Two things, both following
+# whichever list is showing: a soft dark shade over the vortex (no edge: the
+# glow's disc, stretched), and the falling art dimmed harder there than its own
+# BAND_DIM (`MenuFallingArt.rect_dim`).
+const SHADE := Color(0, 0, 0, 0.6)
+const SHADE_REACH := Vector2(150.0, 46.0)
+const ART_DIM := 0.12
 
-# Showing or hiding any of the buttons re-deals the rows at the end of the frame,
-# whoever did it — Continue is the one that comes and goes.
-func _rearrange_on_visibility() -> void:
-	for b in _grid_order:
-		b.visibility_changed.connect(func() -> void:
-			if not _arrange_pending and not _arranging:
-				_arrange_pending = true
-				_arrange_buttons.call_deferred())
+var _shade: TextureRect = null
 
-func _arrange_buttons() -> void:
-	_arrange_pending = false
-	_arranging = true
-	_deal_rows()
-	_arranging = false
+func _mount_shade() -> void:
+	_shade = TextureRect.new()
+	_shade.name = "ButtonShade"
+	_shade.texture = LetterGlow.soft_disc()
+	_shade.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_shade.stretch_mode = TextureRect.STRETCH_SCALE
+	_shade.modulate = SHADE
+	_shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_shade)
+	# Over the art, under the title and the buttons.
+	move_child(_shade, _art.get_index() + 1)
+	_art.rect_dim = ART_DIM
+	for list in [_main_buttons, %ExtrasList]:
+		(list as Control).item_rect_changed.connect(_fit_shade)
+		(list as Control).visibility_changed.connect(_fit_shade)
+	_fit_shade()
 
-# The buttons in the scene's order, taken the first time the rows are dealt, so
-# Continue always comes back in its own place rather than at the end.
-var _grid_order: Array[Button] = []
-
-func _deal_rows() -> void:
-	var box: VBoxContainer = %StartRunBtn.get_parent()
-	if _grid_order.is_empty():
-		for c in box.get_children():
-			if c is Button and c != %StartRunBtn:
-				_grid_order.append(c)
-	var deal: Array[Button] = _grid_order
-	for b in deal:
-		b.reparent(box, false)
-	for c in box.get_children():
-		if c is HBoxContainer and String(c.name).begins_with("Row"):
-			box.remove_child(c)
-			c.queue_free()
-	var shown := deal.filter(func(b: Button) -> bool: return b.visible)
-	var at := %StartRunBtn.get_index() + 1
-	for i in range(0, shown.size(), 2):
-		var row := HBoxContainer.new()
-		row.name = "Row%d" % (i / 2)
-		row.alignment = BoxContainer.ALIGNMENT_CENTER
-		row.add_theme_constant_override("separation", UITheme.GAP)
-		box.add_child(row)
-		box.move_child(row, at)
-		at += 1
-		for b in shown.slice(i, i + 2):
-			b.reparent(row, false)
-			b.custom_minimum_size = Vector2(GRID_W, GRID_H)
-	# Hidden ones stay in the box, out of the rows, until they are shown.
-	for b in deal:
-		if not b.visible:
-			box.move_child(b, -1)
+func _fit_shade() -> void:
+	var list: Control = %ExtrasList if extras_shown() else _main_buttons
+	_art.dim_node = list
+	var r: Rect2 = list.get_global_rect().grow_individual(
+		SHADE_REACH.x, SHADE_REACH.y, SHADE_REACH.x, SHADE_REACH.y)
+	_shade.position = get_global_transform().affine_inverse() * r.position
+	_shade.size = r.size
 
 # Exit Game lives in the bottom-right corner rather than at the foot of the
 # button column. It is the one entry that isn't a way INTO the game, and sitting
@@ -631,7 +614,6 @@ func _refresh_continue_button() -> void:
 	_continue_btn.text = "Continue"
 	if count == 0:
 		_show_save_list(false)
-	_arrange_buttons()
 
 func _on_continue_toggle() -> void:
 	show_extras(false)

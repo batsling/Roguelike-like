@@ -278,3 +278,28 @@ func test_a_label_the_letters_cannot_spell_stays_plain_text() -> void:
 	menu._spell_button(b)
 	assert_false(menu._button_rows.has(b), "no row of letters")
 	assert_gt(b.get_theme_color("font_color").a, 0.0, "and the text is drawn again")
+
+
+# ONE COLUMN, AND A QUIETER BACKGROUND BEHIND IT. The buttons are stacked one to
+# a row under the title; a soft shade and a harder dim on the falling art follow
+# whichever list is showing.
+func test_the_buttons_are_one_column_with_the_background_dimmed_behind_them() -> void:
+	var menu = _menu()
+	await wait_frames(4)
+	var main: Control = menu.get_node("Below/Buttons")
+	var xs := {}
+	for c in main.get_children():
+		if c is Button and c.visible:
+			assert_eq(c.get_parent(), main, "%s is a row of its own" % c.name)
+			xs[c.get_global_rect().get_center().x] = true
+	assert_eq(xs.size(), 1, "every button on one centre line")
+	assert_lt(menu._art.rect_dim, MenuFallingArt.BAND_DIM, "the art is dimmer here than its band")
+	assert_eq(menu._art.dim_node, main, "behind the main buttons")
+	assert_true(menu._shade.get_global_rect().encloses(main.get_global_rect()),
+		"and the shade is behind them")
+	menu.show_extras(true)
+	await wait_frames(4)
+	var extras: Control = menu.get_node("%ExtrasList")
+	assert_eq(menu._art.dim_node, extras, "the dim follows the Extras list")
+	assert_true(menu._shade.get_global_rect().encloses(extras.get_global_rect()),
+		"and so does the shade")

@@ -11,6 +11,13 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The menu's buttons are one column, a third larger.** Two to a row left
+  each word about 200px and the logo letters did not read. The title moved to
+  the upper part of the screen and the buttons stack under it (32px letters, 42
+  on Start Run); the Extras list is seven rows the same way. Behind whichever
+  list is showing there is a soft dark shade over the vortex, and the falling
+  art is dimmed harder than its band (`MenuFallingArt.rect_dim`).
+
 - **The menu's buttons are spelled in logo letters.** Every button on the main
   menu (the five under the title, Exit, the profile's name, the Extras list) is
   drawn the way the title is: a `TitleLetters` row from the same earned pool,
