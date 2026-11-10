@@ -49,6 +49,10 @@ var deck_wins: Dictionary = {}
 # thousand of them.
 const MAX_RUNS := 40
 var runs: Array = []
+# Every run recorded and every one won, for good: `runs` forgets past MAX_RUNS.
+# A profile from before these were kept starts them at what its history holds.
+var runs_played: int = 0
+var runs_won: int = 0
 
 # Which enemies have been beaten ON which game, and the player's own notes about
 # how. Keyed game id -> enemy id -> {"beaten": int, "note": String}.
@@ -131,6 +135,46 @@ const GOAL_KIND_NAMES := {
 
 func _ready() -> void:
 	load_data()
+	_watch_achievements.call_deferred()
+
+# --- achievements (docs/achievements.md) -------------------------------------
+#
+# What this profile has done toward each achievement:
+#   id -> {"best": int, "done": bool, "held": [keys]}
+# `best` is the most a SINGLE-RUN achievement ever reached in one run and `held`
+# what that run was holding; a lifetime one is read off the stats instead, and
+# only its `done` is kept. Never unset once done.
+signal achievement_unlocked(id: StringName)
+var achievements: Dictionary = {}
+
+func achievement_record(id) -> Dictionary:
+	var r = achievements.get(String(id))
+	return r if r is Dictionary else {}
+
+# Write down where an achievement stands; true when this is what finished it.
+# Saves only when something moved, so it can be asked on every change of the pack.
+func note_achievement(id, value: int, goal: int, held: Array = []) -> bool:
+	var rec: Dictionary = achievement_record(id)
+	if bool(rec.get("done", false)):
+		return false
+	var best: int = int(rec.get("best", 0))
+	var done: bool = value >= goal
+	if value <= best and not done:
+		return false
+	achievements[String(id)] = {"best": maxi(best, value), "done": done,
+		"held": held.duplicate() if value > best else rec.get("held", [])}
+	save_data()
+	if done:
+		achievement_unlocked.emit(StringName(id))
+	return done
+
+# Counted again whenever what the run holds changes, and whenever the stats do
+# (Achievements.check). Deferred from _ready: GameState is up, but a check reads
+# Settings and Notifications, which load after this.
+func _watch_achievements() -> void:
+	Achievements.check(false)
+	GameState.inventory_changed.connect(func() -> void: Achievements.check())
+	changed.connect(func() -> void: Achievements.check())
 
 # ---------------------------------------------------------------------------
 # Reads
@@ -280,6 +324,10 @@ func record_collapse_win(amulet_id, character_id) -> void:
 func _note_win_fracture(e: Dictionary) -> void:
 	var f: int = Fracture.level()
 	e["fracture_sum"] = int(e.get("fracture_sum", 0)) + f
+	# The highest level it has been beaten at, for the Stats page's "beaten on
+	# Fracture 10" (docs/achievements.md). Custom runs are practice and do not set it.
+	if Fracture.run_counts():
+		e["fracture_best"] = maxi(int(e.get("fracture_best", 0)), f)
 	if int(e["beaten"]) == 1:
 		e["first_fracture"] = f
 
@@ -290,6 +338,16 @@ func repeat_win_fractures(id) -> int:
 	if not (row is Dictionary):
 		return 0
 	return maxi(0, int(row.get("fracture_sum", 0)) - int(row.get("first_fracture", 0)))
+
+# The highest Fracture this game has been BEATEN at, -1 for one never beaten.
+# Only kept since the Stats page asked for it (10 Nov 2026), so for older wins it
+# is the most the record can prove: the Amulet's best, or the first win's level.
+func game_fracture_best(id) -> int:
+	var row: Variant = stats.get(String(id))
+	if not (row is Dictionary) or int(row.get("beaten", 0)) <= 0:
+		return -1
+	return maxi(maxi(int(row.get("fracture_best", 0)), amulet_best(id)),
+		int(row.get("first_fracture", 0)))
 
 # The highest Fracture this game has been beaten at AS THE AMULET, outside custom
 # runs: the number on its 🏆. -1 for a game never won as the Amulet; a win from
@@ -364,6 +422,10 @@ func record_run(did_win: bool) -> void:
 	})
 	while runs.size() > MAX_RUNS:
 		runs.pop_back()
+	# The history above is capped; these are not (the Stats page's run records).
+	runs_played += 1
+	if did_win:
+		runs_won += 1
 	save_data()
 	changed.emit()
 
@@ -1004,7 +1066,9 @@ func save_data() -> bool:
 		 "character_goal_log": character_goal_log,
 		 "donation_bank": donation_bank_total, "donation_best": donation_best_total,
 		 "last_rifts": last_rifts,
-		 "last_starts": last_starts, "fracture_log": fracture_log, "seen": seen}, "  "))
+		 "last_starts": last_starts, "fracture_log": fracture_log, "seen": seen,
+		 "achievements": achievements,
+		 "runs_played": runs_played, "runs_won": runs_won}, "  "))
 	return true
 
 # --- the Donation Machine's bank -------------------------------------------
@@ -1059,6 +1123,9 @@ func load_data() -> void:
 	last_starts = []
 	fracture_log = {}
 	seen = {}
+	achievements = {}
+	runs_played = 0
+	runs_won = 0
 	if not FileAccess.file_exists(save_path()):
 		return
 	var f := FileAccess.open(save_path(), FileAccess.READ)
@@ -1071,6 +1138,10 @@ func load_data() -> void:
 	# game dictionary. Both parse — a game will never be named "games".
 	if json.data.has("runs") and typeof(json.data["runs"]) == TYPE_ARRAY:
 		runs = json.data["runs"]
+	runs_played = maxi(runs.size(), int(json.data.get("runs_played", 0)))
+	var won_in_history: int = runs.filter(func(r) -> bool:
+		return r is Dictionary and bool(r.get("won", false))).size()
+	runs_won = maxi(won_in_history, int(json.data.get("runs_won", 0)))
 	if json.data.has("enemy_log") and typeof(json.data["enemy_log"]) == TYPE_DICTIONARY:
 		enemy_log = json.data["enemy_log"]
 	# Both added after the file format existed, so an older save simply has
@@ -1108,6 +1179,17 @@ func load_data() -> void:
 			for id in ids.keys():
 				clean[String(id)] = true
 			seen[String(kind)] = clean
+	if typeof(json.data.get("achievements")) == TYPE_DICTIONARY:
+		for aid in json.data["achievements"].keys():
+			var rec = json.data["achievements"][aid]
+			if typeof(rec) != TYPE_DICTIONARY:
+				continue
+			var held: Array = []
+			if typeof(rec.get("held")) == TYPE_ARRAY:
+				for k in rec["held"]:
+					held.append(String(k))
+			achievements[String(aid)] = {"best": int(rec.get("best", 0)),
+				"done": bool(rec.get("done", false)), "held": held}
 	if typeof(json.data.get("last_rifts")) == TYPE_ARRAY:
 		for id in json.data["last_rifts"]:
 			last_rifts.append(String(id))
@@ -1137,6 +1219,11 @@ func load_data() -> void:
 		}
 		# Fractures (docs/fracture-design.md). Copied only when present, so an
 		# older file loads to exactly the record it had.
-		for key in ["fracture_sum", "first_fracture", "amulet_best", "custom_amulets"]:
+		for key in ["fracture_sum", "first_fracture", "amulet_best", "custom_amulets",
+				"fracture_best"]:
 			if r.has(key):
 				stats[String(k)][key] = int(r[key])
+	# A profile switched to (Profiles calls this) may already have what a lifetime
+	# achievement asks for. Not on the first load, which _ready follows up itself.
+	if is_node_ready():
+		Achievements.check(false)

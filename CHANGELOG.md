@@ -11,6 +11,42 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **A Stats tab, with a completion meter.** The Achievements screen's last tab
+  is everything the profile has done, in seven sections: Achievements, Games
+  (different games beaten, perfected, won as the Amulet, beaten on Fracture 10,
+  Amulets won on Fracture 10, each out of every game, with the totals beside
+  them), Enemies, Characters (with a line per character), Collection
+  Discovered, Unlocks Earned, and Run Records. A section's meter is the average
+  of its lines and the overall meter the average of the sections, so a small
+  section weighs as much as the thousand games. `GameStats` now keeps the
+  highest Fracture each game has been beaten at and counts runs past the
+  history's cap of 40. Numbers: `CompletionStats`; see `docs/achievements.md`.
+
+- **Zoe counts different perfected games.** `perfect games` is how many
+  DIFFERENT games have been perfected, not every perfect: one game perfected ten
+  times is one. Her row reads "Perfect 10 different games."
+
+- **Achievements come from the workbook, and Rodney is the third.** A new
+  `achievements` sheet (`Tab | Unlocks | Description | Counted | Condition |
+  Goal`) is written out by `tools/generate_achievement_tres.py` into
+  `data/achievements/`, which is no longer hand-written; `check_data_sync`
+  holds it to the sheet. Rodney is locked until a traditional roguelike has
+  been beaten (`beat games traditional`, a new `games_beaten` count of
+  different games, optionally of one type).
+
+- **Achievements, and two locked characters.** A new screen off the main menu
+  (★ Achievements, in the top row beside Customization) lists what there is to
+  unlock, with a tab per kind of unlock: Characters is the only one so far.
+  Manager is locked until a run holds 3 different coin-tagged items or loot at
+  once; Zoe until 10 games have been perfected. The two are counted differently
+  and each row says which: a single-run one shows a socket per step and "Best in
+  one run: 2 of 3", with the best run's pieces in the sockets; a lifetime one
+  shows a bar and "So far: 4 of 10". In the character picker a locked hero is a
+  silhouette that can be looked at but not confirmed or rolled. Each achievement
+  is an `AchievementData` in `data/achievements/`; the rules are
+  `Achievements`, the progress `GameStats.achievements`. See
+  `docs/achievements.md`.
+
 - **One chest roller, and a Reroll on every chest.** There were two rollers:
   `RewardScreen` rolled the banked chests itself (Sacred Orb's re-draw, no boss
   pool) and `DropQueue` rolled every other (boss pool, no Sacred Orb). Every

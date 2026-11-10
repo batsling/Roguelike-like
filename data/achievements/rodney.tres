@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="AchievementData" load_steps=2 format=3 uid="uid://ach_rodney"]
+
+[ext_resource type="Script" path="res://scripts/resources/AchievementData.gd" id="1_ach"]
+
+[resource]
+script = ExtResource("1_ach")
+id = &"rodney"
+tab = "Characters"
+order = 30
+unlocks_character = &"rodney"
+description = "Beat a traditional roguelike."
+scope = "lifetime"
+metric = "games_beaten"
+tag = ""
+game_type = "traditional"
+goal = 1

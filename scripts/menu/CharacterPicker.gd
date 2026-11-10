@@ -200,10 +200,14 @@ func _build() -> void:
 			state["tiles"][tid].call(tid == ch.id)
 		_fill_char_detail(detail_box, ch)
 		_fill_fracture_row(ch)
-		confirm.disabled = false
+		# A LOCKED hero can be looked at, not played (docs/achievements.md): the
+		# panel says what unlocks them and Confirm stays dark.
+		var locked: bool = Achievements.character_locked(ch.id)
+		confirm.disabled = locked
 		# The name is the detail panel's heading right beside this; the button
 		# carries it on hover rather than saying it twice.
-		confirm.tooltip_text = "Start as %s" % ch.display_name
+		confirm.tooltip_text = ("%s is locked. See Achievements." if locked
+			else "Start as %s") % ch.display_name
 
 	_select = select
 
@@ -220,14 +224,26 @@ func _build() -> void:
 	# first ROW 15px taller than rows 2 and 3. Levelled once the tiles have a size.
 	_equalise_tiles(grid)
 	random_btn.pressed.connect(func(): roll_random())
-	random_btn.disabled = _roster.size() < 2
+	random_btn.disabled = _playable().size() < 2
 	confirm.pressed.connect(func():
 		if String(state["id"]) != "":
 			_confirm(StringName(state["id"])))
 
-	# Preselect the first hero so the panel is never empty and Confirm is live.
-	if not roster.is_empty() and roster[0] is CharacterData:
-		select.call(roster[0])
+	# Preselect the first hero that can be played, so the panel is never empty and
+	# Confirm is live.
+	var open_heroes: Array[CharacterData] = _playable()
+	if not open_heroes.is_empty():
+		select.call(open_heroes[0])
+	elif not _roster.is_empty():
+		select.call(_roster[0])
+
+# The heroes a run can start as: everyone no unfinished achievement is holding back.
+func _playable() -> Array[CharacterData]:
+	var out: Array[CharacterData] = []
+	for ch in _roster:
+		if not Achievements.character_locked(ch.id):
+			out.append(ch)
+	return out
 
 # The row of Fracture levels for `ch`: a button per level, the one that will be
 # played lit, the locked ones greyed out, and the selected level's changes on
@@ -286,13 +302,17 @@ func _fill_fracture_row(ch: CharacterData) -> void:
 func roll_random() -> CharacterData:
 	if _roster.is_empty() or not _select.is_valid():
 		return null
+	# Never a locked hero: the dice hands off to Confirm, which would be dark.
+	var playable: Array[CharacterData] = _playable()
+	if playable.is_empty():
+		return null
 	var pool: Array[CharacterData] = []
 	var showing := String(_state.get("id", &""))
-	for ch in _roster:
+	for ch in playable:
 		if String(ch.id) != showing:
 			pool.append(ch)
 	if pool.is_empty():
-		pool = _roster
+		pool = playable
 	var pick: CharacterData = pool[randi() % pool.size()]
 	_select.call(pick)
 	return pick
@@ -338,6 +358,10 @@ func _character_tile(ch: CharacterData, state: Dictionary, select: Callable) -> 
 		# game cover's.
 		var icon := UITheme.crisp_tex(tex, 76)
 		icon.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		# A locked hero is their silhouette, as on the Achievements screen.
+		if Achievements.character_locked(ch.id):
+			icon.modulate = Color(0, 0, 0, 0.8)
+			tile.tooltip_text = "Locked. %s" % Achievements.for_character(ch.id).description
 		# kept so a costume changed in the detail panel shows on the token at once
 		(state.get_or_add("icons", {}) as Dictionary)[ch.id] = icon
 		vb.add_child(RankBadge.wrap_character(icon, ch.id))
@@ -381,6 +405,9 @@ func _fill_char_detail(box: HBoxContainer, ch: CharacterData) -> void:
 	for c in box.get_children():
 		box.remove_child(c)
 		c.queue_free()
+	if Achievements.character_locked(ch.id):
+		_fill_locked_detail(box, ch)
+		return
 
 	# LEFT: who they are — portrait, name, where they're from, how much Health.
 	var left := VBoxContainer.new()
@@ -485,6 +512,43 @@ func _fill_char_detail(box: HBoxContainer, ch: CharacterData) -> void:
 			reward.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 			reward.add_theme_color_override("font_color", UITheme.GOLD.lerp(UITheme.TEXT, 0.35))
 			right.add_child(reward)
+
+# A LOCKED HERO (docs/achievements.md): the silhouette, the name, and what unlocks
+# them with how close this profile has come — the same words the Achievements
+# screen uses. None of what they play like: that is what the unlock is for.
+func _fill_locked_detail(box: HBoxContainer, ch: CharacterData) -> void:
+	if _looks_box != null:
+		for c in _looks_box.get_children():
+			_looks_box.remove_child(c)
+			c.queue_free()
+	var a: AchievementData = Achievements.for_character(ch.id)
+	var col := VBoxContainer.new()
+	col.name = "Locked"
+	col.add_theme_constant_override("separation", UITheme.GAP_WIDE)
+	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	col.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	box.add_child(col)
+	if ch.shown_portrait() != null:
+		var portrait := UITheme.crisp_tex(ch.shown_portrait(), CHAR_PORTRAIT_SIZE)
+		portrait.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		portrait.modulate = Color(0, 0, 0, 0.8)
+		col.add_child(portrait)
+	var lines := [
+		[ch.display_name, UITheme.FONT_TITLE_LG, UITheme.GOLD],
+		["Locked", UITheme.FONT_SUB, UITheme.ACCENT],
+		[a.description, UITheme.FONT_LEAD, UITheme.TEXT],
+		[("Best in one run: %d of %d" if a.is_run_scope() else "So far: %d of %d")
+			% [Achievements.progress(a), a.goal], UITheme.FONT_LEAD,
+			Achievements.RUN_COLOR if a.is_run_scope() else Achievements.LIFETIME_COLOR],
+	]
+	for l in lines:
+		var lbl := Label.new()
+		lbl.text = String(l[0])
+		lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		lbl.add_theme_font_size_override("font_size", int(l[1]))
+		lbl.add_theme_color_override("font_color", l[2])
+		col.add_child(lbl)
 
 # THE COSTUMES, under the hero they dress (docs/customization.md; the owner, 8 Nov
 # 2026: "change costume/icon in character picker … shows silhouettes of locked

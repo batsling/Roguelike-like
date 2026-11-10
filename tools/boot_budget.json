@@ -4,6 +4,11 @@
   "files": 39,
   "kb": 23
  },
+ "data/achievements/": {
+  "eager_art_kb": 0,
+  "files": 3,
+  "kb": 2
+ },
  "data/bags2.0/": {
   "eager_art_kb": 0,
   "files": 7,
@@ -20,7 +25,7 @@
   "kb": 28
  },
  "data/characters2.0/": {
-  "eager_art_kb": 1869,
+  "eager_art_kb": 2033,
   "files": 15,
   "kb": 18
  },

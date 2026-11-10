@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="AchievementData" load_steps=2 format=3 uid="uid://ach_zoe"]
+
+[ext_resource type="Script" path="res://scripts/resources/AchievementData.gd" id="1_ach"]
+
+[resource]
+script = ExtResource("1_ach")
+id = &"zoe"
+tab = "Characters"
+order = 20
+unlocks_character = &"zoe"
+description = "Perfect 10 different games."
+scope = "lifetime"
+metric = "perfects"
+tag = ""
+game_type = ""
+goal = 10

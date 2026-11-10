@@ -546,6 +546,12 @@ func test_the_background_is_the_vortex_with_the_portal_in_it() -> void:
 
 # THE PORTAL stands round both rows' letters, and follows a row that is redrawn.
 func test_the_portal_stands_round_the_title_and_subtitle() -> void:
+	# STARTER LETTERS ONLY. Which logo letters are unlocked here is whatever the
+	# files before this one happened to draw, at random, and some of them stand a
+	# fraction of a pixel off the line: a title redrawn out of them moved the oval
+	# by 0.08 to 2.4px and failed "in the same place" (docs/test-flakes.md).
+	var was: Dictionary = TitleUnlocks._unlocked
+	TitleUnlocks._unlocked = {}
 	var menu = MENU.instantiate()
 	add_child_autofree(menu)
 	menu._build_title(_rng(6))
@@ -577,6 +583,7 @@ func test_the_portal_stands_round_the_title_and_subtitle() -> void:
 	assert_true(portal.oval.get_global_rect().encloses(menu.title_row.ink.get_global_rect()),
 		"still round a title drawn again")
 	assert_eq(portal.oval.get_global_rect().position.y, before.position.y, "and in the same place")
+	TitleUnlocks._unlocked = was
 
 
 # THE SUBTITLE'S WORDS stand further apart than the title's.

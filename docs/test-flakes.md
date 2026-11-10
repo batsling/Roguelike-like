@@ -67,6 +67,16 @@ failure; diffing a passing and failing run's Control tree) are the reusable part
     waits `wait_process_frames`, the clock the portal and layout run on.
     **`wait_frames` is deprecated in this GUT and means physics frames**: use
     `wait_process_frames` for anything that waits for layout, drawing or `_process`.
+  - The same portal test again (10 Nov 2026), failing "and in the same place" by
+    0.08 to 2.4px in the full suite and never on its own. The title it redraws
+    is spelled from whichever logo letters are unlocked, and by then that is a
+    random set drawn by the wins the earlier files recorded; some logo letters
+    stand a fraction of a pixel off the line, so a redraw could move the oval.
+    A probe that unlocked a random fifth of the letters sixty times moved it
+    twice (+0.74 and -0.09px); with starter letters only it never moved. The
+    test now empties `TitleUnlocks._unlocked` for itself and puts it back, as
+    the file's other tests do. **A test that draws the title is reading every
+    earlier file's random unlocks unless it sets them.**
   - `test_card_system.gd::test_simple_cards_of_the_set` (27 Oct 2026) got 2
     shields from Shrug it Off about one run in 400. The card it deals is random
     and reaches the pack before `card_used` fires for Shrug it Off, so a dealt
