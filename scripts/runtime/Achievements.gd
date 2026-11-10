@@ -79,7 +79,25 @@ static func measure(a: AchievementData) -> Dictionary:
 				if row is Dictionary:
 					n += int((row as Dictionary).get("perfects", 0))
 			return {"value": n, "held": []}
+		"games_beaten":
+			return {"value": games_beaten(a.game_type), "held": []}
 	return {"value": 0, "held": []}
+
+# How many DIFFERENT games this profile has beaten: all of them, or only those of
+# one type ("traditional"). A game no longer in the catalog has no type to match.
+static func games_beaten(game_type: String = "") -> int:
+	var n: int = 0
+	for id in GameStats.stats:
+		var row = GameStats.stats[id]
+		if not (row is Dictionary) or int((row as Dictionary).get("beaten", 0)) <= 0:
+			continue
+		if game_type == "":
+			n += 1
+			continue
+		var g: GameData = Data.get_game(StringName(id))
+		if g != null and String(GameData.GameType.keys()[g.type]).to_lower() == game_type:
+			n += 1
+	return n
 
 # What the screen shows: a lifetime count as it stands, a single-run one at its
 # best, neither past the goal.

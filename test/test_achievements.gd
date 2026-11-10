@@ -50,7 +50,7 @@ func test_every_achievement_unlocks_a_real_character_and_can_be_counted() -> voi
 			"%s unlocks a character in the roster" % a.id)
 		assert_ne(a.description, "", "%s says what to do" % a.id)
 		assert_gt(a.goal, 0, "%s has a goal" % a.id)
-		assert_true(["tagged_held", "perfects"].has(a.metric),
+		assert_true(["tagged_held", "perfects", "games_beaten"].has(a.metric),
 			"%s is counted a way Achievements.measure knows" % a.id)
 
 func test_the_tabs_are_read_off_the_achievements() -> void:
@@ -111,6 +111,32 @@ func test_a_profile_that_already_has_the_perfects_has_zoe_without_a_toast() -> v
 	assert_false(Achievements.character_locked(&"zoe"))
 	assert_eq(Notifications.history.size(), 0, "found at load, not announced")
 
+# --- across all runs: Rodney --------------------------------------------------------
+
+func _a_game_of_type(type: int) -> StringName:
+	for g in Data.all_games():
+		if (g as GameData).type == type:
+			return (g as GameData).id
+	return &""
+
+func test_rodney_is_unlocked_by_beating_a_traditional_roguelike() -> void:
+	var rodney: AchievementData = Data.get_achievement(&"rodney")
+	assert_true(Achievements.character_locked(&"rodney"))
+	GameStats.record_beaten(_a_game_of_type(GameData.GameType.DECKBUILDER))
+	assert_eq(Achievements.progress(rodney), 0, "a deckbuilder is not a traditional roguelike")
+	assert_true(Achievements.character_locked(&"rodney"))
+	GameStats.record_beaten(_a_game_of_type(GameData.GameType.TRADITIONAL))
+	assert_false(Achievements.character_locked(&"rodney"), "one traditional game beaten")
+	assert_true(Notifications.history.any(func(n) -> bool:
+		return String(n["text"]).contains("Rodney")), "and a toast says so")
+
+func test_games_beaten_counts_different_games() -> void:
+	var g: StringName = _a_game_of_type(GameData.GameType.TRADITIONAL)
+	GameStats.record_beaten(g)
+	GameStats.record_beaten(g)
+	assert_eq(Achievements.games_beaten("traditional"), 1, "one game beaten twice is one")
+	assert_eq(Achievements.games_beaten(), 1)
+
 # --- what is kept -------------------------------------------------------------------
 
 func test_progress_survives_a_save_and_a_load() -> void:
@@ -162,9 +188,9 @@ func test_the_screen_says_how_each_is_counted_and_how_close() -> void:
 	assert_true(text.contains("IN ONE RUN") and text.contains("ACROSS ALL RUNS"))
 	assert_true(text.contains("Best in one run: 2 of 3"), "Manager's best run")
 	assert_true(text.contains("So far: 4 of 10"), "Zoe's running total")
-	assert_true(text.contains("0 of 2 unlocked"))
+	assert_true(text.contains("0 of 3 unlocked"))
 	var tab := s.find_child("Tab0", true, false) as Button
-	assert_eq(tab.text, "Characters  0 / 2", "the Characters tab, with its count")
+	assert_eq(tab.text, "Characters  0 / 3", "the Characters tab, with its count")
 	var sockets := s.find_child("Row_manager", true, false).find_child("Sockets", true, false)
 	assert_eq(sockets.get_child_count(), 3, "a socket per coin")
 	assert_eq(sockets.get_children().filter(func(c) -> bool: return c.get_meta("lit")).size(), 2)

@@ -11,4 +11,6 @@ unlocks_character = &"zoe"
 description = "Perfect 10 games."
 scope = "lifetime"
 metric = "perfects"
+tag = ""
+game_type = ""
 goal = 10

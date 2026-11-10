@@ -11,6 +11,14 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Achievements come from the workbook, and Rodney is the third.** A new
+  `achievements` sheet (`Tab | Unlocks | Description | Counted | Condition |
+  Goal`) is written out by `tools/generate_achievement_tres.py` into
+  `data/achievements/`, which is no longer hand-written; `check_data_sync`
+  holds it to the sheet. Rodney is locked until a traditional roguelike has
+  been beaten (`beat games traditional`, a new `games_beaten` count of
+  different games, optionally of one type).
+
 - **Achievements, and two locked characters.** A new screen off the main menu
   (★ Achievements, in the top row beside Customization) lists what there is to
   unlock, with a tab per kind of unlock: Characters is the only one so far.

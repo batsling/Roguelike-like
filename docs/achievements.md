@@ -11,6 +11,7 @@ chose the layout (rows, with a meter that fits how each one is counted).
 |---|---|---|---|
 | `manager` | Manager (Raccoin: Coin Pusher Roguelike) | in one run | Hold 3 different coin-tagged items or loot at the same time |
 | `zoe` | Zoe (Haste) | across all runs | Perfect 10 games |
+| `rodney` | Rodney | across all runs | Beat a traditional roguelike |
 
 A character named by an achievement is **locked** until it is done. Every other
 character is playable from the start.
@@ -32,6 +33,8 @@ What is counted is the `metric`:
   passive piece the Smelter took out of it. Two copies of one trinket are one.
 - `perfects` — every perfected game, summed over all games (ten perfects of one
   game count as ten).
+- `games_beaten` — how many **different** games have been beaten; with a
+  `game_type` (`traditional`), only games of that type.
 
 Once done, an achievement stays done on that profile.
 
@@ -39,7 +42,7 @@ Once done, an achievement stays done on that profile.
 
 | What | Where |
 |---|---|
-| One achievement | `data/achievements/<id>.tres`, an `AchievementData` (`scripts/resources/AchievementData.gd`). Written by hand: there is no sheet for them yet |
+| One achievement | a row of the `achievements` sheet of `tools/Roguelikes.xlsx`, written out by `tools/generate_achievement_tres.py` as `data/achievements/<id>.tres`, an `AchievementData` (`scripts/resources/AchievementData.gd`). Edit the sheet, not the files |
 | The rules | `scripts/runtime/Achievements.gd` — `measure`, `progress`, `is_done`, `character_locked`, `check` |
 | What a profile has done | `GameStats.achievements` (`id -> {best, done, held}`), saved in `game_stats.json` |
 | The screen | `scripts/ui/AchievementsScreen.gd`, opened by the main menu's ★ Achievements button |
@@ -50,13 +53,32 @@ Once done, an achievement stays done on that profile.
 (`GameState.inventory_changed`) and whenever the stats do (`GameStats.changed`).
 It only looks at achievements still open. Finishing one raises a toast.
 
+## The sheet
+
+`achievements`: `Tab | Unlocks | Description | Counted | Condition | Goal`, one
+row per achievement, listed on the screen in sheet order.
+
+| Column | What goes in it |
+|---|---|
+| Tab | the tab it is filed under (`Characters`). A new name is a new tab |
+| Unlocks | the character, by name or id as in the `characters` sheet. One row per character at most |
+| Description | the sentence the player reads |
+| Counted | `one run` or `all runs` |
+| Condition | `hold <tag>` (one run), `perfect games` (all runs), or `beat games [<type>]` (all runs; type is `action`, `strategy`, `deckbuilder` or `traditional`) |
+| Goal | how many it takes |
+
 ## Adding one
 
-1. Write `data/achievements/<id>.tres` with a `tab`, an `order`, the character
-   it unlocks, a one-sentence `description`, a `scope`, a `metric` and a `goal`.
-2. If it is counted a new way, add the metric to `AchievementData`'s enum and to
-   `Achievements.measure`.
-3. A new `tab` name is a new tab on the screen by itself.
+1. Add a row to the `achievements` sheet.
+2. `python3 tools/generate_achievement_tres.py`. It refuses, by name, a
+   character that does not exist, a Condition it cannot read, and a Condition
+   counted the wrong way (`hold` across all runs).
+3. If it is counted a new way, add the clause to the generator's
+   `parse_condition`, the metric to `AchievementData`'s enum and the count to
+   `Achievements.measure`, in the same commit.
+
+The folder is rewritten, not added to: a row deleted from the sheet takes its
+achievement with it. `check_data_sync.py` (CI) holds the folder to the sheet.
 
 ## Things to know
 

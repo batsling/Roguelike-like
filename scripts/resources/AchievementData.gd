@@ -6,6 +6,9 @@ extends Resource
 # the screen files it under the tab named here, so a later kind of unlock is a new
 # tab and a new field rather than a new screen.
 #
+# GENERATED from the `achievements` sheet by tools/generate_achievement_tres.py;
+# a field added here goes into the generator in the same commit.
+#
 # The rules that read these are `scripts/runtime/Achievements.gd`; what the player
 # has done toward each is kept per profile in `GameStats.achievements`.
 
@@ -31,8 +34,11 @@ extends Resource
 #   tagged_held  how many DIFFERENT relics and pieces of loot carrying `tag` the
 #                run is holding at once
 #   perfects     how many games have been perfected, in total
-@export_enum("tagged_held", "perfects") var metric: String = "tagged_held"
+#   games_beaten how many DIFFERENT games have been beaten — of `game_type`
+#                (GameData.GameType by name, lower case) when one is given
+@export_enum("tagged_held", "perfects", "games_beaten") var metric: String = "tagged_held"
 @export var tag: String = ""
+@export var game_type: String = ""
 
 # How many it takes.
 @export var goal: int = 1
