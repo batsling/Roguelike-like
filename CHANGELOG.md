@@ -11,6 +11,10 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Zoe counts different perfected games.** `perfect games` is how many
+  DIFFERENT games have been perfected, not every perfect: one game perfected ten
+  times is one. Her row reads "Perfect 10 different games."
+
 - **Achievements come from the workbook, and Rodney is the third.** A new
   `achievements` sheet (`Tab | Unlocks | Description | Counted | Condition |
   Goal`) is written out by `tools/generate_achievement_tres.py` into

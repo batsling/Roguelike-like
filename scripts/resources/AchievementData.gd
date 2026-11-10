@@ -33,7 +33,7 @@ extends Resource
 # WHAT IS COUNTED (Achievements.measure):
 #   tagged_held  how many DIFFERENT relics and pieces of loot carrying `tag` the
 #                run is holding at once
-#   perfects     how many games have been perfected, in total
+#   perfects     how many DIFFERENT games have been perfected
 #   games_beaten how many DIFFERENT games have been beaten — of `game_type`
 #                (GameData.GameType by name, lower case) when one is given
 @export_enum("tagged_held", "perfects", "games_beaten") var metric: String = "tagged_held"

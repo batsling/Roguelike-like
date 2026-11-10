@@ -10,7 +10,7 @@ chose the layout (rows, with a meter that fits how each one is counted).
 | Achievement | Unlocks | Counted | Condition |
 |---|---|---|---|
 | `manager` | Manager (Raccoin: Coin Pusher Roguelike) | in one run | Hold 3 different coin-tagged items or loot at the same time |
-| `zoe` | Zoe (Haste) | across all runs | Perfect 10 games |
+| `zoe` | Zoe (Haste) | across all runs | Perfect 10 different games |
 | `rodney` | Rodney | across all runs | Beat a traditional roguelike |
 
 A character named by an achievement is **locked** until it is done. Every other
@@ -24,15 +24,15 @@ character is playable from the start.
   lowers it.
 - **Across all runs** (`scope = "lifetime"`): it adds up over every run and is
   read off the stats the game already keeps. A profile that had perfected ten
-  games before this existed has Zoe from its first boot, with no toast.
+  different games before this existed has Zoe from its first boot, with no toast.
 
 What is counted is the `metric`:
 
 - `tagged_held` — how many **different** relics and pieces of loot carrying
   `tag` the run holds at once: relics on the shelf, loot in the pack, and a
   passive piece the Smelter took out of it. Two copies of one trinket are one.
-- `perfects` — every perfected game, summed over all games (ten perfects of one
-  game count as ten).
+- `perfects` — how many **different** games have been perfected (one game
+  perfected ten times is one).
 - `games_beaten` — how many **different** games have been beaten; with a
   `game_type` (`traditional`), only games of that type.
 

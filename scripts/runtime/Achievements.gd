@@ -74,10 +74,12 @@ static func measure(a: AchievementData) -> Dictionary:
 			var held: Array = held_with_tag(a.tag)
 			return {"value": held.size(), "held": held}
 		"perfects":
+			# DIFFERENT games (the owner, 10 Nov 2026): one game perfected ten
+			# times is one.
 			var n: int = 0
 			for row in GameStats.stats.values():
-				if row is Dictionary:
-					n += int((row as Dictionary).get("perfects", 0))
+				if row is Dictionary and int((row as Dictionary).get("perfects", 0)) > 0:
+					n += 1
 			return {"value": n, "held": []}
 		"games_beaten":
 			return {"value": games_beaten(a.game_type), "held": []}

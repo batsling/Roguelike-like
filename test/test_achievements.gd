@@ -105,19 +105,24 @@ func test_a_thing_without_the_tag_does_not_count() -> void:
 
 # --- across all runs: Zoe -----------------------------------------------------------
 
-func test_zoe_counts_every_perfected_game_across_runs() -> void:
+func test_zoe_counts_different_perfected_games_across_runs() -> void:
 	assert_true(Achievements.character_locked(&"zoe"))
 	for i in 9:
-		GameStats.record_perfect("game_%d" % (i % 4))
-	assert_eq(Achievements.progress(_zoe()), 9, "nine perfects, over four games")
+		GameStats.record_perfect("game_%d" % i)
+	for i in 5:
+		GameStats.record_perfect("game_0")
+	assert_eq(Achievements.progress(_zoe()), 9,
+		"nine DIFFERENT games: perfecting one of them again adds nothing")
 	assert_true(Achievements.character_locked(&"zoe"))
-	GameStats.record_perfect("game_0")
-	assert_false(Achievements.character_locked(&"zoe"), "the tenth unlocks her")
+	GameStats.record_perfect("game_9")
+	assert_false(Achievements.character_locked(&"zoe"), "the tenth game unlocks her")
 	GameStats.stats = {}
 	assert_false(Achievements.character_locked(&"zoe"), "and nothing locks her again")
 
 func test_a_profile_that_already_has_the_perfects_has_zoe_without_a_toast() -> void:
-	GameStats.stats = {"hades": {"beaten": 12, "amulets": 0, "perfects": 12}}
+	GameStats.stats = {}
+	for i in 10:
+		GameStats.stats["game_%d" % i] = {"beaten": 1, "amulets": 0, "perfects": 1}
 	Achievements.check(false)
 	assert_false(Achievements.character_locked(&"zoe"))
 	assert_eq(Notifications.history.size(), 0, "found at load, not announced")
@@ -191,7 +196,7 @@ func test_the_screen_says_how_each_is_counted_and_how_close() -> void:
 	Fx.trinket(self, &"burnt_penny", 0)
 	Fx.give(self, &"old_coin")
 	for i in 4:
-		GameStats.record_perfect("hades")
+		GameStats.record_perfect("game_%d" % i)
 	var s := AchievementsScreen.open(self)
 	autofree(s)
 	await wait_frames(2)

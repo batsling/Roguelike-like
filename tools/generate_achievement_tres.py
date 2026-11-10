@@ -21,7 +21,8 @@ CONDITION GRAMMAR — one clause:
 
   hold <tag>           how many DIFFERENT items and pieces of loot carrying
                        <tag> the run holds at once. `one run` only.
-  perfect games        how many games have been perfected. `all runs` only.
+  perfect games        how many DIFFERENT games have been perfected. `all runs`
+                       only.
   beat games [<type>]  how many DIFFERENT games have been beaten; with a type
                        (action, strategy, deckbuilder, traditional) only games
                        of that type. `all runs` only.
