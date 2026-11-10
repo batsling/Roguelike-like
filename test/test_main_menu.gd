@@ -221,18 +221,28 @@ func test_extras_swaps_the_list_in_place_and_each_entry_opens_its_screen() -> vo
 	assert_false(list.visible, "Back leaves it")
 	assert_true(main.visible, "for the main buttons")
 
-# THE BUTTONS STAND IN THE PORTAL WITH THE TITLE: the oval reaches round
-# whichever list is showing, and is measured again when Extras swaps them.
-func test_the_portal_holds_the_buttons_that_are_showing() -> void:
+# THE BUTTONS ARE UNDER THE PORTAL, NOT IN IT: the oval is the title's alone,
+# and each button's letters have a glow behind them in place of a box.
+func test_the_buttons_glow_and_stand_outside_the_portal() -> void:
 	var menu = _menu()
 	await wait_frames(4)
-	var oval: Control = menu.portal.oval
-	assert_true(oval.get_global_rect().encloses(menu.get_node("Below/Buttons").get_global_rect()),
-		"the main buttons are inside the portal")
-	menu.show_extras(true)
-	await wait_frames(4)
-	assert_true(oval.get_global_rect().encloses(menu.get_node("%ExtrasList").get_global_rect()),
-		"and so is the Extras list once it is showing")
+	var oval: Rect2 = menu.portal.oval.get_global_rect()
+	for row in [menu.title_row, menu.subtitle_row]:
+		assert_true(oval.encloses(row.ink.get_global_rect()), "the portal is round the title")
+	for name in ["CustomRunBtn", "ExtrasBtn", "SettingsBtn"]:
+		var b: Button = menu.get_node("%" + name)
+		assert_gt(b.get_global_rect().position.y, oval.end.y, "%s is below the portal" % name)
+	var b: Button = menu.get_node("%SettingsBtn")
+	assert_eq((b.get_theme_stylebox("normal") as StyleBoxFlat).bg_color.a, 0.0, "no box")
+	var row: TitleLetters = menu._button_rows[b]
+	var glow = row.get_meta("glow")
+	assert_eq(glow.get_parent(), b, "a glow on the button")
+	assert_lt(glow.get_index(), row.get_index(), "behind its letters")
+	assert_eq(glow.tint, menu.GLOW, "at rest")
+	b.mouse_entered.emit()
+	assert_eq(glow.tint, menu.GLOW_LIT, "brighter under the mouse")
+	b.mouse_exited.emit()
+	assert_eq(glow.tint, menu.GLOW, "and back")
 
 
 # THE BUTTONS ARE SPELLED LIKE THE TITLE: a row of logo letters over each one,

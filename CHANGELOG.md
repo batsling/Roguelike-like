@@ -15,12 +15,13 @@ For how the project is laid out and how its systems fit together, see
   menu (the five under the title, Exit, the profile's name, the Extras list) is
   drawn the way the title is: a `TitleLetters` row from the same earned pool,
   rolled again every launch and whenever the pool changes. The buttons have no
-  box: they stand in the portal with the title, which now reaches round
-  whichever list is showing (`MenuPortal.holds`). Extras is no longer a
-  pop-over; its list takes the main buttons' place in the portal, and Back or
-  Esc returns. The two corner buttons, over the red, keep a dark plate. A label
-  the pool cannot spell (a profile name with a character Rogue's font lacks)
-  keeps its plain text.
+  box: they stand under the portal, over the red, and each letter has a soft
+  glow behind it in the portal's colour (`MainMenu.LetterGlow`), warmer and
+  brighter on the hovered one. Plates in the portal's blue and buttons inside
+  the portal were both tried first. Extras is no longer a pop-over; its list
+  takes the main buttons' place, and Back or Esc returns. A label the pool
+  cannot spell (a profile name with a character Rogue's font lacks) keeps its
+  plain text.
 
 - **The main menu is five buttons.** Start Run, Continue (when there is a
   save), Custom Run, Extras and Settings under the title; the profile, the radio

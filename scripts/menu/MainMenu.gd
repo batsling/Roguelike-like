@@ -149,8 +149,6 @@ func _mount_portal() -> void:
 	portal = MenuPortal.mount(self, func() -> Array: return [title_row, subtitle_row])
 	portal.art = _art
 	portal.vortex = (%Background as ColorRect).material
-	# ...and the buttons under it: the main five, or the Extras list in their place.
-	portal.holds = func() -> Array: return [_main_buttons, %ExtrasList]
 	move_child(portal, _art.get_index())
 
 # The title and subtitle, spelled in letters cut from roguelike logos and drawn
@@ -199,15 +197,56 @@ func _on_unlock_everything_changed(_on: bool) -> void:
 # button in its place. A label the pool cannot spell in full (a profile name
 # with a character Rogue's font has not got) keeps its plain text instead.
 #
-# THERE IS NO BOX. The buttons stand in the portal with the title, straight on
-# its blue (the owner, 10 Nov 2026: plates did not look right), and the portal
-# reaches round them. The hovered or focused one gets a gold edge and its
-# letters at full strength. The two corner buttons (the profile, Exit) are
-# outside the portal, over the red, and keep a dark plate so their letters read.
+# THERE IS NO BOX, ONLY A GLOW. The buttons stand under the portal, over the
+# red, and each letter has a soft light behind it in the portal's colour
+# (LetterGlow), which is what lets a black logo letter read on the dark rift.
+# The owner tried the other two first (10 Nov 2026): plates in the portal's
+# blue, then the buttons inside the portal itself. The hovered or focused one
+# glows brighter and warmer, with its letters at full strength.
 const BUTTON_LETTERS := 24.0     # a letter's height on an ordinary button
 const START_LETTERS := 36.0      # ...and on Start Run
-const CORNER_PLATE := Color(0, 0, 0, 0.45)
 const LETTER_MARGIN := 14.0      # kept clear either side of the word
+const GLOW := Color(0.70, 1.0, 0.97, 0.6)
+const GLOW_LIT := Color(1.0, 0.92, 0.6, 0.8)
+# A letter's halo, across, of the line height.
+const GLOW_REACH := 2.3
+
+# The light behind a row's letters: one soft disc per letter, so the glow is the
+# shape of the word. Drawn under the row, redrawn when the row moves.
+class LetterGlow extends Control:
+	static var disc: GradientTexture2D = null
+	var row: TitleLetters
+	var tint := Color.WHITE
+
+	func _init(r: TitleLetters) -> void:
+		row = r
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		if disc == null:
+			var g := Gradient.new()
+			g.set_color(0, Color(1, 1, 1, 1))
+			g.set_color(1, Color(1, 1, 1, 0))
+			g.add_point(0.45, Color(1, 1, 1, 0.5))
+			disc = GradientTexture2D.new()
+			disc.gradient = g
+			disc.fill = GradientTexture2D.FILL_RADIAL
+			disc.fill_from = Vector2(0.5, 0.5)
+			disc.fill_to = Vector2(1.0, 0.5)
+			disc.width = 64
+			disc.height = 64
+		row.resized.connect(queue_redraw)
+
+	func light(c: Color) -> void:
+		tint = c
+		queue_redraw()
+
+	func _draw() -> void:
+		if not is_instance_valid(row):
+			return
+		var r: float = row.line_height * GLOW_REACH * 0.5
+		for p in row.placed:
+			var c: Vector2 = row.position + row.ink.position + p.body.get_center()
+			draw_texture_rect(disc, Rect2(c - Vector2(r, r), Vector2(r, r) * 2.0), false, tint)
+
 const LETTERS_REST := Color(0.9, 0.9, 0.9)
 
 var _button_rows: Dictionary = {}    # Button -> its TitleLetters row
@@ -233,23 +272,21 @@ func _spell_buttons() -> void:
 func _spell_button(btn: Button) -> void:
 	if not btn.has_meta("lettered"):
 		btn.set_meta("lettered", true)
-		var plate := CORNER_PLATE if btn.name in [&"ProfileBtn", &"QuitBtn"] else Color(0, 0, 0, 0)
-		var rest := UITheme.flat(plate, 8, 6)
-		var lit := UITheme.flat(plate, 8, 6, 2, UITheme.GOLD)
-		for state in ["normal", "disabled"]:
-			btn.add_theme_stylebox_override(state, rest)
-		for state in ["hover", "pressed", "focus", "hover_pressed"]:
-			btn.add_theme_stylebox_override(state, lit)
+		var clear := UITheme.flat(Color(0, 0, 0, 0), 8, 6)
+		for state in ["normal", "disabled", "hover", "pressed", "focus", "hover_pressed"]:
+			btn.add_theme_stylebox_override(state, clear)
 		var light := func(on: bool) -> void:
 			var r: TitleLetters = _button_rows.get(btn)
 			if r != null and is_instance_valid(r):
 				r.modulate = Color.WHITE if on else LETTERS_REST
+				(r.get_meta("glow") as LetterGlow).light(GLOW_LIT if on else GLOW)
 		btn.mouse_entered.connect(light.bind(true))
 		btn.mouse_exited.connect(light.bind(false))
 		btn.focus_entered.connect(light.bind(true))
 		btn.focus_exited.connect(light.bind(false))
 	var old: TitleLetters = _button_rows.get(btn)
 	if old != null and is_instance_valid(old):
+		(old.get_meta("glow") as Node).queue_free()
 		old.queue_free()
 	_button_rows.erase(btn)
 	# What the letters spell: the button's text without its glyph (📖 🏆 ⏻ 👤),
@@ -278,6 +315,11 @@ func _spell_button(btn: Button) -> void:
 	if fixed <= 0.0:
 		btn.custom_minimum_size.x = row.ink_width + 2.0 * LETTER_MARGIN
 	row.modulate = LETTERS_REST
+	var glow := LetterGlow.new(row)
+	glow.tint = GLOW
+	row.set_meta("glow", glow)
+	btn.add_child(glow)
+	glow.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	btn.add_child(row)
 	row.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_button_rows[btn] = row
@@ -340,9 +382,8 @@ func _build_profile_row() -> void:
 # buttons").
 #
 # Extras SWAPS THE LIST IN PLACE: the main buttons step out and the scene's
-# %ExtrasList stands where they were, in the same portal, which re-measures
-# itself round whichever is showing (MenuPortal.holds). It was a pop-over on a
-# dark panel first, which had nothing to do with the portal the buttons are in.
+# %ExtrasList stands where they were, under the title. It was a pop-over on a
+# dark panel first, which looked like nothing else on the menu.
 # The list stays while one of its screens is open, so closing the Collection
 # lands back on it; Back or Esc returns to the main buttons.
 @onready var _main_buttons: Control = %StartRunBtn.get_parent()

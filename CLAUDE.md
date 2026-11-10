@@ -54,8 +54,8 @@ the honour system.
   Continue, Custom Run, Extras, Settings — and the six screens you look at
   rather than play (the manual, Collection, Run History, Tier List,
   Achievements, Customization) are in the Extras list, which takes their place.
-  Every button is spelled in logo letters like the title (`_spell_button`) and
-  stands in the portal, which reaches round whichever list is showing.
+  Every button is spelled in logo letters like the title (`_spell_button`),
+  with no box: a glow behind each letter (`LetterGlow`), under the portal.
 - **30 autoloads** in `scripts/autoload/`, registered in `project.godot`. The ones
   that matter most: `GameState` (run-persistent state), `Data` (loads every
   `.tres` and serves it by id), `GameLoop2` (the run loop — `Overworld2` is a view
