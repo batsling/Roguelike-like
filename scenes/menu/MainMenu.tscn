@@ -65,7 +65,7 @@ unique_name_in_owner = true
 layout_mode = 2
 tooltip_text = "Switch profile"
 text = "👤  Player"
-custom_minimum_size = Vector2(0, 45)
+custom_minimum_size = Vector2(0, 48)
 
 [node name="Below" type="VBoxContainer" parent="."]
 layout_mode = 1
@@ -89,7 +89,7 @@ theme_override_constants/separation = 8
 unique_name_in_owner = true
 layout_mode = 2
 text = "Start Run"
-custom_minimum_size = Vector2(400, 60)
+custom_minimum_size = Vector2(480, 64)
 
 [node name="ContinueBtn" type="Button" parent="Below/Buttons"]
 unique_name_in_owner = true
@@ -174,43 +174,43 @@ theme_override_colors/font_color = Color(1, 0.8, 0.4, 1)
 unique_name_in_owner = true
 layout_mode = 2
 text = "📖 How to Play"
-custom_minimum_size = Vector2(320, 44)
+custom_minimum_size = Vector2(340, 48)
 
 [node name="CollectionBtn" type="Button" parent="ExtrasOverlay/Center/ExtrasPanel/List"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "Collection"
-custom_minimum_size = Vector2(320, 44)
+custom_minimum_size = Vector2(340, 48)
 
 [node name="RunHistoryBtn" type="Button" parent="ExtrasOverlay/Center/ExtrasPanel/List"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "Run History"
-custom_minimum_size = Vector2(320, 44)
+custom_minimum_size = Vector2(340, 48)
 
 [node name="TierListBtn" type="Button" parent="ExtrasOverlay/Center/ExtrasPanel/List"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "🏆 Tier List"
-custom_minimum_size = Vector2(320, 44)
+custom_minimum_size = Vector2(340, 48)
 
 [node name="AchievementsBtn" type="Button" parent="ExtrasOverlay/Center/ExtrasPanel/List"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "★ Achievements"
-custom_minimum_size = Vector2(320, 44)
+custom_minimum_size = Vector2(340, 48)
 
 [node name="CustomizeBtn" type="Button" parent="ExtrasOverlay/Center/ExtrasPanel/List"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "✦ Customization"
-custom_minimum_size = Vector2(320, 44)
+custom_minimum_size = Vector2(340, 48)
 
 [node name="ExtrasBackBtn" type="Button" parent="ExtrasOverlay/Center/ExtrasPanel/List"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "Back"
-custom_minimum_size = Vector2(320, 44)
+custom_minimum_size = Vector2(340, 48)
 
 [node name="ModalLayer" type="Control" parent="."]
 unique_name_in_owner = true

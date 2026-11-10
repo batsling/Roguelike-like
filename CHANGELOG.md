@@ -11,6 +11,14 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The menu's buttons are spelled in logo letters.** Every button on the main
+  menu (the five under the title, Exit, the profile's name, the Extras list) is
+  drawn the way the title is: a `TitleLetters` row from the same earned pool,
+  rolled again every launch and whenever the pool changes. The boxes are plates
+  in the portal's blue, since logo letters are every colour and the black ones
+  vanished on the UI's dark panel. A label the pool cannot spell (a profile name
+  with a character Rogue's font lacks) keeps its plain text.
+
 - **The main menu is five buttons.** Start Run, Continue (when there is a
   save), Custom Run, Extras and Settings under the title; the profile, the radio
   and Exit in three corners. The manual, Collection, Run History, Tier List,

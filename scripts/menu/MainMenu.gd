@@ -64,6 +64,7 @@ func _ready() -> void:
 	# The pop-over goes over both corners: nothing on the menu under it is live.
 	move_child(_save_overlay, _modal_layer.get_index() - 1)
 	move_child(%ExtrasOverlay, _modal_layer.get_index() - 1)
+	_spell_buttons()
 
 # ---------------------------------------------------------------------------
 # Menu styling
@@ -97,16 +98,8 @@ func _style_menu() -> void:
 	# 14px on a 1280 canvas it read as a small island in a lot of dark. The scene
 	# carries the 1.25x sizes; the fonts go up a step here (14 -> 18), since a
 	# button's text size is the theme's until something overrides it.
-	for btn in [%ProfileBtn, %CustomRunBtn, %ContinueBtn, %ExtrasBtn, %SettingsBtn, %QuitBtn,
-			%HowToPlayBtn, %CollectionBtn, %RunHistoryBtn, %TierListBtn, %AchievementsBtn,
-			%CustomizeBtn, %ExtrasBackBtn]:
+	for btn in _letter_buttons():
 		(btn as Button).add_theme_font_size_override("font_size", MENU_FONT)
-	# Make the primary action stand out — a stylebox, which a scene cannot share
-	# with the theme the way it can a colour.
-	var start := %StartRunBtn as Button
-	start.add_theme_stylebox_override("normal", UITheme.accent_box(UITheme.ACCENT, UITheme.PANEL_HI, 8))
-	start.add_theme_color_override("font_color", UITheme.GOLD)
-	start.add_theme_font_size_override("font_size", UITheme.FONT_DISPLAY)
 
 # The game's own art falling past, down both sides of the button column. Mounted
 # as the FIRST child so it draws under everything else in the scene — the
@@ -189,6 +182,104 @@ func _build_title(rng: RandomNumberGenerator = null) -> void:
 func _on_unlock_everything_changed(_on: bool) -> void:
 	_reroll(true)
 	_reroll(false)
+	_spell_buttons()
+
+# ---------------------------------------------------------------------------
+# The buttons, spelled like the title
+# ---------------------------------------------------------------------------
+
+# EVERY BUTTON ON THE MENU IS SPELLED IN LOGO LETTERS, the way the title is
+# (owner, 10 Nov 2026): the same pool (TitleLetters.available — Rogue's own
+# letters until a rank has paid others), drawn again every launch, and again
+# when the pool changes (Customization closing, Unlock everything).
+#
+# The Button keeps its `text` — the scene previews it, tests and screen readers
+# read it — but draws it transparent, and a TitleLetters row is laid over the
+# button in its place. A label the pool cannot spell in full (a profile name
+# with a character Rogue's font has not got) keeps its plain text instead.
+#
+# THE BOX IS A PIECE OF THE PORTAL: a plate in the blue the title stands on,
+# with no border. Logo letters are every colour, a good many of them black, and
+# on the UI's own dark panel those vanished; the title reads because of what is
+# behind it, so the buttons get the same. The hovered or focused one is brighter,
+# with a gold edge and its letters at full strength.
+const BUTTON_LETTERS := 24.0     # a letter's height on an ordinary button
+const START_LETTERS := 36.0      # ...and on Start Run
+const PLATE := Color(0.30, 0.74, 0.74, 0.80)
+const PLATE_LIT := Color(0.50, 0.93, 0.90, 0.95)
+const LETTER_MARGIN := 14.0      # kept clear either side of the word
+const LETTERS_REST := Color(0.9, 0.9, 0.9)
+
+var _button_rows: Dictionary = {}    # Button -> its TitleLetters row
+var _button_rng := RandomNumberGenerator.new()
+
+# Looked up ONCE, before anything is moved: Exit leaves the scene's tree for its
+# corner (_move_quit_to_corner), and a node taken out of its owner no longer
+# answers to %QuitBtn.
+var _lettered: Array = []
+
+func _letter_buttons() -> Array:
+	if _lettered.is_empty():
+		_lettered = [%StartRunBtn, %ContinueBtn, %CustomRunBtn, %ExtrasBtn, %SettingsBtn,
+			%QuitBtn, %ProfileBtn, %HowToPlayBtn, %CollectionBtn, %RunHistoryBtn,
+			%TierListBtn, %AchievementsBtn, %CustomizeBtn, %ExtrasBackBtn]
+	return _lettered
+
+func _spell_buttons() -> void:
+	_button_rng.randomize()
+	for b in _letter_buttons():
+		_spell_button(b)
+
+func _spell_button(btn: Button) -> void:
+	if not btn.has_meta("lettered"):
+		btn.set_meta("lettered", true)
+		var rest := UITheme.flat(PLATE, 8, 6)
+		var lit := UITheme.flat(PLATE_LIT, 8, 6, 2, UITheme.GOLD)
+		for state in ["normal", "disabled"]:
+			btn.add_theme_stylebox_override(state, rest)
+		for state in ["hover", "pressed", "focus", "hover_pressed"]:
+			btn.add_theme_stylebox_override(state, lit)
+		var light := func(on: bool) -> void:
+			var r: TitleLetters = _button_rows.get(btn)
+			if r != null and is_instance_valid(r):
+				r.modulate = Color.WHITE if on else LETTERS_REST
+		btn.mouse_entered.connect(light.bind(true))
+		btn.mouse_exited.connect(light.bind(false))
+		btn.focus_entered.connect(light.bind(true))
+		btn.focus_exited.connect(light.bind(false))
+	var old: TitleLetters = _button_rows.get(btn)
+	if old != null and is_instance_valid(old):
+		old.queue_free()
+	_button_rows.erase(btn)
+	# What the letters spell: the button's text without its glyph (📖 🏆 ⏻ 👤),
+	# which no logo has.
+	# Only a leading glyph goes: a name with an accent in it is not spelled with
+	# the accent dropped, it stays plain text (below).
+	var word := btn.text.strip_edges()
+	var cut := word.find(" ")
+	if cut > 0 and word.unicode_at(0) >= 128:
+		word = word.substr(cut).strip_edges()
+	var fixed: float = btn.get_meta("fixed_width", btn.custom_minimum_size.x)
+	btn.set_meta("fixed_width", fixed)
+	var row := TitleLetters.make(word, START_LETTERS if btn.name == &"StartRunBtn" else BUTTON_LETTERS,
+		_button_rng, false, maxf(fixed - 2.0 * LETTER_MARGIN, 0.0))
+	var spelled := row.placed.size() == word.replace(" ", "").length() and not row.placed.is_empty()
+	for state in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color",
+			"font_hover_pressed_color", "font_disabled_color"]:
+		if spelled:
+			btn.add_theme_color_override(state, Color(0, 0, 0, 0))
+		else:
+			btn.remove_theme_color_override(state)
+	if not spelled:
+		row.free()
+		return
+	# A button with no width of its own (the profile's) is as wide as its word.
+	if fixed <= 0.0:
+		btn.custom_minimum_size.x = row.ink_width + 2.0 * LETTER_MARGIN
+	row.modulate = LETTERS_REST
+	btn.add_child(row)
+	row.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_button_rows[btn] = row
 
 # Draw the title (or the subtitle) again in place of the one showing.
 func _reroll(title: bool) -> void:
@@ -285,8 +376,8 @@ func _unhandled_input(event: InputEvent) -> void:
 # deals the visible ones after Start Run into rows of two (HBoxes named Row0…),
 # and is run again whenever Continue comes or goes, so an odd one out is centred
 # on a row of its own rather than leaving a hole.
-const GRID_W := 196.0
-const GRID_H := 48.0
+const GRID_W := 236.0
+const GRID_H := 52.0
 
 var _arrange_pending := false
 # Set while the rows are being dealt: moving a button between parents can raise
@@ -374,7 +465,7 @@ func _move_quit_to_corner() -> void:
 			and _modal_layer.get_parent() == self:
 		move_child(corner, _modal_layer.get_index())
 
-	quit_btn.custom_minimum_size = Vector2(188, 45)
+	quit_btn.custom_minimum_size = Vector2(210, 48)
 	quit_btn.size_flags_horizontal = Control.SIZE_SHRINK_END
 	quit_btn.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
 	quit_btn.grow_horizontal = Control.GROW_DIRECTION_BEGIN
@@ -411,6 +502,8 @@ var _radio_player: RadioMiniPlayer = null
 
 func _refresh_profile_row() -> void:
 	(%ProfileBtn as Button).text = "👤  %s" % Profiles.active_name()
+	if (%ProfileBtn as Button).has_meta("lettered"):
+		_spell_button(%ProfileBtn)
 
 func _on_profiles() -> void:
 	ProfilePicker.open(_modal_layer)
@@ -717,7 +810,8 @@ func _on_customize() -> void:
 	s.tree_exited.connect(func() -> void:
 		if is_inside_tree():
 			_reroll(true)
-			_reroll(false))
+			_reroll(false)
+			_spell_buttons())
 
 # What there is to unlock and how close this profile is (docs/achievements.md).
 # In Extras.

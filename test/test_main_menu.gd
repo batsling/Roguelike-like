@@ -222,3 +222,38 @@ func test_extras_opens_a_list_and_each_entry_opens_its_screen() -> void:
 		await wait_frames(2)
 	(menu.get_node("%ExtrasBackBtn") as Button).pressed.emit()
 	assert_false(overlay.visible, "Back closes it")
+
+
+# THE BUTTONS ARE SPELLED LIKE THE TITLE: a row of logo letters over each one,
+# its own text kept (for the scene, the tests, a screen reader) but drawn clear.
+func test_every_menu_button_is_spelled_in_logo_letters() -> void:
+	var menu = _menu()
+	await wait_frames(3)
+	for btn in menu._letter_buttons():
+		var b := btn as Button
+		var row: TitleLetters = menu._button_rows.get(b)
+		assert_not_null(row, "%s has a row of letters" % b.name)
+		if row == null:
+			continue
+		assert_eq(row.get_parent(), b, "laid over the button itself")
+		assert_ne(b.text, "", "%s keeps its text" % b.name)
+		assert_eq(b.get_theme_color("font_color").a, 0.0, "drawn clear under the letters")
+		var word := ""
+		for ch in b.text:
+			if ch.unicode_at(0) < 128 and ch != " ":
+				word += ch
+		var spelled := ""
+		for p in row.placed:
+			spelled += p.ch
+		assert_eq(spelled, word, "%s spells its own label" % b.name)
+		assert_lt(row.ink_width, b.size.x, "%s: the word fits inside the button" % b.name)
+
+# A name the pool cannot spell keeps the plain text rather than a row with holes.
+func test_a_label_the_letters_cannot_spell_stays_plain_text() -> void:
+	var menu = _menu()
+	await wait_frames(2)
+	var b: Button = menu.get_node("%ExtrasBtn")
+	b.text = "Ünïcödé"
+	menu._spell_button(b)
+	assert_false(menu._button_rows.has(b), "no row of letters")
+	assert_gt(b.get_theme_color("font_color").a, 0.0, "and the text is drawn again")
