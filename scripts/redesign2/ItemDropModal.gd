@@ -170,7 +170,7 @@ static func open(host: Node, offer, reroll: Callable = Callable()) -> ItemDropMo
 # on the haul. These two are the whole of the rule, so the three screens cannot
 # disagree about what the button says or what it costs.
 static func dress_reroll(btn: Button) -> void:
-	btn.text = "Reroll (%d)" % GameState.reroll_charges
+	btn.text = "🎲  Reroll (%d)" % GameState.reroll_charges
 	btn.disabled = GameState.reroll_charges <= 0
 	btn.tooltip_text = "Spend a Reroll to roll every chest here again." \
 		if GameState.reroll_charges > 0 else "No Rerolls left."
