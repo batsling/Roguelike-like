@@ -63,7 +63,6 @@ func _ready() -> void:
 	_build_radio_corner()
 	# The pop-over goes over both corners: nothing on the menu under it is live.
 	move_child(_save_overlay, _modal_layer.get_index() - 1)
-	move_child(%ExtrasOverlay, _modal_layer.get_index() - 1)
 	_spell_buttons()
 
 # ---------------------------------------------------------------------------
@@ -150,6 +149,8 @@ func _mount_portal() -> void:
 	portal = MenuPortal.mount(self, func() -> Array: return [title_row, subtitle_row])
 	portal.art = _art
 	portal.vortex = (%Background as ColorRect).material
+	# ...and the buttons under it: the main five, or the Extras list in their place.
+	portal.holds = func() -> Array: return [_main_buttons, %ExtrasList]
 	move_child(portal, _art.get_index())
 
 # The title and subtitle, spelled in letters cut from roguelike logos and drawn
@@ -198,15 +199,14 @@ func _on_unlock_everything_changed(_on: bool) -> void:
 # button in its place. A label the pool cannot spell in full (a profile name
 # with a character Rogue's font has not got) keeps its plain text instead.
 #
-# THE BOX IS A PIECE OF THE PORTAL: a plate in the blue the title stands on,
-# with no border. Logo letters are every colour, a good many of them black, and
-# on the UI's own dark panel those vanished; the title reads because of what is
-# behind it, so the buttons get the same. The hovered or focused one is brighter,
-# with a gold edge and its letters at full strength.
+# THERE IS NO BOX. The buttons stand in the portal with the title, straight on
+# its blue (the owner, 10 Nov 2026: plates did not look right), and the portal
+# reaches round them. The hovered or focused one gets a gold edge and its
+# letters at full strength. The two corner buttons (the profile, Exit) are
+# outside the portal, over the red, and keep a dark plate so their letters read.
 const BUTTON_LETTERS := 24.0     # a letter's height on an ordinary button
 const START_LETTERS := 36.0      # ...and on Start Run
-const PLATE := Color(0.30, 0.74, 0.74, 0.80)
-const PLATE_LIT := Color(0.50, 0.93, 0.90, 0.95)
+const CORNER_PLATE := Color(0, 0, 0, 0.45)
 const LETTER_MARGIN := 14.0      # kept clear either side of the word
 const LETTERS_REST := Color(0.9, 0.9, 0.9)
 
@@ -233,8 +233,9 @@ func _spell_buttons() -> void:
 func _spell_button(btn: Button) -> void:
 	if not btn.has_meta("lettered"):
 		btn.set_meta("lettered", true)
-		var rest := UITheme.flat(PLATE, 8, 6)
-		var lit := UITheme.flat(PLATE_LIT, 8, 6, 2, UITheme.GOLD)
+		var plate := CORNER_PLATE if btn.name in [&"ProfileBtn", &"QuitBtn"] else Color(0, 0, 0, 0)
+		var rest := UITheme.flat(plate, 8, 6)
+		var lit := UITheme.flat(plate, 8, 6, 2, UITheme.GOLD)
 		for state in ["normal", "disabled"]:
 			btn.add_theme_stylebox_override(state, rest)
 		for state in ["hover", "pressed", "focus", "hover_pressed"]:
@@ -331,37 +332,40 @@ func _build_profile_row() -> void:
 # Extras — everything that is not a way to play
 # ---------------------------------------------------------------------------
 
-# THE MENU IS FIVE BUTTONS AND A POP-OVER. Start Run, Continue, Custom Run and
-# Settings stay on the menu; the six screens you LOOK at rather than play (the
-# manual, the Collection, Run History, the Tier List, Achievements,
-# Customization) are behind Extras, which raises them as a list over the menu
-# the way Continue raises the saves. They were spread over a grid of six and a
+# THE MENU IS FIVE BUTTONS AND A SECOND LIST. Start Run, Continue, Custom Run
+# and Settings stay on the menu; the six screens you LOOK at rather than play
+# (the manual, the Collection, Run History, the Tier List, Achievements,
+# Customization) are behind Extras. They were spread over a grid of six and a
 # row of three in the top-left corner (owner, 10 Nov 2026: "minimal amount of
 # buttons").
 #
-# The overlay is laid out in the scene (%ExtrasOverlay). It stays up while one of
-# its screens is open, so closing the Collection lands back on the list it was
-# picked from; a click outside, Back or Esc closes it.
+# Extras SWAPS THE LIST IN PLACE: the main buttons step out and the scene's
+# %ExtrasList stands where they were, in the same portal, which re-measures
+# itself round whichever is showing (MenuPortal.holds). It was a pop-over on a
+# dark panel first, which had nothing to do with the portal the buttons are in.
+# The list stays while one of its screens is open, so closing the Collection
+# lands back on it; Back or Esc returns to the main buttons.
+@onready var _main_buttons: Control = %StartRunBtn.get_parent()
+
 func _wire_extras() -> void:
-	(%ExtrasPanel as PanelContainer).add_theme_stylebox_override("panel",
-		UITheme.panel_box(UITheme.BG, UITheme.GOLD.lerp(UITheme.BORDER, 0.6), 10, 14, 1))
 	%ExtrasBtn.pressed.connect(show_extras.bind(true))
 	%ExtrasBackBtn.pressed.connect(show_extras.bind(false))
-	(%Dim as ColorRect).gui_input.connect(func(ev: InputEvent) -> void:
-		if ev is InputEventMouseButton and ev.pressed:
-			show_extras(false))
+
+func extras_shown() -> bool:
+	return %ExtrasList.visible
 
 func show_extras(on: bool) -> void:
-	%ExtrasOverlay.visible = on
+	%ExtrasList.visible = on
+	_main_buttons.visible = not on
 	if on:
 		_show_save_list(false)
 
-# Esc closes whichever pop-over is up — but only with nothing raised over it: a
+# Esc leaves Extras, or closes the Continue list — but only with nothing raised over it: a
 # screen on %ModalLayer answers its own Esc.
 func _unhandled_input(event: InputEvent) -> void:
 	if not event.is_action_pressed("ui_cancel") or _modal_layer.get_child_count() > 0:
 		return
-	if %ExtrasOverlay.visible:
+	if extras_shown():
 		show_extras(false)
 	elif _save_list_container.visible:
 		_show_save_list(false)

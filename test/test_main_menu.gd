@@ -197,31 +197,42 @@ func test_the_menu_shows_only_the_ways_to_play_and_extras() -> void:
 	assert_string_contains((menu.get_node("%ProfileBtn") as Button).text, Profiles.active_name(),
 		"and it carries the player's name")
 
-func test_extras_opens_a_list_and_each_entry_opens_its_screen() -> void:
+func test_extras_swaps_the_list_in_place_and_each_entry_opens_its_screen() -> void:
 	var menu = _menu()
 	await wait_frames(2)
-	var overlay: Control = menu.get_node("%ExtrasOverlay")
-	assert_false(overlay.visible, "closed until asked for")
+	var list: Control = menu.get_node("%ExtrasList")
+	var main: Control = menu.get_node("Below/Buttons")
+	assert_false(list.visible, "closed until asked for")
 	(menu.get_node("%ExtrasBtn") as Button).pressed.emit()
-	assert_true(overlay.visible, "Extras raises the list")
-	assert_lt(overlay.get_index(), menu._modal_layer.get_index(),
-		"under the layer its screens open on")
-	for corner in ["QuitCorner", "RadioCorner"]:
-		assert_gt(overlay.get_index(), menu.get_node(corner).get_index(),
-			"and over %s, which is not live under it" % corner)
+	assert_true(list.visible, "Extras shows its list")
+	assert_false(main.visible, "in place of the main buttons")
 	for btn in ["HowToPlayBtn", "CollectionBtn", "RunHistoryBtn", "TierListBtn",
 			"AchievementsBtn", "CustomizeBtn"]:
 		var b: Button = menu.get_node("%" + btn)
-		assert_true(overlay.is_ancestor_of(b), "%s is in Extras" % btn)
+		assert_true(list.is_ancestor_of(b), "%s is in Extras" % btn)
 		b.pressed.emit()
 		await wait_frames(1)
 		assert_gt(menu._modal_layer.get_child_count(), 0, "%s opens a screen" % btn)
-		assert_true(overlay.visible, "and the list is still there behind it")
+		assert_true(list.visible, "and the list is still there behind it")
 		for c in menu._modal_layer.get_children():
 			c.queue_free()
 		await wait_frames(2)
 	(menu.get_node("%ExtrasBackBtn") as Button).pressed.emit()
-	assert_false(overlay.visible, "Back closes it")
+	assert_false(list.visible, "Back leaves it")
+	assert_true(main.visible, "for the main buttons")
+
+# THE BUTTONS STAND IN THE PORTAL WITH THE TITLE: the oval reaches round
+# whichever list is showing, and is measured again when Extras swaps them.
+func test_the_portal_holds_the_buttons_that_are_showing() -> void:
+	var menu = _menu()
+	await wait_frames(4)
+	var oval: Control = menu.portal.oval
+	assert_true(oval.get_global_rect().encloses(menu.get_node("Below/Buttons").get_global_rect()),
+		"the main buttons are inside the portal")
+	menu.show_extras(true)
+	await wait_frames(4)
+	assert_true(oval.get_global_rect().encloses(menu.get_node("%ExtrasList").get_global_rect()),
+		"and so is the Extras list once it is showing")
 
 
 # THE BUTTONS ARE SPELLED LIKE THE TITLE: a row of logo letters over each one,

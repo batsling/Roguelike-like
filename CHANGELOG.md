@@ -14,17 +14,20 @@ For how the project is laid out and how its systems fit together, see
 - **The menu's buttons are spelled in logo letters.** Every button on the main
   menu (the five under the title, Exit, the profile's name, the Extras list) is
   drawn the way the title is: a `TitleLetters` row from the same earned pool,
-  rolled again every launch and whenever the pool changes. The boxes are plates
-  in the portal's blue, since logo letters are every colour and the black ones
-  vanished on the UI's dark panel. A label the pool cannot spell (a profile name
-  with a character Rogue's font lacks) keeps its plain text.
+  rolled again every launch and whenever the pool changes. The buttons have no
+  box: they stand in the portal with the title, which now reaches round
+  whichever list is showing (`MenuPortal.holds`). Extras is no longer a
+  pop-over; its list takes the main buttons' place in the portal, and Back or
+  Esc returns. The two corner buttons, over the red, keep a dark plate. A label
+  the pool cannot spell (a profile name with a character Rogue's font lacks)
+  keeps its plain text.
 
 - **The main menu is five buttons.** Start Run, Continue (when there is a
   save), Custom Run, Extras and Settings under the title; the profile, the radio
   and Exit in three corners. The manual, Collection, Run History, Tier List,
-  Achievements and Customization moved into **Extras**, a pop-over list over the
-  menu that stays up behind whichever screen it opens (click outside, Back or
-  Esc closes it; Esc closes the Continue list too). The top-left corner's label,
+  Achievements and Customization moved into **Extras**, a second list that
+  stays up behind whichever screen it opens (Back or Esc leaves it; Esc closes
+  the Continue list too). The top-left corner's label,
   Switch button and three screen buttons are one button carrying the player's
   name, which opens the profile picker.
 

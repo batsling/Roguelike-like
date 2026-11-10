@@ -1,7 +1,7 @@
 extends Control
 
-# The blue portal the main menu's title stands in: one oval round the title and
-# the subtitle together, which the menu's vortex (shaders/menu_vortex.gdshader,
+# The blue portal the main menu's title AND BUTTONS stand in: one oval round the
+# title, the subtitle and whichever list of buttons is showing (`holds`), which the menu's vortex (shaders/menu_vortex.gdshader,
 # MainMenu._paint_vortex) draws as the blue heart of the same swirl as the red
 # rift; this tells it where the oval is. And a fringe of small bats — the menu's
 # own bat, images2.0/custom/menu_bat.png — appearing just outside it and drawn
@@ -51,6 +51,11 @@ const BAT_ALPHA := 0.9
 var oval := Control.new()
 var bats := BatSwarm.new()
 var _rows: Callable
+# The menu's buttons stand in the portal too (the owner, 10 Nov 2026): a callable
+# returning the Controls whose rects the oval also reaches round, by HOLD_REACH.
+# Unset (a test's bare portal), the oval is the title's alone.
+var holds := Callable()
+const HOLD_REACH := Vector2(150.0, 34.0)
 var _last := Rect2()
 # The menu's art (MenuFallingArt), told where the oval is so it flies into it.
 var art: Control = null
@@ -156,6 +161,11 @@ func measure() -> Rect2:
 	if not any:
 		return Rect2()
 	span = span.grow_individual(REACH.x, REACH.y, REACH.x, REACH.y)
+	if holds.is_valid():
+		for c in holds.call():
+			if c != null and is_instance_valid(c) and (c as Control).is_visible_in_tree():
+				span = span.merge((c as Control).get_global_rect().grow_individual(
+					HOLD_REACH.x, HOLD_REACH.y, HOLD_REACH.x, HOLD_REACH.y))
 	var local := Rect2(get_global_transform().affine_inverse() * span.position, span.size)
 	return local.intersection(Rect2(Vector2.ZERO, size).grow(-MARGIN)) if size != Vector2.ZERO else local
 

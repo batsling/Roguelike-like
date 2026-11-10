@@ -48,12 +48,14 @@ the honour system.
 - **Two scenes only.** `scenes/menu/MainMenu.tscn` boots, `scenes/redesign2/Overworld2.tscn`
   *is* the game — and **`Overworld2.tscn` is one node and a script**, so don't go
   looking for the game's UI in it; every screen past the menu is built in code.
-  `MainMenu.tscn` is the exception and always was: it lays out its 32 nodes (the
-  title, the fourteen buttons, the save list, the Extras pop-over) in the editor
+  `MainMenu.tscn` is the exception and always was: it lays out its 28 nodes (the
+  title, the fourteen buttons, the save list, the Extras list) in the editor
   like an ordinary scene. The menu itself shows five buttons — Start Run,
   Continue, Custom Run, Extras, Settings — and the six screens you look at
   rather than play (the manual, Collection, Run History, Tier List,
-  Achievements, Customization) are in the Extras pop-over.
+  Achievements, Customization) are in the Extras list, which takes their place.
+  Every button is spelled in logo letters like the title (`_spell_button`) and
+  stands in the portal, which reaches round whichever list is showing.
 - **30 autoloads** in `scripts/autoload/`, registered in `project.godot`. The ones
   that matter most: `GameState` (run-persistent state), `Data` (loads every
   `.tres` and serves it by id), `GameLoop2` (the run loop — `Overworld2` is a view
