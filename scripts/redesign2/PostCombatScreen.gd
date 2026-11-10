@@ -608,6 +608,10 @@ func _left_column() -> Control:
 	_chest_head.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_chest_head.visible = false
 	col.add_child(_chest_head)
+	_chest_gold_line = _line("", ItemDropModal.GOLD_TEXT, 13)
+	_chest_gold_line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	col.add_child(_chest_gold_line)
+	_sync_chest_gold()
 
 	# …and directly under it, the sum that produced the chest below (chest_terms).
 	# Hidden and shown with the heading, since it is describing the same thing.
@@ -946,20 +950,23 @@ func _build_chests() -> void:
 		_mount_chest(_chests.pop_front())
 	_refresh_exit()
 
-# What a banked chest paid as it landed here, by the list it is offering — kept
-# beside `_chests` rather than in it, because everything else that walks that
-# list wants the items alone. `gold` is what the page already paid; this screen
-# only says so on the chest's heading.
-var _chest_gold: Array = []
+# What the banked chests that landed here paid between them, and how many of
+# them paid it. The page pays it as each lands (taken or skipped); this screen
+# only says so, once, over the chests.
+var _chest_gold: int = 0
+var _chest_gold_from: int = 0
+var _chest_gold_line: Label = null
 
-func _gold_of(items: Array) -> int:
-	for entry in _chest_gold:
-		if is_same(entry["items"], items):
-			return int(entry["gold"])
-	return 0
+# The line stays once there is gold to say: unlike the heading it does not go
+# when the last chest is answered, because the gold did not.
+func _sync_chest_gold() -> void:
+	if _chest_gold_line == null or not is_instance_valid(_chest_gold_line):
+		return
+	_chest_gold_line.visible = _chest_gold > 0
+	_chest_gold_line.text = ItemDropModal.gold_text(_chest_gold, _chest_gold_from)
 
 func _mount_chest(items: Array) -> void:
-	var section := ItemDropModal.embed(self, _chest_slot, items, true, "", _gold_of(items))
+	var section := ItemDropModal.embed(self, _chest_slot, items)
 	_chest_sections.append(section)
 	section.answered.connect(func(taken: bool, item: ItemData):
 		if taken and item != null:
@@ -1099,7 +1106,9 @@ func add_chest(items: Array, gold: int = 0) -> void:
 	if _done or items.is_empty():
 		return
 	if gold > 0:
-		_chest_gold.append({"items": items, "gold": gold})
+		_chest_gold += gold
+		_chest_gold_from += 1
+		_sync_chest_gold()
 	if _chest_slot == null or not is_instance_valid(_chest_slot):
 		_chests.append(items)
 		return

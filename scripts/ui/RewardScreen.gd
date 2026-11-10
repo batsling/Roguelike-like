@@ -380,8 +380,10 @@ func _dress_as_chest() -> void:
 	_title_line.text = "%s  %d Chests" % [ItemDropModal.CHEST_GLYPH, _chest_sizes.size()]
 	_title_line.add_theme_font_size_override("font_size", UITheme.FONT_HEAD)
 	_title_line.add_theme_color_override("font_color", ItemDropModal.CHEST_GOLD)
-	# The gold is on each chest's own heading now (see _refresh_chests).
-	_gold_line.visible = false
+	# THE GOLD, ONCE, OVER THE CHESTS: the total every chest below paid as this
+	# screen opened. It is already in the purse, whatever is taken or skipped.
+	_gold_line.add_theme_font_size_override("font_size", UITheme.FONT_LABEL)
+	_gold_line.add_theme_color_override("font_color", ItemDropModal.GOLD_TEXT)
 	_skip_btn.text = "Skip"
 	for btn in [_skip_btn, _reroll_btn]:
 		btn.custom_minimum_size = Vector2(150, 42)
@@ -406,7 +408,7 @@ func _refresh() -> void:
 	if _choices_box == null:
 		return
 	if _gold_line != null:
-		_gold_line.text = "+%d gold" % _gold
+		_gold_line.text = ItemDropModal.gold_text(_gold, maxi(1, _chest_sizes.size()))
 	# remove_child BEFORE queue_free: queue_free only marks a node, leaving it a
 	# child until the frame ends — and the search box can refresh this list twice in
 	# one frame, which would otherwise draw the old tiles under the new ones.
@@ -539,10 +541,7 @@ func _refresh_chests() -> void:
 			_sections.append(null)
 			continue
 		var pool: String = String(_chest_pools[i]) if i < _chest_pools.size() else _pool_tag
-		# Each chest says its own gold beside its name: its rung's when there are
-		# several, and the whole of what this screen paid when it is the only one.
-		var gold: int = Data.chest_gold(int(_chest_sizes[i])) if several else _gold
-		var section := ItemDropModal.embed(self, _chest_col, _chest_choices[i], several, pool, gold)
+		var section := ItemDropModal.embed(self, _chest_col, _chest_choices[i], several, pool)
 		var chest: int = i
 		section.answered.connect(func(taken: bool, item: ItemData):
 			if taken and item != null:

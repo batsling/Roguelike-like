@@ -11,11 +11,12 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
-- **A chest says the gold it paid.** A banked chest pays gold as it opens
-  (`Data.chest_gold`), and that was only in the log, or one total over several
-  chests. It is beside each chest's name now ("Large Chest — take 1 of 3  +3
-  gold"), on the banked screen and on the haul (`PostCombatScreen.add_chest`
-  takes the amount the page paid). A chest that pays none says nothing.
+- **A screen of chests says the gold it paid, once.** A banked chest pays gold
+  as it opens, taken or skipped (`Data.chest_gold`). The total is one line over
+  the chests ("+6 gold from 3 chests", `ItemDropModal.gold_text`): on the banked
+  screen, and on the haul for the banked chests that land there
+  (`PostCombatScreen.add_chest` takes what the page paid). The haul's line stays
+  after the last chest is answered, because the gold did.
 
 - **A chest shows its size.** The gift in every chest heading is larger and
   sits under an arc of stars, one per rung (Small 1 … Huge 4), over a glow in

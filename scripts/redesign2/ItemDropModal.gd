@@ -69,9 +69,6 @@ var _take_btn: Button = null
 var _compact: bool = false
 # The word a tagged chest is named with ("Devilish"), or "" for the ordinary pool.
 var _pool: String = ""
-# The gold this chest paid as it opened (Data.chest_gold), said beside its name.
-# 0 for a chest that pays none — the caller knows, this screen never pays it.
-var _gold: int = 0
 # The gift in the heading, the one-item layout's body, and the tween that opens
 # the chest (see _play_open).
 var _gift: Control = null
@@ -184,12 +181,11 @@ func _start(host: Node, offer) -> void:
 # several; false keeps the pop-up's full-size cards inside the host's own frame.
 # `pool` names a tagged chest in its heading.
 static func embed(host: Node, slot: Container, offer, compact: bool = true,
-		pool: String = "", gold: int = 0) -> ItemDropModal:
+		pool: String = "") -> ItemDropModal:
 	var modal := ItemDropModal.new()
 	modal._slot = slot
 	modal._compact = compact
 	modal._pool = pool
-	modal._gold = gold
 	# The controller is a parked logic node, not part of the picture: no size, no
 	# mouse, nothing to lay out. Everything it draws goes into `slot`.
 	modal.set_anchors_preset(Control.PRESET_TOP_LEFT)
@@ -323,26 +319,18 @@ func _heading_row(compact: bool) -> Control:
 	# On the gift's line, not the middle of the badge: the stars stand above it.
 	head.size_flags_vertical = Control.SIZE_SHRINK_END
 	row.add_child(head)
-	# THE CHEST'S GOLD, where the chest is. It is paid the moment the chest opens,
-	# taken or skipped, and used to be said only in the log — or as one total over
-	# several chests, which did not say which chest it came out of.
-	if _gold > 0:
-		var coin := Label.new()
-		coin.text = gold_text(_gold)
-		coin.add_theme_font_size_override("font_size", UITheme.FONT_BODY if compact else UITheme.FONT_SUB)
-		coin.add_theme_color_override("font_color", GOLD_TEXT)
-		coin.size_flags_vertical = Control.SIZE_SHRINK_END
-		var gap := Control.new()
-		gap.custom_minimum_size = Vector2(UITheme.GAP_TIGHT, 0)
-		row.add_child(gap)
-		row.add_child(coin)
 	return row
 
 const GOLD_TEXT := Color(1.0, 0.9, 0.3)
 
-# "+2 gold" — the words a chest's gold is announced in beside its name.
-static func gold_text(gold: int) -> String:
-	return "+%d gold" % gold
+# "+6 gold from 3 chests" — the ONE line a screen of chests says its gold in, over
+# the chests rather than on each. The gold is paid as the chests open, taken or
+# skipped, so it is a fact about the screen and not something a chest is holding:
+# on each heading it read as a thing you got by taking that chest.
+static func gold_text(gold: int, chests: int = 1) -> String:
+	if chests <= 1:
+		return "+%d gold" % gold
+	return "+%d gold from %d chests" % [gold, chests]
 
 # The gift, the glow behind it and the stars over it. Built from plain Labels on a
 # fixed-size Control so the whole badge can be bounced as one thing.

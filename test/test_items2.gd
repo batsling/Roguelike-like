@@ -1067,23 +1067,19 @@ func test_a_chest_wears_a_star_per_rung_of_its_size() -> void:
 	small.discard()
 	huge.discard()
 
-func test_a_chest_that_paid_gold_says_so_beside_its_name() -> void:
+func test_the_chests_gold_is_one_total_over_them_and_skipping_keeps_it() -> void:
 	var before: int = GameState.gold
+	var total: int = Data.chest_gold(1) + Data.chest_gold(3)
 	var chest := RewardScreen.new()
 	add_child_autofree(chest)
-	chest.setup_chests([1, 3], [], Data.chest_gold(1) + Data.chest_gold(3))
-	assert_eq(GameState.gold, before + Data.chest_gold(1) + Data.chest_gold(3), "paid once, by the screen")
-	assert_string_contains(Page.text_of(chest._sections[0]._body), ItemDropModal.gold_text(Data.chest_gold(1)))
-	assert_string_contains(Page.text_of(chest._sections[1]._body), ItemDropModal.gold_text(Data.chest_gold(3)))
-	assert_false(chest._gold_line.visible, "and not a second time as a total above them")
+	chest.setup_chests([1, 3], [], total)
+	assert_true(chest._gold_line.visible, "the gold is said once, over the chests")
+	assert_eq(chest._gold_line.text, ItemDropModal.gold_text(total, 2))
+	for section in chest._sections:
+		assert_false(Page.text_of(section._body).contains("gold"), "and not again on each chest")
+	chest._on_skip()
+	assert_eq(GameState.gold, before + total, "a skipped chest still paid its gold")
 	GameState.gold = before
-
-func test_a_chest_that_paid_no_gold_says_nothing_about_gold() -> void:
-	var slot := VBoxContainer.new()
-	add_child_autofree(slot)
-	var chest := ItemDropModal.embed(self, slot, [Data.reward_item2_pool()[0]])
-	assert_false(Page.text_of(slot).contains("gold"), "no gold was paid, so none is claimed")
-	chest.discard()
 
 func test_a_taken_chest_says_what_was_taken_where_it_stood() -> void:
 	var pool: Array = Data.reward_item2_pool()
