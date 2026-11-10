@@ -1099,7 +1099,13 @@ func capture_view_state() -> Dictionary:
 		var ids: Array = []
 		for it in _drop_items(d):
 			ids.append(String((it as ItemData).id))
-		drops.append(ids)
+		# A ROLLED chest keeps how it was rolled, so it can still be re-rolled after
+		# a reload. Written as a dictionary only then: a chest of named items is
+		# the bare list it always was.
+		if d.get("roll") is Dictionary:
+			drops.append({"ids": ids, "roll": (d["roll"] as Dictionary).duplicate()})
+		else:
+			drops.append(ids)
 	return {
 		"phase": _phase,
 		"start_options": starts,
@@ -1206,6 +1212,9 @@ func restore_view_state(view: Dictionary) -> void:
 			continue
 		# An older save wrote one id per chest; a current one writes the list the
 		# chest is offering. Both land as a list here.
+		var how = (raw as Dictionary).get("roll") if raw is Dictionary else null
+		if raw is Dictionary:
+			raw = (raw as Dictionary).get("ids", [])
 		var ids: Array = raw if raw is Array else [raw]
 		var offer: Array = []
 		for iid in ids:
@@ -1213,7 +1222,10 @@ func restore_view_state(view: Dictionary) -> void:
 			if it != null:
 				offer.append(it)
 		if not offer.is_empty():
-			_drop_queue.append({"items": offer})
+			var entry: Dictionary = {"items": offer}
+			if how is Dictionary:
+				entry["roll"] = {"boss": bool(how.get("boss", false)), "pool": String(how.get("pool", ""))}
+			_drop_queue.append(entry)
 	_last_played_game = Data.get_game(StringName(view.get("last_played_game", "")))
 	# The enemies behind the restored cards are the saved ones, so seed the slot
 	# cache with them — otherwise the next repaint would roll new ones.
@@ -1580,7 +1592,7 @@ func _grant_start_gear_once(game: GameData) -> void:
 		if not items.is_empty():
 			GameLog.add("Starting gear (%s): an item chest, pick 1 of %d." % [
 				genre, items.size()], UITheme.GOLD)
-			_drops.queue.append({"items": items})
+			_drops.queue.append(_drops.rolled_drop(items))
 			_drops.pump()
 	_refresh_items()
 
@@ -3893,11 +3905,11 @@ func _hand_chests_to_post_game() -> void:
 		if offer.is_empty():
 			continue
 		if _post_screen != null and is_instance_valid(_post_screen):
-			_post_screen.add_chest(offer)
+			_post_screen.add_chest(offer, gold, GameState.last_chest_pool)
 		else:
 			# The screen went while we were draining: fall back to the queue the
 			# page's own modal drains, rather than losing the chest.
-			_drop_queue.append({"items": offer})
+			_drop_queue.append(_drops.rolled_drop(offer, false, GameState.last_chest_pool))
 			_pump_drops()
 
 # --- what a card or a relic does to the overworld ---------------------------

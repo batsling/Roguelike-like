@@ -11,6 +11,48 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **One chest roller, and a Reroll on every chest.** There were two rollers:
+  `RewardScreen` rolled the banked chests itself (Sacred Orb's re-draw, no boss
+  pool) and `DropQueue` rolled every other (boss pool, no Sacred Orb). Every
+  chest is rolled by `Data.roll_chest(rng, count, pool, from_boss)` now, so a
+  rule about what a chest offers is written once — and `reroll_low_rarity`
+  reaches every chest rather than the banked ones alone. A Reroll charge was
+  spendable on the banked screen only; it works on the pop-up chest
+  (`ItemDropModal.open(host, offer, reroll)`) and on the haul
+  (`PostCombatScreen.reroll_chests`) too, by one rule: a charge re-rolls every
+  rolled chest still open on the screen it is spent on, each the way it was
+  rolled (`DropQueue.rolled_drop` carries `roll: {boss, pool}`, saved with the
+  queue). A chest offering named items has no roll to repeat and no button.
+
+- **A screen of chests says the gold it paid, once.** A banked chest pays gold
+  as it opens, taken or skipped (`Data.chest_gold`). The total is one line over
+  the chests ("+6 gold from 3 chests", `ItemDropModal.gold_text`): on the banked
+  screen, and on the haul for the banked chests that land there
+  (`PostCombatScreen.add_chest` takes what the page paid). The haul's line stays
+  after the last chest is answered, because the gold did.
+
+- **A chest shows its size.** The gift in every chest heading is larger and
+  sits under an arc of stars, one per rung (Small 1 … Huge 4), over a glow in
+  the colour of the rarity on the same rung (`ItemDropModal.chest_rank`,
+  `_gift_badge`). The stars light one by one as the chest opens. A focused Take
+  button is green like the others rather than the theme's orange ring, and a
+  chest you take from leaves "✓ Took <name>" where it stood for a moment before
+  closing up (`_flash_taken`), on the haul and on the banked screen alike.
+
+- **Chests are drawn one way.** A chest used to look like three different
+  things: the pop-up's cards (`ItemDropModal`), the banked-chest screen's own
+  bracketed tiles under a green "Choose a Reward" (`RewardScreen`), and
+  picture-only tiles on the haul. Every chest is an `ItemDropModal` now: the
+  banked screen mounts one section per chest (`ItemDropModal.embed`) and adds
+  only Reroll and Skip to the chest's own row of answers; the haul's compact
+  card shows the name in its rarity's colour, the kind and two lines of what it
+  does, with the rest on hover. Each wears the same heading, the gift (🎁) and
+  its size in gold ("Large Chest — take 1 of 3", `ItemDropModal.chest_heading`,
+  off `Data.CHEST_SIZE_NAMES`), the same gold frame, and the same opening: the
+  gift lands and the cards are dealt, about half a second, finished by a click.
+  The banked screen's backdrop was also 0x0 (`set_anchors_preset` without
+  offsets), so the page behind it was neither dimmed nor blocked; it is both.
+
 - **Title letters: Brotato.** B R O T A T O with their 3D sides, the O the
   potato with its headband drawn as the logo draws it (no side under the
   band, just its black edge: `extrude`'s new `colour_by`), and its two guns as

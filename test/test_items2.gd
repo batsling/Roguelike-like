@@ -1,5 +1,7 @@
 extends GutTest
 
+const Page := preload("res://test/helpers/run_page.gd")
+
 const Fixtures := preload("res://test/helpers/fixtures.gd")
 
 # Games-first (2.0) item + reward wiring: the items2.0 relics that drop from
@@ -1028,9 +1030,166 @@ func test_a_chest_is_still_a_chest() -> void:
 	var chest := RewardScreen.new()
 	add_child_autofree(chest)
 	chest.setup_chest(2)
-	assert_eq(chest._panel.custom_minimum_size, RewardScreen.PANEL_SIZE)
+	assert_lt(chest._panel.custom_minimum_size.x, RewardScreen.PANEL_SIZE.x,
+		"a chest's panel is the pop-up's width, not the catalog's")
 	assert_false(chest._search.visible, "no search over two rolled cards")
-	assert_eq(chest._choices_box.get_child_count(), 2, "two choices, as asked for")
+	assert_eq(chest._sections.size(), 1, "one chest on the screen")
+	assert_eq(chest._sections[0]._cards.size(), 2, "two choices, as asked for")
+
+# --- one chest, drawn one way -------------------------------------------------
+#
+# A chest used to be drawn three ways: the pop-up's cards, this screen's own
+# bracketed tiles under "Choose a Reward", and picture-only tiles on the haul.
+# They are all `ItemDropModal` now, under one heading.
+
+func test_every_chest_is_named_by_its_size_under_the_gift() -> void:
+	assert_eq(ItemDropModal.chest_heading(1), "🎁  Small Chest")
+	assert_eq(ItemDropModal.chest_heading(2), "🎁  Medium Chest — take 1 of 2")
+	assert_eq(ItemDropModal.chest_heading(3), "🎁  Large Chest — take 1 of 3")
+	assert_eq(ItemDropModal.chest_heading(5), "🎁  Huge Chest — take 1 of 5")
+	assert_eq(ItemDropModal.chest_heading(4), "🎁  Chest of 4 — take 1 of 4",
+		"a count that is no rung of the ladder says the count")
+	assert_eq(ItemDropModal.chest_heading(1, "devilish"), "🎁  Devilish Small Chest")
+
+# --- one roller, and a reroll on every chest ------------------------------------
+
+func test_the_one_roller_fills_a_chest_with_distinct_items() -> void:
+	var got: Array = Data.roll_chest(Fixtures.rng(3), 5)
+	assert_eq(got.size(), 5)
+	var ids: Dictionary = {}
+	for it in got:
+		ids[(it as ItemData).id] = true
+	assert_eq(ids.size(), 5, "no relic twice in one chest")
+
+func test_a_boss_chest_rolls_only_boss_relics() -> void:
+	if Data.boss_item2_pool().is_empty():
+		pending("no boss relics authored")
+		return
+	for it in Data.roll_chest(Fixtures.rng(5), 2, "", true):
+		assert_true((it as ItemData).boss, "%s came out of the boss pool" % it.display_name)
+
+func test_the_sacred_orb_reaches_every_chest_through_the_one_roller() -> void:
+	# It used to apply on the banked-chest screen alone, which rolled its own.
+	# No relic in the catalogue carries the flag today, so one is made for the test.
+	var orb := ItemData.new()
+	orb.id = &"__orb__"
+	orb.reroll_low_rarity = true
+	GameState.inventory.append(orb)
+	var rng := Fixtures.rng(11)
+	for i in range(20):
+		for it in Data.roll_chest(rng, 2):
+			assert_ne(int((it as ItemData).rarity), ItemData.Rarity.COMMON,
+				"a Common is re-drawn, whichever chest asked")
+	GameState.inventory.erase(orb)
+
+func test_a_pop_up_chest_spends_a_reroll_and_opens_again_in_place() -> void:
+	var kept: int = GameState.reroll_charges
+	GameState.reroll_charges = 1
+	var pool: Array = Data.reward_item2_pool()
+	var asked := [0]
+	var host := Control.new()
+	add_child_autofree(host)
+	var chest := ItemDropModal.open(host, [pool[0], pool[1]], func():
+		asked[0] += 1
+		return [pool[2], pool[3]])
+	assert_not_null(chest._reroll_btn, "a rolled chest has a Reroll button")
+	assert_false(chest._reroll_btn.disabled)
+	chest._on_reroll()
+	assert_eq(asked[0], 1)
+	assert_eq(GameState.reroll_charges, 0, "the charge is spent")
+	assert_eq(chest.offer(), [pool[2], pool[3]], "and the chest offers what was rolled")
+	assert_eq(chest._cards.size(), 2)
+	assert_true(chest._reroll_btn.disabled, "nothing left to spend")
+	chest._on_reroll()
+	assert_eq(asked[0], 1, "no charge, no roll")
+	chest.leave()
+	GameState.reroll_charges = kept
+
+func test_a_chest_of_named_items_has_no_reroll() -> void:
+	var host := Control.new()
+	add_child_autofree(host)
+	var chest := ItemDropModal.open(host, [Data.reward_item2_pool()[0]])
+	assert_null(chest._reroll_btn, "there was no roll to repeat")
+	chest.leave()
+
+func test_a_chest_wears_a_star_per_rung_of_its_size() -> void:
+	assert_eq(ItemDropModal.chest_rank(1), 0)
+	assert_eq(ItemDropModal.chest_rank(2), 1)
+	assert_eq(ItemDropModal.chest_rank(3), 2)
+	assert_eq(ItemDropModal.chest_rank(4), 2, "between two rungs is the rung below")
+	assert_eq(ItemDropModal.chest_rank(5), 3)
+	var pool: Array = Data.reward_item2_pool()
+	var slot := VBoxContainer.new()
+	add_child_autofree(slot)
+	var small := ItemDropModal.embed(self, slot, [pool[0]])
+	var huge := ItemDropModal.embed(self, slot, pool.slice(0, 5))
+	assert_eq(small._stars.size(), 1, "a Small chest has one star")
+	assert_eq(huge._stars.size(), 4, "a Huge chest has four")
+	small.discard()
+	huge.discard()
+
+func test_the_chests_gold_is_one_total_over_them_and_skipping_keeps_it() -> void:
+	var before: int = GameState.gold
+	var total: int = Data.chest_gold(1) + Data.chest_gold(3)
+	var chest := RewardScreen.new()
+	add_child_autofree(chest)
+	chest.setup_chests([1, 3], [], total)
+	assert_true(chest._gold_line.visible, "the gold is said once, over the chests")
+	assert_eq(chest._gold_line.text, ItemDropModal.gold_text(total, 2))
+	for section in chest._sections:
+		assert_false(Page.text_of(section._body).contains("gold"), "and not again on each chest")
+	chest._on_skip()
+	assert_eq(GameState.gold, before + total, "a skipped chest still paid its gold")
+	GameState.gold = before
+
+func test_a_taken_chest_says_what_was_taken_where_it_stood() -> void:
+	var pool: Array = Data.reward_item2_pool()
+	var slot := VBoxContainer.new()
+	add_child_autofree(slot)
+	var chest := ItemDropModal.embed(self, slot, [pool[0]])
+	chest.take()
+	assert_eq(slot.get_child_count(), 1, "the chest is gone and a line stands in its place")
+	assert_string_contains((slot.get_child(0) as Label).text, pool[0].display_name)
+
+func test_the_banked_chest_screen_draws_the_pop_ups_chest() -> void:
+	var chest := RewardScreen.new()
+	add_child_autofree(chest)
+	chest.setup_chests([1, 3])
+	assert_eq(chest._sections.size(), 2, "a section per chest")
+	for section in chest._sections:
+		assert_true(section is ItemDropModal, "each one is the pop-up's own chest")
+	assert_eq(chest._sections[0]._cards.size(), 1)
+	assert_eq(chest._sections[1]._cards.size(), 3)
+	assert_eq(chest._sections[1]._heading(), ItemDropModal.chest_heading(3))
+
+func test_taking_from_one_banked_chest_leaves_the_others_open() -> void:
+	var chest := RewardScreen.new()
+	add_child_autofree(chest)
+	chest.setup_chests([1, 2])
+	var closed := [false]
+	chest.closed.connect(func(): closed[0] = true)
+	var before: int = GameState.inventory.size()
+	var second = chest._sections[1]
+	chest._sections[0].take()
+	assert_eq(GameState.inventory.size(), before + 1, "the relic landed")
+	assert_false(closed[0], "one chest is still unanswered")
+	assert_false(second.answered_already(), "and it is the same chest it was")
+	second.take()
+	assert_eq(GameState.inventory.size(), before + 2)
+	assert_true(closed[0], "the last answer closes the screen")
+
+func test_a_reroll_replaces_only_the_chests_still_open() -> void:
+	var chest := RewardScreen.new()
+	add_child_autofree(chest)
+	chest.setup_chests([1, 1])
+	chest._sections[0].take()
+	var charges: int = GameState.reroll_charges
+	GameState.reroll_charges = 1
+	chest._on_reroll()
+	assert_null(chest._sections[0], "the answered chest stays answered")
+	assert_not_null(chest._sections[1], "the open one is dealt again")
+	assert_eq(chest._sections[1]._cards.size(), 1)
+	GameState.reroll_charges = charges
 
 # --- Dragon Fruit / Lucky Fysh: the purse and the pack --------------------
 #

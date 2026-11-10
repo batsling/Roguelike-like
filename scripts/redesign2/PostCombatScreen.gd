@@ -174,7 +174,11 @@ static func open(page: Node, snapshot: Dictionary, drops: Array,
 			if items.is_empty() and drop.get("item") is ItemData:
 				items = [drop.get("item")]
 			if not items.is_empty():
-				screen._chests.append(items.duplicate())
+				var mine: Array = items.duplicate()
+				screen._chests.append(mine)
+				if drop.get("roll") is Dictionary:
+					screen._note_roll(mine, bool(drop["roll"].get("boss", false)),
+						String(drop["roll"].get("pool", "")))
 	screen._layer = CanvasLayer.new()
 	screen._layer.layer = LAYER
 	screen._layer.process_mode = Node.PROCESS_MODE_ALWAYS
@@ -608,6 +612,10 @@ func _left_column() -> Control:
 	_chest_head.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_chest_head.visible = false
 	col.add_child(_chest_head)
+	_chest_gold_line = _line("", ItemDropModal.GOLD_TEXT, 13)
+	_chest_gold_line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	col.add_child(_chest_gold_line)
+	_sync_chest_gold()
 
 	# …and directly under it, the sum that produced the chest below (chest_terms).
 	# Hidden and shown with the heading, since it is describing the same thing.
@@ -615,6 +623,14 @@ func _left_column() -> Control:
 	if _chest_why != null:
 		_chest_why.visible = false
 		col.add_child(_chest_why)
+
+	# One Reroll for every chest under it, shown while there is one to re-roll.
+	_chest_reroll = Button.new()
+	_chest_reroll.custom_minimum_size = Vector2(150, 30)
+	_chest_reroll.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	_chest_reroll.visible = false
+	_chest_reroll.pressed.connect(reroll_chests)
+	col.add_child(_chest_reroll)
 
 	_chest_slot = VBoxContainer.new()
 	_chest_slot.add_theme_constant_override("separation", UITheme.GAP_SNUG)
@@ -946,14 +962,72 @@ func _build_chests() -> void:
 		_mount_chest(_chests.pop_front())
 	_refresh_exit()
 
+# What the banked chests that landed here paid between them, and how many of
+# them paid it. The page pays it as each lands (taken or skipped); this screen
+# only says so, once, over the chests.
+var _chest_gold: int = 0
+var _chest_gold_from: int = 0
+var _chest_gold_line: Label = null
+
+# The line stays once there is gold to say: unlike the heading it does not go
+# when the last chest is answered, because the gold did not.
+func _sync_chest_gold() -> void:
+	if _chest_gold_line == null or not is_instance_valid(_chest_gold_line):
+		return
+	_chest_gold_line.visible = _chest_gold > 0
+	_chest_gold_line.text = ItemDropModal.gold_text(_chest_gold, _chest_gold_from)
+
+# HOW EACH CHEST WAS ROLLED, by the list it arrived as — kept beside `_chests`
+# rather than in it, because everything else that walks that list wants the items
+# alone. It is what a Reroll needs to ask the same question again: the boss pool
+# or not, a tagged pool or not. A chest with no entry offers named items (a relic
+# or an event handed them over) and is left alone by a re-roll.
+var _chest_rolls: Array = []
+var _chest_reroll: Button = null
+
+func _note_roll(items: Array, boss: bool, pool: String) -> void:
+	_chest_rolls.append({"items": items, "boss": boss, "pool": pool, "section": null})
+
+func _roll_of(items: Array) -> Dictionary:
+	for entry in _chest_rolls:
+		if is_same(entry["items"], items):
+			return entry
+	return {}
+
+# REROLL, ON THE HAUL. A Reroll charge was only ever spendable on the banked-chest
+# screen, so the chests a won game pays — most of the chests in a run — could not
+# be re-rolled at all. One charge re-rolls every rolled chest still open here,
+# each the way it was rolled, which is the rule on every screen a chest is on.
+func reroll_chests() -> void:
+	if _done or _rerollable().is_empty() or _page == null:
+		return
+	if not ItemDropModal.spend_reroll():
+		return
+	for entry in _rerollable():
+		var section: ItemDropModal = entry["section"]
+		var fresh: Array = Data.roll_chest(_page.drop_rng(), section.offer().size(),
+			String(entry["pool"]), bool(entry["boss"]))
+		section.reoffer(fresh)
+	_sync_chest_head()
+
+# The chests a re-roll would touch: rolled, mounted and still unanswered.
+func _rerollable() -> Array:
+	return _chest_rolls.filter(func(entry):
+		var section = entry["section"]
+		return section != null and is_instance_valid(section) and not section.answered_already())
+
 func _mount_chest(items: Array) -> void:
-	var section := ItemDropModal.embed(self, _chest_slot, items)
+	var how: Dictionary = _roll_of(items)
+	var section := ItemDropModal.embed(self, _chest_slot, items, true, String(how.get("pool", "")))
+	if not how.is_empty():
+		how["section"] = section
 	_chest_sections.append(section)
 	section.answered.connect(func(taken: bool, item: ItemData):
 		if taken and item != null:
 			_collect(item)
 		else:
-			_leave(items)
+			# What it is offering NOW, which a re-roll may have changed.
+			_leave(section.offer())
 		# A relic can pay out loot the moment it is picked up (Sacred Bark, Mom's
 		# Coin Purse), so the pack beside these cards may have just changed.
 		refresh_payout()
@@ -970,6 +1044,9 @@ func _sync_chest_head() -> void:
 		_chest_head.visible = showing
 	if _chest_why != null and is_instance_valid(_chest_why):
 		_chest_why.visible = showing
+	if _chest_reroll != null and is_instance_valid(_chest_reroll):
+		_chest_reroll.visible = not _rerollable().is_empty()
+		ItemDropModal.dress_reroll(_chest_reroll)
 
 # The sum, as one wrapping row of small chips: the win, then a face per body with
 # what it was worth, `+` between them, `=` and the chest at the end. Null when
@@ -1007,7 +1084,7 @@ func _chest_sum_row() -> Control:
 	# The answer sits on the FACES' line, like the operators — centring it against a
 	# term that is now two rows tall would float it between the pictures and their
 	# values, which is the one place it does not belong.
-	var result := _line(chest_result_text(), UITheme.GOLD, 13)
+	var result := _line("%s %s" % [ItemDropModal.CHEST_GLYPH, chest_result_text()], UITheme.GOLD, 13)
 	result.custom_minimum_size = Vector2(0, REASON_FACE)
 	result.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	result.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
@@ -1083,9 +1160,15 @@ func _sum_glyph(text: String) -> Control:
 # a status's payout — put on the screen rather than behind it. Without this it
 # opens a RewardScreen on the page's own layer, underneath this one, and the
 # player sees nothing until they have already left (§8.2).
-func add_chest(items: Array) -> void:
+func add_chest(items: Array, gold: int = 0, pool: String = "") -> void:
 	if _done or items.is_empty():
 		return
+	# A banked chest is always a rolled one.
+	_note_roll(items, false, pool)
+	if gold > 0:
+		_chest_gold += gold
+		_chest_gold_from += 1
+		_sync_chest_gold()
 	if _chest_slot == null or not is_instance_valid(_chest_slot):
 		_chests.append(items)
 		return

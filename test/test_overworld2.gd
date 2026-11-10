@@ -7639,6 +7639,37 @@ func test_every_chest_the_report_dropped_is_on_the_screen_together() -> void:
 	assert_eq(screen.chests_waiting(), mounted - 2, "the rest are untouched")
 	Page.leave_post_game(_ui)
 
+# A Reroll charge used to be spendable on the banked-chest screen alone, so the
+# chests a won game pays could not be re-rolled at all.
+func test_a_reroll_on_the_haul_rolls_every_open_chest_again() -> void:
+	_pick_enemies(0)
+	GameState.grant_chest(1, 3)
+	Page.report_beat(_ui)
+	_ui._end_resolve()
+	var screen := _haul()
+	assert_not_null(screen)
+	if screen == null:
+		return
+	var open_chests: Array = screen._rerollable()
+	assert_gt(open_chests.size(), 0, "there is a rolled chest on the haul")
+	var kept: int = GameState.reroll_charges
+	GameState.reroll_charges = 0
+	assert_true(screen._chest_reroll.visible, "the button stands over them")
+	assert_true(screen._chest_reroll.disabled, "and is spent")
+	screen.reroll_chests()
+	GameState.reroll_charges = 1
+	var sizes: Array = open_chests.map(func(e): return e["section"].offer().size())
+	screen.reroll_chests()
+	assert_eq(GameState.reroll_charges, 0, "one charge for the whole screen")
+	assert_eq(screen._rerollable().size(), open_chests.size(), "the same chests are still open")
+	assert_eq(open_chests.map(func(e): return e["section"].offer().size()), sizes,
+		"each the size it was")
+	for entry in open_chests:
+		assert_eq(entry["section"]._cards.size(), entry["section"].offer().size(),
+			"and drawn as what it offers now")
+	GameState.reroll_charges = kept
+	Page.leave_post_game(_ui)
+
 # A relic is ALWAYS a picture. Both card layouts used to draw art only when
 # `item.image` was non-null, so an unarted row would come up as a name over a gap
 # on the screen where the player is deciding whether to take it.

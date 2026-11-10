@@ -55,6 +55,14 @@ var _title: String = "Victory!"
 var _explicit_pool: Array = []
 
 var _choices_box: HFlowContainer
+# A CHEST HERE IS THE SAME CHEST AS EVERYWHERE ELSE: each one is an
+# `ItemDropModal` section mounted in `_chest_col` — the pop-up's own cards, its
+# heading and its Take button — so this screen draws no chest of its own. One per
+# entry of `_chest_choices`, null once that chest is answered.
+var _chest_col: VBoxContainer
+var _sections: Array = []
+var _btn_row: HBoxContainer
+var _skip_btn: Button
 var _reroll_btn: Button
 var _play_btn: Button
 var _title_line: Label
@@ -135,7 +143,11 @@ func _ready() -> void:
 	# which is what makes two chests in a row differ while the run stays repeatable.
 	_rng.seed = randi()
 	process_mode = Node.PROCESS_MODE_ALWAYS
-	set_anchors_preset(Control.PRESET_FULL_RECT)
+	# …AND OFFSETS. `set_anchors_preset` alone keeps the rect the node already has,
+	# and a node that has just been made has none — so this screen and its backdrop
+	# were both 0x0: the page behind a chest was neither dimmed nor blocked, which
+	# is the one thing the pop-up chest always did.
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_build_ui()
 	# If a setup* ran before we entered the tree, kick off now.
 	if _config_done and not _started:
@@ -166,6 +178,12 @@ func _begin() -> void:
 		_roll_every_chest()
 	else:
 		_roll_choices()
+		# One chest is a list of one chest: the same sections, the same answers.
+		if _explicit_pool.is_empty():
+			_chest_choices = [_choices.duplicate()]
+			_chest_taken = [false]
+	if _explicit_pool.is_empty():
+		_dress_as_chest()
 	_refresh()
 
 # ------------------------------------------------------------------
@@ -174,6 +192,12 @@ func _begin() -> void:
 
 # The ordinary chest panel: two or three big cards and a couple of buttons.
 const PANEL_SIZE := Vector2(820, 460)
+# A chest's panel is as tall as what it holds and as wide as the pop-up would be
+# for the same chest; several at once take the compact cards two abreast.
+const CHEST_PANEL_W := 460.0
+const CHEST_MULTI_W := 600.0
+# What the panel leaves above and below itself before the chests start to scroll.
+const CHEST_SCREEN_MARGIN := 310.0
 
 # --- the obtain-any screen (Wand of Wishing) --------------------------------
 #
@@ -225,8 +249,8 @@ func _widen_for_obtain() -> void:
 func _build_ui() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	var dim := ColorRect.new()
-	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
-	dim.color = Color(0, 0, 0, 0.7)
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	dim.color = ModalScaffold.BACKDROP_COLOR
 	dim.mouse_filter = Control.MOUSE_FILTER_STOP
 	add_child(dim)
 
@@ -234,6 +258,10 @@ func _build_ui() -> void:
 	_panel.custom_minimum_size = PANEL_SIZE
 	_panel.position = (get_viewport_rect().size - PANEL_SIZE) / 2.0
 	add_child(_panel)
+	# Centred whenever it changes shape: a chest's panel is as tall as its cards,
+	# which is not known until they have been laid out.
+	_panel.resized.connect(func():
+		_panel.position = ((get_viewport_rect().size - _panel.size) / 2.0).round())
 	var panel := _panel
 
 	var root := VBoxContainer.new()
@@ -292,32 +320,95 @@ func _build_ui() -> void:
 	_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_scroll.custom_minimum_size = Vector2(0, 270)
 	root.add_child(_scroll)
+	var body := VBoxContainer.new()
+	body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	body.minimum_size_changed.connect(_fit_chests)
+	_scroll.add_child(body)
+	# The chests (see _refresh_chests); empty and so no taller than nothing on the
+	# obtain-any screen, whose catalog is the flow under it.
+	_chest_col = VBoxContainer.new()
+	_chest_col.add_theme_constant_override("separation", UITheme.GAP)
+	_chest_col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	body.add_child(_chest_col)
 	_choices_box = HFlowContainer.new()
 	_choices_box.add_theme_constant_override("h_separation", UITheme.GAP_LOOSE)
 	_choices_box.add_theme_constant_override("v_separation", UITheme.GAP_LOOSE)
 	_choices_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_scroll.add_child(_choices_box)
+	body.add_child(_choices_box)
 
-	var btn_row := HBoxContainer.new()
-	btn_row.add_theme_constant_override("separation", UITheme.GAP_LOOSE)
-	btn_row.alignment = BoxContainer.ALIGNMENT_CENTER
-	root.add_child(btn_row)
+	_btn_row = HBoxContainer.new()
+	_btn_row.add_theme_constant_override("separation", UITheme.GAP_WIDE)
+	_btn_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	root.add_child(_btn_row)
 
 	_reroll_btn = Button.new()
 	_reroll_btn.pressed.connect(_on_reroll)
-	btn_row.add_child(_reroll_btn)
+	_btn_row.add_child(_reroll_btn)
 
-	var skip_btn := Button.new()
-	skip_btn.text = "Skip"
-	skip_btn.custom_minimum_size = Vector2(140, 40)
-	skip_btn.pressed.connect(_on_skip)
-	btn_row.add_child(skip_btn)
+	_skip_btn = Button.new()
+	_skip_btn.text = "Skip"
+	_skip_btn.custom_minimum_size = Vector2(140, 40)
+	_skip_btn.pressed.connect(_on_skip)
+	_btn_row.add_child(_skip_btn)
+
+# THE CHEST'S OWN FRAME. This screen used to wear the stock panel under a green
+# "Choose a Reward" at display size, with bracketed rarities and a Take button on
+# every card — a third way of drawing the thing the pop-up and the haul each drew
+# differently again. It is the pop-up's frame now: the gold border, the gift
+# heading, the same cards (the chests are `ItemDropModal` sections, see
+# _refresh_chests), and the same two answers under them with Reroll beside.
+func _dress_as_chest() -> void:
+	var several: bool = _chest_sizes.size() > 1
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = ModalScaffold.PANEL_BG
+	sb.border_color = ItemDropModal.CHEST_GOLD
+	sb.set_border_width_all(2)
+	sb.set_corner_radius_all(8)
+	sb.set_content_margin_all(UITheme.GAP_SECTION)
+	_panel.add_theme_stylebox_override("panel", sb)
+	var width: float = CHEST_MULTI_W
+	if not several:
+		var n: int = _choice_count()
+		width = CHEST_PANEL_W if n <= 1 else minf(ItemDropModal.MULTI_MAX_W,
+			80.0 + ItemDropModal.CARD_W * n)
+	_panel.custom_minimum_size = Vector2(width, 0)
+	_scroll.custom_minimum_size = Vector2.ZERO
+	_choices_box.visible = false
+	_pick_line.visible = false
+	# One chest names itself in its own heading; several are counted here.
+	_title_line.visible = several
+	_title_line.text = "%s  %d Chests" % [ItemDropModal.CHEST_GLYPH, _chest_sizes.size()]
+	_title_line.add_theme_font_size_override("font_size", UITheme.FONT_HEAD)
+	_title_line.add_theme_color_override("font_color", ItemDropModal.CHEST_GOLD)
+	# THE GOLD, ONCE, OVER THE CHESTS: the total every chest below paid as this
+	# screen opened. It is already in the purse, whatever is taken or skipped.
+	_gold_line.add_theme_font_size_override("font_size", UITheme.FONT_LABEL)
+	_gold_line.add_theme_color_override("font_color", ItemDropModal.GOLD_TEXT)
+	_skip_btn.text = "Skip"
+	for btn in [_skip_btn, _reroll_btn]:
+		btn.custom_minimum_size = Vector2(150, 42)
+
+# How many items the one chest in front of the player offers.
+func _choice_count() -> int:
+	if not _chest_choices.is_empty():
+		return (_chest_choices[0] as Array).size()
+	return maxi(1, _choices.size())
+
+# The chests scroll only once they are taller than the window can hold; until
+# then the panel is exactly as tall as they are.
+func _fit_chests() -> void:
+	if _scroll == null or not _explicit_pool.is_empty() or _chest_col == null:
+		return
+	var want: float = _chest_col.get_combined_minimum_size().y
+	var room: float = maxf(120.0, get_viewport_rect().size.y - CHEST_SCREEN_MARGIN)
+	_scroll.custom_minimum_size = Vector2(0, minf(want, room))
+	_panel.reset_size.call_deferred()
 
 func _refresh() -> void:
 	if _choices_box == null:
 		return
 	if _gold_line != null:
-		_gold_line.text = "+%d gold" % _gold
+		_gold_line.text = ItemDropModal.gold_text(_gold, maxi(1, _chest_sizes.size()))
 	# remove_child BEFORE queue_free: queue_free only marks a node, leaving it a
 	# child until the frame ends — and the search box can refresh this list twice in
 	# one frame, which would otherwise draw the old tiles under the new ones.
@@ -328,17 +419,13 @@ func _refresh() -> void:
 	# returns — leaving it to the tail meant a multi-chest screen showed it as an
 	# unlabelled sliver next to Skip.
 	if _reroll_btn != null:
-		_reroll_btn.text = "Reroll (%d)" % GameState.reroll_charges
-		_reroll_btn.disabled = GameState.reroll_charges <= 0
-		_reroll_btn.custom_minimum_size = Vector2(140, 40)
-	if not _chest_sizes.is_empty():
-		_refresh_multi()
-		return
+		ItemDropModal.dress_reroll(_reroll_btn)
 	if not _explicit_pool.is_empty():
+		if _reroll_btn != null:
+			_reroll_btn.custom_minimum_size = Vector2(140, 40)
 		_refresh_obtain()
 		return
-	for item in _choices:
-		_choices_box.add_child(_build_choice_tile(item))
+	_refresh_chests()
 
 # The catalog, rarest first and alphabetical within a rarity, narrowed by whatever
 # is in the search box. Rarest first because that is the order the decision is
@@ -430,48 +517,49 @@ func _catalog_kind_line(item: ItemData) -> String:
 		_:
 			return "%s · charged" % rarity if item.is_charged() else "%s · passive" % rarity
 
-# One column per chest, each headed and each answered on its own. A chest that
-# has been taken from collapses to its answer, so the screen keeps showing what
-# you already chose while you decide the next one.
-func _refresh_multi() -> void:
-	for i in range(_chest_sizes.size()):
-		var col := VBoxContainer.new()
-		col.add_theme_constant_override("separation", UITheme.GAP_SNUG)
-
-		var head := Label.new()
-		var pool_word: String = String(_chest_pools[i]) if i < _chest_pools.size() else ""
-		head.text = "%s%s Chest" % [(pool_word.capitalize() + " ") if pool_word != "" else "",
-			_size_name(int(_chest_sizes[i]))]
-		head.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		head.add_theme_font_size_override("font_size", UITheme.FONT_LEAD)
-		head.add_theme_color_override("font_color",
-			Color(0.6, 0.7, 0.6) if bool(_chest_taken[i]) else Color(1.0, 0.85, 0.4))
-		col.add_child(head)
-
-		if bool(_chest_taken[i]):
-			var done := Label.new()
-			done.text = "✓  taken"
-			done.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-			done.custom_minimum_size = Vector2(230, 0)
-			done.add_theme_color_override("font_color", Color(0.55, 0.8, 0.6))
-			col.add_child(done)
-		else:
-			var row := HBoxContainer.new()
-			row.add_theme_constant_override("separation", UITheme.GAP_WIDE)
-			for item in (_chest_choices[i] as Array):
-				row.add_child(_build_choice_tile(item, i))
-			col.add_child(row)
-		_choices_box.add_child(col)
-
-
-func _size_name(choices: int) -> String:
-	match choices:
-		1: return "Small"
-		2: return "Medium"
-		3: return "Large"
-		5: return "Huge"
-		_: return "Reward"
-
+# One section per chest still to answer, each the pop-up's own chest
+# (`ItemDropModal.embed`): its gift heading, its cards, its Take button. A single
+# chest wears the full-size cards, because it is the only thing on the screen;
+# several wear the compact ones the haul does, so they can be weighed against
+# each other without scrolling. An answered chest takes itself down.
+func _refresh_chests() -> void:
+	# This screen's own two buttons come home before the sections they may be
+	# sitting in are freed (see below).
+	for btn in [_reroll_btn, _skip_btn]:
+		if btn.get_parent() != _btn_row:
+			btn.get_parent().remove_child(btn)
+			_btn_row.add_child(btn)
+	# Skip, Reroll, Take — the order the pop-up's row is in.
+	_btn_row.move_child(_skip_btn, 0)
+	_btn_row.visible = true
+	for section in _sections:
+		if section != null and is_instance_valid(section):
+			section.discard()
+	_sections.clear()
+	var several: bool = _chest_choices.size() > 1
+	for i in range(_chest_choices.size()):
+		if bool(_chest_taken[i]) or (_chest_choices[i] as Array).is_empty():
+			_sections.append(null)
+			continue
+		var pool: String = String(_chest_pools[i]) if i < _chest_pools.size() else _pool_tag
+		var section := ItemDropModal.embed(self, _chest_col, _chest_choices[i], several, pool)
+		var chest: int = i
+		section.answered.connect(func(taken: bool, item: ItemData):
+			if taken and item != null:
+				_on_take(item, chest))
+		_sections.append(section)
+	# ONE CHEST, ONE ROW OF ANSWERS. The pop-up reads "Leave it | Take"; with this
+	# screen's buttons in a row of their own underneath, the same chest read
+	# "Take" over "Reroll | Skip". So they join the chest's row, ahead of Take.
+	if not several and not _sections.is_empty() and _sections[0] != null:
+		var row: BoxContainer = _sections[0].answer_row()
+		if row != null:
+			for btn in [_reroll_btn, _skip_btn]:
+				_btn_row.remove_child(btn)
+				row.add_child(btn)
+				row.move_child(btn, 0)
+			_btn_row.visible = false
+	_fit_chests.call_deferred()
 
 func _roll_every_chest() -> void:
 	_chest_choices.clear()
@@ -484,45 +572,6 @@ func _roll_every_chest() -> void:
 	_pool_tag = ""
 
 
-func _build_choice_tile(item: ItemData, chest: int = -1) -> Control:
-	var tile := PanelContainer.new()
-	tile.custom_minimum_size = Vector2(230, 250)
-	tile.add_theme_stylebox_override("panel", RarityStyle.panel(int(item.rarity), 12))
-	var vbox := VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", UITheme.GAP_SNUG)
-	tile.add_child(vbox)
-
-	if item.image != null:
-		var icon := TextureRect.new()
-		icon.texture = item.image
-		icon.custom_minimum_size = Vector2(96, 96)
-		icon.expand_mode = TextureRect.EXPAND_FIT_WIDTH_PROPORTIONAL
-		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		icon.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-		vbox.add_child(icon)
-
-	var rarity_idx: int = clampi(int(item.rarity), 0, RARITY_NAMES.size() - 1)
-	var name_lbl := Label.new()
-	name_lbl.text = "%s\n[%s]" % [item.display_name, RARITY_NAMES[rarity_idx]]
-	name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	name_lbl.add_theme_color_override("font_color", RARITY_COLORS[rarity_idx])
-	vbox.add_child(name_lbl)
-
-	var desc := Label.new()
-	desc.text = item.description
-	desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	desc.custom_minimum_size = Vector2(210, 0)
-	desc.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
-	desc.add_theme_color_override("font_color", Color(0.82, 0.82, 0.82))
-	desc.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	vbox.add_child(desc)
-
-	var take := Button.new()
-	take.text = "Take"
-	take.pressed.connect(func(): _on_take(item, chest))
-	vbox.add_child(take)
-	return tile
-
 # ------------------------------------------------------------------
 # Item rolling — mirrors js/loot.js showItemChoiceModal + selectRandomRarity.
 # ------------------------------------------------------------------
@@ -533,58 +582,12 @@ func _roll_choices() -> void:
 	if not _explicit_pool.is_empty():
 		_choices = _explicit_pool.duplicate()
 		return
-	# A TAGGED chest (the Dark Room's devilish one, docs/locations-design.md §3)
-	# draws only from what carries the tag, leaned and without a rarity roll — a
-	# pool that small has no ladder to climb. A tag nothing rollable carries falls
-	# through to the ordinary chest below.
-	var tagged: Array = Data.reward_item2_pool_tagged(_pool_tag) if _pool_tag != "" else []
-	if not tagged.is_empty():
-		var want: int = _choice_count_override if _choice_count_override >= 0 \
-			else BASE_ITEM_CHOICES + maxi(0, Stats.get_value(&"discovery"))
-		want = maxi(1, mini(want, tagged.size()))
-		var guard: int = 0
-		while _choices.size() < want and guard < 100:
-			guard += 1
-			var got: ItemData = Locations.pick(tagged, _rng)
-			if not _choices.has(got):
-				_choices.append(got)
-		return
-	# Enemy-drop relics come from the games-first items2.0 table (§8).
-	var pool: Array = Data.reward_item2_pool()
-	if pool.is_empty():
-		return
-	var discovery: int = Stats.get_value(&"discovery")
-	var n: int = _choice_count_override if _choice_count_override >= 0 else BASE_ITEM_CHOICES + maxi(0, discovery)
-	n = maxi(1, mini(n, pool.size()))
-	var orb: bool = GameState.has_low_rarity_reroll()
-	var attempts: int = 0
-	while _choices.size() < n and attempts < 100:
-		attempts += 1
-		var bucket: Array = Data.reward_item2_pool_of(_roll_rarity())
-		var pick: ItemData = Locations.pick(bucket, _rng)
-		# Sacred Orb: reroll low-rarity picks — Commons always, Uncommons 25%.
-		# Re-loops (re-rolling rarity) until the pick survives, biasing the
-		# offered choices toward higher rarities.
-		if orb:
-			if int(pick.rarity) == ItemData.Rarity.COMMON:
-				continue
-			if int(pick.rarity) == ItemData.Rarity.UNCOMMON and _rng.randf() < 0.25:
-				continue
-		var dup: bool = false
-		for c in _choices:
-			if c.id == pick.id:
-				dup = true
-				break
-		if not dup:
-			_choices.append(pick)
-
-# The shared 75/20/4/1 ladder. This screen used to carry its OWN luck weighting —
-# a port of the HTML build's rollWithLuckAdvantage, which took the better of two
-# [0,1) draws on a luck*10% chance. Luck is a guaranteed reroll per point now and
-# it lives on the ladder itself (Data.roll_item_rarity), so a second
-# implementation here would have applied it twice on this one screen.
-func _roll_rarity() -> int:
-	return Data.roll_item_rarity(_rng)
+	# Every chest in the game is rolled by the one roller (Data.roll_chest): the
+	# tagged pool, the rarity ladder with Luck on it, the Sacred Orb's re-draw.
+	# This screen only decides how MANY — the chest's own size, or the default.
+	var n: int = _choice_count_override if _choice_count_override >= 0 \
+		else BASE_ITEM_CHOICES + maxi(0, Stats.get_value(&"discovery"))
+	_choices = Data.roll_chest(_rng, n, _pool_tag)
 
 # ------------------------------------------------------------------
 # Actions
@@ -595,14 +598,15 @@ func _on_take(item: ItemData, chest: int = -1) -> void:
 		return
 	# Multi-chest: one pick per chest, and the screen only closes once every chest
 	# has been answered. Taking from one must not silently forfeit the others.
-	if chest >= 0 and not _chest_sizes.is_empty():
+	if chest >= 0 and chest < _chest_taken.size():
 		if bool(_chest_taken[chest]):
 			return
 		_chest_taken[chest] = true
 		GameState.add_item(item)
 		GameLog.add("Picked up %s." % item.display_name, Color(0.7, 1.0, 0.7))
+		# The chest that was answered took its own section down; the rest stay
+		# exactly where they were.
 		if _chest_taken.has(false):
-			_refresh()
 			return
 		_resolved = true
 		_finish()
@@ -639,11 +643,12 @@ func _on_play_real() -> void:
 			_play_btn.disabled = true
 
 func _on_reroll() -> void:
-	if _resolved or GameState.reroll_charges <= 0:
+	if _resolved or not ItemDropModal.spend_reroll():
 		return
-	GameState.reroll_charges -= 1
 	if _chest_sizes.is_empty():
 		_roll_choices()
+		if _explicit_pool.is_empty():
+			_chest_choices = [_choices.duplicate()]
 	else:
 		# Rerolls the chests still open; a chest already answered keeps its answer.
 		var kept: Array = _chest_choices.duplicate()
