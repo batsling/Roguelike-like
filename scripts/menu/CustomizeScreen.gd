@@ -7,7 +7,7 @@ extends Control
 #   Characters     each character's costumes, the ICON and the FULL portrait
 #                  chosen separately (a Vampire Survivors costume is both, from
 #                  one picture, and shows in both rows);
-#   Icons          what stands in for 🗝, ✸ and 🏆 everywhere they are drawn;
+#   Icons          what stands in for 🗝, ✸, 🏆 and 🍀 everywhere they are drawn;
 #   Title Letters  which earned letters the main menu may spell with, a game at a
 #                  time or a letter at a time — refused when what is left could
 #                  not spell the title and the subtitle.
@@ -19,8 +19,9 @@ extends Control
 const TILE := 64
 const LETTER_TILE := 40
 const TABS := ["Characters", "Icons", "Title Letters"]
-const KIND_NAMES := {"key": "Keys", "bomb": "Bombs", "difficulty": "Difficulty (the trophy)"}
-const KIND_GLYPHS := {"key": "🗝", "bomb": "✸", "difficulty": "🏆"}
+const KIND_NAMES := {"key": "Keys", "bomb": "Bombs", "difficulty": "Difficulty (the trophy)",
+	"luck": "Luck"}
+const KIND_GLYPHS := {"key": "🗝", "bomb": "✸", "difficulty": "🏆", "luck": "🍀"}
 
 var _tab := 0
 var _tab_buttons: Array[Button] = []

@@ -28,7 +28,7 @@ a lost run will cost. A run is meant to last a day or two of streaming.
    Amulet stands its boss alone. Ticking a goal resolves it on the spot. Each
    lost run of the real game gives the board a turn. After three losses (one at
    a Traditional roguelike), you can escape at a price. Every enemy defeated
-   fills the 🛒 shop bar; full, it opens a shop at the game you stand on.
+   fills the 🛒 shop bar; full, it opens a shop at the game you stand on, between games.
 4. **Report it.** You get chests sized by what you killed, loot off the floor,
    gold, maybe a level-up and an event. Then the end of the game stands more
    bodies up, more the nearer the Amulet you are.

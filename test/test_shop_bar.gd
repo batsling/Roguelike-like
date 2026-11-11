@@ -153,3 +153,27 @@ func test_pressing_a_full_bar_opens_a_shop_where_the_run_stands() -> void:
 	modal.queue_free()
 	ui._shop_modal = null
 	assert_not_null(ui.press_shop_bar(), "and pressing again walks back in")
+
+# A SHOP IS WALKED INTO BETWEEN GAMES ONLY (the owner, 11 Nov 2026). During a game
+# the bar is a meter on the board's DIFFICULTY strip and opens nothing; back on
+# the offering, the 🛒 button there says "Open Shop" off a full bar.
+func test_a_shop_cannot_be_walked_into_while_a_game_is_in_play() -> void:
+	var ui = Page.build(self)
+	Page.open_at_first_offering(ui)
+	GameState.shop_bar = ShopSystem.bar_target()
+	ui._paint_shop_bar()
+	assert_true(ui._shop_btn.visible, "between games a full bar puts the button up")
+	assert_string_contains(ui._shop_btn.text, "Open Shop")
+	assert_not_null(ui._board.shop_bar_slot.find_child("ShopBarChip", true, false),
+		"and the bar stands in the board's difficulty strip")
+	Page.pick_enemies(ui, 0)
+	if ui._phase != ui.Phase.PLAYING:
+		pending("the pick did not put a game in play")
+		return
+	GameState.shop_bar = ShopSystem.bar_target()
+	ui._paint_shop_bar()
+	assert_false(ui.can_shop_now())
+	assert_true(ui._shop_bar_chip.disabled, "during a game the bar is only a meter")
+	assert_null(ui.press_shop_bar(), "and pressing it opens nothing")
+	assert_false(ShopSystem.is_shop(GameState.current_game_id), "nor a shop here")
+	assert_null(ui.open_shop())

@@ -3327,6 +3327,10 @@
   "sitename": "Children of Morta Wiki",
   "wiki": "https://childrenofmorta.fandom.com"
  },
+ "Chivalware": {
+  "checked": "2026-11-11",
+  "wiki": null
+ },
  "Chocobo's Dungeon 2": {
   "api": "https://finalfantasy.fandom.com/api.php",
   "checked": "2026-10-11",
@@ -11038,6 +11042,10 @@
   "signal": "",
   "sitename": "Hell Maiden Wiki",
   "wiki": "https://hellmaiden.wiki.gg/"
+ },
+ "Hell Wait": {
+  "checked": "2026-11-11",
+  "wiki": null
  },
  "Hellboy Web of Wyrd": {
   "checked": "2026-10-11",

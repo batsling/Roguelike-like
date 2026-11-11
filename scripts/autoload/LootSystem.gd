@@ -379,8 +379,11 @@ func display_name(entry: Dictionary, face_up: bool = true) -> String:
 			var b: BagData = Data.get_bag(StringName(entry.get("id", "")))
 			return b.display_name if b != null else "Bag"
 		"weapon":
+			# AN UPGRADED WEAPON WEARS ITS +X IN ITS NAME (the owner, 11 Nov 2026), so
+			# every surface that names it — the tile, the hover, the swing modal, the
+			# log — says it without being taught to.
 			var w: WeaponData = WeaponSystem.def(entry)
-			return w.display_name if w != null else "Weapon"
+			return (w.display_name if w != null else "Weapon") + WeaponSystem.plus_suffix(entry)
 	return "Loot"
 
 # THE ONE PLACE A PIECE OF LOOT BECOMES A PICTURE, and the one place the CARD's

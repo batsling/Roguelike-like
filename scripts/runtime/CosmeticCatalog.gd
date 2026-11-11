@@ -10,7 +10,7 @@ extends RefCounted
 #   * a costume is "costume:<slot>:<character>/<title>" — `slot` is icon, full or
 #     both, and a `both` one (Vampire Survivors') is the icon and the full portrait
 #     in one unlock, from one picture;
-#   * an icon set is "<kind>/<name>" — kind is key, bomb or difficulty — and a set
+#   * an icon set is "<kind>/<name>" — kind is key, bomb, difficulty or luck — and a set
 #     can hold several images, each for a range of Fracture levels (Risk of Rain
 #     2's Drizzle, Rainstorm and Monsoon are one unlock).
 #
@@ -18,7 +18,7 @@ extends RefCounted
 # the units of the games the character is from, and the character's own costumes.
 
 const PATH := "res://data/cosmetics.json"
-const KINDS := ["key", "bomb", "difficulty"]
+const KINDS := ["key", "bomb", "difficulty", "luck"]
 const SLOTS := ["icon", "full"]
 
 static var _cache: Dictionary = {}

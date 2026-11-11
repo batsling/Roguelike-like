@@ -3944,8 +3944,8 @@ gets its loot row the first time it is asked for.
 ### 14.4 When it opens, and what the road can see
 
 > **SUPERSEDED IN PART BY §19.10.** A shop no longer opens after a Shop node's
-> game is beaten: the player opens one off the shop bar, at any game, before or
-> after playing it. The pop-up, the button by the offering, the haul screen's
+> game is beaten: the player opens one off the shop bar, at any game they stand
+> at between games (11 Nov 2026: never while one is in play). The pop-up, the button by the offering, the haul screen's
 > *Go to Shop*, the shelf keyed by node and the stock lines below all stand.
 > Three things below do **not**: a game with a shop **pays its event** like every
 > other (`EventSystem.roll_for_arrival` lost its shop gate); there are no `$`
@@ -4617,6 +4617,19 @@ itself — a button reading "Go to Shop" beside a shelf the player is already
 looking at describes nothing. So the shelf stays where §14 put it, under the
 board, and this screen keeps only the shop's node id to know that is where its exit
 leads (`PostCombatScreen.shop_id`).
+
+**What is unclaimed is said beside the way out, and the way out asks once**
+(11 Nov 2026, after a playtester left items on this screen). `unclaimed()` counts
+the chests not yet answered and the pieces still on the table; while it is not
+zero a gold notice in the footer names them ("Not taken yet: 1 chest to open ·
+2 pieces of loot on the table"), the exit is a neutral plate rather than the
+green one (the green on the screen is then the Take buttons'), and it does not
+hold the keyboard focus, so Enter cannot walk past a chest. Its first press
+(`press_exit`) with something unclaimed turns it into "Leave it behind?" and
+flashes the chest column and the table; the second leaves. Taking or leaving
+anything puts the question away, so it is always about what is there now.
+`dismiss()` is unchanged and unconditional. The count is deliberately NOT on the
+button — "(leaving 3 behind)" beside "STILL FOLLOWING 2" read as enemies.
 
 **The sections are the real modals, embedded.** `ItemDropModal.embed`,
 `LootDropModal.embed` and `BossNoticeModal.embed` build the same cards, run the
@@ -5658,12 +5671,18 @@ made shops hard to find. So:
   before). **One shop per game**, and it **stays for the rest of the run**:
   `GameState.shops`, keyed by node, is now where the shops are as well as what
   is on them.
-- **On screen.** The bar sits right of the purse in the header
-  (`Overworld2._build_shop_bar_chip`): `🛒 [bar] n / N`, `Open shop` when full at
-  a game with none, `Shop` at a game with one. It is a button, because the
-  offering panel and its `🛒 Shop` button are put away while a game is played;
-  pressing it is `press_shop_bar`. Arriving at a game with a shop puts the
-  offering's button up for the visit (`_arrive_at_shop`). A shop is marked with
+- **On screen.** The bar stands in the board's **DIFFICULTY strip**, left of the
+  location (`Overworld2._build_shop_bar_chip`, handed to
+  `BattlefieldView.shop_bar`): `🛒 [bar] n / N`. It sat right of the purse in the
+  header until 11 Nov 2026, and was a button that opened the shop from inside a
+  game. **A shop is now walked into between games only** (`can_shop_now`: the
+  page is on its offering): during a game the bar is a meter (`Full` when it
+  is), and `press_shop_bar` / `open_shop` return null. The way in is the
+  offering's `🛒` button, on the left of *Choose a Game*: `🛒 Shop` at a game
+  with one, `🛒 Open Shop` at a game without when the bar is full
+  (`_paint_shop_btn_face`). Between games the bar itself is still pressable and
+  does the same thing. Arriving at a game with a shop sets the button for the
+  visit (`_arrive_at_shop`); it shows once the game is over. A shop is marked with
   🛒 on its offering card (the `🛒 SHOP` flag, unchanged), in the game popup's
   facts, on the route ladder's and the map's rung (`RouteLadder.shop_marker`),
   on the rung's card, and on the OBS overlay's map; the popup's connection line

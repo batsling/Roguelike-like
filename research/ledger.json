@@ -1178,6 +1178,15 @@
   "loot": "2026-10-09: Unstable Relics; weapons and evolutions: none (divine relics are gem-priced abilities, not weapons; no evolutions)",
   "statuses": "2026-10-09: nothing: no status pages; Corruption is the setting's evil, not a status"
  },
+ "Chivalware": {
+  "characters": "2026-11-11: nothing usable: the four playable Disk Knights are unnamed on the Steam page, and there is no wiki",
+  "connections": "2026-11-11",
+  "events": "2026-11-11: nothing usable: no wiki, and the Steam page names no specific event",
+  "goals": "2026-11-11: nothing usable: no wiki, and the Steam page names no enemy or boss ('New Bosses', unnamed; the mad King has no name)",
+  "locations": "2026-11-11: nothing usable: no wiki, and the Steam page names no place (Chivalware's 'castle' is unnamed)",
+  "loot": "2026-11-11: nothing usable: no wiki; its weapons are 'weapon disks', none named on the Steam page, so no weapon or evolution to write either",
+  "statuses": "2026-11-11: nothing usable: no wiki, and the Steam page names no status"
+ },
  "Chocobo's Dungeon 2": {
   "characters": "2026-10-11: nothing usable: Chocobo, and partners who are Final Fantasy's",
   "connections": "before 2026-10-07",
@@ -3526,6 +3535,15 @@
   "locations": "2026-10-12: nothing usable: two boss pages and mod cards with no effect text",
   "loot": "2026-10-12: nothing usable: two boss pages and mod cards with no effect text",
   "statuses": "2026-10-12: nothing usable: two boss pages and mod cards with no effect text"
+ },
+ "Hell Wait": {
+  "characters": "2026-11-11: nothing usable: no wiki, and the Steam page names no hero",
+  "connections": "2026-11-11",
+  "events": "2026-11-11: nothing usable: no wiki, and the Steam page names no specific event",
+  "goals": "2026-11-11: nothing usable: no wiki, and the Steam page names no opponent or boss (the one you play is only 'his')",
+  "locations": "2026-11-11: nothing usable: no wiki, and the Steam page names no place (Chivalware's 'castle' is unnamed)",
+  "loot": "2026-11-11: nothing usable: no wiki; the Steam page names only categories (Joker tiles, stickers, Blessings, Pacts) and riichi terms (dora, yaku), no specific piece. No weapons or evolutions",
+  "statuses": "2026-11-11: nothing usable: furiten and riichi are mahjong rules rather than a status this game can host; no wiki"
  },
  "Hellboy Web of Wyrd": {
   "characters": "2026-10-12: nothing usable: no wiki under its name on Fandom or wiki.gg, or one with no item or enemy pages",

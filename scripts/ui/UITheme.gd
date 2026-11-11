@@ -367,6 +367,14 @@ static func action_button(text: String, color: Color,
 	btn.custom_minimum_size = min_size
 	if font_size > 0:
 		btn.add_theme_font_size_override("font_size", font_size)
+	tint_action_button(btn, color)
+	btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	return btn
+
+# The plate itself, so a button that changes what it MEANS can change colour with
+# it (the haul screen's way out: neutral while something is still unclaimed,
+# green once nothing is — PostCombatScreen._refresh_exit).
+static func tint_action_button(btn: Button, color: Color) -> void:
 	btn.add_theme_stylebox_override("normal",
 		flat(color.lerp(BG, 0.80), 8, 6, 1, color.lerp(BG, 0.30)))
 	btn.add_theme_stylebox_override("hover",
@@ -384,8 +392,6 @@ static func action_button(text: String, color: Color,
 	btn.add_theme_color_override("font_color", color.lerp(Color.WHITE, 0.45))
 	btn.add_theme_color_override("font_hover_color", color.lerp(Color.WHITE, 0.7))
 	btn.add_theme_color_override("font_disabled_color", TEXT_FAINT)
-	btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	return btn
 
 static func quiet_button(text: String, min_size: Vector2 = Vector2.ZERO, font_size: int = 0) -> Button:
 	var btn := Button.new()

@@ -157,6 +157,25 @@ func test_a_worn_icon_replaces_its_glyph_with_the_level_on_a_trophy() -> void:
 	assert_not_null(num)
 	assert_eq(num.text, "6", "with the Fracture on it")
 
+# Luck is the fourth icon kind (11 Nov 2026): the folder's two pictures are in the
+# catalog, and a worn one stands in for the clover with no number on it.
+func test_a_worn_luck_icon_replaces_the_clover() -> void:
+	var looks := CosmeticCatalog.icons_of("luck")
+	assert_gt(looks.size(), 1, "Mewgenics' and Rebirth's")
+	Cosmetics._unlocked["luck/luck_mewgenics"] = "game:mewgenics"
+	Cosmetics.set_icon("luck", "luck/luck_mewgenics")
+	var l := Label.new()
+	l.text = "🍀 Luck 2"
+	l.set_meta("glyph_level", 6)
+	add_child_autofree(l)
+	Cosmetics.apply_glyph(l)
+	assert_false(l.text.contains("🍀"), "the glyph is gone")
+	assert_string_contains(l.text, "Luck 2")
+	var art: TextureRect = l.get_node_or_null(Cosmetics.GLYPH_NODE)
+	assert_not_null(art, "a picture stands in its place")
+	assert_string_contains(art.texture.resource_path, "Luck_Mewgenics")
+	assert_null(art.get_node_or_null("Level"), "only the trophy carries the Fracture")
+
 func test_an_unworn_glyph_is_left_alone() -> void:
 	var l := Label.new()
 	l.text = "🗝 Keys 2"

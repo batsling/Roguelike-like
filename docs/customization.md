@@ -8,7 +8,7 @@ and characters, and every choice is saved per profile
 | tab | what it changes |
 |---|---|
 | **Characters** | each character's **icon** and **full portrait**, chosen separately |
-| **Icons** | what is drawn in place of 🗝 (keys), ✸ (bombs) and 🏆 (the trophy) |
+| **Icons** | what is drawn in place of 🗝 (keys), ✸ (bombs), 🏆 (the trophy) and 🍀 (Luck)  |
 | **Title Letters** | which earned letters the main menu's title may be spelled from |
 
 ## 1. Earning: a rank is a song, a letter or a look
@@ -44,6 +44,7 @@ images2.0/characters/Costumes Both/<Character>_<Costume>.png   one picture, both
 images2.0/icons/Keys/<Name>_<Game>.png
 images2.0/icons/Bombs/<Name>_<Game>.png
 images2.0/icons/Difficulties/<Name>_<Game>[_<lo>-<hi>].png
+images2.0/icons/Luck/<Name>_<Game>.png
 ```
 
 - `<Character>` is the display name with underscores (`Antonio_Belpaese`), and
@@ -86,8 +87,8 @@ at once.
 
 ### Every slot's choices
 
-Each slot (a character's icon or full portrait, or the key, bomb or difficulty
-icon) offers:
+Each slot (a character's icon or full portrait, or the key, bomb, difficulty or
+Luck icon) offers:
 
 - **Default:** the character's own art, or the glyph.
 - **🎲 Random:** a different look every run, rolled at `GameLoop2.start_run`
@@ -101,12 +102,12 @@ icon) offers:
   (`Cosmetics.is_new` / `mark_seen`, per profile). This happens wherever its tile
   is first shown: the Customization screen or the picker.
 
-## 4. Wearing an icon: every 🗝 ✸ 🏆, everywhere
+## 4. Wearing an icon: every 🗝 ✸ 🏆 🍀, everywhere
 
 The owner's words: "everywhere means everywhere, and with the number on top of
-it too". The UI writes these three as text inside ordinary Labels and Buttons,
+it too". The UI writes these four as text inside ordinary Labels and Buttons,
 so `Cosmetics` watches the tree's `node_added` while any icon is worn. Each
-Label or Button whose text holds one of the three gets the glyph swapped for
+Label or Button whose text holds one of the four gets the glyph swapped for
 spaces, and the picture is laid over that gap (`apply_glyph`, `_place_glyph`).
 On a 🏆, the Fracture level is written over the picture in `Fracture.COLOR`.
 
@@ -118,7 +119,7 @@ On a 🏆, the Fracture level is written over the picture in `Fracture.COLOR`.
   that rewrites its text calls `Cosmetics.apply_glyph(node)` itself: the board's
   Bomb button, both win banners and the Customization screen's own status line.
 - **Limit:** a glyph inside text that wraps by width (not by `\n`) is placed as if
-  the line did not wrap. Every 🗝 ✸ 🏆 in the UI today either starts its line or
+  the line did not wrap. Every 🗝 ✸ 🏆 🍀 in the UI today either starts its line or
   sits in a one-line label.
 
 ## 5. Title letters

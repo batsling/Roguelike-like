@@ -11,6 +11,33 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **A playtest pass (the owner's list, 11 Nov 2026).**
+  - **An upgraded weapon wears its +X.** A weapon that has gained Stun for the
+    run (Scroll of Enchant Weapon today) is named "Wooden Sword +1" everywhere a
+    piece is named, and its tile carries a `+1` chip on the art's top-left corner.
+    `WeaponSystem.plus_of` is the one number both read, so the next way to upgrade
+    a weapon only has to add to it.
+  - **A shop is walked into between games, never during one.** The shop bar left
+    the header for the board's DIFFICULTY strip, where it is a meter while a game
+    is in play. The way in is the 🛒 button beside *Choose a Game*: `Shop` at a
+    game with one, `Open Shop` at a game without when the bar is full
+    (`Overworld2.can_shop_now`, `press_shop_bar`).
+  - **The haul screen says what has not been taken.** A playtester left items on
+    it. A gold notice beside the way out now names what is unclaimed ("1 chest to
+    open · 2 pieces of loot on the table"); the way out is a neutral plate until
+    nothing is, does not hold the keyboard focus until then, and its first press
+    with something unclaimed asks ("Leave it behind?") and flashes the chest and
+    the table rather than leaving (`PostCombatScreen.press_exit`).
+  - **The checklist fits before it scrolls.** A list longer than its room flows
+    into a second column (`ChecklistFlow`), and past that is drawn smaller, down
+    to half size, so every row is on screen while a game is played
+    (`Overworld2._fit_checklist`). The scrollbar remains only past that floor.
+  - **Luck icons.** A fourth icon kind beside keys, bombs and the trophy:
+    `images2.0/icons/Luck/` stands in for every 🍀 (Mewgenics' and Rebirth's).
+  - **Two games:** Hell Wait (Balatro, Buckshot Roulette, Inscryption) and
+    Chivalware (One Step From Eden). The uploaded workbook predated Charon's
+    steal 3 → 4 below, so that cell was put back to 4 rather than reverted.
+
 - **A second pass (the owner's list, 12 Nov 2026).**
   - **Loot on the ground goes on the rewards table.** The report sweeps the
     floor onto the haul screen as it opens (`Overworld2._open_post_game`), and a
