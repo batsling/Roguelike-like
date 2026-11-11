@@ -2856,17 +2856,52 @@ func _add_enemy_node(entry: Dictionary) -> Control:
 	ring_box.border_color = LIT_RING
 	ring_box.set_border_width_all(3)
 	ring_box.set_corner_radius_all(6)
-	for off in cells:
-		var ring := Panel.new()
+	# ONE OUTLINE ROUND THE WHOLE BODY, not a box per cell (the owner, 12 Nov 2026:
+	# "when hovering over an enemy that is more than one square, make sure just the
+	# outline of the enemy is shown not the boxes inside of it"). The body's own
+	# frame has been one shape since Oct 2026; the ring lit over it on a hover was
+	# still a square per cell, so a 2x2 body lit as four boxes. A body of more than
+	# one cell rings with the same FootprintFrame its frame is, drawn hollow.
+	if cells.size() > 1:
+		var ring := FootprintFrame.new()
 		ring.name = "LitRing"
 		ring.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		ring.position = Vector2(off.x, off.y) * float(_cell_step)
-		ring.size = Vector2(_cell, _cell)
-		ring.add_theme_stylebox_override("panel", ring_box)
+		ring.cell_size = float(_cell)
+		ring.step = float(_cell_step)
+		ring.size = node.size
+		ring.fill = Color(0, 0, 0, 0)
+		ring.border = LIT_RING
+		ring.width = 3.0
+		ring.set_cells(cells)
 		ring.visible = _is_lit(inst)
 		badges.add_child(ring)
 		rings.append(ring)
-	if body_pick != null:
+	else:
+		for off in cells:
+			var ring := Panel.new()
+			ring.name = "LitRing"
+			ring.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			ring.position = Vector2(off.x, off.y) * float(_cell_step)
+			ring.size = Vector2(_cell, _cell)
+			ring.add_theme_stylebox_override("panel", ring_box)
+			ring.visible = _is_lit(inst)
+			badges.add_child(ring)
+			rings.append(ring)
+	if body_pick != null and cells.size() > 1:
+		var chosen := FootprintFrame.new()
+		chosen.name = "PickRing"
+		chosen.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		chosen.cell_size = float(_cell)
+		chosen.step = float(_cell_step)
+		chosen.size = node.size
+		chosen.fill = Color(body_pick.accent, 0.3)
+		chosen.border = body_pick.accent.lerp(Color.WHITE, 0.3)
+		chosen.width = 4.0
+		chosen.set_cells(cells)
+		chosen.visible = body_pick.is_selected(inst)
+		badges.add_child(chosen)
+		pick_rings.append(chosen)
+	elif body_pick != null:
 		var pick_box := StyleBoxFlat.new()
 		pick_box.bg_color = Color(body_pick.accent, 0.3)
 		pick_box.border_color = body_pick.accent.lerp(Color.WHITE, 0.3)

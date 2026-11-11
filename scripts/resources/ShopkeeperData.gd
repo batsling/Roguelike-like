@@ -59,7 +59,7 @@ extends Resource
 @export var boss: StringName = &""
 # The tag every piece of loot on the shelf carries (Jimbo's `joker` cards).
 @export var loot_tag: String = ""
-# Card packs on the shelf: 4 gold, open to a pick of 1 of 3 cards.
+# Card packs on the shelf: 5 gold (ShopSystem.PACK_PRICE), open to a pick of 1 of 3 cards.
 @export var pack_slots: int = 0
 
 # How many items and pieces of loot the shelf holds (ShopSystem.STOCK_SLOTS /

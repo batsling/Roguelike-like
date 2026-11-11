@@ -4121,7 +4121,7 @@ static func shopkeeper_rules(k: ShopkeeperData) -> Array:
 			+ (" of %s" % ", ".join(k.loot_kinds) if not k.loot_kinds.is_empty() else " of loot"))
 	if k.pack_slots > 0:
 		shelf.append(Plural.count(k.pack_slots, "card pack")
-			+ " (4 gold, open to a pick of 1 of 3)")
+			+ " (%d gold, open to a pick of 1 of 3)" % ShopSystem.PACK_PRICE)
 	out.append("Shelf: " + (", ".join(shelf) if not shelf.is_empty() else "nothing"))
 	if not k.pools.is_empty():
 		out.append("Items drawn from: %s" % ", ".join(k.pools))
@@ -4146,7 +4146,7 @@ static func shopkeeper_rules(k: ShopkeeperData) -> Array:
 			"donation_shelf":
 				out.append("A Donation Machine stands in the room; the shelf grows with its best bank.")
 			"gold_reroll":
-				out.append("Rerolls the shelf for 1 gold, +1 each time.")
+				out.append("Rerolls the shelf for %d gold, +1 each time." % ShopSystem.GOLD_REROLL_BASE)
 			_:
 				out.append(String(token))
 	return out

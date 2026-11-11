@@ -253,8 +253,12 @@ func discounted(price: int) -> int:
 	@warning_ignore("integer_division")
 	return (num + den - 1) / den
 
-# What a card pack costs, before a keeper's sale and the run's cuts.
-const PACK_PRICE := 4
+# What a card pack costs, before a keeper's sale and the run's cuts. Dearer than
+# a Common item and cheaper than an Uncommon, which is where it has always sat:
+# 4 between 3 and 5 on the old ladder, 5 between 4 and 6 on ITEM_PRICES (the
+# owner, 12 Nov 2026 — the ladder moved on 6 Nov and the keepers' own numbers
+# had not followed).
+const PACK_PRICE := 5
 # How many cards a pack opens to; the player keeps one.
 const PACK_CARDS := 3
 
@@ -639,9 +643,12 @@ func can_reroll(game_id: StringName) -> bool:
 		return GameState.gold >= gold_reroll_cost(game_id)
 	return GameState.scramble >= REROLL_COST
 
-# A `gold_reroll` keeper's next reroll: 1 gold, +1 for each one already bought.
+# A `gold_reroll` keeper's next reroll: GOLD_REROLL_BASE gold, +1 for each one
+# already bought. 2, not the 1 it was under the 3/5/7/9 ladder (the owner,
+# 12 Nov 2026).
+const GOLD_REROLL_BASE := 2
 func gold_reroll_cost(game_id: StringName) -> int:
-	return discounted(1 + int(peek(game_id).get("gold_rerolls", 0)))
+	return discounted(GOLD_REROLL_BASE + int(peek(game_id).get("gold_rerolls", 0)))
 
 
 # Spend a Scramble and redraw the whole shelf — SOLD SLOTS INCLUDED. Refilling

@@ -178,8 +178,8 @@ func _build_icons() -> void:
 
 # --- a slot's choices, shared with the character picker ---------------------------
 #
-# One tile per choice for a slot: the DEFAULT, RANDOM (🎲 — rolled again at the
-# start of every run, Cosmetics.roll_random), then every look that fits it. A
+# One tile per choice for a slot: RANDOM first (🎲 — rolled again at the start of
+# every run, Cosmetics.roll_random), the DEFAULT, then every look that fits it. A
 # LOCKED look is its own picture as a black silhouette, like the Collection's
 # unseen entries, with where it comes from on the hover; a look drawn since it was
 # last shown GLOWS once, the way a new title letter does, and is then seen.
@@ -198,8 +198,6 @@ static func slot_tiles(slot_key: String, default_tex: Texture2D, default_glyph: 
 			Cosmetics.choose(slot_key, key)
 			on_change.call()
 	var out: Array = []
-	out.append(tile(default_tex, default_glyph, chosen == "", false, false, default_tip,
-		pick.call(""), side))
 	var rolled: Dictionary = Cosmetics.costume_or_icon(slot_key) if chosen == Cosmetics.RANDOM else {}
 	var random_tip := "Random — a different one every run, from the default and every look unlocked here."
 	if chosen == Cosmetics.RANDOM:
@@ -207,7 +205,13 @@ static func slot_tiles(slot_key: String, default_tex: Texture2D, default_glyph: 
 	var r := tile(null, "🎲", chosen == Cosmetics.RANDOM, false, false, random_tip,
 		pick.call(Cosmetics.RANDOM), side)
 	r.name = "Random"
+	# RANDOM IS ALL THE WAY ON THE LEFT (the owner, 12 Nov 2026), then the default,
+	# then every look. It was second, between the default and the looks.
 	out.append(r)
+	var d := tile(default_tex, default_glyph, chosen == "", false, false, default_tip,
+		pick.call(""), side)
+	d.name = "Default"
+	out.append(d)
 	for e in looks:
 		var key := String(e["key"])
 		var locked := not Cosmetics.is_unlocked(key)

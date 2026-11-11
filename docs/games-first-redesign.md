@@ -4091,14 +4091,14 @@ then multiplies in every run-wide cut (`GameState.shop_price_cuts`: each Steam
 Sale held, each beaten keeper's sale) and rounds up, so a cut that arrives after a
 shelf was rolled still reaches it.
 
-**The first four** (17 October 2026, the owner's design), all Common:
+**The first four** (17 October 2026, the owner's design), all Common. The three numbers that are a keeper's own (Charon's steal, Jimbo's pack, Furcifer's reroll) were moved up one on 12 Nov 2026 to follow the 4/6/9/13 ladder:
 
 | Keeper | Shelf | Rule |
 |---|---|---|
-| **Charon** (Hades) | 3 items | **Steal ◉3**, once: +3 gold and his boss onto the board; the shop stays open. Beating him: every price -20% for the run (`GameState.shop_sales`) |
-| **Jimbo** (Balatro) | 1 item, 2 `joker` cards, 2 packs | A **pack** (`Pack1-4` art) is 4 gold and opens to 3 cards, rarities rolled; keep one (`ShopSystem.buy_pack` / `take_pack_card`) |
+| **Charon** (Hades) | 3 items | **Steal ◉4**, once: +4 gold and his boss onto the board; the shop stays open. Beating him: every price -20% for the run (`GameState.shop_sales`) |
+| **Jimbo** (Balatro) | 1 item, 2 `joker` cards, 2 packs | A **pack** (`Pack1-4` art) is 5 gold and opens to 3 cards, rarities rolled; keep one (`ShopSystem.buy_pack` / `take_pack_card`) |
 | **Shopkeeper (Isaac)** (The Binding of Isaac: Rebirth) | 2-6 slots by the Donation Machine | A Donation Machine stands in his room. The shelf's size is the best bank the profile has ever reached (`GameStats.donation_best`, never lowered), as of the run's start: 0 → 2, 20 → 3, 100 → 4, 200 → 5, 600 → 6; items take 1-2, loot the rest, and a reroll keeps each slot's kind. **✸ Bomb** him, once (he leaves): a third nothing, a third 1-5 gold, a third a Spider on the board, and 1% **Steam Sale** |
-| **Shopkeeper Furcifer** (Backpack Battles) | 5 loot | Each piece 10% to be half price on the first roll only. Rerolls cost gold, 1 then +1 each |
+| **Shopkeeper Furcifer** (Backpack Battles) | 5 loot | Each piece 10% to be half price on the first roll only. Rerolls cost gold, 2 then +1 each |
 
 The two were `Shopkeeper` and `Furcifer` until the owner renamed them (18 Oct);
 their ids followed (`shopkeeper_isaac`, `shopkeeper_furcifer`) and
