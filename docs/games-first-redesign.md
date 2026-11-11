@@ -1956,7 +1956,7 @@ as one column per turn says anything can.
 | **Ruthless** | Only when it **cannot reach you**. With Devour Whole (the two bodies that have it carry both) it clears the lane outright. |
 | **Invisibility** | The board draws **nothing** — no node, no badge, no hover, and hovering its checklist row lights no square. Its **goal is still on the checklist**: you were told what walked on, not where. It blocks a lane, it walks, and a bomb aimed at that *square* still finds it. It gives itself away the moment it swings. |
 | **Predatory Scent** | An extra turn only when the player **had a status goal and met none of them**. Both halves are the ability. Runs as a turn of its own rather than by bumping the count — it is a free swing for two or three bodies, not the board's pace changing. |
-| **Necromancy (X)** | Raises from **this run's graveyard** — the same list the board's ☠ Fallen panel shows. An empty graveyard is an idle turn. Raised bodies gain the `undead` tag. |
+| **Necromancy (X)** | Raises from **this run's graveyard** — the same list the History's ☠ Fallen tab shows. An empty graveyard is an idle turn. Raised bodies gain the `undead` tag. |
 | **Entry Summon (X, Y)** | A summoner that is **not a wall**: it spends its *first* turn laying X escorts and every turn after that walking and swinging like anything else. The escorts go on **random free squares adjacent to it** rather than in the single cell in front (which is what `_brood_cell` is, and what makes a boxed-in Nested Spawner idle) — so a full lane slows it down instead of stopping it. Each square is rolled against the board *as it stands*, so escort two goes somewhere escort one left free, and one with nowhere to go is simply not laid. |
 | **Drain (X, Y)** | The one rider that takes something **killing the body does not give back**. A thief holds its haul and drops it when it dies; Degradation burns loot the next chest replaces; Drain takes a permanent point off Max Health, Luck, Scramble, Bash, Dash or Transmute. Nothing goes below 0, and **Max Health stops at 1** — a run is lost by Health reaching 0, not by its ceiling doing it. It goes through `grant_run_stat`'s own field map, so `dash` finds `dash_charges`. |
 | **Ritual** | Only the **first** turn is spent. Every turn after, the +1 Strength rides a turn the body also walks or swings on — a Ritual that spent every turn stacking would never attack, and the Strength it piled up would never be spent on anything. |
@@ -2008,7 +2008,7 @@ standing there.
   ordinary enemy is a goal the player will go and spend a real evening on.
 - **The card spells them out** in an ABILITIES panel: name, type chip, and the
   sheet's sentence with its arguments filled in.
-- **☠ Fallen**, beside Push and Bomb above the grid: every enemy this run has put
+- **☠ Fallen**, a tab of the header's 🕮 History (it was a button above the grid until 11 Nov 2026): every enemy this run has put
   down, newest first. Click one for its card; write a note on one and it is filed
   against the (game, enemy) pair in `GameStats.enemy_log` — the same store the
   Atlas's per-game notes use, so it is one fact written once and read in both
@@ -2626,16 +2626,16 @@ by the card being fully readable the instant it is picked up.
 - **A body that was not standing anywhere leaves nothing on the floor.** One
   waiting in the off-grid queue has no square to fall in
   (`_drop_cell_of` → `OFF_FIELD`), so its loot goes straight to the haul screen.
-- **The floor lasts until the next game is picked, and then it is gone**
-  (`DropQueue.clear_floor`, the first thing `Overworld2._begin_game` does). It
-  used to be swept onto the haul screen at the report; the owner (28 Oct 2026)
-  asked for the floor to be a place loot can be LEFT — "when the player goes to
-  the next game, all loot on the floor is gone" — and leaving a piece only means
-  something if moving on costs it. Between the report and the next pick the
-  floor is still there, the report's own kills included, and the reward
-  screen's **⚔ Combat** button opens the board to reach it (§8.2, "the board
-  off the board", below). A body that had no square still sends its piece to
-  the haul screen: it never lay anywhere it could be picked up.
+- **The floor lasts until the game is reported, and then it goes on the haul
+  screen's table** (`Overworld2._open_post_game` sweeps it as the screen opens,
+  the report's own kills included). It is offered there once with the game's
+  payout, and what is not taken is gone. The owner, 12 Nov 2026: "make sure loot
+  on the ground shows up on the table at the rewards screen… and if the player
+  doesn't take it there, it goes away". From 28 Oct until then the floor outlived
+  the report and was reached through the reward screen's **⚔ Combat** button;
+  before that it was swept at the report, as it is again. `DropQueue.clear_floor`
+  (the first thing `Overworld2._begin_game` does) still clears whatever a haul
+  screen never saw.
 - **You can put a piece DOWN.** Drag one out of the pack and let go on a free
   square (`BattlefieldView` → `loot_put_down` → `DropQueue.put_down`). It is OFF
   THE PLAYER from that moment — out of `loot_items`, so no passive, neighbour
@@ -4091,14 +4091,14 @@ then multiplies in every run-wide cut (`GameState.shop_price_cuts`: each Steam
 Sale held, each beaten keeper's sale) and rounds up, so a cut that arrives after a
 shelf was rolled still reaches it.
 
-**The first four** (17 October 2026, the owner's design), all Common:
+**The first four** (17 October 2026, the owner's design), all Common. The three numbers that are a keeper's own (Charon's steal, Jimbo's pack, Furcifer's reroll) were moved up one on 12 Nov 2026 to follow the 4/6/9/13 ladder:
 
 | Keeper | Shelf | Rule |
 |---|---|---|
-| **Charon** (Hades) | 3 items | **Steal ◉3**, once: +3 gold and his boss onto the board; the shop stays open. Beating him: every price -20% for the run (`GameState.shop_sales`) |
-| **Jimbo** (Balatro) | 1 item, 2 `joker` cards, 2 packs | A **pack** (`Pack1-4` art) is 4 gold and opens to 3 cards, rarities rolled; keep one (`ShopSystem.buy_pack` / `take_pack_card`) |
+| **Charon** (Hades) | 3 items | **Steal ◉4**, once: +4 gold and his boss onto the board; the shop stays open. Beating him: every price -20% for the run (`GameState.shop_sales`) |
+| **Jimbo** (Balatro) | 1 item, 2 `joker` cards, 2 packs | A **pack** (`Pack1-4` art) is 5 gold and opens to 3 cards, rarities rolled; keep one (`ShopSystem.buy_pack` / `take_pack_card`) |
 | **Shopkeeper (Isaac)** (The Binding of Isaac: Rebirth) | 2-6 slots by the Donation Machine | A Donation Machine stands in his room. The shelf's size is the best bank the profile has ever reached (`GameStats.donation_best`, never lowered), as of the run's start: 0 → 2, 20 → 3, 100 → 4, 200 → 5, 600 → 6; items take 1-2, loot the rest, and a reroll keeps each slot's kind. **✸ Bomb** him, once (he leaves): a third nothing, a third 1-5 gold, a third a Spider on the board, and 1% **Steam Sale** |
-| **Shopkeeper Furcifer** (Backpack Battles) | 5 loot | Each piece 10% to be half price on the first roll only. Rerolls cost gold, 1 then +1 each |
+| **Shopkeeper Furcifer** (Backpack Battles) | 5 loot | Each piece 10% to be half price on the first roll only. Rerolls cost gold, 2 then +1 each |
 
 The two were `Shopkeeper` and `Furcifer` until the owner renamed them (18 Oct);
 their ids followed (`shopkeeper_isaac`, `shopkeeper_furcifer`) and
@@ -4634,8 +4634,8 @@ out-of-band offer still asks for itself, on the spot.
 
 **The floor arrives here too.** A chest a body left on the board (§8.2) can be
 opened mid-game, on the square it fell in; the ones nobody stopped for are swept
-onto this screen the moment the game is reported
-(`Overworld2._sweep_floor_into_the_queue`, straight after `beat_game`). So the
+onto this screen as it opens (`Overworld2._open_post_game`), loot onto the
+table and offered once. So the
 spoils column is the whole haul either way, and picking a relic up during the
 game is a matter of *when* you answer for it, never of whether you get to.
 

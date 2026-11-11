@@ -113,18 +113,39 @@ func narrow() -> void:
 	_refresh()
 
 var _narrow: bool = false
+var _card: ObjectCard = null   # the open machine's card, or null
 
 func _on_objects_changed() -> void:
 	if not is_inside_tree():
+		return
+	# THE MACHINE YOU WERE LOOKING AT BLEW ITSELF UP. Its card is not taken down
+	# here: it shows the machine break and says `broke` when it is done
+	# (`_on_card_broke`). This used to close the card only when NO machine was
+	# left, so a burst machine's card stayed open, buttons and all, whenever a
+	# second machine stood beside it — and vanished without a word when it was the
+	# last.
+	if _card_is_breaking():
+		if ObjectSystem.has_live():
+			_refresh()
+		else:
+			visible = false
 		return
 	if not ObjectSystem.has_live():
 		close_card()
 		close()
 		return
 	_refresh()
-	# The machine you were looking at blew itself up: its card goes with it.
-	if _card_layer != null and is_instance_valid(_card_layer) and not ObjectSystem.has_live():
-		close_card()
+
+func _card_is_breaking() -> bool:
+	return _card != null and is_instance_valid(_card) and _card_layer != null \
+		and is_instance_valid(_card_layer) and (_card.broken or _card.is_gone())
+
+func _on_card_broke() -> void:
+	close_card()
+	if not ObjectSystem.has_live():
+		close()
+	else:
+		_refresh()
 
 
 # Rebuilt on every objects_changed rather than only when the SET changes: a row
@@ -257,7 +278,9 @@ func open_card(inst: Dictionary) -> Node:
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", UITheme.GAP)
 	margin.add_child(col)
-	col.add_child(ObjectCard.make(inst))
+	_card = ObjectCard.make(inst)
+	_card.broke.connect(_on_card_broke)
+	col.add_child(_card)
 
 	var done := Button.new()
 	done.text = "Step away"
@@ -272,9 +295,16 @@ func close_card() -> void:
 	if _card_layer != null and is_instance_valid(_card_layer):
 		_card_layer.queue_free()
 	_card_layer = null
+	_card = null
 
 
 func close() -> void:
+	# The page takes this panel down the moment the last machine goes. A card in
+	# the middle of showing that machine break finishes first; `_on_card_broke`
+	# comes back here.
+	if _card_is_breaking():
+		visible = false
+		return
 	close_card()
 	finished.emit()
 	queue_free()

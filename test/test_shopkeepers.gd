@@ -271,7 +271,7 @@ func test_charon_sells_three_items_and_his_steal_brings_him_to_the_board() -> vo
 	GameLoop2.reset()
 	GameState.gold = 0
 	assert_true(ShopSystem.steal(node))
-	assert_eq(GameState.gold, 3, "three gold stolen")
+	assert_eq(GameState.gold, 4, "four gold stolen: one Common's worth")
 	var ids: Array = GameLoop2.stack.map(func(e): return (e.get("enemy") as GoalEnemyData).id)
 	assert_has(ids, &"charon", "and Charon stands on the board")
 	assert_false(ShopSystem.steal(node), "once")
@@ -318,9 +318,9 @@ func test_a_pack_opens_to_three_cards_and_keeps_one() -> void:
 	GameState.gold = 10
 	var cards: Array = ShopSystem.buy_pack(node, 0)
 	assert_eq(cards.size(), ShopSystem.PACK_CARDS)
-	assert_eq(GameState.gold, 6, "4 gold")
+	assert_eq(GameState.gold, 10 - ShopSystem.PACK_PRICE, "a pack's price")
 	assert_eq(ShopSystem.buy_pack(node, 0), cards, "an opened pack holds the same three")
-	assert_eq(GameState.gold, 6, "and is not charged twice")
+	assert_eq(GameState.gold, 10 - ShopSystem.PACK_PRICE, "and is not charged twice")
 	var before: int = GameState.loot_items.size()
 	assert_true(ShopSystem.take_pack_card(node, 0, 1))
 	assert_eq(GameState.loot_items.size(), before + 1, "one card taken")
@@ -388,18 +388,52 @@ func test_isaacs_room_has_a_donation_machine_while_it_is_open() -> void:
 	modal.close()
 	assert_false(ObjectSystem.has_live(), "and leaves with it")
 
+# The owner, 12 Nov 2026: "make sure the shopkeepers all have proper prices
+# according to the recent update". The ladder went to 4/6/9/13 on 6 Nov; every
+# keeper's shelf prices off it, and the three numbers that are a keeper's own
+# were moved to follow.
+func test_every_keepers_shelf_is_priced_off_the_ladder() -> void:
+	assert_eq(ShopSystem.ITEM_PRICES, [4, 6, 9, 13] as Array[int])
+	var all: Dictionary = Data.get_meta("all_shopkeepers", {})
+	assert_gt(all.size(), 0, "the roster is on Data's meta")
+	for id in all:
+		var keeper: ShopkeeperData = all[id]
+		if not keeper.sale.is_empty() or keeper.currency != &"gold":
+			continue     # a sale or a Health price is that keeper's own rule
+		GameState.reset_run()
+		var node: StringName = _stand(keeper)
+		for row in ShopSystem.stock(node):
+			var item: ItemData = Data.get_item2(StringName(row["item"]))
+			assert_eq(int(row["price"]), ShopSystem.ladder_price(int(item.rarity)),
+				"%s sells %s at the ladder" % [keeper.display_name, item.display_name])
+		for row in ShopSystem.loot_stock(node):
+			assert_true([2, 4, 7, 11].has(int(row["price"])),
+				"%s's loot is two under the ladder: %d" % [keeper.display_name, int(row["price"])])
+		for row in ShopSystem.pack_stock(node):
+			assert_eq(int(row["price"]), 5, "a pack sits between a Common and an Uncommon")
+
+func test_the_keepers_own_numbers_follow_the_ladder() -> void:
+	assert_eq(ShopSystem.PACK_PRICE, 5)
+	assert_gt(ShopSystem.PACK_PRICE, ShopSystem.ITEM_PRICES[0])
+	assert_lt(ShopSystem.PACK_PRICE, ShopSystem.ITEM_PRICES[1])
+	assert_eq(ShopSystem.GOLD_REROLL_BASE, 2)
+	var node: StringName = _stand(_real(&"charon"))
+	assert_eq(ShopSystem.keeper_number(node, "steal"), ShopSystem.ITEM_PRICES[0],
+		"Charon's steal is one Common's worth")
+
 func test_furcifer_sells_five_loot_and_his_reroll_costs_more_each_time() -> void:
 	var node: StringName = _stand(_real(&"shopkeeper_furcifer"))
 	assert_eq(ShopSystem.stock(node).size(), 0)
 	assert_eq(ShopSystem.loot_stock(node).size(), 5)
 	GameState.gold = 10
 	GameState.scramble = 0
-	assert_eq(ShopSystem.gold_reroll_cost(node), 1)
-	assert_true(ShopSystem.reroll(node))
-	assert_eq(GameState.gold, 9)
+	# 2 then +1 each (the owner, 12 Nov 2026; it was 1 under the 3/5/7/9 ladder).
 	assert_eq(ShopSystem.gold_reroll_cost(node), 2)
 	assert_true(ShopSystem.reroll(node))
-	assert_eq(GameState.gold, 7)
+	assert_eq(GameState.gold, 8)
+	assert_eq(ShopSystem.gold_reroll_cost(node), 3)
+	assert_true(ShopSystem.reroll(node))
+	assert_eq(GameState.gold, 5)
 	assert_eq(ShopSystem.loot_stock(node).size(), 5)
 
 func test_a_chance_sale_lands_on_the_first_roll_only() -> void:

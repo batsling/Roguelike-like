@@ -35,6 +35,17 @@ var _choice_box: VBoxContainer = null
 var _last_result: String = ""
 var _last_text: String = ""
 
+# The machine went — it burst, or was bombed — and the card has finished showing
+# it. The host takes the card down on this, not on `objects_changed`, so the
+# player sees the machine go instead of the card vanishing under the cursor.
+signal broke
+# True from the moment the machine is gone until the card is freed.
+var broken: bool = false
+var _taking: bool = false   # inside `take`, where the break waits for the result
+# How long the break is on screen: the flash and shake, a beat to read what came
+# out of it, the fade.
+const BREAK_SEC := 1.1
+
 
 static func make(inst: Dictionary) -> ObjectCard:
 	var card := ObjectCard.new()
@@ -78,7 +89,19 @@ func _exit_tree() -> void:
 # Every button on the card is gated on something that moves — the purse, the
 # bomb count, the bank, the jam — so the whole card repaints rather than trying
 # to work out which button the last press invalidated.
-func _on_objects_changed() -> void:
+# The arguments are whatever the signal carried — `hp_changed` sends two,
+# `gold_changed` one, the other two none — and none of them are read. With no
+# parameters here every Health change was an error ("expected 0 arguments, called
+# with 2") and the card never repainted on one.
+func _on_objects_changed(_a = null, _b = null) -> void:
+	if broken:
+		return
+	# Gone by some other hand than this card's own button (a bomb's effect, a
+	# rule): break all the same. Not mid-press — `take` does it once it knows
+	# what the press had to say.
+	if not _taking and is_inside_tree() and is_gone():
+		_break()
+		return
 	if _data != null and is_inside_tree():
 		_render()
 
@@ -263,7 +286,9 @@ func take(index: int) -> void:
 	if _data == null or index < 0 or index >= _data.choices.size():
 		return
 	var choice: Dictionary = _data.choices[index]
+	_taking = true
 	var out: Dictionary = ObjectSystem.take(_inst, choice)
+	_taking = false
 	if out.is_empty():
 		return
 	_last_result = String(out.get("result", ""))
@@ -271,12 +296,57 @@ func take(index: int) -> void:
 	if _last_text != "":
 		GameLog.add("%s — %s: %s" % [_data.display_name, choice.get("text", ""), _last_text],
 			UITheme.ACCENT)
-	# The press may have destroyed the machine, in which case ObjectSystem has
-	# already dropped it from `live` and the host will take this card down on the
-	# objects_changed it emitted. Repainting a card mid-removal is harmless, but
-	# there is nothing left to say.
-	if is_inside_tree():
+	# THE PRESS MAY HAVE DESTROYED THE MACHINE (the Blood Donation Machine paying
+	# out its bag, a Bomb). ObjectSystem has already dropped it from `live`; what
+	# is left is to SHOW it go (the owner, 11 Nov 2026): the card says what
+	# happened, offers nothing more to press, shakes apart and is taken down.
+	if is_gone():
+		_break()
+	elif is_inside_tree():
 		_render()
+
+# Whether this card's machine has left the run. By REFERENCE: two untouched
+# copies of one cabinet are equal dictionaries and are still two cabinets.
+func is_gone() -> bool:
+	for inst in ObjectSystem.live:
+		if is_same(inst, _inst):
+			return false
+	return true
+
+# The machine bursting: no buttons, the last line it had to say, a shake and a
+# fade over BREAK_SEC, then `broke` — which is what the host takes the card down
+# on. Out of the tree (a headless caller) it is over at once.
+func _break() -> void:
+	if broken:
+		return
+	broken = true
+	if _choice_box != null:
+		for child in _choice_box.get_children():
+			_choice_box.remove_child(child)
+			child.queue_free()
+	if _prose_box != null:
+		for child in _prose_box.get_children():
+			_prose_box.remove_child(child)
+			child.queue_free()
+		if _last_result != "":
+			_prose_box.add_child(_prose(_last_result, UITheme.TEXT, 12))
+		if _last_text != "":
+			_prose_box.add_child(_prose(_last_text, UITheme.TEXT_DIM, 11))
+	if not is_inside_tree():
+		broke.emit()
+		return
+	pivot_offset = size * 0.5
+	var t: Tween = create_tween()
+	t.tween_property(self, "modulate", Color(1.6, 0.7, 0.6), 0.08)
+	for i in range(6):
+		t.tween_property(self, "rotation_degrees", 2.5 if i % 2 == 0 else -2.5, 0.05)
+	t.tween_property(self, "rotation_degrees", 0.0, 0.04)
+	t.tween_interval(BREAK_SEC - 0.08 - 0.34 - 0.3)
+	t.set_parallel(true)
+	t.tween_property(self, "modulate:a", 0.0, 0.3)
+	t.tween_property(self, "scale", Vector2(0.86, 0.86), 0.3)
+	t.set_parallel(false)
+	t.tween_callback(func(): broke.emit())
 
 
 func _prose(text: String, color: Color, size: int) -> Control:

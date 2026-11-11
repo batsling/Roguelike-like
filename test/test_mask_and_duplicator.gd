@@ -160,9 +160,9 @@ func _texture_count(root: Node) -> int:
 		n += _texture_count(c)
 	return n
 
-# Driven through the real overworld: a mask taken while a game is on WAITS for
-# the haul to be done, opens its popup then, and the masked row on the next
-# report pays the masked character.
+# Driven through the real overworld: a mask taken while a game is on asks AT
+# ONCE (the owner, 11 Nov 2026 — it used to wait for the haul to be done), and
+# the masked row on the next report pays the masked character.
 func test_the_overworld_opens_the_mask_and_the_report_pays_it() -> void:
 	var ui = OVERWORLD.instantiate()
 	add_child_autofree(ui)
@@ -170,17 +170,9 @@ func test_the_overworld_opens_the_mask_and_the_report_pays_it() -> void:
 	await get_tree().process_frame
 	Fixtures.give(self, &"mysterious_mask")
 	await get_tree().process_frame
-	assert_null(_find_modal(get_tree().root), "not over a game in play")
-	ui.report(false, [])
-	ui._end_resolve()               # don't wait out the strike/advance animation
-	await get_tree().process_frame
-	assert_null(_find_modal(get_tree().root), "not over the haul screen either")
-	if ui._post_screen != null and is_instance_valid(ui._post_screen):
-		ui._post_screen.dismiss()
-	await get_tree().process_frame
 	await get_tree().process_frame
 	var modal: MaskChoiceModal = _find_modal(get_tree().root)
-	assert_not_null(modal, "the haul done, the mask asks")
+	assert_not_null(modal, "the mask asks the moment it is used, game in play or not")
 	if modal == null:
 		return
 	var pick: CharacterData = modal.offer()[0]

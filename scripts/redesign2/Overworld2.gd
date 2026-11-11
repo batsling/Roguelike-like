@@ -278,7 +278,7 @@ var _rng := RandomNumberGenerator.new()
 # --- UI nodes (built in code) --------------------------------------------
 # The verbs that are spent CHOOSING, as chips under the offering they act on.
 # (The board's own verbs need no row of their own: BattlefieldView's toolbar
-# buttons already read "⇤ Push (1)" / "✸ Bomb (3)", and its pressure bar ends in
+# buttons already read "💨 1" / "✸ 3", and its pressure bar ends in
 # the run's tier.)
 var _select_stats: HFlowContainer
 # The open READING CARD, or null — an ItemInfoCard (a relic), which is the only
@@ -493,13 +493,14 @@ var _escape_hint: Label           # the small line under it: what would open it
 var _np_box: VBoxContainer
 var _attempt_wrap: Control
 var _done_btn: Button
+var _report_row: HBoxContainer   # Completed Game and Escape, side by side
 # The board itself (§grid): the player on the left, a grid_cols() x grid_rows() grid on
 # the right where enemies close in one column per game beaten (MMBN-style). It's a
 # BattlefieldView — a view over GameLoop2 that reports Push / Bomb / inspect back
 # here, since this screen owns the charges and the run.
 var _board: BattlefieldView
 var _info_popup: EnemyInfoCard      # the click-to-inspect enemy card (null when closed)
-var _graveyard_popup   # the open ☠ Fallen panel (§7.6), or null
+var _full_inventory    # the open full-inventory screen, or null
 var _completed_popup  # the open ✓ Completed panel, or null
 var _choice_modal: GameChoiceModal = null   # the open offered-game popup, or null
 var _start_picker: StartPicker = null       # the opening choose-a-road screen, or null
@@ -1530,9 +1531,10 @@ func _character_rank_from() -> int:
 
 func _begin_game(game: GameData, enemy: GoalEnemyData, tier: int,
 		log_shields: bool = true) -> void:
-	# A NEW GAME, A BARE FLOOR (§8.2). Whatever was left lying on the board — a kill's
-	# drop nobody picked up, a piece the player put down — is gone, before this
-	# game's bodies walk on.
+	# A NEW GAME, A BARE FLOOR (§8.2). The haul screen has usually taken the floor
+	# already (`_open_post_game`); this catches what it did not — a game left with
+	# no haul screen, a piece put down between games — before this game's bodies
+	# walk on.
 	_drops.clear_floor()
 	# Where the game's rank bar stood as it was picked (§20.4), for the end-of-game
 	# screen to fill from.
@@ -2539,12 +2541,9 @@ func report(beaten: bool, fulfilled: Variant = null, escaped: bool = false,
 	var res: Dictionary = GameLoop2.beat_game(false, fulfilled_instances, claims,
 		not free_exit, escaped, beaten)
 	_release_loop_refresh()
-	# THE FLOOR IS NOT SWEPT AT THE REPORT ANY MORE (§8.2). It used to be, onto the
-	# haul screen; now loot lying on the board stays there through the screens
-	# after the game — the reward screen's ⚔ Combat button opens the board, and a
-	# piece can still be dragged off it there — and goes with the floor when the
-	# next game begins (`_begin_game` → DropQueue.clear_floor). The owner, 28 Oct
-	# 2026: "when the player goes to the next game, all loot on the floor is gone".
+	# THE FLOOR IS SWEPT ONTO THE HAUL SCREEN, not here: `_open_post_game` does it
+	# as the screen opens, so the drops this report's own kills leave are on the
+	# table with everything else (the owner, 12 Nov 2026).
 	# …and the relic chest the evening earned, scaled by how much was killed and
 	# how hard it was, paid only for a game you actually BEAT (§8.2). An escape is
 	# not a win: the player walked away, and the bodies they cleared on the way out
@@ -2969,6 +2968,18 @@ func _open_post_game() -> void:
 	# what THIS report put in it.
 	var drops: Array = _drop_queue.duplicate()
 	_drop_queue.clear()
+	# THE FLOOR GOES ON THE TABLE (the owner, 12 Nov 2026: "make sure loot on the
+	# ground shows up on the table at the rewards screen… and if the player doesn't
+	# take it there, it goes away"). Everything lying on the board when the game is
+	# reported — a kill's drop nobody picked up, a piece the player put down — is
+	# swept here and offered with the game's own payout. It is the last offer:
+	# what is left on the table when the screen is done is gone, the way any payout
+	# left there is. Between 28 Oct and now the floor outlived the report and was
+	# reached through the screen's ⚔ Combat button, which most pieces never were.
+	for held in GameLoop2.sweep_drops():
+		var piece: Dictionary = _drops.floor_loot(held)
+		if not piece.is_empty():
+			drops.append({"loot": [piece]})
 	# THE BOSS WARNING, taken over from _maybe_announce_boss rather than left to
 	# open behind this screen. A boss round is announced between two games, and
 	# this screen is what stands between them; marking the round announced here is
@@ -3172,6 +3183,7 @@ const COMPLETED_GOALS_PANEL_SCRIPT := "res://scripts/redesign2/CompletedGoalsPan
 const EVENT_MODAL2_SCRIPT := "res://scripts/redesign2/EventModal2.gd"
 const SHOP_MODAL_SCRIPT := "res://scripts/redesign2/ShopModal2.gd"
 const GRAVEYARD_PANEL_SCRIPT := "res://scripts/redesign2/GraveyardPanel.gd"
+const FULL_INVENTORY_SCRIPT := "res://scripts/redesign2/FullInventory.gd"
 const CAMP_SCRIPT := "res://scripts/runtime/Camp.gd"
 const CAMP_SCREEN_SCRIPT := "res://scripts/redesign2/CampScreen.gd"
 const LOOT_USE_MODAL_SCRIPT := "res://scripts/redesign2/LootUseModal.gd"
@@ -3361,8 +3373,12 @@ func _sync_object_panel() -> void:
 		return
 	_object_panel = ObjectPanel2.mount(_right_col)
 	if _object_panel != null:
+		# Only if it is still THE panel: one that outlived its last machine to show
+		# it break (ObjectPanel2.close) can finish after a new one has been mounted.
+		var mounted = _object_panel
 		_object_panel.finished.connect(func():
-			_object_panel = null
+			if _object_panel == mounted:
+				_object_panel = null
 			_sync_board_budget())
 	_sync_board_budget()
 
@@ -3786,13 +3802,24 @@ func _redeem_pending_chests() -> void:
 		# The chests are done; a mask waiting on its choice goes next.
 		_redeem_pending_masks()
 		return
+	# A CHEST BOUGHT ON THE LOCATION SCREEN OPENS OVER IT (the owner, 11 Nov 2026:
+	# "let's have the chest pop up above the location screen, specifically for the
+	# isaac locations"). Dark Room's "lose 2 Max Health for a devilish chest" used
+	# to bank the chest and say nothing: the popup is on a CanvasLayer of its own,
+	# so the chest either opened UNDERNEATH it or — with a game in play — waited for
+	# the game to be reported. Here it is asked the moment it is paid for, above
+	# the popup, and closing it lands back on the location with the next trade
+	# still on offer. The waits below (a game in play, the haul screen) are about
+	# not interrupting the page; this was the player's own press.
+	var over_location: bool = _location_popup != null and is_instance_valid(_location_popup) \
+		and not _resolving
 	# ON THE HAUL SCREEN, if one is up. A chest banked during a report — a level-up
 	# reward, Unstable Genome firing on the beat, a status paying out — used to open
 	# a RewardScreen as an ordinary child of this page, which is BELOW the
 	# post-combat screen's CanvasLayer: the player saw nothing, and then found a
 	# reward screen waiting the moment they left. It belongs with the rest of the
 	# haul anyway, so it goes there as one more chest section.
-	if _post_screen != null and is_instance_valid(_post_screen):
+	if not over_location and _post_screen != null and is_instance_valid(_post_screen):
 		_hand_chests_to_post_game()
 		return
 	# …AND A CHEST EARNED WHILE THE GAME IS STILL ON WAITS FOR THAT SCREEN (§18).
@@ -3817,7 +3844,7 @@ func _redeem_pending_chests() -> void:
 	# started paying out at the report instead of at the tick. Without it the
 	# level-up's chest opens a RewardScreen over a board still playing the resolve
 	# back, which is the exact interruption this whole block exists to prevent.
-	if _phase == Phase.PLAYING or _resolving:
+	if not over_location and (_phase == Phase.PLAYING or _resolving):
 		return
 	# EVERY banked chest at once, not one screen each. Two chests used to open two
 	# screens back to back, which reads as one screen flickering — you cannot weigh
@@ -3838,28 +3865,47 @@ func _redeem_pending_chests() -> void:
 		return
 	_reward_open = true
 	var screen = load(REWARD_SCREEN_SCRIPT).new()
+	# On a layer of its own when it has a popup to clear; an ordinary child of the
+	# page otherwise, as it always was.
+	var layer: CanvasLayer = null
+	if over_location:
+		layer = CanvasLayer.new()
+		layer.name = "LocationChestLayer"
+		layer.layer = UITheme.Layer.CHOICE
+		layer.process_mode = Node.PROCESS_MODE_ALWAYS
+		add_child(layer)
+		UITheme.dress(screen)
 	screen.closed.connect(func():
 		_reward_open = false
+		if layer != null and is_instance_valid(layer):
+			layer.queue_free()
+		_refresh()
 		_redeem_pending_chests())
-	add_child(screen)
+	(layer if layer != null else self).add_child(screen)
 	# Every chest's gold, on the one screen they open on — paid by the screen.
 	screen.setup_chests(sizes, pools, gold)
 
 # A Mysterious Mask was picked up: open its choice when the page is next idle.
 func _on_mask_granted() -> void:
-	call_deferred("_redeem_pending_chests")
+	# AT ONCE (the owner, 11 Nov 2026: "after using mysterious mask, I'd like it to
+	# show up immediately"). The choice used to wait for the page to be idle — no
+	# game in play, no haul screen up — so a mask used mid-game did nothing the
+	# player could see until the game had been reported. Deferred one step only so
+	# the use that granted it finishes first.
+	_redeem_pending_masks.call_deferred(true)
 
-# MYSTERIOUS MASK (§3.1): open the choice of characters for the next banked mask.
-# Same idle rule as a chest — never over a game in play, a resolve, the haul
-# screen or another reward — and the haul screen's way out comes back here
-# (`_on_post_game_finished`), so a mask taken off the haul is asked about the
-# moment the haul is done. One popup at a time; closing one chains to the next.
-func _redeem_pending_masks() -> void:
+# `now` is the mask asking to be answered the moment it is used: it opens over a
+# game in play and over the haul screen. Without it (the page coming idle, the
+# chests finishing) the old waits apply.
+func _redeem_pending_masks(now: bool = false) -> void:
 	if _reward_open or not is_inside_tree() or GameState.pending_masks <= 0:
 		return
-	if _phase == Phase.PLAYING or _resolving:
+	# Never over the board playing a report back: that is a second or two, and
+	# `_end_resolve` comes back through here.
+	if _resolving:
 		return
-	if _post_screen != null and is_instance_valid(_post_screen):
+	var on_haul: bool = _post_screen != null and is_instance_valid(_post_screen)
+	if not now and (_phase == Phase.PLAYING or on_haul):
 		return
 	var offer: Array = GameState.mask_offer()
 	if offer.is_empty():
@@ -3870,7 +3916,9 @@ func _redeem_pending_masks() -> void:
 		_redeem_pending_masks()
 		return
 	_reward_open = true
-	var modal := MaskChoiceModal.open(self, offer)
+	# Above the haul screen when that is what it is being used from.
+	var modal := MaskChoiceModal.open(self, offer,
+		UITheme.Layer.POST_COMBAT_CARD if on_haul else UITheme.Layer.EVENT)
 	modal.finished.connect(func():
 		_reward_open = false
 		_refresh()
@@ -5229,13 +5277,24 @@ func _close_enemy_info() -> void:
 #
 # Public so a headless test can open it without a click.
 func show_graveyard() -> Node:
-	if _graveyard_popup != null and is_instance_valid(_graveyard_popup):
-		return _graveyard_popup
-	var panel = load(GRAVEYARD_PANEL_SCRIPT).new()
-	panel.closed.connect(func(): _graveyard_popup = null)
-	_graveyard_popup = panel
+	# A TAB OF THE HISTORY NOW (the owner, 11 Nov 2026), not a panel of its own
+	# opened from a button over the grid.
+	var screen = open_history()
+	screen.show_tab(&"fallen")
+	return screen
+
+# THE FULL INVENTORY: every item, the loot pack, the stats and the resources on
+# one screen over the page, opened from the button beside the mini pack.
+#
+# Public so a headless test can open it without a click.
+func show_full_inventory() -> Node:
+	if _full_inventory != null and is_instance_valid(_full_inventory):
+		return _full_inventory
+	var panel = load(FULL_INVENTORY_SCRIPT).new()
+	panel.closed.connect(func(): _full_inventory = null)
+	_full_inventory = panel
 	add_child(panel)
-	panel.setup()
+	panel.setup(self)
 	return panel
 
 # THE COMPLETED PANEL: every goal this run has already answered, opened off the
@@ -7845,27 +7904,16 @@ func _build_ui() -> void:
 	strip_row.add_child(_items_box)
 	_pack = PackStrip.new(self, _items_box)
 	#
-	# THE LOOT TOGGLE IS THE PANEL'S FOOT, full width, under the relics.
-	#
-	# It has now been in three places, and the two it left were each wrong in their
-	# own way. At the TAIL of the relic row it sat under the notification toasts — a
-	# right-anchored column drawn over the page — so the one control that says you
-	# are carrying any loot at all spent most of every report hidden behind
-	# "Acquired Anchor." At the HEAD of that row it was clear of them, but it ate
-	# the left end of the strip the relics wrap into, which costs a relic tile a
-	# whole row the moment the pack gets long.
-	#
-	# On its own row it costs the relics no width at all, and being full width it is
-	# a bar rather than a button — which is the shape a "the rest of what you are
-	# carrying is through here" control should have been all along. THIN, because the
-	# page is fitted to a 720p canvas with a handful of pixels spare (see
-	# test_the_page_still_fits_the_window_*): the bar is drawn at
-	# LootWindow.TOGGLE_H and the capsules it carries are sized to sit inside that,
-	# so stacking it under the strip costs the panel about twenty pixels rather than
-	# a row's worth.
+	# THE LOOT INVENTORY, SMALL, AT THE RIGHT OF THE SAME ROW (the owner, 11 Nov
+	# 2026): the panel is split into the item inventory and a thumbnail of the
+	# pack, instead of the purple "Loot" bar that was this panel's foot. Clicking
+	# the thumbnail opens the loot window; the button beside it opens the full
+	# inventory. The bar's row is given back to the page.
 	_loot_toggle_box = HBoxContainer.new()
-	_loot_toggle_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	inv_box.add_child(_loot_toggle_box)
+	_loot_toggle_box.add_theme_constant_override("separation", UITheme.GAP_TIGHT)
+	_loot_toggle_box.size_flags_horizontal = Control.SIZE_SHRINK_END
+	_loot_toggle_box.size_flags_vertical = Control.SIZE_SHRINK_END
+	strip_row.add_child(_loot_toggle_box)
 	_loot_window = LootWindow.new(self, _loot_toggle_box)
 	_right_col.add_child(_inv_wrap)
 
@@ -7881,8 +7929,8 @@ func _build_ui() -> void:
 	# NO HEADER ROW OVER THE BOARD. There was a Tier / Push / Bombs row here once
 	# and then a one-line summary of the field ("Battlefield — 2 closing in, …"),
 	# and both were the page reading the board back to itself: the pressure bar
-	# ends in "▦ 4×4 · Low", the toolbar's buttons are literally "⇤ Push (1)" and
-	# "✸ Bomb (3)", and the bodies closing in are drawn as bodies, on squares,
+	# ends in "▦ 4×4 · Low", the buttons under the portrait are literally "💨 1" and
+	# "✸ 3", and the bodies closing in are drawn as bodies, on squares,
 	# with their reach on them. The board is the summary.
 	_board = BattlefieldView.new()
 	_board.push_requested.connect(push_follower)
@@ -7894,7 +7942,6 @@ func _build_ui() -> void:
 	_board.loot_throw_cancelled.connect(_on_loot_throw_cancelled)
 	_board.loot_put_down.connect(put_loot_down)
 	_board.enemy_inspected.connect(_show_enemy_info)
-	_board.graveyard_requested.connect(show_graveyard)
 	_board.location_requested.connect(show_location)
 	# The board points back at the checklist: hovering a body lights the goal row
 	# written about it (_bind_row_to_body).
@@ -8021,13 +8068,24 @@ func _build_ui() -> void:
 	done.add_theme_stylebox_override("normal", UITheme.flat(UITheme.SUCCESS.lerp(UITheme.BG, 0.5), 8, 8, 2, UITheme.SUCCESS))
 	done.add_theme_stylebox_override("hover", UITheme.flat(UITheme.SUCCESS.lerp(UITheme.BG, 0.35), 8, 8, 2, UITheme.SUCCESS))
 	done.add_theme_color_override("font_color", UITheme.SUCCESS.lerp(Color.WHITE, 0.45))
-	done.add_theme_font_size_override("font_size", UITheme.FONT_LEAD)
+	done.add_theme_font_size_override("font_size", UITheme.FONT_LABEL)
 	# Pressing it IS the claim: "I completed this game." What you did to the
 	# enemies is the checklist above it, ticked row by row — and what it raises is
 	# the winning-run review (confirm_completed_game), because those rows are the
 	# ones this button is the last chance to answer.
 	done.pressed.connect(confirm_completed_game)
-	_play_panel.add_child(done)
+	# SIDE BY SIDE WITH THE ESCAPE (the owner, 11 Nov 2026: "open up more space for
+	# the checklist by scrunching the complete and escape game so they are side by
+	# side"). They resolve the same step, and stacked they cost the checklist a
+	# whole button's height. Equal halves; the row is as tall as the taller one.
+	_report_row = HBoxContainer.new()
+	_report_row.name = "ReportRow"
+	_report_row.add_theme_constant_override("separation", UITheme.GAP_SNUG)
+	_report_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_play_panel.add_child(_report_row)
+	done.size_flags_stretch_ratio = 1.0
+	done.clip_text = true
+	_report_row.add_child(done)
 	_wire_push_hover(done, func() -> int: return -1)
 
 	# The way out, directly under the way through — they resolve the same step, so
@@ -8042,8 +8100,10 @@ func _build_ui() -> void:
 	# both things at once: there is a door, and here is what opens it.
 	_escape_btn = HoverButton.new()
 	_escape_btn.text = "🏃  Escape this game"
-	_escape_btn.custom_minimum_size = Vector2(0, 30)
+	_escape_btn.custom_minimum_size = Vector2(0, 40)
 	_escape_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_escape_btn.size_flags_stretch_ratio = 1.0
+	_escape_btn.clip_text = true
 	_escape_btn.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 	_escape_btn.add_theme_stylebox_override("normal",
 		UITheme.flat(UITheme.ACCENT.lerp(UITheme.BG, 0.78), 6, 8, 1, UITheme.ACCENT.lerp(UITheme.BG, 0.45)))
@@ -8056,7 +8116,7 @@ func _build_ui() -> void:
 	_escape_btn.add_theme_color_override("font_disabled_color",
 		UITheme.ACCENT.lerp(UITheme.BG, 0.55))
 	_escape_btn.pressed.connect(escape_game)
-	_play_panel.add_child(_escape_btn)
+	_report_row.add_child(_escape_btn)
 
 	# …and WHAT OPENS IT, in small text directly under the button it is about. Only
 	# up while the button is down; an open door needs no instructions.

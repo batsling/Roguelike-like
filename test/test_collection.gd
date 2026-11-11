@@ -458,7 +458,7 @@ func _check_shopkeepers_tab() -> void:
 		pending("Charon is not in the roster")
 		return
 	var words: String = " ".join(Collection.shopkeeper_rules(charon))
-	assert_string_contains(words, "Steals 3 gold")
+	assert_string_contains(words, "Steals 4 gold")
 	assert_string_contains(words, "20% off")
 
 # An object's "If a roll lands" prose carries an {ITEM} hole the run fills with

@@ -55,11 +55,6 @@ signal bomb_cell_requested(cell: Vector2i)
 # An enemy was clicked: the host opens the inspect card for it.
 signal enemy_inspected(entry: Dictionary, col: int)
 
-# The player asked to see THE FALLEN — every enemy this run has put down (§7.6).
-# A signal rather than a panel opened here for the same reason enemy_inspected is
-# one: the panel dims the whole screen and this board lives inside a scrolling
-# page, so the host is the only thing that can mount it.
-signal graveyard_requested
 # The mouse moved onto (or off) a body. The host lights the checklist row that
 # body's goal is written on, so "which of these lines is that thing" is answered
 # by pointing at either half of the pair. `instance` is the body; `hovered` says
@@ -192,7 +187,8 @@ var _hero_tex: Texture2D = null
 var push_target: int = 0
 var push_btn: Button
 var bomb_btn: Button
-var graveyard_btn: Button            # ☠ The Fallen — only once something has
+var _toolbar: Control                # the hint + Cancel bar; hidden when empty
+var _hero_verbs: HBoxContainer       # Push and Bomb, under the portrait
 var aim_btn: Button                  # only on screen while an item is aiming
 var _hint_label: Label
 # THE ARMED AIM — ONE SYSTEM FOR EVERYTHING THE BOARD CAN BE POINTED WITH (the
@@ -243,6 +239,8 @@ var _arrow_layer: Control            # the direction arrows, above every body
 var _boss_warning: Label             # "the next spawn brings a boss", above the grid
 var _pressure_small: Control         # the strip's small-print row, which the warning replaces
 var _strike_layer: Control           # what the last swing hit (GameLoop2.last_strike)
+var _flash_layer: Control            # the one-off flash of a swing; frees itself
+const STRIKE_FLASH_SEC := 0.32
 var _drawn_strike: Dictionary = {}   # the record last drawn, so a new one pulses once
 # True for the duration of refresh(), and the reason is a real crash rather than
 # bookkeeping. refresh() DETACHES every body on the board, and detaching the one
@@ -1050,31 +1048,11 @@ func _build_battle_toolbar() -> Control:
 	_hint_label.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 	bar.add_child(_hint_label)
 
-	push_btn = HoverButton.new()
-	push_btn.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
-	push_btn.pressed.connect(toggle_push_mode)
-	bar.add_child(push_btn)
-
-	bomb_btn = HoverButton.new()
-	bomb_btn.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
-	bomb_btn.pressed.connect(toggle_bomb_mode)
-	bar.add_child(bomb_btn)
-
-	# THE FALLEN (§7.6) — beside the verbs, because it is read at the same moment
-	# they are: what has died is what a Necromancer on the board is about to raise,
-	# and that changes which body you spend a Bomb on.
-	#
-	# Hidden until something HAS died, and hidden while a verb is aiming, for the
-	# reason the Cancel button below is: this is an HFlowContainer inside a board
-	# that fits its page to about ten spare pixels, and a permanent fourth button
-	# wraps the toolbar onto a second row and pushes the bottom of the board off
-	# the window. An empty graveyard is most of the first game of every run.
-	graveyard_btn = HoverButton.new()
-	graveyard_btn.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
-	graveyard_btn.visible = false
-	graveyard_btn.pressed.connect(func(): graveyard_requested.emit())
-	bar.add_child(graveyard_btn)
-
+	# PUSH AND BOMB ARE NOT HERE ANY MORE (the owner, 11 Nov 2026): they stand
+	# under the player's portrait as an icon and a number each (`_build_hero_verbs`).
+	# The Fallen moved too, into the run's History (RunLogScreen's second tab).
+	# What is left on this bar is the hint and the Cancel of an armed item, so the
+	# bar is hidden outright whenever neither is showing (`refresh_toolbar`).
 	# The armed ITEM's way out. Hidden the rest of the time rather than greyed:
 	# this toolbar is an HFlowContainer inside a board that fits its page to about
 	# ten spare pixels (see refresh_toolbar), and a fourth permanent button wraps
@@ -1296,7 +1274,7 @@ func armed_targets() -> Array:
 func aim_hint() -> String:
 	match aim_use():
 		&"push":
-			return "⇤ Push — click a body:"
+			return "💨 Push — click a body:"
 		&"bomb":
 			return "✸ Bomb — click a square:"
 		&"item":
@@ -1374,6 +1352,69 @@ func throw_request(entry: Dictionary = throwing_loot) -> Dictionary:
 		return {"target_kind": "tile", "cells": CardSystem.aim_cells(entry)}
 	return {"target_kind": "tile", "col_min": 0, "col_max": 0}
 
+# PUSH AND BOMB, UNDER THE PORTRAIT (the owner, 11 Nov 2026). No words: an icon
+# and the count, and the hover carries the name, the picture and the number. One
+# that has run out is not drawn at all — the same "only what you have" rule the
+# verbs under the offering follow — except while it is armed, when it is the way
+# back out.
+const PUSH_GLYPH := "💨"
+const BOMB_GLYPH := "✸"
+
+func _build_hero_verbs() -> Control:
+	_hero_verbs = HBoxContainer.new()
+	_hero_verbs.name = "HeroVerbs"
+	_hero_verbs.alignment = BoxContainer.ALIGNMENT_CENTER
+	_hero_verbs.add_theme_constant_override("separation", UITheme.GAP_TIGHT)
+	push_btn = _hero_verb_button(UITheme.ACCENT)
+	push_btn.pressed.connect(toggle_push_mode)
+	_hero_verbs.add_child(push_btn)
+	bomb_btn = _hero_verb_button(UITheme.DANGER)
+	bomb_btn.pressed.connect(toggle_bomb_mode)
+	_hero_verbs.add_child(bomb_btn)
+	return _hero_verbs
+
+func _hero_verb_button(tint: Color) -> Button:
+	var b := HoverButton.new()
+	b.focus_mode = Control.FOCUS_NONE
+	b.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	b.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
+	b.add_theme_color_override("font_color", tint.lerp(Color.WHITE, 0.45))
+	b.add_theme_color_override("font_hover_color", Color.WHITE)
+	b.add_theme_stylebox_override("normal",
+		UITheme.flat(tint.lerp(UITheme.BG, 0.72), 5, 5, 1, tint.lerp(UITheme.BG, 0.3)))
+	for state in ["hover", "pressed", "focus"]:
+		b.add_theme_stylebox_override(state,
+			UITheme.flat(tint.lerp(UITheme.BG, 0.5), 5, 5, 1, tint))
+	return b
+
+# The hover of one verb under the portrait: its name, its picture and how many
+# are left, then what it does. Public so a test can read it.
+func hero_verb_hover(verb: StringName) -> Dictionary:
+	var is_bomb: bool = verb == &"bomb"
+	var count: int = GameState.bombs if is_bomb else GameState.push
+	var armed: bool = bomb_mode if is_bomb else push_mode
+	var card: Dictionary = {
+		"title": "%s  %s" % [BOMB_GLYPH if is_bomb else PUSH_GLYPH, "Bomb" if is_bomb else "Push"],
+		"accent": UITheme.DANGER if is_bomb else UITheme.ACCENT,
+		"subtitle": "%d left" % count,
+	}
+	var art: Texture2D = Cosmetics.glyph_texture(BOMB_GLYPH, Fracture.level()) if is_bomb else null
+	if art != null:
+		card["art"] = art
+		card["title"] = "Bomb"
+	if armed:
+		card["lines"] = ["Armed. Click it again to put it away — nothing has been spent yet."]
+	elif is_bomb:
+		# A bomb goes off on a SQUARE, whether or not anything is standing on it.
+		# A boss is a legal target even though the damage bounces off it — that is
+		# the only way to leave Sticky Bombs' Web under one.
+		card["lines"] = ["Blow up any tile on the board — click this, then the square.",
+			"A body standing there takes 1 damage, and a boss takes none."]
+	else:
+		card["lines"] = ["Shove one enemy a single cell — back, forward, or across into another lane.",
+			"Click this, then the enemy, then pick an arrow."]
+	return card
+
 # --- the toolbar ------------------------------------------------------------
 
 # Re-label and enable/disable the combat verbs for the current selection.
@@ -1421,49 +1462,27 @@ func refresh_toolbar() -> void:
 			aim_btn.text = "✕  Cancel"
 			aim_btn.tooltip_text = "Put %s back in the pack — nothing has been spent yet." \
 				% LootSystem.display_name(throwing_loot)
-	push_btn.visible = not armed_aside
-	bomb_btn.visible = not armed_aside
-	if graveyard_btn != null:
-		var dead: int = GameLoop2.graveyard.size()
-		graveyard_btn.visible = not armed_aside and dead > 0
-		graveyard_btn.text = "☠  Fallen (%d)" % dead
-		graveyard_btn.tooltip_text = ("Everything you have put down this run. "
-			+ "Click one to read its card, or leave yourself a note on it.\n"
-			+ "A Necromancer raises from this list.")
+	if _toolbar != null:
+		_toolbar.visible = (_hint_label != null and _hint_label.visible) \
+			or (aim_btn != null and aim_btn.visible)
 
-	push_btn.text = ("✕  Cancel" if push_mode else "⇤  Push (%d)" % GameState.push)
+	# An icon and a number; "✕" while armed, because the button is then the way
+	# out. Gone at zero, and stood aside while an item or a throw is aiming (arming
+	# either would only put that away, and its Cancel is on the bar saying so).
+	push_btn.visible = not armed_aside and (GameState.push > 0 or push_mode)
+	push_btn.text = "✕" if push_mode else "%s %d" % [PUSH_GLYPH, GameState.push]
 	push_btn.disabled = not push_mode and GameState.push <= 0
-	if push_mode:
-		push_btn.tooltip_text = "Put the Push away — nothing has been spent yet."
-	elif GameState.push <= 0:
-		push_btn.tooltip_text = "No Push charges left."
-	else:
-		push_btn.tooltip_text = "Shove one enemy a single cell — back, forward, or across into another lane. Press this, then click the enemy, then pick an arrow."
+	HoverCard.attach(push_btn, hero_verb_hover(&"push"))
 
-	# BOMB IS ARMED, NOT FIRED. It used to go off on the button press, at whatever
-	# was still selected — so a body clicked three turns ago to read its card took
-	# the charge. Now the press only arms it and the CLICK on a body spends it, so
-	# the button gates on having a charge rather than on having a target.
-	#
-	# A boss is a legal target even though the damage bounces off it — that is the
-	# only way to leave Sticky Bombs' Web under one. The tooltip used to carry that
-	# caveat for "whichever body is currently selected", which is not a thing any
-	# more: the promise is the general one, and the per-body reading is on the body
-	# (EnemyInfoCard), where the player is looking when they aim.
-	bomb_btn.text = ("✕  Cancel" if bomb_mode else "✸  Bomb (%d)" % GameState.bombs)
+	# BOMB IS ARMED, NOT FIRED. The press only arms it and the CLICK on a square
+	# spends it, so the button gates on having a charge rather than a target.
+	bomb_btn.visible = not armed_aside and (GameState.bombs > 0 or bomb_mode)
+	bomb_btn.text = "✕" if bomb_mode else "%s %d" % [BOMB_GLYPH, GameState.bombs]
 	Cosmetics.apply_glyph(bomb_btn)   # a worn bomb icon in place of the ✸
 	bomb_btn.disabled = not bomb_mode and GameState.bombs <= 0
-	if bomb_mode:
-		bomb_btn.tooltip_text = "Put the Bomb away — nothing has been spent yet."
-	elif GameState.bombs <= 0:
-		bomb_btn.tooltip_text = "No Bomb charges left."
-	else:
-		# A bomb goes off on a SQUARE, whether or not anything is standing on it, so
-		# the promise names the ground rather than telling the player to select an
-		# enemy first (which is no longer a thing that can be done).
-		bomb_btn.tooltip_text = ("Blow up any tile on the board — press this, then "
-			+ "click the square. A body standing there takes 1 damage, "
-			+ "and a boss takes none.")
+	HoverCard.attach(bomb_btn, hero_verb_hover(&"bomb"))
+	if _hero_verbs != null:
+		_hero_verbs.visible = push_btn.visible or bomb_btn.visible
 
 # The stack entry for an instance, or {} when it's gone / nothing is selected.
 func _stack_entry(instance: int) -> Dictionary:
@@ -1488,7 +1507,8 @@ func _build() -> void:
 	outer.add_theme_constant_override("separation", UITheme.GAP_WIDE)
 	add_child(outer)
 	outer.add_child(_build_pressure_bar())
-	outer.add_child(_build_battle_toolbar())
+	_toolbar = _build_battle_toolbar()
+	outer.add_child(_toolbar)
 	_battlefield = HBoxContainer.new()
 	_battlefield.add_theme_constant_override("separation", UITheme.GAP_LOOSE)
 	_battlefield.alignment = BoxContainer.ALIGNMENT_BEGIN
@@ -1541,6 +1561,7 @@ func _build() -> void:
 	_hero_hp.add_theme_font_size_override("font_size", UITheme.FONT_LABEL)
 	_hero_hp.add_theme_color_override("font_color", UITheme.DANGER.lerp(UITheme.TEXT, 0.35))
 	hero_box.add_child(_hero_hp)
+	hero_box.add_child(_build_hero_verbs())
 	_battlefield.add_child(hero_box)
 
 	# The board: a Control holding two stacked layers, sized to the grid. The lower
@@ -1614,6 +1635,14 @@ func _build() -> void:
 	_strike_layer.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_strike_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_field.add_child(_strike_layer)
+	# The flash of a swing (`_draw_last_strike`). Its own layer because `refresh`
+	# empties the strike layer, and a use is followed by two or three refreshes: a
+	# flash living there would be cut off by the repaint its own swing caused.
+	_flash_layer = Control.new()
+	_flash_layer.name = "StrikeFlash"
+	_flash_layer.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_flash_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_field.add_child(_flash_layer)
 
 	# The push arrows go above even the badges — while the verb is armed they are
 	# the only thing on the board that can be pressed, and an arrow half-hidden
@@ -2326,11 +2355,16 @@ func _clear_swing_preview() -> void:
 			r.queue_free()
 	_swing_preview.clear()
 
-# PAINT WHAT THE LAST SWING HIT into `_strike_layer` (§12). Each square a strike
-# covered gets the weapon's orange; with more than one strike, the strike's number
-# sits in the corner of the first square it covered, so "struck three times" reads
-# as three places in an order. A record that is new since the last paint pulses a
-# few times, the way fresh ground does, and then holds until the board moves.
+# FLASH WHAT THE LAST SWING HIT (§12), ONCE, AND LEAVE NOTHING BEHIND (the owner,
+# 11 Nov 2026: "just flash the area that was attacked, don't keep the highlighted
+# boxes there"). Each square a strike covered lights in the weapon's orange and
+# fades out over STRIKE_FLASH_SEC; with more than one strike, the strike's number
+# rides the first square it covered for the same instant. The squares used to
+# hold until the board next moved, and a board left lit under the bodies a swing
+# hit read as those bodies still being marked for something.
+#
+# Only a record that is NEW since the last paint flashes — a repaint for any
+# other reason draws nothing.
 func _draw_last_strike() -> void:
 	var rec: Dictionary = GameLoop2.last_strike
 	if rec.is_empty():
@@ -2338,6 +2372,8 @@ func _draw_last_strike() -> void:
 		return
 	var fresh: bool = not is_same(rec, _drawn_strike)
 	_drawn_strike = rec
+	if not fresh or _flash_layer == null:
+		return
 	var strikes: Array = rec.get("strikes", [])
 	var numbered: bool = strikes.size() > 1
 	var painted: Dictionary = {}
@@ -2346,20 +2382,20 @@ func _draw_last_strike() -> void:
 		var cells: Array = (strikes[i] as Dictionary).get("cells", [])
 		# A RAY IS SHOWN BY ITS LINE, not by the squares it lit (owner, 5 Nov
 		# 2026): the line draws itself from the hero outward when the ray goes off,
-		# holds a moment and fades. Its squares are not painted and held after —
-		# the line already said where it went, and a board left lit under the
-		# bodies it hit read as those bodies still being marked for something.
+		# holds a moment and fades.
 		var ray: Array = (strikes[i] as Dictionary).get("ray", [])
 		if ray.size() >= 2:
-			if fresh and is_inside_tree():
-				var line := _ray_line(ray, WeaponSystem.WEAPON_COLOR.lightened(0.25))
-				_strike_layer.add_child(line)
+			var line := _ray_line(ray, WeaponSystem.WEAPON_COLOR.lightened(0.25))
+			_flash_layer.add_child(line)
+			if is_inside_tree():
 				line.grow = 0.0
 				var t: Tween = line.create_tween()
 				t.tween_property(line, "grow", 1.0, RAY_DRAW_SEC).set_trans(Tween.TRANS_SINE)
 				t.tween_interval(RAY_HOLD_SEC)
 				t.tween_property(line, "modulate:a", 0.0, RAY_FADE_SEC)
 				t.tween_callback(line.queue_free)
+			else:
+				line.queue_free()
 			continue
 		for cell in cells:
 			if not GameLoop2._on_board(cell.x, cell.y):
@@ -2371,10 +2407,9 @@ func _draw_last_strike() -> void:
 				r.position = _cell_pos(cell.y, cell.x)
 				r.size = Vector2(_cell, _cell)
 				r.add_theme_stylebox_override("panel",
-					UITheme.flat(Color(WeaponSystem.WEAPON_COLOR, 0.38), 6, 0, 4,
+					UITheme.flat(Color(WeaponSystem.WEAPON_COLOR, 0.55), 6, 0, 4,
 						WeaponSystem.WEAPON_COLOR.lightened(0.25)))
-				r.tooltip_text = "Hit by %s." % String(rec.get("label", "the last swing"))
-				_strike_layer.add_child(r)
+				_flash_layer.add_child(r)
 				nodes.append(r)
 		if numbered and not cells.is_empty():
 			var first: Vector2i = cells[0]
@@ -2383,18 +2418,18 @@ func _draw_last_strike() -> void:
 					UITheme.FONT_HEAD)
 				tag.add_theme_color_override("font_color", WeaponSystem.WEAPON_COLOR.lightened(0.35))
 				tag.position = _cell_pos(first.y, first.x) + Vector2(6 + 16 * (i % 3), 4)
-				_strike_layer.add_child(tag)
+				_flash_layer.add_child(tag)
 				nodes.append(tag)
-	if fresh and is_inside_tree():
-		for n: Control in nodes:
-			n.modulate.a = 0.3
-			var t: Tween = n.create_tween()
-			t.set_loops(3)
-			t.tween_property(n, "modulate:a", 1.0, 0.25).set_trans(Tween.TRANS_SINE)
-			t.tween_property(n, "modulate:a", 0.5, 0.25).set_trans(Tween.TRANS_SINE)
-			t.chain().tween_callback(func():
-				if is_instance_valid(n):
-					n.modulate.a = 1.0)
+	for n: Control in nodes:
+		# Out of the tree (a headless test that never renders) there is no tween to
+		# run, so the flash is simply over.
+		if not is_inside_tree():
+			n.queue_free()
+			continue
+		var t: Tween = n.create_tween()
+		t.tween_property(n, "modulate:a", 0.0, STRIKE_FLASH_SEC) \
+			.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+		t.tween_callback(n.queue_free)
 
 # What one lit square promises, for its own tooltip. The bomb's version is asked
 # of the loop (`bomb_cell_hint`) so the picker and the rule can't drift; an item's
@@ -2821,17 +2856,52 @@ func _add_enemy_node(entry: Dictionary) -> Control:
 	ring_box.border_color = LIT_RING
 	ring_box.set_border_width_all(3)
 	ring_box.set_corner_radius_all(6)
-	for off in cells:
-		var ring := Panel.new()
+	# ONE OUTLINE ROUND THE WHOLE BODY, not a box per cell (the owner, 12 Nov 2026:
+	# "when hovering over an enemy that is more than one square, make sure just the
+	# outline of the enemy is shown not the boxes inside of it"). The body's own
+	# frame has been one shape since Oct 2026; the ring lit over it on a hover was
+	# still a square per cell, so a 2x2 body lit as four boxes. A body of more than
+	# one cell rings with the same FootprintFrame its frame is, drawn hollow.
+	if cells.size() > 1:
+		var ring := FootprintFrame.new()
 		ring.name = "LitRing"
 		ring.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		ring.position = Vector2(off.x, off.y) * float(_cell_step)
-		ring.size = Vector2(_cell, _cell)
-		ring.add_theme_stylebox_override("panel", ring_box)
+		ring.cell_size = float(_cell)
+		ring.step = float(_cell_step)
+		ring.size = node.size
+		ring.fill = Color(0, 0, 0, 0)
+		ring.border = LIT_RING
+		ring.width = 3.0
+		ring.set_cells(cells)
 		ring.visible = _is_lit(inst)
 		badges.add_child(ring)
 		rings.append(ring)
-	if body_pick != null:
+	else:
+		for off in cells:
+			var ring := Panel.new()
+			ring.name = "LitRing"
+			ring.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			ring.position = Vector2(off.x, off.y) * float(_cell_step)
+			ring.size = Vector2(_cell, _cell)
+			ring.add_theme_stylebox_override("panel", ring_box)
+			ring.visible = _is_lit(inst)
+			badges.add_child(ring)
+			rings.append(ring)
+	if body_pick != null and cells.size() > 1:
+		var chosen := FootprintFrame.new()
+		chosen.name = "PickRing"
+		chosen.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		chosen.cell_size = float(_cell)
+		chosen.step = float(_cell_step)
+		chosen.size = node.size
+		chosen.fill = Color(body_pick.accent, 0.3)
+		chosen.border = body_pick.accent.lerp(Color.WHITE, 0.3)
+		chosen.width = 4.0
+		chosen.set_cells(cells)
+		chosen.visible = body_pick.is_selected(inst)
+		badges.add_child(chosen)
+		pick_rings.append(chosen)
+	elif body_pick != null:
 		var pick_box := StyleBoxFlat.new()
 		pick_box.bg_color = Color(body_pick.accent, 0.3)
 		pick_box.border_color = body_pick.accent.lerp(Color.WHITE, 0.3)
@@ -2981,14 +3051,31 @@ func _add_enemy_badges(holder: Control, entry: Dictionary, e: GoalEnemyData,
 	# cuts off less things". Under the box, the strip ran into the gutter and over
 	# the head of whatever stood in the cell below; in the corner it sits on this
 	# body's own frame, the one place the rest of the board does not need.
+	#
+	# AN ARROW, NOT A PIP PER STATUS (the owner, 11 Nov 2026): "instead of showing
+	# every status, just show an up or down arrow, and the statuses will be on the
+	# hoverover". A body carrying four statuses drew four pips across the top of
+	# its own picture. Now it is one ▲ if anything on it is a buff and one ▼ if
+	# anything is a debuff — both when it has both — and the hover's pip row names
+	# each one with its stacks (`enemy_hover`).
 	var statuses: Array = GameLoop2.enemy_statuses(entry)
 	var strip: HBoxContainer = null
 	if not statuses.is_empty():
 		strip = HBoxContainer.new()
 		strip.name = STATUS_STRIP_NAME
-		strip.add_theme_constant_override("separation", UITheme.GAP_HAIR)
-		_fill_status_strip(strip, statuses, StatusData.ENEMY, STATUS_PIP_ENEMY,
-			_nullified_ids(entry), GameLoop2.answered_any_time(entry))
+		strip.add_theme_constant_override("separation", UITheme.GAP_NONE)
+		strip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var arrows: Dictionary = status_arrows(statuses)
+		if arrows["up"]:
+			var up := _corner_badge("▲", STATUS_UP, STATUS_PIP_ENEMY)
+			up.name = "StatusUp"
+			up.add_theme_color_override("font_color", STATUS_UP)
+			strip.add_child(up)
+		if arrows["down"]:
+			var down := _corner_badge("▼", STATUS_DOWN, STATUS_PIP_ENEMY)
+			down.name = "StatusDown"
+			down.add_theme_color_override("font_color", STATUS_DOWN)
+			strip.add_child(down)
 
 	# NO SNOWFLAKE CORNER BADGE ANY MORE (§13.2). Stun was the board's own counter
 	# with a symbol of its own, and it is an ordinary status now — so it is drawn in the
@@ -3013,23 +3100,8 @@ func _add_enemy_badges(holder: Control, entry: Dictionary, e: GoalEnemyData,
 	var marks: Array = []
 	if selected:
 		marks.append(_corner_badge("▸", UITheme.ACCENT))
-	# A PLAIN EXCLAMATION MARK on the body itself, and ⚠ everywhere the mark gets a
-	# line of its own (the hover, the card's section header, the Fallen panel).
-	# Same colour, same meaning; the difference is size. This corner is ABILITY_FONT
-	# px on a 46px cell at the widest board, where a triangle with a stroke inside it
-	# is a smudge and a bare "!" is still legible — and being ASCII it asks nothing
-	# of the shipped glyph subsets at all. A "!" is one stroke wide, so it can carry
-	# the extra points the ❤/⚔ badges beside it could not.
-	if GameLoop2.entry_has_abilities(entry):
-		var mark := _corner_badge("!", ABILITY_MARK, ABILITY_FONT)
-		# Painted, not merely named. _corner_badge draws every badge white for
-		# legibility over the art (see it for why), and the ability mark is one of
-		# the two exceptions: it is the only corner badge that is a WARNING rather
-		# than a number, and white is what made it read as one more stat. The black
-		# outline the badge already carries is what keeps a red glyph legible over
-		# a red enemy.
-		mark.add_theme_color_override("font_color", ABILITY_MARK)
-		marks.append(mark)
+	# NO "!" FOR AN ABILITY ANY MORE (the owner, 11 Nov 2026). The hover and the
+	# card still head the abilities with ⚠, which is where they are read.
 	# The statuses go in the same row, to the LEFT of the marks: the ! and ▸ keep
 	# the very corner they have always had, and the pips run inward from them.
 	if strip != null or not marks.is_empty():
@@ -3113,6 +3185,7 @@ func _damage_badge_text(entry: Dictionary, strikes: int) -> String:
 # of icons), and WHEN IT SWINGS. Its goal rides along because that is the thing
 # you are being asked to go and do. Everything else — the full stat block, the
 # position, the verbs — is a click away and stays there.
+const ENEMY_HOVER_ART := 112
 func enemy_hover(entry: Dictionary, e: GoalEnemyData) -> Dictionary:
 	# THE COUNTDOWN, in lost runs (§7.4) — here and on the card, never over the
 	# body. A lost run is the only thing that moves the board now, so a body's
@@ -3168,6 +3241,9 @@ func enemy_hover(entry: Dictionary, e: GoalEnemyData) -> Dictionary:
 		"subtitle": sub,
 		"accent": threat_color(int(entry.get("col", GameLoop2.spawn_col())), e.is_boss()),
 		"art": GameLoop2.entry_image(entry),
+		# BIGGER THAN ANY OTHER HOVER'S ART (the owner, 11 Nov 2026): a body on a
+		# 7x7 board is 46px, and the hover is where it gets looked at properly.
+		"art_size": ENEMY_HOVER_ART,
 		"pips": pips,
 		"lines": lines,
 	}
@@ -3376,6 +3452,22 @@ func _stat_badge(text: String, accent: Color, font_size: int) -> Label:
 # The status strip's node name on an enemy's badge layer. A const because it is an
 # identity two files agree on: the board builds it and the tests look it up.
 const STATUS_STRIP_NAME := "StatusStrip"
+
+# Which arrows a body's statuses add up to: `up` when any of them is a buff,
+# `down` when any is a debuff. Static and public so a test can ask it.
+const STATUS_UP := Color(0.45, 0.95, 0.55)
+const STATUS_DOWN := Color(1.0, 0.45, 0.42)
+static func status_arrows(rows: Array) -> Dictionary:
+	var out: Dictionary = {"up": false, "down": false}
+	for row in rows:
+		var sd: StatusData = row.get("status")
+		if sd == null:
+			continue
+		if sd.kind == &"debuff":
+			out["down"] = true
+		else:
+			out["up"] = true
+	return out
 
 # One status chip: the art (or the name's first letter when art is missing) with
 # its stack count, tinted by what this SIDE does — a `bonus` is an opportunity and

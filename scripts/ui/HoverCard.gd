@@ -40,6 +40,8 @@ extends RefCounted
 #   title     String        the name, drawn in `accent`
 #   accent    Color         the thing's own colour (threat tier, item class, …)
 #   art       Texture2D     optional thumbnail, left of the title
+#   art_size  int           optional side of the thumbnail when ART is too small
+#                           (an enemy on the board, whose hover is its close-up)
 #   art_path  String        the same, loaded only when the card is shown — for a
 #                           grid of game covers, which load lazily (GameData)
 #   subtitle  String        optional small dim line under the title (its class,
@@ -162,7 +164,7 @@ static func build(cfg: Dictionary) -> Control:
 			and ResourceLoader.exists(String(cfg["art_path"])):
 		art = load(String(cfg["art_path"])) as Texture2D
 	if art != null:
-		var tex: TextureRect = UITheme.crisp_tex(art, int(ART))
+		var tex: TextureRect = UITheme.crisp_tex(art, int(cfg.get("art_size", ART)))
 		tex.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		head.add_child(tex)
 

@@ -27,6 +27,9 @@ extends Control
 signal closed
 
 var _closing: bool = false
+# Where an opened enemy card is mounted. This panel when it is on screen itself;
+# the History screen when only its LIST is (see `embedded`).
+var _card_host: Node = null
 var _list: VBoxContainer
 var _empty: Label
 
@@ -125,6 +128,38 @@ func setup() -> void:
 	inner.add_child(_empty)
 
 	refill()
+
+# THE LIST ON ITS OWN, for the run's History (the owner, 11 Nov 2026: the Fallen
+# is a tab there now, not a button over the grid). No dimmer, no card and no
+# scroll of its own — the History screen has all three. This panel rides the
+# returned box as a hidden child, so it lives exactly as long as the list does;
+# `card_host` is where a clicked body's card opens, since a card mounted on a
+# hidden node would never be seen.
+func embedded(card_host: Node) -> Control:
+	_card_host = card_host
+	visible = false
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", UITheme.GAP)
+	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	box.add_child(self)
+	var blurb := Label.new()
+	blurb.text = ("Everything you have put down this run — however it went down. " +
+		"A Necromancer raises from this list, so what is in here can come back.")
+	blurb.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	blurb.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
+	blurb.add_theme_color_override("font_color", UITheme.TEXT_DIM)
+	box.add_child(blurb)
+	_list = VBoxContainer.new()
+	_list.add_theme_constant_override("separation", UITheme.GAP)
+	_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	box.add_child(_list)
+	_empty = Label.new()
+	_empty.text = "Nothing has died yet."
+	_empty.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
+	_empty.add_theme_color_override("font_color", UITheme.TEXT_DIM)
+	box.add_child(_empty)
+	refill()
+	return box
 
 # Rebuild the list from the loop. Public so a note saved on one row can redraw the
 # panel without the host having to tear it down and put it back.
@@ -225,7 +260,7 @@ func inspect(enemy: GoalEnemyData) -> EnemyInfoCard:
 	if enemy == null:
 		return null
 	var card := EnemyInfoCard.new()
-	add_child(card)
+	(_card_host if _card_host != null and is_instance_valid(_card_host) else self).add_child(card)
 	card.setup({
 		"instance": 0, "enemy": enemy,
 		"health": GameLoop2.effective_health(enemy),

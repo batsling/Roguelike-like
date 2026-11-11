@@ -185,3 +185,34 @@ func test_every_cell_of_an_l_is_inside_its_outline() -> void:
 		var mid := Vector2(c.x * 90.0 + 42.0, c.y * 90.0 + 42.0)
 		assert_true(Geometry2D.is_point_in_polygon(mid, shape), "cell %s is outlined" % c)
 	assert_false(Geometry2D.is_point_in_polygon(Vector2(42, 42), shape), "the empty corner is not")
+
+
+# The owner, 12 Nov 2026: "when hovering over an enemy that is more than one
+# square, make sure just the outline of the enemy is shown not the boxes inside
+# of it". The ring lit over a hovered body was a square per cell.
+func test_a_big_body_lights_as_one_outline_not_a_box_per_cell() -> void:
+	GameState.reset_run()
+	GameLoop2.reset()
+	var board := BattlefieldView.new()
+	add_child_autofree(board)
+	var e := GoalEnemyData.new()
+	e.id = &"synthetic_big"
+	e.display_name = "Synthetic Big"
+	e.health = 3
+	e.damage = 1
+	e.shape_rows = 2
+	e.shape_cols = 2
+	e.shape_mask = PackedInt32Array([3, 3])
+	var inst: int = GameLoop2.spawn_to_stack(e)
+	assert_gt(inst, 0, "the body is standing")
+	board.refresh()
+	var node: Control = board._enemy_nodes.get(inst)
+	assert_not_null(node)
+	if node == null:
+		return
+	var badges: Control = node.get_meta("badges")
+	var rings: Array = badges.find_children("LitRing*", "", false, false)
+	assert_eq(rings.size(), 1, "one ring for the whole body, not one per cell")
+	assert_true(rings[0] is BattlefieldView.FootprintFrame, "and it is the body's own outline")
+	assert_eq((rings[0] as Control).size, node.size, "spanning all of it")
+	assert_eq((rings[0] as BattlefieldView.FootprintFrame).fill.a, 0.0, "hollow: an outline, not a plate")

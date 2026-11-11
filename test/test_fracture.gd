@@ -387,6 +387,26 @@ func _picker() -> CharacterPicker:
 func _fracture_button(picker: CharacterPicker, lv: int) -> Button:
 	return picker._fracture_row.get_node_or_null("Fracture%d" % lv) as Button
 
+# The owner, 11 Nov 2026: hovering a level made its number go away, and the row
+# should show the numbers the player has unlocked (the title digits a rank pays).
+func test_a_fracture_level_wears_an_unlocked_number_and_keeps_it_under_the_mouse() -> void:
+	var picker: CharacterPicker = _picker()
+	for lv in [0, 3, 10]:
+		var b: Button = _fracture_button(picker, lv)
+		assert_not_null(b)
+		var word: TitleLetters = b.get_node_or_null("Digits") as TitleLetters
+		assert_not_null(word, "level %d is spelled out of title digits" % lv)
+		if word == null:
+			continue
+		assert_eq(word.placed.size(), str(lv).length(), "one picture per digit")
+		var have: Dictionary = TitleLetters.available()
+		for piece in word.placed:
+			assert_true((have.get(String(piece.entry["folder"]), []) as Array).has(piece.entry),
+				"and each is one the player has unlocked")
+		b.mouse_entered.emit()
+		assert_gt(word.modulate.a, 0.0, "the number is still there under the mouse")
+		assert_true(word.visible)
+
 func test_the_picker_row_locks_what_is_not_unlocked() -> void:
 	var picker: CharacterPicker = _picker()
 	var first: CharacterData = picker._roster[0]

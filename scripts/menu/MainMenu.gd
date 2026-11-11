@@ -177,8 +177,26 @@ func _build_title(rng: RandomNumberGenerator = null) -> void:
 	_title_rng = rng
 	_reroll(true)
 	_reroll(false)
+	_warm_letters()
+
+# EVERY LETTER THE TITLE CAN BE SPELLED WITH, LOADED BEHIND THE MENU (the owner,
+# 12 Nov 2026: "sometimes clicking through the title screen to get new letters
+# freezes the game"). A click on the title draws it again from the pool, and each
+# letter it had not drawn yet was read off the disk inside that click — up to
+# forty pictures, on the main thread, with nothing kept afterwards, so the same
+# letter cost the same again next time. They are asked for on a thread here, as
+# the menu opens, and kept (TitleLetters.request / texture), so a click finds
+# them in memory. The buttons' letters come from the same pool.
+func _warm_letters() -> void:
+	var paths: Array = []
+	var have: Dictionary = TitleLetters.available()
+	for folder in have:
+		for e in have[folder]:
+			paths.append(String(e["path"]))
+	TitleLetters.request(paths)
 
 func _on_unlock_everything_changed(_on: bool) -> void:
+	_warm_letters()
 	_reroll(true)
 	_reroll(false)
 	_spell_buttons()
@@ -238,7 +256,7 @@ class LetterOutline extends Control:
 	func _draw() -> void:
 		if not is_instance_valid(row):
 			return
-		var at: Vector2 = row.position + row.ink.position
+		var at: Vector2 = row.position - position + row.ink.position
 		for p in row.placed:
 			for i in 16:
 				var off := Vector2.from_angle(TAU * i / 16.0) * OUTLINE_WIDTH
@@ -282,8 +300,16 @@ class LetterGlow extends Control:
 		if not is_instance_valid(row):
 			return
 		var r: float = row.line_height * GLOW_REACH * 0.5
+		# WHERE THE ROW IS, MEASURED FROM THIS CONTROL, not from the button. The two
+		# are siblings, and on a main button both are moved right by the icon's
+		# width; adding the row's position to a control already moved by the same
+		# amount put every glow one icon to the right of its letter (the owner,
+		# 12 Nov 2026: "the glow on the menu selections on the bottom are off to
+		# the right"). A button with no icon has no shift, which is why only the
+		# three main ones were off.
+		var at: Vector2 = row.position - position + row.ink.position
 		for p in row.placed:
-			var c: Vector2 = row.position + row.ink.position + p.body.get_center()
+			var c: Vector2 = at + p.body.get_center()
 			draw_texture_rect(disc, Rect2(c - Vector2(r, r), Vector2(r, r) * 2.0), false, tint)
 
 const ICON_SIZE := 1.2           # the icon's font size, of the letters' height

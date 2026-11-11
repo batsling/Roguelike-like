@@ -67,9 +67,10 @@ _run_trigger(item, trig, ctx_extras, loot)
 
 `Overworld2._begin_game`, one click on the map, before anything is played:
 
-0. **The floor is cleared**: any loot still lying on the board (a kill's drop
-   nobody picked up, a piece the player put down) is gone, before this game's
-   bodies walk on (`DropQueue.clear_floor`).
+0. **The floor is cleared**: any loot still lying on the board is gone, before
+   this game's bodies walk on (`DropQueue.clear_floor`). The haul screen has
+   usually swept it already (§ the screens after); this catches a game that
+   ended without one, or a piece put down between games.
 1. The game's and the character's **rank bars** are noted, for the end screen.
 2. **Starting gear**, first game of the run only.
 3. **Shields**: 3 Temporary Shields, 5 for a Traditional roguelike, fewer on some
@@ -283,8 +284,9 @@ The report button — beaten, missed and escaped all come through here.
 
 Then, back in `Overworld2.report`:
 
-1. The **floor is left as it is** — it lasts until the next game is picked
-   (§1, step 0); the **report chest** is queued (beaten, not escaped); status penalties are announced; each kill is recorded to the
+1. The **floor is left for the haul screen**, which sweeps it onto its table
+   as it opens (`Overworld2._open_post_game`: every piece on the board is offered
+   there once, and what is not taken is gone); the **report chest** is queued (beaten, not escaped); status penalties are announced; each kill is recorded to the
    Atlas and the character.
 2. An **event** is rolled for after the haul (not on a detour); a game the
    player opened a **shop** at queues its button.

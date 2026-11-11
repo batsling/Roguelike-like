@@ -178,8 +178,8 @@ func _build_icons() -> void:
 
 # --- a slot's choices, shared with the character picker ---------------------------
 #
-# One tile per choice for a slot: the DEFAULT, RANDOM (🎲 — rolled again at the
-# start of every run, Cosmetics.roll_random), then every look that fits it. A
+# One tile per choice for a slot: RANDOM first (🎲 — rolled again at the start of
+# every run, Cosmetics.roll_random), the DEFAULT, then every look that fits it. A
 # LOCKED look is its own picture as a black silhouette, like the Collection's
 # unseen entries, with where it comes from on the hover; a look drawn since it was
 # last shown GLOWS once, the way a new title letter does, and is then seen.
@@ -198,8 +198,6 @@ static func slot_tiles(slot_key: String, default_tex: Texture2D, default_glyph: 
 			Cosmetics.choose(slot_key, key)
 			on_change.call()
 	var out: Array = []
-	out.append(tile(default_tex, default_glyph, chosen == "", false, false, default_tip,
-		pick.call(""), side))
 	var rolled: Dictionary = Cosmetics.costume_or_icon(slot_key) if chosen == Cosmetics.RANDOM else {}
 	var random_tip := "Random — a different one every run, from the default and every look unlocked here."
 	if chosen == Cosmetics.RANDOM:
@@ -207,7 +205,13 @@ static func slot_tiles(slot_key: String, default_tex: Texture2D, default_glyph: 
 	var r := tile(null, "🎲", chosen == Cosmetics.RANDOM, false, false, random_tip,
 		pick.call(Cosmetics.RANDOM), side)
 	r.name = "Random"
+	# RANDOM IS ALL THE WAY ON THE LEFT (the owner, 12 Nov 2026), then the default,
+	# then every look. It was second, between the default and the looks.
 	out.append(r)
+	var d := tile(default_tex, default_glyph, chosen == "", false, false, default_tip,
+		pick.call(""), side)
+	d.name = "Default"
+	out.append(d)
 	for e in looks:
 		var key := String(e["key"])
 		var locked := not Cosmetics.is_unlocked(key)
@@ -240,54 +244,160 @@ func _build_letters() -> void:
 		if a == TitleLetters.STARTER_GAME or b == TitleLetters.STARTER_GAME:
 			return a == TitleLetters.STARTER_GAME
 		return _game_name(a) < _game_name(b))
+	# BUILT A SLICE A FRAME, NOT ALL AT ONCE (the owner, 11 Nov 2026: "after
+	# clicking the title letters tab it lagged a lot"). With every letter earned
+	# this tab is 609 tiles, and each one's picture is loaded the first time it is
+	# shown: measured, 2.6 s inside the click that opened the tab, with the screen
+	# frozen on the tab before it. The work is the same; it is spread out. The
+	# first slice is built here, inside the click, so the tab is never empty, and
+	# the rest follows a few milliseconds a frame (`_build_letters_rest`).
+	_letter_tiles.clear()
+	_letter_checks.clear()
+	_letters_gen += 1
+	var todo: Array = []
 	for g in ids:
-		var block := VBoxContainer.new()
-		block.name = "Game_%s" % g
-		block.add_theme_constant_override("separation", UITheme.GAP_TIGHT)
-		_body.add_child(block)
-		var head := HBoxContainer.new()
-		head.add_theme_constant_override("separation", UITheme.GAP)
-		block.add_child(head)
-		var check := CheckBox.new()
-		check.name = "GameToggle"
-		check.text = _game_name(g)
-		check.button_pressed = Cosmetics.letters_game_on(g)
-		check.add_theme_font_size_override("font_size", UITheme.FONT_SUB)
-		check.toggled.connect(func(on: bool) -> void:
-			if not Cosmetics.set_letters_game(g, on):
-				_refused(_game_name(g) + "'s letters")
-			_refresh_keep_scroll())
-		head.add_child(check)
-		var row := HFlowContainer.new()
-		row.add_theme_constant_override("h_separation", UITheme.GAP_TIGHT)
-		row.add_theme_constant_override("v_separation", UITheme.GAP_TIGHT)
-		block.add_child(row)
-		var game_on := Cosmetics.letters_game_on(g)
 		var pieces: Array = by_game[g]
 		pieces.sort_custom(func(a, b): return _piece_order(a) < _piece_order(b))
-		for e in pieces:
-			var key := String(e["key"])
-			var on := Cosmetics.letter_on(key)
-			var t := _tile(TitleLetters.texture(String(e["path"])), "", on and game_on, false,
-				_piece_name(e) + ("" if on else " — switched off"),
-				func() -> void:
-					if not Cosmetics.set_letter(key, not on):
-						_refused(_piece_name(e))
-					_refresh_keep_scroll(), LETTER_TILE, bool(e.get("pixel", false)))
-			if not (on and game_on):
-				t.modulate = Color(1, 1, 1, 0.35)
-			row.add_child(t)
+		todo.append({"game": g, "pieces": pieces, "next": 0, "row": null})
+	_letters_todo = todo
+	# The pictures load on a thread while the tiles are built: of the 2.6 s, the
+	# loading was most of it and building 609 buttons the rest.
+	var paths: Array = []
+	for job in todo:
+		for e in job["pieces"]:
+			paths.append(String(e["path"]))
+	TitleLetters.request(paths)
+	_build_letters_slice(LETTERS_FIRST_SLICE_MS, true)
+	if not _letters_todo.is_empty() and is_inside_tree():
+		_build_letters_rest(_letters_gen)
+
+# How long one slice may build for. The first is inside the click and is kept
+# short enough to feel like a click; the rest are a part of a frame each.
+const LETTERS_FIRST_SLICE_MS := 12.0
+const LETTERS_SLICE_MS := 10.0
+var _letters_todo: Array = []
+var _letters_gen: int = 0
+# key -> {"tile": Button, "entry": Dictionary} and game -> CheckBox, so a switch
+# repaints what is on screen instead of building all of it again.
+var _letter_tiles: Dictionary = {}
+var _letter_checks: Dictionary = {}
+
+func _build_letters_rest(gen: int) -> void:
+	while is_inside_tree() and gen == _letters_gen and _tab == 2 and not _letters_todo.is_empty():
+		await get_tree().process_frame
+		if not is_inside_tree() or gen != _letters_gen or _tab != 2:
+			return
+		_build_letters_slice(LETTERS_SLICE_MS)
+
+# Whether every tile of the tab is built. Public so a test can wait for it.
+func letters_built() -> bool:
+	return _letters_todo.is_empty()
+
+# Build tiles until `budget_ms` has gone, at least one. Always finishes the tile
+# it is on; a game's heading and row are made with its first tile.
+#
+# `wait` lets it sit on a picture that is still loading. The first slice does (the
+# tab must not open empty); the rest stop at one that is not in yet and come back
+# next frame, so a slow disk costs time and never a frozen screen.
+func _build_letters_slice(budget_ms: float, wait: bool = false) -> void:
+	var start: int = Time.get_ticks_usec()
+	while not _letters_todo.is_empty():
+		var job: Dictionary = _letters_todo[0]
+		var g: String = String(job["game"])
+		if job["row"] == null:
+			job["row"] = _letters_block(g)
+		var pieces: Array = job["pieces"]
+		var i: int = int(job["next"])
+		if i < pieces.size() and not wait \
+				and not TitleLetters.is_loaded(String(pieces[i]["path"])):
+			var waiting: Node = (job["row"] as Control).get_parent()
+			if waiting.get_parent() == null:
+				_body.add_child(waiting)
+			return
+		if i < pieces.size():
+			(job["row"] as Control).add_child(_letter_tile(pieces[i]))
+			job["next"] = i + 1
+		var done: bool = int(job["next"]) >= pieces.size()
+		var out_of_time: bool = (Time.get_ticks_usec() - start) / 1000.0 >= budget_ms
+		# A GAME'S BLOCK GOES ON THE PAGE WHOLE where it can: a tile added to a row
+		# that is not in the tree yet costs nothing to lay out, where one added to a
+		# row on screen re-sorts the page. It is put up early only when the slice
+		# runs out part-way through it, so a slice always shows what it built.
+		if done or out_of_time:
+			var block: Node = (job["row"] as Control).get_parent()
+			if block.get_parent() == null:
+				_body.add_child(block)
+		if done:
+			_letters_todo.pop_front()
+		if out_of_time:
+			return
+
+# One game's heading (its checkbox) and the row its letters go in.
+func _letters_block(g: String) -> Control:
+	var block := VBoxContainer.new()
+	block.name = "Game_%s" % g
+	block.add_theme_constant_override("separation", UITheme.GAP_TIGHT)
+	var head := HBoxContainer.new()
+	head.add_theme_constant_override("separation", UITheme.GAP)
+	block.add_child(head)
+	var check := CheckBox.new()
+	check.name = "GameToggle"
+	check.text = _game_name(g)
+	check.button_pressed = Cosmetics.letters_game_on(g)
+	check.add_theme_font_size_override("font_size", UITheme.FONT_SUB)
+	check.toggled.connect(func(on: bool) -> void:
+		if not Cosmetics.set_letters_game(g, on):
+			_refused(_game_name(g) + "'s letters")
+		_sync_letters())
+	head.add_child(check)
+	_letter_checks[g] = check
+	var row := HFlowContainer.new()
+	row.add_theme_constant_override("h_separation", UITheme.GAP_TIGHT)
+	row.add_theme_constant_override("v_separation", UITheme.GAP_TIGHT)
+	block.add_child(row)
+	return row
+
+func _letter_tile(e: Dictionary) -> Button:
+	var key := String(e["key"])
+	# The press reads the switch as it stands, not as it stood when the tile was
+	# built: the tile outlives the switch now.
+	var t := _tile(TitleLetters.texture(String(e["path"])), "", false, false, "",
+		func() -> void:
+			if not Cosmetics.set_letter(key, not Cosmetics.letter_on(key)):
+				_refused(_piece_name(e))
+			_sync_letters(), LETTER_TILE, bool(e.get("pixel", false)))
+	_letter_tiles[key] = {"tile": t, "entry": e}
+	_paint_letter(t, e)
+	return t
+
+# A tile as its switches stand: ringed and bright when it is in the title's pool,
+# dim when it or its whole game is switched off.
+func _paint_letter(t: Button, e: Dictionary) -> void:
+	var key := String(e["key"])
+	var on: bool = Cosmetics.letter_on(key)
+	var lit: bool = on and Cosmetics.letters_game_on(String(e.get("game", "")))
+	var box := UITheme.panel_box(UITheme.PANEL, UITheme.GOLD if lit else UITheme.BORDER,
+		6, 4, 2 if lit else 1)
+	for st in ["normal", "hover", "pressed", "disabled"]:
+		t.add_theme_stylebox_override(st, box)
+	t.tooltip_text = _piece_name(e) + ("" if on else " — switched off")
+	t.modulate = Color.WHITE if lit else Color(1, 1, 1, 0.35)
+
+# Repaint every tile and checkbox on the tab from the switches. A switch used to
+# tear the whole tab down and build it again (150 ms, and the scroll put back by
+# hand); nothing about a switch changes WHICH tiles there are.
+func _sync_letters() -> void:
+	for key in _letter_tiles:
+		var row: Dictionary = _letter_tiles[key]
+		if is_instance_valid(row["tile"]):
+			_paint_letter(row["tile"], row["entry"])
+	for g in _letter_checks:
+		var check: CheckBox = _letter_checks[g]
+		if is_instance_valid(check):
+			check.set_pressed_no_signal(Cosmetics.letters_game_on(String(g)))
 
 func _refused(what: String) -> void:
 	_say.call_deferred("Can't switch off %s: without it the title or the subtitle would have a letter nothing else can spell." % what)
-
-func _refresh_keep_scroll() -> void:
-	var scroll: ScrollContainer = _body.get_parent()
-	var v := scroll.scroll_vertical
-	var msg := _status.text
-	_refresh()
-	_status.text = msg
-	(func() -> void: scroll.scroll_vertical = v).call_deferred()
 
 # Letters A to Z (a capital before its small letter), then digits, then the rest.
 func _piece_order(e: Dictionary) -> String:

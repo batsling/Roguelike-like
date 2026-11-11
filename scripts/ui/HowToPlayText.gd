@@ -522,7 +522,7 @@ static func _ch_board() -> Dictionary:
 				+ "ground alike, and the CLICK is what spends the charge. Bare "
 				+ "ground is worth bombing once the pack has made a blast leave "
 				+ "something behind or reach past its own square."),
-			_kv("⇤ Push", "Shove a follower one cell. Arm the verb, click the "
+			_kv("💨 Push", "Shove a follower one cell. Arm the verb, click the "
 				+ "body, then press one of the arrows that appear. Nothing is "
 				+ "spent until you press an arrow."),
 			_note("Both verbs are armed first and aimed second, and arming either "
@@ -553,10 +553,9 @@ static func _ch_board() -> Dictionary:
 				+ "A piece on the floor is not on you — nothing it does works while "
 				+ "it lies there — but it is not destroyed either, and you can pick "
 				+ "it back up."),
-			_note("The floor lasts until you pick your next game. The reward "
-				+ "screen's ⚔ Combat button opens the board, so you can still "
-				+ "pick a piece up after reporting; whatever is still lying there "
-				+ "when the next game begins is gone."),
+			_note("The floor lasts until you report the game. Whatever is still "
+				+ "lying there is put on the reward screen's table with the rest "
+				+ "of the loot — take it there, or it is gone."),
 		],
 	}
 
@@ -635,7 +634,7 @@ static func _ch_verbs() -> Dictionary:
 				+ "At a node with no spare neighbours the games hold and only the "
 				+ "enemies change, which is still often what you wanted."),
 			_h("On the board"),
-			_kv("⇤ Push", "Shove one follower one cell in any direction. See §5."),
+			_kv("💨 Push", "Shove one follower one cell in any direction. See §5."),
 			_h("What they are actually for"),
 			_p("All of them are answers to a goal you cannot or will not do. Read "
 				+ "the enemy on a card BEFORE deciding — that is the moment a "
@@ -1095,8 +1094,19 @@ static func _ch_screen() -> Dictionary:
 			_kv("Where your shops are", "A 🛒 on the game's card, on the 🗺 map and "
 				+ "on the route ladder. The bar beside your gold says how close the "
 				+ "next one is."),
-			_kv("Push and Bomb charges", "On their own buttons, on the board's "
-				+ "toolbar."),
+			_kv("Push and Bomb charges", "Under your portrait on the board: an "
+				+ "icon and the number left, each one a button. One you have none "
+				+ "of is not shown. Hover it for its name."),
+			_kv("Everything you carry", "The panel over the board is your items "
+				+ "on the left and a small picture of your loot pack on the right. "
+				+ "Click the small pack (or press Tab) to open it. Full beside it "
+				+ "opens the full inventory: every item, the pack, your stats, "
+				+ "your resources, and the statuses and curses on you."),
+			_kv("The fallen", "Every enemy this run has put down is the Fallen "
+				+ "tab of the History, in the bar at the top."),
+			_kv("Statuses on an enemy", "A ▲ on a body means it carries a buff, a "
+				+ "▼ a debuff. Hover the body to see which, and a bigger picture "
+				+ "of it."),
 			_kv("Bash, Dash, Transmute, Scramble", "Chips on the row under the "
 				+ "offering, once you have a charge — a verb at 0 is not shown. Dash "
 				+ "and Scramble act at once; Bash and Transmute ARM, and the next card "

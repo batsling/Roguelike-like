@@ -755,9 +755,11 @@ func test_toolbar_push_needs_a_charge_not_a_target() -> void:
 	_ui.report(false)
 	_ui._board.refresh_toolbar()
 	assert_false(_ui._board.push_btn.disabled, "a charge and no target -> Push can be armed")
+	assert_true(_ui._board.push_btn.visible, "and it is drawn under the portrait")
 	GameState.push = 0
 	_ui._board.refresh_toolbar()
 	assert_true(_ui._board.push_btn.disabled, "no charge -> Push is unavailable")
+	assert_false(_ui._board.push_btn.visible, "and a verb with nothing left is not drawn at all")
 
 # The flow reads "press Push, then say who". Reading a card beforehand leaves
 # nothing behind for the verb to find, so arming starts from a clean aim however
@@ -772,7 +774,7 @@ func test_arming_push_starts_unaimed_and_disarms_on_cancel() -> void:
 	_ui._board.begin_push()
 	assert_true(_ui._board.push_mode, "the verb is armed")
 	assert_eq(_ui._board.push_target, 0, "and nothing is aimed at yet")
-	assert_true(_ui._board.push_btn.text.contains("Cancel"),
+	assert_true(_ui._board.push_btn.text.contains("✕"),
 		"the button becomes the way out: %s" % _ui._board.push_btn.text)
 	_ui._board.cancel_push()
 	assert_false(_ui._board.push_mode, "cancel disarms it")
@@ -867,7 +869,7 @@ func test_arming_the_bomb_starts_unaimed_and_spends_nothing() -> void:
 	assert_eq(_ui._board.push_target, 0,
 		"and the body left over from reading a card is NOT the target")
 	assert_eq(GameState.bombs, 1, "arming spends nothing")
-	assert_true(_ui._board.bomb_btn.text.contains("Cancel"),
+	assert_true(_ui._board.bomb_btn.text.contains("✕"),
 		"the button becomes the way out: %s" % _ui._board.bomb_btn.text)
 	_ui._board.cancel_bomb()
 	assert_false(_ui._board.bomb_mode, "cancel disarms it")
@@ -967,7 +969,7 @@ func test_toolbar_bomb_is_offered_against_a_boss() -> void:
 	assert_gt(inst, 0, "the boss is standing")
 	_ui._board.refresh_toolbar()
 	assert_false(_ui._board.bomb_btn.disabled, "a boss can be bombed")
-	assert_true(_ui._board.bomb_btn.tooltip_text.contains("boss"),
+	assert_true(str(_ui._board.hero_verb_hover(&"bomb").get("lines", [])).contains("boss"),
 		"and the tooltip says the damage won't land")
 	GameState.bombs = 0
 	_ui._board.refresh_toolbar()
@@ -2358,10 +2360,20 @@ func test_the_board_draws_its_own_verbs_and_tier() -> void:
 	GameState.push = 2
 	GameState.bombs = 4
 	_ui._refresh()
-	assert_true(_ui._board.push_btn.text.contains("(2)"),
-		"the toolbar button carries the Push count: %s" % _ui._board.push_btn.text)
-	assert_true(_ui._board.bomb_btn.text.contains("(4)"),
+	assert_true(_ui._board.push_btn.text.contains("2"),
+		"the button under the portrait carries the Push count: %s" % _ui._board.push_btn.text)
+	assert_true(_ui._board.bomb_btn.text.contains("4"),
 		"and the Bomb count: %s" % _ui._board.bomb_btn.text)
+	# The owner, 11 Nov 2026: no words, an icon and the number; the name is the
+	# hover's to say.
+	assert_false(_ui._board.push_btn.text.contains("Push"), "no word on the button")
+	assert_false(_ui._board.bomb_btn.text.contains("Bomb"), "nor on the bomb")
+	assert_true(String(_ui._board.hero_verb_hover(&"push").get("title", "")).contains("Push"),
+		"the hover names it")
+	assert_eq(String(_ui._board.hero_verb_hover(&"bomb").get("subtitle", "")), "4 left",
+		"and carries the number")
+	assert_true(_ui._board._hero_verbs.get_index() > _ui._board._hero_hp.get_index(),
+		"and both stand under the player's picture")
 	assert_true(_ui._board._size_label.text.contains(
 		RunDifficulty.tier_name(RunDifficulty.current_tier())),
 		"and the pressure bar carries the tier: %s" % _ui._board._size_label.text)
@@ -3546,15 +3558,45 @@ func test_the_loot_toggle_carries_the_count_and_says_when_it_is_full() -> void:
 	_ui._refresh_items()
 	var text: String = Page.text_of(_ui._loot_toggle_box)
 	assert_true(text.contains("9/9"), "the toggle carries the count: %s" % text)
-	var btn: Button = null
-	for c in _ui._loot_toggle_box.get_children():
-		if c is Button:
-			btn = c
+	var btn: Button = _ui._loot_toggle_box.get_node_or_null("MiniPackButton")
 	assert_not_null(btn)
 	if btn == null:
 		return
 	assert_true(btn.tooltip_text.contains("Full"),
 		"and says the next payout has nowhere to go, before the drop asks")
+
+# The owner, 11 Nov 2026: the pack panel is the item inventory and a SMALL loot
+# inventory side by side, not a strip with a purple bar under it.
+func test_the_pack_panel_is_split_into_items_and_a_mini_loot_pack() -> void:
+	GameState.add_pill_loot(&"luck_up")
+	_ui._refresh_items()
+	assert_eq(_ui._loot_toggle_box.get_parent(), _ui._items_box.get_parent(),
+		"the mini pack stands on the item strip's own row")
+	assert_gt(_ui._loot_toggle_box.get_index(), _ui._items_box.get_index(),
+		"to its right")
+	var btn: Button = _ui._loot_toggle_box.get_node_or_null("MiniPackButton")
+	assert_not_null(btn, "and it is a button")
+	if btn == null:
+		return
+	assert_false(_ui._loot_window.open, "the window starts shut")
+	btn.pressed.emit()
+	assert_true(_ui._loot_window.open, "clicking the small pack opens the loot window")
+
+func test_the_full_inventory_shows_items_loot_stats_and_resources() -> void:
+	GameState.add_pill_loot(&"luck_up")
+	GameState.bombs = 3
+	_ui._refresh_items()
+	var full: Button = _ui._loot_toggle_box.find_child("FullInventoryButton", true, false)
+	assert_not_null(full, "the button for it stands beside the mini pack")
+	if full == null:
+		return
+	full.pressed.emit()
+	assert_not_null(_ui._full_inventory, "and opens the full inventory")
+	var text: String = Page.text_of(_ui._full_inventory)
+	for word in ["Items", "Loot", "Stats", "Resources", "Health", "Bombs  3", "Statuses", "Curses", "Level"]:
+		assert_true(text.contains(word), "it shows %s: %s" % [word, text])
+	_ui._full_inventory.close()
+	assert_null(_ui._full_inventory, "and closing it lets go")
 
 func test_tab_opens_and_shuts_the_loot_window() -> void:
 	# The `backpack` action existed in project.godot with nothing on the overworld
@@ -8729,7 +8771,8 @@ func test_a_machine_that_blows_itself_up_leaves_the_room_it_was_in() -> void:
 	# What bombing the Blood Donation Machine does, through the same call the
 	# bomb's effect makes.
 	ObjectSystem.destroy(ObjectSystem.live[0], false)
-	await get_tree().process_frame
+	# It breaks on screen first (the owner, 11 Nov 2026), then goes.
+	await wait_seconds(ObjectCard.BREAK_SEC + 0.3)
 	assert_eq(_event_cards(modal), before - 1,
 		"the destroyed machine's card goes with it, rather than sitting there dead")
 	modal._close()
@@ -9657,35 +9700,32 @@ func test_binning_a_floor_piece_asks_first() -> void:
 	assert_false(GameLoop2.has_drop(at), "and on Yes the square is bare")
 	panel.dismiss()
 
-func test_reporting_the_game_leaves_the_floor_until_the_next_game() -> void:
-	# The owner, 28 Oct 2026: "when the player goes to the next game, all loot on
-	# the floor is gone". The report no longer sweeps it onto the haul screen — the
-	# reward screen's Combat button can still reach it — and the next game's start
-	# is what clears it, taking nothing to any screen.
+func test_reporting_the_game_puts_the_floor_on_the_rewards_table() -> void:
+	# The owner, 12 Nov 2026: "make sure loot on the ground shows up on the table at
+	# the rewards screen… and if the player doesn't take it there, it goes away".
+	# (From 28 Oct until then the floor outlived the report and was only reachable
+	# through the screen's Combat button.)
 	_pick_solo(0)
 	_ui._drop_queue.clear()
 	_floor_loot(Vector2i(2, 1), &"one")
 	_floor_loot(Vector2i(3, 0), &"two")
 	Page.report_beat(_ui)
-	# At least the two: the bodies this very report cleared drop onto it too.
-	var ids: Array = []
-	for cell in GameLoop2.drop_cells():
-		ids.append(String((GameLoop2.drop_at(cell)["loot"] as Dictionary).get("id", "")))
-	assert_true(ids.has("one") and ids.has("two"), "the floor outlives the report: %s" % str(ids))
 	_ui._end_resolve()
-	if _ui._post_screen != null:
-		for entry in _ui._post_screen._loot:
-			assert_false(String((entry as Dictionary).get("id", "")) in ["one", "two"],
-				"and nothing on it was moved onto the haul table")
+	if _ui._post_screen == null:
+		pending("this report opened no rewards screen")
+		return
+	var ids: Array = []
+	for entry in _ui._post_screen._loot:
+		ids.append(String((entry as Dictionary).get("id", "")))
+	assert_true(ids.has("one") and ids.has("two"),
+		"what was on the ground is on the table: %s" % str(ids))
+	assert_true(GameLoop2.drop_cells().is_empty(), "and no longer on the ground")
+	var pieces: int = GameState.loot_items.size()
 	Page.leave_post_game(_ui)
 	Page.dismiss_event(_ui)
-	var pieces: int = GameState.loot_items.size()
-	if _ui._phase != _ui.Phase.SELECT:
-		pending("the run did not come back to an offering after the report")
-		return
-	_pick_enemies(0)
-	assert_true(GameLoop2.drop_cells().is_empty(), "a new game is a bare floor")
-	assert_eq(GameState.loot_items.size(), pieces, "and what was on it went nowhere")
+	assert_eq(GameState.loot_items.size(), pieces, "left on the table, it went nowhere")
+	assert_true(GameLoop2.drop_cells().is_empty(), "not back onto the floor either")
+	assert_true(_ui._drop_queue.is_empty(), "nor into a later screen")
 
 func test_a_piece_put_down_is_off_the_player_and_not_destroyed() -> void:
 	_pick_solo(0)
@@ -11078,6 +11118,117 @@ func test_the_history_screen_opens_once_and_closes() -> void:
 # GROUPED BY THE GAME THE RUN WAS STANDING ON, newest first — a flat list of three
 # hundred lines is a wall, the same lines under the cover of the game they
 # happened at is a run you can scan.
+
+# The owner, 11 Nov 2026: "after using a weapon, just flash the area that was
+# attacked, don't keep the highlighted boxes there".
+func test_a_swing_flashes_the_squares_it_hit_and_leaves_nothing_behind() -> void:
+	GameLoop2.set_last_strike("Wooden Sword", [{"cells": [Vector2i(1, 0)], "instances": []}])
+	_ui._board.refresh()
+	assert_eq(_ui._board._strike_layer.get_child_count(), 0,
+		"nothing is painted to stay under the bodies")
+	assert_gt(_ui._board._flash_layer.get_child_count(), 0, "the square it hit lights")
+	_ui._board.refresh()
+	assert_gt(_ui._board._flash_layer.get_child_count(), 0,
+		"and a repaint in the middle does not cut the flash off")
+	await wait_seconds(BattlefieldView.STRIKE_FLASH_SEC + 0.25)
+	assert_eq(_ui._board._flash_layer.get_child_count(), 0, "then it is gone")
+	_ui._board.refresh()
+	assert_eq(_ui._board._flash_layer.get_child_count(), 0,
+		"and the same swing does not flash a second time")
+	GameLoop2.last_strike = {}
+
+# The owner, 11 Nov 2026: "when a blood donation machine is used up and gives the
+# item, it should be destroyed and go away".
+func test_a_blood_machine_that_pays_its_item_breaks_and_goes() -> void:
+	var inst: Dictionary = ObjectSystem.spawn(&"blood_donation_machine")
+	var other: Dictionary = ObjectSystem.spawn(&"blood_donation_machine")
+	assert_not_null(_ui._object_panel, "the machines stand on the page")
+	if _ui._object_panel == null:
+		ObjectSystem.live.clear()
+		return
+	_ui._object_panel.open_card(inst)
+	var card: ObjectCard = _ui._object_panel._card_layer.find_children("*", "ObjectCard", true, false)[0]
+	# The burst is a 6.7% roll; make it certain.
+	card._data = card._data.duplicate(true)
+	(card._data.choices[0]["chance"] as Dictionary)["percent"] = 100.0
+	GameState.hp = GameState.max_hp
+	card.take(0)
+	assert_eq(ObjectSystem.live.find(inst), -1, "the machine that paid is off the run")
+	assert_true(ObjectSystem.live.has(other), "and its neighbour is not")
+	assert_true(card.broken, "the card knows its machine burst")
+	assert_eq(Page.text_of(card._choice_box), "", "and offers nothing more to press")
+	await wait_seconds(ObjectCard.BREAK_SEC + 0.3)
+	assert_null(_ui._object_panel._card_layer, "then the card goes, with a machine still standing beside it")
+	assert_eq(_ui._object_panel._row.get_child_count(), 1, "and only the survivor is on the page")
+	ObjectSystem.live.clear()
+	ObjectSystem.objects_changed.emit()
+
+# The owner, 11 Nov 2026: Completed Game and Escape side by side, so the checklist
+# gets the row one of them used to take.
+func test_completed_game_and_escape_share_one_row() -> void:
+	assert_eq(_ui._done_btn.get_parent(), _ui._escape_btn.get_parent(), "one row")
+	assert_true(_ui._done_btn.get_parent() is HBoxContainer, "side by side")
+	assert_eq(_ui._done_btn.size_flags_stretch_ratio, _ui._escape_btn.size_flags_stretch_ratio,
+		"in equal halves")
+	assert_true(_ui._done_btn.text.contains("Completed Game"), "same label")
+	assert_true(_ui._escape_btn.text.contains("Escape this game"), "and the same on the other")
+
+# The owner, 11 Nov 2026: a chest bought on the location screen (Dark Room, The
+# Chest) pops up ABOVE that screen, not under it and not after the game.
+func test_a_chest_bought_on_the_location_screen_opens_above_it() -> void:
+	# The suite runs with the location roster empty (test/pre_run_hook.gd); the
+	# real one is kept on Data's meta for the tests that are about locations.
+	var all: Dictionary = Data.get_meta("all_locations", {})
+	var dark: LocationData = all.get(&"dark_room")
+	assert_not_null(dark)
+	if dark == null:
+		return
+	Data._locations[dark.id] = dark
+	GameLoop2.location_tier = dark.tier
+	GameLoop2.enter_location(dark)
+	GameState.max_hp = 20
+	GameState.hp = 20
+	var popup = _ui.show_location(false)
+	assert_not_null(popup)
+	assert_true(popup.use_action(0), "the trade is taken")
+	await wait_frames(3)
+	var layer: CanvasLayer = _ui.get_node_or_null("LocationChestLayer")
+	assert_not_null(layer, "the chest opens at once, game in play or not")
+	if layer == null:
+		popup.close()
+		Data._locations.clear()
+		GameLoop2.location_id = &""
+		return
+	assert_gt(layer.layer, popup.get_parent().layer, "on a layer above the location screen")
+	assert_true(is_instance_valid(popup) and popup.is_inside_tree(),
+		"which is still there underneath")
+	assert_eq(GameState.pending_chests, 0, "and the chest is the one on screen")
+	layer.get_child(0)._finish()
+	await wait_frames(2)
+	assert_null(_ui.get_node_or_null("LocationChestLayer"), "closing it takes the layer away")
+	assert_true(is_instance_valid(popup), "and lands back on the location")
+	popup.close()
+	Data._locations.clear()
+	GameLoop2.location_id = &""
+	GameLoop2.location_unseen = false
+
+# The owner, 11 Nov 2026: the Fallen is a tab in the History, not a button over
+# the grid.
+func test_the_fallen_is_a_tab_of_the_history_not_a_button_over_the_grid() -> void:
+	var slime: GoalEnemyData = Data.all_goal_enemies()[0]
+	GameLoop2.graveyard.append({"enemy": slime, "game": &""})
+	_ui._board.refresh_toolbar()
+	assert_false(Page.text_of(_ui._board).contains("Fallen"),
+		"nothing over the grid says Fallen")
+	var screen = _ui.open_history()
+	assert_true(Page.text_of(screen).contains("Fallen (%d)" % GameLoop2.graveyard.size()),
+		"the History carries the tab: %s" % Page.text_of(screen))
+	assert_eq(screen.tab, &"log", "it opens on what happened")
+	screen.show_tab(&"fallen")
+	assert_true(Page.text_of(screen).contains(slime.display_name),
+		"and the tab lists what fell: %s" % Page.text_of(screen))
+	screen.close()
+
 func test_the_history_groups_the_run_by_the_game_it_was_standing_on() -> void:
 	var here: StringName = GameState.current_game_id
 	GameLog.add("a thing that happened here")
