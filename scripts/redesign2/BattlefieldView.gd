@@ -3000,14 +3000,31 @@ func _add_enemy_badges(holder: Control, entry: Dictionary, e: GoalEnemyData,
 	# cuts off less things". Under the box, the strip ran into the gutter and over
 	# the head of whatever stood in the cell below; in the corner it sits on this
 	# body's own frame, the one place the rest of the board does not need.
+	#
+	# AN ARROW, NOT A PIP PER STATUS (the owner, 11 Nov 2026): "instead of showing
+	# every status, just show an up or down arrow, and the statuses will be on the
+	# hoverover". A body carrying four statuses drew four pips across the top of
+	# its own picture. Now it is one ▲ if anything on it is a buff and one ▼ if
+	# anything is a debuff — both when it has both — and the hover's pip row names
+	# each one with its stacks (`enemy_hover`).
 	var statuses: Array = GameLoop2.enemy_statuses(entry)
 	var strip: HBoxContainer = null
 	if not statuses.is_empty():
 		strip = HBoxContainer.new()
 		strip.name = STATUS_STRIP_NAME
-		strip.add_theme_constant_override("separation", UITheme.GAP_HAIR)
-		_fill_status_strip(strip, statuses, StatusData.ENEMY, STATUS_PIP_ENEMY,
-			_nullified_ids(entry), GameLoop2.answered_any_time(entry))
+		strip.add_theme_constant_override("separation", UITheme.GAP_NONE)
+		strip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var arrows: Dictionary = status_arrows(statuses)
+		if arrows["up"]:
+			var up := _corner_badge("▲", STATUS_UP, STATUS_PIP_ENEMY)
+			up.name = "StatusUp"
+			up.add_theme_color_override("font_color", STATUS_UP)
+			strip.add_child(up)
+		if arrows["down"]:
+			var down := _corner_badge("▼", STATUS_DOWN, STATUS_PIP_ENEMY)
+			down.name = "StatusDown"
+			down.add_theme_color_override("font_color", STATUS_DOWN)
+			strip.add_child(down)
 
 	# NO SNOWFLAKE CORNER BADGE ANY MORE (§13.2). Stun was the board's own counter
 	# with a symbol of its own, and it is an ordinary status now — so it is drawn in the
@@ -3032,23 +3049,8 @@ func _add_enemy_badges(holder: Control, entry: Dictionary, e: GoalEnemyData,
 	var marks: Array = []
 	if selected:
 		marks.append(_corner_badge("▸", UITheme.ACCENT))
-	# A PLAIN EXCLAMATION MARK on the body itself, and ⚠ everywhere the mark gets a
-	# line of its own (the hover, the card's section header, the Fallen panel).
-	# Same colour, same meaning; the difference is size. This corner is ABILITY_FONT
-	# px on a 46px cell at the widest board, where a triangle with a stroke inside it
-	# is a smudge and a bare "!" is still legible — and being ASCII it asks nothing
-	# of the shipped glyph subsets at all. A "!" is one stroke wide, so it can carry
-	# the extra points the ❤/⚔ badges beside it could not.
-	if GameLoop2.entry_has_abilities(entry):
-		var mark := _corner_badge("!", ABILITY_MARK, ABILITY_FONT)
-		# Painted, not merely named. _corner_badge draws every badge white for
-		# legibility over the art (see it for why), and the ability mark is one of
-		# the two exceptions: it is the only corner badge that is a WARNING rather
-		# than a number, and white is what made it read as one more stat. The black
-		# outline the badge already carries is what keeps a red glyph legible over
-		# a red enemy.
-		mark.add_theme_color_override("font_color", ABILITY_MARK)
-		marks.append(mark)
+	# NO "!" FOR AN ABILITY ANY MORE (the owner, 11 Nov 2026). The hover and the
+	# card still head the abilities with ⚠, which is where they are read.
 	# The statuses go in the same row, to the LEFT of the marks: the ! and ▸ keep
 	# the very corner they have always had, and the pips run inward from them.
 	if strip != null or not marks.is_empty():
@@ -3132,6 +3134,7 @@ func _damage_badge_text(entry: Dictionary, strikes: int) -> String:
 # of icons), and WHEN IT SWINGS. Its goal rides along because that is the thing
 # you are being asked to go and do. Everything else — the full stat block, the
 # position, the verbs — is a click away and stays there.
+const ENEMY_HOVER_ART := 112
 func enemy_hover(entry: Dictionary, e: GoalEnemyData) -> Dictionary:
 	# THE COUNTDOWN, in lost runs (§7.4) — here and on the card, never over the
 	# body. A lost run is the only thing that moves the board now, so a body's
@@ -3187,6 +3190,9 @@ func enemy_hover(entry: Dictionary, e: GoalEnemyData) -> Dictionary:
 		"subtitle": sub,
 		"accent": threat_color(int(entry.get("col", GameLoop2.spawn_col())), e.is_boss()),
 		"art": GameLoop2.entry_image(entry),
+		# BIGGER THAN ANY OTHER HOVER'S ART (the owner, 11 Nov 2026): a body on a
+		# 7x7 board is 46px, and the hover is where it gets looked at properly.
+		"art_size": ENEMY_HOVER_ART,
 		"pips": pips,
 		"lines": lines,
 	}
@@ -3395,6 +3401,22 @@ func _stat_badge(text: String, accent: Color, font_size: int) -> Label:
 # The status strip's node name on an enemy's badge layer. A const because it is an
 # identity two files agree on: the board builds it and the tests look it up.
 const STATUS_STRIP_NAME := "StatusStrip"
+
+# Which arrows a body's statuses add up to: `up` when any of them is a buff,
+# `down` when any is a debuff. Static and public so a test can ask it.
+const STATUS_UP := Color(0.45, 0.95, 0.55)
+const STATUS_DOWN := Color(1.0, 0.45, 0.42)
+static func status_arrows(rows: Array) -> Dictionary:
+	var out: Dictionary = {"up": false, "down": false}
+	for row in rows:
+		var sd: StatusData = row.get("status")
+		if sd == null:
+			continue
+		if sd.kind == &"debuff":
+			out["down"] = true
+		else:
+			out["up"] = true
+	return out
 
 # One status chip: the art (or the name's first letter when art is missing) with
 # its stack count, tinted by what this SIDE does — a `bonus` is an opportunity and

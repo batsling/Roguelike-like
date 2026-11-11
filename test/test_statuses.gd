@@ -1294,7 +1294,16 @@ func test_an_enemys_statuses_draw_in_its_top_right_corner() -> void:
 	# BY NAME, and it lives in the corner row now, beside the ! and ▸ marks.
 	var strip: Control = badges.find_child(BattlefieldView.STATUS_STRIP_NAME, true, false)
 	assert_not_null(strip, "a status strip was added")
-	assert_eq(strip.get_child_count(), 1, "one pip for the one status")
+	# The owner, 11 Nov 2026: an arrow, not a pip per status — the hover names them.
+	assert_eq(strip.get_child_count(), 1, "one arrow for the one status")
+	var marked: StatusData = Data.get_status(&"marked")
+	assert_eq(String(strip.get_child(0).name),
+		"StatusDown" if marked.kind == &"debuff" else "StatusUp", "pointing the way it leans")
+	var hover: Dictionary = ui._board.enemy_hover(GameLoop2.stack[0], GameLoop2.stack[0]["enemy"])
+	assert_true(str(hover.get("pips", [])).contains(marked.display_name),
+		"and the hover names the status")
+	assert_gt(int(hover.get("art_size", 0)), int(HoverCard.ART), "with a bigger picture of the body")
+	assert_false(Page.text_of(badges).contains("!"), "and no ! for an ability")
 	# The owner, 28 Oct 2026: on the top right, so it cuts off less. Asserted on
 	# the row's anchors rather than on pixels, because a Control's offsets are not
 	# settled until it has been laid out and this test never renders a frame.
