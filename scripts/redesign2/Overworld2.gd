@@ -500,6 +500,7 @@ var _done_btn: Button
 var _board: BattlefieldView
 var _info_popup: EnemyInfoCard      # the click-to-inspect enemy card (null when closed)
 var _graveyard_popup   # the open ☠ Fallen panel (§7.6), or null
+var _full_inventory    # the open full-inventory screen, or null
 var _completed_popup  # the open ✓ Completed panel, or null
 var _choice_modal: GameChoiceModal = null   # the open offered-game popup, or null
 var _start_picker: StartPicker = null       # the opening choose-a-road screen, or null
@@ -3172,6 +3173,7 @@ const COMPLETED_GOALS_PANEL_SCRIPT := "res://scripts/redesign2/CompletedGoalsPan
 const EVENT_MODAL2_SCRIPT := "res://scripts/redesign2/EventModal2.gd"
 const SHOP_MODAL_SCRIPT := "res://scripts/redesign2/ShopModal2.gd"
 const GRAVEYARD_PANEL_SCRIPT := "res://scripts/redesign2/GraveyardPanel.gd"
+const FULL_INVENTORY_SCRIPT := "res://scripts/redesign2/FullInventory.gd"
 const CAMP_SCRIPT := "res://scripts/runtime/Camp.gd"
 const CAMP_SCREEN_SCRIPT := "res://scripts/redesign2/CampScreen.gd"
 const LOOT_USE_MODAL_SCRIPT := "res://scripts/redesign2/LootUseModal.gd"
@@ -5236,6 +5238,20 @@ func show_graveyard() -> Node:
 	_graveyard_popup = panel
 	add_child(panel)
 	panel.setup()
+	return panel
+
+# THE FULL INVENTORY: every item, the loot pack, the stats and the resources on
+# one screen over the page, opened from the button beside the mini pack.
+#
+# Public so a headless test can open it without a click.
+func show_full_inventory() -> Node:
+	if _full_inventory != null and is_instance_valid(_full_inventory):
+		return _full_inventory
+	var panel = load(FULL_INVENTORY_SCRIPT).new()
+	panel.closed.connect(func(): _full_inventory = null)
+	_full_inventory = panel
+	add_child(panel)
+	panel.setup(self)
 	return panel
 
 # THE COMPLETED PANEL: every goal this run has already answered, opened off the
@@ -7845,27 +7861,16 @@ func _build_ui() -> void:
 	strip_row.add_child(_items_box)
 	_pack = PackStrip.new(self, _items_box)
 	#
-	# THE LOOT TOGGLE IS THE PANEL'S FOOT, full width, under the relics.
-	#
-	# It has now been in three places, and the two it left were each wrong in their
-	# own way. At the TAIL of the relic row it sat under the notification toasts — a
-	# right-anchored column drawn over the page — so the one control that says you
-	# are carrying any loot at all spent most of every report hidden behind
-	# "Acquired Anchor." At the HEAD of that row it was clear of them, but it ate
-	# the left end of the strip the relics wrap into, which costs a relic tile a
-	# whole row the moment the pack gets long.
-	#
-	# On its own row it costs the relics no width at all, and being full width it is
-	# a bar rather than a button — which is the shape a "the rest of what you are
-	# carrying is through here" control should have been all along. THIN, because the
-	# page is fitted to a 720p canvas with a handful of pixels spare (see
-	# test_the_page_still_fits_the_window_*): the bar is drawn at
-	# LootWindow.TOGGLE_H and the capsules it carries are sized to sit inside that,
-	# so stacking it under the strip costs the panel about twenty pixels rather than
-	# a row's worth.
+	# THE LOOT INVENTORY, SMALL, AT THE RIGHT OF THE SAME ROW (the owner, 11 Nov
+	# 2026): the panel is split into the item inventory and a thumbnail of the
+	# pack, instead of the purple "Loot" bar that was this panel's foot. Clicking
+	# the thumbnail opens the loot window; the button beside it opens the full
+	# inventory. The bar's row is given back to the page.
 	_loot_toggle_box = HBoxContainer.new()
-	_loot_toggle_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	inv_box.add_child(_loot_toggle_box)
+	_loot_toggle_box.add_theme_constant_override("separation", UITheme.GAP_TIGHT)
+	_loot_toggle_box.size_flags_horizontal = Control.SIZE_SHRINK_END
+	_loot_toggle_box.size_flags_vertical = Control.SIZE_SHRINK_END
+	strip_row.add_child(_loot_toggle_box)
 	_loot_window = LootWindow.new(self, _loot_toggle_box)
 	_right_col.add_child(_inv_wrap)
 

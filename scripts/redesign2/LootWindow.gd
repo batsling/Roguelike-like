@@ -54,13 +54,6 @@ var discoveries_open: bool:
 		LootDiscoveries.open = value
 
 const ACCENT := Color(0.72, 0.62, 0.86)
-# The capsules the toggle carries when the window is shut — see `_toggle_button`.
-const TOGGLE_PEEK := 3
-const TOGGLE_ART := 16
-# The bar's height at the foot of the pack panel. The page is fitted to a 720p
-# canvas with a handful of pixels spare, so this is deliberately the smallest
-# height that still reads as a control rather than as a caption.
-const TOGGLE_H := 18
 
 func _init(page: Node, button_host: Control) -> void:
 	_page = page
@@ -75,6 +68,7 @@ func rebuild(reporting: bool) -> void:
 		return
 	_page._clear(_button_host)
 	_button_host.add_child(_toggle_button())
+	_button_host.add_child(_side_column())
 	# Rebuilt from scratch rather than refreshed in place: the page mounts and
 	# positions it, and a panel that survived a rebuild would have to be re-measured
 	# against a board that may have changed size anyway.
@@ -82,13 +76,13 @@ func rebuild(reporting: bool) -> void:
 	if open:
 		_page.mount_loot_overlay(_panel(reporting))
 
-# The toggle, which is also THE ONLY THING ON THE PAGE THAT SAYS YOU ARE CARRYING
-# LOOT while the window is shut. It used to be a 12px text label at the far right
-# of the pack strip — eight relics drew eight pieces of art and six consumables
-# drew the word "Loot", which is backwards: the consumables are what you spend
-# turn to turn. So it carries the art of the first few pieces as well as the
-# count, and it stands at the HEAD of the strip rather than its tail, out from
-# under the toast column that was drawing over it.
+# THE MINI PACK (the owner, 11 Nov 2026): the loot inventory, drawn small, beside
+# the item inventory — the pack's real shape (the 3x3 and every bag) with each
+# piece's art where it sits. It replaced the purple "Loot" bar that used to be the
+# foot of the pack panel. It is a picture, not a surface: clicking it opens the
+# window, where pieces are moved and spent. The count rides beside it, and it is
+# still THE ONLY THING ON THE PAGE THAT SAYS YOU ARE CARRYING LOOT while the
+# window is shut.
 func _toggle_button() -> Control:
 	var held: int = GameState.loot_items.size()
 	var full: bool = GameState.loot_is_full()
@@ -97,56 +91,106 @@ func _toggle_button() -> Control:
 	var tint: Color = UITheme.DANGER if full else ACCENT
 
 	var btn := Button.new()
+	btn.name = "MiniPackButton"
 	btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	btn.size_flags_vertical = Control.SIZE_SHRINK_END
 	btn.tooltip_text = "Scrolls and pills you're carrying (%d of %d).\nClick or Tab to %s." % [
 		held, GameState.loot_capacity(), "close" if open else "open"]
 	if full:
 		btn.tooltip_text += "\nFull — the next piece of loot has nowhere to go."
-	# Margin 1, not the theme's: this is a full-width BAR at the foot of the pack
-	# panel, and a button's usual padding would make it twice as tall as it needs to
-	# be on a page with a handful of spare pixels.
 	btn.add_theme_stylebox_override("normal",
-		UITheme.flat(tint.lerp(UITheme.BG, 0.72), 5, 1, 1, tint.lerp(UITheme.BG, 0.4)))
+		UITheme.flat(tint.lerp(UITheme.BG, 0.8 if not open else 0.6), 5, 2, 1, tint.lerp(UITheme.BG, 0.4)))
 	btn.add_theme_stylebox_override("hover",
-		UITheme.flat(tint.lerp(UITheme.BG, 0.55), 5, 1, 1, tint))
-	btn.add_theme_stylebox_override("focus", UITheme.flat(Color(0, 0, 0, 0), 5, 1, 0))
+		UITheme.flat(tint.lerp(UITheme.BG, 0.55), 5, 2, 1, tint))
+	btn.add_theme_stylebox_override("pressed",
+		UITheme.flat(tint.lerp(UITheme.BG, 0.55), 5, 2, 1, tint))
+	btn.add_theme_stylebox_override("focus", UITheme.flat(Color(0, 0, 0, 0), 5, 2, 0))
 	btn.pressed.connect(func():
 		open = not open
 		_page.refresh_loot_window())
-
-	# The label and the peek at what's in it, laid over the button rather than in
-	# it: a Button draws one string, and this needs art. IGNORE on the row so every
-	# click lands on the button underneath.
-	#
-	# EVERYTHING PACKED TO THE LEFT — the name, the count, then the peek at what is
-	# in it — and the bar's right half left empty on purpose. The notification toasts
-	# are a right-anchored column drawn over the page, and they cross this panel: a
-	# count sitting at the far end of a full-width bar is a count behind "Acquired
-	# Anchor." for most of every report, which is the exact fault that moved this
-	# control off the end of the relic row in the first place.
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", UITheme.GAP_TIGHT)
-	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	row.set_anchors_preset(Control.PRESET_FULL_RECT)
-	row.offset_left = 7
-	row.offset_right = -7
-	row.add_child(_bar_label("%s  Loot" % ("▾" if open else "▸"), tint, false))
-	row.add_child(_bar_label("%d/%d" % [held, GameState.loot_capacity()], tint, full))
-	for entry in GameState.loot_items.slice(0, TOGGLE_PEEK):
-		if entry is Dictionary:
-			var art: TextureRect = LootSystem.art_tex(entry, TOGGLE_ART)
-			art.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-			row.add_child(art)
-	var spacer := Control.new()
-	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	row.add_child(spacer)
-	btn.add_child(row)
-	# The button has no text of its own, so it has to be told how tall the row it is
-	# carrying makes it. Width comes from the panel — it fills.
-	btn.custom_minimum_size = Vector2(0, TOGGLE_H)
+	var mini := MiniPack.new()
+	mini.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	mini.position = Vector2(MINI_PAD, MINI_PAD)
+	btn.add_child(mini)
+	btn.custom_minimum_size = mini.wanted() + Vector2(MINI_PAD, MINI_PAD) * 2.0
 	return btn
+
+# What stands beside the mini pack: how full it is, and the way into the FULL
+# INVENTORY — items, loot, stats and resources on one screen.
+func _side_column() -> Control:
+	var full: bool = GameState.loot_is_full()
+	var tint: Color = UITheme.DANGER if full else ACCENT
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", UITheme.GAP_HAIR)
+	col.size_flags_vertical = Control.SIZE_SHRINK_END
+	col.add_child(_bar_label("Loot %d/%d" % [GameState.loot_items.size(),
+		GameState.loot_capacity()], tint, full))
+	var all := UITheme.quiet_button("Full ▸", Vector2.ZERO, UITheme.FONT_SMALL)
+	all.name = "FullInventoryButton"
+	all.tooltip_text = "Full inventory: every item, your loot, your stats and your resources."
+	all.pressed.connect(func(): _page.show_full_inventory())
+	col.add_child(all)
+	return col
+
+const MINI_PAD := 3.0
+
+# The pack at thumbnail size. Drawn rather than built out of LootSlots: a slot is
+# a panel, a body, a name and a button, and none of that survives being 11px wide.
+class MiniPack extends Control:
+	# Tall enough for the 3x3 at CELL, and a pack that has grown bags shrinks its
+	# cells to stay inside the same box, down to CELL_MIN.
+	const CELL := 11.0
+	const CELL_MIN := 4.0
+	const SEP := 1.0
+	const BOX := Vector2(84.0, 35.0)
+
+	func cell_px() -> float:
+		var n: Vector2i = GameState.pack_bounds().size
+		var by_h: float = (BOX.y + SEP) / maxf(1.0, n.y) - SEP
+		var by_w: float = (BOX.x + SEP) / maxf(1.0, n.x) - SEP
+		return clampf(floorf(minf(by_h, by_w)), CELL_MIN, CELL)
+
+	func wanted() -> Vector2:
+		var n: Vector2i = GameState.pack_bounds().size
+		var c: float = cell_px()
+		return Vector2(n) * (c + SEP) - Vector2(SEP, SEP)
+
+	func _ready() -> void:
+		size = wanted()
+		texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+
+	func _rect_of(cell: Vector2i, origin: Vector2i, c: float) -> Rect2:
+		return Rect2(Vector2(cell - origin) * (c + SEP), Vector2(c, c))
+
+	func _draw() -> void:
+		var bounds: Rect2i = GameState.pack_bounds()
+		var c: float = cell_px()
+		var layout: Array = GameState.loot_layout()
+		var done: Dictionary = {}
+		for slot in range(GameState.loot_capacity()):
+			var r: Rect2 = _rect_of(GameState.pack_cell_of(slot), bounds.position, c)
+			var in_bag: bool = GameState.bag_at_slot(slot) >= 0
+			var base: Color = LootGrid.BAG_TINT if in_bag else LootWindow.ACCENT
+			var index: int = int(layout[slot]) if slot < layout.size() else -1
+			draw_rect(r, base.lerp(UITheme.BG, 0.55 if index >= 0 else 0.78))
+			if index < 0 or done.has(index) or index >= GameState.loot_items.size():
+				continue
+			done[index] = true
+			var entry = GameState.loot_items[index]
+			if not (entry is Dictionary):
+				continue
+			# A big piece is drawn once, over every cell it covers.
+			var span: Rect2 = r
+			for s in GameState.loot_slots_of(index):
+				span = span.merge(_rect_of(GameState.pack_cell_of(int(s)), bounds.position, c))
+			var tex: Texture2D = LootSystem.art_texture(entry)
+			if tex == null:
+				draw_rect(span.grow(-1.0), base.lerp(Color.WHITE, 0.5))
+				continue
+			var ts: Vector2 = tex.get_size()
+			var k: float = minf(span.size.x / maxf(1.0, ts.x), span.size.y / maxf(1.0, ts.y))
+			var fit: Vector2 = ts * k
+			draw_texture_rect(tex, Rect2(span.position + (span.size - fit) * 0.5, fit), false)
 
 func _bar_label(text: String, tint: Color, loud: bool) -> Label:
 	var l := Label.new()

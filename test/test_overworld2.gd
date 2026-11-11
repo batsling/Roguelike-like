@@ -3546,15 +3546,45 @@ func test_the_loot_toggle_carries_the_count_and_says_when_it_is_full() -> void:
 	_ui._refresh_items()
 	var text: String = Page.text_of(_ui._loot_toggle_box)
 	assert_true(text.contains("9/9"), "the toggle carries the count: %s" % text)
-	var btn: Button = null
-	for c in _ui._loot_toggle_box.get_children():
-		if c is Button:
-			btn = c
+	var btn: Button = _ui._loot_toggle_box.get_node_or_null("MiniPackButton")
 	assert_not_null(btn)
 	if btn == null:
 		return
 	assert_true(btn.tooltip_text.contains("Full"),
 		"and says the next payout has nowhere to go, before the drop asks")
+
+# The owner, 11 Nov 2026: the pack panel is the item inventory and a SMALL loot
+# inventory side by side, not a strip with a purple bar under it.
+func test_the_pack_panel_is_split_into_items_and_a_mini_loot_pack() -> void:
+	GameState.add_pill_loot(&"luck_up")
+	_ui._refresh_items()
+	assert_eq(_ui._loot_toggle_box.get_parent(), _ui._items_box.get_parent(),
+		"the mini pack stands on the item strip's own row")
+	assert_gt(_ui._loot_toggle_box.get_index(), _ui._items_box.get_index(),
+		"to its right")
+	var btn: Button = _ui._loot_toggle_box.get_node_or_null("MiniPackButton")
+	assert_not_null(btn, "and it is a button")
+	if btn == null:
+		return
+	assert_false(_ui._loot_window.open, "the window starts shut")
+	btn.pressed.emit()
+	assert_true(_ui._loot_window.open, "clicking the small pack opens the loot window")
+
+func test_the_full_inventory_shows_items_loot_stats_and_resources() -> void:
+	GameState.add_pill_loot(&"luck_up")
+	GameState.bombs = 3
+	_ui._refresh_items()
+	var full: Button = _ui._loot_toggle_box.find_child("FullInventoryButton", true, false)
+	assert_not_null(full, "the button for it stands beside the mini pack")
+	if full == null:
+		return
+	full.pressed.emit()
+	assert_not_null(_ui._full_inventory, "and opens the full inventory")
+	var text: String = Page.text_of(_ui._full_inventory)
+	for word in ["Items", "Loot", "Stats", "Resources", "Health", "Bombs  3", "Statuses", "Curses", "Level"]:
+		assert_true(text.contains(word), "it shows %s: %s" % [word, text])
+	_ui._full_inventory.close()
+	assert_null(_ui._full_inventory, "and closing it lets go")
 
 func test_tab_opens_and_shuts_the_loot_window() -> void:
 	# The `backpack` action existed in project.godot with nothing on the overworld
