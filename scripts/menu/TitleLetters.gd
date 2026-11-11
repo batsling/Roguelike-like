@@ -262,13 +262,47 @@ static func is_pixel_game(game: StringName) -> bool:
 				return true
 	return false
 
+# KEPT ONCE LOADED. A letter's picture is ~1.2 ms to load and nothing else holds
+# it between two screens that draw it, so the Customization screen's Title
+# Letters tab (every earned piece at once, up to 609) paid for all of them again
+# on every visit. They are small, and the menu draws from the same set.
+static var _tex_cache: Dictionary = {}
+static var _tex_requested: Dictionary = {}
+
 static func texture(path: String) -> Texture2D:
-	if ResourceLoader.exists(path):
-		return load(path)
-	# Not imported yet (a fresh checkout before the editor has scanned): read the
-	# PNG straight off disk, so the menu still has its title.
-	var img := Image.load_from_file(ProjectSettings.globalize_path(path))
-	return ImageTexture.create_from_image(img) if img != null and not img.is_empty() else null
+	if _tex_cache.has(path):
+		return _tex_cache[path]
+	var tex: Texture2D = null
+	if _tex_requested.has(path):
+		# Asked for on a thread (`request`): take it, waiting if it is not in yet.
+		_tex_requested.erase(path)
+		tex = ResourceLoader.load_threaded_get(path) as Texture2D
+	elif ResourceLoader.exists(path):
+		tex = load(path)
+	else:
+		# Not imported yet (a fresh checkout before the editor has scanned): read
+		# the PNG straight off disk, so the menu still has its title.
+		var img := Image.load_from_file(ProjectSettings.globalize_path(path))
+		tex = ImageTexture.create_from_image(img) if img != null and not img.is_empty() else null
+	if tex != null:
+		_tex_cache[path] = tex
+	return tex
+
+# Start loading `paths` off the main thread, for a screen about to draw many of
+# them. `texture` hands each over when asked; `is_loaded` says whether asking
+# would have to wait.
+static func request(paths: Array) -> void:
+	for path in paths:
+		var p := String(path)
+		if _tex_cache.has(p) or _tex_requested.has(p) or not ResourceLoader.exists(p):
+			continue
+		if ResourceLoader.load_threaded_request(p) == OK:
+			_tex_requested[p] = true
+
+static func is_loaded(path: String) -> bool:
+	if _tex_cache.has(path) or not _tex_requested.has(path):
+		return true
+	return ResourceLoader.load_threaded_get_status(path) != ResourceLoader.THREAD_LOAD_IN_PROGRESS
 
 # How tall a logo letter stands for `ch`, and where its top is, both of the line
 # height (the line runs from the capitals' top, 0, to the baseline, 1). THE

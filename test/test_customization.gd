@@ -206,6 +206,46 @@ func test_the_customize_screen_opens_on_every_tab() -> void:
 		assert_gt(s._body.get_child_count(), 0, "tab %d has something on it" % t)
 	s.queue_free()
 
+# The owner, 11 Nov 2026: "after clicking the title letters tab it lagged a lot".
+# With every letter earned it is 609 tiles and their pictures, all built inside the
+# click. It is built a slice a frame now, and a switch repaints instead of
+# rebuilding.
+func test_the_title_letters_tab_is_built_over_frames_not_in_the_click() -> void:
+	var was: bool = Settings.unlock_everything
+	Settings.unlock_everything = true
+	var s := CustomizeScreen.open(self, 2)
+	assert_gt(s._body.get_child_count(), 0, "the click leaves something on the tab")
+	assert_false(s.letters_built(), "and does not build all of it")
+	var frames: int = 0
+	while not s.letters_built() and frames < 2000:
+		await get_tree().process_frame
+		frames += 1
+	assert_true(s.letters_built(), "the rest follows")
+	assert_eq(s._letter_tiles.size(), TitleLetters.units().size() + _starter_count(),
+		"every earned piece ends up with a tile")
+	# A switch repaints the tile that is there.
+	var key: String = "0/rogue.png"
+	if s._letter_tiles.has(key):
+		var tile: Button = s._letter_tiles[key]["tile"]
+		assert_true(Cosmetics.set_letter(key, false))
+		s._sync_letters()
+		assert_true(is_instance_valid(tile) and tile.is_inside_tree(), "the same tile, not a new tab")
+		assert_lt(tile.modulate.a, 1.0, "dimmed where it stands")
+		assert_true(Cosmetics.set_letter(key, true))
+		s._sync_letters()
+		assert_eq(tile.modulate.a, 1.0, "and lit again")
+	Settings.unlock_everything = was
+	s.queue_free()
+
+func _starter_count() -> int:
+	var n: int = 0
+	var p := TitleLetters.pool()
+	for folder in p:
+		for e in p[folder]:
+			if TitleLetters.is_starter(e) and TitleLetters.unit_key(e) == String(e["key"]):
+				n += 1
+	return n
+
 # --- random ------------------------------------------------------------------------
 
 func test_random_rolls_among_the_default_and_what_is_unlocked() -> void:
