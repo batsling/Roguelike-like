@@ -3792,13 +3792,24 @@ func _redeem_pending_chests() -> void:
 		# The chests are done; a mask waiting on its choice goes next.
 		_redeem_pending_masks()
 		return
+	# A CHEST BOUGHT ON THE LOCATION SCREEN OPENS OVER IT (the owner, 11 Nov 2026:
+	# "let's have the chest pop up above the location screen, specifically for the
+	# isaac locations"). Dark Room's "lose 2 Max Health for a devilish chest" used
+	# to bank the chest and say nothing: the popup is on a CanvasLayer of its own,
+	# so the chest either opened UNDERNEATH it or — with a game in play — waited for
+	# the game to be reported. Here it is asked the moment it is paid for, above
+	# the popup, and closing it lands back on the location with the next trade
+	# still on offer. The waits below (a game in play, the haul screen) are about
+	# not interrupting the page; this was the player's own press.
+	var over_location: bool = _location_popup != null and is_instance_valid(_location_popup) \
+		and not _resolving
 	# ON THE HAUL SCREEN, if one is up. A chest banked during a report — a level-up
 	# reward, Unstable Genome firing on the beat, a status paying out — used to open
 	# a RewardScreen as an ordinary child of this page, which is BELOW the
 	# post-combat screen's CanvasLayer: the player saw nothing, and then found a
 	# reward screen waiting the moment they left. It belongs with the rest of the
 	# haul anyway, so it goes there as one more chest section.
-	if _post_screen != null and is_instance_valid(_post_screen):
+	if not over_location and _post_screen != null and is_instance_valid(_post_screen):
 		_hand_chests_to_post_game()
 		return
 	# …AND A CHEST EARNED WHILE THE GAME IS STILL ON WAITS FOR THAT SCREEN (§18).
@@ -3823,7 +3834,7 @@ func _redeem_pending_chests() -> void:
 	# started paying out at the report instead of at the tick. Without it the
 	# level-up's chest opens a RewardScreen over a board still playing the resolve
 	# back, which is the exact interruption this whole block exists to prevent.
-	if _phase == Phase.PLAYING or _resolving:
+	if not over_location and (_phase == Phase.PLAYING or _resolving):
 		return
 	# EVERY banked chest at once, not one screen each. Two chests used to open two
 	# screens back to back, which reads as one screen flickering — you cannot weigh
@@ -3844,10 +3855,23 @@ func _redeem_pending_chests() -> void:
 		return
 	_reward_open = true
 	var screen = load(REWARD_SCREEN_SCRIPT).new()
+	# On a layer of its own when it has a popup to clear; an ordinary child of the
+	# page otherwise, as it always was.
+	var layer: CanvasLayer = null
+	if over_location:
+		layer = CanvasLayer.new()
+		layer.name = "LocationChestLayer"
+		layer.layer = UITheme.Layer.CHOICE
+		layer.process_mode = Node.PROCESS_MODE_ALWAYS
+		add_child(layer)
+		UITheme.dress(screen)
 	screen.closed.connect(func():
 		_reward_open = false
+		if layer != null and is_instance_valid(layer):
+			layer.queue_free()
+		_refresh()
 		_redeem_pending_chests())
-	add_child(screen)
+	(layer if layer != null else self).add_child(screen)
 	# Every chest's gold, on the one screen they open on — paid by the screen.
 	screen.setup_chests(sizes, pools, gold)
 

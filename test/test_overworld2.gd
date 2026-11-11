@@ -11176,6 +11176,45 @@ func test_completed_game_and_escape_share_one_row() -> void:
 	assert_true(_ui._done_btn.text.contains("Completed Game"), "same label")
 	assert_true(_ui._escape_btn.text.contains("Escape this game"), "and the same on the other")
 
+# The owner, 11 Nov 2026: a chest bought on the location screen (Dark Room, The
+# Chest) pops up ABOVE that screen, not under it and not after the game.
+func test_a_chest_bought_on_the_location_screen_opens_above_it() -> void:
+	# The suite runs with the location roster empty (test/pre_run_hook.gd); the
+	# real one is kept on Data's meta for the tests that are about locations.
+	var all: Dictionary = Data.get_meta("all_locations", {})
+	var dark: LocationData = all.get(&"dark_room")
+	assert_not_null(dark)
+	if dark == null:
+		return
+	Data._locations[dark.id] = dark
+	GameLoop2.location_tier = dark.tier
+	GameLoop2.enter_location(dark)
+	GameState.max_hp = 20
+	GameState.hp = 20
+	var popup = _ui.show_location(false)
+	assert_not_null(popup)
+	assert_true(popup.use_action(0), "the trade is taken")
+	await wait_frames(3)
+	var layer: CanvasLayer = _ui.get_node_or_null("LocationChestLayer")
+	assert_not_null(layer, "the chest opens at once, game in play or not")
+	if layer == null:
+		popup.close()
+		Data._locations.clear()
+		GameLoop2.location_id = &""
+		return
+	assert_gt(layer.layer, popup.get_parent().layer, "on a layer above the location screen")
+	assert_true(is_instance_valid(popup) and popup.is_inside_tree(),
+		"which is still there underneath")
+	assert_eq(GameState.pending_chests, 0, "and the chest is the one on screen")
+	layer.get_child(0)._finish()
+	await wait_frames(2)
+	assert_null(_ui.get_node_or_null("LocationChestLayer"), "closing it takes the layer away")
+	assert_true(is_instance_valid(popup), "and lands back on the location")
+	popup.close()
+	Data._locations.clear()
+	GameLoop2.location_id = &""
+	GameLoop2.location_unseen = false
+
 # The owner, 11 Nov 2026: the Fallen is a tab in the History, not a button over
 # the grid.
 func test_the_fallen_is_a_tab_of_the_history_not_a_button_over_the_grid() -> void:
