@@ -276,7 +276,10 @@ func _fill_fracture_row(ch: CharacterData) -> void:
 			if lv == unlocked + 1 else "Locked.")
 		if lv == pick:
 			b.add_theme_stylebox_override("normal", UITheme.accent_box(Fracture.COLOR, UITheme.PANEL_HI, 6))
-			b.add_theme_color_override("font_color", Fracture.COLOR)
+			# Hover too: the picked level used to swap to the theme's plain hover
+			# box under the mouse and read as un-picked.
+			b.add_theme_stylebox_override("hover", UITheme.accent_box(Fracture.COLOR, UITheme.PANEL_HI, 6))
+		_number_fracture_button(b, lv, lv == pick, lv <= unlocked)
 		b.pressed.connect(func():
 			GameStats.set_fracture_pick(ch.id, lv)
 			_fill_fracture_row(ch))
@@ -290,6 +293,49 @@ func _fill_fracture_row(ch: CharacterData) -> void:
 	what.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 	what.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 	_fracture_row.add_child(what)
+
+# THE NUMBER ON A FRACTURE BUTTON, IN THE NUMBERS THE PLAYER HAS UNLOCKED (the
+# owner, 11 Nov 2026: "let's show unlocked numbers here… the number from rank ups
+# that give letters/numbers and stuff"). A rank pays a title letter, and some of
+# those are digits cut from a real game's logo; this row is ten digits, so it is
+# where they get worn. Each level is spelled from `TitleLetters.available()` —
+# Rogue's own digits, which everyone has, plus every earned one that is switched
+# on in Customization — and seeded by the level, so a number keeps its look from
+# one visit to the next instead of re-rolling on every repaint.
+#
+# AND IT NO LONGER VANISHES UNDER THE MOUSE. The button's own text was drawn in
+# the theme's hover colour, which on this screen is the hover box's own colour:
+# hovering a level erased its number. The digits are a picture now and the hover
+# only brightens them; where no picture can be made the text is kept, with every
+# state's colour set.
+const FRACTURE_DIGIT := 17.0
+const FRACTURE_STATES := ["font_color", "font_hover_color", "font_pressed_color",
+	"font_focus_color", "font_hover_pressed_color", "font_disabled_color"]
+
+func _number_fracture_button(b: Button, lv: int, picked: bool, open: bool) -> void:
+	var rest: Color = Fracture.COLOR if picked else (
+		UITheme.TEXT if open else UITheme.TEXT_FAINT)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash("fracture-number-%d" % lv)
+	var word := TitleLetters.make(str(lv), FRACTURE_DIGIT, rng, false,
+		b.custom_minimum_size.x - 8.0)
+	if word.placed.size() != str(lv).length():
+		word.free()
+		for state in FRACTURE_STATES:
+			b.add_theme_color_override(state, rest)
+		b.add_theme_color_override("font_hover_color", rest.lerp(Color.WHITE, 0.5))
+		return
+	word.name = "Digits"
+	word.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	b.add_child(word)
+	# The text stays (a screen reader, a test) and is simply not drawn.
+	for state in FRACTURE_STATES:
+		b.add_theme_color_override(state, Color(0, 0, 0, 0))
+	var dim: Color = Color(1, 1, 1, 1.0 if picked else (0.8 if open else 0.3))
+	word.modulate = dim
+	if open:
+		b.mouse_entered.connect(func(): word.modulate = Color.WHITE)
+		b.mouse_exited.connect(func(): word.modulate = dim)
 
 # Roll a hero into the preview and answer which one it was. Public because the
 # footer's 🎲 is not the only thing that should be able to ask for one, and
