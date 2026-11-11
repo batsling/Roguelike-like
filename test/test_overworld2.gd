@@ -11121,6 +11121,24 @@ func test_the_history_screen_opens_once_and_closes() -> void:
 # hundred lines is a wall, the same lines under the cover of the game they
 # happened at is a run you can scan.
 
+# The owner, 11 Nov 2026: "after using a weapon, just flash the area that was
+# attacked, don't keep the highlighted boxes there".
+func test_a_swing_flashes_the_squares_it_hit_and_leaves_nothing_behind() -> void:
+	GameLoop2.set_last_strike("Wooden Sword", [{"cells": [Vector2i(1, 0)], "instances": []}])
+	_ui._board.refresh()
+	assert_eq(_ui._board._strike_layer.get_child_count(), 0,
+		"nothing is painted to stay under the bodies")
+	assert_gt(_ui._board._flash_layer.get_child_count(), 0, "the square it hit lights")
+	_ui._board.refresh()
+	assert_gt(_ui._board._flash_layer.get_child_count(), 0,
+		"and a repaint in the middle does not cut the flash off")
+	await wait_seconds(BattlefieldView.STRIKE_FLASH_SEC + 0.25)
+	assert_eq(_ui._board._flash_layer.get_child_count(), 0, "then it is gone")
+	_ui._board.refresh()
+	assert_eq(_ui._board._flash_layer.get_child_count(), 0,
+		"and the same swing does not flash a second time")
+	GameLoop2.last_strike = {}
+
 # The owner, 11 Nov 2026: the Fallen is a tab in the History, not a button over
 # the grid.
 func test_the_fallen_is_a_tab_of_the_history_not_a_button_over_the_grid() -> void:

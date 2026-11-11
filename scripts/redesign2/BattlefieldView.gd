@@ -239,6 +239,8 @@ var _arrow_layer: Control            # the direction arrows, above every body
 var _boss_warning: Label             # "the next spawn brings a boss", above the grid
 var _pressure_small: Control         # the strip's small-print row, which the warning replaces
 var _strike_layer: Control           # what the last swing hit (GameLoop2.last_strike)
+var _flash_layer: Control            # the one-off flash of a swing; frees itself
+const STRIKE_FLASH_SEC := 0.32
 var _drawn_strike: Dictionary = {}   # the record last drawn, so a new one pulses once
 # True for the duration of refresh(), and the reason is a real crash rather than
 # bookkeeping. refresh() DETACHES every body on the board, and detaching the one
@@ -1633,6 +1635,14 @@ func _build() -> void:
 	_strike_layer.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_strike_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_field.add_child(_strike_layer)
+	# The flash of a swing (`_draw_last_strike`). Its own layer because `refresh`
+	# empties the strike layer, and a use is followed by two or three refreshes: a
+	# flash living there would be cut off by the repaint its own swing caused.
+	_flash_layer = Control.new()
+	_flash_layer.name = "StrikeFlash"
+	_flash_layer.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_flash_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_field.add_child(_flash_layer)
 
 	# The push arrows go above even the badges — while the verb is armed they are
 	# the only thing on the board that can be pressed, and an arrow half-hidden
@@ -2345,11 +2355,16 @@ func _clear_swing_preview() -> void:
 			r.queue_free()
 	_swing_preview.clear()
 
-# PAINT WHAT THE LAST SWING HIT into `_strike_layer` (§12). Each square a strike
-# covered gets the weapon's orange; with more than one strike, the strike's number
-# sits in the corner of the first square it covered, so "struck three times" reads
-# as three places in an order. A record that is new since the last paint pulses a
-# few times, the way fresh ground does, and then holds until the board moves.
+# FLASH WHAT THE LAST SWING HIT (§12), ONCE, AND LEAVE NOTHING BEHIND (the owner,
+# 11 Nov 2026: "just flash the area that was attacked, don't keep the highlighted
+# boxes there"). Each square a strike covered lights in the weapon's orange and
+# fades out over STRIKE_FLASH_SEC; with more than one strike, the strike's number
+# rides the first square it covered for the same instant. The squares used to
+# hold until the board next moved, and a board left lit under the bodies a swing
+# hit read as those bodies still being marked for something.
+#
+# Only a record that is NEW since the last paint flashes — a repaint for any
+# other reason draws nothing.
 func _draw_last_strike() -> void:
 	var rec: Dictionary = GameLoop2.last_strike
 	if rec.is_empty():
@@ -2357,6 +2372,8 @@ func _draw_last_strike() -> void:
 		return
 	var fresh: bool = not is_same(rec, _drawn_strike)
 	_drawn_strike = rec
+	if not fresh or _flash_layer == null:
+		return
 	var strikes: Array = rec.get("strikes", [])
 	var numbered: bool = strikes.size() > 1
 	var painted: Dictionary = {}
@@ -2365,20 +2382,20 @@ func _draw_last_strike() -> void:
 		var cells: Array = (strikes[i] as Dictionary).get("cells", [])
 		# A RAY IS SHOWN BY ITS LINE, not by the squares it lit (owner, 5 Nov
 		# 2026): the line draws itself from the hero outward when the ray goes off,
-		# holds a moment and fades. Its squares are not painted and held after —
-		# the line already said where it went, and a board left lit under the
-		# bodies it hit read as those bodies still being marked for something.
+		# holds a moment and fades.
 		var ray: Array = (strikes[i] as Dictionary).get("ray", [])
 		if ray.size() >= 2:
-			if fresh and is_inside_tree():
-				var line := _ray_line(ray, WeaponSystem.WEAPON_COLOR.lightened(0.25))
-				_strike_layer.add_child(line)
+			var line := _ray_line(ray, WeaponSystem.WEAPON_COLOR.lightened(0.25))
+			_flash_layer.add_child(line)
+			if is_inside_tree():
 				line.grow = 0.0
 				var t: Tween = line.create_tween()
 				t.tween_property(line, "grow", 1.0, RAY_DRAW_SEC).set_trans(Tween.TRANS_SINE)
 				t.tween_interval(RAY_HOLD_SEC)
 				t.tween_property(line, "modulate:a", 0.0, RAY_FADE_SEC)
 				t.tween_callback(line.queue_free)
+			else:
+				line.queue_free()
 			continue
 		for cell in cells:
 			if not GameLoop2._on_board(cell.x, cell.y):
@@ -2390,10 +2407,9 @@ func _draw_last_strike() -> void:
 				r.position = _cell_pos(cell.y, cell.x)
 				r.size = Vector2(_cell, _cell)
 				r.add_theme_stylebox_override("panel",
-					UITheme.flat(Color(WeaponSystem.WEAPON_COLOR, 0.38), 6, 0, 4,
+					UITheme.flat(Color(WeaponSystem.WEAPON_COLOR, 0.55), 6, 0, 4,
 						WeaponSystem.WEAPON_COLOR.lightened(0.25)))
-				r.tooltip_text = "Hit by %s." % String(rec.get("label", "the last swing"))
-				_strike_layer.add_child(r)
+				_flash_layer.add_child(r)
 				nodes.append(r)
 		if numbered and not cells.is_empty():
 			var first: Vector2i = cells[0]
@@ -2402,18 +2418,18 @@ func _draw_last_strike() -> void:
 					UITheme.FONT_HEAD)
 				tag.add_theme_color_override("font_color", WeaponSystem.WEAPON_COLOR.lightened(0.35))
 				tag.position = _cell_pos(first.y, first.x) + Vector2(6 + 16 * (i % 3), 4)
-				_strike_layer.add_child(tag)
+				_flash_layer.add_child(tag)
 				nodes.append(tag)
-	if fresh and is_inside_tree():
-		for n: Control in nodes:
-			n.modulate.a = 0.3
-			var t: Tween = n.create_tween()
-			t.set_loops(3)
-			t.tween_property(n, "modulate:a", 1.0, 0.25).set_trans(Tween.TRANS_SINE)
-			t.tween_property(n, "modulate:a", 0.5, 0.25).set_trans(Tween.TRANS_SINE)
-			t.chain().tween_callback(func():
-				if is_instance_valid(n):
-					n.modulate.a = 1.0)
+	for n: Control in nodes:
+		# Out of the tree (a headless test that never renders) there is no tween to
+		# run, so the flash is simply over.
+		if not is_inside_tree():
+			n.queue_free()
+			continue
+		var t: Tween = n.create_tween()
+		t.tween_property(n, "modulate:a", 0.0, STRIKE_FLASH_SEC) \
+			.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+		t.tween_callback(n.queue_free)
 
 # What one lit square promises, for its own tooltip. The bomb's version is asked
 # of the loop (`bomb_cell_hint`) so the picker and the rule can't drift; an item's
