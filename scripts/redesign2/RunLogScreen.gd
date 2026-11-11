@@ -27,9 +27,18 @@ const COVER := Vector2(44, 58)
 
 var _layer: CanvasLayer = null
 var _rows: VBoxContainer = null
+# THE TWO TABS: what happened, and what died. The Fallen used to be a button over
+# the grid that opened a panel of its own (the owner, 11 Nov 2026).
+const TAB_LOG := &"log"
+const TAB_FALLEN := &"fallen"
+const GRAVEYARD_PANEL_SCRIPT := "res://scripts/redesign2/GraveyardPanel.gd"
+var tab: StringName = TAB_LOG
+var _tab_buttons: Dictionary = {}
+var _sub: Label = null
 
-static func open(parent: Node) -> RunLogScreen:
+static func open(parent: Node, start_tab: StringName = TAB_LOG) -> RunLogScreen:
 	var s := RunLogScreen.new()
+	s.tab = start_tab
 	s._layer = CanvasLayer.new()
 	# Over the run's pinned header, the way every other full-screen reference
 	# screen in a run is — the header is reporting a run this screen is about.
@@ -92,11 +101,25 @@ func _build() -> void:
 	title.add_theme_font_size_override("font_size", UITheme.FONT_HEAD)
 	title.add_theme_color_override("font_color", UITheme.ACCENT)
 	head.add_child(title)
-	var sub := Label.new()
-	sub.text = "newest first"
-	sub.add_theme_font_size_override("font_size", UITheme.FONT_MICRO)
-	sub.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
-	head.add_child(sub)
+	_sub = Label.new()
+	_sub.text = "newest first"
+	_sub.add_theme_font_size_override("font_size", UITheme.FONT_MICRO)
+	_sub.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
+	head.add_child(_sub)
+
+	var tabs := HBoxContainer.new()
+	tabs.add_theme_constant_override("separation", UITheme.GAP_TIGHT)
+	box.add_child(tabs)
+	for row in [[TAB_LOG, "🕮  History"],
+			[TAB_FALLEN, "☠  Fallen (%d)" % GameLoop2.graveyard.size()]]:
+		var b := Button.new()
+		b.text = row[1]
+		b.toggle_mode = true
+		b.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
+		var which: StringName = row[0]
+		b.pressed.connect(func(): show_tab(which))
+		tabs.add_child(b)
+		_tab_buttons[which] = b
 
 	# THE HEIGHT IS FIXED AND THE LIST SCROLLS. A run's log is unbounded (500 lines
 	# is the cap GameLog keeps), so a panel sized to its content would grow past the
@@ -117,7 +140,25 @@ func _build() -> void:
 	close_btn.pressed.connect(close)
 	box.add_child(close_btn)
 
+# Switch tab. Public so the page can open the screen on the Fallen, and a test can
+# turn the page without a click.
+func show_tab(which: StringName) -> void:
+	tab = which
+	_fill()
+
 func _fill() -> void:
+	for c in _rows.get_children():
+		_rows.remove_child(c)
+		c.queue_free()
+	for k in _tab_buttons:
+		(_tab_buttons[k] as Button).set_pressed_no_signal(k == tab)
+	if _sub != null:
+		_sub.visible = tab == TAB_LOG
+	if tab == TAB_FALLEN:
+		# The graveyard's own rows — the card on a click, the note box — drawn by
+		# the class that has always drawn them. Cards open over THIS screen.
+		_rows.add_child(load(GRAVEYARD_PANEL_SCRIPT).new().embedded(self))
+		return
 	var stops: Array = GameLog.by_stop()
 	if stops.is_empty():
 		var empty := Label.new()

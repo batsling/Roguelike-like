@@ -55,11 +55,6 @@ signal bomb_cell_requested(cell: Vector2i)
 # An enemy was clicked: the host opens the inspect card for it.
 signal enemy_inspected(entry: Dictionary, col: int)
 
-# The player asked to see THE FALLEN — every enemy this run has put down (§7.6).
-# A signal rather than a panel opened here for the same reason enemy_inspected is
-# one: the panel dims the whole screen and this board lives inside a scrolling
-# page, so the host is the only thing that can mount it.
-signal graveyard_requested
 # The mouse moved onto (or off) a body. The host lights the checklist row that
 # body's goal is written on, so "which of these lines is that thing" is answered
 # by pointing at either half of the pair. `instance` is the body; `hovered` says
@@ -192,7 +187,8 @@ var _hero_tex: Texture2D = null
 var push_target: int = 0
 var push_btn: Button
 var bomb_btn: Button
-var graveyard_btn: Button            # ☠ The Fallen — only once something has
+var _toolbar: Control                # the hint + Cancel bar; hidden when empty
+var _hero_verbs: HBoxContainer       # Push and Bomb, under the portrait
 var aim_btn: Button                  # only on screen while an item is aiming
 var _hint_label: Label
 # THE ARMED AIM — ONE SYSTEM FOR EVERYTHING THE BOARD CAN BE POINTED WITH (the
@@ -1050,31 +1046,11 @@ func _build_battle_toolbar() -> Control:
 	_hint_label.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 	bar.add_child(_hint_label)
 
-	push_btn = HoverButton.new()
-	push_btn.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
-	push_btn.pressed.connect(toggle_push_mode)
-	bar.add_child(push_btn)
-
-	bomb_btn = HoverButton.new()
-	bomb_btn.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
-	bomb_btn.pressed.connect(toggle_bomb_mode)
-	bar.add_child(bomb_btn)
-
-	# THE FALLEN (§7.6) — beside the verbs, because it is read at the same moment
-	# they are: what has died is what a Necromancer on the board is about to raise,
-	# and that changes which body you spend a Bomb on.
-	#
-	# Hidden until something HAS died, and hidden while a verb is aiming, for the
-	# reason the Cancel button below is: this is an HFlowContainer inside a board
-	# that fits its page to about ten spare pixels, and a permanent fourth button
-	# wraps the toolbar onto a second row and pushes the bottom of the board off
-	# the window. An empty graveyard is most of the first game of every run.
-	graveyard_btn = HoverButton.new()
-	graveyard_btn.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
-	graveyard_btn.visible = false
-	graveyard_btn.pressed.connect(func(): graveyard_requested.emit())
-	bar.add_child(graveyard_btn)
-
+	# PUSH AND BOMB ARE NOT HERE ANY MORE (the owner, 11 Nov 2026): they stand
+	# under the player's portrait as an icon and a number each (`_build_hero_verbs`).
+	# The Fallen moved too, into the run's History (RunLogScreen's second tab).
+	# What is left on this bar is the hint and the Cancel of an armed item, so the
+	# bar is hidden outright whenever neither is showing (`refresh_toolbar`).
 	# The armed ITEM's way out. Hidden the rest of the time rather than greyed:
 	# this toolbar is an HFlowContainer inside a board that fits its page to about
 	# ten spare pixels (see refresh_toolbar), and a fourth permanent button wraps
@@ -1374,6 +1350,69 @@ func throw_request(entry: Dictionary = throwing_loot) -> Dictionary:
 		return {"target_kind": "tile", "cells": CardSystem.aim_cells(entry)}
 	return {"target_kind": "tile", "col_min": 0, "col_max": 0}
 
+# PUSH AND BOMB, UNDER THE PORTRAIT (the owner, 11 Nov 2026). No words: an icon
+# and the count, and the hover carries the name, the picture and the number. One
+# that has run out is not drawn at all — the same "only what you have" rule the
+# verbs under the offering follow — except while it is armed, when it is the way
+# back out.
+const PUSH_GLYPH := "💨"
+const BOMB_GLYPH := "✸"
+
+func _build_hero_verbs() -> Control:
+	_hero_verbs = HBoxContainer.new()
+	_hero_verbs.name = "HeroVerbs"
+	_hero_verbs.alignment = BoxContainer.ALIGNMENT_CENTER
+	_hero_verbs.add_theme_constant_override("separation", UITheme.GAP_TIGHT)
+	push_btn = _hero_verb_button(UITheme.ACCENT)
+	push_btn.pressed.connect(toggle_push_mode)
+	_hero_verbs.add_child(push_btn)
+	bomb_btn = _hero_verb_button(UITheme.DANGER)
+	bomb_btn.pressed.connect(toggle_bomb_mode)
+	_hero_verbs.add_child(bomb_btn)
+	return _hero_verbs
+
+func _hero_verb_button(tint: Color) -> Button:
+	var b := HoverButton.new()
+	b.focus_mode = Control.FOCUS_NONE
+	b.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	b.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
+	b.add_theme_color_override("font_color", tint.lerp(Color.WHITE, 0.45))
+	b.add_theme_color_override("font_hover_color", Color.WHITE)
+	b.add_theme_stylebox_override("normal",
+		UITheme.flat(tint.lerp(UITheme.BG, 0.72), 5, 5, 1, tint.lerp(UITheme.BG, 0.3)))
+	for state in ["hover", "pressed", "focus"]:
+		b.add_theme_stylebox_override(state,
+			UITheme.flat(tint.lerp(UITheme.BG, 0.5), 5, 5, 1, tint))
+	return b
+
+# The hover of one verb under the portrait: its name, its picture and how many
+# are left, then what it does. Public so a test can read it.
+func hero_verb_hover(verb: StringName) -> Dictionary:
+	var is_bomb: bool = verb == &"bomb"
+	var count: int = GameState.bombs if is_bomb else GameState.push
+	var armed: bool = bomb_mode if is_bomb else push_mode
+	var card: Dictionary = {
+		"title": "%s  %s" % [BOMB_GLYPH if is_bomb else PUSH_GLYPH, "Bomb" if is_bomb else "Push"],
+		"accent": UITheme.DANGER if is_bomb else UITheme.ACCENT,
+		"subtitle": "%d left" % count,
+	}
+	var art: Texture2D = Cosmetics.glyph_texture(BOMB_GLYPH, Fracture.level()) if is_bomb else null
+	if art != null:
+		card["art"] = art
+		card["title"] = "Bomb"
+	if armed:
+		card["lines"] = ["Armed. Click it again to put it away — nothing has been spent yet."]
+	elif is_bomb:
+		# A bomb goes off on a SQUARE, whether or not anything is standing on it.
+		# A boss is a legal target even though the damage bounces off it — that is
+		# the only way to leave Sticky Bombs' Web under one.
+		card["lines"] = ["Blow up any tile on the board — click this, then the square.",
+			"A body standing there takes 1 damage, and a boss takes none."]
+	else:
+		card["lines"] = ["Shove one enemy a single cell — back, forward, or across into another lane.",
+			"Click this, then the enemy, then pick an arrow."]
+	return card
+
 # --- the toolbar ------------------------------------------------------------
 
 # Re-label and enable/disable the combat verbs for the current selection.
@@ -1421,49 +1460,27 @@ func refresh_toolbar() -> void:
 			aim_btn.text = "✕  Cancel"
 			aim_btn.tooltip_text = "Put %s back in the pack — nothing has been spent yet." \
 				% LootSystem.display_name(throwing_loot)
-	push_btn.visible = not armed_aside
-	bomb_btn.visible = not armed_aside
-	if graveyard_btn != null:
-		var dead: int = GameLoop2.graveyard.size()
-		graveyard_btn.visible = not armed_aside and dead > 0
-		graveyard_btn.text = "☠  Fallen (%d)" % dead
-		graveyard_btn.tooltip_text = ("Everything you have put down this run. "
-			+ "Click one to read its card, or leave yourself a note on it.\n"
-			+ "A Necromancer raises from this list.")
+	if _toolbar != null:
+		_toolbar.visible = (_hint_label != null and _hint_label.visible) \
+			or (aim_btn != null and aim_btn.visible)
 
-	push_btn.text = ("✕  Cancel" if push_mode else "⇤  Push (%d)" % GameState.push)
+	# An icon and a number; "✕" while armed, because the button is then the way
+	# out. Gone at zero, and stood aside while an item or a throw is aiming (arming
+	# either would only put that away, and its Cancel is on the bar saying so).
+	push_btn.visible = not armed_aside and (GameState.push > 0 or push_mode)
+	push_btn.text = "✕" if push_mode else "%s %d" % [PUSH_GLYPH, GameState.push]
 	push_btn.disabled = not push_mode and GameState.push <= 0
-	if push_mode:
-		push_btn.tooltip_text = "Put the Push away — nothing has been spent yet."
-	elif GameState.push <= 0:
-		push_btn.tooltip_text = "No Push charges left."
-	else:
-		push_btn.tooltip_text = "Shove one enemy a single cell — back, forward, or across into another lane. Press this, then click the enemy, then pick an arrow."
+	HoverCard.attach(push_btn, hero_verb_hover(&"push"))
 
-	# BOMB IS ARMED, NOT FIRED. It used to go off on the button press, at whatever
-	# was still selected — so a body clicked three turns ago to read its card took
-	# the charge. Now the press only arms it and the CLICK on a body spends it, so
-	# the button gates on having a charge rather than on having a target.
-	#
-	# A boss is a legal target even though the damage bounces off it — that is the
-	# only way to leave Sticky Bombs' Web under one. The tooltip used to carry that
-	# caveat for "whichever body is currently selected", which is not a thing any
-	# more: the promise is the general one, and the per-body reading is on the body
-	# (EnemyInfoCard), where the player is looking when they aim.
-	bomb_btn.text = ("✕  Cancel" if bomb_mode else "✸  Bomb (%d)" % GameState.bombs)
+	# BOMB IS ARMED, NOT FIRED. The press only arms it and the CLICK on a square
+	# spends it, so the button gates on having a charge rather than a target.
+	bomb_btn.visible = not armed_aside and (GameState.bombs > 0 or bomb_mode)
+	bomb_btn.text = "✕" if bomb_mode else "%s %d" % [BOMB_GLYPH, GameState.bombs]
 	Cosmetics.apply_glyph(bomb_btn)   # a worn bomb icon in place of the ✸
 	bomb_btn.disabled = not bomb_mode and GameState.bombs <= 0
-	if bomb_mode:
-		bomb_btn.tooltip_text = "Put the Bomb away — nothing has been spent yet."
-	elif GameState.bombs <= 0:
-		bomb_btn.tooltip_text = "No Bomb charges left."
-	else:
-		# A bomb goes off on a SQUARE, whether or not anything is standing on it, so
-		# the promise names the ground rather than telling the player to select an
-		# enemy first (which is no longer a thing that can be done).
-		bomb_btn.tooltip_text = ("Blow up any tile on the board — press this, then "
-			+ "click the square. A body standing there takes 1 damage, "
-			+ "and a boss takes none.")
+	HoverCard.attach(bomb_btn, hero_verb_hover(&"bomb"))
+	if _hero_verbs != null:
+		_hero_verbs.visible = push_btn.visible or bomb_btn.visible
 
 # The stack entry for an instance, or {} when it's gone / nothing is selected.
 func _stack_entry(instance: int) -> Dictionary:
@@ -1488,7 +1505,8 @@ func _build() -> void:
 	outer.add_theme_constant_override("separation", UITheme.GAP_WIDE)
 	add_child(outer)
 	outer.add_child(_build_pressure_bar())
-	outer.add_child(_build_battle_toolbar())
+	_toolbar = _build_battle_toolbar()
+	outer.add_child(_toolbar)
 	_battlefield = HBoxContainer.new()
 	_battlefield.add_theme_constant_override("separation", UITheme.GAP_LOOSE)
 	_battlefield.alignment = BoxContainer.ALIGNMENT_BEGIN
@@ -1541,6 +1559,7 @@ func _build() -> void:
 	_hero_hp.add_theme_font_size_override("font_size", UITheme.FONT_LABEL)
 	_hero_hp.add_theme_color_override("font_color", UITheme.DANGER.lerp(UITheme.TEXT, 0.35))
 	hero_box.add_child(_hero_hp)
+	hero_box.add_child(_build_hero_verbs())
 	_battlefield.add_child(hero_box)
 
 	# The board: a Control holding two stacked layers, sized to the grid. The lower

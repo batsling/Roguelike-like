@@ -755,9 +755,11 @@ func test_toolbar_push_needs_a_charge_not_a_target() -> void:
 	_ui.report(false)
 	_ui._board.refresh_toolbar()
 	assert_false(_ui._board.push_btn.disabled, "a charge and no target -> Push can be armed")
+	assert_true(_ui._board.push_btn.visible, "and it is drawn under the portrait")
 	GameState.push = 0
 	_ui._board.refresh_toolbar()
 	assert_true(_ui._board.push_btn.disabled, "no charge -> Push is unavailable")
+	assert_false(_ui._board.push_btn.visible, "and a verb with nothing left is not drawn at all")
 
 # The flow reads "press Push, then say who". Reading a card beforehand leaves
 # nothing behind for the verb to find, so arming starts from a clean aim however
@@ -772,7 +774,7 @@ func test_arming_push_starts_unaimed_and_disarms_on_cancel() -> void:
 	_ui._board.begin_push()
 	assert_true(_ui._board.push_mode, "the verb is armed")
 	assert_eq(_ui._board.push_target, 0, "and nothing is aimed at yet")
-	assert_true(_ui._board.push_btn.text.contains("Cancel"),
+	assert_true(_ui._board.push_btn.text.contains("✕"),
 		"the button becomes the way out: %s" % _ui._board.push_btn.text)
 	_ui._board.cancel_push()
 	assert_false(_ui._board.push_mode, "cancel disarms it")
@@ -867,7 +869,7 @@ func test_arming_the_bomb_starts_unaimed_and_spends_nothing() -> void:
 	assert_eq(_ui._board.push_target, 0,
 		"and the body left over from reading a card is NOT the target")
 	assert_eq(GameState.bombs, 1, "arming spends nothing")
-	assert_true(_ui._board.bomb_btn.text.contains("Cancel"),
+	assert_true(_ui._board.bomb_btn.text.contains("✕"),
 		"the button becomes the way out: %s" % _ui._board.bomb_btn.text)
 	_ui._board.cancel_bomb()
 	assert_false(_ui._board.bomb_mode, "cancel disarms it")
@@ -967,7 +969,7 @@ func test_toolbar_bomb_is_offered_against_a_boss() -> void:
 	assert_gt(inst, 0, "the boss is standing")
 	_ui._board.refresh_toolbar()
 	assert_false(_ui._board.bomb_btn.disabled, "a boss can be bombed")
-	assert_true(_ui._board.bomb_btn.tooltip_text.contains("boss"),
+	assert_true(str(_ui._board.hero_verb_hover(&"bomb").get("lines", [])).contains("boss"),
 		"and the tooltip says the damage won't land")
 	GameState.bombs = 0
 	_ui._board.refresh_toolbar()
@@ -2358,10 +2360,20 @@ func test_the_board_draws_its_own_verbs_and_tier() -> void:
 	GameState.push = 2
 	GameState.bombs = 4
 	_ui._refresh()
-	assert_true(_ui._board.push_btn.text.contains("(2)"),
-		"the toolbar button carries the Push count: %s" % _ui._board.push_btn.text)
-	assert_true(_ui._board.bomb_btn.text.contains("(4)"),
+	assert_true(_ui._board.push_btn.text.contains("2"),
+		"the button under the portrait carries the Push count: %s" % _ui._board.push_btn.text)
+	assert_true(_ui._board.bomb_btn.text.contains("4"),
 		"and the Bomb count: %s" % _ui._board.bomb_btn.text)
+	# The owner, 11 Nov 2026: no words, an icon and the number; the name is the
+	# hover's to say.
+	assert_false(_ui._board.push_btn.text.contains("Push"), "no word on the button")
+	assert_false(_ui._board.bomb_btn.text.contains("Bomb"), "nor on the bomb")
+	assert_true(String(_ui._board.hero_verb_hover(&"push").get("title", "")).contains("Push"),
+		"the hover names it")
+	assert_eq(String(_ui._board.hero_verb_hover(&"bomb").get("subtitle", "")), "4 left",
+		"and carries the number")
+	assert_true(_ui._board._hero_verbs.get_index() > _ui._board._hero_hp.get_index(),
+		"and both stand under the player's picture")
 	assert_true(_ui._board._size_label.text.contains(
 		RunDifficulty.tier_name(RunDifficulty.current_tier())),
 		"and the pressure bar carries the tier: %s" % _ui._board._size_label.text)
@@ -11108,6 +11120,24 @@ func test_the_history_screen_opens_once_and_closes() -> void:
 # GROUPED BY THE GAME THE RUN WAS STANDING ON, newest first — a flat list of three
 # hundred lines is a wall, the same lines under the cover of the game they
 # happened at is a run you can scan.
+
+# The owner, 11 Nov 2026: the Fallen is a tab in the History, not a button over
+# the grid.
+func test_the_fallen_is_a_tab_of_the_history_not_a_button_over_the_grid() -> void:
+	var slime: GoalEnemyData = Data.all_goal_enemies()[0]
+	GameLoop2.graveyard.append({"enemy": slime, "game": &""})
+	_ui._board.refresh_toolbar()
+	assert_false(Page.text_of(_ui._board).contains("Fallen"),
+		"nothing over the grid says Fallen")
+	var screen = _ui.open_history()
+	assert_true(Page.text_of(screen).contains("Fallen (%d)" % GameLoop2.graveyard.size()),
+		"the History carries the tab: %s" % Page.text_of(screen))
+	assert_eq(screen.tab, &"log", "it opens on what happened")
+	screen.show_tab(&"fallen")
+	assert_true(Page.text_of(screen).contains(slime.display_name),
+		"and the tab lists what fell: %s" % Page.text_of(screen))
+	screen.close()
+
 func test_the_history_groups_the_run_by_the_game_it_was_standing_on() -> void:
 	var here: StringName = GameState.current_game_id
 	GameLog.add("a thing that happened here")

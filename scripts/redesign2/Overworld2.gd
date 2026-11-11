@@ -499,7 +499,6 @@ var _done_btn: Button
 # here, since this screen owns the charges and the run.
 var _board: BattlefieldView
 var _info_popup: EnemyInfoCard      # the click-to-inspect enemy card (null when closed)
-var _graveyard_popup   # the open ☠ Fallen panel (§7.6), or null
 var _full_inventory    # the open full-inventory screen, or null
 var _completed_popup  # the open ✓ Completed panel, or null
 var _choice_modal: GameChoiceModal = null   # the open offered-game popup, or null
@@ -5231,14 +5230,11 @@ func _close_enemy_info() -> void:
 #
 # Public so a headless test can open it without a click.
 func show_graveyard() -> Node:
-	if _graveyard_popup != null and is_instance_valid(_graveyard_popup):
-		return _graveyard_popup
-	var panel = load(GRAVEYARD_PANEL_SCRIPT).new()
-	panel.closed.connect(func(): _graveyard_popup = null)
-	_graveyard_popup = panel
-	add_child(panel)
-	panel.setup()
-	return panel
+	# A TAB OF THE HISTORY NOW (the owner, 11 Nov 2026), not a panel of its own
+	# opened from a button over the grid.
+	var screen = open_history()
+	screen.show_tab(&"fallen")
+	return screen
 
 # THE FULL INVENTORY: every item, the loot pack, the stats and the resources on
 # one screen over the page, opened from the button beside the mini pack.
@@ -7899,7 +7895,6 @@ func _build_ui() -> void:
 	_board.loot_throw_cancelled.connect(_on_loot_throw_cancelled)
 	_board.loot_put_down.connect(put_loot_down)
 	_board.enemy_inspected.connect(_show_enemy_info)
-	_board.graveyard_requested.connect(show_graveyard)
 	_board.location_requested.connect(show_location)
 	# The board points back at the checklist: hovering a body lights the goal row
 	# written about it (_bind_row_to_body).
