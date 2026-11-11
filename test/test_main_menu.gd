@@ -341,3 +341,26 @@ func test_focus_moves_into_the_list_that_opens_and_back() -> void:
 	assert_eq(menu._button_rows[play].modulate, menu.LETTERS_REST, "and Play is not left lit")
 	(menu.get_node("%PlayBackBtn") as Button).pressed.emit()
 	assert_eq(menu.get_viewport().gui_get_focus_owner(), play, "and back to the first of the three")
+
+
+# The owner, 12 Nov 2026: "the glow on the menu selections on the bottom are off
+# to the right". A main button's glow and its letters are both moved right by
+# the icon's width; the glow then added the row's position again.
+func test_a_main_buttons_glow_sits_behind_its_letters() -> void:
+	var menu = _menu()
+	await wait_frames(3)
+	var btn: Button = menu.get_node("%PlayBtn")
+	var row: TitleLetters = menu._button_rows.get(btn)
+	if row == null:
+		pending("Play is not spelled in letters on this profile")
+		return
+	assert_not_null(btn.get_node_or_null("Icon"), "Play carries an icon, so its word is moved right")
+	var glow: Control = row.get_meta("glow")
+	assert_gt(row.position.x, 0.0)
+	assert_eq(glow.position, row.position, "the glow is moved with the row")
+	# What LetterGlow._draw measures from: the row as seen from the glow itself.
+	assert_eq(row.position - glow.position, Vector2.ZERO,
+		"so the row's place inside the glow is its own, not the button's")
+	var src: String = FileAccess.get_file_as_string("res://scripts/menu/MainMenu.gd")
+	assert_false(src.contains("= row.position + row.ink.position"),
+		"and neither the glow nor the outline adds the row's position on top of its own")

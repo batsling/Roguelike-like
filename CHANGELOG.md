@@ -11,6 +11,31 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **A second pass (the owner's list, 12 Nov 2026).**
+  - **Loot on the ground goes on the rewards table.** The report sweeps the
+    floor onto the haul screen as it opens (`Overworld2._open_post_game`), and a
+    piece not taken there is gone. This reverses the 28 Oct rule, under which
+    the floor outlived the report and was reached through the ⚔ Combat button.
+  - **The keepers' own prices follow the 4/6/9/13 ladder.** Every keeper's shelf
+    already priced off it; the three numbers that are a keeper's own had not
+    moved: Charon's steal 3 → 4 (the sheet,
+    `tools/oneshots/_shopkeepers_charon_steal_four.py`), Jimbo's pack 4 → 5
+    (`ShopSystem.PACK_PRICE`), Furcifer's first reroll 1 → 2
+    (`ShopSystem.GOLD_REROLL_BASE`). `test_shopkeepers.gd` now holds every
+    keeper's shelf to the ladder.
+  - **Customization: Random is the first tile**, then the default, then the looks.
+  - **A body of more than one cell lights as one outline** under the mouse (and
+    when picked), not a ring per cell.
+  - **The menu's glow sits behind its letters.** On Play, Extras and Settings it
+    was one icon's width to the right: the glow is moved right with the word and
+    then added the word's position again.
+  - **The title's letters are loaded behind the menu.** A click on the title
+    drew it again and read each new letter off the disk inside the click, with
+    nothing kept. `MainMenu._warm_letters` asks for the whole available pool on
+    a thread as the menu opens and `TitleLetters` keeps what it loads. A hard
+    freeze did not reproduce in ~2,700 scripted re-rolls; this removes the only
+    disk work a click did.
+
 - **A layout pass on the run page (the owner's list, 11 Nov 2026).**
   - **The pack panel is two inventories.** Items on the left, and at the right a
     small picture of the loot pack in its real shape (`LootWindow.MiniPack`)

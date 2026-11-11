@@ -246,6 +246,14 @@ func _starter_count() -> int:
 				n += 1
 	return n
 
+# The owner, 12 Nov 2026: "for customization random should be all the way on the left".
+func test_random_is_the_first_tile_of_a_slot() -> void:
+	var tiles := CustomizeScreen.costume_tiles(Data.get_character2(&"zoe"), "icon", 40, func(): pass)
+	assert_eq(String((tiles[0] as Node).name), "Random", "Random first")
+	assert_eq(String((tiles[1] as Node).name), "Default", "then the default")
+	for t in tiles:
+		(t as Node).free()
+
 # --- random ------------------------------------------------------------------------
 
 func test_random_rolls_among_the_default_and_what_is_unlocked() -> void:
