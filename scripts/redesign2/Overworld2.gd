@@ -493,6 +493,7 @@ var _escape_hint: Label           # the small line under it: what would open it
 var _np_box: VBoxContainer
 var _attempt_wrap: Control
 var _done_btn: Button
+var _report_row: HBoxContainer   # Completed Game and Escape, side by side
 # The board itself (§grid): the player on the left, a grid_cols() x grid_rows() grid on
 # the right where enemies close in one column per game beaten (MMBN-style). It's a
 # BattlefieldView — a view over GameLoop2 that reports Push / Bomb / inspect back
@@ -8033,13 +8034,24 @@ func _build_ui() -> void:
 	done.add_theme_stylebox_override("normal", UITheme.flat(UITheme.SUCCESS.lerp(UITheme.BG, 0.5), 8, 8, 2, UITheme.SUCCESS))
 	done.add_theme_stylebox_override("hover", UITheme.flat(UITheme.SUCCESS.lerp(UITheme.BG, 0.35), 8, 8, 2, UITheme.SUCCESS))
 	done.add_theme_color_override("font_color", UITheme.SUCCESS.lerp(Color.WHITE, 0.45))
-	done.add_theme_font_size_override("font_size", UITheme.FONT_LEAD)
+	done.add_theme_font_size_override("font_size", UITheme.FONT_LABEL)
 	# Pressing it IS the claim: "I completed this game." What you did to the
 	# enemies is the checklist above it, ticked row by row — and what it raises is
 	# the winning-run review (confirm_completed_game), because those rows are the
 	# ones this button is the last chance to answer.
 	done.pressed.connect(confirm_completed_game)
-	_play_panel.add_child(done)
+	# SIDE BY SIDE WITH THE ESCAPE (the owner, 11 Nov 2026: "open up more space for
+	# the checklist by scrunching the complete and escape game so they are side by
+	# side"). They resolve the same step, and stacked they cost the checklist a
+	# whole button's height. Equal halves; the row is as tall as the taller one.
+	_report_row = HBoxContainer.new()
+	_report_row.name = "ReportRow"
+	_report_row.add_theme_constant_override("separation", UITheme.GAP_SNUG)
+	_report_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_play_panel.add_child(_report_row)
+	done.size_flags_stretch_ratio = 1.0
+	done.clip_text = true
+	_report_row.add_child(done)
 	_wire_push_hover(done, func() -> int: return -1)
 
 	# The way out, directly under the way through — they resolve the same step, so
@@ -8054,8 +8066,10 @@ func _build_ui() -> void:
 	# both things at once: there is a door, and here is what opens it.
 	_escape_btn = HoverButton.new()
 	_escape_btn.text = "🏃  Escape this game"
-	_escape_btn.custom_minimum_size = Vector2(0, 30)
+	_escape_btn.custom_minimum_size = Vector2(0, 40)
 	_escape_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_escape_btn.size_flags_stretch_ratio = 1.0
+	_escape_btn.clip_text = true
 	_escape_btn.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 	_escape_btn.add_theme_stylebox_override("normal",
 		UITheme.flat(UITheme.ACCENT.lerp(UITheme.BG, 0.78), 6, 8, 1, UITheme.ACCENT.lerp(UITheme.BG, 0.45)))
@@ -8068,7 +8082,7 @@ func _build_ui() -> void:
 	_escape_btn.add_theme_color_override("font_disabled_color",
 		UITheme.ACCENT.lerp(UITheme.BG, 0.55))
 	_escape_btn.pressed.connect(escape_game)
-	_play_panel.add_child(_escape_btn)
+	_report_row.add_child(_escape_btn)
 
 	# …and WHAT OPENS IT, in small text directly under the button it is about. Only
 	# up while the button is down; an open door needs no instructions.

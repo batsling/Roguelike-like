@@ -11166,6 +11166,16 @@ func test_a_blood_machine_that_pays_its_item_breaks_and_goes() -> void:
 	ObjectSystem.live.clear()
 	ObjectSystem.objects_changed.emit()
 
+# The owner, 11 Nov 2026: Completed Game and Escape side by side, so the checklist
+# gets the row one of them used to take.
+func test_completed_game_and_escape_share_one_row() -> void:
+	assert_eq(_ui._done_btn.get_parent(), _ui._escape_btn.get_parent(), "one row")
+	assert_true(_ui._done_btn.get_parent() is HBoxContainer, "side by side")
+	assert_eq(_ui._done_btn.size_flags_stretch_ratio, _ui._escape_btn.size_flags_stretch_ratio,
+		"in equal halves")
+	assert_true(_ui._done_btn.text.contains("Completed Game"), "same label")
+	assert_true(_ui._escape_btn.text.contains("Escape this game"), "and the same on the other")
+
 # The owner, 11 Nov 2026: the Fallen is a tab in the History, not a button over
 # the grid.
 func test_the_fallen_is_a_tab_of_the_history_not_a_button_over_the_grid() -> void:
