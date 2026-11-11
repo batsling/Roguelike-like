@@ -3848,19 +3848,25 @@ func _redeem_pending_chests() -> void:
 
 # A Mysterious Mask was picked up: open its choice when the page is next idle.
 func _on_mask_granted() -> void:
-	call_deferred("_redeem_pending_chests")
+	# AT ONCE (the owner, 11 Nov 2026: "after using mysterious mask, I'd like it to
+	# show up immediately"). The choice used to wait for the page to be idle — no
+	# game in play, no haul screen up — so a mask used mid-game did nothing the
+	# player could see until the game had been reported. Deferred one step only so
+	# the use that granted it finishes first.
+	_redeem_pending_masks.call_deferred(true)
 
-# MYSTERIOUS MASK (§3.1): open the choice of characters for the next banked mask.
-# Same idle rule as a chest — never over a game in play, a resolve, the haul
-# screen or another reward — and the haul screen's way out comes back here
-# (`_on_post_game_finished`), so a mask taken off the haul is asked about the
-# moment the haul is done. One popup at a time; closing one chains to the next.
-func _redeem_pending_masks() -> void:
+# `now` is the mask asking to be answered the moment it is used: it opens over a
+# game in play and over the haul screen. Without it (the page coming idle, the
+# chests finishing) the old waits apply.
+func _redeem_pending_masks(now: bool = false) -> void:
 	if _reward_open or not is_inside_tree() or GameState.pending_masks <= 0:
 		return
-	if _phase == Phase.PLAYING or _resolving:
+	# Never over the board playing a report back: that is a second or two, and
+	# `_end_resolve` comes back through here.
+	if _resolving:
 		return
-	if _post_screen != null and is_instance_valid(_post_screen):
+	var on_haul: bool = _post_screen != null and is_instance_valid(_post_screen)
+	if not now and (_phase == Phase.PLAYING or on_haul):
 		return
 	var offer: Array = GameState.mask_offer()
 	if offer.is_empty():
@@ -3871,7 +3877,9 @@ func _redeem_pending_masks() -> void:
 		_redeem_pending_masks()
 		return
 	_reward_open = true
-	var modal := MaskChoiceModal.open(self, offer)
+	# Above the haul screen when that is what it is being used from.
+	var modal := MaskChoiceModal.open(self, offer,
+		UITheme.Layer.POST_COMBAT_CARD if on_haul else UITheme.Layer.EVENT)
 	modal.finished.connect(func():
 		_reward_open = false
 		_refresh()

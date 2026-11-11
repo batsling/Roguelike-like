@@ -30,11 +30,11 @@ func _init() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_STOP
 
-static func open(host: Node, offer: Array) -> MaskChoiceModal:
+static func open(host: Node, offer: Array, layer: int = UITheme.Layer.EVENT) -> MaskChoiceModal:
 	var modal := MaskChoiceModal.new()
 	modal._offer = offer
 	modal._layer = CanvasLayer.new()
-	modal._layer.layer = UITheme.Layer.EVENT
+	modal._layer.layer = layer
 	modal._layer.process_mode = Node.PROCESS_MODE_ALWAYS
 	host.add_child(modal._layer)
 	modal._layer.add_child(modal)
