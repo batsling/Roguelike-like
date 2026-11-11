@@ -11139,6 +11139,32 @@ func test_a_swing_flashes_the_squares_it_hit_and_leaves_nothing_behind() -> void
 		"and the same swing does not flash a second time")
 	GameLoop2.last_strike = {}
 
+# The owner, 11 Nov 2026: "when a blood donation machine is used up and gives the
+# item, it should be destroyed and go away".
+func test_a_blood_machine_that_pays_its_item_breaks_and_goes() -> void:
+	var inst: Dictionary = ObjectSystem.spawn(&"blood_donation_machine")
+	var other: Dictionary = ObjectSystem.spawn(&"blood_donation_machine")
+	assert_not_null(_ui._object_panel, "the machines stand on the page")
+	if _ui._object_panel == null:
+		ObjectSystem.live.clear()
+		return
+	_ui._object_panel.open_card(inst)
+	var card: ObjectCard = _ui._object_panel._card_layer.find_children("*", "ObjectCard", true, false)[0]
+	# The burst is a 6.7% roll; make it certain.
+	card._data = card._data.duplicate(true)
+	(card._data.choices[0]["chance"] as Dictionary)["percent"] = 100.0
+	GameState.hp = GameState.max_hp
+	card.take(0)
+	assert_eq(ObjectSystem.live.find(inst), -1, "the machine that paid is off the run")
+	assert_true(ObjectSystem.live.has(other), "and its neighbour is not")
+	assert_true(card.broken, "the card knows its machine burst")
+	assert_eq(Page.text_of(card._choice_box), "", "and offers nothing more to press")
+	await wait_seconds(ObjectCard.BREAK_SEC + 0.3)
+	assert_null(_ui._object_panel._card_layer, "then the card goes, with a machine still standing beside it")
+	assert_eq(_ui._object_panel._row.get_child_count(), 1, "and only the survivor is on the page")
+	ObjectSystem.live.clear()
+	ObjectSystem.objects_changed.emit()
+
 # The owner, 11 Nov 2026: the Fallen is a tab in the History, not a button over
 # the grid.
 func test_the_fallen_is_a_tab_of_the_history_not_a_button_over_the_grid() -> void:

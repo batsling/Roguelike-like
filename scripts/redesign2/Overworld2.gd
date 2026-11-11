@@ -3362,8 +3362,12 @@ func _sync_object_panel() -> void:
 		return
 	_object_panel = ObjectPanel2.mount(_right_col)
 	if _object_panel != null:
+		# Only if it is still THE panel: one that outlived its last machine to show
+		# it break (ObjectPanel2.close) can finish after a new one has been mounted.
+		var mounted = _object_panel
 		_object_panel.finished.connect(func():
-			_object_panel = null
+			if _object_panel == mounted:
+				_object_panel = null
 			_sync_board_budget())
 	_sync_board_budget()
 

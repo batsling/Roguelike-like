@@ -456,10 +456,25 @@ func _render_objects() -> void:
 		return
 	_objects_drawn = mine.duplicate()
 	for child in _objects_box.get_children():
+		# A MACHINE THAT JUST BURST STAYS UNTIL IT HAS FINISHED BREAKING (the owner,
+		# 11 Nov 2026) — its card shows it go, then says `broke`.
+		if child is ObjectCard and (child as ObjectCard).is_gone() and is_inside_tree():
+			var gone: ObjectCard = child
+			if not gone.broke.is_connected(_on_card_broke):
+				gone.broke.connect(_on_card_broke.bind(gone))
+			continue
 		_objects_box.remove_child(child)
 		child.queue_free()
 	for inst in _objects_drawn:
 		_objects_box.add_child(ObjectCard.make(inst))
+	_fit.call_deferred()
+
+
+func _on_card_broke(card: ObjectCard) -> void:
+	if is_instance_valid(card):
+		if card.get_parent() != null:
+			card.get_parent().remove_child(card)
+		card.queue_free()
 	_fit.call_deferred()
 
 
