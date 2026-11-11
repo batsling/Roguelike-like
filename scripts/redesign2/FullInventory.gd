@@ -210,7 +210,7 @@ static func resources() -> Array:
 			"tip": "Rift Keys. Taking a rift card spends one."},
 		{"glyph": "✸", "name": "Bombs", "count": GameState.bombs, "tint": UITheme.DANGER,
 			"tip": "Blow up an enemy, or a square of the board."},
-		{"glyph": "⇤", "name": "Push", "count": GameState.push, "tint": UITheme.ACCENT,
+		{"glyph": "💨", "name": "Push", "count": GameState.push, "tint": UITheme.ACCENT,
 			"tip": "Shove an enemy back across the board."},
 		{"glyph": "⛏", "name": "Bash", "count": GameState.bash, "tint": Color(0.95, 0.6, 0.3),
 			"tip": "Destroy an offered game outright."},

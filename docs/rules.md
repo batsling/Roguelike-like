@@ -274,7 +274,7 @@ Each body carries what it does on the next game you report — ×2 for two swing
 ### The two things you can do to the board
 
 - **✸ Bomb** — 1 damage. Kills a normal enemy, does nothing to a boss except spend the charge. Arm the verb, then click the SQUARE you want it on — every square lights up, bodies and bare ground alike, and the CLICK is what spends the charge. Bare ground is worth bombing once the pack has made a blast leave something behind or reach past its own square.
-- **⇤ Push** — Shove a follower one cell. Arm the verb, click the body, then press one of the arrows that appear. Nothing is spent until you press an arrow.
+- **💨 Push** — Shove a follower one cell. Arm the verb, click the body, then press one of the arrows that appear. Nothing is spent until you press an arrow.
 
 > Both verbs are armed first and aimed second, and arming either puts the other away. Cancel costs nothing.
 
@@ -335,7 +335,7 @@ Verbs are how you change the board instead of playing it. They are small integer
 
 ### On the board
 
-- **⇤ Push** — Shove one follower one cell in any direction. See §5.
+- **💨 Push** — Shove one follower one cell in any direction. See §5.
 
 ### What they are actually for
 
@@ -581,7 +581,10 @@ There is no HUD strip. Every number is drawn once, by whatever owns it, which ta
 - **Difficulty and location** — The first line of the DIFFICULTY strip over the board: the tier (Low to Insane) with its four pips, and the location you are in on the right — hover it, or click it.
 - **Amulet pressure** — The second line of the DIFFICULTY strip: how many spawns until the next difficulty up, how far the Amulet is and the pressure that puts on you (its two pips, in the band's colour — empty out in the wilds), and on the right what ending THIS game will stand up (☠ +N when this game ends). The strip takes the band's colour.
 - **Where your shops are** — A 🛒 on the game's card, on the 🗺 map and on the route ladder. The bar beside your gold says how close the next one is.
-- **Push and Bomb charges** — On their own buttons, on the board's toolbar.
+- **Push and Bomb charges** — Under your portrait on the board: an icon and the number left, each one a button. One you have none of is not shown. Hover it for its name.
+- **Everything you carry** — The panel over the board is your items on the left and a small picture of your loot pack on the right. Click the small pack (or press Tab) to open it. Full beside it opens the full inventory: every item, the pack, your stats, your resources, and the statuses and curses on you.
+- **The fallen** — Every enemy this run has put down is the Fallen tab of the History, in the bar at the top.
+- **Statuses on an enemy** — A ▲ on a body means it carries a buff, a ▼ a debuff. Hover the body to see which, and a bigger picture of it.
 - **Bash, Dash, Transmute, Scramble** — Chips on the row under the offering, once you have a charge — a verb at 0 is not shown. Dash and Scramble act at once; Bash and Transmute ARM, and the next card you click is the one they hit.
 - **Luck and Rift Keys** — On the same row. Luck shows whenever it is not 0 (bad Luck too); Keys always show.
 - **Shields a game would grant** — On the offering's hover line, and in full on the card.

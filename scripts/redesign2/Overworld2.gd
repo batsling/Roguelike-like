@@ -278,7 +278,7 @@ var _rng := RandomNumberGenerator.new()
 # --- UI nodes (built in code) --------------------------------------------
 # The verbs that are spent CHOOSING, as chips under the offering they act on.
 # (The board's own verbs need no row of their own: BattlefieldView's toolbar
-# buttons already read "⇤ Push (1)" / "✸ Bomb (3)", and its pressure bar ends in
+# buttons already read "💨 1" / "✸ 3", and its pressure bar ends in
 # the run's tier.)
 var _select_stats: HFlowContainer
 # The open READING CARD, or null — an ItemInfoCard (a relic), which is the only
@@ -7919,8 +7919,8 @@ func _build_ui() -> void:
 	# NO HEADER ROW OVER THE BOARD. There was a Tier / Push / Bombs row here once
 	# and then a one-line summary of the field ("Battlefield — 2 closing in, …"),
 	# and both were the page reading the board back to itself: the pressure bar
-	# ends in "▦ 4×4 · Low", the toolbar's buttons are literally "⇤ Push (1)" and
-	# "✸ Bomb (3)", and the bodies closing in are drawn as bodies, on squares,
+	# ends in "▦ 4×4 · Low", the buttons under the portrait are literally "💨 1" and
+	# "✸ 3", and the bodies closing in are drawn as bodies, on squares,
 	# with their reach on them. The board is the summary.
 	_board = BattlefieldView.new()
 	_board.push_requested.connect(push_follower)

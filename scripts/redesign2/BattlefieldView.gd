@@ -1274,7 +1274,7 @@ func armed_targets() -> Array:
 func aim_hint() -> String:
 	match aim_use():
 		&"push":
-			return "⇤ Push — click a body:"
+			return "💨 Push — click a body:"
 		&"bomb":
 			return "✸ Bomb — click a square:"
 		&"item":
