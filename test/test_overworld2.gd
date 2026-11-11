@@ -8771,7 +8771,8 @@ func test_a_machine_that_blows_itself_up_leaves_the_room_it_was_in() -> void:
 	# What bombing the Blood Donation Machine does, through the same call the
 	# bomb's effect makes.
 	ObjectSystem.destroy(ObjectSystem.live[0], false)
-	await get_tree().process_frame
+	# It breaks on screen first (the owner, 11 Nov 2026), then goes.
+	await wait_seconds(ObjectCard.BREAK_SEC + 0.3)
 	assert_eq(_event_cards(modal), before - 1,
 		"the destroyed machine's card goes with it, rather than sitting there dead")
 	modal._close()

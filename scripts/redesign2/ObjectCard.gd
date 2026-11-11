@@ -41,6 +41,7 @@ var _last_text: String = ""
 signal broke
 # True from the moment the machine is gone until the card is freed.
 var broken: bool = false
+var _taking: bool = false   # inside `take`, where the break waits for the result
 # How long the break is on screen: the flash and shake, a beat to read what came
 # out of it, the fade.
 const BREAK_SEC := 1.1
@@ -94,6 +95,12 @@ func _exit_tree() -> void:
 # with 2") and the card never repainted on one.
 func _on_objects_changed(_a = null, _b = null) -> void:
 	if broken:
+		return
+	# Gone by some other hand than this card's own button (a bomb's effect, a
+	# rule): break all the same. Not mid-press — `take` does it once it knows
+	# what the press had to say.
+	if not _taking and is_inside_tree() and is_gone():
+		_break()
 		return
 	if _data != null and is_inside_tree():
 		_render()
@@ -279,7 +286,9 @@ func take(index: int) -> void:
 	if _data == null or index < 0 or index >= _data.choices.size():
 		return
 	var choice: Dictionary = _data.choices[index]
+	_taking = true
 	var out: Dictionary = ObjectSystem.take(_inst, choice)
+	_taking = false
 	if out.is_empty():
 		return
 	_last_result = String(out.get("result", ""))
