@@ -11,6 +11,16 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The game fits the monitor it opens on.** The window used to open at
+  2560x1440, which is also the size Godot's editor Game view runs the project
+  at — so on any screen under 1440p the page hung off the right and bottom with
+  the Settings button out of reach. `project.godot` no longer overrides the
+  window size: it opens at the 1280x720 canvas and `Settings` grows it to fill
+  the screen. And the window-fit clamp now lets the screen win over its
+  1280x720 floor (the page is stretched, so a smaller window shows all of it,
+  smaller), which also stops the bottom of the page hanging off a 1366x768
+  laptop with a taskbar.
+
 - **Exit Game is Quit Game**, and two small faults in the new menu are fixed:
   keyboard focus now moves into the list Play or Extras opens (it was left on
   the hidden button, so the arrow keys did nothing), and a button no longer

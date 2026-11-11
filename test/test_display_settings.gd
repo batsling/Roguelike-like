@@ -86,17 +86,18 @@ func test_the_canvas_is_stretched_not_grown() -> void:
 	assert_eq(int(ProjectSettings.get_setting("display/window/size/viewport_width", 0)), 1280)
 	assert_eq(int(ProjectSettings.get_setting("display/window/size/viewport_height", 0)), 720)
 
-# The WINDOW is a different number from the CANVAS, and the override is what
-# separates them: the canvas stays the 1280x720 box the layout is built to fit,
-# and the window it is scaled into opens at 2560x1440. Pinned together because
-# project.godot's override is what the FIRST frame uses and Settings' constant is
-# what every later switch back to windowed uses — if they drift, the window
-# changes size on its own the moment you press F11 twice.
-func test_the_window_opens_bigger_than_the_canvas_it_draws() -> void:
+# The WINDOW is a different number from the CANVAS. The window OPENS at the canvas
+# size — project.godot has no window override — and Settings grows it to
+# WINDOWED_SIZE, clamped to the screen, a frame later. An override of 2560x1440
+# is the size the editor's Game view opened at on every monitor, so on anything
+# under 1440p the page hung off the right and bottom with Settings out of reach.
+func test_the_window_opens_no_bigger_than_the_canvas() -> void:
 	assert_eq(int(ProjectSettings.get_setting("display/window/size/window_width_override", 0)),
-		Settings.WINDOWED_SIZE.x, "the boot window width is Settings.WINDOWED_SIZE.x")
+		0, "no boot override: a 2560x1440 one crops the page on a smaller screen")
 	assert_eq(int(ProjectSettings.get_setting("display/window/size/window_height_override", 0)),
-		Settings.WINDOWED_SIZE.y, "and the height matches too")
+		0, "and no height override either")
+
+func test_settings_then_asks_for_a_bigger_window() -> void:
 	assert_gt(Settings.WINDOWED_SIZE.x,
 		int(ProjectSettings.get_setting("display/window/size/viewport_width", 0)),
 		"the window is bigger than the canvas — that is what the override is for")
@@ -137,11 +138,22 @@ func test_a_smaller_screen_gets_as_much_as_fits() -> void:
 	assert_eq(box.size.x, 1920, "to exactly the width available")
 	assert_eq(box.size.y, 1080 - TASKBAR - TITLEBAR.y, "and the height left over")
 
-func test_the_floor_wins_over_a_desktop_too_small_for_it() -> void:
-	# A page shown whole under a taskbar beats a page cropped to fit above one.
+func test_a_desktop_smaller_than_the_canvas_still_gets_a_window_that_fits() -> void:
+	# The canvas is stretched, so a window under 1280x720 shows the whole page a
+	# little smaller; a window bigger than the screen shows only part of it. This
+	# used to floor at 1280x720 and hang the page off a 1366x768 laptop.
 	var box: Rect2i = Settings.windowed_fit(Rect2i(0, 0, 1024, 600), TITLEBAR)
-	assert_eq(box.size, Settings.MIN_WINDOWED_SIZE,
-		"never smaller than the canvas at 1:1, whatever the screen says")
+	assert_eq(box.size, Vector2i(1024, 600 - TITLEBAR.y),
+		"the screen wins over the 1280x720 floor")
+	assert_lte(box.position.y + box.size.y + TITLEBAR.y, 600, "nothing hangs off the bottom")
+	var laptop := Rect2i(0, 0, 1366, 768 - 40)
+	var lap: Rect2i = Settings.windowed_fit(laptop, TITLEBAR)
+	assert_lte(lap.size.y + TITLEBAR.y, laptop.size.y,
+		"a 1366x768 laptop with a taskbar gets a window that fits above it")
+
+func test_a_nonsense_usable_rect_still_gives_a_window_you_can_grab() -> void:
+	var box: Rect2i = Settings.windowed_fit(Rect2i(0, 0, 0, 0), TITLEBAR)
+	assert_eq(box.size, Settings.TINY_WINDOW, "never a zero-sized window")
 
 func test_a_second_monitor_gets_the_window_on_itself() -> void:
 	# screen_get_usable_rect is in DESKTOP coordinates, so a monitor to the right
