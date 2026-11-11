@@ -11,6 +11,38 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **A layout pass on the run page (the owner's list, 11 Nov 2026).**
+  - **The pack panel is two inventories.** Items on the left, and at the right a
+    small picture of the loot pack in its real shape (`LootWindow.MiniPack`)
+    where the purple Loot bar used to be. Clicking it opens the loot window;
+    **Full** beside it opens `FullInventory`: every item by name, the pack,
+    stats, resources, statuses and curses, and the character and level.
+  - **Bomb and Push stand under the portrait**: an icon and the number, hidden at
+    zero, with the name, picture and count on the hover. Push's icon is 💨.
+  - **The Fallen is a tab of the History**, not a button over the grid. The bar
+    over the grid now only exists while a verb is armed.
+  - **A body's statuses are an arrow**: ▲ for any buff, ▼ for any debuff. The
+    hover names them and carries a 112px picture of the body. The `!` for an
+    ability is gone from the board.
+  - **A swing flashes** the squares it hit (0.32 s) and leaves nothing lit.
+  - **Completed Game and Escape share a row**, which gives the checklist the
+    height of a button.
+  - **An item in a chest wears its charges** (⚡N on its art).
+  - **Mysterious Mask asks at once**, over a game in play or the haul screen.
+  - **A chest bought on the location screen opens above it** (Dark Room, The
+    Chest) instead of under it or after the game.
+  - **A machine that bursts breaks on screen and goes.** A Blood Donation
+    Machine that paid out stayed open with live buttons when a second machine
+    stood beside it. Also fixed: the machine card's Health handler errored on
+    every `hp_changed` (it took no arguments; the signal sends two).
+  - **Fracture levels in the character picker** no longer lose their number
+    under the mouse, and are spelled from the title digits the player has
+    unlocked (`TitleLetters.available()`).
+  - **The Title Letters tab** built 609 tiles and loaded their pictures inside
+    the click, 2.6 s measured. Pictures load on a thread and are kept
+    (`TitleLetters.request`), tiles are built a slice a frame, and a switch
+    repaints in place. The click is 30-80 ms.
+
 - **The game fits the monitor it opens on.** The window used to open at
   2560x1440, which is also the size Godot's editor Game view runs the project
   at — so on any screen under 1440p the page hung off the right and bottom with

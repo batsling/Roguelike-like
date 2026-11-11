@@ -1956,7 +1956,7 @@ as one column per turn says anything can.
 | **Ruthless** | Only when it **cannot reach you**. With Devour Whole (the two bodies that have it carry both) it clears the lane outright. |
 | **Invisibility** | The board draws **nothing** — no node, no badge, no hover, and hovering its checklist row lights no square. Its **goal is still on the checklist**: you were told what walked on, not where. It blocks a lane, it walks, and a bomb aimed at that *square* still finds it. It gives itself away the moment it swings. |
 | **Predatory Scent** | An extra turn only when the player **had a status goal and met none of them**. Both halves are the ability. Runs as a turn of its own rather than by bumping the count — it is a free swing for two or three bodies, not the board's pace changing. |
-| **Necromancy (X)** | Raises from **this run's graveyard** — the same list the board's ☠ Fallen panel shows. An empty graveyard is an idle turn. Raised bodies gain the `undead` tag. |
+| **Necromancy (X)** | Raises from **this run's graveyard** — the same list the History's ☠ Fallen tab shows. An empty graveyard is an idle turn. Raised bodies gain the `undead` tag. |
 | **Entry Summon (X, Y)** | A summoner that is **not a wall**: it spends its *first* turn laying X escorts and every turn after that walking and swinging like anything else. The escorts go on **random free squares adjacent to it** rather than in the single cell in front (which is what `_brood_cell` is, and what makes a boxed-in Nested Spawner idle) — so a full lane slows it down instead of stopping it. Each square is rolled against the board *as it stands*, so escort two goes somewhere escort one left free, and one with nowhere to go is simply not laid. |
 | **Drain (X, Y)** | The one rider that takes something **killing the body does not give back**. A thief holds its haul and drops it when it dies; Degradation burns loot the next chest replaces; Drain takes a permanent point off Max Health, Luck, Scramble, Bash, Dash or Transmute. Nothing goes below 0, and **Max Health stops at 1** — a run is lost by Health reaching 0, not by its ceiling doing it. It goes through `grant_run_stat`'s own field map, so `dash` finds `dash_charges`. |
 | **Ritual** | Only the **first** turn is spent. Every turn after, the +1 Strength rides a turn the body also walks or swings on — a Ritual that spent every turn stacking would never attack, and the Strength it piled up would never be spent on anything. |
@@ -2008,7 +2008,7 @@ standing there.
   ordinary enemy is a goal the player will go and spend a real evening on.
 - **The card spells them out** in an ABILITIES panel: name, type chip, and the
   sheet's sentence with its arguments filled in.
-- **☠ Fallen**, beside Push and Bomb above the grid: every enemy this run has put
+- **☠ Fallen**, a tab of the header's 🕮 History (it was a button above the grid until 11 Nov 2026): every enemy this run has put
   down, newest first. Click one for its card; write a note on one and it is filed
   against the (game, enemy) pair in `GameStats.enemy_log` — the same store the
   Atlas's per-game notes use, so it is one fact written once and read in both

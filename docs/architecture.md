@@ -610,8 +610,9 @@ it says the rest.
 | `ui/GoalsBeatenView.gd` | The goals beaten at a game, on the Collection's game page |
 | `ui/ConfirmPanel.gd` | The shared "did you really?" confirm the checklist's ticks raise |
 | `redesign2/CompletedGoalsPanel.gd` | The run's ✓ *N* done record, grouped by game (§2.1) |
-| `redesign2/GraveyardPanel.gd` | Every body the run has put down |
-| `redesign2/RunLogScreen.gd` | The header's 🕮 History: `GameLog` grouped into the run's stops |
+| `redesign2/GraveyardPanel.gd` | Every body the run has put down; its list is the Fallen tab of `RunLogScreen` |
+| `redesign2/RunLogScreen.gd` | The header's 🕮 History: `GameLog` grouped into the run's stops, and a ☠ Fallen tab |
+| `redesign2/FullInventory.gd` | The full inventory over the page: items, the loot pack, stats, resources, statuses and curses (opened from **Full** beside the mini pack) |
 | `redesign2/MaskChoiceModal.gd` | Mysterious Mask's pick of a second character's level-up (§3.1) |
 | `redesign2/SmeltChoiceModal.gd` | Smelter: take a passive piece out of the pack and keep it working (`docs/loot-passives.md` §16) |
 | `redesign2/CampScreen.gd` | The end-of-session Camp: Rest or the card a game beaten since the last camp dealt (`docs/rest-site-design.md`) |
