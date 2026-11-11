@@ -2626,16 +2626,16 @@ by the card being fully readable the instant it is picked up.
 - **A body that was not standing anywhere leaves nothing on the floor.** One
   waiting in the off-grid queue has no square to fall in
   (`_drop_cell_of` → `OFF_FIELD`), so its loot goes straight to the haul screen.
-- **The floor lasts until the next game is picked, and then it is gone**
-  (`DropQueue.clear_floor`, the first thing `Overworld2._begin_game` does). It
-  used to be swept onto the haul screen at the report; the owner (28 Oct 2026)
-  asked for the floor to be a place loot can be LEFT — "when the player goes to
-  the next game, all loot on the floor is gone" — and leaving a piece only means
-  something if moving on costs it. Between the report and the next pick the
-  floor is still there, the report's own kills included, and the reward
-  screen's **⚔ Combat** button opens the board to reach it (§8.2, "the board
-  off the board", below). A body that had no square still sends its piece to
-  the haul screen: it never lay anywhere it could be picked up.
+- **The floor lasts until the game is reported, and then it goes on the haul
+  screen's table** (`Overworld2._open_post_game` sweeps it as the screen opens,
+  the report's own kills included). It is offered there once with the game's
+  payout, and what is not taken is gone. The owner, 12 Nov 2026: "make sure loot
+  on the ground shows up on the table at the rewards screen… and if the player
+  doesn't take it there, it goes away". From 28 Oct until then the floor outlived
+  the report and was reached through the reward screen's **⚔ Combat** button;
+  before that it was swept at the report, as it is again. `DropQueue.clear_floor`
+  (the first thing `Overworld2._begin_game` does) still clears whatever a haul
+  screen never saw.
 - **You can put a piece DOWN.** Drag one out of the pack and let go on a free
   square (`BattlefieldView` → `loot_put_down` → `DropQueue.put_down`). It is OFF
   THE PLAYER from that moment — out of `loot_items`, so no passive, neighbour
@@ -4634,8 +4634,8 @@ out-of-band offer still asks for itself, on the spot.
 
 **The floor arrives here too.** A chest a body left on the board (§8.2) can be
 opened mid-game, on the square it fell in; the ones nobody stopped for are swept
-onto this screen the moment the game is reported
-(`Overworld2._sweep_floor_into_the_queue`, straight after `beat_game`). So the
+onto this screen as it opens (`Overworld2._open_post_game`), loot onto the
+table and offered once. So the
 spoils column is the whole haul either way, and picking a relic up during the
 game is a matter of *when* you answer for it, never of whether you get to.
 

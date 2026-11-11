@@ -246,13 +246,11 @@ func floor_loot(held: Dictionary) -> Dictionary:
 	var entry = held.get("loot")
 	return (entry as Dictionary).duplicate(true) if entry is Dictionary else {}
 
-# A NEW GAME CLEARS THE FLOOR (§8.2). Everything still lying on the board when the
-# next game begins is GONE — not swept onto a screen, not banked anywhere. It used
-# to go onto the haul screen at the report; the owner (28 Oct 2026) asked for the
-# floor to be a place loot can be LEFT, and that only means something if leaving it
-# behind when you move on costs it. Between the report and the next game the floor
-# is still there (the reward screen's ⚔ Combat button opens the board), so a piece
-# a report's own kills dropped can still be picked up.
+# A NEW GAME CLEARS THE FLOOR (§8.2). Whatever is still lying on the board when
+# the next game begins is GONE. Since 12 Nov 2026 the report sweeps the floor onto
+# the haul screen's table first (Overworld2._open_post_game), where it is offered
+# one last time, so this only finds what that screen never saw: a game that ended
+# without one, or a piece put down between games.
 func clear_floor() -> void:
 	var left: int = GameLoop2.sweep_drops().size()
 	if left > 0:

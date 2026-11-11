@@ -294,7 +294,7 @@ A body walking onto a piece SHOVES it: to the nearest free square, and away from
 
 PUT ONE DOWN by dragging it out of your pack onto a free square. A piece on the floor is not on you — nothing it does works while it lies there — but it is not destroyed either, and you can pick it back up.
 
-> The floor lasts until you pick your next game. The reward screen's ⚔ Combat button opens the board, so you can still pick a piece up after reporting; whatever is still lying there when the next game begins is gone.
+> The floor lasts until you report the game. Whatever is still lying there is put on the reward screen's table with the rest of the loot — take it there, or it is gone.
 
 ## ♥ Health and dying
 

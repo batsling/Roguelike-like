@@ -1531,9 +1531,10 @@ func _character_rank_from() -> int:
 
 func _begin_game(game: GameData, enemy: GoalEnemyData, tier: int,
 		log_shields: bool = true) -> void:
-	# A NEW GAME, A BARE FLOOR (§8.2). Whatever was left lying on the board — a kill's
-	# drop nobody picked up, a piece the player put down — is gone, before this
-	# game's bodies walk on.
+	# A NEW GAME, A BARE FLOOR (§8.2). The haul screen has usually taken the floor
+	# already (`_open_post_game`); this catches what it did not — a game left with
+	# no haul screen, a piece put down between games — before this game's bodies
+	# walk on.
 	_drops.clear_floor()
 	# Where the game's rank bar stood as it was picked (§20.4), for the end-of-game
 	# screen to fill from.
@@ -2540,12 +2541,9 @@ func report(beaten: bool, fulfilled: Variant = null, escaped: bool = false,
 	var res: Dictionary = GameLoop2.beat_game(false, fulfilled_instances, claims,
 		not free_exit, escaped, beaten)
 	_release_loop_refresh()
-	# THE FLOOR IS NOT SWEPT AT THE REPORT ANY MORE (§8.2). It used to be, onto the
-	# haul screen; now loot lying on the board stays there through the screens
-	# after the game — the reward screen's ⚔ Combat button opens the board, and a
-	# piece can still be dragged off it there — and goes with the floor when the
-	# next game begins (`_begin_game` → DropQueue.clear_floor). The owner, 28 Oct
-	# 2026: "when the player goes to the next game, all loot on the floor is gone".
+	# THE FLOOR IS SWEPT ONTO THE HAUL SCREEN, not here: `_open_post_game` does it
+	# as the screen opens, so the drops this report's own kills leave are on the
+	# table with everything else (the owner, 12 Nov 2026).
 	# …and the relic chest the evening earned, scaled by how much was killed and
 	# how hard it was, paid only for a game you actually BEAT (§8.2). An escape is
 	# not a win: the player walked away, and the bodies they cleared on the way out
@@ -2970,6 +2968,18 @@ func _open_post_game() -> void:
 	# what THIS report put in it.
 	var drops: Array = _drop_queue.duplicate()
 	_drop_queue.clear()
+	# THE FLOOR GOES ON THE TABLE (the owner, 12 Nov 2026: "make sure loot on the
+	# ground shows up on the table at the rewards screen… and if the player doesn't
+	# take it there, it goes away"). Everything lying on the board when the game is
+	# reported — a kill's drop nobody picked up, a piece the player put down — is
+	# swept here and offered with the game's own payout. It is the last offer:
+	# what is left on the table when the screen is done is gone, the way any payout
+	# left there is. Between 28 Oct and now the floor outlived the report and was
+	# reached through the screen's ⚔ Combat button, which most pieces never were.
+	for held in GameLoop2.sweep_drops():
+		var piece: Dictionary = _drops.floor_loot(held)
+		if not piece.is_empty():
+			drops.append({"loot": [piece]})
 	# THE BOSS WARNING, taken over from _maybe_announce_boss rather than left to
 	# open behind this screen. A boss round is announced between two games, and
 	# this screen is what stands between them; marking the round announced here is

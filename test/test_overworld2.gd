@@ -9700,35 +9700,32 @@ func test_binning_a_floor_piece_asks_first() -> void:
 	assert_false(GameLoop2.has_drop(at), "and on Yes the square is bare")
 	panel.dismiss()
 
-func test_reporting_the_game_leaves_the_floor_until_the_next_game() -> void:
-	# The owner, 28 Oct 2026: "when the player goes to the next game, all loot on
-	# the floor is gone". The report no longer sweeps it onto the haul screen — the
-	# reward screen's Combat button can still reach it — and the next game's start
-	# is what clears it, taking nothing to any screen.
+func test_reporting_the_game_puts_the_floor_on_the_rewards_table() -> void:
+	# The owner, 12 Nov 2026: "make sure loot on the ground shows up on the table at
+	# the rewards screen… and if the player doesn't take it there, it goes away".
+	# (From 28 Oct until then the floor outlived the report and was only reachable
+	# through the screen's Combat button.)
 	_pick_solo(0)
 	_ui._drop_queue.clear()
 	_floor_loot(Vector2i(2, 1), &"one")
 	_floor_loot(Vector2i(3, 0), &"two")
 	Page.report_beat(_ui)
-	# At least the two: the bodies this very report cleared drop onto it too.
-	var ids: Array = []
-	for cell in GameLoop2.drop_cells():
-		ids.append(String((GameLoop2.drop_at(cell)["loot"] as Dictionary).get("id", "")))
-	assert_true(ids.has("one") and ids.has("two"), "the floor outlives the report: %s" % str(ids))
 	_ui._end_resolve()
-	if _ui._post_screen != null:
-		for entry in _ui._post_screen._loot:
-			assert_false(String((entry as Dictionary).get("id", "")) in ["one", "two"],
-				"and nothing on it was moved onto the haul table")
+	if _ui._post_screen == null:
+		pending("this report opened no rewards screen")
+		return
+	var ids: Array = []
+	for entry in _ui._post_screen._loot:
+		ids.append(String((entry as Dictionary).get("id", "")))
+	assert_true(ids.has("one") and ids.has("two"),
+		"what was on the ground is on the table: %s" % str(ids))
+	assert_true(GameLoop2.drop_cells().is_empty(), "and no longer on the ground")
+	var pieces: int = GameState.loot_items.size()
 	Page.leave_post_game(_ui)
 	Page.dismiss_event(_ui)
-	var pieces: int = GameState.loot_items.size()
-	if _ui._phase != _ui.Phase.SELECT:
-		pending("the run did not come back to an offering after the report")
-		return
-	_pick_enemies(0)
-	assert_true(GameLoop2.drop_cells().is_empty(), "a new game is a bare floor")
-	assert_eq(GameState.loot_items.size(), pieces, "and what was on it went nowhere")
+	assert_eq(GameState.loot_items.size(), pieces, "left on the table, it went nowhere")
+	assert_true(GameLoop2.drop_cells().is_empty(), "not back onto the floor either")
+	assert_true(_ui._drop_queue.is_empty(), "nor into a later screen")
 
 func test_a_piece_put_down_is_off_the_player_and_not_destroyed() -> void:
 	_pick_solo(0)
