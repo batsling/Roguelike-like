@@ -524,6 +524,50 @@ func _input(event: InputEvent) -> void:
 # unmistakably a thing, and it is the size of the picture it stands in for so
 # nothing reflows behind it.
 func _item_art(item: ItemData, size: int) -> Control:
+	var art: Control = _bare_item_art(item, size)
+	var badge: Control = charge_badge(item)
+	if badge != null:
+		art.add_child(badge)
+	return art
+
+# HOW MANY CHARGES AN ITEM IN A CHEST HOLDS (the owner, 11 Nov 2026), as a pip on
+# the corner of its art — the same pip the pack hangs a counter on. A chest shows
+# a TEMPLATE, so the number is what the item is: the charges a charged item's bar
+# has, or the uses a limited one comes with. Null for an item with neither.
+# Static and public so a test can ask it.
+static func charge_count(item: ItemData) -> int:
+	if item == null:
+		return 0
+	if item.is_charged():
+		return item.max_charge()
+	if item.kind == ItemData.ItemKind.USABLE and item.max_uses > 0:
+		return item.max_uses
+	return 0
+
+static func charge_badge(item: ItemData) -> Control:
+	var count: int = charge_count(item)
+	if count <= 0:
+		return null
+	var wrap := PanelContainer.new()
+	wrap.name = "ChargeBadge"
+	wrap.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+	wrap.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	wrap.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	wrap.offset_right = 3
+	wrap.offset_bottom = 3
+	wrap.mouse_filter = Control.MOUSE_FILTER_STOP
+	wrap.tooltip_text = "%d %s" % [count, Plural.word(count, "charge" if item.is_charged() else "use")]
+	wrap.add_theme_stylebox_override("panel",
+		UITheme.flat(Color(UITheme.WELL, 0.92), 8, 0, 1, UITheme.GOLD))
+	var label := Label.new()
+	label.text = " ⚡%d " % count
+	label.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
+	label.add_theme_color_override("font_color", UITheme.GOLD)
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	wrap.add_child(label)
+	return wrap
+
+func _bare_item_art(item: ItemData, size: int) -> Control:
 	if item != null and item.image != null:
 		return UITheme.crisp_tex(item.image, size)
 	var tint: Color = UITheme.item_color(item) if item != null else UITheme.TEXT_DIM

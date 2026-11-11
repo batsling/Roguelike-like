@@ -1036,6 +1036,26 @@ func test_a_chest_is_still_a_chest() -> void:
 	assert_eq(chest._sections.size(), 1, "one chest on the screen")
 	assert_eq(chest._sections[0]._cards.size(), 2, "two choices, as asked for")
 
+# The owner, 11 Nov 2026: "show the amount of charges on an item when in a chest".
+func test_an_item_in_a_chest_wears_its_charges() -> void:
+	var charged: ItemData = null
+	var plain: ItemData = null
+	for it in Data.all_items2():
+		if (it as ItemData).is_charged() and charged == null:
+			charged = it
+		elif not (it as ItemData).is_charged() and (it as ItemData).max_uses <= 0 and plain == null:
+			plain = it
+	assert_not_null(charged, "the catalogue has a charged item")
+	if charged == null:
+		return
+	assert_eq(ItemDropModal.charge_count(charged), charged.max_charge())
+	var badge: Control = ItemDropModal.charge_badge(charged)
+	assert_not_null(badge, "a charged item gets the pip")
+	assert_true((badge.get_child(0) as Label).text.contains(str(charged.max_charge())),
+		"carrying how many charges it holds")
+	badge.free()
+	assert_null(ItemDropModal.charge_badge(plain), "an item with no charges gets none")
+
 # --- one chest, drawn one way -------------------------------------------------
 #
 # A chest used to be drawn three ways: the pop-up's cards, this screen's own
