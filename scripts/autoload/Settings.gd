@@ -91,9 +91,11 @@ const DISPLAY_KEY := "mode2"
 
 # The window a WINDOWED session opens at. NOT the canvas: the layout's box is a
 # fixed 1280x720 that stretch/mode scales into whatever the window is, so this is
-# purely how big that scaled page is drawn — 2560x1440 draws it at 2x. Kept in
-# step with project.godot's window_width/height_override, which is what the FIRST
-# frame uses, before this autoload has run.
+# purely how big that scaled page is drawn — 2560x1440 draws it at 2x. NOT
+# project.godot's boot size: that has no window override, so the first frame opens
+# at the 1280x720 canvas (which fits almost any monitor) and apply_display_mode
+# grows it to this, clamped, a frame later. An override of 2560x1440 is what the
+# editor's Game view opened at, cropped, on every screen under 1440p.
 #
 # It is a REQUEST, not a size. _fit_windowed clamps it to the screen's usable
 # rect (minus the window frame), so a screen smaller than this gets as much of it
@@ -101,10 +103,15 @@ const DISPLAY_KEY := "mode2"
 # of being windowed.
 const WINDOWED_SIZE := Vector2i(2560, 1440)
 
-# The floor the clamp above will not go under, whatever a screen claims is
-# usable. The canvas is 1280x720 and stretch scales it, so a window this size
-# still shows the whole page — it is just the smallest one that shows it at 1:1.
+# The smallest window a REQUEST may ask for: the canvas at 1:1. It is a floor on
+# what is asked, not on what the screen gives — the screen wins (windowed_fit).
+# The canvas is stretched, so a window smaller than this still shows the whole
+# page, just smaller; a window bigger than the screen shows only part of it.
 const MIN_WINDOWED_SIZE := Vector2i(1280, 720)
+# The least the clamp will hand back however little a screen claims is free, so
+# a bogus usable rect (zero, or negative after the frame) can't make a window
+# nobody can grab.
+const TINY_WINDOW := Vector2i(320, 180)
 
 # The sizes the windowed mode is offered at, as a request each — every one is
 # clamped to what the screen actually has room for (windowed_fit). "Fit the
@@ -249,8 +256,8 @@ func apply_display_mode() -> void:
 #     filled the screen at — so "windowed" lands as a borderless-shaped window
 #     with the taskbar still buried under it, which is the one thing windowed
 #     mode is for.
-#   • On a screen smaller than WINDOWED_SIZE, project.godot's override would open
-#     a window bigger than the desktop with its own title bar off the top.
+#   • At boot the window opens at the 1280x720 canvas (project.godot has no
+#     window override), and this is what grows it to fill the screen.
 #
 # The clamp is against the screen's USABLE rect (what is left once the taskbar /
 # dock / menu bar have taken theirs) MINUS the window frame, because the title
@@ -274,9 +281,12 @@ func _fit_windowed() -> void:
 static func windowed_fit(usable: Rect2i, frame: Vector2i,
 		want: Vector2i = WINDOWED_SIZE) -> Rect2i:
 	frame = frame.max(Vector2i.ZERO)
-	# The floor wins over the screen: a page shown whole under a taskbar beats a
-	# page cropped to fit above one.
-	var room: Vector2i = (usable.size - frame).max(MIN_WINDOWED_SIZE)
+	# The SCREEN wins over the floor. The page is a stretched canvas, so a window
+	# smaller than 1280x720 still shows all of it, a little smaller — while a
+	# window bigger than the screen shows only its top-left, with the Settings
+	# button (the way to fix it) off the edge. This used to floor at 1280x720, and
+	# on a 1366x768 laptop with a taskbar that hung the bottom of the page off it.
+	var room: Vector2i = (usable.size - frame).max(TINY_WINDOW)
 	var size: Vector2i = want.max(MIN_WINDOWED_SIZE).min(room)
 	# Centred on what's free, counting the frame as part of what's being centred,
 	# then pinned so the title bar can never end up above the top of the desktop.

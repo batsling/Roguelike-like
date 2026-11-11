@@ -83,15 +83,17 @@ ObsCompanion="*res://scripts/autoload/ObsCompanion.gd"
 ; The WINDOW and the CANVAS are two different numbers and only one of them is
 ; 1280x720. viewport_width/height is the CANVAS — the fixed box the layout is
 ; built to fit, scaled up by stretch/mode below — and it must stay 1280x720.
-; window_width/height_override is how big the window that canvas is drawn into
-; OPENS: 2560x1440, so a 1440p screen gets the page at 2x rather than a quarter
-; of the desktop. Settings.WINDOWED_SIZE holds the same pair and clamps it to
-; whatever the screen actually leaves free, so a smaller monitor (or one with a
-; taskbar) gets as much of it as fits rather than a window off the edge.
+; There is deliberately NO window_width/height_override: the window OPENS at the
+; canvas size, 1280x720, which fits almost any monitor, and Settings (on the
+; first frame, deferred) grows it to Settings.WINDOWED_SIZE clamped to whatever
+; the screen actually leaves free. The override used to be 2560x1440, and that
+; is the size Godot's editor Game view opens a played project at whatever the
+; monitor is: on anything smaller than 1440p the page hung off the right and
+; bottom with the Settings button out of reach — the clamp in Settings can't help
+; when it is the editor, not the game, that sizes the window. A small window that
+; grows can't crop; a big one that has to shrink can.
 window/size/viewport_width=1280
 window/size/viewport_height=720
-window/size/window_width_override=2560
-window/size/window_height_override=1440
 window/size/mode=0
 window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"

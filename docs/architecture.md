@@ -648,18 +648,23 @@ mode that leaves the OS's own taskbar/dock on screen to do it with.
 
 **The window and the canvas are two different numbers.** `viewport_width/height`
 is the CANVAS — the fixed 1280x720 box the layout is built to fit — and it never
-changes. `window_width/height_override` is how big the window that canvas is
-scaled into opens: **2560x1440**, so a 1440p screen draws the page at 2x instead
-of in a quarter of the desktop. `Settings.WINDOWED_SIZE` holds the same pair for
-every later switch back to windowed, and a test pins the two together — if they
-drift, the window resizes itself the moment you press F11 twice.
+changes. The window that canvas is scaled into **opens at the canvas size**:
+`project.godot` deliberately has no `window_width/height_override`, and
+`Settings` grows the window to `Settings.WINDOWED_SIZE` (**2560x1440**, so a
+1440p screen draws the page at 2x) a frame later, clamped as below. The override
+used to be 2560x1440 itself, and that is the size Godot's editor Game view opened
+the project at on any monitor — on a screen under 1440p the page hung off the
+right and bottom with the Settings button out of reach. A test pins the override
+absent.
 
 That size is a **request**. `Settings.windowed_fit()` clamps it to the screen's
 usable rect (what is left once the taskbar / dock / menu bar have taken theirs)
 *minus the window frame*, since the title bar sits outside the size being set —
 so a smaller monitor gets as much as fits and the taskbar stays clear either way.
-It is floored at 1280x720: a page shown whole under a taskbar beats a page
-cropped to fit above one. The arithmetic is a pure static function precisely
+The screen wins over the 1280x720 floor: the canvas is stretched, so a window
+smaller than that still shows the whole page, a little smaller, while a window
+bigger than the screen crops it (the floor used to win, and hung the bottom of
+the page off a 1366x768 laptop). The arithmetic is a pure static function precisely
 because none of it can be exercised on a headless runner, which has no window
 manager and therefore no decorations and no taskbar.
 
