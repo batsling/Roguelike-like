@@ -152,7 +152,7 @@ func test_a_worn_icon_replaces_its_glyph_with_the_level_on_a_trophy() -> void:
 	assert_string_contains(l.text, "THE AMULET")
 	var art: TextureRect = l.get_node_or_null(Cosmetics.GLYPH_NODE)
 	assert_not_null(art, "a picture stands in its place")
-	assert_string_contains(art.texture.resource_path, "Rainstorm", "picked by the level")
+	assert_string_contains(String(art.get_meta(&"source")), "Rainstorm", "picked by the level")
 	var num: Label = art.get_node_or_null("Level")
 	assert_not_null(num)
 	assert_eq(num.text, "6", "with the Fracture on it")
@@ -173,7 +173,23 @@ func test_a_worn_luck_icon_replaces_the_clover() -> void:
 	assert_string_contains(l.text, "Luck 2")
 	var art: TextureRect = l.get_node_or_null(Cosmetics.GLYPH_NODE)
 	assert_not_null(art, "a picture stands in its place")
-	assert_string_contains(art.texture.resource_path, "Luck_Mewgenics")
+	assert_string_contains(String(art.get_meta(&"source")), "Luck_Mewgenics")
+	# A 330px picture in a line of text is drawn through mipmaps, not point-shrunk
+	# (the owner, 12 Nov 2026: "this looks choppy").
+	assert_eq(art.texture_filter, CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS)
+	assert_true(art.texture.get_image().has_mipmaps(), "from a copy that has them")
+	# …and pixel art stands at a whole multiple of its own size.
+	Cosmetics._unlocked["luck/luck_the_binding_of_isaac_rebirth"] = "game:the_binding_of_isaac_rebirth"
+	Cosmetics.set_icon("luck", "luck/luck_the_binding_of_isaac_rebirth")
+	var p := Label.new()
+	p.text = "🍀 Luck 2"
+	add_child_autofree(p)
+	Cosmetics.apply_glyph(p)
+	var pixel: TextureRect = p.get_node_or_null(Cosmetics.GLYPH_NODE)
+	assert_not_null(pixel)
+	assert_eq(pixel.texture_filter, CanvasItem.TEXTURE_FILTER_NEAREST)
+	assert_eq(pixel.stretch_mode, TextureRect.STRETCH_KEEP_CENTERED)
+	assert_eq(pixel.texture.get_width() % 16, 0, "16px art at 16, 32, 48…")
 	assert_null(art.get_node_or_null("Level"), "only the trophy carries the Fracture")
 
 func test_an_unworn_glyph_is_left_alone() -> void:

@@ -3888,6 +3888,12 @@ func test_the_play_verbs_sit_beside_the_cover() -> void:
 			"%s is to the right of the cover" % btn.text.split("\n")[0])
 		assert_lt(btn.global_position.y, cover.get_global_rect().end.y,
 			"and beside it rather than under it")
+	# PLAY IS THE TOP OF THE PANEL (the owner, 12 Nov 2026), on a line of its own.
+	assert_lte(_ui._launch_row.global_position.y, cover.global_position.y,
+		"the Play row is above the cover")
+	# …and the timer strip is off the page for now.
+	_ui._refresh_split_panel()
+	assert_false(_ui._split_panel.visible, "no clock on the page")
 
 func test_the_biggest_board_still_fits_one_window() -> void:
 	# The board gains a column AND a row per difficulty step; the top of the
@@ -11054,6 +11060,7 @@ func test_a_road_with_no_enemy_says_so_in_words() -> void:
 # strip is its top line.
 func test_the_split_strip_is_one_row_and_the_list_is_a_popup() -> void:
 	_pick_enemies(0)
+	_ui.timer_on_page = true
 	_ui._refresh_split_panel()
 	assert_true(_ui._split_panel.visible, "a run in play has a clock to show")
 	assert_true(_ui._split_panel is HBoxContainer, "the strip is a single row")
@@ -11095,6 +11102,7 @@ func test_the_splits_list_carries_a_row_per_game_and_per_try() -> void:
 # The clock counts real time for as long as the app is open, so answering the door
 # should not cost the run twelve minutes. Nothing else about the run pauses.
 func test_the_pause_button_stops_both_clocks_and_nothing_else() -> void:
+	_ui.timer_on_page = true
 	_pick_enemies(0)
 	_ui._refresh_split_panel()
 	assert_false(RunTimer.paused, "a run starts running")

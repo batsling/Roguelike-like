@@ -835,6 +835,77 @@ static func crisp_tex(tex: Texture2D, size: int, force: bool = false) -> Texture
 	apply_crisp(tr, tex, force)
 	return tr
 
+# --- art drawn SMALL, without the chop ------------------------------------------
+#
+# `apply_crisp` answers one question — nearest or linear — and that is enough for
+# art drawn near its own size. It is not enough for the two cases a worn icon
+# hits (the owner, 12 Nov 2026: "make sure the luck and other images look
+# crisper, this looks choppy"):
+#   * A BIG PICTURE DRAWN TINY. Mewgenics' Luck icon is 330px and stands in an
+#     18px line of text. Linear filtering reads 4 texels of the 300-odd under each
+#     screen pixel, so edges crawl and break up. It needs MIPMAPS, and an imported
+#     texture has none (`.import` files are not tracked, so the import setting
+#     cannot be relied on). `smooth_copy` builds a mipmapped copy once and keeps it.
+#   * PIXEL ART AT A FRACTIONAL SCALE. A 16px sprite stretched to 19.8px repeats
+#     some of its pixels and not others. It is drawn at a WHOLE multiple instead
+#     (1x in an 18px line), centred, even if that is a little under the box.
+#
+# `fit_art` picks between them for a TextureRect drawn in a `side` square, and
+# records the picture it was given as the rect's `source` meta, since the texture
+# it ends up holding may be the copy.
+const FIT_OVERHANG := 1.25      # pixel art may stand this far past the box at 1x
+
+static var _smooth: Dictionary = {}      # source texture's id -> its mipmapped copy
+static var _upscaled: Dictionary = {}    # "id|k" -> the source drawn k times its size
+
+static func smooth_copy(tex: Texture2D) -> Texture2D:
+	if tex == null:
+		return null
+	var key: int = tex.get_instance_id()
+	if _smooth.has(key):
+		return _smooth[key]
+	var out: Texture2D = tex
+	var img: Image = tex.get_image()
+	if img != null and not img.is_empty():
+		if img.is_compressed():
+			img.decompress()
+		img.generate_mipmaps()
+		out = ImageTexture.create_from_image(img)
+	_smooth[key] = out
+	return out
+
+static func _upscaled_copy(tex: Texture2D, k: int) -> Texture2D:
+	var key := "%d|%d" % [tex.get_instance_id(), k]
+	if _upscaled.has(key):
+		return _upscaled[key]
+	var out: Texture2D = tex
+	var img: Image = tex.get_image()
+	if img != null and not img.is_empty():
+		if img.is_compressed():
+			img.decompress()
+		img.resize(img.get_width() * k, img.get_height() * k, Image.INTERPOLATE_NEAREST)
+		out = ImageTexture.create_from_image(img)
+	_upscaled[key] = out
+	return out
+
+static func fit_art(tr: TextureRect, tex: Texture2D, side: float) -> void:
+	tr.set_meta(&"source", tex.resource_path if tex != null else "")
+	if tex == null:
+		tr.texture = null
+		return
+	var longest: float = float(maxi(tex.get_width(), tex.get_height()))
+	if is_small_art(tex) and longest <= side * FIT_OVERHANG:
+		# Pixel art that fits: a whole multiple of its own size, centred.
+		var k: int = maxi(1, int(floor(side / longest)))
+		tr.texture = tex if k == 1 else _upscaled_copy(tex, k)
+		tr.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
+		tr.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		return
+	# Anything being shrunk: the mipmapped copy, filtered through its mipmaps.
+	tr.texture = smooth_copy(tex)
+	tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	tr.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+
 # The same rule applied to an existing TextureRect after its texture is assigned,
 # for art that is set dynamically rather than at build time.
 static func apply_crisp(tr: TextureRect, tex: Texture2D, force: bool = false) -> void:

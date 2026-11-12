@@ -11,6 +11,27 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Follow-ups to the playtest pass (the owner, 12 Nov 2026).**
+  - **The white boxes in the mini loot inventory were pills and potions.** Their
+    art is `load()`ed afresh on every ask with nothing holding it, a draw command
+    keeps only the texture's RID, and the texture was freed as `_draw` returned,
+    so its cell came out blank white. `LootWindow.MiniPack` now holds what it drew.
+  - **Worn icons are drawn without the chop** (`UITheme.fit_art`). A big picture
+    in a line of text (Mewgenics' 330px Luck icon at 18px) goes through a
+    mipmapped copy made once (`smooth_copy`) rather than being point-sampled;
+    pixel art stands at a whole multiple of its own size rather than at 1.2x.
+    The Customization tiles use the same copy for looks much bigger than a tile.
+  - **Open Shop is at the bottom right of the game-choice panel**, beside the
+    verb chips, and is the only thing that says Shop or Open Shop. The bar on the
+    board's DIFFICULTY strip is numbers only and is not pressed.
+  - **The timer is off the page for now** (`Overworld2.timer_on_page`). The
+    clock, its pause button and the splits list are still built; `RunTimer`
+    still counts for Camp, saves and the OBS overlay's own clock.
+  - **Play is the top of the play panel**, the panel's width, and the cover under
+    it is drawn at the height of the Lost a run strip: about 40px more for the
+    checklist. The checklist's two-column and shrink-to-fit now apply only while
+    a game is in play; the Goals list between games keeps its scroll.
+
 - **A playtest pass (the owner's list, 11 Nov 2026).**
   - **An upgraded weapon wears its +X.** A weapon that has gained Stun for the
     run (Scroll of Enchant Weapon today) is named "Wooden Sword +1" everywhere a

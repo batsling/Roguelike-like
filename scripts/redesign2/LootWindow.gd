@@ -162,7 +162,16 @@ class MiniPack extends Control:
 	func _rect_of(cell: Vector2i, origin: Vector2i, c: float) -> Rect2:
 		return Rect2(Vector2(cell - origin) * (c + SEP), Vector2(c, c))
 
+	# THE TEXTURES THIS DRAW USED, HELD. A draw command keeps only a texture's RID,
+	# and a pill's or a potion's art is `load()`ed afresh on every ask with nothing
+	# else holding it — so the texture was freed the moment `_draw` returned and its
+	# cell came out as a blank white square (the owner, 12 Nov 2026: "what's the
+	# white boxes in the mini loot inventory?"). Weapons and scrolls were fine only
+	# because their systems cache their art.
+	var _held: Array = []
+
 	func _draw() -> void:
+		_held.clear()
 		var bounds: Rect2i = GameState.pack_bounds()
 		var c: float = cell_px()
 		var layout: Array = GameState.loot_layout()
@@ -187,6 +196,7 @@ class MiniPack extends Control:
 			if tex == null:
 				draw_rect(span.grow(-1.0), base.lerp(Color.WHITE, 0.5))
 				continue
+			_held.append(tex)
 			var ts: Vector2 = tex.get_size()
 			var k: float = minf(span.size.x / maxf(1.0, ts.x), span.size.y / maxf(1.0, ts.y))
 			var fit: Vector2 = ts * k

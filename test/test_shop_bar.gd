@@ -145,7 +145,15 @@ func test_pressing_a_full_bar_opens_a_shop_where_the_run_stands() -> void:
 	assert_false(ShopSystem.is_shop(here))
 	GameState.shop_bar = ShopSystem.bar_target()
 	ui._paint_shop_bar()
-	assert_false(ui._shop_bar_chip.disabled, "a full bar is a live button")
+	# The bar is a meter (numbers only, 12 Nov 2026); the offering's button is the
+	# way in, at the foot of the panel.
+	assert_true(ui._shop_bar_chip.disabled, "the bar itself is only a meter")
+	assert_false(Page.text_of(ui._shop_bar_chip).to_lower().contains("shop"),
+		"with no words on it")
+	assert_true(ui._shop_btn.visible)
+	assert_string_contains(ui._shop_btn.text, "Open Shop")
+	assert_eq(ui._shop_btn.get_parent().name, &"SelectFoot",
+		"at the bottom right of the game choice panel")
 	var modal = ui.press_shop_bar()
 	assert_not_null(modal, "the shop opens")
 	assert_true(ShopSystem.is_shop(here), "at the game the run stands at")

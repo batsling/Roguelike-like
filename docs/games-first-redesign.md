@@ -5676,12 +5676,13 @@ made shops hard to find. So:
   `BattlefieldView.shop_bar`): `🛒 [bar] n / N`. It sat right of the purse in the
   header until 11 Nov 2026, and was a button that opened the shop from inside a
   game. **A shop is now walked into between games only** (`can_shop_now`: the
-  page is on its offering): during a game the bar is a meter (`Full` when it
-  is), and `press_shop_bar` / `open_shop` return null. The way in is the
-  offering's `🛒` button, on the left of *Choose a Game*: `🛒 Shop` at a game
-  with one, `🛒 Open Shop` at a game without when the bar is full
-  (`_paint_shop_btn_face`). Between games the bar itself is still pressable and
-  does the same thing. Arriving at a game with a shop sets the button for the
+  page is on its offering): during a game the bar is a meter, and `press_shop_bar` / `open_shop` return null. The way in is the
+  offering's `🛒` button, at the **bottom right of the game-choice panel**
+  beside the verb chips (`SelectFoot`; it stood on the left of the heading
+  until 12 Nov 2026): `🛒 Shop` at a game with one, `🛒 Open Shop` at a game
+  without when the bar is full (`_paint_shop_btn_face`). The bar itself carries
+  **numbers only** and is never pressed: those words are the button's alone.
+  Arriving at a game with a shop sets the button for the
   visit (`_arrive_at_shop`); it shows once the game is over. A shop is marked with
   🛒 on its offering card (the `🛒 SHOP` flag, unchanged), in the game popup's
   facts, on the route ladder's and the map's rung (`RouteLadder.shop_marker`),

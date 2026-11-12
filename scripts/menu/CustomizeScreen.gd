@@ -464,6 +464,11 @@ static func tile(tex: Texture2D, glyph: String, selected: bool, locked: bool, ne
 	if tex != null:
 		var inset := maxi(2, side / 16)
 		var tr := UITheme.crisp_tex(tex, side - inset * 2, pixel)
+		# A look much bigger than its tile (a 330px icon in 64px) goes through its
+		# mipmaps rather than being point-shrunk (UITheme.fit_art).
+		if not pixel and maxi(tex.get_width(), tex.get_height()) > (side - inset * 2) * 2:
+			tr.texture = UITheme.smooth_copy(tex)
+			tr.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 		tr.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		tr.offset_left = inset
 		tr.offset_top = inset

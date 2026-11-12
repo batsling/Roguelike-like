@@ -365,7 +365,7 @@ Gold rides the DROP, not the corpse. Beating an enemy on time pays; clearing an 
 
 ### Where the shops are: the shop bar
 
-There are no shops on the map until you open one. The 🛒 SHOP BAR, on the board's DIFFICULTY strip, fills by one for every enemy you defeat (a boss is one too; a bomb is none). When it is full, a 🛒 Open Shop button comes up beside Choose a Game: press it to open a shop at the game you are standing at. The first shop costs 4 kills, and every shop after it one more.
+There are no shops on the map until you open one. The 🛒 SHOP BAR, on the board's DIFFICULTY strip, fills by one for every enemy you defeat (a boss is one too; a bomb is none). When it is full, a 🛒 Open Shop button comes up under the games to choose from: press it to open a shop at the game you are standing at. The first shop costs 4 kills, and every shop after it one more.
 
 - You shop BETWEEN games, never during one. While a game is in play the bar only counts; the 🛒 button is back the moment the game is over.
 - The shop STAYS at that game for the rest of the run. Come back to the game and it is still there; the 🗺 map, the route and the game's card all wear a 🛒 so you can find it.

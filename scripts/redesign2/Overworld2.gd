@@ -304,6 +304,15 @@ var _now_playing_cover: TextureRect # the chosen game's cover, beside it
 # in play at the bottom and still moving, and the run's total under a rule. See
 # _build_split_panel.
 var _split_panel: Control = null
+# THE TIMER IS OFF THE PAGE FOR NOW (the owner, 12 Nov 2026: "let's get rid of the
+# timer mechanic for now"). The strip — the clock, its pause button and the splits
+# list — is still built and still works; this is the one switch that shows it.
+# RunTimer itself keeps counting: Camp reads it, a save carries it, and the OBS
+# overlay's clock is a browser source the streamer adds or leaves out.
+var timer_on_page: bool = false
+# The now-playing cover, as a share of an offering card's: the height of the Lost
+# a run strip beside it.
+const NOW_PLAYING_COVER_SCALE := 0.36
 var _splits_popup: Control = null
 var _split_rows: VBoxContainer = null    # one row per game, plus its tries
 var _split_total: Label = null           # the run's own line
@@ -3259,7 +3268,11 @@ func _fit_checklist() -> void:
 			or _scroll == null or _left_col == null:
 		return
 	var room: float = _scroll.size.y
-	var sig: String = "%d|%d" % [_verify_box.get_child_count(), int(room)]
+	# ONLY WHILE A GAME IS IN PLAY. Between games the same box holds the standing
+	# Goals list under the offering, in what little the cards leave it; split and
+	# shrunk there it was a cramped footnote, so it keeps its scroll (12 Nov 2026).
+	var fitting: bool = _phase == Phase.PLAYING
+	var sig: String = "%d|%d|%d" % [_verify_box.get_child_count(), int(room), int(fitting)]
 	if sig != _checklist_fit_sig:
 		_checklist_fit_sig = sig
 		_checklist_scale = 1.0
@@ -3281,7 +3294,9 @@ func _fit_checklist() -> void:
 		var beside: float = _left_col.get_combined_minimum_size().y \
 			- _verify_scroll.custom_minimum_size.y
 		var budget: float = room - outside - beside
-		if _verify_box.columns > 1 and is_equal_approx(s, 1.0) \
+		if not fitting:
+			pass
+		elif _verify_box.columns > 1 and is_equal_approx(s, 1.0) \
 				and _checklist_unsplit_tries > 0 and shown * 1.7 <= budget:
 			# A SPLIT MADE TOO EARLY IS TAKEN BACK, ONCE. The first fit can run
 			# while the page is still settling (the offering not yet put away, the
@@ -3528,7 +3543,7 @@ func _clear_shop() -> void:
 # only its own answer.
 func _wants_process() -> bool:
 	return (_loot_panel != null and is_instance_valid(_loot_panel)) \
-		or (RunTimer.run_running and not RunTimer.paused)
+		or (timer_on_page and RunTimer.run_running and not RunTimer.paused)
 
 func _process(_delta: float) -> void:
 	_follow_loot_overlay()
@@ -3607,6 +3622,9 @@ func toggle_timer_pause() -> void:
 # the clock is alive, and one of them saying it is enough.
 func _refresh_split_panel() -> void:
 	if _split_panel == null or not is_instance_valid(_split_panel):
+		return
+	if not timer_on_page:
+		_split_panel.visible = false
 		return
 	if not RunTimer.run_running and RunTimer.splits.is_empty():
 		_split_panel.visible = false
@@ -6883,14 +6901,11 @@ func _paint_shop_bar() -> void:
 	_shop_bar_fill.max_value = target
 	_shop_bar_fill.value = mini(GameState.shop_bar, target)
 	var count: Label = _shop_bar_chip.find_child("Count", true, false)
-	if shop_here and between:
-		count.text = "Shop"
-	elif can_open and between:
-		count.text = "Open shop"
-	elif can_open:
-		count.text = "Full"
-	else:
-		count.text = "%d / %d" % [mini(GameState.shop_bar, target), target]
+	# NUMBERS ONLY (the owner, 12 Nov 2026: "the words open shop only on the game
+	# choice area"). The bar is a meter; the 🛒 button on the offering is the one
+	# place that says Shop or Open Shop, and the one way in.
+	count.text = "%d / %d" % [mini(GameState.shop_bar, target), target]
+	live = false
 	count.add_theme_color_override("font_color",
 		UITheme.SHOP_GREEN.lerp(Color.WHITE, 0.4) if live else UITheme.TEXT_DIM)
 	_shop_bar_chip.disabled = not live
@@ -6910,12 +6925,12 @@ func _paint_shop_bar() -> void:
 		+ "further off.\n\n")
 	if not between and not GameLoop2.run_over and (shop_here or can_open):
 		tip += ("There is a shop here" if shop_here else "Full") \
-			+ " — the 🛒 button comes up beside Choose a Game once this game is over. " \
-			+ "A shop is only walked into between games."
+			+ " — the 🛒 button comes up under the games to choose from once this " \
+			+ "game is over. A shop is only walked into between games."
 	elif shop_here:
-		tip += "There is a shop here — press to walk in."
+		tip += "There is a shop here — the 🛒 Shop button under the games walks in."
 	elif can_open:
-		tip += "Full. Press to open a shop at this game."
+		tip += "Full. The 🛒 Open Shop button under the games opens one here."
 	elif full:
 		tip += "Full — kills past it are lost. This game has a shop already, or you are not at one."
 	else:
@@ -7877,16 +7892,11 @@ func _build_ui() -> void:
 	# CENTRED ON THE PANEL, not on what the button leaves of it: a pad on the left
 	# as wide as the Optimal Path button on the right, so the title sits over the
 	# middle of the cards it is the question for.
-	#
-	# THE SHOP'S BUTTON STANDS IN THAT PAD (§14.4): the offering is where the
-	# player is looking when the shop opens for business, so the way into it is
-	# here, on the left of the question, in the shop's green. The pad keeps the
-	# title centred whether it is up or not.
+	# (The shop's button stood in this pad until 12 Nov 2026; it is at the foot of
+	# the panel now, see `SelectFoot`.)
 	var head_pad := HBoxContainer.new()
 	head_pad.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	select_head_row.add_child(head_pad)
-	_shop_btn = _build_shop_button()
-	head_pad.add_child(_shop_btn)
 	_select_head = _section("Choose a Game")
 	_select_head.add_theme_font_size_override("font_size", UITheme.FONT_TITLE_LG)
 	_select_head.add_theme_color_override("font_color", UITheme.GOLD)
@@ -7907,12 +7917,6 @@ func _build_ui() -> void:
 	map_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	map_btn.pressed.connect(open_optimal_path)
 	map_btn.resized.connect(func(): head_pad.custom_minimum_size.x = map_btn.size.x)
-	# And the Optimal Path side matches it back when the shop button is the wider,
-	# so the title stays over the middle either way.
-	_shop_btn.resized.connect(func(): map_btn.custom_minimum_size.x = _shop_btn.size.x \
-		if _shop_btn.visible else 0.0)
-	_shop_btn.visibility_changed.connect(func(): map_btn.custom_minimum_size.x = _shop_btn.size.x \
-		if _shop_btn.visible else 0.0)
 	select_head_row.add_child(map_btn)
 	_select_box.add_child(select_head_row)
 	# Controls row (Dash) — populated per refresh.
@@ -7974,7 +7978,21 @@ func _build_ui() -> void:
 	_select_stats = HFlowContainer.new()
 	_select_stats.add_theme_constant_override("h_separation", UITheme.GAP_SNUG)
 	_select_stats.add_theme_constant_override("v_separation", UITheme.GAP_TIGHT)
-	_select_box.add_child(_select_stats)
+	# …AND THE SHOP'S BUTTON AT THE OTHER END OF THE SAME ROW: the panel's bottom
+	# right (the owner, 12 Nov 2026: "in a more visible space, on the bottom right
+	# of the game choice screen"). It stood on the left of the heading, where it
+	# was one of three things on a title line; down here it is the only thing on
+	# its side, big and green, beside the charges the same decision spends.
+	var foot := HBoxContainer.new()
+	foot.name = "SelectFoot"
+	foot.add_theme_constant_override("separation", UITheme.GAP)
+	_select_stats.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_select_stats.size_flags_vertical = Control.SIZE_SHRINK_END
+	foot.add_child(_select_stats)
+	_shop_btn = _build_shop_button()
+	_shop_btn.size_flags_vertical = Control.SIZE_SHRINK_END
+	foot.add_child(_shop_btn)
+	_select_box.add_child(foot)
 
 	_report_panel = PanelContainer.new()
 	_report_panel.add_theme_stylebox_override("panel",
@@ -8102,11 +8120,22 @@ func _build_ui() -> void:
 	_np_box = VBoxContainer.new()
 	var np_box := _np_box
 	np_box.add_theme_constant_override("separation", UITheme.GAP)
+	# PLAY IS THE TOP OF THE PANEL (the owner, 12 Nov 2026: "move the play button
+	# to the top and make more room for the checklist"). It was the second of three
+	# things stacked beside a 150px cover, and the cover's height was the block's.
+	# Now the button runs the panel's width on a line of its own, and under it the
+	# cover is drawn at the height of the one strip left beside it (Lost a run) —
+	# about 40px less for the block, all of which the checklist gets.
+	# Launch-the-real-game row (populated per game — only games with a launch
+	# target get a button).
+	_launch_row = HBoxContainer.new()
+	_launch_row.add_theme_constant_override("separation", UITheme.GAP_SNUG)
+	np_box.add_child(_launch_row)
 	var head_row := HBoxContainer.new()
 	head_row.add_theme_constant_override("separation", UITheme.GAP_WIDE)
 	np_box.add_child(head_row)
 	_now_playing_cover = TextureRect.new()
-	_now_playing_cover.custom_minimum_size = OfferingCards.COVER_SIZE * 0.72
+	_now_playing_cover.custom_minimum_size = OfferingCards.COVER_SIZE * NOW_PLAYING_COVER_SCALE
 	_now_playing_cover.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_now_playing_cover.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	var cover_frame := PanelContainer.new()
@@ -8144,14 +8173,10 @@ func _build_ui() -> void:
 	# THE SPLIT STRIP (RunTimer). The overlay is where the clock is FOR — a stream
 	# wants a speedrun timer — but a number that only exists inside OBS is a number
 	# the player has to alt-tab to read, and it is their own evening it is counting.
+	# OFF THE PAGE FOR NOW (`timer_on_page`): built, so turning it back on is one
+	# flag, and kept hidden by _refresh_split_panel.
 	_split_panel = _build_split_strip()
 	verbs.add_child(_split_panel)
-
-	# Launch-the-real-game row (populated per game — only games with a launch
-	# target gets a button) + the opt-in Rate button.
-	_launch_row = HBoxContainer.new()
-	_launch_row.add_theme_constant_override("separation", UITheme.GAP_SNUG)
-	verbs.add_child(_launch_row)
 
 	# The attempt tracker (§3) — the thing you press between runs of the real game.
 	_attempt_wrap = _build_attempt_strip()

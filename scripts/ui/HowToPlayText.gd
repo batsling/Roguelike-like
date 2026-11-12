@@ -692,7 +692,7 @@ static func _ch_gold() -> Dictionary:
 			_p(("There are no shops on the map until you open one. The 🛒 SHOP "
 				+ "BAR, on the board's DIFFICULTY strip, fills by one for every "
 				+ "enemy you defeat (a boss is one too; a bomb is none). When it is "
-				+ "full, a 🛒 Open Shop button comes up beside Choose a Game: press "
+				+ "full, a 🛒 Open Shop button comes up under the games to choose from: press "
 				+ "it to open a shop at the game you are standing at. The first "
 				+ "shop costs %d kills, and every shop after it one more.") % ShopSystem.BAR_BASE),
 			_b("You shop BETWEEN games, never during one. While a game is in play "

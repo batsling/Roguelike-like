@@ -369,6 +369,11 @@ The shop fit test now stands **eight** extra bodies instead of clearing the boar
 
 ---
 
+**12 Nov 2026:** the fitting below applies **only while a game is in play**
+(the Goals list between games keeps its scroll), and the play panel gave the
+checklist about 40px more: Play is a full-width line at the top, the cover under
+it is the height of the Lost a run strip, and the timer strip is off the page.
+
 **11 Nov 2026: it fits before it scrolls.** The owner asked that the screen a
 game is played on never need scrolling. The cap above stands, and inside it the
 list now adapts (`Overworld2._fit_checklist`): a list taller than its room flows

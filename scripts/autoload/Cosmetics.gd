@@ -362,8 +362,9 @@ func apply_glyph(c: Variant) -> void:
 		holder.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		holder.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		c.add_child(holder, false, Node.INTERNAL_MODE_BACK)
-	holder.texture = tex
-	UITheme.apply_crisp(holder, tex)
+	# Drawn without the chop (UITheme.fit_art): a big picture through its mipmaps,
+	# pixel art at a whole multiple of its own size.
+	UITheme.fit_art(holder, tex, side)
 	holder.set_meta("at", at)
 	holder.set_meta("room", room.length())
 	var num: Label = holder.get_node_or_null("Level")
