@@ -120,8 +120,9 @@ var _unclaimed_note: Label = null
 var _note_tween: Tween = null
 # The way out has been pressed once with something unclaimed, and is asking.
 var _exit_armed: bool = false
-# How much was unclaimed when it was last painted (-1 before the first paint).
-var _exit_asked_about: int = -1
+# What was unclaimed when it was last painted, as "chests|loot" ("" before the
+# first paint).
+var _exit_asked_about: String = ""
 var _exit_btn: Button = null
 # The chest sections on screen, one per chest the report dropped — ALL of them at
 # once (see _build_chests), held so the way out can answer whatever is left rather
@@ -1025,11 +1026,16 @@ func _refresh_exit() -> void:
 		return
 	var left: int = unclaimed_count()
 	# Taking or leaving something un-asks the question: the next press asks afresh
-	# about what is left NOW.
-	if left != _exit_asked_about:
-		if _exit_asked_about >= 0:
+	# about what is left NOW. Compared as chests AND loot, not as their sum: a
+	# relic taken from a chest can pay a piece onto the table (Mom's Coin Purse),
+	# which is one chest fewer and one piece more — the same total, a different
+	# table.
+	var u: Dictionary = unclaimed()
+	var now: String = "%d|%d" % [int(u["chests"]), int(u["loot"])]
+	if now != _exit_asked_about:
+		if _exit_asked_about != "":
 			_exit_armed = false
-		_exit_asked_about = left
+		_exit_asked_about = now
 	if left == 0:
 		_exit_armed = false
 	_exit_btn.text = ("Leave it behind?  " + exit_text()) if _exit_armed else exit_text()

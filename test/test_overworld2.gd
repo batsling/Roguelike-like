@@ -7649,12 +7649,15 @@ func test_the_way_out_asks_once_before_leaving_something_unclaimed() -> void:
 	assert_string_contains(screen._exit_btn.text, screen.exit_text(),
 		"and still names where it goes")
 	# Taking something un-asks the question, about what is left now.
-	var before: int = screen.unclaimed_count()
+	# LEFT rather than taken, and compared as chests-and-loot rather than a total:
+	# a relic taken from a chest can pay a piece onto the table (Mom's Coin Purse),
+	# which is one fewer and one more — this failed in CI on exactly that roll.
+	var before: Dictionary = screen.unclaimed()
 	if screen.chest() != null:
-		screen.chest().take()
+		screen.chest().leave()
 	elif screen.payout() != null:
 		screen.payout().leave()
-	assert_lt(screen.unclaimed_count(), before)
+	assert_ne(screen.unclaimed(), before, "the table changed")
 	if screen.unclaimed_count() > 0:
 		assert_false(screen._exit_btn.text.contains("Leave it behind?"),
 			"a change on the table puts the question away")
