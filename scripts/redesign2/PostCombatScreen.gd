@@ -1209,6 +1209,10 @@ func _chest_sum_row() -> Control:
 	# term that is now two rows tall would float it between the pictures and their
 	# values, which is the one place it does not belong.
 	var result := _line("%s %s" % [ItemDropModal.CHEST_GLYPH, chest_result_text()], UITheme.GOLD, 13)
+	# A worn chest icon is drawn as the biggest chest the points bought (Cosmetics):
+	# the sizes come out largest first.
+	var bought: Array[int] = Data.chest_reward_sizes(chest_total())
+	result.set_meta("glyph_level", int(bought[0]) if not bought.is_empty() else 0)
 	result.custom_minimum_size = Vector2(0, REASON_FACE)
 	result.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	result.size_flags_vertical = Control.SIZE_SHRINK_BEGIN

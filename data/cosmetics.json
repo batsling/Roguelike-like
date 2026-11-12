@@ -425,6 +425,80 @@
 					"max": 10
 				}
 			]
+		},
+		{
+			"id": "chest/chest_the_binding_of_isaac",
+			"kind": "chest",
+			"name": "Chest",
+			"game": "the_binding_of_isaac",
+			"images": [
+				{
+					"name": "Chest",
+					"path": "res://images2.0/icons/Chests/Chest_The_Binding_of_Isaac.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "chest/chest_the_binding_of_isaac_rebirth",
+			"kind": "chest",
+			"name": "Chest",
+			"game": "the_binding_of_isaac_rebirth",
+			"images": [
+				{
+					"name": "Chest",
+					"path": "res://images2.0/icons/Chests/Chest_The_Binding_of_Isaac_Rebirth.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "chest/chest_vampire_survivors",
+			"kind": "chest",
+			"name": "Chest",
+			"game": "vampire_survivors",
+			"images": [
+				{
+					"name": "Chest",
+					"path": "res://images2.0/icons/Chests/Chest_Vampire_Survivors.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "chest/enter_the_gungeon",
+			"kind": "chest",
+			"name": "D Chest / C Chest / B Chest / A Chest",
+			"game": "enter_the_gungeon",
+			"images": [
+				{
+					"name": "D Chest",
+					"path": "res://images2.0/icons/Chests/D_Chest_Enter_the_Gungeon_0-0.png",
+					"min": 0,
+					"max": 0
+				},
+				{
+					"name": "C Chest",
+					"path": "res://images2.0/icons/Chests/C_Chest_Enter_the_Gungeon_1-1.png",
+					"min": 1,
+					"max": 1
+				},
+				{
+					"name": "B Chest",
+					"path": "res://images2.0/icons/Chests/B_Chest_Enter_the_Gungeon_2-2.png",
+					"min": 2,
+					"max": 2
+				},
+				{
+					"name": "A Chest",
+					"path": "res://images2.0/icons/Chests/A_Chest_Enter_the_Gungeon_3-3.png",
+					"min": 3,
+					"max": 3
+				}
+			]
 		}
 	]
 }

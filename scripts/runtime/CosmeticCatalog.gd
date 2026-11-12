@@ -10,15 +10,17 @@ extends RefCounted
 #   * a costume is "costume:<slot>:<character>/<title>" — `slot` is icon, full or
 #     both, and a `both` one (Vampire Survivors') is the icon and the full portrait
 #     in one unlock, from one picture;
-#   * an icon set is "<kind>/<name>" — kind is key, bomb, difficulty or luck — and a set
-#     can hold several images, each for a range of Fracture levels (Risk of Rain
-#     2's Drizzle, Rainstorm and Monsoon are one unlock).
+#   * an icon set is "<kind>/<name>" — kind is key, bomb, difficulty, luck or chest —
+#     and a set can hold several images, each for a range of Fracture levels (Risk
+#     of Rain 2's Drizzle, Rainstorm and Monsoon are one unlock). A CHEST set's
+#     range is the chest's SIZE instead (0 Small … 3 Huge, Data.ChestSize): Enter
+#     the Gungeon's D, C, B and A chests are one unlock, picked by the chest opened.
 #
 # WHO PAYS WHICH: a GAME's ranks pay the units of that game; a CHARACTER's ranks pay
 # the units of the games the character is from, and the character's own costumes.
 
 const PATH := "res://data/cosmetics.json"
-const KINDS := ["key", "bomb", "difficulty", "luck"]
+const KINDS := ["key", "bomb", "difficulty", "luck", "chest"]
 const SLOTS := ["icon", "full"]
 
 static var _cache: Dictionary = {}
@@ -120,6 +122,19 @@ static func image_for(e: Dictionary, level: int) -> String:
 		if level >= int(i["min"]) and level <= int(i["max"]):
 			return String(i["path"])
 	return String(imgs[0]["path"]) if not imgs.is_empty() else ""
+
+# What one image of a set is FOR, in words: the Fracture levels a difficulty image
+# covers, or the chest sizes a chest image does ("Small Chest", "Large–Huge Chest").
+static func range_text(e: Dictionary, image: Dictionary) -> String:
+	var lo: int = int(image.get("min", 0))
+	var hi: int = int(image.get("max", lo))
+	if String(e.get("kind", "")) != "chest":
+		return "Fracture %d–%d" % [lo, hi] if hi != lo else "Fracture %d" % lo
+	var names: Dictionary = Data.CHEST_SIZE_NAMES
+	var top: int = names.size() - 1
+	var a: String = String(names.get(clampi(lo, 0, top), ""))
+	var b: String = String(names.get(clampi(hi, 0, top), ""))
+	return "%s Chest" % a if a == b else "%s–%s Chest" % [a, b]
 
 # "Zoe — Clown", "Hades — Chthonic Key", "Risk of Rain 2 — Drizzle / Rainstorm / Monsoon".
 static func label(e: Dictionary) -> String:

@@ -378,6 +378,13 @@ func _dress_as_chest() -> void:
 	# One chest names itself in its own heading; several are counted here.
 	_title_line.visible = several
 	_title_line.text = "%s  %d Chests" % [ItemDropModal.CHEST_GLYPH, _chest_sizes.size()]
+	# A worn chest icon is drawn as the BIGGEST chest here (Cosmetics; the text is
+	# set after the label entered the tree, so the swap is asked for by hand).
+	var biggest: int = 0
+	for count in _chest_sizes:
+		biggest = maxi(biggest, ItemDropModal.chest_rank(int(count)))
+	_title_line.set_meta("glyph_level", biggest)
+	Cosmetics.apply_glyph(_title_line)
 	_title_line.add_theme_font_size_override("font_size", UITheme.FONT_HEAD)
 	_title_line.add_theme_color_override("font_color", ItemDropModal.CHEST_GOLD)
 	# THE GOLD, ONCE, OVER THE CHESTS: the total every chest below paid as this

@@ -192,6 +192,96 @@ func test_a_worn_luck_icon_replaces_the_clover() -> void:
 	assert_eq(pixel.texture.get_width() % 16, 0, "16px art at 16, 32, 48…")
 	assert_null(art.get_node_or_null("Level"), "only the trophy carries the Fracture")
 
+# Chests are the fifth icon kind (12 Nov 2026): a worn one stands in for the gift,
+# and Enter the Gungeon's D, C, B and A are ONE unlock picked by the chest's size.
+func test_gungeons_chests_are_one_unlock_picked_by_the_chests_size() -> void:
+	assert_eq(CosmeticCatalog.icons_of("chest").size(), 4,
+		"both Isaacs', Vampire Survivors' and Enter the Gungeon's")
+	var e := CosmeticCatalog.entry("chest/enter_the_gungeon")
+	assert_false(e.is_empty())
+	assert_eq((e["images"] as Array).size(), 4, "four pictures, one unlock")
+	var letters := ["D_Chest", "C_Chest", "B_Chest", "A_Chest"]
+	for size in Data.CHEST_SIZE_CHOICES:
+		var rank: int = ItemDropModal.chest_rank(int(Data.CHEST_SIZE_CHOICES[size]))
+		assert_string_contains(CosmeticCatalog.image_for(e, rank), letters[rank],
+			"%s Chest" % Data.CHEST_SIZE_NAMES[size])
+	assert_eq(CosmeticCatalog.range_text(e, e["images"][0]), "Small Chest")
+	assert_eq(CosmeticCatalog.range_text(e, e["images"][3]), "Huge Chest")
+	assert_true(CosmeticCatalog.units_of_game(&"enter_the_gungeon").has("chest/enter_the_gungeon"))
+
+func test_a_worn_chest_icon_replaces_the_gift_by_the_chests_size() -> void:
+	Cosmetics._unlocked["chest/enter_the_gungeon"] = "game:enter_the_gungeon"
+	Cosmetics.set_icon("chest", "chest/enter_the_gungeon")
+	var l := Label.new()
+	l.text = ItemDropModal.chest_heading(3)
+	l.set_meta("glyph_level", ItemDropModal.chest_rank(3))
+	add_child_autofree(l)
+	Cosmetics.apply_glyph(l)
+	assert_false(l.text.contains("🎁"), "the gift is gone")
+	assert_string_contains(l.text, "Large Chest")
+	var art: TextureRect = l.get_node_or_null(Cosmetics.GLYPH_NODE)
+	assert_not_null(art, "a picture stands in its place")
+	assert_string_contains(String(art.get_meta(&"source")), "B_Chest", "a Large chest is the B chest")
+	assert_null(art.get_node_or_null("Level"), "only the trophy carries a number")
+	# A gift nobody sized is the smallest chest, whatever the run's Fracture.
+	var bare := Label.new()
+	bare.text = "🎁 a chest"
+	add_child_autofree(bare)
+	Cosmetics.apply_glyph(bare)
+	assert_string_contains(String(bare.get_node(Cosmetics.GLYPH_NODE).get_meta(&"source")), "D_Chest")
+
+func test_the_chest_on_the_drop_window_is_the_worn_one_at_its_size() -> void:
+	Cosmetics._unlocked["chest/enter_the_gungeon"] = "game:enter_the_gungeon"
+	Cosmetics.set_icon("chest", "chest/enter_the_gungeon")
+	var items: Array = Data.reward_item2_pool().slice(0, 5)
+	if items.size() < 5:
+		pending("fewer than five items to fill a Huge chest")
+		return
+	var host := Control.new()
+	add_child_autofree(host)
+	var modal := ItemDropModal.open(host, items)
+	await wait_process_frames(3)
+	var gifts: Array = modal.find_children(Cosmetics.GLYPH_NODE, "TextureRect", true, false)
+	assert_eq(gifts.size(), 1, "the gift is a picture")
+	if gifts.size() == 1:
+		assert_string_contains(String(gifts[0].get_meta(&"source")), "A_Chest", "a Huge chest is the A chest")
+
+# A set of several icons shows every one of them on its tile's hover (12 Nov 2026).
+func test_a_set_of_several_icons_shows_them_all_on_the_hover() -> void:
+	for id in ["chest/enter_the_gungeon", "difficulty/risk_of_rain_2"]:
+		var e := CosmeticCatalog.entry(id)
+		var kind := String(e["kind"])
+		Cosmetics._unlocked.erase(id)
+		for locked in [true, false]:
+			if not locked:
+				Cosmetics._unlocked[id] = "game:%s" % e["game"]
+			var tiles: Array = CustomizeScreen.slot_tiles(Cosmetics.icon_slot(kind), null, "?",
+				"Default", CosmeticCatalog.icons_of(kind), 64, func() -> void: pass)
+			var found: Button = null
+			for t in tiles:
+				autofree(t)
+				if String(t.get_meta("look", "")) == id:
+					found = t
+			assert_not_null(found, id)
+			var card: Control = found._make_custom_tooltip(found.tooltip_text)
+			autofree(card)
+			assert_not_null(card, "the hover is a card")
+			var shelf: Node = card.find_child("Gallery", true, false)
+			assert_not_null(shelf, "with a gallery")
+			assert_eq(shelf.get_child_count(), (e["images"] as Array).size(), "one picture per icon in the set")
+			for i in (e["images"] as Array).size():
+				var shot: Node = shelf.get_child(i)
+				assert_true(shot.get_child(0) is TextureRect, "a picture")
+				assert_eq((shot.get_child(0) as TextureRect).modulate == Color(0, 0, 0, 1), locked,
+					"a silhouette while it is locked")
+				assert_string_contains((shot.get_child(1) as Label).text, String(e["images"][i]["name"]))
+	# A single icon keeps the plain hover: there is nothing more to show.
+	var single: Array = CustomizeScreen.slot_tiles(Cosmetics.icon_slot("chest"), null, "?",
+		"Default", [CosmeticCatalog.entry("chest/chest_vampire_survivors")], 64, func() -> void: pass)
+	for t in single:
+		autofree(t)
+	assert_false(single[2].has_meta(HoverCard.META))
+
 func test_an_unworn_glyph_is_left_alone() -> void:
 	var l := Label.new()
 	l.text = "🗝 Keys 2"

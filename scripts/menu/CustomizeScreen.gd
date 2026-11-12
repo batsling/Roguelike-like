@@ -7,7 +7,7 @@ extends Control
 #   Characters     each character's costumes, the ICON and the FULL portrait
 #                  chosen separately (a Vampire Survivors costume is both, from
 #                  one picture, and shows in both rows);
-#   Icons          what stands in for 🗝, ✸, 🏆 and 🍀 everywhere they are drawn;
+#   Icons          what stands in for 🗝, ✸, 🏆, 🍀 and 🎁 everywhere they are drawn;
 #   Title Letters  which earned letters the main menu may spell with, a game at a
 #                  time or a letter at a time — refused when what is left could
 #                  not spell the title and the subtitle.
@@ -20,8 +20,8 @@ const TILE := 64
 const LETTER_TILE := 40
 const TABS := ["Characters", "Icons", "Title Letters"]
 const KIND_NAMES := {"key": "Keys", "bomb": "Bombs", "difficulty": "Difficulty (the trophy)",
-	"luck": "Luck"}
-const KIND_GLYPHS := {"key": "🗝", "bomb": "✸", "difficulty": "🏆", "luck": "🍀"}
+	"luck": "Luck", "chest": "Chests"}
+const KIND_GLYPHS := {"key": "🗝", "bomb": "✸", "difficulty": "🏆", "luck": "🍀", "chest": "🎁"}
 
 var _tab := 0
 var _tab_buttons: Array[Button] = []
@@ -161,7 +161,7 @@ func _build_characters() -> void:
 # --- icons --------------------------------------------------------------------------
 
 func _build_icons() -> void:
-	_say("Each stands in for its symbol everywhere it is drawn. A difficulty icon replaces the 🏆 and carries the Fracture number; Risk of Rain 2's changes with the level.")
+	_say("Each stands in for its symbol everywhere it is drawn. A difficulty icon replaces the 🏆 and carries the Fracture number; Risk of Rain 2's changes with the level. A chest icon replaces the 🎁; Enter the Gungeon's changes with the chest's size.")
 	for kind in CosmeticCatalog.KINDS:
 		var block := VBoxContainer.new()
 		block.name = "Kind_%s" % kind
@@ -219,13 +219,40 @@ static func slot_tiles(slot_key: String, default_tex: Texture2D, default_glyph: 
 		var tip := _look_tip(e, locked)
 		var images: Array = e.get("images", [])
 		if images.size() > 1:
-			tip += "\n" + "\n".join(images.map(func(i): return "%s — Fracture %d–%d" % [i["name"], i["min"], i["max"]]))
+			tip += "\n" + "\n".join(images.map(func(i): return "%s — %s" % [i["name"], CosmeticCatalog.range_text(e, i)]))
 		var path := String(e.get("path", "")) if e.has("path") else CosmeticCatalog.image_for(e, 0)
 		var t := tile(CosmeticCatalog.texture(path), "", chosen == key, locked,
 			Cosmetics.is_new(key), tip, pick.call(key), side)
+		# A SET OF SEVERAL ICONS SHOWS ALL OF THEM ON THE HOVER (the owner, 12 Nov
+		# 2026): the tile has room for one picture, so a set (Risk of Rain 2's three
+		# difficulties, Enter the Gungeon's four chests) would otherwise keep the
+		# rest to itself until it was worn and met in a run.
+		if images.size() > 1:
+			HoverCard.attach(t, set_hover(e, locked))
+			t.tooltip_text = tip   # the plain words stay whole for whoever reads them
 		t.set_meta("look", key)
 		out.append(t)
 	return out
+
+# The hover of an icon SET: every picture in it, each over what it is and when it
+# is the one drawn. A locked set is silhouettes, like its tile.
+static func set_hover(e: Dictionary, locked: bool) -> Dictionary:
+	var g: GameData = Data.get_game(StringName(String(e["game"])))
+	var game := g.display_name if g != null else String(e["game"])
+	var gallery: Array = []
+	for i in e.get("images", []):
+		gallery.append({"art": CosmeticCatalog.texture(String(i["path"])), "dark": locked,
+			"text": "%s\n%s" % [i["name"], CosmeticCatalog.range_text(e, i)]})
+	var chest: bool = String(e.get("kind", "")) == "chest"
+	return {
+		"title": ("Locked — %s" % game) if locked else game,
+		"accent": UITheme.TEXT_DIM if locked else UITheme.GOLD,
+		"subtitle": "%d icons, one unlock" % gallery.size(),
+		"gallery": gallery,
+		"lines": ["The chest's size picks the picture." if chest
+			else "The run's Fracture picks the picture."],
+		"note": ("A rank-up reward from %s, or a character from it." % game) if locked else "",
+	}
 
 # --- title letters ----------------------------------------------------------------
 
@@ -453,7 +480,9 @@ func _tile(tex: Texture2D, glyph: String, selected: bool, locked: bool, tip: Str
 # the index marks `pixel`: Rogue's, Dungeon Crawl Stone Soup's).
 static func tile(tex: Texture2D, glyph: String, selected: bool, locked: bool, new: bool,
 		tip: String, on_press: Callable, side: int = TILE, pixel: bool = false) -> Button:
-	var b := Button.new()
+	# A HoverButton, so a tile's hover is the game's own card (HoverCard) and a set
+	# of several icons can show all of them (set_hover).
+	var b: Button = HoverButton.new()
 	b.custom_minimum_size = Vector2(side, side)
 	b.tooltip_text = tip
 	b.focus_mode = Control.FOCUS_NONE

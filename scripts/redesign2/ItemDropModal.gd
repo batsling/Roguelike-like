@@ -434,9 +434,15 @@ func _gift_badge(glyph: String, compact: bool) -> Control:
 	gift.add_theme_color_override("font_color", CHEST_GOLD.lerp(tint, 0.25))
 	gift.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	gift.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	gift.position = centre - Vector2(side, side) * 0.5
-	gift.size = Vector2(side, side)
+	# As wide as the badge, not as the gift: a worn chest icon is laid over room
+	# made of spaces (Cosmetics.apply_glyph), which is a little wider than the
+	# glyph was, and in a box only the glyph's width it sat right of the glow.
+	gift.position = Vector2(0, centre.y - side * 0.5)
+	gift.size = Vector2(side * 1.5, side)
 	gift.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# A worn chest icon stands in for the gift (Cosmetics), and a set of them is
+	# picked by this chest's size: Enter the Gungeon's D, C, B, A.
+	gift.set_meta("glyph_level", rank)
 	badge.add_child(gift)
 	_stars.clear()
 	var count: int = rank + 1

@@ -11,6 +11,23 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Chest icons, the fifth icon kind (the owner, 12 Nov 2026).** A worn chest
+  icon stands in for every 🎁, like the key, bomb, trophy and Luck icons
+  (`images2.0/icons/Chests/`, `Cosmetics.GLYPHS`). Four to earn: The Binding of
+  Isaac's, Rebirth's, Vampire Survivors', and Enter the Gungeon's.
+  - **Gungeon's is four pictures and one unlock.** Its D, C, B and A chests are
+    the Small, Medium, Large and Huge chest: a chest set's `_<lo>-<hi>` range is
+    the chest's SIZE where a difficulty set's is the Fracture, so the drop
+    window's gift passes its own rung (`glyph_level`), and the "N Chests"
+    heading and the report's chest sum pass their biggest chest's. A 🎁 nobody
+    sized is the smallest; only the trophy falls back to the run's Fracture.
+  - **A set of several icons shows all of them on the hover.** Its tile on the
+    Customization screen has room for one picture, so Gungeon's chests and Risk
+    of Rain 2's difficulties now hover as a card with every picture, each over
+    its name and when it is drawn (`CustomizeScreen.set_hover`, `HoverCard`'s new
+    `gallery`); silhouettes while locked. Every tile there is a `HoverButton`, so
+    the rest hover in the game's own box rather than the stock grey tooltip.
+
 - **Follow-ups to the playtest pass (the owner, 12 Nov 2026).**
   - **The white boxes in the mini loot inventory were pills and potions.** Their
     art is `load()`ed afresh on every ask with nothing holding it, a draw command

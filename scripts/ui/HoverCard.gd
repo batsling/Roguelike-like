@@ -48,6 +48,12 @@ extends RefCounted
 #                           its type — what it IS, as against what it does)
 #   pips      Array         optional [{art: Texture2D, text: String, good: bool}]
 #                           drawn as a compact row under the heading
+#   gallery   Array         optional [{art: Texture2D, text: String, dark: bool}]
+#                           drawn as a row of PICTURES with a caption under each,
+#                           for a thing that is several pictures at once (an icon
+#                           set: Risk of Rain 2's three difficulties, Enter the
+#                           Gungeon's four chests). `dark` draws the picture as a
+#                           black silhouette, the way a locked look is drawn.
 #   lines     Array         the facts. KEEP IT TO TWO — this is the condensed
 #                           read, and a card that needs four lines is a card the
 #                           player should be clicking. Usually plain Strings; an
@@ -196,6 +202,15 @@ static func build(cfg: Dictionary) -> Control:
 		for pip in pips:
 			row.add_child(_pip(pip))
 
+	var gallery: Array = cfg.get("gallery", [])
+	if not gallery.is_empty():
+		var shelf := HBoxContainer.new()
+		shelf.name = "Gallery"
+		shelf.add_theme_constant_override("separation", UITheme.GAP)
+		col.add_child(shelf)
+		for shot in gallery:
+			shelf.add_child(_shot(shot))
+
 	for line in cfg.get("lines", []):
 		# A SECTION HEADER, for a card carrying two kinds of fact. Drawn small,
 		# uppercase and faint so it reads as a label over the lines beneath rather
@@ -231,6 +246,32 @@ static func build(cfg: Dictionary) -> Control:
 		n.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
 		col.add_child(n)
 	return panel
+
+# One picture of a gallery, with its caption under it.
+const GALLERY_ART := 56
+
+static func _shot(shot: Dictionary) -> Control:
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", UITheme.GAP_HAIR)
+	var art: Texture2D = shot.get("art")
+	if art != null:
+		var tex: TextureRect = UITheme.crisp_tex(art, GALLERY_ART)
+		# A picture much bigger than its box goes through its mipmaps rather than
+		# being point-shrunk, as on the Customization screen's tiles.
+		if maxi(art.get_width(), art.get_height()) > GALLERY_ART * 2:
+			tex.texture = UITheme.smooth_copy(art)
+			tex.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+		tex.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		if bool(shot.get("dark", false)):
+			tex.modulate = Color(0, 0, 0, 1)
+		box.add_child(tex)
+	var caption := Label.new()
+	caption.text = String(shot.get("text", ""))
+	caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	caption.add_theme_font_size_override("font_size", UITheme.FONT_TINY)
+	caption.add_theme_color_override("font_color", UITheme.TEXT_DIM)
+	box.add_child(caption)
+	return box
 
 # One status pip: its art (or its initial when it has none) with the stack count
 # beside it, gold for something working FOR the thing and red for a tax — the
