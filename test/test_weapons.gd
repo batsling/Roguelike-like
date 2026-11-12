@@ -538,6 +538,26 @@ func test_enchant_weapon_gives_a_weapon_stun_for_the_rest_of_the_run() -> void:
 	GameState.move_loot(4, 5)
 	assert_eq(WeaponSystem.stun_bonus_of(Fixtures.at(5)), 1, "and it moves with the piece")
 
+# The owner, 11 Nov 2026: "when a weapon gets upgraded through the scroll or any
+# other means, it should get a +X on it" — in its name, and as a chip on its tile.
+func test_an_upgraded_weapon_wears_its_plus() -> void:
+	var sword: Dictionary = _weapon(&"wooden_sword", 4)
+	var plain: String = LootSystem.display_name(sword)
+	assert_false(plain.contains("+"), "nothing to wear before an upgrade")
+	var bare: Control = LootGrid.preview_cell(sword)
+	add_child_autofree(bare)
+	assert_null(bare.find_child("Plus", true, false), "and no chip")
+	ScrollSystem.read_scroll(Data.get_scroll(&"scroll_of_enchant_weapon"))
+	ScrollSystem.read_scroll(Data.get_scroll(&"scroll_of_enchant_weapon"))
+	assert_eq(WeaponSystem.plus_of(sword), 2)
+	assert_eq(LootSystem.display_name(sword), plain + " +2", "the name says it")
+	assert_string_contains(String(LootSystem.hover_card(sword).get("title", "")), "+2")
+	var cell: Control = LootGrid.preview_cell(sword)
+	add_child_autofree(cell)
+	var chip: Node = cell.find_child("Plus", true, false)
+	assert_not_null(chip, "and the tile wears a chip")
+	assert_eq((chip as Label).text if chip is Label else str((chip as Node).find_children("*", "Label", true, false)[0].text), "+2")
+
 func test_enchant_weapon_with_no_weapon_does_nothing_and_stays_unread() -> void:
 	var scroll: ScrollData = Data.get_scroll(&"scroll_of_enchant_weapon")
 	ScrollSystem.unidentify(scroll.id)

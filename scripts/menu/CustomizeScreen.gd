@@ -7,7 +7,7 @@ extends Control
 #   Characters     each character's costumes, the ICON and the FULL portrait
 #                  chosen separately (a Vampire Survivors costume is both, from
 #                  one picture, and shows in both rows);
-#   Icons          what stands in for 🗝, ✸ and 🏆 everywhere they are drawn;
+#   Icons          what stands in for 🗝, ✸, 🏆 and 🍀 everywhere they are drawn;
 #   Title Letters  which earned letters the main menu may spell with, a game at a
 #                  time or a letter at a time — refused when what is left could
 #                  not spell the title and the subtitle.
@@ -19,8 +19,9 @@ extends Control
 const TILE := 64
 const LETTER_TILE := 40
 const TABS := ["Characters", "Icons", "Title Letters"]
-const KIND_NAMES := {"key": "Keys", "bomb": "Bombs", "difficulty": "Difficulty (the trophy)"}
-const KIND_GLYPHS := {"key": "🗝", "bomb": "✸", "difficulty": "🏆"}
+const KIND_NAMES := {"key": "Keys", "bomb": "Bombs", "difficulty": "Difficulty (the trophy)",
+	"luck": "Luck"}
+const KIND_GLYPHS := {"key": "🗝", "bomb": "✸", "difficulty": "🏆", "luck": "🍀"}
 
 var _tab := 0
 var _tab_buttons: Array[Button] = []
@@ -463,6 +464,11 @@ static func tile(tex: Texture2D, glyph: String, selected: bool, locked: bool, ne
 	if tex != null:
 		var inset := maxi(2, side / 16)
 		var tr := UITheme.crisp_tex(tex, side - inset * 2, pixel)
+		# A look much bigger than its tile (a 330px icon in 64px) goes through its
+		# mipmaps rather than being point-shrunk (UITheme.fit_art).
+		if not pixel and maxi(tex.get_width(), tex.get_height()) > (side - inset * 2) * 2:
+			tr.texture = UITheme.smooth_copy(tex)
+			tr.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 		tr.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 		tr.offset_left = inset
 		tr.offset_top = inset

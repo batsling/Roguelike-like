@@ -634,7 +634,11 @@ wherever it lands.
 - `stun_bonus` on the piece itself — Stun it has GAINED for the run. **Scroll of
   Enchant Weapon** (`enchant_weapon random 1`) gives a random weapon in the pack
   +1; it moves, saves and evolves with the piece, and the hover says
-  "Enchanted: +1 Stun". With no weapon carried, the scroll does nothing and stays
+  "Enchanted: +1 Stun". **An upgraded weapon wears its +X**: its name everywhere
+  is "Sword +1" (`LootSystem.display_name`, through `WeaponSystem.plus_suffix`)
+  and its tile carries a "+1" chip on the art's top-left corner
+  (`LootGrid._add_plus`). `WeaponSystem.plus_of` is the one number both read, so
+  a new way to upgrade a weapon is added there. With no weapon carried, the scroll does nothing and stays
   unread.
 
 Under **Link Cable** (§15) every aura reaches every weapon in the pack, and the

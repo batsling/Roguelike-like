@@ -116,6 +116,13 @@ var _chest_head: Label = null
 var _chest_why: Control = null
 var _loot_slot: VBoxContainer = null
 var _boss_slot: VBoxContainer = null
+var _unclaimed_note: Label = null
+var _note_tween: Tween = null
+# The way out has been pressed once with something unclaimed, and is asking.
+var _exit_armed: bool = false
+# What was unclaimed when it was last painted, as "chests|loot" ("" before the
+# first paint).
+var _exit_asked_about: String = ""
 var _exit_btn: Button = null
 # The chest sections on screen, one per chest the report dropped — ALL of them at
 # once (see _build_chests), held so the way out can answer whatever is left rather
@@ -390,16 +397,78 @@ func chests_waiting() -> int:
 # the board on the far side of it. A button promising the shop would be naming the
 # thing after the thing that actually opens.
 #
-# NO "(leaving N behind)" ANY MORE. It sat beside "STILL FOLLOWING 2" in red, and
-# on a stream the N read as a count of ENEMIES — the one thing it was not (it
-# was the loot still on the table). The table itself shows what is left, which
-# is the honest place for it.
+# NO "(leaving N behind)" ON THE BUTTON. It sat beside "STILL FOLLOWING 2" in red,
+# and on a stream the N read as a count of ENEMIES — the one thing it was not (it
+# was the loot still on the table). What is unclaimed is said in WORDS beside the
+# button instead (`unclaimed_text`), where "1 chest · 2 loot" cannot be misread.
 func exit_text() -> String:
 	if _event_pending:
 		return "⚑  Go to Event"
 	if _shop_id != &"":
 		return "🛒  Go to Shop"
 	return "→  Travel on"
+
+# --- what is still unclaimed -------------------------------------------------------
+#
+# A PLAYTESTER WALKED PAST ITEMS ON THIS SCREEN (the owner, 11 Nov 2026). The way
+# out was the one green, focused button on it, so Enter — or the eye — went there
+# first and the chest beside it was left unopened. Four things answer that:
+#   * a NOTICE beside the way out says what has not been taken, in gold, pulsing;
+#   * the way out is a NEUTRAL plate while anything is unclaimed and only turns
+#     green once nothing is, so the green on the screen is the Take buttons';
+#   * it does not hold the keyboard focus until then;
+#   * and its FIRST press with something unclaimed does not leave: it asks
+#     ("Leave it behind?"), flashes what is unclaimed, and the second press goes.
+# `dismiss()` itself is unchanged and unconditional — it is what a test, the page
+# and the second press call.
+
+# {chests, loot}: the chests not yet answered and the pieces still on the table.
+func unclaimed() -> Dictionary:
+	var loot: int = 0
+	if _loot_section != null and is_instance_valid(_loot_section):
+		loot = _loot_section.remaining()
+	return {"chests": _live_chests().size() + _chests.size(), "loot": loot}
+
+func unclaimed_count() -> int:
+	var u: Dictionary = unclaimed()
+	return int(u["chests"]) + int(u["loot"])
+
+# "1 chest to open · 2 pieces of loot on the table", or "" when nothing is left.
+func unclaimed_text() -> String:
+	var u: Dictionary = unclaimed()
+	var parts: Array = []
+	if int(u["chests"]) > 0:
+		parts.append("%s to open" % Plural.count(int(u["chests"]), "chest"))
+	if int(u["loot"]) > 0:
+		parts.append("%d piece%s of loot on the table" % [int(u["loot"]),
+			"" if int(u["loot"]) == 1 else "s"])
+	return " · ".join(parts)
+
+# The way out, PRESSED. Leaves at once when nothing is unclaimed; otherwise the
+# first press asks and the second leaves.
+func press_exit() -> void:
+	if _done:
+		return
+	if unclaimed_count() == 0 or _exit_armed:
+		dismiss()
+		return
+	_exit_armed = true
+	_refresh_exit()
+	_flash_unclaimed()
+
+# Draw the eye to what has not been taken: the chests and the table, twice.
+func _flash_unclaimed() -> void:
+	var u: Dictionary = unclaimed()
+	var targets: Array = []
+	if int(u["chests"]) > 0 and _chest_slot != null and is_instance_valid(_chest_slot):
+		targets.append(_chest_slot)
+	if int(u["loot"]) > 0 and _loot_slot != null and is_instance_valid(_loot_slot):
+		targets.append(_loot_slot)
+	for t in targets:
+		var tw: Tween = (t as Control).create_tween()
+		for i in 2:
+			tw.tween_property(t, "modulate", Color(1.6, 1.45, 0.9), 0.16)
+			tw.tween_property(t, "modulate", Color.WHITE, 0.22)
 
 
 # ---------------------------------------------------------------------------
@@ -907,11 +976,20 @@ func _empty_note(text: String) -> Control:
 func _footer() -> Control:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", UITheme.GAP_LOOSE)
-	# NO LINE BESIDE THE WAY OUT. It named the same destination the button does
-	# ("…then on to the event" beside "Go to Event"); the button is enough.
-	var gap := Control.new()
-	gap.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_child(gap)
+	# WHAT IS STILL UNCLAIMED, where the destination line used to be ("…then on to
+	# the event" said what the button says; this says what the button would leave).
+	# It takes the row's spare width, so the buttons stay hard right.
+	_unclaimed_note = Label.new()
+	_unclaimed_note.name = "UnclaimedNote"
+	_unclaimed_note.add_theme_font_size_override("font_size", UITheme.FONT_SUB)
+	_unclaimed_note.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_unclaimed_note.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_unclaimed_note.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_unclaimed_note.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_unclaimed_note.clip_text = true
+	_unclaimed_note.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	_unclaimed_note.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(_unclaimed_note)
 	# ★ RATE, IMMEDIATELY LEFT OF THE WAY OUT. This is the moment there is anything
 	# to say — the game is over and the score is the last thing the evening
 	# produces — but saying it in a corner of the header meant nobody saw it. The
@@ -924,7 +1002,7 @@ func _footer() -> Control:
 	if g != null:
 		row.add_child(_rate_button(g))
 	_exit_btn = UITheme.confirm_button(exit_text(), Vector2(260, 42), UITheme.FONT_SUB)
-	_exit_btn.pressed.connect(dismiss)
+	_exit_btn.pressed.connect(press_exit)
 	row.add_child(_exit_btn)
 	# Deferred, because this row is built before it is parented and `grab_focus` on
 	# a Control outside the tree fails outright — and GUARDED for the same reason
@@ -933,13 +1011,59 @@ func _footer() -> Control:
 	_focus_exit.call_deferred()
 	return row
 
+# The way out takes the keyboard only once nothing is unclaimed: focused, Enter
+# leaves, and that is how a chest gets walked past.
 func _focus_exit() -> void:
-	if _exit_btn != null and is_instance_valid(_exit_btn) and _exit_btn.is_inside_tree():
+	if _exit_btn == null or not is_instance_valid(_exit_btn) or not _exit_btn.is_inside_tree():
+		return
+	if unclaimed_count() == 0:
 		_exit_btn.grab_focus()
+	elif _exit_btn.has_focus():
+		_exit_btn.release_focus()
 
 func _refresh_exit() -> void:
-	if _exit_btn != null and is_instance_valid(_exit_btn):
-		_exit_btn.text = exit_text()
+	if _exit_btn == null or not is_instance_valid(_exit_btn):
+		return
+	var left: int = unclaimed_count()
+	# Taking or leaving something un-asks the question: the next press asks afresh
+	# about what is left NOW. Compared as chests AND loot, not as their sum: a
+	# relic taken from a chest can pay a piece onto the table (Mom's Coin Purse),
+	# which is one chest fewer and one piece more — the same total, a different
+	# table.
+	var u: Dictionary = unclaimed()
+	var now: String = "%d|%d" % [int(u["chests"]), int(u["loot"])]
+	if now != _exit_asked_about:
+		if _exit_asked_about != "":
+			_exit_armed = false
+		_exit_asked_about = now
+	if left == 0:
+		_exit_armed = false
+	_exit_btn.text = ("Leave it behind?  " + exit_text()) if _exit_armed else exit_text()
+	UITheme.tint_action_button(_exit_btn,
+		UITheme.SUCCESS if left == 0 else UITheme.DANGER if _exit_armed else UITheme.TEXT_DIM)
+	_exit_btn.tooltip_text = "" if left == 0 else (
+		"Still here: %s. Press twice to leave it behind." % unclaimed_text())
+	if _unclaimed_note != null and is_instance_valid(_unclaimed_note):
+		_unclaimed_note.text = "" if left == 0 else "⚠  Not taken yet: %s" % unclaimed_text()
+		_unclaimed_note.add_theme_color_override("font_color",
+			UITheme.DANGER.lerp(Color.WHITE, 0.25) if _exit_armed else UITheme.GOLD)
+		_pulse_note(left > 0)
+	_focus_exit.call_deferred()
+
+# The notice breathes while it has something to say, so it is seen without being
+# read first.
+func _pulse_note(on: bool) -> void:
+	if _note_tween != null and _note_tween.is_valid():
+		if on:
+			return
+		_note_tween.kill()
+	_note_tween = null
+	_unclaimed_note.modulate = Color.WHITE
+	if not on or not _unclaimed_note.is_inside_tree():
+		return
+	_note_tween = _unclaimed_note.create_tween().set_loops()
+	_note_tween.tween_property(_unclaimed_note, "modulate:a", 0.55, 0.7)
+	_note_tween.tween_property(_unclaimed_note, "modulate:a", 1.0, 0.7)
 
 
 # ---------------------------------------------------------------------------

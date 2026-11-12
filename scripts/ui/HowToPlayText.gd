@@ -690,11 +690,14 @@ static func _ch_gold() -> Dictionary:
 				+ "the goal was the price either way. Bombing pays nothing at all."),
 			_h("Where the shops are: the shop bar"),
 			_p(("There are no shops on the map until you open one. The 🛒 SHOP "
-				+ "BAR, beside your gold, fills by one for every enemy you defeat "
-				+ "(a boss is one too; a bomb is none). When it is full, press it to "
-				+ "open a shop at the game you are standing at — before you play "
-				+ "it or after. The first shop costs %d kills, and every shop after "
-				+ "it one more.") % ShopSystem.BAR_BASE),
+				+ "BAR, on the board's DIFFICULTY strip, fills by one for every "
+				+ "enemy you defeat (a boss is one too; a bomb is none). When it is "
+				+ "full, a 🛒 Open Shop button comes up under the games to choose from: press "
+				+ "it to open a shop at the game you are standing at. The first "
+				+ "shop costs %d kills, and every shop after it one more.") % ShopSystem.BAR_BASE),
+			_b("You shop BETWEEN games, never during one. While a game is in play "
+				+ "the bar only counts; the 🛒 button is back the moment the game "
+				+ "is over."),
 			_b("The shop STAYS at that game for the rest of the run. Come back to "
 				+ "the game and it is still there; the 🗺 map, the route and the "
 				+ "game's card all wear a 🛒 so you can find it."),

@@ -202,6 +202,20 @@ static func retriggers_for(index: int) -> int:
 static func stun_bonus_of(entry) -> int:
 	return maxi(0, int((entry as Dictionary).get("stun_bonus", 0))) if is_weapon(entry) else 0
 
+# THE +X AN UPGRADED WEAPON WEARS (the owner, 11 Nov 2026: "when a weapon gets
+# upgraded through the scroll or any other means, it should get a +X on it"). X is
+# every point of Stun the PIECE ITSELF has gained for the run, which today is
+# `stun_bonus`; a new way to upgrade a weapon adds to that key, or is summed in
+# here, and the name and the tile's chip follow. A neighbour's aura (Whetstone) is
+# not an upgrade: it leaves when the neighbour does.
+static func plus_of(entry) -> int:
+	return stun_bonus_of(entry)
+
+# " +2" for an upgraded weapon, "" for any other piece.
+static func plus_suffix(entry) -> String:
+	var n: int = plus_of(entry)
+	return " +%d" % n if n > 0 else ""
+
 # Lightning Ring's Replays — how many strikes past the first each swing makes.
 static func replays_of(entry) -> int:
 	return maxi(0, int((entry as Dictionary).get("replays", 0))) if is_weapon(entry) else 0

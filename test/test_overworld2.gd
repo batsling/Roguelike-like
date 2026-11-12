@@ -3888,6 +3888,12 @@ func test_the_play_verbs_sit_beside_the_cover() -> void:
 			"%s is to the right of the cover" % btn.text.split("\n")[0])
 		assert_lt(btn.global_position.y, cover.get_global_rect().end.y,
 			"and beside it rather than under it")
+	# PLAY IS THE TOP OF THE PANEL (the owner, 12 Nov 2026), on a line of its own.
+	assert_lte(_ui._launch_row.global_position.y, cover.global_position.y,
+		"the Play row is above the cover")
+	# …and the timer strip is off the page for now.
+	_ui._refresh_split_panel()
+	assert_false(_ui._split_panel.visible, "no clock on the page")
 
 func test_the_biggest_board_still_fits_one_window() -> void:
 	# The board gains a column AND a row per difficulty step; the top of the
@@ -7616,6 +7622,61 @@ func test_the_way_out_does_not_print_a_count_beside_the_follower_tally() -> void
 		"and the way out names a place, not a number: %s" % screen.exit_text())
 	Page.leave_post_game(_ui)
 
+# A PLAYTESTER WALKED PAST ITEMS ON THIS SCREEN (the owner, 11 Nov 2026). What is
+# unclaimed is said beside the way out, the way out asks ONCE before leaving it,
+# and it only takes the keyboard when there is nothing left to take.
+func test_the_way_out_asks_once_before_leaving_something_unclaimed() -> void:
+	_pick_enemies(0)
+	Page.report_beat(_ui)
+	_ui._end_resolve()
+	var screen := _haul()
+	assert_not_null(screen)
+	if screen == null:
+		return
+	if screen.unclaimed_count() == 0:
+		pending("this report left nothing on the table")
+		Page.leave_post_game(_ui)
+		return
+	var note: Label = screen.find_child("UnclaimedNote", true, false)
+	assert_not_null(note)
+	assert_string_contains(note.text, "Not taken yet", "the footer says what is unclaimed")
+	assert_string_contains(note.text, screen.unclaimed_text())
+	var left := [false]
+	screen.finished.connect(func(): left[0] = true)
+	screen.press_exit()
+	assert_false(left[0], "the first press does not leave")
+	assert_string_contains(screen._exit_btn.text, "Leave it behind?", "it asks")
+	assert_string_contains(screen._exit_btn.text, screen.exit_text(),
+		"and still names where it goes")
+	# Taking something un-asks the question, about what is left now.
+	# LEFT rather than taken, and compared as chests-and-loot rather than a total:
+	# a relic taken from a chest can pay a piece onto the table (Mom's Coin Purse),
+	# which is one fewer and one more — this failed in CI on exactly that roll.
+	var before: Dictionary = screen.unclaimed()
+	if screen.chest() != null:
+		screen.chest().leave()
+	elif screen.payout() != null:
+		screen.payout().leave()
+	assert_ne(screen.unclaimed(), before, "the table changed")
+	if screen.unclaimed_count() > 0:
+		assert_false(screen._exit_btn.text.contains("Leave it behind?"),
+			"a change on the table puts the question away")
+		screen.press_exit()
+		assert_false(left[0], "and the next press asks again")
+	screen.press_exit()
+	assert_true(left[0], "the second press — or the first with nothing left — leaves")
+	_ui._post_screen = null
+
+func test_the_way_out_leaves_at_once_when_nothing_is_unclaimed() -> void:
+	var screen := PostCombatScreen.open(_ui, {}, [], false)
+	assert_eq(screen.unclaimed_count(), 0)
+	assert_eq(screen.unclaimed_text(), "")
+	var left := [false]
+	screen.finished.connect(func(): left[0] = true)
+	screen.press_exit()
+	assert_true(left[0])
+	_ui._post_screen = null
+
 # The payout is a column of the same screen rather than a modal after it, and it
 # is the REAL one — the same live 3x3, the same bin, the same "use it where you
 # stand" — so a piece taken here lands in the pack exactly as it does anywhere.
@@ -8461,18 +8522,36 @@ func test_a_crowded_board_does_not_push_the_page_past_the_window() -> void:
 	for _i in range(4):
 		await get_tree().process_frame
 	_assert_fits("the report screen with %d bodies standing" % GameLoop2.stack.size())
+	# IT SHRINKS TO FIT BEFORE IT SCROLLS (the owner, 11 Nov 2026: "make sure no
+	# scrolling required on the combat screen"): a second column first, then a
+	# smaller scale, so every row is on screen at once.
+	for _i in range(8):
+		await get_tree().process_frame
+	_assert_fits("…and once the checklist has settled")
 	var shown: float = _ui._verify_scroll.size.y
-	var content: float = _ui._verify_box.get_combined_minimum_size().y
-	assert_lt(shown, content,
-		"the checklist scrolls rather than growing (%.0f shown of %.0f)" % [shown, content])
-	assert_gte(shown, minf(content, OVERWORLD.CHECKLIST_FLOOR),
-		"and it is never squeezed below its floor")
-	# The box keeps the PANEL's width — the load-bearing half of the fix. Laid
-	# out at its minimum width instead (~130px), every goal wraps a word a line.
-	# Less the scrollbar's lane, which it has now because the list scrolls.
-	var lane: float = _ui._verify_scroll.get_v_scroll_bar().size.x
-	assert_almost_eq(_ui._verify_box.size.x, _ui._verify_scroll.size.x - lane, 1.0,
-		"the rows are as wide as the panel they sit in, less the scrollbar")
+	var content: float = _ui._verify_box.get_combined_minimum_size().y \
+		* _ui.checklist_scale()
+	assert_gt(_ui._verify_box.columns, 1, "a long list flows into a second column")
+	assert_gte(_ui.checklist_scale(), OVERWORLD.CHECKLIST_MIN_SCALE,
+		"and is never drawn smaller than the floor")
+	assert_lte(content, shown + 1.0,
+		"so nothing is left to scroll to (%.0f of content in %.0f)" % [content, shown])
+	# The box still spans the PANEL — the load-bearing half of the original fix.
+	# Laid out at its minimum width instead (~130px), every goal wraps a word a
+	# line. Scaled, it is laid out that much wider so that it spans it drawn.
+	assert_almost_eq(_ui._verify_box.size.x * _ui.checklist_scale(),
+		_ui._verify_scroll.size.x, 1.5,
+		"the rows are as wide as the panel they sit in")
+
+# A list that fits is left exactly as it was: one column, full size.
+func test_a_checklist_that_fits_is_not_split_or_shrunk() -> void:
+	_at_720p()
+	_pick_enemies(0)
+	_ui._refresh()
+	for _i in range(8):
+		await get_tree().process_frame
+	assert_eq(_ui._verify_box.columns, 1)
+	assert_almost_eq(_ui.checklist_scale(), 1.0, 0.001)
 
 func test_a_short_checklist_is_not_given_a_scrollbar() -> void:
 	_pick_enemies(0)
@@ -10984,6 +11063,7 @@ func test_a_road_with_no_enemy_says_so_in_words() -> void:
 # strip is its top line.
 func test_the_split_strip_is_one_row_and_the_list_is_a_popup() -> void:
 	_pick_enemies(0)
+	_ui.timer_on_page = true
 	_ui._refresh_split_panel()
 	assert_true(_ui._split_panel.visible, "a run in play has a clock to show")
 	assert_true(_ui._split_panel is HBoxContainer, "the strip is a single row")
@@ -11025,6 +11105,7 @@ func test_the_splits_list_carries_a_row_per_game_and_per_try() -> void:
 # The clock counts real time for as long as the app is open, so answering the door
 # should not cost the run twelve minutes. Nothing else about the run pauses.
 func test_the_pause_button_stops_both_clocks_and_nothing_else() -> void:
+	_ui.timer_on_page = true
 	_pick_enemies(0)
 	_ui._refresh_split_panel()
 	assert_false(RunTimer.paused, "a run starts running")

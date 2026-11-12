@@ -24,7 +24,7 @@ extends RefCounted
 # Overworld2 names ReportChecklist and two class_names that name each other are a
 # cyclic reference Godot resolves badly.
 var _page: Node = null
-var _box: VBoxContainer = null       # the page's _verify_box
+var _box: Container = null           # the page's _verify_box (a ChecklistFlow)
 var _launch: HBoxContainer = null    # the page's _launch_row
 
 # The per-game tick state, PUBLIC because it is this class's whole output and the
@@ -75,7 +75,7 @@ var _sig: String = ""
 # something DID, while a game is in play (see play_panel_stale).
 var _play_sig: String = ""
 
-func _init(page: Node, box: VBoxContainer, launch: HBoxContainer) -> void:
+func _init(page: Node, box: Container, launch: HBoxContainer) -> void:
 	_page = page
 	_box = box
 	_launch = launch
@@ -1756,6 +1756,8 @@ func _add_row(node: Control, sunk: bool = false, nested: bool = false) -> void:
 		pad.add_theme_constant_override("margin_left", NEST_INDENT)
 		pad.add_child(node)
 		added = pad
+		# Kept in its parent's column when the list flows into two (ChecklistFlow).
+		pad.set_meta(&"nested", true)
 	if sunk:
 		_sunk.append(added)
 	else:

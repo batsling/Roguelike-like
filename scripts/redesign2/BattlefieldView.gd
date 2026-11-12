@@ -88,6 +88,11 @@ var _spawn_price: Label             # "☠ +2 on a loss" (§19.8)
 var _boss_count: Label              # "boss in 2 spawns" (§19.8)
 var _size_label: Label              # "Medium difficulty"
 var _location_chip: LocationChip     # the run's location, beside the difficulty
+var shop_bar_slot: HBoxContainer    # where the shop bar stands, on the same line
+# The page's shop bar chip, handed over BEFORE the board enters the tree (the
+# strip is built in _ready). Null on a board nothing gave one to (a test's, the
+# Collection's preview), which simply has no bar.
+var shop_bar: Control = null
 var _hero_icon: TextureRect
 var _hero_hp: Label
 var _hero_statuses: HBoxContainer   # the player's statuses, under the portrait (§13)
@@ -776,6 +781,19 @@ func _build_pressure_bar() -> Control:
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	head.add_child(spacer)
+
+	# THE SHOP BAR (§19.10), on the difficulty's line (the owner, 11 Nov 2026: "put
+	# shop bar in difficulty area"). It is filled by the bodies that fall on this
+	# board, so it is read here beside what stands them up, and it is a METER here
+	# — the way INTO a shop is the 🛒 button on the offering, between games. The
+	# page builds the chip and owns it (Overworld2._build_shop_bar_chip); the board
+	# only keeps the place.
+	shop_bar_slot = HBoxContainer.new()
+	shop_bar_slot.name = "ShopBarSlot"
+	shop_bar_slot.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	head.add_child(shop_bar_slot)
+	if shop_bar != null and is_instance_valid(shop_bar) and shop_bar.get_parent() == null:
+		shop_bar_slot.add_child(shop_bar)
 
 	# THE LOCATION (docs/locations-design.md §6), on the difficulty's own line,
 	# since the two change at the same moment. It answers its own hover and its

@@ -1283,6 +1283,7 @@ static func _cell_body(entry: Dictionary, use_cb: Callable, locked_now: bool,
 		span.custom_minimum_size = Vector2(0, LootSlot.ART_BAND)
 		col.add_child(span)
 		_add_progress(span, extras)
+		_add_plus(span, entry)
 		# A WEAPON is a big piece that is USED (docs/loot-passives.md §12): its charge
 		# in the corner, and Swing / Evolve where a trinket says "Passive".
 		if LootSystem.is_weapon(entry):
@@ -1330,6 +1331,7 @@ static func _cell_body(entry: Dictionary, use_cb: Callable, locked_now: bool,
 
 	var known: bool = LootSystem.is_identified(entry)
 	_add_progress(band, extras)
+	_add_plus(band, entry)
 	# THE PREFERENCE, IN ITS OWN COLOUR, ON THE ART — the corner the pack strip draws
 	# a relic's counter in, for the same reason: the fact belongs to the picture of
 	# the thing, so a grid can be read in one glance without any cell growing a
@@ -1537,6 +1539,23 @@ static func _passive_plate(text: String, tip: String) -> Control:
 	plate.mouse_filter = Control.MOUSE_FILTER_PASS
 	plate.tooltip_text = tip
 	return plate
+
+# AN UPGRADED WEAPON'S +X, on the art's top-LEFT corner (the owner, 11 Nov 2026).
+# The name says it too (LootSystem.display_name), but a tile's name is one clipped
+# line and "Lightning Ri…" loses exactly the two characters that matter. Top-left
+# because top-right is the food's progress and the bottom two are the charge's
+# and the Preference's.
+const PLUS_COLOR := Color(0.62, 0.86, 1.0)
+
+static func _add_plus(on: Control, entry: Dictionary) -> void:
+	var n: int = WeaponSystem.plus_of(entry)
+	if n <= 0:
+		return
+	var chip := UITheme.chip("+%d" % n, PLUS_COLOR, UITheme.FONT_SMALL)
+	chip.name = "Plus"
+	chip.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	chip.tooltip_text = "Upgraded: +%d Stun for the rest of the run." % n
+	on.add_child(chip)
 
 # A WEAPON'S CHARGE, "1/3", in the bottom-left corner — green once it can swing.
 static func _weapon_chip(entry: Dictionary) -> Control:

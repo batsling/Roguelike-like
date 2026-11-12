@@ -201,6 +201,11 @@ To stop the column growing past a width you choose, put
 
 ## The speedrun clock
 
+> **Off the game's own page since 12 Nov 2026** (`Overworld2.timer_on_page`,
+> false): the strip beside the cover, its pause button and the splits list are
+> built but hidden. `RunTimer` still counts, and the overlay's clock below is
+> unchanged; it is a card of a browser source the streamer chooses to show.
+
 A run here is a stack of real games played one after another, which is a
 speedrun with unusually long splits — so it is timed like one. `RunTimer` keeps
 three numbers and the overlay draws all three:

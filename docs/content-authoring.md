@@ -60,8 +60,8 @@ To add or replace art:
 ### Costumes and icons
 
 Costumes go in `images2.0/characters/Costumes Icon|Full|Both/` as
-`<Character>_<Costume>.png`, and key, bomb and difficulty icons go in
-`images2.0/icons/Keys|Bombs|Difficulties/` as `<Name>_<Game>.png`. Then run
+`<Character>_<Costume>.png`, and key, bomb, difficulty and Luck icons go in
+`images2.0/icons/Keys|Bombs|Difficulties|Luck/` as `<Name>_<Game>.png`. Then run
 `python3 tools/build_cosmetics_index.py`. Each one is a rank-up reward from its
 game; `docs/customization.md` §2 has the naming rules and the overrides.
 

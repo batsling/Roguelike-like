@@ -304,6 +304,15 @@ var _now_playing_cover: TextureRect # the chosen game's cover, beside it
 # in play at the bottom and still moving, and the run's total under a rule. See
 # _build_split_panel.
 var _split_panel: Control = null
+# THE TIMER IS OFF THE PAGE FOR NOW (the owner, 12 Nov 2026: "let's get rid of the
+# timer mechanic for now"). The strip — the clock, its pause button and the splits
+# list — is still built and still works; this is the one switch that shows it.
+# RunTimer itself keeps counting: Camp reads it, a save carries it, and the OBS
+# overlay's clock is a browser source the streamer adds or leaves out.
+var timer_on_page: bool = false
+# The now-playing cover, as a share of an offering card's: the height of the Lost
+# a run strip beside it.
+const NOW_PLAYING_COVER_SCALE := 0.36
 var _splits_popup: Control = null
 var _split_rows: VBoxContainer = null    # one row per game, plus its tries
 var _split_total: Label = null           # the run's own line
@@ -313,7 +322,7 @@ var _split_pause_btn: Button = null
 # _refresh_split_panel).
 var _split_paused_shown: int = -1
 var _launch_row: HBoxContainer
-var _verify_box: VBoxContainer      # clean checklist: goal + level-up + follower goals
+var _verify_box: ChecklistFlow      # clean checklist: goal + level-up + follower goals
 var _verify_scroll: ScrollContainer  # _verify_box's frame, capped by _fit_checklist
 var _fit_checklist_queued: bool = false
 # The least the checklist is ever squeezed to, however little room the page has:
@@ -3224,14 +3233,57 @@ func _queue_fit_checklist() -> void:
 	_fit_checklist_queued = true
 	_fit_checklist.call_deferred()
 
+#
+# AND IT SHRINKS TO FIT BEFORE IT SCROLLS (the owner, 11 Nov 2026: "make sure no
+# scrolling required on the combat screen"). A list longer than its room is drawn
+# first laid out in TWO COLUMNS (ChecklistFlow) — most rows are a short sentence
+# that was leaving half the panel empty — and, if that is still too tall, drawn
+# SMALLER: the whole box scaled down, and laid out that much WIDER so the scaled
+# rows still span the panel (and a goal that wrapped at full size usually stops
+# wrapping, which is height back for free). Everything stays on screen at once:
+# the rows, their tick boxes, the portraits that pair them with the board. The
+# scrollbar is still there underneath as the last resort, past CHECKLIST_MIN_SCALE
+# — some twenty-five rows on a 720p window — where smaller would stop being legible.
+#
+# The scale only ever SHRINKS while the same rows are up, with a few guarded
+# steps back up, because the height it is fitting depends on the width it sets
+# (wider rows wrap less): free to move both ways it can chase its own tail. A
+# different list (the row count, or the room) starts again from full size.
+const CHECKLIST_MIN_SCALE := 0.5
+const CHECKLIST_REGROW_STEPS := 2
+# The fewest rows worth splitting: under this a second column is two stubs.
+const CHECKLIST_SPLIT_ROWS := 5
+var _verify_fit: Control = null         # the scaled box's frame inside the scroll
+var _checklist_scale: float = 1.0
+var _checklist_fit_sig: String = ""
+var _checklist_regrow: int = 0
+var _checklist_unsplit_tries: int = 0
+
+func checklist_scale() -> float:
+	return _checklist_scale
+
 func _fit_checklist() -> void:
 	_fit_checklist_queued = false
 	if _verify_scroll == null or not is_instance_valid(_verify_scroll) \
 			or _scroll == null or _left_col == null:
 		return
-	var content: float = _verify_box.get_combined_minimum_size().y
 	var room: float = _scroll.size.y
-	var want: float = content
+	# ONLY WHILE A GAME IS IN PLAY. Between games the same box holds the standing
+	# Goals list under the offering, in what little the cards leave it; split and
+	# shrunk there it was a cramped footnote, so it keeps its scroll (12 Nov 2026).
+	var fitting: bool = _phase == Phase.PLAYING
+	var sig: String = "%d|%d|%d" % [_verify_box.get_child_count(), int(room), int(fitting)]
+	if sig != _checklist_fit_sig:
+		_checklist_fit_sig = sig
+		_checklist_scale = 1.0
+		_checklist_regrow = CHECKLIST_REGROW_STEPS
+		_verify_box.columns = 1
+		_checklist_unsplit_tries = 1
+		_lay_checklist()
+	var s: float = _checklist_scale
+	var content: float = _verify_box.get_combined_minimum_size().y
+	var shown: float = content * s
+	var want: float = shown
 	if room > 0.0 and _scroll.get_child_count() > 0:
 		var page: Control = _scroll.get_child(0)
 		var main_row: Control = _left_col.get_parent()
@@ -3242,10 +3294,55 @@ func _fit_checklist() -> void:
 		var beside: float = _left_col.get_combined_minimum_size().y \
 			- _verify_scroll.custom_minimum_size.y
 		var budget: float = room - outside - beside
-		want = clampf(budget, minf(content, CHECKLIST_FLOOR), content)
+		if not fitting:
+			pass
+		elif _verify_box.columns > 1 and is_equal_approx(s, 1.0) \
+				and _checklist_unsplit_tries > 0 and shown * 1.7 <= budget:
+			# A SPLIT MADE TOO EARLY IS TAKEN BACK, ONCE. The first fit can run
+			# while the page is still settling (the offering not yet put away, the
+			# rows not yet at their width), measure a list far taller than it is,
+			# and split one that fits. With this much room over, the plain list is
+			# tried again; if it really does not fit it splits again and stays.
+			_checklist_unsplit_tries -= 1
+			_verify_box.columns = 1
+			_queue_fit_checklist.call_deferred()
+		elif budget > 0.0 and shown > budget + 0.5 and _verify_box.columns == 1 \
+				and _verify_box.get_child_count() >= CHECKLIST_SPLIT_ROWS:
+			# A second column first; the next pass measures it and scales if it
+			# is still too tall.
+			_verify_box.columns = 2
+			_queue_fit_checklist.call_deferred()
+		elif budget > 0.0 and shown > budget + 0.5 and s > CHECKLIST_MIN_SCALE:
+			# A pixel under, so rounding never leaves a one-pixel scrollbar.
+			s = maxf(CHECKLIST_MIN_SCALE, s * (budget - 1.0) / shown)
+		elif budget > 0.0 and s < 1.0 and shown < budget * 0.9 and _checklist_regrow > 0:
+			_checklist_regrow -= 1
+			s = minf(1.0, s * budget / shown * 0.97)
+		if not is_equal_approx(s, _checklist_scale):
+			_checklist_scale = s
+			shown = content * s
+		want = clampf(budget, minf(shown, CHECKLIST_FLOOR), shown)
+	_lay_checklist()
 	want = floorf(maxf(want, 0.0))
 	if absf(want - _verify_scroll.custom_minimum_size.y) >= 1.0:
 		_verify_scroll.custom_minimum_size.y = want
+
+# Stand the box in its frame at the current scale: `1 / scale` times the frame's
+# width, so that scaled it spans the frame exactly. The frame is a plain Control
+# (a container would undo the scale), so the box's size is set by hand, and its
+# own minimum height changing — a goal re-wrapping at the new width — comes back
+# round through `_queue_fit_checklist`.
+func _lay_checklist() -> void:
+	if _verify_fit == null or not is_instance_valid(_verify_fit):
+		return
+	var s: float = _checklist_scale
+	var h: float = _verify_box.get_combined_minimum_size().y
+	_verify_box.scale = Vector2(s, s)
+	_verify_box.position = Vector2.ZERO
+	_verify_box.size = Vector2(_verify_fit.size.x / s, h)
+	var tall: float = floorf(h * s)
+	if absf(tall - _verify_fit.custom_minimum_size.y) >= 1.0:
+		_verify_fit.custom_minimum_size.y = tall
 
 # --- the shop (§14.4) -------------------------------------------------------
 
@@ -3264,12 +3361,22 @@ func _arrive_at_shop() -> void:
 	_set_shop_here(GameState.current_game_id)
 	_shop_entered_here = false
 
+# A SHOP IS WALKED INTO BETWEEN GAMES, NEVER DURING ONE (the owner, 11 Nov 2026:
+# "go to shop only when outside of combat, and have that show up there"). While a
+# game is in play the bar is a meter and the 🛒 button is put away with the
+# offering it stands on; both come back the moment the game is reported. The haul
+# screen's "Go to Shop" lands here too, by which time the run is back on SELECT.
+func can_shop_now() -> bool:
+	return _phase == Phase.SELECT and not GameLoop2.run_over \
+		and GameState.current_game_id != &""
+
 # THE SHOP BAR, PRESSED (§19.10). Standing at a game with a shop opens it; standing
 # at one without, with the bar full, opens a new shop here and then walks in.
-# Returns the pop-up, or null when there was nothing to open.
+# Returns the pop-up, or null when there was nothing to open — which, since 11 Nov
+# 2026, includes any press while a game is in play (`can_shop_now`).
 func press_shop_bar():
 	var here: StringName = GameState.current_game_id
-	if GameLoop2.run_over or here == &"":
+	if not can_shop_now():
 		return null
 	if not ShopSystem.is_shop(here):
 		if not ShopSystem.open_at(here):
@@ -3288,7 +3395,7 @@ func press_shop_bar():
 func open_shop():
 	if _shop_modal != null and is_instance_valid(_shop_modal):
 		return _shop_modal
-	if _shop_here == &"" or GameLoop2.run_over:
+	if _shop_here == &"" or not can_shop_now():
 		return null
 	_shop_modal = load(SHOP_MODAL_SCRIPT).open(self, _shop_here)
 	if _shop_modal == null:
@@ -3313,13 +3420,32 @@ func open_shop():
 # reads as the thing to press. Always "Shop", never the keeper's name: a name is a
 # width, and the left column's width is the 720p page's fit (the pop-up names the
 # keeper the moment it opens).
+#
+# IT IS ALSO HOW A NEW SHOP IS OPENED (11 Nov 2026). The bar moved to the board's
+# DIFFICULTY strip and became a meter, so a full bar puts this same button up as
+# "🛒 Open Shop" at a game with none. Either way it stands on the offering's
+# heading, which is only on screen between games — the one time a shop may be
+# walked into (`can_shop_now`).
 func _paint_shop_button() -> void:
+	_paint_shop_bar()
+
+# The button's own face. Painted from `_paint_shop_bar`, because everything that
+# moves the bar (a kill, an arrival, a report) can change what this says.
+func _paint_shop_btn_face() -> void:
 	if _shop_btn == null or not is_instance_valid(_shop_btn):
 		return
-	_shop_btn.visible = _shop_here != &""
-	if _shop_here != &"" and ShopSystem.has_seen(_shop_here):
+	var here: StringName = GameState.current_game_id
+	var can_open: bool = _shop_here == &"" and here != &"" and not GameLoop2.run_over \
+		and ShopSystem.can_open_at(here)
+	_shop_btn.visible = _shop_here != &"" or can_open
+	_shop_btn.text = "🛒  Open Shop" if can_open else "🛒  Shop"
+	if can_open:
+		_shop_btn.tooltip_text = ("The shop bar is full. Open a shop at this game — it stays "
+			+ "here for the rest of the run.")
+	elif _shop_here != &"" and ShopSystem.has_seen(_shop_here):
 		_shop_btn.tooltip_text = ShopSystem.headline(_shop_here)
-	_paint_shop_bar()
+	else:
+		_shop_btn.tooltip_text = "There is a shop at this game. Walk in."
 
 func _build_shop_button() -> Button:
 	var btn := HoverButton.new()
@@ -3336,7 +3462,7 @@ func _build_shop_button() -> Button:
 	btn.add_theme_color_override("font_color", green.lerp(Color.WHITE, 0.55))
 	btn.add_theme_color_override("font_hover_color", Color.WHITE)
 	btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	btn.pressed.connect(func(): open_shop())
+	btn.pressed.connect(func(): press_shop_bar())
 	return btn
 
 # Everything mounted under the board because the run is STANDING HERE: the node's
@@ -3417,7 +3543,7 @@ func _clear_shop() -> void:
 # only its own answer.
 func _wants_process() -> bool:
 	return (_loot_panel != null and is_instance_valid(_loot_panel)) \
-		or (RunTimer.run_running and not RunTimer.paused)
+		or (timer_on_page and RunTimer.run_running and not RunTimer.paused)
 
 func _process(_delta: float) -> void:
 	_follow_loot_overlay()
@@ -3496,6 +3622,9 @@ func toggle_timer_pause() -> void:
 # the clock is alive, and one of them saying it is enough.
 func _refresh_split_panel() -> void:
 	if _split_panel == null or not is_instance_valid(_split_panel):
+		return
+	if not timer_on_page:
+		_split_panel.visible = false
 		return
 	if not RunTimer.run_running and RunTimer.splits.is_empty():
 		_split_panel.visible = false
@@ -6705,11 +6834,15 @@ func _paint_gold_chip() -> void:
 		UITheme.COIN_GOLD.lerp(UITheme.TEXT_DIM, 0.55) if GameState.gold <= 0 else UITheme.COIN_GOLD)
 
 
-# THE SHOP BAR (§19.10), beside the purse because the two are read together: what
-# you can spend, and how far off the next place to spend it is. It is a button so
-# the shop is reachable from INSIDE a game — the offering panel, where the 🛒 Shop
-# button stands, is put away while one is being played. Pressing it is
-# `press_shop_bar`: the shop here if there is one, else a new one off a full bar.
+# THE SHOP BAR (§19.10). It stood in the header beside the purse and was the way
+# into a shop from inside a game. Since 11 Nov 2026 it stands in the board's
+# DIFFICULTY strip (BattlefieldView.shop_bar) — every body that falls on that
+# board fills it — and a shop is only walked into between games (`can_shop_now`).
+# So during a game it is a METER; between games it is still pressable, and does
+# what the offering's 🛒 button does (`press_shop_bar`).
+#
+# SMALL, because the strip's height is the page's 720p fit: a 14px cart, an 8px
+# bar and 2px of padding keep it inside the line the DIFFICULTY heading already is.
 func _build_shop_bar_chip() -> Control:
 	var btn := HoverButton.new()
 	btn.name = "ShopBarChip"
@@ -6719,19 +6852,19 @@ func _build_shop_bar_chip() -> Control:
 	row.add_theme_constant_override("separation", UITheme.GAP_TIGHT)
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	row.offset_left = 8
-	row.offset_right = -8
+	row.offset_left = 6
+	row.offset_right = -6
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
 	btn.add_child(row)
 	var cart := Label.new()
 	cart.name = "Cart"
 	cart.text = "🛒"
-	cart.add_theme_font_size_override("font_size", UITheme.FONT_SUB)
+	cart.add_theme_font_size_override("font_size", UITheme.FONT_LABEL)
 	cart.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(cart)
 	_shop_bar_fill = ProgressBar.new()
 	_shop_bar_fill.show_percentage = false
-	_shop_bar_fill.custom_minimum_size = Vector2(46, 10)
+	_shop_bar_fill.custom_minimum_size = Vector2(40, 8)
 	_shop_bar_fill.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_shop_bar_fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_shop_bar_fill.add_theme_stylebox_override("background",
@@ -6740,18 +6873,21 @@ func _build_shop_bar_chip() -> Control:
 	row.add_child(_shop_bar_fill)
 	var count := Label.new()
 	count.name = "Count"
-	count.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
+	count.add_theme_font_size_override("font_size", UITheme.FONT_LABEL)
 	count.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(count)
 	btn.pressed.connect(func(): press_shop_bar())
 	# The row is laid out by hand inside a Button, so the button is told its size.
-	row.minimum_size_changed.connect(func(): btn.custom_minimum_size = row.get_combined_minimum_size() + Vector2(16, 12))
+	row.minimum_size_changed.connect(func(): btn.custom_minimum_size = row.get_combined_minimum_size() + SHOP_BAR_PAD)
 	_shop_bar_chip = btn
 	_paint_shop_bar()
-	btn.custom_minimum_size = row.get_combined_minimum_size() + Vector2(16, 12)
+	btn.custom_minimum_size = row.get_combined_minimum_size() + SHOP_BAR_PAD
 	return btn
 
+const SHOP_BAR_PAD := Vector2(12, 2)
+
 func _paint_shop_bar() -> void:
+	_paint_shop_btn_face()
 	if _shop_bar_chip == null or not is_instance_valid(_shop_bar_chip):
 		return
 	var here: StringName = GameState.current_game_id
@@ -6759,16 +6895,17 @@ func _paint_shop_bar() -> void:
 	var full: bool = ShopSystem.bar_full()
 	var shop_here: bool = ShopSystem.is_shop(here)
 	var can_open: bool = ShopSystem.can_open_at(here) and not GameLoop2.run_over
-	var live: bool = (shop_here or can_open) and not GameLoop2.run_over
+	# Pressable only BETWEEN games; during one it is the meter and nothing else.
+	var between: bool = can_shop_now()
+	var live: bool = (shop_here or can_open) and between
 	_shop_bar_fill.max_value = target
 	_shop_bar_fill.value = mini(GameState.shop_bar, target)
 	var count: Label = _shop_bar_chip.find_child("Count", true, false)
-	if shop_here:
-		count.text = "Shop"
-	elif can_open:
-		count.text = "Open shop"
-	else:
-		count.text = "%d / %d" % [mini(GameState.shop_bar, target), target]
+	# NUMBERS ONLY (the owner, 12 Nov 2026: "the words open shop only on the game
+	# choice area"). The bar is a meter; the 🛒 button on the offering is the one
+	# place that says Shop or Open Shop, and the one way in.
+	count.text = "%d / %d" % [mini(GameState.shop_bar, target), target]
+	live = false
 	count.add_theme_color_override("font_color",
 		UITheme.SHOP_GREEN.lerp(Color.WHITE, 0.4) if live else UITheme.TEXT_DIM)
 	_shop_bar_chip.disabled = not live
@@ -6786,10 +6923,14 @@ func _paint_shop_bar() -> void:
 		+ "full, it opens a shop at any game that has none, and that shop stays there for "
 		+ "the rest of the run. One shop a game. Each shop opened puts the next one a kill "
 		+ "further off.\n\n")
-	if shop_here:
-		tip += "There is a shop here — press to walk in."
+	if not between and not GameLoop2.run_over and (shop_here or can_open):
+		tip += ("There is a shop here" if shop_here else "Full") \
+			+ " — the 🛒 button comes up under the games to choose from once this " \
+			+ "game is over. A shop is only walked into between games."
+	elif shop_here:
+		tip += "There is a shop here — the 🛒 Shop button under the games walks in."
 	elif can_open:
-		tip += "Full. Press to open a shop at this game."
+		tip += "Full. The 🛒 Open Shop button under the games opens one here."
 	elif full:
 		tip += "Full — kills past it are lost. This game has a shop already, or you are not at one."
 	else:
@@ -7646,7 +7787,8 @@ func _build_ui() -> void:
 	header.add_child(_build_character_chip())
 	header.add_child(_build_health_chip())
 	header.add_child(_build_gold_chip())
-	header.add_child(_build_shop_bar_chip())
+	# The shop bar is not here any more: it stands in the board's DIFFICULTY strip
+	# (see where `_board` is built), and the way into a shop is the offering's 🛒.
 	_route_strip = HBoxContainer.new()
 	_route_strip.add_theme_constant_override("separation", UITheme.GAP_NONE)
 	_route_strip.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -7750,16 +7892,11 @@ func _build_ui() -> void:
 	# CENTRED ON THE PANEL, not on what the button leaves of it: a pad on the left
 	# as wide as the Optimal Path button on the right, so the title sits over the
 	# middle of the cards it is the question for.
-	#
-	# THE SHOP'S BUTTON STANDS IN THAT PAD (§14.4): the offering is where the
-	# player is looking when the shop opens for business, so the way into it is
-	# here, on the left of the question, in the shop's green. The pad keeps the
-	# title centred whether it is up or not.
+	# (The shop's button stood in this pad until 12 Nov 2026; it is at the foot of
+	# the panel now, see `SelectFoot`.)
 	var head_pad := HBoxContainer.new()
 	head_pad.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	select_head_row.add_child(head_pad)
-	_shop_btn = _build_shop_button()
-	head_pad.add_child(_shop_btn)
 	_select_head = _section("Choose a Game")
 	_select_head.add_theme_font_size_override("font_size", UITheme.FONT_TITLE_LG)
 	_select_head.add_theme_color_override("font_color", UITheme.GOLD)
@@ -7780,12 +7917,6 @@ func _build_ui() -> void:
 	map_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	map_btn.pressed.connect(open_optimal_path)
 	map_btn.resized.connect(func(): head_pad.custom_minimum_size.x = map_btn.size.x)
-	# And the Optimal Path side matches it back when the shop button is the wider,
-	# so the title stays over the middle either way.
-	_shop_btn.resized.connect(func(): map_btn.custom_minimum_size.x = _shop_btn.size.x \
-		if _shop_btn.visible else 0.0)
-	_shop_btn.visibility_changed.connect(func(): map_btn.custom_minimum_size.x = _shop_btn.size.x \
-		if _shop_btn.visible else 0.0)
 	select_head_row.add_child(map_btn)
 	_select_box.add_child(select_head_row)
 	# Controls row (Dash) — populated per refresh.
@@ -7847,7 +7978,21 @@ func _build_ui() -> void:
 	_select_stats = HFlowContainer.new()
 	_select_stats.add_theme_constant_override("h_separation", UITheme.GAP_SNUG)
 	_select_stats.add_theme_constant_override("v_separation", UITheme.GAP_TIGHT)
-	_select_box.add_child(_select_stats)
+	# …AND THE SHOP'S BUTTON AT THE OTHER END OF THE SAME ROW: the panel's bottom
+	# right (the owner, 12 Nov 2026: "in a more visible space, on the bottom right
+	# of the game choice screen"). It stood on the left of the heading, where it
+	# was one of three things on a title line; down here it is the only thing on
+	# its side, big and green, beside the charges the same decision spends.
+	var foot := HBoxContainer.new()
+	foot.name = "SelectFoot"
+	foot.add_theme_constant_override("separation", UITheme.GAP)
+	_select_stats.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_select_stats.size_flags_vertical = Control.SIZE_SHRINK_END
+	foot.add_child(_select_stats)
+	_shop_btn = _build_shop_button()
+	_shop_btn.size_flags_vertical = Control.SIZE_SHRINK_END
+	foot.add_child(_shop_btn)
+	_select_box.add_child(foot)
 
 	_report_panel = PanelContainer.new()
 	_report_panel.add_theme_stylebox_override("panel",
@@ -7943,6 +8088,7 @@ func _build_ui() -> void:
 	_board.loot_put_down.connect(put_loot_down)
 	_board.enemy_inspected.connect(_show_enemy_info)
 	_board.location_requested.connect(show_location)
+	_board.shop_bar = _build_shop_bar_chip()
 	# The board points back at the checklist: hovering a body lights the goal row
 	# written about it (_bind_row_to_body).
 	_board.enemy_hovered.connect(_on_enemy_hovered)
@@ -7974,11 +8120,22 @@ func _build_ui() -> void:
 	_np_box = VBoxContainer.new()
 	var np_box := _np_box
 	np_box.add_theme_constant_override("separation", UITheme.GAP)
+	# PLAY IS THE TOP OF THE PANEL (the owner, 12 Nov 2026: "move the play button
+	# to the top and make more room for the checklist"). It was the second of three
+	# things stacked beside a 150px cover, and the cover's height was the block's.
+	# Now the button runs the panel's width on a line of its own, and under it the
+	# cover is drawn at the height of the one strip left beside it (Lost a run) —
+	# about 40px less for the block, all of which the checklist gets.
+	# Launch-the-real-game row (populated per game — only games with a launch
+	# target get a button).
+	_launch_row = HBoxContainer.new()
+	_launch_row.add_theme_constant_override("separation", UITheme.GAP_SNUG)
+	np_box.add_child(_launch_row)
 	var head_row := HBoxContainer.new()
 	head_row.add_theme_constant_override("separation", UITheme.GAP_WIDE)
 	np_box.add_child(head_row)
 	_now_playing_cover = TextureRect.new()
-	_now_playing_cover.custom_minimum_size = OfferingCards.COVER_SIZE * 0.72
+	_now_playing_cover.custom_minimum_size = OfferingCards.COVER_SIZE * NOW_PLAYING_COVER_SCALE
 	_now_playing_cover.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_now_playing_cover.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	var cover_frame := PanelContainer.new()
@@ -8016,14 +8173,10 @@ func _build_ui() -> void:
 	# THE SPLIT STRIP (RunTimer). The overlay is where the clock is FOR — a stream
 	# wants a speedrun timer — but a number that only exists inside OBS is a number
 	# the player has to alt-tab to read, and it is their own evening it is counting.
+	# OFF THE PAGE FOR NOW (`timer_on_page`): built, so turning it back on is one
+	# flag, and kept hidden by _refresh_split_panel.
 	_split_panel = _build_split_strip()
 	verbs.add_child(_split_panel)
-
-	# Launch-the-real-game row (populated per game — only games with a launch
-	# target gets a button) + the opt-in Rate button.
-	_launch_row = HBoxContainer.new()
-	_launch_row.add_theme_constant_override("separation", UITheme.GAP_SNUG)
-	verbs.add_child(_launch_row)
 
 	# The attempt tracker (§3) — the thing you press between runs of the real game.
 	_attempt_wrap = _build_attempt_strip()
@@ -8033,7 +8186,7 @@ func _build_ui() -> void:
 	# Verification checklist (populated per game): the main goal, the character's
 	# level-up challenge, and any following enemy whose goal you also cleared. Tick
 	# what you did, then press the single Completed Game button below.
-	_verify_box = VBoxContainer.new()
+	_verify_box = ChecklistFlow.new()
 	_verify_box.add_theme_constant_override("separation", UITheme.GAP_HAIR)
 	_verify_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	# IN ITS OWN SCROLL, CAPPED TO THE ROOM THE PAGE HAS LEFT (_fit_checklist).
@@ -8050,8 +8203,15 @@ func _build_ui() -> void:
 	_verify_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	_verify_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
 	_verify_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_verify_scroll.add_child(_verify_box)
+	# The box rides a plain frame so it can be SCALED to fit (_fit_checklist).
+	_verify_fit = Control.new()
+	_verify_fit.name = "ChecklistFit"
+	_verify_fit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_verify_fit.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_verify_fit.add_child(_verify_box)
+	_verify_scroll.add_child(_verify_fit)
 	_play_panel.add_child(_verify_scroll)
+	_verify_fit.resized.connect(_queue_fit_checklist)
 	_verify_box.minimum_size_changed.connect(_queue_fit_checklist)
 	_left_col.minimum_size_changed.connect(_queue_fit_checklist)
 	# …and the window: a resize is a different amount of room.

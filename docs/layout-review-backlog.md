@@ -369,6 +369,23 @@ The shop fit test now stands **eight** extra bodies instead of clearing the boar
 
 ---
 
+**12 Nov 2026:** the fitting below applies **only while a game is in play**
+(the Goals list between games keeps its scroll), and the play panel gave the
+checklist about 40px more: Play is a full-width line at the top, the cover under
+it is the height of the Lost a run strip, and the timer strip is off the page.
+
+**11 Nov 2026: it fits before it scrolls.** The owner asked that the screen a
+game is played on never need scrolling. The cap above stands, and inside it the
+list now adapts (`Overworld2._fit_checklist`): a list taller than its room flows
+into a **second column** (`ChecklistFlow`, a container that is a VBox until
+`columns` is raised; nested rows stay under their parent and a heading never
+ends a column), and if that is still too tall the box is **scaled down**, laid
+out `1 / scale` times wider so it still spans the panel, to a floor of
+`CHECKLIST_MIN_SCALE` (0.5). Measured at 1280x720: 14 goals fit at 0.93, 17 at
+0.71. Only past the floor (about 25 rows) does the scrollbar return. The scale
+only shrinks while the same rows are up, with two guarded steps back, because
+the height it fits depends on the width it sets.
+
 ## Where the fixed items are written up
 
 The original pass and everything it changed are in [`CHANGELOG.md`](../CHANGELOG.md),

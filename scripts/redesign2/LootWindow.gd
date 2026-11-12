@@ -162,17 +162,35 @@ class MiniPack extends Control:
 	func _rect_of(cell: Vector2i, origin: Vector2i, c: float) -> Rect2:
 		return Rect2(Vector2(cell - origin) * (c + SEP), Vector2(c, c))
 
+	# THE TEXTURES THIS DRAW USED, HELD. A draw command keeps only a texture's RID,
+	# and a pill's or a potion's art is `load()`ed afresh on every ask with nothing
+	# else holding it — so the texture was freed the moment `_draw` returned and its
+	# cell came out as a blank white square (the owner, 12 Nov 2026: "what's the
+	# white boxes in the mini loot inventory?"). Weapons and scrolls were fine only
+	# because their systems cache their art.
+	var _held: Array = []
+
 	func _draw() -> void:
+		_held.clear()
 		var bounds: Rect2i = GameState.pack_bounds()
 		var c: float = cell_px()
 		var layout: Array = GameState.loot_layout()
 		var done: Dictionary = {}
+		# TWO PASSES: every square first, then the art over all of them. In one
+		# pass a big piece (the Whip's 2x2) was drawn at its first slot and then had
+		# the squares of its other three cells painted over it (the owner, 12 Nov
+		# 2026: "make sure the whip is above all squares").
+		for slot in range(GameState.loot_capacity()):
+			var sq: Rect2 = _rect_of(GameState.pack_cell_of(slot), bounds.position, c)
+			var tint: Color = LootGrid.BAG_TINT if GameState.bag_at_slot(slot) >= 0 \
+				else LootWindow.ACCENT
+			var held: int = int(layout[slot]) if slot < layout.size() else -1
+			draw_rect(sq, tint.lerp(UITheme.BG, 0.55 if held >= 0 else 0.78))
 		for slot in range(GameState.loot_capacity()):
 			var r: Rect2 = _rect_of(GameState.pack_cell_of(slot), bounds.position, c)
 			var in_bag: bool = GameState.bag_at_slot(slot) >= 0
 			var base: Color = LootGrid.BAG_TINT if in_bag else LootWindow.ACCENT
 			var index: int = int(layout[slot]) if slot < layout.size() else -1
-			draw_rect(r, base.lerp(UITheme.BG, 0.55 if index >= 0 else 0.78))
 			if index < 0 or done.has(index) or index >= GameState.loot_items.size():
 				continue
 			done[index] = true
@@ -187,6 +205,7 @@ class MiniPack extends Control:
 			if tex == null:
 				draw_rect(span.grow(-1.0), base.lerp(Color.WHITE, 0.5))
 				continue
+			_held.append(tex)
 			var ts: Vector2 = tex.get_size()
 			var k: float = minf(span.size.x / maxf(1.0, ts.x), span.size.y / maxf(1.0, ts.y))
 			var fit: Vector2 = ts * k

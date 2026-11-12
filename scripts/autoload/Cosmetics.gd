@@ -102,7 +102,8 @@ func _refresh_unlocks(announce: bool) -> void:
 		for key in fresh:
 			var e: Dictionary = CosmeticCatalog.entry(key)
 			var what: String = "costume" if String(e.get("unit", "")) == "costume" \
-				else {"key": "key icon", "bomb": "bomb icon", "difficulty": "difficulty icon"}.get(
+				else {"key": "key icon", "bomb": "bomb icon", "difficulty": "difficulty icon",
+					"luck": "Luck icon"}.get(
 					String(e.get("kind", "")), "look")
 			Notifications.notify("✦ New %s: %s" % [what, CosmeticCatalog.label(e)],
 				Color(0.95, 0.8, 0.45), CosmeticCatalog.texture(
@@ -150,7 +151,7 @@ func costume(character: StringName, slot: String) -> Dictionary:
 func set_costume(character: StringName, slot: String, key: String) -> void:
 	_choose(costume_slot(character, slot), key)
 
-# The icon set worn for `kind` (key, bomb, difficulty), or {} for the default glyph.
+# The icon set worn for `kind` (key, bomb, difficulty, luck), or {} for the default glyph.
 func icon(kind: String) -> Dictionary:
 	var key := _shown_key(icon_slot(kind))
 	return CosmeticCatalog.entry(key) if key != "" else {}
@@ -249,9 +250,9 @@ func icon_of(ch: CharacterData) -> Texture2D:
 		return t
 	return ch.icon if ch.icon != null else portrait_of(ch)
 
-# The picture standing in for `glyph` (🗝, ✸ or 🏆) at Fracture `level`, or null
+# The picture standing in for `glyph` (🗝, ✸, 🏆 or 🍀) at Fracture `level`, or null
 # when the default glyph is worn.
-const GLYPHS := {"🗝": "key", "✸": "bomb", "🏆": "difficulty"}
+const GLYPHS := {"🗝": "key", "✸": "bomb", "🏆": "difficulty", "🍀": "luck"}
 
 func glyph_texture(glyph: String, level: int = 0) -> Texture2D:
 	var kind: String = GLYPHS.get(glyph, "")
@@ -266,7 +267,7 @@ func glyph_texture(glyph: String, level: int = 0) -> Texture2D:
 # --- the glyphs on screen ----------------------------------------------------------
 #
 # A WORN ICON IN PLACE OF ITS GLYPH (Customization, docs/customization.md). The UI
-# writes keys as 🗝, bombs as ✸ and the trophy as 🏆 inside ordinary text. When the
+# writes keys as 🗝, bombs as ✸, the trophy as 🏆 and Luck as 🍀 inside ordinary text. When the
 # player wears an icon for one, this swaps the glyph in a Label's or a Button's
 # text for room (spaces) and lays the picture over that room, with the Fracture
 # number on a trophy's (the owner, 8 Nov 2026: "everywhere means everywhere, and
@@ -284,7 +285,7 @@ func glyph_texture(glyph: String, level: int = 0) -> Texture2D:
 #
 # WHAT IT CANNOT PLACE: a glyph inside text that wraps onto a second line by width
 # (rather than by "\n"). Its line is measured as if it did not wrap, so the
-# picture lands where the unwrapped text would put it; every 🗝 ✸ 🏆 in the UI
+# picture lands where the unwrapped text would put it; every 🗝 ✸ 🏆 🍀 in the UI
 # today starts its line or sits in a one-line label.
 
 
@@ -361,8 +362,9 @@ func apply_glyph(c: Variant) -> void:
 		holder.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		holder.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		c.add_child(holder, false, Node.INTERNAL_MODE_BACK)
-	holder.texture = tex
-	UITheme.apply_crisp(holder, tex)
+	# Drawn without the chop (UITheme.fit_art): a big picture through its mipmaps,
+	# pixel art at a whole multiple of its own size.
+	UITheme.fit_art(holder, tex, side)
 	holder.set_meta("at", at)
 	holder.set_meta("room", room.length())
 	var num: Label = holder.get_node_or_null("Level")

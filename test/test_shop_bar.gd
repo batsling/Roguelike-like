@@ -145,7 +145,15 @@ func test_pressing_a_full_bar_opens_a_shop_where_the_run_stands() -> void:
 	assert_false(ShopSystem.is_shop(here))
 	GameState.shop_bar = ShopSystem.bar_target()
 	ui._paint_shop_bar()
-	assert_false(ui._shop_bar_chip.disabled, "a full bar is a live button")
+	# The bar is a meter (numbers only, 12 Nov 2026); the offering's button is the
+	# way in, at the foot of the panel.
+	assert_true(ui._shop_bar_chip.disabled, "the bar itself is only a meter")
+	assert_false(Page.text_of(ui._shop_bar_chip).to_lower().contains("shop"),
+		"with no words on it")
+	assert_true(ui._shop_btn.visible)
+	assert_string_contains(ui._shop_btn.text, "Open Shop")
+	assert_eq(ui._shop_btn.get_parent().name, &"SelectFoot",
+		"at the bottom right of the game choice panel")
 	var modal = ui.press_shop_bar()
 	assert_not_null(modal, "the shop opens")
 	assert_true(ShopSystem.is_shop(here), "at the game the run stands at")
@@ -153,3 +161,27 @@ func test_pressing_a_full_bar_opens_a_shop_where_the_run_stands() -> void:
 	modal.queue_free()
 	ui._shop_modal = null
 	assert_not_null(ui.press_shop_bar(), "and pressing again walks back in")
+
+# A SHOP IS WALKED INTO BETWEEN GAMES ONLY (the owner, 11 Nov 2026). During a game
+# the bar is a meter on the board's DIFFICULTY strip and opens nothing; back on
+# the offering, the 🛒 button there says "Open Shop" off a full bar.
+func test_a_shop_cannot_be_walked_into_while_a_game_is_in_play() -> void:
+	var ui = Page.build(self)
+	Page.open_at_first_offering(ui)
+	GameState.shop_bar = ShopSystem.bar_target()
+	ui._paint_shop_bar()
+	assert_true(ui._shop_btn.visible, "between games a full bar puts the button up")
+	assert_string_contains(ui._shop_btn.text, "Open Shop")
+	assert_not_null(ui._board.shop_bar_slot.find_child("ShopBarChip", true, false),
+		"and the bar stands in the board's difficulty strip")
+	Page.pick_enemies(ui, 0)
+	if ui._phase != ui.Phase.PLAYING:
+		pending("the pick did not put a game in play")
+		return
+	GameState.shop_bar = ShopSystem.bar_target()
+	ui._paint_shop_bar()
+	assert_false(ui.can_shop_now())
+	assert_true(ui._shop_bar_chip.disabled, "during a game the bar is only a meter")
+	assert_null(ui.press_shop_bar(), "and pressing it opens nothing")
+	assert_false(ShopSystem.is_shop(GameState.current_game_id), "nor a shop here")
+	assert_null(ui.open_shop())
