@@ -176,12 +176,21 @@ class MiniPack extends Control:
 		var c: float = cell_px()
 		var layout: Array = GameState.loot_layout()
 		var done: Dictionary = {}
+		# TWO PASSES: every square first, then the art over all of them. In one
+		# pass a big piece (the Whip's 2x2) was drawn at its first slot and then had
+		# the squares of its other three cells painted over it (the owner, 12 Nov
+		# 2026: "make sure the whip is above all squares").
+		for slot in range(GameState.loot_capacity()):
+			var sq: Rect2 = _rect_of(GameState.pack_cell_of(slot), bounds.position, c)
+			var tint: Color = LootGrid.BAG_TINT if GameState.bag_at_slot(slot) >= 0 \
+				else LootWindow.ACCENT
+			var held: int = int(layout[slot]) if slot < layout.size() else -1
+			draw_rect(sq, tint.lerp(UITheme.BG, 0.55 if held >= 0 else 0.78))
 		for slot in range(GameState.loot_capacity()):
 			var r: Rect2 = _rect_of(GameState.pack_cell_of(slot), bounds.position, c)
 			var in_bag: bool = GameState.bag_at_slot(slot) >= 0
 			var base: Color = LootGrid.BAG_TINT if in_bag else LootWindow.ACCENT
 			var index: int = int(layout[slot]) if slot < layout.size() else -1
-			draw_rect(r, base.lerp(UITheme.BG, 0.55 if index >= 0 else 0.78))
 			if index < 0 or done.has(index) or index >= GameState.loot_items.size():
 				continue
 			done[index] = true
