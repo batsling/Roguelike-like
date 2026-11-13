@@ -13,8 +13,9 @@ extends RefCounted
 #   * an icon set is "<kind>/<name>" — kind is key, bomb, difficulty, luck or chest —
 #     and a set can hold several images, each for a range of Fracture levels (Risk
 #     of Rain 2's Drizzle, Rainstorm and Monsoon are one unlock). A CHEST set's
-#     range is the chest's SIZE instead (0 Small … 3 Huge, Data.ChestSize): Enter
-#     the Gungeon's D, C, B and A chests are one unlock, picked by the chest opened.
+#     range is the chest's SIZE instead (0 Small … 3 Huge, Data.ChestSize; 4 is a
+#     BOSS's chest, BOSS_CHEST): Enter the Gungeon's D, C, B and A chests are one
+#     unlock, picked by the chest opened, and so are Slay the Spire's four.
 #
 # WHO PAYS WHICH: a GAME's ranks pay the units of that game; a CHARACTER's ranks pay
 # the units of the games the character is from, and the character's own costumes.
@@ -114,14 +115,27 @@ static func units_of_character(character: StringName) -> Array:
 	out.sort()
 	return out
 
-# The image of an icon set for a run at Fracture `level`: the one whose range holds
-# it, else the first.
+# A BOSS's chest stands one rung above Huge on a chest set's ladder (the owner, 13
+# Nov 2026): Slay the Spire's Boss Chest is `4-4`, drawn for a boss's chest and
+# for nothing else. A set with no picture for it (Enter the Gungeon's stops at
+# 3-3) draws its highest instead, which is `image_for`'s rule for any level above
+# every range.
+const BOSS_CHEST := 4
+
+# The image of an icon set at `level` (a run's Fracture; a chest's size for a chest
+# set): the one whose range holds it. A level above every range is the HIGHEST
+# image, and anything else the first.
 static func image_for(e: Dictionary, level: int) -> String:
 	var imgs: Array = e.get("images", [])
+	var top: Dictionary = {}
 	for i in imgs:
 		if level >= int(i["min"]) and level <= int(i["max"]):
 			return String(i["path"])
-	return String(imgs[0]["path"]) if not imgs.is_empty() else ""
+		if top.is_empty() or int(i["max"]) > int(top["max"]):
+			top = i
+	if imgs.is_empty():
+		return ""
+	return String(top["path"]) if level > int(top["max"]) else String(imgs[0]["path"])
 
 # What one image of a set is FOR, in words: the Fracture levels a difficulty image
 # covers, or the chest sizes a chest image does ("Small Chest", "Large–Huge Chest").
@@ -130,6 +144,8 @@ static func range_text(e: Dictionary, image: Dictionary) -> String:
 	var hi: int = int(image.get("max", lo))
 	if String(e.get("kind", "")) != "chest":
 		return "Fracture %d–%d" % [lo, hi] if hi != lo else "Fracture %d" % lo
+	if lo >= BOSS_CHEST:
+		return "Boss Chest"
 	var names: Dictionary = Data.CHEST_SIZE_NAMES
 	var top: int = names.size() - 1
 	var a: String = String(names.get(clampi(lo, 0, top), ""))

@@ -70,6 +70,12 @@ images2.0/icons/Chests/<Name>_<Game>[_<lo>-<hi>].png
   chests are `0-0`, `1-1`, `2-2` and `3-3`: one unlock, all four at once, and the
   chest on screen picks the picture, so the same rung of the ladder that colours
   its glow picks its letter.
+- **4 is a boss's chest** (`CosmeticCatalog.BOSS_CHEST`), a rung above Huge that
+  only a chest of boss relics stands on (`ItemDropModal.is_boss_chest`). Slay the
+  Spire's set is Small `0-0`, Medium `1-1`, Large `2-3` (Large and Huge) and Boss
+  `4-4`, so its Boss Chest is drawn for a boss's chest and nothing else. A set
+  with no picture for 4 draws its highest (Gungeon's A chest): `image_for` gives
+  any level above every range the highest image.
 
 ## 3. Wearing a costume
 
@@ -127,7 +133,7 @@ On a 🏆, the Fracture level is written over the picture in `Fracture.COLOR`.
   own Fracture during a run and 0 outside one. A level of 0 shows no number, as
   with the cup. `RankBadge` passes each trophy's own best level and sets
   `glyph_number = false`, because it already draws that number.
-- **A gift's level is the chest's size** (0 Small … 3 Huge), again from
+- **A gift's level is the chest's size** (0 Small … 3 Huge, 4 a boss's), again from
   `glyph_level`, and it carries no number. The drop window's gift passes its own
   rung (`ItemDropModal._gift_badge`); the "N Chests" heading and the report's
   chest sum pass their biggest chest's. A 🎁 with no `glyph_level` is drawn as the

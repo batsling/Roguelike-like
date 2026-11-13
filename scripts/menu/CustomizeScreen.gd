@@ -161,7 +161,7 @@ func _build_characters() -> void:
 # --- icons --------------------------------------------------------------------------
 
 func _build_icons() -> void:
-	_say("Each stands in for its symbol everywhere it is drawn. A difficulty icon replaces the 🏆 and carries the Fracture number; Risk of Rain 2's changes with the level. A chest icon replaces the 🎁; Enter the Gungeon's changes with the chest's size.")
+	_say("Each stands in for its symbol everywhere it is drawn. A difficulty icon replaces the 🏆 and carries the Fracture number; Risk of Rain 2's changes with the level. A chest icon replaces the 🎁; Enter the Gungeon's and Slay the Spire's change with the chest's size.")
 	for kind in CosmeticCatalog.KINDS:
 		var block := VBoxContainer.new()
 		block.name = "Kind_%s" % kind
@@ -241,15 +241,18 @@ static func set_hover(e: Dictionary, locked: bool) -> Dictionary:
 	var game := g.display_name if g != null else String(e["game"])
 	var gallery: Array = []
 	for i in e.get("images", []):
+		# Slay the Spire's Small Chest IS the Small chest: said once.
+		var what := String(i["name"])
+		var when := CosmeticCatalog.range_text(e, i)
 		gallery.append({"art": CosmeticCatalog.texture(String(i["path"])), "dark": locked,
-			"text": "%s\n%s" % [i["name"], CosmeticCatalog.range_text(e, i)]})
+			"text": what if what == when else "%s\n%s" % [what, when]})
 	var chest: bool = String(e.get("kind", "")) == "chest"
 	return {
 		"title": ("Locked — %s" % game) if locked else game,
 		"accent": UITheme.TEXT_DIM if locked else UITheme.GOLD,
 		"subtitle": "%d icons, one unlock" % gallery.size(),
 		"gallery": gallery,
-		"lines": ["The chest's size picks the picture." if chest
+		"lines": ["The chest's size picks the picture. A boss's chest is the Boss Chest, or the highest one where there is none." if chest
 			else "The run's Fracture picks the picture."],
 		"note": ("A rank-up reward from %s, or a character from it." % game) if locked else "",
 	}

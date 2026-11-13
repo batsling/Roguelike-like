@@ -11,6 +11,14 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Slay the Spire's chests, and a rung for a boss's chest (the owner, 13 Nov
+  2026).** One unlock, four pictures: Small for a Small chest, Medium for a
+  Medium, Large for a Large or a Huge, and the Boss Chest for a boss's chest and
+  nothing else. A boss's chest is level 4 on a chest set's ladder
+  (`CosmeticCatalog.BOSS_CHEST`), read off the chest itself: one offering only
+  boss relics (`ItemDropModal.is_boss_chest`). A set with no boss picture draws
+  its highest, so a boss's chest in Enter the Gungeon's set is the A chest.
+
 - **Chest icons, the fifth icon kind (the owner, 12 Nov 2026).** A worn chest
   icon stands in for every 🎁, like the key, bomb, trophy and Luck icons
   (`images2.0/icons/Chests/`, `Cosmetics.GLYPHS`). Four to earn: The Binding of

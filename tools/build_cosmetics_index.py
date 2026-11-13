@@ -27,6 +27,8 @@ THE FILE NAME IS THE ENTRY. Drop a PNG in one of the folders below and rerun:
   * A CHEST's range is the chest's SIZE, not the Fracture: 0 Small, 1 Medium,
     2 Large, 3 Huge (Data.ChestSize). Enter the Gungeon's D, C, B and A chests are
     0-0, 1-1, 2-2 and 3-3: one unlock, and the chest being opened picks the image.
+    4 is a BOSS's chest (CosmeticCatalog.BOSS_CHEST): Slay the Spire's Boss Chest
+    is 4-4 and its Large Chest 2-3. A set with no 4 shows its highest for a boss.
 
 `--check` exits 1 when the checked-in JSON is not what the folders say.
 """

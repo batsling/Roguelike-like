@@ -195,8 +195,8 @@ func test_a_worn_luck_icon_replaces_the_clover() -> void:
 # Chests are the fifth icon kind (12 Nov 2026): a worn one stands in for the gift,
 # and Enter the Gungeon's D, C, B and A are ONE unlock picked by the chest's size.
 func test_gungeons_chests_are_one_unlock_picked_by_the_chests_size() -> void:
-	assert_eq(CosmeticCatalog.icons_of("chest").size(), 4,
-		"both Isaacs', Vampire Survivors' and Enter the Gungeon's")
+	assert_eq(CosmeticCatalog.icons_of("chest").size(), 5,
+		"both Isaacs', Vampire Survivors', Enter the Gungeon's and Slay the Spire's")
 	var e := CosmeticCatalog.entry("chest/enter_the_gungeon")
 	assert_false(e.is_empty())
 	assert_eq((e["images"] as Array).size(), 4, "four pictures, one unlock")
@@ -245,6 +245,48 @@ func test_the_chest_on_the_drop_window_is_the_worn_one_at_its_size() -> void:
 	assert_eq(gifts.size(), 1, "the gift is a picture")
 	if gifts.size() == 1:
 		assert_string_contains(String(gifts[0].get_meta(&"source")), "A_Chest", "a Huge chest is the A chest")
+
+# Slay the Spire's chests (13 Nov 2026): Small, Medium, Large for Large and Huge,
+# and a Boss Chest that only a boss's chest wears. A set without one shows its
+# highest for a boss.
+func test_slay_the_spires_boss_chest_is_for_boss_chests_only() -> void:
+	var e := CosmeticCatalog.entry("chest/slay_the_spire")
+	assert_false(e.is_empty())
+	var want := ["Small_Chest", "Medium_Chest", "Large_Chest", "Large_Chest", "Boss_Chest"]
+	for level in want.size():
+		assert_string_contains(CosmeticCatalog.image_for(e, level), want[level], "level %d" % level)
+	assert_eq(CosmeticCatalog.range_text(e, e["images"][2]), "Large–Huge Chest")
+	assert_eq(CosmeticCatalog.range_text(e, e["images"][3]), "Boss Chest")
+	var gungeon := CosmeticCatalog.entry("chest/enter_the_gungeon")
+	assert_string_contains(CosmeticCatalog.image_for(gungeon, CosmeticCatalog.BOSS_CHEST), "A_Chest",
+		"no boss picture: the highest tier")
+	assert_string_contains(CosmeticCatalog.image_for(
+		CosmeticCatalog.entry("chest/chest_vampire_survivors"), CosmeticCatalog.BOSS_CHEST), "Vampire")
+
+func test_a_boss_chest_on_the_drop_window_wears_the_boss_picture() -> void:
+	var boss: Array = Data.boss_item2_pool()
+	var plain: Array = Data.reward_item2_pool().filter(func(it): return not it.boss)
+	if boss.is_empty() or plain.is_empty():
+		pending("no boss relic, or no ordinary one, to fill a chest with")
+		return
+	var host := Control.new()
+	add_child_autofree(host)
+	for set_key in ["chest/slay_the_spire", "chest/enter_the_gungeon"]:
+		Cosmetics._unlocked[set_key] = "game:x"
+		Cosmetics.set_icon("chest", set_key)
+		var from_boss: bool = set_key == "chest/slay_the_spire"
+		for case in [[[boss[0]], "Boss_Chest" if from_boss else "A_Chest"],
+				[[plain[0]], "Small_Chest" if from_boss else "D_Chest"],
+				[[boss[0], plain[0]], "Medium_Chest" if from_boss else "C_Chest"]]:
+			var modal := ItemDropModal.open(host, case[0])
+			assert_eq(modal.is_boss_chest(), case[0] == [boss[0]])
+			await wait_process_frames(3)
+			var gifts: Array = modal.find_children(Cosmetics.GLYPH_NODE, "TextureRect", true, false)
+			assert_eq(gifts.size(), 1, "the gift is a picture")
+			if gifts.size() == 1:
+				assert_string_contains(String(gifts[0].get_meta(&"source")), case[1])
+			modal.leave()
+			await wait_process_frames(2)
 
 # A set of several icons shows every one of them on its tile's hover (12 Nov 2026).
 func test_a_set_of_several_icons_shows_them_all_on_the_hover() -> void:
