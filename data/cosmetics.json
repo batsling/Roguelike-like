@@ -707,6 +707,20 @@
 			]
 		},
 		{
+			"id": "chest/bank_chest_dead_cells",
+			"kind": "chest",
+			"name": "Bank Chest",
+			"game": "dead_cells",
+			"images": [
+				{
+					"name": "Bank Chest",
+					"path": "res://images2.0/icons/Chests/Bank_Chest_Dead_Cells.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
 			"id": "chest/chest_loop_hero",
 			"kind": "chest",
 			"name": "Chest",
@@ -815,26 +829,6 @@
 					"path": "res://images2.0/icons/Chests/Chest_Vampire_Survivors.png",
 					"min": 0,
 					"max": 10
-				}
-			]
-		},
-		{
-			"id": "chest/dead_cells",
-			"kind": "chest",
-			"name": "Treasure Chest / Bank Chest",
-			"game": "dead_cells",
-			"images": [
-				{
-					"name": "Treasure Chest",
-					"path": "res://images2.0/icons/Chests/Treasure_Chest_Dead_Cells_0-3.png",
-					"min": 0,
-					"max": 3
-				},
-				{
-					"name": "Bank Chest",
-					"path": "res://images2.0/icons/Chests/Bank_Chest_Dead_Cells_4-4.png",
-					"min": 4,
-					"max": 4
 				}
 			]
 		},
@@ -957,6 +951,20 @@
 					"path": "res://images2.0/icons/Chests/Boss_Chest_Slay_the_Spire_4-4.png",
 					"min": 4,
 					"max": 4
+				}
+			]
+		},
+		{
+			"id": "chest/treasure_chest_dead_cells",
+			"kind": "chest",
+			"name": "Treasure Chest",
+			"game": "dead_cells",
+			"images": [
+				{
+					"name": "Treasure Chest",
+					"path": "res://images2.0/icons/Chests/Treasure_Chest_Dead_Cells.png",
+					"min": 0,
+					"max": 10
 				}
 			]
 		},
