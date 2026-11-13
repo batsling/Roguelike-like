@@ -166,12 +166,40 @@ KINDS = {
         columns=["Name", "Kind", "Tier", "Description", "Effect", "Tag", "Tag % Up", "Built from", "Suits",
                  "Needs", "Confidence", "Status", "Owner", "Owner Notes", "ID"],
         name="Name", targets=["location effects"], gameless=True),
+    # ASKED FOR, never swept: a picture a game draws for Health, gold, a key…
+    # that could be worn here (docs/customization.md). The candidate's PNG waits
+    # in research/icons/<Kind>/<File>.png, the workbook shows it beside the
+    # yellow column, and tools/icon_research.py finds the best version of it,
+    # adds the row and moves a `yes` into images2.0/icons/. `Kind` is the art
+    # folder's name; `File` is the name it will carry there, <Name>_<Game>.
+    "icons": dict(
+        title="Icons: a game's own picture for Health, damage, gold, a shield, Luck, a key, a bomb, a chest",
+        columns=["Picture", "Kind", "File", "Name", "Game", "Size", "What it is there", "Source", "Confidence",
+                 "Status", "Owner", "Owner Notes", "ID"],
+        name="File", targets=["icons"], on_request=True),
 }
+ICON_ART = os.path.join(ROOT, "images2.0", "icons")
+ICON_STORE = os.path.join(STORE, "icons")
+
+
+def icon_kinds():
+    return sorted(d for d in os.listdir(ICON_ART) if os.path.isdir(os.path.join(ICON_ART, d)))
+
+
+def icon_candidate(row):
+    return os.path.join(ICON_STORE, row.get("Kind", ""), row.get("File", "") + ".png")
+
+
+def icons_in_game():
+    """{lower file stem: kind folder} for every icon the game ships."""
+    return {f[:-4].lower(): d for d in icon_kinds() for f in os.listdir(os.path.join(ICON_ART, d))
+            if f.endswith(".png")}
+
 # Kinds whose rows are written by hand from a game's sources, game by game.
 # `connections` is researched by tools/influence_research.py, and `tags` by
 # tools/tag_research.py, which writes its own sheets and needs no CSV.
 WIKI_KINDS = [k for k in KINDS if KINDS[k].get("categories")]
-LEDGER_KINDS = [k for k in KINDS if not KINDS[k].get("gameless")]
+LEDGER_KINDS = [k for k in KINDS if not KINDS[k].get("gameless") and not KINDS[k].get("on_request")]
 
 STATUSES = {
     "to review": "waiting for the owner",
@@ -422,6 +450,7 @@ def on_sheet_index():
     for sheet, (ncol, gcol) in TARGET_COLS.items():
         out[sheet] = {r.get(ncol, "").lower(): r.get(gcol, "") for r in sheet_table(sheet) if r.get(ncol)}
     out["location effects"] = location_effects_on_sheet()
+    out["icons"] = icons_in_game()  # "on the sheet" for an icon is "in the art folder"
     return out
 
 
@@ -1238,7 +1267,7 @@ def sheet_conflicts(kind, rows, idx=None, pairs=None):
             elif r["Status"] in ("to review", "waiting for game row") and (b, a) in pairs \
                     and (a, b) not in pairs:
                 out.append((r, "is on the sheet the OTHER way round"))
-        else:
+        elif kind != "icons":  # an icon's File is its own key: no namesakes
             name = r.get(KINDS[kind]["name"], "").lower()
             sheet = target_sheet(kind, r)
             on = (idx or {}).get(sheet, {})
@@ -1353,6 +1382,13 @@ def check(verbose=True):
                 bad.append(f"{where}: Game {r['Game']!r} is not spelled as the games sheet spells it")
             if "sheets" in k and r.get("Sheet") not in k["sheets"]:
                 bad.append(f"{where}: Sheet {r.get('Sheet')!r} should be one of {k['sheets']}")
+            if kind == "icons":
+                if r["Kind"] not in icon_kinds():
+                    bad.append(f"{where}: Kind {r['Kind']!r} should be one of {icon_kinds()}")
+                elif r["Status"] == "to review" and r["Owner"].lower() != "no" \
+                        and not os.path.exists(icon_candidate(r)):
+                    bad.append(f"{where}: {r['File']} has no picture at "
+                               f"{os.path.relpath(icon_candidate(r), ROOT)}")
             for clone in filter(None, (c.strip() for c in r.get("Clones", "").split(";"))):
                 # the game is the parenthesis closed right before `: ` or the end; a
                 # game name may itself hold a colon ("Deep Rock Galactic: Survivor")
@@ -1412,7 +1448,8 @@ WIDTHS = {"Name": 24, "Event": 24, "Game": 24, "Influencer": 24, "Influencee": 2
           "Description": 44, "Why it fits": 44, "Why this pairing": 44, "Text": 90, "Source": 30,
           "Prompt": 44, "Owner": 8, "Owner Notes": 30, "ID": 14, "Status": 13, "Heading": 24,
           "Level Up": 34, "What it is there": 40, "Builds on": 22, "Needs": 22, "Clones": 30, "On Player": 30, "On Enemy": 30, "Choices": 40,
-          "Extra": 22, "Tag": 14, "Tags": 14, "Sheet": 10, "Confidence": 10, "Effect": 24}
+          "Extra": 22, "Tag": 14, "Tags": 14, "Sheet": 10, "Confidence": 10, "Effect": 24,
+          "Picture": 11, "Kind": 12, "File": 30, "Size": 10}
 WRAP = {"Description", "Why it fits", "Why this pairing", "Text", "Prompt", "What it is there", "Choices", "Clones"}
 
 
@@ -1456,6 +1493,9 @@ def write_kind_sheet(wb, kind, rows):
         vals = [r.get(c, "") for c in cols]
         ws.append([rb.cell_value(v) for v in vals] + [rb.row_hash(vals)])
     rb.style_table(ws, WIDTHS, owner_col="Owner", wrap=WRAP)
+    if kind == "icons":
+        rb.add_pictures(ws, [icon_candidate(r) if os.path.exists(icon_candidate(r))
+                             else os.path.join(ICON_ART, r["Kind"], r["File"] + ".png") for r in rows])
     letter = openpyxl.utils.get_column_letter(len(cols) + 1)
     ws.column_dimensions[letter].hidden = True
 
@@ -1472,7 +1512,7 @@ def write_status_sheet(wb, games, ledger, wikis, conflicts=()):
         nxt = order_games(kind, games, wikis, ledger)[:5] if kind in WIKI_KINDS else []
         # A gameless kind (location effects) is never researched game by game,
         # so "0 / 1000" would read as work nobody has done.
-        gameless = KINDS[kind].get("gameless")
+        gameless = KINDS[kind].get("gameless") or KINDS[kind].get("on_request")
         ws.append([kind, "not per game" if gameless else f"{done} / {len(games)}",
                    "" if gameless else f"{done_owned} / {len(owned)}", len(rows),
                    sum(r["Status"] == "to review" for r in rows), sum(r["Owner"] == "yes" for r in rows),
@@ -1664,7 +1704,7 @@ def cmd_status(args):
                                                     "yes", "no", "on sheet"))
     for kind in KINDS:
         rows = read_rows(kind)
-        gameless = KINDS[kind].get("gameless")
+        gameless = KINDS[kind].get("gameless") or KINDS[kind].get("on_request")
         print("%-12s %12s %12s %10d %9d %5d %5d %8d" % (
             kind, "not per game" if gameless else f"{sum(researched(ledger, g, kind) for g in games)}/{len(games)}",
             "" if gameless else f"{sum(researched(ledger, g, kind) for g in owned)}/{len(owned)}", len(rows),
