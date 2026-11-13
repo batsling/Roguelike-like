@@ -292,6 +292,13 @@ static func texture(path: String) -> Texture2D:
 # them. `texture` hands each over when asked; `is_loaded` says whether asking
 # would have to wait.
 static func request(paths: Array) -> void:
+	# NOT IN A HEADLESS RUN. The headless renderer's texture storage is not safe
+	# across threads: a loader thread making a texture while the main thread makes
+	# one (a tile's mipmapped copy) left one of them null, "Parameter "t" is null",
+	# about one run of the Title Letters tab's test in ten. There is no screen to
+	# keep smooth there, so the pictures load where they are asked for.
+	if DisplayServer.get_name() == "headless":
+		return
 	for path in paths:
 		var p := String(path)
 		if _tex_cache.has(p) or _tex_requested.has(p) or not ResourceLoader.exists(p):

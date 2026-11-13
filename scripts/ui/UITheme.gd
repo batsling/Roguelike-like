@@ -662,7 +662,11 @@ static func tier_badge_room(cover: Control, game_id) -> Control:
 # Preloaded rather than looked up per call — they are two small sprites drawn
 # dozens of times a repaint, and a `load()` on each would be a disk hit per pip.
 
-# The armour a game grants (§3). One sprite per point, over the hero.
+# The armour a game grants (§3). One sprite per point, over the hero. It is the 🛡
+# the UI writes a shield as in text, drawn once by tools/build_shield_art.py, so
+# the pips match the rest of the basic icon set (the owner, 13 Nov 2026); the
+# pixel shield that stood here is Brutal Orchestra's shield icon now. Draw a
+# shield with `Cosmetics.shield_art()`, which is this unless an icon is worn.
 const SHIELD_ART: Texture2D = preload("res://images2.0/general/Shield.png")
 
 # THE CLOCK. Anything TEMPORARY carries it in its bottom-right corner — a status

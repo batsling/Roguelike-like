@@ -698,7 +698,7 @@ The popup is where the decision is actually made. It carries:
   enemy beaten at this game, marking the ones approaching now;
 - **enemies approaching**: each as a row in the checklist's own format —
   portrait, the goal as it would actually be played (the player's own status
-  clauses included, §13) and the name, with the board's ❤/⚔ — and a `?` row for
+  clauses included, §13) and the name, with the board's ♥/⚔ — and a `?` row for
   each body that is rolled only on arrival (§19.4);
 - and the one thing that can be done about the card: **Travel**, with **Rate this
   game** beside it.
@@ -3654,7 +3654,7 @@ spawns while it is owned.
   shield-granting status handed out, which is spent rather than recomputed (§13.4).
 - **On screen** — the player's statuses draw as art pips between the hero's
   portrait and their health on the battlefield, and an enemy's below its box,
-  under the ❤/⚔ row (which was shrunk and dropped onto the box's bottom edge so
+  under the ♥/⚔ row (which was shrunk and dropped onto the box's bottom edge so
   the art underneath stays readable). Every pip carries `StatusData.tooltip_for`,
   the one place a status's hover text is built, so the board, the enemy card and
   the HUD chip cannot disagree about what a status says.

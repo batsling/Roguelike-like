@@ -579,7 +579,7 @@ func _hover_line(choice: Dictionary) -> String:
 		return "[b]%s[/b]  ·  [i]%s[/i]" % [game.display_name,
 			"stay here and carry on from this game"
 			if bool(choice["stay"]) else "head back and carry on from there"]
-	var tries: String = "  ·  [color=#%s]◆ %s[/color]" % [
+	var tries: String = "  ·  [color=#%s]🛡 %s[/color]" % [
 		_page.SHIELD_BLUE.to_html(false),
 		GameState.temp_shields_text(_hover_grant)] if _hover_grant >= 0 else ""
 	if e == null:

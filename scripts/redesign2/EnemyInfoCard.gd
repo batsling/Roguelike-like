@@ -123,7 +123,7 @@ func setup(entry: Dictionary, col: int, position_note: String = "") -> void:
 	var hp_note: String = "%d goal%s to defeat" % [hp, "" if hp == 1 else "s"]
 	if hp < ceiling:
 		hp_note = "%d of %d goals to defeat" % [hp, ceiling]
-	stat_col.add_child(_stat_row("❤", "Health", hp_note, Color(1.0, 0.5, 0.5)))
+	stat_col.add_child(_stat_row("♥", "Health", hp_note, Color(1.0, 0.5, 0.5)))
 	# Damage as it stands, with the authored number in brackets when a status has
 	# moved it (§13.4). Both, because "⚔4" alone tells you what is coming and
 	# "⚔4 (2 base)" tells you WHY — and why is what decides whether bombing the
@@ -137,12 +137,14 @@ func setup(entry: Dictionary, col: int, position_note: String = "") -> void:
 		# Before statuses, but WITH the run's Fracture: that is part of what this
 		# enemy is on this run, not something that happened to it.
 		dmg_note += "  (%d before statuses)" % GameLoop2.base_damage(e)
-	stat_col.add_child(_stat_row("⚔", "Damage", dmg_note, Color(1.0, 0.8, 0.35)))
+	var dmg_row: Control = _stat_row("⚔", "Damage", dmg_note, Color(1.0, 0.8, 0.35))
+	Cosmetics.as_damage(dmg_row.get_child(0))   # this ⚔ is damage
+	stat_col.add_child(dmg_row)
 	# Shields only when it has some to spend: a body with none is the normal case
-	# and a "◆ Shield: 0" row on every card is a line of noise per enemy.
+	# and a "🛡 Shield: 0" row on every card is a line of noise per enemy.
 	var shield: int = GameLoop2.enemy_shield(entry)
 	if shield > 0:
-		stat_col.add_child(_stat_row("◆", "Shield",
+		stat_col.add_child(_stat_row("🛡", "Shield",
 			"absorbs the next %d damage" % shield, Color(0.62, 0.78, 0.95)))
 	stat_col.add_child(_stat_row("◎", "Position",
 		position_note if position_note != "" else _position_text(entry, col), accent))

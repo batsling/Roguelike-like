@@ -394,7 +394,7 @@ func _shared_art() -> Dictionary:
 		# One sprite per shield, at the same 22px as a status pip — the board sizes
 		# them alike on purpose, so the two rows are read in one glance and a
 		# shield never claims a rank over a status it does not have.
-		"shield": _texture_url(UITheme.SHIELD_ART),
+		"shield": _texture_url(Cosmetics.shield_art()),
 	}
 
 # `get_character2`: the roster the run is actually dealt from

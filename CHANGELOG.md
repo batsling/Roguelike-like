@@ -11,6 +11,64 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The shield is a basic icon, and the old one is Brutal Orchestra's (the
+  owner, 13 Nov 2026).** A shield is 🛡 now: written as the glyph where it was a
+  ◆ (an enemy's shield badge, the inventory, a blocked hit), and drawn as that
+  same glyph where shields stand as pictures (`images2.0/general/Shield.png`,
+  made by `tools/build_shield_art.py`). The pixel shield it replaces is a shield
+  icon to earn from Brutal Orchestra, the ninth icon kind; a worn one is on the
+  pips, the chip, the Camp and the OBS overlay too (`Cosmetics.shield_art()`).
+  Brutal Orchestra's coin joins the gold icons. The glyph fonts are rebuilt: 🛡
+  in, ❤ out.
+
+- **Health, damage and gold icons (the owner, 13 Nov 2026).** Three more icon
+  kinds on the Customization screen. To earn: Wildfrost's heart and sword, The
+  Binding of Isaac's heart and sword, and Rebirth's sword; for gold, the Penny
+  from The Binding of Isaac and from Rebirth, the gold of Super Auto Pets, Slay
+  the Spire and Slay the Spire 2, and Vampire Survivors' coin.
+  - **One heart.** The player's Health was ♥ and an enemy's ❤; both are ♥ now,
+    so one worn Health icon is your heart and every enemy's.
+  - **⚔ is damage only where a node says so** (`Cosmetics.as_damage`): the
+    board's damage badge, the game card's stat pair and the enemy card's Damage
+    row. The swords of "beaten", the Combat button and the weapons tab stay.
+  - The board measures a body's badges as they will stand with a picture in
+    them (`Cosmetics.roomed`), so they still fit the body's width.
+
+- **Risk of Rain's chests (the owner, 13 Nov 2026).** One unlock, three
+  pictures: the Small Chest for a Small chest, the Large Chest for a Medium, and
+  the Golden Chest for a Large or a Huge, and for a boss's, being the set's
+  highest. The wiki's files are the sprites doubled; they are stored at their own
+  size.
+  - **A one-in-ten failure of the Title Letters tab's test is fixed**
+    (`docs/test-flakes.md`): the threaded letter loading raced the main thread's
+    own textures in the headless renderer. `TitleLetters.request` is skipped
+    there; a real window loads on threads as before.
+
+- **Slay the Spire's chests, and a rung for a boss's chest (the owner, 13 Nov
+  2026).** One unlock, four pictures: Small for a Small chest, Medium for a
+  Medium, Large for a Large or a Huge, and the Boss Chest for a boss's chest and
+  nothing else. A boss's chest is level 4 on a chest set's ladder
+  (`CosmeticCatalog.BOSS_CHEST`), read off the chest itself: one offering only
+  boss relics (`ItemDropModal.is_boss_chest`). A set with no boss picture draws
+  its highest, so a boss's chest in Enter the Gungeon's set is the A chest.
+
+- **Chest icons, the fifth icon kind (the owner, 12 Nov 2026).** A worn chest
+  icon stands in for every 🎁, like the key, bomb, trophy and Luck icons
+  (`images2.0/icons/Chests/`, `Cosmetics.GLYPHS`). Four to earn: The Binding of
+  Isaac's, Rebirth's, Vampire Survivors', and Enter the Gungeon's.
+  - **Gungeon's is four pictures and one unlock.** Its D, C, B and A chests are
+    the Small, Medium, Large and Huge chest: a chest set's `_<lo>-<hi>` range is
+    the chest's SIZE where a difficulty set's is the Fracture, so the drop
+    window's gift passes its own rung (`glyph_level`), and the "N Chests"
+    heading and the report's chest sum pass their biggest chest's. A 🎁 nobody
+    sized is the smallest; only the trophy falls back to the run's Fracture.
+  - **A set of several icons shows all of them on the hover.** Its tile on the
+    Customization screen has room for one picture, so Gungeon's chests and Risk
+    of Rain 2's difficulties now hover as a card with every picture, each over
+    its name and when it is drawn (`CustomizeScreen.set_hover`, `HoverCard`'s new
+    `gallery`); silhouettes while locked. Every tile there is a `HoverButton`, so
+    the rest hover in the game's own box rather than the stock grey tooltip.
+
 - **Follow-ups to the playtest pass (the owner, 12 Nov 2026).**
   - **The white boxes in the mini loot inventory were pills and potions.** Their
     art is `load()`ed afresh on every ask with nothing holding it, a draw command

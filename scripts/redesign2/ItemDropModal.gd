@@ -122,6 +122,18 @@ static func chest_rank(count: int) -> int:
 			rank = maxi(rank, int(size))
 	return rank
 
+# A BOSS'S CHEST is one offering boss relics and nothing else. Read off what is in
+# it rather than handed in by whoever opened it, so every screen a chest is drawn
+# on agrees, a re-roll included, and a boss that fell back to the ordinary roll
+# (no boss relics authored) is an ordinary chest.
+func is_boss_chest() -> bool:
+	if _items.is_empty():
+		return false
+	for it in _items:
+		if not (it is ItemData and (it as ItemData).boss):
+			return false
+	return true
+
 # How the chest opens: the gift lands, then the cards are dealt one after another.
 const OPEN_GIFT_SECS := 0.18
 const OPEN_CARD_SECS := 0.16
@@ -434,9 +446,17 @@ func _gift_badge(glyph: String, compact: bool) -> Control:
 	gift.add_theme_color_override("font_color", CHEST_GOLD.lerp(tint, 0.25))
 	gift.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	gift.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	gift.position = centre - Vector2(side, side) * 0.5
-	gift.size = Vector2(side, side)
+	# As wide as the badge, not as the gift: a worn chest icon is laid over room
+	# made of spaces (Cosmetics.apply_glyph), which is a little wider than the
+	# glyph was, and in a box only the glyph's width it sat right of the glow.
+	gift.position = Vector2(0, centre.y - side * 0.5)
+	gift.size = Vector2(side * 1.5, side)
 	gift.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# A worn chest icon stands in for the gift (Cosmetics), and a set of them is
+	# picked by this chest's size: Enter the Gungeon's D, C, B, A. A BOSS's chest
+	# is a rung of its own above Huge, whatever its size: Slay the Spire's Boss
+	# Chest, or the highest picture of a set that has none.
+	gift.set_meta("glyph_level", CosmeticCatalog.BOSS_CHEST if is_boss_chest() else rank)
 	badge.add_child(gift)
 	_stars.clear()
 	var count: int = rank + 1

@@ -6792,7 +6792,7 @@ func _build_health_chip() -> Control:
 	# which is the one place in the run those shields are ever mentioned while no
 	# board is on screen and the one shape nothing else taught. Hidden outright at
 	# zero: an empty shield chip reads as armour you have.
-	_shield_chip_art = UITheme.crisp_tex(UITheme.SHIELD_ART, 18)
+	_shield_chip_art = UITheme.crisp_tex(Cosmetics.shield_art(), 18)
 	_shield_chip_art.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	row.add_child(_shield_chip_art)
 	_shield_chip = Label.new()
@@ -6828,6 +6828,7 @@ func _paint_gold_chip() -> void:
 	if _gold_chip == null or not is_instance_valid(_gold_chip):
 		return
 	_gold_chip.text = "◉  %d" % GameState.gold
+	Cosmetics.apply_glyph(_gold_chip)   # a worn gold icon in place of the ◉
 	# Dimmed at zero: an empty purse is worth reading as empty rather than as a
 	# number, since it's the state where every shop price is out of reach.
 	_gold_chip.add_theme_color_override("font_color",
@@ -6945,6 +6946,7 @@ func _paint_health_chip() -> void:
 	# have to be readable when no board is on screen, and the number they matter
 	# most beside is the one they are standing in front of.
 	_health_chip.text = "♥  %d / %d" % [GameState.hp, GameState.max_hp]
+	Cosmetics.apply_glyph(_health_chip)   # a worn Health icon in place of the ♥
 	_health_chip.tooltip_text = "Health. At zero the run ends."
 	if _shield_chip != null and is_instance_valid(_shield_chip):
 		var shields: int = GameState.bonus_shields

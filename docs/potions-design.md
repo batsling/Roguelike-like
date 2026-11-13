@@ -1007,7 +1007,7 @@ taught the reader nothing about what it was.
    picker generalisation, the second button — and the Landmine's damage trigger
    (§4.7), which is the one piece of this step that is not potion code.~~
    **DONE.** `GameLoop2.area_cells` / `area_instances`, `max_health` on every
-   board entry (seeded, serialized, re-seeded on a Scramble, and drawn as `❤2/3`
+   board entry (seeded, serialized, re-seeded on a Scramble, and drawn as `♥2/3`
    where it differs), `PotionSystem.throw_potion` with the six throw ops and
    §8.2's `AREA_LADDER`, `BattlefieldView.aim_cells` widened to take an aim
    REQUEST, a second button in `LootUseModal`, and `damaged:` in the tile/unit

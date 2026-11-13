@@ -11,6 +11,11 @@ THE FILE NAME IS THE ENTRY. Drop a PNG in one of the folders below and rerun:
   images2.0/icons/Bombs/<Name>_<Game>.png                        a bomb icon
   images2.0/icons/Difficulties/<Name>_<Game>[_<lo>-<hi>].png     the trophy's stand-in
   images2.0/icons/Luck/<Name>_<Game>.png                         a Luck icon (the clover's stand-in)
+  images2.0/icons/Chests/<Name>_<Game>[_<lo>-<hi>].png           a chest icon (the gift's stand-in)
+  images2.0/icons/Health/<Name>_<Game>.png                       a Health icon (the heart's, yours and an enemy's)
+  images2.0/icons/Damage/<Name>_<Game>.png                       a damage icon (the swords', where they mean damage)
+  images2.0/icons/Gold/<Name>_<Game>.png                         a gold icon (the coin's)
+  images2.0/icons/Shields/<Name>_<Game>.png                      a shield icon (the 🛡, written or drawn)
 
   * <Character> is the character's display name with spaces as underscores
     ("Antonio_Belpaese"); what comes after it is the costume's title
@@ -23,6 +28,11 @@ THE FILE NAME IS THE ENTRY. Drop a PNG in one of the folders below and rerun:
   * A difficulty with a trailing `_<lo>-<hi>` is one image of a SET: every file of
     the same game is one unlock, and the run's Fracture picks the image whose range
     holds it (Risk of Rain 2's Drizzle 0-3, Rainstorm 4-7, Monsoon 8-10).
+  * A CHEST's range is the chest's SIZE, not the Fracture: 0 Small, 1 Medium,
+    2 Large, 3 Huge (Data.ChestSize). Enter the Gungeon's D, C, B and A chests are
+    0-0, 1-1, 2-2 and 3-3: one unlock, and the chest being opened picks the image.
+    4 is a BOSS's chest (CosmeticCatalog.BOSS_CHEST): Slay the Spire's Boss Chest
+    is 4-4 and its Large Chest 2-3. A set with no 4 shows its highest for a boss.
 
 `--check` exits 1 when the checked-in JSON is not what the folders say.
 """
@@ -36,7 +46,9 @@ OUT = os.path.join(ROOT, "data", "cosmetics.json")
 CHAR_DIR = "images2.0/characters"
 ICON_DIR = "images2.0/icons"
 SLOTS = {"Costumes Icon": "icon", "Costumes Full": "full", "Costumes Both": "both"}
-ICON_KINDS = {"Keys": "key", "Bombs": "bomb", "Difficulties": "difficulty", "Luck": "luck"}
+ICON_KINDS = {"Keys": "key", "Bombs": "bomb", "Difficulties": "difficulty", "Luck": "luck",
+	"Chests": "chest", "Health": "health", "Damage": "damage", "Gold": "gold",
+	"Shields": "shield"}
 
 # The game a costume is earned from, where its title does not say (the owner, 8 Nov
 # 2026: "any rebirth costumes should be from rebirth, and the isaac_Stray should be

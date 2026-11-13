@@ -23,7 +23,7 @@ extends Control
 #     pace it puts the board on, and your record there (which opens the list of
 #     every enemy you have beaten at it);
 #   • the ENEMIES APPROACHING — as the checklist will list them once you commit:
-#     portrait, goal and name, ❤/⚔, and a "?" row per body rolled on arrival;
+#     portrait, goal and name, ♥/⚔, and a "?" row per body rolled on arrival;
 #   • the SOURCE behind the connection you'd be walking (_build_source_block) —
 #     who inspired whom, and the evidence the sheet records for it;
 #   • and the one thing you can DO about it: travel.
@@ -458,7 +458,7 @@ func _build_game_column(game: GameData, accent: Color) -> Control:
 	# the run grants none of them: nothing is being committed to yet.
 	var shields: int = 0 if bool(_notes.get("move_only", false)) else int(_notes.get("shields", 0))
 	if shields > 0:
-		facts.add_child(_icon_fact(UITheme.SHIELD_ART, "Gain +%s" % GameState.temp_shields_text(shields),
+		facts.add_child(_icon_fact(Cosmetics.shield_art(), "Gain +%s" % GameState.temp_shields_text(shields),
 			Overworld2.SHIELD_BLUE,
 			("Selecting %s grants %s. Each one stops a single hit outright, however "
 				+ "big, and whatever is left expires when you report the game.") % [
@@ -1089,7 +1089,7 @@ func _build_enemy_block(game: GameData) -> Control:
 
 	# THE CHECKLIST'S OWN ROW (ReportChecklist.verify_row): the portrait chip and
 	# "goal — enemy" on one bordered line, so the enemy reads here exactly as it
-	# will on the list beside the board once you commit, with the board's ❤/⚔
+	# will on the list beside the board once you commit, with the board's ♥/⚔
 	# badges at its end. The rest of what the old block spelled out — type and
 	# difficulty — is the row's hover, and the abilities the portrait's hover card,
 	# which is the board's own.
@@ -1243,12 +1243,12 @@ func open_beaten(game: GameData) -> Control:
 	_proof_view = shade
 	return shade
 
-# The board's ❤ / ⚔ badges (BattlefieldView._stat_badge), as a pair for a row's end.
+# The board's ♥ / ⚔ badges (BattlefieldView._stat_badge), as a pair for a row's end.
 func _stat_pair(hp: int, dmg: int) -> Control:
 	var pair := HBoxContainer.new()
 	pair.add_theme_constant_override("separation", UITheme.GAP_TIGHT)
 	pair.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	for b in [["❤%d" % hp, BattlefieldView.HP_BADGE], ["⚔%d" % dmg, BattlefieldView.DMG_BADGE]]:
+	for b in [["♥%d" % hp, BattlefieldView.HP_BADGE], ["⚔%d" % dmg, BattlefieldView.DMG_BADGE]]:
 		var l := Label.new()
 		l.text = b[0]
 		l.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
@@ -1260,6 +1260,7 @@ func _stat_pair(hp: int, dmg: int) -> Control:
 		pill.content_margin_right = 4
 		l.add_theme_stylebox_override("normal", pill)
 		l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		Cosmetics.as_damage(l)   # the pair's ⚔ is damage (the ♥ needs no mark)
 		pair.add_child(l)
 	return pair
 

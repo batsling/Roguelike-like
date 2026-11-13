@@ -425,6 +425,320 @@
 					"max": 10
 				}
 			]
+		},
+		{
+			"id": "chest/chest_the_binding_of_isaac",
+			"kind": "chest",
+			"name": "Chest",
+			"game": "the_binding_of_isaac",
+			"images": [
+				{
+					"name": "Chest",
+					"path": "res://images2.0/icons/Chests/Chest_The_Binding_of_Isaac.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "chest/chest_the_binding_of_isaac_rebirth",
+			"kind": "chest",
+			"name": "Chest",
+			"game": "the_binding_of_isaac_rebirth",
+			"images": [
+				{
+					"name": "Chest",
+					"path": "res://images2.0/icons/Chests/Chest_The_Binding_of_Isaac_Rebirth.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "chest/chest_vampire_survivors",
+			"kind": "chest",
+			"name": "Chest",
+			"game": "vampire_survivors",
+			"images": [
+				{
+					"name": "Chest",
+					"path": "res://images2.0/icons/Chests/Chest_Vampire_Survivors.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "chest/enter_the_gungeon",
+			"kind": "chest",
+			"name": "D Chest / C Chest / B Chest / A Chest",
+			"game": "enter_the_gungeon",
+			"images": [
+				{
+					"name": "D Chest",
+					"path": "res://images2.0/icons/Chests/D_Chest_Enter_the_Gungeon_0-0.png",
+					"min": 0,
+					"max": 0
+				},
+				{
+					"name": "C Chest",
+					"path": "res://images2.0/icons/Chests/C_Chest_Enter_the_Gungeon_1-1.png",
+					"min": 1,
+					"max": 1
+				},
+				{
+					"name": "B Chest",
+					"path": "res://images2.0/icons/Chests/B_Chest_Enter_the_Gungeon_2-2.png",
+					"min": 2,
+					"max": 2
+				},
+				{
+					"name": "A Chest",
+					"path": "res://images2.0/icons/Chests/A_Chest_Enter_the_Gungeon_3-3.png",
+					"min": 3,
+					"max": 3
+				}
+			]
+		},
+		{
+			"id": "chest/risk_of_rain",
+			"kind": "chest",
+			"name": "Small Chest / Large Chest / Golden Chest",
+			"game": "risk_of_rain",
+			"images": [
+				{
+					"name": "Small Chest",
+					"path": "res://images2.0/icons/Chests/Small_Chest_Risk_of_Rain_0-0.png",
+					"min": 0,
+					"max": 0
+				},
+				{
+					"name": "Large Chest",
+					"path": "res://images2.0/icons/Chests/Large_Chest_Risk_of_Rain_1-1.png",
+					"min": 1,
+					"max": 1
+				},
+				{
+					"name": "Golden Chest",
+					"path": "res://images2.0/icons/Chests/Golden_Chest_Risk_of_Rain_2-3.png",
+					"min": 2,
+					"max": 3
+				}
+			]
+		},
+		{
+			"id": "chest/slay_the_spire",
+			"kind": "chest",
+			"name": "Small Chest / Medium Chest / Large Chest / Boss Chest",
+			"game": "slay_the_spire",
+			"images": [
+				{
+					"name": "Small Chest",
+					"path": "res://images2.0/icons/Chests/Small_Chest_Slay_the_Spire_0-0.png",
+					"min": 0,
+					"max": 0
+				},
+				{
+					"name": "Medium Chest",
+					"path": "res://images2.0/icons/Chests/Medium_Chest_Slay_the_Spire_1-1.png",
+					"min": 1,
+					"max": 1
+				},
+				{
+					"name": "Large Chest",
+					"path": "res://images2.0/icons/Chests/Large_Chest_Slay_the_Spire_2-3.png",
+					"min": 2,
+					"max": 3
+				},
+				{
+					"name": "Boss Chest",
+					"path": "res://images2.0/icons/Chests/Boss_Chest_Slay_the_Spire_4-4.png",
+					"min": 4,
+					"max": 4
+				}
+			]
+		},
+		{
+			"id": "health/health_the_binding_of_isaac",
+			"kind": "health",
+			"name": "Health",
+			"game": "the_binding_of_isaac",
+			"images": [
+				{
+					"name": "Health",
+					"path": "res://images2.0/icons/Health/Health_The_Binding_of_Isaac.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "health/health_wildfrost",
+			"kind": "health",
+			"name": "Health",
+			"game": "wildfrost",
+			"images": [
+				{
+					"name": "Health",
+					"path": "res://images2.0/icons/Health/Health_Wildfrost.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "damage/damage_the_binding_of_isaac",
+			"kind": "damage",
+			"name": "Damage",
+			"game": "the_binding_of_isaac",
+			"images": [
+				{
+					"name": "Damage",
+					"path": "res://images2.0/icons/Damage/Damage_The_Binding_of_Isaac.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "damage/damage_the_binding_of_isaac_rebirth",
+			"kind": "damage",
+			"name": "Damage",
+			"game": "the_binding_of_isaac_rebirth",
+			"images": [
+				{
+					"name": "Damage",
+					"path": "res://images2.0/icons/Damage/Damage_The_Binding_of_Isaac_Rebirth.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "damage/damage_wildfrost",
+			"kind": "damage",
+			"name": "Damage",
+			"game": "wildfrost",
+			"images": [
+				{
+					"name": "Damage",
+					"path": "res://images2.0/icons/Damage/Damage_Wildfrost.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "gold/coin_brutal_orchestra",
+			"kind": "gold",
+			"name": "Coin",
+			"game": "brutal_orchestra",
+			"images": [
+				{
+					"name": "Coin",
+					"path": "res://images2.0/icons/Gold/Coin_Brutal_Orchestra.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "gold/coin_vampire_survivors",
+			"kind": "gold",
+			"name": "Coin",
+			"game": "vampire_survivors",
+			"images": [
+				{
+					"name": "Coin",
+					"path": "res://images2.0/icons/Gold/Coin_Vampire_Survivors.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "gold/gold_slay_the_spire",
+			"kind": "gold",
+			"name": "Gold",
+			"game": "slay_the_spire",
+			"images": [
+				{
+					"name": "Gold",
+					"path": "res://images2.0/icons/Gold/Gold_Slay_the_Spire.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "gold/gold_slay_the_spire_2",
+			"kind": "gold",
+			"name": "Gold",
+			"game": "slay_the_spire_2",
+			"images": [
+				{
+					"name": "Gold",
+					"path": "res://images2.0/icons/Gold/Gold_Slay_the_Spire_2.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "gold/gold_super_auto_pets",
+			"kind": "gold",
+			"name": "Gold",
+			"game": "super_auto_pets",
+			"images": [
+				{
+					"name": "Gold",
+					"path": "res://images2.0/icons/Gold/Gold_Super_Auto_Pets.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "gold/penny_the_binding_of_isaac",
+			"kind": "gold",
+			"name": "Penny",
+			"game": "the_binding_of_isaac",
+			"images": [
+				{
+					"name": "Penny",
+					"path": "res://images2.0/icons/Gold/Penny_The_Binding_of_Isaac.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "gold/penny_the_binding_of_isaac_rebirth",
+			"kind": "gold",
+			"name": "Penny",
+			"game": "the_binding_of_isaac_rebirth",
+			"images": [
+				{
+					"name": "Penny",
+					"path": "res://images2.0/icons/Gold/Penny_The_Binding_of_Isaac_Rebirth.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "shield/shield_brutal_orchestra",
+			"kind": "shield",
+			"name": "Shield",
+			"game": "brutal_orchestra",
+			"images": [
+				{
+					"name": "Shield",
+					"path": "res://images2.0/icons/Shields/Shield_Brutal_Orchestra.png",
+					"min": 0,
+					"max": 10
+				}
+			]
 		}
 	]
 }

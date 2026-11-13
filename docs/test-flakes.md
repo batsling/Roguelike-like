@@ -190,3 +190,23 @@ failure; diffing a passing and failing run's Control tree) are the reusable part
     `_disarm_board` now sets every non-boss body to Health 1, beside the
     abilities and goal modes it already strips. Bosses keep theirs, since their
     phases are what a boss is.
+  - `test_customization.gd::test_the_title_letters_tab_is_built_over_frames_not_in_the_click`
+    failed about one run in ten with "Unexpected Errors: Parameter "t" is null"
+    and no failed assertion. **A thread, not a seed**: the tab asks for its 609
+    pictures on loader threads (`TitleLetters.request`) while the main thread
+    builds tiles, and a tile for a big picture makes a texture of its own
+    (`UITheme.smooth_copy`). The headless renderer's texture storage is not safe
+    across threads, so one of the two came out null. Found with a 25-run stress
+    loop of that one test, reading `/tmp/gut_last.log` for the engine's
+    backtrace (`tools/gut.sh` prints only the summary). `request` now does
+    nothing in a headless run, where there is no screen to keep smooth; 0 in 40
+    after. An "Unexpected Errors" failure with every assertion passing is an
+    ENGINE error during the test: read the full log before the test.
+  - `test_items2.gd::test_the_chests_gold_is_one_total_over_them_and_skipping_keeps_it`
+    failed once in CI at "and not again on each chest" and passed every local
+    run. It asserted that no chest's text contains the word "gold", and the
+    chests are ROLLED: **Dragon Fruit**'s own description is "Whenever you obtain
+    any amount of gold". Found by grepping `data/items2.0/` for the word the
+    assertion forbids. It now looks for the payout's words ("+3 gold") instead.
+    An assertion that a word is ABSENT from a screen showing random content is
+    only true until some content says the word.

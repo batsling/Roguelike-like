@@ -192,6 +192,252 @@ func test_a_worn_luck_icon_replaces_the_clover() -> void:
 	assert_eq(pixel.texture.get_width() % 16, 0, "16px art at 16, 32, 48…")
 	assert_null(art.get_node_or_null("Level"), "only the trophy carries the Fracture")
 
+# Chests are the fifth icon kind (12 Nov 2026): a worn one stands in for the gift,
+# and Enter the Gungeon's D, C, B and A are ONE unlock picked by the chest's size.
+func test_gungeons_chests_are_one_unlock_picked_by_the_chests_size() -> void:
+	assert_eq(CosmeticCatalog.icons_of("chest").size(), 6,
+		"both Isaacs', Vampire Survivors', Enter the Gungeon's, Slay the Spire's and Risk of Rain's")
+	var e := CosmeticCatalog.entry("chest/enter_the_gungeon")
+	assert_false(e.is_empty())
+	assert_eq((e["images"] as Array).size(), 4, "four pictures, one unlock")
+	var letters := ["D_Chest", "C_Chest", "B_Chest", "A_Chest"]
+	for size in Data.CHEST_SIZE_CHOICES:
+		var rank: int = ItemDropModal.chest_rank(int(Data.CHEST_SIZE_CHOICES[size]))
+		assert_string_contains(CosmeticCatalog.image_for(e, rank), letters[rank],
+			"%s Chest" % Data.CHEST_SIZE_NAMES[size])
+	assert_eq(CosmeticCatalog.range_text(e, e["images"][0]), "Small Chest")
+	assert_eq(CosmeticCatalog.range_text(e, e["images"][3]), "Huge Chest")
+	assert_true(CosmeticCatalog.units_of_game(&"enter_the_gungeon").has("chest/enter_the_gungeon"))
+
+func test_a_worn_chest_icon_replaces_the_gift_by_the_chests_size() -> void:
+	Cosmetics._unlocked["chest/enter_the_gungeon"] = "game:enter_the_gungeon"
+	Cosmetics.set_icon("chest", "chest/enter_the_gungeon")
+	var l := Label.new()
+	l.text = ItemDropModal.chest_heading(3)
+	l.set_meta("glyph_level", ItemDropModal.chest_rank(3))
+	add_child_autofree(l)
+	Cosmetics.apply_glyph(l)
+	assert_false(l.text.contains("🎁"), "the gift is gone")
+	assert_string_contains(l.text, "Large Chest")
+	var art: TextureRect = l.get_node_or_null(Cosmetics.GLYPH_NODE)
+	assert_not_null(art, "a picture stands in its place")
+	assert_string_contains(String(art.get_meta(&"source")), "B_Chest", "a Large chest is the B chest")
+	assert_null(art.get_node_or_null("Level"), "only the trophy carries a number")
+	# A gift nobody sized is the smallest chest, whatever the run's Fracture.
+	var bare := Label.new()
+	bare.text = "🎁 a chest"
+	add_child_autofree(bare)
+	Cosmetics.apply_glyph(bare)
+	assert_string_contains(String(bare.get_node(Cosmetics.GLYPH_NODE).get_meta(&"source")), "D_Chest")
+
+func test_the_chest_on_the_drop_window_is_the_worn_one_at_its_size() -> void:
+	Cosmetics._unlocked["chest/enter_the_gungeon"] = "game:enter_the_gungeon"
+	Cosmetics.set_icon("chest", "chest/enter_the_gungeon")
+	var items: Array = Data.reward_item2_pool().slice(0, 5)
+	if items.size() < 5:
+		pending("fewer than five items to fill a Huge chest")
+		return
+	var host := Control.new()
+	add_child_autofree(host)
+	var modal := ItemDropModal.open(host, items)
+	await wait_process_frames(3)
+	var gifts: Array = modal.find_children(Cosmetics.GLYPH_NODE, "TextureRect", true, false)
+	assert_eq(gifts.size(), 1, "the gift is a picture")
+	if gifts.size() == 1:
+		assert_string_contains(String(gifts[0].get_meta(&"source")), "A_Chest", "a Huge chest is the A chest")
+
+# Slay the Spire's chests (13 Nov 2026): Small, Medium, Large for Large and Huge,
+# and a Boss Chest that only a boss's chest wears. A set without one shows its
+# highest for a boss.
+func test_slay_the_spires_boss_chest_is_for_boss_chests_only() -> void:
+	var e := CosmeticCatalog.entry("chest/slay_the_spire")
+	assert_false(e.is_empty())
+	var want := ["Small_Chest", "Medium_Chest", "Large_Chest", "Large_Chest", "Boss_Chest"]
+	for level in want.size():
+		assert_string_contains(CosmeticCatalog.image_for(e, level), want[level], "level %d" % level)
+	assert_eq(CosmeticCatalog.range_text(e, e["images"][2]), "Large–Huge Chest")
+	assert_eq(CosmeticCatalog.range_text(e, e["images"][3]), "Boss Chest")
+	var gungeon := CosmeticCatalog.entry("chest/enter_the_gungeon")
+	assert_string_contains(CosmeticCatalog.image_for(gungeon, CosmeticCatalog.BOSS_CHEST), "A_Chest",
+		"no boss picture: the highest tier")
+	assert_string_contains(CosmeticCatalog.image_for(
+		CosmeticCatalog.entry("chest/chest_vampire_survivors"), CosmeticCatalog.BOSS_CHEST), "Vampire")
+
+# Risk of Rain's chests (13 Nov 2026): Small for Small, Large for Medium, Golden
+# for Large and Huge, and, having no boss picture, Golden for a boss's chest too.
+func test_risk_of_rains_chests_by_size() -> void:
+	var e := CosmeticCatalog.entry("chest/risk_of_rain")
+	assert_false(e.is_empty())
+	assert_eq(String(e["game"]), "risk_of_rain", "the first game's, not the sequel's")
+	var want := ["Small_Chest", "Large_Chest", "Golden_Chest", "Golden_Chest", "Golden_Chest"]
+	for level in want.size():
+		assert_string_contains(CosmeticCatalog.image_for(e, level), want[level], "level %d" % level)
+	assert_eq(CosmeticCatalog.range_text(e, e["images"][1]), "Medium Chest")
+	assert_eq(CosmeticCatalog.range_text(e, e["images"][2]), "Large–Huge Chest")
+
+func test_a_boss_chest_on_the_drop_window_wears_the_boss_picture() -> void:
+	var boss: Array = Data.boss_item2_pool()
+	var plain: Array = Data.reward_item2_pool().filter(func(it): return not it.boss)
+	if boss.is_empty() or plain.is_empty():
+		pending("no boss relic, or no ordinary one, to fill a chest with")
+		return
+	var host := Control.new()
+	add_child_autofree(host)
+	for set_key in ["chest/slay_the_spire", "chest/enter_the_gungeon"]:
+		Cosmetics._unlocked[set_key] = "game:x"
+		Cosmetics.set_icon("chest", set_key)
+		var from_boss: bool = set_key == "chest/slay_the_spire"
+		for case in [[[boss[0]], "Boss_Chest" if from_boss else "A_Chest"],
+				[[plain[0]], "Small_Chest" if from_boss else "D_Chest"],
+				[[boss[0], plain[0]], "Medium_Chest" if from_boss else "C_Chest"]]:
+			var modal := ItemDropModal.open(host, case[0])
+			assert_eq(modal.is_boss_chest(), case[0] == [boss[0]])
+			await wait_process_frames(3)
+			var gifts: Array = modal.find_children(Cosmetics.GLYPH_NODE, "TextureRect", true, false)
+			assert_eq(gifts.size(), 1, "the gift is a picture")
+			if gifts.size() == 1:
+				assert_string_contains(String(gifts[0].get_meta(&"source")), case[1])
+			modal.leave()
+			await wait_process_frames(2)
+
+# A set of several icons shows every one of them on its tile's hover (12 Nov 2026).
+func test_a_set_of_several_icons_shows_them_all_on_the_hover() -> void:
+	for id in ["chest/enter_the_gungeon", "difficulty/risk_of_rain_2"]:
+		var e := CosmeticCatalog.entry(id)
+		var kind := String(e["kind"])
+		Cosmetics._unlocked.erase(id)
+		for locked in [true, false]:
+			if not locked:
+				Cosmetics._unlocked[id] = "game:%s" % e["game"]
+			var tiles: Array = CustomizeScreen.slot_tiles(Cosmetics.icon_slot(kind), null, "?",
+				"Default", CosmeticCatalog.icons_of(kind), 64, func() -> void: pass)
+			var found: Button = null
+			for t in tiles:
+				autofree(t)
+				if String(t.get_meta("look", "")) == id:
+					found = t
+			assert_not_null(found, id)
+			var card: Control = found._make_custom_tooltip(found.tooltip_text)
+			autofree(card)
+			assert_not_null(card, "the hover is a card")
+			var shelf: Node = card.find_child("Gallery", true, false)
+			assert_not_null(shelf, "with a gallery")
+			assert_eq(shelf.get_child_count(), (e["images"] as Array).size(), "one picture per icon in the set")
+			for i in (e["images"] as Array).size():
+				var shot: Node = shelf.get_child(i)
+				assert_true(shot.get_child(0) is TextureRect, "a picture")
+				assert_eq((shot.get_child(0) as TextureRect).modulate == Color(0, 0, 0, 1), locked,
+					"a silhouette while it is locked")
+				assert_string_contains((shot.get_child(1) as Label).text, String(e["images"][i]["name"]))
+	# A single icon keeps the plain hover: there is nothing more to show.
+	var single: Array = CustomizeScreen.slot_tiles(Cosmetics.icon_slot("chest"), null, "?",
+		"Default", [CosmeticCatalog.entry("chest/chest_vampire_survivors")], 64, func() -> void: pass)
+	for t in single:
+		autofree(t)
+	assert_false(single[2].has_meta(HoverCard.META))
+
+# Health, damage and gold are icon kinds too (13 Nov 2026). One heart for the
+# player and for every enemy, so one worn Health icon covers both.
+func test_health_damage_and_gold_are_icon_kinds() -> void:
+	for kind in ["health", "damage", "gold"]:
+		assert_true(CosmeticCatalog.KINDS.has(kind), kind)
+		assert_true(CustomizeScreen.KIND_GLYPHS.has(kind) and CustomizeScreen.KIND_NAMES.has(kind), kind)
+	var by_kind := {}
+	for kind in ["health", "damage", "gold"]:
+		by_kind[kind] = CosmeticCatalog.icons_of(kind).map(func(e): return String(e["game"]))
+	by_kind["gold"].sort()
+	assert_eq(by_kind["gold"], ["brutal_orchestra", "slay_the_spire", "slay_the_spire_2",
+		"super_auto_pets", "the_binding_of_isaac", "the_binding_of_isaac_rebirth", "vampire_survivors"])
+	assert_eq(by_kind["health"], ["the_binding_of_isaac", "wildfrost"])
+	assert_eq(by_kind["damage"], ["the_binding_of_isaac", "the_binding_of_isaac_rebirth", "wildfrost"])
+
+func test_no_script_draws_the_other_heart() -> void:
+	# ♥ is THE heart. ❤ was the enemies' and never the player's, so a worn Health
+	# icon would have covered one and not the other.
+	var heavy := char(0x2764)
+	var todo: Array = ["res://scripts"]
+	while not todo.is_empty():
+		var dir: String = todo.pop_back()
+		for d in DirAccess.get_directories_at(dir):
+			todo.append(dir.path_join(d))
+		for f in DirAccess.get_files_at(dir):
+			if f.ends_with(".gd"):
+				assert_false(FileAccess.get_file_as_string(dir.path_join(f)).contains(heavy),
+					"%s draws %s; Health is ♥" % [f, heavy])
+
+func test_a_worn_health_icon_is_the_players_heart_and_an_enemys() -> void:
+	Cosmetics._unlocked["health/health_wildfrost"] = "game:wildfrost"
+	Cosmetics.set_icon("health", "health/health_wildfrost")
+	for text in ["♥  3 / 5", "♥2", "♥ 4 Health"]:
+		var l := Label.new()
+		l.text = text
+		add_child_autofree(l)
+		Cosmetics.apply_glyph(l)
+		assert_false(l.text.contains("♥"), text)
+		var art: TextureRect = l.get_node_or_null(Cosmetics.GLYPH_NODE)
+		assert_not_null(art, text)
+		assert_string_contains(String(art.get_meta(&"source")), "Health_Wildfrost")
+		# A count that ticks: the picture follows the new text.
+		l.text = "♥  1 / 5"
+		Cosmetics.apply_glyph(l)
+		assert_false(l.text.contains("♥"))
+		assert_string_contains(l.text, "1 / 5")
+
+func test_a_worn_damage_icon_only_stands_in_where_the_swords_mean_damage() -> void:
+	Cosmetics._unlocked["damage/damage_wildfrost"] = "game:wildfrost"
+	Cosmetics.set_icon("damage", "damage/damage_wildfrost")
+	var beaten := Label.new()
+	beaten.text = "⚔ 3 beaten"
+	add_child_autofree(beaten)
+	Cosmetics.apply_glyph(beaten)
+	assert_eq(beaten.text, "⚔ 3 beaten", "the swords of a record are left alone")
+	assert_null(beaten.get_node_or_null(Cosmetics.GLYPH_NODE))
+	var dmg := Label.new()
+	dmg.text = "⚔2×3"
+	Cosmetics.as_damage(dmg)
+	add_child_autofree(dmg)
+	Cosmetics.apply_glyph(dmg)
+	assert_false(dmg.text.contains("⚔"), "a damage badge's are swapped")
+	assert_string_contains(dmg.text, "2×3")
+	assert_string_contains(String(dmg.get_node(Cosmetics.GLYPH_NODE).get_meta(&"source")), "Damage_Wildfrost")
+	# The board fits its badges by measuring them as they will stand.
+	var font: Font = dmg.get_theme_font("font")
+	assert_eq(Cosmetics.roomed("⚔2×3", font, 12, true), Cosmetics._room(font, 12) + "2×3")
+	assert_eq(Cosmetics.roomed("⚔2", font, 12), "⚔2", "unmarked, the swords stay")
+	assert_eq(Cosmetics.roomed("♥2", font, 12), "♥2", "no Health icon is worn")
+
+# Shields (13 Nov 2026): the basic shield is the 🛡 glyph, written and drawn, and
+# the pixel shield it replaced is Brutal Orchestra's to earn.
+func test_the_shield_is_the_glyph_until_brutal_orchestras_is_worn() -> void:
+	var key := "shield/shield_brutal_orchestra"
+	assert_eq(String(CosmeticCatalog.entry(key).get("game", "")), "brutal_orchestra")
+	assert_eq(Cosmetics.shield_art(), UITheme.SHIELD_ART, "the basic shield, unworn")
+	Cosmetics.set_icon("shield", key)
+	assert_eq(Cosmetics.shield_art(), UITheme.SHIELD_ART, "worn but locked: still the basic one")
+	Cosmetics._unlocked[key] = "game:brutal_orchestra"
+	assert_string_contains(Cosmetics.shield_art().resource_path, "Shield_Brutal_Orchestra")
+	# …and where a shield is WRITTEN, an enemy's badge.
+	var l := Label.new()
+	l.text = "🛡2"
+	add_child_autofree(l)
+	Cosmetics.apply_glyph(l)
+	assert_false(l.text.contains("🛡"))
+	assert_string_contains(String(l.get_node(Cosmetics.GLYPH_NODE).get_meta(&"source")), "Shield_Brutal_Orchestra")
+
+func test_a_worn_gold_icon_replaces_the_coin() -> void:
+	var key := "gold/penny_the_binding_of_isaac_rebirth"
+	Cosmetics._unlocked[key] = "game:the_binding_of_isaac_rebirth"
+	Cosmetics.set_icon("gold", key)
+	var l := Label.new()
+	l.text = "◉  12"
+	add_child_autofree(l)
+	Cosmetics.apply_glyph(l)
+	assert_false(l.text.contains("◉"))
+	assert_string_contains(l.text, "12")
+	var art: TextureRect = l.get_node_or_null(Cosmetics.GLYPH_NODE)
+	assert_not_null(art)
+	assert_string_contains(String(art.get_meta(&"source")), "Penny_The_Binding_of_Isaac_Rebirth")
+
 func test_an_unworn_glyph_is_left_alone() -> void:
 	var l := Label.new()
 	l.text = "🗝 Keys 2"

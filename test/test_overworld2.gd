@@ -5748,11 +5748,11 @@ func test_the_sword_badge_carries_the_swing_count() -> void:
 		"two swings are counted on the damage itself")
 	assert_eq(_ui._board._damage_badge_text(entry, 3), "⚔3×3")
 	# No space, and "×" not "x": on the 46px cells of a 7x7 board every character
-	# of this badge is width the ❤ beside it doesn't get (see _add_enemy_badges).
+	# of this badge is width the ♥ beside it doesn't get (see _add_enemy_badges).
 	assert_false(_ui._board._damage_badge_text(entry, 3).contains(" "),
 		"the multi-swing badge spends no width on a space")
 
-# Recursive: the ❤ / ⚔ pair lives inside a row now (see the overlap test below),
+# Recursive: the ♥ / ⚔ pair lives inside a row now (see the overlap test below),
 # so a one-level walk would report a body wearing no badges at all.
 func _badge_texts(instance: int) -> Array:
 	var badges: Control = _ui._board._badges_for_instance(instance)
@@ -5762,7 +5762,7 @@ func _badge_texts(instance: int) -> Array:
 #
 # Anchored to opposite bottom corners, each badge grew from its corner inwards —
 # so the moment an enemy got a second swing, "⚔3×2" grew left and printed itself
-# over the ❤ in the other corner. It bit exactly when it mattered: multi-swing
+# over the ♥ in the other corner. It bit exactly when it mattered: multi-swing
 # means the Amulet is close, which means the board is at its widest and the cells
 # at their smallest. One row can't overlap itself.
 func test_the_two_stat_badges_share_one_row_so_they_cannot_overlap() -> void:
@@ -5777,7 +5777,7 @@ func test_the_two_stat_badges_share_one_row_so_they_cannot_overlap() -> void:
 		if not (row is HBoxContainer):
 			continue
 		for c in row.get_children():
-			if c is Label and String((c as Label).text).begins_with("❤"):
+			if c is Label and String((c as Label).text).begins_with("♥"):
 				hp = c
 			elif c is Label and String((c as Label).text).begins_with("⚔"):
 				dmg = c

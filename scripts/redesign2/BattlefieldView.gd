@@ -1931,7 +1931,7 @@ func _unit_node(cell: Vector2i, unit: UnitData) -> Control:
 	var hp: int = int((GameLoop2.units.get(cell, {}) as Dictionary).get("health", unit.health))
 	if unit.health > 1:
 		var badge := Label.new()
-		badge.text = "❤%d" % hp
+		badge.text = "♥%d" % hp
 		badge.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 		badge.add_theme_color_override("font_color", UITheme.TEXT)
 		badge.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
@@ -2705,7 +2705,7 @@ func _draw_order_key(entry: Dictionary) -> int:
 # Add one enemy to the overlay, spanning its whole footprint. Each cell it fills
 # gets a tinted frame (so a 2x3 L visibly reads as an L), the art is drawn across
 # the FULL bounding box — never cropped to the solid cells, so the parts poking
-# out of the shape stay visible — and ❤ health / ⚔ damage / status badges sit in
+# out of the shape stay visible — and ♥ health / ⚔ damage / status badges sit in
 # the corners. The current (now-playing) enemy gets a thicker border.
 func _add_enemy_node(entry: Dictionary) -> Control:
 	var e: GoalEnemyData = entry.get("enemy")
@@ -2988,26 +2988,26 @@ func _add_enemy_badges(holder: Control, entry: Dictionary, e: GoalEnemyData,
 	# game hands the board nothing out in the wilds.
 	var strikes: int = GameLoop2.attacks_in_turns(entry)
 
-	# ❤ health and ⚔ damage sit on the box's bottom EDGE rather than inside it, and
+	# ♥ health and ⚔ damage sit on the box's bottom EDGE rather than inside it, and
 	# small: printed over the art at full size they covered the enemy you were
 	# trying to recognise. Straddling the border puts them clear of the picture
 	# while still obviously belonging to this body.
 	# A FRACTION ONLY WHEN THERE IS ONE (docs/potions-design.md §4.6). Almost every
-	# body on this board is at full Health and "❤1/1" is a badge saying the same
+	# body on this board is at full Health and "♥1/1" is a badge saying the same
 	# thing twice; a chipped one — or one a thrown Fruit Juice has GROWN — is
 	# exactly the case the second number is for, and it was unreadable while the
 	# ceiling was never written down.
 	var hp: int = int(entry.get("health", e.health))
 	var ceiling: int = GameLoop2.entry_max_health(entry)
-	var hp_text: String = "❤%d" % hp if hp >= ceiling else "❤%d/%d" % [hp, ceiling]
+	var hp_text: String = "♥%d" % hp if hp >= ceiling else "♥%d/%d" % [hp, ceiling]
 	var dmg_text: String = _damage_badge_text(entry, strikes)
 	var shield: int = GameLoop2.enemy_shield(entry)
 	var row_texts: Array = [hp_text, dmg_text]
 	if shield > 0:
-		row_texts.append("◆%d" % shield)
+		row_texts.append("🛡%d" % shield)
 	# KEPT INSIDE THE BODY'S OWN WIDTH. The row used to be as wide as its badges at
 	# the cell's font, and on a narrow body (a one-cell body on a crowded board, a
-	# chipped "❤2/3" beside a "⚔3×2") it hung out past both side edges and over the
+	# chipped "♥2/3" beside a "⚔3×2") it hung out past both side edges and over the
 	# neighbours' numbers. The font steps down until the row fits the footprint.
 	var stat_font: int = fit_stat_font(row_texts, holder.size.x, stat_badge_font(_cell))
 	var hp_lbl := _stat_badge(hp_text, HP_BADGE, stat_font)
@@ -3018,11 +3018,12 @@ func _add_enemy_badges(holder: Control, entry: Dictionary, e: GoalEnemyData,
 	# sitting over the art.
 	var dmg_lbl := _stat_badge(dmg_text,
 		UITheme.DANGER.lerp(Color.WHITE, 0.45) if strikes > 1 else DMG_BADGE, stat_font)
+	Cosmetics.as_damage(dmg_lbl)   # its ⚔ is damage: a worn damage icon stands in
 
 	# The two go in ONE ROW, not one in each bottom corner, and that is a bug fix.
 	# Anchored separately, each badge grew from its own corner inwards — so the
 	# moment an enemy got a second swing, "⚔3 ×2" grew left across the box and
-	# printed itself straight over the ❤ in the other corner. The health, which is
+	# printed itself straight over the ♥ in the other corner. The health, which is
 	# the number you are reading to decide whether it dies this game, was the one
 	# that lost. It happened exactly when it mattered most: multi-swing means the
 	# Amulet is close and the board is at its widest, so the cells are at their
@@ -3042,11 +3043,11 @@ func _add_enemy_badges(holder: Control, entry: Dictionary, e: GoalEnemyData,
 	stat_row.add_child(hp_lbl)
 	# A Dexterity shield goes next to the Health it is standing in front of, and
 	# only when there is one to spend (§13.4). It is the number that decides
-	# whether meeting this body's goal kills it, so it belongs beside the ❤ rather
+	# whether meeting this body's goal kills it, so it belongs beside the ♥ rather
 	# than under the status pips — the pip says the body HAS Dexterity, this says
 	# how much of it is left.
 	if shield > 0:
-		stat_row.add_child(_stat_badge("◆%d" % shield, SHIELD_BLUE, stat_font))
+		stat_row.add_child(_stat_badge("🛡%d" % shield, SHIELD_BLUE, stat_font))
 	var gap := Control.new()
 	gap.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	gap.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -3064,7 +3065,7 @@ func _add_enemy_badges(holder: Control, entry: Dictionary, e: GoalEnemyData,
 	holder.add_child(stat_row)
 
 	# Statuses in the TOP-RIGHT corner (§13), in the corner row below. They used to
-	# hang under the box, past the ❤/⚔ row, and the owner (28 Oct 2026) saw what
+	# hang under the box, past the ♥/⚔ row, and the owner (28 Oct 2026) saw what
 	# that cost: "lets have the statuses on enemies show on the top right so it
 	# cuts off less things". Under the box, the strip ran into the gutter and over
 	# the head of whatever stood in the cell below; in the corner it sits on this
@@ -3340,9 +3341,9 @@ func _fill_shields() -> void:
 	var left: int = _shields_shown.x if _shields_shown.x >= 0 else GameState.shields
 	var bonus: int = _shields_shown.y if _shields_shown.y >= 0 else GameState.bonus_shields
 	for _i in range(bonus):
-		_hero_shields.add_child(UITheme.timed_art(UITheme.SHIELD_ART, SHIELD_PIP, false))
+		_hero_shields.add_child(UITheme.timed_art(Cosmetics.shield_art(), SHIELD_PIP, false))
 	for _i in range(left):
-		_hero_shields.add_child(UITheme.timed_art(UITheme.SHIELD_ART, SHIELD_PIP, true))
+		_hero_shields.add_child(UITheme.timed_art(Cosmetics.shield_art(), SHIELD_PIP, true))
 	_hero_shields.visible = left + bonus > 0
 	_hero_shields.tooltip_text = ("%s (the ones with a clock on them) — each stops "
 		+ "one hit outright, however big, and they go when you report this game.") \
@@ -3371,14 +3372,14 @@ const STATUS_PIP_HERO := 22
 # still carries the whole status; the chip only has to say which.
 const STATUS_PIP_ENEMY := 12
 
-# How far the ❤ / ⚔ badges hang BELOW an enemy's box, and how far under them the
+# How far the ♥ / ⚔ badges hang BELOW an enemy's box, and how far under them the
 # status strip sits. Both are negative insets on a bottom-anchored preset, so the
 # badges straddle the border and the statuses clear it entirely — the art keeps
 # the whole cell to itself.
 # The ⚠ that marks a body with an ability (§7.6). RED rather than the amber it
 # started as, and a size up from the stat badges beside it: an ability is always
 # something the player has to account for, the mark's whole job is to say "read
-# this one before you decide", and at 11px in the same warm amber as ❤ and ⚔ it
+# this one before you decide", and at 11px in the same warm amber as ♥ and ⚔ it
 # read as one more number on a corner full of them rather than as a warning.
 const ABILITY_MARK := Color(1.0, 0.29, 0.25)
 const ABILITY_FONT := 15
@@ -3397,7 +3398,7 @@ const HUNT_BAND := Color(1.0, 0.78, 0.28)
 
 const STAT_BADGE_DROP := 7
 
-# THE ❤ / ⚔ BADGES ARE READ OFF A STREAM, so they are sized to the cell rather
+# THE ♥ / ⚔ BADGES ARE READ OFF A STREAM, so they are sized to the cell rather
 # than fixed at the 10px they started at. At 10px, outlined white over the art,
 # they were the smallest text on the page and a 1080p capture downscaled to a
 # viewer's player turned them into specks — while they are the two numbers a
@@ -3427,8 +3428,10 @@ static func stat_row_width(texts: Array, font_size: int) -> float:
 		font = ThemeDB.fallback_font
 	var total: float = float(UITheme.GAP_HAIR) * maxf(0.0, texts.size() - 1)
 	for t in texts:
-		total += font.get_string_size(String(t), HORIZONTAL_ALIGNMENT_LEFT, -1,
-			font_size).x + STAT_PILL_PAD
+		# As it will stand: a worn Health or damage icon is laid over room a little
+		# wider than the glyph it replaces (Cosmetics.roomed).
+		total += font.get_string_size(Cosmetics.roomed(String(t), font, font_size, true),
+			HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x + STAT_PILL_PAD
 	return total
 
 static func fit_stat_font(texts: Array, width: float, start: int) -> int:
@@ -3449,7 +3452,7 @@ static func stat_badge_drop(font: int) -> int:
 # is white because bare text over 800-odd different pictures has nothing else it
 # can rely on (see the note above it), and a backing it brings with it removes
 # that constraint. It also gives each number an EDGE: two bodies standing side by
-# side used to run their badges together into one string ("❤1.❤1").
+# side used to run their badges together into one string ("♥1.♥1").
 #
 # Still a Label (a Label draws a `normal` stylebox), so everything that finds a
 # badge by walking the row for Labels keeps finding it.
@@ -3567,7 +3570,7 @@ func _fill_status_strip(strip: HBoxContainer, rows: Array, which: StringName,
 	return rows.size()
 
 # WHITE ON A BLACK OUTLINE, whatever `color` says — and `color` says a lot: every
-# caller passes the shade its badge is nominally in (❤ pink, ⚔ gold, ◆ blue, the
+# caller passes the shade its badge is nominally in (♥ pink, ⚔ gold, ◆ blue, the
 # ability mark's red). None of them have ever been drawn in it. That is not a bug
 # to fix wholesale: a badge sits ON the enemy art, over whatever colours the
 # picture happens to be, and white-with-an-outline is the only pairing that stays
@@ -3817,6 +3820,7 @@ func _paint_hp() -> void:
 	if _hero_hp == null:
 		return
 	_hero_hp.text = "♥ %d/%d" % [shown_hp(), GameState.max_hp]
+	Cosmetics.apply_glyph(_hero_hp)   # a worn Health icon in place of the ♥
 	shown_hp_changed.emit(shown_hp())
 
 # One strike connected: take it off the number the hero is reading as, and flash
@@ -4202,7 +4206,7 @@ func play_attempt_fx(cost: String) -> void:
 	if _fx_layer == null or not is_inside_tree():
 		return
 	if cost == "shield" or cost == "bonus":
-		_float_over_hero("-1 ◆", SHIELD_BLUE)
+		_float_over_hero("-1 🛡", SHIELD_BLUE)
 		_pop_shield_pips()
 
 # A number rising off the hero — the attempt tracker's feedback, thrown from the
@@ -4256,7 +4260,7 @@ func _spawn_strike_flash(rect: Rect2) -> void:
 func _spawn_damage_number(amount: int, from: Rect2, hero: Rect2,
 		blocked: bool = false) -> void:
 	var lbl := Label.new()
-	lbl.text = ("◆ -%d" if blocked else "-%d") % amount
+	lbl.text = ("🛡 -%d" if blocked else "-%d") % amount
 	lbl.add_theme_font_size_override("font_size", UITheme.FONT_DISPLAY)
 	lbl.add_theme_color_override("font_color", SHIELD_BLUE if blocked else Color(1.0, 0.42, 0.38))
 	lbl.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.95))
