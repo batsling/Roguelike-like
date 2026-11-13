@@ -205,6 +205,20 @@
 			]
 		},
 		{
+			"id": "key/key_luck_be_a_landlord",
+			"kind": "key",
+			"name": "Key",
+			"game": "luck_be_a_landlord",
+			"images": [
+				{
+					"name": "Key",
+					"path": "res://images2.0/icons/Keys/Key_Luck_be_a_Landlord.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
 			"id": "key/key_the_binding_of_isaac",
 			"kind": "key",
 			"name": "Key",
@@ -227,6 +241,20 @@
 				{
 					"name": "Key",
 					"path": "res://images2.0/icons/Keys/Key_The_Binding_of_Isaac_Rebirth.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "key/skeleton_key_nethack",
+			"kind": "key",
+			"name": "Skeleton Key",
+			"game": "nethack",
+			"images": [
+				{
+					"name": "Skeleton Key",
+					"path": "res://images2.0/icons/Keys/Skeleton_Key_NetHack.png",
 					"min": 0,
 					"max": 10
 				}
@@ -339,6 +367,34 @@
 				{
 					"name": "Bomb",
 					"path": "res://images2.0/icons/Bombs/Bomb_The_Binding_of_Isaac_Rebirth.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "bomb/missiles_ftl",
+			"kind": "bomb",
+			"name": "Missiles",
+			"game": "ftl",
+			"images": [
+				{
+					"name": "Missiles",
+					"path": "res://images2.0/icons/Bombs/Missiles_FTL.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "difficulty/amulet_of_yendor_nethack",
+			"kind": "difficulty",
+			"name": "Amulet of Yendor",
+			"game": "nethack",
+			"images": [
+				{
+					"name": "Amulet of Yendor",
+					"path": "res://images2.0/icons/Difficulties/Amulet_of_Yendor_NetHack.png",
 					"min": 0,
 					"max": 10
 				}
@@ -497,6 +553,20 @@
 			]
 		},
 		{
+			"id": "luck/four_leaf_clover_luck_be_a_landlord",
+			"kind": "luck",
+			"name": "Four-Leaf Clover",
+			"game": "luck_be_a_landlord",
+			"images": [
+				{
+					"name": "Four-Leaf Clover",
+					"path": "res://images2.0/icons/Luck/Four-Leaf_Clover_Luck_be_a_Landlord.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
 			"id": "luck/luck_brotato",
 			"kind": "luck",
 			"name": "Luck",
@@ -561,6 +631,20 @@
 				{
 					"name": "Chest",
 					"path": "res://images2.0/icons/Chests/Chest_Loop_Hero.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "chest/chest_nethack",
+			"kind": "chest",
+			"name": "Chest",
+			"game": "nethack",
+			"images": [
+				{
+					"name": "Chest",
+					"path": "res://images2.0/icons/Chests/Chest_NetHack.png",
 					"min": 0,
 					"max": 10
 				}
@@ -651,6 +735,38 @@
 					"path": "res://images2.0/icons/Chests/A_Chest_Enter_the_Gungeon_3-3.png",
 					"min": 3,
 					"max": 3
+				}
+			]
+		},
+		{
+			"id": "chest/luck_be_a_landlord",
+			"kind": "chest",
+			"name": "Lockbox / Safe / Treasure Chest / Mega Chest",
+			"game": "luck_be_a_landlord",
+			"images": [
+				{
+					"name": "Lockbox",
+					"path": "res://images2.0/icons/Chests/Lockbox_Luck_be_a_Landlord_0-0.png",
+					"min": 0,
+					"max": 0
+				},
+				{
+					"name": "Safe",
+					"path": "res://images2.0/icons/Chests/Safe_Luck_be_a_Landlord_1-1.png",
+					"min": 1,
+					"max": 1
+				},
+				{
+					"name": "Treasure Chest",
+					"path": "res://images2.0/icons/Chests/Treasure_Chest_Luck_be_a_Landlord_2-3.png",
+					"min": 2,
+					"max": 3
+				},
+				{
+					"name": "Mega Chest",
+					"path": "res://images2.0/icons/Chests/Mega_Chest_Luck_be_a_Landlord_4-4.png",
+					"min": 4,
+					"max": 4
 				}
 			]
 		},
@@ -839,6 +955,20 @@
 			]
 		},
 		{
+			"id": "health/hearts_luck_be_a_landlord",
+			"kind": "health",
+			"name": "Hearts",
+			"game": "luck_be_a_landlord",
+			"images": [
+				{
+					"name": "Hearts",
+					"path": "res://images2.0/icons/Health/Hearts_Luck_be_a_Landlord.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
 			"id": "health/max_hp_brotato",
 			"kind": "health",
 			"name": "Max HP",
@@ -1021,6 +1151,20 @@
 			]
 		},
 		{
+			"id": "gold/coin_luck_be_a_landlord",
+			"kind": "gold",
+			"name": "Coin",
+			"game": "luck_be_a_landlord",
+			"images": [
+				{
+					"name": "Coin",
+					"path": "res://images2.0/icons/Gold/Coin_Luck_be_a_Landlord.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
 			"id": "gold/coin_mewgenics",
 			"kind": "gold",
 			"name": "Coin",
@@ -1105,6 +1249,20 @@
 			]
 		},
 		{
+			"id": "gold/gold_piece_nethack",
+			"kind": "gold",
+			"name": "Gold Piece",
+			"game": "nethack",
+			"images": [
+				{
+					"name": "Gold Piece",
+					"path": "res://images2.0/icons/Gold/Gold_Piece_NetHack.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
 			"id": "gold/gold_slay_the_spire",
 			"kind": "gold",
 			"name": "Gold",
@@ -1183,6 +1341,20 @@
 				{
 					"name": "Penny",
 					"path": "res://images2.0/icons/Gold/Penny_The_Binding_of_Isaac_Rebirth.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "gold/scrap_ftl",
+			"kind": "gold",
+			"name": "Scrap",
+			"game": "ftl",
+			"images": [
+				{
+					"name": "Scrap",
+					"path": "res://images2.0/icons/Gold/Scrap_FTL.png",
 					"min": 0,
 					"max": 10
 				}
@@ -1301,6 +1473,20 @@
 			]
 		},
 		{
+			"id": "shield/large_shield_nethack",
+			"kind": "shield",
+			"name": "Large Shield",
+			"game": "nethack",
+			"images": [
+				{
+					"name": "Large Shield",
+					"path": "res://images2.0/icons/Shields/Large_Shield_NetHack.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
 			"id": "shield/shield_brutal_orchestra",
 			"kind": "shield",
 			"name": "Shield",
@@ -1323,6 +1509,20 @@
 				{
 					"name": "Shield",
 					"path": "res://images2.0/icons/Shields/Shield_Mewgenics.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "shield/shields_ftl",
+			"kind": "shield",
+			"name": "Shields",
+			"game": "ftl",
+			"images": [
+				{
+					"name": "Shields",
+					"path": "res://images2.0/icons/Shields/Shields_FTL.png",
 					"min": 0,
 					"max": 10
 				}
