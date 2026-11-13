@@ -627,6 +627,34 @@
 					"max": 10
 				}
 			]
+		},
+		{
+			"id": "gold/penny_the_binding_of_isaac",
+			"kind": "gold",
+			"name": "Penny",
+			"game": "the_binding_of_isaac",
+			"images": [
+				{
+					"name": "Penny",
+					"path": "res://images2.0/icons/Gold/Penny_The_Binding_of_Isaac.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "gold/penny_the_binding_of_isaac_rebirth",
+			"kind": "gold",
+			"name": "Penny",
+			"game": "the_binding_of_isaac_rebirth",
+			"images": [
+				{
+					"name": "Penny",
+					"path": "res://images2.0/icons/Gold/Penny_The_Binding_of_Isaac_Rebirth.png",
+					"min": 0,
+					"max": 10
+				}
+			]
 		}
 	]
 }

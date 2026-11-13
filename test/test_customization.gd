@@ -343,8 +343,9 @@ func test_health_damage_and_gold_are_icon_kinds() -> void:
 		assert_true(CosmeticCatalog.KINDS.has(kind), kind)
 		assert_true(CustomizeScreen.KIND_GLYPHS.has(kind) and CustomizeScreen.KIND_NAMES.has(kind), kind)
 	var by_kind := {}
-	for kind in ["health", "damage"]:
+	for kind in ["health", "damage", "gold"]:
 		by_kind[kind] = CosmeticCatalog.icons_of(kind).map(func(e): return String(e["game"]))
+	assert_eq(by_kind["gold"], ["the_binding_of_isaac", "the_binding_of_isaac_rebirth"], "both pennies")
 	assert_eq(by_kind["health"], ["the_binding_of_isaac", "wildfrost"])
 	assert_eq(by_kind["damage"], ["the_binding_of_isaac", "the_binding_of_isaac_rebirth", "wildfrost"])
 
@@ -404,18 +405,18 @@ func test_a_worn_damage_icon_only_stands_in_where_the_swords_mean_damage() -> vo
 	assert_eq(Cosmetics.roomed("♥2", font, 12), "♥2", "no Health icon is worn")
 
 func test_a_worn_gold_icon_replaces_the_coin() -> void:
-	CosmeticCatalog.set_for_tests([], [{"id": "gold/coin_x", "kind": "gold", "name": "Coin",
-		"game": "wildfrost", "images": [{"name": "Coin", "min": 0, "max": 10,
-			"path": "res://images2.0/icons/Health/Health_Wildfrost.png"}]}])
-	Cosmetics._unlocked["gold/coin_x"] = "game:wildfrost"
-	Cosmetics.set_icon("gold", "gold/coin_x")
+	var key := "gold/penny_the_binding_of_isaac_rebirth"
+	Cosmetics._unlocked[key] = "game:the_binding_of_isaac_rebirth"
+	Cosmetics.set_icon("gold", key)
 	var l := Label.new()
 	l.text = "◉  12"
 	add_child_autofree(l)
 	Cosmetics.apply_glyph(l)
 	assert_false(l.text.contains("◉"))
-	assert_not_null(l.get_node_or_null(Cosmetics.GLYPH_NODE))
-	CosmeticCatalog.reset_cache()
+	assert_string_contains(l.text, "12")
+	var art: TextureRect = l.get_node_or_null(Cosmetics.GLYPH_NODE)
+	assert_not_null(art)
+	assert_string_contains(String(art.get_meta(&"source")), "Penny_The_Binding_of_Isaac_Rebirth")
 
 func test_an_unworn_glyph_is_left_alone() -> void:
 	var l := Label.new()

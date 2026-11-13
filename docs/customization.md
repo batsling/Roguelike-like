@@ -158,8 +158,9 @@ On a 🏆, the Fracture level is written over the picture in `Fracture.COLOR`.
   `Cosmetics.roomed(text, font, size, damage)` for the text as it will stand: a
   picture's room is a little wider than its glyph, and the board fits a body's
   ♥ and ⚔ badges to its width (`BattlefieldView.stat_row_width`).
-- **Gold (◉) has no icons to earn yet.** The kind, its folder name and its row on
-  the screen are in place; drop a PNG in `images2.0/icons/Gold/` and rebuild.
+- **Gold is ◉**: the purse chip, the shop's purse, prices and gold Reroll, the
+  Steal action and the inventory's Gold line. A kind with nothing to earn says so
+  on its row ("No icons to earn yet").
 - **Text set after a node enters the tree** is not seen by the watch, so a site
   that rewrites its text calls `Cosmetics.apply_glyph(node)` itself: the board's
   Bomb button, both win banners, the "N Chests" heading, the Health and gold
