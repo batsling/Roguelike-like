@@ -247,6 +247,34 @@
 			]
 		},
 		{
+			"id": "bomb/bomb_peglin",
+			"kind": "bomb",
+			"name": "Bomb",
+			"game": "peglin",
+			"images": [
+				{
+					"name": "Bomb",
+					"path": "res://images2.0/icons/Bombs/Bomb_Peglin.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "bomb/bomb_rogue_legacy",
+			"kind": "bomb",
+			"name": "Bomb",
+			"game": "rogue_legacy",
+			"images": [
+				{
+					"name": "Bomb",
+					"path": "res://images2.0/icons/Bombs/Bomb_Rogue_Legacy.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
 			"id": "bomb/bomb_slay_the_spire",
 			"kind": "bomb",
 			"name": "Bomb",
@@ -455,6 +483,34 @@
 			]
 		},
 		{
+			"id": "chest/chest_loop_hero",
+			"kind": "chest",
+			"name": "Chest",
+			"game": "loop_hero",
+			"images": [
+				{
+					"name": "Chest",
+					"path": "res://images2.0/icons/Chests/Chest_Loop_Hero.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "chest/chest_peglin",
+			"kind": "chest",
+			"name": "Chest",
+			"game": "peglin",
+			"images": [
+				{
+					"name": "Chest",
+					"path": "res://images2.0/icons/Chests/Chest_Peglin.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
 			"id": "chest/chest_the_binding_of_isaac",
 			"kind": "chest",
 			"name": "Chest",
@@ -587,6 +643,20 @@
 			]
 		},
 		{
+			"id": "health/health_rogue_legacy",
+			"kind": "health",
+			"name": "Health",
+			"game": "rogue_legacy",
+			"images": [
+				{
+					"name": "Health",
+					"path": "res://images2.0/icons/Health/Health_Rogue_Legacy.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
 			"id": "health/health_the_binding_of_isaac",
 			"kind": "health",
 			"name": "Health",
@@ -629,6 +699,34 @@
 			]
 		},
 		{
+			"id": "health/heart_peglin",
+			"kind": "health",
+			"name": "Heart",
+			"game": "peglin",
+			"images": [
+				{
+					"name": "Heart",
+					"path": "res://images2.0/icons/Health/Heart_Peglin.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "health/heart_rogue_legacy_2",
+			"kind": "health",
+			"name": "Heart",
+			"game": "rogue_legacy_2",
+			"images": [
+				{
+					"name": "Heart",
+					"path": "res://images2.0/icons/Health/Heart_Rogue_Legacy_2.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
 			"id": "health/max_hp_brotato",
 			"kind": "health",
 			"name": "Max HP",
@@ -643,6 +741,20 @@
 			]
 		},
 		{
+			"id": "damage/attack_rogue_legacy",
+			"kind": "damage",
+			"name": "Attack",
+			"game": "rogue_legacy",
+			"images": [
+				{
+					"name": "Attack",
+					"path": "res://images2.0/icons/Damage/Attack_Rogue_Legacy.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
 			"id": "damage/damage_brotato",
 			"kind": "damage",
 			"name": "Damage",
@@ -651,6 +763,20 @@
 				{
 					"name": "Damage",
 					"path": "res://images2.0/icons/Damage/Damage_Brotato.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "damage/damage_rogue_legacy_2",
+			"kind": "damage",
+			"name": "Damage",
+			"game": "rogue_legacy_2",
+			"images": [
+				{
+					"name": "Damage",
+					"path": "res://images2.0/icons/Damage/Damage_Rogue_Legacy_2.png",
 					"min": 0,
 					"max": 10
 				}
@@ -713,6 +839,20 @@
 			]
 		},
 		{
+			"id": "gold/charon_s_obol_rogue_legacy",
+			"kind": "gold",
+			"name": "Charon's Obol",
+			"game": "rogue_legacy",
+			"images": [
+				{
+					"name": "Charon's Obol",
+					"path": "res://images2.0/icons/Gold/Charon's_Obol_Rogue_Legacy.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
 			"id": "gold/coin_brutal_orchestra",
 			"kind": "gold",
 			"name": "Coin",
@@ -741,6 +881,20 @@
 			]
 		},
 		{
+			"id": "gold/coin_rogue_legacy_2",
+			"kind": "gold",
+			"name": "Coin",
+			"game": "rogue_legacy_2",
+			"images": [
+				{
+					"name": "Coin",
+					"path": "res://images2.0/icons/Gold/Coin_Rogue_Legacy_2.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
 			"id": "gold/coin_vampire_survivors",
 			"kind": "gold",
 			"name": "Coin",
@@ -763,6 +917,20 @@
 				{
 					"name": "Gold Coin",
 					"path": "res://images2.0/icons/Gold/Gold_Coin_Megabonk.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "gold/gold_peglin",
+			"kind": "gold",
+			"name": "Gold",
+			"game": "peglin",
+			"images": [
+				{
+					"name": "Gold",
+					"path": "res://images2.0/icons/Gold/Gold_Peglin.png",
 					"min": 0,
 					"max": 10
 				}
@@ -861,6 +1029,48 @@
 				{
 					"name": "Armor",
 					"path": "res://images2.0/icons/Shields/Armor_Hades.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "shield/armor_rogue_legacy",
+			"kind": "shield",
+			"name": "Armor",
+			"game": "rogue_legacy",
+			"images": [
+				{
+					"name": "Armor",
+					"path": "res://images2.0/icons/Shields/Armor_Rogue_Legacy.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "shield/armor_rogue_legacy_2",
+			"kind": "shield",
+			"name": "Armor",
+			"game": "rogue_legacy_2",
+			"images": [
+				{
+					"name": "Armor",
+					"path": "res://images2.0/icons/Shields/Armor_Rogue_Legacy_2.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "shield/ballwark_peglin",
+			"kind": "shield",
+			"name": "Ballwark",
+			"game": "peglin",
+			"images": [
+				{
+					"name": "Ballwark",
+					"path": "res://images2.0/icons/Shields/Ballwark_Peglin.png",
 					"min": 0,
 					"max": 10
 				}

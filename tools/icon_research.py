@@ -205,7 +205,7 @@ def cmd_apply(args):
     if moved:
         subprocess.check_call([sys.executable, os.path.join(R.TOOLS, "build_cosmetics_index.py")])
         print("now: `python3 tools/research.py build`, `godot --headless --editor --quit`, and\n"
-              "tools/gut.sh test_customization (it pins which games have a Health, damage and gold icon)")
+              "tools/gut.sh test_customization")
 
 
 def main():

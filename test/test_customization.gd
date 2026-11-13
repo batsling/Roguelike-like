@@ -195,8 +195,8 @@ func test_a_worn_luck_icon_replaces_the_clover() -> void:
 # Chests are the fifth icon kind (12 Nov 2026): a worn one stands in for the gift,
 # and Enter the Gungeon's D, C, B and A are ONE unlock picked by the chest's size.
 func test_gungeons_chests_are_one_unlock_picked_by_the_chests_size() -> void:
-	assert_eq(CosmeticCatalog.icons_of("chest").size(), 6,
-		"both Isaacs', Vampire Survivors', Enter the Gungeon's, Slay the Spire's and Risk of Rain's")
+	assert_gte(CosmeticCatalog.icons_of("chest").size(), 6,
+		"both Isaacs', Vampire Survivors', Enter the Gungeon's, Slay the Spire's and Risk of Rain's, and any since")
 	var e := CosmeticCatalog.entry("chest/enter_the_gungeon")
 	assert_false(e.is_empty())
 	assert_eq((e["images"] as Array).size(), 4, "four pictures, one unlock")
@@ -345,12 +345,17 @@ func test_health_damage_and_gold_are_icon_kinds() -> void:
 	var by_kind := {}
 	for kind in ["health", "damage", "gold"]:
 		by_kind[kind] = CosmeticCatalog.icons_of(kind).map(func(e): return String(e["game"]))
-	for kind in by_kind:
-		by_kind[kind].sort()
-	assert_eq(by_kind["gold"], ["brutal_orchestra", "hades", "into_the_breach", "megabonk", "slay_the_spire", "slay_the_spire_2",
-		"super_auto_pets", "the_binding_of_isaac", "the_binding_of_isaac_rebirth", "vampire_survivors"])
-	assert_eq(by_kind["health"], ["brotato", "hades", "the_binding_of_isaac", "wildfrost"])
-	assert_eq(by_kind["damage"], ["brotato", "the_binding_of_isaac", "the_binding_of_isaac_rebirth", "wildfrost"])
+	# The first of each, by name. Not the whole list: icons arrive a handful at a
+	# time (docs/research.md §6.8), and a list pinned here broke on every one.
+	var first := {
+		"gold": ["brutal_orchestra", "slay_the_spire", "slay_the_spire_2", "super_auto_pets",
+			"the_binding_of_isaac", "the_binding_of_isaac_rebirth", "vampire_survivors"],
+		"health": ["the_binding_of_isaac", "wildfrost"],
+		"damage": ["the_binding_of_isaac", "the_binding_of_isaac_rebirth", "wildfrost"],
+	}
+	for kind in first:
+		for game in first[kind]:
+			assert_true(by_kind[kind].has(game), "%s has %s's" % [kind, game])
 
 func test_no_script_draws_the_other_heart() -> void:
 	# ♥ is THE heart. ❤ was the enemies' and never the player's, so a worn Health

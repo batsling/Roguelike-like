@@ -431,9 +431,10 @@ python3 tools/icon_research.py apply                           # after the owner
   answers are then typed into the CSV's `Owner` column.
 - **`apply`** moves every `yes` into `images2.0/icons/<Kind>/` and rebuilds
   `data/cosmetics.json`; a `no` loses its picture and keeps its row, so it is
-  not proposed twice. `build` then reads a moved row as `on sheet`. A new
-  Health, damage or gold icon also means adding its game to the list
-  `test_customization.gd` pins.
+  not proposed twice. `build` then reads a moved row as `on sheet`.
+- **A picture with a background is cleaned before it is offered as final.**
+  Loop Hero's chest came on black: the background was flood-filled away from
+  the border at the art's native size, keeping the 1px outline.
 
 ## 7. When games are added
 
