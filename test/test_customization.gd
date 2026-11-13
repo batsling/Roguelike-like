@@ -345,11 +345,12 @@ func test_health_damage_and_gold_are_icon_kinds() -> void:
 	var by_kind := {}
 	for kind in ["health", "damage", "gold"]:
 		by_kind[kind] = CosmeticCatalog.icons_of(kind).map(func(e): return String(e["game"]))
-	by_kind["gold"].sort()
+	for kind in by_kind:
+		by_kind[kind].sort()
 	assert_eq(by_kind["gold"], ["brutal_orchestra", "slay_the_spire", "slay_the_spire_2",
 		"super_auto_pets", "the_binding_of_isaac", "the_binding_of_isaac_rebirth", "vampire_survivors"])
-	assert_eq(by_kind["health"], ["the_binding_of_isaac", "wildfrost"])
-	assert_eq(by_kind["damage"], ["the_binding_of_isaac", "the_binding_of_isaac_rebirth", "wildfrost"])
+	assert_eq(by_kind["health"], ["brotato", "the_binding_of_isaac", "wildfrost"])
+	assert_eq(by_kind["damage"], ["brotato", "the_binding_of_isaac", "the_binding_of_isaac_rebirth", "wildfrost"])
 
 func test_no_script_draws_the_other_heart() -> void:
 	# ♥ is THE heart. ❤ was the enemies' and never the player's, so a worn Health

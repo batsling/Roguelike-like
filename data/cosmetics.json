@@ -399,6 +399,20 @@
 			]
 		},
 		{
+			"id": "luck/luck_brotato",
+			"kind": "luck",
+			"name": "Luck",
+			"game": "brotato",
+			"images": [
+				{
+					"name": "Luck",
+					"path": "res://images2.0/icons/Luck/Luck_Brotato.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
 			"id": "luck/luck_mewgenics",
 			"kind": "luck",
 			"name": "Luck",
@@ -587,6 +601,34 @@
 			]
 		},
 		{
+			"id": "health/max_hp_brotato",
+			"kind": "health",
+			"name": "Max HP",
+			"game": "brotato",
+			"images": [
+				{
+					"name": "Max HP",
+					"path": "res://images2.0/icons/Health/Max_HP_Brotato.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "damage/damage_brotato",
+			"kind": "damage",
+			"name": "Damage",
+			"game": "brotato",
+			"images": [
+				{
+					"name": "Damage",
+					"path": "res://images2.0/icons/Damage/Damage_Brotato.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
 			"id": "damage/damage_the_binding_of_isaac",
 			"kind": "damage",
 			"name": "Damage",
@@ -721,6 +763,20 @@
 				{
 					"name": "Penny",
 					"path": "res://images2.0/icons/Gold/Penny_The_Binding_of_Isaac_Rebirth.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "shield/armor_brotato",
+			"kind": "shield",
+			"name": "Armor",
+			"game": "brotato",
+			"images": [
+				{
+					"name": "Armor",
+					"path": "res://images2.0/icons/Shields/Armor_Brotato.png",
 					"min": 0,
 					"max": 10
 				}
