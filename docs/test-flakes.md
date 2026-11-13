@@ -190,3 +190,15 @@ failure; diffing a passing and failing run's Control tree) are the reusable part
     `_disarm_board` now sets every non-boss body to Health 1, beside the
     abilities and goal modes it already strips. Bosses keep theirs, since their
     phases are what a boss is.
+  - `test_customization.gd::test_the_title_letters_tab_is_built_over_frames_not_in_the_click`
+    failed about one run in ten with "Unexpected Errors: Parameter "t" is null"
+    and no failed assertion. **A thread, not a seed**: the tab asks for its 609
+    pictures on loader threads (`TitleLetters.request`) while the main thread
+    builds tiles, and a tile for a big picture makes a texture of its own
+    (`UITheme.smooth_copy`). The headless renderer's texture storage is not safe
+    across threads, so one of the two came out null. Found with a 25-run stress
+    loop of that one test, reading `/tmp/gut_last.log` for the engine's
+    backtrace (`tools/gut.sh` prints only the summary). `request` now does
+    nothing in a headless run, where there is no screen to keep smooth; 0 in 40
+    after. An "Unexpected Errors" failure with every assertion passing is an
+    ENGINE error during the test: read the full log before the test.

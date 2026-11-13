@@ -195,8 +195,8 @@ func test_a_worn_luck_icon_replaces_the_clover() -> void:
 # Chests are the fifth icon kind (12 Nov 2026): a worn one stands in for the gift,
 # and Enter the Gungeon's D, C, B and A are ONE unlock picked by the chest's size.
 func test_gungeons_chests_are_one_unlock_picked_by_the_chests_size() -> void:
-	assert_eq(CosmeticCatalog.icons_of("chest").size(), 5,
-		"both Isaacs', Vampire Survivors', Enter the Gungeon's and Slay the Spire's")
+	assert_eq(CosmeticCatalog.icons_of("chest").size(), 6,
+		"both Isaacs', Vampire Survivors', Enter the Gungeon's, Slay the Spire's and Risk of Rain's")
 	var e := CosmeticCatalog.entry("chest/enter_the_gungeon")
 	assert_false(e.is_empty())
 	assert_eq((e["images"] as Array).size(), 4, "four pictures, one unlock")
@@ -262,6 +262,18 @@ func test_slay_the_spires_boss_chest_is_for_boss_chests_only() -> void:
 		"no boss picture: the highest tier")
 	assert_string_contains(CosmeticCatalog.image_for(
 		CosmeticCatalog.entry("chest/chest_vampire_survivors"), CosmeticCatalog.BOSS_CHEST), "Vampire")
+
+# Risk of Rain's chests (13 Nov 2026): Small for Small, Large for Medium, Golden
+# for Large and Huge, and, having no boss picture, Golden for a boss's chest too.
+func test_risk_of_rains_chests_by_size() -> void:
+	var e := CosmeticCatalog.entry("chest/risk_of_rain")
+	assert_false(e.is_empty())
+	assert_eq(String(e["game"]), "risk_of_rain", "the first game's, not the sequel's")
+	var want := ["Small_Chest", "Large_Chest", "Golden_Chest", "Golden_Chest", "Golden_Chest"]
+	for level in want.size():
+		assert_string_contains(CosmeticCatalog.image_for(e, level), want[level], "level %d" % level)
+	assert_eq(CosmeticCatalog.range_text(e, e["images"][1]), "Medium Chest")
+	assert_eq(CosmeticCatalog.range_text(e, e["images"][2]), "Large–Huge Chest")
 
 func test_a_boss_chest_on_the_drop_window_wears_the_boss_picture() -> void:
 	var boss: Array = Data.boss_item2_pool()

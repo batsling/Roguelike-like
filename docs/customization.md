@@ -76,6 +76,9 @@ images2.0/icons/Chests/<Name>_<Game>[_<lo>-<hi>].png
   `4-4`, so its Boss Chest is drawn for a boss's chest and nothing else. A set
   with no picture for 4 draws its highest (Gungeon's A chest): `image_for` gives
   any level above every range the highest image.
+- **A picture's name need not be the size it stands for.** Risk of Rain's Small
+  Chest is `0-0`, its Large Chest `1-1` (a Medium) and its Golden Chest `2-3`
+  (Large and Huge, and a boss's). The hover says both: "Large Chest, Medium Chest".
 
 ## 3. Wearing a costume
 

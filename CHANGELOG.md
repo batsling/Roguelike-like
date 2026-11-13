@@ -11,6 +11,16 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Risk of Rain's chests (the owner, 13 Nov 2026).** One unlock, three
+  pictures: the Small Chest for a Small chest, the Large Chest for a Medium, and
+  the Golden Chest for a Large or a Huge, and for a boss's, being the set's
+  highest. The wiki's files are the sprites doubled; they are stored at their own
+  size.
+  - **A one-in-ten failure of the Title Letters tab's test is fixed**
+    (`docs/test-flakes.md`): the threaded letter loading raced the main thread's
+    own textures in the headless renderer. `TitleLetters.request` is skipped
+    there; a real window loads on threads as before.
+
 - **Slay the Spire's chests, and a rung for a boss's chest (the owner, 13 Nov
   2026).** One unlock, four pictures: Small for a Small chest, Medium for a
   Medium, Large for a Large or a Huge, and the Boss Chest for a boss's chest and
