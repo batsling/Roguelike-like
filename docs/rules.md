@@ -5,19 +5,20 @@
 ## Contents
 
 1. [Start here](#-start-here) — The whole game in one page.
-2. [Choosing where to go](#-choosing-where-to-go) — The offering, the card, and the route to the Amulet.
-3. [Playing the game](#-playing-the-game) — Shields, lost runs, the checklist, getting out, and making camp.
-4. [Enemies are goals](#-enemies-are-goals) — What they want, what they do if you refuse.
-5. [The board](#-the-board) — Where the enemies you owe are standing, and how close.
-6. [Health and dying](#-health-and-dying) — The two numbers that end a run.
-7. [The verbs](#-the-verbs) — Bash, Dash, Transmute, Scramble, Push.
-8. [Gold and shops](#-gold-and-shops) — The one reward you choose what to do with.
-9. [Events and machines](#-events-and-machines) — What happens between the games.
-10. [What you carry](#-what-you-carry) — Items, scrolls, statuses, curses and Luck.
-11. [Bosses and difficulty](#-bosses-and-difficulty) — The clock you ride, and what rides in on it.
-12. [Fractures](#-fractures) — Ten harder runs, unlocked one at a time.
-13. [When it goes wrong](#-when-it-goes-wrong) — Recovery, in the order things actually go wrong.
-14. [Where every number is](#-where-every-number-is) — A map of the screen. Nothing is drawn twice.
+2. [Players](#-players) — The first pick of a run: its extra rules and its Fractures.
+3. [Choosing where to go](#-choosing-where-to-go) — The offering, the card, and the route to the Amulet.
+4. [Playing the game](#-playing-the-game) — Shields, lost runs, the checklist, getting out, and making camp.
+5. [Enemies are goals](#-enemies-are-goals) — What they want, what they do if you refuse.
+6. [The board](#-the-board) — Where the enemies you owe are standing, and how close.
+7. [Health and dying](#-health-and-dying) — The two numbers that end a run.
+8. [The verbs](#-the-verbs) — Bash, Dash, Transmute, Scramble, Push.
+9. [Gold and shops](#-gold-and-shops) — The one reward you choose what to do with.
+10. [Events and machines](#-events-and-machines) — What happens between the games.
+11. [What you carry](#-what-you-carry) — Items, scrolls, statuses, curses and Luck.
+12. [Bosses and difficulty](#-bosses-and-difficulty) — The clock you ride, and what rides in on it.
+13. [Fractures](#-fractures) — Ten harder runs, unlocked one at a time.
+14. [When it goes wrong](#-when-it-goes-wrong) — Recovery, in the order things actually go wrong.
+15. [Where every number is](#-where-every-number-is) — A map of the screen. Nothing is drawn twice.
 
 ## ▶ Start here
 
@@ -29,7 +30,7 @@ There is no combat here to play. The combat is Hades.
 
 ### One run, start to finish
 
-1. Pick a character. That sets your Health and the charges you start with.
+1. Pick a player, then a character. The player decides the run's extra rules and its Fracture; the character sets your Health, your gold, what you start carrying and your level-up challenge.
 2. Pick where you start. You are offered three games, and the one you take is the run's first game — not a free move. The Amulet is named on this panel, and every card says how many games away it is, so you are choosing a road knowing where it ends.
 3. The game you took has TWO ENEMIES walking onto the board, and each enemy is a GOAL: something to do inside the real game. Beat a boss without healing. Descend ten floors. Win in one deck cycle. Beating the game answers for neither of them — each goal is its own.
 4. Go and play it. Actually play it — this is the part that takes an evening, and it is the whole point.
@@ -51,6 +52,34 @@ Three things, and they are the three chapters after this one.
 - The closer you get to the Amulet, the faster everything chasing you moves. Rushing the win and taking the long way are both real strategies, and which one is right depends on what is on your tail.
 
 > You never have to finish a game in one sitting, and the app does not care how long you take. Save the run and close it. It will be here when the game is.
+
+## ☺ Players
+
+*The first pick of a run: its extra rules and its Fractures.*
+
+A run starts with two picks. First the PLAYER, which decides the run's extra rules and holds your Fractures. Then the CHARACTER, which sets your Health, your gold, what you start carrying and the challenge you level up by. Any player can play any character.
+
+### Basic
+
+No extra rules: the game as it is.
+
+### Batty
+
+> Locked until you beat 20 different traditional roguelikes.
+
+- **Hunger** — Start with 3 Hunger (at most 5). Each game you finish costs 1. Drink a potion or eat food for +1. Finish a game or lose a run already at 0 and lose 2 Health.
+- **Unidentified Weapons** — Weapons you find roll -2 to +2 Stun, unknown until the first swing. A minus is CURSED: stuck where it sits in the pack until the curse is lifted.
+
+### Hunger
+
+- Your Hunger is the bar beside your character at the top left. Every game you hand in — beaten, missed or escaped — costs 1.
+- The game that empties it costs nothing more. After that, every game you finish and every run you lose costs 2 Health until you eat.
+- Drinking any potion is +1. So is eating: press Eat beside the bar and click a piece of food in your pack or a food relic — it is gone, and you are +1. You cannot eat at 5.
+
+### Unidentified weapons
+
+- Every weapon you FIND is anywhere from -2 to +2 Stun, and you do not know which until you swing it (it reads "Hero Sword +?"). A Scroll of Identify tells you sooner. A weapon you start with is never rolled.
+- A minus is CURSED once you know it: it stays exactly where it sits in your pack — no moving, turning, dropping or smelting. Anything that lifts a curse lifts it, and a weapon freed that way always lays at least 1 Stun.
 
 ## 🗺 Choosing where to go
 
@@ -309,6 +338,7 @@ The whole survival model is two numbers, and they are deliberately tiny so they 
 
 - A follower striking you on a turn — every lost run hands the board one, and reporting a game near the Amulet hands it the extra turns on the pressure ladder.
 - A few events and machines, which always say so before you press the button.
+- Starving, for a player with Hunger: every game you finish, and every run you lose, while your Hunger is already at 0.
 
 Note what is NOT on that list. Taking a detour costs no Health. Failing a goal costs no Health directly — it costs you a follower, and the follower costs Health later. Nothing in this game hits you out of nowhere.
 
@@ -324,7 +354,7 @@ Your character carries a challenge that is offered every single game — beat a 
 
 *Bash, Dash, Transmute, Scramble, Push.*
 
-Verbs are how you change the board instead of playing it. They are small integer charges, they come from drops, items and level-ups, and they are gone once spent. Four of them reshape what you are being offered; one reshapes the battlefield.
+Verbs are how you change the board instead of playing it. They are small integer charges, they come from drops and items — no character starts with any — and they are gone once spent. Four of them reshape what you are being offered; one reshapes the battlefield.
 
 ### On the offering
 
@@ -502,9 +532,9 @@ A Fracture is a harder run. There are ten, and each one keeps every Fracture bel
 
 ### Unlocking them
 
-- They unlock PER CHARACTER. Win a run as a character to open Fracture 1 for them; win at their highest Fracture to open the next.
-- Pick the level on the character select, in the row under the hero. It stays on whatever you picked last for that hero.
-- A custom run can be played at any Fracture that hero has unlocked, but it is practice: it unlocks nothing and wins no trophy.
+- They unlock PER PLAYER, whichever character you play. Win a run as a player to open Fracture 1 for them; win at their highest Fracture to open the next.
+- Pick the level on the player select, in the row under the player. It stays on whatever you picked last for that player.
+- A custom run can be played at any Fracture that player has unlocked, but it is practice: it unlocks nothing and wins no trophy.
 
 ### The ladder
 

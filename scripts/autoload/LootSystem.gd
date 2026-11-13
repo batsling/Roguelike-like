@@ -100,6 +100,9 @@ func use_loot(index: int, ctx: Dictionary = {}) -> Dictionary:
 			return {"logs": [], "requests": []}
 		var wctx: Dictionary = ctx.duplicate()
 		wctx["weapon_stun"] = WeaponSystem.stun_for(index)
+		# THE FIRST SWING IDENTIFIES IT (docs/players-design.md §5): the roll was in
+		# the Stun just read, and from now on it is in the name — a minus, cursed.
+		WeaponSystem.reveal(entry)
 		wctx["weapon_slot"] = GameState.loot_slot_of(index)
 		# Duplicator: how many extra times the whole swing fires, read off the pack
 		# now for the same reason the Stun is.
@@ -540,7 +543,12 @@ func is_identified(entry: Dictionary) -> bool:
 			# of `carried_unidentified`, so Scroll of Identify never offers to tell
 			# you something you can already read.
 			return true
-		"trinket", "bag", "weapon":
+		"weapon":
+			# Known unless it was found UNIDENTIFIED and has not been swung
+			# (docs/players-design.md §5). Per piece, not per kind: two Hero Swords
+			# can carry different rolls.
+			return WeaponSystem.roll_known(entry)
+		"trinket", "bag":
 			# Nothing hidden about one either: its line is on it from the moment it
 			# is found (docs/loot-passives.md §1, §6).
 			return true
@@ -559,6 +567,8 @@ func identify(entry: Dictionary) -> bool:
 			return PotionSystem.identify(id)
 		"wand":
 			return WandSystem.identify(id)
+		"weapon":
+			return WeaponSystem.reveal(entry)
 		"card":
 			# Nothing to learn, so nothing is news. Identify spending a count on a
 			# card is prevented upstream, by is_identified above.
@@ -580,6 +590,9 @@ func carried_unidentified() -> Array:
 		if not (entry is Dictionary) or is_identified(entry):
 			continue
 		var key: String = "%s/%s" % [entry.get("type", ""), entry.get("id", "")]
+		# A weapon's roll is the PIECE's, not its kind's: each one is its own fact.
+		if WeaponSystem.is_weapon(entry):
+			key += "/%d" % WeaponSystem.uid_of(entry)
 		if seen.has(key):
 			continue
 		seen[key] = true
@@ -663,6 +676,16 @@ func weapon_description(entry: Dictionary) -> String:
 	var enchanted: int = WeaponSystem.stun_bonus_of(entry)
 	if enchanted > 0:
 		swing += " Enchanted: +%d Stun." % enchanted
+	# FOUND UNIDENTIFIED (docs/players-design.md §5): the roll, or that it is not
+	# known yet.
+	if not WeaponSystem.roll_known(entry):
+		swing += " Unidentified: -2 to +2 Stun, learned on its first swing."
+	elif WeaponSystem.roll_of(entry) > 0:
+		swing += " Upgraded: +%d Stun." % WeaponSystem.roll_of(entry)
+	elif WeaponSystem.roll_of(entry) < 0:
+		swing += (" Cursed: %d Stun, and stuck where it sits until the curse is lifted."
+			if WeaponSystem.is_cursed(entry) else " Downgraded: %d Stun (at least 1).") \
+			% WeaponSystem.roll_of(entry)
 	var replays: int = WeaponSystem.replays_of(entry)
 	if replays > 0:
 		swing += " Strikes %d times (%d Replay%s)." % [1 + replays, replays,

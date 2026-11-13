@@ -14,22 +14,13 @@ source_games = PackedStringArray("Raccoin: Coin Pusher Roguelike")
 music_games = Array[StringName]([&"raccoin_coin_pusher_roguelike"])
 base_max_hp = 7
 start_gold = 4
-start_bash = 0
-start_dash = 0
-start_push = 2
-start_transmute = 0
-start_scramble = 0
-start_bombs = 0
-start_keys = 0
-start_random = 0
 starting_items = Array[StringName]([])
 starting_loot = []
 starting_weapon = &""
 level_up_condition = "Beat a game while having collected 3 different types of currency"
-level_up_reward = "Gain +1 Push and +1 Gold"
+level_up_reward = "Gain +1 Gold"
 level_up_stats = {
-"gold": 1,
-"push": 1
+"gold": 1
 }
 level_up_reward_type = &"none"
 level_up_reward_amount = 0

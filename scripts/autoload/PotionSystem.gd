@@ -333,6 +333,8 @@ func quaff_potion(entry: Dictionary, ctx: Dictionary = {}) -> Dictionary:
 	# The bottle was DRUNK whatever happens, so the relics that watch for it see a
 	# use either way. Only the IDENTIFY hangs on the draught doing something.
 	notify_used(potion)
+	# …and a drink feeds Hunger (docs/players-design.md §4), whatever was in it.
+	HungerSystem.feed(1, "Drank %s" % potion.display_name)
 
 	var ops: Array = potion.quaff
 	if ops.is_empty():

@@ -1013,25 +1013,24 @@ func test_report_accepts_an_explicit_fulfilment_list() -> void:
 		assert_ne(int(entry["instance"]), inst, "the explicitly-fulfilled follower is gone")
 
 func test_level_up_checkbox_grants_the_reward() -> void:
-	# Zoe's level-up ("Perfect a game by beating it without losing") pays +1 Dash.
-	# Ticking the level-up box on report should apply the character's
-	# level_up_stats.
-	_reboot(&"zoe")
-	var dash_before: int = GameState.dash_charges
+	# Rodney's level-up pays +1 Max Health (and a piece of loot). Ticking the
+	# level-up box on report should apply the character's level_up_stats.
+	_reboot(&"rodney")
+	var max_before: int = GameState.max_hp
 	var lvl_before: int = GameState.player_level
 	_pick_enemies(0)
-	assert_not_null(_ui._levelup_check, "Zoe has a level-up condition -> a checkbox")
+	assert_not_null(_ui._levelup_check, "Rodney has a level-up condition -> a checkbox")
 	_tick(_ui._levelup_check)
 	Page.report_beat(_ui)
-	assert_eq(GameState.dash_charges, dash_before + 1, "level-up granted +1 Dash")
+	assert_eq(GameState.max_hp, max_before + 1, "level-up granted +1 Max Health")
 	assert_eq(GameState.player_level, lvl_before + 1, "player level advanced")
 
 func test_level_up_not_applied_when_unchecked() -> void:
-	_reboot(&"zoe")
-	var dash_before: int = GameState.dash_charges
+	_reboot(&"rodney")
+	var max_before: int = GameState.max_hp
 	_pick_enemies(0)
 	Page.report_beat(_ui)                              # box left unticked
-	assert_eq(GameState.dash_charges, dash_before, "no level-up without the tick")
+	assert_eq(GameState.max_hp, max_before, "no level-up without the tick")
 
 # A CHEST THE LEVEL-UP EARNS WAITS FOR THE HAUL SCREEN (§18). It used to throw a
 # RewardScreen over the checklist the instant the box was ticked — on a list of

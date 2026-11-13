@@ -198,7 +198,9 @@ everything in it is put back by Undo.
    type on at the back column and resets the ladder; a miss climbs a rung. A hit
    is a spawn event, so the board can grow and a capstone boss can arrive →
    `boss_spawned`, and a new location can be dealt (§1).
-5. The log line, then the animation replays the turn.
+5. **Hunger** (a player with it, `docs/players-design.md` §4): a run lost with
+   the stomach already at 0 costs 2 Health. After the board's blow. ☠
+6. The log line, then the animation replays the turn.
 
 ```order
 scripts/autoload/GameLoop2.gd :: _walk_one
@@ -215,6 +217,7 @@ attempt_costs.append("turn")
 TriggerBus.run_lost.emit(
 attempt_turn()
 _roll_lost_run_spawn()
+HungerSystem.run_lost()
 attempt_logged.emit(
 ```
 
@@ -300,7 +303,11 @@ Then, back in `Overworld2.report`:
 7. **Level-ups**: the character's, then any Mask characters'.
 8. **Event goals** resolve and tick; games played +1; a difficulty step is
    announced.
-9. The **animation** replays the extra turns of 2a / 2a′, then §5.
+9. **Hunger** (a player with it, `docs/players-design.md` §4): the game costs 1,
+   or — handed in with the stomach already at 0 — 2 Health. Last, after the
+   game's own loot was queued, so food the haul is about to hand over cannot
+   save you; eat before you hand the game in. ☠
+10. The **animation** replays the extra turns of 2a / 2a′, then §5.
 
 ```order
 scripts/autoload/GameLoop2.gd :: beat_game
@@ -344,6 +351,7 @@ _apply_level_up()
 _resolve_event_goal_rows()
 GameState.games_played += 1
 _announce_difficulty_step(tier_before, board_before)
+HungerSystem.game_finished()
 _board.animate_resolve(
 ```
 

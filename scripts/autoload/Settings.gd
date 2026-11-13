@@ -42,7 +42,8 @@ var rifts_enabled: bool = true
 #
 # PER PROFILE (prefs.cfg), unlike Radio's "Unlock all songs", which is the PC's:
 # the owner asked for one profile to be the test profile and the rest to play
-# for real. The gates: GameStats.fracture_unlocked, Radio.is_unlocked,
+# for real. The gates: GameStats.player_fracture_unlocked, Achievements.is_done
+# (every locked character and player), Radio.is_unlocked,
 # TitleUnlocks.is_unlocked, and the donation shelf in GameLoop2's run start.
 var unlock_everything: bool = false
 # Emitted on its own, as menu_falling_art_changed is, so the stores whose locks it

@@ -202,6 +202,11 @@ func _get_drag_data(_at: Vector2) -> Variant:
 		return move
 	if not grid.can_drag_from(self):
 		return null
+	# A CURSED WEAPON STAYS WHERE IT SITS (docs/players-design.md §5): it does not
+	# leave the cell at all, so it cannot be dropped on the bin either.
+	if slot_index >= 0 and GameState.is_pinned(entry):
+		Notifications.notify("Cursed: it will not move until the curse is lifted.", UITheme.DANGER)
+		return null
 	# A BAG OFF A MODAL'S TABLE is a take like any other piece, plus the turn the
 	# piece in your hand can put on it; what follows the cursor is its footprint.
 	if slot_index < 0 and GameState.is_bag_entry(entry):

@@ -18,11 +18,24 @@ signal current_game_changed(game_id: StringName)
 signal player_statuses_changed
 # Event goals / curse goals gained, ticked, resolved or expired.
 signal event_goals_changed
+# HUNGER moved (docs/players-design.md §4): the header's bar repaints off this.
+signal hunger_changed(hunger: int)
 
 # === Identity / progression ===
 var character_id: StringName = &""
+# The PLAYER this run is played as (docs/players-design.md): picked before the
+# character, it carries the run's mechanics (has_mechanic) and the Fracture
+# ladder. Saved with the run; a save from before players is the basic player.
+var player_id: StringName = &"basic"
+# HUNGER (docs/players-design.md §4), 0..HungerSystem.MAX, for a player who has the
+# mechanic; 0 and unread for one who does not. The rules are HungerSystem's.
+var hunger: int = 0
+# True while a run's STARTING kit is being handed over (the character's loadout,
+# the genre's starting gear): a weapon made then was not found, so it is not
+# rolled unidentified (WeaponSystem.new_entry, docs/players-design.md §5).
+var granting_start_kit: bool = false
 # The Fracture this run is played at (docs/fracture-design.md), 0..Fracture.MAX.
-# Set once, at GameLoop2.start_run, from the character's remembered pick, and
+# Set once, at GameLoop2.start_run, from the player's remembered pick, and
 # saved with the run so a Continue resumes at the same level. Read it through
 # Fracture.level() / Fracture.at_least().
 var fracture: int = 0
@@ -1122,7 +1135,7 @@ var smelt_target = null
 # Duplicator's auras) has no neighbours once it is off the grid, so it would be
 # smelted into nothing, and is refused. A weapon is swung, not held.
 func can_smelt(entry) -> bool:
-	if not LootPassives.is_passive(entry) or LootSystem.is_bag(entry):
+	if not LootPassives.is_passive(entry) or LootSystem.is_bag(entry) or is_pinned(entry):
 		return false
 	var def: Resource = LootPassives.def_for(entry)
 	if LootPassives.copies(def) != "":
@@ -1251,8 +1264,20 @@ func goal_word() -> String:
 # Mutation API — UI and combat scenes go through these so signals fire.
 # ---------------------------------------------------------------------------
 
+# The run's player, and whether it carries mechanic `m` (PlayerData.MECHANICS).
+# Every player rule asks this rather than the player's id, so a second player
+# with Hunger needs no code.
+func player() -> PlayerData:
+	return Data.get_player(player_id)
+
+func has_mechanic(m: StringName) -> bool:
+	var p: PlayerData = player()
+	return p != null and p.has_mechanic(m)
+
 func reset_run() -> void:
 	character_id = &""
+	player_id = &"basic"
+	hunger = 0
 	fracture = 0
 	donation_best = 0
 	shop_sales = {}
@@ -1400,11 +1425,9 @@ func reset_run() -> void:
 	Notifications.clear()
 	phase = Phase.MENU
 
-# Games-first redesign (2.0) run-start loadout applier. The no-combat rework has
-# no deck / energy / combat stats — a character brings only a tiny Health and the
-# verb/consumable counts (docs/games-first-redesign.md §3), plus its starting
-# items. Health / Max Health reuse hp / max_hp; the verbs map onto their same-
-# named fields (Dash -> dash_charges). Starting items are acquired through the
+# Games-first redesign (2.0) run-start loadout applier. A character brings a tiny
+# Health, a purse and its starting loot — no stats (docs/players-design.md §3).
+# Health / Max Health reuse hp / max_hp. Starting items are acquired through the
 # normal add_item path so pickups (Hollow Heart, Lunch, …) fire their
 # item_acquired effects. Callers should reset_run() first (GameLoop2.start_run
 # does), so this only sets the loadout, not the whole run.
@@ -1420,30 +1443,17 @@ func apply_character2(char_data: CharacterData) -> void:
 	# there is nothing else for this to add to. Set BEFORE the starting items, so
 	# an item that reads gold on pickup sees what the run actually opens holding.
 	set_gold(char_data.start_gold)
-	bash = char_data.start_bash
-	dash_charges = char_data.start_dash
-	push = char_data.start_push
-	transmute = char_data.start_transmute
-	scramble = char_data.start_scramble
-	bombs = char_data.start_bombs
-	keys = char_data.start_keys
-	# …then whatever the character brings UNROLLED (the sheet's Random column).
-	# Done before the starting items so an item that reads a verb count on pickup
-	# sees the loadout the run actually opens on. The roll is announced on both
-	# channels: a loadout that differs run to run is the whole point of the
-	# column, and a silent one just looks like the character screen lying.
-	var rolled: Dictionary = roll_start_random(char_data.start_random)
-	if not rolled.is_empty():
-		var msg: String = "%s's random loadout: %s." % [
-			char_data.display_name, describe_start_random(rolled)]
-		Notifications.notify(msg, Color(1.0, 0.80, 0.40))
-		GameLog.add(msg, Color(1.0, 0.80, 0.40))
+	# A character brings NO verbs (docs/players-design.md §3): Bash, Dash, Push and
+	# the rest open at the 0 reset_run left them at, and come only from what the
+	# run finds.
 
 	inventory.clear()
 	_reset_item_tracking()
+	granting_start_kit = true
 	for item_id in char_data.starting_items:
 		add_item(Data.get_item2(item_id))
 	grant_starting_loot(char_data)
+	granting_start_kit = false
 	# Pickups may have raised Max Health; open the run at the new full pool.
 	hp = max_hp
 	emit_signal("stats_changed")
@@ -1554,36 +1564,6 @@ func grant_starting_loot(char_data: CharacterData) -> void:
 			loot_items.append(_seated(entry))
 			_note_loot_gained(loot_items[-1])
 	emit_signal("inventory_changed")
-
-# The 2.0 verbs a character's Random points can land on. Keys is a verb on the
-# sheet but there is nothing in the build for a key to open yet, so it is left
-# out — a run that rolled its whole random loadout into Keys would open on
-# nothing at all.
-const START_RANDOM_POOL := ["bash", "dash", "push", "transmute", "scramble", "bombs"]
-
-# Spend `points` of unrolled starting loadout across START_RANDOM_POOL, one
-# independent roll each (so two points may land on the same verb). Returns the
-# roll as a verb -> amount dictionary, which is what the character screens and
-# the run log say out loud — a loadout that differs run to run has to be
-# ANNOUNCED, or it reads as the numbers being wrong.
-func roll_start_random(points: int) -> Dictionary:
-	var rolled: Dictionary = {}
-	for _i in range(maxi(0, points)):
-		var verb: String = START_RANDOM_POOL[randi() % START_RANDOM_POOL.size()]
-		var field: String = String(_LEVEL_UP_ABILITY_FIELDS.get(verb, verb))
-		set(field, int(get(field)) + 1)
-		rolled[verb] = int(rolled.get(verb, 0)) + 1
-	return rolled
-
-# "+2 Bash, +1 Dash" for a roll_start_random() result, in pool order so the same
-# roll always reads the same way. "" when nothing was rolled.
-func describe_start_random(rolled: Dictionary) -> String:
-	var parts: Array = []
-	for verb in START_RANDOM_POOL:
-		var n: int = int(rolled.get(verb, 0))
-		if n > 0:
-			parts.append("+%d %s" % [n, _pretty_stat(verb)])
-	return ", ".join(parts)
 
 # Clears the bookkeeping that tracks item-granted bonuses and instance ids.
 # Shared by reset_run() and apply_character() so the two can't drift apart.
@@ -3556,7 +3536,7 @@ func adopt_pack_statuses() -> void:
 # than spent or traded (LootWindow and the drop modal both come through here). A
 # card binned is Trading Card's moment, so it is announced before the piece goes.
 func discard_loot_at(index: int) -> void:
-	if index < 0 or index >= loot_items.size():
+	if index < 0 or index >= loot_items.size() or is_pinned(loot_items[index]):
 		return
 	var entry = loot_items[index]
 	remove_loot_at(index)
@@ -4233,6 +4213,8 @@ func swap_loot_entry_at(entry: Dictionary, slot: int) -> Dictionary:
 	if cells.is_empty() or under.size() != 1:
 		return {}
 	var index: int = int(under[0])
+	if is_pinned(loot_items[index]):
+		return {}
 	_freeze_loot_layout(layout)
 	var out: Dictionary = (loot_items[index] as Dictionary).duplicate(true)
 	# The slot belongs to the pack, not to the piece leaving it: a traded-out piece
@@ -4670,7 +4652,7 @@ func move_loot(from: int, to: int, rot: int = -1) -> bool:
 		return false
 	var layout: Array = loot_layout()
 	var moving: int = int(layout[from])
-	if moving < 0:
+	if moving < 0 or is_pinned(loot_items[moving]):
 		return false
 	var entry: Dictionary = loot_items[moving]
 	var r: int = posmod(rot, 4) if rot >= 0 else int(entry.get("rot", 0))
@@ -4680,7 +4662,7 @@ func move_loot(from: int, to: int, rot: int = -1) -> bool:
 	if cells.is_empty():
 		return false
 	var under: Array = _occupants(layout, cells, moving)
-	if under.size() > 1:
+	if under.size() > 1 or (under.size() == 1 and is_pinned(loot_items[int(under[0])])):
 		return false
 	# Where the displaced piece goes: its top-left on the slot the mover was dragged
 	# from, into the cells the mover leaves (and nothing it now covers).
@@ -4711,7 +4693,7 @@ func can_move_loot(from: int, to: int, rot: int = -1) -> bool:
 		return false
 	var layout: Array = loot_layout()
 	var moving: int = int(layout[from])
-	if moving < 0:
+	if moving < 0 or is_pinned(loot_items[moving]):
 		return false
 	var entry: Dictionary = loot_items[moving]
 	var r: int = posmod(rot, 4) if rot >= 0 else int(entry.get("rot", 0))
@@ -4723,6 +4705,8 @@ func can_move_loot(from: int, to: int, rot: int = -1) -> bool:
 		return false
 	if under.is_empty():
 		return true
+	if is_pinned(loot_items[int(under[0])]):
+		return false
 	var loser: Dictionary = loot_items[int(under[0])]
 	var after: Array = layout.duplicate()
 	for c in range(after.size()):
@@ -4748,6 +4732,8 @@ func can_trade_into(entry: Dictionary, at: int, rot: int) -> bool:
 # to turn where it stands stays as it was (returns false).
 func turn_loot(index: int, rot: int) -> bool:
 	if index < 0 or index >= loot_items.size() or not (loot_items[index] is Dictionary):
+		return false
+	if is_pinned(loot_items[index]):
 		return false
 	var entry: Dictionary = loot_items[index]
 	var r: int = posmod(rot, 4)
@@ -5008,7 +4994,7 @@ func move_bag(i: int, origin: Vector2i, rot: int) -> bool:
 		return false
 	if not can_place_bag(bag_size(bag), origin, rot, i):
 		return false
-	if bag_is_straddled(i):
+	if bag_is_straddled(i) or bag_holds_pinned(i):
 		return false
 	# WHAT IS IN A TURNED BAG TURNS WITH IT (docs/loot-passives.md §10): a piece's
 	# `rot` is the way it faces on screen, so a Blueprint in a bag given a quarter
@@ -5028,6 +5014,26 @@ func move_bag(i: int, origin: Vector2i, rot: int) -> bool:
 	bag["rot"] = posmod(rot, 4)
 	emit_signal("inventory_changed")
 	return true
+
+# Whether bag `i` holds a PINNED piece (a cursed weapon): the bag stays where it is,
+# since its contents ride along when it moves (docs/players-design.md §5).
+func bag_holds_pinned(i: int) -> bool:
+	if i < 0 or i >= pack_bags.size():
+		return false
+	var start: int = bag_slot_start(i)
+	var n: int = bag_size(pack_bags[i]).x * bag_size(pack_bags[i]).y
+	var layout: Array = loot_layout()
+	for slot in range(start, mini(start + n, layout.size())):
+		var index: int = int(layout[slot])
+		if index >= 0 and is_pinned(loot_items[index]):
+			return true
+	return false
+
+# A PINNED piece stays exactly where it is in the pack: it cannot be moved, turned,
+# swapped out, binned or smelted. Today that is a CURSED weapon
+# (docs/players-design.md §5), until its curse is lifted.
+func is_pinned(entry) -> bool:
+	return WeaponSystem.is_cursed(entry)
 
 # Whether a piece sits across bag `i` and another owner. Such a bag stays where it
 # is — moving or turning it would pull the piece's cells apart — until the piece

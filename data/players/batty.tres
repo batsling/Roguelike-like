@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="PlayerData" load_steps=2 format=3 uid="uid://player_batty"]
+
+[ext_resource type="Script" path="res://scripts/resources/PlayerData.gd" id="1_player"]
+
+[resource]
+script = ExtResource("1_player")
+id = &"batty"
+display_name = "Batty"
+description = "A bat with an empty stomach and a pack of things it has never seen before."
+order = 20
+mechanics = Array[StringName]([&"hunger", &"unidentified_weapons"])
+portrait_path = "res://images2.0/players/Batty.png"

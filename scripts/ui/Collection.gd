@@ -2319,23 +2319,16 @@ func _character_overview(ch: CharacterData) -> Control:
 	var row := HBoxContainer.new()
 	row.name = "StatsAndLoadout"
 	row.add_theme_constant_override("separation", UITheme.GAP)
-	# THE STATS AS A GRID OF TILES: Health and each verb a big number over a small
-	# name. The loadout off the character itself, so this tab and the character
-	# picker cannot come to list different verbs (CharacterData.verb_loadout).
+	# THE STATS AS A GRID OF TILES: Health and Gold, a big number over a small
+	# name. A character gives no verbs any more (docs/players-design.md §3).
 	var stats := _section_card("Base Stats", CHAR_GREEN)
 	var grid := GridContainer.new()
 	grid.columns = 3
 	grid.add_theme_constant_override("h_separation", UITheme.GAP_TIGHT)
 	grid.add_theme_constant_override("v_separation", UITheme.GAP_TIGHT)
 	grid.add_child(_stat_tile("Health", str(ch.base_max_hp), Color(0.95, 0.45, 0.45)))
-	for v in ch.verb_loadout():
-		grid.add_child(_stat_tile(String(v[0]), str(int(v[1])), Color(0.75, 0.85, 1.0)))
+	grid.add_child(_stat_tile("Gold", str(ch.start_gold), UITheme.GOLD))
 	stats.add_child(grid)
-	# The unrolled points, said as what they are rather than as a verb count:
-	# which verbs they land on isn't known until the run starts.
-	if ch.start_random > 0:
-		stats.add_child(_prose("+%d random point%s, rolled across the verbs at run start."
-			% [ch.start_random, "" if ch.start_random == 1 else "s"], UITheme.TEXT_DIM))
 	var stats_card: Control = stats.get_meta(&"card")
 	stats_card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	stats_card.size_flags_stretch_ratio = 3.0

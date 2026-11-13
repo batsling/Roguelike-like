@@ -6,7 +6,7 @@
  },
  "data/achievements/": {
   "eager_art_kb": 0,
-  "files": 3,
+  "files": 5,
   "kb": 2
  },
  "data/bags2.0/": {
@@ -73,6 +73,11 @@
   "eager_art_kb": 0,
   "files": 13,
   "kb": 7
+ },
+ "data/players/": {
+  "eager_art_kb": 0,
+  "files": 3,
+  "kb": 2
  },
  "data/potions2.0/": {
   "eager_art_kb": 0,

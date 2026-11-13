@@ -8,8 +8,10 @@ tools/Roguelikes.xlsx into data/achievements/ (docs/achievements.md).
   Tab          the tab of the Achievements screen the row is filed under
                (`Characters`). A new name is a new tab.
   Unlocks      what finishing it unlocks. Under `Characters`: a character, by
-               name or id, as in the `characters` sheet. Required, and one row
-               per character at most.
+               name or id, as in the `characters` sheet. Under `Players`: a
+               player, by name or id, as in the `players` sheet
+               (docs/players-design.md). Required, and one row per character
+               or player at most.
   Description  the sentence the player reads: what to do.
   Counted      `one run`   it has to happen inside a single run; the best run
                            is remembered
@@ -50,6 +52,7 @@ PROJECT_ROOT = base.PROJECT_ROOT
 XLSX_PATH = base.XLSX_PATH
 OUT_DIR = os.path.join(PROJECT_ROOT, "data", "achievements")
 CHARACTERS_DIR = os.path.join(PROJECT_ROOT, "data", "characters2.0")
+PLAYERS_DIR = os.path.join(PROJECT_ROOT, "data", "players")
 SHEET = "achievements"
 
 HEADERS = ("Tab", "Unlocks", "Description", "Counted", "Condition", "Goal")
@@ -65,10 +68,11 @@ def _clean(v) -> str:
     return base._clean(v)
 
 
-def character_ids() -> dict:
-    """lower-cased display name AND id -> id for every character."""
+def character_ids(folder: str = CHARACTERS_DIR) -> dict:
+    """lower-cased display name AND id -> id for every character (or, given
+    PLAYERS_DIR, every player)."""
     out = {}
-    for path in glob.glob(os.path.join(CHARACTERS_DIR, "*.tres")):
+    for path in glob.glob(os.path.join(folder, "*.tres")):
         with open(path, encoding="utf-8") as f:
             head = f.read(2048)
         rid = re.search(r'^id = &"([^"]+)"', head, re.M)
@@ -97,7 +101,7 @@ def parse_condition(raw, who: str) -> dict:
                      "`perfect games` or `beat games [<type>]`" % (who, raw))
 
 
-def achievement_tres(row: dict, order: int, characters: dict) -> tuple:
+def achievement_tres(row: dict, order: int, characters: dict, players: dict = None) -> tuple:
     who = _clean(row.get("Unlocks"))
     if not who:
         raise ValueError("achievements: a row has no Unlocks")
@@ -108,7 +112,13 @@ def achievement_tres(row: dict, order: int, characters: dict) -> tuple:
         if not character:
             raise ValueError("achievements %s: no character by that name or id in "
                              "data/characters2.0" % who)
-    aid = character or base.slugify(who)
+    player = ""
+    if tab.lower() == "players":
+        player = (players or {}).get(who.lower(), "")
+        if not player:
+            raise ValueError("achievements %s: no player by that name or id in "
+                             "data/players" % who)
+    aid = character or (("player_" + player) if player else base.slugify(who))
     description = _clean(row.get("Description"))
     if not description:
         raise ValueError("achievements %s: no Description — it is what the player reads" % who)
@@ -139,6 +149,7 @@ def achievement_tres(row: dict, order: int, characters: dict) -> tuple:
         'tab = "%s"' % base.gd_str(tab),
         "order = %d" % order,
         'unlocks_character = &"%s"' % character,
+        'unlocks_player = &"%s"' % player,
         'description = "%s"' % base.gd_str(description),
         'scope = "%s"' % SCOPES[counted],
         'metric = "%s"' % cond["metric"],
@@ -172,9 +183,10 @@ def main():
         raise SystemExit("achievements: the sheet is missing %s (the columns are %s)"
                          % (" and ".join(missing), " | ".join(HEADERS)))
     characters = character_ids()
+    players = character_ids(PLAYERS_DIR)
     out = {}
     for i, row in enumerate(rows(wb[SHEET])):
-        aid, text = achievement_tres(row, (i + 1) * 10, characters)
+        aid, text = achievement_tres(row, (i + 1) * 10, characters, players)
         if aid in out:
             raise ValueError("achievements: two rows unlock %r — one row each" % aid)
         out[aid] = text

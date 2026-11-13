@@ -144,14 +144,15 @@ func subtitle() -> String:
 			left, "" if left == 1 else "s"]
 	return "Health hit 0 at %s." % [here.display_name if here != null else "the last game"]
 
-# "⟡ Fracture 4 unlocked for Ironclad", or "" when this run unlocked nothing:
-# a loss, a custom run, or a win below the character's highest level.
+# "⟡ Fracture 4 unlocked for Batty", or "" when this run unlocked nothing: a
+# loss, a custom run, or a win below the PLAYER's highest level (the ladder is
+# the player's, docs/players-design.md §2).
 func unlock_line() -> String:
 	if not won or GameStats.last_run_unlocked <= 0:
 		return ""
-	var ch: CharacterData = Data.get_character2(GameState.character_id)
+	var pl: PlayerData = Data.get_player(GameState.player_id)
 	return "%s  Fracture %d unlocked for %s" % [Fracture.GLYPH, GameStats.last_run_unlocked,
-		ch.display_name if ch != null else "this character"]
+		pl.display_name if pl != null else "this player"]
 
 # ---------------------------------------------------------------------------
 # Building

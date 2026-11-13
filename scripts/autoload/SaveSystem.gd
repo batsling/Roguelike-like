@@ -118,6 +118,7 @@ func _summary(data: Dictionary, display_name: String, slot: int = -1) -> Diction
 		"slot": slot,
 		"autosave": slot == AUTOSAVE_SLOT,
 		"character_id": String(data.get("character_id", "")),
+		"player_id": String(data.get("player_id", "basic")),
 		"current_game": String(data.get("current_game_id", "")),
 		"hp": int(data.get("hp", 0)),
 		"max_hp": int(data.get("max_hp", 0)),
@@ -172,6 +173,8 @@ func _build_payload() -> Dictionary:
 		"save_name": GameState.save_name,
 		"saved_at": Time.get_unix_time_from_system(),
 		"character_id": String(GameState.character_id),
+		"player_id": String(GameState.player_id),
+		"hunger": GameState.hunger,
 		"fracture": GameState.fracture,
 		"donation_best": GameState.donation_best,
 		"shop_sales": GameState.shop_sales.duplicate(),
@@ -397,6 +400,9 @@ func _apply_save_data(data: Dictionary) -> void:
 	GameState.reset_run()
 	GameState.save_name = String(data.get("save_name", ""))
 	GameState.character_id = StringName(data.get("character_id", ""))
+	# A save from before players existed was played as the basic player.
+	GameState.player_id = StringName(data.get("player_id", String(Data.BASIC_PLAYER)))
+	GameState.hunger = clampi(int(data.get("hunger", 0)), 0, HungerSystem.MAX)
 	# A save from before Fractures existed has no level and was played at 0.
 	GameState.fracture = clampi(int(data.get("fracture", 0)), 0, Fracture.MAX)
 	GameState.donation_best = int(data.get("donation_best", 0))

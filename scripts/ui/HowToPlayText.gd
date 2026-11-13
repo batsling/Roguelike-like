@@ -65,8 +65,8 @@ static func _row(c: Array, head: bool = false) -> Dictionary:
 # contents panel shows under the title.
 static func chapters() -> Array:
 	return [
-		_ch_start(), _ch_choosing(), _ch_playing(), _ch_enemies(), _ch_board(),
-		_ch_health(), _ch_verbs(), _ch_gold(), _ch_events(), _ch_pack(),
+		_ch_start(), _ch_players(), _ch_choosing(), _ch_playing(), _ch_enemies(),
+		_ch_board(), _ch_health(), _ch_verbs(), _ch_gold(), _ch_events(), _ch_pack(),
 		_ch_bosses(), _ch_fractures(), _ch_wrong(), _ch_screen(),
 	]
 
@@ -87,8 +87,10 @@ static func _ch_start() -> Dictionary:
 				+ "and it takes your word for whether you did it."),
 			_p("There is no combat here to play. The combat is Hades."),
 			_h("One run, start to finish"),
-			_step(1, "Pick a character. That sets your Health and the charges you "
-				+ "start with."),
+			_step(1, "Pick a player, then a character. The player decides the "
+				+ "run's extra rules and its Fracture; the character sets your "
+				+ "Health, your gold, what you start carrying and your level-up "
+				+ "challenge."),
 			_step(2, "Pick where you start. You are offered three games, and the "
 				+ "one you take is the run's first game — not a free move. The "
 				+ "Amulet is named on this panel, and every card says how many "
@@ -582,6 +584,8 @@ static func _ch_health() -> Dictionary:
 				+ "turns on the pressure ladder."),
 			_b("A few events and machines, which always say so before you press "
 				+ "the button."),
+			_b("Starving, for a player with Hunger: every game you finish, and "
+				+ "every run you lose, while your Hunger is already at 0."),
 			_p("Note what is NOT on that list. Taking a detour costs no Health. "
 				+ "Failing a goal costs no Health directly — it costs you a "
 				+ "follower, and the follower costs Health later. Nothing in this "
@@ -603,6 +607,54 @@ static func _ch_health() -> Dictionary:
 
 
 # ---------------------------------------------------------------------------
+# Players (docs/players-design.md)
+# ---------------------------------------------------------------------------
+
+static func _ch_players() -> Dictionary:
+	var blocks: Array = [
+		_p("A run starts with two picks. First the PLAYER, which decides the "
+			+ "run's extra rules and holds your Fractures. Then the CHARACTER, "
+			+ "which sets your Health, your gold, what you start carrying and the "
+			+ "challenge you level up by. Any player can play any character."),
+	]
+	for pl in Data.all_players():
+		blocks.append(_h(pl.display_name))
+		var a: AchievementData = Achievements.for_player(pl.id)
+		if a != null:
+			blocks.append(_note("Locked until you %s" % a.description.substr(0, 1).to_lower()
+				+ a.description.substr(1)))
+		if pl.mechanics.is_empty():
+			blocks.append(_p("No extra rules: the game as it is."))
+		for m in pl.mechanics:
+			blocks.append(_kv(PlayerData.mechanic_name(m), PlayerData.mechanic_line(m)))
+	blocks += [
+		_h("Hunger"),
+		_b("Your Hunger is the bar beside your character at the top left. Every "
+			+ "game you hand in — beaten, missed or escaped — costs 1."),
+		_b("The game that empties it costs nothing more. After that, every game "
+			+ "you finish and every run you lose costs %d Health until you eat."
+			% HungerSystem.STARVE_DAMAGE),
+		_b("Drinking any potion is +1. So is eating: press Eat beside the bar and "
+			+ "click a piece of food in your pack or a food relic — it is gone, "
+			+ "and you are +1. You cannot eat at %d." % HungerSystem.MAX),
+		_h("Unidentified weapons"),
+		_b("Every weapon you FIND is anywhere from -2 to +2 Stun, and you do not "
+			+ "know which until you swing it (it reads \"Hero Sword +?\"). A "
+			+ "Scroll of Identify tells you sooner. A weapon you start with is "
+			+ "never rolled."),
+		_b("A minus is CURSED once you know it: it stays exactly where it sits in "
+			+ "your pack — no moving, turning, dropping or smelting. Anything that "
+			+ "lifts a curse lifts it, and a weapon freed that way always lays at "
+			+ "least 1 Stun."),
+	]
+	return {
+		"id": &"players", "icon": "☺", "title": "Players",
+		"blurb": "The first pick of a run: its extra rules and its Fractures.",
+		"blocks": blocks,
+	}
+
+
+# ---------------------------------------------------------------------------
 # 7. The verbs
 # ---------------------------------------------------------------------------
 
@@ -612,8 +664,8 @@ static func _ch_verbs() -> Dictionary:
 		"blurb": "Bash, Dash, Transmute, Scramble, Push.",
 		"blocks": [
 			_p("Verbs are how you change the board instead of playing it. They are "
-				+ "small integer charges, they come from drops, items and "
-				+ "level-ups, and they are gone once spent. Four of them reshape "
+				+ "small integer charges, they come from drops and items — no "
+				+ "character starts with any — and they are gone once spent. Four of them reshape "
 				+ "what you are being offered; one reshapes the battlefield."),
 			_h("On the offering"),
 			_kv("⛏ Bash", "DESTROY a game outright. It leaves the pool for the "
@@ -978,12 +1030,14 @@ static func _ch_fractures() -> Dictionary:
 				+ "Fracture below it: Fracture 6 is Fractures 1 to 6 together. "
 				+ "Fracture 0 is the game as it is."),
 			_h("Unlocking them"),
-			_b("They unlock PER CHARACTER. Win a run as a character to open "
-				+ "Fracture 1 for them; win at their highest Fracture to open the next."),
-			_b("Pick the level on the character select, in the row under the hero. "
-				+ "It stays on whatever you picked last for that hero."),
-			_b("A custom run can be played at any Fracture that hero has unlocked, "
-				+ "but it is practice: it unlocks nothing and wins no trophy."),
+			_b("They unlock PER PLAYER, whichever character you play. Win a run as "
+				+ "a player to open Fracture 1 for them; win at their highest "
+				+ "Fracture to open the next."),
+			_b("Pick the level on the player select, in the row under the player. "
+				+ "It stays on whatever you picked last for that player."),
+			_b("A custom run can be played at any Fracture that player has "
+				+ "unlocked, but it is practice: it unlocks nothing and wins no "
+				+ "trophy."),
 			_h("The ladder"),
 		] + ladder + [
 			_h("What you get for it"),

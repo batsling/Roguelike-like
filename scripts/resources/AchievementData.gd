@@ -21,6 +21,9 @@ extends Resource
 # The character this unlocks (a CharacterData id). A character named by an
 # achievement is LOCKED in the character picker until it is done.
 @export var unlocks_character: StringName = &""
+# Under the `Players` tab: the player it unlocks (docs/players-design.md), and
+# unlocks_character is empty. One or the other, never both.
+@export var unlocks_player: StringName = &""
 
 # What the player reads: the condition, in one sentence.
 @export_multiline var description: String = ""

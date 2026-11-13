@@ -1,8 +1,9 @@
 class_name CharacterPicker
 extends Control
 
-# The character select overlay — the roster in data/characters2.0, and the one
-# screen between pressing Start Run and being in a run.
+# The character select overlay — the roster in data/characters2.0, and the SECOND
+# screen between pressing Start Run and being in a run: the player and its
+# Fracture are picked first (PlayerPicker, docs/players-design.md).
 #
 # It used to be built inline in MainMenu.gd, which made it the only full-screen
 # overlay in the project that was not its own class: every other one
@@ -41,7 +42,6 @@ const CHAR_PORTRAIT_SIZE := 210
 var _roster: Array[CharacterData] = []
 var _select: Callable = Callable()
 var _state: Dictionary = {}
-var _fracture_row: HBoxContainer = null
 var _looks_box: VBoxContainer = null
 
 static func open(parent: Node) -> CharacterPicker:
@@ -96,7 +96,7 @@ func _build() -> void:
 	title.add_theme_font_size_override("font_size", UITheme.FONT_HERO)
 	title.add_theme_color_override("font_color", UITheme.GOLD)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.tooltip_text = "Each hero opens the run with a different Health pool and set of verbs."
+	title.tooltip_text = "Each hero opens the run with their own Health, gold, starting loot and level-up goal."
 	title.mouse_filter = Control.MOUSE_FILTER_PASS
 	header.add_child(title)
 
@@ -140,13 +140,8 @@ func _build() -> void:
 	_looks_box.name = "Looks"
 	detail_col.add_child(_looks_box)
 
-	# THE FRACTURE ROW (docs/fracture-design.md §4), under the hero it belongs to:
-	# 0..10, the levels this hero has unlocked clickable and the rest greyed out.
-	# Choosing one saves it as the hero's pick, which is the level their next run
-	# starts at (GameLoop2.start_run reads it), so Confirm needs nothing passed.
-	_fracture_row = HBoxContainer.new()
-	_fracture_row.add_theme_constant_override("separation", UITheme.GAP_SNUG)
-	vbox.add_child(_fracture_row)
+	# NO FRACTURE ROW here any more: the ladder belongs to the PLAYER, picked on the
+	# screen before this one (PlayerPicker, docs/players-design.md §2).
 
 	# Footer: Cancel (left) and the Confirm button (right), enabled once a hero is
 	# selected.
@@ -199,7 +194,6 @@ func _build() -> void:
 		for tid in state["tiles"]:
 			state["tiles"][tid].call(tid == ch.id)
 		_fill_char_detail(detail_box, ch)
-		_fill_fracture_row(ch)
 		# A LOCKED hero can be looked at, not played (docs/achievements.md): the
 		# panel says what unlocks them and Confirm stays dark.
 		var locked: bool = Achievements.character_locked(ch.id)
@@ -244,98 +238,6 @@ func _playable() -> Array[CharacterData]:
 		if not Achievements.character_locked(ch.id):
 			out.append(ch)
 	return out
-
-# The row of Fracture levels for `ch`: a button per level, the one that will be
-# played lit, the locked ones greyed out, and the selected level's changes on
-# the right. Each button's hover is the whole ladder up to it.
-func _fill_fracture_row(ch: CharacterData) -> void:
-	if _fracture_row == null:
-		return
-	for c in _fracture_row.get_children():
-		_fracture_row.remove_child(c)
-		c.queue_free()
-	var unlocked: int = GameStats.fracture_unlocked(ch.id)
-	var pick: int = GameStats.fracture_pick(ch.id)
-	var head := Label.new()
-	head.text = "%s Fracture" % Fracture.GLYPH
-	head.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
-	head.add_theme_color_override("font_color", Fracture.COLOR)
-	head.tooltip_text = ("Harder runs, unlocked one at a time by winning at the "
-		+ "highest one this hero has. Each level keeps every level below it.")
-	head.mouse_filter = Control.MOUSE_FILTER_PASS
-	_fracture_row.add_child(head)
-	for lv in range(Fracture.MAX + 1):
-		var b := Button.new()
-		b.name = "Fracture%d" % lv
-		b.text = str(lv)
-		b.custom_minimum_size = Vector2(34, 32)
-		b.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
-		b.disabled = lv > unlocked
-		b.tooltip_text = Fracture.ladder_text(lv) if lv <= unlocked else (
-			"Locked: win a run as %s at Fracture %d to open it." % [ch.display_name, lv - 1]
-			if lv == unlocked + 1 else "Locked.")
-		if lv == pick:
-			b.add_theme_stylebox_override("normal", UITheme.accent_box(Fracture.COLOR, UITheme.PANEL_HI, 6))
-			# Hover too: the picked level used to swap to the theme's plain hover
-			# box under the mouse and read as un-picked.
-			b.add_theme_stylebox_override("hover", UITheme.accent_box(Fracture.COLOR, UITheme.PANEL_HI, 6))
-		_number_fracture_button(b, lv, lv == pick, lv <= unlocked)
-		b.pressed.connect(func():
-			GameStats.set_fracture_pick(ch.id, lv)
-			_fill_fracture_row(ch))
-		_fracture_row.add_child(b)
-	var what := Label.new()
-	what.name = "FractureNote"
-	what.text = (Fracture.change_text(pick) if pick > 0 else "The game as it is.") \
-		if unlocked > 0 else "Win a run as %s to unlock Fracture 1." % ch.display_name
-	what.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	what.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	what.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
-	what.add_theme_color_override("font_color", UITheme.TEXT_DIM)
-	_fracture_row.add_child(what)
-
-# THE NUMBER ON A FRACTURE BUTTON, IN THE NUMBERS THE PLAYER HAS UNLOCKED (the
-# owner, 11 Nov 2026: "let's show unlocked numbers here… the number from rank ups
-# that give letters/numbers and stuff"). A rank pays a title letter, and some of
-# those are digits cut from a real game's logo; this row is ten digits, so it is
-# where they get worn. Each level is spelled from `TitleLetters.available()` —
-# Rogue's own digits, which everyone has, plus every earned one that is switched
-# on in Customization — and seeded by the level, so a number keeps its look from
-# one visit to the next instead of re-rolling on every repaint.
-#
-# AND IT NO LONGER VANISHES UNDER THE MOUSE. The button's own text was drawn in
-# the theme's hover colour, which on this screen is the hover box's own colour:
-# hovering a level erased its number. The digits are a picture now and the hover
-# only brightens them; where no picture can be made the text is kept, with every
-# state's colour set.
-const FRACTURE_DIGIT := 17.0
-const FRACTURE_STATES := ["font_color", "font_hover_color", "font_pressed_color",
-	"font_focus_color", "font_hover_pressed_color", "font_disabled_color"]
-
-func _number_fracture_button(b: Button, lv: int, picked: bool, open: bool) -> void:
-	var rest: Color = Fracture.COLOR if picked else (
-		UITheme.TEXT if open else UITheme.TEXT_FAINT)
-	var rng := RandomNumberGenerator.new()
-	rng.seed = hash("fracture-number-%d" % lv)
-	var word := TitleLetters.make(str(lv), FRACTURE_DIGIT, rng, false,
-		b.custom_minimum_size.x - 8.0)
-	if word.placed.size() != str(lv).length():
-		word.free()
-		for state in FRACTURE_STATES:
-			b.add_theme_color_override(state, rest)
-		b.add_theme_color_override("font_hover_color", rest.lerp(Color.WHITE, 0.5))
-		return
-	word.name = "Digits"
-	word.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	b.add_child(word)
-	# The text stays (a screen reader, a test) and is simply not drawn.
-	for state in FRACTURE_STATES:
-		b.add_theme_color_override(state, Color(0, 0, 0, 0))
-	var dim: Color = Color(1, 1, 1, 1.0 if picked else (0.8 if open else 0.3))
-	word.modulate = dim
-	if open:
-		b.mouse_entered.connect(func(): word.modulate = Color.WHITE)
-		b.mouse_exited.connect(func(): word.modulate = dim)
 
 # Roll a hero into the preview and answer which one it was. Public because the
 # footer's 🎲 is not the only thing that should be able to ask for one, and
@@ -517,12 +419,6 @@ func _fill_char_detail(box: HBoxContainer, ch: CharacterData) -> void:
 	right.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	box.add_child(right)
 
-	var chips := _verb_chips(ch)
-	if chips != null:
-		right.add_child(_detail_head("Starting Verbs"))
-		(chips as FlowContainer).alignment = FlowContainer.ALIGNMENT_BEGIN
-		right.add_child(chips)
-
 	if ch.description != "":
 		var desc := Label.new()
 		desc.text = ch.description
@@ -653,40 +549,3 @@ func _detail_head(text: String) -> Label:
 	l.add_theme_color_override("font_color", UITheme.ACCENT.lerp(UITheme.TEXT, 0.2))
 	return l
 
-# A centered wrap of the character's non-zero starting verbs as small pills, or
-# null when the loadout is all-zero. The verbs come off CharacterData itself, so
-# this and the Collection's stat rows cannot list different ones.
-func _verb_chips(ch: CharacterData) -> Control:
-	var flow := HFlowContainer.new()
-	flow.alignment = FlowContainer.ALIGNMENT_CENTER
-	flow.add_theme_constant_override("h_separation", UITheme.GAP_TIGHT)
-	flow.add_theme_constant_override("v_separation", UITheme.GAP_TIGHT)
-	var any := false
-	for v in ch.verb_loadout():
-		any = true
-		var pill := PanelContainer.new()
-		pill.add_theme_stylebox_override("panel", UITheme.flat(UITheme.PANEL_HI, 6, 4, 1, UITheme.BORDER))
-		var pl := Label.new()
-		pl.text = "%s %d" % [v[0], int(v[1])]
-		pl.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
-		pl.add_theme_color_override("font_color", UITheme.ACCENT.lerp(UITheme.TEXT, 0.3))
-		pill.add_child(pl)
-		flow.add_child(pill)
-	# The unrolled part of the loadout gets its own pill, tinted apart from the
-	# fixed verbs and saying what it will become — "Random 2" beside a solid
-	# "Bash 1" would otherwise read as a verb called Random.
-	if ch.start_random > 0:
-		any = true
-		var pill := PanelContainer.new()
-		pill.add_theme_stylebox_override("panel",
-			UITheme.flat(UITheme.GOLD.lerp(UITheme.BG, 0.78), 6, 4, 1, UITheme.GOLD.lerp(UITheme.BORDER, 0.4)))
-		var pl := Label.new()
-		pl.text = "🎲 %d random" % ch.start_random
-		pl.tooltip_text = ("%d point%s of Bash / Dash / Push / Transmute / Scramble / Bombs, "
-			+ "rolled fresh when the run starts.") % [
-				ch.start_random, "" if ch.start_random == 1 else "s"]
-		pl.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
-		pl.add_theme_color_override("font_color", UITheme.GOLD)
-		pill.add_child(pl)
-		flow.add_child(pill)
-	return flow if any else null

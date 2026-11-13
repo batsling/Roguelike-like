@@ -48,6 +48,7 @@ var _songs: Dictionary = {}             # StringName -> SongData (Roguelike Radi
 var _shopkeepers: Dictionary = {}       # StringName -> ShopkeeperData (§14.6)
 var _locations: Dictionary = {}         # StringName -> LocationData (docs/locations-design.md)
 var _achievements: Dictionary = {}      # StringName -> AchievementData (docs/achievements.md)
+var _players: Dictionary = {}           # StringName -> PlayerData (docs/players-design.md)
 
 func _ready() -> void:
 	_load_dir("res://data/games/", _games)
@@ -76,6 +77,7 @@ func _ready() -> void:
 	_load_dir("res://data/shopkeepers/", _shopkeepers)
 	_load_dir("res://data/locations/", _locations)
 	_load_dir("res://data/achievements/", _achievements)
+	_load_dir("res://data/players/", _players)
 	print("[Data] Loaded %d games" % _games.size())
 	print("[Data] Loaded 2.0: %d characters, %d items, %d goal-enemies, %d bosses, %d scrolls, %d pills, %d cards, %d wands, %d trinkets, %d bags, %d weapons, %d evolutions, %d statuses, %d tiles, %d units, %d abilities, %d events, %d curses, %d objects" % [
 		_characters2.size(), _items2.size(), _goal_enemies.size(), _bosses.size(),
@@ -773,6 +775,20 @@ func get_achievement(id: StringName) -> AchievementData:
 # Every achievement, in the order the screen lists them.
 func all_achievements() -> Array:
 	var out: Array = _achievements.values()
+	out.sort_custom(func(a, b) -> bool:
+		return a.order < b.order if a.order != b.order else String(a.id) < String(b.id))
+	return out
+
+# --- Players (docs/players-design.md) --------------------------------------
+# The first pick of a run: the mechanics, and the Fracture ladder.
+const BASIC_PLAYER := &"basic"
+
+func get_player(id: StringName) -> PlayerData:
+	return _players.get(id)
+
+# In the sheet's order, so the basic player comes first.
+func all_players() -> Array:
+	var out: Array = _players.values()
 	out.sort_custom(func(a, b) -> bool:
 		return a.order < b.order if a.order != b.order else String(a.id) < String(b.id))
 	return out

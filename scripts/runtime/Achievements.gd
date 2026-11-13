@@ -2,7 +2,7 @@ class_name Achievements
 extends RefCounted
 
 # ACHIEVEMENTS (docs/achievements.md; the owner, 10 Nov 2026): things the player
-# does that unlock something — for now, characters. Each is an AchievementData in
+# does that unlock something — characters and players. Each is an AchievementData in
 # data/achievements/; this is the rules over them, and the only place that knows
 # how one is counted. What a profile has done is `GameStats.achievements`.
 #
@@ -46,6 +46,17 @@ static func for_character(character_id) -> AchievementData:
 		if String((a as AchievementData).unlocks_character) == String(character_id):
 			return a
 	return null
+
+# The achievement that unlocks `player_id`, or null when nothing locks them.
+static func for_player(player_id) -> AchievementData:
+	for a in all():
+		if String((a as AchievementData).unlocks_player) == String(player_id):
+			return a
+	return null
+
+static func player_locked(player_id) -> bool:
+	var a: AchievementData = for_player(player_id)
+	return a != null and not is_done(a)
 
 static func is_done(a: AchievementData) -> bool:
 	if a == null or bypass or Settings.unlock_everything:
@@ -189,6 +200,11 @@ static func check(announce: bool = true) -> void:
 			_announce(ach)
 
 static func _announce(a: AchievementData) -> void:
+	var pl: PlayerData = Data.get_player(a.unlocks_player)
+	if pl != null:
+		Notifications.notify("★ New player: %s" % pl.display_name, UITheme.GOLD,
+			pl.portrait, "achievement")
+		return
 	var ch: CharacterData = Data.get_character2(a.unlocks_character)
 	if ch == null:
 		Notifications.notify("★ Achievement unlocked", UITheme.GOLD, null, "achievement")

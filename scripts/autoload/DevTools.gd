@@ -688,7 +688,7 @@ func _build_run_tab() -> void:
 		% RunDifficulty.tier_name(RunDifficulty.current_tier())))
 
 	# FRACTURES (docs/fracture-design.md §9): the run's level, set live so any rung
-	# can be tried without climbing to it, and the character's unlocks opened so
+	# can be tried without climbing to it, and the PLAYER's unlocks opened so
 	# the picker can be tried the same way. Neither is a win: nothing is recorded.
 	_body.add_child(_section("%s Fracture" % Fracture.GLYPH))
 	_body.add_child(_stepper("Fracture", func(): return GameState.fracture,
@@ -696,12 +696,12 @@ func _build_run_tab() -> void:
 			GameState.fracture = clampi(GameState.fracture + signi(d), 0, Fracture.MAX)
 			GameLoop2.sync_grid_bounds()
 			GameLoop2.loop_changed.emit()))
-	_body.add_child(_row_button("Unlock every Fracture for this character", "",
+	_body.add_child(_row_button("Unlock every Fracture for this player", "",
 		func() -> void:
-			if GameState.character_id != &"":
-				GameStats.fracture_log[String(GameState.character_id)] = \
-					GameStats.fracture_log.get(String(GameState.character_id), {})
-				GameStats.fracture_log[String(GameState.character_id)]["best"] = Fracture.MAX - 1
+			if GameState.player_id != &"":
+				GameStats.player_fracture_log[String(GameState.player_id)] = \
+					GameStats.player_fracture_log.get(String(GameState.player_id), {})
+				GameStats.player_fracture_log[String(GameState.player_id)]["best"] = Fracture.MAX - 1
 				GameStats.save_data()
 			_rebuild_body()))
 	_body.add_child(_row_button("Collapse now: carry the Amulet home from here", "",

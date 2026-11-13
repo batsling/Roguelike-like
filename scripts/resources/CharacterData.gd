@@ -50,43 +50,15 @@ extends Resource
 @export var starting_weapon: StringName = &""
 
 # === Games-first redesign (2.0) starting loadout ===
-# The no-combat rework (docs/games-first-redesign.md §3) gives each character a
-# tiny starting Health and a small pool of verb/consumable charges instead of a
-# combat stat block. Health/Max Health reuse GameState.hp / GameState.max_hp
-# (set from `base_max_hp` at run start), so no separate 2.0 health field is
-# needed — only the verbs are new. `dash` maps onto GameState.dash_charges;
-# the rest map onto same-named GameState fields (see GameState grant_run_stat).
-# All default 0, matching the current combat roster which never sets them.
+# A character gives four things (docs/players-design.md §3): its level-up
+# condition, its Health (`base_max_hp`, reused as GameState.hp / max_hp), its
+# gold, and its starting loot. NO stats — the starting verbs (Bash, Dash, Push,
+# …) and their Random points were taken off the sheet on 13 Nov 2026, and the
+# mechanics that differ between runs belong to the PLAYER (PlayerData).
 #
 # `start_gold` (§14) is the gold the character opens the run holding, and it is
-# the WHOLE of a run's starting purse — gold never carries between runs. Three
-# across the roster today, which is exactly one Common item, so the first shop a
-# run reaches is always worth walking into.
-#
-# It leads the block because it is not one of the verbs: everything from
-# start_bash to start_keys is walked as a CONTIGUOUS RANGE by both
-# generate_character2_tres.START_VERBS and GameState.START_RANDOM_POOL (the pool
-# the sheet's `Random` column spends its points into), so a non-verb sitting
-# inside it would be in the way of both. The sheet's column order matches.
+# the WHOLE of a run's starting purse — gold never carries between runs.
 @export var start_gold: int = 0
-@export var start_bash: int = 0
-@export var start_dash: int = 0
-# Push (Manager, from Raccoin) — a board-timing verb that shoves a following
-# enemy back one space, delaying its next attack by a game (§7.2). Maps onto
-# GameState.push, like the other start_* verbs map onto same-named fields.
-@export var start_push: int = 0
-@export var start_transmute: int = 0
-@export var start_scramble: int = 0
-@export var start_bombs: int = 0
-@export var start_keys: int = 0
-# Points of verb loadout the character does NOT bring fixed: rolled at run start
-# across the 2.0 verb pool (GameState.START_RANDOM_POOL — Bash, Dash, Push,
-# Transmute, Scramble, Bombs; Keys is on the sheet but has nothing to open yet,
-# so it is deliberately not in the pool). Each point is rolled independently, so
-# two can land on the same verb — Erratic Deck opening on +2 Bash is a legal and
-# intended roll, not a bug. The character screens list it as "Random N" rather
-# than pretending to know which verbs a run will get.
-@export var start_random: int = 0
 
 # === Level-up mechanic ===
 # Each character levels up by meeting `level_up_condition` — an honour-system
@@ -96,11 +68,10 @@ extends Resource
 @export var level_up_condition: String = ""
 @export var level_up_reward: String = ""
 
-# Stat/ability bonuses granted per level-up. Keys are GameState stat/ability
-# ids (strength, dexterity, intelligence, charisma, constitution, luck, speed,
-# dash, reroll, fov, discovery, max_hp). The special key "random" grants N
-# random points spread across strength/dexterity/intelligence/charisma.
-#   Zoe: {"dexterity": 1, "dash": 1}
+# What a level-up pays besides its reward type: only Max Health and gold now
+# ({"max_hp": 1} for Rodney, {"gold": 1} for the Manager). A character gives no
+# stats (docs/players-design.md §3) — the generator refuses a Reward naming a
+# verb. Applied through GameState.apply_level_up_stats.
 @export var level_up_stats: Dictionary = {}
 
 # Reward handed out on level-up. One of: &"none", &"gold", &"item", &"card",
@@ -154,24 +125,3 @@ func _cosmetics() -> Node:
 # (mirrors GoalEnemyData.art_file()).
 func art_file() -> String:
 	return file if file != "" else display_name.replace(" ", "").replace("'", "")
-
-# The verbs this character actually opens a run with: `[display name, count]`
-# pairs in the sheet's own column order, and only the non-zero ones — which is
-# all either screen that shows a loadout ever wants.
-#
-# It lives here because BOTH of those screens used to write the seven-row table
-# out by hand — the character picker as chips, the Collection's character tab as
-# stat rows — so a verb added to one was a verb missing from the other, silently
-# and for as long as nobody compared the two screens. `start_random` is
-# deliberately NOT in it: it is points that have no verb yet, and each screen
-# says so in its own words.
-func verb_loadout() -> Array:
-	var out: Array = []
-	for pair in [
-		["Bash", start_bash], ["Dash", start_dash], ["Push", start_push],
-		["Transmute", start_transmute], ["Scramble", start_scramble],
-		["Bombs", start_bombs], ["Keys", start_keys],
-	]:
-		if int(pair[1]) > 0:
-			out.append(pair)
-	return out

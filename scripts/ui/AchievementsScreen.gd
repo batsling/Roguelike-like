@@ -4,7 +4,7 @@ extends Control
 # ACHIEVEMENTS (docs/achievements.md; the owner, 10 Nov 2026), off the main menu:
 # what there is to unlock, how, and how close this profile has come.
 #
-# One TAB per kind of unlock — Characters is the only one so far, and the tabs are
+# One TAB per kind of unlock — Characters and Players so far, and the tabs are
 # read off the achievements themselves (AchievementData.tab), so a second kind is
 # a new tab the day its first achievement exists.
 #
@@ -13,7 +13,7 @@ extends Control
 #   in one run       a socket per step, filled with what the BEST run was holding,
 #                    and "Best in one run: 2 of 3";
 #   across all runs  a bar, and "So far: 4 of 10".
-# A locked character is its silhouette; done, it is drawn in colour.
+# A locked character or player is its silhouette; done, it is drawn in colour.
 #
 # THE LAST TAB IS STATS (the owner, 10 Nov 2026: a completion page): everything
 # the profile has done, in sections, each line out of how many there are, with a
@@ -332,7 +332,8 @@ func _row(a: AchievementData) -> Control:
 		UITheme.WELL if done else UITheme.PANEL_HI.lerp(UITheme.BORDER, 0.5), UITheme.BORDER, 6, 6, 1))
 	frame.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	hb.add_child(frame)
-	var tex: Texture2D = ch.shown_icon() if ch != null else null
+	var pl: PlayerData = Data.get_player(a.unlocks_player)
+	var tex: Texture2D = ch.shown_icon() if ch != null else (pl.portrait if pl != null else null)
 	if tex != null:
 		var icon := UITheme.crisp_tex(tex, PORTRAIT)
 		icon.name = "Portrait"
@@ -357,7 +358,8 @@ func _row(a: AchievementData) -> Control:
 	mid.add_child(how)
 	var name_lbl := Label.new()
 	name_lbl.name = "Name"
-	name_lbl.text = ch.display_name if ch != null else String(a.id).capitalize()
+	name_lbl.text = ch.display_name if ch != null else (
+		pl.display_name if pl != null else String(a.id).capitalize())
 	name_lbl.add_theme_font_size_override("font_size", UITheme.FONT_TITLE_LG)
 	name_lbl.add_theme_color_override("font_color", UITheme.GOLD if done else UITheme.TEXT)
 	mid.add_child(name_lbl)
@@ -374,6 +376,13 @@ func _row(a: AchievementData) -> Control:
 		from.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 		from.add_theme_color_override("font_color", UITheme.GOLD.lerp(UITheme.TEXT_DIM, 0.5))
 		mid.add_child(from)
+	elif pl != null:
+		var adds := Label.new()
+		adds.text = "Unlocks %s · %s" % [pl.display_name, ", ".join(
+			pl.mechanics.map(func(m): return PlayerData.mechanic_name(m)))]
+		adds.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
+		adds.add_theme_color_override("font_color", UITheme.GOLD.lerp(UITheme.TEXT_DIM, 0.5))
+		mid.add_child(adds)
 
 	var right := VBoxContainer.new()
 	right.add_theme_constant_override("separation", UITheme.GAP_WIDE)

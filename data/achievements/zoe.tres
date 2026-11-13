@@ -8,6 +8,7 @@ id = &"zoe"
 tab = "Characters"
 order = 20
 unlocks_character = &"zoe"
+unlocks_player = &""
 description = "Perfect 10 different games."
 scope = "lifetime"
 metric = "perfects"

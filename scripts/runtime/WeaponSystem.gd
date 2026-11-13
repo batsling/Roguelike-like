@@ -44,11 +44,105 @@ static func def(entry) -> WeaponData:
 	return Data.get_weapon(StringName(entry.get("id", "")))
 
 # A new pack entry for `w`, EMPTY — a weapon is loaded by playing, not found loaded.
-static func new_entry(w: WeaponData) -> Dictionary:
+#
+# FOUND UNIDENTIFIED (docs/players-design.md §5): for a player with the
+# `unidentified_weapons` mechanic, every weapon the run FINDS is rolled -2..+2 here
+# — a drop, a chest, a shop shelf, an evolution's preview aside (`rolled` false).
+# A weapon the run STARTS with is not (GameState.granting_start_kit).
+static func new_entry(w: WeaponData, rolled: bool = true) -> Dictionary:
 	if w == null:
 		return {}
-	return {"type": "weapon", "id": w.id, "rarity": w.rarity, "charges": 0,
+	var entry := {"type": "weapon", "id": w.id, "rarity": w.rarity, "charges": 0,
 		"uid": _next_uid(), "goal_game": -1}
+	if rolled and GameState.has_mechanic(&"unidentified_weapons") \
+			and not GameState.granting_start_kit:
+		entry["roll"] = roll_modifier()
+		entry["roll_known"] = false
+	return entry
+
+# --- unidentified weapons (docs/players-design.md §5) -------------------------
+#
+# A rolled weapon carries `roll` (-2..+2, added to its Stun) and `roll_known`. Until
+# the first swing — or a Scroll of Identify — the roll is HIDDEN: the name reads
+# "Hero Sword +?", the Stun on its card leaves it out, but a swing lays it. A
+# negative roll, once known, is CURSED: the piece is pinned where it sits in the
+# pack (no moving, dropping, selling or smelting) until a curse is lifted
+# (`lift_curse` — Scroll of Remove Curse), which frees it and holds its Stun to at
+# least 1. Before it is known it is an ordinary piece: nobody knows to be stuck.
+
+# Each roll with its weight, the owner's split (13 Nov 2026): unchanged 40%,
+# +1 / -1 20% each, +2 / -2 10% each.
+const ROLL_WEIGHTS := [[0, 40], [1, 20], [-1, 20], [2, 10], [-2, 10]]
+
+static func roll_modifier(rng: RandomNumberGenerator = null) -> int:
+	var total: int = 0
+	for pair in ROLL_WEIGHTS:
+		total += int(pair[1])
+	var r: int = (rng.randi() if rng != null else randi()) % total
+	for pair in ROLL_WEIGHTS:
+		r -= int(pair[1])
+		if r < 0:
+			return int(pair[0])
+	return 0
+
+static func has_roll(entry) -> bool:
+	return is_weapon(entry) and (entry as Dictionary).has("roll")
+
+static func roll_of(entry) -> int:
+	return int((entry as Dictionary).get("roll", 0)) if has_roll(entry) else 0
+
+# Whether the player knows this weapon's roll: always, for one with none.
+static func roll_known(entry) -> bool:
+	return not has_roll(entry) or bool((entry as Dictionary).get("roll_known", false))
+
+# CURSED: a known minus whose curse has not been lifted.
+static func is_cursed(entry) -> bool:
+	return has_roll(entry) and roll_known(entry) and roll_of(entry) < 0 \
+		and not bool((entry as Dictionary).get("uncursed", false))
+
+# Every cursed weapon in the pack, by index — what Remove Curse offers.
+static func cursed_indices() -> Array:
+	var out: Array = []
+	for i in range(GameState.loot_items.size()):
+		if is_cursed(GameState.loot_items[i]):
+			out.append(i)
+	return out
+
+# Learn the roll (the first swing, or Identify). Returns whether it was news.
+static func reveal(entry) -> bool:
+	if not has_roll(entry) or roll_known(entry):
+		return false
+	(entry as Dictionary)["roll_known"] = true
+	var w: WeaponData = def(entry)
+	var name: String = w.display_name if w != null else "Weapon"
+	var n: int = roll_of(entry)
+	var msg: String
+	var color: Color = WEAPON_COLOR
+	if n < 0:
+		msg = "%s is CURSED: %d Stun, and stuck where it sits until the curse is lifted." % [
+			name, n]
+		color = UITheme.DANGER
+	elif n > 0:
+		msg = "%s is +%d: +%d Stun." % [name, n, n]
+	else:
+		msg = "%s is an ordinary %s." % [name, name]
+	Notifications.notify(msg, color, LootPassives.load_weapon_art(w) if w != null else null)
+	GameLog.add(msg, color)
+	GameState.emit_signal("inventory_changed")
+	return true
+
+# Lift the curse on a cursed weapon: it can move and leave the pack again, and its
+# Stun is held to at least 1 from now on. Returns whether there was one to lift.
+static func lift_curse(entry) -> bool:
+	if not is_cursed(entry):
+		return false
+	(entry as Dictionary)["uncursed"] = true
+	var w: WeaponData = def(entry)
+	var msg := "The curse on %s is lifted." % (w.display_name if w != null else "the weapon")
+	Notifications.notify(msg, WEAPON_COLOR)
+	GameLog.add(msg, WEAPON_COLOR)
+	GameState.emit_signal("inventory_changed")
+	return true
 
 # A uid no carried weapon already has. Random rather than counted so an entry
 # rolled for a shop shelf and one granted later cannot collide on a shared counter
@@ -152,6 +246,11 @@ static func stun_parts(index: int) -> Array:
 	var parts: Array = [{"from": w.display_name, "amount": w.stun}]
 	if stun_bonus_of(entry) > 0:
 		parts.append({"from": "Enchanted", "amount": stun_bonus_of(entry)})
+	# A KNOWN roll is part of the breakdown; a hidden one is not shown (stun_for
+	# still lays it).
+	if has_roll(entry) and roll_known(entry) and roll_of(entry) != 0:
+		parts.append({"from": "Upgraded" if roll_of(entry) > 0 else "Downgraded",
+			"amount": roll_of(entry)})
 	for row in LootPassives.active():
 		var aura: Dictionary = row["def"].get("weapon_stun") \
 			if row["def"].get("weapon_stun") is Dictionary else {}
@@ -176,7 +275,17 @@ static func stun_for(index: int) -> int:
 	var n: int = 0
 	for p in stun_parts(index):
 		n += int(p["amount"])
-	return n
+	if index < 0 or index >= GameState.loot_items.size():
+		return n
+	var entry = GameState.loot_items[index]
+	# The hidden roll counts whether or not the player knows it.
+	if has_roll(entry) and not roll_known(entry):
+		n += roll_of(entry)
+	# A minus cannot take a swing's Stun below 0, and a weapon whose curse was lifted
+	# keeps at least 1 (docs/players-design.md §5).
+	if has_roll(entry) and bool((entry as Dictionary).get("uncursed", false)):
+		return maxi(1, n)
+	return maxi(0, n)
 
 # HOW MANY EXTRA TIMES the piece at `index` fires its whole swing: +N from every
 # piece whose `weapon_retrigger` points at it (Duplicator, on any side) — each
@@ -208,13 +317,24 @@ static func stun_bonus_of(entry) -> int:
 # `stun_bonus`; a new way to upgrade a weapon adds to that key, or is summed in
 # here, and the name and the tile's chip follow. A neighbour's aura (Whetstone) is
 # not an upgrade: it leaves when the neighbour does.
+#
+# AN UNIDENTIFIED WEAPON'S ROLL is part of it too (docs/players-design.md §5) once
+# it is known — and can be negative: "Hero Sword -2". While it is hidden the name
+# says " +?" and this leaves the roll out.
 static func plus_of(entry) -> int:
-	return stun_bonus_of(entry)
+	return stun_bonus_of(entry) + (roll_of(entry) if roll_known(entry) else 0)
 
-# " +2" for an upgraded weapon, "" for any other piece.
+# " +2" for an upgraded weapon, " -1" for a downgraded one, " +?" for one whose
+# roll is not known yet, and "" for any other piece.
 static func plus_suffix(entry) -> String:
+	if not roll_known(entry):
+		return " +?"
 	var n: int = plus_of(entry)
-	return " +%d" % n if n > 0 else ""
+	if n > 0:
+		return " +%d" % n
+	if n < 0:
+		return " -%d" % absi(n)
+	return ""
 
 # Lightning Ring's Replays — how many strikes past the first each swing makes.
 static func replays_of(entry) -> int:
@@ -599,6 +719,13 @@ static func evolve(index: int, evo: EvolutionData, chosen: Array) -> Dictionary:
 		grown["replays"] = replays_of(old)
 	if stun_bonus_of(old) > 0:
 		grown["stun_bonus"] = stun_bonus_of(old)
+	# …and so does an unidentified weapon's roll, known or not, curse and all: an
+	# evolution is the same weapon grown, not a new find (docs/players-design.md §5).
+	grown.erase("roll")
+	grown.erase("roll_known")
+	for key in ["roll", "roll_known", "uncursed"]:
+		if (old as Dictionary).has(key):
+			grown[key] = old[key]
 	if evo.consumes:
 		for c in chosen:
 			if String(c.get("kind", "")) == "item":

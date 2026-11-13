@@ -696,28 +696,53 @@ func _identify_loot(mode: String, count: int, rng: RandomNumberGenerator, out: D
 # are live content — three authored rows, handed out by events, by the Amnesia pill
 # and by the Calling Bell, and drawn on the checklist every game as the things you
 # are trying not to do. Lifting one is a real effect, not a placeholder.
+#
+# AND CURSED WEAPONS (docs/players-design.md §5): a weapon found unidentified that
+# turned out to be a minus is a curse too, and whatever lifts a curse lifts it —
+# freed to move, its Stun held to at least 1. In "choose" mode each is a row
+# beside the curse goals; "all" and "random" draw from both.
 func _remove_curse(mode: String, count: int, rng: RandomNumberGenerator, out: Dictionary) -> bool:
-	if GameState.curse_goals.is_empty():
+	var weapons: Array = cursed_weapons()
+	if GameState.curse_goals.is_empty() and weapons.is_empty():
 		out["logs"].append("Nothing is weighing on you.")
 		return false
 	if mode == "all":
 		var lifted: Array = []
 		for i in range(GameState.curse_goals.size() - 1, -1, -1):
 			lifted.push_front(curse_name(GameState.remove_curse_goal(i)))
+		lifted.append_array(_lift_weapons(weapons))
 		out["logs"].append(_lifted_line(lifted))
 		return not lifted.is_empty()
 	elif mode == "random":
+		# One pool of both kinds: an int is a curse goal's index, a Dictionary a
+		# cursed weapon's pack entry.
 		var pool: Array = range(GameState.curse_goals.size())
+		pool.append_array(weapons)
 		var picked: Array = []
 		for _i in range(count):
 			if pool.is_empty():
 				break
 			picked.append(pool.pop_at(rng.randi_range(0, pool.size() - 1)))
-		var lifted_now: Array = _remove_indices(picked)
+		var lifted_now: Array = _remove_indices(picked.filter(func(p): return p is int))
+		lifted_now.append_array(_lift_weapons(picked.filter(func(p): return p is Dictionary)))
 		out["logs"].append(_lifted_line(lifted_now))
 		return not lifted_now.is_empty()
 	out["requests"].append({"kind": "remove_curse", "count": count})
 	return true
+
+# The cursed weapons in the pack, as their entries.
+func cursed_weapons() -> Array:
+	var out: Array = []
+	for i in WeaponSystem.cursed_indices():
+		out.append(GameState.loot_items[int(i)])
+	return out
+
+func _lift_weapons(entries: Array) -> Array:
+	var names: Array = []
+	for e in entries:
+		if WeaponSystem.lift_curse(e):
+			names.append("the curse on %s" % LootSystem.display_name(e))
+	return names
 
 # Remove several curse rows by index at once. DESCENDING, because every removal
 # shifts the indices above it — the one bug this op can have that the player would
@@ -786,8 +811,11 @@ func _stun_enemies(mode: String, count: int, out: Dictionary) -> bool:
 # its logs before the picker has been drawn, so a fulfilment that stayed silent
 # left the reader with a scroll that reported nothing at all — see
 # LootUseModal._on_read, which is what writes these lines to the run log.
-func remove_curse_chosen(indices: Array) -> String:
-	return _lifted_line(_remove_indices(indices))
+# `indices` are curse-goal indices; `weapons` cursed weapons' entries.
+func remove_curse_chosen(indices: Array, weapons: Array = []) -> String:
+	var names: Array = _remove_indices(indices)
+	names.append_array(_lift_weapons(weapons))
+	return _lifted_line(names)
 
 func identify_loot_chosen(entries: Array) -> String:
 	var names: Array = []
