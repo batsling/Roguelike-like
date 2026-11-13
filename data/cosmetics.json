@@ -685,6 +685,20 @@
 			]
 		},
 		{
+			"id": "gold/coin_into_the_breach",
+			"kind": "gold",
+			"name": "Coin",
+			"game": "into_the_breach",
+			"images": [
+				{
+					"name": "Coin",
+					"path": "res://images2.0/icons/Gold/Coin_Into_the_Breach.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
 			"id": "gold/coin_vampire_survivors",
 			"kind": "gold",
 			"name": "Coin",
@@ -777,6 +791,20 @@
 				{
 					"name": "Armor",
 					"path": "res://images2.0/icons/Shields/Armor_Brotato.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "shield/block_backpack_battles",
+			"kind": "shield",
+			"name": "Block",
+			"game": "backpack_battles",
+			"images": [
+				{
+					"name": "Block",
+					"path": "res://images2.0/icons/Shields/Block_Backpack_Battles.png",
 					"min": 0,
 					"max": 10
 				}
