@@ -373,6 +373,62 @@
 			]
 		},
 		{
+			"id": "difficulty/balatro",
+			"kind": "difficulty",
+			"name": "White Stake / Red Stake / Green Stake / Black Stake / Blue Stake / Purple Stake / Orange Stake / Gold Stake",
+			"game": "balatro",
+			"images": [
+				{
+					"name": "White Stake",
+					"path": "res://images2.0/icons/Difficulties/White_Stake_Balatro_0-0.png",
+					"min": 0,
+					"max": 0
+				},
+				{
+					"name": "Red Stake",
+					"path": "res://images2.0/icons/Difficulties/Red_Stake_Balatro_1-1.png",
+					"min": 1,
+					"max": 1
+				},
+				{
+					"name": "Green Stake",
+					"path": "res://images2.0/icons/Difficulties/Green_Stake_Balatro_2-2.png",
+					"min": 2,
+					"max": 2
+				},
+				{
+					"name": "Black Stake",
+					"path": "res://images2.0/icons/Difficulties/Black_Stake_Balatro_3-3.png",
+					"min": 3,
+					"max": 3
+				},
+				{
+					"name": "Blue Stake",
+					"path": "res://images2.0/icons/Difficulties/Blue_Stake_Balatro_4-4.png",
+					"min": 4,
+					"max": 4
+				},
+				{
+					"name": "Purple Stake",
+					"path": "res://images2.0/icons/Difficulties/Purple_Stake_Balatro_5-5.png",
+					"min": 5,
+					"max": 5
+				},
+				{
+					"name": "Orange Stake",
+					"path": "res://images2.0/icons/Difficulties/Orange_Stake_Balatro_6-6.png",
+					"min": 6,
+					"max": 6
+				},
+				{
+					"name": "Gold Stake",
+					"path": "res://images2.0/icons/Difficulties/Gold_Stake_Balatro_7-10.png",
+					"min": 7,
+					"max": 10
+				}
+			]
+		},
+		{
 			"id": "difficulty/hard_the_binding_of_isaac_rebirth",
 			"kind": "difficulty",
 			"name": "Hard",
@@ -685,6 +741,20 @@
 			]
 		},
 		{
+			"id": "health/heart_enter_the_gungeon",
+			"kind": "health",
+			"name": "Heart",
+			"game": "enter_the_gungeon",
+			"images": [
+				{
+					"name": "Heart",
+					"path": "res://images2.0/icons/Health/Heart_Enter_the_Gungeon.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
 			"id": "health/heart_hades",
 			"kind": "health",
 			"name": "Heart",
@@ -979,6 +1049,20 @@
 			]
 		},
 		{
+			"id": "gold/hegemony_credit_enter_the_gungeon",
+			"kind": "gold",
+			"name": "Hegemony Credit",
+			"game": "enter_the_gungeon",
+			"images": [
+				{
+					"name": "Hegemony Credit",
+					"path": "res://images2.0/icons/Gold/Hegemony_Credit_Enter_the_Gungeon.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
 			"id": "gold/penny_the_binding_of_isaac",
 			"kind": "gold",
 			"name": "Penny",
@@ -1015,6 +1099,20 @@
 				{
 					"name": "Armor",
 					"path": "res://images2.0/icons/Shields/Armor_Brotato.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "shield/armor_enter_the_gungeon",
+			"kind": "shield",
+			"name": "Armor",
+			"game": "enter_the_gungeon",
+			"images": [
+				{
+					"name": "Armor",
+					"path": "res://images2.0/icons/Shields/Armor_Enter_the_Gungeon.png",
 					"min": 0,
 					"max": 10
 				}
