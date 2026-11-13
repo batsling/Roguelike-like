@@ -303,6 +303,20 @@
 			]
 		},
 		{
+			"id": "bomb/bomb_noita",
+			"kind": "bomb",
+			"name": "Bomb",
+			"game": "noita",
+			"images": [
+				{
+					"name": "Bomb",
+					"path": "res://images2.0/icons/Bombs/Bomb_Noita.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
 			"id": "bomb/bomb_peglin",
 			"kind": "bomb",
 			"name": "Bomb",
@@ -592,6 +606,32 @@
 					"name": "Heat",
 					"path": "res://images2.0/icons/Difficulties/Heat_Hades.png",
 					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "difficulty/risk_of_rain",
+			"kind": "difficulty",
+			"name": "Drizzle / Rainstorm / Monsoon",
+			"game": "risk_of_rain",
+			"images": [
+				{
+					"name": "Drizzle",
+					"path": "res://images2.0/icons/Difficulties/Drizzle_Risk_of_Rain_0-3.png",
+					"min": 0,
+					"max": 3
+				},
+				{
+					"name": "Rainstorm",
+					"path": "res://images2.0/icons/Difficulties/Rainstorm_Risk_of_Rain_4-7.png",
+					"min": 4,
+					"max": 7
+				},
+				{
+					"name": "Monsoon",
+					"path": "res://images2.0/icons/Difficulties/Monsoon_Risk_of_Rain_8-10.png",
+					"min": 8,
 					"max": 10
 				}
 			]
@@ -897,6 +937,26 @@
 			]
 		},
 		{
+			"id": "chest/noita",
+			"kind": "chest",
+			"name": "Treasure Chest / Great Treasure Chest",
+			"game": "noita",
+			"images": [
+				{
+					"name": "Treasure Chest",
+					"path": "res://images2.0/icons/Chests/Treasure_Chest_Noita_0-1.png",
+					"min": 0,
+					"max": 1
+				},
+				{
+					"name": "Great Treasure Chest",
+					"path": "res://images2.0/icons/Chests/Great_Treasure_Chest_Noita_2-3.png",
+					"min": 2,
+					"max": 3
+				}
+			]
+		},
+		{
 			"id": "chest/risk_of_rain",
 			"kind": "chest",
 			"name": "Small Chest / Large Chest / Golden Chest",
@@ -1047,6 +1107,20 @@
 				{
 					"name": "Heart",
 					"path": "res://images2.0/icons/Health/Heart_Hades.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "health/heart_noita",
+			"kind": "health",
+			"name": "Heart",
+			"game": "noita",
+			"images": [
+				{
+					"name": "Heart",
+					"path": "res://images2.0/icons/Health/Heart_Noita.png",
 					"min": 0,
 					"max": 10
 				}
@@ -1445,6 +1519,20 @@
 			]
 		},
 		{
+			"id": "gold/gold_nugget_noita",
+			"kind": "gold",
+			"name": "Gold Nugget",
+			"game": "noita",
+			"images": [
+				{
+					"name": "Gold Nugget",
+					"path": "res://images2.0/icons/Gold/Gold_Nugget_Noita.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
 			"id": "gold/gold_peglin",
 			"kind": "gold",
 			"name": "Gold",
@@ -1669,6 +1757,20 @@
 			]
 		},
 		{
+			"id": "shield/energy_shield_noita",
+			"kind": "shield",
+			"name": "Energy Shield",
+			"game": "noita",
+			"images": [
+				{
+					"name": "Energy Shield",
+					"path": "res://images2.0/icons/Shields/Energy_Shield_Noita.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
 			"id": "shield/holy_mantle_the_binding_of_isaac_rebirth",
 			"kind": "shield",
 			"name": "Holy Mantle",
@@ -1705,6 +1807,20 @@
 				{
 					"name": "Shield",
 					"path": "res://images2.0/icons/Shields/Shield_Brutal_Orchestra.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "shield/shield_into_the_breach",
+			"kind": "shield",
+			"name": "Shield",
+			"game": "into_the_breach",
+			"images": [
+				{
+					"name": "Shield",
+					"path": "res://images2.0/icons/Shields/Shield_Into_the_Breach.png",
 					"min": 0,
 					"max": 10
 				}
