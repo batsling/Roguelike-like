@@ -539,6 +539,20 @@
 			]
 		},
 		{
+			"id": "luck/luck_the_legend_of_bum_bo",
+			"kind": "luck",
+			"name": "Luck",
+			"game": "the_legend_of_bum_bo",
+			"images": [
+				{
+					"name": "Luck",
+					"path": "res://images2.0/icons/Luck/Luck_The_Legend_of_Bum-Bo.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
 			"id": "chest/chest_loop_hero",
 			"kind": "chest",
 			"name": "Chest",
@@ -699,6 +713,20 @@
 			]
 		},
 		{
+			"id": "health/health_mewgenics",
+			"kind": "health",
+			"name": "Health",
+			"game": "mewgenics",
+			"images": [
+				{
+					"name": "Health",
+					"path": "res://images2.0/icons/Health/Health_Mewgenics.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
 			"id": "health/health_rogue_legacy",
 			"kind": "health",
 			"name": "Health",
@@ -797,6 +825,20 @@
 			]
 		},
 		{
+			"id": "health/heart_the_legend_of_bum_bo",
+			"kind": "health",
+			"name": "Heart",
+			"game": "the_legend_of_bum_bo",
+			"images": [
+				{
+					"name": "Heart",
+					"path": "res://images2.0/icons/Health/Heart_The_Legend_of_Bum-Bo.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
 			"id": "health/max_hp_brotato",
 			"kind": "health",
 			"name": "Max HP",
@@ -805,6 +847,20 @@
 				{
 					"name": "Max HP",
 					"path": "res://images2.0/icons/Health/Max_HP_Brotato.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "health/red_heart_the_binding_of_isaac_rebirth",
+			"kind": "health",
+			"name": "Red Heart",
+			"game": "the_binding_of_isaac_rebirth",
+			"images": [
+				{
+					"name": "Red Heart",
+					"path": "res://images2.0/icons/Health/Red_Heart_The_Binding_of_Isaac_Rebirth.png",
 					"min": 0,
 					"max": 10
 				}
@@ -833,6 +889,20 @@
 				{
 					"name": "Damage",
 					"path": "res://images2.0/icons/Damage/Damage_Brotato.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "damage/damage_mewgenics",
+			"kind": "damage",
+			"name": "Damage",
+			"game": "mewgenics",
+			"images": [
+				{
+					"name": "Damage",
+					"path": "res://images2.0/icons/Damage/Damage_Mewgenics.png",
 					"min": 0,
 					"max": 10
 				}
@@ -951,6 +1021,20 @@
 			]
 		},
 		{
+			"id": "gold/coin_mewgenics",
+			"kind": "gold",
+			"name": "Coin",
+			"game": "mewgenics",
+			"images": [
+				{
+					"name": "Coin",
+					"path": "res://images2.0/icons/Gold/Coin_Mewgenics.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
 			"id": "gold/coin_rogue_legacy_2",
 			"kind": "gold",
 			"name": "Coin",
@@ -959,6 +1043,20 @@
 				{
 					"name": "Coin",
 					"path": "res://images2.0/icons/Gold/Coin_Rogue_Legacy_2.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "gold/coin_the_legend_of_bum_bo",
+			"kind": "gold",
+			"name": "Coin",
+			"game": "the_legend_of_bum_bo",
+			"images": [
+				{
+					"name": "Coin",
+					"path": "res://images2.0/icons/Gold/Coin_The_Legend_of_Bum-Bo.png",
 					"min": 0,
 					"max": 10
 				}
@@ -1189,6 +1287,20 @@
 			]
 		},
 		{
+			"id": "shield/holy_mantle_the_binding_of_isaac_rebirth",
+			"kind": "shield",
+			"name": "Holy Mantle",
+			"game": "the_binding_of_isaac_rebirth",
+			"images": [
+				{
+					"name": "Holy Mantle",
+					"path": "res://images2.0/icons/Shields/Holy_Mantle_The_Binding_of_Isaac_Rebirth.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
 			"id": "shield/shield_brutal_orchestra",
 			"kind": "shield",
 			"name": "Shield",
@@ -1197,6 +1309,20 @@
 				{
 					"name": "Shield",
 					"path": "res://images2.0/icons/Shields/Shield_Brutal_Orchestra.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "shield/shield_mewgenics",
+			"kind": "shield",
+			"name": "Shield",
+			"game": "mewgenics",
+			"images": [
+				{
+					"name": "Shield",
+					"path": "res://images2.0/icons/Shields/Shield_Mewgenics.png",
 					"min": 0,
 					"max": 10
 				}
