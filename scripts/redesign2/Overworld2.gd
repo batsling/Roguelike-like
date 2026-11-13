@@ -185,6 +185,9 @@ var _shop_bar_fill: ProgressBar = null
 # and the frame around it — held so the pair can be hidden together when the
 # character has no art to draw.
 var _character_chip: TextureRect = null
+# The PLAYER's token, just left of the character's (docs/players-design.md §6).
+# Hidden for a player with no art (the basic player).
+var _player_chip: TextureRect = null
 var _character_wrap: Control = null
 # The character's LEVEL, in the same chip as the token ("Lv. 1"). See
 # _build_character_chip for why it rides the header rather than a panel.
@@ -6738,6 +6741,12 @@ func _build_character_chip() -> Control:
 	_fracture_chip.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_fracture_chip.mouse_filter = Control.MOUSE_FILTER_STOP
 	row.add_child(_fracture_chip)
+	# THE PLAYER, LEFT OF THE CHARACTER (the owner, 13 Nov 2026): the run is a
+	# player playing a character, read left to right, the way it was picked.
+	_player_chip = UITheme.crisp_tex(null, CHARACTER_CHIP)
+	_player_chip.name = "PlayerChip"
+	_player_chip.mouse_filter = Control.MOUSE_FILTER_STOP
+	row.add_child(_player_chip)
 	_character_chip = UITheme.crisp_tex(null, CHARACTER_CHIP)
 	# The token answers a hover with who it is — the name is not written out,
 	# because the header's job here is the picture and a name would cost the route
@@ -6870,6 +6879,19 @@ func _paint_character_chip() -> void:
 				else "Character level."
 	if ch != null:
 		_character_chip.tooltip_text = "%s — the character this run is being played as." % ch.display_name
+	if _player_chip != null and is_instance_valid(_player_chip):
+		var pl: PlayerData = GameState.player()
+		var ptex: Texture2D = pl.icon if pl != null else null
+		_player_chip.texture = ptex
+		UITheme.apply_crisp(_player_chip, ptex)
+		# A PAINTED token (Batsaac's face, stored at twice the chip) is shrunk, and
+		# shrinking wants smoothing: nearest drops three pixels in four and the face
+		# comes out as noise. Pixel art (Retro Bat) is never larger than the chip.
+		if ptex != null and ptex.get_width() > CHARACTER_CHIP:
+			_player_chip.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+		_player_chip.visible = ptex != null
+		if pl != null:
+			_player_chip.tooltip_text = "%s — the player this run is played as." % pl.display_name
 	_paint_hunger_chip()
 
 func _build_health_chip() -> Control:

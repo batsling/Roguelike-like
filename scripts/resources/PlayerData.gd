@@ -31,7 +31,19 @@ const MECHANICS := [&"hunger", &"unidentified_weapons"]
 # then shows the player's name in its place.
 @export var portrait_path: String = ""
 
+# The small token, by path the same way: drawn beside the character's in the
+# page header. Its own file (Icon/) where the full picture does not read small,
+# else the same picture as `portrait_path`.
+@export var icon_path: String = ""
+
 var _portrait: Texture2D = null
+var _icon: Texture2D = null
+
+var icon: Texture2D:
+	get:
+		if _icon == null and icon_path != "" and ResourceLoader.exists(icon_path):
+			_icon = load(icon_path)
+		return _icon if _icon != null else portrait
 
 var portrait: Texture2D:
 	get:

@@ -12,7 +12,9 @@ into data/players/ (docs/players-design.md).
                PlayerData.MECHANICS). Blank = the game as it is.
   File         the art's base name in images2.0/players/ (`RetroBat` ->
                images2.0/players/RetroBat.png). Blank, or no such file, = no art,
-               and the picker shows the name instead.
+               and the picker shows the name instead. The SMALL token is
+               images2.0/players/Icon/<File>.png when there is one (Batsaac's
+               face, cut out so it reads at 26px), else the full picture.
 
 What UNLOCKS a player is not here: it is a row of the `achievements` sheet under
 the `Players` tab (docs/achievements.md), like a character's. Every player is an
@@ -62,13 +64,15 @@ def _clean(v) -> str:
     return "" if s.upper() in ("", "N/A", "NONE") else s
 
 
-def art_path(file: str) -> str:
-    """res:// path of the player's picture, matched case-insensitively, or ""."""
-    if not file or not os.path.isdir(ART_DIR):
+def art_path(file: str, sub: str = "") -> str:
+    """res:// path of the player's picture, matched case-insensitively, or "".
+    `sub` "Icon" looks in images2.0/players/Icon/ for the small token instead."""
+    folder = os.path.join(ART_DIR, sub) if sub else ART_DIR
+    if not file or not os.path.isdir(folder):
         return ""
-    for fn in os.listdir(ART_DIR):
+    for fn in os.listdir(folder):
         if fn.lower() == file.lower() + ".png":
-            return "res://images2.0/players/%s" % fn
+            return "res://images2.0/players/%s%s" % (sub + "/" if sub else "", fn)
     return ""
 
 
@@ -103,6 +107,11 @@ def player_tres(row: dict, order: int) -> tuple:
         "order = %d" % order,
         "mechanics = Array[StringName]([%s])" % ", ".join('&"%s"' % m for m in mechanics),
         'portrait_path = "%s"' % art_path(_clean(row.get("File"))),
+        # The small token (the header, beside the character's): its own file in
+        # Icon/ when the full picture does not read small (Batsaac's face), else
+        # the full picture itself (Retro Bat).
+        'icon_path = "%s"' % (art_path(_clean(row.get("File")), "Icon")
+                              or art_path(_clean(row.get("File")))),
     ]
     return pid, "\n".join(lines) + "\n"
 

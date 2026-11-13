@@ -10,3 +10,4 @@ description = "The game as it is."
 order = 10
 mechanics = Array[StringName]([])
 portrait_path = ""
+icon_path = ""

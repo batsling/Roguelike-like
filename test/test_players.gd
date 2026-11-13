@@ -402,3 +402,25 @@ func test_the_character_card_carries_the_full_portrait_and_what_matters() -> voi
 	var text: String = Page.text_of(card)
 	for want in ["Isaac", "Level 1", "Health", "LEVELS UP BY", "Small Chest", "STARTED WITH", "D6"]:
 		assert_string_contains(text, want)
+
+# --- the header: the player's token left of the character's ---------------------
+
+func test_each_player_has_the_token_the_owner_asked_for() -> void:
+	assert_eq(Data.get_player(RETRO_BAT).icon, Data.get_player(RETRO_BAT).portrait,
+		"Retro Bat's token is its own picture")
+	var face: Texture2D = Data.get_player(BATSAAC).icon
+	assert_not_null(face)
+	assert_ne(face, Data.get_player(BATSAAC).portrait, "Batsaac's is his face, cut out")
+	assert_eq(face.get_size(), Vector2(52, 52), "stored at twice the 26px chip")
+	assert_null(Data.get_player(Data.BASIC_PLAYER).icon, "Basic has none")
+
+func test_the_header_shows_the_player_left_of_the_character() -> void:
+	var ui = Page.build(self)
+	ui.start_run(&"isaac", BATSAAC)
+	var chip: TextureRect = ui._player_chip
+	assert_true(chip.visible)
+	assert_eq(chip.texture, Data.get_player(BATSAAC).icon)
+	assert_eq(chip.get_index() + 1, ui._character_chip.get_index(), "immediately to its left")
+	assert_eq(chip.texture_filter, CanvasItem.TEXTURE_FILTER_LINEAR, "a painted face is smoothed")
+	ui.start_run(&"isaac", Data.BASIC_PLAYER)
+	assert_false(chip.visible, "no token for a player with no art")

@@ -11,6 +11,11 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The player's token in the header (the owner, 13 Nov 2026)**, just left of the
+  character's. Retro Bat's is its own sprite; Batsaac's is his face, cut out of
+  the painting and stored at twice the chip so it shrinks cleanly
+  (`images2.0/players/Icon/`, `PlayerData.icon`).
+
 - **The board shows the player; the character rides on it (the owner, 13 Nov
   2026).** The hero frame draws the player's art, with the character's icon in a
   gold-ringed circle at its top-left (`CharacterBadge`); hovering the circle opens
