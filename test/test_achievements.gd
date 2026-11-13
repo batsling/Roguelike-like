@@ -85,14 +85,14 @@ func test_the_tabs_are_read_off_the_achievements() -> void:
 	assert_eq(Achievements.in_tab("Characters").size() + Achievements.in_tab("Players").size(),
 		Data.all_achievements().size())
 
-# BATTY (docs/players-design.md): locked until 20 different traditional
+# RETRO_BAT (docs/players-design.md): locked until 20 different traditional
 # roguelikes have been beaten, across all runs.
-func test_batty_is_locked_until_twenty_traditional_roguelikes_are_beaten() -> void:
-	var a: AchievementData = Achievements.for_player(&"batty")
-	assert_not_null(a, "an achievement unlocks Batty")
+func test_retro_bat_is_locked_until_twenty_traditional_roguelikes_are_beaten() -> void:
+	var a: AchievementData = Achievements.for_player(&"retro_bat")
+	assert_not_null(a, "an achievement unlocks Retro Bat")
 	assert_eq([a.tab, a.scope, a.metric, a.game_type, a.goal],
 		["Players", "lifetime", "games_beaten", "traditional", 20])
-	assert_true(Achievements.player_locked(&"batty"), "a fresh profile cannot play Batty")
+	assert_true(Achievements.player_locked(&"retro_bat"), "a fresh profile cannot play Retro Bat")
 	assert_false(Achievements.player_locked(&"basic"), "nothing locks the basic player")
 
 # --- in one run: Manager ------------------------------------------------------------

@@ -10,8 +10,8 @@ into data/players/ (docs/players-design.md).
   Mechanics    what the player adds to a run, comma-separated, by name:
                `Hunger`, `Unidentified Weapons` (MECHANICS below, mirroring
                PlayerData.MECHANICS). Blank = the game as it is.
-  File         the art's base name in images2.0/players/ (`Batty` ->
-               images2.0/players/Batty.png). Blank, or no such file, = no art,
+  File         the art's base name in images2.0/players/ (`RetroBat` ->
+               images2.0/players/RetroBat.png). Blank, or no such file, = no art,
                and the picker shows the name instead.
 
 What UNLOCKS a player is not here: it is a row of the `achievements` sheet under

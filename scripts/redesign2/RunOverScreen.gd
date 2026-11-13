@@ -144,7 +144,7 @@ func subtitle() -> String:
 			left, "" if left == 1 else "s"]
 	return "Health hit 0 at %s." % [here.display_name if here != null else "the last game"]
 
-# "⟡ Fracture 4 unlocked for Batty", or "" when this run unlocked nothing: a
+# "⟡ Fracture 4 unlocked for Retro Bat", or "" when this run unlocked nothing: a
 # loss, a custom run, or a win below the PLAYER's highest level (the ladder is
 # the player's, docs/players-design.md §2).
 func unlock_line() -> String:

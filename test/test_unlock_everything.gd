@@ -6,7 +6,7 @@ extends GutTest
 # gives back exactly what the profile earned. Per profile, in prefs.cfg.
 
 const HERO := &"ironclad"
-const PLAYER := &"batty"
+const PLAYER := &"retro_bat"
 
 var _fracture_log: Dictionary
 var _player_log: Dictionary
@@ -62,16 +62,16 @@ func test_every_fracture_level_is_open_without_a_win() -> void:
 	assert_eq(GameStats.player_fracture_pick(PLAYER), 0, "and the pick is held to it again")
 
 func test_every_player_is_playable() -> void:
-	# The suite shares user:// with the game, so the profile may have unlocked Batty
+	# The suite shares user:// with the game, so the profile may have unlocked Retro Bat
 	# for real; this is about the switch, so stand on a profile that has not.
-	var key := "player_batty"
+	var key := "player_retro_bat"
 	var kept = GameStats.achievements.get(key)
 	GameStats.achievements.erase(key)
-	assert_true(Achievements.player_locked(PLAYER), "Batty is locked on a fresh profile")
+	assert_true(Achievements.player_locked(PLAYER), "Retro Bat is locked on a fresh profile")
 	Settings.set_unlock_everything(true)
-	assert_false(Achievements.player_locked(PLAYER), "a test profile can play Batty")
+	assert_false(Achievements.player_locked(PLAYER), "a test profile can play Retro Bat")
 	Settings.set_unlock_everything(false)
-	assert_true(Achievements.player_locked(PLAYER), "off locks Batty again")
+	assert_true(Achievements.player_locked(PLAYER), "off locks Retro Bat again")
 	if kept != null:
 		GameStats.achievements[key] = kept
 

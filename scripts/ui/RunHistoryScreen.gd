@@ -184,7 +184,7 @@ func _run_caption(run: Dictionary) -> Control:
 	var who: CharacterData = Data.get_character2(StringName(String(run.get("character", ""))))
 	var detail := Label.new()
 	var parts: Array = []
-	# "Batty · Ironclad": the player first, the way the run was picked — but only
+	# "Retro Bat · Ironclad": the player first, the way the run was picked — but only
 	# for a player other than the basic one, which every run before players was.
 	var as_player: PlayerData = Data.get_player(StringName(String(run.get("player", "basic"))))
 	if as_player != null and as_player.id != Data.BASIC_PLAYER:

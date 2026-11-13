@@ -1,7 +1,7 @@
 class_name HungerSystem
 extends RefCounted
 
-# HUNGER (docs/players-design.md §4; the owner, 13 Nov 2026) — one of Batty's two
+# HUNGER (docs/players-design.md §4; the owner, 13 Nov 2026) — one of Retro Bat's two
 # mechanics, and any player's whose sheet row names it. The number lives on
 # GameState.hunger and is saved with the run; these are the rules over it.
 #

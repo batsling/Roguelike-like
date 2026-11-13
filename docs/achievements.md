@@ -12,7 +12,7 @@ chose the layout (rows, with a meter that fits how each one is counted).
 | `manager` | Manager (Raccoin: Coin Pusher Roguelike) | in one run | Hold 3 different coin-tagged items or loot at the same time |
 | `zoe` | Zoe (Haste) | across all runs | Perfect 10 different games |
 | `rodney` | Rodney | across all runs | Beat a traditional roguelike |
-| `player_batty` | the player Batty (Players tab) | across all runs | Beat 20 different traditional roguelikes |
+| `player_retro_bat` | the player Retro Bat (Players tab) | across all runs | Beat 20 different traditional roguelikes |
 
 A character or player named by an achievement is **locked** until it is done.
 Every other one is playable from the start. A row under the `Players` tab names a

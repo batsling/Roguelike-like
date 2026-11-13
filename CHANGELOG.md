@@ -11,6 +11,15 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The board shows the player; the character rides on it (the owner, 13 Nov
+  2026).** The hero frame draws the player's art, with the character's icon in a
+  gold-ringed circle at its top-left (`CharacterBadge`); hovering the circle opens
+  the character's card — full portrait, level and Health, level-up goal and
+  reward, starting gold and loot. The basic player, with no art, keeps the
+  character's portrait as before. **Batty is Retro Bat** (its art trimmed to fill
+  the frame), and **Batsaac** — the crying bat from `images2.0/custom/` — is the
+  third player, with no mechanics yet.
+
 - **Players: the first pick of a run (the owner, 13 Nov 2026).** A run is now
   a PLAYER and then a character (`docs/players-design.md`). The player carries
   the run's mechanics and holds the Fracture ladder; the character keeps its

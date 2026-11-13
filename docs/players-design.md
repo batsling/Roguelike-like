@@ -26,11 +26,20 @@ Every player is an **original work**, not a character from a real game.
 | Player | Mechanics | Unlock | Art |
 |---|---|---|---|
 | Basic | none — the game as it is | always | none: the picker draws the word "Basic" |
-| Batty | Hunger, Unidentified Weapons | beat 20 different traditional roguelikes | `images2.0/players/Batty.png` |
+| Retro Bat | Hunger, Unidentified Weapons | beat 20 different traditional roguelikes | `images2.0/players/RetroBat.png` |
+| Batsaac | none yet — the owner's to give | always (for now) | `images2.0/players/Batsaac.png` |
 
-Batty's art is 24×24 pixel art stored at its true size (the owner's upload was
-the same sprite drawn at 10×, with exactly three colours). Every screen draws it
-through `UITheme.crisp_tex`, which scales without smoothing.
+Retro Bat was called Batty for its first day (the owner renamed it, 13 Nov 2026);
+its id is `retro_bat`, its achievement `player_retro_bat`.
+
+**The art, at its best.** Retro Bat's is pixel art stored at its true size: the
+owner's upload was the sprite drawn at 10× with exactly three colours, so it is
+kept 1:1, and its empty border is trimmed (10×15) so it fills a frame rather than
+sitting small in the middle of one. Batsaac's is PAINTED art — the crying bat
+that sat in the custom images folder as IsaacBat, moved here — kept at full resolution
+with only its transparent margin trimmed. Every screen draws both through
+`UITheme.crisp_tex`, which scales pixel art without smoothing and painted art
+with it.
 
 ### The sheet
 
@@ -43,7 +52,7 @@ boot-load rule. What a mechanic SAYS is not on the sheet: the rules are code, so
 
 What **unlocks** a player is a row of the `achievements` sheet under the
 **Players** tab (`AchievementData.unlocks_player`), counted exactly like a
-character's. Batty's: `all runs`, `beat games traditional`, goal 20.
+character's. Retro Bat's: `all runs`, `beat games traditional`, goal 20.
 
 ## 2. Fractures belong to the player
 
@@ -54,13 +63,13 @@ The ladder (`docs/fracture-design.md`) was per character until this change. Now:
   `player_fracture_unlocked`, `player_fracture_pick`, `set_player_fracture_pick`
   and `player_fracture_wins`. `GameLoop2.start_run` takes the run's level from the
   player's pick. The run-over screen names the player ("Fracture 4 unlocked for
-  Batty"), and the Stats page counts **players** who cleared Fracture 10.
+  Retro Bat"), and the Stats page counts **players** who cleared Fracture 10.
 - **The basic player inherits the old ladder** (the owner's call). Until it has a
   record of its own, its best is the highest any character reached
   (`_legacy_ladder_best`, a won run from before Fractures counting as 0), its
   pick the highest any character had, and its per-level wins the characters'
   summed. Its first win writes its own record, never below what it inherited.
-  Batty starts at 0.
+  Retro Bat starts at 0.
 - **What stays on the character** is a record, not a lock: the highest Fracture a
   run was won at as them (`fracture_log[c].best`, their 🏆's number) and the
   levels their game wins were at (`fracture_sum`, their XP, `GameRanks`).
@@ -152,3 +161,22 @@ pack entry is made (`WeaponSystem.new_entry`): **−2 to +2 Stun**, weighted
   1 from then on. The minus stays in its name.
 - **An evolution keeps the roll**, known or not, curse and all: it is the same
   weapon grown, not a new find.
+
+## 6. On the board: the player, with the character on it
+
+The hero frame at the head of the board (`BattlefieldView`) draws the **player's**
+art, and the character the run is played as rides on it as a round badge at its
+top-left (`scripts/redesign2/CharacterBadge.gd`): their icon clipped to a circle
+and ringed in gold. The owner, 13 Nov 2026.
+
+- **Hovering the badge** opens the character's card (`CharacterBadge.card`): the
+  full portrait, then their name and game, level and Health, how they level up
+  and what it pays, the gold and loot they started with, and their line.
+- **Hovering the frame** is the player: their name, who they are playing as, and
+  each mechanic in a line.
+- **A player with no art** (the basic player) leaves the frame to the character's
+  full portrait, as it always was. There is then no badge, and hovering the frame
+  opens the character's card.
+
+The header's small token (top left of the page) is still the character's icon.
+

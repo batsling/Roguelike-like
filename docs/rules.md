@@ -63,12 +63,16 @@ A run starts with two picks. First the PLAYER, which decides the run's extra rul
 
 No extra rules: the game as it is.
 
-### Batty
+### Retro Bat
 
 > Locked until you beat 20 different traditional roguelikes.
 
 - **Hunger** — Start with 3 Hunger (at most 5). Each game you finish costs 1. Drink a potion or eat food for +1. Finish a game or lose a run already at 0 and lose 2 Health.
 - **Unidentified Weapons** — Weapons you find roll -2 to +2 Stun, unknown until the first swing. A minus is CURSED: stuck where it sits in the pack until the curse is lifted.
+
+### Batsaac
+
+No extra rules: the game as it is.
 
 ### Hunger
 

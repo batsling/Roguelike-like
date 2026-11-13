@@ -8,10 +8,10 @@ extends GutTest
 
 const HERO := &"ironclad"
 const GAME := &"hades"
-# The ladder's owner. Batty, not the basic player, so no test here is reading the
+# The ladder's owner. Retro Bat, not the basic player, so no test here is reading the
 # basic player's backfill off the character records by accident; the backfill
 # has tests of its own.
-const PLAYER := &"batty"
+const PLAYER := &"retro_bat"
 
 var _saved: Array
 
@@ -175,7 +175,7 @@ func test_the_basic_player_starts_at_the_best_any_character_reached() -> void:
 	assert_eq(GameStats.player_fracture_best(Data.BASIC_PLAYER), 4, "Zoe's 4 is the best")
 	assert_eq(GameStats.player_fracture_unlocked(Data.BASIC_PLAYER), 5)
 	assert_eq(GameStats.player_fracture_pick(Data.BASIC_PLAYER), 3, "and the highest pick")
-	assert_eq(GameStats.player_fracture_unlocked(PLAYER), 0, "Batty inherits nothing")
+	assert_eq(GameStats.player_fracture_unlocked(PLAYER), 0, "Retro Bat inherits nothing")
 
 func test_a_win_from_before_fractures_opens_fracture_one_for_the_basic_player() -> void:
 	# What an old save holds: a won run in the history, no fracture_log at all.
@@ -487,7 +487,7 @@ func test_the_winning_screen_names_the_unlock() -> void:
 	_win_run_at(0)
 	var screen := RunOverScreen.new()
 	screen.won = true
-	assert_string_contains(screen.unlock_line(), "Fracture 1 unlocked for Batty")
+	assert_string_contains(screen.unlock_line(), "Fracture 1 unlocked for Retro Bat")
 	screen.free()
 
 func test_a_loss_names_no_unlock() -> void:
