@@ -182,8 +182,10 @@ and ringed in gold. The owner, 13 Nov 2026.
 picked: the PLAYER's token, then the character's, then the level. A player's token
 is `PlayerData.icon` — `images2.0/players/Icon/<File>.png` when there is one, else
 the full picture. Retro Bat's is its own sprite. Batsaac's is his FACE, cut out of
-the painting (eyes, tears and mouth — all a 26px chip can carry) and stored
-pre-shrunk at 52px, twice the chip, then drawn with smoothing: art at or under
+the painting (eyes, tears and mouth — all a 26px chip can carry), cut as a
+CIRCLE (the owner's ask; the round mask is baked into the PNG with a smooth
+edge, so it is round wherever it is drawn), and stored pre-shrunk at 52px, twice
+the chip, then drawn with smoothing: art at or under
 128px is otherwise drawn nearest-neighbour as pixel art, and a painting shrunk
 that way, with no mipmaps, comes out as noise. The basic player, with no art, has
 no token.
