@@ -311,12 +311,18 @@ func test_the_picker_lists_both_and_says_basic_where_there_is_no_art() -> void:
 	assert_eq(name_art.text, "Basic")
 
 func test_a_locked_batty_cannot_be_picked() -> void:
+	# The suite shares user:// with the game: stand on a profile that has not
+	# unlocked Batty for real.
+	var kept = GameStats.achievements.get("player_batty")
+	GameStats.achievements.erase("player_batty")
 	Achievements.bypass = false
 	var picker := _picker()
 	picker.select_player(BATTY)
 	var next: Button = picker.find_child("Next", true, false) as Button
 	assert_true(next.disabled, "20 traditional roguelikes first")
 	Achievements.bypass = true
+	if kept != null:
+		GameStats.achievements["player_batty"] = kept
 
 func test_next_hands_the_player_on() -> void:
 	var picker := _picker()

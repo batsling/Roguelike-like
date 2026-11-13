@@ -62,11 +62,18 @@ func test_every_fracture_level_is_open_without_a_win() -> void:
 	assert_eq(GameStats.player_fracture_pick(PLAYER), 0, "and the pick is held to it again")
 
 func test_every_player_is_playable() -> void:
+	# The suite shares user:// with the game, so the profile may have unlocked Batty
+	# for real; this is about the switch, so stand on a profile that has not.
+	var key := "player_batty"
+	var kept = GameStats.achievements.get(key)
+	GameStats.achievements.erase(key)
 	assert_true(Achievements.player_locked(PLAYER), "Batty is locked on a fresh profile")
 	Settings.set_unlock_everything(true)
 	assert_false(Achievements.player_locked(PLAYER), "a test profile can play Batty")
 	Settings.set_unlock_everything(false)
 	assert_true(Achievements.player_locked(PLAYER), "off locks Batty again")
+	if kept != null:
+		GameStats.achievements[key] = kept
 
 func test_every_song_plays_and_none_is_drawn() -> void:
 	var song := _song("unlock_everything_probe")

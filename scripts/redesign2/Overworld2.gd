@@ -6758,7 +6758,7 @@ func _build_character_chip() -> Control:
 	row.add_child(_level_chip)
 	# HUNGER, top left beside the token (the owner, 13 Nov 2026): the stomach as
 	# five pips, and the Eat button while there is something to eat.
-	# A DRAWN bar, not ■/□ glyphs: a hollow box is exactly what a missing character
+	# A DRAWN bar, not filled/hollow box glyphs: a hollow box is what a missing character
 	# renders as (BattlefieldView's RUNG note), and on a stream an empty stomach
 	# would read as a broken font.
 	_hunger_chip = HBoxContainer.new()

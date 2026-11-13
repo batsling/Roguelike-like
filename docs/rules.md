@@ -53,7 +53,7 @@ Three things, and they are the three chapters after this one.
 
 > You never have to finish a game in one sitting, and the app does not care how long you take. Save the run and close it. It will be here when the game is.
 
-## ☺ Players
+## 👤 Players
 
 *The first pick of a run: its extra rules and its Fractures.*
 

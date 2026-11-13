@@ -1623,7 +1623,7 @@ func test_start_run_applies_isaac_loadout() -> void:
 	GameLoop2.start_run(Data.get_character2(&"isaac"))
 	assert_eq(GameState.max_hp, 6, "Isaac Health 6")
 	assert_eq(GameState.hp, 6)
-	assert_eq(GameState.bombs, 1, "Isaac starts with 1 Bomb")
+	assert_eq(GameState.bombs, 0, "a character starts with no verbs (docs/players-design.md §3)")
 	assert_eq(GameState.shields, 0)
 	assert_false(GameLoop2.run_over)
 	assert_eq(GameLoop2.stack_size(), 0)
@@ -1633,7 +1633,7 @@ func test_start_run_applies_isaac_loadout() -> void:
 			has_d6 = true
 	assert_true(has_d6, "Isaac starts holding the D6")
 
-func test_start_run_applies_mina_verbs() -> void:
+func test_start_run_applies_minas_health_and_no_verbs() -> void:
 	# OFF THE RESOURCE, NOT OFF A LITERAL. What this test is about is that
 	# `start_run` carries the character's OWN numbers onto the run — the health it
 	# happens to be authored at is the sheet's business, and pinning it here made
@@ -1642,7 +1642,7 @@ func test_start_run_applies_mina_verbs() -> void:
 	var mina: CharacterData = Data.get_character2(&"min")
 	GameLoop2.start_run(mina)
 	assert_eq(GameState.max_hp, mina.base_max_hp, "Minä's Health reaches the run")
-	assert_eq(GameState.transmute, 2, "Minä starts with 2 Transmute")
+	assert_eq(GameState.transmute, 0, "no starting verbs any more (docs/players-design.md §3)")
 
 # --- scramble (§4) --------------------------------------------------------
 

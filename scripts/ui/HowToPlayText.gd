@@ -648,7 +648,7 @@ static func _ch_players() -> Dictionary:
 			+ "least 1 Stun."),
 	]
 	return {
-		"id": &"players", "icon": "☺", "title": "Players",
+		"id": &"players", "icon": "👤", "title": "Players",
 		"blurb": "The first pick of a run: its extra rules and its Fractures.",
 		"blocks": blocks,
 	}
