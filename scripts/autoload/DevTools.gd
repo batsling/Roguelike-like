@@ -766,7 +766,7 @@ func _board_row(entry: Dictionary) -> Control:
 	var head := Label.new()
 	var where: String = "col %d, row %d" % [int(entry.get("col", 0)),
 		int(entry.get("row", 0))]
-	head.text = "#%d  %s   (%s, ❤%d, ⚔%d)" % [inst, e.display_name, where,
+	head.text = "#%d  %s   (%s, ♥%d, ⚔%d)" % [inst, e.display_name, where,
 		int(entry.get("health", e.health)), e.damage]
 	head.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 	col.add_child(head)

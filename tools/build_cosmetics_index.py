@@ -12,6 +12,9 @@ THE FILE NAME IS THE ENTRY. Drop a PNG in one of the folders below and rerun:
   images2.0/icons/Difficulties/<Name>_<Game>[_<lo>-<hi>].png     the trophy's stand-in
   images2.0/icons/Luck/<Name>_<Game>.png                         a Luck icon (the clover's stand-in)
   images2.0/icons/Chests/<Name>_<Game>[_<lo>-<hi>].png           a chest icon (the gift's stand-in)
+  images2.0/icons/Health/<Name>_<Game>.png                       a Health icon (the heart's, yours and an enemy's)
+  images2.0/icons/Damage/<Name>_<Game>.png                       a damage icon (the swords', where they mean damage)
+  images2.0/icons/Gold/<Name>_<Game>.png                         a gold icon (the coin's)
 
   * <Character> is the character's display name with spaces as underscores
     ("Antonio_Belpaese"); what comes after it is the costume's title
@@ -43,7 +46,7 @@ CHAR_DIR = "images2.0/characters"
 ICON_DIR = "images2.0/icons"
 SLOTS = {"Costumes Icon": "icon", "Costumes Full": "full", "Costumes Both": "both"}
 ICON_KINDS = {"Keys": "key", "Bombs": "bomb", "Difficulties": "difficulty", "Luck": "luck",
-	"Chests": "chest"}
+	"Chests": "chest", "Health": "health", "Damage": "damage", "Gold": "gold"}
 
 # The game a costume is earned from, where its title does not say (the owner, 8 Nov
 # 2026: "any rebirth costumes should be from rebirth, and the isaac_Stray should be

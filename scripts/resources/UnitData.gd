@@ -140,7 +140,7 @@ func hover_card(health_left: int = -1) -> Dictionary:
 		"accent": ACCENT,
 		"art": image,
 		"subtitle": "Unit  ·  a wall on the ground" if blocks else "Unit  ·  yours, standing on the ground",
-		"pips": [{"text": "❤ %d" % hp, "good": true}],
+		"pips": [{"text": "♥ %d" % hp, "good": true}],
 		"lines": lines,
 		"note": ("Nothing can step onto it: an enemy that reaches it hits it for 1 instead. Break it yourself with anything that hits the ground."
 			if blocks else "Nothing is blocked by it — an enemy walks in and it reacts."),

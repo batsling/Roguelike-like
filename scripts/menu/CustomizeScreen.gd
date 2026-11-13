@@ -7,7 +7,8 @@ extends Control
 #   Characters     each character's costumes, the ICON and the FULL portrait
 #                  chosen separately (a Vampire Survivors costume is both, from
 #                  one picture, and shows in both rows);
-#   Icons          what stands in for 🗝, ✸, 🏆, 🍀 and 🎁 everywhere they are drawn;
+#   Icons          what stands in for 🗝, ✸, 🏆, 🍀, 🎁, ♥, ⚔ (as damage) and ◉
+#                  everywhere they are drawn;
 #   Title Letters  which earned letters the main menu may spell with, a game at a
 #                  time or a letter at a time — refused when what is left could
 #                  not spell the title and the subtitle.
@@ -20,8 +21,9 @@ const TILE := 64
 const LETTER_TILE := 40
 const TABS := ["Characters", "Icons", "Title Letters"]
 const KIND_NAMES := {"key": "Keys", "bomb": "Bombs", "difficulty": "Difficulty (the trophy)",
-	"luck": "Luck", "chest": "Chests"}
-const KIND_GLYPHS := {"key": "🗝", "bomb": "✸", "difficulty": "🏆", "luck": "🍀", "chest": "🎁"}
+	"luck": "Luck", "chest": "Chests", "health": "Health", "damage": "Damage", "gold": "Gold"}
+const KIND_GLYPHS := {"key": "🗝", "bomb": "✸", "difficulty": "🏆", "luck": "🍀", "chest": "🎁",
+	"health": "♥", "damage": "⚔", "gold": "◉"}
 
 var _tab := 0
 var _tab_buttons: Array[Button] = []
@@ -161,7 +163,7 @@ func _build_characters() -> void:
 # --- icons --------------------------------------------------------------------------
 
 func _build_icons() -> void:
-	_say("Each stands in for its symbol everywhere it is drawn. A difficulty icon replaces the 🏆 and carries the Fracture number; Risk of Rain 2's changes with the level. A chest icon replaces the 🎁; a set of several changes with the chest's size.")
+	_say("Each stands in for its symbol everywhere it is drawn. A difficulty icon replaces the 🏆 and carries the Fracture number; Risk of Rain 2's changes with the level. A chest icon replaces the 🎁; a set of several changes with the chest's size. A Health icon is your heart and every enemy's.")
 	for kind in CosmeticCatalog.KINDS:
 		var block := VBoxContainer.new()
 		block.name = "Kind_%s" % kind
@@ -176,6 +178,11 @@ func _build_icons() -> void:
 		for t in slot_tiles(Cosmetics.icon_slot(kind), null, glyph, "Default — %s" % glyph,
 				CosmeticCatalog.icons_of(kind), TILE, _refresh):
 			row.add_child(t)
+		if CosmeticCatalog.icons_of(kind).is_empty():
+			var none := _dim("No icons to earn yet.")
+			none.custom_minimum_size = Vector2(0, TILE)
+			none.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+			row.add_child(none)
 
 # --- a slot's choices, shared with the character picker ---------------------------
 #

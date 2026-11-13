@@ -4,7 +4,7 @@ extends Node
 # has EARNED to look different, and what they have chosen to WEAR.
 #
 #   * COSTUMES for a character's icon and full portrait, chosen separately;
-#   * ICONS for keys, bombs, Luck, chests and the trophy (a DIFFICULTY image stands
+#   * ICONS for keys, bombs, Luck, chests, Health, damage, gold and the trophy (a DIFFICULTY image stands
 #     in for 🏆 wherever it is drawn, with the Fracture number on it; a CHEST image
 #     stands in for 🎁, and a set of them is picked by the chest's size);
 #   * which TITLE LETTERS the main menu may spell from — a whole game's, or one
@@ -104,7 +104,8 @@ func _refresh_unlocks(announce: bool) -> void:
 			var e: Dictionary = CosmeticCatalog.entry(key)
 			var what: String = "costume" if String(e.get("unit", "")) == "costume" \
 				else {"key": "key icon", "bomb": "bomb icon", "difficulty": "difficulty icon",
-					"luck": "Luck icon", "chest": "chest icon"}.get(
+					"luck": "Luck icon", "chest": "chest icon", "health": "Health icon",
+					"damage": "damage icon", "gold": "gold icon"}.get(
 					String(e.get("kind", "")), "look")
 			Notifications.notify("✦ New %s: %s" % [what, CosmeticCatalog.label(e)],
 				Color(0.95, 0.8, 0.45), CosmeticCatalog.texture(
@@ -254,10 +255,29 @@ func icon_of(ch: CharacterData) -> Texture2D:
 # The picture standing in for `glyph` (🗝, ✸, 🏆, 🍀 or 🎁) at `level`, or null
 # when the default glyph is worn. `level` is the Fracture for a trophy and the
 # chest's size (0 Small … 3 Huge) for a gift.
-const GLYPHS := {"🗝": "key", "✸": "bomb", "🏆": "difficulty", "🍀": "luck", "🎁": "chest"}
+const GLYPHS := {"🗝": "key", "✸": "bomb", "🏆": "difficulty", "🍀": "luck", "🎁": "chest",
+	"♥": "health", "◉": "gold"}
+# DAMAGE IS ⚔ ONLY WHERE A NODE SAYS SO (the owner, 13 Nov 2026). The crossed swords
+# are also "beaten" on every record line, the Combat button and the weapons tab,
+# and a damage icon has no business on any of those. So a node that writes ⚔ as
+# DAMAGE marks itself (`as_damage`), and only a marked node's ⚔ is swapped.
+const SCOPED := {"⚔": "damage"}
+const META_DAMAGE := "glyph_damage"
+
+static func as_damage(node: Node) -> Node:
+	node.set_meta(META_DAMAGE, true)
+	return node
+
+# The glyphs `c` may have swapped: every plain one, and ⚔ when it is marked.
+func _glyphs_of(c: Node) -> Dictionary:
+	if c != null and c.has_meta(META_DAMAGE):
+		var both: Dictionary = GLYPHS.duplicate()
+		both.merge(SCOPED)
+		return both
+	return GLYPHS
 
 func glyph_texture(glyph: String, level: int = 0) -> Texture2D:
-	var kind: String = GLYPHS.get(glyph, "")
+	var kind: String = GLYPHS.get(glyph, SCOPED.get(glyph, ""))
 	if kind == "":
 		return null
 	var e := icon(kind)
@@ -269,8 +289,8 @@ func glyph_texture(glyph: String, level: int = 0) -> Texture2D:
 # --- the glyphs on screen ----------------------------------------------------------
 #
 # A WORN ICON IN PLACE OF ITS GLYPH (Customization, docs/customization.md). The UI
-# writes keys as 🗝, bombs as ✸, the trophy as 🏆, Luck as 🍀 and a chest as 🎁 inside
-# ordinary text. When the
+# writes keys as 🗝, bombs as ✸, the trophy as 🏆, Luck as 🍀, a chest as 🎁, Health
+# as ♥ (yours and an enemy's alike), gold as ◉ and damage as ⚔ inside ordinary text. When the
 # player wears an icon for one, this swaps the glyph in a Label's or a Button's
 # text for room (spaces) and lays the picture over that room, with the Fracture
 # number on a trophy's (the owner, 8 Nov 2026: "everywhere means everywhere, and
@@ -305,7 +325,7 @@ func _check_glyph(n: Variant) -> void:
 	if not is_instance_valid(n):
 		return
 	var t: String = n.text
-	for g in GLYPHS:
+	for g in _glyphs_of(n):
 		if t.contains(g):
 			apply_glyph(n)
 			return
@@ -341,7 +361,7 @@ func apply_glyph(c: Variant) -> void:
 	var found := ""
 	var tex: Texture2D = null
 	var at := -1
-	for g in GLYPHS:
+	for g in _glyphs_of(c):
 		var i := text.find(g)
 		if i >= 0 and (at < 0 or i < at):
 			var lv := glyph_level_of(c, g)
@@ -362,8 +382,7 @@ func apply_glyph(c: Variant) -> void:
 	var font: Font = c.get_theme_font("font")
 	var fs: int = c.get_theme_font_size("font_size")
 	var side: float = font.get_height(fs) * ICON_SCALE
-	var space_w: float = maxf(font.get_string_size(" ", HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x, 1.0)
-	var room := " ".repeat(ceili(side / space_w))
+	var room := _room(font, fs)
 	var out := text.substr(0, at) + room + text.substr(at + found.length())
 	var holder: TextureRect = old as TextureRect
 	if holder == null:
@@ -401,6 +420,36 @@ func apply_glyph(c: Variant) -> void:
 		c.set_meta("glyph_art_wired", true)
 		c.resized.connect(_place_glyph.bind(c))
 	_place_glyph(c)
+
+# The spaces a picture is laid over, at this font.
+func _room(font: Font, fs: int) -> String:
+	var side: float = font.get_height(fs) * ICON_SCALE
+	var space_w: float = maxf(font.get_string_size(" ", HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x, 1.0)
+	return " ".repeat(ceili(side / space_w))
+
+# `text` as it will stand once its glyph has made room for a worn picture, for a
+# site that MEASURES text before it is on a node (the board's stat badges, fitted
+# to a body's width). Unchanged when nothing it holds is worn. `damage` reads ⚔
+# as damage, as a node marked `as_damage` does.
+func roomed(text: String, font: Font, fs: int, damage: bool = false) -> String:
+	if not _any_icon_worn():
+		return text
+	var at := -1
+	var found := ""
+	for g in GLYPHS:
+		var i := text.find(g)
+		if i >= 0 and (at < 0 or i < at) and not icon(String(GLYPHS[g])).is_empty():
+			at = i
+			found = g
+	if damage:
+		for g in SCOPED:
+			var i := text.find(g)
+			if i >= 0 and (at < 0 or i < at) and not icon(String(SCOPED[g])).is_empty():
+				at = i
+				found = g
+	if found == "":
+		return text
+	return text.substr(0, at) + _room(font, fs) + text.substr(at + found.length())
 
 # Lay the picture over the room left for it.
 func _place_glyph(c: Variant) -> void:

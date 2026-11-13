@@ -493,7 +493,7 @@ func _fill_char_detail(box: HBoxContainer, ch: CharacterData) -> void:
 		left.add_child(src)
 
 	var hp := Label.new()
-	hp.text = "❤ %d Health" % ch.base_max_hp
+	hp.text = "♥ %d Health" % ch.base_max_hp
 	hp.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hp.add_theme_font_size_override("font_size", UITheme.FONT_LEAD)
 	hp.add_theme_color_override("font_color", UITheme.DANGER.lerp(UITheme.TEXT, 0.35))

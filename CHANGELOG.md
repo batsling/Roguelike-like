@@ -11,6 +11,18 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Health, damage and gold icons (the owner, 13 Nov 2026).** Three more icon
+  kinds on the Customization screen. To earn: Wildfrost's heart and sword, The
+  Binding of Isaac's heart and sword, and Rebirth's sword. Gold has its row and
+  its folder (`images2.0/icons/Gold/`) and nothing to earn yet.
+  - **One heart.** The player's Health was ♥ and an enemy's ❤; both are ♥ now,
+    so one worn Health icon is your heart and every enemy's.
+  - **⚔ is damage only where a node says so** (`Cosmetics.as_damage`): the
+    board's damage badge, the game card's stat pair and the enemy card's Damage
+    row. The swords of "beaten", the Combat button and the weapons tab stay.
+  - The board measures a body's badges as they will stand with a picture in
+    them (`Cosmetics.roomed`), so they still fit the body's width.
+
 - **Risk of Rain's chests (the owner, 13 Nov 2026).** One unlock, three
   pictures: the Small Chest for a Small chest, the Large Chest for a Medium, and
   the Golden Chest for a Large or a Huge, and for a boss's, being the set's

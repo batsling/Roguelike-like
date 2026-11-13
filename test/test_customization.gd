@@ -336,6 +336,87 @@ func test_a_set_of_several_icons_shows_them_all_on_the_hover() -> void:
 		autofree(t)
 	assert_false(single[2].has_meta(HoverCard.META))
 
+# Health, damage and gold are icon kinds too (13 Nov 2026). One heart for the
+# player and for every enemy, so one worn Health icon covers both.
+func test_health_damage_and_gold_are_icon_kinds() -> void:
+	for kind in ["health", "damage", "gold"]:
+		assert_true(CosmeticCatalog.KINDS.has(kind), kind)
+		assert_true(CustomizeScreen.KIND_GLYPHS.has(kind) and CustomizeScreen.KIND_NAMES.has(kind), kind)
+	var by_kind := {}
+	for kind in ["health", "damage"]:
+		by_kind[kind] = CosmeticCatalog.icons_of(kind).map(func(e): return String(e["game"]))
+	assert_eq(by_kind["health"], ["the_binding_of_isaac", "wildfrost"])
+	assert_eq(by_kind["damage"], ["the_binding_of_isaac", "the_binding_of_isaac_rebirth", "wildfrost"])
+
+func test_no_script_draws_the_other_heart() -> void:
+	# ♥ is THE heart. ❤ was the enemies' and never the player's, so a worn Health
+	# icon would have covered one and not the other.
+	var heavy := char(0x2764)
+	var todo: Array = ["res://scripts"]
+	while not todo.is_empty():
+		var dir: String = todo.pop_back()
+		for d in DirAccess.get_directories_at(dir):
+			todo.append(dir.path_join(d))
+		for f in DirAccess.get_files_at(dir):
+			if f.ends_with(".gd"):
+				assert_false(FileAccess.get_file_as_string(dir.path_join(f)).contains(heavy),
+					"%s draws %s; Health is ♥" % [f, heavy])
+
+func test_a_worn_health_icon_is_the_players_heart_and_an_enemys() -> void:
+	Cosmetics._unlocked["health/health_wildfrost"] = "game:wildfrost"
+	Cosmetics.set_icon("health", "health/health_wildfrost")
+	for text in ["♥  3 / 5", "♥2", "♥ 4 Health"]:
+		var l := Label.new()
+		l.text = text
+		add_child_autofree(l)
+		Cosmetics.apply_glyph(l)
+		assert_false(l.text.contains("♥"), text)
+		var art: TextureRect = l.get_node_or_null(Cosmetics.GLYPH_NODE)
+		assert_not_null(art, text)
+		assert_string_contains(String(art.get_meta(&"source")), "Health_Wildfrost")
+		# A count that ticks: the picture follows the new text.
+		l.text = "♥  1 / 5"
+		Cosmetics.apply_glyph(l)
+		assert_false(l.text.contains("♥"))
+		assert_string_contains(l.text, "1 / 5")
+
+func test_a_worn_damage_icon_only_stands_in_where_the_swords_mean_damage() -> void:
+	Cosmetics._unlocked["damage/damage_wildfrost"] = "game:wildfrost"
+	Cosmetics.set_icon("damage", "damage/damage_wildfrost")
+	var beaten := Label.new()
+	beaten.text = "⚔ 3 beaten"
+	add_child_autofree(beaten)
+	Cosmetics.apply_glyph(beaten)
+	assert_eq(beaten.text, "⚔ 3 beaten", "the swords of a record are left alone")
+	assert_null(beaten.get_node_or_null(Cosmetics.GLYPH_NODE))
+	var dmg := Label.new()
+	dmg.text = "⚔2×3"
+	Cosmetics.as_damage(dmg)
+	add_child_autofree(dmg)
+	Cosmetics.apply_glyph(dmg)
+	assert_false(dmg.text.contains("⚔"), "a damage badge's are swapped")
+	assert_string_contains(dmg.text, "2×3")
+	assert_string_contains(String(dmg.get_node(Cosmetics.GLYPH_NODE).get_meta(&"source")), "Damage_Wildfrost")
+	# The board fits its badges by measuring them as they will stand.
+	var font: Font = dmg.get_theme_font("font")
+	assert_eq(Cosmetics.roomed("⚔2×3", font, 12, true), Cosmetics._room(font, 12) + "2×3")
+	assert_eq(Cosmetics.roomed("⚔2", font, 12), "⚔2", "unmarked, the swords stay")
+	assert_eq(Cosmetics.roomed("♥2", font, 12), "♥2", "no Health icon is worn")
+
+func test_a_worn_gold_icon_replaces_the_coin() -> void:
+	CosmeticCatalog.set_for_tests([], [{"id": "gold/coin_x", "kind": "gold", "name": "Coin",
+		"game": "wildfrost", "images": [{"name": "Coin", "min": 0, "max": 10,
+			"path": "res://images2.0/icons/Health/Health_Wildfrost.png"}]}])
+	Cosmetics._unlocked["gold/coin_x"] = "game:wildfrost"
+	Cosmetics.set_icon("gold", "gold/coin_x")
+	var l := Label.new()
+	l.text = "◉  12"
+	add_child_autofree(l)
+	Cosmetics.apply_glyph(l)
+	assert_false(l.text.contains("◉"))
+	assert_not_null(l.get_node_or_null(Cosmetics.GLYPH_NODE))
+	CosmeticCatalog.reset_cache()
+
 func test_an_unworn_glyph_is_left_alone() -> void:
 	var l := Label.new()
 	l.text = "🗝 Keys 2"

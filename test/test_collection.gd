@@ -771,7 +771,7 @@ func _tier_word(e: GoalEnemyData) -> String:
 func test_a_character_tile_is_a_portrait_and_a_name() -> void:
 	var text: String = _tile_text_for(Collection.Tab.CHARACTERS, 0)
 	assert_ne(text, "", "there is a character to read")
-	assert_false(text.contains("❤"), "health belongs to the detail panel: %s" % text)
+	assert_false(text.contains("♥"), "health belongs to the detail panel: %s" % text)
 
 func test_an_event_tile_says_its_rarity_but_not_how_many_choices() -> void:
 	var col := _new_collection()

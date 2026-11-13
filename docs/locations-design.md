@@ -170,7 +170,7 @@ On the board:
 - The player breaks it with anything that hits the ground: a bomb, a thrown
   potion. **It pays whoever breaks it** (`_unit_destroyed`). That gives a
   Golden Poop a reason to be bombed before the stack chews through it.
-- A unit with more than 1 Health wears a ❤ badge on the board, and its hover
+- A unit with more than 1 Health wears a ♥ badge on the board, and its hover
   card says it is a wall.
 
 ## 6. Showing it

@@ -8,7 +8,7 @@ and characters, and every choice is saved per profile
 | tab | what it changes |
 |---|---|
 | **Characters** | each character's **icon** and **full portrait**, chosen separately |
-| **Icons** | what is drawn in place of 🗝 (keys), ✸ (bombs), 🏆 (the trophy), 🍀 (Luck) and 🎁 (a chest) |
+| **Icons** | what is drawn in place of 🗝 (keys), ✸ (bombs), 🏆 (the trophy), 🍀 (Luck), 🎁 (a chest), ♥ (Health), ⚔ (damage) and ◉ (gold) |
 | **Title Letters** | which earned letters the main menu's title may be spelled from |
 
 ## 1. Earning: a rank is a song, a letter or a look
@@ -46,6 +46,9 @@ images2.0/icons/Bombs/<Name>_<Game>.png
 images2.0/icons/Difficulties/<Name>_<Game>[_<lo>-<hi>].png
 images2.0/icons/Luck/<Name>_<Game>.png
 images2.0/icons/Chests/<Name>_<Game>[_<lo>-<hi>].png
+images2.0/icons/Health/<Name>_<Game>.png
+images2.0/icons/Damage/<Name>_<Game>.png
+images2.0/icons/Gold/<Name>_<Game>.png
 ```
 
 - `<Character>` is the display name with underscores (`Antonio_Belpaese`), and
@@ -103,7 +106,7 @@ at once.
 ### Every slot's choices
 
 Each slot (a character's icon or full portrait, or the key, bomb, difficulty,
-Luck or chest icon) offers:
+Luck, chest, Health, damage or gold icon) offers:
 
 - **Default:** the character's own art, or the glyph.
 - **🎲 Random:** a different look every run, rolled at `GameLoop2.start_run`
@@ -123,12 +126,12 @@ Luck or chest icon) offers:
   (`Cosmetics.is_new` / `mark_seen`, per profile). This happens wherever its tile
   is first shown: the Customization screen or the picker.
 
-## 4. Wearing an icon: every 🗝 ✸ 🏆 🍀 🎁, everywhere
+## 4. Wearing an icon: every 🗝 ✸ 🏆 🍀 🎁 ♥ ◉, everywhere, and ⚔ where it is damage
 
 The owner's words: "everywhere means everywhere, and with the number on top of
-it too". The UI writes these five as text inside ordinary Labels and Buttons,
+it too". The UI writes these as text inside ordinary Labels and Buttons,
 so `Cosmetics` watches the tree's `node_added` while any icon is worn. Each
-Label or Button whose text holds one of the five gets the glyph swapped for
+Label or Button whose text holds one of them gets the glyph swapped for
 spaces, and the picture is laid over that gap (`apply_glyph`, `_place_glyph`).
 On a 🏆, the Fracture level is written over the picture in `Fracture.COLOR`.
 
@@ -136,17 +139,34 @@ On a 🏆, the Fracture level is written over the picture in `Fracture.COLOR`.
   own Fracture during a run and 0 outside one. A level of 0 shows no number, as
   with the cup. `RankBadge` passes each trophy's own best level and sets
   `glyph_number = false`, because it already draws that number.
+- **One picture per node:** the first worn glyph in a node's text is the one
+  swapped. Nothing in the UI today writes two of them in one Label.
 - **A gift's level is the chest's size** (0 Small … 3 Huge, 4 a boss's), again from
   `glyph_level`, and it carries no number. The drop window's gift passes its own
   rung (`ItemDropModal._gift_badge`); the "N Chests" heading and the report's
   chest sum pass their biggest chest's. A 🎁 with no `glyph_level` is drawn as the
   smallest chest: only the trophy falls back to the run's Fracture.
+- **♥ is THE heart**, the player's and every enemy's. Enemies used to be drawn
+  with ❤ (U+2764), which a worn Health icon would not have covered;
+  `test_customization.gd` fails a script that writes it.
+- **⚔ is damage only where a node says so.** The crossed swords are also "beaten"
+  on every record line, the Combat button and the weapons tab. A node that writes
+  ⚔ as DAMAGE marks itself with `Cosmetics.as_damage(node)` (the board's damage
+  badge, the game card's stat pair, the enemy card's Damage row), and only a
+  marked node's ⚔ is swapped. **A new place that shows damage has to mark it.**
+- **A site that measures text before it is on a node** asks
+  `Cosmetics.roomed(text, font, size, damage)` for the text as it will stand: a
+  picture's room is a little wider than its glyph, and the board fits a body's
+  ♥ and ⚔ badges to its width (`BattlefieldView.stat_row_width`).
+- **Gold (◉) has no icons to earn yet.** The kind, its folder name and its row on
+  the screen are in place; drop a PNG in `images2.0/icons/Gold/` and rebuild.
 - **Text set after a node enters the tree** is not seen by the watch, so a site
   that rewrites its text calls `Cosmetics.apply_glyph(node)` itself: the board's
-  Bomb button, both win banners, the "N Chests" heading and the Customization
-  screen's own status line.
+  Bomb button, both win banners, the "N Chests" heading, the Health and gold
+  chips, the hero's Health line, the shop's purse, prices and Reroll, and the
+  Customization screen's own status line.
 - **Limit:** a glyph inside text that wraps by width (not by `\n`) is placed as if
-  the line did not wrap. Every 🗝 ✸ 🏆 🍀 🎁 in the UI today either starts its line or
+  the line did not wrap. Every one of these glyphs in the UI today either starts its line or
   sits in a one-line label.
 
 ## 5. Title letters

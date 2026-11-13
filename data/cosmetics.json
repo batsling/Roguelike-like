@@ -557,6 +557,76 @@
 					"max": 4
 				}
 			]
+		},
+		{
+			"id": "health/health_the_binding_of_isaac",
+			"kind": "health",
+			"name": "Health",
+			"game": "the_binding_of_isaac",
+			"images": [
+				{
+					"name": "Health",
+					"path": "res://images2.0/icons/Health/Health_The_Binding_of_Isaac.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "health/health_wildfrost",
+			"kind": "health",
+			"name": "Health",
+			"game": "wildfrost",
+			"images": [
+				{
+					"name": "Health",
+					"path": "res://images2.0/icons/Health/Health_Wildfrost.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "damage/damage_the_binding_of_isaac",
+			"kind": "damage",
+			"name": "Damage",
+			"game": "the_binding_of_isaac",
+			"images": [
+				{
+					"name": "Damage",
+					"path": "res://images2.0/icons/Damage/Damage_The_Binding_of_Isaac.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "damage/damage_the_binding_of_isaac_rebirth",
+			"kind": "damage",
+			"name": "Damage",
+			"game": "the_binding_of_isaac_rebirth",
+			"images": [
+				{
+					"name": "Damage",
+					"path": "res://images2.0/icons/Damage/Damage_The_Binding_of_Isaac_Rebirth.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "damage/damage_wildfrost",
+			"kind": "damage",
+			"name": "Damage",
+			"game": "wildfrost",
+			"images": [
+				{
+					"name": "Damage",
+					"path": "res://images2.0/icons/Damage/Damage_Wildfrost.png",
+					"min": 0,
+					"max": 10
+				}
+			]
 		}
 	]
 }

@@ -534,6 +534,7 @@ func open_loot_card(slot: int) -> Node:
 		buy_btn.disabled = true
 	else:
 		buy_btn.text = _price_text(row, "  ")
+		Cosmetics.apply_glyph(buy_btn)   # a worn gold or Health icon on the price
 		var fits: bool = GameState.is_bag_entry(entry) or GameState.loot_fits(entry)
 		buy_btn.disabled = not afford or not fits
 		buy_btn.tooltip_text = _short_of(row) if not afford \
@@ -858,6 +859,7 @@ func _short_of(entry: Dictionary) -> String:
 func _paint_chrome() -> void:
 	if _purse != null and is_instance_valid(_purse):
 		_purse.text = "◉ %d" % GameState.gold
+		Cosmetics.apply_glyph(_purse)   # a worn gold icon in place of the ◉
 		_purse.add_theme_color_override("font_color",
 			UITheme.COIN_GOLD if GameState.gold > 0 else UITheme.TEXT_FAINT)
 	if _subtitle != null and is_instance_valid(_subtitle):
@@ -872,6 +874,7 @@ func _paint_chrome() -> void:
 		_reroll_btn.disabled = not ShopSystem.can_reroll(_game_id)
 		if ShopSystem.keeper_has(_game_id, "gold_reroll"):
 			_reroll_btn.text = "🎲 %s◉%d" % [word, ShopSystem.gold_reroll_cost(_game_id)]
+			Cosmetics.apply_glyph(_reroll_btn)
 			_reroll_btn.tooltip_text = ""
 			return
 		_reroll_btn.tooltip_text = ("Spend 1 Scramble to redraw the relics and the loot."
@@ -943,6 +946,7 @@ func _card(slot: int, entry: Dictionary) -> Control:
 		buy_btn.disabled = true
 	else:
 		buy_btn.text = _price_text(entry, "  ")
+		Cosmetics.apply_glyph(buy_btn)   # a worn gold or Health icon on the price
 		buy_btn.disabled = not afford
 		if afford:
 			buy_btn.add_theme_stylebox_override("normal",
