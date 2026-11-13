@@ -191,6 +191,20 @@
 			]
 		},
 		{
+			"id": "key/gold_key_spelunky",
+			"kind": "key",
+			"name": "Gold Key",
+			"game": "spelunky",
+			"images": [
+				{
+					"name": "Gold Key",
+					"path": "res://images2.0/icons/Keys/Gold_Key_Spelunky.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
 			"id": "key/key_enter_the_gungeon",
 			"kind": "key",
 			"name": "Key",
@@ -213,6 +227,20 @@
 				{
 					"name": "Key",
 					"path": "res://images2.0/icons/Keys/Key_Luck_be_a_Landlord.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "key/key_spelunky_2",
+			"kind": "key",
+			"name": "Key",
+			"game": "spelunky_2",
+			"images": [
+				{
+					"name": "Key",
+					"path": "res://images2.0/icons/Keys/Key_Spelunky_2.png",
 					"min": 0,
 					"max": 10
 				}
@@ -387,6 +415,20 @@
 			]
 		},
 		{
+			"id": "bomb/powerful_grenade_dead_cells",
+			"kind": "bomb",
+			"name": "Powerful Grenade",
+			"game": "dead_cells",
+			"images": [
+				{
+					"name": "Powerful Grenade",
+					"path": "res://images2.0/icons/Bombs/Powerful_Grenade_Dead_Cells.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
 			"id": "difficulty/amulet_of_yendor_nethack",
 			"kind": "difficulty",
 			"name": "Amulet of Yendor",
@@ -480,6 +522,48 @@
 					"name": "Gold Stake",
 					"path": "res://images2.0/icons/Difficulties/Gold_Stake_Balatro_7-10.png",
 					"min": 7,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "difficulty/golden_idol_spelunky",
+			"kind": "difficulty",
+			"name": "Golden Idol",
+			"game": "spelunky",
+			"images": [
+				{
+					"name": "Golden Idol",
+					"path": "res://images2.0/icons/Difficulties/Golden_Idol_Spelunky.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "difficulty/golden_idol_spelunky_2",
+			"kind": "difficulty",
+			"name": "Golden Idol",
+			"game": "spelunky_2",
+			"images": [
+				{
+					"name": "Golden Idol",
+					"path": "res://images2.0/icons/Difficulties/Golden_Idol_Spelunky_2.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "difficulty/golden_idol_spelunky_classic",
+			"kind": "difficulty",
+			"name": "Golden Idol",
+			"game": "spelunky_classic",
+			"images": [
+				{
+					"name": "Golden Idol",
+					"path": "res://images2.0/icons/Difficulties/Golden_Idol_Spelunky_Classic.png",
+					"min": 0,
 					"max": 10
 				}
 			]
@@ -623,6 +707,20 @@
 			]
 		},
 		{
+			"id": "chest/bank_chest_dead_cells",
+			"kind": "chest",
+			"name": "Bank Chest",
+			"game": "dead_cells",
+			"images": [
+				{
+					"name": "Bank Chest",
+					"path": "res://images2.0/icons/Chests/Bank_Chest_Dead_Cells.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
 			"id": "chest/chest_loop_hero",
 			"kind": "chest",
 			"name": "Chest",
@@ -659,6 +757,34 @@
 				{
 					"name": "Chest",
 					"path": "res://images2.0/icons/Chests/Chest_Peglin.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "chest/chest_spelunky",
+			"kind": "chest",
+			"name": "Chest",
+			"game": "spelunky",
+			"images": [
+				{
+					"name": "Chest",
+					"path": "res://images2.0/icons/Chests/Chest_Spelunky.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "chest/chest_spelunky_2",
+			"kind": "chest",
+			"name": "Chest",
+			"game": "spelunky_2",
+			"images": [
+				{
+					"name": "Chest",
+					"path": "res://images2.0/icons/Chests/Chest_Spelunky_2.png",
 					"min": 0,
 					"max": 10
 				}
@@ -829,6 +955,20 @@
 			]
 		},
 		{
+			"id": "chest/treasure_chest_dead_cells",
+			"kind": "chest",
+			"name": "Treasure Chest",
+			"game": "dead_cells",
+			"images": [
+				{
+					"name": "Treasure Chest",
+					"path": "res://images2.0/icons/Chests/Treasure_Chest_Dead_Cells.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
 			"id": "health/health_mewgenics",
 			"kind": "health",
 			"name": "Health",
@@ -935,6 +1075,20 @@
 				{
 					"name": "Heart",
 					"path": "res://images2.0/icons/Health/Heart_Rogue_Legacy_2.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "health/heart_spelunky_2",
+			"kind": "health",
+			"name": "Heart",
+			"game": "spelunky_2",
+			"images": [
+				{
+					"name": "Heart",
+					"path": "res://images2.0/icons/Health/Heart_Spelunky_2.png",
 					"min": 0,
 					"max": 10
 				}
@@ -1221,6 +1375,48 @@
 			]
 		},
 		{
+			"id": "gold/gold_bar_spelunky",
+			"kind": "gold",
+			"name": "Gold Bar",
+			"game": "spelunky",
+			"images": [
+				{
+					"name": "Gold Bar",
+					"path": "res://images2.0/icons/Gold/Gold_Bar_Spelunky.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "gold/gold_bar_spelunky_2",
+			"kind": "gold",
+			"name": "Gold Bar",
+			"game": "spelunky_2",
+			"images": [
+				{
+					"name": "Gold Bar",
+					"path": "res://images2.0/icons/Gold/Gold_Bar_Spelunky_2.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "gold/gold_bar_spelunky_classic",
+			"kind": "gold",
+			"name": "Gold Bar",
+			"game": "spelunky_classic",
+			"images": [
+				{
+					"name": "Gold Bar",
+					"path": "res://images2.0/icons/Gold/Gold_Bar_Spelunky_Classic.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
 			"id": "gold/gold_coin_megabonk",
 			"kind": "gold",
 			"name": "Gold Coin",
@@ -1229,6 +1425,20 @@
 				{
 					"name": "Gold Coin",
 					"path": "res://images2.0/icons/Gold/Gold_Coin_Megabonk.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "gold/gold_dead_cells",
+			"kind": "gold",
+			"name": "Gold",
+			"game": "dead_cells",
+			"images": [
+				{
+					"name": "Gold",
+					"path": "res://images2.0/icons/Gold/Gold_Dead_Cells.png",
 					"min": 0,
 					"max": 10
 				}

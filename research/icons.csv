@@ -217,84 +217,84 @@ Picture,Kind,File,Name,Game,Size,What it is there,Source,Confidence,Status,Owner
 ,Damage,The_Grandfather_Diablo,The Grandfather,Diablo,35x81,Diablo 1's unique sword The Grandfather,https://diablo.fandom.com/wiki/File:D1-grandfather.gif,ok,to review,no,"skipped, not turned down: the owner has not played it yet (13 Nov 2026)",ico-diablo-the-grandfather-diablo
 ,Chests,Chest_Diablo,Chest,Diablo,53x49,A chest in Diablo 1's dungeon (from the wiki's Chests (Diablo I) page),https://diablo.fandom.com/wiki/File:Chest.png,ok,to review,no,"skipped, not turned down: the owner has not played it yet (13 Nov 2026)",ico-diablo-chest-diablo
 ,Chests,Small_Chest_Diablo,Small Chest,Diablo,41x38,A small chest in Diablo 1's dungeon (from the wiki's Chests (Diablo I) page),https://diablo.fandom.com/wiki/File:Small_chest.png,ok,to review,no,"skipped, not turned down: the owner has not played it yet (13 Nov 2026)",ico-diablo-small-chest-diablo
-,Gold,Gold_Dead_Cells,Gold,Dead Cells,17x20,The gold counter's coin,https://deadcells.wiki.gg/wiki/File:Gold_Currency_Icon.png,ok,to review,,,ico-dead-cells-gold-dead-cells
-,Gold,Cell_Dead_Cells,Cell,Dead Cells,24x24,The cells counter's icon: what every unlock is bought with,https://deadcells.wiki.gg/wiki/File:Cell_Currency_Icon.png,ok,to review,,,ico-dead-cells-cell-dead-cells
-,Health,Health_Flask_Dead_Cells,Health Flask,Dead Cells,72x72,The health flask,https://deadcells.wiki.gg/wiki/File:Healing_Potion_1_Icon.png,ok,to review,,,ico-dead-cells-health-flask-dead-cells
-,Health,Health_Scroll_Dead_Cells,Health Scroll,Dead Cells,72x72,The scroll that raises Health,https://deadcells.wiki.gg/wiki/File:Health_Stat.png,ok,to review,,,ico-dead-cells-health-scroll-dead-cells
-,Keys,Gardener's_Key_Dead_Cells,Gardener's Key,Dead Cells,24x24,A Gardener's Key (the rose),https://deadcells.wiki.gg/wiki/File:Gardener%27s_Key.png,ok,to review,,,ico-dead-cells-gardener-s-key-dead-cells
-,Keys,Village_Key_Dead_Cells,Village Key,Dead Cells,24x24,The Village Key,https://deadcells.wiki.gg/wiki/File:Village_Key.png,ok,to review,,,ico-dead-cells-village-key-dead-cells
-,Keys,Castle_Key_Dead_Cells,Castle Key,Dead Cells,24x24,The Castle Key,https://deadcells.wiki.gg/wiki/File:Castle_Key.png,ok,to review,,,ico-dead-cells-castle-key-dead-cells
-,Keys,Crypt_Key_Dead_Cells,Crypt Key,Dead Cells,24x24,The Crypt Key,https://deadcells.wiki.gg/wiki/File:Crypt_Key.png,ok,to review,,,ico-dead-cells-crypt-key-dead-cells
-,Keys,Architect's_Key_Dead_Cells,Architect's Key,Dead Cells,24x24,The Architect's Key,https://deadcells.wiki.gg/wiki/File:Architect%27s_Key.png,ok,to review,,,ico-dead-cells-architect-s-key-dead-cells
-,Shields,Front_Line_Shield_Dead_Cells,Front Line Shield,Dead Cells,24x24,The Front Line Shield,https://deadcells.wiki.gg/wiki/File:Front_Line_Shield_Icon.png,ok,to review,,,ico-dead-cells-front-line-shield-dead-cells
-,Shields,Old_Wooden_Shield_Dead_Cells,Old Wooden Shield,Dead Cells,24x24,"The Old Wooden Shield, the starting one",https://deadcells.wiki.gg/wiki/File:Old_Wooden_Shield_Icon.png,ok,to review,,,ico-dead-cells-old-wooden-shield-dead-cells
-,Shields,Parry_Shield_Dead_Cells,Parry Shield,Dead Cells,24x24,The Parry Shield,https://deadcells.wiki.gg/wiki/File:Parry_Shield_Icon.png,ok,to review,,,ico-dead-cells-parry-shield-dead-cells
-,Shields,Force_Shield_Dead_Cells,Force Shield,Dead Cells,24x24,The Force Shield,https://deadcells.wiki.gg/wiki/File:Force_Shield_Icon.png,ok,to review,,,ico-dead-cells-force-shield-dead-cells
-,Shields,Greed_Shield_Dead_Cells,Greed Shield,Dead Cells,24x24,The Greed Shield: a parry drops gold,https://deadcells.wiki.gg/wiki/File:Greed_Shield_Icon.png,ok,to review,,,ico-dead-cells-greed-shield-dead-cells
-,Shields,Spiked_Shield_Dead_Cells,Spiked Shield,Dead Cells,24x24,The Spiked Shield,https://deadcells.wiki.gg/wiki/File:Spiked_Shield_Icon.png,ok,to review,,,ico-dead-cells-spiked-shield-dead-cells
-,Damage,Rusty_Sword_Dead_Cells,Rusty Sword,Dead Cells,24x24,"The Rusty Sword, the starting weapon",https://deadcells.wiki.gg/wiki/File:Rusty_Sword_Icon.png,ok,to review,,,ico-dead-cells-rusty-sword-dead-cells
-,Damage,Broadsword_Dead_Cells,Broadsword,Dead Cells,24x24,The Broadsword,https://deadcells.wiki.gg/wiki/File:Broadsword_Icon.png,ok,to review,,,ico-dead-cells-broadsword-dead-cells
-,Damage,Blood_Sword_Dead_Cells,Blood Sword,Dead Cells,24x24,The Blood Sword,https://deadcells.wiki.gg/wiki/File:Blood_Sword_Icon.png,ok,to review,,,ico-dead-cells-blood-sword-dead-cells
-,Damage,Cursed_Sword_Dead_Cells,Cursed Sword,Dead Cells,24x24,The Cursed Sword: one hit kills you,https://deadcells.wiki.gg/wiki/File:Cursed_Sword_Icon.png,ok,to review,,,ico-dead-cells-cursed-sword-dead-cells
-,Bombs,Infantry_Grenade_Dead_Cells,Infantry Grenade,Dead Cells,24x24,The Infantry Grenade,https://deadcells.wiki.gg/wiki/File:Infantry_Grenade_Icon.png,ok,to review,,,ico-dead-cells-infantry-grenade-dead-cells
-,Bombs,Powerful_Grenade_Dead_Cells,Powerful Grenade,Dead Cells,24x24,The Powerful Grenade,https://deadcells.wiki.gg/wiki/File:Powerful_Grenade_Icon.png,ok,to review,,,ico-dead-cells-powerful-grenade-dead-cells
-,Bombs,Fire_Grenade_Dead_Cells,Fire Grenade,Dead Cells,24x24,The Fire Grenade,https://deadcells.wiki.gg/wiki/File:Fire_Grenade_Icon.png,ok,to review,,,ico-dead-cells-fire-grenade-dead-cells
-,Bombs,Cluster_Grenade_Dead_Cells,Cluster Grenade,Dead Cells,24x24,The Cluster Grenade,https://deadcells.wiki.gg/wiki/File:Cluster_Grenade_Icon.png,ok,to review,,,ico-dead-cells-cluster-grenade-dead-cells
-,Chests,Treasure_Chest_Dead_Cells,Treasure Chest,Dead Cells,96x70,"A treasure chest, closed",https://deadcells.wiki.gg/wiki/File:Treasurechest_Closed.png,ok,to review,,,ico-dead-cells-treasure-chest-dead-cells
-,Chests,Bank_Chest_Dead_Cells,Bank Chest,Dead Cells,97x92,The Bank's chest,https://deadcells.wiki.gg/wiki/File:Bank_Chest.png,ok,to review,,,ico-dead-cells-bank-chest-dead-cells
-,Difficulties,1_Boss_Cell_Dead_Cells_0-2,1 Boss Cell,Dead Cells,22x24,The mark of a run with 1 Boss Stem Cell,https://deadcells.wiki.gg/wiki/File:BSCI_Icon.png,ok,to review,,,ico-dead-cells-1-boss-cell-dead-cells-0-2
-,Difficulties,2_Boss_Cells_Dead_Cells_3-4,2 Boss Cells,Dead Cells,22x24,The mark of a run with 2 Boss Stem Cells,https://deadcells.wiki.gg/wiki/File:BSCII_Icon.png,ok,to review,,,ico-dead-cells-2-boss-cells-dead-cells-3-4
-,Difficulties,3_Boss_Cells_Dead_Cells_5-6,3 Boss Cells,Dead Cells,22x24,The mark of a run with 3 Boss Stem Cells,https://deadcells.wiki.gg/wiki/File:BSCIII_Icon.png,ok,to review,,,ico-dead-cells-3-boss-cells-dead-cells-5-6
-,Difficulties,4_Boss_Cells_Dead_Cells_7-8,4 Boss Cells,Dead Cells,22x24,The mark of a run with 4 Boss Stem Cells,https://deadcells.wiki.gg/wiki/File:BSCIV_Icon.png,ok,to review,,,ico-dead-cells-4-boss-cells-dead-cells-7-8
-,Difficulties,5_Boss_Cells_Dead_Cells_9-10,5 Boss Cells,Dead Cells,22x24,The mark of a run with 5 Boss Stem Cells,https://deadcells.wiki.gg/wiki/File:BSCV_Icon.png,ok,to review,,,ico-dead-cells-5-boss-cells-dead-cells-9-10
-,Gold,Gold_Bar_Spelunky_Classic,Gold Bar,Spelunky Classic,24x15,A gold bar (the original game's pixel sprite),https://spelunky.fandom.com/wiki/File:Gold_Bar.png,ok,to review,,,ico-spelunky-classic-gold-bar-spelunky-classic
-,Gold,Gold_Stack_Spelunky_Classic,Gold Stack,Spelunky Classic,48x30,A stack of gold bars (the original game's pixel sprite),https://spelunky.fandom.com/wiki/File:Gold_Stack.png,ok,to review,,,ico-spelunky-classic-gold-stack-spelunky-classic
-,Gold,Gold_Nugget_Spelunky_Classic,Gold Nugget,Spelunky Classic,24x24,A large gold nugget (the original game's pixel sprite),https://spelunky.fandom.com/wiki/File:Large_Gold_Nugget.png,ok,to review,,,ico-spelunky-classic-gold-nugget-spelunky-classic
-,Gold,Diamond_Spelunky_Classic,Diamond,Spelunky Classic,24x24,A diamond (the original game's pixel sprite),https://spelunky.fandom.com/wiki/File:Diamond.png,ok,to review,,,ico-spelunky-classic-diamond-spelunky-classic
-,Gold,Ruby_Spelunky_Classic,Ruby,Spelunky Classic,24x24,A large ruby (the original game's pixel sprite),https://spelunky.fandom.com/wiki/File:Large_Ruby.png,ok,to review,,,ico-spelunky-classic-ruby-spelunky-classic
-,Bombs,Bomb_Bag_Spelunky_Classic,Bomb Bag,Spelunky Classic,36x36,The bomb bag: 3 bombs (the original game's pixel sprite),https://spelunky.fandom.com/wiki/File:Bomb_Bag_Small.png,ok,to review,,,ico-spelunky-classic-bomb-bag-spelunky-classic
-,Bombs,Bomb_Box_Spelunky_Classic,Bomb Box,Spelunky Classic,42x33,The bomb box: 12 bombs (the original game's pixel sprite),https://spelunky.fandom.com/wiki/File:Bomb_Box_Small.png,ok,to review,,,ico-spelunky-classic-bomb-box-spelunky-classic
-,Difficulties,Golden_Idol_Spelunky_Classic,Golden Idol,Spelunky Classic,36x45,The golden idol (the original game's pixel sprite),https://spelunky.fandom.com/wiki/File:Golden_Idol.png,ok,to review,,,ico-spelunky-classic-golden-idol-spelunky-classic
-,Gold,Gold_Bar_Spelunky,Gold Bar,Spelunky,50x50,A gold bar,https://spelunky.fandom.com/wiki/File:Goldbar_treasure.png,ok,to review,,,ico-spelunky-gold-bar-spelunky
-,Gold,Gold_Stack_Spelunky,Gold Stack,Spelunky,60x60,A stack of gold bars,https://spelunky.fandom.com/wiki/File:Goldstack_treasure.png,ok,to review,,,ico-spelunky-gold-stack-spelunky
-,Gold,Diamond_Spelunky,Diamond,Spelunky,50x50,A diamond,https://spelunky.fandom.com/wiki/File:Diamond_treasure.png,ok,to review,,,ico-spelunky-diamond-spelunky
-,Keys,Gold_Key_Spelunky,Gold Key,Spelunky,52x27,The key that opens the locked chest,https://spelunky.fandom.com/wiki/File:Gold_Key_HD.png,ok,to review,,,ico-spelunky-gold-key-spelunky
-,Chests,Chest_Spelunky,Chest,Spelunky,65x49,A treasure chest,https://spelunky.fandom.com/wiki/File:Chest_HD.png,ok,to review,,,ico-spelunky-chest-spelunky
-,Chests,Locked_Chest_Spelunky,Locked Chest,Spelunky,66x48,The locked chest that holds the Udjat Eye,https://spelunky.fandom.com/wiki/File:Locked_Chest_HD.png,ok,to review,,,ico-spelunky-locked-chest-spelunky
-,Chests,Crate_Spelunky,Crate,Spelunky,59x51,An item crate,https://spelunky.fandom.com/wiki/File:Crate_HD.png,ok,to review,,,ico-spelunky-crate-spelunky
-,Shields,Shield_Spelunky,Shield,Spelunky,68x97,The Black Knight's shield,https://spelunky.fandom.com/wiki/File:Shield_HD.png,ok,to review,,,ico-spelunky-shield-spelunky
-,Bombs,Bomb_Bag_Spelunky,Bomb Bag,Spelunky,82x81,The bomb bag: 3 bombs,https://spelunky.fandom.com/wiki/File:Bomb_Bag_HD.png,ok,to review,,,ico-spelunky-bomb-bag-spelunky
-,Bombs,Bomb_Box_Spelunky,Bomb Box,Spelunky,94x80,The bomb box: 12 bombs,https://spelunky.fandom.com/wiki/File:Bomb_Box_HD.png,ok,to review,,,ico-spelunky-bomb-box-spelunky
-,Damage,Machete_Spelunky,Machete,Spelunky,108x28,The machete,https://spelunky.fandom.com/wiki/File:Machete_HD.png,ok,to review,,,ico-spelunky-machete-spelunky
-,Damage,Shotgun_Spelunky,Shotgun,Spelunky,106x48,The shotgun,https://spelunky.fandom.com/wiki/File:Shotgun_HD.png,ok,to review,,,ico-spelunky-shotgun-spelunky
-,Health,Ankh_Spelunky,Ankh,Spelunky,79x85,The Ankh: one life back,https://spelunky.fandom.com/wiki/File:Ankh_HD.png,ok,to review,,,ico-spelunky-ankh-spelunky
-,Health,Kapala_Spelunky,Kapala,Spelunky,96x97,The Kapala: collect blood for health,https://spelunky.fandom.com/wiki/File:Kapala_HD.png,ok,to review,,,ico-spelunky-kapala-spelunky
-,Luck,Udjat_Eye_Spelunky,Udjat Eye,Spelunky,103x73,The Udjat Eye,https://spelunky.fandom.com/wiki/File:Udjat_Eye_HD.png,ok,to review,,,ico-spelunky-udjat-eye-spelunky
-,Difficulties,Golden_Idol_Spelunky,Golden Idol,Spelunky,64x82,The golden idol,https://spelunky.fandom.com/wiki/File:Idol_HD.png,ok,to review,,,ico-spelunky-golden-idol-spelunky
-,Health,Heart_Spelunky_2,Heart,Spelunky 2,52x46,The health heart,https://spelunky.fandom.com/wiki/File:Arena_Health_S2.png,ok,to review,,,ico-spelunky-2-heart-spelunky-2
-,Health,Ankh_Spelunky_2,Ankh,Spelunky 2,64x87,The Ankh: one life back,https://spelunky.fandom.com/wiki/File:Ankh_Link_S2.png,ok,to review,,,ico-spelunky-2-ankh-spelunky-2
-,Health,Kapala_Spelunky_2,Kapala,Spelunky 2,85x78,The Kapala: collect blood for health,https://spelunky.fandom.com/wiki/File:Kapala_Link_S2.png,ok,to review,,,ico-spelunky-2-kapala-spelunky-2
-,Bombs,Bomb_Bag_Spelunky_2,Bomb Bag,Spelunky 2,80x85,The bomb bag: 3 bombs,https://spelunky.fandom.com/wiki/File:Bomb_Bag_Link_S2.png,ok,to review,,,ico-spelunky-2-bomb-bag-spelunky-2
-,Bombs,Bomb_Box_Spelunky_2,Bomb Box,Spelunky 2,99x83,The bomb box: 12 bombs,https://spelunky.fandom.com/wiki/File:Bomb_Box_Link_S2.png,ok,to review,,,ico-spelunky-2-bomb-box-spelunky-2
-,Bombs,Sticky_Bomb_Spelunky_2,Sticky Bomb,Spelunky 2,67x71,A bomb covered in paste,https://spelunky.fandom.com/wiki/File:Sticky_Bomb_S2.png,ok,to review,,,ico-spelunky-2-sticky-bomb-spelunky-2
-,Keys,Key_Spelunky_2,Key,Spelunky 2,102x53,The key to a locked shop door,https://spelunky.fandom.com/wiki/File:Key_Link_S2.png,ok,to review,,,ico-spelunky-2-key-spelunky-2
-,Keys,Gold_Key_Spelunky_2,Gold Key,Spelunky 2,103x50,The gold key that opens the locked chest,https://spelunky.fandom.com/wiki/File:Gold_Key_Link_S2.png,ok,to review,,,ico-spelunky-2-gold-key-spelunky-2
-,Keys,Skeleton_Key_Spelunky_2,Skeleton Key,Spelunky 2,113x55,The Skeleton Key,https://spelunky.fandom.com/wiki/File:Skeleton_Key_Link_S2.png,ok,to review,,,ico-spelunky-2-skeleton-key-spelunky-2
-,Chests,Chest_Spelunky_2,Chest,Spelunky 2,96x72,A treasure chest,https://spelunky.fandom.com/wiki/File:Chest_Link_S2.png,ok,to review,,,ico-spelunky-2-chest-spelunky-2
-,Chests,Locked_Chest_Spelunky_2,Locked Chest,Spelunky 2,110x79,The locked chest that holds the Udjat Eye,https://spelunky.fandom.com/wiki/File:Locked_Chest_Link_S2.png,ok,to review,,,ico-spelunky-2-locked-chest-spelunky-2
-,Chests,Crate_Spelunky_2,Crate,Spelunky 2,102x88,An item crate,https://spelunky.fandom.com/wiki/File:Crate_Link_S2.png,ok,to review,,,ico-spelunky-2-crate-spelunky-2
-,Shields,Metal_Shield_Spelunky_2,Metal Shield,Spelunky 2,73x106,The Metal Shield,https://spelunky.fandom.com/wiki/File:Metal_Shield_Link_S2.png,ok,to review,,,ico-spelunky-2-metal-shield-spelunky-2
-,Shields,Wooden_Shield_Spelunky_2,Wooden Shield,Spelunky 2,72x93,The Wooden Shield,https://spelunky.fandom.com/wiki/File:Wooden_Shield_Link_S2.png,ok,to review,,,ico-spelunky-2-wooden-shield-spelunky-2
-,Gold,Gold_Bar_Spelunky_2,Gold Bar,Spelunky 2,74x31,A gold bar,https://spelunky.fandom.com/wiki/File:Gold_Bar_Link_S2.png,ok,to review,,,ico-spelunky-2-gold-bar-spelunky-2
-,Gold,Gold_Bars_Spelunky_2,Gold Bars,Spelunky 2,109x57,A stack of gold bars,https://spelunky.fandom.com/wiki/File:Gold_Bars_Link_S2.png,ok,to review,,,ico-spelunky-2-gold-bars-spelunky-2
-,Gold,Gold_Nugget_Spelunky_2,Gold Nugget,Spelunky 2,57x49,A large gold nugget,https://spelunky.fandom.com/wiki/File:Large_Gold_Nugget_Link_S2.png,ok,to review,,,ico-spelunky-2-gold-nugget-spelunky-2
-,Gold,Diamond_Spelunky_2,Diamond,Spelunky 2,95x69,A diamond,https://spelunky.fandom.com/wiki/File:Diamond_Link_S2.png,ok,to review,,,ico-spelunky-2-diamond-spelunky-2
-,Gold,Ruby_Spelunky_2,Ruby,Spelunky 2,80x83,A ruby,https://spelunky.fandom.com/wiki/File:Ruby_Link_S2.png,ok,to review,,,ico-spelunky-2-ruby-spelunky-2
-,Gold,Pot_of_Gold_Spelunky_2,Pot of Gold,Spelunky 2,126x112,The leprechaun's pot of gold,https://spelunky.fandom.com/wiki/File:Pot_of_Gold_Link_S2.png,ok,to review,,,ico-spelunky-2-pot-of-gold-spelunky-2
-,Luck,Four-Leaf_Clover_Spelunky_2,Four-Leaf Clover,Spelunky 2,60x82,The Four-Leaf Clover: the ghost comes later,https://spelunky.fandom.com/wiki/File:Four-Leaf_Clover_Link_S2.png,ok,to review,,,ico-spelunky-2-four-leaf-clover-spelunky-2
-,Luck,Udjat_Eye_Spelunky_2,Udjat Eye,Spelunky 2,90x62,The Udjat Eye,https://spelunky.fandom.com/wiki/File:Udjat_Eye_Link_S2.png,ok,to review,,,ico-spelunky-2-udjat-eye-spelunky-2
-,Damage,Whip_Spelunky_2,Whip,Spelunky 2,111x110,The whip,https://spelunky.fandom.com/wiki/File:Whip_Link_S2.png,ok,to review,,,ico-spelunky-2-whip-spelunky-2
-,Damage,Machete_Spelunky_2,Machete,Spelunky 2,125x34,The machete,https://spelunky.fandom.com/wiki/File:Machete_Link_S2.png,ok,to review,,,ico-spelunky-2-machete-spelunky-2
-,Damage,Shotgun_Spelunky_2,Shotgun,Spelunky 2,106x46,The shotgun,https://spelunky.fandom.com/wiki/File:Shotgun_Link_S2.png,ok,to review,,,ico-spelunky-2-shotgun-spelunky-2
-,Difficulties,Golden_Idol_Spelunky_2,Golden Idol,Spelunky 2,75x92,The golden idol,https://spelunky.fandom.com/wiki/File:Golden_Idol_Link_S2.png,ok,to review,,,ico-spelunky-2-golden-idol-spelunky-2
-,Difficulties,Tusk_Idol_Spelunky_2,Tusk Idol,Spelunky 2,81x93,The Tusk Idol,https://spelunky.fandom.com/wiki/File:The_Tusk_Idol_Link_S2.png,ok,to review,,,ico-spelunky-2-tusk-idol-spelunky-2
+,Gold,Gold_Dead_Cells,Gold,Dead Cells,17x20,The gold counter's coin,https://deadcells.wiki.gg/wiki/File:Gold_Currency_Icon.png,ok,on sheet,yes,,ico-dead-cells-gold-dead-cells
+,Gold,Cell_Dead_Cells,Cell,Dead Cells,24x24,The cells counter's icon: what every unlock is bought with,https://deadcells.wiki.gg/wiki/File:Cell_Currency_Icon.png,ok,to review,no,,ico-dead-cells-cell-dead-cells
+,Health,Health_Flask_Dead_Cells,Health Flask,Dead Cells,72x72,The health flask,https://deadcells.wiki.gg/wiki/File:Healing_Potion_1_Icon.png,ok,to review,no,,ico-dead-cells-health-flask-dead-cells
+,Health,Health_Scroll_Dead_Cells,Health Scroll,Dead Cells,72x72,The scroll that raises Health,https://deadcells.wiki.gg/wiki/File:Health_Stat.png,ok,to review,no,,ico-dead-cells-health-scroll-dead-cells
+,Keys,Gardener's_Key_Dead_Cells,Gardener's Key,Dead Cells,24x24,A Gardener's Key (the rose),https://deadcells.wiki.gg/wiki/File:Gardener%27s_Key.png,ok,to review,no,,ico-dead-cells-gardener-s-key-dead-cells
+,Keys,Village_Key_Dead_Cells,Village Key,Dead Cells,24x24,The Village Key,https://deadcells.wiki.gg/wiki/File:Village_Key.png,ok,to review,no,,ico-dead-cells-village-key-dead-cells
+,Keys,Castle_Key_Dead_Cells,Castle Key,Dead Cells,24x24,The Castle Key,https://deadcells.wiki.gg/wiki/File:Castle_Key.png,ok,to review,no,,ico-dead-cells-castle-key-dead-cells
+,Keys,Crypt_Key_Dead_Cells,Crypt Key,Dead Cells,24x24,The Crypt Key,https://deadcells.wiki.gg/wiki/File:Crypt_Key.png,ok,to review,no,,ico-dead-cells-crypt-key-dead-cells
+,Keys,Architect's_Key_Dead_Cells,Architect's Key,Dead Cells,24x24,The Architect's Key,https://deadcells.wiki.gg/wiki/File:Architect%27s_Key.png,ok,to review,no,,ico-dead-cells-architect-s-key-dead-cells
+,Shields,Front_Line_Shield_Dead_Cells,Front Line Shield,Dead Cells,24x24,The Front Line Shield,https://deadcells.wiki.gg/wiki/File:Front_Line_Shield_Icon.png,ok,to review,no,,ico-dead-cells-front-line-shield-dead-cells
+,Shields,Old_Wooden_Shield_Dead_Cells,Old Wooden Shield,Dead Cells,24x24,"The Old Wooden Shield, the starting one",https://deadcells.wiki.gg/wiki/File:Old_Wooden_Shield_Icon.png,ok,to review,no,,ico-dead-cells-old-wooden-shield-dead-cells
+,Shields,Parry_Shield_Dead_Cells,Parry Shield,Dead Cells,24x24,The Parry Shield,https://deadcells.wiki.gg/wiki/File:Parry_Shield_Icon.png,ok,to review,no,,ico-dead-cells-parry-shield-dead-cells
+,Shields,Force_Shield_Dead_Cells,Force Shield,Dead Cells,24x24,The Force Shield,https://deadcells.wiki.gg/wiki/File:Force_Shield_Icon.png,ok,to review,no,,ico-dead-cells-force-shield-dead-cells
+,Shields,Greed_Shield_Dead_Cells,Greed Shield,Dead Cells,24x24,The Greed Shield: a parry drops gold,https://deadcells.wiki.gg/wiki/File:Greed_Shield_Icon.png,ok,to review,no,,ico-dead-cells-greed-shield-dead-cells
+,Shields,Spiked_Shield_Dead_Cells,Spiked Shield,Dead Cells,24x24,The Spiked Shield,https://deadcells.wiki.gg/wiki/File:Spiked_Shield_Icon.png,ok,to review,no,,ico-dead-cells-spiked-shield-dead-cells
+,Damage,Rusty_Sword_Dead_Cells,Rusty Sword,Dead Cells,24x24,"The Rusty Sword, the starting weapon",https://deadcells.wiki.gg/wiki/File:Rusty_Sword_Icon.png,ok,to review,no,,ico-dead-cells-rusty-sword-dead-cells
+,Damage,Broadsword_Dead_Cells,Broadsword,Dead Cells,24x24,The Broadsword,https://deadcells.wiki.gg/wiki/File:Broadsword_Icon.png,ok,to review,no,,ico-dead-cells-broadsword-dead-cells
+,Damage,Blood_Sword_Dead_Cells,Blood Sword,Dead Cells,24x24,The Blood Sword,https://deadcells.wiki.gg/wiki/File:Blood_Sword_Icon.png,ok,to review,no,,ico-dead-cells-blood-sword-dead-cells
+,Damage,Cursed_Sword_Dead_Cells,Cursed Sword,Dead Cells,24x24,The Cursed Sword: one hit kills you,https://deadcells.wiki.gg/wiki/File:Cursed_Sword_Icon.png,ok,to review,no,,ico-dead-cells-cursed-sword-dead-cells
+,Bombs,Infantry_Grenade_Dead_Cells,Infantry Grenade,Dead Cells,24x24,The Infantry Grenade,https://deadcells.wiki.gg/wiki/File:Infantry_Grenade_Icon.png,ok,to review,no,,ico-dead-cells-infantry-grenade-dead-cells
+,Bombs,Powerful_Grenade_Dead_Cells,Powerful Grenade,Dead Cells,24x24,The Powerful Grenade,https://deadcells.wiki.gg/wiki/File:Powerful_Grenade_Icon.png,ok,on sheet,yes,,ico-dead-cells-powerful-grenade-dead-cells
+,Bombs,Fire_Grenade_Dead_Cells,Fire Grenade,Dead Cells,24x24,The Fire Grenade,https://deadcells.wiki.gg/wiki/File:Fire_Grenade_Icon.png,ok,to review,no,,ico-dead-cells-fire-grenade-dead-cells
+,Bombs,Cluster_Grenade_Dead_Cells,Cluster Grenade,Dead Cells,24x24,The Cluster Grenade,https://deadcells.wiki.gg/wiki/File:Cluster_Grenade_Icon.png,ok,to review,no,,ico-dead-cells-cluster-grenade-dead-cells
+,Chests,Treasure_Chest_Dead_Cells,Treasure Chest,Dead Cells,96x70,"A treasure chest, closed",https://deadcells.wiki.gg/wiki/File:Treasurechest_Closed.png,ok,on sheet,yes,,ico-dead-cells-treasure-chest-dead-cells
+,Chests,Bank_Chest_Dead_Cells,Bank Chest,Dead Cells,97x92,The Bank's chest,https://deadcells.wiki.gg/wiki/File:Bank_Chest.png,ok,on sheet,yes,,ico-dead-cells-bank-chest-dead-cells
+,Difficulties,1_Boss_Cell_Dead_Cells_0-2,1 Boss Cell,Dead Cells,22x24,The mark of a run with 1 Boss Stem Cell,https://deadcells.wiki.gg/wiki/File:BSCI_Icon.png,ok,to review,no,,ico-dead-cells-1-boss-cell-dead-cells-0-2
+,Difficulties,2_Boss_Cells_Dead_Cells_3-4,2 Boss Cells,Dead Cells,22x24,The mark of a run with 2 Boss Stem Cells,https://deadcells.wiki.gg/wiki/File:BSCII_Icon.png,ok,to review,no,,ico-dead-cells-2-boss-cells-dead-cells-3-4
+,Difficulties,3_Boss_Cells_Dead_Cells_5-6,3 Boss Cells,Dead Cells,22x24,The mark of a run with 3 Boss Stem Cells,https://deadcells.wiki.gg/wiki/File:BSCIII_Icon.png,ok,to review,no,,ico-dead-cells-3-boss-cells-dead-cells-5-6
+,Difficulties,4_Boss_Cells_Dead_Cells_7-8,4 Boss Cells,Dead Cells,22x24,The mark of a run with 4 Boss Stem Cells,https://deadcells.wiki.gg/wiki/File:BSCIV_Icon.png,ok,to review,no,,ico-dead-cells-4-boss-cells-dead-cells-7-8
+,Difficulties,5_Boss_Cells_Dead_Cells_9-10,5 Boss Cells,Dead Cells,22x24,The mark of a run with 5 Boss Stem Cells,https://deadcells.wiki.gg/wiki/File:BSCV_Icon.png,ok,to review,no,,ico-dead-cells-5-boss-cells-dead-cells-9-10
+,Gold,Gold_Bar_Spelunky_Classic,Gold Bar,Spelunky Classic,24x15,A gold bar (the original game's pixel sprite),https://spelunky.fandom.com/wiki/File:Gold_Bar.png,ok,on sheet,yes,,ico-spelunky-classic-gold-bar-spelunky-classic
+,Gold,Gold_Stack_Spelunky_Classic,Gold Stack,Spelunky Classic,48x30,A stack of gold bars (the original game's pixel sprite),https://spelunky.fandom.com/wiki/File:Gold_Stack.png,ok,to review,no,,ico-spelunky-classic-gold-stack-spelunky-classic
+,Gold,Gold_Nugget_Spelunky_Classic,Gold Nugget,Spelunky Classic,24x24,A large gold nugget (the original game's pixel sprite),https://spelunky.fandom.com/wiki/File:Large_Gold_Nugget.png,ok,to review,no,,ico-spelunky-classic-gold-nugget-spelunky-classic
+,Gold,Diamond_Spelunky_Classic,Diamond,Spelunky Classic,24x24,A diamond (the original game's pixel sprite),https://spelunky.fandom.com/wiki/File:Diamond.png,ok,to review,no,,ico-spelunky-classic-diamond-spelunky-classic
+,Gold,Ruby_Spelunky_Classic,Ruby,Spelunky Classic,24x24,A large ruby (the original game's pixel sprite),https://spelunky.fandom.com/wiki/File:Large_Ruby.png,ok,to review,no,,ico-spelunky-classic-ruby-spelunky-classic
+,Bombs,Bomb_Bag_Spelunky_Classic,Bomb Bag,Spelunky Classic,36x36,The bomb bag: 3 bombs (the original game's pixel sprite),https://spelunky.fandom.com/wiki/File:Bomb_Bag_Small.png,ok,to review,no,,ico-spelunky-classic-bomb-bag-spelunky-classic
+,Bombs,Bomb_Box_Spelunky_Classic,Bomb Box,Spelunky Classic,42x33,The bomb box: 12 bombs (the original game's pixel sprite),https://spelunky.fandom.com/wiki/File:Bomb_Box_Small.png,ok,to review,no,,ico-spelunky-classic-bomb-box-spelunky-classic
+,Difficulties,Golden_Idol_Spelunky_Classic,Golden Idol,Spelunky Classic,36x45,The golden idol (the original game's pixel sprite),https://spelunky.fandom.com/wiki/File:Golden_Idol.png,ok,on sheet,yes,,ico-spelunky-classic-golden-idol-spelunky-classic
+,Gold,Gold_Bar_Spelunky,Gold Bar,Spelunky,50x50,A gold bar,https://spelunky.fandom.com/wiki/File:Goldbar_treasure.png,ok,on sheet,yes,,ico-spelunky-gold-bar-spelunky
+,Gold,Gold_Stack_Spelunky,Gold Stack,Spelunky,60x60,A stack of gold bars,https://spelunky.fandom.com/wiki/File:Goldstack_treasure.png,ok,to review,no,,ico-spelunky-gold-stack-spelunky
+,Gold,Diamond_Spelunky,Diamond,Spelunky,50x50,A diamond,https://spelunky.fandom.com/wiki/File:Diamond_treasure.png,ok,to review,no,,ico-spelunky-diamond-spelunky
+,Keys,Gold_Key_Spelunky,Gold Key,Spelunky,52x27,The key that opens the locked chest,https://spelunky.fandom.com/wiki/File:Gold_Key_HD.png,ok,on sheet,yes,,ico-spelunky-gold-key-spelunky
+,Chests,Chest_Spelunky,Chest,Spelunky,65x49,A treasure chest,https://spelunky.fandom.com/wiki/File:Chest_HD.png,ok,on sheet,yes,,ico-spelunky-chest-spelunky
+,Chests,Locked_Chest_Spelunky,Locked Chest,Spelunky,66x48,The locked chest that holds the Udjat Eye,https://spelunky.fandom.com/wiki/File:Locked_Chest_HD.png,ok,to review,no,,ico-spelunky-locked-chest-spelunky
+,Chests,Crate_Spelunky,Crate,Spelunky,59x51,An item crate,https://spelunky.fandom.com/wiki/File:Crate_HD.png,ok,to review,no,,ico-spelunky-crate-spelunky
+,Shields,Shield_Spelunky,Shield,Spelunky,68x97,The Black Knight's shield,https://spelunky.fandom.com/wiki/File:Shield_HD.png,ok,to review,no,,ico-spelunky-shield-spelunky
+,Bombs,Bomb_Bag_Spelunky,Bomb Bag,Spelunky,82x81,The bomb bag: 3 bombs,https://spelunky.fandom.com/wiki/File:Bomb_Bag_HD.png,ok,to review,no,,ico-spelunky-bomb-bag-spelunky
+,Bombs,Bomb_Box_Spelunky,Bomb Box,Spelunky,94x80,The bomb box: 12 bombs,https://spelunky.fandom.com/wiki/File:Bomb_Box_HD.png,ok,to review,no,,ico-spelunky-bomb-box-spelunky
+,Damage,Machete_Spelunky,Machete,Spelunky,108x28,The machete,https://spelunky.fandom.com/wiki/File:Machete_HD.png,ok,to review,no,,ico-spelunky-machete-spelunky
+,Damage,Shotgun_Spelunky,Shotgun,Spelunky,106x48,The shotgun,https://spelunky.fandom.com/wiki/File:Shotgun_HD.png,ok,to review,no,,ico-spelunky-shotgun-spelunky
+,Health,Ankh_Spelunky,Ankh,Spelunky,79x85,The Ankh: one life back,https://spelunky.fandom.com/wiki/File:Ankh_HD.png,ok,to review,no,,ico-spelunky-ankh-spelunky
+,Health,Kapala_Spelunky,Kapala,Spelunky,96x97,The Kapala: collect blood for health,https://spelunky.fandom.com/wiki/File:Kapala_HD.png,ok,to review,no,,ico-spelunky-kapala-spelunky
+,Luck,Udjat_Eye_Spelunky,Udjat Eye,Spelunky,103x73,The Udjat Eye,https://spelunky.fandom.com/wiki/File:Udjat_Eye_HD.png,ok,to review,no,,ico-spelunky-udjat-eye-spelunky
+,Difficulties,Golden_Idol_Spelunky,Golden Idol,Spelunky,64x82,The golden idol,https://spelunky.fandom.com/wiki/File:Idol_HD.png,ok,on sheet,yes,,ico-spelunky-golden-idol-spelunky
+,Health,Heart_Spelunky_2,Heart,Spelunky 2,52x46,The health heart,https://spelunky.fandom.com/wiki/File:Arena_Health_S2.png,ok,on sheet,yes,,ico-spelunky-2-heart-spelunky-2
+,Health,Ankh_Spelunky_2,Ankh,Spelunky 2,64x87,The Ankh: one life back,https://spelunky.fandom.com/wiki/File:Ankh_Link_S2.png,ok,to review,no,,ico-spelunky-2-ankh-spelunky-2
+,Health,Kapala_Spelunky_2,Kapala,Spelunky 2,85x78,The Kapala: collect blood for health,https://spelunky.fandom.com/wiki/File:Kapala_Link_S2.png,ok,to review,no,,ico-spelunky-2-kapala-spelunky-2
+,Bombs,Bomb_Bag_Spelunky_2,Bomb Bag,Spelunky 2,80x85,The bomb bag: 3 bombs,https://spelunky.fandom.com/wiki/File:Bomb_Bag_Link_S2.png,ok,to review,no,,ico-spelunky-2-bomb-bag-spelunky-2
+,Bombs,Bomb_Box_Spelunky_2,Bomb Box,Spelunky 2,99x83,The bomb box: 12 bombs,https://spelunky.fandom.com/wiki/File:Bomb_Box_Link_S2.png,ok,to review,no,,ico-spelunky-2-bomb-box-spelunky-2
+,Bombs,Sticky_Bomb_Spelunky_2,Sticky Bomb,Spelunky 2,67x71,A bomb covered in paste,https://spelunky.fandom.com/wiki/File:Sticky_Bomb_S2.png,ok,to review,no,,ico-spelunky-2-sticky-bomb-spelunky-2
+,Keys,Key_Spelunky_2,Key,Spelunky 2,102x53,The key to a locked shop door,https://spelunky.fandom.com/wiki/File:Key_Link_S2.png,ok,on sheet,yes,,ico-spelunky-2-key-spelunky-2
+,Keys,Gold_Key_Spelunky_2,Gold Key,Spelunky 2,103x50,The gold key that opens the locked chest,https://spelunky.fandom.com/wiki/File:Gold_Key_Link_S2.png,ok,to review,no,,ico-spelunky-2-gold-key-spelunky-2
+,Keys,Skeleton_Key_Spelunky_2,Skeleton Key,Spelunky 2,113x55,The Skeleton Key,https://spelunky.fandom.com/wiki/File:Skeleton_Key_Link_S2.png,ok,to review,no,,ico-spelunky-2-skeleton-key-spelunky-2
+,Chests,Chest_Spelunky_2,Chest,Spelunky 2,96x72,A treasure chest,https://spelunky.fandom.com/wiki/File:Chest_Link_S2.png,ok,on sheet,yes,,ico-spelunky-2-chest-spelunky-2
+,Chests,Locked_Chest_Spelunky_2,Locked Chest,Spelunky 2,110x79,The locked chest that holds the Udjat Eye,https://spelunky.fandom.com/wiki/File:Locked_Chest_Link_S2.png,ok,to review,no,,ico-spelunky-2-locked-chest-spelunky-2
+,Chests,Crate_Spelunky_2,Crate,Spelunky 2,102x88,An item crate,https://spelunky.fandom.com/wiki/File:Crate_Link_S2.png,ok,to review,no,,ico-spelunky-2-crate-spelunky-2
+,Shields,Metal_Shield_Spelunky_2,Metal Shield,Spelunky 2,73x106,The Metal Shield,https://spelunky.fandom.com/wiki/File:Metal_Shield_Link_S2.png,ok,to review,no,,ico-spelunky-2-metal-shield-spelunky-2
+,Shields,Wooden_Shield_Spelunky_2,Wooden Shield,Spelunky 2,72x93,The Wooden Shield,https://spelunky.fandom.com/wiki/File:Wooden_Shield_Link_S2.png,ok,to review,no,,ico-spelunky-2-wooden-shield-spelunky-2
+,Gold,Gold_Bar_Spelunky_2,Gold Bar,Spelunky 2,74x31,A gold bar,https://spelunky.fandom.com/wiki/File:Gold_Bar_Link_S2.png,ok,on sheet,yes,,ico-spelunky-2-gold-bar-spelunky-2
+,Gold,Gold_Bars_Spelunky_2,Gold Bars,Spelunky 2,109x57,A stack of gold bars,https://spelunky.fandom.com/wiki/File:Gold_Bars_Link_S2.png,ok,to review,no,,ico-spelunky-2-gold-bars-spelunky-2
+,Gold,Gold_Nugget_Spelunky_2,Gold Nugget,Spelunky 2,57x49,A large gold nugget,https://spelunky.fandom.com/wiki/File:Large_Gold_Nugget_Link_S2.png,ok,to review,no,,ico-spelunky-2-gold-nugget-spelunky-2
+,Gold,Diamond_Spelunky_2,Diamond,Spelunky 2,95x69,A diamond,https://spelunky.fandom.com/wiki/File:Diamond_Link_S2.png,ok,to review,no,,ico-spelunky-2-diamond-spelunky-2
+,Gold,Ruby_Spelunky_2,Ruby,Spelunky 2,80x83,A ruby,https://spelunky.fandom.com/wiki/File:Ruby_Link_S2.png,ok,to review,no,,ico-spelunky-2-ruby-spelunky-2
+,Gold,Pot_of_Gold_Spelunky_2,Pot of Gold,Spelunky 2,126x112,The leprechaun's pot of gold,https://spelunky.fandom.com/wiki/File:Pot_of_Gold_Link_S2.png,ok,to review,no,,ico-spelunky-2-pot-of-gold-spelunky-2
+,Luck,Four-Leaf_Clover_Spelunky_2,Four-Leaf Clover,Spelunky 2,60x82,The Four-Leaf Clover: the ghost comes later,https://spelunky.fandom.com/wiki/File:Four-Leaf_Clover_Link_S2.png,ok,to review,no,,ico-spelunky-2-four-leaf-clover-spelunky-2
+,Luck,Udjat_Eye_Spelunky_2,Udjat Eye,Spelunky 2,90x62,The Udjat Eye,https://spelunky.fandom.com/wiki/File:Udjat_Eye_Link_S2.png,ok,to review,no,,ico-spelunky-2-udjat-eye-spelunky-2
+,Damage,Whip_Spelunky_2,Whip,Spelunky 2,111x110,The whip,https://spelunky.fandom.com/wiki/File:Whip_Link_S2.png,ok,to review,no,,ico-spelunky-2-whip-spelunky-2
+,Damage,Machete_Spelunky_2,Machete,Spelunky 2,125x34,The machete,https://spelunky.fandom.com/wiki/File:Machete_Link_S2.png,ok,to review,no,,ico-spelunky-2-machete-spelunky-2
+,Damage,Shotgun_Spelunky_2,Shotgun,Spelunky 2,106x46,The shotgun,https://spelunky.fandom.com/wiki/File:Shotgun_Link_S2.png,ok,to review,no,,ico-spelunky-2-shotgun-spelunky-2
+,Difficulties,Golden_Idol_Spelunky_2,Golden Idol,Spelunky 2,75x92,The golden idol,https://spelunky.fandom.com/wiki/File:Golden_Idol_Link_S2.png,ok,on sheet,yes,,ico-spelunky-2-golden-idol-spelunky-2
+,Difficulties,Tusk_Idol_Spelunky_2,Tusk Idol,Spelunky 2,81x93,The Tusk Idol,https://spelunky.fandom.com/wiki/File:The_Tusk_Idol_Link_S2.png,ok,to review,no,,ico-spelunky-2-tusk-idol-spelunky-2
