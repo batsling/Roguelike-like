@@ -437,8 +437,10 @@ python3 tools/icon_research.py apply                           # after the owner
   the new picture and ask again. Never type the answers into the CSV by hand,
   and never send a list or table whose numbers were worked out separately from
   the picture. Finish every change to the candidates BEFORE the sheet that is
-  sent. (13 Nov 2026: one row was dropped after a sheet went out, every later
-  number shifted by one, and five wrong icons went into the game.) After
+  sent. (13 Nov 2026: a row was dropped between two drawings of one sheet, nobody
+  could say afterwards which drawing the owner had answered from, and five
+  right icons were swapped out for five wrong ones before the picture was
+  looked at again.) After
   `answer`, read the yes list back to the owner by name.
 - **`apply`** moves every `yes` into `images2.0/icons/<Kind>/` and rebuilds
   `data/cosmetics.json`; a `no` loses its picture and keeps its row, so it is

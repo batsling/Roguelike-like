@@ -210,8 +210,8 @@ def numbers(words):
 def cmd_answer(args):
     """The owner's numbers, read against the sheet they were shown. Refuses when
     the candidates are no longer the ones that sheet drew (13 Nov 2026: a row
-    dropped after the sheet went out shifted every later number by one, and five
-    wrong icons went into the game)."""
+    dropped between two drawings of a sheet left it unclear which numbering the
+    owner had answered from, and five icons were swapped for the wrong ones)."""
     drawn = R.load_json(NUMBERS, {}).get("ids")
     if not drawn:
         sys.exit("no sheet on record: run `sheet`, show it, then answer")

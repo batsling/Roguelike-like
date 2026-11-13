@@ -233,6 +233,20 @@
 			]
 		},
 		{
+			"id": "key/key_spelunky_2",
+			"kind": "key",
+			"name": "Key",
+			"game": "spelunky_2",
+			"images": [
+				{
+					"name": "Key",
+					"path": "res://images2.0/icons/Keys/Key_Spelunky_2.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
 			"id": "key/key_the_binding_of_isaac",
 			"kind": "key",
 			"name": "Key",
@@ -269,20 +283,6 @@
 				{
 					"name": "Skeleton Key",
 					"path": "res://images2.0/icons/Keys/Skeleton_Key_NetHack.png",
-					"min": 0,
-					"max": 10
-				}
-			]
-		},
-		{
-			"id": "key/skeleton_key_spelunky_2",
-			"kind": "key",
-			"name": "Skeleton Key",
-			"game": "spelunky_2",
-			"images": [
-				{
-					"name": "Skeleton Key",
-					"path": "res://images2.0/icons/Keys/Skeleton_Key_Spelunky_2.png",
 					"min": 0,
 					"max": 10
 				}
@@ -429,20 +429,6 @@
 			]
 		},
 		{
-			"id": "bomb/sticky_bomb_spelunky_2",
-			"kind": "bomb",
-			"name": "Sticky Bomb",
-			"game": "spelunky_2",
-			"images": [
-				{
-					"name": "Sticky Bomb",
-					"path": "res://images2.0/icons/Bombs/Sticky_Bomb_Spelunky_2.png",
-					"min": 0,
-					"max": 10
-				}
-			]
-		},
-		{
 			"id": "difficulty/amulet_of_yendor_nethack",
 			"kind": "difficulty",
 			"name": "Amulet of Yendor",
@@ -549,6 +535,20 @@
 				{
 					"name": "Golden Idol",
 					"path": "res://images2.0/icons/Difficulties/Golden_Idol_Spelunky.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "difficulty/golden_idol_spelunky_2",
+			"kind": "difficulty",
+			"name": "Golden Idol",
+			"game": "spelunky_2",
+			"images": [
+				{
+					"name": "Golden Idol",
+					"path": "res://images2.0/icons/Difficulties/Golden_Idol_Spelunky_2.png",
 					"min": 0,
 					"max": 10
 				}
@@ -707,34 +707,6 @@
 			]
 		},
 		{
-			"id": "luck/udjat_eye_spelunky",
-			"kind": "luck",
-			"name": "Udjat Eye",
-			"game": "spelunky",
-			"images": [
-				{
-					"name": "Udjat Eye",
-					"path": "res://images2.0/icons/Luck/Udjat_Eye_Spelunky.png",
-					"min": 0,
-					"max": 10
-				}
-			]
-		},
-		{
-			"id": "chest/bank_chest_dead_cells",
-			"kind": "chest",
-			"name": "Bank Chest",
-			"game": "dead_cells",
-			"images": [
-				{
-					"name": "Bank Chest",
-					"path": "res://images2.0/icons/Chests/Bank_Chest_Dead_Cells.png",
-					"min": 0,
-					"max": 10
-				}
-			]
-		},
-		{
 			"id": "chest/chest_loop_hero",
 			"kind": "chest",
 			"name": "Chest",
@@ -791,6 +763,20 @@
 			]
 		},
 		{
+			"id": "chest/chest_spelunky_2",
+			"kind": "chest",
+			"name": "Chest",
+			"game": "spelunky_2",
+			"images": [
+				{
+					"name": "Chest",
+					"path": "res://images2.0/icons/Chests/Chest_Spelunky_2.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
 			"id": "chest/chest_the_binding_of_isaac",
 			"kind": "chest",
 			"name": "Chest",
@@ -829,6 +815,26 @@
 					"path": "res://images2.0/icons/Chests/Chest_Vampire_Survivors.png",
 					"min": 0,
 					"max": 10
+				}
+			]
+		},
+		{
+			"id": "chest/dead_cells",
+			"kind": "chest",
+			"name": "Treasure Chest / Bank Chest",
+			"game": "dead_cells",
+			"images": [
+				{
+					"name": "Treasure Chest",
+					"path": "res://images2.0/icons/Chests/Treasure_Chest_Dead_Cells_0-3.png",
+					"min": 0,
+					"max": 3
+				},
+				{
+					"name": "Bank Chest",
+					"path": "res://images2.0/icons/Chests/Bank_Chest_Dead_Cells_4-4.png",
+					"min": 4,
+					"max": 4
 				}
 			]
 		},
@@ -955,20 +961,6 @@
 			]
 		},
 		{
-			"id": "chest/treasure_chest_dead_cells",
-			"kind": "chest",
-			"name": "Treasure Chest",
-			"game": "dead_cells",
-			"images": [
-				{
-					"name": "Treasure Chest",
-					"path": "res://images2.0/icons/Chests/Treasure_Chest_Dead_Cells.png",
-					"min": 0,
-					"max": 10
-				}
-			]
-		},
-		{
 			"id": "health/health_mewgenics",
 			"kind": "health",
 			"name": "Health",
@@ -1075,6 +1067,20 @@
 				{
 					"name": "Heart",
 					"path": "res://images2.0/icons/Health/Heart_Rogue_Legacy_2.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "health/heart_spelunky_2",
+			"kind": "health",
+			"name": "Heart",
+			"game": "spelunky_2",
+			"images": [
+				{
+					"name": "Heart",
+					"path": "res://images2.0/icons/Health/Heart_Spelunky_2.png",
 					"min": 0,
 					"max": 10
 				}
@@ -1235,20 +1241,6 @@
 			]
 		},
 		{
-			"id": "damage/shotgun_spelunky_2",
-			"kind": "damage",
-			"name": "Shotgun",
-			"game": "spelunky_2",
-			"images": [
-				{
-					"name": "Shotgun",
-					"path": "res://images2.0/icons/Damage/Shotgun_Spelunky_2.png",
-					"min": 0,
-					"max": 10
-				}
-			]
-		},
-		{
 			"id": "gold/charon_s_obol_hades",
 			"kind": "gold",
 			"name": "Charon's Obol",
@@ -1383,6 +1375,20 @@
 				{
 					"name": "Gold Bar",
 					"path": "res://images2.0/icons/Gold/Gold_Bar_Spelunky.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "gold/gold_bar_spelunky_2",
+			"kind": "gold",
+			"name": "Gold Bar",
+			"game": "spelunky_2",
+			"images": [
+				{
+					"name": "Gold Bar",
+					"path": "res://images2.0/icons/Gold/Gold_Bar_Spelunky_2.png",
 					"min": 0,
 					"max": 10
 				}
@@ -1719,20 +1725,6 @@
 				{
 					"name": "Shields",
 					"path": "res://images2.0/icons/Shields/Shields_FTL.png",
-					"min": 0,
-					"max": 10
-				}
-			]
-		},
-		{
-			"id": "shield/wooden_shield_spelunky_2",
-			"kind": "shield",
-			"name": "Wooden Shield",
-			"game": "spelunky_2",
-			"images": [
-				{
-					"name": "Wooden Shield",
-					"path": "res://images2.0/icons/Shields/Wooden_Shield_Spelunky_2.png",
 					"min": 0,
 					"max": 10
 				}
