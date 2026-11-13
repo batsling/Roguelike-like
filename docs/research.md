@@ -3,7 +3,7 @@
 The project is a graph of real games, and each of them has more to give than its
 place on the map: who it influenced, what it is about, and the monsters, items,
 events, heroes, statuses and places this game can borrow. Research is how that
-gets found. It is organised as **eight kinds**, one system, one entry point
+gets found. It is organised as **nine kinds**, one system, one entry point
 (`tools/research.py`), one review workbook (`tools/Research.xlsx`) and one ledger.
 
 | kind | the question asked of a game | rows land on | how it is researched |
@@ -17,6 +17,7 @@ gets found. It is organised as **eight kinds**, one system, one entry point
 | statuses | which status effects and curses could become one here | `statuses`, `curses` | its wiki, by hand: §6.5 |
 | locations | which places or map objects could become a location or object | `locations`, `objects` | its wiki, by hand: §6.6 |
 | location effects | what a location could DO, from this game's own content — not from any one source game | `locations` (Description, Effect) | by hand from the project, not a wiki: §6.7 |
+| icons | which of its own pictures (a heart, a coin, a key…) could be worn as an icon here | `images2.0/icons/<Kind>/` — an art folder, not a sheet | **when the owner asks**, with `tools/icon_research.py`: §6.8 |
 
 **The rule that does not change:** nothing goes into `tools/Roguelikes.xlsx`
 until the owner has said `yes` to it. `Research.xlsx` is a **brainstorming
@@ -393,6 +394,47 @@ sheet already does ALL of it: every clause of its Effect, read with its kind
 (`arrive:`, `while:`, `action 4:`), is a clause of that location's Effect
 (`research.effect_clauses`). Free Passage is The Void's `while: offering_rift 1`,
 so it is not asked about again.
+
+### 6.8 icons → `research/icons.csv`
+
+The one kind that is **asked for**, never swept: it is not in the ledger and
+not part of `research.py new`. The owner names a game, a kind of icon, or just
+"find me some coins", and gets pictures back to say yes or no to.
+
+A row is one picture a game draws for something this game also has: `Kind` is
+the art folder it would go in (`Health`, `Damage`, `Gold`, `Shields`, `Luck`,
+`Keys`, `Bombs`, `Chests`, `Difficulties`), `File` the name it would carry there
+(`<Name>_<Game>`, the form [customization.md](customization.md) §2 reads the
+game out of), `Size` its real pixel size and `Source` the page it came from.
+The picture itself waits in `research/icons/<Kind>/<File>.png`, which Godot
+never imports (`research/.gdignore`).
+
+```bash
+python3 tools/icon_research.py best "Brotato" Max_HP.png      # the wiki's ORIGINAL and every look-alike, largest first
+python3 tools/icon_research.py add Health "Max HP" "Brotato" brotato--Max_HP.png --what "The Max HP stat" --page <url>
+python3 tools/research.py check && python3 tools/research.py build
+python3 tools/icon_research.py sheet                           # a numbered contact sheet, to show the owner in chat
+python3 tools/icon_research.py apply                           # after the owner's yes / no (and `research.py sync`)
+```
+
+- **Always the best version** (`best`): the original file rather than a
+  thumbnail, lossless rather than WebP, and the other files of the same name
+  looked at. Bigger with a frame or a background is a different icon, so the
+  choice is made by looking, not by pixel count. Never upscale.
+- **What makes a candidate**: it reads at 16–24 px on a dark panel, it has a
+  transparent background, it is the game's own drawing for that thing (its
+  Health, its currency) and not a screenshot crop, and no icon of that kind from
+  that game is already in the folder.
+- **Two ways to review.** `Research.xlsx`'s `icons` sheet shows each picture on
+  a dark tile beside the yellow `Owner` column. Or `sheet` writes one numbered
+  image to show in the conversation, and the owner answers by number; their
+  answers are then typed into the CSV's `Owner` column.
+- **`apply`** moves every `yes` into `images2.0/icons/<Kind>/` and rebuilds
+  `data/cosmetics.json`; a `no` loses its picture and keeps its row, so it is
+  not proposed twice. `build` then reads a moved row as `on sheet`.
+- **A picture with a background is cleaned before it is offered as final.**
+  Loop Hero's chest came on black: the background was flood-filled away from
+  the border at the art's native size, keeping the 1px outline.
 
 ## 7. When games are added
 

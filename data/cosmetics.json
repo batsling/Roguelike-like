@@ -247,6 +247,48 @@
 			]
 		},
 		{
+			"id": "bomb/bomb_peglin",
+			"kind": "bomb",
+			"name": "Bomb",
+			"game": "peglin",
+			"images": [
+				{
+					"name": "Bomb",
+					"path": "res://images2.0/icons/Bombs/Bomb_Peglin.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "bomb/bomb_rogue_legacy",
+			"kind": "bomb",
+			"name": "Bomb",
+			"game": "rogue_legacy",
+			"images": [
+				{
+					"name": "Bomb",
+					"path": "res://images2.0/icons/Bombs/Bomb_Rogue_Legacy.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "bomb/bomb_slay_the_spire",
+			"kind": "bomb",
+			"name": "Bomb",
+			"game": "slay_the_spire",
+			"images": [
+				{
+					"name": "Bomb",
+					"path": "res://images2.0/icons/Bombs/Bomb_Slay_the_Spire.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
 			"id": "bomb/bomb_spelunky_2",
 			"kind": "bomb",
 			"name": "Bomb",
@@ -331,6 +373,62 @@
 			]
 		},
 		{
+			"id": "difficulty/balatro",
+			"kind": "difficulty",
+			"name": "White Stake / Red Stake / Green Stake / Black Stake / Blue Stake / Purple Stake / Orange Stake / Gold Stake",
+			"game": "balatro",
+			"images": [
+				{
+					"name": "White Stake",
+					"path": "res://images2.0/icons/Difficulties/White_Stake_Balatro_0-0.png",
+					"min": 0,
+					"max": 0
+				},
+				{
+					"name": "Red Stake",
+					"path": "res://images2.0/icons/Difficulties/Red_Stake_Balatro_1-1.png",
+					"min": 1,
+					"max": 1
+				},
+				{
+					"name": "Green Stake",
+					"path": "res://images2.0/icons/Difficulties/Green_Stake_Balatro_2-2.png",
+					"min": 2,
+					"max": 2
+				},
+				{
+					"name": "Black Stake",
+					"path": "res://images2.0/icons/Difficulties/Black_Stake_Balatro_3-3.png",
+					"min": 3,
+					"max": 3
+				},
+				{
+					"name": "Blue Stake",
+					"path": "res://images2.0/icons/Difficulties/Blue_Stake_Balatro_4-4.png",
+					"min": 4,
+					"max": 4
+				},
+				{
+					"name": "Purple Stake",
+					"path": "res://images2.0/icons/Difficulties/Purple_Stake_Balatro_5-5.png",
+					"min": 5,
+					"max": 5
+				},
+				{
+					"name": "Orange Stake",
+					"path": "res://images2.0/icons/Difficulties/Orange_Stake_Balatro_6-6.png",
+					"min": 6,
+					"max": 6
+				},
+				{
+					"name": "Gold Stake",
+					"path": "res://images2.0/icons/Difficulties/Gold_Stake_Balatro_7-10.png",
+					"min": 7,
+					"max": 10
+				}
+			]
+		},
+		{
 			"id": "difficulty/hard_the_binding_of_isaac_rebirth",
 			"kind": "difficulty",
 			"name": "Hard",
@@ -399,6 +497,20 @@
 			]
 		},
 		{
+			"id": "luck/luck_brotato",
+			"kind": "luck",
+			"name": "Luck",
+			"game": "brotato",
+			"images": [
+				{
+					"name": "Luck",
+					"path": "res://images2.0/icons/Luck/Luck_Brotato.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
 			"id": "luck/luck_mewgenics",
 			"kind": "luck",
 			"name": "Luck",
@@ -421,6 +533,34 @@
 				{
 					"name": "Luck",
 					"path": "res://images2.0/icons/Luck/Luck_The_Binding_of_Isaac_Rebirth.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "chest/chest_loop_hero",
+			"kind": "chest",
+			"name": "Chest",
+			"game": "loop_hero",
+			"images": [
+				{
+					"name": "Chest",
+					"path": "res://images2.0/icons/Chests/Chest_Loop_Hero.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "chest/chest_peglin",
+			"kind": "chest",
+			"name": "Chest",
+			"game": "peglin",
+			"images": [
+				{
+					"name": "Chest",
+					"path": "res://images2.0/icons/Chests/Chest_Peglin.png",
 					"min": 0,
 					"max": 10
 				}
@@ -559,6 +699,20 @@
 			]
 		},
 		{
+			"id": "health/health_rogue_legacy",
+			"kind": "health",
+			"name": "Health",
+			"game": "rogue_legacy",
+			"images": [
+				{
+					"name": "Health",
+					"path": "res://images2.0/icons/Health/Health_Rogue_Legacy.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
 			"id": "health/health_the_binding_of_isaac",
 			"kind": "health",
 			"name": "Health",
@@ -581,6 +735,118 @@
 				{
 					"name": "Health",
 					"path": "res://images2.0/icons/Health/Health_Wildfrost.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "health/heart_enter_the_gungeon",
+			"kind": "health",
+			"name": "Heart",
+			"game": "enter_the_gungeon",
+			"images": [
+				{
+					"name": "Heart",
+					"path": "res://images2.0/icons/Health/Heart_Enter_the_Gungeon.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "health/heart_hades",
+			"kind": "health",
+			"name": "Heart",
+			"game": "hades",
+			"images": [
+				{
+					"name": "Heart",
+					"path": "res://images2.0/icons/Health/Heart_Hades.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "health/heart_peglin",
+			"kind": "health",
+			"name": "Heart",
+			"game": "peglin",
+			"images": [
+				{
+					"name": "Heart",
+					"path": "res://images2.0/icons/Health/Heart_Peglin.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "health/heart_rogue_legacy_2",
+			"kind": "health",
+			"name": "Heart",
+			"game": "rogue_legacy_2",
+			"images": [
+				{
+					"name": "Heart",
+					"path": "res://images2.0/icons/Health/Heart_Rogue_Legacy_2.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "health/max_hp_brotato",
+			"kind": "health",
+			"name": "Max HP",
+			"game": "brotato",
+			"images": [
+				{
+					"name": "Max HP",
+					"path": "res://images2.0/icons/Health/Max_HP_Brotato.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "damage/attack_rogue_legacy",
+			"kind": "damage",
+			"name": "Attack",
+			"game": "rogue_legacy",
+			"images": [
+				{
+					"name": "Attack",
+					"path": "res://images2.0/icons/Damage/Attack_Rogue_Legacy.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "damage/damage_brotato",
+			"kind": "damage",
+			"name": "Damage",
+			"game": "brotato",
+			"images": [
+				{
+					"name": "Damage",
+					"path": "res://images2.0/icons/Damage/Damage_Brotato.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "damage/damage_rogue_legacy_2",
+			"kind": "damage",
+			"name": "Damage",
+			"game": "rogue_legacy_2",
+			"images": [
+				{
+					"name": "Damage",
+					"path": "res://images2.0/icons/Damage/Damage_Rogue_Legacy_2.png",
 					"min": 0,
 					"max": 10
 				}
@@ -629,6 +895,34 @@
 			]
 		},
 		{
+			"id": "gold/charon_s_obol_hades",
+			"kind": "gold",
+			"name": "Charon's Obol",
+			"game": "hades",
+			"images": [
+				{
+					"name": "Charon's Obol",
+					"path": "res://images2.0/icons/Gold/Charon's_Obol_Hades.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "gold/charon_s_obol_rogue_legacy",
+			"kind": "gold",
+			"name": "Charon's Obol",
+			"game": "rogue_legacy",
+			"images": [
+				{
+					"name": "Charon's Obol",
+					"path": "res://images2.0/icons/Gold/Charon's_Obol_Rogue_Legacy.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
 			"id": "gold/coin_brutal_orchestra",
 			"kind": "gold",
 			"name": "Coin",
@@ -643,6 +937,34 @@
 			]
 		},
 		{
+			"id": "gold/coin_into_the_breach",
+			"kind": "gold",
+			"name": "Coin",
+			"game": "into_the_breach",
+			"images": [
+				{
+					"name": "Coin",
+					"path": "res://images2.0/icons/Gold/Coin_Into_the_Breach.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "gold/coin_rogue_legacy_2",
+			"kind": "gold",
+			"name": "Coin",
+			"game": "rogue_legacy_2",
+			"images": [
+				{
+					"name": "Coin",
+					"path": "res://images2.0/icons/Gold/Coin_Rogue_Legacy_2.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
 			"id": "gold/coin_vampire_survivors",
 			"kind": "gold",
 			"name": "Coin",
@@ -651,6 +973,34 @@
 				{
 					"name": "Coin",
 					"path": "res://images2.0/icons/Gold/Coin_Vampire_Survivors.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "gold/gold_coin_megabonk",
+			"kind": "gold",
+			"name": "Gold Coin",
+			"game": "megabonk",
+			"images": [
+				{
+					"name": "Gold Coin",
+					"path": "res://images2.0/icons/Gold/Gold_Coin_Megabonk.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "gold/gold_peglin",
+			"kind": "gold",
+			"name": "Gold",
+			"game": "peglin",
+			"images": [
+				{
+					"name": "Gold",
+					"path": "res://images2.0/icons/Gold/Gold_Peglin.png",
 					"min": 0,
 					"max": 10
 				}
@@ -699,6 +1049,20 @@
 			]
 		},
 		{
+			"id": "gold/hegemony_credit_enter_the_gungeon",
+			"kind": "gold",
+			"name": "Hegemony Credit",
+			"game": "enter_the_gungeon",
+			"images": [
+				{
+					"name": "Hegemony Credit",
+					"path": "res://images2.0/icons/Gold/Hegemony_Credit_Enter_the_Gungeon.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
 			"id": "gold/penny_the_binding_of_isaac",
 			"kind": "gold",
 			"name": "Penny",
@@ -721,6 +1085,104 @@
 				{
 					"name": "Penny",
 					"path": "res://images2.0/icons/Gold/Penny_The_Binding_of_Isaac_Rebirth.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "shield/armor_brotato",
+			"kind": "shield",
+			"name": "Armor",
+			"game": "brotato",
+			"images": [
+				{
+					"name": "Armor",
+					"path": "res://images2.0/icons/Shields/Armor_Brotato.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "shield/armor_enter_the_gungeon",
+			"kind": "shield",
+			"name": "Armor",
+			"game": "enter_the_gungeon",
+			"images": [
+				{
+					"name": "Armor",
+					"path": "res://images2.0/icons/Shields/Armor_Enter_the_Gungeon.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "shield/armor_hades",
+			"kind": "shield",
+			"name": "Armor",
+			"game": "hades",
+			"images": [
+				{
+					"name": "Armor",
+					"path": "res://images2.0/icons/Shields/Armor_Hades.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "shield/armor_rogue_legacy",
+			"kind": "shield",
+			"name": "Armor",
+			"game": "rogue_legacy",
+			"images": [
+				{
+					"name": "Armor",
+					"path": "res://images2.0/icons/Shields/Armor_Rogue_Legacy.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "shield/armor_rogue_legacy_2",
+			"kind": "shield",
+			"name": "Armor",
+			"game": "rogue_legacy_2",
+			"images": [
+				{
+					"name": "Armor",
+					"path": "res://images2.0/icons/Shields/Armor_Rogue_Legacy_2.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "shield/ballwark_peglin",
+			"kind": "shield",
+			"name": "Ballwark",
+			"game": "peglin",
+			"images": [
+				{
+					"name": "Ballwark",
+					"path": "res://images2.0/icons/Shields/Ballwark_Peglin.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "shield/block_backpack_battles",
+			"kind": "shield",
+			"name": "Block",
+			"game": "backpack_battles",
+			"images": [
+				{
+					"name": "Block",
+					"path": "res://images2.0/icons/Shields/Block_Backpack_Battles.png",
 					"min": 0,
 					"max": 10
 				}

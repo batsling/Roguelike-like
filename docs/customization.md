@@ -52,6 +52,15 @@ images2.0/icons/Gold/<Name>_<Game>.png
 images2.0/icons/Shields/<Name>_<Game>.png
 ```
 
+- **An icon goes in at its best version, every time** (the owner, 13 Nov 2026).
+  What gets pasted into a conversation is usually a wiki thumbnail: Brotato's
+  four arrived at 60 px with a dither pattern and the wiki's originals were a
+  clean 96. Before a file lands in `images2.0/icons/`, run
+  `python3 tools/icon_research.py best "<Game>" <File.png>`, which fetches the
+  wiki's original and every look-alike, largest first, and LOOK at them: a
+  bigger file with a frame is a different icon. Say in the reply which version
+  went in. Icons can also be researched for the owner to tick:
+  [research.md](research.md) §6.8.
 - `<Character>` is the display name with underscores (`Antonio_Belpaese`), and
   what follows it is the costume's title (`Slay_the_Spire_2` → "Slay the Spire
   2", `Clown_B&W` → "Clown B&W").

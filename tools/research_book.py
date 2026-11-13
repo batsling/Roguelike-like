@@ -25,7 +25,7 @@ BOOK = os.path.join(ROOT, "tools", "Research.xlsx")
 # Sheet order in the workbook. A sheet not named here goes after these, so an
 # owner's own scratch sheet survives a rebuild (at the end).
 ORDER = ["about", "status", "connections", "goals", "loot", "events", "characters", "statuses",
-         "locations", "location_effects", "tag suggestions", "new tag ideas", "vocabulary", "tags about", "_built"]
+         "locations", "location_effects", "icons", "tag suggestions", "new tag ideas", "vocabulary", "tags about", "_built"]
 
 BOLD = Font(bold=True)
 HEAD_FILL = PatternFill("solid", fgColor="D9E1F2")
@@ -106,6 +106,29 @@ def style_table(ws, widths, owner_col=None, wrap=()):
         dv.add(f"{letter}2:{letter}{max(ws.max_row, 2) + 500}")
         for row in ws.iter_rows(min_row=1, min_col=i, max_col=i):
             row[0].fill = OWNER_FILL
+
+
+def add_pictures(ws, paths, size=64):
+    """One picture per data row, in column A, each row tall enough to hold it.
+    Drawn on a dark tile, the way the game shows it, and scaled up to `size`
+    without smoothing so a 16px icon can be judged. A missing file is skipped."""
+    import io
+    from PIL import Image as PILImage
+    from openpyxl.drawing.image import Image as XLImage
+    for n, path in enumerate(paths, 2):
+        ws.row_dimensions[n].height = size * 0.75 + 6
+        if not os.path.exists(path):
+            continue
+        art = PILImage.open(path).convert("RGBA")
+        k = size / max(art.size)
+        art = art.resize((max(1, round(art.width * k)), max(1, round(art.height * k))),
+                         PILImage.NEAREST if k >= 1 else PILImage.LANCZOS)
+        tile = PILImage.new("RGBA", (size, size), (34, 34, 42, 255))
+        tile.alpha_composite(art, ((size - art.width) // 2, (size - art.height) // 2))
+        buf = io.BytesIO()
+        tile.convert("RGB").save(buf, "PNG")
+        buf.seek(0)
+        ws.add_image(XLImage(buf), f"A{n}")
 
 
 def read_sheet(wb, name):
