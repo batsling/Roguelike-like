@@ -16,6 +16,7 @@ goal_type = &"feat"
 goal = "Get the true ending on the hardest difficulty possible"
 abilities = [{"id": &"hexer", "amount": 2, "arg": &"", "text": ""}]
 ability_text = "Hexer (2)"
+tag = &"heart"
 size = "2x2"
 shape_rows = 2
 shape_cols = 2
