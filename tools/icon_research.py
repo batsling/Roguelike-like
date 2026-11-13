@@ -7,6 +7,7 @@ as a candidate for the owner to say yes or no to, and move a yes into the game.
     python3 tools/icon_research.py best --api https://x.wiki.gg/api.php "Some Game" Shield.png --against my.png
     python3 tools/icon_research.py add Health "Max HP" "Brotato" Max_HP.png --what "The Max HP stat's icon"
     python3 tools/icon_research.py add Gold Coin "Into the Breach" path/or/url.png --page https://…
+    python3 tools/icon_research.py add Chests "Bronze Chest" "Rogue Legacy 2" bronze.png --range 0-0   # one of a set
     python3 tools/icon_research.py sheet            # a numbered contact sheet of everything waiting
     python3 tools/icon_research.py apply            # after `research.py sync`: every yes into images2.0/icons/
 
@@ -134,6 +135,10 @@ def cmd_add(args):
     game, shown = suffix_game(stem, game_ids())
     if not game:
         sys.exit(f"{stem}: build_cosmetics_index.py would not find a game in that name")
+    if args.range:  # one image of a SET: a chest's size, a difficulty's Fracture levels
+        if not re.fullmatch(r"\d+-\d+", args.range):
+            sys.exit("--range is <lo>-<hi>, as in 0-0 or 2-3")
+        stem += "_" + args.range
     src = args.picture
     if not re.match(r"https?://", src) and not os.path.exists(src):
         src = os.path.join(WORK, src)  # a name `best` printed
@@ -220,6 +225,7 @@ def main():
     p.add_argument("picture", help="a URL, a path, or a file name `best` saved")
     p.add_argument("--what", default="", help="what it is in its own game")
     p.add_argument("--page", default="", help="the page it came from")
+    p.add_argument("--range", default="", help="<lo>-<hi> for one image of a set (customization.md §2)")
     p.set_defaults(fn=cmd_add)
     p = sub.add_parser("sheet", help="a numbered contact sheet of the candidates waiting")
     p.add_argument("--out")

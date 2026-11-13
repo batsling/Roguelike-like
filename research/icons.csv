@@ -20,3 +20,30 @@ Picture,Kind,File,Name,Game,Size,What it is there,Source,Confidence,Status,Owner
 ,Damage,Damage_Tome_Megabonk,Damage Tome,Megabonk,117x118,The tome that raises damage; drawn on a grey tile,https://megabonk.fandom.com/wiki/File:Damage-Tome.png,check,to review,no,,ico-megabonk-damage-tome-megabonk
 ,Luck,Luck_Tome_Megabonk,Luck Tome,Megabonk,116x118,The tome that raises Luck; drawn on a grey tile,https://megabonk.fandom.com/wiki/File:Luck-Tome.png,check,to review,no,,ico-megabonk-luck-tome-megabonk
 ,Shields,Shield_Tome_Megabonk,Shield Tome,Megabonk,116x117,The tome that grants a shield; drawn on a grey tile,https://megabonk.fandom.com/wiki/File:Shield-Tome.png,check,to review,no,,ico-megabonk-shield-tome-megabonk
+,Health,Health_Rogue_Legacy,Health,Rogue Legacy,60x60,The manor's Health Up skill; drawn in a grey frame,https://roguelegacy.wiki.gg/wiki/File:Health.png,check,to review,,,ico-rogue-legacy-health-rogue-legacy
+,Shields,Armor_Rogue_Legacy,Armor,Rogue Legacy,60x60,The manor's Armor Up skill; drawn in a grey frame,https://roguelegacy.wiki.gg/wiki/File:Armor.png,check,to review,,,ico-rogue-legacy-armor-rogue-legacy
+,Damage,Attack_Rogue_Legacy,Attack,Rogue Legacy,60x60,The manor's Attack Up skill; drawn in a grey frame,https://roguelegacy.wiki.gg/wiki/File:Attack.png,check,to review,,,ico-rogue-legacy-attack-rogue-legacy
+,Gold,Gold_Rogue_Legacy,Gold,Rogue Legacy,28x33,A gold coin dropped in the castle,https://roguelegacy.wiki.gg/wiki/File:Gold.png,ok,to review,,,ico-rogue-legacy-gold-rogue-legacy
+,Gold,Charon's_Obol_Rogue_Legacy,Charon's Obol,Rogue Legacy,134x134,The special item that lets an heir keep their gold past Charon,https://roguelegacy.wiki.gg/wiki/File:Charon's_Obol.png,check,to review,,,ico-rogue-legacy-charon-s-obol-rogue-legacy
+,Bombs,Bomb_Rogue_Legacy,Bomb,Rogue Legacy,28x40,A bomb sprite on the wiki; where it appears in the game is not confirmed,https://roguelegacy.wiki.gg/wiki/File:Bomb.png,check,to review,,,ico-rogue-legacy-bomb-rogue-legacy
+,Health,Heart_Rogue_Legacy_2,Heart,Rogue Legacy 2,80x104,The heart on the wiki's Health stat,https://rogue-legacy-2.fandom.com/wiki/File:Heart.png,ok,to review,,,ico-rogue-legacy-2-heart-rogue-legacy-2
+,Gold,Coin_Rogue_Legacy_2,Coin,Rogue Legacy 2,78x89,The gold coin picked up in the castle,https://rogue-legacy-2.fandom.com/wiki/File:Coin_Icon.png,ok,to review,,,ico-rogue-legacy-2-coin-rogue-legacy-2
+,Shields,Armor_Rogue_Legacy_2,Armor,Rogue Legacy 2,64x64,The Armor stat's icon,https://rogue-legacy-2.fandom.com/wiki/File:Icon_Armor.png,ok,to review,,,ico-rogue-legacy-2-armor-rogue-legacy-2
+,Damage,Damage_Rogue_Legacy_2,Damage,Rogue Legacy 2,64x64,The enemy damage icon shown on burdens and scaling,https://rogue-legacy-2.fandom.com/wiki/File:Icon_EnemyDMG.png,ok,to review,,,ico-rogue-legacy-2-damage-rogue-legacy-2
+,Chests,Bronze_Chest_Rogue_Legacy_2_0-0,Bronze Chest,Rogue Legacy 2,256x161,"The bronze chest; one of a set of five, picked by chest size",https://rogue-legacy-2.fandom.com/wiki/File:DeathIcon_Chest_Bronze.png,ok,to review,,,ico-rogue-legacy-2-bronze-chest-rogue-legacy-2-0-0
+,Chests,Silver_Chest_Rogue_Legacy_2_1-1,Silver Chest,Rogue Legacy 2,256x166,The silver chest (set),https://rogue-legacy-2.fandom.com/wiki/File:DeathIcon_Chest_Silver.png,ok,to review,,,ico-rogue-legacy-2-silver-chest-rogue-legacy-2-1-1
+,Chests,Gold_Chest_Rogue_Legacy_2_2-2,Gold Chest,Rogue Legacy 2,256x175,The gold chest (set),https://rogue-legacy-2.fandom.com/wiki/File:DeathIcon_Chest_Gold.png,ok,to review,,,ico-rogue-legacy-2-gold-chest-rogue-legacy-2-2-2
+,Chests,Fairy_Chest_Rogue_Legacy_2_3-3,Fairy Chest,Rogue Legacy 2,256x181,"The fairy chest, won by a room's challenge (set)",https://rogue-legacy-2.fandom.com/wiki/File:DeathIcon_Chest_Fairy.png,ok,to review,,,ico-rogue-legacy-2-fairy-chest-rogue-legacy-2-3-3
+,Chests,Boss_Chest_Rogue_Legacy_2_4-4,Boss Chest,Rogue Legacy 2,512x434,The chest a boss leaves (set),https://rogue-legacy-2.fandom.com/wiki/File:DeathIcon_Chest_Boss.png,ok,to review,,,ico-rogue-legacy-2-boss-chest-rogue-legacy-2-4-4
+,Health,Heart_Peglin,Heart,Peglin,80x75,The heart beside Peglin's health,https://peglin.wiki.gg/wiki/File:Heart.png,ok,to review,,,ico-peglin-heart-peglin
+,Difficulties,Cruciball_Peglin,Cruciball,Peglin,80x75,The purple heart that marks a Cruciball (difficulty) run,https://peglin.wiki.gg/wiki/File:Cruciball_heart.png,ok,to review,,,ico-peglin-cruciball-peglin
+,Gold,Gold_Peglin,Gold,Peglin,35x33,The pile of gold beside the run's gold count,https://peglin.wiki.gg/wiki/File:Gold.png,ok,to review,,,ico-peglin-gold-peglin
+,Shields,Ballwark_Peglin,Ballwark,Peglin,48x48,The Ballwark status: shield that absorbs damage,https://peglin.wiki.gg/wiki/File:Ballwark.png,ok,to review,,,ico-peglin-ballwark-peglin
+,Shields,Shield_Peglin,Shield,Peglin,27x32,The wooden shield enemies carry,https://peglin.wiki.gg/wiki/File:Shield.png,ok,to review,,,ico-peglin-shield-peglin
+,Bombs,Bomb_Peglin,Bomb,Peglin,32x35,A bomb peg on the board,https://peglin.wiki.gg/wiki/File:Bomb.png,ok,to review,,,ico-peglin-bomb-peglin
+,Bombs,Rigged_Bomb_Peglin,Rigged Bomb,Peglin,44x66,The red rigged bomb,https://peglin.wiki.gg/wiki/File:Bombs.png,ok,to review,,,ico-peglin-rigged-bomb-peglin
+,Damage,Strength_Peglin,Strength,Peglin,48x48,The Strength status icon; drawn in a red frame,https://peglin.wiki.gg/wiki/File:Strength.png,check,to review,,,ico-peglin-strength-peglin
+,Chests,Chest_Peglin,Chest,Peglin,141x117,The treasure chest of a relic room,https://peglin.wiki.gg/wiki/File:Chest_closed.png,ok,to review,,,ico-peglin-chest-peglin
+,Luck,Lucky_Penny_Peglin,Lucky Penny,Peglin,64x64,The Lucky Penny relic,https://peglin.wiki.gg/wiki/File:Lucky_Penny.png,ok,to review,,,ico-peglin-lucky-penny-peglin
+,Shields,Shield_Loop_Hero,Shield,Loop Hero,88x96,A shield as it drops for the Warrior,https://loophero.fandom.com/wiki/File:Shield1.png,ok,to review,,,ico-loop-hero-shield-loop-hero
+,Chests,Chest_Loop_Hero,Chest,Loop Hero,100x100,A treasure chest; the wiki's copy has a black background,https://loophero.fandom.com/wiki/File:Chest_item.png,check,to review,,,ico-loop-hero-chest-loop-hero
