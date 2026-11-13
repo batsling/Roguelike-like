@@ -414,6 +414,7 @@ python3 tools/icon_research.py best "Brotato" Max_HP.png      # the wiki's ORIGI
 python3 tools/icon_research.py add Health "Max HP" "Brotato" brotato--Max_HP.png --what "The Max HP stat" --page <url>
 python3 tools/research.py check && python3 tools/research.py build
 python3 tools/icon_research.py sheet                           # a numbered contact sheet, to show the owner in chat
+python3 tools/icon_research.py answer 1, 4, 13-16              # the owner's numbers off that picture: yes, the rest no
 python3 tools/icon_research.py apply                           # after the owner's yes / no (and `research.py sync`)
 ```
 
@@ -427,8 +428,18 @@ python3 tools/icon_research.py apply                           # after the owner
   that game is already in the folder.
 - **Two ways to review.** `Research.xlsx`'s `icons` sheet shows each picture on
   a dark tile beside the yellow `Owner` column. Or `sheet` writes one numbered
-  image to show in the conversation, and the owner answers by number; their
-  answers are then typed into the CSV's `Owner` column.
+  image to show in the conversation, and the owner answers by number.
+- **The owner reads the numbers off the PICTURE, so the picture is the only
+  numbering there is.** `sheet` records which candidate each number is, and
+  `answer` takes the owner's numbers against that record (`--skip` leaves some
+  waiting, for a game they have not played). It refuses if a candidate was
+  added, dropped or renamed since the sheet was drawn: draw a new sheet, send
+  the new picture and ask again. Never type the answers into the CSV by hand,
+  and never send a list or table whose numbers were worked out separately from
+  the picture. Finish every change to the candidates BEFORE the sheet that is
+  sent. (13 Nov 2026: one row was dropped after a sheet went out, every later
+  number shifted by one, and five wrong icons went into the game.) After
+  `answer`, read the yes list back to the owner by name.
 - **`apply`** moves every `yes` into `images2.0/icons/<Kind>/` and rebuilds
   `data/cosmetics.json`; a `no` loses its picture and keeps its row, so it is
   not proposed twice. `build` then reads a moved row as `on sheet`.

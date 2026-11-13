@@ -269,23 +269,23 @@ Picture,Kind,File,Name,Game,Size,What it is there,Source,Confidence,Status,Owner
 ,Damage,Shotgun_Spelunky,Shotgun,Spelunky,106x48,The shotgun,https://spelunky.fandom.com/wiki/File:Shotgun_HD.png,ok,to review,no,,ico-spelunky-shotgun-spelunky
 ,Health,Ankh_Spelunky,Ankh,Spelunky,79x85,The Ankh: one life back,https://spelunky.fandom.com/wiki/File:Ankh_HD.png,ok,to review,no,,ico-spelunky-ankh-spelunky
 ,Health,Kapala_Spelunky,Kapala,Spelunky,96x97,The Kapala: collect blood for health,https://spelunky.fandom.com/wiki/File:Kapala_HD.png,ok,to review,no,,ico-spelunky-kapala-spelunky
-,Luck,Udjat_Eye_Spelunky,Udjat Eye,Spelunky,103x73,The Udjat Eye,https://spelunky.fandom.com/wiki/File:Udjat_Eye_HD.png,ok,to review,no,,ico-spelunky-udjat-eye-spelunky
+,Luck,Udjat_Eye_Spelunky,Udjat Eye,Spelunky,103x73,The Udjat Eye,https://spelunky.fandom.com/wiki/File:Udjat_Eye_HD.png,ok,on sheet,yes,,ico-spelunky-udjat-eye-spelunky
 ,Difficulties,Golden_Idol_Spelunky,Golden Idol,Spelunky,64x82,The golden idol,https://spelunky.fandom.com/wiki/File:Idol_HD.png,ok,on sheet,yes,,ico-spelunky-golden-idol-spelunky
-,Health,Heart_Spelunky_2,Heart,Spelunky 2,52x46,The health heart,https://spelunky.fandom.com/wiki/File:Arena_Health_S2.png,ok,on sheet,yes,,ico-spelunky-2-heart-spelunky-2
+,Health,Heart_Spelunky_2,Heart,Spelunky 2,52x46,The health heart,https://spelunky.fandom.com/wiki/File:Arena_Health_S2.png,ok,on sheet,no,,ico-spelunky-2-heart-spelunky-2
 ,Health,Ankh_Spelunky_2,Ankh,Spelunky 2,64x87,The Ankh: one life back,https://spelunky.fandom.com/wiki/File:Ankh_Link_S2.png,ok,to review,no,,ico-spelunky-2-ankh-spelunky-2
 ,Health,Kapala_Spelunky_2,Kapala,Spelunky 2,85x78,The Kapala: collect blood for health,https://spelunky.fandom.com/wiki/File:Kapala_Link_S2.png,ok,to review,no,,ico-spelunky-2-kapala-spelunky-2
 ,Bombs,Bomb_Bag_Spelunky_2,Bomb Bag,Spelunky 2,80x85,The bomb bag: 3 bombs,https://spelunky.fandom.com/wiki/File:Bomb_Bag_Link_S2.png,ok,to review,no,,ico-spelunky-2-bomb-bag-spelunky-2
 ,Bombs,Bomb_Box_Spelunky_2,Bomb Box,Spelunky 2,99x83,The bomb box: 12 bombs,https://spelunky.fandom.com/wiki/File:Bomb_Box_Link_S2.png,ok,to review,no,,ico-spelunky-2-bomb-box-spelunky-2
-,Bombs,Sticky_Bomb_Spelunky_2,Sticky Bomb,Spelunky 2,67x71,A bomb covered in paste,https://spelunky.fandom.com/wiki/File:Sticky_Bomb_S2.png,ok,to review,no,,ico-spelunky-2-sticky-bomb-spelunky-2
-,Keys,Key_Spelunky_2,Key,Spelunky 2,102x53,The key to a locked shop door,https://spelunky.fandom.com/wiki/File:Key_Link_S2.png,ok,on sheet,yes,,ico-spelunky-2-key-spelunky-2
+,Bombs,Sticky_Bomb_Spelunky_2,Sticky Bomb,Spelunky 2,67x71,A bomb covered in paste,https://spelunky.fandom.com/wiki/File:Sticky_Bomb_S2.png,ok,on sheet,yes,,ico-spelunky-2-sticky-bomb-spelunky-2
+,Keys,Key_Spelunky_2,Key,Spelunky 2,102x53,The key to a locked shop door,https://spelunky.fandom.com/wiki/File:Key_Link_S2.png,ok,on sheet,no,,ico-spelunky-2-key-spelunky-2
 ,Keys,Gold_Key_Spelunky_2,Gold Key,Spelunky 2,103x50,The gold key that opens the locked chest,https://spelunky.fandom.com/wiki/File:Gold_Key_Link_S2.png,ok,to review,no,,ico-spelunky-2-gold-key-spelunky-2
-,Keys,Skeleton_Key_Spelunky_2,Skeleton Key,Spelunky 2,113x55,The Skeleton Key,https://spelunky.fandom.com/wiki/File:Skeleton_Key_Link_S2.png,ok,to review,no,,ico-spelunky-2-skeleton-key-spelunky-2
-,Chests,Chest_Spelunky_2,Chest,Spelunky 2,96x72,A treasure chest,https://spelunky.fandom.com/wiki/File:Chest_Link_S2.png,ok,on sheet,yes,,ico-spelunky-2-chest-spelunky-2
+,Keys,Skeleton_Key_Spelunky_2,Skeleton Key,Spelunky 2,113x55,The Skeleton Key,https://spelunky.fandom.com/wiki/File:Skeleton_Key_Link_S2.png,ok,on sheet,yes,,ico-spelunky-2-skeleton-key-spelunky-2
+,Chests,Chest_Spelunky_2,Chest,Spelunky 2,96x72,A treasure chest,https://spelunky.fandom.com/wiki/File:Chest_Link_S2.png,ok,on sheet,no,,ico-spelunky-2-chest-spelunky-2
 ,Chests,Locked_Chest_Spelunky_2,Locked Chest,Spelunky 2,110x79,The locked chest that holds the Udjat Eye,https://spelunky.fandom.com/wiki/File:Locked_Chest_Link_S2.png,ok,to review,no,,ico-spelunky-2-locked-chest-spelunky-2
 ,Chests,Crate_Spelunky_2,Crate,Spelunky 2,102x88,An item crate,https://spelunky.fandom.com/wiki/File:Crate_Link_S2.png,ok,to review,no,,ico-spelunky-2-crate-spelunky-2
 ,Shields,Metal_Shield_Spelunky_2,Metal Shield,Spelunky 2,73x106,The Metal Shield,https://spelunky.fandom.com/wiki/File:Metal_Shield_Link_S2.png,ok,to review,no,,ico-spelunky-2-metal-shield-spelunky-2
-,Shields,Wooden_Shield_Spelunky_2,Wooden Shield,Spelunky 2,72x93,The Wooden Shield,https://spelunky.fandom.com/wiki/File:Wooden_Shield_Link_S2.png,ok,to review,no,,ico-spelunky-2-wooden-shield-spelunky-2
-,Gold,Gold_Bar_Spelunky_2,Gold Bar,Spelunky 2,74x31,A gold bar,https://spelunky.fandom.com/wiki/File:Gold_Bar_Link_S2.png,ok,on sheet,yes,,ico-spelunky-2-gold-bar-spelunky-2
+,Shields,Wooden_Shield_Spelunky_2,Wooden Shield,Spelunky 2,72x93,The Wooden Shield,https://spelunky.fandom.com/wiki/File:Wooden_Shield_Link_S2.png,ok,on sheet,yes,,ico-spelunky-2-wooden-shield-spelunky-2
+,Gold,Gold_Bar_Spelunky_2,Gold Bar,Spelunky 2,74x31,A gold bar,https://spelunky.fandom.com/wiki/File:Gold_Bar_Link_S2.png,ok,on sheet,no,,ico-spelunky-2-gold-bar-spelunky-2
 ,Gold,Gold_Bars_Spelunky_2,Gold Bars,Spelunky 2,109x57,A stack of gold bars,https://spelunky.fandom.com/wiki/File:Gold_Bars_Link_S2.png,ok,to review,no,,ico-spelunky-2-gold-bars-spelunky-2
 ,Gold,Gold_Nugget_Spelunky_2,Gold Nugget,Spelunky 2,57x49,A large gold nugget,https://spelunky.fandom.com/wiki/File:Large_Gold_Nugget_Link_S2.png,ok,to review,no,,ico-spelunky-2-gold-nugget-spelunky-2
 ,Gold,Diamond_Spelunky_2,Diamond,Spelunky 2,95x69,A diamond,https://spelunky.fandom.com/wiki/File:Diamond_Link_S2.png,ok,to review,no,,ico-spelunky-2-diamond-spelunky-2
@@ -295,6 +295,6 @@ Picture,Kind,File,Name,Game,Size,What it is there,Source,Confidence,Status,Owner
 ,Luck,Udjat_Eye_Spelunky_2,Udjat Eye,Spelunky 2,90x62,The Udjat Eye,https://spelunky.fandom.com/wiki/File:Udjat_Eye_Link_S2.png,ok,to review,no,,ico-spelunky-2-udjat-eye-spelunky-2
 ,Damage,Whip_Spelunky_2,Whip,Spelunky 2,111x110,The whip,https://spelunky.fandom.com/wiki/File:Whip_Link_S2.png,ok,to review,no,,ico-spelunky-2-whip-spelunky-2
 ,Damage,Machete_Spelunky_2,Machete,Spelunky 2,125x34,The machete,https://spelunky.fandom.com/wiki/File:Machete_Link_S2.png,ok,to review,no,,ico-spelunky-2-machete-spelunky-2
-,Damage,Shotgun_Spelunky_2,Shotgun,Spelunky 2,106x46,The shotgun,https://spelunky.fandom.com/wiki/File:Shotgun_Link_S2.png,ok,to review,no,,ico-spelunky-2-shotgun-spelunky-2
-,Difficulties,Golden_Idol_Spelunky_2,Golden Idol,Spelunky 2,75x92,The golden idol,https://spelunky.fandom.com/wiki/File:Golden_Idol_Link_S2.png,ok,on sheet,yes,,ico-spelunky-2-golden-idol-spelunky-2
+,Damage,Shotgun_Spelunky_2,Shotgun,Spelunky 2,106x46,The shotgun,https://spelunky.fandom.com/wiki/File:Shotgun_Link_S2.png,ok,on sheet,yes,,ico-spelunky-2-shotgun-spelunky-2
+,Difficulties,Golden_Idol_Spelunky_2,Golden Idol,Spelunky 2,75x92,The golden idol,https://spelunky.fandom.com/wiki/File:Golden_Idol_Link_S2.png,ok,on sheet,no,,ico-spelunky-2-golden-idol-spelunky-2
 ,Difficulties,Tusk_Idol_Spelunky_2,Tusk Idol,Spelunky 2,81x93,The Tusk Idol,https://spelunky.fandom.com/wiki/File:The_Tusk_Idol_Link_S2.png,ok,to review,no,,ico-spelunky-2-tusk-idol-spelunky-2
