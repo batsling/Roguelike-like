@@ -232,7 +232,7 @@ func _card(opt: Dictionary) -> Control:
 	btn.add_child(col)
 
 	if String(info.get("icon", "")) == "":
-		var art: TextureRect = UITheme.crisp_tex(UITheme.SHIELD_ART, ICON_PX)
+		var art: TextureRect = UITheme.crisp_tex(Cosmetics.shield_art(), ICON_PX)
 		art.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		art.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		col.add_child(art)

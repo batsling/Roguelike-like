@@ -141,10 +141,10 @@ func setup(entry: Dictionary, col: int, position_note: String = "") -> void:
 	Cosmetics.as_damage(dmg_row.get_child(0))   # this ⚔ is damage
 	stat_col.add_child(dmg_row)
 	# Shields only when it has some to spend: a body with none is the normal case
-	# and a "◆ Shield: 0" row on every card is a line of noise per enemy.
+	# and a "🛡 Shield: 0" row on every card is a line of noise per enemy.
 	var shield: int = GameLoop2.enemy_shield(entry)
 	if shield > 0:
-		stat_col.add_child(_stat_row("◆", "Shield",
+		stat_col.add_child(_stat_row("🛡", "Shield",
 			"absorbs the next %d damage" % shield, Color(0.62, 0.78, 0.95)))
 	stat_col.add_child(_stat_row("◎", "Position",
 		position_note if position_note != "" else _position_text(entry, col), accent))

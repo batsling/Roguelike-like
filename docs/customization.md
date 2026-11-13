@@ -8,7 +8,7 @@ and characters, and every choice is saved per profile
 | tab | what it changes |
 |---|---|
 | **Characters** | each character's **icon** and **full portrait**, chosen separately |
-| **Icons** | what is drawn in place of 🗝 (keys), ✸ (bombs), 🏆 (the trophy), 🍀 (Luck), 🎁 (a chest), ♥ (Health), ⚔ (damage) and ◉ (gold) |
+| **Icons** | what is drawn in place of 🗝 (keys), ✸ (bombs), 🏆 (the trophy), 🍀 (Luck), 🎁 (a chest), ♥ (Health), ⚔ (damage), ◉ (gold) and 🛡 (a shield) |
 | **Title Letters** | which earned letters the main menu's title may be spelled from |
 
 ## 1. Earning: a rank is a song, a letter or a look
@@ -49,6 +49,7 @@ images2.0/icons/Chests/<Name>_<Game>[_<lo>-<hi>].png
 images2.0/icons/Health/<Name>_<Game>.png
 images2.0/icons/Damage/<Name>_<Game>.png
 images2.0/icons/Gold/<Name>_<Game>.png
+images2.0/icons/Shields/<Name>_<Game>.png
 ```
 
 - `<Character>` is the display name with underscores (`Antonio_Belpaese`), and
@@ -106,7 +107,7 @@ at once.
 ### Every slot's choices
 
 Each slot (a character's icon or full portrait, or the key, bomb, difficulty,
-Luck, chest, Health, damage or gold icon) offers:
+Luck, chest, Health, damage, gold or shield icon) offers:
 
 - **Default:** the character's own art, or the glyph.
 - **🎲 Random:** a different look every run, rolled at `GameLoop2.start_run`
@@ -158,6 +159,14 @@ On a 🏆, the Fracture level is written over the picture in `Fracture.COLOR`.
   `Cosmetics.roomed(text, font, size, damage)` for the text as it will stand: a
   picture's room is a little wider than its glyph, and the board fits a body's
   ♥ and ⚔ badges to its width (`BattlefieldView.stat_row_width`).
+- **A shield is 🛡, written AND drawn.** In text it is the glyph (an enemy's
+  shield badge, the inventory, a blocked hit). Where shields stand as pictures
+  (the pips over the hero, the chip beside the Health, the Camp's Rest, the OBS
+  overlay) the picture is `Cosmetics.shield_art()`: the worn shield icon, else
+  `UITheme.SHIELD_ART`, which is that same glyph drawn once by
+  `tools/build_shield_art.py`. **Draw a shield with `Cosmetics.shield_art()`,
+  never `UITheme.SHIELD_ART` directly.** The pixel shield that used to be the
+  default is Brutal Orchestra's icon to earn.
 - **Gold is ◉**: the purse chip, the shop's purse, prices and gold Reroll, the
   Steal action and the inventory's Gold line. A kind with nothing to earn says so
   on its row ("No icons to earn yet").

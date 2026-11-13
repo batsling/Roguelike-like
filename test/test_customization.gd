@@ -346,8 +346,8 @@ func test_health_damage_and_gold_are_icon_kinds() -> void:
 	for kind in ["health", "damage", "gold"]:
 		by_kind[kind] = CosmeticCatalog.icons_of(kind).map(func(e): return String(e["game"]))
 	by_kind["gold"].sort()
-	assert_eq(by_kind["gold"], ["slay_the_spire", "slay_the_spire_2", "super_auto_pets",
-		"the_binding_of_isaac", "the_binding_of_isaac_rebirth", "vampire_survivors"])
+	assert_eq(by_kind["gold"], ["brutal_orchestra", "slay_the_spire", "slay_the_spire_2",
+		"super_auto_pets", "the_binding_of_isaac", "the_binding_of_isaac_rebirth", "vampire_survivors"])
 	assert_eq(by_kind["health"], ["the_binding_of_isaac", "wildfrost"])
 	assert_eq(by_kind["damage"], ["the_binding_of_isaac", "the_binding_of_isaac_rebirth", "wildfrost"])
 
@@ -405,6 +405,24 @@ func test_a_worn_damage_icon_only_stands_in_where_the_swords_mean_damage() -> vo
 	assert_eq(Cosmetics.roomed("⚔2×3", font, 12, true), Cosmetics._room(font, 12) + "2×3")
 	assert_eq(Cosmetics.roomed("⚔2", font, 12), "⚔2", "unmarked, the swords stay")
 	assert_eq(Cosmetics.roomed("♥2", font, 12), "♥2", "no Health icon is worn")
+
+# Shields (13 Nov 2026): the basic shield is the 🛡 glyph, written and drawn, and
+# the pixel shield it replaced is Brutal Orchestra's to earn.
+func test_the_shield_is_the_glyph_until_brutal_orchestras_is_worn() -> void:
+	var key := "shield/shield_brutal_orchestra"
+	assert_eq(String(CosmeticCatalog.entry(key).get("game", "")), "brutal_orchestra")
+	assert_eq(Cosmetics.shield_art(), UITheme.SHIELD_ART, "the basic shield, unworn")
+	Cosmetics.set_icon("shield", key)
+	assert_eq(Cosmetics.shield_art(), UITheme.SHIELD_ART, "worn but locked: still the basic one")
+	Cosmetics._unlocked[key] = "game:brutal_orchestra"
+	assert_string_contains(Cosmetics.shield_art().resource_path, "Shield_Brutal_Orchestra")
+	# …and where a shield is WRITTEN, an enemy's badge.
+	var l := Label.new()
+	l.text = "🛡2"
+	add_child_autofree(l)
+	Cosmetics.apply_glyph(l)
+	assert_false(l.text.contains("🛡"))
+	assert_string_contains(String(l.get_node(Cosmetics.GLYPH_NODE).get_meta(&"source")), "Shield_Brutal_Orchestra")
 
 func test_a_worn_gold_icon_replaces_the_coin() -> void:
 	var key := "gold/penny_the_binding_of_isaac_rebirth"

@@ -458,7 +458,7 @@ func _build_game_column(game: GameData, accent: Color) -> Control:
 	# the run grants none of them: nothing is being committed to yet.
 	var shields: int = 0 if bool(_notes.get("move_only", false)) else int(_notes.get("shields", 0))
 	if shields > 0:
-		facts.add_child(_icon_fact(UITheme.SHIELD_ART, "Gain +%s" % GameState.temp_shields_text(shields),
+		facts.add_child(_icon_fact(Cosmetics.shield_art(), "Gain +%s" % GameState.temp_shields_text(shields),
 			Overworld2.SHIELD_BLUE,
 			("Selecting %s grants %s. Each one stops a single hit outright, however "
 				+ "big, and whatever is left expires when you report the game.") % [

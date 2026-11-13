@@ -3004,7 +3004,7 @@ func _add_enemy_badges(holder: Control, entry: Dictionary, e: GoalEnemyData,
 	var shield: int = GameLoop2.enemy_shield(entry)
 	var row_texts: Array = [hp_text, dmg_text]
 	if shield > 0:
-		row_texts.append("◆%d" % shield)
+		row_texts.append("🛡%d" % shield)
 	# KEPT INSIDE THE BODY'S OWN WIDTH. The row used to be as wide as its badges at
 	# the cell's font, and on a narrow body (a one-cell body on a crowded board, a
 	# chipped "♥2/3" beside a "⚔3×2") it hung out past both side edges and over the
@@ -3047,7 +3047,7 @@ func _add_enemy_badges(holder: Control, entry: Dictionary, e: GoalEnemyData,
 	# than under the status pips — the pip says the body HAS Dexterity, this says
 	# how much of it is left.
 	if shield > 0:
-		stat_row.add_child(_stat_badge("◆%d" % shield, SHIELD_BLUE, stat_font))
+		stat_row.add_child(_stat_badge("🛡%d" % shield, SHIELD_BLUE, stat_font))
 	var gap := Control.new()
 	gap.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	gap.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -3341,9 +3341,9 @@ func _fill_shields() -> void:
 	var left: int = _shields_shown.x if _shields_shown.x >= 0 else GameState.shields
 	var bonus: int = _shields_shown.y if _shields_shown.y >= 0 else GameState.bonus_shields
 	for _i in range(bonus):
-		_hero_shields.add_child(UITheme.timed_art(UITheme.SHIELD_ART, SHIELD_PIP, false))
+		_hero_shields.add_child(UITheme.timed_art(Cosmetics.shield_art(), SHIELD_PIP, false))
 	for _i in range(left):
-		_hero_shields.add_child(UITheme.timed_art(UITheme.SHIELD_ART, SHIELD_PIP, true))
+		_hero_shields.add_child(UITheme.timed_art(Cosmetics.shield_art(), SHIELD_PIP, true))
 	_hero_shields.visible = left + bonus > 0
 	_hero_shields.tooltip_text = ("%s (the ones with a clock on them) — each stops "
 		+ "one hit outright, however big, and they go when you report this game.") \
@@ -4206,7 +4206,7 @@ func play_attempt_fx(cost: String) -> void:
 	if _fx_layer == null or not is_inside_tree():
 		return
 	if cost == "shield" or cost == "bonus":
-		_float_over_hero("-1 ◆", SHIELD_BLUE)
+		_float_over_hero("-1 🛡", SHIELD_BLUE)
 		_pop_shield_pips()
 
 # A number rising off the hero — the attempt tracker's feedback, thrown from the
@@ -4260,7 +4260,7 @@ func _spawn_strike_flash(rect: Rect2) -> void:
 func _spawn_damage_number(amount: int, from: Rect2, hero: Rect2,
 		blocked: bool = false) -> void:
 	var lbl := Label.new()
-	lbl.text = ("◆ -%d" if blocked else "-%d") % amount
+	lbl.text = ("🛡 -%d" if blocked else "-%d") % amount
 	lbl.add_theme_font_size_override("font_size", UITheme.FONT_DISPLAY)
 	lbl.add_theme_color_override("font_color", SHIELD_BLUE if blocked else Color(1.0, 0.42, 0.38))
 	lbl.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.95))

@@ -4,7 +4,7 @@ extends Node
 # has EARNED to look different, and what they have chosen to WEAR.
 #
 #   * COSTUMES for a character's icon and full portrait, chosen separately;
-#   * ICONS for keys, bombs, Luck, chests, Health, damage, gold and the trophy (a DIFFICULTY image stands
+#   * ICONS for keys, bombs, Luck, chests, Health, damage, gold, shields and the trophy (a DIFFICULTY image stands
 #     in for 🏆 wherever it is drawn, with the Fracture number on it; a CHEST image
 #     stands in for 🎁, and a set of them is picked by the chest's size);
 #   * which TITLE LETTERS the main menu may spell from — a whole game's, or one
@@ -105,7 +105,7 @@ func _refresh_unlocks(announce: bool) -> void:
 			var what: String = "costume" if String(e.get("unit", "")) == "costume" \
 				else {"key": "key icon", "bomb": "bomb icon", "difficulty": "difficulty icon",
 					"luck": "Luck icon", "chest": "chest icon", "health": "Health icon",
-					"damage": "damage icon", "gold": "gold icon"}.get(
+					"damage": "damage icon", "gold": "gold icon", "shield": "shield icon"}.get(
 					String(e.get("kind", "")), "look")
 			Notifications.notify("✦ New %s: %s" % [what, CosmeticCatalog.label(e)],
 				Color(0.95, 0.8, 0.45), CosmeticCatalog.texture(
@@ -256,7 +256,15 @@ func icon_of(ch: CharacterData) -> Texture2D:
 # when the default glyph is worn. `level` is the Fracture for a trophy and the
 # chest's size (0 Small … 3 Huge) for a gift.
 const GLYPHS := {"🗝": "key", "✸": "bomb", "🏆": "difficulty", "🍀": "luck", "🎁": "chest",
-	"♥": "health", "◉": "gold"}
+	"♥": "health", "◉": "gold", "🛡": "shield"}
+
+# A SHIELD IS ALSO DRAWN AS A PICTURE, not only written as 🛡: the pips over the
+# hero, the chip beside the Health, the Camp's Rest, the OBS overlay. Each asks
+# here, so a worn shield icon is on those too; unworn it is the basic 🛡 as art.
+func shield_art() -> Texture2D:
+	var e := icon("shield")
+	var t: Texture2D = CosmeticCatalog.texture(CosmeticCatalog.image_for(e, 0)) if not e.is_empty() else null
+	return t if t != null else UITheme.SHIELD_ART
 # DAMAGE IS ⚔ ONLY WHERE A NODE SAYS SO (the owner, 13 Nov 2026). The crossed swords
 # are also "beaten" on every record line, the Combat button and the weapons tab,
 # and a damage icon has no business on any of those. So a node that writes ⚔ as

@@ -11,7 +11,7 @@ extends RefCounted
 #     both, and a `both` one (Vampire Survivors') is the icon and the full portrait
 #     in one unlock, from one picture;
 #   * an icon set is "<kind>/<name>" — kind is key, bomb, difficulty, luck, chest,
-#     health, damage or gold —
+#     health, damage, gold or shield —
 #     and a set can hold several images, each for a range of Fracture levels (Risk
 #     of Rain 2's Drizzle, Rainstorm and Monsoon are one unlock). A CHEST set's
 #     range is the chest's SIZE instead (0 Small … 3 Huge, Data.ChestSize; 4 is a
@@ -22,7 +22,7 @@ extends RefCounted
 # the units of the games the character is from, and the character's own costumes.
 
 const PATH := "res://data/cosmetics.json"
-const KINDS := ["key", "bomb", "difficulty", "luck", "chest", "health", "damage", "gold"]
+const KINDS := ["key", "bomb", "difficulty", "luck", "chest", "health", "damage", "gold", "shield"]
 const SLOTS := ["icon", "full"]
 
 static var _cache: Dictionary = {}

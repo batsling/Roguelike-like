@@ -158,7 +158,7 @@ func _character_column() -> Control:
 	col.add_child(_line("♥  Health  %d / %d" % [GameState.hp, GameState.max_hp],
 		Color(1.0, 0.62, 0.62), "Health. At zero the run ends."))
 	if GameState.bonus_shields > 0:
-		col.add_child(_line("◆  %s" % GameState.shields_text(GameState.bonus_shields),
+		col.add_child(_line("🛡  %s" % GameState.shields_text(GameState.bonus_shields),
 			BattlefieldView.SHIELD_BLUE, "Shields that never expire."))
 	var luck: int = Stats.get_value(&"luck")
 	col.add_child(_line("🍀  Luck  %d" % luck, Color(0.5, 0.85, 0.5),

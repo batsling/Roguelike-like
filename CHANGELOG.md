@@ -11,6 +11,16 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The shield is a basic icon, and the old one is Brutal Orchestra's (the
+  owner, 13 Nov 2026).** A shield is 🛡 now: written as the glyph where it was a
+  ◆ (an enemy's shield badge, the inventory, a blocked hit), and drawn as that
+  same glyph where shields stand as pictures (`images2.0/general/Shield.png`,
+  made by `tools/build_shield_art.py`). The pixel shield it replaces is a shield
+  icon to earn from Brutal Orchestra, the ninth icon kind; a worn one is on the
+  pips, the chip, the Camp and the OBS overlay too (`Cosmetics.shield_art()`).
+  Brutal Orchestra's coin joins the gold icons. The glyph fonts are rebuilt: 🛡
+  in, ❤ out.
+
 - **Health, damage and gold icons (the owner, 13 Nov 2026).** Three more icon
   kinds on the Customization screen. To earn: Wildfrost's heart and sword, The
   Binding of Isaac's heart and sword, and Rebirth's sword; for gold, the Penny

@@ -629,6 +629,20 @@
 			]
 		},
 		{
+			"id": "gold/coin_brutal_orchestra",
+			"kind": "gold",
+			"name": "Coin",
+			"game": "brutal_orchestra",
+			"images": [
+				{
+					"name": "Coin",
+					"path": "res://images2.0/icons/Gold/Coin_Brutal_Orchestra.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
 			"id": "gold/coin_vampire_survivors",
 			"kind": "gold",
 			"name": "Coin",
@@ -707,6 +721,20 @@
 				{
 					"name": "Penny",
 					"path": "res://images2.0/icons/Gold/Penny_The_Binding_of_Isaac_Rebirth.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "shield/shield_brutal_orchestra",
+			"kind": "shield",
+			"name": "Shield",
+			"game": "brutal_orchestra",
+			"images": [
+				{
+					"name": "Shield",
+					"path": "res://images2.0/icons/Shields/Shield_Brutal_Orchestra.png",
 					"min": 0,
 					"max": 10
 				}

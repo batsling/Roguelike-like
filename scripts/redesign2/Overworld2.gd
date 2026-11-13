@@ -6792,7 +6792,7 @@ func _build_health_chip() -> Control:
 	# which is the one place in the run those shields are ever mentioned while no
 	# board is on screen and the one shape nothing else taught. Hidden outright at
 	# zero: an empty shield chip reads as armour you have.
-	_shield_chip_art = UITheme.crisp_tex(UITheme.SHIELD_ART, 18)
+	_shield_chip_art = UITheme.crisp_tex(Cosmetics.shield_art(), 18)
 	_shield_chip_art.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	row.add_child(_shield_chip_art)
 	_shield_chip = Label.new()
