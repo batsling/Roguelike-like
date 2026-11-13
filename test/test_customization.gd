@@ -345,7 +345,9 @@ func test_health_damage_and_gold_are_icon_kinds() -> void:
 	var by_kind := {}
 	for kind in ["health", "damage", "gold"]:
 		by_kind[kind] = CosmeticCatalog.icons_of(kind).map(func(e): return String(e["game"]))
-	assert_eq(by_kind["gold"], ["the_binding_of_isaac", "the_binding_of_isaac_rebirth"], "both pennies")
+	by_kind["gold"].sort()
+	assert_eq(by_kind["gold"], ["slay_the_spire", "slay_the_spire_2", "super_auto_pets",
+		"the_binding_of_isaac", "the_binding_of_isaac_rebirth", "vampire_survivors"])
 	assert_eq(by_kind["health"], ["the_binding_of_isaac", "wildfrost"])
 	assert_eq(by_kind["damage"], ["the_binding_of_isaac", "the_binding_of_isaac_rebirth", "wildfrost"])
 

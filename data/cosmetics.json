@@ -629,6 +629,62 @@
 			]
 		},
 		{
+			"id": "gold/coin_vampire_survivors",
+			"kind": "gold",
+			"name": "Coin",
+			"game": "vampire_survivors",
+			"images": [
+				{
+					"name": "Coin",
+					"path": "res://images2.0/icons/Gold/Coin_Vampire_Survivors.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "gold/gold_slay_the_spire",
+			"kind": "gold",
+			"name": "Gold",
+			"game": "slay_the_spire",
+			"images": [
+				{
+					"name": "Gold",
+					"path": "res://images2.0/icons/Gold/Gold_Slay_the_Spire.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "gold/gold_slay_the_spire_2",
+			"kind": "gold",
+			"name": "Gold",
+			"game": "slay_the_spire_2",
+			"images": [
+				{
+					"name": "Gold",
+					"path": "res://images2.0/icons/Gold/Gold_Slay_the_Spire_2.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "gold/gold_super_auto_pets",
+			"kind": "gold",
+			"name": "Gold",
+			"game": "super_auto_pets",
+			"images": [
+				{
+					"name": "Gold",
+					"path": "res://images2.0/icons/Gold/Gold_Super_Auto_Pets.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
 			"id": "gold/penny_the_binding_of_isaac",
 			"kind": "gold",
 			"name": "Penny",

@@ -14,7 +14,8 @@ For how the project is laid out and how its systems fit together, see
 - **Health, damage and gold icons (the owner, 13 Nov 2026).** Three more icon
   kinds on the Customization screen. To earn: Wildfrost's heart and sword, The
   Binding of Isaac's heart and sword, and Rebirth's sword; for gold, the Penny
-  from The Binding of Isaac and from Rebirth.
+  from The Binding of Isaac and from Rebirth, the gold of Super Auto Pets, Slay
+  the Spire and Slay the Spire 2, and Vampire Survivors' coin.
   - **One heart.** The player's Health was ♥ and an enemy's ❤; both are ♥ now,
     so one worn Health icon is your heart and every enemy's.
   - **⚔ is damage only where a node says so** (`Cosmetics.as_damage`): the
