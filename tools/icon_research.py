@@ -9,6 +9,7 @@ as a candidate for the owner to say yes or no to, and move a yes into the game.
     python3 tools/icon_research.py add Gold Coin "Into the Breach" path/or/url.png --page https://…
     python3 tools/icon_research.py add Chests "Bronze Chest" "Rogue Legacy 2" bronze.png --range 0-0   # one of a set
     python3 tools/icon_research.py sheet            # a numbered contact sheet of everything waiting
+    python3 tools/icon_research.py answer 1, 4, 13-16   # the owner's numbers OFF THAT PICTURE: yes, the rest no
     python3 tools/icon_research.py apply            # after `research.py sync`: every yes into images2.0/icons/
 
 **Best version, every time an icon is added** (the owner, 13 Nov 2026: "when
@@ -51,6 +52,7 @@ from build_cosmetics_index import game_ids, suffix_game  # noqa: E402
 from PIL import Image  # noqa: E402
 
 WORK = os.path.join(R.WORK, "icons")
+NUMBERS = os.path.join(WORK, "to_review.json")  # the last sheet's numbering, for `answer`
 
 
 def get(url):
@@ -184,7 +186,58 @@ def cmd_sheet(args):
     os.makedirs(WORK, exist_ok=True)
     out = args.out or os.path.join(WORK, "to_review.png")
     sheet.save(out)
+    # The numbers the owner reads are the PICTURE's, so the picture's own
+    # numbering is what `answer` goes by, never a list written out afterwards.
+    R.save_json(NUMBERS, {"sheet": out, "ids": [r["ID"] for r in rows]})
     print("->", out)
+    print("Send THIS picture, and take the owner's numbers with `answer`. A candidate added,\n"
+          "dropped or renamed after this point means a new sheet before anything is sent.")
+
+
+def numbers(words):
+    """{1, 21, 24, 25} from ["1,", "21", "24-25"]."""
+    out = set()
+    for w in re.split(r"[,\s]+", " ".join(words)):
+        if not w:
+            continue
+        m = re.fullmatch(r"(\d+)(?:-(\d+))?", w)
+        if not m:
+            sys.exit(f"{w!r} is not a number or a range")
+        out |= set(range(int(m.group(1)), int(m.group(2) or m.group(1)) + 1))
+    return out
+
+
+def cmd_answer(args):
+    """The owner's numbers, read against the sheet they were shown. Refuses when
+    the candidates are no longer the ones that sheet drew (13 Nov 2026: a row
+    dropped between two drawings of a sheet left it unclear which numbering the
+    owner had answered from, and five icons were swapped for the wrong ones)."""
+    drawn = R.load_json(NUMBERS, {}).get("ids")
+    if not drawn:
+        sys.exit("no sheet on record: run `sheet`, show it, then answer")
+    now = [r["ID"] for r in waiting()]
+    if now != drawn:
+        gone, new = [i for i in drawn if i not in now], [i for i in now if i not in drawn]
+        sys.exit("the candidates changed since the sheet was drawn, so its numbers are not theirs any more"
+                 + (f"\n  gone: {gone}" if gone else "") + (f"\n  new: {new}" if new else "")
+                 + "\nrun `sheet` again, show the NEW picture, and ask again")
+    yes, skip = numbers(args.yes), numbers(args.skip or [])
+    bad = sorted(n for n in yes | skip if not 1 <= n <= len(drawn))
+    if bad or yes & skip:
+        sys.exit(f"not on the sheet (1-{len(drawn)}): {bad}" if bad else f"both yes and skipped: {sorted(yes & skip)}")
+    rows = R.read_rows("icons")
+    for r in rows:
+        if r["ID"] in drawn:
+            n = drawn.index(r["ID"]) + 1
+            if n in skip:  # stays waiting: not a no, and it is offered again
+                continue
+            r["Owner"] = "yes" if n in yes else "no"
+            if n in yes:
+                print(f"yes  {n}. {r['Kind']}: {r['Name']} ({r['Game']})")
+    R.write_rows("icons", rows)
+    os.remove(NUMBERS)
+    print(f"{len(yes)} yes, {len(drawn) - len(yes) - len(skip)} no, {len(skip)} left waiting. "
+          "Read the list back to the owner, then `apply`.")
 
 
 def cmd_apply(args):
@@ -230,6 +283,10 @@ def main():
     p = sub.add_parser("sheet", help="a numbered contact sheet of the candidates waiting")
     p.add_argument("--out")
     p.set_defaults(fn=cmd_sheet)
+    p = sub.add_parser("answer", help="the owner's numbers off the sheet: these yes, the rest no")
+    p.add_argument("yes", nargs="*", help="numbers and ranges, as the owner wrote them: 1, 21, 24-25")
+    p.add_argument("--skip", nargs="*", help="numbers to leave waiting (neither yes nor no)")
+    p.set_defaults(fn=cmd_answer)
     p = sub.add_parser("apply", help="move every yes into images2.0/icons/ and rebuild the index")
     p.set_defaults(fn=cmd_apply)
     args = ap.parse_args()
