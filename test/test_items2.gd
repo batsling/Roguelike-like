@@ -1156,8 +1156,12 @@ func test_the_chests_gold_is_one_total_over_them_and_skipping_keeps_it() -> void
 	chest.setup_chests([1, 3], [], total)
 	assert_true(chest._gold_line.visible, "the gold is said once, over the chests")
 	assert_eq(chest._gold_line.text, ItemDropModal.gold_text(total, 2))
+	# The PAYOUT's words ("+3 gold"), not the word: a relic in the chest may say
+	# gold itself. Dragon Fruit does ("Whenever you obtain any amount of gold"),
+	# and a chest that rolled it failed this in CI.
+	var payout := RegEx.create_from_string("\\+\\d+ gold")
 	for section in chest._sections:
-		assert_false(Page.text_of(section._body).contains("gold"), "and not again on each chest")
+		assert_null(payout.search(Page.text_of(section._body)), "and not again on each chest")
 	chest._on_skip()
 	assert_eq(GameState.gold, before + total, "a skipped chest still paid its gold")
 	GameState.gold = before
