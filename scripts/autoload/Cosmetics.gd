@@ -206,17 +206,15 @@ func hat(player: StringName) -> Dictionary:
 func set_hat(player: StringName, key: String) -> void:
 	_choose(hat_slot(player), key)
 
-# `pl`'s full picture (or, `small`, its token) in the hat it wears (HatArt), or
-# its own art when it wears none or has no spot for one.
-func player_art(pl: PlayerData, small: bool = false) -> Texture2D:
+# `pl`'s full picture in the hat it wears (HatArt), or its own art when it wears
+# none or has no spot for one.
+func player_art(pl: PlayerData) -> Texture2D:
 	if pl == null:
 		return null
-	var own: Texture2D = pl.icon if small else pl.portrait
 	var e := hat(pl.id)
-	if e.is_empty() or own == null:
-		return own
-	return HatArt.wear(own, CosmeticCatalog.texture(String(e.get("path", ""))),
-		pl.hat_icon_spot if small else pl.hat_spot)
+	if e.is_empty() or pl.portrait == null:
+		return pl.portrait
+	return HatArt.wear(pl.portrait, CosmeticCatalog.texture(String(e.get("path", ""))), pl.hat_spot)
 
 # What a slot shows now, a costume's or an icon set's entry ({} for the default).
 func costume_or_icon(slot_key: String) -> Dictionary:

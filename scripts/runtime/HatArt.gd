@@ -9,7 +9,7 @@ extends RefCounted
 # screen: every place that draws a player (the picker, the hero on the board, the
 # header's token) asks for one texture and gets the player in their hat, the way a
 # character's costume is just `shown_portrait()`. A new screen gets the hat for
-# free by asking `PlayerData.shown_portrait()` / `shown_icon()`.
+# free by asking `PlayerData.shown_portrait()`. The header's small token stays bare.
 #
 # THE SPOT is a Vector4 in PERCENT of the player's own picture, so it does not
 # care what size the art is stored at:
@@ -18,14 +18,14 @@ extends RefCounted
 #   z      the hat's width, as a share of the picture's width (0 = no spot: the
 #          player wears nothing, whatever is chosen);
 #   w      tilt in degrees, clockwise (the top leans right), about the anchor.
-# The sheet writes it (`players` → Hat / Hat Icon, tools/generate_player_tres.py).
+# The sheet writes it (`players` → Hat, tools/generate_player_tres.py).
 #
 # A hat taller than the space above the head GROWS the canvas upward (and sideways
 # if it must): nothing is cut off, and the picture keeps its own pixels.
 #
 # PIXEL ART IS SCALED UP FIRST, with nearest-neighbour, so a 10×15 sprite wears a
 # hat drawn in painted detail rather than one crushed into its pixels; a small
-# painted picture (Batsaac's 52px face) is scaled up smoothly for the same reason.
+# painted picture is scaled up smoothly for the same reason.
 
 const ANCHOR := Vector2(0.5, 0.75)
 # The long side a picture is scaled up to before a hat is put on it.

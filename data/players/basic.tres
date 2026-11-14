@@ -12,4 +12,3 @@ mechanics = Array[StringName]([])
 portrait_path = ""
 icon_path = ""
 hat_spot = Vector4(0, 0, 0, 0)
-hat_icon_spot = Vector4(0, 0, 0, 0)

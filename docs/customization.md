@@ -258,26 +258,24 @@ way pets wear them in Super Auto Pets. Not on the characters.
   `ABANDON_ESCAPES` (5) and toasts it like a rank's. A locked tile's hover says
   how it is earned (`Cosmetics.SPECIAL_HATS`).
 - **Where it sits: a spot per picture, on the sheet.** The `players` sheet's
-  `Hat` and `Hat Icon` columns hold `x, y, width, tilt` (generator:
-  `tools/generate_player_tres.py` → `PlayerData.hat_spot` / `hat_icon_spot`).
+  `Hat` column holds `x, y, width, tilt` (generator:
+  `tools/generate_player_tres.py` → `PlayerData.hat_spot`).
   `x, y` is where the hat's **brim** lands, as a percent of the picture across
   and down. The brim is the point 50% across and 75% down the hat picture
   (`HatArt.ANCHOR`). `width` is the hat's width as a percent of the picture's,
-  and `tilt` is degrees clockwise about the brim. `Hat Icon` is the spot on the
-  small token in `images2.0/players/Icon/`; blank, it is the `Hat` spot, which is
-  right when the token IS the picture (Retro Bat). A blank `Hat` means no spot,
+  and `tilt` is degrees clockwise about the brim. A blank `Hat` means no spot,
   and that player wears nothing (Basic, who has no picture). The owner placed
   Batsaac's: flat, "very slightly to the left" of centre (`46, 31, 42, 0`).
 - **Wearing.** `HatArt.wear` COMPOSES the hat into the picture once and caches
-  it. Every screen that draws a player as themselves asks
-  `PlayerData.shown_portrait()` / `shown_icon()` (`Cosmetics.player_art`) and
-  gets the player in their hat: the player picker's tiles and portrait, the
-  hero on the board, and the header's token. **A new screen that draws a player
-  should do the same.** An achievement (a player still to unlock) keeps the bare
-  picture. A hat taller than the room above the head grows the canvas upward
+  it. Every screen that draws a player's full picture as themselves asks
+  `PlayerData.shown_portrait()` (`Cosmetics.player_art`) and gets the player in
+  their hat: the player picker's tiles and portrait, and the hero on the board.
+  **A new screen that draws a player should do the same.** The header's small
+  token (`PlayerData.icon`) is always bare, the owner's call ("icon shouldn't
+  have a hat"), and so is an achievement's picture of a player still to unlock. A hat taller than the room above the head grows the canvas upward
   rather than being cut off. Pixel art (Retro Bat, 10×15) is first scaled up
   in whole pixels so the hat keeps its painted detail; a small painted picture
-  (Batsaac's 52px face) is scaled up smoothly.
+  is scaled up smoothly.
 - **Choosing.** Each player has its own slot (`Cosmetics.hat_slot`,
   `"hat:<player>"`) with 🎲 Random, No hat and every hat. Locked hats show as
   silhouettes. The choices are the same on the Customization screen's Hats tab

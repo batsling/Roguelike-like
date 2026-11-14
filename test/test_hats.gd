@@ -75,10 +75,8 @@ func test_a_super_auto_pets_rank_unlocks_a_hat() -> void:
 func test_the_players_spots_come_from_the_sheet() -> void:
 	var bat: PlayerData = Data.get_player(&"batsaac")
 	assert_eq(bat.hat_spot, Vector4(46, 31, 42, 0), "the owner's: no tilt, a touch left")
-	assert_gt(bat.hat_icon_spot.z, 0.0, "his face token has its own spot")
 	var retro: PlayerData = Data.get_player(&"retro_bat")
 	assert_gt(retro.hat_spot.z, 0.0)
-	assert_eq(retro.hat_icon_spot, retro.hat_spot, "his token is his picture, so the same spot")
 	assert_eq(Data.get_player(&"basic").hat_spot.z, 0.0, "the basic player has nothing to wear one on")
 
 # --- wearing ----------------------------------------------------------------------
@@ -91,7 +89,7 @@ func test_a_worn_hat_changes_the_picture_and_no_hat_leaves_it_alone() -> void:
 	Cosmetics.set_hat(bat.id, key)
 	var worn: Texture2D = bat.shown_portrait()
 	assert_ne(worn, bat.portrait, "worn: the composed picture")
-	assert_ne(bat.shown_icon(), bat.icon, "the token wears it too")
+	assert_false("hat_icon_spot" in bat, "the token has no spot: it never wears one")
 	assert_eq(Cosmetics.hat(&"retro_bat"), {}, "each player keeps their own hat")
 	Cosmetics.set_hat(bat.id, "")
 	assert_eq(bat.shown_portrait(), bat.portrait)

@@ -6899,7 +6899,8 @@ func _paint_character_chip() -> void:
 		_character_chip.tooltip_text = "%s — the character this run is being played as." % ch.display_name
 	if _player_chip != null and is_instance_valid(_player_chip):
 		var pl: PlayerData = GameState.player()
-		var ptex: Texture2D = pl.shown_icon() if pl != null else null
+		# Bare: the token never wears the hat (docs/customization.md §7).
+		var ptex: Texture2D = pl.icon if pl != null else null
 		_player_chip.texture = ptex
 		UITheme.apply_crisp(_player_chip, ptex)
 		# A PAINTED token (Batsaac's face, stored at twice the chip) is shrunk, and
