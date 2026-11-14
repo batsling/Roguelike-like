@@ -15058,6 +15058,42 @@
   "sitename": "Nova Drift Wiki",
   "wiki": "https://nova-drift.fandom.com"
  },
+ "Novus Orbis": {
+  "api": "https://novusorbis.wiki.gg/api.php",
+  "articles": 175,
+  "blurb": "",
+  "categories": {
+   "characters": [
+    "Characters"
+   ],
+   "loot": [
+    "Cards",
+    "Mage Cards",
+    "Affliction Cards",
+    "Item Cards",
+    "Equipment Cards",
+    "Special Cards"
+   ],
+   "statuses": [
+    "Affliction Cards",
+    "Statuses"
+   ]
+  },
+  "checked": "2026-11-14",
+  "counts": {
+   "characters": 3,
+   "events": 0,
+   "goals": 0,
+   "locations": 0,
+   "loot": 303,
+   "statuses": 39
+  },
+  "match": "sure",
+  "pages": {},
+  "signal": "",
+  "sitename": "Novus Orbis Wiki",
+  "wiki": "https://novusorbis.wiki.gg/"
+ },
  "Nowhere Prophet": {
   "api": "https://nowhereprophet.fandom.com/api.php",
   "articles": 1459,
