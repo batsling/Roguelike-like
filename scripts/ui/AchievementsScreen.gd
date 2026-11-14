@@ -333,7 +333,12 @@ func _row(a: AchievementData) -> Control:
 	frame.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	hb.add_child(frame)
 	var pl: PlayerData = Data.get_player(a.unlocks_player)
+	# A special hat (the Hats tab): its own picture, and its name off the catalog.
+	var look: Dictionary = CosmeticCatalog.entry(a.unlocks_cosmetic) \
+		if a.unlocks_cosmetic != "" else {}
 	var tex: Texture2D = ch.shown_icon() if ch != null else (pl.portrait if pl != null else null)
+	if tex == null and not look.is_empty():
+		tex = CosmeticCatalog.texture((CosmeticCatalog.paths(look) + [""])[0])
 	if tex != null:
 		var icon := UITheme.crisp_tex(tex, PORTRAIT)
 		icon.name = "Portrait"
@@ -359,7 +364,8 @@ func _row(a: AchievementData) -> Control:
 	var name_lbl := Label.new()
 	name_lbl.name = "Name"
 	name_lbl.text = ch.display_name if ch != null else (
-		pl.display_name if pl != null else String(a.id).capitalize())
+		pl.display_name if pl != null else (String(look["name"])
+			if not look.is_empty() else String(a.id).capitalize()))
 	name_lbl.add_theme_font_size_override("font_size", UITheme.FONT_TITLE_LG)
 	name_lbl.add_theme_color_override("font_color", UITheme.GOLD if done else UITheme.TEXT)
 	mid.add_child(name_lbl)
@@ -383,6 +389,12 @@ func _row(a: AchievementData) -> Control:
 		adds.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 		adds.add_theme_color_override("font_color", UITheme.GOLD.lerp(UITheme.TEXT_DIM, 0.5))
 		mid.add_child(adds)
+	elif not look.is_empty():
+		var hat := Label.new()
+		hat.text = "Unlocks a hat for your players · Customization"
+		hat.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
+		hat.add_theme_color_override("font_color", UITheme.GOLD.lerp(UITheme.TEXT_DIM, 0.5))
+		mid.add_child(hat)
 
 	var right := VBoxContainer.new()
 	right.add_theme_constant_override("separation", UITheme.GAP_WIDE)

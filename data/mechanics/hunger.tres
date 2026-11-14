@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="MechanicData" load_steps=2 format=3 uid="uid://mechanic_hunger"]
+
+[ext_resource type="Script" path="res://scripts/resources/MechanicData.gd" id="1_mech"]
+
+[resource]
+script = ExtResource("1_mech")
+id = &"hunger"
+display_name = "Hunger"
+description = "Start with 3 Hunger (at most 5). Each game you finish costs 1. Drink a potion or eat food for +1. Finish a game or lose a run already at 0 and lose 2 Health."
+order = 10

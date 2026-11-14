@@ -9,6 +9,7 @@ tab = "Characters"
 order = 10
 unlocks_character = &"manager"
 unlocks_player = &""
+unlocks_cosmetic = ""
 description = "Hold 3 different coin-tagged items or loot at the same time."
 scope = "run"
 metric = "tagged_held"

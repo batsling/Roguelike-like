@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="MechanicData" load_steps=2 format=3 uid="uid://mechanic_unidentified_weapons"]
+
+[ext_resource type="Script" path="res://scripts/resources/MechanicData.gd" id="1_mech"]
+
+[resource]
+script = ExtResource("1_mech")
+id = &"unidentified_weapons"
+display_name = "Unidentified Weapons"
+description = "Weapons you find roll -2 to +2 Stun, unknown until the first swing. A minus is CURSED: stuck where it sits in the pack until the curse is lifted."
+order = 20

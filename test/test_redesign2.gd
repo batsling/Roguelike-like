@@ -28,7 +28,8 @@ func test_manager_levels_gold() -> void:
 # --- a character gives no stats (docs/players-design.md §3) ------------------
 #
 # The starting verbs (Bash, Dash, Push, …, and the Random points rolled across
-# them) came off the sheet on 13 Nov 2026, and so did every level-up verb gain.
+# them) came off the sheet on 13 Nov 2026. Level-up verb gains went with them
+# for a day; the owner wrote two back into the Reward column on 14 Nov.
 
 func test_every_character_opens_a_run_with_no_verbs() -> void:
 	for ch in Data.all_characters2():
@@ -37,11 +38,23 @@ func test_every_character_opens_a_run_with_no_verbs() -> void:
 			+ GameState.transmute + GameState.scramble + GameState.bombs + GameState.keys
 		assert_eq(total, 0, "%s opens on no verbs" % ch.display_name)
 
-func test_no_level_up_grants_a_verb() -> void:
+func test_a_level_up_pays_only_what_the_run_can_apply() -> void:
 	for ch in Data.all_characters2():
 		for k in ch.level_up_stats:
-			assert_true(String(k) in ["max_hp", "gold"],
-				"%s's level-up pays only Max Health or gold, not %s" % [ch.display_name, k])
+			assert_true(String(k) in ["max_hp", "gold", "dash", "bash", "push",
+				"transmute", "scramble", "bombs", "keys"],
+				"%s's level-up pays Max Health, gold or a verb, not %s" % [ch.display_name, k])
+
+# The owner's Reward cells of 14 Nov 2026: a verb and nothing else.
+func test_mina_and_zoe_level_up_into_a_verb() -> void:
+	var mina: CharacterData = Data.get_character2(&"min")
+	assert_eq(mina.level_up_stats, {"transmute": 1}, "Gain +1 Transmute")
+	var zoe: CharacterData = Data.get_character2(&"zoe")
+	assert_eq(zoe.level_up_stats, {"dash": 1}, "Gain +1 Dash")
+	assert_eq(String(zoe.level_up_reward_type), "none", "the verb is the whole reward")
+	GameLoop2.start_run(zoe)
+	GameState.grant_level_up()
+	assert_eq(GameState.dash_charges, 1, "and the level pays it")
 
 func test_isaac_starting_loadout() -> void:
 	var isaac: CharacterData = Data.get_character2(&"isaac")

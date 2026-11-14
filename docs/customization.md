@@ -254,9 +254,15 @@ way pets wear them in Super Auto Pets. Not on the characters.
   saved with it and zeroed by `reset_run`. `Overworld2.report` counts it in its
   bookkeeping step, where every game is handed in: an escape adds one (a
   teleport out is an escape too), and any other report sets it back to 0. It
-  then asks `Cosmetics.note_escape_streak`, which unlocks the hat at
-  `ABANDON_ESCAPES` (5) and toasts it like a rank's. A locked tile's hover says
-  how it is earned (`Cosmetics.SPECIAL_HATS`).
+  then asks `Cosmetics.note_escape_streak`.
+  **The rule is an achievement** (the owner, 14 Nov 2026): a row of the
+  `achievements` sheet under the `Hats` tab (`hat_abandon_hat`: one run,
+  `escape games in a row`, goal 5; [achievements.md](achievements.md)). The
+  number of escapes and the sentence a locked tile's hover shows
+  (`Cosmetics.special_how`) are that row's `Goal` and `Description`, the
+  Achievements screen lists it with the best streak so far, and finishing it
+  unlocks the hat and toasts it like a rank's. A profile that earned the hat
+  before it had a row has the achievement from its first boot.
 - **Where it sits: a spot per picture, on the sheet.** The `players` sheet's
   `Hat` column holds `x, y, width, tilt` (generator:
   `tools/generate_player_tres.py` → `PlayerData.hat_spot`).

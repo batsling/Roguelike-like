@@ -49,6 +49,7 @@ var _shopkeepers: Dictionary = {}       # StringName -> ShopkeeperData (§14.6)
 var _locations: Dictionary = {}         # StringName -> LocationData (docs/locations-design.md)
 var _achievements: Dictionary = {}      # StringName -> AchievementData (docs/achievements.md)
 var _players: Dictionary = {}           # StringName -> PlayerData (docs/players-design.md)
+var _mechanics: Dictionary = {}         # StringName -> MechanicData (the `mechanics` sheet)
 
 func _ready() -> void:
 	_load_dir("res://data/games/", _games)
@@ -78,6 +79,7 @@ func _ready() -> void:
 	_load_dir("res://data/locations/", _locations)
 	_load_dir("res://data/achievements/", _achievements)
 	_load_dir("res://data/players/", _players)
+	_load_dir("res://data/mechanics/", _mechanics)
 	print("[Data] Loaded %d games" % _games.size())
 	print("[Data] Loaded 2.0: %d characters, %d items, %d goal-enemies, %d bosses, %d scrolls, %d pills, %d cards, %d wands, %d trinkets, %d bags, %d weapons, %d evolutions, %d statuses, %d tiles, %d units, %d abilities, %d events, %d curses, %d objects" % [
 		_characters2.size(), _items2.size(), _goal_enemies.size(), _bosses.size(),
@@ -785,6 +787,15 @@ const BASIC_PLAYER := &"basic"
 
 func get_player(id: StringName) -> PlayerData:
 	return _players.get(id)
+
+# A mechanic a player can carry: its name and what it says (the `mechanics` sheet).
+func get_mechanic(id: StringName) -> MechanicData:
+	return _mechanics.get(id)
+
+func all_mechanics() -> Array:
+	var out: Array = _mechanics.values()
+	out.sort_custom(func(a, b) -> bool: return a.order < b.order)
+	return out
 
 # In the sheet's order, so the basic player comes first.
 func all_players() -> Array:

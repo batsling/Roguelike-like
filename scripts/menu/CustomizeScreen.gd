@@ -174,7 +174,8 @@ func _build_characters() -> void:
 # characters (the owner, 14 Nov 2026), and each player keeps its own.
 
 func _build_hats() -> void:
-	_say("Hats are worn by players. Super Auto Pets' hats are its rank-up rewards; the Abandon Hat is earned by escaping %d games in a row in one run." % Cosmetics.ABANDON_ESCAPES)
+	# The Abandon Hat's sentence is its achievement's (the `achievements` sheet).
+	_say("Hats are worn by players. Super Auto Pets' hats are its rank-up rewards; the Abandon Hat is an achievement: %s" % Cosmetics.special_how(Cosmetics.ABANDON_HAT))
 	var roster: Array = Data.all_players().filter(func(pl) -> bool:
 		return pl is PlayerData and pl.portrait != null and pl.hat_spot.z > 0.0)
 	roster.sort_custom(func(a, b): return a.order < b.order)
@@ -528,7 +529,7 @@ static func _look_tip(e: Dictionary, locked: bool) -> String:
 	var game := g.display_name if g != null else String(e["game"])
 	var name := String(e["name"])
 	if CosmeticCatalog.is_special(e):
-		var how := String(Cosmetics.SPECIAL_HATS.get(String(e["key"]), ""))
+		var how := Cosmetics.special_how(String(e["key"]))
 		return ("Locked — %s\n%s" % [name, how]) if locked else "%s — %s" % [name, how]
 	if locked:
 		# A hat is its GAME's reward only: no character's ranks draw one.

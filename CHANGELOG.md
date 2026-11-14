@@ -11,6 +11,18 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The owner's upload of 14 Nov 2026, and three things asked for with it.**
+  *Novus Orbis* joins the chart with two connections (Slay the Spire, The
+  Binding of Isaac). The `players` sheet lost its `Description` column, and the
+  picker its line. A new **`mechanics` sheet** beside it holds each mechanic's
+  name and sentence (`MechanicData`); a player's `Mechanics` cell is any mix of
+  its rows, and a name it does not have is refused. **The Abandon Hat is an
+  achievement**: a row of `achievements` under a new `Hats` tab, so the number
+  of escapes and its sentence are the sheet's, and the Achievements screen
+  lists it. **Minä and Zoe level up into a verb again** (+1 Transmute, +1
+  Dash): the owner wrote both back into `Reward`, and the generator that
+  refused a verb for a day reads one again.
+
 - **Hats, worn by the players (the owner, 14 Nov 2026)**, the way Super Auto
   Pets' pets wear them. All 88 of its current play-to-unlock and bought hats,
   mirrored to face the players' way, are Super Auto Pets' rank-up rewards; the

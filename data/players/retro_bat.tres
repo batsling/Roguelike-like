@@ -6,7 +6,6 @@
 script = ExtResource("1_player")
 id = &"retro_bat"
 display_name = "Retro Bat"
-description = "A bat with an empty stomach and a pack of things it has never seen before."
 order = 20
 mechanics = Array[StringName]([&"hunger", &"unidentified_weapons"])
 portrait_path = "res://images2.0/players/RetroBat.png"
