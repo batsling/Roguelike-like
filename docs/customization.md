@@ -285,3 +285,12 @@ way pets wear them in Super Auto Pets. Not on the characters.
   across the foot of the player picker (`PlayerPicker._fill_hat_row`). Both use
   `CustomizeScreen.hat_tiles`. Tests: `test/test_hats.gd`.
 
+- **Not yet: Megabonk's hats.** Megabonk has 21 (its update 1.0.64), each earned
+  by an achievement of the same name. All 21 are researched and held in
+  `research/hats/`: `megabonk.csv` (name, Megabonk's own unlock, Steam api name)
+  and a cut-out picture of each, made from its Steam achievement icon by
+  `tools/oneshots/_hats_megabonk_research.py`. They are **not in the game**: the
+  owner wants them unlocked by mechanics that don't exist yet ("lets not deal
+  with these yet"). When those exist, the pictures go in `images2.0/hats/` like
+  Super Auto Pets' did. megabonk.wiki may have better pictures; it was outside
+  this session's network allowlist.
