@@ -11,6 +11,16 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Clumsy and Normality, from Slay the Spire (the owner, 14 Nov 2026).** A third
+  keyword, **Ethereal**, means a curse goes away after 3 games, win or lose. Its
+  square counts them (`1/3`). **Clumsy** is Ethereal and otherwise only takes a
+  slot. **Normality** allows 3 usable actions per game while it is carried. As
+  the owner answered when asked, these count together: relic actives, any pack
+  loot (wand zaps and weapon swings included) and the board verbs Bash, Dash,
+  Push, Transmute, Scramble and Bombs. A fourth is refused before anything is
+  spent, and the pack's Use buttons and the relic strip grey out. Both are in the
+  random deal. The art is the wiki's release cards (678×874).
+
 - **Two new curse cards from Slay the Spire 2 (the owner, 14 Nov 2026).**
   **Guilty** leaves on its own after you defeat 5 enemies, and its square
   counts them (⚡3/5). **Debt** costs 2 Gold after every game you finish, win or

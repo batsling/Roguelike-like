@@ -84,6 +84,11 @@ func start(host: Node, loot_index: int, overworld: Node) -> void:
 	if loot_index < 0 or loot_index >= GameState.loot_items.size():
 		_finish()
 		return
+	# NORMALITY (docs/loot-passives.md §18): the action limit is reached, so this
+	# screen does not open — said in a toast, nothing spent.
+	if GameState.refuse_action():
+		_finish()
+		return
 	var entry = GameState.loot_items[loot_index]
 	if not (entry is Dictionary) or not entry.has("id"):
 		_finish()
@@ -106,6 +111,9 @@ func start(host: Node, loot_index: int, overworld: Node) -> void:
 func start_entry(host: Node, entry: Dictionary, overworld: Node) -> void:
 	_mount(host)
 	if entry.is_empty() or not entry.has("id"):
+		_finish()
+		return
+	if GameState.refuse_action():
 		_finish()
 		return
 	_overworld = overworld

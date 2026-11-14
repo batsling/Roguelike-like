@@ -833,6 +833,23 @@ That row, its timer and its penalty are all gone.
   placed (`CardData.movable` false, `GameState.is_pinned`),
   exactly like a cursed weapon. It cannot be moved, turned or swapped, and its
   bag stays put too (`bag_holds_pinned`). This is **Poor Sleep**.
+- **ETHEREAL: it goes away after 3 games.** The generator writes the keyword as
+  a `game_beaten every=3: remove_self` trigger (`ETHEREAL_TRIGGER`), so it counts
+  games finished, win or lose, and its square shows the count as `1/3` in games
+  rather than ⚡ charges (`LootPassives.COUNTED_HOOKS`). This is **Clumsy**.
+- **NORMALITY'S `limit_actions N`.** This is a curse's own Effect clause
+  (`CardData.action_limit`). While the curse is carried, the player may take no
+  more than N usable actions each game, counted in
+  `GameState.actions_this_game`, which resets where the game resolves and is
+  saved. The actions are a relic active fired (`can_fire_item` and `use_item`),
+  any piece of pack loot used, whether from the pack, off a table or thrown
+  (`LootSystem.use_loot` / `use_entry`, wand zaps and weapon swings included;
+  Echo copies are not actions), and the board verbs Bash, Dash, Push, Transmute,
+  Scramble and Bombs (the `Overworld2` doors). Each door asks
+  `can_take_action` first, so a refused press costs nothing, and calls
+  `note_action` once the action goes through. The pack's Use buttons and the
+  relic strip grey out at the limit. Two Normalities give the smaller limit, not
+  the sum.
 - **ETERNAL: it can't be destroyed.** No effect can destroy it
   (`CardData.destroyable` false, `GameState.can_destroy`).
   `destroy_loot_at` refuses it, and every effect that picks victims leaves it
@@ -850,6 +867,8 @@ That row, its timer and its penalty are all gone.
 | Poor Sleep | Card | Unmovable | no | Unrest Site |
 | Guilty | Card | — (leaves after 5 kills) | yes | random deals |
 | Debt | Card | — (−2 Gold per game) | yes | random deals |
+| Clumsy | Card | Ethereal | yes | random deals |
+| Normality | Card | — (3 actions a game) | yes | random deals |
 
 Tests: `test/test_curse_cards.gd` covers the pack rules, `test_overworld2.gd`'s
 curse-card block covers the modal, and the sources are covered where they live

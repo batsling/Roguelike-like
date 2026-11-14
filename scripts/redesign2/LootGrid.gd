@@ -1212,10 +1212,10 @@ func _slot(slot_index: int, index: int, entry: Dictionary) -> LootSlot:
 	var progress: Dictionary = LootPassives.kill_progress(index)
 	if not progress.is_empty():
 		extras["progress"] = progress
-	# `false`: the lock holds the pack STILL, it does not stop a piece being spent
-	# (see `locked`). Kept as an argument rather than dropped, because the cell body
-	# is shared with the loose-offer layout and a future rule may want it back.
-	slot.add_child(_cell_body(entry, use_cb, false, true, true, extras))
+	# The lock holds the pack STILL, it does not stop a piece being spent (see
+	# `locked`) — so the Use buttons are greyed only by NORMALITY's action limit
+	# (docs/loot-passives.md §18), once this game's actions are spent.
+	slot.add_child(_cell_body(entry, use_cb, not GameState.can_take_action(), true, true, extras))
 	add_direction_arrow(slot, entry)
 	if pick != null:
 		_dress_for_pick(slot, entry)
@@ -1697,13 +1697,19 @@ static func _add_progress(on: Control, extras: Dictionary) -> void:
 	# piece rather than left as a "3/3" that looks like it should have gone off.
 	# ⚡ AND A READABLE SIZE: this is the piece's charge, the number a food is
 	# all about, and at 9px with no symbol it read as a stray tag.
-	var chip := UITheme.chip("⚡+1" if ready else "⚡%d/%d" % [int(progress["have"]), int(progress["need"])],
+	# A count of GAMES (Ethereal, docs/loot-passives.md §18) wears no ⚡: the bolt
+	# says "charge", and a game finished is not one.
+	var games: bool = String(progress.get("unit", "charge")) == "game"
+	var chip := UITheme.chip("⚡+1" if ready else ("%d/%d" if games else "⚡%d/%d") % [
+			int(progress["have"]), int(progress["need"])],
 		UITheme.ACCENT if ready else UITheme.SUCCESS if not foods.is_empty() else UITheme.GOLD,
 		UITheme.FONT_SMALL)
 	chip.name = "Progress"
 	chip.set_anchors_preset(Control.PRESET_TOP_RIGHT)
 	chip.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	chip.tooltip_text = ("Ready — it pays on its next charge." if ready
+		else "%d of %s played — it goes after the last." % [
+			int(progress["have"]), Plural.count(int(progress["need"]), "game")] if games
 		else "%d of %s toward its next trigger." % [
 			int(progress["have"]), Plural.count(int(progress["need"]), "charge")])
 	if not foods.is_empty():

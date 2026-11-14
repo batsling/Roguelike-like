@@ -24,13 +24,15 @@ put one in the pack. See docs/loot-passives.md §18.
                as a `Passive` row of `cards`). Blank means it only takes up
                space, which is what the first three curses do. Blueprint copies
                a curse's effect exactly as it copies any other passive piece.
-  Keywords     comma-separated, from KEYWORDS below (the owner's two):
+  Keywords     comma-separated, from KEYWORDS below:
                  Unmovable  it can't be moved — locked in the cell it was placed
                             in, and the bag holding that cell stays put too
                             (Poor Sleep).
                  Eternal    it can't be destroyed — by the Scroll of Remove
                             Curse, a card that destroys loot, anything (Curse of
                             the Bell).
+                 Ethereal   it goes away after 3 games, win or lose (Clumsy).
+                            The count shows on its square.
                The player can never bin a curse either way.
   Tag          `random` puts the curse in the random deals (an event's
                `add_curse random`, the Hexer, Amnesia). A blank Tag keeps a curse
@@ -43,6 +45,7 @@ put one in the pack. See docs/loot-passives.md §18.
 
 import argparse
 import os
+import re
 import sys
 
 import openpyxl
@@ -62,10 +65,38 @@ SHEET = "curses"
 TYPES = ("Card",)
 
 # A curse card's keywords, and the rule each one says on the card.
+ETHEREAL_GAMES = 3
 KEYWORDS = {
     "Unmovable": "can't be moved",
     "Eternal": "can't be destroyed",
+    "Ethereal": "goes away after %d games" % ETHEREAL_GAMES,
 }
+
+# ETHEREAL IS A TRIGGER, not a field: after every game finished (win or lose — the
+# moment `game_beaten` names) the count moves, and on the third the card leaves.
+# It is the counted trigger Guilty uses for kills, so the pack draws its count on
+# the square with nothing new (LootPassives.kill_progress).
+ETHEREAL_TRIGGER = {"on": "game_beaten", "every": ETHEREAL_GAMES,
+                    "effects": [{"type": "remove_self"}]}
+
+# `limit_actions N` — NORMALITY's rule, a curse's own clause rather than a relic
+# grammar one (nothing else limits the player): no more than N usable actions a
+# game. Taken out of the Effect cell before the rest goes to item_dsl.
+LIMIT_RE = re.compile(r"^limit_actions\s+(\d+)$", re.I)
+
+
+def _split_limit(effect: str, name: str):
+    """(effect text without `limit_actions N`, N or 0)."""
+    keep, limit = [], 0
+    for clause in [c.strip() for c in effect.split(";") if c.strip()]:
+        m = LIMIT_RE.match(clause)
+        if m:
+            limit = int(m.group(1))
+            if limit < 1:
+                raise ValueError("curses %s: limit_actions wants 1 or more" % name)
+            continue
+        keep.append(clause)
+    return "; ".join(keep), limit
 
 
 def _keywords(raw, name: str) -> list:
@@ -110,8 +141,12 @@ def curse_tres(row) -> tuple:
     keywords = _keywords(row.get("Keywords"), name)
     movable = "Unmovable" not in keywords
     destroyable = "Eternal" not in keywords
-    effect = dsl._clean(row.get("Effect"))
+    effect, action_limit = _split_limit(dsl._clean(row.get("Effect")), name)
     passive = items.parse_loot_passive(name, effect) if effect else None
+    if "Ethereal" in keywords:
+        if passive is None:
+            passive = items.parse_loot_passive(name, "", allow_empty=True)
+        passive["triggers"] = list(passive.get("triggers", [])) + [dict(ETHEREAL_TRIGGER)]
     if passive is not None and passive["harmless_statuses"]:
         raise ValueError("curses %s: harmless_status is a trinket's rule "
                          "(docs/loot-passives.md §17)" % name)
@@ -142,6 +177,8 @@ def curse_tres(row) -> tuple:
         "movable = %s" % ("true" if movable else "false"),
         "destroyable = %s" % ("true" if destroyable else "false"),
     ]
+    if action_limit:
+        lines.append("action_limit = %d" % action_limit)
     if passive is not None:
         lines.append("triggers = %s" % dsl.gd_value(passive["triggers"]))
         lines.append("stat_bonuses = %s" % dsl.gd_value(passive["stat_bonuses"]))

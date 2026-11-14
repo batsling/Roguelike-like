@@ -435,6 +435,13 @@ var loot_uses_this_game: int = 0
 # as the game resolves, and saved with it.
 var cards_used_this_game: int = 0
 
+# USABLE ACTIONS TAKEN THIS GAME, for NORMALITY (docs/loot-passives.md §18): every
+# relic active fired, piece of pack loot used (a wand's zap and a weapon's swing
+# included), and board verb spent — Bash, Dash, Push, Transmute, Scramble, a Bomb.
+# Counted whether or not Normality is carried (it may arrive mid-game), zeroed
+# beside `loot_uses_this_game` as the game resolves (GameLoop2), and saved.
+var actions_this_game: int = 0
+
 # EVERYTHING DESTROYED THIS RUN, oldest first: each piece binned out of the pack or
 # off the floor, and each one an effect destroyed (a card's, an enemy's Degradation,
 # a scroll burning). One list because destroying a piece IS binning it (the owner,
@@ -1037,6 +1044,49 @@ func _trigger_gates_pass(trig: Dictionary, ctx: Dictionary) -> bool:
 #   * one whose row says it is not Destroyable survives every effect that destroys
 #     loot, the Scroll of Remove Curse included (Curse of the Bell).
 
+# --- Normality: the action limit ------------------------------------------------
+#
+# While a curse with an `action_limit` is carried, the player may take no more than
+# that many USABLE ACTIONS each game (the owner, 14 Nov 2026: "anything that would
+# count as a usable action" — relic actives, all pack loot, and the board verbs;
+# 3 in total, per game). Two of them carried is the smaller limit, not the sum.
+#
+# Every door asks `can_take_action` BEFORE it spends anything (so a refused press
+# costs nothing) and calls `note_action` once the action has gone through.
+# `refuse_action` is the asking with the toast attached, for the doors a player
+# presses.
+
+# The limit in force: the smallest carried `action_limit`, or 0 for none.
+func action_limit() -> int:
+	var limit: int = 0
+	for e in loot_items:
+		var c: CardData = curse_def(e)
+		if c != null and c.action_limit > 0:
+			limit = c.action_limit if limit == 0 else mini(limit, c.action_limit)
+	return limit
+
+func can_take_action() -> bool:
+	var limit: int = action_limit()
+	return limit <= 0 or actions_this_game < limit
+
+func note_action() -> void:
+	actions_this_game += 1
+	# The Use buttons and the relic strip grey out on the action that reaches the
+	# limit, so the pack has to redraw.
+	if action_limit() > 0:
+		emit_signal("inventory_changed")
+
+# The words for "no", shared by the toast and the greyed buttons' tooltips.
+func action_limit_text() -> String:
+	return "Normality: no more than %d actions this game." % action_limit()
+
+# True — and a toast — when the limit is reached; false when the action may go.
+func refuse_action() -> bool:
+	if can_take_action():
+		return false
+	Notifications.notify(action_limit_text(), UITheme.CURSE)
+	return true
+
 # The CardData behind a carried entry when it is a curse card, else null.
 func curse_def(entry) -> CardData:
 	if not (entry is Dictionary) or String((entry as Dictionary).get("type", "")) != "card":
@@ -1554,6 +1604,7 @@ func reset_run() -> void:
 	bonus_shields = 0
 	loot_uses_this_game = 0
 	cards_used_this_game = 0
+	actions_this_game = 0
 	bash = 0
 	push = 0
 	transmute = 0
@@ -3054,6 +3105,9 @@ func clear_overworld_context(scene = null) -> void:
 func can_fire_item(item: ItemData) -> bool:
 	if item == null or inventory.find(item) == -1:
 		return false
+	# NORMALITY (docs/loot-passives.md §18): a relic active is a usable action.
+	if not can_take_action():
+		return false
 	if item.is_charged():
 		return item.is_fully_charged()
 	if item.kind == ItemData.ItemKind.USABLE:
@@ -3132,6 +3186,8 @@ func use_item(item: ItemData, target = null) -> bool:
 		pass
 	else:
 		consume_item_use(item)
+	# A relic active fired is a usable action (Normality, docs/loot-passives.md §18).
+	note_action()
 	_recompute_item_bonuses()
 	emit_signal("inventory_changed")
 	return true

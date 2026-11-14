@@ -601,7 +601,7 @@ any event that hands it out:
 | `Game` | The real game it is lifted from. |
 | `Description` | What it does while carried, in words. Blank is fine: the card's line is composed from its keywords. |
 | `Effect` | What it does while carried, in the passive card grammar (`docs/loot-passives.md`). Blank: it only takes up space. |
-| `Keywords` | Comma-separated. **Unmovable**: it can't be moved (locked in the cell it was placed in). **Eternal**: it can't be destroyed (not by Remove Curse, not by anything). |
+| `Keywords` | Comma-separated. **Unmovable**: it can't be moved (locked in the cell it was placed in). **Eternal**: it can't be destroyed (not by Remove Curse, not by anything). **Ethereal**: it goes away after 3 games. |
 | `Tag` | `random` puts it in `add_curse random`'s draw. |
 | `Image` | Art base name under `images2.0/curses/`. |
 
@@ -614,6 +614,8 @@ The roster:
 | **Poor Sleep** | Card | Unrest Site | Unmovable | no |
 | **Guilty** | Card | random deals — leaves after 5 defeated enemies | — | yes |
 | **Debt** | Card | random deals — −2 Gold after every game | — | yes |
+| **Clumsy** | Card | random deals | Ethereal | yes |
+| **Normality** | Card | random deals — 3 usable actions a game (`limit_actions 3`) | — | yes |
 
 ---
 

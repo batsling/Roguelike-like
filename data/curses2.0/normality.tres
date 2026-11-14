@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3 uid="uid://curse2_normality"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"normality"
+display_name = "Normality"
+rarity = "Curse"
+source_game = "Slay the Spire"
+description = "You can take no more than 3 actions each game: active items, loot, and Bash, Dash, Push, Transmute, Scramble and Bombs. Can't be thrown away."
+file = "Normality"
+art_folder = "curses"
+loot_type = "Curse"
+tags = PackedStringArray("curse", "random")
+passive = true
+keywords = PackedStringArray()
+movable = true
+destroyable = true
+action_limit = 3

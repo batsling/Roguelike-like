@@ -1473,6 +1473,7 @@ func pick(index: int) -> void:
 	if _dash_mode:
 		GameState.dash_charges = maxi(0, GameState.dash_charges - 1)
 		_dash_mode = false
+		GameState.note_action()
 	# A RIFT KEY CARD spends its key and opens its rift before the commit, so the
 	# commit stands on a laid rift game (docs/rifts-design.md §8).
 	if _chosen.has("rift_key"):
@@ -1937,6 +1938,10 @@ func dash() -> void:
 		return
 	if _phase != Phase.SELECT or GameState.dash_charges <= 0 or _dash_mode:
 		return
+	# A Dash is a usable action (Normality, docs/loot-passives.md §18): asked for
+	# when the panel opens, counted when the dashed pick spends its charge.
+	if GameState.refuse_action():
+		return
 	# A Dash and an armed verb are three answers to the same question, so opening
 	# one puts the others down.
 	_armed_verb = &""
@@ -2011,7 +2016,18 @@ func armed_verb() -> StringName:
 # node with no more neighbours than the cap the slots can't change, so the reroll
 # lands entirely on the enemies behind them; either way a scramble always changes
 # what you're being offered. Returns true when a charge was spent.
+# NORMALITY (docs/loot-passives.md §18): a board verb is a usable action, so it
+# asks for one first (a refused press costs nothing) and counts one only once it
+# has gone through. The verb itself is `_scramble`.
 func scramble() -> bool:
+	if GameState.refuse_action():
+		return false
+	var done: bool = _scramble()
+	if done:
+		GameState.note_action()
+	return done
+
+func _scramble() -> bool:
 	if _asking_return():
 		return false
 	if _phase != Phase.SELECT or GameState.scramble <= 0 or _choices.is_empty():
@@ -5270,7 +5286,18 @@ func cancel_owned_pick() -> void:
 # armed and be pointed at another card (see `open_choice`) — the player has spent
 # nothing, and disarming them for aiming at the Amulet would make a warning feel
 # like a punishment.
+# NORMALITY (docs/loot-passives.md §18): a board verb is a usable action, so it
+# asks for one first (a refused press costs nothing) and counts one only once it
+# has gone through. The verb itself is `_bash_choice`.
 func bash_choice(index: int) -> bool:
+	if GameState.refuse_action():
+		return false
+	var done: bool = _bash_choice(index)
+	if done:
+		GameState.note_action()
+	return done
+
+func _bash_choice(index: int) -> bool:
 	if _asking_return():
 		return false
 	if _phase != Phase.SELECT or index < 0 or index >= _choices.size():
@@ -5345,7 +5372,18 @@ func bash_choice(index: int) -> bool:
 # gate rather than the game.
 # Returns whether the swap happened, for the same reason bash_choice does: a
 # refused aim keeps the charge and keeps the verb up.
+# NORMALITY (docs/loot-passives.md §18): a board verb is a usable action, so it
+# asks for one first (a refused press costs nothing) and counts one only once it
+# has gone through. The verb itself is `_transmute_choice`.
 func transmute_choice(index: int) -> bool:
+	if GameState.refuse_action():
+		return false
+	var done: bool = _transmute_choice(index)
+	if done:
+		GameState.note_action()
+	return done
+
+func _transmute_choice(index: int) -> bool:
 	if _asking_return():
 		return false
 	if _phase != Phase.SELECT or index < 0 or index >= _choices.size():
@@ -5385,7 +5423,11 @@ func push_follower(instance: int, dir: Vector2i = GameLoop2.PUSH_BACK) -> void:
 	# Where everyone stood BEFORE the shove, so the board can slide them to where
 	# it left them rather than repainting them there (BattlefieldView.animate_push).
 	var before: Dictionary = _board.capture_positions() if _board != null else {}
+	# A Push is a usable action (Normality, docs/loot-passives.md §18).
+	if GameState.refuse_action():
+		return
 	if GameLoop2.push(instance, dir):
+		GameState.note_action()
 		_refresh()
 		if _board != null:
 			_board.animate_push(before)
@@ -5394,7 +5436,11 @@ func push_follower(instance: int, dir: Vector2i = GameLoop2.PUSH_BACK) -> void:
 # when that kills it). A boss can be bombed but takes none of the damage, so the
 # charge only buys Sticky Bombs' stun there. GameLoop2.bomb guards the charge.
 func bomb_follower(instance: int) -> void:
+	# A Bomb is a usable action (Normality, docs/loot-passives.md §18).
+	if GameState.refuse_action():
+		return
 	if GameLoop2.bomb(instance):
+		GameState.note_action()
 		_refresh()
 
 # A bomb spent on GROUND rather than on a body (§17). The board hands back the
@@ -5402,8 +5448,11 @@ func bomb_follower(instance: int) -> void:
 # doing on an empty cell whenever the pack has made a bomb leave something behind
 # (Hot Bombs) or reach past its own square (Brimstone).
 func bomb_cell(cell: Vector2i) -> void:
+	if GameState.refuse_action():
+		return
 	if not GameLoop2.bomb_cell(cell):
 		return
+	GameState.note_action()
 	GameLog.add("A bomb goes off at column %d, row %d." % [cell.x, cell.y + 1],
 		BASH_ORANGE)
 	_refresh()

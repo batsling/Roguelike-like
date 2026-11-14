@@ -1,5 +1,7 @@
 extends GutTest
 
+const Fixtures := preload("res://test/helpers/fixtures.gd")
+
 # CURSE CARDS (docs/loot-passives.md §18). Since 14 Nov 2026 a curse is a card in
 # the pack rather than a checklist goal. These are its rules, held headless; the
 # placement modal is test_overworld2's (`_deal_curse`), the sources are
@@ -67,7 +69,7 @@ func test_a_cursed_weapon_counts_as_a_curse() -> void:
 func test_every_curse_row_is_a_card_with_known_keywords() -> void:
 	for cd in Data.all_curse_cards():
 		for k in cd.keywords:
-			assert_has(["Unmovable", "Eternal"], k, "%s's keyword %s is a known one" % [cd.id, k])
+			assert_has(["Unmovable", "Eternal", "Ethereal"], k, "%s's keyword %s is a known one" % [cd.id, k])
 		assert_eq(cd.movable, not cd.keywords.has("Unmovable"), "%s: Unmovable is movable" % cd.id)
 		assert_eq(cd.destroyable, not cd.keywords.has("Eternal"), "%s: Eternal is destroyable" % cd.id)
 
@@ -241,3 +243,73 @@ func test_two_debts_charge_twice() -> void:
 	GameState.gold = 10
 	TriggerBus.game_beaten.emit({"game_id": &"", "shields_left": 0})
 	assert_eq(GameState.gold, 6)
+
+# --- Clumsy (Ethereal) and Normality (the owner, 14 Nov 2026) ---------------------
+
+func _game_finished() -> void:
+	TriggerBus.game_beaten.emit({"game_id": &"", "shields_left": 0})
+
+func test_clumsy_is_ethereal_and_leaves_after_three_games() -> void:
+	var clumsy: CardData = Data.get_curse_card(&"clumsy")
+	assert_eq(Array(clumsy.keywords), ["Ethereal"])
+	assert_string_contains(clumsy.description, "Ethereal: goes away after 3 games")
+	assert_true(clumsy.is_random_curse(), "Clumsy is in the random deal")
+	_curse(&"clumsy", 0)
+	_game_finished()
+	var shown: Dictionary = LootPassives.kill_progress(0)
+	assert_eq(int(shown.get("have", -1)), 1, "the square counts the games")
+	assert_eq(int(shown.get("need", 0)), 3)
+	assert_eq(String(shown.get("unit", "")), "game", "in games, not charges")
+	_game_finished()
+	assert_true(GameState.has_curse_card(&"clumsy"), "two games is not enough")
+	_game_finished()
+	assert_false(GameState.has_curse_card(&"clumsy"), "the third takes it away")
+
+func test_normality_limits_three_actions_a_game() -> void:
+	var normality: CardData = Data.get_curse_card(&"normality")
+	assert_eq(normality.action_limit, 3)
+	assert_true(normality.is_random_curse(), "Normality is in the random deal")
+	assert_eq(GameState.action_limit(), 0, "no limit until it is carried")
+	_curse(&"normality", 0)
+	assert_eq(GameState.action_limit(), 3)
+	for i in range(4):
+		GameState.add_pill_loot(&"luck_up")
+	for i in range(3):
+		var at: int = GameState.loot_items.size() - 1
+		LootSystem.use_loot(at, {"rng": Fixtures.rng()})
+	assert_eq(GameState.actions_this_game, 3, "three pills were three actions")
+	assert_false(GameState.can_take_action(), "and that is the limit")
+	var left: int = GameState.loot_items.size()
+	var out: Dictionary = LootSystem.use_loot(left - 1, {"rng": Fixtures.rng()})
+	assert_eq(GameState.loot_items.size(), left, "the fourth pill is refused, and kept")
+	assert_string_contains(str(out.get("logs", [])), "Normality")
+
+func test_normality_greys_out_a_relic_active() -> void:
+	var item: ItemData = Fixtures.give(self, &"iv_bag")
+	if item == null:
+		pending("no IV Bag in the catalogue to fire")
+		return
+	# The IV Bag fires wherever there is a page to fire it on; stand one in.
+	var kept = GameState.overworld_scene
+	GameState.overworld_scene = self
+	assert_true(GameState.can_fire_item(item), "the IV Bag can fire")
+	_curse(&"normality", 0)
+	GameState.actions_this_game = 2
+	assert_true(GameState.can_fire_item(item), "under the limit it still can")
+	GameState.actions_this_game = 3
+	assert_false(GameState.can_fire_item(item), "at the limit a relic active is refused too")
+	GameState.overworld_scene = kept
+
+func test_the_action_count_resets_with_the_run_and_rides_a_save() -> void:
+	_curse(&"normality", 0)
+	GameState.actions_this_game = 2
+	var data: Dictionary = JSON.parse_string(JSON.stringify(SaveSystem._build_payload()))
+	GameState.reset_run()
+	assert_eq(GameState.actions_this_game, 0, "a new run starts at none")
+	SaveSystem._apply_save_data(data)
+	assert_eq(GameState.actions_this_game, 2, "a reload mid-game keeps the count")
+
+func test_two_normalities_are_the_smaller_limit_not_the_sum() -> void:
+	_curse(&"normality", 0)
+	_curse(&"normality", 1)
+	assert_eq(GameState.action_limit(), 3)

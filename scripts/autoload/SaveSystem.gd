@@ -278,6 +278,7 @@ func _build_payload() -> Dictionary:
 		# Echo Form copies the FIRST one, so a reload mid-game must not hand the
 		# copy out a second time.
 		"loot_uses_this_game": GameState.loot_uses_this_game,
+		"actions_this_game": GameState.actions_this_game,
 		"cards_used_this_game": GameState.cards_used_this_game,
 		"bash": GameState.base_verb_value("bash"),
 		"push": GameState.base_verb_value("push"),
@@ -495,6 +496,7 @@ func _apply_save_data(data: Dictionary) -> void:
 	# by nothing now: both cards are passives, and a run that had one armed has
 	# the card itself to hold instead.)
 	GameState.loot_uses_this_game = int(data.get("loot_uses_this_game", 0))
+	GameState.actions_this_game = int(data.get("actions_this_game", 0))
 	GameState.cards_used_this_game = int(data.get("cards_used_this_game", 0))
 	GameState.bash = int(data.get("bash", 0))
 	GameState.push = int(data.get("push", 0))
