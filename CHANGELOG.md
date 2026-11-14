@@ -16,7 +16,7 @@ For how the project is laid out and how its systems fit together, see
   mirrored to face the players' way, are Super Auto Pets' rank-up rewards; the
   Abandon Hat is earned by escaping five games in a row in one run. Each player
   has a spot for one on the `players` sheet (`Hat`), placed by the
-  owner for Batsaac; the hat is composed into the picture (`HatArt`), so the
+  owner: Batsaac's flat on his head, Retro Bat's on his right ear, tilted 35°; the hat is composed into the picture (`HatArt`), so the
   picker and the hero on the board show it. The header's small token stays bare. Chosen on a
   new Hats tab in Customization or in a strip on the player picker, with No hat
   and 🎲 Random (`docs/customization.md` §7).

@@ -265,7 +265,9 @@ way pets wear them in Super Auto Pets. Not on the characters.
   (`HatArt.ANCHOR`). `width` is the hat's width as a percent of the picture's,
   and `tilt` is degrees clockwise about the brim. A blank `Hat` means no spot,
   and that player wears nothing (Basic, who has no picture). The owner placed
-  Batsaac's: flat, "very slightly to the left" of centre (`46, 31, 42, 0`).
+  both: Batsaac's flat, "very slightly to the left" of centre (`46, 31, 42, 0`);
+  Retro Bat's on his right ear, leaning out the way Super Auto Pets leans its
+  hats, picked off a sheet of ear and tilt previews (`74, 20, 55, 35`).
 - **Wearing.** `HatArt.wear` COMPOSES the hat into the picture once and caches
   it. Every screen that draws a player's full picture as themselves asks
   `PlayerData.shown_portrait()` (`Cosmetics.player_art`) and gets the player in

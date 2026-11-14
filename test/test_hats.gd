@@ -76,7 +76,7 @@ func test_the_players_spots_come_from_the_sheet() -> void:
 	var bat: PlayerData = Data.get_player(&"batsaac")
 	assert_eq(bat.hat_spot, Vector4(46, 31, 42, 0), "the owner's: no tilt, a touch left")
 	var retro: PlayerData = Data.get_player(&"retro_bat")
-	assert_gt(retro.hat_spot.z, 0.0)
+	assert_eq(retro.hat_spot, Vector4(74, 20, 55, 35), "the owner's: on the right ear, tilted 35°")
 	assert_eq(Data.get_player(&"basic").hat_spot.z, 0.0, "the basic player has nothing to wear one on")
 
 # --- wearing ----------------------------------------------------------------------
