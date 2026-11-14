@@ -17,6 +17,8 @@ THE FILE NAME IS THE ENTRY. Drop a PNG in one of the folders below and rerun:
   images2.0/icons/Gold/<Name>_<Game>.png                         a gold icon (the coin's)
   images2.0/icons/Shields/<Name>_<Game>.png                      a shield icon (the 🛡, written or drawn)
   images2.0/icons/Hunger/<Name>_<Game>.png                       a Hunger icon (the 🍗, drawn five to the bar)
+  images2.0/hats/<Name>_<Game>.png                               a HAT a player wears (docs/customization.md §7)
+  images2.0/hats/Special/<Name>_<Game>.png                       a hat earned some other way than a rank
 
   * <Character> is the character's display name with spaces as underscores
     ("Antonio_Belpaese"); what comes after it is the costume's title
@@ -34,6 +36,10 @@ THE FILE NAME IS THE ENTRY. Drop a PNG in one of the folders below and rerun:
     0-0, 1-1, 2-2 and 3-3: one unlock, and the chest being opened picks the image.
     4 is a BOSS's chest (CosmeticCatalog.BOSS_CHEST): Slay the Spire's Boss Chest
     is 4-4 and its Large Chest 2-3. A set with no 4 shows its highest for a boss.
+  * A HAT is named like an icon (`Top_Hat_Super_Auto_Pets`) and, like one, is its
+    game's rank-up reward. One in `Special/` is NOT: it is unlocked by a rule of
+    its own (Cosmetics.SPECIAL_HATS — the Abandon Hat, five games escaped in a row
+    in one run), and carries `"special": true` so no rank ever draws it.
 
 `--check` exits 1 when the checked-in JSON is not what the folders say.
 """
@@ -46,6 +52,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(ROOT, "data", "cosmetics.json")
 CHAR_DIR = "images2.0/characters"
 ICON_DIR = "images2.0/icons"
+HAT_DIR = "images2.0/hats"
 SLOTS = {"Costumes Icon": "icon", "Costumes Full": "full", "Costumes Both": "both"}
 ICON_KINDS = {"Keys": "key", "Bombs": "bomb", "Difficulties": "difficulty", "Luck": "luck",
 	"Chests": "chest", "Health": "health", "Damage": "damage", "Gold": "gold",
@@ -175,8 +182,22 @@ def build():
 			if len(e["images"]) > 1:
 				e["name"] = " / ".join(i["name"] for i in e["images"])
 			icons.append(e)
+	hats = []
+	for sub, special in (("", False), ("Special", True)):
+		folder = f"{HAT_DIR}/{sub}" if sub else HAT_DIR
+		for f in pngs(folder):
+			game, name = suffix_game(f[:-4], games)
+			if game == "":
+				errors.append(f"hats/{sub + '/' if sub else ''}{f}: names no game")
+				continue
+			e = {"id": f"hat/{norm(name)}", "name": name.strip(), "game": game,
+				"path": f"res://{folder}/{f}"}
+			if special:
+				e["special"] = True
+			hats.append(e)
+	hats.sort(key=lambda h: h["id"])
 	costumes.sort(key=lambda c: c["id"] + c["slot"])
-	return {"costumes": costumes, "icons": icons}, errors
+	return {"costumes": costumes, "icons": icons, "hats": hats}, errors
 
 
 def main():
@@ -192,7 +213,8 @@ def main():
 		print("cosmetics.json is current")
 		return
 	open(OUT, "w", encoding="utf-8").write(text)
-	print(f"{len(data['costumes'])} costumes, {len(data['icons'])} icons -> data/cosmetics.json")
+	print(f"{len(data['costumes'])} costumes, {len(data['icons'])} icons, {len(data['hats'])} hats"
+		" -> data/cosmetics.json")
 	sys.exit(1 if errors else 0)
 
 

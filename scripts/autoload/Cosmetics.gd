@@ -101,18 +101,49 @@ func _refresh_unlocks(announce: bool) -> void:
 	_save()
 	if announce:
 		for key in fresh:
-			var e: Dictionary = CosmeticCatalog.entry(key)
-			var what: String = "costume" if String(e.get("unit", "")) == "costume" \
-				else {"key": "key icon", "bomb": "bomb icon", "difficulty": "difficulty icon",
-					"luck": "Luck icon", "chest": "chest icon", "health": "Health icon",
-					"damage": "damage icon", "gold": "gold icon", "shield": "shield icon",
-					"hunger": "Hunger icon"}.get(
-					String(e.get("kind", "")), "look")
-			Notifications.notify("✦ New %s: %s" % [what, CosmeticCatalog.label(e)],
-				Color(0.95, 0.8, 0.45), CosmeticCatalog.texture(
-					(CosmeticCatalog.paths(e) + [""])[0]), "cosmetic")
-			look_unlocked.emit(key)
+			_announce(key)
 	changed.emit()
+
+# The toast for a look just earned ("✦ New hat: Super Auto Pets — Top Hat").
+func _announce(key: String) -> void:
+	var e: Dictionary = CosmeticCatalog.entry(key)
+	var unit := String(e.get("unit", ""))
+	var what: String = unit if unit in ["costume", "hat"] \
+		else {"key": "key icon", "bomb": "bomb icon", "difficulty": "difficulty icon",
+			"luck": "Luck icon", "chest": "chest icon", "health": "Health icon",
+			"damage": "damage icon", "gold": "gold icon", "shield": "shield icon",
+			"hunger": "Hunger icon"}.get(
+			String(e.get("kind", "")), "look")
+	Notifications.notify("✦ New %s: %s" % [what, CosmeticCatalog.label(e)],
+		Color(0.95, 0.8, 0.45), CosmeticCatalog.texture(
+			(CosmeticCatalog.paths(e) + [""])[0]), "cosmetic")
+	look_unlocked.emit(key)
+
+# A SPECIAL HAT is earned by a rule of its own, never by a rank
+# (CosmeticCatalog.is_special): the owner, 14 Nov 2026 — "don't add special hats
+# except the abandon hat which can be unlocked by escaping 5 games in a row". The
+# streak is the RUN's (GameState.escape_streak; the owner chose "within one run"),
+# counted where every game is handed in (Overworld2.report's bookkeeping).
+const ABANDON_HAT := "hat/abandon_hat"
+const ABANDON_ESCAPES := 5
+# key -> how it is earned, in words, for a locked tile's hover.
+const SPECIAL_HATS := {ABANDON_HAT: "Escape %d games in a row in one run." % ABANDON_ESCAPES}
+const SPECIAL_OWNER := "special"
+
+# Called with the run's escape streak after every game handed in.
+func note_escape_streak(streak: int) -> void:
+	if streak >= ABANDON_ESCAPES:
+		unlock_special(ABANDON_HAT)
+
+# Unlock `key` outside the ranks; true if it was not already. Toasted like a rank's.
+func unlock_special(key: String) -> bool:
+	if _unlocked.has(key) or CosmeticCatalog.entry(key).is_empty():
+		return false
+	_unlocked[key] = SPECIAL_OWNER
+	_save()
+	_announce(key)
+	changed.emit()
+	return true
 
 func _draw(pool: Array, owed: int, owner: String, fresh: Array) -> void:
 	if owed <= 0:
@@ -131,6 +162,11 @@ static func costume_slot(character: StringName, slot: String) -> String:
 
 static func icon_slot(kind: String) -> String:
 	return "icon:%s" % kind
+
+# A PLAYER's hat (docs/customization.md §7): one slot per player, so Retro Bat and
+# Batsaac each keep their own.
+static func hat_slot(player: StringName) -> String:
+	return "hat:%s" % player
 
 # What the player CHOSE for a slot: "" (the default), RANDOM, or a unit key.
 func choice(slot_key: String) -> String:
@@ -162,6 +198,24 @@ func icon(kind: String) -> Dictionary:
 func set_icon(kind: String, key: String) -> void:
 	_choose(icon_slot(kind), key)
 
+# The hat `player` wears, or {} for none.
+func hat(player: StringName) -> Dictionary:
+	var key := _shown_key(hat_slot(player))
+	return CosmeticCatalog.entry(key) if key != "" else {}
+
+func set_hat(player: StringName, key: String) -> void:
+	_choose(hat_slot(player), key)
+
+# `pl`'s full picture in the hat it wears (HatArt), or its own art when it wears
+# none or has no spot for one.
+func player_art(pl: PlayerData) -> Texture2D:
+	if pl == null:
+		return null
+	var e := hat(pl.id)
+	if e.is_empty() or pl.portrait == null:
+		return pl.portrait
+	return HatArt.wear(pl.portrait, CosmeticCatalog.texture(String(e.get("path", ""))), pl.hat_spot)
+
 # What a slot shows now, a costume's or an icon set's entry ({} for the default).
 func costume_or_icon(slot_key: String) -> Dictionary:
 	var key := _shown_key(slot_key)
@@ -187,6 +241,8 @@ func options(slot_key: String) -> Array:
 	var pool: Array = []
 	if parts[0] == "costume":
 		pool = CosmeticCatalog.costumes_of(StringName(parts[1]), parts[2])
+	elif parts[0] == "hat":
+		pool = CosmeticCatalog.hats()
 	else:
 		pool = CosmeticCatalog.icons_of(parts[1])
 	var out: Array = [""]

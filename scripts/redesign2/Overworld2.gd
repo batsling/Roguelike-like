@@ -2669,6 +2669,10 @@ func report(beaten: bool, fulfilled: Variant = null, escaped: bool = false,
 		# stop the clock and all land in the split list with which of the three it
 		# was written on them.
 		RunTimer.finish_game(played_game.id, beaten, escaped)
+		# THE ESCAPE STREAK: games walked out of in a row this run, which any other
+		# hand-in breaks. Five earns the Abandon Hat (docs/customization.md §7).
+		GameState.escape_streak = GameState.escape_streak + 1 if escaped else 0
+		Cosmetics.note_escape_streak(GameState.escape_streak)
 
 	# BEATEN MEANS WON. This block used to sit inside the one above — any report
 	# that wasn't an escape banked the game, a missed goal included — so "⚔ Beaten
@@ -6895,6 +6899,7 @@ func _paint_character_chip() -> void:
 		_character_chip.tooltip_text = "%s — the character this run is being played as." % ch.display_name
 	if _player_chip != null and is_instance_valid(_player_chip):
 		var pl: PlayerData = GameState.player()
+		# Bare: the token never wears the hat (docs/customization.md §7).
 		var ptex: Texture2D = pl.icon if pl != null else null
 		_player_chip.texture = ptex
 		UITheme.apply_crisp(_player_chip, ptex)

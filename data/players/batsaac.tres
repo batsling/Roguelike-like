@@ -11,3 +11,4 @@ order = 30
 mechanics = Array[StringName]([])
 portrait_path = "res://images2.0/players/Batsaac.png"
 icon_path = "res://images2.0/players/Icon/Batsaac.png"
+hat_spot = Vector4(46, 31, 42, 0)

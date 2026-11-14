@@ -43,11 +43,12 @@ with it.
 
 ### The sheet
 
-`players`: `Name | Description | Mechanics | File`. `Mechanics` is a comma list of
+`players`: `Name | Description | Mechanics | File | Hat`. `Mechanics` is a comma list of
 `Hunger`, `Unidentified Weapons` (the generator's `MECHANICS`, mirroring
 `PlayerData.MECHANICS`); blank is the basic player. `File` is the art's base name
 in `images2.0/players/`. The art is named by PATH and loaded on first read, the
-boot-load rule. What a mechanic SAYS is not on the sheet: the rules are code, so
+boot-load rule. `Hat` is where a worn hat sits on the picture
+([customization.md](customization.md) §7); the small token never wears one. What a mechanic SAYS is not on the sheet: the rules are code, so
 `PlayerData.mechanic_line` keeps their words beside them.
 
 What **unlocks** a player is a row of the `achievements` sheet under the

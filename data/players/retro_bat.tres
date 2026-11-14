@@ -11,3 +11,4 @@ order = 20
 mechanics = Array[StringName]([&"hunger", &"unidentified_weapons"])
 portrait_path = "res://images2.0/players/RetroBat.png"
 icon_path = "res://images2.0/players/RetroBat.png"
+hat_spot = Vector4(74, 20, 55, 35)

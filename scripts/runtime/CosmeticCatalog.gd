@@ -16,10 +16,15 @@ extends RefCounted
 #     of Rain 2's Drizzle, Rainstorm and Monsoon are one unlock). A CHEST set's
 #     range is the chest's SIZE instead (0 Small … 3 Huge, Data.ChestSize; 4 is a
 #     BOSS's chest, BOSS_CHEST): Enter the Gungeon's D, C, B and A chests are one
-#     unlock, picked by the chest opened, and so are Slay the Spire's four.
+#     unlock, picked by the chest opened, and so are Slay the Spire's four;
+#   * a HAT is "hat/<name>" — one picture a PLAYER wears on its head (§7 of
+#     docs/customization.md, HatArt). Super Auto Pets' are that game's rank-up
+#     rewards; a `special` one (the Abandon Hat) is earned by a rule of its own
+#     (Cosmetics.SPECIAL_HATS) and no rank ever draws it.
 #
 # WHO PAYS WHICH: a GAME's ranks pay the units of that game; a CHARACTER's ranks pay
-# the units of the games the character is from, and the character's own costumes.
+# the units of the games the character is from, and the character's own costumes
+# — but never a hat: hats are their GAME's reward, and the players wear them.
 
 const PATH := "res://data/cosmetics.json"
 const KINDS := ["key", "bomb", "difficulty", "luck", "chest", "health", "damage", "gold", "shield",
@@ -35,6 +40,7 @@ static func catalog() -> Dictionary:
 	var got: Variant = JSON.parse_string(text) if text != "" else null
 	var costumes: Array = []
 	var icons: Array = []
+	var hats: Array = []
 	if got is Dictionary:
 		for c in (got as Dictionary).get("costumes", []):
 			var e: Dictionary = (c as Dictionary).duplicate()
@@ -46,11 +52,19 @@ static func catalog() -> Dictionary:
 			e["key"] = String(e["id"])
 			e["unit"] = "icon"
 			icons.append(e)
-	_cache = {"costumes": costumes, "icons": icons}
+		for h in (got as Dictionary).get("hats", []):
+			hats.append(_hat_entry(h))
+	_cache = {"costumes": costumes, "icons": icons, "hats": hats}
 	return _cache
 
+static func _hat_entry(h: Dictionary) -> Dictionary:
+	var e: Dictionary = h.duplicate()
+	e["key"] = String(e["id"])
+	e["unit"] = "hat"
+	return e
+
 # For tests that hand in a catalog of their own.
-static func set_for_tests(costumes: Array, icons: Array) -> void:
+static func set_for_tests(costumes: Array, icons: Array, hats: Array = []) -> void:
 	_cache = {}
 	var c: Array = []
 	for e in costumes:
@@ -64,7 +78,7 @@ static func set_for_tests(costumes: Array, icons: Array) -> void:
 		d["key"] = String(d["id"])
 		d["unit"] = "icon"
 		i.append(d)
-	_cache = {"costumes": c, "icons": i}
+	_cache = {"costumes": c, "icons": i, "hats": hats.map(func(h): return _hat_entry(h))}
 
 static func reset_cache() -> void:
 	_cache = {}
@@ -73,6 +87,7 @@ static func all_units() -> Array:
 	var out: Array = []
 	out.append_array(catalog()["costumes"])
 	out.append_array(catalog()["icons"])
+	out.append_array(catalog()["hats"])
 	return out
 
 static func entry(key: String) -> Dictionary:
@@ -91,11 +106,19 @@ static func costumes_of(character: StringName, slot: String) -> Array:
 static func icons_of(kind: String) -> Array:
 	return (catalog()["icons"] as Array).filter(func(e): return String(e["kind"]) == kind)
 
+# Every hat, the special ones included, in the index's order (by name).
+static func hats() -> Array:
+	return catalog()["hats"]
+
+# Whether `e` is earned by a rule of its own rather than drawn by a rank.
+static func is_special(e: Dictionary) -> bool:
+	return bool(e.get("special", false))
+
 # The keys a game's ranks pay out of, sorted so a draw over them is repeatable.
 static func units_of_game(game: StringName) -> Array:
 	var out: Array = []
 	for e in all_units():
-		if String(e["game"]) == String(game):
+		if String(e["game"]) == String(game) and not is_special(e):
 			out.append(String(e["key"]))
 	out.sort()
 	return out
@@ -112,6 +135,8 @@ static func units_of_character(character: StringName) -> Array:
 			games[gid] = true
 	var out: Array = []
 	for e in all_units():
+		if String(e["unit"]) == "hat":
+			continue
 		if games.has(String(e["game"])) or String(e.get("character", "")) == String(character):
 			out.append(String(e["key"]))
 	out.sort()
@@ -166,7 +191,7 @@ static func label(e: Dictionary) -> String:
 
 # Every picture a unit shows, for the menu's falling art.
 static func paths(e: Dictionary) -> Array:
-	if String(e.get("unit", "")) == "costume":
+	if String(e.get("unit", "")) in ["costume", "hat"]:
 		return [String(e["path"])]
 	return (e.get("images", []) as Array).map(func(i): return String(i["path"]))
 

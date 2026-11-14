@@ -190,6 +190,7 @@ func _build_payload() -> Dictionary:
 		"played_games": _stringnames_to_strings(GameState.played_games),
 		"total_games_beaten": GameState.total_games_beaten,
 		"games_played": GameState.games_played,
+		"escape_streak": GameState.escape_streak,
 		"spawn_events": GameState.spawn_events,
 		"player_level": GameState.player_level,
 		# Save the BASE vitals (without item contribution). The item
@@ -447,6 +448,7 @@ func _apply_save_data(data: Dictionary) -> void:
 		data.get("played_games", data.get("beaten_games", [])))
 	GameState.total_games_beaten = data.get("total_games_beaten", 0)
 	GameState.games_played = data.get("games_played", 0)
+	GameState.escape_streak = int(data.get("escape_streak", 0))
 	GameState.spawn_events = data.get("spawn_events", 0)
 	GameState.player_level = data.get("player_level", 1)
 	GameState.max_hp = data.get("max_hp", 75)

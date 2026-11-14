@@ -1896,5 +1896,542 @@
 				}
 			]
 		}
+	],
+	"hats": [
+		{
+			"id": "hat/abandon_hat",
+			"name": "Abandon Hat",
+			"game": "super_auto_pets",
+			"path": "res://images2.0/hats/Special/Abandon_Hat_Super_Auto_Pets.png",
+			"special": true
+		},
+		{
+			"id": "hat/astronaut_helmet",
+			"name": "Astronaut Helmet",
+			"game": "super_auto_pets",
+			"path": "res://images2.0/hats/Astronaut_Helmet_Super_Auto_Pets.png"
+		},
+		{
+			"id": "hat/ball_cap",
+			"name": "Ball Cap",
+			"game": "super_auto_pets",
+			"path": "res://images2.0/hats/Ball_Cap_Super_Auto_Pets.png"
+		},
+		{
+			"id": "hat/balmoral_bonnet",
+			"name": "Balmoral Bonnet",
+			"game": "super_auto_pets",
+			"path": "res://images2.0/hats/Balmoral_Bonnet_Super_Auto_Pets.png"
+		},
+		{
+			"id": "hat/baseball_hat",
+			"name": "Baseball Hat",
+			"game": "super_auto_pets",
+			"path": "res://images2.0/hats/Baseball_Hat_Super_Auto_Pets.png"
+		},
+		{
+			"id": "hat/bear_hat",
+			"name": "Bear Hat",
+			"game": "super_auto_pets",
+			"path": "res://images2.0/hats/Bear_Hat_Super_Auto_Pets.png"
+		},
+		{
+			"id": "hat/bearskin_hat",
+			"name": "Bearskin Hat",
+			"game": "super_auto_pets",
+			"path": "res://images2.0/hats/Bearskin_Hat_Super_Auto_Pets.png"
+		},
+		{
+			"id": "hat/beehive_hat",
+			"name": "Beehive Hat",
+			"game": "super_auto_pets",
+			"path": "res://images2.0/hats/Beehive_Hat_Super_Auto_Pets.png"
+		},
+		{
+			"id": "hat/beret_hat",
+			"name": "Beret Hat",
+			"game": "super_auto_pets",
+			"path": "res://images2.0/hats/Beret_Hat_Super_Auto_Pets.png"
+		},
+		{
+			"id": "hat/bird_nest",
+			"name": "Bird Nest",
+			"game": "super_auto_pets",
+			"path": "res://images2.0/hats/Bird_Nest_Super_Auto_Pets.png"
+		},
+		{
+			"id": "hat/biretta_hat",
+			"name": "Biretta Hat",
+			"game": "super_auto_pets",
+			"path": "res://images2.0/hats/Biretta_Hat_Super_Auto_Pets.png"
+		},
+		{
+			"id": "hat/boudoir_cap",
+			"name": "Boudoir Cap",
+			"game": "super_auto_pets",
+			"path": "res://images2.0/hats/Boudoir_Cap_Super_Auto_Pets.png"
+		},
+		{
+			"id": "hat/bowler_hat",
+			"name": "Bowler Hat",
+			"game": "super_auto_pets",
+			"path": "res://images2.0/hats/Bowler_Hat_Super_Auto_Pets.png"
+		},
+		{
+			"id": "hat/bucket_hat",
+			"name": "Bucket Hat",
+			"game": "super_auto_pets",
+			"path": "res://images2.0/hats/Bucket_Hat_Super_Auto_Pets.png"
+		},
+		{
+			"id": "hat/bullseye_hat",
+			"name": "Bullseye Hat",
+			"game": "super_auto_pets",
+			"path": "res://images2.0/hats/Bullseye_Hat_Super_Auto_Pets.png"
+		},
+		{
+			"id": "hat/cangaceiro_hat",
+			"name": "Cangaceiro Hat",
+			"game": "super_auto_pets",
+			"path": "res://images2.0/hats/Cangaceiro_Hat_Super_Auto_Pets.png"
+		},
+		{
+			"id": "hat/captain_hat",
+			"name": "Captain Hat",
+			"game": "super_auto_pets",
+			"path": "res://images2.0/hats/Captain_Hat_Super_Auto_Pets.png"
+		},
+		{
+			"id": "hat/carnival_tiara",
+			"name": "Carnival Tiara",
+			"game": "super_auto_pets",
+			"path": "res://images2.0/hats/Carnival_Tiara_Super_Auto_Pets.png"
+		},
+		{
+			"id": "hat/chef_hat",
+			"name": "Chef Hat",
+			"game": "super_auto_pets",
+			"path": "res://images2.0/hats/Chef_Hat_Super_Auto_Pets.png"
+		},
+		{
+			"id": "hat/cloche_hat",
+			"name": "Cloche Hat",
+			"game": "super_auto_pets",
+			"path": "res://images2.0/hats/Cloche_Hat_Super_Auto_Pets.png"
+		},
+		{
+			"id": "hat/cooking_pot",
+			"name": "Cooking Pot",
+			"game": "super_auto_pets",
+			"path": "res://images2.0/hats/Cooking_Pot_Super_Auto_Pets.png"
+		},
+		{
+			"id": "hat/coonskin_hat",
+			"name": "Coonskin Hat",
+			"game": "super_auto_pets",
+			"path": "res://images2.0/hats/Coonskin_Hat_Super_Auto_Pets.png"
+		},
+		{
+			"id": "hat/cowboy_hat",
+			"name": "Cowboy Hat",
+			"game": "super_auto_pets",
+			"path": "res://images2.0/hats/Cowboy_Hat_Super_Auto_Pets.png"
+		},
+		{
+			"id": "hat/custodian_helmet",
+			"name": "Custodian Helmet",
+			"game": "super_auto_pets",
+			"path": "res://images2.0/hats/Custodian_Helmet_Super_Auto_Pets.png"
+		},
+		{
+			"id": "hat/early_adopter_hat",
+			"name": "Early Adopter Hat",
+			"game": "super_auto_pets",
+			"path": "res://images2.0/hats/Early_Adopter_Hat_Super_Auto_Pets.png"
+		},
+		{
+			"id": "hat/elf_hat",
+			"name": "Elf Hat",
+			"game": "super_auto_pets",
+			"path": "res://images2.0/hats/Elf_Hat_Super_Auto_Pets.png"
+		},
+		{
+			"id": "hat/feather_hat",
+			"name": "Feather Hat",
+			"game": "super_auto_pets",
+			"path": "res://images2.0/hats/Feather_Hat_Super_Auto_Pets.png"
+		},
+		{
+			"id": "hat/fedora_hat",
+			"name": "Fedora Hat",
+			"game": "super_auto_pets",
+			"path": "res://images2.0/hats/Fedora_Hat_Super_Auto_Pets.png"
+		},
+		{
+			"id": "hat/fez_hat",
+			"name": "Fez Hat",
+			"game": "super_auto_pets",
+			"path": "res://images2.0/hats/Fez_Hat_Super_Auto_Pets.png"
+		},
+		{
+			"id": "hat/fish_hat",
+			"name": "Fish Hat",
+			"game": "super_auto_pets",
+			"path": "res://images2.0/hats/Fish_Hat_Super_Auto_Pets.png"
+		},
+		{
+			"id": "hat/fishing_hat",
+			"name": "Fishing Hat",
+			"game": "super_auto_pets",
+			"path": "res://images2.0/hats/Fishing_Hat_Super_Auto_Pets.png"
+		},
+		{
+			"id": "hat/flat_top_hat",
+			"name": "Flat Top Hat",
+			"game": "super_auto_pets",
+			"path": "res://images2.0/hats/Flat_Top_Hat_Super_Auto_Pets.png"
+		},
+		{
+			"id": "hat/flower_hat",
+			"name": "Flower Hat",
+			"game": "super_auto_pets",
+			"path": "res://images2.0/hats/Flower_Hat_Super_Auto_Pets.png"
+		},
+		{
+			"id": "hat/folded_newspaper",
+			"name": "Folded Newspaper",
+			"game": "super_auto_pets",
+			"path": "res://images2.0/hats/Folded_Newspaper_Super_Auto_Pets.png"
+		},
+		{
+			"id": "hat/fruit_hat",
+			"name": "Fruit Hat",
+			"game": "super_auto_pets",
+			"path": "res://images2.0/hats/Fruit_Hat_Super_Auto_Pets.png"
+		},
+		{
+			"id": "hat/gaucho_hat",
+			"name": "Gaucho Hat",
+			"game": "super_auto_pets",
+			"path": "res://images2.0/hats/Gaucho_Hat_Super_Auto_Pets.png"
+		},
+		{
+			"id": "hat/golden_poop_hat",
+			"name": "Golden Poop Hat",
+			"game": "super_auto_pets",
+			"path": "res://images2.0/hats/Golden_Poop_Hat_Super_Auto_Pets.png"
+		},
+		{
+			"id": "hat/graduation_cap",
+			"name": "Graduation Cap",
+			"game": "super_auto_pets",
+			"path": "res://images2.0/hats/Graduation_Cap_Super_Auto_Pets.png"
+		},
+		{
+			"id": "hat/halo",
+			"name": "Halo",
+			"game": "super_auto_pets",
+			"path": "res://images2.0/hats/Halo_Super_Auto_Pets.png"
+		},
+		{
+			"id": "hat/hamburger_hat",
+			"name": "Hamburger Hat",
+			"game": "super_auto_pets",
+			"path": "res://images2.0/hats/Hamburger_Hat_Super_Auto_Pets.png"
+		},
+		{
+			"id": "hat/hennin_hat",
+			"name": "Hennin Hat",
+			"game": "super_auto_pets",
+			"path": "res://images2.0/hats/Hennin_Hat_Super_Auto_Pets.png"
+		},
+		{
+			"id": "hat/inventor_hat",
+			"name": "Inventor Hat",
+			"game": "super_auto_pets",
+			"path": "res://images2.0/hats/Inventor_Hat_Super_Auto_Pets.png"
+		},
+		{
+			"id": "hat/june_party_hat",
+			"name": "June Party Hat",
+			"game": "super_auto_pets",
+			"path": "res://images2.0/hats/June_Party_Hat_Super_Auto_Pets.png"
+		},
+		{
+			"id": "hat/kepi_hat",
+			"name": "Kepi Hat",
+			"game": "super_auto_pets",
+			"path": "res://images2.0/hats/Kepi_Hat_Super_Auto_Pets.png"
+		},
+		{
+			"id": "hat/kufi_hat",
+			"name": "Kufi Hat",
+			"game": "super_auto_pets",
+			"path": "res://images2.0/hats/Kufi_Hat_Super_Auto_Pets.png"
+		},
+		{
+			"id": "hat/moon_hat",
+			"name": "Moon Hat",
+			"game": "super_auto_pets",
+			"path": "res://images2.0/hats/Moon_Hat_Super_Auto_Pets.png"
+		},
+		{
+			"id": "hat/mushroom_hat",
+			"name": "Mushroom Hat",
+			"game": "super_auto_pets",
+			"path": "res://images2.0/hats/Mushroom_Hat_Super_Auto_Pets.png"
+		},
+		{
+			"id": "hat/napoleon_hat",
+			"name": "Napoleon Hat",
+			"game": "super_auto_pets",
+			"path": "res://images2.0/hats/Napoleon_Hat_Super_Auto_Pets.png"
+		},
+		{
+			"id": "hat/nefertiti_hat",
+			"name": "Nefertiti Hat",
+			"game": "super_auto_pets",
+			"path": "res://images2.0/hats/Nefertiti_Hat_Super_Auto_Pets.png"
+		},
+		{
+			"id": "hat/nurse_hat",
+			"name": "Nurse Hat",
+			"game": "super_auto_pets",
+			"path": "res://images2.0/hats/Nurse_Hat_Super_Auto_Pets.png"
+		},
+		{
+			"id": "hat/old_top_hat",
+			"name": "Old Top Hat",
+			"game": "super_auto_pets",
+			"path": "res://images2.0/hats/Old_Top_Hat_Super_Auto_Pets.png"
+		},
+		{
+			"id": "hat/pamela_hat",
+			"name": "Pamela Hat",
+			"game": "super_auto_pets",
+			"path": "res://images2.0/hats/Pamela_Hat_Super_Auto_Pets.png"
+		},
+		{
+			"id": "hat/pants_hat",
+			"name": "Pants Hat",
+			"game": "super_auto_pets",
+			"path": "res://images2.0/hats/Pants_Hat_Super_Auto_Pets.png"
+		},
+		{
+			"id": "hat/park_ranger_hat",
+			"name": "Park Ranger Hat",
+			"game": "super_auto_pets",
+			"path": "res://images2.0/hats/Park_Ranger_Hat_Super_Auto_Pets.png"
+		},
+		{
+			"id": "hat/party_hat",
+			"name": "Party Hat",
+			"game": "super_auto_pets",
+			"path": "res://images2.0/hats/Party_Hat_Super_Auto_Pets.png"
+		},
+		{
+			"id": "hat/pilgrim_hat",
+			"name": "Pilgrim Hat",
+			"game": "super_auto_pets",
+			"path": "res://images2.0/hats/Pilgrim_Hat_Super_Auto_Pets.png"
+		},
+		{
+			"id": "hat/pirate_hat",
+			"name": "Pirate Hat",
+			"game": "super_auto_pets",
+			"path": "res://images2.0/hats/Pirate_Hat_Super_Auto_Pets.png"
+		},
+		{
+			"id": "hat/plant_hat",
+			"name": "Plant Hat",
+			"game": "super_auto_pets",
+			"path": "res://images2.0/hats/Plant_Hat_Super_Auto_Pets.png"
+		},
+		{
+			"id": "hat/plunger",
+			"name": "Plunger",
+			"game": "super_auto_pets",
+			"path": "res://images2.0/hats/Plunger_Super_Auto_Pets.png"
+		},
+		{
+			"id": "hat/poop_hat",
+			"name": "Poop Hat",
+			"game": "super_auto_pets",
+			"path": "res://images2.0/hats/Poop_Hat_Super_Auto_Pets.png"
+		},
+		{
+			"id": "hat/propeller_hat",
+			"name": "Propeller Hat",
+			"game": "super_auto_pets",
+			"path": "res://images2.0/hats/Propeller_Hat_Super_Auto_Pets.png"
+		},
+		{
+			"id": "hat/rainbow_hat",
+			"name": "Rainbow Hat",
+			"game": "super_auto_pets",
+			"path": "res://images2.0/hats/Rainbow_Hat_Super_Auto_Pets.png"
+		},
+		{
+			"id": "hat/rasta_hat",
+			"name": "Rasta Hat",
+			"game": "super_auto_pets",
+			"path": "res://images2.0/hats/Rasta_Hat_Super_Auto_Pets.png"
+		},
+		{
+			"id": "hat/robot_mask",
+			"name": "Robot Mask",
+			"game": "super_auto_pets",
+			"path": "res://images2.0/hats/Robot_Mask_Super_Auto_Pets.png"
+		},
+		{
+			"id": "hat/rude_hat",
+			"name": "Rude Hat",
+			"game": "super_auto_pets",
+			"path": "res://images2.0/hats/Rude_Hat_Super_Auto_Pets.png"
+		},
+		{
+			"id": "hat/samo",
+			"name": "Samo",
+			"game": "super_auto_pets",
+			"path": "res://images2.0/hats/Samo_Super_Auto_Pets.png"
+		},
+		{
+			"id": "hat/santa_hat",
+			"name": "Santa Hat",
+			"game": "super_auto_pets",
+			"path": "res://images2.0/hats/Santa_Hat_Super_Auto_Pets.png"
+		},
+		{
+			"id": "hat/sherlock_hat",
+			"name": "Sherlock Hat",
+			"game": "super_auto_pets",
+			"path": "res://images2.0/hats/Sherlock_Hat_Super_Auto_Pets.png"
+		},
+		{
+			"id": "hat/shower_head_cap",
+			"name": "Shower Head Cap",
+			"game": "super_auto_pets",
+			"path": "res://images2.0/hats/Shower_Head_Cap_Super_Auto_Pets.png"
+		},
+		{
+			"id": "hat/soda_cap",
+			"name": "Soda Cap",
+			"game": "super_auto_pets",
+			"path": "res://images2.0/hats/Soda_Cap_Super_Auto_Pets.png"
+		},
+		{
+			"id": "hat/soft_ice_hat",
+			"name": "Soft Ice Hat",
+			"game": "super_auto_pets",
+			"path": "res://images2.0/hats/Soft_Ice_Hat_Super_Auto_Pets.png"
+		},
+		{
+			"id": "hat/sombrero_hat",
+			"name": "Sombrero Hat",
+			"game": "super_auto_pets",
+			"path": "res://images2.0/hats/Sombrero_Hat_Super_Auto_Pets.png"
+		},
+		{
+			"id": "hat/stack_of_hats",
+			"name": "Stack of Hats",
+			"game": "super_auto_pets",
+			"path": "res://images2.0/hats/Stack_of_Hats_Super_Auto_Pets.png"
+		},
+		{
+			"id": "hat/straw_hat",
+			"name": "Straw Hat",
+			"game": "super_auto_pets",
+			"path": "res://images2.0/hats/Straw_Hat_Super_Auto_Pets.png"
+		},
+		{
+			"id": "hat/sun_hat",
+			"name": "Sun Hat",
+			"game": "super_auto_pets",
+			"path": "res://images2.0/hats/Sun_Hat_Super_Auto_Pets.png"
+		},
+		{
+			"id": "hat/sunny_egg_hat",
+			"name": "Sunny Egg Hat",
+			"game": "super_auto_pets",
+			"path": "res://images2.0/hats/Sunny_Egg_Hat_Super_Auto_Pets.png"
+		},
+		{
+			"id": "hat/taco_hat",
+			"name": "Taco Hat",
+			"game": "super_auto_pets",
+			"path": "res://images2.0/hats/Taco_Hat_Super_Auto_Pets.png"
+		},
+		{
+			"id": "hat/tengu_mask",
+			"name": "Tengu Mask",
+			"game": "super_auto_pets",
+			"path": "res://images2.0/hats/Tengu_Mask_Super_Auto_Pets.png"
+		},
+		{
+			"id": "hat/tin_foil_hat",
+			"name": "Tin Foil Hat",
+			"game": "super_auto_pets",
+			"path": "res://images2.0/hats/Tin_Foil_Hat_Super_Auto_Pets.png"
+		},
+		{
+			"id": "hat/top_hat",
+			"name": "Top Hat",
+			"game": "super_auto_pets",
+			"path": "res://images2.0/hats/Top_Hat_Super_Auto_Pets.png"
+		},
+		{
+			"id": "hat/traffic_cone",
+			"name": "Traffic Cone",
+			"game": "super_auto_pets",
+			"path": "res://images2.0/hats/Traffic_Cone_Super_Auto_Pets.png"
+		},
+		{
+			"id": "hat/turban",
+			"name": "Turban",
+			"game": "super_auto_pets",
+			"path": "res://images2.0/hats/Turban_Super_Auto_Pets.png"
+		},
+		{
+			"id": "hat/umbrella_hat",
+			"name": "Umbrella Hat",
+			"game": "super_auto_pets",
+			"path": "res://images2.0/hats/Umbrella_Hat_Super_Auto_Pets.png"
+		},
+		{
+			"id": "hat/uncle_sam_hat",
+			"name": "Uncle Sam Hat",
+			"game": "super_auto_pets",
+			"path": "res://images2.0/hats/Uncle_Sam_Hat_Super_Auto_Pets.png"
+		},
+		{
+			"id": "hat/viking_hat",
+			"name": "Viking Hat",
+			"game": "super_auto_pets",
+			"path": "res://images2.0/hats/Viking_Hat_Super_Auto_Pets.png"
+		},
+		{
+			"id": "hat/white_wig",
+			"name": "White Wig",
+			"game": "super_auto_pets",
+			"path": "res://images2.0/hats/White_Wig_Super_Auto_Pets.png"
+		},
+		{
+			"id": "hat/winter_hat",
+			"name": "Winter Hat",
+			"game": "super_auto_pets",
+			"path": "res://images2.0/hats/Winter_Hat_Super_Auto_Pets.png"
+		},
+		{
+			"id": "hat/witch_hat",
+			"name": "Witch Hat",
+			"game": "super_auto_pets",
+			"path": "res://images2.0/hats/Witch_Hat_Super_Auto_Pets.png"
+		},
+		{
+			"id": "hat/wizard_hat",
+			"name": "Wizard Hat",
+			"game": "super_auto_pets",
+			"path": "res://images2.0/hats/Wizard_Hat_Super_Auto_Pets.png"
+		}
 	]
 }

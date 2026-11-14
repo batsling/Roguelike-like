@@ -36,8 +36,22 @@ const MECHANICS := [&"hunger", &"unidentified_weapons"]
 # else the same picture as `portrait_path`.
 @export var icon_path: String = ""
 
+# WHERE A HAT SITS on the full picture (docs/customization.md §7; HatArt): x, y,
+# width and tilt, in percent of the picture (the tilt in degrees). A width of 0 is
+# no spot: a player without one wears nothing. The small token never wears a hat
+# (the owner, 14 Nov 2026: "icon shouldn't have a hat").
+@export var hat_spot: Vector4 = Vector4.ZERO
+
 var _portrait: Texture2D = null
 var _icon: Texture2D = null
+
+# THE PICTURE AS WORN: the player in the hat they have on (Cosmetics.hat), else
+# their own art. Every screen that shows the player's full picture as THEMSELVES —
+# the picker, the hero on the board — draws this, never `portrait`, the way a
+# character is drawn through `shown_portrait()`. An achievement (a player still to
+# unlock) keeps the bare picture, and the header's token (`icon`) is always bare.
+func shown_portrait() -> Texture2D:
+	return Cosmetics.player_art(self)
 
 var icon: Texture2D:
 	get:

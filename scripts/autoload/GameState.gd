@@ -121,6 +121,10 @@ var session_mark: Dictionary = {}
 # EventSystem gates requirements on "games", and SaveSystem derives the autosave
 # seed from it. It ticks at every game.
 var games_played: int = 0
+# HOW MANY GAMES IN A ROW THIS RUN WERE ESCAPED, back to the last one handed in any
+# other way (Overworld2.report). What the Abandon Hat asks for: five
+# (Cosmetics.ABANDON_ESCAPES; docs/customization.md §7).
+var escape_streak: int = 0
 # SPAWN EVENTS — one per game arrival that landed bodies, one per failure spawn,
 # regardless of how many bodies each put down (§19.6). This is what the tier
 # ladder reads now (RunDifficulty.current_tier).
@@ -1297,6 +1301,7 @@ func reset_run() -> void:
 	camp_deal = []
 	session_mark = {}
 	games_played = 0
+	escape_streak = 0
 	spawn_events = 0
 	# THE RUN'S SEED, AND THE STREAM IT DEALS. `run_seed` has existed and been
 	# saved since the shops needed something stable to hash their stock against,
