@@ -668,6 +668,9 @@ static func tier_badge_room(cover: Control, game_id) -> Control:
 # pixel shield that stood here is Brutal Orchestra's shield icon now. Draw a
 # shield with `Cosmetics.shield_art()`, which is this unless an icon is worn.
 const SHIELD_ART: Texture2D = preload("res://images2.0/general/Shield.png")
+# The basic Hunger icon: 🍗 drawn in Hunger's amber (tools/build_hunger_art.py).
+# Draw it with `Cosmetics.hunger_art()`, which swaps in a worn one.
+const HUNGER_ART: Texture2D = preload("res://images2.0/general/Hunger.png")
 
 # THE CLOCK. Anything TEMPORARY carries it in its bottom-right corner — a status
 # borrowed for a game or two (docs/potions-design.md §5.3), a shield that expires

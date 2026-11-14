@@ -1853,6 +1853,48 @@
 					"max": 10
 				}
 			]
+		},
+		{
+			"id": "hunger/floor_chicken_vampire_survivors",
+			"kind": "hunger",
+			"name": "Floor Chicken",
+			"game": "vampire_survivors",
+			"images": [
+				{
+					"name": "Floor Chicken",
+					"path": "res://images2.0/icons/Hunger/Floor_Chicken_Vampire_Survivors.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "hunger/food_mewgenics",
+			"kind": "hunger",
+			"name": "Food",
+			"game": "mewgenics",
+			"images": [
+				{
+					"name": "Food",
+					"path": "res://images2.0/icons/Hunger/Food_Mewgenics.png",
+					"min": 0,
+					"max": 10
+				}
+			]
+		},
+		{
+			"id": "hunger/food_supply_loop_hero",
+			"kind": "hunger",
+			"name": "Food Supply",
+			"game": "loop_hero",
+			"images": [
+				{
+					"name": "Food Supply",
+					"path": "res://images2.0/icons/Hunger/Food_Supply_Loop_Hero.png",
+					"min": 0,
+					"max": 10
+				}
+			]
 		}
 	]
 }

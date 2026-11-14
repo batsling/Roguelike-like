@@ -363,8 +363,12 @@ func test_handing_a_game_in_costs_hunger_and_the_header_shows_it() -> void:
 		pending("the opening start put no game in play")
 		return
 	assert_eq(GameState.hunger, HungerSystem.START - 1, "the opening game cost 1")
-	var lit: int = ui._hunger_pips.filter(func(p): return p.color == HungerSystem.COLOR).size()
-	assert_eq(lit, GameState.hunger, "a lit pip per point")
+	# Five Hunger icons, a full one per point and a ghost for the rest.
+	assert_eq(ui._hunger_pips.size(), HungerSystem.MAX)
+	var lit: int = ui._hunger_pips.filter(func(p): return p.modulate == Color.WHITE).size()
+	assert_eq(lit, GameState.hunger, "a full icon per point")
+	for p in ui._hunger_pips:
+		assert_eq(p.texture, Cosmetics.hunger_art(), "every one is the Hunger icon")
 
 func test_the_eat_button_shows_only_with_food_and_the_basic_player_has_no_bar() -> void:
 	var ui = Page.build(self)
@@ -424,3 +428,13 @@ func test_the_header_shows_the_player_left_of_the_character() -> void:
 	assert_eq(chip.texture_filter, CanvasItem.TEXTURE_FILTER_LINEAR, "a painted face is smoothed")
 	ui.start_run(&"isaac", Data.BASIC_PLAYER)
 	assert_false(chip.visible, "no token for a player with no art")
+
+# THE BASIC HUNGER ICON is the 🍗, drawn; a worn one replaces it (docs/customization.md).
+func test_hunger_is_an_icon_kind_with_a_drawn_default() -> void:
+	assert_true(CosmeticCatalog.KINDS.has("hunger"))
+	assert_true(CustomizeScreen.KIND_NAMES.has("hunger") and CustomizeScreen.KIND_GLYPHS.has("hunger"))
+	var games: Array = CosmeticCatalog.icons_of("hunger").map(func(e): return String(e["game"]))
+	for g in ["mewgenics", "vampire_survivors", "loop_hero"]:
+		assert_has(games, g, "the owner's yes from %s" % g)
+	assert_eq(Cosmetics.hunger_art(), UITheme.HUNGER_ART, "unworn: the basic 🍗")
+

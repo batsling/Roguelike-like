@@ -123,13 +123,15 @@ stats come neither from the start nor from a level-up.
   run on the spot if Health runs out.
 - **Food** is anything tagged `food` on its sheet row: relics (`items`) and loot
   (`trinkets` today). `HungerSystem.edible()` lists both.
-- **The screen**: the bar is five drawn pips beside the character token at the
-  top left of the header (drawn, not `■□` glyphs — a hollow box is what a missing
-  character looks like on stream, BattlefieldView's ladder note). **Eat** sits
-  beside it while there is food, greyed out at 5 so food is never wasted.
-  Pressing it lights the food in the pack and on the relic strip (`OwnedPick`, the
-  gesture Identify uses) and a click eats one. Both are hidden for a player
-  without Hunger.
+- **The screen**: five Hunger icons beside the character token at the top left
+  of the header (the owner, 14 Nov 2026), a full one per point and a faint ghost
+  of the same picture for the rest, all tinted red while the stomach is empty.
+  The picture is `Cosmetics.hunger_art()`: the basic 🍗 (drawn by
+  `tools/build_hunger_art.py`) or a worn Hunger icon (`docs/customization.md`).
+  **Eat** sits beside them while there is food, greyed out at 5 so food is never
+  wasted. Pressing it lights the food in the pack and on the relic strip
+  (`OwnedPick`, the gesture Identify uses) and a click eats one. Both are hidden
+  for a player without Hunger.
 - The numbers are a first cut the owner expects to tune.
 
 ## 5. Unidentified weapons

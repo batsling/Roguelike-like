@@ -76,9 +76,9 @@ No extra rules: the game as it is.
 
 ### Hunger
 
-- Your Hunger is the bar beside your character at the top left. Every game you hand in — beaten, missed or escaped — costs 1.
+- Your Hunger is the five food icons beside your character at the top left, one full icon per point. Every game you hand in — beaten, missed or escaped — costs 1.
 - The game that empties it costs nothing more. After that, every game you finish and every run you lose costs 2 Health until you eat.
-- Drinking any potion is +1. So is eating: press Eat beside the bar and click a piece of food in your pack or a food relic — it is gone, and you are +1. You cannot eat at 5.
+- Drinking any potion is +1. So is eating: press Eat beside the icons and click a piece of food in your pack or a food relic — it is gone, and you are +1. You cannot eat at 5.
 
 ### Unidentified weapons
 

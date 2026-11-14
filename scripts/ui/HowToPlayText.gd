@@ -629,12 +629,13 @@ static func _ch_players() -> Dictionary:
 			blocks.append(_kv(PlayerData.mechanic_name(m), PlayerData.mechanic_line(m)))
 	blocks += [
 		_h("Hunger"),
-		_b("Your Hunger is the bar beside your character at the top left. Every "
-			+ "game you hand in — beaten, missed or escaped — costs 1."),
+		_b("Your Hunger is the five food icons beside your character at the top "
+			+ "left, one full icon per point. Every game you hand in — beaten, "
+			+ "missed or escaped — costs 1."),
 		_b("The game that empties it costs nothing more. After that, every game "
 			+ "you finish and every run you lose costs %d Health until you eat."
 			% HungerSystem.STARVE_DAMAGE),
-		_b("Drinking any potion is +1. So is eating: press Eat beside the bar and "
+		_b("Drinking any potion is +1. So is eating: press Eat beside the icons and "
 			+ "click a piece of food in your pack or a food relic — it is gone, "
 			+ "and you are +1. You cannot eat at %d." % HungerSystem.MAX),
 		_h("Unidentified weapons"),

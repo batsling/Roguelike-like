@@ -11,6 +11,12 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Hunger is five icons, and an icon kind (the owner, 14 Nov 2026).** The word
+  and the bar in the header are five Hunger icons, full or a ghost. The basic one
+  is a 🍗 drawn in Hunger's amber (`tools/build_hunger_art.py`); three to earn,
+  picked by the owner from fifteen researched: Mewgenics' Food, Vampire
+  Survivors' Floor Chicken and Loop Hero's Food Supply.
+
 - **The player's token in the header (the owner, 13 Nov 2026)**, just left of the
   character's. Retro Bat's is its own sprite; Batsaac's is his face, cut out of
   the painting as a circle and stored at twice the chip so it shrinks cleanly

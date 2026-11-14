@@ -198,7 +198,7 @@ var _level_chip: Label = null
 # HUNGER (docs/players-design.md §4), beside the token: the bar, and the Eat
 # button that lights the food in the pack. Both hidden for a player without it.
 var _hunger_chip: HBoxContainer = null
-var _hunger_pips: Array[ColorRect] = []
+var _hunger_pips: Array[TextureRect] = []
 var _eat_btn: Button = null
 # The road walked, across the top of the page. Rebuilt on every refresh — it is a
 # handful of TextureRects and the run only moves a few dozen times.
@@ -6767,29 +6767,23 @@ func _build_character_chip() -> Control:
 	row.add_child(_level_chip)
 	# HUNGER, top left beside the token (the owner, 13 Nov 2026): the stomach as
 	# five pips, and the Eat button while there is something to eat.
-	# A DRAWN bar, not filled/hollow box glyphs: a hollow box is what a missing character
-	# renders as (BattlefieldView's RUNG note), and on a stream an empty stomach
-	# would read as a broken font.
+	# FIVE HUNGER ICONS, not a word and a bar (the owner, 14 Nov 2026): one per
+	# point the stomach can hold, lit for each point it does. The picture is the
+	# worn Hunger icon, else the basic 🍗 (Cosmetics.hunger_art); drawn, never
+	# written, so no glyph swap is involved.
 	_hunger_chip = HBoxContainer.new()
 	_hunger_chip.name = "HungerChip"
 	_hunger_chip.add_theme_constant_override("separation", UITheme.GAP_HAIR)
 	_hunger_chip.mouse_filter = Control.MOUSE_FILTER_STOP
 	_hunger_chip.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	var hunger_word := Label.new()
-	hunger_word.text = "Hunger"
-	hunger_word.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
-	hunger_word.add_theme_color_override("font_color", HungerSystem.COLOR)
-	hunger_word.mouse_filter = Control.MOUSE_FILTER_PASS
-	_hunger_chip.add_child(hunger_word)
 	_hunger_pips.clear()
 	for _i in range(HungerSystem.MAX):
-		var pip := ColorRect.new()
-		pip.custom_minimum_size = Vector2(HUNGER_PIP_W, HUNGER_PIP_H)
-		pip.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		var pip := UITheme.crisp_tex(null, HUNGER_PIP)
 		pip.mouse_filter = Control.MOUSE_FILTER_PASS
 		_hunger_chip.add_child(pip)
 		_hunger_pips.append(pip)
 	row.add_child(_hunger_chip)
+	Cosmetics.changed.connect(_paint_hunger_chip)
 	_eat_btn = Button.new()
 	_eat_btn.name = "EatButton"
 	_eat_btn.text = "Eat"
@@ -6819,19 +6813,26 @@ func _paint_hunger_chip() -> void:
 	if not on:
 		return
 	var h: int = GameState.hunger
-	var lit: Color = UITheme.DANGER if h == 0 else HungerSystem.COLOR
+	var art: Texture2D = Cosmetics.hunger_art()
 	for i in range(_hunger_pips.size()):
-		_hunger_pips[i].color = lit if i < h else UITheme.WELL
-	# Empty, the frame itself goes red: there is no lit pip left to say so.
-	if h == 0 and not _hunger_pips.is_empty():
-		for p in _hunger_pips:
-			p.color = UITheme.DANGER.lerp(UITheme.BG, 0.6)
+		var pip: TextureRect = _hunger_pips[i]
+		pip.texture = art
+		UITheme.apply_crisp(pip, art)
+		# Full, as drawn; empty, a dark ghost of the same picture; and with the
+		# stomach empty every one of them tinted red, since there is no lit icon
+		# left to say so.
+		if i < h:
+			pip.modulate = Color.WHITE
+		elif h == 0:
+			pip.modulate = Color(UITheme.DANGER, 0.55)
+		else:
+			pip.modulate = HUNGER_EMPTY
 	_hunger_chip.tooltip_text = ("Hunger %d/%d. Each game you finish costs 1. At 0, "
 		+ "finishing a game or losing a run costs %d Health. Drink a potion or eat "
 		+ "food for +1.") % [h, HungerSystem.MAX, HungerSystem.STARVE_DAMAGE]
 
-const HUNGER_PIP_W := 8
-const HUNGER_PIP_H := 12
+const HUNGER_PIP := 18
+const HUNGER_EMPTY := Color(1, 1, 1, 0.25)
 
 # THE EAT BUTTON (docs/players-design.md §4): the food in the pack and on the
 # relic strip lights up, and clicking one eats it — OwnedPick, the same gesture

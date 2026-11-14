@@ -22,9 +22,9 @@ const LETTER_TILE := 40
 const TABS := ["Characters", "Icons", "Title Letters"]
 const KIND_NAMES := {"key": "Keys", "bomb": "Bombs", "difficulty": "Difficulty (the trophy)",
 	"luck": "Luck", "chest": "Chests", "health": "Health", "damage": "Damage", "gold": "Gold",
-	"shield": "Shields"}
+	"shield": "Shields", "hunger": "Hunger"}
 const KIND_GLYPHS := {"key": "🗝", "bomb": "✸", "difficulty": "🏆", "luck": "🍀", "chest": "🎁",
-	"health": "♥", "damage": "⚔", "gold": "◉", "shield": "🛡"}
+	"health": "♥", "damage": "⚔", "gold": "◉", "shield": "🛡", "hunger": "🍗"}
 
 var _tab := 0
 var _tab_buttons: Array[Button] = []

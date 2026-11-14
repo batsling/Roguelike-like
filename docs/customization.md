@@ -50,6 +50,7 @@ images2.0/icons/Health/<Name>_<Game>.png
 images2.0/icons/Damage/<Name>_<Game>.png
 images2.0/icons/Gold/<Name>_<Game>.png
 images2.0/icons/Shields/<Name>_<Game>.png
+images2.0/icons/Hunger/<Name>_<Game>.png
 ```
 
 - **An icon goes in at its best version, every time** (the owner, 13 Nov 2026).
@@ -176,6 +177,12 @@ On a 🏆, the Fracture level is written over the picture in `Fracture.COLOR`.
   `tools/build_shield_art.py`. **Draw a shield with `Cosmetics.shield_art()`,
   never `UITheme.SHIELD_ART` directly.** The pixel shield that used to be the
   default is Brutal Orchestra's icon to earn.
+- **Hunger is only ever drawn**, five to the bar in the header for a player with
+  Hunger (`docs/players-design.md` §4): `Cosmetics.hunger_art()`, the worn Hunger
+  icon, else `UITheme.HUNGER_ART` — the 🍗 glyph drawn once in Hunger's amber by
+  `tools/build_hunger_art.py`, the way the shield's is. To earn (the owner's yes,
+  14 Nov 2026): Mewgenics' Food, Vampire Survivors' Floor Chicken and Loop Hero's
+  Food Supply.
 - **Gold is ◉**: the purse chip, the shop's purse, prices and gold Reroll, the
   Steal action and the inventory's Gold line. A kind with nothing to earn says so
   on its row ("No icons to earn yet").
