@@ -1310,16 +1310,34 @@ static func _cell_body(entry: Dictionary, use_cb: Callable, locked_now: bool,
 	var band := Control.new()
 	band.custom_minimum_size = Vector2(0, LootSlot.ART_BAND)
 	band.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# THE ONE PIECE A DROP MODAL OFFERS (`with_name` false — LootDropModal's single
+	# offer, which prints the name and line under the cell instead) has nothing
+	# else in its cell, so the band takes the WHOLE cell and the art is centred in
+	# it at the pack's size, rather than 40px pinned to the top of a 104px square
+	# with the rest of the frame empty. That is the screen a curse card is placed
+	# on, and its first look at the curse should be the picture, not a thumbnail.
+	if not with_name:
+		band.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		col.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	var centre := CenterContainer.new()
 	centre.name = "Centre"
 	centre.set_anchors_preset(Control.PRESET_FULL_RECT)
 	centre.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	band.add_child(centre)
 	# BIGGER IN THE PACK, where the name and the button are laid OVER the picture
-	# rather than stacked under it, so the art gets the whole square.
-	var art: TextureRect = LootSystem.art_tex(entry,
-		LootSlot.ART_BIG if with_name else LootSlot.ART, face_up)
+	# rather than stacked under it, so the art gets the whole square — and on the
+	# drop modal's single offer, which has the whole square to itself (above).
+	var art_side: int = LootSlot.ART_BIG
+	var art: TextureRect = LootSystem.art_tex(entry, art_side, face_up)
 	art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# BIG PAINTED ART IS SHRUNK THROUGH ITS MIPMAPS. A curse card's picture is a
+	# 512px painting drawn at 64; scaled straight down it breaks into stair-steps.
+	# `fit_art` hands it the mipmapped copy and the filter that reads it, the same
+	# rule every other picture drawn far under its size goes through. Pixel art
+	# (every card face, scroll and pill) keeps the crisp path it was already on.
+	var tex: Texture2D = art.texture
+	if tex != null and not UITheme.is_small_art(tex):
+		UITheme.fit_art(art, tex, float(art.custom_minimum_size.x))
 	# THE PICTURE TURNS WITH THE PIECE (`rot`, docs/loot-passives.md §2). A
 	# container resets its children's rotation, so the art sits in a plain Control
 	# of its own size and turns about its middle inside it.
