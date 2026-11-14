@@ -611,7 +611,9 @@ The roster:
 |---|---|---|---|---|
 | **Curse of the Bell** | Card | the Calling Bell relic | Eternal | no |
 | **Injury** | Card | Punch Off, Golden Idol, the Lacerator | — | yes |
-| **Poor Sleep** | Card | Unrest Site | Unmovable | yes |
+| **Poor Sleep** | Card | Unrest Site | Unmovable | no |
+| **Guilty** | Card | random deals — leaves after 5 defeated enemies | — | yes |
+| **Debt** | Card | random deals — −2 Gold after every game | — | yes |
 
 ---
 

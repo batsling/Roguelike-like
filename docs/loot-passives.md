@@ -796,8 +796,13 @@ That row, its timer and its penalty are all gone.
   refuses any `Type` other than `Card` until something reads it.
 - **It is a passive piece.** It is never spent and works from its cell. Its
   `Effect` uses the passive-card grammar, so **Blueprint copies a curse's
-  effect** like any other passive's. The first three curses have no effect and
-  only take up space. Their card text is composed by the generator from their
+  effect** like any other passive's. Curse of the Bell, Injury and Poor Sleep
+  have no effect and only take up space. **Debt** is `game_beaten: lose_gold 2`,
+  which costs 2 Gold every time a game is finished, win or lose. **Guilty** is
+  `enemy_killed every=5: remove_self`. That is food's counted trigger (§11), so
+  its square shows `have/need` like a food's, and `remove_self` takes it out of
+  the pack on the fifth kill (`GameState.expire_curse_card`). Like
+  `break_into`, a Blueprint copying Guilty is the piece that goes. Their card text is composed by the generator from their
   **keywords** ("Eternal: can't be destroyed."), so it cannot claim a rule the
   card does not have. The keywords also show on the hover and as chips on the
   placement modal.
@@ -842,7 +847,9 @@ That row, its timer and its penalty are all gone.
 |---|---|---|---|---|
 | Curse of the Bell | Card | Eternal | no | the Calling Bell |
 | Injury | Card | — | yes | Punch Off, Golden Idol, the Lacerator, random deals |
-| Poor Sleep | Card | Unmovable | yes | Unrest Site, random deals |
+| Poor Sleep | Card | Unmovable | no | Unrest Site |
+| Guilty | Card | — (leaves after 5 kills) | yes | random deals |
+| Debt | Card | — (−2 Gold per game) | yes | random deals |
 
 Tests: `test/test_curse_cards.gd` covers the pack rules, `test_overworld2.gd`'s
 curse-card block covers the modal, and the sources are covered where they live

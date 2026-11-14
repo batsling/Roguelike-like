@@ -197,3 +197,47 @@ func test_a_curse_waiting_to_be_placed_survives_a_save() -> void:
 	assert_true(GameState.has_curse_card(&"poor_sleep"), "and the placed one is still in the pack")
 	assert_true(GameState.is_pinned(GameState.loot_items[0]), "still locked")
 	assert_eq(GameState.loot_slot_of(0), 3, "in the cell it was put in")
+
+# --- Guilty and Debt (the owner, 14 Nov 2026) ------------------------------------
+
+func _kill() -> void:
+	TriggerBus.enemy_killed.emit({"enemy": null, "boss": false})
+
+func test_guilty_counts_five_kills_on_its_square_and_then_leaves() -> void:
+	var guilty: Dictionary = _curse(&"guilty", 0)
+	var shown: Dictionary = LootPassives.entry_progress(guilty)
+	assert_eq(int(shown.get("need", 0)), 5, "the square shows a count out of 5")
+	assert_eq(int(shown.get("have", -1)), 0, "starting at 0")
+	for i in range(4):
+		_kill()
+	assert_true(GameState.has_curse_card(&"guilty"), "four kills is not enough")
+	assert_eq(int(LootPassives.entry_progress(GameState.loot_items[0]).get("have", 0)), 4,
+		"and the square says 4 / 5")
+	watch_signals(TriggerBus)
+	_kill()
+	assert_false(GameState.has_curse_card(&"guilty"), "the fifth kill takes it away")
+	assert_signal_emitted(TriggerBus, "curse_removed")
+	assert_true(GameState.destroyed_loot.is_empty(), "gone, not binned")
+
+func test_guilty_and_debt_are_random_and_poor_sleep_and_the_bell_are_not() -> void:
+	for id in [&"injury", &"guilty", &"debt"]:
+		assert_true(Data.get_curse_card(id).is_random_curse(), "%s is in the random deal" % id)
+	for id in [&"poor_sleep", &"curse_of_the_bell"]:
+		assert_false(Data.get_curse_card(id).is_random_curse(), "%s is not" % id)
+
+func test_debt_takes_two_gold_after_every_game() -> void:
+	_curse(&"debt", 0)
+	GameState.gold = 5
+	TriggerBus.game_beaten.emit({"game_id": &"", "shields_left": 0})
+	assert_eq(GameState.gold, 3, "a game finished costs 2 Gold")
+	TriggerBus.game_beaten.emit({"game_id": &"", "shields_left": 0})
+	TriggerBus.game_beaten.emit({"game_id": &"", "shields_left": 0})
+	assert_eq(GameState.gold, 0, "and never takes the purse below nothing")
+	assert_true(GameState.has_curse_card(&"debt"), "Debt stays")
+
+func test_two_debts_charge_twice() -> void:
+	_curse(&"debt", 0)
+	_curse(&"debt", 1)
+	GameState.gold = 10
+	TriggerBus.game_beaten.emit({"game_id": &"", "shields_left": 0})
+	assert_eq(GameState.gold, 6)

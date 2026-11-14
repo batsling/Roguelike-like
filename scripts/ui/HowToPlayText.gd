@@ -938,7 +938,9 @@ static func _ch_pack() -> Dictionary:
 				+ "screen opens and you have to put it in a slot. You can't skip "
 				+ "it, so if your pack is full, use or bin something to make room."),
 			_p("You can never bin a curse, leave it on the table or put it down "
-				+ "on the board. Most of them only take up the slot. A Scroll of "
+				+ "on the board. Some only take up the slot; some do more. Debt "
+				+ "costs you 2 Gold after every game. Guilty leaves on its own "
+				+ "once you have defeated 5 enemies, and its square counts them. A Scroll of "
 				+ "Remove Curse or anything that destroys loot gets rid of one, "
 				+ "unless its keywords say otherwise:"),
 			_kv("Unmovable", "It can't be moved. It stays in the slot you put it "

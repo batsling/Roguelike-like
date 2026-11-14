@@ -286,8 +286,10 @@ func test_hexer_deals_curses_the_run_is_not_already_carrying() -> void:
 	_put(_enemy([_ability(&"hexer", 2)]))
 	_turn()
 	assert_eq(GameState.curse_count(), 2, "two curse cards")
-	assert_true(GameState.has_curse_card(&"injury") and GameState.has_curse_card(&"poor_sleep"),
-		"two distinct ones")
+	var ids: Dictionary = {}
+	for e in GameState.loot_items:
+		ids[String(e.get("id", ""))] = true
+	assert_eq(ids.size(), 2, "two distinct ones: %s" % str(ids.keys()))
 
 func test_degradation_destroys_carried_loot() -> void:
 	GameState.add_loot("scroll", 3)

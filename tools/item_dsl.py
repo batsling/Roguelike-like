@@ -442,7 +442,9 @@ def parse_one_effect(raw, default_target="enemy", in_grant=False):
               "gain_chest", "lose_hp", "heal", "block",
               "gain_pill", "gain_scroll", "gain_potion", "gain_loot",
               "drop_loot", "gain_card", "bump",
-              "gain_random_buff", "remove_random_debuff", "gain_top_buff"}
+              "gain_random_buff", "remove_random_debuff", "gain_top_buff",
+              # Debt's bill (docs/loot-passives.md §18): `game_beaten: lose_gold 2`.
+              "lose_gold"}
     if verb in SCALAR:
         rest, kv = _kv(toks[1:])
         nums = [int(x) for x in rest if re.match(r"^-?\d+$", x)]
@@ -492,6 +494,14 @@ def parse_one_effect(raw, default_target="enemy", in_grant=False):
         if not rest:
             raise ValueError("item DSL: break_into wants an item id or random_item in %r" % raw)
         return {"type": "break_into", "item": rest[0].lower()}
+
+    # `remove_self` — the piece of loot doing the firing LEAVES THE PACK, and nothing
+    # takes its place. Guilty's way out (docs/loot-passives.md §18): `enemy_killed
+    # every=5: remove_self` is a curse that goes once five enemies have fallen. A
+    # curse that removes ITSELF goes whatever its keywords say — Eternal is about
+    # what OTHER things can do to it.
+    if verb == "remove_self":
+        return {"type": "remove_self"}
 
     # `charge_random N` / `charge_random full` — top up one random relic or wand
     # that has room (Charged Penny +1, Hairpin all the way). The same pool the pill

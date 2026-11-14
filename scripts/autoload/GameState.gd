@@ -1160,6 +1160,23 @@ func place_curse_headless(entry: Dictionary) -> bool:
 			return take_loot_entry(entry)
 	return false
 
+# A curse card that has RUN ITS COURSE leaves the pack on its own terms — Guilty,
+# after five defeated enemies (`remove_self`). Unlike `lift_curse_card` this
+# ignores Eternal: the keyword says nothing ELSE can destroy a curse. Not binned
+# (no Exhume, no Trading Card). Returns the entry, or {}.
+func expire_curse_card(index: int) -> Dictionary:
+	if index < 0 or index >= loot_items.size():
+		return {}
+	var card: CardData = curse_def(loot_items[index])
+	if card == null:
+		return {}
+	var entry: Dictionary = (loot_items[index] as Dictionary).duplicate(true)
+	remove_loot_at(index)
+	Notifications.notify("%s is gone." % card.display_name, UITheme.CURSE)
+	GameLog.add("%s ran its course and left your pack." % card.display_name, UITheme.CURSE)
+	TriggerBus.curse_removed.emit({"curse": card})
+	return entry
+
 # Lift the curse card at `index` off the run — the Scroll of Remove Curse. Only a
 # Destroyable curse comes off; it is not binned (no destroyed pile for Exhume to
 # hand back, no Trading Card), because lifting a curse is not throwing a card

@@ -11,6 +11,14 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Two new curse cards from Slay the Spire 2 (the owner, 14 Nov 2026).**
+  **Guilty** leaves on its own after you defeat 5 enemies, and its square
+  counts them (⚡3/5). **Debt** costs 2 Gold after every game you finish, win or
+  lose. Both are in the random deal. **Poor Sleep** no longer is, and Curse of
+  the Bell never was. The parser learned `remove_self` (a piece takes itself out
+  of the pack) and `lose_gold`. The art is the wiki's full-card originals
+  (734×916).
+
 - **Curses are cards now (the owner, 14 Nov 2026): "get rid of curse goals.
   These curses will now count as cards (not available in the basic loot
   drop)."** The curse GOAL — a checklist row you tried not to complete, which

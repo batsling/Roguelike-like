@@ -139,6 +139,7 @@ func _register_defaults() -> void:
 	register("remove_random_debuff", _h_remove_random_debuff)
 	register("gain_top_buff", _h_gain_top_buff)
 	register("break_into", _h_break_into)
+	register("remove_self", _h_remove_self)
 	register("smelt", _h_smelt)
 
 # Scene-less heal straight to the run HP pool. Caps at max_hp via change_hp.
@@ -796,6 +797,27 @@ func _h_break_into(effect: Dictionary, ctx: Dictionary) -> void:
 	else:
 		_h_gain_item({"item": what}, ctx)
 		_did(ctx, "%s broke into %s" % [piece, Data.get_item2(StringName(what)).display_name])
+
+# `remove_self` — the piece of loot doing the firing LEAVES THE PACK and nothing
+# takes its place (docs/loot-passives.md §18). Guilty's way out: five enemies
+# defeated and the curse is gone. A curse leaves through
+# GameState.expire_curse_card, which ignores Eternal — that keyword is about what
+# other things can do to a curse, not about the curse's own terms. Like
+# break_into, a Blueprint copying it is the piece that fired, so it is the
+# Blueprint that goes.
+func _h_remove_self(_effect: Dictionary, ctx: Dictionary) -> void:
+	var entry = ctx.get("loot_entry")
+	if not (entry is Dictionary):
+		return
+	for i in range(GameState.loot_items.size()):
+		if is_same(GameState.loot_items[i], entry):
+			var piece: String = LootSystem.display_name(entry)
+			if GameState.is_curse_entry(entry):
+				GameState.expire_curse_card(i)
+			else:
+				GameState.remove_loot_at(i)
+			_did(ctx, "%s is gone" % piece)
+			return
 
 # `smelt` — Smelter's use: the piece the overworld picked (GameState.smelt_target)
 # leaves the pack and keeps working as a relic (docs/loot-passives.md §16). The
