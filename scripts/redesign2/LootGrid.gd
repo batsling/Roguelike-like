@@ -1407,6 +1407,11 @@ static func _cell_body(entry: Dictionary, use_cb: Callable, locked_now: bool,
 	var bottom: Control = null
 	if bag:
 		pass
+	elif use_cb.is_valid() and GameState.is_curse_entry(entry):
+		# A CURSE CARD says so where the button would be (docs/loot-passives.md §18),
+		# in the curse purple: it is the piece you did not choose and cannot bin.
+		bottom = _passive_plate("Curse", LootSystem.description(entry))
+		bottom.add_theme_color_override("font_color", UITheme.CURSE)
 	elif use_cb.is_valid() and passive:
 		var dir: String = LootPassives.facing(entry, LootPassives.def_for(entry))
 		var copier: bool = dir != ""
