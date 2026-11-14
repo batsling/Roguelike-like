@@ -43,7 +43,7 @@ var _units: Dictionary = {}             # StringName -> UnitData (§17)
 var _abilities: Dictionary = {}         # StringName -> AbilityData (§7.6)
 var _events2: Dictionary = {}           # StringName -> EventData2 (docs/event-sheet-authoring.md)
 var _objects2: Dictionary = {}          # StringName -> ObjectData (docs/object-sheet-authoring.md)
-var _curses2: Dictionary = {}           # StringName -> CurseData2 (the checklist kind, not data/curses)
+var _curses2: Dictionary = {}           # StringName -> CardData, the CURSE CARDS (docs/loot-passives.md §18)
 var _songs: Dictionary = {}             # StringName -> SongData (Roguelike Radio, docs/roguelike-radio.md)
 var _shopkeepers: Dictionary = {}       # StringName -> ShopkeeperData (§14.6)
 var _locations: Dictionary = {}         # StringName -> LocationData (docs/locations-design.md)
@@ -73,6 +73,9 @@ func _ready() -> void:
 	_load_dir("res://data/abilities2.0/", _abilities)
 	_load_dir("res://data/events2.0/", _events2)
 	_load_dir("res://data/objects2.0/", _objects2)
+	# The CURSE CARDS (docs/loot-passives.md §18). Kept apart from `_cards`, which
+	# is the loot drop's pool and the `cards` sheet's catalogue; `get_card` reaches
+	# both, so a carried curse is a `type: card` entry like any other.
 	_load_dir("res://data/curses2.0/", _curses2)
 	_load_songs(SONGS_PATH)
 	_load_dir("res://data/shopkeepers/", _shopkeepers)
@@ -209,8 +212,12 @@ func all_potions() -> Array:
 	return _potions.values()
 
 # --- Cards (2.0, docs/cards-design.md) -------------------------------------
+# `get_card` answers for a CURSE CARD too (docs/loot-passives.md §18), so a carried
+# curse goes through CardSystem like any card. `all_cards` is the `cards` sheet's
+# catalogue and leaves them out; `all_curse_cards` is theirs.
 func get_card(id: StringName) -> CardData:
-	return _cards.get(id)
+	var card: CardData = _cards.get(id)
+	return card if card != null else _curses2.get(id)
 
 func all_cards() -> Array:
 	return _cards.values()
@@ -484,6 +491,9 @@ func roll_potion(rng: RandomNumberGenerator = null) -> PotionData:
 # ones; what stops that from being free is the ladder, which reaches the Rare rung
 # on about one card drop in twenty.
 func roll_card(rng: RandomNumberGenerator = null, tag: String = "") -> CardData:
+	# Never a curse: `_cards` holds none. A curse card arrives only when something
+	# hands one out by name or at random (`add_curse`), not as loot (the owner,
+	# 14 Nov 2026).
 	var pool: Array = _cards.values()
 	# A tagged draw (a starting loadout's "random joker card") picks from that
 	# family alone, on the same rarity ladder.
@@ -716,10 +726,12 @@ func rarity_index_of(res: Resource) -> int:
 		return at if at >= 0 else int(RarityStep.COMMON)
 	return int(named) if named != null else int(RarityStep.COMMON)
 
-func get_curse2(id: StringName) -> CurseData2:
+# The CURSE CARDS (docs/loot-passives.md §18). They are in `_cards` as well, so
+# `get_card` answers for one; these are for the code that wants curses only.
+func get_curse_card(id: StringName) -> CardData:
 	return _curses2.get(id)
 
-func all_curses2() -> Array:
+func all_curse_cards() -> Array:
 	return _curses2.values()
 
 # ROGUELIKE RADIO's songs (docs/roguelike-radio.md), in id order.

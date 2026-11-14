@@ -111,11 +111,10 @@ const GO_RIM_HI := Color(0.55, 1.0, 0.75)
 # green without competing with the accent ring on the current stop.
 const UNBEATEN := Color(0.85, 0.47, 0.12)        # #d97821
 const DANGER := Color(0.90, 0.33, 0.28)
-# CURSE purple (docs/event-sheet-authoring.md §5). The checklist carries three
-# kinds of objective and they bite differently — an enemy goal is a debt, an
-# event goal a bonus, a curse a bill you pay for SUCCEEDING at the wrong thing.
-# The one row you are trying not to complete must not read like the ones you are
-# chasing, so it gets a colour of its own rather than borrowing DANGER.
+# CURSE purple. A curse is a card in the pack since 14 Nov 2026
+# (docs/loot-passives.md §18) — the one piece you did not choose and cannot throw
+# away — and it keeps the colour the curse rows of the checklist had, rather than
+# borrowing DANGER, so a curse card and the line that dealt it read as one thing.
 const CURSE := Color(0.72, 0.45, 0.90)
 
 # Rarity ramp (mirrors RarityStyle / legacy CSS): Common, Uncommon, Rare,
@@ -257,6 +256,8 @@ class Layer:
 	const POST_COMBAT := 128   # the haul a game ends on
 	const MAP := 130           # the route ladder, a loot use, a reading card
 	const POST_COMBAT_CARD := 131  # a card opened off the haul screen
+	const CURSE := 132         # a curse card being placed — over an event and the haul
+	const CURSE_USE := 133     # a piece spent from that modal to make room
 	const HEADER := 135        # the run's pinned bar — over the gameplay modals
 	const START := 136         # the opening choose-a-road screen
 	const START_MODAL := 138   # what that screen opens over itself

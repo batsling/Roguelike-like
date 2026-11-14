@@ -154,6 +154,16 @@ var _take_all_button: bool = false
 const LAYER := UITheme.Layer.DROP
 const USE_LAYER := UITheme.Layer.MAP
 
+# A CURSE CARD BEING PLACED (docs/loot-passives.md §18), `open_curse`. The same
+# offer and the same live pack, with the one answer this screen otherwise always
+# has taken away: there is no Skip, and the curse cannot go in the bin. The way out
+# is to put it in a slot — and if the pack is full, to spend or bin something
+# first ("the player needs to drop something to fit it"). It stands on its own
+# layer, over an event and over the haul screen, because a curse can be dealt
+# while either is up and neither can take one onto its own table.
+var _curse: bool = false
+var _use_layer: int = USE_LAYER
+
 func _init() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -168,13 +178,22 @@ static func open(host: Node, offer, spendable: bool = true) -> LootDropModal:
 	modal._start(host, offer)
 	return modal
 
-func _start(host: Node, offer) -> void:
+# A CURSE CARD to be placed (see `_curse`). One curse per modal: each one dealt is
+# its own question, asked in the order they landed.
+static func open_curse(host: Node, entry: Dictionary) -> LootDropModal:
+	var modal := LootDropModal.new()
+	modal._curse = true
+	modal._use_layer = UITheme.Layer.CURSE_USE
+	modal._start(host, entry, UITheme.Layer.CURSE)
+	return modal
+
+func _start(host: Node, offer, layer: int = LAYER) -> void:
 	for entry in (offer if offer is Array else [offer]):
 		if entry is Dictionary and not (entry as Dictionary).is_empty():
 			_offers.append((entry as Dictionary).duplicate(true))
 			GameStats.see_loot(entry)
 	_layer = CanvasLayer.new()
-	_layer.layer = LAYER
+	_layer.layer = layer
 	_layer.process_mode = Node.PROCESS_MODE_ALWAYS
 	host.add_child(_layer)
 	_layer.add_child(self)
@@ -292,7 +311,9 @@ func _build() -> void:
 	# host has already put a verdict and a game's name across the top of the page
 	# and this column is plainly the payout on it; a second announcement costs a row
 	# the pack needs and tells the reader nothing they are not looking at.
-	if _slot == null:
+	if _slot == null and _curse:
+		box.add_child(_line("☠  You are cursed", UITheme.CURSE, 18))
+	elif _slot == null:
 		box.add_child(_line("✦  The game paid out" if not multi
 			else "✦  The game paid out %d pieces" % _offers.size(), UITheme.TEXT_DIM, 15))
 
@@ -465,6 +486,14 @@ func _build_single(col: VBoxContainer) -> void:
 		chips.add_child(UITheme.chip(pref, UITheme.preference_color(pref)))
 	elif not LootSystem.is_identified(entry):
 		chips.add_child(UITheme.chip("Unidentified", UITheme.TEXT_DIM))
+	elif GameState.is_curse_entry(entry):
+		# A CURSE CARD wears its KEYWORDS as chips (docs/loot-passives.md §18), so
+		# "Unmovable" is read before it is placed — where it goes is for good.
+		var curse: CardData = GameState.curse_def(entry)
+		for k in curse.keywords:
+			chips.add_child(UITheme.chip(k, UITheme.CURSE))
+		if curse.keywords.is_empty():
+			chips.add_child(UITheme.chip("Curse", UITheme.CURSE))
 	elif LootPassives.is_passive(entry):
 		# A KNOWN PIECE WITH NO PREFERENCE IS NOT UNKNOWN. A trinket or a passive
 		# card has nothing to gamble on, so it has no Preference to show — and this
@@ -518,7 +547,12 @@ func _pack_column() -> Control:
 	# a 720p page with four other sections, and a caption under a labelled bin was
 	# the cheapest row to spend to keep the bin itself above the fold. The full-pack
 	# warning is kept in both — that one says something the picture doesn't.
-	if _slot == null:
+	if _slot == null and _curse:
+		col.add_child(_line("A curse can't be left behind. Drag it into a slot."
+			if not GameState.loot_is_full()
+			else "No room — use or bin something to make room for it.",
+			UITheme.CURSE if GameState.loot_is_full() else UITheme.TEXT_FAINT, 10))
+	elif _slot == null:
 		col.add_child(_line("Drag into a slot, rearrange, or bin what you don't want."
 			if not GameState.loot_is_full() else "No room — make some, or use them now.",
 			UITheme.TEXT_FAINT, 10))
@@ -585,11 +619,18 @@ func _buttons(multi: bool) -> Control:
 	var buttons := HBoxContainer.new()
 	buttons.add_theme_constant_override("separation", UITheme.GAP_WIDE)
 	buttons.alignment = BoxContainer.ALIGNMENT_CENTER
-	var leave := UITheme.quiet_button(
-		"Skip the rest" if multi else "Skip", Vector2(160, 38))
-	leave.tooltip_text = "Walk away from what is still on the table."
-	leave.pressed.connect(_close)
-	buttons.add_child(leave)
+	# NO SKIP FOR A CURSE — unless there is truly no way in: no free cell, and
+	# nothing in the pack that could be spent or binned to free one (every piece is
+	# itself a curse, or pinned). Then the curse is lost rather than the run stuck.
+	if not _curse or no_way_in():
+		var leave := UITheme.quiet_button(
+			"Skip the rest" if multi else "Skip", Vector2(160, 38))
+		leave.tooltip_text = "Walk away from what is still on the table."
+		if _curse:
+			leave.text = "No room for it"
+			leave.tooltip_text = "Your pack is full of pieces that can't make room."
+		leave.pressed.connect(_close)
+		buttons.add_child(leave)
 
 	var room: int = GameState.loot_space()
 	var take := UITheme.confirm_button(
@@ -598,6 +639,10 @@ func _buttons(multi: bool) -> Control:
 	take.disabled = room <= 0
 	take.tooltip_text = "No room — use or bin something first, or use these where you stand." \
 		if room <= 0 else "Put them in the first free slots. Or drag each into the one you want."
+	if _curse:
+		take.text = "✓  Put it in my pack"
+		take.tooltip_text = "No room — use or bin something first." if room <= 0 \
+			else "Put it in the first free slot. Or drag it into the one you want."
 	take.pressed.connect(_take_all)
 	buttons.add_child(take)
 	# DEFERRED: this row is built before it is parented, and `grab_focus` on a
@@ -673,6 +718,9 @@ func _discard_bag(bag: int) -> void:
 func _leave_offer(offer: int) -> void:
 	if _answered:
 		return
+	# A curse is never left on the table (LootGrid.can_trash refuses it first).
+	if offer >= 0 and offer < _offers.size() and GameState.is_curse_entry(_offers[offer]):
+		return
 	_forget_offer(offer, {})
 	_after_change()
 
@@ -684,7 +732,7 @@ func _use_offer(offer: int) -> void:
 		return
 	var entry: Dictionary = _offers[offer]
 	var modal = preload("res://scripts/redesign2/LootUseModal.gd").new()
-	modal.layer_index = USE_LAYER
+	modal.layer_index = _use_layer
 	var spent := [false]
 	modal.used.connect(func(): spent[0] = true)
 	modal.finished.connect(func():
@@ -719,7 +767,7 @@ func _use_carried(index: int) -> void:
 	if _answered or not _spendable:
 		return
 	var modal = preload("res://scripts/redesign2/LootUseModal.gd").new()
-	modal.layer_index = USE_LAYER
+	modal.layer_index = _use_layer
 	modal.finished.connect(_after_change)
 	modal.start(_page(), index, _page())
 
@@ -728,6 +776,9 @@ func _use_carried(index: int) -> void:
 # through unasked): binning one of those is "Leave it", already a one-click answer.
 func _discard_carried(index: int) -> void:
 	if _answered or index < 0 or index >= GameState.loot_items.size():
+		return
+	# A curse card or a pinned piece never reaches the bin (docs/loot-passives.md §18).
+	if not GameState.can_leave_pack(GameState.loot_items[index]):
 		return
 	var piece_name: String = LootSystem.display_name(GameState.loot_items[index])
 	LootTrash.confirm(_page(), piece_name, func():
@@ -876,8 +927,26 @@ func remaining() -> int:
 func take() -> void:
 	_take_all()
 
+# A curse modal refuses to be left while there is a way to make room for it.
 func leave() -> void:
+	if _curse and not no_way_in():
+		return
 	_close()
+
+# Whether this is a curse being placed (`open_curse`).
+func is_curse() -> bool:
+	return _curse
+
+# A CURSE WITH NO WAY IN: no cell it fits, and not one carried piece that may leave
+# the pack to make one. Only then may a curse modal be closed with it unplaced.
+func no_way_in() -> bool:
+	for entry in _offers:
+		if GameState.loot_fits(entry):
+			return false
+	for e in GameState.loot_items:
+		if GameState.can_leave_pack(e):
+			return false
+	return true
 
 func _close() -> void:
 	if _answered:

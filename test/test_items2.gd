@@ -308,8 +308,10 @@ func test_calling_bell_pays_one_item_per_rarity_and_a_permanent_curse() -> void:
 	for rung in [ItemData.Rarity.COMMON, ItemData.Rarity.UNCOMMON, ItemData.Rarity.RARE]:
 		assert_true(rarities.has(int(rung)),
 			"one relic off the %s rung" % UITheme.rarity_name(int(rung)))
-	assert_true(GameState.has_curse_goal(&"curse_of_the_bell"), "and the curse rides in with it")
-	assert_eq(int(GameState.curse_goals[0]["games_left"]), -1, "which never expires")
+	assert_true(GameState.has_curse_card(&"curse_of_the_bell"),
+		"and the curse card rides in with it")
+	assert_false(Data.get_curse_card(&"curse_of_the_bell").destroyable,
+		"one nothing can destroy")
 
 # --- Lord's Parasol: the shop, emptied ------------------------------------
 

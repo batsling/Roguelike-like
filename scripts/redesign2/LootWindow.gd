@@ -229,6 +229,9 @@ func _has_pills() -> bool:
 func _discard(index: int) -> void:
 	if index < 0 or index >= GameState.loot_items.size():
 		return
+	# A curse card or a pinned piece never reaches the bin (docs/loot-passives.md §18).
+	if not GameState.can_leave_pack(GameState.loot_items[index]):
+		return
 	var piece_name: String = LootSystem.display_name(GameState.loot_items[index])
 	LootTrash.confirm(_page, piece_name, func():
 		GameState.discard_loot_at(index)

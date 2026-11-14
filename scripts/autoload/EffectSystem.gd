@@ -65,8 +65,8 @@ func _dyn_amount(effect: Dictionary, base_key: String, from_key: String, mult_ke
 		return _dynamic_count(String(effect[from_key])) * int(effect.get(mult_key, 1))
 	return int(effect.get(base_key, 0))
 
-# Live count for a dynamic effect source. "curses" = the curse goals the run
-# is carrying right now.
+# Live count for a dynamic effect source. "curses" = the curse cards in the pack
+# right now (docs/loot-passives.md §18).
 func _dynamic_count(source: String) -> int:
 	match source:
 		"curses":
@@ -139,6 +139,8 @@ func _register_defaults() -> void:
 	register("remove_random_debuff", _h_remove_random_debuff)
 	register("gain_top_buff", _h_gain_top_buff)
 	register("break_into", _h_break_into)
+	register("remove_self", _h_remove_self)
+	register("lose_hp_per_loot", _h_lose_hp_per_loot)
 	register("smelt", _h_smelt)
 
 # Scene-less heal straight to the run HP pool. Caps at max_hp via change_hp.
@@ -193,8 +195,8 @@ func _h_gain_stat(effect: Dictionary, ctx: Dictionary) -> void:
 	GameState.grant_run_stat(stat, value)
 
 # --- the cost half of the vocabulary (docs/event-sheet-authoring.md §5) ------
-# Events charge for things and a curse is nothing but a charge, so every grant
-# above has a mirror here rather than a second code path with its own rounding.
+# Events charge for things, so every grant above has a mirror here rather than a
+# second code path with its own rounding.
 
 # Max Health down. Floors at 1 — a Max Health of 0 is a run that ended without
 # anything saying so.
@@ -446,17 +448,20 @@ func _h_gain_item_per_rarity(effect: Dictionary, _ctx: Dictionary) -> void:
 		taken[pick.id] = true
 		GameState.add_item(pick)
 
-# Calling Bell's other half: a curse goal (docs/event-sheet-authoring.md §6) from
-# an ITEM rather than from an event. `games` of 0 means the curse's own Timer,
-# which for Curse of the Bell is "never" — an item that hands out a permanent bill
-# is exactly what a Boss relic with a downside should be.
+# Calling Bell's other half: a CURSE CARD (docs/loot-passives.md §18) from an
+# ITEM rather than from an event — Curse of the Bell, which cannot be destroyed,
+# is exactly what a Boss relic with a downside should cost. `random` draws one the
+# way an event's `add_curse random` does. A curse card is placed on the loot modal
+# the page opens for it (GameState.add_curse_card).
 func _h_add_curse(effect: Dictionary, _ctx: Dictionary) -> void:
-	GameState.add_curse_goal(StringName(String(effect.get("curse", ""))), &"",
-		int(effect.get("games", 0)))
+	var cid := StringName(String(effect.get("curse", "")))
+	if cid == &"random":
+		cid = EventSystem.roll_random_curse()
+	if cid != &"":
+		GameState.add_curse_card(cid)
 
-# What every CURSE now costs: a fresh enemy at the run's current difficulty, put
-# straight onto the following stack. Same conjuring the Scroll of Create Monster
-# does (§4.1) — a curse's bill is a body on the board, not a number off a bar.
+# A fresh enemy at the run's current difficulty, put straight onto the following
+# stack. Same conjuring the Scroll of Create Monster does (§4.1).
 #
 # roll_conjured_enemy and not roll_enemy: the difficulty is the whole of what a
 # conjured body is priced on, so it is not allowed to widen into the rest of the
@@ -563,11 +568,18 @@ func _h_lose_relic(_effect: Dictionary, ctx: Dictionary) -> void:
 # GameLoop2 bills a missed `demand` through the same function directly, with the
 # resolve's summary to write into; a `take_damage` authored anywhere else lands
 # here and simply has no summary to bill.
-func _h_take_damage(effect: Dictionary, _ctx: Dictionary) -> void:
+func _h_take_damage(effect: Dictionary, ctx: Dictionary) -> void:
 	var v: int = int(effect.get("value", 0))
 	if v <= 0:
 		return
-	GameLoop2.damage_player(v)
+	# Fired from a report's hook (Decay's `game_ending`), the hit goes into that
+	# report, so the game's damage and blocks count it like the status bills.
+	var hook = ctx.get("hook")
+	var res = (hook as Dictionary).get("res") if hook is Dictionary else null
+	if res is Dictionary:
+		GameLoop2.damage_player(v, res)
+	else:
+		GameLoop2.damage_player(v)
 
 func _h_lose_hp(effect: Dictionary, _ctx: Dictionary) -> void:
 	var v: int = int(effect.get("value", 0))
@@ -793,6 +805,40 @@ func _h_break_into(effect: Dictionary, ctx: Dictionary) -> void:
 	else:
 		_h_gain_item({"item": what}, ctx)
 		_did(ctx, "%s broke into %s" % [piece, Data.get_item2(StringName(what)).display_name])
+
+# `remove_self` — the piece of loot doing the firing LEAVES THE PACK and nothing
+# takes its place (docs/loot-passives.md §18). Guilty's way out: five enemies
+# defeated and the curse is gone. A curse leaves through
+# GameState.expire_curse_card, which ignores Eternal — that keyword is about what
+# other things can do to a curse, not about the curse's own terms. Like
+# break_into, a Blueprint copying it is the piece that fired, so it is the
+# Blueprint that goes.
+func _h_remove_self(_effect: Dictionary, ctx: Dictionary) -> void:
+	var entry = ctx.get("loot_entry")
+	if not (entry is Dictionary):
+		return
+	for i in range(GameState.loot_items.size()):
+		if is_same(GameState.loot_items[i], entry):
+			var piece: String = LootSystem.display_name(entry)
+			if GameState.is_curse_entry(entry):
+				GameState.expire_curse_card(i)
+			else:
+				GameState.remove_loot_at(i)
+			_did(ctx, "%s is gone" % piece)
+			return
+
+# `lose_hp_per_loot N` — Regret (docs/loot-passives.md §18): 1 Health for every N
+# pieces of loot the player has, counted in the pack (curses included, Regret
+# itself among them) and lying on the board, rounded down. Health, not a hit: no
+# Shield stops it.
+func _h_lose_hp_per_loot(effect: Dictionary, ctx: Dictionary) -> void:
+	var per: int = maxi(1, int(effect.get("per", 2)))
+	var pieces: int = GameState.loot_items.size() + GameLoop2.drop_cells().size()
+	var cost: int = pieces / per
+	if cost <= 0:
+		return
+	GameState.change_hp(-cost)
+	_did(ctx, "lost %d Health for %d pieces of loot" % [cost, pieces])
 
 # `smelt` — Smelter's use: the piece the overworld picked (GameState.smelt_target)
 # leaves the pack and keeps working as a relic (docs/loot-passives.md §16). The

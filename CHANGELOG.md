@@ -11,6 +11,56 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Decay, Pain and Regret, from Slay the Spire (the owner, 14 Nov 2026), and
+  Normality without the verbs.** **Decay** deals 1 damage at the end of every
+  game, at the step Burn's bill lands, so the game's shields can still block it.
+  **Pain** costs 1 Health every time loot or an active item is used. **Regret**
+  costs 1 Health at the end of every game per 2 pieces of loot in the pack and on
+  the board. All three are random. They ride two new hooks, `game_ending` (not
+  on an escape) and `action_taken`, and two new parser words, `take_damage` (it
+  used to drop its amount) and `lose_hp_per_loot`. **Normality** no longer
+  counts Bash, Dash, Push, Transmute, Scramble or Bombs: only loot and active
+  items.
+
+- **Clumsy and Normality, from Slay the Spire (the owner, 14 Nov 2026).** A third
+  keyword, **Ethereal**, means a curse goes away after 3 games, win or lose. Its
+  square counts them (`1/3`). **Clumsy** is Ethereal and otherwise only takes a
+  slot. **Normality** allows 3 usable actions per game while it is carried. As
+  the owner answered when asked, these count together: relic actives and any
+  pack loot (wand zaps and weapon swings included); the board verbs counted too
+  until the entry above took them out. A fourth is refused before anything is
+  spent, and the pack's Use buttons and the relic strip grey out. Both are in the
+  random deal. The art is the wiki's release cards (678×874).
+
+- **Two new curse cards from Slay the Spire 2 (the owner, 14 Nov 2026).**
+  **Guilty** leaves on its own after you defeat 5 enemies, and its square
+  counts them (⚡3/5). **Debt** costs 2 Gold after every game you finish, win or
+  lose. Both are in the random deal. **Poor Sleep** no longer is, and Curse of
+  the Bell never was. The parser learned `remove_self` (a piece takes itself out
+  of the pack) and `lose_gold`. The art is the wiki's full-card originals
+  (734×916).
+
+- **Curses are cards now (the owner, 14 Nov 2026): "get rid of curse goals.
+  These curses will now count as cards (not available in the basic loot
+  drop)."** The curse GOAL — a checklist row you tried not to complete, which
+  spawned an enemy when you did, on a three-game or permanent timer — is gone,
+  with its rows, its clock and its bill. A curse is a passive **card** that takes
+  a cell of the pack. Whatever handed one out before still does: Punch Off,
+  Golden Idol, Unrest Site, the Golden Monkey, the Calling Bell, Amnesia, the
+  Hexer and the Lacerator. **It is placed on a loot modal that has no Skip**, so
+  a full pack has to use or bin something to make room. **No curse can ever be
+  binned** or taken out of the pack: it can't be put down on the board, traded
+  for a floor piece, paid as a price, stolen or smelted. The `curses` sheet is
+  now `Curse | Type | Game | Description | Effect | Keywords | Tag | Image`:
+  `Type` is `Card` for all three (a cursed weapon from Retro Bat's unidentified
+  weapons counts as a curse too, as a weapon rather than a row), and the rules
+  are **keywords** the card says out loud: **Unmovable** (can't be moved) and
+  **Eternal** (can't be destroyed). **Curse of the Bell** is Eternal (not even
+  the Scroll of Remove Curse lifts it); **Poor Sleep** is Unmovable, locked in
+  the cell it was placed in along with its bag; **Injury** has neither. The three curse rows
+  left `goals`, and `apply_goals_sheet.py` no longer writes `curses`. Rules in
+  `docs/loot-passives.md` §18; tests in `test_curse_cards.gd`.
+
 - **The owner's upload of 14 Nov 2026, and three things asked for with it.**
   *Novus Orbis* joins the chart with two connections (Slay the Spire, The
   Binding of Isaac). The `players` sheet lost its `Description` column, and the

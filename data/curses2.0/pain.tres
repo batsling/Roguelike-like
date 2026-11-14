@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3 uid="uid://curse2_pain"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"pain"
+display_name = "Pain"
+rarity = "Curse"
+source_game = "Slay the Spire"
+description = "Lose 1 Health every time you use loot or an active item. Can't be thrown away."
+file = "Pain"
+art_folder = "curses"
+loot_type = "Curse"
+tags = PackedStringArray("curse", "random")
+passive = true
+keywords = PackedStringArray()
+movable = true
+destroyable = true
+triggers = [{"on": "action_taken", "effects": [{"type": "lose_hp", "value": 1}]}]
+stat_bonuses = {}
+status_bonuses = {}

@@ -163,6 +163,16 @@ signal bomb_used(ctx: Dictionary)           # ctx.instance, ctx.enemy, ctx.hits,
 signal floor_entered(ctx: Dictionary)       # ctx.game_id
 signal item_acquired(ctx: Dictionary)       # ctx.item
 signal item_lost(ctx: Dictionary)
+# A USABLE ACTION was taken — a piece of pack loot used (zap and swing included)
+# or a relic active fired; Echo copies are not (GameState.note_action, the count
+# Normality holds to). Pain's hook: `action_taken: lose_hp 1`
+# (docs/loot-passives.md §18). ctx is empty.
+signal action_taken(ctx: Dictionary)
+# THE GAME IS ENDING: fired by GameLoop2.beat_game at the step a status's bill
+# lands (Burn), so the game's Temporary Shields still stand — a `take_damage` here
+# can be blocked. Not on an escape. Decay and Regret ride it
+# (docs/loot-passives.md §18, docs/turn-order.md §4). ctx.res is the report.
+signal game_ending(ctx: Dictionary)
 signal item_used(ctx: Dictionary)           # ctx.item — a USABLE consumable was activated
 signal potion_used(ctx: Dictionary)          # ctx.potion — a potion was drunk or thrown.
                                             # Emitted once per use from
@@ -199,11 +209,11 @@ signal wand_used(ctx: Dictionary)            # ctx.wand — a WAND (the loot kin
                                             # that can fire six times off one piece
                                             # of loot, which is what an item
                                             # watching it has to be priced against.
-signal curse_applied(ctx: Dictionary)        # ctx.curse (CurseData2) — a curse
-                                            # goal was added (add_curse_goal).
-signal curse_removed(ctx: Dictionary)        # ctx.curse — a curse left the run
-                                            # (Golden Beetle). Nothing emits it
-                                            # since the 1.0 curse list went.
+signal curse_applied(ctx: Dictionary)        # ctx.curse (CardData) — a curse
+                                            # card was dealt (add_curse_card).
+signal curse_removed(ctx: Dictionary)        # ctx.curse (CardData) — a curse
+                                            # card was lifted off the run
+                                            # (GameState.lift_curse_card).
 signal curse_card_removed(ctx: Dictionary)   # ctx.card — a CURSE-type card left
                                             # the deck (Golden Beetle). Distinct
                                             # from curse_removed: a curse and a

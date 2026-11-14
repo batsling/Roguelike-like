@@ -59,7 +59,7 @@ Thirty forks were settled before any code, in the same discovery-pass style as t
 | 18 | **What an unknown bottle is called** | **By its colour** — "Swirly Potion", "Ruby Potion". Pills never spell a colour out; potions do, because 37 of them cannot be told apart in text otherwise (§6.4). |
 | 19 | **Sacred Bark's reach on a potion** | **Values AND geometry** — damage, healing, status stacks, shields, *and* the area: a 3×3 becomes 5×5, a line becomes the cross (§8.2). |
 | 20 | **`find_weight`** | **A weight inside the rarity bucket.** Identify was 1.25× as likely as the other Commons; rarity keeps meaning what it means (§10). **Superseded for Identify only:** it now authors a weight of **0** (never drawn from the pool) and arrives as a flat **10% of every loot drop**, taken off the top by `GameState.roll_loot_entry` — see games-first-redesign §4.1. The field and the weighted pick stay exactly as designed for every other scroll. |
-| 21 | **Scroll of Remove Curse** | **Ships with a real effect.** Curse GOALS are live (three authored, events and the Calling Bell hand them out) — `remove_curse choose 1` retires one (§10.1). |
+| 21 | **Scroll of Remove Curse** | **Ships with a real effect.** `remove_curse choose 1` lifts a curse card out of the pack — any but Curse of the Bell (§10.1). |
 | 22 | **What identifying teaches** | **Both sides at once.** Identification is of the TYPE: drink the swirly one and you know what throwing it does too (§6.5). |
 | 23 | **A timed Dexterity's shields** | **Unspent shields expire with it.** A departure from §13.4's "handed out, not recomputed", and the one place a clock reaches back into a pool (§5.5). |
 | 24 | **The mine's damage trigger** | **A third trigger word**, `damaged:`, on `units2.0` — which makes it a §17.1 spec edit (§4.7). |
@@ -845,7 +845,7 @@ bearing in the best way — **the save format already has potions in it**:
 | `tools/generate_potion2_tres.py` | New generator → `data/potions2.0/`. Parses both effect columns with the scroll parser's clause loop plus `area=` / `games=`. |
 | `scripts/autoload/PotionSystem.gd` | New autoload (**#23**) — the colour deal, identification, art, `quaff_potion`, `throw_potion`. Registered in `project.godot` (`;` comments, never `#`). |
 | `scripts/autoload/Data.gd` | `_load_dir("res://data/potions2.0/", _potions)`, `get_potion` / `all_potions` / `roll_potion`. |
-| `scripts/autoload/GameState.gd` | `remove_curse_goal(index)` (§10.1); the three-way loot roll; `_add_random_potion_loot`; `add_potion_loot` for DevTools; `loot_potions()`; the timed-status layer (§5.4); `LOOT_CAPACITY` → `loot_capacity()` (§8.1). |
+| `scripts/autoload/GameState.gd` | `lift_curse_card(index)` (§10.1); the three-way loot roll; `_add_random_potion_loot`; `add_potion_loot` for DevTools; `loot_potions()`; the timed-status layer (§5.4); `LOOT_CAPACITY` → `loot_capacity()` (§8.1). |
 | `scripts/autoload/LootSystem.gd` | A `"potion"` arm in each dispatch, plus `can_throw(entry)` — the only kind that answers yes. |
 | `scripts/autoload/GameLoop2.gd` | `area_cells(cell, area)`; `_expire_timed_statuses()` in `beat_game`, for the player and every body; `max_health` on an entry (§4.6) and the `grant_health` / `grant_max_health` / `grant_shield` paths onto one; the timed half of `goal_text_for` (§5.3). |
 | `scripts/autoload/EffectSystem.gd` | `gain_potion`, and `games=` on `apply_status` — **both halves**: the handler alone is a verb the sheet can write and silently get nothing from, so `item_dsl.py` learned to parse them in the same pass. **`deal_damage` and `gain_level` were NOT added here**, deliberately: the potion path dispatches through `PotionSystem`'s own table, not this one, and an item-side `deal_damage` needs a target/area vocabulary on `items2.0` that nothing is asking for. Register them the day a sheet cell wants one. |
@@ -892,8 +892,8 @@ are actually about potions rather than about loot:
 - an unidentified potion names its colour and an identified one does not (§6.4);
 - Sacred Bark widens a 3×3 to 5×5 and a row to the cross, and leaves a `cell` alone
   (§8.2);
-- `remove_curse` lifts the Calling Bell's permanent row, and fizzles with no curse
-  held (§10.1);
+- `remove_curse` lifts a curse card (never Curse of the Bell), and fizzles with no
+  curse held (§10.1);
 - a timed Dexterity's unspent shields come off the body when it expires, shields it
   already spent do not come out of a later pool, and a PERMANENT Dexterity's shields
   survive (§5.5);
@@ -928,33 +928,21 @@ otherwise copy in its broken state.
 
 ### 10.1 Remove Curse has something to remove
 
-**A correction to an earlier draft of this doc, which read the spec's §5 too fast.**
-§5 shelves the combat-era **curse CARDS** (`CurseData`, `data/curses/`, the 16-card
-gambit layer, since deleted). It does not shelve **curse GOALS**, which are live, authored and
-drawn on screen every game:
-
-- `data/curses2.0/` holds three — **Curse of the Bell**, **Injury**, **Poor Sleep**
-  — generated from the `curses2.0` sheet onto `CurseData2`;
-- `GameState.curse_goals` carries them, `ReportChecklist` draws them as the rows you
-  are trying *not* to tick, and `trigger_curse_goal` bills you when you admit to one;
-- **events hand them out** (`EffectSystem._h_add_curse` → `GameState.add_curse_goal`),
-  the Amnesia pill hands out a random one, and the **Calling Bell** relic arrives
-  carrying Curse of the Bell permanently.
-
-So a Rare scroll that removes one is not a placeholder — it is a good card, and its
-best target is the one row in the game that **never expires on its own**: the Bell's,
-whose `Timer` is `N/A` and which `add_curse_goal` therefore stores as `games_left =
--1`. Everything else on that list clears itself in three games.
+> **Since 14 Nov 2026 a curse is a CARD in the pack** (`docs/loot-passives.md`
+> §18), and this scroll lifts curse cards. What follows the rule below is the
+> history of the curse-GOAL version it was first built for.
 
 The op is `remove_curse choose|random|all N`, in the shape `identify_loot` and
 `stun_enemies` already use — a `request` back to `LootUseModal`, a picker listing
-the held curses by name and condition, and a line naming what was lifted. It needs
-one new function, `GameState.remove_curse_goal(index)`: the list has `add`, `has`,
-`trigger` and `tick`, and nothing that takes a row off it early.
+the curse cards it can lift by name and line (then any cursed weapons), and a
+line naming what was lifted. It lifts only a curse whose row says it is
+**Destroyable** (`ScrollSystem.removable_curses` → `GameState.lift_curse_card`):
+Injury and Poor Sleep come off, **Curse of the Bell never does**, and is not even
+offered. A lifted curse is simply gone, not binned — Exhume cannot hand it back.
 
-> **Curse goals are the only curses now.** The combat-era curse *cards* and their
-> removal (`GameState.remove_active_curse`, a different list) were deleted on
-> 25 Oct 2026, so there is no second system to reach for by mistake.
+Before that date the scroll removed curse GOALS (`GameState.remove_curse_goal`),
+and its best target was the Bell's permanent row; the owner's curse-card rules
+made the Bell the one thing it cannot touch.
 
 A fizzle when the player holds none — *"Nothing is weighing on you."* — and the
 scroll is **not** identified by it (§4.5): a Remove Curse read with nothing to lift

@@ -65,6 +65,11 @@ func used_memory() -> Array:
 func use_loot(index: int, ctx: Dictionary = {}) -> Dictionary:
 	if index < 0 or index >= GameState.loot_items.size():
 		return {"logs": [], "requests": []}
+	# NORMALITY (docs/loot-passives.md §18): no more usable actions this game. The
+	# screens ask first and say so; this is the backstop for any other door, and it
+	# refuses before anything is spent.
+	if not GameState.can_take_action():
+		return {"logs": [GameState.action_limit_text()], "requests": []}
 	var entry = GameState.loot_items[index]
 	if not (entry is Dictionary):
 		return {"logs": [], "requests": []}
@@ -109,6 +114,8 @@ func use_loot(index: int, ctx: Dictionary = {}) -> Dictionary:
 		wctx["weapon_triggers"] = WeaponSystem.retriggers_for(index)
 		(entry as Dictionary)["charges"] = 0
 		GameState.emit_signal("inventory_changed")
+		# A swing is a usable action (Normality); it does not pass through _spend.
+		GameState.note_action()
 		return WeaponSystem.swing(entry, wctx)
 	entry = (entry as Dictionary).duplicate(true)
 	# A CARD PINS THE PACK FIRST. A piece with no slot of its own takes the lowest
@@ -161,6 +168,8 @@ func use_entry(entry: Dictionary, ctx: Dictionary = {}) -> Dictionary:
 	# nothing to use where you stand.
 	if LootPassives.is_passive(entry) or is_weapon(entry):
 		return {"logs": [], "requests": []}
+	if not GameState.can_take_action():
+		return {"logs": [GameState.action_limit_text()], "requests": []}
 	# A LOOSE WAND SPENDS A CHARGE TOO. There is no slot to settle, but the charge
 	# is a fact about the piece rather than about the pack, and skipping it here
 	# would let a wand taken on the spot fire for free — and would have the outcome
@@ -212,6 +221,9 @@ func _spend(entry: Dictionary, ctx: Dictionary = {}) -> Dictionary:
 	# first-use copy a second time.
 	var extra: int = GameState.extra_loot_copies()
 	GameState.loot_uses_this_game += 1
+	# ONE USABLE ACTION (Normality, docs/loot-passives.md §18) for the piece in hand
+	# — its echoes and copies below are not actions the player took.
+	GameState.note_action()
 	if extra > 0:
 		var echoers: Array = LootPassives.holders("echo_first_loot")
 		if not echoers.is_empty():
@@ -828,7 +840,8 @@ func kind_name(entry: Dictionary) -> String:
 		"potion":
 			return "Potion"
 		"card":
-			return "Card"
+			# A CURSE CARD says so wherever its kind is named (docs/loot-passives.md §18).
+			return "Curse Card" if GameState.is_curse_entry(entry) else "Card"
 		"wand":
 			return "Wand"
 		"trinket":
@@ -892,6 +905,13 @@ func hover_card(entry: Dictionary, face_up: bool = true) -> Dictionary:
 		var def: Resource = LootPassives.def_for(entry)
 		sub += "  ·  %s" % type_label(entry)
 		note = "▸ Works while it is in your pack — never spent."
+		# A CURSE CARD names its KEYWORDS beside its type (docs/loot-passives.md
+		# §18): "Curse Card · Curse · Eternal". Its line says what each one means.
+		var curse: CardData = GameState.curse_def(entry)
+		if curse != null:
+			for k in curse.keywords:
+				sub += "  ·  %s" % k
+			note = "▸ A curse: it stays in your pack and can't be thrown away."
 		var dir: String = LootPassives.facing(entry, def)
 		if dir != "":
 			var where: String = {"right": "to its right", "down": "below it",
@@ -922,7 +942,8 @@ func hover_card(entry: Dictionary, face_up: bool = true) -> Dictionary:
 			else:
 				lines.append("%d / %d %s toward the next one." % [
 					int(progress["have"]), int(progress["need"]),
-					Plural.word(int(progress["need"]), "charge")])
+					Plural.word(int(progress["need"]),
+						String(progress.get("unit", "charge")))])
 			var foods: Array = progress.get("foods", [])
 			if not foods.is_empty():
 				var names: Array = foods.map(func(f): return Data.get_trinket(f).display_name)

@@ -483,9 +483,17 @@ Two things can be on a square of the board that are not a body, and they layer �
 - **Poops (units that block)** — A WALL. Nothing can step onto one, so an enemy that reaches it spends its step hitting it instead, for exactly what it would hit you for. You can break it too — a bomb, a thrown potion, anything that hits the ground. Broken, it pays out whoever broke it: a Poop drops a piece of loot or lets a fly out, a Golden Poop pays gold, a Rainbow Poop heals you for 3.
 - Enemies steer around mines when they have anywhere else to go, and walk straight through them when they don't — a body in the lane is a wall that might never move, a mine is a toll paid once. So a minefield SHAPES where they come at you rather than stopping them.
 
-### Curse goals
+### Curse cards
 
-A curse goal is a row on your checklist you are trying NOT to complete. Break it and the penalty is always the same one: a random enemy spawns at the run's current difficulty. A curse bills you in the run's own currency rather than reaching for your Health bar.
+A curse is a card that goes in your loot pack. Events, a few enemies, the Calling Bell and the Amnesia pill hand them out; they never drop as ordinary loot. When you get one, the loot screen opens and you have to put it in a slot. You can't skip it, so if your pack is full, use or bin something to make room.
+
+You can never bin a curse, leave it on the table or put it down on the board. Some only take up the slot; some do more. Debt costs you 2 Gold after every game. Guilty leaves on its own once you have defeated 5 enemies, and its square counts them. Normality lets you use only 3 pieces of loot or active items each game (Bash, Dash and the other verbs don't count). Pain costs 1 Health every time you use loot or an active item. Decay deals 1 damage at the end of every game, which a Shield can block. Regret costs 1 Health at the end of every game for every 2 pieces of loot in your pack and on the board. A Scroll of Remove Curse or anything that destroys loot gets rid of one, unless its keywords say otherwise:
+
+- **Unmovable** — It can't be moved. It stays in the slot you put it in, and the bag it sits in can't move either. Poor Sleep is Unmovable.
+- **Eternal** — It can't be destroyed, not even by a Scroll of Remove Curse. Curse of the Bell is Eternal.
+- **Ethereal** — It goes away on its own after 3 games, win or lose, and its square counts them. Clumsy is Ethereal.
+
+A cursed weapon (a minus weapon you found unidentified) counts as a curse too.
 
 ### Luck
 
@@ -617,7 +625,7 @@ There is no HUD strip. Every number is drawn once, by whatever owns it, which ta
 - **Amulet pressure** — The second line of the DIFFICULTY strip: how many spawns until the next difficulty up, how far the Amulet is and the pressure that puts on you (its two pips, in the band's colour — empty out in the wilds), and on the right what ending THIS game will stand up (☠ +N when this game ends). The strip takes the band's colour.
 - **Where your shops are** — A 🛒 on the game's card, on the 🗺 map and on the route ladder. The bar beside your gold says how close the next one is.
 - **Push and Bomb charges** — Under your portrait on the board: an icon and the number left, each one a button. One you have none of is not shown. Hover it for its name.
-- **Everything you carry** — The panel over the board is your items on the left and a small picture of your loot pack on the right. Click the small pack (or press Tab) to open it. Full beside it opens the full inventory: every item, the pack, your stats, your resources, and the statuses and curses on you.
+- **Everything you carry** — The panel over the board is your items on the left and a small picture of your loot pack on the right. Click the small pack (or press Tab) to open it. Full beside it opens the full inventory: every item, the pack, your stats, your resources, your statuses and the curse cards you carry.
 - **The fallen** — Every enemy this run has put down is the Fallen tab of the History, in the bar at the top.
 - **Statuses on an enemy** — A ▲ on a body means it carries a buff, a ▼ a debuff. Hover the body to see which, and a bigger picture of it.
 - **Bash, Dash, Transmute, Scramble** — Chips on the row under the offering, once you have a charge — a verb at 0 is not shown. Dash and Scramble act at once; Bash and Transmute ARM, and the next card you click is the one they hit.

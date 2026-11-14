@@ -931,12 +931,33 @@ static func _ch_pack() -> Dictionary:
 				+ "is a wall that might never move, a mine is a toll paid once. So "
 				+ "a minefield SHAPES where they come at you rather than stopping "
 				+ "them."),
-			_h("Curse goals"),
-			_p("A curse goal is a row on your checklist you are trying NOT to "
-				+ "complete. Break it and the penalty is always the same one: a "
-				+ "random enemy spawns at the run's current difficulty. A curse "
-				+ "bills you in the run's own currency rather than reaching for "
-				+ "your Health bar."),
+			_h("Curse cards"),
+			_p("A curse is a card that goes in your loot pack. Events, a few "
+				+ "enemies, the Calling Bell and the Amnesia pill hand them out; "
+				+ "they never drop as ordinary loot. When you get one, the loot "
+				+ "screen opens and you have to put it in a slot. You can't skip "
+				+ "it, so if your pack is full, use or bin something to make room."),
+			_p("You can never bin a curse, leave it on the table or put it down "
+				+ "on the board. Some only take up the slot; some do more. Debt "
+				+ "costs you 2 Gold after every game. Guilty leaves on its own "
+				+ "once you have defeated 5 enemies, and its square counts them. "
+				+ "Normality lets you use only 3 pieces of loot or active items "
+				+ "each game (Bash, Dash and the other verbs don't count). Pain "
+				+ "costs 1 Health every time you use loot or an active item. "
+				+ "Decay deals 1 damage at the end of every game, which a Shield "
+				+ "can block. Regret costs 1 Health at the end of every game for "
+				+ "every 2 pieces of loot in your pack and on the board. A Scroll of "
+				+ "Remove Curse or anything that destroys loot gets rid of one, "
+				+ "unless its keywords say otherwise:"),
+			_kv("Unmovable", "It can't be moved. It stays in the slot you put it "
+				+ "in, and the bag it sits in can't move either. Poor Sleep is "
+				+ "Unmovable."),
+			_kv("Eternal", "It can't be destroyed, not even by a Scroll of Remove "
+				+ "Curse. Curse of the Bell is Eternal."),
+			_kv("Ethereal", "It goes away on its own after 3 games, win or lose, "
+				+ "and its square counts them. Clumsy is Ethereal."),
+			_p("A cursed weapon (a minus weapon you found unidentified) counts as "
+				+ "a curse too."),
 			_h("Luck"),
 			_p("Every point of Luck is a 50% chance of one more roll, and the "
 				+ "better result is kept. It compounds rather than adding — at 1 "
@@ -1159,7 +1180,7 @@ static func _ch_screen() -> Dictionary:
 				+ "on the left and a small picture of your loot pack on the right. "
 				+ "Click the small pack (or press Tab) to open it. Full beside it "
 				+ "opens the full inventory: every item, the pack, your stats, "
-				+ "your resources, and the statuses and curses on you."),
+				+ "your resources, your statuses and the curse cards you carry."),
 			_kv("The fallen", "Every enemy this run has put down is the Fallen "
 				+ "tab of the History, in the bar at the top."),
 			_kv("Statuses on an enemy", "A ▲ on a body means it carries a buff, a "

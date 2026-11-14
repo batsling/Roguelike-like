@@ -15,7 +15,7 @@ event-only forms this module adds:
     needs <Choice> <op> <n>          a gate on the event's own state
     needs not_jammed | bank_space    a gate on the OBJECT (objects2.0 only)
     add_goal "<cond>" [for <n> games] -> <reward>
-    add_curse <curse> [for <n> games]
+    add_curse <curse>                a CURSE CARD into the pack (docs/loot-passives.md §18)
     play_game tag=<tag> -> <reward>
     chance <p>% -> <reward>          roll p percent; pay on a win, nothing on a loss
     chance <p>% -> <a> else <b>      …or pay `b` on the loss, for a two-sided roll
@@ -177,9 +177,13 @@ GATE_CHOICE_RE = re.compile(r"^([A-Za-z0-9_' ]+?)\s*(<=|>=|==|=|<|>)\s*(\d+)$")
 GOAL_RE = re.compile(r'^add_goal\s+"([^"]*)"\s*(?:for\s+(\d+)\s+games?)?\s*$', re.I)
 CURSE_RE = re.compile(r"^add_curse\s+([a-z0-9_]+)\s*(?:for\s+(\d+)\s+games?)?\s*$", re.I)
 # `add_curse random` is the one id that names no row: the curse is drawn when the
-# choice is taken rather than authored (the Golden Monkey, §16). It never rolls a
-# PERMANENT curse — see EventSystem.roll_random_curse for why that is the rule
-# rather than the monkey's own exception.
+# choice is taken rather than authored (the Golden Monkey, §16). It only rolls a
+# curse the sheet tags `random` — never Curse of the Bell; see
+# EventSystem.roll_random_curse for why that is the rule.
+#
+# `for <n> games` is still PARSED, and written as `games`, because the curse-goal
+# days gave a curse a window; a curse is a card in the pack now and nothing reads
+# it. Kept so the sheet's existing cells and the .tres keep their shape.
 RANDOM_CURSE = "random"
 PLAY_RE = re.compile(r"^play_game\s+tag\s*=\s*([A-Za-z0-9_' -]+?)\s*$", re.I)
 # `chance 25%` or `chance {35+10*X}%` — the percent is an ordinary reward amount,
@@ -447,12 +451,11 @@ def parse_effect_cell(cell, where, choice_labels, curse_ids, item_ids=(),
                 raise ValueError("events2.0 %s: add_curse names unknown curse %r "
                                  "(the curses sheet has: %s)"
                                  % (where, cid, ", ".join(sorted(curse_ids)) or "none"))
-            # games 0 = "use the curse's own Timer", so a re-tuned curse retunes
-            # every event that hands it out.
+            # `games` is read by nothing since curses became cards (see CURSE_RE).
             out["curse"] = {"curse": cid, "games": int(m.group(2)) if m.group(2) else 0}
             # Deliberately NOT added to effects_text: EventSystem.describe_choice
-            # renders a curse in full, with its condition and its window, and a
-            # bare "Curse: Injury" beside that just says the name twice.
+            # renders the curse card in full, and a bare "Curse: Injury" beside
+            # that just says the name twice.
             continue
 
         m = PLAY_RE.match(clause)

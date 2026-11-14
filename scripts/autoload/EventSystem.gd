@@ -12,8 +12,9 @@ extends Node
 #   * THE DRAW — which event a game pays, dealt on arrival from a per-rarity
 #     shuffle bag (see roll_for_arrival).
 #   * GATES — the sheet's Requirement column, and a choice's `needs` clauses.
-#   * RESOLUTION — applying a choice's payload, which may leave an event goal or
-#     a curse goal behind on GameState for the checklist to carry.
+#   * RESOLUTION — applying a choice's payload, which may leave an event goal
+#     behind on GameState for the checklist to carry, or hand over a curse card
+#     (docs/loot-passives.md §18).
 #
 # The state itself lives on GameState (run-scope, saved, reset); this is the
 # logic, the same split ScrollSystem has.
@@ -457,21 +458,21 @@ func opening_loot() -> Array:
 	return _opening_loot
 
 
-# The curse behind `add_curse random` (§16). PERMANENT CURSES ARE NOT IN THE BAG,
-# and that is the rule rather than the Golden Monkey's own exception: a permanent
-# curse is a price something specific charges for something specific — Curse of
-# the Bell is what the Calling Bell hangs on you — and a random roll that can land
-# one turns every idle button in the game into a coin flip on the rest of the run.
-# So "a random curse" means a curse the sheet's `Tag` column marks `random`
-# (CurseData2.is_random) — the owner's call per curse, not inferred from its
-# timer. The Hexer's spread (GameLoop2._deal_curses) reads the same tag.
+# The curse card behind `add_curse random` (§16). CURSE OF THE BELL IS NOT IN THE
+# BAG, and that is the rule rather than the Golden Monkey's own exception: it is a
+# price something specific charges for something specific — the Calling Bell hangs
+# it on you — and a random roll that could land one would turn every idle button in
+# the game into a coin flip on the rest of the run. So "a random curse" means a
+# curse the sheet's `Tag` column marks `random` (CardData.is_random_curse) — the
+# owner's call per curse. The Hexer's spread (GameLoop2._deal_curses) and Amnesia
+# read the same tag.
 #
 # &"" when nothing qualifies, which the caller treats as "no curse" rather than
-# reaching for a permanent one to fill the gap.
+# reaching for an untagged one to fill the gap.
 func roll_random_curse() -> StringName:
 	var pool: Array = []
-	for cd in Data.all_curses2():
-		if cd is CurseData2 and (cd as CurseData2).is_random():
+	for cd in Data.all_curse_cards():
+		if cd is CardData and (cd as CardData).is_random_curse():
 			pool.append(cd.id)
 	if pool.is_empty():
 		return &""
@@ -490,6 +491,9 @@ func _roll_offered_card(ev: EventData2) -> Dictionary:
 	var floor_rarity: String = String(want.get("min_rarity", ""))
 	var held: Array = []
 	for entry in GameState.loot_cards():
+		# A curse card is not yours to hand over (docs/loot-passives.md §18).
+		if not GameState.can_leave_pack(entry):
+			continue
 		if floor_rarity == "" or _rarity_at_least(entry, floor_rarity):
 			held.append(entry)
 	if held.is_empty():
@@ -992,11 +996,13 @@ func resolve_choice(ev: Resource, choice: Dictionary, taken: int,
 		var cid := StringName(curse.get("curse", &""))
 		if bool(curse.get("random", false)):
 			cid = roll_random_curse()
-			var caught: CurseData2 = Data.get_curse2(cid)
+			var caught: CardData = Data.get_curse_card(cid)
 			if caught != null:
-				words.append("%s: %s" % [caught.display_name, caught.describe()])
+				words.append("Cursed: %s" % caught.display_name)
+		# A CURSE CARD (docs/loot-passives.md §18), placed in the pack on the loot
+		# modal the page opens for it.
 		if cid != &"":
-			GameState.add_curse_goal(cid, ev.id, int(curse.get("games", 0)))
+			GameState.add_curse_card(cid)
 
 	# A gamble's prose comes from the EVENT, because it depends on the roll rather
 	# than on which button produced it — Scrap Ooze's two reaches print the same
@@ -1148,8 +1154,7 @@ func _fill_holes(text: String, x: int) -> String:
 # at the END of the line describing it. It reads as a clock rather than as part
 # of the objective's name, which is what it is: "Injury: if you skip a night's
 # sleep, take 2 damage · Lasts 3 games" is one sentence about a thing plus how
-# long you have it for. Anything under a game is PERMANENT — the -1 sentinel
-# GameState.add_curse_goal stores for a curse with no timer.
+# long you have it for. Anything under a game is PERMANENT.
 func lasts_text(games: int) -> String:
 	if games < 1:
 		return " · Permanent"
@@ -1199,22 +1204,16 @@ func describe_choice(choice: Dictionary, taken: int) -> String:
 	if not curse.is_empty():
 		# A RANDOM curse cannot be named before it is rolled, and must not be:
 		# naming one on the button would be the button lying about which. What
-		# the player is owed is the shape of the bargain — that a curse is coming
-		# and that it has a clock on it, which every curse in the bag does.
+		# the player is owed is the shape of the bargain — that a curse card is
+		# coming into their pack.
 		if bool(curse.get("random", false)):
-			parts.append("+1 random Curse")
-		var cd: CurseData2 = Data.get_curse2(StringName(curse.get("curse", &"")))
+			parts.append("+1 random Curse card")
+		var cd: CardData = Data.get_curse_card(StringName(curse.get("curse", &"")))
 		if cd != null:
-			var games: int = int(curse.get("games", 0))
-			if games <= 0:
-				games = cd.timer
 			# The curse is named — "Injury", "Poor Sleep" — rather than announced
-			# as the category "Curse". The player is being handed a particular
-			# thing, and the name is what the checklist will call it from here on.
-			# 0 games here means the curse's own Timer is 0, which is PERMANENT —
-			# the same -1 sentinel GameState.add_curse_goal will store.
-			parts.append("%s: %s%s" % [cd.display_name, cd.describe(),
-				lasts_text(games if games > 0 else -1)])
+			# as the category "Curse". The player is being handed a particular card
+			# and the line says what it does in the pack.
+			parts.append("+%s (Curse card: %s)" % [cd.display_name, cd.description])
 
 	var play: Dictionary = choice.get("play", {})
 	if not play.is_empty():

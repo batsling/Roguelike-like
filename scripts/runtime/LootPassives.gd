@@ -522,6 +522,11 @@ static func every_for(trig: Dictionary, row: Dictionary) -> int:
 # WHERE A PIECE IS TOWARD ITS NEXT ENEMY-DEFEAT TRIGGER, for the number drawn on
 # it: {have, need, foods} — `need` already lowered by the food beside it — or {}
 # for a piece with no such trigger. The first such trigger answers.
+# THE COUNTED HOOKS A SQUARE SHOWS, and what one tick of each is called. A
+# defeated enemy is a CHARGE (food, Guilty); a finished game is a GAME (ETHEREAL,
+# docs/loot-passives.md §18 — Clumsy leaves after 3).
+const COUNTED_HOOKS := {"enemy_killed": "charge", "game_beaten": "game"}
+
 static func kill_progress(index: int) -> Dictionary:
 	for row in active():
 		if int(row.get("slot", -1)) < 0 \
@@ -530,15 +535,17 @@ static func kill_progress(index: int) -> Dictionary:
 		var it: ItemData = row["item"]
 		for i in range(it.triggers.size()):
 			var trig: Dictionary = it.triggers[i]
-			if String(trig.get("on", "")) != "enemy_killed" or int(trig.get("every", 0)) <= 1:
+			var on: String = String(trig.get("on", ""))
+			if not COUNTED_HOOKS.has(on) or int(trig.get("every", 0)) <= 1:
 				continue
 			var counts: Dictionary = (row["entry"] as Dictionary).get("every_count", {})
 			var need: int = every_for(trig, row)
-			var have: int = int(counts.get(count_key("enemy_killed#%d" % i, row), 0))
+			var have: int = int(counts.get(count_key("%s#%d" % [on, i], row), 0))
 			# READY: a move beside more food has lowered the target to at or below
 			# what it already holds. It does not pay on the spot — the count only moves
 			# on a charge — so it pays on the NEXT one, and the piece says so.
 			return {"have": mini(have, need), "need": need, "ready": have >= need,
+				"unit": COUNTED_HOOKS[on],
 				"foods": adjacent_foods(index, StringName(row["def"].get("id")))
 					if need < int(trig["every"]) else []}
 	return {}
@@ -555,12 +562,14 @@ static func entry_progress(entry: Dictionary) -> Dictionary:
 	var triggers: Array = def.triggers
 	for i in range(triggers.size()):
 		var trig: Dictionary = triggers[i]
-		if String(trig.get("on", "")) != "enemy_killed" or int(trig.get("every", 0)) <= 1:
+		var on: String = String(trig.get("on", ""))
+		if not COUNTED_HOOKS.has(on) or int(trig.get("every", 0)) <= 1:
 			continue
 		var counts: Dictionary = entry.get("every_count", {})
 		var need: int = int(trig["every"])
-		var have: int = int(counts.get("enemy_killed#%d" % i, 0))
-		return {"have": mini(have, need), "need": need, "ready": false, "foods": []}
+		var have: int = int(counts.get("%s#%d" % [on, i], 0))
+		return {"have": mini(have, need), "need": need, "ready": false, "foods": [],
+			"unit": COUNTED_HOOKS[on]}
 	return {}
 
 # --- who is working on whom (the hover glow) -------------------------------------

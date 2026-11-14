@@ -87,8 +87,35 @@ extends Resource
 # Echo Form: while held, the FIRST piece of loot used in each game plays this many
 # additional copies (GameState.extra_loot_copies).
 @export var echo_first_loot: int = 0
-# The sheet's `Type`: "Usable" or "Passive", drawn as a chip on the card.
+# The sheet's `Type`: "Usable" or "Passive", drawn as a chip on the card — or
+# "Curse" for a CURSE CARD (below), which comes from the `curses` sheet instead.
 @export var loot_type: String = "Usable"
+# The art folder under res://images2.0/ that `file` names a picture in. "cards" for
+# every row of the `cards` sheet; a curse card's art lives in "curses".
+@export var art_folder: String = "cards"
+
+# --- CURSE CARDS (docs/loot-passives.md §18) -------------------------------------
+# A curse is a card since 14 Nov 2026: `loot_type` "Curse", from the `curses` sheet
+# (tools/generate_curse2_tres.py), never in the ordinary loot drop. It is a PASSIVE
+# piece — never spent, and whatever it does it does from its cell (the four relic-
+# grammar fields above; the first three curses do nothing but take up space) — and
+# the player can never bin it or leave it out of the pack. Two more rules are the
+# sheet's, per curse:
+#   movable      false: locked in the cell it was placed in (GameState.is_pinned),
+#                and its bag with it — the keyword UNMOVABLE. Poor Sleep.
+#   destroyable  false: no effect can destroy it, the Scroll of Remove Curse
+#                included — the keyword ETERNAL. Curse of the Bell.
+# Both are written from the sheet's `Keywords` column, which is what the card
+# SAYS (`keywords`, in the sheet's order); the two bools are what the code reads.
+@export var keywords: PackedStringArray = PackedStringArray()
+@export var movable: bool = true
+@export var destroyable: bool = true
+# NORMALITY's rule (the sheet's `limit_actions N`): while this curse is carried, no
+# more than N USABLE ACTIONS a game — relic actives and every piece of pack loot
+# (not the board verbs). 0 = no limit.
+# GameState.action_limit reads it; the third keyword, ETHEREAL, needs no field of
+# its own: the generator writes it as a `game_beaten every=3: remove_self` trigger.
+@export var action_limit: int = 0
 # The sheet's `Tags` — what family the card belongs to (joker, tarot,
 # playing_card). A starting loadout's "1 random joker card" draws from these.
 @export var tags: PackedStringArray = PackedStringArray()
@@ -96,6 +123,17 @@ extends Resource
 
 func is_passive() -> bool:
 	return passive
+
+
+func is_curse() -> bool:
+	return loot_type == "Curse"
+
+
+# Whether a random curse deal can hand this one out (an event's `add_curse random`,
+# the Hexer's spread, Amnesia): the `curses` sheet's Tag says `random`. One without
+# it (Curse of the Bell) only arrives when something names it.
+func is_random_curse() -> bool:
+	return is_curse() and tags.has("random")
 
 
 # Shared 0-3 rarity ordering (Common/Uncommon/Rare/Legendary).

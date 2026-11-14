@@ -607,13 +607,13 @@ func test_an_options_random_curse_reads_random() -> void:
 		col._show_event_detail(ev)
 		var text: String = Page.text_of(col._detail_box)
 		for line in text.split("\n"):
-			assert_false(line.strip_edges() == "Curse:",
+			assert_false(line.strip_edges() == "Curse card:",
 				"%s has a curse line with no curse named" % ev.display_name)
 		for c in ev.choices:
 			if c.get("curse") is Dictionary and bool((c["curse"] as Dictionary).get("random", false)):
 				found = true
-				assert_true(text.contains("Curse: Random"),
-					"%s's random curse reads 'Curse: Random'" % ev.display_name)
+				assert_true(text.contains("Curse card: Random"),
+					"%s's random curse reads 'Curse card: Random'" % ev.display_name)
 	if not found:
 		pending("no event authors a random curse any more")
 

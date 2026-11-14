@@ -419,6 +419,7 @@ func test_the_layer_registry_reads_bottom_to_top() -> void:
 		["EVENT", UITheme.Layer.EVENT], ["CHOICE", UITheme.Layer.CHOICE],
 		["POST_COMBAT", UITheme.Layer.POST_COMBAT], ["MAP", UITheme.Layer.MAP],
 		["POST_COMBAT_CARD", UITheme.Layer.POST_COMBAT_CARD],
+		["CURSE", UITheme.Layer.CURSE], ["CURSE_USE", UITheme.Layer.CURSE_USE],
 		["HEADER", UITheme.Layer.HEADER], ["START", UITheme.Layer.START],
 		["START_MODAL", UITheme.Layer.START_MODAL],
 		["FULL_SCREEN", UITheme.Layer.FULL_SCREEN], ["CONFIRM", UITheme.Layer.CONFIRM],
@@ -442,6 +443,10 @@ func test_the_layers_that_have_to_outrank_each_other_do() -> void:
 		"a card opened off the haul screen lands over it")
 	assert_gt(UITheme.Layer.VERDICT, UITheme.Layer.FULL_SCREEN,
 		"the run being over outranks the star chart")
+	assert_gt(UITheme.Layer.CURSE, UITheme.Layer.POST_COMBAT,
+		"a curse card is placed over the haul screen, which cannot take one")
+	assert_gt(UITheme.Layer.CURSE, UITheme.Layer.EVENT,
+		"and over the event that handed it out")
 
 # --- the modal surface ------------------------------------------------------
 

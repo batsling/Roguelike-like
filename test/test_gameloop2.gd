@@ -2208,19 +2208,23 @@ func test_floor_loot_cannot_move_onto_another_piece_or_off_the_board() -> void:
 # spread as well as an event's `add_curse random`.
 func test_a_random_curse_deal_only_draws_curses_tagged_random() -> void:
 	var allowed: Array = []
-	for c in Data.all_curses2():
-		if (c as CurseData2).is_random():
-			allowed.append((c as CurseData2).id)
+	for c in Data.all_curse_cards():
+		if (c as CardData).is_random_curse():
+			allowed.append((c as CardData).id)
 	assert_false(allowed.has(&"curse_of_the_bell"), "the Bell is not tagged random")
 	assert_gt(allowed.size(), 0, "and some curses are")
+	var kept: Array = GameState.loot_items.duplicate(true)
 	for _i in range(10):
-		GameState.curse_goals.clear()
+		# A curse is a CARD in the pack (docs/loot-passives.md §18).
+		GameState.loot_items.clear()
 		GameLoop2._deal_curses(5)
-		for g in GameState.curse_goals:
-			assert_true(allowed.has(StringName(g.get("curse", ""))),
+		assert_gt(GameState.curse_count(), 0, "the deal put curse cards in the pack")
+		for g in GameState.loot_items:
+			assert_true(allowed.has(StringName(String(g.get("id", "")))),
 				"%s was dealt at random" % str(g))
 		assert_true(allowed.has(EventSystem.roll_random_curse()),
 			"an event's random curse comes from the same list")
+	GameState.loot_items = kept
 
 func test_an_empty_entry_never_reaches_the_floor() -> void:
 	assert_eq(GameLoop2.place_drop(Vector2i(2, 1), {}), GameLoop2.OFF_FIELD,

@@ -164,12 +164,10 @@ var _pending_event: EventData2 = null
 # The node that event was rolled for, so opening it can SPEND that node — one
 # event per game, however many times the run walks back through it.
 var _pending_event_node: StringName = &""
-# Checklist bindings for the two event-borne sections. ReportChecklist owns them;
-# these are read-only views under the names the tests reach for.
+# Checklist bindings for the event-goal section. ReportChecklist owns them; this
+# is a read-only view under the name the tests reach for.
 var _event_goal_checks: Array:
 	get: return _checklist.event_goal_checks if _checklist != null else []
-var _curse_goal_checks: Array:
-	get: return _checklist.curse_goal_checks if _checklist != null else []
 # The header's always-visible Health readout (see _build_health_chip).
 var _health_chip: Label = null
 # The shields that stay, beside Health in the same chip: the sprite and its count
@@ -638,6 +636,11 @@ func _ready() -> void:
 	# working unchanged.
 	if not GameState.loot_offered.is_connected(_on_loot_offered):
 		GameState.loot_offered.connect(_on_loot_offered)
+	# …and a CURSE CARD handed out (docs/loot-passives.md §18) is PLACED on a loot
+	# modal of its own that cannot be skipped. Connected here for the same reason:
+	# with nobody listening, GameState places it itself.
+	if not GameState.curse_offered.is_connected(_on_curse_offered):
+		GameState.curse_offered.connect(_on_curse_offered)
 	# …and a RELIC a payout hands over (the Blood Donation Machine's bag) asks on
 	# the item modal, the same Take / Leave a chest gets.
 	if not GameState.items_offered.is_connected(_on_items_offered):
@@ -2581,8 +2584,7 @@ func report(beaten: bool, fulfilled: Variant = null, escaped: bool = false,
 	var chest_sources: Array = GameLoop2.chest_point_breakdown()
 	_queue_report_chests(beaten and not escaped)
 	# What a status charged for a game it went unanswered (§13, Burn). GameLoop2 is
-	# a model node and says nothing to the player, so the bite is announced here,
-	# on the same terms as a curse's.
+	# a model node and says nothing to the player, so the bite is announced here.
 	_announce_status_penalties(res)
 	# "After beating a game" is the dominant 2.0 item trigger (§8): fire it now so
 	# owned items react (Burning Blood +1 Health, Meat on the Bone's conditional
@@ -2751,13 +2753,12 @@ func report(beaten: bool, fulfilled: Variant = null, escaped: bool = false,
 			mask_levels_paid.append({"levels": 1, "character": mch.display_name,
 				"condition": mch.level_up_condition, "reward": mch.level_up_reward,
 				"stats": GameState.grant_level_up(_rng, mch)})
-	# The event/curse half of the same honour-system report (§5): claim the event
-	# goals the player ticked and pay out the curses they owned up to. Read before
-	# games_played moves, because the tick below is what ages them.
+	# The event half of the same honour-system report (§5): claim the event goals
+	# the player ticked. Read before games_played moves, because the tick below is
+	# what ages them.
 	_resolve_event_goal_rows()
 	GameState.games_played += 1
-	# Both kinds of standing objective age by one game. An expired event goal gets
-	# its "missed" line; an expired curse says nothing, because nothing happened.
+	# The event goals age by one game. An expired one gets its "missed" line.
 	for expired in GameState.tick_event_goals():
 		var src: EventData2 = Data.get_event2(StringName(expired.get("event", &"")))
 		if src != null and src.goal_missed != "":
@@ -3926,6 +3927,9 @@ func _exit_tree() -> void:
 		TriggerBus.chest_granted.disconnect(_on_chest_granted)
 	if GameState.mask_granted.is_connected(_on_mask_granted):
 		GameState.mask_granted.disconnect(_on_mask_granted)
+	# With no page to place it on, a curse dealt from here on is placed by GameState.
+	if GameState.curse_offered.is_connected(_on_curse_offered):
+		GameState.curse_offered.disconnect(_on_curse_offered)
 	if GameState.inventory_changed.is_connected(_on_inventory_changed):
 		GameState.inventory_changed.disconnect(_on_inventory_changed)
 	if GameState.hp_changed.is_connected(_on_vitals_changed):
@@ -7536,6 +7540,9 @@ func _on_enemy_defeated(enemy: GoalEnemyData, cell: Vector2i) -> void:
 
 func _on_loot_offered(entries: Array) -> void:
 	_drops.on_loot_offered(entries)
+
+func _on_curse_offered(_entry: Dictionary) -> void:
+	_drops.on_curse_offered()
 
 func _on_items_offered(items: Array) -> void:
 	_drops.queue.append({"items": items.duplicate()})

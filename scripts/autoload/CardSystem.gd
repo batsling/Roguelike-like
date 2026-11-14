@@ -278,7 +278,9 @@ func _destroy_row(out: Dictionary, ctx: Dictionary, tally: Dictionary) -> void:
 	if slot < 0:
 		out["logs"].append("Played off the floor, it has no row to burn.")
 		return
-	var victims: Array = pieces_in_row(slot)
+	# An indestructible curse in the row is left standing (docs/loot-passives.md
+	# §18), and is not counted as burned.
+	var victims: Array = pieces_in_row(slot).filter(func(e): return GameState.can_destroy(e))
 	for entry in victims:
 		var at: int = -1
 		for i in range(GameState.loot_items.size()):
@@ -618,7 +620,7 @@ func art_texture(entry: Dictionary, face_up: bool = true) -> Texture2D:
 		# A set with no icon on disk shows its face rather than nothing. It leaks
 		# what the design would rather withhold, and a blank square on the board
 		# leaks that something is broken, which is worse.
-	return _load_art("cards", card.art_file())
+	return _load_art(card.art_folder, card.art_file())
 
 
 func _load_art(folder: String, base: String) -> Texture2D:

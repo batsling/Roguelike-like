@@ -490,7 +490,8 @@ func _list_potions() -> void:
 func _list_cards() -> void:
 	var query: String = _query()
 	var rows: Array = []
-	for c in Data.all_cards():
+	# The curse cards are listed too, so one can be handed to the run to test.
+	for c in Data.all_cards() + Data.all_curse_cards():
 		if not (c is CardData):
 			continue
 		var label: String = String(c.display_name)
@@ -501,7 +502,11 @@ func _list_cards() -> void:
 			card.rarity, card.set_name if card.set_name != "" else "Card",
 			card.description],
 			"press": func() -> void:
-				GameState.add_card_loot(card.id)
+				# A curse goes through the curse path, so it is PLACED like a real one.
+				if card.is_curse():
+					GameState.add_curse_card(card.id)
+				else:
+					GameState.add_card_loot(card.id)
 				_say("Added card: %s" % card.display_name, CardSystem.CARD_COLOR)})
 	_emit_rows(rows)
 

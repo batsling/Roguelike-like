@@ -21,7 +21,6 @@ const HOLLOW := &"whispering_hollow"
 var _hp: int
 var _max_hp: int
 var _goals: Array
-var _curses: Array
 var _fired: Dictionary
 # The bag, too — these tests deal from it directly, and a bag left half-empty
 # would show up as a mystery failure in whichever script ran next.
@@ -49,7 +48,6 @@ func before_each() -> void:
 	_hp = GameState.hp
 	_max_hp = GameState.max_hp
 	_goals = GameState.event_goals.duplicate(true)
-	_curses = GameState.curse_goals.duplicate(true)
 	_fired = GameState.events_fired.duplicate(true)
 	_seen = GameState.events_seen.duplicate(true)
 	_last_event = GameState.last_event_id
@@ -64,7 +62,10 @@ func before_each() -> void:
 	# one and this puts back whatever was there.
 	_loot = GameState.loot_items.duplicate(true)
 	GameState.event_goals.clear()
-	GameState.curse_goals.clear()
+	# A curse is a CARD in the pack now (docs/loot-passives.md §18), so each test
+	# starts from an empty pack and puts back whatever was there.
+	GameState.loot_items.clear()
+	GameState.pending_curses.clear()
 	GameState.events_fired.clear()
 	GameState.events_seen.clear()
 	GameState.last_event_id = &""
@@ -73,7 +74,7 @@ func before_each() -> void:
 
 func after_each() -> void:
 	GameState.event_goals = _goals.duplicate(true)
-	GameState.curse_goals = _curses.duplicate(true)
+	GameState.pending_curses.clear()
 	GameState.events_fired = _fired.duplicate(true)
 	GameState.events_seen = _seen.duplicate(true)
 	GameState.last_event_id = _last_event
@@ -125,8 +126,8 @@ func test_every_authored_event_loads() -> void:
 
 
 func test_every_curse_an_event_hands_out_exists() -> void:
-	# A dangling add_curse is a purple checklist row with nothing behind it. The
-	# generator refuses one; this catches a hand-edited .tres.
+	# A dangling add_curse is a curse card with nothing behind it. The generator
+	# refuses one; this catches a hand-edited .tres.
 	for ev in Data.all_events2():
 		for choice in ev.choices:
 			var curse: Dictionary = choice.get("curse", {})
@@ -141,67 +142,58 @@ func test_every_curse_an_event_hands_out_exists() -> void:
 						% [ev.id, choice.get("id", "")])
 				continue
 			var cid := StringName(curse.get("curse", &""))
-			assert_not_null(Data.get_curse2(cid),
+			assert_not_null(Data.get_curse_card(cid),
 				"%s/%s references curse %s, which curses2.0 does not define"
 					% [ev.id, choice.get("id", ""), cid])
 
 
-func test_curses_describe_themselves_from_condition_and_penalty() -> void:
-	var poor: CurseData2 = Data.get_curse2(&"poor_sleep")
-	assert_not_null(poor, "data/curses2.0/poor_sleep.tres must exist")
-	assert_eq(poor.timer, 3, "curse goals default to a three-game window")
-	# The row is composed, never authored, so it cannot drift from the effects.
-	assert_string_contains(poor.describe(), "rest site")
-	assert_string_contains(poor.describe(), "random enemy")
+# A CURSE IS A CARD (docs/loot-passives.md §18): a passive piece, out of the
+# ordinary loot drop, whose line is composed from the sheet's rules so it cannot
+# claim one it does not have.
+func test_every_curse_is_a_passive_card() -> void:
+	assert_gt(Data.all_curse_cards().size(), 0, "there is a curse roster")
+	for cd in Data.all_curse_cards():
+		assert_true(cd is CardData, "%s is a CardData" % cd.id)
+		assert_true(cd.is_curse(), "%s says it is a curse" % cd.id)
+		assert_true(cd.is_passive(), "%s is never spent" % cd.id)
+		assert_eq(Data.get_card(cd.id), cd, "and a card lookup finds it")
+		assert_does_not_have(Data.all_cards(), cd, "but it is not in the cards catalogue")
+		assert_string_contains(cd.description, "Can't be thrown away")
 
 
-# Every curse in the sheet bills the same way now: a body on the board, not a
-# number off the Health bar. This is the guard on that being true of the WHOLE
-# roster rather than of the two rows a test happens to name.
-func test_every_curse_pays_in_enemies() -> void:
-	assert_gt(Data.all_curses2().size(), 0, "there is a curse roster")
-	for cd in Data.all_curses2():
-		assert_eq(cd.penalty.size(), 1, "%s has exactly one penalty clause" % cd.id)
-		assert_eq(String(cd.penalty[0].get("type", "")), "spawn_enemy",
-			"%s spawns an enemy rather than charging a resource" % cd.id)
+func test_each_curse_carries_the_owners_rules() -> void:
+	var bell: CardData = Data.get_curse_card(&"curse_of_the_bell")
+	var injury: CardData = Data.get_curse_card(&"injury")
+	var poor: CardData = Data.get_curse_card(&"poor_sleep")
+	assert_true(bell.movable and not bell.destroyable, "the Bell moves and cannot be destroyed")
+	assert_true(injury.movable and injury.destroyable, "Injury moves and can be destroyed")
+	assert_true(not poor.movable and poor.destroyable, "Poor Sleep is locked and can be destroyed")
+	# The rules are KEYWORDS, and the card says them.
+	assert_eq(Array(bell.keywords), ["Eternal"], "the Bell is Eternal")
+	assert_eq(Array(poor.keywords), ["Unmovable"], "Poor Sleep is Unmovable")
+	assert_true(injury.keywords.is_empty(), "Injury has neither")
+	assert_string_contains(bell.description, "Eternal: can't be destroyed")
+	assert_string_contains(poor.description, "Unmovable: can't be moved")
 
 
-# The Bell asks for a thing you must REMEMBER, where the other two ask for things
-# you must avoid. That inversion lives entirely in the Condition column — the
-# checklist row is composed from it, so the row has to read as the admission it
-# is without any code knowing which way round this one runs.
-func test_the_bell_bites_when_you_forget_rather_than_when_you_ring() -> void:
-	var bell: CurseData2 = Data.get_curse2(&"curse_of_the_bell")
-	assert_not_null(bell, "data/curses2.0/curse_of_the_bell.tres must exist")
-	assert_eq(bell.condition, "you don't ring a bell",
-		"the bell is rung to AVOID the penalty, not to earn it")
-	assert_eq(bell.describe(),
-		"If you don't ring a bell, spawn a random enemy when you report the game.")
+func test_no_curse_is_ever_in_the_ordinary_loot_drop() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 7
+	for _i in range(300):
+		var card: CardData = Data.roll_card(rng)
+		assert_false(card != null and card.is_curse(), "the drop rolled a curse")
 
 
-# Every curse now bills a BODY, so "does the bill actually arrive" is a question
-# about the board rather than about a number. Fires the penalty the same way the
-# checklist does — GameState.trigger_curse_goal — and looks at the stack.
-func test_a_curse_that_bites_puts_an_enemy_on_the_board() -> void:
-	GameState.add_curse_goal(&"curse_of_the_bell")
-	var before: int = GameLoop2.stack.size()
-	var fired: Dictionary = GameState.trigger_curse_goal(0)
-	assert_false(fired.is_empty(), "the curse fired")
-	assert_eq(GameLoop2.stack.size(), before + 1, "and something walked on")
-	assert_eq(GameState.curse_goals.size(), 1, "a curse bites and STAYS")
-
-
-# A CURSE LANDING SAYS SO on the bus. Only the retired 1.0 curse list ever
-# emitted curse_applied, so for the whole curse-goal era a curse arrived in
-# silence: the OBS ticker's "Cursed — …" line could not fire, and neither could
-# a relic watching for it. It carries the curse, which is what both read.
+# A CURSE LANDING SAYS SO on the bus (the OBS ticker's "Cursed — …"), carrying
+# the curse card itself, and the card is in the pack.
 func test_gaining_a_curse_announces_it() -> void:
 	watch_signals(TriggerBus)
-	assert_true(GameState.add_curse_goal(&"poor_sleep"), "the curse landed")
+	assert_true(GameState.add_curse_card(&"poor_sleep"), "the curse landed")
 	assert_signal_emitted(TriggerBus, "curse_applied", "and the bus heard it")
 	var ctx: Dictionary = get_signal_parameters(TriggerBus, "curse_applied")[0]
-	assert_eq(ctx.get("curse"), Data.get_curse2(&"poor_sleep"), "carrying the curse itself")
-	assert_eq(GameState.curse_count(), 1, "the tally counts curse goals")
+	assert_eq(ctx.get("curse"), Data.get_curse_card(&"poor_sleep"), "carrying the curse itself")
+	assert_eq(GameState.curse_count(), 1, "the tally counts curse cards")
+	assert_true(GameState.has_curse_card(&"poor_sleep"), "and it is in the pack")
 
 
 # …and the body it puts there is one from the run's own difficulty. A conjured
@@ -231,18 +223,18 @@ func _top_stocked_tier(tier: int) -> int:
 	return 0
 
 
-# Curse of the Bell is the one that never comes off — the Timer column says N/A,
-# which is a 0 on the resource and a -1 window on the run.
-func test_the_bells_curse_is_permanent() -> void:
-	var bell: CurseData2 = Data.get_curse2(&"curse_of_the_bell")
-	assert_not_null(bell, "data/curses2.0/curse_of_the_bell.tres must exist")
-	assert_eq(bell.timer, 0, "Timer N/A means permanent")
-	GameState.add_curse_goal(&"curse_of_the_bell")
-	assert_eq(int(GameState.curse_goals[0]["games_left"]), -1, "stored as the -1 sentinel")
+# Curse of the Bell is the one that never comes off: nothing destroys it and the
+# player cannot bin it, and no number of games clears it.
+func test_the_bells_curse_cannot_be_destroyed() -> void:
+	GameState.add_curse_card(&"curse_of_the_bell")
+	assert_eq(GameState.loot_items.size(), 1, "the Bell is in the pack")
+	assert_true(GameState.destroy_loot_at(0).is_empty(), "destroying it is refused")
+	GameState.discard_loot_at(0)
+	assert_eq(GameState.loot_items.size(), 1, "and so is binning it")
+	assert_true(GameState.lift_curse_card(0).is_empty(), "and so is lifting it")
 	for _i in range(6):
 		GameState.tick_event_goals()
-	assert_eq(GameState.curse_goals.size(), 1, "and no number of games clears it")
-	assert_string_contains(CurseData2.window_text(-1), "permanent")
+	assert_true(GameState.has_curse_card(&"curse_of_the_bell"), "and no number of games clears it")
 
 
 # --- Abyssal Baths: staging, gates, and the escalating hole ------------------
@@ -422,28 +414,22 @@ func test_resting_takes_on_the_curse_and_heals() -> void:
 	GameState.hp = 4
 	EventSystem.resolve_choice(ev, _choice(ev, "rest_anyways"), 0)
 	assert_eq(GameState.hp, 10, "Rest Anyways heals to full")
-	assert_true(GameState.has_curse_goal(&"poor_sleep"), "and you carry Poor Sleep out")
-	assert_eq(int(GameState.curse_goals[0]["games_left"]), 3,
-		"for the curse's own Timer, since the event named no override")
+	assert_true(GameState.has_curse_card(&"poor_sleep"), "and you carry Poor Sleep out")
 
 
-func test_a_curse_bites_repeatedly_and_only_the_timer_clears_it() -> void:
-	# This is the whole difference between a curse and an event goal: meeting the
-	# condition costs you and does NOT retire the row.
+# A curse card stays in the pack: no checklist, no clock, nothing that bites.
+func test_a_curse_card_stays_until_something_lifts_it() -> void:
 	var ev: EventData2 = _event(UNREST)
 	GameState.max_hp = 20
 	GameState.hp = 20
-	EventSystem.resolve_choice(ev, _choice(ev, "rest_anyways"), 0)
 	var following: int = GameLoop2.stack_size()
-	GameState.trigger_curse_goal(0)
-	assert_eq(GameLoop2.stack_size(), following + 1, "owning up costs the penalty")
-	assert_eq(GameState.curse_goals.size(), 1, "and the curse stays on you")
-	GameState.trigger_curse_goal(0)
-	assert_eq(GameLoop2.stack_size(), following + 2, "so it can bite again next game")
-	GameState.tick_event_goals()
-	GameState.tick_event_goals()
-	GameState.tick_event_goals()
-	assert_eq(GameState.curse_goals.size(), 0, "only the timer removes it")
+	EventSystem.resolve_choice(ev, _choice(ev, "rest_anyways"), 0)
+	for _i in range(5):
+		GameState.tick_event_goals()
+	assert_true(GameState.has_curse_card(&"poor_sleep"), "games played do not clear it")
+	assert_eq(GameLoop2.stack_size(), following, "and it spawns nothing")
+	assert_false(GameState.lift_curse_card(0).is_empty(), "a Remove Curse can take it off")
+	assert_false(GameState.has_curse_card(&"poor_sleep"))
 
 
 func test_killing_the_trees_costs_max_health() -> void:
@@ -634,9 +620,11 @@ func test_every_authored_event_has_its_art() -> void:
 
 
 func test_every_curse_has_its_art() -> void:
-	for cd in Data.all_curses2():
+	for cd in Data.all_curse_cards():
 		var path: String = "res://images2.0/curses/%s.png" % cd.art_file()
 		assert_true(ResourceLoader.exists(path), "%s is missing art at %s" % [cd.id, path])
+		assert_not_null(LootSystem.art_texture(GameState.curse_entry(cd.id)),
+			"and the pack draws it as %s" % cd.id)
 
 
 func test_a_curse_is_described_once_not_twice() -> void:
@@ -646,7 +634,7 @@ func test_a_curse_is_described_once_not_twice() -> void:
 	var nab: Dictionary = _choice(_event(PUNCH), "nab")
 	assert_false(String(nab.get("effects_text", "")).to_lower().contains("curse"),
 		"effects_text should leave the curse to describe_choice")
-	assert_string_contains(EventSystem.describe_choice(nab, 0).to_lower(), "half health")
+	assert_string_contains(EventSystem.describe_choice(nab, 0).to_lower(), "injury")
 
 
 # --- the shuffle bag --------------------------------------------------------
@@ -1120,28 +1108,27 @@ func test_the_dummys_settings_bank_the_sizes_they_promise() -> void:
 
 # --- persistence ------------------------------------------------------------
 
-func test_goals_and_curses_survive_a_save_round_trip() -> void:
+func test_goals_survive_a_save_round_trip() -> void:
 	var dummy: EventData2 = _event(DUMMY)
 	EventSystem.resolve_choice(dummy, _choice(dummy, "setting_3"), 0)
-	GameState.add_curse_goal(&"injury", PUNCH)
 	GameState.run_seed = 4242
 	var blob: Dictionary = GameState.serialize_event_goals()
 
 	GameState.event_goals.clear()
-	GameState.curse_goals.clear()
 	GameState.restore_event_goals(blob)
 
 	assert_eq(GameState.event_goals.size(), 1, "the goal comes back")
-	assert_eq(GameState.curse_goals.size(), 1, "and so does the curse")
-	assert_true(GameState.has_curse_goal(&"injury"))
 	assert_eq(int(GameState.event_goals[0]["games_left"]), 3,
 		"with its countdown where it left off")
+	assert_false(blob.has("curses"), "and there are no curse goals to save")
 
 
 func test_reset_run_clears_them() -> void:
-	GameState.add_curse_goal(&"poor_sleep")
+	GameState.add_curse_card(&"poor_sleep")
+	GameState.pending_curses.append(GameState.curse_entry(&"injury"))
 	GameState.reset_run()
-	assert_eq(GameState.curse_goals.size(), 0, "a new run carries no old curses")
+	assert_eq(GameState.curse_count(), 0, "a new run carries no old curses")
+	assert_true(GameState.pending_curses.is_empty(), "and none waiting to be placed")
 	assert_eq(GameState.event_goals.size(), 0)
 	assert_ne(GameState.run_seed, 0, "and gets a seed of its own")
 
@@ -1218,7 +1205,7 @@ func test_outrunning_and_hiding_charge_what_they_said() -> void:
 func test_smashing_the_boulder_leaves_the_injury() -> void:
 	var ev: EventData2 = _event(IDOL)
 	EventSystem.resolve_choice(ev, _choice(ev, "smash"), 0)
-	assert_true(GameState.has_curse_goal(&"injury"), "Smash is the curse route")
+	assert_true(GameState.has_curse_card(&"injury"), "Smash is the curse route")
 
 
 # --- Relic Trader: three offers built out of your own pack ------------------
@@ -1461,26 +1448,16 @@ func test_a_non_lethal_cost_is_never_a_death_however_it_is_dressed() -> void:
 func test_a_curse_is_offered_by_its_own_name() -> void:
 	var choice: Dictionary = {
 		"id": "sleep", "text": "Sleep badly",
-		"curse": {"curse": "injury", "games": 3},
+		"curse": {"curse": "injury"},
 	}
 	var line: String = EventSystem.describe_choice(choice, 0)
-	var cd: CurseData2 = Data.get_curse2(&"injury")
+	var cd: CardData = Data.get_curse_card(&"injury")
 	assert_not_null(cd, "the catalogue has the curse")
 	assert_string_contains(line, cd.display_name)
 	assert_false(line.contains("Curse ("),
 		"the category, in brackets, in front of the sentence — that is what went")
-	assert_string_contains(line, "Lasts 3 games")
-	assert_true(line.find("Lasts") > line.find(cd.display_name),
-		"how long you have it for comes after what it is")
-
-func test_a_permanent_curse_says_so_rather_than_counting_to_zero() -> void:
-	var choice: Dictionary = {
-		"id": "ring", "text": "Take the bell",
-		"curse": {"curse": "curse_of_the_bell", "games": 0},
-	}
-	var line: String = EventSystem.describe_choice(choice, 0)
-	assert_string_contains(line, "Permanent")
-	assert_false(line.contains("Lasts 0"), "nothing lasts zero games")
+	assert_string_contains(line, "Curse card")
+	assert_false(line.contains("Lasts"), "a curse card has no clock")
 
 func test_an_event_goal_is_called_one() -> void:
 	var choice: Dictionary = {
@@ -1772,10 +1749,10 @@ func test_touching_the_monkey_pays_luck_and_costs_a_curse() -> void:
 	var ev: EventData2 = _event(MONKEY)
 	assert_eq(ev.prompt, "", "wordless, like the lab")
 	var luck: int = GameState.luck
-	var curses: int = GameState.curse_goals.size()
+	var curses: int = GameState.curse_count()
 	EventSystem.resolve_choice(ev, _choice(ev, "touch_the_golden_monkey"), 0)
 	assert_eq(GameState.luck, luck + 1, "+1 Luck")
-	assert_eq(GameState.curse_goals.size(), curses + 1, "and one curse for it")
+	assert_eq(GameState.curse_count(), curses + 1, "and one curse card for it")
 
 
 func test_leaving_the_monkey_alone_costs_nothing() -> void:
@@ -1783,7 +1760,7 @@ func test_leaving_the_monkey_alone_costs_nothing() -> void:
 	var luck: int = GameState.luck
 	EventSystem.resolve_choice(ev, _choice(ev, "leave"), 0)
 	assert_eq(GameState.luck, luck, "no Luck")
-	assert_eq(GameState.curse_goals.size(), 0, "and no curse")
+	assert_eq(GameState.curse_count(), 0, "and no curse")
 
 
 # The button cannot name the curse, because the curse has not been rolled yet —
@@ -1794,40 +1771,39 @@ func test_the_monkey_offers_a_curse_without_naming_one() -> void:
 		_choice(_event(MONKEY), "touch_the_golden_monkey"), 0)
 	assert_string_contains(line, "+1 Luck")
 	assert_string_contains(line, "random Curse")
-	for cd in Data.all_curses2():
+	for cd in Data.all_curse_cards():
 		assert_false(line.contains(cd.display_name),
 			"no curse is named before it is rolled: %s" % line)
 
 
-# A RANDOM CURSE IS NEVER A PERMANENT ONE, and that is the rule rather than the
-# monkey's own exception: a permanent curse is the price something specific
-# charges — Curse of the Bell is what the Calling Bell hangs on you — and a random
-# roll that could land one turns an idle button into a coin flip on the whole run.
-func test_a_random_curse_is_never_a_permanent_one() -> void:
-	var permanent: Array = []
-	var timed: Array = []
-	for cd in Data.all_curses2():
-		if cd.timer > 0:
-			timed.append(cd.id)
+# A RANDOM CURSE IS ONLY ONE THE SHEET TAGS `random`, and that is the rule rather
+# than the monkey's own exception: Curse of the Bell is the price something
+# specific charges — the Calling Bell hangs it on you — and a random roll that
+# could land one turns an idle button into a coin flip on the whole run.
+func test_a_random_curse_is_never_the_bell() -> void:
+	var tagged: Array = []
+	var untagged: Array = []
+	for cd in Data.all_curse_cards():
+		if cd.is_random_curse():
+			tagged.append(cd.id)
 		else:
-			permanent.append(cd.id)
-	assert_gt(permanent.size(), 0, "the catalogue has a permanent curse to exclude")
-	assert_gt(timed.size(), 0, "and something to roll instead")
+			untagged.append(cd.id)
+	assert_has(untagged, &"curse_of_the_bell", "the Bell is not in the random bag")
+	assert_gt(tagged.size(), 0, "and something is")
 	for _i in range(40):
 		var rolled: StringName = EventSystem.roll_random_curse()
-		assert_has(timed, rolled, "a random curse has a clock on it")
-		assert_does_not_have(permanent, rolled, "never the permanent one")
+		assert_has(tagged, rolled, "a random curse is a tagged one")
 
 
 func test_the_curse_the_monkey_rolls_is_the_curse_it_hands_over() -> void:
 	var ev: EventData2 = _event(MONKEY)
 	var out: Dictionary = EventSystem.resolve_choice(
 		ev, _choice(ev, "touch_the_golden_monkey"), 0)
-	assert_eq(GameState.curse_goals.size(), 1, "one curse landed")
-	var cid := StringName(GameState.curse_goals[0].get("curse", &""))
-	var cd: CurseData2 = Data.get_curse2(cid)
+	assert_eq(GameState.curse_count(), 1, "one curse landed")
+	var cid := StringName(String(GameState.loot_items[0].get("id", "")))
+	var cd: CardData = Data.get_curse_card(cid)
 	assert_not_null(cd, "and it is a real one")
-	assert_gt(cd.timer, 0, "with a clock on it")
+	assert_true(cd.is_random_curse(), "from the random bag")
 	# …and the line the modal prints on the way out names what was caught, since
 	# the button could not.
 	assert_string_contains(String(out["text"]), cd.display_name)

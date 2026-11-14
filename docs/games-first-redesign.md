@@ -66,7 +66,6 @@ row on the spot**, while the game is still being played:
 | A player status goal / `demand` | pays it, and answers the demand so it cannot bill you at the end of the game |
 | The character's level-up | takes the level and its reward |
 | An event goal | claims it |
-| A curse | nothing to pay — what it buys is the penalty *not* firing at the report |
 
 **Identical bodies share one row** (`ReportChecklist.group_bodies`): the same
 enemy with the same goal and no status riding it is drawn once, with a **×N**
@@ -736,7 +735,7 @@ rather than a fact that was always true.
 | Bad Trip | Negative | −2 Health | −4 Health |
 | Full Health | Positive | Heal to full | Heal to full, +3 Shields |
 | Balls of Steel | Positive | +2 Shields | +4 Shields |
-| Amnesia | Negative | A random curse goal (§5) | A random curse goal, and forget every identified loot — **itself included** |
+| Amnesia | Negative | A random curse card (§5) | A random curse card, and forget every identified loot — **itself included** |
 
 **The colours.** `images2.0/pills/` ships **13 colours**, each with a horse twin
 (`<Colour>.png` / `<Colour>Horse.png`). A run binds **10 of the 13** to the ten
@@ -1318,23 +1317,27 @@ cards or wands it drew.
 
 ---
 
-## 5. Curses — shelved for now
+## 5. Curses — cards in the pack
 
-**The combat-era curses are not part of the current design.** The
-enemy-with-a-goal *is* the challenge mechanic, so `CurseData` / `data/curses` —
-the 16 curse cards of the build this one replaced — were set aside to avoid
-duplicating that role, and deleted on 25 Oct 2026 (they are in git history, and
-in the owner's own archive, if an opt-in gambit layer ever brings them back).
-Nothing in the core loop depended on them.
+**A curse is a CARD** since 14 Nov 2026 (the owner: "get rid of curse goals.
+These curses will now count as cards (not available in the basic loot drop)").
+It sits in a cell of the loot pack, is placed on the loot modal the moment it
+arrives — a modal with no Skip, so a full pack has to make room — and can never
+be binned or taken out of the pack. Per curse, the `curses` sheet gives it
+KEYWORDS: **Unmovable** (it can't be moved — Poor Sleep) and **Eternal** (it
+can't be destroyed — Curse of the Bell); Injury has neither. A cursed weapon
+(Retro Bat's unidentified weapons) counts as a curse too. Events hand them out (`add_curse`), and so do the Calling Bell
+(§8), the Amnesia pill, the Hexer and the Lacerator. The rules are
+`docs/loot-passives.md` §18.
 
-**Not to be confused with a CURSE GOAL**, which is live and authored: a row on the
-post-game checklist that you are trying *not* to complete, defined in the
-`curses2.0` sheet and described in `event-sheet-authoring.md` §6. Same word,
-different thing, and nothing wires the two together. Its penalty is always the
-same one — **spawn a random enemy at the run's current difficulty** — so a curse
-bills in the run's own currency rather than competing with the enemy stack for
-the Health bar. Events hand them out (`add_curse`), and so does one relic: the
-Calling Bell arrives with a permanent Curse of the Bell (§8).
+**There are no curse GOALS any more.** Until that date a curse was a row on the
+post-game checklist you were trying *not* to complete, which spawned a random
+enemy when you did. Where the sections below still describe a curse row, a
+`Timer`, or "a curse's bill", they describe that retired system.
+
+The combat-era curses (`CurseData` / `data/curses`, the 16 curse cards of the
+build this one replaced) were deleted on 25 Oct 2026 and are in git history;
+nothing was ported from them.
 
 ---
 
@@ -2030,8 +2033,9 @@ standing there.
 sheet was built as a read-only VIEW — six owning sheets in five column shapes,
 gathered so the roster could be counted — and it has been promoted to the
 **source**. `tools/apply_goals_sheet.py` writes it out into the sheets the
-generators read (`enemies`, `bosses`, `characters`' `Level Up`, `curses`'
-`Condition`, and `statuses`' `On Player` prose); `--check` is what CI runs, and
+generators read (`enemies`, `bosses`, `characters`' `Level Up`, and `statuses`'
+`On Player` prose — `curses`' `Condition` too, until a curse became a card on
+14 Nov 2026 and had no goal left); `--check` is what CI runs, and
 an edit made to an owner sheet's goal column is lost on the next push.
 
 That promotion is what made a consistent pass over the goals possible: 34 of the
@@ -2236,9 +2240,8 @@ nothing — so this pass corrected the SOURCE, not the build. Marked's
 `achivements` typo lived in exactly the same place and never reached a player
 either; the effect column had always spelled it `[achievement|achievements]`.
 
-**Three sheets carry neither column** — `characters`, `curses` and `statuses` —
-because a level-up, a curse and a status clause are already settled by the run
-being won. Authoring a `Ticked` or a `Count` on one is a **hard error** in
+**Two sheets carry neither column** — `characters` and `statuses` — because a
+level-up and a status clause are already settled by the run being won. Authoring a `Ticked` or a `Count` on one is a **hard error** in
 `apply_goals_sheet.py` rather than a silent drop, since the value would otherwise
 vanish on the way through and the goal would keep behaving the way it always did
 with the sheet saying otherwise.
@@ -2294,7 +2297,7 @@ in Common grey is a lie every screen would then repeat.
 
 **The Boss relics** (3): **Sacred Bark** doubles every loot consumable, good and
 bad alike; **Calling Bell** pays three relics — one Common, one Uncommon, one Rare
-— and saddles you with the permanent Curse of the Bell; **Lord's Parasol** empties
+— and saddles you with Curse of the Bell, a curse card nothing can destroy (§5); **Lord's Parasol** empties
 the next shop you walk into, free (§14).
 
 **Type** = *behavior class* (how the item works, not what it grants):
@@ -3178,7 +3181,8 @@ Resource schema in `scripts/resources/`.
   scrolls, identification + Preference. **Fog dropped** vs. the old set.
 - **games** — extend with richer tags and the promoted **type** (§6.1). Regenerate
   via `import-games-godot.py`.
-- **curses** — **shelved** (§5). **bingo** — **retired**; legacy not ported.
+- **curses** — **cards** in the pack (§5, `docs/loot-passives.md` §18). **bingo** —
+  **retired**; legacy not ported.
 
 **What `Year` means, and what a backward connection is.** `Year` is the year a
 game first became **available to influence others** — an early-access date, or a

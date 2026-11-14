@@ -554,18 +554,36 @@ func test_a_random_identify_can_land_on_a_pill() -> void:
 	assert_true(PillSystem.is_identified(&"telepills"))
 
 # --- Remove Curse ----------------------------------------------------------
+#
+# A curse is a CARD in the pack (docs/loot-passives.md §18). The scroll lifts the
+# ones the sheet says are Destroyable; Curse of the Bell is not, and stays.
 
-func test_remove_curse_lifts_the_permanent_row() -> void:
-	# Curse of the Bell's Timer is N/A, so it is the one row on the list that never
-	# clears itself — which is exactly what a Rare scroll should be able to answer.
-	GameState.add_curse_goal(&"curse_of_the_bell")
-	assert_eq(GameState.curse_goals.size(), 1)
-	var said: String = ScrollSystem.remove_curse_chosen([0])
-	assert_eq(GameState.curse_goals.size(), 0, "the permanent curse comes off")
-	assert_true(said.contains("Curse of the Bell"), "and is named: %s" % said)
+func _curse_at(id: StringName) -> Dictionary:
+	for e in GameState.loot_items:
+		if GameState.is_curse_entry(e) and StringName(String(e.get("id", ""))) == id:
+			return e
+	return {}
+
+func test_remove_curse_lifts_a_curse_card() -> void:
+	GameState.add_curse_card(&"poor_sleep")
+	assert_eq(GameState.curse_count(), 1)
+	var said: String = ScrollSystem.remove_curse_chosen([_curse_at(&"poor_sleep")])
+	assert_eq(GameState.curse_count(), 0, "the curse comes off")
+	assert_true(said.contains("Poor Sleep"), "and is named: %s" % said)
+	assert_true(GameState.destroyed_loot.is_empty(),
+		"lifted, not binned — nothing for Exhume to hand back")
+
+func test_remove_curse_never_offers_the_bell() -> void:
+	GameState.add_curse_card(&"curse_of_the_bell")
+	assert_true(ScrollSystem.removable_curses().is_empty(), "the Bell is not on the list")
+	var out: Dictionary = ScrollSystem.read_scroll(
+		Data.get_scroll(&"scroll_of_remove_curse"), {"rng": Fixtures.rng()})
+	assert_true((out["requests"] as Array).is_empty(), "no picker over the Bell alone")
+	ScrollSystem.remove_curse_chosen([_curse_at(&"curse_of_the_bell")])
+	assert_eq(GameState.curse_count(), 1, "and even named, it does not come off")
 
 func test_remove_curse_asks_which_one() -> void:
-	GameState.add_curse_goal(&"injury")
+	GameState.add_curse_card(&"injury")
 	var out: Dictionary = ScrollSystem.read_scroll(
 		Data.get_scroll(&"scroll_of_remove_curse"), {"rng": Fixtures.rng()})
 	assert_eq(out["requests"].size(), 1)
@@ -581,29 +599,32 @@ func test_remove_curse_with_nothing_held_fizzles() -> void:
 		"and teaches nothing — a read that did nothing showed nothing (§4.5)")
 
 func test_removing_several_curses_takes_the_ones_that_were_picked() -> void:
-	# Descending removal, or every index above the first one lifted points at the
-	# wrong row — which the player would read as the scroll taking the wrong curse.
-	GameState.add_curse_goal(&"curse_of_the_bell")
-	GameState.add_curse_goal(&"injury")
-	GameState.add_curse_goal(&"poor_sleep")
-	ScrollSystem.remove_curse_chosen([0, 2])
-	assert_eq(GameState.curse_goals.size(), 1)
-	assert_eq(StringName(GameState.curse_goals[0].get("curse", &"")), &"injury",
-		"the middle row is the one left standing")
+	# Found by identity, so lifting one cannot shift which the next one is.
+	GameState.add_curse_card(&"injury")
+	GameState.add_curse_card(&"poor_sleep")
+	GameState.add_curse_card(&"injury")
+	var first: Dictionary = GameState.loot_items[0]
+	var poor: Dictionary = GameState.loot_items[1]
+	ScrollSystem.remove_curse_chosen([first, poor])
+	assert_eq(GameState.curse_count(), 1)
+	assert_eq(StringName(String(GameState.loot_items[0].get("id", ""))), &"injury",
+		"the second Injury is the one left standing")
 
-func test_remove_curse_all_clears_the_list() -> void:
-	GameState.add_curse_goal(&"injury")
-	GameState.add_curse_goal(&"poor_sleep")
+func test_remove_curse_all_clears_every_liftable_curse() -> void:
+	GameState.add_curse_card(&"injury")
+	GameState.add_curse_card(&"poor_sleep")
+	GameState.add_curse_card(&"curse_of_the_bell")
 	var out: Dictionary = ScrollSystem.read_scroll(
 		_scroll_with([{"op": "remove_curse", "mode": "all", "count": 1}]), {"rng": Fixtures.rng()})
-	assert_eq(GameState.curse_goals.size(), 0)
+	assert_eq(GameState.curse_count(), 1, "only the Bell is left")
+	assert_true(GameState.has_curse_card(&"curse_of_the_bell"))
 	assert_false((out["logs"] as Array).is_empty())
 
-func test_remove_curse_goal_refuses_a_stale_index() -> void:
-	assert_eq(GameState.remove_curse_goal(0), {}, "an empty list removes nothing")
-	GameState.add_curse_goal(&"injury")
-	assert_eq(GameState.remove_curse_goal(9), {}, "and neither does an index past the end")
-	assert_eq(GameState.curse_goals.size(), 1)
+func test_lift_curse_card_refuses_a_stale_index() -> void:
+	assert_eq(GameState.lift_curse_card(0), {}, "an empty pack lifts nothing")
+	GameState.add_curse_card(&"injury")
+	assert_eq(GameState.lift_curse_card(9), {}, "and neither does an index past the end")
+	assert_eq(GameState.curse_count(), 1)
 
 # --- Authored words beat generated ones ------------------------------------
 

@@ -16,7 +16,7 @@ signal current_game_changed(game_id: StringName)
 # A status on the PLAYER was applied, ticked, or removed (§13). The checklist and
 # the HUD strip rebuild off this; enemy-side statuses ride GameLoop2.loop_changed.
 signal player_statuses_changed
-# Event goals / curse goals gained, ticked, resolved or expired.
+# Event goals gained, ticked, resolved or expired.
 signal event_goals_changed
 # HUNGER moved (docs/players-design.md §4): the header's bar repaints off this.
 signal hunger_changed(hunger: int)
@@ -435,6 +435,14 @@ var loot_uses_this_game: int = 0
 # as the game resolves, and saved with it.
 var cards_used_this_game: int = 0
 
+# USABLE ACTIONS TAKEN THIS GAME, for NORMALITY (docs/loot-passives.md §18): every
+# relic active fired and piece of pack loot used (a wand's zap and a weapon's swing
+# included). The board verbs are NOT actions (the owner, 14 Nov 2026: "let's have
+# verbs not count as actions, it's a little complicated").
+# Counted whether or not Normality is carried (it may arrive mid-game), zeroed
+# beside `loot_uses_this_game` as the game resolves (GameLoop2), and saved.
+var actions_this_game: int = 0
+
 # EVERYTHING DESTROYED THIS RUN, oldest first: each piece binned out of the pack or
 # off the floor, and each one an effect destroyed (a card's, an enemy's Degradation,
 # a scroll burning). One list because destroying a piece IS binning it (the owner,
@@ -533,26 +541,22 @@ var timed_statuses: Array = []
 var _next_timed_instance: int = 1
 
 # ---------------------------------------------------------------------------
-# Event goals and curse goals (docs/event-sheet-authoring.md §5)
+# Event goals (docs/event-sheet-authoring.md §5)
 #
-# The two kinds of objective an EVENT can leave behind after its modal closes.
-# Both are run-scope, both tick down one per game played, and both live here
-# rather than on GameLoop2's stack because neither is attached to an enemy — an
-# enemy goal is a debt that follows you, these are a bonus and a bill.
+# The objective an EVENT can leave behind after its modal closes. Run-scope, it
+# ticks down one per game played, and it lives here rather than on GameLoop2's
+# stack because it is not attached to an enemy — an enemy goal is a debt that
+# follows you, an event goal is a bonus.
 #
 #   event_goals  {event, condition, games_left, effects, effects_text}
 #                Meet it -> pays `effects`, and it is done. Let it run out ->
 #                nothing happens. Removed when met or when games_left hits 0.
 #
-#   curse_goals  {curse, event, games_left}
-#                The INVERSE: meeting the condition costs you the curse's
-#                penalty, and it does NOT go away — it can bite again next game.
-#                Only the timer removes it. Condition, penalty and default timer
-#                come from CurseData2 (data/curses2.0), so the same curse handed
-#                out by two events is one authored thing.
+# There were CURSE GOALS beside it until 14 Nov 2026 — a checklist row you were
+# trying not to complete. A curse is a CARD in the pack now (§18 of
+# docs/loot-passives.md, and `add_curse_card` below).
 # ---------------------------------------------------------------------------
 var event_goals: Array = []
-var curse_goals: Array = []
 # event id -> times fired this run. Events have no per-run cap any more; this is
 # the lifetime-of-the-run tally the Collection reads and the shuffle bag's record
 # of what has come up.
@@ -675,7 +679,9 @@ func _connect_lifecycle_hooks() -> void:
 	# no scene, one event per moment, and whatever is held — relic or pack piece —
 	# answers from the far end.
 	for hook in ["game_won", "shop_entered", "boss_spawned", "loot_used", "card_binned", "card_used",
-			"weapon_stunned", "weapon_hit", "weapon_charged", "game_perfected"]:
+			"weapon_stunned", "weapon_hit", "weapon_charged", "game_perfected",
+			# Pain, Decay and Regret's hooks (docs/loot-passives.md §18).
+			"action_taken", "game_ending"]:
 		var sig: Signal = TriggerBus.get(hook)
 		# One Callable per hook, kept, so is_connected can recognise it on a second
 		# pass (a fresh lambda is a fresh Callable and would connect twice).
@@ -1024,11 +1030,223 @@ func _trigger_gates_pass(trig: Dictionary, ctx: Dictionary) -> bool:
 		return false
 	return true
 
-# --- Curse tally -----------------------------------------------------------
-# How many curses the run is carrying: the live curse goals (curse_goals). The
-# `curses` dynamic source (EffectSystem.value_from) counts these.
+# --- Curse cards (docs/loot-passives.md §18) --------------------------------
+#
+# A CURSE IS A CARD IN THE PACK since 14 Nov 2026 (the owner: "get rid of curse
+# goals. These curses will now count as cards"). It is a passive piece that does
+# whatever its row says from its cell — the first three do nothing but take the
+# room — and these are the rules that make it a curse rather than a card:
+#
+#   * it is never in the ordinary loot drop (Data.roll_card); it arrives only
+#     through `add_curse_card`, which puts it on the loot modal to be PLACED;
+#   * the player can never take it out of the pack — no bin, no putting it down
+#     on the board, no trading it for a piece off the floor, no handing it to an
+#     event or a thief (`can_leave_pack`);
+#   * one whose row says it is not Movable is PINNED where it was placed, exactly
+#     as a cursed weapon is, and the bag it sits in with it (Poor Sleep);
+#   * one whose row says it is not Destroyable survives every effect that destroys
+#     loot, the Scroll of Remove Curse included (Curse of the Bell).
+
+# --- Normality: the action limit ------------------------------------------------
+#
+# While a curse with an `action_limit` is carried, the player may take no more than
+# that many USABLE ACTIONS each game: relic actives and all pack loot, 3 in total,
+# per game. The board verbs were in it for one commit and came out (the owner,
+# 14 Nov 2026). Two of them carried is the smaller limit, not the sum.
+#
+# Every door asks `can_take_action` BEFORE it spends anything (so a refused press
+# costs nothing) and calls `note_action` once the action has gone through.
+# `refuse_action` is the asking with the toast attached, for the doors a player
+# presses.
+
+# The limit in force: the smallest carried `action_limit`, or 0 for none.
+func action_limit() -> int:
+	var limit: int = 0
+	for e in loot_items:
+		var c: CardData = curse_def(e)
+		if c != null and c.action_limit > 0:
+			limit = c.action_limit if limit == 0 else mini(limit, c.action_limit)
+	return limit
+
+func can_take_action() -> bool:
+	var limit: int = action_limit()
+	return limit <= 0 or actions_this_game < limit
+
+func note_action() -> void:
+	actions_this_game += 1
+	# Pain's moment (docs/loot-passives.md §18): every usable action, Normality or
+	# not.
+	TriggerBus.action_taken.emit({})
+	# The Use buttons and the relic strip grey out on the action that reaches the
+	# limit, so the pack has to redraw.
+	if action_limit() > 0:
+		emit_signal("inventory_changed")
+
+# The words for "no", shared by the toast and the greyed buttons' tooltips.
+func action_limit_text() -> String:
+	return "Normality: no more than %d actions this game." % action_limit()
+
+# True — and a toast — when the limit is reached; false when the action may go.
+func refuse_action() -> bool:
+	if can_take_action():
+		return false
+	Notifications.notify(action_limit_text(), UITheme.CURSE)
+	return true
+
+# The CardData behind a carried entry when it is a curse card, else null.
+func curse_def(entry) -> CardData:
+	if not (entry is Dictionary) or String((entry as Dictionary).get("type", "")) != "card":
+		return null
+	var card: CardData = Data.get_card(StringName(String((entry as Dictionary).get("id", ""))))
+	return card if card != null and card.is_curse() else null
+
+func is_curse_entry(entry) -> bool:
+	return curse_def(entry) != null
+
+# THE KINDS OF CURSE (the owner, 14 Nov 2026: "multiple types of curses that all
+# count as curses"). A curse CARD (the `curses` sheet, Type `Card`) and a CURSED
+# WEAPON (Retro Bat's unidentified weapons, WeaponSystem.is_cursed) are both
+# curses: both are counted here, both are listed under Curses, and the Scroll of
+# Remove Curse lifts either. Whether a piece is one of them is `is_curse`.
+func is_curse(entry) -> bool:
+	return is_curse_entry(entry) or WeaponSystem.is_cursed(entry)
+
+# How many curses the pack is carrying, of every kind. The `curses` dynamic source
+# (EffectSystem.value_from) counts these.
 func curse_count() -> int:
-	return curse_goals.size()
+	var n: int = 0
+	for e in loot_items:
+		if is_curse(e):
+			n += 1
+	return n
+
+# The curse CARDS alone.
+func curse_card_count() -> int:
+	var n: int = 0
+	for e in loot_items:
+		if is_curse_entry(e):
+			n += 1
+	return n
+
+func has_curse_card(curse_id: StringName) -> bool:
+	for e in loot_items:
+		if is_curse_entry(e) and StringName(String(e.get("id", ""))) == curse_id:
+			return true
+	return false
+
+# The carried curse cards an effect is allowed to lift (the Scroll of Remove
+# Curse), by index into `loot_items`: every curse that is Destroyable.
+func removable_curse_indices() -> Array:
+	var out: Array = []
+	for i in range(loot_items.size()):
+		var c: CardData = curse_def(loot_items[i])
+		if c != null and c.destroyable:
+			out.append(i)
+	return out
+
+# Whether an EFFECT may destroy this piece — a destroying card, an enemy's
+# Degradation, the Hunger eating it. Everything except a curse whose row says it
+# cannot be destroyed (Curse of the Bell).
+func can_destroy(entry) -> bool:
+	var c: CardData = curse_def(entry)
+	return c == null or c.destroyable
+
+# Whether the piece may leave the pack by any route that is not destruction: the
+# bin, the floor, a trade off the floor, an event or a thief taking it. A curse
+# never does, and neither does a pinned piece.
+func can_leave_pack(entry) -> bool:
+	return not is_curse_entry(entry) and not is_pinned(entry)
+
+# A curse card as a carried loot entry. It is a CARD (`type: card`) so every
+# surface that draws, names or describes loot already knows how to show it.
+static func curse_entry(curse_id: StringName) -> Dictionary:
+	return {"type": "card", "id": curse_id, "rarity": "Curse"}
+
+# A curse card is on its way into the pack and has to be PLACED: the page answers
+# with the loot modal (Overworld2 -> DropQueue), which will not close until it is
+# in. With no listener (headless, tests) `add_curse_card` places it itself.
+signal curse_offered(entry: Dictionary)
+
+# The curse cards handed out and NOT YET PLACED, oldest first. A curse waits here,
+# rather than in the page's drop queue, for two reasons: the haul screen takes that
+# queue over at a report and lets the player walk away from what is on it, which a
+# curse must never allow; and it is saved with the run, so a reload asks again
+# instead of losing the curse. It leaves the list when it is in the pack
+# (`curse_placed`).
+var pending_curses: Array = []
+
+# The placement modal put `entry` in the pack: off the waiting list.
+func curse_placed(entry: Dictionary) -> void:
+	for i in range(pending_curses.size()):
+		if StringName(String(pending_curses[i].get("id", ""))) == StringName(String(entry.get("id", ""))):
+			pending_curses.remove_at(i)
+			return
+
+# HAND OUT A CURSE CARD — every source comes through here: an event's `add_curse`,
+# the Calling Bell, Amnesia, the Hexer and the Lacerator. Returns whether a curse
+# was dealt (false only for an id that is not a curse, or, headless, a pack with no
+# room that cannot be made).
+func add_curse_card(curse_id: StringName) -> bool:
+	var card: CardData = Data.get_curse_card(curse_id)
+	if card == null:
+		push_warning("GameState.add_curse_card: unknown curse '%s'" % curse_id)
+		return false
+	var entry: Dictionary = curse_entry(card.id)
+	# The run-wide "a curse landed" hook (the OBS ticker's "Cursed — …").
+	TriggerBus.curse_applied.emit({"curse": card})
+	if has_connections("curse_offered"):
+		pending_curses.append(entry.duplicate(true))
+		curse_offered.emit(entry)
+		return true
+	return place_curse_headless(entry)
+
+# Put a curse card in the pack with nobody to ask: the first free cell, and if the
+# pack is full, the LAST piece that is allowed to leave it makes the room (it is
+# destroyed — the player "needs to drop something to fit it"). False when every
+# cell holds something that cannot leave (other curses, pinned pieces).
+func place_curse_headless(entry: Dictionary) -> bool:
+	if take_loot_entry(entry):
+		return true
+	for i in range(loot_items.size() - 1, -1, -1):
+		if can_leave_pack(loot_items[i]):
+			var piece: String = LootSystem.display_name(loot_items[i])
+			destroy_loot_at(i)
+			GameLog.add("%s was dropped to make room for %s." % [
+				piece, LootSystem.display_name(entry)], UITheme.CURSE)
+			return take_loot_entry(entry)
+	return false
+
+# A curse card that has RUN ITS COURSE leaves the pack on its own terms — Guilty,
+# after five defeated enemies (`remove_self`). Unlike `lift_curse_card` this
+# ignores Eternal: the keyword says nothing ELSE can destroy a curse. Not binned
+# (no Exhume, no Trading Card). Returns the entry, or {}.
+func expire_curse_card(index: int) -> Dictionary:
+	if index < 0 or index >= loot_items.size():
+		return {}
+	var card: CardData = curse_def(loot_items[index])
+	if card == null:
+		return {}
+	var entry: Dictionary = (loot_items[index] as Dictionary).duplicate(true)
+	remove_loot_at(index)
+	Notifications.notify("%s is gone." % card.display_name, UITheme.CURSE)
+	GameLog.add("%s ran its course and left your pack." % card.display_name, UITheme.CURSE)
+	TriggerBus.curse_removed.emit({"curse": card})
+	return entry
+
+# Lift the curse card at `index` off the run — the Scroll of Remove Curse. Only a
+# Destroyable curse comes off; it is not binned (no destroyed pile for Exhume to
+# hand back, no Trading Card), because lifting a curse is not throwing a card
+# away. Returns the entry that came off, or {}.
+func lift_curse_card(index: int) -> Dictionary:
+	if index < 0 or index >= loot_items.size():
+		return {}
+	var card: CardData = curse_def(loot_items[index])
+	if card == null or not card.destroyable:
+		return {}
+	var entry: Dictionary = (loot_items[index] as Dictionary).duplicate(true)
+	remove_loot_at(index)
+	TriggerBus.curse_removed.emit({"curse": card})
+	return entry
 
 # === Chests (item rewards) =================================================
 # A "chest" is the project's parlance for an item-reward — the gold-less
@@ -1140,6 +1358,10 @@ var smelt_target = null
 # smelted into nothing, and is refused. A weapon is swung, not held.
 func can_smelt(entry) -> bool:
 	if not LootPassives.is_passive(entry) or LootSystem.is_bag(entry) or is_pinned(entry):
+		return false
+	# A CURSE IS NEVER SMELTED (the owner, 14 Nov 2026): it would leave the pack and
+	# the Smelter would become a way to be rid of one.
+	if is_curse_entry(entry):
 		return false
 	var def: Resource = LootPassives.def_for(entry)
 	if LootPassives.copies(def) != "":
@@ -1355,6 +1577,7 @@ func reset_run() -> void:
 	_reset_item_tracking()
 	loot = {"key": 0}
 	loot_items.clear()
+	pending_curses.clear()
 	pack_bags.clear()
 	identified_potion_types.clear()
 	identified_scroll_types.clear()
@@ -1387,6 +1610,7 @@ func reset_run() -> void:
 	bonus_shields = 0
 	loot_uses_this_game = 0
 	cards_used_this_game = 0
+	actions_this_game = 0
 	bash = 0
 	push = 0
 	transmute = 0
@@ -1403,7 +1627,6 @@ func reset_run() -> void:
 	timed_statuses.clear()
 	_next_timed_instance = 1
 	event_goals.clear()
-	curse_goals.clear()
 	events_fired.clear()
 	events_seen.clear()
 	last_event_id = &""
@@ -2402,7 +2625,7 @@ func status_clauses() -> Array:
 	return out
 
 # Save blob for the player's statuses: plain String -> int, JSON-safe.
-# --- event goals / curse goals: the run-scope API ---------------------------
+# --- event goals: the run-scope API -----------------------------------------
 
 # Take on an event goal. `games` is the window in games played; 0 or less reads
 # as one game, since a goal with no window is a goal you can never meet.
@@ -2417,37 +2640,6 @@ func add_event_goal(event_id: StringName, condition: String, games: int,
 	})
 	event_goals_changed.emit()
 
-# Take on a curse. `games` of 0 means "use the curse's own Timer", so re-tuning
-# the curse re-tunes every event that hands it out. An unknown id is refused
-# rather than stored — a curse the catalog can't describe is a blank purple row.
-func add_curse_goal(curse_id: StringName, event_id: StringName = &"", games: int = 0) -> bool:
-	var cd: CurseData2 = Data.get_curse2(curse_id)
-	if cd == null:
-		push_warning("GameState.add_curse_goal: unknown curse '%s'" % curse_id)
-		return false
-	# -1 is PERMANENT, and it is what a curse with a Timer of 0 (the sheet's `N/A`)
-	# becomes. The sign is the whole distinction: tick_event_goals decrements a
-	# positive window and leaves a negative one alone, so nothing has to go back to
-	# the catalogue to find out whether this row can ever clear.
-	var window: int = games if games > 0 else cd.timer
-	curse_goals.append({
-		"curse": curse_id,
-		"event": event_id,
-		"games_left": -1 if window <= 0 else window,
-	})
-	event_goals_changed.emit()
-	# The run-wide "a curse landed" hook (the OBS ticker's "Cursed — …", any relic
-	# watching curse_applied). Only the retired 1.0 curse list used to fire it, so
-	# for the whole of the curse-goal era a curse landed in silence.
-	TriggerBus.curse_applied.emit({"curse": cd})
-	return true
-
-func has_curse_goal(curse_id: StringName) -> bool:
-	for c in curse_goals:
-		if StringName(c.get("curse", &"")) == curse_id:
-			return true
-	return false
-
 # The player ticked an event goal on the checklist: pay it and retire it.
 # Returns the goal that was claimed, or {} when the index is stale.
 func claim_event_goal(index: int) -> Dictionary:
@@ -2460,46 +2652,8 @@ func claim_event_goal(index: int) -> Dictionary:
 	event_goals_changed.emit()
 	return goal
 
-# The player admitted doing the cursed thing: pay the penalty. The curse STAYS —
-# that is what separates it from an event goal. Only the timer clears it.
-func trigger_curse_goal(index: int) -> Dictionary:
-	if index < 0 or index >= curse_goals.size():
-		return {}
-	var entry: Dictionary = curse_goals[index]
-	var cd: CurseData2 = Data.get_curse2(StringName(entry.get("curse", &"")))
-	if cd == null:
-		return {}
-	for eff in cd.penalty:
-		EffectSystem.apply(eff, {})
-	event_goals_changed.emit()
-	return entry
-
-# Lift a curse off the run early — Scroll of Remove Curse (potions-design §10.1).
-# Returns the row that came off, or {} when the index is stale.
-#
-# THE LIST HAD NO WAY OFF IT BUT THE CLOCK. add / has / trigger / tick were the
-# whole API, and `trigger` is the opposite of this one: it pays the bill and leaves
-# the curse standing, because meeting a curse's condition is not how you are rid of
-# it. Removal is a thing an effect does TO the list, and nothing could do it.
-#
-# Its best target is the one row that never leaves on its own: Curse of the Bell's
-# Timer is N/A, which add_curse_goal stores as games_left = -1. Everything else
-# clears itself in three games, and a scroll that hurries that along is a fair Rare;
-# a scroll that can lift the permanent one is the reason it exists.
-#
-# NOT remove_active_curse (above) — that is the shelved curse CARD system and it
-# operates on a different list. Same word, different thing (CurseData2).
-func remove_curse_goal(index: int) -> Dictionary:
-	if index < 0 or index >= curse_goals.size():
-		return {}
-	var entry: Dictionary = curse_goals[index]
-	curse_goals.remove_at(index)
-	event_goals_changed.emit()
-	return entry
-
-# One game has been played. Ticks both lists and drops whatever ran out.
-# Returns the EXPIRED event goals so the caller can print their "missed" line —
-# expired curses need no announcement, since nothing happened.
+# One game has been played. Ticks the event goals and drops whatever ran out.
+# Returns the EXPIRED ones so the caller can print their "missed" line.
 func tick_event_goals() -> Array:
 	var expired: Array = []
 	var kept: Array = []
@@ -2510,23 +2664,12 @@ func tick_event_goals() -> Array:
 		else:
 			kept.append(goal)
 	event_goals = kept
-	var kept_curses: Array = []
-	for c in curse_goals:
-		# A permanent curse (games_left < 0) neither counts down nor comes off.
-		if int(c.get("games_left", 0)) < 0:
-			kept_curses.append(c)
-			continue
-		c["games_left"] = int(c.get("games_left", 0)) - 1
-		if int(c["games_left"]) > 0:
-			kept_curses.append(c)
-	curse_goals = kept_curses
 	event_goals_changed.emit()
 	return expired
 
 func serialize_event_goals() -> Dictionary:
 	return {
 		"goals": event_goals.duplicate(true),
-		"curses": curse_goals.duplicate(true),
 		"fired": events_fired.duplicate(true),
 		# The bag has to ride the save or a reload would re-offer an event the run
 		# had already spent, which is the one thing the bag exists to prevent.
@@ -2538,16 +2681,15 @@ func serialize_event_goals() -> Dictionary:
 
 func restore_event_goals(data: Dictionary) -> void:
 	event_goals.clear()
-	curse_goals.clear()
 	events_fired.clear()
 	events_seen.clear()
 	event_nodes_fired.clear()
 	for g in data.get("goals", []):
 		if g is Dictionary:
 			event_goals.append(g.duplicate(true))
-	for c in data.get("curses", []):
-		if c is Dictionary:
-			curse_goals.append(c.duplicate(true))
+	# A save from before 14 Nov 2026 carries `curses` (the retired curse GOALS).
+	# They are not read: a curse is a card in the pack now, and a goal row has no
+	# cell to be placed in.
 	for k in data.get("fired", {}).keys():
 		events_fired[StringName(k)] = int(data["fired"][k])
 	for k in data.get("seen", []):
@@ -2969,6 +3111,9 @@ func clear_overworld_context(scene = null) -> void:
 func can_fire_item(item: ItemData) -> bool:
 	if item == null or inventory.find(item) == -1:
 		return false
+	# NORMALITY (docs/loot-passives.md §18): a relic active is a usable action.
+	if not can_take_action():
+		return false
 	if item.is_charged():
 		return item.is_fully_charged()
 	if item.kind == ItemData.ItemKind.USABLE:
@@ -3047,6 +3192,8 @@ func use_item(item: ItemData, target = null) -> bool:
 		pass
 	else:
 		consume_item_use(item)
+	# A relic active fired is a usable action (Normality, docs/loot-passives.md §18).
+	note_action()
 	_recompute_item_bonuses()
 	emit_signal("inventory_changed")
 	return true
@@ -3540,8 +3687,11 @@ func adopt_pack_statuses() -> void:
 # BIN a carried piece — the one place that says a piece was thrown away rather
 # than spent or traded (LootWindow and the drop modal both come through here). A
 # card binned is Trading Card's moment, so it is announced before the piece goes.
+#
+# A CURSE CARD is never binned (docs/loot-passives.md §18), and neither is a pinned
+# piece: `can_leave_pack` is the one rule for both.
 func discard_loot_at(index: int) -> void:
-	if index < 0 or index >= loot_items.size() or is_pinned(loot_items[index]):
+	if index < 0 or index >= loot_items.size() or not can_leave_pack(loot_items[index]):
 		return
 	var entry = loot_items[index]
 	remove_loot_at(index)
@@ -3552,6 +3702,10 @@ func discard_loot_at(index: int) -> void:
 # draws from, and a card is Trading Card's moment.
 func note_loot_binned(entry) -> void:
 	if not (entry is Dictionary) or (entry as Dictionary).is_empty():
+		return
+	# A CURSE destroyed by an effect is GONE: not on the pile for Exhume to hand
+	# back, and not a card Trading Card pays for (docs/loot-passives.md §18).
+	if is_curse_entry(entry):
 		return
 	var kept: Dictionary = (entry as Dictionary).duplicate(true)
 	kept.erase("pack_slot")
@@ -3566,8 +3720,14 @@ func note_loot_binned(entry) -> void:
 # destroyed card pays Trading Card exactly as one dragged to the bin does. Every
 # effect that destroys a piece comes through here (the destroying cards, an enemy's
 # Degradation, a scroll catching fire). Returns the entry, or {} for a bad index.
+#
+# A curse that cannot be destroyed (Curse of the Bell) is refused here, so every
+# destroying effect respects it; the ones that PICK a victim also leave it out of
+# the pick (`can_destroy`), so they do not waste their shot on it.
 func destroy_loot_at(index: int) -> Dictionary:
 	if index < 0 or index >= loot_items.size() or not (loot_items[index] is Dictionary):
+		return {}
+	if not can_destroy(loot_items[index]):
 		return {}
 	var entry: Dictionary = loot_items[index]
 	remove_loot_at(index)
@@ -4218,7 +4378,8 @@ func swap_loot_entry_at(entry: Dictionary, slot: int) -> Dictionary:
 	if cells.is_empty() or under.size() != 1:
 		return {}
 	var index: int = int(under[0])
-	if is_pinned(loot_items[index]):
+	# The piece traded out lands on the board, which a curse never does.
+	if not can_leave_pack(loot_items[index]):
 		return {}
 	_freeze_loot_layout(layout)
 	var out: Dictionary = (loot_items[index] as Dictionary).duplicate(true)
@@ -5020,8 +5181,9 @@ func move_bag(i: int, origin: Vector2i, rot: int) -> bool:
 	emit_signal("inventory_changed")
 	return true
 
-# Whether bag `i` holds a PINNED piece (a cursed weapon): the bag stays where it is,
-# since its contents ride along when it moves (docs/players-design.md §5).
+# Whether bag `i` holds a PINNED piece (a cursed weapon, a curse card that is not
+# Movable): the bag stays where it is, since its contents ride along when it moves
+# (docs/players-design.md §5, docs/loot-passives.md §18).
 func bag_holds_pinned(i: int) -> bool:
 	if i < 0 or i >= pack_bags.size():
 		return false
@@ -5035,10 +5197,15 @@ func bag_holds_pinned(i: int) -> bool:
 	return false
 
 # A PINNED piece stays exactly where it is in the pack: it cannot be moved, turned,
-# swapped out, binned or smelted. Today that is a CURSED weapon
-# (docs/players-design.md §5), until its curse is lifted.
+# swapped out, binned or smelted. Two things pin: a CURSED weapon
+# (docs/players-design.md §5), until its curse is lifted, and a curse card whose
+# row says it is not Movable — Poor Sleep, locked in the cell it was placed in
+# (docs/loot-passives.md §18).
 func is_pinned(entry) -> bool:
-	return WeaponSystem.is_cursed(entry)
+	if WeaponSystem.is_cursed(entry):
+		return true
+	var c: CardData = curse_def(entry)
+	return c != null and not c.movable
 
 # Whether a piece sits across bag `i` and another owner. Such a bag stays where it
 # is — moving or turning it would pull the piece's cells apart — until the piece
@@ -5136,7 +5303,8 @@ func auto_place_bag(entry: Dictionary) -> bool:
 func _drop_loot_of_type(type: String, count: int) -> void:
 	for _i in range(count):
 		for j in range(loot_items.size() - 1, -1, -1):
-			if loot_items[j] is Dictionary and String(loot_items[j].get("type", "")) == type:
+			if loot_items[j] is Dictionary and String(loot_items[j].get("type", "")) == type \
+					and can_leave_pack(loot_items[j]):
 				loot_items.remove_at(j)
 				break
 

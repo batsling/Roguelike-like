@@ -280,12 +280,16 @@ func test_a_shield_stops_the_rider_as_well_as_the_damage() -> void:
 func test_lacerator_hands_over_the_injury_curse() -> void:
 	_put(_enemy([_ability(&"lacerator")]))
 	_turn()
-	assert_true(GameState.has_curse_goal(&"injury"), "Injury landed")
+	assert_true(GameState.has_curse_card(&"injury"), "an Injury card landed in the pack")
 
 func test_hexer_deals_curses_the_run_is_not_already_carrying() -> void:
 	_put(_enemy([_ability(&"hexer", 2)]))
 	_turn()
-	assert_eq(GameState.curse_goals.size(), 2, "two distinct curses")
+	assert_eq(GameState.curse_count(), 2, "two curse cards")
+	var ids: Dictionary = {}
+	for e in GameState.loot_items:
+		ids[String(e.get("id", ""))] = true
+	assert_eq(ids.size(), 2, "two distinct ones: %s" % str(ids.keys()))
 
 func test_degradation_destroys_carried_loot() -> void:
 	GameState.add_loot("scroll", 3)

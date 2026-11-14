@@ -500,7 +500,9 @@ func _rank_of(game: GameData) -> Variant:
 #   instead a second way out of one body (a Burn's "or instead …")
 #   status  the player's own standing objective (GameState.status_objectives)
 #   event   a goal an event handed out
-#   curse   a goal a curse handed out
+#   curse   a goal a curse handed out — RETIRED: a curse is a card in the pack
+#           since 14 Nov 2026 (docs/loot-passives.md §18). The page still reads
+#           the kind, so an older payload draws; nothing sends it now.
 #   done    a row already answered THIS RUN, kept for the "what you have done"
 #           tail the page shows when there is room
 #
@@ -693,24 +695,6 @@ func _goals(threat: Dictionary) -> Array:
 			"games": left,
 			"done": GameLoop2.row_answered("event:%d:%s" % [i, eg.get("condition", "")]),
 		})
-	for i in range(GameState.curse_goals.size()):
-		var cg: Dictionary = GameState.curse_goals[i]
-		var cd: CurseData2 = Data.get_curse2(StringName(cg.get("curse", &"")))
-		if cd == null:
-			continue
-		out.append({
-			"kind": "curse",
-			"text": "%s — %s (if failed, %s)" % [cd.display_name, cd.goal_text(),
-				cd.penalty_text],
-			"who": cd.display_name,
-			"icon": _texture_url(cd.image),
-			"boss": false,
-			"front": false,
-			# -1 is a curse with no clock on it at all, which the page prints as
-			# "permanent" rather than as minus one game left.
-			"games": int(cg.get("games_left", 0)),
-			"done": GameLoop2.row_answered("curse:%d:%s" % [i, cd.id]),
-		})
 	return out
 
 # One row for a group of identical bodies. `damage` is what the WHOLE group
@@ -900,9 +884,8 @@ func _turns_away() -> int:
 # wrong colour under any other rule. Quoted here so the board and the overlay
 # cannot say different things about the same stack.
 #
-# The curses are NOT here: since §13 a curse is a checklist row with a clock and a
-# penalty (GameState.curse_goals), so it goes out with the goals where it can be
-# read as the instruction it is, rather than as a chip that only names itself.
+# The curses are NOT here: a curse is a CARD in the pack (docs/loot-passives.md
+# §18), not a status on the player.
 #
 # One pip per status, totalled — the other way round from `status_objectives`
 # above, which is one row per instance. What a stack DOES is felt as a total, and

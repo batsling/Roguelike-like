@@ -1,32 +1,58 @@
 #!/usr/bin/env python3
 """
-Generate Godot CurseData2 .tres from the `curses2.0` sheet of
+Generate CURSE CARDS — Godot CardData .tres — from the `curses` sheet of
 tools/Roguelikes.xlsx into data/curses2.0/.
 
-A curse (docs/event-sheet-authoring.md §6) is the third kind of objective on the
-post-game checklist and the only one you are trying NOT to complete. It is
-authored once here and referenced by id from any event that hands it out
-(`add_curse poor_sleep`), exactly as an item references a status.
+A curse is a CARD since 14 Nov 2026 (the owner: "get rid of curse goals. These
+curses will now count as cards"). It sits in a cell of the pack like a passive
+card, is placed through the loot modal the moment it arrives, can never be binned
+or left behind, and is never in the ordinary loot drop: only something that hands
+out a curse by name (`add_curse injury`) or at random (`add_curse random`) can
+put one in the pack. See docs/loot-passives.md §18.
 
-  curses2.0: Curse | Game | Condition | Penalty | Timer | Tag | Image
+  curses: Curse | Type | Game | Description | Effect | Keywords | Tag | Image
 
-`Penalty` speaks the shared reward-token DSL, pointed the other way — the parser
-lives in generate_status_tres.py so there is one implementation of it. The
-checklist row is COMPOSED from Condition + Penalty at runtime (CurseData2.describe)
-rather than authored, so a curse's text cannot drift from what it does.
+  Type         what KIND of curse the row is. `Card` is the only kind with rows:
+               a curse is also a cursed weapon (Retro Bat's unidentified
+               weapons, WeaponSystem.is_cursed), but that is a weapon's roll,
+               not a row here. Any other Type is refused until something reads it.
+  Description  what the curse does while carried, in words. Blank is fine: the
+               card's line is COMPOSED here from its keywords, so it says
+               "Can't be thrown away" etc. without anyone having to type it.
+  Effect       what it does while carried, in the PASSIVE CARD grammar (the
+               relic grammar, compiled by item_dsl.parse_loot_passive — the same
+               as a `Passive` row of `cards`). Blank means it only takes up
+               space, which is what the first three curses do. Blueprint copies
+               a curse's effect exactly as it copies any other passive piece.
+  Keywords     comma-separated, from KEYWORDS below:
+                 Unmovable  it can't be moved — locked in the cell it was placed
+                            in, and the bag holding that cell stays put too
+                            (Poor Sleep).
+                 Eternal    it can't be destroyed — by the Scroll of Remove
+                            Curse, a card that destroys loot, anything (Curse of
+                            the Bell).
+                 Ethereal   it goes away after 3 games, win or lose (Clumsy).
+                            The count shows on its square.
+               The player can never bin a curse either way.
+  Tag          `random` puts the curse in the random deals (an event's
+               `add_curse random`, the Hexer, Amnesia). A blank Tag keeps a curse
+               out of them: it only arrives when something names it.
+  Image        art base name under images2.0/curses/.
 
   python3 tools/generate_curse2_tres.py           # write data/curses2.0/*.tres
-  python3 tools/generate_curse2_tres.py --list    # print the parse, write nothing
+  python3 tools/generate_curse2_tres.py --list    # print, write nothing
 """
 
 import argparse
 import os
+import re
 import sys
 
 import openpyxl
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import generate_status_tres as dsl  # noqa: E402  (the shared reward-token parser)
+import generate_status_tres as dsl  # noqa: E402  (slugify, gd_str, gd_value, rows)
+import item_dsl as items  # noqa: E402  (the passive card grammar)
 
 PROJECT_ROOT = dsl.PROJECT_ROOT
 XLSX_PATH = dsl.XLSX_PATH
@@ -35,67 +61,134 @@ IMG_DIR = os.path.join(PROJECT_ROOT, "images2.0", "curses")
 IMG_RES_PREFIX = "res://images2.0/curses/"
 SHEET = "curses"
 
-DEFAULT_TIMER = 3
+# The kinds of curse a row can be, as the sheet spells them.
+TYPES = ("Card",)
+
+# A curse card's keywords, and the rule each one says on the card.
+ETHEREAL_GAMES = 3
+KEYWORDS = {
+    "Unmovable": "can't be moved",
+    "Eternal": "can't be destroyed",
+    "Ethereal": "goes away after %d games" % ETHEREAL_GAMES,
+}
+
+# ETHEREAL IS A TRIGGER, not a field: after every game finished (win or lose — the
+# moment `game_beaten` names) the count moves, and on the third the card leaves.
+# It is the counted trigger Guilty uses for kills, so the pack draws its count on
+# the square with nothing new (LootPassives.kill_progress).
+ETHEREAL_TRIGGER = {"on": "game_beaten", "every": ETHEREAL_GAMES,
+                    "effects": [{"type": "remove_self"}]}
+
+# `limit_actions N` — NORMALITY's rule, a curse's own clause rather than a relic
+# grammar one (nothing else limits the player): no more than N usable actions a
+# game. Taken out of the Effect cell before the rest goes to item_dsl.
+LIMIT_RE = re.compile(r"^limit_actions\s+(\d+)$", re.I)
 
 
-# Timer words that mean "this one never expires" -> 0, which CurseData2 reads as
-# PERMANENT. Curse of the Bell is the reason it exists: the Slay the Spire curse
-# it is lifted from is the one you cannot remove, and a three-game version of that
-# is a different card. A BLANK cell still means the three-game default — "nobody
-# filled this in" and "this is forever" must not be the same value.
-PERMANENT_WORDS = ("n/a", "none", "never", "permanent", "forever")
+def _split_limit(effect: str, name: str):
+    """(effect text without `limit_actions N`, N or 0)."""
+    keep, limit = [], 0
+    for clause in [c.strip() for c in effect.split(";") if c.strip()]:
+        m = LIMIT_RE.match(clause)
+        if m:
+            limit = int(m.group(1))
+            if limit < 1:
+                raise ValueError("curses %s: limit_actions wants 1 or more" % name)
+            continue
+        keep.append(clause)
+    return "; ".join(keep), limit
 
 
-def _timer(raw) -> int:
-    s = ("" if raw is None else str(raw)).strip()
-    if s.lower() in PERMANENT_WORDS:
-        return 0
-    if not s:
-        return DEFAULT_TIMER
-    try:
-        return max(0, int(float(s)))
-    except ValueError:
-        raise ValueError("curses2.0: Timer %r is not a number (or one of %s)"
-                         % (raw, ", ".join(PERMANENT_WORDS)))
+def _keywords(raw, name: str) -> list:
+    out = []
+    for word in dsl._clean(raw).split(","):
+        word = word.strip()
+        if not word:
+            continue
+        match = [k for k in KEYWORDS if k.lower() == word.lower()]
+        if not match:
+            raise ValueError("curses %s: keyword %r is not one of %s"
+                             % (name, word, ", ".join(KEYWORDS)))
+        if match[0] not in out:
+            out.append(match[0])
+    return out
 
 
-# The Tag column: comma-separated, lower-cased. `random` puts a curse in the
-# random draws (CurseData2.is_random); a blank cell keeps it out of them.
+# The Tag column: comma-separated, lower-cased.
 def _tags(raw) -> list:
     text = dsl._clean(raw)
     return [t.strip().lower() for t in text.split(",") if t.strip()] if text else []
 
 
+# What the card says, composed from what it does so the line can never claim a
+# rule the card does not have. The authored Description (if any) leads, then each
+# keyword with its rule: "Eternal: can't be destroyed."
+def card_text(description: str, keywords: list) -> str:
+    parts = [description.strip() if description.strip() else "Takes up a slot."]
+    parts.append("Can't be thrown away.")
+    for k in keywords:
+        parts.append("%s: %s." % (k, KEYWORDS[k]))
+    return " ".join(parts)
+
+
 def curse_tres(row) -> tuple:
     name = str(row["Curse"]).strip()
     cid = dsl.slugify(name)
-    condition = dsl._clean(row.get("Condition"))
-    penalty, penalty_text = dsl.parse_reward(row.get("Penalty"))
-    if condition and not penalty:
-        raise ValueError(
-            "curses2.0 %s: a curse with a condition and no Penalty costs nothing "
-            "— give it one or drop the row" % name)
-    file = dsl._clean(row.get("Image"))
+    kind = dsl._clean(row.get("Type")) or "Card"
+    if kind.capitalize() not in TYPES:
+        raise ValueError("curses %s: Type %r is not one of %s — a cursed weapon is a "
+                         "weapon's roll, not a row" % (name, kind, ", ".join(TYPES)))
+    keywords = _keywords(row.get("Keywords"), name)
+    movable = "Unmovable" not in keywords
+    destroyable = "Eternal" not in keywords
+    effect, action_limit = _split_limit(dsl._clean(row.get("Effect")), name)
+    passive = items.parse_loot_passive(name, effect) if effect else None
+    if "Ethereal" in keywords:
+        if passive is None:
+            passive = items.parse_loot_passive(name, "", allow_empty=True)
+        passive["triggers"] = list(passive.get("triggers", [])) + [dict(ETHEREAL_TRIGGER)]
+    if passive is not None and passive["harmless_statuses"]:
+        raise ValueError("curses %s: harmless_status is a trinket's rule "
+                         "(docs/loot-passives.md §17)" % name)
+    description = card_text(dsl._clean(row.get("Description")), keywords)
+    tags = ["curse"] + [t for t in _tags(row.get("Tag")) if t != "curse"]
 
     lines = [
-        '[gd_resource type="Resource" script_class="CurseData2" load_steps=2 '
+        '[gd_resource type="Resource" script_class="CardData" load_steps=2 '
         'format=3 uid="uid://curse2_%s"]' % cid,
         "",
-        '[ext_resource type="Script" path="res://scripts/resources/CurseData2.gd" '
-        'id="1_curse"]',
+        '[ext_resource type="Script" path="res://scripts/resources/CardData.gd" '
+        'id="1_card"]',
         "",
         "[resource]",
-        'script = ExtResource("1_curse")',
+        'script = ExtResource("1_card")',
         'id = &"%s"' % cid,
         'display_name = "%s"' % dsl.gd_str(name),
+        'rarity = "Curse"',
         'source_game = "%s"' % dsl.gd_str(dsl._clean(row.get("Game"))),
-        'condition = "%s"' % dsl.gd_str(dsl.normalise_holes(condition)),
-        "penalty = %s" % dsl.gd_value(penalty),
-        'penalty_text = "%s"' % dsl.gd_str(penalty_text),
-        "timer = %d" % _timer(row.get("Timer")),
-        "tags = %s" % dsl.gd_value(_tags(row.get("Tag"))),
-        'file = "%s"' % dsl.gd_str(file),
+        'description = "%s"' % dsl.gd_str(description),
+        'file = "%s"' % dsl.gd_str(dsl._clean(row.get("Image"))),
+        'art_folder = "curses"',
+        'loot_type = "Curse"',
+        "tags = PackedStringArray(%s)" % ", ".join('"%s"' % dsl.gd_str(t) for t in tags),
+        # Never spent: a curse works (or does nothing) from its cell.
+        "passive = true",
+        "keywords = PackedStringArray(%s)" % ", ".join('"%s"' % k for k in keywords),
+        "movable = %s" % ("true" if movable else "false"),
+        "destroyable = %s" % ("true" if destroyable else "false"),
     ]
+    if action_limit:
+        lines.append("action_limit = %d" % action_limit)
+    if passive is not None:
+        lines.append("triggers = %s" % dsl.gd_value(passive["triggers"]))
+        lines.append("stat_bonuses = %s" % dsl.gd_value(passive["stat_bonuses"]))
+        lines.append("status_bonuses = %s" % dsl.gd_value(passive["status_bonuses"]))
+        if passive["copy_neighbour"]:
+            lines.append('copy_neighbour = "%s"' % dsl.gd_str(passive["copy_neighbour"]))
+        if passive["bank_shields"]:
+            lines.append("bank_shields = true")
+        if passive["echo_first_loot"]:
+            lines.append("echo_first_loot = %d" % passive["echo_first_loot"])
     return cid, "\n".join(lines) + "\n"
 
 
@@ -106,8 +199,7 @@ def main():
 
     wb = openpyxl.load_workbook(XLSX_PATH, data_only=True)
     if SHEET not in wb.sheetnames:
-        raise SystemExit("%s has no %r sheet — run tools/oneshots/_curses2_sheet_setup.py"
-                         % (XLSX_PATH, SHEET))
+        raise SystemExit("%s has no %r sheet" % (XLSX_PATH, SHEET))
     os.makedirs(OUT_DIR, exist_ok=True)
     written = []
     for row in dsl.rows(wb[SHEET]):
@@ -123,7 +215,7 @@ def main():
             print("  ! %s: no art at %s%s.png" % (cid, IMG_RES_PREFIX,
                                                   dsl._clean(row.get("Image"))))
     if not args.list:
-        print("Wrote %d curse2.0 .tres to %s" % (len(written), OUT_DIR))
+        print("Wrote %d curse card .tres to %s" % (len(written), OUT_DIR))
         for c in written:
             print("  -", c)
 

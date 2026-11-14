@@ -554,12 +554,16 @@ func can_trash(data: Dictionary) -> bool:
 		return false
 	match String(data.get("kind", "")):
 		"loot_move":
-			return int(data.get("index", -1)) >= 0
+			# A CURSE CARD never goes in the bin (docs/loot-passives.md §18).
+			var index: int = int(data.get("index", -1))
+			return index >= 0 and index < GameState.loot_items.size() \
+				and GameState.can_leave_pack(GameState.loot_items[index])
 		"loot_take":
 			# The offer — or the piece off the floor — thrown away rather than taken.
-			# Always allowed: a full pack is exactly when you most want to say no to a
-			# piece with your hands.
-			return true
+			# Allowed for everything but a CURSE: a full pack is exactly when you most
+			# want to say no to a piece with your hands, and a curse is the one piece
+			# you are not allowed to say no to.
+			return not GameState.is_curse_entry(data.get("entry", {}))
 		"bag_move":
 			# A BAG COMES OFF EMPTY, and only if nothing else is hanging off it —
 			# binning one with loot in it would bin the loot, and one holding up
@@ -1208,10 +1212,10 @@ func _slot(slot_index: int, index: int, entry: Dictionary) -> LootSlot:
 	var progress: Dictionary = LootPassives.kill_progress(index)
 	if not progress.is_empty():
 		extras["progress"] = progress
-	# `false`: the lock holds the pack STILL, it does not stop a piece being spent
-	# (see `locked`). Kept as an argument rather than dropped, because the cell body
-	# is shared with the loose-offer layout and a future rule may want it back.
-	slot.add_child(_cell_body(entry, use_cb, false, true, true, extras))
+	# The lock holds the pack STILL, it does not stop a piece being spent (see
+	# `locked`) — so the Use buttons are greyed only by NORMALITY's action limit
+	# (docs/loot-passives.md §18), once this game's actions are spent.
+	slot.add_child(_cell_body(entry, use_cb, not GameState.can_take_action(), true, true, extras))
 	add_direction_arrow(slot, entry)
 	if pick != null:
 		_dress_for_pick(slot, entry)
@@ -1306,6 +1310,15 @@ static func _cell_body(entry: Dictionary, use_cb: Callable, locked_now: bool,
 	var band := Control.new()
 	band.custom_minimum_size = Vector2(0, LootSlot.ART_BAND)
 	band.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# THE ONE PIECE A DROP MODAL OFFERS (`with_name` false — LootDropModal's single
+	# offer, which prints the name and line under the cell instead) has nothing
+	# else in its cell, so the band takes the WHOLE cell and the art is centred in
+	# it at the pack's size, rather than 40px pinned to the top of a 104px square
+	# with the rest of the frame empty. That is the screen a curse card is placed
+	# on, and its first look at the curse should be the picture, not a thumbnail.
+	if not with_name:
+		band.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		col.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	var centre := CenterContainer.new()
 	centre.name = "Centre"
 	centre.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -1313,9 +1326,26 @@ static func _cell_body(entry: Dictionary, use_cb: Callable, locked_now: bool,
 	band.add_child(centre)
 	# BIGGER IN THE PACK, where the name and the button are laid OVER the picture
 	# rather than stacked under it, so the art gets the whole square.
-	var art: TextureRect = LootSystem.art_tex(entry,
-		LootSlot.ART_BIG if with_name else LootSlot.ART, face_up)
+	var art: TextureRect = LootSystem.art_tex(entry, LootSlot.ART_BIG, face_up)
+	# …AND THE WHOLE SQUARE on the drop modal's single offer, which has nothing else
+	# in its cell (the owner, 14 Nov 2026: "make sure the image fits the whole
+	# square"): the cell's inner side, edge to edge, its aspect kept. Not through
+	# `art_box`, whose horse-dose third would push a capsule past the frame; the
+	# "Horse Pill" chip under the cell says that instead.
+	if not with_name:
+		art = UITheme.crisp_tex(LootSystem.art_texture(entry, face_up), LootSlot.CELL - LootSlot.PAD * 2)
 	art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# BIG PAINTED ART IS SHRUNK THROUGH ITS MIPMAPS. A curse card's picture is a
+	# 512px painting drawn at 64; scaled straight down it breaks into stair-steps.
+	# `fit_art` hands it the mipmapped copy and the filter that reads it, the same
+	# rule every other picture drawn far under its size goes through. Pixel art
+	# (every card face, scroll and pill) keeps the crisp path it was already on.
+	# On the single offer, pixel art goes through `fit_art` too, which draws it at a
+	# WHOLE multiple of its own size in the square rather than at a fractional
+	# stretch that doubles some of its pixels and not others.
+	var tex: Texture2D = art.texture
+	if tex != null and (not with_name or not UITheme.is_small_art(tex)):
+		UITheme.fit_art(art, tex, float(art.custom_minimum_size.x))
 	# THE PICTURE TURNS WITH THE PIECE (`rot`, docs/loot-passives.md §2). A
 	# container resets its children's rotation, so the art sits in a plain Control
 	# of its own size and turns about its middle inside it.
@@ -1403,6 +1433,11 @@ static func _cell_body(entry: Dictionary, use_cb: Callable, locked_now: bool,
 	var bottom: Control = null
 	if bag:
 		pass
+	elif use_cb.is_valid() and GameState.is_curse_entry(entry):
+		# A CURSE CARD says so where the button would be (docs/loot-passives.md §18),
+		# in the curse purple: it is the piece you did not choose and cannot bin.
+		bottom = _passive_plate("Curse", LootSystem.description(entry))
+		bottom.add_theme_color_override("font_color", UITheme.CURSE)
 	elif use_cb.is_valid() and passive:
 		var dir: String = LootPassives.facing(entry, LootPassives.def_for(entry))
 		var copier: bool = dir != ""
@@ -1662,13 +1697,19 @@ static func _add_progress(on: Control, extras: Dictionary) -> void:
 	# piece rather than left as a "3/3" that looks like it should have gone off.
 	# ⚡ AND A READABLE SIZE: this is the piece's charge, the number a food is
 	# all about, and at 9px with no symbol it read as a stray tag.
-	var chip := UITheme.chip("⚡+1" if ready else "⚡%d/%d" % [int(progress["have"]), int(progress["need"])],
+	# A count of GAMES (Ethereal, docs/loot-passives.md §18) wears no ⚡: the bolt
+	# says "charge", and a game finished is not one.
+	var games: bool = String(progress.get("unit", "charge")) == "game"
+	var chip := UITheme.chip("⚡+1" if ready else ("%d/%d" if games else "⚡%d/%d") % [
+			int(progress["have"]), int(progress["need"])],
 		UITheme.ACCENT if ready else UITheme.SUCCESS if not foods.is_empty() else UITheme.GOLD,
 		UITheme.FONT_SMALL)
 	chip.name = "Progress"
 	chip.set_anchors_preset(Control.PRESET_TOP_RIGHT)
 	chip.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	chip.tooltip_text = ("Ready — it pays on its next charge." if ready
+		else "%d of %s played — it goes after the last." % [
+			int(progress["have"]), Plural.count(int(progress["need"]), "game")] if games
 		else "%d of %s toward its next trigger." % [
 			int(progress["have"]), Plural.count(int(progress["need"]), "charge")])
 	if not foods.is_empty():

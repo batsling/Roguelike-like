@@ -271,6 +271,9 @@ The report button — beaten, missed and escaped all come through here.
 - **2a′.** board: **Fracture 8+** — the whole board takes one extra turn after a
   game won or escaped. ☠
 - **2b.** **Status bills** (Burn's 3 damage), while shields still stand → hit chain.
+- **2c.** Signal `game_ending` (not on an escape) → the **curse cards' bills**,
+  while shields still stand: Decay's 1 damage is a hit a Shield can stop, and
+  Regret's Health for loot carried is not (`docs/loot-passives.md` §18).
 - Per-game loot counters and the lost-run tracker reset.
 - **3.** Your status **clauses** tick, if any goal was completed this game.
 - **3b.** Your **game-measured statuses** wear off (Bleed, Stun on you).
@@ -322,6 +325,7 @@ game_in_play = false
 _predators(claims)
 Fracture.extra_turn()
 _resolve_status_demands(claims, res)
+TriggerBus.game_ending.emit(
 _clear_attempts()
 _tick_player_clauses(goals_completed)
 _wear_player_statuses()

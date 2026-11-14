@@ -43,13 +43,14 @@ because the goal fields only travel as far as something downstream reads them:
   characters       `Level Up` only. A level-up is already a winning-run row in
                    ReportChecklist, so `game beaten` is what it always was and a
                    column saying so would be a column nothing reads.
-  curses           `Condition` only, for the same reason.
+  (curses          no longer: a curse is a CARD since 14 Nov 2026 and has no
+                   goal — tools/oneshots/_curses_become_curse_cards.py.)
   statuses         the goal spliced back into the `On Player` prose (see
                    `status_prose_with`). A status MODIFIES the goal you carry
                    rather than having one, so it has no tick row of its own.
 
-Because those three carry no Ticked/Count column, authoring one there would be a
-silent no-op. So it is a hard error instead: a character, curse or status row
+Because those two carry no Ticked/Count column, authoring one there would be a
+silent no-op. So it is a hard error instead: a character or status row
 that is not `game beaten`, or that carries a Count, stops the run and names
 itself. Widen this script and the owner sheet together if that day comes.
 
@@ -82,7 +83,6 @@ OWNER_SHEETS = {
     "enemy": "enemies",
     "boss": "bosses",
     "character": "characters",
-    "curse": "curses",
     "status": "statuses",
     "weapon": "weapons",
 }
@@ -324,8 +324,8 @@ def edits_for_enemy_sheet(wb, sheet_name, owner_key, by_owner, header):
 def edits_for_simple_sheet(wb, sheet_name, owner_key, column, by_owner):
     """Cell edits for a sheet that takes the goal TEXT and nothing else.
 
-    `characters` (`Level Up`) and `curses` (`Condition`). Neither carries a
-    Ticked or a Count column, so a row that authors one would be authoring into
+    `characters` (`Level Up`). It carries no
+    Ticked or Count column, so a row that authors one would be authoring into
     a void — hence the check.
     """
     header, rows = read_sheet(wb, sheet_name)
@@ -467,8 +467,7 @@ def build_edits():
             wb, sheet_name, owner_key, by_owner, header)
         plan[sheet_name] = (edits, added, header + added,
                             max(n for n, _ in rows))
-    for owner_key, sheet_name, column in (("character", "characters", "Level Up"),
-                                          ("curse", "curses", "Condition")):
+    for owner_key, sheet_name, column in (("character", "characters", "Level Up"),):
         plan[sheet_name] = (edits_for_simple_sheet(
             wb, sheet_name, owner_key, column, by_owner), [], [], 0)
     plan["statuses"] = (edits_for_statuses(wb, by_owner), [], [], 0)

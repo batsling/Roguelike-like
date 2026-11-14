@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3 uid="uid://curse2_debt"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"debt"
+display_name = "Debt"
+rarity = "Curse"
+source_game = "Slay the Spire 2"
+description = "Lose 2 Gold after every game. Can't be thrown away."
+file = "Debt"
+art_folder = "curses"
+loot_type = "Curse"
+tags = PackedStringArray("curse", "random")
+passive = true
+keywords = PackedStringArray()
+movable = true
+destroyable = true
+triggers = [{"on": "game_beaten", "effects": [{"type": "lose_gold", "value": 2}]}]
+stat_bonuses = {}
+status_bonuses = {}
