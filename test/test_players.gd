@@ -427,7 +427,7 @@ func test_the_header_shows_the_player_left_of_the_character() -> void:
 	assert_true(chip.visible)
 	assert_eq(chip.texture, Data.get_player(BATSAAC).icon)
 	assert_eq(chip.get_index() + 1, ui._character_chip.get_index(), "immediately to its left")
-	assert_eq(chip.texture_filter, CanvasItem.TEXTURE_FILTER_LINEAR, "a painted face is smoothed")
+	assert_eq(chip.texture_filter, CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS, "a painted face is smoothed")
 	ui.start_run(&"isaac", Data.BASIC_PLAYER)
 	assert_false(chip.visible, "no token for a player with no art")
 
@@ -450,3 +450,18 @@ func test_a_big_icon_is_shrunk_properly_before_it_is_drawn_small() -> void:
 	var tiny: Texture2D = load("res://images2.0/icons/Hunger/Food_Supply_Loop_Hero.png")
 	assert_eq(UITheme.shrunk(tiny, 18), tiny, "pixel art (128px or under) is never softened")
 
+
+# EVERY PICTURE IS IMPORTED WITH MIPMAPS, and smoothed art reads them (the owner,
+# 14 Nov 2026: make as much as possible look good). Without them a big painted
+# picture drawn small is sampled and its lines break into dots.
+func test_pictures_are_imported_with_mipmaps_and_drawn_with_them() -> void:
+	var defaults = ProjectSettings.get_setting("importer_defaults/texture", {})
+	assert_true(bool((defaults as Dictionary).get("mipmaps/generate", false)),
+		"project.godot's [importer_defaults] turns mipmaps on")
+	# Viewport's enum, not CanvasItem's: a 3 here would be NEAREST with mipmaps.
+	assert_eq(int(ProjectSettings.get_setting("rendering/textures/canvas_textures/default_texture_filter")),
+		Viewport.DEFAULT_CANVAS_ITEM_TEXTURE_FILTER_LINEAR_WITH_MIPMAPS, "and the canvas reads them by default")
+	assert_eq(get_viewport().canvas_item_default_texture_filter,
+		Viewport.DEFAULT_CANVAS_ITEM_TEXTURE_FILTER_LINEAR_WITH_MIPMAPS)
+	var cover: Texture2D = load("res://images2.0/icons/Hunger/Food_Mewgenics.png")
+	assert_true(cover.get_image().has_mipmaps(), "an imported picture carries them")

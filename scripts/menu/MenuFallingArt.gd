@@ -250,7 +250,7 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_rng.randomize()
 	_pixel_layer = _make_layer(CanvasItem.TEXTURE_FILTER_NEAREST)
-	_smooth_layer = _make_layer(CanvasItem.TEXTURE_FILTER_LINEAR)
+	_smooth_layer = _make_layer(CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS)
 	Settings.menu_falling_art_changed.connect(_on_setting_changed)
 	Settings.menu_falling_art_count_changed.connect(_on_count_changed)
 	_on_setting_changed(Settings.menu_falling_art)

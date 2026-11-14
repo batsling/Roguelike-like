@@ -340,6 +340,19 @@ python3 tools/outline.py scripts/redesign2/Overworld2.gd --grep stun   # a file'
   `python3 tools/check_boot_load.py` (CI) counts what boot loads against
   `tools/boot_budget.json` and fails a folder that newly embeds its art;
   `--report` prints the numbers, `--update` accepts a deliberate rise.
+- **Every picture is imported WITH MIPMAPS, and smoothed art draws with them**
+  (`project.godot` `[importer_defaults]` + `[rendering]`; the owner, 14 Nov 2026:
+  make as much as possible look good). ~2,500 of ~2,900 PNGs are painted art drawn
+  far smaller than they are, and without mipmaps the GPU samples them — covers'
+  lettering and thin outlines break into dots. Three things follow: an OLD
+  checkout's `.import` files still say `mipmaps/generate=false` (they are
+  gitignored and only regenerate when deleted — delete the image `*.import` files
+  and run `godot --headless --editor --quit`); a node that wants smooth art says
+  `TEXTURE_FILTER_LINEAR_WITH_MIPMAPS`, never plain `LINEAR` (pixel art stays
+  `NEAREST` via `UITheme.apply_crisp`); and `default_texture_filter` counts in
+  VIEWPORT's enum, where Linear Mipmap is **2** (3 is Nearest Mipmap), not
+  CanvasItem's 4. For the sharpest result at one known size, `UITheme.shrunk`
+  makes a Lanczos copy at the exact SCREEN size (the Hunger icons).
 - **`data/games/` has 1,000 files.** Never glob or read it wholesale to answer a
   question; query it with `grep` for the field you care about.
 - **The repo tracks source only.** `.godot/`, `*.import`, `*.uid` and

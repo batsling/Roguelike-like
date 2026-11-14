@@ -157,7 +157,7 @@ class MiniPack extends Control:
 
 	func _ready() -> void:
 		size = wanted()
-		texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+		texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 
 	func _rect_of(cell: Vector2i, origin: Vector2i, c: float) -> Rect2:
 		return Rect2(Vector2(cell - origin) * (c + SEP), Vector2(c, c))

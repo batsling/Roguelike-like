@@ -11,6 +11,13 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Everything drawn small looks clean: mipmaps project-wide (the owner, 14 Nov
+  2026).** Every picture is imported with mipmaps and smoothed art draws with
+  them, so a big cover or portrait shrunk into a card is averaged instead of
+  sampled: covers' lettering (Source of Madness, Angband) and thin outlines no
+  longer break into dots. Pixel art is unchanged. A checkout from before this
+  needs one reimport (see CLAUDE.md).
+
 - **Hunger is five icons, and an icon kind (the owner, 14 Nov 2026).** The word
   and the bar in the header are five Hunger icons, full or a ghost. The basic one
   is a 🍗 drawn in Hunger's amber (`tools/build_hunger_art.py`); three to earn,

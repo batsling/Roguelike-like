@@ -6902,7 +6902,7 @@ func _paint_character_chip() -> void:
 		# shrinking wants smoothing: nearest drops three pixels in four and the face
 		# comes out as noise. Pixel art (Retro Bat) is never larger than the chip.
 		if ptex != null and ptex.get_width() > CHARACTER_CHIP:
-			_player_chip.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+			_player_chip.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 		_player_chip.visible = ptex != null
 		if pl != null:
 			_player_chip.tooltip_text = "%s — the player this run is played as." % pl.display_name
