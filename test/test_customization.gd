@@ -500,7 +500,7 @@ func test_the_customize_screen_opens_on_every_tab() -> void:
 func test_the_title_letters_tab_is_built_over_frames_not_in_the_click() -> void:
 	var was: bool = Settings.unlock_everything
 	Settings.unlock_everything = true
-	var s := CustomizeScreen.open(self, 2)
+	var s := CustomizeScreen.open(self, CustomizeScreen.TAB_LETTERS)
 	assert_gt(s._body.get_child_count(), 0, "the click leaves something on the tab")
 	assert_false(s.letters_built(), "and does not build all of it")
 	var frames: int = 0

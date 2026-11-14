@@ -7,6 +7,8 @@ extends Control
 #   Characters     each character's costumes, the ICON and the FULL portrait
 #                  chosen separately (a Vampire Survivors costume is both, from
 #                  one picture, and shows in both rows);
+#   Hats           what each PLAYER wears on its head (§7 of the doc, HatArt):
+#                  Super Auto Pets' hats, its rank-up rewards, and the Abandon Hat;
 #   Icons          what stands in for 🗝, ✸, 🏆, 🍀, 🎁, ♥, ⚔ (as damage) and ◉
 #                  everywhere they are drawn;
 #   Title Letters  which earned letters the main menu may spell with, a game at a
@@ -19,7 +21,10 @@ extends Control
 
 const TILE := 64
 const LETTER_TILE := 40
-const TABS := ["Characters", "Icons", "Title Letters"]
+const TABS := ["Characters", "Hats", "Icons", "Title Letters"]
+const TAB_LETTERS := 3
+# How big the Hats tab draws each player in what they have on.
+const HAT_PREVIEW := 150
 const KIND_NAMES := {"key": "Keys", "bomb": "Bombs", "difficulty": "Difficulty (the trophy)",
 	"luck": "Luck", "chest": "Chests", "health": "Health", "damage": "Damage", "gold": "Gold",
 	"shield": "Shields", "hunger": "Hunger"}
@@ -127,7 +132,8 @@ func _refresh() -> void:
 		c.queue_free()
 	match _tab:
 		0: _build_characters()
-		1: _build_icons()
+		1: _build_hats()
+		2: _build_icons()
 		_: _build_letters()
 
 func _say(text: String) -> void:
@@ -160,6 +166,48 @@ func _build_characters() -> void:
 			row.add_child(lbl)
 			for t in costume_tiles(ch, slot, TILE, _refresh):
 				row.add_child(t)
+
+# --- hats ---------------------------------------------------------------------------
+#
+# One block per player with a picture to wear a hat on: the player in what they
+# have on now, large, beside the row of choices. Hats are worn by PLAYERS, not
+# characters (the owner, 14 Nov 2026), and each player keeps its own.
+
+func _build_hats() -> void:
+	_say("Hats are worn by players. Super Auto Pets' hats are its rank-up rewards; the Abandon Hat is earned by escaping %d games in a row in one run." % Cosmetics.ABANDON_ESCAPES)
+	var roster: Array = Data.all_players().filter(func(pl) -> bool:
+		return pl is PlayerData and pl.portrait != null and pl.hat_spot.z > 0.0)
+	roster.sort_custom(func(a, b): return a.order < b.order)
+	for pl in roster:
+		var block := VBoxContainer.new()
+		block.name = "Player_%s" % pl.id
+		block.add_theme_constant_override("separation", UITheme.GAP_TIGHT)
+		_body.add_child(block)
+		var head: String = pl.display_name
+		if Achievements.player_locked(pl.id):
+			head += "  (locked — the hat waits for them)"
+		block.add_child(_heading(head))
+		var hb := HBoxContainer.new()
+		hb.add_theme_constant_override("separation", UITheme.GAP_LOOSE)
+		block.add_child(hb)
+		var preview := UITheme.crisp_tex(pl.shown_portrait(), HAT_PREVIEW)
+		preview.name = "Preview"
+		preview.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+		hb.add_child(preview)
+		var row := HFlowContainer.new()
+		row.name = "Slot_hat"
+		row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_theme_constant_override("h_separation", UITheme.GAP)
+		row.add_theme_constant_override("v_separation", UITheme.GAP)
+		hb.add_child(row)
+		for t in hat_tiles(pl, TILE, _refresh):
+			row.add_child(t)
+
+# A player's hat tiles: 🎲 Random, No hat (their own picture) and every hat. A
+# SPECIAL hat's locked hover says how it is earned instead of which game ranks it.
+static func hat_tiles(pl: PlayerData, side: int, on_change: Callable) -> Array:
+	return slot_tiles(Cosmetics.hat_slot(pl.id), pl.portrait, "", "No hat — %s as they are" % pl.display_name,
+		CosmeticCatalog.hats(), side, on_change)
 
 # --- icons --------------------------------------------------------------------------
 
@@ -322,9 +370,9 @@ var _letter_tiles: Dictionary = {}
 var _letter_checks: Dictionary = {}
 
 func _build_letters_rest(gen: int) -> void:
-	while is_inside_tree() and gen == _letters_gen and _tab == 2 and not _letters_todo.is_empty():
+	while is_inside_tree() and gen == _letters_gen and _tab == TAB_LETTERS and not _letters_todo.is_empty():
 		await get_tree().process_frame
-		if not is_inside_tree() or gen != _letters_gen or _tab != 2:
+		if not is_inside_tree() or gen != _letters_gen or _tab != TAB_LETTERS:
 			return
 		_build_letters_slice(LETTERS_SLICE_MS)
 
@@ -479,8 +527,13 @@ static func _look_tip(e: Dictionary, locked: bool) -> String:
 	var g: GameData = Data.get_game(StringName(String(e["game"])))
 	var game := g.display_name if g != null else String(e["game"])
 	var name := String(e["name"])
+	if CosmeticCatalog.is_special(e):
+		var how := String(Cosmetics.SPECIAL_HATS.get(String(e["key"]), ""))
+		return ("Locked — %s\n%s" % [name, how]) if locked else "%s — %s" % [name, how]
 	if locked:
-		return "Locked — %s\nA rank-up reward from %s, or a character from it." % [name, game]
+		# A hat is its GAME's reward only: no character's ranks draw one.
+		return "Locked — %s\nA rank-up reward from %s%s." % [name, game,
+			"" if String(e.get("unit", "")) == "hat" else ", or a character from it"]
 	return "%s — from %s" % [name, game]
 
 func _tile(tex: Texture2D, glyph: String, selected: bool, locked: bool, tip: String,

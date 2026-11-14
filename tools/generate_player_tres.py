@@ -3,7 +3,7 @@
 Generate Godot PlayerData .tres from the `players` sheet of tools/Roguelikes.xlsx
 into data/players/ (docs/players-design.md).
 
-  players: Name | Description | Mechanics | File
+  players: Name | Description | Mechanics | File | Hat | Hat Icon
 
   Name         the player's name, as the picker shows it. Its id is the slug.
   Description  one line about them.
@@ -15,6 +15,13 @@ into data/players/ (docs/players-design.md).
                and the picker shows the name instead. The SMALL token is
                images2.0/players/Icon/<File>.png when there is one (Batsaac's
                face, cut out so it reads at 26px), else the full picture.
+  Hat          where a worn hat sits on the full picture (docs/customization.md
+               §7, HatArt): `x, y, width, tilt` — the brim's spot as a percent of
+               the picture across and down, the hat's width as a percent of the
+               picture's, and the tilt in degrees clockwise (optional, 0). Blank =
+               no spot, and the player wears no hat.
+  Hat Icon     the same for the small token in Icon/. Blank = the Hat spot, which
+               is right when the token IS the full picture (Retro Bat).
 
 What UNLOCKS a player is not here: it is a row of the `achievements` sheet under
 the `Players` tab (docs/achievements.md), like a character's. Every player is an
@@ -43,7 +50,7 @@ XLSX_PATH = os.environ.get("CARDS_XLSX", os.path.join(SCRIPT_DIR, "Roguelikes.xl
 OUT_DIR = os.path.join(PROJECT_ROOT, "data", "players")
 ART_DIR = os.path.join(PROJECT_ROOT, "images2.0", "players")
 SHEET = "players"
-HEADERS = ("Name", "Description", "Mechanics", "File")
+HEADERS = ("Name", "Description", "Mechanics", "File", "Hat", "Hat Icon")
 
 # Sheet word -> PlayerData.MECHANICS id. Keep the two in step.
 MECHANICS = {"hunger": "hunger", "unidentified weapons": "unidentified_weapons"}
@@ -87,12 +94,37 @@ def parse_mechanics(raw, who: str) -> list:
     return out
 
 
+def parse_spot(raw, who: str, col: str) -> tuple:
+    """`x, y, width[, tilt]` -> four floats, or None for a blank cell."""
+    text = _clean(raw)
+    if not text:
+        return None
+    try:
+        nums = [float(t) for t in text.replace(";", ",").split(",") if t.strip()]
+    except ValueError:
+        raise ValueError("players %s: %s %r is not `x, y, width, tilt`" % (who, col, text))
+    if len(nums) == 3:
+        nums.append(0.0)
+    if len(nums) != 4 or nums[2] <= 0:
+        raise ValueError("players %s: %s %r is not `x, y, width, tilt` with a width over 0"
+                         % (who, col, text))
+    return tuple(nums)
+
+
+def gd_vec4(spot) -> str:
+    def n(v):
+        return ("%g" % v) if v != int(v) else "%d" % v
+    return "Vector4(%s)" % ", ".join(n(v) for v in (spot or (0, 0, 0, 0)))
+
+
 def player_tres(row: dict, order: int) -> tuple:
     name = _clean(row.get("Name"))
     if not name:
         raise ValueError("players: a row has no Name")
     pid = slugify(name)
     mechanics = parse_mechanics(row.get("Mechanics"), name)
+    hat = parse_spot(row.get("Hat"), name, "Hat")
+    hat_icon = parse_spot(row.get("Hat Icon"), name, "Hat Icon") or hat
     lines = [
         '[gd_resource type="Resource" script_class="PlayerData" load_steps=2 '
         'format=3 uid="uid://player_%s"]' % pid,
@@ -112,6 +144,8 @@ def player_tres(row: dict, order: int) -> tuple:
         # the full picture itself (Retro Bat).
         'icon_path = "%s"' % (art_path(_clean(row.get("File")), "Icon")
                               or art_path(_clean(row.get("File")))),
+        "hat_spot = %s" % gd_vec4(hat),
+        "hat_icon_spot = %s" % gd_vec4(hat_icon),
     ]
     return pid, "\n".join(lines) + "\n"
 

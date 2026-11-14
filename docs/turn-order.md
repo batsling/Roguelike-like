@@ -298,7 +298,9 @@ Then, back in `Overworld2.report`:
 4. Signal `game_won` (goal met) → items; then `game_perfected` (won with no lost
    run) → items.
 5. The **game's own loot** (a scroll or a pill) is queued. Not on an escape.
-6. Bookkeeping: game marked played, the clock's split banked, beats and perfects
+6. Bookkeeping: game marked played, the clock's split banked, the run's **escape
+   streak** counted (an escape +1, anything else back to 0; five earns the
+   Abandon Hat, `docs/customization.md` §7), beats and perfects
    recorded (won only), the repeat-visit Dash.
 7. **Level-ups**: the character's, then any Mask characters'.
 8. **Event goals** resolve and tick; games played +1; a difficulty step is

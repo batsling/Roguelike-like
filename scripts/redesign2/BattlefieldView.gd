@@ -289,12 +289,14 @@ func _ready() -> void:
 # (the basic player) leaves the frame to the character's portrait, as before, and
 # then needs no badge.
 func _hero_texture() -> Texture2D:
-	var id: StringName = StringName("%s/%s" % [GameState.player_id, GameState.character_id])
+	# The worn hat is part of the key: changing it changes the picture.
+	var id: StringName = StringName("%s/%s/%s" % [GameState.player_id, GameState.character_id,
+		Cosmetics.hat(GameState.player_id).get("key", "")])
 	if id != _hero_id:
 		_hero_id = id
 		var pl: PlayerData = GameState.player()
 		var ch: CharacterData = Data.get_character2(GameState.character_id)
-		_hero_tex = pl.portrait if pl != null else null
+		_hero_tex = pl.shown_portrait() if pl != null else null
 		if _hero_tex == null and ch != null:
 			_hero_tex = ch.shown_portrait()
 	return _hero_tex

@@ -1,13 +1,14 @@
 # Customization
 
 The **✦ Customization** button in the main menu's Extras list (`scripts/menu/CustomizeScreen.gd`)
-opens one screen with three tabs. Everything on it is earned by ranking up games
+opens one screen with four tabs. Everything on it is earned by ranking up games
 and characters, and every choice is saved per profile
 (`user://profiles/<n>/customization.json`, the `Cosmetics` autoload).
 
 | tab | what it changes |
 |---|---|
 | **Characters** | each character's **icon** and **full portrait**, chosen separately |
+| **Hats** | what each **player** (Retro Bat, Batsaac) wears on its head (§7) |
 | **Icons** | what is drawn in place of 🗝 (keys), ✸ (bombs), 🏆 (the trophy), 🍀 (Luck), 🎁 (a chest), ♥ (Health), ⚔ (damage), ◉ (gold) and 🛡 (a shield) |
 | **Title Letters** | which earned letters the main menu's title may be spelled from |
 
@@ -15,7 +16,7 @@ and characters, and every choice is saved per profile
 
 A game at rank N, and a character at rank N, has earned N rewards. Before this
 change each was a radio song or a title letter, 50/50. A third kind now joins
-them: a **look**, which is one costume or one icon set (`RankRewards.split`).
+them: a **look**, which is one costume, one icon set or one hat (§7) (`RankRewards.split`).
 
 - **One roll per rank, among the kinds with something left.** The order is
   letter, song, look, and the roll picks one of the kinds still open, evenly.
@@ -51,6 +52,8 @@ images2.0/icons/Damage/<Name>_<Game>.png
 images2.0/icons/Gold/<Name>_<Game>.png
 images2.0/icons/Shields/<Name>_<Game>.png
 images2.0/icons/Hunger/<Name>_<Game>.png
+images2.0/hats/<Name>_<Game>.png                  a hat, its game's rank-up reward (§7)
+images2.0/hats/Special/<Name>_<Game>.png          a hat earned some other way (§7)
 ```
 
 - **An icon goes in at its best version, every time** (the owner, 13 Nov 2026).
@@ -222,6 +225,63 @@ cards whose pictures sit in `items/`, and the scrolls (art "Identify", id
 back fall once any of their kind has been seen. Covers are matched by each game's
 own `cover_path`. `test_menu_falling_art.gd` marks everything seen and requires
 every picture in those folders to match, so a new picture whose name matches
-nothing fails CI. Every unlocked costume and icon falls too, taken
+nothing fails CI. Every unlocked costume, icon and hat falls too, taken
 whole like the characters, and a character falls in the costume it wears. On a
 brand-new profile nothing falls until something has been seen.
+
+## 7. Hats: what a player wears
+
+Asked for and decided by the owner on 14 Nov 2026: hats on the **players**, the
+way pets wear them in Super Auto Pets. Not on the characters.
+
+- **What there is.** Super Auto Pets' 88 current hats: every one the wiki lists as
+  *Play to Unlock* (70) or bought in its Hat store (18), at the CURRENT picture,
+  never "Previous Version". The only special hat is the **Abandon Hat**. The
+  pictures are the wiki's original files, **mirrored** on the way in, because the
+  wiki draws every hat facing right and the players face the other way. They were
+  fetched by `tools/oneshots/_hats_super_auto_pets.py`, which also mends two of
+  the wiki's typos ("Rude Hate", "Flat top Hat"). Its play-to-unlock "Real Bucket
+  Hat" links the same file as the bought Bucket Hat, so the two are one hat.
+- **Earning.** A hat is a look like a costume or an icon (§1), and it belongs to
+  its game, so **Super Auto Pets' ranks pay its hats**. That game has no radio
+  songs, so each of its ranks is a hat or one of its title letters, and only
+  hats once the letters are all drawn. **No character's ranks draw a hat**
+  (`CosmeticCatalog.units_of_character` skips them), even a character from that
+  game. A `Special/` hat carries `"special": true` in the index, and
+  `units_of_game` leaves it out, so no rank ever draws it.
+- **The Abandon Hat** is earned by **escaping five games in a row in one run**.
+  The owner chose "within one run": `GameState.escape_streak` is the run's,
+  saved with it and zeroed by `reset_run`. `Overworld2.report` counts it in its
+  bookkeeping step, where every game is handed in: an escape adds one (a
+  teleport out is an escape too), and any other report sets it back to 0. It
+  then asks `Cosmetics.note_escape_streak`, which unlocks the hat at
+  `ABANDON_ESCAPES` (5) and toasts it like a rank's. A locked tile's hover says
+  how it is earned (`Cosmetics.SPECIAL_HATS`).
+- **Where it sits: a spot per picture, on the sheet.** The `players` sheet's
+  `Hat` and `Hat Icon` columns hold `x, y, width, tilt` (generator:
+  `tools/generate_player_tres.py` → `PlayerData.hat_spot` / `hat_icon_spot`).
+  `x, y` is where the hat's **brim** lands, as a percent of the picture across
+  and down. The brim is the point 50% across and 75% down the hat picture
+  (`HatArt.ANCHOR`). `width` is the hat's width as a percent of the picture's,
+  and `tilt` is degrees clockwise about the brim. `Hat Icon` is the spot on the
+  small token in `images2.0/players/Icon/`; blank, it is the `Hat` spot, which is
+  right when the token IS the picture (Retro Bat). A blank `Hat` means no spot,
+  and that player wears nothing (Basic, who has no picture). The owner placed
+  Batsaac's: flat, "very slightly to the left" of centre (`46, 31, 42, 0`).
+- **Wearing.** `HatArt.wear` COMPOSES the hat into the picture once and caches
+  it. Every screen that draws a player as themselves asks
+  `PlayerData.shown_portrait()` / `shown_icon()` (`Cosmetics.player_art`) and
+  gets the player in their hat: the player picker's tiles and portrait, the
+  hero on the board, and the header's token. **A new screen that draws a player
+  should do the same.** An achievement (a player still to unlock) keeps the bare
+  picture. A hat taller than the room above the head grows the canvas upward
+  rather than being cut off. Pixel art (Retro Bat, 10×15) is first scaled up
+  in whole pixels so the hat keeps its painted detail; a small painted picture
+  (Batsaac's 52px face) is scaled up smoothly.
+- **Choosing.** Each player has its own slot (`Cosmetics.hat_slot`,
+  `"hat:<player>"`) with 🎲 Random, No hat and every hat. Locked hats show as
+  silhouettes. The choices are the same on the Customization screen's Hats tab
+  (a preview of the player in what they wear, then the tiles) and in a strip
+  across the foot of the player picker (`PlayerPicker._fill_hat_row`). Both use
+  `CustomizeScreen.hat_tiles`. Tests: `test/test_hats.gd`.
+
