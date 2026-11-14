@@ -620,7 +620,7 @@ still exists under an old name silently generates the wrong content.
 | `generate_unit_tres.py` | `data/units2.0/*.tres` from the `units` sheet — imports the parsers above rather than restating them |
 | `generate_ability_tres.py` | `data/abilities2.0/*.tres` from the `abilities` sheet — and owns the **grammar of the enemy `Ability` column** (`Ranged (2), Fireproof, Infliction (1, Burn)`), which the goal-enemy generator imports rather than restating (§7.6) |
 | `generate_event2_tres.py` | `data/events2.0/*.tres` from the `events` sheet — see [Authoring an event](#authoring-an-event) |
-| `generate_curse2_tres.py` | `data/curses2.0/*.tres` from the `curses` sheet |
+| `generate_curse2_tres.py` | `data/curses2.0/*.tres` — the CURSE CARDS (`CardData`, `docs/loot-passives.md` §18) — from the `curses` sheet |
 | `build_glyph_font.py` | `fonts/*.ttf` — the UI's symbol glyphs, subsetted from Noto. Not sheet-driven: it scans `scripts/**/*.gd` for the glyphs actually used. Run it after adding a new one; `--check` verifies without writing |
 | `item_dsl.py` | **not a generator**: the item Effect-column DSL and ItemData writer that `generate_item2_tres.py` runs and the loot generators borrow (it was `generate_item_tres.py`) |
 | `import-games-godot.py` | `data/games/*.tres` (incl. per-connection source + sequel flag), resolving each cover in `images2.0/games/` — then re-bakes the Atlas, and lists the games `research/ledger.json` has no entry for (`research.py new` researches them) |
@@ -816,7 +816,7 @@ Semicolon-separated tokens. It is the same reward DSL `statuses2.0` and
 | `apply_unit <unit> …` | The same, for a `units2.0` UNIT (§17). `target=random_empty` puts it on a cell with nothing on it at all — no body, no unit, no tile effect (Landmines). |
 | `random_item_choice N` | Pick 1 of N random items. |
 | `gain_item <item_id>` | A **named** `items2.0` relic, handed straight over — the one token that says *which* item. The generator checks the id against the sheet. |
-| `spawn_enemy [N] [tag=<t>]` | Conjures N enemies at the run's current difficulty onto the following stack. What every curse costs. `tag=` narrows the roll to the goal-enemies carrying that synergy tag (`spawn_enemy tag=robot 1` — Punch Off's Constructs); the generator checks the tag against the `enemies` sheet's Tag column, and a tagged roll widens by difficulty rather than dropping the tag. |
+| `spawn_enemy [N] [tag=<t>]` | Conjures N enemies at the run's current difficulty onto the following stack. `tag=` narrows the roll to the goal-enemies carrying that synergy tag (`spawn_enemy tag=robot 1` — Punch Off's Constructs); the generator checks the tag against the `enemies` sheet's Tag column, and a tagged roll widens by difficulty rather than dropping the tag. |
 | `trade_relic <slot>` | The Relic Trader's swap: one of your relics for one of his. Fills `<give>` / `<get>` in the choice's prose. |
 | `gain_random_item N` | N relics off the rollable pool, straight into the pack — not a chest opened a screen later. Prefers what you don't own, and fills `{ITEM}` with what it rolled. |
 | `lose_potion` / `lose_relic` / `lose_card [uncommon+]` | A price paid in **things**: one bottle, one tradeable relic, one card. Which one is rolled when the event opens and named on the button through the `<potion>` / `<relic>` / `<card>` holes, so the player knows what they are handing over before they press (Ranwid the Elder, We Meet Again!). |
@@ -829,7 +829,7 @@ And the event-only forms:
 needs keys 1                           only offered if the player HAS it (a check, not a charge)
 needs Immerse > 0                      only offered at this point in the event (names another Choice)
 add_goal "<condition>" [for <n> games] -> <reward>
-add_curse <curse_id> | random [for <n> games]
+add_curse <curse_id> | random
 play_game tag=<tag> -> <reward>
 chance <p>% -> <reward>
 ```
@@ -841,21 +841,18 @@ chance <p>% -> <reward>
   `shields`, `relics` (tradeable ones only) and `potions` (bottles carried).
 - **`add_goal`** bolts an objective onto the next *n* games, in the same
   honour-system voice enemy goals use. Pays if met, costs nothing if not.
+- **`add_curse`** hands over a **curse card** (`docs/loot-passives.md` §18): it
+  takes an id from the **`curses` sheet**, so the curse is authored once and any
+  event can hand out the same one. The card goes into the pack on the loot modal,
+  which cannot be skipped, and can never be binned. (Until 14 Nov 2026 it left a
+  curse GOAL on the checklist instead; a `for <n> games` clause is still parsed
+  and now means nothing.)
 - **`add_curse random`** draws the curse when the button is pressed instead of
   naming one, and **only from curses the `curses` sheet tags `random`** (its `Tag`
-  column, read by `CurseData2.is_random`) — the Hexer's random spread reads the
-  same tag. Curse of the Bell is untagged: a random roll that could hand it out
-  would make an idle button a coin flip on the rest of the run. The Golden Monkey
-  is what it is for.
-- **`add_curse`** is that inverted — an objective you want to *not* meet, which
-  bills you every time you do. It takes an id from the **`curses2.0` tab**, so
-  the curse is authored once and any event can hand out the same one. On the
-  report checklist it is a row like any other — an **instruction** with its price
-  after it (`CurseData2.goal_text()`, then `if failed, <penalty>`: "don't use a
-  rest site to replenish health   if failed, Spawn a random enemy") — ticked if
-  you followed it, and **left unticked is what fires the penalty**. Conditions
-  authored as an absence ("you don't ring a bell") have the negation stripped
-  rather than doubled, so the row reads "ring a bell".
+  column, read by `CardData.is_random_curse`) — the Hexer's random spread reads
+  the same tag. Curse of the Bell is untagged: a random roll that could hand it
+  out would make an idle button a coin flip on the rest of the run. The Golden
+  Monkey is what it is for.
 - **`play_game`** sends the player to a random game carrying `tag`, off their
   route; the `->` payload lands when they beat it. **Check the tag has games
   behind it first** — the thin end of that vocabulary has single-game buckets.

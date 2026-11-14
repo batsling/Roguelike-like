@@ -11,6 +11,24 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Curses are cards now (the owner, 14 Nov 2026): "get rid of curse goals.
+  These curses will now count as cards (not available in the basic loot
+  drop)."** The curse GOAL — a checklist row you tried not to complete, which
+  spawned an enemy when you did, on a three-game or permanent timer — is gone,
+  with its rows, its clock and its bill. A curse is a passive **card** that takes
+  a cell of the pack. Whatever handed one out before still does: Punch Off,
+  Golden Idol, Unrest Site, the Golden Monkey, the Calling Bell, Amnesia, the
+  Hexer and the Lacerator. **It is placed on a loot modal that has no Skip**, so
+  a full pack has to use or bin something to make room. **No curse can ever be
+  binned** or taken out of the pack: it can't be put down on the board, traded
+  for a floor piece, paid as a price, stolen or smelted. The `curses` sheet is
+  now `Curse | Game | Description | Effect | Movable | Destroyable | Tag |
+  Image`. **Curse of the Bell** moves but nothing can destroy it (the Scroll of
+  Remove Curse included); **Injury** moves and can be destroyed; **Poor Sleep**
+  locks in the cell it was placed in, along with its bag. The three curse rows
+  left `goals`, and `apply_goals_sheet.py` no longer writes `curses`. Rules in
+  `docs/loot-passives.md` §18; tests in `test_curse_cards.gd`.
+
 - **The owner's upload of 14 Nov 2026, and three things asked for with it.**
   *Novus Orbis* joins the chart with two connections (Slay the Spire, The
   Binding of Isaac). The `players` sheet lost its `Description` column, and the

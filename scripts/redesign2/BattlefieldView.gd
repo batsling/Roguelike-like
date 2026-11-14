@@ -2576,7 +2576,12 @@ func _can_put_down(at: Vector2, data: Variant) -> bool:
 	if kind == "loot_take" and data.get("floor") is Vector2i:
 		var to: Vector2i = cell_at(at)
 		return to != data["floor"] and is_free_floor(to)
-	if kind != "loot_move" or int(data.get("index", -1)) < 0:
+	var index: int = int(data.get("index", -1))
+	if kind != "loot_move" or index < 0:
+		return false
+	# A CURSE CARD never leaves the pack (docs/loot-passives.md §18).
+	if index < GameState.loot_items.size() \
+			and not GameState.can_leave_pack(GameState.loot_items[index]):
 		return false
 	return is_free_floor(cell_at(at))
 

@@ -152,9 +152,9 @@ static func goal_tile(host: Node, g: GameData, kind: String, row: Dictionary,
 			if st != null:
 				tex = st.image
 		"curse":
-			var cd: CurseData2 = Data.get_curse2(StringName(key))
-			if cd != null:
-				tex = cd.image
+			# A retired kind (curse GOALS ended 14 Nov 2026); an older record is
+			# still drawn, with the art of the curse card it became.
+			tex = LootSystem.art_texture({"type": "card", "id": StringName(key)})
 	# The label of the other kinds is already "Name — the goal"; split it so the
 	# hover reads the same for every kind.
 	if goal == "" and name.contains(" — "):

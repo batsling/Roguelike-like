@@ -315,6 +315,8 @@ func _build_payload() -> Dictionary:
 		# Smelter: the pieces taken out of the pack that work as relics.
 		"smelted_loot": GameState.smelted_loot.duplicate(true),
 		"destroyed_loot": GameState.destroyed_loot.duplicate(true),
+		# Curse cards handed out and not yet placed (docs/loot-passives.md §18).
+		"pending_curses": GameState.pending_curses.duplicate(true),
 		"total_combats_completed": GameState.total_combats_completed,
 		# The enemy stack, the destroyed games, the attempt tracker.
 		"loop": GameLoop2.serialize(),
@@ -639,6 +641,10 @@ func _apply_save_data(data: Dictionary) -> void:
 	for e in data.get("destroyed_loot", []):
 		if e is Dictionary:
 			GameState.destroyed_loot.append((e as Dictionary).duplicate(true))
+	GameState.pending_curses.clear()
+	for e in data.get("pending_curses", []):
+		if e is Dictionary:
+			GameState.pending_curses.append((e as Dictionary).duplicate(true))
 	GameState.smelted_loot.clear()
 	for e in data.get("smelted_loot", []):
 		if e is Dictionary:

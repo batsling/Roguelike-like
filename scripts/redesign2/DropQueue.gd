@@ -271,6 +271,9 @@ func put_down(index: int, cell: Vector2i) -> void:
 	var entry = GameState.loot_items[index]
 	if not (entry is Dictionary) or (entry as Dictionary).is_empty():
 		return
+	# A curse card stays in the pack (docs/loot-passives.md §18).
+	if not GameState.can_leave_pack(entry):
+		return
 	var piece: Dictionary = (entry as Dictionary).duplicate(true)
 	# Where it sat in the pack is a fact about the pack, not about the piece.
 	piece.erase("pack_slot")
@@ -409,6 +412,13 @@ func pump() -> void:
 func open_next() -> void:
 	if not _may_open():
 		return
+	# A CURSE CARD WAITING TO BE PLACED GOES FIRST (docs/loot-passives.md §18). It is
+	# not in `queue` — it waits on GameState.pending_curses, where the haul screen
+	# cannot take it over and the save keeps it — and it asks on its own modal,
+	# which has no Skip: the only way out is to put it in the pack.
+	if not GameState.pending_curses.is_empty():
+		_open_curse(GameState.pending_curses[0])
+		return
 	var drop: Dictionary = queue[0]
 	# A LOOT payout rides the same queue as the relics a body left (§4.3), because
 	# they are the same question asked about different things and a game can hand
@@ -451,9 +461,32 @@ func open_next() -> void:
 func _may_open() -> bool:
 	if modal != null and is_instance_valid(modal):
 		return false
-	if queue.is_empty() or not _page.is_inside_tree():
+	if (queue.is_empty() and GameState.pending_curses.is_empty()) \
+			or not _page.is_inside_tree():
 		return false
 	return not _page.drops_are_done()
+
+# A curse card was dealt (GameState.curse_offered): ask as soon as asking is
+# allowed — after a report's playback, never on top of another question.
+func on_curse_offered() -> void:
+	pump()
+
+# Ask where the curse goes. When the modal closes it is off the waiting list
+# whether or not it went in: the modal only closes with it unplaced when there was
+# no way to make room (LootDropModal.no_way_in), and then it is lost.
+func _open_curse(entry: Dictionary) -> void:
+	var curse_modal := LootDropModal.open_curse(_page, entry)
+	modal = curse_modal
+	curse_modal.answered.connect(func(taken: Array):
+		modal = null
+		GameState.curse_placed(entry)
+		if taken.is_empty():
+			GameLog.add("No room could be made for %s." % LootSystem.display_name(entry),
+				UITheme.CURSE)
+		else:
+			GameLog.add("%s is in your pack." % LootSystem.display_name(entry), UITheme.CURSE)
+			_page._refresh_items()
+		pump())
 
 # ---------------------------------------------------------------------------
 # Rolling and taking

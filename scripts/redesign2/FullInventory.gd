@@ -186,18 +186,15 @@ func _character_column() -> Control:
 		for row in held:
 			flow.add_child(_status_chip(row))
 
+	# The CURSE CARDS in the pack (docs/loot-passives.md §18), listed here as well
+	# as drawn in their cells: they are the pieces you did not choose.
 	col.add_child(_section("Curses"))
-	if GameState.curse_goals.is_empty():
+	var carried: Array = GameState.loot_items.filter(func(e): return GameState.is_curse_entry(e))
+	if carried.is_empty():
 		col.add_child(_faint("None."))
-	for c in GameState.curse_goals:
-		var cd: CurseData2 = Data.get_curse2(StringName(c.get("curse", &"")))
-		if cd == null:
-			continue
-		var left: int = int(c.get("games_left", -1))
-		var text: String = cd.display_name if left < 0 \
-			else "%s  (%d %s left)" % [cd.display_name, left, Plural.word(left, "game")]
-		col.add_child(_line(text, UITheme.DANGER.lerp(Color.WHITE, 0.3),
-			"%s\n%s" % [cd.condition, cd.penalty_text]))
+	for e in carried:
+		col.add_child(_line(LootSystem.display_name(e), UITheme.CURSE,
+			LootSystem.description(e)))
 	return col
 
 # Every counted thing the run spends, in one list. Static and public so a test can

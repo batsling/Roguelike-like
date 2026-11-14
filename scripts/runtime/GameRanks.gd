@@ -27,7 +27,7 @@ const XP_PERFECT := 100
 # An enemy or boss goal by its tier, indexed by GoalEnemyData.Difficulty.
 const XP_BY_TIER := [20, 40, 70, 120]
 # Every other kind of goal — a level-up (a Mask's included), a weapon charged, a
-# status goal, a bonus, a curse followed — is worth a Medium.
+# status goal, a bonus, a curse followed (a retired kind) — is worth a Medium.
 const XP_OTHER_GOAL := 40
 const BOSS_MULT := 2.0
 const GAME_BEATEN_MULT := 1.5

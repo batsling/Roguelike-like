@@ -3885,13 +3885,13 @@ func _event_choice_block(c: Dictionary, ac: Color) -> Control:
 			Color(0.95, 0.85, 0.5), 11, false, true))
 	var curse: Dictionary = c.get("curse", {}) if c.get("curse") is Dictionary else {}
 	if not curse.is_empty():
-		var cd: CurseData2 = Data.get_curse2(StringName(curse.get("curse", &"")))
+		var cd: CardData = Data.get_curse_card(StringName(curse.get("curse", &"")))
 		# `add_curse random` names no row (EventSystem rolls it when it fires), so
 		# its name here is "Random" — it used to print a bare "Curse:".
 		var curse_name: String = cd.display_name if cd != null else String(curse.get("curse", ""))
 		if bool(curse.get("random", false)) or curse_name == "":
 			curse_name = "Random"
-		vb.add_child(_label("Curse: %s" % curse_name, Color(0.85, 0.55, 0.9), 11, false, true))
+		vb.add_child(_label("Curse card: %s" % curse_name, Color(0.85, 0.55, 0.9), 11, false, true))
 	# "again" / "stay" options loop the modal; that changes how the event plays,
 	# so it belongs next to the option it is a property of.
 	var repeat: String = String(c.get("repeat", "end"))

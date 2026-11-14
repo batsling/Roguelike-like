@@ -557,37 +557,36 @@ func _pick_in_pack(cfg: Dictionary, on_done: Callable) -> bool:
 
 # --- Lift which curse (choose up to N) -------------------------------------
 #
-# The rows are the run's curse GOALS — the ones the checklist draws as things to
-# avoid doing — and each is listed by its name AND its condition, because a player
-# choosing which to be rid of is choosing between two conditions rather than
-# between two names. The permanent one says so: it is the row this scroll is for.
+# The rows are the CURSE CARDS in the pack that can be lifted (docs/loot-passives.md
+# §18 — Curse of the Bell cannot, so it is not offered), then the cursed weapons.
+# Each curse is listed by its name and what it does in the pack.
 func _pick_remove_curse(req: Dictionary) -> void:
 	var max_pick: int = int(req.get("count", 1))
-	var selected: Dictionary = {}   # index -> true
+	var selected: Dictionary = {}   # key -> true
 	_rebuild_panel()
 	_body.add_child(_heading("Remove a Curse", ACCENT, 20))
+	var curses: Array = ScrollSystem.removable_curses()
 	var weapons: Array = ScrollSystem.cursed_weapons()
-	if GameState.curse_goals.is_empty() and weapons.is_empty():
+	if curses.is_empty() and weapons.is_empty():
 		_body.add_child(_muted("Nothing is weighing on you."))
 		_report("Nothing is weighing on you.")
 		_body.add_child(_continue_button())
 		return
 	_body.add_child(_muted("Choose up to %d to lift." % max_pick))
-	for i in range(GameState.curse_goals.size()):
-		var row: Dictionary = GameState.curse_goals[i]
-		var cd: CurseData2 = Data.get_curse2(StringName(row.get("curse", &"")))
-		var left: int = int(row.get("games_left", 0))
+	# Keyed by position in this list rather than by the entry: two Injury cards are
+	# equal Dictionaries, and the player is choosing one of them.
+	var by_key: Dictionary = {}
+	for n in range(curses.size()):
+		var e: Dictionary = curses[n]
+		var key: String = "curse:%d" % n
+		by_key[key] = e
 		var btn := Button.new()
 		btn.toggle_mode = true
-		btn.text = "%s — %s (%s)" % [
-			ScrollSystem.curse_name(row),
-			cd.condition if cd != null else "",
-			"permanent" if left < 0 else "%d game%s left" % [left, "" if left == 1 else "s"]]
-		btn.toggled.connect(func(on): _toggle_select(selected, i, on, max_pick, btn))
+		btn.text = "%s — %s" % [LootSystem.display_name(e), LootSystem.description(e)]
+		btn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		btn.toggled.connect(func(on): _toggle_select(selected, key, on, max_pick, btn))
 		_body.add_child(btn)
-	# A CURSED WEAPON is a row too (docs/players-design.md §5), keyed by its uid
-	# so it cannot collide with a goal's index.
-	var by_key: Dictionary = {}
+	# A CURSED WEAPON is a row too (docs/players-design.md §5), keyed by its uid.
 	for e in weapons:
 		var key: String = "weapon:%d" % WeaponSystem.uid_of(e)
 		by_key[key] = e
@@ -599,12 +598,16 @@ func _pick_remove_curse(req: Dictionary) -> void:
 	var confirm := UITheme.confirm_button("Lift Selected", Vector2(180, 34))
 	confirm.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	confirm.pressed.connect(func():
-		var goals: Array = selected.keys().filter(func(k): return k is int)
+		var cards: Array = []
 		var picked: Array = []
 		for k in selected.keys():
-			if by_key.has(k):
+			if not by_key.has(k):
+				continue
+			if String(k).begins_with("curse:"):
+				cards.append(by_key[k])
+			else:
 				picked.append(by_key[k])
-		_report(ScrollSystem.remove_curse_chosen(goals, picked))
+		_report(ScrollSystem.remove_curse_chosen(cards, picked))
 		_process_next_request())
 	_body.add_child(confirm)
 
@@ -814,7 +817,9 @@ func _pick_copy_item(req: Dictionary) -> void:
 func _pick_destroy(req: Dictionary) -> void:
 	var candidates: Array = []
 	for e in req.get("candidates", []):
-		if e is Dictionary and GameState.loot_items.any(func(x): return is_same(x, e)):
+		# A curse that cannot be destroyed is not on offer (docs/loot-passives.md §18).
+		if e is Dictionary and GameState.loot_items.any(func(x): return is_same(x, e)) \
+				and GameState.can_destroy(e):
 			candidates.append(e)
 	var need: int = mini(int(req.get("count", 1)), candidates.size())
 	if need > 0 and _pick_in_pack({"candidates": candidates, "count": need, "exact": true,

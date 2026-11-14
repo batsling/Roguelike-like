@@ -554,12 +554,16 @@ func can_trash(data: Dictionary) -> bool:
 		return false
 	match String(data.get("kind", "")):
 		"loot_move":
-			return int(data.get("index", -1)) >= 0
+			# A CURSE CARD never goes in the bin (docs/loot-passives.md §18).
+			var index: int = int(data.get("index", -1))
+			return index >= 0 and index < GameState.loot_items.size() \
+				and GameState.can_leave_pack(GameState.loot_items[index])
 		"loot_take":
 			# The offer — or the piece off the floor — thrown away rather than taken.
-			# Always allowed: a full pack is exactly when you most want to say no to a
-			# piece with your hands.
-			return true
+			# Allowed for everything but a CURSE: a full pack is exactly when you most
+			# want to say no to a piece with your hands, and a curse is the one piece
+			# you are not allowed to say no to.
+			return not GameState.is_curse_entry(data.get("entry", {}))
 		"bag_move":
 			# A BAG COMES OFF EMPTY, and only if nothing else is hanging off it —
 			# binning one with loot in it would bin the loot, and one holding up

@@ -931,12 +931,22 @@ static func _ch_pack() -> Dictionary:
 				+ "is a wall that might never move, a mine is a toll paid once. So "
 				+ "a minefield SHAPES where they come at you rather than stopping "
 				+ "them."),
-			_h("Curse goals"),
-			_p("A curse goal is a row on your checklist you are trying NOT to "
-				+ "complete. Break it and the penalty is always the same one: a "
-				+ "random enemy spawns at the run's current difficulty. A curse "
-				+ "bills you in the run's own currency rather than reaching for "
-				+ "your Health bar."),
+			_h("Curse cards"),
+			_p("A curse is a card that goes in your loot pack. Events, a few "
+				+ "enemies, the Calling Bell and the Amnesia pill hand them out; "
+				+ "they never drop as ordinary loot. When you get one, the loot "
+				+ "screen opens and you have to put it in a slot. You can't skip "
+				+ "it, so if your pack is full, use or bin something to make room."),
+			_p("You can never bin a curse, leave it on the table or put it down "
+				+ "on the board. Most of them only take up the slot. Each one has "
+				+ "its own rules:"),
+			_kv("Curse of the Bell", "You can move it around your pack. Nothing "
+				+ "can destroy it, not even a Scroll of Remove Curse."),
+			_kv("Injury", "You can move it around your pack. A Scroll of Remove "
+				+ "Curse or anything that destroys loot can get rid of it."),
+			_kv("Poor Sleep", "Locked in the slot you put it in, and the bag "
+				+ "it sits in can't move either. A Scroll of Remove Curse or "
+				+ "anything that destroys loot can get rid of it."),
 			_h("Luck"),
 			_p("Every point of Luck is a 50% chance of one more roll, and the "
 				+ "better result is kept. It compounds rather than adding — at 1 "
@@ -1159,7 +1169,7 @@ static func _ch_screen() -> Dictionary:
 				+ "on the left and a small picture of your loot pack on the right. "
 				+ "Click the small pack (or press Tab) to open it. Full beside it "
 				+ "opens the full inventory: every item, the pack, your stats, "
-				+ "your resources, and the statuses and curses on you."),
+				+ "your resources, your statuses and the curse cards you carry."),
 			_kv("The fallen", "Every enemy this run has put down is the Fallen "
 				+ "tab of the History, in the bar at the top."),
 			_kv("Statuses on an enemy", "A ▲ on a body means it carries a buff, a "

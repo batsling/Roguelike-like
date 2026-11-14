@@ -1,15 +1,18 @@
-[gd_resource type="Resource" script_class="CurseData2" load_steps=2 format=3 uid="uid://curse2_poor_sleep"]
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3 uid="uid://curse2_poor_sleep"]
 
-[ext_resource type="Script" path="res://scripts/resources/CurseData2.gd" id="1_curse"]
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
 
 [resource]
-script = ExtResource("1_curse")
+script = ExtResource("1_card")
 id = &"poor_sleep"
 display_name = "Poor Sleep"
+rarity = "Curse"
 source_game = "Slay the Spire 2"
-condition = "you use a rest site to replenish health"
-penalty = [{"type": "spawn_enemy", "value": 1}]
-penalty_text = "Spawn a random enemy"
-timer = 3
-tags = ["random"]
+description = "Takes up a slot. Can't be thrown away. Locked in the slot you put it in."
 file = "PoorSleep"
+art_folder = "curses"
+loot_type = "Curse"
+tags = PackedStringArray("curse", "random")
+passive = true
+movable = false
+destroyable = true

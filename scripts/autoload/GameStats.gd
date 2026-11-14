@@ -119,6 +119,10 @@ var goal_log: Dictionary = {}
 # what an enemy's clause paid, and last the curses you followed. Every one of
 # them counts towards "complete X distinct goals".
 #
+# CURSE is a RETIRED kind: a curse is a card in the pack since 14 Nov 2026 and has
+# no goal to follow, so nothing writes one any more. It stays on the list so a
+# record from before then still counts and still draws.
+#
 # A BONUS is keyed by its STATUS, not by the enemy it rode on: Burn paid on two
 # different enemies is one goal, the same rule that makes five Monkeys one.
 #

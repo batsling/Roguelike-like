@@ -441,9 +441,9 @@ func _pretty(stat: String) -> String:
 	return stat.capitalize()
 
 # --- add_curse (Amnesia) ----------------------------------------------------
-# A curse GOAL (§5): a row on the post-game checklist you are trying not to
-# complete. `random` picks from the whole authored set each time rather than once
-# and repeated, so a doubled Amnesia is two DIFFERENT curses where it can be.
+# A CURSE CARD (docs/loot-passives.md §18), placed in the pack on the loot modal.
+# `random` picks from the whole authored set each time rather than once and
+# repeated, so a doubled Amnesia is two DIFFERENT curses where it can be.
 func _add_curses(op: Dictionary, out: Dictionary, rng: RandomNumberGenerator) -> bool:
 	var count: int = maxi(1, _scaled_value(op, "count", 1))
 	var named := StringName(String(op.get("curse", "random")))
@@ -451,21 +451,21 @@ func _add_curses(op: Dictionary, out: Dictionary, rng: RandomNumberGenerator) ->
 	for _i in range(count):
 		var id: StringName = named
 		if named == &"random":
-			var pool: Array = Data.all_curses2().filter(
+			var pool: Array = Data.all_curse_cards().filter(
 				func(c): return c != null and not taken.has(c.id))
 			if pool.is_empty():
-				pool = Data.all_curses2()
+				pool = Data.all_curse_cards()
 			if pool.is_empty():
 				break
 			id = pool[rng.randi_range(0, pool.size() - 1)].id
-		if GameState.add_curse_goal(id):
+		if GameState.add_curse_card(id):
 			taken.append(id)
 	if taken.is_empty():
 		out["logs"].append("Nothing sticks.")
 		return false
 	var names: Array = []
 	for id in taken:
-		var cd = Data.get_curse2(id)
+		var cd: CardData = Data.get_curse_card(id)
 		names.append(cd.display_name if cd != null else String(id))
 	out["logs"].append("You are cursed: %s." % ", ".join(PackedStringArray(names)))
 	return true

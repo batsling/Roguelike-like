@@ -26,7 +26,7 @@ the same folder but are static helpers, not autoloads.)
 | `EffectSystem` | Central dispatch for structured effects (`{type, value, target}`) applied via `EffectSystem.apply()`. |
 | `TriggerBus` | Global signal hub wiring item/event triggers to game moments (`game_beaten`, `chest_granted`, …). |
 | `Stats` | Stat dispatcher; loads `StatDefinition`s and answers stat queries, and rolls every random decision through Luck (below). `docs/archive/stat-dispatcher.md` is the combat-era design it began as. |
-| `EventSystem` | Events (`docs/event-sheet-authoring.md`): dealing an event from the per-rarity shuffle bag when a game is played, the Requirement/`needs` gates, and resolving a choice into effects, an event goal, a curse, or a `chance` roll. Objects go through the same resolution. |
+| `EventSystem` | Events (`docs/event-sheet-authoring.md`): dealing an event from the per-rarity shuffle bag when a game is played, the Requirement/`needs` gates, and resolving a choice into effects, an event goal, a curse card (`docs/loot-passives.md` §18), or a `chance` roll. Objects go through the same resolution. |
 | `ObjectSystem` | Objects (`docs/object-sheet-authoring.md`): the machines standing in front of the player, spawning them by tag, and their state — jams, what has been blown off the run, and the Donation Machine's cross-run bank. |
 | `GameLoop2` | The run loop: the spawn-event clock the difficulty reads (§19.6), the enemy stack, and the grid the followers advance across. Every game stands **two** bodies on the board and the Amulet its boss (§19.10; the node KINDS of §19.1 are retired), and the end of every game stands more up at the back (§19.5). **None of them belongs to the game.** There is no "this game's enemy": what walks on is a follower like every other body from the moment it lands — bombable, pushable, one ordinary row in the report checklist — and `arrivals` is only the record of which bodies came with the game in play, kept so a Scramble can supersede them. `Overworld2` is a view over it. It also owns the OPS every **ability** is built out of (§7.6): the catalogue in `data/abilities2.0` authors `trigger: op args` in its `Effect` column and this file dispatches on that rather than on the ability's id, so an ability composed of ops that already exist is a sheet row and nothing else. `ABILITY_OPS` is the list that exists, and the generator refuses to write a row naming anything outside it. The pure half of that — the queries over a body Dictionary (`entry_goal`, `entry_image`, `entry_phase`, `ability_lines`, `entry_tags`, the `entry_ability_*` family) — is **`BodyFacts.gd`**, a file of `static` functions that touch no run state at all; `GameLoop2` forwards each one, so `GameLoop2.entry_goal(entry)` still reads the same everywhere. See `docs/performance-backlog.md` §1b for why the ability behaviour did not come with it — `BodyFacts` gained the pure half of the op layer (`ops_at`, `has_op`, `op_row`, `resolve_op_args`) for the same reason, while the ops themselves run on the loop. |
 | `ShopSystem` | Shops (`docs/games-first-redesign.md` §14, §19.10): the **shop bar** (`add_kill` on every defeat; full at `bar_target()`, 4 and a kill more per shop opened) and a shop **opened by the player** off it at any game without one (`open_at`; the hub games and the Shop node kind before it are retired). Each shop's three-item shelf, keyed by **node** id so a transmuted node keeps it, its keeper, prices, buying, and the Scramble reroll. State lives on `GameState` (`shops`, `shop_bar`), the same split `EventSystem` uses. |
@@ -618,7 +618,7 @@ it says the rest.
 | `redesign2/CompletedGoalsPanel.gd` | The run's ✓ *N* done record, grouped by game (§2.1) |
 | `redesign2/GraveyardPanel.gd` | Every body the run has put down; its list is the Fallen tab of `RunLogScreen` |
 | `redesign2/RunLogScreen.gd` | The header's 🕮 History: `GameLog` grouped into the run's stops, and a ☠ Fallen tab |
-| `redesign2/FullInventory.gd` | The full inventory over the page: items, the loot pack, stats, resources, statuses and curses (opened from **Full** beside the mini pack) |
+| `redesign2/FullInventory.gd` | The full inventory over the page: items, the loot pack, stats, resources, statuses and the curse cards carried (opened from **Full** beside the mini pack) |
 | `redesign2/MaskChoiceModal.gd` | Mysterious Mask's pick of a second character's level-up (§3.1) |
 | `redesign2/SmeltChoiceModal.gd` | Smelter: take a passive piece out of the pack and keep it working (`docs/loot-passives.md` §16) |
 | `redesign2/CampScreen.gd` | The end-of-session Camp: Rest or the card a game beaten since the last camp dealt (`docs/rest-site-design.md`) |
@@ -705,8 +705,9 @@ with their schemas defined in `scripts/resources/`:
 
 `GameData`, `GoalEnemyData` (enemies and bosses), `CharacterData`, `ItemData`,
 `AbilityData`, `StatusData`, `TileEffectData`, `UnitData`, `EventData2`,
-`ObjectData`, `CurseData2`, `ShopkeeperData`, `SongData`, the loot kinds
-(`ScrollData` + `ScrollNames`, `PillData`, `PotionData`, `CardData`, `WandData`,
+`ObjectData`, `ShopkeeperData`, `SongData`, the loot kinds
+(`ScrollData` + `ScrollNames`, `PillData`, `PotionData`, `CardData` — the curse
+cards of `data/curses2.0/` included, `docs/loot-passives.md` §18 — `WandData`,
 `TrinketData`, `BagData`, `WeaponData`, `EvolutionData`), `StatDefinition`, and
 `AtlasLayout` (the baked star chart). The combat-era `CurseData` and its
 `data/curses/` set were deleted on 25 Oct 2026, with the pre-2.0 items and

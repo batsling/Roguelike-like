@@ -65,8 +65,8 @@ func _dyn_amount(effect: Dictionary, base_key: String, from_key: String, mult_ke
 		return _dynamic_count(String(effect[from_key])) * int(effect.get(mult_key, 1))
 	return int(effect.get(base_key, 0))
 
-# Live count for a dynamic effect source. "curses" = the curse goals the run
-# is carrying right now.
+# Live count for a dynamic effect source. "curses" = the curse cards in the pack
+# right now (docs/loot-passives.md §18).
 func _dynamic_count(source: String) -> int:
 	match source:
 		"curses":
@@ -193,8 +193,8 @@ func _h_gain_stat(effect: Dictionary, ctx: Dictionary) -> void:
 	GameState.grant_run_stat(stat, value)
 
 # --- the cost half of the vocabulary (docs/event-sheet-authoring.md §5) ------
-# Events charge for things and a curse is nothing but a charge, so every grant
-# above has a mirror here rather than a second code path with its own rounding.
+# Events charge for things, so every grant above has a mirror here rather than a
+# second code path with its own rounding.
 
 # Max Health down. Floors at 1 — a Max Health of 0 is a run that ended without
 # anything saying so.
@@ -446,17 +446,20 @@ func _h_gain_item_per_rarity(effect: Dictionary, _ctx: Dictionary) -> void:
 		taken[pick.id] = true
 		GameState.add_item(pick)
 
-# Calling Bell's other half: a curse goal (docs/event-sheet-authoring.md §6) from
-# an ITEM rather than from an event. `games` of 0 means the curse's own Timer,
-# which for Curse of the Bell is "never" — an item that hands out a permanent bill
-# is exactly what a Boss relic with a downside should be.
+# Calling Bell's other half: a CURSE CARD (docs/loot-passives.md §18) from an
+# ITEM rather than from an event — Curse of the Bell, which cannot be destroyed,
+# is exactly what a Boss relic with a downside should cost. `random` draws one the
+# way an event's `add_curse random` does. A curse card is placed on the loot modal
+# the page opens for it (GameState.add_curse_card).
 func _h_add_curse(effect: Dictionary, _ctx: Dictionary) -> void:
-	GameState.add_curse_goal(StringName(String(effect.get("curse", ""))), &"",
-		int(effect.get("games", 0)))
+	var cid := StringName(String(effect.get("curse", "")))
+	if cid == &"random":
+		cid = EventSystem.roll_random_curse()
+	if cid != &"":
+		GameState.add_curse_card(cid)
 
-# What every CURSE now costs: a fresh enemy at the run's current difficulty, put
-# straight onto the following stack. Same conjuring the Scroll of Create Monster
-# does (§4.1) — a curse's bill is a body on the board, not a number off a bar.
+# A fresh enemy at the run's current difficulty, put straight onto the following
+# stack. Same conjuring the Scroll of Create Monster does (§4.1).
 #
 # roll_conjured_enemy and not roll_enemy: the difficulty is the whole of what a
 # conjured body is priced on, so it is not allowed to widen into the rest of the

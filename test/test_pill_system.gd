@@ -301,10 +301,10 @@ func test_the_horse_telepills_lands_by_distance_from_the_amulet() -> void:
 	assert_eq(int(req["min"]), 1)
 	assert_eq(int(req["max"]), 3)
 
-func test_amnesia_hands_out_a_curse_goal() -> void:
-	var before: int = GameState.curse_goals.size()
+func test_amnesia_hands_out_a_curse_card() -> void:
+	var before: int = GameState.curse_count()
 	_take(&"amnesia")
-	assert_eq(GameState.curse_goals.size(), before + 1)
+	assert_eq(GameState.curse_count(), before + 1)
 
 func test_the_horse_amnesia_forgets_every_identified_piece_of_loot() -> void:
 	ScrollSystem.identify(&"scroll_of_identify")

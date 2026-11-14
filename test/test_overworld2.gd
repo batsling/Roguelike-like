@@ -381,8 +381,7 @@ func test_report_goal_met_defeats_and_drops() -> void:
 	# and the random offering sometimes stands one: read which it is up front.
 	# THE BAND RESTARTS, so the end-of-game spawn cannot be the every-third
 	# CAPSTONE (§19.6): that boss lands on top of the road's bodies and is not
-	# counted in `end_spawns`, so it read as one body too many (as in
-	# _arrange_a_plain_curse_game, below).
+	# counted in `end_spawns`, so it read as one body too many.
 	GameState.spawn_events = 0
 	var landed: Dictionary = GameLoop2.arrival()
 	var boss: bool = not landed.is_empty() and (landed["enemy"] as GoalEnemyData).is_boss()
@@ -1922,8 +1921,7 @@ func test_beating_the_game_clears_nothing_by_itself() -> void:
 	_disarm_board()
 	# THE BAND RESTARTS, so the end-of-game spawn cannot be the every-third
 	# CAPSTONE (§19.6): that boss lands on top of the road's bodies and is not
-	# counted in `end_spawns`, so it read as one body too many (as in
-	# _arrange_a_plain_curse_game, below).
+	# counted in `end_spawns`, so it read as one body too many.
 	GameState.spawn_events = 0
 	var before: int = GameLoop2.stack.size()
 	assert_gt(before, 0, "something walked on")
@@ -4195,95 +4193,98 @@ func test_walking_back_to_a_game_you_played_still_pays_exactly_one_dash() -> voi
 	assert_eq(GameState.dash_charges, before + OVERWORLD.REPEAT_BEAT_DASH,
 		"so the clear is the only thing that moved the counter")
 
-# --- curses on the report checklist ----------------------------------------
+# --- curse cards (docs/loot-passives.md §18) --------------------------------
 #
-# A curse is a row like any other on this list: an INSTRUCTION, ticked if you
-# followed it, with what it costs written after it. It used to be phrased as the
-# rule instead — "If you use a rest site to replenish health, spawn a random
-# enemy when you report the game" — with a box that fired the penalty when you
-# CHECKED it, which made it the one row on the checklist whose tick meant the
-# opposite of every other row's.
+# A curse is a CARD in the pack since 14 Nov 2026, not a checklist row. Dealt on
+# the page, it opens a loot modal of its own: no Skip, no bin for it, and it does
+# not close until the curse is in a slot.
 
-func _curse_checks() -> Array:
-	var out: Array = []
-	for entry in _ui._curse_goal_checks:
-		out.append(entry["check"])
-	return out
+# Deal a curse on the page and stand its modal up now rather than on the deferred
+# pump, so the test reads it in the same frame.
+func _deal_curse(id: StringName) -> LootDropModal:
+	GameState.pending_curses.clear()
+	GameState.add_curse_card(id)
+	_ui._drops.open_next()
+	return _ui._drop_modal as LootDropModal
 
-func test_a_curse_row_reads_as_the_thing_to_do_with_its_price_after_it() -> void:
-	GameState.add_curse_goal(&"poor_sleep")
+func _close_curse_modal() -> void:
+	var m = _ui._drop_modal
+	if m != null and is_instance_valid(m):
+		m._close()
+	_ui._drop_modal = null
+	GameState.pending_curses.clear()
+
+func test_a_curse_dealt_on_the_page_waits_to_be_placed() -> void:
+	GameState.loot_items.clear()
+	var modal := _deal_curse(&"injury")
+	assert_not_null(modal, "the curse opened its own modal")
+	if modal == null:
+		return
+	assert_true(modal.is_curse(), "a curse modal")
+	assert_eq(GameState.curse_count(), 0, "it is not in the pack until it is placed")
+	assert_eq(GameState.pending_curses.size(), 1, "it waits on the run, where a save keeps it")
+	assert_false(Page.text_of(modal).contains("Skip"), "there is no Skip")
+	modal.leave()
+	assert_true(is_instance_valid(modal) and not modal._answered, "and leave() is refused")
+	modal.take()
+	assert_true(GameState.has_curse_card(&"injury"), "taking it puts it in the pack")
+	assert_true(GameState.pending_curses.is_empty(), "and off the waiting list")
+	assert_null(_ui._drop_modal, "and the modal is gone")
+	_close_curse_modal()
+
+func test_a_curse_on_the_table_cannot_be_binned() -> void:
+	GameState.loot_items.clear()
+	var modal := _deal_curse(&"poor_sleep")
+	await wait_frames(2)
+	var grid: LootGrid = _find_grid(modal) as LootGrid
+	if grid == null:
+		pending("the curse modal has no grid up")
+		_close_curse_modal()
+		return
+	var offer: Dictionary = GameState.curse_entry(&"poor_sleep")
+	assert_false(grid.can_trash({"kind": "loot_take", "entry": offer, "offer": 0}),
+		"the bin refuses the curse on the table")
+	modal._leave_offer(0)
+	assert_eq(modal.remaining(), 1, "and it is still on the table")
+	_close_curse_modal()
+
+func test_a_full_pack_has_to_make_room_for_a_curse() -> void:
+	GameState.loot_items.clear()
+	for i in range(GameState.loot_capacity()):
+		GameState.add_pill_loot(&"luck_up")
+	var modal := _deal_curse(&"injury")
+	assert_not_null(modal)
+	if modal == null:
+		return
+	assert_false(modal.no_way_in(), "a pill can be binned to make room")
+	assert_false(Page.text_of(modal).contains("Skip"), "so there is still no Skip")
+	GameState.discard_loot_at(0)                     # "drop something to fit it"
+	modal.take()
+	assert_true(GameState.has_curse_card(&"injury"), "the curse took the freed slot")
+	_close_curse_modal()
+
+func test_a_pack_that_cannot_make_room_lets_the_curse_go() -> void:
+	# Every cell holds a curse already: nothing can leave to make room, so the modal
+	# must not hold the run hostage.
+	GameState.loot_items.clear()
+	for i in range(GameState.loot_capacity()):
+		GameState.place_curse_headless(GameState.curse_entry(&"curse_of_the_bell"))
+	var modal := _deal_curse(&"injury")
+	assert_not_null(modal)
+	if modal == null:
+		return
+	assert_true(modal.no_way_in(), "there is no way in")
+	assert_true(Page.text_of(modal).contains("No room for it"), "and it says so")
+	modal.leave()
+	assert_true(GameState.pending_curses.is_empty(), "the curse is lost rather than stuck")
+	_close_curse_modal()
+
+func test_a_curse_is_not_a_checklist_row() -> void:
+	GameState.loot_items.clear()
+	GameState.place_curse_headless(GameState.curse_entry(&"poor_sleep"))
 	_pick_enemies(0)
-	var checks: Array = _curse_checks()
-	assert_eq(checks.size(), 1, "the curse is on the checklist")
-	if checks.is_empty():
-		return
-	var text: String = (checks[0] as CheckBox).text
-	assert_string_contains(text, "don't use a rest site to replenish health")
-	assert_string_contains(text, "if failed, Spawn a random enemy")
-	assert_false(text.contains("If you"), "not the rule it was derived from: %s" % text)
-
-# …and a curse authored as the ABSENCE of something is not doubled up. Curse of
-# the Bell's condition is "you don't ring a bell", and the instruction that comes
-# out of it is "ring a bell" rather than "don't don't ring a bell".
-func test_a_negatively_authored_curse_is_not_negated_twice() -> void:
-	var bell: CurseData2 = Data.get_curse2(&"curse_of_the_bell")
-	assert_not_null(bell)
-	if bell == null:
-		return
-	assert_eq(bell.goal_text(), "ring a bell")
-
-func test_every_checklist_row_opens_unanswered_including_the_curses() -> void:
-	GameState.add_curse_goal(&"poor_sleep")
-	_pick_enemies(0)
-	for check in _curse_checks():
-		assert_false((check as CheckBox).button_pressed,
-			"an empty box means 'I did not do this' on every row of the list")
-	for f in _ui._fulfil_checks:
-		assert_false((f["check"] as CheckBox).button_pressed,
-			"every enemy row too — the ones that walked on with this game included")
-
-# The two curse tests below count bodies, and two things the RUN rolls could stand
-# an extra one up that is neither the curse's nor the road's `end_spawns`: a
-# CAPSTONE boss (§19.6), which lands on top of an end-of-game spawn when that spawn
-# is the band's fourth but is not counted in `end_spawns`, and a solo body authored
-# with more Health than one goal hit takes, which survives the report stunned. Both
-# failed `test_a_curse_left_unticked_is_what_bites` as "2 expected to equal 1" in a
-# full run. Arranged away rather than hoped away: the band restarts, so no spawn
-# these tests make can close it, and the solo body falls to its one hit.
-func _arrange_a_plain_curse_game() -> void:
-	GameState.spawn_events = 0
-	_pick_solo(0)
-	for inst in GameLoop2.arrivals:
-		_one_hit(int(inst))
-
-# Poor Sleep's bill is a BODY (every curse's is), so both halves of this are
-# read off the board: a met goal leaves nothing following, so anything standing
-# there afterwards is the curse and only the curse.
-func test_a_curse_you_ticked_costs_nothing() -> void:
-	GameState.add_curse_goal(&"poor_sleep")
-	_arrange_a_plain_curse_game()
-	var checks: Array = _curse_checks()
-	if checks.is_empty():
-		pending("the run did not reach this case (checks.is_empty())")
-		return
-	_tick(checks[0])                                 # "I didn't use a rest site"
-	Page.report_beat(_ui)
-	# Less what the ROAD stood up as the game ended (§19.5, `end_spawns`): Amulet
-	# pressure stands bodies up near the goal whatever was ticked, and this is a
-	# claim about the curse's bill, not about the road.
-	var walked: int = int(GameLoop2.last_result.get("end_spawns", 0))
-	assert_eq(GameLoop2.stack_size() - walked, 0,
-		"the goal was met and the curse was followed, so nothing is following")
-
-func test_a_curse_left_unticked_is_what_bites() -> void:
-	GameState.add_curse_goal(&"poor_sleep")
-	_arrange_a_plain_curse_game()
-	Page.report_beat(_ui)                       # the row left exactly as it opened
-	# Less the road's own spawns as the game ended (§19.5), as above.
-	var walked: int = int(GameLoop2.last_result.get("end_spawns", 0))
-	assert_eq(GameLoop2.stack_size() - walked, 1,
-		"the goal was met, so the body on the board is Poor Sleep's")
-	assert_eq(GameState.curse_goals.size(), 1, "and a curse that bites STAYS")
+	assert_false(Page.text_of(_ui._play_panel).contains("Poor Sleep"),
+		"the checklist has no curse on it")
 
 # --- the board / checklist stage -------------------------------------------
 
@@ -9432,8 +9433,8 @@ func test_only_a_teleport_among_the_scroll_ops_needs_the_map() -> void:
 	for op in seen:
 		if map_only.has(op):
 			continue
-		# identify_loot and remove_curse both land mid-game: one reads the pack and
-		# one the run's curse list, and neither needs the map the way a teleport does.
+		# identify_loot and remove_curse both land mid-game: both read the pack (a
+		# curse is a card in it), and neither needs the map the way a teleport does.
 		# enchant_weapon only reads the pack too.
 		assert_true(op in ["apply_status", "apply_tile", "forget", "spawn_enemy",
 			"identify_loot", "remove_curse", "stun_enemies", "enchant_weapon"],
@@ -9986,45 +9987,11 @@ func test_confirming_a_goal_kills_the_enemy_there_and_then() -> void:
 	assert_false(GameLoop2.drop_cells().is_empty(),
 		"its loot is on the floor to go and pick up (§8.2)")
 
-func test_a_curse_row_arms_rather_than_confirming() -> void:
-	# A CURSE ROW IS SETTLED BY THE REPORT, NOT BY ITS TICK. It used to raise the
-	# "this cannot be taken back" confirm and lock, which was the wrong shape for it
-	# twice over: nothing happens when the box goes on (what a tick buys is the
-	# penalty NOT firing at the report — resolve_event_goals), and the promise was
-	# taken halfway through a game the player had not finished. It behaves like the
-	# winning-run rows now — on and off freely, and the tick survives a repaint
-	# because the LOOP holds it.
-	GameState.add_curse_goal(&"poor_sleep")
-	_pick_enemies(0)
-	var checks: Array = _curse_checks()
-	if checks.is_empty():
-		pending("the run did not reach this case (checks.is_empty())")
-		return
-	var check: CheckBox = checks[0]
-	var key: String = "curse:0:poor_sleep"
-	_tick(check)
-	assert_null(_ui.get_node_or_null("Confirm"), "no confirm is raised")
-	assert_false(check.disabled, "and the row can still be taken back")
-	assert_true(check.button_pressed, "it is ticked")
-	assert_true(GameLoop2.row_armed(key), "and armed on the loop, not answered")
-	assert_false(GameLoop2.row_answered(key), "nothing has resolved")
-
-	_ui._populate_play_panel()
-	var again: Array = _curse_checks()
-	assert_false(again.is_empty(), "the curse is still on the list")
-	if again.is_empty():
-		return
-	assert_true((again[0] as CheckBox).button_pressed,
-		"and the rebuilt row is still ticked")
-	(again[0] as CheckBox).button_pressed = false
-	assert_false(GameLoop2.row_armed(key), "unticking disarms it")
-
 func test_the_report_does_not_hit_a_body_twice_for_one_goal() -> void:
 	_pick_solo(0)
 	# THE BAND RESTARTS, so the end-of-game spawn cannot be the every-third
 	# CAPSTONE (§19.6): that boss lands on top of the road's bodies and is not
-	# counted in `end_spawns`, so it read as one body too many (as in
-	# _arrange_a_plain_curse_game, below).
+	# counted in `end_spawns`, so it read as one body too many.
 	GameState.spawn_events = 0
 	if _ui._fulfil_checks.is_empty():
 		pending("the offering rolled a game with no goal rows on it")
@@ -10382,17 +10349,17 @@ func test_an_armed_winning_run_row_survives_the_checklist_being_rebuilt() -> voi
 	assert_false(GameLoop2.row_armed("levelup"), "unticking it disarms it")
 
 func test_the_answered_rows_go_with_the_game() -> void:
-	GameState.add_curse_goal(&"poor_sleep")
+	GameState.add_event_goal(&"", "you test the rows", 3, [], "")
 	_pick_solo(0)
-	var checks: Array = _curse_checks()
+	var checks: Array = _ui._event_goal_checks
 	if checks.is_empty():
 		pending("the run did not reach this case (checks.is_empty())")
 		return
-	var key: String = "curse:0:poor_sleep"
-	# A CURSE ROW ARMS NOW rather than resolving on its tick, so what this asks about
-	# is `armed_rows` — the same rule either way: a tick is a claim about the game
-	# being handed in, and the next game asks again.
-	_tick(checks[0])
+	var key: String = "event:0:you test the rows"
+	# An EVENT ROW ARMS rather than resolving on its tick, so what this asks about
+	# is `armed_rows` — a tick is a claim about the game being handed in, and the
+	# next game asks again.
+	_tick(checks[0]["check"])
 	assert_true(GameLoop2.row_armed(key))
 	Page.report_beat(_ui)
 	assert_false(GameLoop2.row_armed(key),

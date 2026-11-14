@@ -828,7 +828,8 @@ func kind_name(entry: Dictionary) -> String:
 		"potion":
 			return "Potion"
 		"card":
-			return "Card"
+			# A CURSE CARD says so wherever its kind is named (docs/loot-passives.md §18).
+			return "Curse Card" if GameState.is_curse_entry(entry) else "Card"
 		"wand":
 			return "Wand"
 		"trinket":

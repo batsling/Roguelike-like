@@ -7,7 +7,6 @@ that's left. Companion to `games-first-redesign.md` and
 somewhere to live — §1 is that somewhere.
 
 ```bash
-python3 tools/oneshots/_curses2_sheet_setup.py    # (re)lay the curses2.0 sheet
 python3 tools/oneshots/_events2_sheet_setup.py    # (re)lay the events2.0 sheet
 python3 tools/generate_curse2_tres.py    # sheet -> data/curses2.0/
 python3 tools/generate_event2_tres.py    # sheet -> data/events2.0/
@@ -408,7 +407,7 @@ needs <token>                  a gate — offered only if the player can pay
 needs <Choice> <op> <n>        a gate — offered only at this point in the event
 needs not_jammed | bank_space  a gate on the MACHINE (objects2.0 only)
 add_goal  "<condition>" [for <n> games] -> <reward>; <reward>
-add_curse <curse> [for <n> games]
+add_curse <curse> | random                 a CURSE CARD into the pack
 play_game tag=<tag> -> <reward>; <reward>
 chance <p>% -> <reward>; <reward>
 chance <p>% -> <reward> else <reward>      a two-sided roll
@@ -469,19 +468,17 @@ translate a **turn limit** — the Battleworn Dummy's three turns become three
 games (§7) — and it is the difference between a goal you must hit immediately and
 one you have room to line up.
 
-`add_curse` is the same token **inverted**: a standing objective you want to
-*not* meet, which costs you every time you do. It takes a **curse id from the
-`curses2.0` sheet** (§6) rather than an inline condition, exactly as an item
-takes a status id — the curse's condition, penalty and lifetime are authored
-once and any number of events can hand out the same one. It carries a window
-like `add_goal` does, defaulting to the curse's own `Timer`; `for <n> games`
-overrides it. Unrest Site (§9) is where it comes from.
+`add_curse` hands over a **CURSE CARD** (§6, `docs/loot-passives.md` §18): it
+takes a **curse id from the `curses` sheet**, exactly as an item takes a status
+id, and the card goes into the pack through the loot modal, which cannot be
+skipped. Until 14 Nov 2026 it left a curse GOAL on the checklist instead, with a
+window (`for <n> games`); a `for` clause is still parsed and now means nothing.
 
 `add_curse random` is the one id that names no row (§15): the curse is drawn when
-the choice is taken, and **never a permanent one** — a random draw that could hand
-out Curse of the Bell would make an idle button a coin flip on the rest of the
-run, so only a curse the `curses` sheet tags `random` (its `Tag` column) is in
-any random draw — an event's or the Hexer's.
+the choice is taken, and only from curses the `curses` sheet tags `random` (its
+`Tag` column) — a random draw that could hand out Curse of the Bell would make an
+idle button a coin flip on the rest of the run. An event's random draw and the
+Hexer's read the same tag.
 
 `play_game` is the odd one out: it hands over neither a reward nor a goal but
 **sends the player somewhere**. `play_game tag=mecha` drops them into a random
@@ -513,33 +510,18 @@ prose comes from `Chance Won` / `Chance Lost` (§3) rather than from the choice'
 `Result`, because the outcome is the roll's and not the button's. Scrap Ooze
 (§11) is where it comes from.
 
-That gives the checklist **three kinds of objective**, and they are genuinely
-different animals:
+That gives the checklist **two kinds of objective** an event or a card can
+leave, and they are genuinely different animals:
 
 | | Issued by | Condition met | Condition not met | Lifetime |
 |---|---|---|---|---|
 | **Enemy goal** | the card you took | the enemy dies, its item drops | it follows you and hits every game | until met |
 | **Event goal** | `add_goal` | pays its reward | **nothing** — it expires | `for <n> games` |
-| **Curse goal** | `add_curse` | **you take the penalty**, every time | nothing | its `Timer` — 3 games by default, or permanent |
 
-Each gets **its own section of the post-game checklist**, and that separation is
-the point rather than decoration: an enemy goal is a debt that bites when missed,
-an event goal is a bonus that merely lapses, and a curse is a bill that arrives
-when you *succeed* at the wrong thing. A checklist that renders all three alike
-is lying about which one hurts (`archive/locations-and-events-design.md` §1 draws the
-same line for locations). **Curse rows read purple**, so the one objective on the
-list you are trying to avoid never looks like the ones you are chasing.
-
-Event goals and curse goals tick to the **same three-game clock** by default,
-which is deliberate: whatever the checklist is carrying, it clears at about the
-same rate, and the player is never tracking two different countdowns.
-
-Two things this is *not*. It is not the combat-era `CurseData` / `data/curses`
-system (deleted) (`games-first-redesign.md` §5) — same word, different thing: a curse goal
-is a row on the checklist, not a card, and nothing should wire the two together.
-And `Goal Met` never means "it went well" — it means the condition happened. On a
-curse that is the bad outcome. The sign lives in the token, not in the column
-name.
+Each gets **its own section of the post-game checklist**: an enemy goal is a debt
+that bites when missed, and an event goal is a bonus that merely lapses. There
+was a third, the **curse goal**, until 14 Nov 2026; a curse is a card in the pack
+now (§6) and is not on the checklist at all.
 
 Abyssal Baths (§6) is deliberately authored out of tiers A and B only, so the
 first event needs no new effect handler to run.
@@ -598,66 +580,38 @@ the trader, GDScript knows the two hole names and nothing else about him.
 
 ---
 
-## 6. The `curses2.0` sheet
+## 6. The `curses` sheet — curse CARDS
 
-A curse is authored **once**, in its own sheet, and referenced by id from any
-event that hands it out — the same relationship an item has with `statuses2.0`.
-Six columns:
+**A curse is a card in the pack** since 14 Nov 2026 (the owner: "get rid of curse
+goals. These curses will now count as cards"). Everything below this line that
+talks about a curse *goal* — a checklist row with a `Condition`, a `Penalty` that
+spawned an enemy and a `Timer` — describes the system that was retired. The full
+rules are in `docs/loot-passives.md` §18. In short: an event's `add_curse` hands
+over a curse card, the loot modal opens to place it (with no Skip), the player
+can never bin it or take it out of the pack, and the sheet says per curse whether
+it can be moved and whether anything can destroy it.
+
+A curse is still authored **once**, in its own sheet, and referenced by id from
+any event that hands it out:
 
 | Column | Meaning |
 |---|---|
 | `Curse` | Display name, and the id events reference (slugified: `Poor Sleep` → `poor_sleep`). |
 | `Game` | The real game it is lifted from. |
-| `Condition` | What meeting it looks like, in the honour-system voice the goals use. Usually a thing to **avoid** ("you use a rest site to replenish health"); it may equally be a thing you must **remember** ("you don't ring a bell"), which reads as the same row and costs the same bill. |
-| `Penalty` | What it costs when you do it — the same reward-token DSL, pointed the other way. |
-| `Timer` | Games it lasts before expiring. **3** unless a curse says otherwise. `N/A` (or `None` / `Permanent`) means it **never** expires — Curse of the Bell, which arrives with the Calling Bell relic and stays for the run. A **blank** cell is still the three-game default: "nobody filled this in" and "this is forever" must not be the same value. |
+| `Description` | What it does while carried, in words. Blank is fine: the card's line is composed from the two rule columns. |
+| `Effect` | What it does while carried, in the passive card grammar (`docs/loot-passives.md`). Blank: it only takes up space. |
+| `Movable` | `yes` / `no`. `no` locks it in the cell it was placed in. |
+| `Destroyable` | `yes` / `no`. Whether an effect (Remove Curse, a destroying card) can get rid of it. |
+| `Tag` | `random` puts it in `add_curse random`'s draw. |
 | `Image` | Art base name under `images2.0/curses/`. |
 
 The roster:
 
-| Curse | From | Condition | Penalty | Timer |
-|---|---|---|---|--:|
-| **Poor Sleep** | Unrest Site | you use a rest site to replenish health | `spawn_enemy` | 3 |
-| **Injury** | Punch Off, Golden Idol | you go below half health | `spawn_enemy` | 3 |
-| **Curse of the Bell** | the Calling Bell relic | you don't ring a bell | `spawn_enemy` | permanent |
-
-**The Bell runs the other way round, and that is a Condition, not a feature.**
-Poor Sleep and Injury are things you must not do; the Bell is a thing you must
-do — every game, forever, since its Timer is `N/A`. Nothing in the code knows
-which way a curse points: the row is composed from `Condition` either way, the
-tick-box means the same thing (you are admitting the condition was met), and the
-bill is paid the same. A curse that inverts is a sentence, not a column.
-
-**Every curse pays in enemies.** The penalty column used to charge Health, which
-put a curse in competition with the enemy stack for the same resource and made
-"take the curse" a piece of arithmetic: two damage against whatever the reward
-was worth. `spawn_enemy` bills in the run's own currency instead — a body that
-has to be *beaten*, that follows you until it is, and whose cost depends on where
-the board already is rather than on a number. It is also the only penalty that
-gets worse the deeper the run goes, since the conjured enemy rolls at the current
-difficulty. A test asserts this holds for the whole roster rather than for the
-rows a test happens to name, so a curse authored later has to say why if it wants
-to be the exception.
-
-**The checklist row is generated, not authored.** `Condition` + `Penalty` compose
-into *"If you use a rest site to replenish health, spawn a random enemy when you
-report the game"*, so a curse's text cannot drift from what it actually does.
-There is no prose column to keep in sync, which is the mistake the legacy `curses`
-sheet made.
-
-The flavours are deliberately different, and it's worth keeping that spread as
-more are authored:
-
-- **Poor Sleep points at the real game.** A rest site is a thing in whatever
-  roguelike you go off and play, checked on the honour system. That is the flavour
-  only this app can produce — the curse follows you out of the modal and into
-  Hades, and the app never has to know what a rest site looks like there.
-- **Injury points at the run.** Half health is this app's own number, so it fires
-  off state the app can see.
-
-Three games is the default because it matches `add_goal`'s window: whatever the
-checklist is carrying, it clears at about the same rate, and the player is never
-tracking two countdowns at different speeds.
+| Curse | From | Movable | Destroyable | Random |
+|---|---|---|---|---|
+| **Curse of the Bell** | the Calling Bell relic | yes | no | no |
+| **Injury** | Punch Off, Golden Idol, the Lacerator | yes | yes | yes |
+| **Poor Sleep** | Unrest Site | no | yes | yes |
 
 ---
 
@@ -844,15 +798,13 @@ kind would carry a blank.
 > *If you use a rest site to replenish health, take 2 damage at the end of
 > combat.*
 
-Slay the Spire 2 hands you a card called Poor Sleep; here it is a row on the
-checklist, authored in `curses2.0` (§6) and referenced from the event as
-`add_curse poor_sleep`. It lasts **3 games** — its `Timer` — so it is a weight on
-the next stretch of run rather than a permanent tax. And note what the condition
-points at:
-a rest site **in the real game you are playing**, checked on the honour system
-like every other goal in this app. That is the shape events should reach for —
-the curse follows you out of the modal and into Hades, and the app never has to
-know what a rest site looks like there.
+Slay the Spire 2 hands you a card called Poor Sleep, and since 14 Nov 2026 so
+does this game: a **curse card**, authored in `curses` (§6) and referenced from
+the event as `add_curse poor_sleep`. It goes into the pack on the loot modal and
+locks in the cell you put it in (its `Movable` is `no`), costing you that cell
+until a Scroll of Remove Curse lifts it. Until that date it was a three-game row
+on the checklist instead ("don't use a rest site to replenish health"), which is
+what the rest of this section's history describes.
 
 ### Changes from the original
 
@@ -1296,20 +1248,20 @@ deal a different three each time the player looked away.
 
 A point of Luck against a curse, and *which* curse is not yours to know: the roll
 happens when the button is pressed, so the line under it can only say **"+1
-random Curse"**. Naming one there would be the button lying about which.
+random Curse card"**. Naming one there would be the button lying about which.
 
-**`add_curse random` never rolls a permanent curse**, and that is the rule rather
-than the monkey's exception. A permanent curse is a price something *specific*
-charges for something specific — Curse of the Bell is what the Calling Bell hangs
-on you — and a random draw that could land one turns an idle button into a coin
-flip on the rest of the run. So "a random curse" means a curse the `curses`
-sheet's `Tag` column marks `random` — the owner's call per curse, as of 5 Nov
-2026, rather than inferred from its timer. `CurseData2.is_random` is the test, and
-`EventSystem.roll_random_curse` and the Hexer's `GameLoop2._deal_curses` both ask it.
+**`add_curse random` never rolls Curse of the Bell**, and that is the rule rather
+than the monkey's exception. The Bell is a price something *specific* charges
+for something specific — the Calling Bell hangs it on you — and a random draw
+that could land one turns an idle button into a coin flip on the rest of the run.
+So "a random curse" means a curse the `curses` sheet's `Tag` column marks
+`random` — the owner's call per curse, as of 5 Nov 2026.
+`CardData.is_random_curse` is the test, and `EventSystem.roll_random_curse` and the
+Hexer's `GameLoop2._deal_curses` both ask it.
 
 The result prose is blank on both choices, on purpose: what the player needs to
-read is what they caught, and that line is composed from the curse itself
-(`CurseData2.describe()`) rather than authored, so it names whichever one landed.
+read is what they caught, and that line ("Cursed: Injury") is composed from the
+curse card that landed rather than authored.
 
 ---
 
@@ -1456,10 +1408,10 @@ of them is really solving:
 
 | Piece | Where | The problem it solves |
 |---|---|---|
-| `CurseData2`, `EventData2` | `scripts/resources/` | the schemas the sheet generates into |
+| `CardData` (a curse is one), `EventData2` | `scripts/resources/` | the schemas the sheet generates into |
 | `generate_curse2_tres.py`, `generate_event2_tres.py` | `tools/` | sheet → `data/curses2.0/`, `data/events2.0/` |
 | `EventSystem` | `scripts/autoload/` | placement, gates, resolving a choice |
-| `event_goals` / `curse_goals` | `GameState` | run state, saved and reset with the run |
+| `event_goals`, `pending_curses` | `GameState` | run state, saved and reset with the run |
 | `EventModal2` | `scripts/redesign2/` | the screen an event happens on |
 | the badge, the checklist rows | `Overworld2` | telling the player before and after |
 | the **Events** tab | `DevTools` | authoring: start one anywhere, and see which gate is hiding it |
@@ -1505,12 +1457,11 @@ standing for a later visit, which is what keeps it a reward rather than a toll
 for arriving. The modal is queued and opened from `_end_resolve`, after the board
 has finished playing the resolve back, so it never lands on a moving battlefield.
 
-**Three kinds of checklist row, three colours.** Enemy goals green, event goals
-accent, curses `UITheme.CURSE` purple. Event goals and curses both show their
-countdown, because an objective with a clock on it is a different decision on its
-last game than on its first and the player can see that clock nowhere else. A
-claimed event goal retires; a triggered curse does *not* — only its timer clears
-it, which is the whole difference between a bonus and a bill.
+**Two kinds of checklist row, two colours.** Enemy goals green, event goals
+accent. Event goals show their countdown, because an objective with a clock on it
+is a different decision on its last game than on its first and the player can see
+that clock nowhere else. (Curse rows were the third, in purple, until a curse
+became a card in the pack — §6.)
 
 **`play_game` is the only token that moves you.** It picks a tagged game, runs it
 as an ordinary game (enemy and all) without counting as a route step, pays the

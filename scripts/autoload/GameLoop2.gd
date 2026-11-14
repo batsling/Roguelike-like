@@ -8356,17 +8356,19 @@ func _attack_riders(entry: Dictionary, hit: Dictionary, res: Dictionary) -> void
 						GameState.apply_status(status, stacks)
 						fired.append(aid)
 			&"add_curse":
-				# Hexer deals X RANDOM ones, preferring curses the run has not got;
-				# Lacerator names one and STACKS it, because it is one named curse
-				# and cutting you twice is cutting you twice. `random` is the
-				# spelling that means the spread, and anything else is an id.
+				# CURSE CARDS (docs/loot-passives.md §18), each placed in the pack on
+				# the loot modal. Hexer deals X RANDOM ones, preferring curses the
+				# pack has not got; Lacerator names one and STACKS it, because it is
+				# one named curse and cutting you twice is cutting you twice.
+				# `random` is the spelling that means the spread, and anything else
+				# is an id.
 				if args.size() >= 2:
 					var which: StringName = StringName(args[0])
 					var count: int = maxi(1, int(args[1]))
 					if which == &"random":
 						if _deal_curses(count) > 0:
 							fired.append(aid)
-					elif GameState.add_curse_goal(which):
+					elif GameState.add_curse_card(which):
 						fired.append(aid)
 			&"destroy_loot":
 				var burned: int = _destroy_loot(maxi(1, int(args[0]) if not args.is_empty() else 1))
@@ -8391,23 +8393,23 @@ func _attack_riders(entry: Dictionary, hit: Dictionary, res: Dictionary) -> void
 	if not fired.is_empty():
 		_note(res, "riders", {"instance": inst, "fired": fired})
 
-# X random curses, preferring ones the run is not already carrying. Returns how
-# many landed.
+# X random curse cards, preferring ones the pack is not already carrying. Returns
+# how many landed.
 #
-# FRESH FIRST, then anything. A doubled row on the checklist is noise, so a Hexer
-# reaches for a curse you have not got — but the catalogue is three rows deep, and
-# a rule that ONLY dealt fresh ones would make the ability fizzle to nothing three
-# curses into a run, which is exactly when a Corrupt Heart is swinging at you.
+# FRESH FIRST, then anything. A Hexer reaches for a curse you have not got — but
+# the catalogue is three rows deep, and a rule that ONLY dealt fresh ones would
+# make the ability fizzle to nothing a few curses into a run, which is exactly
+# when a Corrupt Heart is swinging at you.
 func _deal_curses(count: int) -> int:
 	var fresh: Array = []
 	var all: Array = []
-	for c in Data.all_curses2():
-		var cd: CurseData2 = c
+	for c in Data.all_curse_cards():
+		var cd: CardData = c
 		# Only the curses the sheet tags `random` are in a random deal (Tag column).
-		if cd == null or not cd.is_random():
+		if cd == null or not cd.is_random_curse():
 			continue
 		all.append(cd.id)
-		if not GameState.has_curse_goal(cd.id):
+		if not GameState.has_curse_card(cd.id):
 			fresh.append(cd.id)
 	var dealt: int = 0
 	while dealt < count:
@@ -8415,7 +8417,7 @@ func _deal_curses(count: int) -> int:
 		if pool.is_empty():
 			break
 		var pick: int = randi() % pool.size()
-		if GameState.add_curse_goal(pool[pick]):
+		if GameState.add_curse_card(pool[pick]):
 			dealt += 1
 		pool.remove_at(pick)
 	return dealt
@@ -8426,11 +8428,17 @@ func _deal_curses(count: int) -> int:
 func _destroy_loot(count: int) -> int:
 	var gone: int = 0
 	for _i in range(count):
-		if GameState.loot_items.is_empty():
+		# Only what CAN be destroyed: a curse that cannot be (Curse of the Bell) is
+		# not on the menu (docs/loot-passives.md §18).
+		var can: Array = []
+		for i in range(GameState.loot_items.size()):
+			if GameState.can_destroy(GameState.loot_items[i]):
+				can.append(i)
+		if can.is_empty():
 			break
 		# Destroyed, which is binned (GameState.destroy_loot_at): Exhume can bring it
 		# back, and a card burned this way pays Trading Card.
-		GameState.destroy_loot_at(randi() % GameState.loot_items.size())
+		GameState.destroy_loot_at(int(can[randi() % can.size()]))
 		gone += 1
 	return gone
 
@@ -8510,9 +8518,14 @@ func _steal(entry: Dictionary, res: Dictionary) -> bool:
 					took.append({"kind": "item", "id": String(relic.id)})
 		_:
 			for _i in range(count):
-				if GameState.loot_items.is_empty():
+				# A curse card is never carried off (docs/loot-passives.md §18).
+				var can: Array = []
+				for i in range(GameState.loot_items.size()):
+					if GameState.can_leave_pack(GameState.loot_items[i]):
+						can.append(i)
+				if can.is_empty():
 					break
-				var at: int = randi() % GameState.loot_items.size()
+				var at: int = int(can[randi() % can.size()])
 				var piece: Dictionary = GameState.loot_items[at]
 				GameState.loot_items.remove_at(at)
 				took.append({"kind": "loot", "loot": piece.duplicate(true)})

@@ -52,9 +52,7 @@ extends Resource
 var _art: Texture2D = null
 var _art_loaded: bool = false            # so a missing/broken name is tried once
 
-# LAZY, AND A PATH RATHER THAN AN `@export var image: Texture2D` — CurseData2's
-# `image` for the same reason, quoted rather than reinvented so the two read
-# alike: an ExtResource resolves EAGERLY when `Data` loads the folder, so a typed
+# LAZY, AND A PATH RATHER THAN AN `@export var image: Texture2D`: an ExtResource resolves EAGERLY when `Data` loads the folder, so a typed
 # export would decode every event's art on every boot and every headless test run
 # whether or not a run has ever opened one.
 #
@@ -123,7 +121,9 @@ var image: Texture2D:
 #   effects       Array of EffectSystem effect dicts, applied immediately
 #   effects_text  those effects in words, for the button's mechanical line
 #   goal          {} or {"condition", "games", "effects", "effects_text"}
-#   curse         {} or {"curse": &"poor_sleep", "games": 0}   (0 = the curse's own timer)
+#   curse         {} or {"curse": &"poor_sleep"} or {"random": true} — a CURSE CARD
+#                 handed over (GameState.add_curse_card, docs/loot-passives.md §18).
+#                 A `games` key from the curse-goal days is ignored.
 #   play          {} or {"tag": "mecha", "effects": [...], "effects_text": ".."}
 #   chance        {} or {"percent": 25, "effects": [...], "effects_text": ".."} —
 #                 a gamble. `percent` may instead arrive as a {expr} hole under
