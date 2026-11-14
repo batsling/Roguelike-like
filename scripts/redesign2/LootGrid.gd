@@ -1325,18 +1325,26 @@ static func _cell_body(entry: Dictionary, use_cb: Callable, locked_now: bool,
 	centre.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	band.add_child(centre)
 	# BIGGER IN THE PACK, where the name and the button are laid OVER the picture
-	# rather than stacked under it, so the art gets the whole square — and on the
-	# drop modal's single offer, which has the whole square to itself (above).
-	var art_side: int = LootSlot.ART_BIG
-	var art: TextureRect = LootSystem.art_tex(entry, art_side, face_up)
+	# rather than stacked under it, so the art gets the whole square.
+	var art: TextureRect = LootSystem.art_tex(entry, LootSlot.ART_BIG, face_up)
+	# …AND THE WHOLE SQUARE on the drop modal's single offer, which has nothing else
+	# in its cell (the owner, 14 Nov 2026: "make sure the image fits the whole
+	# square"): the cell's inner side, edge to edge, its aspect kept. Not through
+	# `art_box`, whose horse-dose third would push a capsule past the frame; the
+	# "Horse Pill" chip under the cell says that instead.
+	if not with_name:
+		art = UITheme.crisp_tex(LootSystem.art_texture(entry, face_up), LootSlot.CELL - LootSlot.PAD * 2)
 	art.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	# BIG PAINTED ART IS SHRUNK THROUGH ITS MIPMAPS. A curse card's picture is a
 	# 512px painting drawn at 64; scaled straight down it breaks into stair-steps.
 	# `fit_art` hands it the mipmapped copy and the filter that reads it, the same
 	# rule every other picture drawn far under its size goes through. Pixel art
 	# (every card face, scroll and pill) keeps the crisp path it was already on.
+	# On the single offer, pixel art goes through `fit_art` too, which draws it at a
+	# WHOLE multiple of its own size in the square rather than at a fractional
+	# stretch that doubles some of its pixels and not others.
 	var tex: Texture2D = art.texture
-	if tex != null and not UITheme.is_small_art(tex):
+	if tex != null and (not with_name or not UITheme.is_small_art(tex)):
 		UITheme.fit_art(art, tex, float(art.custom_minimum_size.x))
 	# THE PICTURE TURNS WITH THE PIECE (`rot`, docs/loot-passives.md §2). A
 	# container resets its children's rotation, so the art sits in a plain Control
