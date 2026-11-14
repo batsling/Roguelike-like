@@ -615,7 +615,10 @@ The roster:
 | **Guilty** | Card | random deals — leaves after 5 defeated enemies | — | yes |
 | **Debt** | Card | random deals — −2 Gold after every game | — | yes |
 | **Clumsy** | Card | random deals | Ethereal | yes |
-| **Normality** | Card | random deals — 3 usable actions a game (`limit_actions 3`) | — | yes |
+| **Normality** | Card | random deals — 3 loot/active uses a game (`limit_actions 3`) | — | yes |
+| **Decay** | Card | random deals — 1 damage at the end of a game (`game_ending: take_damage 1`) | — | yes |
+| **Pain** | Card | random deals — −1 Health per loot/active use (`action_taken: lose_hp 1`) | — | yes |
+| **Regret** | Card | random deals — −1 Health per 2 pieces at the end of a game (`game_ending: lose_hp_per_loot 2`) | — | yes |
 
 ---
 

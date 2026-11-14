@@ -140,6 +140,7 @@ func _register_defaults() -> void:
 	register("gain_top_buff", _h_gain_top_buff)
 	register("break_into", _h_break_into)
 	register("remove_self", _h_remove_self)
+	register("lose_hp_per_loot", _h_lose_hp_per_loot)
 	register("smelt", _h_smelt)
 
 # Scene-less heal straight to the run HP pool. Caps at max_hp via change_hp.
@@ -567,11 +568,18 @@ func _h_lose_relic(_effect: Dictionary, ctx: Dictionary) -> void:
 # GameLoop2 bills a missed `demand` through the same function directly, with the
 # resolve's summary to write into; a `take_damage` authored anywhere else lands
 # here and simply has no summary to bill.
-func _h_take_damage(effect: Dictionary, _ctx: Dictionary) -> void:
+func _h_take_damage(effect: Dictionary, ctx: Dictionary) -> void:
 	var v: int = int(effect.get("value", 0))
 	if v <= 0:
 		return
-	GameLoop2.damage_player(v)
+	# Fired from a report's hook (Decay's `game_ending`), the hit goes into that
+	# report, so the game's damage and blocks count it like the status bills.
+	var hook = ctx.get("hook")
+	var res = (hook as Dictionary).get("res") if hook is Dictionary else null
+	if res is Dictionary:
+		GameLoop2.damage_player(v, res)
+	else:
+		GameLoop2.damage_player(v)
 
 func _h_lose_hp(effect: Dictionary, _ctx: Dictionary) -> void:
 	var v: int = int(effect.get("value", 0))
@@ -818,6 +826,19 @@ func _h_remove_self(_effect: Dictionary, ctx: Dictionary) -> void:
 				GameState.remove_loot_at(i)
 			_did(ctx, "%s is gone" % piece)
 			return
+
+# `lose_hp_per_loot N` — Regret (docs/loot-passives.md §18): 1 Health for every N
+# pieces of loot the player has, counted in the pack (curses included, Regret
+# itself among them) and lying on the board, rounded down. Health, not a hit: no
+# Shield stops it.
+func _h_lose_hp_per_loot(effect: Dictionary, ctx: Dictionary) -> void:
+	var per: int = maxi(1, int(effect.get("per", 2)))
+	var pieces: int = GameState.loot_items.size() + GameLoop2.drop_cells().size()
+	var cost: int = pieces / per
+	if cost <= 0:
+		return
+	GameState.change_hp(-cost)
+	_did(ctx, "lost %d Health for %d pieces of loot" % [cost, pieces])
 
 # `smelt` — Smelter's use: the piece the overworld picked (GameState.smelt_target)
 # leaves the pack and keeps working as a relic (docs/loot-passives.md §16). The

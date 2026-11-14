@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3 uid="uid://curse2_decay"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"decay"
+display_name = "Decay"
+rarity = "Curse"
+source_game = "Slay the Spire"
+description = "Take 1 damage at the end of every game. A Shield can block it. Can't be thrown away."
+file = "Decay"
+art_folder = "curses"
+loot_type = "Curse"
+tags = PackedStringArray("curse", "random")
+passive = true
+keywords = PackedStringArray()
+movable = true
+destroyable = true
+triggers = [{"on": "game_ending", "effects": [{"type": "take_damage", "value": 1}]}]
+stat_bonuses = {}
+status_bonuses = {}

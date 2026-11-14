@@ -2894,6 +2894,13 @@ func beat_game(clear_advertised: bool = false, fulfilled_instances: Array = [],
 	#     outright before it reaches Health.
 	_resolve_status_demands(claims, res)
 
+	# 2c. THE CURSES' OWN BILL (docs/loot-passives.md §18), at the same moment and
+	#     for the same reason as 2b: the game's Temporary Shields still stand, so
+	#     Decay's 1 damage is a hit one of them can stop. Regret's Health it costs
+	#     is not a hit. Not on an escape — an escape is not a game finished.
+	if not escaped:
+		TriggerBus.game_ending.emit({"res": res})
+
 	# A NEW GAME GETS A NEW FIRST PIECE (docs/loot-passives.md §8). Echo Form copies
 	# the first loot used in each game, so the count of pieces this game spent goes
 	# back to zero on the beat the game ends — however it ended.

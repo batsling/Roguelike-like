@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3 uid="uid://curse2_regret"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"regret"
+display_name = "Regret"
+rarity = "Curse"
+source_game = "Slay the Spire"
+description = "At the end of every game, lose 1 Health for every 2 pieces of loot in your pack and on the board. Can't be thrown away."
+file = "Regret"
+art_folder = "curses"
+loot_type = "Curse"
+tags = PackedStringArray("curse", "random")
+passive = true
+keywords = PackedStringArray()
+movable = true
+destroyable = true
+triggers = [{"on": "game_ending", "effects": [{"type": "lose_hp_per_loot", "per": 2}]}]
+stat_bonuses = {}
+status_bonuses = {}

@@ -111,8 +111,8 @@ extends Resource
 @export var movable: bool = true
 @export var destroyable: bool = true
 # NORMALITY's rule (the sheet's `limit_actions N`): while this curse is carried, no
-# more than N USABLE ACTIONS a game — relic actives, every piece of pack loot, and
-# the board verbs (Bash, Dash, Push, Transmute, Scramble, Bombs). 0 = no limit.
+# more than N USABLE ACTIONS a game — relic actives and every piece of pack loot
+# (not the board verbs). 0 = no limit.
 # GameState.action_limit reads it; the third keyword, ETHEREAL, needs no field of
 # its own: the generator writes it as a `game_beaten every=3: remove_self` trigger.
 @export var action_limit: int = 0

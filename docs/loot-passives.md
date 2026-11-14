@@ -844,12 +844,22 @@ That row, its timer and its penalty are all gone.
   saved. The actions are a relic active fired (`can_fire_item` and `use_item`),
   any piece of pack loot used, whether from the pack, off a table or thrown
   (`LootSystem.use_loot` / `use_entry`, wand zaps and weapon swings included;
-  Echo copies are not actions), and the board verbs Bash, Dash, Push, Transmute,
-  Scramble and Bombs (the `Overworld2` doors). Each door asks
+  Echo copies are not actions). The board verbs (Bash, Dash, Push, Transmute,
+  Scramble, Bombs) are **not** actions: they counted for one commit, and the
+  owner took them out as too complicated. Each door asks
   `can_take_action` first, so a refused press costs nothing, and calls
   `note_action` once the action goes through. The pack's Use buttons and the
   relic strip grey out at the limit. Two Normalities give the smaller limit, not
   the sum.
+- **Two hooks only the curses use** (`TriggerBus`, the relic grammar):
+  `action_taken` fires on every action Normality counts (`note_action`), and
+  **Pain** is `action_taken: lose_hp 1`. `game_ending` fires at the end of a game
+  (not an escape) at the step a status's bill lands, while the game's Temporary
+  Shields still stand (`GameLoop2.beat_game`, `docs/turn-order.md` §4 2c).
+  **Decay** is `game_ending: take_damage 1`, a hit a Shield can block. **Regret**
+  is `game_ending: lose_hp_per_loot 2`, which costs 1 Health per 2 pieces in the
+  pack and on the board, rounded down; it is Health, not a hit, so no Shield
+  stops it. All three are ordinary triggers, so Blueprint copies them.
 - **ETERNAL: it can't be destroyed.** No effect can destroy it
   (`CardData.destroyable` false, `GameState.can_destroy`).
   `destroy_loot_at` refuses it, and every effect that picks victims leaves it
@@ -868,7 +878,10 @@ That row, its timer and its penalty are all gone.
 | Guilty | Card | — (leaves after 5 kills) | yes | random deals |
 | Debt | Card | — (−2 Gold per game) | yes | random deals |
 | Clumsy | Card | Ethereal | yes | random deals |
-| Normality | Card | — (3 actions a game) | yes | random deals |
+| Normality | Card | — (3 loot/active uses a game) | yes | random deals |
+| Decay | Card | — (1 damage at the end of a game) | yes | random deals |
+| Pain | Card | — (−1 Health per loot/active use) | yes | random deals |
+| Regret | Card | — (−1 Health per 2 pieces, end of a game) | yes | random deals |
 
 Tests: `test/test_curse_cards.gd` covers the pack rules, `test_overworld2.gd`'s
 curse-card block covers the modal, and the sources are covered where they live

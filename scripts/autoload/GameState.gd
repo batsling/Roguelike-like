@@ -436,8 +436,9 @@ var loot_uses_this_game: int = 0
 var cards_used_this_game: int = 0
 
 # USABLE ACTIONS TAKEN THIS GAME, for NORMALITY (docs/loot-passives.md §18): every
-# relic active fired, piece of pack loot used (a wand's zap and a weapon's swing
-# included), and board verb spent — Bash, Dash, Push, Transmute, Scramble, a Bomb.
+# relic active fired and piece of pack loot used (a wand's zap and a weapon's swing
+# included). The board verbs are NOT actions (the owner, 14 Nov 2026: "let's have
+# verbs not count as actions, it's a little complicated").
 # Counted whether or not Normality is carried (it may arrive mid-game), zeroed
 # beside `loot_uses_this_game` as the game resolves (GameLoop2), and saved.
 var actions_this_game: int = 0
@@ -678,7 +679,9 @@ func _connect_lifecycle_hooks() -> void:
 	# no scene, one event per moment, and whatever is held — relic or pack piece —
 	# answers from the far end.
 	for hook in ["game_won", "shop_entered", "boss_spawned", "loot_used", "card_binned", "card_used",
-			"weapon_stunned", "weapon_hit", "weapon_charged", "game_perfected"]:
+			"weapon_stunned", "weapon_hit", "weapon_charged", "game_perfected",
+			# Pain, Decay and Regret's hooks (docs/loot-passives.md §18).
+			"action_taken", "game_ending"]:
 		var sig: Signal = TriggerBus.get(hook)
 		# One Callable per hook, kept, so is_connected can recognise it on a second
 		# pass (a fresh lambda is a fresh Callable and would connect twice).
@@ -1047,9 +1050,9 @@ func _trigger_gates_pass(trig: Dictionary, ctx: Dictionary) -> bool:
 # --- Normality: the action limit ------------------------------------------------
 #
 # While a curse with an `action_limit` is carried, the player may take no more than
-# that many USABLE ACTIONS each game (the owner, 14 Nov 2026: "anything that would
-# count as a usable action" — relic actives, all pack loot, and the board verbs;
-# 3 in total, per game). Two of them carried is the smaller limit, not the sum.
+# that many USABLE ACTIONS each game: relic actives and all pack loot, 3 in total,
+# per game. The board verbs were in it for one commit and came out (the owner,
+# 14 Nov 2026). Two of them carried is the smaller limit, not the sum.
 #
 # Every door asks `can_take_action` BEFORE it spends anything (so a refused press
 # costs nothing) and calls `note_action` once the action has gone through.
@@ -1071,6 +1074,9 @@ func can_take_action() -> bool:
 
 func note_action() -> void:
 	actions_this_game += 1
+	# Pain's moment (docs/loot-passives.md §18): every usable action, Normality or
+	# not.
+	TriggerBus.action_taken.emit({})
 	# The Use buttons and the relic strip grey out on the action that reaches the
 	# limit, so the pack has to redraw.
 	if action_limit() > 0:

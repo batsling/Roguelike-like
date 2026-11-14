@@ -313,3 +313,76 @@ func test_two_normalities_are_the_smaller_limit_not_the_sum() -> void:
 	_curse(&"normality", 0)
 	_curse(&"normality", 1)
 	assert_eq(GameState.action_limit(), 3)
+
+# --- Decay, Pain, Regret (the owner, 14 Nov 2026) --------------------------------
+
+func _end_game(escaped: bool = false) -> Dictionary:
+	return GameLoop2.beat_game(false, [], {}, false, escaped, false)
+
+func test_decay_pain_and_regret_are_random() -> void:
+	for id in [&"decay", &"pain", &"regret", &"clumsy", &"normality"]:
+		assert_true(Data.get_curse_card(id).is_random_curse(), "%s is in the random deal" % id)
+
+func test_decay_hits_for_one_at_the_end_of_a_game() -> void:
+	_curse(&"decay", 0)
+	GameState.max_hp = 10
+	GameState.hp = 10
+	GameState.shields = 0
+	GameState.bonus_shields = 0
+	_end_game()
+	assert_eq(GameState.hp, 9, "1 damage as the game ends")
+
+func test_a_shield_blocks_decay() -> void:
+	_curse(&"decay", 0)
+	GameState.max_hp = 10
+	GameState.hp = 10
+	GameState.shields = 1
+	GameState.bonus_shields = 0
+	_end_game()
+	assert_eq(GameState.hp, 10, "the game's own shield stopped it")
+
+func test_decay_does_not_bite_an_escape() -> void:
+	_curse(&"decay", 0)
+	GameState.max_hp = 10
+	GameState.hp = 10
+	GameState.shields = 0
+	GameState.bonus_shields = 0
+	_end_game(true)
+	assert_eq(GameState.hp, 10, "an escape is not a game finished")
+
+func test_pain_costs_a_health_per_loot_used() -> void:
+	_curse(&"pain", 0)
+	GameState.max_hp = 10
+	GameState.hp = 10
+	GameState.add_pill_loot(&"luck_up")
+	GameState.add_pill_loot(&"luck_up")
+	LootSystem.use_loot(GameState.loot_items.size() - 1, {"rng": Fixtures.rng()})
+	assert_eq(GameState.hp, 9, "one piece used, one Health")
+	LootSystem.use_loot(GameState.loot_items.size() - 1, {"rng": Fixtures.rng()})
+	assert_eq(GameState.hp, 8, "and again")
+
+func test_pain_costs_a_health_per_active_fired() -> void:
+	_curse(&"pain", 0)
+	var hp_before: int = GameState.hp
+	GameState.note_action()                 # what GameState.use_item calls as it fires
+	assert_eq(GameState.hp, hp_before - 1, "an active fired is an action too")
+
+func test_regret_costs_a_health_per_two_pieces_carried_or_lying_about() -> void:
+	_curse(&"regret", 0)
+	for i in range(4):
+		GameState.add_scroll_loot(&"scroll_of_fire")
+	GameState.max_hp = 20
+	GameState.hp = 20
+	GameState.shields = 3                    # Regret is Health, not a hit
+	_end_game()
+	assert_eq(GameState.hp, 18, "5 pieces (Regret among them) is 2 Health")
+
+func test_regret_counts_the_floor_too() -> void:
+	_curse(&"regret", 0)
+	GameState.add_scroll_loot(&"scroll_of_fire")
+	assert_ne(GameLoop2.place_drop(Vector2i(2, 1), {"type": "scroll", "id": &"scroll_of_fire"}),
+		GameLoop2.OFF_FIELD, "a piece lying on the board")
+	GameState.max_hp = 20
+	GameState.hp = 20
+	_end_game()
+	assert_eq(GameState.hp, 19, "2 in the pack + 1 on the floor is 1 Health")

@@ -4279,17 +4279,16 @@ func test_a_pack_that_cannot_make_room_lets_the_curse_go() -> void:
 	assert_true(GameState.pending_curses.is_empty(), "the curse is lost rather than stuck")
 	_close_curse_modal()
 
-# NORMALITY (docs/loot-passives.md §18): the board verbs are usable actions too.
-func test_normality_stops_a_board_verb_at_the_limit() -> void:
+# NORMALITY (docs/loot-passives.md §18) counts loot and active items, NOT the
+# board verbs (the owner, 14 Nov 2026: "let's have verbs not count as actions").
+func test_normality_leaves_the_board_verbs_alone() -> void:
 	GameState.loot_items.clear()
 	GameState.place_curse_headless(GameState.curse_entry(&"normality"))
-	GameState.scramble = 2
+	GameState.scramble = 1
 	GameState.actions_this_game = 3
-	assert_false(_ui.scramble(), "at the limit a Scramble is refused")
-	assert_eq(GameState.scramble, 2, "and costs nothing")
-	GameState.actions_this_game = 2
-	assert_true(_ui.scramble(), "under it, it goes through")
-	assert_eq(GameState.actions_this_game, 3, "and counts as one action")
+	assert_false(GameState.can_take_action(), "the limit is reached")
+	assert_true(_ui.scramble(), "and a Scramble still goes through")
+	assert_eq(GameState.actions_this_game, 3, "without counting as an action")
 	GameState.loot_items.clear()
 	GameState.actions_this_game = 0
 

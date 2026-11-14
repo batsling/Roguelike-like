@@ -158,6 +158,14 @@ TRIGGER_SIGNALS = {
     # ranks' perfected visit (§20.1). Narrower than game_won, and fired beside it
     # (Performance Based Health Insurance).
     "game_perfected": "game_perfected",
+    # The curse cards' hooks (docs/loot-passives.md §18):
+    #   action_taken — a usable action was taken: a piece of pack loot used or a
+    #                  relic active fired (GameState.note_action). Pain.
+    #   game_ending  — the game is ending, at the step a status's bill lands, so its
+    #                  Temporary Shields still stand (GameLoop2.beat_game). Not on
+    #                  an escape. Decay, Regret.
+    "action_taken": "action_taken",
+    "game_ending": "game_ending",
 }
 # Triggers whose effects default to the player (self) rather than an enemy —
 # every out-of-combat / on-self hook. game_beaten is scene-less run-scope, so
@@ -168,7 +176,7 @@ SELF_DEFAULT_TRIGGERS = ("combat_started", "turn_started", "turn_ended",
                          "gold_gained", "card_obtained", "card_used", "game_won",
                          "shop_entered", "boss_spawned", "loot_used",
                          "card_binned", "weapon_hit", "weapon_charged",
-                         "game_perfected")
+                         "game_perfected", "action_taken", "game_ending")
 # Hooks that fire frequently enough to suppress the generic trigger log line.
 # `health_lost` is on the list because in the 2.0 loop it fires on every enemy
 # swing that lands AND on every failed try — a report can be a dozen of them, and
@@ -444,7 +452,9 @@ def parse_one_effect(raw, default_target="enemy", in_grant=False):
               "drop_loot", "gain_card", "bump",
               "gain_random_buff", "remove_random_debuff", "gain_top_buff",
               # Debt's bill (docs/loot-passives.md §18): `game_beaten: lose_gold 2`.
-              "lose_gold"}
+              "lose_gold",
+              # Decay's (§18): a HIT, which a Shield can stop — `lose_hp` cannot be.
+              "take_damage"}
     if verb in SCALAR:
         rest, kv = _kv(toks[1:])
         nums = [int(x) for x in rest if re.match(r"^-?\d+$", x)]
@@ -502,6 +512,15 @@ def parse_one_effect(raw, default_target="enemy", in_grant=False):
     # what OTHER things can do to it.
     if verb == "remove_self":
         return {"type": "remove_self"}
+
+    # `lose_hp_per_loot N` — Regret (docs/loot-passives.md §18): lose 1 Health for
+    # every N pieces of loot in the pack AND lying on the board, rounded down.
+    if verb == "lose_hp_per_loot":
+        rest, _ = _kv(toks[1:])
+        nums = [int(x) for x in rest if re.match(r"^\d+$", x)]
+        if not nums or nums[0] < 1:
+            raise ValueError("item DSL: lose_hp_per_loot wants a count of 1 or more in %r" % raw)
+        return {"type": "lose_hp_per_loot", "per": nums[0]}
 
     # `charge_random N` / `charge_random full` — top up one random relic or wand
     # that has room (Charged Penny +1, Hairpin all the way). The same pool the pill

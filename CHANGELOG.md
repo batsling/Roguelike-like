@@ -11,13 +11,24 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Decay, Pain and Regret, from Slay the Spire (the owner, 14 Nov 2026), and
+  Normality without the verbs.** **Decay** deals 1 damage at the end of every
+  game, at the step Burn's bill lands, so the game's shields can still block it.
+  **Pain** costs 1 Health every time loot or an active item is used. **Regret**
+  costs 1 Health at the end of every game per 2 pieces of loot in the pack and on
+  the board. All three are random. They ride two new hooks, `game_ending` (not
+  on an escape) and `action_taken`, and two new parser words, `take_damage` (it
+  used to drop its amount) and `lose_hp_per_loot`. **Normality** no longer
+  counts Bash, Dash, Push, Transmute, Scramble or Bombs: only loot and active
+  items.
+
 - **Clumsy and Normality, from Slay the Spire (the owner, 14 Nov 2026).** A third
   keyword, **Ethereal**, means a curse goes away after 3 games, win or lose. Its
   square counts them (`1/3`). **Clumsy** is Ethereal and otherwise only takes a
   slot. **Normality** allows 3 usable actions per game while it is carried. As
-  the owner answered when asked, these count together: relic actives, any pack
-  loot (wand zaps and weapon swings included) and the board verbs Bash, Dash,
-  Push, Transmute, Scramble and Bombs. A fourth is refused before anything is
+  the owner answered when asked, these count together: relic actives and any
+  pack loot (wand zaps and weapon swings included); the board verbs counted too
+  until the entry above took them out. A fourth is refused before anything is
   spent, and the pack's Use buttons and the relic strip grey out. Both are in the
   random deal. The art is the wiki's release cards (678×874).
 
