@@ -486,6 +486,14 @@ func _build_single(col: VBoxContainer) -> void:
 		chips.add_child(UITheme.chip(pref, UITheme.preference_color(pref)))
 	elif not LootSystem.is_identified(entry):
 		chips.add_child(UITheme.chip("Unidentified", UITheme.TEXT_DIM))
+	elif GameState.is_curse_entry(entry):
+		# A CURSE CARD wears its KEYWORDS as chips (docs/loot-passives.md §18), so
+		# "Unmovable" is read before it is placed — where it goes is for good.
+		var curse: CardData = GameState.curse_def(entry)
+		for k in curse.keywords:
+			chips.add_child(UITheme.chip(k, UITheme.CURSE))
+		if curse.keywords.is_empty():
+			chips.add_child(UITheme.chip("Curse", UITheme.CURSE))
 	elif LootPassives.is_passive(entry):
 		# A KNOWN PIECE WITH NO PREFERENCE IS NOT UNKNOWN. A trinket or a passive
 		# card has nothing to gamble on, so it has no Preference to show — and this

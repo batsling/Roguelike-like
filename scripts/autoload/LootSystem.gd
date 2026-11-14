@@ -893,6 +893,13 @@ func hover_card(entry: Dictionary, face_up: bool = true) -> Dictionary:
 		var def: Resource = LootPassives.def_for(entry)
 		sub += "  ·  %s" % type_label(entry)
 		note = "▸ Works while it is in your pack — never spent."
+		# A CURSE CARD names its KEYWORDS beside its type (docs/loot-passives.md
+		# §18): "Curse Card · Curse · Eternal". Its line says what each one means.
+		var curse: CardData = GameState.curse_def(entry)
+		if curse != null:
+			for k in curse.keywords:
+				sub += "  ·  %s" % k
+			note = "▸ A curse: it stays in your pack and can't be thrown away."
 		var dir: String = LootPassives.facing(entry, def)
 		if dir != "":
 			var where: String = {"right": "to its right", "down": "below it",

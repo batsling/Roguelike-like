@@ -14,5 +14,6 @@ art_folder = "curses"
 loot_type = "Curse"
 tags = PackedStringArray("curse", "random")
 passive = true
+keywords = PackedStringArray()
 movable = true
 destroyable = true

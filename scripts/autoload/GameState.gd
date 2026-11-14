@@ -1047,9 +1047,25 @@ func curse_def(entry) -> CardData:
 func is_curse_entry(entry) -> bool:
 	return curse_def(entry) != null
 
-# How many curse cards the pack is carrying. The `curses` dynamic source
+# THE KINDS OF CURSE (the owner, 14 Nov 2026: "multiple types of curses that all
+# count as curses"). A curse CARD (the `curses` sheet, Type `Card`) and a CURSED
+# WEAPON (Retro Bat's unidentified weapons, WeaponSystem.is_cursed) are both
+# curses: both are counted here, both are listed under Curses, and the Scroll of
+# Remove Curse lifts either. Whether a piece is one of them is `is_curse`.
+func is_curse(entry) -> bool:
+	return is_curse_entry(entry) or WeaponSystem.is_cursed(entry)
+
+# How many curses the pack is carrying, of every kind. The `curses` dynamic source
 # (EffectSystem.value_from) counts these.
 func curse_count() -> int:
+	var n: int = 0
+	for e in loot_items:
+		if is_curse(e):
+			n += 1
+	return n
+
+# The curse CARDS alone.
+func curse_card_count() -> int:
 	var n: int = 0
 	for e in loot_items:
 		if is_curse_entry(e):

@@ -784,14 +784,23 @@ That row, its timer and its penalty are all gone.
   carried curse is an ordinary `{type: card, id}` entry
   (`GameState.curse_entry`) that every surface already knows how to draw, name
   and describe. Its art lives in `images2.0/curses/` (`CardData.art_folder`).
-  The columns are `Curse | Game | Description | Effect | Movable | Destroyable
-  | Tag | Image`.
+  The columns are `Curse | Type | Game | Description | Effect | Keywords | Tag
+  | Image`.
+- **There is more than one kind of curse.** The owner: "multiple types of curses
+  that all count as curses". A **curse card** is a row of this sheet with `Type`
+  `Card`, which is every row today. A **cursed weapon** (Retro Bat's
+  unidentified weapons, `docs/players-design.md` §5) is a curse too, but it comes
+  from a weapon's roll rather than a row. Both count: `GameState.is_curse`,
+  `curse_count` (with `curse_card_count` for the cards alone), the inventory's
+  Curses list and the Scroll of Remove Curse all take either. The generator
+  refuses any `Type` other than `Card` until something reads it.
 - **It is a passive piece.** It is never spent and works from its cell. Its
   `Effect` uses the passive-card grammar, so **Blueprint copies a curse's
   effect** like any other passive's. The first three curses have no effect and
-  only take up space. Their card text is composed from `Movable` and
-  `Destroyable` by the generator, so it cannot claim a rule the card does not
-  have.
+  only take up space. Their card text is composed by the generator from their
+  **keywords** ("Eternal: can't be destroyed."), so it cannot claim a rule the
+  card does not have. The keywords also show on the hover and as chips on the
+  placement modal.
 - **It is never in the ordinary loot drop.** `Data.roll_card` draws only from
   the `cards` sheet. A curse arrives only through `GameState.add_curse_card`,
   which is reached by an event's `add_curse`, the Calling Bell, the Amnesia
@@ -815,10 +824,12 @@ That row, its timer and its penalty are all gone.
   (`swap_loot_entry_at`), an event's `lose_card` price, a thief's theft, a
   `lose a card` cost and the Smelter. `GameState.can_leave_pack` is the single
   rule for all of these, and it is false for a curse and for a pinned piece.
-- **Movable `no` pins the curse** where it was placed (`GameState.is_pinned`),
+- **UNMOVABLE: it can't be moved.** The keyword pins the curse where it was
+  placed (`CardData.movable` false, `GameState.is_pinned`),
   exactly like a cursed weapon. It cannot be moved, turned or swapped, and its
   bag stays put too (`bag_holds_pinned`). This is **Poor Sleep**.
-- **Destroyable `no` means no effect can destroy it** (`GameState.can_destroy`).
+- **ETERNAL: it can't be destroyed.** No effect can destroy it
+  (`CardData.destroyable` false, `GameState.can_destroy`).
   `destroy_loot_at` refuses it, and every effect that picks victims leaves it
   out of the pick: Prepared, the row-burners, Degradation and the Scroll of
   Remove Curse. This is **Curse of the Bell**. A curse that *is* destroyed or
@@ -827,11 +838,11 @@ That row, its timer and its penalty are all gone.
 - **The Scroll of Remove Curse** lifts any Destroyable curse card
   (`GameState.lift_curse_card`), alongside cursed weapons.
 
-| Curse | Movable | Destroyable | Dealt at random | Given by |
+| Curse | Type | Keywords | Dealt at random | Given by |
 |---|---|---|---|---|
-| Curse of the Bell | yes | no | no | the Calling Bell |
-| Injury | yes | yes | yes | Punch Off, Golden Idol, the Lacerator, random deals |
-| Poor Sleep | no | yes | yes | Unrest Site, random deals |
+| Curse of the Bell | Card | Eternal | no | the Calling Bell |
+| Injury | Card | — | yes | Punch Off, Golden Idol, the Lacerator, random deals |
+| Poor Sleep | Card | Unmovable | yes | Unrest Site, random deals |
 
 Tests: `test/test_curse_cards.gd` covers the pack rules, `test_overworld2.gd`'s
 curse-card block covers the modal, and the sources are covered where they live

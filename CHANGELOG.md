@@ -22,10 +22,13 @@ For how the project is laid out and how its systems fit together, see
   a full pack has to use or bin something to make room. **No curse can ever be
   binned** or taken out of the pack: it can't be put down on the board, traded
   for a floor piece, paid as a price, stolen or smelted. The `curses` sheet is
-  now `Curse | Game | Description | Effect | Movable | Destroyable | Tag |
-  Image`. **Curse of the Bell** moves but nothing can destroy it (the Scroll of
-  Remove Curse included); **Injury** moves and can be destroyed; **Poor Sleep**
-  locks in the cell it was placed in, along with its bag. The three curse rows
+  now `Curse | Type | Game | Description | Effect | Keywords | Tag | Image`:
+  `Type` is `Card` for all three (a cursed weapon from Retro Bat's unidentified
+  weapons counts as a curse too, as a weapon rather than a row), and the rules
+  are **keywords** the card says out loud: **Unmovable** (can't be moved) and
+  **Eternal** (can't be destroyed). **Curse of the Bell** is Eternal (not even
+  the Scroll of Remove Curse lifts it); **Poor Sleep** is Unmovable, locked in
+  the cell it was placed in along with its bag; **Injury** has neither. The three curse rows
   left `goals`, and `apply_goals_sheet.py` no longer writes `curses`. Rules in
   `docs/loot-passives.md` §18; tests in `test_curse_cards.gd`.
 

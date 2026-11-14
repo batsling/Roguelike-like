@@ -588,8 +588,8 @@ talks about a curse *goal* — a checklist row with a `Condition`, a `Penalty` t
 spawned an enemy and a `Timer` — describes the system that was retired. The full
 rules are in `docs/loot-passives.md` §18. In short: an event's `add_curse` hands
 over a curse card, the loot modal opens to place it (with no Skip), the player
-can never bin it or take it out of the pack, and the sheet says per curse whether
-it can be moved and whether anything can destroy it.
+can never bin it or take it out of the pack, and its keywords say whether it
+can be moved (`Unmovable`) and whether anything can destroy it (`Eternal`).
 
 A curse is still authored **once**, in its own sheet, and referenced by id from
 any event that hands it out:
@@ -597,21 +597,21 @@ any event that hands it out:
 | Column | Meaning |
 |---|---|
 | `Curse` | Display name, and the id events reference (slugified: `Poor Sleep` → `poor_sleep`). |
+| `Type` | The kind of curse. `Card` for every row: a cursed weapon is a curse too, but it is a weapon's roll, not a row. |
 | `Game` | The real game it is lifted from. |
-| `Description` | What it does while carried, in words. Blank is fine: the card's line is composed from the two rule columns. |
+| `Description` | What it does while carried, in words. Blank is fine: the card's line is composed from its keywords. |
 | `Effect` | What it does while carried, in the passive card grammar (`docs/loot-passives.md`). Blank: it only takes up space. |
-| `Movable` | `yes` / `no`. `no` locks it in the cell it was placed in. |
-| `Destroyable` | `yes` / `no`. Whether an effect (Remove Curse, a destroying card) can get rid of it. |
+| `Keywords` | Comma-separated. **Unmovable**: it can't be moved (locked in the cell it was placed in). **Eternal**: it can't be destroyed (not by Remove Curse, not by anything). |
 | `Tag` | `random` puts it in `add_curse random`'s draw. |
 | `Image` | Art base name under `images2.0/curses/`. |
 
 The roster:
 
-| Curse | From | Movable | Destroyable | Random |
+| Curse | Type | From | Keywords | Random |
 |---|---|---|---|---|
-| **Curse of the Bell** | the Calling Bell relic | yes | no | no |
-| **Injury** | Punch Off, Golden Idol, the Lacerator | yes | yes | yes |
-| **Poor Sleep** | Unrest Site | no | yes | yes |
+| **Curse of the Bell** | Card | the Calling Bell relic | Eternal | no |
+| **Injury** | Card | Punch Off, Golden Idol, the Lacerator | — | yes |
+| **Poor Sleep** | Card | Unrest Site | Unmovable | yes |
 
 ---
 
@@ -801,7 +801,7 @@ kind would carry a blank.
 Slay the Spire 2 hands you a card called Poor Sleep, and since 14 Nov 2026 so
 does this game: a **curse card**, authored in `curses` (§6) and referenced from
 the event as `add_curse poor_sleep`. It goes into the pack on the loot modal and
-locks in the cell you put it in (its `Movable` is `no`), costing you that cell
+locks in the cell you put it in (it is `Unmovable`), costing you that cell
 until a Scroll of Remove Curse lifts it. Until that date it was a three-game row
 on the checklist instead ("don't use a rest site to replenish health"), which is
 what the rest of this section's history describes.

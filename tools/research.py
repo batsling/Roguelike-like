@@ -981,7 +981,7 @@ DESCRIBE = {
     "enemies": ("Goal", "Tag"), "bosses": ("Goal", "Tag"), "items": ("Description",), "trinkets": ("Description",),
     "cards": ("Description",), "weapons": ("Goal", "Passive"), "bags": ("Description",), "wands": ("Description",),
     "potions": ("On Player", "On Tile"), "scrolls": ("Description",), "events": ("Requirement",),
-    "characters": ("Level Up",), "statuses": ("Type", "Combat"), "curses": ("Description", "Movable", "Destroyable"),
+    "characters": ("Level Up",), "statuses": ("Type", "Combat"), "curses": ("Type", "Description", "Keywords"),
     "locations": ("Goal", "Goal Effect"), "objects": ("Tag",), "tiles": ("Description",),
     "units": ("Type", "Description"), "evolutions": ("Requirement 1", "Requirement 2", "Outcome"),
 }

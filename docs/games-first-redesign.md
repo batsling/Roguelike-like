@@ -1323,10 +1323,10 @@ cards or wands it drew.
 These curses will now count as cards (not available in the basic loot drop)").
 It sits in a cell of the loot pack, is placed on the loot modal the moment it
 arrives — a modal with no Skip, so a full pack has to make room — and can never
-be binned or taken out of the pack. Per curse, the `curses` sheet says whether it
-can be moved and whether anything can destroy it: Curse of the Bell moves but is
-indestructible, Injury moves and can be destroyed, Poor Sleep locks in the cell
-it was placed in. Events hand them out (`add_curse`), and so do the Calling Bell
+be binned or taken out of the pack. Per curse, the `curses` sheet gives it
+KEYWORDS: **Unmovable** (it can't be moved — Poor Sleep) and **Eternal** (it
+can't be destroyed — Curse of the Bell); Injury has neither. A cursed weapon
+(Retro Bat's unidentified weapons) counts as a curse too. Events hand them out (`add_curse`), and so do the Calling Bell
 (§8), the Amnesia pill, the Hexer and the Lacerator. The rules are
 `docs/loot-passives.md` §18.
 

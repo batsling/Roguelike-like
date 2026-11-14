@@ -49,6 +49,33 @@ func test_curse_count_counts_the_pack() -> void:
 	GameState.add_scroll_loot(&"scroll_of_fire")
 	assert_eq(GameState.curse_count(), 2, "two curse cards, and the scroll is not one")
 
+# A CURSED WEAPON IS A CURSE TOO (the owner: "multiple types of curses that all
+# count as curses"): counted with the cards, though it is not a curse card.
+func test_a_cursed_weapon_counts_as_a_curse() -> void:
+	_curse(&"injury", 0)
+	var w: Dictionary = GameState.add_weapon_loot(&"lightning_ring")
+	assert_false(w.is_empty(), "a weapon to curse")
+	w["roll"] = -1
+	w["roll_known"] = true
+	assert_true(GameState.is_curse(w), "a known minus is a curse")
+	assert_false(GameState.is_curse_entry(w), "but not a curse card")
+	assert_eq(GameState.curse_count(), 2, "both kinds are counted")
+	assert_eq(GameState.curse_card_count(), 1, "one of them a card")
+	WeaponSystem.lift_curse(w)
+	assert_eq(GameState.curse_count(), 1, "lifted, it is just a weapon again")
+
+func test_every_curse_row_is_a_card_with_known_keywords() -> void:
+	for cd in Data.all_curse_cards():
+		for k in cd.keywords:
+			assert_has(["Unmovable", "Eternal"], k, "%s's keyword %s is a known one" % [cd.id, k])
+		assert_eq(cd.movable, not cd.keywords.has("Unmovable"), "%s: Unmovable is movable" % cd.id)
+		assert_eq(cd.destroyable, not cd.keywords.has("Eternal"), "%s: Eternal is destroyable" % cd.id)
+
+func test_the_hover_names_a_curses_keywords() -> void:
+	var bell: Dictionary = _curse(&"curse_of_the_bell", 0)
+	var card: Dictionary = LootSystem.hover_card(bell)
+	assert_string_contains(String(card.get("subtitle", "")), "Eternal")
+
 # --- never out of the pack by the player's hand --------------------------------
 
 func test_no_curse_can_be_binned() -> void:

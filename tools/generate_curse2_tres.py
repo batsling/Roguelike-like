@@ -10,21 +10,28 @@ or left behind, and is never in the ordinary loot drop: only something that hand
 out a curse by name (`add_curse injury`) or at random (`add_curse random`) can
 put one in the pack. See docs/loot-passives.md §18.
 
-  curses: Curse | Game | Description | Effect | Movable | Destroyable | Tag | Image
+  curses: Curse | Type | Game | Description | Effect | Keywords | Tag | Image
 
+  Type         what KIND of curse the row is. `Card` is the only kind with rows:
+               a curse is also a cursed weapon (Retro Bat's unidentified
+               weapons, WeaponSystem.is_cursed), but that is a weapon's roll,
+               not a row here. Any other Type is refused until something reads it.
   Description  what the curse does while carried, in words. Blank is fine: the
-               card's line is COMPOSED here from the rules below, so it says
+               card's line is COMPOSED here from its keywords, so it says
                "Can't be thrown away" etc. without anyone having to type it.
   Effect       what it does while carried, in the PASSIVE CARD grammar (the
                relic grammar, compiled by item_dsl.parse_loot_passive — the same
                as a `Passive` row of `cards`). Blank means it only takes up
                space, which is what the first three curses do. Blueprint copies
                a curse's effect exactly as it copies any other passive piece.
-  Movable      yes / no. `no` locks the card in the cell it was placed in, and
-               the bag holding that cell stays put too (Poor Sleep).
-  Destroyable  yes / no. Whether an EFFECT can destroy it — the Scroll of Remove
-               Curse, a card that destroys loot. The player can never bin a curse
-               either way. `no` is Curse of the Bell.
+  Keywords     comma-separated, from KEYWORDS below (the owner's two):
+                 Unmovable  it can't be moved — locked in the cell it was placed
+                            in, and the bag holding that cell stays put too
+                            (Poor Sleep).
+                 Eternal    it can't be destroyed — by the Scroll of Remove
+                            Curse, a card that destroys loot, anything (Curse of
+                            the Bell).
+               The player can never bin a curse either way.
   Tag          `random` puts the curse in the random deals (an event's
                `add_curse random`, the Hexer, Amnesia). A blank Tag keeps a curse
                out of them: it only arrives when something names it.
@@ -51,17 +58,29 @@ IMG_DIR = os.path.join(PROJECT_ROOT, "images2.0", "curses")
 IMG_RES_PREFIX = "res://images2.0/curses/"
 SHEET = "curses"
 
-YES = ("yes", "y", "true", "1")
-NO = ("no", "n", "false", "0")
+# The kinds of curse a row can be, as the sheet spells them.
+TYPES = ("Card",)
+
+# A curse card's keywords, and the rule each one says on the card.
+KEYWORDS = {
+    "Unmovable": "can't be moved",
+    "Eternal": "can't be destroyed",
+}
 
 
-def _flag(raw, name: str, column: str) -> bool:
-    s = dsl._clean(raw).lower()
-    if s in YES:
-        return True
-    if s in NO:
-        return False
-    raise ValueError("curses %s: %s %r is not yes or no" % (name, column, raw))
+def _keywords(raw, name: str) -> list:
+    out = []
+    for word in dsl._clean(raw).split(","):
+        word = word.strip()
+        if not word:
+            continue
+        match = [k for k in KEYWORDS if k.lower() == word.lower()]
+        if not match:
+            raise ValueError("curses %s: keyword %r is not one of %s"
+                             % (name, word, ", ".join(KEYWORDS)))
+        if match[0] not in out:
+            out.append(match[0])
+    return out
 
 
 # The Tag column: comma-separated, lower-cased.
@@ -71,28 +90,32 @@ def _tags(raw) -> list:
 
 
 # What the card says, composed from what it does so the line can never claim a
-# rule the card does not have. The authored Description (if any) leads.
-def card_text(description: str, movable: bool, destroyable: bool) -> str:
+# rule the card does not have. The authored Description (if any) leads, then each
+# keyword with its rule: "Eternal: can't be destroyed."
+def card_text(description: str, keywords: list) -> str:
     parts = [description.strip() if description.strip() else "Takes up a slot."]
     parts.append("Can't be thrown away.")
-    if not movable:
-        parts.append("Locked in the slot you put it in.")
-    if not destroyable:
-        parts.append("Can't be destroyed.")
+    for k in keywords:
+        parts.append("%s: %s." % (k, KEYWORDS[k]))
     return " ".join(parts)
 
 
 def curse_tres(row) -> tuple:
     name = str(row["Curse"]).strip()
     cid = dsl.slugify(name)
-    movable = _flag(row.get("Movable"), name, "Movable")
-    destroyable = _flag(row.get("Destroyable"), name, "Destroyable")
+    kind = dsl._clean(row.get("Type")) or "Card"
+    if kind.capitalize() not in TYPES:
+        raise ValueError("curses %s: Type %r is not one of %s — a cursed weapon is a "
+                         "weapon's roll, not a row" % (name, kind, ", ".join(TYPES)))
+    keywords = _keywords(row.get("Keywords"), name)
+    movable = "Unmovable" not in keywords
+    destroyable = "Eternal" not in keywords
     effect = dsl._clean(row.get("Effect"))
     passive = items.parse_loot_passive(name, effect) if effect else None
     if passive is not None and passive["harmless_statuses"]:
         raise ValueError("curses %s: harmless_status is a trinket's rule "
                          "(docs/loot-passives.md §17)" % name)
-    description = card_text(dsl._clean(row.get("Description")), movable, destroyable)
+    description = card_text(dsl._clean(row.get("Description")), keywords)
     tags = ["curse"] + [t for t in _tags(row.get("Tag")) if t != "curse"]
 
     lines = [
@@ -115,6 +138,7 @@ def curse_tres(row) -> tuple:
         "tags = PackedStringArray(%s)" % ", ".join('"%s"' % dsl.gd_str(t) for t in tags),
         # Never spent: a curse works (or does nothing) from its cell.
         "passive = true",
+        "keywords = PackedStringArray(%s)" % ", ".join('"%s"' % k for k in keywords),
         "movable = %s" % ("true" if movable else "false"),
         "destroyable = %s" % ("true" if destroyable else "false"),
     ]

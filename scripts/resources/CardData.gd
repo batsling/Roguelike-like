@@ -102,9 +102,12 @@ extends Resource
 # the player can never bin it or leave it out of the pack. Two more rules are the
 # sheet's, per curse:
 #   movable      false: locked in the cell it was placed in (GameState.is_pinned),
-#                and its bag with it. Poor Sleep.
+#                and its bag with it — the keyword UNMOVABLE. Poor Sleep.
 #   destroyable  false: no effect can destroy it, the Scroll of Remove Curse
-#                included. Curse of the Bell.
+#                included — the keyword ETERNAL. Curse of the Bell.
+# Both are written from the sheet's `Keywords` column, which is what the card
+# SAYS (`keywords`, in the sheet's order); the two bools are what the code reads.
+@export var keywords: PackedStringArray = PackedStringArray()
 @export var movable: bool = true
 @export var destroyable: bool = true
 # The sheet's `Tags` — what family the card belongs to (joker, tarot,

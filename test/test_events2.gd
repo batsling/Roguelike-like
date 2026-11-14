@@ -168,8 +168,12 @@ func test_each_curse_carries_the_owners_rules() -> void:
 	assert_true(bell.movable and not bell.destroyable, "the Bell moves and cannot be destroyed")
 	assert_true(injury.movable and injury.destroyable, "Injury moves and can be destroyed")
 	assert_true(not poor.movable and poor.destroyable, "Poor Sleep is locked and can be destroyed")
-	assert_string_contains(bell.description, "Can't be destroyed")
-	assert_string_contains(poor.description, "Locked")
+	# The rules are KEYWORDS, and the card says them.
+	assert_eq(Array(bell.keywords), ["Eternal"], "the Bell is Eternal")
+	assert_eq(Array(poor.keywords), ["Unmovable"], "Poor Sleep is Unmovable")
+	assert_true(injury.keywords.is_empty(), "Injury has neither")
+	assert_string_contains(bell.description, "Eternal: can't be destroyed")
+	assert_string_contains(poor.description, "Unmovable: can't be moved")
 
 
 func test_no_curse_is_ever_in_the_ordinary_loot_drop() -> void:

@@ -938,15 +938,16 @@ static func _ch_pack() -> Dictionary:
 				+ "screen opens and you have to put it in a slot. You can't skip "
 				+ "it, so if your pack is full, use or bin something to make room."),
 			_p("You can never bin a curse, leave it on the table or put it down "
-				+ "on the board. Most of them only take up the slot. Each one has "
-				+ "its own rules:"),
-			_kv("Curse of the Bell", "You can move it around your pack. Nothing "
-				+ "can destroy it, not even a Scroll of Remove Curse."),
-			_kv("Injury", "You can move it around your pack. A Scroll of Remove "
-				+ "Curse or anything that destroys loot can get rid of it."),
-			_kv("Poor Sleep", "Locked in the slot you put it in, and the bag "
-				+ "it sits in can't move either. A Scroll of Remove Curse or "
-				+ "anything that destroys loot can get rid of it."),
+				+ "on the board. Most of them only take up the slot. A Scroll of "
+				+ "Remove Curse or anything that destroys loot gets rid of one, "
+				+ "unless its keywords say otherwise:"),
+			_kv("Unmovable", "It can't be moved. It stays in the slot you put it "
+				+ "in, and the bag it sits in can't move either. Poor Sleep is "
+				+ "Unmovable."),
+			_kv("Eternal", "It can't be destroyed, not even by a Scroll of Remove "
+				+ "Curse. Curse of the Bell is Eternal."),
+			_p("A cursed weapon (a minus weapon you found unidentified) counts as "
+				+ "a curse too."),
 			_h("Luck"),
 			_p("Every point of Luck is a 50% chance of one more roll, and the "
 				+ "better result is kept. It compounds rather than adding — at 1 "

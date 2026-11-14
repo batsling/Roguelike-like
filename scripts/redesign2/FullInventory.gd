@@ -186,10 +186,11 @@ func _character_column() -> Control:
 		for row in held:
 			flow.add_child(_status_chip(row))
 
-	# The CURSE CARDS in the pack (docs/loot-passives.md §18), listed here as well
-	# as drawn in their cells: they are the pieces you did not choose.
+	# EVERY CURSE in the pack (docs/loot-passives.md §18) — curse cards and cursed
+	# weapons alike, since both count as curses — listed here as well as drawn in
+	# their cells: they are the pieces you did not choose.
 	col.add_child(_section("Curses"))
-	var carried: Array = GameState.loot_items.filter(func(e): return GameState.is_curse_entry(e))
+	var carried: Array = GameState.loot_items.filter(func(e): return GameState.is_curse(e))
 	if carried.is_empty():
 		col.add_child(_faint("None."))
 	for e in carried:
