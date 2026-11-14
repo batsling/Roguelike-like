@@ -21,7 +21,10 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 FONT = os.path.join(ROOT, "fonts", "NotoEmoji-Subset.ttf")
 OUT = os.path.join(ROOT, "images2.0", "general", "Hunger.png")
 GLYPH = "\U0001F357"
-SIDE = 128
+# 256, not the shield's 128: over UITheme.SMALL_ART_MAX it is drawn as a painted
+# picture, shrunk cleanly to the icon's real screen size (UITheme.shrunk) rather
+# than sampled as pixel art.
+SIDE = 256
 AMBER = (235, 168, 77, 255)   # HungerSystem.COLOR, Color(0.92, 0.66, 0.30)
 
 

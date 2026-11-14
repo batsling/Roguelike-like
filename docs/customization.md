@@ -182,9 +182,12 @@ On a 🏆, the Fracture level is written over the picture in `Fracture.COLOR`.
   icon, else `UITheme.HUNGER_ART` — the 🍗 glyph drawn once in Hunger's amber by
   `tools/build_hunger_art.py`, the way the shield's is. To earn (the owner's yes,
   14 Nov 2026): Mewgenics' Food, Vampire Survivors' Floor Chicken and Loop Hero's
-  Food Supply. A big painted icon is shrunk with Lanczos before it is drawn at
-  18 px (`UITheme.shrunk`): nothing generates mipmaps, so sampling it straight
-  broke Mewgenics' outline into dots.
+  Food Supply. A big PAINTED icon (over 128 px) is shrunk with Lanczos, once,
+  to the icon's real size in SCREEN pixels and drawn 1:1 (`UITheme.shrunk`,
+  `screen_scale`): nothing generates mipmaps, so sampling it straight broke
+  Mewgenics' outline into dots, and shrinking to twice the size and letting the
+  GPU halve it again made it blurry. Pixel art (128 px or under) is drawn as it
+  always was. The basic 🍗 is drawn at 256 px so it is shrunk the clean way.
 - **Gold is ◉**: the purse chip, the shop's purse, prices and gold Reroll, the
   Steal action and the inventory's Gold line. A kind with nothing to earn says so
   on its row ("No icons to earn yet").

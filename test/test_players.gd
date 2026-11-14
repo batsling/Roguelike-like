@@ -369,7 +369,7 @@ func test_handing_a_game_in_costs_hunger_and_the_header_shows_it() -> void:
 	assert_eq(lit, GameState.hunger, "a full icon per point")
 	# …shrunk properly from the big picture, the same texture for all five.
 	for p in ui._hunger_pips:
-		assert_eq(p.texture, UITheme.shrunk(Cosmetics.hunger_art(), ui.HUNGER_PIP),
+		assert_eq(p.texture, UITheme.shrunk(Cosmetics.hunger_art(), ui.hunger_pip_pixels()),
 			"every one is the Hunger icon")
 
 func test_the_eat_button_shows_only_with_food_and_the_basic_player_has_no_bar() -> void:
@@ -445,8 +445,8 @@ func test_hunger_is_an_icon_kind_with_a_drawn_default() -> void:
 func test_a_big_icon_is_shrunk_properly_before_it_is_drawn_small() -> void:
 	var big: Texture2D = load("res://images2.0/icons/Hunger/Food_Mewgenics.png")
 	var small: Texture2D = UITheme.shrunk(big, 18)
-	assert_eq(maxi(small.get_width(), small.get_height()), 36, "twice the side it is drawn at")
+	assert_eq(maxi(small.get_width(), small.get_height()), 18, "exactly the screen size it is drawn at")
 	assert_eq(UITheme.shrunk(big, 18), small, "made once and kept")
 	var tiny: Texture2D = load("res://images2.0/icons/Hunger/Food_Supply_Loop_Hero.png")
-	assert_eq(UITheme.shrunk(tiny, 64), tiny, "a picture already small enough is left alone")
+	assert_eq(UITheme.shrunk(tiny, 18), tiny, "pixel art (128px or under) is never softened")
 

@@ -940,18 +940,32 @@ const SMALL_ART_MAX := 128
 # mipmaps, so a 256px icon drawn at 18px is sampled, not averaged: three pixels
 # in four are dropped and an outline breaks into a dotted line (Mewgenics' food,
 # the owner, 14 Nov 2026: "make it look better"). This hands back `tex` shrunk
-# with Lanczos to twice `side` (a little room for a scaled window), cached per
-# picture and size; draw it with LINEAR filtering. A picture already that small
-# comes back as it is.
+# with Lanczos so its longer side is exactly `side` SCREEN pixels, cached per
+# picture and size. Shrunk once and drawn 1:1 with NEAREST, it is as sharp as the
+# picture allows: an earlier cut shrank to twice the size and let the GPU halve
+# it again with LINEAR, which softened it twice ("the image looks blurry").
+# `side` is in screen pixels, so a caller passes its canvas size times
+# `screen_scale(node)`. A picture already that small comes back as it is.
 static var _shrunk: Dictionary = {}
+
+# How many screen pixels one canvas pixel is: the window's stretch of the fixed
+# 1280x720 canvas (project.godot, stretch/mode canvas_items).
+static func screen_scale(node: CanvasItem) -> float:
+	if node == null or not node.is_inside_tree():
+		return 1.0
+	return maxf(node.get_viewport().get_final_transform().get_scale().x, 0.01)
 
 static func shrunk(tex: Texture2D, side: int) -> Texture2D:
 	if tex == null:
 		return null
-	var want: int = side * 2
+	var want: int = maxi(side, 1)
 	var w: int = tex.get_width()
 	var h: int = tex.get_height()
-	if maxi(w, h) <= want:
+	# PIXEL ART IS LEFT ALONE: at SMALL_ART_MAX or under it is pixel art by this
+	# theme's rule, and a Lanczos shrink would soften it where sampling keeps its
+	# blocks (Vampire Survivors' chicken, Loop Hero's food). Only a painted picture
+	# bigger than that is shrunk.
+	if maxi(w, h) <= want or maxi(w, h) <= SMALL_ART_MAX:
 		return tex
 	var key := "%s@%d" % [tex.resource_path if tex.resource_path != "" else str(tex.get_rid()), want]
 	if _shrunk.has(key):

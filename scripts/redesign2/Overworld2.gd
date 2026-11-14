@@ -6784,6 +6784,8 @@ func _build_character_chip() -> Control:
 		_hunger_pips.append(pip)
 	row.add_child(_hunger_chip)
 	Cosmetics.changed.connect(_paint_hunger_chip)
+	# The screen size of an icon follows the window, so a resize re-shrinks it.
+	get_viewport().size_changed.connect(_paint_hunger_chip)
 	_eat_btn = Button.new()
 	_eat_btn.name = "EatButton"
 	_eat_btn.text = "Eat"
@@ -6816,13 +6818,14 @@ func _paint_hunger_chip() -> void:
 	var art: Texture2D = Cosmetics.hunger_art()
 	for i in range(_hunger_pips.size()):
 		var pip: TextureRect = _hunger_pips[i]
-		# A big painted icon is shrunk properly first (UITheme.shrunk) and drawn
-		# smooth; pixel art small enough already stays crisp.
-		var small: Texture2D = UITheme.shrunk(art, HUNGER_PIP)
+		# A big painted icon is shrunk once, properly, to the pip's size in SCREEN
+		# pixels (UITheme.shrunk) and drawn 1:1, so nothing softens it again.
+		# Pixel art small enough already is drawn as it always was.
+		var small: Texture2D = UITheme.shrunk(art, hunger_pip_pixels())
 		pip.texture = small
 		UITheme.apply_crisp(pip, small)
 		if small != art:
-			pip.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+			pip.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 		# Full, as drawn; empty, a dark ghost of the same picture; and with the
 		# stomach empty every one of them tinted red, since there is no lit icon
 		# left to say so.
@@ -6837,6 +6840,11 @@ func _paint_hunger_chip() -> void:
 		+ "food for +1.") % [h, HungerSystem.MAX, HungerSystem.STARVE_DAMAGE]
 
 const HUNGER_PIP := 18
+
+# The Hunger icon's side in SCREEN pixels: the canvas's 18, times the window's
+# stretch. Repainted when the window changes size (_build_character_chip).
+func hunger_pip_pixels() -> int:
+	return maxi(1, roundi(HUNGER_PIP * UITheme.screen_scale(self)))
 const HUNGER_EMPTY := Color(1, 1, 1, 0.25)
 
 # THE EAT BUTTON (docs/players-design.md §4): the food in the pack and on the
