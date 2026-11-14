@@ -238,10 +238,13 @@ selected, gain +1 Temporary Shield"), and future tag routes / scrolls.
 ### 3.1 Characters, Level Up & the reward loop
 
 **This reuses the current project's level-up mechanic directly** (`CharacterData`
-+ `Overworld._resolve_level_up`). In `characters2.0`, **the columns left of `Level
-Up` (Health, Bash, Dash, Push, Transmute, Scramble, Bombs, Keys) are the character's
-starting stats**; `Level Up` is a per-game challenge and `Reward` is what meeting
-it grants.
++ `Overworld._resolve_level_up`). Since 13 Nov 2026 a character gives four things
+and **no stats** (`docs/players-design.md` §3): its Health, its Gold, its starting
+loot and its `Level Up` challenge, with `Reward` what meeting it grants. The
+starting verb columns (Bash, Dash, Push, Transmute, Scramble, Bombs, Keys,
+Random) are gone from the sheet, and a reward pays a chest, a card, loot, Max
+Health or gold — never a verb. What differs between runs MECHANICALLY is the
+**player** picked before the character (`docs/players-design.md`).
 
 All eleven, as the sheet has them — the wordings all say "Beat a game…" now
 because a level-up is settled by the run being won, and the `goals` sheet's pass
@@ -250,11 +253,11 @@ made every goal say when it is answered (§7.7):
 | Character | Level Up objective | Reward |
 |---|---|---|
 | Rodney | Beat a game without meta progression | +1 Max Health, +1 Loot |
-| Isaac | Beat a game while having used sorrow or self-inflicted pain as a weapon | +1 Small Chest, +1 Scramble |
-| Zoe | Perfect a game by beating it without losing | +1 Dash |
-| Minä | Beat a game while having crafted or combined a spell or weapon | +1 Transmute |
+| Isaac | Beat a game while having used sorrow or self-inflicted pain as a weapon | +1 Small Chest |
+| Zoe | Perfect a game by beating it without losing | — (counts toward XP only) |
+| Minä | Beat a game while having crafted or combined a spell or weapon | — (counts toward XP only) |
 | Ironclad | Beat a game while having made a Faustian bargain | +1 Small Chest |
-| Manager | Beat a game while having collected 3 different types of currency | +1 Push, +1 Gold |
+| Manager | Beat a game while having collected 3 different types of currency | +1 Gold |
 | Regent | Beat a game while having made a friend | +1 Small Chest |
 | Zagreus | Beat a game with the help of a God | +1 Large Chest |
 | Poe Ratcho | Beat a game while being stinky | +1 Random Sized Chest |

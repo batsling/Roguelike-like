@@ -65,20 +65,35 @@ func _texts(root: Node) -> String:
 
 # --- the data -----------------------------------------------------------------------
 
-func test_every_achievement_unlocks_a_real_character_and_can_be_counted() -> void:
+func test_every_achievement_unlocks_a_real_character_or_player_and_can_be_counted() -> void:
 	assert_eq(Data.all_achievements().size(), Fx.tres_count("res://data/achievements/"),
 		"every file in data/achievements loaded")
 	for a in Data.all_achievements():
-		assert_not_null(Data.get_character2(a.unlocks_character),
-			"%s unlocks a character in the roster" % a.id)
+		# One or the other (docs/players-design.md): a character under Characters,
+		# a player under Players.
+		var ch: CharacterData = Data.get_character2(a.unlocks_character)
+		var pl: PlayerData = Data.get_player(a.unlocks_player)
+		assert_true((ch != null) != (pl != null),
+			"%s unlocks exactly one character or player" % a.id)
 		assert_ne(a.description, "", "%s says what to do" % a.id)
 		assert_gt(a.goal, 0, "%s has a goal" % a.id)
 		assert_true(["tagged_held", "perfects", "games_beaten"].has(a.metric),
 			"%s is counted a way Achievements.measure knows" % a.id)
 
 func test_the_tabs_are_read_off_the_achievements() -> void:
-	assert_eq(Achievements.tabs(), ["Characters"], "one kind of unlock so far")
-	assert_eq(Achievements.in_tab("Characters").size(), Data.all_achievements().size())
+	assert_eq(Achievements.tabs(), ["Characters", "Players"], "two kinds of unlock so far")
+	assert_eq(Achievements.in_tab("Characters").size() + Achievements.in_tab("Players").size(),
+		Data.all_achievements().size())
+
+# RETRO_BAT (docs/players-design.md): locked until 20 different traditional
+# roguelikes have been beaten, across all runs.
+func test_retro_bat_is_locked_until_twenty_traditional_roguelikes_are_beaten() -> void:
+	var a: AchievementData = Achievements.for_player(&"retro_bat")
+	assert_not_null(a, "an achievement unlocks Retro Bat")
+	assert_eq([a.tab, a.scope, a.metric, a.game_type, a.goal],
+		["Players", "lifetime", "games_beaten", "traditional", 20])
+	assert_true(Achievements.player_locked(&"retro_bat"), "a fresh profile cannot play Retro Bat")
+	assert_false(Achievements.player_locked(&"basic"), "nothing locks the basic player")
 
 # --- in one run: Manager ------------------------------------------------------------
 
@@ -216,7 +231,7 @@ func test_the_screen_says_how_each_is_counted_and_how_close() -> void:
 	assert_true(text.contains("IN ONE RUN") and text.contains("ACROSS ALL RUNS"))
 	assert_true(text.contains("Best in one run: 2 of 3"), "Manager's best run")
 	assert_true(text.contains("So far: 4 of 10"), "Zoe's running total")
-	assert_true(text.contains("0 of 3 unlocked"))
+	assert_true(text.contains("0 of 4 unlocked"))
 	var tab := s.find_child("Tab0", true, false) as Button
 	assert_eq(tab.text, "Characters  0 / 3", "the Characters tab, with its count")
 	var sockets := s.find_child("Row_manager", true, false).find_child("Sockets", true, false)
@@ -296,9 +311,11 @@ func test_the_meter_is_the_average_of_the_sections_that_have_something_to_comple
 	var after: Array = CompletionStats.sections()
 	var counted: int = after.filter(func(s) -> bool: return float(s["ratio"]) >= 0.0).size()
 	assert_eq(counted, after.size() - 1, "every section but the run records is counted")
-	assert_almost_eq(CompletionStats.achievements()["ratio"], 1.0 / 3.0, 0.0001)
-	assert_almost_eq(CompletionStats.overall(after) - before, (1.0 / 3.0) / counted, 0.0001,
-		"a third of one section, and every section weighs the same")
+	# A line per tab, averaged: Characters 1 of 3, Players 0 of 1.
+	var ratio: float = (1.0 / 3.0 + 0.0) / 2.0
+	assert_almost_eq(CompletionStats.achievements()["ratio"], ratio, 0.0001)
+	assert_almost_eq(CompletionStats.overall(after) - before, ratio / counted, 0.0001,
+		"a share of one section, and every section weighs the same")
 
 func test_the_test_switch_completes_nothing_on_the_stats_page() -> void:
 	Settings.unlock_everything = true
@@ -322,11 +339,11 @@ func test_runs_are_counted_past_the_history_s_cap() -> void:
 
 func test_the_stats_tab_shows_the_meter_and_every_section() -> void:
 	GameStats.note_achievement(&"rodney", 1, 1)
-	var s := AchievementsScreen.open(self, 1)
+	var s := AchievementsScreen.open(self, 2)
 	autofree(s)
 	await wait_frames(2)
 	var overall: String = AchievementsScreen._percent(CompletionStats.overall())
-	assert_eq((s.find_child("Tab1", true, false) as Button).text, "Stats  %s" % overall)
+	assert_eq((s.find_child("Tab2", true, false) as Button).text, "Stats  %s" % overall)
 	assert_eq((s.find_child("Overall", true, false) as Label).text, overall)
 	var text: String = _texts(s)
 	for section in CompletionStats.sections():

@@ -694,7 +694,7 @@ func _on_start_run() -> void:
 	# goes with it, and RunGraph falls back to Settings.game_filter. Done here
 	# rather than in _begin_run, which the custom flow also goes through.
 	RunConfig.reset()
-	_open_character_picker()
+	_open_player_picker()
 
 # The custom flow is the same flow with a screen in front of it: pick what the run
 # is made of, then pick who plays it. RunConfig is applied before the picker opens
@@ -706,6 +706,17 @@ func _on_custom_run() -> void:
 	var screen := CustomRunScreen.open(self)
 	screen.begun.connect(func(config: Dictionary):
 		RunConfig.apply(config)
+		_open_player_picker())
+
+# THE FIRST PICK: the player and its Fracture (PlayerPicker, docs/players-design.md).
+# Its Next opens the character select; the player waits on GameState's meta until
+# the character is chosen, as the character waits for the scene swap.
+func _open_player_picker() -> void:
+	for c in _modal_layer.get_children():
+		c.queue_free()
+	var picker := PlayerPicker.open(_modal_layer)
+	picker.chosen.connect(func(player_id: StringName):
+		GameState.set_meta("pending_player2", player_id)
 		_open_character_picker())
 
 # The picker is its own screen (CharacterPicker), mounted on %ModalLayer like

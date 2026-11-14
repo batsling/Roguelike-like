@@ -123,3 +123,28 @@ toggle_fullscreen={
 "events": [Object(InputEventKey,"resource_local_to_scene":false,"resource_name":"","device":-1,"window_id":0,"alt_pressed":false,"shift_pressed":false,"ctrl_pressed":false,"meta_pressed":false,"pressed":false,"keycode":4194342,"physical_keycode":0,"key_label":0,"unicode":0,"location":0,"echo":false,"script":null)
 ]
 }
+
+[importer_defaults]
+
+; MIPMAPS ON EVERY IMPORTED PICTURE (the owner, 14 Nov 2026: "make sure as many
+; things as possible in this project look good"). ~2,500 of the ~2,900 PNGs are
+; painted art far bigger than they are drawn — a 600px cover in a 92px card, a
+; 256px icon at 18px — and without mipmaps the GPU SAMPLES them: most pixels are
+; dropped, so thin lines and lettering break into dots (Angband's title, the
+; Mewgenics drumstick's outline). With mipmaps, and the canvas's default filter
+; below, it averages them instead. Pixel art is unaffected: UITheme.apply_crisp
+; draws it NEAREST, which never reads a mipmap. The .import files are gitignored,
+; so this is what every fresh checkout imports with; a checkout that already has
+; them needs one reimport (delete the *.import files, then
+; `godot --headless --editor --quit`).
+texture={
+"mipmaps/generate": true
+}
+
+[rendering]
+
+; …and smoothed art reads them: Linear Mipmap rather than plain Linear, so every
+; TextureRect left to inherit its filter averages a picture drawn small. This
+; setting counts in Viewport's enum (0 Nearest, 1 Linear, 2 LINEAR WITH MIPMAPS,
+; 3 Nearest with mipmaps), NOT CanvasItem's, where Linear Mipmap is 4.
+textures/canvas_textures/default_texture_filter=2

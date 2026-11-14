@@ -185,6 +185,9 @@ var _shop_bar_fill: ProgressBar = null
 # and the frame around it — held so the pair can be hidden together when the
 # character has no art to draw.
 var _character_chip: TextureRect = null
+# The PLAYER's token, just left of the character's (docs/players-design.md §6).
+# Hidden for a player with no art (the basic player).
+var _player_chip: TextureRect = null
 var _character_wrap: Control = null
 # The character's LEVEL, in the same chip as the token ("Lv. 1"). See
 # _build_character_chip for why it rides the header rather than a panel.
@@ -192,6 +195,11 @@ var _fracture_chip: Label = null
 # What the Collapse just changed, [{node, from, to}], until its screen has shown it.
 var _collapse_changes: Array = []
 var _level_chip: Label = null
+# HUNGER (docs/players-design.md §4), beside the token: the bar, and the Eat
+# button that lights the food in the pack. Both hidden for a player without it.
+var _hunger_chip: HBoxContainer = null
+var _hunger_pips: Array[TextureRect] = []
+var _eat_btn: Button = null
 # The road walked, across the top of the page. Rebuilt on every refresh — it is a
 # handful of TextureRects and the run only moves a few dozen times.
 var _route_strip: HBoxContainer = null
@@ -682,7 +690,11 @@ func _ready() -> void:
 	var pending: StringName = GameState.get_meta("pending_character2", &"")
 	if pending != &"":
 		GameState.remove_meta("pending_character2")
-	start_run(pending)
+	# …and the player picked before them (docs/players-design.md).
+	var player: StringName = GameState.get_meta("pending_player2", Data.BASIC_PLAYER)
+	if GameState.has_meta("pending_player2"):
+		GameState.remove_meta("pending_player2")
+	start_run(pending, player)
 
 # THE ON-DEMAND SCREENS ARE COMPILED IN THE BACKGROUND once the page is up. They
 # are reached by path so the page does not pay for them on the way in (see the
@@ -715,7 +727,7 @@ func _warm_screens() -> void:
 # position on the graph until choose_start() puts them on one, so the first real
 # offering is drawn from whichever start they take. `character_id` empty -> the
 # first authored 2.0 character.
-func start_run(character_id: StringName = &"") -> void:
+func start_run(character_id: StringName = &"", player_id: StringName = Data.BASIC_PLAYER) -> void:
 	# Whatever the last run left on the page goes with it: a verdict screen, a
 	# resolve still being played back, an offering.
 	_dismiss_run_over()
@@ -779,7 +791,7 @@ func start_run(character_id: StringName = &"") -> void:
 	if ch == null:
 		var roster: Array = Data.all_characters2()
 		ch = roster[0] if not roster.is_empty() else null
-	GameLoop2.start_run(ch)
+	GameLoop2.start_run(ch, player_id)
 	_rng.seed = GameState.run_seed
 	var pick: Dictionary = RunGraph.pick_amulet_and_starts(_rng)
 	_start_floor = int(pick.get("floor", RunGraph.ROUTE_SLACK_FLOOR))
@@ -1589,7 +1601,12 @@ func _grant_start_gear_once(game: GameData) -> void:
 	var genre: String = RunGraph.type_label(int(game.type))
 	var leftover: Array = []
 	var names: Array = []
-	for entry in GameState.roll_start_gear(int(game.type)):
+	# The kit is not a FIND, so a weapon in it is not rolled unidentified
+	# (docs/players-design.md §5).
+	GameState.granting_start_kit = true
+	var kit: Array = GameState.roll_start_gear(int(game.type))
+	GameState.granting_start_kit = false
+	for entry in kit:
 		names.append(LootSystem.display_name(entry))
 		if not GameState.take_loot_entry(entry):
 			leftover.append(entry)
@@ -2746,6 +2763,11 @@ func report(beaten: bool, fulfilled: Variant = null, escaped: bool = false,
 	# just grown under the bodies standing on it (§7.3). Reconcile it and say so.
 	if not GameLoop2.run_over:
 		_announce_difficulty_step(tier_before, board_before)
+	# HUNGER (docs/players-design.md §4): every game handed in costs 1, and one
+	# handed in already starving costs Health. Last, after the game's loot was
+	# queued, so food the haul is about to hand over cannot save you. ☠
+	if not GameLoop2.run_over:
+		HungerSystem.game_finished()
 	_chosen = {}
 	# Rating is a BUTTON, never a pop-up: remember the game so the "★ Rate <game>"
 	# button on the select screen can score it whenever the player feels like it.
@@ -6719,6 +6741,12 @@ func _build_character_chip() -> Control:
 	_fracture_chip.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_fracture_chip.mouse_filter = Control.MOUSE_FILTER_STOP
 	row.add_child(_fracture_chip)
+	# THE PLAYER, LEFT OF THE CHARACTER (the owner, 13 Nov 2026): the run is a
+	# player playing a character, read left to right, the way it was picked.
+	_player_chip = UITheme.crisp_tex(null, CHARACTER_CHIP)
+	_player_chip.name = "PlayerChip"
+	_player_chip.mouse_filter = Control.MOUSE_FILTER_STOP
+	row.add_child(_player_chip)
 	_character_chip = UITheme.crisp_tex(null, CHARACTER_CHIP)
 	# The token answers a hover with who it is — the name is not written out,
 	# because the header's job here is the picture and a name would cost the route
@@ -6737,9 +6765,102 @@ func _build_character_chip() -> Control:
 	_level_chip.add_theme_color_override("font_color", UITheme.GOLD)
 	_level_chip.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	row.add_child(_level_chip)
+	# HUNGER, top left beside the token (the owner, 13 Nov 2026): the stomach as
+	# five pips, and the Eat button while there is something to eat.
+	# FIVE HUNGER ICONS, not a word and a bar (the owner, 14 Nov 2026): one per
+	# point the stomach can hold, lit for each point it does. The picture is the
+	# worn Hunger icon, else the basic 🍗 (Cosmetics.hunger_art); drawn, never
+	# written, so no glyph swap is involved.
+	_hunger_chip = HBoxContainer.new()
+	_hunger_chip.name = "HungerChip"
+	_hunger_chip.add_theme_constant_override("separation", UITheme.GAP_HAIR)
+	_hunger_chip.mouse_filter = Control.MOUSE_FILTER_STOP
+	_hunger_chip.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_hunger_pips.clear()
+	for _i in range(HungerSystem.MAX):
+		var pip := UITheme.crisp_tex(null, HUNGER_PIP)
+		pip.mouse_filter = Control.MOUSE_FILTER_PASS
+		_hunger_chip.add_child(pip)
+		_hunger_pips.append(pip)
+	row.add_child(_hunger_chip)
+	Cosmetics.changed.connect(_paint_hunger_chip)
+	# The screen size of an icon follows the window, so a resize re-shrinks it.
+	get_viewport().size_changed.connect(_paint_hunger_chip)
+	_eat_btn = Button.new()
+	_eat_btn.name = "EatButton"
+	_eat_btn.text = "Eat"
+	_eat_btn.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
+	_eat_btn.pressed.connect(begin_eating)
+	row.add_child(_eat_btn)
+	GameState.hunger_changed.connect(func(_h): _paint_hunger_chip())
+	GameState.inventory_changed.connect(_paint_hunger_chip)
 	_character_wrap = wrap
 	_paint_character_chip()
 	return wrap
+
+# The Hunger pips and whether Eat is live. Hidden for a player without Hunger.
+func _paint_hunger_chip() -> void:
+	if _hunger_chip == null or not is_instance_valid(_hunger_chip):
+		return
+	var on: bool = HungerSystem.active()
+	_hunger_chip.visible = on
+	if _eat_btn != null and is_instance_valid(_eat_btn):
+		var food: Array = HungerSystem.edible()
+		# Shown while there is something to eat; greyed out when full, so the
+		# food is never wasted on a stomach that cannot take it.
+		_eat_btn.visible = on and not food.is_empty()
+		_eat_btn.disabled = HungerSystem.is_full()
+		_eat_btn.tooltip_text = ("You are full." if HungerSystem.is_full() else
+			"Eat a piece of food from your pack or relics: +1 Hunger, and it is gone.")
+	if not on:
+		return
+	var h: int = GameState.hunger
+	var art: Texture2D = Cosmetics.hunger_art()
+	for i in range(_hunger_pips.size()):
+		var pip: TextureRect = _hunger_pips[i]
+		# A big painted icon is shrunk once, properly, to the pip's size in SCREEN
+		# pixels (UITheme.shrunk) and drawn 1:1, so nothing softens it again.
+		# Pixel art small enough already is drawn as it always was.
+		var small: Texture2D = UITheme.shrunk(art, hunger_pip_pixels())
+		pip.texture = small
+		UITheme.apply_crisp(pip, small)
+		if small != art:
+			pip.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		# Full, as drawn; empty, a dark ghost of the same picture; and with the
+		# stomach empty every one of them tinted red, since there is no lit icon
+		# left to say so.
+		if i < h:
+			pip.modulate = Color.WHITE
+		elif h == 0:
+			pip.modulate = Color(UITheme.DANGER, 0.55)
+		else:
+			pip.modulate = HUNGER_EMPTY
+	_hunger_chip.tooltip_text = ("Hunger %d/%d. Each game you finish costs 1. At 0, "
+		+ "finishing a game or losing a run costs %d Health. Drink a potion or eat "
+		+ "food for +1.") % [h, HungerSystem.MAX, HungerSystem.STARVE_DAMAGE]
+
+const HUNGER_PIP := 18
+
+# The Hunger icon's side in SCREEN pixels: the canvas's 18, times the window's
+# stretch. Repainted when the window changes size (_build_character_chip).
+func hunger_pip_pixels() -> int:
+	return maxi(1, roundi(HUNGER_PIP * UITheme.screen_scale(self)))
+const HUNGER_EMPTY := Color(1, 1, 1, 0.25)
+
+# THE EAT BUTTON (docs/players-design.md §4): the food in the pack and on the
+# relic strip lights up, and clicking one eats it — OwnedPick, the same gesture
+# an Identify uses. Backing out eats nothing.
+func begin_eating() -> void:
+	if not HungerSystem.can_eat():
+		return
+	begin_owned_pick({
+		"candidates": HungerSystem.edible(), "count": 1, "exact": true,
+		"verb": "eat", "accent": HungerSystem.COLOR,
+		"on_cancel": func(): pass,
+	}, func(chosen: Array) -> void:
+		for thing in chosen:
+			HungerSystem.eat(thing)
+		_paint_hunger_chip())
 
 func _paint_character_chip() -> void:
 	if _character_chip == null or not is_instance_valid(_character_chip):
@@ -6772,6 +6893,20 @@ func _paint_character_chip() -> void:
 				else "Character level."
 	if ch != null:
 		_character_chip.tooltip_text = "%s — the character this run is being played as." % ch.display_name
+	if _player_chip != null and is_instance_valid(_player_chip):
+		var pl: PlayerData = GameState.player()
+		var ptex: Texture2D = pl.icon if pl != null else null
+		_player_chip.texture = ptex
+		UITheme.apply_crisp(_player_chip, ptex)
+		# A PAINTED token (Batsaac's face, stored at twice the chip) is shrunk, and
+		# shrinking wants smoothing: nearest drops three pixels in four and the face
+		# comes out as noise. Pixel art (Retro Bat) is never larger than the chip.
+		if ptex != null and ptex.get_width() > CHARACTER_CHIP:
+			_player_chip.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+		_player_chip.visible = ptex != null
+		if pl != null:
+			_player_chip.tooltip_text = "%s — the player this run is played as." % pl.display_name
+	_paint_hunger_chip()
 
 func _build_health_chip() -> Control:
 	var wrap := PanelContainer.new()

@@ -18,69 +18,35 @@ func test_character2_roster_loads() -> void:
 	assert_eq(Data.all_characters2().size(), Fixtures.tres_count("res://data/characters2.0/"),
 		"every characters2.0 .tres loads")
 
-func test_manager_levels_push() -> void:
+func test_manager_levels_gold() -> void:
 	var manager: CharacterData = Data.get_character2(&"manager")
 	assert_not_null(manager, "manager.tres should load from data/characters2.0")
 	assert_eq(manager.source_game, "Raccoin: Coin Pusher Roguelike")
-	assert_eq(manager.start_push, 2, "Manager starts with 2 Push charges")
-	assert_eq(int(manager.level_up_stats.get("push", 0)), 1, "level-up reward is +1 Push")
+	assert_eq(manager.level_up_stats, {"gold": 1}, "level-up pays +1 Gold and no verb")
 	assert_eq(manager.level_up_condition, "Beat a game while having collected 3 different types of currency")
 
-# --- the unrolled loadout (the sheet's Random column) ----------------------
+# --- a character gives no stats (docs/players-design.md §3) ------------------
 #
-# Erratic Deck and Rodney bring part of their loadout UNROLLED: N points spent
-# across the verb pool when the run starts, so no two runs of them open the same.
+# The starting verbs (Bash, Dash, Push, …, and the Random points rolled across
+# them) came off the sheet on 13 Nov 2026, and so did every level-up verb gain.
 
-func test_the_random_column_reaches_the_roster() -> void:
-	assert_eq(Data.get_character2(&"erratic_deck").start_random, 2,
-		"Erratic Deck's whole loadout is rolled")
-	assert_eq(Data.get_character2(&"rodney").start_random, 2, "and so is Rodney's")
-	assert_eq(Data.get_character2(&"ironclad").start_random, 0,
-		"a character with a fixed loadout rolls nothing")
-
-func test_a_random_loadout_lands_entirely_inside_the_verb_pool() -> void:
-	var erratic: CharacterData = Data.get_character2(&"erratic_deck")
-	# Run it enough times that a leak into the wrong field would show.
-	for _i in range(40):
-		GameLoop2.start_run(erratic)
+func test_every_character_opens_a_run_with_no_verbs() -> void:
+	for ch in Data.all_characters2():
+		GameLoop2.start_run(ch)
 		var total: int = GameState.bash + GameState.dash_charges + GameState.push \
-			+ GameState.transmute + GameState.scramble + GameState.bombs
-		assert_eq(total, erratic.start_random,
-			"every rolled point landed on a verb in the pool, and only one each")
-		assert_eq(GameState.keys, 0,
-			"Keys is out of the pool — nothing in the build opens with one yet")
+			+ GameState.transmute + GameState.scramble + GameState.bombs + GameState.keys
+		assert_eq(total, 0, "%s opens on no verbs" % ch.display_name)
 
-func test_the_roll_is_actually_random() -> void:
-	# Not a distribution test — just that 60 rolls of 2 points don't all produce
-	# the same loadout, which is what a broken (or unseeded) pick would give.
-	var seen: Dictionary = {}
-	var erratic: CharacterData = Data.get_character2(&"erratic_deck")
-	for _i in range(60):
-		GameLoop2.start_run(erratic)
-		seen["%d/%d/%d/%d/%d/%d" % [GameState.bash, GameState.dash_charges,
-			GameState.push, GameState.transmute, GameState.scramble, GameState.bombs]] = true
-	assert_gt(seen.size(), 1, "the loadout differs between runs")
-
-func test_a_fixed_loadout_is_untouched_by_the_roll() -> void:
-	var manager: CharacterData = Data.get_character2(&"manager")
-	GameLoop2.start_run(manager)
-	assert_eq(GameState.push, manager.start_push,
-		"a character that rolls nothing opens on exactly its sheet row")
-	assert_eq(GameState.bash, 0)
-
-func test_the_roll_is_reported_in_words() -> void:
-	# The run log has to be able to say what was rolled, or a loadout that differs
-	# every run just reads as the character screen being wrong.
-	assert_eq(GameState.describe_start_random({"bash": 2, "push": 1}), "+2 Bash, +1 Push",
-		"named in pool order, whatever order they were rolled in")
-	assert_eq(GameState.describe_start_random({}), "", "and nothing to say for no roll")
+func test_no_level_up_grants_a_verb() -> void:
+	for ch in Data.all_characters2():
+		for k in ch.level_up_stats:
+			assert_true(String(k) in ["max_hp", "gold"],
+				"%s's level-up pays only Max Health or gold, not %s" % [ch.display_name, k])
 
 func test_isaac_starting_loadout() -> void:
 	var isaac: CharacterData = Data.get_character2(&"isaac")
 	assert_not_null(isaac, "isaac.tres should load from data/characters2.0")
 	assert_eq(isaac.base_max_hp, 6, "Isaac Health 6 -> base_max_hp")
-	assert_eq(isaac.start_bombs, 1, "Isaac starts with 1 Bomb")
-	assert_eq(isaac.start_dash, 0)
 	assert_true(isaac.starting_items.has(&"d6"), "Isaac starts with the D6 item")
 
 func test_isaac_levelup_reward_is_chest() -> void:
@@ -89,10 +55,7 @@ func test_isaac_levelup_reward_is_chest() -> void:
 	assert_eq(isaac.level_up_reward_amount, 1)
 	assert_eq(isaac.level_up_reward_chest_choices, 1, "Small -> 1 item, no choice")
 	assert_eq(isaac.level_up_condition, "Beat a game while having used sorrow or self-inflicted pain as a weapon")
-	# "Gain +1 Small Chest and +1 Scramble" — the chest AND the stat, not one or
-	# the other: the reward parser reads the verb gain alongside the chest type.
-	assert_eq(int(isaac.level_up_stats.get("scramble", 0)), 1,
-		"the second half of the reward is a Scramble")
+	assert_eq(isaac.level_up_stats, {}, "the chest and nothing else")
 
 func test_zagreus_levelup_reward_is_a_large_chest() -> void:
 	var zag: CharacterData = Data.get_character2(&"zagreus")
@@ -111,12 +74,6 @@ func test_zagreus_has_art() -> void:
 	assert_not_null(zag.portrait, "Zagreus' full portrait resolves")
 	assert_not_null(zag.icon, "Zagreus' in-world icon resolves")
 
-func test_minä_starts_and_levels_transmute() -> void:
-	var mina: CharacterData = Data.get_character2(&"min")
-	assert_not_null(mina, "Minä loads (id slugs to 'min')")
-	assert_eq(mina.start_transmute, 2, "Noita starts with 2 Transmute")
-	assert_eq(int(mina.level_up_stats.get("transmute", 0)), 1, "reward +1 Transmute")
-
 func test_poe_ratcho_starting_loadout_and_reward() -> void:
 	var poe: CharacterData = Data.get_character2(&"poe_ratcho")
 	assert_not_null(poe, "poe_ratcho.tres should load from data/characters2.0")
@@ -133,7 +90,6 @@ func test_antonio_belpaese_starting_loadout_and_reward() -> void:
 	assert_not_null(antonio, "antonio_belpaese.tres should load from data/characters2.0")
 	assert_eq(antonio.source_game, "Vampire Survivors")
 	assert_eq(antonio.base_max_hp, 7)
-	assert_eq(antonio.start_bash, 1, "Antonio starts with 1 Bash")
 	assert_eq(antonio.starting_items.size(), 0, "Antonio starts with no relics…")
 	assert_eq(antonio.starting_loot, [{"type": "weapon", "id": "whip"}], "…and a Whip")
 	assert_eq(String(antonio.level_up_reward_type), "random_sized_chest",

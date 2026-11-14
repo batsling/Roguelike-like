@@ -1395,16 +1395,15 @@ func test_character_detail_is_split_into_three_pages_one_shown() -> void:
 		"the next character opens on the same page")
 	col._char_page = "overview"
 
-# The stats are tiles: Health plus one per verb in the loadout.
-func test_character_overview_draws_a_stat_tile_per_verb() -> void:
+# The stats are tiles: Health and Gold. A character gives no verbs.
+func test_character_overview_draws_health_and_gold_tiles() -> void:
 	var ch: CharacterData = Data.all_characters2()[0]
 	var col := _new_collection()
 	col._set_tab(Collection.Tab.CHARACTERS)
 	col._show_character_detail(ch)
 	var grids: Array = (_char_pages(col)["overview"] as Node).find_children("*", "GridContainer", true, false)
 	assert_eq(grids.size(), 1, "one stat grid")
-	assert_eq((grids[0] as Node).get_child_count(), 1 + ch.verb_loadout().size(),
-		"Health and every verb")
+	assert_eq((grids[0] as Node).get_child_count(), 2, "Health and Gold")
 
 # --- Locations tab -----------------------------------------------------------
 #

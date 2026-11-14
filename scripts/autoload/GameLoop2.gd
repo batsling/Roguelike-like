@@ -975,18 +975,23 @@ func _reseat_stack(was_offgrid_from: int = -1) -> void:
 			entry["row"] = 0
 	_admit_offgrid()
 
-# Full run start for the games-first loop: wipes run state, applies the chosen
-# character's 2.0 loadout (Health + verbs + starting items), and clears the enemy
-# stack. The single entry point a menu / new-run flow calls to begin a 2.0 run.
-func start_run(character: CharacterData) -> void:
+# Full run start for the games-first loop: wipes run state, sets the PLAYER
+# (docs/players-design.md), applies the chosen character's 2.0 loadout (Health,
+# gold, starting loot), and clears the enemy stack. The single entry point a
+# menu / new-run flow calls to begin a 2.0 run.
+func start_run(character: CharacterData, player_id: StringName = Data.BASIC_PLAYER) -> void:
 	GameState.reset_run()
+	# The player first: its mechanics are switched on before the character's
+	# starting loot is handed over (Hunger starts full; a starting weapon is not
+	# rolled either way — docs/players-design.md §5).
+	GameState.player_id = player_id if Data.get_player(player_id) != null else Data.BASIC_PLAYER
+	HungerSystem.begin_run()
 	GameState.apply_character2(character)
-	# The level this run is played at: the character's remembered pick, which
+	# The level this run is played at: the PLAYER's remembered pick, which
 	# GameStats already holds to what they have unlocked (docs/fracture-design.md
-	# §4). A custom run may use any level unlocked in ordinary runs, so the same
-	# pick serves both.
-	if character != null:
-		GameState.fracture = GameStats.fracture_pick(character.id)
+	# §4, the ladder per player since docs/players-design.md §2). A custom run may
+	# use any level unlocked in ordinary runs, so the same pick serves both.
+	GameState.fracture = GameStats.player_fracture_pick(GameState.player_id)
 	# What a Donation Machine has unlocked, as of now (§14.6): this run's gold
 	# counts from the next one.
 	GameState.donation_best = GameStats.donation_best()
@@ -2293,6 +2298,10 @@ func log_attempt() -> String:
 	# on at the back and acts from the next lost run like any other arrival.
 	if not run_over:
 		last_attempt_turn["lost_run_spawn"] = _roll_lost_run_spawn()
+	# HUNGER (docs/players-design.md §4): a run lost on an empty stomach costs
+	# Health too. After the turn, so the board's blow lands first. ☠
+	if not run_over:
+		HungerSystem.run_lost()
 	_sat_out_stunned.clear()
 	attempt_logged.emit("turn", false)
 	loop_changed.emit()
@@ -5657,6 +5666,17 @@ func _take_hit(damage: int, res: Dictionary,
 	if GameState.hp <= 0 and not run_over:
 		_finish_run(false)
 	return {"damage": damage, "blocked": absorbed, "pool": pool}
+
+# LOSE Health outright — no shield stops it, no status scales it — and end the run
+# if it ran out. For a bill that is not a hit at all: Hunger's starving loss
+# (docs/players-design.md §4). Synchronous, unlike the deferred _check_death,
+# because the report that bills it asks `run_over` on the next line.
+func lose_health(amount: int, source: String = "") -> void:
+	if amount <= 0:
+		return
+	GameState.change_hp(-amount, source)
+	if GameState.hp <= 0 and not run_over and GameState.character_id != &"":
+		_finish_run(false)
 
 # Damage the player from something that is NOT an enemy's swing — a status's
 # penalty (Burn's 3, §13), a `take_damage` effect from anywhere. Goes through the

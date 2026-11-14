@@ -1013,25 +1013,24 @@ func test_report_accepts_an_explicit_fulfilment_list() -> void:
 		assert_ne(int(entry["instance"]), inst, "the explicitly-fulfilled follower is gone")
 
 func test_level_up_checkbox_grants_the_reward() -> void:
-	# Zoe's level-up ("Perfect a game by beating it without losing") pays +1 Dash.
-	# Ticking the level-up box on report should apply the character's
-	# level_up_stats.
-	_reboot(&"zoe")
-	var dash_before: int = GameState.dash_charges
+	# Rodney's level-up pays +1 Max Health (and a piece of loot). Ticking the
+	# level-up box on report should apply the character's level_up_stats.
+	_reboot(&"rodney")
+	var max_before: int = GameState.max_hp
 	var lvl_before: int = GameState.player_level
 	_pick_enemies(0)
-	assert_not_null(_ui._levelup_check, "Zoe has a level-up condition -> a checkbox")
+	assert_not_null(_ui._levelup_check, "Rodney has a level-up condition -> a checkbox")
 	_tick(_ui._levelup_check)
 	Page.report_beat(_ui)
-	assert_eq(GameState.dash_charges, dash_before + 1, "level-up granted +1 Dash")
+	assert_eq(GameState.max_hp, max_before + 1, "level-up granted +1 Max Health")
 	assert_eq(GameState.player_level, lvl_before + 1, "player level advanced")
 
 func test_level_up_not_applied_when_unchecked() -> void:
-	_reboot(&"zoe")
-	var dash_before: int = GameState.dash_charges
+	_reboot(&"rodney")
+	var max_before: int = GameState.max_hp
 	_pick_enemies(0)
 	Page.report_beat(_ui)                              # box left unticked
-	assert_eq(GameState.dash_charges, dash_before, "no level-up without the tick")
+	assert_eq(GameState.max_hp, max_before, "no level-up without the tick")
 
 # A CHEST THE LEVEL-UP EARNS WAITS FOR THE HAUL SCREEN (§18). It used to throw a
 # RewardScreen over the checklist the instant the box was ticked — on a list of
@@ -10275,7 +10274,7 @@ func test_the_confirm_still_asks_when_there_is_nothing_to_review() -> void:
 # granted got a section on the haul screen and the +1 Dash got nothing, on the one
 # screen that exists to say what the evening earned.
 func test_the_haul_screen_says_what_the_level_up_paid() -> void:
-	_reboot(&"zoe")                          # +1 Dash, no chest
+	_reboot(&"rodney")                       # +1 Max Health (and a piece of loot)
 	_pick_enemies(0)
 	_tick(_ui._levelup_check)
 	Page.report_beat(_ui)
@@ -10285,7 +10284,7 @@ func test_the_haul_screen_says_what_the_level_up_paid() -> void:
 		return
 	var text: String = str(_labels_under(_ui._post_screen))
 	assert_string_contains(text, "LEVELLED UP", "the haul screen says a level was taken")
-	assert_string_contains(text, "Dash", "and what it actually paid")
+	assert_string_contains(text, "+1 Max HP", "and what it actually paid")
 	Page.leave_post_game(_ui)
 	Page.dismiss_event(_ui)
 
@@ -10331,18 +10330,18 @@ func test_a_report_with_no_level_up_says_nothing_about_one() -> void:
 # the game in is what cashes it. Unticking it before the report costs nothing,
 # which is the other half of the same rule.
 func test_the_level_up_is_taken_at_the_report_and_not_before() -> void:
-	_reboot(&"zoe")
-	var dash_before: int = GameState.dash_charges
+	_reboot(&"rodney")
+	var max_before: int = GameState.max_hp
 	_pick_enemies(0)
 	if _ui._levelup_check == null:
 		pending("the run did not put a level-up row on the report")
 		return
 	_tick(_ui._levelup_check)
-	assert_eq(GameState.dash_charges, dash_before,
+	assert_eq(GameState.max_hp, max_before,
 		"nothing landed mid-game — the row is armed, not answered")
 	assert_false(_ui._levelup_check.disabled, "and it can still be taken back")
 	Page.report_beat(_ui)
-	assert_eq(GameState.dash_charges, dash_before + 1, "the report is what takes it")
+	assert_eq(GameState.max_hp, max_before + 1, "the report is what takes it")
 	_ui._end_resolve()
 	Page.leave_post_game(_ui)
 	Page.dismiss_event(_ui)

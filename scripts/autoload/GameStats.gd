@@ -391,20 +391,28 @@ func record_run(did_win: bool) -> void:
 	for id in GameState.walked_path():
 		path.append(String(id))
 	last_run_unlocked = -1
-	# THE UNLOCK (docs/fracture-design.md §1): a win at the character's highest
-	# level opens the next one. Before the route check below, so a win is never
-	# lost to a history row there was nothing to draw for. Custom runs never
-	# unlock: they are practice.
+	# THE UNLOCK (docs/fracture-design.md §1): a win at the PLAYER's highest level
+	# opens the next one (docs/players-design.md §2 — the ladder was per character
+	# until 13 Nov 2026). Before the route check below, so a win is never lost to
+	# a history row there was nothing to draw for. Custom runs never unlock: they
+	# are practice.
 	var c := String(GameState.character_id)
+	var p := String(GameState.player_id)
+	if did_win and p != "" and Fracture.run_counts():
+		var before: int = player_fracture_unlocked(p)
+		var prec: Dictionary = _player_record(p)
+		prec["best"] = maxi(player_fracture_best(p), Fracture.level())
+		# How many runs were won at each level, for the player's stats (§6).
+		var key := "won_%d" % Fracture.level()
+		prec[key] = int(prec.get(key, 0)) + 1
+		if player_fracture_unlocked(p) > before:
+			last_run_unlocked = player_fracture_unlocked(p)
+	# The CHARACTER keeps the highest level a run was won at as them, for their
+	# 🏆 — a fact about their wins, not a ladder: nothing is unlocked by it.
 	if did_win and c != "" and Fracture.run_counts():
-		var before: int = fracture_unlocked(c)
 		var rec: Dictionary = _fracture_record(c)
 		rec["best"] = maxi(fracture_best(c), Fracture.level())
-		# How many runs were won at each level, for the character's stats (§6).
-		var key := "won_%d" % Fracture.level()
-		rec[key] = int(rec.get(key, 0)) + 1
-		if fracture_unlocked(c) > before:
-			last_run_unlocked = fracture_unlocked(c)
+	if did_win and Fracture.run_counts():
 		save_data()
 	if path.size() < 2:
 		return
@@ -413,6 +421,7 @@ func record_run(did_win: bool) -> void:
 		"amulet": String(GameState.amulet_game_id),
 		"won": did_win,
 		"character": String(GameState.character_id),
+		"player": String(GameState.player_id),
 		"at": int(Time.get_unix_time_from_system()),
 		"beaten": int(GameState.total_games_beaten),
 		# Which level it was played at, and whether it was a custom run, for the
@@ -812,14 +821,17 @@ func character_custom_amulet_wins(character_id) -> int:
 	return _character_game_sum(character_id, "custom_amulets")
 
 # ---------------------------------------------------------------------------
-# Fractures, per character (docs/fracture-design.md)
+# Fractures as a character played them (docs/fracture-design.md)
 # ---------------------------------------------------------------------------
 #
 # character id -> {"best": int, "pick": int, "fracture_sum": int,
 #                  "first_fracture": int}
 #   best            the highest Fracture a run was WON at as them, custom runs
-#                   aside. What unlocks the next level and what their 🏆 shows.
-#   pick            the level last chosen for them, which the next run starts at.
+#                   aside. What their 🏆 shows. It UNLOCKED the next level until
+#                   the ladder moved to players (player_fracture_log, below);
+#                   now it is a record, and the basic player's backfill.
+#   pick            the level last chosen for them, from the old ladder — read
+#                   only as the basic player's backfill.
 #   fracture_sum /  their game wins' levels, for their XP, exactly as a game's
 #   first_fracture  (see _note_win_fracture).
 # Stored rather than read off `runs` because that history is capped at
@@ -932,31 +944,101 @@ func fracture_best(character_id) -> int:
 		return int(rec["best"])
 	return 0 if character_amulet_wins(character_id) > 0 else -1
 
-# The highest level `character_id` may start a run at: one past their best win,
-# or 0 before their first. Fracture 1 needs a win first (§1). A test profile
-# (Settings.unlock_everything) has every level, without a win on record.
-func fracture_unlocked(character_id) -> int:
+# --- the ladder, per PLAYER (docs/players-design.md §2) ---------------------------
+#
+# player id -> {"best": int, "pick": int, "won_<level>": int}
+#   best   the highest Fracture a run was WON at as this player, custom runs aside.
+#          What unlocks the next level and what the player's 🏆 shows.
+#   pick   the level last chosen for them, which the next run starts at.
+#   won_N  runs won at level N, for the stats.
+#
+# THE BASIC PLAYER INHERITS THE OLD LADDER. Until 13 Nov 2026 each character had
+# its own; a profile from then has the basic player start at the highest level
+# ANY character had unlocked (the owner's call), read lazily off the character
+# records until the basic player's own first win writes a record of its own.
+var player_fracture_log: Dictionary = {}
+# The player the last run was started as, so the player select opens on them.
+var last_player: String = ""
+
+func _player_record(p: String) -> Dictionary:
+	if not player_fracture_log.has(p):
+		player_fracture_log[p] = {}
+	return player_fracture_log[p]
+
+# The highest Fracture `player_id` has won a run at, or -1 for none.
+func player_fracture_best(player_id) -> int:
+	var rec: Dictionary = player_fracture_log.get(String(player_id), {})
+	if rec.has("best"):
+		return int(rec["best"])
+	if StringName(player_id) == Data.BASIC_PLAYER:
+		return _legacy_ladder_best()
+	return -1
+
+# The best any CHARACTER reached on the old per-character ladder, the backfill for
+# the basic player. A won run from before Fractures counts as 0 (fracture_best).
+func _legacy_ladder_best() -> int:
+	var best: int = -1
+	for c in _legacy_character_ids():
+		best = maxi(best, fracture_best(c))
+	return best
+
+# Every character an old ladder could be on: the ones with a record, and the
+# roster (whose won runs in the history count at Fracture 0 without one).
+func _legacy_character_ids() -> Array:
+	var ids: Dictionary = {}
+	for c in fracture_log.keys():
+		ids[String(c)] = true
+	for ch in Data.all_characters2():
+		ids[String(ch.id)] = true
+	return ids.keys()
+
+# The highest level `player_id` may start a run at: one past their best win, or 0
+# before their first. A test profile (Settings.unlock_everything) has every level.
+func player_fracture_unlocked(player_id) -> int:
 	if Settings.unlock_everything:
 		return Fracture.MAX
-	return mini(fracture_best(character_id) + 1, Fracture.MAX)
+	return mini(player_fracture_best(player_id) + 1, Fracture.MAX)
 
-# The level the next run as `character_id` starts at: the last one picked, held
-# to what is unlocked.
-func fracture_pick(character_id) -> int:
-	var rec: Dictionary = fracture_log.get(String(character_id), {})
-	return clampi(int(rec.get("pick", 0)), 0, fracture_unlocked(character_id))
+# The level the next run as `player_id` starts at: the last one picked, held to
+# what is unlocked. The basic player's first read falls back to the highest pick
+# any character had.
+func player_fracture_pick(player_id) -> int:
+	var p := String(player_id)
+	var rec: Dictionary = player_fracture_log.get(p, {})
+	var pick: int = int(rec.get("pick", 0))
+	if not rec.has("pick") and StringName(p) == Data.BASIC_PLAYER:
+		for c in fracture_log.keys():
+			pick = maxi(pick, int((fracture_log[c] as Dictionary).get("pick", 0)))
+	return clampi(pick, 0, player_fracture_unlocked(p))
 
-func set_fracture_pick(character_id, level: int) -> void:
-	var c := String(character_id)
-	if c == "":
+func set_player_fracture_pick(player_id, level: int) -> void:
+	var p := String(player_id)
+	if p == "":
 		return
-	_fracture_record(c)["pick"] = clampi(level, 0, fracture_unlocked(c))
+	_player_record(p)["pick"] = clampi(level, 0, player_fracture_unlocked(p))
 	save_data()
 	changed.emit()
 
-# Runs won as `character_id`, by Fracture: {level: count}, levels with a win only.
-# Wins from before Fractures existed are not in fracture_log, and count at 0 —
-# the history's own count of them, the same backfill fracture_best reads.
+# Runs won as `player_id`, by Fracture: {level: count}. The basic player, until
+# it has a record of its own, adds up the characters' old ones.
+func player_fracture_wins(player_id) -> Dictionary:
+	var out: Dictionary = {}
+	var p := String(player_id)
+	var rec: Dictionary = player_fracture_log.get(p, {})
+	if rec.is_empty() and StringName(p) == Data.BASIC_PLAYER:
+		for c in _legacy_character_ids():
+			var w: Dictionary = fracture_wins(c)
+			for lv in w:
+				out[lv] = int(out.get(lv, 0)) + int(w[lv])
+		return out
+	for key in rec.keys():
+		if String(key).begins_with("won_"):
+			out[int(String(key).substr(4))] = int(rec[key])
+	return out
+
+# Runs won as `character_id` on the OLD per-character ladder, by Fracture:
+# {level: count}. Only the basic player's backfill reads it now. Wins from before
+# Fractures existed count at 0, the history's own count of them.
 func fracture_wins(character_id) -> Dictionary:
 	var out: Dictionary = {}
 	var rec: Dictionary = fracture_log.get(String(character_id), {})
@@ -1066,7 +1148,9 @@ func save_data() -> bool:
 		 "character_goal_log": character_goal_log,
 		 "donation_bank": donation_bank_total, "donation_best": donation_best_total,
 		 "last_rifts": last_rifts,
-		 "last_starts": last_starts, "fracture_log": fracture_log, "seen": seen,
+		 "last_starts": last_starts, "fracture_log": fracture_log,
+		 "player_fracture_log": player_fracture_log, "last_player": last_player,
+		 "seen": seen,
 		 "achievements": achievements,
 		 "runs_played": runs_played, "runs_won": runs_won}, "  "))
 	return true
@@ -1122,6 +1206,8 @@ func load_data() -> void:
 	last_rifts = []
 	last_starts = []
 	fracture_log = {}
+	player_fracture_log = {}
+	last_player = ""
 	seen = {}
 	achievements = {}
 	runs_played = 0
@@ -1170,6 +1256,16 @@ func load_data() -> void:
 			for key in rec.keys():
 				clean[String(key)] = int(rec[key])
 			fracture_log[String(ck)] = clean
+	last_player = String(json.data.get("last_player", ""))
+	if typeof(json.data.get("player_fracture_log")) == TYPE_DICTIONARY:
+		for pk in json.data["player_fracture_log"].keys():
+			var rec = json.data["player_fracture_log"][pk]
+			if typeof(rec) != TYPE_DICTIONARY:
+				continue
+			var clean: Dictionary = {}
+			for key in rec.keys():
+				clean[String(key)] = int(rec[key])
+			player_fracture_log[String(pk)] = clean
 	if typeof(json.data.get("seen")) == TYPE_DICTIONARY:
 		for kind in json.data["seen"].keys():
 			var ids = json.data["seen"][kind]

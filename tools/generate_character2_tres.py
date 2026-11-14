@@ -3,25 +3,22 @@
 Generate Godot CharacterData .tres for the games-first redesign (2.0) roster,
 from the `characters2.0` sheet of tools/Roguelikes.xlsx into data/characters2.0/.
 
-The 2.0 roster reuses the existing CharacterData resource (extended in place with
-the small start_* verb fields) and the project's level-up mechanic
+The 2.0 roster reuses the existing CharacterData resource and the project's
+level-up mechanic
 (docs/games-first-redesign.md §3.1). The columns left of `Level Up` are the
 character's STARTING loadout; `Level Up` is the per-game honour-system challenge
 and `Reward` is what meeting it grants (parsed into level_up_stats +
 level_up_reward_type here).
 
-  characters2.0: Name | Game | Health | Gold | Bash | Dash | Push | Transmute |
-                 Scramble | Bombs | Keys | Random | Level Up | Reward |
-                 Description | Starting loadout | File
+  characters: Name | Game | Health | Gold | Level Up | Reward |
+              Description | Starting loadout | File
 
 Health -> base_max_hp (a 2.0 run's tiny Health/Max Health reuse hp/max_hp).
-Gold -> start_gold, the run's starting purse (§14). It sits beside Health rather
-        than inside the verb block on purpose: START_VERBS below and
-        GameState.START_RANDOM_POOL both walk Bash..Keys as a contiguous range.
-Bash/Dash/Push/Transmute/Scramble/Bombs/Keys -> start_* fields.
-Random -> start_random: points of loadout the character does NOT bring fixed,
-          rolled across the verb pool at run start (GameState.roll_start_random).
-Reward -> level_up_stats (verb / max_hp gains) + level_up_reward_type
+Gold -> start_gold, the run's starting purse (§14).
+A character gives NO stats (docs/players-design.md §3, 13 Nov 2026): the starting
+verb columns (Bash … Keys, Random) were taken off the sheet, and a Reward that
+names a verb ("+1 Dash") is a REFUSAL here rather than a silent stat gain.
+Reward -> level_up_stats (Max Health / Gold only) + level_up_reward_type
           (a sized Chest -> item, with level_up_reward_chest_choices set from
           the size — Small 1 / Medium 2 / Large 3 / Huge 5; Random Sized Chest
           -> random_sized_chest; Scroll -> scroll).
@@ -81,13 +78,10 @@ def _png_map(dir_path):
                 out[fn[:-4].lower()] = fn[:-4]
     return out
 
-# start_* verb columns on the sheet -> CharacterData field suffix.
-START_VERBS = ["Bash", "Dash", "Push", "Transmute", "Scramble", "Bombs", "Keys"]
-# Verbs the level-up Reward may grant, mapped to their GameState/level-up stat key.
-REWARD_VERBS = {
-    "dash": "dash", "bash": "bash", "push": "push", "transmute": "transmute",
-    "scramble": "scramble", "bombs": "bombs", "keys": "keys",
-}
+# The verbs a level-up USED to grant. A character gives no stats any more
+# (docs/players-design.md §3), so a Reward naming one is refused rather than
+# quietly read as nothing.
+STAT_VERBS = ["dash", "bash", "push", "transmute", "scramble", "bombs", "keys"]
 # A named chest SIZE -> how many items it offers to choose one from. Mirrors
 # Data.CHEST_SIZE_CHOICES; keep the two in step. Ordered biggest-word-first so
 # "Large Chest" can't be read as a bare "Chest".
@@ -142,17 +136,17 @@ def parse_reward(raw):
     max_hp = _find_amt(s, r"Max Health")
     if max_hp:
         stats["max_hp"] = max_hp
-    # Gold is a reward a level-up can pay (the Manager's "+1 Push and +1 Gold").
-    # It is NOT one of REWARD_VERBS: those all name a run verb that maps onto a
+    # Gold is a reward a level-up can pay (the Manager's "+1 Gold").
+    # It is not a verb (a character gives none, STAT_VERBS): gold maps onto no
     # same-named GameState field, and gold has to go through change_gold so the
     # purse readout hears about it.
     gold = _find_amt(s, r"Gold")
     if gold:
         stats["gold"] = gold
-    for verb, key in REWARD_VERBS.items():
-        n = _find_amt(s, verb + r"\b")
-        if n:
-            stats[key] = n
+    for verb in STAT_VERBS:
+        if _find_amt(s, verb + r"\b"):
+            raise ValueError("Reward %r grants a stat (%s); a character gives no stats "
+                             "(docs/players-design.md §3)" % (s, verb))
     # LOOT FIRST, before the chest and scroll branches. It is the KIND-BLIND
     # payout — a piece of loot whose kind (scroll / pill / potion) is rolled on
     # use, GameState.add_loot("loot") — and it has to be read before `Scroll`
@@ -347,17 +341,6 @@ def character_tres(row, catalog=None, games=None) -> tuple:
     # The run's starting purse. Gold is run-scope (never carried between runs),
     # so this column is all a run opens with.
     lines.append("start_gold = %d" % _int(row.get("Gold")))
-    # Games-first starting verb loadout.
-    lines.append("start_bash = %d" % _int(row.get("Bash")))
-    lines.append("start_dash = %d" % _int(row.get("Dash")))
-    lines.append("start_push = %d" % _int(row.get("Push")))
-    lines.append("start_transmute = %d" % _int(row.get("Transmute")))
-    lines.append("start_scramble = %d" % _int(row.get("Scramble")))
-    lines.append("start_bombs = %d" % _int(row.get("Bombs")))
-    lines.append("start_keys = %d" % _int(row.get("Keys")))
-    # Unrolled loadout — spent across the verb pool at run start, not here, so
-    # every run of the character opens differently.
-    lines.append("start_random = %d" % _int(row.get("Random")))
     lines.append("starting_items = %s" % string_name_array(items))
     lines.append("starting_loot = %s" % _loot_value(loot))
     lines.append('starting_weapon = &""')

@@ -10,6 +10,13 @@ October 2026.
 The build order is at the end. Section numbers (§7.4, §19.6, …) refer to
 `docs/games-first-redesign.md`; rift sections refer to `docs/rifts-design.md`.
 
+> **Since 13 Nov 2026 the ladder belongs to the PLAYER, not the character**
+> (`docs/players-design.md` §2). Read "character" below as "player" wherever it
+> is about unlocking or picking a level: the row is on the player select, the
+> record is `GameStats.player_fracture_log`, and the basic player inherited the
+> best any character had reached. A character keeps only the highest level it
+> won at, for its 🏆, and its XP.
+
 ## 1. What a Fracture is
 
 Fractures are the game's **Ascension**: ten extra difficulty levels on top of a

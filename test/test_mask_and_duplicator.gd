@@ -118,10 +118,13 @@ func test_wearing_a_mask_adds_that_condition() -> void:
 
 func test_a_masked_level_pays_the_masked_characters_reward() -> void:
 	GameState.character_id = &"rodney"
-	var zoe: CharacterData = Data.get_character2(&"zoe")
-	var dash: int = GameState.dash_charges
-	var stats: Array = GameState.grant_level_up(null, zoe)
-	assert_gt(GameState.dash_charges, dash, "Zoe's +1 Dash, not Rodney's payout")
+	# The Manager's level pays +1 Gold; Rodney's would pay Max Health and loot.
+	var manager: CharacterData = Data.get_character2(&"manager")
+	var gold: int = GameState.gold
+	var max_hp: int = GameState.max_hp
+	var stats: Array = GameState.grant_level_up(null, manager)
+	assert_gt(GameState.gold, gold, "the Manager's +1 Gold, not Rodney's payout")
+	assert_eq(GameState.max_hp, max_hp, "and not Rodney's Max Health")
 	assert_gt(stats.size(), 0)
 
 func test_masks_go_with_the_run() -> void:

@@ -403,7 +403,7 @@ not part of `research.py new`. The owner names a game, a kind of icon, or just
 
 A row is one picture a game draws for something this game also has: `Kind` is
 the art folder it would go in (`Health`, `Damage`, `Gold`, `Shields`, `Luck`,
-`Keys`, `Bombs`, `Chests`, `Difficulties`), `File` the name it would carry there
+`Keys`, `Bombs`, `Chests`, `Difficulties`, `Hunger`), `File` the name it would carry there
 (`<Name>_<Game>`, the form [customization.md](customization.md) §2 reads the
 game out of), `Size` its real pixel size and `Source` the page it came from.
 The picture itself waits in `research/icons/<Kind>/<File>.png`, which Godot
@@ -445,6 +445,9 @@ python3 tools/icon_research.py apply                           # after the owner
 - **`apply`** moves every `yes` into `images2.0/icons/<Kind>/` and rebuilds
   `data/cosmetics.json`; a `no` loses its picture and keeps its row, so it is
   not proposed twice. `build` then reads a moved row as `on sheet`.
+- **An SVG on the wiki is rendered here**, its longer side at 256 px (cairosvg),
+  the size Mewgenics' earlier icons came in at: the wiki serves the raw SVG, which
+  `best` cannot read.
 - **A picture with a background is cleaned before it is offered as final.**
   Loop Hero's chest came on black: the background was flood-filled away from
   the border at the art's native size, keeping the 1px outline.

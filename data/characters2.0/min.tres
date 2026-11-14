@@ -14,22 +14,12 @@ source_games = PackedStringArray("Noita")
 music_games = Array[StringName]([&"noita"])
 base_max_hp = 7
 start_gold = 4
-start_bash = 0
-start_dash = 0
-start_push = 0
-start_transmute = 2
-start_scramble = 0
-start_bombs = 0
-start_keys = 0
-start_random = 0
 starting_items = Array[StringName]([])
 starting_loot = [{"type": "wand", "count": 1}]
 starting_weapon = &""
 level_up_condition = "Beat a game while having crafted or combined a spell or weapon"
-level_up_reward = "Gain +1 Transmute"
-level_up_stats = {
-"transmute": 1
-}
+level_up_reward = ""
+level_up_stats = {}
 level_up_reward_type = &"none"
 level_up_reward_amount = 0
 file = "Minä"

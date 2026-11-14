@@ -668,6 +668,9 @@ static func tier_badge_room(cover: Control, game_id) -> Control:
 # pixel shield that stood here is Brutal Orchestra's shield icon now. Draw a
 # shield with `Cosmetics.shield_art()`, which is this unless an icon is worn.
 const SHIELD_ART: Texture2D = preload("res://images2.0/general/Shield.png")
+# The basic Hunger icon: 🍗 drawn in Hunger's amber (tools/build_hunger_art.py).
+# Draw it with `Cosmetics.hunger_art()`, which swaps in a worn one.
+const HUNGER_ART: Texture2D = preload("res://images2.0/general/Hunger.png")
 
 # THE CLOCK. Anything TEMPORARY carries it in its bottom-right corner — a status
 # borrowed for a game or two (docs/potions-design.md §5.3), a shield that expires
@@ -932,6 +935,52 @@ static func is_pixel_art(tex: Texture2D, box: Vector2) -> bool:
 # pixels, was left on linear filtering and came out soft — and the roster's
 # smaller enemies (16x16 to ~120px) are exactly the ones drawn as pixel art.
 const SMALL_ART_MAX := 128
+
+# A BIG PICTURE DRAWN SMALL, SHRUNK PROPERLY FIRST. Nothing here generates
+# mipmaps, so a 256px icon drawn at 18px is sampled, not averaged: three pixels
+# in four are dropped and an outline breaks into a dotted line (Mewgenics' food,
+# the owner, 14 Nov 2026: "make it look better"). This hands back `tex` shrunk
+# with Lanczos so its longer side is exactly `side` SCREEN pixels, cached per
+# picture and size. Shrunk once and drawn 1:1 with NEAREST, it is as sharp as the
+# picture allows: an earlier cut shrank to twice the size and let the GPU halve
+# it again with LINEAR, which softened it twice ("the image looks blurry").
+# `side` is in screen pixels, so a caller passes its canvas size times
+# `screen_scale(node)`. A picture already that small comes back as it is.
+static var _shrunk: Dictionary = {}
+
+# How many screen pixels one canvas pixel is: the window's stretch of the fixed
+# 1280x720 canvas (project.godot, stretch/mode canvas_items).
+static func screen_scale(node: CanvasItem) -> float:
+	if node == null or not node.is_inside_tree():
+		return 1.0
+	return maxf(node.get_viewport().get_final_transform().get_scale().x, 0.01)
+
+static func shrunk(tex: Texture2D, side: int) -> Texture2D:
+	if tex == null:
+		return null
+	var want: int = maxi(side, 1)
+	var w: int = tex.get_width()
+	var h: int = tex.get_height()
+	# PIXEL ART IS LEFT ALONE: at SMALL_ART_MAX or under it is pixel art by this
+	# theme's rule, and a Lanczos shrink would soften it where sampling keeps its
+	# blocks (Vampire Survivors' chicken, Loop Hero's food). Only a painted picture
+	# bigger than that is shrunk.
+	if maxi(w, h) <= want or maxi(w, h) <= SMALL_ART_MAX:
+		return tex
+	var key := "%s@%d" % [tex.resource_path if tex.resource_path != "" else str(tex.get_rid()), want]
+	if _shrunk.has(key):
+		return _shrunk[key]
+	var img: Image = tex.get_image()
+	if img == null:
+		return tex
+	img = img.duplicate()
+	if img.is_compressed():
+		img.decompress()
+	var s: float = float(want) / float(maxi(w, h))
+	img.resize(maxi(1, roundi(w * s)), maxi(1, roundi(h * s)), Image.INTERPOLATE_LANCZOS)
+	var out := ImageTexture.create_from_image(img)
+	_shrunk[key] = out
+	return out
 
 static func is_small_art(tex: Texture2D) -> bool:
 	return tex != null and maxi(tex.get_width(), tex.get_height()) <= SMALL_ART_MAX

@@ -1,8 +1,8 @@
 # Achievements
 
-Things the player does that unlock something. For now what they unlock is
-**characters**; the screen has a tab per kind of unlock, so a second kind is a
-new tab rather than a new screen. The owner asked for it on 10 Nov 2026 and
+Things the player does that unlock something: **characters**, and since 13 Nov
+2026 **players** (`docs/players-design.md`). The screen has a tab per kind of
+unlock, so the second kind was a new tab rather than a new screen. The owner asked for it on 10 Nov 2026 and
 chose the layout (rows, with a meter that fits how each one is counted).
 
 ## What there is
@@ -12,9 +12,13 @@ chose the layout (rows, with a meter that fits how each one is counted).
 | `manager` | Manager (Raccoin: Coin Pusher Roguelike) | in one run | Hold 3 different coin-tagged items or loot at the same time |
 | `zoe` | Zoe (Haste) | across all runs | Perfect 10 different games |
 | `rodney` | Rodney | across all runs | Beat a traditional roguelike |
+| `player_retro_bat` | the player Retro Bat (Players tab) | across all runs | Beat 20 different traditional roguelikes |
 
-A character named by an achievement is **locked** until it is done. Every other
-character is playable from the start.
+A character or player named by an achievement is **locked** until it is done.
+Every other one is playable from the start. A row under the `Players` tab names a
+player in its `Unlocks` cell and writes `unlocks_player`; under `Characters` it
+writes `unlocks_character`. Its id is the player's prefixed `player_`, so a
+player and a character can share a name.
 
 ## The two ways of counting
 

@@ -176,6 +176,13 @@ var _punch_tweens: Array = []
 # The hero portrait, resolved once per character rather than on every repaint.
 var _hero_id: StringName = &""
 var _hero_tex: Texture2D = null
+# THE PLAYER ON THE BOARD (docs/players-design.md §6): the frame draws the player,
+# the character rides on it as a round badge at the top-left, and each answers a
+# hover with its own card.
+var _hero_frame: HeroFrame = null
+var _hero_badge: CharacterBadge = null
+const HERO_BADGE := 0.34   # the badge's edge, as a share of the frame's width
+const HERO_BADGE_MIN := 30
 
 # THE BODY A PUSH IS AIMING AT, and nothing else (0 = none). A push is the one
 # verb that needs two clicks — pick the body, then pick which way it is shoved —
@@ -276,15 +283,26 @@ func _ready() -> void:
 # The icon is still the fallback, for a character authored without a full image,
 # and it is still what the header's small chip uses (Overworld2._build_character_chip)
 # — a token IS the right art in a 26px box, where a full figure would be a smudge.
+#
+# THE PLAYER, SINCE 13 NOV 2026 (docs/players-design.md §6): the frame shows the
+# PLAYER's art, and the character is the round badge on it. A player with no art
+# (the basic player) leaves the frame to the character's portrait, as before, and
+# then needs no badge.
 func _hero_texture() -> Texture2D:
-	var id: StringName = GameState.character_id
+	var id: StringName = StringName("%s/%s" % [GameState.player_id, GameState.character_id])
 	if id != _hero_id:
 		_hero_id = id
-		var ch: CharacterData = Data.get_character2(id)
-		_hero_tex = null
-		if ch != null:
+		var pl: PlayerData = GameState.player()
+		var ch: CharacterData = Data.get_character2(GameState.character_id)
+		_hero_tex = pl.portrait if pl != null else null
+		if _hero_tex == null and ch != null:
 			_hero_tex = ch.shown_portrait()
 	return _hero_tex
+
+# Whether the frame is drawing the PLAYER (and so wears the character's badge).
+func shows_player() -> bool:
+	var pl: PlayerData = GameState.player()
+	return pl != null and pl.portrait != null
 
 # The grid cell edge, in px. It is NOT a constant, because the board is not a
 # constant size: every difficulty step adds a column and a row (4x4 at Low up to
@@ -703,6 +721,10 @@ func _scale_hero() -> void:
 		height = maxi(room, 1)
 		side = maxi(roundi(height / HERO_ASPECT), 1)
 	_hero_icon.custom_minimum_size = Vector2(side, height)
+	if _hero_badge != null:
+		var edge: float = maxf(roundf(side * HERO_BADGE), HERO_BADGE_MIN)
+		_hero_badge.size = Vector2(edge, edge)
+		_hero_badge.position = Vector2(-4, -4)
 
 # Top-left of grid cell (`row`, `col`) inside the board (0-based row, 1-based col).
 func _cell_pos(row: int, col: int) -> Vector2:
@@ -1558,12 +1580,21 @@ func _build() -> void:
 	# what a shield does unreachable.
 	_hero_shields.mouse_filter = Control.MOUSE_FILTER_STOP
 	hero_box.add_child(_hero_shields)
-	var hero_frame := PanelContainer.new()
+	var hero_frame := HeroFrame.new()
+	hero_frame.name = "HeroFrame"
 	hero_frame.add_theme_stylebox_override("panel", UITheme.flat(UITheme.PANEL, 8, 8, 2, UITheme.ACCENT))
+	_hero_frame = hero_frame
 	_hero_icon = TextureRect.new()
 	_hero_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_hero_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_hero_icon.mouse_filter = Control.MOUSE_FILTER_PASS
 	hero_frame.add_child(_hero_icon)
+	# The character's round badge rides the portrait's top-left corner. A child of
+	# the TextureRect, which is not a container, so it sits where it is put and
+	# shakes with the hero when a hit lands (_punch_hero).
+	_hero_badge = CharacterBadge.new()
+	_hero_badge.name = "CharacterBadge"
+	_hero_icon.add_child(_hero_badge)
 	hero_box.add_child(hero_frame)
 	_scale_hero()
 	# Statuses BETWEEN the portrait and the health, so the hero column reads
@@ -3309,10 +3340,40 @@ func refresh_hero() -> void:
 	var hero_tex: Texture2D = _hero_texture()
 	_hero_icon.texture = hero_tex
 	UITheme.apply_crisp(_hero_icon, hero_tex)
+	_paint_hero_cards()
 	_paint_hp()
 	_fill_status_strip(_hero_statuses, GameState.status_list(), StatusData.PLAYER,
 		STATUS_PIP_HERO)
 	_fill_shields()
+
+# Who is on the board, for the two hovers. The badge is the character (CharacterBadge
+# draws their card); the frame is the player — their name and what they add — or,
+# for a player with no art, the character again, since that is who it shows.
+func _paint_hero_cards() -> void:
+	var ch: CharacterData = Data.get_character2(GameState.character_id)
+	var pl: PlayerData = GameState.player()
+	if _hero_badge != null:
+		_hero_badge.character = ch
+		_hero_badge.visible = ch != null and shows_player()
+	if _hero_frame == null:
+		return
+	if shows_player():
+		var lines: Array = []
+		for m in pl.mechanics:
+			lines.append("%s: %s" % [PlayerData.mechanic_name(m), PlayerData.mechanic_line(m)])
+		if lines.is_empty():
+			lines.append("No extra rules: the game as it is.")
+		HoverCard.attach(_hero_frame, {"title": pl.display_name, "accent": UITheme.ACCENT,
+			"subtitle": "Playing as %s" % ch.display_name if ch != null else "",
+			"lines": lines,
+			"note": "Hover the round badge for %s." % (ch.display_name if ch != null
+				else "the character")})
+		_hero_frame.set_meta(&"character_card", false)
+	else:
+		if _hero_frame.has_meta(HoverCard.META):
+			_hero_frame.remove_meta(HoverCard.META)
+		_hero_frame.tooltip_text = ch.display_name if ch != null else ""
+		_hero_frame.set_meta(&"character_card", ch != null)
 
 # Icon edge for one shield sprite over the hero. The status pips beside them are
 # STATUS_PIP_HERO and these match: the two rows are read in one glance and a
@@ -4633,3 +4694,12 @@ func _free_slide_ghosts() -> void:
 		if g != null and is_instance_valid(g):
 			g.queue_free()
 	_slide_ghosts.clear()
+
+# The hero's frame: a HoverPanel whose hover is the CHARACTER's full card when
+# the frame is drawing the character (a player with no art), and the player's
+# card otherwise (_paint_hero_cards).
+class HeroFrame extends HoverPanel:
+	func _make_custom_tooltip(for_text: String) -> Object:
+		if bool(get_meta(&"character_card", false)):
+			return CharacterBadge.card(Data.get_character2(GameState.character_id))
+		return HoverCard.tip(self, for_text)

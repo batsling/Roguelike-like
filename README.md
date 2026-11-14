@@ -109,13 +109,13 @@ The repository root **is** the Godot project, so `res://x` is `./x`.
 │   ├── autoload/    # the 29 singletons: GameState, Data, GameLoop2, EventSystem, …
 │   ├── redesign2/   # the run's screens: Overworld2, BattlefieldView, ReportChecklist,
 │   │                #   GameChoiceModal, PostCombatScreen, the loot pack, the shop, …
-│   ├── menu/        # MainMenu, CharacterPicker, StartPicker, CustomRunScreen, ProfilePicker
+│   ├── menu/        # MainMenu, PlayerPicker, CharacterPicker, StartPicker, CustomRunScreen, …
 │   ├── ui/          # shared UI: UITheme, Collection, AtlasView, HowToPlay*, Radio*, Rank*, …
 │   ├── runtime/     # rules that aren't screens: RunGraph, Fracture, GameRanks, LootPassives, …
 │   └── resources/   # the Resource schemas every .tres is typed by
 │
 ├── data/            # all content as .tres, generated from the spreadsheet:
-│                    #   games/ (1000), enemies2.0/, bosses2.0/, characters2.0/, items2.0/,
+│                    #   games/ (1000), enemies2.0/, bosses2.0/, characters2.0/, players/, items2.0/,
 │                    #   abilities2.0/, statuses2.0/, tiles2.0/, units2.0/, events2.0/,
 │                    #   objects2.0/, curses2.0/, the loot kinds (scrolls2.0/, pills2.0/,
 │                    #   potions2.0/, cards2.0/, wands2.0/, trinkets2.0/, bags2.0/,
@@ -154,6 +154,7 @@ The repository root **is** the Godot project, so `res://x` is `./x`.
 | Adding content: art, the spreadsheet, generators, events, objects | [`docs/content-authoring.md`](docs/content-authoring.md), plus [`event-sheet-authoring.md`](docs/event-sheet-authoring.md), [`object-sheet-authoring.md`](docs/object-sheet-authoring.md), [`item-sheet-authoring.md`](docs/item-sheet-authoring.md) |
 | Loot: trinkets, bags, weapons, evolutions, the pack's neighbour rules | [`docs/loot-passives.md`](docs/loot-passives.md), [`cards-design.md`](docs/cards-design.md), [`potions-design.md`](docs/potions-design.md), [`wands-design.md`](docs/wands-design.md) |
 | Difficulty above a won run | [`docs/fracture-design.md`](docs/fracture-design.md) |
+| Players — the first pick: mechanics (Hunger, unidentified weapons) and the Fracture ladder | [`docs/players-design.md`](docs/players-design.md) |
 | Rifts: off-map games pulled into the map | [`docs/rifts-design.md`](docs/rifts-design.md) |
 | Achievements (what unlocks a character) | [`docs/achievements.md`](docs/achievements.md) |
 | Roguelike Radio | [`docs/roguelike-radio.md`](docs/roguelike-radio.md) |

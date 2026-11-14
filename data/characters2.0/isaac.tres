@@ -14,22 +14,12 @@ source_games = PackedStringArray("The Binding of Isaac", "The Binding of Isaac: 
 music_games = Array[StringName]([&"the_binding_of_isaac", &"the_binding_of_isaac_rebirth"])
 base_max_hp = 6
 start_gold = 4
-start_bash = 0
-start_dash = 0
-start_push = 0
-start_transmute = 0
-start_scramble = 0
-start_bombs = 1
-start_keys = 0
-start_random = 0
 starting_items = Array[StringName]([&"d6"])
 starting_loot = []
 starting_weapon = &""
 level_up_condition = "Beat a game while having used sorrow or self-inflicted pain as a weapon"
-level_up_reward = "Gain +1 Small Chest and +1 Scramble"
-level_up_stats = {
-"scramble": 1
-}
+level_up_reward = "Gain +1 Small Chest"
+level_up_stats = {}
 level_up_reward_type = &"item"
 level_up_reward_amount = 1
 level_up_reward_chest_choices = 1

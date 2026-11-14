@@ -1548,13 +1548,28 @@ static func _passive_plate(text: String, tip: String) -> Control:
 const PLUS_COLOR := Color(0.62, 0.86, 1.0)
 
 static func _add_plus(on: Control, entry: Dictionary) -> void:
-	var n: int = WeaponSystem.plus_of(entry)
-	if n <= 0:
+	# AN UNIDENTIFIED WEAPON (docs/players-design.md §5) wears "+?" until its first
+	# swing, and a downgraded one its minus — red while it is cursed.
+	var chip: Control = null
+	if not WeaponSystem.roll_known(entry):
+		chip = UITheme.chip("+?", PLUS_COLOR, UITheme.FONT_SMALL)
+		chip.tooltip_text = "Unidentified: anywhere from -2 to +2 Stun. Swing it to find out."
+	else:
+		var n: int = WeaponSystem.plus_of(entry)
+		if n > 0:
+			chip = UITheme.chip("+%d" % n, PLUS_COLOR, UITheme.FONT_SMALL)
+			chip.tooltip_text = "Upgraded: +%d Stun for the rest of the run." % n
+		elif n < 0:
+			var cursed: bool = WeaponSystem.is_cursed(entry)
+			chip = UITheme.chip("-%d" % absi(n), UITheme.DANGER if cursed else UITheme.TEXT_DIM,
+				UITheme.FONT_SMALL)
+			chip.tooltip_text = ("Cursed: %d Stun, and stuck where it sits until the curse "
+				+ "is lifted.") % n if cursed else ("Downgraded: %d Stun. The curse is "
+				+ "lifted; it lays at least 1.") % n
+	if chip == null:
 		return
-	var chip := UITheme.chip("+%d" % n, PLUS_COLOR, UITheme.FONT_SMALL)
 	chip.name = "Plus"
 	chip.set_anchors_preset(Control.PRESET_TOP_LEFT)
-	chip.tooltip_text = "Upgraded: +%d Stun for the rest of the run." % n
 	on.add_child(chip)
 
 # A WEAPON'S CHARGE, "1/3", in the bottom-left corner — green once it can swing.

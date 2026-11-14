@@ -11,6 +11,56 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Everything drawn small looks clean: mipmaps project-wide (the owner, 14 Nov
+  2026).** Every picture is imported with mipmaps and smoothed art draws with
+  them, so a big cover or portrait shrunk into a card is averaged instead of
+  sampled: covers' lettering (Source of Madness, Angband) and thin outlines no
+  longer break into dots. Pixel art is unchanged. A checkout from before this
+  needs one reimport (see CLAUDE.md).
+
+- **Hunger is five icons, and an icon kind (the owner, 14 Nov 2026).** The word
+  and the bar in the header are five Hunger icons, full or a ghost. The basic one
+  is a 🍗 drawn in Hunger's amber (`tools/build_hunger_art.py`); three to earn,
+  picked by the owner from fifteen researched: Mewgenics' Food, Vampire
+  Survivors' Floor Chicken and Loop Hero's Food Supply.
+
+- **The player's token in the header (the owner, 13 Nov 2026)**, just left of the
+  character's. Retro Bat's is its own sprite; Batsaac's is his face, cut out of
+  the painting as a circle and stored at twice the chip so it shrinks cleanly
+  (`images2.0/players/Icon/`, `PlayerData.icon`).
+
+- **The board shows the player; the character rides on it (the owner, 13 Nov
+  2026).** The hero frame draws the player's art, with the character's icon in a
+  gold-ringed circle at its top-left (`CharacterBadge`); hovering the circle opens
+  the character's card — full portrait, level and Health, level-up goal and
+  reward, starting gold and loot. The basic player, with no art, keeps the
+  character's portrait as before. **Batty is Retro Bat** (its art trimmed to fill
+  the frame), and **Batsaac** — the crying bat from `images2.0/custom/` — is the
+  third player, with no mechanics yet.
+
+- **Players: the first pick of a run (the owner, 13 Nov 2026).** A run is now
+  a PLAYER and then a character (`docs/players-design.md`). The player carries
+  the run's mechanics and holds the Fracture ladder; the character keeps its
+  level-up goal, Health, gold and starting loot.
+  - **Two players.** Basic is the game as it is (no art yet: its card says
+    "Basic"). Batty — original 24×24 pixel art — brings Hunger and Unidentified
+    Weapons, and unlocks after beating 20 different traditional roguelikes (a
+    new `Players` tab on the Achievements screen).
+  - **Fractures are per player.** The row moved to the player select; the
+    basic player inherits the best level any character had reached, and a
+    character keeps only its 🏆's number and its XP.
+  - **Characters give no stats.** The starting verbs and the Random points are
+    off the `characters` sheet, and level-ups lost their verb gains (Isaac,
+    Manager, Minä, Zoe). Minä's and Zoe's level-ups now pay nothing past the
+    level itself.
+  - **Hunger**: 3 to start, 5 at most, −1 per game handed in; at 0 every game
+    handed in and every run lost costs 2 Health. Any potion drunk is +1, and
+    Eat (beside the bar, top left) destroys a food relic or piece for +1.
+  - **Unidentified weapons**: a found weapon is −2..+2 Stun, "Hero Sword +?"
+    until its first swing or a Scroll of Identify. A known minus is cursed and
+    pinned where it sits in the pack until a curse is lifted, which also holds
+    its Stun to at least 1.
+
 - **The shield is a basic icon, and the old one is Brutal Orchestra's (the
   owner, 13 Nov 2026).** A shield is 🛡 now: written as the glyph where it was a
   ◆ (an enemy's shield badge, the inventory, a blocked hit), and drawn as that

@@ -6,8 +6,10 @@ extends GutTest
 # gives back exactly what the profile earned. Per profile, in prefs.cfg.
 
 const HERO := &"ironclad"
+const PLAYER := &"retro_bat"
 
 var _fracture_log: Dictionary
+var _player_log: Dictionary
 var _prefs := ConfigFile.new()
 var _had_prefs := false
 
@@ -23,12 +25,18 @@ func after_all() -> void:
 
 func before_each() -> void:
 	_fracture_log = GameStats.fracture_log.duplicate(true)
+	_player_log = GameStats.player_fracture_log.duplicate(true)
 	GameStats.fracture_log = {}
+	GameStats.player_fracture_log = {}
 	Settings.unlock_everything = false
+	Achievements.bypass = false
 
 func after_each() -> void:
 	Settings.set_unlock_everything(false)
 	GameStats.fracture_log = _fracture_log
+	GameStats.player_fracture_log = _player_log
+	# The suite runs with it on (test/pre_run_hook.gd).
+	Achievements.bypass = true
 	GameState.reset_run()
 	GameLoop2.reset()
 	RunConfig.reset()
@@ -40,16 +48,32 @@ func _song(id: String) -> SongData:
 	s.id = StringName(id)
 	return s
 
+# The ladder is the PLAYER's (docs/players-design.md §2), so it is a player's
+# levels a test profile opens.
 func test_every_fracture_level_is_open_without_a_win() -> void:
-	assert_eq(GameStats.fracture_unlocked(HERO), 0, "a fresh character has only Fracture 0")
+	assert_eq(GameStats.player_fracture_unlocked(PLAYER), 0, "a fresh player has only Fracture 0")
 	Settings.set_unlock_everything(true)
-	assert_eq(GameStats.fracture_unlocked(HERO), Fracture.MAX, "a test profile has every level")
-	GameStats.set_fracture_pick(HERO, Fracture.MAX)
-	assert_eq(GameStats.fracture_pick(HERO), Fracture.MAX, "and can pick the top one")
-	assert_eq(GameStats.fracture_best(HERO), -1, "but no win was recorded for it")
+	assert_eq(GameStats.player_fracture_unlocked(PLAYER), Fracture.MAX, "a test profile has every level")
+	GameStats.set_player_fracture_pick(PLAYER, Fracture.MAX)
+	assert_eq(GameStats.player_fracture_pick(PLAYER), Fracture.MAX, "and can pick the top one")
+	assert_eq(GameStats.player_fracture_best(PLAYER), -1, "but no win was recorded for it")
 	Settings.set_unlock_everything(false)
-	assert_eq(GameStats.fracture_unlocked(HERO), 0, "off gives back what was earned")
-	assert_eq(GameStats.fracture_pick(HERO), 0, "and the pick is held to it again")
+	assert_eq(GameStats.player_fracture_unlocked(PLAYER), 0, "off gives back what was earned")
+	assert_eq(GameStats.player_fracture_pick(PLAYER), 0, "and the pick is held to it again")
+
+func test_every_player_is_playable() -> void:
+	# The suite shares user:// with the game, so the profile may have unlocked Retro Bat
+	# for real; this is about the switch, so stand on a profile that has not.
+	var key := "player_retro_bat"
+	var kept = GameStats.achievements.get(key)
+	GameStats.achievements.erase(key)
+	assert_true(Achievements.player_locked(PLAYER), "Retro Bat is locked on a fresh profile")
+	Settings.set_unlock_everything(true)
+	assert_false(Achievements.player_locked(PLAYER), "a test profile can play Retro Bat")
+	Settings.set_unlock_everything(false)
+	assert_true(Achievements.player_locked(PLAYER), "off locks Retro Bat again")
+	if kept != null:
+		GameStats.achievements[key] = kept
 
 func test_every_song_plays_and_none_is_drawn() -> void:
 	var song := _song("unlock_everything_probe")

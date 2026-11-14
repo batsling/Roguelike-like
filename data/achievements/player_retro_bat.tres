@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="AchievementData" load_steps=2 format=3 uid="uid://ach_player_retro_bat"]
+
+[ext_resource type="Script" path="res://scripts/resources/AchievementData.gd" id="1_ach"]
+
+[resource]
+script = ExtResource("1_ach")
+id = &"player_retro_bat"
+tab = "Players"
+order = 40
+unlocks_character = &""
+unlocks_player = &"retro_bat"
+description = "Beat 20 different traditional roguelikes."
+scope = "lifetime"
+metric = "games_beaten"
+tag = ""
+game_type = "traditional"
+goal = 20

@@ -145,15 +145,19 @@ static func enemies() -> Dictionary:
 static func characters() -> Dictionary:
 	var roster: Array = Data.all_characters2()
 	var winners := 0
-	var top := 0
 	for ch in roster:
 		if GameStats.character_amulet_wins(ch.id) > 0:
 			winners += 1
-		if GameStats.fracture_best(ch.id) >= FRACTURE_TOP:
+	# The Fracture ladder is the PLAYER's (docs/players-design.md §2), so the top
+	# of it is counted per player.
+	var players: Array = Data.all_players()
+	var top := 0
+	for pl in players:
+		if GameStats.player_fracture_best(pl.id) >= FRACTURE_TOP:
 			top += 1
 	return _section("Characters", [
 		row("Characters with an Amulet win", winners, roster.size()),
-		row("Characters who cleared Fracture %d" % FRACTURE_TOP, top, roster.size()),
+		row("Players who cleared Fracture %d" % FRACTURE_TOP, top, players.size()),
 	])
 
 # One line per character for the table under the Characters section:

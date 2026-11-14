@@ -566,7 +566,8 @@ func _pick_remove_curse(req: Dictionary) -> void:
 	var selected: Dictionary = {}   # index -> true
 	_rebuild_panel()
 	_body.add_child(_heading("Remove a Curse", ACCENT, 20))
-	if GameState.curse_goals.is_empty():
+	var weapons: Array = ScrollSystem.cursed_weapons()
+	if GameState.curse_goals.is_empty() and weapons.is_empty():
 		_body.add_child(_muted("Nothing is weighing on you."))
 		_report("Nothing is weighing on you.")
 		_body.add_child(_continue_button())
@@ -584,10 +585,26 @@ func _pick_remove_curse(req: Dictionary) -> void:
 			"permanent" if left < 0 else "%d game%s left" % [left, "" if left == 1 else "s"]]
 		btn.toggled.connect(func(on): _toggle_select(selected, i, on, max_pick, btn))
 		_body.add_child(btn)
+	# A CURSED WEAPON is a row too (docs/players-design.md §5), keyed by its uid
+	# so it cannot collide with a goal's index.
+	var by_key: Dictionary = {}
+	for e in weapons:
+		var key: String = "weapon:%d" % WeaponSystem.uid_of(e)
+		by_key[key] = e
+		var wbtn := Button.new()
+		wbtn.toggle_mode = true
+		wbtn.text = "%s — cursed weapon, stuck in your pack" % LootSystem.display_name(e)
+		wbtn.toggled.connect(func(on): _toggle_select(selected, key, on, max_pick, wbtn))
+		_body.add_child(wbtn)
 	var confirm := UITheme.confirm_button("Lift Selected", Vector2(180, 34))
 	confirm.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	confirm.pressed.connect(func():
-		_report(ScrollSystem.remove_curse_chosen(selected.keys()))
+		var goals: Array = selected.keys().filter(func(k): return k is int)
+		var picked: Array = []
+		for k in selected.keys():
+			if by_key.has(k):
+				picked.append(by_key[k])
+		_report(ScrollSystem.remove_curse_chosen(goals, picked))
 		_process_next_request())
 	_body.add_child(confirm)
 
@@ -671,7 +688,7 @@ func show_evolve() -> void:
 		art.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		box.add_child(art)
 		box.add_child(_heading("→ %s" % into.display_name, UITheme.GOLD, 17))
-		box.add_child(_muted(LootSystem.weapon_description(WeaponSystem.new_entry(into))))
+		box.add_child(_muted(LootSystem.weapon_description(WeaponSystem.new_entry(into, false))))
 		box.add_child(_muted("Needs %s — %s." % [WeaponSystem.need_words(evo),
 			"used up" if evo.consumes else "kept"]))
 		var selected: Dictionary = {}

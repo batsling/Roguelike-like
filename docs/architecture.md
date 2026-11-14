@@ -76,7 +76,12 @@ ordinary scene.
   raises mounts — so the door out of the application sat on top of the character
   picker, the Collection and the Atlas, live and clickable through their own
   backdrops. The corner is mounted under the modal layer now.
-  - **`CharacterPicker.gd`** — the roster in `data/characters2.0`, and the one
+  - **`PlayerPicker.gd`** — the FIRST pick after **Start Run** (and after the
+    custom run's screen): the players in `data/players` and the Fracture row
+    under them, since the ladder is the player's (`docs/players-design.md`). Its
+    Next parks the choice on `GameState`'s `pending_player2` meta and opens the
+    character select.
+  - **`CharacterPicker.gd`** — the roster in `data/characters2.0`, and the second
     screen between **Start Run** and being in a run: a four-wide grid of icon
     tiles on the left, the selected hero's full portrait beside its facts on the
     right, Confirm along the bottom. The detail half **never scrolls** — the

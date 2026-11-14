@@ -1,12 +1,17 @@
 extends GutTest
 
 # FRACTURES, build step 1 (docs/fracture-design.md §11): the RECORD. Which level
-# a run is at and that it survives a save; the per-character unlocks and the
-# remembered pick; which level each win was at, and the XP that pays; the
+# a run is at and that it survives a save; the per-PLAYER unlocks and the
+# remembered pick (docs/players-design.md §2 — the ladder was per character until
+# 13 Nov 2026, and the basic player inherits it); which level each win was at, and the XP that pays; the
 # trophy's number; and custom runs, which pay XP and nothing else.
 
 const HERO := &"ironclad"
 const GAME := &"hades"
+# The ladder's owner. Retro Bat, not the basic player, so no test here is reading the
+# basic player's backfill off the character records by accident; the backfill
+# has tests of its own.
+const PLAYER := &"retro_bat"
 
 var _saved: Array
 
@@ -15,7 +20,8 @@ func before_each() -> void:
 		GameStats.runs.duplicate(true), GameStats.fracture_log.duplicate(true),
 		GameStats.goal_log.duplicate(true), GameStats.enemy_log.duplicate(true),
 		GameStats.character_goal_log.duplicate(true),
-		GameStats.character_enemy_log.duplicate(true), GameStats.levelup_log.duplicate(true)]
+		GameStats.character_enemy_log.duplicate(true), GameStats.levelup_log.duplicate(true),
+		GameStats.player_fracture_log.duplicate(true)]
 	GameStats.stats = {}
 	GameStats.character_game_log = {}
 	GameStats.runs = []
@@ -25,8 +31,10 @@ func before_each() -> void:
 	GameStats.character_goal_log = {}
 	GameStats.character_enemy_log = {}
 	GameStats.levelup_log = {}
+	GameStats.player_fracture_log = {}
 	GameState.reset_run()
 	GameState.character_id = HERO
+	GameState.player_id = PLAYER
 	RunConfig.reset()
 
 func after_each() -> void:
@@ -39,6 +47,7 @@ func after_each() -> void:
 	GameStats.character_goal_log = _saved[6]
 	GameStats.character_enemy_log = _saved[7]
 	GameStats.levelup_log = _saved[8]
+	GameStats.player_fracture_log = _saved[9]
 	GameStats.save_data()
 	GameState.reset_run()
 	# Two tests here apply a save, which leaves a resume pending: the next file's
@@ -55,6 +64,7 @@ func after_each() -> void:
 func _win_run_at(level: int) -> void:
 	GameState.fracture = level
 	GameState.character_id = HERO
+	GameState.player_id = PLAYER
 	GameState.visited_games = [&"a", &"b"]
 	GameStats.record_run(true)
 
@@ -86,82 +96,119 @@ func test_a_save_from_before_fractures_loads_at_zero() -> void:
 	SaveSystem._apply_save_data(payload)
 	assert_eq(GameState.fracture, 0)
 
-func test_a_run_starts_at_the_characters_pick() -> void:
-	GameStats.fracture_log[String(HERO)] = {"best": 5, "pick": 3}
-	GameLoop2.start_run(Data.get_character2(HERO))
-	assert_eq(GameState.fracture, 3, "the remembered pick")
+func test_a_run_starts_at_the_players_pick() -> void:
+	GameStats.player_fracture_log[String(PLAYER)] = {"best": 5, "pick": 3}
+	GameLoop2.start_run(Data.get_character2(HERO), PLAYER)
+	assert_eq(GameState.fracture, 3, "the player's remembered pick")
+	# …and never a character's: the ladder is not theirs any more.
+	GameStats.fracture_log[String(HERO)] = {"best": 9, "pick": 8}
+	GameLoop2.start_run(Data.get_character2(HERO), PLAYER)
+	assert_eq(GameState.fracture, 3)
 
 # --- unlocks -----------------------------------------------------------------
 
 func test_fracture_one_needs_a_win_first() -> void:
-	assert_eq(GameStats.fracture_best(HERO), -1, "no win yet")
-	assert_eq(GameStats.fracture_unlocked(HERO), 0, "so only Fracture 0 is open")
+	assert_eq(GameStats.player_fracture_best(PLAYER), -1, "no win yet")
+	assert_eq(GameStats.player_fracture_unlocked(PLAYER), 0, "so only Fracture 0 is open")
 	_win_run_at(0)
-	assert_eq(GameStats.fracture_unlocked(HERO), 1, "a win at 0 opens 1")
+	assert_eq(GameStats.player_fracture_unlocked(PLAYER), 1, "a win at 0 opens 1")
 
 func test_a_win_at_the_top_level_opens_the_next() -> void:
 	_win_run_at(0)
 	_win_run_at(1)
-	assert_eq(GameStats.fracture_unlocked(HERO), 2)
+	assert_eq(GameStats.player_fracture_unlocked(PLAYER), 2)
 	assert_eq(GameStats.last_run_unlocked, 2, "the winning screen is told which")
 
 func test_a_win_below_the_top_level_unlocks_nothing() -> void:
 	_win_run_at(0)
 	_win_run_at(1)
 	_win_run_at(0)
-	assert_eq(GameStats.fracture_unlocked(HERO), 2)
+	assert_eq(GameStats.player_fracture_unlocked(PLAYER), 2)
 	assert_eq(GameStats.last_run_unlocked, -1)
 
 func test_a_loss_unlocks_nothing() -> void:
 	GameState.visited_games = [&"a", &"b"]
 	GameStats.record_run(false)
-	assert_eq(GameStats.fracture_unlocked(HERO), 0)
+	assert_eq(GameStats.player_fracture_unlocked(PLAYER), 0)
 
 func test_unlocks_stop_at_ten() -> void:
 	_win_run_at(10)
-	assert_eq(GameStats.fracture_unlocked(HERO), Fracture.MAX)
+	assert_eq(GameStats.player_fracture_unlocked(PLAYER), Fracture.MAX)
 	assert_eq(GameStats.last_run_unlocked, Fracture.MAX)
 	_win_run_at(10)
 	assert_eq(GameStats.last_run_unlocked, -1, "nothing past the top")
 
-func test_unlocks_are_per_character() -> void:
+func test_unlocks_are_per_player_not_per_character() -> void:
 	_win_run_at(0)
-	assert_eq(GameStats.fracture_unlocked(&"silent"), 0)
+	assert_eq(GameStats.player_fracture_unlocked(PLAYER), 1)
+	# Another character, the same player: the ladder is already open.
+	GameState.character_id = &"silent"
+	assert_eq(GameStats.player_fracture_unlocked(PLAYER), 1)
+	# The same character, another player with no wins of its own: nothing.
+	GameStats.player_fracture_log[String(Data.BASIC_PLAYER)] = {"best": -1}
+	assert_eq(GameStats.player_fracture_unlocked(Data.BASIC_PLAYER), 0)
+
+func test_the_character_still_records_its_best_win_for_its_trophy() -> void:
+	_win_run_at(3)
+	assert_eq(GameStats.fracture_best(HERO), 3, "the 🏆's number, a record and not a lock")
 
 func test_a_custom_run_win_unlocks_nothing() -> void:
 	RunConfig.apply({})
 	_win_run_at(0)
-	assert_eq(GameStats.fracture_unlocked(HERO), 0)
+	assert_eq(GameStats.player_fracture_unlocked(PLAYER), 0)
 	assert_true(bool(GameStats.runs[0].get("custom", false)), "the history says custom")
-
-func test_a_win_from_before_fractures_counts_as_fracture_zero() -> void:
-	# What an old save holds: a won run in the history, no fracture_log at all.
-	GameStats.runs = [{"path": ["a", "b"], "won": true, "character": String(HERO)}]
-	assert_eq(GameStats.fracture_best(HERO), 0)
-	assert_eq(GameStats.fracture_unlocked(HERO), 1)
 
 func test_the_unlock_outlives_the_capped_history() -> void:
 	_win_run_at(0)
 	GameStats.runs = []
-	assert_eq(GameStats.fracture_unlocked(HERO), 1, "kept in fracture_log, not read off runs")
+	assert_eq(GameStats.player_fracture_unlocked(PLAYER), 1,
+		"kept in player_fracture_log, not read off runs")
+
+func test_the_run_history_says_which_player() -> void:
+	_win_run_at(0)
+	assert_eq(String(GameStats.runs[0].get("player", "")), String(PLAYER))
+
+# --- the basic player inherits the old per-character ladder ---------------------
+
+func test_the_basic_player_starts_at_the_best_any_character_reached() -> void:
+	GameStats.fracture_log = {"ironclad": {"best": 2, "pick": 1}, "zoe": {"best": 4, "pick": 3}}
+	assert_eq(GameStats.player_fracture_best(Data.BASIC_PLAYER), 4, "Zoe's 4 is the best")
+	assert_eq(GameStats.player_fracture_unlocked(Data.BASIC_PLAYER), 5)
+	assert_eq(GameStats.player_fracture_pick(Data.BASIC_PLAYER), 3, "and the highest pick")
+	assert_eq(GameStats.player_fracture_unlocked(PLAYER), 0, "Retro Bat inherits nothing")
+
+func test_a_win_from_before_fractures_opens_fracture_one_for_the_basic_player() -> void:
+	# What an old save holds: a won run in the history, no fracture_log at all.
+	GameStats.runs = [{"path": ["a", "b"], "won": true, "character": String(HERO)}]
+	assert_eq(GameStats.player_fracture_best(Data.BASIC_PLAYER), 0)
+	assert_eq(GameStats.player_fracture_unlocked(Data.BASIC_PLAYER), 1)
+
+func test_the_basic_players_first_win_keeps_the_inherited_level() -> void:
+	GameStats.fracture_log = {"zoe": {"best": 4}}
+	GameState.player_id = Data.BASIC_PLAYER
+	GameState.fracture = 0
+	GameState.visited_games = [&"a", &"b"]
+	GameStats.record_run(true)
+	assert_eq(GameStats.player_fracture_best(Data.BASIC_PLAYER), 4,
+		"a win at 0 does not drop the basic player below what it inherited")
 
 # --- the remembered pick -----------------------------------------------------
 
 func test_the_pick_is_remembered_and_held_to_what_is_unlocked() -> void:
 	_win_run_at(0)
 	_win_run_at(1)
-	GameStats.set_fracture_pick(HERO, 2)
-	assert_eq(GameStats.fracture_pick(HERO), 2)
-	GameStats.set_fracture_pick(HERO, 9)
-	assert_eq(GameStats.fracture_pick(HERO), 2, "never past the highest unlocked")
+	GameStats.set_player_fracture_pick(PLAYER, 2)
+	assert_eq(GameStats.player_fracture_pick(PLAYER), 2)
+	GameStats.set_player_fracture_pick(PLAYER, 9)
+	assert_eq(GameStats.player_fracture_pick(PLAYER), 2, "never past the highest unlocked")
 
 func test_the_record_survives_a_reload() -> void:
 	_win_run_at(0)
-	GameStats.set_fracture_pick(HERO, 1)
+	GameStats.set_player_fracture_pick(PLAYER, 1)
 	GameStats.save_data()
 	GameStats.load_data()
-	assert_eq(GameStats.fracture_unlocked(HERO), 1)
-	assert_eq(GameStats.fracture_pick(HERO), 1)
+	assert_eq(GameStats.player_fracture_unlocked(PLAYER), 1)
+	assert_eq(GameStats.player_fracture_pick(PLAYER), 1)
 
 # --- XP ----------------------------------------------------------------------
 
@@ -378,19 +425,21 @@ func test_every_level_says_what_it_adds() -> void:
 		assert_ne(Fracture.change_text(lv), "", "Fracture %d has a line" % lv)
 	assert_eq(Fracture.ladder_text(4).split("\n").size(), 4, "a line per level up to it")
 
-func _picker() -> CharacterPicker:
+# THE ROW IS ON THE PLAYER SELECT now (PlayerPicker, docs/players-design.md §2).
+func _picker() -> PlayerPicker:
 	var host := Control.new()
 	add_child_autofree(host)
-	var picker: CharacterPicker = CharacterPicker.open(host)
+	var picker: PlayerPicker = PlayerPicker.open(host)
+	picker.select_player(PLAYER)
 	return picker
 
-func _fracture_button(picker: CharacterPicker, lv: int) -> Button:
+func _fracture_button(picker: PlayerPicker, lv: int) -> Button:
 	return picker._fracture_row.get_node_or_null("Fracture%d" % lv) as Button
 
 # The owner, 11 Nov 2026: hovering a level made its number go away, and the row
 # should show the numbers the player has unlocked (the title digits a rank pays).
 func test_a_fracture_level_wears_an_unlocked_number_and_keeps_it_under_the_mouse() -> void:
-	var picker: CharacterPicker = _picker()
+	var picker: PlayerPicker = _picker()
 	for lv in [0, 3, 10]:
 		var b: Button = _fracture_button(picker, lv)
 		assert_not_null(b)
@@ -408,37 +457,37 @@ func test_a_fracture_level_wears_an_unlocked_number_and_keeps_it_under_the_mouse
 		assert_true(word.visible)
 
 func test_the_picker_row_locks_what_is_not_unlocked() -> void:
-	var picker: CharacterPicker = _picker()
-	var first: CharacterData = picker._roster[0]
-	GameStats.fracture_log[String(first.id)] = {"best": 2}
-	picker._select.call(first)
+	GameStats.player_fracture_log[String(PLAYER)] = {"best": 2}
+	var picker: PlayerPicker = _picker()
 	for lv in range(Fracture.MAX + 1):
 		var b: Button = _fracture_button(picker, lv)
 		assert_not_null(b, "a button for Fracture %d" % lv)
 		if b != null:
 			assert_eq(b.disabled, lv > 3, "Fracture %d is %s" % [lv, "locked" if lv > 3 else "open"])
 
-func test_pressing_a_level_saves_it_as_the_heros_pick() -> void:
-	var picker: CharacterPicker = _picker()
-	var first: CharacterData = picker._roster[0]
-	GameStats.fracture_log[String(first.id)] = {"best": 4}
-	picker._select.call(first)
+func test_pressing_a_level_saves_it_as_the_players_pick() -> void:
+	GameStats.player_fracture_log[String(PLAYER)] = {"best": 4}
+	var picker: PlayerPicker = _picker()
 	_fracture_button(picker, 3).pressed.emit()
-	assert_eq(GameStats.fracture_pick(first.id), 3)
+	assert_eq(GameStats.player_fracture_pick(PLAYER), 3)
 
-func test_a_hero_with_no_win_is_told_how_to_open_fracture_one() -> void:
-	var picker: CharacterPicker = _picker()
-	var first: CharacterData = picker._roster[0]
-	picker._select.call(first)
+func test_a_player_with_no_win_is_told_how_to_open_fracture_one() -> void:
+	var picker: PlayerPicker = _picker()
 	var note: Label = picker._fracture_row.get_node_or_null("FractureNote") as Label
 	assert_not_null(note)
 	assert_string_contains(note.text, "unlock Fracture 1")
+
+func test_the_character_select_has_no_fracture_row_any_more() -> void:
+	var host := Control.new()
+	add_child_autofree(host)
+	var picker: CharacterPicker = CharacterPicker.open(host)
+	assert_null(picker.find_child("Fracture0", true, false), "the ladder is the player's")
 
 func test_the_winning_screen_names_the_unlock() -> void:
 	_win_run_at(0)
 	var screen := RunOverScreen.new()
 	screen.won = true
-	assert_string_contains(screen.unlock_line(), "Fracture 1 unlocked")
+	assert_string_contains(screen.unlock_line(), "Fracture 1 unlocked for Retro Bat")
 	screen.free()
 
 func test_a_loss_names_no_unlock() -> void:
@@ -457,11 +506,11 @@ func test_wins_are_counted_by_fracture() -> void:
 	_win_run_at(0)
 	_win_run_at(0)
 	_win_run_at(1)
-	assert_eq(GameStats.fracture_wins(HERO), {0: 2, 1: 1})
+	assert_eq(GameStats.player_fracture_wins(PLAYER), {0: 2, 1: 1})
 
-func test_old_wins_count_at_fracture_zero() -> void:
+func test_old_wins_count_at_fracture_zero_for_the_basic_player() -> void:
 	GameStats.runs = [{"path": ["a", "b"], "won": true, "character": String(HERO)}]
-	assert_eq(GameStats.fracture_wins(HERO), {0: 1})
+	assert_eq(GameStats.player_fracture_wins(Data.BASIC_PLAYER), {0: 1})
 
 func test_how_to_play_has_a_fractures_chapter() -> void:
 	var ids: Array = []
