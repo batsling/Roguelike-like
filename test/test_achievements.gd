@@ -69,21 +69,23 @@ func test_every_achievement_unlocks_a_real_character_or_player_and_can_be_counte
 	assert_eq(Data.all_achievements().size(), Fx.tres_count("res://data/achievements/"),
 		"every file in data/achievements loaded")
 	for a in Data.all_achievements():
-		# One or the other (docs/players-design.md): a character under Characters,
-		# a player under Players.
+		# Exactly one: a character under Characters, a player under Players
+		# (docs/players-design.md), a special hat under Hats.
 		var ch: CharacterData = Data.get_character2(a.unlocks_character)
 		var pl: PlayerData = Data.get_player(a.unlocks_player)
-		assert_true((ch != null) != (pl != null),
-			"%s unlocks exactly one character or player" % a.id)
+		var hat: bool = not CosmeticCatalog.entry(a.unlocks_cosmetic).is_empty() \
+			if a.unlocks_cosmetic != "" else false
+		assert_eq(int(ch != null) + int(pl != null) + int(hat), 1,
+			"%s unlocks exactly one character, player or hat" % a.id)
 		assert_ne(a.description, "", "%s says what to do" % a.id)
 		assert_gt(a.goal, 0, "%s has a goal" % a.id)
-		assert_true(["tagged_held", "perfects", "games_beaten"].has(a.metric),
+		assert_true(["tagged_held", "perfects", "games_beaten", "escape_streak"].has(a.metric),
 			"%s is counted a way Achievements.measure knows" % a.id)
 
 func test_the_tabs_are_read_off_the_achievements() -> void:
-	assert_eq(Achievements.tabs(), ["Characters", "Players"], "two kinds of unlock so far")
-	assert_eq(Achievements.in_tab("Characters").size() + Achievements.in_tab("Players").size(),
-		Data.all_achievements().size())
+	assert_eq(Achievements.tabs(), ["Characters", "Players", "Hats"], "three kinds of unlock so far")
+	assert_eq(Achievements.in_tab("Characters").size() + Achievements.in_tab("Players").size()
+		+ Achievements.in_tab("Hats").size(), Data.all_achievements().size())
 
 # RETRO_BAT (docs/players-design.md): locked until 20 different traditional
 # roguelikes have been beaten, across all runs.
@@ -231,7 +233,7 @@ func test_the_screen_says_how_each_is_counted_and_how_close() -> void:
 	assert_true(text.contains("IN ONE RUN") and text.contains("ACROSS ALL RUNS"))
 	assert_true(text.contains("Best in one run: 2 of 3"), "Manager's best run")
 	assert_true(text.contains("So far: 4 of 10"), "Zoe's running total")
-	assert_true(text.contains("0 of 4 unlocked"))
+	assert_true(text.contains("0 of 5 unlocked"))
 	var tab := s.find_child("Tab0", true, false) as Button
 	assert_eq(tab.text, "Characters  0 / 3", "the Characters tab, with its count")
 	var sockets := s.find_child("Row_manager", true, false).find_child("Sockets", true, false)
@@ -311,8 +313,8 @@ func test_the_meter_is_the_average_of_the_sections_that_have_something_to_comple
 	var after: Array = CompletionStats.sections()
 	var counted: int = after.filter(func(s) -> bool: return float(s["ratio"]) >= 0.0).size()
 	assert_eq(counted, after.size() - 1, "every section but the run records is counted")
-	# A line per tab, averaged: Characters 1 of 3, Players 0 of 1.
-	var ratio: float = (1.0 / 3.0 + 0.0) / 2.0
+	# A line per tab, averaged: Characters 1 of 3, Players 0 of 1, Hats 0 of 1.
+	var ratio: float = (1.0 / 3.0 + 0.0 + 0.0) / 3.0
 	assert_almost_eq(CompletionStats.achievements()["ratio"], ratio, 0.0001)
 	assert_almost_eq(CompletionStats.overall(after) - before, ratio / counted, 0.0001,
 		"a share of one section, and every section weighs the same")
@@ -339,11 +341,13 @@ func test_runs_are_counted_past_the_history_s_cap() -> void:
 
 func test_the_stats_tab_shows_the_meter_and_every_section() -> void:
 	GameStats.note_achievement(&"rodney", 1, 1)
-	var s := AchievementsScreen.open(self, 2)
+	# The Stats tab is the last one, after a tab per kind of unlock.
+	var stats_tab: int = Achievements.tabs().size()
+	var s := AchievementsScreen.open(self, stats_tab)
 	autofree(s)
 	await wait_frames(2)
 	var overall: String = AchievementsScreen._percent(CompletionStats.overall())
-	assert_eq((s.find_child("Tab2", true, false) as Button).text, "Stats  %s" % overall)
+	assert_eq((s.find_child("Tab%d" % stats_tab, true, false) as Button).text, "Stats  %s" % overall)
 	assert_eq((s.find_child("Overall", true, false) as Label).text, overall)
 	var text: String = _texts(s)
 	for section in CompletionStats.sections():
@@ -356,3 +360,43 @@ func test_a_percentage_only_reads_100_when_everything_is_done() -> void:
 	assert_eq(AchievementsScreen._percent(0.9999), "99.9%")
 	assert_eq(AchievementsScreen._percent(1.0), "100.0%")
 	assert_eq(AchievementsScreen._number(1004), "1,004")
+
+# --- a hat: the Abandon Hat (docs/customization.md §7) -------------------------------
+
+# The owner, 14 Nov 2026: the Abandon Hat counts as an achievement. Its rule is a
+# row of the sheet's `Hats` tab, counted in one run off the run's escape streak.
+func test_the_abandon_hat_is_an_achievement_counted_off_the_escape_streak() -> void:
+	var a: AchievementData = Achievements.for_cosmetic(Cosmetics.ABANDON_HAT)
+	assert_not_null(a, "an achievement unlocks the Abandon Hat")
+	assert_eq([a.tab, a.scope, a.metric, a.goal], ["Hats", "run", "escape_streak", 5])
+	Cosmetics._unlocked = {}
+	GameState.escape_streak = 3
+	Cosmetics.note_escape_streak(3)
+	assert_eq(Achievements.progress(a), 3, "the best streak is kept")
+	assert_false(Achievements.is_done(a))
+	assert_false(Cosmetics.is_unlocked(Cosmetics.ABANDON_HAT))
+	GameState.escape_streak = 0
+	Cosmetics.note_escape_streak(0)
+	assert_eq(Achievements.progress(a), 3, "and a broken streak does not lower it")
+	GameState.escape_streak = 5
+	Cosmetics.note_escape_streak(5)
+	assert_true(Achievements.is_done(a), "five in a row finishes it")
+	assert_true(Cosmetics.is_unlocked(Cosmetics.ABANDON_HAT), "and the hat is unlocked")
+
+# A profile that earned the hat before it had a row here is not asked to again.
+func test_a_profile_already_wearing_the_abandon_hat_has_the_achievement() -> void:
+	var a: AchievementData = Achievements.for_cosmetic(Cosmetics.ABANDON_HAT)
+	Cosmetics._unlocked = {Cosmetics.ABANDON_HAT: Cosmetics.SPECIAL_OWNER}
+	Achievements.check()
+	assert_true(bool(GameStats.achievement_record(a.id).get("done", false)))
+	assert_eq(Notifications.history.size(), 0, "without a toast")
+
+func test_the_hats_tab_shows_the_hat_and_how_it_is_earned() -> void:
+	var s := AchievementsScreen.open(self, Achievements.tabs().find("Hats"))
+	autofree(s)
+	await wait_frames(2)
+	var row: Node = s.find_child("Row_hat_abandon_hat", true, false)
+	assert_not_null(row, "the Hats tab lists it")
+	assert_string_contains(_texts(row), "Abandon Hat")
+	assert_string_contains(_texts(row), "Escape 5 games in a row")
+	assert_not_null(row.find_child("Portrait", true, false), "with the hat's picture")

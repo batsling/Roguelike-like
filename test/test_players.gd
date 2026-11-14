@@ -47,6 +47,28 @@ func test_retro_bat_has_hunger_and_unidentified_weapons_and_crisp_art() -> void:
 	for m in bat.mechanics:
 		assert_ne(PlayerData.mechanic_line(m), "", "%s says what it does" % m)
 
+# THE `mechanics` SHEET (the owner, 14 Nov 2026): a mechanic's name and sentence
+# are a row there, and a player's Mechanics cell is a mix of those rows.
+func test_every_mechanic_is_a_row_of_the_mechanics_sheet_and_has_a_rule() -> void:
+	assert_eq(Data.all_mechanics().size(), Fx.tres_count("res://data/mechanics/"))
+	for d in Data.all_mechanics():
+		assert_ne(d.display_name, "", "%s has a name" % d.id)
+		assert_ne(d.description, "", "%s says what it does" % d.id)
+		assert_true(PlayerData.MECHANICS.has(d.id), "%s has a rule in code" % d.id)
+	for m in PlayerData.MECHANICS:
+		assert_not_null(Data.get_mechanic(m), "%s is on the sheet" % m)
+	for pl in Data.all_players():
+		for m in pl.mechanics:
+			assert_not_null(Data.get_mechanic(m), "%s carries a real mechanic" % pl.display_name)
+	assert_eq(PlayerData.mechanic_name(&"unidentified_weapons"), "Unidentified Weapons")
+
+# Hunger's numbers are typed into its sentence on the sheet; the rules are code.
+func test_hungers_sentence_says_the_numbers_the_rules_use() -> void:
+	var line: String = PlayerData.mechanic_line(&"hunger")
+	assert_string_contains(line, "Start with %d Hunger" % HungerSystem.START)
+	assert_string_contains(line, "at most %d" % HungerSystem.MAX)
+	assert_string_contains(line, "lose %d Health" % HungerSystem.STARVE_DAMAGE)
+
 # Batsaac's art is painted, not pixel art: kept at its full size (the transparent
 # margin trimmed), and no mechanics until the owner gives him some.
 func test_batsaac_is_painted_art_with_no_mechanics_yet() -> void:

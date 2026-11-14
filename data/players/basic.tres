@@ -6,7 +6,6 @@
 script = ExtResource("1_player")
 id = &"basic"
 display_name = "Basic"
-description = "The game as it is."
 order = 10
 mechanics = Array[StringName]([])
 portrait_path = ""

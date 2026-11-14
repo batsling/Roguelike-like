@@ -3,13 +3,13 @@
 Generate Godot PlayerData .tres from the `players` sheet of tools/Roguelikes.xlsx
 into data/players/ (docs/players-design.md).
 
-  players: Name | Description | Mechanics | File | Hat
+  players: Name | Mechanics | File | Hat
 
   Name         the player's name, as the picker shows it. Its id is the slug.
-  Description  one line about them.
-  Mechanics    what the player adds to a run, comma-separated, by name:
-               `Hunger`, `Unidentified Weapons` (MECHANICS below, mirroring
-               PlayerData.MECHANICS). Blank = the game as it is.
+  Mechanics    what the player adds to a run: a comma list of NAMES from the
+               `mechanics` sheet (generate_mechanic_tres.py), any mix of them —
+               `Hunger, Unidentified Weapons`. A name with no row there is
+               refused. Blank = the game as it is.
   File         the art's base name in images2.0/players/ (`RetroBat` ->
                images2.0/players/RetroBat.png). Blank, or no such file, = no art,
                and the picker shows the name instead. The SMALL token is
@@ -42,6 +42,7 @@ import sys
 import openpyxl
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from generate_mechanic_tres import sheet_mechanics  # noqa: E402
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.dirname(SCRIPT_DIR)
@@ -49,10 +50,7 @@ XLSX_PATH = os.environ.get("CARDS_XLSX", os.path.join(SCRIPT_DIR, "Roguelikes.xl
 OUT_DIR = os.path.join(PROJECT_ROOT, "data", "players")
 ART_DIR = os.path.join(PROJECT_ROOT, "images2.0", "players")
 SHEET = "players"
-HEADERS = ("Name", "Description", "Mechanics", "File", "Hat")
-
-# Sheet word -> PlayerData.MECHANICS id. Keep the two in step.
-MECHANICS = {"hunger": "hunger", "unidentified weapons": "unidentified_weapons"}
+HEADERS = ("Name", "Mechanics", "File", "Hat")
 
 
 def slugify(name: str) -> str:
@@ -82,14 +80,15 @@ def art_path(file: str, sub: str = "") -> str:
     return ""
 
 
-def parse_mechanics(raw, who: str) -> list:
+def parse_mechanics(raw, who: str, known: dict) -> list:
+    """`known` is the `mechanics` sheet: lower-cased name -> id."""
     out = []
     for term in [t.strip().lower() for t in _clean(raw).split(",") if t.strip()]:
-        if term not in MECHANICS:
-            raise ValueError("players %s: Mechanics %r is not one of %s"
-                             % (who, term, ", ".join(sorted(MECHANICS))))
-        if MECHANICS[term] not in out:
-            out.append(MECHANICS[term])
+        if term not in known:
+            raise ValueError("players %s: Mechanics %r is not a row of the `mechanics` "
+                             "sheet (%s)" % (who, term, ", ".join(sorted(known)) or "it is empty"))
+        if known[term] not in out:
+            out.append(known[term])
     return out
 
 
@@ -116,12 +115,12 @@ def gd_vec4(spot) -> str:
     return "Vector4(%s)" % ", ".join(n(v) for v in (spot or (0, 0, 0, 0)))
 
 
-def player_tres(row: dict, order: int) -> tuple:
+def player_tres(row: dict, order: int, known: dict) -> tuple:
     name = _clean(row.get("Name"))
     if not name:
         raise ValueError("players: a row has no Name")
     pid = slugify(name)
-    mechanics = parse_mechanics(row.get("Mechanics"), name)
+    mechanics = parse_mechanics(row.get("Mechanics"), name, known)
     hat = parse_spot(row.get("Hat"), name, "Hat")
     lines = [
         '[gd_resource type="Resource" script_class="PlayerData" load_steps=2 '
@@ -133,7 +132,6 @@ def player_tres(row: dict, order: int) -> tuple:
         'script = ExtResource("1_player")',
         'id = &"%s"' % pid,
         'display_name = "%s"' % gd_str(name),
-        'description = "%s"' % gd_str(_clean(row.get("Description"))),
         "order = %d" % order,
         "mechanics = Array[StringName]([%s])" % ", ".join('&"%s"' % m for m in mechanics),
         'portrait_path = "%s"' % art_path(_clean(row.get("File"))),
@@ -164,9 +162,10 @@ def main():
     if SHEET not in wb.sheetnames:
         raise SystemExit("%s has no %r sheet — run tools/oneshots/_players_sheet_setup.py"
                          % (XLSX_PATH, SHEET))
+    known = sheet_mechanics(wb)
     out = {}
     for i, row in enumerate(rows(wb[SHEET])):
-        pid, text = player_tres(row, (i + 1) * 10)
+        pid, text = player_tres(row, (i + 1) * 10, known)
         if pid in out:
             raise ValueError("players: two rows are called %r" % pid)
         out[pid] = text

@@ -124,15 +124,28 @@ func _announce(key: String) -> void:
 # except the abandon hat which can be unlocked by escaping 5 games in a row". The
 # streak is the RUN's (GameState.escape_streak; the owner chose "within one run"),
 # counted where every game is handed in (Overworld2.report's bookkeeping).
+#
+# THE RULE IS A ROW OF THE `achievements` SHEET (the `Hats` tab; the owner, 14 Nov
+# 2026: "make sure the abandon hat counts as an achievement"): how many escapes
+# it takes and the sentence that says so are `Achievements.for_cosmetic(key)`'s
+# goal and description, so the hat is listed and counted with every other
+# achievement and the number is the owner's to change on the sheet.
 const ABANDON_HAT := "hat/abandon_hat"
-const ABANDON_ESCAPES := 5
-# key -> how it is earned, in words, for a locked tile's hover.
-const SPECIAL_HATS := {ABANDON_HAT: "Escape %d games in a row in one run." % ABANDON_ESCAPES}
 const SPECIAL_OWNER := "special"
 
-# Called with the run's escape streak after every game handed in.
+# How a special hat is earned, in words, for a locked tile's hover.
+static func special_how(key: String) -> String:
+	var a: AchievementData = Achievements.for_cosmetic(key)
+	return a.description if a != null else ""
+
+# Called with the run's escape streak after every game handed in. The achievement
+# keeps the best streak and unlocks the hat when it is done (Achievements.check);
+# the line after it is the same rule for a profile that counts no achievements
+# (the suite's bypass), so the hat cannot depend on which one is on.
 func note_escape_streak(streak: int) -> void:
-	if streak >= ABANDON_ESCAPES:
+	Achievements.check()
+	var a: AchievementData = Achievements.for_cosmetic(ABANDON_HAT)
+	if a != null and streak >= a.goal:
 		unlock_special(ABANDON_HAT)
 
 # Unlock `key` outside the ranks; true if it was not already. Toasted like a rank's.

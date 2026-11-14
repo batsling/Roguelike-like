@@ -123,7 +123,7 @@ var session_mark: Dictionary = {}
 var games_played: int = 0
 # HOW MANY GAMES IN A ROW THIS RUN WERE ESCAPED, back to the last one handed in any
 # other way (Overworld2.report). What the Abandon Hat asks for: five
-# (Cosmetics.ABANDON_ESCAPES; docs/customization.md §7).
+# (the `achievements` sheet's Hats row; docs/customization.md §7).
 var escape_streak: int = 0
 # SPAWN EVENTS — one per game arrival that landed bodies, one per failure spawn,
 # regardless of how many bodies each put down (§19.6). This is what the tier

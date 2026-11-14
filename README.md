@@ -115,7 +115,7 @@ The repository root **is** the Godot project, so `res://x` is `./x`.
 │   └── resources/   # the Resource schemas every .tres is typed by
 │
 ├── data/            # all content as .tres, generated from the spreadsheet:
-│                    #   games/ (1000), enemies2.0/, bosses2.0/, characters2.0/, players/, items2.0/,
+│                    #   games/ (1000), enemies2.0/, bosses2.0/, characters2.0/, players/, mechanics/, items2.0/,
 │                    #   abilities2.0/, statuses2.0/, tiles2.0/, units2.0/, events2.0/,
 │                    #   objects2.0/, curses2.0/, the loot kinds (scrolls2.0/, pills2.0/,
 │                    #   potions2.0/, cards2.0/, wands2.0/, trinkets2.0/, bags2.0/,
@@ -156,7 +156,7 @@ The repository root **is** the Godot project, so `res://x` is `./x`.
 | Difficulty above a won run | [`docs/fracture-design.md`](docs/fracture-design.md) |
 | Players — the first pick: mechanics (Hunger, unidentified weapons) and the Fracture ladder | [`docs/players-design.md`](docs/players-design.md) |
 | Rifts: off-map games pulled into the map | [`docs/rifts-design.md`](docs/rifts-design.md) |
-| Achievements (what unlocks a character) | [`docs/achievements.md`](docs/achievements.md) |
+| Achievements (what unlocks a character, a player or the Abandon Hat) | [`docs/achievements.md`](docs/achievements.md) |
 | Roguelike Radio | [`docs/roguelike-radio.md`](docs/roguelike-radio.md) |
 | The end-of-session Camp | [`docs/rest-site-design.md`](docs/rest-site-design.md) |
 | Locations: dealt at each difficulty up, what they do, the tag lean, the poops | [`docs/locations-design.md`](docs/locations-design.md) |

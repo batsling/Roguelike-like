@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="AchievementData" load_steps=2 format=3 uid="uid://ach_hat_abandon_hat"]
+
+[ext_resource type="Script" path="res://scripts/resources/AchievementData.gd" id="1_ach"]
+
+[resource]
+script = ExtResource("1_ach")
+id = &"hat_abandon_hat"
+tab = "Hats"
+order = 50
+unlocks_character = &""
+unlocks_player = &""
+unlocks_cosmetic = "hat/abandon_hat"
+description = "Escape 5 games in a row in one run."
+scope = "run"
+metric = "escape_streak"
+tag = ""
+game_type = ""
+goal = 5

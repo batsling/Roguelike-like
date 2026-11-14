@@ -1,10 +1,11 @@
 # Players — design
 
 **Status: built (13 Nov 2026).** Asked for and decided by the owner the same day.
-Rules: `scripts/resources/PlayerData.gd` (the resource and each mechanic's words),
+Rules: `scripts/resources/PlayerData.gd` (the resource; each mechanic's words are the `mechanics` sheet's),
 `scripts/runtime/HungerSystem.gd`, `scripts/runtime/WeaponSystem.gd` (the
-unidentified roll). Screen: `scripts/menu/PlayerPicker.gd`. Sheet: `players` →
-`tools/generate_player_tres.py` → `data/players/`. Tests: `test/test_players.gd`,
+unidentified roll). Screen: `scripts/menu/PlayerPicker.gd`. Sheets: `players` →
+`tools/generate_player_tres.py` → `data/players/`, and `mechanics` →
+`tools/generate_mechanic_tres.py` → `data/mechanics/`. Tests: `test/test_players.gd`,
 and the ladder's in `test/test_fracture.gd`.
 
 ## 1. What a player is
@@ -41,15 +42,31 @@ with only its transparent margin trimmed. Every screen draws both through
 `UITheme.crisp_tex`, which scales pixel art without smoothing and painted art
 with it.
 
-### The sheet
+### The sheets
 
-`players`: `Name | Description | Mechanics | File | Hat`. `Mechanics` is a comma list of
-`Hunger`, `Unidentified Weapons` (the generator's `MECHANICS`, mirroring
-`PlayerData.MECHANICS`); blank is the basic player. `File` is the art's base name
-in `images2.0/players/`. The art is named by PATH and loaded on first read, the
+`players`: `Name | Mechanics | File | Hat`. `Mechanics` is a comma list of
+names from the `mechanics` sheet, **any mix of them** (`Hunger, Unidentified
+Weapons`); blank is the basic player, and a name with no row on `mechanics` is
+refused by the generator. `File` is the art's base name in
+`images2.0/players/`. The art is named by PATH and loaded on first read, the
 boot-load rule. `Hat` is where a worn hat sits on the picture
-([customization.md](customization.md) §7); the small token never wears one. What a mechanic SAYS is not on the sheet: the rules are code, so
-`PlayerData.mechanic_line` keeps their words beside them.
+([customization.md](customization.md) §7); the small token never wears one. A
+player has no description of its own (the owner took the column off, 14 Nov
+2026): the picker shows the picture, the name and what each mechanic does.
+
+`mechanics`: `Name | Description` (the owner, 14 Nov 2026), on the tab beside
+`players`. One row per mechanic: the name a player's `Mechanics` cell uses, and
+the sentence the picker, the manual and the hero's card say about it
+(`MechanicData`, `Data.get_mechanic`; `PlayerData.mechanic_name` /
+`mechanic_line` read it). Its id is the name's slug. The RULES stay code:
+`PlayerData.MECHANICS` lists the ids that have one, and the generator prints a
+note for a row that is not in it, which is a name and a sentence until its rule
+is written. Hunger's sentence has its numbers typed into it; `test_players.gd`
+holds them to `HungerSystem`'s.
+
+To give a player a mechanic, type its name into the player's `Mechanics` cell.
+To add a new one, add its row to `mechanics`, then its id to
+`PlayerData.MECHANICS` with the rule that asks `GameState.has_mechanic`.
 
 What **unlocks** a player is a row of the `achievements` sheet under the
 **Players** tab (`AchievementData.unlocks_player`), counted exactly like a
@@ -80,22 +97,25 @@ The ladder (`docs/fracture-design.md`) was per character until this change. Now:
 The Fracture row moved off the character select onto the player select, with its
 numbers still spelled in unlocked title digits (`PlayerPicker.number_fracture_button`).
 
-## 3. Characters give no stats
+## 3. Characters give no starting stats
 
 A character now gives exactly four things: its **level-up challenge**, its
 **Health**, its **gold** and its **starting loot**. The owner, 13 Nov 2026:
-stats come neither from the start nor from a level-up.
+stats come neither from the start nor from a level-up. The second half lasted
+a day: on 14 Nov the owner wrote "Gain +1 Transmute" (Minä) and "Gain +1 Dash"
+(Zoe) back into the `Reward` column, so **a level-up can pay a verb again**. A
+run still opens with every verb at 0.
 
 - The `characters` sheet lost its starting-verb columns — Bash, Dash, Push,
   Transmute, Scramble, Bombs, Keys and Random
   (`tools/oneshots/_characters_no_stats.py`). A run opens with every verb at 0.
-- A level-up's `Reward` keeps what it pays — a chest, a card, loot, Max Health,
-  gold — and loses its verb: Isaac's "+1 Scramble", the Manager's "+1 Push",
-  Minä's "+1 Transmute" and Zoe's "+1 Dash". **Minä's and Zoe's rewards were
-  nothing but a verb**, so their level-ups now pay nothing past the level itself
-  (and its XP). That is for the owner to refill on the sheet if wanted.
-- `generate_character2_tres.py` **refuses** a Reward that names a verb, rather
-  than reading it as nothing.
+- On 13 Nov every level-up `Reward` lost its verb: Isaac's "+1 Scramble", the
+  Manager's "+1 Push", Minä's "+1 Transmute" and Zoe's "+1 Dash". Minä's and
+  Zoe's rewards were nothing but a verb, which left their level-ups paying
+  nothing, and the owner refilled both the next day with the verb they had.
+  Isaac's and the Manager's stay as they were left (a chest, gold).
+- `generate_character2_tres.py` reads a verb in a Reward into `level_up_stats`
+  again (`STAT_VERBS`); `GameState.apply_level_up_stats` pays it.
 - **The Erratic Deck's challenge** ("Beat a game while having selected a random
   starting build") was written against the Random column, which is gone. The
   wording is the owner's to revisit.

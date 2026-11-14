@@ -239,11 +239,11 @@ selected, gain +1 Temporary Shield"), and future tag routes / scrolls.
 
 **This reuses the current project's level-up mechanic directly** (`CharacterData`
 + `Overworld._resolve_level_up`). Since 13 Nov 2026 a character gives four things
-and **no stats** (`docs/players-design.md` §3): its Health, its Gold, its starting
+and **no starting stats** (`docs/players-design.md` §3): its Health, its Gold, its starting
 loot and its `Level Up` challenge, with `Reward` what meeting it grants. The
 starting verb columns (Bash, Dash, Push, Transmute, Scramble, Bombs, Keys,
 Random) are gone from the sheet, and a reward pays a chest, a card, loot, Max
-Health or gold — never a verb. What differs between runs MECHANICALLY is the
+Health, gold or (again, since 14 Nov 2026) a verb. What differs between runs MECHANICALLY is the
 **player** picked before the character (`docs/players-design.md`).
 
 All eleven, as the sheet has them — the wordings all say "Beat a game…" now
@@ -254,8 +254,8 @@ made every goal say when it is answered (§7.7):
 |---|---|---|
 | Rodney | Beat a game without meta progression | +1 Max Health, +1 Loot |
 | Isaac | Beat a game while having used sorrow or self-inflicted pain as a weapon | +1 Small Chest |
-| Zoe | Perfect a game by beating it without losing | — (counts toward XP only) |
-| Minä | Beat a game while having crafted or combined a spell or weapon | — (counts toward XP only) |
+| Zoe | Perfect a game by beating it without losing | +1 Dash |
+| Minä | Beat a game while having crafted or combined a spell or weapon | +1 Transmute |
 | Ironclad | Beat a game while having made a Faustian bargain | +1 Small Chest |
 | Manager | Beat a game while having collected 3 different types of currency | +1 Gold |
 | Regent | Beat a game while having made a friend | +1 Small Chest |

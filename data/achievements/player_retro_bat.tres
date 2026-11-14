@@ -9,6 +9,7 @@ tab = "Players"
 order = 40
 unlocks_character = &""
 unlocks_player = &"retro_bat"
+unlocks_cosmetic = ""
 description = "Beat 20 different traditional roguelikes."
 scope = "lifetime"
 metric = "games_beaten"

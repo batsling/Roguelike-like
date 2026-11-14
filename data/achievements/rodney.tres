@@ -9,6 +9,7 @@ tab = "Characters"
 order = 30
 unlocks_character = &"rodney"
 unlocks_player = &""
+unlocks_cosmetic = ""
 description = "Beat a traditional roguelike."
 scope = "lifetime"
 metric = "games_beaten"

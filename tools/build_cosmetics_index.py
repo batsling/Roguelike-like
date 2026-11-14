@@ -38,7 +38,7 @@ THE FILE NAME IS THE ENTRY. Drop a PNG in one of the folders below and rerun:
     is 4-4 and its Large Chest 2-3. A set with no 4 shows its highest for a boss.
   * A HAT is named like an icon (`Top_Hat_Super_Auto_Pets`) and, like one, is its
     game's rank-up reward. One in `Special/` is NOT: it is unlocked by a rule of
-    its own (Cosmetics.SPECIAL_HATS — the Abandon Hat, five games escaped in a row
+    its own (the `achievements` sheet's Hats tab — the Abandon Hat, five games escaped in a row
     in one run), and carries `"special": true` so no rank ever draws it.
 
 `--check` exits 1 when the checked-in JSON is not what the folders say.

@@ -6,7 +6,6 @@
 script = ExtResource("1_player")
 id = &"batsaac"
 display_name = "Batsaac"
-description = ""
 order = 30
 mechanics = Array[StringName]([])
 portrait_path = "res://images2.0/players/Batsaac.png"

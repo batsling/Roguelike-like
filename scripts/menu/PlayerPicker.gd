@@ -258,10 +258,6 @@ func _fill_detail(box: HBoxContainer, pl: PlayerData) -> void:
 			% [Achievements.progress(a), a.goal], UITheme.FONT_LEAD,
 			Achievements.RUN_COLOR if a.is_run_scope() else Achievements.LIFETIME_COLOR))
 		return
-	if pl.description != "":
-		right.add_child(_line(pl.description, UITheme.FONT_TEXT,
-			UITheme.TEXT.lerp(UITheme.TEXT_DIM, 0.3)))
-	right.add_child(HSeparator.new())
 	if pl.mechanics.is_empty():
 		right.add_child(_line("No extra mechanics: the game as it is.", UITheme.FONT_BODY,
 			UITheme.TEXT_DIM))

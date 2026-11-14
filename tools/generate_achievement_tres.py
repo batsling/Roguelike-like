@@ -10,8 +10,10 @@ tools/Roguelikes.xlsx into data/achievements/ (docs/achievements.md).
   Unlocks      what finishing it unlocks. Under `Characters`: a character, by
                name or id, as in the `characters` sheet. Under `Players`: a
                player, by name or id, as in the `players` sheet
-               (docs/players-design.md). Required, and one row per character
-               or player at most.
+               (docs/players-design.md). Under `Hats`: a SPECIAL hat, by
+               name, as data/cosmetics.json lists it (the Abandon Hat;
+               docs/customization.md §7) — a hat no rank ever draws. Required,
+               and one row per character, player or hat at most.
   Description  the sentence the player reads: what to do.
   Counted      `one run`   it has to happen inside a single run; the best run
                            is remembered
@@ -28,6 +30,9 @@ CONDITION GRAMMAR — one clause:
   beat games [<type>]  how many DIFFERENT games have been beaten; with a type
                        (action, strategy, deckbuilder, traditional) only games
                        of that type. `all runs` only.
+  escape games in a row
+                       how many games in a row the run has escaped, back to the
+                       last one handed in any other way. `one run` only.
 
 Rows are listed on the screen in sheet order. The output folder is REWRITTEN,
 not added to: a row deleted from the sheet takes its achievement with it. Its
@@ -53,6 +58,7 @@ XLSX_PATH = base.XLSX_PATH
 OUT_DIR = os.path.join(PROJECT_ROOT, "data", "achievements")
 CHARACTERS_DIR = os.path.join(PROJECT_ROOT, "data", "characters2.0")
 PLAYERS_DIR = os.path.join(PROJECT_ROOT, "data", "players")
+COSMETICS_JSON = os.path.join(PROJECT_ROOT, "data", "cosmetics.json")
 SHEET = "achievements"
 
 HEADERS = ("Tab", "Unlocks", "Description", "Counted", "Condition", "Goal")
@@ -61,7 +67,8 @@ SCOPES = {"one run": "run", "all runs": "lifetime"}
 # GameData.GameType, by the name the `games` sheet uses.
 GAME_TYPES = ("action", "strategy", "deckbuilder", "traditional")
 # metric -> the only way it can be counted.
-METRIC_SCOPE = {"tagged_held": "run", "perfects": "lifetime", "games_beaten": "lifetime"}
+METRIC_SCOPE = {"tagged_held": "run", "perfects": "lifetime", "games_beaten": "lifetime",
+                "escape_streak": "run"}
 
 
 def _clean(v) -> str:
@@ -84,6 +91,19 @@ def character_ids(folder: str = CHARACTERS_DIR) -> dict:
     return out
 
 
+def special_hats(path: str = COSMETICS_JSON) -> dict:
+    """lower-cased name AND key -> key (`hat/abandon_hat`) for every SPECIAL hat
+    in the cosmetics index: the hats earned by a rule, never by a rank."""
+    import json
+    out = {}
+    with open(path, encoding="utf-8") as f:
+        for e in json.load(f).get("hats", []):
+            if e.get("special"):
+                out[str(e["name"]).lower()] = e["id"]
+                out[str(e["id"]).lower()] = e["id"]
+    return out
+
+
 def parse_condition(raw, who: str) -> dict:
     """{"metric", "tag", "game_type"} for a Condition cell, or refused by name."""
     words = _clean(raw).lower().split()
@@ -97,8 +117,11 @@ def parse_condition(raw, who: str) -> dict:
             raise ValueError("achievements %s: Condition %r — %r is not a game type (%s)"
                              % (who, raw, gtype, ", ".join(GAME_TYPES)))
         return {"metric": "games_beaten", "tag": "", "game_type": gtype}
+    if words == ["escape", "games", "in", "a", "row"]:
+        return {"metric": "escape_streak", "tag": "", "game_type": ""}
     raise ValueError("achievements %s: Condition %r must be `hold <tag>`, "
-                     "`perfect games` or `beat games [<type>]`" % (who, raw))
+                     "`perfect games`, `beat games [<type>]` or "
+                     "`escape games in a row`" % (who, raw))
 
 
 def achievement_tres(row: dict, order: int, characters: dict, players: dict = None) -> tuple:
@@ -118,7 +141,14 @@ def achievement_tres(row: dict, order: int, characters: dict, players: dict = No
         if not player:
             raise ValueError("achievements %s: no player by that name or id in "
                              "data/players" % who)
-    aid = character or (("player_" + player) if player else base.slugify(who))
+    cosmetic = ""
+    if tab.lower() == "hats":
+        cosmetic = special_hats().get(who.lower(), "")
+        if not cosmetic:
+            raise ValueError("achievements %s: no special hat by that name in "
+                             "data/cosmetics.json (a hat in images2.0/hats/Special/)" % who)
+    aid = character or (("player_" + player) if player else "") \
+        or (("hat_" + cosmetic.split("/")[-1]) if cosmetic else base.slugify(who))
     description = _clean(row.get("Description"))
     if not description:
         raise ValueError("achievements %s: no Description — it is what the player reads" % who)
@@ -150,6 +180,7 @@ def achievement_tres(row: dict, order: int, characters: dict, players: dict = No
         "order = %d" % order,
         'unlocks_character = &"%s"' % character,
         'unlocks_player = &"%s"' % player,
+        'unlocks_cosmetic = "%s"' % cosmetic,
         'description = "%s"' % base.gd_str(description),
         'scope = "%s"' % SCOPES[counted],
         'metric = "%s"' % cond["metric"],

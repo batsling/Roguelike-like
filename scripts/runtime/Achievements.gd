@@ -2,7 +2,7 @@ class_name Achievements
 extends RefCounted
 
 # ACHIEVEMENTS (docs/achievements.md; the owner, 10 Nov 2026): things the player
-# does that unlock something — characters and players. Each is an AchievementData in
+# does that unlock something — characters, players and special hats. Each is an AchievementData in
 # data/achievements/; this is the rules over them, and the only place that knows
 # how one is counted. What a profile has done is `GameStats.achievements`.
 #
@@ -54,6 +54,15 @@ static func for_player(player_id) -> AchievementData:
 			return a
 	return null
 
+# The achievement that unlocks the look `key` (a special hat), or null.
+static func for_cosmetic(key: String) -> AchievementData:
+	if key == "":
+		return null
+	for a in all():
+		if (a as AchievementData).unlocks_cosmetic == key:
+			return a
+	return null
+
 static func player_locked(player_id) -> bool:
 	var a: AchievementData = for_player(player_id)
 	return a != null and not is_done(a)
@@ -94,6 +103,8 @@ static func measure(a: AchievementData) -> Dictionary:
 			return {"value": n, "held": []}
 		"games_beaten":
 			return {"value": games_beaten(a.game_type), "held": []}
+		"escape_streak":
+			return {"value": GameState.escape_streak, "held": []}
 	return {"value": 0, "held": []}
 
 # How many DIFFERENT games this profile has beaten: all of them, or only those of
@@ -193,10 +204,20 @@ static func check(announce: bool = true) -> void:
 		var ach := a as AchievementData
 		if bool(GameStats.achievement_record(ach.id).get("done", false)):
 			continue
+		# A LOOK ALREADY OWNED IS AN ACHIEVEMENT ALREADY DONE: the Abandon Hat could
+		# be earned before it had a row here, and a profile wearing it should not
+		# read "0 of 5". Written down without a toast.
+		# (`drawn_by`, not `is_unlocked`: "Unlock everything" owns nothing.)
+		if ach.unlocks_cosmetic != "" and Cosmetics.drawn_by(ach.unlocks_cosmetic) != "":
+			GameStats.note_achievement(ach.id, ach.goal, ach.goal)
+			continue
 		var m: Dictionary = measure(ach)
 		var newly: bool = GameStats.note_achievement(ach.id, int(m["value"]), ach.goal,
 			m["held"] if ach.is_run_scope() else [])
-		if newly and announce:
+		if newly and ach.unlocks_cosmetic != "":
+			# The hat's own toast ("✦ New hat: …") is the announcement.
+			Cosmetics.unlock_special(ach.unlocks_cosmetic)
+		elif newly and announce:
 			_announce(ach)
 
 static func _announce(a: AchievementData) -> void:

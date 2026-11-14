@@ -6,10 +6,10 @@ Videos and podcast episodes where a developer may say what inspired their game, 
 
 | | games | results |
 |---|---|---|
-| 1. Confirm a suspected connection | 106 | 300 |
-| 2. Games with few connections | 180 | 579 |
+| 1. Confirm a suspected connection | 112 | 313 |
+| 2. Games with few connections | 184 | 598 |
 
-Searched 565 of the 565 games that qualify; 279 had nothing that looked like the developer talking.
+Searched 564 of the 564 games that qualify; 268 had nothing that looked like the developer talking.
 
 ---
 
@@ -473,6 +473,12 @@ Listen for: **Slay the Spire** (sheet says "Perfect is based on defect")
 - [ ] video [Meme Mayhem against Dev](https://www.youtube.com/watch?v=w2BZyZOIMzs) — MXbraneSIC · 0:23 · 1y ago — dev
 - [ ] video [What is Meme Mayhem?](https://www.youtube.com/watch?v=N89b_aQcwZQ) — Pravculear · 12:13 · 2y ago — cue in the description
 
+### Merge Maestro (2025) — 1 connection
+
+Listen for: **Super Auto Pets** (sheet says "check folder")
+
+- [ ] video [Merge Maestro How to Play](https://www.youtube.com/watch?v=szKSHVlqWEk) — Stingless · 0:47 · 1y ago — names the developer
+
 ### Mission: Thunderbolt (1987) — 1 connection
 
 Listen for: **Rogue** (sheet says "look at it")
@@ -487,7 +493,9 @@ Listen for: **Rogue** (sheet says "look at it")
 Listen for: **Slay the Spire** (sheet says "look at it")
 
 - [ ] video [Chatting with Monster Train 2 Developer! - Game Doctor Interview](https://www.youtube.com/watch?v=wQVZIg2w0is) — The Game Doctor · 13:01 · 1y ago — chatting with, developer, interview
+- [ ] video [Shiny Shoe's Mark Cooke talks Monster Train and Inkbound / The AIAS Game Maker's Notebook Podcast](https://www.youtube.com/watch?v=c7_LXPAruWk) — Academy of Interactive Arts & Sciences · 1:23:12 · 3y ago — names the developer
 - [ ] video [Catching Up With Brian Cronin and Baddieball / Perceptive Podcast, Game Developer Podcast](https://www.youtube.com/watch?v=28yBRUOJLbU) — Game Wisdom · 59:29 · 5y ago — developer
+- [ ] video [Brian Cronin - Off The Rails: Lessons from Monster Train Development](https://www.youtube.com/watch?v=qO3CIpP62Q0) — Roguelike Celebration · 30:33 · 4y ago — names the developer
 
 ### Moonring (2023) — 4 connections
 
@@ -526,7 +534,7 @@ Listen for: **The Binding of Isaac** (sheet says "check folder")
 - [ ] podcast [Neon Abyss](https://podcasts.apple.com/us/podcast/neon-abyss/id1517189195?i=1000576445404) — The Steam Machine PC Gaming Podcast · 123 min · 2022-08-18 — names the developer
 - [ ] podcast [Neon Abyss Book Club](https://podcasts.apple.com/us/podcast/neon-abyss-book-club/id1459327958?i=1000544078092) — Indie Pod: An Indie Games Podcast · 68 min · 2021-12-06 — names the developer
 
-### Neophyte (2022) — 1 connection
+### Neophyte (2022) — 2 connections
 
 Listen for: **Vampire Survivors** (sheet says "look at it")
 
@@ -545,8 +553,8 @@ Listen for: **Vampire Survivors** (sheet says "look at it")
 
 Listen for: **Vampire Survivors** (sheet says "check folder")
 
+- [x] video [DOTS Developer Interview: NIMRODS: GunCraft Survivor - The Hot Path Show Ep. 47](https://www.youtube.com/watch?v=l-aec7fgtbE) — Turbo Makes Games · 2:25:56 · Streamed 1y ago — developer, interview, names the developer
 - [ ] video [Interview with Kevin about his game, Nimrods.](https://www.youtube.com/watch?v=F_5cHj1rR9Q) — ATX Game Makers · 4:16 · 2y ago — interview
-- [x] video [DOTS Developer Interview: NIMRODS: GunCraft Survivor - The Hot Path Show Ep. 47](https://www.youtube.com/watch?v=l-aec7fgtbE) — Turbo Makes Games · 2:25:56 · Streamed 1y ago — developer, interview
 - [ ] video [How Director Lee Kirk Made a Green Day Comedy ‘Nimrods’](https://www.youtube.com/watch?v=eMRl4IxcxK8) — mikedeestro · 28:54 · 1mo ago — director
 - [ ] video [The Popcorn Podcast: Nimrods](https://www.youtube.com/watch?v=aB_6Q9UgeZw) — SLUG Magazine · 12:46 · 1mo ago — cue in the description
 - [ ] podcast [Actor-Turned-Director Lee Kirk on Directing Actors and the Making of 'Nimrods'](https://podcasts.apple.com/us/podcast/actor-turned-director-lee-kirk-on-directing-actors/id1078804724?i=1000792224915) — The No Film School Podcast · 50 min · 2026-09-29 — director, making of
@@ -566,16 +574,24 @@ Listen for: **Into the Breach** (sheet says "check folder"); **Slay the Spire** 
 
 Listen for: **Spelunky Classic** (sheet says "check folder")
 
+- [ ] video [Nolla Games: Making of Noita – The Pixel-Based Physics Roguelite - Games Now! lecture series](https://www.youtube.com/watch?v=Mr3E_voEG8Y) — Games Now! · 2:01:17 · Streamed 6y ago — making of, names the developer
 - [ ] video [Ultimate ShotgunTaze Bro / Noita Dev Interview Info in description: tomorrow, don't miss out / Noita](https://www.youtube.com/watch?v=rmp18TsY9pA) — Let's Suffer Together · 1:20:27 · 5y ago — dev, interview
 - [ ] video [What's in store for the future of Noita pvp? Developer interview](https://www.youtube.com/watch?v=n1QBeKB7Yxs) — AliasGaming · 44:43 · 3y ago — developer, interview
-- [ ] video [One of the devs (Hempuli) speaking about the secrets in Noita](https://www.youtube.com/watch?v=ItzQh6K3hP8) — FuryForged · 7:00 · 4y ago — devs
-- [ ] video [Nolla Games: Making of Noita – The Pixel-Based Physics Roguelite - Games Now! lecture series](https://www.youtube.com/watch?v=Mr3E_voEG8Y) — Games Now! · 2:01:17 · Streamed 6y ago — making of
+- [ ] video [Exploring the Tech and Design of Noita](https://www.youtube.com/watch?v=prXuyMCgbTc) — GDC Festival of Gaming · 31:00 · 6y ago — gdc, names the developer
 - [ ] podcast [Noita (with Tyler Pittman)](https://podcasts.apple.com/us/podcast/noita-with-tyler-pittman/id1650474911?i=1000698839479) — GROGPOD Roguelike Podcast · 101 min · 2025-03-12 — cue in the description
+
+### Nordhold (2025) — 2 connections
+
+Listen for: **Rogue Tower** (sheet says "check folder"); **Slay the Spire** (sheet says "check folder")
+
+- [ ] video [Nordhold / Holden's Half Hour](https://www.youtube.com/watch?v=6V2eTHIZn-U) — Holden's Game Archive · 31:35 · 10d ago — names the developer
 
 ### Nordic Ashes: Survivors of Ragnarok (2022) — 3 connections
 
 Listen for: **Vampire Survivors** (sheet says "look at it")
 
+- [ ] podcast [Violeta y Esteban nos hablan de Nordic Ashes, el último título de Noxfall Studios](https://podcasts.apple.com/us/podcast/violeta-y-esteban-nos-hablan-de-nordic-ashes-el/id1896835859?i=1000770086030) — EntreMandos Podcast · 63 min · 2024-04-15 — names the developer
+- [ ] podcast [Violeta y Esteban nos hablan de Nordic Ashes, el último título de Noxfall Studios](https://podcasts.apple.com/us/podcast/violeta-y-esteban-nos-hablan-de-nordic-ashes-el/id1613491302?i=1000652493108) — EntreMandos Podcast · 63 min · 2024-04-15 — names the developer
 - [ ] podcast [DeVCast Informativo 049 - Actualidad del videojuego español mayo 2025 (2ª quincena)](https://podcasts.apple.com/us/podcast/devcast-informativo-049-actualidad-del-videojuego-espa%C3%B1ol/id1485219752?i=1000708970241) — DeVCast, el podcast de DeVuego · 63 min · 2025-05-19 — cue in the description
 
 ### Nubby's Number Factory (2024) — 6 connections
@@ -695,8 +711,8 @@ Listen for: **Vampire Survivors** (sheet says "check folder")
 
 Listen for: **Dicey Dungeons** (sheet says "check folder"); **Slay the Spire** (sheet says "check folder")
 
+- [ ] video [SpellRogue Developer Check-In (On The Horizon 2024)](https://www.youtube.com/watch?v=zc0NfZrejMk) — Ghost Ship Games · 6:54 · 1y ago — developer, names the developer
 - [ ] video [The Making Of 2024's Best Roguelikes! - SpellRogue Developer Interview](https://www.youtube.com/watch?v=eiFxgAUndaE) — Wanderbot Prime · 1:16:49 · 2y ago — developer, interview, making of
-- [ ] video [SpellRogue Developer Check-In (On The Horizon 2024)](https://www.youtube.com/watch?v=zc0NfZrejMk) — Ghost Ship Games · 6:54 · 1y ago — developer
 - [ ] video [I've Been Secretly Obsessed With This New Deckbuilder Dice Roguelike For Months! - SpellRogue](https://www.youtube.com/watch?v=AAW8lqdx368) — Wanderbots · 1:54:15 · 2y ago — cue in the description
 
 ### Spiritfall (2023) — 2 connections
@@ -704,15 +720,15 @@ Listen for: **Dicey Dungeons** (sheet says "check folder"); **Slay the Spire** (
 Listen for: **Hades** (sheet says "check folder"); **Slay the Spire** (sheet says "check folder")
 
 - [ ] video [Spiritfall Interview // The Mini indie Showcase 2023](https://www.youtube.com/watch?v=bJ0Zmg3qW0k) — Six One Indie · 18:20 · 3y ago — interview
-- [ ] video [Spiritfall - Hades Meets Super Smash Bros.?! / The Duel Screens Podcast #162](https://www.youtube.com/watch?v=pVb9rENq0kM) — indieRift · 53:07 · 3y ago — cue in the description
-- [ ] podcast [Spiritfall with Or Avrahamy / The Duel Screens Podcast: Episode #163](https://podcasts.apple.com/us/podcast/spiritfall-with-or-avrahamy-the-duel-screens/id1599978672?i=1000599338166) — DevDive · 53 min · 2023-02-13 — cue in the description
+- [ ] video [Spiritfall - Hades Meets Super Smash Bros.?! / The Duel Screens Podcast #162](https://www.youtube.com/watch?v=pVb9rENq0kM) — indieRift · 53:07 · 3y ago — names the developer
+- [ ] podcast [Spiritfall with Or Avrahamy / The Duel Screens Podcast: Episode #163](https://podcasts.apple.com/us/podcast/spiritfall-with-or-avrahamy-the-duel-screens/id1599978672?i=1000599338166) — DevDive · 53 min · 2023-02-13 — names the developer
 
 ### Swordship (2022) — 1 connection
 
 Listen for: **Into the Breach** (sheet says "check folder")
 
-- [ ] video [Swordship Is a Reverse Bullet Hell (You Don’t Shoot) — Devs Explain the ‘Dodge ’Em Up’ / Interview](https://www.youtube.com/watch?v=mNAw-Nwh7Kg) — The Expansion Pass · 39:41 · 3y ago — devs, interview
-- [ ] podcast [XEP Interview: Swordship / Stéphane Restani & Basile Perrenoud, Digital Kingdom](https://podcasts.apple.com/us/podcast/xep-interview-swordship-st%C3%A9phane-restani-basile-perrenoud/id1482705634?i=1000608594361) — Xbox Expansion Pass · 39 min · 2023-04-12 — interview
+- [ ] video [Swordship Is a Reverse Bullet Hell (You Don’t Shoot) — Devs Explain the ‘Dodge ’Em Up’ / Interview](https://www.youtube.com/watch?v=mNAw-Nwh7Kg) — The Expansion Pass · 39:41 · 3y ago — devs, interview, names the developer
+- [ ] podcast [XEP Interview: Swordship / Stéphane Restani & Basile Perrenoud, Digital Kingdom](https://podcasts.apple.com/us/podcast/xep-interview-swordship-st%C3%A9phane-restani-basile-perrenoud/id1482705634?i=1000608594361) — Xbox Expansion Pass · 39 min · 2023-04-12 — interview, names the developer
 - [ ] podcast [Dr. Pinky Ngcakani - Ncula, Founder of Swordship gospel group - Group Profiling](https://podcasts.apple.com/us/podcast/dr-pinky-ngcakani-ncula-founder-of-swordship-gospel/id1521658894?i=1000540485093) — SUNDAY WRAP · 17 min · 2021-10-24 — founder
 
 ### Tabletop Tavern (2026) — 5 connections
@@ -750,7 +766,7 @@ Listen for: **Balatro** (sheet says "check folder")
 
 Listen for: **Vampire Survivors** (sheet says "look at it")
 
-- [ ] video [The Spell Brigade - Dev Team Q&A](https://www.youtube.com/watch?v=Z9dVqVFil9k) — Bolt Blaster Games · 12:42 · 7mo ago — dev, q&a
+- [ ] video [The Spell Brigade - Dev Team Q&A](https://www.youtube.com/watch?v=Z9dVqVFil9k) — Bolt Blaster Games · 12:42 · 7mo ago — dev, q&a, names the developer
 - [ ] video [INTERVIEW / The Spell Brigade @ gamescom 25 / Pragalicious.com](https://www.youtube.com/watch?v=EqQfDzjyh70) — Pragalicious · 3:53 · 1y ago — interview
 
 ### The Spirit Lift (2026) — 2 connections
@@ -793,11 +809,18 @@ Listen for: **Darkest Dungeon** (sheet says "check folder")
 - [ ] video [(Live Look):  Tinyfolks + Interview w/ Developer — 1 Bit Pixel Art / Turn Based Strategy Tactics](https://www.youtube.com/watch?v=XG_Wco2YlVk) — Pursuing Pixels · 2:27:29 · 4y ago — developer, interview
 - [ ] podcast [Marketing Games On Steam: Tinyfolks w/ Pierre Vandermaesen](https://podcasts.apple.com/us/podcast/marketing-games-on-steam-tinyfolks-w-pierre-vandermaesen/id1545969785?i=1000576161057) — Crowdfunding Nerds: Kickstarter Marketing, Business, & Beyond! · 56 min · 2022-08-15 — names the developer
 
+### Tower Factory (2024) — 2 connections
+
+Listen for: **Heroes of Hammerwatch** (sheet says "check folder"); **Vampire Survivors** (sheet says "check folder")
+
+- [ ] video [Episodio 45 - Tower Factory (Primeras Impresiones)](https://www.youtube.com/watch?v=FeTg7qx1clU) — Jon Fernández · 6:31 · 2y ago — names the developer
+- [ ] podcast [Episodio 45 - Tower Factory (Primeras Impresiones)](https://podcasts.apple.com/us/podcast/episodio-45-tower-factory-primeras-impresiones/id6806051670?i=1000786356271) — El Indiario · 6 min · 2024-05-20 — names the developer
+
 ### Toy Smash Kaboom! (2025) — 1 connection
 
 Listen for: **Backpack Battles** (sheet says "look at it")
 
-- [ ] video [Toy Smash Kaboom! Launching on Dec 4!](https://www.youtube.com/watch?v=ClgLs_mtR2g) — Free Particle Studio · 1:00 · 10mo ago — cue in the description
+- [ ] video [Toy Smash Kaboom! Launching on Dec 4!](https://www.youtube.com/watch?v=ClgLs_mtR2g) — Free Particle Studio · 1:00 · 10mo ago — names the developer
 
 ### Trials of Fire (2019) — 1 connection
 
@@ -810,6 +833,12 @@ Listen for: **FTL** (sheet says "check folder")
 - [ ] podcast [The Sausage Factory: 337 – Trials of Fire by Whatboy Games](https://podcasts.apple.com/us/podcast/the-sausage-factory-337-trials-of-fire-by-whatboy-games/id1727863948?i=1000643204748) — The Sausage Factory · 64 min · 2021-06-18 — names the developer
 - [ ] podcast [The Sausage Factory: 337 – Trials of Fire by Whatboy Games](https://podcasts.apple.com/us/podcast/the-sausage-factory-337-trials-of-fire-by-whatboy-games/id767461047?i=1000525994224) — The Sausage Factory · 64 min · 2021-06-18 — names the developer
 
+### Tyrant's Realm (2025) — 1 connection
+
+Listen for: **Dead Cells** (sheet says "check folder")
+
+- [ ] video [What is Tyrant's Realm?](https://www.youtube.com/watch?v=Vx8VQRIxFNM) — Into the Aether · 31:02 · 1y ago — names the developer
+
 ### Vampire Hunters (2023) — 3 connections
 
 Listen for: **Vampire Survivors** (sheet says "check folder")
@@ -817,11 +846,25 @@ Listen for: **Vampire Survivors** (sheet says "check folder")
 - [ ] video [Bonus 1: Hot Vampire Hunters in Your Area! / Re: Dracula](https://www.youtube.com/watch?v=ihzE_no0YEI) — Re: Dracula · 43:23 · 3y ago — cue in the description
 - [ ] podcast [Bonus 1: Hot Vampire Hunters in Your Area!](https://podcasts.apple.com/us/podcast/bonus-1-hot-vampire-hunters-in-your-area/id1679833472?i=1000606859900) — Re: Dracula · 45 min · 2024-11-08 — cue in the description
 
+### Vital Shell (2026) — 1 connection
+
+Listen for: **Vampire Survivors** (sheet says "check folder")
+
+- [ ] video [BB11 - Vital Shell (arena shooter)](https://www.youtube.com/watch?v=A2WMrGs4nbA) — indie game garden · 34:37 · 7mo ago — names the developer
+- [ ] podcast [BB11 - Vital Shell (arena shooter)](https://podcasts.apple.com/us/podcast/bb11-vital-shell-arena-shooter/id1849572208?i=1000746033545) — Gamejoy · 34 min · 2026-01-21 — names the developer
+
 ### Witchfire (2023) — 3 connections
 
 Listen for: **Hades** (sheet says "mentions hades in discord a lot and check folder also here https://www.theastronauts.com/2022/10/redesigning-one-witchfire-feature/")
 
-- [ ] video [Witchfire - People Behind the Screams](https://www.youtube.com/watch?v=Mmy0ct_Rj8w) — The Astronauts · 4:52 · 6mo ago — behind the
+- [ ] video [Witchfire - People Behind the Screams](https://www.youtube.com/watch?v=Mmy0ct_Rj8w) — The Astronauts · 4:52 · 6mo ago — behind the, names the developer
+- [ ] video [What It Takes to Make a Reload Animation in Witchfire // with German and Polish subtitles](https://www.youtube.com/watch?v=qA8emFfCvIw) — Witch Fire · 3:45 · 6y ago — names the developer
+
+### Worlds Upon The Wind (2026) — 1 connection
+
+Listen for: **Renowned Explorers: International Society** (sheet says "check folder")
+
+- [ ] video [This game is STUNNING. / Sponsored Worlds Upon the Wind](https://www.youtube.com/watch?v=F2sjCKS5gf4) — Jorbs · 1:01:48 · 2mo ago — names the developer
 
 ### Yasha: Legends of the Demon Blade (2025) — 1 connection
 
@@ -1011,7 +1054,8 @@ Held on the map by one connection or none. Listen for any game on the chart.
 
 ### Octogeddon (2018) — 0 connections
 
-- [ ] video [All Yes Good Interview, 8K Monitors, Uber/Lyft Wage Study, Voice Shopping](https://www.youtube.com/watch?v=SJkNMDH7AJY) — Computer America · 1:00:58 · Streamed 8y ago — interview
+- [ ] video [All Yes Good Interview, 8K Monitors, Uber/Lyft Wage Study, Voice Shopping](https://www.youtube.com/watch?v=SJkNMDH7AJY) — Computer America · 1:00:58 · Streamed 8y ago — interview, names the developer
+- [ ] video [WTF is... Octogeddon ?](https://www.youtube.com/watch?v=fT5A13hQSUA) — TotalBiscuit · 18:48 · 8y ago — names the developer
 - [ ] video [George Fan (Plants vs Zombies Creator) on Game Design / Perceptive Podcast](https://www.youtube.com/watch?v=_o2aNOKe1NU) — Game Wisdom · 2:11:41 · 7y ago — creator
 - [ ] podcast [George Fan, I'm your biggest Fan!](https://podcasts.apple.com/us/podcast/george-fan-im-your-biggest-fan/id1671350556?i=1000614422468) — The Fourth Curtain · 88 min · 2023-05-25 — cue in the description
 - [ ] podcast [Episode 107 - Drop a Pin](https://podcasts.apple.com/us/podcast/episode-107-drop-a-pin/id1067849668?i=1000402061527) — The Optional Podcast · 76 min · 2018-02-12 — cue in the description
@@ -1020,12 +1064,16 @@ Held on the map by one connection or none. Listen for any game on the chart.
 
 - [ ] video [Orbital Bullet  - Interview auf den German Dev Days 2019](https://www.youtube.com/watch?v=Rv0CQ0eSlRs) — Geruhn Streamarchiv · 3:59 · 7y ago — dev, interview
 - [ ] video [SWW Interviews Episode 70: Orbital Bullet and Breach Wanderers](https://www.youtube.com/watch?v=r59i-Nd0D-g) — The SWW Show · 51:03 · 1y ago — interview
-- [ ] video [Leet's Play Pre-Release "Orbital Bullet" by SmokeStab / devcom Indie Expo](https://www.youtube.com/watch?v=uiSyWq1NhSo) — gamescom dev · 23:58 · 4y ago — dev
+- [ ] video [Leet's Play Pre-Release "Orbital Bullet" by SmokeStab / devcom Indie Expo](https://www.youtube.com/watch?v=uiSyWq1NhSo) — gamescom dev · 23:58 · 4y ago — dev, names the developer
+- [ ] video [Playing Some / Orbital Bullet (Steam)](https://www.youtube.com/watch?v=aVrJU2Q2_Po) — GameEnthus · 30:59 · 4y ago — names the developer
 - [ ] podcast [SWW Interviews Episode 70: Orbital Bullet and Breach Wanderers](https://podcasts.apple.com/us/podcast/sww-interviews-episode-70-orbital-bullet-and-breach/id1435072446?i=1000531213276) — The SWW Show · 51 min · 2021-08-06 — interview
+- [ ] podcast [The Sausage Factory: 334 –  Orbital Bullet by Smokestab Games](https://podcasts.apple.com/us/podcast/the-sausage-factory-334-orbital-bullet-by-smokestab-games/id767461047?i=1000523384967) — The Sausage Factory · 59 min · 2021-05-28 — names the developer
+- [ ] podcast [The Sausage Factory: 334 –  Orbital Bullet by Smokestab Games](https://podcasts.apple.com/us/podcast/the-sausage-factory-334-orbital-bullet-by-smokestab-games/id1727863948?i=1000643204457) — The Sausage Factory · 59 min · 2021-05-28 — names the developer
 
 ### OTXO (2023) — 0 connections
 
-- [ ] video [High Speed Action With OTXO Developer Interview / Perceptive Podcast #indiedev #indiegames](https://www.youtube.com/watch?v=sCKDrDnwZzQ) — Game Wisdom · 57:28 · 3y ago — developer, interview
+- [ ] video [High Speed Action With OTXO Developer Interview / Perceptive Podcast #indiedev #indiegames](https://www.youtube.com/watch?v=sCKDrDnwZzQ) — Game Wisdom · 57:28 · 3y ago — developer, interview, names the developer
+- [ ] video [OTXO / Holden's Half Hour](https://www.youtube.com/watch?v=vV6st6zJdWI) — Holden's Game Archive · 30:48 · 2y ago — names the developer
 - [ ] video [OTXO OST - Silent Scream (EXTENDED)](https://www.youtube.com/watch?v=MspIPiUpr0k) — Tragic · 11:33 · 3y ago — cue in the description
 - [ ] podcast [OTXO](https://podcasts.apple.com/us/podcast/otxo/id1662404177?i=1000619209433) — Die and Retry · 52 min · 2023-07-04 — cue in the description
 
@@ -1065,6 +1113,10 @@ Held on the map by one connection or none. Listen for any game on the chart.
 
 - [ ] video [NoC - Indie Game Recommendation: Rogue Flight](https://www.youtube.com/watch?v=P4MXYoDF62k) — TheEliteX1 · 2:29 · 1y ago — names the developer
 
+### Rogue Waters (2024) — 0 connections
+
+- [ ] podcast ["Rogue Waters". Gra inspirowana wielkim kinowym hitem](https://podcasts.apple.com/us/podcast/rogue-waters-gra-inspirowana-wielkim-kinowym-hitem/id1735317655?i=1000770950274) — 24. poziom · 27 min · 2025-02-09 — names the developer
+
 ### Slots & Daggers (2025) — 0 connections
 
 - [ ] video [Episode 34 - Slots & Daggers](https://www.youtube.com/watch?v=tdMbpAMqkDY) — tiny game chronicles · 46:21 · 8mo ago — names the developer
@@ -1083,10 +1135,10 @@ Held on the map by one connection or none. Listen for any game on the chart.
 
 ### SULFUR (2024) — 0 connections
 
-- [ ] video [I Interviewed Perfect Random, The Developers of SULFUR](https://www.youtube.com/watch?v=CtJmnAVvk7k) — The Homie Dot · 1:58:56 · 1y ago — developer, interview
-- [ ] video [Live Q&A With the Developers of SULFUR, Perfect Random](https://www.youtube.com/watch?v=aF7COE1QZ7Q) — The Homie Dot · 2:17:38 · Streamed 11mo ago — developer, q&a
+- [ ] video [I Interviewed Perfect Random, The Developers of SULFUR](https://www.youtube.com/watch?v=CtJmnAVvk7k) — The Homie Dot · 1:58:56 · 1y ago — developer, interview, names the developer
+- [ ] video [Live Q&A With the Developers of SULFUR, Perfect Random](https://www.youtube.com/watch?v=aF7COE1QZ7Q) — The Homie Dot · 2:17:38 · Streamed 11mo ago — developer, q&a, names the developer
+- [ ] video [INTERVIEW: Anton Albiin, CEO & Founder of Perfect Random, Developer of SULFUR - Boss Rush Spotlight](https://www.youtube.com/watch?v=rfMFqg-L2f0) — Boss Rush Podcast  |  Boss Rush Network · 49:08 · 1y ago — developer, founder, interview, names the developer
 - [ ] video [Sulfur Dev Interview // Six One Indie Showcase](https://www.youtube.com/watch?v=s9xKFq3XdPo) — Six One Indie · 35:32 · 2y ago — dev, interview
-- [ ] video [INTERVIEW: Anton Albiin, CEO & Founder of Perfect Random, Developer of SULFUR - Boss Rush Spotlight](https://www.youtube.com/watch?v=rfMFqg-L2f0) — Boss Rush Podcast  |  Boss Rush Network · 49:08 · 1y ago — developer, founder, interview
 - [ ] podcast [The Spawn Chunks 411: Straw Slabs And Sulfur Stories](https://podcasts.apple.com/us/podcast/the-spawn-chunks-411-straw-slabs-and-sulfur-stories/id1433556215?i=1000777601016) — The Spawn Chunks - A Minecraft Podcast · 63 min · 2026-07-20 — cue in the description
 
 ### Super Alloy Crush (2026) — 0 connections
@@ -1113,7 +1165,7 @@ Held on the map by one connection or none. Listen for any game on the chart.
 
 ### Underdogs (2024) — 0 connections
 
-- [ ] video [Interview with Dave Levy - Game Director of Underdogs and Co-Founder of One Hamsa](https://www.youtube.com/watch?v=3al54AtG3PU) — Ruff Talk VR - A Virtual Reality Podcast · 1:21:31 · 2y ago — director, founder, interview
+- [ ] video [Interview with Dave Levy - Game Director of Underdogs and Co-Founder of One Hamsa](https://www.youtube.com/watch?v=3al54AtG3PU) — Ruff Talk VR - A Virtual Reality Podcast · 1:21:31 · 2y ago — director, founder, interview, names the developer
 - [ ] video [#DevQuest – Episode 4: Underdogs](https://www.youtube.com/watch?v=MZyOIOFjo1E) — Windows Developer · 14:14 · 8y ago — developer
 
 ### We Need To Go Deeper (2017) — 0 connections
@@ -1559,10 +1611,10 @@ Held on the map by one connection or none. Listen for any game on the chart.
 
 ### Moon Hunters (2016) — 1 connection
 
-- [ ] video [Moon Hunters Interview with Xin Ran Lau](https://www.youtube.com/watch?v=p7jdC3fm2mo) — Artistry in Games · 14:46 · 12y ago — interview
+- [ ] video [Moon Hunters Interview with Xin Ran Lau](https://www.youtube.com/watch?v=p7jdC3fm2mo) — Artistry in Games · 14:46 · 12y ago — interview, names the developer
+- [ ] video [Moon Hunters - Interview With Jongwoo Kim](https://www.youtube.com/watch?v=6Dm8mZJ9gwc) — Indie Bytes · 9:44 · 8y ago — interview, names the developer
+- [ ] video [Moon Hunters - (PAX prime 2015) - interview with Marcelo Perez of Kitfox Games](https://www.youtube.com/watch?v=ReQQ6WOke5k) — InfiniteLivesPodcast · 3:45 · 11y ago — interview, names the developer
 - [ ] video [MOON HUNTERS / Royal Report / Interview #3](https://www.youtube.com/watch?v=0twvhCnM768) — TheRoyalNerd · 4:11 · 11y ago — interview
-- [ ] video [Moon Hunters - Interview With Jongwoo Kim](https://www.youtube.com/watch?v=6Dm8mZJ9gwc) — Indie Bytes · 9:44 · 8y ago — interview
-- [ ] video [Moon Hunters - (PAX prime 2015) - interview with Marcelo Perez of Kitfox Games](https://www.youtube.com/watch?v=ReQQ6WOke5k) — InfiniteLivesPodcast · 3:45 · 11y ago — interview
 
 ### Moonlighter 2: The Endless Vault (2025) — 1 connection
 
@@ -1589,10 +1641,11 @@ Held on the map by one connection or none. Listen for any game on the chart.
 
 ### Mr. Sun's Hatbox (2023) — 1 connection
 
-- [ ] podcast [Doubling Down on Intuition with Kenny Sun (Mr. Sun's Hatbox)](https://podcasts.apple.com/us/podcast/doubling-down-on-intuition-with-kenny-sun-mr-suns-hatbox/id1435365252?i=1000612137634) — The Secret Lives of Games · 65 min · 2023-05-08 — cue in the description
-- [ ] podcast [#155: "The Roommate Revelation" w/ Kenny Sun](https://podcasts.apple.com/us/podcast/155-the-roommate-revelation-w-kenny-sun/id1517896727?i=1000614689117) — All N: a Nintendo podcast · 130 min · 2023-05-27 — cue in the description
-- [ ] podcast [EP: A Year of UFO 50 - Mooncat](https://podcasts.apple.com/us/podcast/ep-a-year-of-ufo-50-mooncat/id1435365252?i=1000681152215) — Eggplant: The Secret Lives of Games · 101 min · 2024-12-20 — cue in the description
-- [ ] podcast [EP: A Year of UFO 50 - Mooncat](https://podcasts.apple.com/us/podcast/ep-a-year-of-ufo-50-mooncat/id1840758452?i=1000741998925) — Eggplant Presents: A Year of UFO 50 (encore feed) · 101 min · 2025-12-19 — cue in the description
+- [ ] video [What is Mr. Sun's Hatbox?](https://www.youtube.com/watch?v=oMB7LR9DKvY) — Into the Aether · 19:17 · 3y ago — names the developer
+- [ ] podcast [Doubling Down on Intuition with Kenny Sun (Mr. Sun's Hatbox)](https://podcasts.apple.com/us/podcast/doubling-down-on-intuition-with-kenny-sun-mr-suns-hatbox/id1435365252?i=1000612137634) — The Secret Lives of Games · 65 min · 2023-05-08 — names the developer
+- [ ] podcast [#155: "The Roommate Revelation" w/ Kenny Sun](https://podcasts.apple.com/us/podcast/155-the-roommate-revelation-w-kenny-sun/id1517896727?i=1000614689117) — All N: a Nintendo podcast · 130 min · 2023-05-27 — names the developer
+- [ ] podcast [EP: A Year of UFO 50 - Mooncat](https://podcasts.apple.com/us/podcast/ep-a-year-of-ufo-50-mooncat/id1435365252?i=1000681152215) — Eggplant: The Secret Lives of Games · 101 min · 2024-12-20 — names the developer
+- [ ] podcast [EP: A Year of UFO 50 - Mooncat](https://podcasts.apple.com/us/podcast/ep-a-year-of-ufo-50-mooncat/id1840758452?i=1000741998925) — Eggplant Presents: A Year of UFO 50 (encore feed) · 101 min · 2025-12-19 — names the developer
 
 ### Mullet Madjack (2024) — 1 connection
 
@@ -1646,10 +1699,10 @@ Held on the map by one connection or none. Listen for any game on the chart.
 
 ### Popup Dungeon (2020) — 1 connection
 
+- [ ] video [Popup Dungeon Interview - Enrique the Developer](https://www.youtube.com/watch?v=80b28b2PSbM) — TripleBTitles · 5:51 · 12y ago — developer, interview, names the developer
+- [ ] video [Popup Dungeon Interview - Paul the Programmer](https://www.youtube.com/watch?v=ll2Tt2hpV4Q) — TripleBTitles · 5:53 · 12y ago — interview, names the developer
+- [ ] video [Popup Dungeon Interview - Courtney the Artist](https://www.youtube.com/watch?v=fdFlKweK0rk) — TripleBTitles · 3:23 · 12y ago — interview, names the developer
 - [ ] video [Popup Dungeon - Exclusive Developer Interview](https://www.youtube.com/watch?v=_01xBKfcojI) — Shacknews Interviews · 16:06 · 6y ago — developer, interview
-- [ ] video [Popup Dungeon Interview - Enrique the Developer](https://www.youtube.com/watch?v=80b28b2PSbM) — TripleBTitles · 5:51 · 12y ago — developer, interview
-- [ ] video [Popup Dungeon Interview - Paul the Programmer](https://www.youtube.com/watch?v=ll2Tt2hpV4Q) — TripleBTitles · 5:53 · 12y ago — interview
-- [ ] video [Popup Dungeon Interview SGC 2014](https://www.youtube.com/watch?v=qAEobai3H7c) — GameWorx · 4:47 · 12y ago — interview
 - [ ] podcast [SWW Interviews Episode 40: Popup Dungeon, Tin Can, and StressOut](https://podcasts.apple.com/us/podcast/sww-interviews-episode-40-popup-dungeon-tin-can-and/id1435072446?i=1000490919152) — The SWW Show · 57 min · 2020-09-11 — interview
 - [ ] podcast [SWW Interviews Episode 7: Popup Dungeon](https://podcasts.apple.com/us/podcast/sww-interviews-episode-7-popup-dungeon/id1435072446?i=1000452295588) — The SWW Show · 32 min · 2019-10-04 — interview
 
@@ -1675,7 +1728,8 @@ Held on the map by one connection or none. Listen for any game on the chart.
 
 ### Rogue Heroes: Ruins of Tasos (2021) — 1 connection
 
-- [ ] video [The Making of "Rogue Heroes: Ruins of Tasos" for Nintendo Switch / Another Zelda Podcast S3 E14.1](https://www.youtube.com/watch?v=x5baAoMMGmY) — Another Zelda Podcast · 55:09 · 5y ago — making of
+- [ ] video [The Making of "Rogue Heroes: Ruins of Tasos" for Nintendo Switch / Another Zelda Podcast S3 E14.1](https://www.youtube.com/watch?v=x5baAoMMGmY) — Another Zelda Podcast · 55:09 · 5y ago — making of, names the developer
+- [ ] video [Holden's Half Hour - Rogue Heroes: Ruins Of Tasos](https://www.youtube.com/watch?v=MxPjKp_MSbI) — Holden's Game Archive · 36:35 · 4y ago — names the developer
 - [ ] video [Rogue Heroes: Ruins of Tasos / DEMO R33L](https://www.youtube.com/watch?v=fIwlJJG-kG0) — CSRadical · 24:47 · 6y ago — cue in the description
 - [ ] podcast [Rogue Heroes: Epix’s New Series Stars Jack O’Connell and Alfie Allen Interview](https://podcasts.apple.com/us/podcast/rogue-heroes-epixs-new-series-stars-jack-oconnell-and/id1228398652?i=1000586512117) — Pop Culture Unplugged w/ Elias · 8 min · 2022-11-17 — interview
 - [ ] podcast [Rogue Heroes: Ruins of Tasos and Other Games (Ft. Hayden Bleechmore)](https://podcasts.apple.com/us/podcast/rogue-heroes-ruins-of-tasos-and-other-games-ft/id1441496783?i=1000511569314) — Thumb Cramps · 53 min · 2021-03-04 — ft.
@@ -1686,12 +1740,12 @@ Held on the map by one connection or none. Listen for any game on the chart.
 
 - [ ] video [SWW Interviews Episode 57: Zooconomy and Rogue Legacy 2](https://www.youtube.com/watch?v=vVH0IuyRv1c) — The SWW Show · 53:42 · 1y ago — interview
 - [ ] video [Rogue Legacy 2 Olympics / Featuring a Developer and other YouTubers!](https://www.youtube.com/watch?v=9uRPzt37j-M) — Teelore · 26:47 · 5y ago — developer
-- [ ] video [The Making of Rogue Legacy 2 / Noclip Documentary](https://www.youtube.com/watch?v=p3aFy8F0aRw) — /noclip · 1:04:14 · 4y ago — making of
-- [ ] video [Shacknews E5 - Teddy Lee Talks Rogue Legacy 2 - Drifting Worlds Update](https://www.youtube.com/watch?v=diTViuI9g8w) — Shacknews Interviews · 20:19 · 5y ago — interview
+- [ ] video [Rogue Legacy 2 / History of Cellar Door Games - Noclip Podcast #40](https://www.youtube.com/watch?v=0pz9tKzce34) — /noclip Podcasts · 1:09:34 · 6y ago — names the developer
+- [ ] video [The Games We Love - Rogue Legacy 2 with Kenny Lee (Cellar Door Games)](https://www.youtube.com/watch?v=Xui8OnBjAhU) — The Games We Love Podcast · 44:10 · 4y ago — names the developer
+- [ ] podcast [Rogue Legacy 2: the story behind the roguelike hit / Teddy Lee (Cellar Door Games)](https://podcasts.apple.com/us/podcast/rogue-legacy-2-the-story-behind-the-roguelike-hit/id1450484588?i=1000567239085) — High Resolution: inside the video games industry · 45 min · 2022-06-21 — behind the, names the developer
 - [ ] podcast [SWW Interviews Episode 57: Zooconomy and Rogue Legacy 2](https://podcasts.apple.com/us/podcast/sww-interviews-episode-57-zooconomy-and-rogue-legacy-2/id1435072446?i=1000512704238) — The SWW Show · 53 min · 2021-03-12 — interview
-- [ ] podcast [Rogue Legacy 2: the story behind the roguelike hit / Teddy Lee (Cellar Door Games)](https://podcasts.apple.com/us/podcast/rogue-legacy-2-the-story-behind-the-roguelike-hit/id1450484588?i=1000567239085) — High Resolution: inside the video games industry · 45 min · 2022-06-21 — behind the
-- [ ] podcast [Rogue Legacy 2 benefited a ton from early access (The Resties)](https://podcasts.apple.com/us/podcast/rogue-legacy-2-benefited-a-ton-from-early-access-the-resties/id505516789?i=1000559478423) — The Besties · 46 min · 2022-05-03 — cue in the description
-- [ ] podcast [Rogue Legacy 2 with Kenny Lee (Cellar Door Games)](https://podcasts.apple.com/us/podcast/rogue-legacy-2-with-kenny-lee-cellar-door-games/id1511228964?i=1000558659191) — The Games We Love · 44 min · 2022-04-25 — cue in the description
+- [ ] podcast [Rogue Legacy 2 & The History of Cellar Door Games](https://podcasts.apple.com/us/podcast/rogue-legacy-2-the-history-of-cellar-door-games/id1385062988?i=1000492494602) — Noclip Crewcast · 69 min · 2020-09-25 — names the developer
+- [ ] podcast [Rogue Legacy 2 with Kenny Lee (Cellar Door Games)](https://podcasts.apple.com/us/podcast/rogue-legacy-2-with-kenny-lee-cellar-door-games/id1511228964?i=1000558659191) — The Games We Love · 44 min · 2022-04-25 — names the developer
 
 ### Rogue Lords (2021) — 1 connection
 
@@ -1714,12 +1768,12 @@ Held on the map by one connection or none. Listen for any game on the chart.
 ### Roundguard (2020) — 1 connection
 
 - [ ] video [SWW Interviews Episode 24: Galactic Ruler, Kakatte Koi Yo, and Roundguard](https://www.youtube.com/watch?v=5c5cPiZhQNk) — The SWW Show · 1:33:11 · 1y ago — interview
+- [ ] video [Roundguard with Andrea Roberts (AAP - 0012)](https://www.youtube.com/watch?v=R-D0NEDiZw8) — Tim Chaten · 32:40 · 6y ago — names the developer
 - [ ] video [PAX West Spotlight: Roundguard](https://www.youtube.com/watch?v=ce1mg-msPyc) — The Geekly Grind · 4:27 · 8y ago — cue in the description
-- [ ] video [Roundguard with Andrea Roberts (AAP - 0012)](https://www.youtube.com/watch?v=R-D0NEDiZw8) — Tim Chaten · 32:40 · 6y ago — cue in the description
 - [ ] podcast [MomoCon 2019: Roundguard Interview](https://podcasts.apple.com/us/podcast/momocon-2019-roundguard-interview/id1468954668?i=1000441838399) — Altered Confusion Interviews · 4 min · 2019-06-12 — interview
 - [ ] podcast [SWW Interviews Episode 24: Galactic Ruler, Kakatte Koi Yo, and Roundguard](https://podcasts.apple.com/us/podcast/sww-interviews-episode-24-galactic-ruler-kakatte-koi/id1435072446?i=1000473660852) — The SWW Show · 93 min · 2020-05-05 — interview
-- [ ] podcast [Le Fiabe della Nostra Vita (feat. ROUNDGUARD)](https://podcasts.apple.com/us/podcast/le-fiabe-della-nostra-vita-feat-roundguard/id1546373939?i=1000662596276) — Retrogaming Lives · 60 min · 2024-07-18 — feat.
-- [ ] podcast [Roundguard with Andrea Roberts (AAP - 0012)](https://podcasts.apple.com/us/podcast/roundguard-with-andrea-roberts-aap-0012/id1482011806?i=1000470748093) — Apple Arcade Plus · 32 min · 2020-04-07 — cue in the description
+- [ ] podcast [Roundguard with Andrea Roberts (AAP - 0012)](https://podcasts.apple.com/us/podcast/roundguard-with-andrea-roberts-aap-0012/id1482011806?i=1000470748093) — Apple Arcade Plus · 32 min · 2020-04-07 — names the developer
+- [ ] podcast [The Physics of Uncertainly with Andrea Roberts (Roundguard)](https://podcasts.apple.com/us/podcast/the-physics-of-uncertainly-with-andrea-roberts-roundguard/id1435365252?i=1000468341198) — The Secret Lives of Games · 82 min · 2020-03-13 — names the developer
 
 ### Rounds (2021) — 1 connection
 
@@ -1739,6 +1793,12 @@ Held on the map by one connection or none. Listen for any game on the chart.
 - [ ] podcast [Vibe coding a 3D multiplayer game in 15 minutes—with no game dev experience / Cody De Arkland (Senior Director of Developer Experience at Sentry)](https://podcasts.apple.com/us/podcast/vibe-coding-a-3d-multiplayer-game-in-15-minutes-with/id1809663079?i=1000706343916) — How I AI · 31 min · 2025-05-05 — dev, developer, director
 - [ ] podcast [Buying Generational PDP Minerals Assets w/ Steve Foerster & Taylor McIntyre at Sentry Mineral Holdings](https://podcasts.apple.com/us/podcast/buying-generational-pdp-minerals-assets-w-steve-foerster/id1502759760?i=1000756895295) — The Minerals and Royalties Podcast · 40 min · 2026-03-24 — cue in the description
 - [ ] podcast [BDGS: #087 - The Sentry Showdown 2026 Recap](https://podcasts.apple.com/us/podcast/bdgs-087-the-sentry-showdown-2026-recap/id1735368514?i=1000792112224) — The Brown Duke Gun Show · 25 min · 2026-09-29 — cue in the description
+
+### Shard Squad (2025) — 1 connection
+
+- [ ] video [#103 - Shard Squad: hordas de bichinhos fofinhos que vão te matar (com The Root Studios)](https://www.youtube.com/watch?v=jwkk6fJnreU) — Controles Voadores · 1:26:12 · 8mo ago — names the developer
+- [ ] video [Shard Squad / A Primeira Hora](https://www.youtube.com/watch?v=b6_SjdsGH9E) — Ítalo Guttemberg | VGQuest · 1:07:12 · Streamed 2mo ago — names the developer
+- [ ] podcast [#103 - Shard Squad: hordas de bichinhos fofinhos que vão te matar (com The Root Studios)](https://podcasts.apple.com/us/podcast/103-shard-squad-hordas-de-bichinhos-fofinhos-que-v%C3%A3o/id1608885870?i=1000748379711) — Controles Voadores · 86 min · 2026-02-05 — names the developer
 
 ### Shiren the Wanderer: The Mystery Dungeon of Serpentcoil Island (2024) — 1 connection
 
@@ -1771,7 +1831,10 @@ Held on the map by one connection or none. Listen for any game on the chart.
 
 ### Source of Madness (2021) — 1 connection
 
-- [ ] podcast [#12 - Carry Castle - Source of Madness - Per Fornander - Sweden](https://podcasts.apple.com/us/podcast/12-carry-castle-source-of-madness-per-fornander-sweden/id1558287347?i=1000541597644) — openindie - your indie game podcast · 44 min · 2021-11-12 — cue in the description
+- [ ] podcast [The Sausage Factory: 401 – Source of Madness by Carry Castle](https://podcasts.apple.com/us/podcast/the-sausage-factory-401-source-of-madness-by-carry-castle/id1727863948?i=1000643204452) — The Sausage Factory · 49 min · 2022-08-12 — names the developer
+- [ ] podcast [The Sausage Factory: 401 – Source of Madness by Carry Castle](https://podcasts.apple.com/us/podcast/the-sausage-factory-401-source-of-madness-by-carry-castle/id767461047?i=1000575870266) — The Sausage Factory · 49 min · 2022-08-12 — names the developer
+- [ ] podcast [141 Per Fornander (Grundare / Source of Madness)](https://podcasts.apple.com/us/podcast/141-per-fornander-grundare-source-of-madness/id1084993748?i=1000539111873) — Spelskaparna · 35 min · 2021-10-19 — names the developer
+- [ ] podcast [78: Sean Andrew Murray / Source of Madness](https://podcasts.apple.com/us/podcast/78-sean-andrew-murray-source-of-madness/id1590177585?i=1000566931519) — Indie Game International · 80 min · 2022-06-18 — names the developer
 
 ### Spelunky 2 (2020) — 1 connection
 
@@ -1790,6 +1853,11 @@ Held on the map by one connection or none. Listen for any game on the chart.
 - [ ] video [BEANS@E3 2016 / Strafe: Interview mit Thom Glunt von Pixel Titans / 16.06.2016](https://www.youtube.com/watch?v=hZOH5xKuDlY) — Rocket Beans Gaming · 13:29 · 10y ago — interview, names the developer
 - [ ] video [PAX East 2016: STRAFE (Gameplay - Review - interview)](https://www.youtube.com/watch?v=mnr-W05P3ag) — Dubl day · 12:08 · 10y ago — interview
 - [ ] video [16 minutes of Strafe gameplay with Developer Commentary - Includes Black Canyon gameplay - E3 2016](https://www.youtube.com/watch?v=BtDqusEp4uA) — Eurogamer · 16:03 · 10y ago — developer
+
+### Swarm Grinder (2023) — 1 connection
+
+- [ ] video [YERLİ EKİPTEN BÜYÜK BAŞARI / Last Bite Games ile Swarm Grinder Sohbeti](https://www.youtube.com/watch?v=4w3Pr8WxKTI) — Disket Kutusu · 22:47 · 3y ago — names the developer
+- [ ] podcast [Last Bite Games ile Swarm Grinder Muhabbeti](https://podcasts.apple.com/us/podcast/last-bite-games-ile-swarm-grinder-muhabbeti/id1567244843?i=1000614588068) — Disket Kutusu · 22 min · 2023-05-26 — names the developer
 
 ### Sword of Fargoal (1982) — 1 connection
 
@@ -1812,6 +1880,12 @@ Held on the map by one connection or none. Listen for any game on the chart.
 
 - [ ] video [Tainted Grail: Fall of Avalon - Dev Update January](https://www.youtube.com/watch?v=XL7ls6-Evzg) — Awaken Realms · 10:32 · 2y ago — dev
 - [ ] podcast [Tainted Grail: The Fall of Avalon Act 1 - 001 Radio Games Club](https://podcasts.apple.com/us/podcast/tainted-grail-the-fall-of-avalon-act-1-001-radio-games-club/id1518512406?i=1000756252259) — 001 Radio Gamescast · 90 min · 2026-03-19 — cue in the description
+
+### Takara Cards (2023) — 1 connection
+
+- [ ] video [Takara Cards](https://www.youtube.com/watch?v=rUQeP45XwtA) — kawa keiko · 0:41 · 4y ago — names the developer
+- [ ] video [Takara Cards on Steam Deck](https://www.youtube.com/watch?v=apWA8OpsXPk) — Post Mortem Pixels · 3:43 · 3y ago — names the developer
+- [ ] video [Takara Cards / Holden's Half Hour #sponsored](https://www.youtube.com/watch?v=vrILcbOVWCM) — Holden's Game Archive · 43:40 · 1y ago — names the developer
 
 ### Tears of Metal (2026) — 1 connection
 
@@ -1932,8 +2006,8 @@ Held on the map by one connection or none. Listen for any game on the chart.
 - [ ] video [Whisker Squadron: Survivor Interview // The Mini Indie Showcase 2023](https://www.youtube.com/watch?v=oucbqpMAwNs) — Six One Indie · 26:06 · 3y ago — interview
 - [ ] video [Whisker Squadron is Procedural Star Fox - Developer Interview](https://www.youtube.com/watch?v=9DObB5SgCIQ) — Nintendo World Report TV · 26:29 · 5y ago — developer, interview
 - [ ] video [Whisker Squadron: Survivor (Code provided by Devs)](https://www.youtube.com/watch?v=CP5Ww8XVzDc) — AmberGambEXE · 2:06:48 · 2y ago — devs
+- [ ] podcast [Flippfly LLC Developer Interview](https://podcasts.apple.com/us/podcast/flippfly-llc-developer-interview/id1459327958?i=1000521439007) — Indie Pod: An Indie Games Podcast · 41 min · 2021-05-12 — developer, interview, names the developer
 - [ ] podcast [Episode 16: Interview - Aaron San Filippo, Whisker Squadron Lead Programmer](https://podcasts.apple.com/us/podcast/episode-16-interview-aaron-san-filippo-whisker-squadron/id1536306554?i=1000517820548) — IndieQuest - An Indie Game Podcast · 41 min · 2021-04-19 — interview
-- [ ] podcast [Flippfly LLC Developer Interview](https://podcasts.apple.com/us/podcast/flippfly-llc-developer-interview/id1459327958?i=1000521439007) — Indie Pod: An Indie Games Podcast · 41 min · 2021-05-12 — developer, interview
 - [ ] podcast [Whisker Squadron Dev on Procedural Generation](https://podcasts.apple.com/us/podcast/whisker-squadron-dev-on-procedural-generation/id1451749618?i=1000517126756) — Super Switch Headz · 82 min · 2021-04-14 — dev
 - [ ] podcast [The Game Maker Series - Whisker Squadron: Survivor](https://podcasts.apple.com/us/podcast/the-game-maker-series-whisker-squadron-survivor/id1490060114?i=1000632026962) — The Pre-Order Bonus · 35 min · 2023-10-20 — cue in the description
 

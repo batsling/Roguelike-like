@@ -2,8 +2,8 @@ class_name AchievementData
 extends Resource
 
 # ONE ACHIEVEMENT (docs/achievements.md; the owner, 10 Nov 2026): something the
-# player does that unlocks something. For now what it unlocks is a CHARACTER, and
-# the screen files it under the tab named here, so a later kind of unlock is a new
+# player does that unlocks something — a CHARACTER, a PLAYER or a special HAT.
+# The screen files it under the tab named here, so a later kind of unlock is a new
 # tab and a new field rather than a new screen.
 #
 # GENERATED from the `achievements` sheet by tools/generate_achievement_tres.py;
@@ -24,6 +24,9 @@ extends Resource
 # Under the `Players` tab: the player it unlocks (docs/players-design.md), and
 # unlocks_character is empty. One or the other, never both.
 @export var unlocks_player: StringName = &""
+# Under the `Hats` tab: the special hat it unlocks, by its CosmeticCatalog key
+# (`hat/abandon_hat`; docs/customization.md §7). The other two are empty.
+@export var unlocks_cosmetic: String = ""
 
 # What the player reads: the condition, in one sentence.
 @export_multiline var description: String = ""
@@ -39,7 +42,9 @@ extends Resource
 #   perfects     how many DIFFERENT games have been perfected
 #   games_beaten how many DIFFERENT games have been beaten — of `game_type`
 #                (GameData.GameType by name, lower case) when one is given
-@export_enum("tagged_held", "perfects", "games_beaten") var metric: String = "tagged_held"
+#   escape_streak how many games in a row the run has escaped
+#                (GameState.escape_streak)
+@export_enum("tagged_held", "perfects", "games_beaten", "escape_streak") var metric: String = "tagged_held"
 @export var tag: String = ""
 @export var game_type: String = ""
 

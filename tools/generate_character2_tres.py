@@ -15,10 +15,11 @@ level_up_reward_type here).
 
 Health -> base_max_hp (a 2.0 run's tiny Health/Max Health reuse hp/max_hp).
 Gold -> start_gold, the run's starting purse (§14).
-A character gives NO stats (docs/players-design.md §3, 13 Nov 2026): the starting
-verb columns (Bash … Keys, Random) were taken off the sheet, and a Reward that
-names a verb ("+1 Dash") is a REFUSAL here rather than a silent stat gain.
-Reward -> level_up_stats (Max Health / Gold only) + level_up_reward_type
+A character gives no STARTING stats (docs/players-design.md §3, 13 Nov 2026): the
+starting verb columns (Bash … Keys, Random) were taken off the sheet. A level-up
+Reward may pay a verb again ("+1 Dash"): the owner put Minä's Transmute and Zoe's
+Dash back on the sheet the day after (14 Nov 2026).
+Reward -> level_up_stats (Max Health / Gold / a verb) + level_up_reward_type
           (a sized Chest -> item, with level_up_reward_chest_choices set from
           the size — Small 1 / Medium 2 / Large 3 / Huge 5; Random Sized Chest
           -> random_sized_chest; Scroll -> scroll).
@@ -78,9 +79,10 @@ def _png_map(dir_path):
                 out[fn[:-4].lower()] = fn[:-4]
     return out
 
-# The verbs a level-up USED to grant. A character gives no stats any more
-# (docs/players-design.md §3), so a Reward naming one is refused rather than
-# quietly read as nothing.
+# The verbs a level-up Reward may grant: each is its own level_up_stats key
+# (GameState.apply_level_up_stats). Refused for one day (13 Nov 2026, when the
+# starting verbs came off the sheet) and back the next, when the owner wrote
+# Minä's "+1 Transmute" and Zoe's "+1 Dash" into the Reward column again.
 STAT_VERBS = ["dash", "bash", "push", "transmute", "scramble", "bombs", "keys"]
 # A named chest SIZE -> how many items it offers to choose one from. Mirrors
 # Data.CHEST_SIZE_CHOICES; keep the two in step. Ordered biggest-word-first so
@@ -137,16 +139,16 @@ def parse_reward(raw):
     if max_hp:
         stats["max_hp"] = max_hp
     # Gold is a reward a level-up can pay (the Manager's "+1 Gold").
-    # It is not a verb (a character gives none, STAT_VERBS): gold maps onto no
+    # It is not one of STAT_VERBS: gold maps onto no
     # same-named GameState field, and gold has to go through change_gold so the
     # purse readout hears about it.
     gold = _find_amt(s, r"Gold")
     if gold:
         stats["gold"] = gold
     for verb in STAT_VERBS:
-        if _find_amt(s, verb + r"\b"):
-            raise ValueError("Reward %r grants a stat (%s); a character gives no stats "
-                             "(docs/players-design.md §3)" % (s, verb))
+        n = _find_amt(s, verb + r"\b")
+        if n:
+            stats[verb] = n
     # LOOT FIRST, before the chest and scroll branches. It is the KIND-BLIND
     # payout — a piece of loot whose kind (scroll / pill / potion) is rolled on
     # use, GameState.add_loot("loot") — and it has to be read before `Scroll`

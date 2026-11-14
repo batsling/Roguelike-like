@@ -1,7 +1,8 @@
 # Achievements
 
-Things the player does that unlock something: **characters**, and since 13 Nov
-2026 **players** (`docs/players-design.md`). The screen has a tab per kind of
+Things the player does that unlock something: **characters**, since 13 Nov
+2026 **players** (`docs/players-design.md`), and since 14 Nov a special **hat**
+(`docs/customization.md` §7). The screen has a tab per kind of
 unlock, so the second kind was a new tab rather than a new screen. The owner asked for it on 10 Nov 2026 and
 chose the layout (rows, with a meter that fits how each one is counted).
 
@@ -13,12 +14,17 @@ chose the layout (rows, with a meter that fits how each one is counted).
 | `zoe` | Zoe (Haste) | across all runs | Perfect 10 different games |
 | `rodney` | Rodney | across all runs | Beat a traditional roguelike |
 | `player_retro_bat` | the player Retro Bat (Players tab) | across all runs | Beat 20 different traditional roguelikes |
+| `hat_abandon_hat` | the Abandon Hat (Hats tab) | in one run | Escape 5 games in a row |
 
 A character or player named by an achievement is **locked** until it is done.
 Every other one is playable from the start. A row under the `Players` tab names a
 player in its `Unlocks` cell and writes `unlocks_player`; under `Characters` it
 writes `unlocks_character`. Its id is the player's prefixed `player_`, so a
-player and a character can share a name.
+player and a character can share a name. A row under the `Hats` tab names a
+SPECIAL hat (one in `images2.0/hats/Special/`, which no rank draws) and writes
+`unlocks_cosmetic`, its catalog key; its id is prefixed `hat_`. Finishing it
+unlocks the hat (`Cosmetics.unlock_special`), whose own toast is the
+announcement, and a hat already owned reads as done.
 
 ## The two ways of counting
 
@@ -39,6 +45,10 @@ What is counted is the `metric`:
   perfected ten times is one).
 - `games_beaten` — how many **different** games have been beaten; with a
   `game_type` (`traditional`), only games of that type.
+- `escape_streak` — how many games in a row the run has escaped
+  (`GameState.escape_streak`), counted in one run; the best streak is kept.
+  `Cosmetics.note_escape_streak` asks for the count after every game handed
+  in, since neither the pack nor the stats move on an escape.
 
 Once done, an achievement stays done on that profile.
 
@@ -66,10 +76,10 @@ row per achievement, listed on the screen in sheet order.
 | Column | What goes in it |
 |---|---|
 | Tab | the tab it is filed under (`Characters`). A new name is a new tab |
-| Unlocks | the character, by name or id as in the `characters` sheet. One row per character at most |
+| Unlocks | the character, by name or id as in the `characters` sheet (a player under `Players`, a special hat by name under `Hats`). One row per character, player or hat at most |
 | Description | the sentence the player reads |
 | Counted | `one run` or `all runs` |
-| Condition | `hold <tag>` (one run), `perfect games` (all runs), or `beat games [<type>]` (all runs; type is `action`, `strategy`, `deckbuilder` or `traditional`) |
+| Condition | `hold <tag>` (one run), `perfect games` (all runs), `beat games [<type>]` (all runs; type is `action`, `strategy`, `deckbuilder` or `traditional`), or `escape games in a row` (one run) |
 | Goal | how many it takes |
 
 ## Adding one

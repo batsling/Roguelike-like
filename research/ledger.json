@@ -5192,6 +5192,15 @@
   "loot": "2026-10-10: its 'Evolution' is a ship mod, not a weapon evolution; weapons and mods are stat upgrades. Nothing usable",
   "statuses": "2026-10-10: small wiki; the brief's pages for this kind hold nothing usable or new on a read (generic enemies, stat upgrades)"
  },
+ "Novus Orbis": {
+  "characters": "2026-11-14: nothing usable: the wiki (novusorbis.wiki.gg, 175 articles) is page shells: card, character and pet pages have empty Description sections, and only Strength and Great Strength say what they do (Strength is live, from Slay the Spire); the three classes (Warrior, Mage, Mechanic) are generic and Warrior is a candidate already (Diablo)",
+  "connections": "2026-11-14",
+  "events": "2026-11-14: nothing usable: the wiki has no enemy, event or place pages, and the store page names none",
+  "goals": "2026-11-14: nothing usable: the wiki has no enemy, event or place pages, and the store page names none",
+  "locations": "2026-11-14: nothing usable: the wiki has no enemy, event or place pages, and the store page names none",
+  "loot": "2026-11-14: nothing usable: the wiki (novusorbis.wiki.gg, 175 articles) is page shells: card, character and pet pages have empty Description sections, and only Strength and Great Strength say what they do (Strength is live, from Slay the Spire). Cards: about 300 named, a few Mage cards with numbers (Fire Ball 6 damage, 12 on a combo) and no text, so none can be written as itself. No weapons page and no evolutions (cards have a base and a combo side, not a recipe)",
+  "statuses": "2026-11-14: nothing usable: the wiki (novusorbis.wiki.gg, 175 articles) is page shells: card, character and pet pages have empty Description sections, and only Strength and Great Strength say what they do (Strength is live, from Slay the Spire)"
+ },
  "Nowhere Prophet": {
   "characters": "2026-10-10: nothing: the Firebrand's intimidation repeats Griftlands' Plocka, the Banshee is a live boss name, the Breaker's explosives and the Echo's speed are taken",
   "connections": "before 2026-10-07",
