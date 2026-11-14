@@ -367,8 +367,10 @@ func test_handing_a_game_in_costs_hunger_and_the_header_shows_it() -> void:
 	assert_eq(ui._hunger_pips.size(), HungerSystem.MAX)
 	var lit: int = ui._hunger_pips.filter(func(p): return p.modulate == Color.WHITE).size()
 	assert_eq(lit, GameState.hunger, "a full icon per point")
+	# …shrunk properly from the big picture, the same texture for all five.
 	for p in ui._hunger_pips:
-		assert_eq(p.texture, Cosmetics.hunger_art(), "every one is the Hunger icon")
+		assert_eq(p.texture, UITheme.shrunk(Cosmetics.hunger_art(), ui.HUNGER_PIP),
+			"every one is the Hunger icon")
 
 func test_the_eat_button_shows_only_with_food_and_the_basic_player_has_no_bar() -> void:
 	var ui = Page.build(self)
@@ -437,4 +439,14 @@ func test_hunger_is_an_icon_kind_with_a_drawn_default() -> void:
 	for g in ["mewgenics", "vampire_survivors", "loop_hero"]:
 		assert_has(games, g, "the owner's yes from %s" % g)
 	assert_eq(Cosmetics.hunger_art(), UITheme.HUNGER_ART, "unworn: the basic 🍗")
+
+# A big painted icon drawn at 18px is shrunk with Lanczos first, not sampled: no
+# mipmaps, so sampling broke Mewgenics' outline into dots (the owner, 14 Nov 2026).
+func test_a_big_icon_is_shrunk_properly_before_it_is_drawn_small() -> void:
+	var big: Texture2D = load("res://images2.0/icons/Hunger/Food_Mewgenics.png")
+	var small: Texture2D = UITheme.shrunk(big, 18)
+	assert_eq(maxi(small.get_width(), small.get_height()), 36, "twice the side it is drawn at")
+	assert_eq(UITheme.shrunk(big, 18), small, "made once and kept")
+	var tiny: Texture2D = load("res://images2.0/icons/Hunger/Food_Supply_Loop_Hero.png")
+	assert_eq(UITheme.shrunk(tiny, 64), tiny, "a picture already small enough is left alone")
 

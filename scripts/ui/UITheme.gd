@@ -936,6 +936,38 @@ static func is_pixel_art(tex: Texture2D, box: Vector2) -> bool:
 # smaller enemies (16x16 to ~120px) are exactly the ones drawn as pixel art.
 const SMALL_ART_MAX := 128
 
+# A BIG PICTURE DRAWN SMALL, SHRUNK PROPERLY FIRST. Nothing here generates
+# mipmaps, so a 256px icon drawn at 18px is sampled, not averaged: three pixels
+# in four are dropped and an outline breaks into a dotted line (Mewgenics' food,
+# the owner, 14 Nov 2026: "make it look better"). This hands back `tex` shrunk
+# with Lanczos to twice `side` (a little room for a scaled window), cached per
+# picture and size; draw it with LINEAR filtering. A picture already that small
+# comes back as it is.
+static var _shrunk: Dictionary = {}
+
+static func shrunk(tex: Texture2D, side: int) -> Texture2D:
+	if tex == null:
+		return null
+	var want: int = side * 2
+	var w: int = tex.get_width()
+	var h: int = tex.get_height()
+	if maxi(w, h) <= want:
+		return tex
+	var key := "%s@%d" % [tex.resource_path if tex.resource_path != "" else str(tex.get_rid()), want]
+	if _shrunk.has(key):
+		return _shrunk[key]
+	var img: Image = tex.get_image()
+	if img == null:
+		return tex
+	img = img.duplicate()
+	if img.is_compressed():
+		img.decompress()
+	var s: float = float(want) / float(maxi(w, h))
+	img.resize(maxi(1, roundi(w * s)), maxi(1, roundi(h * s)), Image.INTERPOLATE_LANCZOS)
+	var out := ImageTexture.create_from_image(img)
+	_shrunk[key] = out
+	return out
+
 static func is_small_art(tex: Texture2D) -> bool:
 	return tex != null and maxi(tex.get_width(), tex.get_height()) <= SMALL_ART_MAX
 

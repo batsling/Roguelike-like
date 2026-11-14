@@ -6816,8 +6816,13 @@ func _paint_hunger_chip() -> void:
 	var art: Texture2D = Cosmetics.hunger_art()
 	for i in range(_hunger_pips.size()):
 		var pip: TextureRect = _hunger_pips[i]
-		pip.texture = art
-		UITheme.apply_crisp(pip, art)
+		# A big painted icon is shrunk properly first (UITheme.shrunk) and drawn
+		# smooth; pixel art small enough already stays crisp.
+		var small: Texture2D = UITheme.shrunk(art, HUNGER_PIP)
+		pip.texture = small
+		UITheme.apply_crisp(pip, small)
+		if small != art:
+			pip.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
 		# Full, as drawn; empty, a dark ghost of the same picture; and with the
 		# stomach empty every one of them tinted red, since there is no lit icon
 		# left to say so.
