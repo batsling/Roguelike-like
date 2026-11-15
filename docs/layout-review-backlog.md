@@ -381,8 +381,11 @@ into a **second column** (`ChecklistFlow`, a container that is a VBox until
 `columns` is raised; nested rows stay under their parent and a heading never
 ends a column), and if that is still too tall the box is **scaled down**, laid
 out `1 / scale` times wider so it still spans the panel, to a floor of
-`CHECKLIST_MIN_SCALE` (0.5). Measured at 1280x720: 14 goals fit at 0.93, 17 at
-0.71. Only past the floor (about 25 rows) does the scrollbar return. The scale
+`CHECKLIST_MIN_SCALE` (0.75). Measured at 1280x720: 14 goals fit at 0.93, 17 at
+0.71. Only past the floor (about 16 goals) does the scrollbar return.
+**15 Nov 2026: the floor went from 0.5 to 0.75** — the owner chose readable over
+always-fitting ("raise it so it stays readable and scrolls on very crowded
+boards"); half size was a 6px smear. The scale
 only shrinks while the same rows are up, with two guarded steps back, because
 the height it fits depends on the width it sets.
 

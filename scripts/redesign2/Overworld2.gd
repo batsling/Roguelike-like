@@ -3270,13 +3270,16 @@ func _queue_fit_checklist() -> void:
 # wrapping, which is height back for free). Everything stays on screen at once:
 # the rows, their tick boxes, the portraits that pair them with the board. The
 # scrollbar is still there underneath as the last resort, past CHECKLIST_MIN_SCALE
-# — some twenty-five rows on a 720p window — where smaller would stop being legible.
+# — some sixteen goals on a 720p window — where smaller would stop being legible.
+# THE FLOOR WAS 0.5 and the owner raised it (15 Nov 2026: "raise it so it stays
+# readable and scrolls on very crowded boards"): 13px text drawn at half size was
+# a 6px smear, and a scrollbar on a very crowded board is the better trade.
 #
 # The scale only ever SHRINKS while the same rows are up, with a few guarded
 # steps back up, because the height it is fitting depends on the width it sets
 # (wider rows wrap less): free to move both ways it can chase its own tail. A
 # different list (the row count, or the room) starts again from full size.
-const CHECKLIST_MIN_SCALE := 0.5
+const CHECKLIST_MIN_SCALE := 0.75
 const CHECKLIST_REGROW_STEPS := 2
 # The fewest rows worth splitting: under this a second column is two stubs.
 const CHECKLIST_SPLIT_ROWS := 5

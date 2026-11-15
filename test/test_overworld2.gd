@@ -8619,14 +8619,24 @@ func test_a_crowded_board_does_not_push_the_page_past_the_window() -> void:
 	assert_gt(_ui._verify_box.columns, 1, "a long list flows into a second column")
 	assert_gte(_ui.checklist_scale(), OVERWORLD.CHECKLIST_MIN_SCALE,
 		"and is never drawn smaller than the floor")
-	assert_lte(content, shown + 1.0,
-		"so nothing is left to scroll to (%.0f of content in %.0f)" % [content, shown])
+	# Above the floor everything fits; AT the floor a very crowded board scrolls
+	# rather than shrinking past legible (the owner, 15 Nov 2026).
+	if _ui.checklist_scale() > OVERWORLD.CHECKLIST_MIN_SCALE + 0.001:
+		assert_lte(content, shown + 1.0,
+			"so nothing is left to scroll to (%.0f of content in %.0f)" % [content, shown])
+	else:
+		assert_ne(_ui._verify_scroll.vertical_scroll_mode, ScrollContainer.SCROLL_MODE_DISABLED,
+			"at the floor, the rest is a scroll away")
 	# The box still spans the PANEL — the load-bearing half of the original fix.
 	# Laid out at its minimum width instead (~130px), every goal wraps a word a
 	# line. Scaled, it is laid out that much wider so that it spans it drawn.
+	# Measured against the frame the box stands in, which is the panel less a
+	# scrollbar when the floor leaves one showing.
 	assert_almost_eq(_ui._verify_box.size.x * _ui.checklist_scale(),
-		_ui._verify_scroll.size.x, 1.5,
+		_ui._verify_fit.size.x, 1.5,
 		"the rows are as wide as the panel they sit in")
+	assert_gte(_ui._verify_fit.size.x, _ui._verify_scroll.size.x - 16.0,
+		"and that frame is the panel, less at most a scrollbar")
 
 # A list that fits is left exactly as it was: one column, full size.
 func test_a_checklist_that_fits_is_not_split_or_shrunk() -> void:
