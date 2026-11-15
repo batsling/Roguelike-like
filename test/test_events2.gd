@@ -2398,6 +2398,56 @@ func test_that_is_clumsy_and_a_small_chest() -> void:
 	assert_eq(GameState.pending_chests, chests + 1)
 	assert_true(GameState.has_curse_card(&"clumsy"))
 
+# --- Sunken Treasury (Slay the Spire 2) and Greed ---------------------------
+#
+# The owner, 15 Nov 2026: First Chest +5 Gold; Second Chest +25 Gold and Greed,
+# an Eternal curse only this event deals. Common, every tier.
+
+const TREASURY := &"sunken_treasury"
+
+func test_sunken_treasury_is_slay_the_spire_2s_own_words() -> void:
+	var ev: EventData2 = _event(TREASURY)
+	assert_eq(ev.source_game, "Slay the Spire 2")
+	assert_eq(ev.prompt, "A path leads you into a partially submerged vault. There "
+		+ "are 2 chests but only 1 brittle key. The First Chest: Shaking it, you get "
+		+ "jingly-jangly noises. Bit of gold. The Second Chest: Enormous, ornate, and "
+		+ "clearly cursed. Lots of gold!")
+	assert_eq(ev.choices.map(func(c): return String(c.get("text", ""))),
+		["First Chest", "Second Chest"])
+	assert_eq(String(_choice(ev, "first_chest")["results"][0]), "Yup, there was gold in it.")
+	assert_eq(String(_choice(ev, "second_chest")["results"][0]), "You've never seen so "
+		+ "much gold in one place! All of the Merchant's wares can be bought... "
+		+ "Dangerous thugs can be paid off... The feverishly greedy thoughts stay "
+		+ "with you forever...")
+	assert_eq(ev.rarity, "Common")
+	assert_true(ev.requirement.is_empty())
+
+func test_the_first_chest_is_five_gold() -> void:
+	var ev: EventData2 = _event(TREASURY)
+	GameState.gold = 0
+	EventSystem.resolve_choice(ev, _choice(ev, "first_chest"), 0)
+	assert_eq(GameState.gold, 5)
+	assert_false(GameState.has_curse_card(&"greed"))
+
+func test_the_second_chest_is_twenty_five_gold_and_greed() -> void:
+	var ev: EventData2 = _event(TREASURY)
+	GameState.gold = 0
+	assert_string_contains(EventSystem.describe_choice(_choice(ev, "second_chest"), 0),
+		"Greed")
+	EventSystem.resolve_choice(ev, _choice(ev, "second_chest"), 0)
+	assert_eq(GameState.gold, 25)
+	assert_true(GameState.has_curse_card(&"greed"))
+
+func test_greed_is_eternal_and_never_dealt_at_random() -> void:
+	var greed: CardData = Data.get_curse_card(&"greed")
+	assert_not_null(greed)
+	assert_true(greed.keywords.has("Eternal"))
+	assert_false(greed.destroyable, "nothing can destroy it")
+	assert_false(greed.is_random_curse(), "only Sunken Treasury deals it")
+	GameState.add_curse_card(&"greed")
+	assert_eq(ScrollSystem.liftable_curse_count(), 0,
+		"so the Divine Fountain is never dealt for it")
+
 # Stands in for the overworld's board: takes the pick and hands it back.
 class BoardHost extends Node:
 	var cfg: Dictionary = {}

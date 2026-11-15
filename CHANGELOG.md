@@ -11,6 +11,16 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Sunken Treasury and Greed, from Slay the Spire 2 (the owner, 15 Nov 2026).**
+  A Common event at every difficulty, with Slay the Spire 2's own prose. Two
+  things are left out: the wiki's footnote, and the "greedy thought" lines
+  written for each of Slay the Spire 2's characters.
+  - **First Chest** is +5 Gold.
+  - **Second Chest** is +25 Gold and **Greed**, a new curse card.
+  - **Greed** is Eternal and does nothing else: it takes a slot and can never be
+    destroyed or lifted, like Curse of the Bell. It is not dealt at random; this
+    event is its only source.
+
 - **This or That?, from Slay the Spire 2 (the owner, 15 Nov 2026).** A Common
   event at every difficulty, whose prompt and results are Slay the Spire 2's
   own words. **This** is −1 Health and +5 Gold, a fixed amount where Slay the

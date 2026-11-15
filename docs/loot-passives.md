@@ -883,6 +883,7 @@ That row, its timer and its penalty are all gone.
 | Decay | Card | — (1 damage at the end of a game) | yes | random deals |
 | Pain | Card | — (−1 Health per loot/active use) | yes | random deals |
 | Regret | Card | — (−1 Health per 2 pieces, end of a game) | yes | random deals |
+| Greed | Card | Eternal | no | Sunken Treasury's Second Chest |
 
 Tests: `test/test_curse_cards.gd` covers the pack rules, `test_overworld2.gd`'s
 curse-card block covers the modal, and the sources are covered where they live
