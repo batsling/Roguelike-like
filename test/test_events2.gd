@@ -2298,6 +2298,62 @@ func test_the_beggar_with_no_board_to_pick_on_removes_one_anyway() -> void:
 	assert_string_contains(String(out["text"]), "stopped following you")
 
 
+# --- The Divine Fountain (Slay the Spire) -----------------------------------
+#
+# The owner, 15 Nov 2026: Drink lifts every curse that can be lifted — curse
+# cards and cursed weapons — and the fountain only turns up while there is one.
+# Rare, every tier.
+
+const FOUNTAIN := &"the_divine_fountain"
+
+func _cursed_weapon() -> Dictionary:
+	var w: Dictionary = GameState.add_weapon_loot(&"lightning_ring")
+	assert_false(w.is_empty(), "a weapon to curse")
+	w["roll"] = -1
+	w["roll_known"] = true
+	return w
+
+func test_the_fountain_is_slay_the_spires_own_words() -> void:
+	var ev: EventData2 = _event(FOUNTAIN)
+	assert_eq(ev.prompt, "You come across shimmering water flowing endlessly from a "
+		+ "fountain on a nearby wall.")
+	assert_eq(ev.choices.map(func(c): return String(c.get("text", ""))), ["Drink", "Leave"])
+	assert_eq(String(_choice(ev, "drink")["results"][0]),
+		"As you drink the water, you feel a dark grasp loosen.")
+	assert_eq(String(_choice(ev, "leave")["results"][0]),
+		"Unsure of the nature of this water, you continue on your way, parched.")
+	assert_eq(ev.rarity, "Rare")
+	assert_eq(EventSystem.describe_choice(_choice(ev, "drink"), 0), "Lift every curse")
+
+func test_the_fountain_needs_a_curse_it_can_lift() -> void:
+	var ev: EventData2 = _event(FOUNTAIN)
+	assert_false(EventSystem.requirement_met(ev), "no curse, no fountain")
+	GameState.add_curse_card(&"curse_of_the_bell")
+	assert_false(EventSystem.requirement_met(ev),
+		"an Eternal curse is one it cannot lift")
+	GameState.add_curse_card(&"injury")
+	assert_true(EventSystem.requirement_met(ev))
+
+func test_a_cursed_weapon_alone_is_enough_for_the_fountain() -> void:
+	_cursed_weapon()
+	assert_true(EventSystem.requirement_met(_event(FOUNTAIN)))
+
+func test_drinking_lifts_every_curse_but_the_eternal_one() -> void:
+	var ev: EventData2 = _event(FOUNTAIN)
+	GameState.add_curse_card(&"injury")
+	GameState.add_curse_card(&"pain")
+	GameState.add_curse_card(&"curse_of_the_bell")
+	var w: Dictionary = _cursed_weapon()
+	var out: Dictionary = EventSystem.resolve_choice(ev, _choice(ev, "drink"), 0)
+	assert_false(GameState.has_curse_card(&"injury"))
+	assert_false(GameState.has_curse_card(&"pain"))
+	assert_true(GameState.has_curse_card(&"curse_of_the_bell"), "Eternal stays")
+	assert_false(WeaponSystem.is_cursed(w), "the weapon's curse is lifted")
+	assert_true(GameState.loot_items.any(func(e): return is_same(e, w)),
+		"and the weapon stays")
+	assert_string_contains(String(out["text"]), "lifted")
+	assert_eq(String(out["result"]), "As you drink the water, you feel a dark grasp loosen.")
+
 # Stands in for the overworld's board: takes the pick and hands it back.
 class BoardHost extends Node:
 	var cfg: Dictionary = {}

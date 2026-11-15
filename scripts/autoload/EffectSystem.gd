@@ -113,6 +113,7 @@ func _register_defaults() -> void:
 	register("gain_item", _h_gain_item)
 	register("lose_item", _h_lose_item)
 	register("remove_enemy", _h_remove_enemy)
+	register("lift_curses", _h_lift_curses)
 	register("upgrade_loot", _h_upgrade_loot)
 	register("gain_item_per_rarity", _h_gain_item_per_rarity)
 	register("add_curse", _h_add_curse)
@@ -441,6 +442,14 @@ func _h_lose_item(effect: Dictionary, _ctx: Dictionary) -> void:
 		if item is ItemData and item.id == id:
 			GameState.remove_item(item)
 			return
+
+# LIFT EVERY CURSE (the Divine Fountain's Drink): Scroll of Remove Curse's `all`,
+# through the same door (ScrollSystem.lift_every_curse) — Destroyable curse cards
+# leave, cursed weapons lose their curse, Eternal curses stay.
+func _h_lift_curses(_effect: Dictionary, ctx: Dictionary) -> void:
+	var line: String = ScrollSystem.lift_every_curse()
+	GameLog.add(line, UITheme.ACCENT)
+	_did(ctx, line.trim_suffix("."))
 
 # REMOVE N NON-BOSS ENEMIES (the Old Beggar's purification): each simply stops
 # following — `GameLoop2.despawn`, so NO defeat, no gold, no drop, no

@@ -11,6 +11,18 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The Divine Fountain, from Slay the Spire (the owner, 15 Nov 2026).** A
+  **Rare** event at every difficulty, with Slay the Spire's own prose.
+  - **Drink** lifts every curse that can be lifted: Destroyable curse cards leave
+    the pack, and cursed weapons lose their curse but stay. Eternal curses (Curse
+    of the Bell) stay, as in Slay the Spire. This is Scroll of Remove Curse's
+    "all" mode, now public as `ScrollSystem.lift_every_curse`.
+  - **Leave** does nothing.
+  - **When it turns up:** only while you carry a curse Drink can actually lift.
+    The new `curses` Requirement stat counts Destroyable curse cards and cursed
+    weapons.
+  - **For authoring:** the new token is `lift_curses`.
+
 - **Old Beggar, from Slay the Spire (the owner, 15 Nov 2026).** A Common event
   at every difficulty, with Slay the Spire's own prose. **Offer Gold** costs 6
   Gold. Instead of removing a card, the beggar takes away **one non-boss enemy**,

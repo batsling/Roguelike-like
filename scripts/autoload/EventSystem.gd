@@ -34,7 +34,8 @@ extends Node
 #
 #   * roll the rarity ladder (Luck rerolls it, like every other roll) and fall
 #     down to the nearest ELIGIBLE rung — most events are Common, the Forgotten
-#     Altar Uncommon, the Potion Lab and the Ominous Forge Rare;
+#     Altar Uncommon, the Potion Lab, the Ominous Forge and the Divine Fountain
+#     Rare;
 #   * draw from the events of that rarity NOT YET SEEN this run. Drawing marks an
 #     event seen whether or not the player engaged with it — seeing it is what
 #     was spent;
@@ -143,6 +144,8 @@ const GATE_STAT_NAMES := {
 	"upgradeable": "Upgradeable Loot",
 	# The board: bodies following you that are not bosses (the Old Beggar).
 	"enemies": "Non-boss Enemies",
+	# Curses something could lift: Destroyable curse cards and cursed weapons.
+	"curses": "Liftable Curses",
 }
 
 # The same names for ONE of the thing — "Needs 1 Bomb", not "Needs 1 Bombs". Only
@@ -151,6 +154,7 @@ const GATE_STAT_ONE := {
 	"games": "Game played", "keys": "Key", "bombs": "Bomb",
 	"shields": "Temporary Shield", "bonus_shields": "Shield",
 	"relics": "Tradeable Relic", "potions": "Potion", "enemies": "Non-boss Enemy",
+	"curses": "Liftable Curse",
 }
 
 # A gated resource's name for `n` of it.
@@ -687,6 +691,10 @@ func _run_stat(stat: String) -> int:
 		# Non-boss bodies on the board — what the Old Beggar gates on, since the
 		# one thing he does is take one of them away.
 		"enemies": return GameLoop2.non_boss_instances().size()
+		# Curses that can be LIFTED (the Divine Fountain): an Eternal one does not
+		# count, or a run carrying only Curse of the Bell would be dealt a fountain
+		# whose Drink does nothing.
+		"curses": return ScrollSystem.liftable_curse_count()
 		_: return -1
 
 

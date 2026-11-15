@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="EventData2" load_steps=2 format=3 uid="uid://event2_the_divine_fountain"]
+
+[ext_resource type="Script" path="res://scripts/resources/EventData2.gd" id="1_event"]
+
+[resource]
+script = ExtResource("1_event")
+id = &"the_divine_fountain"
+display_name = "The Divine Fountain"
+source_game = "Slay the Spire"
+tier_tags = PackedStringArray()
+where = ""
+requirement = {"stat": "curses", "op": ">=", "value": 1, "percent": false}
+trigger = "after"
+rarity = "Rare"
+file = "TheDivineFountain"
+prompt = "You come across shimmering water flowing endlessly from a fountain on a nearby wall."
+opens_with = {}
+goal_met = ""
+goal_missed = ""
+chance_won = ""
+chance_lost = ""
+choices = [{"id": "drink", "text": "Drink", "repeat": "end", "repeat_max": 0, "results": ["As you drink the water, you feel a dark grasp loosen."], "gates": [], "effects": [{"type": "lift_curses"}], "effects_text": "Lift every curse", "goal": {}, "curse": {}, "play": {}, "chance": {}}, {"id": "leave", "text": "Leave", "repeat": "end", "repeat_max": 0, "results": ["Unsure of the nature of this water, you continue on your way, parched."], "gates": [], "effects": [{"type": "none"}], "effects_text": "Nothing", "goal": {}, "curse": {}, "play": {}, "chance": {}}]

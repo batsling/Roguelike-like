@@ -82,10 +82,12 @@ TRIGGERS = ("after", "before")
 # Upgrade could land on (LootUpgrade.gd). The Ominous Forge gates on it — the
 # owner chose to keep the whole event back rather than show a dead Forge button.
 # `enemies` is the board: bodies following you that are not bosses — what the Old
-# Beggar gates on, since taking one away is all he does.
+# Beggar gates on, since taking one away is all he does. `curses` counts curses
+# that can be LIFTED (Destroyable curse cards, cursed weapons) — the Divine
+# Fountain's gate.
 GATE_STATS = ("hp", "max_hp", "gold", "games", "keys", "bombs", "bash", "dash",
               "push", "transmute", "scramble", "shields", "relics", "potions",
-              "upgradeable", "enemies")
+              "upgradeable", "enemies", "curses")
 
 
 # --- the Requirement column -------------------------------------------------

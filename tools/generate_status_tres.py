@@ -753,6 +753,13 @@ def parse_reward_clause(clause):
         iid = rest[0].strip().lower()
         return {"type": "gain_item", "item": iid}, "+%s" % _title(iid)
 
+    # LIFT EVERY CURSE (the Divine Fountain's Drink): Scroll of Remove Curse's
+    # `all` — Destroyable curse cards leave, cursed weapons lose their curse.
+    if verb == "lift_curses":
+        if rest:
+            raise ValueError("reward DSL: lift_curses takes nothing, not %r" % clause)
+        return {"type": "lift_curses"}, "Lift every curse"
+
     # REMOVE N NON-BOSS ENEMIES (the Old Beggar): each simply stops following —
     # no defeat, no gold, no drop (EffectSystem._h_remove_enemy). In an event the
     # player PICKS which on the board; `random` rolls them.
