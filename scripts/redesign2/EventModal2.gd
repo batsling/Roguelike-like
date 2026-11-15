@@ -121,6 +121,12 @@ var _chip: Button = null
 # still on the event's loot table, which the player can be moving while it is up.
 var _exit_button: Button = null
 var _backdrop_nodes: Array = []
+# A CHOICE THAT ASKS "WHICH" is under way (_begin_pick): the Ominous Forge's
+# Upgrade 1 Loot is answered in the pack, the Old Beggar's Offer Gold on the board,
+# and both are under this panel. So the event steps aside — no resume chip, since
+# the pick's own banner is what is on screen — and comes back when the pick is
+# answered or backed out of. Nothing else on the event can be pressed meanwhile.
+var _picking: bool = false
 
 
 func _init() -> void:
@@ -383,6 +389,11 @@ func _render() -> void:
 	for i in range(_event.choices.size()):
 		var choice: Dictionary = _event.choices[i]
 		if not EventSystem.choice_available(choice, _picks):
+			# …unless it wants a relic you do not carry: then it stays, LOCKED
+			# (EventSystem.choice_locked) — "Requires: Golden Idol".
+			var locked: String = EventSystem.choice_locked(choice, _picks)
+			if locked != "":
+				_choice_box.add_child(_locked_button(choice, locked))
 			continue
 		_choice_box.add_child(_choice_button(i, choice))
 		offered += 1
@@ -670,6 +681,34 @@ func _choice_button(index: int, choice: Dictionary) -> Control:
 	return col
 
 
+# A choice that wants a relic you do not carry: its label, disabled, and under it
+# what it requires. Not counted as an offer, so an event whose every other button
+# is spent still gets its way out.
+func _locked_button(choice: Dictionary, why: String) -> Control:
+	var col := VBoxContainer.new()
+	col.name = "Locked"
+	col.add_theme_constant_override("separation", UITheme.GAP_NONE)
+	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var btn := Button.new()
+	btn.text = EventSystem.fill_name_holes(String(choice.get("text", "…")), choice)
+	btn.disabled = true
+	btn.custom_minimum_size = Vector2(0, 36)
+	btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	btn.add_theme_font_size_override("font_size", UITheme.FONT_LEAD)
+	btn.add_theme_stylebox_override("disabled",
+		UITheme.flat(UITheme.BG, 6, 6, 1, UITheme.BORDER))
+	btn.add_theme_color_override("font_disabled_color", UITheme.TEXT_DIM)
+	col.add_child(btn)
+	var lbl := Label.new()
+	lbl.text = "Locked · %s" % why
+	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	lbl.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
+	lbl.add_theme_color_override("font_color", UITheme.TEXT_DIM)
+	col.add_child(lbl)
+	return col
+
+
 # Public so a test can answer without a click.
 func take(index: int) -> void:
 	_take(index)
@@ -688,15 +727,87 @@ func _confirm_then_take(index: int) -> void:
 
 
 func _take(index: int) -> void:
-	if _done or index < 0 or index >= _event.choices.size():
+	if _done or _picking or index < 0 or index >= _event.choices.size():
 		return
 	var choice: Dictionary = _event.choices[index]
 	if not EventSystem.choice_available(choice, _picks):
 		return
+	if _begin_pick(index, choice):
+		return
+	_resolve(index, {})
+
+
+# A CHOICE THAT ASKS "WHICH", answered by a click where the things are rather than
+# in this panel: the Ominous Forge's `upgrade_loot` picks a piece in the PACK
+# (Overworld2.begin_owned_pick), the Old Beggar's `remove_enemy` a body on the
+# BOARD (begin_board_pick). The event steps aside while it is answered. False when
+# there is no pick to make here — no page that can run one (a test, the panel
+# opened bare) — and the choice then resolves at once, its handler rolling instead.
+# Backing out of the pick is backing out of the press: the event comes back with
+# the choice unspent and nothing paid.
+const PICKS := {
+	"upgrade_loot": {"opener": "begin_owned_pick", "answer": "upgrade_chosen",
+		"cfg": {"verb": "upgrade"}},
+	"remove_enemy": {"opener": "begin_board_pick", "answer": "remove_chosen",
+		"cfg": {"verb": "remove", "noun": "enemy", "nouns": "enemies",
+			"where": "on the board"}},
+}
+
+func _begin_pick(index: int, choice: Dictionary) -> bool:
+	var kind: String = ""
+	var count: int = 0
+	for eff in choice.get("effects", []):
+		var type: String = String((eff as Dictionary).get("type", "")) if eff is Dictionary else ""
+		if PICKS.has(type) and String(eff.get("mode", "pick")) == "pick":
+			kind = type
+			count += maxi(1, int(eff.get("value", 1)))
+	if kind == "":
+		return false
+	var spec: Dictionary = PICKS[kind]
+	if _host == null or not _host.has_method(String(spec["opener"])):
+		return false
+	var candidates: Array = LootUpgrade.upgradeable() if kind == "upgrade_loot" \
+		else GameLoop2.non_boss_instances()
+	if candidates.is_empty():
+		return false
+	var cfg: Dictionary = (spec["cfg"] as Dictionary).duplicate()
+	cfg["candidates"] = candidates
+	cfg["count"] = count
+	cfg["exact"] = true
+	cfg["on_cancel"] = func(): _step_aside(false)
+	_step_aside(true)
+	var began: bool = _host.call(String(spec["opener"]), cfg, func(chosen: Array):
+		_step_aside(false)
+		_resolve(index, {String(spec["answer"]): chosen}))
+	if not began:
+		_step_aside(false)
+	return began
+
+
+# The WHOLE layer goes, not just the panel: the board treats a visible layer over
+# it as covering it (Overworld2._covering_layers) and would hide the event behind a
+# peek bar of its own.
+func _step_aside(away: bool) -> void:
+	if _done or _picking == away:
+		return
+	_picking = away
+	if _layer != null and is_instance_valid(_layer):
+		_layer.visible = not away
+
+
+# Public so a test can answer the pick without a click.
+func is_picking() -> bool:
+	return _picking
+
+
+func _resolve(index: int, ctx: Dictionary) -> void:
+	if _done:
+		return
+	var choice: Dictionary = _event.choices[index]
 	var cid: String = String(choice.get("id", ""))
 	var taken: int = int(_picks.get(cid, 0))
 
-	var out: Dictionary = EventSystem.resolve_choice(_event, choice, taken)
+	var out: Dictionary = EventSystem.resolve_choice(_event, choice, taken, ctx)
 	_picks[cid] = taken + 1
 	_last_result = String(out.get("result", ""))
 	_last_text = String(out.get("text", ""))
@@ -836,7 +947,7 @@ func _rule() -> Control:
 # --- hide / show ------------------------------------------------------------
 
 func _hide_event() -> void:
-	if _done or _hidden:
+	if _done or _hidden or _picking:
 		return
 	_hidden = true
 	_panel.visible = false
@@ -869,7 +980,7 @@ func _hide_event() -> void:
 
 
 func _show_event() -> void:
-	if _done or not _hidden:
+	if _done or not _hidden or _picking:
 		return
 	_hidden = false
 	if _chip != null and is_instance_valid(_chip):
@@ -941,7 +1052,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	# stray key is not an answer. It PUTS IT AWAY instead, which is the thing the
 	# player actually wants when the board is still animating behind it. While
 	# hidden, Escape is none of this modal's business.
-	if _hidden:
+	if _hidden or _picking:
 		return
 	accept_event()
 	_hide_event()

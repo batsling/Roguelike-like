@@ -11,6 +11,95 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Sunken Treasury and Greed, from Slay the Spire 2 (the owner, 15 Nov 2026).**
+  A Common event at every difficulty, with Slay the Spire 2's own prose. Two
+  things are left out: the wiki's footnote, and the "greedy thought" lines
+  written for each of Slay the Spire 2's characters.
+  - **First Chest** is +5 Gold.
+  - **Second Chest** is +25 Gold and **Greed**, a new curse card.
+  - **Greed** is Eternal and does nothing else: it takes a slot and can never be
+    destroyed or lifted, like Curse of the Bell. It is not dealt at random; this
+    event is its only source.
+
+- **This or That?, from Slay the Spire 2 (the owner, 15 Nov 2026).** A Common
+  event at every difficulty, whose prompt and results are Slay the Spire 2's
+  own words. **This** is −1 Health and +5 Gold, a fixed amount where Slay the
+  Spire 2 rolls 41–68. **That** is the Clumsy curse card and a small chest,
+  matching what you chose for Big Fish's Box.
+
+- **The Divine Fountain, from Slay the Spire (the owner, 15 Nov 2026).** A
+  **Rare** event at every difficulty, with Slay the Spire's own prose.
+  - **Drink** lifts every curse that can be lifted: Destroyable curse cards leave
+    the pack, and cursed weapons lose their curse but stay. Eternal curses (Curse
+    of the Bell) stay, as in Slay the Spire. This is Scroll of Remove Curse's
+    "all" mode, now public as `ScrollSystem.lift_every_curse`.
+  - **Leave** does nothing.
+  - **When it turns up:** only while you carry a curse Drink can actually lift.
+    The new `curses` Requirement stat counts Destroyable curse cards and cursed
+    weapons.
+  - **For authoring:** the new token is `lift_curses`.
+
+- **Old Beggar, from Slay the Spire (the owner, 15 Nov 2026).** A Common event
+  at every difficulty, with Slay the Spire's own prose. **Offer Gold** costs 6
+  Gold. Instead of removing a card, the beggar takes away **one non-boss enemy**,
+  which the player picks on the board. It simply stops following you: no defeat,
+  no gold, no drop, and its goal leaves the checklist. **Back** returns you to
+  the event with nothing paid. **Leave** does nothing. The event isn't dealt
+  without 6 Gold and a non-boss enemy on the board.
+  - **New for authoring:** the `remove_enemy` token and the `enemies`
+    Requirement stat.
+  - **Event picks are now one flow:** a button that asks "which" runs its pick
+    where the things are, in the pack for the Forge or on the board for the
+    Beggar. While the pick is open, the whole event layer steps aside.
+  - **Board picks can be backed out of:** `begin_board_pick` now honours a Back
+    (`on_cancel`) the way the pack pick does.
+
+- **Forgotten Altar and Bloody Idol, from Slay the Spire (the owner, 15 Nov
+  2026).** The first **Uncommon** event, dealt only at **High** difficulty and
+  above, whether or not the Golden Idol has turned up. (It first shipped gated on
+  the Golden Idol event; the owner lifted that, and the `after <Event>`
+  Requirement clause it needed was removed with it.) Its prompt and results are
+  Slay the Spire's own words.
+  - **Offer: Golden Idol** trades the Golden Idol for the **Bloody Idol**, an
+    Event relic that heals 1 Health whenever you gain Gold and pays no bonus
+    Gold.
+  - **Sacrifice** is +1 Max Health, then the loss of 35% of Max Health
+    (Slay the Spire's Ascension 15 price; the owner raised it from 25% "so it's
+    a little rougher").
+  - **Desecrate** gives the Decay curse card.
+
+  Without the idol, Offer is shown **locked**, reading "Requires: Golden Idol",
+  as in Slay the Spire. This is a new kind of gate, `needs item <id>`; every
+  other gate still hides its button. There is also a new token, `lose_item
+  <id>`. **One fix for every event:** a button's `{…}` amounts are now all worked
+  out before any of its effects land, so a press charges exactly what the
+  button quoted. Before, a gain followed by a percentage cost could charge a
+  point more.
+
+- **Big Fish, from Slay the Spire (the owner, 15 Nov 2026).** A Common event,
+  dealt at every difficulty, whose prompt and results are Slay the Spire's own
+  words (the prose keeps the game's "Max HP"). **Banana** heals a third of Max
+  Health, rounded down as the original rounds it, and never less than 1.
+  **Donut** is +1 Max Health. **Box** is a small chest and the Regret curse card.
+  The owner chose the chest over a relic handed straight over.
+
+- **The Ominous Forge and Warped Tongs, from Slay the Spire, and Upgrade (the
+  owner, 15 Nov 2026).** **Upgrade** is new: +1 Stun on an attack (a card tagged
+  `attack`) or a weapon, stacking with no cap. On an attack it raises every Stun
+  clause's own number before `per` multiplies it, so an upgraded Fiend Fire is
+  Stun 2 for each piece destroyed. It is kept on the pack entry (`stun_bonus`,
+  the key Scroll of Enchant Weapon already wrote), and an upgraded attack now
+  wears a "+1" the way a weapon does. The rule is `scripts/runtime/LootUpgrade.gd`
+  (`docs/loot-passives.md` §19). The **Ominous Forge** is a Rare event whose
+  prompt and results are Slay the Spire's own words. **Forge** upgrades 1 loot,
+  which you pick in the pack (Back returns to the event). **Rummage** gives
+  **Warped Tongs** and the Pain curse. **Leave** does nothing. The event is not
+  dealt until you carry an attack or a weapon (the new `upgradeable` Requirement
+  stat). Warped Tongs, an Event relic, upgrades one random attack or weapon at
+  the start of every game, for that game only. The new reward token is
+  `upgrade_loot [N] [pick|random] [run|game]`. A weapon's hover says
+  "Upgraded: +N Stun" where it said "Enchanted".
+
 - **Decay, Pain and Regret, from Slay the Spire (the owner, 14 Nov 2026), and
   Normality without the verbs.** **Decay** deals 1 damage at the end of every
   game, at the step Burn's bill lands, so the game's shields can still block it.

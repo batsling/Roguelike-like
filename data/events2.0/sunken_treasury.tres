@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="EventData2" load_steps=2 format=3 uid="uid://event2_sunken_treasury"]
+
+[ext_resource type="Script" path="res://scripts/resources/EventData2.gd" id="1_event"]
+
+[resource]
+script = ExtResource("1_event")
+id = &"sunken_treasury"
+display_name = "Sunken Treasury"
+source_game = "Slay the Spire 2"
+tier_tags = PackedStringArray()
+where = ""
+requirement = {}
+trigger = "after"
+rarity = "Common"
+file = "SunkenTreasury"
+prompt = "A path leads you into a partially submerged vault. There are 2 chests but only 1 brittle key. The First Chest: Shaking it, you get jingly-jangly noises. Bit of gold. The Second Chest: Enormous, ornate, and clearly cursed. Lots of gold!"
+opens_with = {}
+goal_met = ""
+goal_missed = ""
+chance_won = ""
+chance_lost = ""
+choices = [{"id": "first_chest", "text": "First Chest", "repeat": "end", "repeat_max": 0, "results": ["Yup, there was gold in it."], "gates": [], "effects": [{"type": "gain_gold", "value": 5}], "effects_text": "+5 Gold", "goal": {}, "curse": {}, "play": {}, "chance": {}}, {"id": "second_chest", "text": "Second Chest", "repeat": "end", "repeat_max": 0, "results": ["You've never seen so much gold in one place! All of the Merchant's wares can be bought... Dangerous thugs can be paid off... The feverishly greedy thoughts stay with you forever..."], "gates": [], "effects": [{"type": "gain_gold", "value": 25}], "effects_text": "+25 Gold", "goal": {}, "curse": {"curse": "greed", "games": 0}, "play": {}, "chance": {}}]

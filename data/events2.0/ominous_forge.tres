@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="EventData2" load_steps=2 format=3 uid="uid://event2_ominous_forge"]
+
+[ext_resource type="Script" path="res://scripts/resources/EventData2.gd" id="1_event"]
+
+[resource]
+script = ExtResource("1_event")
+id = &"ominous_forge"
+display_name = "Ominous Forge"
+source_game = "Slay the Spire"
+tier_tags = PackedStringArray()
+where = ""
+requirement = {"stat": "upgradeable", "op": ">=", "value": 1, "percent": false}
+trigger = "after"
+rarity = "Rare"
+file = "OminousForge"
+prompt = "You duck inside a small hut. Inside you find what appears to be a forge. The smithing tools are covered with dust, yet a fire roars inside the furnace. You feel on edge..."
+opens_with = {}
+goal_met = ""
+goal_missed = ""
+chance_won = ""
+chance_lost = ""
+choices = [{"id": "forge", "text": "Forge", "repeat": "end", "repeat_max": 0, "results": ["You decide to put the forge to use and... CLANG CLAAANG CLANG! ...improve your arsenal!"], "gates": [], "effects": [{"type": "upgrade_loot", "value": 1, "mode": "pick", "lasts": "run"}], "effects_text": "Upgrade 1 Loot", "goal": {}, "curse": {}, "play": {}, "chance": {}}, {"id": "rummage", "text": "Rummage", "repeat": "end", "repeat_max": 0, "results": ["You decide to see if you can find anything of use. After uncovering tarps, looking through boxes, and checking nooks and crannies, you find a dust covered relic! Taking the relic, you can't shake a sudden feeling of sharp pain as you exit the hut. Maybe you disturbed some sort of spirit?"], "gates": [], "effects": [{"type": "gain_item", "item": "warped_tongs"}], "effects_text": "+Warped Tongs", "goal": {}, "curse": {"curse": "pain", "games": 0}, "play": {}, "chance": {}}, {"id": "leave", "text": "Leave", "repeat": "end", "repeat_max": 0, "results": ["There doesn't seem to be anything of use. You exit the way you came, the flames of the furnace casting eerie shadows on the walls inside the hut..."], "gates": [], "effects": [{"type": "none"}], "effects_text": "Nothing", "goal": {}, "curse": {}, "play": {}, "chance": {}}]

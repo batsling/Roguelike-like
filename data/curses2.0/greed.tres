@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3 uid="uid://curse2_greed"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"greed"
+display_name = "Greed"
+rarity = "Curse"
+source_game = "Slay the Spire 2"
+description = "Takes up a slot. Can't be thrown away. Eternal: can't be destroyed."
+file = "Greed"
+art_folder = "curses"
+loot_type = "Curse"
+tags = PackedStringArray("curse")
+passive = true
+keywords = PackedStringArray("Eternal")
+movable = true
+destroyable = false

@@ -33,8 +33,9 @@ extends Node
 # SHUFFLE BAG:
 #
 #   * roll the rarity ladder (Luck rerolls it, like every other roll) and fall
-#     down to the nearest stocked rung — today everything is Common, so every
-#     roll lands there;
+#     down to the nearest ELIGIBLE rung — most events are Common, the Forgotten
+#     Altar Uncommon, the Potion Lab, the Ominous Forge and the Divine Fountain
+#     Rare;
 #   * draw from the events of that rarity NOT YET SEEN this run. Drawing marks an
 #     event seen whether or not the player engaged with it — seeing it is what
 #     was spent;
@@ -139,6 +140,12 @@ const GATE_STAT_NAMES := {
 	"bonus_shields": "Shields", "relics": "Tradeable Relics",
 	# The pack again: bottles carried, identified or not.
 	"potions": "Potions",
+	# …and what an Upgrade could land on: attacks and weapons (LootUpgrade).
+	"upgradeable": "Upgradeable Loot",
+	# The board: bodies following you that are not bosses (the Old Beggar).
+	"enemies": "Non-boss Enemies",
+	# Curses something could lift: Destroyable curse cards and cursed weapons.
+	"curses": "Liftable Curses",
 }
 
 # The same names for ONE of the thing — "Needs 1 Bomb", not "Needs 1 Bombs". Only
@@ -146,7 +153,8 @@ const GATE_STAT_NAMES := {
 const GATE_STAT_ONE := {
 	"games": "Game played", "keys": "Key", "bombs": "Bomb",
 	"shields": "Temporary Shield", "bonus_shields": "Shield",
-	"relics": "Tradeable Relic", "potions": "Potion",
+	"relics": "Tradeable Relic", "potions": "Potion", "enemies": "Non-boss Enemy",
+	"curses": "Liftable Curse",
 }
 
 # A gated resource's name for `n` of it.
@@ -676,6 +684,17 @@ func _run_stat(stat: String) -> int:
 		# apply: every potion carried is a potion that can be handed over, and an
 		# unidentified one is handed over exactly as readily as a known one.
 		"potions": return GameState.loot_potions().size()
+		# Attacks and weapons carried — what the Ominous Forge gates on, since its
+		# Forge has nothing to do without one (the owner, 14 Nov 2026: gate the
+		# whole event rather than grey the button).
+		"upgradeable": return LootUpgrade.upgradeable().size()
+		# Non-boss bodies on the board — what the Old Beggar gates on, since the
+		# one thing he does is take one of them away.
+		"enemies": return GameLoop2.non_boss_instances().size()
+		# Curses that can be LIFTED (the Divine Fountain): an Eternal one does not
+		# count, or a run carrying only Curse of the Bell would be dealt a fountain
+		# whose Drink does nothing.
+		"curses": return ScrollSystem.liftable_curse_count()
 		_: return -1
 
 
@@ -734,6 +753,9 @@ func _gate_passes(gate: Dictionary, picks: Dictionary) -> bool:
 	# choice dict is shared by every copy of a machine on screen.
 	if gate.has("flag"):
 		return ObjectSystem.flag_passes(String(gate["flag"]))
+	# `needs item <id>`: the relic is carried.
+	if gate.has("item"):
+		return GameState.has_item(StringName(String(gate["item"])))
 	return _run_stat(String(gate.get("resource", ""))) >= int(gate.get("value", 0))
 
 
@@ -745,6 +767,8 @@ func gate_refusal(gate: Dictionary, picks: Dictionary) -> String:
 		return ""
 	if gate.has("flag"):
 		return ObjectSystem.flag_refusal(String(gate["flag"]))
+	if gate.has("item"):
+		return "Requires: %s" % _item_name(gate["item"])
 	if gate.has("resource"):
 		var n: int = int(gate.get("value", 0))
 		return "Needs %d %s" % [n, gate_stat_name(String(gate["resource"]), n)]
@@ -759,6 +783,27 @@ func choice_refusal(choice: Dictionary, picks: Dictionary) -> String:
 		if why != "":
 			return why
 	return ""
+
+
+# A button shown LOCKED rather than hidden: "Requires: Golden Idol". Slay the
+# Spire's Forgotten Altar does this and the owner kept it (15 Nov 2026) — the
+# button is the altar saying what it wants. Only a `needs item` gate locks; every
+# other refusal still hides the button. "" when the choice is not locked: either
+# it can be pressed, or something other than a missing relic stops it.
+func choice_locked(choice: Dictionary, picks: Dictionary) -> String:
+	var why: String = ""
+	for gate in choice.get("gates", []):
+		if not (gate as Dictionary).has("item"):
+			continue
+		why = gate_refusal(gate, picks)
+		if why != "":
+			break
+	if why == "":
+		return ""
+	var unlocked: Dictionary = choice.duplicate()
+	unlocked["gates"] = (choice.get("gates", []) as Array).filter(
+		func(g): return not (g as Dictionary).has("item"))
+	return why if choice_available(unlocked, picks) else ""
 
 
 # --- how close a choice is to killing you -----------------------------------
@@ -956,10 +1001,20 @@ func resolve_choice(ev: Resource, choice: Dictionary, taken: int,
 		ctx: Dictionary = {}) -> Dictionary:
 	var words: Array = []
 
-	for eff in choice.get("effects", []):
-		EffectSystem.apply(_scaled(eff, taken), ctx)
+	# EVERY HOLE IS WORKED OUT BEFORE ANY EFFECT LANDS, against the run as the
+	# button saw it. Applied one by one, the Forgotten Altar's `gain_max_hp 1;
+	# lose_hp {25% of MAX_HP}` charged a quarter of the NEW Max Health and could
+	# take a point more than the button said.
+	var scaled: Array = (choice.get("effects", []) as Array).map(
+		func(eff): return _scaled(eff, taken))
+	for eff in scaled:
+		EffectSystem.apply(eff, ctx)
 	if String(choice.get("effects_text", "")) != "":
 		words.append(fill_name_holes(_fill_holes(String(choice["effects_text"]), taken), choice))
+	# What an effect did that the button could not say before it was pressed — the
+	# Forge's "Upgrade 1 Loot" is only "Upgraded Cleave +1" once a piece is picked.
+	for line in ctx.get("did", []):
+		words.append(String(line))
 
 	# The gamble. Rolled AFTER the certain costs, because that is the order the
 	# player experiences: the acid burns whether or not there was a relic in there.

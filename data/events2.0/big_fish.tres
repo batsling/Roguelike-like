@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="EventData2" load_steps=2 format=3 uid="uid://event2_big_fish"]
+
+[ext_resource type="Script" path="res://scripts/resources/EventData2.gd" id="1_event"]
+
+[resource]
+script = ExtResource("1_event")
+id = &"big_fish"
+display_name = "Big Fish"
+source_game = "Slay the Spire"
+tier_tags = PackedStringArray()
+where = ""
+requirement = {}
+trigger = "after"
+rarity = "Common"
+file = "BigFish"
+prompt = "As you make your way down a long corridor you see a banana, a donut, and a box floating about. No... upon closer inspection they are tied to strings coming from holes in the ceiling. There is a quiet cackling from above as you approach the objects. What do you do?"
+opens_with = {}
+goal_met = ""
+goal_missed = ""
+chance_won = ""
+chance_lost = ""
+choices = [{"id": "banana", "text": "Banana", "repeat": "end", "repeat_max": 0, "results": ["You eat the banana. It is nutritious and slightly magical, healing you."], "gates": [], "effects": [{"type": "gain_hp", "scaled": {"value": "max(1.0,floor(MAX_HP/3.0))"}}], "effects_text": "+{max(1.0,floor(MAX_HP/3.0))} Health", "goal": {}, "curse": {}, "play": {}, "chance": {}}, {"id": "donut", "text": "Donut", "repeat": "end", "repeat_max": 0, "results": ["You eat the donut. It really hits the spot! Your Max HP increases."], "gates": [], "effects": [{"type": "gain_max_hp", "value": 1}], "effects_text": "+1 Max Health", "goal": {}, "curse": {}, "play": {}, "chance": {}}, {"id": "box", "text": "Box", "repeat": "end", "repeat_max": 0, "results": ["You grab the box. Inside you find a relic! However, you really craved the donut... You are filled with sadness, but mostly regret."], "gates": [], "effects": [{"type": "gain_chest", "value": 1, "choices": 1}], "effects_text": "+1 Small Chest", "goal": {}, "curse": {"curse": "regret", "games": 0}, "play": {}, "chance": {}}]

@@ -111,6 +111,10 @@ func _register_defaults() -> void:
 	register("apply_tile", _h_apply_tile)
 	register("apply_unit", _h_apply_unit)
 	register("gain_item", _h_gain_item)
+	register("lose_item", _h_lose_item)
+	register("remove_enemy", _h_remove_enemy)
+	register("lift_curses", _h_lift_curses)
+	register("upgrade_loot", _h_upgrade_loot)
 	register("gain_item_per_rarity", _h_gain_item_per_rarity)
 	register("add_curse", _h_add_curse)
 	register("spawn_enemy", _h_spawn_enemy)
@@ -428,6 +432,76 @@ func _h_gain_item(effect: Dictionary, _ctx: Dictionary) -> void:
 		push_warning("EffectSystem.gain_item: no items2.0 item '%s'" % effect.get("item", ""))
 		return
 	GameState.add_item(template)
+
+# `gain_item`'s other half: the NAMED relic leaves the shelf (the Forgotten Altar
+# takes the Golden Idol). The first copy carried; none carried is nothing done,
+# which the event's `needs item` gate keeps off the screen anyway.
+func _h_lose_item(effect: Dictionary, _ctx: Dictionary) -> void:
+	var id := StringName(String(effect.get("item", "")))
+	for item in GameState.inventory:
+		if item is ItemData and item.id == id:
+			GameState.remove_item(item)
+			return
+
+# LIFT EVERY CURSE (the Divine Fountain's Drink): Scroll of Remove Curse's `all`,
+# through the same door (ScrollSystem.lift_every_curse) — Destroyable curse cards
+# leave, cursed weapons lose their curse, Eternal curses stay.
+func _h_lift_curses(_effect: Dictionary, ctx: Dictionary) -> void:
+	var line: String = ScrollSystem.lift_every_curse()
+	GameLog.add(line, UITheme.ACCENT)
+	_did(ctx, line.trim_suffix("."))
+
+# REMOVE N NON-BOSS ENEMIES (the Old Beggar's purification): each simply stops
+# following — `GameLoop2.despawn`, so NO defeat, no gold, no drop, no
+# `enemy_killed` (the owner, 15 Nov 2026), and its goal leaves the checklist with
+# it. `mode` `pick`: the player chose them on the board, and they come in
+# `ctx.remove_chosen` (EventModal2 runs the pick); with none chosen (a test, a
+# press with no board) it rolls. `random` always rolls. A boss is never taken.
+func _h_remove_enemy(effect: Dictionary, ctx: Dictionary) -> void:
+	var count: int = maxi(1, int(effect.get("value", 1)))
+	var pool: Array = GameLoop2.non_boss_instances()
+	var targets: Array = []
+	if String(effect.get("mode", "pick")) == "pick":
+		for c in ctx.get("remove_chosen", []):
+			if pool.has(int(c)) and not targets.has(int(c)) and targets.size() < count:
+				targets.append(int(c))
+	pool = pool.filter(func(i): return not targets.has(i))
+	while targets.size() < count and not pool.is_empty():
+		targets.append(pool.pop_at(_rng.randi_range(0, pool.size() - 1)))
+	for inst in targets:
+		var entry: Dictionary = GameLoop2.entry_for(inst)
+		var name: String = (entry.get("enemy") as GoalEnemyData).display_name \
+			if entry.get("enemy") is GoalEnemyData else "An enemy"
+		if GameLoop2.despawn(inst):
+			var line: String = "%s stopped following you" % name
+			GameLog.add(line + ".", UITheme.ACCENT)
+			_did(ctx, line)
+
+# UPGRADE N LOOT (LootUpgrade; docs/loot-passives.md §19): +1 Stun on `value`
+# attacks or weapons, each. `mode` says which:
+#   pick    the player chose them (the Ominous Forge). The chosen entries come in
+#           `ctx.upgrade_chosen`; EventModal2 runs the pick in the pack before it
+#           resolves the choice. With nothing chosen (a test, a press with no page
+#           to pick on) it falls back to a random one, as the Camp's Study does.
+#   random  rolled from what is carried (Warped Tongs).
+# `lasts` is `run` or `game` (Warped Tongs' "for the rest of combat"). Nothing
+# upgradeable carried is nothing done.
+func _h_upgrade_loot(effect: Dictionary, ctx: Dictionary) -> void:
+	var count: int = maxi(1, int(effect.get("value", 1)))
+	var lasts: String = String(effect.get("lasts", LootUpgrade.LASTS_RUN))
+	var targets: Array = []
+	if String(effect.get("mode", "pick")) == "pick":
+		for c in ctx.get("upgrade_chosen", []):
+			if LootUpgrade.can_upgrade(c) and targets.size() < count:
+				targets.append(c)
+	var pool: Array = LootUpgrade.upgradeable()
+	while targets.size() < count and not pool.is_empty():
+		targets.append(pool[_rng.randi_range(0, pool.size() - 1)])
+	for entry in targets:
+		LootUpgrade.upgrade(entry, 1, lasts)
+		var line: String = LootUpgrade.did_line(entry, lasts)
+		GameLog.add(line + ".", UITheme.ACCENT)
+		_did(ctx, line)
 
 # Calling Bell: `count` items, ONE PER RARITY off the bottom of the ladder —
 # Common, then Uncommon, then Rare. Not `count` rolls: a rarity roll is 75%

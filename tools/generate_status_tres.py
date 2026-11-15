@@ -733,6 +733,18 @@ def parse_reward_clause(clause):
     if verb == "obtain_item":
         return {"type": "obtain_item"}, "+1 Item"
 
+    # UPGRADE N LOOT (LootUpgrade.gd, docs/loot-passives.md §19): +1 Stun on N
+    # attacks or weapons. In an event or an object the player PICKS which (the
+    # Ominous Forge); `random` rolls it, `game` makes it last this game only.
+    if verb == "upgrade_loot":
+        import item_dsl  # the one parser of the token, shared with items2.0
+        eff = item_dsl._upgrade_loot(rest, "pick", clause)
+        n = eff["value"]
+        word = "Upgrade %d %sLoot" % (n, "random " if eff["mode"] == "random" else "")
+        if eff["lasts"] == "game":
+            word += " for this game"
+        return eff, word
+
     # A NAMED items2.0 relic, handed straight over. The one reward verb that says
     # WHICH item, for the events built around a specific one (Golden Idol).
     if verb == "gain_item":
@@ -740,6 +752,43 @@ def parse_reward_clause(clause):
             raise ValueError("reward DSL: gain_item needs an item id in %r" % clause)
         iid = rest[0].strip().lower()
         return {"type": "gain_item", "item": iid}, "+%s" % _title(iid)
+
+    # LIFT EVERY CURSE (the Divine Fountain's Drink): Scroll of Remove Curse's
+    # `all` — Destroyable curse cards leave, cursed weapons lose their curse.
+    if verb == "lift_curses":
+        if rest:
+            raise ValueError("reward DSL: lift_curses takes nothing, not %r" % clause)
+        return {"type": "lift_curses"}, "Lift every curse"
+
+    # REMOVE N NON-BOSS ENEMIES (the Old Beggar): each simply stops following —
+    # no defeat, no gold, no drop (EffectSystem._h_remove_enemy). In an event the
+    # player PICKS which on the board; `random` rolls them.
+    if verb == "remove_enemy":
+        n, mode = 1, "pick"
+        for tok in rest:
+            low = tok.lower()
+            if re.fullmatch(r"\d+", low):
+                n = int(low)
+            elif low in ("pick", "random"):
+                mode = low
+            else:
+                raise ValueError("reward DSL: remove_enemy takes a count and "
+                                 "pick|random, not %r in %r" % (tok, clause))
+        if n < 1:
+            raise ValueError("reward DSL: remove_enemy count must be 1 or more in %r"
+                             % clause)
+        word = "Remove %d %snon-boss %s" % (n, "random " if mode == "random" else "",
+                                           "enemy" if n == 1 else "enemies")
+        return {"type": "remove_enemy", "value": n, "mode": mode}, word
+
+    # `gain_item`'s other half: a NAMED relic taken off you — the Forgotten Altar
+    # wants the Golden Idol and nothing else. Pair it with `needs item <id>` so the
+    # button is only pressable while the relic is carried.
+    if verb == "lose_item":
+        if not rest:
+            raise ValueError("reward DSL: lose_item needs an item id in %r" % clause)
+        iid = rest[0].strip().lower()
+        return {"type": "lose_item", "item": iid}, "-%s" % _title(iid)
 
     # What every CURSE costs (docs/event-sheet-authoring.md §6): a fresh enemy at
     # the run's current difficulty, straight onto the following stack. A curse's

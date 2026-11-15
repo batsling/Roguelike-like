@@ -103,8 +103,16 @@ func play_card(entry: Dictionary, ctx: Dictionary = {}) -> Dictionary:
 	# one reads what an earlier one left here; nothing outlives the play.
 	var tally := {"destroyed": 0, "hit": 0,
 		"cards_used": GameState.cards_used_this_game}
+	# AN UPGRADED ATTACK (LootUpgrade): +1 to every Stun clause's own number per
+	# upgrade, BEFORE `per` multiplies it — an upgraded Fiend Fire is Stun 2 for each
+	# loot destroyed (the owner, 14 Nov 2026). Only `stun`: Bullseye's Marked is not
+	# Stun and does not grow.
+	var upgraded: int = LootUpgrade.bonus_of(entry)
 	for e in card.effect:
 		if e is Dictionary:
+			if upgraded > 0 and String(e.get("op", "")) == "stun":
+				e = (e as Dictionary).duplicate()
+				e["value"] = int(e.get("value", 1)) + upgraded
 			_apply_one(e, out, rng, ctx, tally)
 	notify_used(card)
 	return out

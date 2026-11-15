@@ -1,5 +1,7 @@
 extends GutTest
 
+const Fixtures := preload("res://test/helpers/fixtures.gd")
+
 # Events 2.0 (docs/event-sheet-authoring.md) — the payoff for walking into a
 # corner of the map, and the two kinds of objective it can leave behind.
 #
@@ -2037,3 +2039,420 @@ func test_walking_out_costs_nothing_but_your_dignity() -> void:
 	assert_eq(GameState.hp, hp, "she does not actually hit you for Health")
 	assert_eq(GameState.loot_potions().size(), 0)
 	assert_string_contains(String(out["result"]), "WHAM")
+
+
+# --- Big Fish (Slay the Spire) ----------------------------------------------
+#
+# The owner, 15 Nov 2026: heal a third of your Health, +1 Max Health, or Regret
+# and an item — the item a small chest. The prose is Slay the Spire's own.
+
+const FISH := &"big_fish"
+
+func test_big_fish_is_slay_the_spires_own_words() -> void:
+	var ev: EventData2 = _event(FISH)
+	assert_eq(ev.prompt, "As you make your way down a long corridor you see a banana, "
+		+ "a donut, and a box floating about. No... upon closer inspection they are tied "
+		+ "to strings coming from holes in the ceiling. There is a quiet cackling from "
+		+ "above as you approach the objects. What do you do?")
+	assert_eq(ev.choices.map(func(c): return String(c.get("text", ""))),
+		["Banana", "Donut", "Box"])
+	assert_eq(ev.rarity, "Common")
+	assert_true(ev.requirement.is_empty(), "every button can always be pressed")
+
+func test_the_banana_heals_a_third_of_max_health_rounded_down() -> void:
+	var ev: EventData2 = _event(FISH)
+	var banana: Dictionary = _choice(ev, "banana")
+	GameState.max_hp = 8
+	GameState.hp = 1
+	assert_eq(EventSystem.describe_choice(banana, 0), "+2 Health",
+		"the button says the number, not the formula")
+	var out: Dictionary = EventSystem.resolve_choice(ev, banana, 0)
+	assert_eq(GameState.hp, 3, "8 / 3 rounds down to 2")
+	assert_eq(String(out["result"]),
+		"You eat the banana. It is nutritious and slightly magical, healing you.")
+
+func test_the_banana_always_heals_at_least_one() -> void:
+	var ev: EventData2 = _event(FISH)
+	GameState.max_hp = 2
+	GameState.hp = 1
+	EventSystem.resolve_choice(ev, _choice(ev, "banana"), 0)
+	assert_eq(GameState.hp, 2, "a third of 2 would be nothing")
+
+func test_the_donut_is_one_more_max_health_and_arrives_full() -> void:
+	var ev: EventData2 = _event(FISH)
+	GameState.max_hp = 7
+	GameState.hp = 7
+	var out: Dictionary = EventSystem.resolve_choice(ev, _choice(ev, "donut"), 0)
+	assert_eq(GameState.max_hp, 8)
+	assert_eq(GameState.hp, 8)
+	assert_eq(String(out["result"]),
+		"You eat the donut. It really hits the spot! Your Max HP increases.")
+
+func test_the_box_is_a_small_chest_and_regret() -> void:
+	var ev: EventData2 = _event(FISH)
+	var box: Dictionary = _choice(ev, "box")
+	assert_string_contains(EventSystem.describe_choice(box, 0), "+1 Small Chest")
+	assert_string_contains(EventSystem.describe_choice(box, 0), "Regret")
+	var chests: int = GameState.pending_chests
+	var out: Dictionary = EventSystem.resolve_choice(ev, box, 0)
+	assert_eq(GameState.pending_chests, chests + 1)
+	assert_true(GameState.has_curse_card(&"regret"), "and the Regret curse card")
+	assert_eq(String(out["result"]), "You grab the box. Inside you find a relic! However, "
+		+ "you really craved the donut... You are filled with sadness, but mostly regret.")
+
+
+# --- Forgotten Altar (Slay the Spire) ---------------------------------------
+#
+# The owner, 15 Nov 2026: Uncommon, dealt only at High difficulty and above; the
+# Offer button shown LOCKED without the idol; Sacrifice +1 Max Health for 35% of
+# it; Desecrate is Decay. Bloody Idol heals 1 per gold gain and replaces the
+# Golden Idol outright.
+
+const ALTAR := &"forgotten_altar"
+
+func test_the_altar_is_slay_the_spires_own_words() -> void:
+	var ev: EventData2 = _event(ALTAR)
+	assert_eq(ev.prompt, "In front of you sits an altar to a forgotten god. Atop the "
+		+ "altar sits an ornate female statue with arms outstretched. She calls out to "
+		+ "you, demanding sacrifice.")
+	assert_eq(ev.choices.map(func(c): return String(c.get("text", ""))),
+		["Offer: Golden Idol", "Sacrifice", "Desecrate"])
+	assert_eq(ev.rarity, "Uncommon")
+	assert_string_contains(String(_choice(ev, "desecrate")["results"][0]),
+		"you can feel the cursed magic seep into your bones.")
+
+func test_the_altar_is_dealt_only_at_high_difficulty_and_above() -> void:
+	# The owner, 15 Nov 2026: "available even if the player hasn't gotten the
+	# golden idol, but make sure difficulty is at least high".
+	var ev: EventData2 = _event(ALTAR)
+	assert_true(ev.requirement.is_empty(), "no Golden Idol needed")
+	assert_false(ev.tier_allows("Low"))
+	assert_false(ev.tier_allows("Medium"))
+	assert_true(ev.tier_allows("High"))
+	assert_true(ev.tier_allows("Insane"))
+	# …and through the dealer's own gate, at a run's real difficulty.
+	var spawns: int = GameState.spawn_events
+	GameState.spawn_events = 0
+	assert_true(EventSystem.blockers_for(ev, &"").has("wrong tier"), "not at Low")
+	while RunDifficulty.current_tier() < RunDifficulty.Tier.HIGH and GameState.spawn_events < 500:
+		GameState.spawn_events += 1
+	assert_eq(RunDifficulty.current_tier(), RunDifficulty.Tier.HIGH, "a High run was found")
+	assert_true(EventSystem.blockers_for(ev, &"").is_empty(), "dealt at High")
+	GameState.spawn_events = spawns
+
+
+func test_without_the_idol_the_offer_is_locked_not_hidden() -> void:
+	var ev: EventData2 = _event(ALTAR)
+	var offer: Dictionary = _choice(ev, "offer_golden_idol")
+	assert_false(EventSystem.choice_available(offer, {}))
+	assert_eq(EventSystem.choice_locked(offer, {}), "Requires: Golden Idol")
+	assert_eq(EventSystem.choice_locked(_choice(ev, "sacrifice"), {}), "",
+		"an ordinary button is not locked")
+	var modal: EventModal2 = EventModal2.open(add_child_autofree(Node.new()), ev)
+	var locked: Node = modal.find_child("Locked", true, false)
+	assert_not_null(locked, "the modal shows it")
+	assert_true((locked.find_children("*", "Button", true, false)[0] as Button).disabled)
+	modal.dismiss()
+
+func test_offering_the_idol_trades_it_for_the_bloody_idol() -> void:
+	var ev: EventData2 = _event(ALTAR)
+	GameState.add_item(Data.get_item2(IDOL))
+	var offer: Dictionary = _choice(ev, "offer_golden_idol")
+	assert_true(EventSystem.choice_available(offer, {}))
+	assert_eq(EventSystem.choice_locked(offer, {}), "", "carried, it is not locked")
+	assert_eq(EventSystem.describe_choice(offer, 0), "-Golden Idol, +Bloody Idol")
+	EventSystem.resolve_choice(ev, offer, 0)
+	assert_false(GameState.has_item(IDOL), "the Golden Idol is gone")
+	assert_true(GameState.has_item(&"bloody_idol"), "and bleeds")
+
+func test_sacrifice_charges_exactly_what_its_button_says() -> void:
+	# 35% of Max Health (the owner raised it from 25%, 15 Nov 2026). At 4 Max
+	# Health that is 1.4 -> 1; worked out after the +1 it would be 35% of 5 =
+	# 1.75 -> 2, a point more than the button quoted.
+	var ev: EventData2 = _event(ALTAR)
+	var sacrifice: Dictionary = _choice(ev, "sacrifice")
+	GameState.max_hp = 4
+	GameState.hp = 4
+	assert_eq(EventSystem.describe_choice(sacrifice, 0), "+1 Max Health, -1 Health")
+	EventSystem.resolve_choice(ev, sacrifice, 0)
+	assert_eq(GameState.max_hp, 5, "+1 Max Health")
+	assert_eq(GameState.hp, 4, "arrives full, then pays the 1 quoted")
+
+func test_sacrifice_costs_35_percent() -> void:
+	var sacrifice: Dictionary = _choice(_event(ALTAR), "sacrifice")
+	GameState.max_hp = 7
+	assert_eq(EventSystem.describe_choice(sacrifice, 0), "+1 Max Health, -2 Health",
+		"35% of 7 is 2.45")
+	GameState.max_hp = 10
+	assert_eq(EventSystem.describe_choice(sacrifice, 0), "+1 Max Health, -4 Health",
+		"35% of 10 is 3.5, rounded up")
+
+func test_desecrating_the_altar_is_decay() -> void:
+	var ev: EventData2 = _event(ALTAR)
+	EventSystem.resolve_choice(ev, _choice(ev, "desecrate"), 0)
+	assert_true(GameState.has_curse_card(&"decay"))
+
+func test_the_bloody_idol_heals_one_per_gold_gain_and_pays_no_gold() -> void:
+	var idol: ItemData = Data.get_item2(&"bloody_idol")
+	assert_not_null(idol)
+	assert_true(idol.event, "an Event relic")
+	assert_eq(idol.gold_per_enemy, 0, "it replaces the Golden Idol, not adds to it")
+	GameState.add_item(idol)
+	GameState.max_hp = 7
+	GameState.hp = 3
+	GameState.change_gold(3)
+	assert_eq(GameState.hp, 4, "one gain, one Health, whatever the amount")
+
+
+# --- Old Beggar (Slay the Spire) --------------------------------------------
+#
+# The owner, 15 Nov 2026: 6 Gold, and he takes away a NON-BOSS ENEMY of your
+# choosing instead of a card. It simply stops following — no defeat, no gold, no
+# drop. Common, all tiers; not dealt without 6 Gold and a non-boss enemy.
+
+const BEGGAR := &"old_beggar"
+
+func _boss_body() -> int:
+	var inst: int = Fixtures.body(Vector2i(2, 0))
+	var boss: GoalEnemyData = (GameLoop2.entry_for(inst)["enemy"] as GoalEnemyData).duplicate()
+	boss.boss = true
+	GameLoop2.entry_for(inst)["enemy"] = boss
+	return inst
+
+func test_the_beggar_is_slay_the_spires_own_words() -> void:
+	var ev: EventData2 = _event(BEGGAR)
+	assert_eq(ev.prompt, "An old beggar cloaked in fur reaches his hands out towards "
+		+ "you as you pass. \"Spare some coin, child?\"")
+	assert_eq(ev.choices.map(func(c): return String(c.get("text", ""))),
+		["Offer Gold", "Leave"])
+	assert_eq(String(_choice(ev, "offer_gold")["results"][0]), "The beggar takes off "
+		+ "its cloak to reveal that he is Cleric! \"You are a kind soul. Receive my "
+		+ "purification!\" he screams. You are unsure if he is grateful or mad.")
+	assert_eq(String(_choice(ev, "leave")["results"][0]), "The beggar looks to the "
+		+ "floor as you pass. \"You will never make a difference... You never do.\"")
+	assert_eq(ev.rarity, "Common")
+	assert_eq(EventSystem.describe_choice(_choice(ev, "offer_gold"), 0),
+		"-6 Gold, Remove 1 non-boss enemy")
+
+func test_the_beggar_needs_six_gold_and_a_non_boss_enemy() -> void:
+	var ev: EventData2 = _event(BEGGAR)
+	GameLoop2.stack.clear()
+	GameState.gold = 6
+	assert_false(EventSystem.requirement_met(ev), "nobody following")
+	_boss_body()
+	assert_false(EventSystem.requirement_met(ev), "a boss is not his to take")
+	Fixtures.body(Vector2i(1, 0))
+	assert_true(EventSystem.requirement_met(ev))
+	GameState.gold = 5
+	assert_false(EventSystem.requirement_met(ev), "and 6 Gold")
+
+func test_offering_gold_removes_the_enemy_the_player_picks() -> void:
+	var ev: EventData2 = _event(BEGGAR)
+	GameLoop2.stack.clear()
+	GameState.gold = 8
+	var boss: int = _boss_body()
+	var a: int = Fixtures.body(Vector2i(1, 0))
+	var b: int = Fixtures.body(Vector2i(1, 1))
+	var host := BoardHost.new()
+	add_child_autofree(host)
+	var modal: EventModal2 = EventModal2.open(host, ev)
+	modal.take(0)
+	assert_true(modal.is_picking(), "the event steps aside for the board")
+	assert_eq(host.cfg.get("candidates"), [a, b], "every non-boss body, and not the boss")
+	assert_eq(String(host.cfg.get("verb", "")), "remove")
+	assert_eq(GameState.gold, 8, "nothing is paid until the pick is answered")
+	watch_signals(TriggerBus)
+	host.on_done.call([b])
+	assert_false(modal.is_picking())
+	assert_eq(GameState.gold, 2, "6 Gold")
+	assert_true(GameLoop2.entry_for(b).is_empty(), "the one picked stopped following")
+	assert_false(GameLoop2.entry_for(a).is_empty(), "and only it")
+	assert_false(GameLoop2.entry_for(boss).is_empty())
+	assert_signal_not_emitted(TriggerBus, "enemy_killed", "it was not defeated")
+	modal.dismiss()
+
+func test_backing_out_of_the_beggars_pick_costs_nothing() -> void:
+	var ev: EventData2 = _event(BEGGAR)
+	GameLoop2.stack.clear()
+	GameState.gold = 6
+	var a: int = Fixtures.body(Vector2i(1, 0))
+	var host := BoardHost.new()
+	add_child_autofree(host)
+	var modal: EventModal2 = EventModal2.open(host, ev)
+	modal.take(0)
+	(host.cfg["on_cancel"] as Callable).call()
+	assert_false(modal.is_picking(), "the event is back")
+	assert_eq(GameState.gold, 6)
+	assert_false(GameLoop2.entry_for(a).is_empty())
+	modal.dismiss()
+
+func test_the_beggar_with_no_board_to_pick_on_removes_one_anyway() -> void:
+	var ev: EventData2 = _event(BEGGAR)
+	GameLoop2.stack.clear()
+	GameState.gold = 6
+	_boss_body()
+	var a: int = Fixtures.body(Vector2i(1, 0))
+	var out: Dictionary = EventSystem.resolve_choice(ev, _choice(ev, "offer_gold"), 0)
+	assert_true(GameLoop2.entry_for(a).is_empty(), "the only non-boss body")
+	assert_eq(GameLoop2.stack.size(), 1, "the boss stays")
+	assert_string_contains(String(out["text"]), "stopped following you")
+
+
+# --- The Divine Fountain (Slay the Spire) -----------------------------------
+#
+# The owner, 15 Nov 2026: Drink lifts every curse that can be lifted — curse
+# cards and cursed weapons — and the fountain only turns up while there is one.
+# Rare, every tier.
+
+const FOUNTAIN := &"the_divine_fountain"
+
+func _cursed_weapon() -> Dictionary:
+	var w: Dictionary = GameState.add_weapon_loot(&"lightning_ring")
+	assert_false(w.is_empty(), "a weapon to curse")
+	w["roll"] = -1
+	w["roll_known"] = true
+	return w
+
+func test_the_fountain_is_slay_the_spires_own_words() -> void:
+	var ev: EventData2 = _event(FOUNTAIN)
+	assert_eq(ev.prompt, "You come across shimmering water flowing endlessly from a "
+		+ "fountain on a nearby wall.")
+	assert_eq(ev.choices.map(func(c): return String(c.get("text", ""))), ["Drink", "Leave"])
+	assert_eq(String(_choice(ev, "drink")["results"][0]),
+		"As you drink the water, you feel a dark grasp loosen.")
+	assert_eq(String(_choice(ev, "leave")["results"][0]),
+		"Unsure of the nature of this water, you continue on your way, parched.")
+	assert_eq(ev.rarity, "Rare")
+	assert_eq(EventSystem.describe_choice(_choice(ev, "drink"), 0), "Lift every curse")
+
+func test_the_fountain_needs_a_curse_it_can_lift() -> void:
+	var ev: EventData2 = _event(FOUNTAIN)
+	assert_false(EventSystem.requirement_met(ev), "no curse, no fountain")
+	GameState.add_curse_card(&"curse_of_the_bell")
+	assert_false(EventSystem.requirement_met(ev),
+		"an Eternal curse is one it cannot lift")
+	GameState.add_curse_card(&"injury")
+	assert_true(EventSystem.requirement_met(ev))
+
+func test_a_cursed_weapon_alone_is_enough_for_the_fountain() -> void:
+	_cursed_weapon()
+	assert_true(EventSystem.requirement_met(_event(FOUNTAIN)))
+
+func test_drinking_lifts_every_curse_but_the_eternal_one() -> void:
+	var ev: EventData2 = _event(FOUNTAIN)
+	GameState.add_curse_card(&"injury")
+	GameState.add_curse_card(&"pain")
+	GameState.add_curse_card(&"curse_of_the_bell")
+	var w: Dictionary = _cursed_weapon()
+	var out: Dictionary = EventSystem.resolve_choice(ev, _choice(ev, "drink"), 0)
+	assert_false(GameState.has_curse_card(&"injury"))
+	assert_false(GameState.has_curse_card(&"pain"))
+	assert_true(GameState.has_curse_card(&"curse_of_the_bell"), "Eternal stays")
+	assert_false(WeaponSystem.is_cursed(w), "the weapon's curse is lifted")
+	assert_true(GameState.loot_items.any(func(e): return is_same(e, w)),
+		"and the weapon stays")
+	assert_string_contains(String(out["text"]), "lifted")
+	assert_eq(String(out["result"]), "As you drink the water, you feel a dark grasp loosen.")
+
+# --- This or That? (Slay the Spire 2) ---------------------------------------
+#
+# The owner, 15 Nov 2026: This is -1 Health and +5 Gold; That is Clumsy and a
+# small chest. Common, every tier, no Requirement.
+
+const THIS_OR_THAT := &"this_or_that"
+
+func test_this_or_that_is_slay_the_spire_2s_own_words() -> void:
+	var ev: EventData2 = _event(THIS_OR_THAT)
+	assert_eq(ev.display_name, "This or That?")
+	assert_eq(ev.source_game, "Slay the Spire 2")
+	assert_eq(ev.prompt, "Arms suddenly jut out from a nearby hole, clutching a "
+		+ "suspicious bag of riches and a clearly cursed relic. \"This... or That?\" "
+		+ "a scratched-up voice whispers from below.")
+	assert_eq(ev.choices.map(func(c): return String(c.get("text", ""))), ["This", "That"])
+	assert_eq(String(_choice(ev, "this")["results"][0]), "You grab the bag and as soon "
+		+ "as you do, a THIRD hand appears and clutches at you!! After a frantic "
+		+ "struggle, it releases\u2014the arms and the hole have vanished.")
+	assert_eq(String(_choice(ev, "that")["results"][0]), "You grab the Cursed Relic. "
+		+ "As soon as you grasp it, shackles materialize on your wrists. You hear a "
+		+ "ghostly laughter and a bright plume of fire fills your vision! The hole "
+		+ "and arms are gone.")
+	assert_eq(ev.rarity, "Common")
+	assert_true(ev.requirement.is_empty())
+
+func test_this_is_a_point_of_health_for_five_gold() -> void:
+	var ev: EventData2 = _event(THIS_OR_THAT)
+	GameState.max_hp = 7
+	GameState.hp = 5
+	GameState.gold = 2
+	EventSystem.resolve_choice(ev, _choice(ev, "this"), 0)
+	assert_eq(GameState.hp, 4)
+	assert_eq(GameState.gold, 7)
+
+func test_that_is_clumsy_and_a_small_chest() -> void:
+	var ev: EventData2 = _event(THIS_OR_THAT)
+	var that: Dictionary = _choice(ev, "that")
+	assert_string_contains(EventSystem.describe_choice(that, 0), "+1 Small Chest")
+	assert_string_contains(EventSystem.describe_choice(that, 0), "Clumsy")
+	var chests: int = GameState.pending_chests
+	EventSystem.resolve_choice(ev, that, 0)
+	assert_eq(GameState.pending_chests, chests + 1)
+	assert_true(GameState.has_curse_card(&"clumsy"))
+
+# --- Sunken Treasury (Slay the Spire 2) and Greed ---------------------------
+#
+# The owner, 15 Nov 2026: First Chest +5 Gold; Second Chest +25 Gold and Greed,
+# an Eternal curse only this event deals. Common, every tier.
+
+const TREASURY := &"sunken_treasury"
+
+func test_sunken_treasury_is_slay_the_spire_2s_own_words() -> void:
+	var ev: EventData2 = _event(TREASURY)
+	assert_eq(ev.source_game, "Slay the Spire 2")
+	assert_eq(ev.prompt, "A path leads you into a partially submerged vault. There "
+		+ "are 2 chests but only 1 brittle key. The First Chest: Shaking it, you get "
+		+ "jingly-jangly noises. Bit of gold. The Second Chest: Enormous, ornate, and "
+		+ "clearly cursed. Lots of gold!")
+	assert_eq(ev.choices.map(func(c): return String(c.get("text", ""))),
+		["First Chest", "Second Chest"])
+	assert_eq(String(_choice(ev, "first_chest")["results"][0]), "Yup, there was gold in it.")
+	assert_eq(String(_choice(ev, "second_chest")["results"][0]), "You've never seen so "
+		+ "much gold in one place! All of the Merchant's wares can be bought... "
+		+ "Dangerous thugs can be paid off... The feverishly greedy thoughts stay "
+		+ "with you forever...")
+	assert_eq(ev.rarity, "Common")
+	assert_true(ev.requirement.is_empty())
+
+func test_the_first_chest_is_five_gold() -> void:
+	var ev: EventData2 = _event(TREASURY)
+	GameState.gold = 0
+	EventSystem.resolve_choice(ev, _choice(ev, "first_chest"), 0)
+	assert_eq(GameState.gold, 5)
+	assert_false(GameState.has_curse_card(&"greed"))
+
+func test_the_second_chest_is_twenty_five_gold_and_greed() -> void:
+	var ev: EventData2 = _event(TREASURY)
+	GameState.gold = 0
+	assert_string_contains(EventSystem.describe_choice(_choice(ev, "second_chest"), 0),
+		"Greed")
+	EventSystem.resolve_choice(ev, _choice(ev, "second_chest"), 0)
+	assert_eq(GameState.gold, 25)
+	assert_true(GameState.has_curse_card(&"greed"))
+
+func test_greed_is_eternal_and_never_dealt_at_random() -> void:
+	var greed: CardData = Data.get_curse_card(&"greed")
+	assert_not_null(greed)
+	assert_true(greed.keywords.has("Eternal"))
+	assert_false(greed.destroyable, "nothing can destroy it")
+	assert_false(greed.is_random_curse(), "only Sunken Treasury deals it")
+	GameState.add_curse_card(&"greed")
+	assert_eq(ScrollSystem.liftable_curse_count(), 0,
+		"so the Divine Fountain is never dealt for it")
+
+# Stands in for the overworld's board: takes the pick and hands it back.
+class BoardHost extends Node:
+	var cfg: Dictionary = {}
+	var on_done: Callable = Callable()
+	func begin_board_pick(c: Dictionary, d: Callable) -> bool:
+		cfg = c
+		on_done = d
+		return true

@@ -2908,6 +2908,8 @@ func beat_game(clear_advertised: bool = false, fulfilled_instances: Array = [],
 	GameState.cards_used_this_game = 0
 	# …and Normality's count of usable actions (docs/loot-passives.md §18).
 	GameState.actions_this_game = 0
+	# …and Warped Tongs' upgrade, which was "for the rest of combat" (§19).
+	LootUpgrade.clear_game_bonuses()
 	# The tracker went with it: `res` already carries the count for the log, and the
 	# board must not keep counting a finished game's lost runs. The escape gate is
 	# the same kind of per-game fact and goes at the same moment — the swings above
@@ -5713,6 +5715,18 @@ func despawn(instance: int) -> bool:
 	_admit_offgrid()
 	loop_changed.emit()
 	return true
+
+# Every body on the board that is NOT a boss, by instance — what the Old Beggar
+# can purify away (his `remove_enemy`, which `despawn`s it) and what his event's
+# `enemies` Requirement counts. A boss is never on offer: it is the run's wall,
+# not a follower to be talked out of following.
+func non_boss_instances() -> Array:
+	var out: Array = []
+	for entry in stack:
+		var enemy = entry.get("enemy")
+		if enemy is GoalEnemyData and not (enemy as GoalEnemyData).is_boss():
+			out.append(int(entry["instance"]))
+	return out
 
 # Take the body at `idx` off the board. THE ONE WAY a body leaves `stack`, because
 # `arrivals` holds handles into it (§7.2) and a removal that doesn't drop them

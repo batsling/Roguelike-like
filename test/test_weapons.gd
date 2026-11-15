@@ -533,7 +533,7 @@ func test_enchant_weapon_gives_a_weapon_stun_for_the_rest_of_the_run() -> void:
 	var out: Dictionary = ScrollSystem.read_scroll(scroll)
 	assert_eq(WeaponSystem.stun_bonus_of(Fixtures.at(4)), 1, "kept on the piece")
 	assert_eq(WeaponSystem.stun_for(sword), 2, "+1 Stun on its swing")
-	assert_string_contains(LootSystem.weapon_description(Fixtures.at(4)), "Enchanted: +1 Stun")
+	assert_string_contains(LootSystem.weapon_description(Fixtures.at(4)), "Upgraded: +1 Stun")
 	assert_false((out["logs"] as Array).is_empty(), "the read says what it did")
 	GameState.move_loot(4, 5)
 	assert_eq(WeaponSystem.stun_bonus_of(Fixtures.at(5)), 1, "and it moves with the piece")

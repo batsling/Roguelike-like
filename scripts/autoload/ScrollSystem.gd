@@ -731,6 +731,22 @@ func _remove_curse(mode: String, count: int, rng: RandomNumberGenerator, out: Di
 	out["requests"].append({"kind": "remove_curse", "count": count})
 	return true
 
+# EVERY CURSE THAT CAN BE LIFTED, lifted — the scroll's `all` mode, public for the
+# Divine Fountain's Drink (`lift_curses`, EffectSystem) so an event and a scroll lift
+# the same things the same way: each Destroyable curse card leaves the pack, each
+# cursed weapon keeps its place and loses its curse. Eternal curses stay. Returns
+# the line saying what went.
+func lift_every_curse() -> String:
+	var lifted: Array = _lift_curse_cards(removable_curses())
+	lifted.append_array(_lift_weapons(cursed_weapons()))
+	return _lifted_line(lifted)
+
+# How many curses `lift_every_curse` would lift right now — what the Divine
+# Fountain's `curses` Requirement counts, so it is never dealt to a run whose only
+# curse is one nothing can lift (Curse of the Bell).
+func liftable_curse_count() -> int:
+	return removable_curses().size() + cursed_weapons().size()
+
 # The curse cards in the pack this scroll can lift, as their (live) entries.
 func removable_curses() -> Array:
 	var out: Array = []

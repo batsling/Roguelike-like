@@ -78,8 +78,16 @@ TRIGGERS = ("after", "before")
 # `potions` is the pack too: bottles carried, whatever they turn out to be. It
 # is what Ranwid gates on — an event whose middle button is "hand over a potion"
 # should not stand on a node where there is no bottle to hand over.
+# `upgradeable` is the pack once more: attacks and weapons carried, what an
+# Upgrade could land on (LootUpgrade.gd). The Ominous Forge gates on it — the
+# owner chose to keep the whole event back rather than show a dead Forge button.
+# `enemies` is the board: bodies following you that are not bosses — what the Old
+# Beggar gates on, since taking one away is all he does. `curses` counts curses
+# that can be LIFTED (Destroyable curse cards, cursed weapons) — the Divine
+# Fountain's gate.
 GATE_STATS = ("hp", "max_hp", "gold", "games", "keys", "bombs", "bash", "dash",
-              "push", "transmute", "scramble", "shields", "relics", "potions")
+              "push", "transmute", "scramble", "shields", "relics", "potions",
+              "upgradeable", "enemies", "curses")
 
 
 # --- the Requirement column -------------------------------------------------
@@ -239,6 +247,13 @@ def parse_gate(clause, where, choice_labels):
         return {"choice": slug, "op": "==" if op == "=" else op,
                 "value": int(m.group(3))}
     toks = body.split()
+    # `needs item <id>` — the player CARRIES that relic (the Forgotten Altar's
+    # Offer: Golden Idol). Unlike every other gate, a button behind one is shown
+    # LOCKED rather than hidden, so the player learns what the event wanted
+    # (EventSystem.choice_locked). The id is checked against `items` with the
+    # rest of the cell (_check_item_ids).
+    if len(toks) == 2 and toks[0].lower() == "item":
+        return {"item": toks[1].lower()}
     if len(toks) != 2 or not re.fullmatch(r"\d+", toks[1]):
         raise ValueError('events2.0 %s: cannot parse gate %r — expected '
                          '"needs <resource> <n>", "needs <Choice> <op> <n>" '
@@ -366,7 +381,7 @@ def _check_item_ids(effects, where, item_ids):
         return
     for eff in effects:
         named = []
-        if eff.get("type") == "gain_item":
+        if eff.get("type") in ("gain_item", "lose_item"):
             named = [str(eff.get("item", ""))]
         elif eff.get("type") == "gain_item_of":
             named = [str(i) for i in eff.get("items", [])]
@@ -520,6 +535,9 @@ def parse_effect_cell(cell, where, choice_labels, curse_ids, item_ids=(),
     for eff in out["effects"]:
         if eff.get("type") == "chance" and eff.get("effect"):
             lists.append([eff["effect"]])
+    # A `needs item` gate names a relic too.
+    lists.append([{"type": "lose_item", "item": g["item"]}
+                  for g in out["gates"] if "item" in g])
     for effects in lists:
         _check_item_ids(effects, where, item_ids)
         _check_enemy_tags(effects, where, enemy_tags)

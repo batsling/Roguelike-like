@@ -384,7 +384,10 @@ func display_name(entry: Dictionary, face_up: bool = true) -> String:
 		"potion":
 			return PotionSystem.display_name(entry)
 		"card":
-			return CardSystem.display_name(entry, face_up)
+			# AN UPGRADED ATTACK wears its +X the way an upgraded weapon does
+			# (LootUpgrade). Only face up: a card on the floor is its deck's back.
+			return CardSystem.display_name(entry, face_up) \
+				+ (LootUpgrade.plus_suffix(entry) if face_up else "")
 		"wand":
 			return WandSystem.display_name(entry)
 		"trinket":
@@ -656,7 +659,9 @@ func description(entry: Dictionary, face_up: bool = true) -> String:
 		"potion":
 			return PotionSystem.description(entry)
 		"card":
-			return CardSystem.description(entry, face_up)
+			var said: String = CardSystem.description(entry, face_up)
+			var upgraded: String = LootUpgrade.card_line(entry) if face_up else ""
+			return said if upgraded == "" else "%s\n%s" % [said, upgraded]
 		"wand":
 			return WandSystem.description(entry)
 		"trinket":
@@ -685,9 +690,11 @@ func weapon_description(entry: Dictionary) -> String:
 	if w.push > 0:
 		swing += " Then pushes them %d square%s %s." % [w.push, "" if w.push == 1 else "s",
 			{"right": "back", "left": "forward", "up": "up", "down": "down"}.get(w.push_dir, "back")]
-	var enchanted: int = WeaponSystem.stun_bonus_of(entry)
-	if enchanted > 0:
-		swing += " Enchanted: +%d Stun." % enchanted
+	# UPGRADES (LootUpgrade): for the run, and for this game only (Warped Tongs).
+	if LootUpgrade.run_bonus(entry) > 0:
+		swing += " Upgraded: +%d Stun." % LootUpgrade.run_bonus(entry)
+	if LootUpgrade.game_bonus(entry) > 0:
+		swing += " This game: +%d Stun more." % LootUpgrade.game_bonus(entry)
 	# FOUND UNIDENTIFIED (docs/players-design.md §5): the roll, or that it is not
 	# known yet.
 	if not WeaponSystem.roll_known(entry):
