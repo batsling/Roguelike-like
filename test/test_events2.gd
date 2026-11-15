@@ -2037,3 +2037,63 @@ func test_walking_out_costs_nothing_but_your_dignity() -> void:
 	assert_eq(GameState.hp, hp, "she does not actually hit you for Health")
 	assert_eq(GameState.loot_potions().size(), 0)
 	assert_string_contains(String(out["result"]), "WHAM")
+
+
+# --- Big Fish (Slay the Spire) ----------------------------------------------
+#
+# The owner, 15 Nov 2026: heal a third of your Health, +1 Max Health, or Regret
+# and an item — the item a small chest. The prose is Slay the Spire's own.
+
+const FISH := &"big_fish"
+
+func test_big_fish_is_slay_the_spires_own_words() -> void:
+	var ev: EventData2 = _event(FISH)
+	assert_eq(ev.prompt, "As you make your way down a long corridor you see a banana, "
+		+ "a donut, and a box floating about. No... upon closer inspection they are tied "
+		+ "to strings coming from holes in the ceiling. There is a quiet cackling from "
+		+ "above as you approach the objects. What do you do?")
+	assert_eq(ev.choices.map(func(c): return String(c.get("text", ""))),
+		["Banana", "Donut", "Box"])
+	assert_eq(ev.rarity, "Common")
+	assert_true(ev.requirement.is_empty(), "every button can always be pressed")
+
+func test_the_banana_heals_a_third_of_max_health_rounded_down() -> void:
+	var ev: EventData2 = _event(FISH)
+	var banana: Dictionary = _choice(ev, "banana")
+	GameState.max_hp = 8
+	GameState.hp = 1
+	assert_eq(EventSystem.describe_choice(banana, 0), "+2 Health",
+		"the button says the number, not the formula")
+	var out: Dictionary = EventSystem.resolve_choice(ev, banana, 0)
+	assert_eq(GameState.hp, 3, "8 / 3 rounds down to 2")
+	assert_eq(String(out["result"]),
+		"You eat the banana. It is nutritious and slightly magical, healing you.")
+
+func test_the_banana_always_heals_at_least_one() -> void:
+	var ev: EventData2 = _event(FISH)
+	GameState.max_hp = 2
+	GameState.hp = 1
+	EventSystem.resolve_choice(ev, _choice(ev, "banana"), 0)
+	assert_eq(GameState.hp, 2, "a third of 2 would be nothing")
+
+func test_the_donut_is_one_more_max_health_and_arrives_full() -> void:
+	var ev: EventData2 = _event(FISH)
+	GameState.max_hp = 7
+	GameState.hp = 7
+	var out: Dictionary = EventSystem.resolve_choice(ev, _choice(ev, "donut"), 0)
+	assert_eq(GameState.max_hp, 8)
+	assert_eq(GameState.hp, 8)
+	assert_eq(String(out["result"]),
+		"You eat the donut. It really hits the spot! Your Max HP increases.")
+
+func test_the_box_is_a_small_chest_and_regret() -> void:
+	var ev: EventData2 = _event(FISH)
+	var box: Dictionary = _choice(ev, "box")
+	assert_string_contains(EventSystem.describe_choice(box, 0), "+1 Small Chest")
+	assert_string_contains(EventSystem.describe_choice(box, 0), "Regret")
+	var chests: int = GameState.pending_chests
+	var out: Dictionary = EventSystem.resolve_choice(ev, box, 0)
+	assert_eq(GameState.pending_chests, chests + 1)
+	assert_true(GameState.has_curse_card(&"regret"), "and the Regret curse card")
+	assert_eq(String(out["result"]), "You grab the box. Inside you find a relic! However, "
+		+ "you really craved the donut... You are filled with sadness, but mostly regret.")

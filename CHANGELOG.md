@@ -11,6 +11,13 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Big Fish, from Slay the Spire (the owner, 15 Nov 2026).** A Common event,
+  dealt at every difficulty, whose prompt and results are Slay the Spire's own
+  words (the prose keeps the game's "Max HP"). **Banana** heals a third of Max
+  Health, rounded down as the original rounds it, and never less than 1.
+  **Donut** is +1 Max Health. **Box** is a small chest and the Regret curse card.
+  The owner chose the chest over a relic handed straight over.
+
 - **The Ominous Forge and Warped Tongs, from Slay the Spire, and Upgrade (the
   owner, 15 Nov 2026).** **Upgrade** is new: +1 Stun on an attack (a card tagged
   `attack`) or a weapon, stacking with no cap. On an attack it raises every Stun

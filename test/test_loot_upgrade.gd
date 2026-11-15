@@ -199,9 +199,7 @@ func test_rummaging_pays_the_tongs_and_the_pain() -> void:
 	Fixtures.card(self, &"cleave", 0)
 	EventSystem.resolve_choice(ev, _choice(ev, "rummage"), 0)
 	assert_true(GameState.has_item(TONGS), "Warped Tongs")
-	assert_true(GameState.pending_curses.has(&"pain") \
-		or GameState.loot_items.any(func(e): return String(e.get("id", "")) == "pain"),
-		"and the Pain curse card")
+	assert_true(GameState.has_curse_card(&"pain"), "and the Pain curse card")
 
 # --- Warped Tongs --------------------------------------------------------------
 
