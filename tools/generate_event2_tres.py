@@ -113,8 +113,25 @@ def parse_requirement(raw, where):
     return {"all": clauses}
 
 
+# `after <Event>` — the run has already OPENED that event (whatever was pressed).
+# What the Forgotten Altar waits on: the owner, 15 Nov 2026, "the only requirement
+# is that it should be after the golden idol event". Checked against the sheet's
+# own Event column, so a misspelt event is an error rather than an altar that
+# never comes. Filled by main() before any row is read; empty (unchecked) when
+# a caller has not read the sheet, as the objects generator has not.
+AFTER_RE = re.compile(r"^\s*after\s+(.+?)\s*$", re.I)
+EVENT_IDS = set()
+
+
 def parse_requirement_clause(raw, where):
     s = raw.strip()
+    m = AFTER_RE.match(s)
+    if m:
+        eid = dsl.slugify(m.group(1))
+        if EVENT_IDS and eid not in EVENT_IDS:
+            raise ValueError("events2.0 %s: Requirement `after %s` names no event on "
+                             "the sheet" % (where, m.group(1)))
+        return {"after_event": eid}
     m = REQ_RE.match(s)
     if not m:
         raise ValueError('events2.0 %s: cannot parse Requirement %r — expected '
@@ -243,6 +260,13 @@ def parse_gate(clause, where, choice_labels):
         return {"choice": slug, "op": "==" if op == "=" else op,
                 "value": int(m.group(3))}
     toks = body.split()
+    # `needs item <id>` — the player CARRIES that relic (the Forgotten Altar's
+    # Offer: Golden Idol). Unlike every other gate, a button behind one is shown
+    # LOCKED rather than hidden, so the player learns what the event wanted
+    # (EventSystem.choice_locked). The id is checked against `items` with the
+    # rest of the cell (_check_item_ids).
+    if len(toks) == 2 and toks[0].lower() == "item":
+        return {"item": toks[1].lower()}
     if len(toks) != 2 or not re.fullmatch(r"\d+", toks[1]):
         raise ValueError('events2.0 %s: cannot parse gate %r — expected '
                          '"needs <resource> <n>", "needs <Choice> <op> <n>" '
@@ -370,7 +394,7 @@ def _check_item_ids(effects, where, item_ids):
         return
     for eff in effects:
         named = []
-        if eff.get("type") == "gain_item":
+        if eff.get("type") in ("gain_item", "lose_item"):
             named = [str(eff.get("item", ""))]
         elif eff.get("type") == "gain_item_of":
             named = [str(i) for i in eff.get("items", [])]
@@ -524,6 +548,9 @@ def parse_effect_cell(cell, where, choice_labels, curse_ids, item_ids=(),
     for eff in out["effects"]:
         if eff.get("type") == "chance" and eff.get("effect"):
             lists.append([eff["effect"]])
+    # A `needs item` gate names a relic too.
+    lists.append([{"type": "lose_item", "item": g["item"]}
+                  for g in out["gates"] if "item" in g])
     for effects in lists:
         _check_item_ids(effects, where, item_ids)
         _check_enemy_tags(effects, where, enemy_tags)
@@ -722,6 +749,7 @@ def main():
         raise SystemExit("%s has no %r sheet — run tools/oneshots/_events2_sheet_setup.py"
                          % (XLSX_PATH, SHEET))
     curse_ids, item_ids, enemy_tags = cross_sheet_ids(wb)
+    EVENT_IDS.update(dsl.slugify(str(r["Event"]).strip()) for r in dsl.rows(wb[SHEET]))
     # `spawn_object tag=` is checked the same way, but the objects generator owns
     # that sheet, so the lookup lives there and is imported rather than duplicated.
     import generate_object2_tres as objects  # noqa: E402  (circular at module scope)

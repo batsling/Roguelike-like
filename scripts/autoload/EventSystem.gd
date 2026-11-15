@@ -172,6 +172,9 @@ static func requirement_text(req: Dictionary) -> String:
 			if clause is Dictionary:
 				parts.append(requirement_text(clause))
 		return " and ".join(parts) if parts.size() > 0 else "nothing"
+	if req.has("after_event"):
+		var after: EventData2 = Data.get_event2(StringName(String(req["after_event"])))
+		return "after %s" % (after.display_name if after != null else String(req["after_event"]))
 	var stat: String = String(req.get("stat", ""))
 	return "%s %s %s%s" % [
 		String(GATE_STAT_NAMES.get(stat, stat.capitalize())),
@@ -637,6 +640,10 @@ func _compare_stat(req: Dictionary) -> bool:
 			if clause is Dictionary and not _compare_stat(clause):
 				return false
 		return true
+	# `after <Event>`: that event has opened this run, whatever was pressed (the
+	# Forgotten Altar waits on the Golden Idol). mark_fired is the record.
+	if req.has("after_event"):
+		return int(GameState.events_fired.get(StringName(String(req["after_event"])), 0)) > 0
 	var stat: String = String(req.get("stat", ""))
 	var have: float = float(_run_stat(stat))
 	if have < 0.0:
@@ -740,6 +747,9 @@ func _gate_passes(gate: Dictionary, picks: Dictionary) -> bool:
 	# choice dict is shared by every copy of a machine on screen.
 	if gate.has("flag"):
 		return ObjectSystem.flag_passes(String(gate["flag"]))
+	# `needs item <id>`: the relic is carried.
+	if gate.has("item"):
+		return GameState.has_item(StringName(String(gate["item"])))
 	return _run_stat(String(gate.get("resource", ""))) >= int(gate.get("value", 0))
 
 
@@ -751,6 +761,8 @@ func gate_refusal(gate: Dictionary, picks: Dictionary) -> String:
 		return ""
 	if gate.has("flag"):
 		return ObjectSystem.flag_refusal(String(gate["flag"]))
+	if gate.has("item"):
+		return "Requires: %s" % _item_name(gate["item"])
 	if gate.has("resource"):
 		var n: int = int(gate.get("value", 0))
 		return "Needs %d %s" % [n, gate_stat_name(String(gate["resource"]), n)]
@@ -765,6 +777,27 @@ func choice_refusal(choice: Dictionary, picks: Dictionary) -> String:
 		if why != "":
 			return why
 	return ""
+
+
+# A button shown LOCKED rather than hidden: "Requires: Golden Idol". Slay the
+# Spire's Forgotten Altar does this and the owner kept it (15 Nov 2026) — the
+# button is the altar saying what it wants. Only a `needs item` gate locks; every
+# other refusal still hides the button. "" when the choice is not locked: either
+# it can be pressed, or something other than a missing relic stops it.
+func choice_locked(choice: Dictionary, picks: Dictionary) -> String:
+	var why: String = ""
+	for gate in choice.get("gates", []):
+		if not (gate as Dictionary).has("item"):
+			continue
+		why = gate_refusal(gate, picks)
+		if why != "":
+			break
+	if why == "":
+		return ""
+	var unlocked: Dictionary = choice.duplicate()
+	unlocked["gates"] = (choice.get("gates", []) as Array).filter(
+		func(g): return not (g as Dictionary).has("item"))
+	return why if choice_available(unlocked, picks) else ""
 
 
 # --- how close a choice is to killing you -----------------------------------
@@ -962,8 +995,14 @@ func resolve_choice(ev: Resource, choice: Dictionary, taken: int,
 		ctx: Dictionary = {}) -> Dictionary:
 	var words: Array = []
 
-	for eff in choice.get("effects", []):
-		EffectSystem.apply(_scaled(eff, taken), ctx)
+	# EVERY HOLE IS WORKED OUT BEFORE ANY EFFECT LANDS, against the run as the
+	# button saw it. Applied one by one, the Forgotten Altar's `gain_max_hp 1;
+	# lose_hp {25% of MAX_HP}` charged a quarter of the NEW Max Health and could
+	# take a point more than the button said.
+	var scaled: Array = (choice.get("effects", []) as Array).map(
+		func(eff): return _scaled(eff, taken))
+	for eff in scaled:
+		EffectSystem.apply(eff, ctx)
 	if String(choice.get("effects_text", "")) != "":
 		words.append(fill_name_holes(_fill_holes(String(choice["effects_text"]), taken), choice))
 	# What an effect did that the button could not say before it was pressed — the

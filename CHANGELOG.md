@@ -11,6 +11,25 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Forgotten Altar and Bloody Idol, from Slay the Spire (the owner, 15 Nov
+  2026).** The first **Uncommon** event. It is dealt at every difficulty, but
+  only after the Golden Idol event has opened this run (a new Requirement
+  clause, `after <Event>`). Its prompt and results are Slay the Spire's own
+  words.
+  - **Offer: Golden Idol** trades the Golden Idol for the **Bloody Idol**, an
+    Event relic that heals 1 Health whenever you gain Gold and pays no bonus
+    Gold.
+  - **Sacrifice** is +1 Max Health, then the loss of 25% of Max Health.
+  - **Desecrate** gives the Decay curse card.
+
+  Without the idol, Offer is shown **locked**, reading "Requires: Golden Idol",
+  as in Slay the Spire. This is a new kind of gate, `needs item <id>`; every
+  other gate still hides its button. There is also a new token, `lose_item
+  <id>`. **One fix for every event:** a button's `{…}` amounts are now all worked
+  out before any of its effects land, so a press charges exactly what the
+  button quoted. Before, a gain followed by a percentage cost could charge a
+  point more.
+
 - **Big Fish, from Slay the Spire (the owner, 15 Nov 2026).** A Common event,
   dealt at every difficulty, whose prompt and results are Slay the Spire's own
   words (the prose keeps the game's "Max HP"). **Banana** heals a third of Max

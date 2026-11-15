@@ -390,6 +390,11 @@ func _render() -> void:
 	for i in range(_event.choices.size()):
 		var choice: Dictionary = _event.choices[i]
 		if not EventSystem.choice_available(choice, _picks):
+			# …unless it wants a relic you do not carry: then it stays, LOCKED
+			# (EventSystem.choice_locked) — "Requires: Golden Idol".
+			var locked: String = EventSystem.choice_locked(choice, _picks)
+			if locked != "":
+				_choice_box.add_child(_locked_button(choice, locked))
 			continue
 		_choice_box.add_child(_choice_button(i, choice))
 		offered += 1
@@ -674,6 +679,34 @@ func _choice_button(index: int, choice: Dictionary) -> Control:
 		warn.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
 		warn.add_theme_color_override("font_color", UITheme.DANGER)
 		col.add_child(warn)
+	return col
+
+
+# A choice that wants a relic you do not carry: its label, disabled, and under it
+# what it requires. Not counted as an offer, so an event whose every other button
+# is spent still gets its way out.
+func _locked_button(choice: Dictionary, why: String) -> Control:
+	var col := VBoxContainer.new()
+	col.name = "Locked"
+	col.add_theme_constant_override("separation", UITheme.GAP_NONE)
+	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var btn := Button.new()
+	btn.text = EventSystem.fill_name_holes(String(choice.get("text", "…")), choice)
+	btn.disabled = true
+	btn.custom_minimum_size = Vector2(0, 36)
+	btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	btn.add_theme_font_size_override("font_size", UITheme.FONT_LEAD)
+	btn.add_theme_stylebox_override("disabled",
+		UITheme.flat(UITheme.BG, 6, 6, 1, UITheme.BORDER))
+	btn.add_theme_color_override("font_disabled_color", UITheme.TEXT_DIM)
+	col.add_child(btn)
+	var lbl := Label.new()
+	lbl.text = "Locked · %s" % why
+	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	lbl.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
+	lbl.add_theme_color_override("font_color", UITheme.TEXT_DIM)
+	col.add_child(lbl)
 	return col
 
 

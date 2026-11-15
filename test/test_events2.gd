@@ -2097,3 +2097,84 @@ func test_the_box_is_a_small_chest_and_regret() -> void:
 	assert_true(GameState.has_curse_card(&"regret"), "and the Regret curse card")
 	assert_eq(String(out["result"]), "You grab the box. Inside you find a relic! However, "
 		+ "you really craved the donut... You are filled with sadness, but mostly regret.")
+
+
+# --- Forgotten Altar (Slay the Spire) ---------------------------------------
+#
+# The owner, 15 Nov 2026: Uncommon, dealt only after the Golden Idol event; the
+# Offer button shown LOCKED without the idol; Sacrifice +1 Max Health for 25% of
+# it; Desecrate is Decay. Bloody Idol heals 1 per gold gain and replaces the
+# Golden Idol outright.
+
+const ALTAR := &"forgotten_altar"
+
+func test_the_altar_is_slay_the_spires_own_words() -> void:
+	var ev: EventData2 = _event(ALTAR)
+	assert_eq(ev.prompt, "In front of you sits an altar to a forgotten god. Atop the "
+		+ "altar sits an ornate female statue with arms outstretched. She calls out to "
+		+ "you, demanding sacrifice.")
+	assert_eq(ev.choices.map(func(c): return String(c.get("text", ""))),
+		["Offer: Golden Idol", "Sacrifice", "Desecrate"])
+	assert_eq(ev.rarity, "Uncommon")
+	assert_string_contains(String(_choice(ev, "desecrate")["results"][0]),
+		"you can feel the cursed magic seep into your bones.")
+
+func test_the_altar_waits_for_the_golden_idol_event() -> void:
+	var ev: EventData2 = _event(ALTAR)
+	assert_false(EventSystem.requirement_met(ev), "not before the Golden Idol")
+	assert_true(EventSystem.blockers_for(ev, &"").has("needs after Golden Idol"))
+	EventSystem.mark_fired(_event(IDOL))
+	assert_true(EventSystem.requirement_met(ev),
+		"after it, whether or not the idol was taken")
+
+func test_without_the_idol_the_offer_is_locked_not_hidden() -> void:
+	var ev: EventData2 = _event(ALTAR)
+	var offer: Dictionary = _choice(ev, "offer_golden_idol")
+	assert_false(EventSystem.choice_available(offer, {}))
+	assert_eq(EventSystem.choice_locked(offer, {}), "Requires: Golden Idol")
+	assert_eq(EventSystem.choice_locked(_choice(ev, "sacrifice"), {}), "",
+		"an ordinary button is not locked")
+	var modal: EventModal2 = EventModal2.open(add_child_autofree(Node.new()), ev)
+	var locked: Node = modal.find_child("Locked", true, false)
+	assert_not_null(locked, "the modal shows it")
+	assert_true((locked.find_children("*", "Button", true, false)[0] as Button).disabled)
+	modal.dismiss()
+
+func test_offering_the_idol_trades_it_for_the_bloody_idol() -> void:
+	var ev: EventData2 = _event(ALTAR)
+	GameState.add_item(Data.get_item2(IDOL))
+	var offer: Dictionary = _choice(ev, "offer_golden_idol")
+	assert_true(EventSystem.choice_available(offer, {}))
+	assert_eq(EventSystem.choice_locked(offer, {}), "", "carried, it is not locked")
+	assert_eq(EventSystem.describe_choice(offer, 0), "-Golden Idol, +Bloody Idol")
+	EventSystem.resolve_choice(ev, offer, 0)
+	assert_false(GameState.has_item(IDOL), "the Golden Idol is gone")
+	assert_true(GameState.has_item(&"bloody_idol"), "and bleeds")
+
+func test_sacrifice_charges_exactly_what_its_button_says() -> void:
+	# At 5 Max Health, 25% is 1.25 -> 1. Worked out after the +1 it would be
+	# 25% of 6 = 1.5 -> 2, a point more than the button quoted.
+	var ev: EventData2 = _event(ALTAR)
+	var sacrifice: Dictionary = _choice(ev, "sacrifice")
+	GameState.max_hp = 5
+	GameState.hp = 5
+	assert_eq(EventSystem.describe_choice(sacrifice, 0), "+1 Max Health, -1 Health")
+	EventSystem.resolve_choice(ev, sacrifice, 0)
+	assert_eq(GameState.max_hp, 6, "+1 Max Health")
+	assert_eq(GameState.hp, 5, "arrives full, then pays the 1 quoted")
+
+func test_desecrating_the_altar_is_decay() -> void:
+	var ev: EventData2 = _event(ALTAR)
+	EventSystem.resolve_choice(ev, _choice(ev, "desecrate"), 0)
+	assert_true(GameState.has_curse_card(&"decay"))
+
+func test_the_bloody_idol_heals_one_per_gold_gain_and_pays_no_gold() -> void:
+	var idol: ItemData = Data.get_item2(&"bloody_idol")
+	assert_not_null(idol)
+	assert_true(idol.event, "an Event relic")
+	assert_eq(idol.gold_per_enemy, 0, "it replaces the Golden Idol, not adds to it")
+	GameState.add_item(idol)
+	GameState.max_hp = 7
+	GameState.hp = 3
+	GameState.change_gold(3)
+	assert_eq(GameState.hp, 4, "one gain, one Health, whatever the amount")

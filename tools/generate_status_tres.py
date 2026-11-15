@@ -753,6 +753,15 @@ def parse_reward_clause(clause):
         iid = rest[0].strip().lower()
         return {"type": "gain_item", "item": iid}, "+%s" % _title(iid)
 
+    # `gain_item`'s other half: a NAMED relic taken off you — the Forgotten Altar
+    # wants the Golden Idol and nothing else. Pair it with `needs item <id>` so the
+    # button is only pressable while the relic is carried.
+    if verb == "lose_item":
+        if not rest:
+            raise ValueError("reward DSL: lose_item needs an item id in %r" % clause)
+        iid = rest[0].strip().lower()
+        return {"type": "lose_item", "item": iid}, "-%s" % _title(iid)
+
     # What every CURSE costs (docs/event-sheet-authoring.md §6): a fresh enemy at
     # the run's current difficulty, straight onto the following stack. A curse's
     # bill is a body on the board rather than a number off a bar, so there is one

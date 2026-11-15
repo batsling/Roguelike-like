@@ -736,7 +736,7 @@ Everything about one lives in the **`events2.0` tab** of
 **Which event you get** is dealt from a **shuffle bag**, per rarity:
 
 - roll the rarity ladder (Luck rerolls it, like every other roll in the build),
-  falling down to the nearest stocked rung — today the Potion Lab and the Ominous Forge are Rare and every other event Common;
+  falling down to the nearest stocked rung — today the Potion Lab and the Ominous Forge are Rare, the Forgotten Altar Uncommon and every other event Common;
 - draw from the events of that rarity **not yet seen this run**. Opening one
   marks it seen whether or not you engaged with it;
 - when a rarity's bag empties it reshuffles, except that the event which just
@@ -778,7 +778,7 @@ names the row and the cell.
 | `Game` | The real game it's lifted from. Shows as "From: *game*" in the modal. |
 | `Tier` | `All`, or a comma list of `Low` / `Medium` / `High` / `Insane`. |
 | `Where` | **Leave blank.** An event fires after every game, so this answers nothing today. It stays wired (`Dead End` / `Any` / `Game`) for the per-location work. |
-| `Requirement` | A gate on the run: `<stat> <op> <value>`, `%` reads against the max. `hp <= 70%`, `relics >= 5`. Several clauses joined by **`and`** when an event needs more than one thing at once (`gold>=4 and potions>=1 and relics>=1` — Ranwid, whose every button spends a different kind of thing). Blank = always eligible. A gated event is skipped and stays in the bag. |
+| `Requirement` | A gate on the run: `<stat> <op> <value>`, `%` reads against the max. `hp <= 70%`, `relics >= 5`. Several clauses joined by **`and`** when an event needs more than one thing at once (`gold>=4 and potions>=1 and relics>=1` — Ranwid, whose every button spends a different kind of thing). `after <Event>` waits until that event has opened this run, whatever was pressed (`after Golden Idol` — the Forgotten Altar); the generator checks the name against the sheet. Blank = always eligible. A gated event is skipped and stays in the bag. |
 | `Trigger` | `After` (fires once the game at the node is played). ⚠ `Before` parses and is stored, but **nothing reads it yet**. Leave it `After` until that is wired up. |
 | `Rarity` | `Common` / `Uncommon` / `Rare` — which bag it is dealt from. |
 | `Image` | Art base name → `images2.0/events/<Image>.png`. Blank falls back to the de-spaced `Event`. |
@@ -816,6 +816,7 @@ Semicolon-separated tokens. It is the same reward DSL `statuses2.0` and
 | `apply_unit <unit> …` | The same, for a `units2.0` UNIT (§17). `target=random_empty` puts it on a cell with nothing on it at all — no body, no unit, no tile effect (Landmines). |
 | `random_item_choice N` | Pick 1 of N random items. |
 | `gain_item <item_id>` | A **named** `items2.0` relic, handed straight over — the one token that says *which* item. The generator checks the id against the sheet. |
+| `lose_item <item_id>` | The other half: that named relic taken off you (the Forgotten Altar takes the Golden Idol). Pair it with `needs item <item_id>`. |
 | `spawn_enemy [N] [tag=<t>]` | Conjures N enemies at the run's current difficulty onto the following stack. `tag=` narrows the roll to the goal-enemies carrying that synergy tag (`spawn_enemy tag=robot 1` — Punch Off's Constructs); the generator checks the tag against the `enemies` sheet's Tag column, and a tagged roll widens by difficulty rather than dropping the tag. |
 | `trade_relic <slot>` | The Relic Trader's swap: one of your relics for one of his. Fills `<give>` / `<get>` in the choice's prose. |
 | `gain_random_item N` | N relics off the rollable pool, straight into the pack — not a chest opened a screen later. Prefers what you don't own, and fills `{ITEM}` with what it rolled. |
@@ -829,6 +830,7 @@ And the event-only forms:
 ```
 needs keys 1                           only offered if the player HAS it (a check, not a charge)
 needs Immerse > 0                      only offered at this point in the event (names another Choice)
+needs item golden_idol                 only pressable while that relic is carried — and shown LOCKED ("Requires: Golden Idol") rather than hidden
 add_goal "<condition>" [for <n> games] -> <reward>
 add_curse <curse_id> | random
 play_game tag=<tag> -> <reward>

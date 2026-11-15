@@ -111,6 +111,7 @@ func _register_defaults() -> void:
 	register("apply_tile", _h_apply_tile)
 	register("apply_unit", _h_apply_unit)
 	register("gain_item", _h_gain_item)
+	register("lose_item", _h_lose_item)
 	register("upgrade_loot", _h_upgrade_loot)
 	register("gain_item_per_rarity", _h_gain_item_per_rarity)
 	register("add_curse", _h_add_curse)
@@ -429,6 +430,16 @@ func _h_gain_item(effect: Dictionary, _ctx: Dictionary) -> void:
 		push_warning("EffectSystem.gain_item: no items2.0 item '%s'" % effect.get("item", ""))
 		return
 	GameState.add_item(template)
+
+# `gain_item`'s other half: the NAMED relic leaves the shelf (the Forgotten Altar
+# takes the Golden Idol). The first copy carried; none carried is nothing done,
+# which the event's `needs item` gate keeps off the screen anyway.
+func _h_lose_item(effect: Dictionary, _ctx: Dictionary) -> void:
+	var id := StringName(String(effect.get("item", "")))
+	for item in GameState.inventory:
+		if item is ItemData and item.id == id:
+			GameState.remove_item(item)
+			return
 
 # UPGRADE N LOOT (LootUpgrade; docs/loot-passives.md §19): +1 Stun on `value`
 # attacks or weapons, each. `mode` says which:
