@@ -248,6 +248,30 @@ func test_ranged_strikes_across_the_gap_it_names() -> void:
 	var plain: Dictionary = _put(_enemy(), Vector2i(2, 2))
 	assert_false(GameLoop2.can_strike(plain), "and a body with no Ranged still walks in")
 
+# A SHOT HITS THE POOP IN FRONT OF IT (docs/locations-design.md §5; the owner,
+# 15 Nov 2026): a ranged body with a wall in its lane breaks the wall, not you.
+func test_a_ranged_shot_hits_the_poop_in_front_of_it() -> void:
+	var entry: Dictionary = _put(_enemy([_ability(&"ranged", 3)]), Vector2i(4, 0))
+	(entry["enemy"] as GoalEnemyData).damage = 2
+	GameLoop2.apply_unit(Vector2i(1, 0), &"poop")
+	GameLoop2.apply_unit(Vector2i(2, 0), &"golden_poop")
+	var near: int = int(GameLoop2.units[Vector2i(2, 0)]["health"])
+	var res := _turn()
+	assert_eq(GameState.hp, 40, "the shot never reached you")
+	assert_eq(int(GameLoop2.units[Vector2i(2, 0)]["health"]), near - 2,
+		"the poop nearest the shooter took it, for what it hits you for")
+	assert_true(GameLoop2.units.has(Vector2i(1, 0)), "the one behind it is untouched")
+	var walled := false
+	for a in res.get("attacks", []):
+		walled = walled or bool(a.get("walled", false))
+	assert_true(walled, "the turn says where the shot went")
+
+func test_a_ranged_shot_in_another_lane_is_not_stopped() -> void:
+	_put(_enemy([_ability(&"ranged", 3)]), Vector2i(4, 0))
+	GameLoop2.apply_unit(Vector2i(2, 1), &"poop")
+	_turn()
+	assert_lt(GameState.hp, 40, "a wall in the next lane is not in the way")
+
 func test_an_unlimited_range_fires_from_the_back_column() -> void:
 	var entry: Dictionary = _put(_enemy([_ability(&"ranged", 0)]),
 		Vector2i(GameLoop2.grid_cols(), 0))

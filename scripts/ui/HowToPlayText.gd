@@ -921,7 +921,8 @@ static func _ch_pack() -> Dictionary:
 				+ "blast blows the fire out."),
 			_kv("Poops (units that block)", "A WALL. Nothing can step onto one, so "
 				+ "an enemy that reaches it spends its step hitting it instead, for "
-				+ "exactly what it would hit you for. "
+				+ "exactly what it would hit you for. A Ranged enemy's shot hits "
+				+ "the first poop in its lane instead of you. "
 				+ "You can break it too — a bomb, a thrown potion, anything that hits "
 				+ "the ground. Broken, it pays out whoever broke it: a Poop drops a "
 				+ "piece of loot or lets a fly out, a Golden Poop pays gold, a "
