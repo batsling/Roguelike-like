@@ -139,6 +139,8 @@ const GATE_STAT_NAMES := {
 	"bonus_shields": "Shields", "relics": "Tradeable Relics",
 	# The pack again: bottles carried, identified or not.
 	"potions": "Potions",
+	# …and what an Upgrade could land on: attacks and weapons (LootUpgrade).
+	"upgradeable": "Upgradeable Loot",
 }
 
 # The same names for ONE of the thing — "Needs 1 Bomb", not "Needs 1 Bombs". Only
@@ -676,6 +678,10 @@ func _run_stat(stat: String) -> int:
 		# apply: every potion carried is a potion that can be handed over, and an
 		# unidentified one is handed over exactly as readily as a known one.
 		"potions": return GameState.loot_potions().size()
+		# Attacks and weapons carried — what the Ominous Forge gates on, since its
+		# Forge has nothing to do without one (the owner, 14 Nov 2026: gate the
+		# whole event rather than grey the button).
+		"upgradeable": return LootUpgrade.upgradeable().size()
 		_: return -1
 
 
@@ -960,6 +966,10 @@ func resolve_choice(ev: Resource, choice: Dictionary, taken: int,
 		EffectSystem.apply(_scaled(eff, taken), ctx)
 	if String(choice.get("effects_text", "")) != "":
 		words.append(fill_name_holes(_fill_holes(String(choice["effects_text"]), taken), choice))
+	# What an effect did that the button could not say before it was pressed — the
+	# Forge's "Upgrade 1 Loot" is only "Upgraded Cleave +1" once a piece is picked.
+	for line in ctx.get("did", []):
+		words.append(String(line))
 
 	# The gamble. Rolled AFTER the certain costs, because that is the order the
 	# player experiences: the acid burns whether or not there was a relic in there.

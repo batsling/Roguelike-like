@@ -121,6 +121,13 @@ var _chip: Button = null
 # still on the event's loot table, which the player can be moving while it is up.
 var _exit_button: Button = null
 var _backdrop_nodes: Array = []
+# A CHOICE THAT ASKS "WHICH" is under way: the Ominous Forge's Upgrade 1 Loot is
+# answered by clicking the piece in the pack (Overworld2.begin_owned_pick), the way
+# the Camp's Study is, and the pack is under this panel. So the panel steps aside —
+# no resume chip, since the pick's own banner is what is on screen — and comes back
+# when the pick is answered or backed out of. Nothing else on the event can be
+# pressed meanwhile.
+var _picking: bool = false
 
 
 func _init() -> void:
@@ -688,15 +695,68 @@ func _confirm_then_take(index: int) -> void:
 
 
 func _take(index: int) -> void:
-	if _done or index < 0 or index >= _event.choices.size():
+	if _done or _picking or index < 0 or index >= _event.choices.size():
 		return
 	var choice: Dictionary = _event.choices[index]
 	if not EventSystem.choice_available(choice, _picks):
 		return
+	if _begin_upgrade_pick(index, choice):
+		return
+	_resolve(index, {})
+
+
+# The Forge's "which": light the upgradeable pieces in the pack and wait for the
+# click. False when there is no pick to make here — no page that can run one (a
+# test, the panel opened bare) — and the choice then resolves straight away, its
+# handler rolling the piece instead (EffectSystem._h_upgrade_loot). Backing out of
+# the pick is backing out of the press: the event comes back with the choice unspent.
+func _begin_upgrade_pick(index: int, choice: Dictionary) -> bool:
+	var count: int = 0
+	for eff in choice.get("effects", []):
+		if eff is Dictionary and String(eff.get("type", "")) == "upgrade_loot" \
+				and String(eff.get("mode", "pick")) == "pick":
+			count += maxi(1, int(eff.get("value", 1)))
+	if count <= 0 or _host == null or not _host.has_method("begin_owned_pick"):
+		return false
+	var candidates: Array = LootUpgrade.upgradeable()
+	if candidates.is_empty():
+		return false
+	_step_aside(true)
+	var began: bool = _host.begin_owned_pick({"candidates": candidates, "count": count,
+		"exact": true, "verb": "upgrade", "on_cancel": func(): _step_aside(false)},
+		func(chosen: Array):
+			_step_aside(false)
+			_resolve(index, {"upgrade_chosen": chosen}))
+	if not began:
+		_step_aside(false)
+	return began
+
+
+func _step_aside(away: bool) -> void:
+	if _done or _picking == away:
+		return
+	_picking = away
+	_panel.visible = not away and not _hidden
+	for n in _backdrop_nodes:
+		if is_instance_valid(n):
+			(n as CanvasItem).visible = not away and not _hidden
+	mouse_filter = Control.MOUSE_FILTER_IGNORE if away or _hidden \
+		else Control.MOUSE_FILTER_STOP
+
+
+# Public so a test can answer the pick without a click.
+func is_picking() -> bool:
+	return _picking
+
+
+func _resolve(index: int, ctx: Dictionary) -> void:
+	if _done:
+		return
+	var choice: Dictionary = _event.choices[index]
 	var cid: String = String(choice.get("id", ""))
 	var taken: int = int(_picks.get(cid, 0))
 
-	var out: Dictionary = EventSystem.resolve_choice(_event, choice, taken)
+	var out: Dictionary = EventSystem.resolve_choice(_event, choice, taken, ctx)
 	_picks[cid] = taken + 1
 	_last_result = String(out.get("result", ""))
 	_last_text = String(out.get("text", ""))
@@ -836,7 +896,7 @@ func _rule() -> Control:
 # --- hide / show ------------------------------------------------------------
 
 func _hide_event() -> void:
-	if _done or _hidden:
+	if _done or _hidden or _picking:
 		return
 	_hidden = true
 	_panel.visible = false
@@ -869,7 +929,7 @@ func _hide_event() -> void:
 
 
 func _show_event() -> void:
-	if _done or not _hidden:
+	if _done or not _hidden or _picking:
 		return
 	_hidden = false
 	if _chip != null and is_instance_valid(_chip):
@@ -941,7 +1001,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	# stray key is not an answer. It PUTS IT AWAY instead, which is the thing the
 	# player actually wants when the board is still animating behind it. While
 	# hidden, Escape is none of this modal's business.
-	if _hidden:
+	if _hidden or _picking:
 		return
 	accept_event()
 	_hide_event()

@@ -111,6 +111,7 @@ func _register_defaults() -> void:
 	register("apply_tile", _h_apply_tile)
 	register("apply_unit", _h_apply_unit)
 	register("gain_item", _h_gain_item)
+	register("upgrade_loot", _h_upgrade_loot)
 	register("gain_item_per_rarity", _h_gain_item_per_rarity)
 	register("add_curse", _h_add_curse)
 	register("spawn_enemy", _h_spawn_enemy)
@@ -428,6 +429,32 @@ func _h_gain_item(effect: Dictionary, _ctx: Dictionary) -> void:
 		push_warning("EffectSystem.gain_item: no items2.0 item '%s'" % effect.get("item", ""))
 		return
 	GameState.add_item(template)
+
+# UPGRADE N LOOT (LootUpgrade; docs/loot-passives.md §19): +1 Stun on `value`
+# attacks or weapons, each. `mode` says which:
+#   pick    the player chose them (the Ominous Forge). The chosen entries come in
+#           `ctx.upgrade_chosen`; EventModal2 runs the pick in the pack before it
+#           resolves the choice. With nothing chosen (a test, a press with no page
+#           to pick on) it falls back to a random one, as the Camp's Study does.
+#   random  rolled from what is carried (Warped Tongs).
+# `lasts` is `run` or `game` (Warped Tongs' "for the rest of combat"). Nothing
+# upgradeable carried is nothing done.
+func _h_upgrade_loot(effect: Dictionary, ctx: Dictionary) -> void:
+	var count: int = maxi(1, int(effect.get("value", 1)))
+	var lasts: String = String(effect.get("lasts", LootUpgrade.LASTS_RUN))
+	var targets: Array = []
+	if String(effect.get("mode", "pick")) == "pick":
+		for c in ctx.get("upgrade_chosen", []):
+			if LootUpgrade.can_upgrade(c) and targets.size() < count:
+				targets.append(c)
+	var pool: Array = LootUpgrade.upgradeable()
+	while targets.size() < count and not pool.is_empty():
+		targets.append(pool[_rng.randi_range(0, pool.size() - 1)])
+	for entry in targets:
+		LootUpgrade.upgrade(entry, 1, lasts)
+		var line: String = LootUpgrade.did_line(entry, lasts)
+		GameLog.add(line + ".", UITheme.ACCENT)
+		_did(ctx, line)
 
 # Calling Bell: `count` items, ONE PER RARITY off the bottom of the ladder —
 # Common, then Uncommon, then Rare. Not `count` rolls: a rarity roll is 75%

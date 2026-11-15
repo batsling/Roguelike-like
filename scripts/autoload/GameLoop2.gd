@@ -2908,6 +2908,8 @@ func beat_game(clear_advertised: bool = false, fulfilled_instances: Array = [],
 	GameState.cards_used_this_game = 0
 	# …and Normality's count of usable actions (docs/loot-passives.md §18).
 	GameState.actions_this_game = 0
+	# …and Warped Tongs' upgrade, which was "for the rest of combat" (§19).
+	LootUpgrade.clear_game_bonuses()
 	# The tracker went with it: `res` already carries the count for the log, and the
 	# board must not keep counting a finished game's lost runs. The escape gate is
 	# the same kind of per-game fact and goes at the same moment — the swings above

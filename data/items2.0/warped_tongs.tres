@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=3 format=3 uid="uid://item_warped_tongs"]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+[ext_resource type="Texture2D" path="res://images2.0/items/WarpedTongs.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_item")
+id = &"warped_tongs"
+display_name = "Warped Tongs"
+kind = 1
+rarity = 0
+event = true
+description = "At the start of combat, Upgrade 1 random Loot for the rest of combat"
+triggers = [{"on": "game_selected", "effects": [{"type": "upgrade_loot", "value": 1, "mode": "random", "lasts": "game"}]}]
+stat_bonuses = {}
+max_uses = -1
+source_game = "Slay the Spire"
+tags = PackedStringArray("tool")
+image = ExtResource("2_img")

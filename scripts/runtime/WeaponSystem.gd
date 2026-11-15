@@ -6,7 +6,7 @@ extends RefCounted
 # off its own goal.
 #
 # THE PACK ENTRY is {type: "weapon", id, rarity, charges, uid, goal_game[, replays,
-# stun_bonus]}:
+# stun_bonus, stun_game]}:
 #   charges    how many it holds, 0..max_charges. A new weapon arrives EMPTY.
 #   uid        tells two copies of one weapon apart — each has its own goal row on
 #              the checklist, and each charges once per game.
@@ -14,8 +14,9 @@ extends RefCounted
 #              tick in the same game is refused whatever door it comes through.
 #   replays    Lightning Ring's count: each one is another strike per swing. Grows
 #              after every swing (`replay_gain`) and rides an evolution.
-#   stun_bonus Stun the piece has GAINED for the rest of the run (Scroll of Enchant
-#              Weapon), on top of its sheet's Stun. Rides an evolution.
+#   stun_bonus Stun the piece has GAINED for the rest of the run (an Upgrade —
+#              LootUpgrade), on top of its sheet's Stun. Rides an evolution.
+#   stun_game  the same for THIS game only (Warped Tongs); the report wipes it.
 #
 # HOW IT CHARGES. Ticking its goal while a game is in play is +1 Charge, at most
 # once per game (the checklist row is `any time`, keyed by `goal_key`, and locks
@@ -244,8 +245,11 @@ static func stun_parts(index: int) -> Array:
 	if w == null:
 		return []
 	var parts: Array = [{"from": w.display_name, "amount": w.stun}]
+	# UPGRADES (LootUpgrade): the run's, then this game's (Warped Tongs).
 	if stun_bonus_of(entry) > 0:
-		parts.append({"from": "Enchanted", "amount": stun_bonus_of(entry)})
+		parts.append({"from": "Upgraded", "amount": stun_bonus_of(entry)})
+	if LootUpgrade.game_bonus(entry) > 0:
+		parts.append({"from": "Upgraded this game", "amount": LootUpgrade.game_bonus(entry)})
 	# A KNOWN roll is part of the breakdown; a hidden one is not shown (stun_for
 	# still lays it).
 	if has_roll(entry) and roll_known(entry) and roll_of(entry) != 0:
@@ -307,7 +311,8 @@ static func retriggers_for(index: int) -> int:
 			n += int(aura.get("amount", 0))
 	return n
 
-# The Stun a weapon has gained for the run (Scroll of Enchant Weapon), 0 for none.
+# The Stun a weapon has gained for the run (an Upgrade: the Ominous Forge, Scroll of
+# Enchant Weapon — docs/loot-passives.md §19), 0 for none.
 static func stun_bonus_of(entry) -> int:
 	return maxi(0, int((entry as Dictionary).get("stun_bonus", 0))) if is_weapon(entry) else 0
 
@@ -322,7 +327,7 @@ static func stun_bonus_of(entry) -> int:
 # it is known — and can be negative: "Hero Sword -2". While it is hidden the name
 # says " +?" and this leaves the roll out.
 static func plus_of(entry) -> int:
-	return stun_bonus_of(entry) + (roll_of(entry) if roll_known(entry) else 0)
+	return LootUpgrade.bonus_of(entry) + (roll_of(entry) if roll_known(entry) else 0)
 
 # " +2" for an upgraded weapon, " -1" for a downgraded one, " +?" for one whose
 # roll is not known yet, and "" for any other piece.
@@ -719,6 +724,8 @@ static func evolve(index: int, evo: EvolutionData, chosen: Array) -> Dictionary:
 		grown["replays"] = replays_of(old)
 	if stun_bonus_of(old) > 0:
 		grown["stun_bonus"] = stun_bonus_of(old)
+	if LootUpgrade.game_bonus(old) > 0:
+		grown[LootUpgrade.GAME_KEY] = LootUpgrade.game_bonus(old)
 	# …and so does an unidentified weapon's roll, known or not, curse and all: an
 	# evolution is the same weapon grown, not a new find (docs/players-design.md §5).
 	grown.erase("roll")

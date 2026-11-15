@@ -78,8 +78,12 @@ TRIGGERS = ("after", "before")
 # `potions` is the pack too: bottles carried, whatever they turn out to be. It
 # is what Ranwid gates on — an event whose middle button is "hand over a potion"
 # should not stand on a node where there is no bottle to hand over.
+# `upgradeable` is the pack once more: attacks and weapons carried, what an
+# Upgrade could land on (LootUpgrade.gd). The Ominous Forge gates on it — the
+# owner chose to keep the whole event back rather than show a dead Forge button.
 GATE_STATS = ("hp", "max_hp", "gold", "games", "keys", "bombs", "bash", "dash",
-              "push", "transmute", "scramble", "shields", "relics", "potions")
+              "push", "transmute", "scramble", "shields", "relics", "potions",
+              "upgradeable")
 
 
 # --- the Requirement column -------------------------------------------------

@@ -11,6 +11,23 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The Ominous Forge and Warped Tongs, from Slay the Spire, and Upgrade (the
+  owner, 15 Nov 2026).** **Upgrade** is new: +1 Stun on an attack (a card tagged
+  `attack`) or a weapon, stacking with no cap. On an attack it raises every Stun
+  clause's own number before `per` multiplies it, so an upgraded Fiend Fire is
+  Stun 2 for each piece destroyed. It is kept on the pack entry (`stun_bonus`,
+  the key Scroll of Enchant Weapon already wrote), and an upgraded attack now
+  wears a "+1" the way a weapon does. The rule is `scripts/runtime/LootUpgrade.gd`
+  (`docs/loot-passives.md` §19). The **Ominous Forge** is a Rare event whose
+  prompt and results are Slay the Spire's own words. **Forge** upgrades 1 loot,
+  which you pick in the pack (Back returns to the event). **Rummage** gives
+  **Warped Tongs** and the Pain curse. **Leave** does nothing. The event is not
+  dealt until you carry an attack or a weapon (the new `upgradeable` Requirement
+  stat). Warped Tongs, an Event relic, upgrades one random attack or weapon at
+  the start of every game, for that game only. The new reward token is
+  `upgrade_loot [N] [pick|random] [run|game]`. A weapon's hover says
+  "Upgraded: +N Stun" where it said "Enchanted".
+
 - **Decay, Pain and Regret, from Slay the Spire (the owner, 14 Nov 2026), and
   Normality without the verbs.** **Decay** deals 1 damage at the end of every
   game, at the step Burn's bill lands, so the game's shields can still block it.

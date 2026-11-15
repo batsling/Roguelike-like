@@ -1575,7 +1575,8 @@ static func _passive_plate(text: String, tip: String) -> Control:
 	plate.tooltip_text = tip
 	return plate
 
-# AN UPGRADED WEAPON'S +X, on the art's top-LEFT corner (the owner, 11 Nov 2026).
+# AN UPGRADED WEAPON'S +X, on the art's top-LEFT corner (the owner, 11 Nov 2026) —
+# and an upgraded ATTACK's, which is the same rule (LootUpgrade).
 # The name says it too (LootSystem.display_name), but a tile's name is one clipped
 # line and "Lightning Ri…" loses exactly the two characters that matter. Top-left
 # because top-right is the food's progress and the bottom two are the charge's
@@ -1593,7 +1594,10 @@ static func _add_plus(on: Control, entry: Dictionary) -> void:
 		var n: int = WeaponSystem.plus_of(entry)
 		if n > 0:
 			chip = UITheme.chip("+%d" % n, PLUS_COLOR, UITheme.FONT_SMALL)
-			chip.tooltip_text = "Upgraded: +%d Stun for the rest of the run." % n
+			var this_game: int = LootUpgrade.game_bonus(entry)
+			chip.tooltip_text = "Upgraded: +%d Stun for the rest of the run." % (n - this_game) \
+				if this_game <= 0 else ("Upgraded: +%d Stun, %d of it for this game only."
+					% [n, this_game])
 		elif n < 0:
 			var cursed: bool = WeaponSystem.is_cursed(entry)
 			chip = UITheme.chip("-%d" % absi(n), UITheme.DANGER if cursed else UITheme.TEXT_DIM,

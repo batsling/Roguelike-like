@@ -631,15 +631,16 @@ wherever it lands.
   a Hero sword's aura is for *other* weapons;
 - `stun_per_food +N per=M` — **Stankus' Toothpick**: +1 for every 2 food pieces
   touching it (pieces, not kinds: two Garlics are two food);
-- `stun_bonus` on the piece itself — Stun it has GAINED for the run. **Scroll of
-  Enchant Weapon** (`enchant_weapon random 1`) gives a random weapon in the pack
-  +1; it moves, saves and evolves with the piece, and the hover says
-  "Enchanted: +1 Stun". **An upgraded weapon wears its +X**: its name everywhere
-  is "Sword +1" (`LootSystem.display_name`, through `WeaponSystem.plus_suffix`)
-  and its tile carries a "+1" chip on the art's top-left corner
-  (`LootGrid._add_plus`). `WeaponSystem.plus_of` is the one number both read, so
-  a new way to upgrade a weapon is added there. With no weapon carried, the scroll does nothing and stays
-  unread.
+- `stun_bonus` on the piece itself — Stun it has GAINED for the run, and
+  `stun_game` for this game only: an **Upgrade** (§19). **Scroll of Enchant
+  Weapon** (`enchant_weapon random 1`) gives a random weapon in the pack +1; it
+  moves, saves and evolves with the piece, and the hover says "Upgraded: +1
+  Stun". **An upgraded weapon wears its +X**: its name everywhere is "Sword +1"
+  (`LootSystem.display_name`, through `WeaponSystem.plus_suffix`) and its tile
+  carries a "+1" chip on the art's top-left corner (`LootGrid._add_plus`).
+  `WeaponSystem.plus_of` is the one number both read (it asks
+  `LootUpgrade.bonus_of`). With no weapon carried, the scroll does nothing and
+  stays unread.
 
 Under **Link Cable** (§15) every aura reaches every weapon in the pack, and the
 Toothpick counts every food piece.
@@ -887,3 +888,59 @@ Tests: `test/test_curse_cards.gd` covers the pack rules, `test_overworld2.gd`'s
 curse-card block covers the modal, and the sources are covered where they live
 (`test_events2`, `test_enemy_abilities`, `test_items2`, `test_pill_system`,
 `test_scroll_system2`).
+
+## 19. Upgrade — +1 Stun on an attack or a weapon
+
+The owner, 14 Nov 2026: *"Upgrading a card in this game should be Upgrade 1 Loot.
+At the moment that includes all attacks and all weapons. It gives a base +1 stun
+to them stacking indefinitely."* Slay the Spire's Upgrade, translated.
+
+- **Code:** `scripts/runtime/LootUpgrade.gd` is the rule — what can be upgraded
+  (`can_upgrade`), what is carried that could be (`upgradeable`), and how much a
+  piece has (`run_bonus`, `game_bonus`, `bonus_of`). Every reader asks it, so a
+  new kind becomes upgradeable by being answered there.
+- **What can be upgraded:** a **weapon**, and an **attack** — a card the `cards`
+  sheet tags `attack` (Bullseye, Cleave, Fiend Fire, Finisher, Pommel Strike,
+  Reaper). Both lay Stun on purpose.
+- **What it does:** +1 to the piece's **base** Stun, per upgrade, no cap. A
+  weapon's swing adds it to its sheet's Stun (`WeaponSystem.stun_parts`, "Upgraded"
+  in the breakdown). An attack adds it to **every `stun` clause's own number before
+  `per` multiplies it** (`CardSystem.play_card`): an upgraded Fiend Fire is Stun 2
+  for *each* piece destroyed, an upgraded Finisher Stun 2 per other card used —
+  the owner chose this over a flat +1 on top. Other clauses (Bullseye's Marked)
+  do not grow.
+- **Where it is kept:** on the pack entry. `stun_bonus` is for the run — the key
+  Scroll of Enchant Weapon already wrote, so the +X, the swing and an evolution
+  all read one number whichever door the upgrade came through. `stun_game` is for
+  this game only; the report erases it at the step it zeroes
+  `cards_used_this_game` (`LootUpgrade.clear_game_bonuses`), however the game
+  ended. Both ride a weapon's evolution and are saved with the pack.
+- **How it shows:** an upgraded attack wears its +X like a weapon — "Cleave +1"
+  face up, the "+1" chip on its tile, and "Upgraded: +1 Stun to each Stun it
+  applies." under its description. A this-game upgrade is in the same +X, and the
+  chip's tooltip says how much of it goes when the game ends.
+- **The token:** `upgrade_loot [N] [pick|random] [run|game]` — one parser
+  (`item_dsl._upgrade_loot`) shared by the reward DSL and the item DSL, handled by
+  `EffectSystem._h_upgrade_loot`. In an **event** it defaults to `pick`: the modal
+  steps aside (no resume chip), the page lights the upgradeable pieces in the pack
+  through `Overworld2.begin_owned_pick` (verb "upgrade"), and the click is the
+  choice; **Back** returns to the event with the button unspent. With no page that
+  can run a pick, the handler rolls one instead. On a **relic** it defaults to
+  `random`. The button reads "Upgrade 1 Loot"; the epilogue names the piece
+  ("Upgraded Cleave +1").
+- **The gate:** `upgradeable` joined the event Requirement stats — attacks and
+  weapons carried. The owner chose to hold a whole event back rather than show a
+  dead button when there is nothing to upgrade.
+
+| Source | Upgrades | Lasts |
+|---|---|---|
+| **Ominous Forge** (Rare event, Slay the Spire) — Forge | 1 piece the player picks | the run |
+| **Warped Tongs** (Event relic, from the Forge's Rummage) | 1 random piece at the start of every game | that game |
+| Scroll of Enchant Weapon | 1 random **weapon** | the run |
+
+Warped Tongs is Slay the Spire's "At the start of your turn, Upgrade a random card
+in your hand for the rest of combat", moved onto Anchor's hook (`game_selected`,
+"At the start of combat") because a game here is one combat. Its description:
+"At the start of combat, Upgrade 1 random Loot for the rest of combat".
+
+Tests: `test/test_loot_upgrade.gd`.

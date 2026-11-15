@@ -736,7 +736,7 @@ Everything about one lives in the **`events2.0` tab** of
 **Which event you get** is dealt from a **shuffle bag**, per rarity:
 
 - roll the rarity ladder (Luck rerolls it, like every other roll in the build),
-  falling down to the nearest stocked rung — today everything is Common;
+  falling down to the nearest stocked rung — today the Potion Lab and the Ominous Forge are Rare and every other event Common;
 - draw from the events of that rarity **not yet seen this run**. Opening one
   marks it seen whether or not you engaged with it;
 - when a rarity's bag empties it reshuffles, except that the event which just
@@ -820,6 +820,7 @@ Semicolon-separated tokens. It is the same reward DSL `statuses2.0` and
 | `trade_relic <slot>` | The Relic Trader's swap: one of your relics for one of his. Fills `<give>` / `<get>` in the choice's prose. |
 | `gain_random_item N` | N relics off the rollable pool, straight into the pack — not a chest opened a screen later. Prefers what you don't own, and fills `{ITEM}` with what it rolled. |
 | `lose_potion` / `lose_relic` / `lose_card [uncommon+]` | A price paid in **things**: one bottle, one tradeable relic, one card. Which one is rolled when the event opens and named on the button through the `<potion>` / `<relic>` / `<card>` holes, so the player knows what they are handing over before they press (Ranwid the Elder, We Meet Again!). |
+| `upgrade_loot [N] [pick\|random] [run\|game]` | **Upgrade** N loot: +1 Stun on an attack or a weapon (`docs/loot-passives.md` §19). In an event the player **picks** which, in the pack (the Ominous Forge); `random` rolls it; `game` makes it last this game only (Warped Tongs, on a relic, where it defaults to `random`). Nothing upgradeable carried is nothing done — gate the event with `upgradeable >= 1`. |
 | `obtain_item` | Pick **any** item in the catalogue. This is Wand of Wishing's picker (the WAND's, since the relic became one — `docs/wands-design.md` §5.2) — much stronger than a chest, use deliberately. |
 | `nothing` | An explicit no-op. Write it where a blank cell would read as unfinished. |
 
@@ -838,7 +839,8 @@ chance <p>% -> <reward>
   that costs a key is `needs keys 1; lose_stat keys 1; gain_chest medium 1`, with
   the gate and the charge written separately. Gate stats: `hp`, `max_hp`, `gold`,
   `games`, `keys`, `bombs`, `bash`, `dash`, `push`, `transmute`, `scramble`,
-  `shields`, `relics` (tradeable ones only) and `potions` (bottles carried).
+  `shields`, `relics` (tradeable ones only), `potions` (bottles carried) and
+  `upgradeable` (attacks and weapons carried — the Ominous Forge's gate).
 - **`add_goal`** bolts an objective onto the next *n* games, in the same
   honour-system voice enemy goals use. Pays if met, costs nothing if not.
 - **`add_curse`** hands over a **curse card** (`docs/loot-passives.md` §18): it

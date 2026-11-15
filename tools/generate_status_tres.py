@@ -733,6 +733,18 @@ def parse_reward_clause(clause):
     if verb == "obtain_item":
         return {"type": "obtain_item"}, "+1 Item"
 
+    # UPGRADE N LOOT (LootUpgrade.gd, docs/loot-passives.md §19): +1 Stun on N
+    # attacks or weapons. In an event or an object the player PICKS which (the
+    # Ominous Forge); `random` rolls it, `game` makes it last this game only.
+    if verb == "upgrade_loot":
+        import item_dsl  # the one parser of the token, shared with items2.0
+        eff = item_dsl._upgrade_loot(rest, "pick", clause)
+        n = eff["value"]
+        word = "Upgrade %d %sLoot" % (n, "random " if eff["mode"] == "random" else "")
+        if eff["lasts"] == "game":
+            word += " for this game"
+        return eff, word
+
     # A NAMED items2.0 relic, handed straight over. The one reward verb that says
     # WHICH item, for the events built around a specific one (Golden Idol).
     if verb == "gain_item":

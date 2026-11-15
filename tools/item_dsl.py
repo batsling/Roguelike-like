@@ -327,6 +327,27 @@ def _kv(tokens):
 # effect-payload parsing
 # --------------------------------------------------------------------------
 
+def _upgrade_loot(args, default_mode, raw):
+    """`upgrade_loot` in either grammar -> {type, value, mode, lasts}. Shared with
+    the reward DSL (generate_status_tres.py), so an event and a relic that upgrade
+    write the same effect."""
+    value, mode, lasts = 1, default_mode, "run"
+    for tok in args:
+        low = tok.lower()
+        if re.fullmatch(r"\d+", low):
+            value = int(low)
+        elif low in ("random", "pick"):
+            mode = low
+        elif low in ("game", "run"):
+            lasts = low
+        else:
+            raise ValueError("upgrade_loot: unknown word %r in %r (want a count, "
+                             "random|pick, game|run)" % (tok, raw))
+    if value < 1:
+        raise ValueError("upgrade_loot: count must be 1 or more in %r" % raw)
+    return {"type": "upgrade_loot", "value": value, "mode": mode, "lasts": lasts}
+
+
 def parse_one_effect(raw, default_target="enemy", in_grant=False):
     """Parse a single payload effect (already comma-split) -> dict or None.
     Returns ('boost', {...}) when the effect should land in a card_grant's
@@ -572,6 +593,12 @@ def parse_one_effect(raw, default_target="enemy", in_grant=False):
     if verb == "gain_item":
         rest, _ = _kv(toks[1:])
         return {"type": "gain_item", "item": rest[0].lower() if rest else ""}
+    # upgrade_loot [N] [random|pick] [game] — UPGRADE N LOOT (LootUpgrade.gd,
+    # docs/loot-passives.md §19): +1 Stun on N attacks or weapons. A relic has no
+    # moment to ask which, so it is `random` here unless it says otherwise; `game`
+    # is Warped Tongs' "for the rest of combat", gone when the game ends.
+    if verb == "upgrade_loot":
+        return _upgrade_loot(toks[1:], "random", raw)
     # gain_item_per_rarity N — Calling Bell: N items, one off each rung of the
     # ladder from the bottom (Common, Uncommon, Rare), NOT N rarity rolls.
     if verb == "gain_item_per_rarity":
