@@ -9916,6 +9916,42 @@ func test_a_piece_put_down_is_off_the_player_and_not_destroyed() -> void:
 	_ui.take_floor_loot(_ui._floor_loot(GameLoop2.drop_at(cell)), 0, cell)
 	assert_eq(GameState.loot_items.size(), 1, "it can be picked back up")
 
+# LET GO ANYWHERE OUTSIDE THE PACK, IT GOES ON THE GROUND (the owner, 15 Nov 2026),
+# the Action start's weapon included — a big piece, which is the case asked about.
+func test_a_weapon_dragged_out_of_the_pack_and_let_go_lands_on_the_ground() -> void:
+	_pick_solo(0)
+	GameState.loot_items.clear()
+	GameLoop2.drops.clear()
+	var w: Dictionary = GameState.add_weapon_loot(Data.all_weapons()[0].id)
+	var index: int = GameState.loot_items.find(w)
+	assert_gt(index, -1, "the weapon is carried")
+	# Let go off every pack and off the board's squares: the top-left of the screen.
+	_ui.release_pack_drag({"kind": "loot_move", "index": index, "from": 0}, Vector2(2, 2))
+	assert_false(GameState.loot_items.any(func(e): return is_same(e, w)), "out of the pack")
+	var landed: bool = false
+	for cell in GameLoop2.drop_cells():
+		landed = landed or String((GameLoop2.drop_at(cell)["loot"] as Dictionary).get("id", "")) \
+			== String(w["id"])
+	assert_true(landed, "and lying on the ground")
+
+func test_a_piece_let_go_over_the_pack_stays_in_it() -> void:
+	_pick_solo(0)
+	GameState.loot_items.clear()
+	GameState.take_loot_entry({"type": "scroll", "id": "keep", "rarity": "Common"})
+	_ui._loot_window.open = true
+	_ui.refresh_loot_window()
+	await wait_frames(2)
+	var grid: Control = null
+	for g in _ui.find_children("*", "LootGrid", true, false):
+		if (g as Control).is_visible_in_tree():
+			grid = g
+	if grid == null:
+		pending("no pack grid on screen")
+		return
+	_ui.release_pack_drag({"kind": "loot_move", "index": 0, "from": 0},
+		grid.get_global_rect().get_center())
+	assert_eq(GameState.loot_items.size(), 1, "a missed swap is not a throw-away")
+
 func test_the_board_takes_only_a_pack_piece_on_bare_ground() -> void:
 	_pick_solo(0)
 	var board: BattlefieldView = _ui._board

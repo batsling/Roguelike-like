@@ -263,11 +263,20 @@ func clear_floor() -> void:
 # passive, neighbour rule or count reads it — and it is NOT destroyed: it is not on
 # the destroyed pile and Trading Card does not pay for it. It lies there like a
 # kill's drop, can be picked back up, and goes when the next game clears the floor.
-func put_down(index: int, cell: Vector2i) -> void:
+#
+# `anywhere`: a piece dragged OUT of the pack and let go somewhere that is not a
+# free square (the owner, 15 Nov 2026: "if the player drags loot out of the
+# inventory then make sure it goes on the ground"). It lands on `cell` when that is
+# bare, else on the nearest bare square to it (`place_drop`), else nowhere.
+func put_down(index: int, cell: Vector2i, anywhere: bool = false) -> void:
 	if GameLoop2.run_over or index < 0 or index >= GameState.loot_items.size():
 		return
 	if not BattlefieldView.is_free_floor(cell):
-		return
+		if not anywhere:
+			return
+		if cell == GameLoop2.OFF_FIELD:
+			@warning_ignore("integer_division")
+			cell = Vector2i(1, GameLoop2.grid_rows() / 2)
 	var entry = GameState.loot_items[index]
 	if not (entry is Dictionary) or (entry as Dictionary).is_empty():
 		return

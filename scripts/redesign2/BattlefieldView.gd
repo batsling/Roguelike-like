@@ -2550,6 +2550,12 @@ func cell_at(at: Vector2) -> Vector2i:
 		return GameLoop2.OFF_FIELD
 	return Vector2i(col, row)
 
+# The square under a VIEWPORT point (a mouse position), or OFF_FIELD.
+func cell_at_screen(at: Vector2) -> Vector2i:
+	if _field == null or not is_instance_valid(_field):
+		return GameLoop2.OFF_FIELD
+	return cell_at(_field.get_global_transform_with_canvas().affine_inverse() * at)
+
 # Whether `cell` is bare ground a piece can be put down on: on the grid, with no
 # body standing in it, no unit on it and nothing already lying there.
 static func is_free_floor(cell: Vector2i) -> bool:

@@ -7554,6 +7554,13 @@ func refresh_board() -> void:
 # Only for a piece off the FLOOR. Dragging inside the loot window or the drop
 # modal already has a pack in front of it, and a second one arriving beside the
 # board would be the page answering a question nobody asked.
+#
+# …AND A PIECE OUT OF THE PACK THAT LANDS NOWHERE GOES ON THE GROUND (the owner,
+# 15 Nov 2026). The drag's payload is held from its start, since it is gone by its
+# end; a drag that no drop target took (`gui_is_drag_successful`) and that was let
+# go outside every pack grid is put down (`release_pack_drag`).
+var _pack_drag: Dictionary = {}
+
 func _notification(what: int) -> void:
 	if _drops == null:
 		return
@@ -7562,8 +7569,33 @@ func _notification(what: int) -> void:
 			var data = get_viewport().gui_get_drag_data() if get_viewport() != null else null
 			if data is Dictionary and (data as Dictionary).has("floor"):
 				_drops.mount_drag_pack()
+			_pack_drag = (data as Dictionary).duplicate() if data is Dictionary \
+				and String(data.get("kind", "")) == "loot_move" else {}
 		NOTIFICATION_DRAG_END:
 			_drops.unmount_drag_pack()
+			var held: Dictionary = _pack_drag
+			_pack_drag = {}
+			if not held.is_empty() and get_viewport() != null \
+					and not get_viewport().gui_is_drag_successful():
+				release_pack_drag(held, get_viewport().get_mouse_position())
+
+# A pack piece's drag let go at `at` (viewport coordinates) with no drop target
+# taking it: onto the ground, unless it was let go over a pack (a missed swap is
+# not a throw-away), or the page is not where the board is — a drop screen, the
+# haul screen, the run over, a throw being aimed. Public so a test can drive it.
+func release_pack_drag(data: Dictionary, at: Vector2) -> void:
+	var index: int = int(data.get("index", -1))
+	if index < 0 or _board == null or not is_instance_valid(_board) or GameLoop2.run_over:
+		return
+	if (_drop_modal != null and is_instance_valid(_drop_modal)) \
+			or (_post_screen != null and is_instance_valid(_post_screen)) or _board.is_aiming():
+		return
+	for g in find_children("*", "LootGrid", true, false):
+		if (g as Control).is_visible_in_tree() and (g as Control).get_global_rect().grow(8).has_point(at):
+			return
+	if index >= GameState.loot_items.size() or not GameState.can_leave_pack(GameState.loot_items[index]):
+		return
+	_drops.put_down(index, _board.cell_at_screen(at), true)
 
 # --- forwards into the queue -----------------------------------------------
 
