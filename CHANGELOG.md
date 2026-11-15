@@ -11,6 +11,21 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Old Beggar, from Slay the Spire (the owner, 15 Nov 2026).** A Common event
+  at every difficulty, with Slay the Spire's own prose. **Offer Gold** costs 6
+  Gold. Instead of removing a card, the beggar takes away **one non-boss enemy**,
+  which the player picks on the board. It simply stops following you: no defeat,
+  no gold, no drop, and its goal leaves the checklist. **Back** returns you to
+  the event with nothing paid. **Leave** does nothing. The event isn't dealt
+  without 6 Gold and a non-boss enemy on the board.
+  - **New for authoring:** the `remove_enemy` token and the `enemies`
+    Requirement stat.
+  - **Event picks are now one flow:** a button that asks "which" runs its pick
+    where the things are, in the pack for the Forge or on the board for the
+    Beggar. While the pick is open, the whole event layer steps aside.
+  - **Board picks can be backed out of:** `begin_board_pick` now honours a Back
+    (`on_cancel`) the way the pack pick does.
+
 - **Forgotten Altar and Bloody Idol, from Slay the Spire (the owner, 15 Nov
   2026).** The first **Uncommon** event, dealt only at **High** difficulty and
   above, whether or not the Golden Idol has turned up. (It first shipped gated on

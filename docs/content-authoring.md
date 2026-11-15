@@ -816,6 +816,7 @@ Semicolon-separated tokens. It is the same reward DSL `statuses2.0` and
 | `apply_unit <unit> …` | The same, for a `units2.0` UNIT (§17). `target=random_empty` puts it on a cell with nothing on it at all — no body, no unit, no tile effect (Landmines). |
 | `random_item_choice N` | Pick 1 of N random items. |
 | `gain_item <item_id>` | A **named** `items2.0` relic, handed straight over — the one token that says *which* item. The generator checks the id against the sheet. |
+| `remove_enemy [N] [pick\|random]` | N **non-boss** enemies stop following you: off the board with no defeat, no gold, no drop and no `enemy_killed` (`GameLoop2.despawn`); its goal leaves the checklist with it. In an event the player **picks** which on the board, with a Back that returns to the event unpaid (the Old Beggar); `random` rolls. Gate the event with `enemies >= 1`. |
 | `lose_item <item_id>` | The other half: that named relic taken off you (the Forgotten Altar takes the Golden Idol). Pair it with `needs item <item_id>`. |
 | `spawn_enemy [N] [tag=<t>]` | Conjures N enemies at the run's current difficulty onto the following stack. `tag=` narrows the roll to the goal-enemies carrying that synergy tag (`spawn_enemy tag=robot 1` — Punch Off's Constructs); the generator checks the tag against the `enemies` sheet's Tag column, and a tagged roll widens by difficulty rather than dropping the tag. |
 | `trade_relic <slot>` | The Relic Trader's swap: one of your relics for one of his. Fills `<give>` / `<get>` in the choice's prose. |
@@ -841,8 +842,9 @@ chance <p>% -> <reward>
   that costs a key is `needs keys 1; lose_stat keys 1; gain_chest medium 1`, with
   the gate and the charge written separately. Gate stats: `hp`, `max_hp`, `gold`,
   `games`, `keys`, `bombs`, `bash`, `dash`, `push`, `transmute`, `scramble`,
-  `shields`, `relics` (tradeable ones only), `potions` (bottles carried) and
-  `upgradeable` (attacks and weapons carried — the Ominous Forge's gate).
+  `shields`, `relics` (tradeable ones only), `potions` (bottles carried),
+  `upgradeable` (attacks and weapons carried — the Ominous Forge's gate) and
+  `enemies` (non-boss bodies on the board — the Old Beggar's).
 - **`add_goal`** bolts an objective onto the next *n* games, in the same
   honour-system voice enemy goals use. Pays if met, costs nothing if not.
 - **`add_curse`** hands over a **curse card** (`docs/loot-passives.md` §18): it

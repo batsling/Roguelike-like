@@ -1,5 +1,7 @@
 extends GutTest
 
+const Fixtures := preload("res://test/helpers/fixtures.gd")
+
 # Events 2.0 (docs/event-sheet-authoring.md) — the payoff for walking into a
 # corner of the map, and the two kinds of objective it can leave behind.
 #
@@ -2200,3 +2202,107 @@ func test_the_bloody_idol_heals_one_per_gold_gain_and_pays_no_gold() -> void:
 	GameState.hp = 3
 	GameState.change_gold(3)
 	assert_eq(GameState.hp, 4, "one gain, one Health, whatever the amount")
+
+
+# --- Old Beggar (Slay the Spire) --------------------------------------------
+#
+# The owner, 15 Nov 2026: 6 Gold, and he takes away a NON-BOSS ENEMY of your
+# choosing instead of a card. It simply stops following — no defeat, no gold, no
+# drop. Common, all tiers; not dealt without 6 Gold and a non-boss enemy.
+
+const BEGGAR := &"old_beggar"
+
+func _boss_body() -> int:
+	var inst: int = Fixtures.body(Vector2i(2, 0))
+	var boss: GoalEnemyData = (GameLoop2.entry_for(inst)["enemy"] as GoalEnemyData).duplicate()
+	boss.boss = true
+	GameLoop2.entry_for(inst)["enemy"] = boss
+	return inst
+
+func test_the_beggar_is_slay_the_spires_own_words() -> void:
+	var ev: EventData2 = _event(BEGGAR)
+	assert_eq(ev.prompt, "An old beggar cloaked in fur reaches his hands out towards "
+		+ "you as you pass. \"Spare some coin, child?\"")
+	assert_eq(ev.choices.map(func(c): return String(c.get("text", ""))),
+		["Offer Gold", "Leave"])
+	assert_eq(String(_choice(ev, "offer_gold")["results"][0]), "The beggar takes off "
+		+ "its cloak to reveal that he is Cleric! \"You are a kind soul. Receive my "
+		+ "purification!\" he screams. You are unsure if he is grateful or mad.")
+	assert_eq(String(_choice(ev, "leave")["results"][0]), "The beggar looks to the "
+		+ "floor as you pass. \"You will never make a difference... You never do.\"")
+	assert_eq(ev.rarity, "Common")
+	assert_eq(EventSystem.describe_choice(_choice(ev, "offer_gold"), 0),
+		"-6 Gold, Remove 1 non-boss enemy")
+
+func test_the_beggar_needs_six_gold_and_a_non_boss_enemy() -> void:
+	var ev: EventData2 = _event(BEGGAR)
+	GameLoop2.stack.clear()
+	GameState.gold = 6
+	assert_false(EventSystem.requirement_met(ev), "nobody following")
+	_boss_body()
+	assert_false(EventSystem.requirement_met(ev), "a boss is not his to take")
+	Fixtures.body(Vector2i(1, 0))
+	assert_true(EventSystem.requirement_met(ev))
+	GameState.gold = 5
+	assert_false(EventSystem.requirement_met(ev), "and 6 Gold")
+
+func test_offering_gold_removes_the_enemy_the_player_picks() -> void:
+	var ev: EventData2 = _event(BEGGAR)
+	GameLoop2.stack.clear()
+	GameState.gold = 8
+	var boss: int = _boss_body()
+	var a: int = Fixtures.body(Vector2i(1, 0))
+	var b: int = Fixtures.body(Vector2i(1, 1))
+	var host := BoardHost.new()
+	add_child_autofree(host)
+	var modal: EventModal2 = EventModal2.open(host, ev)
+	modal.take(0)
+	assert_true(modal.is_picking(), "the event steps aside for the board")
+	assert_eq(host.cfg.get("candidates"), [a, b], "every non-boss body, and not the boss")
+	assert_eq(String(host.cfg.get("verb", "")), "remove")
+	assert_eq(GameState.gold, 8, "nothing is paid until the pick is answered")
+	watch_signals(TriggerBus)
+	host.on_done.call([b])
+	assert_false(modal.is_picking())
+	assert_eq(GameState.gold, 2, "6 Gold")
+	assert_true(GameLoop2.entry_for(b).is_empty(), "the one picked stopped following")
+	assert_false(GameLoop2.entry_for(a).is_empty(), "and only it")
+	assert_false(GameLoop2.entry_for(boss).is_empty())
+	assert_signal_not_emitted(TriggerBus, "enemy_killed", "it was not defeated")
+	modal.dismiss()
+
+func test_backing_out_of_the_beggars_pick_costs_nothing() -> void:
+	var ev: EventData2 = _event(BEGGAR)
+	GameLoop2.stack.clear()
+	GameState.gold = 6
+	var a: int = Fixtures.body(Vector2i(1, 0))
+	var host := BoardHost.new()
+	add_child_autofree(host)
+	var modal: EventModal2 = EventModal2.open(host, ev)
+	modal.take(0)
+	(host.cfg["on_cancel"] as Callable).call()
+	assert_false(modal.is_picking(), "the event is back")
+	assert_eq(GameState.gold, 6)
+	assert_false(GameLoop2.entry_for(a).is_empty())
+	modal.dismiss()
+
+func test_the_beggar_with_no_board_to_pick_on_removes_one_anyway() -> void:
+	var ev: EventData2 = _event(BEGGAR)
+	GameLoop2.stack.clear()
+	GameState.gold = 6
+	_boss_body()
+	var a: int = Fixtures.body(Vector2i(1, 0))
+	var out: Dictionary = EventSystem.resolve_choice(ev, _choice(ev, "offer_gold"), 0)
+	assert_true(GameLoop2.entry_for(a).is_empty(), "the only non-boss body")
+	assert_eq(GameLoop2.stack.size(), 1, "the boss stays")
+	assert_string_contains(String(out["text"]), "stopped following you")
+
+
+# Stands in for the overworld's board: takes the pick and hands it back.
+class BoardHost extends Node:
+	var cfg: Dictionary = {}
+	var on_done: Callable = Callable()
+	func begin_board_pick(c: Dictionary, d: Callable) -> bool:
+		cfg = c
+		on_done = d
+		return true

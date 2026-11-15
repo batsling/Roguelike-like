@@ -121,12 +121,11 @@ var _chip: Button = null
 # still on the event's loot table, which the player can be moving while it is up.
 var _exit_button: Button = null
 var _backdrop_nodes: Array = []
-# A CHOICE THAT ASKS "WHICH" is under way: the Ominous Forge's Upgrade 1 Loot is
-# answered by clicking the piece in the pack (Overworld2.begin_owned_pick), the way
-# the Camp's Study is, and the pack is under this panel. So the panel steps aside —
-# no resume chip, since the pick's own banner is what is on screen — and comes back
-# when the pick is answered or backed out of. Nothing else on the event can be
-# pressed meanwhile.
+# A CHOICE THAT ASKS "WHICH" is under way (_begin_pick): the Ominous Forge's
+# Upgrade 1 Loot is answered in the pack, the Old Beggar's Offer Gold on the board,
+# and both are under this panel. So the event steps aside — no resume chip, since
+# the pick's own banner is what is on screen — and comes back when the pick is
+# answered or backed out of. Nothing else on the event can be pressed meanwhile.
 var _picking: bool = false
 
 
@@ -733,48 +732,67 @@ func _take(index: int) -> void:
 	var choice: Dictionary = _event.choices[index]
 	if not EventSystem.choice_available(choice, _picks):
 		return
-	if _begin_upgrade_pick(index, choice):
+	if _begin_pick(index, choice):
 		return
 	_resolve(index, {})
 
 
-# The Forge's "which": light the upgradeable pieces in the pack and wait for the
-# click. False when there is no pick to make here — no page that can run one (a
-# test, the panel opened bare) — and the choice then resolves straight away, its
-# handler rolling the piece instead (EffectSystem._h_upgrade_loot). Backing out of
-# the pick is backing out of the press: the event comes back with the choice unspent.
-func _begin_upgrade_pick(index: int, choice: Dictionary) -> bool:
+# A CHOICE THAT ASKS "WHICH", answered by a click where the things are rather than
+# in this panel: the Ominous Forge's `upgrade_loot` picks a piece in the PACK
+# (Overworld2.begin_owned_pick), the Old Beggar's `remove_enemy` a body on the
+# BOARD (begin_board_pick). The event steps aside while it is answered. False when
+# there is no pick to make here — no page that can run one (a test, the panel
+# opened bare) — and the choice then resolves at once, its handler rolling instead.
+# Backing out of the pick is backing out of the press: the event comes back with
+# the choice unspent and nothing paid.
+const PICKS := {
+	"upgrade_loot": {"opener": "begin_owned_pick", "answer": "upgrade_chosen",
+		"cfg": {"verb": "upgrade"}},
+	"remove_enemy": {"opener": "begin_board_pick", "answer": "remove_chosen",
+		"cfg": {"verb": "remove", "noun": "enemy", "nouns": "enemies",
+			"where": "on the board"}},
+}
+
+func _begin_pick(index: int, choice: Dictionary) -> bool:
+	var kind: String = ""
 	var count: int = 0
 	for eff in choice.get("effects", []):
-		if eff is Dictionary and String(eff.get("type", "")) == "upgrade_loot" \
-				and String(eff.get("mode", "pick")) == "pick":
+		var type: String = String((eff as Dictionary).get("type", "")) if eff is Dictionary else ""
+		if PICKS.has(type) and String(eff.get("mode", "pick")) == "pick":
+			kind = type
 			count += maxi(1, int(eff.get("value", 1)))
-	if count <= 0 or _host == null or not _host.has_method("begin_owned_pick"):
+	if kind == "":
 		return false
-	var candidates: Array = LootUpgrade.upgradeable()
+	var spec: Dictionary = PICKS[kind]
+	if _host == null or not _host.has_method(String(spec["opener"])):
+		return false
+	var candidates: Array = LootUpgrade.upgradeable() if kind == "upgrade_loot" \
+		else GameLoop2.non_boss_instances()
 	if candidates.is_empty():
 		return false
+	var cfg: Dictionary = (spec["cfg"] as Dictionary).duplicate()
+	cfg["candidates"] = candidates
+	cfg["count"] = count
+	cfg["exact"] = true
+	cfg["on_cancel"] = func(): _step_aside(false)
 	_step_aside(true)
-	var began: bool = _host.begin_owned_pick({"candidates": candidates, "count": count,
-		"exact": true, "verb": "upgrade", "on_cancel": func(): _step_aside(false)},
-		func(chosen: Array):
-			_step_aside(false)
-			_resolve(index, {"upgrade_chosen": chosen}))
+	var began: bool = _host.call(String(spec["opener"]), cfg, func(chosen: Array):
+		_step_aside(false)
+		_resolve(index, {String(spec["answer"]): chosen}))
 	if not began:
 		_step_aside(false)
 	return began
 
 
+# The WHOLE layer goes, not just the panel: the board treats a visible layer over
+# it as covering it (Overworld2._covering_layers) and would hide the event behind a
+# peek bar of its own.
 func _step_aside(away: bool) -> void:
 	if _done or _picking == away:
 		return
 	_picking = away
-	_panel.visible = not away and not _hidden
-	for n in _backdrop_nodes:
-		if is_instance_valid(n):
-			(n as CanvasItem).visible = not away and not _hidden
-	mouse_filter = Control.MOUSE_FILTER_IGNORE if away or _hidden \
-		else Control.MOUSE_FILTER_STOP
+	if _layer != null and is_instance_valid(_layer):
+		_layer.visible = not away
 
 
 # Public so a test can answer the pick without a click.

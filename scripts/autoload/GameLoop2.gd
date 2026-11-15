@@ -5716,6 +5716,18 @@ func despawn(instance: int) -> bool:
 	loop_changed.emit()
 	return true
 
+# Every body on the board that is NOT a boss, by instance — what the Old Beggar
+# can purify away (his `remove_enemy`, which `despawn`s it) and what his event's
+# `enemies` Requirement counts. A boss is never on offer: it is the run's wall,
+# not a follower to be talked out of following.
+func non_boss_instances() -> Array:
+	var out: Array = []
+	for entry in stack:
+		var enemy = entry.get("enemy")
+		if enemy is GoalEnemyData and not (enemy as GoalEnemyData).is_boss():
+			out.append(int(entry["instance"]))
+	return out
+
 # Take the body at `idx` off the board. THE ONE WAY a body leaves `stack`, because
 # `arrivals` holds handles into it (§7.2) and a removal that doesn't drop them
 # leaves a Scramble chasing a body that is not on the field.

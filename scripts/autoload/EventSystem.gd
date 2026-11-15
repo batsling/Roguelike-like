@@ -141,6 +141,8 @@ const GATE_STAT_NAMES := {
 	"potions": "Potions",
 	# …and what an Upgrade could land on: attacks and weapons (LootUpgrade).
 	"upgradeable": "Upgradeable Loot",
+	# The board: bodies following you that are not bosses (the Old Beggar).
+	"enemies": "Non-boss Enemies",
 }
 
 # The same names for ONE of the thing — "Needs 1 Bomb", not "Needs 1 Bombs". Only
@@ -148,7 +150,7 @@ const GATE_STAT_NAMES := {
 const GATE_STAT_ONE := {
 	"games": "Game played", "keys": "Key", "bombs": "Bomb",
 	"shields": "Temporary Shield", "bonus_shields": "Shield",
-	"relics": "Tradeable Relic", "potions": "Potion",
+	"relics": "Tradeable Relic", "potions": "Potion", "enemies": "Non-boss Enemy",
 }
 
 # A gated resource's name for `n` of it.
@@ -682,6 +684,9 @@ func _run_stat(stat: String) -> int:
 		# Forge has nothing to do without one (the owner, 14 Nov 2026: gate the
 		# whole event rather than grey the button).
 		"upgradeable": return LootUpgrade.upgradeable().size()
+		# Non-boss bodies on the board — what the Old Beggar gates on, since the
+		# one thing he does is take one of them away.
+		"enemies": return GameLoop2.non_boss_instances().size()
 		_: return -1
 
 

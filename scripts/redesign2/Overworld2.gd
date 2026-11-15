@@ -5111,6 +5111,17 @@ func begin_board_pick(cfg: Dictionary, on_done: Callable) -> bool:
 	# Nothing else is armed while the board is answering.
 	_board.disarm()
 	var pick: Node = load(OWNED_PICK_SCRIPT).new()
+	# A pick that may be backed out of (cfg.on_cancel — the Old Beggar's) puts the
+	# board back the way an answered one does before the opener hears about it.
+	var on_cancel: Callable = cfg.get("on_cancel", Callable())
+	if on_cancel.is_valid():
+		cfg = cfg.duplicate()
+		cfg["on_cancel"] = func():
+			_owned_pick = null
+			if _board != null and is_instance_valid(_board):
+				_board.end_body_pick()
+			on_cancel.call()
+			_refresh()
 	pick.setup(cfg)
 	pick.on_change = func():
 		if _board != null and is_instance_valid(_board):

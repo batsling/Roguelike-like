@@ -81,9 +81,11 @@ TRIGGERS = ("after", "before")
 # `upgradeable` is the pack once more: attacks and weapons carried, what an
 # Upgrade could land on (LootUpgrade.gd). The Ominous Forge gates on it — the
 # owner chose to keep the whole event back rather than show a dead Forge button.
+# `enemies` is the board: bodies following you that are not bosses — what the Old
+# Beggar gates on, since taking one away is all he does.
 GATE_STATS = ("hp", "max_hp", "gold", "games", "keys", "bombs", "bash", "dash",
               "push", "transmute", "scramble", "shields", "relics", "potions",
-              "upgradeable")
+              "upgradeable", "enemies")
 
 
 # --- the Requirement column -------------------------------------------------

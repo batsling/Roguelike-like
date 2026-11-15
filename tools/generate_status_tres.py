@@ -753,6 +753,27 @@ def parse_reward_clause(clause):
         iid = rest[0].strip().lower()
         return {"type": "gain_item", "item": iid}, "+%s" % _title(iid)
 
+    # REMOVE N NON-BOSS ENEMIES (the Old Beggar): each simply stops following —
+    # no defeat, no gold, no drop (EffectSystem._h_remove_enemy). In an event the
+    # player PICKS which on the board; `random` rolls them.
+    if verb == "remove_enemy":
+        n, mode = 1, "pick"
+        for tok in rest:
+            low = tok.lower()
+            if re.fullmatch(r"\d+", low):
+                n = int(low)
+            elif low in ("pick", "random"):
+                mode = low
+            else:
+                raise ValueError("reward DSL: remove_enemy takes a count and "
+                                 "pick|random, not %r in %r" % (tok, clause))
+        if n < 1:
+            raise ValueError("reward DSL: remove_enemy count must be 1 or more in %r"
+                             % clause)
+        word = "Remove %d %snon-boss %s" % (n, "random " if mode == "random" else "",
+                                           "enemy" if n == 1 else "enemies")
+        return {"type": "remove_enemy", "value": n, "mode": mode}, word
+
     # `gain_item`'s other half: a NAMED relic taken off you — the Forgotten Altar
     # wants the Golden Idol and nothing else. Pair it with `needs item <id>` so the
     # button is only pressable while the relic is carried.
