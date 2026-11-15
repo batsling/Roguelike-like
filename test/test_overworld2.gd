@@ -3225,18 +3225,67 @@ func test_scare_monster_is_aimed_by_clicking_bodies_on_the_board() -> void:
 	if is_instance_valid(modal):
 		modal._finish()
 
-func test_under_the_drop_screen_the_pick_stays_in_the_use_screen() -> void:
+# UNDER A DROP SCREEN THE PICK IS MADE IN THAT SCREEN'S PACK (the owner, 15 Nov
+# 2026: Identify read on the "You are cursed" screen "had its own thing" rather
+# than the pack's selection). The page's loot window is under the drop screen, so
+# the drop screen's own 3x3 lights up and takes the click.
+func _drop_slot_for(drop: Node, entry: Dictionary) -> LootSlot:
+	for n in drop.find_children("*", "LootSlot", true, false):
+		var slot := n as LootSlot
+		if slot.visible and slot.slot_index >= 0 and is_same(slot.entry, entry):
+			return slot
+	return null
+
+func test_under_the_drop_screen_the_pick_is_made_in_its_pack() -> void:
 	GameState.loot_items.clear()
 	for i in range(2):
 		GameState.add_pill_loot(&"luck_up")
+	var target: Dictionary = GameState.loot_items[1]
 	var drop := LootDropModal.open(_ui, {"type": "scroll", "id": &"scroll_of_fire"})
 	_ui._drop_modal = drop
 	await wait_frames(2)
 	var modal: Node = await _use_modal_asking({"kind": "destroy_loot", "count": 1,
-		"candidates": [GameState.loot_items[1]]})
-	assert_null(_ui.owned_pick(), "the drop owns the screen, so the pack is not asked")
-	assert_true(modal.visible, "and the use screen asks in its own grid")
-	modal._finish()
+		"candidates": [target]})
+	assert_not_null(_ui.owned_pick(), "the pack is asked")
+	assert_false(modal.visible, "the use screen gets out of the way")
+	assert_eq(drop._grid.pick, _ui.owned_pick(), "in the drop screen's own pack")
+	assert_gt(_ui.owned_pick().layer, UITheme.Layer.DROP, "its banner over the drop screen")
+	var slot := _drop_slot_for(drop, target)
+	assert_not_null(slot, "the candidate is a cell of that pack")
+	if slot != null:
+		_click(slot)
+		await wait_frames(2)
+		assert_false(GameState.loot_items.any(func(e): return is_same(e, target)),
+			"the click chose it")
+		assert_null(_ui.owned_pick(), "and the pick is over")
+		assert_null(drop._grid.pick, "the drop screen's pack is its own again")
+	if is_instance_valid(modal):
+		modal._finish()
+	_ui._drop_modal = null
+	drop.queue_free()
+	await wait_frames(2)
+
+func test_identify_on_the_curse_screen_is_chosen_in_its_pack() -> void:
+	PillSystem.unidentify(&"luck_up")
+	GameState.loot_items.clear()
+	GameState.add_pill_loot(&"luck_up")
+	var pill: Dictionary = GameState.loot_items[0]
+	var curse: Dictionary = GameState.curse_entry(Data.all_curse_cards()[0].id)
+	var drop := LootDropModal.open_curse(_ui, curse)
+	_ui._drop_modal = drop
+	await wait_frames(2)
+	var modal: Node = await _use_modal_asking({"kind": "identify_loot", "count": 1,
+		"candidates": [pill]})
+	assert_not_null(_ui.owned_pick(), "Identify asks in the pack")
+	assert_eq(drop._grid.pick, _ui.owned_pick(), "the curse screen's pack")
+	var slot := _drop_slot_for(drop, pill)
+	assert_not_null(slot)
+	if slot != null:
+		_click(slot)
+		await wait_frames(2)
+		assert_true(PillSystem.is_identified(&"luck_up"), "the click identified it")
+	if is_instance_valid(modal):
+		modal._finish()
 	_ui._drop_modal = null
 	drop.queue_free()
 	await wait_frames(2)

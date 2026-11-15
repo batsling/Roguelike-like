@@ -5041,8 +5041,15 @@ const OWNED_PICK_SCRIPT := "res://scripts/redesign2/OwnedPick.gd"
 var _owned_pick: Node = null
 
 func begin_owned_pick(cfg: Dictionary, on_done: Callable) -> bool:
+	# UNDER A DROP SCREEN (a payout, a curse being placed), the pick is hosted in
+	# THAT screen's pack (LootDropModal.host_pick) rather than refused: the
+	# owner, 15 Nov 2026, read a Scroll of Identify on the "You are cursed" screen
+	# and got a picker of the use modal's own instead of the pack.
+	var host = null
 	if _drop_modal != null and is_instance_valid(_drop_modal):
-		return false
+		if not _drop_modal.has_method("can_host_pick") or not _drop_modal.can_host_pick():
+			return false
+		host = _drop_modal
 	# Nor under the post-game screen: it covers the page, so a pick in the page's
 	# pack was invisible there — a Scroll of Identify read on the rewards screen
 	# showed nothing until the player was back on the run (owner, 5 Nov 2026). The
@@ -5055,7 +5062,8 @@ func begin_owned_pick(cfg: Dictionary, on_done: Callable) -> bool:
 	var any_loot: bool = false
 	for c in candidates:
 		if c is ItemData:
-			if not GameState.inventory.has(c):
+			# The relic strip is under the drop screen: nothing there to click.
+			if host != null or not GameState.inventory.has(c):
 				return false
 		elif c is Dictionary:
 			if not GameState.loot_items.any(func(x): return is_same(x, c)):
@@ -5072,16 +5080,28 @@ func begin_owned_pick(cfg: Dictionary, on_done: Callable) -> bool:
 		cfg = cfg.duplicate()
 		cfg["on_cancel"] = func():
 			_owned_pick = null
+			if host != null and is_instance_valid(host):
+				host.end_pick()
 			on_cancel.call()
 			_refresh_items()
 	pick.setup(cfg)
 	pick.on_change = _refresh_items
 	pick.on_done = func(chosen: Array):
 		_owned_pick = null
+		if host != null and is_instance_valid(host):
+			host.end_pick()
 		on_done.call(chosen)
 		_refresh_items()
 	_owned_pick = pick
 	add_child(pick)
+	if host != null:
+		pick.layer = host.pick_layer()
+		pick.on_change = func():
+			if is_instance_valid(host):
+				host.host_pick(pick)
+			_refresh_items()
+		host.host_pick(pick)
+		return true
 	# The pack is where the clicks go, so it opens; the relic card would sit over
 	# the strip, so it goes.
 	if any_loot and _loot_window != null:
@@ -5257,6 +5277,8 @@ func cancel_owned_pick() -> void:
 	if _owned_pick != null and is_instance_valid(_owned_pick):
 		_owned_pick.queue_free()
 	_owned_pick = null
+	if _drop_modal != null and is_instance_valid(_drop_modal) and _drop_modal.has_method("end_pick"):
+		_drop_modal.end_pick()
 	if _board != null and is_instance_valid(_board):
 		_board.end_body_pick()
 
