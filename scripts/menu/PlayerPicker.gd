@@ -86,8 +86,8 @@ func _build() -> void:
 	detail.add_theme_constant_override("separation", UITheme.GAP_LOOSE)
 	detail.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	detail_col.add_child(detail)
-	# THE HAT, a band across the foot of the panel like the character picker's
-	# costumes (_hat_row): the same tiles as the Customization screen's Hats tab.
+	# THE CUSTOMIZE BUTTON's place, at the foot of the panel (_fill_hat_row): the
+	# hats open in a popup, the same tiles as the Customization screen's Hats tab.
 	_hat_box = VBoxContainer.new()
 	_hat_box.name = "Hats"
 	detail_col.add_child(_hat_box)
@@ -269,9 +269,12 @@ func _fill_detail(box: HBoxContainer, pl: PlayerData) -> void:
 		right.add_child(_line(PlayerData.mechanic_line(m), UITheme.FONT_BODY,
 			UITheme.TEXT.lerp(Color(0.7, 0.85, 0.95), 0.5)))
 
-# The Hat strip for `pl`: No hat, 🎲 Random and every hat, locked ones as
-# silhouettes. Only for a player who is unlocked and has a spot for one (the basic
+# THE CUSTOMIZE BUTTON for `pl` (the owner, 15 Nov 2026), at the foot of the
+# detail panel: it opens the hat choices in a popup rather than a strip across the
+# panel. Only for a player who is unlocked and has a spot for a hat (the basic
 # player has no picture to wear it on). A pick redraws the portrait and the tile.
+var _popup: Control = null
+
 func _fill_hat_row(detail: HBoxContainer, pl: PlayerData) -> void:
 	for c in _hat_box.get_children():
 		_hat_box.remove_child(c)
@@ -279,26 +282,16 @@ func _fill_hat_row(detail: HBoxContainer, pl: PlayerData) -> void:
 	if pl.portrait == null or pl.hat_spot.z <= 0.0 or Achievements.player_locked(pl.id) \
 			or CosmeticCatalog.hats().is_empty():
 		return
-	_hat_box.add_child(HSeparator.new())
-	var row := HBoxContainer.new()
-	row.name = "Slot_hat"
-	row.add_theme_constant_override("separation", UITheme.GAP_SNUG)
-	_hat_box.add_child(row)
-	var lbl := Label.new()
-	lbl.text = "Hat"
-	lbl.custom_minimum_size = Vector2(34, 0)
-	lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	lbl.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
-	lbl.add_theme_color_override("font_color", UITheme.TEXT_DIM)
-	row.add_child(lbl)
-	var scroll := ScrollContainer.new()
-	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.custom_minimum_size = Vector2(0, LOOK_TILE + UITheme.GAP_WIDE)
-	row.add_child(scroll)
-	var strip := HBoxContainer.new()
-	strip.add_theme_constant_override("separation", UITheme.GAP_TIGHT)
-	scroll.add_child(strip)
+	_hat_box.add_child(CustomizeScreen.customize_button(func(): open_customize(detail, pl)))
+
+# Open the hat popup for `pl`. Public so a test can open it as the button does.
+func open_customize(detail: HBoxContainer = null, pl: PlayerData = null) -> Control:
+	if detail == null:
+		detail = find_child("Detail", true, false)
+	if pl == null:
+		pl = Data.get_player(selected_id())
+	if is_instance_valid(_popup):
+		_popup.queue_free()
 	var on_change := func() -> void:
 		(func() -> void:
 			var arts: Dictionary = _state.get("arts", {})
@@ -306,22 +299,14 @@ func _fill_hat_row(detail: HBoxContainer, pl: PlayerData) -> void:
 				var tr := arts[pl.id] as TextureRect
 				tr.texture = pl.shown_portrait()
 				UITheme.apply_crisp(tr, tr.texture)
-			var keep: float = scroll.scroll_horizontal
 			_fill_detail(detail, pl)
-			_fill_hat_row(detail, pl)
-			_restore_scroll.call_deferred(keep)).call_deferred()
-	for t in CustomizeScreen.hat_tiles(pl, LOOK_TILE, on_change):
-		strip.add_child(t)
-
-# A pick rebuilds the strip; put it back where it was scrolled to, not at the start.
-func _restore_scroll(x: float) -> void:
-	if not is_inside_tree():
-		return
-	await get_tree().process_frame   # once the new strip has been laid out
-	if not is_instance_valid(_hat_box):
-		return
-	for c in _hat_box.find_children("*", "ScrollContainer", true, false):
-		(c as ScrollContainer).scroll_horizontal = int(x)
+			if is_instance_valid(_popup):
+				(_popup.get_meta(&"refill") as Callable).call()).call_deferred()
+	_popup = CustomizeScreen.looks_popup(self, "%s — Hat" % pl.display_name,
+		func(body: VBoxContainer) -> void:
+			body.add_child(CustomizeScreen.look_row("Slot_hat", "Hat",
+				CustomizeScreen.hat_tiles(pl, LOOK_TILE, on_change))))
+	return _popup
 
 func _line(text: String, size: int, color: Color) -> Label:
 	var l := Label.new()

@@ -207,10 +207,14 @@ func test_the_player_picker_offers_hats_for_a_player_with_a_spot() -> void:
 	var p := PlayerPicker.open(self)
 	await get_tree().process_frame
 	p.select_player(&"batsaac")
-	assert_not_null(p._hat_box.find_child("Slot_hat", true, false), "Batsaac can wear one")
+	var btn: Button = p._hat_box.find_child("Customize", true, false)
+	assert_not_null(btn, "Batsaac can wear one: a Customize button")
+	btn.pressed.emit()
+	assert_not_null(p._popup.find_child("Slot_hat", true, false), "it opens the hats")
+	p._popup.free()
 	p.select_player(&"basic")
 	await get_tree().process_frame
-	assert_null(p._hat_box.find_child("Slot_hat", true, false), "Basic has nothing to put it on")
+	assert_null(p._hat_box.find_child("Customize", true, false), "Basic has nothing to put it on")
 	p.queue_free()
 
 func TABS_HATS() -> int:

@@ -204,6 +204,94 @@ func _build_hats() -> void:
 		for t in hat_tiles(pl, TILE, _refresh):
 			row.add_child(t)
 
+# THE LOOKS POPUP the two pickers open from their Customize button (the owner,
+# 15 Nov 2026: "instead of having hats on the bottom of the choose player screen
+# and character, have a customize button that will bring that up"). A dim over the
+# picker, a panel with `title`, whatever `fill(body)` puts in it, and Done. Its
+# meta "refill" empties the body and runs `fill` again, which is what a pick calls
+# so the tiles show the new choice. Named "LooksPopup".
+const POPUP_W := 760
+
+static func looks_popup(host: Node, title: String, fill: Callable) -> Control:
+	var popup := Control.new()
+	popup.name = "LooksPopup"
+	popup.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	popup.mouse_filter = Control.MOUSE_FILTER_STOP
+	var dim := ColorRect.new()
+	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	dim.color = Color(0, 0, 0, 0.6)
+	popup.add_child(dim)
+	var center := CenterContainer.new()
+	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	popup.add_child(center)
+	var panel := PanelContainer.new()
+	panel.custom_minimum_size = Vector2(POPUP_W, 0)
+	panel.add_theme_stylebox_override("panel", UITheme.panel_box(UITheme.BG,
+		UITheme.ACCENT.lerp(UITheme.BORDER, 0.4), 12, 18, 2))
+	center.add_child(panel)
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", UITheme.GAP_LOOSE)
+	panel.add_child(col)
+	var head := Label.new()
+	head.text = title
+	head.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	head.add_theme_font_size_override("font_size", UITheme.FONT_TITLE_LG)
+	head.add_theme_color_override("font_color", UITheme.GOLD)
+	col.add_child(head)
+	var body := VBoxContainer.new()
+	body.name = "Body"
+	body.add_theme_constant_override("separation", UITheme.GAP)
+	col.add_child(body)
+	var done := Button.new()
+	done.name = "Done"
+	done.text = "Done"
+	done.custom_minimum_size = Vector2(150, 40)
+	done.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	done.pressed.connect(popup.queue_free)
+	col.add_child(done)
+	var refill := func() -> void:
+		if not is_instance_valid(body):
+			return
+		for c in body.get_children():
+			body.remove_child(c)
+			c.queue_free()
+		fill.call(body)
+	popup.set_meta(&"refill", refill)
+	refill.call()
+	host.add_child(popup)
+	return popup
+
+# A labelled row of look tiles that WRAPS (no sideways scroll in a popup).
+static func look_row(row_name: String, label: String, tiles: Array) -> Control:
+	var row := HBoxContainer.new()
+	row.name = row_name
+	row.add_theme_constant_override("separation", UITheme.GAP_SNUG)
+	if label != "":
+		var lbl := Label.new()
+		lbl.text = label
+		lbl.custom_minimum_size = Vector2(40, 0)
+		lbl.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
+		lbl.add_theme_color_override("font_color", UITheme.TEXT_DIM)
+		row.add_child(lbl)
+	var flow := HFlowContainer.new()
+	flow.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	flow.add_theme_constant_override("h_separation", UITheme.GAP_TIGHT)
+	flow.add_theme_constant_override("v_separation", UITheme.GAP_TIGHT)
+	row.add_child(flow)
+	for t in tiles:
+		flow.add_child(t)
+	return row
+
+# The picker's Customize button.
+static func customize_button(on_press: Callable) -> Button:
+	var b := Button.new()
+	b.name = "Customize"
+	b.text = "Customize"
+	b.custom_minimum_size = Vector2(150, 36)
+	b.size_flags_horizontal = Control.SIZE_SHRINK_END
+	b.pressed.connect(on_press)
+	return b
+
 # A player's hat tiles: 🎲 Random, No hat (their own picture) and every hat. A
 # SPECIAL hat's locked hover says how it is earned instead of which game ranks it.
 static func hat_tiles(pl: PlayerData, side: int, on_change: Callable) -> Array:
