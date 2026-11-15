@@ -117,6 +117,11 @@ func use_loot(index: int, ctx: Dictionary = {}) -> Dictionary:
 		# A swing is a usable action (Normality); it does not pass through _spend.
 		GameState.note_action()
 		return WeaponSystem.swing(entry, wctx)
+	# PLAYING AN UNIDENTIFIED ATTACK IDENTIFIES IT (Retro Bat, docs/players-design.md
+	# §5), the way a weapon's first swing does — on the pack's own entry, before the
+	# copy that resolves is taken, so the roll it lays is the one just learned.
+	if LootUpgrade.is_attack(entry):
+		WeaponSystem.reveal(entry)
 	entry = (entry as Dictionary).duplicate(true)
 	# A CARD PINS THE PACK FIRST. A piece with no slot of its own takes the lowest
 	# free one (GameState.loot_layout), so emptying this slot would slide the pieces
@@ -556,8 +561,10 @@ func is_identified(entry: Dictionary) -> bool:
 			# question every kind-blind surface asks, and the honest answer is yes:
 			# nothing about a card in the pack is hidden. It is what keeps a card out
 			# of `carried_unidentified`, so Scroll of Identify never offers to tell
-			# you something you can already read.
-			return true
+			# you something you can already read. AN ATTACK found by Retro Bat is
+			# the exception: its Stun roll is hidden until it is played or
+			# identified (docs/players-design.md §5).
+			return WeaponSystem.roll_known(entry)
 		"weapon":
 			# Known unless it was found UNIDENTIFIED and has not been swung
 			# (docs/players-design.md §5). Per piece, not per kind: two Hero Swords
@@ -585,9 +592,10 @@ func identify(entry: Dictionary) -> bool:
 		"weapon":
 			return WeaponSystem.reveal(entry)
 		"card":
-			# Nothing to learn, so nothing is news. Identify spending a count on a
-			# card is prevented upstream, by is_identified above.
-			return false
+			# Nothing to learn but an attack's roll (Retro Bat), so nothing else is
+			# news. Identify spending a count on a plain card is prevented upstream,
+			# by is_identified above.
+			return WeaponSystem.reveal(entry)
 	return false
 
 # One representative carried entry per unidentified TYPE in the pack — the
@@ -606,7 +614,7 @@ func carried_unidentified() -> Array:
 			continue
 		var key: String = "%s/%s" % [entry.get("type", ""), entry.get("id", "")]
 		# A weapon's roll is the PIECE's, not its kind's: each one is its own fact.
-		if WeaponSystem.is_weapon(entry):
+		if WeaponSystem.has_roll(entry):
 			key += "/%d" % WeaponSystem.uid_of(entry)
 		if seen.has(key):
 			continue

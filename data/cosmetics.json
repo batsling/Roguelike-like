@@ -747,20 +747,6 @@
 			]
 		},
 		{
-			"id": "chest/bank_chest_dead_cells",
-			"kind": "chest",
-			"name": "Bank Chest",
-			"game": "dead_cells",
-			"images": [
-				{
-					"name": "Bank Chest",
-					"path": "res://images2.0/icons/Chests/Bank_Chest_Dead_Cells.png",
-					"min": 0,
-					"max": 10
-				}
-			]
-		},
-		{
 			"id": "chest/chest_loop_hero",
 			"kind": "chest",
 			"name": "Chest",

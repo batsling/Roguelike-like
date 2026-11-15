@@ -165,8 +165,12 @@ On the board:
 - A body whose step it stops tries Trample, then Agile, and only then
   **strikes the poop for what it would hit you for** (`enemy_damage`:
   Strength, Burn's halving, a Fracture, a rift; never less than 1) instead of
-  stepping (`_walk_one`). Only when the poop blocks its step: a Ranged body does
-  not shoot one from range.
+  stepping (`_walk_one`).
+- **A shot from range hits the poop in front of it** (the owner, 15 Nov 2026).
+  A body swinging from beyond column 1 fires down its own rows, and the first
+  blocking unit in them (the nearest to the shooter) takes the shot instead of
+  the player, for the same damage (`_shot_blocked_by`). The turn logs it as a
+  `walled` attack, which the board does not play as a hit on you.
 - The player breaks it with anything that hits the ground: a bomb, a thrown
   potion. **It pays whoever breaks it** (`_unit_destroyed`). That gives a
   Golden Poop a reason to be bombed before the stack chews through it.

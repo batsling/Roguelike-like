@@ -3111,6 +3111,19 @@ func _resolve_enemy_turn(turn: int, res: Dictionary, only: Array = [],
 			if entry_has_op(entry, &"strike_through") and _ruthless_strike(entry, res):
 				spent[inst] = true
 			continue
+		# A SHOT FROM RANGE HITS THE POOP IN FRONT OF IT (docs/locations-design.md §5;
+		# the owner, 15 Nov 2026). A body swinging from beyond column 1 fires down
+		# its own rows, and the first blocking unit in them takes the shot — for what
+		# it would have hit you for, as a body walking into one does (`_walk_one`).
+		var wall: Array = _shot_blocked_by(entry)
+		if not wall.is_empty():
+			_reveal(entry)
+			spent[inst] = true
+			for cell in wall:
+				damage_unit(cell, maxi(1, enemy_damage(entry)))
+			res["attacks"].append({"instance": inst, "turn": turn, "walled": true})
+			_wear_statuses(entry, &"attack")
+			continue
 		# It swung, so an invisible body has just given itself away (§7.6).
 		_reveal(entry)
 		spent[inst] = true
@@ -7815,6 +7828,26 @@ func can_strike(entry: Dictionary) -> bool:
 	if bool(entry.get("corpse", false)):
 		return false
 	return _front_col(entry) <= 1 + strike_range(entry)
+
+# The blocking units a shot from `entry` hits instead of the player: in each row
+# its footprint stands in, the first one between its leading edge and the
+# player's side (the nearest to the body). Empty for a body swinging from column
+# 1, which has nothing in front of it, or a lane with no wall in it.
+func _shot_blocked_by(entry: Dictionary) -> Array:
+	var front: int = _front_col(entry)
+	if front <= 1 or front > grid_cols():
+		return []
+	var rows: Dictionary = {}
+	for cell in entry_cells(entry):
+		rows[int(cell.y)] = true
+	var out: Array = []
+	for row in rows:
+		for col in range(front - 1, 0, -1):
+			var cell := Vector2i(col, int(row))
+			if blocks_at(cell):
+				out.append(cell)
+				break
+	return out
 
 # THE SAME QUESTION AS `can_strike`, SOLVED FOR TURNS: how many of them before
 # this body's leading edge is within its own reach of the front column. 0 when it

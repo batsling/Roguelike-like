@@ -487,3 +487,58 @@ func test_pictures_are_imported_with_mipmaps_and_drawn_with_them() -> void:
 		Viewport.DEFAULT_CANVAS_ITEM_TEXTURE_FILTER_LINEAR_WITH_MIPMAPS)
 	var cover: Texture2D = load("res://images2.0/icons/Hunger/Food_Mewgenics.png")
 	assert_true(cover.get_image().has_mipmaps(), "an imported picture carries them")
+
+# --- Unidentified ATTACKS (the owner, 15 Nov 2026) --------------------------------
+# An attack card is the other kind of loot that lays Stun on purpose, so Retro Bat
+# finds those rolled too: hidden until played or identified, cursed when a minus.
+
+func _rolled_attack(roll: int) -> Dictionary:
+	_start(RETRO_BAT)
+	GameState.add_card_loot(&"cleave")
+	var c: Dictionary = GameState.loot_items[-1]
+	c["roll"] = roll
+	c["roll_known"] = false
+	return c
+
+func test_retro_bat_finds_attacks_rolled_and_unknown() -> void:
+	_start(RETRO_BAT)
+	GameState.add_card_loot(&"cleave")
+	var c: Dictionary = GameState.loot_items[-1]
+	assert_true(WeaponSystem.has_roll(c), "a found attack is rolled")
+	assert_false(WeaponSystem.roll_known(c))
+	assert_eq(LootSystem.display_name(c), "Cleave +?")
+	assert_false(LootSystem.is_identified(c), "Identify can be spent on it")
+
+func test_a_card_that_is_not_an_attack_is_never_rolled() -> void:
+	_start(RETRO_BAT)
+	var plain: CardData = null
+	for card in Data.all_cards():
+		if not card.tags.has("attack") and not card.is_passive():
+			plain = card
+			break
+	GameState.add_card_loot(plain.id)
+	assert_false(WeaponSystem.has_roll(GameState.loot_items[-1]))
+
+func test_the_basic_player_finds_plain_attacks() -> void:
+	_start(Data.BASIC_PLAYER)
+	GameState.add_card_loot(&"cleave")
+	assert_false(WeaponSystem.has_roll(GameState.loot_items[-1]))
+	assert_eq(LootSystem.display_name(GameState.loot_items[-1]), "Cleave")
+
+func test_playing_an_attack_lays_its_roll_and_identifies_it() -> void:
+	var c := _rolled_attack(2)
+	var inst: int = Fx.body(Vector2i(1, 0))
+	LootSystem.use_loot(GameState.loot_items.find(c), {"target": Vector2i(1, 0)})
+	assert_true(WeaponSystem.roll_known(c), "played, it is known")
+	assert_eq(GameLoop2.stun_stacks(GameLoop2.entry_for(inst)), 3, "Cleave's 1 and the +2")
+
+func test_identify_reveals_an_attack_and_a_minus_curses_it() -> void:
+	var c := _rolled_attack(-1)
+	assert_true(LootSystem.carried_unidentified().any(func(e): return is_same(e, c)))
+	assert_true(LootSystem.identify(c))
+	assert_eq(LootSystem.display_name(c), "Cleave -1")
+	assert_true(WeaponSystem.is_cursed(c), "a known minus is cursed")
+	assert_true(GameState.is_pinned(c), "and stuck where it sits")
+	assert_true(GameState.is_curse(c), "a curse like any other")
+	ScrollSystem.remove_curse_chosen([], [c])
+	assert_false(GameState.is_pinned(c), "Remove Curse frees it")

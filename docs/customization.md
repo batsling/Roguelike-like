@@ -110,12 +110,13 @@ is unlocked again.
 
 ### Choosing in the character picker
 
-The picker (`CharacterPicker._costume_rows`) has a band across the foot of the
-detail panel for every hero with costumes: an **Icon** strip and a **Full** strip.
-They hold the same choices as the Customization screen, because both use
-`CustomizeScreen.slot_tiles`. A strip scrolls sideways rather than wrapping, and
-the panel never scrolls. A change redraws the portrait and the hero's grid token
-at once.
+The picker has a **Customize** button at the foot of the detail panel for every
+unlocked hero with costumes (the owner, 15 Nov 2026: a button rather than a band
+across the panel). It opens a popup (`CharacterPicker.open_customize`, built by
+`CustomizeScreen.looks_popup`) with an **Icon** row and a **Full** row. They hold
+the same choices as the Customization screen, because both use
+`CustomizeScreen.slot_tiles`. A row wraps. A change redraws the portrait and the
+hero's grid token at once.
 
 ### Every slot's choices
 
@@ -287,8 +288,8 @@ way pets wear them in Super Auto Pets. Not on the characters.
 - **Choosing.** Each player has its own slot (`Cosmetics.hat_slot`,
   `"hat:<player>"`) with 🎲 Random, No hat and every hat. Locked hats show as
   silhouettes. The choices are the same on the Customization screen's Hats tab
-  (a preview of the player in what they wear, then the tiles) and in a strip
-  across the foot of the player picker (`PlayerPicker._fill_hat_row`). Both use
+  (a preview of the player in what they wear, then the tiles) and in the popup
+  the player picker's **Customize** button opens (`PlayerPicker.open_customize`). Both use
   `CustomizeScreen.hat_tiles`. Tests: `test/test_hats.gd`.
 
 - **Not yet: Megabonk's hats.** Megabonk has 21 (its update 1.0.64), each earned

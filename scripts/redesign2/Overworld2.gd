@@ -3270,13 +3270,16 @@ func _queue_fit_checklist() -> void:
 # wrapping, which is height back for free). Everything stays on screen at once:
 # the rows, their tick boxes, the portraits that pair them with the board. The
 # scrollbar is still there underneath as the last resort, past CHECKLIST_MIN_SCALE
-# — some twenty-five rows on a 720p window — where smaller would stop being legible.
+# — some sixteen goals on a 720p window — where smaller would stop being legible.
+# THE FLOOR WAS 0.5 and the owner raised it (15 Nov 2026: "raise it so it stays
+# readable and scrolls on very crowded boards"): 13px text drawn at half size was
+# a 6px smear, and a scrollbar on a very crowded board is the better trade.
 #
 # The scale only ever SHRINKS while the same rows are up, with a few guarded
 # steps back up, because the height it is fitting depends on the width it sets
 # (wider rows wrap less): free to move both ways it can chase its own tail. A
 # different list (the row count, or the room) starts again from full size.
-const CHECKLIST_MIN_SCALE := 0.5
+const CHECKLIST_MIN_SCALE := 0.75
 const CHECKLIST_REGROW_STEPS := 2
 # The fewest rows worth splitting: under this a second column is two stubs.
 const CHECKLIST_SPLIT_ROWS := 5
@@ -3285,6 +3288,15 @@ var _checklist_scale: float = 1.0
 var _checklist_fit_sig: String = ""
 var _checklist_regrow: int = 0
 var _checklist_unsplit_tries: int = 0
+# A JUMP IN HEIGHT IS NOT BELIEVED ON SIGHT (the owner, 15 Nov 2026: "i clicked
+# the + on the bony and the checklist kept shrinking way too small"). A + repaints
+# the rows, and the first measure after a repaint catches them before they have
+# their width — every goal wrapping a word a line, four times its real height.
+# Shrinking to that sent the list to the floor in one press, and the two regrow
+# steps were spent by the next press. So a list suddenly much taller than the
+# last one measured waits a frame and is measured again; still tall, it is real.
+var _checklist_last_content: float = 0.0
+var _checklist_waited: bool = false
 
 func checklist_scale() -> float:
 	return _checklist_scale
@@ -3309,6 +3321,14 @@ func _fit_checklist() -> void:
 		_lay_checklist()
 	var s: float = _checklist_scale
 	var content: float = _verify_box.get_combined_minimum_size().y
+	if fitting and not _checklist_waited and _checklist_last_content > 0.0 \
+			and content > _checklist_last_content * 1.5 and is_inside_tree():
+		_checklist_waited = true
+		if not get_tree().process_frame.is_connected(_queue_fit_checklist):
+			get_tree().process_frame.connect(_queue_fit_checklist, CONNECT_ONE_SHOT)
+		return
+	_checklist_waited = false
+	_checklist_last_content = content
 	var shown: float = content * s
 	var want: float = shown
 	if room > 0.0 and _scroll.get_child_count() > 0:
@@ -5041,8 +5061,15 @@ const OWNED_PICK_SCRIPT := "res://scripts/redesign2/OwnedPick.gd"
 var _owned_pick: Node = null
 
 func begin_owned_pick(cfg: Dictionary, on_done: Callable) -> bool:
+	# UNDER A DROP SCREEN (a payout, a curse being placed), the pick is hosted in
+	# THAT screen's pack (LootDropModal.host_pick) rather than refused: the
+	# owner, 15 Nov 2026, read a Scroll of Identify on the "You are cursed" screen
+	# and got a picker of the use modal's own instead of the pack.
+	var host = null
 	if _drop_modal != null and is_instance_valid(_drop_modal):
-		return false
+		if not _drop_modal.has_method("can_host_pick") or not _drop_modal.can_host_pick():
+			return false
+		host = _drop_modal
 	# Nor under the post-game screen: it covers the page, so a pick in the page's
 	# pack was invisible there — a Scroll of Identify read on the rewards screen
 	# showed nothing until the player was back on the run (owner, 5 Nov 2026). The
@@ -5055,7 +5082,8 @@ func begin_owned_pick(cfg: Dictionary, on_done: Callable) -> bool:
 	var any_loot: bool = false
 	for c in candidates:
 		if c is ItemData:
-			if not GameState.inventory.has(c):
+			# The relic strip is under the drop screen: nothing there to click.
+			if host != null or not GameState.inventory.has(c):
 				return false
 		elif c is Dictionary:
 			if not GameState.loot_items.any(func(x): return is_same(x, c)):
@@ -5072,16 +5100,28 @@ func begin_owned_pick(cfg: Dictionary, on_done: Callable) -> bool:
 		cfg = cfg.duplicate()
 		cfg["on_cancel"] = func():
 			_owned_pick = null
+			if host != null and is_instance_valid(host):
+				host.end_pick()
 			on_cancel.call()
 			_refresh_items()
 	pick.setup(cfg)
 	pick.on_change = _refresh_items
 	pick.on_done = func(chosen: Array):
 		_owned_pick = null
+		if host != null and is_instance_valid(host):
+			host.end_pick()
 		on_done.call(chosen)
 		_refresh_items()
 	_owned_pick = pick
 	add_child(pick)
+	if host != null:
+		pick.layer = host.pick_layer()
+		pick.on_change = func():
+			if is_instance_valid(host):
+				host.host_pick(pick)
+			_refresh_items()
+		host.host_pick(pick)
+		return true
 	# The pack is where the clicks go, so it opens; the relic card would sit over
 	# the strip, so it goes.
 	if any_loot and _loot_window != null:
@@ -5257,6 +5297,8 @@ func cancel_owned_pick() -> void:
 	if _owned_pick != null and is_instance_valid(_owned_pick):
 		_owned_pick.queue_free()
 	_owned_pick = null
+	if _drop_modal != null and is_instance_valid(_drop_modal) and _drop_modal.has_method("end_pick"):
+		_drop_modal.end_pick()
 	if _board != null and is_instance_valid(_board):
 		_board.end_body_pick()
 
@@ -7532,6 +7574,13 @@ func refresh_board() -> void:
 # Only for a piece off the FLOOR. Dragging inside the loot window or the drop
 # modal already has a pack in front of it, and a second one arriving beside the
 # board would be the page answering a question nobody asked.
+#
+# …AND A PIECE OUT OF THE PACK THAT LANDS NOWHERE GOES ON THE GROUND (the owner,
+# 15 Nov 2026). The drag's payload is held from its start, since it is gone by its
+# end; a drag that no drop target took (`gui_is_drag_successful`) and that was let
+# go outside every pack grid is put down (`release_pack_drag`).
+var _pack_drag: Dictionary = {}
+
 func _notification(what: int) -> void:
 	if _drops == null:
 		return
@@ -7540,8 +7589,33 @@ func _notification(what: int) -> void:
 			var data = get_viewport().gui_get_drag_data() if get_viewport() != null else null
 			if data is Dictionary and (data as Dictionary).has("floor"):
 				_drops.mount_drag_pack()
+			_pack_drag = (data as Dictionary).duplicate() if data is Dictionary \
+				and String(data.get("kind", "")) == "loot_move" else {}
 		NOTIFICATION_DRAG_END:
 			_drops.unmount_drag_pack()
+			var held: Dictionary = _pack_drag
+			_pack_drag = {}
+			if not held.is_empty() and get_viewport() != null \
+					and not get_viewport().gui_is_drag_successful():
+				release_pack_drag(held, get_viewport().get_mouse_position())
+
+# A pack piece's drag let go at `at` (viewport coordinates) with no drop target
+# taking it: onto the ground, unless it was let go over a pack (a missed swap is
+# not a throw-away), or the page is not where the board is — a drop screen, the
+# haul screen, the run over, a throw being aimed. Public so a test can drive it.
+func release_pack_drag(data: Dictionary, at: Vector2) -> void:
+	var index: int = int(data.get("index", -1))
+	if index < 0 or _board == null or not is_instance_valid(_board) or GameLoop2.run_over:
+		return
+	if (_drop_modal != null and is_instance_valid(_drop_modal)) \
+			or (_post_screen != null and is_instance_valid(_post_screen)) or _board.is_aiming():
+		return
+	for g in find_children("*", "LootGrid", true, false):
+		if (g as Control).is_visible_in_tree() and (g as Control).get_global_rect().grow(8).has_point(at):
+			return
+	if index >= GameState.loot_items.size() or not GameState.can_leave_pack(GameState.loot_items[index]):
+		return
+	_drops.put_down(index, _board.cell_at_screen(at), true)
 
 # --- forwards into the queue -----------------------------------------------
 

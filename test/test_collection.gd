@@ -1623,3 +1623,35 @@ func test_loadout_tiles_have_a_card_and_open_their_page() -> void:
 		assert_eq(col._tab, Collection.Tab.LOOT)
 		assert_eq(col._loot_sub, Collection.LOOT_SUB_OF[kind])
 	col._loot_sub = Collection.LOOT_SCROLLS
+
+# PLAYERS, right before Characters in the bar (the owner, 15 Nov 2026), a cell for
+# each, and a page that names its mechanics.
+func test_players_have_a_tab_before_characters() -> void:
+	var col := _new_collection()
+	var bar: Node = col._tab_buttons[Collection.Tab.PLAYERS].get_parent()
+	var players: int = col._tab_buttons[Collection.Tab.PLAYERS].get_index()
+	assert_eq(players + 1, col._tab_buttons[Collection.Tab.CHARACTERS].get_index(),
+		"Players sits right before Characters")
+	assert_eq(bar, col._tab_buttons[Collection.Tab.CHARACTERS].get_parent())
+	col._set_tab(Collection.Tab.PLAYERS)
+	assert_gt(Data.all_players().size(), 0, "there are players")
+	assert_eq(col._grid.get_child_count(), Data.all_players().size(), "a cell for every player")
+	for pl in Data.all_players():
+		if not (pl as PlayerData).mechanics.is_empty():
+			col._show_player_detail(pl)
+			var said := ""
+			for l in col._detail_box.find_children("*", "Label", true, false):
+				said += (l as Label).text + "\n"
+			assert_string_contains(said, PlayerData.mechanic_name(pl.mechanics[0]))
+
+# CURSES ARE A TAB OF THEIR OWN (the owner, 15 Nov 2026: "some curses in the
+# future won't be loot"), not a Loot sub-tab.
+func test_curses_are_their_own_tab() -> void:
+	var col := _new_collection()
+	assert_true(col._tab_buttons.has(Collection.Tab.CURSES), "a Curses tab in the bar")
+	col._set_tab(Collection.Tab.CURSES)
+	assert_gt(Data.all_curse_cards().size(), 0, "there are curses to list")
+	assert_eq(col._grid.get_child_count(), Data.all_curse_cards().size(), "a cell for every curse")
+	col._set_tab(Collection.Tab.LOOT)
+	assert_false(Page.text_of(col._content).contains("Curses ("), "and no Curses sub-tab under Loot")
+

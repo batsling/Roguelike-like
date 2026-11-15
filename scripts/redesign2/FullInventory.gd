@@ -9,9 +9,10 @@ extends Control
 # the mini pack on the run page (`Overworld2.show_full_inventory`).
 #
 # It is the page's own state drawn again, so everything on it still works: an
-# item opens its card, a piece of loot can be moved, turned and spent. Acting on
-# one closes the screen first, because the item card and the Use screen are
-# modals of their own and would open underneath it.
+# item opens its card, a piece of loot can be moved, turned and spent. An item's
+# card opens OVER this screen and closing it comes back here; spending a piece of
+# loot closes the screen first, because the Use screen and a throw's aim need
+# the page.
 #
 # Built in code and loaded BY PATH with no class_name, like every screen the page
 # only opens on demand (test_page_load.gd).
@@ -296,10 +297,19 @@ func _item_row(item: ItemData) -> Control:
 		var c := _line("%d / %d" % [clampi(item.current_charge, 0, item.max_charge()), item.max_charge()], UITheme.GOLD)
 		c.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		inner.add_child(c)
+	# THE CARD OPENS OVER THIS SCREEN, which stays (the owner, 15 Nov 2026: "when
+	# clicking on an item in full inventory, make sure the player is still in the
+	# full inventory when they click away"). The card has its own CanvasLayer
+	# (Overworld2._mount_reading_card), so it draws above; closing it — the ✕ or a
+	# click on its scrim — lands back here, redrawn in case the card fired the item.
 	var target: ItemData = item
 	row.pressed.connect(func():
-		close()
-		_page.open_item_card(target))
+		_page.open_item_card(target)
+		var card = _page.get("_item_card")
+		if card != null and is_instance_valid(card) and card.has_signal("closed"):
+			card.closed.connect(func():
+				if is_instance_valid(self) and not _closing:
+					refill.call_deferred()))
 	return row
 
 func _smelted_row(entry: Dictionary) -> Control:

@@ -425,9 +425,11 @@ clicked again to put it back first, and an "up to N" pick (Identify) carries a
 Done. Destroy, charge, identify and ? Card's copy all go this way, and so does
 Scare Monster's "which to Stun" — on the BOARD, where its bodies light up as for a
 Bomb, a click chooses one and a chosen body wears the pick's ring
-(`Overworld2.begin_board_pick`, `BattlefieldView.body_pick`). Under the drop
-screen, which owns the screen while it is answered, the use screen still asks in
-its own grid.
+(`Overworld2.begin_board_pick`, `BattlefieldView.body_pick`). Under a drop
+screen (a payout, or "You are cursed" while a curse is placed), the pick is made
+in THAT screen's pack instead (`LootDropModal.host_pick`; the owner, 15 Nov 2026),
+its banner just over it. Under the post-combat screen the use screen still asks
+in its own grid.
 
 - `destroy_loot` (Prepared): exactly 2, or every piece if the pack holds fewer, out
   of the pack as it stood when the card was played — so the two cards it hands

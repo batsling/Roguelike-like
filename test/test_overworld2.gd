@@ -3225,18 +3225,67 @@ func test_scare_monster_is_aimed_by_clicking_bodies_on_the_board() -> void:
 	if is_instance_valid(modal):
 		modal._finish()
 
-func test_under_the_drop_screen_the_pick_stays_in_the_use_screen() -> void:
+# UNDER A DROP SCREEN THE PICK IS MADE IN THAT SCREEN'S PACK (the owner, 15 Nov
+# 2026: Identify read on the "You are cursed" screen "had its own thing" rather
+# than the pack's selection). The page's loot window is under the drop screen, so
+# the drop screen's own 3x3 lights up and takes the click.
+func _drop_slot_for(drop: Node, entry: Dictionary) -> LootSlot:
+	for n in drop.find_children("*", "LootSlot", true, false):
+		var slot := n as LootSlot
+		if slot.visible and slot.slot_index >= 0 and is_same(slot.entry, entry):
+			return slot
+	return null
+
+func test_under_the_drop_screen_the_pick_is_made_in_its_pack() -> void:
 	GameState.loot_items.clear()
 	for i in range(2):
 		GameState.add_pill_loot(&"luck_up")
+	var target: Dictionary = GameState.loot_items[1]
 	var drop := LootDropModal.open(_ui, {"type": "scroll", "id": &"scroll_of_fire"})
 	_ui._drop_modal = drop
 	await wait_frames(2)
 	var modal: Node = await _use_modal_asking({"kind": "destroy_loot", "count": 1,
-		"candidates": [GameState.loot_items[1]]})
-	assert_null(_ui.owned_pick(), "the drop owns the screen, so the pack is not asked")
-	assert_true(modal.visible, "and the use screen asks in its own grid")
-	modal._finish()
+		"candidates": [target]})
+	assert_not_null(_ui.owned_pick(), "the pack is asked")
+	assert_false(modal.visible, "the use screen gets out of the way")
+	assert_eq(drop._grid.pick, _ui.owned_pick(), "in the drop screen's own pack")
+	assert_gt(_ui.owned_pick().layer, UITheme.Layer.DROP, "its banner over the drop screen")
+	var slot := _drop_slot_for(drop, target)
+	assert_not_null(slot, "the candidate is a cell of that pack")
+	if slot != null:
+		_click(slot)
+		await wait_frames(2)
+		assert_false(GameState.loot_items.any(func(e): return is_same(e, target)),
+			"the click chose it")
+		assert_null(_ui.owned_pick(), "and the pick is over")
+		assert_null(drop._grid.pick, "the drop screen's pack is its own again")
+	if is_instance_valid(modal):
+		modal._finish()
+	_ui._drop_modal = null
+	drop.queue_free()
+	await wait_frames(2)
+
+func test_identify_on_the_curse_screen_is_chosen_in_its_pack() -> void:
+	PillSystem.unidentify(&"luck_up")
+	GameState.loot_items.clear()
+	GameState.add_pill_loot(&"luck_up")
+	var pill: Dictionary = GameState.loot_items[0]
+	var curse: Dictionary = GameState.curse_entry(Data.all_curse_cards()[0].id)
+	var drop := LootDropModal.open_curse(_ui, curse)
+	_ui._drop_modal = drop
+	await wait_frames(2)
+	var modal: Node = await _use_modal_asking({"kind": "identify_loot", "count": 1,
+		"candidates": [pill]})
+	assert_not_null(_ui.owned_pick(), "Identify asks in the pack")
+	assert_eq(drop._grid.pick, _ui.owned_pick(), "the curse screen's pack")
+	var slot := _drop_slot_for(drop, pill)
+	assert_not_null(slot)
+	if slot != null:
+		_click(slot)
+		await wait_frames(2)
+		assert_true(PillSystem.is_identified(&"luck_up"), "the click identified it")
+	if is_instance_valid(modal):
+		modal._finish()
 	_ui._drop_modal = null
 	drop.queue_free()
 	await wait_frames(2)
@@ -3594,6 +3643,29 @@ func test_the_full_inventory_shows_items_loot_stats_and_resources() -> void:
 		assert_true(text.contains(word), "it shows %s: %s" % [word, text])
 	_ui._full_inventory.close()
 	assert_null(_ui._full_inventory, "and closing it lets go")
+
+# The owner, 15 Nov 2026: clicking an item in the full inventory, then clicking
+# away from its card, should leave you in the full inventory.
+func test_an_items_card_opens_over_the_full_inventory_and_returns_to_it() -> void:
+	var item: ItemData = Data.all_items2()[0]
+	GameState.add_item(item)
+	var full: Node = _ui.show_full_inventory()
+	var row: Button = null
+	for b in full.find_children("*", "HoverButton", true, false):
+		if Page.text_of(b).contains(item.display_name):
+			row = b
+	assert_not_null(row, "the item has a row")
+	if row == null:
+		return
+	row.pressed.emit()
+	assert_not_null(_ui._item_card, "its card opens")
+	assert_true(is_instance_valid(full) and _ui._full_inventory == full,
+		"over the full inventory, which stays")
+	_ui._item_card.close()
+	await wait_frames(2)
+	assert_true(is_instance_valid(full) and _ui._full_inventory == full,
+		"closing the card lands back in it")
+	full.close()
 
 func test_tab_opens_and_shuts_the_loot_window() -> void:
 	# The `backpack` action existed in project.godot with nothing on the overworld
@@ -8547,14 +8619,24 @@ func test_a_crowded_board_does_not_push_the_page_past_the_window() -> void:
 	assert_gt(_ui._verify_box.columns, 1, "a long list flows into a second column")
 	assert_gte(_ui.checklist_scale(), OVERWORLD.CHECKLIST_MIN_SCALE,
 		"and is never drawn smaller than the floor")
-	assert_lte(content, shown + 1.0,
-		"so nothing is left to scroll to (%.0f of content in %.0f)" % [content, shown])
+	# Above the floor everything fits; AT the floor a very crowded board scrolls
+	# rather than shrinking past legible (the owner, 15 Nov 2026).
+	if _ui.checklist_scale() > OVERWORLD.CHECKLIST_MIN_SCALE + 0.001:
+		assert_lte(content, shown + 1.0,
+			"so nothing is left to scroll to (%.0f of content in %.0f)" % [content, shown])
+	else:
+		assert_ne(_ui._verify_scroll.vertical_scroll_mode, ScrollContainer.SCROLL_MODE_DISABLED,
+			"at the floor, the rest is a scroll away")
 	# The box still spans the PANEL — the load-bearing half of the original fix.
 	# Laid out at its minimum width instead (~130px), every goal wraps a word a
 	# line. Scaled, it is laid out that much wider so that it spans it drawn.
+	# Measured against the frame the box stands in, which is the panel less a
+	# scrollbar when the floor leaves one showing.
 	assert_almost_eq(_ui._verify_box.size.x * _ui.checklist_scale(),
-		_ui._verify_scroll.size.x, 1.5,
+		_ui._verify_fit.size.x, 1.5,
 		"the rows are as wide as the panel they sit in")
+	assert_gte(_ui._verify_fit.size.x, _ui._verify_scroll.size.x - 16.0,
+		"and that frame is the panel, less at most a scrollbar")
 
 # A list that fits is left exactly as it was: one column, full size.
 func test_a_checklist_that_fits_is_not_split_or_shrunk() -> void:
@@ -9843,6 +9925,42 @@ func test_a_piece_put_down_is_off_the_player_and_not_destroyed() -> void:
 		"and putting a piece down is not destroying it")
 	_ui.take_floor_loot(_ui._floor_loot(GameLoop2.drop_at(cell)), 0, cell)
 	assert_eq(GameState.loot_items.size(), 1, "it can be picked back up")
+
+# LET GO ANYWHERE OUTSIDE THE PACK, IT GOES ON THE GROUND (the owner, 15 Nov 2026),
+# the Action start's weapon included — a big piece, which is the case asked about.
+func test_a_weapon_dragged_out_of_the_pack_and_let_go_lands_on_the_ground() -> void:
+	_pick_solo(0)
+	GameState.loot_items.clear()
+	GameLoop2.drops.clear()
+	var w: Dictionary = GameState.add_weapon_loot(Data.all_weapons()[0].id)
+	var index: int = GameState.loot_items.find(w)
+	assert_gt(index, -1, "the weapon is carried")
+	# Let go off every pack and off the board's squares: the top-left of the screen.
+	_ui.release_pack_drag({"kind": "loot_move", "index": index, "from": 0}, Vector2(2, 2))
+	assert_false(GameState.loot_items.any(func(e): return is_same(e, w)), "out of the pack")
+	var landed: bool = false
+	for cell in GameLoop2.drop_cells():
+		landed = landed or String((GameLoop2.drop_at(cell)["loot"] as Dictionary).get("id", "")) \
+			== String(w["id"])
+	assert_true(landed, "and lying on the ground")
+
+func test_a_piece_let_go_over_the_pack_stays_in_it() -> void:
+	_pick_solo(0)
+	GameState.loot_items.clear()
+	GameState.take_loot_entry({"type": "scroll", "id": "keep", "rarity": "Common"})
+	_ui._loot_window.open = true
+	_ui.refresh_loot_window()
+	await wait_frames(2)
+	var grid: Control = null
+	for g in _ui.find_children("*", "LootGrid", true, false):
+		if (g as Control).is_visible_in_tree():
+			grid = g
+	if grid == null:
+		pending("no pack grid on screen")
+		return
+	_ui.release_pack_drag({"kind": "loot_move", "index": 0, "from": 0},
+		grid.get_global_rect().get_center())
+	assert_eq(GameState.loot_items.size(), 1, "a missed swap is not a throw-away")
 
 func test_the_board_takes_only_a_pack_piece_on_bare_ground() -> void:
 	_pick_solo(0)
@@ -12043,3 +12161,27 @@ func test_a_queued_body_waits_level_with_its_lane_and_shows_where_it_goes() -> v
 	assert_eq(board.queue_target_shown(), 1, "hovering lights the square it wants")
 	token.mouse_exited.emit()
 	assert_eq(board.queue_target_shown(), 0, "and lets go")
+
+# THE OWNER, 15 Nov 2026: "i clicked the + on the bony and the checklist kept
+# shrinking way too small". Each + repaints the rows, and the first measure after
+# a repaint caught them before they had their width — four times their height —
+# so one press sent the list to its floor scale. Pressing + must not shrink it.
+func test_pressing_plus_does_not_shrink_the_checklist() -> void:
+	_at_720p()
+	_pick_enemies(0)
+	_crowd_board(6)
+	var inst: int = _make_front_body(&"bony")
+	if inst == 0:
+		pending("the board had no body to make a Bony of")
+		return
+	_ui._refresh()
+	for _i in range(12):
+		await get_tree().process_frame
+	var before: float = _ui.checklist_scale()
+	for press in range(4):
+		_count_buttons("+")[0].pressed.emit()
+		for _i in range(12):
+			await get_tree().process_frame
+		assert_gte(_ui.checklist_scale(), before - 0.01,
+			"press %d left the checklist at %.2f (was %.2f)" % [press + 1,
+				_ui.checklist_scale(), before])

@@ -105,9 +105,9 @@ static func clear_game_bonuses() -> void:
 
 # " +2" on the end of an upgraded attack's name, the way an upgraded weapon wears
 # its +X (WeaponSystem.plus_suffix answers for weapons, roll and all).
+# A rolled attack (Retro Bat) wears its roll in it too, or " +?" while hidden.
 static func plus_suffix(entry) -> String:
-	var n: int = bonus_of(entry)
-	return " +%d" % n if n > 0 else ""
+	return WeaponSystem.plus_suffix(entry)
 
 # The line an upgraded attack's description ends on. "" for none.
 static func card_line(entry) -> String:
@@ -116,4 +116,13 @@ static func card_line(entry) -> String:
 		parts.append("Upgraded: +%d Stun to each Stun it applies." % run_bonus(entry))
 	if game_bonus(entry) > 0:
 		parts.append("This game: +%d Stun more." % game_bonus(entry))
+	# FOUND UNIDENTIFIED (Retro Bat, docs/players-design.md §5).
+	if not WeaponSystem.roll_known(entry):
+		parts.append("Unidentified: -2 to +2 Stun, learned when it is played.")
+	elif WeaponSystem.roll_of(entry) > 0:
+		parts.append("Upgraded: +%d Stun." % WeaponSystem.roll_of(entry))
+	elif WeaponSystem.roll_of(entry) < 0:
+		parts.append(("Cursed: %d Stun, and stuck where it sits until the curse is lifted."
+			if WeaponSystem.is_cursed(entry) else "Downgraded: %d Stun (at least 1).")
+			% WeaponSystem.roll_of(entry))
 	return " ".join(PackedStringArray(parts))

@@ -514,3 +514,39 @@ func test_a_bashed_neighbour_is_not_a_way_on() -> void:
 		"a door Bash destroyed is not a door")
 	assert_eq(RunGraph.degree(here), before,
 		"…though the graph itself is unchanged — that is the difference between them")
+
+# --- no arrow through a box (the owner, 15 Nov 2026) ---------------------------
+# "there's a connection from crawl to diablo to angband, but a key can bring me
+# from crawl to angband and that arrow goes through diablo."
+
+const LADDER := preload("res://scripts/redesign2/RouteLadder.gd")
+
+func test_a_clear_line_is_left_straight() -> void:
+	var rects := {"0|a": Rect2(0, 0, 50, 50), "1|b": Rect2(200, 0, 50, 50)}
+	var pts: PackedVector2Array = LADDER.route_around(Vector2(50, 25), Vector2(200, 25), rects)
+	assert_eq(pts.size(), 2, "nothing in the way: straight")
+
+func test_a_line_through_a_box_bends_round_it() -> void:
+	# Crawl at depth 0, Diablo between at depth 1, Angband at depth 2, all level.
+	var rects := {"0|crawl": Rect2(0, 100, 60, 60), "1|diablo": Rect2(150, 100, 60, 60),
+		"2|angband": Rect2(300, 100, 60, 60)}
+	var a := Vector2(60, 145)
+	var b := Vector2(300, 145)
+	var pts: PackedVector2Array = LADDER.route_around(a, b, rects)
+	assert_gt(pts.size(), 2, "it bends")
+	assert_eq(pts[0], a)
+	assert_eq(pts[pts.size() - 1], b)
+	var diablo: Rect2 = rects["1|diablo"]
+	for i in range(pts.size() - 1):
+		assert_false(LADDER._segment_hits_rect(pts[i], pts[i + 1], diablo),
+			"no stretch of it touches Diablo (%s → %s)" % [pts[i], pts[i + 1]])
+
+func test_a_bend_takes_the_gap_between_two_boxes() -> void:
+	var rects := {"0|s": Rect2(0, 100, 60, 60), "1|top": Rect2(150, 0, 60, 90),
+		"1|mid": Rect2(150, 120, 60, 60), "1|low": Rect2(150, 210, 60, 90),
+		"2|e": Rect2(300, 130, 60, 60)}
+	var pts: PackedVector2Array = LADDER.route_around(Vector2(60, 140), Vector2(300, 160), rects)
+	for i in range(pts.size() - 1):
+		for k in ["1|top", "1|mid", "1|low"]:
+			assert_false(LADDER._segment_hits_rect(pts[i], pts[i + 1], rects[k]),
+				"clear of %s" % k)

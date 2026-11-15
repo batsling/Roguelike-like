@@ -485,12 +485,19 @@ func test_a_push_into_a_wall_stays_put() -> void:
 
 func test_bloody_tear_heals_for_every_enemy_it_hits() -> void:
 	_weapon(&"bloody_tear", 0, 3)          # 0, 1, 3, 4
-	Fixtures.body(Vector2i(1, 0))
+	# 1x4: one row, four columns away from you — the whip swung HORIZONTALLY
+	# (the owner, 15 Nov 2026), so the two bodies stand in the aimed row.
 	Fixtures.body(Vector2i(1, 1))
+	Fixtures.body(Vector2i(3, 1))
+	Fixtures.body(Vector2i(1, 0))             # the next row: out of the swing
 	GameState.max_hp = 20
 	GameState.hp = 10
 	LootSystem.use_loot(_index(0), {"target": Vector2i(1, 1)})
 	assert_eq(GameState.hp, 12, "two bodies hit, two Health")
+
+func test_the_whip_swings_horizontally() -> void:
+	assert_eq(GameLoop2.area_cells(Vector2i(1, 1), Data.get_weapon(&"whip").area),
+		[Vector2i(1, 1), Vector2i(2, 1), Vector2i(3, 1)], "one row, three columns")
 
 func test_the_board_forgets_the_swing_when_it_moves() -> void:
 	_weapon(&"wooden_sword", 0, 3)

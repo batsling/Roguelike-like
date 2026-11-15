@@ -6,9 +6,11 @@ extends Control
 # because the ladder belongs to the player now. Confirm hands over to the
 # character select (CharacterPicker), which is the second pick.
 #
-# The same shape as CharacterPicker on purpose: a column of tiles on the left, the
-# selected player's details on the right, the Fracture row under them, and Cancel /
-# Next along the bottom. Selecting a tile only previews it.
+# THE SAME LOOK AS CharacterPicker (the owner, 15 Nov 2026: "make the player select
+# look like the character one"): the same panel, a four-wide grid of small tiles on
+# the left, the selected player's picture beside their facts on the right, then
+# the Fracture row, and Cancel / 🎲 Random / Next along the bottom. Selecting a
+# tile only previews it, and so does the dice.
 #
 # A player with no art (the basic player) is drawn as its NAME in the tile and in
 # the detail panel's picture box: the owner asked for "Basic" to be said rather
@@ -18,9 +20,13 @@ extends Control
 # was saved as the player's pick when it was clicked, so nothing else is passed.
 signal chosen(player_id: StringName)
 
-const TILE_SIZE := Vector2(150, 150)
-const PORTRAIT := 200
-const TILE_ART := 96
+# The character picker's numbers (CharacterPicker.TILE_*), so the two screens are
+# one design.
+const TILE_COLUMNS := CharacterPicker.TILE_COLUMNS
+const TILE_SIZE := CharacterPicker.TILE_SIZE
+const TILE_GAP := CharacterPicker.TILE_GAP
+const PORTRAIT := CharacterPicker.CHAR_PORTRAIT_SIZE
+const TILE_ART := 76
 # A tile in the Hat strip (docs/customization.md §7), the character picker's size.
 const LOOK_TILE := 48
 
@@ -51,7 +57,7 @@ func _build() -> void:
 	center.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(center)
 	var panel := PanelContainer.new()
-	panel.custom_minimum_size = Vector2(1080, 560)
+	panel.custom_minimum_size = Vector2(1080, 620)
 	panel.add_theme_stylebox_override("panel", UITheme.panel_box(UITheme.BG,
 		UITheme.ACCENT.lerp(UITheme.BORDER, 0.4), 12, 22, 2))
 	center.add_child(panel)
@@ -70,12 +76,22 @@ func _build() -> void:
 	body.add_theme_constant_override("separation", UITheme.GAP_SECTION)
 	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	vbox.add_child(body)
-	var tiles := VBoxContainer.new()
-	tiles.add_theme_constant_override("separation", UITheme.GAP)
-	body.add_child(tiles)
+	# The character picker's board: a fixed four-wide grid in a scroll.
+	var grid_scroll := ScrollContainer.new()
+	grid_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	grid_scroll.custom_minimum_size = Vector2(TILE_COLUMNS * (TILE_SIZE.x + TILE_GAP), 400)
+	grid_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	body.add_child(grid_scroll)
+	var tiles := GridContainer.new()
+	tiles.columns = TILE_COLUMNS
+	tiles.add_theme_constant_override("h_separation", TILE_GAP)
+	tiles.add_theme_constant_override("v_separation", TILE_GAP)
+	tiles.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	grid_scroll.add_child(tiles)
 	var detail_wrap := PanelContainer.new()
 	detail_wrap.add_theme_stylebox_override("panel", UITheme.panel_box(UITheme.PANEL,
 		UITheme.BORDER, 12, 14, 1))
+	detail_wrap.custom_minimum_size = Vector2(520, 0)
 	detail_wrap.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	body.add_child(detail_wrap)
 	var detail_col := VBoxContainer.new()
@@ -86,8 +102,8 @@ func _build() -> void:
 	detail.add_theme_constant_override("separation", UITheme.GAP_LOOSE)
 	detail.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	detail_col.add_child(detail)
-	# THE HAT, a band across the foot of the panel like the character picker's
-	# costumes (_hat_row): the same tiles as the Customization screen's Hats tab.
+	# THE CUSTOMIZE BUTTON's place, at the foot of the panel (_fill_hat_row): the
+	# hats open in a popup, the same tiles as the Customization screen's Hats tab.
 	_hat_box = VBoxContainer.new()
 	_hat_box.name = "Hats"
 	detail_col.add_child(_hat_box)
@@ -109,6 +125,14 @@ func _build() -> void:
 	var spacer := Control.new()
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	footer.add_child(spacer)
+	# The dice previews, Next confirms — beside it, as on the character picker.
+	var random_btn := Button.new()
+	random_btn.name = "Random"
+	random_btn.text = "🎲  Random"
+	random_btn.custom_minimum_size = Vector2(150, 44)
+	random_btn.tooltip_text = "Pick a player at random — press again to reroll, Next to take it."
+	random_btn.pressed.connect(func(): roll_random())
+	footer.add_child(random_btn)
 	var confirm := Button.new()
 	confirm.name = "Next"
 	confirm.text = "Next"
@@ -137,6 +161,7 @@ func _build() -> void:
 			_roster.append(pl)
 	for pl in _roster:
 		tiles.add_child(_tile(pl, state, select))
+	random_btn.disabled = _playable().size() < 2
 	confirm.pressed.connect(func():
 		if String(state["id"]) != "":
 			_confirm(StringName(state["id"])))
@@ -155,6 +180,27 @@ func _build() -> void:
 		select.call(first)
 	elif not _roster.is_empty():
 		select.call(_roster[0])
+
+# The players a run can start as: every one no achievement is holding back.
+func _playable() -> Array[PlayerData]:
+	var out: Array[PlayerData] = []
+	for pl in _roster:
+		if not Achievements.player_locked(pl.id):
+			out.append(pl)
+	return out
+
+# Roll a player into the preview, never the one already showing while there is
+# another (CharacterPicker.roll_random's rule). Public for the dice and the tests.
+func roll_random() -> PlayerData:
+	var playable: Array[PlayerData] = _playable()
+	if playable.is_empty() or not _select.is_valid():
+		return null
+	var pool: Array[PlayerData] = playable.filter(func(p): return p.id != selected_id())
+	if pool.is_empty():
+		pool = playable
+	var pick: PlayerData = pool[randi() % pool.size()]
+	_select.call(pick)
+	return pick
 
 # Select `id`, as a click on its tile would. For tests and the menu.
 func select_player(id: StringName) -> void:
@@ -204,9 +250,16 @@ func _tile(pl: PlayerData, state: Dictionary, select: Callable) -> Control:
 	tile.add_theme_stylebox_override("panel", normal)
 	state["tiles"][pl.id] = func(is_sel: bool) -> void:
 		tile.add_theme_stylebox_override("panel", selected if is_sel else normal)
+		tile.modulate = Color(1.08, 1.08, 1.08) if is_sel else Color.WHITE
 	tile.gui_input.connect(func(e):
 		if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT:
 			select.call(pl))
+	tile.mouse_entered.connect(func():
+		if String(state["id"]) != String(pl.id):
+			tile.modulate = Color(1.06, 1.06, 1.06))
+	tile.mouse_exited.connect(func():
+		if String(state["id"]) != String(pl.id):
+			tile.modulate = Color.WHITE)
 	var vb := VBoxContainer.new()
 	vb.alignment = BoxContainer.ALIGNMENT_CENTER
 	vb.add_theme_constant_override("separation", UITheme.GAP_TIGHT)
@@ -269,9 +322,12 @@ func _fill_detail(box: HBoxContainer, pl: PlayerData) -> void:
 		right.add_child(_line(PlayerData.mechanic_line(m), UITheme.FONT_BODY,
 			UITheme.TEXT.lerp(Color(0.7, 0.85, 0.95), 0.5)))
 
-# The Hat strip for `pl`: No hat, 🎲 Random and every hat, locked ones as
-# silhouettes. Only for a player who is unlocked and has a spot for one (the basic
+# THE CUSTOMIZE BUTTON for `pl` (the owner, 15 Nov 2026), at the foot of the
+# detail panel: it opens the hat choices in a popup rather than a strip across the
+# panel. Only for a player who is unlocked and has a spot for a hat (the basic
 # player has no picture to wear it on). A pick redraws the portrait and the tile.
+var _popup: Control = null
+
 func _fill_hat_row(detail: HBoxContainer, pl: PlayerData) -> void:
 	for c in _hat_box.get_children():
 		_hat_box.remove_child(c)
@@ -279,26 +335,16 @@ func _fill_hat_row(detail: HBoxContainer, pl: PlayerData) -> void:
 	if pl.portrait == null or pl.hat_spot.z <= 0.0 or Achievements.player_locked(pl.id) \
 			or CosmeticCatalog.hats().is_empty():
 		return
-	_hat_box.add_child(HSeparator.new())
-	var row := HBoxContainer.new()
-	row.name = "Slot_hat"
-	row.add_theme_constant_override("separation", UITheme.GAP_SNUG)
-	_hat_box.add_child(row)
-	var lbl := Label.new()
-	lbl.text = "Hat"
-	lbl.custom_minimum_size = Vector2(34, 0)
-	lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	lbl.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
-	lbl.add_theme_color_override("font_color", UITheme.TEXT_DIM)
-	row.add_child(lbl)
-	var scroll := ScrollContainer.new()
-	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.custom_minimum_size = Vector2(0, LOOK_TILE + UITheme.GAP_WIDE)
-	row.add_child(scroll)
-	var strip := HBoxContainer.new()
-	strip.add_theme_constant_override("separation", UITheme.GAP_TIGHT)
-	scroll.add_child(strip)
+	_hat_box.add_child(CustomizeScreen.customize_button(func(): open_customize(detail, pl)))
+
+# Open the hat popup for `pl`. Public so a test can open it as the button does.
+func open_customize(detail: HBoxContainer = null, pl: PlayerData = null) -> Control:
+	if detail == null:
+		detail = find_child("Detail", true, false)
+	if pl == null:
+		pl = Data.get_player(selected_id())
+	if is_instance_valid(_popup):
+		_popup.queue_free()
 	var on_change := func() -> void:
 		(func() -> void:
 			var arts: Dictionary = _state.get("arts", {})
@@ -306,22 +352,14 @@ func _fill_hat_row(detail: HBoxContainer, pl: PlayerData) -> void:
 				var tr := arts[pl.id] as TextureRect
 				tr.texture = pl.shown_portrait()
 				UITheme.apply_crisp(tr, tr.texture)
-			var keep: float = scroll.scroll_horizontal
 			_fill_detail(detail, pl)
-			_fill_hat_row(detail, pl)
-			_restore_scroll.call_deferred(keep)).call_deferred()
-	for t in CustomizeScreen.hat_tiles(pl, LOOK_TILE, on_change):
-		strip.add_child(t)
-
-# A pick rebuilds the strip; put it back where it was scrolled to, not at the start.
-func _restore_scroll(x: float) -> void:
-	if not is_inside_tree():
-		return
-	await get_tree().process_frame   # once the new strip has been laid out
-	if not is_instance_valid(_hat_box):
-		return
-	for c in _hat_box.find_children("*", "ScrollContainer", true, false):
-		(c as ScrollContainer).scroll_horizontal = int(x)
+			if is_instance_valid(_popup):
+				(_popup.get_meta(&"refill") as Callable).call()).call_deferred()
+	_popup = CustomizeScreen.looks_popup(self, "%s — Hat" % pl.display_name,
+		func(body: VBoxContainer) -> void:
+			body.add_child(CustomizeScreen.look_row("Slot_hat", "Hat",
+				CustomizeScreen.hat_tiles(pl, LOOK_TILE, on_change))))
+	return _popup
 
 func _line(text: String, size: int, color: Color) -> Label:
 	var l := Label.new()

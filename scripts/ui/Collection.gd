@@ -10,6 +10,12 @@ extends Control
 # sheets. Tabs:
 #   Games      — the roguelike catalog (influence graph) + lifetime stats.
 #   Items      — every 2.0 ItemData (data/items2.0), grid + detail panel.
+#   Curses     — every curse (data/curses2.0), a tab of its OWN rather than a
+#                Loot sub-tab (the owner, 15 Nov 2026: "some curses in the future
+#                won't be loot"). Today's are all cards in the pack.
+#   Players    — every PlayerData (data/players): the first pick of a run, its
+#                mechanics and its Fracture ladder. All shown; a locked one says
+#                what unlocks it.
 #   Characters — every 2.0 CharacterData (data/characters2.0), grid + detail.
 #   Enemies    — the normal goal-enemies (data/enemies2.0), grid + detail.
 #   Bosses     — the boss roster (data/bosses2.0), grid + detail.
@@ -30,8 +36,9 @@ extends Control
 # A character's detail is a fixed header (portrait, name, game, rank) over three
 # sub-pages — Overview, Progress, Games — each section in its own card.
 
-# LOCATIONS is last in the enum (an index nothing else moves for), not in the bar.
-enum Tab { GAMES, ITEMS, CHARACTERS, ENEMIES, BOSSES, LOOT, EVENTS, OBJECTS, SHOPKEEPERS, LOCATIONS }
+# LOCATIONS and PLAYERS are last in the enum (indexes nothing else moves for), not
+# in the bar: Players sits right before Characters there (the owner, 15 Nov 2026).
+enum Tab { GAMES, ITEMS, CHARACTERS, ENEMIES, BOSSES, LOOT, EVENTS, OBJECTS, SHOPKEEPERS, LOCATIONS, PLAYERS, CURSES }
 
 # Which half of the Loot tab is showing. A sub-tab rather than a filter chip
 # because the two sets share nothing but the pack they end up in: a scroll has a
@@ -133,7 +140,7 @@ const CELL_SEP := 2
 var _tab: int = Tab.GAMES
 
 var _search := {"items": "", "characters": "", "enemies": "", "scrolls": "", "pills": "",
-	"potions": "", "cards": "", "wands": "", "trinkets": "", "bags": "", "weapons": "",
+	"potions": "", "cards": "", "curses": "", "wands": "", "trinkets": "", "bags": "", "weapons": "",
 	"evolutions": "", "games": "", "events": "", "objects": "", "shopkeepers": "",
 	"locations": ""}
 # Which sub-tab the Loot tab is on: one of the LOOT_* constants.
@@ -303,10 +310,12 @@ func _build_shell() -> void:
 	header.add_child(tabs)
 	_add_tab_button(tabs, Tab.GAMES, "Games (%d)" % Data.game_count())
 	_add_tab_button(tabs, Tab.ITEMS, "Items (%d)" % Data.all_items2().size())
+	_add_tab_button(tabs, Tab.PLAYERS, "Players (%d)" % Data.all_players().size())
 	_add_tab_button(tabs, Tab.CHARACTERS, "Characters (%d)" % Data.all_characters2().size())
 	_add_tab_button(tabs, Tab.ENEMIES, "Enemies (%d)" % Data.all_goal_enemies().size())
 	_add_tab_button(tabs, Tab.BOSSES, "Bosses (%d)" % Data.all_bosses().size())
 	_add_tab_button(tabs, Tab.LOOT, "Loot (%d)" % loot_total())
+	_add_tab_button(tabs, Tab.CURSES, "Curses (%d)" % Data.all_curse_cards().size())
 	_add_tab_button(tabs, Tab.EVENTS, "Events (%d)" % Data.all_events2().size())
 	_add_tab_button(tabs, Tab.LOCATIONS, "Locations (%d)" % Data.all_locations().size())
 	_add_tab_button(tabs, Tab.OBJECTS, "Objects (%d)" % Data.all_objects2().size())
@@ -376,6 +385,10 @@ func _refresh() -> void:
 			_build_items()
 		Tab.CHARACTERS:
 			_build_characters()
+		Tab.PLAYERS:
+			_build_players()
+		Tab.CURSES:
+			_build_curses()
 		Tab.ENEMIES, Tab.BOSSES:
 			_build_enemies()
 		Tab.LOOT:
@@ -1358,6 +1371,7 @@ func _tab_roster() -> Array:
 		Tab.OBJECTS: return ["object", Data.all_objects2()]
 		Tab.SHOPKEEPERS: return ["shopkeeper", Data.all_shopkeepers()]
 		Tab.LOCATIONS: return ["location", Data.all_locations()]
+		Tab.CURSES: return ["card", Data.all_curse_cards()]
 		Tab.LOOT:
 			match _loot_sub:
 				LOOT_SCROLLS: return ["scroll", Data.all_scrolls()]
@@ -1411,6 +1425,10 @@ func _populate() -> void:
 			_populate_shopkeepers()
 		Tab.LOCATIONS:
 			_populate_locations()
+		Tab.PLAYERS:
+			_populate_players()
+		Tab.CURSES:
+			_populate_curses()
 
 # ------------------------------------------------------------------
 # Games tab
@@ -2104,6 +2122,85 @@ func _show_item_detail(it: ItemData) -> void:
 	if it.tags.size() > 0:
 		_detail_box.add_child(_detail_section("Tags"))
 		_detail_box.add_child(_label(", ".join(it.tags), Color(0.73, 0.55, 0.78), 11, false, true))
+
+# ------------------------------------------------------------------
+# Players tab
+# ------------------------------------------------------------------
+#
+# A player has no "seen": there are two of them and the picker lists both from
+# the first launch, so nothing here is veiled. A LOCKED player is drawn dark, the
+# way the picker draws one, and its page says what unlocks it.
+
+const PLAYER_COLOR := Color(0.55, 0.75, 0.95)
+
+func _build_players() -> void:
+	var row := _controls_row()
+	var gap := Control.new()
+	gap.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(gap)
+	_count_lbl = _label("", Color(0.6, 0.6, 0.65), 11)
+	row.add_child(_count_lbl)
+	_grid_and_detail()
+	_populate_players()
+
+func _populate_players() -> void:
+	_clear_children(_grid)
+	var list: Array = []
+	for pl in Data.all_players():
+		if pl is PlayerData:
+			list.append(pl)
+	list.sort_custom(func(a, b): return a.order < b.order)
+	for pl in list:
+		_grid.add_child(_player_cell(pl))
+	_count_lbl.text = "%d" % list.size()
+
+func _player_cell(pl: PlayerData) -> Control:
+	var locked: bool = Achievements.player_locked(pl.id)
+	var cell := _cell(PLAYER_COLOR, func(): _show_player_detail(pl))
+	cell.panel.custom_minimum_size = Vector2(GRID_PORTRAIT_SIZE + CELL_PAD + CELL_TEXT_SLACK, 0)
+	cell.panel.set_meta(&"entry", "player:%s" % String(pl.id))
+	var vb: VBoxContainer = cell.vbox
+	vb.alignment = BoxContainer.ALIGNMENT_CENTER
+	vb.add_child(PlayerPicker.picture(pl, GRID_PORTRAIT_SIZE, locked))
+	if pl.portrait != null:
+		vb.add_child(_label(pl.display_name, PLAYER_COLOR, GRID_NAME_FONT, true, true))
+	if locked:
+		vb.add_child(_label("LOCKED", UITheme.TEXT_FAINT, GRID_META_FONT, true, true))
+	return cell.panel
+
+func _show_player_detail(pl: PlayerData) -> void:
+	_set_detail_open(true)
+	_clear_children(_detail_box)
+	_detail_game = null
+	var locked: bool = Achievements.player_locked(pl.id)
+	var pic := PlayerPicker.picture(pl, CHAR_HEADER_PORTRAIT, locked)
+	pic.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	_detail_box.add_child(pic)
+	_detail_box.add_child(_label(pl.display_name, PLAYER_COLOR, 18, true, true))
+	if locked:
+		var a: AchievementData = Achievements.for_player(pl.id)
+		var lock := _section_card("Locked", UITheme.ACCENT)
+		if a != null:
+			lock.add_child(_prose(a.description))
+			lock.add_child(_label(("Best in one run: %d of %d" if a.is_run_scope()
+				else "So far: %d of %d") % [Achievements.progress(a), a.goal],
+				Achievements.RUN_COLOR if a.is_run_scope() else Achievements.LIFETIME_COLOR,
+				UITheme.FONT_BODY, false, true))
+		_detail_box.add_child(lock.get_meta(&"card"))
+	var mech := _section_card("Mechanics", PLAYER_COLOR)
+	if pl.mechanics.is_empty():
+		mech.add_child(_prose("No extra mechanics: the game as it is.", UITheme.TEXT_DIM))
+	for m in pl.mechanics:
+		mech.add_child(_label(PlayerData.mechanic_name(m), UITheme.ACCENT.lerp(UITheme.TEXT, 0.2),
+			UITheme.FONT_LABEL))
+		mech.add_child(_prose(PlayerData.mechanic_line(m)))
+	_detail_box.add_child(mech.get_meta(&"card"))
+	var frac := _section_card("%s Fracture" % Fracture.GLYPH, Fracture.COLOR)
+	var best: int = GameStats.player_fracture_best(pl.id)
+	frac.add_child(_prose("Highest won: %d" % best if best >= 0 else "No run won yet."))
+	frac.add_child(_prose("Unlocked up to: %d" % GameStats.player_fracture_unlocked(pl.id),
+		UITheme.TEXT_DIM))
+	_detail_box.add_child(frac.get_meta(&"card"))
 
 # ------------------------------------------------------------------
 # Characters tab
@@ -3151,6 +3248,50 @@ func _card_cell(c: CardData) -> Control:
 				said.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 				row.add_child(said)
 				vb.add_child(row)
+			_body_text(vb, c.description)
+			_source_line(vb, c.source_game)), "card", c.id)
+
+# THE CURSES TAB: a search box, the count, and the grid. A curse today IS a card
+# in the pack (`type: card`), so it is seen under "card" (GameStats.see_loot) and
+# drawn on the loot cells; a curse that is not loot gets its own cell here when
+# there is one.
+func _build_curses() -> void:
+	var row := _controls_row()
+	row.add_child(_search_box("curses"))
+	var gap := Control.new()
+	gap.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	gap.size_flags_stretch_ratio = 2.0
+	row.add_child(gap)
+	_add_count_label(row)
+	_grid_and_detail()
+	_populate_curses()
+
+func _populate_curses() -> void:
+	_clear_children(_grid)
+	var term: String = _search["curses"].to_lower()
+	var curses: Array = Data.all_curse_cards()
+	curses.sort_custom(func(a, b): return a.display_name.to_lower() < b.display_name.to_lower())
+	var shown: int = 0
+	for c in curses:
+		if not (c is CardData):
+			continue
+		if (term != "" or _hide_unseen) and not GameStats.is_seen("card", c.id):
+			continue
+		if term != "" and not (term in c.display_name.to_lower()):
+			continue
+		_grid.add_child(_curse_cell(c))
+		shown += 1
+	_set_count(shown, Data.all_curse_cards().size())
+
+const CURSE_COLOR := Color(0.85, 0.55, 0.9)
+
+# A curse: its picture, its keywords as the caption, and what it does.
+func _curse_cell(c: CardData) -> Control:
+	var face: Texture2D = _card_art(c.art_folder, c.art_file())
+	var art: Array = [face] if face != null else []
+	var words: String = ", ".join(Array(c.keywords)) if not c.keywords.is_empty() else "Curse"
+	return _veil(_loot_cell(art, c.display_name, CURSE_COLOR, words, "Curse  ·  %s" % words,
+		func(vb: VBoxContainer):
 			_body_text(vb, c.description)
 			_source_line(vb, c.source_game)), "card", c.id)
 

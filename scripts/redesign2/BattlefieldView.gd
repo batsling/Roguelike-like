@@ -2550,6 +2550,12 @@ func cell_at(at: Vector2) -> Vector2i:
 		return GameLoop2.OFF_FIELD
 	return Vector2i(col, row)
 
+# The square under a VIEWPORT point (a mouse position), or OFF_FIELD.
+func cell_at_screen(at: Vector2) -> Vector2i:
+	if _field == null or not is_instance_valid(_field):
+		return GameLoop2.OFF_FIELD
+	return cell_at(_field.get_global_transform_with_canvas().affine_inverse() * at)
+
 # Whether `cell` is bare ground a piece can be put down on: on the grid, with no
 # body standing in it, no unit on it and nothing already lying there.
 static func is_free_floor(cell: Vector2i) -> bool:
@@ -3109,20 +3115,34 @@ func _add_enemy_badges(holder: Control, entry: Dictionary, e: GoalEnemyData,
 	# the head of whatever stood in the cell below; in the corner it sits on this
 	# body's own frame, the one place the rest of the board does not need.
 	#
-	# AN ARROW, NOT A PIP PER STATUS (the owner, 11 Nov 2026): "instead of showing
-	# every status, just show an up or down arrow, and the statuses will be on the
-	# hoverover". A body carrying four statuses drew four pips across the top of
-	# its own picture. Now it is one ▲ if anything on it is a buff and one ▼ if
-	# anything is a debuff — both when it has both — and the hover's pip row names
-	# each one with its stacks (`enemy_hover`).
+	# STUN BY ITS OWN ICON, EVERYTHING ELSE AS AN ARROW (the owner, 15 Nov 2026:
+	# "stun, and the arrows should be there. i meant stun should be the only
+	# specific status there"). The ▲/▼ (11 Nov) stays for the rest — one ▲ if any
+	# other status is a buff, one ▼ if any is a debuff — and Stun, the one that
+	# changes what the body does THIS turn, is its own pip with its stacks. Every
+	# status, Stun included, is named with its stacks on the hover (`enemy_hover`).
 	var statuses: Array = GameLoop2.enemy_statuses(entry)
 	var strip: HBoxContainer = null
+	var stun_row: Dictionary = {}
+	var others: Array = []
+	for row in statuses:
+		var sd: StatusData = row.get("status")
+		if sd != null and sd.id == STUN_STATUS:
+			stun_row = row
+		else:
+			others.append(row)
 	if not statuses.is_empty():
 		strip = HBoxContainer.new()
 		strip.name = STATUS_STRIP_NAME
 		strip.add_theme_constant_override("separation", UITheme.GAP_NONE)
 		strip.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		var arrows: Dictionary = status_arrows(statuses)
+		if not stun_row.is_empty():
+			var pip := _status_pip(stun_row["status"], int(stun_row["stacks"]),
+				StatusData.ENEMY, STATUS_PIP_ENEMY, false, int(stun_row.get("games", 0)))
+			pip.name = "StatusStun"
+			pip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			strip.add_child(pip)
+		var arrows: Dictionary = status_arrows(others)
 		if arrows["up"]:
 			var up := _corner_badge("▲", STATUS_UP, STATUS_PIP_ENEMY)
 			up.name = "StatusUp"
@@ -3541,6 +3561,8 @@ func _stat_badge(text: String, accent: Color, font_size: int) -> Label:
 # The status strip's node name on an enemy's badge layer. A const because it is an
 # identity two files agree on: the board builds it and the tests look it up.
 const STATUS_STRIP_NAME := "StatusStrip"
+# The one status drawn on an enemy's body (the rest live on its hover).
+const STUN_STATUS := &"stun"
 
 # Which arrows a body's statuses add up to: `up` when any of them is a buff,
 # `down` when any is a debuff. Static and public so a test can ask it.

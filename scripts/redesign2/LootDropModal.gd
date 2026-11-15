@@ -232,6 +232,35 @@ static func embed(page: Node, host: Node, slot: Container, offer, spendable: boo
 # piece spent, a slot emptied. Rebuilding the whole panel rather than patching it
 # is the call the loot window makes for the same reason: nine cells is cheap, and a
 # view kept in sync by hand is a view that eventually disagrees with the array.
+# --- a pick of pieces you own, in THIS pack (OwnedPick.gd) --------------------
+#
+# The owner, 15 Nov 2026: a Scroll of Identify read from the "You are cursed"
+# screen "didn't do the proper selection screen of the loot inventory, it had its
+# own thing". The page's pick runs in the loot window, which is under this screen,
+# so it used to refuse and the use modal drew a grid of its own. Now the page
+# hands the pick here (Overworld2.begin_owned_pick) and this screen's pack is the
+# one that lights up and takes the click. Standalone only: embedded, the
+# post-combat screen owns the page.
+var _pick = null
+
+func can_host_pick() -> bool:
+	return _slot == null and not _answered and is_instance_valid(_layer)
+
+func host_pick(pick) -> void:
+	_pick = pick
+	_rebuild()
+
+func end_pick() -> void:
+	if _pick == null:
+		return
+	_pick = null
+	_rebuild()
+
+# The layer a hosted pick's banner goes on: just over this screen and the use
+# modal it opens, so its words and its Done button are on top.
+func pick_layer() -> int:
+	return (_layer.layer if is_instance_valid(_layer) else LAYER) + 2
+
 func _rebuild() -> void:
 	if _answered:
 		return
@@ -321,10 +350,14 @@ func _build() -> void:
 	# EVERYTHING THE LOOT WINDOW'S GRID DOES, because it is the same grid: rearrange,
 	# inspect, spend, bin — plus taking what is on the table.
 	_grid = LootGrid.new()
-	_grid.allow_take = true
-	_grid.allow_reorder = true
-	_grid.show_use = _spendable
-	_grid.allow_discard = true
+	# A PICK HOSTED HERE (`host_pick`) turns this pack into the answer, as it does
+	# the loot window's: the pieces it can take light up, a click chooses, and
+	# nothing moves, spends, is taken or binned until it is answered.
+	_grid.pick = _pick
+	_grid.allow_take = _pick == null
+	_grid.allow_reorder = _pick == null
+	_grid.show_use = _spendable and _pick == null
+	_grid.allow_discard = _pick == null
 	_grid.take_requested.connect(_take_offer)
 	_grid.use_requested.connect(_use_carried)
 	_grid.discard_requested.connect(_discard_carried)

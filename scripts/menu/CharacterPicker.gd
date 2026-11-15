@@ -131,11 +131,13 @@ func _build() -> void:
 	detail_col.add_theme_constant_override("separation", UITheme.GAP_SNUG)
 	detail_wrap.add_child(detail_col)
 	var detail_box := HBoxContainer.new()
+	detail_box.name = "Detail"
 	detail_box.add_theme_constant_override("separation", UITheme.GAP_LOOSE)
 	detail_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	detail_box.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	detail_col.add_child(detail_box)
-	# The hero's costumes, a band across the foot of the panel (_costume_rows).
+	# The CUSTOMIZE BUTTON's place, at the foot of the panel: the hero's costumes
+	# open in a popup from it (open_customize).
 	_looks_box = VBoxContainer.new()
 	_looks_box.name = "Looks"
 	detail_col.add_child(_looks_box)
@@ -405,10 +407,9 @@ func _fill_char_detail(box: HBoxContainer, ch: CharacterData) -> void:
 		for c in _looks_box.get_children():
 			_looks_box.remove_child(c)
 			c.queue_free()
-		var looks := _costume_rows(box, ch)
-		if looks != null:
-			_looks_box.add_child(HSeparator.new())
-			_looks_box.add_child(looks)
+		if _has_costumes(ch):
+			_looks_box.add_child(CustomizeScreen.customize_button(
+				func(): open_customize(box, ch)))
 
 	# RIGHT: what they play like.
 	var right := VBoxContainer.new()
@@ -492,55 +493,45 @@ func _fill_locked_detail(box: HBoxContainer, ch: CharacterData) -> void:
 		lbl.add_theme_color_override("font_color", l[2])
 		col.add_child(lbl)
 
-# THE COSTUMES, under the hero they dress (docs/customization.md; the owner, 8 Nov
-# 2026: "change costume/icon in character picker … shows silhouettes of locked
-# costumes"). A band across the foot of the detail panel, full width so a hero's
-# every costume is in view (under the portrait, four were). One strip for the
-# icon and one for the full portrait, each the same
-# choices as the Customization screen (CustomizeScreen.slot_tiles): the default,
-# 🎲 Random, then every costume, a locked one as its silhouette. A strip SCROLLS
-# sideways rather than wrapping: Zoe's nine icons would otherwise stack three rows
-# into a panel that never scrolls. Null for a hero with no costumes at all.
+# THE COSTUMES, in a popup off the Customize button (the owner, 15 Nov 2026; they
+# were a band across the foot of the detail panel). One row for the icon and one
+# for the full portrait, each the same choices as the Customization screen
+# (CustomizeScreen.slot_tiles): the default, 🎲 Random, then every costume, a
+# locked one as its silhouette. No button for a hero with no costumes at all.
 const LOOK_TILE := 40
+var _popup: Control = null
 
-func _costume_rows(box: HBoxContainer, ch: CharacterData) -> Control:
-	var slots: Array = CosmeticCatalog.SLOTS.filter(func(slot):
+func _costume_slots(ch: CharacterData) -> Array:
+	return CosmeticCatalog.SLOTS.filter(func(slot):
 		return not CosmeticCatalog.costumes_of(ch.id, slot).is_empty())
-	if slots.is_empty():
-		return null
-	var col := VBoxContainer.new()
-	col.name = "Costumes"
-	col.add_theme_constant_override("separation", UITheme.GAP_TIGHT)
+
+func _has_costumes(ch: CharacterData) -> bool:
+	return not _costume_slots(ch).is_empty()
+
+# Open the costume popup for `ch`. Public so a test can open it as the button does.
+func open_customize(box: HBoxContainer, ch: CharacterData) -> Control:
+	if is_instance_valid(_popup):
+		_popup.queue_free()
 	var on_change := func() -> void:
 		(func() -> void:
 			var icons: Dictionary = _state.get("icons", {})
 			if icons.has(ch.id) and is_instance_valid(icons[ch.id]):
 				(icons[ch.id] as TextureRect).texture = ch.shown_icon()
 				UITheme.apply_crisp(icons[ch.id], ch.shown_icon())
-			_fill_char_detail(box, ch)).call_deferred()
-	for slot in slots:
-		var row := HBoxContainer.new()
-		row.name = "Slot_%s" % slot
-		row.add_theme_constant_override("separation", UITheme.GAP_SNUG)
-		col.add_child(row)
-		var lbl := Label.new()
-		lbl.text = "Icon" if slot == "icon" else "Full"
-		lbl.custom_minimum_size = Vector2(34, 0)
-		lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		lbl.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
-		lbl.add_theme_color_override("font_color", UITheme.TEXT_DIM)
-		row.add_child(lbl)
-		var scroll := ScrollContainer.new()
-		scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-		scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		scroll.custom_minimum_size = Vector2(0, LOOK_TILE + UITheme.GAP_WIDE)
-		row.add_child(scroll)
-		var strip := HBoxContainer.new()
-		strip.add_theme_constant_override("separation", UITheme.GAP_TIGHT)
-		scroll.add_child(strip)
-		for t in CustomizeScreen.costume_tiles(ch, slot, LOOK_TILE, on_change):
-			strip.add_child(t)
-	return col
+			_fill_char_detail(box, ch)
+			if is_instance_valid(_popup):
+				(_popup.get_meta(&"refill") as Callable).call()).call_deferred()
+	_popup = CustomizeScreen.looks_popup(self, "%s — Costumes" % ch.display_name,
+		func(body: VBoxContainer) -> void:
+			var col := VBoxContainer.new()
+			col.name = "Costumes"
+			col.add_theme_constant_override("separation", UITheme.GAP)
+			body.add_child(col)
+			for slot in _costume_slots(ch):
+				col.add_child(CustomizeScreen.look_row("Slot_%s" % slot,
+					"Icon" if slot == "icon" else "Full",
+					CustomizeScreen.costume_tiles(ch, slot, LOOK_TILE, on_change))))
+	return _popup
 
 func _detail_head(text: String) -> Label:
 	var l := Label.new()

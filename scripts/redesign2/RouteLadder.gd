@@ -213,6 +213,17 @@ static func build(cfg: Dictionary) -> Control:
 					Vector2(ra.end.x, ra.get_center().y + ra.size.y * 0.25),
 					Vector2(rb.position.x, rb.get_center().y + rb.size.y * 0.25),
 					false, "key"])
+	# NO ARROW THROUGH A BOX (the owner, 15 Nov 2026: Crawl's key road to Angband
+	# was drawn straight through Diablo, the game between them). Each line that
+	# would cross a box it does not start or end at is bent through the nearest
+	# gap in that column instead (`route_around`), and carries the bend as its
+	# points.
+	for seg in segments:
+		var pts: PackedVector2Array = route_around(seg[0], seg[1], rects)
+		if pts.size() > 2:
+			while (seg as Array).size() < 4:
+				(seg as Array).append("")
+			(seg as Array).append(pts)
 	canvas.segments = segments
 	canvas.arrow_size = 9.0 * clampf(box.y / BOX.y, 0.6, 1.0)
 	canvas.custom_minimum_size = stage + Vector2(pad, pad) * 2.0
@@ -250,6 +261,112 @@ static func build(cfg: Dictionary) -> Control:
 	for m in markers:
 		canvas.add_child(m)
 	return canvas
+
+# THE ROAD FROM `a` TO `b` THAT TOUCHES NO BOX between them: [a, b] when the
+# straight line is clear, else bent through the free gap nearest the line in each
+# column it would cross — one point at the column's left and one at its right, so
+# the line runs level through the gap. `rects` is every box ("depth|id" -> Rect2);
+# the two the line joins are the ones its ends sit on and are not in its way.
+# Public and static so a test can hold a route to it.
+const ROUTE_CLEAR := 4.0
+
+static func route_around(a: Vector2, b: Vector2, rects: Dictionary) -> PackedVector2Array:
+	var direct := PackedVector2Array([a, b])
+	var columns: Dictionary = {}       # depth -> [Rect2]
+	var hit: Dictionary = {}           # depths the straight line crosses a box in
+	for k in rects:
+		var r: Rect2 = rects[k]
+		var depth: int = int(String(k).get_slice("|", 0))
+		if not columns.has(depth):
+			columns[depth] = []
+		(columns[depth] as Array).append(r)
+		# The boxes the line starts and ends at are its own.
+		if r.grow(1.0).has_point(a) or r.grow(1.0).has_point(b):
+			continue
+		if r.position.x > maxf(a.x, b.x) or r.end.x < minf(a.x, b.x):
+			continue
+		if _segment_hits_rect(a, b, r.grow(ROUTE_CLEAR)):
+			hit[depth] = true
+	if hit.is_empty():
+		return direct
+	var depths: Array = hit.keys()
+	depths.sort()
+	if b.x < a.x:
+		depths.reverse()
+	var out := PackedVector2Array([a])
+	for depth in depths:
+		var col: Array = columns[depth]
+		var left: float = INF
+		var right: float = -INF
+		for r in col:
+			left = minf(left, (r as Rect2).position.x)
+			right = maxf(right, (r as Rect2).end.x)
+		var mid_x: float = (left + right) * 0.5
+		var t: float = 0.0 if is_equal_approx(b.x, a.x) else clampf((mid_x - a.x) / (b.x - a.x), 0.0, 1.0)
+		var want: float = lerpf(a.y, b.y, t)
+		var y: float = _nearest_gap(col, want)
+		var first: float = left - ROUTE_CLEAR * 2.0 if b.x >= a.x else right + ROUTE_CLEAR * 2.0
+		var last: float = right + ROUTE_CLEAR * 2.0 if b.x >= a.x else left - ROUTE_CLEAR * 2.0
+		out.append(Vector2(first, y))
+		out.append(Vector2(last, y))
+	out.append(b)
+	return out
+
+# The y nearest `want` that runs clear between the boxes of one column: inside a
+# gap between two of them, or above the first, or below the last.
+static func _nearest_gap(col: Array, want: float) -> float:
+	var spans: Array = []
+	for r in col:
+		spans.append([(r as Rect2).position.y - ROUTE_CLEAR, (r as Rect2).end.y + ROUTE_CLEAR])
+	spans.sort_custom(func(x, y): return float(x[0]) < float(y[0]))
+	# The free stretches: above the first box, between each pair, below the last.
+	var free: Array = [[-INF, float(spans[0][0])]]
+	var reach: float = float(spans[0][1])
+	for i in range(1, spans.size()):
+		if float(spans[i][0]) > reach:
+			free.append([reach, float(spans[i][0])])
+		reach = maxf(reach, float(spans[i][1]))
+	free.append([reach, INF])
+	var best: float = want
+	var best_d: float = INF
+	for f in free:
+		var lo: float = float(f[0])
+		var hi: float = float(f[1])
+		# The middle of a bounded gap; the edge plus a clearance for the open ends.
+		var y: float
+		if is_inf(lo):
+			y = minf(want, hi - ROUTE_CLEAR * 2.0)
+		elif is_inf(hi):
+			y = maxf(want, lo + ROUTE_CLEAR * 2.0)
+		else:
+			y = clampf(want, lo + ROUTE_CLEAR, hi - ROUTE_CLEAR) if hi - lo > ROUTE_CLEAR * 2.0 \
+				else (lo + hi) * 0.5
+		var d: float = absf(y - want)
+		if d < best_d:
+			best_d = d
+			best = y
+	return best
+
+# Whether the segment a→b passes through `r` (Liang–Barsky clip).
+static func _segment_hits_rect(a: Vector2, b: Vector2, r: Rect2) -> bool:
+	var d: Vector2 = b - a
+	var t0: float = 0.0
+	var t1: float = 1.0
+	var p := [-d.x, d.x, -d.y, d.y]
+	var q := [a.x - r.position.x, r.end.x - a.x, a.y - r.position.y, r.end.y - a.y]
+	for i in 4:
+		if is_zero_approx(float(p[i])):
+			if float(q[i]) < 0.0:
+				return false
+			continue
+		var t: float = float(q[i]) / float(p[i])
+		if float(p[i]) < 0.0:
+			t0 = maxf(t0, t)
+		else:
+			t1 = minf(t1, t)
+		if t0 > t1:
+			return false
+	return true
 
 # THE ORDER WITHIN EACH COLUMN, chosen to cross as few arrows as the DAG allows:
 # a few sweeps of the barycentre heuristic, each column sorted by the mean slot of
@@ -955,8 +1072,23 @@ class GraphCanvas extends Control:
 
 	func _draw() -> void:
 		for seg in segments:
+			# A BENT ROAD (route_around) draws its bends, the arrowhead on the last.
+			var pts: PackedVector2Array = seg[4] if seg.size() > 4 \
+				and seg[4] is PackedVector2Array else PackedVector2Array()
 			var a: Vector2 = seg[0]
 			var b: Vector2 = seg[1]
+			if pts.size() > 2:
+				var col0: Color = UITheme.GOLD if seg.size() > 3 and String(seg[3]) == "key" \
+					else (UITheme.RIFT if seg.size() > 2 and bool(seg[2]) else COL_ARROW)
+				var w0: float = 2.5 * (arrow_size / 9.0)
+				var dashed: bool = (seg.size() > 2 and bool(seg[2])) \
+					or (seg.size() > 3 and String(seg[3]) == "key")
+				for i in range(pts.size() - 2):
+					if dashed:
+						draw_dashed_line(pts[i], pts[i + 1], col0, w0, arrow_size * 0.7, true)
+					else:
+						draw_line(pts[i], pts[i + 1], col0, w0, true)
+				a = pts[pts.size() - 2]
 			# Stop the line a touch short of the box so the arrowhead sits clear.
 			var dir: Vector2 = (b - a)
 			if dir.length() < 0.001:

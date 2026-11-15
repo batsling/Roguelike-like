@@ -643,6 +643,8 @@ static func _ch_players() -> Dictionary:
 			+ "know which until you swing it (it reads \"Hero Sword +?\"). A "
 			+ "Scroll of Identify tells you sooner. A weapon you start with is "
 			+ "never rolled."),
+		_b("ATTACK cards you find are rolled the same way: each Stun the card "
+			+ "lays is -2 to +2, unknown until you play it (\"Cleave +?\")."),
 		_b("A minus is CURSED once you know it: it stays exactly where it sits in "
 			+ "your pack — no moving, turning, dropping or smelting. Anything that "
 			+ "lifts a curse lifts it, and a weapon freed that way always lays at "
@@ -921,7 +923,8 @@ static func _ch_pack() -> Dictionary:
 				+ "blast blows the fire out."),
 			_kv("Poops (units that block)", "A WALL. Nothing can step onto one, so "
 				+ "an enemy that reaches it spends its step hitting it instead, for "
-				+ "exactly what it would hit you for. "
+				+ "exactly what it would hit you for. A Ranged enemy's shot hits "
+				+ "the first poop in its lane instead of you. "
 				+ "You can break it too — a bomb, a thrown potion, anything that hits "
 				+ "the ground. Broken, it pays out whoever broke it: a Poop drops a "
 				+ "piece of loot or lets a fly out, a Golden Poop pays gold, a "
@@ -956,8 +959,8 @@ static func _ch_pack() -> Dictionary:
 				+ "Curse. Curse of the Bell is Eternal."),
 			_kv("Ethereal", "It goes away on its own after 3 games, win or lose, "
 				+ "and its square counts them. Clumsy is Ethereal."),
-			_p("A cursed weapon (a minus weapon you found unidentified) counts as "
-				+ "a curse too."),
+			_p("A cursed weapon or attack card (a minus one you found "
+				+ "unidentified) counts as a curse too."),
 			_h("Luck"),
 			_p("Every point of Luck is a 50% chance of one more roll, and the "
 				+ "better result is kept. It compounds rather than adding — at 1 "
@@ -1183,9 +1186,10 @@ static func _ch_screen() -> Dictionary:
 				+ "your resources, your statuses and the curse cards you carry."),
 			_kv("The fallen", "Every enemy this run has put down is the Fallen "
 				+ "tab of the History, in the bar at the top."),
-			_kv("Statuses on an enemy", "A ▲ on a body means it carries a buff, a "
-				+ "▼ a debuff. Hover the body to see which, and a bigger picture "
-				+ "of it."),
+			_kv("Statuses on an enemy", "Stun is drawn on a body as itself, with "
+				+ "its stacks. Any other status is an arrow: a ▲ means it carries a "
+				+ "buff, a ▼ a debuff. Hover the body to see which, and a bigger "
+				+ "picture of it."),
 			_kv("Bash, Dash, Transmute, Scramble", "Chips on the row under the "
 				+ "offering, once you have a charge — a verb at 0 is not shown. Dash "
 				+ "and Scramble act at once; Bash and Transmute ARM, and the next card "

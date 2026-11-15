@@ -144,6 +144,9 @@ const SMALL_DIRS := [
 # is not a piece of loot anyone carries face down on a menu, so it stays out.
 const CARD_DIR := "res://images2.0/cards/"
 const CARD_SKIP := ["QuestionMarkCard.png"]
+# The CURSE CARDS fall too (the owner, 15 Nov 2026), whole like the cards, once
+# seen — a curse in the pack is seen as a card (`Data.all_cards_and_curses`).
+const CURSE_DIR := "res://images2.0/curses/"
 
 # EVERY KIND OF LOOT GETS A SEAT. The small pool is ~100 picks out of ~300, so a
 # kind with five pictures (bags) or six (weapons) would be on screen some launches
@@ -341,6 +344,11 @@ func _loot_groups() -> Array:
 		if not CARD_SKIP.has(String(path).get_file()) and _was_seen(seen, path):
 			cards.append({"path": path, "kind": Kind.SMALL, "foot": 1, "whole": true})
 	out.append(cards)
+	var curses: Array = []
+	for path in _pngs_in(CURSE_DIR):
+		if _was_seen(seen, path):
+			curses.append({"path": path, "kind": Kind.SMALL, "foot": 1, "whole": true})
+	out.append(curses)
 	return out
 
 # Enemies and bosses straight off their resources, each carrying the footprint it
@@ -405,7 +413,7 @@ func _character_jobs() -> Array:
 const SEEN_KINDS := {
 	"item": "all_items2", "scroll": "all_scrolls2", "potion": "all_potions",
 	"trinket": "all_trinkets", "weapon": "all_weapons", "bag": "all_bags",
-	"card": "all_cards", "evolution": "all_evolutions", "pill": "all_pills",
+	"card": "all_cards_and_curses", "evolution": "all_evolutions", "pill": "all_pills",
 }
 # A picture that stands for a whole kind: folder (or file) -> the kind.
 const KIND_ART := {

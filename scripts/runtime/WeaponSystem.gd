@@ -55,7 +55,16 @@ static func new_entry(w: WeaponData, rolled: bool = true) -> Dictionary:
 		return {}
 	var entry := {"type": "weapon", "id": w.id, "rarity": w.rarity, "charges": 0,
 		"uid": _next_uid(), "goal_game": -1}
-	if rolled and GameState.has_mechanic(&"unidentified_weapons") \
+	if rolled:
+		roll_new(entry)
+	return entry
+
+# ROLL A FOUND PIECE, if the run's player finds them unidentified: a weapon, or an
+# ATTACK card (the owner, 15 Nov 2026: "make sure attack cards also have the
+# unidentified weapon mechanic from retro bat"). What the run starts with is not
+# rolled (GameState.granting_start_kit). Returns `entry`.
+static func roll_new(entry: Dictionary) -> Dictionary:
+	if is_rollable(entry) and GameState.has_mechanic(&"unidentified_weapons") \
 			and not GameState.granting_start_kit:
 		entry["roll"] = roll_modifier()
 		entry["roll_known"] = false
@@ -86,8 +95,13 @@ static func roll_modifier(rng: RandomNumberGenerator = null) -> int:
 			return int(pair[0])
 	return 0
 
+# What can carry a roll: a weapon, or an attack card (LootUpgrade.is_attack) — the
+# two kinds of loot that lay Stun on purpose.
+static func is_rollable(entry) -> bool:
+	return is_weapon(entry) or LootUpgrade.is_attack(entry)
+
 static func has_roll(entry) -> bool:
-	return is_weapon(entry) and (entry as Dictionary).has("roll")
+	return is_rollable(entry) and (entry as Dictionary).has("roll")
 
 static func roll_of(entry) -> int:
 	return int((entry as Dictionary).get("roll", 0)) if has_roll(entry) else 0
@@ -115,7 +129,9 @@ static func reveal(entry) -> bool:
 		return false
 	(entry as Dictionary)["roll_known"] = true
 	var w: WeaponData = def(entry)
-	var name: String = w.display_name if w != null else "Weapon"
+	var card: CardData = CardSystem.data_for(entry) if w == null else null
+	var name: String = w.display_name if w != null else (
+		card.display_name if card != null else "Weapon")
 	var n: int = roll_of(entry)
 	var msg: String
 	var color: Color = WEAPON_COLOR
@@ -127,7 +143,8 @@ static func reveal(entry) -> bool:
 		msg = "%s is +%d: +%d Stun." % [name, n, n]
 	else:
 		msg = "%s is an ordinary %s." % [name, name]
-	Notifications.notify(msg, color, LootPassives.load_weapon_art(w) if w != null else null)
+	Notifications.notify(msg, color, LootPassives.load_weapon_art(w) if w != null
+		else LootSystem.art_texture(entry, true))
 	GameLog.add(msg, color)
 	GameState.emit_signal("inventory_changed")
 	return true
@@ -138,8 +155,7 @@ static func lift_curse(entry) -> bool:
 	if not is_cursed(entry):
 		return false
 	(entry as Dictionary)["uncursed"] = true
-	var w: WeaponData = def(entry)
-	var msg := "The curse on %s is lifted." % (w.display_name if w != null else "the weapon")
+	var msg := "The curse on %s is lifted." % LootSystem.display_name(entry)
 	Notifications.notify(msg, WEAPON_COLOR)
 	GameLog.add(msg, WEAPON_COLOR)
 	GameState.emit_signal("inventory_changed")

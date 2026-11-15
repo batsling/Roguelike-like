@@ -68,7 +68,7 @@ No extra rules: the game as it is.
 > Locked until you beat 20 different traditional roguelikes.
 
 - **Hunger** — Start with 3 Hunger (at most 5). Each game you finish costs 1. Drink a potion or eat food for +1. Finish a game or lose a run already at 0 and lose 2 Health.
-- **Unidentified Weapons** — Weapons you find roll -2 to +2 Stun, unknown until the first swing. A minus is CURSED: stuck where it sits in the pack until the curse is lifted.
+- **Unidentified Weapons** — Weapons and attack cards you find roll -2 to +2 Stun, unknown until first used. A minus is CURSED: stuck where it sits in the pack until the curse is lifted.
 
 ### Batsaac
 
@@ -83,6 +83,7 @@ No extra rules: the game as it is.
 ### Unidentified weapons
 
 - Every weapon you FIND is anywhere from -2 to +2 Stun, and you do not know which until you swing it (it reads "Hero Sword +?"). A Scroll of Identify tells you sooner. A weapon you start with is never rolled.
+- ATTACK cards you find are rolled the same way: each Stun the card lays is -2 to +2, unknown until you play it ("Cleave +?").
 - A minus is CURSED once you know it: it stays exactly where it sits in your pack — no moving, turning, dropping or smelting. Anything that lifts a curse lifts it, and a weapon freed that way always lays at least 1 Stun.
 
 ## 🗺 Choosing where to go
@@ -480,7 +481,7 @@ Two things can be on a square of the board that are not a body, and they layer �
 - **Fire (a tile effect)** — Anything that walks into it, or starts its turn standing in it, takes +1 Burn — and so does anything the fire is lit UNDER, on the spot. A big body pays for every burning square it covers. It burns for 3 GAMES — not turns — wherever it is lit. Scroll of Fire lights the whole front column, Red Candle lights one square you pick in columns 2-3, and Hot Bombs leaves it on every square a bomb went off over.
 - **Landmine (a unit)** — Steps on it, and it explodes: no Bomb of yours is spent, but it counts as one, so every bomb relic in your pack reads it — Brimstone widens the blast, Blood Bombs heals you, and Hot Bombs and Sticky Bombs leave a tile in the crater (Fire, and Web that stuns whatever walks in). Like a bomb it destroys rather than defeats, so nothing drops. Landmines lays one after every game you finish.
 - **The two together** — Fire and a mine cannot share a square. Whichever arrives second, the heat sets the mine off and the blast blows the fire out.
-- **Poops (units that block)** — A WALL. Nothing can step onto one, so an enemy that reaches it spends its step hitting it instead, for exactly what it would hit you for. You can break it too — a bomb, a thrown potion, anything that hits the ground. Broken, it pays out whoever broke it: a Poop drops a piece of loot or lets a fly out, a Golden Poop pays gold, a Rainbow Poop heals you for 3.
+- **Poops (units that block)** — A WALL. Nothing can step onto one, so an enemy that reaches it spends its step hitting it instead, for exactly what it would hit you for. A Ranged enemy's shot hits the first poop in its lane instead of you. You can break it too — a bomb, a thrown potion, anything that hits the ground. Broken, it pays out whoever broke it: a Poop drops a piece of loot or lets a fly out, a Golden Poop pays gold, a Rainbow Poop heals you for 3.
 - Enemies steer around mines when they have anywhere else to go, and walk straight through them when they don't — a body in the lane is a wall that might never move, a mine is a toll paid once. So a minefield SHAPES where they come at you rather than stopping them.
 
 ### Curse cards
@@ -493,7 +494,7 @@ You can never bin a curse, leave it on the table or put it down on the board. So
 - **Eternal** — It can't be destroyed, not even by a Scroll of Remove Curse. Curse of the Bell is Eternal.
 - **Ethereal** — It goes away on its own after 3 games, win or lose, and its square counts them. Clumsy is Ethereal.
 
-A cursed weapon (a minus weapon you found unidentified) counts as a curse too.
+A cursed weapon or attack card (a minus one you found unidentified) counts as a curse too.
 
 ### Luck
 
@@ -627,7 +628,7 @@ There is no HUD strip. Every number is drawn once, by whatever owns it, which ta
 - **Push and Bomb charges** — Under your portrait on the board: an icon and the number left, each one a button. One you have none of is not shown. Hover it for its name.
 - **Everything you carry** — The panel over the board is your items on the left and a small picture of your loot pack on the right. Click the small pack (or press Tab) to open it. Full beside it opens the full inventory: every item, the pack, your stats, your resources, your statuses and the curse cards you carry.
 - **The fallen** — Every enemy this run has put down is the Fallen tab of the History, in the bar at the top.
-- **Statuses on an enemy** — A ▲ on a body means it carries a buff, a ▼ a debuff. Hover the body to see which, and a bigger picture of it.
+- **Statuses on an enemy** — Stun is drawn on a body as itself, with its stacks. Any other status is an arrow: a ▲ means it carries a buff, a ▼ a debuff. Hover the body to see which, and a bigger picture of it.
 - **Bash, Dash, Transmute, Scramble** — Chips on the row under the offering, once you have a charge — a verb at 0 is not shown. Dash and Scramble act at once; Bash and Transmute ARM, and the next card you click is the one they hit.
 - **Luck and Rift Keys** — On the same row. Luck shows whenever it is not 0 (bad Luck too); Keys always show.
 - **Shields a game would grant** — On the offering's hover line, and in full on the card.

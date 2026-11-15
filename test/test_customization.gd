@@ -605,13 +605,18 @@ func test_the_picker_dresses_a_hero_with_costumes() -> void:
 	var p := CharacterPicker.open(self)
 	await get_tree().process_frame
 	p._select.call(Data.get_character2(&"zoe"))
+	var btn: Button = p._looks_box.find_child("Customize", true, false)
+	assert_not_null(btn, "Zoe has costumes to choose: a Customize button")
+	assert_null(p.find_child("Costumes", true, false), "no strip on the panel itself")
+	btn.pressed.emit()
 	var looks: Node = p.find_child("Costumes", true, false)
-	assert_not_null(looks, "Zoe has costumes to choose")
+	assert_not_null(looks, "the button opens them")
 	assert_not_null(looks.find_child("Slot_icon", true, false), "an icon strip")
 	assert_null(looks.find_child("Slot_full", true, false), "and no full one: hers are icons only")
+	p._popup.free()
 	p._select.call(Data.get_character2(&"manager"))
 	await get_tree().process_frame
-	assert_null(p.find_child("Costumes", true, false), "a hero with none shows none")
+	assert_null(p._looks_box.find_child("Customize", true, false), "a hero with none has no button")
 	p.queue_free()
 
 func test_choosing_in_the_picker_changes_the_portrait() -> void:
@@ -621,6 +626,7 @@ func test_choosing_in_the_picker_changes_the_portrait() -> void:
 	await get_tree().process_frame
 	var isaac: CharacterData = Data.get_character2(&"isaac")
 	p._select.call(isaac)
+	p.open_customize(p.find_child("Detail", true, false), isaac)
 	var strip: Node = p.find_child("Slot_full", true, false)
 	var pressed := false
 	for t in strip.find_children("*", "Button", true, false):

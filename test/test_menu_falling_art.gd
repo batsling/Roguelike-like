@@ -787,7 +787,7 @@ func test_every_loot_picture_belongs_to_something_that_can_be_seen() -> void:
 	var seen := _art._seen_names()
 	assert_false(seen.has(MenuFallingArt.ANY), "matched by name, not by the bypass")
 	var unmatched: Array = []
-	for dir in MenuFallingArt.SMALL_DIRS + [MenuFallingArt.CARD_DIR]:
+	for dir in MenuFallingArt.SMALL_DIRS + [MenuFallingArt.CARD_DIR, MenuFallingArt.CURSE_DIR]:
 		for path in _art._pngs_in(dir):
 			if MenuFallingArt.CARD_SKIP.has(String(path).get_file()):
 				continue
@@ -828,3 +828,13 @@ func test_nothing_unseen_falls() -> void:
 	assert_true(covers.is_empty(), "no covers")
 	for g in groups:
 		assert_eq((g as Array).size(), 0, "no loot")
+
+func test_curse_cards_fall_once_seen() -> void:
+	var saved := _see_everything()
+	var groups: Array = _art._loot_groups()
+	_restore(saved)
+	var paths: Array = []
+	for g in groups:
+		for job in g:
+			paths.append(String(job.get("path", "")))
+	assert_true(paths.has(MenuFallingArt.CURSE_DIR + "Clumsy.png"), "a seen curse falls")
