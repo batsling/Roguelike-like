@@ -41,8 +41,8 @@
  },
  "data/events2.0/": {
   "eager_art_kb": 0,
-  "files": 20,
-  "kb": 38
+  "files": 27,
+  "kb": 49
  },
  "data/evolutions2.0/": {
   "eager_art_kb": 0,
@@ -55,9 +55,9 @@
   "kb": 1124
  },
  "data/items2.0/": {
-  "eager_art_kb": 1388,
-  "files": 97,
-  "kb": 65
+  "eager_art_kb": 1420,
+  "files": 99,
+  "kb": 67
  },
  "data/locations/": {
   "eager_art_kb": 0,
