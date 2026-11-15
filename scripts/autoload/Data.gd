@@ -734,6 +734,11 @@ func get_curse_card(id: StringName) -> CardData:
 func all_curse_cards() -> Array:
 	return _curses2.values()
 
+# Every card a pack can hold, curses included — what "seen as a card" covers
+# (a curse in the pack is a `type: card` entry, GameStats.see_loot).
+func all_cards_and_curses() -> Array:
+	return all_cards() + all_curse_cards()
+
 # ROGUELIKE RADIO's songs (docs/roguelike-radio.md), in id order.
 func get_song(id: StringName) -> SongData:
 	return _songs.get(id)

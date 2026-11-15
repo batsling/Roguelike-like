@@ -483,7 +483,8 @@ func test_the_loot_tab_counts_every_kind_it_lists() -> void:
 	var col := _new_collection()
 	var want: int = Data.all_scrolls().size() + Data.all_pills().size() \
 		+ Data.all_potions().size() + Data.all_cards().size() + Data.all_wands().size() \
-		+ Data.all_trinkets().size() + Data.all_bags().size() + Data.all_weapons().size()
+		+ Data.all_trinkets().size() + Data.all_bags().size() + Data.all_weapons().size() \
+		+ Data.all_curse_cards().size()
 	var btn: Button = col._tab_buttons[Collection.Tab.LOOT]
 	assert_eq(btn.text, "Loot (%d)" % want)
 
@@ -495,7 +496,8 @@ func test_the_pack_pieces_each_have_a_loot_sub_tab() -> void:
 	for pair in [[Collection.LOOT_TRINKETS, Data.all_trinkets().size()],
 			[Collection.LOOT_BAGS, Data.all_bags().size()],
 			[Collection.LOOT_WEAPONS, Data.all_weapons().size()],
-			[Collection.LOOT_EVOLUTIONS, Data.all_evolutions().size()]]:
+			[Collection.LOOT_EVOLUTIONS, Data.all_evolutions().size()],
+			[Collection.LOOT_CURSES, Data.all_curse_cards().size()]]:
 		col._loot_sub = pair[0]
 		col._refresh()
 		assert_gt(int(pair[1]), 0, "%s has content to show" % pair[0])
@@ -1623,3 +1625,4 @@ func test_loadout_tiles_have_a_card_and_open_their_page() -> void:
 		assert_eq(col._tab, Collection.Tab.LOOT)
 		assert_eq(col._loot_sub, Collection.LOOT_SUB_OF[kind])
 	col._loot_sub = Collection.LOOT_SCROLLS
+
