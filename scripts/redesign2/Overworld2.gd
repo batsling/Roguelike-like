@@ -3285,6 +3285,15 @@ var _checklist_scale: float = 1.0
 var _checklist_fit_sig: String = ""
 var _checklist_regrow: int = 0
 var _checklist_unsplit_tries: int = 0
+# A JUMP IN HEIGHT IS NOT BELIEVED ON SIGHT (the owner, 15 Nov 2026: "i clicked
+# the + on the bony and the checklist kept shrinking way too small"). A + repaints
+# the rows, and the first measure after a repaint catches them before they have
+# their width — every goal wrapping a word a line, four times its real height.
+# Shrinking to that sent the list to the floor in one press, and the two regrow
+# steps were spent by the next press. So a list suddenly much taller than the
+# last one measured waits a frame and is measured again; still tall, it is real.
+var _checklist_last_content: float = 0.0
+var _checklist_waited: bool = false
 
 func checklist_scale() -> float:
 	return _checklist_scale
@@ -3309,6 +3318,14 @@ func _fit_checklist() -> void:
 		_lay_checklist()
 	var s: float = _checklist_scale
 	var content: float = _verify_box.get_combined_minimum_size().y
+	if fitting and not _checklist_waited and _checklist_last_content > 0.0 \
+			and content > _checklist_last_content * 1.5 and is_inside_tree():
+		_checklist_waited = true
+		if not get_tree().process_frame.is_connected(_queue_fit_checklist):
+			get_tree().process_frame.connect(_queue_fit_checklist, CONNECT_ONE_SHOT)
+		return
+	_checklist_waited = false
+	_checklist_last_content = content
 	var shown: float = content * s
 	var want: float = shown
 	if room > 0.0 and _scroll.get_child_count() > 0:

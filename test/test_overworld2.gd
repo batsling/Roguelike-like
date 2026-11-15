@@ -12151,3 +12151,27 @@ func test_a_queued_body_waits_level_with_its_lane_and_shows_where_it_goes() -> v
 	assert_eq(board.queue_target_shown(), 1, "hovering lights the square it wants")
 	token.mouse_exited.emit()
 	assert_eq(board.queue_target_shown(), 0, "and lets go")
+
+# THE OWNER, 15 Nov 2026: "i clicked the + on the bony and the checklist kept
+# shrinking way too small". Each + repaints the rows, and the first measure after
+# a repaint caught them before they had their width — four times their height —
+# so one press sent the list to its floor scale. Pressing + must not shrink it.
+func test_pressing_plus_does_not_shrink_the_checklist() -> void:
+	_at_720p()
+	_pick_enemies(0)
+	_crowd_board(6)
+	var inst: int = _make_front_body(&"bony")
+	if inst == 0:
+		pending("the board had no body to make a Bony of")
+		return
+	_ui._refresh()
+	for _i in range(12):
+		await get_tree().process_frame
+	var before: float = _ui.checklist_scale()
+	for press in range(4):
+		_count_buttons("+")[0].pressed.emit()
+		for _i in range(12):
+			await get_tree().process_frame
+		assert_gte(_ui.checklist_scale(), before - 0.01,
+			"press %d left the checklist at %.2f (was %.2f)" % [press + 1,
+				_ui.checklist_scale(), before])
