@@ -483,8 +483,7 @@ func test_the_loot_tab_counts_every_kind_it_lists() -> void:
 	var col := _new_collection()
 	var want: int = Data.all_scrolls().size() + Data.all_pills().size() \
 		+ Data.all_potions().size() + Data.all_cards().size() + Data.all_wands().size() \
-		+ Data.all_trinkets().size() + Data.all_bags().size() + Data.all_weapons().size() \
-		+ Data.all_curse_cards().size()
+		+ Data.all_trinkets().size() + Data.all_bags().size() + Data.all_weapons().size()
 	var btn: Button = col._tab_buttons[Collection.Tab.LOOT]
 	assert_eq(btn.text, "Loot (%d)" % want)
 
@@ -496,8 +495,7 @@ func test_the_pack_pieces_each_have_a_loot_sub_tab() -> void:
 	for pair in [[Collection.LOOT_TRINKETS, Data.all_trinkets().size()],
 			[Collection.LOOT_BAGS, Data.all_bags().size()],
 			[Collection.LOOT_WEAPONS, Data.all_weapons().size()],
-			[Collection.LOOT_EVOLUTIONS, Data.all_evolutions().size()],
-			[Collection.LOOT_CURSES, Data.all_curse_cards().size()]]:
+			[Collection.LOOT_EVOLUTIONS, Data.all_evolutions().size()]]:
 		col._loot_sub = pair[0]
 		col._refresh()
 		assert_gt(int(pair[1]), 0, "%s has content to show" % pair[0])
@@ -1645,4 +1643,15 @@ func test_players_have_a_tab_before_characters() -> void:
 			for l in col._detail_box.find_children("*", "Label", true, false):
 				said += (l as Label).text + "\n"
 			assert_string_contains(said, PlayerData.mechanic_name(pl.mechanics[0]))
+
+# CURSES ARE A TAB OF THEIR OWN (the owner, 15 Nov 2026: "some curses in the
+# future won't be loot"), not a Loot sub-tab.
+func test_curses_are_their_own_tab() -> void:
+	var col := _new_collection()
+	assert_true(col._tab_buttons.has(Collection.Tab.CURSES), "a Curses tab in the bar")
+	col._set_tab(Collection.Tab.CURSES)
+	assert_gt(Data.all_curse_cards().size(), 0, "there are curses to list")
+	assert_eq(col._grid.get_child_count(), Data.all_curse_cards().size(), "a cell for every curse")
+	col._set_tab(Collection.Tab.LOOT)
+	assert_false(Page.text_of(col._content).contains("Curses ("), "and no Curses sub-tab under Loot")
 

@@ -10,6 +10,9 @@ extends Control
 # sheets. Tabs:
 #   Games      — the roguelike catalog (influence graph) + lifetime stats.
 #   Items      — every 2.0 ItemData (data/items2.0), grid + detail panel.
+#   Curses     — every curse (data/curses2.0), a tab of its OWN rather than a
+#                Loot sub-tab (the owner, 15 Nov 2026: "some curses in the future
+#                won't be loot"). Today's are all cards in the pack.
 #   Players    — every PlayerData (data/players): the first pick of a run, its
 #                mechanics and its Fracture ladder. All shown; a locked one says
 #                what unlocks it.
@@ -21,7 +24,6 @@ extends Control
 #                revealed reference. They are one tab because they are one thing
 #                to the run — one 50/50 payout, one nine-piece pack, one window —
 #                and two top-level tabs said the opposite.
-#                Curses (data/curses2.0) are a sub-tab too: cards, never loot.
 #   Objects    — every 2.0 object (data/objects2.0), grid + detail: the machines
 #                and what each of their buttons costs.
 #   Events     — every 2.0 event (data/events2.0), grid + detail: what it asks,
@@ -36,7 +38,7 @@ extends Control
 
 # LOCATIONS and PLAYERS are last in the enum (indexes nothing else moves for), not
 # in the bar: Players sits right before Characters there (the owner, 15 Nov 2026).
-enum Tab { GAMES, ITEMS, CHARACTERS, ENEMIES, BOSSES, LOOT, EVENTS, OBJECTS, SHOPKEEPERS, LOCATIONS, PLAYERS }
+enum Tab { GAMES, ITEMS, CHARACTERS, ENEMIES, BOSSES, LOOT, EVENTS, OBJECTS, SHOPKEEPERS, LOCATIONS, PLAYERS, CURSES }
 
 # Which half of the Loot tab is showing. A sub-tab rather than a filter chip
 # because the two sets share nothing but the pack they end up in: a scroll has a
@@ -45,9 +47,6 @@ const LOOT_SCROLLS := "scrolls"
 const LOOT_PILLS := "pills"
 const LOOT_POTIONS := "potions"
 const LOOT_CARDS := "cards"
-# The curse cards (docs/loot-passives.md §18): cards too, but never in the loot
-# drop, so they are a sub-tab of their own rather than mixed into Cards.
-const LOOT_CURSES := "curses"
 const LOOT_WANDS := "wands"
 # The pack's other pieces (docs/loot-passives.md): trinkets (§1), bags (§6) and
 # weapons (§12), plus the evolutions that turn one weapon into another (§13).
@@ -316,6 +315,7 @@ func _build_shell() -> void:
 	_add_tab_button(tabs, Tab.ENEMIES, "Enemies (%d)" % Data.all_goal_enemies().size())
 	_add_tab_button(tabs, Tab.BOSSES, "Bosses (%d)" % Data.all_bosses().size())
 	_add_tab_button(tabs, Tab.LOOT, "Loot (%d)" % loot_total())
+	_add_tab_button(tabs, Tab.CURSES, "Curses (%d)" % Data.all_curse_cards().size())
 	_add_tab_button(tabs, Tab.EVENTS, "Events (%d)" % Data.all_events2().size())
 	_add_tab_button(tabs, Tab.LOCATIONS, "Locations (%d)" % Data.all_locations().size())
 	_add_tab_button(tabs, Tab.OBJECTS, "Objects (%d)" % Data.all_objects2().size())
@@ -387,6 +387,8 @@ func _refresh() -> void:
 			_build_characters()
 		Tab.PLAYERS:
 			_build_players()
+		Tab.CURSES:
+			_build_curses()
 		Tab.ENEMIES, Tab.BOSSES:
 			_build_enemies()
 		Tab.LOOT:
@@ -1369,13 +1371,13 @@ func _tab_roster() -> Array:
 		Tab.OBJECTS: return ["object", Data.all_objects2()]
 		Tab.SHOPKEEPERS: return ["shopkeeper", Data.all_shopkeepers()]
 		Tab.LOCATIONS: return ["location", Data.all_locations()]
+		Tab.CURSES: return ["card", Data.all_curse_cards()]
 		Tab.LOOT:
 			match _loot_sub:
 				LOOT_SCROLLS: return ["scroll", Data.all_scrolls()]
 				LOOT_PILLS: return ["pill", Data.all_pills()]
 				LOOT_POTIONS: return ["potion", Data.all_potions()]
 				LOOT_CARDS: return ["card", Data.all_cards()]
-				LOOT_CURSES: return ["card", Data.all_curse_cards()]
 				LOOT_WANDS: return ["wand", Data.all_wands()]
 				LOOT_TRINKETS: return ["trinket", Data.all_trinkets()]
 				LOOT_BAGS: return ["bag", Data.all_bags()]
@@ -1425,6 +1427,8 @@ func _populate() -> void:
 			_populate_locations()
 		Tab.PLAYERS:
 			_populate_players()
+		Tab.CURSES:
+			_populate_curses()
 
 # ------------------------------------------------------------------
 # Games tab
@@ -2865,7 +2869,6 @@ func _show_enemy_detail(e: GoalEnemyData) -> void:
 static func loot_total() -> int:
 	return Data.all_scrolls().size() + Data.all_pills().size() \
 		+ Data.all_potions().size() + Data.all_cards().size() + Data.all_wands().size() \
-		+ Data.all_curse_cards().size() \
 		+ Data.all_trinkets().size() + Data.all_bags().size() + Data.all_weapons().size()
 
 func _build_loot() -> void:
@@ -2885,8 +2888,6 @@ func _build_loot() -> void:
 	subs.add_child(_loot_sub_button("🧪  Potions (%d)" % Data.all_potions().size(),
 		LOOT_POTIONS))
 	subs.add_child(_loot_sub_button("🃏  Cards (%d)" % Data.all_cards().size(), LOOT_CARDS))
-	subs.add_child(_loot_sub_button("☠  Curses (%d)" % Data.all_curse_cards().size(),
-		LOOT_CURSES))
 	subs.add_child(_loot_sub_button("🪄  Wands (%d)" % Data.all_wands().size(), LOOT_WANDS))
 	subs.add_child(_loot_sub_button("◆  Trinkets (%d)" % Data.all_trinkets().size(),
 		LOOT_TRINKETS))
@@ -2942,9 +2943,6 @@ func _loot_note(sub: String = "") -> String:
 			# deck icon each cell wears is exactly what the board shows you of it.
 			return ("Revealed reference — and a card hides nothing in a run either. "
 				+ "Face down on the floor it shows only its deck, which is the icon here.")
-		LOOT_CURSES:
-			return ("Never found as loot: something hands a curse to you, it takes a "
-				+ "pack slot, and it cannot be thrown away.")
 		LOOT_WANDS:
 			return ("Revealed reference — including the charges. Every run deals these "
 				+ "a material out of 28, so the stick you'll be holding is not this one.")
@@ -2980,8 +2978,6 @@ func _populate_loot() -> void:
 			_populate_potions()
 		LOOT_CARDS:
 			_populate_cards()
-		LOOT_CURSES:
-			_populate_curses()
 		LOOT_WANDS:
 			_populate_wands()
 		LOOT_TRINKETS:
@@ -3255,8 +3251,21 @@ func _card_cell(c: CardData) -> Control:
 			_body_text(vb, c.description)
 			_source_line(vb, c.source_game)), "card", c.id)
 
-# The curse cards, on the same cells as the cards: a curse IS a card in the pack
-# (`type: card`), so it is seen under "card" (GameStats.see_loot).
+# THE CURSES TAB: a search box, the count, and the grid. A curse today IS a card
+# in the pack (`type: card`), so it is seen under "card" (GameStats.see_loot) and
+# drawn on the loot cells; a curse that is not loot gets its own cell here when
+# there is one.
+func _build_curses() -> void:
+	var row := _controls_row()
+	row.add_child(_search_box("curses"))
+	var gap := Control.new()
+	gap.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	gap.size_flags_stretch_ratio = 2.0
+	row.add_child(gap)
+	_add_count_label(row)
+	_grid_and_detail()
+	_populate_curses()
+
 func _populate_curses() -> void:
 	_clear_children(_grid)
 	var term: String = _search["curses"].to_lower()
