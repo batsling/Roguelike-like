@@ -14,6 +14,9 @@ A run starts with **two picks**, in this order:
 
 1. **The player**, and its **Fracture** (`PlayerPicker`). The player carries the
    run's extra **mechanics** and holds the Fracture ladder.
+   It looks like the character select (the owner, 15 Nov 2026): the same panel, a
+   four-wide grid of tiles, the picture beside its facts, a Customize button for
+   the hat, the Fracture row, and Cancel / 🎲 Random / Next.
 2. **The character** (`CharacterPicker`), as before. Any player can play any
    character, and characters keep their own locks (`docs/achievements.md`).
 

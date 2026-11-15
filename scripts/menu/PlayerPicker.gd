@@ -6,9 +6,11 @@ extends Control
 # because the ladder belongs to the player now. Confirm hands over to the
 # character select (CharacterPicker), which is the second pick.
 #
-# The same shape as CharacterPicker on purpose: a column of tiles on the left, the
-# selected player's details on the right, the Fracture row under them, and Cancel /
-# Next along the bottom. Selecting a tile only previews it.
+# THE SAME LOOK AS CharacterPicker (the owner, 15 Nov 2026: "make the player select
+# look like the character one"): the same panel, a four-wide grid of small tiles on
+# the left, the selected player's picture beside their facts on the right, then
+# the Fracture row, and Cancel / 🎲 Random / Next along the bottom. Selecting a
+# tile only previews it, and so does the dice.
 #
 # A player with no art (the basic player) is drawn as its NAME in the tile and in
 # the detail panel's picture box: the owner asked for "Basic" to be said rather
@@ -18,9 +20,13 @@ extends Control
 # was saved as the player's pick when it was clicked, so nothing else is passed.
 signal chosen(player_id: StringName)
 
-const TILE_SIZE := Vector2(150, 150)
-const PORTRAIT := 200
-const TILE_ART := 96
+# The character picker's numbers (CharacterPicker.TILE_*), so the two screens are
+# one design.
+const TILE_COLUMNS := CharacterPicker.TILE_COLUMNS
+const TILE_SIZE := CharacterPicker.TILE_SIZE
+const TILE_GAP := CharacterPicker.TILE_GAP
+const PORTRAIT := CharacterPicker.CHAR_PORTRAIT_SIZE
+const TILE_ART := 76
 # A tile in the Hat strip (docs/customization.md §7), the character picker's size.
 const LOOK_TILE := 48
 
@@ -51,7 +57,7 @@ func _build() -> void:
 	center.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(center)
 	var panel := PanelContainer.new()
-	panel.custom_minimum_size = Vector2(1080, 560)
+	panel.custom_minimum_size = Vector2(1080, 620)
 	panel.add_theme_stylebox_override("panel", UITheme.panel_box(UITheme.BG,
 		UITheme.ACCENT.lerp(UITheme.BORDER, 0.4), 12, 22, 2))
 	center.add_child(panel)
@@ -70,12 +76,22 @@ func _build() -> void:
 	body.add_theme_constant_override("separation", UITheme.GAP_SECTION)
 	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	vbox.add_child(body)
-	var tiles := VBoxContainer.new()
-	tiles.add_theme_constant_override("separation", UITheme.GAP)
-	body.add_child(tiles)
+	# The character picker's board: a fixed four-wide grid in a scroll.
+	var grid_scroll := ScrollContainer.new()
+	grid_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	grid_scroll.custom_minimum_size = Vector2(TILE_COLUMNS * (TILE_SIZE.x + TILE_GAP), 400)
+	grid_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	body.add_child(grid_scroll)
+	var tiles := GridContainer.new()
+	tiles.columns = TILE_COLUMNS
+	tiles.add_theme_constant_override("h_separation", TILE_GAP)
+	tiles.add_theme_constant_override("v_separation", TILE_GAP)
+	tiles.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	grid_scroll.add_child(tiles)
 	var detail_wrap := PanelContainer.new()
 	detail_wrap.add_theme_stylebox_override("panel", UITheme.panel_box(UITheme.PANEL,
 		UITheme.BORDER, 12, 14, 1))
+	detail_wrap.custom_minimum_size = Vector2(520, 0)
 	detail_wrap.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	body.add_child(detail_wrap)
 	var detail_col := VBoxContainer.new()
@@ -109,6 +125,14 @@ func _build() -> void:
 	var spacer := Control.new()
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	footer.add_child(spacer)
+	# The dice previews, Next confirms — beside it, as on the character picker.
+	var random_btn := Button.new()
+	random_btn.name = "Random"
+	random_btn.text = "🎲  Random"
+	random_btn.custom_minimum_size = Vector2(150, 44)
+	random_btn.tooltip_text = "Pick a player at random — press again to reroll, Next to take it."
+	random_btn.pressed.connect(func(): roll_random())
+	footer.add_child(random_btn)
 	var confirm := Button.new()
 	confirm.name = "Next"
 	confirm.text = "Next"
@@ -137,6 +161,7 @@ func _build() -> void:
 			_roster.append(pl)
 	for pl in _roster:
 		tiles.add_child(_tile(pl, state, select))
+	random_btn.disabled = _playable().size() < 2
 	confirm.pressed.connect(func():
 		if String(state["id"]) != "":
 			_confirm(StringName(state["id"])))
@@ -155,6 +180,27 @@ func _build() -> void:
 		select.call(first)
 	elif not _roster.is_empty():
 		select.call(_roster[0])
+
+# The players a run can start as: every one no achievement is holding back.
+func _playable() -> Array[PlayerData]:
+	var out: Array[PlayerData] = []
+	for pl in _roster:
+		if not Achievements.player_locked(pl.id):
+			out.append(pl)
+	return out
+
+# Roll a player into the preview, never the one already showing while there is
+# another (CharacterPicker.roll_random's rule). Public for the dice and the tests.
+func roll_random() -> PlayerData:
+	var playable: Array[PlayerData] = _playable()
+	if playable.is_empty() or not _select.is_valid():
+		return null
+	var pool: Array[PlayerData] = playable.filter(func(p): return p.id != selected_id())
+	if pool.is_empty():
+		pool = playable
+	var pick: PlayerData = pool[randi() % pool.size()]
+	_select.call(pick)
+	return pick
 
 # Select `id`, as a click on its tile would. For tests and the menu.
 func select_player(id: StringName) -> void:
@@ -204,9 +250,16 @@ func _tile(pl: PlayerData, state: Dictionary, select: Callable) -> Control:
 	tile.add_theme_stylebox_override("panel", normal)
 	state["tiles"][pl.id] = func(is_sel: bool) -> void:
 		tile.add_theme_stylebox_override("panel", selected if is_sel else normal)
+		tile.modulate = Color(1.08, 1.08, 1.08) if is_sel else Color.WHITE
 	tile.gui_input.connect(func(e):
 		if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT:
 			select.call(pl))
+	tile.mouse_entered.connect(func():
+		if String(state["id"]) != String(pl.id):
+			tile.modulate = Color(1.06, 1.06, 1.06))
+	tile.mouse_exited.connect(func():
+		if String(state["id"]) != String(pl.id):
+			tile.modulate = Color.WHITE)
 	var vb := VBoxContainer.new()
 	vb.alignment = BoxContainer.ALIGNMENT_CENTER
 	vb.add_theme_constant_override("separation", UITheme.GAP_TIGHT)
