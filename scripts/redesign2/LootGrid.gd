@@ -1589,7 +1589,8 @@ static func _add_plus(on: Control, entry: Dictionary) -> void:
 	var chip: Control = null
 	if not WeaponSystem.roll_known(entry):
 		chip = UITheme.chip("+?", PLUS_COLOR, UITheme.FONT_SMALL)
-		chip.tooltip_text = "Unidentified: anywhere from -2 to +2 Stun. Swing it to find out."
+		chip.tooltip_text = "Unidentified: anywhere from -2 to +2 Stun. %s it to find out." % (
+			"Swing" if WeaponSystem.is_weapon(entry) else "Play")
 	else:
 		var n: int = WeaponSystem.plus_of(entry)
 		if n > 0:

@@ -184,6 +184,15 @@ pack entry is made (`WeaponSystem.new_entry`): **−2 to +2 Stun**, weighted
   1 from then on. The minus stays in its name.
 - **An evolution keeps the roll**, known or not, curse and all: it is the same
   weapon grown, not a new find.
+- **ATTACK cards roll too** (the owner, 15 Nov 2026: "make sure attack cards
+  also have the unidentified weapon mechanic from retro bat"). An attack is a
+  card the `cards` sheet tags `attack` — the other kind of loot that lays Stun on
+  purpose (`LootUpgrade.is_attack`). It is rolled the same way when it is found
+  (`WeaponSystem.roll_new`, from `CardSystem.roll_card_loot` and
+  `GameState.add_card_loot`), reads "Cleave +?" until it is played or identified,
+  adds its roll to each Stun clause (`CardSystem.play_card`, never below 0, or 1
+  once lifted), and a known minus is cursed and pinned like a weapon.
+  `WeaponSystem.is_rollable` is the one place that says which kinds roll.
 
 ## 6. On the board: the player, with the character on it
 

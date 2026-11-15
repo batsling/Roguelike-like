@@ -6,5 +6,5 @@
 script = ExtResource("1_mech")
 id = &"unidentified_weapons"
 display_name = "Unidentified Weapons"
-description = "Weapons you find roll -2 to +2 Stun, unknown until the first swing. A minus is CURSED: stuck where it sits in the pack until the curse is lifted."
+description = "Weapons and attack cards you find roll -2 to +2 Stun, unknown until first used. A minus is CURSED: stuck where it sits in the pack until the curse is lifted."
 order = 20

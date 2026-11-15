@@ -68,7 +68,7 @@ No extra rules: the game as it is.
 > Locked until you beat 20 different traditional roguelikes.
 
 - **Hunger** — Start with 3 Hunger (at most 5). Each game you finish costs 1. Drink a potion or eat food for +1. Finish a game or lose a run already at 0 and lose 2 Health.
-- **Unidentified Weapons** — Weapons you find roll -2 to +2 Stun, unknown until the first swing. A minus is CURSED: stuck where it sits in the pack until the curse is lifted.
+- **Unidentified Weapons** — Weapons and attack cards you find roll -2 to +2 Stun, unknown until first used. A minus is CURSED: stuck where it sits in the pack until the curse is lifted.
 
 ### Batsaac
 
@@ -83,6 +83,7 @@ No extra rules: the game as it is.
 ### Unidentified weapons
 
 - Every weapon you FIND is anywhere from -2 to +2 Stun, and you do not know which until you swing it (it reads "Hero Sword +?"). A Scroll of Identify tells you sooner. A weapon you start with is never rolled.
+- ATTACK cards you find are rolled the same way: each Stun the card lays is -2 to +2, unknown until you play it ("Cleave +?").
 - A minus is CURSED once you know it: it stays exactly where it sits in your pack — no moving, turning, dropping or smelting. Anything that lifts a curse lifts it, and a weapon freed that way always lays at least 1 Stun.
 
 ## 🗺 Choosing where to go
@@ -493,7 +494,7 @@ You can never bin a curse, leave it on the table or put it down on the board. So
 - **Eternal** — It can't be destroyed, not even by a Scroll of Remove Curse. Curse of the Bell is Eternal.
 - **Ethereal** — It goes away on its own after 3 games, win or lose, and its square counts them. Clumsy is Ethereal.
 
-A cursed weapon (a minus weapon you found unidentified) counts as a curse too.
+A cursed weapon or attack card (a minus one you found unidentified) counts as a curse too.
 
 ### Luck
 

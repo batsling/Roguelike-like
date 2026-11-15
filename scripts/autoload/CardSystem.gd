@@ -52,7 +52,8 @@ func roll_card_loot(rng: RandomNumberGenerator = null, tag: String = "") -> Dict
 	var card: CardData = Data.roll_card(rng, tag)
 	if card == null:
 		return {}
-	return {"type": "card", "id": card.id, "rarity": card.rarity}
+	# An ATTACK found by Retro Bat is unidentified (WeaponSystem.roll_new).
+	return WeaponSystem.roll_new({"type": "card", "id": card.id, "rarity": card.rarity})
 
 
 func data_for(entry: Dictionary) -> CardData:
@@ -107,12 +108,16 @@ func play_card(entry: Dictionary, ctx: Dictionary = {}) -> Dictionary:
 	# upgrade, BEFORE `per` multiplies it — an upgraded Fiend Fire is Stun 2 for each
 	# loot destroyed (the owner, 14 Nov 2026). Only `stun`: Bullseye's Marked is not
 	# Stun and does not grow.
-	var upgraded: int = LootUpgrade.bonus_of(entry)
+	# AN UNIDENTIFIED ATTACK'S ROLL (Retro Bat, docs/players-design.md §5) is added
+	# the same way, known or not: -2..+2 on each Stun clause, never below 0 — or 1,
+	# once a curse on it has been lifted.
+	var upgraded: int = LootUpgrade.bonus_of(entry) + WeaponSystem.roll_of(entry)
+	var floor_stun: int = 1 if bool(entry.get("uncursed", false)) else 0
 	for e in card.effect:
 		if e is Dictionary:
-			if upgraded > 0 and String(e.get("op", "")) == "stun":
+			if upgraded != 0 and String(e.get("op", "")) == "stun":
 				e = (e as Dictionary).duplicate()
-				e["value"] = int(e.get("value", 1)) + upgraded
+				e["value"] = maxi(floor_stun, int(e.get("value", 1)) + upgraded)
 			_apply_one(e, out, rng, ctx, tally)
 	notify_used(card)
 	return out

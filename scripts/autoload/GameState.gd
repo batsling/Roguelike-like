@@ -4428,7 +4428,7 @@ func add_card_loot(id: StringName) -> void:
 	var c: CardData = Data.get_card(id)
 	if c == null:
 		return
-	loot_items.append({"type": "card", "id": c.id, "rarity": c.rarity})
+	loot_items.append(WeaponSystem.roll_new({"type": "card", "id": c.id, "rarity": c.rarity}))
 	emit_signal("inventory_changed")
 	_note_loot_gained(loot_items[-1])
 
