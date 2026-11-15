@@ -113,25 +113,8 @@ def parse_requirement(raw, where):
     return {"all": clauses}
 
 
-# `after <Event>` — the run has already OPENED that event (whatever was pressed).
-# What the Forgotten Altar waits on: the owner, 15 Nov 2026, "the only requirement
-# is that it should be after the golden idol event". Checked against the sheet's
-# own Event column, so a misspelt event is an error rather than an altar that
-# never comes. Filled by main() before any row is read; empty (unchecked) when
-# a caller has not read the sheet, as the objects generator has not.
-AFTER_RE = re.compile(r"^\s*after\s+(.+?)\s*$", re.I)
-EVENT_IDS = set()
-
-
 def parse_requirement_clause(raw, where):
     s = raw.strip()
-    m = AFTER_RE.match(s)
-    if m:
-        eid = dsl.slugify(m.group(1))
-        if EVENT_IDS and eid not in EVENT_IDS:
-            raise ValueError("events2.0 %s: Requirement `after %s` names no event on "
-                             "the sheet" % (where, m.group(1)))
-        return {"after_event": eid}
     m = REQ_RE.match(s)
     if not m:
         raise ValueError('events2.0 %s: cannot parse Requirement %r — expected '
@@ -749,7 +732,6 @@ def main():
         raise SystemExit("%s has no %r sheet — run tools/oneshots/_events2_sheet_setup.py"
                          % (XLSX_PATH, SHEET))
     curse_ids, item_ids, enemy_tags = cross_sheet_ids(wb)
-    EVENT_IDS.update(dsl.slugify(str(r["Event"]).strip()) for r in dsl.rows(wb[SHEET]))
     # `spawn_object tag=` is checked the same way, but the objects generator owns
     # that sheet, so the lookup lives there and is imported rather than duplicated.
     import generate_object2_tres as objects  # noqa: E402  (circular at module scope)

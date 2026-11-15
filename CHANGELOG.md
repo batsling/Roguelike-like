@@ -12,10 +12,11 @@ For how the project is laid out and how its systems fit together, see
 ---
 
 - **Forgotten Altar and Bloody Idol, from Slay the Spire (the owner, 15 Nov
-  2026).** The first **Uncommon** event. It is dealt at every difficulty, but
-  only after the Golden Idol event has opened this run (a new Requirement
-  clause, `after <Event>`). Its prompt and results are Slay the Spire's own
-  words.
+  2026).** The first **Uncommon** event, dealt only at **High** difficulty and
+  above, whether or not the Golden Idol has turned up. (It first shipped gated on
+  the Golden Idol event; the owner lifted that, and the `after <Event>`
+  Requirement clause it needed was removed with it.) Its prompt and results are
+  Slay the Spire's own words.
   - **Offer: Golden Idol** trades the Golden Idol for the **Bloody Idol**, an
     Event relic that heals 1 Health whenever you gain Gold and pays no bonus
     Gold.

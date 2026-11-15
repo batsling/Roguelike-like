@@ -15,9 +15,11 @@ Slay the Spire's Act 2 altar, translated. Two rows:
                           Worked out against Max Health BEFORE the +1, as the
                           button quotes it (EventSystem.resolve_choice).
      Desecrate            the Decay curse card.
-   **Uncommon**, every tier, and `Requirement: after Golden Idol` — the owner:
-   "the only requirement is that it should be after the golden idol event". It is
-   the first event in the Uncommon bag.
+   **Uncommon** (the first event in that bag), and only at **High** difficulty
+   and above. It first shipped gated on the Golden Idol event having opened
+   (`after Golden Idol`); the owner then made it "available even if the player
+   hasn't gotten the golden idol, but make sure difficulty is at least high", so
+   the Requirement is blank and the clause it needed was removed.
 
 2. **`items` — Bloody Idol** (Event relic): "Whenever you gain Gold, heal 5 HP"
    becomes +1 Health per gain (the owner's choice), on the `gold_gained` hook the
@@ -49,8 +51,8 @@ XLSX = os.path.join(os.path.dirname(os.path.abspath(__file__)), "Roguelikes.xlsx
 EVENT = {
     "Event": "Forgotten Altar",
     "Game": "Slay the Spire",
-    "Tier": "All",
-    "Requirement": "after Golden Idol",
+    "Tier": "High, Insane",
+    "Requirement": "",
     "Trigger": "After",
     "Rarity": "Uncommon",
     "Image": "ForgottenAltar",

@@ -2101,7 +2101,7 @@ func test_the_box_is_a_small_chest_and_regret() -> void:
 
 # --- Forgotten Altar (Slay the Spire) ---------------------------------------
 #
-# The owner, 15 Nov 2026: Uncommon, dealt only after the Golden Idol event; the
+# The owner, 15 Nov 2026: Uncommon, dealt only at High difficulty and above; the
 # Offer button shown LOCKED without the idol; Sacrifice +1 Max Health for 35% of
 # it; Desecrate is Decay. Bloody Idol heals 1 per gold gain and replaces the
 # Golden Idol outright.
@@ -2119,13 +2119,25 @@ func test_the_altar_is_slay_the_spires_own_words() -> void:
 	assert_string_contains(String(_choice(ev, "desecrate")["results"][0]),
 		"you can feel the cursed magic seep into your bones.")
 
-func test_the_altar_waits_for_the_golden_idol_event() -> void:
+func test_the_altar_is_dealt_only_at_high_difficulty_and_above() -> void:
+	# The owner, 15 Nov 2026: "available even if the player hasn't gotten the
+	# golden idol, but make sure difficulty is at least high".
 	var ev: EventData2 = _event(ALTAR)
-	assert_false(EventSystem.requirement_met(ev), "not before the Golden Idol")
-	assert_true(EventSystem.blockers_for(ev, &"").has("needs after Golden Idol"))
-	EventSystem.mark_fired(_event(IDOL))
-	assert_true(EventSystem.requirement_met(ev),
-		"after it, whether or not the idol was taken")
+	assert_true(ev.requirement.is_empty(), "no Golden Idol needed")
+	assert_false(ev.tier_allows("Low"))
+	assert_false(ev.tier_allows("Medium"))
+	assert_true(ev.tier_allows("High"))
+	assert_true(ev.tier_allows("Insane"))
+	# …and through the dealer's own gate, at a run's real difficulty.
+	var spawns: int = GameState.spawn_events
+	GameState.spawn_events = 0
+	assert_true(EventSystem.blockers_for(ev, &"").has("wrong tier"), "not at Low")
+	while RunDifficulty.current_tier() < RunDifficulty.Tier.HIGH and GameState.spawn_events < 500:
+		GameState.spawn_events += 1
+	assert_eq(RunDifficulty.current_tier(), RunDifficulty.Tier.HIGH, "a High run was found")
+	assert_true(EventSystem.blockers_for(ev, &"").is_empty(), "dealt at High")
+	GameState.spawn_events = spawns
+
 
 func test_without_the_idol_the_offer_is_locked_not_hidden() -> void:
 	var ev: EventData2 = _event(ALTAR)

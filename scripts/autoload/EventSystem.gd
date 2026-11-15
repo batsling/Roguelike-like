@@ -33,8 +33,8 @@ extends Node
 # SHUFFLE BAG:
 #
 #   * roll the rarity ladder (Luck rerolls it, like every other roll) and fall
-#     down to the nearest stocked rung — today everything is Common, so every
-#     roll lands there;
+#     down to the nearest ELIGIBLE rung — most events are Common, the Forgotten
+#     Altar Uncommon, the Potion Lab and the Ominous Forge Rare;
 #   * draw from the events of that rarity NOT YET SEEN this run. Drawing marks an
 #     event seen whether or not the player engaged with it — seeing it is what
 #     was spent;
@@ -172,9 +172,6 @@ static func requirement_text(req: Dictionary) -> String:
 			if clause is Dictionary:
 				parts.append(requirement_text(clause))
 		return " and ".join(parts) if parts.size() > 0 else "nothing"
-	if req.has("after_event"):
-		var after: EventData2 = Data.get_event2(StringName(String(req["after_event"])))
-		return "after %s" % (after.display_name if after != null else String(req["after_event"]))
 	var stat: String = String(req.get("stat", ""))
 	return "%s %s %s%s" % [
 		String(GATE_STAT_NAMES.get(stat, stat.capitalize())),
@@ -640,10 +637,6 @@ func _compare_stat(req: Dictionary) -> bool:
 			if clause is Dictionary and not _compare_stat(clause):
 				return false
 		return true
-	# `after <Event>`: that event has opened this run, whatever was pressed (the
-	# Forgotten Altar waits on the Golden Idol). mark_fired is the record.
-	if req.has("after_event"):
-		return int(GameState.events_fired.get(StringName(String(req["after_event"])), 0)) > 0
 	var stat: String = String(req.get("stat", ""))
 	var have: float = float(_run_stat(stat))
 	if have < 0.0:
