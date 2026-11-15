@@ -1291,14 +1291,21 @@ func test_an_enemys_statuses_draw_in_its_top_right_corner() -> void:
 	var node: Control = ui._board._enemy_nodes.get(inst)
 	assert_not_null(node, "the body has a node on the board")
 	var badges: Control = node.get_meta("badges")
-	# BY NAME, and it lives in the corner row now, beside the ! and ▸ marks.
-	var strip: Control = badges.find_child(BattlefieldView.STATUS_STRIP_NAME, true, false)
-	assert_not_null(strip, "a status strip was added")
-	# The owner, 11 Nov 2026: an arrow, not a pip per status — the hover names them.
-	assert_eq(strip.get_child_count(), 1, "one arrow for the one status")
+	# The owner, 15 Nov 2026: only Stun is drawn on the body — Marked is on the
+	# hover alone.
+	assert_null(badges.find_child(BattlefieldView.STATUS_STRIP_NAME, true, false),
+		"Marked draws nothing on the body")
 	var marked: StatusData = Data.get_status(&"marked")
-	assert_eq(String(strip.get_child(0).name),
-		"StatusDown" if marked.kind == &"debuff" else "StatusUp", "pointing the way it leans")
+	GameLoop2.apply_status_to(inst, &"stun", 2)
+	ui._board.refresh()
+	node = ui._board._enemy_nodes.get(inst)
+	badges = node.get_meta("badges")
+	# BY NAME, and it lives in the corner row, beside the ▸ mark.
+	var strip: Control = badges.find_child(BattlefieldView.STATUS_STRIP_NAME, true, false)
+	assert_not_null(strip, "Stun is drawn")
+	assert_eq(strip.get_child_count(), 1, "and only Stun, not Marked beside it")
+	assert_eq(String(strip.get_child(0).name), "StatusStun")
+	assert_string_contains(Page.text_of(strip), "2", "with its stacks")
 	var hover: Dictionary = ui._board.enemy_hover(GameLoop2.stack[0], GameLoop2.stack[0]["enemy"])
 	assert_true(str(hover.get("pips", [])).contains(marked.display_name),
 		"and the hover names the status")
