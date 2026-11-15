@@ -2354,6 +2354,50 @@ func test_drinking_lifts_every_curse_but_the_eternal_one() -> void:
 	assert_string_contains(String(out["text"]), "lifted")
 	assert_eq(String(out["result"]), "As you drink the water, you feel a dark grasp loosen.")
 
+# --- This or That? (Slay the Spire 2) ---------------------------------------
+#
+# The owner, 15 Nov 2026: This is -1 Health and +5 Gold; That is Clumsy and a
+# small chest. Common, every tier, no Requirement.
+
+const THIS_OR_THAT := &"this_or_that"
+
+func test_this_or_that_is_slay_the_spire_2s_own_words() -> void:
+	var ev: EventData2 = _event(THIS_OR_THAT)
+	assert_eq(ev.display_name, "This or That?")
+	assert_eq(ev.source_game, "Slay the Spire 2")
+	assert_eq(ev.prompt, "Arms suddenly jut out from a nearby hole, clutching a "
+		+ "suspicious bag of riches and a clearly cursed relic. \"This... or That?\" "
+		+ "a scratched-up voice whispers from below.")
+	assert_eq(ev.choices.map(func(c): return String(c.get("text", ""))), ["This", "That"])
+	assert_eq(String(_choice(ev, "this")["results"][0]), "You grab the bag and as soon "
+		+ "as you do, a THIRD hand appears and clutches at you!! After a frantic "
+		+ "struggle, it releases\u2014the arms and the hole have vanished.")
+	assert_eq(String(_choice(ev, "that")["results"][0]), "You grab the Cursed Relic. "
+		+ "As soon as you grasp it, shackles materialize on your wrists. You hear a "
+		+ "ghostly laughter and a bright plume of fire fills your vision! The hole "
+		+ "and arms are gone.")
+	assert_eq(ev.rarity, "Common")
+	assert_true(ev.requirement.is_empty())
+
+func test_this_is_a_point_of_health_for_five_gold() -> void:
+	var ev: EventData2 = _event(THIS_OR_THAT)
+	GameState.max_hp = 7
+	GameState.hp = 5
+	GameState.gold = 2
+	EventSystem.resolve_choice(ev, _choice(ev, "this"), 0)
+	assert_eq(GameState.hp, 4)
+	assert_eq(GameState.gold, 7)
+
+func test_that_is_clumsy_and_a_small_chest() -> void:
+	var ev: EventData2 = _event(THIS_OR_THAT)
+	var that: Dictionary = _choice(ev, "that")
+	assert_string_contains(EventSystem.describe_choice(that, 0), "+1 Small Chest")
+	assert_string_contains(EventSystem.describe_choice(that, 0), "Clumsy")
+	var chests: int = GameState.pending_chests
+	EventSystem.resolve_choice(ev, that, 0)
+	assert_eq(GameState.pending_chests, chests + 1)
+	assert_true(GameState.has_curse_card(&"clumsy"))
+
 # Stands in for the overworld's board: takes the pick and hands it back.
 class BoardHost extends Node:
 	var cfg: Dictionary = {}

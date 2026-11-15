@@ -11,6 +11,12 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **This or That?, from Slay the Spire 2 (the owner, 15 Nov 2026).** A Common
+  event at every difficulty, whose prompt and results are Slay the Spire 2's
+  own words. **This** is −1 Health and +5 Gold, a fixed amount where Slay the
+  Spire 2 rolls 41–68. **That** is the Clumsy curse card and a small chest,
+  matching what you chose for Big Fish's Box.
+
 - **The Divine Fountain, from Slay the Spire (the owner, 15 Nov 2026).** A
   **Rare** event at every difficulty, with Slay the Spire's own prose.
   - **Drink** lifts every curse that can be lifted: Destroyable curse cards leave
