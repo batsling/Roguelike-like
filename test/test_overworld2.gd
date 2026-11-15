@@ -3644,6 +3644,29 @@ func test_the_full_inventory_shows_items_loot_stats_and_resources() -> void:
 	_ui._full_inventory.close()
 	assert_null(_ui._full_inventory, "and closing it lets go")
 
+# The owner, 15 Nov 2026: clicking an item in the full inventory, then clicking
+# away from its card, should leave you in the full inventory.
+func test_an_items_card_opens_over_the_full_inventory_and_returns_to_it() -> void:
+	var item: ItemData = Data.all_items2()[0]
+	GameState.add_item(item)
+	var full: Node = _ui.show_full_inventory()
+	var row: Button = null
+	for b in full.find_children("*", "HoverButton", true, false):
+		if Page.text_of(b).contains(item.display_name):
+			row = b
+	assert_not_null(row, "the item has a row")
+	if row == null:
+		return
+	row.pressed.emit()
+	assert_not_null(_ui._item_card, "its card opens")
+	assert_true(is_instance_valid(full) and _ui._full_inventory == full,
+		"over the full inventory, which stays")
+	_ui._item_card.close()
+	await wait_frames(2)
+	assert_true(is_instance_valid(full) and _ui._full_inventory == full,
+		"closing the card lands back in it")
+	full.close()
+
 func test_tab_opens_and_shuts_the_loot_window() -> void:
 	# The `backpack` action existed in project.godot with nothing on the overworld
 	# listening for it.
