@@ -19,7 +19,9 @@ For how the project is laid out and how its systems fit together, see
   - **Offer: Golden Idol** trades the Golden Idol for the **Bloody Idol**, an
     Event relic that heals 1 Health whenever you gain Gold and pays no bonus
     Gold.
-  - **Sacrifice** is +1 Max Health, then the loss of 25% of Max Health.
+  - **Sacrifice** is +1 Max Health, then the loss of 35% of Max Health
+    (Slay the Spire's Ascension 15 price; the owner raised it from 25% "so it's
+    a little rougher").
   - **Desecrate** gives the Decay curse card.
 
   Without the idol, Offer is shown **locked**, reading "Requires: Golden Idol",

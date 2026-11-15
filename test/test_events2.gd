@@ -2102,7 +2102,7 @@ func test_the_box_is_a_small_chest_and_regret() -> void:
 # --- Forgotten Altar (Slay the Spire) ---------------------------------------
 #
 # The owner, 15 Nov 2026: Uncommon, dealt only after the Golden Idol event; the
-# Offer button shown LOCKED without the idol; Sacrifice +1 Max Health for 25% of
+# Offer button shown LOCKED without the idol; Sacrifice +1 Max Health for 35% of
 # it; Desecrate is Decay. Bloody Idol heals 1 per gold gain and replaces the
 # Golden Idol outright.
 
@@ -2152,16 +2152,26 @@ func test_offering_the_idol_trades_it_for_the_bloody_idol() -> void:
 	assert_true(GameState.has_item(&"bloody_idol"), "and bleeds")
 
 func test_sacrifice_charges_exactly_what_its_button_says() -> void:
-	# At 5 Max Health, 25% is 1.25 -> 1. Worked out after the +1 it would be
-	# 25% of 6 = 1.5 -> 2, a point more than the button quoted.
+	# 35% of Max Health (the owner raised it from 25%, 15 Nov 2026). At 4 Max
+	# Health that is 1.4 -> 1; worked out after the +1 it would be 35% of 5 =
+	# 1.75 -> 2, a point more than the button quoted.
 	var ev: EventData2 = _event(ALTAR)
 	var sacrifice: Dictionary = _choice(ev, "sacrifice")
-	GameState.max_hp = 5
-	GameState.hp = 5
+	GameState.max_hp = 4
+	GameState.hp = 4
 	assert_eq(EventSystem.describe_choice(sacrifice, 0), "+1 Max Health, -1 Health")
 	EventSystem.resolve_choice(ev, sacrifice, 0)
-	assert_eq(GameState.max_hp, 6, "+1 Max Health")
-	assert_eq(GameState.hp, 5, "arrives full, then pays the 1 quoted")
+	assert_eq(GameState.max_hp, 5, "+1 Max Health")
+	assert_eq(GameState.hp, 4, "arrives full, then pays the 1 quoted")
+
+func test_sacrifice_costs_35_percent() -> void:
+	var sacrifice: Dictionary = _choice(_event(ALTAR), "sacrifice")
+	GameState.max_hp = 7
+	assert_eq(EventSystem.describe_choice(sacrifice, 0), "+1 Max Health, -2 Health",
+		"35% of 7 is 2.45")
+	GameState.max_hp = 10
+	assert_eq(EventSystem.describe_choice(sacrifice, 0), "+1 Max Health, -4 Health",
+		"35% of 10 is 3.5, rounded up")
 
 func test_desecrating_the_altar_is_decay() -> void:
 	var ev: EventData2 = _event(ALTAR)

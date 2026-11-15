@@ -9,8 +9,9 @@ Slay the Spire's Act 2 altar, translated. Two rows:
                           Bloody Idol comes. Without the idol the button is
                           shown LOCKED, "Requires: Golden Idol", as Slay the
                           Spire shows it (the owner's choice).
-     Sacrifice            +1 Max Health, then lose 25% of Max Health (rounded,
-                          at least 1) — the Golden Idol's own Outrun formula.
+     Sacrifice            +1 Max Health, then lose 35% of Max Health (rounded,
+                          at least 1) — Slay the Spire's Ascension 15 price; the
+                          owner raised it from 25% "so it's a little rougher".
                           Worked out against Max Health BEFORE the +1, as the
                           button quotes it (EventSystem.resolve_choice).
      Desecrate            the Decay curse card.
@@ -67,7 +68,7 @@ EVENT = {
                 "in sacrifice, the arms of the statue reach out and close around your "
                 "eyes. Everything goes dark. You wake up a short time later feeling a "
                 "new potential surging through you.",
-    "Effect 2": "gain_max_hp 1; lose_hp {max(1,round(0.25*MAX_HP))}",
+    "Effect 2": "gain_max_hp 1; lose_hp {max(1,round(0.35*MAX_HP))}",
     "Choice 3": "Desecrate",
     "Result 3": "You lash out and smash the statue in front of you, breaking the "
                 "magical hold the room had placed upon you. A dark wail echoes all "
@@ -97,9 +98,18 @@ def insert_sorted(wb, sheet, key_col, values):
     col = header.index(key_col)
     name = values[key_col]
     rows = grid[1:]
-    if any(str(r[col]).strip() == name for r in rows):
-        print("%s: %s is already on the sheet" % (sheet, name))
-        return
+    for r in rows:
+        if str(r[col]).strip() == name:
+            # Already there: bring its cells to these values (how Sacrifice went
+            # from 25% to 35% after this first ran).
+            changed = [k for k, v in values.items() if str(r[header.index(k)] or "") != v]
+            for k in changed:
+                r[header.index(k)] = values[k]
+            if changed:
+                wb.write_grid(sheet, [grid[0]] + rows)
+            print("%s: %s is already on the sheet%s" % (sheet, name,
+                  " — set " + ", ".join(changed) if changed else ""))
+            return
     fresh = ["" for _ in header]
     for key, value in values.items():
         fresh[header.index(key)] = value
