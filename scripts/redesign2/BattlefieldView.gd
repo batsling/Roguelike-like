@@ -3115,27 +3115,44 @@ func _add_enemy_badges(holder: Control, entry: Dictionary, e: GoalEnemyData,
 	# the head of whatever stood in the cell below; in the corner it sits on this
 	# body's own frame, the one place the rest of the board does not need.
 	#
-	# ONLY STUN IS DRAWN ON THE BODY (the owner, 15 Nov 2026: "the only status
-	# that should be shown visually on an enemy should be stunned"). It replaced the
-	# ▲/▼ arrows (11 Nov), which had replaced a pip per status. Stun is the one that
-	# changes what the body does THIS turn; every status, Stun included, is still
-	# named with its stacks on the hover's pip row (`enemy_hover`).
+	# STUN BY ITS OWN ICON, EVERYTHING ELSE AS AN ARROW (the owner, 15 Nov 2026:
+	# "stun, and the arrows should be there. i meant stun should be the only
+	# specific status there"). The ▲/▼ (11 Nov) stays for the rest — one ▲ if any
+	# other status is a buff, one ▼ if any is a debuff — and Stun, the one that
+	# changes what the body does THIS turn, is its own pip with its stacks. Every
+	# status, Stun included, is named with its stacks on the hover (`enemy_hover`).
 	var statuses: Array = GameLoop2.enemy_statuses(entry)
 	var strip: HBoxContainer = null
+	var stun_row: Dictionary = {}
+	var others: Array = []
 	for row in statuses:
 		var sd: StatusData = row.get("status")
-		if sd == null or sd.id != STUN_STATUS:
-			continue
+		if sd != null and sd.id == STUN_STATUS:
+			stun_row = row
+		else:
+			others.append(row)
+	if not statuses.is_empty():
 		strip = HBoxContainer.new()
 		strip.name = STATUS_STRIP_NAME
 		strip.add_theme_constant_override("separation", UITheme.GAP_NONE)
 		strip.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		var pip := _status_pip(sd, int(row["stacks"]), StatusData.ENEMY, STATUS_PIP_ENEMY,
-			false, int(row.get("games", 0)))
-		pip.name = "StatusStun"
-		pip.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		strip.add_child(pip)
-		break
+		if not stun_row.is_empty():
+			var pip := _status_pip(stun_row["status"], int(stun_row["stacks"]),
+				StatusData.ENEMY, STATUS_PIP_ENEMY, false, int(stun_row.get("games", 0)))
+			pip.name = "StatusStun"
+			pip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			strip.add_child(pip)
+		var arrows: Dictionary = status_arrows(others)
+		if arrows["up"]:
+			var up := _corner_badge("▲", STATUS_UP, STATUS_PIP_ENEMY)
+			up.name = "StatusUp"
+			up.add_theme_color_override("font_color", STATUS_UP)
+			strip.add_child(up)
+		if arrows["down"]:
+			var down := _corner_badge("▼", STATUS_DOWN, STATUS_PIP_ENEMY)
+			down.name = "StatusDown"
+			down.add_theme_color_override("font_color", STATUS_DOWN)
+			strip.add_child(down)
 
 	# NO SNOWFLAKE CORNER BADGE ANY MORE (§13.2). Stun was the board's own counter
 	# with a symbol of its own, and it is an ordinary status now — so it is drawn in the
@@ -3546,6 +3563,22 @@ func _stat_badge(text: String, accent: Color, font_size: int) -> Label:
 const STATUS_STRIP_NAME := "StatusStrip"
 # The one status drawn on an enemy's body (the rest live on its hover).
 const STUN_STATUS := &"stun"
+
+# Which arrows a body's statuses add up to: `up` when any of them is a buff,
+# `down` when any is a debuff. Static and public so a test can ask it.
+const STATUS_UP := Color(0.45, 0.95, 0.55)
+const STATUS_DOWN := Color(1.0, 0.45, 0.42)
+static func status_arrows(rows: Array) -> Dictionary:
+	var out: Dictionary = {"up": false, "down": false}
+	for row in rows:
+		var sd: StatusData = row.get("status")
+		if sd == null:
+			continue
+		if sd.kind == &"debuff":
+			out["down"] = true
+		else:
+			out["up"] = true
+	return out
 
 # One status chip: the art (or the name's first letter when art is missing) with
 # its stack count, tinted by what this SIDE does — a `bonus` is an opportunity and

@@ -1186,9 +1186,10 @@ static func _ch_screen() -> Dictionary:
 				+ "your resources, your statuses and the curse cards you carry."),
 			_kv("The fallen", "Every enemy this run has put down is the Fallen "
 				+ "tab of the History, in the bar at the top."),
-			_kv("Statuses on an enemy", "Only Stun is drawn on a body, in its "
-				+ "top-right corner with its stacks. Hover the body to see every "
-				+ "status it carries, and a bigger picture of it."),
+			_kv("Statuses on an enemy", "Stun is drawn on a body as itself, with "
+				+ "its stacks. Any other status is an arrow: a ▲ means it carries a "
+				+ "buff, a ▼ a debuff. Hover the body to see which, and a bigger "
+				+ "picture of it."),
 			_kv("Bash, Dash, Transmute, Scramble", "Chips on the row under the "
 				+ "offering, once you have a charge — a verb at 0 is not shown. Dash "
 				+ "and Scramble act at once; Bash and Transmute ARM, and the next card "

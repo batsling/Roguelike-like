@@ -628,7 +628,7 @@ There is no HUD strip. Every number is drawn once, by whatever owns it, which ta
 - **Push and Bomb charges** — Under your portrait on the board: an icon and the number left, each one a button. One you have none of is not shown. Hover it for its name.
 - **Everything you carry** — The panel over the board is your items on the left and a small picture of your loot pack on the right. Click the small pack (or press Tab) to open it. Full beside it opens the full inventory: every item, the pack, your stats, your resources, your statuses and the curse cards you carry.
 - **The fallen** — Every enemy this run has put down is the Fallen tab of the History, in the bar at the top.
-- **Statuses on an enemy** — Only Stun is drawn on a body, in its top-right corner with its stacks. Hover the body to see every status it carries, and a bigger picture of it.
+- **Statuses on an enemy** — Stun is drawn on a body as itself, with its stacks. Any other status is an arrow: a ▲ means it carries a buff, a ▼ a debuff. Hover the body to see which, and a bigger picture of it.
 - **Bash, Dash, Transmute, Scramble** — Chips on the row under the offering, once you have a charge — a verb at 0 is not shown. Dash and Scramble act at once; Bash and Transmute ARM, and the next card you click is the one they hit.
 - **Luck and Rift Keys** — On the same row. Luck shows whenever it is not 0 (bad Luck too); Keys always show.
 - **Shields a game would grant** — On the offering's hover line, and in full on the card.
