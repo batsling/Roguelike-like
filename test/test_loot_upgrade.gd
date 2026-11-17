@@ -248,6 +248,63 @@ func test_a_downgraded_charge_card_can_hand_out_none() -> void:
 	var out: Dictionary = _play(blood)
 	assert_true((out["requests"] as Array).is_empty(), "2 - 2: nothing to place")
 
+# AFTER IMAGE, DOWNGRADED (the owner, 17 Nov 2026: "make sure downgrades on stuff
+# like afterimage work"): a passive card's roll moves its trigger the way an
+# upgrade does — and below 0 the trigger takes Shield away each time it fires.
+
+func _after_image(roll: int, known: bool = true) -> Dictionary:
+	var image: Dictionary = Fixtures.card(self, &"after_image", 0)
+	image["roll"] = roll
+	image["roll_known"] = known
+	return image
+
+func test_after_image_minus_one_gives_nothing() -> void:
+	_after_image(-1)
+	GameState.shields = 2
+	CardSystem.notify_used(Data.get_card(&"vi_the_lovers"))
+	assert_eq(GameState.shields, 2, "1 - 1 = 0 Shield a card")
+
+func test_after_image_minus_two_takes_a_shield_per_card() -> void:
+	_after_image(-2)
+	GameState.shields = 3
+	CardSystem.notify_used(Data.get_card(&"vi_the_lovers"))
+	CardSystem.notify_used(Data.get_card(&"vi_the_lovers"))
+	assert_eq(GameState.shields, 1, "-1 Shield for each card used")
+
+func test_after_image_takes_no_more_shield_than_there_is() -> void:
+	_after_image(-2)
+	GameState.shields = 0
+	CardSystem.notify_used(Data.get_card(&"vi_the_lovers"))
+	assert_eq(GameState.shields, 0)
+
+func test_a_hidden_minus_on_after_image_still_lays_and_is_learned() -> void:
+	var image: Dictionary = _after_image(-2, false)
+	GameState.shields = 2
+	CardSystem.notify_used(Data.get_card(&"vi_the_lovers"))
+	assert_eq(GameState.shields, 1, "a hidden roll still counts")
+	assert_true(WeaponSystem.roll_known(image), "and firing taught it")
+	assert_true(WeaponSystem.is_cursed(image), "a known minus is cursed")
+	assert_true(GameState.is_pinned(image), "and stuck where it sits")
+
+func test_an_upgrade_offsets_a_downgrade() -> void:
+	var image: Dictionary = _after_image(-1)
+	LootUpgrade.upgrade(image)
+	GameState.shields = 0
+	CardSystem.notify_used(Data.get_card(&"vi_the_lovers"))
+	assert_eq(GameState.shields, 1, "1 - 1 + 1")
+
+func test_a_lifted_curse_holds_after_image_to_one() -> void:
+	var image: Dictionary = _after_image(-2)
+	assert_true(WeaponSystem.lift_curse(image))
+	GameState.shields = 0
+	CardSystem.notify_used(Data.get_card(&"vi_the_lovers"))
+	assert_eq(GameState.shields, 1, "at least 1 once the curse is lifted")
+
+func test_a_downgraded_after_image_says_so() -> void:
+	var image: Dictionary = _after_image(-2)
+	assert_string_contains(LootSystem.description(image), "Cursed: -2 Shield")
+	assert_string_ends_with(LootSystem.display_name(image), " -2")
+
 func test_stun_below_zero_does_nothing() -> void:
 	var cleave: Dictionary = _rolled(Fixtures.card(self, &"cleave", 0), -2)
 	var a: int = _stand(1, 1)

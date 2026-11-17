@@ -47,7 +47,7 @@ static func def(entry) -> WeaponData:
 # A new pack entry for `w`, EMPTY — a weapon is loaded by playing, not found loaded.
 #
 # FOUND UNIDENTIFIED (docs/players-design.md §5): for a player with the
-# `unidentified_weapons` mechanic, every weapon the run FINDS is rolled -2..+2 here
+# `unidentified_equipment` mechanic, every weapon the run FINDS is rolled -2..+2 here
 # — a drop, a chest, a shop shelf, an evolution's preview aside (`rolled` false).
 # A weapon the run STARTS with is not (GameState.granting_start_kit).
 static func new_entry(w: WeaponData, rolled: bool = true) -> Dictionary:
@@ -64,13 +64,13 @@ static func new_entry(w: WeaponData, rolled: bool = true) -> Dictionary:
 # unidentified weapon mechanic from retro bat"). What the run starts with is not
 # rolled (GameState.granting_start_kit). Returns `entry`.
 static func roll_new(entry: Dictionary) -> Dictionary:
-	if is_rollable(entry) and GameState.has_mechanic(&"unidentified_weapons") \
+	if is_rollable(entry) and GameState.has_mechanic(&"unidentified_equipment") \
 			and not GameState.granting_start_kit:
 		entry["roll"] = roll_modifier()
 		entry["roll_known"] = false
 	return entry
 
-# --- unidentified weapons (docs/players-design.md §5) -------------------------
+# --- unidentified equipment (docs/players-design.md §5) -------------------------
 #
 # A rolled weapon carries `roll` (-2..+2, added to its Stun) and `roll_known`. Until
 # the first swing — or a Scroll of Identify — the roll is HIDDEN: the name reads

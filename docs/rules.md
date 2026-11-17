@@ -68,7 +68,7 @@ No extra rules: the game as it is.
 > Locked until you beat 20 different traditional roguelikes.
 
 - **Hunger** — Start with 3 Hunger (at most 5). Each game you finish costs 1. Drink a potion or eat food for +1. Finish a game or lose a run already at 0 and lose 2 Health.
-- **Unidentified Weapons** — Weapons and attack cards you find roll -2 to +2 Stun, unknown until first used. A minus is CURSED: stuck where it sits in the pack until the curse is lifted.
+- **Unidentified Equipment** — Weapons and cards that can be upgraded roll -2 to +2 when you find them, unknown until first used. A minus is CURSED: stuck where it sits in the pack until the curse is lifted.
 
 ### Batsaac
 
@@ -80,10 +80,10 @@ No extra rules: the game as it is.
 - The game that empties it costs nothing more. After that, every game you finish and every run you lose costs 2 Health until you eat.
 - Drinking any potion is +1. So is eating: press Eat beside the icons and click a piece of food in your pack or a food relic — it is gone, and you are +1. You cannot eat at 5.
 
-### Unidentified weapons
+### Unidentified equipment
 
 - Every weapon you FIND is anywhere from -2 to +2 Stun, and you do not know which until you swing it (it reads "Hero Sword +?"). A Scroll of Identify tells you sooner. A weapon you start with is never rolled.
-- CARDS that can be upgraded are rolled the same way: the number an upgrade would grow — Stun, Shield, charges, potions, loot — is -2 to +2, unknown until you play it ("Cleave +?", or "Cleave +1?" once it has been upgraded too). A Shield card that comes out below zero takes Shield away; Stun below zero does nothing.
+- CARDS that can be upgraded are rolled the same way: the number an upgrade would grow — Stun, Shield, charges, potions, loot — is -2 to +2, unknown until you play it — or, for a passive card like After Image, until it first fires ("Cleave +?", or "Cleave +1?" once it has been upgraded too). A Shield card that comes out below zero takes Shield away; Stun below zero does nothing.
 - A minus is CURSED once you know it: it stays exactly where it sits in your pack — no moving, turning, dropping or smelting. Anything that lifts a curse lifts it, and a weapon freed that way always lays at least 1 Stun.
 
 ## 🗺 Choosing where to go

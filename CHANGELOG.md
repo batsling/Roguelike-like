@@ -33,6 +33,12 @@ For how the project is laid out and how its systems fit together, see
     numbers back.
   - **Lord's Parasol is removed**: its row, `.tres`, art, the `shop_sweep`
     flag and `ShopSystem.sweep`. Two Boss relics are left.
+  - **Retro Bat's "Unidentified Weapons" is now "Unidentified Equipment"**
+    (id `unidentified_equipment`), since it rolls every upgradeable card too.
+    Tests check that every card with an Upgrade Type is found rolled, and that
+    a downgraded After Image gives nothing at -1 and takes a Shield for each
+    card at -2. A hidden minus still counts and is learned when it fires, and a
+    lifted curse holds it at 1.
   - **A Brotato fruit Hunger icon** (`images2.0/icons/Hunger/Fruit_Brotato.png`,
     the wiki's 128px original "Chal fruit").
 

@@ -790,7 +790,7 @@ That row, its timer and its penalty are all gone.
 - **There is more than one kind of curse.** The owner: "multiple types of curses
   that all count as curses". A **curse card** is a row of this sheet with `Type`
   `Card`, which is every row today. A **cursed weapon** (Retro Bat's
-  unidentified weapons, `docs/players-design.md` §5) is a curse too, but it comes
+  Unidentified Equipment, `docs/players-design.md` §5) is a curse too, but it comes
   from a weapon's roll rather than a row. Both count: `GameState.is_curse`,
   `curse_count` (with `curse_card_count` for the cards alone), the inventory's
   Curses list and the Scroll of Remove Curse all take either. The generator

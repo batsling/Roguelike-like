@@ -1115,7 +1115,7 @@ func is_curse_entry(entry) -> bool:
 
 # THE KINDS OF CURSE (the owner, 14 Nov 2026: "multiple types of curses that all
 # count as curses"). A curse CARD (the `curses` sheet, Type `Card`) and a CURSED
-# WEAPON (Retro Bat's unidentified weapons, WeaponSystem.is_cursed) are both
+# WEAPON (Retro Bat's Unidentified Equipment, WeaponSystem.is_cursed) are both
 # curses: both are counted here, both are listed under Curses, and the Scroll of
 # Remove Curse lifts either. Whether a piece is one of them is `is_curse`.
 func is_curse(entry) -> bool:

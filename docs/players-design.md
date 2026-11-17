@@ -30,7 +30,7 @@ Every player is an **original work**, not a character from a real game.
 | Player | Mechanics | Unlock | Art |
 |---|---|---|---|
 | Basic | none — the game as it is | always | none: the picker draws the word "Basic" |
-| Retro Bat | Hunger, Unidentified Weapons | beat 20 different traditional roguelikes | `images2.0/players/RetroBat.png` |
+| Retro Bat | Hunger, Unidentified Equipment | beat 20 different traditional roguelikes | `images2.0/players/RetroBat.png` |
 | Batsaac | none yet — the owner's to give | always (for now) | `images2.0/players/Batsaac.png` |
 
 Retro Bat was called Batty for its first day (the owner renamed it, 13 Nov 2026);
@@ -158,7 +158,14 @@ run still opens with every verb at 0.
   for a player without Hunger.
 - The numbers are a first cut the owner expects to tune.
 
-## 5. Unidentified weapons
+## 5. Unidentified equipment (was Unidentified Weapons)
+
+Renamed 17 Nov 2026 (the owner), when the roll widened past weapons and attacks
+to every card with an `Upgrade Type`: the mechanic's id is
+`unidentified_equipment` (`GameState.has_mechanic`), its row in the `mechanics`
+sheet and Retro Bat's `Mechanics` cell both say *Unidentified Equipment*
+(`tools/oneshots/_mechanics_unidentified_equipment.py`). Saves are unaffected: a
+run stores its player, and the mechanics come from the player's data.
 
 A weapon the run **finds** — a drop, a chest, a shop shelf — is rolled when its
 pack entry is made (`WeaponSystem.new_entry`): **−2 to +2 Stun**, weighted

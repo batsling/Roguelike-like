@@ -154,7 +154,7 @@ The repository root **is** the Godot project, so `res://x` is `./x`.
 | Adding content: art, the spreadsheet, generators, events, objects | [`docs/content-authoring.md`](docs/content-authoring.md), plus [`event-sheet-authoring.md`](docs/event-sheet-authoring.md), [`object-sheet-authoring.md`](docs/object-sheet-authoring.md), [`item-sheet-authoring.md`](docs/item-sheet-authoring.md) |
 | Loot: trinkets, bags, weapons, evolutions, the pack's neighbour rules | [`docs/loot-passives.md`](docs/loot-passives.md), [`cards-design.md`](docs/cards-design.md), [`potions-design.md`](docs/potions-design.md), [`wands-design.md`](docs/wands-design.md) |
 | Difficulty above a won run | [`docs/fracture-design.md`](docs/fracture-design.md) |
-| Players — the first pick: mechanics (Hunger, unidentified weapons) and the Fracture ladder | [`docs/players-design.md`](docs/players-design.md) |
+| Players — the first pick: mechanics (Hunger, Unidentified Equipment) and the Fracture ladder | [`docs/players-design.md`](docs/players-design.md) |
 | Rifts: off-map games pulled into the map | [`docs/rifts-design.md`](docs/rifts-design.md) |
 | Achievements (what unlocks a character, a player or the Abandon Hat) | [`docs/achievements.md`](docs/achievements.md) |
 | Roguelike Radio | [`docs/roguelike-radio.md`](docs/roguelike-radio.md) |

@@ -638,14 +638,15 @@ static func _ch_players() -> Dictionary:
 		_b("Drinking any potion is +1. So is eating: press Eat beside the icons and "
 			+ "click a piece of food in your pack or a food relic — it is gone, "
 			+ "and you are +1. You cannot eat at %d." % HungerSystem.MAX),
-		_h("Unidentified weapons"),
+		_h("Unidentified equipment"),
 		_b("Every weapon you FIND is anywhere from -2 to +2 Stun, and you do not "
 			+ "know which until you swing it (it reads \"Hero Sword +?\"). A "
 			+ "Scroll of Identify tells you sooner. A weapon you start with is "
 			+ "never rolled."),
 		_b("CARDS that can be upgraded are rolled the same way: the number an "
 			+ "upgrade would grow — Stun, Shield, charges, potions, loot — is -2 to "
-			+ "+2, unknown until you play it (\"Cleave +?\", or \"Cleave +1?\" "
+			+ "+2, unknown until you play it — or, for a passive card like After "
+			+ "Image, until it first fires (\"Cleave +?\", or \"Cleave +1?\" "
 			+ "once it has been upgraded too). A Shield card that comes out below "
 			+ "zero takes Shield away; Stun below zero does nothing."),
 		_b("A minus is CURSED once you know it: it stays exactly where it sits in "

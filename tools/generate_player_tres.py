@@ -8,7 +8,7 @@ into data/players/ (docs/players-design.md).
   Name         the player's name, as the picker shows it. Its id is the slug.
   Mechanics    what the player adds to a run: a comma list of NAMES from the
                `mechanics` sheet (generate_mechanic_tres.py), any mix of them —
-               `Hunger, Unidentified Weapons`. A name with no row there is
+               `Hunger, Unidentified Equipment`. A name with no row there is
                refused. Blank = the game as it is.
   File         the art's base name in images2.0/players/ (`RetroBat` ->
                images2.0/players/RetroBat.png). Blank, or no such file, = no art,

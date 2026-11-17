@@ -2,7 +2,7 @@ extends GutTest
 
 # PLAYERS (docs/players-design.md; the owner, 13 Nov 2026): the first pick of a
 # run, carrying its mechanics and the Fracture ladder. Two to start — the basic
-# player (the game as it is) and Retro Bat (Hunger and Unidentified Weapons, locked
+# player (the game as it is) and Retro Bat (Hunger and Unidentified Equipment, locked
 # behind 20 traditional roguelikes). The ladder's own tests are in
 # test_fracture.gd; this file is the players, Hunger and the weapon roll.
 
@@ -37,9 +37,9 @@ func test_basic_has_no_mechanics_and_no_art() -> void:
 	assert_true(basic.mechanics.is_empty(), "the game as it is")
 	assert_null(basic.portrait, "no art yet: the picker says its name instead")
 
-func test_retro_bat_has_hunger_and_unidentified_weapons_and_crisp_art() -> void:
+func test_retro_bat_has_hunger_and_unidentified_equipment_and_crisp_art() -> void:
 	var bat: PlayerData = Data.get_player(RETRO_BAT)
-	assert_eq(bat.mechanics, [&"hunger", &"unidentified_weapons"] as Array[StringName])
+	assert_eq(bat.mechanics, [&"hunger", &"unidentified_equipment"] as Array[StringName])
 	assert_not_null(bat.portrait)
 	# Stored at its true pixel size (its empty border trimmed); the screens scale
 	# it up without smoothing.
@@ -60,7 +60,7 @@ func test_every_mechanic_is_a_row_of_the_mechanics_sheet_and_has_a_rule() -> voi
 	for pl in Data.all_players():
 		for m in pl.mechanics:
 			assert_not_null(Data.get_mechanic(m), "%s carries a real mechanic" % pl.display_name)
-	assert_eq(PlayerData.mechanic_name(&"unidentified_weapons"), "Unidentified Weapons")
+	assert_eq(PlayerData.mechanic_name(&"unidentified_equipment"), "Unidentified Equipment")
 
 # Hunger's numbers are typed into its sentence on the sheet; the rules are code.
 func test_hungers_sentence_says_the_numbers_the_rules_use() -> void:
@@ -196,7 +196,7 @@ func test_what_is_not_food_cannot_be_eaten() -> void:
 	assert_false(HungerSystem.edible().any(func(e): return is_same(e, w)))
 	assert_false(HungerSystem.eat(w))
 
-# --- Unidentified weapons -------------------------------------------------------
+# --- Unidentified equipment -------------------------------------------------------
 
 func test_retro_bat_finds_weapons_rolled_and_unknown() -> void:
 	_start(RETRO_BAT)
@@ -370,7 +370,7 @@ func test_the_picker_lists_retro_bat_s_mechanics() -> void:
 	var picker := _picker()
 	picker.select_player(RETRO_BAT)
 	assert_not_null(picker.find_child("Mechanic_hunger", true, false))
-	assert_not_null(picker.find_child("Mechanic_unidentified_weapons", true, false))
+	assert_not_null(picker.find_child("Mechanic_unidentified_equipment", true, false))
 
 # --- on the run page -------------------------------------------------------------
 
@@ -509,15 +509,55 @@ func test_retro_bat_finds_attacks_rolled_and_unknown() -> void:
 	assert_eq(LootSystem.display_name(c), "Cleave +?")
 	assert_false(LootSystem.is_identified(c), "Identify can be spent on it")
 
-func test_a_card_that_is_not_an_attack_is_never_rolled() -> void:
+func test_a_card_with_no_upgrade_type_is_never_rolled() -> void:
 	_start(RETRO_BAT)
-	var plain: CardData = null
-	for card in Data.all_cards():
-		if not card.tags.has("attack") and not card.is_passive():
-			plain = card
-			break
-	GameState.add_card_loot(plain.id)
-	assert_false(WeaponSystem.has_roll(GameState.loot_items[-1]))
+	for id in [&"vi_the_lovers", &"barricade", &"echo_form"]:
+		GameState.add_card_loot(id)
+		assert_false(WeaponSystem.has_roll(GameState.loot_items[-1]),
+			"%s has no Upgrade Type, so nothing to roll" % id)
+
+# UNIDENTIFIED EQUIPMENT (the owner, 17 Nov 2026: "make sure it works on all
+# upgradable things including the new cards that aren't attacks").
+func test_every_upgradeable_card_is_found_rolled() -> void:
+	var n: int = 0
+	for c in Data.all_cards():
+		var card: CardData = c
+		if card.upgrade_types.is_empty():
+			continue
+		_start(RETRO_BAT)
+		GameState.add_card_loot(card.id)
+		var e: Dictionary = GameState.loot_items[-1]
+		assert_true(WeaponSystem.has_roll(e), "%s is rolled" % card.id)
+		assert_false(WeaponSystem.roll_known(e), "%s is hidden" % card.id)
+		assert_string_ends_with(LootSystem.display_name(e), " +?")
+		n += 1
+	assert_gt(n, 6, "the attacks and the other upgradeable cards")
+
+func test_the_mechanic_is_called_unidentified_equipment() -> void:
+	assert_eq(PlayerData.mechanic_name(&"unidentified_equipment"), "Unidentified Equipment")
+	_start(RETRO_BAT)
+	assert_true(GameState.has_mechanic(&"unidentified_equipment"))
+
+func test_a_rolled_shield_card_lays_its_roll_and_identifies_it() -> void:
+	_start(RETRO_BAT)
+	GameState.add_card_loot(&"shrug_it_off")
+	var c: Dictionary = GameState.loot_items[-1]
+	c["roll"] = 2
+	c["roll_known"] = false
+	GameState.shields = 0
+	LootSystem.use_loot(GameState.loot_items.find(c), {})
+	assert_true(WeaponSystem.roll_known(c), "played, it is known")
+	assert_eq(GameState.shields, 3, "Shrug it Off's 1 and the +2")
+
+func test_a_cursed_charge_card_is_pinned_like_a_weapon() -> void:
+	_start(RETRO_BAT)
+	GameState.add_card_loot(&"bloodletting")
+	var c: Dictionary = GameState.loot_items[-1]
+	c["roll"] = -1
+	c["roll_known"] = false
+	assert_true(LootSystem.identify(c))
+	assert_eq(LootSystem.display_name(c), "Bloodletting -1")
+	assert_true(GameState.is_pinned(c), "a known minus is cursed and stuck")
 
 func test_the_basic_player_finds_plain_attacks() -> void:
 	_start(Data.BASIC_PLAYER)

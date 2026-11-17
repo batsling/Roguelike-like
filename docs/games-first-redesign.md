@@ -1326,7 +1326,7 @@ arrives — a modal with no Skip, so a full pack has to make room — and can ne
 be binned or taken out of the pack. Per curse, the `curses` sheet gives it
 KEYWORDS: **Unmovable** (it can't be moved — Poor Sleep) and **Eternal** (it
 can't be destroyed — Curse of the Bell); Injury has neither. A cursed weapon
-(Retro Bat's unidentified weapons) counts as a curse too. Events hand them out (`add_curse`), and so do the Calling Bell
+(Retro Bat's Unidentified Equipment) counts as a curse too. Events hand them out (`add_curse`), and so do the Calling Bell
 (§8), the Amnesia pill, the Hexer and the Lacerator. The rules are
 `docs/loot-passives.md` §18.
 

@@ -18,8 +18,8 @@ extends Resource
 # that asks for it. tools/generate_mechanic_tres.py prints a note for a row that
 # is not in this list.
 #   hunger               docs/players-design.md §4 — HungerSystem
-#   unidentified_weapons docs/players-design.md §5 — WeaponSystem's +/- roll
-const MECHANICS := [&"hunger", &"unidentified_weapons"]
+#   unidentified_equipment docs/players-design.md §5 — WeaponSystem's +/- roll
+const MECHANICS := [&"hunger", &"unidentified_equipment"]
 
 @export var id: StringName
 @export var display_name: String
