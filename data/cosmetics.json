@@ -1881,6 +1881,20 @@
 					"max": 10
 				}
 			]
+		},
+		{
+			"id": "hunger/fruit_brotato",
+			"kind": "hunger",
+			"name": "Fruit",
+			"game": "brotato",
+			"images": [
+				{
+					"name": "Fruit",
+					"path": "res://images2.0/icons/Hunger/Fruit_Brotato.png",
+					"min": 0,
+					"max": 10
+				}
+			]
 		}
 	],
 	"hats": [

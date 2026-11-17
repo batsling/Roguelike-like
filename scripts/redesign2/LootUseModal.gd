@@ -865,36 +865,60 @@ func _pick_destroy(req: Dictionary) -> void:
 		_process_next_request())
 	_body.add_child(confirm)
 
-# --- Bloodletting / Offering: charge one chargeable thing --------------------
+# --- Bloodletting / Offering: hand out charges, one pick each ---------------
 #
 # Relics with a bar, wands, weapons and food: everything a charge can land on
-# (GameState.chargeable_things). One press, like ? Card's copy: it is one choice.
+# (GameState.chargeable_things). ONE PICK PER CHARGE (the owner, 17 Nov 2026:
+# "pick charges one at a time in the same way you pick things on that screen"):
+# Offering's four can go 2 + 1 + 1 across three things, or all four on one. After
+# each pick the request comes back with one fewer charge and the candidates read
+# afresh, so a thing a charge has just filled is no longer offered. What landed is
+# reported once, when the last charge is placed or nothing has room left.
 func _pick_charge(req: Dictionary) -> void:
-	var amount: int = int(req.get("amount", 1))
-	var candidates: Array = req.get("candidates", [])
+	var left: int = int(req.get("amount", 1))
+	var total: int = int(req.get("of", left))
+	var landed: Dictionary = req.get("landed", {})   # name -> charges taken
+	var candidates: Array = req.get("candidates", []).filter(func(t):
+		return GameState.charge_thing_room(t) > 0)
+	if left <= 0 or candidates.is_empty():
+		_finish_charges(landed, left, total)
+		return
+	var step: String = "give charge %d of %d" % [total - left + 1, total] if total > 1 \
+		else "give 1 charge"
+	var on_pick := func(thing):
+		var name: String = GameState.charge_thing_name(thing)
+		if GameState.charge_thing(thing, 1):
+			landed[name] = int(landed.get(name, 0)) + 1
+		_requests.push_front({"kind": "charge_loot", "amount": left - 1, "of": total,
+			"landed": landed, "candidates": GameState.chargeable_things()})
+		_process_next_request()
 	if _pick_in_pack({"candidates": candidates, "count": 1, "exact": true,
-			"verb": "give %d charge%s" % [amount, "" if amount == 1 else "s"]},
-			func(chosen: Array):
-				_report(CardSystem.charge_chosen(chosen[0], amount))
-				_process_next_request()):
+			"verb": step}, func(chosen: Array): on_pick.call(chosen[0])):
 		return
 	_rebuild_panel()
-	_body.add_child(_heading("Give %d Charge%s" % [amount, "" if amount == 1 else "s"],
-		ACCENT, 20))
-	if candidates.is_empty():
-		_body.add_child(_muted("You are carrying nothing that takes a charge."))
-		_report("There was nothing to charge.")
-		_body.add_child(_continue_button())
-		return
-	_body.add_child(_muted("Choose one. It fills to its top and no further."))
+	_body.add_child(_heading("Give %s" % Plural.count(left, "Charge"), ACCENT, 20))
+	_body.add_child(_muted("Choose where charge %d of %d goes. Each fills to its top and no further."
+		% [total - left + 1, total] if total > 1 else "Choose one. It fills to its top and no further."))
 	for thing in candidates:
 		var btn := Button.new()
 		btn.text = "%s — %d to fill" % [GameState.charge_thing_name(thing),
 			GameState.charge_thing_room(thing)]
-		btn.pressed.connect(func():
-			_report(CardSystem.charge_chosen(thing, amount))
-			_process_next_request())
+		btn.pressed.connect(func(): on_pick.call(thing))
 		_body.add_child(btn)
+
+# Every charge placed, or nothing left with room for the rest: one line for the lot.
+func _finish_charges(landed: Dictionary, left: int, total: int) -> void:
+	var parts := PackedStringArray()
+	for name in landed:
+		parts.append("%s takes %s" % [name, Plural.count(int(landed[name]), "Charge")])
+	var line: String = ", ".join(parts) + "." if not parts.is_empty() \
+		else "There was nothing to charge."
+	if left > 0 and not parts.is_empty():
+		line += " Nothing else had room for the other %d." % left
+	elif left > 0 and total > 0 and parts.is_empty():
+		line = "You are carrying nothing that takes a charge."
+	_report(line)
+	_process_next_request()
 
 # --- Exhume: bring back one destroyed piece ----------------------------------
 #

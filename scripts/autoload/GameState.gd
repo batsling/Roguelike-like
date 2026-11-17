@@ -883,9 +883,19 @@ func _run_trigger(item: ItemData, trig: Dictionary, ctx_extras: Dictionary,
 		fx_ctx["loot_copy"] = bool(loot.get("copy", false))
 		if loot.has("bag"):
 			fx_ctx["loot_bag"] = int(loot["bag"])
+	# AN UPGRADED PASSIVE CARD (After Image, LootUpgrade) grows its trigger's numbers
+	# as a played card grows its clauses, and an unidentified one (Retro Bat) is
+	# identified the first time it fires — the passive's version of being played.
+	# Cards only: a weapon's passive (King Bomber's gold) is not what its upgrade grows.
+	var piece = loot.get("entry") if not bool(loot.get("copy", false)) else null
+	if not LootUpgrade.is_upgradeable_card(piece):
+		piece = null
+	if piece != null and WeaponSystem.has_roll(piece):
+		WeaponSystem.reveal(piece)
 	_begin_trigger_report()
 	for effect in trig.get("effects", []):
-		EffectSystem.apply(effect, fx_ctx)
+		EffectSystem.apply(LootUpgrade.grown(piece, effect) if piece != null
+			else effect, fx_ctx)
 	_end_trigger_report(label, art, fx_ctx)
 
 # The gates about the PIECE a hook names (docs/loot-passives.md §6), both Potion
@@ -2272,8 +2282,15 @@ func grant_run_stat(stat: String, value: int) -> void:
 	if value > 0:
 		amt += stat_gain_bonus_for(stat)
 	var field: String = _LEVEL_UP_ABILITY_FIELDS.get(stat, stat)
-	set(field, int(get(field)) + amt)
+	var now: int = int(get(field)) + amt
+	# A SHIELD TAKEN AWAY (a downgraded Shield card, LootUpgrade) stops at none.
+	if amt < 0 and field in NON_NEGATIVE_RUN_STATS:
+		now = maxi(0, now)
+	set(field, now)
 	emit_signal("stats_changed")
+
+# The run stats a loss stops at 0 rather than running into debt.
+const NON_NEGATIVE_RUN_STATS := ["shields", "bonus_shields"]
 
 # ---------------------------------------------------------------------------
 # Statuses 2.0 on the PLAYER (§13)
@@ -3058,10 +3075,6 @@ func shop_price_cuts() -> Array:
 			out.append(it.shop_discount)
 	out.append_array(shop_sales.values())
 	return out
-
-# Lord's Parasol: walking into a shop empties its shelf into the pack (§14).
-func sweeps_shops() -> bool:
-	return _any_item_flag("shop_sweep")
 
 # Link Cable: whether every piece in the pack counts as touching every other
 # (docs/loot-passives.md §15). One is enough — a piece cannot be more beside

@@ -35,7 +35,7 @@ const CLASS_NAMES := ["Common", "Uncommon", "Rare", "Legendary", "Starter", "Bos
 #
 # "Starter" (Burning Blood, D6) belongs to a character's opening loadout.
 @export var starter: bool = false
-# "Boss" (Sacred Bark, Calling Bell, Lord's Parasol) drops from a defeated BOSS
+# "Boss" (Sacred Bark, Calling Bell) drops from a defeated BOSS
 # and from nowhere else — beating a boss pays a boss relic instead of the normal
 # roll (docs/games-first-redesign.md §7.1 / §8). Data.boss_item2_pool is the pool.
 @export var boss: bool = false
@@ -547,10 +547,6 @@ const CLASS_NAMES := ["Common", "Uncommon", "Rare", "Legendary", "Starter", "Bos
 # Golden Idol: every defeated enemy pays this much extra Gold on its drop (§14).
 # Read by GameLoop2._defeat via GameState.enemy_gold_bonus, which SUMS the copies.
 @export var gold_per_enemy: int = 0
-
-# Lord's Parasol: walking into a shop takes the whole shelf, no gold spent (§14).
-# Read by ShopSystem.mark_seen via GameState.sweeps_shops.
-@export var shop_sweep: bool = false
 
 # Steam Sale: every shop price cut by this percent (§14.6). Read by
 # ShopSystem.price_of through GameState.shop_price_cuts; copies multiply.

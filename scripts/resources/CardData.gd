@@ -119,6 +119,10 @@ extends Resource
 # The sheet's `Tags` — what family the card belongs to (joker, tarot,
 # playing_card). A starting loadout's "1 random joker card" draws from these.
 @export var tags: PackedStringArray = PackedStringArray()
+# The sheet's `Upgrade Type`, lower-cased: what an Upgrade grows on this card
+# (stun, shield, charge, potion, loot, destroy — LootUpgrade.grows). Empty: the
+# card cannot be upgraded, and is never found unidentified (docs/loot-passives.md §19).
+@export var upgrade_types: PackedStringArray = PackedStringArray()
 
 
 func is_passive() -> bool:

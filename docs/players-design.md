@@ -187,14 +187,18 @@ pack entry is made (`WeaponSystem.new_entry`): **−2 to +2 Stun**, weighted
   1 from then on. The minus stays in its name.
 - **An evolution keeps the roll**, known or not, curse and all: it is the same
   weapon grown, not a new find.
-- **ATTACK cards roll too** (the owner, 15 Nov 2026: "make sure attack cards
-  also have the unidentified weapon mechanic from retro bat"). An attack is a
-  card the `cards` sheet tags `attack` — the other kind of loot that lays Stun on
-  purpose (`LootUpgrade.is_attack`). It is rolled the same way when it is found
-  (`WeaponSystem.roll_new`, from `CardSystem.roll_card_loot` and
-  `GameState.add_card_loot`), reads "Cleave +?" until it is played or identified,
-  adds its roll to each Stun clause (`CardSystem.play_card`, never below 0, or 1
-  once lifted), and a known minus is cursed and pinned like a weapon.
+- **CARDS roll too** (the owner, 15 Nov 2026: "make sure attack cards also have
+  the unidentified weapon mechanic from retro bat"; widened 17 Nov 2026 to every
+  card an Upgrade can grow). A card rolls when its `cards` row has an `Upgrade
+  Type` (`LootUpgrade.is_upgradeable_card`) — the roll moves exactly the numbers
+  an upgrade would (`LootUpgrade.grown`, docs/loot-passives.md §19). It is rolled
+  the same way when it is found (`WeaponSystem.roll_new`, from
+  `CardSystem.roll_card_loot` and `GameState.add_card_loot`), reads "Cleave +?"
+  until it is played (a passive card: until it first fires) or identified —
+  "Cleave +1?" if it has been upgraded meanwhile (`WeaponSystem.hidden_plus`) —
+  and a known minus is cursed and pinned like a weapon. Floors: Stun stops at 0;
+  a Shield clause goes negative and takes Shield away (down to none); charges,
+  potions, loot and destroys stop at 0; a lifted curse holds each at 1.
   `WeaponSystem.is_rollable` is the one place that says which kinds roll.
 
 ## 6. On the board: the player, with the character on it

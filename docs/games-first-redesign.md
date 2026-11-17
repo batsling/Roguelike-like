@@ -2295,10 +2295,11 @@ shelf by one rule rather than by three remembered ones.
 Each gets its own colour and its own word on the card, because a Boss relic drawn
 in Common grey is a lie every screen would then repeat.
 
-**The Boss relics** (3): **Sacred Bark** doubles every loot consumable, good and
+**The Boss relics** (2): **Sacred Bark** doubles every loot consumable, good and
 bad alike; **Calling Bell** pays three relics — one Common, one Uncommon, one Rare
-— and saddles you with Curse of the Bell, a curse card nothing can destroy (§5); **Lord's Parasol** empties
-the next shop you walk into, free (§14).
+— and saddles you with Curse of the Bell, a curse card nothing can destroy (§5).
+Lord's Parasol, which emptied the next shop you walked into, was removed on 17 Nov
+2026 (the owner).
 
 **Type** = *behavior class* (how the item works, not what it grants):
 
@@ -3944,8 +3945,7 @@ unidentified on the shelf**: the row, its hover, its card and the offering's
 stock lines all draw it through `LootSystem`, which shows the mask. A piece costs
 **two gold less** than a relic of its rarity, never under 2 (Common 2, Uncommon 4,
 Rare 7, Legendary 11 — `LOOT_DISCOUNT`, `LOOT_MIN_PRICE`). Buying needs room in the pack; a piece that does not fit is not
-charged for and stays. **A reroll redraws both rows.** Lord's Parasol sweeps the
-loot row too, as far as the pack has room. A shelf saved before loot was sold
+charged for and stays. **A reroll redraws both rows.** A shelf saved before loot was sold
 gets its loot row the first time it is asked for.
 
 ### 14.4 When it opens, and what the road can see
@@ -3987,12 +3987,7 @@ below the fold behind a `🛒 Shop ↓` pointer and cost the board its height wh
 shared the column. The owner chose the third shape on 17 October 2026: asked for,
 never missed, and costing the page one button.
 
-**Lord's Parasol resolves the moment you stand in one.** The Boss relic (§8)
-sweeps the whole shelf into the pack for **no gold** — not "buy everything you can
-afford", which would make it weakest exactly when the shelf is best and would read
-as a discount rather than as a relic. It fires from `ShopSystem.mark_seen`, behind
-the `seen` guard, so it is the *first* visit to each shop that empties it and a
-rerolled shelf on a return trip is not swept a second time. The Amulet is always a
+The Amulet is always a
 Champion node, so it never carries a shop; the page still drops a pending shop
 when the run ends, as a guard for the day that changes.
 

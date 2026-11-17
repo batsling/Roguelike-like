@@ -643,8 +643,11 @@ static func _ch_players() -> Dictionary:
 			+ "know which until you swing it (it reads \"Hero Sword +?\"). A "
 			+ "Scroll of Identify tells you sooner. A weapon you start with is "
 			+ "never rolled."),
-		_b("ATTACK cards you find are rolled the same way: each Stun the card "
-			+ "lays is -2 to +2, unknown until you play it (\"Cleave +?\")."),
+		_b("CARDS that can be upgraded are rolled the same way: the number an "
+			+ "upgrade would grow — Stun, Shield, charges, potions, loot — is -2 to "
+			+ "+2, unknown until you play it (\"Cleave +?\", or \"Cleave +1?\" "
+			+ "once it has been upgraded too). A Shield card that comes out below "
+			+ "zero takes Shield away; Stun below zero does nothing."),
 		_b("A minus is CURSED once you know it: it stays exactly where it sits in "
 			+ "your pack — no moving, turning, dropping or smelting. Anything that "
 			+ "lifts a curse lifts it, and a weapon freed that way always lays at "
@@ -959,7 +962,7 @@ static func _ch_pack() -> Dictionary:
 				+ "Curse. Curse of the Bell is Eternal."),
 			_kv("Ethereal", "It goes away on its own after 3 games, win or lose, "
 				+ "and its square counts them. Clumsy is Ethereal."),
-			_p("A cursed weapon or attack card (a minus one you found "
+			_p("A cursed weapon or card (a minus one you found "
 				+ "unidentified) counts as a curse too."),
 			_h("Luck"),
 			_p("Every point of Luck is a 50% chance of one more roll, and the "

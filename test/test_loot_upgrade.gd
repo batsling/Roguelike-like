@@ -50,14 +50,40 @@ func _choice(ev: EventData2, id: String) -> Dictionary:
 
 # --- what can be upgraded --------------------------------------------------
 
-func test_attacks_and_weapons_can_be_upgraded_and_nothing_else() -> void:
+func test_cards_with_an_upgrade_type_and_weapons_can_be_upgraded() -> void:
+	# The owner, 17 Nov 2026: "Different cards can be upgraded, not just attacks" —
+	# the ones the `cards` sheet gives an Upgrade Type.
 	var cleave: Dictionary = Fixtures.card(self, &"cleave", 0)
 	var lovers: Dictionary = Fixtures.card(self, &"vi_the_lovers", 1)
+	var shrug: Dictionary = Fixtures.card(self, &"shrug_it_off", 2)
 	var sword: Dictionary = _weapon(&"wooden_sword", 3)
 	assert_true(LootUpgrade.can_upgrade(cleave), "an attack")
+	assert_true(LootUpgrade.can_upgrade(shrug), "a Shield card")
 	assert_true(LootUpgrade.can_upgrade(sword), "a weapon")
-	assert_false(LootUpgrade.can_upgrade(lovers), "a card that is not an attack")
-	assert_eq(LootUpgrade.upgradeable(), [cleave, sword], "in pack order")
+	assert_false(LootUpgrade.can_upgrade(lovers), "a card the sheet says N/A")
+	assert_eq(LootUpgrade.upgradeable(), [cleave, shrug, sword], "in pack order")
+
+func test_power_cards_cannot_be_upgraded() -> void:
+	# "Power cards should not be able to upgrade, only the cards I've selected."
+	for id in [&"barricade", &"echo_form", &"blueprint"]:
+		assert_true(Data.get_card(id).upgrade_types.is_empty(), "%s has no Upgrade Type" % id)
+
+func test_every_upgrade_type_names_a_clause_its_card_has() -> void:
+	# The generator refuses a row that doesn't; this holds the .tres to it too.
+	var typed: int = 0
+	for c in Data.all_cards():
+		var card: CardData = c
+		var clauses: Array = card.effect.duplicate()
+		for trig in card.triggers:
+			clauses.append_array(trig.get("effects", []))
+		for t in card.upgrade_types:
+			typed += 1
+			var found: bool = false
+			for e in clauses:
+				if e is Dictionary and LootUpgrade.grows(String(t), e) != "":
+					found = true
+			assert_true(found, "%s grows %s, and has a clause of it" % [card.id, t])
+	assert_gt(typed, 0, "the sheet types some cards")
 
 func test_every_attack_on_the_sheet_lays_stun_for_the_upgrade_to_grow() -> void:
 	# An attack whose clauses held no `stun` would take an upgrade and do nothing
@@ -70,6 +96,7 @@ func test_every_attack_on_the_sheet_lays_stun_for_the_upgrade_to_grow() -> void:
 		attacks += 1
 		assert_true(card.effect.any(func(e): return String(e.get("op", "")) == "stun"),
 			"%s has a Stun clause" % card.id)
+		assert_true(card.upgrade_types.has("stun"), "%s grows its Stun" % card.id)
 	assert_gt(attacks, 0, "there are attacks")
 
 # --- what it does ------------------------------------------------------------
@@ -136,6 +163,119 @@ func test_upgrades_are_saved_with_the_pack() -> void:
 	LootUpgrade.upgrade(sword, 2)
 	var copy: Dictionary = GameState.loot_items.duplicate(true)[GameState.loot_index_at_slot(4)]
 	assert_eq(LootUpgrade.run_bonus(copy), 2, "it is on the entry, which the save keeps whole")
+
+# --- the other upgrade types (the owner, 17 Nov 2026) -----------------------
+
+func _play(entry: Dictionary) -> Dictionary:
+	return CardSystem.play_card(entry, {"rng": Fixtures.rng()})
+
+func test_an_upgraded_shield_card_gives_one_more_shield() -> void:
+	var shrug: Dictionary = Fixtures.card(self, &"shrug_it_off", 0)
+	LootUpgrade.upgrade(shrug)
+	GameState.shields = 0
+	_play(shrug)
+	assert_eq(GameState.shields, 2, "Shrug it Off's 1, +1")
+
+func test_an_upgraded_per_shield_grows_before_it_multiplies() -> void:
+	var stack: Dictionary = Fixtures.card(self, &"stack", 0)
+	LootUpgrade.upgrade(stack)
+	GameState.shields = 0
+	GameState.cards_used_this_game = 3
+	_play(stack)
+	assert_eq(GameState.shields, 6, "2 Shield for each of the 3 other cards")
+
+func test_an_upgraded_charge_card_hands_out_one_more() -> void:
+	var blood: Dictionary = Fixtures.card(self, &"bloodletting", 0)
+	LootUpgrade.upgrade(blood)
+	GameState.hp = 10
+	var req: Dictionary = (_play(blood)["requests"] as Array)[0]
+	assert_eq(String(req["kind"]), "charge_loot")
+	assert_eq(int(req["amount"]), 3, "Bloodletting's 2, +1")
+
+func test_an_upgraded_prepared_grows_both_its_numbers() -> void:
+	# "Destroy, Loot": destroy one more, and one more card for it.
+	var prepared: Dictionary = Fixtures.card(self, &"prepared", 0)
+	Fixtures.card(self, &"vi_the_lovers", 1)
+	Fixtures.card(self, &"v_the_hierophant", 2)
+	LootUpgrade.upgrade(prepared)
+	var reqs: Array = _play(prepared)["requests"]
+	assert_eq(int(reqs[0]["count"]), 2, "destroy 2")
+	assert_eq(int(reqs[1]["count"]), 2, "gain 2")
+
+func test_an_upgraded_alchemize_gives_one_more_potion() -> void:
+	var alch: Dictionary = Fixtures.card(self, &"alchemize", 0)
+	LootUpgrade.upgrade(alch)
+	var clause: Dictionary = Data.get_card(&"alchemize").effect[0]
+	assert_eq(int(LootUpgrade.grown(alch, clause)["count"]), 2)
+
+func test_an_upgraded_after_image_shields_one_more_per_card() -> void:
+	var image: Dictionary = Fixtures.card(self, &"after_image", 0)
+	LootUpgrade.upgrade(image)
+	GameState.shields = 0
+	CardSystem.notify_used(Data.get_card(&"vi_the_lovers"))
+	assert_eq(GameState.shields, 2, "a passive grows from its trigger")
+
+# --- downgraded (Retro Bat's roll) ------------------------------------------
+
+func _rolled(entry: Dictionary, roll: int) -> Dictionary:
+	entry["roll"] = roll
+	entry["roll_known"] = true
+	return entry
+
+func test_any_upgradeable_card_can_carry_a_roll() -> void:
+	assert_true(WeaponSystem.is_rollable(Fixtures.card(self, &"shrug_it_off", 0)))
+	assert_false(WeaponSystem.is_rollable(Fixtures.card(self, &"vi_the_lovers", 1)),
+		"a card with no Upgrade Type is never found unidentified")
+
+func test_a_downgraded_shield_card_takes_shield_away() -> void:
+	# The owner: "Block or charges can be lost through this."
+	var shrug: Dictionary = _rolled(Fixtures.card(self, &"shrug_it_off", 0), -2)
+	GameState.shields = 3
+	_play(shrug)
+	assert_eq(GameState.shields, 2, "1 - 2 = -1 Shield")
+
+func test_a_shield_loss_stops_at_none() -> void:
+	var shrug: Dictionary = _rolled(Fixtures.card(self, &"shrug_it_off", 0), -2)
+	GameState.shields = 0
+	var out: Dictionary = _play(shrug)
+	assert_eq(GameState.shields, 0)
+	assert_true((out["logs"] as Array).any(func(l): return String(l).contains("no ")),
+		"and it says there was none to lose")
+
+func test_a_downgraded_charge_card_can_hand_out_none() -> void:
+	var blood: Dictionary = _rolled(Fixtures.card(self, &"bloodletting", 0), -2)
+	GameState.hp = 10
+	var out: Dictionary = _play(blood)
+	assert_true((out["requests"] as Array).is_empty(), "2 - 2: nothing to place")
+
+func test_stun_below_zero_does_nothing() -> void:
+	var cleave: Dictionary = _rolled(Fixtures.card(self, &"cleave", 0), -2)
+	var a: int = _stand(1, 1)
+	CardSystem.play_card(cleave, {"target": Vector2i(1, 1), "rng": Fixtures.rng()})
+	assert_eq(_stun_on(a), 0)
+
+func test_an_upgraded_unidentified_piece_reads_plus_one_question() -> void:
+	# The owner, 17 Nov 2026: "Cleave +1?".
+	var cleave: Dictionary = Fixtures.card(self, &"cleave", 0)
+	cleave["roll"] = 2
+	cleave["roll_known"] = false
+	assert_string_ends_with(LootSystem.display_name(cleave), " +?")
+	LootUpgrade.upgrade(cleave)
+	assert_string_ends_with(LootSystem.display_name(cleave), " +1?")
+	var cell: Control = LootGrid.preview_cell(cleave)
+	add_child_autofree(cell)
+	var chip: Node = cell.find_child("Plus", true, false)
+	assert_not_null(chip)
+	assert_string_contains(LootSystem.description(cleave), "Upgraded: +1")
+
+func test_a_passive_card_is_identified_the_first_time_it_fires() -> void:
+	var image: Dictionary = Fixtures.card(self, &"after_image", 0)
+	image["roll"] = 1
+	image["roll_known"] = false
+	GameState.shields = 0
+	CardSystem.notify_used(Data.get_card(&"vi_the_lovers"))
+	assert_true(WeaponSystem.roll_known(Fixtures.at(0)), "it fired, so it is known")
+	assert_eq(GameState.shields, 2, "and its roll was in that firing")
 
 # --- the Ominous Forge -------------------------------------------------------
 

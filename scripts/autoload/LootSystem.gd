@@ -120,7 +120,7 @@ func use_loot(index: int, ctx: Dictionary = {}) -> Dictionary:
 	# PLAYING AN UNIDENTIFIED ATTACK IDENTIFIES IT (Retro Bat, docs/players-design.md
 	# §5), the way a weapon's first swing does — on the pack's own entry, before the
 	# copy that resolves is taken, so the roll it lays is the one just learned.
-	if LootUpgrade.is_attack(entry):
+	if WeaponSystem.has_roll(entry):
 		WeaponSystem.reveal(entry)
 	entry = (entry as Dictionary).duplicate(true)
 	# A CARD PINS THE PACK FIRST. A piece with no slot of its own takes the lowest
@@ -389,7 +389,7 @@ func display_name(entry: Dictionary, face_up: bool = true) -> String:
 		"potion":
 			return PotionSystem.display_name(entry)
 		"card":
-			# AN UPGRADED ATTACK wears its +X the way an upgraded weapon does
+			# AN UPGRADED CARD wears its +X the way an upgraded weapon does
 			# (LootUpgrade). Only face up: a card on the floor is its deck's back.
 			return CardSystem.display_name(entry, face_up) \
 				+ (LootUpgrade.plus_suffix(entry) if face_up else "")

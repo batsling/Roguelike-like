@@ -11,6 +11,31 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Upgrade Types for cards, charges picked one at a time, Lord's Parasol gone
+  (the owner, 17 Nov 2026).**
+  - **The `cards` sheet's new `Upgrade Type` column** decides which cards an
+    Upgrade can grow, and what it grows: Stun, Shield, Charge, Potion, Loot,
+    Destroy (`LootUpgrade.grows`, `docs/loot-passives.md` §19). Cards marked N/A
+    can't be upgraded, the Power cards included. That covers Shrug it Off,
+    Second Wind, Stack, After Image (through its trigger), Bloodletting,
+    Offering, Alchemize and Prepared, as well as the attacks.
+  - **Retro Bat's roll** now reaches every card with an Upgrade Type. A
+    downgraded Shield card takes Shield away, down to none. Stun below 0 does
+    nothing; the other types stop at 0.
+  - **An upgraded unidentified piece reads "Cleave +1?"**: the upgrade is shown,
+    and the "?" is the roll still hidden.
+  - **Bloodletting and Offering** ask once per charge, so the charges can be
+    spread across several things or all go on one. Only things with room are
+    offered.
+  - **Base numbers:** Bloodletting gives 2 charges (it was 4). Prepared destroys
+    1 loot and gives 1 card (it was 2 and 2). The owner rewrote both
+    descriptions, and the Effect cells now match them. Upgrades give the bigger
+    numbers back.
+  - **Lord's Parasol is removed**: its row, `.tres`, art, the `shop_sweep`
+    flag and `ShopSystem.sweep`. Two Boss relics are left.
+  - **A Brotato fruit Hunger icon** (`images2.0/icons/Hunger/Fruit_Brotato.png`,
+    the wiki's 128px original "Chal fruit").
+
 - **Sunken Treasury and Greed, from Slay the Spire 2 (the owner, 15 Nov 2026).**
   A Common event at every difficulty, with Slay the Spire 2's own prose. Two
   things are left out: the wiki's footnote, and the "greedy thought" lines

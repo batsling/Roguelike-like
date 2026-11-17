@@ -6,7 +6,16 @@ Cards are the FOURTH loot consumable (docs/cards-design.md), and the only one
 that is not a gamble: one use, one effect, printed on the face. So this generator
 parses ONE effect column and no Preference — there is nothing to hint at.
 
-  cards: Name | Rarity | Type | Description | Effect | Game | Image | Icon Image
+  cards: Name | Rarity | Type | Description | Effect | Tags | Game | Upgrade Type
+         | Image | Icon Image
+
+`Upgrade Type` (the owner, 16 Nov 2026) is what an Upgrade grows on the card —
++1 per upgrade to each clause of that kind (docs/loot-passives.md §19):
+Stun, Shield, Charge, Potion, Loot, Destroy, or several joined by commas
+("Destroy, Loot" is Prepared). `N/A` or blank: the card cannot be upgraded, and
+Retro Bat never finds it unidentified. Each type has to name a clause the card
+actually has (UPGRADE_CLAUSES), or the row is refused — an upgrade that grows
+nothing would be a +1 the player pays for and never sees.
 
 `Image` is the card's FACE, drawn once it is in the pack; `Icon Image` is its
 BACK, drawn while it is lying on the floor, and shared by every card of a set.
@@ -314,6 +323,44 @@ def gd_value(v) -> str:
     raise TypeError(type(v))
 
 
+# What each Upgrade Type grows, mirrored from LootUpgrade.grows() so a typo in the
+# sheet fails here rather than as a +1 that does nothing in a run. Each answers
+# whether one clause (a card op, or a passive's relic-grammar effect) is its kind.
+def _op(e):
+    return e.get("op", e.get("type", ""))
+
+UPGRADE_CLAUSES = {
+    "stun": lambda e: _op(e) == "stun",
+    "shield": lambda e: _op(e) == "gain_stat" and e.get("stat") in ("shields", "bonus_shields"),
+    "charge": lambda e: _op(e) == "charge_pick",
+    "potion": lambda e: _op(e) == "gain_loot" and e.get("kind") == "potion",
+    "loot": lambda e: _op(e) == "gain_loot",
+    "destroy": lambda e: _op(e) == "destroy_pick",
+}
+
+
+def upgrade_types(name, raw, effect, passive) -> list:
+    raw = _clean(raw)
+    if raw.upper() in ("", "N/A", "NA"):
+        return []
+    clauses = list(effect)
+    if passive is not None:
+        for trig in passive["triggers"]:
+            clauses.extend(trig.get("effects", []))
+    out = []
+    for t in (x.strip().lower() for x in raw.split(",")):
+        if not t:
+            continue
+        if t not in UPGRADE_CLAUSES:
+            raise ValueError("card %r: Upgrade Type %r is not one of %s"
+                             % (name, t, ", ".join(sorted(UPGRADE_CLAUSES))))
+        if not any(isinstance(e, dict) and UPGRADE_CLAUSES[t](e) for e in clauses):
+            raise ValueError("card %r: Upgrade Type %r but no clause of that kind in "
+                             "its Effect" % (name, t))
+        out.append(t)
+    return out
+
+
 def card_tres(row) -> tuple:
     name = str(row["Name"]).strip()
     cid = slugify(name)
@@ -332,6 +379,7 @@ def card_tres(row) -> tuple:
     icon = on_disk("cards_icons", _clean(row.get("Icon Image")))
     source_game, set_name = icon_credit(icon)
     source_game = _clean(row.get("Game")) or source_game
+    upgrades = upgrade_types(name, row.get("Upgrade Type"), effect, passive)
 
     lines = []
     lines.append('[gd_resource type="Resource" script_class="CardData" load_steps=2 '
@@ -357,6 +405,9 @@ def card_tres(row) -> tuple:
     tags = [t.strip().lower() for t in _clean(row.get("Tags")).split(",") if t.strip()]
     if tags:
         lines.append("tags = PackedStringArray(%s)" % ", ".join('"%s"' % gd_str(t) for t in tags))
+    if upgrades:
+        lines.append("upgrade_types = PackedStringArray(%s)"
+                     % ", ".join('"%s"' % t for t in upgrades))
     if passive is not None:
         lines.append("passive = true")
         lines.append("triggers = %s" % gd_value(passive["triggers"]))

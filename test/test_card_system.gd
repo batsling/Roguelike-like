@@ -582,7 +582,8 @@ func test_an_enemy_destroying_loot_puts_it_on_the_pile() -> void:
 func test_trading_card_says_destroying() -> void:
 	assert_string_contains(Data.get_card(&"trading_card").description, "destroying")
 
-func test_prepared_asks_for_two_and_destroys_exactly_those() -> void:
+func test_prepared_asks_for_one_and_destroys_exactly_that() -> void:
+	# Its base numbers (the owner, 17 Nov 2026): an Upgrade makes it two and two.
 	GameState.add_card_loot(&"vi_the_lovers")
 	GameState.add_card_loot(&"v_the_hierophant")
 	GameState.add_card_loot(&"queen_of_hearts")
@@ -590,17 +591,15 @@ func test_prepared_asks_for_two_and_destroys_exactly_those() -> void:
 	assert_eq((out["requests"] as Array).size(), 2)
 	var req: Dictionary = (out["requests"] as Array)[0]
 	assert_eq(String(req["kind"]), "destroy_loot")
-	assert_eq(int(req["count"]), 2)
+	assert_eq(int(req["count"]), 1)
 	assert_eq((req["candidates"] as Array).size(), 3, "the pack as it stood")
 	var then: Dictionary = (out["requests"] as Array)[1]
 	assert_eq(String(then["kind"]), "offer_loot",
-		"the two cards wait for the pick, so their screen cannot cover it")
-	assert_eq(int(then["count"]), 2)
+		"the card waits for the pick, so its screen cannot cover it")
+	assert_eq(int(then["count"]), 1)
 	assert_eq(GameState.loot_items.size(), 3, "nothing handed over yet")
-	var pick: Array = [GameState.loot_items[0], GameState.loot_items[2]]
-	CardSystem.destroy_chosen(pick)
-	assert_eq(GameState.loot_items.size(), 1)
-	assert_eq(String(GameState.loot_items[0].get("id", "")), "v_the_hierophant")
+	CardSystem.destroy_chosen([GameState.loot_items[0]])
+	assert_eq(GameState.loot_items.size(), 2)
 
 func test_bloodletting_costs_health_and_asks_what_to_charge() -> void:
 	GameState.hp = 5
@@ -608,7 +607,7 @@ func test_bloodletting_costs_health_and_asks_what_to_charge() -> void:
 	assert_eq(GameState.hp, 3)
 	var req: Dictionary = (out["requests"] as Array)[0]
 	assert_eq(String(req["kind"]), "charge_loot")
-	assert_eq(int(req["amount"]), 4)
+	assert_eq(int(req["amount"]), 2, "its base two (the owner, 17 Nov 2026)")
 
 func test_the_health_a_card_costs_can_end_the_run() -> void:
 	GameState.hp = 2

@@ -1588,24 +1588,29 @@ static func _add_plus(on: Control, entry: Dictionary) -> void:
 	# swing, and a downgraded one its minus — red while it is cursed.
 	var chip: Control = null
 	if not WeaponSystem.roll_known(entry):
-		chip = UITheme.chip("+?", PLUS_COLOR, UITheme.FONT_SMALL)
-		chip.tooltip_text = "Unidentified: anywhere from -2 to +2 Stun. %s it to find out." % (
-			"Swing" if WeaponSystem.is_weapon(entry) else "Play")
+		# " +1?" once it has been upgraded on top of the hidden roll.
+		chip = UITheme.chip(WeaponSystem.hidden_plus(entry).strip_edges(), PLUS_COLOR,
+			UITheme.FONT_SMALL)
+		var up: int = LootUpgrade.bonus_of(entry)
+		chip.tooltip_text = "%sUnidentified: anywhere from -2 to +2 more. %s it to find out." % [
+			"Upgraded +%d. " % up if up > 0 else "",
+			"Swing" if WeaponSystem.is_weapon(entry) else (
+				"Trigger" if LootPassives.is_passive(entry) else "Play")]
 	else:
 		var n: int = WeaponSystem.plus_of(entry)
 		if n > 0:
 			chip = UITheme.chip("+%d" % n, PLUS_COLOR, UITheme.FONT_SMALL)
 			var this_game: int = LootUpgrade.game_bonus(entry)
-			chip.tooltip_text = "Upgraded: +%d Stun for the rest of the run." % (n - this_game) \
-				if this_game <= 0 else ("Upgraded: +%d Stun, %d of it for this game only."
+			chip.tooltip_text = "Upgraded: +%d for the rest of the run." % (n - this_game) \
+				if this_game <= 0 else ("Upgraded: +%d, %d of it for this game only."
 					% [n, this_game])
 		elif n < 0:
 			var cursed: bool = WeaponSystem.is_cursed(entry)
 			chip = UITheme.chip("-%d" % absi(n), UITheme.DANGER if cursed else UITheme.TEXT_DIM,
 				UITheme.FONT_SMALL)
-			chip.tooltip_text = ("Cursed: %d Stun, and stuck where it sits until the curse "
-				+ "is lifted.") % n if cursed else ("Downgraded: %d Stun. The curse is "
-				+ "lifted; it lays at least 1.") % n
+			chip.tooltip_text = ("Cursed: %d, and stuck where it sits until the curse "
+				+ "is lifted.") % n if cursed else ("Downgraded: %d. The curse is "
+				+ "lifted; it gives at least 1.") % n
 	if chip == null:
 		return
 	chip.name = "Plus"

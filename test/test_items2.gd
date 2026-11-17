@@ -313,68 +313,6 @@ func test_calling_bell_pays_one_item_per_rarity_and_a_permanent_curse() -> void:
 	assert_false(Data.get_curse_card(&"curse_of_the_bell").destroyable,
 		"one nothing can destroy")
 
-# --- Lord's Parasol: the shop, emptied ------------------------------------
-
-# A game with a shop open at it (§19.10), opened off a full bar rather than
-# looked for, so the test does not ride whether the run has opened one; after_each's
-# reset_run takes it back off.
-func _a_shop_node() -> StringName:
-	for g in Data.all_games():
-		if g is GameData and not RunGraph.is_off_map(g.id):
-			# A fresh shelf, opened off a full bar (§19.10).
-			GameState.shops.erase(g.id)
-			GameState.shop_bar = ShopSystem.bar_target()
-			ShopSystem.open_at(g.id)
-			return g.id
-	return &""
-
-func test_lords_parasol_takes_the_whole_shelf_for_nothing() -> void:
-	var hub: StringName = _a_shop_node()
-	var shop: Dictionary = ShopSystem.shop_for(hub)
-	var shelf: Array = shop.get("stock", [])
-	assert_eq(shelf.size(), ShopSystem.STOCK_SLOTS, "a full shelf to sweep")
-	# THE LOOT ON THE SHELF IS ARRANGED, not rolled. A rolled shelf now and then
-	# carried a piece the pack could not seat — a weapon with no spot its shape fits
-	# once the other pieces were in, or a second bag with nowhere to go — and a
-	# sweep rightly leaves what you cannot carry, so "the shelf is bare" failed now
-	# and then in a full suite run (never in 3,000 isolated deals, so the shelf it
-	# needs leans on state earlier files leave behind). What fits a pack is the
-	# pack's business and has tests of its own; one-cell scrolls are this test's.
-	shop["loot"] = []
-	for i in ShopSystem.LOOT_SLOTS:
-		shop["loot"].append({"entry": {"type": "scroll", "id": &"scroll_of_fire",
-			"rarity": "Common"}, "sold": false, "price": 10})
-	Fixtures.give(self, &"lords_parasol")
-	# THE PURSE STARTS FULL, AND THE TEST IS THAT NOTHING COMES OUT OF IT. It used
-	# to start at 0 and assert 0 afterwards, which is a different claim and one the
-	# shelf itself can falsify: the stock is rolled, several relics pay out on
-	# pickup, and a sweep that happened to lift Old Coin arrived with +6 gold and
-	# failed a test about being charged. Whether the run got richer is the relics'
-	# business; the Parasol's promise is only that it takes nothing.
-	GameState.gold = 100
-	var before: int = GameState.inventory.size()
-	ShopSystem.mark_seen(hub)
-	# EVERY SLOT IS OWNED, asked by id rather than by counting the pack. A count
-	# was only usually true: the shelf is rolled, and a swept Ultra Duplicator
-	# (duplicate_items) copies the relic swept after it, so the pack gained one
-	# more than the shelf held about one run in thirty. That is the Duplicator
-	# working; what the Parasol promises is that the whole shelf comes with you.
-	for entry in shelf:
-		assert_true(GameState.has_item(StringName(entry["item"])),
-			"%s came off the shelf into the pack" % entry["item"])
-	assert_gte(GameState.inventory.size(), before + shelf.size(),
-		"and nothing on it was left behind")
-	assert_true(GameState.gold >= 100,
-		"and not a coin of it is paid for (gold %d, started at 100)" % GameState.gold)
-	assert_true(ShopSystem.is_sold_out(hub), "the shelf is bare behind you")
-
-func test_a_shop_is_only_swept_by_someone_holding_the_parasol() -> void:
-	var hub: StringName = _a_shop_node()
-	var before: int = GameState.inventory.size()
-	ShopSystem.mark_seen(hub)
-	assert_eq(GameState.inventory.size(), before, "no Parasol, no sweep")
-	assert_false(ShopSystem.is_sold_out(hub), "the shelf is where you left it")
-
 # --- Golden Idol: +1 Gold off every body ----------------------------------
 
 func test_the_golden_idol_pays_on_top_of_every_drop() -> void:

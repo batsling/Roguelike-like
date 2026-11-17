@@ -33,7 +33,7 @@ Effect DSL (one item = `clause; clause; ...`, paren/bracket aware):
                   bomb_cardinal, bomb_tile <tile>, death_tile <tile>,
                   grid_grow, grid_length, front_column_slow [N], hide_spawns,
                   spawn_status <status> N, loot_multiplier: N, heal_multiplier: N,
-                  gold_per_enemy: N, shop_sweep, shop_discount: N, boss_chest_bonus: N,
+                  gold_per_enemy: N, shop_discount: N, boss_chest_bonus: N,
                   base_chest_bonus: N, link_loot, duplicate_items,
                   pills_positive, echo_loot N,
                   reroll_enemies, destroy_on_damage.
@@ -1211,10 +1211,6 @@ def parse_item(row):
             # Steam Sale: every shop price cut by N percent.
             fields["shop_discount"] = _int(re.search(r"\d+", clause).group(0), 0)
             last_trigger = None
-        elif kl0 == "shop_sweep":
-            # Lord's Parasol: walking into a shop takes the whole shelf.
-            fields["shop_sweep"] = True
-            last_trigger = None
         elif kl0 == "link_loot":
             # Link Cable: every piece in the pack counts as touching every other,
             # in every direction (docs/loot-passives.md §15). Read by
@@ -1586,7 +1582,6 @@ def item_tres(row):
         ("loot_multiplier", lambda v: str(v)),
         ("heal_multiplier", lambda v: str(v)),
         ("gold_per_enemy", lambda v: str(v)),
-        ("shop_sweep", lambda v: "true"),
         ("shop_discount", lambda v: str(v)),
         ("link_loot", lambda v: "true"),
         ("duplicate_items", lambda v: "true"),

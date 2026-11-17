@@ -3170,6 +3170,8 @@ func test_charging_a_relic_is_chosen_on_the_relic_strip() -> void:
 		pending("no charged relic in the catalog to stand on the strip")
 		return
 	relic = GameState.add_item(relic)
+	# Empty, so it has room: a full one is not offered (a charge on it would be lost).
+	relic.current_charge = 0
 	var modal: Node = await _use_modal_asking({"kind": "charge_loot", "amount": 1,
 		"candidates": [relic]})
 	assert_false(modal.visible)
@@ -3177,6 +3179,35 @@ func test_charging_a_relic_is_chosen_on_the_relic_strip() -> void:
 	_ui.owned_pick().choose(relic)
 	await wait_frames(2)
 	assert_null(_ui.owned_pick(), "one click answers a pick of one")
+	assert_true(is_instance_valid(modal) and modal.visible)
+	if is_instance_valid(modal):
+		modal._finish()
+
+# OFFERING / BLOODLETTING: ONE PICK PER CHARGE (the owner, 17 Nov 2026): the pick
+# comes back for each charge, so two can go to two things — or both to one.
+func test_each_charge_is_its_own_pick() -> void:
+	GameState.loot_items.clear()
+	GameState.add_pill_loot(&"luck_up")
+	var relic: ItemData = null
+	for it in Data.all_items2():
+		if it is ItemData and it.is_charged() and it.max_charge() >= 2:
+			relic = it
+			break
+	if relic == null:
+		pending("no relic with a bar of two or more to stand on the strip")
+		return
+	relic = GameState.add_item(relic)
+	relic.current_charge = 0
+	var modal: Node = await _use_modal_asking({"kind": "charge_loot", "amount": 2,
+		"candidates": [relic]})
+	_ui.owned_pick().choose(relic)
+	await wait_frames(2)
+	assert_not_null(_ui.owned_pick(), "the second charge is a second pick")
+	assert_eq(relic.current_charge, 1, "the first landed already")
+	_ui.owned_pick().choose(relic)
+	await wait_frames(2)
+	assert_null(_ui.owned_pick(), "two charges, two picks, done")
+	assert_eq(relic.current_charge, 2)
 	assert_true(is_instance_valid(modal) and modal.visible)
 	if is_instance_valid(modal):
 		modal._finish()

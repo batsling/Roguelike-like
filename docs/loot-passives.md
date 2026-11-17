@@ -890,7 +890,7 @@ curse-card block covers the modal, and the sources are covered where they live
 (`test_events2`, `test_enemy_abilities`, `test_items2`, `test_pill_system`,
 `test_scroll_system2`).
 
-## 19. Upgrade — +1 Stun on an attack or a weapon
+## 19. Upgrade — +1 on a weapon, or on a card with an Upgrade Type
 
 The owner, 14 Nov 2026: *"Upgrading a card in this game should be Upgrade 1 Loot.
 At the moment that includes all attacks and all weapons. It gives a base +1 stun
@@ -900,25 +900,51 @@ to them stacking indefinitely."* Slay the Spire's Upgrade, translated.
   (`can_upgrade`), what is carried that could be (`upgradeable`), and how much a
   piece has (`run_bonus`, `game_bonus`, `bonus_of`). Every reader asks it, so a
   new kind becomes upgradeable by being answered there.
-- **What can be upgraded:** a **weapon**, and an **attack** — a card the `cards`
-  sheet tags `attack` (Bullseye, Cleave, Fiend Fire, Finisher, Pommel Strike,
-  Reaper). Both lay Stun on purpose.
-- **What it does:** +1 to the piece's **base** Stun, per upgrade, no cap. A
-  weapon's swing adds it to its sheet's Stun (`WeaponSystem.stun_parts`, "Upgraded"
-  in the breakdown). An attack adds it to **every `stun` clause's own number before
-  `per` multiplies it** (`CardSystem.play_card`): an upgraded Fiend Fire is Stun 2
-  for *each* piece destroyed, an upgraded Finisher Stun 2 per other card used —
-  the owner chose this over a flat +1 on top. Other clauses (Bullseye's Marked)
-  do not grow.
+- **What can be upgraded:** a **weapon** (it grows its Stun), and a **card whose
+  `cards` row names an `Upgrade Type`** (the owner, 17 Nov 2026: "Different cards
+  can be upgraded, not just attacks" — and "Power cards should not be able to
+  upgrade, only the cards I've selected"). The column is `CardData.upgrade_types`;
+  `N/A` means never. What each type grows is `LootUpgrade.grows`, one table:
+
+  | Upgrade Type | grows | cards |
+  |---|---|---|
+  | Stun | each `stun` clause | Bullseye, Cleave, Fiend Fire, Finisher, Pommel Strike, Reaper |
+  | Shield | each `gain_stat shields` | After Image (its trigger), Second Wind, Shrug it Off, Stack |
+  | Charge | `charge_pick` | Bloodletting, Offering |
+  | Potion | `gain_loot potion` | Alchemize |
+  | Loot | `gain_loot` | Prepared |
+  | Destroy | `destroy_pick` | Prepared |
+
+  `tools/generate_card2_tres.py` refuses a row whose type names a clause the card
+  does not have (its `UPGRADE_CLAUSES` mirrors `grows`), and
+  `test_loot_upgrade.gd` holds the `.tres` to the same rule.
+- **What it does:** +1 to each growing clause's **base** number, per upgrade, no
+  cap. A weapon's swing adds it to its sheet's Stun (`WeaponSystem.stun_parts`,
+  "Upgraded" in the breakdown). A card adds it to **each growing clause's own
+  number before `per` multiplies it** (`LootUpgrade.grown`, called by
+  `CardSystem.play_card` and, for a passive card's trigger, by
+  `GameState._run_trigger`): an upgraded Fiend Fire is Stun 2 for *each* piece
+  destroyed, an upgraded Stack 2 Shield per other card used — the owner chose this
+  over a flat +1 on top. Other clauses (Bullseye's Marked, Offering's Health) do
+  not grow.
+- **Downgraded** (Retro Bat's roll, `docs/players-design.md` §5 — every
+  upgradeable card can be found at -2..+2): the same numbers shrink. Stun stops at
+  0 (it does nothing below that); a **Shield clause goes negative and takes Shield
+  away**, down to none (the owner: "Block or charges can be lost through this" —
+  `GameState.NON_NEGATIVE_RUN_STATS`); charges, potions, loot and destroys stop at
+  0, and a clause at 0 asks for nothing. A lifted curse holds each at 1.
 - **Where it is kept:** on the pack entry. `stun_bonus` is for the run — the key
   Scroll of Enchant Weapon already wrote, so the +X, the swing and an evolution
   all read one number whichever door the upgrade came through. `stun_game` is for
   this game only; the report erases it at the step it zeroes
   `cards_used_this_game` (`LootUpgrade.clear_game_bonuses`), however the game
   ended. Both ride a weapon's evolution and are saved with the pack.
-- **How it shows:** an upgraded attack wears its +X like a weapon — "Cleave +1"
+- **How it shows:** an upgraded card wears its +X like a weapon — "Cleave +1"
   face up, the "+1" chip on its tile, and "Upgraded: +1 Stun to each Stun it
-  applies." under its description. A this-game upgrade is in the same +X, and the
+  applies." (or "+1 Shield to each Shield it gives", and so on per type) under its
+  description. An upgraded piece whose roll is still HIDDEN reads **"Cleave +1?"**
+  (the owner, 17 Nov 2026; `WeaponSystem.hidden_plus`): the upgrade is known, the
+  question mark is the roll on top. A this-game upgrade is in the same +X, and the
   chip's tooltip says how much of it goes when the game ends.
 - **The token:** `upgrade_loot [N] [pick|random] [run|game]` — one parser
   (`item_dsl._upgrade_loot`) shared by the reward DSL and the item DSL, handled by
@@ -929,8 +955,8 @@ to them stacking indefinitely."* Slay the Spire's Upgrade, translated.
   can run a pick, the handler rolls one instead. On a **relic** it defaults to
   `random`. The button reads "Upgrade 1 Loot"; the epilogue names the piece
   ("Upgraded Cleave +1").
-- **The gate:** `upgradeable` joined the event Requirement stats — attacks and
-  weapons carried. The owner chose to hold a whole event back rather than show a
+- **The gate:** `upgradeable` joined the event Requirement stats — upgradeable
+  cards and weapons carried. The owner chose to hold a whole event back rather than show a
   dead button when there is nothing to upgrade.
 
 | Source | Upgrades | Lasts |
@@ -943,5 +969,11 @@ Warped Tongs is Slay the Spire's "At the start of your turn, Upgrade a random ca
 in your hand for the rest of combat", moved onto Anchor's hook (`game_selected`,
 "At the start of combat") because a game here is one combat. Its description:
 "At the start of combat, Upgrade 1 random Loot for the rest of combat".
+
+**Bloodletting and Offering place their charges ONE PICK AT A TIME** (the owner,
+17 Nov 2026): `LootUseModal._pick_charge` asks once per charge, in the pack and the
+relic strip like every owned pick, and comes back with one fewer each time, so
+Offering's four can go 2 + 1 + 1 or all on one thing. Only things with room are
+offered; the charges land as they are picked, and one line reports them all.
 
 Tests: `test/test_loot_upgrade.gd`.
