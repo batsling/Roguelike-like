@@ -419,6 +419,8 @@ def card_tres(row) -> tuple:
             lines.append("bank_shields = true")
         if passive["echo_first_loot"]:
             lines.append("echo_first_loot = %d" % passive["echo_first_loot"])
+        if passive["gold_debt"]:
+            lines.append("gold_debt = %d" % passive["gold_debt"])
         if passive["harmless_statuses"]:
             raise ValueError("card %r: harmless_status is a trinket's rule "
                              "(docs/loot-passives.md §17)" % name)

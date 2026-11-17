@@ -394,7 +394,8 @@ func remaining_loot(game_id: StringName) -> Array:
 func can_afford(entry: Dictionary) -> bool:
 	if pays_in_health(entry):
 		return GameState.hp > price_of(entry)
-	return GameState.gold >= price_of(entry)
+	# Credit Card: down to -gold_debt_limit.
+	return GameState.gold - price_of(entry) >= -GameState.gold_debt_limit()
 
 func pays_in_health(entry: Dictionary) -> bool:
 	return String(entry.get("currency", "gold")) == "health"
@@ -406,7 +407,7 @@ func _pay(entry: Dictionary) -> void:
 	if pays_in_health(entry):
 		GameState.change_hp(-price_of(entry), "shop")
 	else:
-		GameState.spend_gold(price_of(entry))
+		GameState.spend_gold(price_of(entry), true)
 
 # "5 gold" / "2 Health", for the log.
 func price_words(entry: Dictionary) -> String:
@@ -601,7 +602,7 @@ func can_reroll(game_id: StringName) -> bool:
 	if shop_for(game_id).is_empty():
 		return false
 	if keeper_has(game_id, "gold_reroll"):
-		return GameState.gold >= gold_reroll_cost(game_id)
+		return GameState.gold - gold_reroll_cost(game_id) >= -GameState.gold_debt_limit()
 	return GameState.scramble >= REROLL_COST
 
 # A `gold_reroll` keeper's next reroll: GOLD_REROLL_BASE gold, +1 for each one
@@ -624,7 +625,7 @@ func reroll(game_id: StringName) -> bool:
 		return false
 	var shop: Dictionary = shop_for(game_id)
 	if keeper_has(game_id, "gold_reroll"):
-		GameState.spend_gold(gold_reroll_cost(game_id))
+		GameState.spend_gold(gold_reroll_cost(game_id), true)
 		shop["gold_rerolls"] = int(shop.get("gold_rerolls", 0)) + 1
 	else:
 		GameState.scramble -= REROLL_COST

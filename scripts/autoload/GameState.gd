@@ -1995,9 +1995,20 @@ func change_hp(delta: int, source: String = "") -> void:
 	if hp < before:
 		TriggerBus.health_lost.emit({"amount": before - hp, "source": source})
 
-func set_gold(new_gold: int) -> void:
-	gold = max(0, new_gold)
+# GOLD CAN BE NEGATIVE ONLY THROUGH A SHOP (Credit Card, `gold_debt_limit`): a
+# purchase passes `debt_ok` and may take it below 0. Everything else stops at 0 —
+# or, already in debt, where the debt stands: a loss cannot deepen it and `lose_gold
+# all` cannot wipe it. A gain pays it down. A restore (undo) passes `debt_ok` too,
+# so it puts back exactly what it saved.
+func set_gold(new_gold: int, debt_ok: bool = false) -> void:
+	gold = new_gold if debt_ok else max(mini(0, gold), new_gold)
 	emit_signal("gold_changed", gold)
+
+# CREDIT CARD (Balatro, the owner 17 Nov 2026): how far below 0 a shop purchase may
+# take Gold — the `gold_debt` of every working piece, summed (a Blueprint beside one
+# counts again). 0 without one.
+func gold_debt_limit() -> int:
+	return LootPassives.total("gold_debt")
 
 func change_gold(delta: int) -> void:
 	var before: int = gold
@@ -2020,10 +2031,15 @@ func change_gold(delta: int) -> void:
 # and counts toward Keeper's Sack. Use this — NOT change_gold — wherever the
 # player chooses to pay: gold lost to events / curses must not count as
 # "spending."
-func spend_gold(amount: int) -> void:
+# `into_debt`: the shop's spends, which Credit Card lets go below 0 (ShopSystem
+# checks the limit before it calls this).
+func spend_gold(amount: int, into_debt: bool = false) -> void:
 	if amount <= 0:
 		return
-	change_gold(-amount)
+	if into_debt:
+		set_gold(gold - amount, true)
+	else:
+		change_gold(-amount)
 	_track_gold_spent(amount)
 
 # Keeper's Sack: accumulate gold spent and grant +1 to a random core stat for
@@ -2883,7 +2899,7 @@ func restore_run_resources(snap: Dictionary) -> void:
 	# against, so a pack that was carrying +Max Health has to be back on before the
 	# number it raised is written.
 	set_hp(int(snap.get("hp", hp)))
-	set_gold(int(snap.get("gold", gold)))
+	set_gold(int(snap.get("gold", gold)), true)
 
 # Whether the pack already holds an item of this id. Ownership is by ID, not by
 # instance: add_item duplicates the .tres template into the slot, so the copies

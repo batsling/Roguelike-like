@@ -1108,6 +1108,12 @@ def parse_item(row):
             # Shields it left standing into Shields (docs/loot-passives.md §8).
             fields["bank_shields"] = True
             last_trigger = None
+        elif kl0 == "gold_debt":
+            # Credit Card, held: shop purchases may take Gold down to -N
+            # (GameState.gold_debt_limit). Copies add up.
+            mm = re.search(r"\d+", clause)
+            fields["gold_debt"] = int(mm.group(0)) if mm else 20
+            last_trigger = None
         elif kl0 == "echo_first_loot":
             # Echo Form, held: the FIRST piece of loot used in each game plays N
             # additional copies (docs/loot-passives.md §8).
@@ -1283,7 +1289,7 @@ def parse_item(row):
 # shelf, so a trinket authoring one would print a promise the runtime never reads —
 # the exact silent failure every generator here exists to turn into a loud one.
 LOOT_PASSIVE_FIELDS = ("triggers", "stat_bonuses", "status_bonuses", "copy_neighbour",
-                       "bank_shields", "echo_first_loot", "weapon_stun",
+                       "bank_shields", "echo_first_loot", "gold_debt", "weapon_stun",
                        "stun_per_food", "charge_bonus_chance", "replay_gain",
                        "weapon_retrigger", "harmless_statuses")
 # Everything parse_item always emits whatever the Effect said, so never a refusal.
@@ -1303,7 +1309,7 @@ def parse_loot_passive(name, effect_text, allow_empty=False):
     if extra:
         raise ValueError("%s: a loot passive cannot author %s — only triggers, "
                          "passive:, passive_status:, copy_right, bank_shields, "
-                         "echo_first_loot, weapon_stun, stun_per_food, "
+                         "echo_first_loot, gold_debt, weapon_stun, stun_per_food, "
                          "replay_on_use, weapon_retrigger, harmless_status "
                          "and charge_bonus "
                          "reach the pack "
@@ -1316,6 +1322,7 @@ def parse_loot_passive(name, effect_text, allow_empty=False):
             "copy_neighbour": out.get("copy_neighbour", ""),
             "bank_shields": bool(out.get("bank_shields", False)),
             "echo_first_loot": int(out.get("echo_first_loot", 0)),
+            "gold_debt": int(out.get("gold_debt", 0)),
             "weapon_stun": out.get("weapon_stun", {}),
             "stun_per_food": out.get("stun_per_food", {}),
             "charge_bonus_chance": float(out.get("charge_bonus_chance", 0.0)),

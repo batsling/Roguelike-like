@@ -854,14 +854,23 @@ func _price_text(entry: Dictionary, gap: String = " ") -> String:
 func _short_of(entry: Dictionary) -> String:
 	if ShopSystem.pays_in_health(entry):
 		return "%s — it has to leave you at least 1 Health." % ShopSystem.price_words(entry)
+	var limit: int = GameState.gold_debt_limit()
+	if limit > 0:   # Credit Card
+		return "%s — you have %d, and can go down to -%d." % [
+			ShopSystem.price_words(entry), GameState.gold, limit]
 	return "%s — you have %d." % [ShopSystem.price_words(entry), GameState.gold]
 
 func _paint_chrome() -> void:
 	if _purse != null and is_instance_valid(_purse):
 		_purse.text = "◉ %d" % GameState.gold
+		# CREDIT CARD: what the purse can still go down to, beside it.
+		var limit: int = GameState.gold_debt_limit()
+		if limit > 0:
+			_purse.text += "  (credit to -%d)" % limit
 		Cosmetics.apply_glyph(_purse)   # a worn gold icon in place of the ◉
 		_purse.add_theme_color_override("font_color",
-			UITheme.COIN_GOLD if GameState.gold > 0 else UITheme.TEXT_FAINT)
+			UITheme.COIN_GOLD if GameState.gold > 0
+			else (UITheme.DANGER if GameState.gold < 0 else UITheme.TEXT_FAINT))
 	if _subtitle != null and is_instance_valid(_subtitle):
 		var left: int = ShopSystem.remaining(_game_id).size()
 		left += ShopSystem.remaining_loot(_game_id).size() + ShopSystem.remaining_packs(_game_id).size()

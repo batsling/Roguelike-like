@@ -11,6 +11,17 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Credit Card, and To the Moon at Balatro's rate (the owner, 17 Nov 2026).**
+  - **Credit Card** is a new Uncommon Balatro joker, using Balatro's own art.
+    While you carry it, shop purchases and gold rerolls can take you down to
+    -20 Gold (`gold_debt 20`, `GameState.gold_debt_limit`). Nothing outside a
+    shop takes Gold below 0 or makes a debt deeper, and losing all your Gold
+    doesn't clear what you owe. Gold you gain pays the debt down, and the debt
+    stays if the card leaves. The shop's purse shows "(credit to -20)" and
+    turns red while you're in debt.
+  - **To the Moon** pays 1 Gold for every 5 you hold when you win a game (it
+    was every 3), and pays nothing while you're in debt.
+
 - **Upgrade Types for cards, charges picked one at a time, Lord's Parasol gone
   (the owner, 17 Nov 2026).**
   - **The `cards` sheet's new `Upgrade Type` column** decides which cards an

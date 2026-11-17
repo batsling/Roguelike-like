@@ -117,6 +117,9 @@ def trinket_tres(row) -> tuple:
     ]
     if passive["copy_neighbour"]:
         lines.append('copy_neighbour = "%s"' % passive["copy_neighbour"])
+    if passive["gold_debt"]:
+        raise ValueError("trinket %r: gold_debt is a card's rule (Credit Card) — "
+                         "TrinketData has no field for it" % name)
     if passive["bank_shields"]:
         lines.append("bank_shields = true")
     if passive["echo_first_loot"]:

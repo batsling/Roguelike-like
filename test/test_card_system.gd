@@ -32,7 +32,7 @@ func _entry(id: StringName) -> Dictionary:
 
 func test_every_card_loads_with_an_effect_and_both_pictures() -> void:
 	var cards: Array = Data.all_cards()
-	assert_eq(cards.size(), 37, "the sheet's 37 rows all generated")
+	assert_eq(cards.size(), 38, "the sheet's 38 rows all generated")
 	for c in cards:
 		assert_true(c is CardData)
 		var card: CardData = c
@@ -46,7 +46,7 @@ func test_every_card_loads_with_an_effect_and_both_pictures() -> void:
 			assert_true(card.effect.is_empty(), "%s has nothing to play" % card.id)
 			assert_true(not card.triggers.is_empty() or card.copy_neighbour != ""
 				or not card.stat_bonuses.is_empty() or not card.status_bonuses.is_empty()
-				or card.bank_shields or card.echo_first_loot > 0,
+				or card.bank_shields or card.echo_first_loot > 0 or card.gold_debt > 0,
 				"%s does something from the pack" % card.id)
 			continue
 		assert_false(card.effect.is_empty(), "%s does something" % card.id)
@@ -166,8 +166,8 @@ func test_which_decks_give_their_card_away_when_it_is_face_down() -> void:
 	lonely.sort()
 	assert_eq(lonely, LONELY_DECKS,
 		"these decks hold one card each and name it on the floor — see LONELY_DECKS")
-	assert_eq(int(counts.get("Balatro_Playing_Cards", 0)), 6,
-		"Ride the Bus and the five jokers")
+	assert_eq(int(counts.get("Balatro_Playing_Cards", 0)), 7,
+		"Ride the Bus and the six jokers")
 	assert_eq(int(counts.get("Isaac_Major_Arcana", 0)), 7,
 		"the arcana are where a face-down card is a real guess")
 	assert_eq(int(counts.get("Isaac_Playing_Cards", 0)), 6)

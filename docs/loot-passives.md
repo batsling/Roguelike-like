@@ -8,8 +8,8 @@ care about what is next to them.
 
 - Content: the `trinkets` sheet (11 Isaac trinkets, five Backpack Battles
   foods and the Whetstone, §10-§12) and five passive rows on the
-  `cards` sheet (Balatro's Blueprint, Chaos the Clown, Rocket, To the Moon,
-  Trading Card), plus Slay the Spire's Barricade and Echo Form (§8).
+  `cards` sheet (Balatro's Blueprint, Chaos the Clown, Credit Card, Rocket, To
+  the Moon, Trading Card), plus Slay the Spire's Barricade and Echo Form (§8).
 - Code: `scripts/runtime/LootPassives.gd` (which pieces are working and what each
   resolves to), `GameState.fire_run_item_triggers` (the runner),
   `scripts/resources/TrinketData.gd` and the passive fields on `CardData`.
@@ -155,7 +155,7 @@ expire, and passes it on `game_beaten`'s context.
 | `drop_copy` | A duplicate of the piece the hook was about lands on a free square of the battlefield (Endless Nameless). A full board pays nothing. |
 | `bump N` | Grows the counter on the firing piece (Rocket). A copy never bumps. |
 | `gain_card N` | A named card grant (Deck of Cards). |
-| `gain_gold N per=P of=<stat>` | N for every P of the stat, rounded down, read before this payout lands (To the Moon: `per=3 of=gold`). |
+| `gain_gold N per=P of=<stat>` | N for every P of the stat, rounded down, read before this payout lands (To the Moon: `per=5 of=gold`, Balatro's rate since 17 Nov 2026). A purse in debt (Credit Card) counts as 0. |
 | `gain_gold N plus=counter` | N plus the counter on the piece whose passive this is (Rocket). |
 | `break_into <item_id>` / `break_into random_item` | The firing piece **leaves the pack** and a relic takes its place: a named one, or a random one off the reward pool (Bag Lunch -> Lunch, Wish Bone). Its own verb because a `N% chance` wraps exactly one effect. A Blueprint copying one is the piece that fired, so the Blueprint is what breaks. |
 
@@ -345,7 +345,7 @@ Trinkets can be bigger than one cell now (§10).
   not move the tier ladder.
 - **Deck of Cards** (relic, Charged 2, `item_used: gain_card 1`) deals a card.
 
-## 8. Barricade and Echo Form, held
+## 8. Barricade, Echo Form and Credit Card, held
 
 Both were one-use cards that armed a run flag for the next game. Both are passive
 cards now. They are **rules the run consults at one moment** rather than answers
@@ -364,6 +364,16 @@ to a hook, so each is a field on the card read by total across every working pie
   the game resolves. The count is saved, so a mid-game reload does not hand the
   copy out twice. A wand zap counts like any other use and is copied (§9). The
   copy leaves a toast: "Echo Form: Luck Up again".
+
+- **Credit Card** (`gold_debt 20`, Balatro, Uncommon; the owner, 17 Nov 2026: "allow
+  the player to go into -20 gold in the shop"): `GameState.gold_debt_limit()` sums
+  it. **Only a shop purchase or a gold reroll goes below 0**:
+  `ShopSystem.can_afford` checks `gold - price >= -limit`, and the shop pays with
+  `spend_gold(price, true)`. Everything else stops at 0, or at the debt already
+  owed (`GameState.set_gold`): a loss cannot make the debt deeper, `lose_gold all`
+  cannot wipe it, and a gain pays it down. The debt stays after the card leaves,
+  as in Balatro. The shop's purse shows "(credit to -20)" and turns red in debt.
+  The generator refuses `gold_debt` on a trinket or a weapon.
 
 The old run flags (`bank_shields_next`, `echo_loot_next_game`) and the card ops
 that set them are removed. A save that still carries them loads fine; the keys

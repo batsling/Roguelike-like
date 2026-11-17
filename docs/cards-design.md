@@ -151,6 +151,7 @@ twice.
 |---|---|---|---|
 | Barricade | Rare | `bank_shields` (passive) | §5.1 |
 | Echo Form | Rare | `echo_first_loot 1` (passive) | §5.8 |
+| Credit Card | Uncommon | `gold_debt 20` (passive) | Balatro; [`loot-passives.md`](loot-passives.md) §8 |
 | Ride the Bus | Uncommon | `teleport_type deckbuilder` | §5.2 |
 | V - The Hierophant | Common | `gain_stat bonus_shields 2` | |
 | VI - The Lovers | Common | `gain_hp 2` | |

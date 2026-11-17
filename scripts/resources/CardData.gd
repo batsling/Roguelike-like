@@ -87,6 +87,9 @@ extends Resource
 # Echo Form: while held, the FIRST piece of loot used in each game plays this many
 # additional copies (GameState.extra_loot_copies).
 @export var echo_first_loot: int = 0
+# Credit Card: while held, a shop purchase may take Gold down to -this
+# (GameState.gold_debt_limit). Copies add up.
+@export var gold_debt: int = 0
 # The sheet's `Type`: "Usable" or "Passive", drawn as a chip on the card — or
 # "Curse" for a CURSE CARD (below), which comes from the `curses` sheet instead.
 @export var loot_type: String = "Usable"
