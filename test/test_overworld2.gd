@@ -3979,14 +3979,16 @@ func test_the_play_verbs_sit_beside_the_cover() -> void:
 	_ui._refresh()
 	await get_tree().process_frame
 	var cover: Control = _ui._now_playing_cover
-	for btn: Button in [_ui._attempt_btn]:
-		assert_gt(btn.global_position.x, cover.get_global_rect().end.x - 1.0,
-			"%s is to the right of the cover" % btn.text.split("\n")[0])
-		assert_lt(btn.global_position.y, cover.get_global_rect().end.y,
-			"and beside it rather than under it")
-	# PLAY IS THE TOP OF THE PANEL (the owner, 12 Nov 2026), on a line of its own.
-	assert_lte(_ui._launch_row.global_position.y, cover.global_position.y,
-		"the Play row is above the cover")
+	# PLAY IS BESIDE THE COVER (the owner, 18 Nov 2026), at the top of its column.
+	assert_gt(_ui._launch_row.global_position.x, cover.get_global_rect().end.x - 1.0,
+		"the Play row is to the right of the cover")
+	assert_lt(_ui._launch_row.global_position.y, cover.get_global_rect().end.y,
+		"and beside it rather than under it")
+	# …and LOST A RUN BESIDE COMPLETED GAME, with Escape under the pair.
+	assert_eq(_ui._attempt_wrap.get_parent(), _ui._done_btn.get_parent(),
+		"Lost a run shares Completed Game's row")
+	assert_gt(_ui._escape_btn.global_position.y, _ui._done_btn.get_global_rect().end.y - 1.0,
+		"Escape is under them")
 	# …and the timer strip is off the page for now.
 	_ui._refresh_split_panel()
 	assert_false(_ui._split_panel.visible, "no clock on the page")
@@ -11294,13 +11296,14 @@ func test_a_blood_machine_that_pays_its_item_breaks_and_goes() -> void:
 	ObjectSystem.live.clear()
 	ObjectSystem.objects_changed.emit()
 
-# The owner, 11 Nov 2026: Completed Game and Escape side by side, so the checklist
-# gets the row one of them used to take.
-func test_completed_game_and_escape_share_one_row() -> void:
-	assert_eq(_ui._done_btn.get_parent(), _ui._escape_btn.get_parent(), "one row")
+# The owner, 18 Nov 2026: Completed Game and LOST A RUN side by side (it was
+# Escape, 11 Nov), with Escape on a row of its own under them.
+func test_completed_game_and_lost_a_run_share_one_row() -> void:
+	assert_eq(_ui._done_btn.get_parent(), _ui._attempt_wrap.get_parent(), "one row")
 	assert_true(_ui._done_btn.get_parent() is HBoxContainer, "side by side")
-	assert_eq(_ui._done_btn.size_flags_stretch_ratio, _ui._escape_btn.size_flags_stretch_ratio,
+	assert_eq(_ui._done_btn.size_flags_stretch_ratio, _ui._attempt_wrap.size_flags_stretch_ratio,
 		"in equal halves")
+	assert_ne(_ui._escape_btn.get_parent(), _ui._done_btn.get_parent(), "Escape has its own row")
 	assert_true(_ui._done_btn.text.contains("Completed Game"), "same label")
 	assert_true(_ui._escape_btn.text.contains("Escape this game"), "and the same on the other")
 

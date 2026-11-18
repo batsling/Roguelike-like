@@ -318,7 +318,9 @@ var _split_panel: Control = null
 var timer_on_page: bool = false
 # The now-playing cover, as a share of an offering card's: the height of the Lost
 # a run strip beside it.
-const NOW_PLAYING_COVER_SCALE := 0.36
+# 0.5, up from 0.36 (the owner, 18 Nov 2026: "make the game image a little
+# bigger and put the play button to the right of the image").
+const NOW_PLAYING_COVER_SCALE := 0.5
 var _splits_popup: Control = null
 var _split_rows: VBoxContainer = null    # one row per game, plus its tries
 var _split_total: Label = null           # the run's own line
@@ -8350,7 +8352,6 @@ func _build_ui() -> void:
 	# target get a button).
 	_launch_row = HBoxContainer.new()
 	_launch_row.add_theme_constant_override("separation", UITheme.GAP_SNUG)
-	np_box.add_child(_launch_row)
 	var head_row := HBoxContainer.new()
 	head_row.add_theme_constant_override("separation", UITheme.GAP_WIDE)
 	np_box.add_child(head_row)
@@ -8386,6 +8387,10 @@ func _build_ui() -> void:
 	verbs.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	verbs.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	head_row.add_child(verbs)
+	# PLAY BESIDE THE COVER (the owner, 18 Nov 2026), at the top of the column of
+	# what you are doing with the game.
+	_launch_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	verbs.add_child(_launch_row)
 	_now_playing = _panel_label()
 	_now_playing.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	verbs.add_child(_now_playing)
@@ -8399,8 +8404,14 @@ func _build_ui() -> void:
 	verbs.add_child(_split_panel)
 
 	# The attempt tracker (§3) — the thing you press between runs of the real game.
+	# LOST A RUN STANDS BESIDE COMPLETED GAME now (the owner, 18 Nov 2026): the
+	# two outcomes you report, side by side at the foot of the checklist, with
+	# Escape under them. The strip is built here and mounted in _report_row below;
+	# its count of lost runs stays up here, beside the cover, as a fact about it.
 	_attempt_wrap = _build_attempt_strip()
-	verbs.add_child(_attempt_wrap)
+	_attempt_count.get_parent().remove_child(_attempt_count)
+	_attempt_count.add_theme_color_override("font_color", UITheme.TEXT_DIM)
+	verbs.add_child(_attempt_count)
 	_play_panel.add_child(np_box)
 
 	# Verification checklist (populated per game): the main goal, the character's
@@ -8467,6 +8478,11 @@ func _build_ui() -> void:
 	done.clip_text = true
 	_report_row.add_child(done)
 	_wire_push_hover(done, func() -> int: return -1)
+	_attempt_wrap.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_attempt_wrap.size_flags_stretch_ratio = 1.0
+	# No frame of its own beside Completed Game: the button is the half.
+	_attempt_wrap.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
+	_report_row.add_child(_attempt_wrap)
 
 	# The way out, directly under the way through — they resolve the same step, so
 	# they belong together. Deliberately quieter than Completed Game: this is the
@@ -8496,7 +8512,8 @@ func _build_ui() -> void:
 	_escape_btn.add_theme_color_override("font_disabled_color",
 		UITheme.ACCENT.lerp(UITheme.BG, 0.55))
 	_escape_btn.pressed.connect(escape_game)
-	_report_row.add_child(_escape_btn)
+	# ITS OWN ROW, under Completed and Lost a run.
+	_play_panel.add_child(_escape_btn)
 
 	# …and WHAT OPENS IT, in small text directly under the button it is about. Only
 	# up while the button is down; an open door needs no instructions.
@@ -8645,6 +8662,7 @@ func _build_attempt_strip() -> Control:
 	_attempt_btn.add_theme_stylebox_override("normal", UITheme.flat(UITheme.DANGER.lerp(UITheme.BG, 0.62), 6, 8, 1, UITheme.DANGER.lerp(UITheme.BG, 0.35)))
 	_attempt_btn.add_theme_stylebox_override("hover", UITheme.flat(UITheme.DANGER.lerp(UITheme.BG, 0.45), 6, 8, 1, UITheme.DANGER))
 	_attempt_btn.pressed.connect(log_attempt)
+	_attempt_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(_attempt_btn)
 	_wire_push_hover(_attempt_btn,
 		func() -> int: return 1 if GameLoop2.lost_run_spawn_chance() > 0.0 else 0)
@@ -8662,11 +8680,6 @@ func _build_attempt_strip() -> Control:
 	# Dropping it is what buys this panel the room to put the two verbs beside the
 	# cover instead of under it.
 
-	# The strip still ends in a stretch, so the escape hint and the tracker keep the
-	# widths they had — the sentence that used to fill it has moved onto the button.
-	var spacer := Control.new()
-	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_child(spacer)
 	return wrap
 
 # WHO A PRESS WOULD PUSH INTO YOU, shown only while the button is hovered (owner,
