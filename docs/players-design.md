@@ -30,7 +30,7 @@ Every player is an **original work**, not a character from a real game.
 | Player | Mechanics | Unlock | Art |
 |---|---|---|---|
 | Basic | none — the game as it is | always | none: the picker draws the word "Basic" |
-| Retro Bat | Hunger, Unidentified Weapons | beat 20 different traditional roguelikes | `images2.0/players/RetroBat.png` |
+| Retro Bat | Hunger, Unidentified Equipment | beat 20 different traditional roguelikes | `images2.0/players/RetroBat.png` |
 | Batsaac | none yet — the owner's to give | always (for now) | `images2.0/players/Batsaac.png` |
 
 Retro Bat was called Batty for its first day (the owner renamed it, 13 Nov 2026);
@@ -158,7 +158,14 @@ run still opens with every verb at 0.
   for a player without Hunger.
 - The numbers are a first cut the owner expects to tune.
 
-## 5. Unidentified weapons
+## 5. Unidentified equipment (was Unidentified Weapons)
+
+Renamed 17 Nov 2026 (the owner), when the roll widened past weapons and attacks
+to every card with an `Upgrade Type`: the mechanic's id is
+`unidentified_equipment` (`GameState.has_mechanic`), its row in the `mechanics`
+sheet and Retro Bat's `Mechanics` cell both say *Unidentified Equipment*
+(`tools/oneshots/_mechanics_unidentified_equipment.py`). Saves are unaffected: a
+run stores its player, and the mechanics come from the player's data.
 
 A weapon the run **finds** — a drop, a chest, a shop shelf — is rolled when its
 pack entry is made (`WeaponSystem.new_entry`): **−2 to +2 Stun**, weighted
@@ -187,14 +194,18 @@ pack entry is made (`WeaponSystem.new_entry`): **−2 to +2 Stun**, weighted
   1 from then on. The minus stays in its name.
 - **An evolution keeps the roll**, known or not, curse and all: it is the same
   weapon grown, not a new find.
-- **ATTACK cards roll too** (the owner, 15 Nov 2026: "make sure attack cards
-  also have the unidentified weapon mechanic from retro bat"). An attack is a
-  card the `cards` sheet tags `attack` — the other kind of loot that lays Stun on
-  purpose (`LootUpgrade.is_attack`). It is rolled the same way when it is found
-  (`WeaponSystem.roll_new`, from `CardSystem.roll_card_loot` and
-  `GameState.add_card_loot`), reads "Cleave +?" until it is played or identified,
-  adds its roll to each Stun clause (`CardSystem.play_card`, never below 0, or 1
-  once lifted), and a known minus is cursed and pinned like a weapon.
+- **CARDS roll too** (the owner, 15 Nov 2026: "make sure attack cards also have
+  the unidentified weapon mechanic from retro bat"; widened 17 Nov 2026 to every
+  card an Upgrade can grow). A card rolls when its `cards` row has an `Upgrade
+  Type` (`LootUpgrade.is_upgradeable_card`) — the roll moves exactly the numbers
+  an upgrade would (`LootUpgrade.grown`, docs/loot-passives.md §19). It is rolled
+  the same way when it is found (`WeaponSystem.roll_new`, from
+  `CardSystem.roll_card_loot` and `GameState.add_card_loot`), reads "Cleave +?"
+  until it is played (a passive card: until it first fires) or identified —
+  "Cleave +1?" if it has been upgraded meanwhile (`WeaponSystem.hidden_plus`) —
+  and a known minus is cursed and pinned like a weapon. Floors: Stun stops at 0;
+  a Shield clause goes negative and takes Shield away (down to none); charges,
+  potions, loot and destroys stop at 0; a lifted curse holds each at 1.
   `WeaponSystem.is_rollable` is the one place that says which kinds roll.
 
 ## 6. On the board: the player, with the character on it

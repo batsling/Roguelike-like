@@ -151,6 +151,7 @@ twice.
 |---|---|---|---|
 | Barricade | Rare | `bank_shields` (passive) | §5.1 |
 | Echo Form | Rare | `echo_first_loot 1` (passive) | §5.8 |
+| Credit Card | Uncommon | `gold_debt 20` (passive) | Balatro; [`loot-passives.md`](loot-passives.md) §8 |
 | Ride the Bus | Uncommon | `teleport_type deckbuilder` | §5.2 |
 | V - The Hierophant | Common | `gain_stat bonus_shields 2` | |
 | VI - The Lovers | Common | `gain_hp 2` | |
@@ -372,7 +373,7 @@ Effect left blank as always; `tools/oneshots/_cards_slay_the_spire_set.py` wrote
 |---|---|
 | After Image | `card_used: gain_stat shields 1` (passive, the relic grammar) |
 | Alchemize | `gain_loot potion 1 identify`: the potion is rolled and identified before it is offered, and stays known if the pack has no room for it |
-| Bloodletting | `lose_hp 2; charge_pick 4` |
+| Bloodletting | `lose_hp 2; charge_pick 2` (4 until 17 Nov 2026: the sheet holds the un-upgraded card now) |
 | Bullseye | `stun 1; apply_status marked 1` |
 | Cleave | `stun 1 area=row` |
 | Exhume | `exhume` |
@@ -380,7 +381,7 @@ Effect left blank as always; `tools/oneshots/_cards_slay_the_spire_set.py` wrote
 | Finisher | `stun 1 per=cards_used` |
 | Offering | `lose_hp 6; charge_pick 4; gain_loot card 3` |
 | Pommel Strike | `stun 1; gain_loot card 1` |
-| Prepared | `destroy_pick 2; gain_loot card 2` |
+| Prepared | `destroy_pick 1; gain_loot card 1` (2 and 2 until 17 Nov 2026) |
 | Reaper | `stun 1 area=board; gain_hp 1 per=hit` |
 | Second Wind | `destroy_row; gain_stat shields 2 per=destroyed` |
 | Shrug it Off | `gain_stat shields 1; gain_loot card 1` |

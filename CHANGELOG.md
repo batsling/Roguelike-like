@@ -11,6 +11,48 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Credit Card, and To the Moon at Balatro's rate (the owner, 17 Nov 2026).**
+  - **Credit Card** is a new Uncommon Balatro joker, using Balatro's own art.
+    While you carry it, shop purchases and gold rerolls can take you down to
+    -20 Gold (`gold_debt 20`, `GameState.gold_debt_limit`). Nothing outside a
+    shop takes Gold below 0 or makes a debt deeper, and losing all your Gold
+    doesn't clear what you owe. Gold you gain pays the debt down, and the debt
+    stays if the card leaves. The shop's purse shows "(credit to -20)" and
+    turns red while you're in debt.
+  - **To the Moon** pays 1 Gold for every 5 you hold when you win a game (it
+    was every 3), and pays nothing while you're in debt.
+
+- **Upgrade Types for cards, charges picked one at a time, Lord's Parasol gone
+  (the owner, 17 Nov 2026).**
+  - **The `cards` sheet's new `Upgrade Type` column** decides which cards an
+    Upgrade can grow, and what it grows: Stun, Shield, Charge, Potion, Loot,
+    Destroy (`LootUpgrade.grows`, `docs/loot-passives.md` §19). Cards marked N/A
+    can't be upgraded, the Power cards included. That covers Shrug it Off,
+    Second Wind, Stack, After Image (through its trigger), Bloodletting,
+    Offering, Alchemize and Prepared, as well as the attacks.
+  - **Retro Bat's roll** now reaches every card with an Upgrade Type. A
+    downgraded Shield card takes Shield away, down to none. Stun below 0 does
+    nothing; the other types stop at 0.
+  - **An upgraded unidentified piece reads "Cleave +1?"**: the upgrade is shown,
+    and the "?" is the roll still hidden.
+  - **Bloodletting and Offering** ask once per charge, so the charges can be
+    spread across several things or all go on one. Only things with room are
+    offered.
+  - **Base numbers:** Bloodletting gives 2 charges (it was 4). Prepared destroys
+    1 loot and gives 1 card (it was 2 and 2). The owner rewrote both
+    descriptions, and the Effect cells now match them. Upgrades give the bigger
+    numbers back.
+  - **Lord's Parasol is removed**: its row, `.tres`, art, the `shop_sweep`
+    flag and `ShopSystem.sweep`. Two Boss relics are left.
+  - **Retro Bat's "Unidentified Weapons" is now "Unidentified Equipment"**
+    (id `unidentified_equipment`), since it rolls every upgradeable card too.
+    Tests check that every card with an Upgrade Type is found rolled, and that
+    a downgraded After Image gives nothing at -1 and takes a Shield for each
+    card at -2. A hidden minus still counts and is learned when it fires, and a
+    lifted curse holds it at 1.
+  - **A Brotato fruit Hunger icon** (`images2.0/icons/Hunger/Fruit_Brotato.png`,
+    the wiki's 128px original "Chal fruit").
+
 - **Sunken Treasury and Greed, from Slay the Spire 2 (the owner, 15 Nov 2026).**
   A Common event at every difficulty, with Slay the Spire 2's own prose. Two
   things are left out: the wiki's footnote, and the "greedy thought" lines

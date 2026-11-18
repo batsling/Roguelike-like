@@ -7,7 +7,7 @@ tools/Roguelikes.xlsx into data/mechanics/ (docs/players-design.md §1).
 
   Name         the mechanic's name, as the `players` sheet's Mechanics column
                spells it and as the picker shows it. Its id is the slug
-               (`Unidentified Weapons` -> unidentified_weapons).
+               (`Unidentified Equipment` -> unidentified_equipment).
   Description  what it does, as the player reads it on the player select, the
                manual and the hero's card.
 

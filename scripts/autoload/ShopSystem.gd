@@ -349,45 +349,6 @@ func mark_seen(game_id: StringName) -> void:
 	if shop.is_empty() or bool(shop.get("seen", false)):
 		return
 	shop["seen"] = true
-	# Lord's Parasol resolves HERE — the moment the player stands in the shop for
-	# the first time — because "when encountering a shop" is a moment, and this is
-	# the only place that moment is recorded. Behind the `seen` guard, so a second
-	# visit to a shop does not re-sweep a shelf that was rerolled since.
-	sweep(game_id)
-
-
-# Lord's Parasol (§8, Boss): take the whole shelf, no gold spent. Returns what was
-# taken, empty when nothing owned sweeps or the shelf was already bare.
-#
-# FREE, not "buy everything you can afford". A boss relic whose payout is capped
-# by the purse would be at its weakest exactly when the shelf is at its best, and
-# the whole point of the thing is walking out with the shop.
-func sweep(game_id: StringName) -> Array:
-	var taken: Array = []
-	if not GameState.sweeps_shops():
-		return taken
-	# The loot row too — "purchase everything in it" — as far as the pack has room.
-	for row in remaining_loot(game_id):
-		if GameState.take_loot_entry((row["entry"] as Dictionary).duplicate(true)):
-			row["sold"] = true
-			GameLog.add("Lord's Parasol takes %s off the shelf."
-				% LootSystem.display_name(row["entry"]), UITheme.COIN_GOLD)
-	for entry in remaining(game_id):
-		var template: ItemData = Data.get_item2(StringName(entry.get("item", &"")))
-		if template == null:
-			continue
-		entry["sold"] = true
-		# add_item, exactly as `buy` does: a Pickup swept off the shelf has to land
-		# the same way one paid for does.
-		GameState.add_item(template)
-		taken.append(template)
-		GameLog.add("Lord's Parasol takes %s off the shelf." % template.display_name,
-			UITheme.COIN_GOLD)
-	if not taken.is_empty():
-		Notifications.notify("Lord's Parasol empties the shop — %d item%s."
-			% [taken.size(), "" if taken.size() == 1 else "s"], UITheme.SHOP_GREEN)
-		shop_changed.emit(game_id)
-	return taken
 
 
 # Everything on the shelf, sold slots included — the modal draws those greyed so
@@ -433,7 +394,8 @@ func remaining_loot(game_id: StringName) -> Array:
 func can_afford(entry: Dictionary) -> bool:
 	if pays_in_health(entry):
 		return GameState.hp > price_of(entry)
-	return GameState.gold >= price_of(entry)
+	# Credit Card: down to -gold_debt_limit.
+	return GameState.gold - price_of(entry) >= -GameState.gold_debt_limit()
 
 func pays_in_health(entry: Dictionary) -> bool:
 	return String(entry.get("currency", "gold")) == "health"
@@ -445,7 +407,7 @@ func _pay(entry: Dictionary) -> void:
 	if pays_in_health(entry):
 		GameState.change_hp(-price_of(entry), "shop")
 	else:
-		GameState.spend_gold(price_of(entry))
+		GameState.spend_gold(price_of(entry), true)
 
 # "5 gold" / "2 Health", for the log.
 func price_words(entry: Dictionary) -> String:
@@ -640,7 +602,7 @@ func can_reroll(game_id: StringName) -> bool:
 	if shop_for(game_id).is_empty():
 		return false
 	if keeper_has(game_id, "gold_reroll"):
-		return GameState.gold >= gold_reroll_cost(game_id)
+		return GameState.gold - gold_reroll_cost(game_id) >= -GameState.gold_debt_limit()
 	return GameState.scramble >= REROLL_COST
 
 # A `gold_reroll` keeper's next reroll: GOLD_REROLL_BASE gold, +1 for each one
@@ -663,7 +625,7 @@ func reroll(game_id: StringName) -> bool:
 		return false
 	var shop: Dictionary = shop_for(game_id)
 	if keeper_has(game_id, "gold_reroll"):
-		GameState.spend_gold(gold_reroll_cost(game_id))
+		GameState.spend_gold(gold_reroll_cost(game_id), true)
 		shop["gold_rerolls"] = int(shop.get("gold_rerolls", 0)) + 1
 	else:
 		GameState.scramble -= REROLL_COST

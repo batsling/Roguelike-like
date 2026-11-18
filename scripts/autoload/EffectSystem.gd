@@ -228,7 +228,7 @@ func _h_lose_stat(effect: Dictionary, _ctx: Dictionary) -> void:
 # the player walked in with 3 gold or 30.
 func _h_lose_gold(effect: Dictionary, _ctx: Dictionary) -> void:
 	if bool(effect.get("all", false)):
-		GameState.set_gold(0)
+		GameState.set_gold(mini(0, GameState.gold))   # a debt is not "all you have"
 		return
 	var v: int = int(effect.get("value", 0))
 	if v != 0:
@@ -303,7 +303,8 @@ func _h_gain_gold(effect: Dictionary, ctx: Dictionary) -> void:
 	if effect.has("per"):
 		var per: int = maxi(1, int(effect["per"]))
 		@warning_ignore("integer_division")
-		v *= int(GameState.get(String(effect.get("of", "gold")))) / per
+		# Interest is on what you HAVE: a purse in debt (Credit Card) earns none.
+		v *= maxi(0, int(GameState.get(String(effect.get("of", "gold"))))) / per
 	if bool(effect.get("plus_counter", false)):
 		var src = ctx.get("loot_source")
 		if src is Dictionary:

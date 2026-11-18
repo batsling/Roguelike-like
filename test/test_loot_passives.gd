@@ -55,7 +55,7 @@ const FOOD_SHAPES := {&"broccoli": Vector2i(1, 2), &"carrot": Vector2i(2, 1),
 
 func test_the_passive_cards_are_passive_and_the_rest_are_not() -> void:
 	for id in [&"blueprint", &"chaos_the_clown", &"rocket", &"to_the_moon", &"trading_card",
-			&"barricade", &"echo_form"]:
+			&"barricade", &"echo_form", &"credit_card"]:
 		var c: CardData = Data.get_card(id)
 		assert_true(c != null and c.is_passive(), "%s is a passive card" % id)
 		assert_true(c != null and c.effect.is_empty(), "%s has nothing to play" % id)
@@ -415,11 +415,93 @@ func test_a_blueprinted_rocket_pays_its_payout_and_never_grows_it() -> void:
 	TriggerBus.game_won.emit({"game_id": &""})
 	assert_eq(GameState.gold, gold + 6, "3 from the Rocket and 3 from its copy")
 
-func test_to_the_moon_pays_one_per_three_gold() -> void:
+func test_to_the_moon_pays_one_per_five_gold() -> void:
+	# Balatro's rate (the owner, 17 Nov 2026): 1 interest for every 5 Gold.
 	Fixtures.card(self, &"to_the_moon", 0)
-	GameState.set_gold(13)
+	GameState.set_gold(14)
 	TriggerBus.game_won.emit({"game_id": &""})
-	assert_eq(GameState.gold, 17, "four whole threes in 13, the stray one pays nothing")
+	assert_eq(GameState.gold, 16, "two whole fives in 14, the stray four pays nothing")
+
+func test_to_the_moon_pays_nothing_on_a_debt() -> void:
+	Fixtures.card(self, &"to_the_moon", 0)
+	GameState.set_gold(-10, true)
+	TriggerBus.game_won.emit({"game_id": &""})
+	assert_eq(GameState.gold, -10, "no interest on what you owe")
+
+# --- Credit Card (Balatro, the owner 17 Nov 2026): down to -20 in a shop ----------
+
+func _shop_with_one_relic_at(price: int) -> StringName:
+	var gid: StringName = &"credit_card_shop"
+	GameState.shop_bar = ShopSystem.bar_target()
+	ShopSystem.open_at(gid)
+	var shelf: Array = ShopSystem.shop_for(gid).get("stock", [])
+	assert_false(shelf.is_empty(), "the shop has a shelf")
+	shelf[0]["price"] = price
+	shelf[0]["sold"] = false
+	shelf[0].erase("currency")
+	return gid
+
+func test_credit_card_is_an_uncommon_balatro_joker() -> void:
+	var c: CardData = Data.get_card(&"credit_card")
+	assert_not_null(c)
+	assert_true(c.is_passive())
+	assert_eq(c.rarity, "Uncommon")
+	assert_eq(c.gold_debt, 20)
+	assert_true(c.tags.has("joker"))
+	assert_true(ResourceLoader.exists("res://images2.0/cards/%s.png" % c.art_file()))
+
+func test_without_a_credit_card_the_shop_wants_the_gold() -> void:
+	var gid: StringName = _shop_with_one_relic_at(15)
+	GameState.set_gold(5)
+	assert_false(ShopSystem.can_afford(ShopSystem.stock(gid)[0]))
+	assert_null(ShopSystem.buy(gid, 0))
+	assert_eq(GameState.gold, 5)
+
+func test_a_credit_card_buys_into_debt() -> void:
+	Fixtures.card(self, &"credit_card", 0)
+	assert_eq(GameState.gold_debt_limit(), 20)
+	var gid: StringName = _shop_with_one_relic_at(15)
+	GameState.set_gold(5)
+	var price: int = ShopSystem.price_of(ShopSystem.stock(gid)[0])
+	assert_not_null(ShopSystem.buy(gid, 0), "5 Gold buys a %d-Gold relic on credit" % price)
+	assert_eq(GameState.gold, 5 - price)
+
+func test_the_debt_stops_at_minus_twenty() -> void:
+	Fixtures.card(self, &"credit_card", 0)
+	var gid: StringName = _shop_with_one_relic_at(30)
+	GameState.set_gold(5)
+	var price: int = ShopSystem.price_of(ShopSystem.stock(gid)[0])
+	assert_eq(ShopSystem.can_afford(ShopSystem.stock(gid)[0]), 5 - price >= -20)
+	GameState.set_gold(price - 20)
+	assert_true(ShopSystem.can_afford(ShopSystem.stock(gid)[0]), "exactly -20 is allowed")
+	GameState.set_gold(price - 21)
+	assert_false(ShopSystem.can_afford(ShopSystem.stock(gid)[0]), "-21 is not")
+
+func test_nothing_but_a_shop_goes_below_zero() -> void:
+	Fixtures.card(self, &"credit_card", 0)
+	GameState.set_gold(3)
+	GameState.change_gold(-10)
+	assert_eq(GameState.gold, 0, "a loss outside the shop stops at 0, card or not")
+
+func test_a_debt_is_paid_down_and_not_deepened_or_wiped() -> void:
+	GameState.set_gold(-12, true)
+	GameState.change_gold(-5)
+	assert_eq(GameState.gold, -12, "a loss cannot deepen a debt")
+	EffectSystem.apply({"type": "lose_gold", "all": true}, {})
+	assert_eq(GameState.gold, -12, "losing all your gold does not wipe what you owe")
+	GameState.change_gold(5)
+	assert_eq(GameState.gold, -7, "a gain pays it down")
+
+func test_a_debt_outlasts_the_card() -> void:
+	Fixtures.card(self, &"credit_card", 0)
+	var gid: StringName = _shop_with_one_relic_at(15)
+	GameState.set_gold(0)
+	ShopSystem.buy(gid, 0)
+	assert_lt(GameState.gold, 0)
+	GameState.loot_items.clear()
+	GameState.emit_signal("inventory_changed")
+	assert_eq(GameState.gold_debt_limit(), 0)
+	assert_lt(GameState.gold, 0, "the debt stays, as in Balatro")
 
 func test_trading_card_pays_once_a_game() -> void:
 	Fixtures.card(self, &"trading_card", 0)

@@ -883,9 +883,19 @@ func _run_trigger(item: ItemData, trig: Dictionary, ctx_extras: Dictionary,
 		fx_ctx["loot_copy"] = bool(loot.get("copy", false))
 		if loot.has("bag"):
 			fx_ctx["loot_bag"] = int(loot["bag"])
+	# AN UPGRADED PASSIVE CARD (After Image, LootUpgrade) grows its trigger's numbers
+	# as a played card grows its clauses, and an unidentified one (Retro Bat) is
+	# identified the first time it fires — the passive's version of being played.
+	# Cards only: a weapon's passive (King Bomber's gold) is not what its upgrade grows.
+	var piece = loot.get("entry") if not bool(loot.get("copy", false)) else null
+	if not LootUpgrade.is_upgradeable_card(piece):
+		piece = null
+	if piece != null and WeaponSystem.has_roll(piece):
+		WeaponSystem.reveal(piece)
 	_begin_trigger_report()
 	for effect in trig.get("effects", []):
-		EffectSystem.apply(effect, fx_ctx)
+		EffectSystem.apply(LootUpgrade.grown(piece, effect) if piece != null
+			else effect, fx_ctx)
 	_end_trigger_report(label, art, fx_ctx)
 
 # The gates about the PIECE a hook names (docs/loot-passives.md §6), both Potion
@@ -1105,7 +1115,7 @@ func is_curse_entry(entry) -> bool:
 
 # THE KINDS OF CURSE (the owner, 14 Nov 2026: "multiple types of curses that all
 # count as curses"). A curse CARD (the `curses` sheet, Type `Card`) and a CURSED
-# WEAPON (Retro Bat's unidentified weapons, WeaponSystem.is_cursed) are both
+# WEAPON (Retro Bat's Unidentified Equipment, WeaponSystem.is_cursed) are both
 # curses: both are counted here, both are listed under Curses, and the Scroll of
 # Remove Curse lifts either. Whether a piece is one of them is `is_curse`.
 func is_curse(entry) -> bool:
@@ -1985,9 +1995,20 @@ func change_hp(delta: int, source: String = "") -> void:
 	if hp < before:
 		TriggerBus.health_lost.emit({"amount": before - hp, "source": source})
 
-func set_gold(new_gold: int) -> void:
-	gold = max(0, new_gold)
+# GOLD CAN BE NEGATIVE ONLY THROUGH A SHOP (Credit Card, `gold_debt_limit`): a
+# purchase passes `debt_ok` and may take it below 0. Everything else stops at 0 —
+# or, already in debt, where the debt stands: a loss cannot deepen it and `lose_gold
+# all` cannot wipe it. A gain pays it down. A restore (undo) passes `debt_ok` too,
+# so it puts back exactly what it saved.
+func set_gold(new_gold: int, debt_ok: bool = false) -> void:
+	gold = new_gold if debt_ok else max(mini(0, gold), new_gold)
 	emit_signal("gold_changed", gold)
+
+# CREDIT CARD (Balatro, the owner 17 Nov 2026): how far below 0 a shop purchase may
+# take Gold — the `gold_debt` of every working piece, summed (a Blueprint beside one
+# counts again). 0 without one.
+func gold_debt_limit() -> int:
+	return LootPassives.total("gold_debt")
 
 func change_gold(delta: int) -> void:
 	var before: int = gold
@@ -2010,10 +2031,15 @@ func change_gold(delta: int) -> void:
 # and counts toward Keeper's Sack. Use this — NOT change_gold — wherever the
 # player chooses to pay: gold lost to events / curses must not count as
 # "spending."
-func spend_gold(amount: int) -> void:
+# `into_debt`: the shop's spends, which Credit Card lets go below 0 (ShopSystem
+# checks the limit before it calls this).
+func spend_gold(amount: int, into_debt: bool = false) -> void:
 	if amount <= 0:
 		return
-	change_gold(-amount)
+	if into_debt:
+		set_gold(gold - amount, true)
+	else:
+		change_gold(-amount)
 	_track_gold_spent(amount)
 
 # Keeper's Sack: accumulate gold spent and grant +1 to a random core stat for
@@ -2272,8 +2298,15 @@ func grant_run_stat(stat: String, value: int) -> void:
 	if value > 0:
 		amt += stat_gain_bonus_for(stat)
 	var field: String = _LEVEL_UP_ABILITY_FIELDS.get(stat, stat)
-	set(field, int(get(field)) + amt)
+	var now: int = int(get(field)) + amt
+	# A SHIELD TAKEN AWAY (a downgraded Shield card, LootUpgrade) stops at none.
+	if amt < 0 and field in NON_NEGATIVE_RUN_STATS:
+		now = maxi(0, now)
+	set(field, now)
 	emit_signal("stats_changed")
+
+# The run stats a loss stops at 0 rather than running into debt.
+const NON_NEGATIVE_RUN_STATS := ["shields", "bonus_shields"]
 
 # ---------------------------------------------------------------------------
 # Statuses 2.0 on the PLAYER (§13)
@@ -2866,7 +2899,7 @@ func restore_run_resources(snap: Dictionary) -> void:
 	# against, so a pack that was carrying +Max Health has to be back on before the
 	# number it raised is written.
 	set_hp(int(snap.get("hp", hp)))
-	set_gold(int(snap.get("gold", gold)))
+	set_gold(int(snap.get("gold", gold)), true)
 
 # Whether the pack already holds an item of this id. Ownership is by ID, not by
 # instance: add_item duplicates the .tres template into the slot, so the copies
@@ -3058,10 +3091,6 @@ func shop_price_cuts() -> Array:
 			out.append(it.shop_discount)
 	out.append_array(shop_sales.values())
 	return out
-
-# Lord's Parasol: walking into a shop empties its shelf into the pack (§14).
-func sweeps_shops() -> bool:
-	return _any_item_flag("shop_sweep")
 
 # Link Cable: whether every piece in the pack counts as touching every other
 # (docs/loot-passives.md §15). One is enough — a piece cannot be more beside

@@ -140,7 +140,7 @@ const GATE_STAT_NAMES := {
 	"bonus_shields": "Shields", "relics": "Tradeable Relics",
 	# The pack again: bottles carried, identified or not.
 	"potions": "Potions",
-	# …and what an Upgrade could land on: attacks and weapons (LootUpgrade).
+	# …and what an Upgrade could land on: upgradeable cards and weapons (LootUpgrade).
 	"upgradeable": "Upgradeable Loot",
 	# The board: bodies following you that are not bosses (the Old Beggar).
 	"enemies": "Non-boss Enemies",

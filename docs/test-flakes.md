@@ -166,7 +166,7 @@ failure; diffing a passing and failing run's Control tree) are the reusable part
   - `test_items2.gd::test_lords_parasol_takes_the_whole_shelf_for_nothing` counted
     the pack after the sweep and failed when the rolled shelf held an **Ultra
     Duplicator**, which copies the relic swept after it (one more than the shelf).
-    It now checks each shelf relic is owned, by id.
+    It checked each shelf relic by id after that (relic and test removed 17 Nov 2026).
   - `test_overworld2.gd::test_bash_refills_the_slot_from_a_connected_game` failed
     when the run laid a **rift** beside the hub it stands at: `_first_bashable`
     took the first non-Amulet card, and bashing a rift card keeps the slot and

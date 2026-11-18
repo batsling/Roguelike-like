@@ -47,7 +47,7 @@ static func def(entry) -> WeaponData:
 # A new pack entry for `w`, EMPTY — a weapon is loaded by playing, not found loaded.
 #
 # FOUND UNIDENTIFIED (docs/players-design.md §5): for a player with the
-# `unidentified_weapons` mechanic, every weapon the run FINDS is rolled -2..+2 here
+# `unidentified_equipment` mechanic, every weapon the run FINDS is rolled -2..+2 here
 # — a drop, a chest, a shop shelf, an evolution's preview aside (`rolled` false).
 # A weapon the run STARTS with is not (GameState.granting_start_kit).
 static func new_entry(w: WeaponData, rolled: bool = true) -> Dictionary:
@@ -64,13 +64,13 @@ static func new_entry(w: WeaponData, rolled: bool = true) -> Dictionary:
 # unidentified weapon mechanic from retro bat"). What the run starts with is not
 # rolled (GameState.granting_start_kit). Returns `entry`.
 static func roll_new(entry: Dictionary) -> Dictionary:
-	if is_rollable(entry) and GameState.has_mechanic(&"unidentified_weapons") \
+	if is_rollable(entry) and GameState.has_mechanic(&"unidentified_equipment") \
 			and not GameState.granting_start_kit:
 		entry["roll"] = roll_modifier()
 		entry["roll_known"] = false
 	return entry
 
-# --- unidentified weapons (docs/players-design.md §5) -------------------------
+# --- unidentified equipment (docs/players-design.md §5) -------------------------
 #
 # A rolled weapon carries `roll` (-2..+2, added to its Stun) and `roll_known`. Until
 # the first swing — or a Scroll of Identify — the roll is HIDDEN: the name reads
@@ -95,10 +95,11 @@ static func roll_modifier(rng: RandomNumberGenerator = null) -> int:
 			return int(pair[0])
 	return 0
 
-# What can carry a roll: a weapon, or an attack card (LootUpgrade.is_attack) — the
-# two kinds of loot that lay Stun on purpose.
+# What can carry a roll: a weapon, or any card an Upgrade can grow (the owner,
+# 17 Nov 2026 — every card with an `Upgrade Type`, not only attacks). The roll
+# moves the same numbers an upgrade does (LootUpgrade.grown).
 static func is_rollable(entry) -> bool:
-	return is_weapon(entry) or LootUpgrade.is_attack(entry)
+	return is_weapon(entry) or LootUpgrade.is_upgradeable_card(entry)
 
 static func has_roll(entry) -> bool:
 	return is_rollable(entry) and (entry as Dictionary).has("roll")
@@ -135,12 +136,16 @@ static func reveal(entry) -> bool:
 	var n: int = roll_of(entry)
 	var msg: String
 	var color: Color = WEAPON_COLOR
+	# What the roll moves: Stun on a weapon, the card's own Upgrade Type on a card
+	# (a Shrug it Off -1 gives a Shield less).
+	var what: String = "Stun" if w != null else ", ".join(Array(
+		LootUpgrade.types_of(entry)).map(func(t): return String(t).capitalize()))
 	if n < 0:
-		msg = "%s is CURSED: %d Stun, and stuck where it sits until the curse is lifted." % [
-			name, n]
+		msg = "%s is CURSED: %d %s, and stuck where it sits until the curse is lifted." % [
+			name, n, what]
 		color = UITheme.DANGER
 	elif n > 0:
-		msg = "%s is +%d: +%d Stun." % [name, n, n]
+		msg = "%s is +%d: +%d %s." % [name, n, n, what]
 	else:
 		msg = "%s is an ordinary %s." % [name, name]
 	Notifications.notify(msg, color, LootPassives.load_weapon_art(w) if w != null
@@ -346,16 +351,23 @@ static func plus_of(entry) -> int:
 	return LootUpgrade.bonus_of(entry) + (roll_of(entry) if roll_known(entry) else 0)
 
 # " +2" for an upgraded weapon, " -1" for a downgraded one, " +?" for one whose
-# roll is not known yet, and "" for any other piece.
+# roll is not known yet, and "" for any other piece. An UNKNOWN roll on a piece
+# that has been upgraded reads " +1?" (the owner, 17 Nov 2026): the upgrade is
+# known, the question mark is the roll still hidden on top of it.
 static func plus_suffix(entry) -> String:
 	if not roll_known(entry):
-		return " +?"
+		return hidden_plus(entry)
 	var n: int = plus_of(entry)
 	if n > 0:
 		return " +%d" % n
 	if n < 0:
 		return " -%d" % absi(n)
 	return ""
+
+# " +?" for a hidden roll, " +1?" once the piece has been upgraded on top of it.
+static func hidden_plus(entry) -> String:
+	var known: int = LootUpgrade.bonus_of(entry)
+	return " +%d?" % known if known > 0 else " +?"
 
 # Lightning Ring's Replays — how many strikes past the first each swing makes.
 static func replays_of(entry) -> int:

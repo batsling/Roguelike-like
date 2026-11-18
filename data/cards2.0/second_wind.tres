@@ -15,3 +15,4 @@ file = "SecondWind"
 icon = "Slay_The_Spire_Ironclad_Uncommon"
 loot_type = "Usable"
 tags = PackedStringArray("ironclad")
+upgrade_types = PackedStringArray("shield")

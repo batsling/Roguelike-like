@@ -104,21 +104,15 @@ func play_card(entry: Dictionary, ctx: Dictionary = {}) -> Dictionary:
 	# one reads what an earlier one left here; nothing outlives the play.
 	var tally := {"destroyed": 0, "hit": 0,
 		"cards_used": GameState.cards_used_this_game}
-	# AN UPGRADED ATTACK (LootUpgrade): +1 to every Stun clause's own number per
-	# upgrade, BEFORE `per` multiplies it — an upgraded Fiend Fire is Stun 2 for each
-	# loot destroyed (the owner, 14 Nov 2026). Only `stun`: Bullseye's Marked is not
-	# Stun and does not grow.
-	# AN UNIDENTIFIED ATTACK'S ROLL (Retro Bat, docs/players-design.md §5) is added
-	# the same way, known or not: -2..+2 on each Stun clause, never below 0 — or 1,
-	# once a curse on it has been lifted.
-	var upgraded: int = LootUpgrade.bonus_of(entry) + WeaponSystem.roll_of(entry)
-	var floor_stun: int = 1 if bool(entry.get("uncursed", false)) else 0
+	# AN UPGRADED CARD (LootUpgrade): +1 per upgrade to each clause its Upgrade Type
+	# grows, BEFORE `per` multiplies it — an upgraded Fiend Fire is Stun 2 for each
+	# loot destroyed (the owner, 14 Nov 2026), an upgraded Stack 2 Shield per card.
+	# AN UNIDENTIFIED CARD'S ROLL (Retro Bat, docs/players-design.md §5) moves the
+	# same numbers, known or not, -2..+2 — and can take a Shield clause below 0
+	# (LootUpgrade.grown has the floors).
 	for e in card.effect:
 		if e is Dictionary:
-			if upgraded != 0 and String(e.get("op", "")) == "stun":
-				e = (e as Dictionary).duplicate()
-				e["value"] = maxi(floor_stun, int(e.get("value", 1)) + upgraded)
-			_apply_one(e, out, rng, ctx, tally)
+			_apply_one(LootUpgrade.grown(entry, e), out, rng, ctx, tally)
 	notify_used(card)
 	return out
 
@@ -155,13 +149,18 @@ func _apply_one(effect: Dictionary, out: Dictionary,
 		"destroy_row":
 			_destroy_row(out, ctx, tally)
 		"destroy_pick":
-			out["requests"].append({"kind": "destroy_loot",
-				"count": maxi(1, int(effect.get("value", 1))),
-				"candidates": GameState.loot_items.duplicate()})
+			# A downgrade can bring the count to 0: nothing to destroy.
+			if int(effect.get("value", 1)) > 0:
+				out["requests"].append({"kind": "destroy_loot",
+					"count": int(effect.get("value", 1)),
+					"candidates": GameState.loot_items.duplicate()})
 		"charge_pick":
-			out["requests"].append({"kind": "charge_loot",
-				"amount": maxi(1, int(effect.get("value", 1))),
-				"candidates": GameState.chargeable_things()})
+			if int(effect.get("value", 1)) > 0:
+				out["requests"].append({"kind": "charge_loot",
+					"amount": int(effect.get("value", 1)),
+					"candidates": GameState.chargeable_things()})
+			else:
+				out["logs"].append("No charges to give.")
 		"exhume":
 			out["requests"].append({"kind": "exhume"})
 		"double_stat":
@@ -402,8 +401,16 @@ func _gain_stat(effect: Dictionary, out: Dictionary) -> void:
 		# Gold's own setter, for the reason _double_stat gives (VIII - Justice).
 		GameState.change_gold(value)
 	else:
+		# A DOWNGRADED Shield card takes Shield away (LootUpgrade) — what is had,
+		# and no further.
+		var before: int = int(GameState.get(stat)) if stat in GameState else 0
 		GameState.grant_run_stat(stat, value)
-	out["logs"].append("+%d %s." % [value, _stat_word(stat)])
+		if value < 0:
+			var lost: int = before - (int(GameState.get(stat)) if stat in GameState else 0)
+			out["logs"].append("-%d %s." % [lost, _stat_word(stat)] if lost > 0
+				else "You have no %s to lose." % _stat_word(stat))
+			return
+	out["logs"].append("%+d %s." % [value, _stat_word(stat)])
 
 
 # WHAT THE THREE TWOS DO. Double what you are holding; where you are holding none,

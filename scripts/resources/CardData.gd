@@ -87,6 +87,9 @@ extends Resource
 # Echo Form: while held, the FIRST piece of loot used in each game plays this many
 # additional copies (GameState.extra_loot_copies).
 @export var echo_first_loot: int = 0
+# Credit Card: while held, a shop purchase may take Gold down to -this
+# (GameState.gold_debt_limit). Copies add up.
+@export var gold_debt: int = 0
 # The sheet's `Type`: "Usable" or "Passive", drawn as a chip on the card — or
 # "Curse" for a CURSE CARD (below), which comes from the `curses` sheet instead.
 @export var loot_type: String = "Usable"
@@ -119,6 +122,10 @@ extends Resource
 # The sheet's `Tags` — what family the card belongs to (joker, tarot,
 # playing_card). A starting loadout's "1 random joker card" draws from these.
 @export var tags: PackedStringArray = PackedStringArray()
+# The sheet's `Upgrade Type`, lower-cased: what an Upgrade grows on this card
+# (stun, shield, charge, potion, loot, destroy — LootUpgrade.grows). Empty: the
+# card cannot be upgraded, and is never found unidentified (docs/loot-passives.md §19).
+@export var upgrade_types: PackedStringArray = PackedStringArray()
 
 
 func is_passive() -> bool:
