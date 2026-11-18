@@ -53,7 +53,7 @@ const PAD_X := 12
 const PAD_Y := 4
 
 # How far off the bottom edge the stack floats when nothing else is down there.
-const BOTTOM_MARGIN := 16.0
+const BOTTOM_MARGIN := 6.0
 const SIDE_MARGIN := 16.0
 
 var _stack: VBoxContainer

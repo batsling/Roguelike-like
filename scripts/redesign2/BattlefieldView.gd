@@ -313,7 +313,10 @@ func shows_player() -> bool:
 # there. So the cells are fitted to a WIDTH BUDGET instead — big and readable at
 # 4x4, tighter as the ground opens up — which keeps the board inside the column
 # it shares with the offering at every tier.
-const CELL_MAX: int = 90            # cell edge on the smallest board
+# 94 rather than 90 (the owner, 18 Nov 2026: "lets make the grid a little
+# larger"): 16px more board on a 4x4, which is what the gap under the board could
+# give while still holding the two toasts that stand there.
+const CELL_MAX: int = 94            # cell edge on the smallest board
 const CELL_MIN: int = 44            # never smaller than this, whatever the tier
 const CELL_SEP: int = 6
 # How wide the grid itself (cells + gutters, excluding the hero and the off-field
@@ -332,7 +335,7 @@ const FIELD_WIDTH_BUDGET: int = 470
 # scrolling, and a board fitted only across still ran a 7x7 grid off the bottom
 # of one. It binds on nothing but the big boards — a 4x4 is capped by CELL_MAX
 # long before either budget is the constraint.
-const FIELD_HEIGHT_BUDGET: int = 384
+const FIELD_HEIGHT_BUDGET: int = 400
 # …and what it drops to when something is mounted UNDER the board — a node's shop,
 # or the machines standing at this game. The right column is 626px of a 688px
 # page with about five pixels to spare, so a panel below the board has nowhere to
