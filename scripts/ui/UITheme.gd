@@ -1186,15 +1186,26 @@ const BATS_SHADER := preload("res://shaders/menu_bats.gdshader")
 const BATS_ART := preload("res://images2.0/custom/menu_bat.png")
 
 
-static func bat_backdrop() -> ColorRect:
+# QUIET is the run page's version (the owner, 18 Nov 2026): the same bats, pulled
+# most of the way down to the page colour, so the panels in front of them are the
+# brightest thing on screen rather than the wallpaper. The full-strength pattern
+# stays where nothing is being read over it.
+const BATS_QUIET := 0.6
+
+static func bat_backdrop(quiet: bool = false) -> ColorRect:
 	var rect := ColorRect.new()
 	rect.set_anchors_preset(Control.PRESET_FULL_RECT)
 	rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var mat := ShaderMaterial.new()
 	mat.shader = BATS_SHADER
 	mat.set_shader_parameter("bat", BATS_ART)
-	mat.set_shader_parameter("base", PALETTES[PALETTE]["bat_ground"])
-	mat.set_shader_parameter("ink", PALETTES[PALETTE]["bat"])
+	var ground: Color = PALETTES[PALETTE]["bat_ground"]
+	var ink: Color = PALETTES[PALETTE]["bat"]
+	if quiet:
+		ground = ground.lerp(BG_DEEP, BATS_QUIET)
+		ink = ink.lerp(BG_DEEP, BATS_QUIET * 0.5)
+	mat.set_shader_parameter("base", ground)
+	mat.set_shader_parameter("ink", ink)
 	rect.material = mat
 	rect.resized.connect(func() -> void: mat.set_shader_parameter("size", rect.size))
 	return rect

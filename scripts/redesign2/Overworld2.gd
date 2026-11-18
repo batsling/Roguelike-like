@@ -7950,7 +7950,7 @@ func _build_ui() -> void:
 	# previous run's shop would leave every later board fitted for a column it is
 	# no longer sharing.
 	BattlefieldView.set_sharing_column(false)
-	add_child(UITheme.bat_backdrop())
+	add_child(UITheme.bat_backdrop(true))
 	# The page is taller than a screen (HUD, choices, play panel, battlefield, log),
 	# so host it in a ScrollContainer — everything stays reachable and the battlefield
 	# no longer falls off the bottom on short displays.
