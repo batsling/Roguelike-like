@@ -1216,10 +1216,10 @@ static func _ch_screen() -> Dictionary:
 				+ "Amulet, rung by rung, with your shops marked. It lives in the "
 				+ "offering's heading row, and on every offered card — a card's "
 				+ "own button routes the path as it would be if you took it."),
-			_kv("🗺 Map", "The star chart, with the road ahead drawn over it. It "
-				+ "lives in the header, so it opens from anywhere in a run."),
-			_kv("✦ Atlas", "The same star chart opened from the menus, with no run "
-				+ "on it. Not a run tool — a thing to look at."),
+			_kv("🗺 Map", "The Optimal Path from where you stand. It lives in the "
+				+ "header, so it opens from anywhere in a run, mid-game included."),
+			_kv("✦ Atlas", "The star chart of every game, opened from the "
+				+ "Collection. Not a run tool — a thing to look at."),
 			_kv("Collection", "Every item, scroll, enemy, event and status in the "
 				+ "game, and whether you have met it."),
 			_kv("🏆 Tier List", "Your own ranking of every game you have beaten, "

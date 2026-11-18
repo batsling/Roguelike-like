@@ -2037,6 +2037,15 @@ func scramble() -> bool:
 # corridor back in frame — and the window drags out of the way by its header,
 # since the sky underneath stays live.
 
+# NO STAR CHART IN A RUN, FOR NOW (the owner, 18 Nov 2026: "lets take the atlas
+# out of the in run game for now, i think the optimal path works and also i have
+# a different idea for a map"). Every door to the map from the run page — the
+# header's Map, the offering's Optimal Path, a card's preview — opens the ladder
+# alone, and the window does not offer to raise the chart. The Atlas itself is
+# untouched and still opens from the Collection. One switch, so turning it back
+# on is this line.
+const RUN_ATLAS := false
+
 # The run's own map: from where the player stands to the Amulet, with the games
 # currently on offer flagged.
 func open_map() -> Node:
@@ -2112,7 +2121,9 @@ func _open_route_map(origin: StringName, choice_ids: Array, options: Dictionary)
 	# stranded underneath with no way back to it.
 	_dismiss_route_map()
 	var opts: Dictionary = options.duplicate()
-	var wants_chart: bool = bool(opts.get("chart", true)) and load(ATLAS_VIEW_SCRIPT).load_layout() != null
+	var wants_chart: bool = RUN_ATLAS and bool(opts.get("chart", true)) \
+		and load(ATLAS_VIEW_SCRIPT).load_layout() != null
+	opts["offer_chart"] = RUN_ATLAS
 	opts.erase("chart")
 	if wants_chart:
 		var atlas = load(ATLAS_VIEW_SCRIPT).new()
@@ -4903,19 +4914,28 @@ func _sync_combat_button() -> void:
 		if _combat_button != null and is_instance_valid(_combat_button):
 			_combat_button.visible = false
 		return
-	_ensure_peek_layer()
 	if _combat_button == null or not is_instance_valid(_combat_button):
-		# The danger plate, because it is the button to the fight.
-		_combat_button = UITheme.action_button("⚔ Combat", UITheme.DANGER,
-			Vector2(0, 32), UITheme.FONT_BODY)
-		_combat_button.name = "CombatButton"
-		_combat_button.tooltip_text = ("See the battlefield behind this screen — hover "
-			+ "the bodies, read the ground, pick up loot off the floor. Back brings "
-			+ "this screen back.")
-		_combat_button.pressed.connect(func(): peek_board(false))
+		# No header to stand in (a page torn down mid-frame): the old floating spot.
+		_ensure_peek_layer()
+		_combat_button = _build_combat_button()
 		_peek_layer.add_child(_combat_button)
+		_place_top_right(_combat_button)
 	_combat_button.visible = true
-	_place_top_right(_combat_button)
+
+# THE BUTTON LIVES IN THE HEADER (the owner, 18 Nov 2026). It used to float at the
+# top right on a layer of its own, which put it over the pack strip's Full button
+# and the corner of every panel it opened above. The header is already the row no
+# modal can cover, so it stands there, hidden until a screen covers the board.
+func _build_combat_button() -> Button:
+	# The danger plate, because it is the button to the fight.
+	var b := UITheme.action_button("⚔ Combat", UITheme.DANGER, Vector2(0, 0),
+		UITheme.FONT_BODY)
+	b.name = "CombatButton"
+	b.tooltip_text = ("See the battlefield behind this screen — hover the bodies, read "
+		+ "the ground, pick up loot off the floor. Back brings this screen back.")
+	b.pressed.connect(func(): peek_board(false))
+	b.visible = false
+	return b
 
 # Once a frame, because the screens that cover the board open and close from a
 # dozen places and none of them should have to know about this: show or hide the
@@ -8054,6 +8074,8 @@ func _build_ui() -> void:
 	# modal and no scroll position can put it away.
 	# The radio leads the three: History and the Map are a pair about the run,
 	# and the Map sits against the Menu, so the one about the music stands apart.
+	_combat_button = _build_combat_button()
+	header.add_child(_combat_button)
 	header.add_child(_build_radio_button())
 	header.add_child(_build_history_button())
 	header.add_child(_build_map_button())
@@ -8145,8 +8167,7 @@ func _build_ui() -> void:
 	select_head_row.add_child(_select_head)
 	var map_btn := HoverButton.new()
 	map_btn.text = "→  Optimal Path"
-	map_btn.tooltip_text = ("The shortest road from here to the Amulet, rung by rung. "
-		+ "The star chart is the 🗺 Map button in the header.")
+	map_btn.tooltip_text = "The shortest road from here to the Amulet, rung by rung."
 	map_btn.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	map_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	map_btn.pressed.connect(open_optimal_path)
@@ -8541,10 +8562,23 @@ func _build_ui() -> void:
 	# a CanvasLayer has no rect to anchor to, which parks the stack off-screen.
 	_toasts = NotificationToasts.new()
 	add_child(_toasts)
+	# …in the lane under the board: the right column's x and width (see
+	# NotificationToasts.set_lane). Followed as the column moves, since it is
+	# laid out after this and re-laid out on every resize.
+	if _right_col != null:
+		_right_col.resized.connect(_fit_toast_lane)
+		_right_col.item_rect_changed.connect(_fit_toast_lane)
+		_fit_toast_lane.call_deferred()
 	# …and the stack starts BELOW the header bar, which is opaque and drawn over
 	# the toasts' layer: its own 56px inset was written against a page with no bar
 	# pinned across the top of it.
 	_fit_page_under_header()
+
+func _fit_toast_lane() -> void:
+	if _toasts == null or not is_instance_valid(_toasts) or _right_col == null \
+			or not is_instance_valid(_right_col) or _right_col.size.x <= 0.0:
+		return
+	_toasts.set_lane(_right_col.global_position.x - global_position.x, _right_col.size.x)
 
 # --- the header, pinned to the screen --------------------------------------
 
@@ -8792,8 +8826,10 @@ func _clear(box: Control) -> void:
 func _build_map_button() -> Button:
 	var b := HoverButton.new()
 	b.text = "🗺  Map"
-	b.tooltip_text = ("The star chart: every game in the run's catalog, with the road "
-		+ "ahead drawn over it. Open from anywhere, including mid-game.")
+	b.tooltip_text = ("The road from here to the Amulet. Open from anywhere, "
+		+ "including mid-game.") if not RUN_ATLAS else ("The star chart: every game "
+		+ "in the run's catalog, with the road ahead drawn over it. Open from "
+		+ "anywhere, including mid-game.")
 	b.pressed.connect(open_map)
 	_header_map_btn = b
 	return b

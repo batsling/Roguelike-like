@@ -6208,7 +6208,7 @@ func test_the_amulet_report_says_the_goal_is_a_bonus() -> void:
 		"and the panel says what actually wins")
 
 # ---------------------------------------------------------------------------
-# The map: the star chart, with the ladder floating over it
+# The map: the ladder (the in-run star chart is off — Overworld2.RUN_ATLAS)
 # ---------------------------------------------------------------------------
 
 func _chart() -> AtlasView:
@@ -6217,18 +6217,24 @@ func _chart() -> AtlasView:
 			return c
 	return null
 
-func test_the_map_is_the_star_chart_with_the_ladder_over_it() -> void:
+# THE RUN OPENS NO STAR CHART (Overworld2.RUN_ATLAS, the owner, 18 Nov 2026):
+# the header's Map is the ladder alone, and the window does not offer to raise
+# the chart. The tests of the chart-under-the-ladder are in git history from
+# before that switch, for whenever it comes back.
+func test_the_map_is_the_ladder_without_the_star_chart() -> void:
+	assert_false(OVERWORLD.RUN_ATLAS, "the in-run star chart is switched off")
 	var modal = _ui.open_map()
 	assert_not_null(modal, "the Map button opens something")
-	var atlas: AtlasView = _chart()
-	assert_not_null(atlas, "and what it opens is the star chart")
-	if atlas == null or modal == null:
+	assert_null(_chart(), "and it is not the star chart")
+	if modal == null:
 		return
-	assert_true(atlas.is_ancestor_of(modal),
-		"with the ladder mounted over it, so closing the chart takes it along")
-	assert_eq(modal.mouse_filter, Control.MOUSE_FILTER_IGNORE,
-		"the ladder is a window, not a modal — the sky under it stays live")
-	assert_eq(atlas.preview_origin, &"", "the run's own map routes from where you stand")
+	assert_null(modal._atlas, "the ladder has no chart under it")
+	assert_null(_star_chart_button(modal), "nor offers to raise one")
+	var slot: StringName = _ui._choices[0]["slot"] if not _ui._choices.is_empty() else &""
+	if slot != &"":
+		var card = _ui.preview_map(slot)
+		assert_null(_chart(), "a card's map raises no chart either")
+		assert_null(_star_chart_button(card), "nor offers one")
 
 func test_the_ladder_window_can_be_moved_but_not_lost() -> void:
 	var modal = _ui.open_map()
@@ -6240,100 +6246,20 @@ func test_the_ladder_window_can_be_moved_but_not_lost() -> void:
 		"and can't be dragged under the header bar that is drawn over it…")
 	assert_gt(modal.panel_position().x + modal._panel.size.x, 0.0, "…or off the side")
 
-# THE WAY OFF THE CHART.
-#
-# The chart is a full-screen page whose header — the title, the search box, the
-# ✦ jump buttons and CLOSE — is its first row. The run's header bar is pinned to
-# the top of the screen on a layer above it and is opaque, so a chart drawn from
-# y=0 had that entire row eaten and no way back to the run but the Esc key.
-func test_the_chart_opens_below_the_runs_header_bar() -> void:
-	_ui.open_map()
-	var atlas: AtlasView = _chart()
-	assert_not_null(atlas)
-	if atlas == null:
-		return
-	var bar: float = ModalScaffold.reserved_top
-	assert_gt(bar, 0.0, "the run's header bar is standing on the top of the screen")
-	assert_almost_eq(atlas.position.y, bar, 0.5,
-		"so the chart starts under it rather than beneath it")
-	assert_not_null(_close_button(atlas), "and its way out is on screen")
-
-func test_the_chart_can_be_closed_back_to_the_run() -> void:
-	_ui.open_map()
-	var atlas: AtlasView = _chart()
-	if atlas == null:
-		pending("the run did not reach this case (atlas == null)")
-		return
-	var close: Button = _close_button(atlas)
-	assert_not_null(close, "the chart carries a way back")
-	if close == null:
-		return
-	close.pressed.emit()
-	await wait_frames(2)
-	assert_null(_chart(), "pressing it puts the run back in front")
-
-# The chart's own Close, wherever the header put it.
-func _close_button(node: Node) -> Button:
-	for child in node.get_children():
-		if child is Button and (child as Button).text.contains("Back"):
-			return child
-		var found: Button = _close_button(child)
-		if found != null:
-			return found
-	return null
-
-func test_clicking_a_game_on_the_ladder_finds_it_on_the_chart() -> void:
-	var modal = _ui.open_map()
-	var atlas: AtlasView = _chart()
-	if atlas == null or not atlas.has_layout():
-		pending("the baked atlas layout is missing — run tools/bake_atlas.py")
-		return
-	assert_true(modal.show_on_chart(GameState.amulet_game_id), "the chart takes the click")
-	assert_eq(atlas.layout.id_at(atlas.selected_index()), GameState.amulet_game_id,
-		"and lands on that game")
-
-func test_a_card_map_draws_that_cards_route_on_the_chart() -> void:
-	var slot: StringName = _ui._choices[0]["slot"]
-	var modal = _ui.preview_map(slot)
-	var atlas: AtlasView = _chart()
-	assert_not_null(atlas, "a card's map opens the chart too")
-	if atlas == null or not atlas.has_layout():
-		return
-	assert_eq(atlas.preview_origin, slot, "routed from the game on the card")
-	assert_eq(atlas.preview_index(), atlas.layout.index_of(slot))
-	assert_true(atlas.marker_text(atlas.preview_index()).contains("IF YOU GO HERE"),
-		"and the chart says which star that is")
-	# The corridor drawn on the sky IS the ladder in the window: same DAG, edge
-	# for edge, from the candidate rather than from where the player stands.
-	var dag: Dictionary = RunGraph.shortest_path_dag(slot, GameState.amulet_game_id)
-	var expected: int = 0
-	for edge in dag.get("edges", []):
-		# A step through a rift is not an influence, so the chart leaves it out
-		# (docs/rifts-design.md §9) while the ladder walks it.
-		if RunGraph.is_rift_game(StringName(edge["from"])) \
-				or RunGraph.is_rift_game(StringName(edge["to"])):
-			continue
-		if atlas.layout.index_of(StringName(edge["from"])) >= 0 \
-				and atlas.layout.index_of(StringName(edge["to"])) >= 0:
-			expected += 1
-	assert_eq(atlas.trail_segment_count(), expected,
-		"the chart's route and the ladder's influence edges are the same graph")
-	assert_eq(modal.shortest_distance(), _ui.steps_to_amulet(slot))
-
 func test_the_start_pickers_map_is_the_ladder_alone() -> void:
 	# The picker's map raises NO star chart. It used to withhold the destination as
 	# well, which is over — the ladder names it (below) — but the sky stays down:
 	# the question on that panel is "which of these three roads", the ladder is the
 	# answer to it, and 852 stars with nothing on them to orient by (the run has no
-	# position yet) is not. The chart is one button away on the window itself.
+	# position yet) is not.
 	_ui.start_run()
 	var modal = _ui.preview_map(_ui._start_options[0]["game"].id)
 	assert_null(_chart(), "no star chart from the start picker")
 	var amulet: GameData = Data.get_game(GameState.amulet_game_id)
 	assert_eq(modal.node_name(GameState.amulet_game_id), amulet.display_name,
 		"but the ladder still names the destination")
-	assert_not_null(_star_chart_button(modal),
-		"and the window offers to raise the chart for anyone who wants it")
+	assert_null(_star_chart_button(modal),
+		"and, with the in-run chart switched off, does not offer one")
 
 # The map window's "✦ Star chart" button, wherever its tools row put it.
 func _star_chart_button(node: Node) -> Button:

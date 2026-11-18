@@ -34,14 +34,23 @@ extends Control
 # lands first. The corner is the left column's foot, which on every phase holds
 # the least load-bearing line on the page (the "Last game:" recap, the escape
 # hint, the haul screen's footer prompt), and never the board.
+#
+# AND THE LANE IS THE GAP UNDER THE BOARD NOW (the owner, 18 Nov 2026). The left
+# column's foot turned out not to be free: a full checklist runs the column down to
+# the Completed / Escape buttons, and three wrapped toasts climbed straight over
+# them. Under the board, the right column ends early on every phase and nothing
+# is ever drawn there, so the page hands its lane to the stack (`set_lane`) —
+# the right column's x and width — and the stack keeps to it: TWO at most, one
+# line each (the whole sentence is in History), so it never grows into the board.
+# A page that hands over no lane (a screen without a board) keeps the old corner.
 const HOLD_TIME := 2.6
 const FADE_IN := 0.18
 const FADE_OUT := 0.35
 const TOAST_W := 400.0
-const MAX_VISIBLE := 3
+const MAX_VISIBLE := 2
 const STRIPE_W := 5
 const PAD_X := 12
-const PAD_Y := 6
+const PAD_Y := 4
 
 # How far off the bottom edge the stack floats when nothing else is down there.
 const BOTTOM_MARGIN := 16.0
@@ -82,6 +91,18 @@ func _ready() -> void:
 
 	Notifications.notified.connect(_on_notified)
 
+# Put the stack in a lane of its own: `left` px from the screen's left edge,
+# `width` px wide, still standing on the foot of the screen. Every toast is cut to
+# one line at that width.
+var _lane_w: float = TOAST_W
+
+func set_lane(left: float, width: float) -> void:
+	if _stack == null or not is_instance_valid(_stack) or width <= 0.0:
+		return
+	_lane_w = width
+	_stack.offset_left = left
+	_stack.offset_right = left + width
+
 # Lift the stack clear of whatever else is standing at the foot of the screen.
 # Called by the overworld as its shop pointer comes and goes; 0 puts the stack
 # back on the bottom margin.
@@ -115,7 +136,7 @@ func _apply_bottom_inset() -> void:
 # the pack fires, the notice carries its picture, drawn to the left of the line at
 # the size the eye reads before the words — "the penny went off" should be a thing
 # the player sees, not a sentence they have to read to find out which penny.
-const ICON_SIZE := 32
+const ICON_SIZE := 22
 
 # Live toasts by source key, so a burst from one source stacks (see `_restack`).
 var _by_key: Dictionary = {}
@@ -156,15 +177,20 @@ func _on_notified(text: String, color: Color, icon: Texture2D = null, key: Strin
 
 	var lbl := Label.new()
 	lbl.text = text
-	lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	# ONE LINE: a toast is a headline, and History holds the sentence. The full
+	# text rides the tooltip-less label's ellipsis rather than a second line, so
+	# the lane is the same height whatever was said.
+	lbl.autowrap_mode = TextServer.AUTOWRAP_OFF
+	lbl.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	lbl.clip_text = true
 	lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	lbl.add_theme_color_override("font_color", Color(0.97, 0.97, 0.97))
-	lbl.add_theme_font_size_override("font_size", UITheme.FONT_LABEL)
+	lbl.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 	lbl.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	lbl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	# The width the column gives it, less the picture beside it: a wrapping Label
 	# reports a minimum of about one character otherwise.
-	var room: float = TOAST_W - STRIPE_W - 1 - PAD_X * 2
+	var room: float = _lane_w - STRIPE_W - 1 - PAD_X * 2
 	if pic != null:
 		room -= ICON_SIZE + UITheme.GAP_WIDE
 	lbl.custom_minimum_size = Vector2(room, 0)
