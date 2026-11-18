@@ -2665,12 +2665,10 @@ func report(beaten: bool, fulfilled: Variant = null, escaped: bool = false,
 			# game ranks' PERFECTED visit (Performance Based Health Insurance).
 			if perfect_visit:
 				TriggerBus.game_perfected.emit({"game_id": played_game.id})
-		# THE GAME'S OWN LOOT (§4.3): one piece, a straight 50/50 between a scroll
-		# and a pill, asked about the way a kill drop is. On the same terms as the
-		# trigger above — any game seen through, win or lose — because what it pays
-		# for is the evening spent on it. An ESCAPE is the one report that earns
-		# none of it, which is why this sits inside the `not escaped` block.
-		_queue_loot_drop()
+		# NO GAME'S OWN LOOT any more (the owner, 18 Nov 2026: "lets get rid of the
+		# extra loot from beating the game, it's not necessary"). A game pays its
+		# chest and what the bodies cleared at it drop; `_queue_loot_drop` stays
+		# for the tests that drive the queue directly.
 
 	# WHERE THE RUN HAS BEEN. Every report is a game played, whatever it said: a
 	# missed goal was still an evening spent on that game, and so was walking away

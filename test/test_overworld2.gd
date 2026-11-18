@@ -70,9 +70,9 @@ func _say_no(host) -> void:
 	if panel != null:
 		panel.dismiss()
 
-# How many RELIC drops are waiting. Every report also queues the game's own loot
-# payout (§4.3) — a scroll or a pill, asked about in the same queue — so a raw
-# _drop_queue.size() no longer counts what these tests are about.
+# How many RELIC drops are waiting. Loot payouts (a grant, a relic's pay) ride the
+# same queue, so a raw _drop_queue.size() does not count what these tests are
+# about.
 func _item_drops() -> int:
 	var n: int = 0
 	for d in _ui._drop_queue:
