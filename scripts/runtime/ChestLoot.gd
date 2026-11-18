@@ -57,7 +57,10 @@ static func description(entry: Dictionary) -> String:
 		"boss relics" if is_boss(entry) else ("relic" if n == 1 else "relics"), gold(entry)]
 
 # The picture: the chest icon the player wears (Customization), picked by size,
-# or the game's own pixel chest in the size's colour.
+# or the same gift the chest's popup draws (ItemDropModal._gift_badge), rendered
+# to images2.0/general/Chest*.png in that popup's colour for each size — so the
+# chest in the pack, on the table, under the grid and in its popup is one picture
+# (the owner, 18 Nov 2026).
 static func art_texture(entry: Dictionary) -> Texture2D:
 	var level: int = CosmeticCatalog.BOSS_CHEST if is_boss(entry) else rank(entry)
 	var worn: Texture2D = Cosmetics.glyph_texture("🎁", level)

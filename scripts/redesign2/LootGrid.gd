@@ -1464,7 +1464,7 @@ static func _cell_body(entry: Dictionary, use_cb: Callable, locked_now: bool,
 			bottom = _weapon_button(entry, use_cb, locked_now)
 		else:
 			var use := UITheme.confirm_button("Zap" if wand else ("Open" if chest else "Use"),
-				Vector2(0, LootSlot.USE_H), 10)
+				Vector2(0, LootSlot.USE_H), UITheme.FONT_MICRO)
 			use.disabled = locked_now
 			# NOT "this is how an unknown one gets identified" any more: a use only
 			# identifies a piece when it actually DID something (LootSystem's spend
@@ -1558,8 +1558,8 @@ static func _tighten(btn: Button) -> void:
 		var box: StyleBox = btn.get_theme_stylebox(state).duplicate()
 		box.content_margin_top = 0
 		box.content_margin_bottom = 0
-		box.content_margin_left = 5
-		box.content_margin_right = 5
+		box.content_margin_left = 3
+		box.content_margin_right = 3
 		if box is StyleBoxFlat:
 			(box as StyleBoxFlat).set_corner_radius_all(5)
 		btn.add_theme_stylebox_override(state, box)
@@ -1670,7 +1670,7 @@ static func _weapon_button(entry: Dictionary, use_cb: Callable, locked_now: bool
 		charging.add_child(cell)
 		return charging
 	var use := UITheme.confirm_button("Evolve" if evolvable else "Swing",
-		Vector2(0, LootSlot.USE_H), 10)
+		Vector2(0, LootSlot.USE_H), UITheme.FONT_MICRO)
 	use.name = "WeaponButton"
 	use.disabled = locked_now
 	use.tooltip_text = "It can evolve — open it to choose." if evolvable \

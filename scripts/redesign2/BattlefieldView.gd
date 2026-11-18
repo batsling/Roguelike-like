@@ -1798,6 +1798,8 @@ func _fill_reward_strip() -> void:
 		(", and %d piece%s of loot off the board" % [loot.size(), "" if loot.size() == 1 else "s"])
 			if not loot.is_empty() else ""]
 
+# One chest SIZE on the strip: its count, then the popup's own badge — the gift,
+# its glow and its stars arced over it (ItemDropModal.gift_badge), compact.
 func _chest_badge(count: int, size: int, boss: bool) -> Control:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", UITheme.GAP_TIGHT)
@@ -1805,21 +1807,10 @@ func _chest_badge(count: int, size: int, boss: bool) -> Control:
 	n.text = "%d" % count
 	n.add_theme_font_size_override("font_size", UITheme.FONT_LABEL)
 	n.add_theme_color_override("font_color", UITheme.TEXT)
+	n.size_flags_vertical = Control.SIZE_SHRINK_END
 	row.add_child(n)
-	var tint: Color = UITheme.ITEM_CLASS_COLORS[5] if boss else RarityStyle.color(size)
-	var gift := Label.new()
-	gift.text = "🎁"
-	gift.add_theme_font_size_override("font_size", UITheme.FONT_HEAD)
-	gift.add_theme_color_override("font_color", ItemDropModal.CHEST_GOLD.lerp(tint, 0.25))
-	gift.set_meta("glyph_level", CosmeticCatalog.BOSS_CHEST if boss else size)
-	row.add_child(gift)
-	Cosmetics.apply_glyph(gift)
-	var stars := Label.new()
-	stars.text = ItemDropModal.STAR_GLYPH.repeat(size + 1)
-	stars.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
-	stars.add_theme_color_override("font_color", tint.lerp(Color.WHITE, 0.25))
-	stars.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-	row.add_child(stars)
+	var badge: Control = ItemDropModal.gift_badge("🎁", size, boss, true)
+	row.add_child(badge)
 	return row
 
 func refresh() -> void:

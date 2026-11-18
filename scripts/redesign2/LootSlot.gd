@@ -109,10 +109,13 @@ const NAME_H := 30
 # with its neighbours'). A longer name ends in an ellipsis; the hover card carries
 # the whole of it.
 const NAME_LINE := 15
-const USE_H := 18
+# 15 and 32, down from 18 and 38 (the owner, 18 Nov 2026: "the use/open/others
+# buttons on loot can be a little smaller so they don't take up a lot of the
+# image"), with their text a step smaller to match (LootGrid, FONT_MICRO).
+const USE_H := 15
 # The Use / Zap / Swing pill laid over a pack cell's art: its least width, and how
 # far it sits up off the cell's bottom edge (LootGrid._overlaid).
-const USE_W := 38
+const USE_W := 32
 const USE_INSET := 3
 const GAP := 3
 

@@ -746,6 +746,10 @@ func _left_column() -> Control:
 	return col
 
 var _inv_row: HBoxContainer = null
+# Narrower than the Full Inventory's own 250 + 330: the table beside them grows a
+# column for every few pieces a big evening drops, and it needs the room.
+const INV_CHAR_W := 220.0
+const INV_ITEMS_W := 220.0
 var _inv_dirty: bool = false
 
 # Redraw the two inventory columns from the run as it stands: a relic out of a
@@ -756,8 +760,8 @@ func _fill_inventory() -> void:
 	for c in _inv_row.get_children():
 		_inv_row.remove_child(c)
 		c.queue_free()
-	_inv_row.add_child(_inv._character_column())
-	_inv_row.add_child(_inv._items_column())
+	_inv_row.add_child(_inv._character_column(INV_CHAR_W))
+	_inv_row.add_child(_inv._items_column(INV_ITEMS_W))
 
 # WHO IS STILL FOLLOWING YOU, BY FACE — the bottom of the left column.
 #
@@ -886,7 +890,7 @@ func _right_column() -> Control:
 # and held to the 3x3's box it was drawn at half size with the left column beside
 # it mostly air. So it may take the frame's width less what the left column keeps
 # (`LEFT_MIN`) — the pack only shrinks once the screen genuinely cannot hold it.
-const LEFT_MIN := 600.0
+const LEFT_MIN := INV_CHAR_W + INV_ITEMS_W + 16.0
 
 func _payout_budget() -> float:
 	var frame_w: float = get_viewport_rect().size.x - INSET_X * 2.0 - 14.0 * 2.0 - 4.0

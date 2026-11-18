@@ -430,8 +430,14 @@ static func gold_text(gold: int, chests: int = 1) -> String:
 # The gift, the glow behind it and the stars over it. Built from plain Labels on a
 # fixed-size Control so the whole badge can be bounced as one thing.
 func _gift_badge(glyph: String, compact: bool) -> Control:
-	var rank: int = chest_rank(_items.size())
-	var tint: Color = RarityStyle.color(rank)
+	return gift_badge(glyph, chest_rank(_items.size()), is_boss_chest(), compact, _stars)
+
+# THE BADGE ON ITS OWN, for any surface that draws a chest the way its popup does
+# — the board's reward strip (BattlefieldView) as well as this modal. `stars_out`
+# collects the star labels, for a caller that animates them.
+static func gift_badge(glyph: String, rank: int, boss: bool, compact: bool,
+		stars_out: Array = []) -> Control:
+	var tint: Color = UITheme.ITEM_CLASS_COLORS[5] if boss else RarityStyle.color(rank)
 	var font: int = UITheme.FONT_TITLE_LG if compact else UITheme.FONT_HERO
 	var star_font: int = UITheme.FONT_TINY if compact else UITheme.FONT_BODY
 	var side: float = font * 1.5
@@ -460,9 +466,10 @@ func _gift_badge(glyph: String, compact: bool) -> Control:
 	# picked by this chest's size: Enter the Gungeon's D, C, B, A. A BOSS's chest
 	# is a rung of its own above Huge, whatever its size: Slay the Spire's Boss
 	# Chest, or the highest picture of a set that has none.
-	gift.set_meta("glyph_level", CosmeticCatalog.BOSS_CHEST if is_boss_chest() else rank)
+	gift.set_meta("glyph_level", CosmeticCatalog.BOSS_CHEST if boss else rank)
 	badge.add_child(gift)
-	_stars.clear()
+	badge.set_meta(&"gift", gift)
+	stars_out.clear()
 	var count: int = rank + 1
 	var step: float = STAR_ARC_DEG / 3.0
 	for i in range(count):
@@ -479,7 +486,7 @@ func _gift_badge(glyph: String, compact: bool) -> Control:
 		star.pivot_offset = star.size * 0.5
 		star.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		badge.add_child(star)
-		_stars.append(star)
+		stars_out.append(star)
 	return badge
 
 # THE CHEST OPENS. The gift lands with a bounce and the cards are dealt after it,
