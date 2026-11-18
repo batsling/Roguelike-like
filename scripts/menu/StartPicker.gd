@@ -418,12 +418,14 @@ func select(index: int) -> void:
 	if index < 0 or index >= _cards.size():
 		return
 	_selected = index
+	# THE SELECTION IS EMBER, never the genre: a purple rim read as "Traditional",
+	# not "chosen", and the chosen card's colour changed with whichever card it
+	# was. The genre keeps its own word at the top of the card.
 	for i in range(_cards.size()):
-		var accent: Color = _cards[i]["accent"]
 		var on: bool = i == index
 		_cards[i]["panel"].add_theme_stylebox_override("panel", UITheme.panel_box(
 			UITheme.PANEL_HI if on else UITheme.PANEL,
-			accent if on else UITheme.BORDER, 10, 10, 2 if on else 1))
+			UITheme.ACCENT if on else UITheme.BORDER, 10, 10, 2 if on else 1))
 	if _confirm != null:
 		_confirm.disabled = false
 		var game: GameData = _options[index]["game"]
