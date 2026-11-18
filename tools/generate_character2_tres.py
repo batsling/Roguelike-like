@@ -26,7 +26,8 @@ Reward -> level_up_stats (Max Health / Gold / a verb) + level_up_reward_type
 Starting loadout -> comma-separated things the run opens holding. Each is
           a NAME — a relic (items) goes to starting_items; a weapon, trinket,
           card, wand, scroll, potion, pill or bag to starting_loot as
-          {type, id} — or `N random [<tag>] <kind>` ("1 random joker card",
+          {type, id}, optionally counted ("1 Scroll of Identify" is N copies)
+          — or `N random [<tag>] <kind>` ("1 random joker card",
           "1 random wand"), which is rolled at run start as {type, count[,
           tag]}. A name no sheet has is a refusal. (The column was `Starting
           items` and is still read under that name.)
@@ -224,13 +225,21 @@ def parse_loadout(name, raw, catalog):
                 entry["tag"] = m.group(2).strip().lower().replace(" ", "_")
             loot.append(entry)
             continue
+        # A named piece may carry a count, "1 Scroll of Identify" (the owner's
+        # wording for Rodney, 18 Nov 2026): N copies of that one piece. The bare
+        # name is tried first so a name that itself starts with a number stays
+        # whole.
+        count = 1
         key = _norm(term)
+        cm = re.match(r"^(\d+)\s+(.+)$", term)
+        if cm and not any(key in catalog.get(k, {}) for k in ["item", *LOADOUT_SHEETS]):
+            count, key = int(cm.group(1)), _norm(cm.group(2))
         if key in catalog.get("item", {}):
-            items.append(catalog["item"][key])
+            items.extend([catalog["item"][key]] * count)
             continue
         for kind in LOADOUT_SHEETS:
             if key in catalog.get(kind, {}):
-                loot.append({"type": kind, "id": catalog[kind][key]})
+                loot.extend({"type": kind, "id": catalog[kind][key]} for _ in range(count))
                 break
         else:
             raise ValueError("character %r: Starting loadout %r is not a relic, a piece "
