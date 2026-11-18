@@ -1012,8 +1012,9 @@ time*. A chest is the ninth kind of loot (`type: "chest"`), and
   opens anywhere, mid-game included (`Overworld2.open_carried_chest`).
 - **How it looks.** The chest icon the player wears (Customization, by size; a
   Boss chest is its own rung), or the same gift its popup draws, rendered per
-  size in the popup's colours (`images2.0/general/Chest*.png`), with its size in
-  stars in the cell's corner. No Preference badge: it is not a gamble. Under the
+  size in the popup's colours (`images2.0/general/Chest*.png`). In a pack or
+  table cell it is drawn with the popup's own badge — the glow behind the gift
+  and its stars arced over it. No Preference badge: it is not a gamble. Under the
   board, "Beat it:" draws each chest with the popup's own badge — the glow and
   the arced stars (`ItemDropModal.gift_badge`).
 - **Between games.** A chest banked with no reward screen up (a potion's

@@ -29,8 +29,8 @@ var _box: Control = null
 
 const ITEM_TOKEN := 34
 # Height of the Use button / charge battery that sits above an active item's tile.
-# 10, down from 14 (the owner, 18 Nov 2026), in the tight face (UITheme.tight_font).
-const ITEM_USE_H := 10
+# 12, down from 14 (the owner, 18 Nov 2026: shorter, then "a tiny more" back), in the tight face (UITheme.tight_font).
+const ITEM_USE_H := 12
 
 func _init(page: Node, box: Control) -> void:
 	_page = page

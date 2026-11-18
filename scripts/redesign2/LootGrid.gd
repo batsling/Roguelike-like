@@ -1357,7 +1357,16 @@ static func _cell_body(entry: Dictionary, use_cb: Callable, locked_now: bool,
 	art.pivot_offset = art.custom_minimum_size * 0.5
 	art.rotation = posmod(int(entry.get("rot", 0)), 4) * PI * 0.5
 	turn_box.add_child(art)
-	centre.add_child(turn_box)
+	# A CHEST WEARS ITS POPUP'S BADGE in the pack and on the table too (the owner,
+	# 18 Nov 2026): the gift with the glow behind it and its stars arced over it
+	# (ItemDropModal.gift_badge), so it is the same chest everywhere it appears.
+	if ChestLoot.is_chest(entry):
+		var badge: Control = ItemDropModal.gift_badge("🎁", ChestLoot.rank(entry),
+			ChestLoot.is_boss(entry), not with_name)
+		badge.name = "ChestBadge"
+		centre.add_child(badge)
+	else:
+		centre.add_child(turn_box)
 
 	var known: bool = LootSystem.is_identified(entry)
 	_add_progress(band, extras)
@@ -1382,14 +1391,8 @@ static func _cell_body(entry: Dictionary, use_cb: Callable, locked_now: bool,
 	# A WEAPON is not a gamble either (docs/loot-passives.md §12).
 	var weapon: bool = LootSystem.is_weapon(entry)
 	# A CHEST is not a gamble: it wears its SIZE instead, in stars (ChestLoot).
+	# (Its stars ride its badge, arced over the gift — see above.)
 	var chest: bool = ChestLoot.is_chest(entry)
-	if chest:
-		var stars := UITheme.chip(ChestLoot.stars(entry), ChestLoot.tint(entry), 9)
-		stars.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
-		stars.grow_horizontal = Control.GROW_DIRECTION_END
-		stars.grow_vertical = Control.GROW_DIRECTION_BEGIN
-		stars.tooltip_text = ChestLoot.display_name(entry)
-		band.add_child(stars)
 	if String(entry.get("type", "")) != "card" and not passive and not bag and not weapon \
 			and not chest:
 		var badge := UITheme.chip(pref_glyph(entry) if known else "?",
