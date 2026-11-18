@@ -11,6 +11,37 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Seven new games, and the map and the sheet agree exactly (the owner's
+  upload, 18 Nov 2026).**
+  - **The games**: Deadly Days: Roadtrip, Func Key, March of the Living, Near
+    Mint, Ovis Loop, Stella Sora and Void Crew join `data/games/` with their
+    covers and eleven connections, 1,014 games and 1,658 connections in all.
+    Stella Sora's proof clip is converted to `.ogv` and the MP4 is gone; the
+    other six proofs came as pictures.
+  - **Rodney starts with a Scroll of Identify.** The sheet's `1 Scroll of
+    Identify` was refused by the character generator, which read a named piece
+    only without a count. It reads `N <name>` now as N copies.
+  - **Map Calc's formulas were re-laid** (`map_calc.py`): Excel had saved all
+    148,000 of them in a form `--check` doesn't recognise. The formulas mean
+    the same thing.
+  - **`Roguelikes.drawio` and `RoguelikeMap.svg` match the sheet exactly**:
+    1,014 boxes for 1,014 games, 1,658 lines for 1,658 connections, 170
+    Dev/Series on both sides, every line attached to its boxes. That took
+    four changes (`tools/oneshots/_map_sync_18nov.py`,
+    `_connections_dev_series_from_map.py`):
+    - Grail, Lucky Hunter, Moonsigil Atlas, Teleglitch and Thysiastery are
+      drawn on their year rows, with their three lines. The two without one go
+      at the end of the 2026 column of unconnected games.
+    - Rogue → Beneath Apple Manor is deleted. It pointed at an older game and
+      the sheet never had it.
+    - Hack → NetHack, Caveblazers → Wildfrost and both Cataclysm forks are
+      Dev/Series on the sheet now, as the map always drew them. Fatal Labyrinth
+      → Dragon Crystal went the other way: the sheet was right, so the line is
+      blue.
+    - Five lines that ended next to a box rather than on it are attached.
+    The SVG is a fresh export from the drawio with draw.io 29.6.6, at the
+    owner's settings (scale 5, no border, white background).
+
 - **Credit Card, and To the Moon at Balatro's rate (the owner, 17 Nov 2026).**
   - **Credit Card** is a new Uncommon Balatro joker, using Balatro's own art.
     While you carry it, shop purchases and gold rerolls can take you down to
