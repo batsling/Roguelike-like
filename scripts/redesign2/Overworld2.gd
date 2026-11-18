@@ -1694,7 +1694,7 @@ func _log_second_body() -> void:
 	var second: GoalEnemyData = GameLoop2.second_body()
 	if second == null:
 		return
-	var msg: String = "%s walked on beside it — it follows you until its goal is cleared." % second.display_name
+	var msg: String = "%s walked on too." % second.display_name
 	GameLog.add(msg, UITheme.DANGER)
 	Notifications.notify(msg, UITheme.DANGER)
 
@@ -1720,7 +1720,7 @@ func _log_second_body() -> void:
 func _remind_twitch_category(game: GameData) -> void:
 	if game == null or not Settings.twitch_reminder:
 		return
-	var msg: String = "📺  Switch your Twitch category to \"%s\"." % game.display_name
+	var msg: String = "📺  Twitch category → %s" % game.display_name
 	GameLog.add(msg, UITheme.ACCENT)
 	Notifications.notify(msg, UITheme.ACCENT)
 
@@ -1839,8 +1839,10 @@ func escape_hint_text() -> String:
 	var to_go: int = escape_runs_to_go()
 	if to_go > 0:
 		var gate: int = GameLoop2.escape_after_lost_runs()
-		return "Unlocks after %d lost run%s here — %d to go." % [
-			gate, "" if gate == 1 else "s", to_go]
+		# FEW WORDS (the owner, 18 Nov 2026: "the least amount of words on screen
+		# while it still making sense"): the count is the news; the gate it counts
+		# toward is on the hover (escape_hover).
+		return "Opens in %d more lost run%s" % [to_go, "" if to_go == 1 else "s"]
 	var price: Dictionary = GameLoop2.end_of_game_price(true)
 	var bodies: int = int(price["bodies"])
 	if bodies <= 0:

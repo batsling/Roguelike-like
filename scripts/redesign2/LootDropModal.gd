@@ -586,7 +586,7 @@ func _pack_column() -> Control:
 			else "No room — use or bin something to make room for it.",
 			UITheme.CURSE if GameState.loot_is_full() else UITheme.TEXT_FAINT, 10))
 	elif _slot == null:
-		col.add_child(_line("Drag into a slot, rearrange, or bin what you don't want."
+		col.add_child(_line("Drag to place or bin."
 			if not GameState.loot_is_full() else "No room — make some, or use them now.",
 			UITheme.TEXT_FAINT, 10))
 	elif GameState.loot_is_full():

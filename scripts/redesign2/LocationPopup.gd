@@ -92,9 +92,8 @@ func _build() -> void:
 	root.add_child(_actions_box)
 	_refresh_actions()
 
-	if _arrival:
-		root.add_child(_line("Hover it beside the difficulty on the board to read this again.",
-			UITheme.TEXT_FAINT, UITheme.FONT_SMALL))
+	# No "hover it on the board to read this again" line: the location's chip is
+	# on the board, and a sentence telling you so cost a row on every arrival.
 
 	var ok := Button.new()
 	ok.text = "Onward" if _arrival else "Close"

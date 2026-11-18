@@ -6808,12 +6808,12 @@ func test_escape_is_shut_until_its_runs_are_lost() -> void:
 	_ui._refresh()
 	assert_true(_ui._escape_btn.visible, "the button is still up, so the door is known about")
 	assert_true(_ui._escape_btn.disabled, "but dark")
-	assert_string_contains(_ui.escape_hint_text(), "%d to go" % gate,
+	assert_string_contains(_ui.escape_hint_text(), "in %d more" % gate,
 		"and the line under it counts down: %s" % _ui.escape_hint_text())
 	while GameLoop2.attempts() < gate - 1:
 		GameLoop2.attempt_costs.append("shield")
 	assert_false(_ui.can_escape(), "one short of the gate is still shut")
-	assert_string_contains(_ui.escape_hint_text(), "1 to go", _ui.escape_hint_text())
+	assert_string_contains(_ui.escape_hint_text(), "in 1 more lost run", _ui.escape_hint_text())
 	GameLoop2.attempt_costs.append("shield")
 	assert_true(_ui.can_escape(), "the last one opens it")
 	_ui._refresh()
@@ -11424,7 +11424,7 @@ func test_what_arriving_at_a_game_writes_is_filed_under_that_game() -> void:
 			continue
 		for e in (stop["lines"] as Array):
 			assert_false(String(e["text"]).contains(
-				"Twitch category to \"%s\"" % Data.get_game(slot).display_name),
+				"Twitch category → %s" % Data.get_game(slot).display_name),
 				"the arrival's reminder is not filed under the game left")
 	assert_eq(GameLog.arriving_at, &"", "and the log is back to stamping where the run stands")
 
