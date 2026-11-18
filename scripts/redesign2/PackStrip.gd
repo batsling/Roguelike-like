@@ -265,6 +265,9 @@ func _item_fire_control(item: ItemData, ready: bool, reporting: bool) -> Control
 			UITheme.flat(Color(UITheme.GO_FILL, 0.95), 4, 0, 1, UITheme.GO_RIM))
 		btn.add_theme_stylebox_override("hover",
 			UITheme.flat(UITheme.GO_FILL_HI, 4, 0, 1, UITheme.GO_RIM_HI))
+		for state in ["pressed", "focus", "disabled"]:
+			btn.add_theme_stylebox_override(state,
+				UITheme.flat(UITheme.GO_FILL_HI, 4, 0, 1, UITheme.GO_RIM_HI))
 		btn.add_theme_color_override("font_color", Color(0.6, 1.0, 0.8))
 		btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 		btn.tooltip_text = "Use %s" % item.display_name
@@ -284,6 +287,11 @@ func _item_fire_control(item: ItemData, ready: bool, reporting: bool) -> Control
 	idle.custom_minimum_size = Vector2(ITEM_TOKEN + 6, ITEM_USE_H)
 	idle.add_theme_font_size_override("font_size", UITheme.FONT_MICRO)
 	idle.add_theme_font_override("font", UITheme.tight_font())
+	# Its own plates with no padding, like the live one's: the theme's padded plate
+	# stood a dark Use 25px tall over the art.
+	for state in ["normal", "disabled", "hover", "pressed", "focus"]:
+		idle.add_theme_stylebox_override(state,
+			UITheme.flat(UITheme.PANEL, 4, 0, 1, UITheme.BORDER))
 	idle.tooltip_text = "Finish reporting this game first."
 	return idle
 
