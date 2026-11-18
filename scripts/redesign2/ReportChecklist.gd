@@ -2149,8 +2149,12 @@ func _nullified_row(row: Dictionary, instance: int = 0) -> Control:
 func _objective_row(text: String, color: Color, icon: Control = null,
 		instance: int = 0, mark: Control = null) -> Control:
 	var wrap := PanelContainer.new()
+	# Quiet at rest, as verify_row's rows are: parchment on a hairline, the row's
+	# colour kept for the hover and for a warning (DANGER) or a faded row.
+	var warns: bool = color == UITheme.DANGER or color == UITheme.TEXT_FAINT
+	var text_color: Color = color if warns else UITheme.TEXT
 	var idle: StyleBox = UITheme.flat(Color(UITheme.BG, 0.6), 5, 4, 1,
-		color.lerp(UITheme.BORDER, 0.35))
+		color.lerp(UITheme.BORDER, 0.35) if warns else UITheme.BORDER)
 	var lit: StyleBox = UITheme.flat(color.lerp(UITheme.BG, 0.78), 5, 4, 2,
 		color.lerp(Color.WHITE, 0.35))
 	wrap.add_theme_stylebox_override("panel", idle)
@@ -2164,7 +2168,7 @@ func _objective_row(text: String, color: Color, icon: Control = null,
 	var l := Label.new()
 	l.text = "•  " + text
 	l.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
-	l.add_theme_color_override("font_color", color)
+	l.add_theme_color_override("font_color", text_color)
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	l.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -2456,7 +2460,17 @@ func verify_row(text: String, color: Color, emphasise: bool,
 		instance: int = 0, mark: Control = null,
 		counter: Dictionary = {}) -> Dictionary:
 	var wrap := PanelContainer.new()
-	var border: Color = color.lerp(UITheme.BORDER, 0.35)
+	# QUIET AT REST, LOUD WHEN IT MATTERS (the owner, 18 Nov 2026). Every row used
+	# to be gold text in a gold frame, so a list of six read as one gold block and
+	# the hover that points a row at its body changed almost nothing. A row now
+	# rests in parchment on a plain hairline, and the row's own colour is spent on
+	# the three moments that are news: its portrait rim, the hover, and a warning.
+	# A DANGER row (a status demanding something) keeps its red at rest — that one
+	# IS news before anyone hovers it.
+	var warns: bool = color == UITheme.DANGER
+	var text_color: Color = color if warns else UITheme.TEXT
+	var border: Color = color.lerp(UITheme.BORDER, 0.35) if (warns or emphasise) \
+		else UITheme.BORDER
 	var width: int = 2 if emphasise else 1
 	var idle: StyleBox = UITheme.flat(Color(UITheme.BG, 0.6), 5, 4, width, border)
 	# The WHOLE ROW answers, not just the box: a ticked row goes green-washed and
@@ -2555,14 +2569,14 @@ func verify_row(text: String, color: Color, emphasise: bool,
 	# is as tall as it needs and as wide as it is given.
 	cb.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	cb.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
-	cb.add_theme_color_override("font_color", color)
-	cb.add_theme_color_override("font_pressed_color", color)
+	cb.add_theme_color_override("font_color", text_color)
+	cb.add_theme_color_override("font_pressed_color", text_color)
 	cb.add_theme_color_override("font_hover_color", UITheme.GOLD)
 	cb.toggled.connect(func(on: bool):
 		ticked["on"] = on
 		paint.call(lit_instances.has(instance))
 		cb.add_theme_color_override("font_color",
-			UITheme.SUCCESS.lerp(Color.WHITE, 0.55) if on else color))
+			UITheme.SUCCESS.lerp(Color.WHITE, 0.55) if on else text_color))
 	line.add_child(cb)
 	# THE BOX ON A COUNTED ROW IS STATE, NOT A CONTROL. Hidden rather than absent:
 	# `_lock_row`, `_open_claim`, `_arm_row` and the green wash are all written in
@@ -2579,7 +2593,7 @@ func verify_row(text: String, color: Color, emphasise: bool,
 		words.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 		words.add_theme_color_override("font_color",
 			UITheme.SUCCESS.lerp(Color.WHITE, 0.55)
-			if bool(counter.get("locked", false)) else color)
+			if bool(counter.get("locked", false)) else text_color)
 		line.add_child(words)
 	# NO NOTES BUTTON ON THE ROW. Every enemy row and the level-up row used to end
 	# in one, which is a second control on every line of a list whose lines are
