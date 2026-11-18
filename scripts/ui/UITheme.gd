@@ -125,12 +125,17 @@ const RARITY := [
 ]
 
 # Game-type accent colours, indexed by GameData.GameType (Action, Strategy,
-# Deckbuilder, Traditional).
+# Deckbuilder, Traditional). THE ONLY GENRE PALETTE: RunGraph.type_color reads
+# this. There used to be two, and they disagreed — Traditional was green here and
+# purple on the start panel, the Atlas and the route map, Deckbuilder the other
+# way round. The owner settled it (18 Nov 2026): DECKBUILDER is purple and
+# Traditional green. The lightness is this list's, since the old navy Strategy
+# was too dark to read as text on the panel colour.
 const TYPE_COLORS := [
 	Color(0.93, 0.42, 0.32),   # Action  — red-orange
 	Color(0.46, 0.70, 0.95),   # Strategy — blue
-	Color(0.70, 0.45, 1.0),    # Deckbuilder — violet
-	Color(0.55, 0.80, 0.50),   # Traditional — green
+	Color(0.72, 0.48, 0.95),   # Deckbuilder — purple
+	Color(0.40, 0.80, 0.52),   # Traditional — green
 ]
 
 const RARITY_NAMES := ["Common", "Uncommon", "Rare", "Legendary"]
@@ -1262,10 +1267,41 @@ static var _glyph_font: Font = null
 #     subsets declared, base search still on    12.4 ms
 #     subsets, base search off, system last      4.5 ms
 # and a character NOTHING here ships still renders, off the tail of the chain.
+const BODY_FONT_PATH := "res://fonts/VT323-UI.ttf"
+
+# THE TIGHT FACE, for a one-word button laid over a picture (a loot cell's Use /
+# Open / Zap, an item's Use): VT323 alone, no symbol fonts chained behind it, with
+# its line spacing trimmed. The chain is what sets an ordinary line's height —
+# the symbol subsets stand 1.36 em tall — so a button in the normal face could
+# not get shorter than ~13px however small it was asked to be (the owner, 18 Nov
+# 2026: "a good chunk less tall"). These words carry no symbols to need it.
+static var _tight_font: Font = null
+
+static func tight_font() -> Font:
+	if _tight_font != null:
+		return _tight_font
+	if not ResourceLoader.exists(BODY_FONT_PATH):
+		return glyph_font()
+	var v := FontVariation.new()
+	v.base_font = load(BODY_FONT_PATH)
+	v.spacing_top = -2
+	v.spacing_bottom = -1
+	_tight_font = v
+	return _tight_font
+
 static func glyph_font() -> Font:
 	if _glyph_font != null:
 		return _glyph_font
-	var base: Font = ThemeDB.fallback_font
+	# THE TEXT FONT IS VT323 (the owner, 18 Nov 2026, after seeing it: "the new
+	# font looks pretty good"), the terminal face to sit beside the headings'
+	# Px437. Shipped as fonts/VT323-UI.ttf, VT323 RESCALED so its capitals stand
+	# exactly as tall as the old default's at the same pixel size (its em is 784
+	# units, not 1000; see LICENSE-VT323-OFL.txt). That is what let it go in with
+	# no size constant changed: every FONT_* step reads the same height as it did,
+	# and the line height, which Godot takes as the tallest of the chain, is still
+	# the glyph subsets' — the em grid the note below asks to keep.
+	var base: Font = load(BODY_FONT_PATH) if ResourceLoader.exists(BODY_FONT_PATH) \
+		else ThemeDB.fallback_font
 	if base == null:
 		return null
 	var fallbacks: Array[Font] = []

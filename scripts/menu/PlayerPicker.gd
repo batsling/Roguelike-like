@@ -57,7 +57,7 @@ func _build() -> void:
 	center.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(center)
 	var panel := PanelContainer.new()
-	panel.custom_minimum_size = Vector2(1080, 620)
+	panel.custom_minimum_size = Vector2(1080, 0)
 	panel.add_theme_stylebox_override("panel", UITheme.panel_box(UITheme.BG,
 		UITheme.ACCENT.lerp(UITheme.BORDER, 0.4), 12, 22, 2))
 	center.add_child(panel)
@@ -79,7 +79,12 @@ func _build() -> void:
 	# The character picker's board: a fixed four-wide grid in a scroll.
 	var grid_scroll := ScrollContainer.new()
 	grid_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	grid_scroll.custom_minimum_size = Vector2(TILE_COLUMNS * (TILE_SIZE.x + TILE_GAP), 400)
+	# Vertical scrolling OFF too: the box then grows to the grid's real height (a
+	# tile is taller than TILE_SIZE once its rank badge hangs under the icon), so
+	# there is never a bar. grid_height is only the floor.
+	grid_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	grid_scroll.custom_minimum_size = Vector2(TILE_COLUMNS * (TILE_SIZE.x + TILE_GAP),
+		CharacterPicker.grid_height(Data.all_players().size()))
 	grid_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	body.add_child(grid_scroll)
 	var tiles := GridContainer.new()

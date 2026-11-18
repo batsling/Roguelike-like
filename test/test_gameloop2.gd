@@ -3183,3 +3183,13 @@ func test_choosing_a_game_resets_the_lost_run_spawn() -> void:
 	GameLoop2.lost_run_spawn_step = 3
 	var _a: int = Fixtures.choose_solo(_enemy(1))
 	assert_eq(GameLoop2.lost_run_spawn_step, 0, "a new game always opens on the free rung")
+
+# THE BOARD'S REWARD STRIP reads what the report would pay, never spends it.
+func test_the_reward_preview_is_what_a_win_would_claim() -> void:
+	GameLoop2.chest_points = 3
+	var preview: Dictionary = GameLoop2.reward_preview()
+	assert_eq(GameLoop2.chest_points, 3, "a preview spends nothing")
+	var claimed: Array = GameLoop2.claim_chests(true)
+	assert_eq((preview["chests"] as Array).size(), 1)
+	assert_eq(preview["chests"], Data.chest_reward_sizes(int(claimed[0]["points"])),
+		"the strip shows the chest the win then pays")

@@ -131,8 +131,8 @@ func _column(width: float) -> VBoxContainer:
 
 # WHO, HOW STRONG, AND WHAT THEY HAVE TO SPEND: the character and level, the
 # stats, the resources, then the statuses and curses on the player.
-func _character_column() -> Control:
-	var col := _column(250)
+func _character_column(width: float = 250.0) -> Control:
+	var col := _column(width)
 	var ch: CharacterData = Data.get_character2(GameState.character_id)
 	if ch != null:
 		var row := HBoxContainer.new()
@@ -152,7 +152,7 @@ func _character_column() -> Control:
 		if ch.level_up_condition != "":
 			var how := _line("Levels up by: %s" % ch.level_up_condition, UITheme.TEXT_DIM)
 			how.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-			how.custom_minimum_size = Vector2(250, 0)
+			how.custom_minimum_size = Vector2(width, 0)
 			col.add_child(how)
 
 	col.add_child(_section("Stats"))
@@ -243,8 +243,8 @@ func _status_chip(row: Dictionary) -> Control:
 	return chip
 
 # EVERY ITEM, with its name beside its art — the strip on the page is art only.
-func _items_column() -> Control:
-	var col := _column(330)
+func _items_column(width: float = 330.0) -> Control:
+	var col := _column(width)
 	var count: int = GameState.inventory.size() + GameState.smelted_loot.size()
 	col.add_child(_section("Items  (%d)" % count))
 	if count == 0:
@@ -252,7 +252,7 @@ func _items_column() -> Control:
 		return col
 	var scroll := ScrollContainer.new()
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	scroll.custom_minimum_size = Vector2(330, 440)
+	scroll.custom_minimum_size = Vector2(width, 440)
 	col.add_child(scroll)
 	var list := VBoxContainer.new()
 	list.add_theme_constant_override("separation", UITheme.GAP_TIGHT)

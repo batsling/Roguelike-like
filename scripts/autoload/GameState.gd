@@ -1332,7 +1332,7 @@ func wear_mask(id: StringName) -> void:
 	if ch == null or masked_characters.has(id) or id == character_id:
 		return
 	masked_characters.append(id)
-	Notifications.notify("Mysterious Mask: you can now level up as %s too." % ch.display_name,
+	Notifications.announce("Mysterious Mask: you can now level up as %s too." % ch.display_name,
 		Color(1.0, 0.85, 0.4))
 	GameLog.add("Took on %s's Level Up — %s" % [ch.display_name, ch.level_up_condition],
 		Color(1.0, 0.85, 0.4))
@@ -2183,6 +2183,10 @@ func grant_level_up(rng: RandomNumberGenerator = null, ch: CharacterData = null)
 	if ch == null:
 		return []
 	player_level += 1
+	# History only (the owner, 18 Nov 2026): XP landing is shown by the rank bars
+	# sliding up from the corner (XpPopup), not by a toast.
+	Notifications.notify("▲  %s reached level %d" % [ch.display_name, player_level],
+		Color(1.0, 0.80, 0.40), ch.shown_icon() if ch.has_method("shown_icon") else null)
 	var applied: Array = apply_level_up_stats(ch.level_up_stats)
 	match String(ch.level_up_reward_type):
 		"item", "chest":

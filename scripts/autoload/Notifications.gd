@@ -26,15 +26,29 @@ func _ready() -> void:
 	TriggerBus.item_acquired.connect(_on_item_acquired)
 	TriggerBus.game_beaten.connect(_on_game_beaten)
 
-# Post a notification: appends to history (capped) and fires the toast.
+# HISTORY ONLY, NO POP-UP (the owner, 18 Nov 2026: "lets get rid of the toasts
+# and just keep the history page. We can still have popups for unlocks or seeing
+# something new that would be added to the collection"). `notify` records a line
+# for the History page; `announce` records it AND pops it up. Four kinds still
+# announce: a Collection discovery (GameStats.mark_seen), an unlock (achievements,
+# title letters, cosmetics, radio songs), a level-up (GameState.grant_level_up)
+# and the Twitch category reminder.
 func notify(text: String, color: Color = DEFAULT_COLOR, icon: Texture2D = null,
+		_key: String = "") -> void:
+	_record(text, color, icon)
+
+func announce(text: String, color: Color = DEFAULT_COLOR, icon: Texture2D = null,
 		key: String = "") -> void:
+	if _record(text, color, icon):
+		notified.emit(text, color, icon, key)
+
+func _record(text: String, color: Color, icon: Texture2D) -> bool:
 	if text == "":
-		return
+		return false
 	history.append({"text": text, "color": color, "icon": icon})
 	if history.size() > MAX_HISTORY:
 		history.pop_front()
-	notified.emit(text, color, icon, key)
+	return true
 
 func clear() -> void:
 	history.clear()

@@ -115,6 +115,10 @@ func _init() -> void:
 #   title        String     replaces the header title
 #   atlas        AtlasView  the star chart underneath, wired to the ladder
 #   layer        int        the CanvasLayer to mount on (default 130)
+# False when the page that opened this has the chart switched off
+# (Overworld2.RUN_ATLAS): the window then does not offer to raise one.
+var _offer_chart: bool = true
+
 func start(host: Node, current: StringName, amulet: StringName, choice_ids: Array = [],
 		options: Dictionary = {}) -> void:
 	_current = current
@@ -122,6 +126,7 @@ func start(host: Node, current: StringName, amulet: StringName, choice_ids: Arra
 	_preview = bool(options.get("preview", false))
 	_title = String(options.get("title", ""))
 	_atlas = options.get("atlas")
+	_offer_chart = bool(options.get("offer_chart", true))
 	_choice_ids.clear()
 	for id in choice_ids:
 		_choice_ids[StringName(id)] = true
@@ -321,7 +326,7 @@ func _build_header() -> Control:
 		# Put the whole corridor back in frame on the chart behind — the window is
 		# a second view of the same route, and it should be able to point at it.
 		tools.add_child(_zoom_button("⌖ Frame route", _frame_route))
-	elif AtlasView.load_layout() != null:
+	elif _offer_chart and AtlasView.load_layout() != null:
 		# Opened without a chart under it: offer to raise one. The start picker gets
 		# the offer too now — there is no longer a secret for the sky to give away.
 		tools.add_child(_zoom_button("✦ Star chart", _open_atlas))

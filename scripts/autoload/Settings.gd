@@ -210,6 +210,16 @@ func _ready() -> void:
 	# CanvasLayer of its own and dresses itself (UITheme.dress, called from
 	# ModalScaffold).
 	get_tree().root.theme = UITheme.shared()
+	# …AND GODOT'S OWN FALLBACK FONT IS THE SAME CHAIN (the owner, 18 Nov 2026:
+	# "make sure the entire project text that isn't the random letter main menu
+	# stuff is one of the two retro fonts"). The theme reaches whatever it is set
+	# on; a control under no theme at all — a modal's layer that never dressed
+	# itself, a dropdown's popup window, an engine dialog — falls back to Godot's
+	# built-in sans. Pointed here, that fallback is VT323 too (UITheme.glyph_font),
+	# and the rogue rule above still sets headings and buttons in Px437.
+	var text_font: Font = UITheme.glyph_font()
+	if text_font != null:
+		ThemeDB.fallback_font = text_font
 	# Headings and buttons in Rogue's font (UITheme "Rogue's font"): every Label and
 	# Button is looked at once as it enters the tree.
 	get_tree().node_added.connect(UITheme._on_node_added)

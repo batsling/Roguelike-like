@@ -29,7 +29,8 @@ var _box: Control = null
 
 const ITEM_TOKEN := 34
 # Height of the Use button / charge battery that sits above an active item's tile.
-const ITEM_USE_H := 14
+# 12, down from 14 (the owner, 18 Nov 2026: shorter, then "a tiny more" back), in the tight face (UITheme.tight_font).
+const ITEM_USE_H := 12
 
 func _init(page: Node, box: Control) -> void:
 	_page = page
@@ -258,11 +259,15 @@ func _item_fire_control(item: ItemData, ready: bool, reporting: bool) -> Control
 		var btn := Button.new()
 		btn.text = "Use"
 		btn.custom_minimum_size = Vector2(ITEM_TOKEN + 6, ITEM_USE_H)
-		btn.add_theme_font_size_override("font_size", UITheme.FONT_TINY)
+		btn.add_theme_font_size_override("font_size", UITheme.FONT_MICRO)
+		btn.add_theme_font_override("font", UITheme.tight_font())
 		btn.add_theme_stylebox_override("normal",
-			UITheme.flat(Color(UITheme.GO_FILL, 0.95), 4, 1, 1, UITheme.GO_RIM))
+			UITheme.flat(Color(UITheme.GO_FILL, 0.95), 4, 0, 1, UITheme.GO_RIM))
 		btn.add_theme_stylebox_override("hover",
-			UITheme.flat(UITheme.GO_FILL_HI, 4, 1, 1, UITheme.GO_RIM_HI))
+			UITheme.flat(UITheme.GO_FILL_HI, 4, 0, 1, UITheme.GO_RIM_HI))
+		for state in ["pressed", "focus", "disabled"]:
+			btn.add_theme_stylebox_override(state,
+				UITheme.flat(UITheme.GO_FILL_HI, 4, 0, 1, UITheme.GO_RIM_HI))
 		btn.add_theme_color_override("font_color", Color(0.6, 1.0, 0.8))
 		btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 		btn.tooltip_text = "Use %s" % item.display_name
@@ -280,7 +285,13 @@ func _item_fire_control(item: ItemData, ready: bool, reporting: bool) -> Control
 	idle.text = "Use"
 	idle.disabled = true
 	idle.custom_minimum_size = Vector2(ITEM_TOKEN + 6, ITEM_USE_H)
-	idle.add_theme_font_size_override("font_size", UITheme.FONT_TINY)
+	idle.add_theme_font_size_override("font_size", UITheme.FONT_MICRO)
+	idle.add_theme_font_override("font", UITheme.tight_font())
+	# Its own plates with no padding, like the live one's: the theme's padded plate
+	# stood a dark Use 25px tall over the art.
+	for state in ["normal", "disabled", "hover", "pressed", "focus"]:
+		idle.add_theme_stylebox_override(state,
+			UITheme.flat(UITheme.PANEL, 4, 0, 1, UITheme.BORDER))
 	idle.tooltip_text = "Finish reporting this game first."
 	return idle
 

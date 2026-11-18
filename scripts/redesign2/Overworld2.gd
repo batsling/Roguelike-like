@@ -318,7 +318,9 @@ var _split_panel: Control = null
 var timer_on_page: bool = false
 # The now-playing cover, as a share of an offering card's: the height of the Lost
 # a run strip beside it.
-const NOW_PLAYING_COVER_SCALE := 0.36
+# 0.5, up from 0.36 (the owner, 18 Nov 2026: "make the game image a little
+# bigger and put the play button to the right of the image").
+const NOW_PLAYING_COVER_SCALE := 0.5
 var _splits_popup: Control = null
 var _split_rows: VBoxContainer = null    # one row per game, plus its tries
 var _split_total: Label = null           # the run's own line
@@ -614,6 +616,9 @@ func _ready() -> void:
 	# once the shields are gone (§3).
 	if not GameLoop2.attempt_logged.is_connected(_on_attempt_logged):
 		GameLoop2.attempt_logged.connect(_on_attempt_logged)
+	# XP landing mid-game slides the rank bars up from the corner (XpPopup).
+	if not GameStats.changed.is_connected(_on_stats_changed_for_xp):
+		GameStats.changed.connect(_on_stats_changed_for_xp)
 	# Register as the mounted overworld so overworld-active items (Ride the Bus,
 	# Wand of Wishing) can route their effect here, and so item pickups refresh
 	# the inventory panel.
@@ -1531,6 +1536,69 @@ func pick(index: int) -> void:
 #
 # `log_shields` is false for the detour alone, which is the drift noted above:
 # it grants the armour silently. Kept as it was rather than quietly fixed.
+# --- XP as it lands (XpPopup) ---------------------------------------------
+#
+# A goal ticked mid-game writes the record at once (ReportChecklist ->
+# _record_defeat), and the game's and character's XP are read off that record, so
+# the climb happens with the game still on. GameStats.changed is the cue; the
+# check runs once a frame however many times it fired (a report fires it five
+# times), and only while a game is in play — the report's own summary page shows
+# the climb a report makes. `_xp_shown` is where the bars stood when they were
+# last shown: the game's XP at pick time to start with (GameLoop2.rank_start).
+const XP_POPUP_SCRIPT := "res://scripts/redesign2/XpPopup.gd"
+var _xp_check_due: bool = false
+var _xp_shown: Dictionary = {}
+var _xp_popup: Control = null
+var _xp_layer: CanvasLayer = null
+
+func _on_stats_changed_for_xp() -> void:
+	if _xp_check_due:
+		return
+	_xp_check_due = true
+	_check_xp_gain.call_deferred()
+
+func _check_xp_gain() -> void:
+	_xp_check_due = false
+	if not is_inside_tree() or _phase != Phase.PLAYING or _resolving or GameLoop2.run_over:
+		return
+	var gid: String = String(GameState.current_game_id)
+	var cid: String = String(GameState.character_id)
+	if gid == "":
+		return
+	var start: Dictionary = GameLoop2.rank_start
+	if String(_xp_shown.get("game", "")) != gid or String(_xp_shown.get("character", "")) != cid:
+		_xp_shown = {"game": gid, "character": cid,
+			"xp": int(start.get("xp", GameRanks.xp(gid))) if String(start.get("game", "")) == gid \
+				else GameRanks.xp(gid),
+			"cxp": int(start.get("character_xp", GameRanks.character_xp(cid))) \
+				if String(start.get("character", "")) == cid else GameRanks.character_xp(cid)}
+	var gxp: int = GameRanks.xp(gid)
+	var cxp: int = GameRanks.character_xp(cid)
+	if gxp <= int(_xp_shown["xp"]) and cxp <= int(_xp_shown["cxp"]):
+		return
+	show_xp_gain(int(_xp_shown["xp"]), gxp, int(_xp_shown["cxp"]), cxp)
+	_xp_shown["xp"] = gxp
+	_xp_shown["cxp"] = cxp
+
+# Slide the bars up from `gfrom`/`cfrom` to `gto`/`cto`. A card already up is
+# replaced by one filling from where IT started, so a burst is one climb.
+# Public for the tests. Returns the card.
+func show_xp_gain(gfrom: int, gto: int, cfrom: int, cto: int) -> Control:
+	if _xp_popup != null and is_instance_valid(_xp_popup) and not _xp_popup.is_queued_for_deletion():
+		gfrom = mini(gfrom, int(_xp_popup.game_from))
+		cfrom = mini(cfrom, int(_xp_popup.char_from))
+		_xp_popup.queue_free()
+	if _xp_layer == null or not is_instance_valid(_xp_layer):
+		_xp_layer = CanvasLayer.new()
+		_xp_layer.name = "XpLayer"
+		# Over the page and its pinned header, under every modal that asks something.
+		_xp_layer.layer = UITheme.Layer.HEADER + 1
+		add_child(_xp_layer)
+	_xp_popup = load(XP_POPUP_SCRIPT).open(self, _xp_layer,
+		Data.get_game(GameState.current_game_id), gfrom, gto,
+		Data.get_character2(GameState.character_id), cfrom, cto)
+	return _xp_popup
+
 # The XP `game` had when it was picked (GameLoop2.rank_start), or its XP now when
 # that was not recorded for it.
 func _rank_from(game: GameData) -> int:
@@ -1562,9 +1630,12 @@ func _begin_game(game: GameData, enemy: GoalEnemyData, tier: int,
 	_drops.clear_floor()
 	# Where the game's rank bar stood as it was picked (§20.4), for the end-of-game
 	# screen to fill from.
+	# …and its PARTS, so the report's summary can say what the gain was for.
 	GameLoop2.rank_start = {"game": String(game.id), "xp": GameRanks.xp(game.id),
+		"parts": GameRanks.xp_parts(game.id),
 		"character": String(GameState.character_id),
-		"character_xp": GameRanks.character_xp(GameState.character_id)} \
+		"character_xp": GameRanks.character_xp(GameState.character_id),
+		"character_parts": GameRanks.character_xp_parts(GameState.character_id)} \
 		if game != null else {}
 	# THE TIER CAN STEP RIGHT HERE NOW (§19.6). The counter it reads is spawn
 	# events, and an arrival that lands bodies IS one — so committing a game can
@@ -1694,7 +1765,7 @@ func _log_second_body() -> void:
 	var second: GoalEnemyData = GameLoop2.second_body()
 	if second == null:
 		return
-	var msg: String = "%s walked on beside it — it follows you until its goal is cleared." % second.display_name
+	var msg: String = "%s walked on too." % second.display_name
 	GameLog.add(msg, UITheme.DANGER)
 	Notifications.notify(msg, UITheme.DANGER)
 
@@ -1720,9 +1791,9 @@ func _log_second_body() -> void:
 func _remind_twitch_category(game: GameData) -> void:
 	if game == null or not Settings.twitch_reminder:
 		return
-	var msg: String = "📺  Switch your Twitch category to \"%s\"." % game.display_name
+	var msg: String = "📺  Twitch category → %s" % game.display_name
 	GameLog.add(msg, UITheme.ACCENT)
-	Notifications.notify(msg, UITheme.ACCENT)
+	Notifications.announce(msg, UITheme.ACCENT)
 
 # The attempt tracker (§3): the player ticks this every time they LOSE a run of
 # the game they're playing. THE TICK COSTS A TURN OF THE BOARD — the enemies
@@ -1839,8 +1910,10 @@ func escape_hint_text() -> String:
 	var to_go: int = escape_runs_to_go()
 	if to_go > 0:
 		var gate: int = GameLoop2.escape_after_lost_runs()
-		return "Unlocks after %d lost run%s here — %d to go." % [
-			gate, "" if gate == 1 else "s", to_go]
+		# FEW WORDS (the owner, 18 Nov 2026: "the least amount of words on screen
+		# while it still making sense"): the count is the news; the gate it counts
+		# toward is on the hover (escape_hover).
+		return "Opens in %d more lost run%s" % [to_go, "" if to_go == 1 else "s"]
 	var price: Dictionary = GameLoop2.end_of_game_price(true)
 	var bodies: int = int(price["bodies"])
 	if bodies <= 0:
@@ -2037,6 +2110,15 @@ func scramble() -> bool:
 # corridor back in frame — and the window drags out of the way by its header,
 # since the sky underneath stays live.
 
+# NO STAR CHART IN A RUN, FOR NOW (the owner, 18 Nov 2026: "lets take the atlas
+# out of the in run game for now, i think the optimal path works and also i have
+# a different idea for a map"). Every door to the map from the run page — the
+# header's Map, the offering's Optimal Path, a card's preview — opens the ladder
+# alone, and the window does not offer to raise the chart. The Atlas itself is
+# untouched and still opens from the Collection. One switch, so turning it back
+# on is this line.
+const RUN_ATLAS := false
+
 # The run's own map: from where the player stands to the Amulet, with the games
 # currently on offer flagged.
 func open_map() -> Node:
@@ -2112,7 +2194,9 @@ func _open_route_map(origin: StringName, choice_ids: Array, options: Dictionary)
 	# stranded underneath with no way back to it.
 	_dismiss_route_map()
 	var opts: Dictionary = options.duplicate()
-	var wants_chart: bool = bool(opts.get("chart", true)) and load(ATLAS_VIEW_SCRIPT).load_layout() != null
+	var wants_chart: bool = RUN_ATLAS and bool(opts.get("chart", true)) \
+		and load(ATLAS_VIEW_SCRIPT).load_layout() != null
+	opts["offer_chart"] = RUN_ATLAS
 	opts.erase("chart")
 	if wants_chart:
 		var atlas = load(ATLAS_VIEW_SCRIPT).new()
@@ -2279,9 +2363,30 @@ func turn_note(choice: Dictionary) -> Dictionary:
 func use_loot(idx: int) -> void:
 	if not put_away_pending_use():
 		return
+	# A CHEST carried in the pack opens where you stand (ChestLoot), mid-game too.
+	if idx >= 0 and idx < GameState.loot_items.size() \
+			and ChestLoot.is_chest(GameState.loot_items[idx]):
+		open_carried_chest(idx)
+		return
 	var modal = load(LOOT_USE_MODAL_SCRIPT).new()
 	modal.finished.connect(_refresh)
 	modal.start(self, idx, self)
+
+# Open the chest at `idx` in the pack: it leaves the pack, pays its gold and asks
+# which relic to take. Public for the tests. Returns the chest's modal.
+func open_carried_chest(idx: int) -> Node:
+	if idx < 0 or idx >= GameState.loot_items.size() \
+			or not ChestLoot.is_chest(GameState.loot_items[idx]):
+		return null
+	var chest: Dictionary = GameState.loot_items[idx]
+	GameState.remove_loot_at(idx)
+	_refresh()
+	var over: bool = _post_screen != null and is_instance_valid(_post_screen)
+	return ChestLoot.open(self, chest,
+		UITheme.Layer.POST_COMBAT_CARD if over else UITheme.Layer.DROP,
+		func():
+			_refresh()
+			autosave())
 
 # The old name for it, kept because the scroll panel's tests and DevTools' grant
 # path both say "read the scroll at this index" and mean exactly this.
@@ -2652,12 +2757,10 @@ func report(beaten: bool, fulfilled: Variant = null, escaped: bool = false,
 			# game ranks' PERFECTED visit (Performance Based Health Insurance).
 			if perfect_visit:
 				TriggerBus.game_perfected.emit({"game_id": played_game.id})
-		# THE GAME'S OWN LOOT (§4.3): one piece, a straight 50/50 between a scroll
-		# and a pill, asked about the way a kill drop is. On the same terms as the
-		# trigger above — any game seen through, win or lose — because what it pays
-		# for is the evening spent on it. An ESCAPE is the one report that earns
-		# none of it, which is why this sits inside the `not escaped` block.
-		_queue_loot_drop()
+		# NO GAME'S OWN LOOT any more (the owner, 18 Nov 2026: "lets get rid of the
+		# extra loot from beating the game, it's not necessary"). A game pays its
+		# chest and what the bodies cleared at it drop; `_queue_loot_drop` stays
+		# for the tests that drive the queue directly.
 
 	# WHERE THE RUN HAS BEEN. Every report is a game played, whatever it said: a
 	# missed goal was still an evening spent on that game, and so was walking away
@@ -2834,6 +2937,16 @@ func report(beaten: bool, fulfilled: Variant = null, escaped: bool = false,
 		# mid-game included, won or lost. Both ends equal when the start was not
 		# recorded (a save from before ranks), so the bar shows without filling.
 		"rank_from": _rank_from(played_game),
+		# Beaten with no lost run: what the summary page marks PERFECT.
+		"perfect": beaten and not escaped and perfect_visit,
+		# Where this report's XP came from (ReportSummary): the parts now, less the
+		# parts as they stood when the game was picked.
+		"xp_sources": GameRanks.gained(GameLoop2.rank_start.get("parts", {}),
+			GameRanks.xp_parts(played_game.id)) if played_game != null \
+			and String(GameLoop2.rank_start.get("game", "")) == String(played_game.id) else [],
+		"character_xp_sources": GameRanks.gained(GameLoop2.rank_start.get("character_parts", {}),
+			GameRanks.character_xp_parts(GameState.character_id)) \
+			if String(GameLoop2.rank_start.get("character", "")) == String(GameState.character_id) else [],
 		"rank_to": GameRanks.xp(played_game.id) if played_game != null else 0,
 		# …and THE CHARACTER'S (§20.9), the same way.
 		"character_rank_from": _character_rank_from(),
@@ -3934,6 +4047,8 @@ func _on_arrived(game_id: StringName) -> void:
 
 func _exit_tree() -> void:
 	GameState.clear_overworld_context(self)
+	if GameStats.changed.is_connected(_on_stats_changed_for_xp):
+		GameStats.changed.disconnect(_on_stats_changed_for_xp)
 	# The header bar goes with the page. Leaving its height published would push
 	# the main menu's own modals down by a strip that no longer exists.
 	ModalScaffold.reserved_top = 0.0
@@ -4025,44 +4140,38 @@ func _redeem_pending_chests() -> void:
 	# back, which is the exact interruption this whole block exists to prevent.
 	if not over_location and (_phase == Phase.PLAYING or _resolving):
 		return
-	# EVERY banked chest at once, not one screen each. Two chests used to open two
-	# screens back to back, which reads as one screen flickering — you cannot weigh
-	# the second chest's offer against what you just took, and nothing marks it as
-	# a different chest. One screen with a labelled group per chest says what you
-	# actually got: "2 Small Chests" is two chests of one item, not one of two.
-	var sizes: Array = []
-	var pools: Array = []
-	var gold: int = 0
+	# AS LOOT (the owner, 18 Nov 2026: "convert mid-game chests to loot too").
+	# Every banked chest is rolled now, as a chest on the reward screen's table is,
+	# and offered like any other loot: the same drop screen, where it can be
+	# opened on the spot or put in the pack for later. Its gold is paid when it
+	# opens (ChestLoot). All at once, one question.
+	var discovery: int = maxi(0, Stats.get_value(&"discovery"))
+	var entries: Array = []
 	while GameState.pending_chests > 0:
 		var choices: int = GameState.take_pending_chest()  # -1 none / 0 default / N
 		if choices < 0:
 			break
-		sizes.append(maxi(0, choices))
-		pools.append(GameState.last_chest_pool)
-		gold += Data.chest_gold(choices)
-	if sizes.is_empty():
+		var count: int = choices if choices > 0 \
+			else load(REWARD_SCREEN_SCRIPT).BASE_ITEM_CHOICES + discovery
+		var pool: String = GameState.last_chest_pool
+		var offer: Array = _drops.roll_chest(false, maxi(1, count), pool)
+		if not offer.is_empty():
+			entries.append(ChestLoot.make(offer, false, pool))
+	if entries.is_empty():
+		_redeem_pending_masks()
 		return
 	_reward_open = true
-	var screen = load(REWARD_SCREEN_SCRIPT).new()
-	# On a layer of its own when it has a popup to clear; an ordinary child of the
-	# page otherwise, as it always was.
-	var layer: CanvasLayer = null
-	if over_location:
-		layer = CanvasLayer.new()
-		layer.name = "LocationChestLayer"
-		layer.layer = UITheme.Layer.CHOICE
-		layer.process_mode = Node.PROCESS_MODE_ALWAYS
-		add_child(layer)
-		UITheme.dress(screen)
-	screen.closed.connect(func():
+	var modal := LootDropModal.open(self, entries, true)
+	# Above the location's popup when that is where it was bought.
+	if over_location and modal._layer != null:
+		modal._layer.layer = UITheme.Layer.CHOICE + 1
+		modal._layer.name = "LocationChestLayer"
+	modal.answered.connect(func(taken: Array):
 		_reward_open = false
-		if layer != null and is_instance_valid(layer):
-			layer.queue_free()
+		_drops.note_taken(taken)
 		_refresh()
+		autosave()
 		_redeem_pending_chests())
-	(layer if layer != null else self).add_child(screen)
-	# Every chest's gold, on the one screen they open on — paid by the screen.
-	screen.setup_chests(sizes, pools, gold)
 
 # A Mysterious Mask was picked up: open its choice when the page is next idle.
 func _on_mask_granted() -> void:
@@ -4121,12 +4230,10 @@ func _hand_chests_to_post_game() -> void:
 		var choices: int = GameState.take_pending_chest()
 		if choices < 0:
 			break
-		# The chest's gold (Data.chest_gold) is paid as it lands on the haul,
-		# taken or not — the same rule the RewardScreen keeps.
+		# The chest's gold (Data.chest_gold) is paid when it OPENS now — it lands
+		# on the haul's table as a chest (ChestLoot) — except on the fall-back
+		# below, which asks about it at once.
 		var gold: int = Data.chest_gold(choices)
-		if gold > 0:
-			GameState.change_gold(gold)
-			GameLog.add("Chest: +%d gold." % gold, Color(1.0, 0.9, 0.3))
 		var count: int = choices if choices > 0 else load(REWARD_SCREEN_SCRIPT).BASE_ITEM_CHOICES + discovery
 		var offer: Array = _drops.roll_chest(false, maxi(1, count), GameState.last_chest_pool)
 		if offer.is_empty():
@@ -4136,6 +4243,9 @@ func _hand_chests_to_post_game() -> void:
 		else:
 			# The screen went while we were draining: fall back to the queue the
 			# page's own modal drains, rather than losing the chest.
+			if gold > 0:
+				GameState.change_gold(gold)
+				GameLog.add("Chest: +%d gold." % gold, Color(1.0, 0.9, 0.3))
 			_drop_queue.append(_drops.rolled_drop(offer, false, GameState.last_chest_pool))
 			_pump_drops()
 
@@ -4787,7 +4897,6 @@ func _take_return_choice(index: int) -> void:
 const PEEK_LAYER := UITheme.Layer.HEADER - 1
 const COVER_MIN := UITheme.Layer.MENU_SCREEN
 var _peek_layer: CanvasLayer = null
-var _combat_button: Button = null
 var _peek_bar: Control = null
 var _peeked: Array = []              # the CanvasLayers hidden for this peek
 var _peek_for_aim: bool = false
@@ -4828,7 +4937,6 @@ func peek_board(for_aim: bool = false) -> void:
 	_peek_bar.name = "BoardPeekBar"
 	_peek_layer.add_child(_peek_bar)
 	_paint_peek_bar()
-	_sync_combat_button()
 
 # Put the covering screens back.
 func end_peek() -> void:
@@ -4840,7 +4948,6 @@ func end_peek() -> void:
 	if _peek_bar != null and is_instance_valid(_peek_bar):
 		_peek_bar.queue_free()
 	_peek_bar = null
-	_sync_combat_button()
 
 # BACK. Over an aim it is the aim's Cancel too — the screen the aim came from is
 # the one Back returns to, and a target left armed under it would fire on the next
@@ -4894,33 +5001,13 @@ func _place_top_right(c: Control) -> void:
 	c.position = Vector2(view.x - c.get_combined_minimum_size().x - 12.0,
 		ModalScaffold.reserved_top + 8.0)
 
-# The ⚔ Combat button: up whenever something covers the board and the page is not
-# already showing it.
-func _sync_combat_button() -> void:
-	var want: bool = not is_peeking() and _board != null and is_instance_valid(_board) \
-		and not GameLoop2.run_over and _phase != Phase.OVER and board_covered()
-	if not want:
-		if _combat_button != null and is_instance_valid(_combat_button):
-			_combat_button.visible = false
-		return
-	_ensure_peek_layer()
-	if _combat_button == null or not is_instance_valid(_combat_button):
-		# The danger plate, because it is the button to the fight.
-		_combat_button = UITheme.action_button("⚔ Combat", UITheme.DANGER,
-			Vector2(0, 32), UITheme.FONT_BODY)
-		_combat_button.name = "CombatButton"
-		_combat_button.tooltip_text = ("See the battlefield behind this screen — hover "
-			+ "the bodies, read the ground, pick up loot off the floor. Back brings "
-			+ "this screen back.")
-		_combat_button.pressed.connect(func(): peek_board(false))
-		_peek_layer.add_child(_combat_button)
-	_combat_button.visible = true
-	_place_top_right(_combat_button)
+# NO COMBAT BUTTON (the owner, 18 Nov 2026: "the hide button works as that").
+# A screen that covers the board carries its own Hide; peek_board is still how
+# an aim shows the board from under the screen it was armed on.
 
 # Once a frame, because the screens that cover the board open and close from a
-# dozen places and none of them should have to know about this: show or hide the
-# Combat button, end an aim's peek once the aim is done, and end any peek whose
-# screens have all gone.
+# dozen places and none of them should have to know about this: end an aim's
+# peek once the aim is done, and end any peek whose screens have all gone.
 func _tick_board_peek() -> void:
 	if not is_inside_tree():
 		return
@@ -4930,7 +5017,6 @@ func _tick_board_peek() -> void:
 		if (_peek_for_aim and not aiming) or not any_left:
 			end_peek()
 		return
-	_sync_combat_button()
 
 # --- throwing a potion at the board (docs/potions-design.md §4.2) -----------
 
@@ -8145,8 +8231,7 @@ func _build_ui() -> void:
 	select_head_row.add_child(_select_head)
 	var map_btn := HoverButton.new()
 	map_btn.text = "→  Optimal Path"
-	map_btn.tooltip_text = ("The shortest road from here to the Amulet, rung by rung. "
-		+ "The star chart is the 🗺 Map button in the header.")
+	map_btn.tooltip_text = "The shortest road from here to the Amulet, rung by rung."
 	map_btn.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	map_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	map_btn.pressed.connect(open_optimal_path)
@@ -8364,7 +8449,6 @@ func _build_ui() -> void:
 	# target get a button).
 	_launch_row = HBoxContainer.new()
 	_launch_row.add_theme_constant_override("separation", UITheme.GAP_SNUG)
-	np_box.add_child(_launch_row)
 	var head_row := HBoxContainer.new()
 	head_row.add_theme_constant_override("separation", UITheme.GAP_WIDE)
 	np_box.add_child(head_row)
@@ -8400,6 +8484,10 @@ func _build_ui() -> void:
 	verbs.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	verbs.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	head_row.add_child(verbs)
+	# PLAY BESIDE THE COVER (the owner, 18 Nov 2026), at the top of the column of
+	# what you are doing with the game.
+	_launch_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	verbs.add_child(_launch_row)
 	_now_playing = _panel_label()
 	_now_playing.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	verbs.add_child(_now_playing)
@@ -8413,8 +8501,14 @@ func _build_ui() -> void:
 	verbs.add_child(_split_panel)
 
 	# The attempt tracker (§3) — the thing you press between runs of the real game.
+	# LOST A RUN STANDS BESIDE COMPLETED GAME now (the owner, 18 Nov 2026): the
+	# two outcomes you report, side by side at the foot of the checklist, with
+	# Escape under them. The strip is built here and mounted in _report_row below;
+	# its count of lost runs stays up here, beside the cover, as a fact about it.
 	_attempt_wrap = _build_attempt_strip()
-	verbs.add_child(_attempt_wrap)
+	_attempt_count.get_parent().remove_child(_attempt_count)
+	_attempt_count.add_theme_color_override("font_color", UITheme.TEXT_DIM)
+	verbs.add_child(_attempt_count)
 	_play_panel.add_child(np_box)
 
 	# Verification checklist (populated per game): the main goal, the character's
@@ -8481,6 +8575,11 @@ func _build_ui() -> void:
 	done.clip_text = true
 	_report_row.add_child(done)
 	_wire_push_hover(done, func() -> int: return -1)
+	_attempt_wrap.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_attempt_wrap.size_flags_stretch_ratio = 1.0
+	# No frame of its own beside Completed Game: the button is the half.
+	_attempt_wrap.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
+	_report_row.add_child(_attempt_wrap)
 
 	# The way out, directly under the way through — they resolve the same step, so
 	# they belong together. Deliberately quieter than Completed Game: this is the
@@ -8510,7 +8609,8 @@ func _build_ui() -> void:
 	_escape_btn.add_theme_color_override("font_disabled_color",
 		UITheme.ACCENT.lerp(UITheme.BG, 0.55))
 	_escape_btn.pressed.connect(escape_game)
-	_report_row.add_child(_escape_btn)
+	# ITS OWN ROW, under Completed and Lost a run.
+	_play_panel.add_child(_escape_btn)
 
 	# …and WHAT OPENS IT, in small text directly under the button it is about. Only
 	# up while the button is down; an open door needs no instructions.
@@ -8541,10 +8641,23 @@ func _build_ui() -> void:
 	# a CanvasLayer has no rect to anchor to, which parks the stack off-screen.
 	_toasts = NotificationToasts.new()
 	add_child(_toasts)
+	# …in the lane under the board: the right column's x and width (see
+	# NotificationToasts.set_lane). Followed as the column moves, since it is
+	# laid out after this and re-laid out on every resize.
+	if _right_col != null:
+		_right_col.resized.connect(_fit_toast_lane)
+		_right_col.item_rect_changed.connect(_fit_toast_lane)
+		_fit_toast_lane.call_deferred()
 	# …and the stack starts BELOW the header bar, which is opaque and drawn over
 	# the toasts' layer: its own 56px inset was written against a page with no bar
 	# pinned across the top of it.
 	_fit_page_under_header()
+
+func _fit_toast_lane() -> void:
+	if _toasts == null or not is_instance_valid(_toasts) or _right_col == null \
+			or not is_instance_valid(_right_col) or _right_col.size.x <= 0.0:
+		return
+	_toasts.set_lane(_right_col.global_position.x - global_position.x, _right_col.size.x)
 
 # --- the header, pinned to the screen --------------------------------------
 
@@ -8646,6 +8759,7 @@ func _build_attempt_strip() -> Control:
 	_attempt_btn.add_theme_stylebox_override("normal", UITheme.flat(UITheme.DANGER.lerp(UITheme.BG, 0.62), 6, 8, 1, UITheme.DANGER.lerp(UITheme.BG, 0.35)))
 	_attempt_btn.add_theme_stylebox_override("hover", UITheme.flat(UITheme.DANGER.lerp(UITheme.BG, 0.45), 6, 8, 1, UITheme.DANGER))
 	_attempt_btn.pressed.connect(log_attempt)
+	_attempt_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(_attempt_btn)
 	_wire_push_hover(_attempt_btn,
 		func() -> int: return 1 if GameLoop2.lost_run_spawn_chance() > 0.0 else 0)
@@ -8663,11 +8777,6 @@ func _build_attempt_strip() -> Control:
 	# Dropping it is what buys this panel the room to put the two verbs beside the
 	# cover instead of under it.
 
-	# The strip still ends in a stretch, so the escape hint and the tracker keep the
-	# widths they had — the sentence that used to fill it has moved onto the button.
-	var spacer := Control.new()
-	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_child(spacer)
 	return wrap
 
 # WHO A PRESS WOULD PUSH INTO YOU, shown only while the button is hovered (owner,
@@ -8792,8 +8901,10 @@ func _clear(box: Control) -> void:
 func _build_map_button() -> Button:
 	var b := HoverButton.new()
 	b.text = "🗺  Map"
-	b.tooltip_text = ("The star chart: every game in the run's catalog, with the road "
-		+ "ahead drawn over it. Open from anywhere, including mid-game.")
+	b.tooltip_text = ("The road from here to the Amulet. Open from anywhere, "
+		+ "including mid-game.") if not RUN_ATLAS else ("The star chart: every game "
+		+ "in the run's catalog, with the road ahead drawn over it. Open from "
+		+ "anywhere, including mid-game.")
 	b.pressed.connect(open_map)
 	_header_map_btn = b
 	return b

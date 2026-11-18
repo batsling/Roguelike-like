@@ -128,6 +128,10 @@ var _exit_btn: Button = null
 # once (see _build_chests), held so the way out can answer whatever is left rather
 # than binning it without a word.
 var _chest_sections: Array = []
+# How many of `_loot` are chests, while the screen is being assembled (they lead).
+var _table_chest_count: int = 0
+# The chest opened off the table, while it is asking.
+var _open_chest: ItemDropModal = null
 var _loot_section: LootDropModal = null
 # The tally's tiles, held so they can be repainted when a stat moves UNDER the
 # screen — a potion read off the table, a Hollow Heart taken out of a chest.
@@ -180,12 +184,13 @@ static func open(page: Node, snapshot: Dictionary, drops: Array,
 			var items: Array = drop.get("items", [])
 			if items.is_empty() and drop.get("item") is ItemData:
 				items = [drop.get("item")]
+			# A CHEST IS LOOT ON THE TABLE now (ChestLoot, the owner 18 Nov 2026):
+			# the chests go first, then what the game's bodies dropped.
 			if not items.is_empty():
-				var mine: Array = items.duplicate()
-				screen._chests.append(mine)
-				if drop.get("roll") is Dictionary:
-					screen._note_roll(mine, bool(drop["roll"].get("boss", false)),
-						String(drop["roll"].get("pool", "")))
+				var roll: Dictionary = drop.get("roll", {}) if drop.get("roll") is Dictionary else {}
+				screen._loot.insert(screen._table_chest_count,
+					ChestLoot.make(items, bool(roll.get("boss", false)), String(roll.get("pool", ""))))
+				screen._table_chest_count += 1
 	screen._layer = CanvasLayer.new()
 	screen._layer.layer = LAYER
 	screen._layer.process_mode = Node.PROCESS_MODE_ALWAYS
@@ -205,6 +210,9 @@ func _ready() -> void:
 			(sig as Signal).connect(_refresh_tally)
 
 func _exit_tree() -> void:
+	if _inv != null and is_instance_valid(_inv) and not _inv.is_inside_tree():
+		_inv.free()
+		_inv = null
 	for sig in [GameState.hp_changed, GameState.stats_changed]:
 		if (sig as Signal).is_connected(_refresh_tally):
 			(sig as Signal).disconnect(_refresh_tally)
@@ -362,18 +370,45 @@ func chest_reason() -> String:
 # does (`take` / `leave`) rather than reaching into the layout for a button.
 # Either is null once it has been answered, and `chest` is null when a report
 # felled nothing.
+# THE CHEST BEING ASKED ABOUT: the one opened off the table, or — when none is —
+# the first chest on the table, opened now (as its Open button would). Null when
+# no chest is left.
 func chest() -> ItemDropModal:
-	for c in _live_chests():
-		return c
-	return null
+	if _open_chest != null and is_instance_valid(_open_chest) \
+			and not _open_chest.answered_already():
+		return _open_chest
+	var at: int = _first_table_chest()
+	if at < 0:
+		return null
+	var entry: Dictionary = _loot_section._offers[at]
+	_loot_section._forget_offer(at, entry)
+	_loot_section._after_change()
+	_open_chest = ChestLoot.open(_page, entry, CARD_LAYER, func():
+		refresh_payout()
+		_refresh_exit())
+	_refresh_exit()
+	return _open_chest
 
-# Every chest still waiting to be answered, oldest first.
+# The chests still lying on the table, as entries.
+func table_chests() -> Array:
+	if _loot_section == null or not is_instance_valid(_loot_section):
+		return []
+	return _loot_section._offers.filter(func(e): return ChestLoot.is_chest(e))
+
+func _first_table_chest() -> int:
+	if _loot_section == null or not is_instance_valid(_loot_section):
+		return -1
+	for i in range(_loot_section._offers.size()):
+		if ChestLoot.is_chest(_loot_section._offers[i]):
+			return i
+	return -1
+
+# The chest asking right now, as a list (empty or one).
 func _live_chests() -> Array:
-	var out: Array = []
-	for c in _chest_sections:
-		if c != null and is_instance_valid(c) and not c.answered_already():
-			out.append(c)
-	return out
+	if _open_chest != null and is_instance_valid(_open_chest) \
+			and not _open_chest.answered_already():
+		return [_open_chest]
+	return []
 
 func payout() -> LootDropModal:
 	return _loot_section if _loot_section != null and is_instance_valid(_loot_section) else null
@@ -382,7 +417,7 @@ func payout() -> LootDropModal:
 # are all ON the screen now rather than queued behind it — this is what is left to
 # decide, not what is left to see.
 func chests_waiting() -> int:
-	return maxi(0, _live_chests().size() - 1)
+	return table_chests().size()
 
 # What the way out says. The EVENT when the node owes one, because clicking it is
 # what opens the event — the player leaves this screen into the next thing rather
@@ -425,9 +460,10 @@ func exit_text() -> String:
 # {chests, loot}: the chests not yet answered and the pieces still on the table.
 func unclaimed() -> Dictionary:
 	var loot: int = 0
+	var chests: int = table_chests().size() + _live_chests().size()
 	if _loot_section != null and is_instance_valid(_loot_section):
-		loot = _loot_section.remaining()
-	return {"chests": _live_chests().size() + _chests.size(), "loot": loot}
+		loot = _loot_section.remaining() - table_chests().size()
+	return {"chests": chests, "loot": maxi(0, loot)}
 
 func unclaimed_count() -> int:
 	var u: Dictionary = unclaimed()
@@ -460,9 +496,8 @@ func press_exit() -> void:
 func _flash_unclaimed() -> void:
 	var u: Dictionary = unclaimed()
 	var targets: Array = []
-	if int(u["chests"]) > 0 and _chest_slot != null and is_instance_valid(_chest_slot):
-		targets.append(_chest_slot)
-	if int(u["loot"]) > 0 and _loot_slot != null and is_instance_valid(_loot_slot):
+	if (int(u["chests"]) > 0 or int(u["loot"]) > 0) and _loot_slot != null \
+			and is_instance_valid(_loot_slot):
 		targets.append(_loot_slot)
 	for t in targets:
 		var tw: Tween = (t as Control).create_tween()
@@ -499,7 +534,7 @@ func _build() -> void:
 	# have to find by scrolling.
 	col.add_theme_constant_override("separation", UITheme.GAP)
 	frame.add_child(col)
-	col.add_child(_header())
+	col.add_child(_compact_header())
 
 	var body := HBoxContainer.new()
 	body.add_theme_constant_override("separation", COLUMN_GAP)
@@ -515,6 +550,48 @@ func _build() -> void:
 	body.add_child(_right_column())
 	col.add_child(_footer())
 	_fill_sections()
+	# THE FIRST PAGE: the game, the XP and what it was for (ReportSummary), laid
+	# over the haul until Continue.
+	_summary = load(SUMMARY_SCRIPT).new()
+	add_child(_summary)
+	_summary.setup(self)
+
+const SUMMARY_SCRIPT := "res://scripts/redesign2/ReportSummary.gd"
+var _summary: Control = null
+
+# The summary page while it is up, else null.
+func summary() -> Control:
+	return _summary if _summary != null and is_instance_valid(_summary) \
+		and not _summary.is_queued_for_deletion() else null
+
+# The cover, how it went, and the game's name, on one line: the full header with
+# the rank bars is the summary screen's (ReportSummary).
+func _compact_header() -> Control:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", UITheme.GAP)
+	var g: GameData = game()
+	if g != null and g.cover_image != null:
+		var art := TextureRect.new()
+		art.texture = g.cover_image
+		art.custom_minimum_size = Vector2(30, 40)
+		art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		row.add_child(art)
+	var head := _line(headline(), _accent(), UITheme.FONT_HEAD)
+	head.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(head)
+	if g != null:
+		var name := _line(g.display_name, UITheme.TEXT_DIM, UITheme.FONT_LABEL)
+		name.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		row.add_child(name)
+	# PERFECT, when it was beaten with no lost run (the owner, 18 Nov 2026).
+	if bool(_snap.get("perfect", false)):
+		var perfect := UITheme.chip("★  PERFECT", UITheme.GOLD, UITheme.FONT_BODY)
+		perfect.name = "Perfect"
+		perfect.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		perfect.tooltip_text = "Beaten with no lost run."
+		row.add_child(perfect)
+	return row
 
 func _accent() -> Color:
 	match verdict():
@@ -649,72 +726,49 @@ func _open_rating(g: GameData, btn: Button) -> void:
 # shop with a Huge chest is more than a 720p canvas holds — the loot column beside
 # it does not, since the drag between its two halves is the one thing on this
 # screen that a scrollbar would get in the way of.
+# THE INVENTORY, AS THE FULL INVENTORY DRAWS IT (the owner, 18 Nov 2026: "I'd
+# like it to look like the full inventory, but with a section that has the 'on
+# the table' section"): who you are and what you hold — the character, the stats,
+# the resources, the statuses and curses, then every relic — beside the table and
+# the pack. The run's report itself (the tally, the level-up, the chest's sum, who
+# is still following) is the summary screen in front of this one (ReportSummary).
+const FULL_INVENTORY_SCRIPT := "res://scripts/redesign2/FullInventory.gd"
+var _inv: Node = null
+
 func _left_column() -> Control:
-	var scroller := ScrollContainer.new()
-	scroller.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	scroller.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroller.size_flags_vertical = Control.SIZE_EXPAND_FILL
-
 	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", UITheme.GAP_WIDE)
-	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroller.add_child(col)
-
-	col.add_child(_tally_panel())
-
-	# THE LEVEL-UP, WHEN THE REPORT TOOK ONE. Above the chests, because its chest
-	# is one of the ones below and this is the line that says where that one came
-	# from. See _level_up_panel.
-	var lvl: Control = _level_up_panel()
-	if lvl != null:
-		col.add_child(lvl)
-	# …and one per Mysterious Mask whose condition the report met (§3.1).
-	for masked in _snap.get("mask_level_ups", []):
-		var mlvl: Control = _level_up_block(masked)
-		if mlvl != null:
-			col.add_child(mlvl)
-
-	# One heading over all the chests rather than one apiece: three bodies each
-	# leaving a single relic is three panels that would otherwise each announce "it
-	# dropped something" over the picture that already says it.
-	_chest_head = _line("✦  What the evening earned", UITheme.TEXT_DIM, 12)
-	_chest_head.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_chest_head.visible = false
-	col.add_child(_chest_head)
-	_chest_gold_line = _line("", ItemDropModal.GOLD_TEXT, 13)
-	_chest_gold_line.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	col.add_child(_chest_gold_line)
-	_sync_chest_gold()
-
-	# …and directly under it, the sum that produced the chest below (chest_terms).
-	# Hidden and shown with the heading, since it is describing the same thing.
-	_chest_why = _chest_sum_row()
-	if _chest_why != null:
-		_chest_why.visible = false
-		col.add_child(_chest_why)
-
-	# One Reroll for every chest under it, shown while there is one to re-roll.
-	_chest_reroll = Button.new()
-	_chest_reroll.custom_minimum_size = Vector2(150, 30)
-	_chest_reroll.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	_chest_reroll.visible = false
-	_chest_reroll.pressed.connect(reroll_chests)
-	col.add_child(_chest_reroll)
-
-	_chest_slot = VBoxContainer.new()
-	_chest_slot.add_theme_constant_override("separation", UITheme.GAP_SNUG)
-	_chest_slot.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	col.add_child(_chest_slot)
-
+	col.add_theme_constant_override("separation", UITheme.GAP)
+	col.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	# A boss on the way says so at the top, where it always did.
 	_boss_slot = VBoxContainer.new()
 	_boss_slot.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	col.add_child(_boss_slot)
+	_inv_row = HBoxContainer.new()
+	_inv_row.add_theme_constant_override("separation", UITheme.GAP_SECTION)
+	_inv_row.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	col.add_child(_inv_row)
+	_inv = load(FULL_INVENTORY_SCRIPT).new()
+	_inv.set("_page", _page)
+	_fill_inventory()
+	return col
 
-	var board: Control = _board_panel()
-	if board != null:
-		col.add_child(board)
+var _inv_row: HBoxContainer = null
+# Narrower than the Full Inventory's own 250 + 330: the table beside them grows a
+# column for every few pieces a big evening drops, and it needs the room.
+const INV_CHAR_W := 220.0
+const INV_ITEMS_W := 220.0
+var _inv_dirty: bool = false
 
-	return scroller
+# Redraw the two inventory columns from the run as it stands: a relic out of a
+# chest, the gold a chest paid, a potion drunk off the table all change them.
+func _fill_inventory() -> void:
+	if _inv_row == null or not is_instance_valid(_inv_row) or _inv == null:
+		return
+	for c in _inv_row.get_children():
+		_inv_row.remove_child(c)
+		c.queue_free()
+	_inv_row.add_child(_inv._character_column(INV_CHAR_W))
+	_inv_row.add_child(_inv._items_column(INV_ITEMS_W))
 
 # WHO IS STILL FOLLOWING YOU, BY FACE — the bottom of the left column.
 #
@@ -808,7 +862,6 @@ func _fill_sections() -> void:
 	if not _bosses.is_empty() or _boss_tier != "":
 		BossNoticeModal.embed(self, _boss_slot, _boss_tier, _bosses)
 	_fill_payout()
-	_build_chests()
 	_refresh_exit()
 
 func _tally_panel() -> Control:
@@ -844,7 +897,7 @@ func _right_column() -> Control:
 # and held to the 3x3's box it was drawn at half size with the left column beside
 # it mostly air. So it may take the frame's width less what the left column keeps
 # (`LEFT_MIN`) — the pack only shrinks once the screen genuinely cannot hold it.
-const LEFT_MIN := 320.0
+const LEFT_MIN := INV_CHAR_W + INV_ITEMS_W + 16.0
 
 func _payout_budget() -> float:
 	var frame_w: float = get_viewport_rect().size.x - INSET_X * 2.0 - 14.0 * 2.0 - 4.0
@@ -1022,6 +1075,14 @@ func _focus_exit() -> void:
 		_exit_btn.release_focus()
 
 func _refresh_exit() -> void:
+	# Whatever moved the way out moved the inventory too (a chest opened, a piece
+	# spent); redrawn next frame so a burst of changes is one redraw.
+	if not _inv_dirty:
+		_inv_dirty = true
+		(func():
+			_inv_dirty = false
+			if is_instance_valid(self):
+				_fill_inventory()).call_deferred()
 	if _exit_btn == null or not is_instance_valid(_exit_btn):
 		return
 	var left: int = unclaimed_count()
@@ -1123,15 +1184,20 @@ func _roll_of(items: Array) -> Dictionary:
 # be re-rolled at all. One charge re-rolls every rolled chest still open here,
 # each the way it was rolled, which is the rule on every screen a chest is on.
 func reroll_chests() -> void:
-	if _done or _rerollable().is_empty() or _page == null:
+	var chests: Array = table_chests()
+	if _done or chests.is_empty() or _page == null:
 		return
 	if not ItemDropModal.spend_reroll():
 		return
-	for entry in _rerollable():
-		var section: ItemDropModal = entry["section"]
-		var fresh: Array = Data.roll_chest(_page.drop_rng(), section.offer().size(),
-			String(entry["pool"]), bool(entry["boss"]))
-		section.reoffer(fresh)
+	# Every chest still on the table, each the way it was rolled; a chest's own
+	# Reroll, once it is open, asks the same of that one.
+	for entry in chests:
+		var fresh: Array = Data.roll_chest(_page.drop_rng(), int(entry.get("choices", 1)),
+			String(entry.get("pool", "")), bool(entry.get("boss", false)))
+		if not fresh.is_empty():
+			var made: Dictionary = ChestLoot.make(fresh, bool(entry.get("boss", false)),
+				String(entry.get("pool", "")))
+			entry["offer"] = made["offer"]
 	_sync_chest_head()
 
 # The chests a re-roll would touch: rolled, mounted and still unanswered.
@@ -1288,20 +1354,12 @@ func _sum_glyph(text: String) -> Control:
 # a status's payout — put on the screen rather than behind it. Without this it
 # opens a RewardScreen on the page's own layer, underneath this one, and the
 # player sees nothing until they have already left (§8.2).
-func add_chest(items: Array, gold: int = 0, pool: String = "") -> void:
+# It goes ON THE TABLE as a chest (ChestLoot); its gold is paid when it opens,
+# so `_gold` is no longer used.
+func add_chest(items: Array, _gold: int = 0, pool: String = "") -> void:
 	if _done or items.is_empty():
 		return
-	# A banked chest is always a rolled one.
-	_note_roll(items, false, pool)
-	if gold > 0:
-		_chest_gold += gold
-		_chest_gold_from += 1
-		_sync_chest_gold()
-	if _chest_slot == null or not is_instance_valid(_chest_slot):
-		_chests.append(items)
-		return
-	_mount_chest(items)
-	_refresh_exit()
+	add_loot([ChestLoot.make(items, false, pool)])
 
 # Taking and leaving go back through the page, which owns the inventory, the log
 # and the toast — this screen decides nothing about a relic beyond which one was
@@ -1359,10 +1417,6 @@ func dismiss() -> void:
 		_loot_section = null
 	for section in _live_chests():
 		section.leave()
-	_chest_sections.clear()
-	for items in _chests:
-		_leave(items)
-	_chests.clear()
 	finished.emit()
 	if _layer != null and is_instance_valid(_layer):
 		_layer.queue_free()

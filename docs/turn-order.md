@@ -300,7 +300,8 @@ Then, back in `Overworld2.report`:
    Blood), every charged item +1, Harvesting, the toast, the overlay.
 4. Signal `game_won` (goal met) → items; then `game_perfected` (won with no lost
    run) → items.
-5. The **game's own loot** (a scroll or a pill) is queued. Not on an escape.
+5. (There is no game's own loot any more — removed 18 Nov 2026; a game pays its
+   chest and its bodies' drops.)
 6. Bookkeeping: game marked played, the clock's split banked, the run's **escape
    streak** counted (an escape +1, anything else back to 0; five earns the
    Abandon Hat, `docs/customization.md` §7), beats and perfects
@@ -309,9 +310,8 @@ Then, back in `Overworld2.report`:
 8. **Event goals** resolve and tick; games played +1; a difficulty step is
    announced.
 9. **Hunger** (a player with it, `docs/players-design.md` §4): the game costs 1,
-   or — handed in with the stomach already at 0 — 2 Health. Last, after the
-   game's own loot was queued, so food the haul is about to hand over cannot
-   save you; eat before you hand the game in. ☠
+   or — handed in with the stomach already at 0 — 2 Health. Last, so food the
+   haul is about to hand over cannot save you; eat before you hand the game in. ☠
 10. The **animation** replays the extra turns of 2a / 2a′, then §5.
 
 ```order
@@ -349,7 +349,6 @@ ShopSystem.is_shop(slot_here)
 TriggerBus.game_beaten.emit(
 TriggerBus.game_won.emit(
 TriggerBus.game_perfected.emit(
-_queue_loot_drop()
 GameState.note_game_played(
 RunTimer.finish_game(
 GameState.note_game_beaten(
@@ -370,8 +369,8 @@ Once the animation ends (`_end_resolve`):
    bill — has no playback to wait for, so it waits for the player instead:
    `Overworld2._hold_death` puts up the **death card** (`DeathCard.gd`), or tells a
    pack piece's use screen it was fatal, and the run-over screen opens on Continue.)
-2. The **end-of-game screen** — the haul: kill drops that had no square, chests, the
-   game's own loot, the boss warning, and *Go to Shop* at a game with a shop. Autosave
+2. The **end-of-game screen** — the haul: kill drops that had no square, chests,
+   the boss warning, and *Go to Shop* at a game with a shop. Autosave
    when it closes.
 3. The **Collapse** screen, Fracture 10's Amulet only.
 4. The **event** rolled at the report.

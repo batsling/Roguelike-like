@@ -20,6 +20,12 @@ const CIRCLE := 30.0
 # game's, then the character's), so each is a size smaller there.
 const CIRCLE_COMPACT := 22.0
 var compact: bool = false
+# LARGE: the report's summary page, where the two bars ARE the page (the owner,
+# 18 Nov 2026) — a bigger circle and numbers, and a thick bar as wide as its row.
+var large: bool = false
+const CIRCLE_LARGE := 52.0
+const BAR_H_LARGE := 12.0
+const BAR_W_LARGE := 380.0
 
 var from_xp: int = 0
 # Whose rank this is — the game's name or the character's — leading the line.
@@ -73,7 +79,7 @@ func _ready() -> void:
 	_number.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_number.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_number.add_theme_font_size_override("font_size",
-		UITheme.FONT_SMALL if compact else UITheme.FONT_LABEL)
+		UITheme.FONT_TITLE if large else (UITheme.FONT_SMALL if compact else UITheme.FONT_LABEL))
 	_circle.add_child(_number)
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", UITheme.GAP_HAIR)
@@ -81,10 +87,15 @@ func _ready() -> void:
 	add_child(col)
 	_gain = Label.new()
 	_gain.add_theme_font_size_override("font_size",
-		UITheme.FONT_TINY if compact else UITheme.FONT_SMALL)
+		UITheme.FONT_LEAD if large else (UITheme.FONT_TINY if compact else UITheme.FONT_SMALL))
 	col.add_child(_gain)
 	_bar = Control.new()
-	_bar.custom_minimum_size = Vector2(BAR_W, BAR_H - (1.0 if compact else 0.0))
+	_bar.custom_minimum_size = Vector2(BAR_W_LARGE, BAR_H_LARGE) if large \
+		else Vector2(BAR_W, BAR_H - (1.0 if compact else 0.0))
+	if large:
+		size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_bar.draw.connect(_draw_bar)
 	col.add_child(_bar)
@@ -98,7 +109,7 @@ func _ready() -> void:
 			.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 
 func circle() -> float:
-	return CIRCLE_COMPACT if compact else CIRCLE
+	return CIRCLE_LARGE if large else (CIRCLE_COMPACT if compact else CIRCLE)
 
 func _set_shown(value: float) -> void:
 	shown_xp = value
@@ -122,8 +133,8 @@ func _draw_circle() -> void:
 	var c := Vector2(d, d) * 0.5
 	var up: bool = shown_rank() > GameRanks.rank_for(from_xp)
 	_circle.draw_circle(c, d * 0.5, Color(UITheme.BG_DEEP, 0.95))
-	_circle.draw_arc(c, d * 0.5 - 1.0, 0.0, TAU, 40,
-		UITheme.GOLD if up or shown_rank() > 0 else UITheme.BORDER, 2.0, true)
+	_circle.draw_arc(c, d * 0.5 - 1.5, 0.0, TAU, 48,
+		UITheme.GOLD if up or shown_rank() > 0 else UITheme.BORDER, 3.0 if large else 2.0, true)
 
 func _draw_bar() -> void:
 	var r := Rect2(Vector2.ZERO, _bar.size)

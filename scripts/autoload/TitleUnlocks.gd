@@ -109,7 +109,7 @@ func _refresh_unlocks(announce: bool) -> void:
 	_save()
 	if announce:
 		for key in fresh:
-			Notifications.notify("🏆 New title letter: %s" % label(key),
+			Notifications.announce("🏆 New title letter: %s" % label(key),
 				Color(0.95, 0.8, 0.45), null, "title_letter")
 			letter_unlocked.emit(key)
 	changed.emit()

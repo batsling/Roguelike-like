@@ -885,6 +885,41 @@ func mark_seen(kind: String, id) -> void:
 	if not _seen_save_due:
 		_seen_save_due = true
 		_flush_seen.call_deferred()
+	# A FIRST SIGHTING IS NEWS (the owner, 18 Nov 2026): one of the few things
+	# that still pops up rather than only going to History (Notifications).
+	var res = _seen_resource(kind, StringName(key))
+	var shown: String = String(res.get("display_name")) if res != null \
+		and res.get("display_name") != null else key.capitalize()
+	var pic: Texture2D = null
+	if res != null:
+		for prop in ["icon", "image"]:
+			var v = res.get(prop)
+			if v is Texture2D:
+				pic = v
+				break
+	Notifications.announce("📖  New in the Collection: %s" % shown,
+		Color(0.55, 0.80, 0.95), pic)
+
+# The resource a SEEN_KINDS id names, for the discovery line's name and picture.
+func _seen_resource(kind: String, id: StringName):
+	match kind:
+		"game": return Data.get_game(id)
+		"item": return Data.get_item2(id)
+		"character": return Data.get_character2(id)
+		"enemy", "boss": return Data.get_goal_enemy_any(id)
+		"scroll": return Data.get_scroll(id)
+		"pill": return Data.get_pill(id)
+		"potion": return Data.get_potion(id)
+		"card": return Data.get_card(id)
+		"wand": return Data.get_wand(id)
+		"trinket": return Data.get_trinket(id)
+		"bag": return Data.get_bag(id)
+		"weapon", "evolution": return Data.get_weapon(id)
+		"event": return Data.get_event2(id)
+		"object": return Data.get_object2(id)
+		"shopkeeper": return Data.get_shopkeeper(id)
+		"location": return Data.get_location(id)
+	return null
 
 func _flush_seen() -> void:
 	if not _seen_save_due:

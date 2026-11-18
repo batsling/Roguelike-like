@@ -810,7 +810,11 @@ nothing about the rule above changed except how long it lasts.
 
 **Where pills come from.** Two places, and they are the same roll.
 
-**Beating a game pays 1 random piece of loot** — an even FOUR-way split between a
+> **Removed 18 Nov 2026** (the owner: "it's not necessary"): a game no longer pays
+> a piece of loot of its own. What follows is kept as the history of the rule;
+> the bodies' drops below are now the run's loot income, with the chest.
+
+**Beating a game paid 1 random piece of loot** — an even FOUR-way split between a
 scroll, a pill, a potion and a **card** ([`cards-design.md`](cards-design.md) §4),
 and the run's baseline loot income. It is paid for
 any game the player actually saw through: **walking away from a game pays

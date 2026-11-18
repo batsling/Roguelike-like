@@ -575,6 +575,23 @@ func chest_points_for(enemy: GoalEnemyData) -> int:
 func chest_point_breakdown() -> Array:
 	return chest_point_sources.duplicate()
 
+# WHAT BEATING THE GAME WOULD PAY RIGHT NOW (the owner, 18 Nov 2026: "a visual
+# indicator at the bottom of the grid that shows what the reward will be"): the
+# chest sizes `claim_chests(true)` would hand over, plus one row per boss chest,
+# and the loot lying on the board. Reads, never spends — the same arithmetic as
+# claim_chests, so the board and the haul can never disagree.
+func reward_preview() -> Dictionary:
+	var base: int = 1 + GameState.base_chest_bonus()
+	if RunGraph.is_rift_game(GameState.current_game_id):
+		base *= RIFT_MULT
+	var loot: Array = []
+	for cell in drops:
+		var held = drops[cell]
+		if held is Dictionary and (held as Dictionary).get("loot") is Dictionary:
+			loot.append((held as Dictionary)["loot"])
+	return {"chests": Data.chest_reward_sizes(base + chest_points),
+		"boss_chests": boss_chests.size(), "loot": loot}
+
 func claim_chests(beaten: bool) -> Array:
 	var out: Array = []
 	if beaten:

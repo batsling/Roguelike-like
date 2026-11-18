@@ -1968,12 +1968,10 @@ static func type_label(type_val: int) -> String:
 		GameData.GameType.TRADITIONAL: return "Traditional"
 	return "?"
 
-# Themed color (RGB) used for the chip + Choose button. Matches the
-# typeColors map in character-start.js.
+# A genre's colour. UITheme.TYPE_COLORS owns the palette; this kept a second
+# copy that disagreed with it (Traditional purple here, green there), so every
+# screen now reads the one list.
 static func type_color(type_val: int) -> Color:
-	match type_val:
-		GameData.GameType.ACTION: return Color8(0xc0, 0x39, 0x2b)
-		GameData.GameType.TRADITIONAL: return Color8(0x7d, 0x3c, 0x98)
-		GameData.GameType.STRATEGY: return Color8(0x1a, 0x52, 0x76)
-		GameData.GameType.DECKBUILDER: return Color8(0x1e, 0x84, 0x49)
-	return Color8(0x55, 0x55, 0x55)
+	if type_val < 0 or type_val >= UITheme.TYPE_COLORS.size():
+		return Color8(0x55, 0x55, 0x55)
+	return UITheme.type_color(type_val)

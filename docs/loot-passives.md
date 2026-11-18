@@ -987,3 +987,36 @@ Offering's four can go 2 + 1 + 1 or all on one thing. Only things with room are
 offered; the charges land as they are picked, and one line reports them all.
 
 Tests: `test/test_loot_upgrade.gd`.
+
+## 20. Chests — loot you open
+
+**The owner, 18 Nov 2026:** "Chests will now be treated as loot in the sense that
+you can move it around in your inventory" — and, asked, *pack item, open any
+time*. A chest is the ninth kind of loot (`type: "chest"`), and
+`scripts/runtime/ChestLoot.gd` is the whole of its rule:
+
+- **Where it comes from.** Every chest a report pays (`GameLoop2.claim_chests`)
+  and every chest banked while the reward screen is up (a level-up's) lies on that
+  screen's **table** (`PostCombatScreen`), first, beside the loot the bodies
+  dropped. A chest left on the table is lost with the rest.
+- **What it holds.** Its relics are rolled when it is earned, as they always
+  were, and kept on the entry as ids (`offer`), so a save carries it and the
+  seeded stream is drawn in the same order. `choices` is how many it offers (its
+  size, `ItemDropModal.chest_rank`), `boss` and `pool` how it was rolled — what
+  a Reroll asks again (`PostCombatScreen.reroll_chests` for every chest on the
+  table, the chest's own Reroll once it is open).
+- **Opening.** Its cell's button reads **Open** (`LootSystem.use_verb`). Opening
+  takes it off the table or out of the pack, pays its gold (`Data.chest_gold`),
+  and asks which relic to take on the same `ItemDropModal` every chest uses,
+  above whatever screen it was opened from (`ChestLoot.open`). From the pack it
+  opens anywhere, mid-game included (`Overworld2.open_carried_chest`).
+- **How it looks.** The chest icon the player wears (Customization, by size; a
+  Boss chest is its own rung), or the same gift its popup draws, rendered per
+  size in the popup's colours (`images2.0/general/Chest*.png`). In a pack or
+  table cell it is drawn with the popup's own badge — the glow behind the gift
+  and its stars arced over it. No Preference badge: it is not a gamble. Under the
+  board, "Beat it:" draws each chest with the popup's own badge — the glow and
+  the arced stars (`ItemDropModal.gift_badge`).
+- **Between games.** A chest banked with no reward screen up (a potion's
+  level-up, a location's trade) is rolled and offered as chest loot on the
+  ordinary loot screen (`Overworld2._redeem_pending_chests`).

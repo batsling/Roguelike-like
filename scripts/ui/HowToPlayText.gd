@@ -466,6 +466,18 @@ static func _ch_enemies() -> Dictionary:
 			_p("Every chest also holds gold, one per rung: a Small 1, a Medium 2, "
 				+ "a Large 3, a Huge 4. It is paid as the chest opens, whether or not "
 				+ "you take anything out of it."),
+			_p("A chest is a piece of loot. It lies on the reward screen's table "
+				+ "with the loot the bodies dropped: press Open to choose a relic "
+				+ "now, or drag it into your pack and open it whenever you like. A "
+				+ "chest left on the table is lost with the rest."),
+			_p("The reward screen opens on the game you just played: how it went, "
+				+ "the XP it and your character earned, and what each part of it "
+				+ "was for. Continue goes on to your inventory and the table."),
+			_p("XP lands as you earn it: tick a goal mid-game and the game's and "
+				+ "your character's rank bars slide up in the bottom-right corner "
+				+ "and fill. A bar that reaches a new rank says RANK UP."),
+			_p("Under the board, \"Beat it:\" shows what beating the game would pay "
+				+ "right now — its chests and the loot on the board."),
 			_note("Bosses are not in that pool. A boss drops a chest of its own, "
 				+ "on its own terms, and it is paid whether or not the game went "
 				+ "your way."),
@@ -1216,10 +1228,10 @@ static func _ch_screen() -> Dictionary:
 				+ "Amulet, rung by rung, with your shops marked. It lives in the "
 				+ "offering's heading row, and on every offered card — a card's "
 				+ "own button routes the path as it would be if you took it."),
-			_kv("🗺 Map", "The star chart, with the road ahead drawn over it. It "
-				+ "lives in the header, so it opens from anywhere in a run."),
-			_kv("✦ Atlas", "The same star chart opened from the menus, with no run "
-				+ "on it. Not a run tool — a thing to look at."),
+			_kv("🗺 Map", "The Optimal Path from where you stand. It lives in the "
+				+ "header, so it opens from anywhere in a run, mid-game included."),
+			_kv("✦ Atlas", "The star chart of every game, opened from the "
+				+ "Collection. Not a run tool — a thing to look at."),
 			_kv("Collection", "Every item, scroll, enemy, event and status in the "
 				+ "game, and whether you have met it."),
 			_kv("🏆 Tier List", "Your own ranking of every game you have beaten, "
