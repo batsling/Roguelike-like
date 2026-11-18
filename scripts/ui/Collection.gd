@@ -523,6 +523,31 @@ const COVER_PLATE := UITheme.PANEL
 # `game_id` is only ever the tier badge's business (UITheme.attach_tier_badge) —
 # the plate itself does not care which game it is drawing. Optional so the two
 # callers that draw a cover for something other than a game row stay as they are.
+# HOW A GAME YOU HAVE NOT SEEN SHOWS IN THE GRID (the owner, 18 Nov 2026: "let
+# me see a dimmed or pixelated version"). 1,007 black plates said nothing about
+# what was behind them; these let the catalogue look like a catalogue while the
+# name stays "???".
+#   "dark"  — the old black silhouette
+#   "dim"   — the real cover, darkened and greyed
+#   "pixel" — the real cover in big blocks, like a Gamedle cover before a guess
+const UNSEEN_COVER := "pixel"
+const UNSEEN_PIXEL_CELLS := 7.0
+const PIXELATE_SHADER := preload("res://shaders/pixelate.gdshader")
+
+func _unseen_cover_plate(g: GameData) -> Control:
+	var plate: Control = _cover_plate(g.cover_image, g.id)
+	var tr := plate.find_child("Cover", true, false) as TextureRect
+	if tr == null:
+		return plate
+	if UNSEEN_COVER == "pixel":
+		var mat := ShaderMaterial.new()
+		mat.shader = PIXELATE_SHADER
+		mat.set_shader_parameter("cells", UNSEEN_PIXEL_CELLS)
+		tr.material = mat
+	else:
+		tr.self_modulate = Color(0.32, 0.30, 0.30)
+	return plate
+
 func _cover_plate(tex: Texture2D, game_id = &"") -> Control:
 	var plate := PanelContainer.new()
 	var sb := StyleBoxFlat.new()
@@ -880,7 +905,10 @@ func _fill_cell(index: int) -> void:
 	var g: GameData = slot["game"]
 	var tc := _game_type_color(int(g.type))
 	var unseen: bool = not GameStats.is_seen("game", g.id)
-	if unseen:
+	var hinted: bool = unseen and UNSEEN_COVER != "dark" and g.cover_path != ""
+	if hinted:
+		box.add_child(_unseen_cover_plate(g))
+	elif unseen:
 		# A silhouette needs no picture: the plate alone, blacked out below.
 		box.add_child(_cover_plate(null, g.id))
 	elif g.cover_path != "":
@@ -918,7 +946,7 @@ func _fill_cell(index: int) -> void:
 		Color(0.95, 0.8, 0.4) if played else Color(0.5, 0.5, 0.55), GRID_META_FONT, false))
 	box.add_child(stat_row)
 	if unseen:
-		_veil_box(box)
+		_veil_box(box, hinted)
 	slot["filled"] = true
 
 func _empty_cell(index: int) -> void:
@@ -1571,7 +1599,10 @@ func _game_type_color(t: int) -> Color:
 # scrollbar are the full catalog's whichever cells happen to be drawn.
 func _game_cell(g: GameData) -> Control:
 	var tc := _game_type_color(int(g.type))
-	var cell := _cell(tc, func(): _show_game_detail(g))
+	# An unseen game's frame is a plain hairline: its genre is something you learn
+	# by meeting it, and 1,007 bright rims were the loudest thing on the screen.
+	var rim: Color = tc if GameStats.is_seen("game", g.id) else UITheme.BORDER
+	var cell := _cell(rim, func(): _show_game_detail(g))
 	var panel: PanelContainer = cell.panel
 	panel.custom_minimum_size = Vector2(GRID_COVER_W + CELL_PAD, _game_cell_height())
 	# The full name, since the label inside is clamped to NAME_LINES and the long
@@ -3624,7 +3655,9 @@ func _veil(panel: Control, kind: String, id) -> Control:
 
 # The first picture black, the first line "???", everything else hidden. Also
 # what a streamed game cell does to itself once it is filled (`_fill_cell`).
-func _veil_box(vb: Node) -> void:
+# `keep_art`: the picture was already drawn veiled (UNSEEN_COVER), so it is left
+# as it is rather than blacked out.
+func _veil_box(vb: Node, keep_art: bool = false) -> void:
 	var named: bool = false
 	var drawn: bool = false
 	for c in vb.get_children():
@@ -3637,7 +3670,8 @@ func _veil_box(vb: Node) -> void:
 				(c as Control).visible = false
 		elif c is Control:
 			if not drawn and not named:
-				_silhouette(c as Control)
+				if not keep_art:
+					_silhouette(c as Control)
 				drawn = true
 			else:
 				(c as Control).visible = false
