@@ -4800,7 +4800,6 @@ func _take_return_choice(index: int) -> void:
 const PEEK_LAYER := UITheme.Layer.HEADER - 1
 const COVER_MIN := UITheme.Layer.MENU_SCREEN
 var _peek_layer: CanvasLayer = null
-var _combat_button: Button = null
 var _peek_bar: Control = null
 var _peeked: Array = []              # the CanvasLayers hidden for this peek
 var _peek_for_aim: bool = false
@@ -4841,7 +4840,6 @@ func peek_board(for_aim: bool = false) -> void:
 	_peek_bar.name = "BoardPeekBar"
 	_peek_layer.add_child(_peek_bar)
 	_paint_peek_bar()
-	_sync_combat_button()
 
 # Put the covering screens back.
 func end_peek() -> void:
@@ -4853,7 +4851,6 @@ func end_peek() -> void:
 	if _peek_bar != null and is_instance_valid(_peek_bar):
 		_peek_bar.queue_free()
 	_peek_bar = null
-	_sync_combat_button()
 
 # BACK. Over an aim it is the aim's Cancel too — the screen the aim came from is
 # the one Back returns to, and a target left armed under it would fire on the next
@@ -4907,42 +4904,13 @@ func _place_top_right(c: Control) -> void:
 	c.position = Vector2(view.x - c.get_combined_minimum_size().x - 12.0,
 		ModalScaffold.reserved_top + 8.0)
 
-# The ⚔ Combat button: up whenever something covers the board and the page is not
-# already showing it.
-func _sync_combat_button() -> void:
-	var want: bool = not is_peeking() and _board != null and is_instance_valid(_board) \
-		and not GameLoop2.run_over and _phase != Phase.OVER and board_covered()
-	if not want:
-		if _combat_button != null and is_instance_valid(_combat_button):
-			_combat_button.visible = false
-		return
-	if _combat_button == null or not is_instance_valid(_combat_button):
-		# No header to stand in (a page torn down mid-frame): the old floating spot.
-		_ensure_peek_layer()
-		_combat_button = _build_combat_button()
-		_peek_layer.add_child(_combat_button)
-		_place_top_right(_combat_button)
-	_combat_button.visible = true
-
-# THE BUTTON LIVES IN THE HEADER (the owner, 18 Nov 2026). It used to float at the
-# top right on a layer of its own, which put it over the pack strip's Full button
-# and the corner of every panel it opened above. The header is already the row no
-# modal can cover, so it stands there, hidden until a screen covers the board.
-func _build_combat_button() -> Button:
-	# The danger plate, because it is the button to the fight.
-	var b := UITheme.action_button("⚔ Combat", UITheme.DANGER, Vector2(0, 0),
-		UITheme.FONT_BODY)
-	b.name = "CombatButton"
-	b.tooltip_text = ("See the battlefield behind this screen — hover the bodies, read "
-		+ "the ground, pick up loot off the floor. Back brings this screen back.")
-	b.pressed.connect(func(): peek_board(false))
-	b.visible = false
-	return b
+# NO COMBAT BUTTON (the owner, 18 Nov 2026: "the hide button works as that").
+# A screen that covers the board carries its own Hide; peek_board is still how
+# an aim shows the board from under the screen it was armed on.
 
 # Once a frame, because the screens that cover the board open and close from a
-# dozen places and none of them should have to know about this: show or hide the
-# Combat button, end an aim's peek once the aim is done, and end any peek whose
-# screens have all gone.
+# dozen places and none of them should have to know about this: end an aim's
+# peek once the aim is done, and end any peek whose screens have all gone.
 func _tick_board_peek() -> void:
 	if not is_inside_tree():
 		return
@@ -4952,7 +4920,6 @@ func _tick_board_peek() -> void:
 		if (_peek_for_aim and not aiming) or not any_left:
 			end_peek()
 		return
-	_sync_combat_button()
 
 # --- throwing a potion at the board (docs/potions-design.md §4.2) -----------
 
@@ -8076,8 +8043,6 @@ func _build_ui() -> void:
 	# modal and no scroll position can put it away.
 	# The radio leads the three: History and the Map are a pair about the run,
 	# and the Map sits against the Menu, so the one about the music stands apart.
-	_combat_button = _build_combat_button()
-	header.add_child(_combat_button)
 	header.add_child(_build_radio_button())
 	header.add_child(_build_history_button())
 	header.add_child(_build_map_button())

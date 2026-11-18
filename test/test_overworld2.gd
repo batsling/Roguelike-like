@@ -2910,22 +2910,18 @@ func _cover_board() -> CanvasLayer:
 	_ui.add_child(layer)
 	return layer
 
-func test_a_covered_board_has_a_combat_button_that_shows_it() -> void:
+# NO COMBAT BUTTON: a screen over the board is put away by its own Hide. The
+# peek itself still works, for an aim armed under a screen (the test below).
+func test_a_covered_board_raises_no_combat_button() -> void:
 	_pick_solo(0)
 	var cover := _cover_board()
 	await wait_process_frames(3)
-	assert_not_null(_ui._combat_button, "the Combat button is up while a screen covers the board")
-	assert_true(_ui._combat_button.visible)
-	_ui._combat_button.pressed.emit()
-	assert_false(cover.visible, "pressing it takes the screen off the board")
-	assert_true(_ui.is_peeking())
-	assert_false(_ui._combat_button.visible, "and the button gives way to the Back bar")
+	assert_null(_ui.find_child("CombatButton", true, false), "nothing called Combat is built")
+	_ui.peek_board(false)
+	assert_false(cover.visible, "the peek still takes a screen off the board")
 	_ui._peek_back()
-	assert_true(cover.visible, "Back puts the screen back")
-	assert_false(_ui.is_peeking())
+	assert_true(cover.visible, "and Back puts it back")
 	cover.queue_free()
-	await wait_process_frames(3)
-	assert_false(_ui._combat_button.visible, "with nothing covering the board, no button")
 
 func test_an_aim_armed_under_a_screen_shows_the_board_and_gives_it_back() -> void:
 	# Pommel Strike off the reward screen: the target was armed on a board nobody
