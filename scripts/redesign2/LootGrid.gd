@@ -1381,7 +1381,17 @@ static func _cell_body(entry: Dictionary, use_cb: Callable, locked_now: bool,
 	var bag: bool = LootSystem.is_bag(entry)
 	# A WEAPON is not a gamble either (docs/loot-passives.md §12).
 	var weapon: bool = LootSystem.is_weapon(entry)
-	if String(entry.get("type", "")) != "card" and not passive and not bag and not weapon:
+	# A CHEST is not a gamble: it wears its SIZE instead, in stars (ChestLoot).
+	var chest: bool = ChestLoot.is_chest(entry)
+	if chest:
+		var stars := UITheme.chip(ChestLoot.stars(entry), ChestLoot.tint(entry), 9)
+		stars.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
+		stars.grow_horizontal = Control.GROW_DIRECTION_END
+		stars.grow_vertical = Control.GROW_DIRECTION_BEGIN
+		stars.tooltip_text = ChestLoot.display_name(entry)
+		band.add_child(stars)
+	if String(entry.get("type", "")) != "card" and not passive and not bag and not weapon \
+			and not chest:
 		var badge := UITheme.chip(pref_glyph(entry) if known else "?",
 			UITheme.preference_color(LootSystem.preference(entry)) if known else UITheme.TEXT_FAINT,
 			9)
@@ -1453,14 +1463,15 @@ static func _cell_body(entry: Dictionary, use_cb: Callable, locked_now: bool,
 		if weapon:
 			bottom = _weapon_button(entry, use_cb, locked_now)
 		else:
-			var use := UITheme.confirm_button("Zap" if wand else "Use",
+			var use := UITheme.confirm_button("Zap" if wand else ("Open" if chest else "Use"),
 				Vector2(0, LootSlot.USE_H), 10)
 			use.disabled = locked_now
 			# NOT "this is how an unknown one gets identified" any more: a use only
 			# identifies a piece when it actually DID something (LootSystem's spend
 			# paths), so a tooltip promising the lesson would be promising a lesson a
 			# zap into an empty square does not buy.
-			use.tooltip_text = "Spend a charge." if wand else "Spend it."
+			use.tooltip_text = "Spend a charge." if wand else (
+				"Open it and choose a relic." if chest else "Spend it.")
 			use.pressed.connect(use_cb)
 			bottom = use
 	return _overlaid(col, band, _name_label(entry, face_up), bottom)

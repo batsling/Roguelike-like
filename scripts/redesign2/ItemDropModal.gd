@@ -171,10 +171,14 @@ func _init() -> void:
 #
 # `reroll` makes the chest re-rollable: called when a Reroll charge is spent, it
 # returns what the chest offers now.
-static func open(host: Node, offer, reroll: Callable = Callable()) -> ItemDropModal:
+# `layer` above the default DROP when it is opened from a screen drawn higher — a
+# chest opened off the reward screen's table (ChestLoot.open).
+static func open(host: Node, offer, reroll: Callable = Callable(), layer: int = -1) -> ItemDropModal:
 	var modal := ItemDropModal.new()
 	modal._reroll = reroll
 	modal._start(host, offer)
+	if layer >= 0 and modal._layer != null:
+		modal._layer.layer = layer
 	return modal
 
 # ONE REROLL, EVERYWHERE. A charge re-rolls every chest still open on the screen

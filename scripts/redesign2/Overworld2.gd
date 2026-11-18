@@ -1564,9 +1564,12 @@ func _begin_game(game: GameData, enemy: GoalEnemyData, tier: int,
 	_drops.clear_floor()
 	# Where the game's rank bar stood as it was picked (§20.4), for the end-of-game
 	# screen to fill from.
+	# …and its PARTS, so the report's summary can say what the gain was for.
 	GameLoop2.rank_start = {"game": String(game.id), "xp": GameRanks.xp(game.id),
+		"parts": GameRanks.xp_parts(game.id),
 		"character": String(GameState.character_id),
-		"character_xp": GameRanks.character_xp(GameState.character_id)} \
+		"character_xp": GameRanks.character_xp(GameState.character_id),
+		"character_parts": GameRanks.character_xp_parts(GameState.character_id)} \
 		if game != null else {}
 	# THE TIER CAN STEP RIGHT HERE NOW (§19.6). The counter it reads is spawn
 	# events, and an arrival that lands bodies IS one — so committing a game can
@@ -2294,9 +2297,30 @@ func turn_note(choice: Dictionary) -> Dictionary:
 func use_loot(idx: int) -> void:
 	if not put_away_pending_use():
 		return
+	# A CHEST carried in the pack opens where you stand (ChestLoot), mid-game too.
+	if idx >= 0 and idx < GameState.loot_items.size() \
+			and ChestLoot.is_chest(GameState.loot_items[idx]):
+		open_carried_chest(idx)
+		return
 	var modal = load(LOOT_USE_MODAL_SCRIPT).new()
 	modal.finished.connect(_refresh)
 	modal.start(self, idx, self)
+
+# Open the chest at `idx` in the pack: it leaves the pack, pays its gold and asks
+# which relic to take. Public for the tests. Returns the chest's modal.
+func open_carried_chest(idx: int) -> Node:
+	if idx < 0 or idx >= GameState.loot_items.size() \
+			or not ChestLoot.is_chest(GameState.loot_items[idx]):
+		return null
+	var chest: Dictionary = GameState.loot_items[idx]
+	GameState.remove_loot_at(idx)
+	_refresh()
+	var over: bool = _post_screen != null and is_instance_valid(_post_screen)
+	return ChestLoot.open(self, chest,
+		UITheme.Layer.POST_COMBAT_CARD if over else UITheme.Layer.DROP,
+		func():
+			_refresh()
+			autosave())
 
 # The old name for it, kept because the scroll panel's tests and DevTools' grant
 # path both say "read the scroll at this index" and mean exactly this.
@@ -2847,6 +2871,14 @@ func report(beaten: bool, fulfilled: Variant = null, escaped: bool = false,
 		# mid-game included, won or lost. Both ends equal when the start was not
 		# recorded (a save from before ranks), so the bar shows without filling.
 		"rank_from": _rank_from(played_game),
+		# Where this report's XP came from (ReportSummary): the parts now, less the
+		# parts as they stood when the game was picked.
+		"xp_sources": GameRanks.gained(GameLoop2.rank_start.get("parts", {}),
+			GameRanks.xp_parts(played_game.id)) if played_game != null \
+			and String(GameLoop2.rank_start.get("game", "")) == String(played_game.id) else [],
+		"character_xp_sources": GameRanks.gained(GameLoop2.rank_start.get("character_parts", {}),
+			GameRanks.character_xp_parts(GameState.character_id)) \
+			if String(GameLoop2.rank_start.get("character", "")) == String(GameState.character_id) else [],
 		"rank_to": GameRanks.xp(played_game.id) if played_game != null else 0,
 		# …and THE CHARACTER'S (§20.9), the same way.
 		"character_rank_from": _character_rank_from(),
@@ -4134,12 +4166,10 @@ func _hand_chests_to_post_game() -> void:
 		var choices: int = GameState.take_pending_chest()
 		if choices < 0:
 			break
-		# The chest's gold (Data.chest_gold) is paid as it lands on the haul,
-		# taken or not — the same rule the RewardScreen keeps.
+		# The chest's gold (Data.chest_gold) is paid when it OPENS now — it lands
+		# on the haul's table as a chest (ChestLoot) — except on the fall-back
+		# below, which asks about it at once.
 		var gold: int = Data.chest_gold(choices)
-		if gold > 0:
-			GameState.change_gold(gold)
-			GameLog.add("Chest: +%d gold." % gold, Color(1.0, 0.9, 0.3))
 		var count: int = choices if choices > 0 else load(REWARD_SCREEN_SCRIPT).BASE_ITEM_CHOICES + discovery
 		var offer: Array = _drops.roll_chest(false, maxi(1, count), GameState.last_chest_pool)
 		if offer.is_empty():
@@ -4149,6 +4179,9 @@ func _hand_chests_to_post_game() -> void:
 		else:
 			# The screen went while we were draining: fall back to the queue the
 			# page's own modal drains, rather than losing the chest.
+			if gold > 0:
+				GameState.change_gold(gold)
+				GameLog.add("Chest: +%d gold." % gold, Color(1.0, 0.9, 0.3))
 			_drop_queue.append(_drops.rolled_drop(offer, false, GameState.last_chest_pool))
 			_pump_drops()
 

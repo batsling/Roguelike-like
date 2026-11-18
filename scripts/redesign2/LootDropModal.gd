@@ -764,6 +764,13 @@ func _use_offer(offer: int) -> void:
 	if _answered or not _spendable or offer < 0 or offer >= _offers.size():
 		return
 	var entry: Dictionary = _offers[offer]
+	# A CHEST OPENS (ChestLoot): off the table at once, its gold paid, its relics
+	# asked about above this screen.
+	if ChestLoot.is_chest(entry):
+		_forget_offer(offer, entry)
+		_after_change()
+		ChestLoot.open(_page(), entry, _use_layer, _after_change)
+		return
 	var modal = preload("res://scripts/redesign2/LootUseModal.gd").new()
 	modal.layer_index = _use_layer
 	var spent := [false]
@@ -798,6 +805,13 @@ func _forget_offer(offer: int, entry: Dictionary) -> void:
 # Take button live.
 func _use_carried(index: int) -> void:
 	if _answered or not _spendable:
+		return
+	if index >= 0 and index < GameState.loot_items.size() \
+			and ChestLoot.is_chest(GameState.loot_items[index]):
+		var chest: Dictionary = GameState.loot_items[index]
+		GameState.remove_loot_at(index)
+		_after_change()
+		ChestLoot.open(_page(), chest, _use_layer, _after_change)
 		return
 	var modal = preload("res://scripts/redesign2/LootUseModal.gd").new()
 	modal.layer_index = _use_layer

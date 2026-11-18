@@ -407,6 +407,8 @@ func display_name(entry: Dictionary, face_up: bool = true) -> String:
 			# log — says it without being taught to.
 			var w: WeaponData = WeaponSystem.def(entry)
 			return (w.display_name if w != null else "Weapon") + WeaponSystem.plus_suffix(entry)
+		"chest":
+			return ChestLoot.display_name(entry)
 	return "Loot"
 
 # THE ONE PLACE A PIECE OF LOOT BECOMES A PICTURE, and the one place the CARD's
@@ -440,6 +442,8 @@ func art_texture(entry: Dictionary, face_up: bool = true) -> Texture2D:
 			return LootPassives.load_bag_art(Data.get_bag(StringName(entry.get("id", ""))))
 		"weapon":
 			return LootPassives.load_weapon_art(WeaponSystem.def(entry))
+		"chest":
+			return ChestLoot.art_texture(entry)
 	return null
 
 # The box this piece's art should be drawn in, given the size everything else on
@@ -473,6 +477,8 @@ func glyph(entry: Dictionary) -> String:
 			return "🎒"
 		"weapon":
 			return "⚔"
+		"chest":
+			return "🎁"
 	return "📜"
 
 # ===========================================================================
@@ -570,9 +576,10 @@ func is_identified(entry: Dictionary) -> bool:
 			# (docs/players-design.md §5). Per piece, not per kind: two Hero Swords
 			# can carry different rolls.
 			return WeaponSystem.roll_known(entry)
-		"trinket", "bag":
+		"trinket", "bag", "chest":
 			# Nothing hidden about one either: its line is on it from the moment it
-			# is found (docs/loot-passives.md §1, §6).
+			# is found (docs/loot-passives.md §1, §6). A CHEST says its size and
+			# its count; what is in it is the surprise, not what it is.
 			return true
 	return false
 
@@ -679,6 +686,8 @@ func description(entry: Dictionary, face_up: bool = true) -> String:
 			return bag_description(Data.get_bag(StringName(entry.get("id", ""))))
 		"weapon":
 			return weapon_description(entry)
+		"chest":
+			return ChestLoot.description(entry)
 	return ""
 
 # What a weapon says about itself: the swing, what charges it, then its passive.
@@ -838,6 +847,8 @@ func use_verb(entry: Dictionary) -> String:
 			return "Play Card"
 		"weapon":
 			return "Swing"
+		"chest":
+			return "Open"
 		"wand":
 			# NOT "Use". A wand is ZAPPED, and the word is doing work: it is the one
 			# verb in the pack that does not mean the piece is gone afterwards.
@@ -865,6 +876,8 @@ func kind_name(entry: Dictionary) -> String:
 			return "Bag"
 		"weapon":
 			return "Weapon"
+		"chest":
+			return "Chest"
 	return "Scroll"
 
 # The hover model for a piece of loot, in the shape every other hover on the page

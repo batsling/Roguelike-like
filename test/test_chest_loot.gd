@@ -1,0 +1,76 @@
+extends GutTest
+
+# CHESTS ARE LOOT (ChestLoot, the owner 18 Nov 2026), and the reward screen opens
+# on a summary of the game and its XP (ReportSummary).
+
+const Page := preload("res://test/helpers/run_page.gd")
+
+var _ui: Node = null
+
+func before_each() -> void:
+	GameState.reset_run()
+	GameLoop2.reset()
+	_ui = Page.build(self)
+
+func after_each() -> void:
+	GameState.reset_run()
+	GameLoop2.reset()
+
+func _relics(n: int) -> Array:
+	return Data.reward_item2_pool_of(0).slice(0, n)
+
+func test_a_chest_is_a_piece_of_loot_with_a_size() -> void:
+	var entry: Dictionary = ChestLoot.make(_relics(2))
+	assert_true(ChestLoot.is_chest(entry))
+	assert_eq(LootSystem.display_name(entry), "Medium Chest", "two relics is a Medium")
+	assert_eq(LootSystem.kind_name(entry), "Chest")
+	assert_eq(LootSystem.use_verb(entry), "Open")
+	assert_not_null(LootSystem.art_texture(entry), "it is drawn as a chest")
+	assert_eq(ChestLoot.stars(entry), "★★", "and wears its size in stars")
+	assert_eq(ChestLoot.items(entry).size(), 2, "it holds what it was rolled with")
+	assert_eq(LootSystem.display_name(ChestLoot.make(_relics(1), true)), "Boss Chest")
+
+func test_a_chest_carried_in_the_pack_opens_where_you_stand() -> void:
+	Page.play_opening(_ui)
+	var chest: Dictionary = ChestLoot.make(_relics(2))
+	assert_true(GameState.take_loot_entry(chest), "it goes into the pack like any loot")
+	var idx: int = GameState.loot_items.find(chest)
+	assert_gt(idx, -1)
+	var gold: int = GameState.gold
+	var relics: int = GameState.inventory.size()
+	var modal = _ui.open_carried_chest(idx)
+	assert_not_null(modal, "Open asks which relic to take")
+	assert_eq(GameState.gold, gold + ChestLoot.gold(chest), "its gold is paid as it opens")
+	assert_eq(GameState.loot_items.find(chest), -1, "and it has left the pack")
+	if modal != null:
+		modal.take()
+	assert_eq(GameState.inventory.size(), relics + 1, "taking one grants the relic")
+
+func test_the_reward_screen_opens_on_the_summary() -> void:
+	Page.play_opening(_ui)
+	_ui.pick(0)
+	Page.report_beat(_ui)
+	_ui._end_resolve()
+	var screen = _ui._post_screen
+	assert_not_null(screen)
+	if screen == null:
+		return
+	var summary = screen.summary()
+	assert_not_null(summary, "the game and its XP come first")
+	if summary != null:
+		assert_not_null(summary.find_child("Continue", true, false), "with a way on")
+		summary.proceed()
+	await wait_frames(2)
+	assert_null(screen.summary(), "Continue leaves the haul underneath")
+	assert_gt(screen.chests_waiting(), 0, "with the win's chest on its table")
+	Page.leave_post_game(_ui)
+
+func test_the_xp_sources_are_the_parts_that_grew() -> void:
+	var before := {"wins": {"label": "Beat the game", "xp": 100}}
+	var after := {"wins": {"label": "Beat the game", "xp": 150},
+		"goal:enemy:spider": {"label": "Spider", "xp": 20}}
+	var got: Array = GameRanks.gained(before, after)
+	assert_eq(got.size(), 2)
+	assert_eq(got[0], {"label": "Beat the game", "xp": 50}, "a second win pays its growth")
+	assert_eq(got[1], {"label": "Spider", "xp": 20})
+	assert_eq(load("res://scripts/redesign2/ReportSummary.gd").source_text(got), "+50 Beat the game  ·  +20 Spider")

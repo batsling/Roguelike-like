@@ -276,6 +276,12 @@ Points climb the chest ladder — 1 Small, 2 Medium, 3 Large, 4 Huge — and pas
 
 Every chest also holds gold, one per rung: a Small 1, a Medium 2, a Large 3, a Huge 4. It is paid as the chest opens, whether or not you take anything out of it.
 
+A chest is a piece of loot. It lies on the reward screen's table with the loot the bodies dropped: press Open to choose a relic now, or drag it into your pack and open it whenever you like. A chest left on the table is lost with the rest.
+
+The reward screen opens on the game you just played: how it went, the XP it and your character earned, and what each part of it was for. Continue goes on to your inventory and the table.
+
+Under the board, "Beat it:" shows what beating the game would pay right now — its chests and the loot on the board.
+
 > Bosses are not in that pool. A boss drops a chest of its own, on its own terms, and it is paid whether or not the game went your way.
 
 - A BOSS takes no bomb damage at all and can only be removed by its goal.

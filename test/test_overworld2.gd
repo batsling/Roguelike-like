@@ -396,8 +396,8 @@ func test_report_goal_met_defeats_and_drops() -> void:
 	# the wilds now (§7.4), and landing is what hands the queue over.
 	_ui._end_resolve()
 	assert_not_null(_ui._post_screen, "the report ended on the haul screen")
-	assert_eq(_ui._post_screen._chest_sections.size(), 2 if boss else 1,
-		"carrying the kill's chest (and a boss's own, if it was one)")
+	assert_eq(_ui._post_screen.chests_waiting(), 2 if boss else 1,
+		"carrying the kill's chest on its table (and a boss's own, if it was one)")
 	Page.leave_post_game(_ui)
 
 # An enemy kill ASKS whether you want what fell off it (§8): the item at full
@@ -483,7 +483,7 @@ func test_the_playback_landing_hands_the_whole_queue_to_the_haul_screen() -> voi
 	# ends up on the screen and nothing is left on the page behind it.
 	_ui._end_resolve()
 	assert_not_null(_ui._post_screen, "the haul screen took it")
-	assert_gt(_ui._post_screen._chest_sections.size(), 0, "the report's drop is on it")
+	assert_gt(_ui._post_screen.chests_waiting(), 0, "the report's drop is on it")
 	assert_eq(_ui._drop_queue.size(), 0, "and the page's queue is empty behind it")
 	assert_null(_ui._drop_modal, "with no modal left over to open on top of it")
 	Page.leave_post_game(_ui)
@@ -1058,7 +1058,7 @@ func test_isaac_level_up_banks_a_chest_and_the_haul_screen_takes_it() -> void:
 	_ui._end_resolve()
 	assert_not_null(_ui._post_screen, "the report ends on the haul screen")
 	assert_eq(GameState.pending_chests, 0, "which took the whole queue")
-	assert_gt(_ui._post_screen._chest_sections.size(), 0,
+	assert_gt(_ui._post_screen.chests_waiting(), 0,
 		"and the level-up's chest is on it")
 	Page.leave_post_game(_ui)
 
@@ -1088,7 +1088,7 @@ func test_poe_level_up_grants_a_size_rolled_chest() -> void:
 	# earned is answered for.
 	_ui._end_resolve()
 	assert_not_null(_ui._post_screen, "the report ends on the haul screen")
-	assert_gt(_ui._post_screen._chest_sections.size(), 0,
+	assert_gt(_ui._post_screen.chests_waiting(), 0,
 		"and the level-up's chest is on it")
 	Page.leave_post_game(_ui)
 	Page.dismiss_event(_ui)
@@ -7773,13 +7773,15 @@ func test_every_chest_the_report_dropped_is_on_the_screen_together() -> void:
 	# own — its goal chest, and on some random openings more besides — so an exact
 	# count was only usually true (it failed about one run in five, on the base
 	# code too). What the test is about is that every one of them is up at once.
-	var mounted: int = screen._chest_sections.size()
-	assert_gte(mounted, 2, "both queued chests were mounted, with whatever the report added")
-	assert_eq(screen.chests_waiting(), mounted - 1,
-		"every one of them still unanswered besides the first")
-	# Answering one leaves the others exactly where they were.
-	screen.chest().leave()
-	assert_eq(screen.chests_waiting(), mounted - 2, "the rest are untouched")
+	# CHESTS ARE LOOT ON THE TABLE now (ChestLoot): all of them lie there at once,
+	# and opening one takes it off the table and leaves the rest.
+	var mounted: int = screen.chests_waiting()
+	assert_gte(mounted, 2, "both queued chests are on the table, with whatever the report added")
+	var first = screen.chest()
+	assert_not_null(first, "a chest opens")
+	assert_eq(screen.chests_waiting(), mounted - 1, "the one opened is off the table")
+	first.leave()
+	assert_eq(screen.chests_waiting(), mounted - 1, "and the rest are untouched")
 	Page.leave_post_game(_ui)
 
 # A Reroll charge used to be spendable on the banked-chest screen alone, so the
@@ -7793,23 +7795,20 @@ func test_a_reroll_on_the_haul_rolls_every_open_chest_again() -> void:
 	assert_not_null(screen)
 	if screen == null:
 		return
-	var open_chests: Array = screen._rerollable()
-	assert_gt(open_chests.size(), 0, "there is a rolled chest on the haul")
+	var chests: Array = screen.table_chests()
+	assert_gt(chests.size(), 0, "there is a chest on the table")
 	var kept: int = GameState.reroll_charges
 	GameState.reroll_charges = 0
-	assert_true(screen._chest_reroll.visible, "the button stands over them")
-	assert_true(screen._chest_reroll.disabled, "and is spent")
+	var before: Array = chests.map(func(e): return (e["offer"] as Array).duplicate())
 	screen.reroll_chests()
+	assert_eq(chests.map(func(e): return e["offer"]), before, "with no charge nothing moves")
 	GameState.reroll_charges = 1
-	var sizes: Array = open_chests.map(func(e): return e["section"].offer().size())
+	var sizes: Array = chests.map(func(e): return (e["offer"] as Array).size())
 	screen.reroll_chests()
-	assert_eq(GameState.reroll_charges, 0, "one charge for the whole screen")
-	assert_eq(screen._rerollable().size(), open_chests.size(), "the same chests are still open")
-	assert_eq(open_chests.map(func(e): return e["section"].offer().size()), sizes,
+	assert_eq(GameState.reroll_charges, 0, "one charge for every chest on the table")
+	assert_eq(screen.table_chests().size(), chests.size(), "the same chests are still there")
+	assert_eq(screen.table_chests().map(func(e): return (e["offer"] as Array).size()), sizes,
 		"each the size it was")
-	for entry in open_chests:
-		assert_eq(entry["section"]._cards.size(), entry["section"].offer().size(),
-			"and drawn as what it offers now")
 	GameState.reroll_charges = kept
 	Page.leave_post_game(_ui)
 
@@ -7825,7 +7824,8 @@ func test_every_relic_on_offer_is_drawn_with_a_picture() -> void:
 	if screen == null:
 		return
 	var cards: int = 0
-	for section in screen._chest_sections:
+	var opened = screen.chest()
+	for section in ([opened] if opened != null else []):
 		for card in section._cards:
 			cards += 1
 			var art: bool = false
@@ -7862,11 +7862,11 @@ func test_a_chest_banked_while_the_screen_is_up_lands_on_it() -> void:
 	assert_not_null(screen)
 	if screen == null:
 		return
-	var before: int = screen._chest_sections.size()
+	var before: int = screen.chests_waiting()
 	GameState.grant_chest(1)
 	_ui._redeem_pending_chests()
-	assert_eq(screen._chest_sections.size(), before + 1,
-		"the banked chest is a section of the haul screen")
+	assert_eq(screen.chests_waiting(), before + 1,
+		"the banked chest lies on the haul screen's table")
 	assert_eq(GameState.pending_chests, 0, "and the bank is drained")
 	var found: RewardScreen = null
 	for c in _ui.get_children():
@@ -10029,7 +10029,7 @@ func test_the_report_s_chests_reach_the_haul_screen() -> void:
 	_ui._end_resolve()
 	assert_not_null(_ui._post_screen)
 	if _ui._post_screen != null:
-		assert_gt(_ui._post_screen._chest_sections.size(), 0,
+		assert_gt(_ui._post_screen.chests_waiting(), 0,
 			"a beaten game arrives with at least the Small chest the win is worth")
 	Page.leave_post_game(_ui)
 	Page.dismiss_event(_ui)

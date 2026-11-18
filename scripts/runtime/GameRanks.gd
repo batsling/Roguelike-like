@@ -125,3 +125,58 @@ static func progress_for(total_xp: int) -> Dictionary:
 
 static func progress(game) -> Dictionary:
 	return progress_for(xp(game))
+
+# --- WHERE THE XP CAME FROM (the report's summary screen) --------------------
+#
+# The same sums as `xp` and `character_xp`, kept apart as {key: {label, xp}} so the
+# screen a game ends on can say what each part of the gain was for. A game's XP is
+# derived, never stored, so "what did this game earn" is the parts now minus the
+# parts as they stood when it was picked (GameLoop2.rank_start keeps those).
+static func xp_parts(game) -> Dictionary:
+	var id := String(game)
+	if id == "":
+		return {}
+	return _parts(GameStats.beaten_count(id), GameStats.repeat_win_fractures(id),
+		GameStats.amulet_wins(id) > 0 or GameStats.custom_amulet_wins(id) > 0,
+		GameStats.perfect_count(id) > 0, GameStats.goals_at(id))
+
+static func character_xp_parts(character) -> Dictionary:
+	var id := String(character)
+	if id == "":
+		return {}
+	return _parts(GameStats.character_wins(id), GameStats.character_repeat_win_fractures(id),
+		GameStats.character_amulet_wins(id) > 0 or GameStats.character_custom_amulet_wins(id) > 0,
+		GameStats.character_perfects(id) > 0, GameStats.character_goals(id))
+
+static func _parts(wins: int, fractures: int, amulet: bool, perfect: bool,
+		goals: Dictionary) -> Dictionary:
+	var out: Dictionary = {}
+	if wins > 0:
+		out["wins"] = {"label": "Beat the game", "xp": wins_xp(wins)}
+	if fractures > 0:
+		out["fracture"] = {"label": "Fracture", "xp": Fracture.XP_PER_LEVEL * fractures}
+	if amulet:
+		out["amulet"] = {"label": "The Amulet", "xp": XP_AMULET}
+	if perfect:
+		out["perfect"] = {"label": "No lost run", "xp": XP_PERFECT}
+	for kind in goals.keys():
+		for g in goals[kind]:
+			var key: String = String((g as Dictionary).get("key", ""))
+			out["goal:%s:%s" % [kind, key]] = {
+				"label": String((g as Dictionary).get("label", key.capitalize())),
+				"xp": goal_xp(String(kind), key)}
+	return out
+
+# What changed between two `xp_parts` readings, as [{label, xp}] largest first:
+# the sources of one report's gain. A part that grew pays its growth (a second
+# win is +50, not +150).
+static func gained(before: Dictionary, after: Dictionary) -> Array:
+	var out: Array = []
+	for key in after.keys():
+		var now: int = int((after[key] as Dictionary).get("xp", 0))
+		var was: int = int((before.get(key, {}) as Dictionary).get("xp", 0))
+		if now > was:
+			out.append({"label": String((after[key] as Dictionary).get("label", "")),
+				"xp": now - was})
+	out.sort_custom(func(a, b): return int(a["xp"]) > int(b["xp"]))
+	return out
