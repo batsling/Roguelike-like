@@ -1532,22 +1532,59 @@ static func _overlaid(col: VBoxContainer, art: Control, name: Label, bottom: Con
 			else:
 				c.offset_top -= below
 				c.offset_bottom -= below
-	var scrim := PanelContainer.new()
-	scrim.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var dark := StyleBoxFlat.new()
-	dark.bg_color = Color(UITheme.WELL, 0.62)
-	dark.set_corner_radius_all(3)
-	scrim.add_theme_stylebox_override("panel", dark)
-	name.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
-	name.add_theme_constant_override("outline_size", 3)
-	scrim.add_child(name)
-	scrim.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE, Control.PRESET_MODE_MINSIZE)
-	stack.add_child(scrim)
+	# THE NAME OVER A FADE, not a bar (the owner, 18 Nov 2026: "make the title of
+	# the loot look a little better"). A flat dark band cut a hard line across the
+	# top of every picture; this darkens the very top edge and is clear by the
+	# foot of the name, so the art runs up behind it, and the name's own outline
+	# does the rest of the work of being read.
+	var fade := TextureRect.new()
+	fade.name = "NameFade"
+	fade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	fade.texture = _name_fade()
+	fade.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	fade.stretch_mode = TextureRect.STRETCH_SCALE
+	fade.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+	fade.offset_bottom = LootSlot.NAME_LINE + 6
+	stack.add_child(fade)
+	name.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.95))
+	name.add_theme_constant_override("outline_size", 4)
+	name.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE, Control.PRESET_MODE_MINSIZE)
+	name.offset_left = 3
+	name.offset_right = -3
+	name.offset_top = 1
+	stack.add_child(name)
 	if bottom != null:
 		stack.add_child(bottom)
-		bottom.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM,
-			Control.PRESET_MODE_MINSIZE, LootSlot.USE_INSET)
+		# PLACED AT ITS MINIMUM, and again whenever that changes: a preset sizes the
+		# button off the minimum it has at that moment, and the tight face lands a
+		# frame later, so a button placed once kept the taller box it started with.
+		var place := func() -> void:
+			if is_instance_valid(bottom):
+				bottom.size = bottom.get_combined_minimum_size()
+				bottom.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM,
+					Control.PRESET_MODE_MINSIZE, LootSlot.USE_INSET)
+		place.call()
+		bottom.minimum_size_changed.connect(place)
+		place.call_deferred()
 	return stack
+
+# The top-down fade behind a cell's name: shared, since every cell draws one.
+static var _fade_tex: GradientTexture2D = null
+
+static func _name_fade() -> GradientTexture2D:
+	if _fade_tex != null:
+		return _fade_tex
+	var g := Gradient.new()
+	g.set_color(0, Color(UITheme.WELL, 0.85))
+	g.set_color(1, Color(UITheme.WELL, 0.0))
+	var t := GradientTexture2D.new()
+	t.gradient = g
+	t.width = 4
+	t.height = 32
+	t.fill_from = Vector2(0, 0)
+	t.fill_to = Vector2(0, 1)
+	_fade_tex = t
+	return _fade_tex
 
 # Cut a button's padding to a pill: every state's plate keeps its colours and
 # rule, no padding above and below, 5px either side, and the micro font.
@@ -1561,9 +1598,11 @@ static func _tighten(btn: Button) -> void:
 		box.content_margin_left = 3
 		box.content_margin_right = 3
 		if box is StyleBoxFlat:
-			(box as StyleBoxFlat).set_corner_radius_all(5)
+			(box as StyleBoxFlat).set_corner_radius_all(4)
 		btn.add_theme_stylebox_override(state, box)
 	btn.add_theme_font_size_override("font_size", UITheme.FONT_MICRO)
+	btn.add_theme_font_override("font", UITheme.tight_font())
+	btn.custom_minimum_size.y = LootSlot.USE_H
 
 # "Passive" / "Copies >" where a spent piece's Use button would be — on a dark
 # plate, since it is laid over the art.

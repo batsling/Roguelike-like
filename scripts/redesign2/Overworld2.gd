@@ -2937,6 +2937,8 @@ func report(beaten: bool, fulfilled: Variant = null, escaped: bool = false,
 		# mid-game included, won or lost. Both ends equal when the start was not
 		# recorded (a save from before ranks), so the bar shows without filling.
 		"rank_from": _rank_from(played_game),
+		# Beaten with no lost run: what the summary page marks PERFECT.
+		"perfect": beaten and not escaped and perfect_visit,
 		# Where this report's XP came from (ReportSummary): the parts now, less the
 		# parts as they stood when the game was picked.
 		"xp_sources": GameRanks.gained(GameLoop2.rank_start.get("parts", {}),

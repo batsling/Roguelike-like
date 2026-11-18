@@ -152,19 +152,20 @@ static func _parts(wins: int, fractures: int, amulet: bool, perfect: bool,
 		goals: Dictionary) -> Dictionary:
 	var out: Dictionary = {}
 	if wins > 0:
-		out["wins"] = {"label": "Beat the game", "xp": wins_xp(wins)}
+		out["wins"] = {"label": "Beat the game", "xp": wins_xp(wins), "kind": "wins"}
 	if fractures > 0:
-		out["fracture"] = {"label": "Fracture", "xp": Fracture.XP_PER_LEVEL * fractures}
+		out["fracture"] = {"label": "Fracture", "xp": Fracture.XP_PER_LEVEL * fractures,
+			"kind": "fracture"}
 	if amulet:
-		out["amulet"] = {"label": "The Amulet", "xp": XP_AMULET}
+		out["amulet"] = {"label": "The Amulet", "xp": XP_AMULET, "kind": "amulet"}
 	if perfect:
-		out["perfect"] = {"label": "No lost run", "xp": XP_PERFECT}
+		out["perfect"] = {"label": "Perfect", "xp": XP_PERFECT, "kind": "perfect"}
 	for kind in goals.keys():
 		for g in goals[kind]:
 			var key: String = String((g as Dictionary).get("key", ""))
 			out["goal:%s:%s" % [kind, key]] = {
 				"label": String((g as Dictionary).get("label", key.capitalize())),
-				"xp": goal_xp(String(kind), key)}
+				"xp": goal_xp(String(kind), key), "kind": String(kind), "key": key}
 	return out
 
 # What changed between two `xp_parts` readings, as [{label, xp}] largest first:
@@ -176,7 +177,8 @@ static func gained(before: Dictionary, after: Dictionary) -> Array:
 		var now: int = int((after[key] as Dictionary).get("xp", 0))
 		var was: int = int((before.get(key, {}) as Dictionary).get("xp", 0))
 		if now > was:
-			out.append({"label": String((after[key] as Dictionary).get("label", "")),
-				"xp": now - was})
+			var row: Dictionary = (after[key] as Dictionary).duplicate()
+			row["xp"] = now - was
+			out.append(row)
 	out.sort_custom(func(a, b): return int(a["xp"]) > int(b["xp"]))
 	return out

@@ -376,7 +376,13 @@ python3 tools/outline.py scripts/redesign2/Overworld2.gd --grep stun   # a file'
   so Godot re-imports the changed `.ttf`s — until it does, the new glyph is on disk
   and the test still fails, which reads exactly like the script not having worked.
   It also needs `pip install fonttools brotli` and network access to fontsource.
-  If you ever swap a font in there, its **vertical metrics must stay on the base
-  font's em grid** (4096 upem, ascender 4378, descender 1200): Godot takes a
+  **Every text in the game is VT323 or Px437** (the owner, 18 Nov 2026): the base
+  of that chain is `fonts/VT323-UI.ttf` (VT323 rescaled to the old default's cap
+  height, see `UITheme.glyph_font`), headings and buttons are Px437 by the rogue
+  rule, and `Settings` points Godot's own `ThemeDB.fallback_font` at the same
+  chain so nothing outside a theme falls back to the engine's sans; one-word
+  buttons over art use `UITheme.tight_font()` (VT323 alone, trimmed spacing).
+  If you ever swap a font in there, its **vertical metrics must stay on the symbol
+  subsets' em grid** (4096 upem, ascender 4378, descender 1200): Godot takes a
   font's height as the max over the whole fallback chain, so a taller subset makes
   every line in the game taller and the 720p fit tests fail 63px over.

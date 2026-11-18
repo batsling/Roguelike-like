@@ -39,7 +39,7 @@ func setup(screen: Node) -> void:
 		UITheme.flat(UITheme.BG, 12, 18, 2, screen._accent()))
 	center.add_child(card)
 	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", UITheme.GAP_LOOSE)
+	col.add_theme_constant_override("separation", UITheme.GAP)
 	card.add_child(col)
 
 	# HOW IT WENT, on one line: the cover, the verdict and the game.
@@ -52,14 +52,14 @@ func setup(screen: Node) -> void:
 	if g != null and screen._snap.has("rank_to"):
 		col.add_child(_bar_block(g.cover_image, false,
 			int(screen._snap.get("rank_from", 0)), int(screen._snap["rank_to"]),
-			g.display_name, screen._snap.get("xp_sources", [])))
+			g.display_name, _with_perfect(screen._snap.get("xp_sources", []))))
 	var ch: CharacterData = Data.get_character2(StringName(screen._snap.get("character_id", "")))
 	if screen._snap.has("character_rank_to"):
 		col.add_child(_bar_block(ch.shown_icon() if ch != null else null, true,
 			int(screen._snap.get("character_rank_from", 0)),
 			int(screen._snap["character_rank_to"]),
 			String(screen._snap.get("character_name", "")),
-			screen._snap.get("character_xp_sources", [])))
+			_with_perfect(screen._snap.get("character_xp_sources", []))))
 	# The rest of the report, smaller, under the bars.
 	var lvl: Control = screen._level_up_panel()
 	if lvl != null:
@@ -69,12 +69,19 @@ func setup(screen: Node) -> void:
 		if m != null:
 			col.add_child(m)
 	# …how the chest size was worked out, and who is still following.
+	# Side by side, so the page stays one screen tall under two full bars.
+	var foot := HBoxContainer.new()
+	foot.add_theme_constant_override("separation", UITheme.GAP_LOOSE)
 	var sum: Control = screen._chest_sum_row()
 	if sum != null:
-		col.add_child(sum)
+		sum.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		foot.add_child(sum)
 	var board: Control = screen._board_panel()
 	if board != null:
-		col.add_child(board)
+		board.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		foot.add_child(board)
+	if foot.get_child_count() > 0:
+		col.add_child(foot)
 
 	var go := UITheme.confirm_button("Continue  →", Vector2(220, 44), UITheme.FONT_LABEL)
 	go.name = "Continue"
@@ -130,24 +137,94 @@ func _bar_block(art: Texture2D, character: bool, from: int, to: int, who: String
 		none.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
 		none.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
 		col.add_child(none)
-	var grid := GridContainer.new()
-	grid.columns = 2
-	grid.add_theme_constant_override("h_separation", UITheme.GAP_LOOSE)
-	grid.add_theme_constant_override("v_separation", UITheme.GAP_HAIR)
-	col.add_child(grid)
+	# A TILE PER SOURCE, the Collection's way (GoalsBeatenView): its picture, its
+	# name, and the XP it gave under both (the owner, 18 Nov 2026).
+	var flow := HFlowContainer.new()
+	flow.name = "Sources"
+	flow.add_theme_constant_override("h_separation", UITheme.GAP_LOOSE)
+	flow.add_theme_constant_override("v_separation", UITheme.GAP)
+	col.add_child(flow)
 	for r in rows:
-		var xp := Label.new()
-		xp.text = "+%d" % int(r.get("xp", 0))
-		xp.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-		xp.add_theme_font_size_override("font_size", UITheme.FONT_LEAD)
-		xp.add_theme_color_override("font_color", UITheme.GOLD)
-		grid.add_child(xp)
-		var what := Label.new()
-		what.text = String(r.get("label", ""))
-		what.add_theme_font_size_override("font_size", UITheme.FONT_LEAD)
-		what.add_theme_color_override("font_color", UITheme.TEXT)
-		grid.add_child(what)
+		flow.add_child(_source_tile(r))
 	return wrap
+
+# PERFECT IS ALWAYS SAID when the game was beaten with no lost run, even where it
+# paid nothing: its XP is paid once per game (and once per character), so a second
+# perfect is "+0", and the page still says it was one.
+func _with_perfect(rows: Array) -> Array:
+	if not bool(_screen._snap.get("perfect", false)):
+		return rows
+	for r in rows:
+		if String(r.get("kind", "")) == "perfect":
+			return rows
+	var out: Array = rows.duplicate()
+	out.append({"kind": "perfect", "label": "Perfect", "xp": 0})
+	return out
+
+const TILE_W := 84
+const TILE_ART := 44
+const KIND_GLYPHS := {"wins": "🏆", "perfect": "★", "amulet": "✦", "fracture": Fracture.GLYPH}
+
+func _source_tile(r: Dictionary) -> Control:
+	var col := VBoxContainer.new()
+	col.name = "Source"
+	col.custom_minimum_size = Vector2(TILE_W, 0)
+	col.add_theme_constant_override("separation", UITheme.GAP_HAIR)
+	var kind: String = String(r.get("kind", ""))
+	var key := StringName(String(r.get("key", "")))
+	var tex: Texture2D = null
+	match kind:
+		"enemy", "boss":
+			var e: GoalEnemyData = Data.get_goal_enemy_any(key)
+			tex = e.image if e != null else null
+		"character":
+			var c: CharacterData = Data.get_character2(key)
+			tex = c.shown_icon() if c != null else null
+		"weapon":
+			var w: WeaponData = Data.get_weapon(key)
+			tex = LootPassives.load_weapon_art(w) if w != null else null
+		"status":
+			var st: StatusData = Data.get_status(key)
+			tex = st.image if st != null else null
+	var frame := PanelContainer.new()
+	frame.custom_minimum_size = Vector2(TILE_ART + 8, TILE_ART + 8)
+	frame.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	var gold: bool = kind == "perfect"
+	frame.add_theme_stylebox_override("panel", UITheme.flat(UITheme.BG_DEEP, 6, 4, 1,
+		UITheme.GOLD if gold else UITheme.BORDER))
+	if tex != null:
+		var art := UITheme.crisp_tex(tex, TILE_ART)
+		art.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		art.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		frame.add_child(art)
+	else:
+		var g := Label.new()
+		g.text = String(KIND_GLYPHS.get(kind, "✦"))
+		g.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		g.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		g.add_theme_font_size_override("font_size", UITheme.FONT_TITLE_LG)
+		g.add_theme_color_override("font_color", UITheme.GOLD)
+		frame.add_child(g)
+	col.add_child(frame)
+	var name := Label.new()
+	name.text = String(r.get("label", ""))
+	name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	name.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	name.max_lines_visible = 2
+	name.custom_minimum_size = Vector2(TILE_W, 0)
+	name.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
+	name.add_theme_color_override("font_color", UITheme.GOLD if gold else UITheme.TEXT)
+	col.add_child(name)
+	var xp := Label.new()
+	xp.name = "SourceXp"
+	xp.text = "+%d xp" % int(r.get("xp", 0))
+	xp.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	xp.add_theme_font_size_override("font_size", UITheme.FONT_LEAD)
+	xp.add_theme_color_override("font_color", UITheme.GOLD)
+	col.add_child(xp)
+	if kind == "perfect" and int(r.get("xp", 0)) == 0:
+		col.tooltip_text = "Beaten with no lost run. Its XP is paid once, the first time."
+	return col
 
 static func source_text(rows: Array) -> String:
 	var parts: PackedStringArray = []

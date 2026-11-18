@@ -1269,6 +1269,26 @@ static var _glyph_font: Font = null
 # and a character NOTHING here ships still renders, off the tail of the chain.
 const BODY_FONT_PATH := "res://fonts/VT323-UI.ttf"
 
+# THE TIGHT FACE, for a one-word button laid over a picture (a loot cell's Use /
+# Open / Zap, an item's Use): VT323 alone, no symbol fonts chained behind it, with
+# its line spacing trimmed. The chain is what sets an ordinary line's height —
+# the symbol subsets stand 1.36 em tall — so a button in the normal face could
+# not get shorter than ~13px however small it was asked to be (the owner, 18 Nov
+# 2026: "a good chunk less tall"). These words carry no symbols to need it.
+static var _tight_font: Font = null
+
+static func tight_font() -> Font:
+	if _tight_font != null:
+		return _tight_font
+	if not ResourceLoader.exists(BODY_FONT_PATH):
+		return glyph_font()
+	var v := FontVariation.new()
+	v.base_font = load(BODY_FONT_PATH)
+	v.spacing_top = -2
+	v.spacing_bottom = -1
+	_tight_font = v
+	return _tight_font
+
 static func glyph_font() -> Font:
 	if _glyph_font != null:
 		return _glyph_font

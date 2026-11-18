@@ -584,6 +584,13 @@ func _compact_header() -> Control:
 		var name := _line(g.display_name, UITheme.TEXT_DIM, UITheme.FONT_LABEL)
 		name.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		row.add_child(name)
+	# PERFECT, when it was beaten with no lost run (the owner, 18 Nov 2026).
+	if bool(_snap.get("perfect", false)):
+		var perfect := UITheme.chip("★  PERFECT", UITheme.GOLD, UITheme.FONT_BODY)
+		perfect.name = "Perfect"
+		perfect.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		perfect.tooltip_text = "Beaten with no lost run."
+		row.add_child(perfect)
 	return row
 
 func _accent() -> Color:
