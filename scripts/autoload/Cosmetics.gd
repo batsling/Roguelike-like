@@ -114,7 +114,7 @@ func _announce(key: String) -> void:
 			"damage": "damage icon", "gold": "gold icon", "shield": "shield icon",
 			"hunger": "Hunger icon"}.get(
 			String(e.get("kind", "")), "look")
-	Notifications.notify("✦ New %s: %s" % [what, CosmeticCatalog.label(e)],
+	Notifications.announce("✦ New %s: %s" % [what, CosmeticCatalog.label(e)],
 		Color(0.95, 0.8, 0.45), CosmeticCatalog.texture(
 			(CosmeticCatalog.paths(e) + [""])[0]), "cosmetic")
 	look_unlocked.emit(key)

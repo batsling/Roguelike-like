@@ -11988,10 +11988,20 @@ func test_the_stat_badges_grow_with_the_board_cells() -> void:
 	assert_gte(small, UITheme.FONT_BODY,
 		"and even the 7x7's are no smaller than body text — they are read off a stream")
 
+# A PLAIN NOTICE GOES TO HISTORY ONLY; an announcement pops up too.
+func test_a_plain_notice_pops_nothing_up() -> void:
+	var toasts: NotificationToasts = _ui._toasts
+	var before: int = toasts._stack.get_child_count()
+	var from: int = Notifications.history.size()
+	Notifications.notify("Spider walked on.", Color.GOLD)
+	await wait_frames(2)
+	assert_eq(toasts._stack.get_child_count(), before, "no toast for an ordinary line")
+	assert_eq(Notifications.history.size(), from + 1, "but History has it")
+
 func test_a_toast_burst_never_stands_more_than_the_cap() -> void:
 	var toasts: NotificationToasts = _ui._toasts
 	for i in range(NotificationToasts.MAX_VISIBLE + 3):
-		Notifications.notify("burst %d" % i, Color.GOLD)
+		Notifications.announce("burst %d" % i, Color.GOLD)
 	await wait_frames(2)
 	var live: int = 0
 	for t in toasts._stack.get_children():
@@ -12002,8 +12012,8 @@ func test_a_toast_burst_never_stands_more_than_the_cap() -> void:
 
 func test_every_toast_is_the_same_width() -> void:
 	var toasts: NotificationToasts = _ui._toasts
-	Notifications.notify("Short", Color.GOLD)
-	Notifications.notify("A much longer notice that has to wrap onto a second line of the toast", Color.TOMATO)
+	Notifications.announce("Short", Color.GOLD)
+	Notifications.announce("A much longer notice that has to wrap onto a second line of the toast", Color.TOMATO)
 	await wait_frames(3)
 	var widths: Array = []
 	for t in toasts._stack.get_children():

@@ -1722,7 +1722,7 @@ func _remind_twitch_category(game: GameData) -> void:
 		return
 	var msg: String = "📺  Twitch category → %s" % game.display_name
 	GameLog.add(msg, UITheme.ACCENT)
-	Notifications.notify(msg, UITheme.ACCENT)
+	Notifications.announce(msg, UITheme.ACCENT)
 
 # The attempt tracker (§3): the player ticks this every time they LOSE a run of
 # the game they're playing. THE TICK COSTS A TURN OF THE BOARD — the enemies

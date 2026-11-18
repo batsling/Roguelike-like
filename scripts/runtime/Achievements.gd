@@ -223,12 +223,12 @@ static func check(announce: bool = true) -> void:
 static func _announce(a: AchievementData) -> void:
 	var pl: PlayerData = Data.get_player(a.unlocks_player)
 	if pl != null:
-		Notifications.notify("★ New player: %s" % pl.display_name, UITheme.GOLD,
+		Notifications.announce("★ New player: %s" % pl.display_name, UITheme.GOLD,
 			pl.portrait, "achievement")
 		return
 	var ch: CharacterData = Data.get_character2(a.unlocks_character)
 	if ch == null:
-		Notifications.notify("★ Achievement unlocked", UITheme.GOLD, null, "achievement")
+		Notifications.announce("★ Achievement unlocked", UITheme.GOLD, null, "achievement")
 		return
-	Notifications.notify("★ New character: %s" % ch.display_name, UITheme.GOLD,
+	Notifications.announce("★ New character: %s" % ch.display_name, UITheme.GOLD,
 		ch.shown_icon(), "achievement")

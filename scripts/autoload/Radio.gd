@@ -464,7 +464,7 @@ func _refresh_unlocks(announce: bool) -> void:
 			if has_file(song) and on_station(song):
 				_queue.push_front(song.id)
 		for song in fresh:
-			Notifications.notify("📻 New on Roguelike Radio: %s" % _label(song),
+			Notifications.announce("📻 New on Roguelike Radio: %s" % _label(song),
 				Color(0.95, 0.8, 0.45), null, "radio")
 			song_unlocked.emit(song)
 		if current == &"" and not paused and autoplay:
