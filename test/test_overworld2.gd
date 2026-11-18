@@ -11337,7 +11337,12 @@ func test_a_chest_bought_on_the_location_screen_opens_above_it() -> void:
 	assert_true(is_instance_valid(popup) and popup.is_inside_tree(),
 		"which is still there underneath")
 	assert_eq(GameState.pending_chests, 0, "and the chest is the one on screen")
-	layer.get_child(0)._finish()
+	# A CHEST IS LOOT (ChestLoot): it is offered on the loot screen, as a chest.
+	var modal = layer.get_child(0)
+	assert_true(modal is LootDropModal, "offered on the loot screen")
+	assert_true(ChestLoot.is_chest(modal._offers[0]) if modal is LootDropModal else false,
+		"as a chest")
+	modal.leave()
 	await wait_frames(2)
 	assert_null(_ui.get_node_or_null("LocationChestLayer"), "closing it takes the layer away")
 	assert_true(is_instance_valid(popup), "and lands back on the location")

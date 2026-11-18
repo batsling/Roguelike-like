@@ -4070,44 +4070,38 @@ func _redeem_pending_chests() -> void:
 	# back, which is the exact interruption this whole block exists to prevent.
 	if not over_location and (_phase == Phase.PLAYING or _resolving):
 		return
-	# EVERY banked chest at once, not one screen each. Two chests used to open two
-	# screens back to back, which reads as one screen flickering — you cannot weigh
-	# the second chest's offer against what you just took, and nothing marks it as
-	# a different chest. One screen with a labelled group per chest says what you
-	# actually got: "2 Small Chests" is two chests of one item, not one of two.
-	var sizes: Array = []
-	var pools: Array = []
-	var gold: int = 0
+	# AS LOOT (the owner, 18 Nov 2026: "convert mid-game chests to loot too").
+	# Every banked chest is rolled now, as a chest on the reward screen's table is,
+	# and offered like any other loot: the same drop screen, where it can be
+	# opened on the spot or put in the pack for later. Its gold is paid when it
+	# opens (ChestLoot). All at once, one question.
+	var discovery: int = maxi(0, Stats.get_value(&"discovery"))
+	var entries: Array = []
 	while GameState.pending_chests > 0:
 		var choices: int = GameState.take_pending_chest()  # -1 none / 0 default / N
 		if choices < 0:
 			break
-		sizes.append(maxi(0, choices))
-		pools.append(GameState.last_chest_pool)
-		gold += Data.chest_gold(choices)
-	if sizes.is_empty():
+		var count: int = choices if choices > 0 \
+			else load(REWARD_SCREEN_SCRIPT).BASE_ITEM_CHOICES + discovery
+		var pool: String = GameState.last_chest_pool
+		var offer: Array = _drops.roll_chest(false, maxi(1, count), pool)
+		if not offer.is_empty():
+			entries.append(ChestLoot.make(offer, false, pool))
+	if entries.is_empty():
+		_redeem_pending_masks()
 		return
 	_reward_open = true
-	var screen = load(REWARD_SCREEN_SCRIPT).new()
-	# On a layer of its own when it has a popup to clear; an ordinary child of the
-	# page otherwise, as it always was.
-	var layer: CanvasLayer = null
-	if over_location:
-		layer = CanvasLayer.new()
-		layer.name = "LocationChestLayer"
-		layer.layer = UITheme.Layer.CHOICE
-		layer.process_mode = Node.PROCESS_MODE_ALWAYS
-		add_child(layer)
-		UITheme.dress(screen)
-	screen.closed.connect(func():
+	var modal := LootDropModal.open(self, entries, true)
+	# Above the location's popup when that is where it was bought.
+	if over_location and modal._layer != null:
+		modal._layer.layer = UITheme.Layer.CHOICE + 1
+		modal._layer.name = "LocationChestLayer"
+	modal.answered.connect(func(taken: Array):
 		_reward_open = false
-		if layer != null and is_instance_valid(layer):
-			layer.queue_free()
+		_drops.note_taken(taken)
 		_refresh()
+		autosave()
 		_redeem_pending_chests())
-	(layer if layer != null else self).add_child(screen)
-	# Every chest's gold, on the one screen they open on — paid by the screen.
-	screen.setup_chests(sizes, pools, gold)
 
 # A Mysterious Mask was picked up: open its choice when the page is next idle.
 func _on_mask_granted() -> void:

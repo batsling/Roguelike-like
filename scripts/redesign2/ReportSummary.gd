@@ -42,15 +42,25 @@ func setup(screen: Node) -> void:
 	col.add_theme_constant_override("separation", UITheme.GAP_LOOSE)
 	card.add_child(col)
 
-	# The game, how it went, and both rank bars filling (the reward screen's own
-	# header, which tweens each bar from where it stood when the game was picked).
-	col.add_child(screen._header())
-	# …and under each bar, WHAT IT WAS FOR.
-	var sources := _sources_block()
-	if sources != null:
-		col.add_child(sources)
-
-	col.add_child(screen._tally_panel())
+	# HOW IT WENT, on one line: the cover, the verdict and the game.
+	col.add_child(screen._compact_header())
+	# THE TWO BARS ARE THE PAGE (the owner, 18 Nov 2026: "make the two experience
+	# bars the focus"): the game's and the character's, at full size, each filling
+	# from where it stood when the game was picked, and under each the list of
+	# what it was for and how much each thing gave. No tally of stats here.
+	var g: GameData = screen.game()
+	if g != null and screen._snap.has("rank_to"):
+		col.add_child(_bar_block(g.cover_image, false,
+			int(screen._snap.get("rank_from", 0)), int(screen._snap["rank_to"]),
+			g.display_name, screen._snap.get("xp_sources", [])))
+	var ch: CharacterData = Data.get_character2(StringName(screen._snap.get("character_id", "")))
+	if screen._snap.has("character_rank_to"):
+		col.add_child(_bar_block(ch.shown_icon() if ch != null else null, true,
+			int(screen._snap.get("character_rank_from", 0)),
+			int(screen._snap["character_rank_to"]),
+			String(screen._snap.get("character_name", "")),
+			screen._snap.get("character_xp_sources", [])))
+	# The rest of the report, smaller, under the bars.
 	var lvl: Control = screen._level_up_panel()
 	if lvl != null:
 		col.add_child(lvl)
@@ -58,6 +68,7 @@ func setup(screen: Node) -> void:
 		var m: Control = screen._level_up_block(masked)
 		if m != null:
 			col.add_child(m)
+	# …how the chest size was worked out, and who is still following.
 	var sum: Control = screen._chest_sum_row()
 	if sum != null:
 		col.add_child(sum)
@@ -84,40 +95,62 @@ func proceed() -> void:
 	continued.emit()
 	queue_free()
 
-# "+100 Beat the game · +40 Monkey", one line per bar, under the header.
-func _sources_block() -> Control:
-	var game_rows: Array = _screen._snap.get("xp_sources", [])
-	var hero_rows: Array = _screen._snap.get("character_xp_sources", [])
-	if game_rows.is_empty() and hero_rows.is_empty():
-		return null
-	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", UITheme.GAP_TIGHT)
-	var g: GameData = _screen.game()
-	if not game_rows.is_empty():
-		box.add_child(_source_line(g.display_name if g != null else "The game", game_rows))
-	if not hero_rows.is_empty():
-		box.add_child(_source_line(String(_screen._snap.get("character_name", "You")), hero_rows))
-	return box
+# ONE BAR: the picture, the big rank bar, and a row per source of its XP —
+# "+100  Beat the game" — so the number on each thing is readable at a glance.
+const BAR_ART := 64
+
+func _bar_block(art: Texture2D, character: bool, from: int, to: int, who: String,
+		rows: Array) -> Control:
+	var wrap := PanelContainer.new()
+	wrap.add_theme_stylebox_override("panel",
+		UITheme.panel_box(UITheme.PANEL, UITheme.BORDER, 10, 14, 1))
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", UITheme.GAP_SECTION)
+	wrap.add_child(row)
+	if art != null:
+		var pic: TextureRect = UITheme.crisp_tex(art, BAR_ART) if character else TextureRect.new()
+		if not character:
+			pic.texture = art
+			pic.custom_minimum_size = Vector2(BAR_ART * 0.75, BAR_ART)
+			pic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			pic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		pic.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		row.add_child(pic)
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", UITheme.GAP_SNUG)
+	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(col)
+	var bar: RankFill = RankFill.make(from, to, who, character, false)
+	bar.large = true
+	bar.name = "CharacterBar" if character else "GameBar"
+	col.add_child(bar)
+	if rows.is_empty():
+		var none := Label.new()
+		none.text = "No XP this game." if to <= from else ""
+		none.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
+		none.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
+		col.add_child(none)
+	var grid := GridContainer.new()
+	grid.columns = 2
+	grid.add_theme_constant_override("h_separation", UITheme.GAP_LOOSE)
+	grid.add_theme_constant_override("v_separation", UITheme.GAP_HAIR)
+	col.add_child(grid)
+	for r in rows:
+		var xp := Label.new()
+		xp.text = "+%d" % int(r.get("xp", 0))
+		xp.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		xp.add_theme_font_size_override("font_size", UITheme.FONT_LEAD)
+		xp.add_theme_color_override("font_color", UITheme.GOLD)
+		grid.add_child(xp)
+		var what := Label.new()
+		what.text = String(r.get("label", ""))
+		what.add_theme_font_size_override("font_size", UITheme.FONT_LEAD)
+		what.add_theme_color_override("font_color", UITheme.TEXT)
+		grid.add_child(what)
+	return wrap
 
 static func source_text(rows: Array) -> String:
 	var parts: PackedStringArray = []
 	for r in rows:
 		parts.append("+%d %s" % [int(r.get("xp", 0)), String(r.get("label", ""))])
 	return "  ·  ".join(parts)
-
-func _source_line(who: String, rows: Array) -> Control:
-	var line := HBoxContainer.new()
-	line.add_theme_constant_override("separation", UITheme.GAP)
-	var name := Label.new()
-	name.text = "%s:" % who
-	name.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
-	name.add_theme_color_override("font_color", UITheme.TEXT_DIM)
-	line.add_child(name)
-	var what := Label.new()
-	what.text = source_text(rows)
-	what.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	what.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	what.add_theme_font_size_override("font_size", UITheme.FONT_TEXT)
-	what.add_theme_color_override("font_color", UITheme.GOLD)
-	line.add_child(what)
-	return line

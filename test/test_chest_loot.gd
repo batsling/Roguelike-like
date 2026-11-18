@@ -74,3 +74,24 @@ func test_the_xp_sources_are_the_parts_that_grew() -> void:
 	assert_eq(got[0], {"label": "Beat the game", "xp": 50}, "a second win pays its growth")
 	assert_eq(got[1], {"label": "Spider", "xp": 20})
 	assert_eq(load("res://scripts/redesign2/ReportSummary.gd").source_text(got), "+50 Beat the game  ·  +20 Spider")
+
+# A chest banked BETWEEN games (a potion's level-up, an event) is offered as loot
+# too, on the ordinary loot screen, not on a chest screen of its own.
+func test_a_chest_banked_between_games_is_offered_as_loot() -> void:
+	Page.open_at_first_offering(_ui)
+	GameState.grant_chest(1, 2)
+	_ui._redeem_pending_chests()
+	await wait_frames(2)
+	var modal: LootDropModal = null
+	for layer in _ui.get_children():
+		for c in layer.get_children():
+			if c is LootDropModal:
+				modal = c
+	assert_not_null(modal, "the loot screen asks about it")
+	if modal == null:
+		return
+	assert_eq(modal._offers.size(), 1)
+	assert_true(ChestLoot.is_chest(modal._offers[0]), "as a chest")
+	assert_eq(int(modal._offers[0]["choices"]), 2, "the size it was banked at")
+	assert_eq(GameState.pending_chests, 0, "and the bank is drained")
+	modal.leave()
