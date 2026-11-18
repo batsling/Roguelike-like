@@ -280,6 +280,8 @@ A chest is a piece of loot. It lies on the reward screen's table with the loot t
 
 The reward screen opens on the game you just played: how it went, the XP it and your character earned, and what each part of it was for. Continue goes on to your inventory and the table.
 
+XP lands as you earn it: tick a goal mid-game and the game's and your character's rank bars slide up in the bottom-right corner and fill. A bar that reaches a new rank says RANK UP.
+
 Under the board, "Beat it:" shows what beating the game would pay right now — its chests and the loot on the board.
 
 > Bosses are not in that pool. A boss drops a chest of its own, on its own terms, and it is paid whether or not the game went your way.

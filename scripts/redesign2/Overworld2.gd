@@ -616,6 +616,9 @@ func _ready() -> void:
 	# once the shields are gone (§3).
 	if not GameLoop2.attempt_logged.is_connected(_on_attempt_logged):
 		GameLoop2.attempt_logged.connect(_on_attempt_logged)
+	# XP landing mid-game slides the rank bars up from the corner (XpPopup).
+	if not GameStats.changed.is_connected(_on_stats_changed_for_xp):
+		GameStats.changed.connect(_on_stats_changed_for_xp)
 	# Register as the mounted overworld so overworld-active items (Ride the Bus,
 	# Wand of Wishing) can route their effect here, and so item pickups refresh
 	# the inventory panel.
@@ -1533,6 +1536,69 @@ func pick(index: int) -> void:
 #
 # `log_shields` is false for the detour alone, which is the drift noted above:
 # it grants the armour silently. Kept as it was rather than quietly fixed.
+# --- XP as it lands (XpPopup) ---------------------------------------------
+#
+# A goal ticked mid-game writes the record at once (ReportChecklist ->
+# _record_defeat), and the game's and character's XP are read off that record, so
+# the climb happens with the game still on. GameStats.changed is the cue; the
+# check runs once a frame however many times it fired (a report fires it five
+# times), and only while a game is in play — the report's own summary page shows
+# the climb a report makes. `_xp_shown` is where the bars stood when they were
+# last shown: the game's XP at pick time to start with (GameLoop2.rank_start).
+const XP_POPUP_SCRIPT := "res://scripts/redesign2/XpPopup.gd"
+var _xp_check_due: bool = false
+var _xp_shown: Dictionary = {}
+var _xp_popup: Control = null
+var _xp_layer: CanvasLayer = null
+
+func _on_stats_changed_for_xp() -> void:
+	if _xp_check_due:
+		return
+	_xp_check_due = true
+	_check_xp_gain.call_deferred()
+
+func _check_xp_gain() -> void:
+	_xp_check_due = false
+	if not is_inside_tree() or _phase != Phase.PLAYING or _resolving or GameLoop2.run_over:
+		return
+	var gid: String = String(GameState.current_game_id)
+	var cid: String = String(GameState.character_id)
+	if gid == "":
+		return
+	var start: Dictionary = GameLoop2.rank_start
+	if String(_xp_shown.get("game", "")) != gid or String(_xp_shown.get("character", "")) != cid:
+		_xp_shown = {"game": gid, "character": cid,
+			"xp": int(start.get("xp", GameRanks.xp(gid))) if String(start.get("game", "")) == gid \
+				else GameRanks.xp(gid),
+			"cxp": int(start.get("character_xp", GameRanks.character_xp(cid))) \
+				if String(start.get("character", "")) == cid else GameRanks.character_xp(cid)}
+	var gxp: int = GameRanks.xp(gid)
+	var cxp: int = GameRanks.character_xp(cid)
+	if gxp <= int(_xp_shown["xp"]) and cxp <= int(_xp_shown["cxp"]):
+		return
+	show_xp_gain(int(_xp_shown["xp"]), gxp, int(_xp_shown["cxp"]), cxp)
+	_xp_shown["xp"] = gxp
+	_xp_shown["cxp"] = cxp
+
+# Slide the bars up from `gfrom`/`cfrom` to `gto`/`cto`. A card already up is
+# replaced by one filling from where IT started, so a burst is one climb.
+# Public for the tests. Returns the card.
+func show_xp_gain(gfrom: int, gto: int, cfrom: int, cto: int) -> Control:
+	if _xp_popup != null and is_instance_valid(_xp_popup) and not _xp_popup.is_queued_for_deletion():
+		gfrom = mini(gfrom, int(_xp_popup.game_from))
+		cfrom = mini(cfrom, int(_xp_popup.char_from))
+		_xp_popup.queue_free()
+	if _xp_layer == null or not is_instance_valid(_xp_layer):
+		_xp_layer = CanvasLayer.new()
+		_xp_layer.name = "XpLayer"
+		# Over the page and its pinned header, under every modal that asks something.
+		_xp_layer.layer = UITheme.Layer.HEADER + 1
+		add_child(_xp_layer)
+	_xp_popup = load(XP_POPUP_SCRIPT).open(self, _xp_layer,
+		Data.get_game(GameState.current_game_id), gfrom, gto,
+		Data.get_character2(GameState.character_id), cfrom, cto)
+	return _xp_popup
+
 # The XP `game` had when it was picked (GameLoop2.rank_start), or its XP now when
 # that was not recorded for it.
 func _rank_from(game: GameData) -> int:
@@ -3979,6 +4045,8 @@ func _on_arrived(game_id: StringName) -> void:
 
 func _exit_tree() -> void:
 	GameState.clear_overworld_context(self)
+	if GameStats.changed.is_connected(_on_stats_changed_for_xp):
+		GameStats.changed.disconnect(_on_stats_changed_for_xp)
 	# The header bar goes with the page. Leaving its height published would push
 	# the main menu's own modals down by a strip that no longer exists.
 	ModalScaffold.reserved_top = 0.0

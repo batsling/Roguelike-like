@@ -95,3 +95,34 @@ func test_a_chest_banked_between_games_is_offered_as_loot() -> void:
 	assert_eq(int(modal._offers[0]["choices"]), 2, "the size it was banked at")
 	assert_eq(GameState.pending_chests, 0, "and the bank is drained")
 	modal.leave()
+
+# XP AS IT LANDS: a goal ticked mid-game slides the rank bars up from the corner
+# (XpPopup), and a climb across a rank says so.
+func test_xp_landing_mid_game_slides_the_bars_up() -> void:
+	Page.open_at_first_offering(_ui)
+	_ui.pick(0)
+	var gid: StringName = GameState.current_game_id
+	var g: int = GameRanks.xp(gid)
+	GameLoop2.rank_start = {"game": String(gid), "xp": g - 20,
+		"character": String(GameState.character_id),
+		"character_xp": GameRanks.character_xp(GameState.character_id)}
+	_ui._xp_shown = {}
+	_ui._check_xp_gain()
+	var pop = _ui._xp_popup
+	assert_not_null(pop, "a gain since the pick puts the card up")
+	if pop == null:
+		return
+	assert_eq(int(pop.game_from), g - 20, "filling from where the game stood")
+	assert_eq(int(pop.game_to), g)
+	_ui._check_xp_gain()
+	assert_eq(_ui._xp_popup, pop, "and nothing new is shown when nothing moved")
+
+func test_a_climb_across_a_rank_is_a_rank_up() -> void:
+	Page.open_at_first_offering(_ui)
+	_ui.pick(0)
+	var pop = _ui.show_xp_gain(240, 260, 10, 20)
+	assert_eq(pop.rank_ups().size(), 1, "the game crossed 250, the character did not")
+	var again = _ui.show_xp_gain(260, 600, 20, 30)
+	assert_false(is_instance_valid(pop) and not pop.is_queued_for_deletion(),
+		"a second gain replaces the card")
+	assert_eq(int(again.game_from), 240, "filling on from where the first started")
