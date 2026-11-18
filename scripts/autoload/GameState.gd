@@ -2183,7 +2183,7 @@ func grant_level_up(rng: RandomNumberGenerator = null, ch: CharacterData = null)
 	if ch == null:
 		return []
 	player_level += 1
-	Notifications.announce("⬆  %s reached level %d" % [ch.display_name, player_level],
+	Notifications.announce("▲  %s reached level %d" % [ch.display_name, player_level],
 		Color(1.0, 0.80, 0.40), ch.shown_icon() if ch.has_method("shown_icon") else null)
 	var applied: Array = apply_level_up_stats(ch.level_up_stats)
 	match String(ch.level_up_reward_type):

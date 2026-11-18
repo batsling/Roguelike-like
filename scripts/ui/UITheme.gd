@@ -1267,10 +1267,21 @@ static var _glyph_font: Font = null
 #     subsets declared, base search still on    12.4 ms
 #     subsets, base search off, system last      4.5 ms
 # and a character NOTHING here ships still renders, off the tail of the chain.
+const BODY_FONT_PATH := "res://fonts/VT323-UI.ttf"
+
 static func glyph_font() -> Font:
 	if _glyph_font != null:
 		return _glyph_font
-	var base: Font = ThemeDB.fallback_font
+	# THE TEXT FONT IS VT323 (the owner, 18 Nov 2026, after seeing it: "the new
+	# font looks pretty good"), the terminal face to sit beside the headings'
+	# Px437. Shipped as fonts/VT323-UI.ttf, VT323 RESCALED so its capitals stand
+	# exactly as tall as the old default's at the same pixel size (its em is 784
+	# units, not 1000; see LICENSE-VT323-OFL.txt). That is what let it go in with
+	# no size constant changed: every FONT_* step reads the same height as it did,
+	# and the line height, which Godot takes as the tallest of the chain, is still
+	# the glyph subsets' — the em grid the note below asks to keep.
+	var base: Font = load(BODY_FONT_PATH) if ResourceLoader.exists(BODY_FONT_PATH) \
+		else ThemeDB.fallback_font
 	if base == null:
 		return null
 	var fallbacks: Array[Font] = []
