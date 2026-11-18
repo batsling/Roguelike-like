@@ -125,12 +125,17 @@ const RARITY := [
 ]
 
 # Game-type accent colours, indexed by GameData.GameType (Action, Strategy,
-# Deckbuilder, Traditional).
+# Deckbuilder, Traditional). THE ONLY GENRE PALETTE: RunGraph.type_color reads
+# this. There used to be two, and they disagreed — Traditional was green here and
+# purple on the start panel, the Atlas and the route map, Deckbuilder the other
+# way round. The owner settled it (18 Nov 2026): Traditional is PURPLE. The hues
+# are the start panel's; the lightness is this list's, since the start panel's
+# navy Strategy was too dark to read as text on the panel colour.
 const TYPE_COLORS := [
 	Color(0.93, 0.42, 0.32),   # Action  — red-orange
 	Color(0.46, 0.70, 0.95),   # Strategy — blue
-	Color(0.70, 0.45, 1.0),    # Deckbuilder — violet
-	Color(0.55, 0.80, 0.50),   # Traditional — green
+	Color(0.40, 0.80, 0.52),   # Deckbuilder — green
+	Color(0.72, 0.48, 0.95),   # Traditional — purple
 ]
 
 const RARITY_NAMES := ["Common", "Uncommon", "Rare", "Legendary"]
