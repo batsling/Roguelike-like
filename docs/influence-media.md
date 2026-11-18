@@ -7,9 +7,9 @@ Videos and podcast episodes where a developer may say what inspired their game, 
 | | games | results |
 |---|---|---|
 | 1. Confirm a suspected connection | 112 | 313 |
-| 2. Games with few connections | 184 | 598 |
+| 2. Games with few connections | 187 | 610 |
 
-Searched 564 of the 564 games that qualify; 268 had nothing that looked like the developer talking.
+Searched 568 of the 568 games that qualify; 269 had nothing that looked like the developer talking.
 
 ---
 
@@ -76,7 +76,7 @@ Listen for: **Torneko's Great Adventure: Mystery Dungeon** (sheet says "look at 
 
 - [ ] podcast [Azure Dreams](https://podcasts.apple.com/us/podcast/azure-dreams/id1650474911?i=1000696127812) — GROGPOD Roguelike Podcast · 123 min · 2025-02-26 — cue in the description
 
-### Backpack Battles (2023) — 12 connections
+### Backpack Battles (2023) — 13 connections
 
 Listen for: **Super Auto Pets** (sheet says "check folder")
 
@@ -1598,6 +1598,14 @@ Held on the map by one connection or none. Listen for any game on the chart.
 
 - [ ] video [Maid Survivors - a playtest of a forthcoming swarm survival game](https://www.youtube.com/watch?v=pyFOM35Xg0w) — Gentlemen's Pixel Club · 51:34 · 1y ago — cue in the description
 
+### March of the Living (2016) — 1 connection
+
+- [ ] video [Behind the Scenes — March of the Living 2025, Poland](https://www.youtube.com/watch?v=i_YRNlRedUU) — JMG Production TV · 2:42 · 6mo ago — behind the
+- [ ] podcast [Never Forgetting the Holocaust with Joel Katz, North East Regional Director of March of The Living](https://podcasts.apple.com/us/podcast/never-forgetting-the-holocaust-with-joel-katz-north/id1693436238?i=1000631710711) — Inside The Inspired · 50 min · 2023-10-18 — director
+- [ ] podcast [Never Forgetting the Holocaust with Joel Katz, North East Regional Director of March of The Living](https://podcasts.apple.com/us/podcast/never-forgetting-the-holocaust-with-joel-katz-north/id1535384791?i=1000631709559) — Inside The Inspired · 50 min · 2023-10-18 — director
+- [ ] podcast [Marching for Memory: The International March of the Living](https://podcasts.apple.com/us/podcast/marching-for-memory-the-international-march-of-the-living/id1545267345?i=1000595073597) — Gesher · 22 min · 2023-01-17 — cue in the description
+- [ ] podcast [Shmuel Rosenman, former international chairman of March of the Living](https://podcasts.apple.com/us/podcast/shmuel-rosenman-former-international-chairman-of/id161305550?i=1000609058861) — SBS Hebrew · 10 min · 2023-04-15 — cue in the description
+
 ### Metal Slug Tactics (2024) — 1 connection
 
 - [ ] video [Enquête sur la fermeture de Leikir Studio (Metal Slug Tactics)](https://www.youtube.com/watch?v=p1F65brsjpQ) — ORIGAMI, Média jeu vidéo... mais pas que ! · 34:09 · 8mo ago — names the developer
@@ -1667,6 +1675,11 @@ Held on the map by one connection or none. Listen for any game on the chart.
 
 - [ ] video [SBU Podcast Episode 7 (OneBit Adventure Developer)](https://www.youtube.com/watch?v=LMLBbPgqyUI) — SpaceBetween Us · 34:48 · 6y ago — developer
 - [ ] video [Indie developer Jonathan Concepcion back and better than ever!](https://www.youtube.com/watch?v=FqmXlDzmIpI) — SpaceBetween Us · 21:36 · 4y ago — developer
+
+### Ovis Loop (2025) — 1 connection
+
+- [ ] video [SWW Interviews Episode 187: OVIS LOOP](https://www.youtube.com/watch?v=q_hcE658T9s) — The SWW Show · 26:37 · 1y ago — interview
+- [ ] podcast [SWW Interviews Episode 187: OVIS LOOP](https://podcasts.apple.com/us/podcast/sww-interviews-episode-187-ovis-loop/id1435072446?i=1000720225186) — The SWW Show · 26 min · 2025-08-01 — interview
 
 ### Passant: A Chess Roguelike (2025) — 1 connection
 
@@ -1970,6 +1983,14 @@ Held on the map by one connection or none. Listen for any game on the chart.
 - [ ] video [Vampire Crawlers Demands Your Attention](https://www.youtube.com/watch?v=D6MhZDKGBas) — Wavelengths · 15:22 · 5mo ago — cue in the description
 - [ ] podcast [Vampire Crawlers & Double Fine's New Game Kiln Are Great](https://podcasts.apple.com/us/podcast/vampire-crawlers-double-fines-new-game-kiln-are-great/id335246945?i=1000765641199) — The Game Informer Show · 65 min · 2026-05-01 — cue in the description
 - [ ] podcast [Vampire Crawlers Demands Your Attention](https://podcasts.apple.com/us/podcast/vampire-crawlers-demands-your-attention/id1677660078?i=1000762903050) — Overworld Weekly: A Wider View of Video Game News · 15 min · 2026-04-21 — cue in the description
+
+### Void Crew (2023) — 1 connection
+
+- [ ] video [Void Crew Interview / Deep Dive into the Game’s Development](https://www.youtube.com/watch?v=7i_anCBjRVQ) — Gamer Section Media · 22:48 · 5mo ago — interview
+- [ ] video [Jesse Plays: Void Crew with the Developers! Part 1](https://www.youtube.com/watch?v=SZgLlSoXqr8) — CoxClips · 2:41:02 · 3y ago — developer
+- [ ] video [Playing MORE Void Crew with the Developers!](https://www.youtube.com/watch?v=pOLIeGTJ2yg) — CoxClips · 2:46:27 · 1y ago — developer
+- [ ] video [Best of Void Crew w/ the Devs!](https://www.youtube.com/watch?v=PSxVp295im8) — Jesse Cox · 11:39 · 3y ago — devs
+- [ ] podcast [Episode 187 - Void Crew: Det næste store danske spilhit!?](https://podcasts.apple.com/us/podcast/episode-187-void-crew-det-n%C3%A6ste-store-danske-spilhit/id1153562353?i=1000677671843) — Arkaden · 166 min · 2024-11-20 — names the developer
 
 ### Voidigo (2023) — 1 connection
 

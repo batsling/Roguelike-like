@@ -1772,6 +1772,15 @@
   "loot": "2026-10-12: nothing usable: no wiki under its name on Fandom or wiki.gg, or one with no item or enemy pages",
   "statuses": "2026-10-12: nothing usable: no wiki under its name on Fandom or wiki.gg, or one with no item or enemy pages"
  },
+ "Deadly Days: Roadtrip": {
+  "characters": "2026-11-18: nothing usable: the wiki documents only items and weapons",
+  "connections": "2026-11-18",
+  "events": "2026-11-18: nothing usable: the wiki documents only items and weapons",
+  "goals": "2026-11-18: nothing usable: the German fandom wiki's Mobs page is an empty stub",
+  "locations": "2026-11-18: nothing usable: the wiki documents only items and weapons",
+  "loot": "2026-11-18: 2 rows (Bicycle Pump, WiFi Repeater); weapons are a bare list of generic guns and blades with no stats, nothing a live or candidate weapon lacks; no evolutions",
+  "statuses": "2026-11-18: nothing usable: the wiki documents only items and weapons"
+ },
  "Deadzone: Rogue": {
   "characters": "2026-10-12: nothing usable: no wiki under its name on Fandom or wiki.gg, or one with no item or enemy pages",
   "connections": "before 2026-10-07",
@@ -2950,6 +2959,15 @@
   "locations": "2026-10-12: nothing usable: a wiki with no item or enemy categories",
   "loot": "2026-10-12: nothing usable: a wiki with no item or enemy categories",
   "statuses": "2026-10-12: nothing usable: a wiki with no item or enemy categories"
+ },
+ "Func Key": {
+  "characters": "2026-11-18: nothing usable: no wiki; store page only, which names no single enemy, piece, event, hero, status or place",
+  "connections": "2026-11-18",
+  "events": "2026-11-18: nothing usable: no wiki; store page only, which names no single enemy, piece, event, hero, status or place",
+  "goals": "2026-11-18: nothing usable: no wiki; store page only, which names no single enemy, piece, event, hero, status or place",
+  "locations": "2026-11-18: nothing usable: no wiki; store page only, which names no single enemy, piece, event, hero, status or place",
+  "loot": "2026-11-18: nothing usable: no wiki; store page only, which names no single enemy, piece, event, hero, status or place",
+  "statuses": "2026-11-18: nothing usable: no wiki; store page only, which names no single enemy, piece, event, hero, status or place"
  },
  "Fury Unleashed": {
   "characters": "2026-10-12: nothing usable: boss pages describe attack patterns (the Chained God can't move); pickups and skills are numbers",
@@ -4463,6 +4481,15 @@
   "loot": "2026-10-12: nothing usable: a small wiki whose pages are short; its bear trap and turret repeat existing candidates",
   "statuses": "2026-10-12: nothing usable: a small wiki whose pages are short; its bear trap and turret repeat existing candidates"
  },
+ "March of the Living": {
+  "characters": "2026-11-18: 1 row (Greg); Ana (a nurse) would repeat the Healer (NetHack) level-up",
+  "connections": "2026-11-18",
+  "events": "2026-11-18: 1 row (Locked Vault); the wiki names 160+ events but documents none, so this one is built from the items page",
+  "goals": "2026-11-18: nothing usable: zombies and nameless human factions (Bandits, TSR/SSU Soldiers, Marines); Defeat a zombie is already a candidate (Crypt of the NecroDancer)",
+  "locations": "2026-11-18: nothing usable: trading stations and safe houses are a shop and a rest site, which the game has",
+  "loot": "2026-11-18: 2 rows (Machete weapon, Duct Tape); the rest are event keys and generic guns; no evolutions",
+  "statuses": "2026-11-18: nothing usable: Fatigue is a rest meter; zombie Grapple is the 'Get grabbed and escape' candidate already"
+ },
  "Masks of the Void: Origins": {
   "characters": "2026-10-12: nothing usable: no wiki (Fandom and wiki.gg tried), and nothing beyond store blurbs",
   "connections": "before 2026-10-07",
@@ -4948,6 +4975,15 @@
   "locations": "2026-10-12: nothing usable: no wiki under its name on Fandom or wiki.gg, or one with no item or enemy pages",
   "loot": "2026-10-12: nothing usable: no wiki under its name on Fandom or wiki.gg, or one with no item or enemy pages",
   "statuses": "2026-10-12: nothing usable: no wiki under its name on Fandom or wiki.gg, or one with no item or enemy pages"
+ },
+ "Near Mint": {
+  "characters": "2026-11-18: nothing usable: no wiki; store page only, which names no single enemy, piece, event, hero, status or place",
+  "connections": "2026-11-18",
+  "events": "2026-11-18: nothing usable: no wiki; store page only, which names no single enemy, piece, event, hero, status or place",
+  "goals": "2026-11-18: nothing usable: no wiki; store page only, which names no single enemy, piece, event, hero, status or place",
+  "locations": "2026-11-18: nothing usable: no wiki; store page only, which names no single enemy, piece, event, hero, status or place",
+  "loot": "2026-11-18: nothing usable: no wiki; store page only, which names no single enemy, piece, event, hero, status or place",
+  "statuses": "2026-11-18: nothing usable: no wiki; store page only, which names no single enemy, piece, event, hero, status or place"
  },
  "NecroBouncer": {
   "characters": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
@@ -5452,6 +5488,15 @@
   "locations": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
   "loot": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
   "statuses": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs"
+ },
+ "Ovis Loop": {
+  "characters": "2026-11-18: nothing usable: no wiki; store page only, which names no single enemy, piece, event, hero, status or place",
+  "connections": "2026-11-18",
+  "events": "2026-11-18: nothing usable: no wiki; store page only, which names no single enemy, piece, event, hero, status or place",
+  "goals": "2026-11-18: nothing usable: no wiki; store page only, which names no single enemy, piece, event, hero, status or place",
+  "locations": "2026-11-18: nothing usable: no wiki; store page only, which names no single enemy, piece, event, hero, status or place",
+  "loot": "2026-11-18: nothing usable: no wiki; store page only, which names no single enemy, piece, event, hero, status or place",
+  "statuses": "2026-11-18: nothing usable: no wiki; store page only, which names no single enemy, piece, event, hero, status or place"
  },
  "Pairs & Perils": {
   "characters": "2026-10-12: nothing usable: no wiki (Fandom and wiki.gg tried), and nothing beyond store blurbs",
@@ -7379,6 +7424,15 @@
   "loot": "2026-10-11: nothing: its charms are stat bonuses by rarity and category; no weapons pages beyond each Diver's revolver, and no evolutions",
   "statuses": "2026-10-11: nothing: none"
  },
+ "Stella Sora": {
+  "characters": "2026-11-18: nothing usable: no wiki; store page only, which names no single enemy, piece, event, hero, status or place",
+  "connections": "2026-11-18",
+  "events": "2026-11-18: nothing usable: no wiki; store page only, which names no single enemy, piece, event, hero, status or place",
+  "goals": "2026-11-18: nothing usable: no wiki; store page only, which names no single enemy, piece, event, hero, status or place",
+  "locations": "2026-11-18: nothing usable: no wiki; store page only, which names no single enemy, piece, event, hero, status or place",
+  "loot": "2026-11-18: nothing usable: no wiki; store page only, which names no single enemy, piece, event, hero, status or place",
+  "statuses": "2026-11-18: nothing usable: no wiki; store page only, which names no single enemy, piece, event, hero, status or place"
+ },
  "Steve's Warehouse: Physics. Roguelike. Chaos.": {
   "characters": "2026-10-12: nothing usable: no wiki under its name on Fandom or wiki.gg, or one with no item or enemy pages",
   "connections": "before 2026-10-07",
@@ -8602,6 +8656,15 @@
   "locations": "2026-10-12: nothing usable: ships are levels",
   "loot": "2026-10-12: 1 row (Kittybot); its weapons are crafted upgrades of each other (Stapler to Head Stapler), stat lines; no evolutions to write from",
   "statuses": "2026-10-12: nothing usable: none listed"
+ },
+ "Void Crew": {
+  "characters": "2026-11-18: nothing usable: no page for this kind; its missions are fights",
+  "connections": "2026-11-18",
+  "events": "2026-11-18: nothing usable: no page for this kind; its missions are fights",
+  "goals": "2026-11-18: 3 rows (Hollow Collector, Hollow Summoner, Hollow Reclaimer boss)",
+  "locations": "2026-11-18: nothing usable: no page for this kind; its missions are fights",
+  "loot": "2026-11-18: 1 row (Close Quarters relic); perks are a skill tree; no weapons page and no evolutions",
+  "statuses": "2026-11-18: nothing usable: no page for this kind; its missions are fights"
  },
  "Void Scrappers": {
   "characters": "2026-10-12: nothing usable: no wiki (Fandom and wiki.gg both tried under its name), and nothing beyond store blurbs",
