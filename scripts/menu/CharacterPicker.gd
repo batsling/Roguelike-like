@@ -36,6 +36,18 @@ const TILE_GAP := 10
 # Health column is laid out to, so the two columns line up.
 const CHAR_PORTRAIT_SIZE := 210
 
+# NO SCROLL BAR, NO DEAD SPACE (the owner, 18 Nov 2026: "condense the
+# character/player selection screen so that there's less wasting space. At this
+# point there should be no need for a scroll bar"). The grid is as tall as its
+# rows, floored at what the detail panel beside it needs, and the panel is as
+# tall as that — it used to be a fixed 620 with a 470px scroll the roster
+# overflowed by one row of two-line names.
+const DETAIL_MIN_H := 340.0
+
+static func grid_height(count: int) -> float:
+	var rows: int = maxi(1, ceili(float(count) / float(TILE_COLUMNS)))
+	return maxf(DETAIL_MIN_H, rows * TILE_SIZE.y + (rows - 1) * TILE_GAP)
+
 # The roster as CharacterData, in the order the grid draws it, and the selection
 # callback every tile click goes through. Both exist so `roll_random` picks a hero
 # the same way a click does rather than re-implementing selection beside it.
@@ -80,7 +92,7 @@ func _build() -> void:
 	# Wide enough for FOUR icon columns on the left and a portrait-beside-facts
 	# detail panel on the right, and short enough that both halves are one screen
 	# on a 720p window.
-	panel.custom_minimum_size = Vector2(1080, 620)
+	panel.custom_minimum_size = Vector2(1080, 0)
 	panel.add_theme_stylebox_override("panel", UITheme.panel_box(UITheme.BG, UITheme.ACCENT.lerp(UITheme.BORDER, 0.4), 12, 22, 2))
 	center.add_child(panel)
 
@@ -110,7 +122,12 @@ func _build() -> void:
 	# board, so a hero is always in the same place whatever the panel's width does.
 	var grid_scroll := ScrollContainer.new()
 	grid_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	grid_scroll.custom_minimum_size = Vector2(TILE_COLUMNS * (TILE_SIZE.x + TILE_GAP), 470)
+	# Vertical scrolling OFF too: the box then grows to the grid's real height (a
+	# tile is taller than TILE_SIZE once its rank badge hangs under the icon), so
+	# there is never a bar. grid_height is only the floor.
+	grid_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	grid_scroll.custom_minimum_size = Vector2(TILE_COLUMNS * (TILE_SIZE.x + TILE_GAP),
+		grid_height(Data.all_characters2().size()))
 	grid_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	body.add_child(grid_scroll)
 	var grid := GridContainer.new()
@@ -319,8 +336,14 @@ func _character_tile(ch: CharacterData, state: Dictionary, select: Callable) -> 
 	name_lbl.text = ch.display_name
 	name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	name_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	name_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	# ONE LINE, so every tile is the same height and three rows fit; a long name
+	# ends in an ellipsis and is whole on the hover and in the detail panel.
+	name_lbl.autowrap_mode = TextServer.AUTOWRAP_OFF
+	name_lbl.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	name_lbl.clip_text = true
 	name_lbl.custom_minimum_size = Vector2(TILE_SIZE.x - 16, 0)
+	if tile.tooltip_text == "":
+		tile.tooltip_text = ch.display_name
 	name_lbl.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	name_lbl.add_theme_color_override("font_color", UITheme.TEXT)
 	vb.add_child(name_lbl)
