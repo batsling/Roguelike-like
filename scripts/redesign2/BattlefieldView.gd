@@ -1558,6 +1558,11 @@ func _build() -> void:
 	_battlefield.add_theme_constant_override("separation", UITheme.GAP_LOOSE)
 	_battlefield.alignment = BoxContainer.ALIGNMENT_BEGIN
 	outer.add_child(_battlefield)
+	_reward_strip = HBoxContainer.new()
+	_reward_strip.name = "RewardStrip"
+	_reward_strip.alignment = BoxContainer.ALIGNMENT_CENTER
+	_reward_strip.add_theme_constant_override("separation", UITheme.GAP)
+	outer.add_child(_reward_strip)
 
 	# Animation overlay: ghost sprites and damage numbers are parented here so they
 	# can travel across cells without being clipped by a cell's own rect.
@@ -1737,9 +1742,90 @@ func _build() -> void:
 # NOW PLAYING tag in the overflow lane. There is no such body (GameLoop2.arrivals):
 # every enemy on this board is a follower on the same terms, and drawing one of
 # them differently was the board arguing with its own rules.
+# THE REWARD, UNDER THE GRID (the owner, 18 Nov 2026): what beating the game
+# pays as things stand — its chests, drawn as the chest icon with the size's
+# stars (the icon the Customization screen can swap), and the loot lying on the
+# board, drawn as itself. GameLoop2.reward_preview does the arithmetic.
+var _reward_strip: HBoxContainer = null
+const REWARD_ART := 26
+
+func _fill_reward_strip() -> void:
+	if _reward_strip == null or not is_instance_valid(_reward_strip):
+		return
+	for c in _reward_strip.get_children():
+		_reward_strip.remove_child(c)
+		c.queue_free()
+	var live: bool = GameLoop2.game_in_play and not GameLoop2.run_over
+	_reward_strip.visible = live
+	if not live:
+		return
+	var preview: Dictionary = GameLoop2.reward_preview()
+	var head := Label.new()
+	head.text = "Beat it:"
+	head.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
+	head.add_theme_color_override("font_color", UITheme.TEXT_DIM)
+	_reward_strip.add_child(head)
+	# One badge per chest SIZE, with its count: "1 🎁★★" for a Medium.
+	var counts: Dictionary = {}
+	for size in preview.get("chests", []):
+		counts[int(size)] = int(counts.get(int(size), 0)) + 1
+	var sizes: Array = counts.keys()
+	sizes.sort()
+	sizes.reverse()
+	for size in sizes:
+		_reward_strip.add_child(_chest_badge(int(counts[size]), int(size), false))
+	if int(preview.get("boss_chests", 0)) > 0:
+		_reward_strip.add_child(_chest_badge(int(preview["boss_chests"]),
+			Data.ChestSize.HUGE, true))
+	var loot: Array = preview.get("loot", [])
+	if not loot.is_empty():
+		var n := Label.new()
+		n.text = "+  %d" % loot.size()
+		n.add_theme_font_size_override("font_size", UITheme.FONT_LABEL)
+		n.add_theme_color_override("font_color", UITheme.TEXT)
+		_reward_strip.add_child(n)
+		for i in range(mini(loot.size(), 4)):
+			var tex: Texture2D = LootSystem.art_texture(loot[i], false)
+			if tex != null:
+				_reward_strip.add_child(UITheme.crisp_tex(tex, REWARD_ART))
+		var word := Label.new()
+		word.text = "loot"
+		word.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
+		word.add_theme_color_override("font_color", UITheme.TEXT_DIM)
+		_reward_strip.add_child(word)
+	_reward_strip.tooltip_text = "What beating this game pays as it stands: %s%s." % [
+		Data.chest_sizes_text(preview.get("chests", [])),
+		(", and %d piece%s of loot off the board" % [loot.size(), "" if loot.size() == 1 else "s"])
+			if not loot.is_empty() else ""]
+
+func _chest_badge(count: int, size: int, boss: bool) -> Control:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", UITheme.GAP_TIGHT)
+	var n := Label.new()
+	n.text = "%d" % count
+	n.add_theme_font_size_override("font_size", UITheme.FONT_LABEL)
+	n.add_theme_color_override("font_color", UITheme.TEXT)
+	row.add_child(n)
+	var tint: Color = UITheme.ITEM_CLASS_COLORS[5] if boss else RarityStyle.color(size)
+	var gift := Label.new()
+	gift.text = "🎁"
+	gift.add_theme_font_size_override("font_size", UITheme.FONT_HEAD)
+	gift.add_theme_color_override("font_color", ItemDropModal.CHEST_GOLD.lerp(tint, 0.25))
+	gift.set_meta("glyph_level", CosmeticCatalog.BOSS_CHEST if boss else size)
+	row.add_child(gift)
+	Cosmetics.apply_glyph(gift)
+	var stars := Label.new()
+	stars.text = ItemDropModal.STAR_GLYPH.repeat(size + 1)
+	stars.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
+	stars.add_theme_color_override("font_color", tint.lerp(Color.WHITE, 0.25))
+	stars.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	row.add_child(stars)
+	return row
+
 func refresh() -> void:
 	if _battlefield == null:
 		return
+	_fill_reward_strip()
 	# A crash the loop recorded outside a resolve. Deferred, because a resolve
 	# refreshes the board and THEN calls animate_resolve in the same frame, which
 	# takes the crashes for itself and plays them in their place in the sequence.
