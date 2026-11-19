@@ -122,7 +122,48 @@ const MAP_NAME_FONT := 10.0
 const MAP_YEAR_FONT := 12.0
 const MAP_ARROW := 6.0
 const MAP_MIN_TEXT_PX := 6
-const MAP_EDGE_BANDS := 8
+const MAP_EDGE_ALPHA := 0.42
+const GRAIN_SIZE := 256
+
+static var _grain: Texture2D = null
+
+# The paper's grain, made once: soft blotches (value noise) for the uneven tone
+# of old paper, short horizontal fibres, and single dark specks, all in the
+# paper's brown at low alpha so the sheet's colour shows through. Seeded, so the
+# paper is the same every time.
+static func paper_grain() -> Texture2D:
+	if _grain != null:
+		return _grain
+	var n: int = GRAIN_SIZE
+	var img := Image.create(n, n, false, Image.FORMAT_RGBA8)
+	var blot := FastNoiseLite.new()
+	blot.seed = 7
+	blot.noise_type = FastNoiseLite.TYPE_VALUE_CUBIC
+	blot.frequency = 0.035
+	var fibre := FastNoiseLite.new()
+	fibre.seed = 11
+	fibre.noise_type = FastNoiseLite.TYPE_SIMPLEX
+	fibre.frequency = 0.08
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 1979
+	var edge := MAP_PAPER_EDGE
+	for y in range(n):
+		for x in range(n):
+			# Noise sampled on a torus would tile perfectly; sampling the plane and
+			# blending the four wrapped copies is the cheap version of the same.
+			var fx: float = float(x) / n
+			var fy: float = float(y) / n
+			var b: float = 0.0
+			for o in [[0, 0], [n, 0], [0, n], [n, n]]:
+				var w: float = (1.0 - fx if o[0] == 0 else fx) * (1.0 - fy if o[1] == 0 else fy)
+				b += w * blot.get_noise_2d(x - o[0], y - o[1])
+			var f: float = fibre.get_noise_2d(x * 0.25, y * 3.0)
+			var a: float = 0.05 + 0.06 * b + (0.05 if f > 0.55 else 0.0)
+			if rng.randf() < 0.012:
+				a += rng.randf_range(0.08, 0.2)
+			img.set_pixel(x, y, Color(edge, clampf(a, 0.0, 0.32)))
+	_grain = ImageTexture.create_from_image(img)
+	return _grain
 # Clear space between a box's border and its name, in screen pixels.
 const MAP_TEXT_PAD := 1.5
 
@@ -2481,7 +2522,8 @@ class StarCanvas extends Control:
 					_text_in(font, box, str(lay.ruler_years[k]), ypx, AtlasView.MAP_INK)
 
 		# The lines, under the boxes as in draw.io.
-		var width: float = clampf(sc, 1.0, 2.5)
+		# Thin, like a pen line (the owner, 19 Nov 2026: "a little thinner").
+		var width: float = clampf(sc * 0.55, 0.7, 1.5)
 		var head: float = clampf(AtlasView.MAP_ARROW * sc, 3.0, 16.0)
 		for pair in range(lay.edge_count()):
 			var a: int = lay.edges[pair * 2]
@@ -2557,12 +2599,56 @@ class StarCanvas extends Control:
 		var lift: float = clampf(minf(sheet.size.x, sheet.size.y) * 0.01, 3.0, 12.0)
 		draw_rect(Rect2(sheet.position + Vector2(lift, lift * 1.4), sheet.size), AtlasView.MAP_SHADOW)
 		draw_rect(sheet, AtlasView.MAP_PAPER)
-		# The browned edges: thin translucent bands, darkest at the border.
-		var band: float = clampf(minf(sheet.size.x, sheet.size.y) * 0.012, 2.0, 18.0)
-		for k in range(AtlasView.MAP_EDGE_BANDS):
-			var a: float = 0.11 * (1.0 - float(k) / AtlasView.MAP_EDGE_BANDS)
-			draw_rect(sheet.grow(-band * (k + 0.5)), Color(AtlasView.MAP_PAPER_EDGE, a), false, band)
+		_draw_grain(sheet, vis)
+		# The browned edges, darkest at the border and fading over 8% of the
+		# sheet's short side (the owner, 19 Nov 2026: "make the edges stronger").
+		# One smooth gradient per side, mitred at the corners: a trapezoid with the
+		# browned colour on its outer edge, clear on its inner edge, and a middle
+		# step so the darkening falls off faster than linear, as aged paper does.
+		var depth: float = clampf(minf(sheet.size.x, sheet.size.y) * 0.08, 6.0, 180.0)
+		var o0: Vector2 = sheet.position
+		var o1 := Vector2(sheet.end.x, sheet.position.y)
+		var o2: Vector2 = sheet.end
+		var o3 := Vector2(sheet.position.x, sheet.end.y)
+		var outer := [o0, o1, o2, o3]
+		var mid := []
+		var inner := []
+		for k in range(4):
+			var toward: Vector2 = (sheet.get_center() - outer[k]).sign()
+			mid.append(outer[k] + toward * depth * 0.35)
+			inner.append(outer[k] + toward * depth)
+		var dark := Color(AtlasView.MAP_PAPER_EDGE, AtlasView.MAP_EDGE_ALPHA)
+		var half := Color(AtlasView.MAP_PAPER_EDGE, AtlasView.MAP_EDGE_ALPHA * 0.35)
+		var clear := Color(AtlasView.MAP_PAPER_EDGE, 0.0)
+		for k in range(4):
+			var n: int = (k + 1) % 4
+			draw_polygon(PackedVector2Array([outer[k], outer[n], mid[n], mid[k]]),
+				PackedColorArray([dark, dark, half, half]))
+			draw_polygon(PackedVector2Array([mid[k], mid[n], inner[n], inner[k]]),
+				PackedColorArray([half, half, clear, clear]))
 		draw_rect(sheet, AtlasView.MAP_FRAME, false, clampf(lift * 0.6, 2.0, 6.0))
+
+	# Paper grain: a tile of fibres and specks laid over the sheet at a fixed
+	# SCREEN size, anchored to the sheet's corner, so it moves with the paper when
+	# you pan and stays a fine grain at every zoom. Only the tiles on screen are
+	# drawn.
+	func _draw_grain(sheet: Rect2, vis: Rect2) -> void:
+		var area: Rect2 = sheet.intersection(vis)
+		if area.size.x <= 0.0 or area.size.y <= 0.0:
+			return
+		var tex: Texture2D = AtlasView.paper_grain()
+		var t: float = float(tex.get_width())
+		var start := sheet.position + ((area.position - sheet.position) / t).floor() * t
+		var y: float = start.y
+		while y < area.end.y:
+			var x: float = start.x
+			while x < area.end.x:
+				# The last row and column are cut at the sheet's edge.
+				var cell := Rect2(x, y, t, t).intersection(sheet)
+				if cell.size.x > 0.0 and cell.size.y > 0.0:
+					draw_texture_rect_region(tex, cell, Rect2(cell.position - Vector2(x, y), cell.size))
+				x += t
+			y += t
 
 	# The largest size, at most `want`, at which `text` wrapped at `area`'s width
 	# fits inside `area` entirely, width and height both; 0 when even the smallest

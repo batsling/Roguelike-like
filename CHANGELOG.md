@@ -40,7 +40,11 @@ For how the project is laid out and how its systems fit together, see
     the size of the drawing, with a margin, browned edges, a dark frame and a
     shadow, lying on the game's background and moving with the map. draw.io's
     black ink is brown, its blue lines a faded ink blue, its grey year rules
-    faint brown, and the boxes lighter cream cards.
+    faint brown, and the boxes lighter cream cards. The edges brown in a
+    smooth gradient over 8% of the sheet, a paper grain (blotches, fibres and
+    specks, made once and tiled at a fixed screen size so it pans with the paper)
+    lies over it, and the lines are pen-thin (0.7 to 1.5 px; the orange route
+    keeps its width).
   - **The Collection keeps the computed constellations and the Tree**, with
     their filters.
   - **`tools/bake_drawio_map.py`** reads the drawio into
