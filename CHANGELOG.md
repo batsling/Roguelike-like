@@ -34,7 +34,8 @@ For how the project is laid out and how its systems fit together, see
     `check_map_sync.py` reads that drawing clean: 1,014 games, 1,658 lines, 170
     Dev/Series on both sides.
   - **More room on the map** (`tools/oneshots/_map_widen_ruler.py`): the year
-    labels and the two era captions moved 1,000 px left, and each year's grey
+    labels and the two era captions moved 3,000 px left (1,000, then 2,000 more
+    when the owner asked for more), and each year's grey
     ruler line is now one straight line, attached to nothing, from its label to
     1,000 px past the rightmost box. 2021's ruler had been two pieces and
     2024's three, two of them attached to RollScape, so moving that box bent

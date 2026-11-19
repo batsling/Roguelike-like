@@ -15,7 +15,11 @@ single line; they are all the same shape now.
 Surgical text edits, like every other map one-shot: the file is not
 reserialised.
 
-    python3 tools/oneshots/_map_widen_ruler.py [path/to/Roguelikes.drawio]
+    python3 tools/oneshots/_map_widen_ruler.py [path/to/Roguelikes.drawio] [--shift N]
+
+Run on 19 Nov 2026 with the default (1,000), then again with --shift 2000 when
+the owner asked for more room on the left: 3,000 px in all. A rerun only adds
+its shift; the ruler's right end is recomputed and stays PAD past the last box.
 """
 import os
 import re
@@ -34,7 +38,13 @@ LINE_STYLE = ("endArrow=none;html=1;rounded=0;strokeColor=#C8C8C8;strokeWidth=1;
 
 
 def main():
-    path = sys.argv[1] if len(sys.argv) > 1 else os.path.join(TOOLS, "Roguelikes.drawio")
+    args = sys.argv[1:]
+    shift = SHIFT
+    if "--shift" in args:
+        i = args.index("--shift")
+        shift = float(args[i + 1])
+        del args[i:i + 2]
+    path = args[0] if args else os.path.join(TOOLS, "Roguelikes.drawio")
     text = open(path, encoding="utf-8").read()
     root = C.load_model(path)
     cells = root.findall(".//mxCell")
@@ -82,11 +92,11 @@ def main():
         m = span(cid)
         old = m.group(0)
         new = re.sub(r'(<mxGeometry\b[^>]*?\bx=")(-?[\d.]+)(")',
-                     lambda g: "%s%g%s" % (g.group(1), float(g.group(2)) - SHIFT, g.group(3)), old, count=1)
+                     lambda g: "%s%g%s" % (g.group(1), float(g.group(2)) - shift, g.group(3)), old, count=1)
         text = text.replace(old, new, 1)
 
     # 2. One line per year row, from the moved label's right edge to `right + PAD`.
-    label_right = {v[0]: v[1] - SHIFT + v[3] for v in years.values()}
+    label_right = {v[0]: v[1] - shift + v[3] for v in years.values()}
     end = right + PAD
     for year, lines in sorted(rows.items()):
         lines.sort(key=lambda l: l[2])     # keep the leftmost piece's id and height
@@ -108,7 +118,7 @@ def main():
     ET.fromstring(text)
     open(path, "w", encoding="utf-8").write(text)
     print("moved %d year labels and %d captions %d left; %d ruler rows redrawn from x=%g to x=%g"
-          % (len(years), len(captions), SHIFT, len(rows), min(label_right.values()), end))
+          % (len(years), len(captions), shift, len(rows), min(label_right.values()), end))
     if missing:
         print("year rows with no ruler line: %s" % missing)
 
