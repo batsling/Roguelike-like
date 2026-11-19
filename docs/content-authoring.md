@@ -630,6 +630,7 @@ still exists under an old name silently generates the wrong content.
 | `apply_radio_import.py` | the `radio` sheet, from the Radio screen's *Export song list* (`tools/radio_import.json`): a row per new audio file in the player's music folder, from the file's own tags, its game matched from the folder it sits in. Only adds; through `_xlsx_surgery`, then runs `generate_song_tres.py`. `--dry-run`, `--game "Folder=Game"`; see `docs/roguelike-radio.md` §2a |
 | `tag_research.py` | **not data**: the tag sheets of `tools/Research.xlsx` (it leaves the other sheets alone), tag suggestions for the owner from each game's Steam tags, store text and title. It never writes `Roguelikes.xlsx`; the owner types the tags they agree with into `games` |
 | `bake_atlas.py` | `data/atlas_layout.tres` — the Atlas star chart's positions |
+| `bake_drawio_map.py` | `data/atlas_layout_map.tres` — **the owner's hand-drawn map**, read straight off `tools/Roguelikes.drawio`: every box where and as big as it was drawn, every line with its colour and anchors, the year ruler. A run's Atlas draws it. Rerun after every drawio upload; CI's `--check` says when it is stale |
 | `_relics_events_sheet_edit.py` | one-shot: the Boss/Event relic effects, the curse penalties, and the two new event rows |
 | `_events2_ranwid_setup.py` | one-shot: the Ranwid the Elder event row |
 | `_events2_tiny_rogues_setup.py` | one-shot: the `Opens With` column, the Potion Lab and Golden Monkey rows, and Ranwid's credit line |
@@ -701,6 +702,40 @@ the last bits, and the packer picks positions with strict comparisons a one-ulp
 difference can flip. That never shows, because the unfiltered catalog is drawn
 from the baked file. Keep the two in step when either changes — the tests in
 `test/test_atlas_layout_builder.gd` assert the agreement.
+
+**The map a run draws is the owner's drawing, not a computed sky** (the
+owner, 19 Nov 2026). `tools/bake_drawio_map.py` reads `tools/Roguelikes.drawio`
+into `data/atlas_layout_map.tres`, an `AtlasLayout` with the drawn-map fields
+(`box_w`/`box_h`, `edge_dev`, `edge_anchors`, the `ruler_*` arrays;
+`is_drawn_map()`), and `AtlasView` draws it outside the Collection: white paper,
+each game a box with its name, black and blue lines with draw.io's arrowheads,
+the grey year rules. Hovering a box puts up the game's card with its art. A game
+the run can't enter (outside the game filter, or off the run's main group) is
+greyed in place, never removed, because the shape is the point. The
+Collection keeps the computed constellations and the Tree.
+
+The drawio is upstream of that file the way the sheet is upstream of `data/`:
+redraw, upload the `.drawio` alone (the SVG is exported from it), rerun:
+
+```bash
+python3 tools/bake_drawio_map.py          # write data/atlas_layout_map.tres
+python3 tools/bake_drawio_map.py --check  # CI: is it current?
+```
+
+Two rules the owner set for it (19 Nov 2026), and how each is kept:
+
+- **No letter outside a box.** `StarCanvas._fit_px` measures each name in the
+  game's font and shrinks it until it fits its box (the drawio's 10 px is the
+  ceiling); a name that can't fit at `MAP_MIN_TEXT_PX` isn't drawn.
+- **No line through a box.** Lines go under the boxes and the run's road
+  follows the drawn line (`AtlasView.road_ends`). A line that passes through a
+  box other than its own two is the drawio's to fix, and the bake lists each
+  one ("to fix in the drawio: …").
+
+It refuses a box or a line the sheet doesn't have, so a run can never be drawn
+a road it cannot travel. A game or a connection on the sheet that isn't drawn
+yet is only listed: it is legal, and it is simply absent from the in-game map
+until the drawio has it. Tests: `test/test_drawn_map.gd`.
 
 **Is the map still healthy after a batch of new games?**
 `tools/dump_map_health.gd` measures the run graph with the game's own code —

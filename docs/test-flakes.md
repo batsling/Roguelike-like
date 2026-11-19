@@ -210,3 +210,13 @@ failure; diffing a passing and failing run's Control tree) are the reusable part
     assertion forbids. It now looks for the payout's words ("+3 gold") instead.
     An assertion that a word is ABSENT from a screen showing random content is
     only true until some content says the word.
+  - `test_overworld2.gd::test_what_arriving_at_a_game_writes_is_filed_under_that_game`
+    failed about one run in ten at "the arrival's reminder is not filed under
+    the game left". **A name inside a name**: the test looked for "Twitch
+    category → X" in the left game's lines with `contains`, and the run starts
+    on a random game. Leaving **Cataclysm: Dark Days Ahead** for **Cataclysm**,
+    the left game's own, correct reminder ("→ Cataclysm: Dark Days Ahead")
+    contains "→ Cataclysm". Found in four runs of a stress loop that printed the
+    matched line. The test now compares the whole reminder line; 0 in 12 after.
+    Same family as Dragon Fruit's "gold" above: a substring test over text made
+    from content is only as safe as the content's names.

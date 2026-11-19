@@ -160,8 +160,15 @@ jobs:
         # Reports drift in both directions and is informational by design — games
         # get drawn before they are sheeted and vice versa — so its exit code is
         # not the build's. The log is the point.
-        run: python3 tools/check_map_sync.py || true
+        run: python3 tools/check_map_sync.py tools/Roguelikes.drawio || true
         continue-on-error: true
+
+      - name: The in-game map is baked from the drawio
+        # A run's Atlas draws tools/Roguelikes.drawio, baked into
+        # data/atlas_layout_map.tres. This fails when the drawio changed and the
+        # bake didn't follow, and the bake itself refuses a drawio the sheet
+        # disagrees with (a game or a connection on one side only).
+        run: python3 tools/bake_drawio_map.py --check
 
   overlay:
     name: OBS overlay

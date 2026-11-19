@@ -49,6 +49,14 @@ const CAPITAL_LAYOUTS := {
 }
 const CAPITAL_CHOICES := [6, 8, 12]
 
+# THE OWNER'S HAND-DRAWN MAP (tools/Roguelikes.drawio, baked by
+# tools/bake_drawio_map.py). A run draws this instead of a computed sky (the
+# owner, 19 Nov 2026: during runs it replaces the constellations; the Collection
+# keeps those and the Tree). It holds every game, whatever the game filter: the
+# shape is the point, so a game the run can't enter is dimmed where it stands
+# rather than taken out and the map re-laid around the hole.
+const MAP_LAYOUT_PATH := "res://data/atlas_layout_map.tres"
+
 const LAYOUT_PATHS := {
 	Settings.GameFilter.ALL: "res://data/atlas_layout.tres",
 	Settings.GameFilter.OWNED: "res://data/atlas_layout_owned.tres",
@@ -64,6 +72,12 @@ const ZOOM_MIN := 0.55
 # Headroom above the point covers appear, so zooming further keeps growing the
 # art rather than hitting the ceiling the moment the first cover shows.
 const ZOOM_MAX := 26.0
+# The drawn map is ~35,000 units across with boxes ~40 wide, so fit-to-screen
+# makes a box a pixel or two: it needs far more headroom before its names read.
+const ZOOM_MAX_DRAWN := 90.0
+# How much of the drawn map (in its own units) "take me to this game" shows: a
+# neighbourhood of boxes with their names legible.
+const DRAWN_FOCUS_SPAN := 1400.0
 
 # Colours. Star outlines come from RunGraph.type_color so the atlas, the
 # choose-your-start panel and the overworld all agree on what a Deckbuilder is.
@@ -85,6 +99,74 @@ const ZOOM_MAX := 26.0
 # desaturated towards the parchment neutral and dropped well under half their old
 # alpha. Nothing else on the chart changes, and the corridor is now the only ember
 # on it.
+# The drawn map's colours: an OLD PARCHMENT MAP (the owner, 19 Nov 2026, so the
+# map doesn't sit on the game's dark screens as a sheet of stark white). draw.io's
+# black-on-white becomes brown ink on aged paper, its blue Sequel / Same Devs
+# lines a faded ink blue, its grey year rules a faint brown. The sheet lies on
+# the game's dark background with a frame and a shadow.
+const MAP_PAPER := Color(0.910, 0.851, 0.710)        # the sheet
+const MAP_PAPER_EDGE := Color(0.420, 0.278, 0.137)   # its darkened, aged edges
+const MAP_BOX := Color(0.953, 0.910, 0.800)          # a game's box, a lighter card
+const MAP_PAPER_DIM := Color(0.835, 0.769, 0.616)    # a game the run can't enter
+const MAP_INK := Color(0.227, 0.149, 0.078)
+const MAP_BLUE := Color(0.173, 0.310, 0.525)
+const MAP_RULE := Color(0.420, 0.278, 0.137, 0.30)
+const MAP_FRAME := Color(0.353, 0.239, 0.133)
+const MAP_SHADOW := Color(0, 0, 0, 0.45)
+const MAP_PICK := Color(1.0, 0.541, 0.235)   # UITheme.ACCENT, for what you point at
+const MAP_FADE := 0.18
+# Sizes in the drawio's own units: its game labels are 10 px, its year labels
+# draw.io's default 12, its arrowheads about 6. Text smaller than this on screen
+# is left out rather than drawn as a smudge.
+const MAP_NAME_FONT := 10.0
+const MAP_YEAR_FONT := 12.0
+const MAP_ARROW := 6.0
+const MAP_MIN_TEXT_PX := 6
+const MAP_EDGE_ALPHA := 0.42
+const GRAIN_SIZE := 256
+
+static var _grain: Texture2D = null
+
+# The paper's grain, made once: soft blotches (value noise) for the uneven tone
+# of old paper, short horizontal fibres, and single dark specks, all in the
+# paper's brown at low alpha so the sheet's colour shows through. Seeded, so the
+# paper is the same every time.
+static func paper_grain() -> Texture2D:
+	if _grain != null:
+		return _grain
+	var n: int = GRAIN_SIZE
+	var img := Image.create(n, n, false, Image.FORMAT_RGBA8)
+	var blot := FastNoiseLite.new()
+	blot.seed = 7
+	blot.noise_type = FastNoiseLite.TYPE_VALUE_CUBIC
+	blot.frequency = 0.035
+	var fibre := FastNoiseLite.new()
+	fibre.seed = 11
+	fibre.noise_type = FastNoiseLite.TYPE_SIMPLEX
+	fibre.frequency = 0.08
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 1979
+	var edge := MAP_PAPER_EDGE
+	for y in range(n):
+		for x in range(n):
+			# Noise sampled on a torus would tile perfectly; sampling the plane and
+			# blending the four wrapped copies is the cheap version of the same.
+			var fx: float = float(x) / n
+			var fy: float = float(y) / n
+			var b: float = 0.0
+			for o in [[0, 0], [n, 0], [0, n], [n, n]]:
+				var w: float = (1.0 - fx if o[0] == 0 else fx) * (1.0 - fy if o[1] == 0 else fy)
+				b += w * blot.get_noise_2d(x - o[0], y - o[1])
+			var f: float = fibre.get_noise_2d(x * 0.25, y * 3.0)
+			var a: float = 0.05 + 0.06 * b + (0.05 if f > 0.55 else 0.0)
+			if rng.randf() < 0.012:
+				a += rng.randf_range(0.08, 0.2)
+			img.set_pixel(x, y, Color(edge, clampf(a, 0.0, 0.32)))
+	_grain = ImageTexture.create_from_image(img)
+	return _grain
+# Clear space between a box's border and its name, in screen pixels.
+const MAP_TEXT_PAD := 1.5
+
 const COL_EDGE := Color(0.902, 0.835, 0.722, 0.13)
 const COL_EDGE_CROSS := Color(0.86, 0.74, 0.62, 0.06)
 const COL_HULL := Color(0.902, 0.835, 0.722, 0.028)
@@ -157,6 +239,39 @@ var _offset: Vector2 = Vector2.ZERO
 var _selected: int = -1
 var _selected_edge: int = -1         # index of the clicked link, as an edge pair
 var _hovered: int = -1
+# THE DRAWN MAP's card follows the mouse (the owner, 19 Nov 2026: "hovering over
+# will give game info and the art"). This is the last game hovered, kept when the
+# cursor leaves it so the card's buttons can still be reached; a click pins one
+# (`_selected`) and a click on empty map clears both.
+var _hover_card: int = -1
+# Drawn map: the font size each box's name fits at, per box, remembered with the
+# box's on-screen size it was measured for (see StarCanvas._fit_px).
+var _fit_cache: Dictionary = {}
+# Drawn map: edge-pair index by unordered star pair, so a road can follow the
+# line exactly as drawn.
+var _pair_index: Dictionary = {}
+
+func pair_of(a: int, b: int) -> int:
+	if _pair_index.is_empty() and has_layout():
+		for p in range(layout.edge_count()):
+			var x: int = layout.edges[p * 2]
+			var y: int = layout.edges[p * 2 + 1]
+			_pair_index[Vector2i(mini(x, y), maxi(x, y))] = p
+	return int(_pair_index.get(Vector2i(mini(a, b), maxi(a, b)), -1))
+
+# Where a road between stars `a` and `b` runs, in layout units, from `a` to `b`.
+# On the drawn map a road between two connected games is the drawn line itself,
+# anchors and all; anything else (a computed sky, a hop with no line) runs
+# centre to centre.
+func road_ends(a: int, b: int) -> PackedVector2Array:
+	if layout.is_drawn_map():
+		var p: int = pair_of(a, b)
+		if p >= 0:
+			var ends: PackedVector2Array = layout.edge_ends(p)
+			if layout.edges[p * 2] == a:
+				return ends
+			return PackedVector2Array([ends[1], ends[0]])
+	return PackedVector2Array([layout.position_of(a), layout.position_of(b)])
 var _dragging: bool = false
 var _drag_moved: float = 0.0
 # Right-drag pans too, and does it without the click-vs-drag question — the
@@ -284,6 +399,10 @@ func _ready() -> void:
 	top_level = true
 	theme = UITheme.shared()
 	mouse_filter = Control.MOUSE_FILTER_STOP
+	# A run is drawn on the owner's map; the Collection (`pure_catalog`) keeps
+	# the computed skies, its filters and its modes.
+	if layout == null and not pure_catalog:
+		layout = load_drawn_map()
 	if layout == null:
 		layout = load_layout()
 	# The baked sky the filters measure against. Held separately from `layout`,
@@ -297,6 +416,14 @@ func _ready() -> void:
 	_build_history()
 	_build()
 	frame_all()
+
+# The drawn map, or null if it was never baked.
+static func load_drawn_map() -> AtlasLayout:
+	if ResourceLoader.exists(MAP_LAYOUT_PATH):
+		var res: Resource = load(MAP_LAYOUT_PATH)
+		if res is AtlasLayout and (res as AtlasLayout).is_drawn_map():
+			return res as AtlasLayout
+	return null
 
 # Loads the sky matching the active game filter, falling back to the full one if
 # that variant was never baked. Returns null when nothing has been generated, and
@@ -646,7 +773,7 @@ func frame_rect(world: Rect2) -> void:
 	_fit_scale = minf((view.x - pad * 2.0) / layout.bounds.size.x,
 		(view.y - pad * 2.0) / layout.bounds.size.y)
 	_scale = minf((free_w - pad * 2.0) / world.size.x, (view.y - pad * 2.0) / world.size.y)
-	_scale = clampf(_scale, _fit_scale * ZOOM_MIN, _fit_scale * ZOOM_MAX)
+	_scale = clampf(_scale, _fit_scale * ZOOM_MIN, _fit_scale * zoom_max())
 	var centre: Vector2 = world.position + world.size * 0.5
 	_offset = Vector2(free_x + free_w * 0.5, view.y * 0.5) - centre * _scale
 	_redraw()
@@ -691,7 +818,7 @@ func frame_games(ids: Array) -> bool:
 	return true
 
 func zoom_by(factor: float, pivot: Vector2) -> void:
-	var target: float = clampf(_scale * factor, _fit_scale * ZOOM_MIN, _fit_scale * ZOOM_MAX)
+	var target: float = clampf(_scale * factor, _fit_scale * ZOOM_MIN, _fit_scale * zoom_max())
 	var k: float = target / _scale
 	_offset = pivot - (pivot - _offset) * k
 	_scale = target
@@ -715,6 +842,9 @@ func _clamp_view() -> void:
 		_offset.y += margin - br.y
 	elif tl.y > view.y - margin:
 		_offset.y -= tl.y - (view.y - margin)
+
+func zoom_max() -> float:
+	return ZOOM_MAX_DRAWN if has_layout() and layout.is_drawn_map() else ZOOM_MAX
 
 func zoom_ratio() -> float:
 	return _scale / maxf(_fit_scale, 0.0001)
@@ -785,11 +915,15 @@ func cover_screen_size(i: int) -> Vector2:
 # connected games cross the threshold at a much lower zoom than dead ends do,
 # which is the whole point — the map fills in from its hubs outward.
 func shows_cover(i: int) -> bool:
+	if layout.is_drawn_map():
+		return false  # the drawn map is boxes and names; the art is on the card
 	return cover_screen_size(i).x >= MIN_COVER_PX
 
 # Half-height of whatever is actually drawn for a star, in screen pixels. Labels
 # hang off this so they clear the art instead of sitting on top of it.
 func drawn_half_height(i: int) -> float:
+	if layout.is_drawn_map():
+		return layout.box_h[i] * 0.5 * _scale
 	var size: Vector2 = cover_screen_size(i)
 	if size.x >= MIN_COVER_PX:
 		return size.y * 0.5
@@ -880,6 +1014,8 @@ func star_id(i: int) -> StringName:
 # after one of those, index i is a different game.
 func _invalidate_star_cache() -> void:
 	_ids_cache.clear()
+	_fit_cache.clear()
+	_pair_index.clear()
 	_game_cache.clear()
 	_aspect_cache.clear()
 	# A different sky is a different count at the same camera.
@@ -890,6 +1026,13 @@ func _invalidate_star_cache() -> void:
 # drawn, because the sky is rebuilt from the survivors. Kept as the one place
 # that answers "is this game in?", so the rebuild and the drawing can never
 # disagree about which games those are.
+# On the drawn map during a run: a game the run cannot walk to (outside the game
+# filter, or off the run's main group), greyed where it stands.
+func off_run(i: int) -> bool:
+	if pure_catalog or not has_layout() or not layout.is_drawn_map():
+		return false
+	return RunGraph.is_off_map(star_id(i))
+
 func passes_filter(i: int) -> bool:
 	if not pure_catalog or not has_layout():
 		return true
@@ -1131,6 +1274,8 @@ func _visible_rect() -> Rect2:
 func pick(at: Vector2) -> int:
 	if not has_layout():
 		return -1
+	if layout.is_drawn_map():
+		return _pick_box(at)
 	var best: int = -1
 	var best_d: float = PICK_RADIUS * PICK_RADIUS
 	for i in range(layout.star_count()):
@@ -1139,6 +1284,26 @@ func pick(at: Vector2) -> int:
 			best_d = d
 			best = i
 	return best
+
+# The drawn map's boxes are what a click lands on: the box under the cursor, grown
+# a few pixels so a box drawn a pixel wide can still be hit. Later boxes win, as
+# they are drawn on top.
+func _pick_box(at: Vector2) -> int:
+	var best: int = -1
+	var best_d: float = INF
+	for i in range(layout.star_count()):
+		var r: Rect2 = screen_box(i).grow(3.0)
+		if r.has_point(at):
+			var d: float = r.get_center().distance_squared_to(at)
+			if d <= best_d:
+				best_d = d
+				best = i
+	return best
+
+# A game's box on screen (drawn map only).
+func screen_box(i: int) -> Rect2:
+	var r: Rect2 = layout.box_of(i)
+	return Rect2(to_screen(r.position), r.size * _scale)
 
 # Nearest LINK to a click, as an edge-pair index, or -1. Stars win ties: a click
 # near a hub touches dozens of lines, and the star is almost always what was
@@ -1196,6 +1361,8 @@ func select(i: int) -> void:
 	_selected = i
 	if i >= 0:
 		_selected_edge = -1
+	else:
+		_hover_card = -1
 	_near.clear()
 	if i >= 0:
 		_near[i] = true
@@ -1214,7 +1381,9 @@ func focus_game(game_id: StringName, zoom: float = 5.0) -> bool:
 	var i: int = layout.index_of(game_id)
 	if i < 0:
 		return false
-	_scale = clampf(_fit_scale * zoom, _fit_scale * ZOOM_MIN, _fit_scale * ZOOM_MAX)
+	if layout.is_drawn_map():
+		zoom = maxf(zoom, _canvas_size().x / DRAWN_FOCUS_SPAN / maxf(_fit_scale, 0.0001))
+	_scale = clampf(_fit_scale * zoom, _fit_scale * ZOOM_MIN, _fit_scale * zoom_max())
 	_offset = _canvas_size() * 0.5 - layout.position_of(i) * _scale
 	select(i)
 	return true
@@ -1446,6 +1615,8 @@ func _frame_star(index: int) -> void:
 		return
 	var p: Vector2 = layout.position_of(index)
 	var span: float = maxf(layout.bounds.size.x, layout.bounds.size.y) * 0.12
+	if layout.is_drawn_map():
+		span = DRAWN_FOCUS_SPAN
 	frame_rect(Rect2(p - Vector2(span, span) * 0.5, Vector2(span, span)))
 
 func _tool_button(text: String, cb: Callable) -> Button:
@@ -1491,8 +1662,13 @@ func _fill_legend() -> void:
 	row.add_theme_constant_override("h_separation", UITheme.GAP_SECTION)
 	row.add_theme_constant_override("v_separation", UITheme.GAP_TIGHT)
 	bar.add_child(row)
-	for t in RunGraph.TYPE_ORDER:
-		row.add_child(_legend_chip(RunGraph.type_label(t), RunGraph.type_color(t)))
+	var drawn: bool = layout != null and layout.is_drawn_map()
+	# The drawn map has no genre rims to key: its lines are the owner's two kinds.
+	if drawn:
+		row.add_child(_route_key("Inspired", UITheme.TEXT))
+	else:
+		for t in RunGraph.TYPE_ORDER:
+			row.add_child(_legend_chip(RunGraph.type_label(t), RunGraph.type_color(t)))
 	# The record is only drawn in the catalog view, so only key it there.
 	if pure_catalog:
 		row.add_child(_legend_chip("⚔ Beaten", COL_BEATEN, true))
@@ -1512,7 +1688,8 @@ func _fill_legend() -> void:
 	if not _trail.is_empty():
 		row.add_child(_route_key("Route ahead", COL_TRAIL))
 	var note := Label.new()
-	note.text = "Star size = connections"
+	note.text = "Greyed = off this run's map · hover a game for its card" if drawn \
+		else "Star size = connections"
 	# No EXPAND_FILL: in the HBox this used to be, that let the note swallow the
 	# slack and drew its text at the left of it — the same place a flow puts it
 	# anyway. In a flow it would claim a line of its own instead.
@@ -1611,17 +1788,18 @@ func _refresh_card() -> void:
 	if _selected_edge >= 0 and has_layout():
 		_fill_connection_card()
 		return
-	if _selected < 0 or not has_layout():
+	var sel: int = card_star()
+	if sel < 0 or not has_layout():
 		_card.visible = false
 		return
 	_card.visible = true
 	_set_card_width(272.0)
 
-	var id: StringName = layout.id_at(_selected)
+	var id: StringName = layout.id_at(sel)
 	# The node's own game, and whatever Transmute has pasted on top of it.
 	var original: GameData = Data.get_game(id)
-	var game: GameData = game_at(_selected)
-	var pasted: bool = is_transmuted(_selected)
+	var game: GameData = game_at(sel)
+	var pasted: bool = is_transmuted(sel)
 	var name_text: String = game.display_name if game != null else String(id)
 
 	var title := Label.new()
@@ -1656,16 +1834,18 @@ func _refresh_card() -> void:
 	_card_box.add_child(facts)
 	if game != null and game.year > 0:
 		facts.add_child(_fact("Released", str(game.year)))
-	facts.add_child(_fact("Connections", str(layout.degree_of(_selected))))
-	var region_label: String = layout.region_name(_selected)
-	if region_label == "":
+	facts.add_child(_fact("Connections", str(layout.degree_of(sel))))
+	var region_label: String = layout.region_name(sel)
+	if layout.is_drawn_map():
+		pass  # the hand-drawn map has no constellations
+	elif region_label == "":
 		facts.add_child(_fact("Region", "drifting — no capital reaches it"))
-	elif layout.is_capital(_selected):
+	elif layout.is_capital(sel):
 		facts.add_child(_fact("Region", "%s (capital)" % region_label))
 	else:
 		facts.add_child(_fact("Region", region_label))
 		facts.add_child(_fact("From capital", "%d hop%s" %
-			[layout.hops[_selected], "" if layout.hops[_selected] == 1 else "s"]))
+			[layout.hops[sel], "" if layout.hops[sel] == 1 else "s"]))
 	# A pasted node reports both games: what you play here now, and what this spot
 	# was on the map before.
 	if pasted and original != null:
@@ -1679,7 +1859,7 @@ func _refresh_card() -> void:
 	if amulet_runs > 0:
 		facts.add_child(_fact("👑 Amulet won", "%d run%s" % [amulet_runs,
 			"" if amulet_runs == 1 else "s"]))
-	if is_bashed(_selected):
+	if is_bashed(sel):
 		facts.add_child(_fact("Status", "destroyed — bashed this run"))
 	elif not pure_catalog and GameState.has_beaten_game(id):
 		facts.add_child(_fact("Status", "beaten this run"))
@@ -1724,6 +1904,15 @@ func _refresh_card() -> void:
 	dismiss.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	dismiss.pressed.connect(func(): select(-1))
 	_card_box.add_child(dismiss)
+
+# The game the card is about: the pinned one, else (on the drawn map only) the
+# last one hovered.
+func card_star() -> int:
+	if _selected >= 0:
+		return _selected
+	if has_layout() and layout.is_drawn_map():
+		return _hover_card
+	return -1
 
 # One connection: who influenced whom, and what backs the claim.
 func _fill_connection_card() -> void:
@@ -2098,7 +2287,10 @@ func _refresh_hud() -> void:
 	# A tree has no constellations to count; what it has instead is a root and a
 	# depth, which is the thing worth saying about it.
 	var shape: String = Plural.count(layout.capitals.size(), "constellation")
-	if layout.is_tree():
+	if layout.is_drawn_map():
+		shape = "the drawn map"
+		detail = "labelled" if MAP_NAME_FONT * _scale >= MAP_MIN_TEXT_PX else "overview"
+	elif layout.is_tree():
 		var root_game: GameData = Data.get_game(layout.id_at(_tree_root_index()))
 		shape = "rooted at %s, %d deep" % [
 			root_game.display_name if root_game != null else "?", _tree_depth()]
@@ -2228,6 +2420,10 @@ func _on_canvas_input(event: InputEvent) -> void:
 			var hit: int = pick(mm.position)
 			if hit != _hovered:
 				_hovered = hit
+				if hit >= 0 and hit != _hover_card and layout.is_drawn_map():
+					_hover_card = hit
+					if _selected < 0 and _selected_edge < 0:
+						_refresh_card()
 				_redraw()
 
 # ---------------------------------------------------------------------------
@@ -2250,6 +2446,9 @@ class StarCanvas extends Control:
 			return
 
 		var lay: AtlasLayout = view.layout
+		if lay.is_drawn_map():
+			_draw_drawn_map(lay)
+			return
 		var ratio: float = view.zoom_ratio()
 		var show_links: bool = ratio >= AtlasView.ZOOM_LINKS
 		var show_rims: bool = ratio >= AtlasView.ZOOM_RIMS
@@ -2289,6 +2488,201 @@ class StarCanvas extends Control:
 		# the two questions the sky exists to answer are where you stand and what
 		# you came for.
 		_draw_run_markers(lay)
+
+	# THE OWNER'S MAP, drawn as draw.io draws it (the owner, 19 Nov 2026:
+	# "exactly like the drawio"): white paper, a faint grey rule per year with its
+	# year beside it, black lines for influence and blue for sequels and same
+	# studio, each with draw.io's filled arrowhead where it enters, and every game
+	# a white box with a thin black border and its name. Hovering a box puts its
+	# card up (AtlasView.card_star). During a run, games the run can't enter are
+	# greyed where they stand; the run's own roads and markers go on top.
+	func _draw_drawn_map(lay: AtlasLayout) -> void:
+		var vis := Rect2(Vector2.ZERO, size)
+		_draw_parchment(lay, vis)
+		var font: Font = get_theme_default_font()
+		var sc: float = view._scale
+		var focused: bool = view._selected >= 0
+
+		# The year ruler.
+		var x0: float = view.to_screen(Vector2(lay.ruler_x.x, 0)).x
+		var x1: float = view.to_screen(Vector2(lay.ruler_x.y, 0)).x
+		var year_px: int = int(round(AtlasView.MAP_YEAR_FONT * sc))
+		for k in range(lay.ruler_years.size()):
+			var y: float = view.to_screen(Vector2(0, lay.ruler_ys[k])).y
+			if y < -40.0 or y > vis.size.y + 40.0:
+				continue
+			draw_line(Vector2(maxf(x0, -10.0), y), Vector2(minf(x1, vis.size.x + 10.0), y),
+				AtlasView.MAP_RULE, 1.0)
+			if year_px >= AtlasView.MAP_MIN_TEXT_PX:
+				var lr: Rect2 = lay.ruler_label_rect
+				var box := Rect2(view.to_screen(Vector2(lr.position.x, lay.ruler_label_ys[k])),
+					lr.size * sc)
+				var ypx: int = _fit_px(font, -1 - k, str(lay.ruler_years[k]), box.size, year_px)
+				if ypx > 0:
+					_text_in(font, box, str(lay.ruler_years[k]), ypx, AtlasView.MAP_INK)
+
+		# The lines, under the boxes as in draw.io.
+		# Thin, like a pen line (the owner, 19 Nov 2026: "a little thinner").
+		var width: float = clampf(sc * 0.55, 0.7, 1.5)
+		var head: float = clampf(AtlasView.MAP_ARROW * sc, 3.0, 16.0)
+		for pair in range(lay.edge_count()):
+			var a: int = lay.edges[pair * 2]
+			var b: int = lay.edges[pair * 2 + 1]
+			var ends: PackedVector2Array = lay.edge_ends(pair)
+			var pa: Vector2 = view.to_screen(ends[0])
+			var pb: Vector2 = view.to_screen(ends[1])
+			if not vis.grow(head).intersects(Rect2(pa, Vector2.ZERO).expand(pb)):
+				continue
+			var col: Color = AtlasView.MAP_BLUE if lay.is_dev_edge(pair) else AtlasView.MAP_INK
+			var w: float = width
+			var incident: bool = focused and (a == view._selected or b == view._selected)
+			if incident:
+				col = AtlasView.MAP_PICK
+				w = width + 1.5
+			elif focused or view.off_run(a) or view.off_run(b):
+				col = Color(col, AtlasView.MAP_FADE)
+			draw_line(pa, pb, col, w, true)
+			var d: Vector2 = pb - pa
+			if d.length() > head * 1.5:
+				var dir: Vector2 = d.normalized()
+				var perp := Vector2(-dir.y, dir.x)
+				draw_colored_polygon(PackedVector2Array([pb,
+					pb - dir * head + perp * head * 0.4,
+					pb - dir * head * 0.75,
+					pb - dir * head - perp * head * 0.4]), col)
+
+		# The run's roads, over the lines and under the boxes.
+		_draw_roads()
+		_draw_picked_edge(lay)
+
+		# The boxes.
+		var name_px: int = int(round(AtlasView.MAP_NAME_FONT * sc))
+		for i in range(lay.star_count()):
+			var r: Rect2 = view.screen_box(i)
+			if not vis.intersects(r.grow(2.0)):
+				continue
+			var faded: bool = view.off_run(i) or (focused and not view._near.has(i))
+			var fill: Color = AtlasView.MAP_BOX
+			var ink: Color = AtlasView.MAP_INK
+			if faded:
+				fill = AtlasView.MAP_PAPER_DIM
+				ink = Color(AtlasView.MAP_INK, 0.35)
+			draw_rect(r, fill)
+			var edge_col: Color = ink
+			var edge_w: float = 1.0
+			if i == view._selected or i == view._hovered:
+				edge_col = AtlasView.MAP_PICK
+				edge_w = 2.5
+			draw_rect(r, edge_col, false, edge_w)
+			# A game bashed this run is a road that no longer exists: crossed out.
+			if view.is_bashed(i):
+				draw_line(r.position, r.end, AtlasView.COL_EDGE_BASHED, 2.0, true)
+				draw_line(Vector2(r.end.x, r.position.y), Vector2(r.position.x, r.end.y),
+					AtlasView.COL_EDGE_BASHED, 2.0, true)
+			if name_px >= AtlasView.MAP_MIN_TEXT_PX:
+				var game: GameData = view.game_at(i)
+				var label: String = game.display_name if game != null else String(view.star_id(i))
+				var inner: Rect2 = r.grow(-AtlasView.MAP_TEXT_PAD)
+				var px: int = _fit_px(font, i, label, inner.size, name_px)
+				if px > 0:
+					_text_in(font, inner, label, px, ink)
+
+		_draw_run_markers(lay)
+
+	# The sheet the map is drawn on: aged paper the size of the map (its bounds,
+	# which the bake pads with a margin), lying on the game's own dark background
+	# with a shadow under it, edges darkened the way old paper browns, and a frame.
+	# It pans and zooms with the map, so it reads as a thing you are looking at.
+	func _draw_parchment(lay: AtlasLayout, vis: Rect2) -> void:
+		draw_rect(vis, UITheme.BG_DEEP)
+		var sheet := Rect2(view.to_screen(lay.bounds.position), lay.bounds.size * view._scale)
+		var lift: float = clampf(minf(sheet.size.x, sheet.size.y) * 0.01, 3.0, 12.0)
+		draw_rect(Rect2(sheet.position + Vector2(lift, lift * 1.4), sheet.size), AtlasView.MAP_SHADOW)
+		draw_rect(sheet, AtlasView.MAP_PAPER)
+		_draw_grain(sheet, vis)
+		# The browned edges, darkest at the border and fading over 8% of the
+		# sheet's short side (the owner, 19 Nov 2026: "make the edges stronger").
+		# One smooth gradient per side, mitred at the corners: a trapezoid with the
+		# browned colour on its outer edge, clear on its inner edge, and a middle
+		# step so the darkening falls off faster than linear, as aged paper does.
+		var depth: float = clampf(minf(sheet.size.x, sheet.size.y) * 0.08, 6.0, 180.0)
+		var o0: Vector2 = sheet.position
+		var o1 := Vector2(sheet.end.x, sheet.position.y)
+		var o2: Vector2 = sheet.end
+		var o3 := Vector2(sheet.position.x, sheet.end.y)
+		var outer := [o0, o1, o2, o3]
+		var mid := []
+		var inner := []
+		for k in range(4):
+			var toward: Vector2 = (sheet.get_center() - outer[k]).sign()
+			mid.append(outer[k] + toward * depth * 0.35)
+			inner.append(outer[k] + toward * depth)
+		var dark := Color(AtlasView.MAP_PAPER_EDGE, AtlasView.MAP_EDGE_ALPHA)
+		var half := Color(AtlasView.MAP_PAPER_EDGE, AtlasView.MAP_EDGE_ALPHA * 0.35)
+		var clear := Color(AtlasView.MAP_PAPER_EDGE, 0.0)
+		for k in range(4):
+			var n: int = (k + 1) % 4
+			draw_polygon(PackedVector2Array([outer[k], outer[n], mid[n], mid[k]]),
+				PackedColorArray([dark, dark, half, half]))
+			draw_polygon(PackedVector2Array([mid[k], mid[n], inner[n], inner[k]]),
+				PackedColorArray([half, half, clear, clear]))
+		draw_rect(sheet, AtlasView.MAP_FRAME, false, clampf(lift * 0.6, 2.0, 6.0))
+
+	# Paper grain: a tile of fibres and specks laid over the sheet at a fixed
+	# SCREEN size, anchored to the sheet's corner, so it moves with the paper when
+	# you pan and stays a fine grain at every zoom. Only the tiles on screen are
+	# drawn.
+	func _draw_grain(sheet: Rect2, vis: Rect2) -> void:
+		var area: Rect2 = sheet.intersection(vis)
+		if area.size.x <= 0.0 or area.size.y <= 0.0:
+			return
+		var tex: Texture2D = AtlasView.paper_grain()
+		var t: float = float(tex.get_width())
+		var start := sheet.position + ((area.position - sheet.position) / t).floor() * t
+		var y: float = start.y
+		while y < area.end.y:
+			var x: float = start.x
+			while x < area.end.x:
+				# The last row and column are cut at the sheet's edge.
+				var cell := Rect2(x, y, t, t).intersection(sheet)
+				if cell.size.x > 0.0 and cell.size.y > 0.0:
+					draw_texture_rect_region(tex, cell, Rect2(cell.position - Vector2(x, y), cell.size))
+				x += t
+			y += t
+
+	# The largest size, at most `want`, at which `text` wrapped at `area`'s width
+	# fits inside `area` entirely, width and height both; 0 when even the smallest
+	# legible size doesn't (the box is then left without its name rather than
+	# letting letters out of it: the owner, 19 Nov 2026, "none of the letters go
+	# outside of a box"). The boxes were sized for draw.io's Helvetica, and this
+	# game's font wraps differently, so the size is measured rather than assumed.
+	# Remembered per box with the pixel size it was measured at, so panning costs
+	# nothing and a zoom step re-measures only the boxes on screen.
+	func _fit_px(font: Font, key: int, text: String, area: Vector2, want: int) -> int:
+		var stamp := [int(area.x), int(area.y), want, text.hash()]
+		var hit: Array = view._fit_cache.get(key, [])
+		if not hit.is_empty() and hit[0] == stamp:
+			return int(hit[1])
+		var px: int = want
+		while px >= AtlasView.MAP_MIN_TEXT_PX:
+			var sz: Vector2 = font.get_multiline_string_size(text, HORIZONTAL_ALIGNMENT_CENTER,
+				area.x, px)
+			if sz.x <= area.x and sz.y <= area.y:
+				break
+			px = mini(px - 1, int(px * 0.92))
+		if px < AtlasView.MAP_MIN_TEXT_PX:
+			px = 0
+		view._fit_cache[key] = [stamp, px]
+		return px
+
+	# Text centred in a box, wrapped at its width, as draw.io's `whiteSpace=wrap`
+	# draws a label. `_fit_px` has already chosen a size it fits at.
+	func _text_in(font: Font, box: Rect2, text: String, px: int, col: Color) -> void:
+		var sz: Vector2 = font.get_multiline_string_size(text, HORIZONTAL_ALIGNMENT_CENTER,
+			box.size.x, px)
+		var top: float = box.position.y + (box.size.y - sz.y) * 0.5 + font.get_ascent(px)
+		draw_multiline_string(font, Vector2(box.position.x, top), text,
+			HORIZONTAL_ALIGNMENT_CENTER, box.size.x, px, -1, col)
 
 	# A faint disc behind each constellation, so a region reads as a place even
 	# before its name is legible.
@@ -2362,15 +2756,17 @@ class StarCanvas extends Control:
 		var dash: float = maxf(9.0, casing * 2.4)
 
 		for seg in segments:
-			var a: Vector2 = view.to_screen(lay.position_of(int(seg[0])))
-			var b: Vector2 = view.to_screen(lay.position_of(int(seg[1])))
+			var ends: PackedVector2Array = _seg_ends(seg)
+			var a: Vector2 = ends[0]
+			var b: Vector2 = ends[1]
 			if _jumped(seg):
 				draw_dashed_line(a, b, AtlasView.COL_TRAIL_CASING, casing, dash, true)
 			else:
 				draw_line(a, b, AtlasView.COL_TRAIL_CASING, casing, true)
 		for seg in segments:
-			var a2: Vector2 = view.to_screen(lay.position_of(int(seg[0])))
-			var b2: Vector2 = view.to_screen(lay.position_of(int(seg[1])))
+			var ends2: PackedVector2Array = _seg_ends(seg)
+			var a2: Vector2 = ends2[0]
+			var b2: Vector2 = ends2[1]
 			if _jumped(seg):
 				draw_dashed_line(a2, b2, col, core, dash, true)
 			else:
@@ -2383,14 +2779,18 @@ class StarCanvas extends Control:
 		for seg in segments:
 			var from_i: int = int(seg[0])
 			var to_i: int = int(seg[1])
-			var a3: Vector2 = view.to_screen(lay.position_of(from_i))
-			var delta: Vector2 = view.to_screen(lay.position_of(to_i)) - a3
+			var ends3: PackedVector2Array = _seg_ends(seg)
+			var a3: Vector2 = ends3[0]
+			var delta: Vector2 = ends3[1] - a3
 			var length: float = delta.length()
 			if length < 1.0:
 				continue
 			var dir: Vector2 = delta / length
-			for t in AtlasView.route_arrow_offsets(length,
-					view.drawn_half_height(from_i), view.drawn_half_height(to_i), head):
+			# On the drawn map the road already starts and ends at the boxes'
+			# borders, so there is nothing to clear.
+			var pad_a: float = 0.0 if lay.is_drawn_map() else view.drawn_half_height(from_i)
+			var pad_b: float = 0.0 if lay.is_drawn_map() else view.drawn_half_height(to_i)
+			for t in AtlasView.route_arrow_offsets(length, pad_a, pad_b, head):
 				_chevron(a3 + dir * t, dir, head, col)
 
 	# The link the player clicked: drawn over the stars so it can't be lost in a
@@ -2402,8 +2802,9 @@ class StarCanvas extends Control:
 			return
 		var a: int = lay.edges[e * 2]
 		var b: int = lay.edges[e * 2 + 1]
-		var pa: Vector2 = view.to_screen(lay.position_of(a))
-		var pb: Vector2 = view.to_screen(lay.position_of(b))
+		var picked: PackedVector2Array = view.road_ends(a, b)
+		var pa: Vector2 = view.to_screen(picked[0])
+		var pb: Vector2 = view.to_screen(picked[1])
 		var core: float = clampf(view._scale * 0.32, 2.0, 4.0)
 		draw_line(pa, pb, AtlasView.COL_TRAIL_CASING, core + 3.0, true)
 		draw_line(pa, pb, AtlasView.COL_SELECTED_EDGE, core, true)
@@ -2417,6 +2818,11 @@ class StarCanvas extends Control:
 			var p: Vector2 = view.to_screen(lay.position_of(idx))
 			var r: float = maxf(6.0, view.drawn_half_height(idx) + 3.0)
 			draw_arc(p, r, 0.0, TAU, 28, AtlasView.COL_SELECTED_EDGE, 1.8, true)
+
+	# A road segment's two ends on screen (AtlasView.road_ends).
+	func _seg_ends(seg: Array) -> PackedVector2Array:
+		var e: PackedVector2Array = view.road_ends(int(seg[0]), int(seg[1]))
+		return PackedVector2Array([view.to_screen(e[0]), view.to_screen(e[1])])
 
 	# A hop the player made without traversing a link — a Teleportation scroll or
 	# Winged Boots. Drawn dashed, because no such road exists on the map.

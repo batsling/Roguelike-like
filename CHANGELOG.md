@@ -11,6 +11,81 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **A run's Atlas is the owner's hand-drawn map (19 Nov 2026).**
+  - **The map you open during a run is `tools/Roguelikes.drawio`**, exactly as
+    drawn: every game a white box with its name, at the place and size the
+    owner gave it, black lines for influence and blue for sequels and same
+    studio, each with draw.io's arrowhead, and the grey year rules with their
+    years. The cave shape is the owner's.
+    - The run's roads, the You are here and Amulet markers, search, the jump
+      buttons and the bash and transmute marks all work on it as they did on the
+      stars.
+    - Hovering a box puts up the game's card with its art. It stays on the last
+      game you hovered so you can reach its buttons, and a click pins it.
+    - Games the run can't enter are greyed where they stand rather than
+      removed.
+    - **No letter outside its box.** The boxes were sized for draw.io's
+      Helvetica, and this game's font wraps differently, so each name is
+      measured into its box and shrunk until it fits, width and height both. If
+      it can't fit at a readable size, the box is left without its name.
+    - **Lines stay off the boxes.** Lines are drawn under the boxes, as in
+      draw.io, and the run's route follows each drawn line exactly rather than
+      cutting centre to centre, so it can't clip a box the line avoids. The
+      bake lists every line that passes through a box other than its own two.
+      On 19 Nov there were two, both for the owner to move in the drawio:
+      Angband → Zorbus over Ancient Domains of Mystery, and Torneko's Great
+      Adventure → House of Necrosis over Shiren the Wanderer GB.
+  - **It looks like an old parchment map** (the owner's pick, so it doesn't sit
+    on the game's dark screens as stark white). The map is a sheet of aged paper
+    the size of the drawing, with a margin, browned edges, a dark frame and a
+    shadow, lying on the game's background and moving with the map. draw.io's
+    black ink is brown, its blue lines a faded ink blue, its grey year rules
+    faint brown, and the boxes lighter cream cards. The edges brown in a
+    smooth gradient over 8% of the sheet, a paper grain (blotches, fibres and
+    specks, made once and tiled at a fixed screen size so it pans with the paper)
+    lies over it, and the lines are pen-thin (0.7 to 1.5 px; the orange route
+    keeps its width).
+  - **The Collection keeps the computed constellations and the Tree**, with
+    their filters.
+  - **`tools/bake_drawio_map.py`** reads the drawio into
+    `data/atlas_layout_map.tres`. It refuses a box or a line the sheet doesn't
+    have, and lists, without failing, anything on the sheet that isn't drawn
+    yet. CI checks the bake is current, and its map report now reads the live
+    drawio rather than the old `Roguelikes.drawio6.svg`.
+  - `test_atlas.gd` names the computed sky it tests; `test_drawn_map.gd` covers
+    the new map.
+
+- **Seven new games, and the map and the sheet agree exactly (the owner's
+  upload, 18 Nov 2026).**
+  - **The games**: Deadly Days: Roadtrip, Func Key, March of the Living, Near
+    Mint, Ovis Loop, Stella Sora and Void Crew join `data/games/` with their
+    covers and eleven connections, 1,014 games and 1,658 connections in all.
+    Stella Sora's proof clip is converted to `.ogv` and the MP4 is gone; the
+    other six proofs came as pictures.
+  - **Rodney starts with a Scroll of Identify.** The sheet's `1 Scroll of
+    Identify` was refused by the character generator, which read a named piece
+    only without a count. It reads `N <name>` now as N copies.
+  - **Map Calc's formulas were re-laid** (`map_calc.py`): Excel had saved all
+    148,000 of them in a form `--check` doesn't recognise. The formulas mean
+    the same thing.
+  - **The sheet's side of the map check.** `check_map_sync.py` found five
+    lines whose type the map and the sheet disagreed on. The owner settled
+    them: Hack → NetHack, Caveblazers → Wildfrost and both Cataclysm forks are
+    Dev/Series on the sheet now, as the map draws them
+    (`tools/oneshots/_connections_dev_series_from_map.py`). The map's side
+    (five undrawn games, Rogue → Beneath Apple Manor, Fatal Labyrinth → Dragon
+    Crystal's colour, two loose lines) the owner redrew by hand on 19 Nov, and
+    `check_map_sync.py` reads that drawing clean: 1,014 games, 1,658 lines, 170
+    Dev/Series on both sides.
+  - **More room on the map** (`tools/oneshots/_map_widen_ruler.py`): the year
+    labels and the two era captions moved left to make room (1,000, then 2,000, then
+    5,000 more after the owner's second redraw: 8,000 in all), and each year's grey
+    ruler line is now one straight line, attached to nothing, from its label to
+    1,000 px past the rightmost box. 2021's ruler had been two pieces and
+    2024's three, two of them attached to RollScape, so moving that box bent
+    the line. No game box or connection moved. `RoguelikeMap.svg` is exported
+    from it again at the owner's settings.
+
 - **Credit Card, and To the Moon at Balatro's rate (the owner, 17 Nov 2026).**
   - **Credit Card** is a new Uncommon Balatro joker, using Balatro's own art.
     While you carry it, shop purchases and gold rerolls can take you down to

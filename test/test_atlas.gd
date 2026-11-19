@@ -30,8 +30,14 @@ func after_each() -> void:
 	GameState.reset_run()
 	GameLoop2.reset()
 
+# THE COMPUTED SKY, handed in. Since 19 Nov 2026 a view opened outside the
+# Collection draws the owner's hand-drawn map (test_drawn_map.gd), and these
+# tests are about the constellation sky: its capitals, its packing, its filters.
+# So they name the sky they mean, the one `load_layout()` serves for the active
+# filter, as a run's Atlas did before the drawn map.
 func _open() -> AtlasView:
 	var view: AtlasView = ATLAS.new()
+	view.layout = ATLAS.load_layout()
 	add_child_autofree(view)
 	return view
 

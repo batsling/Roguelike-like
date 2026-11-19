@@ -5318,6 +5318,37 @@
   "sitename": "Dead Weight Wiki",
   "wiki": "https://dead-weight.fandom.com"
  },
+ "Deadly Days: Roadtrip": {
+  "also": [
+   "https://deadly-days.fandom.com/api.php"
+  ],
+  "api": "https://deadly-days-roadtrip.fandom.com/api.php",
+  "articles": 108,
+  "blurb": "The Wiki is in progress! We need some day´s to complete it! Thanks! The wiki is still under construction and currently only available in German. We’re working on translating and completing everything as soon as possible. Thanks for your pat",
+  "categories": {},
+  "checked": "2026-11-18",
+  "counts": {
+   "characters": 0,
+   "events": 0,
+   "goals": 0,
+   "locations": 0,
+   "loot": 0,
+   "statuses": 0
+  },
+  "match": "check",
+  "pages": {
+   "goals": [
+    "Mobs"
+   ],
+   "loot": [
+    "Items",
+    "Weapons"
+   ]
+  },
+  "signal": "",
+  "sitename": "Deadly Days: Roadtrip Wiki",
+  "wiki": "https://deadly-days-roadtrip.fandom.com"
+ },
  "Deadzone: Rogue": {
   "api": "https://deadzone-rogue.fandom.com/api.php",
   "articles": 4,
@@ -9157,6 +9188,10 @@
   "signal": "year",
   "sitename": "Full Mojo Rampage Wiki",
   "wiki": "https://fullmojorampage.fandom.com"
+ },
+ "Func Key": {
+  "checked": "2026-11-18",
+  "wiki": null
  },
  "Fury Unleashed": {
   "api": "https://fury-unleashed.fandom.com/api.php",
@@ -13021,6 +13056,44 @@
   "sitename": "Mana Spark Wiki",
   "wiki": "https://manaspark.fandom.com"
  },
+ "March of the Living": {
+  "api": "https://marchoftheliving.fandom.com/api.php",
+  "articles": 39,
+  "blurb": "## Welcome to the March of The Living Wikia Wiki for \"March of the Living\" Game, a Roguelike-like inspired by FTL and popular zombie fiction. In this game the player guides a group of survivors to a rumoured safe haven. The game was Release",
+  "categories": {
+   "characters": [
+    "Recruitable characters",
+    "Mandatory characters",
+    "Main characters"
+   ]
+  },
+  "checked": "2026-11-18",
+  "counts": {
+   "characters": 25,
+   "events": 0,
+   "goals": 0,
+   "locations": 0,
+   "loot": 0,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "events": [
+    "Events"
+   ],
+   "goals": [
+    "Enemies"
+   ],
+   "loot": [
+    "Items",
+    "Weapons",
+    "Food"
+   ]
+  },
+  "signal": "rogue",
+  "sitename": "March of The Living Wikia",
+  "wiki": "https://marchoftheliving.fandom.com"
+ },
  "Masks of the Void: Origins": {
   "checked": "2026-10-11",
   "wiki": null
@@ -14232,6 +14305,10 @@
  },
  "Nadir": {
   "checked": "2026-10-11",
+  "wiki": null
+ },
+ "Near Mint": {
+  "checked": "2026-11-18",
   "wiki": null
  },
  "NecroBouncer": {
@@ -15816,6 +15893,10 @@
  },
  "Overworld": {
   "checked": "2026-10-11",
+  "wiki": null
+ },
+ "Ovis Loop": {
+  "checked": "2026-11-18",
   "wiki": null
  },
  "Pairs & Perils": {
@@ -20641,6 +20722,10 @@
   "sitename": "Starlight Re:Volver Wiki",
   "wiki": "https://starlightrevolver.wiki.gg/"
  },
+ "Stella Sora": {
+  "checked": "2026-11-18",
+  "wiki": null
+ },
  "Steve's Warehouse: Physics. Roguelike. Chaos.": {
   "checked": "2026-10-11",
   "wiki": null
@@ -24265,6 +24350,41 @@
   "signal": "",
   "sitename": "Void Bastards Wiki",
   "wiki": "https://voidbastards.fandom.com"
+ },
+ "Void Crew": {
+  "also": [
+   "https://void-crew.fandom.com/api.php"
+  ],
+  "api": "https://voidcrew.wiki.gg/api.php",
+  "articles": 105,
+  "blurb": "Welcome to the official Void Crew wikiThe Metem approved official codex of VOID CREW, written and maintained by the players.Please feel free to contribute - for suggestions or questions, check the official Void Crew DiscordWe are currently ",
+  "categories": {
+   "goals": [
+    "Enemy Factions"
+   ]
+  },
+  "checked": "2026-11-18",
+  "counts": {
+   "characters": 0,
+   "events": 0,
+   "goals": 24,
+   "locations": 0,
+   "loot": 0,
+   "statuses": 0
+  },
+  "match": "sure",
+  "pages": {
+   "goals": [
+    "Enemies"
+   ],
+   "loot": [
+    "Relics",
+    "Perks"
+   ]
+  },
+  "signal": "rogue",
+  "sitename": "Void Crew Wiki",
+  "wiki": "https://voidcrew.wiki.gg/"
  },
  "Void Scrappers": {
   "checked": "2026-10-11",
