@@ -11423,12 +11423,16 @@ func test_what_arriving_at_a_game_writes_is_filed_under_that_game() -> void:
 		if String(e["text"]).contains("one hit stopped each"):
 			shields_at_arrival = true
 	assert_true(shields_at_arrival, "and it carries the shields committing granted")
+	# The reminder is matched WHOLE (it is the line, `Overworld2` writes nothing
+	# after the name). `contains` matched a prefix: leaving Cataclysm: Dark Days
+	# Ahead for Cataclysm found "→ Cataclysm" inside the left game's own, correct
+	# "→ Cataclysm: Dark Days Ahead", one run in ten or so.
+	var reminder: String = "📺  Twitch category → %s" % Data.get_game(slot).display_name
 	for stop in stops.slice(1):
 		if StringName(stop["game"]) != left:
 			continue
 		for e in (stop["lines"] as Array):
-			assert_false(String(e["text"]).contains(
-				"Twitch category → %s" % Data.get_game(slot).display_name),
+			assert_ne(String(e["text"]).strip_edges(), reminder.strip_edges(),
 				"the arrival's reminder is not filed under the game left")
 	assert_eq(GameLog.arriving_at, &"", "and the log is back to stamping where the run stands")
 
