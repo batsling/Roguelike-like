@@ -30,8 +30,16 @@ For how the project is laid out and how its systems fit together, see
     Dev/Series on the sheet now, as the map draws them
     (`tools/oneshots/_connections_dev_series_from_map.py`). The map's side
     (five undrawn games, Rogue → Beneath Apple Manor, Fatal Labyrinth → Dragon
-    Crystal's colour, two loose lines) the owner is redrawing by hand, so
-    `Roguelikes.drawio` and `RoguelikeMap.svg` stay as uploaded.
+    Crystal's colour, two loose lines) the owner redrew by hand on 19 Nov, and
+    `check_map_sync.py` reads that drawing clean: 1,014 games, 1,658 lines, 170
+    Dev/Series on both sides.
+  - **More room on the map** (`tools/oneshots/_map_widen_ruler.py`): the year
+    labels and the two era captions moved 1,000 px left, and each year's grey
+    ruler line is now one straight line, attached to nothing, from its label to
+    1,000 px past the rightmost box. 2021's ruler had been two pieces and
+    2024's three, two of them attached to RollScape, so moving that box bent
+    the line. No game box or connection moved. `RoguelikeMap.svg` is exported
+    from it again at the owner's settings.
 
 - **Credit Card, and To the Moon at Balatro's rate (the owner, 17 Nov 2026).**
   - **Credit Card** is a new Uncommon Balatro joker, using Balatro's own art.
