@@ -35,6 +35,12 @@ For how the project is laid out and how its systems fit together, see
       On 19 Nov there were two, both for the owner to move in the drawio:
       Angband → Zorbus over Ancient Domains of Mystery, and Torneko's Great
       Adventure → House of Necrosis over Shiren the Wanderer GB.
+  - **It looks like an old parchment map** (the owner's pick, so it doesn't sit
+    on the game's dark screens as stark white). The map is a sheet of aged paper
+    the size of the drawing, with a margin, browned edges, a dark frame and a
+    shadow, lying on the game's background and moving with the map. draw.io's
+    black ink is brown, its blue lines a faded ink blue, its grey year rules
+    faint brown, and the boxes lighter cream cards.
   - **The Collection keeps the computed constellations and the Tree**, with
     their filters.
   - **`tools/bake_drawio_map.py`** reads the drawio into

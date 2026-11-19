@@ -50,7 +50,9 @@ DRAWIO = os.path.join(TOOLS, "Roguelikes.drawio")
 XLSX = os.path.join(TOOLS, "Roguelikes.xlsx")
 OUT = os.path.join(ROOT, "data", "atlas_layout_map.tres")
 GAMES_DIR = os.path.join(ROOT, "data", "games")
-PAD = 40.0  # margin around everything, in drawio units, for framing
+# Margin around everything, in drawio units: the parchment sheet the game draws
+# the map on is the bounds, so this is the paper showing round the drawing.
+PAD = 400.0
 
 
 def _f(v, default=0.0):

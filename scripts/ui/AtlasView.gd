@@ -99,13 +99,20 @@ const DRAWN_FOCUS_SPAN := 1400.0
 # desaturated towards the parchment neutral and dropped well under half their old
 # alpha. Nothing else on the chart changes, and the corridor is now the only ember
 # on it.
-# The drawn map's own colours, which are draw.io's: black on white, the blue of
-# its Sequel / Same Devs lines, the grey of its year rules.
-const MAP_PAPER := Color(1, 1, 1)
-const MAP_PAPER_DIM := Color(0.93, 0.93, 0.93)
-const MAP_INK := Color(0, 0, 0)
-const MAP_BLUE := Color(0, 0, 1)
-const MAP_RULE := Color(0.784, 0.784, 0.784)
+# The drawn map's colours: an OLD PARCHMENT MAP (the owner, 19 Nov 2026, so the
+# map doesn't sit on the game's dark screens as a sheet of stark white). draw.io's
+# black-on-white becomes brown ink on aged paper, its blue Sequel / Same Devs
+# lines a faded ink blue, its grey year rules a faint brown. The sheet lies on
+# the game's dark background with a frame and a shadow.
+const MAP_PAPER := Color(0.910, 0.851, 0.710)        # the sheet
+const MAP_PAPER_EDGE := Color(0.420, 0.278, 0.137)   # its darkened, aged edges
+const MAP_BOX := Color(0.953, 0.910, 0.800)          # a game's box, a lighter card
+const MAP_PAPER_DIM := Color(0.835, 0.769, 0.616)    # a game the run can't enter
+const MAP_INK := Color(0.227, 0.149, 0.078)
+const MAP_BLUE := Color(0.173, 0.310, 0.525)
+const MAP_RULE := Color(0.420, 0.278, 0.137, 0.30)
+const MAP_FRAME := Color(0.353, 0.239, 0.133)
+const MAP_SHADOW := Color(0, 0, 0, 0.45)
 const MAP_PICK := Color(1.0, 0.541, 0.235)   # UITheme.ACCENT, for what you point at
 const MAP_FADE := 0.18
 # Sizes in the drawio's own units: its game labels are 10 px, its year labels
@@ -115,6 +122,7 @@ const MAP_NAME_FONT := 10.0
 const MAP_YEAR_FONT := 12.0
 const MAP_ARROW := 6.0
 const MAP_MIN_TEXT_PX := 6
+const MAP_EDGE_BANDS := 8
 # Clear space between a box's border and its name, in screen pixels.
 const MAP_TEXT_PAD := 1.5
 
@@ -2449,7 +2457,7 @@ class StarCanvas extends Control:
 	# greyed where they stand; the run's own roads and markers go on top.
 	func _draw_drawn_map(lay: AtlasLayout) -> void:
 		var vis := Rect2(Vector2.ZERO, size)
-		draw_rect(vis, AtlasView.MAP_PAPER)
+		_draw_parchment(lay, vis)
 		var font: Font = get_theme_default_font()
 		var sc: float = view._scale
 		var focused: bool = view._selected >= 0
@@ -2512,7 +2520,7 @@ class StarCanvas extends Control:
 			if not vis.intersects(r.grow(2.0)):
 				continue
 			var faded: bool = view.off_run(i) or (focused and not view._near.has(i))
-			var fill: Color = AtlasView.MAP_PAPER
+			var fill: Color = AtlasView.MAP_BOX
 			var ink: Color = AtlasView.MAP_INK
 			if faded:
 				fill = AtlasView.MAP_PAPER_DIM
@@ -2538,6 +2546,23 @@ class StarCanvas extends Control:
 					_text_in(font, inner, label, px, ink)
 
 		_draw_run_markers(lay)
+
+	# The sheet the map is drawn on: aged paper the size of the map (its bounds,
+	# which the bake pads with a margin), lying on the game's own dark background
+	# with a shadow under it, edges darkened the way old paper browns, and a frame.
+	# It pans and zooms with the map, so it reads as a thing you are looking at.
+	func _draw_parchment(lay: AtlasLayout, vis: Rect2) -> void:
+		draw_rect(vis, UITheme.BG_DEEP)
+		var sheet := Rect2(view.to_screen(lay.bounds.position), lay.bounds.size * view._scale)
+		var lift: float = clampf(minf(sheet.size.x, sheet.size.y) * 0.01, 3.0, 12.0)
+		draw_rect(Rect2(sheet.position + Vector2(lift, lift * 1.4), sheet.size), AtlasView.MAP_SHADOW)
+		draw_rect(sheet, AtlasView.MAP_PAPER)
+		# The browned edges: thin translucent bands, darkest at the border.
+		var band: float = clampf(minf(sheet.size.x, sheet.size.y) * 0.012, 2.0, 18.0)
+		for k in range(AtlasView.MAP_EDGE_BANDS):
+			var a: float = 0.11 * (1.0 - float(k) / AtlasView.MAP_EDGE_BANDS)
+			draw_rect(sheet.grow(-band * (k + 0.5)), Color(AtlasView.MAP_PAPER_EDGE, a), false, band)
+		draw_rect(sheet, AtlasView.MAP_FRAME, false, clampf(lift * 0.6, 2.0, 6.0))
 
 	# The largest size, at most `want`, at which `text` wrapped at `area`'s width
 	# fits inside `area` entirely, width and height both; 0 when even the smallest
