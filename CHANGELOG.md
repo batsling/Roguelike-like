@@ -11,6 +11,29 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **A run's Atlas is the owner's hand-drawn map (19 Nov 2026).**
+  - **The map you open during a run is `tools/Roguelikes.drawio`**, exactly as
+    drawn: every game a white box with its name, at the place and size the
+    owner gave it, black lines for influence and blue for sequels and same
+    studio, each with draw.io's arrowhead, and the grey year rules with their
+    years. The cave shape is the owner's.
+    - The run's roads, the You are here and Amulet markers, search, the jump
+      buttons and the bash and transmute marks all work on it as they did on the
+      stars.
+    - Hovering a box puts up the game's card with its art. It stays on the last
+      game you hovered so you can reach its buttons, and a click pins it.
+    - Games the run can't enter are greyed where they stand rather than
+      removed.
+  - **The Collection keeps the computed constellations and the Tree**, with
+    their filters.
+  - **`tools/bake_drawio_map.py`** reads the drawio into
+    `data/atlas_layout_map.tres`. It refuses a box or a line the sheet doesn't
+    have, and lists, without failing, anything on the sheet that isn't drawn
+    yet. CI checks the bake is current, and its map report now reads the live
+    drawio rather than the old `Roguelikes.drawio6.svg`.
+  - `test_atlas.gd` names the computed sky it tests; `test_drawn_map.gd` covers
+    the new map.
+
 - **Seven new games, and the map and the sheet agree exactly (the owner's
   upload, 18 Nov 2026).**
   - **The games**: Deadly Days: Roadtrip, Func Key, March of the Living, Near

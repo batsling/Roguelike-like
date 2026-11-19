@@ -49,6 +49,14 @@ const CAPITAL_LAYOUTS := {
 }
 const CAPITAL_CHOICES := [6, 8, 12]
 
+# THE OWNER'S HAND-DRAWN MAP (tools/Roguelikes.drawio, baked by
+# tools/bake_drawio_map.py). A run draws this instead of a computed sky (the
+# owner, 19 Nov 2026: during runs it replaces the constellations; the Collection
+# keeps those and the Tree). It holds every game, whatever the game filter: the
+# shape is the point, so a game the run can't enter is dimmed where it stands
+# rather than taken out and the map re-laid around the hole.
+const MAP_LAYOUT_PATH := "res://data/atlas_layout_map.tres"
+
 const LAYOUT_PATHS := {
 	Settings.GameFilter.ALL: "res://data/atlas_layout.tres",
 	Settings.GameFilter.OWNED: "res://data/atlas_layout_owned.tres",
@@ -64,6 +72,12 @@ const ZOOM_MIN := 0.55
 # Headroom above the point covers appear, so zooming further keeps growing the
 # art rather than hitting the ceiling the moment the first cover shows.
 const ZOOM_MAX := 26.0
+# The drawn map is ~35,000 units across with boxes ~40 wide, so fit-to-screen
+# makes a box a pixel or two: it needs far more headroom before its names read.
+const ZOOM_MAX_DRAWN := 90.0
+# How much of the drawn map (in its own units) "take me to this game" shows: a
+# neighbourhood of boxes with their names legible.
+const DRAWN_FOCUS_SPAN := 1400.0
 
 # Colours. Star outlines come from RunGraph.type_color so the atlas, the
 # choose-your-start panel and the overworld all agree on what a Deckbuilder is.
@@ -85,6 +99,23 @@ const ZOOM_MAX := 26.0
 # desaturated towards the parchment neutral and dropped well under half their old
 # alpha. Nothing else on the chart changes, and the corridor is now the only ember
 # on it.
+# The drawn map's own colours, which are draw.io's: black on white, the blue of
+# its Sequel / Same Devs lines, the grey of its year rules.
+const MAP_PAPER := Color(1, 1, 1)
+const MAP_PAPER_DIM := Color(0.93, 0.93, 0.93)
+const MAP_INK := Color(0, 0, 0)
+const MAP_BLUE := Color(0, 0, 1)
+const MAP_RULE := Color(0.784, 0.784, 0.784)
+const MAP_PICK := Color(1.0, 0.541, 0.235)   # UITheme.ACCENT, for what you point at
+const MAP_FADE := 0.18
+# Sizes in the drawio's own units: its game labels are 10 px, its year labels
+# draw.io's default 12, its arrowheads about 6. Text smaller than this on screen
+# is left out rather than drawn as a smudge.
+const MAP_NAME_FONT := 10.0
+const MAP_YEAR_FONT := 12.0
+const MAP_ARROW := 6.0
+const MAP_MIN_TEXT_PX := 6
+
 const COL_EDGE := Color(0.902, 0.835, 0.722, 0.13)
 const COL_EDGE_CROSS := Color(0.86, 0.74, 0.62, 0.06)
 const COL_HULL := Color(0.902, 0.835, 0.722, 0.028)
@@ -157,6 +188,11 @@ var _offset: Vector2 = Vector2.ZERO
 var _selected: int = -1
 var _selected_edge: int = -1         # index of the clicked link, as an edge pair
 var _hovered: int = -1
+# THE DRAWN MAP's card follows the mouse (the owner, 19 Nov 2026: "hovering over
+# will give game info and the art"). This is the last game hovered, kept when the
+# cursor leaves it so the card's buttons can still be reached; a click pins one
+# (`_selected`) and a click on empty map clears both.
+var _hover_card: int = -1
 var _dragging: bool = false
 var _drag_moved: float = 0.0
 # Right-drag pans too, and does it without the click-vs-drag question — the
@@ -284,6 +320,10 @@ func _ready() -> void:
 	top_level = true
 	theme = UITheme.shared()
 	mouse_filter = Control.MOUSE_FILTER_STOP
+	# A run is drawn on the owner's map; the Collection (`pure_catalog`) keeps
+	# the computed skies, its filters and its modes.
+	if layout == null and not pure_catalog:
+		layout = load_drawn_map()
 	if layout == null:
 		layout = load_layout()
 	# The baked sky the filters measure against. Held separately from `layout`,
@@ -297,6 +337,14 @@ func _ready() -> void:
 	_build_history()
 	_build()
 	frame_all()
+
+# The drawn map, or null if it was never baked.
+static func load_drawn_map() -> AtlasLayout:
+	if ResourceLoader.exists(MAP_LAYOUT_PATH):
+		var res: Resource = load(MAP_LAYOUT_PATH)
+		if res is AtlasLayout and (res as AtlasLayout).is_drawn_map():
+			return res as AtlasLayout
+	return null
 
 # Loads the sky matching the active game filter, falling back to the full one if
 # that variant was never baked. Returns null when nothing has been generated, and
@@ -646,7 +694,7 @@ func frame_rect(world: Rect2) -> void:
 	_fit_scale = minf((view.x - pad * 2.0) / layout.bounds.size.x,
 		(view.y - pad * 2.0) / layout.bounds.size.y)
 	_scale = minf((free_w - pad * 2.0) / world.size.x, (view.y - pad * 2.0) / world.size.y)
-	_scale = clampf(_scale, _fit_scale * ZOOM_MIN, _fit_scale * ZOOM_MAX)
+	_scale = clampf(_scale, _fit_scale * ZOOM_MIN, _fit_scale * zoom_max())
 	var centre: Vector2 = world.position + world.size * 0.5
 	_offset = Vector2(free_x + free_w * 0.5, view.y * 0.5) - centre * _scale
 	_redraw()
@@ -691,7 +739,7 @@ func frame_games(ids: Array) -> bool:
 	return true
 
 func zoom_by(factor: float, pivot: Vector2) -> void:
-	var target: float = clampf(_scale * factor, _fit_scale * ZOOM_MIN, _fit_scale * ZOOM_MAX)
+	var target: float = clampf(_scale * factor, _fit_scale * ZOOM_MIN, _fit_scale * zoom_max())
 	var k: float = target / _scale
 	_offset = pivot - (pivot - _offset) * k
 	_scale = target
@@ -715,6 +763,9 @@ func _clamp_view() -> void:
 		_offset.y += margin - br.y
 	elif tl.y > view.y - margin:
 		_offset.y -= tl.y - (view.y - margin)
+
+func zoom_max() -> float:
+	return ZOOM_MAX_DRAWN if has_layout() and layout.is_drawn_map() else ZOOM_MAX
 
 func zoom_ratio() -> float:
 	return _scale / maxf(_fit_scale, 0.0001)
@@ -785,11 +836,15 @@ func cover_screen_size(i: int) -> Vector2:
 # connected games cross the threshold at a much lower zoom than dead ends do,
 # which is the whole point — the map fills in from its hubs outward.
 func shows_cover(i: int) -> bool:
+	if layout.is_drawn_map():
+		return false  # the drawn map is boxes and names; the art is on the card
 	return cover_screen_size(i).x >= MIN_COVER_PX
 
 # Half-height of whatever is actually drawn for a star, in screen pixels. Labels
 # hang off this so they clear the art instead of sitting on top of it.
 func drawn_half_height(i: int) -> float:
+	if layout.is_drawn_map():
+		return layout.box_h[i] * 0.5 * _scale
 	var size: Vector2 = cover_screen_size(i)
 	if size.x >= MIN_COVER_PX:
 		return size.y * 0.5
@@ -890,6 +945,13 @@ func _invalidate_star_cache() -> void:
 # drawn, because the sky is rebuilt from the survivors. Kept as the one place
 # that answers "is this game in?", so the rebuild and the drawing can never
 # disagree about which games those are.
+# On the drawn map during a run: a game the run cannot walk to (outside the game
+# filter, or off the run's main group), greyed where it stands.
+func off_run(i: int) -> bool:
+	if pure_catalog or not has_layout() or not layout.is_drawn_map():
+		return false
+	return RunGraph.is_off_map(star_id(i))
+
 func passes_filter(i: int) -> bool:
 	if not pure_catalog or not has_layout():
 		return true
@@ -1131,6 +1193,8 @@ func _visible_rect() -> Rect2:
 func pick(at: Vector2) -> int:
 	if not has_layout():
 		return -1
+	if layout.is_drawn_map():
+		return _pick_box(at)
 	var best: int = -1
 	var best_d: float = PICK_RADIUS * PICK_RADIUS
 	for i in range(layout.star_count()):
@@ -1139,6 +1203,26 @@ func pick(at: Vector2) -> int:
 			best_d = d
 			best = i
 	return best
+
+# The drawn map's boxes are what a click lands on: the box under the cursor, grown
+# a few pixels so a box drawn a pixel wide can still be hit. Later boxes win, as
+# they are drawn on top.
+func _pick_box(at: Vector2) -> int:
+	var best: int = -1
+	var best_d: float = INF
+	for i in range(layout.star_count()):
+		var r: Rect2 = screen_box(i).grow(3.0)
+		if r.has_point(at):
+			var d: float = r.get_center().distance_squared_to(at)
+			if d <= best_d:
+				best_d = d
+				best = i
+	return best
+
+# A game's box on screen (drawn map only).
+func screen_box(i: int) -> Rect2:
+	var r: Rect2 = layout.box_of(i)
+	return Rect2(to_screen(r.position), r.size * _scale)
 
 # Nearest LINK to a click, as an edge-pair index, or -1. Stars win ties: a click
 # near a hub touches dozens of lines, and the star is almost always what was
@@ -1196,6 +1280,8 @@ func select(i: int) -> void:
 	_selected = i
 	if i >= 0:
 		_selected_edge = -1
+	else:
+		_hover_card = -1
 	_near.clear()
 	if i >= 0:
 		_near[i] = true
@@ -1214,7 +1300,9 @@ func focus_game(game_id: StringName, zoom: float = 5.0) -> bool:
 	var i: int = layout.index_of(game_id)
 	if i < 0:
 		return false
-	_scale = clampf(_fit_scale * zoom, _fit_scale * ZOOM_MIN, _fit_scale * ZOOM_MAX)
+	if layout.is_drawn_map():
+		zoom = maxf(zoom, _canvas_size().x / DRAWN_FOCUS_SPAN / maxf(_fit_scale, 0.0001))
+	_scale = clampf(_fit_scale * zoom, _fit_scale * ZOOM_MIN, _fit_scale * zoom_max())
 	_offset = _canvas_size() * 0.5 - layout.position_of(i) * _scale
 	select(i)
 	return true
@@ -1446,6 +1534,8 @@ func _frame_star(index: int) -> void:
 		return
 	var p: Vector2 = layout.position_of(index)
 	var span: float = maxf(layout.bounds.size.x, layout.bounds.size.y) * 0.12
+	if layout.is_drawn_map():
+		span = DRAWN_FOCUS_SPAN
 	frame_rect(Rect2(p - Vector2(span, span) * 0.5, Vector2(span, span)))
 
 func _tool_button(text: String, cb: Callable) -> Button:
@@ -1491,8 +1581,13 @@ func _fill_legend() -> void:
 	row.add_theme_constant_override("h_separation", UITheme.GAP_SECTION)
 	row.add_theme_constant_override("v_separation", UITheme.GAP_TIGHT)
 	bar.add_child(row)
-	for t in RunGraph.TYPE_ORDER:
-		row.add_child(_legend_chip(RunGraph.type_label(t), RunGraph.type_color(t)))
+	var drawn: bool = layout != null and layout.is_drawn_map()
+	# The drawn map has no genre rims to key: its lines are the owner's two kinds.
+	if drawn:
+		row.add_child(_route_key("Inspired", UITheme.TEXT))
+	else:
+		for t in RunGraph.TYPE_ORDER:
+			row.add_child(_legend_chip(RunGraph.type_label(t), RunGraph.type_color(t)))
 	# The record is only drawn in the catalog view, so only key it there.
 	if pure_catalog:
 		row.add_child(_legend_chip("⚔ Beaten", COL_BEATEN, true))
@@ -1512,7 +1607,8 @@ func _fill_legend() -> void:
 	if not _trail.is_empty():
 		row.add_child(_route_key("Route ahead", COL_TRAIL))
 	var note := Label.new()
-	note.text = "Star size = connections"
+	note.text = "Greyed = off this run's map · hover a game for its card" if drawn \
+		else "Star size = connections"
 	# No EXPAND_FILL: in the HBox this used to be, that let the note swallow the
 	# slack and drew its text at the left of it — the same place a flow puts it
 	# anyway. In a flow it would claim a line of its own instead.
@@ -1611,17 +1707,18 @@ func _refresh_card() -> void:
 	if _selected_edge >= 0 and has_layout():
 		_fill_connection_card()
 		return
-	if _selected < 0 or not has_layout():
+	var sel: int = card_star()
+	if sel < 0 or not has_layout():
 		_card.visible = false
 		return
 	_card.visible = true
 	_set_card_width(272.0)
 
-	var id: StringName = layout.id_at(_selected)
+	var id: StringName = layout.id_at(sel)
 	# The node's own game, and whatever Transmute has pasted on top of it.
 	var original: GameData = Data.get_game(id)
-	var game: GameData = game_at(_selected)
-	var pasted: bool = is_transmuted(_selected)
+	var game: GameData = game_at(sel)
+	var pasted: bool = is_transmuted(sel)
 	var name_text: String = game.display_name if game != null else String(id)
 
 	var title := Label.new()
@@ -1656,16 +1753,18 @@ func _refresh_card() -> void:
 	_card_box.add_child(facts)
 	if game != null and game.year > 0:
 		facts.add_child(_fact("Released", str(game.year)))
-	facts.add_child(_fact("Connections", str(layout.degree_of(_selected))))
-	var region_label: String = layout.region_name(_selected)
-	if region_label == "":
+	facts.add_child(_fact("Connections", str(layout.degree_of(sel))))
+	var region_label: String = layout.region_name(sel)
+	if layout.is_drawn_map():
+		pass  # the hand-drawn map has no constellations
+	elif region_label == "":
 		facts.add_child(_fact("Region", "drifting — no capital reaches it"))
-	elif layout.is_capital(_selected):
+	elif layout.is_capital(sel):
 		facts.add_child(_fact("Region", "%s (capital)" % region_label))
 	else:
 		facts.add_child(_fact("Region", region_label))
 		facts.add_child(_fact("From capital", "%d hop%s" %
-			[layout.hops[_selected], "" if layout.hops[_selected] == 1 else "s"]))
+			[layout.hops[sel], "" if layout.hops[sel] == 1 else "s"]))
 	# A pasted node reports both games: what you play here now, and what this spot
 	# was on the map before.
 	if pasted and original != null:
@@ -1679,7 +1778,7 @@ func _refresh_card() -> void:
 	if amulet_runs > 0:
 		facts.add_child(_fact("👑 Amulet won", "%d run%s" % [amulet_runs,
 			"" if amulet_runs == 1 else "s"]))
-	if is_bashed(_selected):
+	if is_bashed(sel):
 		facts.add_child(_fact("Status", "destroyed — bashed this run"))
 	elif not pure_catalog and GameState.has_beaten_game(id):
 		facts.add_child(_fact("Status", "beaten this run"))
@@ -1724,6 +1823,15 @@ func _refresh_card() -> void:
 	dismiss.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
 	dismiss.pressed.connect(func(): select(-1))
 	_card_box.add_child(dismiss)
+
+# The game the card is about: the pinned one, else (on the drawn map only) the
+# last one hovered.
+func card_star() -> int:
+	if _selected >= 0:
+		return _selected
+	if has_layout() and layout.is_drawn_map():
+		return _hover_card
+	return -1
 
 # One connection: who influenced whom, and what backs the claim.
 func _fill_connection_card() -> void:
@@ -2098,7 +2206,10 @@ func _refresh_hud() -> void:
 	# A tree has no constellations to count; what it has instead is a root and a
 	# depth, which is the thing worth saying about it.
 	var shape: String = Plural.count(layout.capitals.size(), "constellation")
-	if layout.is_tree():
+	if layout.is_drawn_map():
+		shape = "the drawn map"
+		detail = "labelled" if MAP_NAME_FONT * _scale >= MAP_MIN_TEXT_PX else "overview"
+	elif layout.is_tree():
 		var root_game: GameData = Data.get_game(layout.id_at(_tree_root_index()))
 		shape = "rooted at %s, %d deep" % [
 			root_game.display_name if root_game != null else "?", _tree_depth()]
@@ -2228,6 +2339,10 @@ func _on_canvas_input(event: InputEvent) -> void:
 			var hit: int = pick(mm.position)
 			if hit != _hovered:
 				_hovered = hit
+				if hit >= 0 and hit != _hover_card and layout.is_drawn_map():
+					_hover_card = hit
+					if _selected < 0 and _selected_edge < 0:
+						_refresh_card()
 				_redraw()
 
 # ---------------------------------------------------------------------------
@@ -2250,6 +2365,9 @@ class StarCanvas extends Control:
 			return
 
 		var lay: AtlasLayout = view.layout
+		if lay.is_drawn_map():
+			_draw_drawn_map(lay)
+			return
 		var ratio: float = view.zoom_ratio()
 		var show_links: bool = ratio >= AtlasView.ZOOM_LINKS
 		var show_rims: bool = ratio >= AtlasView.ZOOM_RIMS
@@ -2289,6 +2407,110 @@ class StarCanvas extends Control:
 		# the two questions the sky exists to answer are where you stand and what
 		# you came for.
 		_draw_run_markers(lay)
+
+	# THE OWNER'S MAP, drawn as draw.io draws it (the owner, 19 Nov 2026:
+	# "exactly like the drawio"): white paper, a faint grey rule per year with its
+	# year beside it, black lines for influence and blue for sequels and same
+	# studio, each with draw.io's filled arrowhead where it enters, and every game
+	# a white box with a thin black border and its name. Hovering a box puts its
+	# card up (AtlasView.card_star). During a run, games the run can't enter are
+	# greyed where they stand; the run's own roads and markers go on top.
+	func _draw_drawn_map(lay: AtlasLayout) -> void:
+		var vis := Rect2(Vector2.ZERO, size)
+		draw_rect(vis, AtlasView.MAP_PAPER)
+		var font: Font = get_theme_default_font()
+		var sc: float = view._scale
+		var focused: bool = view._selected >= 0
+
+		# The year ruler.
+		var x0: float = view.to_screen(Vector2(lay.ruler_x.x, 0)).x
+		var x1: float = view.to_screen(Vector2(lay.ruler_x.y, 0)).x
+		var year_px: int = int(round(AtlasView.MAP_YEAR_FONT * sc))
+		for k in range(lay.ruler_years.size()):
+			var y: float = view.to_screen(Vector2(0, lay.ruler_ys[k])).y
+			if y < -40.0 or y > vis.size.y + 40.0:
+				continue
+			draw_line(Vector2(maxf(x0, -10.0), y), Vector2(minf(x1, vis.size.x + 10.0), y),
+				AtlasView.MAP_RULE, 1.0)
+			if year_px >= AtlasView.MAP_MIN_TEXT_PX:
+				var lr: Rect2 = lay.ruler_label_rect
+				var box := Rect2(view.to_screen(Vector2(lr.position.x, lay.ruler_label_ys[k])),
+					lr.size * sc)
+				_text_in(font, box, str(lay.ruler_years[k]), year_px, AtlasView.MAP_INK)
+
+		# The lines, under the boxes as in draw.io.
+		var width: float = clampf(sc, 1.0, 2.5)
+		var head: float = clampf(AtlasView.MAP_ARROW * sc, 3.0, 16.0)
+		for pair in range(lay.edge_count()):
+			var a: int = lay.edges[pair * 2]
+			var b: int = lay.edges[pair * 2 + 1]
+			var ends: PackedVector2Array = lay.edge_ends(pair)
+			var pa: Vector2 = view.to_screen(ends[0])
+			var pb: Vector2 = view.to_screen(ends[1])
+			if not vis.grow(head).intersects(Rect2(pa, Vector2.ZERO).expand(pb)):
+				continue
+			var col: Color = AtlasView.MAP_BLUE if lay.is_dev_edge(pair) else AtlasView.MAP_INK
+			var w: float = width
+			var incident: bool = focused and (a == view._selected or b == view._selected)
+			if incident:
+				col = AtlasView.MAP_PICK
+				w = width + 1.5
+			elif focused or view.off_run(a) or view.off_run(b):
+				col = Color(col, AtlasView.MAP_FADE)
+			draw_line(pa, pb, col, w, true)
+			var d: Vector2 = pb - pa
+			if d.length() > head * 1.5:
+				var dir: Vector2 = d.normalized()
+				var perp := Vector2(-dir.y, dir.x)
+				draw_colored_polygon(PackedVector2Array([pb,
+					pb - dir * head + perp * head * 0.4,
+					pb - dir * head * 0.75,
+					pb - dir * head - perp * head * 0.4]), col)
+
+		# The run's roads, over the lines and under the boxes.
+		_draw_roads()
+		_draw_picked_edge(lay)
+
+		# The boxes.
+		var name_px: int = int(round(AtlasView.MAP_NAME_FONT * sc))
+		for i in range(lay.star_count()):
+			var r: Rect2 = view.screen_box(i)
+			if not vis.intersects(r.grow(2.0)):
+				continue
+			var faded: bool = view.off_run(i) or (focused and not view._near.has(i))
+			var fill: Color = AtlasView.MAP_PAPER
+			var ink: Color = AtlasView.MAP_INK
+			if faded:
+				fill = AtlasView.MAP_PAPER_DIM
+				ink = Color(AtlasView.MAP_INK, 0.35)
+			draw_rect(r, fill)
+			var edge_col: Color = ink
+			var edge_w: float = 1.0
+			if i == view._selected or i == view._hovered:
+				edge_col = AtlasView.MAP_PICK
+				edge_w = 2.5
+			draw_rect(r, edge_col, false, edge_w)
+			# A game bashed this run is a road that no longer exists: crossed out.
+			if view.is_bashed(i):
+				draw_line(r.position, r.end, AtlasView.COL_EDGE_BASHED, 2.0, true)
+				draw_line(Vector2(r.end.x, r.position.y), Vector2(r.position.x, r.end.y),
+					AtlasView.COL_EDGE_BASHED, 2.0, true)
+			if name_px >= AtlasView.MAP_MIN_TEXT_PX:
+				var game: GameData = view.game_at(i)
+				var label: String = game.display_name if game != null else String(view.star_id(i))
+				_text_in(font, r.grow(-1.0), label, name_px, ink)
+
+		_draw_run_markers(lay)
+
+	# Text centred in a box, wrapped at its width, as draw.io's `whiteSpace=wrap`
+	# draws a label: a name taller than its box runs over the top and bottom edges
+	# rather than being cut, which is what the owner sees in draw.io.
+	func _text_in(font: Font, box: Rect2, text: String, px: int, col: Color) -> void:
+		var sz: Vector2 = font.get_multiline_string_size(text, HORIZONTAL_ALIGNMENT_CENTER,
+			box.size.x, px)
+		var top: float = box.position.y + (box.size.y - sz.y) * 0.5 + font.get_ascent(px)
+		draw_multiline_string(font, Vector2(box.position.x, top), text,
+			HORIZONTAL_ALIGNMENT_CENTER, box.size.x, px, -1, col)
 
 	# A faint disc behind each constellation, so a region reads as a place even
 	# before its name is legible.

@@ -61,6 +61,70 @@ extends Resource
 # Bounding box of every star, with a little margin. Used to frame the view.
 @export var bounds: Rect2 = Rect2()
 
+# THE DRAWN MAP ONLY (`data/atlas_layout_map.tres`, tools/bake_drawio_map.py):
+# the owner's hand-drawn map read straight off tools/Roguelikes.drawio. Empty on
+# every computed sky, and `is_drawn_map()` is that test. In draw.io's own units,
+# y down, so `xs`/`ys` above are each box's CENTRE.
+#
+# Each game's box, as drawn.
+@export var box_w: PackedFloat32Array = PackedFloat32Array()
+@export var box_h: PackedFloat32Array = PackedFloat32Array()
+# One per edge pair: 1 when the line is drawn blue (Sequel / Same Devs).
+@export var edge_dev: PackedByteArray = PackedByteArray()
+# Four per edge pair, draw.io's anchors in the order the pair is stored (the
+# first star is the box the line leaves): exitX, exitY on that box, entryX,
+# entryY on the other, each a fraction of its box. -1 = no anchor: the line runs
+# centre to centre, cut at each box's border, as draw.io draws an unanchored one.
+@export var edge_anchors: PackedFloat32Array = PackedFloat32Array()
+# The year ruler down the left: each year, the y of its grey rule, and the top of
+# its label; every label shares one x, width and height (`ruler_label_rect`,
+# whose y is unused), and every rule runs from `ruler_x.x` to `ruler_x.y`.
+@export var ruler_years: PackedInt32Array = PackedInt32Array()
+@export var ruler_ys: PackedFloat32Array = PackedFloat32Array()
+@export var ruler_label_ys: PackedFloat32Array = PackedFloat32Array()
+@export var ruler_label_rect: Rect2 = Rect2()
+@export var ruler_x: Vector2 = Vector2()
+
+func is_drawn_map() -> bool:
+	return not box_w.is_empty()
+
+# A game's box on the drawn map, in layout units.
+func box_of(i: int) -> Rect2:
+	return Rect2(xs[i] - box_w[i] * 0.5, ys[i] - box_h[i] * 0.5, box_w[i], box_h[i])
+
+func is_dev_edge(pair: int) -> bool:
+	return pair < edge_dev.size() and edge_dev[pair] == 1
+
+# Where the line for edge pair `pair` leaves its first box and enters its
+# second, in layout units: draw.io's anchor where it has one, else where the
+# centre-to-centre line crosses the box's border.
+func edge_ends(pair: int) -> PackedVector2Array:
+	var a: int = edges[pair * 2]
+	var b: int = edges[pair * 2 + 1]
+	var ra: Rect2 = box_of(a)
+	var rb: Rect2 = box_of(b)
+	var k: int = pair * 4
+	var from: Vector2
+	var to: Vector2
+	if k + 3 < edge_anchors.size() and edge_anchors[k] >= 0.0:
+		from = ra.position + Vector2(edge_anchors[k], edge_anchors[k + 1]) * ra.size
+	else:
+		from = _border_toward(ra, rb.get_center())
+	if k + 3 < edge_anchors.size() and edge_anchors[k + 2] >= 0.0:
+		to = rb.position + Vector2(edge_anchors[k + 2], edge_anchors[k + 3]) * rb.size
+	else:
+		to = _border_toward(rb, ra.get_center())
+	return PackedVector2Array([from, to])
+
+static func _border_toward(r: Rect2, target: Vector2) -> Vector2:
+	var c: Vector2 = r.get_center()
+	var d: Vector2 = target - c
+	if d.is_zero_approx():
+		return c
+	var sx: float = INF if is_zero_approx(d.x) else (r.size.x * 0.5) / absf(d.x)
+	var sy: float = INF if is_zero_approx(d.y) else (r.size.y * 0.5) / absf(d.y)
+	return c + d * minf(minf(sx, sy), 1.0)
+
 var _index: Dictionary = {}        # StringName -> int
 var _degree: PackedInt32Array = PackedInt32Array()
 
