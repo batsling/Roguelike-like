@@ -200,3 +200,56 @@ func test_the_map_draws_headless_without_errors() -> void:
 	view._canvas.queue_redraw()
 	await get_tree().process_frame
 	assert_true(view.has_layout(), "the map drew at overview and close up")
+
+# The owner, 19 Nov 2026: "none of the letters go outside of a box". The boxes
+# were sized for draw.io's Helvetica and this game's font wraps differently, so
+# every name is measured into its box; at several zooms, every name the view
+# would draw fits inside its box, width and height.
+func test_every_name_drawn_fits_inside_its_box() -> void:
+	if _map == null:
+		pending("the drawn map is not baked")
+		return
+	var view := _open_run_view()
+	view.size = Vector2(1280, 720)
+	await get_tree().process_frame
+	var canvas = view._canvas
+	var font: Font = canvas.get_theme_default_font()
+	var checked: int = 0
+	for gid in [&"slay_the_spire", &"rogue", &"hades", &"balatro", &"nethack"]:
+		for zoom in [1.0, 0.6, 0.35]:
+			view.focus_game(gid)
+			view._scale *= zoom
+			var vis := Rect2(Vector2.ZERO, view._canvas_size())
+			var want: int = int(round(AtlasView.MAP_NAME_FONT * view._scale))
+			if want < AtlasView.MAP_MIN_TEXT_PX:
+				continue
+			for i in range(view.layout.star_count()):
+				var r: Rect2 = view.screen_box(i)
+				if not vis.intersects(r):
+					continue
+				var inner: Rect2 = r.grow(-AtlasView.MAP_TEXT_PAD)
+				var label: String = view.game_at(i).display_name
+				var px: int = canvas._fit_px(font, i, label, inner.size, want)
+				if px == 0:
+					continue
+				var sz: Vector2 = font.get_multiline_string_size(label,
+					HORIZONTAL_ALIGNMENT_CENTER, inner.size.x, px)
+				checked += 1
+				if sz.x > inner.size.x + 0.01 or sz.y > inner.size.y + 0.01:
+					fail_test("%s at %dpx is %s in a %s box" % [label, px, sz, inner.size])
+					return
+	assert_gt(checked, 50, "names were measured on screen")
+
+# The run's road runs along the line exactly as drawn, so it can't clip a box
+# the drawn line avoids.
+func test_a_road_follows_the_drawn_line() -> void:
+	if _map == null:
+		pending("the drawn map is not baked")
+		return
+	var view := _open_run_view()
+	var a: int = view.layout.edges[0]
+	var b: int = view.layout.edges[1]
+	var drawn: PackedVector2Array = view.layout.edge_ends(0)
+	assert_eq(view.road_ends(a, b), drawn, "the road from a to b is the drawn line")
+	assert_eq(view.road_ends(b, a), PackedVector2Array([drawn[1], drawn[0]]),
+		"and the other way round it runs back along it")

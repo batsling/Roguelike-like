@@ -115,6 +115,8 @@ const MAP_NAME_FONT := 10.0
 const MAP_YEAR_FONT := 12.0
 const MAP_ARROW := 6.0
 const MAP_MIN_TEXT_PX := 6
+# Clear space between a box's border and its name, in screen pixels.
+const MAP_TEXT_PAD := 1.5
 
 const COL_EDGE := Color(0.902, 0.835, 0.722, 0.13)
 const COL_EDGE_CROSS := Color(0.86, 0.74, 0.62, 0.06)
@@ -193,6 +195,34 @@ var _hovered: int = -1
 # cursor leaves it so the card's buttons can still be reached; a click pins one
 # (`_selected`) and a click on empty map clears both.
 var _hover_card: int = -1
+# Drawn map: the font size each box's name fits at, per box, remembered with the
+# box's on-screen size it was measured for (see StarCanvas._fit_px).
+var _fit_cache: Dictionary = {}
+# Drawn map: edge-pair index by unordered star pair, so a road can follow the
+# line exactly as drawn.
+var _pair_index: Dictionary = {}
+
+func pair_of(a: int, b: int) -> int:
+	if _pair_index.is_empty() and has_layout():
+		for p in range(layout.edge_count()):
+			var x: int = layout.edges[p * 2]
+			var y: int = layout.edges[p * 2 + 1]
+			_pair_index[Vector2i(mini(x, y), maxi(x, y))] = p
+	return int(_pair_index.get(Vector2i(mini(a, b), maxi(a, b)), -1))
+
+# Where a road between stars `a` and `b` runs, in layout units, from `a` to `b`.
+# On the drawn map a road between two connected games is the drawn line itself,
+# anchors and all; anything else (a computed sky, a hop with no line) runs
+# centre to centre.
+func road_ends(a: int, b: int) -> PackedVector2Array:
+	if layout.is_drawn_map():
+		var p: int = pair_of(a, b)
+		if p >= 0:
+			var ends: PackedVector2Array = layout.edge_ends(p)
+			if layout.edges[p * 2] == a:
+				return ends
+			return PackedVector2Array([ends[1], ends[0]])
+	return PackedVector2Array([layout.position_of(a), layout.position_of(b)])
 var _dragging: bool = false
 var _drag_moved: float = 0.0
 # Right-drag pans too, and does it without the click-vs-drag question — the
@@ -935,6 +965,8 @@ func star_id(i: int) -> StringName:
 # after one of those, index i is a different game.
 func _invalidate_star_cache() -> void:
 	_ids_cache.clear()
+	_fit_cache.clear()
+	_pair_index.clear()
 	_game_cache.clear()
 	_aspect_cache.clear()
 	# A different sky is a different count at the same camera.
@@ -2436,7 +2468,9 @@ class StarCanvas extends Control:
 				var lr: Rect2 = lay.ruler_label_rect
 				var box := Rect2(view.to_screen(Vector2(lr.position.x, lay.ruler_label_ys[k])),
 					lr.size * sc)
-				_text_in(font, box, str(lay.ruler_years[k]), year_px, AtlasView.MAP_INK)
+				var ypx: int = _fit_px(font, -1 - k, str(lay.ruler_years[k]), box.size, year_px)
+				if ypx > 0:
+					_text_in(font, box, str(lay.ruler_years[k]), ypx, AtlasView.MAP_INK)
 
 		# The lines, under the boxes as in draw.io.
 		var width: float = clampf(sc, 1.0, 2.5)
@@ -2498,13 +2532,40 @@ class StarCanvas extends Control:
 			if name_px >= AtlasView.MAP_MIN_TEXT_PX:
 				var game: GameData = view.game_at(i)
 				var label: String = game.display_name if game != null else String(view.star_id(i))
-				_text_in(font, r.grow(-1.0), label, name_px, ink)
+				var inner: Rect2 = r.grow(-AtlasView.MAP_TEXT_PAD)
+				var px: int = _fit_px(font, i, label, inner.size, name_px)
+				if px > 0:
+					_text_in(font, inner, label, px, ink)
 
 		_draw_run_markers(lay)
 
+	# The largest size, at most `want`, at which `text` wrapped at `area`'s width
+	# fits inside `area` entirely, width and height both; 0 when even the smallest
+	# legible size doesn't (the box is then left without its name rather than
+	# letting letters out of it: the owner, 19 Nov 2026, "none of the letters go
+	# outside of a box"). The boxes were sized for draw.io's Helvetica, and this
+	# game's font wraps differently, so the size is measured rather than assumed.
+	# Remembered per box with the pixel size it was measured at, so panning costs
+	# nothing and a zoom step re-measures only the boxes on screen.
+	func _fit_px(font: Font, key: int, text: String, area: Vector2, want: int) -> int:
+		var stamp := [int(area.x), int(area.y), want, text.hash()]
+		var hit: Array = view._fit_cache.get(key, [])
+		if not hit.is_empty() and hit[0] == stamp:
+			return int(hit[1])
+		var px: int = want
+		while px >= AtlasView.MAP_MIN_TEXT_PX:
+			var sz: Vector2 = font.get_multiline_string_size(text, HORIZONTAL_ALIGNMENT_CENTER,
+				area.x, px)
+			if sz.x <= area.x and sz.y <= area.y:
+				break
+			px = mini(px - 1, int(px * 0.92))
+		if px < AtlasView.MAP_MIN_TEXT_PX:
+			px = 0
+		view._fit_cache[key] = [stamp, px]
+		return px
+
 	# Text centred in a box, wrapped at its width, as draw.io's `whiteSpace=wrap`
-	# draws a label: a name taller than its box runs over the top and bottom edges
-	# rather than being cut, which is what the owner sees in draw.io.
+	# draws a label. `_fit_px` has already chosen a size it fits at.
 	func _text_in(font: Font, box: Rect2, text: String, px: int, col: Color) -> void:
 		var sz: Vector2 = font.get_multiline_string_size(text, HORIZONTAL_ALIGNMENT_CENTER,
 			box.size.x, px)
@@ -2584,15 +2645,17 @@ class StarCanvas extends Control:
 		var dash: float = maxf(9.0, casing * 2.4)
 
 		for seg in segments:
-			var a: Vector2 = view.to_screen(lay.position_of(int(seg[0])))
-			var b: Vector2 = view.to_screen(lay.position_of(int(seg[1])))
+			var ends: PackedVector2Array = _seg_ends(seg)
+			var a: Vector2 = ends[0]
+			var b: Vector2 = ends[1]
 			if _jumped(seg):
 				draw_dashed_line(a, b, AtlasView.COL_TRAIL_CASING, casing, dash, true)
 			else:
 				draw_line(a, b, AtlasView.COL_TRAIL_CASING, casing, true)
 		for seg in segments:
-			var a2: Vector2 = view.to_screen(lay.position_of(int(seg[0])))
-			var b2: Vector2 = view.to_screen(lay.position_of(int(seg[1])))
+			var ends2: PackedVector2Array = _seg_ends(seg)
+			var a2: Vector2 = ends2[0]
+			var b2: Vector2 = ends2[1]
 			if _jumped(seg):
 				draw_dashed_line(a2, b2, col, core, dash, true)
 			else:
@@ -2605,14 +2668,18 @@ class StarCanvas extends Control:
 		for seg in segments:
 			var from_i: int = int(seg[0])
 			var to_i: int = int(seg[1])
-			var a3: Vector2 = view.to_screen(lay.position_of(from_i))
-			var delta: Vector2 = view.to_screen(lay.position_of(to_i)) - a3
+			var ends3: PackedVector2Array = _seg_ends(seg)
+			var a3: Vector2 = ends3[0]
+			var delta: Vector2 = ends3[1] - a3
 			var length: float = delta.length()
 			if length < 1.0:
 				continue
 			var dir: Vector2 = delta / length
-			for t in AtlasView.route_arrow_offsets(length,
-					view.drawn_half_height(from_i), view.drawn_half_height(to_i), head):
+			# On the drawn map the road already starts and ends at the boxes'
+			# borders, so there is nothing to clear.
+			var pad_a: float = 0.0 if lay.is_drawn_map() else view.drawn_half_height(from_i)
+			var pad_b: float = 0.0 if lay.is_drawn_map() else view.drawn_half_height(to_i)
+			for t in AtlasView.route_arrow_offsets(length, pad_a, pad_b, head):
 				_chevron(a3 + dir * t, dir, head, col)
 
 	# The link the player clicked: drawn over the stars so it can't be lost in a
@@ -2624,8 +2691,9 @@ class StarCanvas extends Control:
 			return
 		var a: int = lay.edges[e * 2]
 		var b: int = lay.edges[e * 2 + 1]
-		var pa: Vector2 = view.to_screen(lay.position_of(a))
-		var pb: Vector2 = view.to_screen(lay.position_of(b))
+		var picked: PackedVector2Array = view.road_ends(a, b)
+		var pa: Vector2 = view.to_screen(picked[0])
+		var pb: Vector2 = view.to_screen(picked[1])
 		var core: float = clampf(view._scale * 0.32, 2.0, 4.0)
 		draw_line(pa, pb, AtlasView.COL_TRAIL_CASING, core + 3.0, true)
 		draw_line(pa, pb, AtlasView.COL_SELECTED_EDGE, core, true)
@@ -2639,6 +2707,11 @@ class StarCanvas extends Control:
 			var p: Vector2 = view.to_screen(lay.position_of(idx))
 			var r: float = maxf(6.0, view.drawn_half_height(idx) + 3.0)
 			draw_arc(p, r, 0.0, TAU, 28, AtlasView.COL_SELECTED_EDGE, 1.8, true)
+
+	# A road segment's two ends on screen (AtlasView.road_ends).
+	func _seg_ends(seg: Array) -> PackedVector2Array:
+		var e: PackedVector2Array = view.road_ends(int(seg[0]), int(seg[1]))
+		return PackedVector2Array([view.to_screen(e[0]), view.to_screen(e[1])])
 
 	# A hop the player made without traversing a link — a Teleportation scroll or
 	# Winged Boots. Drawn dashed, because no such road exists on the map.

@@ -722,6 +722,16 @@ python3 tools/bake_drawio_map.py          # write data/atlas_layout_map.tres
 python3 tools/bake_drawio_map.py --check  # CI: is it current?
 ```
 
+Two rules the owner set for it (19 Nov 2026), and how each is kept:
+
+- **No letter outside a box.** `StarCanvas._fit_px` measures each name in the
+  game's font and shrinks it until it fits its box (the drawio's 10 px is the
+  ceiling); a name that can't fit at `MAP_MIN_TEXT_PX` isn't drawn.
+- **No line through a box.** Lines go under the boxes and the run's road
+  follows the drawn line (`AtlasView.road_ends`). A line that passes through a
+  box other than its own two is the drawio's to fix, and the bake lists each
+  one ("to fix in the drawio: …").
+
 It refuses a box or a line the sheet doesn't have, so a run can never be drawn
 a road it cannot travel. A game or a connection on the sheet that isn't drawn
 yet is only listed: it is legal, and it is simply absent from the in-game map

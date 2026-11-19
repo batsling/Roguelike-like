@@ -17,7 +17,10 @@ label, a line the sheet never recorded): the game must not draw a connection
 that a run cannot travel. The other direction only WARNS. A game or a connection
 added to the sheet before it is drawn is normal (the owner draws in either
 order), so it is simply not on the in-game map until the drawio has it, and the
-bake says so. `check_map_sync.py` is the full report. A game the map has but
+bake says so, and so is a line that runs through a box other than its own two
+(the owner wants none; the game draws lines under the boxes as draw.io does,
+but a line passing behind a box looks like it joins it). `check_map_sync.py`
+is the full report. A game the map has but
 `data/games/` lacks means the import hasn't run.
 
 Coordinates are draw.io's own (y grows down, as in Godot). A star's position is
@@ -59,6 +62,63 @@ def _f(v, default=0.0):
 
 def _style(s):
     return dict(kv.split("=", 1) for kv in (s or "").split(";") if "=" in kv)
+
+
+def _ends(box, a, b, anchors):
+    """Where the line from box `a` to box `b` leaves and enters, as AtlasLayout
+    .edge_ends draws it: draw.io's anchor, else the centre line cut at the border."""
+    def border(r, tx, ty):
+        cx, cy = r[0] + r[2] / 2, r[1] + r[3] / 2
+        dx, dy = tx - cx, ty - cy
+        if dx == 0 and dy == 0:
+            return cx, cy
+        k = min(r[2] / 2 / abs(dx) if dx else 1e18, r[3] / 2 / abs(dy) if dy else 1e18, 1.0)
+        return cx + dx * k, cy + dy * k
+    ra, rb = box[a], box[b]
+    ex, ey, nx, ny = anchors
+    p = (ra[0] + ex * ra[2], ra[1] + ey * ra[3]) if ex >= 0 else \
+        border(ra, rb[0] + rb[2] / 2, rb[1] + rb[3] / 2)
+    q = (rb[0] + nx * rb[2], rb[1] + ny * rb[3]) if nx >= 0 else \
+        border(rb, ra[0] + ra[2] / 2, ra[1] + ra[3] / 2)
+    return p, q
+
+
+def _hits(p, q, r):
+    """Does segment p-q pass through rectangle r (x, y, w, h)? Liang-Barsky."""
+    x0, y0 = p
+    dx, dy = q[0] - x0, q[1] - y0
+    t0, t1 = 0.0, 1.0
+    for pp, qq in ((-dx, x0 - r[0]), (dx, r[0] + r[2] - x0),
+                   (-dy, y0 - r[1]), (dy, r[1] + r[3] - y0)):
+        if pp == 0:
+            if qq < 0:
+                return False
+        else:
+            t = qq / pp
+            if pp < 0:
+                t0 = max(t0, t)
+            else:
+                t1 = min(t1, t)
+            if t0 > t1:
+                return False
+    return True
+
+
+def crossings(rects, lines):
+    """Lines that pass through a box other than their own two, as (a, b, [boxes]).
+    The owner wants none (19 Nov 2026), and the bake lists them on every run.
+    Boxes are shrunk 1 unit so a line merely grazing a border doesn't count."""
+    out = []
+    for a, b, anchors in lines:
+        p, q = _ends(rects, a, b, anchors)
+        lo_x, hi_x = sorted((p[0], q[0]))
+        lo_y, hi_y = sorted((p[1], q[1]))
+        over = [k for k, r in rects.items() if k not in (a, b)
+                and r[0] + r[2] >= lo_x and r[0] <= hi_x and r[1] + r[3] >= lo_y and r[1] <= hi_y
+                and _hits(p, q, (r[0] + 1, r[1] + 1, r[2] - 2, r[3] - 2))]
+        if over:
+            out.append((a, b, over))
+    return out
 
 
 def bake(drawio=DRAWIO):
@@ -215,13 +275,17 @@ ruler_label_rect = Rect2({lx:g}, 0, {lw:g}, {lh:g})
 ruler_x = Vector2({x0:g}, {x1:g})
 bounds = Rect2({minx:g}, {miny:g}, {maxx - minx:g}, {maxy - miny:g})
 """
+    rects = {boxes[c][0]: boxes[c][1:] for c in boxes}
+    for a, b, over in crossings(rects, [(boxes[l[0]][0], boxes[l[1]][0], l[3:7]) for l in lines]):
+        waiting.append("the line %s -> %s crosses %s" % (id_name.get(a, a), id_name.get(b, b),
+                                                         ", ".join(id_name.get(o, o) for o in over)))
     return body, len(ids), len(lines), len(years), waiting
 
 
 def main():
     body, n, e, y, waiting = bake()
     for w in waiting:
-        print("not drawn yet: " + w)
+        print("to fix in the drawio: " + w)
     if "--check" in sys.argv:
         current = open(OUT, encoding="utf-8").read() if os.path.exists(OUT) else ""
         if current != body:

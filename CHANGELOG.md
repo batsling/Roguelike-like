@@ -24,6 +24,17 @@ For how the project is laid out and how its systems fit together, see
       game you hovered so you can reach its buttons, and a click pins it.
     - Games the run can't enter are greyed where they stand rather than
       removed.
+    - **No letter outside its box.** The boxes were sized for draw.io's
+      Helvetica, and this game's font wraps differently, so each name is
+      measured into its box and shrunk until it fits, width and height both. If
+      it can't fit at a readable size, the box is left without its name.
+    - **Lines stay off the boxes.** Lines are drawn under the boxes, as in
+      draw.io, and the run's route follows each drawn line exactly rather than
+      cutting centre to centre, so it can't clip a box the line avoids. The
+      bake lists every line that passes through a box other than its own two.
+      On 19 Nov there were two, both for the owner to move in the drawio:
+      Angband → Zorbus over Ancient Domains of Mystery, and Torneko's Great
+      Adventure → House of Necrosis over Shiren the Wanderer GB.
   - **The Collection keeps the computed constellations and the Tree**, with
     their filters.
   - **`tools/bake_drawio_map.py`** reads the drawio into
