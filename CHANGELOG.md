@@ -24,23 +24,14 @@ For how the project is laid out and how its systems fit together, see
   - **Map Calc's formulas were re-laid** (`map_calc.py`): Excel had saved all
     148,000 of them in a form `--check` doesn't recognise. The formulas mean
     the same thing.
-  - **`Roguelikes.drawio` and `RoguelikeMap.svg` match the sheet exactly**:
-    1,014 boxes for 1,014 games, 1,658 lines for 1,658 connections, 170
-    Dev/Series on both sides, every line attached to its boxes. That took
-    four changes (`tools/oneshots/_map_sync_18nov.py`,
-    `_connections_dev_series_from_map.py`):
-    - Grail, Lucky Hunter, Moonsigil Atlas, Teleglitch and Thysiastery are
-      drawn on their year rows, with their three lines. The two without one go
-      at the end of the 2026 column of unconnected games.
-    - Rogue → Beneath Apple Manor is deleted. It pointed at an older game and
-      the sheet never had it.
-    - Hack → NetHack, Caveblazers → Wildfrost and both Cataclysm forks are
-      Dev/Series on the sheet now, as the map always drew them. Fatal Labyrinth
-      → Dragon Crystal went the other way: the sheet was right, so the line is
-      blue.
-    - Five lines that ended next to a box rather than on it are attached.
-    The SVG is a fresh export from the drawio with draw.io 29.6.6, at the
-    owner's settings (scale 5, no border, white background).
+  - **The sheet's side of the map check.** `check_map_sync.py` found five
+    lines whose type the map and the sheet disagreed on. The owner settled
+    them: Hack → NetHack, Caveblazers → Wildfrost and both Cataclysm forks are
+    Dev/Series on the sheet now, as the map draws them
+    (`tools/oneshots/_connections_dev_series_from_map.py`). The map's side
+    (five undrawn games, Rogue → Beneath Apple Manor, Fatal Labyrinth → Dragon
+    Crystal's colour, two loose lines) the owner is redrawing by hand, so
+    `Roguelikes.drawio` and `RoguelikeMap.svg` stay as uploaded.
 
 - **Credit Card, and To the Moon at Balatro's rate (the owner, 17 Nov 2026).**
   - **Credit Card** is a new Uncommon Balatro joker, using Balatro's own art.
