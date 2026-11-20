@@ -650,7 +650,7 @@ There is no HUD strip. Every number is drawn once, by whatever owns it, which ta
 ### Elsewhere in the menus
 
 - **→ Optimal Path** — The shortest road from where you stand to the Amulet, rung by rung, with your shops marked. It lives in the offering's heading row, and on every offered card — a card's own button routes the path as it would be if you took it.
-- **🗺 Map** — The Optimal Path from where you stand. It lives in the header, so it opens from anywhere in a run, mid-game included. The switch at its top flips to the Full map: the whole drawn map with your route and the run's rifts on it, and back.
+- **🗺 Map** — The Optimal Path from where you stand. It lives in the header, so it opens from anywhere in a run, mid-game included. The switch at its top flips to the Full map: the whole drawn map with your route and the run's rifts on it, and back. On the full map, Owned games (the default) draws only the games you own and the lines between them; All games draws every one.
 - **✦ Atlas** — The star chart of every game, opened from the Collection. Not a run tool — a thing to look at.
 - **Collection** — Every item, scroll, enemy, event and status in the game, and whether you have met it.
 - **🏆 Tier List** — Your own ranking of every game you have beaten, across all runs, with the notes you wrote at the time.

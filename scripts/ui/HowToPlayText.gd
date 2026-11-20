@@ -1237,7 +1237,9 @@ static func _ch_screen() -> Dictionary:
 			_kv("🗺 Map", "The Optimal Path from where you stand. It lives in the "
 				+ "header, so it opens from anywhere in a run, mid-game included. "
 				+ "The switch at its top flips to the Full map: the whole drawn "
-				+ "map with your route and the run's rifts on it, and back."),
+				+ "map with your route and the run's rifts on it, and back. On the "
+				+ "full map, Owned games (the default) draws only the games you own "
+				+ "and the lines between them; All games draws every one."),
 			_kv("✦ Atlas", "The star chart of every game, opened from the "
 				+ "Collection. Not a run tool — a thing to look at."),
 			_kv("Collection", "Every item, scroll, enemy, event and status in the "

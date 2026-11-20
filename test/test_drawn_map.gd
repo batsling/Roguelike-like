@@ -338,3 +338,42 @@ func test_the_run_map_toggles_between_optimal_and_full() -> void:
 	assert_false(is_instance_valid(atlas), "Optimal closes the map")
 	assert_not_null(ui._route_map, "and opens the optimal path again")
 	ui._dismiss_route_map()
+
+# ALL GAMES / OWNED GAMES (the owner, 20 Nov 2026): the run's full map has both,
+# Owned by default, and Owned leaves every unowned game and its lines undrawn and
+# unpickable — except the run's own road and anchors.
+func test_the_full_map_shows_owned_games_by_default_and_can_show_all() -> void:
+	if _map == null:
+		pending("the drawn map is not baked")
+		return
+	var was: bool = AtlasView.owned_only
+	AtlasView.owned_only = true
+	var ui = _start_run()
+	var atlas = ui.open_full_map()
+	await wait_frames(2)
+	assert_not_null(atlas.find_child("OwnedToggle", true, false), "the switch is on the map")
+	assert_true(atlas.owned_filter_on(), "owned games is the default")
+	var unowned: int = -1
+	for i in range(atlas.layout.star_count()):
+		if not Ownership.is_owned(atlas.game_at(i)) and not atlas.route_stars().has(i) \
+				and i != atlas.current_index() and i != atlas.amulet_index():
+			unowned = i
+			break
+	if unowned < 0:
+		pending("every game off the route is owned")
+		ui._dismiss_route_map()
+		AtlasView.owned_only = was
+		return
+	assert_true(atlas.hidden(unowned), "an unowned game is not drawn")
+	assert_eq(atlas._pick_box(atlas.screen_box(unowned).get_center()), -1,
+		"and can't be pointed at")
+	for i in [atlas.current_index(), atlas.amulet_index()]:
+		if i >= 0:
+			assert_false(atlas.hidden(i), "the run's anchors always are")
+	var all_btn: Button = atlas.find_child("AllGames", true, false)
+	all_btn.pressed.emit()
+	await wait_frames(1)
+	assert_false(atlas.owned_filter_on(), "All games turns it off")
+	assert_false(atlas.hidden(unowned), "and the game is back")
+	ui._dismiss_route_map()
+	AtlasView.owned_only = was

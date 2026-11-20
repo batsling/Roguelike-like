@@ -129,8 +129,8 @@ const MAP_ARROW := 6.0
 # How wide an arrowhead opens, as a fraction of its length: the lines' heads and
 # the road's chevrons on the drawn map (thinner since 20 Nov 2026; draw.io's own
 # head is 0.4 and the computed skies' chevron 0.44).
-const MAP_ARROW_SPREAD := 0.25
-const MAP_CHEVRON_SPREAD := 0.28
+const MAP_ARROW_SPREAD := 0.18
+const MAP_CHEVRON_SPREAD := 0.22
 const MAP_MIN_TEXT_PX := 6
 const MAP_EDGE_ALPHA := 0.42
 const GRAIN_SIZE := 256
@@ -1059,6 +1059,49 @@ func rift_seams() -> Array:
 		out.append({"game": StringName(r.get("game", "")), "a": a, "b": b})
 	return out
 
+# OWNED GAMES ONLY (the owner, 20 Nov 2026: "two options on the full map that
+# shows all games and owned games with owned games set to default. having owned
+# games on will make the other games and arrows invisible"). On the run's drawn
+# map, a game the player doesn't own (Ownership.is_owned) is not drawn, nor is any
+# line touching it, nor a rift with an end on it, and it can't be pointed at. The
+# run's own route, the road walked and the two anchors stay whatever they are, so
+# a run on the full catalog never has its road run into nothing.
+#
+# Static, so the choice holds from one opening of the map to the next.
+static var owned_only: bool = true
+var _owned_flags: PackedByteArray = PackedByteArray()
+
+func owned_filter_on() -> bool:
+	return owned_only and not pure_catalog and has_layout() and layout.is_drawn_map()
+
+func hidden(i: int) -> bool:
+	if not owned_filter_on():
+		return false
+	if _owned_flags.size() != layout.star_count():
+		_owned_flags.resize(layout.star_count())
+		for k in range(layout.star_count()):
+			_owned_flags[k] = 1 if Ownership.is_owned(game_at(k)) else 0
+	if _owned_flags[i] == 1:
+		return false
+	if route_stars().has(i):
+		return false
+	return i != current_index() and i != amulet_index() and i != preview_index()
+
+func set_owned_only(on: bool) -> void:
+	if owned_only == on:
+		return
+	owned_only = on
+	if _hovered >= 0 and hidden(_hovered):
+		_hovered = -1
+	if _selected >= 0 and hidden(_selected):
+		select(-1)
+	if _selected_edge >= 0 and has_layout() and (hidden(layout.edges[_selected_edge * 2])
+			or hidden(layout.edges[_selected_edge * 2 + 1])):
+		select_edge(-1)
+	_rebuild_mode_strip()
+	_refresh_hud()
+	_redraw()
+
 func off_run(i: int) -> bool:
 	if pure_catalog or not has_layout() or not layout.is_drawn_map():
 		return false
@@ -1323,6 +1366,8 @@ func _pick_box(at: Vector2) -> int:
 	var best: int = -1
 	var best_d: float = INF
 	for i in range(layout.star_count()):
+		if hidden(i):
+			continue
 		var r: Rect2 = screen_box(i).grow(3.0)
 		if r.has_point(at):
 			var d: float = r.get_center().distance_squared_to(at)
@@ -1351,6 +1396,8 @@ func pick_edge(at: Vector2) -> int:
 		# Only links actually on screen can be clicked, so what you see is what
 		# you get: when a star is selected the sky shows just its links.
 		if _selected >= 0 and a != _selected and b != _selected:
+			continue
+		if hidden(a) or hidden(b):
 			continue
 		var pa: Vector2 = to_screen(layout.position_of(a))
 		var pb: Vector2 = to_screen(layout.position_of(b))
@@ -1435,18 +1482,14 @@ func _build() -> void:
 	add_child(root)
 
 	root.add_child(_build_header())
-	# THE SWITCH BACK TO THE OPTIMAL PATH, when the run opened this as its full map.
-	if to_optimal.is_valid():
-		var strip := PanelContainer.new()
-		strip.name = "MapMode"
-		strip.add_theme_stylebox_override("panel", UITheme.flat(UITheme.BG, 0, 6, 0))
-		var mid := CenterContainer.new()
-		strip.add_child(mid)
-		mid.add_child(map_mode_toggle(true, func():
-			var go: Callable = to_optimal
-			_finish()
-			go.call(), Callable()))
-		root.add_child(strip)
+	# THE TWO SWITCHES of the run's drawn map: back to the Optimal Path (when the
+	# run opened this as its full map), and All games / Owned games.
+	if not pure_catalog and layout.is_drawn_map():
+		_mode_strip = PanelContainer.new()
+		_mode_strip.name = "MapMode"
+		_mode_strip.add_theme_stylebox_override("panel", UITheme.flat(UITheme.BG, 0, 6, 0))
+		root.add_child(_mode_strip)
+		_rebuild_mode_strip()
 	if pure_catalog:
 		_filter_bar = PanelContainer.new()
 		_filter_bar.add_theme_stylebox_override("panel", UITheme.flat(UITheme.BG, 0, 8, 0))
@@ -2339,8 +2382,20 @@ func _refresh_hud() -> void:
 		var root_game: GameData = Data.get_game(layout.id_at(_tree_root_index()))
 		shape = "rooted at %s, %d deep" % [
 			root_game.display_name if root_game != null else "?", _tree_depth()]
+	var games_n: int = layout.star_count()
+	var links_n: int = layout.edge_count()
+	if owned_filter_on():
+		scope = " · owned games"
+		games_n = 0
+		for i in range(layout.star_count()):
+			if not hidden(i):
+				games_n += 1
+		links_n = 0
+		for e in range(layout.edge_count()):
+			if not hidden(layout.edges[e * 2]) and not hidden(layout.edges[e * 2 + 1]):
+				links_n += 1
 	_hud.text = "%s · %s · %s%s · %s" % [
-		Plural.count(layout.star_count(), "game"), Plural.count(layout.edge_count(), "link"),
+		Plural.count(games_n, "game"), Plural.count(links_n, "link"),
 		shape, scope, detail]
 	var run_line: String = run_summary()
 	if run_line != "":
@@ -2407,6 +2462,29 @@ func _finish() -> void:
 # Set by the run page when this is its FULL MAP: the toggle at the top switches to
 # the Optimal Path by calling it (this view closes first).
 var to_optimal: Callable = Callable()
+var _mode_strip: PanelContainer = null
+
+func _rebuild_mode_strip() -> void:
+	if _mode_strip == null or not is_instance_valid(_mode_strip):
+		return
+	for c in _mode_strip.get_children():
+		_mode_strip.remove_child(c)
+		c.queue_free()
+	var mid := CenterContainer.new()
+	_mode_strip.add_child(mid)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", UITheme.GAP_BREAK)
+	mid.add_child(row)
+	if to_optimal.is_valid():
+		row.add_child(map_mode_toggle(true, func():
+			var go: Callable = to_optimal
+			_finish()
+			go.call(), Callable()))
+	var games := segmented(["All games", "Owned games"], ["AllGames", "OwnedGames"],
+		1 if owned_only else 0, [func(): set_owned_only(false), func(): set_owned_only(true)],
+		["Every game on the map.", "Only the games you own, and the lines between them."])
+	games.name = "OwnedToggle"
+	row.add_child(games)
 
 # THE MAP'S TWO VIEWS, ONE SWITCH (the owner, 20 Nov 2026: "lets add the map and
 # have a prominent toggle from optimal to full"). Two big buttons side by side at
@@ -2417,39 +2495,48 @@ const MODE_W := 230.0
 const MODE_H := 42.0
 
 static func map_mode_toggle(full: bool, to_optimal_cb: Callable, to_full_cb: Callable) -> Control:
-	var row := HBoxContainer.new()
+	var row: Control = segmented(["→  Optimal path", "🗺  Full map"], ["Optimal", "Full"],
+		1 if full else 0, [to_optimal_cb, to_full_cb],
+		["The shortest road to the goal, decision by decision.",
+			"The whole drawn map, with your route on it."])
 	row.name = "MapModeToggle"
+	return row
+
+# A row of joined buttons, one of them lit gold: the map's switches. Pressing the
+# lit one does nothing; pressing another calls its callback.
+static func segmented(labels: Array, names: Array, selected: int, callbacks: Array,
+		tips: Array = []) -> Control:
+	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", UITheme.GAP_NONE)
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	for side in [false, true]:
-		var on: bool = side == full
+	var n: int = labels.size()
+	for k in range(n):
+		var on: bool = k == selected
 		var b := Button.new()
-		b.name = "Full" if side else "Optimal"
-		b.text = "🗺  Full map" if side else "→  Optimal path"
+		b.name = String(names[k])
+		b.text = String(labels[k])
 		b.custom_minimum_size = Vector2(MODE_W, MODE_H)
 		b.add_theme_font_size_override("font_size", UITheme.FONT_SUB)
 		b.toggle_mode = true
 		b.button_pressed = on
 		b.focus_mode = Control.FOCUS_NONE
-		var left: bool = not side
 		var fill: Color = UITheme.GOLD if on else UITheme.PANEL
 		var edge: Color = UITheme.GOLD if on else UITheme.BORDER
 		for state in ["normal", "hover", "pressed", "hover_pressed", "focus"]:
 			var sb := UITheme.flat(fill if state != "hover" or on else UITheme.PANEL_HI,
 				0, 10, 2, edge)
-			sb.corner_radius_top_left = 10 if left else 0
-			sb.corner_radius_bottom_left = 10 if left else 0
-			sb.corner_radius_top_right = 0 if left else 10
-			sb.corner_radius_bottom_right = 0 if left else 10
+			sb.corner_radius_top_left = 10 if k == 0 else 0
+			sb.corner_radius_bottom_left = 10 if k == 0 else 0
+			sb.corner_radius_top_right = 10 if k == n - 1 else 0
+			sb.corner_radius_bottom_right = 10 if k == n - 1 else 0
 			b.add_theme_stylebox_override(state, sb)
 		var ink: Color = UITheme.BG_DEEP if on else UITheme.TEXT
 		for c in ["font_color", "font_hover_color", "font_pressed_color",
 				"font_hover_pressed_color", "font_focus_color"]:
 			b.add_theme_color_override(c, ink)
-		b.tooltip_text = ("You are on the " + ("full map." if side else "optimal path.")) if on \
-			else ("The whole drawn map, with your route on it." if side
-				else "The shortest road to the goal, decision by decision.")
-		var cb: Callable = to_full_cb if side else to_optimal_cb
+		if k < tips.size():
+			b.tooltip_text = String(tips[k])
+		var cb: Callable = callbacks[k] if k < callbacks.size() else Callable()
 		b.pressed.connect(func():
 			if on:
 				b.set_pressed_no_signal(true)
@@ -2623,10 +2710,12 @@ class StarCanvas extends Control:
 		# The lines, under the boxes as in draw.io.
 		# Thin, like a pen line (the owner, 19 Nov 2026: "a little thinner").
 		var width: float = clampf(sc * 0.55, 0.7, 1.5)
-		var head: float = clampf(AtlasView.MAP_ARROW * sc, 3.0, 12.0)
+		var head: float = clampf(AtlasView.MAP_ARROW * sc, 3.0, 10.0)
 		for pair in range(lay.edge_count()):
 			var a: int = lay.edges[pair * 2]
 			var b: int = lay.edges[pair * 2 + 1]
+			if view.hidden(a) or view.hidden(b):
+				continue
 			var ends: PackedVector2Array = lay.edge_ends(pair)
 			var pa: Vector2 = view.to_screen(ends[0])
 			var pb: Vector2 = view.to_screen(ends[1])
@@ -2651,7 +2740,8 @@ class StarCanvas extends Control:
 					pb - dir * head - perp * head * AtlasView.MAP_ARROW_SPREAD]), col)
 
 		# The run's rifts: the seams under the roads, the badges over the boxes.
-		var seams: Array = view.rift_seams()
+		var seams: Array = view.rift_seams().filter(func(sm):
+			return not view.hidden(sm["a"]) and (int(sm["b"]) < 0 or not view.hidden(sm["b"])))
 		var arcs: Array = []
 		for seam in seams:
 			arcs.append(_rift_arc(seam))
@@ -2665,7 +2755,7 @@ class StarCanvas extends Control:
 		var name_px: int = int(round(AtlasView.MAP_NAME_FONT * sc))
 		for i in range(lay.star_count()):
 			var r: Rect2 = view.screen_box(i)
-			if not vis.intersects(r.grow(2.0)):
+			if not vis.intersects(r.grow(2.0)) or view.hidden(i):
 				continue
 			var faded: bool = view.off_run(i) or (focused and not view._near.has(i))
 			var fill: Color = AtlasView.MAP_BOX
@@ -2988,9 +3078,9 @@ class StarCanvas extends Control:
 		# the map become thinner"): a pen-weight road over pen-weight lines, with
 		# narrower arrowheads. The computed skies keep the heavier road.
 		var drawn: bool = lay.is_drawn_map()
-		var core: float = clampf(view._scale * 0.28, 1.5, 3.0) if drawn \
+		var core: float = clampf(view._scale * 0.2, 1.2, 2.2) if drawn \
 			else clampf(view._scale * 0.42, 2.0, 5.0)
-		var casing: float = core + (maxf(1.2, core * 0.5) if drawn else maxf(2.0, core * 0.75))
+		var casing: float = core + (maxf(1.0, core * 0.45) if drawn else maxf(2.0, core * 0.75))
 		var dash: float = maxf(9.0, casing * 2.4)
 
 		for seg in segments:
@@ -3013,7 +3103,7 @@ class StarCanvas extends Control:
 		# Arrowheads point the way the run travels: along the road ahead a DAG edge
 		# always runs from the game nearer you to the game nearer the Amulet, and
 		# along the walked road from the older game to the newer one.
-		var head: float = clampf(core * 3.4, 7.0, 14.0) if drawn else clampf(core * 3.1, 8.0, 24.0)
+		var head: float = clampf(core * 3.6, 6.0, 11.0) if drawn else clampf(core * 3.1, 8.0, 24.0)
 		var spread: float = AtlasView.MAP_CHEVRON_SPREAD if drawn else 0.44
 		for seg in segments:
 			var from_i: int = int(seg[0])
