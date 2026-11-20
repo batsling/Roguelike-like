@@ -6320,7 +6320,9 @@ func _refresh_route_strip() -> void:
 	if _phase == Phase.START_SELECT or GameState.current_game_id == &"":
 		return
 
-	# GAMES PLAYED, and only games played. The strip used to close on the AMULET,
+	# GAMES PLAYED, and only games played — the Amulet is back at the strip's far
+	# end since 20 Nov 2026, but as its own gold tile past a gap that says how
+	# far it is, never as a stop on the road. The strip used to close on the AMULET,
 	# with the gap not yet walked drawn dashed — which meant the header carried a
 	# cover for a game the player had never been to, sitting right beside the ones
 	# they had, reading as "and then you went here". The road ahead has two screens
@@ -6364,9 +6366,26 @@ func _refresh_route_strip() -> void:
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_route_strip.add_child(spacer)
 
+	# THE AMULET, AT THE FAR END (the owner, 20 Nov 2026: "all the way to the right
+	# of that be the amulet game"). Kept apart from the road by the spacer and by
+	# how many steps away it is, and ringed gold with a 🏆, so it never reads as a
+	# stop the run has made — which is why it was once taken off the strip.
+	var amulet: StringName = GameState.goal_game_id()
+	if amulet != &"" and amulet != GameState.current_game_id:
+		var steps: int = int(RunGraph.bfs_distances(amulet).get(GameState.current_game_id, -1))
+		var gap := Label.new()
+		gap.name = "AmuletSteps"
+		gap.text = ("· · %s · ·" % Plural.count(steps, "step")) if steps > 0 else "· · ·"
+		gap.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		gap.custom_minimum_size.y = STRIP_COVER.y
+		gap.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
+		gap.add_theme_color_override("font_color", UITheme.GOLD.lerp(UITheme.TEXT_FAINT, 0.4))
+		_route_strip.add_child(gap)
+		_route_strip.add_child(_strip_amulet(amulet, steps))
+
 # One cover on the strip. `is_here` rings the game you are standing on; every
-# other stop is a plain frame. There is no Amulet tile any more — see
-# _refresh_route_strip: this strip is the road behind, and the Amulet is ahead.
+# other stop is a plain frame. The Amulet has its own tile at the far end of the
+# strip (_strip_amulet), set apart so it never reads as a stop.
 func _strip_stop(id: StringName, is_here: bool, beaten: bool = false) -> Control:
 	var game: GameData = GameLoop2.game_at(id)
 	if game == null:
@@ -6380,7 +6399,7 @@ func _strip_stop(id: StringName, is_here: bool, beaten: bool = false) -> Control
 	var border: Color = UITheme.ACCENT if is_here \
 		else (UITheme.SUCCESS if beaten else UITheme.UNBEATEN)
 	var width: int = 2 if is_here else 1
-	var frame := PanelContainer.new()
+	var frame := HoverPanel.new()
 	frame.add_theme_stylebox_override("panel",
 		UITheme.flat(UITheme.BG_DEEP, 3, 1, width, border))
 	frame.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -6391,6 +6410,11 @@ func _strip_stop(id: StringName, is_here: bool, beaten: bool = false) -> Control
 	else:
 		frame.tooltip_text = "%s — %s" % [name_text,
 			"beaten" if beaten else "walked away from"]
+	# HOVER FOR ITS PROFILE (the owner, 20 Nov 2026), the map's game card, headed
+	# with what this stop was.
+	if game != null:
+		HoverCard.profile(frame, game.id, "▶ You are here" if is_here
+			else ("Beaten on this visit" if beaten else "Walked away from"), border)
 
 	if game != null and game.cover_image != null:
 		var art := TextureRect.new()
@@ -6410,6 +6434,35 @@ func _strip_stop(id: StringName, is_here: bool, beaten: bool = false) -> Control
 		blank.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 		frame.add_child(blank)
 	return frame
+
+# The Amulet's tile: the same small cover, ringed gold, with a 🏆 on its corner.
+# Its hover is its profile, headed with how far it is.
+func _strip_amulet(id: StringName, steps: int) -> Control:
+	var frame: Control = _strip_stop(id, false)
+	frame.remove_meta("stop")
+	frame.set_meta("amulet", id)
+	frame.name = "AmuletTile"
+	frame.add_theme_stylebox_override("panel",
+		UITheme.flat(UITheme.BG_DEEP, 3, 1, 2, UITheme.GOLD))
+	var game: GameData = Data.get_game(id)
+	var name_text: String = game.display_name if game != null else String(id)
+	frame.tooltip_text = "🏆 %s — %s" % [name_text, GameState.goal_word()]
+	HoverCard.profile(frame, id, "🏆 %s — %s" % [GameState.goal_word().capitalize(),
+		Plural.count(steps, "step") + " away" if steps > 0 else "the goal"], UITheme.GOLD)
+	var cup := Label.new()
+	cup.text = "🏆"
+	cup.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
+	cup.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	cup.size_flags_horizontal = Control.SIZE_SHRINK_END
+	cup.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	frame.add_child(cup)
+	return frame
+
+# The Amulet tile at the strip's end, or null before the run has one.
+func route_strip_amulet() -> Control:
+	if _route_strip == null:
+		return null
+	return _route_strip.get_node_or_null("AmuletTile")
 
 func _strip_arrow() -> Control:
 	var a := ROUTE_ARROW.new()

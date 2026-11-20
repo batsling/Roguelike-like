@@ -67,6 +67,23 @@ extends RefCounted
 const ART := 44.0
 const WRAP := 250.0
 const META := "hover_card"
+# Set on a node to give it a game's profile as its hover (`profile`).
+const PROFILE_META := "hover_profile"
+const PROFILE_NOTE := "hover_profile_note"
+const PROFILE_NOTE_COLOR := "hover_profile_note_color"
+const PROFILE_SCRIPT := "res://scripts/ui/GameProfile.gd"
+
+# Make `node`'s hover the profile of the game `game_id`, with `note` as its first
+# line. The node must be one of the hover wrappers (HoverPanel, HoverButton…).
+static func profile(node: Control, game_id: StringName, note: String = "",
+		note_color: Color = UITheme.ACCENT) -> void:
+	if node == null:
+		return
+	node.set_meta(PROFILE_META, String(game_id))
+	node.set_meta(PROFILE_NOTE, note)
+	node.set_meta(PROFILE_NOTE_COLOR, note_color)
+	if node.tooltip_text == "":
+		node.tooltip_text = " "
 
 # Store `cfg` on `node` and seed the plain tooltip Godot needs before it will ask
 # for a custom one. Safe to call on any Control; the card only appears on the
@@ -93,7 +110,15 @@ static func attach(node: Control, cfg: Dictionary) -> void:
 # The card for whatever was attached to `node`, or null when nothing was — which
 # is what `_make_custom_tooltip` must return to fall back to the plain tooltip.
 static func of(node: Control) -> Control:
-	if node == null or not node.has_meta(META):
+	if node == null:
+		return null
+	# A GAME'S PROFILE (GameProfile.gd), for a node that names a game rather than
+	# carrying a card: the header strip's covers. Built only when hovered.
+	if node.has_meta(PROFILE_META):
+		var game: GameData = Data.get_game(StringName(node.get_meta(PROFILE_META)))
+		return load(PROFILE_SCRIPT).build(game, String(node.get_meta(PROFILE_NOTE, "")),
+			node.get_meta(PROFILE_NOTE_COLOR, UITheme.ACCENT))
+	if not node.has_meta(META):
 		return null
 	var cfg = node.get_meta(META)
 	return build(cfg) if cfg is Dictionary else null

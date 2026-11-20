@@ -709,10 +709,19 @@ into `data/atlas_layout_map.tres`, an `AtlasLayout` with the drawn-map fields
 (`box_w`/`box_h`, `edge_dev`, `edge_anchors`, the `ruler_*` arrays;
 `is_drawn_map()`), and `AtlasView` draws it outside the Collection: white paper,
 each game a box with its name, black and blue lines with draw.io's arrowheads,
-the grey year rules. Hovering a box puts up the game's card with its art. A game
-the run can't enter (outside the game filter, or off the run's main group) is
-greyed in place, never removed, because the shape is the point. The
+the grey year rules. Hovering a box lights it and puts up the game's card with
+its art. A game the run can't enter (outside the game filter, or off the run's
+main group) is greyed in place, because the shape is the point. The
 Collection keeps the computed constellations and the Tree.
+
+In a run it is the **Full map** half of the 🗺 Map's "Optimal path | Full map"
+switch (`Overworld2.open_full_map`), and it has a second switch, **All games |
+Owned games**, Owned by default (the owner, 20 Nov 2026): with Owned on, a game
+the player doesn't own is not drawn at all, nor its lines, unless the run's own
+road or its anchors use it (`AtlasView.hidden`). The run's **rifts** are drawn
+on it as dashed teal seams with a clickable swirl badge, each curve picked from
+a range of bows to stay on the paper and cross as few boxes as it can
+(`AtlasView.rift_curves`, docs/rifts-design.md §9).
 
 The drawio is upstream of that file the way the sheet is upstream of `data/`:
 redraw, upload the `.drawio` alone (the SVG is exported from it), rerun:

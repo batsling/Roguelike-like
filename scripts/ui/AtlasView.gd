@@ -1091,6 +1091,8 @@ func set_owned_only(on: bool) -> void:
 	if owned_only == on:
 		return
 	owned_only = on
+	_selected_rift = -1
+	_hovered_rift = -1
 	if _hovered >= 0 and hidden(_hovered):
 		_hovered = -1
 	if _selected >= 0 and hidden(_selected):
@@ -1101,6 +1103,215 @@ func set_owned_only(on: bool) -> void:
 	_rebuild_mode_strip()
 	_refresh_hud()
 	_redraw()
+
+# THE RIFTS AS DRAWN: each seam with the curve it is drawn on, in the map's own
+# units. A two-ended rift is a quadratic curve from one box's border to the
+# other's, bowed off the straight line so it never reads as an influence line —
+# and bowed WHICHEVER WAY, AND BY HOWEVER MUCH, CROSSES THE FEWEST BOXES (the
+# owner, 20 Nov 2026: "have the rift curve in a way that makes it not go through
+# any boxes if possible while keeping it looking good"). The bow is tried at a
+# handful of depths on both sides; a clean curve wins, then a shallower one, then
+# the upward one. A keyed rift has one end and is a short hook off its box.
+#
+# Worked out once per set of rifts and per All / Owned (the boxes to avoid are
+# the ones drawn), not per frame.
+const RIFT_BOWS := [0.16, 0.22, 0.30, 0.38, 0.46, 0.56]
+# Where along the chord the bow peaks: the middle first, then leaning toward
+# either end, which threads a curve past a box sitting under its middle.
+const RIFT_LEANS := [0.5, 0.35, 0.65]
+const RIFT_SAMPLES := 28
+const RIFT_CLEAR := 4.0      # map units of paper kept between a curve and a box
+const RIFT_GRID := 320.0     # the bucket size boxes are filed under for the search
+
+var _rift_curves: Array = []
+var _rift_curves_key: String = ""
+var _box_grid: Dictionary = {}
+var _selected_rift: int = -1
+var _hovered_rift: int = -1
+
+func rift_curves() -> Array:
+	if pure_catalog or not has_layout() or not layout.is_drawn_map():
+		return []
+	var key: String = "%s|%s" % [str(RunGraph.rifts()), owned_filter_on()]
+	if key == _rift_curves_key:
+		return _rift_curves
+	_rift_curves_key = key
+	_rift_curves = []
+	for seam in rift_seams():
+		if hidden(seam["a"]) or (int(seam["b"]) >= 0 and hidden(seam["b"])):
+			continue
+		var c: Dictionary = (seam as Dictionary).duplicate()
+		if int(seam["b"]) >= 0:
+			c.merge(_best_bow(int(seam["a"]), int(seam["b"])), true)
+		_rift_curves.append(c)
+	if _selected_rift >= _rift_curves.size():
+		_selected_rift = -1
+	return _rift_curves
+
+# The ends and the control point of the cleanest curve between boxes a and b:
+# {"pa", "pb", "c", "crosses"} in map units.
+func _best_bow(a: int, b: int) -> Dictionary:
+	var ra: Rect2 = layout.box_of(a)
+	var rb: Rect2 = layout.box_of(b)
+	var pa: Vector2 = border_toward(ra, rb.get_center())
+	var pb: Vector2 = border_toward(rb, ra.get_center())
+	var d: Vector2 = pb - pa
+	var up := Vector2(-d.y, d.x).normalized()
+	if up.y > 0.0:
+		up = -up
+	var best: Dictionary = {}
+	var best_key: Array = []
+	for side in [1.0, -1.0]:
+		for k in RIFT_BOWS:
+			for li in range(RIFT_LEANS.size()):
+				var lean: float = RIFT_LEANS[li]
+				var c: Vector2 = pa.lerp(pb, lean) + up * side * d.length() * k
+				var hits: int = _curve_crossings(pa, c, pb, a, b)
+				# ON THE PAPER before anything: a curve that dips off the sheet onto
+				# the dark background is worse than one that crosses a box. Then
+				# clean, then shallow, then centred, then upward.
+				var rank: Array = [0 if _curve_on_paper(pa, c, pb) else 1, hits, k, li,
+					0 if side > 0.0 else 1]
+				if best.is_empty() or _rank_before(rank, best_key):
+					best = {"pa": pa, "pb": pb, "c": c, "crosses": hits}
+					best_key = rank
+	return best
+
+func _rank_before(x: Array, y: Array) -> bool:
+	for i in range(x.size()):
+		if x[i] != y[i]:
+			return x[i] < y[i]
+	return false
+
+# Where the line from a box's centre toward `to` leaves the box.
+static func border_toward(r: Rect2, to: Vector2) -> Vector2:
+	var c: Vector2 = r.get_center()
+	var d: Vector2 = to - c
+	if d == Vector2.ZERO:
+		return c
+	var k: float = 1.0
+	if d.x != 0.0:
+		k = minf(k, r.size.x * 0.5 / absf(d.x))
+	if d.y != 0.0:
+		k = minf(k, r.size.y * 0.5 / absf(d.y))
+	return c + d * k
+
+static func bezier(pa: Vector2, c: Vector2, pb: Vector2, t: float) -> Vector2:
+	return pa.lerp(c, t).lerp(c.lerp(pb, t), t)
+
+# Whether the whole curve, and its badge's ring, stays inside the paper the map is
+# drawn on (the bake's bounds, which pad the drawing with a margin).
+func _curve_on_paper(pa: Vector2, c: Vector2, pb: Vector2) -> bool:
+	var paper: Rect2 = layout.bounds.grow(-60.0)
+	for s in range(0, RIFT_SAMPLES + 1):
+		if not paper.has_point(bezier(pa, c, pb, float(s) / RIFT_SAMPLES)):
+			return false
+	return true
+
+# How many drawn boxes, other than its own two, the curve passes through.
+func _curve_crossings(pa: Vector2, c: Vector2, pb: Vector2, a: int, b: int) -> int:
+	if _box_grid.is_empty():
+		for i in range(layout.star_count()):
+			var r: Rect2 = layout.box_of(i)
+			for gx in range(floori(r.position.x / RIFT_GRID), floori(r.end.x / RIFT_GRID) + 1):
+				for gy in range(floori(r.position.y / RIFT_GRID), floori(r.end.y / RIFT_GRID) + 1):
+					var cell := Vector2i(gx, gy)
+					if not _box_grid.has(cell):
+						_box_grid[cell] = []
+					(_box_grid[cell] as Array).append(i)
+	var hit: Dictionary = {}
+	var prev: Vector2 = pa
+	for s in range(1, RIFT_SAMPLES + 1):
+		var p: Vector2 = bezier(pa, c, pb, float(s) / RIFT_SAMPLES)
+		var seg := Rect2(prev, Vector2.ZERO).expand(p)
+		for gx in range(floori(seg.position.x / RIFT_GRID), floori(seg.end.x / RIFT_GRID) + 1):
+			for gy in range(floori(seg.position.y / RIFT_GRID), floori(seg.end.y / RIFT_GRID) + 1):
+				for i in _box_grid.get(Vector2i(gx, gy), []):
+					if i == a or i == b or hit.has(i) or hidden(i):
+						continue
+					if segment_hits_rect(prev, p, layout.box_of(i).grow(RIFT_CLEAR)):
+						hit[i] = true
+		prev = p
+	return hit.size()
+
+# Liang–Barsky: whether the segment p→q touches the rectangle r.
+static func segment_hits_rect(p: Vector2, q: Vector2, r: Rect2) -> bool:
+	var d: Vector2 = q - p
+	var t0: float = 0.0
+	var t1: float = 1.0
+	for side in [[-d.x, p.x - r.position.x], [d.x, r.end.x - p.x],
+			[-d.y, p.y - r.position.y], [d.y, r.end.y - p.y]]:
+		var pp: float = side[0]
+		var qq: float = side[1]
+		if pp == 0.0:
+			if qq < 0.0:
+				return false
+		else:
+			var t: float = qq / pp
+			if pp < 0.0:
+				t0 = maxf(t0, t)
+			else:
+				t1 = minf(t1, t)
+			if t0 > t1:
+				return false
+	return true
+
+# A rift's curve on screen, as points; the badge sits at its middle (its end for a
+# keyed rift).
+func rift_arc(k: int) -> PackedVector2Array:
+	var curve: Dictionary = rift_curves()[k]
+	var pts := PackedVector2Array()
+	if int(curve["b"]) < 0:
+		var ra: Rect2 = screen_box(curve["a"])
+		var p0 := Vector2(ra.end.x, ra.position.y)
+		var reach: float = clampf(_scale * 90.0, 36.0, 120.0)
+		var p1: Vector2 = p0 + Vector2(reach, -reach * 0.8)
+		var c1: Vector2 = (p0 + p1) * 0.5 + Vector2(0, -reach * 0.35)
+		for i in range(33):
+			pts.append(bezier(p0, c1, p1, float(i) / 32.0))
+		return pts
+	for i in range(33):
+		pts.append(to_screen(bezier(curve["pa"], curve["c"], curve["pb"], float(i) / 32.0)))
+	return pts
+
+func rift_badge_at(k: int) -> Vector2:
+	var pts: PackedVector2Array = rift_arc(k)
+	return pts[pts.size() - 1] if int(rift_curves()[k]["b"]) < 0 else pts[pts.size() / 2]
+
+func rift_badge_radius() -> float:
+	return clampf(_scale * 12.0, 7.0, 20.0)
+
+# The rift under `at`: its badge, or within a few pixels of its curve. -1 if none.
+func pick_rift(at: Vector2) -> int:
+	var curves: Array = rift_curves()
+	for k in range(curves.size()):
+		if rift_badge_at(k).distance_to(at) <= rift_badge_radius() + 4.0:
+			return k
+	for k in range(curves.size()):
+		var pts: PackedVector2Array = rift_arc(k)
+		for i in range(pts.size() - 1):
+			if at.distance_to(Geometry2D.get_closest_point_to_segment(at, pts[i], pts[i + 1])) <= 6.0:
+				return k
+	return -1
+
+# CLICKING A RIFT (the owner, 20 Nov 2026: "make rifts clickable") puts up its
+# card: the rift game's profile, the two games it joins, and the buttons to play
+# it. Public so a test can do it without a click.
+func select_rift(k: int) -> void:
+	_selected_rift = k
+	if k >= 0:
+		_selected = -1
+		_selected_edge = -1
+		_near.clear()
+		var curve: Dictionary = rift_curves()[k]
+		_near[curve["a"]] = true
+		if int(curve["b"]) >= 0:
+			_near[curve["b"]] = true
+	_refresh_card()
+	_redraw()
+
+func selected_rift() -> int:
+	return _selected_rift
 
 func off_run(i: int) -> bool:
 	if pure_catalog or not has_layout() or not layout.is_drawn_map():
@@ -1428,6 +1639,7 @@ func select_edge(e: int) -> void:
 	_selected_edge = e
 	if e >= 0:
 		_selected = -1
+		_selected_rift = -1
 		_near.clear()
 	_refresh_card()
 	_redraw()
@@ -1437,6 +1649,7 @@ func selected_edge_index() -> int:
 
 func select(i: int) -> void:
 	_selected = i
+	_selected_rift = -1
 	if i >= 0:
 		_selected_edge = -1
 	else:
@@ -1901,6 +2114,9 @@ func _refresh_card() -> void:
 	if _selected_edge >= 0 and has_layout():
 		_fill_connection_card()
 		return
+	if _selected_rift >= 0 and has_layout() and _selected_rift < rift_curves().size():
+		_fill_rift_card(rift_curves()[_selected_rift])
+		return
 	var sel: int = card_star()
 	if sel < 0 or not has_layout():
 		_card.visible = false
@@ -2012,6 +2228,56 @@ func _refresh_card() -> void:
 		steam.pressed.connect(func(): game.open_steam_page())
 		_card_box.add_child(steam)
 
+	var dismiss := Button.new()
+	dismiss.text = "Dismiss"
+	dismiss.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
+	dismiss.pressed.connect(func(): select(-1))
+	_card_box.add_child(dismiss)
+
+const GAME_PROFILE := preload("res://scripts/ui/GameProfile.gd")
+
+# A RIFT'S CARD: what it is, the game in it (its profile, as the header strip's
+# hover shows a game), which two games it joins, and the buttons to play it.
+func _fill_rift_card(curve: Dictionary) -> void:
+	_card.visible = true
+	_set_card_width(272.0)
+	var head := Label.new()
+	head.text = "🌀  Rift"
+	head.add_theme_font_size_override("font_size", UITheme.FONT_SUB)
+	head.add_theme_color_override("font_color", UITheme.RIFT)
+	_card_box.add_child(head)
+	var game: GameData = Data.get_game(StringName(curve["game"]))
+	var names: Array = []
+	for end in [curve["a"], curve["b"]]:
+		if int(end) >= 0:
+			var g: GameData = game_at(int(end))
+			names.append(g.display_name if g != null else "?")
+	var what := Label.new()
+	if names.size() == 2:
+		what.text = ("Dimensions merged here: a way between %s and %s, through a game "
+			+ "that is not on the map. No influence — a rift.") % names
+	else:
+		what.text = ("A keyed rift: one way into %s, through a game that is not on "
+			+ "the map.") % names[0]
+	what.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	what.custom_minimum_size.x = CARD_ART_WIDTH
+	what.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
+	what.add_theme_color_override("font_color", UITheme.TEXT_DIM)
+	_card_box.add_child(what)
+	if game != null:
+		GAME_PROFILE.fill(_card_box, game)
+		if game.has_launch_target():
+			var play := Button.new()
+			play.text = "▶  Play the real game"
+			play.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
+			play.pressed.connect(func(): game.launch())
+			_card_box.add_child(play)
+		if game.has_steam_page():
+			var steam := Button.new()
+			steam.text = "🎮  Steam page"
+			steam.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
+			steam.pressed.connect(func(): game.open_steam_page())
+			_card_box.add_child(steam)
 	var dismiss := Button.new()
 	dismiss.text = "Dismiss"
 	dismiss.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
@@ -2382,6 +2648,12 @@ func _on_search(text: String) -> void:
 func _refresh_hud() -> void:
 	if _hud == null:
 		return
+	# NOT ON THE RUN'S DRAWN MAP (the owner, 20 Nov 2026): where you are and the
+	# Amulet are on the run's own header strip, so the line stays empty — it is
+	# kept as the header's spacer.
+	if not pure_catalog and has_layout() and layout.is_drawn_map():
+		_hud.text = ""
+		return
 	if not has_layout():
 		_hud.text = "No baked layout — run tools/bake_atlas.py"
 		return
@@ -2611,8 +2883,14 @@ func _on_canvas_input(event: InputEvent) -> void:
 				# star is what was meant.
 				if _drag_moved < 5.0:
 					var hit: int = pick(mb.position)
+					var rift: int = pick_rift(mb.position) if hit < 0 else -1
 					if hit >= 0:
 						select(-1 if hit == _selected else hit)
+					elif rift >= 0:
+						if rift == _selected_rift:
+							select(-1)
+						else:
+							select_rift(rift)
 					else:
 						var link: int = pick_edge(mb.position)
 						if link >= 0:
@@ -2630,6 +2908,12 @@ func _on_canvas_input(event: InputEvent) -> void:
 			_redraw()
 		else:
 			var hit: int = pick(mm.position)
+			var over_rift: int = pick_rift(mm.position) if hit < 0 else -1
+			if over_rift != _hovered_rift:
+				_hovered_rift = over_rift
+				_canvas.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND \
+					if over_rift >= 0 else Control.CURSOR_ARROW
+				_redraw()
 			if hit != _hovered:
 				_hovered = hit
 				if hit >= 0 and hit != _hover_card and layout.is_drawn_map():
@@ -2766,12 +3050,12 @@ class StarCanvas extends Control:
 					pb - dir * head - perp * head * AtlasView.MAP_ARROW_SPREAD]), col)
 
 		# The run's rifts: the seams under the roads, the badges over the boxes.
-		var seams: Array = view.rift_seams().filter(func(sm):
-			return not view.hidden(sm["a"]) and (int(sm["b"]) < 0 or not view.hidden(sm["b"])))
+		var curves: Array = view.rift_curves()
 		var arcs: Array = []
-		for seam in seams:
-			arcs.append(_rift_arc(seam))
-			_draw_rift_seam(arcs[-1], _rift_alpha(seam, focused))
+		var focused_any: bool = focused or view._selected_rift >= 0
+		for k in range(curves.size()):
+			arcs.append(view.rift_arc(k))
+			_draw_rift_seam(arcs[k], _rift_alpha(k, curves[k], focused_any))
 
 		# The run's roads, over the lines and under the boxes.
 		_draw_roads()
@@ -2789,10 +3073,18 @@ class StarCanvas extends Control:
 			if faded:
 				fill = AtlasView.MAP_PAPER_DIM
 				ink = Color(AtlasView.MAP_INK, 0.35)
+			# THE BOX UNDER THE CURSOR LIGHTS UP (the owner, 20 Nov 2026): tinted
+			# and ringed in the pick colour, with a soft halo outside the ring, so
+			# a small box at a low zoom still says which one the card is about.
+			var lit: bool = i == view._selected or i == view._hovered
+			if lit:
+				fill = AtlasView.MAP_BOX.lerp(AtlasView.MAP_PICK, 0.22)
+				ink = AtlasView.MAP_INK
+				draw_rect(r.grow(3.0), Color(AtlasView.MAP_PICK, 0.35), false, 4.0)
 			draw_rect(r, fill)
 			var edge_col: Color = ink
 			var edge_w: float = 1.0
-			if i == view._selected or i == view._hovered:
+			if lit:
 				edge_col = AtlasView.MAP_PICK
 				edge_w = 2.5
 			draw_rect(r, edge_col, false, edge_w)
@@ -2809,61 +3101,20 @@ class StarCanvas extends Control:
 				if px > 0:
 					_text_in(font, inner, label, px, ink)
 
-		for k in range(seams.size()):
-			_draw_rift_badge(font, arcs[k], seams[k], name_px, _rift_alpha(seams[k], focused))
+		for k in range(curves.size()):
+			_draw_rift_badge(font, arcs[k], curves[k], name_px,
+				_rift_alpha(k, curves[k], focused_any),
+				k == view._selected_rift or k == view._hovered_rift)
 
 		_draw_run_markers(lay)
 
-	# A seam fades with the other lines when a picked game isn't one of its ends.
-	func _rift_alpha(seam: Dictionary, focused: bool) -> float:
-		if not focused:
+	# A seam fades with the other lines when something else is picked.
+	func _rift_alpha(k: int, seam: Dictionary, focused: bool) -> float:
+		if not focused or k == view._selected_rift:
 			return 1.0
-		if view._near.has(seam["a"]) or view._near.has(seam["b"]):
+		if view._selected_rift < 0 and (view._near.has(seam["a"]) or view._near.has(seam["b"])):
 			return 1.0
 		return 0.25
-
-	# A rift's path on screen: a curve from one box's border to the other's, bowed
-	# off the straight line (upward) so it never reads as an influence line. A
-	# keyed rift has one end, so it is a short hook rising off its box's corner.
-	func _rift_arc(seam: Dictionary) -> PackedVector2Array:
-		var ra: Rect2 = view.screen_box(seam["a"])
-		var pa: Vector2
-		var pb: Vector2
-		var bow: Vector2
-		if int(seam["b"]) < 0:
-			pa = Vector2(ra.end.x, ra.position.y)
-			var reach: float = clampf(view._scale * 90.0, 36.0, 120.0)
-			pb = pa + Vector2(reach, -reach * 0.8)
-			bow = Vector2(0, -reach * 0.35)
-		else:
-			var rb: Rect2 = view.screen_box(seam["b"])
-			pa = _border_toward(ra, rb.get_center())
-			pb = _border_toward(rb, ra.get_center())
-			var d: Vector2 = pb - pa
-			var perp := Vector2(-d.y, d.x).normalized()
-			if perp.y > 0.0:
-				perp = -perp
-			bow = perp * d.length() * 0.22
-		var c: Vector2 = (pa + pb) * 0.5 + bow
-		var pts := PackedVector2Array()
-		var n: int = 32
-		for i in range(n + 1):
-			var t: float = float(i) / n
-			pts.append(pa.lerp(c, t).lerp(c.lerp(pb, t), t))
-		return pts
-
-	# Where the line from a box's centre toward `to` leaves the box.
-	func _border_toward(r: Rect2, to: Vector2) -> Vector2:
-		var c: Vector2 = r.get_center()
-		var d: Vector2 = to - c
-		if d == Vector2.ZERO:
-			return c
-		var k: float = 1.0
-		if d.x != 0.0:
-			k = minf(k, r.size.x * 0.5 / absf(d.x))
-		if d.y != 0.0:
-			k = minf(k, r.size.y * 0.5 / absf(d.y))
-		return c + d * k
 
 	func _draw_rift_seam(pts: PackedVector2Array, alpha: float) -> void:
 		if not Rect2(Vector2.ZERO, size).grow(40.0).intersects(_bounds_of(pts)):
@@ -2902,13 +3153,17 @@ class StarCanvas extends Control:
 	# The swirl badge at the seam's middle (its end, for a keyed rift), and under
 	# it the rift game's name on a violet pill once names are legible at all.
 	func _draw_rift_badge(font: Font, pts: PackedVector2Array, seam: Dictionary,
-			name_px: int, alpha: float) -> void:
+			name_px: int, alpha: float, lit: bool = false) -> void:
 		var at: Vector2 = pts[pts.size() - 1] if int(seam["b"]) < 0 else pts[pts.size() / 2]
-		var rad: float = clampf(view._scale * 12.0, 7.0, 20.0)
+		var rad: float = view.rift_badge_radius()
 		if not Rect2(Vector2.ZERO, size).grow(rad * 8.0).has_point(at):
 			return
 		var deep := Color(UITheme.RIFT_DEEP, alpha)
 		var glow := Color(UITheme.RIFT, alpha)
+		# Picked or under the cursor: ringed in the pick colour, as a box is.
+		if lit:
+			draw_circle(at, rad + 5.0, Color(AtlasView.MAP_PICK, 0.45))
+			draw_arc(at, rad + 3.5, 0.0, TAU, 32, AtlasView.MAP_PICK, 2.5, true)
 		draw_circle(at, rad + 1.5, glow)
 		draw_circle(at, rad, deep)
 		var spiral := PackedVector2Array()

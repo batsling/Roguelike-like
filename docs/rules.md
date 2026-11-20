@@ -631,6 +631,7 @@ There is no HUD strip. Every number is drawn once, by whatever owns it, which ta
 
 - **Health, shields, statuses** — On the hero, on the left of the board. Hearts under the portrait, one shield over it per shield you have — the ones that stay nearest your face, the Temporary ones after them with a clock on them. Anything wearing that clock is going away, statuses included.
 - **Gold** — A chip in the top bar.
+- **Your road and the Amulet** — Across the top bar: every game you have played, oldest first, with arrows between them, and at the far right, ringed gold, the Amulet and how many steps away it is. Hover any of them for the game's profile.
 - **Difficulty and location** — The first line of the DIFFICULTY strip over the board: the tier (Low to Insane) with its four pips, and the location you are in on the right — hover it, or click it.
 - **Amulet pressure** — The second line of the DIFFICULTY strip: how many spawns until the next difficulty up, how far the Amulet is and the pressure that puts on you (its two pips, in the band's colour — empty out in the wilds), and on the right what ending THIS game will stand up (☠ +N when this game ends). The strip takes the band's colour.
 - **Where your shops are** — A 🛒 on the game's card, on the 🗺 map and on the route ladder. The bar beside your gold says how close the next one is.
@@ -650,7 +651,7 @@ There is no HUD strip. Every number is drawn once, by whatever owns it, which ta
 ### Elsewhere in the menus
 
 - **→ Optimal Path** — The shortest road from where you stand to the Amulet, rung by rung, with your shops marked. It lives in the offering's heading row, and on every offered card — a card's own button routes the path as it would be if you took it.
-- **🗺 Map** — The Optimal Path from where you stand. It lives in the header, so it opens from anywhere in a run, mid-game included. The switch at its top flips to the Full map: the whole drawn map with your route and the run's rifts on it, and back. On the full map, Owned games (the default) draws only the games you own and the lines between them; All games draws every one.
+- **🗺 Map** — The Optimal Path from where you stand. It lives in the header, so it opens from anywhere in a run, mid-game included. The switch at its top flips to the Full map: the whole drawn map with your route and the run's rifts on it, and back. On the full map, Owned games (the default) draws only the games you own and the lines between them; All games draws every one. Click a rift's swirl for the game inside it.
 - **✦ Atlas** — The star chart of every game, opened from the Collection. Not a run tool — a thing to look at.
 - **Collection** — Every item, scroll, enemy, event and status in the game, and whether you have met it.
 - **🏆 Tier List** — Your own ranking of every game you have beaten, across all runs, with the notes you wrote at the time.

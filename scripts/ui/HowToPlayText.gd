@@ -1183,6 +1183,10 @@ static func _ch_screen() -> Dictionary:
 				+ "ones after them with a clock on them. Anything wearing that "
 				+ "clock is going away, statuses included."),
 			_kv("Gold", "A chip in the top bar."),
+			_kv("Your road and the Amulet", "Across the top bar: every game you "
+				+ "have played, oldest first, with arrows between them, and at the "
+				+ "far right, ringed gold, the Amulet and how many steps away it "
+				+ "is. Hover any of them for the game's profile."),
 			_kv("Difficulty and location", "The first line of the DIFFICULTY strip "
 				+ "over the board: the tier (Low to Insane) with its four pips, and "
 				+ "the location you are in on the right — hover it, or click it."),
@@ -1239,7 +1243,8 @@ static func _ch_screen() -> Dictionary:
 				+ "The switch at its top flips to the Full map: the whole drawn "
 				+ "map with your route and the run's rifts on it, and back. On the "
 				+ "full map, Owned games (the default) draws only the games you own "
-				+ "and the lines between them; All games draws every one."),
+				+ "and the lines between them; All games draws every one. Click a "
+				+ "rift's swirl for the game inside it."),
 			_kv("✦ Atlas", "The star chart of every game, opened from the "
 				+ "Collection. Not a run tool — a thing to look at."),
 			_kv("Collection", "Every item, scroll, enemy, event and status in the "

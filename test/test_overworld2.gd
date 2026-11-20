@@ -4126,6 +4126,35 @@ func test_the_amulet_is_not_drawn_on_the_road_behind_you() -> void:
 	assert_false(_ui.route_strip_stops().has(amulet),
 		"the game the run is a search for is ahead of it, not behind it")
 
+# THE AMULET AT THE STRIP'S FAR END (the owner, 20 Nov 2026), its own gold tile
+# past a gap that says how far it is — never one of the road's stops — and every
+# cover on the strip hovers the game's profile.
+func test_the_strip_ends_on_the_amulet_and_hovers_profiles() -> void:
+	var amulet: StringName = GameState.goal_game_id()
+	if amulet == &"" or amulet == GameState.current_game_id:
+		pending("the run did not reach this case (no Amulet, or standing on it)")
+		return
+	_ui._refresh_route_strip()
+	var tile: Control = _ui.route_strip_amulet()
+	assert_not_null(tile, "the Amulet has a tile on the strip")
+	if tile == null:
+		return
+	assert_eq(StringName(tile.get_meta("amulet")), amulet, "it is the Amulet")
+	assert_eq(tile.get_index(), _ui._route_strip.get_child_count() - 1, "at the far right")
+	assert_false(_ui.route_strip_stops().has(amulet), "and not a stop on the road")
+	assert_not_null(_ui._route_strip.get_node_or_null("AmuletSteps"), "with how far it is")
+	var card: Control = HoverCard.of(tile)
+	assert_not_null(card, "its hover is the game's profile")
+	if card != null:
+		assert_true(Page.text_of(card).contains(Data.get_game(amulet).display_name))
+		card.free()
+	for c in _ui._route_strip.get_children():
+		if c.has_meta("stop"):
+			var stop_card: Control = HoverCard.of(c)
+			assert_not_null(stop_card, "a stop hovers its profile too")
+			if stop_card != null:
+				stop_card.free()
+
 func test_the_road_walked_keeps_the_doubling_back() -> void:
 	# `visited_games` is a set, so a run that came back to a game drew one cover
 	# for two stops. The strip reads the WALK now (GameState.walked_path).

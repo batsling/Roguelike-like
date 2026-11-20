@@ -274,7 +274,12 @@ Keys already exist as a character stat, reserved by the spec for exactly this
   violet swirl badge at its middle and `RIFT · <game>` on a pill under it once
   names are legible. The rift game gets no box (`rift_seams()`; a keyed rift is a
   short hook off its one end). Seams go under the roads, badges over the boxes,
-  and the legend keys `🌀 Rift`. Tests in `test_drawn_map.gd`.
+  and the legend keys `🌀 Rift`. Since 20 Nov 2026 each curve is CHOSEN
+  (`AtlasView.rift_curves`): bowed either way, by one of six depths, peaking at
+  the middle or leaning toward an end, and the one kept stays on the paper and
+  crosses the fewest boxes, then is the shallowest. A rift is CLICKABLE — its
+  badge or its curve — and its card shows the rift game's profile, the two
+  games it joins, and Play / Steam. Tests in `test_drawn_map.gd`.
 - `ObsCompanion`: `now.rift`, and `rift` on every road stop and map rung. The page
   rings the cover in an animated teal-and-violet glow (outline and box-shadow, so
   no layout), dashes a rift stop's outline and tags a rift rung "Rift".
