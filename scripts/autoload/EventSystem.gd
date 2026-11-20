@@ -370,7 +370,8 @@ func _roll_trades() -> Array:
 			held[it.id] = true
 			mine.append(it.id)
 	var theirs: Array = []
-	for it in Data.reward_item2_pool():
+	# Sacred Orb: what he offers is a random relic too (Data.orb_filter).
+	for it in Data.orb_filter(Data.reward_item2_pool()):
 		if not held.has(it.id):
 			theirs.append(it.id)
 	var offers: Array = []

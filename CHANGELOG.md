@@ -11,6 +11,20 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Three Isaac relics for the angel room (20 Nov 2026).** All tagged `angelic`
+  and in the `angel_room` pool. **Book of Revelations** (flash Isaac, Rare,
+  Charged 3, +1 Shield that stays) was already on the sheet and only gained the
+  tag and the pool. **Habit** (flash Isaac, Common): whenever Health is lost, +1
+  Charge to a random chargeable relic or loot. **Sacred Orb** (Rebirth,
+  Legendary): every random relic that would come up Common is rerolled until it
+  is not; Uncommons are left alone (Isaac's 25% Uncommon reroll is dropped, the
+  owner's call). Its flag `reroll_low_rarity` was in the grammar with no relic
+  carrying it, and only chests read it; the rule is now `Data.orb_filter`, which
+  every random relic draw passes through: chests (tagged ones too), shop shelves,
+  an event's random relic, the Relic Trader's offers and Calling Bell's Common.
+  A pool of nothing but Commons is kept whole. Tests `test_angel_relics.gd`. Art
+  is the Isaac wiki's 32px collectible icons.
+
 - **The Round Tea Party and Royal Poison, from Slay the Spire 2 (20 Nov 2026).**
   A Common event for the late difficulties (`High, Insane`, Spire's Act 3), dealt
   only with 3+ Health, in Spire 2's own words. **Enjoy Your Tea** heals to full

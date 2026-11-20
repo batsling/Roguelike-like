@@ -562,6 +562,9 @@ func _h_gain_item_per_rarity(effect: Dictionary, _ctx: Dictionary) -> void:
 	var taken: Dictionary = {}
 	for rarity in range(count):
 		var bucket: Array = Data.reward_item2_pool_of(rarity)
+		# Sacred Orb: the Common slot is rerolled into something that is not one.
+		if rarity == ItemData.Rarity.COMMON and GameState.has_low_rarity_reroll():
+			bucket = Data.orb_filter(Data.reward_item2_pool())
 		if bucket.is_empty():
 			continue
 		var fresh: Array = bucket.filter(func(it):
@@ -650,7 +653,8 @@ func _h_gain_random_item(effect: Dictionary, ctx: Dictionary) -> void:
 			pool = Data.reward_item2_pool().filter(func(it): return it.id != given)
 		if pool.is_empty():
 			break
-		var pick: ItemData = Locations.pick(pool, _rng)
+		# Sacred Orb: no Common while it is owned (Data.orb_filter).
+		var pick: ItemData = Locations.pick(Data.orb_filter(pool), _rng)
 		GameState.add_item(pick)
 		names.append(pick.display_name)
 		ids.append(pick.id)

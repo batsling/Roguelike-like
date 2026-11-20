@@ -867,14 +867,15 @@ const SHOP_POOL_WEIGHT := 2
 # shop-pool weighting.
 func _draw_one(rng: RandomNumberGenerator, taken: Dictionary,
 		pools: PackedStringArray = PackedStringArray()) -> ItemData:
-	var rarity: int = Data.roll_item_rarity(rng)
+	# Sacred Orb: a Common shelf roll is rolled again (Data.orb_filter).
+	var rarity: int = Data.orb_rarity(Data.roll_item_rarity(rng), rng)
 	# A KEEPER'S POOL (§14.6) narrows the catalog before anything else, and widens
 	# back the same way the rarity does: the rolled rarity's matches, then every
 	# rarity's, and only when no item in the game matches does the shelf fall back
 	# to the ordinary draw below rather than stand empty.
 	if not pools.is_empty():
-		var matching: Array = Data.reward_item2_pool().filter(func(it):
-			return not taken.has(it.id) and _matches_pool(it, pools))
+		var matching: Array = Data.orb_filter(Data.reward_item2_pool().filter(func(it):
+			return not taken.has(it.id) and _matches_pool(it, pools)))
 		if not matching.is_empty():
 			var in_rarity: Array = matching.filter(func(it): return int(it.rarity) == rarity)
 			var unheld: Array = in_rarity.filter(func(it): return not GameState.has_item(it.id))
@@ -889,7 +890,8 @@ func _draw_one(rng: RandomNumberGenerator, taken: Dictionary,
 	var unheld: Array = bucket.filter(func(it): return not taken.has(it.id))
 	if not unheld.is_empty():
 		return _weighted_pick(rng, unheld)
-	var whole: Array = Data.reward_item2_pool().filter(func(it): return not taken.has(it.id))
+	var whole: Array = Data.orb_filter(
+		Data.reward_item2_pool().filter(func(it): return not taken.has(it.id)))
 	if not whole.is_empty():
 		return _weighted_pick(rng, whole)
 	return null

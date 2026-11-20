@@ -15,5 +15,6 @@ stat_bonuses = {}
 charge_cost = 3
 starts_charged = true
 source_game = "The Binding of Isaac"
-tags = PackedStringArray("book")
+tags = PackedStringArray("book", "angelic")
+pools = PackedStringArray("angel_room")
 image = ExtResource("2_img")
