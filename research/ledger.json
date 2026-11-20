@@ -1727,6 +1727,15 @@
   "loot": "2026-10-09: 2 items; weapons and evolutions: Bone Saw and Makeshift Javelin (the wiki's Weapon combat items); no evolutions; trinkets are on-hit/on-miss stat rolls",
   "statuses": "2026-10-09: Riposte, Stealth; Loathing left out (a Kingdoms-mode difficulty track, not a status)"
  },
+ "Dash Dash Dead": {
+  "characters": "2026-11-20: nothing usable: no wiki; store page only, which names no single enemy, piece, event, hero, status or place",
+  "connections": "2026-11-20",
+  "events": "2026-11-20: nothing usable: no wiki; store page only, which names no single enemy, piece, event, hero, status or place",
+  "goals": "2026-11-20: nothing usable: no wiki; store page only, which names no single enemy, piece, event, hero, status or place",
+  "locations": "2026-11-20: nothing usable: no wiki; store page only, which names no single enemy, piece, event, hero, status or place",
+  "loot": "2026-11-20: nothing usable: no wiki; store page only, which names no single enemy, piece, event, hero, status or place",
+  "statuses": "2026-11-20: nothing usable: no wiki; store page only, which names no single enemy, piece, event, hero, status or place"
+ },
  "Dave the Diver": {
   "characters": "2026-10-10: 1 row: Dave; the other characters are NPCs and crossover guests",
   "connections": "before 2026-10-07",
@@ -2842,6 +2851,15 @@
   "locations": "2026-10-12: nothing usable: no wiki under its name on Fandom or wiki.gg, or one with no item or enemy pages",
   "loot": "2026-10-12: nothing usable: no wiki under its name on Fandom or wiki.gg, or one with no item or enemy pages",
   "statuses": "2026-10-12: nothing usable: no wiki under its name on Fandom or wiki.gg, or one with no item or enemy pages"
+ },
+ "Folk Hero": {
+  "characters": "2026-11-20: 1 row (Recruit); Warrior, Defender, Archer and Rogue are named but undocumented beyond that",
+  "connections": "2026-11-20",
+  "events": "2026-11-20: 1 row (Kikimora); the Ancient Forge's Blessing of Skillful Sharpening repeats the live Ominous Forge",
+  "goals": "2026-11-20: 1 row (Koschei boss), from the Steam patch notes (no wiki); Likho is a boss with no documented behaviour; friendly fire repeats Marshmallow's 'Have an enemy defeat another enemy'",
+  "locations": "2026-11-20: nothing usable: the Mysterious Forest, Swamp, Wasteland and Castle of Koschei are named with nothing said of what they do",
+  "loot": "2026-11-20: 1 row (Eye of Likho), from the patch notes; Living Water repeats Dio's Best Friend, Sharpening Stone the whetstone family, Sword of Koschei and Frost Gauntlets are undocumented; weapons are class kits (sword, bow, daggers) with no named weapons, and rune combining joins runes, not weapons, so no evolutions",
+  "statuses": "2026-11-20: nothing usable: its rune elements (Fire, Curse, Bleeding, Electricity, Slowdown) are all live statuses"
  },
  "Footgun: Underground": {
   "characters": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
@@ -4111,6 +4129,15 @@
   "locations": "2026-10-12: nothing usable: a stub wiki with no item or enemy text",
   "loot": "2026-10-12: nothing usable: a stub wiki with no item or enemy text",
   "statuses": "2026-10-12: nothing usable: a stub wiki with no item or enemy text"
+ },
+ "Korridor": {
+  "characters": "2026-11-20: nothing usable: no wiki; store page only, which names no single enemy, piece, event, hero, status or place",
+  "connections": "2026-11-20",
+  "events": "2026-11-20: nothing usable: no wiki; store page only, which names no single enemy, piece, event, hero, status or place",
+  "goals": "2026-11-20: nothing usable: no wiki; store page only, which names no single enemy, piece, event, hero, status or place",
+  "locations": "2026-11-20: nothing usable: no wiki; store page only, which names no single enemy, piece, event, hero, status or place",
+  "loot": "2026-11-20: nothing usable: no wiki; store page only, which names no single enemy, piece, event, hero, status or place",
+  "statuses": "2026-11-20: nothing usable: no wiki; store page only, which names no single enemy, piece, event, hero, status or place"
  },
  "Kādomon: Hyper Auto Battlers": {
   "characters": "2026-10-12: nothing usable: no wiki, and nothing beyond store blurbs",
