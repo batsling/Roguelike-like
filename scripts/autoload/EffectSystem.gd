@@ -145,6 +145,7 @@ func _register_defaults() -> void:
 	register("gain_top_buff", _h_gain_top_buff)
 	register("break_into", _h_break_into)
 	register("remove_self", _h_remove_self)
+	register("place_in_row", _h_place_in_row)
 	register("lose_hp_per_loot", _h_lose_hp_per_loot)
 	register("smelt", _h_smelt)
 
@@ -191,8 +192,14 @@ func _h_gain_stat(effect: Dictionary, ctx: Dictionary) -> void:
 	if effect.has("per"):
 		var per: int = maxi(1, int(effect["per"]))
 		var of: String = String(effect.get("of", ""))
-		var have: int = GameState.unidentified_in_bag(int(ctx.get("loot_bag", -1))) \
-			if of == "unidentified_in_bag" else int(GameState.get(of))
+		var have: int = 0
+		if of == "unidentified_in_bag":
+			have = GameState.unidentified_in_bag(int(ctx.get("loot_bag", -1)))
+		elif LootPassives.STRUCTURE_COUNTS.has(of):
+			# The structures around the piece firing (Brick, Brick Wall, Roof — §21).
+			have = LootPassives.structures_counted(ctx.get("loot_entry"), of).size()
+		else:
+			have = int(GameState.get(of))
 		@warning_ignore("integer_division")
 		value *= have / per
 	if stat == "" or value == 0:
@@ -942,6 +949,37 @@ func _h_remove_self(_effect: Dictionary, ctx: Dictionary) -> void:
 				GameState.remove_loot_at(i)
 			_did(ctx, "%s is gone" % piece)
 			return
+
+# `place_in_row <trinket>` — Masonry Tools (docs/loot-passives.md §21): a NEW piece
+# of that trinket lands in a random empty cell of the ROW the firing piece sits in,
+# as the pack is drawn — bags beside it included, since a row is a row on screen.
+# A full row places nothing. The row is the screen's whichever way the tools are
+# turned. A Blueprint copying it is the piece that fired, so its row is used.
+func _h_place_in_row(effect: Dictionary, ctx: Dictionary) -> void:
+	var entry = ctx.get("loot_entry")
+	var t: TrinketData = Data.get_trinket(StringName(String(effect.get("trinket", ""))))
+	if not (entry is Dictionary) or t == null:
+		return
+	var me: int = -1
+	for i in range(GameState.loot_items.size()):
+		if is_same(GameState.loot_items[i], entry):
+			me = i
+			break
+	var slot: int = GameState.loot_slot_of(me) if me >= 0 else -1
+	if slot < 0:
+		return
+	var row: int = GameState.pack_cell_of(slot).y
+	var layout: Array = GameState.loot_layout()
+	var cells: Array = GameState.pack_cells()
+	var free: Array = []
+	for s in range(cells.size()):
+		if (cells[s] as Vector2i).y == row and s < layout.size() and int(layout[s]) < 0:
+			free.append(s)
+	if free.is_empty():
+		return
+	var at: int = int(free[_rng.randi_range(0, free.size() - 1)])
+	if GameState.take_loot_entry_at({"type": "trinket", "id": t.id, "rarity": t.rarity}, at):
+		_did(ctx, "+1 %s" % t.display_name)
 
 # `lose_hp_per_loot N` — Regret (docs/loot-passives.md §18): 1 Health for every N
 # pieces of loot the player has, counted in the pack (curses included, Regret

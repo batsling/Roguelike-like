@@ -50,8 +50,8 @@ func test_every_trinket_loads_with_art_and_a_passive() -> void:
 # rows — Vector2i(columns, rows) — the way its picture is painted.
 const FOOD_SHAPES := {&"broccoli": Vector2i(1, 2), &"carrot": Vector2i(2, 1),
 	&"cheese": Vector2i(2, 1), &"cupcake": Vector2i.ONE, &"garlic": Vector2i(1, 2),
-	# Not a food, and the one other trinket bigger than a cell (§17).
-	&"gecko_gi": Vector2i(2, 2)}
+	# Not foods: Gecko Gi (§17), and the two-wide structures (§21).
+	&"gecko_gi": Vector2i(2, 2), &"brick_wall": Vector2i(2, 1), &"roof": Vector2i(2, 1)}
 
 func test_the_passive_cards_are_passive_and_the_rest_are_not() -> void:
 	for id in [&"blueprint", &"chaos_the_clown", &"rocket", &"to_the_moon", &"trading_card",

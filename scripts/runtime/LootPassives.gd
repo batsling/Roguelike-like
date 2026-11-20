@@ -77,6 +77,11 @@ static func directions(entry) -> Array:
 			var dir: String = turned(String(d), rot)
 			if DIRECTIONS.has(dir) and not out.has(dir):
 				out.append(dir)
+	# Roof: the structures it counts are BELOW it, turned with it (§21).
+	if structure_counts_of(def).has("structures_below"):
+		var below: String = turned("down", rot)
+		if not out.has(below):
+			out.append(below)
 	return out
 
 # The direction the piece in `entry` copies, turned the way it is carried, or ""
@@ -572,6 +577,101 @@ static func entry_progress(entry: Dictionary) -> Dictionary:
 			"unit": COUNTED_HOOKS[on]}
 	return {}
 
+# --- structures: pieces that count the structures around them (§21) --------------
+#
+# Backpack Hero's STRUCTURES. A piece is a structure when its sheet row is tagged
+# `structure` (Brick, Brick Wall, Roof) — or it is a copier running one, the way a
+# Blueprint copying a food is that food. Three counts read the pack around the
+# piece FIRING (a Blueprint copying a Brick counts from where the Blueprint sits),
+# each answered as `gain_stat ... per=1 of=<count>`:
+#   structures_beside  the four sides of any cell of its footprint (Brick);
+#   structures_around  the sides and the diagonals (Brick Wall);
+#   structures_below   anywhere in the columns under it, touching or not, "under"
+#                      turned the way the piece is (Roof).
+# Each structure counts ONCE, however many cells it touches on, and the piece never
+# counts itself. Under Link Cable every piece touches every other (§15), the
+# directional count included: every other structure in the pack.
+
+const STRUCTURE_COUNTS := ["structures_beside", "structures_around", "structures_below"]
+const _DIAGONALS := [Vector2i(1, 1), Vector2i(1, -1), Vector2i(-1, 1), Vector2i(-1, -1)]
+
+# Is the piece at `index` a structure?
+static func is_structure(index: int) -> bool:
+	var slot: int = GameState.loot_slot_of(index)
+	if slot < 0:
+		return false
+	for c in copied(slot):
+		var tags = c["def"].get("tags")
+		if tags is PackedStringArray and (tags as PackedStringArray).has("structure"):
+			return true
+	return false
+
+# The structures (indices) `count` sees from the piece `entry` (a live pack row).
+static func structures_counted(entry, count: String) -> Array:
+	var me: int = -1
+	for i in range(GameState.loot_items.size()):
+		if is_same(GameState.loot_items[i], entry):
+			me = i
+			break
+	if me < 0 or not STRUCTURE_COUNTS.has(count):
+		return []
+	var out: Array = []
+	if linked():
+		for other in carried():
+			if other != me and is_structure(other):
+				out.append(other)
+		return out
+	var mine: Array = []
+	for s in GameState.loot_slots_of(me):
+		mine.append(GameState.pack_cell_of(int(s)))
+	var candidates: Array = []
+	if count == "structures_below":
+		var down: Vector2i = DIRECTIONS[turned("down", int((entry as Dictionary).get("rot", 0)))]
+		for other in carried():
+			if other == me:
+				continue
+			for s in GameState.loot_slots_of(other):
+				if _in_line(mine, GameState.pack_cell_of(int(s)), down):
+					candidates.append(other)
+					break
+	else:
+		var steps: Array = DIRECTIONS.values()
+		if count == "structures_around":
+			steps = steps + _DIAGONALS
+		for c in mine:
+			for step in steps:
+				var n: int = GameState.pack_slot_at(c + step)
+				var other: int = GameState.loot_index_at_slot(n) if n >= 0 else -1
+				if other >= 0 and other != me and not candidates.has(other):
+					candidates.append(other)
+	for other in candidates:
+		if not out.has(other) and is_structure(other):
+			out.append(other)
+	return out
+
+# Is `cell` somewhere past one of `cells` in direction `dir` (same column for down)?
+static func _in_line(cells: Array, cell: Vector2i, dir: Vector2i) -> bool:
+	for c in cells:
+		var d: Vector2i = cell - c
+		if dir.x == 0 and d.x == 0 and d.y * dir.y > 0:
+			return true
+		if dir.y == 0 and d.y == 0 and d.x * dir.x > 0:
+			return true
+	return false
+
+# The structure counts a definition's triggers read, e.g. ["structures_below"].
+static func structure_counts_of(def: Resource) -> Array:
+	var out: Array = []
+	if def == null or not ("triggers" in def):
+		return out
+	for trig in def.triggers:
+		for eff in (trig as Dictionary).get("effects", []):
+			var of: String = String((eff as Dictionary).get("of", "")) if eff is Dictionary else ""
+			if STRUCTURE_COUNTS.has(of) and not out.has(of):
+				out.append(of)
+	return out
+
+
 # --- who is working on whom (the hover glow) -------------------------------------
 #
 # WHEN A PIECE IS HOVERED, THE PIECES IT WORKS ON LIGHT UP, and so do the pieces
@@ -622,6 +722,10 @@ static func _works_on(a: int, b: int) -> bool:
 				if WeaponSystem.aura_targets(a, run.get(aura_key),
 						int((entry as Dictionary).get("rot", 0))).has(b):
 					return true
+		# A structure count (Brick, Brick Wall, Roof) works on what it counts (§21).
+		for of in structure_counts_of(run):
+			if structures_counted(entry, of).has(b):
+				return true
 	var fa: Array = food_ids_at(a)
 	if not fa.is_empty() and adjacent_pieces(b).has(a):
 		# A food lowers a DIFFERENT food's target, and feeds a weapon that counts food.

@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="TrinketData" load_steps=2 format=3 uid="uid://trinket2_masonry_tools"]
+
+[ext_resource type="Script" path="res://scripts/resources/TrinketData.gd" id="1_trinket"]
+
+[resource]
+script = ExtResource("1_trinket")
+id = &"masonry_tools"
+display_name = "Masonry Tools"
+rarity = "Legendary"
+size = Vector2i(1, 1)
+description = "At the end of combat, add a Brick to a random empty space in this row"
+source_game = "Backpack Hero"
+tags = PackedStringArray()
+file = "MasonryTools"
+loot_type = "Passive"
+triggers = [{"on": "game_beaten", "effects": [{"type": "place_in_row", "trinket": "brick"}]}]
+stat_bonuses = {}
+status_bonuses = {}

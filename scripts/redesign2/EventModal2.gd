@@ -753,7 +753,7 @@ const PICKS := {
 			"where": "on the board"}},
 	# A Note For Yourself: the card to leave for the next run, in the pack.
 	"note_for_yourself": {"opener": "begin_owned_pick", "answer": "note_chosen",
-		"cfg": {"verb": "store"}},
+		"cfg": {"verb": "store", "noun": "card", "nouns": "cards"}},
 }
 
 # What each pick lights up.

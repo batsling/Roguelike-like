@@ -11,6 +11,17 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Structures, from Backpack Hero (20 Nov 2026).** Four trinkets
+  (`docs/loot-passives.md` §21). **Brick** (Common), **Brick Wall** (Uncommon,
+  two wide) and **Roof** (Rare, two wide) are tagged `structure` and pay +1
+  Temporary Shield at the start of combat for each structure beside them (Brick),
+  beside or diagonal (Brick Wall), or anywhere under them (Roof, turned with the
+  piece and marked with an arrow). **Masonry Tools** (Legendary) adds a Brick to a
+  random empty cell of its row whenever a game ends. New `gain_stat` sources
+  `of=structures_beside|structures_around|structures_below`
+  (`LootPassives.structures_counted`) and verb `place_in_row`; tests
+  `test_structures.gd`. Art is the Backpack Hero wiki's original sprites.
+
 - **Iron Wave and A Note For Yourself, from Slay the Spire (20 Nov 2026).**
   - **Iron Wave** is a Common Ironclad attack card: "Gain +1 Temporary Shield
     and Apply Stun 1 to an Enemy". Its Upgrade Type is **Shield, Stun**, so each
