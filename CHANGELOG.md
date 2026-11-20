@@ -11,6 +11,18 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Padding, from Brotato (20 Nov 2026).** An Uncommon relic: "Gain +1 Max
+  Health, and +1 Max Health for every 10 Gold you have" (Brotato's is +3, and +1
+  per 80 Materials). Live, as in Brotato: more Gold adds EMPTY Max Health, and
+  spending below a step takes it back, Health above the new max with it.
+  `GameState.set_gold` now recomputes the relic bonuses when an owned relic
+  `scaling`s off Gold (`scales_with`), and a purse in debt counts as 0 rather
+  than taking Max Health away. **It shows what it gives**: a red "+3" pip in the
+  relic's corner on the strip (`PackStrip.scaling_badge`, the counter pip's
+  shape) and "Giving +3 Max Health right now." on its hover, both read off
+  `GameState.scaling_now` — the same sum the Max Health itself comes from.
+  Tests `test_padding.gd`. Art is the Brotato wiki's `Item padding.png`.
+
 - **Structures, from Backpack Hero (20 Nov 2026).** Four trinkets
   (`docs/loot-passives.md` §21). **Brick** (Common), **Brick Wall** (Uncommon,
   two wide) and **Roof** (Rare, two wide) are tagged `structure` and pay +1
