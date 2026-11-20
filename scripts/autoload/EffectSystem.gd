@@ -114,6 +114,7 @@ func _register_defaults() -> void:
 	register("lose_item", _h_lose_item)
 	register("remove_enemy", _h_remove_enemy)
 	register("lift_curses", _h_lift_curses)
+	register("note_for_yourself", _h_note_for_yourself)
 	register("upgrade_loot", _h_upgrade_loot)
 	register("gain_item_per_rarity", _h_gain_item_per_rarity)
 	register("add_curse", _h_add_curse)
@@ -451,6 +452,46 @@ func _h_lift_curses(_effect: Dictionary, ctx: Dictionary) -> void:
 	var line: String = ScrollSystem.lift_every_curse()
 	GameLog.add(line, UITheme.ACCENT)
 	_did(ctx, line.trim_suffix("."))
+
+# A NOTE FOR YOURSELF (Slay the Spire's event; GameStats.note_card): take the card
+# an earlier run left behind the brick — Iron Wave the first time — and leave one
+# of yours for the next run. The card left is the one the player PICKED in the
+# pack (`ctx.note_chosen`, EventModal2 runs the pick); with none chosen (a test,
+# a press with no page) one is rolled. Only a card that may leave the pack can be
+# left (no curse, nothing pinned). With none, the note is not touched at all:
+# Spire's Take and Give is a trade, and a take with no give is not one.
+#
+# The card left goes first, so the one taken has its cell to land in. It comes
+# as it was left, upgrade and all, and is NOT rolled again for Retro Bat: it was
+# found once already.
+func _h_note_for_yourself(_effect: Dictionary, ctx: Dictionary) -> void:
+	var pool: Array = note_candidates()
+	if pool.is_empty():
+		return
+	var left: Dictionary = {}
+	for c in ctx.get("note_chosen", []):
+		if pool.any(func(p): return is_same(p, c)):
+			left = c
+			break
+	if left.is_empty():
+		left = pool[_rng.randi_range(0, pool.size() - 1)]
+	var found: Dictionary = GameStats.note_card_entry()
+	var left_name: String = LootSystem.display_name(left)
+	for i in range(GameState.loot_items.size()):
+		if is_same(GameState.loot_items[i], left):
+			GameState.remove_loot_at(i)
+			break
+	GameStats.store_note_card(left)
+	GameState.offer_loot_entries([found])
+	var line: String = "Took %s from the note, left %s for next time" \
+		% [LootSystem.display_name(found), left_name]
+	GameLog.add(line + ".", UITheme.ACCENT)
+	_did(ctx, line)
+
+# The cards A Note For Yourself could be left: every carried card that may leave
+# the pack. What its pick lights and what its `cards` gate counts.
+func note_candidates() -> Array:
+	return GameState.loot_cards().filter(func(e): return GameState.can_leave_pack(e))
 
 # REMOVE N NON-BOSS ENEMIES (the Old Beggar's purification): each simply stops
 # following — `GameLoop2.despawn`, so NO defeat, no gold, no drop, no

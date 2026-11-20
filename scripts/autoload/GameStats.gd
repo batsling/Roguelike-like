@@ -257,6 +257,42 @@ func record_start_panel(ids: Array) -> void:
 		last_starts.append(String(id))
 	save_data()
 
+# A NOTE FOR YOURSELF (Slay the Spire's event): the card one run left behind
+# the loose brick for a later run to take. One card for the whole profile, kept
+# here rather than on GameState for the reason the donation bank is: reset_run
+# wipes the run, and a note the next run cannot read is no note. Empty means the
+# brick has never been opened, and it holds Iron Wave, as Spire's first one does.
+#
+# Only what makes the card ITSELF is kept (NOTE_KEYS): its id and rarity, its
+# upgrade (the owner, 20 Nov 2026: the upgrade is kept, as in Spire) and a Retro
+# Bat roll with whether it is known and lifted. Nothing about where it sat.
+const NOTE_DEFAULT := &"iron_wave"
+const NOTE_KEYS := ["id", "rarity", "stun_bonus", "roll", "roll_known", "uncursed"]
+var note_card: Dictionary = {}
+
+# The card waiting in the note, as a fresh pack entry.
+func note_card_entry() -> Dictionary:
+	var entry: Dictionary = {"type": "card"}
+	if note_card.is_empty():
+		var c: CardData = Data.get_card(NOTE_DEFAULT)
+		entry["id"] = NOTE_DEFAULT
+		entry["rarity"] = c.rarity if c != null else "Common"
+		return entry
+	for key in NOTE_KEYS:
+		if note_card.has(key):
+			entry[key] = note_card[key]
+	entry["id"] = StringName(String(entry.get("id", NOTE_DEFAULT)))
+	return entry
+
+# Leave `entry` in the note for the next run, and save at once: the run that
+# left it may never reach its end.
+func store_note_card(entry: Dictionary) -> void:
+	note_card = {}
+	for key in NOTE_KEYS:
+		if entry.has(key):
+			note_card[key] = String(entry[key]) if key == "id" else entry[key]
+	save_data()
+
 # A Rift Key opened a rift mid-run (docs/rifts-design.md §8): one more appearance
 # for the rotation, without touching last run's list, which is the dealt rifts'.
 func record_key_rift(id) -> void:
@@ -1187,7 +1223,8 @@ func save_data() -> bool:
 		 "character_goal_log": character_goal_log,
 		 "donation_bank": donation_bank_total, "donation_best": donation_best_total,
 		 "last_rifts": last_rifts,
-		 "last_starts": last_starts, "fracture_log": fracture_log,
+		 "last_starts": last_starts, "note_card": note_card,
+		 "fracture_log": fracture_log,
 		 "player_fracture_log": player_fracture_log, "last_player": last_player,
 		 "seen": seen,
 		 "achievements": achievements,
@@ -1244,6 +1281,7 @@ func load_data() -> void:
 	donation_best_total = 0
 	last_rifts = []
 	last_starts = []
+	note_card = {}
 	fracture_log = {}
 	player_fracture_log = {}
 	last_player = ""
@@ -1331,6 +1369,14 @@ func load_data() -> void:
 	if typeof(json.data.get("last_starts")) == TYPE_ARRAY:
 		for id in json.data["last_starts"]:
 			last_starts.append(String(id))
+	# JSON reads every number back as a float; the note's are whole.
+	if typeof(json.data.get("note_card")) == TYPE_DICTIONARY \
+			and Data.get_card(StringName(String(json.data["note_card"].get("id", "")))) != null:
+		for key in NOTE_KEYS:
+			var v = json.data["note_card"].get(key)
+			if v == null:
+				continue
+			note_card[key] = int(v) if typeof(v) == TYPE_FLOAT else v
 	var games: Dictionary = json.data
 	if json.data.has("games") and typeof(json.data["games"]) == TYPE_DICTIONARY:
 		games = json.data["games"]

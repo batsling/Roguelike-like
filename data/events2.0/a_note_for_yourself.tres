@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="EventData2" load_steps=2 format=3 uid="uid://event2_a_note_for_yourself"]
+
+[ext_resource type="Script" path="res://scripts/resources/EventData2.gd" id="1_event"]
+
+[resource]
+script = ExtResource("1_event")
+id = &"a_note_for_yourself"
+display_name = "A Note For Yourself"
+source_game = "Slay the Spire"
+tier_tags = PackedStringArray()
+where = ""
+requirement = {"stat": "cards", "op": ">=", "value": 1, "percent": false}
+trigger = "after"
+rarity = "Uncommon"
+file = "ANoteForYourself"
+prompt = "You spot a loose brick within a pillar that catches your eye. You find a folded note and a card inside. It reads, “The Heart awaits” This is your handwriting."
+opens_with = {}
+goal_met = ""
+goal_missed = ""
+chance_won = ""
+chance_lost = ""
+choices = [{"id": "take_and_give", "text": "Take and Give", "repeat": "end", "repeat_max": 0, "results": [], "gates": [], "effects": [{"type": "note_for_yourself"}], "effects_text": "+<note>, store 1 Card", "goal": {}, "curse": {}, "play": {}, "chance": {}}, {"id": "ignore", "text": "Ignore", "repeat": "end", "repeat_max": 0, "results": ["What is going on?"], "gates": [], "effects": [{"type": "none"}], "effects_text": "Nothing", "goal": {}, "curse": {}, "play": {}, "chance": {}}]

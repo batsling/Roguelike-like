@@ -146,6 +146,8 @@ const GATE_STAT_NAMES := {
 	"enemies": "Non-boss Enemies",
 	# Curses something could lift: Destroyable curse cards and cursed weapons.
 	"curses": "Liftable Curses",
+	# Cards that could be handed over: not curses, not pinned (A Note For Yourself).
+	"cards": "Cards",
 }
 
 # The same names for ONE of the thing — "Needs 1 Bomb", not "Needs 1 Bombs". Only
@@ -154,7 +156,7 @@ const GATE_STAT_ONE := {
 	"games": "Game played", "keys": "Key", "bombs": "Bomb",
 	"shields": "Temporary Shield", "bonus_shields": "Shield",
 	"relics": "Tradeable Relic", "potions": "Potion", "enemies": "Non-boss Enemy",
-	"curses": "Liftable Curse",
+	"curses": "Liftable Curse", "cards": "Card",
 }
 
 # A gated resource's name for `n` of it.
@@ -277,6 +279,9 @@ const RELIC_HOLE := "<relic>"
 # pack. Rolled with the rest of the offering and named on the button, because
 # "give me a card" is not a price anyone can weigh.
 const CARD_HOLE := "<card>"
+# A Note For Yourself's: the card waiting in the note (GameStats.note_card), named
+# with its +X, because which card it is decides whether Take and Give is worth it.
+const NOTE_HOLE := "<note>"
 
 var _trade_offers: Array = []   # [{ "give": StringName, "get": StringName }]
 # What this event will take off you if you let it: one loot entry out of the
@@ -592,6 +597,8 @@ func fill_name_holes(text: String, choice: Dictionary) -> String:
 		text = text.replace(RELIC_HOLE, _item_name(_offered_relic))
 	if text.contains(CARD_HOLE):
 		text = text.replace(CARD_HOLE, offered_card_name())
+	if text.contains(NOTE_HOLE):
+		text = text.replace(NOTE_HOLE, LootSystem.display_name(GameStats.note_card_entry()))
 	return text
 
 
@@ -695,6 +702,9 @@ func _run_stat(stat: String) -> int:
 		# count, or a run carrying only Curse of the Bell would be dealt a fountain
 		# whose Drink does nothing.
 		"curses": return ScrollSystem.liftable_curse_count()
+		# Cards that could be left behind — A Note For Yourself's gate, since its
+		# Take and Give has to store one.
+		"cards": return EffectSystem.note_candidates().size()
 		_: return -1
 
 
@@ -719,6 +729,10 @@ func choice_available(choice: Dictionary, picks: Dictionary) -> bool:
 	if _has_effect(choice, "lose_relic") and _offered_relic == &"":
 		return false
 	if _has_effect(choice, "lose_card") and _offered_card.is_empty():
+		return false
+	# A Note For Yourself's trade has to leave a card; with none that may leave the
+	# pack (the last one was binned since the event was dealt) it is not offered.
+	if _has_effect(choice, "note_for_yourself") and EffectSystem.note_candidates().is_empty():
 		return false
 	for gate in choice.get("gates", []):
 		if not _gate_passes(gate, picks):

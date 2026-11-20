@@ -760,6 +760,16 @@ def parse_reward_clause(clause):
             raise ValueError("reward DSL: lift_curses takes nothing, not %r" % clause)
         return {"type": "lift_curses"}, "Lift every curse"
 
+    # A NOTE FOR YOURSELF (Slay the Spire's event): take the card an earlier run
+    # left (Iron Wave the first time) and leave one of yours for the next run —
+    # GameStats.note_card keeps it between runs. In an event the player PICKS the
+    # card to leave in the pack (EventModal2.PICKS).
+    if verb == "note_for_yourself":
+        if rest:
+            raise ValueError("reward DSL: note_for_yourself takes nothing, not %r"
+                             % clause)
+        return {"type": "note_for_yourself"}, "+<note>, store 1 Card"
+
     # REMOVE N NON-BOSS ENEMIES (the Old Beggar): each simply stops following —
     # no defeat, no gold, no drop (EffectSystem._h_remove_enemy). In an event the
     # player PICKS which on the board; `random` rolls them.

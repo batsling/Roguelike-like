@@ -11,6 +11,20 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Iron Wave and A Note For Yourself, from Slay the Spire (20 Nov 2026).**
+  - **Iron Wave** is a Common Ironclad attack card: "Gain +1 Temporary Shield
+    and Apply Stun 1 to an Enemy". Its Upgrade Type is **Shield, Stun**, so each
+    upgrade grows both (`docs/loot-passives.md` §19).
+  - **A Note For Yourself** is an Uncommon event: *Take and Give* hands over the
+    card an earlier run left in the note, Iron Wave the first time as in Spire,
+    and the player picks a card in the pack to leave for the NEXT run, upgrade
+    kept. The note is saved with the profile (`GameStats.note_card`), not the run.
+    It is only dealt to a run carrying a card that may leave the pack (the new
+    `cards` Requirement stat), and its button names the card waiting (`<note>`).
+    New verb `note_for_yourself`; tests `test_note_for_yourself.gd`. Both
+    pictures are the Slay the Spire wiki's originals (`Red-IronWave.png`,
+    `Event-SelfNote.png`).
+
 - **The map comes back to the run, with a switch; the floor in the Full Inventory (20 Nov 2026).**
   - **🗺 Map opens on the Optimal Path with an "Optimal path | Full map"
     switch on top**, and Full opens the owner's drawn map on its own with the

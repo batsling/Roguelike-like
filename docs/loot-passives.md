@@ -918,12 +918,16 @@ to them stacking indefinitely."* Slay the Spire's Upgrade, translated.
 
   | Upgrade Type | grows | cards |
   |---|---|---|
-  | Stun | each `stun` clause | Bullseye, Cleave, Fiend Fire, Finisher, Pommel Strike, Reaper |
-  | Shield | each `gain_stat shields` | After Image (its trigger), Second Wind, Shrug it Off, Stack |
+  | Stun | each `stun` clause | Bullseye, Cleave, Fiend Fire, Finisher, Iron Wave, Pommel Strike, Reaper |
+  | Shield | each `gain_stat shields` | After Image (its trigger), Iron Wave, Second Wind, Shrug it Off, Stack |
   | Charge | `charge_pick` | Bloodletting, Offering |
   | Potion | `gain_loot potion` | Alchemize |
   | Loot | `gain_loot` | Prepared |
   | Destroy | `destroy_pick` | Prepared |
+
+  A card can name more than one type, and an upgrade then grows every one of
+  them: Prepared (Loot, Destroy), and Iron Wave (Shield, Stun — the owner,
+  20 Nov 2026: an upgraded Iron Wave is Shield 2 and Stun 2).
 
   `tools/generate_card2_tres.py` refuses a row whose type names a clause the card
   does not have (its `UPGRADE_CLAUSES` mirrors `grows`), and
