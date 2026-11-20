@@ -1844,10 +1844,34 @@ func _build_card() -> PanelContainer:
 	card.offset_bottom = 76             # grows with its content
 	card.grow_vertical = Control.GROW_DIRECTION_END
 	card.visible = false
+	# THE CARD STAYS ON THE MAP (20 Nov 2026): it starts under whatever sits over
+	# the top of the canvas (the header, and on the run's drawn map the switches)
+	# and scrolls when it is taller than the canvas, so a cover, the facts and the
+	# Play / Steam buttons never run under the switches or off the bottom.
+	_card_scroll = ScrollContainer.new()
+	_card_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	card.add_child(_card_scroll)
 	_card_box = VBoxContainer.new()
 	_card_box.add_theme_constant_override("separation", UITheme.GAP)
-	card.add_child(_card_box)
+	_card_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_card_scroll.add_child(_card_box)
 	return card
+
+var _card_scroll: ScrollContainer = null
+
+# Where the card sits and how tall its scroll is: the top of the canvas, and no
+# lower than its bottom. Deferred from every refill, once the new contents have a
+# size.
+func _fit_card() -> void:
+	if _card == null or not is_instance_valid(_card) or _canvas == null or not _card.visible:
+		return
+	const PAD := 8.0
+	var top: float = _canvas.get_global_rect().position.y - get_global_rect().position.y
+	_card.offset_top = top + PAD
+	_card.offset_bottom = top + PAD
+	var chrome: float = 26.0     # the panel's padding and border, top and bottom
+	var room: float = _canvas.size.y - PAD * 2.0 - chrome
+	_card_scroll.custom_minimum_size.y = maxf(80.0, minf(_card_box.get_combined_minimum_size().y, room))
 
 # Cover art on a card is shown WHOLE. The two builders live on UITheme now
 # (UITheme.card_art / card_art_size), because the route ladder's card draws the
@@ -1872,6 +1896,7 @@ func _refresh_card() -> void:
 	if _card == null:
 		return
 	for c in _card_box.get_children():
+		_card_box.remove_child(c)
 		c.queue_free()
 	if _selected_edge >= 0 and has_layout():
 		_fill_connection_card()
@@ -2171,6 +2196,7 @@ func _set_card_width(width: float) -> void:
 	_card.custom_minimum_size.x = width
 	_card.offset_left = -(width + MARGIN)
 	_card.offset_right = -MARGIN
+	_fit_card.call_deferred()
 
 # Every enemy beaten at this game, with the player's note under each. Read-only
 # — notes are written on the checklist, at the moment you actually beat the
