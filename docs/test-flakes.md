@@ -19,6 +19,13 @@ failure; diffing a passing and failing run's Control tree) are the reusable part
 - **The varying failures that used to live here are FIXED.** All were
   assertions that were only *usually* true, and they are worth reading before
   blaming a seed for a new one.
+  - `test_loot_upgrade.gd::test_an_upgraded_shield_card_gives_one_more_shield`
+    (20 Nov 2026) got 3 shields instead of 2 on CI. Shrug it Off is "+1
+    Temporary Shield and +1 Random Card", and the random card lands in the pack
+    BEFORE the play counts as a card used — so when it is After Image ("whenever
+    you use a Card, +1 Temporary Shield"), it pays a shield on the same play.
+    Putting an After Image in the pack first reproduces the 3 every time. The
+    test now counts the After Images the play dealt out of the total.
   - **CI's GUT job crashing with signal 11** (main on 19 Nov 2026, PR #366
     twice on 20 Nov), at a random point after `test_overworld2`'s orphan
     list, with no failed assertion. Each crash log that reaches back far enough

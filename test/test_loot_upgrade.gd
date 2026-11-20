@@ -174,7 +174,14 @@ func test_an_upgraded_shield_card_gives_one_more_shield() -> void:
 	LootUpgrade.upgrade(shrug)
 	GameState.shields = 0
 	_play(shrug)
-	assert_eq(GameState.shields, 2, "Shrug it Off's 1, +1")
+	# SHRUG IT OFF ALSO DEALS A RANDOM CARD, into the pack before the play counts
+	# as a card used — and when that card is After Image ("whenever you use a
+	# Card, +1 Temporary Shield") it pays its own shield on this very play. That
+	# made this 3 about one run in thirty-odd (CI on PR #366); the shield clause
+	# is what this test is about, so the After Images it dealt are counted out.
+	var echoes: int = GameState.loot_items.filter(
+		func(e): return String((e as Dictionary).get("id", "")) == "after_image").size()
+	assert_eq(GameState.shields - echoes, 2, "Shrug it Off's 1, +1")
 
 func test_an_upgraded_per_shield_grows_before_it_multiplies() -> void:
 	var stack: Dictionary = Fixtures.card(self, &"stack", 0)
