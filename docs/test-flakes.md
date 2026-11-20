@@ -253,3 +253,17 @@ failure; diffing a passing and failing run's Control tree) are the reusable part
     matched line. The test now compares the whole reminder line; 0 in 12 after.
     Same family as Dragon Fruit's "gold" above: a substring test over text made
     from content is only as safe as the content's names.
+  - `test_drawn_map.gd::test_the_map_draws_headless_without_errors` failed in CI
+    with two engine errors, `Condition "indices.is_empty()" is true`, every
+    assertion passing. **A small polygon far from the origin**: Godot
+    triangulates `draw_colored_polygon` from its ABSOLUTE coordinates in 32-bit
+    floats, and the road's 6 px arrowheads (`AtlasView` `_chevron`) are drawn
+    for the whole road, most of it off screen — about 17,000 px out at the close
+    zoom the test focuses on — where the rounding is as big as the triangle and
+    its area comes out zero. Which ones land there depends on the random run.
+    Caught in 3 of 60 runs of a parameterised stress test, with
+    `Geometry2D.triangulate_polygon` checked in `_chevron` to print the
+    refused triangles (printing every chevron and reading the line before the
+    error misled: stdout and stderr are buffered separately). Arrowheads are now
+    built round the origin and moved there with `draw_set_transform`
+    (`_polygon_at`), the lines' arrowheads too; 0 in 120 after.

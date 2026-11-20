@@ -3044,10 +3044,10 @@ class StarCanvas extends Control:
 			if d.length() > head * 1.5:
 				var dir: Vector2 = d.normalized()
 				var perp := Vector2(-dir.y, dir.x)
-				draw_colored_polygon(PackedVector2Array([pb,
-					pb - dir * head + perp * head * AtlasView.MAP_ARROW_SPREAD,
-					pb - dir * head * 0.75,
-					pb - dir * head - perp * head * AtlasView.MAP_ARROW_SPREAD]), col)
+				_polygon_at(pb, PackedVector2Array([Vector2.ZERO,
+					-dir * head + perp * head * AtlasView.MAP_ARROW_SPREAD,
+					-dir * head * 0.75,
+					-dir * head - perp * head * AtlasView.MAP_ARROW_SPREAD]), col)
 
 		# The run's rifts: the seams under the roads, the badges over the boxes.
 		var curves: Array = view.rift_curves()
@@ -3448,10 +3448,20 @@ class StarCanvas extends Control:
 		var left: Vector2 = -dir * size * 0.5 + perp * size * spread
 		var right: Vector2 = -dir * size * 0.5 - perp * size * spread
 		var grow: float = (size + (2.0 if spread < 0.44 else 3.4)) / size
-		draw_colored_polygon(PackedVector2Array([
-			at + tip * grow, at + left * grow, at + right * grow]),
+		_polygon_at(at, PackedVector2Array([tip * grow, left * grow, right * grow]),
 			AtlasView.COL_TRAIL_CASING)
-		draw_colored_polygon(PackedVector2Array([at + tip, at + left, at + right]), col)
+		_polygon_at(at, PackedVector2Array([tip, left, right]), col)
+
+	# A small polygon drawn around `at`, its points given RELATIVE to it.
+	# Godot triangulates a polygon from its absolute coordinates in 32-bit
+	# floats, so a few-pixel arrowhead far off screen (17,000 px out, at close
+	# zoom on the drawn map) rounds to zero area and is refused with "Invalid
+	# polygon data, triangulation failed". Built round the origin and moved there
+	# by the canvas transform, its coordinates stay small wherever it is.
+	func _polygon_at(at: Vector2, pts: PackedVector2Array, col: Color) -> void:
+		draw_set_transform(at)
+		draw_colored_polygon(pts, col)
+		draw_set_transform(Vector2.ZERO)
 
 	# One pass over the sky. `layer` says WHICH stars this pass is for — all of
 	# them (no route), the scenery, or the route itself — so the roads can be laid
