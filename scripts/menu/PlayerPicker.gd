@@ -342,6 +342,17 @@ func _fill_hat_row(detail: HBoxContainer, pl: PlayerData) -> void:
 		return
 	_hat_box.add_child(CustomizeScreen.customize_button(func(): open_customize(detail, pl)))
 
+func _after_look_change(detail: HBoxContainer, pl: PlayerData) -> void:
+	var arts: Dictionary = _state.get("arts", {})
+	if arts.has(pl.id) and is_instance_valid(arts[pl.id]):
+		var tr := arts[pl.id] as TextureRect
+		tr.texture = pl.shown_portrait()
+		UITheme.apply_crisp(tr, tr.texture)
+	if is_instance_valid(detail):
+		_fill_detail(detail, pl)
+	if is_instance_valid(_popup):
+		(_popup.get_meta(&"refill") as Callable).call()
+
 # Open the hat popup for `pl`. Public so a test can open it as the button does.
 func open_customize(detail: HBoxContainer = null, pl: PlayerData = null) -> Control:
 	if detail == null:
@@ -350,16 +361,10 @@ func open_customize(detail: HBoxContainer = null, pl: PlayerData = null) -> Cont
 		pl = Data.get_player(selected_id())
 	if is_instance_valid(_popup):
 		_popup.queue_free()
+	# A method, not a lambda, on the deferred queue: see
+	# PostCombatScreen._refresh_exit for the crash a freed lambda causes.
 	var on_change := func() -> void:
-		(func() -> void:
-			var arts: Dictionary = _state.get("arts", {})
-			if arts.has(pl.id) and is_instance_valid(arts[pl.id]):
-				var tr := arts[pl.id] as TextureRect
-				tr.texture = pl.shown_portrait()
-				UITheme.apply_crisp(tr, tr.texture)
-			_fill_detail(detail, pl)
-			if is_instance_valid(_popup):
-				(_popup.get_meta(&"refill") as Callable).call()).call_deferred()
+		_after_look_change.call_deferred(detail, pl)
 	_popup = CustomizeScreen.looks_popup(self, "%s — Hat" % pl.display_name,
 		func(body: VBoxContainer) -> void:
 			body.add_child(CustomizeScreen.look_row("Slot_hat", "Hat",

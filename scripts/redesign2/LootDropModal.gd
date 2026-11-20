@@ -684,11 +684,14 @@ func _buttons(multi: bool) -> Control:
 	# screen can be opened and left inside one frame (every headless test of it
 	# does), and the deferred call would then land on a button that is gone.
 	if room > 0:
-		var btn: Button = take
-		(func():
-			if is_instance_valid(btn) and btn.is_inside_tree():
-				btn.grab_focus()).call_deferred()
+		# A method, not a lambda, on the deferred queue: see
+		# PostCombatScreen._refresh_exit for the crash a freed lambda causes.
+		_focus_take.call_deferred(take)
 	return buttons
+
+func _focus_take(btn: Button) -> void:
+	if is_instance_valid(btn) and btn.is_inside_tree():
+		btn.grab_focus()
 
 # ---------------------------------------------------------------------------
 # Resolving an offer

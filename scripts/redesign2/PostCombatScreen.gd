@@ -989,15 +989,22 @@ func _focus_exit() -> void:
 	elif _exit_btn.has_focus():
 		_exit_btn.release_focus()
 
+func _flush_inventory() -> void:
+	_inv_dirty = false
+	_fill_inventory()
+
 func _refresh_exit() -> void:
 	# Whatever moved the way out moved the inventory too (a chest opened, a piece
 	# spent); redrawn next frame so a burst of changes is one redraw.
 	if not _inv_dirty:
 		_inv_dirty = true
-		(func():
-			_inv_dirty = false
-			if is_instance_valid(self):
-				_fill_inventory()).call_deferred()
+		# A METHOD, NOT A LAMBDA, is what goes on the deferred queue. A deferred
+		# lambda outlives the screen it belongs to when the screen is freed in the
+		# same frame (every headless test that leaves the haul does), and Godot 4.6
+		# then CRASHES naming it ("Trying to call a lambda with an invalid
+		# instance", then signal 11 — CI on 19 and 20 Nov 2026). A deferred method
+		# call is dropped quietly when its object is gone.
+		_flush_inventory.call_deferred()
 	if _exit_btn == null or not is_instance_valid(_exit_btn):
 		return
 	var left: int = unclaimed_count()
