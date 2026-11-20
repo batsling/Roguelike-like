@@ -9,14 +9,20 @@ the engine runs on is the two effect columns, one per side, authored
 independently so a status's two halves can do different things:
 
   statuses2.0: Name | Type | Game | On Player | On Player Effect | On Enemy
-                    | On Enemy Effect | Combat | Decrease | EnemyOnly
-                    | Enemy Combat Effect | Stackable | Image
+                    | On Enemy Effect | Combat | Decrease | Enemy Combat Effect
+                    | Player Combat | Player Combat Effect | Stackable | Image
 
-A status has a third side beside its two goal sides: a COMBAT side, which is the
-one place it touches a number on the board rather than a goal. `Combat` is the
-prose, `Enemy Combat Effect` the machine-readable counterpart, and `EnemyOnly`
-says whether it is felt on enemies alone (every buff) or on whoever is carrying
-it, the player included (every debuff). See parse_combat below.
+A status has COMBAT sides beside its two goal sides: the one place it touches a
+number on the board rather than a goal. Like the goal sides there is one per
+holder, authored independently: `Combat` / `Enemy Combat Effect` is what it does
+to an enemy carrying it (prose, then code), `Player Combat` / `Player Combat
+Effect` what it does to the player carrying it. The two hold different fields,
+because the two holders do different things on the board — an enemy swings for
+damage, the player lands Stun and gains Shields. See parse_combat below.
+
+`Player Combat Effect` replaced an `EnemyOnly` Yes/No (20 Nov 2026), which could
+only say "the player feels the enemy side too" — so a buff had nothing to give
+the player, and Strength on you did nothing on the board.
 
 Side effect DSL — one clause per cell:
 
@@ -455,11 +461,12 @@ def parse_max_stacks(raw, name):
     return cap
 
 
-# --- the COMBAT side ------------------------------------------------------
+# --- the COMBAT sides -----------------------------------------------------
 #
 # A status used to be goals and nothing else: it never touched a number on the
-# board. It touches four of them now, and the `Enemy Combat Effect` cell is where
-# each one is authored. One clause per number, semicolons between:
+# board. It touches several now, authored in `Enemy Combat Effect` (what it does
+# to an enemy carrying it) and `Player Combat Effect` (to the player carrying
+# it). One clause per number, semicolons between:
 #
 #     <field> +<amount>   an ADDITIVE bonus, scaling with the stack count
 #     <field> x<factor>   a flat MULTIPLIER, the same at every stack
@@ -493,6 +500,27 @@ COMBAT_ADD_FIELDS = {
     "recoil",
 }
 COMBAT_MULT_FIELDS = {"damage_taken", "damage_dealt"}
+
+# THE PLAYER'S SIDE takes its own list, because the player does different things
+# on the board: they never swing for damage, take a turn or walk a column, so
+# `damage_dealt`, `skip_turn` or `tile_move` in a Player cell would be read by
+# nothing. Refusing them here is the difference between an authoring mistake that
+# fails the build and one that ships as a status doing silently nothing.
+PLAYER_ADD_FIELDS = {
+    # What hits on the player land for, before any multiplier (Marked's half).
+    "damage_taken",
+    # +X STUN on every stun the player causes — a card, a weapon, a scroll, a
+    # bomb, an item. Not the goal hit's stun, which the player did not aim.
+    # Strength: on the player, Stun is the damage (GameLoop2.player_stun).
+    "stun_dealt",
+    # +X on every Shield GAIN that loot hands the player (GameState.grant_run_stat
+    # — items, cards, potions, pills, events), on whichever pool it lands in. Not
+    # the grant for selecting a game, Camp's Brace or Barricade's banking, which
+    # write the pools directly. Dexterity.
+    "shields_gained",
+}
+PLAYER_MULT_FIELDS = {"damage_taken"}
+PLAYER_FLAGS = {"pierce_shields"}
 # `key=value` options a clause may carry after its amount. One today.
 COMBAT_OPTIONS = {
     # The percentage chance ONE roll of `recoil` actually bites. Absent means
@@ -511,13 +539,17 @@ COMBAT_FLAGS = {
 }
 
 
-def parse_combat(raw, where):
-    """Parse one `Enemy Combat Effect` cell into the dict StatusData runs on.
+def parse_combat(raw, where, player=False):
+    """Parse one `Enemy Combat Effect` (or, with `player`, `Player Combat Effect`)
+    cell into the dict StatusData runs on.
 
     {} for an empty cell: most statuses will never have a combat side, and a
     blank cell has to read as "this one does nothing on the board" rather than as
     an authoring mistake.
     """
+    add_fields = PLAYER_ADD_FIELDS if player else COMBAT_ADD_FIELDS
+    mult_fields = PLAYER_MULT_FIELDS if player else COMBAT_MULT_FIELDS
+    flags = PLAYER_FLAGS if player else COMBAT_FLAGS
     s = _clean(raw)
     if not s:
         return {}
@@ -542,11 +574,11 @@ def parse_combat(raw, where):
                 rest.append(t)
         toks = [field] + rest
         if len(toks) == 1:
-            if field not in COMBAT_FLAGS:
+            if field not in flags:
                 raise ValueError(
                     "statuses2.0 %s: %r takes an amount, or is not a known combat "
                     "flag (known flags: %s)"
-                    % (where, clause, ", ".join(sorted(COMBAT_FLAGS))))
+                    % (where, clause, ", ".join(sorted(flags))))
             out[field] = True
             continue
         if len(toks) != 2:
@@ -561,10 +593,10 @@ def parse_combat(raw, where):
                                  % (where, k, v, clause))
         amount = toks[1]
         if amount.startswith("x"):
-            if field not in COMBAT_MULT_FIELDS:
+            if field not in mult_fields:
                 raise ValueError("statuses2.0 %s: %r takes no xN multiplier "
                                  "(known: %s)"
-                                 % (where, field, ", ".join(sorted(COMBAT_MULT_FIELDS))))
+                                 % (where, field, ", ".join(sorted(mult_fields))))
             try:
                 out[field + "_mult"] = float(amount[1:])
             except ValueError:
@@ -574,9 +606,9 @@ def parse_combat(raw, where):
         if not amount.startswith("+"):
             raise ValueError("statuses2.0 %s: combat amount %r needs a leading + "
                              "or x (%r)" % (where, amount, clause))
-        if field not in COMBAT_ADD_FIELDS:
+        if field not in add_fields:
             raise ValueError("statuses2.0 %s: unknown combat field %r (known: %s)"
-                             % (where, field, ", ".join(sorted(COMBAT_ADD_FIELDS))))
+                             % (where, field, ", ".join(sorted(add_fields))))
         kind, val = _amount(amount[1:])
         # Literal or hole, it is stored as an expression string: one evaluator at
         # runtime rather than two code paths that have to agree.
@@ -1102,7 +1134,9 @@ def status_tres(row) -> tuple:
     on_player = parse_side(row.get("On Player Effect"), "%s / On Player Effect" % name)
     on_enemy = parse_side(row.get("On Enemy Effect"), "%s / On Enemy Effect" % name)
     combat = parse_combat(row.get("Enemy Combat Effect"), "%s / Enemy Combat Effect" % name)
-    if not on_player and not on_enemy and not combat:
+    player_combat = parse_combat(row.get("Player Combat Effect"),
+                                 "%s / Player Combat Effect" % name, player=True)
+    if not on_player and not on_enemy and not combat and not player_combat:
         raise ValueError("statuses2.0 %s: neither side does anything" % name)
     # The Decrease column is the truth about depletion, and the sides' `decay`
     # flags are checked against it rather than trusted alongside it. A cell that
@@ -1121,12 +1155,6 @@ def status_tres(row) -> tuple:
         if decays and side:
             side["decay"] = True
     max_stacks = parse_max_stacks(row.get("Stackable"), name)
-    # EnemyOnly gates the COMBAT side alone — the goal sides are already authored
-    # one per side and say for themselves who they land on. Blank reads as Yes,
-    # which is the conservative half: a status nobody thought about does not
-    # start taxing the player's own Health.
-    enemy_only = (_clean(row.get("EnemyOnly")) or "Yes").strip().lower() \
-        not in ("no", "false", "0")
     file = _clean(row.get("Image"))
     img = _image_path(file)
 
@@ -1151,10 +1179,11 @@ def status_tres(row) -> tuple:
     lines.append('decrease = "%s"' % gd_str(decrease))
     lines.append('wear = "%s"' % gd_str(wear))
     lines.append('combat_text = "%s"' % gd_str(_clean(row.get("Combat"))))
-    lines.append("enemy_only = %s" % gd_value(enemy_only))
+    lines.append('player_combat_text = "%s"' % gd_str(_clean(row.get("Player Combat"))))
     lines.append("on_player = %s" % gd_value(on_player))
     lines.append("on_enemy = %s" % gd_value(on_enemy))
     lines.append("combat = %s" % gd_value(combat))
+    lines.append("player_combat = %s" % gd_value(player_combat))
     lines.append('file = "%s"' % gd_str(file))
     if img:
         lines.append('image = ExtResource("2_img")')
@@ -1181,11 +1210,12 @@ def main():
                           ("On Enemy Effect", "_statuses_sheet_setup.py"),
                           ("Combat", "_statuses2_combat_setup.py"),
                           ("Decrease", "_statuses2_burn_setup.py"),
-                          ("EnemyOnly", "_statuses2_combat_setup.py"),
-                          ("Enemy Combat Effect", "_statuses2_combat_setup.py")):
+                          ("Enemy Combat Effect", "_statuses2_combat_setup.py"),
+                          ("Player Combat", "_statuses_player_combat_setup.py"),
+                          ("Player Combat Effect", "_statuses_player_combat_setup.py")):
         if needed not in headers:
             raise SystemExit(
-                "statuses2.0 has no %r column — run tools/%s first." % (needed, setup))
+                "statuses2.0 has no %r column — run tools/oneshots/%s first." % (needed, setup))
 
     os.makedirs(OUT_DIR, exist_ok=True)
     written = []

@@ -389,6 +389,12 @@ That kills the prerequisite this doc originally carried. `EnemyOnly` stays as it
 §13.4 does not move, no status grows a player-facing combat number, and no call site
 has to learn to read one. What the potions need is the clock and nothing else.
 
+*Later (20 Nov 2026):* statuses did grow a player combat side — `Player Combat
+Effect` replaced `EnemyOnly`, and Strength / Dexterity on you now add Stun and
+Shields (spec §13.4). Nothing here needed to change for it: a quaffed Strength is a
+timed stack, and the combat side reads the same effective statuses the goal does,
+so Flex Potion now also grows your stuns for its one game.
+
 It also changes what a buff potion *is*, and the change is for the better: a quaffed
 buff is an **opportunity, not a stat**. Flex Potion is not "you hit harder"; it is
 one game in which raising the difficulty five times pays a Huge chest and a Bash.

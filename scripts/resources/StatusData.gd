@@ -11,7 +11,10 @@ extends Resource
 # stack makes an enemy hit harder, a Dexterity stack gives it a shield to spend, a
 # Speed stack walks it a tile closer, and Marked doubles what lands on whoever is
 # wearing it. That side is `combat`, at the bottom of the exports, and it is the
-# only part of a status that touches a number rather than a goal.
+# only part of a status that touches a number rather than a goal. The PLAYER has a
+# combat side of its own, `player_combat`, because the player does different
+# things on the board: Strength on you adds Stun to every stun you cause, and
+# Dexterity adds Shields to every Shield loot gives you.
 #
 # A status has TWO GOAL SIDES, `on_player` and `on_enemy`, authored independently
 # in the sheet so its halves can do genuinely different things (Marked taxes every
@@ -37,9 +40,9 @@ extends Resource
 #            "beaten in <game>" tally and no note. Burn's enemy side.
 #
 # Because the mode says what a side does, `kind` (Buff / Debuff) drives no
-# mechanic at all: it is the HUD tint and the collection filter, nothing more. The
-# distinction it stands for is real, but it is spelled out in `enemy_only` rather
-# than inferred from the word — a debuff's combat side reaches the player too.
+# mechanic at all: it is the HUD tint and the collection filter, nothing more.
+# Who feels what on the board is spelled out per holder (`combat`,
+# `player_combat`) rather than inferred from the word.
 #
 # Source-of-truth content lives in the `statuses2.0` sheet of
 # tools/Roguelikes.xlsx and is generated into data/statuses2.0/*.tres by
@@ -130,10 +133,11 @@ const ENEMY := &"enemy"
 @export var on_player: Dictionary = {}
 @export var on_enemy: Dictionary = {}
 
-# THE COMBAT SIDE. Everything above rewrites GOALS; this is the one part of a
-# status that touches a number on the board. `combat_text` is the sheet's prose
-# and `combat` is what the engine runs on — {} for a status that does nothing in
-# combat, else some of:
+# THE COMBAT SIDES. Everything above rewrites GOALS; these are the part of a
+# status that touches a number on the board, one per holder, like the goal sides.
+#
+# `combat` is what it does to an ENEMY carrying it (`combat_text` the sheet's
+# prose) — {} for a status that does nothing to one in combat, else some of:
 #
 #   damage_dealt        String expr over X   this thing's hits land for that much more
 #   damage_taken        String expr over X   hits on this thing land for that much more
@@ -154,13 +158,23 @@ const ENEMY := &"enemy"
 @export var combat_text: String = ""
 @export var combat: Dictionary = {}
 
-# Whether the combat side is felt on ENEMIES ONLY (the sheet's EnemyOnly column).
-# Every buff is: Strength on the player would be a stat, and this game has no
-# player attack to put it on. Every debuff is not — a debuff is felt by whoever is
-# carrying it, so Marked doubles the damage the PLAYER takes as readily as an
-# enemy's. Nothing else in the class keys off Buff/Debuff; this column is where
-# that distinction became a rule instead of a tint.
-@export var enemy_only: bool = true
+# What it does to the PLAYER carrying it (the sheet's `Player Combat` prose and
+# `Player Combat Effect` code). Its own fields, because the player never swings,
+# takes a turn or walks a column — on the player, STUN is the damage:
+#
+#   stun_dealt          String expr over X   +that much Stun on every stun the
+#                                            player causes (GameLoop2.player_stun)
+#   shields_gained      String expr over X   +that many on every Shield gain loot
+#                                            hands out (GameState.grant_run_stat)
+#   damage_taken        String expr over X   hits on the player land for more
+#   damage_taken_mult   float                Marked's x2
+#   pierce_shields      bool                 hits on the player ignore Shields
+#
+# It replaced an `EnemyOnly` flag (20 Nov 2026) that could only say "the player
+# feels the enemy side too": a buff had nothing to give the player, and a debuff
+# could only be a copy of its enemy half. Marked's cell is that copy, written out.
+@export var player_combat_text: String = ""
+@export var player_combat: Dictionary = {}
 
 # Art base name under res://images2.0/statuses/ (the sheet's Image column).
 @export var file: String = ""
@@ -354,7 +368,7 @@ func hover_card(which: StringName, stacks: int, nullified: bool = false,
 		_:
 			lines.append("Does nothing on this side.")
 	if combat_applies(which):
-		lines.append("In combat: %s." % combat_line(stacks))
+		lines.append("In combat: %s." % combat_line(stacks, which))
 	var clock: String = clock_note(games)
 	if clock != "":
 		lines.append(clock)
@@ -469,8 +483,8 @@ func tooltip_for(which: StringName, stacks: int, nullified: bool = false,
 	# one thing to the player, and "what is this doing to me" has to be answerable
 	# in one hover whether the answer is a goal, a number on the board, or both.
 	if combat_applies(which):
-		body += "\nIn combat: %s." % combat_line(stacks)
-	elif has_combat() and which == PLAYER:
+		body += "\nIn combat: %s." % combat_line(stacks, which)
+	elif which == PLAYER and combat_applies(ENEMY):
 		body += "\nIts combat effect is felt by enemies only."
 	# LAST LINE, and deliberately after the combat one: how long this lasts is the
 	# thing about it that changes between one look and the next, which is where the
@@ -526,28 +540,44 @@ const COMBAT_ZERO := {
 	"damage_dealt_mult": 1.0, "damage_taken_mult": 1.0,
 	"shield": 0, "tile_move": 0, "pierce_shields": false,
 	"skip_turn": false,
+	# The player's own two (`player_combat`): Strength and Dexterity on you.
+	"stun_dealt": 0, "shields_gained": 0,
 }
 
-func has_combat() -> bool:
-	return not combat.is_empty()
+# The additive fields the aggregator sums — both holders' in one list, since a
+# field a side never authors simply reads 0 off it.
+const COMBAT_ADD_KEYS := ["damage_dealt", "damage_taken", "shield", "tile_move",
+	"stun_dealt", "shields_gained"]
 
-# Whether this status's combat side is felt by `which`. A status on an ENEMY
-# always acts; on the PLAYER only when the sheet said it reaches that far.
+# Does it do anything on the board, to either holder?
+func has_combat() -> bool:
+	return not combat.is_empty() or not player_combat.is_empty()
+
+# The combat side `which` carries: `player_combat` for the player, `combat` for an
+# enemy. Every reader below goes through here, so the two holders can never be
+# read off each other's cell.
+func combat_for(which: StringName) -> Dictionary:
+	return player_combat if which == PLAYER else combat
+
+# Whether this status does anything on the board to `which` when carried.
 func combat_applies(which: StringName) -> bool:
-	return has_combat() and (which == ENEMY or not enemy_only)
+	return not combat_for(which).is_empty()
 
 # One additive combat field at `stacks` — 0 when this status doesn't author it.
-func combat_bonus(field: StringName, stacks: int) -> int:
-	if not combat.has(field):
+# `which` defaults to the ENEMY because nearly every caller is the board asking
+# about a body; the player's reads all come through `combat_totals`.
+func combat_bonus(field: StringName, stacks: int, which: StringName = ENEMY) -> int:
+	var side: Dictionary = combat_for(which)
+	if not side.has(field):
 		return 0
-	return int(round(evaluate(String(combat[field]), stacks)))
+	return int(round(evaluate(String(side[field]), stacks)))
 
 # One multiplier field, 1.0 when unauthored. Flat: `stacks` is not consulted.
-func combat_mult(field: StringName) -> float:
-	return float(combat.get(String(field) + "_mult", 1.0))
+func combat_mult(field: StringName, which: StringName = ENEMY) -> float:
+	return float(combat_for(which).get(String(field) + "_mult", 1.0))
 
-func pierces_shields() -> bool:
-	return bool(combat.get("pierce_shields", false))
+func pierces_shields(which: StringName = ENEMY) -> bool:
+	return bool(combat_for(which).get("pierce_shields", false))
 
 # Does the holder lose its turn outright? Stun's whole combat side, and the same
 # effect the board's own `stun` counter has had since Scroll of Scare Monster
@@ -613,13 +643,15 @@ static func combat_totals(held: Dictionary, which: StringName) -> Dictionary:
 		var stacks: int = int(held[id])
 		if stacks <= 0:
 			continue
-		for field in ["damage_dealt", "damage_taken", "shield", "tile_move"]:
-			out[field] = int(out[field]) + status.combat_bonus(StringName(field), stacks)
+		for field in COMBAT_ADD_KEYS:
+			out[field] = int(out[field]) + status.combat_bonus(StringName(field), stacks, which)
 		for field in ["damage_dealt_mult", "damage_taken_mult"]:
 			out[field] = float(out[field]) * status.combat_mult(
-				StringName(String(field).trim_suffix("_mult")))
-		out["pierce_shields"] = bool(out["pierce_shields"]) or status.pierces_shields()
-		out["skip_turn"] = bool(out["skip_turn"]) or status.skips_turn()
+				StringName(String(field).trim_suffix("_mult")), which)
+		out["pierce_shields"] = bool(out["pierce_shields"]) or status.pierces_shields(which)
+		# An enemy's alone: the player has no turn to lose.
+		if which == ENEMY:
+			out["skip_turn"] = bool(out["skip_turn"]) or status.skips_turn()
 	return out
 
 # Apply one totals dict to a raw damage number: the bonus first, then the
@@ -631,30 +663,43 @@ static func apply_damage_mods(damage: int, bonus: int, mult: float) -> int:
 # What the combat side DOES, in words, at `stacks` — the live line the tooltips
 # carry. Built from the parsed `combat` rather than from `combat_text`, so it
 # quotes the number that is actually in force instead of the sheet's bare X.
-func combat_line(stacks: int) -> String:
-	if not has_combat():
+#
+# `which` picks the side: the ENEMY's by default, since a body's card is the
+# commonest reader; the player's tooltip and a scroll aimed at you pass PLAYER.
+func combat_line(stacks: int, which: StringName = ENEMY) -> String:
+	if not combat_applies(which):
 		return ""
 	var parts: PackedStringArray = []
-	var dealt: int = combat_bonus(&"damage_dealt", stacks)
+	var dealt: int = combat_bonus(&"damage_dealt", stacks, which)
 	if dealt != 0:
 		parts.append("deals %+d damage" % dealt)
-	var dealt_mult: float = combat_mult(&"damage_dealt")
+	var dealt_mult: float = combat_mult(&"damage_dealt", which)
 	if not is_equal_approx(dealt_mult, 1.0):
 		parts.append("deals %sx damage" % format_number(dealt_mult))
-	var taken: int = combat_bonus(&"damage_taken", stacks)
+	var taken: int = combat_bonus(&"damage_taken", stacks, which)
 	if taken != 0:
 		parts.append("takes %+d damage" % taken)
-	var taken_mult: float = combat_mult(&"damage_taken")
+	var taken_mult: float = combat_mult(&"damage_taken", which)
 	if not is_equal_approx(taken_mult, 1.0):
 		parts.append("takes %sx damage" % format_number(taken_mult))
-	var shield: int = combat_bonus(&"shield", stacks)
+	var shield: int = combat_bonus(&"shield", stacks, which)
 	if shield != 0:
 		parts.append("+%d %s" % [shield, "Shield" if shield == 1 else "Shields"])
-	var move: int = combat_bonus(&"tile_move", stacks)
+	var move: int = combat_bonus(&"tile_move", stacks, which)
 	if move != 0:
 		parts.append("moves %+d %s per turn" % [move, "tile" if absi(move) == 1 else "tiles"])
-	if pierces_shields():
+	# The player's two. Said as what happens to the NEXT one, because that is
+	# what the player is deciding about when they hover the pip.
+	var stun_more: int = combat_bonus(&"stun_dealt", stacks, which)
+	if stun_more != 0:
+		parts.append("every Stun you deal lands %+d more" % stun_more)
+	var shields_more: int = combat_bonus(&"shields_gained", stacks, which)
+	if shields_more != 0:
+		parts.append("%+d to every Shield gain from loot" % shields_more)
+	if pierces_shields(which):
 		parts.append("ignores Shields")
+	if which == PLAYER:
+		return ", ".join(parts)
 	if skips_turn():
 		parts.append("loses its turn")
 	var hit: int = recoil_damage()

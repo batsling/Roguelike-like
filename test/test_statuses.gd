@@ -935,9 +935,8 @@ func test_burn_halves_what_a_body_hits_for() -> void:
 		"and flat: the stacks move the condition, not the halving")
 
 func test_burns_halving_is_felt_by_enemies_only() -> void:
-	# A debuff is normally felt by whoever carries it, but there is no player
-	# attack for a halving to sit on — so the sheet says enemies only, and that
-	# column is what decides it rather than the word "debuff".
+	# There is no player attack for a halving to sit on, so Burn's Player Combat
+	# cell is blank — the cell decides it, not the word "debuff".
 	var burn: StatusData = Data.get_status(&"burn")
 	assert_true(burn.is_debuff())
 	assert_true(burn.combat_applies(StatusData.ENEMY))
@@ -1337,10 +1336,11 @@ func test_an_enemys_statuses_draw_in_its_top_right_corner() -> void:
 
 # A synthetic status with only a combat side, so the rules can be tested without
 # the authored roster's goals coming along for the ride.
-func _combat_status(id: StringName, combat: Dictionary, enemy_only: bool = true) -> StatusData:
+func _combat_status(id: StringName, combat: Dictionary,
+		player_combat: Dictionary = {}) -> StatusData:
 	var s: StatusData = _status(id)
 	s.combat = combat
-	s.enemy_only = enemy_only
+	s.player_combat = player_combat
 	return s
 
 # --- what the sheet authored ----------------------------------------------
@@ -1356,16 +1356,95 @@ func test_the_roster_authored_the_combat_sides_the_sheet_promises() -> void:
 		"Marked: double damage taken")
 	assert_true(Data.get_status(&"marked").pierces_shields(), "and through shields")
 
-func test_only_the_debuff_reaches_the_player() -> void:
-	# EnemyOnly is what Buff/Debuff always meant: a debuff is felt by whoever is
-	# carrying it, a buff only ever by an enemy.
-	for id in [&"strength", &"speed", &"dexterity"]:
-		var buff: StatusData = Data.get_status(id)
-		assert_true(buff.combat_applies(StatusData.ENEMY), "%s acts on an enemy" % id)
-		assert_false(buff.combat_applies(StatusData.PLAYER), "%s does not on the player" % id)
+func test_each_holder_reads_its_own_combat_cell() -> void:
+	# `Player Combat Effect` replaced EnemyOnly: each holder's side is written out
+	# on its own, like the goal sides, so a buff can do the PLAYER's version of
+	# its job rather than nothing.
+	for id in [&"speed", &"burn", &"bleed", &"stun"]:
+		var sd: StatusData = Data.get_status(id)
+		assert_true(sd.combat_applies(StatusData.ENEMY), "%s acts on an enemy" % id)
+		assert_false(sd.combat_applies(StatusData.PLAYER), "%s does not on the player" % id)
+	var strength: StatusData = Data.get_status(&"strength")
+	assert_eq(strength.combat_bonus(&"stun_dealt", 3, StatusData.PLAYER), 3,
+		"Strength on you: +X Stun dealt")
+	assert_eq(strength.combat_bonus(&"damage_dealt", 3, StatusData.PLAYER), 0,
+		"and not the enemy's +X damage — the player never swings")
+	assert_eq(strength.combat_bonus(&"stun_dealt", 3), 0, "nor the other way round")
+	var dex: StatusData = Data.get_status(&"dexterity")
+	assert_eq(dex.combat_bonus(&"shields_gained", 2, StatusData.PLAYER), 2,
+		"Dexterity on you: +X to each Shield gain")
+	assert_eq(dex.combat_bonus(&"shield", 2, StatusData.PLAYER), 0,
+		"and no Shield handed out when it lands")
 	var marked: StatusData = Data.get_status(&"marked")
 	assert_true(marked.combat_applies(StatusData.ENEMY))
-	assert_true(marked.combat_applies(StatusData.PLAYER), "Marked is felt both ways")
+	assert_eq(marked.combat_mult(&"damage_taken", StatusData.PLAYER), 2.0,
+		"Marked is felt both ways")
+	assert_true(marked.pierces_shields(StatusData.PLAYER))
+
+# --- Strength and Dexterity on the PLAYER (§13.4) ----------------------------
+
+func test_strength_on_you_adds_to_every_stun_you_cause() -> void:
+	var inst: int = Fixtures.body(Vector2i(2, 1))
+	GameState.apply_status(&"strength", 2)
+	assert_eq(GameState.stun_dealt_bonus(), 2)
+	GameLoop2.stun(inst)                 # a weapon's, a scroll's, a bomb's
+	assert_eq(GameLoop2.stun_stacks(GameLoop2.entry_for(inst)), 3, "1 + 2")
+
+func test_strength_does_not_add_to_the_goal_hits_stun() -> void:
+	# The player aimed a goal, not this; +X on it would be +X every game on every
+	# body still standing.
+	var inst: int = Fixtures.body(Vector2i(2, 1))
+	GameState.apply_status(&"strength", 2)
+	GameLoop2._stun_survivor(inst)
+	assert_eq(GameLoop2.stun_stacks(GameLoop2.entry_for(inst)), GameLoop2.GOAL_HIT_STUN)
+
+func test_strength_adds_to_an_items_stun_and_to_nothing_else() -> void:
+	var inst: int = Fixtures.body(Vector2i(2, 1))
+	GameState.apply_status(&"strength", 2)
+	# The Necronomicon's clause.
+	EffectSystem.apply({"type": "apply_status", "status": "stun", "value": 1,
+		"target": "all"}, {})
+	assert_eq(GameLoop2.stun_stacks(GameLoop2.entry_for(inst)), 3, "1 + 2")
+	EffectSystem.apply({"type": "apply_status", "status": "burn", "value": 1,
+		"target": "all"}, {})
+	assert_eq(GameLoop2.entry_status_stacks(GameLoop2.entry_for(inst), &"burn"), 1,
+		"Strength is Stun's, not every status's")
+
+func test_strength_on_an_enemy_does_not_reach_the_players_stun() -> void:
+	var inst: int = Fixtures.body(Vector2i(2, 1))
+	GameLoop2.apply_status_to(inst, &"strength", 3)
+	GameLoop2.stun(inst)
+	assert_eq(GameLoop2.stun_stacks(GameLoop2.entry_for(inst)), 1)
+
+func test_dexterity_on_you_adds_to_every_shield_gain_from_loot() -> void:
+	GameState.apply_status(&"dexterity", 2)
+	GameState.shields = 0
+	GameState.bonus_shields = 0
+	assert_eq(GameState.grant_run_stat("shields", 1), 3, "it says what landed")
+	assert_eq(GameState.shields, 3, "a Temporary Shield: 1 + 2")
+	GameState.grant_run_stat("bonus_shields", 1)
+	assert_eq(GameState.bonus_shields, 3, "a Shield that stays: 1 + 2")
+	GameState.grant_run_stat("block", 1)
+	assert_eq(GameState.shields, 6, "the old `block` spelling is the same pool")
+	GameState.grant_run_stat("shields", -1)
+	assert_eq(GameState.shields, 5, "a loss is not a gain")
+	var bombs: int = GameState.bombs
+	GameState.grant_run_stat("bombs", 1)
+	assert_eq(GameState.bombs, bombs + 1, "nor is a Bomb a Shield")
+
+func test_dexterity_does_not_add_to_the_grant_for_selecting_a_game() -> void:
+	GameState.apply_status(&"dexterity", 2)
+	GameState.shields = 0
+	var n: int = GameLoop2.grant_selection_shields(null)
+	assert_eq(GameState.shields, n, "the selection grant is not loot")
+
+func test_a_strength_potion_borrows_the_stun_too() -> void:
+	# A timed stack is a stack (potions-design §5.4): the combat side reads the
+	# same effective statuses the goal side does.
+	var inst: int = Fixtures.body(Vector2i(2, 1))
+	GameState.apply_status(&"strength", 1, 1)
+	GameLoop2.stun(inst)
+	assert_eq(GameLoop2.stun_stacks(GameLoop2.entry_for(inst)), 2)
 
 func test_a_multiplier_is_flat_while_a_bonus_scales() -> void:
 	# A doubling that compounded per stack would turn a 1-damage board into a
@@ -1564,8 +1643,8 @@ func test_marked_ignores_a_shield_rather_than_spending_it() -> void:
 		"five shields stopped none of it")
 
 func test_marked_on_the_player_doubles_what_lands_and_skips_the_tries() -> void:
-	# The rule that makes EnemyOnly worth having: a debuff is felt by whoever is
-	# carrying it, Shields included.
+	# Marked's Player Combat cell is its enemy one, written out: a debuff felt by
+	# whoever is carrying it, Shields included.
 	var ui = _booted()
 	Page.pick_enemies(ui, 0)
 	Fixtures.shut_failure_tap()
@@ -1686,10 +1765,17 @@ func test_the_tooltip_carries_the_combat_line_at_the_live_stack() -> void:
 	assert_true(tip.contains("+3 damage"), "the number in force, not the sheet's X")
 
 func test_the_tooltip_says_when_a_buff_is_enemies_only() -> void:
-	# Otherwise a player holding Strength has a pip that looks like it does
+	# Otherwise a player holding Speed has a pip that looks like it does
 	# something and a tooltip that never mentions it doesn't.
-	var tip: String = Data.get_status(&"strength").tooltip_for(StatusData.PLAYER, 2)
+	var tip: String = Data.get_status(&"speed").tooltip_for(StatusData.PLAYER, 2)
 	assert_true(tip.to_lower().contains("enemies only"))
+
+func test_the_players_tooltip_quotes_the_players_combat_side() -> void:
+	var strength: String = Data.get_status(&"strength").tooltip_for(StatusData.PLAYER, 2)
+	assert_string_contains(strength, "every Stun you deal lands +2 more")
+	assert_false(strength.contains("damage"), "not the enemy's swing")
+	var dex: String = Data.get_status(&"dexterity").tooltip_for(StatusData.PLAYER, 3)
+	assert_string_contains(dex, "+3 to every Shield gain from loot")
 
 # --- a goal's ADD-ONS, as rows rather than as a sentence (§13) ---------------
 #

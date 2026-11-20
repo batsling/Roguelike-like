@@ -267,8 +267,11 @@ func _hit_enemies(effect: Dictionary, out: Dictionary, ctx: Dictionary,
 	if area == "cell" and bodies.size() > 1:
 		bodies = bodies.slice(0, 1)
 	var landed: int = 0
+	# Strength on you adds to a stun (GameLoop2.player_stun); the log below still
+	# quotes the card's own number, which is what the card says it does.
+	var lands: int = GameLoop2.player_stun(status, stacks)
 	for inst in bodies:
-		if GameLoop2.apply_status_to(int(inst), status, stacks) > 0:
+		if GameLoop2.apply_status_to(int(inst), status, lands) > 0:
 			landed += 1
 	if landed <= 0:
 		out["logs"].append("No enemy is there to take it.")
@@ -276,7 +279,7 @@ func _hit_enemies(effect: Dictionary, out: Dictionary, ctx: Dictionary,
 	tally["hit"] = int(tally.get("hit", 0)) + landed
 	var word: String = sdata.display_name if sdata != null else String(status).capitalize()
 	out["logs"].append("%d enem%s gain%s +%d %s." % [landed,
-		"y" if landed == 1 else "ies", "s" if landed == 1 else "", stacks, word])
+		"y" if landed == 1 else "ies", "s" if landed == 1 else "", lands, word])
 
 
 # Fiend Fire, Second Wind: "destroy all OTHER loot in this row" — every piece with
@@ -404,12 +407,15 @@ func _gain_stat(effect: Dictionary, out: Dictionary) -> void:
 		# A DOWNGRADED Shield card takes Shield away (LootUpgrade) — what is had,
 		# and no further.
 		var before: int = int(GameState.get(stat)) if stat in GameState else 0
-		GameState.grant_run_stat(stat, value)
+		var got: int = GameState.grant_run_stat(stat, value)
 		if value < 0:
 			var lost: int = before - (int(GameState.get(stat)) if stat in GameState else 0)
 			out["logs"].append("-%d %s." % [lost, _stat_word(stat)] if lost > 0
 				else "You have no %s to lose." % _stat_word(stat))
 			return
+		# What LANDED, Snowball and Dexterity included, rather than the card's own
+		# number: the log is where the player sees the bonus at work.
+		value = got
 	out["logs"].append("%+d %s." % [value, _stat_word(stat)])
 
 
@@ -447,7 +453,7 @@ func _double_stat(effect: Dictionary, out: Dictionary) -> void:
 		GameState.change_gold(gain)
 		out["logs"].append("+%d Gold%s." % [gain, "" if have > 0 else " — you had none"])
 		return
-	GameState.grant_run_stat(stat, gain)
+	gain = GameState.grant_run_stat(stat, gain)
 	out["logs"].append("+%d %s%s." % [gain, _stat_word(stat),
 		"" if have > 0 else " — you had none"])
 

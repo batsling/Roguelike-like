@@ -373,6 +373,9 @@ func _h_apply_status(effect: Dictionary, ctx: Dictionary) -> void:
 	# by whoever did the aiming — GameState.use_item passes it through — so a
 	# firing with nobody picked lands on nothing rather than falling through to
 	# "current" and burning whatever happens to be standing closest.
+	# On an enemy it is the PLAYER'S doing — an item fired it (The Necronomicon,
+	# Ceremonial Dagger) — so Strength on you adds to a stun (GameLoop2.player_stun).
+	stacks = GameLoop2.player_stun(status_id, stacks)
 	if target == "enemy":
 		var aimed: Variant = ctx.get("target")
 		if not (aimed is int) or int(aimed) <= 0:

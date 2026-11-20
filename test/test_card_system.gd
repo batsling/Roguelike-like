@@ -482,6 +482,30 @@ func test_pommel_strike_stuns_the_body_it_is_aimed_at_and_offers_a_card() -> voi
 	assert_eq(GameState.loot_items.size(), 1, "+1 Random Card")
 	assert_eq(String(GameState.loot_items[0].get("type", "")), "card")
 
+func test_strength_on_you_adds_to_each_body_a_card_stuns() -> void:
+	# Slay the Spire's rule: a multi-target attack adds Strength to every enemy hit.
+	GameState.apply_status(&"strength", 2)
+	var a: int = _stand(9001, 1, 1)
+	var b: int = _stand(9002, 3, 1)
+	var out: Dictionary = _play(&"cleave", {"target": Vector2i(2, 1)})
+	assert_eq(_stun_on(a), 3, "1 + 2")
+	assert_eq(_stun_on(b), 3, "1 + 2, again")
+	assert_string_contains(" ".join(PackedStringArray(out.get("logs", []))), "+3 Stun",
+		"the log says what landed")
+
+func test_iron_wave_under_strength_and_dexterity_grows_both_halves() -> void:
+	# "Gain +1 Temporary Shield and Apply Stun 1 to an Enemy" — Slay the Spire's
+	# Iron Wave, which Strength and Dexterity both grow there too.
+	GameState.apply_status(&"strength", 1)
+	GameState.apply_status(&"dexterity", 2)
+	GameState.shields = 0
+	var a: int = _stand(9001, 1, 0)
+	var out: Dictionary = _play(&"iron_wave", {"target": Vector2i(1, 0)})
+	assert_eq(GameState.shields, 3, "1 + 2 Dexterity")
+	assert_eq(_stun_on(a), 2, "1 + 1 Strength")
+	assert_string_contains(" ".join(PackedStringArray(out.get("logs", []))), "+3",
+		"the log says what landed")
+
 func test_cleave_stuns_the_whole_lane_and_only_that_lane() -> void:
 	var a: int = _stand(9001, 1, 1)
 	var b: int = _stand(9002, 3, 1)

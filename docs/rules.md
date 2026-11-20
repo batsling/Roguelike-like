@@ -476,12 +476,12 @@ A status is first of all a clause bolted onto a GOAL, which is the only currency
 
 The five of them, and what they do in a fight:
 
-- **Strength** — Every hit that enemy lands is worth 1 more per stack.
+- **Strength** — Every hit that enemy lands is worth 1 more per stack. On YOU, every Stun you deal lands 1 more per stack — a card, a weapon, a scroll, a bomb, an item, each body it reaches. Not the Stun an enemy takes for surviving its goal's hit.
 - **Speed** — It closes one extra tile per stack, every turn — so it reaches you sooner than the board looks like it should.
-- **Dexterity** — It gets a Shield per stack. Each one stops a whole hit and is spent doing it, so a shielded enemy takes an extra goal per shield to put down.
+- **Dexterity** — It gets a Shield per stack. Each one stops a whole hit and is spent doing it, so a shielded enemy takes an extra goal per shield to put down. On YOU, every time loot gives you Shields you get 1 more per stack — not the Shields for choosing a game.
 - **Marked** — Everything that lands on it is DOUBLED and goes straight through Shields. On YOU it is a debt as well: every game, get as many achievements in the game you are playing as you have stacks of it — or take 3 damage. On an ENEMY the same condition pays a chest instead, so a marked body is worth engaging.
 - **Burn** — It hits for half. On YOU it is a debt instead: every game, skip or trash as many items in the game you are playing as you have stacks of it — or take 3 damage once the enemies have swung. Pay it and a stack comes off, which makes the next one cheaper. It stacks no higher than 3. On an ENEMY the same deal runs the other way: its goal grows a way out that costs 4 minus its stacks, so a badly burned enemy is the cheapest one to be rid of. Burn is bad for whoever is carrying it. And it burns PAPER: every time Burn lands on you there is a 1-in-4 chance that one random scroll in your pack goes up with it. Pills and potions are safe.
-- The buffs are felt by enemies only. Marked is a debuff, and a debuff is felt by whoever is carrying it — Marked on YOU doubles every hit you take and goes straight past the shields you were counting on to stop it. Burn's halving is the exception that proves it is a column and not a rule about the word: there is no attack of yours for a halving to sit on, so the sheet says enemies only.
+- Each status says what it does to you and to an enemy separately. Speed is felt by enemies only — you have no tile to close. Marked on YOU doubles every hit you take and goes straight past the shields you were counting on to stop it. Burn's halving is enemies only: there is no attack of yours for a halving to sit on.
 
 ### The ground: tiles and units
 

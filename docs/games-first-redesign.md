@@ -3396,8 +3396,8 @@ work off and a reason to engage the thing carrying it.
 ### 13.1 Schema
 
 `statuses2.0` columns: `Name | Type | Game | On Player | On Player Effect |
-On Enemy | On Enemy Effect | Combat | Decrease | EnemyOnly |
-Enemy Combat Effect | Stackable | Image`.
+On Enemy | On Enemy Effect | Combat | Decrease | Enemy Combat Effect |
+Player Combat | Player Combat Effect | Stackable | Image`.
 
 The two **prose** columns (`On Player` / `On Enemy`) are the author's wording,
 carried onto `StatusData` for tooltips. Beside each sits its machine-readable
@@ -3747,8 +3747,12 @@ the status does not have.
 ### 13.4 The combat side
 
 A status started out as goals and nothing else — it never touched a number on the
-board. It touches four of them now, authored in the `Combat` / `EnemyOnly` /
-`Enemy Combat Effect` columns and parsed onto `StatusData.combat`:
+board. It has a combat side per HOLDER now, like its two goal sides: `Combat` /
+`Enemy Combat Effect` is what it does to an enemy carrying it (parsed onto
+`StatusData.combat`), `Player Combat` / `Player Combat Effect` what it does to the
+player carrying it (`StatusData.player_combat`).
+
+On an **enemy**:
 
 | Clause | What it does |
 |---|---|
@@ -3758,17 +3762,43 @@ board. It touches four of them now, authored in the `Combat` / `EnemyOnly` /
 | `tile_move +{X}` | this body closes X extra columns per step (Speed) |
 | `pierce_shields` | damage aimed at this body ignores shields outright (Marked) |
 
+On the **player**, who never swings, takes a turn or walks a column — on the
+player, Stun is the damage:
+
+| Clause | What it does |
+|---|---|
+| `stun_dealt +{X}` | every stun the player causes lands X more, on each body it reaches (Strength) |
+| `shields_gained +{X}` | every Shield gain from loot lands X more, in either pool (Dexterity) |
+| `damage_taken +{X}` / `damage_taken x2` | hits on the player land for more (Marked) |
+| `pierce_shields` | hits on the player ignore Shields (Marked) |
+
+The generator refuses an enemy-only field in a Player cell, so a status cannot
+ship doing silently nothing.
+
+**Which stuns, which shields** (the owner, 20 Nov 2026). Strength counts every stun
+the player CAUSES: a card (`CardSystem._hit_enemies`), a weapon, a scroll, a bomb
+(`GameLoop2.stun`), an item's `apply_status` — all through
+`GameLoop2.player_stun`. Not the goal hit's `GOAL_HIT_STUN` (the player aimed a
+goal, not that, and +X on it would be +X every game on every body standing), and
+not a Web tile's per-turn stun (the ground's, and +X a turn would pin a body for
+good). Dexterity counts every gain through `GameState.grant_run_stat` — items,
+cards, potions, pills, events — but not the grant for selecting a game, Camp's
+Brace or Barricade's banking, which write the pools directly. A potion's borrowed
+Strength or Dexterity counts while it lasts: the combat side reads the same
+effective statuses the goal side does.
+
 Three rules hold the side together:
 
 - **Additive fields scale with the stack count; multipliers do not.** Marked
   doubles at one stack and at four. A doubling that compounded per stack would
   turn a board where a hit is worth 1 into one where it is worth 16, off a status
   the player never chose to stack.
-- **`EnemyOnly` is what Buff/Debuff always meant.** Every buff sets it, because
-  Strength on the player would want a player attack to sit on and this game has
-  none. Every debuff clears it, so **a debuff is felt by whoever is carrying it**:
-  Marked on the player doubles the damage they take and takes it straight past the
-  Shields they were counting on to stop it.
+- **Each holder's side is its own cell.** It used to be one cell plus an
+  `EnemyOnly` Yes/No, which could only say "the player feels the enemy side too" —
+  so a buff had nothing to give the player and Strength on you did nothing on the
+  board. The Player cell replaced it (20 Nov 2026); Marked's, the one row that
+  was `EnemyOnly = No`, is its enemy cell written out: on the player it doubles
+  the damage they take and takes it straight past their Shields.
 - **Shields are a POOL the status hands out, not a reading of the stack count.**
   Dexterity 2 grants two shields; each stops one whole hit and is gone. The
   body still has two Dexterity stacks afterwards (its goal clause is unchanged) and
