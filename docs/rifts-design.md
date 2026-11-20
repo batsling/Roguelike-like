@@ -268,6 +268,13 @@ Keys already exist as a character stat, reserved by the spec for exactly this
 - `RouteLadder`: each segment carries a third entry, `rift`, drawn dashed in the
   rift colour; a rift game's rung has a teal border and a `🌀`. The run map uses
   the same ladder.
+- `AtlasView` (the owner's drawn map, 20 Nov 2026, "option A" of four mocked up):
+  every rift is a **seam** — a dashed teal curve between the two games it joins,
+  bowed off the straight line so it never reads as an influence line, with a
+  violet swirl badge at its middle and `RIFT · <game>` on a pill under it once
+  names are legible. The rift game gets no box (`rift_seams()`; a keyed rift is a
+  short hook off its one end). Seams go under the roads, badges over the boxes,
+  and the legend keys `🌀 Rift`. Tests in `test_drawn_map.gd`.
 - `ObsCompanion`: `now.rift`, and `rift` on every road stop and map rung. The page
   rings the cover in an animated teal-and-violet glow (outline and box-shadow, so
   no layout), dashes a rift stop's outline and tags a rift rung "Rift".

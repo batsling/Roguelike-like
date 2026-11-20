@@ -115,6 +115,11 @@ const MAP_FRAME := Color(0.353, 0.239, 0.133)
 const MAP_SHADOW := Color(0, 0, 0, 0.45)
 const MAP_PICK := Color(1.0, 0.541, 0.235)   # UITheme.ACCENT, for what you point at
 const MAP_FADE := 0.18
+# A RIFT on the drawn map (docs/rifts-design.md §9): a dashed teal seam with a
+# pale glow under it, and a violet swirl badge naming the rift game. Teal is
+# UITheme.RIFT taken darker, because the light one vanishes on the parchment.
+const MAP_RIFT := Color(0.035, 0.50, 0.50)
+const MAP_RIFT_GLOW := Color(0.40, 0.92, 0.88, 0.45)
 # Sizes in the drawio's own units: its game labels are 10 px, its year labels
 # draw.io's default 12, its arrowheads about 6. Text smaller than this on screen
 # is left out rather than drawn as a smudge.
@@ -1028,6 +1033,27 @@ func _invalidate_star_cache() -> void:
 # disagree about which games those are.
 # On the drawn map during a run: a game the run cannot walk to (outside the game
 # filter, or off the run's main group), greyed where it stands.
+# The run's rifts as the drawn map draws them: {game, a, b} with `a` and `b` star
+# indices (`b` is -1 for a keyed rift, which has only the end it leads to). A rift
+# whose end isn't drawn is left out; its game needs no box, because a rift game
+# is off the map by definition (the owner, 20 Nov 2026: "option A" — a seam
+# between the two games, never a box).
+func rift_seams() -> Array:
+	var out: Array = []
+	if pure_catalog or not has_layout() or not layout.is_drawn_map():
+		return out
+	for r in RunGraph.rifts():
+		var a: int = layout.index_of(StringName(r.get("a", "")))
+		if a < 0:
+			continue
+		var b: int = -1
+		if String(r.get("kind", "")) != RunGraph.RIFT_KEYED:
+			b = layout.index_of(StringName(r.get("b", "")))
+			if b < 0:
+				continue
+		out.append({"game": StringName(r.get("game", "")), "a": a, "b": b})
+	return out
+
 func off_run(i: int) -> bool:
 	if pure_catalog or not has_layout() or not layout.is_drawn_map():
 		return false
@@ -1687,6 +1713,8 @@ func _fill_legend() -> void:
 		row.add_child(_route_key("Path taken", COL_HISTORY))
 	if not _trail.is_empty():
 		row.add_child(_route_key("Route ahead", COL_TRAIL))
+	if drawn and not rift_seams().is_empty():
+		row.add_child(_route_key("🌀 Rift", UITheme.RIFT))
 	var note := Label.new()
 	note.text = "Greyed = off this run's map · hover a game for its card" if drawn \
 		else "Star size = connections"
@@ -2551,6 +2579,13 @@ class StarCanvas extends Control:
 					pb - dir * head * 0.75,
 					pb - dir * head - perp * head * 0.4]), col)
 
+		# The run's rifts: the seams under the roads, the badges over the boxes.
+		var seams: Array = view.rift_seams()
+		var arcs: Array = []
+		for seam in seams:
+			arcs.append(_rift_arc(seam))
+			_draw_rift_seam(arcs[-1], _rift_alpha(seam, focused))
+
 		# The run's roads, over the lines and under the boxes.
 		_draw_roads()
 		_draw_picked_edge(lay)
@@ -2587,7 +2622,134 @@ class StarCanvas extends Control:
 				if px > 0:
 					_text_in(font, inner, label, px, ink)
 
+		for k in range(seams.size()):
+			_draw_rift_badge(font, arcs[k], seams[k], name_px, _rift_alpha(seams[k], focused))
+
 		_draw_run_markers(lay)
+
+	# A seam fades with the other lines when a picked game isn't one of its ends.
+	func _rift_alpha(seam: Dictionary, focused: bool) -> float:
+		if not focused:
+			return 1.0
+		if view._near.has(seam["a"]) or view._near.has(seam["b"]):
+			return 1.0
+		return 0.25
+
+	# A rift's path on screen: a curve from one box's border to the other's, bowed
+	# off the straight line (upward) so it never reads as an influence line. A
+	# keyed rift has one end, so it is a short hook rising off its box's corner.
+	func _rift_arc(seam: Dictionary) -> PackedVector2Array:
+		var ra: Rect2 = view.screen_box(seam["a"])
+		var pa: Vector2
+		var pb: Vector2
+		var bow: Vector2
+		if int(seam["b"]) < 0:
+			pa = Vector2(ra.end.x, ra.position.y)
+			var reach: float = clampf(view._scale * 90.0, 36.0, 120.0)
+			pb = pa + Vector2(reach, -reach * 0.8)
+			bow = Vector2(0, -reach * 0.35)
+		else:
+			var rb: Rect2 = view.screen_box(seam["b"])
+			pa = _border_toward(ra, rb.get_center())
+			pb = _border_toward(rb, ra.get_center())
+			var d: Vector2 = pb - pa
+			var perp := Vector2(-d.y, d.x).normalized()
+			if perp.y > 0.0:
+				perp = -perp
+			bow = perp * d.length() * 0.22
+		var c: Vector2 = (pa + pb) * 0.5 + bow
+		var pts := PackedVector2Array()
+		var n: int = 32
+		for i in range(n + 1):
+			var t: float = float(i) / n
+			pts.append(pa.lerp(c, t).lerp(c.lerp(pb, t), t))
+		return pts
+
+	# Where the line from a box's centre toward `to` leaves the box.
+	func _border_toward(r: Rect2, to: Vector2) -> Vector2:
+		var c: Vector2 = r.get_center()
+		var d: Vector2 = to - c
+		if d == Vector2.ZERO:
+			return c
+		var k: float = 1.0
+		if d.x != 0.0:
+			k = minf(k, r.size.x * 0.5 / absf(d.x))
+		if d.y != 0.0:
+			k = minf(k, r.size.y * 0.5 / absf(d.y))
+		return c + d * k
+
+	func _draw_rift_seam(pts: PackedVector2Array, alpha: float) -> void:
+		if not Rect2(Vector2.ZERO, size).grow(40.0).intersects(_bounds_of(pts)):
+			return
+		var core: float = clampf(view._scale * 0.9, 1.6, 3.5)
+		draw_polyline(pts, Color(AtlasView.MAP_RIFT_GLOW, AtlasView.MAP_RIFT_GLOW.a * alpha),
+			core * 3.2, true)
+		# Dashed along the curve's length, so the dashes stay even round the bend.
+		var dash: float = maxf(7.0, core * 3.5)
+		var gap: float = dash * 0.6
+		var col := Color(AtlasView.MAP_RIFT, alpha)
+		var on: bool = true
+		var left: float = dash
+		for i in range(pts.size() - 1):
+			var p: Vector2 = pts[i]
+			var q: Vector2 = pts[i + 1]
+			var seg: float = p.distance_to(q)
+			while seg > 0.0:
+				var step: float = minf(seg, left)
+				var r: Vector2 = p.move_toward(q, step)
+				if on:
+					draw_line(p, r, col, core, true)
+				p = r
+				seg -= step
+				left -= step
+				if left <= 0.0:
+					on = not on
+					left = dash if on else gap
+
+	func _bounds_of(pts: PackedVector2Array) -> Rect2:
+		var r := Rect2(pts[0], Vector2.ZERO)
+		for p in pts:
+			r = r.expand(p)
+		return r
+
+	# The swirl badge at the seam's middle (its end, for a keyed rift), and under
+	# it the rift game's name on a violet pill once names are legible at all.
+	func _draw_rift_badge(font: Font, pts: PackedVector2Array, seam: Dictionary,
+			name_px: int, alpha: float) -> void:
+		var at: Vector2 = pts[pts.size() - 1] if int(seam["b"]) < 0 else pts[pts.size() / 2]
+		var rad: float = clampf(view._scale * 12.0, 7.0, 20.0)
+		if not Rect2(Vector2.ZERO, size).grow(rad * 8.0).has_point(at):
+			return
+		var deep := Color(UITheme.RIFT_DEEP, alpha)
+		var glow := Color(UITheme.RIFT, alpha)
+		draw_circle(at, rad + 1.5, glow)
+		draw_circle(at, rad, deep)
+		var spiral := PackedVector2Array()
+		for i in range(60):
+			var t: float = float(i) / 59.0
+			var ang: float = t * TAU * 2.2
+			spiral.append(at + Vector2(cos(ang), sin(ang)) * rad * 0.82 * t)
+		draw_polyline(spiral, glow, maxf(1.2, rad * 0.14), true)
+		if name_px < AtlasView.MAP_MIN_TEXT_PX:
+			return
+		var game: GameData = Data.get_game(seam["game"])
+		var label: String = "RIFT · " + (game.display_name if game != null else String(seam["game"]))
+		var px: int = clampi(int(name_px * 1.1), AtlasView.MAP_MIN_TEXT_PX + 4, 22)
+		var sz: Vector2 = font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, px)
+		var pad := Vector2(px * 0.6, px * 0.25)
+		var pill := Rect2(Vector2(at.x - sz.x * 0.5, at.y + rad + 4.0) - pad, sz + pad * 2.0)
+		draw_style_box(_pill_box(deep, glow), pill)
+		draw_string(font, Vector2(pill.position.x + pad.x, pill.position.y + pad.y + font.get_ascent(px)),
+			label, HORIZONTAL_ALIGNMENT_LEFT, -1, px, glow)
+
+	func _pill_box(fill: Color, edge: Color) -> StyleBoxFlat:
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = fill
+		sb.border_color = edge
+		sb.set_border_width_all(1)
+		sb.set_corner_radius_all(64)
+		sb.anti_aliasing = true
+		return sb
 
 	# The sheet the map is drawn on: aged paper the size of the map (its bounds,
 	# which the bake pads with a margin), lying on the game's own dark background

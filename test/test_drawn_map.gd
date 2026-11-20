@@ -253,3 +253,49 @@ func test_a_road_follows_the_drawn_line() -> void:
 	assert_eq(view.road_ends(a, b), drawn, "the road from a to b is the drawn line")
 	assert_eq(view.road_ends(b, a), PackedVector2Array([drawn[1], drawn[0]]),
 		"and the other way round it runs back along it")
+
+# THE RUN'S RIFTS (the owner, 20 Nov 2026: option A, "rift seam"): each rift is
+# drawn as a seam between the two games it joins, with no box of its own, and
+# the Collection's pure catalog draws none, because it has no run.
+func test_every_rift_is_a_seam_between_its_two_games() -> void:
+	if _map == null:
+		pending("the drawn map is not baked")
+		return
+	_start_run()
+	var rifts: Array = RunGraph.rifts()
+	if rifts.is_empty():
+		pending("this run laid no rifts")
+		return
+	var view := _open_run_view()
+	var seams: Array = view.rift_seams()
+	assert_eq(seams.size(), rifts.size(), "every rift's ends are drawn, so every rift is a seam")
+	for k in range(seams.size()):
+		var seam: Dictionary = seams[k]
+		assert_eq(String(view.star_id(seam["a"])), rifts[k]["a"], "a seam starts at its rift's game")
+		if rifts[k]["kind"] != RunGraph.RIFT_KEYED:
+			assert_eq(String(view.star_id(seam["b"])), rifts[k]["b"], "and ends at the other")
+	# The curve leaves one box and enters the other, bowed off the straight line.
+	var canvas = view._canvas
+	var two: Dictionary = {}
+	for s in seams:
+		if int(s["b"]) >= 0:
+			two = s
+			break
+	if two.is_empty():
+		pending("every rift this run was keyed")
+		return
+	var pts: PackedVector2Array = canvas._rift_arc(two)
+	assert_true(view.screen_box(two["a"]).grow(0.5).has_point(pts[0]), "it leaves its first game's box")
+	assert_true(view.screen_box(two["b"]).grow(0.5).has_point(pts[-1]), "and enters the second's")
+	var mid: Vector2 = (pts[0] + pts[-1]) * 0.5
+	assert_gt(pts[pts.size() / 2].distance_to(mid), 1.0, "bowed, so it never reads as an influence line")
+
+func test_the_collection_draws_no_rifts() -> void:
+	if _map == null:
+		pending("the drawn map is not baked")
+		return
+	_start_run()
+	var view: AtlasView = ATLAS.new()
+	view.pure_catalog = true
+	add_child_autofree(view)
+	assert_eq(view.rift_seams(), [], "the catalog has no run, so no rifts")
