@@ -11,6 +11,16 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The Round Tea Party and Royal Poison, from Slay the Spire 2 (20 Nov 2026).**
+  A Common event for the late difficulties (`High, Insane`, Spire's Act 3), dealt
+  only with 3+ Health, in Spire 2's own words. **Enjoy Your Tea** heals to full
+  and pays **Royal Poison**, an Event relic: "At the start of combat, Lose 1
+  Health" — Health loss, so no Shield stops it (Spire: lose 4 HP). **Pick a
+  Fight** costs 2 Health for a random relic (Spire: 11 HP); the 3-Health gate
+  (Spire: 12) means it can never kill. Pick a Fight's two pages are one Result.
+  Tests `test_round_tea_party.gd`. Art is the Spire wiki's originals
+  (`StS2 Round Tea Party.png`, `StS2 RoyalPoison.png`).
+
 - **Padding, from Brotato (20 Nov 2026).** An Uncommon relic: "Gain +1 Max
   Health, and +1 Max Health for every 10 Gold you have" (Brotato's is +3, and +1
   per 80 Materials). Live, as in Brotato: more Gold adds EMPTY Max Health, and
