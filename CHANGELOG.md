@@ -11,6 +11,24 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Live Stun and Shield numbers in loot text, green and red (20 Nov 2026).** The
+  owner: "show the proper amount when factoring dex or power, with green text if
+  higher than base and red if lower". `scripts/runtime/LiveNumbers.gd` rewrites
+  the applied-Stun ("Apply Stun 1", "Apply 1 Stun") and Shield-gain ("+1
+  Temporary Shield") numbers in a piece's prose to what they will land for:
+  upgrades, known downgrades (a hidden roll is never shown), Strength and
+  Dexterity on you. Upward numbers are `UITheme.SUCCESS`, downward ones `DANGER`. Weapon
+  auras ("Gains +1 Stun") are not stun dealt and are left alone. It covers
+  everything with such a number: cards, weapons' swings
+  (`WeaponSystem.shown_stun`), relics (`LootSystem.item_text`), trinkets, bags,
+  pills and potions. The colour shows on every hover card, the drop and use
+  modals, the Smelt choice, the shop's card and the relic info card; Buttons and
+  the compact relic row get the right number in plain text. Text nothing moved
+  is returned untouched. **Rule change, so a `for each` number can be exact:**
+  Strength and Dexterity now grow each UNIT of a `for each` clause (Fiend Fire
+  under 2 Strength destroying three is (1+2)×3), via a `times` count carried
+  beside the unit. Tests `test_live_numbers.gd`.
+
 - **Statuses gain a player combat side: Strength and Dexterity on you (20 Nov
   2026).** The `statuses` sheet has two new columns, `Player Combat` (prose) and
   `Player Combat Effect` (code), which say what a status does to the PLAYER on

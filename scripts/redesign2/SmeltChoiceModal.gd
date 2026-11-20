@@ -118,7 +118,11 @@ func _card(entry: Dictionary) -> Control:
 		art.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		col.add_child(art)
 	col.add_child(_line(LootSystem.display_name(entry), ACCENT, UITheme.FONT_SUB))
-	col.add_child(_line(LootSystem.description(entry), UITheme.TEXT, UITheme.FONT_TEXT))
+	var desc: Control = LiveNumbers.body(LootSystem.description(entry, true, true),
+		UITheme.TEXT, UITheme.FONT_TEXT, HORIZONTAL_ALIGNMENT_CENTER)
+	desc.custom_minimum_size = Vector2(CARD_W - UITheme.GAP * 2, 0)
+	desc.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	col.add_child(desc)
 	# A Button does not grow to a child it does not lay out, so the card takes the
 	# column's height once the labels have wrapped.
 	col.minimum_size_changed.connect(func():

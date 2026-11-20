@@ -253,12 +253,10 @@ static func build(cfg: Dictionary) -> Control:
 		var text: String = String(line).strip_edges()
 		if text == "":
 			continue
-		var l := Label.new()
-		l.text = text
-		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		# A line whose Stun or Shield number moved (LiveNumbers) carries colour,
+		# and draws as rich text; every other line is the Label it always was.
+		var l: Control = LiveNumbers.body(text, UITheme.TEXT, UITheme.FONT_BODY)
 		l.custom_minimum_size = Vector2(WRAP, 0)
-		l.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
-		l.add_theme_color_override("font_color", UITheme.TEXT)
 		col.add_child(l)
 
 	var note: String = String(cfg.get("note", "")).strip_edges()

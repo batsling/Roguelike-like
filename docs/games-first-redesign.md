@@ -3787,6 +3787,21 @@ Brace or Barricade's banking, which write the pools directly. A potion's borrowe
 Strength or Dexterity counts while it lasts: the combat side reads the same
 effective statuses the goal side does.
 
+**Per UNIT on a `for each` clause** (the owner, 20 Nov 2026). Fiend Fire's "Apply
+Stun 1 to an Enemy for each loot destroyed" under 2 Strength, destroying three, is
+(1 + 2) × 3 = 9, and Brick's "+1 Temporary Shield for each adjacent Structure"
+under 2 Dexterity is 3 per Structure — the Slay the Spire reading, Strength on
+every hit. The count rides beside the unit (`times`: `CardSystem._apply_one`,
+`EffectSystem._h_gain_stat`, `GameState.grant_run_stat`) rather than being
+multiplied in first. Snowball's `stat_gain_bonus` is still once per gain.
+
+**The text shows it** (`LiveNumbers`). Every piece's description is the sheet's
+prose with its applied-Stun and Shield-gain numbers rewritten to what will land:
+upgrades, known downgrades, Strength and Dexterity — **green** above the sheet's
+number, **red** below. Because the per-unit rule above holds, the one number in a
+`for each` sentence is exact. Text nothing moved comes back untouched, so a piece
+with no bonus never grows markup.
+
 Three rules hold the side together:
 
 - **Additive fields scale with the stack count; multipliers do not.** Marked

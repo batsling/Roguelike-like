@@ -916,6 +916,10 @@ static func _ch_pack() -> Dictionary:
 				+ "PAPER: every time Burn lands on you there is a 1-in-4 chance "
 				+ "that one random scroll in your pack goes up with it. Pills "
 				+ "and potions are safe."),
+			_b("A piece's text shows its Stun and Shield numbers as they will land — "
+				+ "GREEN when Strength, Dexterity or an upgrade raised them, RED when a "
+				+ "downgrade lowered them. On a \"for each\" piece the bonus is on "
+				+ "each one: Strength 2 makes \"Stun 1 for each\" Stun 3 for each."),
 			_b("Each status says what it does to you and to an enemy separately. "
 				+ "Speed is felt by enemies only — you have no tile to close. "
 				+ "Marked on YOU doubles every hit you take and goes straight past "

@@ -312,6 +312,32 @@ static func stun_for(index: int) -> int:
 		return maxi(1, n)
 	return maxi(0, n)
 
+# THE STUN A WEAPON'S TEXT SHOWS (LiveNumbers): `stun_for` without the part the
+# player has not learned — a hidden roll still lays, but a description that moved
+# by it would be the identification for free. In the pack it counts the auras
+# beside it (stun_parts); anywhere else (the floor, a reward) the piece alone.
+# Strength on you is the caller's to add (GameLoop2.player_stun), as the swing does.
+static func shown_stun(entry) -> int:
+	var w: WeaponData = def(entry)
+	if w == null:
+		return 0
+	var n: int = 0
+	var index: int = -1
+	for i in range(GameState.loot_items.size()):
+		if is_same(GameState.loot_items[i], entry):
+			index = i
+			break
+	if index >= 0:
+		for p in stun_parts(index):
+			n += int(p["amount"])
+	else:
+		n = w.stun + stun_bonus_of(entry) + LootUpgrade.game_bonus(entry)
+		if has_roll(entry) and roll_known(entry):
+			n += roll_of(entry)
+	if has_roll(entry) and bool((entry as Dictionary).get("uncursed", false)):
+		return maxi(1, n)
+	return maxi(0, n)
+
 # HOW MANY EXTRA TIMES the piece at `index` fires its whole swing: +N from every
 # piece whose `weapon_retrigger` points at it (Duplicator, on any side) — each
 # such piece once, turned with the piece, as weapon_stun is read.

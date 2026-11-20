@@ -477,7 +477,7 @@ func _build_catalog_tile(item: ItemData) -> Control:
 		"subtitle": _catalog_kind_line(item),
 		"accent": RarityStyle.color(int(item.rarity)),
 		"art": item.image,
-		"lines": [item.description if String(item.description) != "" else "No description."],
+		"lines": [LootSystem.item_text(item, true) if String(item.description) != "" else "No description."],
 		"note": "Click to wish for it.",
 	})
 

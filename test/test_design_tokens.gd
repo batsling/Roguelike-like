@@ -29,6 +29,7 @@ extends GutTest
 # Every screen in the project that sets a font size in code. The list is the
 # migration's own record of itself: a file here cannot drift back to a literal.
 const MIGRATED_FONTS := [
+	"res://scripts/runtime/LiveNumbers.gd",
 	"res://scripts/ui/TagEditor.gd",
 	"res://scripts/autoload/Cosmetics.gd",
 	"res://scripts/menu/CustomizeScreen.gd",

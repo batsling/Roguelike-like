@@ -584,10 +584,10 @@ func _shelf_row(slot: int, entry: Dictionary) -> Control:
 	# item_color, not rarity_color: a Boss relic has a class of its own and should
 	# read as one here exactly as it does in the pack and on the drop modal.
 	var btn := _card_button(UITheme.item_color(item), sold, entry,
-		UITheme.crisp_tex(item.image, _row_icon()), item.display_name, item.description,
+		UITheme.crisp_tex(item.image, _row_icon()), item.display_name, LootSystem.item_text(item),
 		Vector2(_row_w(), _row_h()), _desc_lines())
 	btn.tooltip_text = "%s — %s\n\n%s\n\n%s" % [
-		item.display_name, _kind_line(item), item.description,
+		item.display_name, _kind_line(item), LootSystem.item_text(item),
 		"Click to look at it." if not sold else "Already bought."]
 	btn.pressed.connect(func(): open_card(slot))
 	return btn
@@ -944,12 +944,9 @@ func _card(slot: int, entry: Dictionary) -> Control:
 	kind.add_theme_color_override("font_color", UITheme.TEXT_FAINT)
 	box.add_child(kind)
 
-	var desc := Label.new()
-	desc.text = item.description
-	desc.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	desc.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
-	desc.add_theme_color_override("font_color", UITheme.TEXT)
+	# Live Stun / Shield numbers, coloured when Strength or Dexterity moved them.
+	var desc: Control = LiveNumbers.body(LootSystem.item_text(item, true), UITheme.TEXT,
+		UITheme.FONT_SMALL, HORIZONTAL_ALIGNMENT_CENTER)
 	desc.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	box.add_child(desc)
 

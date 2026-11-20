@@ -136,7 +136,14 @@ func _apply_one(effect: Dictionary, out: Dictionary,
 			return
 		effect = effect.duplicate()
 		effect.erase("per")
-		effect["value"] = int(effect.get("value", 1)) * times
+		# A STUN OR A SHIELD KEEPS ITS UNIT and carries the count beside it, because
+		# Strength and Dexterity on you grow each UNIT (the owner, 20 Nov 2026):
+		# Fiend Fire under 2 Strength, destroying three, is (1 + 2) x 3. Everything
+		# else is the plain product it always was.
+		if op in ["stun", "apply_status", "gain_stat"]:
+			effect["times"] = times
+		else:
+			effect["value"] = int(effect.get("value", 1)) * times
 	match op:
 		"gain_hp":
 			_gain_hp(effect, out, rng)
@@ -267,9 +274,10 @@ func _hit_enemies(effect: Dictionary, out: Dictionary, ctx: Dictionary,
 	if area == "cell" and bodies.size() > 1:
 		bodies = bodies.slice(0, 1)
 	var landed: int = 0
-	# Strength on you adds to a stun (GameLoop2.player_stun); the log below still
-	# quotes the card's own number, which is what the card says it does.
-	var lands: int = GameLoop2.player_stun(status, stacks)
+	# Strength on you adds to a stun (GameLoop2.player_stun) — to each UNIT of a
+	# `for each` clause, before the count multiplies it (`times`, _apply_one).
+	var lands: int = GameLoop2.player_stun(status, stacks) \
+		* maxi(1, int(effect.get("times", 1)))
 	for inst in bodies:
 		if GameLoop2.apply_status_to(int(inst), status, lands) > 0:
 			landed += 1
@@ -400,14 +408,16 @@ func _gain_stat(effect: Dictionary, out: Dictionary) -> void:
 	var value: int = int(effect.get("value", 0))
 	if stat == "" or value == 0:
 		return
+	var times: int = maxi(1, int(effect.get("times", 1)))
 	if stat == "gold":
 		# Gold's own setter, for the reason _double_stat gives (VIII - Justice).
+		value *= times
 		GameState.change_gold(value)
 	else:
 		# A DOWNGRADED Shield card takes Shield away (LootUpgrade) — what is had,
 		# and no further.
 		var before: int = int(GameState.get(stat)) if stat in GameState else 0
-		var got: int = GameState.grant_run_stat(stat, value)
+		var got: int = GameState.grant_run_stat(stat, value, times)
 		if value < 0:
 			var lost: int = before - (int(GameState.get(stat)) if stat in GameState else 0)
 			out["logs"].append("-%d %s." % [lost, _stat_word(stat)] if lost > 0

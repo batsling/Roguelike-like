@@ -106,11 +106,10 @@ func setup(item: ItemData, usable: bool) -> void:
 	text_col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	text_col.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	if String(item.description) != "":
-		var desc := Label.new()
-		desc.text = item.description
-		desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		# Live Stun / Shield numbers, coloured when Strength or Dexterity moved them.
+		var desc: Control = LiveNumbers.body(LootSystem.item_text(item, true),
+			UITheme.TEXT, UITheme.FONT_LABEL)
 		desc.custom_minimum_size = Vector2(270, 0)
-		desc.add_theme_font_size_override("font_size", UITheme.FONT_LABEL)
 		text_col.add_child(desc)
 		# The KEYWORD STRIP (§17): every status, tile effect or unit the sentence
 		# above names, as a hover chip that says what it is. This is the card's

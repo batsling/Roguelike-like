@@ -2348,20 +2348,27 @@ func verb_value(stat: String) -> int:
 #
 # Returns what it was asked for PLUS every amplifier that landed with it, so a log
 # line can say "+3 Shields" when Dexterity made a +1 into a 3.
-func grant_run_stat(stat: String, value: int) -> int:
-	if value == 0:
+#
+# `times` is a `for each` clause's count (Stack's "+1 Temporary Shield for each
+# other Card used", Brick's "for each adjacent Structure"): `value` is ONE unit,
+# and Dexterity grows each unit rather than the total (the owner, 20 Nov 2026), so
+# the number the card prints is exactly what each one lands for. Snowball's bonus
+# is per GAIN, as it always was, and lands once.
+func grant_run_stat(stat: String, value: int, times: int = 1) -> int:
+	if value == 0 or times <= 0:
 		return 0
-	var amt: int = value
+	var unit: int = value
 	var field: String = _LEVEL_UP_ABILITY_FIELDS.get(stat, stat)
+	# DEXTERITY ON YOU (§13.4): every Shield gain that comes through here — and
+	# every one loot hands out does: items, cards, potions, pills, events — gets
+	# +X, on whichever pool it lands in. The grant for selecting a game, Camp's
+	# Brace and Barricade's banking write the pools directly and are not gains
+	# from loot, which is the line the owner drew.
+	if value > 0 and field in SHIELD_FIELDS:
+		unit += shield_gain_bonus()
+	var amt: int = unit * times
 	if value > 0:
 		amt += stat_gain_bonus_for(stat)
-		# DEXTERITY ON YOU (§13.4): every Shield gain that comes through here — and
-		# every one loot hands out does: items, cards, potions, pills, events — gets
-		# +X, on whichever pool it lands in. The grant for selecting a game, Camp's
-		# Brace and Barricade's banking write the pools directly and are not gains
-		# from loot, which is the line the owner drew.
-		if field in SHIELD_FIELDS:
-			amt += shield_gain_bonus()
 	var now: int = int(get(field)) + amt
 	# A SHIELD TAKEN AWAY (a downgraded Shield card, LootUpgrade) stops at none.
 	if amt < 0 and field in NON_NEGATIVE_RUN_STATS:
