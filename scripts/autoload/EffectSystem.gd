@@ -189,6 +189,11 @@ func _h_gain_stat(effect: Dictionary, ctx: Dictionary) -> void:
 	# Sized by the run, as gain_gold is (`per=N of=<what>`). One `of` is not a stat:
 	# `unidentified_in_bag` is the unidentified pieces in the BAG firing this
 	# (Holdall, docs/loot-passives.md §6) — `ctx.loot_bag`, set by the runner.
+	#
+	# The count rides to grant_run_stat as `times` rather than being multiplied in
+	# here, so Dexterity grows each UNIT — Brick's "+1 Temporary Shield for each
+	# adjacent Structure" is +1+X per Structure, the number its text then shows.
+	var times: int = 1
 	if effect.has("per"):
 		var per: int = maxi(1, int(effect["per"]))
 		var of: String = String(effect.get("of", ""))
@@ -201,10 +206,10 @@ func _h_gain_stat(effect: Dictionary, ctx: Dictionary) -> void:
 		else:
 			have = int(GameState.get(of))
 		@warning_ignore("integer_division")
-		value *= have / per
-	if stat == "" or value == 0:
+		times = have / per
+	if stat == "" or value == 0 or times <= 0:
 		return
-	GameState.grant_run_stat(stat, value)
+	GameState.grant_run_stat(stat, value, times)
 
 # --- the cost half of the vocabulary (docs/event-sheet-authoring.md §5) ------
 # Events charge for things, so every grant above has a mirror here rather than a
@@ -373,6 +378,9 @@ func _h_apply_status(effect: Dictionary, ctx: Dictionary) -> void:
 	# by whoever did the aiming — GameState.use_item passes it through — so a
 	# firing with nobody picked lands on nothing rather than falling through to
 	# "current" and burning whatever happens to be standing closest.
+	# On an enemy it is the PLAYER'S doing — an item fired it (The Necronomicon,
+	# Ceremonial Dagger) — so Strength on you adds to a stun (GameLoop2.player_stun).
+	stacks = GameLoop2.player_stun(status_id, stacks)
 	if target == "enemy":
 		var aimed: Variant = ctx.get("target")
 		if not (aimed is int) or int(aimed) <= 0:

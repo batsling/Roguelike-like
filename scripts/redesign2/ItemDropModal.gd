@@ -736,7 +736,7 @@ func _offer_card(item: ItemData) -> Control:
 		"subtitle": _kind_line(item),
 		"accent": tint,
 		"art": item.image,
-		"lines": [item.description if String(item.description) != "" else "A dropped relic."],
+		"lines": [LootSystem.item_text(item, true) if String(item.description) != "" else "A dropped relic."],
 	})
 
 	var margin := MarginContainer.new()
@@ -793,7 +793,7 @@ func _offer_card(item: ItemData) -> Control:
 	col.add_child(kind)
 
 	var desc := Label.new()
-	desc.text = item.description if String(item.description) != "" else "A dropped relic."
+	desc.text = LootSystem.item_text(item) if String(item.description) != "" else "A dropped relic."
 	desc.horizontal_alignment = align
 	desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	if compact:

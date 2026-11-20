@@ -172,7 +172,9 @@ func _show_intro() -> void:
 		if pref != "":
 			chips.append(UITheme.chip(pref, UITheme.preference_color(pref)))
 		_body.add_child(_chip_row(chips))
-		_body.add_child(_muted(summary))
+		# Live Stun / Shield numbers, coloured when they moved (LiveNumbers).
+		_body.add_child(LiveNumbers.body(LootSystem.description(_entry, true, true),
+			Color(0.75, 0.75, 0.8), 0, HORIZONTAL_ALIGNMENT_CENTER))
 		# The KEYWORD STRIP (§17), on the same terms an item card carries one: what
 		# a Scroll of Fire does is written in the names of three mechanics, and the
 		# reader is about to spend it on the strength of that sentence. Only on an
@@ -804,7 +806,7 @@ func _pick_copy_item(req: Dictionary) -> void:
 			continue
 		var item: ItemData = it
 		var btn := Button.new()
-		btn.text = "%s — %s" % [item.display_name, item.description]
+		btn.text = "%s — %s" % [item.display_name, LootSystem.item_text(item)]
 		btn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		# ONE PRESS AND IT IS DONE, where the other pickers toggle and confirm. Those
 		# choose UP TO N and need a commit step for the count; this chooses exactly

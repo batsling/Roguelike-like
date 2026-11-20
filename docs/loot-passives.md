@@ -960,6 +960,14 @@ to them stacking indefinitely."* Slay the Spire's Upgrade, translated.
   (the owner, 17 Nov 2026; `WeaponSystem.hidden_plus`): the upgrade is known, the
   question mark is the roll on top. A this-game upgrade is in the same +X, and the
   chip's tooltip says how much of it goes when the game ends.
+- **The numbers in its text are live** (the owner, 20 Nov 2026;
+  `scripts/runtime/LiveNumbers.gd`): "Apply Stun 1" on a +1 Cleave reads "Apply
+  Stun 2", in **green** above the sheet's number and **red** below it (a known
+  downgrade). Strength and Dexterity on you show the same way, on every piece whose
+  text names an applied Stun or a Shield gain — cards, weapons' swings, relics,
+  trinkets, bags, pills, potions (spec §13.4). A hidden roll is left out of the
+  text, as it is left out of `stun_parts`. The "Upgraded: …" line stays under
+  the description to say why the number moved.
 - **The token:** `upgrade_loot [N] [pick|random] [run|game]` — one parser
   (`item_dsl._upgrade_loot`) shared by the reward DSL and the item DSL, handled by
   `EffectSystem._h_upgrade_loot`. In an **event** it defaults to `pick`: the modal

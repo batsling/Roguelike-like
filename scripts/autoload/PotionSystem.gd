@@ -430,7 +430,7 @@ func _apply_one(op: Dictionary, out: Dictionary, _rng: RandomNumberGenerator) ->
 		"gain_stat":
 			var stat: String = String(op.get("stat", ""))
 			var amount: int = _scaled_value(op, "value", 1)
-			GameState.grant_run_stat(stat, amount)
+			amount = GameState.grant_run_stat(stat, amount)
 			out["logs"].append("You gain +%d %s." % [amount, _pretty_stat(stat)])
 			return true
 		"apply_status":

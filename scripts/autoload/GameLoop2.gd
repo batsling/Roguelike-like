@@ -3317,8 +3317,11 @@ func retreat_goal(instance: int) -> bool:
 # A body took its goal's hit and lived: it is STUNNED for GOAL_HIT_STUN turns
 # (§7.2). Only ever called on a survivor; a defeated body is off the board and has
 # nothing left to hold still.
+#
+# NOT the player's stun, so Strength adds nothing to it (§13.4): the player aimed
+# a goal, not this, and a +X on it would be +X a game on every body standing.
 func _stun_survivor(instance: int) -> void:
-	stun(instance, GOAL_HIT_STUN)
+	stun(instance, GOAL_HIT_STUN, false)
 
 # The same hit for a goal met THE OTHER WAY (§13, Burn's `instead`): the player did
 # the alternative rather than the condition, so the body clears and is engaged, but
@@ -4480,12 +4483,29 @@ func _prune_offboard_cells() -> void:
 # that wears off a stack a turn, and the owner cut it. So a goal hit's stun and a
 # scroll's are the same stacks, with nothing to tell apart.
 #
-# `stacks` is how many turns it sits out.
-func stun(instance: int, stacks: int = 1) -> bool:
+# `stacks` is how many turns it sits out. `by_player` says the PLAYER caused it —
+# a weapon, a scroll, a bomb — which every caller but the goal hit's
+# `_stun_survivor` does, so Strength's bonus lands (`player_stun`).
+func stun(instance: int, stacks: int = 1, by_player: bool = true) -> bool:
 	if entry_for(instance).is_empty():
 		return false
-	apply_status_to(instance, &"stun", stacks)
+	apply_status_to(instance, &"stun", player_stun(&"stun", stacks) if by_player else stacks)
 	return true
+
+# STRENGTH ON YOU (§13.4): `stacks` of `status_id` as they land when the PLAYER
+# lays them on an enemy. Stun alone grows — on the player, Stun is the damage —
+# by `GameState.stun_dealt_bonus()`, once per body per application, so a Cleave
+# down a lane of three is three bodies each getting +X, the way Slay the Spire's
+# Strength adds to every enemy a multi-target attack hits.
+#
+# Every place the player stuns asks here: `stun` above (weapons, scrolls, bombs),
+# a card's `_hit_enemies`, and an item's or a scroll's `apply_status` aimed at the
+# board. The ground does not (a Web's tile stun is the tile's, every turn, and +X
+# a turn would hold a body in place for good), and neither does the goal hit.
+func player_stun(status_id: StringName, stacks: int) -> int:
+	if status_id != &"stun" or stacks <= 0:
+		return stacks
+	return stacks + GameState.stun_dealt_bonus()
 
 # How many turns `entry` is going to sit out. The one place the number is read off
 # a body, so nothing has to know it is a status rather than a field.
@@ -6203,11 +6223,12 @@ func goal_addons_for(entry: Dictionary) -> Array:
 #   Speed      +X columns closed per step
 #   Marked     x2 the damage this body TAKES, straight through its shields
 #
-# Marked is the only one the player feels, and that is a rule rather than a
-# special case: `StatusData.enemy_only` is off for debuffs, so a debuff is felt by
-# whoever is carrying it. Every one of these totals is worked out by
-# StatusData.combat_totals, which the player side calls too, so the two holders
-# cannot end up disagreeing about what a status does.
+# The PLAYER's side is its own cell (`StatusData.player_combat`): Marked does the
+# same there, while Strength and Dexterity do the player's version of their job —
+# +X Stun on every stun the player causes (`player_stun`), +X on every Shield
+# gain from loot (`GameState.grant_run_stat`). Every one of these totals is worked
+# out by StatusData.combat_totals, which the player side calls too, so the two
+# holders cannot end up disagreeing about the arithmetic.
 
 # What every status on `entry` adds up to in combat.
 func enemy_combat(entry: Dictionary) -> Dictionary:

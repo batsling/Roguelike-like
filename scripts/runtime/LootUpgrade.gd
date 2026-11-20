@@ -114,22 +114,38 @@ static func delta_of(entry) -> int:
 # `clause` as `entry` plays it: the growing number moved by `delta_of`, held to its
 # floor. Returns `clause` itself when nothing moves, else a copy.
 static func grown(entry, clause: Dictionary) -> Dictionary:
-	var delta: int = delta_of(entry)
-	if delta == 0:
+	if delta_of(entry) == 0:
 		return clause
 	for type in types_of(entry):
 		var key: String = grows(String(type), clause)
 		if key == "":
 			continue
 		var out: Dictionary = clause.duplicate()
-		var n: int = int(clause.get(key, 1)) + delta
-		if bool((entry as Dictionary).get("uncursed", false)):
-			n = maxi(1, n)
-		elif String(type) != "shield":
-			n = maxi(0, n)
-		out[key] = n
+		out[key] = grow_number(entry, String(type), int(clause.get(key, 1)))
 		return out
 	return clause
+
+# One number of `type` on `entry` — `base` as the sheet wrote it — as the piece
+# plays it: moved by its upgrades and its roll, held to the floor `grown` holds it
+# to. `base` itself when the piece does not grow that type.
+#
+# `known_only` is for the TEXT (LiveNumbers): a roll the player has not learned
+# yet still lays when the piece is played, but a description that moved by it
+# would be the identification for free.
+static func grow_number(entry, type: String, base: int, known_only: bool = false) -> int:
+	if not types_of(entry).has(type):
+		return base
+	var delta: int = bonus_of(entry)
+	if not known_only or WeaponSystem.roll_known(entry):
+		delta += WeaponSystem.roll_of(entry)
+	if delta == 0:
+		return base
+	var n: int = base + delta
+	if bool((entry as Dictionary).get("uncursed", false)):
+		n = maxi(1, n)
+	elif type != "shield":
+		n = maxi(0, n)
+	return n
 
 # Every carried piece an upgrade could land on, in pack order — what the Forge's
 # pick lights and what Warped Tongs rolls from.

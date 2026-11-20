@@ -656,7 +656,48 @@ func pick_label(entry: Dictionary) -> String:
 
 # What the piece does, in one line, or the "you don't know yet" line when it is
 # unidentified. The loot window's hover and the drop modal both quote this.
-func description(entry: Dictionary, face_up: bool = true) -> String:
+#
+# ITS STUN AND SHIELD NUMBERS ARE LIVE (LiveNumbers): what an upgrade, a downgrade,
+# Strength or Dexterity makes of them now. `rich` colours the ones that moved —
+# green up, red down — for a surface that can draw it (HoverCard, LiveNumbers.body).
+func description(entry: Dictionary, face_up: bool = true, rich: bool = false) -> String:
+	var said: String = _description(entry, face_up, rich)
+	match String(entry.get("type", "")):
+		"weapon", "card":
+			return said    # their own numbers are done inside (see _description)
+	return live_text(entry, said, rich)
+
+# The sheet's numbers in `text` as `entry` lays them now (see `description`).
+# Upgrades and downgrades move only the kinds a piece grows (LootUpgrade.types_of),
+# and only by what the player KNOWS of its roll; Strength and Dexterity on you
+# move every piece's.
+func live_text(entry: Dictionary, text: String, rich: bool = false) -> String:
+	var stun := func(base: int) -> int:
+		return GameLoop2.player_stun(&"stun", LootUpgrade.grow_number(entry, "stun", base, true))
+	var shield := func(base: int) -> int:
+		return shield_gain_now(LootUpgrade.grow_number(entry, "shield", base, true))
+	return LiveNumbers.rewrite(text, stun, shield, rich)
+
+# The same for a RELIC's text (ItemData): no upgrades, so only Strength and
+# Dexterity move it.
+func item_text(item: ItemData, rich: bool = false) -> String:
+	if item == null:
+		return ""
+	return bare_live(String(item.description), rich)
+
+# `text` with only Strength and Dexterity on you applied — for prose that belongs
+# to no upgradeable piece (a relic, a weapon's passive line).
+func bare_live(text: String, rich: bool = false) -> String:
+	return LiveNumbers.rewrite(text,
+		func(base: int) -> int: return GameLoop2.player_stun(&"stun", base),
+		shield_gain_now, rich)
+
+# A Shield gain of `n` as Dexterity on you lands it — only a gain grows, as in
+# GameState.grant_run_stat; a downgraded card that takes Shield away does not.
+static func shield_gain_now(n: int) -> int:
+	return n + GameState.shield_gain_bonus() if n > 0 else n
+
+func _description(entry: Dictionary, face_up: bool, rich: bool) -> String:
 	match String(entry.get("type", "")):
 		"scroll":
 			var s: ScrollData = Data.get_scroll(StringName(entry.get("id", "")))
@@ -675,7 +716,12 @@ func description(entry: Dictionary, face_up: bool = true) -> String:
 			return PotionSystem.description(entry)
 		"card":
 			var said: String = CardSystem.description(entry, face_up)
-			var upgraded: String = LootUpgrade.card_line(entry) if face_up else ""
+			if not face_up:
+				return said
+			# The live numbers are the card's own sentence's; the upgrade line under
+			# it says WHY they moved, and its "+1" is not one of them.
+			said = live_text(entry, said, rich)
+			var upgraded: String = LootUpgrade.card_line(entry)
 			return said if upgraded == "" else "%s\n%s" % [said, upgraded]
 		"wand":
 			return WandSystem.description(entry)
@@ -685,24 +731,31 @@ func description(entry: Dictionary, face_up: bool = true) -> String:
 		"bag":
 			return bag_description(Data.get_bag(StringName(entry.get("id", ""))))
 		"weapon":
-			return weapon_description(entry)
+			return weapon_description(entry, rich)
 		"chest":
 			return ChestLoot.description(entry)
 	return ""
 
 # What a weapon says about itself: the swing, what charges it, then its passive.
-func weapon_description(entry: Dictionary) -> String:
+#
+# The swing's Stun is the LIVE number (WeaponSystem.shown_stun): upgrades, a known
+# roll, the auras beside it and Strength on you. `rich` colours it when it moved.
+func weapon_description(entry: Dictionary, rich: bool = false) -> String:
 	var w: WeaponData = WeaponSystem.def(entry)
 	if w == null:
 		return ""
-	var swing: String = "Swing: %d Stun to every enemy in a %s, aimed %s." % [
-		w.stun, WeaponSystem.area_words(w.area), WeaponSystem.aim_words(w)]
+	var now: int = GameLoop2.player_stun(&"stun", WeaponSystem.shown_stun(entry))
+	var stun: String = str(now)
+	if rich and now != w.stun:
+		stun = LiveNumbers.colored(stun, now > w.stun)
+	var swing: String = "Swing: %s Stun to every enemy in a %s, aimed %s." % [
+		stun, WeaponSystem.area_words(w.area), WeaponSystem.aim_words(w)]
 	if w.aim == "ray":
 		# A ray's area is laid where the line strikes, not where it was aimed.
 		var reach: String = "it" if w.area == "cell" \
 			else "a %s round each" % WeaponSystem.area_words(w.area)
-		swing = "Swing: fires %s, toward any square. %d Stun to every enemy it hits%s." % [
-			RayAim.words(w.bounce), w.stun,
+		swing = "Swing: fires %s, toward any square. %s Stun to every enemy it hits%s." % [
+			RayAim.words(w.bounce), stun,
 			"" if w.area == "cell" else " and to every enemy in %s" % reach]
 	if w.push > 0:
 		swing += " Then pushes them %d square%s %s." % [w.push, "" if w.push == 1 else "s",
@@ -729,7 +782,7 @@ func weapon_description(entry: Dictionary) -> String:
 	var lines: Array = [swing,
 		"Charges when you complete its goal: %s (once per game, won or lost)." % w.goal]
 	if w.description != "":
-		lines.append(w.description)
+		lines.append(bare_live(w.description, rich))
 	return "\n".join(lines)
 
 # The Preference, or "" while the piece is unknown — hidden for both kinds, since
@@ -916,7 +969,7 @@ func hover_card(entry: Dictionary, face_up: bool = true) -> Dictionary:
 			"lines": [description(entry, false)],
 			"note": "▸ Pick it up to turn it over.",
 		}
-	var lines: Array = [description(entry)]
+	var lines: Array = [description(entry, true, true)]
 	var note: String = ""
 	# A BAG SAYS HOW TO PLACE IT (docs/loot-passives.md §6): it is the one piece
 	# that goes onto the EDGE of the pack rather than into it, and turns.

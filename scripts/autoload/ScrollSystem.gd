@@ -541,11 +541,11 @@ func status_effect_text(effect: Dictionary) -> String:
 		"random": "One random enemy",
 		"front": "Every enemy in the front column",
 	}.get(target, "Every enemy on the board")
-	# On the PLAYER the combat line is usually the wrong half to quote — most of
-	# the roster's combat sides are felt by enemies only (§13.4), so a scroll that
-	# burns you would otherwise promise a halving that never lands on you.
+	# Each holder has its own combat side (§13.4), so a scroll aimed at you quotes
+	# the player's — a scroll that burns you would otherwise promise a halving
+	# that never lands on you.
 	var side: StringName = StatusData.PLAYER if target == "player" else StatusData.ENEMY
-	var what: String = status.combat_line(stacks) if status.combat_applies(side) else ""
+	var what: String = status.combat_line(stacks, side)
 	return "%s %s +%d %s%s." % [who, "gain" if target == "player" else "gains",
 		stacks, status.display_name, " (%s)" % what if what != "" else ""]
 
@@ -573,6 +573,8 @@ func _apply_status(effect: Dictionary, out: Dictionary) -> bool:
 			return false
 		out["logs"].append("You gain +%d %s." % [after - before, status.display_name])
 		return true
+	# The player's scroll, so Strength on you adds to a stun (GameLoop2.player_stun).
+	stacks = GameLoop2.player_stun(status_id, stacks)
 	var landed: int = GameLoop2.apply_enemy_status(status_id, stacks, target)
 	if landed <= 0:
 		# NOTHING IS SAID when the clause found nobody. It used to append a line

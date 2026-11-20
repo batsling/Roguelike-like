@@ -525,8 +525,9 @@ var player_statuses: Dictionary = {}
 # `effective_statuses()` for permanent + timed, and a row expires WHOLE.
 #
 # `shield` is what that row's application handed out (§5.5). It is always 0 here:
-# Dexterity's shield side is `EnemyOnly` (§13.4), so the player is never granted
-# one. The field is on both holders' rows so the two layers stay one shape.
+# Dexterity on the PLAYER hands out nothing when it lands — its player side adds
+# to each Shield gain instead (§13.4, `shield_gain_bonus`). The field is on both
+# holders' rows so the two layers stay one shape.
 var timed_statuses: Array = []
 
 # The instance counter the timed rows are numbered from. EVERY TEMPORARY
@@ -2344,19 +2345,40 @@ func verb_value(stat: String) -> int:
 	var v: Variant = get(field)
 	return int(v) if v != null else 0
 
-func grant_run_stat(stat: String, value: int) -> void:
-	if value == 0:
-		return
-	var amt: int = value
+#
+# Returns what it was asked for PLUS every amplifier that landed with it, so a log
+# line can say "+3 Shields" when Dexterity made a +1 into a 3.
+#
+# `times` is a `for each` clause's count (Stack's "+1 Temporary Shield for each
+# other Card used", Brick's "for each adjacent Structure"): `value` is ONE unit,
+# and Dexterity grows each unit rather than the total (the owner, 20 Nov 2026), so
+# the number the card prints is exactly what each one lands for. Snowball's bonus
+# is per GAIN, as it always was, and lands once.
+func grant_run_stat(stat: String, value: int, times: int = 1) -> int:
+	if value == 0 or times <= 0:
+		return 0
+	var unit: int = value
+	var field: String = _LEVEL_UP_ABILITY_FIELDS.get(stat, stat)
+	# DEXTERITY ON YOU (§13.4): every Shield gain that comes through here — and
+	# every one loot hands out does: items, cards, potions, pills, events — gets
+	# +X, on whichever pool it lands in. The grant for selecting a game, Camp's
+	# Brace and Barricade's banking write the pools directly and are not gains
+	# from loot, which is the line the owner drew.
+	if value > 0 and field in SHIELD_FIELDS:
+		unit += shield_gain_bonus()
+	var amt: int = unit * times
 	if value > 0:
 		amt += stat_gain_bonus_for(stat)
-	var field: String = _LEVEL_UP_ABILITY_FIELDS.get(stat, stat)
 	var now: int = int(get(field)) + amt
 	# A SHIELD TAKEN AWAY (a downgraded Shield card, LootUpgrade) stops at none.
 	if amt < 0 and field in NON_NEGATIVE_RUN_STATS:
 		now = maxi(0, now)
 	set(field, now)
 	emit_signal("stats_changed")
+	return amt
+
+# The two Shield pools, by field: what Dexterity's `shields_gained` adds to.
+const SHIELD_FIELDS := ["shields", "bonus_shields"]
 
 # The run stats a loss stops at 0 rather than running into debt.
 const NON_NEGATIVE_RUN_STATS := ["shields", "bonus_shields"]
@@ -2684,12 +2706,11 @@ func _alloc_timed_instance() -> int:
 # What the player's statuses add up to IN COMBAT (§13.4) — the other half of the
 # status mechanic, the half that moves a number instead of a goal.
 #
-# Most statuses contribute nothing here: `StatusData.enemy_only` is set on every
-# buff, because Strength on the player would want a player attack to sit on and
-# this game has none. What comes through is the DEBUFFS, which are felt by whoever
-# is carrying them — Marked doubles the damage the player takes and takes it past
-# their Shields, exactly as it does on an enemy. Same aggregator either side, so
-# the two can't drift.
+# Each status says what it does to the player in its own cell
+# (`StatusData.player_combat`, the sheet's `Player Combat Effect`): Marked doubles
+# the damage the player takes and takes it past their Shields, Strength adds Stun
+# to every stun they cause, Dexterity adds to every Shield loot gives them. Same
+# aggregator as an enemy's, so the arithmetic can't drift.
 func combat_totals() -> Dictionary:
 	var out: Dictionary = StatusData.combat_totals(effective_statuses(), StatusData.PLAYER)
 	# THE LOCATION'S HALF (docs/locations-design.md §3): Dark Room and The Chest
@@ -2700,6 +2721,16 @@ func combat_totals() -> Dictionary:
 	if loc_mult != 1.0:
 		out["damage_taken_mult"] = float(out.get("damage_taken_mult", 1.0)) * loc_mult
 	return out
+
+# STRENGTH ON YOU: how much more Stun every stun the player causes lands
+# (GameLoop2.player_stun). 0 with no Strength.
+func stun_dealt_bonus() -> int:
+	return maxi(0, int(combat_totals().get("stun_dealt", 0)))
+
+# DEXTERITY ON YOU: how many more Shields every Shield gain from loot lands
+# (grant_run_stat). 0 with no Dexterity.
+func shield_gain_bonus() -> int:
+	return maxi(0, int(combat_totals().get("shields_gained", 0)))
 
 # The statuses whose PLAYER side is a `clause` — the requirements that get ANDed
 # onto every enemy's goal.

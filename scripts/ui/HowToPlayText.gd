@@ -889,12 +889,17 @@ static func _ch_pack() -> Dictionary:
 				+ "win: nothing about it goes on the record, because you never did "
 				+ "what it asked. Never offered on a boss."),
 			_p("The five of them, and what they do in a fight:"),
-			_kv("Strength", "Every hit that enemy lands is worth 1 more per stack."),
+			_kv("Strength", "Every hit that enemy lands is worth 1 more per stack. "
+				+ "On YOU, every Stun you deal lands 1 more per stack — a card, a "
+				+ "weapon, a scroll, a bomb, an item, each body it reaches. Not "
+				+ "the Stun an enemy takes for surviving its goal's hit."),
 			_kv("Speed", "It closes one extra tile per stack, every turn — so it "
 				+ "reaches you sooner than the board looks like it should."),
 			_kv("Dexterity", "It gets a Shield per stack. Each one stops a whole hit "
 				+ "and is spent doing it, so a shielded enemy takes an extra goal "
-				+ "per shield to put down."),
+				+ "per shield to put down. On YOU, every time loot gives you "
+				+ "Shields you get 1 more per stack — not the Shields for choosing "
+				+ "a game."),
 			_kv("Marked", "Everything that lands on it is DOUBLED and goes straight "
 				+ "through Shields. On YOU it is a debt as well: every game, get as "
 				+ "many achievements in the game you are playing as you have stacks "
@@ -911,12 +916,16 @@ static func _ch_pack() -> Dictionary:
 				+ "PAPER: every time Burn lands on you there is a 1-in-4 chance "
 				+ "that one random scroll in your pack goes up with it. Pills "
 				+ "and potions are safe."),
-			_b("The buffs are felt by enemies only. Marked is a debuff, and a debuff "
-				+ "is felt by whoever is carrying it — Marked on YOU doubles every "
-				+ "hit you take and goes straight past the shields you were "
-				+ "counting on to stop it. Burn's halving is the exception that proves it is a "
-				+ "column and not a rule about the word: there is no attack of "
-				+ "yours for a halving to sit on, so the sheet says enemies only."),
+			_b("A piece's text shows its Stun and Shield numbers as they will land — "
+				+ "GREEN when Strength, Dexterity or an upgrade raised them, RED when a "
+				+ "downgrade lowered them. On a \"for each\" piece the bonus is on "
+				+ "each one: Strength 2 makes \"Stun 1 for each\" Stun 3 for each."),
+			_b("Each status says what it does to you and to an enemy separately. "
+				+ "Speed is felt by enemies only — you have no tile to close. "
+				+ "Marked on YOU doubles every hit you take and goes straight past "
+				+ "the shields you were counting on to stop it. Burn's halving is "
+				+ "enemies only: there is no attack of yours for a halving to sit "
+				+ "on."),
 			_h("The ground: tiles and units"),
 			_p("Two things can be on a square of the board that are not a body, and "
 				+ "they layer — a unit stands on top of a tile effect. Mostly they "

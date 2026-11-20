@@ -535,7 +535,8 @@ func _build_single(col: VBoxContainer) -> void:
 		chips.add_child(UITheme.chip("Passive", UITheme.TEXT_DIM))
 	col.add_child(chips)
 
-	var desc := _line(LootSystem.description(entry), UITheme.TEXT, 13)
+	var desc: Control = LiveNumbers.body(LootSystem.description(entry, true, true),
+		UITheme.TEXT, 13, HORIZONTAL_ALIGNMENT_CENTER)
 	desc.custom_minimum_size = Vector2(SINGLE_W - 16, 0)
 	col.add_child(desc)
 

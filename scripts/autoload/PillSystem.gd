@@ -428,7 +428,9 @@ func _apply_stat(op: Dictionary, negative: bool, out: Dictionary) -> bool:
 	var amount: int = _scaled_value(op, "value", 1)
 	if amount == 0:
 		return false
-	GameState.grant_run_stat(stat, -amount if negative else amount)
+	var got: int = GameState.grant_run_stat(stat, -amount if negative else amount)
+	if not negative:
+		amount = got   # what landed, Dexterity on a Shield included
 	# The sign belongs to the NUMBER, not to the verb. Splitting the format three
 	# ways put a space between them — "You gain + 1 Luck." — which nobody caught
 	# while these lines only ever went to the run log, and which is the first thing

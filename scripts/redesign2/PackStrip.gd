@@ -150,7 +150,7 @@ func _smelted_token(entry: Dictionary) -> Control:
 		"subtitle": "Smelted  ·  works like an item",
 		"accent": accent,
 		"art": LootPassives.art_for(LootPassives.def_for(entry)),
-		"lines": [LootSystem.description(entry)],
+		"lines": [LootSystem.description(entry, true, true)],
 	})
 	var art := UITheme.crisp_tex(LootPassives.art_for(LootPassives.def_for(entry)), ITEM_TOKEN)
 	art.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -413,7 +413,7 @@ static func item_hover(item: ItemData, active: bool, ready: bool, reporting: boo
 			# mid-game now, so a Ride the Bus that cannot press is being refused for
 			# some other reason and must not blame the game in play for it.
 			note = "▸ Report this game first."
-	var lines: Array = [String(item.description)]
+	var lines: Array = [LootSystem.item_text(item, true)]
 	# ECHO CHAMBER NAMES WHAT IT IS HOLDING (§4.3). Its description says "the last
 	# 3 Loot you used" and the hover is where "which three" belongs — a relic that
 	# changes what spending loot MEANS is unreadable while the three are invisible.
