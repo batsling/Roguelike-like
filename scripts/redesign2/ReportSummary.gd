@@ -17,6 +17,9 @@ extends Control
 signal continued
 
 var _screen: Node = null
+var _card: PanelContainer = null
+var _scroll: ScrollContainer = null
+var _body: VBoxContainer = null
 
 func setup(screen: Node) -> void:
 	_screen = screen
@@ -38,24 +41,40 @@ func setup(screen: Node) -> void:
 	card.add_theme_stylebox_override("panel",
 		UITheme.flat(UITheme.BG, 12, 18, 2, screen._accent()))
 	center.add_child(card)
+	_card = card
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", UITheme.GAP)
 	card.add_child(col)
 
 	# HOW IT WENT, on one line: the cover, the verdict and the game.
 	col.add_child(screen._compact_header())
+	# THE MIDDLE SCROLLS, THE WAY OUT DOESN'T (the owner, 20 Nov 2026: "it didn't
+	# fit on my screen and i couldn't see the continue"). Two full bars, a level-up
+	# and a mask's level-up are taller than a laptop screen, so everything between
+	# the header and Continue sits in a scroll box that is exactly as tall as it
+	# needs to be when there is room, and as tall as the window allows when there
+	# isn't (`_fit`). Continue is never in it.
+	_scroll = ScrollContainer.new()
+	_scroll.name = "Body"
+	_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	col.add_child(_scroll)
+	_body = VBoxContainer.new()
+	_body.add_theme_constant_override("separation", UITheme.GAP)
+	_body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_scroll.add_child(_body)
+	var body: VBoxContainer = _body
 	# THE TWO BARS ARE THE PAGE (the owner, 18 Nov 2026: "make the two experience
 	# bars the focus"): the game's and the character's, at full size, each filling
 	# from where it stood when the game was picked, and under each the list of
 	# what it was for and how much each thing gave. No tally of stats here.
 	var g: GameData = screen.game()
 	if g != null and screen._snap.has("rank_to"):
-		col.add_child(_bar_block(g.cover_image, false,
+		body.add_child(_bar_block(g.cover_image, false,
 			int(screen._snap.get("rank_from", 0)), int(screen._snap["rank_to"]),
 			g.display_name, _with_perfect(screen._snap.get("xp_sources", []))))
 	var ch: CharacterData = Data.get_character2(StringName(screen._snap.get("character_id", "")))
 	if screen._snap.has("character_rank_to"):
-		col.add_child(_bar_block(ch.shown_icon() if ch != null else null, true,
+		body.add_child(_bar_block(ch.shown_icon() if ch != null else null, true,
 			int(screen._snap.get("character_rank_from", 0)),
 			int(screen._snap["character_rank_to"]),
 			String(screen._snap.get("character_name", "")),
@@ -63,25 +82,16 @@ func setup(screen: Node) -> void:
 	# The rest of the report, smaller, under the bars.
 	var lvl: Control = screen._level_up_panel()
 	if lvl != null:
-		col.add_child(lvl)
+		body.add_child(lvl)
 	for masked in screen._snap.get("mask_level_ups", []):
 		var m: Control = screen._level_up_block(masked)
 		if m != null:
-			col.add_child(m)
-	# …how the chest size was worked out, and who is still following.
-	# Side by side, so the page stays one screen tall under two full bars.
-	var foot := HBoxContainer.new()
-	foot.add_theme_constant_override("separation", UITheme.GAP_LOOSE)
+			body.add_child(m)
+	# …and how the chest size was worked out. Who is still following is not said
+	# here any more (the owner, 20 Nov 2026: "no need to show still following").
 	var sum: Control = screen._chest_sum_row()
 	if sum != null:
-		sum.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		foot.add_child(sum)
-	var board: Control = screen._board_panel()
-	if board != null:
-		board.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		foot.add_child(board)
-	if foot.get_child_count() > 0:
-		col.add_child(foot)
+		body.add_child(sum)
 
 	var go := UITheme.confirm_button("Continue  →", Vector2(220, 44), UITheme.FONT_LABEL)
 	go.name = "Continue"
@@ -89,6 +99,25 @@ func setup(screen: Node) -> void:
 	go.pressed.connect(proceed)
 	col.add_child(go)
 	go.grab_focus.call_deferred()
+	_fit.call_deferred()
+
+func _ready() -> void:
+	get_viewport().size_changed.connect(_fit)
+
+# The scroll box's height: the body's own, capped at what the window has left
+# once the pinned header bar, the card's chrome, the header line and Continue are
+# taken off. Public so a test can ask for it after changing the window.
+const MARGIN := 16.0
+
+func _fit() -> void:
+	if _scroll == null or not is_instance_valid(_scroll) or not is_inside_tree():
+		return
+	var want: float = _body.get_combined_minimum_size().y
+	_scroll.custom_minimum_size.y = 0.0
+	var chrome: float = _card.get_combined_minimum_size().y
+	var room: float = get_viewport_rect().size.y - ModalScaffold.reserved_top \
+		- MARGIN * 2.0 - chrome
+	_scroll.custom_minimum_size.y = maxf(80.0, minf(want, room))
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_accept") or event.is_action_pressed("ui_cancel"):

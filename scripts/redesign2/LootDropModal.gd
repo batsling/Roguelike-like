@@ -638,7 +638,7 @@ func _take_all_row(multi: bool) -> Control:
 	var room: int = GameState.loot_space() \
 		+ _offers.filter(func(e): return GameState.is_bag_entry(e)).size()
 	var take := UITheme.confirm_button(
-		"✓  Take it" if not multi else "✓  Take %d" % mini(room, _offers.size()),
+		"✓  Take",
 		Vector2(190, 34), 15)
 	take.disabled = room <= 0
 	take.tooltip_text = "No room — use or bin something first, or use these where you stand." \
@@ -667,7 +667,7 @@ func _buttons(multi: bool) -> Control:
 
 	var room: int = GameState.loot_space()
 	var take := UITheme.confirm_button(
-		"✓  Take it" if not multi else "✓  Take %d" % mini(room, _offers.size()),
+		"✓  Take",
 		Vector2(190, 38), 16)
 	take.disabled = room <= 0
 	take.tooltip_text = "No room — use or bin something first, or use these where you stand." \

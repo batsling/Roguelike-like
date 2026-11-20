@@ -10,9 +10,17 @@ extends Control
 #
 # It is the page's own state drawn again, so everything on it still works: an
 # item opens its card, a piece of loot can be moved, turned and spent. An item's
-# card opens OVER this screen and closing it comes back here; spending a piece of
-# loot closes the screen first, because the Use screen and a throw's aim need
-# the page.
+# card opens OVER this screen and closing it comes back here. SPENDING A PIECE OF
+# LOOT KEEPS YOU HERE too (the owner, 20 Nov 2026: "unless directed somewhere
+# else"): the Use screen opens over this one and closing it lands back here,
+# redrawn. Only what takes you elsewhere closes it — a throw or a wand's aim
+# (the board is where the click goes: Overworld2.begin_loot_throw) and a
+# teleport (the run moves: Overworld2.loot_teleport).
+#
+# THE FLOOR IS HERE TOO (the owner, 20 Nov 2026): every piece lying on the
+# board, which drags into the pack as it does off the board itself (a full pack
+# trades, the evicted piece landing where the new one lay), and a pack piece
+# dragged onto the floor section is put down on a free square.
 #
 # Built in code and loaded BY PATH with no class_name, like every screen the page
 # only opens on demand (test_page_load.gd).
@@ -26,6 +34,7 @@ const ACCENT := Color(0.72, 0.62, 0.86)
 var _page: Node = null
 var _closing: bool = false
 var _body: HBoxContainer = null
+var _dirty: bool = false
 
 func setup(page: Node) -> void:
 	_page = page
@@ -76,6 +85,20 @@ func setup(page: Node) -> void:
 	_body.add_theme_constant_override("separation", UITheme.GAP_SECTION)
 	box.add_child(_body)
 	refill()
+	# Whatever changes the pack or the floor while this is up — a Use screen
+	# opened over it, a piece taken off the floor — redraws it.
+	GameState.inventory_changed.connect(_mark_dirty)
+	GameLoop2.loop_changed.connect(_mark_dirty)
+
+func _mark_dirty() -> void:
+	_dirty = true
+
+# Redrawn when nothing is in the hand: rebuilding the pack under a drag would free
+# the piece being carried.
+func _process(_delta: float) -> void:
+	if _dirty and not _closing and not get_viewport().gui_is_dragging():
+		_dirty = false
+		refill()
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_cancel") or event.is_action_pressed("backpack"):
@@ -327,7 +350,7 @@ func _smelted_row(entry: Dictionary) -> Control:
 	return row
 
 # THE PACK, at full size and live: drag to move, R to turn, and each piece
-# carries the button that spends it.
+# carries the button that spends it. Under it, THE FLOOR.
 func _loot_column() -> Control:
 	var col := _column(0)
 	col.add_child(_section("Loot  %d / %d" % [GameState.loot_items.size(),
@@ -335,13 +358,111 @@ func _loot_column() -> Control:
 	var grid := LootGrid.new()
 	grid.allow_reorder = true
 	grid.show_use = true
+	grid.allow_floor_take = true
 	grid.use_requested.connect(func(i: int):
-		close()
-		_page.use_loot(i))
+		_page.use_loot(i)
+		_mark_dirty())
 	grid.moved.connect(func(from: int, to: int, rot: int):
 		if GameState.move_loot(from, to, rot):
 			_page.refresh_loot_window()
 			refill.call_deferred())
+	grid.floor_take_requested.connect(func(entry: Dictionary, slot: int, cell: Vector2i):
+		_page.take_floor_loot(entry, slot, cell)
+		_mark_dirty())
+	grid.floor_bag_take_requested.connect(
+		func(entry: Dictionary, origin: Vector2i, rot: int, cell: Vector2i):
+			_page.take_floor_bag(entry, origin, rot, cell)
+			_mark_dirty())
 	grid.rebuild()
 	col.add_child(grid)
+	col.add_child(_floor_section())
 	return col
+
+# EVERY PIECE ON THE FLOOR, as the board's own tokens (FloorLoot): the same
+# hover card, and the same drag — into the pack above to pick it up. The section
+# is also where a pack piece goes to be put DOWN (FloorDrop).
+const FLOOR_TOKEN := 44
+
+static func floor_cells() -> Array:
+	var cells: Array = GameLoop2.drops.keys()
+	cells.sort_custom(func(a: Vector2i, b: Vector2i): return a.x < b.x or (a.x == b.x and a.y < b.y))
+	var out: Array = []
+	for c in cells:
+		var loot = (GameLoop2.drops[c] as Dictionary).get("loot")
+		if loot is Dictionary and not (loot as Dictionary).is_empty():
+			out.append(c)
+	return out
+
+func _floor_section() -> Control:
+	var zone := FloorDrop.new()
+	zone.name = "Floor"
+	zone.page = _page
+	zone.add_theme_stylebox_override("panel",
+		UITheme.flat(UITheme.BG_DEEP, 6, 8, 1, UITheme.BORDER))
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", UITheme.GAP_SNUG)
+	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	zone.add_child(col)
+	var cells: Array = floor_cells()
+	var head := _section("On the floor  (%d)" % cells.size())
+	head.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	col.add_child(head)
+	if cells.is_empty():
+		var none := _faint("Nothing. Drag a piece here to put it down.")
+		none.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		col.add_child(none)
+		return zone
+	var flow := HFlowContainer.new()
+	flow.name = "FloorPieces"
+	flow.add_theme_constant_override("h_separation", UITheme.GAP_SNUG)
+	flow.add_theme_constant_override("v_separation", UITheme.GAP_SNUG)
+	flow.mouse_filter = Control.MOUSE_FILTER_PASS
+	flow.custom_minimum_size = Vector2(FLOOR_TOKEN * 5 + UITheme.GAP_SNUG * 4, 0)
+	col.add_child(flow)
+	for cell in cells:
+		flow.add_child(_floor_token(cell))
+	var hint := _faint("Drag one into your pack to pick it up, or drag from your pack to here to put it down.")
+	hint.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
+	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	hint.custom_minimum_size = Vector2(FLOOR_TOKEN * 5, 0)
+	hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	col.add_child(hint)
+	return zone
+
+func _floor_token(cell: Vector2i) -> Control:
+	var held: Dictionary = GameLoop2.drop_at(cell)
+	var loot: Dictionary = held.get("loot", {})
+	var token := FloorLoot.new()
+	token.entry = loot
+	token.cell = cell
+	token.ring = 3 if bool(held.get("boss", false)) else 2
+	token.custom_minimum_size = Vector2(FLOOR_TOKEN, FLOOR_TOKEN)
+	var art: Texture2D = LootSystem.art_texture(loot, false)
+	if art != null:
+		var tex: TextureRect = UITheme.crisp_tex(art, FLOOR_TOKEN - 8)
+		tex.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		tex.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		token.add_child(tex)
+	HoverCard.attach(token, LootSystem.hover_card(loot))
+	return token
+
+# The floor section as a drop target: a pack piece let go on it is put down on a
+# free square of the board (a random one, as a piece with no square of its own
+# is: GameLoop2.drop_loot_anywhere), unless it is a curse, which stays.
+class FloorDrop extends PanelContainer:
+	var page: Node = null
+
+	func _init() -> void:
+		mouse_filter = Control.MOUSE_FILTER_STOP
+
+	func _can_drop_data(_at: Vector2, data: Variant) -> bool:
+		if not (data is Dictionary) or String(data.get("kind", "")) != "loot_move":
+			return false
+		var index: int = int(data.get("index", -1))
+		return index >= 0 and index < GameState.loot_items.size() \
+			and GameState.can_leave_pack(GameState.loot_items[index]) \
+			and GameLoop2.floor_has_room() and not GameLoop2.run_over
+
+	func _drop_data(_at: Vector2, data: Variant) -> void:
+		if page != null and _can_drop_data(_at, data):
+			page.put_loot_down(int(data["index"]), GameLoop2.random_free_cell())

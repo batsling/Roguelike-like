@@ -126,6 +126,11 @@ const MAP_RIFT_GLOW := Color(0.40, 0.92, 0.88, 0.45)
 const MAP_NAME_FONT := 10.0
 const MAP_YEAR_FONT := 12.0
 const MAP_ARROW := 6.0
+# How wide an arrowhead opens, as a fraction of its length: the lines' heads and
+# the road's chevrons on the drawn map (thinner since 20 Nov 2026; draw.io's own
+# head is 0.4 and the computed skies' chevron 0.44).
+const MAP_ARROW_SPREAD := 0.25
+const MAP_CHEVRON_SPREAD := 0.28
 const MAP_MIN_TEXT_PX := 6
 const MAP_EDGE_ALPHA := 0.42
 const GRAIN_SIZE := 256
@@ -1430,6 +1435,18 @@ func _build() -> void:
 	add_child(root)
 
 	root.add_child(_build_header())
+	# THE SWITCH BACK TO THE OPTIMAL PATH, when the run opened this as its full map.
+	if to_optimal.is_valid():
+		var strip := PanelContainer.new()
+		strip.name = "MapMode"
+		strip.add_theme_stylebox_override("panel", UITheme.flat(UITheme.BG, 0, 6, 0))
+		var mid := CenterContainer.new()
+		strip.add_child(mid)
+		mid.add_child(map_mode_toggle(true, func():
+			var go: Callable = to_optimal
+			_finish()
+			go.call(), Callable()))
+		root.add_child(strip)
 	if pure_catalog:
 		_filter_bar = PanelContainer.new()
 		_filter_bar.add_theme_stylebox_override("panel", UITheme.flat(UITheme.BG, 0, 8, 0))
@@ -2387,6 +2404,60 @@ func _finish() -> void:
 	finished.emit()
 	queue_free()
 
+# Set by the run page when this is its FULL MAP: the toggle at the top switches to
+# the Optimal Path by calling it (this view closes first).
+var to_optimal: Callable = Callable()
+
+# THE MAP'S TWO VIEWS, ONE SWITCH (the owner, 20 Nov 2026: "lets add the map and
+# have a prominent toggle from optimal to full"). Two big buttons side by side at
+# the top of whichever view is up — the Optimal Path window or the full drawn map
+# — the one you are on lit gold, the other a click away. Static so both screens
+# build the same control.
+const MODE_W := 230.0
+const MODE_H := 42.0
+
+static func map_mode_toggle(full: bool, to_optimal_cb: Callable, to_full_cb: Callable) -> Control:
+	var row := HBoxContainer.new()
+	row.name = "MapModeToggle"
+	row.add_theme_constant_override("separation", UITheme.GAP_NONE)
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	for side in [false, true]:
+		var on: bool = side == full
+		var b := Button.new()
+		b.name = "Full" if side else "Optimal"
+		b.text = "🗺  Full map" if side else "→  Optimal path"
+		b.custom_minimum_size = Vector2(MODE_W, MODE_H)
+		b.add_theme_font_size_override("font_size", UITheme.FONT_SUB)
+		b.toggle_mode = true
+		b.button_pressed = on
+		b.focus_mode = Control.FOCUS_NONE
+		var left: bool = not side
+		var fill: Color = UITheme.GOLD if on else UITheme.PANEL
+		var edge: Color = UITheme.GOLD if on else UITheme.BORDER
+		for state in ["normal", "hover", "pressed", "hover_pressed", "focus"]:
+			var sb := UITheme.flat(fill if state != "hover" or on else UITheme.PANEL_HI,
+				0, 10, 2, edge)
+			sb.corner_radius_top_left = 10 if left else 0
+			sb.corner_radius_bottom_left = 10 if left else 0
+			sb.corner_radius_top_right = 0 if left else 10
+			sb.corner_radius_bottom_right = 0 if left else 10
+			b.add_theme_stylebox_override(state, sb)
+		var ink: Color = UITheme.BG_DEEP if on else UITheme.TEXT
+		for c in ["font_color", "font_hover_color", "font_pressed_color",
+				"font_hover_pressed_color", "font_focus_color"]:
+			b.add_theme_color_override(c, ink)
+		b.tooltip_text = ("You are on the " + ("full map." if side else "optimal path.")) if on \
+			else ("The whole drawn map, with your route on it." if side
+				else "The shortest road to the goal, decision by decision.")
+		var cb: Callable = to_full_cb if side else to_optimal_cb
+		b.pressed.connect(func():
+			if on:
+				b.set_pressed_no_signal(true)
+			elif cb.is_valid():
+				cb.call())
+		row.add_child(b)
+	return row
+
 func _unhandled_key_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
 		if _selected >= 0 or _selected_edge >= 0:
@@ -2552,7 +2623,7 @@ class StarCanvas extends Control:
 		# The lines, under the boxes as in draw.io.
 		# Thin, like a pen line (the owner, 19 Nov 2026: "a little thinner").
 		var width: float = clampf(sc * 0.55, 0.7, 1.5)
-		var head: float = clampf(AtlasView.MAP_ARROW * sc, 3.0, 16.0)
+		var head: float = clampf(AtlasView.MAP_ARROW * sc, 3.0, 12.0)
 		for pair in range(lay.edge_count()):
 			var a: int = lay.edges[pair * 2]
 			var b: int = lay.edges[pair * 2 + 1]
@@ -2575,9 +2646,9 @@ class StarCanvas extends Control:
 				var dir: Vector2 = d.normalized()
 				var perp := Vector2(-dir.y, dir.x)
 				draw_colored_polygon(PackedVector2Array([pb,
-					pb - dir * head + perp * head * 0.4,
+					pb - dir * head + perp * head * AtlasView.MAP_ARROW_SPREAD,
 					pb - dir * head * 0.75,
-					pb - dir * head - perp * head * 0.4]), col)
+					pb - dir * head - perp * head * AtlasView.MAP_ARROW_SPREAD]), col)
 
 		# The run's rifts: the seams under the roads, the badges over the boxes.
 		var seams: Array = view.rift_seams()
@@ -2913,8 +2984,13 @@ class StarCanvas extends Control:
 		if segments.is_empty():
 			return
 		var lay: AtlasLayout = view.layout
-		var core: float = clampf(view._scale * 0.42, 2.0, 5.0)
-		var casing: float = core + maxf(2.0, core * 0.75)
+		# THINNER ON THE DRAWN MAP (the owner, 20 Nov 2026: "lets have the arrows in
+		# the map become thinner"): a pen-weight road over pen-weight lines, with
+		# narrower arrowheads. The computed skies keep the heavier road.
+		var drawn: bool = lay.is_drawn_map()
+		var core: float = clampf(view._scale * 0.28, 1.5, 3.0) if drawn \
+			else clampf(view._scale * 0.42, 2.0, 5.0)
+		var casing: float = core + (maxf(1.2, core * 0.5) if drawn else maxf(2.0, core * 0.75))
 		var dash: float = maxf(9.0, casing * 2.4)
 
 		for seg in segments:
@@ -2937,7 +3013,8 @@ class StarCanvas extends Control:
 		# Arrowheads point the way the run travels: along the road ahead a DAG edge
 		# always runs from the game nearer you to the game nearer the Amulet, and
 		# along the walked road from the older game to the newer one.
-		var head: float = clampf(core * 3.1, 8.0, 24.0)
+		var head: float = clampf(core * 3.4, 7.0, 14.0) if drawn else clampf(core * 3.1, 8.0, 24.0)
+		var spread: float = AtlasView.MAP_CHEVRON_SPREAD if drawn else 0.44
 		for seg in segments:
 			var from_i: int = int(seg[0])
 			var to_i: int = int(seg[1])
@@ -2953,7 +3030,7 @@ class StarCanvas extends Control:
 			var pad_a: float = 0.0 if lay.is_drawn_map() else view.drawn_half_height(from_i)
 			var pad_b: float = 0.0 if lay.is_drawn_map() else view.drawn_half_height(to_i)
 			for t in AtlasView.route_arrow_offsets(length, pad_a, pad_b, head):
-				_chevron(a3 + dir * t, dir, head, col)
+				_chevron(a3 + dir * t, dir, head, col, spread)
 
 	# The link the player clicked: drawn over the stars so it can't be lost in a
 	# hub's fan of lines, with both endpoints ringed so it's obvious which two
@@ -2993,12 +3070,13 @@ class StarCanvas extends Control:
 
 	# One arrowhead: a cased triangle, so it stays legible over cover art the
 	# same way the road itself does.
-	func _chevron(at: Vector2, dir: Vector2, size: float, col: Color) -> void:
+	func _chevron(at: Vector2, dir: Vector2, size: float, col: Color,
+			spread: float = 0.44) -> void:
 		var perp := Vector2(-dir.y, dir.x)
 		var tip: Vector2 = dir * size * 0.5
-		var left: Vector2 = -dir * size * 0.5 + perp * size * 0.44
-		var right: Vector2 = -dir * size * 0.5 - perp * size * 0.44
-		var grow: float = (size + 3.4) / size
+		var left: Vector2 = -dir * size * 0.5 + perp * size * spread
+		var right: Vector2 = -dir * size * 0.5 - perp * size * spread
+		var grow: float = (size + (2.0 if spread < 0.44 else 3.4)) / size
 		draw_colored_polygon(PackedVector2Array([
 			at + tip * grow, at + left * grow, at + right * grow]),
 			AtlasView.COL_TRAIL_CASING)

@@ -3748,6 +3748,14 @@ func _free_drop_cell(from: Vector2i, avoid: Vector2i = OFF_FIELD) -> Vector2i:
 func drop_loot_anywhere(loot: Dictionary) -> Vector2i:
 	if loot.is_empty():
 		return OFF_FIELD
+	var cell: Vector2i = random_free_cell()
+	if cell == OFF_FIELD:
+		return OFF_FIELD
+	return place_drop(cell, loot)
+
+# A random square nothing stands or lies on, or OFF_FIELD when there is none.
+# Public for the screens that put a piece down "somewhere" (FullInventory's floor).
+func random_free_cell() -> Vector2i:
 	var free: Array = []
 	var taken: Dictionary = occupancy()
 	for col in range(1, grid_cols() + 1):
@@ -3758,7 +3766,17 @@ func drop_loot_anywhere(loot: Dictionary) -> Vector2i:
 			free.append(cell)
 	if free.is_empty():
 		return OFF_FIELD
-	return place_drop(free[randi() % free.size()], loot)
+	return free[randi() % free.size()]
+
+# Whether `drop_loot_anywhere` has a square to put a piece on.
+func floor_has_room() -> bool:
+	var taken: Dictionary = occupancy()
+	for col in range(1, grid_cols() + 1):
+		for row in range(grid_rows()):
+			var cell := Vector2i(col, row)
+			if not (taken.has(cell) or drops.has(cell) or units.has(cell)):
+				return true
+	return false
 
 # Lexicographic "is a closer match than", for _free_drop_cell's sort key.
 func _key_before(a: Array, b: Array) -> bool:

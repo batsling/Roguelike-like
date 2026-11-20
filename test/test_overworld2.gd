@@ -3694,6 +3694,48 @@ func test_an_items_card_opens_over_the_full_inventory_and_returns_to_it() -> voi
 		"closing the card lands back in it")
 	full.close()
 
+# The owner, 20 Nov 2026: using something in the full inventory keeps you there
+# unless it sends you somewhere else.
+func test_using_loot_in_the_full_inventory_keeps_it_open() -> void:
+	GameState.add_pill_loot(&"luck_up")
+	var full: Node = _ui.show_full_inventory()
+	var grid: LootGrid = full.find_children("*", "LootGrid", true, false)[0]
+	grid.use_requested.emit(0)
+	await wait_frames(2)
+	assert_true(is_instance_valid(full) and _ui.full_inventory_open(),
+		"the use screen opens over the full inventory, which stays")
+	full.close()
+
+# The owner, 20 Nov 2026: the full inventory shows the loot on the floor, and it
+# can be picked up and put down from there.
+func test_the_full_inventory_lists_and_picks_up_the_floor() -> void:
+	var entry: Dictionary = GameState.roll_loot_entry("pill")
+	var cell: Vector2i = GameLoop2.random_free_cell()
+	if cell == GameLoop2.OFF_FIELD:
+		pending("no free square on this board")
+		return
+	GameLoop2.place_drop(cell, entry)
+	var full: Node = _ui.show_full_inventory()
+	assert_eq(full.floor_cells(), [cell], "the piece on the floor is listed")
+	assert_true(Page.text_of(full).contains("On the floor  (1)"), Page.text_of(full))
+	assert_eq(full.find_children("*", "FloorLoot", true, false).size(), 1, "as a token")
+	var grid: LootGrid = full.find_children("*", "LootGrid", true, false)[0]
+	assert_true(grid.allow_floor_take, "the pack takes pieces off the floor")
+	var before: int = GameState.loot_items.size()
+	grid.floor_take_requested.emit(GameLoop2.drop_at(cell)["loot"], 0, cell)
+	assert_eq(GameState.loot_items.size(), before + 1, "picked up into the pack")
+	assert_false(GameLoop2.has_drop(cell), "and gone from the floor")
+	await wait_frames(2)
+	assert_true(Page.text_of(full).contains("On the floor  (0)"), "the section redraws")
+	# …and back down again.
+	var zone = full.find_child("Floor", true, false)
+	var data := {"kind": "loot_move", "from": 0, "index": GameState.loot_items.size() - 1}
+	assert_true(zone._can_drop_data(Vector2.ZERO, data), "a pack piece can be put down here")
+	zone._drop_data(Vector2.ZERO, data)
+	assert_eq(GameState.loot_items.size(), before, "out of the pack")
+	assert_eq(GameLoop2.drops.size(), 1, "onto the floor")
+	full.close()
+
 func test_tab_opens_and_shuts_the_loot_window() -> void:
 	# The `backpack` action existed in project.godot with nothing on the overworld
 	# listening for it.

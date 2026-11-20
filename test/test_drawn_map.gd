@@ -299,3 +299,42 @@ func test_the_collection_draws_no_rifts() -> void:
 	view.pure_catalog = true
 	add_child_autofree(view)
 	assert_eq(view.rift_seams(), [], "the catalog has no run, so no rifts")
+
+# THE MAP'S TOGGLE (the owner, 20 Nov 2026): the run's Map opens on the Optimal
+# Path with an "Optimal path | Full map" switch on top; Full opens the drawn map on
+# its own with the same switch, and the switch goes back.
+func _button(root: Node, name: String) -> Button:
+	for b in root.find_children(name, "Button", true, false):
+		if (b as Button).is_visible_in_tree():
+			return b
+	return null
+
+func test_the_run_map_toggles_between_optimal_and_full() -> void:
+	if _map == null:
+		pending("the drawn map is not baked")
+		return
+	var ui = _start_run()
+	var win = ui.open_map()
+	assert_not_null(win, "the map opens")
+	await wait_frames(2)
+	var full: Button = _button(get_tree().root, "Full")
+	assert_not_null(full, "on the optimal path, with the switch to the full map")
+	if full == null:
+		return
+	full.pressed.emit()
+	await wait_frames(2)
+	var atlas = ui._route_atlas
+	assert_true(atlas is AtlasView and is_instance_valid(atlas), "Full opens the map")
+	if not (atlas is AtlasView):
+		return
+	assert_true((atlas as AtlasView).layout.is_drawn_map(), "the owner's drawn map")
+	assert_false(is_instance_valid(win), "and the optimal path window is gone")
+	var back: Button = _button(atlas, "Optimal")
+	assert_not_null(back, "the map has the switch back")
+	if back == null:
+		return
+	back.pressed.emit()
+	await wait_frames(2)
+	assert_false(is_instance_valid(atlas), "Optimal closes the map")
+	assert_not_null(ui._route_map, "and opens the optimal path again")
+	ui._dismiss_route_map()

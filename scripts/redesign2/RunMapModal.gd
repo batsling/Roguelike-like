@@ -118,6 +118,9 @@ func _init() -> void:
 # False when the page that opened this has the chart switched off
 # (Overworld2.RUN_ATLAS): the window then does not offer to raise one.
 var _offer_chart: bool = true
+# The run page's way to its full map (the owner, 20 Nov 2026): when set, the
+# window opens with the Optimal / Full toggle on top and offers no star chart.
+var _to_full: Callable = Callable()
 
 func start(host: Node, current: StringName, amulet: StringName, choice_ids: Array = [],
 		options: Dictionary = {}) -> void:
@@ -127,6 +130,7 @@ func start(host: Node, current: StringName, amulet: StringName, choice_ids: Arra
 	_title = String(options.get("title", ""))
 	_atlas = options.get("atlas")
 	_offer_chart = bool(options.get("offer_chart", true))
+	_to_full = options.get("to_full", Callable())
 	_choice_ids.clear()
 	for id in choice_ids:
 		_choice_ids[StringName(id)] = true
@@ -251,6 +255,12 @@ func _build_header() -> Control:
 	var stack := VBoxContainer.new()
 	stack.add_theme_constant_override("separation", UITheme.GAP_SNUG)
 
+	if _to_full.is_valid():
+		var go: Callable = _to_full
+		stack.add_child(AtlasView.map_mode_toggle(false, Callable(), func():
+			_finish()
+			go.call()))
+
 	var bar := PanelContainer.new()
 	bar.add_theme_stylebox_override("panel",
 		UITheme.flat(UITheme.PANEL_HI.lerp(UITheme.BG, 0.35), 6, 6, 0))
@@ -326,7 +336,7 @@ func _build_header() -> Control:
 		# Put the whole corridor back in frame on the chart behind — the window is
 		# a second view of the same route, and it should be able to point at it.
 		tools.add_child(_zoom_button("⌖ Frame route", _frame_route))
-	elif _offer_chart and AtlasView.load_layout() != null:
+	elif _offer_chart and not _to_full.is_valid() and AtlasView.load_layout() != null:
 		# Opened without a chart under it: offer to raise one. The start picker gets
 		# the offer too now — there is no longer a secret for the sky to give away.
 		tools.add_child(_zoom_button("✦ Star chart", _open_atlas))

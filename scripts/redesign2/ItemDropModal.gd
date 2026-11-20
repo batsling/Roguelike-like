@@ -828,8 +828,8 @@ func _refresh_selection() -> void:
 			UITheme.flat(tint.lerp(UITheme.BG, 0.80 if chosen else 0.92), 8, 8,
 				2 if chosen else 1, tint if chosen else UITheme.BORDER))
 	if _take_btn != null and is_instance_valid(_take_btn):
-		_take_btn.text = "✓  Take it" if _cards.is_empty() \
-			else "✓  Take %s" % _selected.display_name
+		# Just "Take" (the owner, 20 Nov 2026): the chosen card is already lit.
+		_take_btn.text = "✓  Take"
 
 # The one line the tray never had room for: what kind of thing this is, so
 # "passive" and "click it on the overworld" aren't left to be discovered.
