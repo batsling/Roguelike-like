@@ -1489,6 +1489,7 @@ func test_a_spent_shield_does_not_come_back_with_the_stacks() -> void:
 	# Dexterity it has — so soaking a hit costs a point that stays gone.
 	var ui = _booted()
 	Page.pick_enemies(ui, 0)
+	_disarm_board()        # a Defensive Stance would add a shield of its own
 	var inst: int = int(GameLoop2.arrival()["instance"])
 	GameLoop2.apply_enemy_status(&"dexterity", 2, "current")
 	GameLoop2.beat_game(true)
@@ -1507,7 +1508,13 @@ func test_a_second_application_tops_the_shield_up() -> void:
 func test_a_shielded_body_dies_once_the_shield_is_gone() -> void:
 	var ui = _booted()
 	Page.pick_enemies(ui, 0)
+	# ARRANGED, not hoped for: the offering rolls a random enemy, and one that
+	# spends its turn on an ability (a Revola's Defensive Stance shields itself
+	# again) or carries more than one Health survives the hit this test is about.
+	# It failed one full-suite run in a few that way (docs/test-flakes.md).
+	_disarm_board()
 	var inst: int = int(GameLoop2.arrival()["instance"])
+	GameLoop2.entry_for(inst)["health"] = 1
 	GameLoop2.apply_enemy_status(&"dexterity", 1, "current")
 	GameLoop2.beat_game(true)              # shield 1 -> 0
 	assert_false(GameLoop2.entry_for(inst).is_empty(), "still standing")

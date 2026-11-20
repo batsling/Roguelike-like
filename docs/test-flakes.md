@@ -19,6 +19,18 @@ failure; diffing a passing and failing run's Control tree) are the reusable part
 - **The varying failures that used to live here are FIXED.** All were
   assertions that were only *usually* true, and they are worth reading before
   blaming a seed for a new one.
+  - `test_statuses.gd::test_a_shielded_body_dies_once_the_shield_is_gone`
+    (20 Nov 2026) failed "and this one killed it" in one local full-suite run,
+    on a branch that never touched statuses, and passed on every rerun — 0 in 40
+    in a stress loop of the same scenario, so the cause was NOT caught in the
+    act. The test stood the offering's random enemy, ran a board turn and
+    expected the next goal hit to kill it; both known ways for that to be only
+    usually true apply — an ability spending the turn on itself (a Revola's
+    Defensive Stance shields it again, so the hit only strips that shield) and
+    an enemy authored with more than one Health. It now arranges the case:
+    `_disarm_board()` and the body set to 1 Health, as the rest of the file's
+    board tests do. Its neighbour that counts the shield left after a turn got
+    the `_disarm_board()` too.
   - `test_gameloop2.gd::test_reporting_a_game_moves_nobody_out_in_the_wilds`
     (9 Nov 2026) failed on CI with "[2] expected to equal [4]: so nobody
     walked", about one run in 200, on a PR that never touched the loop. The
