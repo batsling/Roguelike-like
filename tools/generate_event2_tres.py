@@ -84,10 +84,12 @@ TRIGGERS = ("after", "before")
 # `enemies` is the board: bodies following you that are not bosses — what the Old
 # Beggar gates on, since taking one away is all he does. `curses` counts curses
 # that can be LIFTED (Destroyable curse cards, cursed weapons) — the Divine
-# Fountain's gate.
+# Fountain's gate. `cards` counts the cards that could be handed over — not
+# curses, not pinned (GameState.can_leave_pack) — what A Note For Yourself gates
+# on, since its Take and Give has to store one.
 GATE_STATS = ("hp", "max_hp", "gold", "games", "keys", "bombs", "bash", "dash",
               "push", "transmute", "scramble", "shields", "relics", "potions",
-              "upgradeable", "enemies", "curses")
+              "upgradeable", "enemies", "curses", "cards")
 
 
 # --- the Requirement column -------------------------------------------------

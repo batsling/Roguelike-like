@@ -32,7 +32,7 @@ func _entry(id: StringName) -> Dictionary:
 
 func test_every_card_loads_with_an_effect_and_both_pictures() -> void:
 	var cards: Array = Data.all_cards()
-	assert_eq(cards.size(), 38, "the sheet's 38 rows all generated")
+	assert_eq(cards.size(), 39, "the sheet's 39 rows all generated")
 	for c in cards:
 		assert_true(c is CardData)
 		var card: CardData = c

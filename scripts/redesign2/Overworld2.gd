@@ -7352,6 +7352,10 @@ func _paint_health_chip() -> void:
 
 func _on_gold_changed(_amount: int = 0) -> void:
 	_paint_gold_chip()
+	# A relic that scales off Gold (Padding) wears what it gives right now on the
+	# strip, so the strip has to follow the purse — only while one is owned.
+	if GameState.scales_with("gold"):
+		_refresh_items()
 
 
 func _refresh_stats(_a = null) -> void:

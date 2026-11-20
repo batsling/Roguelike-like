@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="TrinketData" load_steps=2 format=3 uid="uid://trinket2_brick"]
+
+[ext_resource type="Script" path="res://scripts/resources/TrinketData.gd" id="1_trinket"]
+
+[resource]
+script = ExtResource("1_trinket")
+id = &"brick"
+display_name = "Brick"
+rarity = "Common"
+size = Vector2i(1, 1)
+description = "At the start of combat, Gain +1 Temporary Shield for each adjacent Structure"
+source_game = "Backpack Hero"
+tags = PackedStringArray("structure")
+file = "Brick"
+loot_type = "Passive"
+triggers = [{"on": "game_selected", "effects": [{"type": "gain_stat", "stat": "shields", "value": 1, "per": 1, "of": "structures_beside"}]}]
+stat_bonuses = {}
+status_bonuses = {}

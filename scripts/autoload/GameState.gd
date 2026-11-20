@@ -2001,8 +2001,57 @@ func change_hp(delta: int, source: String = "") -> void:
 # all` cannot wipe it. A gain pays it down. A restore (undo) passes `debt_ok` too,
 # so it puts back exactly what it saved.
 func set_gold(new_gold: int, debt_ok: bool = false) -> void:
+	var before: int = gold
 	gold = new_gold if debt_ok else max(mini(0, gold), new_gold)
+	# A relic that SCALES off Gold (Padding: +1 Max Health per 10 Gold) moves with
+	# the purse, both ways, as Brotato's does. Only recomputed when one is owned.
+	if gold != before and scales_with("gold"):
+		_recompute_item_bonuses()
 	emit_signal("gold_changed", gold)
+
+# Does any owned relic have a `scaling` rule read off run stat `stat`?
+func scales_with(stat: String) -> bool:
+	for it in inventory:
+		if it is ItemData:
+			for rule in (it as ItemData).scaling:
+				if String(rule.get("of", "")) == stat:
+					return true
+	return false
+
+# What one `scaling` rule is worth right now (Padding's "+1 max_hp per 10 gold"
+# at 25 Gold is 2). The one sum, read by the recompute and by the number drawn on
+# the relic, so the two cannot disagree.
+func scaling_contribution(rule: Dictionary) -> int:
+	var per: int = int(rule.get("per", 0))
+	var src_stat: String = String(rule.get("of", ""))
+	if per <= 0 or src_stat == "":
+		return 0
+	var src_amount: int
+	if src_stat.begins_with("deck_tag:"):
+		src_amount = _count_deck_cards_with_tag(src_stat.substr(9))
+	else:
+		# Never below 0: a purse in debt (Credit Card) counts as empty, so Padding
+		# takes nothing away rather than giving negative Max Health.
+		src_amount = maxi(0, int(get(src_stat)))
+	@warning_ignore("integer_division")
+	return int(rule.get("value", 0)) * (src_amount / per)
+
+# What a scaling relic is giving RIGHT NOW, per stat it scales: its flat bonus to
+# that stat plus every rule's worth — Padding at 25 Gold is {max_hp: 3}. What its
+# pip on the relic strip shows (PackStrip). {} for a relic with no scaling.
+func scaling_now(it: ItemData) -> Dictionary:
+	var out: Dictionary = {}
+	if it == null or it.scaling.is_empty():
+		return out
+	var flat: Dictionary = it.effective_stat_bonuses()
+	for rule in it.scaling:
+		var stat: String = String(rule.get("stat", ""))
+		if stat == "":
+			continue
+		if not out.has(stat):
+			out[stat] = int(flat.get(stat, 0))
+		out[stat] = int(out[stat]) + scaling_contribution(rule)
+	return out
 
 # CREDIT CARD (Balatro, the owner 17 Nov 2026): how far below 0 a shop purchase may
 # take Gold — the `gold_debt` of every working piece, summed (a Blueprint beside one
@@ -3913,16 +3962,9 @@ func _recompute_item_bonuses() -> void:
 			if out_stat == "max_energy":
 				push_warning("ItemData.scaling: '%s' cannot output max_energy" % it.id)
 				continue
-			var src_amount: int
-			if src_stat.begins_with("deck_tag:"):
-				src_amount = _count_deck_cards_with_tag(src_stat.substr(9))
-			else:
-				src_amount = int(get(src_stat))
-			@warning_ignore("integer_division")
-			var stacks: int = src_amount / per
-			if stacks == 0:
+			var contribution: int = scaling_contribution(rule)
+			if contribution == 0:
 				continue
-			var contribution: int = per_val * stacks
 			if out_stat == "max_hp":
 				scaling_max_hp_total += contribution
 			else:

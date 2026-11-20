@@ -751,7 +751,17 @@ const PICKS := {
 	"remove_enemy": {"opener": "begin_board_pick", "answer": "remove_chosen",
 		"cfg": {"verb": "remove", "noun": "enemy", "nouns": "enemies",
 			"where": "on the board"}},
+	# A Note For Yourself: the card to leave for the next run, in the pack.
+	"note_for_yourself": {"opener": "begin_owned_pick", "answer": "note_chosen",
+		"cfg": {"verb": "store", "noun": "card", "nouns": "cards"}},
 }
+
+# What each pick lights up.
+static func _pick_candidates(kind: String) -> Array:
+	match kind:
+		"upgrade_loot": return LootUpgrade.upgradeable()
+		"note_for_yourself": return EffectSystem.note_candidates()
+		_: return GameLoop2.non_boss_instances()
 
 func _begin_pick(index: int, choice: Dictionary) -> bool:
 	var kind: String = ""
@@ -766,8 +776,7 @@ func _begin_pick(index: int, choice: Dictionary) -> bool:
 	var spec: Dictionary = PICKS[kind]
 	if _host == null or not _host.has_method(String(spec["opener"])):
 		return false
-	var candidates: Array = LootUpgrade.upgradeable() if kind == "upgrade_loot" \
-		else GameLoop2.non_boss_instances()
+	var candidates: Array = _pick_candidates(kind)
 	if candidates.is_empty():
 		return false
 	var cfg: Dictionary = (spec["cfg"] as Dictionary).duplicate()

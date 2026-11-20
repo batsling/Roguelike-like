@@ -880,8 +880,8 @@ func reward_item2_pool() -> Array:
 #              word as a tag or a pool, drawn by the location's lean. A word
 #              nothing rollable carries rolls the ordinary chest instead.
 #   otherwise  a rarity off the 75/20/4/1 ladder (Luck included), then a leaned
-#              pick from that rarity; the Sacred Orb re-draws every Common and one
-#              Uncommon in four.
+#              pick from that rarity; the Sacred Orb re-draws every Common until
+#              it is not one (`orb_filter`; the owner, 20 Nov 2026).
 #
 # Distinct is a preference and not a rule: two of the same relic side by side is
 # not a choice, but a thin pool still owes a chest, so the draw gives up after a
@@ -898,7 +898,8 @@ func roll_chest(rng: RandomNumberGenerator, count: int, pool: String = "",
 	var plain: bool = boss_pool.is_empty() and tagged.is_empty()
 	if plain and reward_item2_pool().is_empty():
 		return out
-	var orb: bool = plain and GameState.has_low_rarity_reroll()
+	var orb: bool = plain and GameState.has_low_rarity_reroll() \
+		and not orb_filter(reward_item2_pool()).is_empty()
 	var tries: int = 0
 	while out.size() < want and tries < CHEST_ROLL_TRIES:
 		tries += 1
@@ -906,13 +907,11 @@ func roll_chest(rng: RandomNumberGenerator, count: int, pool: String = "",
 		if not boss_pool.is_empty():
 			item = Locations.pick(boss_pool, rng)
 		elif not tagged.is_empty():
-			item = Locations.pick(tagged, rng)
+			item = Locations.pick(orb_filter(tagged), rng)
 		else:
 			item = Locations.pick(reward_item2_pool_of(roll_item_rarity(rng)), rng)
 			if orb and item != null:
 				if int(item.rarity) == ItemData.Rarity.COMMON:
-					continue
-				if int(item.rarity) == ItemData.Rarity.UNCOMMON and rng.randf() < 0.25:
 					continue
 		if item == null:
 			break
@@ -924,6 +923,31 @@ func roll_chest(rng: RandomNumberGenerator, count: int, pool: String = "",
 		if not dup:
 			out.append(item)
 	return out
+
+# SACRED ORB (The Binding of Isaac: Rebirth; the owner, 20 Nov 2026): while one is
+# owned, every random relic that would come up COMMON is rerolled until it is not —
+# which is the same as drawing from the pool with its Commons taken out. Uncommons
+# are left alone. So every random relic draw passes its pool through here: chests,
+# shop shelves, an event's random relic, the Relic Trader's offers, Calling Bell's
+# Common. A pool with nothing BUT Commons is returned whole, so a draw is never
+# left empty by the Orb.
+func orb_filter(pool: Array) -> Array:
+	if not GameState.has_low_rarity_reroll():
+		return pool
+	var kept: Array = pool.filter(func(it):
+		return not (it is ItemData) or int((it as ItemData).rarity) != ItemData.Rarity.COMMON)
+	return pool if kept.is_empty() else kept
+
+# A rolled relic rarity, rerolled while the Orb says Common (`orb_filter`), for the
+# draws that roll a rung first (a shop shelf).
+func orb_rarity(rarity: int, rng: RandomNumberGenerator) -> int:
+	if not GameState.has_low_rarity_reroll() or orb_filter(reward_item2_pool()).is_empty():
+		return rarity
+	var tries: int = 0
+	while rarity == ItemData.Rarity.COMMON and tries < CHEST_ROLL_TRIES:
+		rarity = roll_item_rarity(rng)
+		tries += 1
+	return rarity
 
 # The BOSS relics — what beating a boss pays instead of a normal drop (§7.1).
 # A separate pool rather than a rarity bucket for the same reason `boss` is a flag

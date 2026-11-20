@@ -11,6 +11,67 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **Three Isaac relics for the angel room (20 Nov 2026).** All tagged `angelic`
+  and in the `angel_room` pool. **Book of Revelations** (flash Isaac, Rare,
+  Charged 3, +1 Shield that stays) was already on the sheet and only gained the
+  tag and the pool. **Habit** (flash Isaac, Common): whenever Health is lost, +1
+  Charge to a random chargeable relic or loot. **Sacred Orb** (Rebirth,
+  Legendary): every random relic that would come up Common is rerolled until it
+  is not; Uncommons are left alone (Isaac's 25% Uncommon reroll is dropped, the
+  owner's call). Its flag `reroll_low_rarity` was in the grammar with no relic
+  carrying it, and only chests read it; the rule is now `Data.orb_filter`, which
+  every random relic draw passes through: chests (tagged ones too), shop shelves,
+  an event's random relic, the Relic Trader's offers and Calling Bell's Common.
+  A pool of nothing but Commons is kept whole. Tests `test_angel_relics.gd`. Art
+  is the Isaac wiki's 32px collectible icons.
+
+- **The Round Tea Party and Royal Poison, from Slay the Spire 2 (20 Nov 2026).**
+  A Common event for the late difficulties (`High, Insane`, Spire's Act 3), dealt
+  only with 3+ Health, in Spire 2's own words. **Enjoy Your Tea** heals to full
+  and pays **Royal Poison**, an Event relic: "At the start of combat, Lose 1
+  Health" — Health loss, so no Shield stops it (Spire: lose 4 HP). **Pick a
+  Fight** costs 2 Health for a random relic (Spire: 11 HP); the 3-Health gate
+  (Spire: 12) means it can never kill. Pick a Fight's two pages are one Result.
+  Tests `test_round_tea_party.gd`. Art is the Spire wiki's originals
+  (`StS2 Round Tea Party.png`, `StS2 RoyalPoison.png`).
+
+- **Padding, from Brotato (20 Nov 2026).** An Uncommon relic: "Gain +1 Max
+  Health, and +1 Max Health for every 10 Gold you have" (Brotato's is +3, and +1
+  per 80 Materials). Live, as in Brotato: more Gold adds EMPTY Max Health, and
+  spending below a step takes it back, Health above the new max with it.
+  `GameState.set_gold` now recomputes the relic bonuses when an owned relic
+  `scaling`s off Gold (`scales_with`), and a purse in debt counts as 0 rather
+  than taking Max Health away. **It shows what it gives**: a red "+3" pip in the
+  relic's corner on the strip (`PackStrip.scaling_badge`, the counter pip's
+  shape) and "Giving +3 Max Health right now." on its hover, both read off
+  `GameState.scaling_now` — the same sum the Max Health itself comes from.
+  Tests `test_padding.gd`. Art is the Brotato wiki's `Item padding.png`.
+
+- **Structures, from Backpack Hero (20 Nov 2026).** Four trinkets
+  (`docs/loot-passives.md` §21). **Brick** (Common), **Brick Wall** (Uncommon,
+  two wide) and **Roof** (Rare, two wide) are tagged `structure` and pay +1
+  Temporary Shield at the start of combat for each structure beside them (Brick),
+  beside or diagonal (Brick Wall), or anywhere under them (Roof, turned with the
+  piece and marked with an arrow). **Masonry Tools** (Legendary) adds a Brick to a
+  random empty cell of its row whenever a game ends. New `gain_stat` sources
+  `of=structures_beside|structures_around|structures_below`
+  (`LootPassives.structures_counted`) and verb `place_in_row`; tests
+  `test_structures.gd`. Art is the Backpack Hero wiki's original sprites.
+
+- **Iron Wave and A Note For Yourself, from Slay the Spire (20 Nov 2026).**
+  - **Iron Wave** is a Common Ironclad attack card: "Gain +1 Temporary Shield
+    and Apply Stun 1 to an Enemy". Its Upgrade Type is **Shield, Stun**, so each
+    upgrade grows both (`docs/loot-passives.md` §19).
+  - **A Note For Yourself** is an Uncommon event: *Take and Give* hands over the
+    card an earlier run left in the note, Iron Wave the first time as in Spire,
+    and the player picks a card in the pack to leave for the NEXT run, upgrade
+    kept. The note is saved with the profile (`GameStats.note_card`), not the run.
+    It is only dealt to a run carrying a card that may leave the pack (the new
+    `cards` Requirement stat), and its button names the card waiting (`<note>`).
+    New verb `note_for_yourself`; tests `test_note_for_yourself.gd`. Both
+    pictures are the Slay the Spire wiki's originals (`Red-IronWave.png`,
+    `Event-SelfNote.png`).
+
 - **The map comes back to the run, with a switch; the floor in the Full Inventory (20 Nov 2026).**
   - **🗺 Map opens on the Optimal Path with an "Optimal path | Full map"
     switch on top**, and Full opens the owner's drawn map on its own with the

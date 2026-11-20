@@ -534,6 +534,15 @@ def parse_one_effect(raw, default_target="enemy", in_grant=False):
     if verb == "remove_self":
         return {"type": "remove_self"}
 
+    # `place_in_row <trinket_id>` — a NEW piece of that trinket lands in a random
+    # empty cell of the row the firing piece sits in (Masonry Tools' Brick,
+    # docs/loot-passives.md §21). A full row is nothing.
+    if verb == "place_in_row":
+        rest, _ = _kv(toks[1:])
+        if len(rest) != 1:
+            raise ValueError("item DSL: place_in_row wants one trinket id in %r" % raw)
+        return {"type": "place_in_row", "trinket": rest[0].lower()}
+
     # `lose_hp_per_loot N` — Regret (docs/loot-passives.md §18): lose 1 Health for
     # every N pieces of loot in the pack AND lying on the board, rounded down.
     if verb == "lose_hp_per_loot":

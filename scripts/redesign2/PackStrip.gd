@@ -122,6 +122,8 @@ func _item_token(item: ItemData, reporting: bool) -> Control:
 	art.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	stack.add_child(art)
 	var badge: Control = _counter_badge(item)
+	if badge == null:
+		badge = scaling_badge(item)
 	if badge != null:
 		stack.add_child(badge)
 
@@ -221,6 +223,57 @@ func _counter_badge(item: ItemData) -> Control:
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	wrap.add_child(label)
 	return wrap
+
+# A SCALING relic's worth right now, in the same corner pip as a counter: Padding
+# at 25 Gold reads "+3", in Health's red, because what it gives moves with the
+# purse and the player should not have to do the sum (the owner, 20 Nov 2026).
+# Its hover says it in words (`scaling_line`). null for anything that does not
+# scale, or scales to nothing — a +0 pip on every relic would be noise.
+static func scaling_badge(item: ItemData) -> Control:
+	var now: Dictionary = GameState.scaling_now(item)
+	if now.is_empty():
+		return null
+	var stat: String = String(now.keys()[0])
+	var amount: int = int(now[stat])
+	if amount == 0:
+		return null
+	var accent: Color = UITheme.DANGER if stat == "max_hp" else UITheme.GOLD
+	var wrap := PanelContainer.new()
+	wrap.name = "ScalingBadge"
+	wrap.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+	wrap.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	wrap.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	wrap.offset_right = COUNTER_HANG
+	wrap.offset_bottom = COUNTER_HANG
+	wrap.custom_minimum_size = Vector2(COUNTER_PIP, COUNTER_PIP)
+	wrap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	wrap.add_theme_stylebox_override("panel",
+		UITheme.flat(Color(UITheme.WELL, 0.92), COUNTER_PIP / 2, 0, 1, accent))
+	var label := Label.new()
+	label.text = "%+d" % amount
+	label.add_theme_font_size_override("font_size", UITheme.FONT_TINY)
+	label.add_theme_color_override("font_color", accent)
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	wrap.add_child(label)
+	return wrap
+
+# The same in words, for the hover: "Giving +3 Max Health right now." "" for a
+# relic that does not scale.
+const SCALED_STAT_NAMES := {"max_hp": "Max Health"}
+
+static func scaling_line(item: ItemData) -> String:
+	# Only the relic you OWN gives anything: the shop shelf and the drop modal
+	# draw templates through the same hover, and those are giving nothing yet.
+	if not GameState.inventory.has(item):
+		return ""
+	var now: Dictionary = GameState.scaling_now(item)
+	var parts: Array = []
+	for stat in now.keys():
+		parts.append("%+d %s" % [int(now[stat]),
+			String(SCALED_STAT_NAMES.get(stat, String(stat).capitalize()))])
+	return "" if parts.is_empty() else "Giving %s right now." % ", ".join(parts)
 
 # CAN THIS ITEM FIRE WHILE A GAME IS IN PLAY? Every active used to be held back
 # until the game had been reported, which is right for a USABLE consumable — those
@@ -367,6 +420,9 @@ static func item_hover(item: ItemData, active: bool, ready: bool, reporting: boo
 	# The card its click opens draws them with art; this is the fast version.
 	if int(item.echo_loot) > 0:
 		lines.append(_echo_line(item))
+	var scaled: String = scaling_line(item)
+	if scaled != "":
+		lines.append(scaled)
 	return {
 		"title": item.display_name,
 		"subtitle": sub,

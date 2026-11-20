@@ -329,9 +329,9 @@ const CLASS_NAMES := ["Common", "Uncommon", "Rare", "Legendary", "Starter", "Bos
 # GameState.apply_level_up_stats and GameState.grant_run_stat.
 @export var stat_gain_bonus: Dictionary = {}
 
-# Sacred Orb: while owned, item rewards reroll away from low rarities — Common
-# picks are always rerolled and Uncommon picks have a 25% reroll chance. Read
-# by RewardScreen._roll_choices.
+# Sacred Orb: while owned, every random relic that would come up Common is
+# rerolled until it is not; Uncommons are left alone (the owner, 20 Nov 2026).
+# The rule is Data.orb_filter, which every random relic draw passes through.
 @export var reroll_low_rarity: bool = false
 
 # For Usable items: how many uses (-1 = infinite)

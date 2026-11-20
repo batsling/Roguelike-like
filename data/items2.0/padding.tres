@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="ItemData" load_steps=3 format=3 uid="uid://item_padding"]
+
+[ext_resource type="Script" path="res://scripts/resources/ItemData.gd" id="1_item"]
+[ext_resource type="Texture2D" path="res://images2.0/items/Padding.png" id="2_img"]
+
+[resource]
+script = ExtResource("1_item")
+id = &"padding"
+display_name = "Padding"
+kind = 0
+rarity = 1
+description = "Gain +1 Max Health, and +1 Max Health for every 10 Gold you have"
+triggers = []
+stat_bonuses = {"max_hp": 1}
+scaling = [{"stat": "max_hp", "value": 1, "per": 10, "of": "gold"}]
+max_uses = -1
+source_game = "Brotato"
+tags = PackedStringArray()
+image = ExtResource("2_img")

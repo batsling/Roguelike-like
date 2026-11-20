@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="CardData" load_steps=2 format=3 uid="uid://card2_iron_wave"]
+
+[ext_resource type="Script" path="res://scripts/resources/CardData.gd" id="1_card"]
+
+[resource]
+script = ExtResource("1_card")
+id = &"iron_wave"
+display_name = "Iron Wave"
+rarity = "Common"
+source_game = "Slay the Spire"
+set_name = "Ironclad Common"
+description = "Gain +1 Temporary Shield and Apply Stun 1 to an Enemy"
+effect = [{"op": "gain_stat", "stat": "shields", "value": 1}, {"op": "stun", "value": 1}]
+file = "IronWave"
+icon = "Slay_The_Spire_Ironclad_Common"
+loot_type = "Usable"
+tags = PackedStringArray("ironclad", "attack")
+upgrade_types = PackedStringArray("shield", "stun")

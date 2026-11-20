@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="EventData2" load_steps=2 format=3 uid="uid://event2_the_round_tea_party"]
+
+[ext_resource type="Script" path="res://scripts/resources/EventData2.gd" id="1_event"]
+
+[resource]
+script = ExtResource("1_event")
+id = &"the_round_tea_party"
+display_name = "The Round Tea Party"
+source_game = "Slay the Spire 2"
+tier_tags = PackedStringArray("high", "insane")
+where = ""
+requirement = {"stat": "hp", "op": ">=", "value": 3, "percent": false}
+trigger = "after"
+rarity = "Common"
+file = "TheRoundTeaParty"
+prompt = "You find an invitation for a \"Sir Galalot\" to a tea party and decide to show up in his stead. Upon entering an unassuming rotunda, you find yourself in the midst of commanders, generals, warlords, and mercenaries having... tea? The gigantic knight donning a golden crown speaks. \"Thou art late for Tea?!\""
+opens_with = {}
+goal_met = ""
+goal_missed = ""
+chance_won = ""
+chance_lost = ""
+choices = [{"id": "enjoy_your_tea", "text": "Enjoy Your Tea", "repeat": "end", "repeat_max": 0, "results": ["You grab a teacup and down it one go. It's SCALDING HOT but you don't change your expression. The patrons are stunned by your lack of self preservation. \"We meant no offense, Sir Galalot. our sincerest apologies.\" You enjoy some tea and crumpets, unaware of the poison you've ingested."], "gates": [], "effects": [{"type": "gain_item", "item": "royal_poison"}, {"type": "heal_full"}], "effects_text": "+Royal Poison, Heal to full", "goal": {}, "curse": {}, "play": {}, "chance": {}}, {"id": "pick_a_fight", "text": "Pick a Fight", "repeat": "end", "repeat_max": 0, "results": ["You jump onto the table and kick the warlord knight in the face! The knight lets out a haunting shriek and keels over. *everyone gasps* The patrons stare wide-eyed at the corpse of one of their regulars... then bursts into applause!? \"We were wondering how to rid of Sir Wygore, incredible work!\" They dump out your poisoned tea and you discuss tactics and secrets all night. A most excellent tea party."], "gates": [], "effects": [{"type": "lose_hp", "value": 2}, {"type": "gain_random_item", "value": 1}], "effects_text": "-2 Health, +1 random Relic", "goal": {}, "curse": {}, "play": {}, "chance": {}}]

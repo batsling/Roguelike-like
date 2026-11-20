@@ -918,12 +918,16 @@ to them stacking indefinitely."* Slay the Spire's Upgrade, translated.
 
   | Upgrade Type | grows | cards |
   |---|---|---|
-  | Stun | each `stun` clause | Bullseye, Cleave, Fiend Fire, Finisher, Pommel Strike, Reaper |
-  | Shield | each `gain_stat shields` | After Image (its trigger), Second Wind, Shrug it Off, Stack |
+  | Stun | each `stun` clause | Bullseye, Cleave, Fiend Fire, Finisher, Iron Wave, Pommel Strike, Reaper |
+  | Shield | each `gain_stat shields` | After Image (its trigger), Iron Wave, Second Wind, Shrug it Off, Stack |
   | Charge | `charge_pick` | Bloodletting, Offering |
   | Potion | `gain_loot potion` | Alchemize |
   | Loot | `gain_loot` | Prepared |
   | Destroy | `destroy_pick` | Prepared |
+
+  A card can name more than one type, and an upgrade then grows every one of
+  them: Prepared (Loot, Destroy), and Iron Wave (Shield, Stun — the owner,
+  20 Nov 2026: an upgraded Iron Wave is Shield 2 and Stun 2).
 
   `tools/generate_card2_tres.py` refuses a row whose type names a clause the card
   does not have (its `UPGRADE_CLAUSES` mirrors `grows`), and
@@ -1020,3 +1024,47 @@ time*. A chest is the ninth kind of loot (`type: "chest"`), and
 - **Between games.** A chest banked with no reward screen up (a potion's
   level-up, a location's trade) is rolled and offered as chest loot on the
   ordinary loot screen (`Overworld2._redeem_pending_chests`).
+
+## 21. Structures — pieces that count the structures around them
+
+**The owner, 20 Nov 2026:** "I'd like to focus on the structure mechanic by adding
+items with the structure tag." Backpack Hero's structures, as `trinkets` rows
+tagged `structure`, all four from that game:
+
+| Piece | Rarity | Size | At the start of combat (`game_selected`) |
+|---|---|---|---|
+| **Brick** | Common | 1x1 | +1 Temporary Shield per structure **beside** it (the four sides) |
+| **Brick Wall** | Uncommon | 1x2 (two wide) | +1 per structure beside it **or diagonal** to it |
+| **Roof** | Rare | 1x2 (two wide) | +1 per structure **anywhere in the columns under it**, touching or not |
+| **Masonry Tools** | Legendary | 1x1 | not a structure; see below |
+
+Each starts at 0: a Brick on its own pays nothing. The owner chose Backpack Hero's
+own reach for each (Brick sides only, Brick Wall diagonals too) and a Temporary
+Shield (Wooden Cross's).
+
+- **The rule is `LootPassives.structures_counted(entry, count)`**, and the three
+  counts are `of=` sources of `gain_stat`: `gain_stat shields 1 per=1
+  of=structures_beside` / `structures_around` / `structures_below`
+  (`EffectSystem._h_gain_stat`, beside Holdall's `unidentified_in_bag`). A new
+  structure piece is a sheet row, not code.
+- **A structure counts once**, however many of its cells touch the piece, and a
+  piece never counts itself. A Roof is a structure too, so a Brick beside it counts it.
+- **"Below" turns with the Roof**, like Whetstone's up and down: turned upside
+  down it counts the structures above it. It wears an arrow that way
+  (`LootPassives.directions`).
+- **A Blueprint copying a structure is one**, as one copying a food is that food
+  (`is_structure` asks what a piece runs), and it counts from where the Blueprint
+  sits, since it is the piece that fires.
+- **Link Cable** (§15): every other structure in the pack counts, the Roof's
+  included.
+- **Hovering** a structure piece lights the structures it counts (`_works_on`).
+
+**Masonry Tools** — "At the end of combat, add a Brick to a random empty space in
+this row": `game_beaten: place_in_row brick`. The owner chose **every game end, won
+or lost** (`game_beaten`, not `game_won`) and **its own row as drawn**, bag cells
+on that row included. A full row places nothing. The row is the screen's, whichever
+way the tools are turned. The verb `place_in_row <trinket>` (`EffectSystem._h_place_in_row`)
+takes any trinket id.
+
+The art is the Backpack Hero wiki's original sprites (`Brick.png`,
+`Brickwall.png`, `Roof.png`, `Masonry_Tools.png`). Tests: `test/test_structures.gd`.

@@ -114,6 +114,7 @@ func _register_defaults() -> void:
 	register("lose_item", _h_lose_item)
 	register("remove_enemy", _h_remove_enemy)
 	register("lift_curses", _h_lift_curses)
+	register("note_for_yourself", _h_note_for_yourself)
 	register("upgrade_loot", _h_upgrade_loot)
 	register("gain_item_per_rarity", _h_gain_item_per_rarity)
 	register("add_curse", _h_add_curse)
@@ -144,6 +145,7 @@ func _register_defaults() -> void:
 	register("gain_top_buff", _h_gain_top_buff)
 	register("break_into", _h_break_into)
 	register("remove_self", _h_remove_self)
+	register("place_in_row", _h_place_in_row)
 	register("lose_hp_per_loot", _h_lose_hp_per_loot)
 	register("smelt", _h_smelt)
 
@@ -190,8 +192,14 @@ func _h_gain_stat(effect: Dictionary, ctx: Dictionary) -> void:
 	if effect.has("per"):
 		var per: int = maxi(1, int(effect["per"]))
 		var of: String = String(effect.get("of", ""))
-		var have: int = GameState.unidentified_in_bag(int(ctx.get("loot_bag", -1))) \
-			if of == "unidentified_in_bag" else int(GameState.get(of))
+		var have: int = 0
+		if of == "unidentified_in_bag":
+			have = GameState.unidentified_in_bag(int(ctx.get("loot_bag", -1)))
+		elif LootPassives.STRUCTURE_COUNTS.has(of):
+			# The structures around the piece firing (Brick, Brick Wall, Roof — §21).
+			have = LootPassives.structures_counted(ctx.get("loot_entry"), of).size()
+		else:
+			have = int(GameState.get(of))
 		@warning_ignore("integer_division")
 		value *= have / per
 	if stat == "" or value == 0:
@@ -452,6 +460,46 @@ func _h_lift_curses(_effect: Dictionary, ctx: Dictionary) -> void:
 	GameLog.add(line, UITheme.ACCENT)
 	_did(ctx, line.trim_suffix("."))
 
+# A NOTE FOR YOURSELF (Slay the Spire's event; GameStats.note_card): take the card
+# an earlier run left behind the brick — Iron Wave the first time — and leave one
+# of yours for the next run. The card left is the one the player PICKED in the
+# pack (`ctx.note_chosen`, EventModal2 runs the pick); with none chosen (a test,
+# a press with no page) one is rolled. Only a card that may leave the pack can be
+# left (no curse, nothing pinned). With none, the note is not touched at all:
+# Spire's Take and Give is a trade, and a take with no give is not one.
+#
+# The card left goes first, so the one taken has its cell to land in. It comes
+# as it was left, upgrade and all, and is NOT rolled again for Retro Bat: it was
+# found once already.
+func _h_note_for_yourself(_effect: Dictionary, ctx: Dictionary) -> void:
+	var pool: Array = note_candidates()
+	if pool.is_empty():
+		return
+	var left: Dictionary = {}
+	for c in ctx.get("note_chosen", []):
+		if pool.any(func(p): return is_same(p, c)):
+			left = c
+			break
+	if left.is_empty():
+		left = pool[_rng.randi_range(0, pool.size() - 1)]
+	var found: Dictionary = GameStats.note_card_entry()
+	var left_name: String = LootSystem.display_name(left)
+	for i in range(GameState.loot_items.size()):
+		if is_same(GameState.loot_items[i], left):
+			GameState.remove_loot_at(i)
+			break
+	GameStats.store_note_card(left)
+	GameState.offer_loot_entries([found])
+	var line: String = "Took %s from the note, left %s for next time" \
+		% [LootSystem.display_name(found), left_name]
+	GameLog.add(line + ".", UITheme.ACCENT)
+	_did(ctx, line)
+
+# The cards A Note For Yourself could be left: every carried card that may leave
+# the pack. What its pick lights and what its `cards` gate counts.
+func note_candidates() -> Array:
+	return GameState.loot_cards().filter(func(e): return GameState.can_leave_pack(e))
+
 # REMOVE N NON-BOSS ENEMIES (the Old Beggar's purification): each simply stops
 # following — `GameLoop2.despawn`, so NO defeat, no gold, no drop, no
 # `enemy_killed` (the owner, 15 Nov 2026), and its goal leaves the checklist with
@@ -514,6 +562,9 @@ func _h_gain_item_per_rarity(effect: Dictionary, _ctx: Dictionary) -> void:
 	var taken: Dictionary = {}
 	for rarity in range(count):
 		var bucket: Array = Data.reward_item2_pool_of(rarity)
+		# Sacred Orb: the Common slot is rerolled into something that is not one.
+		if rarity == ItemData.Rarity.COMMON and GameState.has_low_rarity_reroll():
+			bucket = Data.orb_filter(Data.reward_item2_pool())
 		if bucket.is_empty():
 			continue
 		var fresh: Array = bucket.filter(func(it):
@@ -602,7 +653,8 @@ func _h_gain_random_item(effect: Dictionary, ctx: Dictionary) -> void:
 			pool = Data.reward_item2_pool().filter(func(it): return it.id != given)
 		if pool.is_empty():
 			break
-		var pick: ItemData = Locations.pick(pool, _rng)
+		# Sacred Orb: no Common while it is owned (Data.orb_filter).
+		var pick: ItemData = Locations.pick(Data.orb_filter(pool), _rng)
 		GameState.add_item(pick)
 		names.append(pick.display_name)
 		ids.append(pick.id)
@@ -901,6 +953,37 @@ func _h_remove_self(_effect: Dictionary, ctx: Dictionary) -> void:
 				GameState.remove_loot_at(i)
 			_did(ctx, "%s is gone" % piece)
 			return
+
+# `place_in_row <trinket>` — Masonry Tools (docs/loot-passives.md §21): a NEW piece
+# of that trinket lands in a random empty cell of the ROW the firing piece sits in,
+# as the pack is drawn — bags beside it included, since a row is a row on screen.
+# A full row places nothing. The row is the screen's whichever way the tools are
+# turned. A Blueprint copying it is the piece that fired, so its row is used.
+func _h_place_in_row(effect: Dictionary, ctx: Dictionary) -> void:
+	var entry = ctx.get("loot_entry")
+	var t: TrinketData = Data.get_trinket(StringName(String(effect.get("trinket", ""))))
+	if not (entry is Dictionary) or t == null:
+		return
+	var me: int = -1
+	for i in range(GameState.loot_items.size()):
+		if is_same(GameState.loot_items[i], entry):
+			me = i
+			break
+	var slot: int = GameState.loot_slot_of(me) if me >= 0 else -1
+	if slot < 0:
+		return
+	var row: int = GameState.pack_cell_of(slot).y
+	var layout: Array = GameState.loot_layout()
+	var cells: Array = GameState.pack_cells()
+	var free: Array = []
+	for s in range(cells.size()):
+		if (cells[s] as Vector2i).y == row and s < layout.size() and int(layout[s]) < 0:
+			free.append(s)
+	if free.is_empty():
+		return
+	var at: int = int(free[_rng.randi_range(0, free.size() - 1)])
+	if GameState.take_loot_entry_at({"type": "trinket", "id": t.id, "rarity": t.rarity}, at):
+		_did(ctx, "+1 %s" % t.display_name)
 
 # `lose_hp_per_loot N` — Regret (docs/loot-passives.md §18): 1 Health for every N
 # pieces of loot the player has, counted in the pack (curses included, Regret
