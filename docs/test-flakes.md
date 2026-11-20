@@ -19,6 +19,39 @@ failure; diffing a passing and failing run's Control tree) are the reusable part
 - **The varying failures that used to live here are FIXED.** All were
   assertions that were only *usually* true, and they are worth reading before
   blaming a seed for a new one.
+  - `test_loot_upgrade.gd::test_an_upgraded_shield_card_gives_one_more_shield`
+    (20 Nov 2026) got 3 shields instead of 2 on CI. Shrug it Off is "+1
+    Temporary Shield and +1 Random Card", and the random card lands in the pack
+    BEFORE the play counts as a card used — so when it is After Image ("whenever
+    you use a Card, +1 Temporary Shield"), it pays a shield on the same play.
+    Putting an After Image in the pack first reproduces the 3 every time. The
+    test now counts the After Images the play dealt out of the total.
+  - **CI's GUT job crashing with signal 11** (main on 19 Nov 2026, PR #366
+    twice on 20 Nov), at a random point after `test_overworld2`'s orphan
+    list, with no failed assertion. Each crash log that reaches back far enough
+    shows "Trying to call a lambda with an invalid instance" and "Error calling
+    deferred method: '…<anonymous lambda>': Instance is null" just before it — a
+    lambda written in an instance method and put on the deferred queue, whose
+    object (a screen a test opened and left in the same frame) was freed first.
+    Godot 4.6 can then read freed memory naming it (the `TextParagraph::` in the
+    message was whatever reused the slot). It never reproduced locally, where
+    the stale lambda is simply skipped. Four sites did it (the haul screen's
+    inventory redraw, the loot drop's Take focus, both pickers' look refresh);
+    each now defers a METHOD, which the queue drops by ObjectID when its object
+    is gone, and `test_no_deferred_lambdas.gd` refuses the pattern in instance
+    code (it fails on exactly those four lines without the fix).
+  - `test_statuses.gd::test_a_shielded_body_dies_once_the_shield_is_gone`
+    (20 Nov 2026) failed "and this one killed it" in one local full-suite run,
+    on a branch that never touched statuses, and passed on every rerun — 0 in 40
+    in a stress loop of the same scenario, so the cause was NOT caught in the
+    act. The test stood the offering's random enemy, ran a board turn and
+    expected the next goal hit to kill it; both known ways for that to be only
+    usually true apply — an ability spending the turn on itself (a Revola's
+    Defensive Stance shields it again, so the hit only strips that shield) and
+    an enemy authored with more than one Health. It now arranges the case:
+    `_disarm_board()` and the body set to 1 Health, as the rest of the file's
+    board tests do. Its neighbour that counts the shield left after a turn got
+    the `_disarm_board()` too.
   - `test_gameloop2.gd::test_reporting_a_game_moves_nobody_out_in_the_wilds`
     (9 Nov 2026) failed on CI with "[2] expected to equal [4]: so nobody
     walked", about one run in 200, on a PR that never touched the loop. The

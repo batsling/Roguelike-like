@@ -2117,6 +2117,12 @@ func scramble() -> bool:
 # alone, and the window does not offer to raise the chart. The Atlas itself is
 # untouched and still opens from the Collection. One switch, so turning it back
 # on is this line.
+#
+# THE MAP IS BACK, AS THE OTHER HALF OF A TOGGLE (the owner, 20 Nov 2026: "lets
+# add the map and have a prominent toggle from optimal to full"). This switch
+# still keeps the chart from opening UNDER the ladder; instead the ladder window
+# carries an "Optimal path | Full map" toggle on top, and Full opens the owner's
+# drawn map on its own (`open_full_map`), with the same toggle to come back.
 const RUN_ATLAS := false
 
 # The run's own map: from where the player stands to the Amulet, with the games
@@ -2130,7 +2136,8 @@ func open_map() -> Node:
 	if _phase == Phase.SELECT:
 		for c in _choices:
 			choice_ids.append(c["slot"])
-	return _open_route_map(GameState.current_game_id, choice_ids, {})
+	return _open_route_map(GameState.current_game_id, choice_ids,
+		{"to_full": func(): open_full_map()})
 
 # THE OPTIMAL PATH, and only that: the ladder window with no star chart under it.
 #
@@ -2147,7 +2154,8 @@ func open_optimal_path() -> Node:
 	if _phase == Phase.SELECT:
 		for c in _choices:
 			choice_ids.append(c["slot"])
-	return _open_route_map(GameState.current_game_id, choice_ids, {"chart": false})
+	return _open_route_map(GameState.current_game_id, choice_ids,
+		{"chart": false, "to_full": func(): open_full_map()})
 
 # The same map for a game you have NOT taken: the optimal road to the Amulet as
 # it would stand if you picked this card. Every offered game carries an
@@ -2186,7 +2194,34 @@ func preview_map(game_id: StringName) -> Node:
 	# perfectly underneath it and never be seen.
 	if _start_picker != null and is_instance_valid(_start_picker):
 		opts["layer"] = StartPicker.MODAL_LAYER
+	elif _phase != Phase.START_SELECT:
+		opts["to_full"] = func(): open_full_map(game_id)
 	return _open_route_map(game_id, [], opts)
+
+# THE FULL MAP (the owner, 20 Nov 2026: "lets add the map and have a prominent
+# toggle from optimal to full"): the owner's drawn map, whole, with the run's
+# route on it and nothing floating over it. Reached from the toggle on the
+# Optimal Path window, and its own toggle goes back. `preview` routes it from a
+# game being considered, as the window it came from did. Public for the tests.
+func open_full_map(preview: StringName = &"") -> Node:
+	_dismiss_route_map()
+	if load(ATLAS_VIEW_SCRIPT).load_drawn_map() == null:
+		return null
+	var atlas = load(ATLAS_VIEW_SCRIPT).new()
+	if preview != &"":
+		atlas.preview_origin = preview
+	atlas.to_optimal = func():
+		if preview != &"":
+			preview_map(preview)
+		else:
+			open_map()
+	add_child(atlas)
+	_route_atlas = atlas
+	atlas.finished.connect(func():
+		if _route_atlas == atlas:
+			_route_atlas = null)
+	atlas.frame_trail.call_deferred()
+	return atlas
 
 func _open_route_map(origin: StringName, choice_ids: Array, options: Dictionary) -> Node:
 	# One map at a time, and the run holds the handle to it (_dismiss_route_map).
@@ -2360,17 +2395,17 @@ func turn_note(choice: Dictionary) -> Dictionary:
 # ONE ENTRY POINT for scrolls and pills alike: the echo means using either kind
 # can replay the other, so a path that only knew about scrolls would drop half of
 # what its own use just did.
-func use_loot(idx: int) -> void:
+func use_loot(idx: int) -> Node:
 	if not put_away_pending_use():
-		return
+		return null
 	# A CHEST carried in the pack opens where you stand (ChestLoot), mid-game too.
 	if idx >= 0 and idx < GameState.loot_items.size() \
 			and ChestLoot.is_chest(GameState.loot_items[idx]):
-		open_carried_chest(idx)
-		return
+		return open_carried_chest(idx)
 	var modal = load(LOOT_USE_MODAL_SCRIPT).new()
 	modal.finished.connect(_refresh)
 	modal.start(self, idx, self)
+	return modal
 
 # Open the chest at `idx` in the pack: it leaves the pack, pays its gold and asks
 # which relic to take. Public for the tests. Returns the chest's modal.
@@ -2511,6 +2546,9 @@ func loot_teleport(req: Dictionary) -> String:
 	# means the game that is there — it is not a free re-roll of the offering (see
 	# arrive_at_game). The line above rides onto the card that opens over the board,
 	# so the player reads where they landed before they meet what is on it.
+	# A teleport is the run going somewhere else, so the Full Inventory goes too.
+	if full_inventory_open():
+		_full_inventory.close()
 	arrive_at_game(dest, landed)
 	return landed
 
@@ -5045,6 +5083,11 @@ func begin_loot_throw(modal: Node, entry: Dictionary, index: int) -> bool:
 	if not _board.begin_loot_throw(entry, index):
 		return false
 	_throw_modal = modal
+	# THE FULL INVENTORY STEPS ASIDE for an aim (the owner, 20 Nov 2026: using
+	# something there keeps you there "unless directed somewhere else") — the
+	# board is where the click goes now.
+	if full_inventory_open():
+		_full_inventory.close()
 	# GET OFF THE BOARD. The loot window is a panel that floats OVER the
 	# battlefield (§4.3) and the info card is full-screen — a picker armed behind
 	# either of them lights up squares the player cannot reach. They are put away
@@ -6277,7 +6320,9 @@ func _refresh_route_strip() -> void:
 	if _phase == Phase.START_SELECT or GameState.current_game_id == &"":
 		return
 
-	# GAMES PLAYED, and only games played. The strip used to close on the AMULET,
+	# GAMES PLAYED, and only games played — the Amulet is back at the strip's far
+	# end since 20 Nov 2026, but as its own gold tile past a gap that says how
+	# far it is, never as a stop on the road. The strip used to close on the AMULET,
 	# with the gap not yet walked drawn dashed — which meant the header carried a
 	# cover for a game the player had never been to, sitting right beside the ones
 	# they had, reading as "and then you went here". The road ahead has two screens
@@ -6321,9 +6366,26 @@ func _refresh_route_strip() -> void:
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_route_strip.add_child(spacer)
 
+	# THE AMULET, AT THE FAR END (the owner, 20 Nov 2026: "all the way to the right
+	# of that be the amulet game"). Kept apart from the road by the spacer and by
+	# how many steps away it is, and ringed gold with a 🏆, so it never reads as a
+	# stop the run has made — which is why it was once taken off the strip.
+	var amulet: StringName = GameState.goal_game_id()
+	if amulet != &"" and amulet != GameState.current_game_id:
+		var steps: int = int(RunGraph.bfs_distances(amulet).get(GameState.current_game_id, -1))
+		var gap := Label.new()
+		gap.name = "AmuletSteps"
+		gap.text = ("· · %s · ·" % Plural.count(steps, "step")) if steps > 0 else "· · ·"
+		gap.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		gap.custom_minimum_size.y = STRIP_COVER.y
+		gap.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
+		gap.add_theme_color_override("font_color", UITheme.GOLD.lerp(UITheme.TEXT_FAINT, 0.4))
+		_route_strip.add_child(gap)
+		_route_strip.add_child(_strip_amulet(amulet, steps))
+
 # One cover on the strip. `is_here` rings the game you are standing on; every
-# other stop is a plain frame. There is no Amulet tile any more — see
-# _refresh_route_strip: this strip is the road behind, and the Amulet is ahead.
+# other stop is a plain frame. The Amulet has its own tile at the far end of the
+# strip (_strip_amulet), set apart so it never reads as a stop.
 func _strip_stop(id: StringName, is_here: bool, beaten: bool = false) -> Control:
 	var game: GameData = GameLoop2.game_at(id)
 	if game == null:
@@ -6337,7 +6399,7 @@ func _strip_stop(id: StringName, is_here: bool, beaten: bool = false) -> Control
 	var border: Color = UITheme.ACCENT if is_here \
 		else (UITheme.SUCCESS if beaten else UITheme.UNBEATEN)
 	var width: int = 2 if is_here else 1
-	var frame := PanelContainer.new()
+	var frame := HoverPanel.new()
 	frame.add_theme_stylebox_override("panel",
 		UITheme.flat(UITheme.BG_DEEP, 3, 1, width, border))
 	frame.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -6348,6 +6410,11 @@ func _strip_stop(id: StringName, is_here: bool, beaten: bool = false) -> Control
 	else:
 		frame.tooltip_text = "%s — %s" % [name_text,
 			"beaten" if beaten else "walked away from"]
+	# HOVER FOR ITS PROFILE (the owner, 20 Nov 2026), the map's game card, headed
+	# with what this stop was.
+	if game != null:
+		HoverCard.profile(frame, game.id, "▶ You are here" if is_here
+			else ("Beaten on this visit" if beaten else "Walked away from"), border)
 
 	if game != null and game.cover_image != null:
 		var art := TextureRect.new()
@@ -6367,6 +6434,35 @@ func _strip_stop(id: StringName, is_here: bool, beaten: bool = false) -> Control
 		blank.add_theme_color_override("font_color", UITheme.TEXT_DIM)
 		frame.add_child(blank)
 	return frame
+
+# The Amulet's tile: the same small cover, ringed gold, with a 🏆 on its corner.
+# Its hover is its profile, headed with how far it is.
+func _strip_amulet(id: StringName, steps: int) -> Control:
+	var frame: Control = _strip_stop(id, false)
+	frame.remove_meta("stop")
+	frame.set_meta("amulet", id)
+	frame.name = "AmuletTile"
+	frame.add_theme_stylebox_override("panel",
+		UITheme.flat(UITheme.BG_DEEP, 3, 1, 2, UITheme.GOLD))
+	var game: GameData = Data.get_game(id)
+	var name_text: String = game.display_name if game != null else String(id)
+	frame.tooltip_text = "🏆 %s — %s" % [name_text, GameState.goal_word()]
+	HoverCard.profile(frame, id, "🏆 %s — %s" % [GameState.goal_word().capitalize(),
+		Plural.count(steps, "step") + " away" if steps > 0 else "the goal"], UITheme.GOLD)
+	var cup := Label.new()
+	cup.text = "🏆"
+	cup.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
+	cup.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	cup.size_flags_horizontal = Control.SIZE_SHRINK_END
+	cup.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	frame.add_child(cup)
+	return frame
+
+# The Amulet tile at the strip's end, or null before the run has one.
+func route_strip_amulet() -> Control:
+	if _route_strip == null:
+		return null
+	return _route_strip.get_node_or_null("AmuletTile")
 
 func _strip_arrow() -> Control:
 	var a := ROUTE_ARROW.new()
@@ -7673,7 +7769,8 @@ func _notification(what: int) -> void:
 	match what:
 		NOTIFICATION_DRAG_BEGIN:
 			var data = get_viewport().gui_get_drag_data() if get_viewport() != null else null
-			if data is Dictionary and (data as Dictionary).has("floor"):
+			if data is Dictionary and (data as Dictionary).has("floor") \
+					and not full_inventory_open():
 				_drops.mount_drag_pack()
 			_pack_drag = (data as Dictionary).duplicate() if data is Dictionary \
 				and String(data.get("kind", "")) == "loot_move" else {}
@@ -7694,7 +7791,8 @@ func release_pack_drag(data: Dictionary, at: Vector2) -> void:
 	if index < 0 or _board == null or not is_instance_valid(_board) or GameLoop2.run_over:
 		return
 	if (_drop_modal != null and is_instance_valid(_drop_modal)) \
-			or (_post_screen != null and is_instance_valid(_post_screen)) or _board.is_aiming():
+			or (_post_screen != null and is_instance_valid(_post_screen)) or _board.is_aiming() \
+			or full_inventory_open():
 		return
 	for g in find_children("*", "LootGrid", true, false):
 		if (g as Control).is_visible_in_tree() and (g as Control).get_global_rect().grow(8).has_point(at):
@@ -7725,6 +7823,17 @@ func take_floor_loot(entry: Dictionary, slot: int, cell: Vector2i) -> void:
 
 func bin_floor_loot(cell: Vector2i) -> void:
 	_drops.bin_floor_loot(cell)
+
+# A bag dragged off the floor onto the pack's edge. Public for the Full Inventory,
+# whose pack takes floor pieces as the drag pack does.
+func take_floor_bag(entry: Dictionary, origin: Vector2i, rot: int, cell: Vector2i) -> void:
+	_drops.take_floor_bag(entry, origin, rot, cell)
+
+# Whether the Full Inventory is open: it has its own pack and its own floor, so a
+# drag on it neither raises the drag pack nor drops a piece on the hidden board.
+func full_inventory_open() -> bool:
+	return _full_inventory != null and is_instance_valid(_full_inventory) \
+		and not _full_inventory.is_queued_for_deletion()
 
 # A piece out of the pack, put down on a free square (§8.2). Public because the
 # board's signal lands here and the tests drive it directly.

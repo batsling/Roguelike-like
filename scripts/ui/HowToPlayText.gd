@@ -784,6 +784,9 @@ static func _ch_gold() -> Dictionary:
 				+ "Once you have played the game a 🛒 Shop button also stands by "
 				+ "the games to choose from."),
 			_b("A Scramble charge rerolls the whole shelf, sold slots included."),
+			_b("Buy loot with a full pack and it goes on the floor of the board. "
+				+ "Pick it up (or trade for it) before your next game — a new game "
+				+ "clears the floor."),
 			_b("A shop card shows you what is left on a shelf you have already "
 				+ "stood in — which is what makes going back a real decision. A "
 				+ "shop you have never visited only tells you it is there."),
@@ -1180,6 +1183,10 @@ static func _ch_screen() -> Dictionary:
 				+ "ones after them with a clock on them. Anything wearing that "
 				+ "clock is going away, statuses included."),
 			_kv("Gold", "A chip in the top bar."),
+			_kv("Your road and the Amulet", "Across the top bar: every game you "
+				+ "have played, oldest first, with arrows between them, and at the "
+				+ "far right, ringed gold, the Amulet and how many steps away it "
+				+ "is. Hover any of them for the game's profile."),
 			_kv("Difficulty and location", "The first line of the DIFFICULTY strip "
 				+ "over the board: the tier (Low to Insane) with its four pips, and "
 				+ "the location you are in on the right — hover it, or click it."),
@@ -1199,7 +1206,10 @@ static func _ch_screen() -> Dictionary:
 				+ "on the left and a small picture of your loot pack on the right. "
 				+ "Click the small pack (or press Tab) to open it. Full beside it "
 				+ "opens the full inventory: every item, the pack, your stats, "
-				+ "your resources, your statuses and the curse cards you carry."),
+				+ "your resources, your statuses, the curse cards you carry and "
+				+ "the loot lying on the floor — drag a piece between the pack and "
+				+ "the floor to pick it up or put it down. Using a piece there "
+				+ "keeps you there, unless it has to be aimed at the board."),
 			_kv("The fallen", "Every enemy this run has put down is the Fallen "
 				+ "tab of the History, in the bar at the top."),
 			_kv("Statuses on an enemy", "Stun is drawn on a body as itself, with "
@@ -1229,7 +1239,12 @@ static func _ch_screen() -> Dictionary:
 				+ "offering's heading row, and on every offered card — a card's "
 				+ "own button routes the path as it would be if you took it."),
 			_kv("🗺 Map", "The Optimal Path from where you stand. It lives in the "
-				+ "header, so it opens from anywhere in a run, mid-game included."),
+				+ "header, so it opens from anywhere in a run, mid-game included. "
+				+ "The switch at its top flips to the Full map: the whole drawn "
+				+ "map with your route and the run's rifts on it, and back. On the "
+				+ "full map, Owned games (the default) draws only the games you own "
+				+ "and the lines between them; All games draws every one. Click a "
+				+ "rift's swirl for the game inside it."),
 			_kv("✦ Atlas", "The star chart of every game, opened from the "
 				+ "Collection. Not a run tool — a thing to look at."),
 			_kv("Collection", "Every item, scroll, enemy, event and status in the "

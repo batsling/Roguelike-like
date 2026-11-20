@@ -115,12 +115,22 @@ const MAP_FRAME := Color(0.353, 0.239, 0.133)
 const MAP_SHADOW := Color(0, 0, 0, 0.45)
 const MAP_PICK := Color(1.0, 0.541, 0.235)   # UITheme.ACCENT, for what you point at
 const MAP_FADE := 0.18
+# A RIFT on the drawn map (docs/rifts-design.md §9): a dashed teal seam with a
+# pale glow under it, and a violet swirl badge naming the rift game. Teal is
+# UITheme.RIFT taken darker, because the light one vanishes on the parchment.
+const MAP_RIFT := Color(0.035, 0.50, 0.50)
+const MAP_RIFT_GLOW := Color(0.40, 0.92, 0.88, 0.45)
 # Sizes in the drawio's own units: its game labels are 10 px, its year labels
 # draw.io's default 12, its arrowheads about 6. Text smaller than this on screen
 # is left out rather than drawn as a smudge.
 const MAP_NAME_FONT := 10.0
 const MAP_YEAR_FONT := 12.0
 const MAP_ARROW := 6.0
+# How wide an arrowhead opens, as a fraction of its length: the lines' heads and
+# the road's chevrons on the drawn map (thinner since 20 Nov 2026; draw.io's own
+# head is 0.4 and the computed skies' chevron 0.44).
+const MAP_ARROW_SPREAD := 0.18
+const MAP_CHEVRON_SPREAD := 0.22
 const MAP_MIN_TEXT_PX := 6
 const MAP_EDGE_ALPHA := 0.42
 const GRAIN_SIZE := 256
@@ -1028,6 +1038,281 @@ func _invalidate_star_cache() -> void:
 # disagree about which games those are.
 # On the drawn map during a run: a game the run cannot walk to (outside the game
 # filter, or off the run's main group), greyed where it stands.
+# The run's rifts as the drawn map draws them: {game, a, b} with `a` and `b` star
+# indices (`b` is -1 for a keyed rift, which has only the end it leads to). A rift
+# whose end isn't drawn is left out; its game needs no box, because a rift game
+# is off the map by definition (the owner, 20 Nov 2026: "option A" — a seam
+# between the two games, never a box).
+func rift_seams() -> Array:
+	var out: Array = []
+	if pure_catalog or not has_layout() or not layout.is_drawn_map():
+		return out
+	for r in RunGraph.rifts():
+		var a: int = layout.index_of(StringName(r.get("a", "")))
+		if a < 0:
+			continue
+		var b: int = -1
+		if String(r.get("kind", "")) != RunGraph.RIFT_KEYED:
+			b = layout.index_of(StringName(r.get("b", "")))
+			if b < 0:
+				continue
+		out.append({"game": StringName(r.get("game", "")), "a": a, "b": b})
+	return out
+
+# OWNED GAMES ONLY (the owner, 20 Nov 2026: "two options on the full map that
+# shows all games and owned games with owned games set to default. having owned
+# games on will make the other games and arrows invisible"). On the run's drawn
+# map, a game the player doesn't own (Ownership.is_owned) is not drawn, nor is any
+# line touching it, nor a rift with an end on it, and it can't be pointed at. The
+# run's own route, the road walked and the two anchors stay whatever they are, so
+# a run on the full catalog never has its road run into nothing.
+#
+# Static, so the choice holds from one opening of the map to the next.
+static var owned_only: bool = true
+var _owned_flags: PackedByteArray = PackedByteArray()
+
+func owned_filter_on() -> bool:
+	return owned_only and not pure_catalog and has_layout() and layout.is_drawn_map()
+
+func hidden(i: int) -> bool:
+	if not owned_filter_on():
+		return false
+	if _owned_flags.size() != layout.star_count():
+		_owned_flags.resize(layout.star_count())
+		for k in range(layout.star_count()):
+			_owned_flags[k] = 1 if Ownership.is_owned(game_at(k)) else 0
+	if _owned_flags[i] == 1:
+		return false
+	if route_stars().has(i):
+		return false
+	return i != current_index() and i != amulet_index() and i != preview_index()
+
+func set_owned_only(on: bool) -> void:
+	if owned_only == on:
+		return
+	owned_only = on
+	_selected_rift = -1
+	_hovered_rift = -1
+	if _hovered >= 0 and hidden(_hovered):
+		_hovered = -1
+	if _selected >= 0 and hidden(_selected):
+		select(-1)
+	if _selected_edge >= 0 and has_layout() and (hidden(layout.edges[_selected_edge * 2])
+			or hidden(layout.edges[_selected_edge * 2 + 1])):
+		select_edge(-1)
+	_rebuild_mode_strip()
+	_refresh_hud()
+	_redraw()
+
+# THE RIFTS AS DRAWN: each seam with the curve it is drawn on, in the map's own
+# units. A two-ended rift is a quadratic curve from one box's border to the
+# other's, bowed off the straight line so it never reads as an influence line —
+# and bowed WHICHEVER WAY, AND BY HOWEVER MUCH, CROSSES THE FEWEST BOXES (the
+# owner, 20 Nov 2026: "have the rift curve in a way that makes it not go through
+# any boxes if possible while keeping it looking good"). The bow is tried at a
+# handful of depths on both sides; a clean curve wins, then a shallower one, then
+# the upward one. A keyed rift has one end and is a short hook off its box.
+#
+# Worked out once per set of rifts and per All / Owned (the boxes to avoid are
+# the ones drawn), not per frame.
+const RIFT_BOWS := [0.16, 0.22, 0.30, 0.38, 0.46, 0.56]
+# Where along the chord the bow peaks: the middle first, then leaning toward
+# either end, which threads a curve past a box sitting under its middle.
+const RIFT_LEANS := [0.5, 0.35, 0.65]
+const RIFT_SAMPLES := 28
+const RIFT_CLEAR := 4.0      # map units of paper kept between a curve and a box
+const RIFT_GRID := 320.0     # the bucket size boxes are filed under for the search
+
+var _rift_curves: Array = []
+var _rift_curves_key: String = ""
+var _box_grid: Dictionary = {}
+var _selected_rift: int = -1
+var _hovered_rift: int = -1
+
+func rift_curves() -> Array:
+	if pure_catalog or not has_layout() or not layout.is_drawn_map():
+		return []
+	var key: String = "%s|%s" % [str(RunGraph.rifts()), owned_filter_on()]
+	if key == _rift_curves_key:
+		return _rift_curves
+	_rift_curves_key = key
+	_rift_curves = []
+	for seam in rift_seams():
+		if hidden(seam["a"]) or (int(seam["b"]) >= 0 and hidden(seam["b"])):
+			continue
+		var c: Dictionary = (seam as Dictionary).duplicate()
+		if int(seam["b"]) >= 0:
+			c.merge(_best_bow(int(seam["a"]), int(seam["b"])), true)
+		_rift_curves.append(c)
+	if _selected_rift >= _rift_curves.size():
+		_selected_rift = -1
+	return _rift_curves
+
+# The ends and the control point of the cleanest curve between boxes a and b:
+# {"pa", "pb", "c", "crosses"} in map units.
+func _best_bow(a: int, b: int) -> Dictionary:
+	var ra: Rect2 = layout.box_of(a)
+	var rb: Rect2 = layout.box_of(b)
+	var pa: Vector2 = border_toward(ra, rb.get_center())
+	var pb: Vector2 = border_toward(rb, ra.get_center())
+	var d: Vector2 = pb - pa
+	var up := Vector2(-d.y, d.x).normalized()
+	if up.y > 0.0:
+		up = -up
+	var best: Dictionary = {}
+	var best_key: Array = []
+	for side in [1.0, -1.0]:
+		for k in RIFT_BOWS:
+			for li in range(RIFT_LEANS.size()):
+				var lean: float = RIFT_LEANS[li]
+				var c: Vector2 = pa.lerp(pb, lean) + up * side * d.length() * k
+				var hits: int = _curve_crossings(pa, c, pb, a, b)
+				# ON THE PAPER before anything: a curve that dips off the sheet onto
+				# the dark background is worse than one that crosses a box. Then
+				# clean, then shallow, then centred, then upward.
+				var rank: Array = [0 if _curve_on_paper(pa, c, pb) else 1, hits, k, li,
+					0 if side > 0.0 else 1]
+				if best.is_empty() or _rank_before(rank, best_key):
+					best = {"pa": pa, "pb": pb, "c": c, "crosses": hits}
+					best_key = rank
+	return best
+
+func _rank_before(x: Array, y: Array) -> bool:
+	for i in range(x.size()):
+		if x[i] != y[i]:
+			return x[i] < y[i]
+	return false
+
+# Where the line from a box's centre toward `to` leaves the box.
+static func border_toward(r: Rect2, to: Vector2) -> Vector2:
+	var c: Vector2 = r.get_center()
+	var d: Vector2 = to - c
+	if d == Vector2.ZERO:
+		return c
+	var k: float = 1.0
+	if d.x != 0.0:
+		k = minf(k, r.size.x * 0.5 / absf(d.x))
+	if d.y != 0.0:
+		k = minf(k, r.size.y * 0.5 / absf(d.y))
+	return c + d * k
+
+static func bezier(pa: Vector2, c: Vector2, pb: Vector2, t: float) -> Vector2:
+	return pa.lerp(c, t).lerp(c.lerp(pb, t), t)
+
+# Whether the whole curve, and its badge's ring, stays inside the paper the map is
+# drawn on (the bake's bounds, which pad the drawing with a margin).
+func _curve_on_paper(pa: Vector2, c: Vector2, pb: Vector2) -> bool:
+	var paper: Rect2 = layout.bounds.grow(-60.0)
+	for s in range(0, RIFT_SAMPLES + 1):
+		if not paper.has_point(bezier(pa, c, pb, float(s) / RIFT_SAMPLES)):
+			return false
+	return true
+
+# How many drawn boxes, other than its own two, the curve passes through.
+func _curve_crossings(pa: Vector2, c: Vector2, pb: Vector2, a: int, b: int) -> int:
+	if _box_grid.is_empty():
+		for i in range(layout.star_count()):
+			var r: Rect2 = layout.box_of(i)
+			for gx in range(floori(r.position.x / RIFT_GRID), floori(r.end.x / RIFT_GRID) + 1):
+				for gy in range(floori(r.position.y / RIFT_GRID), floori(r.end.y / RIFT_GRID) + 1):
+					var cell := Vector2i(gx, gy)
+					if not _box_grid.has(cell):
+						_box_grid[cell] = []
+					(_box_grid[cell] as Array).append(i)
+	var hit: Dictionary = {}
+	var prev: Vector2 = pa
+	for s in range(1, RIFT_SAMPLES + 1):
+		var p: Vector2 = bezier(pa, c, pb, float(s) / RIFT_SAMPLES)
+		var seg := Rect2(prev, Vector2.ZERO).expand(p)
+		for gx in range(floori(seg.position.x / RIFT_GRID), floori(seg.end.x / RIFT_GRID) + 1):
+			for gy in range(floori(seg.position.y / RIFT_GRID), floori(seg.end.y / RIFT_GRID) + 1):
+				for i in _box_grid.get(Vector2i(gx, gy), []):
+					if i == a or i == b or hit.has(i) or hidden(i):
+						continue
+					if segment_hits_rect(prev, p, layout.box_of(i).grow(RIFT_CLEAR)):
+						hit[i] = true
+		prev = p
+	return hit.size()
+
+# Liang–Barsky: whether the segment p→q touches the rectangle r.
+static func segment_hits_rect(p: Vector2, q: Vector2, r: Rect2) -> bool:
+	var d: Vector2 = q - p
+	var t0: float = 0.0
+	var t1: float = 1.0
+	for side in [[-d.x, p.x - r.position.x], [d.x, r.end.x - p.x],
+			[-d.y, p.y - r.position.y], [d.y, r.end.y - p.y]]:
+		var pp: float = side[0]
+		var qq: float = side[1]
+		if pp == 0.0:
+			if qq < 0.0:
+				return false
+		else:
+			var t: float = qq / pp
+			if pp < 0.0:
+				t0 = maxf(t0, t)
+			else:
+				t1 = minf(t1, t)
+			if t0 > t1:
+				return false
+	return true
+
+# A rift's curve on screen, as points; the badge sits at its middle (its end for a
+# keyed rift).
+func rift_arc(k: int) -> PackedVector2Array:
+	var curve: Dictionary = rift_curves()[k]
+	var pts := PackedVector2Array()
+	if int(curve["b"]) < 0:
+		var ra: Rect2 = screen_box(curve["a"])
+		var p0 := Vector2(ra.end.x, ra.position.y)
+		var reach: float = clampf(_scale * 90.0, 36.0, 120.0)
+		var p1: Vector2 = p0 + Vector2(reach, -reach * 0.8)
+		var c1: Vector2 = (p0 + p1) * 0.5 + Vector2(0, -reach * 0.35)
+		for i in range(33):
+			pts.append(bezier(p0, c1, p1, float(i) / 32.0))
+		return pts
+	for i in range(33):
+		pts.append(to_screen(bezier(curve["pa"], curve["c"], curve["pb"], float(i) / 32.0)))
+	return pts
+
+func rift_badge_at(k: int) -> Vector2:
+	var pts: PackedVector2Array = rift_arc(k)
+	return pts[pts.size() - 1] if int(rift_curves()[k]["b"]) < 0 else pts[pts.size() / 2]
+
+func rift_badge_radius() -> float:
+	return clampf(_scale * 12.0, 7.0, 20.0)
+
+# The rift under `at`: its badge, or within a few pixels of its curve. -1 if none.
+func pick_rift(at: Vector2) -> int:
+	var curves: Array = rift_curves()
+	for k in range(curves.size()):
+		if rift_badge_at(k).distance_to(at) <= rift_badge_radius() + 4.0:
+			return k
+	for k in range(curves.size()):
+		var pts: PackedVector2Array = rift_arc(k)
+		for i in range(pts.size() - 1):
+			if at.distance_to(Geometry2D.get_closest_point_to_segment(at, pts[i], pts[i + 1])) <= 6.0:
+				return k
+	return -1
+
+# CLICKING A RIFT (the owner, 20 Nov 2026: "make rifts clickable") puts up its
+# card: the rift game's profile, the two games it joins, and the buttons to play
+# it. Public so a test can do it without a click.
+func select_rift(k: int) -> void:
+	_selected_rift = k
+	if k >= 0:
+		_selected = -1
+		_selected_edge = -1
+		_near.clear()
+		var curve: Dictionary = rift_curves()[k]
+		_near[curve["a"]] = true
+		if int(curve["b"]) >= 0:
+			_near[curve["b"]] = true
+	_refresh_card()
+	_redraw()
+
+func selected_rift() -> int:
+	return _selected_rift
+
 func off_run(i: int) -> bool:
 	if pure_catalog or not has_layout() or not layout.is_drawn_map():
 		return false
@@ -1292,6 +1577,8 @@ func _pick_box(at: Vector2) -> int:
 	var best: int = -1
 	var best_d: float = INF
 	for i in range(layout.star_count()):
+		if hidden(i):
+			continue
 		var r: Rect2 = screen_box(i).grow(3.0)
 		if r.has_point(at):
 			var d: float = r.get_center().distance_squared_to(at)
@@ -1320,6 +1607,8 @@ func pick_edge(at: Vector2) -> int:
 		# Only links actually on screen can be clicked, so what you see is what
 		# you get: when a star is selected the sky shows just its links.
 		if _selected >= 0 and a != _selected and b != _selected:
+			continue
+		if hidden(a) or hidden(b):
 			continue
 		var pa: Vector2 = to_screen(layout.position_of(a))
 		var pb: Vector2 = to_screen(layout.position_of(b))
@@ -1350,6 +1639,7 @@ func select_edge(e: int) -> void:
 	_selected_edge = e
 	if e >= 0:
 		_selected = -1
+		_selected_rift = -1
 		_near.clear()
 	_refresh_card()
 	_redraw()
@@ -1359,6 +1649,7 @@ func selected_edge_index() -> int:
 
 func select(i: int) -> void:
 	_selected = i
+	_selected_rift = -1
 	if i >= 0:
 		_selected_edge = -1
 	else:
@@ -1404,6 +1695,14 @@ func _build() -> void:
 	add_child(root)
 
 	root.add_child(_build_header())
+	# THE TWO SWITCHES of the run's drawn map: back to the Optimal Path (when the
+	# run opened this as its full map), and All games / Owned games.
+	if not pure_catalog and layout.is_drawn_map():
+		_mode_strip = PanelContainer.new()
+		_mode_strip.name = "MapMode"
+		_mode_strip.add_theme_stylebox_override("panel", UITheme.flat(UITheme.BG, 0, 6, 0))
+		root.add_child(_mode_strip)
+		_rebuild_mode_strip()
 	if pure_catalog:
 		_filter_bar = PanelContainer.new()
 		_filter_bar.add_theme_stylebox_override("panel", UITheme.flat(UITheme.BG, 0, 8, 0))
@@ -1687,6 +1986,8 @@ func _fill_legend() -> void:
 		row.add_child(_route_key("Path taken", COL_HISTORY))
 	if not _trail.is_empty():
 		row.add_child(_route_key("Route ahead", COL_TRAIL))
+	if drawn and not rift_seams().is_empty():
+		row.add_child(_route_key("🌀 Rift", UITheme.RIFT))
 	var note := Label.new()
 	note.text = "Greyed = off this run's map · hover a game for its card" if drawn \
 		else "Star size = connections"
@@ -1756,10 +2057,34 @@ func _build_card() -> PanelContainer:
 	card.offset_bottom = 76             # grows with its content
 	card.grow_vertical = Control.GROW_DIRECTION_END
 	card.visible = false
+	# THE CARD STAYS ON THE MAP (20 Nov 2026): it starts under whatever sits over
+	# the top of the canvas (the header, and on the run's drawn map the switches)
+	# and scrolls when it is taller than the canvas, so a cover, the facts and the
+	# Play / Steam buttons never run under the switches or off the bottom.
+	_card_scroll = ScrollContainer.new()
+	_card_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	card.add_child(_card_scroll)
 	_card_box = VBoxContainer.new()
 	_card_box.add_theme_constant_override("separation", UITheme.GAP)
-	card.add_child(_card_box)
+	_card_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_card_scroll.add_child(_card_box)
 	return card
+
+var _card_scroll: ScrollContainer = null
+
+# Where the card sits and how tall its scroll is: the top of the canvas, and no
+# lower than its bottom. Deferred from every refill, once the new contents have a
+# size.
+func _fit_card() -> void:
+	if _card == null or not is_instance_valid(_card) or _canvas == null or not _card.visible:
+		return
+	const PAD := 8.0
+	var top: float = _canvas.get_global_rect().position.y - get_global_rect().position.y
+	_card.offset_top = top + PAD
+	_card.offset_bottom = top + PAD
+	var chrome: float = 26.0     # the panel's padding and border, top and bottom
+	var room: float = _canvas.size.y - PAD * 2.0 - chrome
+	_card_scroll.custom_minimum_size.y = maxf(80.0, minf(_card_box.get_combined_minimum_size().y, room))
 
 # Cover art on a card is shown WHOLE. The two builders live on UITheme now
 # (UITheme.card_art / card_art_size), because the route ladder's card draws the
@@ -1784,9 +2109,13 @@ func _refresh_card() -> void:
 	if _card == null:
 		return
 	for c in _card_box.get_children():
+		_card_box.remove_child(c)
 		c.queue_free()
 	if _selected_edge >= 0 and has_layout():
 		_fill_connection_card()
+		return
+	if _selected_rift >= 0 and has_layout() and _selected_rift < rift_curves().size():
+		_fill_rift_card(rift_curves()[_selected_rift])
 		return
 	var sel: int = card_star()
 	if sel < 0 or not has_layout():
@@ -1899,6 +2228,56 @@ func _refresh_card() -> void:
 		steam.pressed.connect(func(): game.open_steam_page())
 		_card_box.add_child(steam)
 
+	var dismiss := Button.new()
+	dismiss.text = "Dismiss"
+	dismiss.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
+	dismiss.pressed.connect(func(): select(-1))
+	_card_box.add_child(dismiss)
+
+const GAME_PROFILE := preload("res://scripts/ui/GameProfile.gd")
+
+# A RIFT'S CARD: what it is, the game in it (its profile, as the header strip's
+# hover shows a game), which two games it joins, and the buttons to play it.
+func _fill_rift_card(curve: Dictionary) -> void:
+	_card.visible = true
+	_set_card_width(272.0)
+	var head := Label.new()
+	head.text = "🌀  Rift"
+	head.add_theme_font_size_override("font_size", UITheme.FONT_SUB)
+	head.add_theme_color_override("font_color", UITheme.RIFT)
+	_card_box.add_child(head)
+	var game: GameData = Data.get_game(StringName(curve["game"]))
+	var names: Array = []
+	for end in [curve["a"], curve["b"]]:
+		if int(end) >= 0:
+			var g: GameData = game_at(int(end))
+			names.append(g.display_name if g != null else "?")
+	var what := Label.new()
+	if names.size() == 2:
+		what.text = ("Dimensions merged here: a way between %s and %s, through a game "
+			+ "that is not on the map. No influence — a rift.") % names
+	else:
+		what.text = ("A keyed rift: one way into %s, through a game that is not on "
+			+ "the map.") % names[0]
+	what.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	what.custom_minimum_size.x = CARD_ART_WIDTH
+	what.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
+	what.add_theme_color_override("font_color", UITheme.TEXT_DIM)
+	_card_box.add_child(what)
+	if game != null:
+		GAME_PROFILE.fill(_card_box, game)
+		if game.has_launch_target():
+			var play := Button.new()
+			play.text = "▶  Play the real game"
+			play.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
+			play.pressed.connect(func(): game.launch())
+			_card_box.add_child(play)
+		if game.has_steam_page():
+			var steam := Button.new()
+			steam.text = "🎮  Steam page"
+			steam.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
+			steam.pressed.connect(func(): game.open_steam_page())
+			_card_box.add_child(steam)
 	var dismiss := Button.new()
 	dismiss.text = "Dismiss"
 	dismiss.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
@@ -2083,6 +2462,7 @@ func _set_card_width(width: float) -> void:
 	_card.custom_minimum_size.x = width
 	_card.offset_left = -(width + MARGIN)
 	_card.offset_right = -MARGIN
+	_fit_card.call_deferred()
 
 # Every enemy beaten at this game, with the player's note under each. Read-only
 # — notes are written on the checklist, at the moment you actually beat the
@@ -2268,6 +2648,12 @@ func _on_search(text: String) -> void:
 func _refresh_hud() -> void:
 	if _hud == null:
 		return
+	# NOT ON THE RUN'S DRAWN MAP (the owner, 20 Nov 2026): where you are and the
+	# Amulet are on the run's own header strip, so the line stays empty — it is
+	# kept as the header's spacer.
+	if not pure_catalog and has_layout() and layout.is_drawn_map():
+		_hud.text = ""
+		return
 	if not has_layout():
 		_hud.text = "No baked layout — run tools/bake_atlas.py"
 		return
@@ -2294,8 +2680,20 @@ func _refresh_hud() -> void:
 		var root_game: GameData = Data.get_game(layout.id_at(_tree_root_index()))
 		shape = "rooted at %s, %d deep" % [
 			root_game.display_name if root_game != null else "?", _tree_depth()]
+	var games_n: int = layout.star_count()
+	var links_n: int = layout.edge_count()
+	if owned_filter_on():
+		scope = " · owned games"
+		games_n = 0
+		for i in range(layout.star_count()):
+			if not hidden(i):
+				games_n += 1
+		links_n = 0
+		for e in range(layout.edge_count()):
+			if not hidden(layout.edges[e * 2]) and not hidden(layout.edges[e * 2 + 1]):
+				links_n += 1
 	_hud.text = "%s · %s · %s%s · %s" % [
-		Plural.count(layout.star_count(), "game"), Plural.count(layout.edge_count(), "link"),
+		Plural.count(games_n, "game"), Plural.count(links_n, "link"),
 		shape, scope, detail]
 	var run_line: String = run_summary()
 	if run_line != "":
@@ -2359,6 +2757,92 @@ func _finish() -> void:
 	finished.emit()
 	queue_free()
 
+# Set by the run page when this is its FULL MAP: the toggle at the top switches to
+# the Optimal Path by calling it (this view closes first).
+var to_optimal: Callable = Callable()
+var _mode_strip: PanelContainer = null
+
+func _rebuild_mode_strip() -> void:
+	if _mode_strip == null or not is_instance_valid(_mode_strip):
+		return
+	for c in _mode_strip.get_children():
+		_mode_strip.remove_child(c)
+		c.queue_free()
+	var mid := CenterContainer.new()
+	_mode_strip.add_child(mid)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", UITheme.GAP_BREAK)
+	mid.add_child(row)
+	if to_optimal.is_valid():
+		row.add_child(map_mode_toggle(true, func():
+			var go: Callable = to_optimal
+			_finish()
+			go.call(), Callable()))
+	var games := segmented(["All games", "Owned games"], ["AllGames", "OwnedGames"],
+		1 if owned_only else 0, [func(): set_owned_only(false), func(): set_owned_only(true)],
+		["Every game on the map.", "Only the games you own, and the lines between them."])
+	games.name = "OwnedToggle"
+	row.add_child(games)
+
+# THE MAP'S TWO VIEWS, ONE SWITCH (the owner, 20 Nov 2026: "lets add the map and
+# have a prominent toggle from optimal to full"). Two big buttons side by side at
+# the top of whichever view is up — the Optimal Path window or the full drawn map
+# — the one you are on lit gold, the other a click away. Static so both screens
+# build the same control.
+const MODE_W := 230.0
+const MODE_H := 42.0
+
+static func map_mode_toggle(full: bool, to_optimal_cb: Callable, to_full_cb: Callable) -> Control:
+	var row: Control = segmented(["→  Optimal path", "🗺  Full map"], ["Optimal", "Full"],
+		1 if full else 0, [to_optimal_cb, to_full_cb],
+		["The shortest road to the goal, decision by decision.",
+			"The whole drawn map, with your route on it."])
+	row.name = "MapModeToggle"
+	return row
+
+# A row of joined buttons, one of them lit gold: the map's switches. Pressing the
+# lit one does nothing; pressing another calls its callback.
+static func segmented(labels: Array, names: Array, selected: int, callbacks: Array,
+		tips: Array = []) -> Control:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", UITheme.GAP_NONE)
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	var n: int = labels.size()
+	for k in range(n):
+		var on: bool = k == selected
+		var b := Button.new()
+		b.name = String(names[k])
+		b.text = String(labels[k])
+		b.custom_minimum_size = Vector2(MODE_W, MODE_H)
+		b.add_theme_font_size_override("font_size", UITheme.FONT_SUB)
+		b.toggle_mode = true
+		b.button_pressed = on
+		b.focus_mode = Control.FOCUS_NONE
+		var fill: Color = UITheme.GOLD if on else UITheme.PANEL
+		var edge: Color = UITheme.GOLD if on else UITheme.BORDER
+		for state in ["normal", "hover", "pressed", "hover_pressed", "focus"]:
+			var sb := UITheme.flat(fill if state != "hover" or on else UITheme.PANEL_HI,
+				0, 10, 2, edge)
+			sb.corner_radius_top_left = 10 if k == 0 else 0
+			sb.corner_radius_bottom_left = 10 if k == 0 else 0
+			sb.corner_radius_top_right = 10 if k == n - 1 else 0
+			sb.corner_radius_bottom_right = 10 if k == n - 1 else 0
+			b.add_theme_stylebox_override(state, sb)
+		var ink: Color = UITheme.BG_DEEP if on else UITheme.TEXT
+		for c in ["font_color", "font_hover_color", "font_pressed_color",
+				"font_hover_pressed_color", "font_focus_color"]:
+			b.add_theme_color_override(c, ink)
+		if k < tips.size():
+			b.tooltip_text = String(tips[k])
+		var cb: Callable = callbacks[k] if k < callbacks.size() else Callable()
+		b.pressed.connect(func():
+			if on:
+				b.set_pressed_no_signal(true)
+			elif cb.is_valid():
+				cb.call())
+		row.add_child(b)
+	return row
+
 func _unhandled_key_input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
 		if _selected >= 0 or _selected_edge >= 0:
@@ -2399,8 +2883,14 @@ func _on_canvas_input(event: InputEvent) -> void:
 				# star is what was meant.
 				if _drag_moved < 5.0:
 					var hit: int = pick(mb.position)
+					var rift: int = pick_rift(mb.position) if hit < 0 else -1
 					if hit >= 0:
 						select(-1 if hit == _selected else hit)
+					elif rift >= 0:
+						if rift == _selected_rift:
+							select(-1)
+						else:
+							select_rift(rift)
 					else:
 						var link: int = pick_edge(mb.position)
 						if link >= 0:
@@ -2418,6 +2908,12 @@ func _on_canvas_input(event: InputEvent) -> void:
 			_redraw()
 		else:
 			var hit: int = pick(mm.position)
+			var over_rift: int = pick_rift(mm.position) if hit < 0 else -1
+			if over_rift != _hovered_rift:
+				_hovered_rift = over_rift
+				_canvas.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND \
+					if over_rift >= 0 else Control.CURSOR_ARROW
+				_redraw()
 			if hit != _hovered:
 				_hovered = hit
 				if hit >= 0 and hit != _hover_card and layout.is_drawn_map():
@@ -2524,10 +3020,12 @@ class StarCanvas extends Control:
 		# The lines, under the boxes as in draw.io.
 		# Thin, like a pen line (the owner, 19 Nov 2026: "a little thinner").
 		var width: float = clampf(sc * 0.55, 0.7, 1.5)
-		var head: float = clampf(AtlasView.MAP_ARROW * sc, 3.0, 16.0)
+		var head: float = clampf(AtlasView.MAP_ARROW * sc, 3.0, 10.0)
 		for pair in range(lay.edge_count()):
 			var a: int = lay.edges[pair * 2]
 			var b: int = lay.edges[pair * 2 + 1]
+			if view.hidden(a) or view.hidden(b):
+				continue
 			var ends: PackedVector2Array = lay.edge_ends(pair)
 			var pa: Vector2 = view.to_screen(ends[0])
 			var pb: Vector2 = view.to_screen(ends[1])
@@ -2547,9 +3045,17 @@ class StarCanvas extends Control:
 				var dir: Vector2 = d.normalized()
 				var perp := Vector2(-dir.y, dir.x)
 				draw_colored_polygon(PackedVector2Array([pb,
-					pb - dir * head + perp * head * 0.4,
+					pb - dir * head + perp * head * AtlasView.MAP_ARROW_SPREAD,
 					pb - dir * head * 0.75,
-					pb - dir * head - perp * head * 0.4]), col)
+					pb - dir * head - perp * head * AtlasView.MAP_ARROW_SPREAD]), col)
+
+		# The run's rifts: the seams under the roads, the badges over the boxes.
+		var curves: Array = view.rift_curves()
+		var arcs: Array = []
+		var focused_any: bool = focused or view._selected_rift >= 0
+		for k in range(curves.size()):
+			arcs.append(view.rift_arc(k))
+			_draw_rift_seam(arcs[k], _rift_alpha(k, curves[k], focused_any))
 
 		# The run's roads, over the lines and under the boxes.
 		_draw_roads()
@@ -2559,7 +3065,7 @@ class StarCanvas extends Control:
 		var name_px: int = int(round(AtlasView.MAP_NAME_FONT * sc))
 		for i in range(lay.star_count()):
 			var r: Rect2 = view.screen_box(i)
-			if not vis.intersects(r.grow(2.0)):
+			if not vis.intersects(r.grow(2.0)) or view.hidden(i):
 				continue
 			var faded: bool = view.off_run(i) or (focused and not view._near.has(i))
 			var fill: Color = AtlasView.MAP_BOX
@@ -2567,10 +3073,18 @@ class StarCanvas extends Control:
 			if faded:
 				fill = AtlasView.MAP_PAPER_DIM
 				ink = Color(AtlasView.MAP_INK, 0.35)
+			# THE BOX UNDER THE CURSOR LIGHTS UP (the owner, 20 Nov 2026): tinted
+			# and ringed in the pick colour, with a soft halo outside the ring, so
+			# a small box at a low zoom still says which one the card is about.
+			var lit: bool = i == view._selected or i == view._hovered
+			if lit:
+				fill = AtlasView.MAP_BOX.lerp(AtlasView.MAP_PICK, 0.22)
+				ink = AtlasView.MAP_INK
+				draw_rect(r.grow(3.0), Color(AtlasView.MAP_PICK, 0.35), false, 4.0)
 			draw_rect(r, fill)
 			var edge_col: Color = ink
 			var edge_w: float = 1.0
-			if i == view._selected or i == view._hovered:
+			if lit:
 				edge_col = AtlasView.MAP_PICK
 				edge_w = 2.5
 			draw_rect(r, edge_col, false, edge_w)
@@ -2587,7 +3101,97 @@ class StarCanvas extends Control:
 				if px > 0:
 					_text_in(font, inner, label, px, ink)
 
+		for k in range(curves.size()):
+			_draw_rift_badge(font, arcs[k], curves[k], name_px,
+				_rift_alpha(k, curves[k], focused_any),
+				k == view._selected_rift or k == view._hovered_rift)
+
 		_draw_run_markers(lay)
+
+	# A seam fades with the other lines when something else is picked.
+	func _rift_alpha(k: int, seam: Dictionary, focused: bool) -> float:
+		if not focused or k == view._selected_rift:
+			return 1.0
+		if view._selected_rift < 0 and (view._near.has(seam["a"]) or view._near.has(seam["b"])):
+			return 1.0
+		return 0.25
+
+	func _draw_rift_seam(pts: PackedVector2Array, alpha: float) -> void:
+		if not Rect2(Vector2.ZERO, size).grow(40.0).intersects(_bounds_of(pts)):
+			return
+		var core: float = clampf(view._scale * 0.9, 1.6, 3.5)
+		draw_polyline(pts, Color(AtlasView.MAP_RIFT_GLOW, AtlasView.MAP_RIFT_GLOW.a * alpha),
+			core * 3.2, true)
+		# Dashed along the curve's length, so the dashes stay even round the bend.
+		var dash: float = maxf(7.0, core * 3.5)
+		var gap: float = dash * 0.6
+		var col := Color(AtlasView.MAP_RIFT, alpha)
+		var on: bool = true
+		var left: float = dash
+		for i in range(pts.size() - 1):
+			var p: Vector2 = pts[i]
+			var q: Vector2 = pts[i + 1]
+			var seg: float = p.distance_to(q)
+			while seg > 0.0:
+				var step: float = minf(seg, left)
+				var r: Vector2 = p.move_toward(q, step)
+				if on:
+					draw_line(p, r, col, core, true)
+				p = r
+				seg -= step
+				left -= step
+				if left <= 0.0:
+					on = not on
+					left = dash if on else gap
+
+	func _bounds_of(pts: PackedVector2Array) -> Rect2:
+		var r := Rect2(pts[0], Vector2.ZERO)
+		for p in pts:
+			r = r.expand(p)
+		return r
+
+	# The swirl badge at the seam's middle (its end, for a keyed rift), and under
+	# it the rift game's name on a violet pill once names are legible at all.
+	func _draw_rift_badge(font: Font, pts: PackedVector2Array, seam: Dictionary,
+			name_px: int, alpha: float, lit: bool = false) -> void:
+		var at: Vector2 = pts[pts.size() - 1] if int(seam["b"]) < 0 else pts[pts.size() / 2]
+		var rad: float = view.rift_badge_radius()
+		if not Rect2(Vector2.ZERO, size).grow(rad * 8.0).has_point(at):
+			return
+		var deep := Color(UITheme.RIFT_DEEP, alpha)
+		var glow := Color(UITheme.RIFT, alpha)
+		# Picked or under the cursor: ringed in the pick colour, as a box is.
+		if lit:
+			draw_circle(at, rad + 5.0, Color(AtlasView.MAP_PICK, 0.45))
+			draw_arc(at, rad + 3.5, 0.0, TAU, 32, AtlasView.MAP_PICK, 2.5, true)
+		draw_circle(at, rad + 1.5, glow)
+		draw_circle(at, rad, deep)
+		var spiral := PackedVector2Array()
+		for i in range(60):
+			var t: float = float(i) / 59.0
+			var ang: float = t * TAU * 2.2
+			spiral.append(at + Vector2(cos(ang), sin(ang)) * rad * 0.82 * t)
+		draw_polyline(spiral, glow, maxf(1.2, rad * 0.14), true)
+		if name_px < AtlasView.MAP_MIN_TEXT_PX:
+			return
+		var game: GameData = Data.get_game(seam["game"])
+		var label: String = "RIFT · " + (game.display_name if game != null else String(seam["game"]))
+		var px: int = clampi(int(name_px * 1.1), AtlasView.MAP_MIN_TEXT_PX + 4, 22)
+		var sz: Vector2 = font.get_string_size(label, HORIZONTAL_ALIGNMENT_LEFT, -1, px)
+		var pad := Vector2(px * 0.6, px * 0.25)
+		var pill := Rect2(Vector2(at.x - sz.x * 0.5, at.y + rad + 4.0) - pad, sz + pad * 2.0)
+		draw_style_box(_pill_box(deep, glow), pill)
+		draw_string(font, Vector2(pill.position.x + pad.x, pill.position.y + pad.y + font.get_ascent(px)),
+			label, HORIZONTAL_ALIGNMENT_LEFT, -1, px, glow)
+
+	func _pill_box(fill: Color, edge: Color) -> StyleBoxFlat:
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = fill
+		sb.border_color = edge
+		sb.set_border_width_all(1)
+		sb.set_corner_radius_all(64)
+		sb.anti_aliasing = true
+		return sb
 
 	# The sheet the map is drawn on: aged paper the size of the map (its bounds,
 	# which the bake pads with a margin), lying on the game's own dark background
@@ -2751,8 +3355,13 @@ class StarCanvas extends Control:
 		if segments.is_empty():
 			return
 		var lay: AtlasLayout = view.layout
-		var core: float = clampf(view._scale * 0.42, 2.0, 5.0)
-		var casing: float = core + maxf(2.0, core * 0.75)
+		# THINNER ON THE DRAWN MAP (the owner, 20 Nov 2026: "lets have the arrows in
+		# the map become thinner"): a pen-weight road over pen-weight lines, with
+		# narrower arrowheads. The computed skies keep the heavier road.
+		var drawn: bool = lay.is_drawn_map()
+		var core: float = clampf(view._scale * 0.2, 1.2, 2.2) if drawn \
+			else clampf(view._scale * 0.42, 2.0, 5.0)
+		var casing: float = core + (maxf(1.0, core * 0.45) if drawn else maxf(2.0, core * 0.75))
 		var dash: float = maxf(9.0, casing * 2.4)
 
 		for seg in segments:
@@ -2775,7 +3384,8 @@ class StarCanvas extends Control:
 		# Arrowheads point the way the run travels: along the road ahead a DAG edge
 		# always runs from the game nearer you to the game nearer the Amulet, and
 		# along the walked road from the older game to the newer one.
-		var head: float = clampf(core * 3.1, 8.0, 24.0)
+		var head: float = clampf(core * 3.6, 6.0, 11.0) if drawn else clampf(core * 3.1, 8.0, 24.0)
+		var spread: float = AtlasView.MAP_CHEVRON_SPREAD if drawn else 0.44
 		for seg in segments:
 			var from_i: int = int(seg[0])
 			var to_i: int = int(seg[1])
@@ -2791,7 +3401,7 @@ class StarCanvas extends Control:
 			var pad_a: float = 0.0 if lay.is_drawn_map() else view.drawn_half_height(from_i)
 			var pad_b: float = 0.0 if lay.is_drawn_map() else view.drawn_half_height(to_i)
 			for t in AtlasView.route_arrow_offsets(length, pad_a, pad_b, head):
-				_chevron(a3 + dir * t, dir, head, col)
+				_chevron(a3 + dir * t, dir, head, col, spread)
 
 	# The link the player clicked: drawn over the stars so it can't be lost in a
 	# hub's fan of lines, with both endpoints ringed so it's obvious which two
@@ -2831,12 +3441,13 @@ class StarCanvas extends Control:
 
 	# One arrowhead: a cased triangle, so it stays legible over cover art the
 	# same way the road itself does.
-	func _chevron(at: Vector2, dir: Vector2, size: float, col: Color) -> void:
+	func _chevron(at: Vector2, dir: Vector2, size: float, col: Color,
+			spread: float = 0.44) -> void:
 		var perp := Vector2(-dir.y, dir.x)
 		var tip: Vector2 = dir * size * 0.5
-		var left: Vector2 = -dir * size * 0.5 + perp * size * 0.44
-		var right: Vector2 = -dir * size * 0.5 - perp * size * 0.44
-		var grow: float = (size + 3.4) / size
+		var left: Vector2 = -dir * size * 0.5 + perp * size * spread
+		var right: Vector2 = -dir * size * 0.5 - perp * size * spread
+		var grow: float = (size + (2.0 if spread < 0.44 else 3.4)) / size
 		draw_colored_polygon(PackedVector2Array([
 			at + tip * grow, at + left * grow, at + right * grow]),
 			AtlasView.COL_TRAIL_CASING)

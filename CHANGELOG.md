@@ -11,6 +11,38 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **The map comes back to the run, with a switch; the floor in the Full Inventory (20 Nov 2026).**
+  - **🗺 Map opens on the Optimal Path with an "Optimal path | Full map"
+    switch on top**, and Full opens the owner's drawn map on its own with the
+    same switch back (`Overworld2.open_full_map`, `AtlasView.map_mode_toggle`).
+    The offering's Optimal Path button and each card's preview carry it too.
+  - **All games | Owned games on the full map, Owned by default.** Owned leaves
+    every unowned game, its lines and any rift with an end on it undrawn and
+    unpickable (`AtlasView.hidden`), except the run's own road and its two
+    anchors. The choice holds between openings.
+  - **The map's info lines are gone; the header strip says it instead.** The
+    road walked across the top of the page now ends, far right and set apart,
+    on the Amulet: ringed gold with a 🏆 and "N steps" before it. Every cover on
+    the strip shows the game's profile on hover (`GameProfile.gd`, the map's game
+    card without its buttons).
+  - **Rifts are seams on the drawn map**: a dashed teal curve between the two
+    games a rift joins, with a swirl badge naming the rift game. **Each curve is
+    chosen to cross as few boxes as it can** and to stay on the paper, from a
+    range of bows and leans (`AtlasView.rift_curves`). **Click a rift** for its
+    card: the rift game's profile, the games it joins, Play and Steam.
+  - **The box under the cursor lights up** — tinted, ringed and haloed in the
+    pick colour — and the map's card starts under the switches and scrolls
+    inside the map.
+  - **Thinner arrows** on the drawn map: the route road, its chevrons and the
+    lines' arrowheads.
+  - **Full Inventory shows the floor**: every piece lying on the board, which
+    drags into the pack (a full pack trades) or back down from it. Using a piece
+    there keeps you there unless it is aimed at the board or teleports you.
+  - **Buying loot with a full pack puts it on the floor** of the board rather
+    than refusing (`ShopSystem._stow`); a new game still clears the floor.
+  - **The game-beaten page always fits**: its middle scrolls and Continue is
+    pinned. It no longer says who is still following. Reward screens say "Take".
+
 - **A run's Atlas is the owner's hand-drawn map (19 Nov 2026).**
   - **The map you open during a run is `tools/Roguelikes.drawio`**, exactly as
     drawn: every game a white box with its name, at the place and size the

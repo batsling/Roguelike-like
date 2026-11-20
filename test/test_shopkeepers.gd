@@ -326,6 +326,38 @@ func test_a_pack_opens_to_three_cards_and_keeps_one() -> void:
 	assert_eq(GameState.loot_items.size(), before + 1, "one card taken")
 	assert_true(bool(ShopSystem.pack_stock(node)[0]["sold"]))
 
+# A FULL PACK IS NOT A REFUSAL (the owner, 20 Nov 2026): what you buy with no
+# room for it goes on a free square of the board, to be picked up like any other
+# piece on the floor.
+func _fill_pack() -> void:
+	var guard: int = 0
+	while not GameState.loot_is_full() and guard < 64:
+		GameState.take_loot_entry(GameState.roll_loot_entry("card"))
+		guard += 1
+
+func test_loot_bought_with_a_full_pack_goes_on_the_floor() -> void:
+	var node: StringName = _stand(_real(&"jimbo"))
+	_fill_pack()
+	assert_true(GameState.loot_is_full(), "the pack is full")
+	var carried: int = GameState.loot_items.size()
+	GameState.gold = 50
+	var price: int = ShopSystem.price_of(ShopSystem.loot_stock(node)[0])
+	var bought: Dictionary = ShopSystem.buy_loot(node, 0)
+	assert_false(bought.is_empty(), "it is sold")
+	assert_true(ShopSystem.last_on_floor, "and said to be on the floor")
+	assert_eq(GameLoop2.drops.size(), 1, "one piece on the floor")
+	assert_eq(GameState.loot_items.size(), carried, "the pack is untouched")
+	assert_eq(GameState.gold, 50 - price, "and it was paid for")
+
+func test_a_pack_card_with_a_full_pack_goes_on_the_floor() -> void:
+	var node: StringName = _stand(_real(&"jimbo"))
+	_fill_pack()
+	GameState.gold = 50
+	assert_eq(ShopSystem.buy_pack(node, 0).size(), ShopSystem.PACK_CARDS, "the pack opens")
+	assert_true(ShopSystem.take_pack_card(node, 0, 0), "a card is taken")
+	assert_true(ShopSystem.last_on_floor)
+	assert_eq(GameLoop2.drops.size(), 1, "onto the floor")
+
 func test_isaacs_shelf_grows_with_the_best_donation_bank() -> void:
 	var want := {0: 2, 19: 2, 20: 3, 100: 4, 200: 5, 599: 5, 600: 6, 999: 6}
 	for best in want.keys():

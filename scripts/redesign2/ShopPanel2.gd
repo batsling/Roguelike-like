@@ -535,11 +535,13 @@ func open_loot_card(slot: int) -> Node:
 	else:
 		buy_btn.text = _price_text(row, "  ")
 		Cosmetics.apply_glyph(buy_btn)   # a worn gold or Health icon on the price
-		var fits: bool = GameState.is_bag_entry(entry) or GameState.loot_fits(entry)
+		var fits: bool = ShopSystem.has_room_for(entry)
+		var in_pack: bool = GameState.is_bag_entry(entry) or GameState.loot_fits(entry)
 		buy_btn.disabled = not afford or not fits
 		buy_btn.tooltip_text = _short_of(row) if not afford \
-			else ("No room in your pack for it." if not fits
-				else "Buy it for %s." % ShopSystem.price_words(row))
+			else ("No room in your pack or on the floor for it." if not fits
+				else "Buy it for %s.%s" % [ShopSystem.price_words(row),
+					"" if in_pack else " Your pack is full, so it goes on the floor."])
 	buy_btn.pressed.connect(func(): buy_loot(slot))
 	col.add_child(buy_btn)
 	var done := Button.new()
@@ -832,9 +834,13 @@ func open_pack(slot: int) -> Node:
 	return layer
 
 func take_pack_card(slot: int, pick: int) -> bool:
+	var cards: Array = ShopSystem.pack_stock(_game_id)[slot].get("cards", []) \
+		if slot >= 0 and slot < ShopSystem.pack_stock(_game_id).size() else []
 	if not ShopSystem.take_pack_card(_game_id, slot, pick):
 		return false
 	close_card()
+	if ShopSystem.last_on_floor and pick < cards.size():
+		_say_bought(LootSystem.display_name(cards[pick]))
 	return true
 
 # Gold for an ordinary price, green for one on sale, red for one out of reach.
@@ -1005,8 +1011,16 @@ func buy_loot(slot: int) -> bool:
 	if bought.is_empty():
 		return false
 	close_card()
-	Notifications.notify("Bought %s." % LootSystem.display_name(bought), UITheme.SHOP_GREEN)
+	_say_bought(LootSystem.display_name(bought))
 	return true
+
+func _say_bought(name: String) -> void:
+	if ShopSystem.last_on_floor:
+		# The board repaints itself: putting a piece down emits loop_changed.
+		Notifications.notify("Bought %s — your pack is full, so it's on the floor." % name,
+			UITheme.SHOP_GREEN)
+	else:
+		Notifications.notify("Bought %s." % name, UITheme.SHOP_GREEN)
 
 
 func reroll() -> bool:

@@ -443,9 +443,32 @@ func buy(game_id: StringName, slot: int) -> ItemData:
 	return owned
 
 
-# Buy loot slot `slot` at `game_id`. Returns the entry now in the pack, or {} when
-# it could not happen — no shop, bad slot, sold, too dear, or NO ROOM: a piece you
-# cannot carry is not charged for, and stays on the shelf.
+# Whether the last piece bought (buy_loot, take_pack_card) went on the FLOOR
+# rather than into the pack, so the shop can say where it went.
+var last_on_floor: bool = false
+
+# Where a bought piece goes: the pack, or — when the pack has no room — a free
+# square of the board (the owner, 20 Nov 2026: "when buying loot when the
+# inventory is full i get an error, lets have it put it on the grid floor"). From
+# there it is picked up and traded like any other piece on the floor. False when
+# there is no room in either, and then nothing is charged.
+func _stow(entry: Dictionary) -> bool:
+	last_on_floor = false
+	if GameState.take_loot_entry(entry):
+		return true
+	if GameLoop2.drop_loot_anywhere(entry) == GameLoop2.OFF_FIELD:
+		return false
+	last_on_floor = true
+	return true
+
+# Whether a bought piece has somewhere to go: a slot, or a square of the floor.
+func has_room_for(entry: Dictionary) -> bool:
+	return GameState.is_bag_entry(entry) or GameState.loot_fits(entry) \
+		or GameLoop2.floor_has_room()
+
+# Buy loot slot `slot` at `game_id`. Returns the entry bought, or {} when it could
+# not happen — no shop, bad slot, sold, too dear, or NO ROOM in the pack or on the
+# floor: a piece with nowhere to go is not charged for, and stays on the shelf.
 func buy_loot(game_id: StringName, slot: int) -> Dictionary:
 	var shop: Dictionary = shop_for(game_id)
 	if shop.is_empty():
@@ -457,7 +480,7 @@ func buy_loot(game_id: StringName, slot: int) -> Dictionary:
 	if bool(row.get("sold", false)) or not can_afford(row):
 		return {}
 	var entry: Dictionary = (row["entry"] as Dictionary).duplicate(true)
-	if not GameState.take_loot_entry(entry):
+	if not _stow(entry):
 		return {}
 	_pay(row)
 	row["sold"] = true
@@ -490,7 +513,7 @@ func buy_pack(game_id: StringName, slot: int) -> Array:
 		var c: Dictionary = GameState.roll_loot_entry("card")
 		if not c.is_empty():
 			cards.append(c)
-	if cards.is_empty() or not GameState.loot_fits(cards[0]):
+	if cards.is_empty() or not has_room_for(cards[0]):
 		return []
 	_pay(row)
 	row["cards"] = cards
@@ -507,7 +530,7 @@ func take_pack_card(game_id: StringName, slot: int, pick: int) -> bool:
 	var cards: Array = row.get("cards", [])
 	if pick < 0 or pick >= cards.size():
 		return false
-	if not GameState.take_loot_entry((cards[pick] as Dictionary).duplicate(true)):
+	if not _stow((cards[pick] as Dictionary).duplicate(true)):
 		return false
 	row.erase("cards")
 	row["sold"] = true

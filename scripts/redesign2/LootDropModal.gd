@@ -638,7 +638,7 @@ func _take_all_row(multi: bool) -> Control:
 	var room: int = GameState.loot_space() \
 		+ _offers.filter(func(e): return GameState.is_bag_entry(e)).size()
 	var take := UITheme.confirm_button(
-		"✓  Take it" if not multi else "✓  Take %d" % mini(room, _offers.size()),
+		"✓  Take",
 		Vector2(190, 34), 15)
 	take.disabled = room <= 0
 	take.tooltip_text = "No room — use or bin something first, or use these where you stand." \
@@ -667,7 +667,7 @@ func _buttons(multi: bool) -> Control:
 
 	var room: int = GameState.loot_space()
 	var take := UITheme.confirm_button(
-		"✓  Take it" if not multi else "✓  Take %d" % mini(room, _offers.size()),
+		"✓  Take",
 		Vector2(190, 38), 16)
 	take.disabled = room <= 0
 	take.tooltip_text = "No room — use or bin something first, or use these where you stand." \
@@ -684,11 +684,14 @@ func _buttons(multi: bool) -> Control:
 	# screen can be opened and left inside one frame (every headless test of it
 	# does), and the deferred call would then land on a button that is gone.
 	if room > 0:
-		var btn: Button = take
-		(func():
-			if is_instance_valid(btn) and btn.is_inside_tree():
-				btn.grab_focus()).call_deferred()
+		# A method, not a lambda, on the deferred queue: see
+		# PostCombatScreen._refresh_exit for the crash a freed lambda causes.
+		_focus_take.call_deferred(take)
 	return buttons
+
+func _focus_take(btn: Button) -> void:
+	if is_instance_valid(btn) and btn.is_inside_tree():
+		btn.grab_focus()
 
 # ---------------------------------------------------------------------------
 # Resolving an offer

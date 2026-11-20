@@ -3694,6 +3694,48 @@ func test_an_items_card_opens_over_the_full_inventory_and_returns_to_it() -> voi
 		"closing the card lands back in it")
 	full.close()
 
+# The owner, 20 Nov 2026: using something in the full inventory keeps you there
+# unless it sends you somewhere else.
+func test_using_loot_in_the_full_inventory_keeps_it_open() -> void:
+	GameState.add_pill_loot(&"luck_up")
+	var full: Node = _ui.show_full_inventory()
+	var grid: LootGrid = full.find_children("*", "LootGrid", true, false)[0]
+	grid.use_requested.emit(0)
+	await wait_frames(2)
+	assert_true(is_instance_valid(full) and _ui.full_inventory_open(),
+		"the use screen opens over the full inventory, which stays")
+	full.close()
+
+# The owner, 20 Nov 2026: the full inventory shows the loot on the floor, and it
+# can be picked up and put down from there.
+func test_the_full_inventory_lists_and_picks_up_the_floor() -> void:
+	var entry: Dictionary = GameState.roll_loot_entry("pill")
+	var cell: Vector2i = GameLoop2.random_free_cell()
+	if cell == GameLoop2.OFF_FIELD:
+		pending("no free square on this board")
+		return
+	GameLoop2.place_drop(cell, entry)
+	var full: Node = _ui.show_full_inventory()
+	assert_eq(full.floor_cells(), [cell], "the piece on the floor is listed")
+	assert_true(Page.text_of(full).contains("On the floor  (1)"), Page.text_of(full))
+	assert_eq(full.find_children("*", "FloorLoot", true, false).size(), 1, "as a token")
+	var grid: LootGrid = full.find_children("*", "LootGrid", true, false)[0]
+	assert_true(grid.allow_floor_take, "the pack takes pieces off the floor")
+	var before: int = GameState.loot_items.size()
+	grid.floor_take_requested.emit(GameLoop2.drop_at(cell)["loot"], 0, cell)
+	assert_eq(GameState.loot_items.size(), before + 1, "picked up into the pack")
+	assert_false(GameLoop2.has_drop(cell), "and gone from the floor")
+	await wait_frames(2)
+	assert_true(Page.text_of(full).contains("On the floor  (0)"), "the section redraws")
+	# …and back down again.
+	var zone = full.find_child("Floor", true, false)
+	var data := {"kind": "loot_move", "from": 0, "index": GameState.loot_items.size() - 1}
+	assert_true(zone._can_drop_data(Vector2.ZERO, data), "a pack piece can be put down here")
+	zone._drop_data(Vector2.ZERO, data)
+	assert_eq(GameState.loot_items.size(), before, "out of the pack")
+	assert_eq(GameLoop2.drops.size(), 1, "onto the floor")
+	full.close()
+
 func test_tab_opens_and_shuts_the_loot_window() -> void:
 	# The `backpack` action existed in project.godot with nothing on the overworld
 	# listening for it.
@@ -4083,6 +4125,35 @@ func test_the_amulet_is_not_drawn_on_the_road_behind_you() -> void:
 	_ui._refresh()
 	assert_false(_ui.route_strip_stops().has(amulet),
 		"the game the run is a search for is ahead of it, not behind it")
+
+# THE AMULET AT THE STRIP'S FAR END (the owner, 20 Nov 2026), its own gold tile
+# past a gap that says how far it is — never one of the road's stops — and every
+# cover on the strip hovers the game's profile.
+func test_the_strip_ends_on_the_amulet_and_hovers_profiles() -> void:
+	var amulet: StringName = GameState.goal_game_id()
+	if amulet == &"" or amulet == GameState.current_game_id:
+		pending("the run did not reach this case (no Amulet, or standing on it)")
+		return
+	_ui._refresh_route_strip()
+	var tile: Control = _ui.route_strip_amulet()
+	assert_not_null(tile, "the Amulet has a tile on the strip")
+	if tile == null:
+		return
+	assert_eq(StringName(tile.get_meta("amulet")), amulet, "it is the Amulet")
+	assert_eq(tile.get_index(), _ui._route_strip.get_child_count() - 1, "at the far right")
+	assert_false(_ui.route_strip_stops().has(amulet), "and not a stop on the road")
+	assert_not_null(_ui._route_strip.get_node_or_null("AmuletSteps"), "with how far it is")
+	var card: Control = HoverCard.of(tile)
+	assert_not_null(card, "its hover is the game's profile")
+	if card != null:
+		assert_true(Page.text_of(card).contains(Data.get_game(amulet).display_name))
+		card.free()
+	for c in _ui._route_strip.get_children():
+		if c.has_meta("stop"):
+			var stop_card: Control = HoverCard.of(c)
+			assert_not_null(stop_card, "a stop hovers its profile too")
+			if stop_card != null:
+				stop_card.free()
 
 func test_the_road_walked_keeps_the_doubling_back() -> void:
 	# `visited_games` is a set, so a run that came back to a game drew one cover

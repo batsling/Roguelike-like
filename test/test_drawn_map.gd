@@ -253,3 +253,192 @@ func test_a_road_follows_the_drawn_line() -> void:
 	assert_eq(view.road_ends(a, b), drawn, "the road from a to b is the drawn line")
 	assert_eq(view.road_ends(b, a), PackedVector2Array([drawn[1], drawn[0]]),
 		"and the other way round it runs back along it")
+
+# THE RUN'S RIFTS (the owner, 20 Nov 2026: option A, "rift seam"): each rift is
+# drawn as a seam between the two games it joins, with no box of its own, and
+# the Collection's pure catalog draws none, because it has no run.
+func test_every_rift_is_a_seam_between_its_two_games() -> void:
+	if _map == null:
+		pending("the drawn map is not baked")
+		return
+	_start_run()
+	var rifts: Array = RunGraph.rifts()
+	if rifts.is_empty():
+		pending("this run laid no rifts")
+		return
+	var view := _open_run_view()
+	var seams: Array = view.rift_seams()
+	assert_eq(seams.size(), rifts.size(), "every rift's ends are drawn, so every rift is a seam")
+	for k in range(seams.size()):
+		var seam: Dictionary = seams[k]
+		assert_eq(String(view.star_id(seam["a"])), rifts[k]["a"], "a seam starts at its rift's game")
+		if rifts[k]["kind"] != RunGraph.RIFT_KEYED:
+			assert_eq(String(view.star_id(seam["b"])), rifts[k]["b"], "and ends at the other")
+	# The curve leaves one box and enters the other, bowed off the straight line.
+	var curves: Array = view.rift_curves()
+	var two: int = -1
+	for k in range(curves.size()):
+		if int(curves[k]["b"]) >= 0:
+			two = k
+			break
+	if two < 0:
+		pending("every rift this run was keyed")
+		return
+	var pts: PackedVector2Array = view.rift_arc(two)
+	assert_true(view.screen_box(curves[two]["a"]).grow(0.5).has_point(pts[0]), "it leaves its first game's box")
+	assert_true(view.screen_box(curves[two]["b"]).grow(0.5).has_point(pts[-1]), "and enters the second's")
+	var mid: Vector2 = (pts[0] + pts[-1]) * 0.5
+	assert_gt(pts[pts.size() / 2].distance_to(mid), 1.0, "bowed, so it never reads as an influence line")
+
+# THE CURVE GOES ROUND THE BOXES (the owner, 20 Nov 2026): of the bows tried, the
+# one drawn crosses no more boxes than any other would have, and stays on the paper.
+func test_a_rift_curve_crosses_the_fewest_boxes_it_can() -> void:
+	if _map == null:
+		pending("the drawn map is not baked")
+		return
+	_start_run()
+	var view := _open_run_view()
+	var curves: Array = view.rift_curves()
+	var checked: int = 0
+	for c in curves:
+		if int(c["b"]) < 0:
+			continue
+		var pa: Vector2 = c["pa"]
+		var pb: Vector2 = c["pb"]
+		var d: Vector2 = pb - pa
+		var up := Vector2(-d.y, d.x).normalized()
+		for side in [1.0, -1.0]:
+			for k in AtlasView.RIFT_BOWS:
+				var alt: Vector2 = pa.lerp(pb, 0.5) + up * side * d.length() * k
+				if not view._curve_on_paper(pa, alt, pb):
+					continue    # off the paper is never chosen over on it
+				assert_true(int(c["crosses"]) <= view._curve_crossings(pa, alt, pb, c["a"], c["b"]),
+					"no other bow on the paper is cleaner")
+		checked += 1
+	if checked == 0:
+		pending("this run laid no two-ended rift on the drawn map")
+
+# CLICKING A RIFT (the owner, 20 Nov 2026) puts up its card: the rift game, and
+# the two games it joins.
+func test_clicking_a_rift_shows_its_card() -> void:
+	if _map == null:
+		pending("the drawn map is not baked")
+		return
+	_start_run()
+	var view := _open_run_view()
+	if view.rift_curves().is_empty():
+		pending("this run laid no rift on the drawn map")
+		return
+	view.focus_game(view.star_id(view.rift_curves()[0]["a"]))
+	view.select(-1)
+	var click := InputEventMouseButton.new()
+	click.button_index = MOUSE_BUTTON_LEFT
+	click.position = view.rift_badge_at(0)
+	if view.pick(click.position) >= 0:
+		pending("a box sits under this rift's badge at this zoom")
+		return
+	click.pressed = true
+	view._on_canvas_input(click)
+	click.pressed = false
+	view._on_canvas_input(click)
+	assert_eq(view.selected_rift(), 0, "the rift is picked")
+	var game: GameData = Data.get_game(StringName(view.rift_curves()[0]["game"]))
+	var text: String = _text(view._card)
+	assert_true(text.contains("Rift"), text)
+	assert_true(text.contains(game.display_name), "the card names the rift game: %s" % text)
+	view.select(-1)
+	assert_eq(view.selected_rift(), -1, "dismissing clears it")
+
+func _text(node: Node) -> String:
+	var out: String = ""
+	for c in node.find_children("*", "Label", true, false):
+		out += (c as Label).text + "\n"
+	return out
+
+func test_the_collection_draws_no_rifts() -> void:
+	if _map == null:
+		pending("the drawn map is not baked")
+		return
+	_start_run()
+	var view: AtlasView = ATLAS.new()
+	view.pure_catalog = true
+	add_child_autofree(view)
+	assert_eq(view.rift_seams(), [], "the catalog has no run, so no rifts")
+
+# THE MAP'S TOGGLE (the owner, 20 Nov 2026): the run's Map opens on the Optimal
+# Path with an "Optimal path | Full map" switch on top; Full opens the drawn map on
+# its own with the same switch, and the switch goes back.
+func _button(root: Node, name: String) -> Button:
+	for b in root.find_children(name, "Button", true, false):
+		if (b as Button).is_visible_in_tree():
+			return b
+	return null
+
+func test_the_run_map_toggles_between_optimal_and_full() -> void:
+	if _map == null:
+		pending("the drawn map is not baked")
+		return
+	var ui = _start_run()
+	var win = ui.open_map()
+	assert_not_null(win, "the map opens")
+	await wait_frames(2)
+	var full: Button = _button(get_tree().root, "Full")
+	assert_not_null(full, "on the optimal path, with the switch to the full map")
+	if full == null:
+		return
+	full.pressed.emit()
+	await wait_frames(2)
+	var atlas = ui._route_atlas
+	assert_true(atlas is AtlasView and is_instance_valid(atlas), "Full opens the map")
+	if not (atlas is AtlasView):
+		return
+	assert_true((atlas as AtlasView).layout.is_drawn_map(), "the owner's drawn map")
+	assert_false(is_instance_valid(win), "and the optimal path window is gone")
+	var back: Button = _button(atlas, "Optimal")
+	assert_not_null(back, "the map has the switch back")
+	if back == null:
+		return
+	back.pressed.emit()
+	await wait_frames(2)
+	assert_false(is_instance_valid(atlas), "Optimal closes the map")
+	assert_not_null(ui._route_map, "and opens the optimal path again")
+	ui._dismiss_route_map()
+
+# ALL GAMES / OWNED GAMES (the owner, 20 Nov 2026): the run's full map has both,
+# Owned by default, and Owned leaves every unowned game and its lines undrawn and
+# unpickable — except the run's own road and anchors.
+func test_the_full_map_shows_owned_games_by_default_and_can_show_all() -> void:
+	if _map == null:
+		pending("the drawn map is not baked")
+		return
+	var was: bool = AtlasView.owned_only
+	AtlasView.owned_only = true
+	var ui = _start_run()
+	var atlas = ui.open_full_map()
+	await wait_frames(2)
+	assert_not_null(atlas.find_child("OwnedToggle", true, false), "the switch is on the map")
+	assert_true(atlas.owned_filter_on(), "owned games is the default")
+	var unowned: int = -1
+	for i in range(atlas.layout.star_count()):
+		if not Ownership.is_owned(atlas.game_at(i)) and not atlas.route_stars().has(i) \
+				and i != atlas.current_index() and i != atlas.amulet_index():
+			unowned = i
+			break
+	if unowned < 0:
+		pending("every game off the route is owned")
+		ui._dismiss_route_map()
+		AtlasView.owned_only = was
+		return
+	assert_true(atlas.hidden(unowned), "an unowned game is not drawn")
+	assert_eq(atlas._pick_box(atlas.screen_box(unowned).get_center()), -1,
+		"and can't be pointed at")
+	for i in [atlas.current_index(), atlas.amulet_index()]:
+		if i >= 0:
+			assert_false(atlas.hidden(i), "the run's anchors always are")
+	var all_btn: Button = atlas.find_child("AllGames", true, false)
+	all_btn.pressed.emit()
+	await wait_frames(1)
+	assert_false(atlas.owned_filter_on(), "All games turns it off")
+	assert_false(atlas.hidden(unowned), "and the game is back")
+	ui._dismiss_route_map()
+	AtlasView.owned_only = was

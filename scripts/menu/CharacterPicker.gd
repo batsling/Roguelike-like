@@ -532,18 +532,23 @@ func _has_costumes(ch: CharacterData) -> bool:
 	return not _costume_slots(ch).is_empty()
 
 # Open the costume popup for `ch`. Public so a test can open it as the button does.
+func _after_look_change(box: HBoxContainer, ch: CharacterData) -> void:
+	var icons: Dictionary = _state.get("icons", {})
+	if icons.has(ch.id) and is_instance_valid(icons[ch.id]):
+		(icons[ch.id] as TextureRect).texture = ch.shown_icon()
+		UITheme.apply_crisp(icons[ch.id], ch.shown_icon())
+	if is_instance_valid(box):
+		_fill_char_detail(box, ch)
+	if is_instance_valid(_popup):
+		(_popup.get_meta(&"refill") as Callable).call()
+
 func open_customize(box: HBoxContainer, ch: CharacterData) -> Control:
 	if is_instance_valid(_popup):
 		_popup.queue_free()
+	# A method, not a lambda, on the deferred queue: see
+	# PostCombatScreen._refresh_exit for the crash a freed lambda causes.
 	var on_change := func() -> void:
-		(func() -> void:
-			var icons: Dictionary = _state.get("icons", {})
-			if icons.has(ch.id) and is_instance_valid(icons[ch.id]):
-				(icons[ch.id] as TextureRect).texture = ch.shown_icon()
-				UITheme.apply_crisp(icons[ch.id], ch.shown_icon())
-			_fill_char_detail(box, ch)
-			if is_instance_valid(_popup):
-				(_popup.get_meta(&"refill") as Callable).call()).call_deferred()
+		_after_look_change.call_deferred(box, ch)
 	_popup = CustomizeScreen.looks_popup(self, "%s — Costumes" % ch.display_name,
 		func(body: VBoxContainer) -> void:
 			var col := VBoxContainer.new()

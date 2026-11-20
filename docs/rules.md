@@ -420,6 +420,7 @@ There are no shops on the map until you open one. The 🛒 SHOP BAR, on the boar
 - So a shop you cleared out is a shop you know is empty, and a shop you left two items at is a reason to walk back.
 - At a game with a shop, the bar reads Shop: press it to walk in. Once you have played the game a 🛒 Shop button also stands by the games to choose from.
 - A Scramble charge rerolls the whole shelf, sold slots included.
+- Buy loot with a full pack and it goes on the floor of the board. Pick it up (or trade for it) before your next game — a new game clears the floor.
 - A shop card shows you what is left on a shelf you have already stood in — which is what makes going back a real decision. A shop you have never visited only tells you it is there.
 
 > Transmute the game a shop stands at and it still sells — the shop belongs to the spot on the map, not to the game.
@@ -630,11 +631,12 @@ There is no HUD strip. Every number is drawn once, by whatever owns it, which ta
 
 - **Health, shields, statuses** — On the hero, on the left of the board. Hearts under the portrait, one shield over it per shield you have — the ones that stay nearest your face, the Temporary ones after them with a clock on them. Anything wearing that clock is going away, statuses included.
 - **Gold** — A chip in the top bar.
+- **Your road and the Amulet** — Across the top bar: every game you have played, oldest first, with arrows between them, and at the far right, ringed gold, the Amulet and how many steps away it is. Hover any of them for the game's profile.
 - **Difficulty and location** — The first line of the DIFFICULTY strip over the board: the tier (Low to Insane) with its four pips, and the location you are in on the right — hover it, or click it.
 - **Amulet pressure** — The second line of the DIFFICULTY strip: how many spawns until the next difficulty up, how far the Amulet is and the pressure that puts on you (its two pips, in the band's colour — empty out in the wilds), and on the right what ending THIS game will stand up (☠ +N when this game ends). The strip takes the band's colour.
 - **Where your shops are** — A 🛒 on the game's card, on the 🗺 map and on the route ladder. The bar beside your gold says how close the next one is.
 - **Push and Bomb charges** — Under your portrait on the board: an icon and the number left, each one a button. One you have none of is not shown. Hover it for its name.
-- **Everything you carry** — The panel over the board is your items on the left and a small picture of your loot pack on the right. Click the small pack (or press Tab) to open it. Full beside it opens the full inventory: every item, the pack, your stats, your resources, your statuses and the curse cards you carry.
+- **Everything you carry** — The panel over the board is your items on the left and a small picture of your loot pack on the right. Click the small pack (or press Tab) to open it. Full beside it opens the full inventory: every item, the pack, your stats, your resources, your statuses, the curse cards you carry and the loot lying on the floor — drag a piece between the pack and the floor to pick it up or put it down. Using a piece there keeps you there, unless it has to be aimed at the board.
 - **The fallen** — Every enemy this run has put down is the Fallen tab of the History, in the bar at the top.
 - **Statuses on an enemy** — Stun is drawn on a body as itself, with its stacks. Any other status is an arrow: a ▲ means it carries a buff, a ▼ a debuff. Hover the body to see which, and a bigger picture of it.
 - **Bash, Dash, Transmute, Scramble** — Chips on the row under the offering, once you have a charge — a verb at 0 is not shown. Dash and Scramble act at once; Bash and Transmute ARM, and the next card you click is the one they hit.
@@ -649,7 +651,7 @@ There is no HUD strip. Every number is drawn once, by whatever owns it, which ta
 ### Elsewhere in the menus
 
 - **→ Optimal Path** — The shortest road from where you stand to the Amulet, rung by rung, with your shops marked. It lives in the offering's heading row, and on every offered card — a card's own button routes the path as it would be if you took it.
-- **🗺 Map** — The Optimal Path from where you stand. It lives in the header, so it opens from anywhere in a run, mid-game included.
+- **🗺 Map** — The Optimal Path from where you stand. It lives in the header, so it opens from anywhere in a run, mid-game included. The switch at its top flips to the Full map: the whole drawn map with your route and the run's rifts on it, and back. On the full map, Owned games (the default) draws only the games you own and the lines between them; All games draws every one. Click a rift's swirl for the game inside it.
 - **✦ Atlas** — The star chart of every game, opened from the Collection. Not a run tool — a thing to look at.
 - **Collection** — Every item, scroll, enemy, event and status in the game, and whether you have met it.
 - **🏆 Tier List** — Your own ranking of every game you have beaten, across all runs, with the notes you wrote at the time.
