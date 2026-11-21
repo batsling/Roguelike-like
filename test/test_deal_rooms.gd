@@ -156,17 +156,16 @@ func test_the_relic_chance_is_rolled_once_a_difficulty_up() -> void:
 	assert_false(DealRooms.item_roll_due(), "spent for the floor")
 	assert_false(DealRooms.roll_after_game(_rng, 3), "once a floor")
 
-func test_the_relic_chance_is_spent_by_a_game_an_enemy_hurt_you_in() -> void:
+# No clean-game gate on this one (the owner, 21 Nov 2026).
+func test_the_relic_chance_rolls_even_after_an_enemy_hurt_you() -> void:
 	_start()
 	var book: ItemData = Data.get_item2(&"book_of_revelations").duplicate()
 	book.stat_bonuses = {"deal_chance": 100.0}
 	GameState.add_item(book)
 	DealRooms.note_new_floor()
 	GameState.change_hp(-1, GameState.HEALTH_SOURCE_ENEMY_ATTACK)
-	assert_eq(DealRooms.item_chance(), 0.0)
-	assert_false(DealRooms.roll_after_game(_rng, 3))
-	DealRooms.note_game_started()
-	assert_false(DealRooms.roll_after_game(_rng, 3), "that floor's chance is gone")
+	assert_eq(DealRooms.item_chance(), 100.0, "a hit does not rule it out")
+	assert_true(DealRooms.roll_after_game(_rng, 3))
 
 func test_batsaac_keeps_his_own_roll_with_the_relics_in_it() -> void:
 	_start(BATSAAC)

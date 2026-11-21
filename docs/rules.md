@@ -462,7 +462,7 @@ The Binding of Isaac's deal rooms, as a rare event. One can only be dealt after 
 - **Angel Room** — Every item is free, but take one and the rest vanish.
 - The first deal door of a run is always the Devil's. After that each door has a 50% chance of being the Angel's, and putting 10 Gold into a Donation Machine since the last difficulty up adds another 50% coin flip.
 - Take one Deal with the Devil and no Angel Room will ever open for you again that run. Walk away from your first Devil Room without going in, and the next door is guaranteed to be an Angel's.
-- Relics that raise the Devil Deal chance — Book of Revelations, The Book of Belial — work for every player. Hold one and the chance shows beside your character; it is rolled once each difficulty up, after the game the difficulty up lands in, for a bonus door before that game's event — if no enemy took your Health in it.
+- Relics that raise the Devil Deal chance — Book of Revelations, The Book of Belial — work for every player. Hold one and the chance shows beside your character; it is rolled once each difficulty up, after the game the difficulty up lands in, for a bonus door before that game's event — whether or not an enemy hurt you.
 
 ## 🎒 What you carry
 

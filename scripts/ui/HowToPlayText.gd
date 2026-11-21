@@ -876,7 +876,7 @@ static func _ch_events() -> Dictionary:
 				+ "Book of Belial — work for every player. Hold one and the chance "
 				+ "shows beside your character; it is rolled once each difficulty "
 				+ "up, after the game the difficulty up lands in, for a bonus door "
-				+ "before that game's event — if no enemy took your Health in it."),
+				+ "before that game's event — whether or not an enemy hurt you."),
 		],
 	}
 

@@ -300,7 +300,7 @@ Then, back in `Overworld2.report`:
    (`DealRooms.roll_after_game`) for a bonus deal door that opens before that
    event: Batsaac's after a clean game, never on the first; anyone else's — what
    their relics add, Book of Revelations and the like — once a difficulty up, after
-   the clean game it lands in. A game the player opened a **shop** at
+   the game it lands in, hurt or not. A game the player opened a **shop** at
    queues its button.
 3. Signal `game_beaten` (any report but an escape, won or not) → items (Burning
    Blood), every charged item +1, Harvesting, the toast, the overlay.

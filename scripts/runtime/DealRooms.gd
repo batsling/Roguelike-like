@@ -15,7 +15,8 @@ extends RefCounted
 #   * ANY OTHER PLAYER HOLDING A RELIC THAT RAISES THE CHANCE (Book of
 #     Revelations, The Book of Belial) gets that much of it (the owner, 21 Nov
 #     2026): rolled once a floor, after the game a difficulty up lands in, for a
-#     bonus door of the same kind — clean games only (`roll_item_bonus`).
+#     bonus door of the same kind (`roll_item_bonus`). No clean-game gate: the
+#     owner took it off this one ("it should work without it").
 #   * A room has 2-4 items, with 4 the rarest (Repentance's layout weights). Devil
 #     items cost Max Health by rarity (2/4/6/8); Isaac's three-soul-heart price is
 #     3 Shields when there is no Max Health left to pay with. Angel items are free,
@@ -265,15 +266,12 @@ static func item_roll_due() -> bool:
 	return int(s.get("floor", 0)) > int(s.get("rolled_floor", 0))
 
 # The relics' chance for a player without the mechanic: only what they hold, cut
-# by a recent door like Batsaac's, and nothing after a game an enemy hurt you in
-# or on a floor that has already had its door.
+# by a recent door like Batsaac's, and nothing on a floor that has already had its
+# door. Whether an enemy hurt you does not come into it (the owner, 21 Nov 2026).
 static func item_chance_parts() -> Dictionary:
 	var out := {"items": item_bonus(), "mult": seen_multiplier(), "total": 0.0, "why": ""}
 	if float(out["items"]) <= 0.0:
 		out["why"] = "no relic that raises it"
-		return out
-	if not clean_game():
-		out["why"] = "an enemy took Health this game"
 		return out
 	if door_this_floor():
 		out["why"] = "a door already opened this floor"
@@ -285,8 +283,8 @@ static func item_chance() -> float:
 	return float(item_chance_parts()["total"])
 
 # After a report (Overworld2.report): when a difficulty up has landed since the
-# last roll, the relics' chance is rolled ONCE for it — spent whether or not this
-# game was clean, as Isaac has one chance a floor.
+# last roll, the relics' chance is rolled ONCE for it, as Isaac has one chance a
+# floor.
 static func roll_item_bonus(rng: RandomNumberGenerator) -> bool:
 	if active() or not item_roll_due():
 		return false
@@ -297,7 +295,7 @@ static func roll_item_bonus(rng: RandomNumberGenerator) -> bool:
 	return Stats.roll_chance(rng, c, Stats.Favour.HIGH)
 
 # EVERY bonus door a report can open, whoever the player is: Batsaac's after any
-# clean game, anyone else's relic chance after a difficulty up.
+# clean game, anyone else's relic chance after any difficulty up.
 static func roll_after_game(rng: RandomNumberGenerator, games_before: int) -> bool:
 	if active():
 		return roll_bonus(rng, games_before)

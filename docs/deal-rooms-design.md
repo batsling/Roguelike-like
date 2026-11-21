@@ -21,14 +21,15 @@ Fandom copy refuses scripts).
 
 ## 1. The gate: no enemy took your Health this game
 
-Every deal room — drawn from the bag or found by Batsaac — needs a game in which
+Every deal room drawn from the bag or found by Batsaac needs a game in which
 no ENEMY took any of the player's Health. "An enemy" is a hit that got past the
 Shields (`HEALTH_SOURCE_ENEMY_ATTACK`) or a status's charge (`HEALTH_SOURCE_STATUS`,
 Burn's bill). A hit a Shield stopped took no Health, so it does not count; nor does
 anything the player did to themselves (an event's price, the Blood Donation
 Machine, a pill, Hunger, a deal), because Isaac's red-heart-damage rule excludes
 self-damage too. `DealRooms.note_health_lost` counts it off `TriggerBus.health_lost`;
-`note_game_started` (from `GameLoop2.choose_game`) clears it.
+`note_game_started` (from `GameLoop2.choose_game`) clears it. The relics' roll for
+other players (§3.1) does not ask it.
 
 On the events sheet it is the Requirement `enemy_hp_lost=0`, a gate stat like any
 other (`EventSystem._run_stat`, `generate_event2_tres.GATE_STATS`).
@@ -89,9 +90,10 @@ increasing difficulty". A player WITHOUT the mechanic who holds a relic with
 that much — none of Batsaac's base or boss terms — cut by the same recent-door
 multiplier (`item_chance_parts`). It is rolled ONCE per difficulty up, at the
 report of the game the difficulty up lands in (`roll_item_bonus`, `rolled_floor`),
-and is spent for that floor whether or not the game was clean; a game an enemy
-took Health in, or a floor that already had its door, rolls nothing. A hit is the
-same bonus door before the game's own event. `roll_after_game` is the one call the
+and is spent for that floor. **No clean-game gate here** — the owner: "get rid of
+the no hit clause since it should work without it" — so an enemy taking Health
+does not matter; only a floor that already had its door rolls nothing. A hit is
+the same bonus door before the game's own event. `roll_after_game` is the one call the
 report makes for both kinds of player.
 
 The chip shows for them too (`chip_active`) while they hold such a relic, with the

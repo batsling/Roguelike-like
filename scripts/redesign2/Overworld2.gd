@@ -7169,7 +7169,6 @@ func _item_deal_tooltip(door: float) -> String:
 	if float(parts["mult"]) < 1.0:
 		lines.append("×%s — a deal door opened recently" % str(parts["mult"]))
 	lines.append("Angel Room chance if a door opens: %d%%" % roundi(DealRooms.angel_chance()))
-	lines.append("Any Health an enemy takes in that game rules a door out.")
 	return "\n".join(lines)
 
 # The Hunger pips and whether Eat is live. Hidden for a player without Hunger.

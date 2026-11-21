@@ -16,8 +16,9 @@ For how the project is laid out and how its systems fit together, see
   %. It will trigger as a bonus event after increasing difficulty". A player
   without Batsaac's mechanic who holds Book of Revelations or The Book of Belial
   gets that relic's chance, shown on the same chip, rolled once per difficulty up
-  after the game it lands in (clean games only) for a bonus door before the
-  game's event (`DealRooms.roll_item_bonus`, `roll_after_game`). The Book of
+  after the game it lands in — whether or not an enemy took Health in it (the
+  owner: "get rid of the no hit clause since it should work without it") — for a
+  bonus door before the game's event (`DealRooms.roll_item_bonus`, `roll_after_game`). The Book of
   Belial is Charged 3, not 2.
 
 - **Two more devil-pool items (21 Nov 2026).** The owner: "add some more devil
