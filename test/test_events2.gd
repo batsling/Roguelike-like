@@ -21,6 +21,9 @@ const GROVE := &"morphic_grove"
 const HOLLOW := &"whispering_hollow"
 
 var _hp: int
+# The Shields that stay: a Health price is lethal only past them now (GameState.
+# health_and_shields), so every test here starts with none and puts them back.
+var _bonus_shields: int
 var _max_hp: int
 var _goals: Array
 var _fired: Dictionary
@@ -48,6 +51,8 @@ func before_each() -> void:
 	# and restore it — a leaked curse would show up as a mystery failure three
 	# scripts later.
 	_hp = GameState.hp
+	_bonus_shields = GameState.bonus_shields
+	GameState.bonus_shields = 0
 	_max_hp = GameState.max_hp
 	_goals = GameState.event_goals.duplicate(true)
 	_fired = GameState.events_fired.duplicate(true)
@@ -75,6 +80,7 @@ func before_each() -> void:
 
 
 func after_each() -> void:
+	GameState.bonus_shields = _bonus_shields
 	GameState.event_goals = _goals.duplicate(true)
 	GameState.pending_curses.clear()
 	GameState.events_fired = _fired.duplicate(true)
@@ -746,6 +752,13 @@ func test_a_lone_event_at_its_rarity_can_only_repeat_itself() -> void:
 	# bag reshuffles onto it every time — and that is the intended answer, not a
 	# gap. If the sheet ever gives that rung a second event this test becomes
 	# unreachable and says so instead of quietly passing.
+	# ARRANGED, not hoped for: the run is Batsaac's, whose bag never deals the Devil
+	# Room (DealRooms finds his by chance), which leaves the Potion Lab alone at
+	# Rare again — the rung this test was written against. Put back before the
+	# test ends.
+	var player_before: StringName = GameState.player_id
+	GameState.player_id = &"batsaac"
+	var restore := func(): GameState.player_id = player_before
 	var lone: EventData2 = null
 	for ev in Data.all_events2():
 		if ev is EventData2 and _rarity_siblings(ev) == 1 \
@@ -753,6 +766,7 @@ func test_a_lone_event_at_its_rarity_can_only_repeat_itself() -> void:
 			lone = ev
 			break
 	if lone == null:
+		restore.call()
 		pending("every rarity rung holds more than one ungated event right now")
 		return
 	GameState.events_seen[lone.id] = true
@@ -760,6 +774,7 @@ func test_a_lone_event_at_its_rarity_can_only_repeat_itself() -> void:
 	var bag: Array = Data.rarity_bucket_of(
 		[lone], Data.rarity_index_of(lone))
 	assert_eq(bag.size(), 1, "%s really is alone at its rarity" % lone.id)
+	restore.call()
 
 
 # How many ungated events share `ev`'s rarity rung, itself included.

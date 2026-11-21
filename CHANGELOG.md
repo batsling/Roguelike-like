@@ -11,6 +11,58 @@ For how the project is laid out and how its systems fit together, see
 
 ---
 
+- **No hit rule on the deal-room events (21 Nov 2026).** The owner: "I was
+  talking about the devil room event as well because batsaac's mechanic already
+  integrates getting hit". The Devil and Angel Rooms' `enemy_hp_lost=0`
+  Requirement is gone: the bag deals the Devil Room after any game. Only
+  Batsaac's own roll still needs a game no enemy took Health in.
+
+- **The deal chance for every player (21 Nov 2026).** The owner: "holding things
+  that give devil deal bonus should give it to any player and it should show the
+  %. It will trigger as a bonus event after increasing difficulty". A player
+  without Batsaac's mechanic who holds Book of Revelations or The Book of Belial
+  gets that relic's chance, shown on the same chip, rolled once per difficulty up
+  after the game it lands in — whether or not an enemy took Health in it (the
+  owner: "get rid of the no hit clause since it should work without it") — for a
+  bonus door before the game's event (`DealRooms.roll_item_bonus`, `roll_after_game`). The Book of
+  Belial is Charged 3, not 2.
+
+- **Two more devil-pool items (21 Nov 2026).** The owner: "add some more devil
+  deal items so that there's theoretically enough". **The Book of Belial**
+  (Uncommon, Charged 2, `book, devilish`): +4 Temporary Strength, and Isaac's
+  +12.5% Devil Deal chance while held. **Whore of Babylon** (Common,
+  `devilish`): +3 Strength and +1 Speed while at 2 Health or less — a new
+  `while hp<=2` on `passive_status:` (`ItemData.status_condition`), switched on
+  and off by `GameState._sync_conditional_statuses` whenever Health or the relics
+  move, and only its own share. The Mark now gives +1 Strength like the Vajra in
+  place of its Bash. Art: the wiki's newest sprites. The devil pool is five.
+
+- **Devil and Angel Deals, Batsaac's mechanic (21 Nov 2026).** The owner: "I'm
+  ready to start batsaac's mechanic, Devil and Angel deals". The Binding of
+  Isaac: Repentance's deal rooms, from the wiki's own numbers
+  (`docs/deal-rooms-design.md`). **Two Rare events**, Devil Room and Angel Room,
+  shaped like the Arcade Room: the door's picture with Enter / Leave, then the
+  statue and 2–4 items (Repentance's layout weights: four is rare). Any player
+  can be dealt one, but only after a game in which **no enemy took any of their
+  Health** (`enemy_hp_lost=0`); the bag deals the Devil Room and Repentance's coin
+  flips decide at the door whether it is the Angel's (first door always the
+  Devil's; 50%, +50% for 10 Gold into a Donation Machine this floor; a deal ever
+  taken shuts the Angels; leaving the first Devil Room unentered promises one).
+  Devil items cost **Max Health by rarity, 2/4/6/8**, all of it when the price is
+  bigger, 3 Shields at 0 Max Health; Angel items are free and the rest vanish.
+  **Batsaac** (the `Devil and Angel Deals` mechanic) does not draw them: after a
+  clean game, never the first, he rolls Isaac's deal chance — 1%, +35% when the
+  floor's boss fell that game, +99% when no enemy took Health all floor (a floor
+  is a difficulty-up boss's band), ×0.25 / ×0.5 after a recent door, one a floor
+  — for a bonus door before the game's own event, with the odds on a chip beside
+  his token. Book of Revelations carries Isaac's +17.5% (`deal_chance`, so the
+  items sheet's `passive:` now takes a decimal). **Rule change that came with it,
+  everywhere:** a run at 0 Health or 0 Max Health lives while it holds permanent
+  Shields (`GameState.out_of_health`); a Health bill that runs past the Health
+  comes off them, one per point; Max Health floors at 0, Drain included; lethal
+  warnings count the Shields. Art: the wiki's original doors, statues and map
+  marks. Tests `test_deal_rooms.gd`.
+
 - **Live Stun and Shield numbers in loot text, green and red (20 Nov 2026).** The
   owner: "show the proper amount when factoring dex or power, with green text if
   higher than base and red if lower". `scripts/runtime/LiveNumbers.gd` rewrites

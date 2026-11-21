@@ -19,7 +19,8 @@ extends Resource
 # is not in this list.
 #   hunger               docs/players-design.md §4 — HungerSystem
 #   unidentified_equipment docs/players-design.md §5 — WeaponSystem's +/- roll
-const MECHANICS := [&"hunger", &"unidentified_equipment"]
+#   devil_and_angel_deals docs/deal-rooms-design.md — DealRooms (Batsaac)
+const MECHANICS := [&"hunger", &"unidentified_equipment", &"devil_and_angel_deals"]
 
 @export var id: StringName
 @export var display_name: String

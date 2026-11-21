@@ -320,6 +320,8 @@ func donate(target, amount: int) -> void:
 	var paid: int = mini(amount, room)
 	GameState.change_gold(-paid)
 	GameStats.add_to_donation_bank(paid)
+	# Ten gold in on a floor is one more Angel Room coin flip (DealRooms).
+	DealRooms.note_donated(paid)
 	if inst.is_empty():
 		return
 	objects_changed.emit()

@@ -909,6 +909,10 @@ func _ready() -> void:
 	# number and says nothing, so the player was left standing at 0 Health with
 	# the run carrying on around them.
 	GameState.hp_changed.connect(_on_hp_changed)
+	# …and the Shields, since a run at 0 Health is alive only while it holds one
+	# (GameState.out_of_health). An event that spends the last Shield at 0 Health
+	# moves no Health at all, so the Health signal alone would never notice.
+	GameState.stats_changed.connect(func(): _check_death.call_deferred())
 
 func reset() -> void:
 	arrivals.clear()
@@ -1838,6 +1842,8 @@ func choose_game(enemy: GoalEnemyData, escort_type: StringName = &"",
 	_clear_attempts()
 	_clear_game_record()
 	hurt_this_game = false
+	# …and the deal rooms' record of what enemies took from you THIS game.
+	DealRooms.note_game_started()
 	# The superseded bodies leave the board rather than lingering on it as ones
 	# nobody chose: they were never played for. Both of them — the second one only ever
 	# stood there because the game it came with did.
@@ -1920,6 +1926,9 @@ func _count_spawn_event() -> void:
 
 func _capstone_if_due(type_key: StringName = &"", tier: int = -1) -> void:
 	if RunDifficulty.is_boss_spawn(GameState.spawn_events):
+		# A difficulty up is a new FLOOR for the deal rooms (DealRooms), and its
+		# boss is that floor's boss.
+		DealRooms.note_new_floor()
 		_land_capstone_boss(type_key, tier)
 	# …and the difficulty up's third half: a NEW LOCATION (docs/locations-design.md
 	# §2), after the boss, so what it stands up arrives on top of everything the
@@ -1957,8 +1966,10 @@ func _land_capstone_boss(type_key: StringName = &"", tier: int = -1) -> void:
 	var boss: GoalEnemyData = roll_boss(key, tier if tier >= 0 else RunDifficulty.current_tier())
 	if boss == null:
 		return          # an empty boss roster: the band closes without one
-	if spawn_to_stack(boss) <= 0:
+	var boss_inst: int = spawn_to_stack(boss)
+	if boss_inst <= 0:
 		return
+	DealRooms.note_floor_boss(boss_inst)
 	# On a Fracture the capstone does not walk on alone (docs/fracture-design.md
 	# §3): a body of the same game type and tier comes with it, landed the way the
 	# boss was, so it is no more an arrival than the boss is.
@@ -5257,7 +5268,7 @@ func _on_hp_changed(_hp: int, _max_hp: int) -> void:
 # menus, a run being torn down and a character being applied all move Health
 # around, and none of them is a death.
 func _check_death() -> void:
-	if run_over or GameState.hp > 0 or GameState.character_id == &"":
+	if run_over or not GameState.out_of_health() or GameState.character_id == &"":
 		return
 	_finish_run(false)
 
@@ -5742,7 +5753,9 @@ func _take_hit(damage: int, res: Dictionary,
 			hurt_this_game = true
 	res["blocked"] = int(res.get("blocked", 0)) + absorbed
 	res["damage_taken"] = int(res.get("damage_taken", 0)) + overflow
-	if GameState.hp <= 0 and not run_over:
+	# Alive at 0 Health while a Shield stands (GameState.out_of_health) — and a hit
+	# that breaks the LAST one with no Health behind it is the one that kills.
+	if GameState.out_of_health() and not run_over:
 		_finish_run(false)
 	return {"damage": damage, "blocked": absorbed, "pool": pool}
 
@@ -5754,7 +5767,7 @@ func lose_health(amount: int, source: String = "") -> void:
 	if amount <= 0:
 		return
 	GameState.change_hp(-amount, source)
-	if GameState.hp <= 0 and not run_over and GameState.character_id != &"":
+	if GameState.out_of_health() and not run_over and GameState.character_id != &"":
 		_finish_run(false)
 
 # Damage the player from something that is NOT an enemy's swing — a status's
@@ -5803,6 +5816,8 @@ func _take_off_board(idx: int) -> void:
 	if idx < 0 or idx >= stack.size():
 		return
 	var inst: int = int(stack[idx].get("instance", 0))
+	# A floor boss leaving the board is its floor's boss fight won (DealRooms).
+	DealRooms.note_off_board(inst)
 	# Kept for the rest of the game so its optional bonus can still be claimed off
 	# it (§2.1, see claim_enemy_bonus). A copy, because the entry is about to stop
 	# existing and the claim reads its statuses.
@@ -8579,8 +8594,10 @@ func _drain_stat(stat: StringName, amount: int) -> int:
 			# Through `set_max_hp`, which is what clamps current Health to the new
 			# ceiling and tells Stats the pool moved — a bare write to `max_hp` would
 			# leave a player standing on more Health than they have room for.
+			# Down to 0, not 1: a run at 0 Max Health lives on its Shields and ends
+			# when they are gone (GameState.out_of_health, the owner, 21 Nov 2026).
 			var before: int = GameState.max_hp
-			GameState.set_max_hp(maxi(1, before - amount))
+			GameState.set_max_hp(maxi(0, before - amount))
 			return before - GameState.max_hp
 		"luck", "scramble", "bash", "dash", "transmute":
 			# `verb_value` reads through the same field map `grant_run_stat` writes

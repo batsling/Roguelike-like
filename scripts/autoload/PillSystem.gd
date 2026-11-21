@@ -188,7 +188,9 @@ func would_save_you(pill: PillData, horse: bool) -> bool:
 			continue
 		if String(op.get("lethal", "")) != "heal_full":
 			continue
-		if GameState.hp <= _scaled_value(op, "value", 1):
+		# Against the Health AND the Shields a bill falls through to (GameState.
+		# change_hp): with Shields behind it the dose is no longer the one that kills.
+		if GameState.health_and_shields() <= _scaled_value(op, "value", 1):
 			return true
 	return false
 
@@ -385,7 +387,7 @@ func _apply_one(op: Dictionary, out: Dictionary, rng: RandomNumberGenerator,
 			# The deliberate NON-mirror (§3): the room goes, the Health stays, and
 			# only moves when it no longer fits.
 			var down: int = _scaled_value(op, "value", 1)
-			GameState.set_max_hp(maxi(1, GameState.max_hp - down), false)
+			GameState.set_max_hp(maxi(0, GameState.max_hp - down), false)
 			out["logs"].append("You lose %d Max Health." % down)
 			return true
 		"lose_hp":

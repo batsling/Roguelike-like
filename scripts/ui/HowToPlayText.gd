@@ -585,11 +585,16 @@ static func _ch_health() -> Dictionary:
 		"blocks": [
 			_p("The whole survival model is two numbers, and they are deliberately "
 				+ "tiny so they fit on a stream overlay."),
-			_kv("Health", "Set by your character. Reaching 0 ends the run, "
-				+ "immediately, wherever you are."),
+			_kv("Health", "Set by your character. Reaching 0 with no Shields left "
+				+ "ends the run, immediately, wherever you are."),
 			_kv("Shields", "Each stops one hit outright, however big. The "
 				+ "Temporary ones a game grants expire when you report it; the "
 				+ "plain ones stay until something breaks them."),
+			_p("The Shields that stay keep you alive at 0 Health — even at 0 Max "
+				+ "Health — the way soul hearts do in Isaac. A price paid in Health "
+				+ "(an event, a Blood Donation Machine, a deal) that runs past your "
+				+ "Health takes one of those Shields per point instead. When the "
+				+ "last one goes with no Health behind it, the run is over."),
 			_h("Everything that can take Health off you"),
 			_b("A follower striking you on a turn — every lost run hands the board "
 				+ "one, and reporting a game near the Amulet hands it the extra "
@@ -650,6 +655,21 @@ static func _ch_players() -> Dictionary:
 		_b("Drinking any potion is +1. So is eating: press Eat beside the icons and "
 			+ "click a piece of food in your pack or a food relic — it is gone, "
 			+ "and you are +1. You cannot eat at %d." % HungerSystem.MAX),
+		_h("Devil and Angel Deals"),
+		_b("You FIND deal rooms the way Isaac does, instead of drawing them as "
+			+ "events. After any game in which no enemy took your Health — never "
+			+ "the first — a door may open before the game's own event."),
+		_b("The chance is %d%%, +%d%% if the floor's boss fell that game, and "
+			% [roundi(DealRooms.BASE_CHANCE), roundi(DealRooms.BOSS_CLEAN_BONUS)]
+			+ "+%d%% more if no enemy took your Health from the moment that boss "
+			% roundi(DealRooms.FLOOR_CLEAN_BONUS)
+			+ "walked on. A floor is the stretch from one difficulty-up boss to the "
+			+ "next. Book of Revelations adds 17.5% while you hold it, The Book of "
+			+ "Belial 12.5%."),
+		_b("One door a floor. After one opens the chance is quartered for the "
+			+ "rest of that floor and the next, and halved on the one after."),
+		_b("The two marks beside your character show the odds: the Devil's and "
+			+ "the Angel's share of a door opening after this game."),
 		_h("Unidentified equipment"),
 		_b("Every weapon you FIND is anywhere from -2 to +2 Stun, and you do not "
 			+ "know which until you swing it (it reads \"Hero Sword +?\"). A "
@@ -832,6 +852,29 @@ static func _ch_events() -> Dictionary:
 				+ "because you are broke."),
 			_note("The Donation Machine's bank is the one number in this game that "
 				+ "is not about the current run. It survives your death."),
+			_h("Devil and Angel Rooms"),
+			_p("The Binding of Isaac's deal rooms, as a rare event. Its door shows "
+				+ "first; walk in and the statue is there with %d to %d items, "
+				% [2, 4] + "four only rarely."),
+			_kv("Devil Room", "Each item costs Max Health by its rarity: %s for "
+				% ", ".join(PackedStringArray(DealRooms.PRICE_BY_RARITY.map(func(n): return str(n))))
+				+ "Common to Legendary. A price bigger than your Max Health takes "
+				+ "all of it, and you live on only if you hold a Shield. With no "
+				+ "Max Health left, a deal costs %d Shields." % DealRooms.SHIELD_PRICE),
+			_kv("Angel Room", "Every item is free, but take one and the rest vanish."),
+			_b("The first deal door of a run is always the Devil's. After that each "
+				+ "door has a %d%% chance of being the Angel's, and putting %d Gold "
+				% [roundi(DealRooms.ANGEL_BASE_FLIP), DealRooms.DONATION_NEEDED]
+				+ "into a Donation Machine since the last difficulty up adds another "
+				+ "%d%% coin flip." % roundi(DealRooms.DONATION_FLIP)),
+			_b("Take one Deal with the Devil and no Angel Room will ever open for "
+				+ "you again that run. Walk away from your first Devil Room without "
+				+ "going in, and the next door is guaranteed to be an Angel's."),
+			_b("Relics that raise the Devil Deal chance — Book of Revelations, The "
+				+ "Book of Belial — work for every player. Hold one and the chance "
+				+ "shows beside your character; it is rolled once each difficulty "
+				+ "up, after the game the difficulty up lands in, for a bonus door "
+				+ "before that game's event — whether or not an enemy hurt you."),
 		],
 	}
 

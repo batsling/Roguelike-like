@@ -187,7 +187,7 @@ Kept deliberately tiny for HUD readability.
 
 | Stat | Value | Notes |
 |---|---|---|
-| Health | character-set (5–10) | Current HP. Lose at 0. |
+| Health | character-set (5–10) | Current HP. Lose at 0 **with no Shields left** — a run at 0 Health (or 0 Max Health) lives on its Shields, as Isaac lives on soul hearts (`GameState.out_of_health`; the owner, 21 Nov 2026). A Health *bill* that runs past the Health (an event's price, the Blood Donation Machine, a deal) comes off the Shields, one per point; an enemy's hit met the Shields first anyway. |
 | Max Health | character-set | The cap Health heals up to; **items raise it** (`+N Max Health`). Raising it heals by the same amount — a container arrives full — so the item that means an *empty* one says so with its own token (`gain_empty_max_hp`, Hollow Heart). Lowering it is not the mirror: it takes the room and leaves the Health, which only moves when it no longer fits. |
 | Temporary Shields (`shields`) | granted per game, **no cap** | **The armour the game you selected granted** (see §3.2). Each stops **one whole instance of damage**, however big, before `health` is touched — and they **expire with the game that granted them**. Losing a run does not spend them. |
 | Shields (`bonus_shields`) | gained off the board, **no cap** | The same block, from a pill or a banked game (§4.3) — but they **stay** until something breaks one, and are used only once the Temporary ones are gone. |
@@ -1968,7 +1968,7 @@ as one column per turn says anything can.
 | **Predatory Scent** | An extra turn only when the player **had a status goal and met none of them**. Both halves are the ability. Runs as a turn of its own rather than by bumping the count — it is a free swing for two or three bodies, not the board's pace changing. |
 | **Necromancy (X)** | Raises from **this run's graveyard** — the same list the History's ☠ Fallen tab shows. An empty graveyard is an idle turn. Raised bodies gain the `undead` tag. |
 | **Entry Summon (X, Y)** | A summoner that is **not a wall**: it spends its *first* turn laying X escorts and every turn after that walking and swinging like anything else. The escorts go on **random free squares adjacent to it** rather than in the single cell in front (which is what `_brood_cell` is, and what makes a boxed-in Nested Spawner idle) — so a full lane slows it down instead of stopping it. Each square is rolled against the board *as it stands*, so escort two goes somewhere escort one left free, and one with nowhere to go is simply not laid. |
-| **Drain (X, Y)** | The one rider that takes something **killing the body does not give back**. A thief holds its haul and drops it when it dies; Degradation burns loot the next chest replaces; Drain takes a permanent point off Max Health, Luck, Scramble, Bash, Dash or Transmute. Nothing goes below 0, and **Max Health stops at 1** — a run is lost by Health reaching 0, not by its ceiling doing it. It goes through `grant_run_stat`'s own field map, so `dash` finds `dash_charges`. |
+| **Drain (X, Y)** | The one rider that takes something **killing the body does not give back**. A thief holds its haul and drops it when it dies; Degradation burns loot the next chest replaces; Drain takes a permanent point off Max Health, Luck, Scramble, Bash, Dash or Transmute. Nothing goes below 0 — Max Health included: at 0 the run lives on its Shields and ends when they are gone (§3). It goes through `grant_run_stat`'s own field map, so `dash` finds `dash_charges`. |
 | **Ritual** | Only the **first** turn is spent. Every turn after, the +1 Strength rides a turn the body also walks or swings on — a Ritual that spent every turn stacking would never attack, and the Strength it piled up would never be spent on anything. |
 | **Fireproof** | Refused inside `_add_status_to`, so every route a Burn can arrive by is covered at once — a fire tile, a Scroll of Fire, another enemy's Infliction, a Bolster aura lending it. |
 | **Fading (X)** | A combat is a **game**, so it ticks with the tiles and the borrowed statuses at the end of a report. Running out is a **death**: its own Aftermath fires and its face joins the graveyard. It pays nothing, because nobody did its goal. |
@@ -2336,8 +2336,8 @@ turn up at a shop more often than the rest of their rarity while still dropping
 off a body like anything else. Isaac's shop pool is a separate table nothing else
 reaches; against a catalogue of thirty relics and a run that visits at most ten
 hubs, that would have made every shop the same two items. `devil_room` /
-`angel_room` are authored ahead of the encounters that will read them and are
-inert until those exist.
+`angel_room` are what the Devil and Angel Rooms draw their items from
+(`docs/deal-rooms-design.md`).
 
 Sample synergies already in the sheet: **Crown** doubles Level Ups; **Snowball**
 doubles Transmute gains; **Alien Baby** (+6 Max Health but all enemies +1 Health)
@@ -2351,13 +2351,15 @@ and so brought a piece of machinery with it:
 |---|---|---|
 | **Piggy Bank** | Uncommon, `shop` | The `health_lost` hook — *any* Health leaving the player, anywhere in the run. |
 | **There's Options** | Uncommon, `shop` | A dropped item restated as a Small **chest**, and `boss_chest_bonus` to buy a boss's one a size up (§8.2). |
-| **The Mark** | Uncommon, `devil_room` | Nothing new: +1 Bash and the **Speed** status (§13), the way Vajra grants Strength. |
+| **The Mark** | Uncommon, `devil_room` | Nothing new: the **Strength** and **Speed** statuses (§13), +1 each, the way Vajra grants Strength. (It paid +1 Bash instead of the Strength until 21 Nov 2026.) |
 | **Stigmata** | Uncommon, `angel_room` | Nothing new: +2 Max Health arriving full, and +1 Bash. |
 | **Charm of the Vampire** | Uncommon | The **incremental** counter, and `enemy_killed` for it to count. |
 | **D10** | Common, Charged 2 | `reroll_enemies` — the board re-rolled at its own difficulty and type. |
 | **Wooden Nickel** | Common, Charged 1 | Nothing new: a 50% `chance` at +1 Gold, on the shortest bar in the game. |
 | **Mom's Key** | Uncommon, `shop` | `base_chest_bonus` — +1 Key, and a beaten game's own chest point raised to 2 (§8.2). |
 | **The Book of Sin** | Uncommon, Charged 2 | `one_of` — Gold, Health, a Bomb, a Key or a piece of Loot, one at random. |
+| **The Book of Belial** | Uncommon, Charged 2, `devil_room` | +4 **Temporary** Strength (`games=1`), and Isaac's +12.5% Devil Deal chance while held (`deal_chance`, `docs/deal-rooms-design.md`). |
+| **Whore of Babylon** | Common, `devil_room` | `passive_status: … while hp<=2` — +3 Strength and +1 Speed held up only at 2 Health or less, switched on and off as Health moves (`ItemData.status_condition`, `GameState._sync_conditional_statuses`). |
 | **Latch Key** | Common | Nothing new: +1 Key and +1 Shield kept, +1 Luck while held. |
 | **Book of Revelations** | Rare, Charged 3 | Nothing new: +1 Shield (the pool that stays) per use. |
 | **The Necronomicon** | Uncommon, Charged 3, `devil_room` | Nothing new: Stun 1 on every body on the board and the enemy in play (`apply_status stun 1 target=all`). |
@@ -2385,7 +2387,7 @@ event's bill, or a curse's drain — is not an attack and breaks nothing either.
 `GameLoop2._take_hit` is the only caller that tags it as a swing.
 
 **Ban Hammer** (Uncommon, Yet Another Zombie Survivors) rounds the set out and
-brought nothing with it: +2 Bashes on pickup, the same `gain_stat` The Mark pays
+brought nothing with it: +2 Bashes on pickup, the same `gain_stat` Stigmata pays
 one of.
 
 **The potion five** are the Slay the Spire side of the shelf, and two of them

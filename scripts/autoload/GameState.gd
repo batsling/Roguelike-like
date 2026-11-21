@@ -574,6 +574,11 @@ var last_event_id: StringName = &""
 # game, but each GAME only ever pays one: walking a loop between two nodes would
 # otherwise be an event faucet at a game a pull.
 var event_nodes_fired: Dictionary = {}
+# DEVIL AND ANGEL DEALS (scripts/runtime/DealRooms.gd, docs/deal-rooms-design.md):
+# the Health enemies took this game and this run, the floors and their bosses, the
+# deal doors seen, whether a deal was ever paid for, and the room standing open.
+# Saved with the event bag (serialize_event_goals).
+var deals: Dictionary = DealRooms.fresh()
 
 # ---------------------------------------------------------------------------
 # SHOPS (docs/games-first-redesign.md §14). The logic lives in ShopSystem; this
@@ -778,6 +783,8 @@ func _on_card_obtained(ctx: Dictionary) -> void:
 
 func _on_health_lost(ctx: Dictionary) -> void:
 	fire_run_item_triggers("health_lost", ctx)
+	# The deal rooms' gate: did an ENEMY take Health this game (DealRooms)?
+	DealRooms.note_health_lost(ctx)
 	# Fortune Necklace and friends shatter here rather than in _take_hit, so the
 	# rule holds wherever an enemy's damage is applied from — and so the Shields
 	# get their say first: this hook only runs on Health that actually came off.
@@ -1642,6 +1649,7 @@ func reset_run() -> void:
 	events_seen.clear()
 	last_event_id = &""
 	event_nodes_fired.clear()
+	deals = DealRooms.fresh()
 	# The machines go with the run too — the jams, what was blown up, what has
 	# been spawned. Not the Donation Machine's bank, which is the one thing here
 	# that outlives a run on purpose (GameStats).
@@ -1813,6 +1821,7 @@ func _reset_item_tracking() -> void:
 	_applied_item_verbs = {}
 	_applied_scaling_max_hp = 0
 	_applied_pack_statuses = {}
+	_applied_conditional_statuses = {}
 	max_hp_cap = -1
 	_next_item_instance_id = 1
 	_gold_spent_accum = 0
@@ -1935,12 +1944,17 @@ func set_max_hp(new_max: int, heal_to_full: bool = false) -> void:
 	var capped_max: int = new_max
 	if max_hp_cap >= 0:
 		capped_max = mini(capped_max, max_hp_cap)
-	max_hp = max(1, capped_max)
+	# FLOORS AT 0, NOT 1 (the owner, 21 Nov 2026, with the Devil Deals): a run can
+	# be down to no Max Health at all and still be alive, standing on its Shields
+	# the way Isaac stands on soul hearts. Whether it IS alive is `out_of_health`'s
+	# question, asked by GameLoop2's death checks — never by a floor here.
+	max_hp = maxi(0, capped_max)
 	if heal_to_full:
 		hp = max_hp
 	else:
 		hp = mini(hp, max_hp)
 	Stats.note_max_hp_change(max_hp, old_max)
+	_sync_conditional_statuses()
 	emit_signal("hp_changed", hp, max_hp)
 	# SCALING items keyed off max_hp (Beefy Ring) need a refresh whenever
 	# the pool moves outside of the inventory-recompute path. Guarded by
@@ -1953,6 +1967,7 @@ func change_max_hp(delta: int) -> void:
 
 func set_hp(new_hp: int) -> void:
 	hp = clamp(new_hp, 0, max_hp)
+	_sync_conditional_statuses()
 	emit_signal("hp_changed", hp, max_hp)
 
 # `source` names WHAT took the Health, and is passed through to the health_lost
@@ -1976,6 +1991,21 @@ const HEALTH_SOURCE_STATUS := "status"
 # Max Health items rather than one about healing.
 const HEALTH_SOURCE_MAX_HP_FILL := "max_hp_fill"
 
+# IS THE RUN OUT OF HEALTH? Health at 0 is no longer the whole answer (the owner,
+# 21 Nov 2026): a player at 0 Health — or at 0 MAX Health, after a Devil Deal took
+# the last of it — is still alive while they hold permanent Shields, exactly as
+# Isaac lives on soul hearts with no red ones left. Temporary Shields do not count:
+# they go at the end of the game whatever happens. Every death check in the run
+# asks this, so the rule is one line.
+func out_of_health() -> bool:
+	return hp <= 0 and bonus_shields <= 0
+
+# How much a Health BILL can take before the run ends: the Health, then the
+# Shields behind it (change_hp's fall-through). What EventSystem.is_lethal and the
+# deal rooms measure a price against.
+func health_and_shields() -> int:
+	return maxi(0, hp) + maxi(0, bonus_shields)
+
 func change_hp(delta: int, source: String = "") -> void:
 	# Rejuvenation Rack (§8.1): a heal lands at its multiple. Applied HERE, at the
 	# one point every gain in the run passes through, so the doubling reaches a
@@ -1985,6 +2015,19 @@ func change_hp(delta: int, source: String = "") -> void:
 	if delta > 0 and source != HEALTH_SOURCE_MAX_HP_FILL:
 		delta *= heal_multiplier()
 	var before: int = hp
+	# A BILL THAT RUNS PAST THE HEALTH COMES OFF THE SHIELDS (the owner, 21 Nov
+	# 2026): Isaac's Blood Donation Machine takes a soul heart once the red ones are
+	# gone, and so does every self-inflicted loss here — an event's price, a pill,
+	# Hunger, a deal. One Shield per point, since a bill is points rather than an
+	# instance of damage. An enemy's hit and a status's charge are NOT bills: they
+	# met the Shields first in GameLoop2._take_hit, and what got past them (Pierce)
+	# is meant to land on Health and nowhere else.
+	if delta < 0 and hp + delta < 0 and bonus_shields > 0 \
+			and source != HEALTH_SOURCE_ENEMY_ATTACK and source != HEALTH_SOURCE_STATUS:
+		var past: int = -(hp + delta)
+		var taken: int = mini(past, bonus_shields)
+		bonus_shields -= taken
+		emit_signal("stats_changed")
 	set_hp(hp + delta)
 	# "You lost Health" (Piggy Bank, §8.1) — fired on what ACTUALLY came off,
 	# not on what was asked for, so a 5-point drain against 2 Health left is one
@@ -2794,6 +2837,7 @@ func serialize_event_goals() -> Dictionary:
 		"last": String(last_event_id),
 		"nodes": event_nodes_fired.keys(),
 		"objects": ObjectSystem.to_save(),
+		"deals": deals.duplicate(true),
 	}
 
 func restore_event_goals(data: Dictionary) -> void:
@@ -2815,6 +2859,12 @@ func restore_event_goals(data: Dictionary) -> void:
 		event_nodes_fired[StringName(k)] = true
 	last_event_id = StringName(data.get("last", ""))
 	ObjectSystem.from_save(data.get("objects", {}))
+	# A save from before the deal rooms has none: a fresh record, every key filled.
+	deals = DealRooms.fresh()
+	var saved_deals = data.get("deals", {})
+	if saved_deals is Dictionary:
+		for k in saved_deals:
+			deals[k] = saved_deals[k]
 
 # --- shops (§14) -----------------------------------------------------------
 #
@@ -2958,7 +3008,7 @@ func restore_run_resources(snap: Dictionary) -> void:
 	# The ceiling, put back as base + WHAT THE PACK IS CURRENTLY CONTRIBUTING, so
 	# that _recompute_item_bonuses below — which works in deltas against those same
 	# applied totals — lands on base + what the RESTORED pack contributes.
-	max_hp = maxi(1, int(snap.get("base_max_hp",
+	max_hp = maxi(0, int(snap.get("base_max_hp",
 		max_hp - _applied_item_max_hp - _applied_scaling_max_hp))
 		+ _applied_item_max_hp + _applied_scaling_max_hp)
 	shields = maxi(0, int(snap.get("shields", shields)))
@@ -3729,6 +3779,11 @@ func remove_item_at(index: int) -> void:
 func _apply_status_bonuses(item: ItemData, direction: int) -> void:
 	if item == null or item.status_bonuses.is_empty():
 		return
+	# A grant held only WHILE something is true is the sync's to switch, not the
+	# slot's to put up (Whore of Babylon, _sync_conditional_statuses).
+	if not item.status_condition.is_empty():
+		_sync_conditional_statuses()
+		return
 	for key in item.status_bonuses.keys():
 		var stacks: int = int(item.status_bonuses[key]) * direction
 		if stacks != 0:
@@ -3744,6 +3799,48 @@ func _apply_status_bonuses(item: ItemData, direction: int) -> void:
 # change — and, like a relic's, only ever its own share: Speed gained any other way
 # is never the pack's to take back.
 var _applied_pack_statuses: Dictionary = {}
+
+# --- relic statuses held only WHILE a condition holds (ItemData.status_condition) --
+#
+# Whore of Babylon: +3 Strength and +1 Speed at 2 Health or less. The same diff the
+# pack's statuses use: what the held relics whose condition is met want, against
+# what was applied a moment ago, re-asked whenever Health or the relics change.
+# Only ever its own share, so Strength gained any other way is never taken back.
+var _applied_conditional_statuses: Dictionary = {}
+
+func _conditional_statuses_wanted() -> Dictionary:
+	var want: Dictionary = {}
+	for it in inventory:
+		if not (it is ItemData):
+			continue
+		var item: ItemData = it
+		if item.status_condition.is_empty() or item.status_bonuses.is_empty():
+			continue
+		if not item.status_condition_met():
+			continue
+		for k in item.status_bonuses.keys():
+			want[String(k)] = int(want.get(String(k), 0)) + int(item.status_bonuses[k])
+	return want
+
+func _sync_conditional_statuses() -> void:
+	var want: Dictionary = _conditional_statuses_wanted()
+	if want.is_empty() and _applied_conditional_statuses.is_empty():
+		return
+	var keys: Dictionary = {}
+	for k in want.keys():
+		keys[k] = true
+	for k in _applied_conditional_statuses.keys():
+		keys[k] = true
+	var before: Dictionary = _applied_conditional_statuses
+	_applied_conditional_statuses = want
+	for k in keys.keys():
+		var delta: int = int(want.get(k, 0)) - int(before.get(k, 0))
+		if delta != 0:
+			apply_status(StringName(k), delta)
+
+# A save load restores the statuses with this share already in them.
+func adopt_conditional_statuses() -> void:
+	_applied_conditional_statuses = _conditional_statuses_wanted()
 
 func _on_pack_changed() -> void:
 	_recompute_item_bonuses()
@@ -3910,8 +4007,9 @@ func _apply_capped_max_hp_delta(total: int, applied: int) -> int:
 	if max_hp_cap >= 0:
 		new_max = mini(new_max, max_hp_cap)
 	var actual_delta: int = new_max - max_hp
-	max_hp = maxi(1, new_max)
+	max_hp = maxi(0, new_max)
 	hp = mini(hp, max_hp)
+	_sync_conditional_statuses()
 	emit_signal("hp_changed", hp, max_hp)
 	return applied + actual_delta
 

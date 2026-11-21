@@ -89,7 +89,10 @@ TRIGGERS = ("after", "before")
 # on, since its Take and Give has to store one.
 GATE_STATS = ("hp", "max_hp", "gold", "games", "keys", "bombs", "bash", "dash",
               "push", "transmute", "scramble", "shields", "relics", "potions",
-              "upgradeable", "enemies", "curses", "cards")
+              "upgradeable", "enemies", "curses", "cards",
+              # Health an ENEMY took this game — the Devil Room's gate
+              # (scripts/runtime/DealRooms.gd).
+              "enemy_hp_lost")
 
 
 # --- the Requirement column -------------------------------------------------

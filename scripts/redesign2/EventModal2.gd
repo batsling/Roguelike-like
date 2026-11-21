@@ -121,6 +121,11 @@ var _chip: Button = null
 # still on the event's loot table, which the player can be moving while it is up.
 var _exit_button: Button = null
 var _backdrop_nodes: Array = []
+# THE DEAL ROOMS (DealRooms): the picture is the DOOR until you walk in, and then
+# the statue that stands in the room — so the node is held to be repainted. And
+# the room's items, laid out under the prose the way the Arcade's cabinets are.
+var _art_rect: TextureRect = null
+var _deal_box: HFlowContainer = null
 # A CHOICE THAT ASKS "WHICH" is under way (_begin_pick): the Ominous Forge's
 # Upgrade 1 Loot is answered in the pack, the Old Beggar's Offer Gold on the board,
 # and both are under this panel. So the event steps aside — no resume chip, since
@@ -169,6 +174,10 @@ func _start(host: Node, event: EventData2, game_id: StringName = &"") -> void:
 	if not ObjectSystem.objects_changed.is_connected(_on_objects_changed):
 		ObjectSystem.objects_changed.connect(_on_objects_changed)
 	EventSystem.mark_fired(_event, game_id)
+	# A deal room opened by anything but its door (the dev panel, a test) still
+	# needs a room to stand in.
+	if DealRooms.is_deal_event(_event):
+		DealRooms.ensure_room(_event.id)
 	# Roll whatever this event's content depends on the RUN for — the Relic
 	# Trader's three offers are built from the player's own pack. Once, here,
 	# rather than per repaint, so a button cannot rename itself under the cursor.
@@ -271,6 +280,13 @@ func _build() -> void:
 	_objects_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_objects_drawn = []
 	_right.add_child(_objects_box)
+	# A deal room's items, in the same place in the column as the machines.
+	_deal_box = HFlowContainer.new()
+	_deal_box.add_theme_constant_override("h_separation", UITheme.GAP)
+	_deal_box.add_theme_constant_override("v_separation", UITheme.GAP)
+	_deal_box.alignment = FlowContainer.ALIGNMENT_CENTER
+	_deal_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_right.add_child(_deal_box)
 	# The table the event opened with, under the machines and above the buttons —
 	# the same place in the column, for the same reason: it is a thing standing in
 	# the room with you, and the choices below it are what you do about the room.
@@ -337,6 +353,7 @@ func _art_column(tex: Texture2D) -> Control:
 	rect.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	UITheme.apply_crisp(rect, tex)
+	_art_rect = rect
 	return rect
 
 
@@ -358,6 +375,7 @@ func _art_banner(tex: Texture2D) -> Control:
 	rect.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	UITheme.apply_crisp(rect, tex)
+	_art_rect = rect
 	return rect
 
 
@@ -367,6 +385,7 @@ func _render() -> void:
 	for child in _choice_box.get_children():
 		child.queue_free()
 	_render_objects()
+	_render_deals()
 
 	# The prompt stays up the whole event; on a repeat the last outcome sits
 	# under it, so "you surface changed" reads as the thing that just happened
@@ -382,7 +401,8 @@ func _render() -> void:
 		if _prose_box.get_child_count() > 0:
 			_prose_box.add_child(_rule())
 		_prose_box.add_child(_prose(_last_result, UITheme.TEXT_DIM, 13))
-	if _last_text != "":
+	# A deal room's "Walk in" is what the statue replacing the door already says.
+	if _last_text != "" and not DealRooms.is_deal_event(_event):
 		_prose_box.add_child(_did_line(_last_text, 12))
 
 	var offered: int = 0
@@ -487,6 +507,143 @@ func _on_card_broke(card: ObjectCard) -> void:
 			card.get_parent().remove_child(card)
 		card.queue_free()
 	_fit.call_deferred()
+
+
+# --- the deal room (DealRooms) ---------------------------------------------
+
+# The room's items, once you are inside: one card each, with its price and a Take.
+# Rebuilt on every render — a room holds four at most, and taking one changes what
+# every other card says (an Angel's vanish; a Devil's price can drop to "all you
+# have" once the Max Health is down).
+func _render_deals() -> void:
+	if _deal_box == null:
+		return
+	for child in _deal_box.get_children():
+		child.queue_free()
+	if not DealRooms.is_deal_event(_event) or not DealRooms.is_entered():
+		return
+	if _art_rect != null and is_instance_valid(_art_rect):
+		var statue: Texture2D = DealRooms.statue_art(_event.id)
+		if statue != null and _art_rect.texture != statue:
+			_art_rect.texture = statue
+			UITheme.apply_crisp(_art_rect, statue)
+			# SHORTER INSIDE: the items need the height the door had to itself, and
+			# at the door's size the room's Leave went below the fold of a 720p
+			# window. Only the stacked banner — a side column costs no height.
+			if _art_rect.get_parent() == _right:
+				var aspect: float = float(statue.get_width()) / maxf(1.0, float(statue.get_height()))
+				_art_rect.custom_minimum_size = Vector2(ROOM_ART_HEIGHT * aspect, ROOM_ART_HEIGHT)
+	var list: Array = DealRooms.items()
+	if list.is_empty():
+		var empty := _prose("The room is bare.", UITheme.TEXT_DIM, 13)
+		empty.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		_deal_box.add_child(empty)
+		return
+	for i in range(list.size()):
+		_deal_box.add_child(_deal_card(i))
+
+
+const DEAL_CARD_W := 150.0
+const ROOM_ART_HEIGHT := 110.0
+
+func _deal_card(i: int) -> Control:
+	var item: ItemData = DealRooms.item_at(i)
+	var kind: StringName = DealRooms.room_kind()
+	var tint: Color = DealRooms.ANGEL_COLOR if kind == DealRooms.ANGEL else DealRooms.DEVIL_COLOR
+	var gone: bool = DealRooms.is_gone(i)
+	var panel := PanelContainer.new()
+	panel.name = "Deal%d" % i
+	panel.custom_minimum_size = Vector2(DEAL_CARD_W, 0)
+	panel.add_theme_stylebox_override("panel",
+		UITheme.flat(UITheme.BG, 6, 8, 1, tint if not gone else UITheme.BORDER))
+	panel.modulate = Color(1, 1, 1, 0.45) if gone else Color.WHITE
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", UITheme.GAP_SNUG)
+	panel.add_child(col)
+	if item == null:
+		return panel
+	panel.tooltip_text = "%s\n%s" % [item.display_name, item.description]
+	if item.image != null:
+		var pic := TextureRect.new()
+		pic.texture = item.image
+		pic.custom_minimum_size = Vector2(0, 56)
+		pic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		pic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		pic.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		UITheme.apply_crisp(pic, item.image)
+		col.add_child(pic)
+	var name_lbl := Label.new()
+	name_lbl.text = item.display_name
+	name_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	name_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	name_lbl.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
+	name_lbl.add_theme_color_override("font_color", UITheme.rarity_color(int(item.rarity)))
+	col.add_child(name_lbl)
+	var desc := Label.new()
+	desc.text = item.description
+	desc.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	desc.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
+	desc.add_theme_color_override("font_color", UITheme.TEXT_DIM)
+	col.add_child(desc)
+	var deadly: bool = not gone and DealRooms.is_deadly(i)
+	var cost := Label.new()
+	cost.text = ("Taken" if DealRooms.is_taken(i) else "Gone") if gone else DealRooms.cost_text(i)
+	cost.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	cost.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	cost.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
+	cost.add_theme_color_override("font_color", UITheme.DANGER if deadly else tint)
+	col.add_child(cost)
+	var btn := Button.new()
+	btn.name = "Take"
+	btn.text = "Take"
+	btn.disabled = not DealRooms.can_take(i)
+	btn.custom_minimum_size = Vector2(0, 30)
+	btn.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
+	if deadly:
+		btn.add_theme_stylebox_override("normal", UITheme.lethal_box())
+		btn.add_theme_stylebox_override("hover", UITheme.lethal_box(true))
+		btn.add_theme_color_override("font_color", UITheme.DANGER)
+	btn.pressed.connect(func(): _confirm_then_take_deal(i))
+	col.add_child(btn)
+	if deadly:
+		var warn := Label.new()
+		warn.text = "☠  This will kill you."
+		warn.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		warn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		warn.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
+		warn.add_theme_color_override("font_color", UITheme.DANGER)
+		col.add_child(warn)
+	return panel
+
+
+# Public so a test can take a deal without a click.
+func take_deal(i: int) -> void:
+	if _done or not DealRooms.can_take(i):
+		return
+	DealRooms.take(i)
+	_render()
+
+
+# A deal that would end the run asks first, like every other red button.
+func _confirm_then_take_deal(i: int) -> void:
+	if _done or not DealRooms.can_take(i):
+		return
+	if DealRooms.is_deadly(i) and is_inside_tree():
+		var item: ItemData = DealRooms.item_at(i)
+		var layer := CanvasLayer.new()
+		layer.layer = EventSystem.CONFIRM_LAYER
+		layer.process_mode = Node.PROCESS_MODE_ALWAYS
+		add_child(layer)
+		var body: String = "%s costs %s, and you have no Shield to live on after it. Taking it ends the run." % [
+			item.display_name if item != null else "This", DealRooms.cost_text(i).trim_prefix("-")]
+		var panel := ConfirmPanel.ask(layer, "Are you sure?", body, "Do it anyway",
+			func(): take_deal(i))
+		panel.tree_exited.connect(func():
+			if is_instance_valid(layer):
+				layer.queue_free())
+		return
+	take_deal(i)
 
 
 # The event's own drop table (`EventData2.opens_with`, §15). The REAL one —
@@ -929,6 +1086,11 @@ func _did_line(text: String, size: int) -> Label:
 # An ExtResource would resolve eagerly and decode all of them on every boot and
 # every headless test run — the same trap `GameData.cover_image` already sidesteps.
 func _art() -> Texture2D:
+	# Inside a deal room the statue stands where the door was.
+	if DealRooms.is_deal_event(_event) and DealRooms.is_entered():
+		var statue: Texture2D = DealRooms.statue_art(_event.id)
+		if statue != null:
+			return statue
 	var file: String = _event.art_file()
 	if file == "":
 		return null
@@ -1032,6 +1194,10 @@ func _close() -> void:
 # machines the event spawned are the event's, and leaving the Arcade Room is
 # leaving the arcade — the cabinets do not follow you out to the board.
 func _end_objects() -> void:
+	# A deal room closes with its event — and walking away from the first devil
+	# door without going in is remembered (DealRooms.close_room).
+	if DealRooms.is_deal_event(_event):
+		DealRooms.close_room()
 	if ObjectSystem.objects_changed.is_connected(_on_objects_changed):
 		ObjectSystem.objects_changed.disconnect(_on_objects_changed)
 	ObjectSystem.clear_spawned_since(_objects_before)

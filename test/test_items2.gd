@@ -560,10 +560,15 @@ func test_the_book_of_sin_is_a_two_charge_pick_of_five() -> void:
 
 # --- The Mark / Stigmata: the two board-verb pickups ---------------------
 
-func test_the_mark_grants_a_bash_and_the_speed_status() -> void:
-	var before: int = GameState.bash
+# Strength rather than a Bash since 21 Nov 2026 (the owner: "+1 power like the
+# Vajra"), with the Speed it always gave.
+func test_the_mark_grants_strength_and_the_speed_status() -> void:
+	var bash_before: int = GameState.bash
+	var strength_before: int = GameState.status_stacks(&"strength")
 	Fixtures.give(self, &"the_mark")
-	assert_eq(GameState.bash, before + 1, "The Mark: +1 Bash")
+	assert_eq(GameState.status_stacks(&"strength"), strength_before + 1,
+		"The Mark: +1 Strength, as the Vajra gives")
+	assert_eq(GameState.bash, bash_before, "and no Bash any more")
 	assert_eq(GameState.status_stacks(&"speed"), 1, "and +1 Speed, the 2.0 status")
 
 func test_stigmata_fills_the_container_it_adds_and_pays_a_bash() -> void:

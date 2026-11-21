@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="MechanicData" load_steps=2 format=3 uid="uid://mechanic_devil_and_angel_deals"]
+
+[ext_resource type="Script" path="res://scripts/resources/MechanicData.gd" id="1_mech"]
+
+[resource]
+script = ExtResource("1_mech")
+id = &"devil_and_angel_deals"
+display_name = "Devil and Angel Deals"
+description = "After a game in which no enemy took any of your Health, a Devil or Angel Room may open, by Isaac's deal chance: 1%, +35% if the floor's boss fell that game, +99% if no enemy took your Health all floor. Less for a while after a door opens. Never on the first game."
+order = 30
